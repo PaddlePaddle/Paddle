@@ -23,6 +23,12 @@ from paddle.base import core
 
 paddle.enable_static()
 
+_softmax_mask_fuse_upper_triangle_python_api = getattr(
+    paddle.incubate.softmax_mask_fuse_upper_triangle,
+    '__wrapped__',
+    paddle.incubate.softmax_mask_fuse_upper_triangle,
+)
+
 
 def _get_softmax_upper(x, fp16=True):
     x_lower = np.tril(x)
@@ -44,7 +50,7 @@ def _get_softmax_upper(x, fp16=True):
 class TestSoftmaxMaskFuseOp(OpTest):
     def setUp(self):
         self.op_type = "fused_softmax_mask_upper_triangle"
-        self.python_api = paddle.incubate.softmax_mask_fuse_upper_triangle
+        self.python_api = _softmax_mask_fuse_upper_triangle_python_api
         x = np.random.random((1, 4, 32, 32)).astype("float16")
         self.inputs = {'X': x}
         rst = _get_softmax_upper(x)
@@ -68,7 +74,7 @@ class TestSoftmaxMaskFuseOp(OpTest):
 class TestSoftmaxMaskFuseOp_ZeroSize(TestSoftmaxMaskFuseOp):
     def setUp(self):
         self.op_type = "fused_softmax_mask_upper_triangle"
-        self.python_api = paddle.incubate.softmax_mask_fuse_upper_triangle
+        self.python_api = _softmax_mask_fuse_upper_triangle_python_api
         x = np.random.random((1, 1, 0, 32)).astype("float16")
         self.inputs = {'X': x}
         rst = _get_softmax_upper(x)
@@ -82,7 +88,7 @@ class TestSoftmaxMaskFuseOp_ZeroSize(TestSoftmaxMaskFuseOp):
 class TestSoftmaxMaskFuseOp1(OpTest):
     def setUp(self):
         self.op_type = "fused_softmax_mask_upper_triangle"
-        self.python_api = paddle.incubate.softmax_mask_fuse_upper_triangle
+        self.python_api = _softmax_mask_fuse_upper_triangle_python_api
         x = np.random.random((1, 4, 32, 32))
         self.inputs = {'X': x}
         rst = _get_softmax_upper(x)

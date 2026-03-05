@@ -2923,5 +2923,79 @@ class TestRenormInplace(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestCloneAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        paddle.enable_static()
+        self.shape = [3, 4]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_x = np.random.rand(*self.shape).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        paddle_dygraph_out = []
+
+        out1 = paddle.clone(x)
+        paddle_dygraph_out.append(out1)
+
+        out2 = paddle.clone(x=x)
+        paddle_dygraph_out.append(out2)
+
+        out3 = paddle.clone(input=x)
+        paddle_dygraph_out.append(out3)
+
+        out4 = x.clone()
+        paddle_dygraph_out.append(out4)
+
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(out.numpy(), self.np_x)
+            self.assertIsNot(out, x)
+
+        x_grad = paddle.to_tensor(self.np_x)
+        x_grad.stop_gradient = False
+        x_grad.retain_grads()
+        clone_x_grad = paddle.clone(x_grad)
+        clone_x_grad.retain_grads()
+        y = clone_x_grad * 2
+        y.backward()
+        self.assertIsNotNone(x_grad.grad)
+        self.assertIsNotNone(clone_x_grad.grad)
+        np.testing.assert_allclose(
+            clone_x_grad.grad.numpy(), 2 * np.ones_like(self.np_x)
+        )
+        np.testing.assert_allclose(
+            x_grad.grad.numpy(), 2 * np.ones_like(self.np_x)
+        )
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+
+            out1 = paddle.clone(x)
+            out2 = paddle.clone(x=x)
+            out3 = paddle.clone(input=x)
+            out4 = x.clone()
+
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2, out3, out4],
+            )
+
+            # Verify all outputs match input
+            for out in fetches:
+                np.testing.assert_allclose(out, self.np_x)
+
+
 if __name__ == '__main__':
     unittest.main()
