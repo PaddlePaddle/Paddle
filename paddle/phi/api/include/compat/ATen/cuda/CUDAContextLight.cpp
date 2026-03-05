@@ -37,22 +37,26 @@ inline phi::GPUContext* getCurrentGPUContext() {
 
 }  // namespace
 
-cudaDeviceProp* getCurrentDeviceProperties() {
+CUDAContextDeviceProp* getCurrentDeviceProperties() {
   int device = phi::backends::gpu::GetCurrentDeviceId();
   return getDeviceProperties(device);
 }
 
 int warp_size() { return getCurrentDeviceProperties()->warpSize; }
 
-cudaDeviceProp* getDeviceProperties(c10::DeviceIndex device) {
-  return const_cast<cudaDeviceProp*>(
+CUDAContextDeviceProp* getDeviceProperties(c10::DeviceIndex device) {
+  return const_cast<CUDAContextDeviceProp*>(
       &phi::backends::gpu::GetDeviceProperties(device));
 }
 
 bool canDeviceAccessPeer(c10::DeviceIndex device,
                          c10::DeviceIndex peer_device) {
   int can_access = 0;
+#ifdef PADDLE_WITH_HIP
+  hipDeviceCanAccessPeer(&can_access, device, peer_device);
+#else
   cudaDeviceCanAccessPeer(&can_access, device, peer_device);
+#endif
   return can_access != 0;
 }
 
@@ -63,15 +67,15 @@ c10::Allocator* getCUDADeviceAllocator() {
 
 /* Handles */
 
-cusparseHandle_t getCurrentCUDASparseHandle() {
+CUDAContextSparseHandle getCurrentCUDASparseHandle() {
   return getCurrentGPUContext()->cusparse_handle();
 }
 
-cublasHandle_t getCurrentCUDABlasHandle() {
+CUDAContextBlasHandle getCurrentCUDABlasHandle() {
   return getCurrentGPUContext()->cublas_handle();
 }
 
-cublasLtHandle_t getCurrentCUDABlasLtHandle() {
+CUDAContextBlasLtHandle getCurrentCUDABlasLtHandle() {
   return getCurrentGPUContext()->cublaslt_handle();
 }
 
@@ -111,7 +115,7 @@ void* getCUDABlasLtWorkspace() {
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-cusolverDnHandle_t getCurrentCUDASolverDnHandle() {
+CUDAContextSolverHandle getCurrentCUDASolverDnHandle() {
   return getCurrentGPUContext()->cusolver_dn_handle();
 }
 #endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP

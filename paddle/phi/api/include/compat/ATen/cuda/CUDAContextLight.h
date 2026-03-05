@@ -41,6 +41,20 @@ struct Allocator;
 
 namespace at::cuda {
 
+#if defined(PADDLE_WITH_HIP)
+using CUDAContextDeviceProp = phi::gpuDeviceProp;
+using CUDAContextSparseHandle = phi::sparseHandle_t;
+using CUDAContextBlasHandle = phi::blasHandle_t;
+using CUDAContextBlasLtHandle = phi::blasLtHandle_t;
+using CUDAContextSolverHandle = phi::solverHandle_t;
+#else
+using CUDAContextDeviceProp = cudaDeviceProp;
+using CUDAContextSparseHandle = cusparseHandle_t;
+using CUDAContextBlasHandle = cublasHandle_t;
+using CUDAContextBlasLtHandle = cublasLtHandle_t;
+using CUDAContextSolverHandle = cusolverDnHandle_t;
+#endif
+
 /*
 A common CUDA interface for ATen.
 
@@ -74,20 +88,20 @@ inline int64_t getNumGPUs() { return c10::cuda::device_count(); }
  */
 inline bool is_available() { return c10::cuda::device_count() > 0; }
 
-cudaDeviceProp* getCurrentDeviceProperties();
+CUDAContextDeviceProp* getCurrentDeviceProperties();
 
 int warp_size();
 
-cudaDeviceProp* getDeviceProperties(c10::DeviceIndex device);
+CUDAContextDeviceProp* getDeviceProperties(c10::DeviceIndex device);
 
 bool canDeviceAccessPeer(c10::DeviceIndex device, c10::DeviceIndex peer_device);
 
 c10::Allocator* getCUDADeviceAllocator();
 
 /* Handles */
-cusparseHandle_t getCurrentCUDASparseHandle();
-cublasHandle_t getCurrentCUDABlasHandle();
-cublasLtHandle_t getCurrentCUDABlasLtHandle();
+CUDAContextSparseHandle getCurrentCUDASparseHandle();
+CUDAContextBlasHandle getCurrentCUDABlasHandle();
+CUDAContextBlasLtHandle getCurrentCUDABlasLtHandle();
 
 void clearCublasWorkspaces();
 struct WorkspaceMapWithMutex {
@@ -102,7 +116,7 @@ size_t getCUDABlasLtWorkspaceSize();
 void* getCUDABlasLtWorkspace();
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-cusolverDnHandle_t getCurrentCUDASolverDnHandle();
+CUDAContextSolverHandle getCurrentCUDASolverDnHandle();
 #endif
 
 #if defined(USE_CUDSS)
