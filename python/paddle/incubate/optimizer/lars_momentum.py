@@ -64,7 +64,7 @@ class LarsMomentumOptimizer(Optimizer):
             before updating. Often choose to be `1.0/batch_size`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import numpy as np

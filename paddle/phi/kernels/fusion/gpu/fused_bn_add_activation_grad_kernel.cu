@@ -110,10 +110,9 @@ void FusedBatchNormAddActGradKernel(const Context &dev_ctx,
   cudnnTensorDescriptor_t bn_param_desc_;
   cudnnBatchNormMode_t mode_ = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
 
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnCreateTensorDescriptor(&data_desc_));
   PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::cudnnCreateTensorDescriptor(&data_desc_));
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::cudnnCreateTensorDescriptor(&bn_param_desc_));
+      dynload::cudnnCreateTensorDescriptor(&bn_param_desc_));
   if (epsilon1 <= CUDNN_BN_MIN_EPSILON - FLT_EPSILON) {
     LOG(ERROR) << "Provided epsilon is smaller than "
                << "CUDNN_BN_MIN_EPSILON. Setting it to "
@@ -121,13 +120,13 @@ void FusedBatchNormAddActGradKernel(const Context &dev_ctx,
   }
   epsilon1 = std::max(epsilon1, CUDNN_BN_MIN_EPSILON);
 
-  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetTensorNdDescriptor(
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSetTensorNdDescriptor(
       data_desc_,
       CudnnDataType<T>::type,
       in_dims.size() > 3 ? in_dims.size() : 4,
       dims.data(),
       strides.data()));
-  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnDeriveBNTensorDescriptor(
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnDeriveBNTensorDescriptor(
       bn_param_desc_, data_desc_, mode_));
 
   const auto *saved_mean_ptr = &saved_mean;
@@ -147,7 +146,7 @@ void FusedBatchNormAddActGradKernel(const Context &dev_ctx,
       scope_act_desc.descriptor<T>(act_type);
   // --------------- cudnn batchnorm workspace ---------------
   PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::cudnnGetBatchNormalizationBackwardExWorkspaceSize(
+      dynload::cudnnGetBatchNormalizationBackwardExWorkspaceSize(
           /*handle=*/dev_ctx.cudnn_handle(),
           /*mode=*/mode_,
           /*bnOps=*/bnOps_,
@@ -163,7 +162,7 @@ void FusedBatchNormAddActGradKernel(const Context &dev_ctx,
   workspace_tensor.Resize({static_cast<int64_t>(workspace_size)});
   workspace_ptr = dev_ctx.template Alloc<T>(&workspace_tensor);
 
-  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnBatchNormalizationBackwardEx(
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnBatchNormalizationBackwardEx(
       /*handle=*/dev_ctx.cudnn_handle(),
       /*mode=*/mode_,
       /*bnOps=*/bnOps_,
@@ -196,10 +195,9 @@ void FusedBatchNormAddActGradKernel(const Context &dev_ctx,
       /*reserveSpaceSizeInBytes=*/reserve_space_size));
 
   // clean when exit.
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnDestroyTensorDescriptor(data_desc_));
   PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::cudnnDestroyTensorDescriptor(data_desc_));
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::cudnnDestroyTensorDescriptor(bn_param_desc_));
+      dynload::cudnnDestroyTensorDescriptor(bn_param_desc_));
 #else
   PADDLE_THROW(common::errors::Unimplemented(
       "The fused_bn_add_activation operator is not supported on GPU "

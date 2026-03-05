@@ -42,8 +42,8 @@ void MaskedFillKernel(const Context& dev_ctx,
   DDim mask_dims_ex = mask_dims;
 
   if (x_dims.size() == 0 && mask_dims.size() == 0) {
-    x_dims_ex = common::make_ddim({1});
-    mask_dims_ex = common::make_ddim({1});
+    x_dims_ex = make_ddim({1});
+    mask_dims_ex = make_ddim({1});
   } else {
     int rank = std::max(x_dims.size(), mask_dims.size());
     x_dims_ex = funcs::ExtendDims2Rank(x_dims, rank);

@@ -238,7 +238,7 @@ def show() -> None:
         cinn: the cinn version of package. It will return `False` if paddle package is not compiled with CINN
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -303,7 +303,7 @@ def nccl() -> str:
         string: Return the version information of cuda nccl. If paddle package is CPU version, it will return False.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -321,7 +321,7 @@ CUDA_FUNC_DOC = """Get cuda version of paddle package.
         string: Return the version information of cuda. If paddle package is CPU version, it will return False.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -362,7 +362,7 @@ def cudnn() -> str:
         string: Return the version information of cudnn. If paddle package is CPU version, it will return False.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -379,7 +379,7 @@ def xpu() -> str:
     Returns:
         string: Return the version information of xpu. If paddle package is non-XPU version, it will return False.
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -396,7 +396,7 @@ def xpu_xre() -> str:
         string: Return the version information of xpu. If paddle package is non-XPU version, it will return False.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -414,7 +414,7 @@ def xpu_xccl() -> str:
         string: Return the version information of xpu xccl. If paddle package is non-XPU version, it will return False.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -432,7 +432,7 @@ def xpu_xhpc() -> str:
         string: Return the version information of xpu xhpc. If paddle package is non-XPU version, it will return False.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -450,7 +450,7 @@ def cinn() -> str:
         string: Return the version information of CINN. If paddle package is not compiled with CINN, it will return False.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -468,7 +468,7 @@ def tensorrt() -> str:
         string: Return the version information of TensorRT. If paddle package is not compiled with TensorRT, it will return False.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -488,7 +488,7 @@ def cuda_archs():
         list[int]: Return the compiled cuda archs if with gpu. If paddle package is not compiled with gpu, it will return "".
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -666,7 +666,7 @@ def get_paddle_extra_install_requirements():
                 "nvidia-cusolver-cu12==11.7.1.2; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                 "nvidia-cusparse-cu12==12.5.4.2; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                 "nvidia-cusparselt-cu12==0.6.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-nccl-cu12==2.28.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-nccl-cu12==2.19.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                 "nvidia-nvtx-cu12==12.6.77; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                 "nvidia-nvjitlink-cu12==12.6.85; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                 "nvidia-cufile-cu12==1.11.1.6; platform_system == 'Linux' and platform_machine == 'x86_64'"
@@ -876,6 +876,7 @@ def build_cutlass3_src_code():
 packages=['paddle',
           'paddle.libs',
           'paddle.utils',
+          'paddle.utils.data',
           'paddle.utils.gast',
           'paddle.utils.cpp_extension',
           'paddle.dataset',
@@ -1132,6 +1133,11 @@ if os.name != 'nt':
 else:
     package_data={'paddle.base': ['${FLUID_CORE_NAME}' + '.pyd', '${FLUID_CORE_NAME}' + '.lib']}
 
+custom_device_dir = '${PADDLE_BINARY_DIR}/python/paddle/paddle_custom_device'
+if os.path.isdir(custom_device_dir):
+    packages.append('paddle.paddle_custom_device')
+    package_data['paddle.paddle_custom_device'] = ['*.so', 'include/**']
+
 package_data['paddle.base'] += ['${PADDLE_BINARY_DIR}/python/paddle/cost_model/static_op_benchmark.json']
 
 whl_cinn_config_path = '${PADDLE_BINARY_DIR}/python/paddle/cinn_config'
@@ -1160,6 +1166,8 @@ package_dir={
     'paddle.base.proto.profiler': '${PADDLE_BINARY_DIR}/paddle/fluid/platform',
     'paddle.base.proto': '${PADDLE_BINARY_DIR}/paddle/fluid/framework',
     'paddle.base': '${PADDLE_BINARY_DIR}/python/paddle/base',
+    **({'paddle.paddle_custom_device': custom_device_dir}
+       if os.path.isdir(custom_device_dir) else {}),
 }
 
 # put all thirdparty libraries in paddle.libs
@@ -1178,6 +1186,9 @@ if('${WITH_SHARED_PHI}' == 'ON'):
         if('${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON'):
             package_data['paddle.libs'] += [('libphi_gpu' if os.name != 'nt' else 'phi_gpu') + ext_name]
             shutil.copy('${PHI_GPU_LIB}', libs_path)
+    if os.name == 'nt':
+        package_data['paddle.libs'] += ['phi.lib']
+        shutil.copy('${PHI_LINK}', libs_path)
 
 if('${WITH_SHARED_IR}' == 'ON'):
     package_data['paddle.libs'] += [('libpir' if os.name != 'nt' else 'pir') + ext_name]

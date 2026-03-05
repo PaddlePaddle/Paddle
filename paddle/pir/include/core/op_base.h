@@ -30,7 +30,7 @@ class Block;
 class OpBase {
  public:
   explicit OpBase(const Operation *operation = nullptr)
-      : operation_(const_cast<pir::Operation *>(operation)) {}
+      : operation_(const_cast<Operation *>(operation)) {}
 
   Operation *operation() const {
     PADDLE_ENFORCE_NOT_NULL(
@@ -171,11 +171,11 @@ class Op : public OpBase {
   }
 
   static std::set<InterfaceValue> interface_set() {
-    return pir::detail::GetInterfaceSet<ConcreteOp, InterfaceList>();
+    return detail::GetInterfaceSet<ConcreteOp, InterfaceList>();
   }
 
   static std::vector<TypeId> GetTraitSet() {
-    return pir::detail::GetTraitSet<ConcreteOp, TraitList>();
+    return detail::GetTraitSet<ConcreteOp, TraitList>();
   }
 
   // Checking that the derived class does not define any member by comparing

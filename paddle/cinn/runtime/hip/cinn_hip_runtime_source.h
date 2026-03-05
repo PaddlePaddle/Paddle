@@ -374,11 +374,11 @@ __device__ inline float16 FN_FP16(pow)(float16 a, float16 b) {
 // *************************************************************** //
 // reduce operator, need `--expt-relaxed-constexpr` option to call std function
 // in device kernel
-#define EXPAND_REDUCE_INT32_MARCO(MARCO, ...)          \
-  MARCO(sum_int32, 0, int, ##__VA_ARGS__)              \
-  MARCO(prod_int32, 1, int, ##__VA_ARGS__)             \
-  MARCO(max_int32, CINN_INT32_MIN, int, ##__VA_ARGS__) \
-  MARCO(min_int32, CINN_INT32_MAX, int, ##__VA_ARGS__)
+#define EXPAND_REDUCE_INT32_MACRO(MACRO, ...)          \
+  MACRO(sum_int32, 0, int, ##__VA_ARGS__)              \
+  MACRO(prod_int32, 1, int, ##__VA_ARGS__)             \
+  MACRO(max_int32, CINN_INT32_MIN, int, ##__VA_ARGS__) \
+  MACRO(min_int32, CINN_INT32_MAX, int, ##__VA_ARGS__)
 
 __device__ inline int cinn_sum_int32(const int left, const int right) {
   return left + right;
@@ -393,12 +393,12 @@ __device__ inline int cinn_min_int32(const int left, const int right) {
   return min(left, right);
 }
 
-#define EXPAND_REDUCE_INT64_MARCO(MARCO, ...)                                 \
-  MARCO(sum_int64, 0, int64_t, ##__VA_ARGS__)                                 \
-  MARCO(prod_int64, 1, int64_t, ##__VA_ARGS__)                                \
-  MARCO(                                                                      \
+#define EXPAND_REDUCE_INT64_MACRO(MACRO, ...)                                 \
+  MACRO(sum_int64, 0, int64_t, ##__VA_ARGS__)                                 \
+  MACRO(prod_int64, 1, int64_t, ##__VA_ARGS__)                                \
+  MACRO(                                                                      \
       max_int64, std::numeric_limits<int64_t>::min(), int64_t, ##__VA_ARGS__) \
-  MARCO(min_int64, std::numeric_limits<int64_t>::max(), int64_t, ##__VA_ARGS__)
+  MACRO(min_int64, std::numeric_limits<int64_t>::max(), int64_t, ##__VA_ARGS__)
 
 __device__ inline int64_t cinn_sum_int64(const int64_t left,
                                          const int64_t right) {
@@ -526,8 +526,8 @@ __device__ inline bool cinn_any(const bool left, const bool right) {
     return tmp_val;                                                           \
   }
 
-EXPAND_REDUCE_INT32_MARCO(CINN_WARP_SHUFFLE_INTERNAL_IMPL)
-EXPAND_REDUCE_INT64_MARCO(CINN_WARP_SHUFFLE_INTERNAL_IMPL)
+EXPAND_REDUCE_INT32_MACRO(CINN_WARP_SHUFFLE_INTERNAL_IMPL)
+EXPAND_REDUCE_INT64_MACRO(CINN_WARP_SHUFFLE_INTERNAL_IMPL)
 EXPAND_REDUCE_FP32_MACRO(CINN_WARP_SHUFFLE_INTERNAL_IMPL)
 EXPAND_REDUCE_FP64_MACRO(CINN_WARP_SHUFFLE_INTERNAL_IMPL)
 EXPAND_REDUCE_BOOL_MACRO(CINN_WARP_SHUFFLE_INTERNAL_IMPL)
@@ -564,8 +564,8 @@ EXPAND_REDUCE_FP16_MACRO(CINN_WARP_SHUFFLE_INTERNAL_IMPL)
     CINN_BLOCK_REDUCE_IMPL(DTYPE, cinn_warp_shuffle_##REDUCE_TYPE##_internal); \
   }
 
-EXPAND_REDUCE_INT32_MARCO(CINN_BLOCK_REDUCE_MACRO)
-EXPAND_REDUCE_INT64_MARCO(CINN_BLOCK_REDUCE_MACRO)
+EXPAND_REDUCE_INT32_MACRO(CINN_BLOCK_REDUCE_MACRO)
+EXPAND_REDUCE_INT64_MACRO(CINN_BLOCK_REDUCE_MACRO)
 EXPAND_REDUCE_FP32_MACRO(CINN_BLOCK_REDUCE_MACRO)
 EXPAND_REDUCE_FP64_MACRO(CINN_BLOCK_REDUCE_MACRO)
 EXPAND_REDUCE_BOOL_MACRO(CINN_BLOCK_REDUCE_MACRO)
@@ -600,8 +600,8 @@ EXPAND_REDUCE_FP16_MACRO(CINN_BLOCK_REDUCE_MACRO)
     CINN_DISCRETE_REDUCE_IMPL(REDUCE_TYPE, value);                    \
   }
 
-EXPAND_REDUCE_INT32_MARCO(CINN_DISCRETE_REDUCE_MACRO)
-EXPAND_REDUCE_INT64_MARCO(CINN_DISCRETE_REDUCE_MACRO)
+EXPAND_REDUCE_INT32_MACRO(CINN_DISCRETE_REDUCE_MACRO)
+EXPAND_REDUCE_INT64_MACRO(CINN_DISCRETE_REDUCE_MACRO)
 EXPAND_REDUCE_FP32_MACRO(CINN_DISCRETE_REDUCE_MACRO)
 EXPAND_REDUCE_FP64_MACRO(CINN_DISCRETE_REDUCE_MACRO)
 EXPAND_REDUCE_BOOL_MACRO(CINN_DISCRETE_REDUCE_MACRO)
@@ -631,8 +631,8 @@ EXPAND_REDUCE_FP16_MACRO(CINN_DISCRETE_REDUCE_MACRO)
     CINN_GRID_REDUCE_IMPL(REDUCE_TYPE, (DTYPE)(INITIAL_VALUE), DTYPE); \
   }
 
-EXPAND_REDUCE_INT32_MARCO(CINN_GRID_REDUCE_MACRO)
-EXPAND_REDUCE_INT64_MARCO(CINN_GRID_REDUCE_MACRO)
+EXPAND_REDUCE_INT32_MACRO(CINN_GRID_REDUCE_MACRO)
+EXPAND_REDUCE_INT64_MACRO(CINN_GRID_REDUCE_MACRO)
 EXPAND_REDUCE_FP32_MACRO(CINN_GRID_REDUCE_MACRO)
 EXPAND_REDUCE_FP64_MACRO(CINN_GRID_REDUCE_MACRO)
 EXPAND_REDUCE_BOOL_MACRO(CINN_GRID_REDUCE_MACRO)
@@ -660,8 +660,8 @@ __device__ inline bool cinn_grid_reduce_update_semaphore(int *semaphores) {
   return done;
 }
 
-#undef EXPAND_REDUCE_INT32_MARCO
-#undef EXPAND_REDUCE_INT64_MARCO
+#undef EXPAND_REDUCE_INT32_MACRO
+#undef EXPAND_REDUCE_INT64_MACRO
 #undef EXPAND_REDUCE_FP32_MACRO
 #undef EXPAND_REDUCE_FP64_MACRO
 #undef EXPAND_REDUCE_BOOL_MACRO

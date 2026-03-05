@@ -41,7 +41,7 @@ void FullKernel(const Context& dev_ctx,
                 const Scalar& val,
                 DataType dtype,
                 DenseTensor* out) {
-  out->Resize(common::make_ddim(shape.GetData()));
+  out->Resize(make_ddim(shape.GetData()));
   int64_t numel = out->numel();
   dev_ctx.template Alloc<T>(out);
 

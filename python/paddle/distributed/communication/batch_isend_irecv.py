@@ -50,7 +50,7 @@ class P2POp:
             default group. Default: None.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
 
@@ -152,7 +152,7 @@ def batch_isend_irecv(p2p_op_list: list[P2POp]) -> list[task]:
         This API only supports the dygraph mode.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
 

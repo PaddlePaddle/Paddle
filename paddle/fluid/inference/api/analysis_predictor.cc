@@ -1184,8 +1184,7 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
   basic_pass_pm.Run(pir_program_.get());
   //----------------------------------------------------------------------------------------------//
 
-  pir_program_ =
-      paddle::dialect::PdOpLowerToKernelPass(pir_program_.get(), place_);
+  pir_program_ = pir::PdOpLowerToKernelPass(pir_program_.get(), place_);
 
   ::pir::PassManager lowered_pm(::pir::IrContext::Instance(), 3);
   auto remove_shadow_feed_pass = ::pir::CreateRemoveShadowFeedPass();

@@ -422,6 +422,14 @@ class TestFractionalMaxPool3DAPI(unittest.TestCase):
                 x=x, output_size=[3, 3, None], random_u=0.6
             )
 
+            # test param_two_alias(["x", "input"], ["return_mask", "return_indices"])
+            out_9 = paddle.nn.functional.fractional_max_pool3d(
+                input=x,
+                output_size=[3, 3, None],
+                random_u=0.6,
+                return_indices=False,
+            )
+
             np.testing.assert_allclose(out_1.numpy(), self.res_1_np)
             np.testing.assert_allclose(out_2.numpy(), self.res_2_np)
             np.testing.assert_allclose(out_3.numpy(), self.res_3_np)
@@ -430,6 +438,7 @@ class TestFractionalMaxPool3DAPI(unittest.TestCase):
             np.testing.assert_allclose(out_6.numpy(), self.res_6_np)
             np.testing.assert_allclose(out_7.numpy(), self.res_7_np)
             np.testing.assert_allclose(out_8.numpy(), self.res_8_np)
+            np.testing.assert_allclose(out_9.numpy(), self.res_8_np)
 
 
 class TestFractionalMaxPool3DClassAPI(unittest.TestCase):
@@ -550,11 +559,28 @@ class TestFractionalMaxPool3DClassAPI(unittest.TestCase):
             )
             out_5 = fractional_max_pool(x=x)
 
+            # test param_one_alias(["x", "input"])
+            fractional_max_pool = paddle.nn.FractionalMaxPool3D(
+                kernel_size=[2, 2, 2], output_size=[3, 3, 3], random_u=0.6
+            )
+            out_6 = fractional_max_pool(input=x)
+
+            # test param_one_alias(["return_mask", "return_indices"])
+            fractional_max_pool = paddle.nn.FractionalMaxPool3D(
+                kernel_size=[2, 2, 2],
+                output_size=[3, 3, 3],
+                random_u=0.6,
+                return_indices=False,
+            )
+            out_7 = fractional_max_pool(x=x)
+
             np.testing.assert_allclose(out_1.numpy(), self.res_1_np)
             np.testing.assert_allclose(out_2.numpy(), self.res_2_np)
             np.testing.assert_allclose(out_3.numpy(), self.res_3_np)
             np.testing.assert_allclose(out_4.numpy(), self.res_4_np)
             np.testing.assert_allclose(out_5.numpy(), self.res_5_np)
+            np.testing.assert_allclose(out_6.numpy(), self.res_5_np)
+            np.testing.assert_allclose(out_7.numpy(), self.res_5_np)
 
 
 class TestOutDtype(unittest.TestCase):

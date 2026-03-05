@@ -16,15 +16,11 @@
 
 #include <iterator>
 #include <random>
-#include <set>
-#include <string>
-#include <vector>
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math/sampler.h"
 #include "paddle/utils/optional.h"
-#include "unsupported/Eigen/CXX11/Tensor"
 
 namespace phi {
 
@@ -165,10 +161,10 @@ void NCEKernel(const Context &dev_ctx,
         (num_true_classes == -1) ? -1 : (num_neg_samples + num_true_classes));
 
     sample_labels = &sample_labels_tmp;
-    sample_labels->Resize(common::make_ddim(sample_out_dims));
+    sample_labels->Resize(make_ddim(sample_out_dims));
 
     sample_out = &sample_out_tmp;
-    sample_out->Resize(common::make_ddim(sample_out_dims));
+    sample_out->Resize(make_ddim(sample_out_dims));
   } else {
     sample_labels = sample_labels_out;
     sample_out = sample_logits_out;

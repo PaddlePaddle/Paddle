@@ -44,7 +44,7 @@ endif()
 if(WITH_ARM)
   set(XPU_XCCL_BASE_VERSION "20251104") # For XRE5
 else()
-  set(XPU_XCCL_BASE_VERSION "3.0.7.0") # For XRE5
+  set(XPU_XCCL_BASE_VERSION "3.0.8.0") # For XRE5
 endif()
 if(NOT DEFINED XPU_XFT_BASE_VERSION)
   set(XPU_XFT_BASE_VERSION "20250507/xpu3")
@@ -65,7 +65,7 @@ else()
 endif()
 
 if(WITH_XPU_XRE5)
-  set(XPU_XPUTX_BASE_VERSION "2.0.2.0")
+  set(XPU_XPUTX_BASE_VERSION "2.0.2.4")
 endif()
 
 if(WITH_XPU_XRE5)

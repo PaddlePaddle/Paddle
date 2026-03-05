@@ -124,7 +124,7 @@ def sequence_conv(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP("env set will not work in ci check because import paddle in global_exec")
             >>> # set env var before import paddle to disable pir mode, following example code use os module.
@@ -234,7 +234,7 @@ def sequence_softmax(input, use_cudnn=False, name=None):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP("env set will not work in ci check because import paddle in global_exec")
             >>> # set env var before import paddle to disable pir mode, following example code use os module.
@@ -243,12 +243,10 @@ def sequence_softmax(input, use_cudnn=False, name=None):
             >>> import paddle
             >>> paddle.enable_static()
 
-            >>> x = paddle.static.data(name='x', shape=[7, 1],
-            ...     dtype='float32', lod_level=1)
+            >>> x = paddle.static.data(name='x', shape=[7, 1], dtype='float32', lod_level=1)
             >>> x_sequence_softmax_1 = paddle.static.nn.sequence_softmax(input=x)
 
-            >>> y = paddle.static.data(name='y', shape=[7],
-            ...     dtype='float32', lod_level=1)
+            >>> y = paddle.static.data(name='y', shape=[7], dtype='float32', lod_level=1)
             >>> x_sequence_softmax_2 = paddle.static.nn.sequence_softmax(input=y)
     """
     assert not in_dygraph_mode(), (
@@ -351,7 +349,7 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP("env set will not work in ci check because import paddle in global_exec")
             >>> # set env var before import paddle to disable pir mode, following example code use os module.
@@ -451,7 +449,7 @@ def sequence_first_step(input):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP("env set will not work in ci check because import paddle in global_exec")
             >>> # set env var before import paddle to disable pir mode, following example code use os module.
@@ -519,7 +517,7 @@ def sequence_last_step(input):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP("env set will not work in ci check because import paddle in global_exec")
             >>> # set env var before import paddle to disable pir mode, following example code use os module.
@@ -620,7 +618,7 @@ def sequence_expand(x, y, ref_level=-1, name=None):
             The data type is same as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP("env set will not work in ci check because import paddle in global_exec")
             >>> # set env var before import paddle to disable pir mode, following example code use os module.
@@ -740,7 +738,7 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
             int32 or int64.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 

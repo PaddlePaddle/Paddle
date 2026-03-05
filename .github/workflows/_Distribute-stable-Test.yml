@@ -43,6 +43,7 @@ jobs:
     if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: Distribute
+    timeout-minutes: 120
     steps:
       - name: Check docker image and run container
         env:
@@ -121,6 +122,7 @@ jobs:
           -w /paddle --network host ${docker_image}
 
       - name: Download paddle.tar.gz and merge target branch
+        timeout-minutes: 30
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*

@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING, overload
 
 from paddle import _C_ops
 from paddle.framework import LayerHelper, in_dynamic_or_pir_mode
+from paddle.utils.deprecated import deprecated
 
 if TYPE_CHECKING:
     from paddle import Tensor
@@ -71,6 +72,11 @@ def masked_multihead_attention(
 ) -> tuple[Tensor, Tensor, Tensor]: ...
 
 
+@deprecated(
+    since="3.4.0",
+    level=1,
+    update_to="paddle.nn.functional.scaled_dot_product_attention",
+)
 def masked_multihead_attention(
     x,
     cache_kv=None,
@@ -124,7 +130,7 @@ def masked_multihead_attention(
         If "beam_cache_offset_out" is none, return the tuple (output, cache_kvs_out).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -141,7 +147,10 @@ def masked_multihead_attention(
             >>> cache_kv = paddle.rand(shape=(2, 2, 32, 64, 128), dtype="float32")
 
             >>> output = F.masked_multihead_attention(
-            ...     x, src_mask=src_mask, cache_kv=cache_kv)
+            ...     x,
+            ...     src_mask=src_mask,
+            ...     cache_kv=cache_kv,
+            ... )
 
     """
 

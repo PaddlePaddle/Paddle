@@ -1010,7 +1010,7 @@ void BuildOpFuncList(const phi::Place& place,
       for (auto& vname : op->InputVars()) {
         auto* var = local_scope->FindVar(vname);
         if (var == nullptr) continue;
-        const phi::DenseTensor* tensor{nullptr};
+        const DenseTensor* tensor{nullptr};
         if (var->IsType<DenseTensor>()) {
           tensor = &var->Get<DenseTensor>();
         } else {
@@ -1026,7 +1026,7 @@ void BuildOpFuncList(const phi::Place& place,
       for (auto& vname : op->OutputVars(true)) {
         auto* var = local_scope->FindVar(vname);
         if (var == nullptr) continue;
-        const phi::DenseTensor* tensor{nullptr};
+        const DenseTensor* tensor{nullptr};
         if (var->IsType<DenseTensor>()) {
           tensor = &var->Get<DenseTensor>();
         } else {

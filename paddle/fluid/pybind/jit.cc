@@ -91,7 +91,7 @@ void BindGuard(pybind11::module *m) {
       *m, "DtypeMatchGuard", R"DOC(DtypeMatchGuard Class.)DOC")
       .def(py::init<const paddle::framework::proto::VarType &>(),
            py::arg("dtype"))
-      .def(py::init<const phi::DataType &>(), py::arg("dtype"));
+      .def(py::init<const DataType &>(), py::arg("dtype"));
   py::class_<AttributeMatchGuard,
              GuardBase,
              std::shared_ptr<AttributeMatchGuard>>(

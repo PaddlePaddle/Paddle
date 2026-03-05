@@ -30,7 +30,7 @@ void UniformKernel(const Context &dev_ctx,
                    const Scalar &max,
                    int seed,
                    DenseTensor *out) {
-  out->Resize(common::make_ddim(shape.GetData()));
+  out->Resize(make_ddim(shape.GetData()));
   T *data = dev_ctx.template Alloc<T>(out);
   if (out->numel() == 0) {
     return;

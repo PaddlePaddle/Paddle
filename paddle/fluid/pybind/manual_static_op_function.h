@@ -153,7 +153,7 @@ PyObject *static_api_full(PyObject *self, PyObject *args, PyObject *kwargs) {
     PyObject *dtype_obj = PyTuple_GET_ITEM(args, 2);
     PyObject *place_obj = PyTuple_GET_ITEM(args, 3);
 
-    phi::DataType dtype = CastPyArg2DataTypeDirectly(dtype_obj, "full", 2);
+    DataType dtype = CastPyArg2DataTypeDirectly(dtype_obj, "full", 2);
     Place place = CastPyArg2Place(place_obj, "full", 3);
 
     if (!PyObject_CheckIRValue(shape_obj) &&
@@ -189,7 +189,7 @@ PyObject *static_api_full(PyObject *self, PyObject *args, PyObject *kwargs) {
       } else {
         std::vector<int64_t> shape_tmp = CastPyArg2Longs(shape_obj, "full", 0);
         shape = paddle::dialect::full_int_array(
-            shape_tmp, phi::DataType::INT64, CPUPlace());
+            shape_tmp, DataType::INT64, CPUPlace());
       }
 
       if (PyObject_CheckIRValue(value_obj)) {
@@ -207,7 +207,7 @@ PyObject *static_api_full(PyObject *self, PyObject *args, PyObject *kwargs) {
           double value_tmp = CastPyArg2Double(value_obj, "full", 1);
           value = paddle::dialect::full(std::vector<int64_t>{1},
                                         value_tmp,
-                                        phi::DataType::FLOAT32,
+                                        DataType::FLOAT32,
                                         CPUPlace());
         }
       }
@@ -235,8 +235,7 @@ static PyObject *static_api_create_array(PyObject *self,
 
     // Get dtype from args
     PyObject *dtype_obj = PyTuple_GET_ITEM(args, 0);
-    phi::DataType dtype =
-        CastPyArg2DataTypeDirectly(dtype_obj, "create_array", 0);
+    DataType dtype = CastPyArg2DataTypeDirectly(dtype_obj, "create_array", 0);
 
     // Call ir static api
     CallStackRecorder callstack_recorder("create_array");
@@ -319,7 +318,7 @@ static PyObject *static_api_array_read(PyObject *self,
     } else {
       int64_t i_tmp = CastPyArg2Int(i_obj, "array_read", 1);
       i = paddle::dialect::full(
-          std::vector<int64_t>{1}, i_tmp, phi::DataType::INT64, CPUPlace());
+          std::vector<int64_t>{1}, i_tmp, DataType::INT64, CPUPlace());
     }
 
     // Call ir static api
@@ -381,7 +380,7 @@ static PyObject *static_api_array_write_(PyObject *self,
     } else {
       int64_t i_tmp = CastPyArg2Int(i_obj, "array_write_", 2);
       i = paddle::dialect::full(
-          std::vector<int64_t>{1}, i_tmp, phi::DataType::INT64, CPUPlace());
+          std::vector<int64_t>{1}, i_tmp, DataType::INT64, CPUPlace());
     }
 
     // Call ir static api
@@ -485,7 +484,7 @@ static PyObject *static_api_slice_array(PyObject *self,
       std::vector<int64_t> starts_tmp =
           CastPyArg2Longs(starts_obj, "slice_array", 1);
       starts = paddle::dialect::full_int_array(
-          starts_tmp, phi::DataType::INT64, CPUPlace());
+          starts_tmp, DataType::INT64, CPUPlace());
     }
 
     PyObject *ends_obj = PyTuple_GET_ITEM(args, 2);
@@ -500,7 +499,7 @@ static PyObject *static_api_slice_array(PyObject *self,
       std::vector<int64_t> ends_tmp =
           CastPyArg2Longs(ends_obj, "slice_array", 2);
       ends = paddle::dialect::full_int_array(
-          ends_tmp, phi::DataType::INT64, CPUPlace());
+          ends_tmp, DataType::INT64, CPUPlace());
     }
 
     // Call ir static api
@@ -540,7 +539,7 @@ static PyObject *static_api_slice_array_dense(PyObject *self,
       std::vector<int64_t> starts_tmp =
           CastPyArg2Longs(starts_obj, "slice_array_dense", 1);
       starts = paddle::dialect::full_int_array(
-          starts_tmp, phi::DataType::INT64, CPUPlace());
+          starts_tmp, DataType::INT64, CPUPlace());
     }
     // Call ir static api
     CallStackRecorder callstack_recorder("slice_array_dense");
@@ -633,7 +632,7 @@ static PyObject *static_api_run_custom_op(PyObject *self,
     }
     if (paddle::framework::detail::IsDuplicableVar(input)) {
       std::vector<std::vector<int64_t>> tmp_input_shapes;
-      std::vector<phi::DataType> tmp_input_dtypes;
+      std::vector<DataType> tmp_input_dtypes;
       vec_input_name2id_map[inputs[i]] = vec_input_index;
       vec_input_index++;
       std::vector<pir::Value> input_values =
@@ -785,7 +784,7 @@ static PyObject *static_api_run_custom_op(PyObject *self,
                                        vec_input_shapes,
                                        vec_input_name2id_map,
                                        custom_attrs);
-  std::vector<phi::DataType> output_dtypes =
+  std::vector<DataType> output_dtypes =
       paddle::framework::RunInferDtype(inferdtype_func,
                                        vec_map[0],
                                        input_dtypes,

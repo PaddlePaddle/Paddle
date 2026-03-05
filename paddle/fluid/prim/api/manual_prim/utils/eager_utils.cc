@@ -20,32 +20,30 @@ namespace paddle::prim {
 
 template <>
 Tensor empty<Tensor>(const paddle::experimental::IntArray& shape,
-                     phi::DataType dtype,
-                     const paddle::Place& place) {
-  if (dtype == phi::DataType::UNDEFINED) {
-    dtype = phi::DataType::FLOAT32;
+                     DataType dtype,
+                     const Place& place) {
+  if (dtype == DataType::UNDEFINED) {
+    dtype = DataType::FLOAT32;
   }
   return empty_ad_func(shape, dtype, place);
 }
 
 template <>
-Tensor empty_like<Tensor>(const paddle::Tensor& x,
-                          phi::DataType dtype,
-                          const paddle::Place& place) {
-  if (dtype == phi::DataType::UNDEFINED) {
-    dtype = phi::DataType::FLOAT32;
+Tensor empty_like<Tensor>(const Tensor& x, DataType dtype, const Place& place) {
+  if (dtype == DataType::UNDEFINED) {
+    dtype = DataType::FLOAT32;
   }
   return empty_like_ad_func(x, dtype, place);
 }
 
 template <>
-void set_output<Tensor>(const paddle::Tensor& x_tmp, paddle::Tensor* x) {
+void set_output<Tensor>(const Tensor& x_tmp, Tensor* x) {
   x->set_impl(x_tmp.impl());
   x->set_autograd_meta(x_tmp.mutable_autograd_meta());
 }
 
 template <>
-void by_pass<Tensor>(const paddle::Tensor& x, Tensor* out) {
+void by_pass<Tensor>(const Tensor& x, Tensor* out) {
   set_output<Tensor>(x, out);
 }
 

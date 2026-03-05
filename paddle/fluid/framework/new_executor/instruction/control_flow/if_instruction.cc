@@ -43,7 +43,7 @@ COMMON_DECLARE_bool(check_cuda_error);
 namespace paddle::framework {
 
 IfInstruction::IfInstruction(size_t id,
-                             const phi::Place& place,
+                             const Place& place,
                              pir::Operation* op,
                              ValueExecutionInfo* value_exec_info,
                              interpreter::ExecutionConfig execution_config)

@@ -32,7 +32,7 @@ struct GraphSendRecvSumCUDAFunctor {
                                 T* output,
                                 const IndexT& in_i,
                                 const IndexT& out_i) {
-    phi::CudaAtomicAdd(output + out_i, *(params + in_i));
+    CudaAtomicAdd(output + out_i, *(params + in_i));
   }
 };
 
@@ -106,7 +106,7 @@ __global__ void ComputeCountCUDAKernel(int32_t* count,
                                        size_t index_size) {
   CUDA_KERNEL_LOOP_TYPE(i, index_size, int64_t) {
     IndexT dst_i = dst_indices[i];
-    phi::CudaAtomicAdd(count + dst_i, 1);
+    CudaAtomicAdd(count + dst_i, 1);
   }
 }
 
@@ -140,8 +140,8 @@ __global__ void ManipulateMeanGradCUDAKernel(const T* params,
     IndexT dst_i = dst_indices[indices_i];
     int64_t in_i = src_i * slice_size + slice_i;
     int64_t out_i = dst_i * slice_size + slice_i;
-    phi::CudaAtomicAdd(output + out_i,
-                       *(params + in_i) / static_cast<T>(dst_count[src_i]));
+    CudaAtomicAdd(output + out_i,
+                  *(params + in_i) / static_cast<T>(dst_count[src_i]));
   }
 }
 
@@ -162,9 +162,9 @@ __global__ void ManipulateMinMaxGradCUDAKernel(const T* params,
     IndexT dst_i = dst_indices[indices_i];
     int64_t in_i = src_i * slice_size + slice_i;
     int64_t out_i = dst_i * slice_size + slice_i;
-    phi::CudaAtomicAdd(output + out_i,
-                       *(params + in_i) * static_cast<T>(*(ptr_input + out_i) ==
-                                                         *(ptr_output + in_i)));
+    CudaAtomicAdd(output + out_i,
+                  *(params + in_i) * static_cast<T>(*(ptr_input + out_i) ==
+                                                    *(ptr_output + in_i)));
   }
 }
 
