@@ -3208,6 +3208,130 @@ class TestDsplitAPI(unittest.TestCase):
                 np.testing.assert_allclose(fetches[i], ref_out[0])
                 np.testing.assert_allclose(fetches[i + 1], ref_out[1])
 
+class TestCummaxAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.shape = [5, 6]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_x = np.random.randn(*self.shape).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        paddle_dygraph_out = []
+
+        out1, idx1 = paddle.cummax(x, 0)
+        paddle_dygraph_out.append((out1, idx1))
+
+        out2, idx2 = paddle.cummax(x=x, axis=0)
+        paddle_dygraph_out.append((out2, idx2))
+
+        out3, idx3 = paddle.cummax(input=x, dim=0)
+        paddle_dygraph_out.append((out3, idx3))
+
+        out_val = paddle.empty(self.shape, dtype=self.dtype)
+        out_idx = paddle.empty(self.shape, dtype='int64')
+        paddle.cummax(x, axis=0, out=(out_val, out_idx))
+        paddle_dygraph_out.append((out_val, out_idx))
+
+        out_val2 = paddle.empty(self.shape, dtype=self.dtype)
+        out_idx2 = paddle.empty(self.shape, dtype='int64')
+        paddle.cummax(input=x, dim=0, out=(out_val2, out_idx2))
+        paddle_dygraph_out.append((out_val2, out_idx2))
+
+        np_val = np.maximum.accumulate(self.np_x, axis=0)
+
+        for val, idx in paddle_dygraph_out:
+            np.testing.assert_allclose(np_val, val.numpy())
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+
+            out1, idx1 = paddle.cummax(x, 0)
+
+            out2, idx2 = paddle.cummax(x=x, axis=0)
+
+            out3, idx3 = paddle.cummax(input=x, dim=0)
+
+            exe = paddle.base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main, feed={"x": self.np_x}, fetch_list=[out1, idx1, out2, idx2, out3, idx3],
+            )
+
+        np_val = np.maximum.accumulate(self.np_x, axis=0)
+        for i in range(0, len(fetches), 2):
+            np.testing.assert_allclose(np_val, fetches[i])
+
+class TestCumminAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.shape = [5, 6]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_x = np.random.randn(*self.shape).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        paddle_dygraph_out = []
+
+        out1, idx1 = paddle.cummin(x, 0)
+        paddle_dygraph_out.append((out1, idx1))
+
+        out2, idx2 = paddle.cummin(x=x, axis=0)
+        paddle_dygraph_out.append((out2, idx2))
+
+        out3, idx3 = paddle.cummin(input=x, dim=0)
+        paddle_dygraph_out.append((out3, idx3))
+
+        out_val = paddle.empty(self.shape, dtype=self.dtype)
+        out_idx = paddle.empty(self.shape, dtype='int64')
+        paddle.cummin(x, axis=0, out=(out_val, out_idx))
+        paddle_dygraph_out.append((out_val, out_idx))
+
+        np_val = np.minimum.accumulate(self.np_x, axis=0)
+
+        for val, idx in paddle_dygraph_out:
+            np.testing.assert_allclose(np_val, val.numpy())
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+
+            out1, idx1 = paddle.cummin(x, 0)
+
+            out2, idx2 = paddle.cummin(x=x, axis=0)
+
+            out3, idx3 = paddle.cummin(input=x, dim=0)
+
+            exe = paddle.base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main, feed={"x": self.np_x}, fetch_list=[out1, idx1, out2, idx2, out3, idx3],
+            )
+
+        np_val = np.minimum.accumulate(self.np_x, axis=0)
+
+        for i in range(0, len(fetches), 2):
+            np.testing.assert_allclose(np_val, fetches[i])
+
 
 class TestVsplitAPI(unittest.TestCase):
     def setUp(self):

@@ -4871,6 +4871,143 @@ def cross(
 )
 
 add_doc_and_signature(
+    "cummax",
+    r"""
+    The cumulative max of the elements along a given axis.
+
+    Note:
+        The first element of the result is the same as the first element of the input.
+
+    Args:
+        x (Tensor): The input tensor needed to be cummaxed.
+        axis (int, optional): The dimension to accumulate along. -1 means the last dimension. The default (None) is to compute the cummax over the flattened array.
+        dtype (str|paddle.dtype|np.dtype, optional): The data type of the indices tensor, can be int32, int64. The default value is int64.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor), The result of cummax operation. The dtype of cummax result is same with input x.
+
+        indices (Tensor), The corresponding index results of cummax operation.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> data = paddle.to_tensor([-1, 5, 0, -2, -3, 2])
+            >>> data = paddle.reshape(data, (2, 3))
+
+            >>> value, indices = paddle.cummax(data)
+            >>> value
+            Tensor(shape=[6], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [-1,  5,  5,  5,  5,  5])
+            >>> indices
+            Tensor(shape=[6], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [0, 1, 1, 1, 1, 1])
+
+            >>> value, indices = paddle.cummax(data, axis=0)
+            >>> value
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[-1,  5,  0],
+             [-1,  5,  2]])
+            >>> indices
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 0, 0],
+             [0, 0, 1]])
+
+            >>> value, indices = paddle.cummax(data, axis=-1)
+            >>> value
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[-1,  5,  5],
+             [-2, -2,  2]])
+            >>> indices
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 1, 1],
+             [0, 0, 2]])
+
+            >>> value, indices = paddle.cummax(data, dtype='int64')
+            >>> assert indices.dtype == paddle.int64
+""",
+    """
+def cummax(
+    x: Tensor,
+    axis: int | None = None,
+    dtype: DTypeLike = 'int64',
+    out: tuple[Tensor, Tensor] | None = None,
+    name: str | None = None,
+) -> tuple[Tensor, Tensor]
+""",
+)
+
+add_doc_and_signature(
+    "cummin",
+    r"""
+    The cumulative min of the elements along a given axis.
+
+    Note:
+        The first element of the result is the same as the first element of the input.
+
+    Args:
+        x (Tensor): The input tensor needed to be cummined.
+        axis (int, optional): The dimension to accumulate along. -1 means the last dimension. The default (None) is to compute the cummin over the flattened array.
+        dtype (str|paddle.dtype|np.dtype, optional): The data type of the indices tensor, can be int32, int64. The default value is int64.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor), The result of cummin operation. The dtype of cummin result is same with input x.
+
+        indices (Tensor), The corresponding index results of cummin operation.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+            >>> data = paddle.to_tensor([-1, 5, 0, -2, -3, 2])
+            >>> data = paddle.reshape(data, (2, 3))
+
+            >>> value, indices = paddle.cummin(data)
+            >>> value
+            Tensor(shape=[6], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [-1, -1, -1, -2, -3, -3])
+            >>> indices
+            Tensor(shape=[6], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [0, 0, 0, 3, 4, 4])
+
+            >>> value, indices = paddle.cummin(data, axis=0)
+            >>> value
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[-1,  5,  0],
+             [-2, -3,  0]])
+            >>> indices
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 0, 0],
+             [1, 1, 0]])
+
+            >>> value, indices = paddle.cummin(data, axis=-1)
+            >>> value
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[-1, -1, -1],
+             [-2, -3, -3]])
+            >>> indices
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 0, 0],
+             [0, 1, 1]])
+
+            >>> value, indices = paddle.cummin(data, dtype='int64')
+            >>> assert indices.dtype == paddle.int64
+""",
+    """
+def cummin(
+    x: Tensor,
+    axis: int | None = None,
+    dtype: DTypeLike = 'int64',
+    out: tuple[Tensor, Tensor] | None = None,
+    name: str | None = None,
+) -> tuple[Tensor, Tensor]
+""",
+)
+
+add_doc_and_signature(
     "dist",
     r"""
     Returns the p-norm of (x - y). It is not a norm in a strict sense, only as a measure

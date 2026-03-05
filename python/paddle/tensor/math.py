@@ -3228,10 +3228,12 @@ def cumsum_(
         return _C_ops.cumsum_(x, axis, flatten, False, False)
 
 
+@param_two_alias(["x", "input"], ["axis", "dim"]) 
 def cummax(
     x: Tensor,
     axis: int | None = None,
     dtype: DTypeLike = 'int64',
+    out: tuple[Tensor, Tensor] | None = None, 
     name: str | None = None,
 ) -> tuple[Tensor, Tensor]:
     """
@@ -3299,7 +3301,20 @@ def cummax(
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.cummax(x, axis, dtype)
+        if out is not None:
+            if not isinstance(out, (tuple, list)) or len(out) != 2:
+                raise ValueError("out must be a tuple of two Tensors (values, indices)")
+            
+            out_value, out_index = out
+
+            result_val, result_idx = _C_ops.cummax(x, axis, dtype)
+            paddle.assign(result_val, out_value)
+            paddle.assign(result_idx, out_index)
+            
+            return out_value, out_index
+        else:
+            return _C_ops.cummax(x, axis, dtype)
+            
     else:
         check_variable_and_dtype(
             x,
@@ -3309,21 +3324,34 @@ def cummax(
         )
         check_type(x, 'x', (Variable), 'cummax')
         helper = LayerHelper('cummax', **locals())
-        out = helper.create_variable_for_type_inference(x.dtype)
-        indices = helper.create_variable_for_type_inference(dtype='int64')
-        helper.append_op(
-            type='cummax',
-            inputs={'x': x},
-            outputs={'out': out, 'indices': indices},
-            attrs={'axis': axis, 'dtype': dtype},
-        )
-        return out, indices
+
+        if out is not None:
+            out_value, out_index = out
+            helper.append_op(
+                type='cummax',
+                inputs={'x': x},
+                outputs={'out': out_value, 'indices': out_index}, 
+                attrs={'axis': axis, 'dtype': dtype},
+            )
+            return out_value, out_index
+        else:
+            out = helper.create_variable_for_type_inference(x.dtype)
+            indices = helper.create_variable_for_type_inference(dtype='int64')
+            helper.append_op(
+                type='cummax',
+                inputs={'x': x},
+                outputs={'out': out, 'indices': indices},
+                attrs={'axis': axis, 'dtype': dtype},
+            )
+            return out, indices
 
 
+@param_two_alias(["x", "input"], ["axis", "dim"]) 
 def cummin(
     x: Tensor,
     axis: int | None = None,
     dtype: DTypeLike = 'int64',
+    out: tuple[Tensor, Tensor] | None = None,
     name: str | None = None,
 ) -> tuple[Tensor, Tensor]:
     """
@@ -3390,7 +3418,20 @@ def cummin(
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.cummin(x, axis, dtype)
+        if out is not None:
+            if not isinstance(out, (tuple, list)) or len(out) != 2:
+                raise ValueError("out must be a tuple of two Tensors (values, indices)")
+            
+            out_value, out_index = out
+
+            result_val, result_idx = _C_ops.cummin(x, axis, dtype)
+            paddle.assign(result_val, out_value)
+            paddle.assign(result_idx, out_index)
+            
+            return out_value, out_index
+        else:
+            return _C_ops.cummin(x, axis, dtype)
+                        
     else:
         check_variable_and_dtype(
             x,
@@ -3400,15 +3441,26 @@ def cummin(
         )
         check_type(x, 'x', (Variable), 'cummin')
         helper = LayerHelper('cummin', **locals())
-        out = helper.create_variable_for_type_inference(x.dtype)
-        indices = helper.create_variable_for_type_inference(dtype='int64')
-        helper.append_op(
-            type='cummin',
-            inputs={'x': x},
-            outputs={'out': out, 'indices': indices},
-            attrs={'axis': axis, 'dtype': dtype},
-        )
-        return out, indices
+        
+        if out is not None:
+            out_value, out_index = out
+            helper.append_op(
+                type='cummin',
+                inputs={'x': x},
+                outputs={'out': out_value, 'indices': out_index}, 
+                attrs={'axis': axis, 'dtype': dtype},
+            )
+            return out_value, out_index
+        else:
+            out = helper.create_variable_for_type_inference(x.dtype)
+            indices = helper.create_variable_for_type_inference(dtype='int64')
+            helper.append_op(
+                type='cummin',
+                inputs={'x': x},
+                outputs={'out': out, 'indices': indices},
+                attrs={'axis': axis, 'dtype': dtype},
+            )
+            return out, indices
 
 
 def logcumsumexp(

@@ -246,6 +246,35 @@ class TestCummaxAPI(unittest.TestCase):
 
         self.assertRaises(IndexError, test_axis_outrange)
 
+    def test_api_compatibility(self):
+        paddle.disable_static()
+        data_np = np.random.random((10, 10)).astype(np.float32)
+        data = paddle.to_tensor(data_np)
+
+        y1, idx1 = paddle.cummax(data, axis=0)
+        y2, idx2 = paddle.cummax(input=data, dim=0)  
+        
+        np.testing.assert_array_equal(y1.numpy(), y2.numpy())
+        np.testing.assert_array_equal(idx1.numpy(), idx2.numpy())
+        
+        out_val = paddle.empty_like(data)
+        out_idx = paddle.empty((10, 10), dtype=paddle.int64)
+        
+        paddle.cummax(data, axis=0, out=(out_val, out_idx))
+        
+        np.testing.assert_array_equal(y1.numpy(), out_val.numpy())
+        np.testing.assert_array_equal(idx1.numpy(), out_idx.numpy())
+        
+        out_val2 = paddle.empty_like(data)
+        out_idx2 = paddle.empty((10, 10), dtype=paddle.int64)
+        paddle.cummax(input=data, dim=0, out=(out_val2, out_idx2))
+        
+        np.testing.assert_array_equal(y1.numpy(), out_val2.numpy())
+        np.testing.assert_array_equal(idx1.numpy(), out_idx2.numpy())
+
+        paddle.enable_static()
+
+
 
 if __name__ == '__main__':
     unittest.main()
