@@ -1184,8 +1184,7 @@ class TestNLLLossName(unittest.TestCase):
 
 class TestNLLLossTargetAlias(unittest.TestCase):
     def test_nll_loss_target_alias(self):
-        paddle.disable_static()
-        try:
+        with base.dygraph.guard():
             logits = paddle.randn([3, 5], dtype='float32')
             log_probs = paddle.nn.functional.log_softmax(logits, axis=1)
             label = paddle.to_tensor([0, 3, 4], dtype='int64')
@@ -1226,8 +1225,6 @@ class TestNLLLossTargetAlias(unittest.TestCase):
             np.testing.assert_allclose(
                 out_with_label.numpy(), out_with_target.numpy()
             )
-        finally:
-            paddle.enable_static()
 
 
 class TestNLLLossInvalidArgs(unittest.TestCase):
