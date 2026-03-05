@@ -49,7 +49,10 @@ static void LinearInterpolation(const DenseTensor& input,
   auto input_t = EigenTensor<T, 3>::From(input);
   auto output_t = EigenTensor<T, 3>::From(*output);
   bool align_flag = (align_mode == 0 && !align_corners);
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT =
+      typename std::conditional_t<std::is_integral<T>::value,
+                                  float,
+                                  typename phi::dtype::MPTypeTrait<T>::Type>;
 
   std::vector<int> vx_w, vx_e;
   std::vector<MT> vd_w, vd_e;
@@ -61,16 +64,34 @@ static void LinearInterpolation(const DenseTensor& input,
 #pragma omp parallel for
 #endif
   for (int l = 0; l < out_w; l++) {
-    int x_w = static_cast<int>(align_flag ? (ratio_w * (l + 0.5) - 0.5)
-                                          : ratio_w * l);
-    x_w = (x_w > 0) ? x_w : 0;                       // w
-    int x_e = (x_w < (in_w - 1)) ? (x_w + 1) : x_w;  // w_id
+    if (in_w == out_w) {
+      // Identity case
+      vx_w[l] = l;
+      vx_e[l] = l;
+      vd_w[l] = static_cast<MT>(0);
+      vd_e[l] = static_cast<MT>(1);
+    } else {
+      MT real_input_index;
+      if (align_flag) {
+        real_input_index =
+            static_cast<MT>(ratio_w) * (l + static_cast<MT>(0.5)) -
+            static_cast<MT>(0.5);
+      } else if (align_corners) {
+        real_input_index = static_cast<MT>(ratio_w) * l;
+      } else {
+        real_input_index = static_cast<MT>(ratio_w) * l;
+      }
+      // guard_index_and_lambda equivalent
+      int x_w = std::min(
+          static_cast<int>(std::floor(static_cast<double>(real_input_index))),
+          in_w - 1);
+      MT d_w = std::min(
+          std::max(static_cast<MT>(real_input_index - static_cast<MT>(x_w)),
+                   static_cast<MT>(0)),
+          static_cast<MT>(1));
+      MT d_e = static_cast<MT>(1) - d_w;
+      int x_e = (x_w < in_w - 1) ? x_w + 1 : x_w;
 
-    MT idx_src_x = ratio_w * (l + 0.5) - 0.5;
-    idx_src_x = (idx_src_x > 0) ? idx_src_x : 0;
-    MT d_w = align_flag ? idx_src_x - x_w : ratio_w * l - x_w;  // w1lambda
-    MT d_e = 1. - d_w;                                          // w2lambda
-    {
       vx_w[l] = x_w;
       vx_e[l] = x_e;
       vd_w[l] = d_w;
@@ -119,10 +140,13 @@ static void BilinearInterpolation(const DenseTensor& input,
   auto input_t = EigenTensor<T, 4>::From(input);
   auto output_t = EigenTensor<T, 4>::From(*output);
   bool align_flag = (align_mode == 0 && !align_corners);
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT =
+      typename std::conditional_t<std::is_integral<T>::value,
+                                  float,
+                                  typename phi::dtype::MPTypeTrait<T>::Type>;
 
   std::vector<int> vy_n, vy_s;
-  std::vector<float> vd_n, vd_s;
+  std::vector<MT> vd_n, vd_s;
   vy_n.reserve(out_h);
   vy_s.reserve(out_h);
   vd_n.reserve(out_h);
@@ -131,17 +155,34 @@ static void BilinearInterpolation(const DenseTensor& input,
 #pragma omp parallel for
 #endif
   for (int k = 0; k < out_h; k++) {
-    int y_n = static_cast<int>(align_flag ? (ratio_h * (k + 0.5) - 0.5)
-                                          : (ratio_h * static_cast<float>(k)));
-    y_n = (y_n > 0) ? y_n : 0;
-    int y_s = (y_n + 1) < (in_h - 1) ? (y_n + 1) : (in_h - 1);
-    float idx_src_y = ratio_h * (k + 0.5) - 0.5;
-    idx_src_y = (idx_src_y > 0) ? idx_src_y : 0;
-    float d_n = align_flag
-                    ? idx_src_y - static_cast<float>(y_n)
-                    : ratio_h * static_cast<float>(k) - static_cast<float>(y_n);
-    float d_s = 1.f - d_n;
-    {
+    if (in_h == out_h) {
+      // Identity case
+      vy_n[k] = k;
+      vy_s[k] = k;
+      vd_n[k] = static_cast<MT>(0);
+      vd_s[k] = static_cast<MT>(1);
+    } else {
+      MT real_input_index;
+      if (align_flag) {
+        real_input_index =
+            static_cast<MT>(ratio_h) * (k + static_cast<MT>(0.5)) -
+            static_cast<MT>(0.5);
+      } else if (align_corners) {
+        real_input_index = static_cast<MT>(ratio_h) * k;
+      } else {
+        real_input_index = static_cast<MT>(ratio_h) * k;
+      }
+      // guard_index_and_lambda equivalent
+      int y_n = std::min(
+          static_cast<int>(std::floor(static_cast<double>(real_input_index))),
+          in_h - 1);
+      MT d_n = std::min(
+          std::max(static_cast<MT>(real_input_index - static_cast<MT>(y_n)),
+                   static_cast<MT>(0)),
+          static_cast<MT>(1));
+      MT d_s = static_cast<MT>(1) - d_n;
+      int y_s = (y_n < in_h - 1) ? y_n + 1 : y_n;
+
       vy_n[k] = y_n;
       vy_s[k] = y_s;
       vd_n[k] = d_n;
@@ -150,7 +191,7 @@ static void BilinearInterpolation(const DenseTensor& input,
   }
 
   std::vector<int> vx_w, vx_e;
-  std::vector<float> vd_w, vd_e;
+  std::vector<MT> vd_w, vd_e;
   vx_w.reserve(out_w);
   vx_e.reserve(out_w);
   vd_w.reserve(out_w);
@@ -159,18 +200,34 @@ static void BilinearInterpolation(const DenseTensor& input,
 #pragma omp parallel for
 #endif
   for (int l = 0; l < out_w; l++) {
-    int x_w = (align_mode == 0 && !align_corners)
-                  ? static_cast<int>(ratio_w * (l + 0.5) - 0.5)
-                  : static_cast<int>(ratio_w * static_cast<float>(l));
-    x_w = (x_w > 0) ? x_w : 0;
-    int x_e = (x_w + 1) < (in_w - 1) ? (x_w + 1) : (in_w - 1);
-    float idx_src_x = ratio_w * (static_cast<float>(l) + 0.5f) - 0.5f;
-    idx_src_x = (idx_src_x > 0) ? idx_src_x : 0;
-    float d_w = align_flag
-                    ? idx_src_x - static_cast<float>(x_w)
-                    : ratio_w * static_cast<float>(l) - static_cast<float>(x_w);
-    float d_e = 1.f - d_w;
-    {
+    if (in_w == out_w) {
+      // Identity case
+      vx_w[l] = l;
+      vx_e[l] = l;
+      vd_w[l] = static_cast<MT>(0);
+      vd_e[l] = static_cast<MT>(1);
+    } else {
+      MT real_input_index;
+      if (align_flag) {
+        real_input_index =
+            static_cast<MT>(ratio_w) * (l + static_cast<MT>(0.5)) -
+            static_cast<MT>(0.5);
+      } else if (align_corners) {
+        real_input_index = static_cast<MT>(ratio_w) * l;
+      } else {
+        real_input_index = static_cast<MT>(ratio_w) * l;
+      }
+      // guard_index_and_lambda equivalent
+      int x_w = std::min(
+          static_cast<int>(std::floor(static_cast<double>(real_input_index))),
+          in_w - 1);
+      MT d_w = std::min(
+          std::max(static_cast<MT>(real_input_index - static_cast<MT>(x_w)),
+                   static_cast<MT>(0)),
+          static_cast<MT>(1));
+      MT d_e = static_cast<MT>(1) - d_w;
+      int x_e = (x_w < in_w - 1) ? x_w + 1 : x_w;
+
       vx_w[l] = x_w;
       vx_e[l] = x_e;
       vd_w[l] = d_w;
@@ -188,27 +245,27 @@ static void BilinearInterpolation(const DenseTensor& input,
           // bilinear interpolation
           T out_t;
           if (data_layout == DataLayout::NCHW) {
+            MT w00 = vd_s[k] * vd_e[l];
+            MT w01 = vd_s[k] * vd_w[l];
+            MT w10 = vd_n[k] * vd_e[l];
+            MT w11 = vd_n[k] * vd_w[l];
             out_t = static_cast<T>(
-                static_cast<MT>(input_t(i, j, vy_n[k], vx_w[l])) * vd_s[k] *
-                    vd_e[l] +
-                static_cast<MT>(input_t(i, j, vy_s[k], vx_w[l])) * vd_n[k] *
-                    vd_e[l] +
-                static_cast<MT>(input_t(i, j, vy_n[k], vx_e[l])) * vd_s[k] *
-                    vd_w[l] +
-                static_cast<MT>(input_t(i, j, vy_s[k], vx_e[l])) * vd_n[k] *
-                    vd_w[l]);
+                static_cast<MT>(input_t(i, j, vy_n[k], vx_w[l])) * w00 +
+                static_cast<MT>(input_t(i, j, vy_s[k], vx_w[l])) * w10 +
+                static_cast<MT>(input_t(i, j, vy_n[k], vx_e[l])) * w01 +
+                static_cast<MT>(input_t(i, j, vy_s[k], vx_e[l])) * w11);
             output_t(i, j, k, l) = out_t;
 
           } else {
+            MT w00 = vd_s[k] * vd_e[l];
+            MT w01 = vd_s[k] * vd_w[l];
+            MT w10 = vd_n[k] * vd_e[l];
+            MT w11 = vd_n[k] * vd_w[l];
             out_t = static_cast<T>(
-                static_cast<MT>(input_t(i, vy_n[k], vx_w[l], j)) * vd_s[k] *
-                    vd_e[l] +
-                static_cast<MT>(input_t(i, vy_s[k], vx_w[l], j)) * vd_n[k] *
-                    vd_e[l] +
-                static_cast<MT>(input_t(i, vy_n[k], vx_e[l], j)) * vd_s[k] *
-                    vd_w[l] +
-                static_cast<MT>(input_t(i, vy_s[k], vx_e[l], j)) * vd_n[k] *
-                    vd_w[l]);
+                static_cast<MT>(input_t(i, vy_n[k], vx_w[l], j)) * w00 +
+                static_cast<MT>(input_t(i, vy_s[k], vx_w[l], j)) * w10 +
+                static_cast<MT>(input_t(i, vy_n[k], vx_e[l], j)) * w01 +
+                static_cast<MT>(input_t(i, vy_s[k], vx_e[l], j)) * w11);
             output_t(i, k, l, j) = out_t;
           }
         }
@@ -271,19 +328,30 @@ static void BicubicInterpolation(const DenseTensor& input,
                                  const DataLayout data_layout) {
   auto input_t = EigenTensor<T, 4>::From(input);
   auto output_t = EigenTensor<T, 4>::From(*output);
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT =
+      typename std::conditional_t<std::is_integral<T>::value,
+                                  float,
+                                  typename phi::dtype::MPTypeTrait<T>::Type>;
 
   for (int k = 0; k < out_h; k++) {  // loop for images
     MT y_n = align_corners ? static_cast<MT>(ratio_h * static_cast<float>(k))
                            : static_cast<MT>(ratio_h * (k + 0.5) - 0.5);
-    int input_y = floorf(y_n);
-    const MT y_t = y_n - input_y;
+    int input_y = std::min(
+        static_cast<int>(std::floor(static_cast<double>(y_n))), in_h - 1);
+    const MT y_t =
+        std::min(std::max(static_cast<MT>(y_n - static_cast<MT>(input_y)),
+                          static_cast<MT>(0)),
+                 static_cast<MT>(1));
 
     for (int l = 0; l < out_w; l++) {
       MT x_n = align_corners ? static_cast<MT>(ratio_w * static_cast<float>(l))
                              : static_cast<MT>(ratio_w * (l + 0.5) - 0.5);
-      int input_x = floorf(x_n);
-      const MT x_t = x_n - input_x;
+      int input_x = std::min(
+          static_cast<int>(std::floor(static_cast<double>(x_n))), in_w - 1);
+      const MT x_t =
+          std::min(std::max(static_cast<MT>(x_n - static_cast<MT>(input_x)),
+                            static_cast<MT>(0)),
+                   static_cast<MT>(1));
 
       for (int i = 0; i < n; i++) {    // loop for batches
         for (int j = 0; j < c; j++) {  // loop for channels
@@ -359,10 +427,13 @@ static void TrilinearInterpolation(const DenseTensor& input,
   auto input_t = EigenTensor<T, 5>::From(input);
   auto output_t = EigenTensor<T, 5>::From(*output);
   bool align_flag = (align_mode == 0 && !align_corners);
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT =
+      typename std::conditional_t<std::is_integral<T>::value,
+                                  float,
+                                  typename phi::dtype::MPTypeTrait<T>::Type>;
 
   std::vector<int> vt_f, vt_b;
-  std::vector<float> vd_f, vd_b;
+  std::vector<MT> vd_f, vd_b;
   vt_f.reserve(out_d);
   vt_b.reserve(out_d);
   vd_f.reserve(out_d);
@@ -371,17 +442,34 @@ static void TrilinearInterpolation(const DenseTensor& input,
 #pragma omp parallel for
 #endif
   for (int j = 0; j < out_d; j++) {
-    int t_f = align_flag ? static_cast<int>(ratio_d * (j + 0.5) - 0.5)
-                         : static_cast<int>(ratio_d * static_cast<float>(j));
-    t_f = (t_f > 0) ? t_f : 0;
-    int t_b = (t_f + 1) < (in_d - 1) ? (t_f + 1) : (in_d - 1);
-    float idx_src_t = ratio_d * (static_cast<float>(j) + 0.5f) - 0.5f;
-    idx_src_t = (idx_src_t > 0) ? idx_src_t : 0;
-    float d_f = align_flag
-                    ? idx_src_t - static_cast<float>(t_f)
-                    : ratio_d * static_cast<float>(j) - static_cast<float>(t_f);
-    float d_b = 1.f - d_f;
-    {
+    if (in_d == out_d) {
+      // Identity case
+      vt_f[j] = j;
+      vt_b[j] = j;
+      vd_f[j] = static_cast<MT>(0);
+      vd_b[j] = static_cast<MT>(1);
+    } else {
+      MT real_input_index;
+      if (align_flag) {
+        real_input_index =
+            static_cast<MT>(ratio_d) * (j + static_cast<MT>(0.5)) -
+            static_cast<MT>(0.5);
+      } else if (align_corners) {
+        real_input_index = static_cast<MT>(ratio_d) * j;
+      } else {
+        real_input_index = static_cast<MT>(ratio_d) * j;
+      }
+      // guard_index_and_lambda equivalent
+      int t_f = std::min(
+          static_cast<int>(std::floor(static_cast<double>(real_input_index))),
+          in_d - 1);
+      MT d_f = std::min(
+          std::max(static_cast<MT>(real_input_index - static_cast<MT>(t_f)),
+                   static_cast<MT>(0)),
+          static_cast<MT>(1));
+      MT d_b = static_cast<MT>(1) - d_f;
+      int t_b = (t_f < in_d - 1) ? t_f + 1 : t_f;
+
       vt_f[j] = t_f;
       vt_b[j] = t_b;
       vd_f[j] = d_f;
@@ -390,7 +478,7 @@ static void TrilinearInterpolation(const DenseTensor& input,
   }
 
   std::vector<int> vy_n, vy_s;
-  std::vector<float> vd_n, vd_s;
+  std::vector<MT> vd_n, vd_s;
   vy_n.reserve(out_h);
   vy_s.reserve(out_h);
   vd_n.reserve(out_h);
@@ -399,17 +487,34 @@ static void TrilinearInterpolation(const DenseTensor& input,
 #pragma omp parallel for
 #endif
   for (int k = 0; k < out_h; k++) {
-    int y_n = align_flag ? static_cast<int>(ratio_h * (k + 0.5) - 0.5)
-                         : static_cast<int>(ratio_h * static_cast<float>(k));
-    y_n = (y_n > 0) ? y_n : 0;
-    int y_s = (y_n + 1) < (in_h - 1) ? (y_n + 1) : (in_h - 1);
-    float idx_src_y = ratio_h * (static_cast<float>(k) + 0.5f) - 0.5f;
-    idx_src_y = (idx_src_y > 0) ? idx_src_y : 0;
-    float d_n = align_flag
-                    ? idx_src_y - static_cast<float>(y_n)
-                    : ratio_h * static_cast<float>(k) - static_cast<float>(y_n);
-    float d_s = 1.f - d_n;
-    {
+    if (in_h == out_h) {
+      // Identity case
+      vy_n[k] = k;
+      vy_s[k] = k;
+      vd_n[k] = static_cast<MT>(0);
+      vd_s[k] = static_cast<MT>(1);
+    } else {
+      MT real_input_index;
+      if (align_flag) {
+        real_input_index =
+            static_cast<MT>(ratio_h) * (k + static_cast<MT>(0.5)) -
+            static_cast<MT>(0.5);
+      } else if (align_corners) {
+        real_input_index = static_cast<MT>(ratio_h) * k;
+      } else {
+        real_input_index = static_cast<MT>(ratio_h) * k;
+      }
+      // guard_index_and_lambda equivalent
+      int y_n = std::min(
+          static_cast<int>(std::floor(static_cast<double>(real_input_index))),
+          in_h - 1);
+      MT d_n = std::min(
+          std::max(static_cast<MT>(real_input_index - static_cast<MT>(y_n)),
+                   static_cast<MT>(0)),
+          static_cast<MT>(1));
+      MT d_s = static_cast<MT>(1) - d_n;
+      int y_s = (y_n < in_h - 1) ? y_n + 1 : y_n;
+
       vy_n[k] = y_n;
       vy_s[k] = y_s;
       vd_n[k] = d_n;
@@ -418,7 +523,7 @@ static void TrilinearInterpolation(const DenseTensor& input,
   }
 
   std::vector<int> vx_w, vx_e;
-  std::vector<float> vd_w, vd_e;
+  std::vector<MT> vd_w, vd_e;
   vx_w.reserve(out_w);
   vx_e.reserve(out_w);
   vd_w.reserve(out_w);
@@ -427,18 +532,34 @@ static void TrilinearInterpolation(const DenseTensor& input,
 #pragma omp parallel for
 #endif
   for (int l = 0; l < out_w; l++) {
-    int x_w = (align_mode == 0 && !align_corners)
-                  ? static_cast<int>(ratio_w * (l + 0.5) - 0.5)
-                  : static_cast<int>(ratio_w * static_cast<float>(l));
-    x_w = (x_w > 0) ? x_w : 0;
-    int x_e = (x_w + 1) < (in_w - 1) ? (x_w + 1) : (in_w - 1);
-    float idx_src_x = ratio_w * (static_cast<float>(l) + 0.5f) - 0.5f;
-    idx_src_x = (idx_src_x > 0) ? idx_src_x : 0;
-    float d_w = align_flag
-                    ? idx_src_x - static_cast<float>(x_w)
-                    : ratio_w * static_cast<float>(l) - static_cast<float>(x_w);
-    float d_e = 1.f - d_w;
-    {
+    if (in_w == out_w) {
+      // Identity case
+      vx_w[l] = l;
+      vx_e[l] = l;
+      vd_w[l] = static_cast<MT>(0);
+      vd_e[l] = static_cast<MT>(1);
+    } else {
+      MT real_input_index;
+      if (align_flag) {
+        real_input_index =
+            static_cast<MT>(ratio_w) * (l + static_cast<MT>(0.5)) -
+            static_cast<MT>(0.5);
+      } else if (align_corners) {
+        real_input_index = static_cast<MT>(ratio_w) * l;
+      } else {
+        real_input_index = static_cast<MT>(ratio_w) * l;
+      }
+      // guard_index_and_lambda equivalent
+      int x_w = std::min(
+          static_cast<int>(std::floor(static_cast<double>(real_input_index))),
+          in_w - 1);
+      MT d_w = std::min(
+          std::max(static_cast<MT>(real_input_index - static_cast<MT>(x_w)),
+                   static_cast<MT>(0)),
+          static_cast<MT>(1));
+      MT d_e = static_cast<MT>(1) - d_w;
+      int x_e = (x_w < in_w - 1) ? x_w + 1 : x_w;
+
       vx_w[l] = x_w;
       vx_e[l] = x_e;
       vd_w[l] = d_w;
@@ -456,42 +577,62 @@ static void TrilinearInterpolation(const DenseTensor& input,
           for (int l = 0; l < out_w; l++) {
             // trilinear interpolation
             if (data_layout == DataLayout::NCHW) {
+              MT w_fb = vd_b[j];
+              MT w_bb = vd_f[j];
+              MT w000 = w_fb * vd_s[k] * vd_e[l];
+              MT w001 = w_fb * vd_s[k] * vd_w[l];
+              MT w010 = w_fb * vd_n[k] * vd_e[l];
+              MT w011 = w_fb * vd_n[k] * vd_w[l];
+              MT w100 = w_bb * vd_s[k] * vd_e[l];
+              MT w101 = w_bb * vd_s[k] * vd_w[l];
+              MT w110 = w_bb * vd_n[k] * vd_e[l];
+              MT w111 = w_bb * vd_n[k] * vd_w[l];
               T out_t = static_cast<T>(
                   static_cast<MT>(input_t(b, i, vt_f[j], vy_n[k], vx_w[l])) *
-                      vd_b[j] * vd_s[k] * vd_e[l] +
+                      w000 +
                   static_cast<MT>(input_t(b, i, vt_f[j], vy_n[k], vx_e[l])) *
-                      vd_b[j] * vd_s[k] * vd_w[l] +
+                      w001 +
                   static_cast<MT>(input_t(b, i, vt_f[j], vy_s[k], vx_w[l])) *
-                      vd_b[j] * vd_n[k] * vd_e[l] +
+                      w010 +
                   static_cast<MT>(input_t(b, i, vt_f[j], vy_s[k], vx_e[l])) *
-                      vd_b[j] * vd_n[k] * vd_w[l] +
+                      w011 +
                   static_cast<MT>(input_t(b, i, vt_b[j], vy_n[k], vx_w[l])) *
-                      vd_f[j] * vd_s[k] * vd_e[l] +
+                      w100 +
                   static_cast<MT>(input_t(b, i, vt_b[j], vy_n[k], vx_e[l])) *
-                      vd_f[j] * vd_s[k] * vd_w[l] +
+                      w101 +
                   static_cast<MT>(input_t(b, i, vt_b[j], vy_s[k], vx_w[l])) *
-                      vd_f[j] * vd_n[k] * vd_e[l] +
+                      w110 +
                   static_cast<MT>(input_t(b, i, vt_b[j], vy_s[k], vx_e[l])) *
-                      vd_f[j] * vd_n[k] * vd_w[l]);
+                      w111);
               output_t(b, i, j, k, l) = out_t;
             } else {
+              MT w_fb = vd_b[j];
+              MT w_bb = vd_f[j];
+              MT w000 = w_fb * vd_s[k] * vd_e[l];
+              MT w001 = w_fb * vd_s[k] * vd_w[l];
+              MT w010 = w_fb * vd_n[k] * vd_e[l];
+              MT w011 = w_fb * vd_n[k] * vd_w[l];
+              MT w100 = w_bb * vd_s[k] * vd_e[l];
+              MT w101 = w_bb * vd_s[k] * vd_w[l];
+              MT w110 = w_bb * vd_n[k] * vd_e[l];
+              MT w111 = w_bb * vd_n[k] * vd_w[l];
               T out_t = static_cast<T>(
                   static_cast<MT>(input_t(b, vt_f[j], vy_n[k], vx_w[l], i)) *
-                      vd_b[j] * vd_s[k] * vd_e[l] +
+                      w000 +
                   static_cast<MT>(input_t(b, vt_f[j], vy_n[k], vx_e[l], i)) *
-                      vd_b[j] * vd_s[k] * vd_w[l] +
+                      w001 +
                   static_cast<MT>(input_t(b, vt_f[j], vy_s[k], vx_w[l], i)) *
-                      vd_b[j] * vd_n[k] * vd_e[l] +
+                      w010 +
                   static_cast<MT>(input_t(b, vt_f[j], vy_s[k], vx_e[l], i)) *
-                      vd_b[j] * vd_n[k] * vd_w[l] +
+                      w011 +
                   static_cast<MT>(input_t(b, vt_b[j], vy_n[k], vx_w[l], i)) *
-                      vd_f[j] * vd_s[k] * vd_e[l] +
+                      w100 +
                   static_cast<MT>(input_t(b, vt_b[j], vy_n[k], vx_e[l], i)) *
-                      vd_f[j] * vd_s[k] * vd_w[l] +
+                      w101 +
                   static_cast<MT>(input_t(b, vt_b[j], vy_s[k], vx_w[l], i)) *
-                      vd_f[j] * vd_n[k] * vd_e[l] +
+                      w110 +
                   static_cast<MT>(input_t(b, vt_b[j], vy_s[k], vx_e[l], i)) *
-                      vd_f[j] * vd_n[k] * vd_w[l]);
+                      w111);
               output_t(b, j, k, l, i) = out_t;
             }
           }
@@ -748,9 +889,9 @@ static void Interpolate2DCPUFwd(
   }
 
   float ratio_h =
-      funcs::AreaPixelComputeScale<float>(in_h, out_h, align_corners, scale_h);
+      funcs::AreaPixelComputeScale<double>(in_h, out_h, align_corners, scale_h);
   float ratio_w =
-      funcs::AreaPixelComputeScale<float>(in_w, out_w, align_corners, scale_w);
+      funcs::AreaPixelComputeScale<double>(in_w, out_w, align_corners, scale_w);
 
   // TODO(zrr1999): to align xpu
   if (out_h <= 1) {
@@ -939,11 +1080,11 @@ static void Interpolate3DCPUFwd(
   }
 
   float ratio_d =
-      funcs::AreaPixelComputeScale<float>(in_d, out_d, align_corners, scale_d);
+      funcs::AreaPixelComputeScale<double>(in_d, out_d, align_corners, scale_d);
   float ratio_h =
-      funcs::AreaPixelComputeScale<float>(in_h, out_h, align_corners, scale_h);
+      funcs::AreaPixelComputeScale<double>(in_h, out_h, align_corners, scale_h);
   float ratio_w =
-      funcs::AreaPixelComputeScale<float>(in_w, out_w, align_corners, scale_w);
+      funcs::AreaPixelComputeScale<double>(in_w, out_w, align_corners, scale_w);
 
   if ("trilinear" == interp_method) {
     TrilinearInterpolation<T>(x,
@@ -1363,8 +1504,12 @@ static void AAInterpolation2DCPU_NCHW(const T* input_data,
                                       float ratio_w,
                                       const InterpFilter& filter) {
   // Use MPTypeTrait to match GPU: float for float/float16/bfloat16, double for
-  // double
-  using WT = typename phi::dtype::MPTypeTrait<T>::Type;
+  // double. For integral types (e.g. uint8_t), force float to avoid integer
+  // arithmetic in weight/coordinate computation.
+  using WT =
+      typename std::conditional_t<std::is_integral<T>::value,
+                                  float,
+                                  typename phi::dtype::MPTypeTrait<T>::Type>;
   WT scale_h = static_cast<WT>(ratio_h);
   WT scale_w = static_cast<WT>(ratio_w);
 
@@ -1490,8 +1635,12 @@ static void AAInterpolation2DCPU_NHWC(const T* input_data,
                                       float ratio_w,
                                       const InterpFilter& filter) {
   // Use MPTypeTrait to match GPU: float for float/float16/bfloat16, double for
-  // double
-  using WT = typename phi::dtype::MPTypeTrait<T>::Type;
+  // double. For integral types (e.g. uint8_t), force float to avoid integer
+  // arithmetic in weight/coordinate computation.
+  using WT =
+      typename std::conditional_t<std::is_integral<T>::value,
+                                  float,
+                                  typename phi::dtype::MPTypeTrait<T>::Type>;
   WT scale_h = static_cast<WT>(ratio_h);
   WT scale_w = static_cast<WT>(ratio_w);
 

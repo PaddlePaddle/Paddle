@@ -1203,7 +1203,12 @@ static void AAInterpolation2DGradCPU_NCHW(const T* output_grad_data,
                                           float ratio_h,
                                           float ratio_w,
                                           const InterpFilter& filter) {
-  using WT = typename phi::dtype::MPTypeTrait<T>::Type;
+  // For integral types (e.g. uint8_t), force float to avoid integer
+  // arithmetic in weight/coordinate computation.
+  using WT =
+      typename std::conditional_t<std::is_integral<T>::value,
+                                  float,
+                                  typename phi::dtype::MPTypeTrait<T>::Type>;
   WT scale_h = static_cast<WT>(ratio_h);
   WT scale_w = static_cast<WT>(ratio_w);
 
@@ -1330,7 +1335,12 @@ static void AAInterpolation2DGradCPU_NHWC(const T* output_grad_data,
                                           float ratio_h,
                                           float ratio_w,
                                           const InterpFilter& filter) {
-  using WT = typename phi::dtype::MPTypeTrait<T>::Type;
+  // For integral types (e.g. uint8_t), force float to avoid integer
+  // arithmetic in weight/coordinate computation.
+  using WT =
+      typename std::conditional_t<std::is_integral<T>::value,
+                                  float,
+                                  typename phi::dtype::MPTypeTrait<T>::Type>;
   WT scale_h = static_cast<WT>(ratio_h);
   WT scale_w = static_cast<WT>(ratio_w);
 
