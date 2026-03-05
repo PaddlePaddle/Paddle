@@ -72,7 +72,7 @@ void SGDDenseKernel(const Context& dev_ctx,
                     bool multi_precision,
                     DenseTensor* param_out,
                     DenseTensor* master_param_out) {
-  using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   // do check here
   // if (multi_precision) {
   //   bool has_master =
@@ -80,18 +80,17 @@ void SGDDenseKernel(const Context& dev_ctx,
   //       dev_ctx.HasOutput("MasterParamOut");
 
   // }
-  const MPDType* master_in_data =
-      multi_precision ? master_param->data<MPDType>() : nullptr;
-  MPDType* master_out_data =
-      multi_precision ? dev_ctx.template Alloc<MPDType>(master_param_out)
-                      : nullptr;
+  const MT* master_in_data =
+      multi_precision ? master_param->data<MT>() : nullptr;
+  MT* master_out_data =
+      multi_precision ? dev_ctx.template Alloc<MT>(master_param_out) : nullptr;
   const bool use_float32_grad = grad.dtype() == phi::DataType::FLOAT32;
 
   int block = 512;
   int64_t grid_max = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int grid = std::min((param.numel() + block - 1) / block, grid_max);
   if (use_float32_grad) {
-    SGDKernelMT<T, MPDType, float><<<grid, block, 0, dev_ctx.stream()>>>(
+    SGDKernelMT<T, MT, float><<<grid, block, 0, dev_ctx.stream()>>>(
         param.data<T>(),
         grad.data<float>(),
         learning_rate.data<T>(),
@@ -100,7 +99,7 @@ void SGDDenseKernel(const Context& dev_ctx,
         master_in_data,
         master_out_data);
   } else {
-    SGDKernelMT<T, MPDType, T><<<grid, block, 0, dev_ctx.stream()>>>(
+    SGDKernelMT<T, MT, T><<<grid, block, 0, dev_ctx.stream()>>>(
         param.data<T>(),
         grad.data<T>(),
         learning_rate.data<T>(),
@@ -120,7 +119,7 @@ void SGDDenseParamSparseGradKernel(const Context& dev_ctx,
                                    bool multi_precision,
                                    DenseTensor* param_out,
                                    DenseTensor* master_param_out) {
-  using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   // do some check here
   // if (multi_precision) {
   //   bool has_master =
@@ -128,11 +127,10 @@ void SGDDenseParamSparseGradKernel(const Context& dev_ctx,
   //       dev_ctx.HasOutput("MasterParamOut");
 
   // }
-  const MPDType* master_in_data =
-      multi_precision ? master_param->data<MPDType>() : nullptr;
-  MPDType* master_out_data =
-      multi_precision ? dev_ctx.template Alloc<MPDType>(master_param_out)
-                      : nullptr;
+  const MT* master_in_data =
+      multi_precision ? master_param->data<MT>() : nullptr;
+  MT* master_out_data =
+      multi_precision ? dev_ctx.template Alloc<MT>(master_param_out) : nullptr;
 
   PADDLE_ENFORCE_EQ(
       param.IsSharedBufferWith(*param_out),

@@ -3686,6 +3686,7 @@ def assign(x: TensorLike, output: paddle.Tensor | None = None) -> paddle.Tensor:
     return output
 
 
+@param_one_alias(['x', 'input'])
 def clone(x: paddle.Tensor, name: str | None = None) -> paddle.Tensor:
     """
     Returns a copy of input Tensor. It will always have a Tensor copy.
@@ -3694,6 +3695,7 @@ def clone(x: paddle.Tensor, name: str | None = None) -> paddle.Tensor:
 
     Parameters:
         x (Tensor): The input Tensor.
+            Alias: ``input``.
         name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:

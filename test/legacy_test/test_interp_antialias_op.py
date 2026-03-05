@@ -236,77 +236,11 @@ def interp_antialias_np(
     return out.astype(input.dtype)
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(), "Antialias only supported on GPU"
-)
-class TestInterpAntiAliasAlignment(unittest.TestCase):
-    def test_antialias_vs_no_antialias(self):
-        """Compare with and without anti-aliasing"""
-        place = core.CUDAPlace(0)
-        with base.dygraph.guard(place):
-            input_data = np.random.random((1, 3, 64, 64)).astype("float32")
-            input_x = paddle.to_tensor(input_data)
-
-            out_no_aa = interpolate(
-                input_x,
-                size=(32, 32),
-                mode="bicubic",
-                align_corners=False,
-                antialias=False,
-            )
-
-            out_aa = interpolate(
-                input_x,
-                size=(32, 32),
-                mode="bicubic",
-                align_corners=False,
-                antialias=True,
-            )
-
-            # Both should have same shape
-            self.assertEqual(out_aa.shape, out_no_aa.shape)
-            # Both should be valid
-            self.assertFalse(np.isnan(out_aa.numpy()).any())
-            self.assertFalse(np.isnan(out_no_aa.numpy()).any())
+# ==================== OpTest-based tests (CPU & GPU) ====================
+# These tests compare kernel output against the NumPy reference via OpTest.
+# They run on whatever device is available (GPU if compiled with CUDA, CPU otherwise).
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(), "Antialias only supported on GPU"
-)
-class TestBilinearInterpAntiAliasAlignment(unittest.TestCase):
-    def test_antialias_vs_no_antialias(self):
-        """Compare with and without anti-aliasing for bilinear"""
-        place = core.CUDAPlace(0)
-        with base.dygraph.guard(place):
-            input_data = np.random.random((1, 3, 64, 64)).astype("float32")
-            input_x = paddle.to_tensor(input_data)
-
-            out_no_aa = interpolate(
-                input_x,
-                size=(32, 32),
-                mode="bilinear",
-                align_corners=False,
-                antialias=False,
-            )
-
-            out_aa = interpolate(
-                input_x,
-                size=(32, 32),
-                mode="bilinear",
-                align_corners=False,
-                antialias=True,
-            )
-
-            # Both should have same shape
-            self.assertEqual(out_aa.shape, out_no_aa.shape)
-            # Both should be valid
-            self.assertFalse(np.isnan(out_aa.numpy()).any())
-            self.assertFalse(np.isnan(out_no_aa.numpy()).any())
-
-
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(), "Antialias only supported on GPU"
-)
 class TestInterpAntiAlias(OpTest):
     def setUp(self):
         self.python_api = interp_antialias_test
@@ -355,34 +289,23 @@ class TestInterpAntiAlias(OpTest):
         pass
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(), "Antialias only supported on GPU"
-)
 class TestInterpAntiAliasCase1(TestInterpAntiAlias):
     def init_test_case(self):
         self.scale_h = 0.5
         self.scale_w = 0.5
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(), "Antialias only supported on GPU"
-)
+@unittest.skipIf(not core.is_compiled_with_cuda(), "float16 requires GPU")
 class TestInterpAntiAliasCase2(TestInterpAntiAlias):
     def init_test_case(self):
         self.dtype = np.float16
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(), "Antialias only supported on GPU"
-)
 class TestBilinearInterpAntiAliasCase1(TestInterpAntiAlias):
     def init_test_case(self):
         self.interp_method = 'bilinear'
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(), "Antialias only supported on GPU"
-)
 class TestBilinearInterpAntiAliasCase2(TestInterpAntiAlias):
     def init_test_case(self):
         self.interp_method = 'bilinear'
@@ -390,9 +313,6 @@ class TestBilinearInterpAntiAliasCase2(TestInterpAntiAlias):
         self.scale_w = 0.5
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(), "Antialias only supported on GPU"
-)
 class TestBilinearInterpAntiAliasCase3(TestInterpAntiAlias):
     def init_test_case(self):
         self.interp_method = 'bilinear'
@@ -403,27 +323,19 @@ class TestBilinearInterpAntiAliasCase3(TestInterpAntiAlias):
         self.scale_w = 2.0
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(), "Antialias only supported on GPU"
-)
+@unittest.skipIf(not core.is_compiled_with_cuda(), "float16 requires GPU")
 class TestBilinearInterpAntiAliasCase4(TestInterpAntiAlias):
     def init_test_case(self):
         self.interp_method = 'bilinear'
         self.dtype = np.float16
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(), "Antialias only supported on GPU"
-)
 class TestBilinearInterpAntiAliasCase5(TestInterpAntiAlias):
     def init_test_case(self):
         self.interp_method = 'bilinear'
         self.align_corners = True
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(), "Antialias only supported on GPU"
-)
 class TestBilinearInterpAntiAliasCase6(TestInterpAntiAlias):
     def init_test_case(self) -> None:
         self.interp_method = 'bilinear'
@@ -431,8 +343,80 @@ class TestBilinearInterpAntiAliasCase6(TestInterpAntiAlias):
         self.input_shape = (2, 10, 10, 3)
 
 
+# ==================== Functional tests ====================
+# These test high-level API behavior: shape, dtype, NaN-free, various sizes.
+
+
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "Antialias only supported on GPU"
+    not core.is_compiled_with_cuda(), "GPU functional tests require CUDA"
+)
+class TestInterpAntiAliasAlignment(unittest.TestCase):
+    def test_antialias_vs_no_antialias(self):
+        """Compare with and without anti-aliasing"""
+        place = core.CUDAPlace(0)
+        with base.dygraph.guard(place):
+            input_data = np.random.random((1, 3, 64, 64)).astype("float32")
+            input_x = paddle.to_tensor(input_data)
+
+            out_no_aa = interpolate(
+                input_x,
+                size=(32, 32),
+                mode="bicubic",
+                align_corners=False,
+                antialias=False,
+            )
+
+            out_aa = interpolate(
+                input_x,
+                size=(32, 32),
+                mode="bicubic",
+                align_corners=False,
+                antialias=True,
+            )
+
+            # Both should have same shape
+            self.assertEqual(out_aa.shape, out_no_aa.shape)
+            # Both should be valid
+            self.assertFalse(np.isnan(out_aa.numpy()).any())
+            self.assertFalse(np.isnan(out_no_aa.numpy()).any())
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "GPU functional tests require CUDA"
+)
+class TestBilinearInterpAntiAliasAlignment(unittest.TestCase):
+    def test_antialias_vs_no_antialias(self):
+        """Compare with and without anti-aliasing for bilinear"""
+        place = core.CUDAPlace(0)
+        with base.dygraph.guard(place):
+            input_data = np.random.random((1, 3, 64, 64)).astype("float32")
+            input_x = paddle.to_tensor(input_data)
+
+            out_no_aa = interpolate(
+                input_x,
+                size=(32, 32),
+                mode="bilinear",
+                align_corners=False,
+                antialias=False,
+            )
+
+            out_aa = interpolate(
+                input_x,
+                size=(32, 32),
+                mode="bilinear",
+                align_corners=False,
+                antialias=True,
+            )
+
+            # Both should have same shape
+            self.assertEqual(out_aa.shape, out_no_aa.shape)
+            # Both should be valid
+            self.assertFalse(np.isnan(out_aa.numpy()).any())
+            self.assertFalse(np.isnan(out_no_aa.numpy()).any())
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "GPU functional tests require CUDA"
 )
 class TestBilinearInterpAntiAliasDifferentSizes(unittest.TestCase):
     def test_various_downsample_ratios(self):
@@ -459,6 +443,180 @@ class TestBilinearInterpAntiAliasDifferentSizes(unittest.TestCase):
                     self.assertEqual(out_aa.shape, (1, 3, size[0], size[1]))
                     # Check no NaN values
                     self.assertFalse(np.isnan(out_aa.numpy()).any())
+
+
+# ==================== uint8 tests (CPU only, GPU does not support uint8 antialias) ====================
+
+
+class TestInterpAntiAliasUint8(unittest.TestCase):
+    """Test uint8 antialias interpolation on CPU.
+
+    GPU antialias kernel does not support uint8, so these are CPU-only tests.
+    """
+
+    def test_uint8_bilinear_downscale(self):
+        paddle.set_device('cpu')
+        input_data = np.random.randint(0, 256, (1, 3, 16, 16)).astype("uint8")
+        input_x = paddle.to_tensor(input_data)
+        out = interpolate(
+            input_x,
+            size=(8, 8),
+            mode="bilinear",
+            align_corners=False,
+            antialias=True,
+        )
+        self.assertEqual(out.shape, [1, 3, 8, 8])
+        self.assertEqual(out.dtype, paddle.uint8)
+        out_np = out.numpy()
+        self.assertTrue(np.all(out_np >= 0))
+        self.assertTrue(np.all(out_np <= 255))
+
+    def test_uint8_bicubic_downscale(self):
+        paddle.set_device('cpu')
+        input_data = np.random.randint(0, 256, (1, 3, 16, 16)).astype("uint8")
+        input_x = paddle.to_tensor(input_data)
+        out = interpolate(
+            input_x,
+            size=(8, 8),
+            mode="bicubic",
+            align_corners=False,
+            antialias=True,
+        )
+        self.assertEqual(out.shape, [1, 3, 8, 8])
+        self.assertEqual(out.dtype, paddle.uint8)
+
+    def test_uint8_bilinear_upscale(self):
+        paddle.set_device('cpu')
+        input_data = np.random.randint(0, 256, (1, 3, 8, 8)).astype("uint8")
+        input_x = paddle.to_tensor(input_data)
+        out = interpolate(
+            input_x,
+            size=(16, 16),
+            mode="bilinear",
+            align_corners=False,
+            antialias=True,
+        )
+        self.assertEqual(out.shape, [1, 3, 16, 16])
+        self.assertEqual(out.dtype, paddle.uint8)
+
+    def test_uint8_nhwc(self):
+        paddle.set_device('cpu')
+        input_data = np.random.randint(0, 256, (1, 16, 16, 3)).astype("uint8")
+        input_x = paddle.to_tensor(input_data)
+        out = interpolate(
+            input_x,
+            size=(8, 8),
+            mode="bilinear",
+            align_corners=False,
+            antialias=True,
+            data_format='NHWC',
+        )
+        self.assertEqual(out.shape, [1, 8, 8, 3])
+        self.assertEqual(out.dtype, paddle.uint8)
+
+
+# ==================== CPU precision against NumPy reference ====================
+
+
+class TestInterpAntiAliasCPUPrecision(unittest.TestCase):
+    """Verify CPU antialias kernel output matches the NumPy reference."""
+
+    def _compare_with_numpy(
+        self,
+        input_shape,
+        out_h,
+        out_w,
+        mode,
+        dtype,
+        data_format='NCHW',
+        align_corners=False,
+        atol=1e-5,
+    ):
+        paddle.set_device('cpu')
+        np.random.seed(42)
+        input_np = np.random.random(input_shape).astype(dtype)
+
+        output_np = interp_antialias_np(
+            input_np,
+            out_h,
+            out_w,
+            align_corners=align_corners,
+            data_format=data_format,
+            interp_method=mode,
+        )
+
+        input_x = paddle.to_tensor(input_np)
+        out = interpolate(
+            input_x,
+            size=(out_h, out_w),
+            mode=mode,
+            align_corners=align_corners,
+            antialias=True,
+            data_format=data_format,
+        )
+
+        np.testing.assert_allclose(
+            out.numpy(),
+            output_np,
+            atol=atol,
+            rtol=1e-5,
+            err_msg=(
+                f"Failed for {mode} {dtype} "
+                f"{input_shape}->{out_h}x{out_w} {data_format}"
+            ),
+        )
+
+    def test_bilinear_float64_downscale(self):
+        self._compare_with_numpy(
+            (2, 3, 10, 10), 5, 5, 'bilinear', 'float64', atol=1e-12
+        )
+
+    def test_bilinear_float32_downscale(self):
+        self._compare_with_numpy(
+            (2, 3, 10, 10), 5, 5, 'bilinear', 'float32', atol=1e-5
+        )
+
+    def test_bicubic_float64_downscale(self):
+        self._compare_with_numpy(
+            (2, 3, 10, 10), 5, 5, 'bicubic', 'float64', atol=1e-12
+        )
+
+    def test_bicubic_float32_downscale(self):
+        self._compare_with_numpy(
+            (2, 3, 10, 10), 5, 5, 'bicubic', 'float32', atol=1e-5
+        )
+
+    def test_bilinear_float64_upscale(self):
+        self._compare_with_numpy(
+            (2, 3, 8, 8), 16, 16, 'bilinear', 'float64', atol=1e-12
+        )
+
+    def test_bilinear_float32_upscale(self):
+        self._compare_with_numpy(
+            (2, 3, 8, 8), 16, 16, 'bilinear', 'float32', atol=1e-5
+        )
+
+    def test_bilinear_nhwc_float64(self):
+        self._compare_with_numpy(
+            (2, 10, 10, 3),
+            5,
+            5,
+            'bilinear',
+            'float64',
+            data_format='NHWC',
+            atol=1e-12,
+        )
+
+    def test_bilinear_align_corners(self):
+        self._compare_with_numpy(
+            (2, 3, 10, 10),
+            5,
+            5,
+            'bilinear',
+            'float64',
+            align_corners=True,
+            atol=1e-12,
+        )
 
 
 if __name__ == "__main__":

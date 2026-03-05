@@ -55,6 +55,10 @@ inline constexpr int kMaxNumExpertsForOptKernel = 32;
 inline constexpr int kFp8CumsumBlockSize = 32;
 inline constexpr int kFp8BlockDimX = 256;
 
+// Unified permute kernel constants (always warp-ballot based)
+inline constexpr int kPermuteBlockSize = 32;   // rows per block = warp size
+inline constexpr int kPermuteBlockDimX = 256;  // threads per block
+
 }  // namespace moe
 
 // ============================================================================
@@ -140,6 +144,23 @@ inline void ScaleType(bool using_ue8m0, F&& f) {
   }
 }
 
+// Bucketed TOPK dispatch: compile-time topk for shared memory sizing.
+// Buckets: 1, 2, 4, 8, 16
+template <typename F>
+inline void TopK(int topk, F&& f) {
+  if (topk <= 1) {
+    f(std::integral_constant<int, 1>{});
+  } else if (topk <= 2) {
+    f(std::integral_constant<int, 2>{});
+  } else if (topk <= 4) {
+    f(std::integral_constant<int, 4>{});
+  } else if (topk <= 8) {
+    f(std::integral_constant<int, 8>{});
+  } else {
+    f(std::integral_constant<int, 16>{});
+  }
+}
+
 }  // namespace dispatch
 
 // ============================================================================
@@ -159,6 +180,20 @@ struct ExpertSlotInfo {
     prob = other.prob;
     return *this;
   }
+};
+
+// Compact per-token-expert slot for the unified permute kernel.
+// Stores only topk entries per row instead of num_experts entries.
+template <typename ProbT>
+struct CompactSlot {
+  int output_row;
+  int expert_id;
+  ProbT prob;
+
+  __device__ __host__ CompactSlot()
+      : output_row(-1), expert_id(-1), prob(ProbT(0)) {}
+  __device__ __host__ CompactSlot(int row, int eid, ProbT p)
+      : output_row(row), expert_id(eid), prob(p) {}
 };
 
 template <paddle::DataType DType>
@@ -344,6 +379,14 @@ __global__ __launch_bounds__(512) void filling_padding_rows_kernel(
     }
   }
 }
+// Optimized routemap_digest_kernel — single-block design.
+// The bulk -1 fill of expert_indices is offloaded to cudaMemsetAsync (DMA
+// engine) BEFORE this kernel launches.  The kernel only needs to:
+//   Phase 1: Histogram topk_ids into per-expert counts
+//   Phase 2: Padded exclusive prefix-sum → expert_offset / expert_offset_end
+//   Phase 3: Sparse overwrite of expert_indices for valid-token positions only
+//
+// Shared memory layout: [hist: num_experts] [padded_count: num_experts]
 template <bool FillExpertIndices, int BLOCK_SIZE>
 __global__ void routemap_digest_kernel(const int32_t* __restrict__ topk_ids,
                                        int32_t* __restrict__ expert_offset,
@@ -351,17 +394,16 @@ __global__ void routemap_digest_kernel(const int32_t* __restrict__ topk_ids,
                                        int32_t* __restrict__ expert_indices,
                                        int32_t numel,
                                        int32_t num_experts,
-                                       int32_t padding_alignment,
-                                       int32_t override_buffer_size) {
+                                       int32_t padding_alignment) {
   extern __shared__ int32_t shared[];
-  int32_t* hist = shared;                       // [0, ne)
-  int32_t* offset_smem = shared + num_experts;  // [ne, 2*ne)
+  int32_t* hist = shared;                             // [0, ne)
+  int32_t* padded_count_smem = shared + num_experts;  // [ne, 2*ne)
 
-  //  Phase 1: Histogram
+  // ===== Phase 1: Histogram =====
   for (int i = threadIdx.x; i < num_experts; i += BLOCK_SIZE) hist[i] = 0;
   __syncthreads();
 
-  // Vectorized int4 bulk: each thread loads 4 int32s per iteration
+  // Vectorized int4 loads: each thread processes 4 int32s per iteration
   const int num_vec4 = numel >> 2;
   const int4* topk_vec4 = reinterpret_cast<const int4*>(topk_ids);
 
@@ -384,40 +426,73 @@ __global__ void routemap_digest_kernel(const int32_t* __restrict__ topk_ids,
   }
   __syncthreads();
 
-  //  Phase 2: Padded prefix-sum (thread 0)
+  // ===== Phase 2: Padded exclusive prefix-sum =====
+  // Step 2a: Compute padded_count per expert in parallel
+  for (int i = threadIdx.x; i < num_experts; i += BLOCK_SIZE) {
+    padded_count_smem[i] = align_up(hist[i], padding_alignment);
+  }
+  __syncthreads();
+
+  // Step 2b: Serial prefix-sum on thread 0 (128 experts — trivial cost).
+  // For 128-384 experts the serial loop is <0.1μs; a parallel scan would
+  // add overhead from syncthreads and is not worthwhile here.
   if (threadIdx.x == 0) {
-    int32_t offset = 0;
+    int32_t running_offset = 0;
     for (int i = 0; i < num_experts; i++) {
       int32_t count = hist[i];
-      int32_t padded_count = align_up(count, padding_alignment);
-      expert_offset[i] = offset;
-      expert_offset_end[i] = offset + count - 1;
-      offset_smem[i] = offset;
-      offset += padded_count;
+      int32_t padded = padded_count_smem[i];  // read before overwrite
+      expert_offset[i] = running_offset;
+      expert_offset_end[i] = running_offset + count - 1;
+      // Reuse hist[] → offset, padded_count_smem[] → count for Phase 3
+      hist[i] = running_offset;
+      padded_count_smem[i] = count;
+      running_offset += padded;
     }
   }
-  if constexpr (FillExpertIndices) {
-    __syncthreads();
-    //  Phase 3: Fill expert_indices – per-expert loop, single pass
-    //    For each expert: write expert_id for valid slots, -1 for padding.
-    for (int expert = 0; expert < num_experts; expert++) {
-      int32_t offset = offset_smem[expert];
-      int32_t count = hist[expert];
-      int32_t padded_count = align_up(count, padding_alignment);
-      for (int j = threadIdx.x; j < padded_count; j += BLOCK_SIZE) {
-        int32_t write_pos = offset + j;
-        if (write_pos < override_buffer_size)
-          expert_indices[write_pos] = (j < count) ? expert : -1;
+
+  if constexpr (!FillExpertIndices) return;
+
+  __syncthreads();
+
+  // ===== Phase 3: Sparse fill of expert_indices (valid positions only) =====
+  // The entire buffer was pre-filled with -1 by cudaMemsetAsync.
+  // Here we only overwrite the [offset, offset+count) range for each expert
+  // that has count > 0.  With 96 tokens across 128 experts, this is ~96
+  // int32 stores — negligible compared to the 10K-500K DMA fill.
+  //
+  // All data comes from smem (hist[] = offset, padded_count_smem[] = count),
+  // avoiding global memory loads in the tight loop.
+  for (int e = threadIdx.x; e < num_experts; e += BLOCK_SIZE) {
+    int32_t off = hist[e];                 // start offset (smem)
+    int32_t count = padded_count_smem[e];  // token count (smem)
+    if (count <= 0) continue;
+
+    // Vectorized fill: pack expert_id into int4 for 128-bit stores.
+    // Requires 16-byte alignment (off must be multiple of 4 int32s).
+    // padding_alignment is typically >=8, so offsets are always aligned.
+    if ((off & 3) == 0) {
+      int4 fill_vec;
+      fill_vec.x = e;
+      fill_vec.y = e;
+      fill_vec.z = e;
+      fill_vec.w = e;
+      int4* dst_vec = reinterpret_cast<int4*>(&expert_indices[off]);
+      int num_vec4_fill = count >> 2;
+
+      for (int v = 0; v < num_vec4_fill; v++) {
+        dst_vec[v] = fill_vec;
+      }
+      // Scalar tail
+      int filled = num_vec4_fill << 2;
+      for (int j = filled; j < count; j++) {
+        expert_indices[off + j] = e;
+      }
+    } else {
+      // Unaligned fallback (should rarely happen)
+      for (int j = 0; j < count; j++) {
+        expert_indices[off + j] = e;
       }
     }
-    // Phase 3b: Fill the rest of the buffer with -1 (parallel)
-    // Total filled size = offset of last expert + its padded_count
-    int32_t total_filled = offset_smem[num_experts - 1] +
-                           align_up(hist[num_experts - 1], padding_alignment);
-    // All threads parallel fill remaining positions
-    for (int i = total_filled + threadIdx.x; i < override_buffer_size;
-         i += BLOCK_SIZE)
-      expert_indices[i] = -1;
   }
 }
 }  // namespace phi
