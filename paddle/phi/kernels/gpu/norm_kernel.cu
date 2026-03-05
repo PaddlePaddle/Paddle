@@ -101,6 +101,11 @@ void NormKernel(const Context& dev_ctx,
   int64_t pre, n, post;
   funcs::GetPrePostNumel(xdim, axis, &pre, &n, &post);
 
+  // Handle zero-size tensor: skip kernel launch to avoid invalid CUDA config
+  if (pre * post == 0) {
+    return;
+  }
+
   const int block = 512;
   int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
   const int64_t max_blocks = std::max(max_threads / block, 1);

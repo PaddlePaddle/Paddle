@@ -26,9 +26,14 @@ void TrilTriuGradKernel(const Context& dev_ctx,
                         int diagonal,
                         bool lower,
                         DenseTensor* x_grad) {
-  const auto* dout_data = out_grad.data<T>();
   auto* dx_data = dev_ctx.template Alloc<T>(x_grad);
 
+  // Early return for empty tensor to avoid invalid CUDA kernel launch
+  if (out_grad.numel() == 0) {
+    return;
+  }
+
+  const auto* dout_data = out_grad.data<T>();
   const auto& dims = out_grad.dims();
   const auto H = dims[dims.size() - 2];
   const auto W = dims[dims.size() - 1];
