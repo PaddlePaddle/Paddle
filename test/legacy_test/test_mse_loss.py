@@ -355,8 +355,7 @@ class TestNNFunctionalMseLoss_ZeroSize(unittest.TestCase):
 
 class TestNNFunctionalMseLossAlias(unittest.TestCase):
     def test_target_alias_dygraph(self):
-        paddle.disable_static()
-        try:
+        with base.dygraph.guard():
             x = paddle.randn([4, 5], dtype="float32")
             y = paddle.randn([4, 5], dtype="float32")
 
@@ -371,8 +370,6 @@ class TestNNFunctionalMseLossAlias(unittest.TestCase):
             np.testing.assert_allclose(
                 out3.numpy(), out4.numpy(), rtol=1e-6, atol=0.0
             )
-        finally:
-            paddle.enable_static()
 
 
 if __name__ == "__main__":
