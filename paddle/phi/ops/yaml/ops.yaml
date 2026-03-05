@@ -6182,3 +6182,14 @@
   optional : scale
   backward: rms_norm_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : is_real
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnaryInferMeta
+  kernel :
+    func : is_real
+    data_type : x
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait

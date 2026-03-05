@@ -553,3 +553,8 @@
   name : [paddle.triu, paddle.Tensor.triu]
   args_alias :
     use_default_mapping : True
+
+- op : is_real
+  name : [paddle.is_real, paddle.isreal, paddle.Tensor.is_real, paddle.Tensor.isreal]
+  args_alias :
+    input : x
