@@ -34,7 +34,7 @@ using moe::kPermuteBlockDimX;
 using moe::kPermuteBlockSize;
 
 // ============================================================================
-//                        Unified Permute Kernel
+//                         Unified Permute Kernel
 // ============================================================================
 // Register-centric scheduling: metadata lives in registers, not shared memory.
 // Shared memory layout (phases are non-overlapping):
