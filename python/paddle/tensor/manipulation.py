@@ -3101,6 +3101,12 @@ def tensor_split(
         )
 
 
+@ParamAliasDecorator(
+    {
+        "x": ["input"],
+        "num_or_indices": ["indices", "sections"],
+    }
+)
 def hsplit(
     x: Tensor, num_or_indices: int | Sequence[int], name: str | None = None
 ) -> list[Tensor]:
@@ -3119,8 +3125,10 @@ def hsplit(
 
     Args:
         x (Tensor): A Tensor whose dimension must be greater than 0. The data type is bool, bfloat16, float16, float32, float64, uint8, int32 or int64.
+            Alias: ``input``.
         num_or_indices (int|list|tuple): If ``num_or_indices`` is an int ``n``, ``x`` is split into ``n`` sections.
             If ``num_or_indices`` is a list or tuple of integer indices, ``x`` is split at each of the indices.
+            Alias: ``indices``、``sections``.
         name (str|None, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
     Returns:
@@ -3166,6 +3174,12 @@ def hsplit(
         return tensor_split(x, num_or_indices, axis=0, name=name)
 
 
+@ParamAliasDecorator(
+    {
+        "x": ["input"],
+        "num_or_indices": ["indices", "sections"],
+    }
+)
 def dsplit(
     x: Tensor, num_or_indices: int | Sequence[int], name: str | None = None
 ) -> list[Tensor]:
@@ -3183,8 +3197,10 @@ def dsplit(
 
     Args:
         x (Tensor): A Tensor whose dimension must be greater than 2. The data type is bool, bfloat16, float16, float32, float64, uint8, int32 or int64.
+            Alias: ``input``.
         num_or_indices (int|list|tuple): If ``num_or_indices`` is an int ``n``, ``x`` is split into ``n`` sections.
             If ``num_or_indices`` is a list or tuple of integer indices, ``x`` is split at each of the indices.
+            Alias: ``indices``、``sections``.
         name (str|None, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
     Returns:
@@ -3219,6 +3235,12 @@ def dsplit(
     return tensor_split(x, num_or_indices, axis=2, name=name)
 
 
+@ParamAliasDecorator(
+    {
+        "x": ["input"],
+        "num_or_indices": ["indices", "sections"],
+    }
+)
 def vsplit(
     x: Tensor, num_or_indices: int | Sequence[int], name: str | None = None
 ) -> list[Tensor]:
@@ -3240,8 +3262,10 @@ def vsplit(
 
     Args:
         x (Tensor): A Tensor whose dimension must be greater than 1. The data type is bool, bfloat16, float16, float32, float64, uint8, int32 or int64.
+            Alias: ``input``.
         num_or_indices (int|list|tuple): If ``num_or_indices`` is an int ``n``, ``x`` is split into ``n`` sections.
             If ``num_or_indices`` is a list or tuple of integer indices, ``x`` is split at each of the indices.
+            Alias: ``indices``、``sections``.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
 
