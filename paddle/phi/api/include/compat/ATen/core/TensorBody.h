@@ -17,7 +17,6 @@
 #include <ATen/TensorIndexing.h>
 #include <ATen/core/TensorBase.h>
 #include <c10/core/Backend.h>
-#include <c10/core/Device.h>
 #include <c10/core/Scalar.h>
 #include <c10/core/Stream.h>
 #include <c10/util/OptionalArrayRef.h>
@@ -664,31 +663,7 @@ class Tensor : public TensorBase {
                                        /*decrease_axis=*/{0});
   }
 
-  void record_stream(at::Stream s) const {
-    auto dense_tensor =
-        std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl());
-    PD_CHECK(dense_tensor != nullptr,
-             "record_stream only supports DenseTensor, but got a non-dense "
-             "tensor implementation.");
-#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
-    !defined(PADDLE_WITH_CUSTOM_DEVICE)
-    paddle::memory::RecordStream(
-        dense_tensor->Holder(),
-        reinterpret_cast<gpuStream_t>(s.native_handle()));
-#elif defined(PADDLE_WITH_XPU)
-    paddle::memory::RecordStream(
-        dense_tensor->Holder(), reinterpret_cast<XPUStream>(s.native_handle()));
-#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
-    paddle::memory::RecordStream(
-        dense_tensor->Holder(),
-        reinterpret_cast<phi::stream::stream_t>(s.native_handle()));
-#else
-    (void)dense_tensor;
-    PD_THROW(
-        "record_stream is not supported: no GPU/XPU/Custom device enabled "
-        "in this build.");
-#endif
-  }
+  void record_stream(at::Stream s) const;
 
   Tensor var(int dim) const { return var(at::IntArrayRef{dim}, true, false); }
 
