@@ -91,7 +91,6 @@ from ..framework import (
     core,
     in_dynamic_mode,
     in_dynamic_or_pir_mode,
-    dygraph_only,
     in_pir_mode,
 )
 from .creation import assign
@@ -152,7 +151,6 @@ if TYPE_CHECKING:
     from paddle._typing import DTypeLike
 
 from paddle.utils.decorator_utils import ForbidKeywordsDecorator
-
 
 __all__ = []
 
