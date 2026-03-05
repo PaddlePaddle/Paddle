@@ -1867,6 +1867,7 @@ def kl_div(
             loss = paddle.sum(loss) / batch_size
         return loss
 
+
 @param_one_alias(["label", "target"])
 def mse_loss(
     input: Tensor,
