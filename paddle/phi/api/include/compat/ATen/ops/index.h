@@ -30,8 +30,7 @@ inline at::Tensor index(const at::Tensor& self,
     ends[i] = indices[i].stop();
   }
   return paddle::experimental::slice(
-             self._PD_GetInner(), {0, 1}, starts, ends, {1}, {})
-      .contiguous();
+      self._PD_GetInner(), {0, 1}, starts, ends, {1}, {});
 }
 
 }  // namespace at
