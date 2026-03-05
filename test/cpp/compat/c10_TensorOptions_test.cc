@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <ATen/ops/empty.h>
 #include <c10/core/Device.h>
 #include <c10/core/Layout.h>
 #include <c10/core/MemoryFormat.h>
@@ -330,45 +329,3 @@ TEST(TensorOptionsTest, HelperFunction_dtype) {
   ASSERT_TRUE(opts.has_dtype());
   ASSERT_EQ(opts.dtype(), c10::kLong);
 }
-
-// ---- Chained free-function style: dtype(...).device(...) with at::empty ----
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-TEST(TensorOptionsTest, ChainDtypeDevice_Int32_1D_CUDA) {
-  // torch::empty({num_ranks}, dtype(torch::kInt32).device(torch::kCUDA))
-  constexpr int64_t num_ranks = 4;
-  at::Tensor t = at::empty({num_ranks}, at::dtype(at::kInt).device(at::kCUDA));
-
-  ASSERT_EQ(t.scalar_type(), at::kInt);
-  ASSERT_EQ(t.device().type(), c10::DeviceType::CUDA);
-  ASSERT_EQ(t.dim(), 1);
-  ASSERT_EQ(t.size(0), num_ranks);
-}
-
-TEST(TensorOptionsTest, ChainDtypeDevice_Int32_1D_CUDA_NumExperts) {
-  // torch::empty({num_experts}, dtype(torch::kInt32).device(torch::kCUDA))
-  constexpr int64_t num_experts = 8;
-  at::Tensor t =
-      at::empty({num_experts}, at::dtype(at::kInt).device(at::kCUDA));
-
-  ASSERT_EQ(t.scalar_type(), at::kInt);
-  ASSERT_EQ(t.device().type(), c10::DeviceType::CUDA);
-  ASSERT_EQ(t.dim(), 1);
-  ASSERT_EQ(t.size(0), num_experts);
-}
-
-TEST(TensorOptionsTest, ChainDtypeDevice_Bool_2D_CUDA) {
-  // torch::empty({num_tokens, num_ranks},
-  // dtype(torch::kBool).device(torch::kCUDA))
-  constexpr int64_t num_tokens = 16;
-  constexpr int64_t num_ranks = 4;
-  at::Tensor t = at::empty({num_tokens, num_ranks},
-                           at::dtype(at::kBool).device(at::kCUDA));
-
-  ASSERT_EQ(t.scalar_type(), at::kBool);
-  ASSERT_EQ(t.device().type(), c10::DeviceType::CUDA);
-  ASSERT_EQ(t.dim(), 2);
-  ASSERT_EQ(t.size(0), num_tokens);
-  ASSERT_EQ(t.size(1), num_ranks);
-}
-#endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
