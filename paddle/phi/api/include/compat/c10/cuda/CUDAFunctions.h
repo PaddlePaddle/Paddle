@@ -18,7 +18,7 @@
 
 namespace c10::cuda {
 
-c10::DeviceIndex device_count() {
+inline c10::DeviceIndex device_count() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   return phi::backends::gpu::GetGPUDeviceCount();
 #else
@@ -27,7 +27,7 @@ c10::DeviceIndex device_count() {
 #endif
 }
 
-void device_synchronize() {
+inline void device_synchronize() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   int curr_device_id = paddle::platform::GetCurrentDeviceId();
   paddle::platform::SetDeviceId(curr_device_id);
