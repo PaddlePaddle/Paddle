@@ -1174,16 +1174,11 @@ void FlashMaskV2GradBaseKernel(
   bool const use_rs_overlap = nranks > 1 && num_heads_k >= 4;
   VLOG(6) << "FlashMask RS overlap: use rs: " << use_rs_overlap
           << ", num chunk: " << chunks_per_seg;
-  if (use_rs_overlap) {
-    PADDLE_ENFORCE_GT(
-        chunks_per_seg,
-        0,
-        common::errors::InvalidArgument(
-            "chunks_per_seg should be at least 1, but got: %d. This could be "
-            "caused by not setting `WITH_DISTRIBUTED_OVERLAP` for flashmask "
-            "compilation.",
-            chunks_per_seg));
-  }
+  PADDLE_ENFORCE_GT(
+      chunks_per_seg,
+      0,
+      common::errors::InvalidArgument(
+          "chunks_per_seg should be at least 1, but got: %d.", chunks_per_seg));
   int const dkv_accum_s_scaler =
       use_rs_overlap ? chunks_per_seg : nranks;  // * cp_size
   int const dkv_s_scaler =
@@ -1271,6 +1266,13 @@ void FlashMaskV2GradBaseKernel(
         true,
         common::errors::InvalidArgument("FlashMask distributed overlap does "
                                         "not support non-GQA currently."));
+    PADDLE_ENFORCE_LT(rank,
+                      nranks,
+                      common::errors::InvalidArgument(
+                          "FlashMask distributed overlap requires "
+                          "rank < nranks, but got rank = %d >= nranks %d.",
+                          rank,
+                          nranks));
   }
 
   auto GradTensorCheckSetter = [&](const DenseTensor &t,
@@ -1295,15 +1297,11 @@ void FlashMaskV2GradBaseKernel(
         CHECK_SHAPE((*dt), total_k, num_heads_k, head_size);
       }
     } else {
-      if (nranks == 1) {
-        *dt = phi::EmptyLike<T, Context>(dev_ctx, t);
-      } else {
-        // nranks > 1: using distributed overlap will actually compute with
-        // complete size
-        *dt = phi::Empty<T, Context>(
-            dev_ctx,
-            {batch_size, seqlen_k * dkv_s_scaler, num_heads_k, head_size});
-      }
+      // nranks > 1: using distributed overlap will actually compute with
+      // complete size. If nrank == 1, dkv_s_scaler will be 1
+      *dt = phi::Empty<T, Context>(
+          dev_ctx,
+          {batch_size, seqlen_k * dkv_s_scaler, num_heads_k, head_size});
     }
   };
 
