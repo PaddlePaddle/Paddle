@@ -317,7 +317,7 @@ jobs:
 
           echo "::group::Install dependencies"
           retry_or_skip python -m pip install PyGithub
-          retry_or_skip python -m pip install wheel
+          retry_or_skip python -m pip install wheel PyYAML
           echo "::endgroup::"
           retry_or_skip pip install -U numpy==1.26.4
           git config --global --add safe.directory ${work_dir}

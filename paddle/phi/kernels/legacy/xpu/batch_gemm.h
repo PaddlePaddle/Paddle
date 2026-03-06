@@ -1,4 +1,4 @@
-// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,11 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// The file has been adapted from DeepSeek DeepEP project
-// Copyright (c) 2025 DeepSeek
-// Licensed under the MIT License -
-// https://github.com/deepseek-ai/DeepEP/blob/main/LICENSE
-
 #pragma once
-#include "xpu/bkcl.h"
-#include "xpu/deep_ep.h"
+
+#include "paddle/phi/core/dense_tensor.h"
+
+namespace phi {
+
+template <typename T, typename Context>
+void BatchedGEMM(const Context &dev_ctx,
+                 const DenseTensor &lhs,
+                 const DenseTensor &rhs,
+                 const std::vector<int64_t> &batch_sizes,
+                 const bool trans_lhs,
+                 const bool trans_rhs,
+                 DenseTensor *output);
+}  // namespace phi
