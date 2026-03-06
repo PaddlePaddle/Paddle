@@ -123,3 +123,6 @@ python/paddle/base/dygraph/generated_tensor_methods_patch.py
 #fp8
 paddle/fluid/fp8/deep_gemm/include/cute/*
 paddle/fluid/fp8/deep_gemm/include/cutlass/*
+paddle/cinn/runtime/custom_device/float16.h
+paddle/cinn/runtime/custom_device/bfloat16.h
+paddle/cinn/runtime/custom_device/float8e4m3.h
