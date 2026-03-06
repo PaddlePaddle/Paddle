@@ -417,6 +417,19 @@
     force_backend : force_cpu
   traits : paddle::dialect::ForwardOnlyTrait
 
+- op : group_norm
+  args : (Tensor x, Tensor scale, Tensor bias, float epsilon = 1e-5, int groups = -1, str data_format = "NCHW")
+  output : Tensor(y), Tensor(mean), Tensor(variance)
+  infer_meta :
+    func : GroupNormInferMeta
+    spmd_rule : GroupNormInferSpmd
+  kernel :
+    func : group_norm
+  optional : scale, bias
+  intermediate : mean, variance
+  backward : group_norm_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
+
 - op : hardswish
   args : (Tensor x, float threshold = 6.0f, float scale = 6.0f, float offset = 3.0f)
   output : Tensor(out)
