@@ -609,6 +609,7 @@ def edit_distance(
 
     return edit_distance_out, sequence_num
 
+
 @param_one_alias(["label", "target"])
 def binary_cross_entropy(
     input: Tensor,

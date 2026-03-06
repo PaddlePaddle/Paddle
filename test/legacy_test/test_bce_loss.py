@@ -241,7 +241,9 @@ class TestBCELoss(unittest.TestCase):
     def test_BCELoss_target_alias(self):
         paddle.disable_static()
         try:
-            input_np = np.random.uniform(0.1, 0.8, size=(4, 5)).astype(np.float32)
+            input_np = np.random.uniform(0.1, 0.8, size=(4, 5)).astype(
+                np.float32
+            )
             label_np = np.random.randint(0, 2, size=(4, 5)).astype(np.float32)
             input = paddle.to_tensor(input_np)
             label = paddle.to_tensor(label_np)
