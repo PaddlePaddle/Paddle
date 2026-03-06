@@ -42,21 +42,19 @@ class PADDLE_API Generator {
                    uint64_t offset_ = 0,
                    std::shared_ptr<std::mt19937_64> engine = nullptr)
         : device(device_), seed(seed_), offset(offset_) {
-      std::seed_seq seq({seed_});
-      cpu_engine = std::make_shared<std::mt19937_64>(seq);
       if (engine != nullptr) {
         // Clone the engine state
-        *(cpu_engine) = *(engine);
+        cpu_engine = std::make_shared<std::mt19937_64>(*(engine));
+      } else {
+        std::seed_seq seq({seed_});
+        cpu_engine = std::make_shared<std::mt19937_64>(seq);
       }
     }
 
     GeneratorState(const GeneratorState& state)
         : device(state.device), seed(state.seed), offset(state.offset) {
       if (state.cpu_engine) {
-        std::seed_seq seq({state.seed});
-        cpu_engine = std::make_shared<std::mt19937_64>(seq);
-        // Clone the engine state
-        *(cpu_engine) = *(state.cpu_engine);
+        cpu_engine = std::make_shared<std::mt19937_64>(*(state.cpu_engine));
       }
     }
 
@@ -67,9 +65,7 @@ class PADDLE_API Generator {
         offset = state.offset;
 
         if (state.cpu_engine) {
-          std::seed_seq seq({state.seed});
-          cpu_engine = std::make_shared<std::mt19937_64>(seq);
-          *cpu_engine = *(state.cpu_engine);
+          cpu_engine = std::make_shared<std::mt19937_64>(*(state.cpu_engine));
         } else {
           cpu_engine = nullptr;
         }
