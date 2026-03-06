@@ -42,6 +42,10 @@ class TestAllocatorVisitor(unittest.TestCase):
             ["Free", 1 * self.MB, "0x100000010"],
             ["Free", 2 * self.MB, "0x100000013"],
         ]
+        # FLAGS_use_system_allocator bypasses VMM allocator entirely,
+        # causing VMM-specific APIs to return empty results. Disable it
+        # so the VMM allocator is actually used.
+        paddle.set_flags({'FLAGS_use_system_allocator': False})
         paddle.set_flags({'FLAGS_use_virtual_memory_auto_growth': True})
 
     def allocate_cmds(self, cmds):
