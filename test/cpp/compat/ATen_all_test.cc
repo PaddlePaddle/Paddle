@@ -569,15 +569,15 @@ TEST(TestAllclose, AllcloseEmptyTensor) {
 
 TEST(TestAllclose, AllcloseScalarTensor) {
   // Test allclose with scalar tensors (0-dimensional)
-  at::Tensor scalar1 = at::scalar_tensor(1.0, at::kFloat);
-  at::Tensor scalar2 = at::scalar_tensor(1.0, at::kFloat);
+  at::Tensor scalar1 = at::tensor(1.0, at::kFloat);
+  at::Tensor scalar2 = at::tensor(1.0, at::kFloat);
 
   bool result = at::allclose(scalar1, scalar2);
   ASSERT_EQ(result, true);
 
   // Different values
-  at::Tensor scalar3 = at::scalar_tensor(1.0, at::kFloat);
-  at::Tensor scalar4 = at::scalar_tensor(2.0, at::kFloat);
+  at::Tensor scalar3 = at::tensor(1.0, at::kFloat);
+  at::Tensor scalar4 = at::tensor(2.0, at::kFloat);
   bool result_diff = at::allclose(scalar3, scalar4);
   ASSERT_EQ(result_diff, false);
 
@@ -601,7 +601,7 @@ TEST(TestAllclose, AllcloseHalf) {
   // Test with small difference
   at::Tensor tensor3 = at::ones({3}, at::kHalf);
   at::Tensor tensor4 = at::ones({3}, at::kHalf);
-  tensor4[0] = at::scalar_tensor(1.1f, at::kHalf);  // small difference
+  tensor4[0] = at::tensor(1.1f, at::kHalf);  // small difference
   bool result_diff = at::allclose(tensor3, tensor4);
   ASSERT_EQ(result_diff, false);
 
@@ -612,10 +612,11 @@ TEST(TestAllclose, AllcloseHalf) {
 
 TEST(TestAllclose, AllcloseHalfNaN) {
   // Test allclose with half (float16) tensors and NaN
-  const float16 nan_val =
-      paddle::float16(std::numeric_limits<float>::quiet_NaN());
-  std::vector<paddle::float16> data1 = {
-      paddle::float16(1.0f), paddle::float16(1.0f), paddle::float16(nan_val)};
+  const phi::dtype::float16 nan_val =
+      phi::dtype::float16(std::numeric_limits<float>::quiet_NaN());
+  std::vector<phi::dtype::float16> data1 = {phi::dtype::float16(1.0f),
+                                            phi::dtype::float16(1.0f),
+                                            phi::dtype::float16(nan_val)};
   at::Tensor tensor1 = at::from_blob(data1.data(), {3}, at::kHalf);
   at::Tensor tensor2 = tensor1.clone();
 
