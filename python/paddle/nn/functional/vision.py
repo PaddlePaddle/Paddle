@@ -23,6 +23,7 @@ from paddle.base.framework import (
     in_dynamic_or_pir_mode,
     in_pir_mode,
 )
+from paddle.utils.decorator_utils import param_one_alias
 
 from ...base.data_feeder import check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
@@ -211,6 +212,7 @@ def pixel_shuffle(
         return out
 
 
+@param_one_alias(["x", "input"])
 def pixel_unshuffle(
     x: Tensor,
     downscale_factor: int,
@@ -223,6 +225,7 @@ def pixel_unshuffle(
 
     Parameters:
         x (Tensor): 4-D tensor, the data type should be float32 or float64.
+            Alias: ``input``.
         downscale_factor (int): Factor to decrease spatial resolution.
         data_format (str, optional): The data format of the input and output data. An optional string of ``'NCHW'`` or ``'NHWC'``. When it is ``'NCHW'``, the data is stored in the order of [batch_size, input_channels, input_height, input_width]. Default: ``'NCHW'``.
         name (str|None, optional): Name for the operation (optional, default is None). Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.

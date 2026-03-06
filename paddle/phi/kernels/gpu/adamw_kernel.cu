@@ -168,9 +168,9 @@ PADDLE_API void AdamwDenseKernel(const Context& dev_ctx,
                                  DenseTensor* beta1_pow_out,
                                  DenseTensor* beta2_pow_out,
                                  DenseTensor* master_param_outs) {
-  using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
-  MPDType coeff_ = static_cast<MPDType>(coeff);
-  MPDType lr_ratio_ = static_cast<MPDType>(lr_ratio);
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  MT coeff_ = static_cast<MT>(coeff);
+  MT lr_ratio_ = static_cast<MT>(lr_ratio);
 
   bool skip_update_ = false;
   if (skip_update.is_initialized()) {
@@ -207,12 +207,12 @@ PADDLE_API void AdamwDenseKernel(const Context& dev_ctx,
 
   // if with_decay = false, coeff = 0
   if (!with_decay) {
-    coeff_ = static_cast<MPDType>(0.0);
+    coeff_ = static_cast<MT>(0.0);
   }
 
-  MPDType beta1_ = beta1.to<MPDType>();
-  MPDType beta2_ = beta2.to<MPDType>();
-  MPDType epsilon_ = epsilon.to<MPDType>();
+  MT beta1_ = beta1.to<MT>();
+  MT beta2_ = beta2.to<MT>();
+  MT epsilon_ = epsilon.to<MT>();
   VLOG(3) << "beta1_pow.numel() : " << beta1_pow.numel()
           << "beta2_pow.numel() : " << beta2_pow.numel();
   VLOG(3) << "param.numel(): " << param.numel();
@@ -230,16 +230,15 @@ PADDLE_API void AdamwDenseKernel(const Context& dev_ctx,
                               "value is:%d.",
                               beta2_pow_out->numel()));
 
-  const MPDType* master_in_data =
-      multi_precision ? master_param->data<MPDType>() : nullptr;
-  MPDType* master_out_data =
-      multi_precision ? dev_ctx.template Alloc<MPDType>(master_param_outs)
-                      : nullptr;
+  const MT* master_in_data =
+      multi_precision ? master_param->data<MT>() : nullptr;
+  MT* master_out_data =
+      multi_precision ? dev_ctx.template Alloc<MT>(master_param_outs) : nullptr;
 
-  const MPDType* moment2_max_in_data =
-      amsgrad ? moment2_max.get().data<MPDType>() : nullptr;
-  MPDType* moment2_max_out_data =
-      amsgrad ? dev_ctx.template Alloc<MPDType>(moment2_max_out) : nullptr;
+  const MT* moment2_max_in_data =
+      amsgrad ? moment2_max.get().data<MT>() : nullptr;
+  MT* moment2_max_out_data =
+      amsgrad ? dev_ctx.template Alloc<MT>(moment2_max_out) : nullptr;
 
   // update param and moment
   int threads = 512;
@@ -257,142 +256,136 @@ PADDLE_API void AdamwDenseKernel(const Context& dev_ctx,
       moment1.dtype() == phi::DataType::BFLOAT16 &&
       moment2.dtype() == phi::DataType::BFLOAT16;
 
-#define LAUNCH_ADAMW_KERNEL(MOMENT_T)                                          \
-  if (beta_pow_on_cpu) {                                                       \
-    BetaPowAccessor<MPDType, true> accessor(beta1_pow.data<MPDType>(),         \
-                                            beta2_pow.data<MPDType>());        \
-    if (use_bfloat32_grad) {                                                   \
-      AdamWKernel<T, float, MPDType, MOMENT_T, BetaPowAccessor<MPDType, true>> \
-          <<<blocks, threads, 0, dev_ctx.stream()>>>(                          \
-              beta1_,                                                          \
-              beta2_,                                                          \
-              epsilon_,                                                        \
-              coeff_,                                                          \
-              lr_ratio_,                                                       \
-              learning_rate.data<MPDType>(),                                   \
-              grad.data<float>(),                                              \
-              param.data<T>(),                                                 \
-              dev_ctx.template Alloc<T>(param_out),                            \
-              master_in_data,                                                  \
-              master_out_data,                                                 \
-              moment1.data<MOMENT_T>(),                                        \
-              dev_ctx.template Alloc<MOMENT_T>(moment1_out),                   \
-              moment2.data<MOMENT_T>(),                                        \
-              dev_ctx.template Alloc<MOMENT_T>(moment2_out),                   \
-              moment2_max ? moment2_max->data<MOMENT_T>() : nullptr,           \
-              amsgrad ? dev_ctx.template Alloc<MOMENT_T>(moment2_max_out)      \
-                      : nullptr,                                               \
-              accessor,                                                        \
-              param.numel(),                                                   \
-              amsgrad);                                                        \
-    } else {                                                                   \
-      AdamWKernel<T, T, MPDType, MOMENT_T, BetaPowAccessor<MPDType, true>>     \
-          <<<blocks, threads, 0, dev_ctx.stream()>>>(                          \
-              beta1_,                                                          \
-              beta2_,                                                          \
-              epsilon_,                                                        \
-              coeff_,                                                          \
-              lr_ratio_,                                                       \
-              learning_rate.data<MPDType>(),                                   \
-              grad.data<T>(),                                                  \
-              param.data<T>(),                                                 \
-              dev_ctx.template Alloc<T>(param_out),                            \
-              master_in_data,                                                  \
-              master_out_data,                                                 \
-              moment1.data<MOMENT_T>(),                                        \
-              dev_ctx.template Alloc<MOMENT_T>(moment1_out),                   \
-              moment2.data<MOMENT_T>(),                                        \
-              dev_ctx.template Alloc<MOMENT_T>(moment2_out),                   \
-              moment2_max ? moment2_max->data<MOMENT_T>() : nullptr,           \
-              amsgrad ? dev_ctx.template Alloc<MOMENT_T>(moment2_max_out)      \
-                      : nullptr,                                               \
-              accessor,                                                        \
-              param.numel(),                                                   \
-              amsgrad);                                                        \
-    }                                                                          \
-  } else {                                                                     \
-    BetaPowAccessor<MPDType, false> accessor(beta1_pow.data<MPDType>(),        \
-                                             beta2_pow.data<MPDType>());       \
-    if (use_bfloat32_grad) {                                                   \
-      AdamWKernel<T,                                                           \
-                  float,                                                       \
-                  MPDType,                                                     \
-                  MOMENT_T,                                                    \
-                  BetaPowAccessor<MPDType, false>>                             \
-          <<<blocks, threads, 0, dev_ctx.stream()>>>(                          \
-              beta1_,                                                          \
-              beta2_,                                                          \
-              epsilon_,                                                        \
-              coeff_,                                                          \
-              lr_ratio_,                                                       \
-              learning_rate.data<MPDType>(),                                   \
-              grad.data<float>(),                                              \
-              param.data<T>(),                                                 \
-              dev_ctx.template Alloc<T>(param_out),                            \
-              master_in_data,                                                  \
-              master_out_data,                                                 \
-              moment1.data<MOMENT_T>(),                                        \
-              dev_ctx.template Alloc<MOMENT_T>(moment1_out),                   \
-              moment2.data<MOMENT_T>(),                                        \
-              dev_ctx.template Alloc<MOMENT_T>(moment2_out),                   \
-              moment2_max ? moment2_max->data<MOMENT_T>() : nullptr,           \
-              amsgrad ? dev_ctx.template Alloc<MOMENT_T>(moment2_max_out)      \
-                      : nullptr,                                               \
-              accessor,                                                        \
-              param.numel(),                                                   \
-              amsgrad);                                                        \
-    } else {                                                                   \
-      AdamWKernel<T, T, MPDType, MOMENT_T, BetaPowAccessor<MPDType, false>>    \
-          <<<blocks, threads, 0, dev_ctx.stream()>>>(                          \
-              beta1_,                                                          \
-              beta2_,                                                          \
-              epsilon_,                                                        \
-              coeff_,                                                          \
-              lr_ratio_,                                                       \
-              learning_rate.data<MPDType>(),                                   \
-              grad.data<T>(),                                                  \
-              param.data<T>(),                                                 \
-              dev_ctx.template Alloc<T>(param_out),                            \
-              master_in_data,                                                  \
-              master_out_data,                                                 \
-              moment1.data<MOMENT_T>(),                                        \
-              dev_ctx.template Alloc<MOMENT_T>(moment1_out),                   \
-              moment2.data<MOMENT_T>(),                                        \
-              dev_ctx.template Alloc<MOMENT_T>(moment2_out),                   \
-              moment2_max ? moment2_max->data<MOMENT_T>() : nullptr,           \
-              amsgrad ? dev_ctx.template Alloc<MOMENT_T>(moment2_max_out)      \
-                      : nullptr,                                               \
-              accessor,                                                        \
-              param.numel(),                                                   \
-              amsgrad);                                                        \
-    }                                                                          \
+#define LAUNCH_ADAMW_KERNEL(MOMENT_T)                                     \
+  if (beta_pow_on_cpu) {                                                  \
+    BetaPowAccessor<MT, true> accessor(beta1_pow.data<MT>(),              \
+                                       beta2_pow.data<MT>());             \
+    if (use_bfloat32_grad) {                                              \
+      AdamWKernel<T, float, MT, MOMENT_T, BetaPowAccessor<MT, true>>      \
+          <<<blocks, threads, 0, dev_ctx.stream()>>>(                     \
+              beta1_,                                                     \
+              beta2_,                                                     \
+              epsilon_,                                                   \
+              coeff_,                                                     \
+              lr_ratio_,                                                  \
+              learning_rate.data<MT>(),                                   \
+              grad.data<float>(),                                         \
+              param.data<T>(),                                            \
+              dev_ctx.template Alloc<T>(param_out),                       \
+              master_in_data,                                             \
+              master_out_data,                                            \
+              moment1.data<MOMENT_T>(),                                   \
+              dev_ctx.template Alloc<MOMENT_T>(moment1_out),              \
+              moment2.data<MOMENT_T>(),                                   \
+              dev_ctx.template Alloc<MOMENT_T>(moment2_out),              \
+              moment2_max ? moment2_max->data<MOMENT_T>() : nullptr,      \
+              amsgrad ? dev_ctx.template Alloc<MOMENT_T>(moment2_max_out) \
+                      : nullptr,                                          \
+              accessor,                                                   \
+              param.numel(),                                              \
+              amsgrad);                                                   \
+    } else {                                                              \
+      AdamWKernel<T, T, MT, MOMENT_T, BetaPowAccessor<MT, true>>          \
+          <<<blocks, threads, 0, dev_ctx.stream()>>>(                     \
+              beta1_,                                                     \
+              beta2_,                                                     \
+              epsilon_,                                                   \
+              coeff_,                                                     \
+              lr_ratio_,                                                  \
+              learning_rate.data<MT>(),                                   \
+              grad.data<T>(),                                             \
+              param.data<T>(),                                            \
+              dev_ctx.template Alloc<T>(param_out),                       \
+              master_in_data,                                             \
+              master_out_data,                                            \
+              moment1.data<MOMENT_T>(),                                   \
+              dev_ctx.template Alloc<MOMENT_T>(moment1_out),              \
+              moment2.data<MOMENT_T>(),                                   \
+              dev_ctx.template Alloc<MOMENT_T>(moment2_out),              \
+              moment2_max ? moment2_max->data<MOMENT_T>() : nullptr,      \
+              amsgrad ? dev_ctx.template Alloc<MOMENT_T>(moment2_max_out) \
+                      : nullptr,                                          \
+              accessor,                                                   \
+              param.numel(),                                              \
+              amsgrad);                                                   \
+    }                                                                     \
+  } else {                                                                \
+    BetaPowAccessor<MT, false> accessor(beta1_pow.data<MT>(),             \
+                                        beta2_pow.data<MT>());            \
+    if (use_bfloat32_grad) {                                              \
+      AdamWKernel<T, float, MT, MOMENT_T, BetaPowAccessor<MT, false>>     \
+          <<<blocks, threads, 0, dev_ctx.stream()>>>(                     \
+              beta1_,                                                     \
+              beta2_,                                                     \
+              epsilon_,                                                   \
+              coeff_,                                                     \
+              lr_ratio_,                                                  \
+              learning_rate.data<MT>(),                                   \
+              grad.data<float>(),                                         \
+              param.data<T>(),                                            \
+              dev_ctx.template Alloc<T>(param_out),                       \
+              master_in_data,                                             \
+              master_out_data,                                            \
+              moment1.data<MOMENT_T>(),                                   \
+              dev_ctx.template Alloc<MOMENT_T>(moment1_out),              \
+              moment2.data<MOMENT_T>(),                                   \
+              dev_ctx.template Alloc<MOMENT_T>(moment2_out),              \
+              moment2_max ? moment2_max->data<MOMENT_T>() : nullptr,      \
+              amsgrad ? dev_ctx.template Alloc<MOMENT_T>(moment2_max_out) \
+                      : nullptr,                                          \
+              accessor,                                                   \
+              param.numel(),                                              \
+              amsgrad);                                                   \
+    } else {                                                              \
+      AdamWKernel<T, T, MT, MOMENT_T, BetaPowAccessor<MT, false>>         \
+          <<<blocks, threads, 0, dev_ctx.stream()>>>(                     \
+              beta1_,                                                     \
+              beta2_,                                                     \
+              epsilon_,                                                   \
+              coeff_,                                                     \
+              lr_ratio_,                                                  \
+              learning_rate.data<MT>(),                                   \
+              grad.data<T>(),                                             \
+              param.data<T>(),                                            \
+              dev_ctx.template Alloc<T>(param_out),                       \
+              master_in_data,                                             \
+              master_out_data,                                            \
+              moment1.data<MOMENT_T>(),                                   \
+              dev_ctx.template Alloc<MOMENT_T>(moment1_out),              \
+              moment2.data<MOMENT_T>(),                                   \
+              dev_ctx.template Alloc<MOMENT_T>(moment2_out),              \
+              moment2_max ? moment2_max->data<MOMENT_T>() : nullptr,      \
+              amsgrad ? dev_ctx.template Alloc<MOMENT_T>(moment2_max_out) \
+                      : nullptr,                                          \
+              accessor,                                                   \
+              param.numel(),                                              \
+              amsgrad);                                                   \
+    }                                                                     \
   }
 
   // Select template instantiation based on moment type
   if (use_bfloat16_moments) {
     LAUNCH_ADAMW_KERNEL(bfloat16)
   } else {
-    LAUNCH_ADAMW_KERNEL(MPDType)
+    LAUNCH_ADAMW_KERNEL(MT)
   }
 #undef LAUNCH_ADAMW_KERNEL
 
   // Update beta_pow
   if (!use_global_beta_pow) {
     if (beta_pow_on_cpu) {
-      auto* beta1_pow_out_data =
-          dev_ctx.template HostAlloc<MPDType>(beta1_pow_out);
-      auto* beta2_pow_out_data =
-          dev_ctx.template HostAlloc<MPDType>(beta2_pow_out);
-      beta1_pow_out_data[0] = beta1_ * beta1_pow.data<MPDType>()[0];
-      beta2_pow_out_data[0] = beta2_ * beta2_pow.data<MPDType>()[0];
+      auto* beta1_pow_out_data = dev_ctx.template HostAlloc<MT>(beta1_pow_out);
+      auto* beta2_pow_out_data = dev_ctx.template HostAlloc<MT>(beta2_pow_out);
+      beta1_pow_out_data[0] = beta1_ * beta1_pow.data<MT>()[0];
+      beta2_pow_out_data[0] = beta2_ * beta2_pow.data<MT>()[0];
     } else {
-      UpdateBetaPowKernel<MPDType><<<1, 1, 0, dev_ctx.stream()>>>(
+      UpdateBetaPowKernel<MT><<<1, 1, 0, dev_ctx.stream()>>>(
           beta1_,
           beta2_,
-          beta1_pow.data<MPDType>(),
-          beta2_pow.data<MPDType>(),
-          dev_ctx.template Alloc<MPDType>(beta1_pow_out),
-          dev_ctx.template Alloc<MPDType>(beta2_pow_out));
+          beta1_pow.data<MT>(),
+          beta2_pow.data<MT>(),
+          dev_ctx.template Alloc<MT>(beta1_pow_out),
+          dev_ctx.template Alloc<MT>(beta2_pow_out));
     }
   }
 }

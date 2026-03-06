@@ -109,5 +109,57 @@ class TestMishAPI(unittest.TestCase):
             run(place, False)
 
 
+class TestMishInputAlias(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(0)
+        self.shape = [10, 12]
+        self.x_np = np.random.uniform(-1, 1, self.shape).astype(np.float32)
+        self.place = get_places()
+
+    def test_input_alias_dygraph(self):
+        paddle.disable_static()
+        x_tensor = paddle.to_tensor(self.x_np)
+        out_x = F.mish(x=x_tensor, inplace=False)
+        out_input = F.mish(input=x_tensor, inplace=False)
+        np.testing.assert_allclose(out_x.numpy(), out_input.numpy(), rtol=1e-5)
+        paddle.enable_static()
+
+    def test_input_alias_with_inplace_dygraph(self):
+        paddle.disable_static()
+        x_tensor_1 = paddle.to_tensor(copy.deepcopy(self.x_np))
+        x_tensor_2 = paddle.to_tensor(copy.deepcopy(self.x_np))
+        out_x = F.mish(x=x_tensor_1, inplace=True)
+        out_input = F.mish(input=x_tensor_2, inplace=True)
+        np.testing.assert_allclose(out_x.numpy(), out_input.numpy(), rtol=1e-5)
+        np.testing.assert_allclose(
+            x_tensor_1.numpy(), x_tensor_2.numpy(), rtol=1e-5
+        )
+        paddle.enable_static()
+
+    def test_input_alias_static(self):
+        paddle.enable_static()
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            x = paddle.static.data('X', self.shape)
+            out_x = F.mish(x=x, inplace=False)
+            out_input = F.mish(input=x, inplace=False)
+        exe = paddle.static.Executor(self.place[0])
+        exe.run(startup_program)
+        out_x_np, out_input_np = exe.run(
+            main_program,
+            feed={'X': self.x_np},
+            fetch_list=[out_x, out_input],
+        )
+        np.testing.assert_allclose(out_x_np, out_input_np, rtol=1e-5)
+
+    def test_input_alias_conflict(self):
+        paddle.disable_static()
+        x_tensor = paddle.to_tensor(self.x_np)
+        with self.assertRaises(ValueError):
+            F.mish(x=x_tensor, input=x_tensor)
+        paddle.enable_static()
+
+
 if __name__ == '__main__':
     unittest.main()

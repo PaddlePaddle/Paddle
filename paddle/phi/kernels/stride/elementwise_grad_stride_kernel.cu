@@ -38,6 +38,74 @@ COMMON_DECLARE_bool(use_stride_compute_kernel);
 
 namespace phi {
 
+inline void PrepareStridedOut(DenseTensor* out) {
+  if (!FLAGS_use_stride_kernel) {
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "should not be called!"));
+  }
+  auto meta = out->meta();
+  meta.strides = meta.calc_strides(out->dims());
+  out->set_meta(meta);
+}
+
+template <typename T, typename Context>
+void SumStrideKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const IntArray& dims,
+                     DataType out_dtype,
+                     bool keep_dim,
+                     DenseTensor* out) {
+  PrepareStridedOut(out);
+
+  phi::SumKernel<T, Context>(dev_ctx, x, dims, out_dtype, keep_dim, out);
+}
+
+template <typename T, typename Context>
+void ComputeMultiplyGradHelper(const Context& dev_ctx,
+                               const phi::DenseTensor& dout,
+                               const phi::DenseTensor& fwd_tensor,
+                               int axis,
+                               phi::DenseTensor* grad_tensor) {
+  auto broadcast_dim = dout.dims();
+
+  if (broadcast_dim == grad_tensor->dims()) {
+    phi::MultiplyStrideKernel<T, Context>(
+        dev_ctx, dout, fwd_tensor, grad_tensor);
+  } else {
+    phi::DenseTensor tmp_grad;
+
+    auto ref_strides = dout.meta().strides;
+    auto ref_dims = dout.dims();
+    int64_t max_offset = 0;
+    for (int i = 0; i < ref_dims.size(); i++) {
+      max_offset += (ref_dims[i] - 1) * (ref_strides[i]);
+    }
+
+    tmp_grad.Resize({max_offset + 1});
+    dev_ctx.template Alloc<T>(&tmp_grad);
+
+    auto tmp_meta = tmp_grad.meta();
+    tmp_meta.dims = dout.dims();
+    tmp_meta.strides = dout.meta().strides;
+    tmp_grad.set_meta(tmp_meta);
+
+    phi::MultiplyStrideKernel<T, Context>(dev_ctx, dout, fwd_tensor, &tmp_grad);
+
+    std::vector<int> reduce_dims_int =
+        phi::funcs::GetReduceDim(grad_tensor->dims(), broadcast_dim, axis);
+    std::vector<int64_t> reduce_dims(reduce_dims_int.begin(),
+                                     reduce_dims_int.end());
+
+    phi::SumStrideKernel<T, Context>(dev_ctx,
+                                     tmp_grad,
+                                     reduce_dims,
+                                     grad_tensor->dtype(),
+                                     false,
+                                     grad_tensor);
+  }
+}
+
 template <typename Context>
 DenseTensor Tensor2Contiguous(const Context& dev_ctx,
                               const DenseTensor& tensor) {
@@ -219,6 +287,23 @@ void MultiplyGradStrideKernel(const Context& dev_ctx,
 
   if (FLAGS_use_stride_compute_kernel && dout.initialized() &&
       dout.numel() != 0 && !invalid_stride) {
+#if defined(PADDLE_WITH_CUDA)
+    if (x.initialized() && y.initialized() && dx != nullptr && dy != nullptr) {
+      ComputeMultiplyGradHelper<T, Context>(dev_ctx, dout, y, axis, dx);
+      ComputeMultiplyGradHelper<T, Context>(dev_ctx, dout, x, axis, dy);
+      return;
+    }
+
+    if (y.initialized() && dx != nullptr && dy == nullptr) {
+      ComputeMultiplyGradHelper<T, Context>(dev_ctx, dout, y, axis, dx);
+      return;
+    }
+
+    if (x.initialized() && dy != nullptr && dx == nullptr) {
+      ComputeMultiplyGradHelper<T, Context>(dev_ctx, dout, x, axis, dy);
+      return;
+    }
+#else
     auto broadcast_dim = dout.dims();
     if (x.initialized() && y.initialized() && dx != nullptr && dy != nullptr &&
         broadcast_dim == dx->dims() && broadcast_dim == dy->dims()) {
@@ -238,6 +323,7 @@ void MultiplyGradStrideKernel(const Context& dev_ctx,
       phi::MultiplyStrideKernel<T, Context>(dev_ctx, dout, x, dy);
       return;
     }
+#endif
   }
 
   if (x.initialized() && !x.meta().is_contiguous()) {
