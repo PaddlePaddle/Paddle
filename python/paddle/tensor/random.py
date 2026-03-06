@@ -1749,6 +1749,35 @@ def randint(
 ) -> Tensor: ...
 
 
+@overload
+def randint(
+    low: int = 0,
+    high: int | None = None,
+    *,
+    size: ShapeLike,
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
+    out: Tensor | None = None,
+    device: PlaceLike | None = None,
+    pin_memory: bool = False,
+    requires_grad: bool = False,
+) -> Tensor: ...
+
+
+@overload
+def randint(
+    high: int,
+    *,
+    size: ShapeLike,
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
+    out: Tensor | None = None,
+    device: PlaceLike | None = None,
+    pin_memory: bool = False,
+    requires_grad: bool = False,
+) -> Tensor: ...
+
+
 @param_one_alias(["shape", "size"])
 def randint(
     low: int = 0,
