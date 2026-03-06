@@ -22,6 +22,10 @@
 #include "paddle/phi/kernels/gpu/group_norm_utils.h"
 namespace phi {
 
+// ============================================================================
+// NHWC backward kernels (kept unchanged for NHWC data layout)
+// ============================================================================
+
 template <typename T, typename AccT, int flags>
 __global__ void GroupNormBackwardGetMeanAndVar(const T* x,
                                                const T* scale,
@@ -102,8 +106,6 @@ __global__ void GroupNormBackward(const T* x,
                                   int64_t group_size,
                                   float epsilon,
                                   T* d_x) {
-  // using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
-
   int gid = blockIdx.y;
   for (int64_t cid = blockIdx.x; cid < group_size; cid += gridDim.x) {
     for (int64_t bid = blockIdx.z; bid < N; bid += gridDim.z) {
@@ -143,136 +145,309 @@ __global__ void GroupNormBackward(const T* x,
   }
 }
 
+// ============================================================================
+// PyTorch-aligned NCHW backward implementation
+// ============================================================================
+
+// Constant matching PyTorch's kCUDABlockReduceNumThreads
+constexpr int kGradBlockReduceNumThreads = 512;
+constexpr int kGradReduceTileSize = 32;
+
+// Warp reduce sum using shuffle-down (matching PyTorch's WarpReduceSum)
+template <typename AccT>
+__device__ __forceinline__ AccT GradWarpReduceSum(AccT val) {
+#pragma unroll
+  for (int offset = 16; offset > 0; offset >>= 1) {
+    val += __shfl_down_sync(0xffffffff, val, offset);
+  }
+  return val;
+}
+
+// Block reduce sum (matching PyTorch's BlockReduceSum)
+template <typename AccT>
+__device__ __forceinline__ AccT GradBlockReduceSum(AccT val, AccT* shared) {
+  const int tid = threadIdx.x;
+  const int lid = tid % 32;
+  const int wid = tid / 32;
+  const int num_warps = blockDim.x / 32;
+  val = GradWarpReduceSum(val);
+  __syncthreads();
+  if (lid == 0) {
+    shared[wid] = val;
+  }
+  __syncthreads();
+  val = (tid < num_warps) ? shared[lid] : AccT(0);
+  if (wid == 0) {
+    val = GradWarpReduceSum(val);
+  }
+  return val;
+}
+
+// Stage 1: Compute internal gradients ds[n,c] and db[n,c]
+// ds[nc] = sum_hw(dY * X), db[nc] = sum_hw(dY)
+// Grid: N*C blocks. Matches PyTorch's ComputeInternalGradientsCUDAKernel.
 template <typename T, typename AccT>
-__global__ void ScalarGetDsDbCUDAKernel(int64_t imsize,
-                                        const T* x,
-                                        const T* dy,
-                                        AccT* ds,
-                                        AccT* db,
-                                        int64_t total_groups) {
-  for (int64_t nc = blockIdx.x; nc < total_groups; nc += gridDim.x) {
-    AccT ds_sum = 0;
-    AccT db_sum = 0;
-    for (int64_t i = threadIdx.x; i < imsize; i += blockDim.x) {
-      const int64_t index = nc * imsize + i;
-      ds_sum += static_cast<AccT>(dy[index]) * static_cast<AccT>(x[index]);
-      db_sum += static_cast<AccT>(dy[index]);
-    }
-    ReduceMeanAndVar<AccT>(db, ds, db_sum, ds_sum, 1, nc);
+__global__ void ComputeInternalGradientsCUDAKernel(
+    int64_t HxW, const T* dY, const T* X, AccT* ds, AccT* db) {
+  const int64_t nc = blockIdx.x;
+  AccT sum1 = 0;
+  AccT sum2 = 0;
+  for (int64_t hw = threadIdx.x; hw < HxW; hw += blockDim.x) {
+    const int64_t index = nc * HxW + hw;
+    sum1 += static_cast<AccT>(dY[index]) * static_cast<AccT>(X[index]);
+    sum2 += static_cast<AccT>(dY[index]);
+  }
+  if (blockDim.x <= 32) {
+    sum1 = GradWarpReduceSum(sum1);
+    sum2 = GradWarpReduceSum(sum2);
+  } else {
+    __shared__ AccT ds_shared[32];
+    __shared__ AccT db_shared[32];
+    sum1 = GradBlockReduceSum(sum1, ds_shared);
+    sum2 = GradBlockReduceSum(sum2, db_shared);
+  }
+  if (threadIdx.x == 0) {
+    ds[nc] = sum1;
+    db[nc] = sum2;
   }
 }
 
+// Stage 2: Compute backward fused params c2[n,g] and c3[n,g]
+// Reduces ds*gamma and db*gamma across channels in group.
+// Grid: dim3(N, G). Matches PyTorch's ComputeBackwardFusedParamsCUDAKernel.
+// Rounds mean/rstd through T to match PyTorch's precision behavior.
 template <typename T, typename AccT>
-__global__ void GetScaleBiasGradientCUDAKernel(int64_t N,
-                                               int64_t C,
-                                               int group,
-                                               float epsilon,
-                                               const AccT* mean,
-                                               const AccT* var,
-                                               const AccT* ds,
-                                               const AccT* db,
-                                               T* d_scale,
-                                               T* d_bias) {
-  for (int64_t c =
-           static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
-           static_cast<int64_t>(threadIdx.x);
-       c < C;
-       c += gridDim.x * blockDim.x) {
-    if (c < C) {
-      const int G = group;
-      const int64_t D = C / G;
-      AccT sum1 = static_cast<AccT>(0);
-      AccT sum2 = static_cast<AccT>(0);
-      for (int64_t n = 0; n < N; ++n) {
-        const int64_t nc = n * C + c;
-        const int64_t ng = n * G + c / D;
-        sum1 += (d_scale == nullptr) ? AccT(0)
-                                     : ((ds[nc] - db[nc] * (mean[ng])) *
-                                        (rsqrt((var[ng]) + epsilon)));
-        sum2 += (d_bias == nullptr) ? AccT(0) : db[nc];
-      }
-      if (d_scale != nullptr) {
-        d_scale[c] = static_cast<T>(sum1);
-      }
-      if (d_bias != nullptr) {
-        d_bias[c] = static_cast<T>(sum2);
-      }
-    }
+__global__ void ComputeBackwardFusedParamsCUDAKernel(int64_t C,
+                                                     int64_t HxW,
+                                                     int64_t G,
+                                                     const AccT* mean,
+                                                     const AccT* var,
+                                                     const T* gamma,
+                                                     const AccT* ds,
+                                                     const AccT* db,
+                                                     AccT eps,
+                                                     AccT* c2,
+                                                     AccT* c3) {
+  const int64_t D = C / G;
+  const int64_t n = blockIdx.x;
+  const int64_t g = blockIdx.y;
+  const int64_t ng = n * G + g;
+  AccT sum1 = 0;
+  AccT sum2 = 0;
+  for (int64_t i = threadIdx.x; i < D; i += blockDim.x) {
+    const int64_t index = ng * D + i;
+    const int64_t c_idx = g * D + i;
+    const AccT gamma_v =
+        gamma == nullptr ? AccT(1) : static_cast<AccT>(gamma[c_idx]);
+    sum1 += ds[index] * gamma_v;
+    sum2 += db[index] * gamma_v;
+  }
+  if (blockDim.x <= 32) {
+    sum1 = GradWarpReduceSum(sum1);
+    sum2 = GradWarpReduceSum(sum2);
+  } else {
+    __shared__ AccT ds_shared[32];
+    __shared__ AccT db_shared[32];
+    sum1 = GradBlockReduceSum(sum1, ds_shared);
+    sum2 = GradBlockReduceSum(sum2, db_shared);
+  }
+  if (threadIdx.x == 0) {
+    // Round mean and rstd through T to match PyTorch
+    AccT mean_val = static_cast<AccT>(static_cast<T>(mean[ng]));
+    AccT rstd_val = static_cast<AccT>(static_cast<T>(rsqrt(var[ng] + eps)));
+    const AccT s = AccT(1) / static_cast<AccT>(D * HxW);
+    const AccT x =
+        (sum2 * mean_val - sum1) * rstd_val * rstd_val * rstd_val * s;
+    c2[ng] = x;
+    c3[ng] = -x * mean_val - sum2 * rstd_val * s;
   }
 }
 
-template <typename T, typename AccT, int BlockDim>
-__global__ void GetBackwardParamsCUDAKernel(int64_t N,
-                                            int64_t imsize,
-                                            int groups,
-                                            int64_t group_size,
-                                            float epsilon,
-                                            const AccT* mean,
-                                            const AccT* var,
-                                            const T* scale,
-                                            const AccT* ds,
-                                            const AccT* db,
-                                            AccT* p1,
-                                            AccT* p2,
-                                            AccT* p3) {
-  for (int64_t n = blockIdx.x; n < N; n += gridDim.x) {
-    const int g = blockIdx.y;
-    const int64_t ng = n * groups + g;
+// Stage 4: dX = c1 * dY + c2 * X + c3 (element-wise)
+// c1[n,c] = rstd[n,g] * gamma[c]
+// Rounds rstd through T to match PyTorch.
+template <typename T, typename AccT>
+__global__ void GroupNormBackwardDxCUDAKernel(int64_t N_C,
+                                              int64_t HxW,
+                                              int64_t C,
+                                              int64_t G,
+                                              const T* dY,
+                                              const T* X,
+                                              const AccT* mean,
+                                              const AccT* var,
+                                              const T* gamma,
+                                              const AccT* c2,
+                                              const AccT* c3,
+                                              AccT eps,
+                                              T* dX) {
+  const int64_t D = C / G;
+  const int64_t total = N_C * HxW;
+  for (int64_t idx =
+           static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+       idx < total;
+       idx += static_cast<int64_t>(gridDim.x) * blockDim.x) {
+    const int64_t nc = idx / HxW;
+    const int64_t n = nc / C;
+    const int64_t c = nc % C;
+    const int64_t ng = n * G + c / D;
+
+    // Round rstd through T to match PyTorch
+    AccT rstd_val = static_cast<AccT>(static_cast<T>(rsqrt(var[ng] + eps)));
+    AccT c1_val =
+        (gamma == nullptr) ? rstd_val : rstd_val * static_cast<AccT>(gamma[c]);
+    dX[idx] = static_cast<T>(c1_val * static_cast<AccT>(dY[idx]) +
+                             c2[ng] * static_cast<AccT>(X[idx]) + c3[ng]);
+  }
+}
+
+// Stage 4 variant: no gamma, c1 = rstd
+// Rounds rstd through T to match PyTorch.
+template <typename T, typename AccT>
+__global__ void GroupNormBackwardDxNoGammaCUDAKernel(int64_t N_G,
+                                                     int64_t D_HxW,
+                                                     const T* dY,
+                                                     const T* X,
+                                                     const AccT* var,
+                                                     const AccT* c2,
+                                                     const AccT* c3,
+                                                     AccT eps,
+                                                     T* dX) {
+  const int64_t total = N_G * D_HxW;
+  for (int64_t idx =
+           static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+       idx < total;
+       idx += static_cast<int64_t>(gridDim.x) * blockDim.x) {
+    const int64_t ng = idx / D_HxW;
+    // Round rstd through T to match PyTorch
+    AccT rstd_val = static_cast<AccT>(static_cast<T>(rsqrt(var[ng] + eps)));
+    dX[idx] = static_cast<T>(rstd_val * static_cast<AccT>(dY[idx]) +
+                             c2[ng] * static_cast<AccT>(X[idx]) + c3[ng]);
+  }
+}
+
+// dgamma/dbeta variant 1: small batch (N <= 128)
+// Per-channel thread, loop over batch dimension.
+// Matches PyTorch's GammaBetaBackwardCUDAKernel1.
+// Rounds mean/rstd through T to match PyTorch.
+template <typename T, typename AccT>
+__global__ void GammaBetaBackwardCUDAKernel1(int64_t N,
+                                             int64_t C,
+                                             int64_t G,
+                                             const AccT* mean,
+                                             const AccT* var,
+                                             const AccT* ds,
+                                             const AccT* db,
+                                             AccT eps,
+                                             T* dgamma,
+                                             T* dbeta) {
+  const int64_t c = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (c < C) {
+    const int64_t D = C / G;
     AccT sum1 = 0;
     AccT sum2 = 0;
-    AccT var_inv = rsqrt(static_cast<AccT>(var[ng]) + epsilon);
-    for (int64_t i = threadIdx.x; i < group_size; i += blockDim.x) {
-      const int64_t index = ng * group_size + i;
-      const int64_t c = g * group_size + i;
-      const AccT scale_v =
-          scale == nullptr ? static_cast<AccT>(1) : static_cast<AccT>(scale[c]);
-      sum1 += static_cast<AccT>(ds[index]) * scale_v;
-      sum2 += static_cast<AccT>(db[index]) * scale_v;
-      const AccT scale_c =
-          scale == nullptr ? static_cast<AccT>(0) : static_cast<AccT>(scale[c]);
-      p1[index] = static_cast<AccT>(scale_c) * var_inv;
+    for (int64_t n = 0; n < N; ++n) {
+      const int64_t nc = n * C + c;
+      const int64_t ng = n * G + c / D;
+      // Round through T to match PyTorch
+      AccT mean_val = static_cast<AccT>(static_cast<T>(mean[ng]));
+      AccT rstd_val = static_cast<AccT>(static_cast<T>(rsqrt(var[ng] + eps)));
+      sum1 += (dgamma == nullptr) ? AccT(0)
+                                  : ((ds[nc] - db[nc] * mean_val) * rstd_val);
+      sum2 += (dbeta == nullptr) ? AccT(0) : db[nc];
     }
-
-    typedef cub::BlockReduce<AccT, BlockDim> BlockReduce;
-    __shared__ typename BlockReduce::TempStorage ds_storage;
-    __shared__ typename BlockReduce::TempStorage db_storage;
-    sum1 = BlockReduce(ds_storage).Reduce(sum1, cub::Sum());
-    sum2 = BlockReduce(db_storage).Reduce(sum2, cub::Sum());
-
-    if (threadIdx.x == 0) {
-      const AccT s =
-          static_cast<AccT>(1) / static_cast<AccT>(group_size * imsize);
-      const AccT x = (sum2 * static_cast<AccT>(mean[ng]) - sum1) * (var_inv) *
-                     (var_inv) * (var_inv)*s;
-      p2[ng] = x;
-      p3[ng] = -x * (mean[ng]) - (sum2 * var_inv) * s;
+    if (dgamma != nullptr) {
+      dgamma[c] = static_cast<T>(sum1);
+    }
+    if (dbeta != nullptr) {
+      dbeta[c] = static_cast<T>(sum2);
     }
   }
 }
 
+// dgamma/dbeta variant 2: large batch (N > 128)
+// 32x32 tile with shared memory.
+// Matches PyTorch's GammaBetaBackwardCUDAKernel2.
+// Rounds mean/rstd through T to match PyTorch.
 template <typename T, typename AccT>
-__global__ void GetXGradientCUDAKernel(int64_t N,
-                                       int64_t imsize,
-                                       int64_t C,
-                                       int64_t group_size,
-                                       int groups,
-                                       AccT* p1,
-                                       AccT* p2,
-                                       AccT* p3,
-                                       const T* x,
-                                       const T* dy,
-                                       T* dx) {
-  int gid = blockIdx.y;
-  for (int64_t cid = blockIdx.x; cid < group_size; cid += gridDim.x) {
-    for (int64_t bid = blockIdx.z; bid < N; bid += gridDim.z) {
-      int64_t ccid = bid * C + gid * group_size + cid;
-      int64_t ng = bid * groups + gid;
-      int64_t nc = gid * group_size + cid;
-      for (int64_t imid = threadIdx.x; imid < imsize; imid += blockDim.x) {
-        int64_t index = (bid * C + nc) * imsize + imid;
-        dx[index] =
-            static_cast<T>(p1[ccid] * static_cast<AccT>(dy[index]) +
-                           p2[ng] * static_cast<AccT>(x[index]) + p3[ng]);
+__global__ void GammaBetaBackwardCUDAKernel2(int64_t N,
+                                             int64_t C,
+                                             int64_t G,
+                                             const AccT* mean,
+                                             const AccT* var,
+                                             const AccT* ds,
+                                             const AccT* db,
+                                             AccT eps,
+                                             T* dgamma,
+                                             T* dbeta) {
+  __shared__ AccT g_shared[kGradReduceTileSize][kGradReduceTileSize + 1];
+  __shared__ AccT b_shared[kGradReduceTileSize][kGradReduceTileSize + 1];
+  const int64_t c = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  AccT dg_sum1 = 0;
+  AccT dg_sum2 = 0;
+  AccT db_sum1 = 0;
+  AccT db_sum2 = 0;
+  if (c < C) {
+    const int64_t D = C / G;
+    for (int64_t n = threadIdx.y; n < N; n += blockDim.y * 2) {
+      const int64_t n1 = n;
+      const int64_t n2 = n + blockDim.y;
+      const int64_t nc1 = n1 * C + c;
+      const int64_t nc2 = n2 * C + c;
+      const int64_t ng1 = n1 * G + c / D;
+      const int64_t ng2 = n2 * G + c / D;
+      // Round through T to match PyTorch
+      AccT mean_val1 = static_cast<AccT>(static_cast<T>(mean[ng1]));
+      AccT rstd1 = static_cast<AccT>(static_cast<T>(rsqrt(var[ng1] + eps)));
+      dg_sum1 += dgamma == nullptr ? AccT(0)
+                                   : ((ds[nc1] - db[nc1] * mean_val1) * rstd1);
+      db_sum1 += dbeta == nullptr ? AccT(0) : db[nc1];
+      if (n2 < N) {
+        AccT mean_val2 = static_cast<AccT>(static_cast<T>(mean[ng2]));
+        AccT rstd2 = static_cast<AccT>(static_cast<T>(rsqrt(var[ng2] + eps)));
+        dg_sum2 += dgamma == nullptr
+                       ? AccT(0)
+                       : ((ds[nc2] - db[nc2] * mean_val2) * rstd2);
+        db_sum2 += dbeta == nullptr ? AccT(0) : db[nc2];
+      }
+    }
+  }
+
+  g_shared[threadIdx.y][threadIdx.x] = dg_sum1;
+  g_shared[threadIdx.y + blockDim.y][threadIdx.x] = dg_sum2;
+  b_shared[threadIdx.y][threadIdx.x] = db_sum1;
+  b_shared[threadIdx.y + blockDim.y][threadIdx.x] = db_sum2;
+  __syncthreads();
+
+  // Warp reduce for 1st 16 cols in tile
+  AccT sum1 = g_shared[threadIdx.x][threadIdx.y];
+  AccT sum2 = b_shared[threadIdx.x][threadIdx.y];
+  sum1 = GradWarpReduceSum(sum1);
+  sum2 = GradWarpReduceSum(sum2);
+  if (threadIdx.x == 0) {
+    const int64_t c_out = blockIdx.x * blockDim.x + threadIdx.y;
+    if (c_out < C) {
+      if (dgamma != nullptr) {
+        dgamma[c_out] = static_cast<T>(sum1);
+      }
+      if (dbeta != nullptr) {
+        dbeta[c_out] = static_cast<T>(sum2);
+      }
+    }
+  }
+
+  // Warp reduce for 2nd 16 cols in tile
+  sum1 = g_shared[threadIdx.x][threadIdx.y + blockDim.y];
+  sum2 = b_shared[threadIdx.x][threadIdx.y + blockDim.y];
+  sum1 = GradWarpReduceSum(sum1);
+  sum2 = GradWarpReduceSum(sum2);
+  if (threadIdx.x == 0) {
+    const int64_t c_out = blockIdx.x * blockDim.x + threadIdx.y + blockDim.y;
+    if (c_out < C) {
+      if (dgamma != nullptr) {
+        dgamma[c_out] = static_cast<T>(sum1);
+      }
+      if (dbeta != nullptr) {
+        dbeta[c_out] = static_cast<T>(sum2);
       }
     }
   }
@@ -296,10 +471,8 @@ void GroupNormGradKernel(const Context& dev_ctx,
   if (x.numel() == 0) {
     dev_ctx.template Alloc<T>(d_x);
     if (d_scale) {
-      // If batch dim is 0, we should set d_scale to zero, or else NAN
       if (x.dims().size() > 0 && x.dims()[0] == 0) {
         Full<T, Context>(dev_ctx, d_scale->dims(), 0, d_scale);
-
       } else {
         Full<T, Context>(dev_ctx, d_scale->dims(), NAN, d_scale);
       }
@@ -315,25 +488,22 @@ void GroupNormGradKernel(const Context& dev_ctx,
   const auto bias_ptr = bias.get_ptr();
 
   const auto& x_dims = x.dims();
+  const int64_t N = x_dims[0];
   const int64_t C =
       (data_layout == DataLayout::NCHW ? x_dims[1] : x_dims[x_dims.size() - 1]);
   const int64_t group_size = C / groups;
   const int64_t W =
       (data_layout == DataLayout::NCHW ? x_dims[x_dims.size() - 1]
                                        : x_dims[x_dims.size() - 2]);
+  const int64_t G = groups;
+  const int64_t D = C / G;
 
   if (d_x) {
     dev_ctx.template Alloc<T>(d_x);
   }
   funcs::SetConstant<GPUContext, T> set_zero;
   funcs::SetConstant<GPUContext, AccT> set_zero_AccT;
-  DenseTensor ds, db;
-  ds.Resize({x_dims[0], C});
-  AccT* ds_data = dev_ctx.template Alloc<AccT>(&ds);
-  db.Resize({x_dims[0], C});
-  AccT* db_data = dev_ctx.template Alloc<AccT>(&db);
 
-  auto* y_data = y.data<T>();
   auto* x_data = x.data<T>();
   T* d_x_data = nullptr;
   if (d_x) d_x_data = d_x->data<T>();
@@ -367,93 +537,145 @@ void GroupNormGradKernel(const Context& dev_ctx,
     }
   }
 
-  int block_size = std::min(static_cast<int64_t>(1024), imsize);
-  const int block_dims = 1024;
-  int64_t max_grid_x = dev_ctx.GetCUDAMaxGridDimSize()[0];
-  int64_t max_grid_z = dev_ctx.GetCUDAMaxGridDimSize()[2];
-  dim3 grid(std::min(max_grid_x, group_size),
-            groups,
-            std::min(max_grid_z, x_dims[0]));
-  dim3 threads(block_size, 1, 1);
-  int flags =
-      (scale_data != nullptr) * kHasScale + (bias_data != nullptr) * kHasBias;
   if (data_layout == DataLayout::NCHW) {
-    const int max_num_threads = 1024;
-    int max_block_size =
-        std::min(imsize, static_cast<int64_t>(max_num_threads));
-    int block_size_nchw = 1;
-    while (block_size_nchw < max_block_size) {
-      block_size_nchw *= 2;
-    }
-    block_size_nchw = std::max(block_size_nchw, kps::details::kWarpSize);
-    dim3 blocks(block_size_nchw);
-    ScalarGetDsDbCUDAKernel<T, AccT>
-        <<<std::min(x_dims[0] * C, max_grid_x), blocks, 0, dev_ctx.stream()>>>(
-            imsize, x_data, dy_data, ds_data, db_data, x_dims[0] * C);
+    // =========================================================
+    // PyTorch-aligned NCHW backward path
+    // =========================================================
+    const int64_t HxW = imsize;
 
-    if (d_scale || d_bias) {
-      const int block = 256;
-      GetScaleBiasGradientCUDAKernel<T, AccT>
-          <<<std::min(max_grid_x, (C + block - 1) / block),
-             block,
-             0,
-             dev_ctx.stream()>>>(x_dims[0],
-                                 C,
-                                 groups,
-                                 epsilon,
-                                 mean_data,
-                                 var_data,
-                                 ds_data,
-                                 db_data,
-                                 d_scale_data,
-                                 d_bias_data);
+    // Stage 1: Compute internal gradients ds[n,c] = sum_hw(dY*X),
+    //          db[n,c] = sum_hw(dY)
+    DenseTensor ds_tensor, db_tensor;
+    ds_tensor.Resize({N, C});
+    db_tensor.Resize({N, C});
+    AccT* ds_data = dev_ctx.template Alloc<AccT>(&ds_tensor);
+    AccT* db_data = dev_ctx.template Alloc<AccT>(&db_tensor);
+
+    {
+      int64_t num_threads =
+          HxW < kGradBlockReduceNumThreads ? 32 : kGradBlockReduceNumThreads;
+      ComputeInternalGradientsCUDAKernel<T, AccT>
+          <<<N * C, num_threads, 0, dev_ctx.stream()>>>(
+              HxW, dy_data, x_data, ds_data, db_data);
     }
 
+    // Stage 2+3+4: Compute dX
     if (d_x_data != nullptr) {
-      // p1 * dy + p2 * x + p3,
-      // p1, p2, p3 represent the reverse calculation of temporary variables
-      // p1 = scale * var_inv
-      // p2 = (db * scale * mean - ds * scale) * pow(var_inv, 3) * (1/n)
-      // p3 = -p2 * mean[ng] - db * scale * var_inv * (1/n);
-      DenseTensor p1, p2, p3;
-      p1.Resize({x_dims[0] * C});
-      AccT* p1_data = dev_ctx.template Alloc<AccT>(&p1);
-      p2.Resize({x_dims[0], groups});
-      AccT* p2_data = dev_ctx.template Alloc<AccT>(&p2);
-      p3.Resize({x_dims[0], groups});
-      AccT* p3_data = dev_ctx.template Alloc<AccT>(&p3);
+      DenseTensor c2_tensor, c3_tensor;
+      c2_tensor.Resize({N, G});
+      c3_tensor.Resize({N, G});
+      AccT* c2_data = dev_ctx.template Alloc<AccT>(&c2_tensor);
+      AccT* c3_data = dev_ctx.template Alloc<AccT>(&c3_tensor);
 
-      GetBackwardParamsCUDAKernel<T, AccT, block_dims>
-          <<<dim3(std::min(x_dims[0], max_grid_x), groups),
-             block_dims,
-             0,
-             dev_ctx.stream()>>>(x_dims[0],
-                                 imsize,
-                                 groups,
-                                 group_size,
-                                 epsilon,
-                                 mean_data,
-                                 var_data,
-                                 scale_data,
-                                 ds_data,
-                                 db_data,
-                                 p1_data,
-                                 p2_data,
-                                 p3_data);
-      GetXGradientCUDAKernel<T, AccT>
-          <<<grid, threads, 0, dev_ctx.stream()>>>(x_dims[0],
-                                                   imsize,
-                                                   C,
-                                                   group_size,
-                                                   groups,
-                                                   p1_data,
-                                                   p2_data,
-                                                   p3_data,
-                                                   x_data,
-                                                   dy_data,
-                                                   d_x_data);
+      // Stage 2: Compute backward fused params c2, c3
+      {
+        int64_t num_threads =
+            D < kGradBlockReduceNumThreads ? 32 : kGradBlockReduceNumThreads;
+        ComputeBackwardFusedParamsCUDAKernel<T, AccT>
+            <<<dim3(N, G), num_threads, 0, dev_ctx.stream()>>>(
+                C,
+                HxW,
+                G,
+                mean_data,
+                var_data,
+                scale_data,
+                ds_data,
+                db_data,
+                static_cast<AccT>(epsilon),
+                c2_data,
+                c3_data);
+      }
+
+      // Stage 4: dX = c1 * dY + c2 * X + c3
+      int64_t max_grid_x = dev_ctx.GetCUDAMaxGridDimSize()[0];
+      if (scale_data != nullptr) {
+        const int64_t total = N * C * HxW;
+        constexpr int64_t kElemThreads = 256;
+        const int64_t elem_blocks =
+            std::min((total + kElemThreads - 1) / kElemThreads, max_grid_x);
+        GroupNormBackwardDxCUDAKernel<T, AccT>
+            <<<elem_blocks, kElemThreads, 0, dev_ctx.stream()>>>(
+                N * C,
+                HxW,
+                C,
+                G,
+                dy_data,
+                x_data,
+                mean_data,
+                var_data,
+                scale_data,
+                c2_data,
+                c3_data,
+                static_cast<AccT>(epsilon),
+                d_x_data);
+      } else {
+        const int64_t D_HxW = D * HxW;
+        const int64_t total = N * G * D_HxW;
+        constexpr int64_t kElemThreads = 256;
+        const int64_t elem_blocks =
+            std::min((total + kElemThreads - 1) / kElemThreads, max_grid_x);
+        GroupNormBackwardDxNoGammaCUDAKernel<T, AccT>
+            <<<elem_blocks, kElemThreads, 0, dev_ctx.stream()>>>(
+                N * G,
+                D_HxW,
+                dy_data,
+                x_data,
+                var_data,
+                c2_data,
+                c3_data,
+                static_cast<AccT>(epsilon),
+                d_x_data);
+      }
+    }
+
+    // Stage 5: dgamma/dbeta
+    if (d_scale || d_bias) {
+      if (N <= 128) {
+        constexpr int kNumThreads = 256;
+        const int64_t B = (C + kNumThreads - 1) / kNumThreads;
+        GammaBetaBackwardCUDAKernel1<T, AccT>
+            <<<B, kNumThreads, 0, dev_ctx.stream()>>>(
+                N,
+                C,
+                G,
+                mean_data,
+                var_data,
+                ds_data,
+                db_data,
+                static_cast<AccT>(epsilon),
+                d_scale_data,
+                d_bias_data);
+      } else {
+        const int64_t B = (C + kGradReduceTileSize - 1) / kGradReduceTileSize;
+        constexpr int kThreadX = kGradReduceTileSize;
+        constexpr int kThreadY = kGradReduceTileSize / 2;
+        GammaBetaBackwardCUDAKernel2<T, AccT>
+            <<<B, dim3(kThreadX, kThreadY), 0, dev_ctx.stream()>>>(
+                N,
+                C,
+                G,
+                mean_data,
+                var_data,
+                ds_data,
+                db_data,
+                static_cast<AccT>(epsilon),
+                d_scale_data,
+                d_bias_data);
+      }
     }
   } else {
+    // =========================================================
+    // NHWC backward path (kept unchanged)
+    // =========================================================
+    int block_size = std::min(static_cast<int64_t>(1024), imsize);
+    int64_t max_grid_x = dev_ctx.GetCUDAMaxGridDimSize()[0];
+    int64_t max_grid_z = dev_ctx.GetCUDAMaxGridDimSize()[2];
+    dim3 grid(
+        std::min(max_grid_x, group_size), groups, std::min(max_grid_z, N));
+    dim3 threads(block_size, 1, 1);
+
+    auto* y_data = y.data<T>();
+
     if (d_scale) {
       set_zero(dev_ctx, d_scale, static_cast<T>(0));
     }
@@ -481,7 +703,7 @@ void GroupNormGradKernel(const Context& dev_ctx,
                      scale_data,
                      bias_data,
                      dy_data,
-                     x_dims[0],
+                     N,
                      C,
                      W,
                      imsize,
@@ -502,7 +724,7 @@ void GroupNormGradKernel(const Context& dev_ctx,
                        var_data,
                        temp_mean_data,
                        temp_var_data,
-                       x_dims[0],
+                       N,
                        C,
                        W,
                        imsize,

@@ -895,6 +895,250 @@ void GroupNormNDHWCKernel(const Context& dev_ctx,
 #endif
 }
 
+// ============================================================================
+// PyTorch-aligned NCHW forward implementation using Welford algorithm
+// ============================================================================
+
+// Welford data structure for online mean/variance computation
+template <typename AccT>
+struct WelfordData {
+  AccT mean;
+  AccT m2;
+  int64_t n;
+  AccT nf;
+
+  __host__ __device__ WelfordData() : mean(0), m2(0), n(0), nf(0) {}
+  __host__ __device__ WelfordData(AccT mean, AccT m2, int64_t n, AccT nf)
+      : mean(mean), m2(m2), n(n), nf(nf) {}
+};
+
+// Welford online update: incorporate a single data point
+template <typename AccT>
+__device__ __forceinline__ WelfordData<AccT> WelfordReduce(
+    WelfordData<AccT> acc, AccT data) {
+  int64_t new_n = acc.n + 1;
+  AccT new_nf = static_cast<AccT>(new_n);
+  AccT delta = data - acc.mean;
+  AccT new_mean = acc.mean + delta / new_nf;
+  AccT new_delta = data - new_mean;
+  return {new_mean, acc.m2 + delta * new_delta, new_n, new_nf};
+}
+
+// Welford combine: merge two partial aggregates
+template <typename AccT>
+__device__ __forceinline__ WelfordData<AccT> WelfordCombine(
+    WelfordData<AccT> a, WelfordData<AccT> b) {
+  if (a.nf == 0) return b;
+  if (b.nf == 0) return a;
+  AccT delta = b.mean - a.mean;
+  AccT new_count = a.nf + b.nf;
+  AccT nb_over_n = b.nf / new_count;
+  return {a.mean + delta * nb_over_n,
+          a.m2 + b.m2 + delta * delta * a.nf * nb_over_n,
+          -1,
+          new_count};
+}
+
+// Warp-level Welford reduce using shuffle-down
+template <typename AccT>
+__device__ __forceinline__ WelfordData<AccT> WelfordWarpReduce(
+    WelfordData<AccT> val) {
+  constexpr int kWarpSize = 32;
+#pragma unroll
+  for (int offset = kWarpSize / 2; offset > 0; offset >>= 1) {
+    WelfordData<AccT> other;
+    other.mean = __shfl_down_sync(0xffffffff, val.mean, offset);
+    other.m2 = __shfl_down_sync(0xffffffff, val.m2, offset);
+    other.n = __shfl_down_sync(0xffffffff, val.n, offset);
+    other.nf = __shfl_down_sync(0xffffffff, val.nf, offset);
+    val = WelfordCombine(val, other);
+  }
+  return val;
+}
+
+// Block-level Welford reduce (for > 32 threads)
+template <typename AccT>
+__device__ __forceinline__ WelfordData<AccT> WelfordBlockReduce(
+    WelfordData<AccT> val) {
+  constexpr int kWarpSize = 32;
+  // Shared memory for warp results
+  __shared__ AccT s_mean[kWarpSize];
+  __shared__ AccT s_m2[kWarpSize];
+  __shared__ int64_t s_n[kWarpSize];
+  __shared__ AccT s_nf[kWarpSize];
+
+  int tid = threadIdx.x;
+  int lid = tid % kWarpSize;
+  int wid = tid / kWarpSize;
+  int num_warps = blockDim.x / kWarpSize;
+
+  // First reduce within each warp
+  val = WelfordWarpReduce(val);
+  __syncthreads();
+
+  // Warp leaders write to shared memory
+  if (lid == 0) {
+    s_mean[wid] = val.mean;
+    s_m2[wid] = val.m2;
+    s_n[wid] = val.n;
+    s_nf[wid] = val.nf;
+  }
+  __syncthreads();
+
+  // First warp reads and reduces across warps
+  WelfordData<AccT> zero_val(0, 0, 0, 0);
+  val = (tid < num_warps)
+            ? WelfordData<AccT>{s_mean[lid], s_m2[lid], s_n[lid], s_nf[lid]}
+            : zero_val;
+  if (wid == 0) {
+    val = WelfordWarpReduce(val);
+  }
+  return val;
+}
+
+// Constant matching PyTorch's kCUDABlockReduceNumThreads
+constexpr int kBlockReduceNumThreads = 512;
+
+// Phase 1: Welford moments kernel - computes mean and rstd per group
+// Grid: N*G blocks. Each block processes D*HxW elements for one (n,g) pair.
+// Matches PyTorch's RowwiseMomentsCUDAKernel exactly.
+template <typename T, typename AccT>
+__global__ void WelfordMomentsCUDAKernel(
+    int64_t D_times_HxW, AccT eps, const T* X, AccT* mean_out, AccT* var_out) {
+  const int64_t i = blockIdx.x;
+  WelfordData<AccT> val(0, 0, 0, 0);
+
+  for (int64_t j = threadIdx.x; j < D_times_HxW; j += blockDim.x) {
+    const int64_t index = i * D_times_HxW + j;
+    val = WelfordReduce(val, static_cast<AccT>(X[index]));
+  }
+
+  if (blockDim.x <= 32) {
+    val = WelfordWarpReduce(val);
+  } else {
+    val = WelfordBlockReduce(val);
+  }
+
+  if (threadIdx.x == 0) {
+    AccT final_mean = val.mean;
+    AccT final_var = val.m2 / val.nf;
+    mean_out[i] = final_mean;
+    var_out[i] = final_var;
+  }
+}
+
+// Phase 2a: Compute fused parameters a and b
+// a[n*C + c] = rstd[n*G + c/D] * gamma[c]
+// b[n*C + c] = -a[n*C + c] * mean[n*G + c/D] + beta[c]
+// Matches PyTorch's ComputeFusedParamsCUDAKernel.
+// Key: mean and rstd are first rounded through T (input dtype) to match
+// PyTorch's behavior where mean/rstd are stored in T.
+template <typename T, typename AccT>
+__global__ void ComputeFusedParamsCUDAKernel(int64_t N,
+                                             int64_t C,
+                                             int64_t G,
+                                             AccT eps,
+                                             const AccT* mean,
+                                             const AccT* var,
+                                             const T* gamma,
+                                             const T* beta,
+                                             AccT* a,
+                                             AccT* b) {
+  const int64_t index =
+      static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (index < N * C) {
+    const int64_t D = C / G;
+    const int64_t ng = index / D;
+    const int64_t c = index % C;
+    // Round mean and rstd through T to match PyTorch's behavior
+    // (PyTorch stores mean/rstd in input dtype T, then reads them back)
+    AccT mean_val = static_cast<AccT>(static_cast<T>(mean[ng]));
+    AccT rstd_val = static_cast<AccT>(static_cast<T>(rsqrt(var[ng] + eps)));
+    const AccT scale =
+        (gamma == nullptr) ? rstd_val : rstd_val * static_cast<AccT>(gamma[c]);
+    a[index] = scale;
+    b[index] =
+        -scale * mean_val +
+        ((beta == nullptr) ? static_cast<AccT>(0) : static_cast<AccT>(beta[c]));
+  }
+}
+
+// Phase 2b: Element-wise normalization: Y = a * X + b
+// Matches PyTorch's approach of Y = a[n*C+c] * float(X[idx]) + b[n*C+c].
+template <typename T, typename AccT>
+__global__ void GroupNormForwardElementwiseCUDAKernel(
+    int64_t N_C, int64_t HxW, const T* X, const AccT* a, const AccT* b, T* Y) {
+  const int64_t total = N_C * HxW;
+  for (int64_t idx =
+           static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+       idx < total;
+       idx += static_cast<int64_t>(gridDim.x) * blockDim.x) {
+    const int64_t nc = idx / HxW;
+    Y[idx] = static_cast<T>(a[nc] * static_cast<AccT>(X[idx]) + b[nc]);
+  }
+}
+
+// Forward without gamma/beta - simple (X - mean) * rstd
+// Rounds mean/rstd through T to match PyTorch's precision behavior.
+template <typename T, typename AccT>
+__global__ void GroupNormForwardNoScaleBiasCUDAKernel(int64_t N_G,
+                                                      int64_t D_HxW,
+                                                      const T* X,
+                                                      const AccT* mean,
+                                                      const AccT* var,
+                                                      AccT eps,
+                                                      T* Y) {
+  const int64_t total = N_G * D_HxW;
+  for (int64_t idx =
+           static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+       idx < total;
+       idx += static_cast<int64_t>(gridDim.x) * blockDim.x) {
+    const int64_t ng = idx / D_HxW;
+    // Round through T to match PyTorch behavior
+    AccT mean_val = static_cast<AccT>(static_cast<T>(mean[ng]));
+    AccT rstd_val = static_cast<AccT>(static_cast<T>(rsqrt(var[ng] + eps)));
+    Y[idx] = static_cast<T>((static_cast<AccT>(X[idx]) - mean_val) * rstd_val);
+  }
+}
+
+// Fused normalization kernel that computes Y on the fly without temp buffers
+// Rounds mean/rstd through T to match PyTorch's precision behavior.
+template <typename T, typename AccT>
+__global__ void GroupNormForwardFusedNCHWKernel(int64_t N_C,
+                                                int64_t HxW,
+                                                int64_t C,
+                                                int64_t G,
+                                                const T* X,
+                                                const AccT* mean,
+                                                const AccT* var,
+                                                const T* gamma,
+                                                const T* beta,
+                                                AccT eps,
+                                                T* Y) {
+  const int64_t D = C / G;
+  const int64_t total = N_C * HxW;
+  for (int64_t idx =
+           static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+       idx < total;
+       idx += static_cast<int64_t>(gridDim.x) * blockDim.x) {
+    const int64_t nc = idx / HxW;
+    const int64_t c = nc % C;
+    const int64_t ng = nc / D;
+    // Round through T to match PyTorch behavior
+    AccT mean_val = static_cast<AccT>(static_cast<T>(mean[ng]));
+    AccT rstd_val = static_cast<AccT>(static_cast<T>(rsqrt(var[ng] + eps)));
+    AccT scale_val =
+        (gamma == nullptr) ? rstd_val : rstd_val * static_cast<AccT>(gamma[c]);
+    AccT bias_val =
+        (beta == nullptr) ? static_cast<AccT>(0) : static_cast<AccT>(beta[c]);
+    Y[idx] = static_cast<T>(scale_val * static_cast<AccT>(X[idx]) +
+                            (-scale_val * mean_val + bias_val));
+  }
+}
+
+// Keep the old NHWC kernels for GroupNormForwardGetMeanAndVar and
+// GroupNormForward (used by NHWC float32/64 path and
+// GroupNormDirectCUDAFunctor)
 template <typename T, typename AccT>
 __global__ void GroupNormForwardGetMeanAndVar(const T* x,
                                               int64_t N,
@@ -932,9 +1176,6 @@ __global__ void GroupNormForwardGetMeanAndVar(const T* x,
       CudaAtomicAddWithWarp(&var[bid * groups + gid], x_var);
 #endif
 #ifdef __HIPCC__
-      // Note(wangyanpeng04): When the block size is less than the warp size,
-      // WarpReduce will result in all zeros. It seems to be an internal problem
-      // of hipcub on DCU.
       if (blockDim.x < phi::kps::details::kWarpSize) {
         CudaAtomicAdd(&mean[bid * groups + gid], x_mean);
         CudaAtomicAdd(&var[bid * groups + gid], x_var);
@@ -1046,29 +1287,57 @@ void GroupNormDirectCUDAFunctor<T, AccT>::operator()(
             std::min(input_ddim[0], max_grid_x));
   dim3 threads(block_size, 1, 1);
   if (data_layout == DataLayout::NCHW) {
-    constexpr int vec_size = sizeof(float4) / sizeof(T);
-    int64_t size = group_size * image_size;  // group element size
-    const int max_num_threads = 1024;
-    int max_block_size =
-        std::min(static_cast<int>(size / vec_size), max_num_threads);
-    int block_size_nchw = 1;
-    while (block_size_nchw < max_block_size) {
-      block_size_nchw *= 2;
-    }
+    // Use PyTorch-aligned Welford algorithm for NCHW
+    const int64_t N = input_ddim[0];
+    const int64_t G = groups;
+    const int64_t D = C / G;
+    const int64_t D_times_HxW = D * image_size;
+    const int64_t num_threads =
+        D_times_HxW < kBlockReduceNumThreads ? 32 : kBlockReduceNumThreads;
 
-    block_size_nchw = std::max(block_size_nchw, phi::kps::details::kWarpSize);
-    int64_t n_groups = input_ddim[0] * static_cast<int64_t>(groups);
-    dim3 grids(std::min(max_grid_x, n_groups));
-    dim3 blocks(block_size_nchw);
+    // Phase 1: Welford moments -> mean and centered variance in temp_variance
+    WelfordMomentsCUDAKernel<T, AccT><<<N * G, num_threads, 0, stream>>>(
+        D_times_HxW, static_cast<AccT>(eps), input, mean, temp_variance);
 
-    if (size < vec_size * block_size_nchw) {
-      phi::ScalarGetMeanAndVarNCHW<T, AccT><<<grids, blocks, 0, stream>>>(
-          input, mean, temp_variance, size, n_groups);
+    // Phase 2: Fused normalization using mean/var on the fly (no temp buffers)
+    if (scale != nullptr || bias != nullptr) {
+      const int64_t total = N * C * image_size;
+      const int64_t elem_threads = 256;
+      const int64_t elem_blocks =
+          std::min((total + elem_threads - 1) / elem_threads, max_grid_x);
+      GroupNormForwardFusedNCHWKernel<T, AccT>
+          <<<elem_blocks, elem_threads, 0, stream>>>(N * C,
+                                                     image_size,
+                                                     C,
+                                                     G,
+                                                     input,
+                                                     mean,
+                                                     temp_variance,
+                                                     scale,
+                                                     bias,
+                                                     static_cast<AccT>(eps),
+                                                     output);
     } else {
-      phi::VectorizedGetMeanAndVarNCHW<T, AccT, vec_size>
-          <<<grids, blocks, 0, stream>>>(
-              input, mean, temp_variance, size, n_groups);
+      const int64_t total = N * G * D_times_HxW;
+      const int64_t elem_threads = 256;
+      const int64_t elem_blocks =
+          std::min((total + elem_threads - 1) / elem_threads, max_grid_x);
+      GroupNormForwardNoScaleBiasCUDAKernel<T, AccT>
+          <<<elem_blocks, elem_threads, 0, stream>>>(N * G,
+                                                     D_times_HxW,
+                                                     input,
+                                                     mean,
+                                                     temp_variance,
+                                                     static_cast<AccT>(eps),
+                                                     output);
     }
+
+    // Copy centered variance to variance output
+    cudaMemcpyAsync(variance,
+                    temp_variance,
+                    N * G * sizeof(AccT),
+                    cudaMemcpyDeviceToDevice,
+                    stream);
   } else {
 #ifdef PADDLE_WITH_HIP
     hipMemset(mean, 0, sizeof(AccT) * input_ddim[0] * groups);
@@ -1088,23 +1357,23 @@ void GroupNormDirectCUDAFunctor<T, AccT>::operator()(
                                        group_size,
                                        mean,
                                        temp_variance);
+    GroupNormForward<T, AccT, 3>
+        <<<grid, threads, 0, stream>>>(input,
+                                       mean,
+                                       temp_variance,
+                                       scale,
+                                       bias,
+                                       input_ddim[0],
+                                       C,
+                                       W,
+                                       image_size,
+                                       groups,
+                                       group_size,
+                                       static_cast<AccT>(eps),
+                                       output,
+                                       variance,
+                                       data_layout);
   }
-  GroupNormForward<T, AccT, 3>
-      <<<grid, threads, 0, stream>>>(input,
-                                     mean,
-                                     temp_variance,
-                                     scale,
-                                     bias,
-                                     input_ddim[0],
-                                     C,
-                                     W,
-                                     image_size,
-                                     groups,
-                                     group_size,
-                                     static_cast<AccT>(eps),
-                                     output,
-                                     variance,
-                                     data_layout);
 }
 template class PADDLE_API GroupNormDirectCUDAFunctor<float, float>;
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
@@ -1127,27 +1396,24 @@ void GroupNormGeneralCaseKernel(const Context& dev_ctx,
   const auto scale_ptr = scale.get_ptr();
   const auto bias_ptr = bias.get_ptr();
   const auto x_dims = x.dims();
+  const int64_t N = x_dims[0];
   const int64_t C =
       (data_layout == DataLayout::NCHW ? x_dims[1] : x_dims[x_dims.size() - 1]);
   const int64_t group_size = C / groups;
   const int64_t W =
       (data_layout == DataLayout::NCHW ? x_dims[x_dims.size() - 1]
                                        : x_dims[x_dims.size() - 2]);
+  const int64_t G = groups;
+  const int64_t D = C / G;
 
   dev_ctx.template Alloc<T>(y);
   dev_ctx.template Alloc<AccT>(mean);
   dev_ctx.template Alloc<AccT>(var);
-  // temp_var is used to calculate the mean^2
-  DenseTensor temp_var;
-  temp_var.Resize(var->dims());
-  dev_ctx.template Alloc<AccT>(&temp_var);
-  funcs::SetConstant<GPUContext, T> set_zero;
-  funcs::SetConstant<GPUContext, AccT> set_zero_AccT;
+
   auto* x_data = x.data<T>();
   auto* y_data = y->data<T>();
   auto* mean_data = mean->data<AccT>();
   auto* var_data = var->data<AccT>();
-  auto* temp_var_data = temp_var.data<AccT>();
 
   const T* scale_data = nullptr;
   if (scale_ptr) scale_data = scale_ptr->data<T>();
@@ -1165,68 +1431,117 @@ void GroupNormGeneralCaseKernel(const Context& dev_ctx,
     }
   }
 
-  int block_size = std::min(static_cast<int64_t>(1024), imsize);
-  int64_t max_grid_x = dev_ctx.GetCUDAMaxGridDimSize()[0];
-  int64_t max_grid_z = dev_ctx.GetCUDAMaxGridDimSize()[2];
-  dim3 grid(std::min(max_grid_x, group_size),
-            groups,
-            std::min(max_grid_z, x_dims[0]));
-  dim3 threads(block_size, 1, 1);
   if (data_layout == DataLayout::NCHW) {
-    constexpr int vec_size = sizeof(float4) / sizeof(T);
-    int64_t size = group_size * imsize;
-    const int max_num_threads = 1024;
-    int max_block_size =
-        std::min(static_cast<int>(size / vec_size), max_num_threads);
-    int block_size_nchw = 1;
-    while (block_size_nchw < max_block_size) {
-      block_size_nchw *= 2;
-    }
-    block_size_nchw = std::max(block_size_nchw, kps::details::kWarpSize);
-    int64_t n_groups = x_dims[0] * static_cast<int64_t>(groups);
-    dim3 grids(std::min(max_grid_x, n_groups));
-    dim3 blocks(block_size_nchw);
-    if (size < vec_size * block_size_nchw) {
-      ScalarGetMeanAndVarNCHW<T, AccT><<<grids, blocks, 0, dev_ctx.stream()>>>(
-          x_data, mean_data, temp_var_data, size, n_groups);
+    // =========================================================
+    // PyTorch-aligned NCHW path using Welford algorithm
+    // =========================================================
+    const int64_t D_times_HxW = D * imsize;
+
+    // Phase 1: Compute moments using Welford algorithm
+    // Grid: N*G blocks, matching PyTorch's RowwiseMomentsCUDAKernel
+    const int64_t num_threads =
+        D_times_HxW < kBlockReduceNumThreads ? 32 : kBlockReduceNumThreads;
+
+    WelfordMomentsCUDAKernel<T, AccT>
+        <<<N * G, num_threads, 0, dev_ctx.stream()>>>(
+            D_times_HxW,
+            static_cast<AccT>(epsilon),
+            x_data,
+            mean_data,
+            var_data);
+
+    // Phase 2: Normalization
+    if (scale_data != nullptr || bias_data != nullptr) {
+      // Phase 2a: Compute fused params a and b
+      DenseTensor a_tensor, b_tensor;
+      a_tensor.Resize({N, C});
+      b_tensor.Resize({N, C});
+      AccT* a_data = dev_ctx.template Alloc<AccT>(&a_tensor);
+      AccT* b_data = dev_ctx.template Alloc<AccT>(&b_tensor);
+
+      constexpr int64_t kNumThreads = 256;
+      const int64_t B = (N * C + kNumThreads - 1) / kNumThreads;
+      ComputeFusedParamsCUDAKernel<T, AccT>
+          <<<B, kNumThreads, 0, dev_ctx.stream()>>>(N,
+                                                    C,
+                                                    G,
+                                                    static_cast<AccT>(epsilon),
+                                                    mean_data,
+                                                    var_data,
+                                                    scale_data,
+                                                    bias_data,
+                                                    a_data,
+                                                    b_data);
+
+      // Phase 2b: Element-wise Y = a * X + b
+      const int64_t total = N * C * imsize;
+      constexpr int64_t kElemThreads = 256;
+      int64_t max_grid_x = dev_ctx.GetCUDAMaxGridDimSize()[0];
+      const int64_t elem_blocks =
+          std::min((total + kElemThreads - 1) / kElemThreads, max_grid_x);
+      GroupNormForwardElementwiseCUDAKernel<T, AccT>
+          <<<elem_blocks, kElemThreads, 0, dev_ctx.stream()>>>(
+              N * C, imsize, x_data, a_data, b_data, y_data);
     } else {
-      VectorizedGetMeanAndVarNCHW<T, AccT, vec_size>
-          <<<grids, blocks, 0, dev_ctx.stream()>>>(
-              x_data, mean_data, temp_var_data, size, n_groups);
+      // No scale/bias: Y = (X - mean) * rstd
+      const int64_t total = N * G * D_times_HxW;
+      constexpr int64_t kElemThreads = 256;
+      int64_t max_grid_x = dev_ctx.GetCUDAMaxGridDimSize()[0];
+      const int64_t elem_blocks =
+          std::min((total + kElemThreads - 1) / kElemThreads, max_grid_x);
+      GroupNormForwardNoScaleBiasCUDAKernel<T, AccT>
+          <<<elem_blocks, kElemThreads, 0, dev_ctx.stream()>>>(
+              N * G,
+              D_times_HxW,
+              x_data,
+              mean_data,
+              var_data,
+              static_cast<AccT>(epsilon),
+              y_data);
     }
   } else {
+    // =========================================================
+    // NHWC float32/float64 path (legacy, kept as-is)
+    // =========================================================
+    DenseTensor temp_var;
+    temp_var.Resize(var->dims());
+    dev_ctx.template Alloc<AccT>(&temp_var);
+    auto* temp_var_data = temp_var.data<AccT>();
+
+    funcs::SetConstant<GPUContext, AccT> set_zero_AccT;
     set_zero_AccT(dev_ctx, mean, static_cast<AccT>(0));
     set_zero_AccT(dev_ctx, &temp_var, static_cast<AccT>(0));
-    GroupNormForwardGetMeanAndVar<T, AccT>
-        <<<grid, threads, 0, dev_ctx.stream()>>>(x_data,
-                                                 x_dims[0],
-                                                 C,
-                                                 W,
-                                                 imsize,
-                                                 groups,
-                                                 group_size,
-                                                 mean_data,
-                                                 temp_var_data);
+
+    int block_size = std::min(static_cast<int64_t>(1024), imsize);
+    int64_t max_grid_x = dev_ctx.GetCUDAMaxGridDimSize()[0];
+    int64_t max_grid_z = dev_ctx.GetCUDAMaxGridDimSize()[2];
+    dim3 grid(
+        std::min(max_grid_x, group_size), groups, std::min(max_grid_z, N));
+    dim3 threads(block_size, 1, 1);
+
+    GroupNormForwardGetMeanAndVar<T,
+                                  AccT><<<grid, threads, 0, dev_ctx.stream()>>>(
+        x_data, N, C, W, imsize, groups, group_size, mean_data, temp_var_data);
+    int flags =
+        (scale_data != nullptr) * kHasScale + (bias_data != nullptr) * kHasBias;
+    UNROLL_ALL_CASES(flags,
+                     GroupNormForward,
+                     x_data,
+                     mean_data,
+                     temp_var_data,
+                     scale_data,
+                     bias_data,
+                     N,
+                     C,
+                     W,
+                     imsize,
+                     groups,
+                     group_size,
+                     static_cast<AccT>(epsilon),
+                     y_data,
+                     var_data,
+                     data_layout);
   }
-  int flags =
-      (scale_data != nullptr) * kHasScale + (bias_data != nullptr) * kHasBias;
-  UNROLL_ALL_CASES(flags,
-                   GroupNormForward,
-                   x_data,
-                   mean_data,
-                   temp_var_data,
-                   scale_data,
-                   bias_data,
-                   x_dims[0],
-                   C,
-                   W,
-                   imsize,
-                   groups,
-                   group_size,
-                   static_cast<AccT>(epsilon),
-                   y_data,
-                   var_data,
-                   data_layout);
 }
 
 template <typename T, typename Context>
@@ -1294,7 +1609,6 @@ void GroupNormKernel(const Context& dev_ctx,
   GroupNormGeneralCaseKernel<T, Context>(
       dev_ctx, x, scale, bias, epsilon, groups, data_layout_str, y, mean, var);
 }
-
 }  // namespace phi
 
 PD_REGISTER_KERNEL(group_norm,
