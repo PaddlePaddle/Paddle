@@ -481,3 +481,170 @@ TEST(TestAllclose, AllcloseInfinityValues) {
   // PyTorch returns true here because inf <= inf is true mathematically
   ASSERT_EQ(result_diff_inf, true);
 }
+
+TEST(TestAll, AllEmptyTensor) {
+  // Test all() on empty tensor (0-dimensional scalar tensor)
+  at::Tensor tensor_empty = at::empty({}, at::kBool);
+  // Empty tensor with no elements - all() should return true (vacuously true)
+  at::Tensor result = tensor_empty.all();
+  ASSERT_EQ(result.numel(), 1);
+  ASSERT_EQ(result.item<bool>(), true);
+}
+
+TEST(TestAll, AllEmpty1DTensor) {
+  // Test all() on empty 1D tensor (size 0)
+  at::Tensor tensor_empty = at::empty({0}, at::kBool);
+  // Empty tensor - all() should return true (vacuously true)
+  at::Tensor result = tensor_empty.all();
+  ASSERT_EQ(result.numel(), 1);
+  ASSERT_EQ(result.item<bool>(), true);
+}
+
+TEST(TestAllclose, AllcloseShapeMismatch) {
+  // Test allclose with tensors of different shapes - should return false
+  at::Tensor tensor1 = at::arange(6, at::kFloat).reshape({2, 3});
+  at::Tensor tensor2 = at::arange(4, at::kFloat).reshape({2, 2});
+
+  bool result = at::allclose(tensor1, tensor2);
+  ASSERT_EQ(result, false);
+
+  // Also test member function
+  bool result_member = tensor1.allclose(tensor2);
+  ASSERT_EQ(result_member, false);
+}
+
+TEST(TestAllclose, AllcloseInt32) {
+  // Test allclose with int32 tensors
+  at::Tensor tensor1 = at::arange(6, at::kInt).reshape({2, 3});
+  at::Tensor tensor2 = at::arange(6, at::kInt).reshape({2, 3});
+
+  bool result = at::allclose(tensor1, tensor2);
+  ASSERT_EQ(result, true);
+
+  // Test with different values
+  at::Tensor tensor3 = at::ones({3}, at::kInt);
+  at::Tensor tensor4 = at::ones({3}, at::kInt);
+  tensor4[0] = 2;
+  bool result_diff = at::allclose(tensor3, tensor4);
+  ASSERT_EQ(result_diff, false);
+
+  // Test with custom tolerance
+  bool result_tol = at::allclose(tensor3, tensor4, 1.0, 0.0, false);
+  ASSERT_EQ(result_tol, true);
+}
+
+TEST(TestAllclose, AllcloseInt64) {
+  // Test allclose with int64 (long) tensors
+  at::Tensor tensor1 = at::arange(6, at::kLong).reshape({2, 3});
+  at::Tensor tensor2 = at::arange(6, at::kLong).reshape({2, 3});
+
+  bool result = at::allclose(tensor1, tensor2);
+  ASSERT_EQ(result, true);
+
+  // Test with small difference and custom tolerance
+  at::Tensor tensor3 = at::ones({4}, at::kLong);
+  at::Tensor tensor4 = at::ones({4}, at::kLong);
+  tensor4[0] = 2;
+  bool result_diff = at::allclose(tensor3, tensor4);
+  ASSERT_EQ(result_diff, false);
+
+  // With large tolerance, should pass
+  bool result_tol = at::allclose(tensor3, tensor4, 1.0, 0.0, false);
+  ASSERT_EQ(result_tol, true);
+}
+
+TEST(TestAllclose, AllcloseEmptyTensor) {
+  // Test allclose with empty tensors
+  at::Tensor tensor1 = at::empty({0}, at::kFloat);
+  at::Tensor tensor2 = at::empty({0}, at::kFloat);
+
+  // Empty tensors should be close to each other
+  bool result = at::allclose(tensor1, tensor2);
+  ASSERT_EQ(result, true);
+
+  // Member function
+  bool result_member = tensor1.allclose(tensor2);
+  ASSERT_EQ(result_member, true);
+}
+
+TEST(TestAllclose, AllcloseScalarTensor) {
+  // Test allclose with scalar tensors (0-dimensional)
+  at::Tensor scalar1 = at::scalar_tensor(1.0, at::kFloat);
+  at::Tensor scalar2 = at::scalar_tensor(1.0, at::kFloat);
+
+  bool result = at::allclose(scalar1, scalar2);
+  ASSERT_EQ(result, true);
+
+  // Different values
+  at::Tensor scalar3 = at::scalar_tensor(1.0, at::kFloat);
+  at::Tensor scalar4 = at::scalar_tensor(2.0, at::kFloat);
+  bool result_diff = at::allclose(scalar3, scalar4);
+  ASSERT_EQ(result_diff, false);
+
+  // Within tolerance
+  bool result_tol = at::allclose(scalar3, scalar4, 1.0, 0.0, false);
+  ASSERT_EQ(result_tol, true);
+}
+
+TEST(TestAllclose, AllcloseHalf) {
+  // Test allclose with half (float16) tensors
+  at::Tensor tensor1 = at::arange(6, at::kHalf).reshape({2, 3});
+  at::Tensor tensor2 = at::arange(6, at::kHalf).reshape({2, 3});
+
+  bool result = at::allclose(tensor1, tensor2);
+  ASSERT_EQ(result, true);
+
+  // Test member function
+  bool result_member = tensor1.allclose(tensor2, 1e-05, 1e-08, false);
+  ASSERT_EQ(result_member, true);
+
+  // Test with small difference
+  at::Tensor tensor3 = at::ones({3}, at::kHalf);
+  at::Tensor tensor4 = at::ones({3}, at::kHalf);
+  tensor4[0] = at::scalar_tensor(1.1f, at::kHalf);  // small difference
+  bool result_diff = at::allclose(tensor3, tensor4);
+  ASSERT_EQ(result_diff, false);
+
+  // With custom tolerance, should pass
+  bool result_tol = at::allclose(tensor3, tensor4, 0.2, 0.0, false);
+  ASSERT_EQ(result_tol, true);
+}
+
+TEST(TestAllclose, AllcloseHalfNaN) {
+  // Test allclose with half (float16) tensors and NaN
+  const float16 nan_val =
+      paddle::float16(std::numeric_limits<float>::quiet_NaN());
+  std::vector<paddle::float16> data1 = {
+      paddle::float16(1.0f), paddle::float16(1.0f), paddle::float16(nan_val)};
+  at::Tensor tensor1 = at::from_blob(data1.data(), {3}, at::kHalf);
+  at::Tensor tensor2 = tensor1.clone();
+
+  // Without equal_nan, NaN should fail
+  bool result_no_eq = at::allclose(tensor1, tensor2, 1e-05, 1e-08, false);
+  ASSERT_EQ(result_no_eq, false);
+
+  // With equal_nan, should pass
+  bool result_eq = at::allclose(tensor1, tensor2, 1e-05, 1e-08, true);
+  ASSERT_EQ(result_eq, true);
+}
+
+TEST(TestAllclose, AllcloseWithDifferentRtolAtolOrder) {
+  // Test allclose with parameters in different orders (edge cases)
+  at::Tensor tensor1 = at::zeros({3}, at::kFloat);
+  at::Tensor tensor2 = at::zeros({3}, at::kFloat);
+  tensor2[0] = 0.0001f;
+
+  // Test with zero rtol, small atol
+  bool result1 = at::allclose(tensor1, tensor2, 0.0, 0.0001, false);
+  ASSERT_EQ(result1, true);
+
+  // Test with zero atol, small rtol
+  bool result2 = at::allclose(tensor1, tensor2, 0.0001, 0.0, false);
+  ASSERT_EQ(result2, false);  // relative tolerance is relative to values (0.0)
+
+  // Both zero tolerance - exact match required
+  at::Tensor tensor3 = at::ones({2}, at::kFloat);
+  at::Tensor tensor4 = at::ones({2}, at::kFloat);
+  bool result3 = at::allclose(tensor3, tensor4, 0.0, 0.0, false);
+  ASSERT_EQ(result3, true);
+}
