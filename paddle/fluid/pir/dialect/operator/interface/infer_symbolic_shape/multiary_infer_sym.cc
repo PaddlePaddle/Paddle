@@ -74,45 +74,65 @@ bool AddcmulOpInferSymbolicShape(
   std::vector<symbol::DimExpr> tensor1_shape = tensor1_shape_or_data.shape();
   std::vector<symbol::DimExpr> tensor2_shape = tensor2_shape_or_data.shape();
 
-  // NOTE(large-tensor): tensor dimensions are small integers
-  int input_ndims = static_cast<int>(input_shape.size());
+  // Step 1: Broadcast tensor1 and tensor2 (matches InferMeta order)
   int tensor1_ndims = static_cast<int>(tensor1_shape.size());
   int tensor2_ndims = static_cast<int>(tensor2_shape.size());
-  std::vector<symbol::DimExpr> intermediate_shape;
-  std::vector<symbol::DimExpr> output_shape;
-  int diff_input_tensor1 = input_ndims - tensor1_ndims;
-  if (diff_input_tensor1 > 0) {
-    for (int i = 0; i < diff_input_tensor1; ++i) {
-      tensor1_shape.emplace(tensor1_shape.begin(), 1);
+  int diff_t1_t2 = tensor1_ndims - tensor2_ndims;
+  if (diff_t1_t2 > 0) {
+    for (int i = 0; i < diff_t1_t2; ++i) {
+      tensor2_shape.emplace(tensor2_shape.begin(), 1);
     }
   } else {
-    for (int i = 0; i < -diff_input_tensor1; ++i) {
+    for (int i = 0; i < -diff_t1_t2; ++i) {
+      tensor1_shape.emplace(tensor1_shape.begin(), 1);
+    }
+  }
+
+  symbol::DimExprBuilder builder;
+  std::vector<symbol::DimExpr> mul_shape;
+  for (size_t i = 0; i < tensor1_shape.size(); ++i) {
+    if (tensor1_shape[i] == tensor2_shape[i]) {
+      mul_shape.emplace_back(tensor1_shape[i]);
+    } else if (tensor1_shape[i] == 1) {
+      mul_shape.emplace_back(tensor2_shape[i]);
+    } else if (tensor2_shape[i] == 1) {
+      mul_shape.emplace_back(tensor1_shape[i]);
+    } else {
+      mul_shape.emplace_back(
+          builder.Broadcast(tensor1_shape[i], tensor2_shape[i]));
+      infer_context->AddBroadcastableCstr(tensor1_shape[i], tensor2_shape[i]);
+    }
+  }
+
+  // Step 2: Broadcast input and mul_shape (matches InferMeta order)
+  int input_ndims = static_cast<int>(input_shape.size());
+  int mul_ndims = static_cast<int>(mul_shape.size());
+  int diff_input_mul = input_ndims - mul_ndims;
+  if (diff_input_mul > 0) {
+    for (int i = 0; i < diff_input_mul; ++i) {
+      mul_shape.emplace(mul_shape.begin(), 1);
+    }
+  } else {
+    for (int i = 0; i < -diff_input_mul; ++i) {
       input_shape.emplace(input_shape.begin(), 1);
     }
   }
-  symbol::DimExprBuilder builder;
+
+  std::vector<symbol::DimExpr> output_shape;
   for (size_t i = 0; i < input_shape.size(); ++i) {
-    intermediate_shape.emplace_back(
-        builder.Broadcast(input_shape[i], tensor1_shape[i]));
-    infer_context->AddBroadcastableCstr(input_shape[i], tensor1_shape[i]);
-  }
-  int intermediate_ndims = intermediate_shape.size();
-  int diff_tensor2_intermediate = tensor2_ndims - intermediate_ndims;
-  if (diff_tensor2_intermediate > 0) {
-    for (int i = 0; i < diff_tensor2_intermediate; ++i) {
-      intermediate_shape.emplace(intermediate_shape.begin(), 1);
-    }
-  } else {
-    for (int i = 0; i < -diff_tensor2_intermediate; ++i) {
-      tensor2_shape.emplace(tensor2_shape.begin(), 1);
+    if (input_shape[i] == mul_shape[i]) {
+      output_shape.emplace_back(input_shape[i]);
+    } else if (input_shape[i] == 1) {
+      output_shape.emplace_back(mul_shape[i]);
+    } else if (mul_shape[i] == 1) {
+      output_shape.emplace_back(input_shape[i]);
+    } else {
+      output_shape.emplace_back(
+          builder.Broadcast(input_shape[i], mul_shape[i]));
+      infer_context->AddBroadcastableCstr(input_shape[i], mul_shape[i]);
     }
   }
-  for (size_t i = 0; i < tensor2_shape.size(); ++i) {
-    output_shape.emplace_back(
-        builder.Broadcast(tensor2_shape[i], intermediate_shape[i]));
-    infer_context->AddBroadcastableCstr(tensor2_shape[i],
-                                        intermediate_shape[i]);
-  }
+
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{
