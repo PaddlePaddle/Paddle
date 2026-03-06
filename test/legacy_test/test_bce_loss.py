@@ -239,8 +239,7 @@ class TestBCELoss(unittest.TestCase):
         paddle.enable_static()
 
     def test_BCELoss_target_alias(self):
-        paddle.disable_static()
-        try:
+        with paddle.base.dygraph.guard():
             input_np = np.random.uniform(0.1, 0.8, size=(4, 5)).astype(
                 np.float32
             )
@@ -268,8 +267,6 @@ class TestBCELoss(unittest.TestCase):
                 paddle.nn.functional.binary_cross_entropy(
                     input=input, label=label, target=label, reduction="none"
                 )
-        finally:
-            paddle.enable_static()
 
 
 def bce_loss(input, label):
