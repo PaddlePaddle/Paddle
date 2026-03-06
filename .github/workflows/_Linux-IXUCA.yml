@@ -165,7 +165,14 @@ jobs:
       - name: Clone Paddle-iluvatar and setup
         if: steps.check-approval.outputs.can-skip != 'true'
         run: |
-          git clone --depth=1 -b develop https://github.com/PaddlePaddle/Paddle-iluvatar.git
+          git config --global http.postBuffer 524288000
+          git config --global http.version HTTP/1.1
+          for i in 1 2 3; do
+            git clone --depth=1 -b develop https://github.com/PaddlePaddle/Paddle-iluvatar.git && break
+            echo "git clone attempt $i failed, retrying in 10s..."
+            rm -rf Paddle-iluvatar
+            sleep 10
+          done
           cd Paddle-iluvatar
 
           # If Paddle-iluvatar PR number exists, fetch and merge it
