@@ -93,4 +93,5 @@ PD_REGISTER_KERNEL(cumsum,
                    int,
                    int64_t,
                    phi::float16,
-                   phi::bfloat16) {}
+                   phi::bfloat16,
+                   bool) {}

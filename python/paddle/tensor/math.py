@@ -3159,6 +3159,7 @@ def cumsum(
             paddle.int8,
             paddle.int16,
             paddle.int32,
+            paddle.bool,
         ]:
             x = cast(x, "int64")
     else:

@@ -528,7 +528,8 @@ PD_REGISTER_KERNEL(cumsum,
                    double,
                    int16_t,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   bool) {}
 
 PD_REGISTER_KERNEL(
     logcumsumexp, GPU, ALL_LAYOUT, phi::LogcumsumexpKernel, float, double) {}
@@ -547,7 +548,8 @@ PD_REGISTER_KERNEL(cumsum,
                    phi::float16,
                    phi::bfloat16,
                    phi::complex64,
-                   phi::complex128) {}
+                   phi::complex128,
+                   bool) {}
 
 PD_REGISTER_KERNEL(logcumsumexp,
                    GPU,
