@@ -635,7 +635,6 @@ void CumInferMeta(const MetaTensor& x,
   auto x_dims = x.dims();
   if (flatten) {
     out->set_dims(make_ddim({common::product(x_dims)}));
-    out->set_dtype(x.dtype());
   } else {
     if (x_dims.size() > 0) {
       PADDLE_ENFORCE_GE(
@@ -665,7 +664,15 @@ void CumInferMeta(const MetaTensor& x,
                                   axis));
     }
     out->set_dims(x_dims);
-    out->set_dtype(x.dtype());
+  }
+
+  auto x_dtype = x.dtype();
+  if (x_dtype == DataType::BOOL || x_dtype == DataType::UINT8 ||
+      x_dtype == DataType::INT8 || x_dtype == DataType::INT16 ||
+      x_dtype == DataType::INT32 || x_dtype == DataType::INT64) {
+    out->set_dtype(DataType::INT64);
+  } else {
+    out->set_dtype(x_dtype);
   }
 
   out->share_lod(x);

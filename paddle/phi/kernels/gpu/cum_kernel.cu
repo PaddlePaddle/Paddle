@@ -459,6 +459,60 @@ void CumsumKernel(const Context& dev_ctx,
                   bool exclusive,
                   bool reverse,
                   DenseTensor* out) {
+  // For bool/integer types, output dtype is int64 (set by InferMeta)
+  bool need_cast = (out->dtype() != x.dtype());
+
+  if (need_cast) {
+    // bool/int -> int64 path
+    if (out && out->numel() == 0) {
+      dev_ctx.Alloc(out, out->dtype());
+      return;
+    }
+    dev_ctx.Alloc(out, out->dtype());
+
+    if (out->numel() == 1) {
+      // 0D tensor
+      int64_t* out_data = out->data<int64_t>();
+      const T* x_data = x.data<T>();
+      int64_t val = 0;
+      cudaMemcpyAsync(
+          &val, x_data, sizeof(T), cudaMemcpyDeviceToHost, dev_ctx.stream());
+      dev_ctx.Wait();
+      val = static_cast<int64_t>(val);
+      cudaMemcpyAsync(out_data,
+                      &val,
+                      sizeof(int64_t),
+                      cudaMemcpyHostToDevice,
+                      dev_ctx.stream());
+      return;
+    }
+
+    size_t outer_dim = 1;
+    size_t mid_dim = 1;
+    size_t inner_dim = 1;
+
+    if (flatten) {
+      mid_dim = x.numel();
+    } else {
+      GetCumprodDimInfo(
+          x.dims(), axis.to<int>(), &outer_dim, &mid_dim, &inner_dim);
+    }
+
+    const T* x_data = x.data<T>();
+    int64_t* out_data = out->data<int64_t>();
+
+    funcs::InclusiveScan<T, int64_t>(x_data,
+                                     out_data,
+                                     outer_dim,
+                                     mid_dim,
+                                     inner_dim,
+                                     static_cast<int64_t>(0),
+                                     funcs::AddFunctor<int64_t>(),
+                                     /*reverse=*/reverse,
+                                     dev_ctx);
+    return;
+  }
+
   using Op =
       typename std::conditional<std::is_same<T, phi::complex64>::value ||
                                     std::is_same<T, phi::complex128>::value,
@@ -537,6 +591,7 @@ PD_REGISTER_KERNEL(cumsum,
                    GPU,
                    ALL_LAYOUT,
                    phi::CumsumKernel,
+                   bool,
                    float,
                    double,
                    uint8_t,

@@ -73,10 +73,14 @@ static auto MakeThrustReverseIterator(T *x) {
       thrust::device_pointer_cast(x));
 }
 
-template <typename T, typename BinaryOp, bool kReverse>
+template <typename T, typename OutT, typename BinaryOp, bool kReverse>
 struct InclusiveScanOuterOrMidDimFunctor {
-  HOSTDEVICE InclusiveScanOuterOrMidDimFunctor(
-      const T *x, T *y, size_t mid_dim, size_t inner_dim, T init, BinaryOp op)
+  HOSTDEVICE InclusiveScanOuterOrMidDimFunctor(const T *x,
+                                               OutT *y,
+                                               size_t mid_dim,
+                                               size_t inner_dim,
+                                               OutT init,
+                                               BinaryOp op)
       : x_(x),
         y_(y),
         mid_dim_(mid_dim),
@@ -96,9 +100,9 @@ struct InclusiveScanOuterOrMidDimFunctor {
 
     auto x_ptr = x_ + idx;
     auto y_ptr = y_ + idx;
-    T acc_value = init_;
+    OutT acc_value = init_;
     for (size_t i = 0; i < mid_dim_; ++i) {
-      acc_value = op_(acc_value, *x_ptr);
+      acc_value = op_(acc_value, static_cast<OutT>(*x_ptr));
       *y_ptr = acc_value;
       if (kReverse) {
         x_ptr -= inner_dim_;
@@ -112,34 +116,39 @@ struct InclusiveScanOuterOrMidDimFunctor {
 
  private:
   const T *x_;
-  T *y_;
+  OutT *y_;
   size_t mid_dim_;
   size_t inner_dim_;
-  T init_;
+  OutT init_;
   BinaryOp op_;
 };
 
 template <typename T,
+          typename OutT,
           typename BinaryOp,
           size_t kThreadNumX,
           size_t kThreadNumY,
           bool kReverse>
-static __global__ void InclusiveScanInnerDimCUDAKernel(
-    const T *x, T *y, size_t num_rows, size_t row_size, T init, BinaryOp op) {
-  using RealT = phi::dtype::Real<T>;
+static __global__ void InclusiveScanInnerDimCUDAKernel(const T *x,
+                                                       OutT *y,
+                                                       size_t num_rows,
+                                                       size_t row_size,
+                                                       OutT init,
+                                                       BinaryOp op) {
+  using RealT = phi::dtype::Real<OutT>;
   constexpr auto kSharedBufferSize =
-      IsComplex<T>::value ? 4 * kThreadNumX : 2 * kThreadNumX;
+      IsComplex<OutT>::value ? 4 * kThreadNumX : 2 * kThreadNumX;
   __shared__ RealT sbuf[kThreadNumY][kSharedBufferSize];
-  T *row_buf = reinterpret_cast<T *>(sbuf[threadIdx.y]);
+  OutT *row_buf = reinterpret_cast<OutT *>(sbuf[threadIdx.y]);
 
   size_t block_row = static_cast<size_t>(blockIdx.x * kThreadNumY);
   size_t block_row_stride = static_cast<size_t>(gridDim.x * kThreadNumY);
   for (; block_row < num_rows; block_row += block_row_stride) {
     size_t row = block_row + static_cast<size_t>(threadIdx.y);
-    T block_total = init;
+    OutT block_total = init;
 
     const T *row_x = x + row * row_size;
-    T *row_y = y + row * row_size;
+    OutT *row_y = y + row * row_size;
     for (size_t block_col = 0; block_col < row_size;
          block_col += 2 * kThreadNumX) {
       size_t col1, col2;
@@ -153,13 +162,13 @@ static __global__ void InclusiveScanInnerDimCUDAKernel(
 
       if (row < num_rows) {
         if (col1 < row_size) {
-          row_buf[threadIdx.x] = row_x[col1];
+          row_buf[threadIdx.x] = static_cast<OutT>(row_x[col1]);
         } else {
           row_buf[threadIdx.x] = init;
         }
 
         if (col2 < row_size) {
-          row_buf[kThreadNumX + threadIdx.x] = row_x[col2];
+          row_buf[kThreadNumX + threadIdx.x] = static_cast<OutT>(row_x[col2]);
         } else {
           row_buf[kThreadNumX + threadIdx.x] = init;
         }
@@ -196,12 +205,12 @@ static __global__ void InclusiveScanInnerDimCUDAKernel(
   }
 }
 
-template <typename T, typename BinaryOp>
+template <typename T, typename OutT, typename BinaryOp>
 static void InclusiveScanInnerDim(const T *x,
-                                  T *y,
+                                  OutT *y,
                                   size_t outer_dim,
                                   size_t inner_dim,
-                                  T init,
+                                  OutT init,
                                   BinaryOp op,
                                   bool reverse,
                                   const phi::GPUContext &dev_ctx) {
@@ -213,6 +222,7 @@ static void InclusiveScanInnerDim(const T *x,
   dim3 thread_dims(kThreadNumX, kThreadNumY);
   if (reverse) {
     InclusiveScanInnerDimCUDAKernel<T,
+                                    OutT,
                                     BinaryOp,
                                     kThreadNumX,
                                     kThreadNumY,
@@ -221,6 +231,7 @@ static void InclusiveScanInnerDim(const T *x,
             x, y, outer_dim, inner_dim, init, op);
   } else {
     InclusiveScanInnerDimCUDAKernel<T,
+                                    OutT,
                                     BinaryOp,
                                     kThreadNumX,
                                     kThreadNumY,
@@ -258,15 +269,15 @@ constexpr inline Integer GetLogNumThreadsX(Integer num_rows, Integer row_size) {
   return log_num_threads_x;
 }
 
-template <typename T, typename index_t, class BinaryFunction>
+template <typename OutT, typename index_t, class BinaryFunction>
 __device__ void InclusiveScanInnerDimSklanskyImpl(
-    T *row_buf,
-    T *tgt_,
-    const T *src_,
+    OutT *row_buf,
+    OutT *tgt_,
+    const OutT *src_,
     const uint32_t num_rows,
     const uint32_t row_size,
     const uint32_t log_num_threads_x,
-    T init,
+    OutT init,
     BinaryFunction binary_op) {
   const index_t num_threads_x = 1 << log_num_threads_x;
 
@@ -274,10 +285,10 @@ __device__ void InclusiveScanInnerDimSklanskyImpl(
        block_row < num_rows;
        block_row += blockDim.y * gridDim.x) {
     index_t row = block_row + (index_t)threadIdx.y;
-    T block_total = init;
+    OutT block_total = init;
 
-    const T *row_src = src_ + row * row_size;
-    T *row_tgt = tgt_ + row * row_size;
+    const OutT *row_src = src_ + row * row_size;
+    OutT *row_tgt = tgt_ + row * row_size;
     const bool row_exists = row < num_rows;
 
     for (index_t block_col = 0; block_col < row_size;
@@ -328,49 +339,50 @@ __device__ void InclusiveScanInnerDimSklanskyImpl(
   }
 }
 
-template <typename T, class BinaryFunction>
+template <typename OutT, class BinaryFunction>
 __global__ void InclusiveScanInnerDimSklanskyKernel(
-    T *tgt_,
-    const T *src_,
+    OutT *tgt_,
+    const OutT *src_,
     const uint32_t num_rows,
     const uint32_t row_size,
     const uint32_t log_num_threads_x,
-    T init,
+    OutT init,
     BinaryFunction binary_op) {
   extern __shared__ char sbuf[];
-  T *sbuf2 = reinterpret_cast<T *>(sbuf);
+  OutT *sbuf2 = reinterpret_cast<OutT *>(sbuf);
 
   const uint32_t num_threads_x = 1 << log_num_threads_x;
-  T *row_buf = reinterpret_cast<T *>(sbuf2 + num_threads_x * 2 * threadIdx.y);
+  OutT *row_buf =
+      reinterpret_cast<OutT *>(sbuf2 + num_threads_x * 2 * threadIdx.y);
 
   if (static_cast<size_t>(num_rows) * static_cast<size_t>(row_size) <=
       UINT_MAX) {
-    InclusiveScanInnerDimSklanskyImpl<T, uint32_t>(row_buf,
-                                                   tgt_,
-                                                   src_,
-                                                   num_rows,
-                                                   row_size,
-                                                   log_num_threads_x,
-                                                   init,
-                                                   binary_op);
+    InclusiveScanInnerDimSklanskyImpl<OutT, uint32_t>(row_buf,
+                                                      tgt_,
+                                                      src_,
+                                                      num_rows,
+                                                      row_size,
+                                                      log_num_threads_x,
+                                                      init,
+                                                      binary_op);
   } else {
-    InclusiveScanInnerDimSklanskyImpl<T, size_t>(row_buf,
-                                                 tgt_,
-                                                 src_,
-                                                 num_rows,
-                                                 row_size,
-                                                 log_num_threads_x,
-                                                 init,
-                                                 binary_op);
+    InclusiveScanInnerDimSklanskyImpl<OutT, size_t>(row_buf,
+                                                    tgt_,
+                                                    src_,
+                                                    num_rows,
+                                                    row_size,
+                                                    log_num_threads_x,
+                                                    init,
+                                                    binary_op);
   }
 }
 
-template <typename T, typename BinaryOp>
-void InclusiveScanInnerDimSklansky(const T *src,
-                                   T *tgt,
+template <typename OutT, typename BinaryOp>
+void InclusiveScanInnerDimSklansky(const OutT *src,
+                                   OutT *tgt,
                                    size_t outer_dim,
                                    size_t inner_dim,
-                                   T init,
+                                   OutT init,
                                    BinaryOp op,
                                    const phi::GPUContext &dev_ctx) {
   int64_t num_rows = outer_dim;
@@ -387,9 +399,9 @@ void InclusiveScanInnerDimSklansky(const T *src,
   int64_t grid_y = CeilDiv(num_rows, int64_t{threads.y});
   dim3 grid(std::min(max_grid_dim, grid_y));
 
-  size_t shared_mem_bytes = num_threads_y * (num_threads_x * 2) * sizeof(T);
+  size_t shared_mem_bytes = num_threads_y * (num_threads_x * 2) * sizeof(OutT);
 
-  InclusiveScanInnerDimSklanskyKernel<T, BinaryOp>
+  InclusiveScanInnerDimSklanskyKernel<OutT, BinaryOp>
       <<<grid, threads, shared_mem_bytes, dev_ctx.stream()>>>(
           tgt,
           src,
@@ -400,6 +412,7 @@ void InclusiveScanInnerDimSklansky(const T *src,
           op);
 }
 
+// InclusiveScan with same input/output type
 template <typename T, typename BinaryOp>
 void InclusiveScan(const T *x,
                    T *y,
@@ -424,21 +437,57 @@ void InclusiveScan(const T *x,
     funcs::ForRange<phi::GPUContext> for_range(dev_ctx, outer_dim * inner_dim);
     if (reverse) {
       for_range(
-          InclusiveScanOuterOrMidDimFunctor<T, BinaryOp, /*kReverse=*/true>(
+          InclusiveScanOuterOrMidDimFunctor<T, T, BinaryOp, /*kReverse=*/true>(
               x, y, mid_dim, inner_dim, init, op));
     } else {
-      for_range(
-          InclusiveScanOuterOrMidDimFunctor<T, BinaryOp, /*kReverse=*/false>(
-              x, y, mid_dim, inner_dim, init, op));
+      for_range(InclusiveScanOuterOrMidDimFunctor<T,
+                                                  T,
+                                                  BinaryOp,
+                                                  /*kReverse=*/false>(
+          x, y, mid_dim, inner_dim, init, op));
     }
   } else {
     if (FLAGS_use_accuracy_compatible_kernel && !reverse) {
       InclusiveScanInnerDimSklansky<T, BinaryOp>(
           x, y, outer_dim, mid_dim, init, op, dev_ctx);
     } else {
-      InclusiveScanInnerDim<T, BinaryOp>(
+      InclusiveScanInnerDim<T, T, BinaryOp>(
           x, y, outer_dim, mid_dim, init, op, reverse, dev_ctx);
     }
+  }
+}
+
+// InclusiveScan with different input/output types
+template <typename T, typename OutT, typename BinaryOp>
+void InclusiveScan(const T *x,
+                   OutT *y,
+                   size_t outer_dim,
+                   size_t mid_dim,
+                   size_t inner_dim,
+                   OutT init,
+                   BinaryOp op,
+                   bool reverse,
+                   const phi::GPUContext &dev_ctx) {
+  if (outer_dim == 0 || mid_dim == 0 || inner_dim == 0) return;
+
+  if (inner_dim != 1) {
+    funcs::ForRange<phi::GPUContext> for_range(dev_ctx, outer_dim * inner_dim);
+    if (reverse) {
+      for_range(InclusiveScanOuterOrMidDimFunctor<T,
+                                                  OutT,
+                                                  BinaryOp,
+                                                  /*kReverse=*/true>(
+          x, y, mid_dim, inner_dim, init, op));
+    } else {
+      for_range(InclusiveScanOuterOrMidDimFunctor<T,
+                                                  OutT,
+                                                  BinaryOp,
+                                                  /*kReverse=*/false>(
+          x, y, mid_dim, inner_dim, init, op));
+    }
+  } else {
+    InclusiveScanInnerDim<T, OutT, BinaryOp>(
+        x, y, outer_dim, mid_dim, init, op, reverse, dev_ctx);
   }
 }
 

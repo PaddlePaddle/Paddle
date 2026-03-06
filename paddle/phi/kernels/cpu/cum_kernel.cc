@@ -58,10 +58,10 @@ void ScanKernel(const Context& dev_ctx,
                 Reducer reducer,
                 DenseTensor* out) {
   if (out && out->numel() == 0) {
-    dev_ctx.template Alloc<T>(out);
+    dev_ctx.Alloc(out, out->dtype());
     return;
   }
-  dev_ctx.template Alloc<T>(out);
+  dev_ctx.Alloc(out, out->dtype());
 
   if (x.numel() == 1) {
     auto raw_dims = out->dims();
@@ -150,6 +150,30 @@ void CumsumKernel(const Context& dev_ctx,
                   bool exclusive,
                   bool reverse,
                   DenseTensor* out) {
+  // For bool/integer types, output dtype is int64 (set by InferMeta)
+  if (out->dtype() != x.dtype()) {
+    // Cast input to int64 then compute
+    DenseTensor x_cast;
+    x_cast.Resize(x.dims());
+    dev_ctx.template Alloc<int64_t>(&x_cast);
+    auto numel = x.numel();
+    const T* x_data = x.data<T>();
+    int64_t* x_cast_data = x_cast.data<int64_t>();
+    for (int64_t i = 0; i < numel; ++i) {
+      x_cast_data[i] = static_cast<int64_t>(x_data[i]);
+    }
+    using Reducer = Eigen::internal::SumReducer<int64_t>;
+    auto reducer = Reducer();
+    ScanKernel<int64_t, Context, Reducer>(dev_ctx,
+                                          x_cast,
+                                          axis.to<int>(),
+                                          flatten,
+                                          exclusive,
+                                          reverse,
+                                          reducer,
+                                          out);
+    return;
+  }
   using Reducer = Eigen::internal::SumReducer<T>;
   auto reducer = Reducer();
   ScanKernel<T, Context, Reducer>(
@@ -271,6 +295,7 @@ PD_REGISTER_KERNEL(cumsum,
                    CPU,
                    ALL_LAYOUT,
                    phi::CumsumKernel,
+                   bool,
                    float,
                    double,
                    uint8_t,

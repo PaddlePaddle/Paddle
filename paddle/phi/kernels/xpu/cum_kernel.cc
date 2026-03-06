@@ -27,6 +27,30 @@ void CumsumKernel(const Context& dev_ctx,
                   bool exclusive,
                   bool reverse,
                   DenseTensor* out) {
+  // For bool/integer types, output dtype is int64 (set by InferMeta)
+  // XPU does not support bool cumsum, so cast to int64 first
+  if (out->dtype() != x.dtype()) {
+    // Cast input to int64, then run cumsum on int64
+    DenseTensor x_cast;
+    x_cast.Resize(x.dims());
+    dev_ctx.template Alloc<int64_t>(&x_cast);
+    auto numel = x.numel();
+
+    // Cast on XPU: use xpu::cast
+    using XPUType = typename XPUTypeTrait<T>::Type;
+    int r = xpu::cast<XPUType, int64_t>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(x.data<T>()),
+        x_cast.data<int64_t>(),
+        numel);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+
+    // Now run cumsum on the int64 tensor
+    CumsumKernel<int64_t, Context>(
+        dev_ctx, x_cast, axis, flatten, exclusive, reverse, out);
+    return;
+  }
+
   using XPUType = typename XPUTypeTrait<T>::Type;
   if (out && out->numel() == 0) {
     dev_ctx.template Alloc<T>(out);
@@ -89,6 +113,7 @@ PD_REGISTER_KERNEL(cumsum,
                    XPU,
                    ALL_LAYOUT,
                    phi::CumsumKernel,
+                   bool,
                    float,
                    int,
                    int64_t,
