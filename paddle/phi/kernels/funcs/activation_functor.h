@@ -29,6 +29,10 @@
 
 #include <type_traits>
 
+#ifdef PADDLE_WITH_SLEEF
+#include <sleef.h>
+#endif
+
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
@@ -61,17 +65,57 @@ struct Sine {
   HOSTDEVICE T operator()(const T& val) const { return sin(val); }
 };
 
+// Specialized Sine for float using Sleef (matches PyTorch's u35 precision)
+template <>
+struct Sine<float> {
+  HOSTDEVICE float operator()(const float& val) const {
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
+    return sin(val);
+#elif defined(PADDLE_WITH_SLEEF)
+    return Sleef_sinf1_u35(val);
+#else
+    return sin(val);
+#endif
+  }
+};
+
+// Specialized Sine for double using Sleef (matches PyTorch's u10 precision)
+template <>
+struct Sine<double> {
+  HOSTDEVICE double operator()(const double& val) const {
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
+    return sin(val);
+#elif defined(PADDLE_WITH_SLEEF)
+    return Sleef_sind1_u10(val);
+#else
+    return sin(val);
+#endif
+  }
+};
+
 template <>
 struct Sine<dtype::float16> {
   HOSTDEVICE dtype::float16 operator()(const dtype::float16& val) const {
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
     return dtype::float16(sin(static_cast<float>(val)));
+#elif defined(PADDLE_WITH_SLEEF)
+    return dtype::float16(Sleef_sinf1_u35(static_cast<float>(val)));
+#else
+    return dtype::float16(sin(static_cast<float>(val)));
+#endif
   }
 };
 
 template <>
 struct Sine<dtype::bfloat16> {
   HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16& val) const {
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
     return dtype::bfloat16(sin(static_cast<float>(val)));
+#elif defined(PADDLE_WITH_SLEEF)
+    return dtype::bfloat16(Sleef_sinf1_u35(static_cast<float>(val)));
+#else
+    return dtype::bfloat16(sin(static_cast<float>(val)));
+#endif
   }
 };
 
@@ -80,17 +124,57 @@ struct Cosine {
   HOSTDEVICE T operator()(const T& val) const { return cos(val); }
 };
 
+// Specialized Cosine for float using Sleef (matches PyTorch's u35 precision)
+template <>
+struct Cosine<float> {
+  HOSTDEVICE float operator()(const float& val) const {
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
+    return cos(val);
+#elif defined(PADDLE_WITH_SLEEF)
+    return Sleef_cosf1_u35(val);
+#else
+    return cos(val);
+#endif
+  }
+};
+
+// Specialized Cosine for double using Sleef (matches PyTorch's u10 precision)
+template <>
+struct Cosine<double> {
+  HOSTDEVICE double operator()(const double& val) const {
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
+    return cos(val);
+#elif defined(PADDLE_WITH_SLEEF)
+    return Sleef_cosd1_u10(val);
+#else
+    return cos(val);
+#endif
+  }
+};
+
 template <>
 struct Cosine<dtype::float16> {
   HOSTDEVICE dtype::float16 operator()(const dtype::float16& val) const {
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
     return dtype::float16(cos(static_cast<float>(val)));
+#elif defined(PADDLE_WITH_SLEEF)
+    return dtype::float16(Sleef_cosf1_u35(static_cast<float>(val)));
+#else
+    return dtype::float16(cos(static_cast<float>(val)));
+#endif
   }
 };
 
 template <>
 struct Cosine<dtype::bfloat16> {
   HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16& val) const {
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
     return dtype::bfloat16(cos(static_cast<float>(val)));
+#elif defined(PADDLE_WITH_SLEEF)
+    return dtype::bfloat16(Sleef_cosf1_u35(static_cast<float>(val)));
+#else
+    return dtype::bfloat16(cos(static_cast<float>(val)));
+#endif
   }
 };
 
