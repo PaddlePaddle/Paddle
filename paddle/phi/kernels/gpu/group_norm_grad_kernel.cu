@@ -20,6 +20,9 @@
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/gpu/group_norm_utils.h"
+
+#include "paddle/common/flags.h"
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 namespace phi {
 
 // ============================================================================
@@ -453,6 +456,145 @@ __global__ void GammaBetaBackwardCUDAKernel2(int64_t N,
   }
 }
 
+// ============================================================================
+// Original NCHW backward kernels (high-performance path, FLAG=0)
+// ============================================================================
+
+template <typename T, typename AccT>
+__global__ void ScalarGetDsDbCUDAKernel(int64_t imsize,
+                                        const T* x,
+                                        const T* dy,
+                                        AccT* ds,
+                                        AccT* db,
+                                        int64_t total_groups) {
+  for (int64_t nc = blockIdx.x; nc < total_groups; nc += gridDim.x) {
+    AccT ds_sum = 0;
+    AccT db_sum = 0;
+    for (int64_t i = threadIdx.x; i < imsize; i += blockDim.x) {
+      const int64_t index = nc * imsize + i;
+      ds_sum += static_cast<AccT>(dy[index]) * static_cast<AccT>(x[index]);
+      db_sum += static_cast<AccT>(dy[index]);
+    }
+    ReduceMeanAndVar<AccT>(db, ds, db_sum, ds_sum, 1, nc);
+  }
+}
+
+template <typename T, typename AccT>
+__global__ void GetScaleBiasGradientCUDAKernel(int64_t N,
+                                               int64_t C,
+                                               int group,
+                                               double epsilon,
+                                               const AccT* mean,
+                                               const AccT* var,
+                                               const AccT* ds,
+                                               const AccT* db,
+                                               T* d_scale,
+                                               T* d_bias) {
+  for (int64_t c =
+           static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+           static_cast<int64_t>(threadIdx.x);
+       c < C;
+       c += gridDim.x * blockDim.x) {
+    if (c < C) {
+      const int G = group;
+      const int64_t D = C / G;
+      AccT sum1 = static_cast<AccT>(0);
+      AccT sum2 = static_cast<AccT>(0);
+      for (int64_t n = 0; n < N; ++n) {
+        const int64_t nc = n * C + c;
+        const int64_t ng = n * G + c / D;
+        sum1 += (d_scale == nullptr) ? AccT(0)
+                                     : ((ds[nc] - db[nc] * (mean[ng])) *
+                                        (rsqrt((var[ng]) + epsilon)));
+        sum2 += (d_bias == nullptr) ? AccT(0) : db[nc];
+      }
+      if (d_scale != nullptr) {
+        d_scale[c] = static_cast<T>(sum1);
+      }
+      if (d_bias != nullptr) {
+        d_bias[c] = static_cast<T>(sum2);
+      }
+    }
+  }
+}
+
+template <typename T, typename AccT, int BlockDim>
+__global__ void GetBackwardParamsCUDAKernel(int64_t N,
+                                            int64_t imsize,
+                                            int groups,
+                                            int64_t group_size,
+                                            double epsilon,
+                                            const AccT* mean,
+                                            const AccT* var,
+                                            const T* scale,
+                                            const AccT* ds,
+                                            const AccT* db,
+                                            AccT* p1,
+                                            AccT* p2,
+                                            AccT* p3) {
+  for (int64_t n = blockIdx.x; n < N; n += gridDim.x) {
+    const int g = blockIdx.y;
+    const int64_t ng = n * groups + g;
+    AccT sum1 = 0;
+    AccT sum2 = 0;
+    AccT var_inv = rsqrt(static_cast<AccT>(var[ng]) + epsilon);
+    for (int64_t i = threadIdx.x; i < group_size; i += blockDim.x) {
+      const int64_t index = ng * group_size + i;
+      const int64_t c = g * group_size + i;
+      const AccT scale_v =
+          scale == nullptr ? static_cast<AccT>(1) : static_cast<AccT>(scale[c]);
+      sum1 += static_cast<AccT>(ds[index]) * scale_v;
+      sum2 += static_cast<AccT>(db[index]) * scale_v;
+      const AccT scale_c =
+          scale == nullptr ? static_cast<AccT>(0) : static_cast<AccT>(scale[c]);
+      p1[index] = static_cast<AccT>(scale_c) * var_inv;
+    }
+
+    typedef cub::BlockReduce<AccT, BlockDim> BlockReduce;
+    __shared__ typename BlockReduce::TempStorage ds_storage;
+    __shared__ typename BlockReduce::TempStorage db_storage;
+    sum1 = BlockReduce(ds_storage).Reduce(sum1, cub::Sum());
+    sum2 = BlockReduce(db_storage).Reduce(sum2, cub::Sum());
+
+    if (threadIdx.x == 0) {
+      const AccT s =
+          static_cast<AccT>(1) / static_cast<AccT>(group_size * imsize);
+      const AccT x = (sum2 * static_cast<AccT>(mean[ng]) - sum1) * (var_inv) *
+                     (var_inv) * (var_inv)*s;
+      p2[ng] = x;
+      p3[ng] = -x * (mean[ng]) - (sum2 * var_inv) * s;
+    }
+  }
+}
+
+template <typename T, typename AccT>
+__global__ void GetXGradientCUDAKernel(int64_t N,
+                                       int64_t imsize,
+                                       int64_t C,
+                                       int64_t group_size,
+                                       int groups,
+                                       AccT* p1,
+                                       AccT* p2,
+                                       AccT* p3,
+                                       const T* x,
+                                       const T* dy,
+                                       T* dx) {
+  int gid = blockIdx.y;
+  for (int64_t cid = blockIdx.x; cid < group_size; cid += gridDim.x) {
+    for (int64_t bid = blockIdx.z; bid < N; bid += gridDim.z) {
+      int64_t ccid = bid * C + gid * group_size + cid;
+      int64_t ng = bid * groups + gid;
+      int64_t nc = gid * group_size + cid;
+      for (int64_t imid = threadIdx.x; imid < imsize; imid += blockDim.x) {
+        int64_t index = (bid * C + nc) * imsize + imid;
+        dx[index] =
+            static_cast<T>(p1[ccid] * static_cast<AccT>(dy[index]) +
+                           p2[ng] * static_cast<AccT>(x[index]) + p3[ng]);
+      }
+    }
+  }
+}
+
 template <typename T, typename Context>
 void GroupNormGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
@@ -538,129 +680,219 @@ void GroupNormGradKernel(const Context& dev_ctx,
   }
 
   if (data_layout == DataLayout::NCHW) {
-    // =========================================================
-    // PyTorch-aligned NCHW backward path
-    // =========================================================
-    const int64_t HxW = imsize;
+    if (FLAGS_use_accuracy_compatible_kernel) {
+      // =========================================================
+      // PyTorch-aligned NCHW backward path
+      // =========================================================
+      const int64_t HxW = imsize;
 
-    // Stage 1: Compute internal gradients ds[n,c] = sum_hw(dY*X),
-    //          db[n,c] = sum_hw(dY)
-    DenseTensor ds_tensor, db_tensor;
-    ds_tensor.Resize({N, C});
-    db_tensor.Resize({N, C});
-    AccT* ds_data = dev_ctx.template Alloc<AccT>(&ds_tensor);
-    AccT* db_data = dev_ctx.template Alloc<AccT>(&db_tensor);
+      // Stage 1: Compute internal gradients ds[n,c] = sum_hw(dY*X),
+      //          db[n,c] = sum_hw(dY)
+      DenseTensor ds_tensor, db_tensor;
+      ds_tensor.Resize({N, C});
+      db_tensor.Resize({N, C});
+      AccT* ds_data = dev_ctx.template Alloc<AccT>(&ds_tensor);
+      AccT* db_data = dev_ctx.template Alloc<AccT>(&db_tensor);
 
-    {
-      int64_t num_threads =
-          HxW < kGradBlockReduceNumThreads ? 32 : kGradBlockReduceNumThreads;
-      ComputeInternalGradientsCUDAKernel<T, AccT>
-          <<<N * C, num_threads, 0, dev_ctx.stream()>>>(
-              HxW, dy_data, x_data, ds_data, db_data);
-    }
-
-    // Stage 2+3+4: Compute dX
-    if (d_x_data != nullptr) {
-      DenseTensor c2_tensor, c3_tensor;
-      c2_tensor.Resize({N, G});
-      c3_tensor.Resize({N, G});
-      AccT* c2_data = dev_ctx.template Alloc<AccT>(&c2_tensor);
-      AccT* c3_data = dev_ctx.template Alloc<AccT>(&c3_tensor);
-
-      // Stage 2: Compute backward fused params c2, c3
       {
         int64_t num_threads =
-            D < kGradBlockReduceNumThreads ? 32 : kGradBlockReduceNumThreads;
-        ComputeBackwardFusedParamsCUDAKernel<T, AccT>
-            <<<dim3(N, G), num_threads, 0, dev_ctx.stream()>>>(
-                C,
-                HxW,
-                G,
-                mean_data,
-                var_data,
-                scale_data,
-                ds_data,
-                db_data,
-                static_cast<AccT>(epsilon),
-                c2_data,
-                c3_data);
+            HxW < kGradBlockReduceNumThreads ? 32 : kGradBlockReduceNumThreads;
+        ComputeInternalGradientsCUDAKernel<T, AccT>
+            <<<N * C, num_threads, 0, dev_ctx.stream()>>>(
+                HxW, dy_data, x_data, ds_data, db_data);
       }
 
-      // Stage 4: dX = c1 * dY + c2 * X + c3
+      // Stage 2+3+4: Compute dX
+      if (d_x_data != nullptr) {
+        DenseTensor c2_tensor, c3_tensor;
+        c2_tensor.Resize({N, G});
+        c3_tensor.Resize({N, G});
+        AccT* c2_data = dev_ctx.template Alloc<AccT>(&c2_tensor);
+        AccT* c3_data = dev_ctx.template Alloc<AccT>(&c3_tensor);
+
+        // Stage 2: Compute backward fused params c2, c3
+        {
+          int64_t num_threads =
+              D < kGradBlockReduceNumThreads ? 32 : kGradBlockReduceNumThreads;
+          ComputeBackwardFusedParamsCUDAKernel<T, AccT>
+              <<<dim3(N, G), num_threads, 0, dev_ctx.stream()>>>(
+                  C,
+                  HxW,
+                  G,
+                  mean_data,
+                  var_data,
+                  scale_data,
+                  ds_data,
+                  db_data,
+                  static_cast<AccT>(epsilon),
+                  c2_data,
+                  c3_data);
+        }
+
+        // Stage 4: dX = c1 * dY + c2 * X + c3
+        int64_t max_grid_x = dev_ctx.GetCUDAMaxGridDimSize()[0];
+        if (scale_data != nullptr) {
+          const int64_t total = N * C * HxW;
+          constexpr int64_t kElemThreads = 256;
+          const int64_t elem_blocks =
+              std::min((total + kElemThreads - 1) / kElemThreads, max_grid_x);
+          GroupNormBackwardDxCUDAKernel<T, AccT>
+              <<<elem_blocks, kElemThreads, 0, dev_ctx.stream()>>>(
+                  N * C,
+                  HxW,
+                  C,
+                  G,
+                  dy_data,
+                  x_data,
+                  mean_data,
+                  var_data,
+                  scale_data,
+                  c2_data,
+                  c3_data,
+                  static_cast<AccT>(epsilon),
+                  d_x_data);
+        } else {
+          const int64_t D_HxW = D * HxW;
+          const int64_t total = N * G * D_HxW;
+          constexpr int64_t kElemThreads = 256;
+          const int64_t elem_blocks =
+              std::min((total + kElemThreads - 1) / kElemThreads, max_grid_x);
+          GroupNormBackwardDxNoGammaCUDAKernel<T, AccT>
+              <<<elem_blocks, kElemThreads, 0, dev_ctx.stream()>>>(
+                  N * G,
+                  D_HxW,
+                  dy_data,
+                  x_data,
+                  var_data,
+                  c2_data,
+                  c3_data,
+                  static_cast<AccT>(epsilon),
+                  d_x_data);
+        }
+      }
+
+      // Stage 5: dgamma/dbeta
+      if (d_scale || d_bias) {
+        if (N <= 128) {
+          constexpr int kNumThreads = 256;
+          const int64_t B = (C + kNumThreads - 1) / kNumThreads;
+          GammaBetaBackwardCUDAKernel1<T, AccT>
+              <<<B, kNumThreads, 0, dev_ctx.stream()>>>(
+                  N,
+                  C,
+                  G,
+                  mean_data,
+                  var_data,
+                  ds_data,
+                  db_data,
+                  static_cast<AccT>(epsilon),
+                  d_scale_data,
+                  d_bias_data);
+        } else {
+          const int64_t B = (C + kGradReduceTileSize - 1) / kGradReduceTileSize;
+          constexpr int kThreadX = kGradReduceTileSize;
+          constexpr int kThreadY = kGradReduceTileSize / 2;
+          GammaBetaBackwardCUDAKernel2<T, AccT>
+              <<<B, dim3(kThreadX, kThreadY), 0, dev_ctx.stream()>>>(
+                  N,
+                  C,
+                  G,
+                  mean_data,
+                  var_data,
+                  ds_data,
+                  db_data,
+                  static_cast<AccT>(epsilon),
+                  d_scale_data,
+                  d_bias_data);
+        }
+      }
+    } else {
+      // =========================================================
+      // Original high-performance NCHW backward path
+      // =========================================================
+      int block_size = std::min(static_cast<int64_t>(1024), imsize);
       int64_t max_grid_x = dev_ctx.GetCUDAMaxGridDimSize()[0];
-      if (scale_data != nullptr) {
-        const int64_t total = N * C * HxW;
-        constexpr int64_t kElemThreads = 256;
-        const int64_t elem_blocks =
-            std::min((total + kElemThreads - 1) / kElemThreads, max_grid_x);
-        GroupNormBackwardDxCUDAKernel<T, AccT>
-            <<<elem_blocks, kElemThreads, 0, dev_ctx.stream()>>>(
-                N * C,
-                HxW,
-                C,
-                G,
-                dy_data,
-                x_data,
-                mean_data,
-                var_data,
-                scale_data,
-                c2_data,
-                c3_data,
-                static_cast<AccT>(epsilon),
-                d_x_data);
-      } else {
-        const int64_t D_HxW = D * HxW;
-        const int64_t total = N * G * D_HxW;
-        constexpr int64_t kElemThreads = 256;
-        const int64_t elem_blocks =
-            std::min((total + kElemThreads - 1) / kElemThreads, max_grid_x);
-        GroupNormBackwardDxNoGammaCUDAKernel<T, AccT>
-            <<<elem_blocks, kElemThreads, 0, dev_ctx.stream()>>>(
-                N * G,
-                D_HxW,
-                dy_data,
-                x_data,
-                var_data,
-                c2_data,
-                c3_data,
-                static_cast<AccT>(epsilon),
-                d_x_data);
-      }
-    }
+      int64_t max_grid_z = dev_ctx.GetCUDAMaxGridDimSize()[2];
+      dim3 grid(
+          std::min(max_grid_x, group_size), groups, std::min(max_grid_z, N));
+      dim3 threads(block_size, 1, 1);
 
-    // Stage 5: dgamma/dbeta
-    if (d_scale || d_bias) {
-      if (N <= 128) {
-        constexpr int kNumThreads = 256;
-        const int64_t B = (C + kNumThreads - 1) / kNumThreads;
-        GammaBetaBackwardCUDAKernel1<T, AccT>
-            <<<B, kNumThreads, 0, dev_ctx.stream()>>>(
-                N,
-                C,
-                G,
-                mean_data,
-                var_data,
-                ds_data,
-                db_data,
-                static_cast<AccT>(epsilon),
-                d_scale_data,
-                d_bias_data);
-      } else {
-        const int64_t B = (C + kGradReduceTileSize - 1) / kGradReduceTileSize;
-        constexpr int kThreadX = kGradReduceTileSize;
-        constexpr int kThreadY = kGradReduceTileSize / 2;
-        GammaBetaBackwardCUDAKernel2<T, AccT>
-            <<<B, dim3(kThreadX, kThreadY), 0, dev_ctx.stream()>>>(
-                N,
-                C,
-                G,
-                mean_data,
-                var_data,
-                ds_data,
-                db_data,
-                static_cast<AccT>(epsilon),
-                d_scale_data,
-                d_bias_data);
+      DenseTensor ds, db;
+      ds.Resize({N, C});
+      AccT* ds_data = dev_ctx.template Alloc<AccT>(&ds);
+      db.Resize({N, C});
+      AccT* db_data = dev_ctx.template Alloc<AccT>(&db);
+
+      const int max_num_threads = 1024;
+      int max_block_size =
+          std::min(imsize, static_cast<int64_t>(max_num_threads));
+      int block_size_nchw = 1;
+      while (block_size_nchw < max_block_size) {
+        block_size_nchw *= 2;
+      }
+      block_size_nchw = std::max(block_size_nchw, kps::details::kWarpSize);
+      dim3 blocks(block_size_nchw);
+      ScalarGetDsDbCUDAKernel<T, AccT>
+          <<<std::min(N * C, max_grid_x), blocks, 0, dev_ctx.stream()>>>(
+              imsize, x_data, dy_data, ds_data, db_data, N * C);
+
+      if (d_scale || d_bias) {
+        const int block = 256;
+        GetScaleBiasGradientCUDAKernel<T, AccT>
+            <<<std::min(max_grid_x, (C + block - 1) / block),
+               block,
+               0,
+               dev_ctx.stream()>>>(N,
+                                   C,
+                                   groups,
+                                   epsilon,
+                                   mean_data,
+                                   var_data,
+                                   ds_data,
+                                   db_data,
+                                   d_scale_data,
+                                   d_bias_data);
+      }
+
+      if (d_x_data != nullptr) {
+        // p1 * dy + p2 * x + p3
+        DenseTensor p1, p2, p3;
+        p1.Resize({N * C});
+        AccT* p1_data = dev_ctx.template Alloc<AccT>(&p1);
+        p2.Resize({N, groups});
+        AccT* p2_data = dev_ctx.template Alloc<AccT>(&p2);
+        p3.Resize({N, groups});
+        AccT* p3_data = dev_ctx.template Alloc<AccT>(&p3);
+
+        GetBackwardParamsCUDAKernel<T, AccT, 1024>
+            <<<dim3(std::min(N, max_grid_x), groups),
+               1024,
+               0,
+               dev_ctx.stream()>>>(N,
+                                   imsize,
+                                   groups,
+                                   group_size,
+                                   epsilon,
+                                   mean_data,
+                                   var_data,
+                                   scale_data,
+                                   ds_data,
+                                   db_data,
+                                   p1_data,
+                                   p2_data,
+                                   p3_data);
+        GetXGradientCUDAKernel<T, AccT>
+            <<<grid, threads, 0, dev_ctx.stream()>>>(N,
+                                                     imsize,
+                                                     C,
+                                                     group_size,
+                                                     groups,
+                                                     p1_data,
+                                                     p2_data,
+                                                     p3_data,
+                                                     x_data,
+                                                     dy_data,
+                                                     d_x_data);
       }
     }
   } else {
