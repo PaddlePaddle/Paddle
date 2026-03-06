@@ -119,17 +119,27 @@ class TestEmptyCache(TestCase):
         """Test that empty_cache works after memory allocation."""
         if paddle.cuda.device_count() > 0:
             # Get initial memory state
-            initial_memory = paddle.cuda.memory_allocated()
+            initial_allocated = paddle.cuda.memory_allocated()
+            initial_reserved = paddle.cuda.memory_reserved()
 
             # Allocate some memory
             tensor = paddle.randn([1000, 1000])
-            allocated_memory = paddle.cuda.memory_allocated()
+            after_allocated = paddle.cuda.memory_allocated()
+            after_reserved = paddle.cuda.memory_reserved()
 
-            # Verify that memory was actually allocated
-            self.assertGreater(
-                allocated_memory,
-                initial_memory,
-                "Memory should increase after tensor allocation",
+            # Verify that memory was actually allocated.
+            # When FLAGS_use_system_allocator=1, memory_allocated() may not
+            # track allocations (returns 0) because the system allocator
+            # bypasses StatAllocator's tracking. In that case, fall back to
+            # checking memory_reserved() which is always tracked by the
+            # underlying CUDAAllocator via RecordedGpuMalloc.
+            allocated_increased = after_allocated > initial_allocated
+            reserved_increased = after_reserved > initial_reserved
+            self.assertTrue(
+                allocated_increased or reserved_increased,
+                "Memory should increase after tensor allocation "
+                f"(allocated: {initial_allocated} -> {after_allocated}, "
+                f"reserved: {initial_reserved} -> {after_reserved})",
             )
 
             # Delete tensor and empty cache
@@ -137,15 +147,23 @@ class TestEmptyCache(TestCase):
             paddle.cuda.empty_cache()
 
             # Check memory after empty_cache
-            final_memory = paddle.cuda.memory_allocated()
+            final_allocated = paddle.cuda.memory_allocated()
+            final_reserved = paddle.cuda.memory_reserved()
 
             # Memory should be reduced after empty_cache
             # Note: We allow some tolerance as memory management may not free everything immediately
-            self.assertLessEqual(
-                final_memory,
-                allocated_memory,
-                "Memory should be reduced after empty_cache",
-            )
+            if allocated_increased:
+                self.assertLessEqual(
+                    final_allocated,
+                    after_allocated,
+                    "Allocated memory should be reduced after empty_cache",
+                )
+            if reserved_increased:
+                self.assertLessEqual(
+                    final_reserved,
+                    after_reserved,
+                    "Reserved memory should be reduced after empty_cache",
+                )
 
 
 class TestIsInitialized(TestCase):
