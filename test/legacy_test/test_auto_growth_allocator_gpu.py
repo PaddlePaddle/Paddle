@@ -32,6 +32,12 @@ def _run_test_case(plan, flags, cuda_visible_devices="0"):
         os.path.dirname(__file__), "auto_growth_allocator_gpu.py"
     )
     env = os.environ.copy()
+    # Remove allocator-related FLAGS inherited from the parent process so that
+    # the subprocess uses the auto_growth allocator as intended by the test.
+    # Tests pass their desired FLAGS via FLAGS_JSON instead.
+    for key in list(env.keys()):
+        if key.startswith("FLAGS_") and key not in ("FLAGS_JSON",):
+            env.pop(key, None)
     env["CUDA_VISIBLE_DEVICES"] = cuda_visible_devices
     env["FLAGS_JSON"] = json.dumps(flags)
     env.setdefault("PYTHONUNBUFFERED", "1")
