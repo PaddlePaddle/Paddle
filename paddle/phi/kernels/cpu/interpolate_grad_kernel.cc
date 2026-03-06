@@ -34,7 +34,7 @@ namespace phi {
 template <typename T>
 static void LinearInterpolationGrad(const DenseTensor& output_grad,
                                     DenseTensor* input_grad,
-                                    const float ratio_w,
+                                    const double ratio_w,
                                     const int64_t in_w,
                                     const int64_t n,
                                     const int64_t c,
@@ -45,32 +45,57 @@ static void LinearInterpolationGrad(const DenseTensor& output_grad,
   auto input_grad_t = EigenTensor<T, 3>::From(*input_grad);
   auto output_grad_t = EigenTensor<T, 3>::From(output_grad);
   bool align_flag = (align_mode == 0 && !align_corners);
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-  for (int l = 0; l < out_w; l++) {
-    int x_w = static_cast<int>(align_flag ? (ratio_w * (l + 0.5) - 0.5)
-                                          : (ratio_w * static_cast<float>(l)));
-    x_w = (x_w > 0) ? x_w : 0;                       // w
-    int x_e = (x_w < (in_w - 1)) ? (x_w + 1) : x_w;  // w_id
+  using MT =
+      typename std::conditional_t<std::is_integral<T>::value,
+                                  float,
+                                  typename phi::dtype::MPTypeTrait<T>::Type>;
+  MT ratio_w_mt = static_cast<MT>(ratio_w);
 
-    float idx_src_x = ratio_w * (static_cast<float>(l) + 0.5f) - 0.5f;
-    idx_src_x = (idx_src_x > 0) ? idx_src_x : 0;
-    float d_w = static_cast<float>(
-        align_flag ? idx_src_x - static_cast<float>(x_w)
-                   : ratio_w * static_cast<float>(l) -
-                         static_cast<float>(x_w));  // w1lambda
-    float d_e = 1.f - d_w;                          // w2lambda
+  for (int l = 0; l < out_w; l++) {
+    int x_w, x_e;
+    MT d_w, d_e;
+    if (in_w == out_w) {
+      // Identity case
+      x_w = l;
+      x_e = l;
+      d_w = MT(0);
+      d_e = MT(1);
+    } else {
+      MT real_input_index;
+      if (align_flag) {
+        real_input_index =
+            ratio_w_mt * (l + static_cast<MT>(0.5)) - static_cast<MT>(0.5);
+      } else if (align_corners) {
+        real_input_index = ratio_w_mt * l;
+      } else {
+        real_input_index = ratio_w_mt * l;
+      }
+      // Match PyTorch: clamp negative source index to 0 for non-cubic modes
+      if (real_input_index < MT(0)) {
+        real_input_index = MT(0);
+      }
+      // guard_index_and_lambda equivalent
+      x_w = std::min(static_cast<int>(std::floor(real_input_index)),
+                     static_cast<int>(in_w - 1));
+      d_w = std::min(
+          std::max(static_cast<MT>(real_input_index - static_cast<MT>(x_w)),
+                   static_cast<MT>(0)),
+          static_cast<MT>(1));
+      d_e = static_cast<MT>(1) - d_w;
+      x_e = (x_w < in_w - 1) ? x_w + 1 : x_w;
+    }
 
     for (int i = 0; i < n; i++) {    // loop for batches
       for (int j = 0; j < c; j++) {  // loop for channels
         // linear interpolation grad
         if (data_layout == DataLayout::NCHW) {
           const MT grad = static_cast<MT>(output_grad_t(i, j, l));
-          input_grad_t(i, j, x_w) += static_cast<T>(grad * d_e);
-          input_grad_t(i, j, x_e) += static_cast<T>(grad * d_w);
+          input_grad_t(i, j, x_w) += static_cast<T>(d_e * grad);
+          input_grad_t(i, j, x_e) += static_cast<T>(d_w * grad);
         } else {
           const MT grad = static_cast<MT>(output_grad_t(i, l, j));
-          input_grad_t(i, x_w, j) += static_cast<T>(grad * d_e);
-          input_grad_t(i, x_e, j) += static_cast<T>(grad * d_w);
+          input_grad_t(i, x_w, j) += static_cast<T>(d_e * grad);
+          input_grad_t(i, x_e, j) += static_cast<T>(d_w * grad);
         }
       }
     }
@@ -80,8 +105,8 @@ static void LinearInterpolationGrad(const DenseTensor& output_grad,
 template <typename T>
 static void BilinearInterpolationGrad(const DenseTensor& output_grad,
                                       DenseTensor* input_grad,
-                                      const float ratio_h,
-                                      const float ratio_w,
+                                      const double ratio_h,
+                                      const double ratio_w,
                                       const int64_t in_h,
                                       const int64_t in_w,
                                       const int64_t n,
@@ -95,48 +120,114 @@ static void BilinearInterpolationGrad(const DenseTensor& output_grad,
   auto output_grad_t = EigenTensor<T, 4>::From(output_grad);
   bool align_flag = (align_mode == 0 && !align_corners);
 
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT =
+      typename std::conditional_t<std::is_integral<T>::value,
+                                  float,
+                                  typename phi::dtype::MPTypeTrait<T>::Type>;
+  MT ratio_h_mt = static_cast<MT>(ratio_h);
+  MT ratio_w_mt = static_cast<MT>(ratio_w);
 
-  for (int k = 0; k < out_h; k++) {  // loop for images
-    int y_n = static_cast<int>(align_flag ? (ratio_h * (k + 0.5) - 0.5)
-                                          : (ratio_h * static_cast<float>(k)));
-    y_n = (y_n > 0) ? y_n : 0;
-    int y_s = (y_n + 1) < (in_h - 1) ? (y_n + 1) : (in_h - 1);
-    float idx_src_y = ratio_h * (static_cast<float>(k) + 0.5f) - 0.5f;
-    idx_src_y = (idx_src_y > 0) ? idx_src_y : 0;
-    float d_n = align_flag
-                    ? idx_src_y - static_cast<float>(y_n)
-                    : ratio_h * static_cast<float>(k) - static_cast<float>(y_n);
-    float d_s = 1.f - d_n;
+  // Pre-compute height indices and weights
+  std::vector<int> vy_n(out_h), vy_s(out_h);
+  std::vector<MT> vd_n(out_h), vd_s(out_h);
+  for (int k = 0; k < out_h; k++) {
+    if (in_h == out_h) {
+      vy_n[k] = k;
+      vy_s[k] = k;
+      vd_n[k] = MT(0);
+      vd_s[k] = MT(1);
+    } else {
+      MT real_input_index;
+      if (align_flag) {
+        real_input_index =
+            ratio_h_mt * (k + static_cast<MT>(0.5)) - static_cast<MT>(0.5);
+      } else if (align_corners) {
+        real_input_index = ratio_h_mt * k;
+      } else {
+        real_input_index = ratio_h_mt * k;
+      }
+      if (real_input_index < MT(0)) {
+        real_input_index = MT(0);
+      }
+      int y_n = std::min(static_cast<int>(std::floor(real_input_index)),
+                         static_cast<int>(in_h - 1));
+      MT d_n = std::min(
+          std::max(static_cast<MT>(real_input_index - static_cast<MT>(y_n)),
+                   static_cast<MT>(0)),
+          static_cast<MT>(1));
+      MT d_s = static_cast<MT>(1) - d_n;
+      int y_s = (y_n < in_h - 1) ? y_n + 1 : y_n;
 
+      vy_n[k] = y_n;
+      vy_s[k] = y_s;
+      vd_n[k] = d_n;
+      vd_s[k] = d_s;
+    }
+  }
+
+  // Pre-compute width indices and weights
+  std::vector<int> vx_w(out_w), vx_e(out_w);
+  std::vector<MT> vd_w(out_w), vd_e(out_w);
+  for (int l = 0; l < out_w; l++) {
+    if (in_w == out_w) {
+      vx_w[l] = l;
+      vx_e[l] = l;
+      vd_w[l] = MT(0);
+      vd_e[l] = MT(1);
+    } else {
+      MT real_input_index;
+      if (align_flag) {
+        real_input_index =
+            ratio_w_mt * (l + static_cast<MT>(0.5)) - static_cast<MT>(0.5);
+      } else if (align_corners) {
+        real_input_index = ratio_w_mt * l;
+      } else {
+        real_input_index = ratio_w_mt * l;
+      }
+      if (real_input_index < MT(0)) {
+        real_input_index = MT(0);
+      }
+      int x_w = std::min(static_cast<int>(std::floor(real_input_index)),
+                         static_cast<int>(in_w - 1));
+      MT d_w = std::min(
+          std::max(static_cast<MT>(real_input_index - static_cast<MT>(x_w)),
+                   static_cast<MT>(0)),
+          static_cast<MT>(1));
+      MT d_e = static_cast<MT>(1) - d_w;
+      int x_e = (x_w < in_w - 1) ? x_w + 1 : x_w;
+
+      vx_w[l] = x_w;
+      vx_e[l] = x_e;
+      vd_w[l] = d_w;
+      vd_e[l] = d_e;
+    }
+  }
+
+  for (int k = 0; k < out_h; k++) {
     for (int l = 0; l < out_w; l++) {
-      int x_w = static_cast<int>(
-          align_flag ? (ratio_w * (static_cast<float>(l) + 0.5f) - 0.5f)
-                     : (ratio_w * static_cast<float>(l)));
-      x_w = (x_w > 0) ? x_w : 0;
-      int x_e = (x_w + 1) < (in_w - 1) ? (x_w + 1) : (in_w - 1);
-      float idx_src_x = ratio_w * (static_cast<float>(l) + 0.5f) - 0.5f;
-      idx_src_x = (idx_src_x > 0) ? idx_src_x : 0;
-      float d_w = align_flag ? idx_src_x - static_cast<float>(x_w)
-                             : ratio_w * static_cast<float>(l) -
-                                   static_cast<float>(x_w);
-      float d_e = 1.f - d_w;
-
       for (int i = 0; i < n; i++) {    // loop for batches
         for (int j = 0; j < c; j++) {  // loop for channels
           // bilinear interpolation grad
           if (data_layout == DataLayout::NCHW) {
             const MT grad = static_cast<MT>(output_grad_t(i, j, k, l));
-            input_grad_t(i, j, y_n, x_w) += static_cast<T>(grad * d_s * d_e);
-            input_grad_t(i, j, y_s, x_w) += static_cast<T>(grad * d_n * d_e);
-            input_grad_t(i, j, y_n, x_e) += static_cast<T>(grad * d_s * d_w);
-            input_grad_t(i, j, y_s, x_e) += static_cast<T>(grad * d_n * d_w);
+            input_grad_t(i, j, vy_n[k], vx_w[l]) +=
+                static_cast<T>(vd_s[k] * vd_e[l] * grad);
+            input_grad_t(i, j, vy_s[k], vx_w[l]) +=
+                static_cast<T>(vd_n[k] * vd_e[l] * grad);
+            input_grad_t(i, j, vy_n[k], vx_e[l]) +=
+                static_cast<T>(vd_s[k] * vd_w[l] * grad);
+            input_grad_t(i, j, vy_s[k], vx_e[l]) +=
+                static_cast<T>(vd_n[k] * vd_w[l] * grad);
           } else {
             const MT grad = static_cast<MT>(output_grad_t(i, k, l, j));
-            input_grad_t(i, y_n, x_w, j) += static_cast<T>(grad * d_s * d_e);
-            input_grad_t(i, y_s, x_w, j) += static_cast<T>(grad * d_n * d_e);
-            input_grad_t(i, y_n, x_e, j) += static_cast<T>(grad * d_s * d_w);
-            input_grad_t(i, y_s, x_e, j) += static_cast<T>(grad * d_n * d_w);
+            input_grad_t(i, vy_n[k], vx_w[l], j) +=
+                static_cast<T>(vd_s[k] * vd_e[l] * grad);
+            input_grad_t(i, vy_s[k], vx_w[l], j) +=
+                static_cast<T>(vd_n[k] * vd_e[l] * grad);
+            input_grad_t(i, vy_n[k], vx_e[l], j) +=
+                static_cast<T>(vd_s[k] * vd_w[l] * grad);
+            input_grad_t(i, vy_s[k], vx_e[l], j) +=
+                static_cast<T>(vd_n[k] * vd_w[l] * grad);
           }
         }
       }
@@ -184,8 +275,8 @@ static void NearestNeighborInterpolateGrad(const DenseTensor& output_grad,
 template <typename T>
 static void BicubicInterpolationGrad(const DenseTensor& output_grad,
                                      DenseTensor* input_grad,
-                                     const float ratio_h,
-                                     const float ratio_w,
+                                     const double ratio_h,
+                                     const double ratio_w,
                                      const int64_t in_h,
                                      const int64_t in_w,
                                      const int64_t n,
@@ -196,19 +287,26 @@ static void BicubicInterpolationGrad(const DenseTensor& output_grad,
                                      const DataLayout data_layout) {
   auto input_grad_t = EigenTensor<T, 4>::From(*input_grad);
   auto output_grad_t = EigenTensor<T, 4>::From(output_grad);
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT =
+      typename std::conditional_t<std::is_integral<T>::value,
+                                  float,
+                                  typename phi::dtype::MPTypeTrait<T>::Type>;
+  MT ratio_h_mt = static_cast<MT>(ratio_h);
+  MT ratio_w_mt = static_cast<MT>(ratio_w);
 
   for (int k = 0; k < out_h; k++) {  // loop for images
-    MT y_n = align_corners ? ratio_h * static_cast<float>(k)
-                           : ratio_h * (static_cast<float>(k) + 0.5f) - 0.5f;
-    int64_t input_y = floorf(y_n);
-    MT y_t = y_n - input_y;
+    MT y_n = align_corners
+                 ? ratio_h_mt * static_cast<MT>(k)
+                 : ratio_h_mt * (static_cast<MT>(k) + MT(0.5)) - MT(0.5);
+    int64_t input_y = static_cast<int64_t>(std::floor(y_n));
+    MT y_t = y_n - static_cast<MT>(input_y);
 
     for (int l = 0; l < out_w; l++) {
-      MT x_n = align_corners ? ratio_w * static_cast<float>(l)
-                             : ratio_w * (static_cast<float>(l) + 0.5f) - 0.5f;
-      int64_t input_x = floorf(x_n);
-      MT x_t = x_n - input_x;
+      MT x_n = align_corners
+                   ? ratio_w_mt * static_cast<MT>(l)
+                   : ratio_w_mt * (static_cast<MT>(l) + MT(0.5)) - MT(0.5);
+      int64_t input_x = static_cast<int64_t>(std::floor(x_n));
+      MT x_t = x_n - static_cast<MT>(input_x);
 
       std::array<MT, 4> x_coeffs;
       std::array<MT, 4> y_coeffs;
@@ -245,9 +343,9 @@ static void BicubicInterpolationGrad(const DenseTensor& output_grad,
 template <typename T>
 static void TrilinearInterpolationGrad(const DenseTensor& output_grad,
                                        DenseTensor* input_grad,
-                                       const float ratio_d,
-                                       const float ratio_h,
-                                       const float ratio_w,
+                                       const double ratio_d,
+                                       const double ratio_h,
+                                       const double ratio_w,
                                        const int64_t in_d,
                                        const int64_t in_h,
                                        const int64_t in_w,
@@ -262,85 +360,161 @@ static void TrilinearInterpolationGrad(const DenseTensor& output_grad,
   auto input_grad_t = EigenTensor<T, 5>::From(*input_grad);
   auto output_grad_t = EigenTensor<T, 5>::From(output_grad);
   bool align_flag = (align_mode == 0 && !align_corners);
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-  for (int j = 0; j < out_d; j++) {  // loop for D
-    int t_f = static_cast<int>(
-        align_flag ? (ratio_d * (static_cast<float>(j) + 0.5f) - 0.5f)
-                   : (ratio_d * static_cast<float>(j)));
-    t_f = (t_f > 0) ? t_f : 0;
-    int t_b = (t_f + 1) < (in_d - 1) ? (t_f + 1) : (in_d - 1);
-    float idx_src_t = ratio_d * (static_cast<float>(j) + 0.5f) - 0.5f;
-    idx_src_t = (idx_src_t > 0) ? idx_src_t : 0;
-    float d_f = align_flag
-                    ? idx_src_t - static_cast<float>(t_f)
-                    : ratio_d * static_cast<float>(j) - static_cast<float>(t_f);
-    float d_b = 1.f - d_f;
+  using MT =
+      typename std::conditional_t<std::is_integral<T>::value,
+                                  float,
+                                  typename phi::dtype::MPTypeTrait<T>::Type>;
+  MT ratio_d_mt = static_cast<MT>(ratio_d);
+  MT ratio_h_mt = static_cast<MT>(ratio_h);
+  MT ratio_w_mt = static_cast<MT>(ratio_w);
 
-    for (int k = 0; k < out_h; k++) {  // loop for H
-      int y_n = static_cast<int>(
-          align_flag ? (ratio_h * (static_cast<float>(k) + 0.5f) - 0.5f)
-                     : (ratio_h * static_cast<float>(k)));
-      y_n = (y_n > 0) ? y_n : 0;
-      int y_s = (y_n + 1) < (in_h - 1) ? (y_n + 1) : (in_h - 1);
-      float idx_src_y = ratio_h * (static_cast<float>(k) + 0.5f) - 0.5f;
-      idx_src_y = (idx_src_y > 0) ? idx_src_y : 0;
-      float d_n = align_flag ? idx_src_y - static_cast<float>(y_n)
-                             : ratio_h * static_cast<float>(k) -
-                                   static_cast<float>(y_n);
-      float d_s = 1.f - d_n;
+  // Pre-compute depth indices and weights
+  std::vector<int> vt_f(out_d), vt_b(out_d);
+  std::vector<MT> vd_f(out_d), vd_b(out_d);
+  for (int j = 0; j < out_d; j++) {
+    if (in_d == out_d) {
+      vt_f[j] = j;
+      vt_b[j] = j;
+      vd_f[j] = MT(0);
+      vd_b[j] = MT(1);
+    } else {
+      MT real_input_index;
+      if (align_flag) {
+        real_input_index =
+            ratio_d_mt * (j + static_cast<MT>(0.5)) - static_cast<MT>(0.5);
+      } else if (align_corners) {
+        real_input_index = ratio_d_mt * j;
+      } else {
+        real_input_index = ratio_d_mt * j;
+      }
+      if (real_input_index < MT(0)) real_input_index = MT(0);
+      int t_f = std::min(static_cast<int>(std::floor(real_input_index)),
+                         static_cast<int>(in_d - 1));
+      MT d_f = std::min(
+          std::max(static_cast<MT>(real_input_index - static_cast<MT>(t_f)),
+                   static_cast<MT>(0)),
+          static_cast<MT>(1));
+      MT d_b = static_cast<MT>(1) - d_f;
+      int t_b = (t_f < in_d - 1) ? t_f + 1 : t_f;
+      vt_f[j] = t_f;
+      vt_b[j] = t_b;
+      vd_f[j] = d_f;
+      vd_b[j] = d_b;
+    }
+  }
 
-      for (int l = 0; l < out_w; l++) {  // loop for W
-        int x_w = static_cast<int>(
-            align_flag ? (ratio_w * (static_cast<float>(l) + 0.5f) - 0.5f)
-                       : (ratio_w * static_cast<float>(l)));
-        x_w = (x_w > 0) ? x_w : 0;
-        int x_e = (x_w + 1) < (in_w - 1) ? (x_w + 1) : (in_w - 1);
-        float idx_src_x = ratio_w * (static_cast<float>(l) + 0.5f) - 0.5f;
-        idx_src_x = (idx_src_x > 0) ? idx_src_x : 0;
-        float d_w = align_flag ? idx_src_x - static_cast<float>(x_w)
-                               : ratio_w * static_cast<float>(l) -
-                                     static_cast<float>(x_w);
-        float d_e = 1.f - d_w;
+  // Pre-compute height indices and weights
+  std::vector<int> vy_n(out_h), vy_s(out_h);
+  std::vector<MT> vdn(out_h), vds(out_h);
+  for (int k = 0; k < out_h; k++) {
+    if (in_h == out_h) {
+      vy_n[k] = k;
+      vy_s[k] = k;
+      vdn[k] = MT(0);
+      vds[k] = MT(1);
+    } else {
+      MT real_input_index;
+      if (align_flag) {
+        real_input_index =
+            ratio_h_mt * (k + static_cast<MT>(0.5)) - static_cast<MT>(0.5);
+      } else if (align_corners) {
+        real_input_index = ratio_h_mt * k;
+      } else {
+        real_input_index = ratio_h_mt * k;
+      }
+      if (real_input_index < MT(0)) real_input_index = MT(0);
+      int y_n = std::min(static_cast<int>(std::floor(real_input_index)),
+                         static_cast<int>(in_h - 1));
+      MT d_n = std::min(
+          std::max(static_cast<MT>(real_input_index - static_cast<MT>(y_n)),
+                   static_cast<MT>(0)),
+          static_cast<MT>(1));
+      MT d_s = static_cast<MT>(1) - d_n;
+      int y_s = (y_n < in_h - 1) ? y_n + 1 : y_n;
+      vy_n[k] = y_n;
+      vy_s[k] = y_s;
+      vdn[k] = d_n;
+      vds[k] = d_s;
+    }
+  }
 
+  // Pre-compute width indices and weights
+  std::vector<int> vx_w(out_w), vx_e(out_w);
+  std::vector<MT> vdw(out_w), vde(out_w);
+  for (int l = 0; l < out_w; l++) {
+    if (in_w == out_w) {
+      vx_w[l] = l;
+      vx_e[l] = l;
+      vdw[l] = MT(0);
+      vde[l] = MT(1);
+    } else {
+      MT real_input_index;
+      if (align_flag) {
+        real_input_index =
+            ratio_w_mt * (l + static_cast<MT>(0.5)) - static_cast<MT>(0.5);
+      } else if (align_corners) {
+        real_input_index = ratio_w_mt * l;
+      } else {
+        real_input_index = ratio_w_mt * l;
+      }
+      if (real_input_index < MT(0)) real_input_index = MT(0);
+      int x_w = std::min(static_cast<int>(std::floor(real_input_index)),
+                         static_cast<int>(in_w - 1));
+      MT d_w = std::min(
+          std::max(static_cast<MT>(real_input_index - static_cast<MT>(x_w)),
+                   static_cast<MT>(0)),
+          static_cast<MT>(1));
+      MT d_e = static_cast<MT>(1) - d_w;
+      int x_e = (x_w < in_w - 1) ? x_w + 1 : x_w;
+      vx_w[l] = x_w;
+      vx_e[l] = x_e;
+      vdw[l] = d_w;
+      vde[l] = d_e;
+    }
+  }
+
+  for (int j = 0; j < out_d; j++) {
+    for (int k = 0; k < out_h; k++) {
+      for (int l = 0; l < out_w; l++) {
         for (int b = 0; b < n; b++) {    // loop for batches
           for (int i = 0; i < c; i++) {  // loop for channels
             // trilinear interpolation grad
             if (data_layout == DataLayout::NCHW) {
               const MT grad = static_cast<MT>(output_grad_t(b, i, j, k, l));
-              input_grad_t(b, i, t_f, y_n, x_w) +=
-                  static_cast<T>(grad * d_b * d_s * d_e);
-              input_grad_t(b, i, t_f, y_n, x_e) +=
-                  static_cast<T>(grad * d_b * d_s * d_w);
-              input_grad_t(b, i, t_f, y_s, x_w) +=
-                  static_cast<T>(grad * d_b * d_n * d_e);
-              input_grad_t(b, i, t_f, y_s, x_e) +=
-                  static_cast<T>(grad * d_b * d_n * d_w);
-              input_grad_t(b, i, t_b, y_n, x_w) +=
-                  static_cast<T>(grad * d_f * d_s * d_e);
-              input_grad_t(b, i, t_b, y_n, x_e) +=
-                  static_cast<T>(grad * d_f * d_s * d_w);
-              input_grad_t(b, i, t_b, y_s, x_w) +=
-                  static_cast<T>(grad * d_f * d_n * d_e);
-              input_grad_t(b, i, t_b, y_s, x_e) +=
-                  static_cast<T>(grad * d_f * d_n * d_w);
+              input_grad_t(b, i, vt_f[j], vy_n[k], vx_w[l]) +=
+                  static_cast<T>(vd_b[j] * vds[k] * vde[l] * grad);
+              input_grad_t(b, i, vt_f[j], vy_n[k], vx_e[l]) +=
+                  static_cast<T>(vd_b[j] * vds[k] * vdw[l] * grad);
+              input_grad_t(b, i, vt_f[j], vy_s[k], vx_w[l]) +=
+                  static_cast<T>(vd_b[j] * vdn[k] * vde[l] * grad);
+              input_grad_t(b, i, vt_f[j], vy_s[k], vx_e[l]) +=
+                  static_cast<T>(vd_b[j] * vdn[k] * vdw[l] * grad);
+              input_grad_t(b, i, vt_b[j], vy_n[k], vx_w[l]) +=
+                  static_cast<T>(vd_f[j] * vds[k] * vde[l] * grad);
+              input_grad_t(b, i, vt_b[j], vy_n[k], vx_e[l]) +=
+                  static_cast<T>(vd_f[j] * vds[k] * vdw[l] * grad);
+              input_grad_t(b, i, vt_b[j], vy_s[k], vx_w[l]) +=
+                  static_cast<T>(vd_f[j] * vdn[k] * vde[l] * grad);
+              input_grad_t(b, i, vt_b[j], vy_s[k], vx_e[l]) +=
+                  static_cast<T>(vd_f[j] * vdn[k] * vdw[l] * grad);
             } else {
               const MT grad = static_cast<MT>(output_grad_t(b, j, k, l, i));
-              input_grad_t(b, t_f, y_n, x_w, i) +=
-                  static_cast<T>(grad * d_b * d_s * d_e);
-              input_grad_t(b, t_f, y_n, x_e, i) +=
-                  static_cast<T>(grad * d_b * d_s * d_w);
-              input_grad_t(b, t_f, y_s, x_w, i) +=
-                  static_cast<T>(grad * d_b * d_n * d_e);
-              input_grad_t(b, t_f, y_s, x_e, i) +=
-                  static_cast<T>(grad * d_b * d_n * d_w);
-              input_grad_t(b, t_b, y_n, x_w, i) +=
-                  static_cast<T>(grad * d_f * d_s * d_e);
-              input_grad_t(b, t_b, y_n, x_e, i) +=
-                  static_cast<T>(grad * d_f * d_s * d_w);
-              input_grad_t(b, t_b, y_s, x_w, i) +=
-                  static_cast<T>(grad * d_f * d_n * d_e);
-              input_grad_t(b, t_b, y_s, x_e, i) +=
-                  static_cast<T>(grad * d_f * d_n * d_w);
+              input_grad_t(b, vt_f[j], vy_n[k], vx_w[l], i) +=
+                  static_cast<T>(vd_b[j] * vds[k] * vde[l] * grad);
+              input_grad_t(b, vt_f[j], vy_n[k], vx_e[l], i) +=
+                  static_cast<T>(vd_b[j] * vds[k] * vdw[l] * grad);
+              input_grad_t(b, vt_f[j], vy_s[k], vx_w[l], i) +=
+                  static_cast<T>(vd_b[j] * vdn[k] * vde[l] * grad);
+              input_grad_t(b, vt_f[j], vy_s[k], vx_e[l], i) +=
+                  static_cast<T>(vd_b[j] * vdn[k] * vdw[l] * grad);
+              input_grad_t(b, vt_b[j], vy_n[k], vx_w[l], i) +=
+                  static_cast<T>(vd_f[j] * vds[k] * vde[l] * grad);
+              input_grad_t(b, vt_b[j], vy_n[k], vx_e[l], i) +=
+                  static_cast<T>(vd_f[j] * vds[k] * vdw[l] * grad);
+              input_grad_t(b, vt_b[j], vy_s[k], vx_w[l], i) +=
+                  static_cast<T>(vd_f[j] * vdn[k] * vde[l] * grad);
+              input_grad_t(b, vt_b[j], vy_s[k], vx_e[l], i) +=
+                  static_cast<T>(vd_f[j] * vdn[k] * vdw[l] * grad);
             }
           }
         }
@@ -473,17 +647,15 @@ static void Interpolate1DCPUBwd(
     return;
   }
 
-  float ratio_w = 0.f;
-  if (out_w > 1) {
-    float new_scale_w = 0.f;
-    new_scale_w = static_cast<float>(
-        scale_w > 0 ? (1.f / scale_w)
-                    : static_cast<float>(in_w) / static_cast<float>(out_w));
-    ratio_w =
-        static_cast<float>(align_corners ? (static_cast<float>(in_w) - 1.f) /
-                                               (static_cast<float>(out_w) - 1.f)
-                                         : new_scale_w);
-  }
+  // Match forward kernel: compute ratio in target precision (float for
+  // float32, double for float64) to avoid double-rounding differences
+  using MT =
+      typename std::conditional_t<std::is_integral<T>::value,
+                                  float,
+                                  typename phi::dtype::MPTypeTrait<T>::Type>;
+  double ratio_w = static_cast<double>(
+      funcs::AreaPixelComputeScale<MT>(in_w, out_w, align_corners, scale_w));
+
   if ("linear" == interp_method) {
     LinearInterpolationGrad<T>(output_grad,
                                input_grad,
@@ -599,10 +771,16 @@ static void Interpolate2DCPUBwd(
     return;
   }
 
-  double ratio_h =
-      funcs::AreaPixelComputeScale<float>(in_h, out_h, align_corners, scale_h);
-  double ratio_w =
-      funcs::AreaPixelComputeScale<float>(in_w, out_w, align_corners, scale_w);
+  // Match forward kernel: compute ratio in target precision (float for
+  // float32, double for float64) to avoid double-rounding differences
+  using MT =
+      typename std::conditional_t<std::is_integral<T>::value,
+                                  float,
+                                  typename phi::dtype::MPTypeTrait<T>::Type>;
+  double ratio_h = static_cast<double>(
+      funcs::AreaPixelComputeScale<MT>(in_h, out_h, align_corners, scale_h));
+  double ratio_w = static_cast<double>(
+      funcs::AreaPixelComputeScale<MT>(in_w, out_w, align_corners, scale_w));
 
   // TODO(zrr1999): to align xpu
   if (out_h <= 1) {
@@ -775,12 +953,18 @@ static void Interpolate3DCPUBwd(
     return;
   }
 
-  double ratio_d =
-      funcs::AreaPixelComputeScale<float>(in_d, out_d, align_corners, scale_d);
-  double ratio_h =
-      funcs::AreaPixelComputeScale<float>(in_h, out_h, align_corners, scale_h);
-  double ratio_w =
-      funcs::AreaPixelComputeScale<float>(in_w, out_w, align_corners, scale_w);
+  // Match forward kernel: compute ratio in target precision (float for
+  // float32, double for float64) to avoid double-rounding differences
+  using MT =
+      typename std::conditional_t<std::is_integral<T>::value,
+                                  float,
+                                  typename phi::dtype::MPTypeTrait<T>::Type>;
+  double ratio_d = static_cast<double>(
+      funcs::AreaPixelComputeScale<MT>(in_d, out_d, align_corners, scale_d));
+  double ratio_h = static_cast<double>(
+      funcs::AreaPixelComputeScale<MT>(in_h, out_h, align_corners, scale_h));
+  double ratio_w = static_cast<double>(
+      funcs::AreaPixelComputeScale<MT>(in_w, out_w, align_corners, scale_w));
 
   if ("trilinear" == interp_method) {
     TrilinearInterpolationGrad<T>(output_grad,
