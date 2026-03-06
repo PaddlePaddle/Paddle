@@ -1547,6 +1547,9 @@ static void ComputeAAWeightsSpanCPU(const int i,
                         std::floor(*center + support + static_cast<WT>(0.5))),
                     input_size) -
            *xmin;
+  // Clamp xsize to non-negative. In rare precision edge cases, xsize can
+  // become negative. Matches PyTorch's std::clamp(xsize, 0, max_interp_size).
+  *xsize = std::max(*xsize, 0);
 }
 
 // Single dimension AA interpolation for float types on CPU.
@@ -1822,6 +1825,9 @@ static void AAInterpolation2DCPU_NHWC(const T* input_data,
 
 // Specialization for uint8_t: uses double weights, int16 quantization,
 // int32 accumulation -- matching PyTorch's Pillow-compatible uint8 path.
+// Uses GLOBAL weight precision (single P per dimension) matching PyTorch's
+// _compute_index_ranges_int16_weights which computes one precision value
+// from the global wt_max across ALL output indices.
 template <typename InterpFilter>
 static void AAInterpolation2DCPU_NCHW_UInt8(const uint8_t* input_data,
                                             uint8_t* output_data,
@@ -1831,8 +1837,8 @@ static void AAInterpolation2DCPU_NCHW_UInt8(const uint8_t* input_data,
                                             int in_w,
                                             int out_h,
                                             int out_w,
-                                            float ratio_h,
-                                            float ratio_w,
+                                            double ratio_h,
+                                            double ratio_w,
                                             const InterpFilter& filter) {
   using WT = double;
   WT scale_h = static_cast<WT>(ratio_h);
@@ -1853,36 +1859,13 @@ static void AAInterpolation2DCPU_NCHW_UInt8(const uint8_t* input_data,
     WT center;
   };
 
-  // Helper: compute double weights, then quantize to int16 as PyTorch does
-  auto compute_int16_weights = [&](const std::vector<WT>& dbl_weights,
-                                   int xsize,
-                                   std::vector<int16_t>& i16_weights,
-                                   unsigned int& precision) {
-    // Find maximum weight
-    WT wt_max = 0.0;
-    for (int j = 0; j < xsize; j++) {
-      WT aw = dbl_weights[j] < 0 ? -dbl_weights[j] : dbl_weights[j];
-      if (aw > wt_max) wt_max = aw;
-    }
-    // Find max precision P such that round(max_weight * 2^(P+1)) < 2^15
-    unsigned int P = 0;
-    for (P = 0; P < 22; ++P) {
-      int next_value = static_cast<int>(0.5 + wt_max * (1 << (P + 1)));
-      if (next_value >= (1 << 15)) break;
-    }
-    precision = P;
-    i16_weights.resize(xsize);
-    for (int j = 0; j < xsize; j++) {
-      i16_weights[j] =
-          static_cast<int16_t>(std::round(dbl_weights[j] * (1 << P)));
-    }
-  };
-
-  // Pre-compute horizontal weights (double) and quantized int16 weights
+  // ---------------------------------------------------------------
+  // Phase 1: Pre-compute ALL horizontal double weights and spans.
+  //          Track global wt_max across all output indices.
+  // ---------------------------------------------------------------
   std::vector<SpanInfo> h_spans(out_w);
   std::vector<std::vector<WT>> h_dbl_weights(out_w);
-  std::vector<std::vector<int16_t>> h_i16_weights(out_w);
-  std::vector<unsigned int> h_precision(out_w);
+  WT global_wt_max_h = 0.0;
 
   for (int ow = 0; ow < out_w; ow++) {
     ComputeAAWeightsSpanCPU<WT>(ow,
@@ -1900,17 +1883,40 @@ static void AAInterpolation2DCPU_NCHW_UInt8(const uint8_t* input_data,
         filter,
         static_cast<WT>(h_spans[ow].xmin) - h_spans[ow].center,
         h_spans[ow].xsize);
-    compute_int16_weights(h_dbl_weights[ow],
-                          h_spans[ow].xsize,
-                          h_i16_weights[ow],
-                          h_precision[ow]);
+    // Track global max (positive only, matching PyTorch's
+    // _compute_indices_min_size_weights_aa which uses std::max without abs)
+    for (int j = 0; j < h_spans[ow].xsize; j++) {
+      global_wt_max_h = std::max(global_wt_max_h, h_dbl_weights[ow][j]);
+    }
   }
 
-  // Pre-compute vertical weights
+  // Compute SINGLE horizontal precision from global wt_max
+  // Matches PyTorch's _compute_index_ranges_int16_weights
+  unsigned int P_h = 0;
+  for (P_h = 0; P_h < 22; ++P_h) {
+    int next_value = static_cast<int>(0.5 + global_wt_max_h * (1 << (P_h + 1)));
+    if (next_value >= (1 << 15)) break;
+  }
+
+  // Convert ALL horizontal weights to int16 using the single global P_h
+  std::vector<std::vector<int16_t>> h_i16_weights(out_w);
+  for (int ow = 0; ow < out_w; ow++) {
+    int xsize = h_spans[ow].xsize;
+    h_i16_weights[ow].resize(xsize);
+    for (int j = 0; j < xsize; j++) {
+      double v = h_dbl_weights[ow][j] * (1 << P_h);
+      h_i16_weights[ow][j] = static_cast<int16_t>(
+          (v < 0) ? static_cast<int>(-0.5 + v) : static_cast<int>(0.5 + v));
+    }
+  }
+
+  // ---------------------------------------------------------------
+  // Phase 2: Pre-compute ALL vertical double weights and spans.
+  //          Track global wt_max across all output indices.
+  // ---------------------------------------------------------------
   std::vector<SpanInfo> v_spans(out_h);
   std::vector<std::vector<WT>> v_dbl_weights(out_h);
-  std::vector<std::vector<int16_t>> v_i16_weights(out_h);
-  std::vector<unsigned int> v_precision(out_h);
+  WT global_wt_max_v = 0.0;
 
   for (int oh = 0; oh < out_h; oh++) {
     ComputeAAWeightsSpanCPU<WT>(oh,
@@ -1928,11 +1934,33 @@ static void AAInterpolation2DCPU_NCHW_UInt8(const uint8_t* input_data,
         filter,
         static_cast<WT>(v_spans[oh].xmin) - v_spans[oh].center,
         v_spans[oh].xsize);
-    compute_int16_weights(v_dbl_weights[oh],
-                          v_spans[oh].xsize,
-                          v_i16_weights[oh],
-                          v_precision[oh]);
+    for (int j = 0; j < v_spans[oh].xsize; j++) {
+      global_wt_max_v = std::max(global_wt_max_v, v_dbl_weights[oh][j]);
+    }
   }
+
+  // Compute SINGLE vertical precision from global wt_max
+  unsigned int P_v = 0;
+  for (P_v = 0; P_v < 22; ++P_v) {
+    int next_value = static_cast<int>(0.5 + global_wt_max_v * (1 << (P_v + 1)));
+    if (next_value >= (1 << 15)) break;
+  }
+
+  // Convert ALL vertical weights to int16 using the single global P_v
+  std::vector<std::vector<int16_t>> v_i16_weights(out_h);
+  for (int oh = 0; oh < out_h; oh++) {
+    int ysize = v_spans[oh].xsize;
+    v_i16_weights[oh].resize(ysize);
+    for (int j = 0; j < ysize; j++) {
+      double v = v_dbl_weights[oh][j] * (1 << P_v);
+      v_i16_weights[oh][j] = static_cast<int16_t>(
+          (v < 0) ? static_cast<int>(-0.5 + v) : static_cast<int>(0.5 + v));
+    }
+  }
+
+  // ---------------------------------------------------------------
+  // Phase 3: Accumulation using single P per dimension
+  // ---------------------------------------------------------------
 
   // Temporary buffer [N, C, H_in, W_out] as uint8
   std::vector<uint8_t> temp(static_cast<size_t>(n) * c * in_h * out_w);
@@ -1946,15 +1974,14 @@ static void AAInterpolation2DCPU_NCHW_UInt8(const uint8_t* input_data,
       for (int ow = 0; ow < out_w; ow++) {
         int xmin = h_spans[ow].xmin;
         int xsize = h_spans[ow].xsize;
-        unsigned int P = h_precision[ow];
         const int16_t* i16w = h_i16_weights[ow].data();
 
-        int32_t accum = 1 << (P > 0 ? P - 1 : 0);  // rounding bias
+        int32_t accum = 1 << (P_h - 1);  // rounding bias
         for (int j = 0; j < xsize; j++) {
           accum += static_cast<int32_t>(in_row[xmin + j]) *
                    static_cast<int32_t>(i16w[j]);
         }
-        int32_t result = accum >> P;
+        int32_t result = accum >> P_h;
         temp_row[ow] = static_cast<uint8_t>(std::max(0, std::min(255, result)));
       }
     }
@@ -1965,27 +1992,26 @@ static void AAInterpolation2DCPU_NCHW_UInt8(const uint8_t* input_data,
     for (int oh = 0; oh < out_h; oh++) {
       int ymin = v_spans[oh].xmin;
       int ysize = v_spans[oh].xsize;
-      unsigned int P = v_precision[oh];
       const int16_t* i16w = v_i16_weights[oh].data();
 
       uint8_t* out_row = output_data + nc_idx * out_h * out_w + oh * out_w;
 
       for (int ow = 0; ow < out_w; ow++) {
-        int32_t accum = 1 << (P > 0 ? P - 1 : 0);
+        int32_t accum = 1 << (P_v - 1);  // rounding bias
         for (int j = 0; j < ysize; j++) {
           const uint8_t* temp_row =
               temp.data() + nc_idx * in_h * out_w + (ymin + j) * out_w;
           accum += static_cast<int32_t>(temp_row[ow]) *
                    static_cast<int32_t>(i16w[j]);
         }
-        int32_t result = accum >> P;
+        int32_t result = accum >> P_v;
         out_row[ow] = static_cast<uint8_t>(std::max(0, std::min(255, result)));
       }
     }
   }
 }
 
-// NHWC variant for uint8
+// NHWC variant for uint8 -- global weight precision matching PyTorch
 template <typename InterpFilter>
 static void AAInterpolation2DCPU_NHWC_UInt8(const uint8_t* input_data,
                                             uint8_t* output_data,
@@ -1995,8 +2021,8 @@ static void AAInterpolation2DCPU_NHWC_UInt8(const uint8_t* input_data,
                                             int in_w,
                                             int out_h,
                                             int out_w,
-                                            float ratio_h,
-                                            float ratio_w,
+                                            double ratio_h,
+                                            double ratio_w,
                                             const InterpFilter& filter) {
   using WT = double;
   WT scale_h = static_cast<WT>(ratio_h);
@@ -2017,32 +2043,11 @@ static void AAInterpolation2DCPU_NHWC_UInt8(const uint8_t* input_data,
     WT center;
   };
 
-  auto compute_int16_weights = [&](const std::vector<WT>& dbl_weights,
-                                   int xsize,
-                                   std::vector<int16_t>& i16_weights,
-                                   unsigned int& precision) {
-    WT wt_max = 0.0;
-    for (int j = 0; j < xsize; j++) {
-      WT aw = dbl_weights[j] < 0 ? -dbl_weights[j] : dbl_weights[j];
-      if (aw > wt_max) wt_max = aw;
-    }
-    unsigned int P = 0;
-    for (P = 0; P < 22; ++P) {
-      int next_value = static_cast<int>(0.5 + wt_max * (1 << (P + 1)));
-      if (next_value >= (1 << 15)) break;
-    }
-    precision = P;
-    i16_weights.resize(xsize);
-    for (int j = 0; j < xsize; j++) {
-      i16_weights[j] =
-          static_cast<int16_t>(std::round(dbl_weights[j] * (1 << P)));
-    }
-  };
-
+  // Phase 1: Pre-compute ALL horizontal double weights, track global wt_max
   std::vector<SpanInfo> h_spans(out_w);
   std::vector<std::vector<WT>> h_dbl_weights(out_w);
-  std::vector<std::vector<int16_t>> h_i16_weights(out_w);
-  std::vector<unsigned int> h_precision(out_w);
+  WT global_wt_max_h = 0.0;
+
   for (int ow = 0; ow < out_w; ow++) {
     ComputeAAWeightsSpanCPU<WT>(ow,
                                 in_w,
@@ -2059,16 +2064,35 @@ static void AAInterpolation2DCPU_NHWC_UInt8(const uint8_t* input_data,
         filter,
         static_cast<WT>(h_spans[ow].xmin) - h_spans[ow].center,
         h_spans[ow].xsize);
-    compute_int16_weights(h_dbl_weights[ow],
-                          h_spans[ow].xsize,
-                          h_i16_weights[ow],
-                          h_precision[ow]);
+    for (int j = 0; j < h_spans[ow].xsize; j++) {
+      global_wt_max_h = std::max(global_wt_max_h, h_dbl_weights[ow][j]);
+    }
   }
 
+  // Compute SINGLE horizontal precision from global wt_max
+  unsigned int P_h = 0;
+  for (P_h = 0; P_h < 22; ++P_h) {
+    int next_value = static_cast<int>(0.5 + global_wt_max_h * (1 << (P_h + 1)));
+    if (next_value >= (1 << 15)) break;
+  }
+
+  // Convert ALL horizontal weights to int16 using the single global P_h
+  std::vector<std::vector<int16_t>> h_i16_weights(out_w);
+  for (int ow = 0; ow < out_w; ow++) {
+    int xsize = h_spans[ow].xsize;
+    h_i16_weights[ow].resize(xsize);
+    for (int j = 0; j < xsize; j++) {
+      double v = h_dbl_weights[ow][j] * (1 << P_h);
+      h_i16_weights[ow][j] = static_cast<int16_t>(
+          (v < 0) ? static_cast<int>(-0.5 + v) : static_cast<int>(0.5 + v));
+    }
+  }
+
+  // Phase 2: Pre-compute ALL vertical double weights, track global wt_max
   std::vector<SpanInfo> v_spans(out_h);
   std::vector<std::vector<WT>> v_dbl_weights(out_h);
-  std::vector<std::vector<int16_t>> v_i16_weights(out_h);
-  std::vector<unsigned int> v_precision(out_h);
+  WT global_wt_max_v = 0.0;
+
   for (int oh = 0; oh < out_h; oh++) {
     ComputeAAWeightsSpanCPU<WT>(oh,
                                 in_h,
@@ -2085,11 +2109,31 @@ static void AAInterpolation2DCPU_NHWC_UInt8(const uint8_t* input_data,
         filter,
         static_cast<WT>(v_spans[oh].xmin) - v_spans[oh].center,
         v_spans[oh].xsize);
-    compute_int16_weights(v_dbl_weights[oh],
-                          v_spans[oh].xsize,
-                          v_i16_weights[oh],
-                          v_precision[oh]);
+    for (int j = 0; j < v_spans[oh].xsize; j++) {
+      global_wt_max_v = std::max(global_wt_max_v, v_dbl_weights[oh][j]);
+    }
   }
+
+  // Compute SINGLE vertical precision from global wt_max
+  unsigned int P_v = 0;
+  for (P_v = 0; P_v < 22; ++P_v) {
+    int next_value = static_cast<int>(0.5 + global_wt_max_v * (1 << (P_v + 1)));
+    if (next_value >= (1 << 15)) break;
+  }
+
+  // Convert ALL vertical weights to int16 using the single global P_v
+  std::vector<std::vector<int16_t>> v_i16_weights(out_h);
+  for (int oh = 0; oh < out_h; oh++) {
+    int ysize = v_spans[oh].xsize;
+    v_i16_weights[oh].resize(ysize);
+    for (int j = 0; j < ysize; j++) {
+      double v = v_dbl_weights[oh][j] * (1 << P_v);
+      v_i16_weights[oh][j] = static_cast<int16_t>(
+          (v < 0) ? static_cast<int>(-0.5 + v) : static_cast<int>(0.5 + v));
+    }
+  }
+
+  // Phase 3: Accumulation with single P per dimension
 
   // Temp buffer [N, H_in, W_out, C] as uint8
   std::vector<uint8_t> temp(static_cast<size_t>(n) * in_h * out_w * c);
@@ -2100,17 +2144,16 @@ static void AAInterpolation2DCPU_NHWC_UInt8(const uint8_t* input_data,
       for (int ow = 0; ow < out_w; ow++) {
         int xmin = h_spans[ow].xmin;
         int xsize = h_spans[ow].xsize;
-        unsigned int P = h_precision[ow];
         const int16_t* i16w = h_i16_weights[ow].data();
 
         for (int64_t ch = 0; ch < c; ch++) {
-          int32_t accum = 1 << (P > 0 ? P - 1 : 0);
+          int32_t accum = 1 << (P_h - 1);
           for (int j = 0; j < xsize; j++) {
             int64_t in_idx = ((bi * in_h + ih) * in_w + (xmin + j)) * c + ch;
             accum += static_cast<int32_t>(input_data[in_idx]) *
                      static_cast<int32_t>(i16w[j]);
           }
-          int32_t result = accum >> P;
+          int32_t result = accum >> P_h;
           int64_t temp_idx = ((bi * in_h + ih) * out_w + ow) * c + ch;
           temp[temp_idx] =
               static_cast<uint8_t>(std::max(0, std::min(255, result)));
@@ -2124,18 +2167,17 @@ static void AAInterpolation2DCPU_NHWC_UInt8(const uint8_t* input_data,
     for (int oh = 0; oh < out_h; oh++) {
       int ymin = v_spans[oh].xmin;
       int ysize = v_spans[oh].xsize;
-      unsigned int P = v_precision[oh];
       const int16_t* i16w = v_i16_weights[oh].data();
 
       for (int ow = 0; ow < out_w; ow++) {
         for (int64_t ch = 0; ch < c; ch++) {
-          int32_t accum = 1 << (P > 0 ? P - 1 : 0);
+          int32_t accum = 1 << (P_v - 1);
           for (int j = 0; j < ysize; j++) {
             int64_t temp_idx = ((bi * in_h + (ymin + j)) * out_w + ow) * c + ch;
             accum += static_cast<int32_t>(temp[temp_idx]) *
                      static_cast<int32_t>(i16w[j]);
           }
-          int32_t result = accum >> P;
+          int32_t result = accum >> P_v;
           int64_t out_idx = ((bi * out_h + oh) * out_w + ow) * c + ch;
           output_data[out_idx] =
               static_cast<uint8_t>(std::max(0, std::min(255, result)));
@@ -2196,8 +2238,8 @@ static void AAInterpolation2DCPUDispatchUInt8(const uint8_t* input_data,
                                               int in_w,
                                               int out_h,
                                               int out_w,
-                                              float ratio_h,
-                                              float ratio_w,
+                                              double ratio_h,
+                                              double ratio_w,
                                               const DataLayout data_layout,
                                               const InterpFilter& filter) {
   if (data_layout == DataLayout::NCHW) {
@@ -2343,7 +2385,9 @@ static void InterpolateAA2DCPUFwd(
     return;
   }
 
-  // Use conditional type: float for integral/half types, double for double
+  // Use conditional type: float for integral/half types, double for double.
+  // For uint8 AA path, compute scale directly as double to match PyTorch's
+  // area_pixel_compute_scale<double>() in _compute_index_ranges_int16_weights.
   using MT =
       typename std::conditional_t<std::is_integral<T>::value,
                                   float,
@@ -2356,6 +2400,12 @@ static void InterpolateAA2DCPUFwd(
   // Dispatch based on interp_method and dtype
   auto launch_aa = [&](auto filter_functor) {
     if constexpr (std::is_same<T, uint8_t>::value) {
+      // For uint8, compute scale as double to avoid float precision loss.
+      // PyTorch: area_pixel_compute_scale<double>(input_size, output_size, ...)
+      double ratio_h_dbl = funcs::AreaPixelComputeScale<double>(
+          in_h, out_h, align_corners, scale_h);
+      double ratio_w_dbl = funcs::AreaPixelComputeScale<double>(
+          in_w, out_w, align_corners, scale_w);
       AAInterpolation2DCPUDispatchUInt8(input_data,
                                         output_data,
                                         n,
@@ -2364,8 +2414,8 @@ static void InterpolateAA2DCPUFwd(
                                         in_w,
                                         out_h,
                                         out_w,
-                                        static_cast<float>(ratio_h),
-                                        static_cast<float>(ratio_w),
+                                        ratio_h_dbl,
+                                        ratio_w_dbl,
                                         data_layout,
                                         filter_functor);
     } else {
