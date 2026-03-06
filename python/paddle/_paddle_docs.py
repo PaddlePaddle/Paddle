@@ -3933,6 +3933,53 @@ def angle(
 )
 
 add_doc_and_signature(
+    "real",
+    r"""
+    Returns a new Tensor containing real values of the input Tensor.
+
+    Args:
+        x (Tensor): The input Tensor, its data type could be complex64 or complex128. Alias: ``input``.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
+
+    Keyword args:
+        out(Tensor, optional): The output tensor.
+
+    Returns:
+        Tensor: A Tensor containing real values of the input Tensor.
+
+    Note:
+        In static graph mode, keyword aliases ``x`` and ``input`` are currently
+        not supported. Please pass the tensor as the first positional argument.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [1 + 6j, 2 + 5j, 3 + 4j],
+            ...         [4 + 3j, 5 + 2j, 6 + 1j],
+            ...     ]
+            ... )
+            >>> real_res = paddle.real(x)
+            >>> real_res
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1., 2., 3.],
+             [4., 5., 6.]])
+""",
+    """
+def real(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
     "heaviside",
     r"""
     Computes the Heaviside step function determined by corresponding element in y for each element in x. The equation is
