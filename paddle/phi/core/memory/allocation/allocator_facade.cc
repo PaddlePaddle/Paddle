@@ -1605,6 +1605,12 @@ class AllocatorFacadePrivate {
             pair.second, pair.first, retry_time);
       }
     }
+    for (auto& pair : system_allocators_) {
+      if (phi::is_gpu_place(pair.first) || phi::is_xpu_place(pair.first)) {
+        pair.second = std::make_shared<RetryAllocator>(
+            pair.second, pair.first, retry_time);
+      }
+    }
   }
 
   void WrapStatAllocator() {
