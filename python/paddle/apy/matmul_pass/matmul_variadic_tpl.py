@@ -416,6 +416,7 @@ void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
 
         file_ext = "cu"
 
+
         return CodeModule(  # noqa: F821
             FuncDeclare(  # noqa: F821
                 ap.DataType.void,
