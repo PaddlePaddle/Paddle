@@ -25,6 +25,11 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/interpolate_function.h"
 
+// Disable FMA (fused multiply-add) contraction so that a*b+c is computed as
+// two separate operations (multiply then add) matching PyTorch's rounding
+// behavior.  FMA yields 1-ULP differences because it rounds only once instead
+// of twice.
+#pragma GCC optimize("fp-contract=off")
 namespace phi {
 
 template <typename T>
