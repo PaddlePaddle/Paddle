@@ -3627,7 +3627,8 @@ struct CudaCosGradFunctor : public BaseActivationFunctor<T> {
                                           const T arg_x) const {
     MPType dout = static_cast<MPType>(arg_dout);
     MPType x = static_cast<MPType>(arg_x);
-    if constexpr (std::is_same<T, phi::float16>::value) {
+    if constexpr (std::is_same<T, phi::float16>::value ||
+                  std::is_same<T, phi::dtype::bfloat16>::value) {
       return static_cast<T>(-arg_dout * static_cast<T>(sin(x)));
     } else {
       return static_cast<T>(-dout * sin(x));
@@ -3978,7 +3979,8 @@ struct CudaSinGradFunctor : public BaseActivationFunctor<T> {
                                           const T arg_x) const {
     MPType dout = static_cast<MPType>(arg_dout);
     MPType x = static_cast<MPType>(arg_x);
-    if constexpr (std::is_same<T, phi::float16>::value) {
+    if constexpr (std::is_same<T, phi::float16>::value ||
+                  std::is_same<T, phi::dtype::bfloat16>::value) {
       return static_cast<T>(arg_dout * static_cast<T>(cos(x)));
     } else {
       return static_cast<T>(dout * cos(x));
