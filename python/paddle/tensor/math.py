@@ -3153,19 +3153,6 @@ def cumsum(
     else:
         flatten = False
 
-    if dtype is None:
-        if x.dtype in [
-            paddle.uint8,
-            paddle.int8,
-            paddle.int16,
-            paddle.int32,
-        ]:
-            x = cast(x, "int64")
-    else:
-        dtype = convert_np_dtype_to_dtype_(dtype)
-        if x.dtype != dtype:
-            x = cast(x, dtype)
-
     if in_dynamic_or_pir_mode():
         if axis is None:
             axis = -1

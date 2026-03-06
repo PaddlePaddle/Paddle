@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
@@ -150,6 +151,25 @@ void CumsumKernel(const Context& dev_ctx,
                   bool exclusive,
                   bool reverse,
                   DenseTensor* out) {
+  // If input type is bool or integer types (uint8, int8, int16, int32),
+  // we need to promote to int64 for the computation
+  if (x.dtype() == DataType::BOOL || x.dtype() == DataType::UINT8 ||
+      x.dtype() == DataType::INT8 || x.dtype() == DataType::INT16 ||
+      x.dtype() == DataType::INT32) {
+    // Use int64 kernel
+    DenseTensor x_int64;
+    x_int64.Resize(x.dims());
+    x_int64.set_type(DataType::INT64);
+
+    // Cast input to int64
+    CastKernel<T, CPUContext>(dev_ctx, x, DataType::INT64, &x_int64);
+
+    // Call int64 cumsum
+    CumsumKernel<int64_t, Context>(
+        dev_ctx, x_int64, axis, flatten, exclusive, reverse, out);
+    return;
+  }
+
   using Reducer = Eigen::internal::SumReducer<T>;
   auto reducer = Reducer();
   ScanKernel<T, Context, Reducer>(
@@ -271,6 +291,7 @@ PD_REGISTER_KERNEL(cumsum,
                    CPU,
                    ALL_LAYOUT,
                    phi::CumsumKernel,
+                   bool,
                    float,
                    double,
                    uint8_t,

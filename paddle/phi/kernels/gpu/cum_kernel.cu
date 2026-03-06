@@ -27,6 +27,7 @@
 #include "paddle/phi/kernels/funcs/cumprod.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/inclusive_scan.h"
+#include "paddle/phi/kernels/gpu/cast_impl.h"
 
 #include "paddle/common/flags.h"
 
@@ -459,6 +460,27 @@ void CumsumKernel(const Context& dev_ctx,
                   bool exclusive,
                   bool reverse,
                   DenseTensor* out) {
+  // If input type is bool or integer types (uint8, int8, int16, int32),
+  // we need to promote to int64 for the computation
+  if (x.dtype() == DataType::BOOL || x.dtype() == DataType::UINT8 ||
+      x.dtype() == DataType::INT8 || x.dtype() == DataType::INT16 ||
+      x.dtype() == DataType::INT32) {
+    // Use int64 kernel
+    DenseTensor x_int64;
+    x_int64.Resize(x.dims());
+    x_int64.set_type(DataType::INT64);
+
+    // Cast input to int64
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    CastCUDAKernel<MT>(dev_ctx, x, DataType::INT64, &x_int64);
+
+    // Call int64 cumsum
+    CumsumKernel<int64_t, Context>(
+        dev_ctx, x_int64, axis, flatten, exclusive, reverse, out);
+    return;
+  }
+
+  // Original implementation for types that don't need promotion
   using Op =
       typename std::conditional<std::is_same<T, phi::complex64>::value ||
                                     std::is_same<T, phi::complex128>::value,
@@ -537,6 +559,7 @@ PD_REGISTER_KERNEL(cumsum,
                    GPU,
                    ALL_LAYOUT,
                    phi::CumsumKernel,
+                   bool,
                    float,
                    double,
                    uint8_t,

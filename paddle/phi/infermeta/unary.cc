@@ -633,9 +633,20 @@ void CumInferMeta(const MetaTensor& x,
                   bool reverse,
                   MetaTensor* out) {
   auto x_dims = x.dims();
+  auto x_dtype = x.dtype();
+
+  // If input is bool or integer types (uint8, int8, int16, int32),
+  // output should be int64
+  DataType out_dtype = x_dtype;
+  if (x_dtype == DataType::BOOL || x_dtype == DataType::UINT8 ||
+      x_dtype == DataType::INT8 || x_dtype == DataType::INT16 ||
+      x_dtype == DataType::INT32) {
+    out_dtype = DataType::INT64;
+  }
+
   if (flatten) {
     out->set_dims(make_ddim({common::product(x_dims)}));
-    out->set_dtype(x.dtype());
+    out->set_dtype(out_dtype);
   } else {
     if (x_dims.size() > 0) {
       PADDLE_ENFORCE_GE(
@@ -643,7 +654,7 @@ void CumInferMeta(const MetaTensor& x,
           -x_dims.size(),
           common::errors::OutOfRange(
               "axis is out of range (expected to be in range of [%ld, "
-              "%ld), but got %ld).",
+              "%ld], but got %ld).",
               -(x_dims.size()),
               x_dims.size(),
               axis));
@@ -652,7 +663,7 @@ void CumInferMeta(const MetaTensor& x,
           x_dims.size(),
           common::errors::OutOfRange(
               "axis is out of range (expected to be in range of [%ld, "
-              "%ld), but got %ld).",
+              "%ld], but got %ld).",
               -(x_dims.size()),
               x_dims.size(),
               axis));
@@ -665,7 +676,7 @@ void CumInferMeta(const MetaTensor& x,
                                   axis));
     }
     out->set_dims(x_dims);
-    out->set_dtype(x.dtype());
+    out->set_dtype(out_dtype);
   }
 
   out->share_lod(x);
