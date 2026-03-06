@@ -39,6 +39,9 @@ jobs:
         LIBRARY_PATH: /usr/local/corex/lib
     env:
       no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
+    defaults:
+      run:
+        shell: bash
     outputs:
       result: ${{ steps.set-result.outputs.result }}
 
@@ -128,10 +131,6 @@ jobs:
           git config pull.rebase false
           git checkout test
           echo "Fetching upstream develop branch"
-          git config --global --unset-all http.proxy || true
-          git config --global --unset-all https.proxy || true
-          git config --global http.proxy "$http_proxy"
-          git config --global https.proxy "$https_proxy"
           git fetch upstream develop
           echo "Rebasing test branch onto upstream/develop"
           git rebase upstream/develop || {
