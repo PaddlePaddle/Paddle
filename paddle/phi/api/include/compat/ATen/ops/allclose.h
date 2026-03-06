@@ -18,6 +18,7 @@
 
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/scalar.h"
 
 namespace at {
 
@@ -29,12 +30,13 @@ inline bool allclose(const at::Tensor& self,
                      bool equal_nan = false) {
   // Paddle's allclose returns a Tensor, but PyTorch's allclose returns bool
   // We need to extract the scalar value from the result tensor
-  PaddleTensor result =
-      paddle::experimental::allclose(self._PD_GetInner(),
-                                     other._PD_GetInner(),
-                                     paddle::experimental::Scalar(rtol),
-                                     paddle::experimental::Scalar(atol),
-                                     equal_nan);
+  // Use phi::Scalar instead of paddle::experimental::Scalar to ensure
+  // correct dtype is passed to the kernel
+  PaddleTensor result = paddle::experimental::allclose(self._PD_GetInner(),
+                                                       other._PD_GetInner(),
+                                                       phi::Scalar(rtol),
+                                                       phi::Scalar(atol),
+                                                       equal_nan);
 
   // Extract the boolean value from the result tensor
   // allclose should return a scalar tensor with a single boolean value
