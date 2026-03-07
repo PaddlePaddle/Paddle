@@ -575,3 +575,82 @@ TEST(TestAllclose, AllcloseWithDifferentRtolAtolOrder) {
   bool result3 = at::allclose(tensor3, tensor4, 0.0, 0.0, false);
   ASSERT_EQ(result3, true);
 }
+
+TEST(TestAbsolute, AbsoluteBasic) {
+  // Test absolute() - alias for abs()
+  at::Tensor tensor = at::tensor({-3.0f, 2.0f, -1.0f});
+  at::Tensor result = tensor.absolute();
+
+  ASSERT_EQ(result.numel(), 3);
+  ASSERT_NEAR(result.data_ptr<float>()[0], 3.0f, 1e-6f);
+  ASSERT_NEAR(result.data_ptr<float>()[1], 2.0f, 1e-6f);
+  ASSERT_NEAR(result.data_ptr<float>()[2], 1.0f, 1e-6f);
+}
+
+TEST(TestAbsolute, AbsoluteNegativeOnly) {
+  // Test absolute() on all-negative tensor
+  at::Tensor tensor = at::tensor({-5.0f, -10.0f, -0.5f});
+  at::Tensor result = tensor.absolute();
+
+  ASSERT_NEAR(result.data_ptr<float>()[0], 5.0f, 1e-6f);
+  ASSERT_NEAR(result.data_ptr<float>()[1], 10.0f, 1e-6f);
+  ASSERT_NEAR(result.data_ptr<float>()[2], 0.5f, 1e-6f);
+}
+
+TEST(TestAbsolute, AbsoluteZero) {
+  // Test absolute() on zero tensor
+  at::Tensor tensor = at::zeros({3}, at::kFloat);
+  at::Tensor result = tensor.absolute();
+
+  for (int i = 0; i < 3; ++i) {
+    ASSERT_NEAR(result.data_ptr<float>()[i], 0.0f, 1e-6f);
+  }
+}
+
+TEST(TestAbsolute, AbsoluteInPlace) {
+  // Test absolute_() - in-place alias for abs_()
+  at::Tensor tensor = at::tensor({-3.0f, 2.0f, -1.0f});
+  at::Tensor& ref = tensor.absolute_();
+
+  // Should modify tensor in place
+  ASSERT_NEAR(tensor.data_ptr<float>()[0], 3.0f, 1e-6f);
+  ASSERT_NEAR(tensor.data_ptr<float>()[1], 2.0f, 1e-6f);
+  ASSERT_NEAR(tensor.data_ptr<float>()[2], 1.0f, 1e-6f);
+
+  // Return value should be the same tensor
+  ASSERT_EQ(ref.data_ptr<float>(), tensor.data_ptr<float>());
+}
+
+TEST(TestAbsolute, AbsoluteInPlaceNegative) {
+  // Test absolute_() on all-negative tensor
+  at::Tensor tensor = at::tensor({-4.0f, -8.0f, -0.25f});
+  tensor.absolute_();
+
+  ASSERT_NEAR(tensor.data_ptr<float>()[0], 4.0f, 1e-6f);
+  ASSERT_NEAR(tensor.data_ptr<float>()[1], 8.0f, 1e-6f);
+  ASSERT_NEAR(tensor.data_ptr<float>()[2], 0.25f, 1e-6f);
+}
+
+TEST(TestAbsolute, AbsoluteDouble) {
+  // Test absolute() with double precision
+  at::Tensor tensor = at::tensor({-1.5, 2.5, -3.5}, at::kDouble);
+  at::Tensor result = tensor.absolute();
+
+  ASSERT_NEAR(result.data_ptr<double>()[0], 1.5, 1e-10);
+  ASSERT_NEAR(result.data_ptr<double>()[1], 2.5, 1e-10);
+  ASSERT_NEAR(result.data_ptr<double>()[2], 3.5, 1e-10);
+}
+
+TEST(TestAbsolute, AbsoluteMatchesAbs) {
+  // Test that absolute() returns same result as abs()
+  at::Tensor tensor = at::tensor({-3.0f, 2.0f, -1.0f, 0.0f});
+  at::Tensor result_absolute = tensor.absolute();
+  at::Tensor result_abs = tensor.abs();
+
+  ASSERT_EQ(result_absolute.numel(), result_abs.numel());
+  for (int i = 0; i < result_absolute.numel(); ++i) {
+    ASSERT_NEAR(result_absolute.data_ptr<float>()[i],
+                result_abs.data_ptr<float>()[i],
+                1e-6f);
+  }
+}
