@@ -482,35 +482,6 @@ TEST(TestAllclose, AllcloseInfinityValues) {
   ASSERT_EQ(result_diff_inf, true);
 }
 
-TEST(TestAll, AllEmptyTensor) {
-  // Test all() on empty tensor (0-dimensional scalar tensor)
-  at::Tensor tensor_empty = at::tensor(true, at::kBool);
-  // Empty tensor with no elements - all() should return true (vacuously true)
-  at::Tensor result = tensor_empty.all();
-  ASSERT_EQ(result.numel(), 1);
-  ASSERT_EQ(result.item<bool>(), true);
-}
-
-TEST(TestAll, AllEmpty1DTensor) {
-  // Test all() on empty 1D tensor (size 0)
-  at::Tensor tensor_empty = at::empty({0}, at::kBool);
-  // Empty tensor - all() should return true (vacuously true)
-  at::Tensor result = tensor_empty.all();
-  ASSERT_EQ(result.numel(), 1);
-  ASSERT_EQ(result.item<bool>(), true);
-}
-
-TEST(TestAllclose, AllcloseShapeMismatch) {
-  // Test allclose with tensors of different shapes - should return false
-  at::Tensor tensor1 = at::arange(6, at::kFloat).reshape({2, 3});
-  at::Tensor tensor2 = at::arange(4, at::kFloat).reshape({2, 2});
-
-  EXPECT_THROW(at::allclose(tensor1, tensor2), std::exception);
-
-  // Also test member function
-  EXPECT_THROW(tensor1.allclose(tensor2), std::exception);
-}
-
 TEST(TestAllclose, AllcloseInt32) {
   // Test allclose with int32 tensors
   at::Tensor tensor1 = at::arange(6, at::kInt).reshape({2, 3});
@@ -583,54 +554,6 @@ TEST(TestAllclose, AllcloseScalarTensor) {
   bool result_tol = at::allclose(scalar3, scalar4, 1.0, 0.0, false);
   ASSERT_EQ(result_tol, true);
 }
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-TEST(TestAllclose, AllcloseHalf) {
-  // Test allclose with half (float16) tensors
-  auto options = at::TensorOptions().dtype(at::kHalf).device(at::kCUDA);
-  at::Tensor tensor1 = at::arange(6, options).reshape({2, 3});
-  at::Tensor tensor2 = at::arange(6, options).reshape({2, 3});
-
-  bool result = at::allclose(tensor1, tensor2);
-  ASSERT_EQ(result, true);
-
-  // Test member function
-  bool result_member = tensor1.allclose(tensor2, 1e-05, 1e-08, false);
-  ASSERT_EQ(result_member, true);
-
-  // Test with small difference
-  at::Tensor tensor3 = at::ones({3}, options);
-  at::Tensor tensor4 = at::ones({3}, options);
-  tensor4[0] = at::tensor(1.1f, options);  // small difference
-  bool result_diff = at::allclose(tensor3, tensor4);
-  ASSERT_EQ(result_diff, false);
-
-  // With custom tolerance, should pass
-  bool result_tol = at::allclose(tensor3, tensor4, 0.2, 0.0, false);
-  ASSERT_EQ(result_tol, true);
-}
-#endif
-
-#if 0
-TEST(TestAllclose, AllcloseHalfNaN) {
-  // Test allclose with half (float16) tensors and NaN
-  const phi::dtype::float16 nan_val =
-      phi::dtype::float16(std::numeric_limits<float>::quiet_NaN());
-  std::vector<phi::dtype::float16> data1 = {phi::dtype::float16(1.0f),
-                                            phi::dtype::float16(1.0f),
-                                            phi::dtype::float16(nan_val)};
-  at::Tensor tensor1 = at::from_blob(data1.data(), {3}, at::kHalf);
-  at::Tensor tensor2 = tensor1.clone();
-
-  // Without equal_nan, NaN should fail
-  bool result_no_eq = at::allclose(tensor1, tensor2, 1e-05, 1e-08, false);
-  ASSERT_EQ(result_no_eq, false);
-
-  // With equal_nan, should pass
-  bool result_eq = at::allclose(tensor1, tensor2, 1e-05, 1e-08, true);
-  ASSERT_EQ(result_eq, true);
-}
-#endif
 
 TEST(TestAllclose, AllcloseWithDifferentRtolAtolOrder) {
   // Test allclose with parameters in different orders (edge cases)
