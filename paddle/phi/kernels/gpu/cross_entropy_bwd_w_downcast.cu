@@ -45,8 +45,8 @@ __global__ void SoftmaxWithCrossEntropyGradHardLabelVectorized(
     const int ignore_index) {
   // Vectorized load/store with float4 for 128-bit memory transactions
   constexpr int VEC_SIZE = 4;
-  using VecT = typename phi::AlignedVector<LogitT, VEC_SIZE>;
-  using SoftmaxVecT = typename phi::AlignedVector<T, VEC_SIZE>;
+  using VecT = typename AlignedVector<LogitT, VEC_SIZE>;
+  using SoftmaxVecT = typename AlignedVector<T, VEC_SIZE>;
 
   int64_t tid =
       static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +

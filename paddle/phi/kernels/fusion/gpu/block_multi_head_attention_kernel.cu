@@ -276,9 +276,9 @@ __global__ void DequantKernel(T* output,
       VecSize;
   int64_t col_id = idx % n;
 
-  phi::AlignedVector<int32_t, VecSize> in_vec;
-  phi::AlignedVector<float, VecSize> out_scale_vec;
-  phi::AlignedVector<T, VecSize> out_vec;
+  AlignedVector<int32_t, VecSize> in_vec;
+  AlignedVector<float, VecSize> out_scale_vec;
+  AlignedVector<T, VecSize> out_vec;
 
   for (; idx < numel; idx += stride) {
     phi::Load<int32_t, VecSize>(input + idx, &in_vec);
