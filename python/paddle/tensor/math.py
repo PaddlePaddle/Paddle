@@ -4034,11 +4034,15 @@ def digamma(
         helper = LayerHelper('digamma', **locals())
         out_tensor = helper.create_variable_for_type_inference(x.dtype)
         if out is not None:
-            helper.append_op(type='digamma', inputs={'X': x}, outputs={'Out': out_tensor})
+            helper.append_op(
+                type='digamma', inputs={'X': x}, outputs={'Out': out_tensor}
+            )
             paddle.assign(out_tensor, out)
             return out
         else:
-            helper.append_op(type='digamma', inputs={'X': x}, outputs={'Out': out_tensor})
+            helper.append_op(
+                type='digamma', inputs={'X': x}, outputs={'Out': out_tensor}
+            )
             return out_tensor
 
 
