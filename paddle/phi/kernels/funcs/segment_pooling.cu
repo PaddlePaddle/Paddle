@@ -25,8 +25,6 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-using Tensor = DenseTensor;
-
 template <typename T, typename Index, int DimTileSize>
 __global__ void SegmentSumIdsKernel(const Index* segment_ids,
                                     T* summed_ids,

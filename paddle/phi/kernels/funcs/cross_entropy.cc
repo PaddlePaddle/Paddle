@@ -20,7 +20,6 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-using Tensor = DenseTensor;
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>

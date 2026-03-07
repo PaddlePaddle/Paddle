@@ -22,7 +22,6 @@
 #define MAX_RANK_SUPPORTED 8
 
 namespace phi {
-using Tensor = DenseTensor;
 
 template <typename Context, typename T, int Rank>
 void Expand(const Context& dev_ctx,

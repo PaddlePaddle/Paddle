@@ -27,8 +27,6 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-using Tensor = DenseTensor;
-
 struct EqualTo {
   constexpr bool operator()(int a, int b) const { return a == b; }
 };
