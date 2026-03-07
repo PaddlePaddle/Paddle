@@ -142,6 +142,10 @@ class TestAddcmulOp_0D(TestAddcmulOp):
         self.attrs = {'value': 0.5}
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not compiled with CUDA",
+)
 class TestAddcmulFP16Op(TestAddcmulOp):
     """Test float16 dtype"""
 
@@ -158,8 +162,9 @@ class TestAddcmulFP16Op(TestAddcmulOp):
 
 
 @unittest.skipIf(
-    not core.is_bfloat16_supported(get_device_place()),
-    "not support the bfloat16",
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestAddcmulBF16Op(OpTest):
     """Test bfloat16 dtype"""
@@ -311,9 +316,10 @@ class TestAddcmulAPI(unittest.TestCase):
     def test_dygraph_api(self):
         """Test dynamic graph API"""
         paddle.disable_static()
-        x = paddle.to_tensor(self.np_input)
-        t1 = paddle.to_tensor(self.np_tensor1)
-        t2 = paddle.to_tensor(self.np_tensor2)
+        place = paddle.CPUPlace()
+        x = paddle.to_tensor(self.np_input, place=place)
+        t1 = paddle.to_tensor(self.np_tensor1, place=place)
+        t2 = paddle.to_tensor(self.np_tensor2, place=place)
 
         out1 = paddle.addcmul(x, t1, t2, value=0.5)
         out2 = paddle.addcmul(input=x, tensor1=t1, tensor2=t2, value=0.5)
@@ -357,9 +363,10 @@ class TestAddcmulAPI(unittest.TestCase):
     def test_out_parameter(self):
         """Test out parameter"""
         paddle.disable_static()
-        input = paddle.to_tensor(self.np_input)
-        tensor1 = paddle.to_tensor(self.np_tensor1)
-        tensor2 = paddle.to_tensor(self.np_tensor2)
+        place = paddle.CPUPlace()
+        input = paddle.to_tensor(self.np_input, place=place)
+        tensor1 = paddle.to_tensor(self.np_tensor1, place=place)
+        tensor2 = paddle.to_tensor(self.np_tensor2, place=place)
         out = paddle.empty(self.shape, dtype=self.dtype)
 
         paddle.addcmul(input, tensor1, tensor2, value=0.5, out=out)
