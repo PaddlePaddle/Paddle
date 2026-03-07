@@ -60,35 +60,55 @@ from paddle.incubate.distributed.fleet import recompute_hybrid
 from ..pp_utils.forward_backward_overlap_utils import (
     ScheduleChunk,
 )
+from .spec_utils import LayerSpec, build_spec_layer
 
 __all__ = []
 
 
 class LayerDesc:
-    def __init__(self, layer_func, *inputs, **kwargs):
-        self.layer_func = layer_func
-        self.inputs = inputs
+    def __init__(self, layer_func_or_spec, *inputs, **kwargs):
         self.kwargs = kwargs
+        self.using_layer_spec = False
 
-        if not issubclass(layer_func, nn.Layer):
-            raise TypeError(
-                "The input(layer_func) should be a derived class of Layer."
-            )
+        if isinstance(layer_func_or_spec, LayerSpec):
+            self.using_layer_spec = True
+            self.layer_spec = layer_func_or_spec
+        else:
+            self.inputs = inputs
+            self.layer_func = layer_func_or_spec
+            if not issubclass(layer_func_or_spec, nn.Layer):
+                raise TypeError(
+                    "The input(layer_func) should be a derived class of Layer."
+                )
 
     def build_layer(self, **extra_kwargs):
-        return self.layer_func(*self.inputs, **{**self.kwargs, **extra_kwargs})
+        if self.using_layer_spec:
+            all_extra_kwargs = {
+                **self.layer_spec.extra_kwargs,
+                **self.kwargs,
+                **extra_kwargs,
+            }
+            self.layer_spec.extra_kwargs = all_extra_kwargs
+            return build_spec_layer(self.layer_spec)
+        else:
+            return self.layer_func(
+                *self.inputs, **{**self.kwargs, **extra_kwargs}
+            )
 
     def __repr__(self):
-        return layer_to_str(
-            self.layer_func.__name__, *self.inputs, **self.kwargs
-        )
+        if self.using_layer_spec:
+            return layer_to_str(repr(self.layer_spec), **self.kwargs)
+        else:
+            return layer_to_str(
+                self.layer_func.__name__, *self.inputs, **self.kwargs
+            )
 
 
 class SharedLayerDesc(LayerDesc):
     def __init__(
         self,
         key,
-        layer_func,
+        layer_func,  # May be layer_func or layer_spec
         forward_func=None,
         shared_weight_attr='weight',
         *inputs,
@@ -106,6 +126,7 @@ class SharedLayerDesc(LayerDesc):
         self.shared_weight_attr = shared_weight_attr
 
 
+# TODO: PaddleFleet LayerSpec Support dualpipev
 class LocalSharedLayerDesc(LayerDesc):
     """
     Used for dualpipev, some layers can be shared locally
@@ -221,7 +242,13 @@ class SegmentLayers:
             if isinstance(layer, nn.Layer):
                 name = layer.__class__.__name__
             elif isinstance(layer, LayerDesc):
-                name = layer.layer_func.__name__
+                if layer.using_layer_spec:
+                    if not isinstance(layer.layer_spec.layer, tuple):
+                        name = layer.layer_spec.layer.__name__
+                    else:
+                        continue
+                else:
+                    name = layer.layer_func.__name__
             else:
                 try:
                     name = layer.__name__
@@ -390,6 +417,7 @@ class PipelineLayer(nn.Layer):
                 "virtual_pipeline_stage should be None or an int"
             )
             if num_virtual_pipeline_stages > 1:
+                assert num_stages > 1, "Cannot enable vpp under no pp."
                 logger.info(
                     "set num_virtual_pipeline_stages > 1 means using interleave scheduler instead of 1f1b scheduler"
                 )
@@ -759,7 +787,7 @@ class PipelineLayer(nn.Layer):
                         grad_var = param.grad
                     with paddle.framework.no_grad():
                         paddle.distributed.all_reduce(
-                            grad_var,
+                            grad_var.contiguous(),
                             group=comm['group'],
                         )
                 else:
@@ -1119,9 +1147,26 @@ class PipelineLayer(nn.Layer):
             self.run_function = model_chunk.get_run_function()
 
     def get_schedule_chunk(self, chunk_id):
+        """
+        Get the schedule chunk for the specified chunk_id and build schedule nodes.
+
+        This method is used in pipeline parallel to retrieve the model chunk
+        (run_function) corresponding to the chunk_id and build schedule nodes for that chunk.
+
+        Args:
+            chunk_id (int): The ID of the virtual pipeline chunk to retrieve
+
+        Returns:
+            list: The built schedule nodes list
+
+        Raises:
+            AssertionError: If recompute_interval is not 0, as overlap schedule mode requires recompute_interval to be 0
+        """
         self.update_run_function(chunk_id)
 
-        assert self._recompute_interval == 0
+        assert self._recompute_interval == 0, (
+            "overlap_schedule_mode requires recompute_interval==0."
+        )
         return self.build_schedule_nodes(0, len(self.run_function))
 
     def forward(self, input, chunk_id=None):

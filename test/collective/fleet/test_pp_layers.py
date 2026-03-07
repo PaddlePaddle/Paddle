@@ -12,10 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .api_tracer import start_api_tracer, stop_api_tracer
+import unittest
 
-__all__ = [
-    'api_tracer',
-    'start_api_tracer',
-    'stop_api_tracer',
-]
+from legacy_test.test_parallel_dygraph_dataparallel import (
+    TestMultipleAccelerators,
+)
+
+
+class TestPipelineParallel(TestMultipleAccelerators):
+    def test_pipeline_parallel(self):
+        self.run_mnist_2accelerators('hybrid_parallel_pp_layers.py')
+
+
+if __name__ == "__main__":
+    unittest.main()
