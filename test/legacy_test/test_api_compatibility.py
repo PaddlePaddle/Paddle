@@ -3003,6 +3003,101 @@ class TestRenormInplace(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestLgammaAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        paddle.enable_static()
+        self.shape = [5, 6]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_x = (np.random.rand(*self.shape) * 5.0 + 0.1).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        paddle_dygraph_out = []
+
+        # Paddle positional arguments
+        out1 = paddle.lgamma(x)
+        paddle_dygraph_out.append(out1)
+
+        # Paddle keyword arguments
+        out2 = paddle.lgamma(x=x)
+        paddle_dygraph_out.append(out2)
+
+        # PyTorch-style positional arguments
+        out3 = paddle.lgamma(x)
+        paddle_dygraph_out.append(out3)
+
+        # PyTorch keyword arguments (alias)
+        out4 = paddle.lgamma(input=x)
+        paddle_dygraph_out.append(out4)
+
+        # Mixed arguments
+        out5 = paddle.lgamma(x, name=None)
+        paddle_dygraph_out.append(out5)
+
+        # out parameter
+        out6 = paddle.empty_like(x)
+        out7 = paddle.lgamma(x, out=out6)
+        paddle_dygraph_out.append(out6)
+        paddle_dygraph_out.append(out7)
+
+        # Tensor method - args
+        out8 = x.lgamma()
+        paddle_dygraph_out.append(out8)
+
+        # Tensor method - kwargs
+        out9 = x.lgamma(name=None)
+        paddle_dygraph_out.append(out9)
+
+        ref_out = out1.numpy()
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-6, atol=1e-6)
+
+        # Exception parameters
+        with self.assertRaises(ValueError):
+            paddle.lgamma()
+        with self.assertRaises(ValueError):
+            paddle.lgamma(input=1)
+        with self.assertRaises(ValueError):
+            paddle.lgamma(x=x, invalid_param=True)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+
+            # Paddle positional arguments
+            out1 = paddle.lgamma(x)
+            # Paddle keyword arguments
+            out2 = paddle.lgamma(x=x)
+            # PyTorch keyword arguments (alias)
+            out3 = paddle.lgamma(input=x)
+            # Tensor method
+            out4 = x.lgamma()
+            # Mixed arguments
+            out5 = paddle.lgamma(x, name=None)
+
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2, out3, out4, out5],
+            )
+
+            for out in fetches[1:]:
+                np.testing.assert_allclose(
+                    fetches[0], out, rtol=1e-6, atol=1e-6
+                )
+
+
 class TestCloneAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)

@@ -390,6 +390,11 @@
   args_alias:
     use_default_mapping : True
 
+- op : lgamma
+  name : [paddle.lgamma, paddle.Tensor.lgamma]
+  args_alias :
+    use_default_mapping : True
+
 - op : log
   name : [paddle.log, paddle.Tensor.log]
   args_alias :
