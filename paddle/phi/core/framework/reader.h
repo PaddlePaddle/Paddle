@@ -200,6 +200,14 @@ class ReaderHolder {
     reader_->Start();
   }
 
+  bool HasReachedEnd() const {
+    PADDLE_ENFORCE_NOT_NULL(
+        reader_,
+        common::errors::InvalidArgument(
+            "The underlying reader of ReaderHolder should not be null"));
+    return reader_->HasReachedEnd();
+  }
+
   const std::vector<DDim>& Shapes() const { return reader_->Shapes(); }
 
   const std::vector<proto::VarType::Type>& VarTypes() const {
