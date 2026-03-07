@@ -54,6 +54,8 @@ class ReaderBase {
 
   PADDLE_API virtual void Start();
 
+  PADDLE_API virtual bool HasReachedEnd() const;
+
   // Return the readers which are the end of decorating chain. Basically
   // they are readers just before read op.
   PADDLE_API std::unordered_set<ReaderBase*> GetEndPoints();
@@ -131,6 +133,8 @@ class DecoratedReader : public ReaderBase,
   void ShutdownImpl() override { reader_->Shutdown(); }
 
   void StartImpl() override { reader_->Start(); }
+
+  bool HasReachedEnd() const override { return reader_->HasReachedEnd(); }
 
   std::shared_ptr<ReaderBase> reader_;
 };

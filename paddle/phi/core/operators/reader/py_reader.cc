@@ -31,6 +31,7 @@ PyReader::PyReader(
 void PyReader::ReadNext(phi::TensorArray* out) {
   bool success = false;
   *out = queue_->Pop(&success);
+  reached_end_.store(!success, std::memory_order_relaxed);
   if (!success) out->clear();
 }
 
@@ -40,6 +41,13 @@ PyReader::~PyReader() {  // NOLINT
 
 void PyReader::Shutdown() { queue_->Close(); }
 
-void PyReader::Start() { queue_->ReOpen(); }
+void PyReader::Start() {
+  reached_end_.store(false, std::memory_order_relaxed);
+  queue_->ReOpen();
+}
+
+bool PyReader::HasReachedEnd() const {
+  return reached_end_.load(std::memory_order_relaxed);
+}
 
 }  // namespace paddle::operators::reader

@@ -43,8 +43,11 @@ class PADDLE_API PyReader : public framework::FileReader {
 
   void Start() override;
 
+  bool HasReachedEnd() const override;
+
  private:
   std::shared_ptr<DenseTensorBlockingQueue> queue_;
+  std::atomic<bool> reached_end_{false};
 };
 
 }  // namespace reader

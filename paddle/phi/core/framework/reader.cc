@@ -71,6 +71,8 @@ void ReaderBase::Start() {
   }
 }
 
+bool ReaderBase::HasReachedEnd() const { return false; }
+
 ReaderBase::~ReaderBase() = default;
 
 DecoratedReader::~DecoratedReader() {
