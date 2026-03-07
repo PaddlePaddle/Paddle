@@ -308,7 +308,9 @@ class MultiDeviceFeedReader {
       futures_[i] = pool_->enqueue([this, i] {
         try {
           readers_[i]->ReadNext(&ret_[i]);
-          return ret_[i].empty() ? Status::kEOF : Status::kSuccess;
+          return (ret_[i].empty() && readers_[i]->HasReachedEnd())
+                     ? Status::kEOF
+                     : Status::kSuccess;
         } catch (...) {
           exceptions_[i] = std::current_exception();
           return Status::kException;
