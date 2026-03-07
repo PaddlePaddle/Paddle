@@ -31,9 +31,27 @@
 #endif
 
 #include <c10/core/Device.h>
+#include <c10/core/List.h>
+#include <c10/core/ScalarType.h>
+#include <c10/core/SymIntArrayRef.h>
+#include <limits>
+#include <optional>
 #include <utility>
 #include <vector>
+#include "paddle/common/ddim.h"
 #include "paddle/phi/common/place.h"
+
+namespace at {
+class Tensor;
+
+// Type aliases for ATen compatibility
+using Scalar = c10::Scalar;
+using TensorOptions = c10::TensorOptions;
+using MemoryFormat = c10::MemoryFormat;
+using IntArrayRef = c10::IntArrayRef;
+using OptionalIntArrayRef = c10::OptionalIntArrayRef;
+using ScalarType = c10::ScalarType;
+}  // namespace at
 
 namespace at {  // NOLINT(build/namespaces)
 using PaddleTensor = paddle::Tensor;
@@ -208,6 +226,119 @@ class Tensor : public TensorBase {
   T item() const;
 
   bool equal(const at::Tensor& other) const;
+
+  // Clamp functions
+  at::Tensor clamp(
+      const ::std::optional<at::Scalar>& min,
+      const ::std::optional<at::Scalar>& max = ::std::nullopt) const;
+
+  at::Tensor clamp(const ::std::optional<at::Tensor>& min = {},
+                   const ::std::optional<at::Tensor>& max = {}) const;
+
+  at::Tensor& clamp_(
+      const ::std::optional<at::Scalar>& min,
+      const ::std::optional<at::Scalar>& max = ::std::nullopt) const;
+
+  at::Tensor& clamp_(const ::std::optional<at::Tensor>& min = {},
+                     const ::std::optional<at::Tensor>& max = {}) const;
+
+  at::Tensor clamp_max(const at::Scalar& max) const;
+  at::Tensor clamp_max(const at::Tensor& max) const;
+  at::Tensor& clamp_max_(const at::Scalar& max) const;
+  at::Tensor& clamp_max_(const at::Tensor& max) const;
+
+  at::Tensor clamp_min(const at::Scalar& min) const;
+  at::Tensor clamp_min(const at::Tensor& min) const;
+  at::Tensor& clamp_min_(const at::Scalar& min) const;
+  at::Tensor& clamp_min_(const at::Tensor& min) const;
+
+  // as_strided: Create a tensor view with custom size, stride, and
+  // storage_offset
+  at::Tensor as_strided(
+      at::IntArrayRef size,
+      at::IntArrayRef stride,
+      ::std::optional<int64_t> storage_offset = ::std::nullopt) const;
+
+  // as_strided_: Inplace version
+  const at::Tensor& as_strided_(
+      at::IntArrayRef size,
+      at::IntArrayRef stride,
+      ::std::optional<int64_t> storage_offset = ::std::nullopt) const;
+
+  // as_strided_scatter: Scatter src into a strided view
+  at::Tensor as_strided_scatter(
+      const at::Tensor& src,
+      at::IntArrayRef size,
+      at::IntArrayRef stride,
+      ::std::optional<int64_t> storage_offset = ::std::nullopt) const;
+
+  // Standard deviation functions
+  Tensor std(int dim) const;
+  Tensor std(bool unbiased = true) const;
+  Tensor std(at::OptionalIntArrayRef dim,
+             bool unbiased = true,
+             bool keepdim = false) const;
+  Tensor std(at::OptionalIntArrayRef dim,
+             const ::std::optional<at::Scalar>& correction,
+             bool keepdim = false) const;
+
+  Tensor tensor_data() const {
+    PaddleTensor result;
+    if (tensor_.initialized()) {
+      auto src_impl = tensor_.impl();
+      auto* src_tensor =
+          std::dynamic_pointer_cast<phi::DenseTensor>(src_impl).get();
+      if (src_tensor && src_tensor->meta().is_contiguous()) {
+        result.set_impl(std::make_shared<phi::DenseTensor>());
+        auto* dst_tensor =
+            std::dynamic_pointer_cast<phi::DenseTensor>(result.impl()).get();
+        dst_tensor->ShareDataWith(*src_tensor);
+      } else {
+        result = paddle::experimental::assign(tensor_);
+      }
+    }
+    // For uninitialized tensor, return an uninitialized tensor (no assign
+    // needed)
+    return Tensor(result);
+  }
+
+  Tensor variable_data() const {
+    PaddleTensor result;
+    if (tensor_.initialized()) {
+      auto src_impl = tensor_.impl();
+      auto* src_tensor =
+          std::dynamic_pointer_cast<phi::DenseTensor>(src_impl).get();
+      if (src_tensor && src_tensor->meta().is_contiguous()) {
+        result.set_impl(std::make_shared<phi::DenseTensor>());
+        auto* dst_tensor =
+            std::dynamic_pointer_cast<phi::DenseTensor>(result.impl()).get();
+        dst_tensor->ShareDataWith(*src_tensor);
+      } else {
+        result = paddle::experimental::assign(tensor_);
+      }
+    }
+    // For uninitialized tensor, return an uninitialized tensor (no assign
+    // needed)
+    return Tensor(result);
+  }
+
+  // index: Get values at specified tensor indices
+  at::Tensor index(const c10::List<::std::optional<at::Tensor>>& indices) const;
+
+  // index_put_: Set values at specified indices in-place
+  at::Tensor& index_put_(const c10::List<::std::optional<at::Tensor>>& indices,
+                         const at::Tensor& values,
+                         bool accumulate = false) const;
+
+  // index_put_: Set scalar value at specified indices in-place
+  at::Tensor& index_put_(const c10::List<::std::optional<at::Tensor>>& indices,
+                         const at::Scalar& v,
+                         bool accumulate = false) const;
+
+  // index_put: Non-inplace version of index_put_
+  at::Tensor index_put(const c10::List<::std::optional<at::Tensor>>& indices,
+                       const at::Tensor& values,
+                       bool accumulate = false) const;
 
   Tensor toType(ScalarType t) const {
     return Tensor(paddle::experimental::cast(
