@@ -51,7 +51,7 @@ void SquaredL2Norm(const phi::CPUContext& dev_ctx,
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 template <typename T1, typename T2 = T1>
-void SquaredL2Norm(const phi::GPUContext& dev_ctx,
+void SquaredL2Norm(const GPUContext& dev_ctx,
                    const T1* x,
                    T2* y,
                    size_t numel,

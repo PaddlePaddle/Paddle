@@ -38,7 +38,7 @@ struct RowwiseMean2D {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <typename T>
-class RowwiseMean2D<phi::GPUContext, T> {
+class RowwiseMean2D<GPUContext, T> {
  public:
   RowwiseMean2D(int left, int right, const DeviceContext& dev_ctx)
       : left_(left), right_(right) {
@@ -47,17 +47,17 @@ class RowwiseMean2D<phi::GPUContext, T> {
     dev_ctx.template Alloc<T>(&divisor_);
     funcs::set_constant(dev_ctx, &divisor_, static_cast<T>(1.0 / right));
   }
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& input,
                   DenseTensor* out) {
-    funcs::GetBlas<phi::GPUContext, T>(dev_ctx).GEMV(false,
-                                                     left_,
-                                                     right_,
-                                                     1.,
-                                                     input.data<T>(),
-                                                     divisor_.data<T>(),
-                                                     0.,
-                                                     out->data<T>());
+    funcs::GetBlas<GPUContext, T>(dev_ctx).GEMV(false,
+                                                left_,
+                                                right_,
+                                                1.,
+                                                input.data<T>(),
+                                                divisor_.data<T>(),
+                                                0.,
+                                                out->data<T>());
   }
 
  private:
@@ -95,9 +95,9 @@ struct ColwiseSum2D {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <typename T>
-class ColwiseSum2D<phi::GPUContext, T> {
+class ColwiseSum2D<GPUContext, T> {
  public:
-  ColwiseSum2D(int left, int right, const phi::GPUContext& dev_ctx)
+  ColwiseSum2D(int left, int right, const GPUContext& dev_ctx)
       : left_(left), right_(right) {
     DDim ones_dim({left_});
     divisor_.Resize(ones_dim);
@@ -105,17 +105,17 @@ class ColwiseSum2D<phi::GPUContext, T> {
     funcs::set_constant(dev_ctx, &divisor_, static_cast<T>(1.0));
   }
 
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& input,
                   DenseTensor* out) {
-    funcs::GetBlas<phi::GPUContext, T>(dev_ctx).GEMV(true,
-                                                     left_,
-                                                     right_,
-                                                     1.,
-                                                     input.data<T>(),
-                                                     divisor_.data<T>(),
-                                                     0.,
-                                                     out->data<T>());
+    funcs::GetBlas<GPUContext, T>(dev_ctx).GEMV(true,
+                                                left_,
+                                                right_,
+                                                1.,
+                                                input.data<T>(),
+                                                divisor_.data<T>(),
+                                                0.,
+                                                out->data<T>());
   }
 
  private:

@@ -38,7 +38,7 @@ void BatchTranspose(T* output,
                     int64_t batch,
                     int64_t m,
                     int64_t n,
-                    const phi::GPUContext* dev_ctx);
+                    const GPUContext* dev_ctx);
 #endif
 template <typename DeviceContext, typename T>
 struct TransposeNormal {

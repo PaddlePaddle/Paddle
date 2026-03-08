@@ -100,7 +100,7 @@ void BatchTranspose(T* output,
                     int64_t batch,
                     int64_t m,
                     int64_t n,
-                    const phi::GPUContext* dev_ctx) {
+                    const GPUContext* dev_ctx) {
   int64_t device_id = dev_ctx->GetPlace().GetDeviceId();
   const auto& prop = phi::backends::gpu::GetDeviceProperties(device_id);
   int max_grid_y = prop.maxGridSize[1];
@@ -131,37 +131,37 @@ template void BatchTranspose(float16* output,
                              int64_t batch,
                              int64_t m,
                              int64_t n,
-                             const phi::GPUContext* dev_ctx);
+                             const GPUContext* dev_ctx);
 template void BatchTranspose(float* output,
                              const float* input,
                              int64_t batch,
                              int64_t m,
                              int64_t n,
-                             const phi::GPUContext* dev_ctx);
+                             const GPUContext* dev_ctx);
 template void BatchTranspose(bfloat16* output,
                              const bfloat16* input,
                              int64_t batch,
                              int64_t m,
                              int64_t n,
-                             const phi::GPUContext* dev_ctx);
+                             const GPUContext* dev_ctx);
 
-template struct SetConstant<phi::GPUContext, float8_e4m3fn>;
-template struct SetConstant<phi::GPUContext, float8_e5m2>;
-template struct SetConstant<phi::GPUContext, float16>;
-template struct SetConstant<phi::GPUContext, bfloat16>;
-template struct SetConstant<phi::GPUContext, float>;
-template struct SetConstant<phi::GPUContext, double>;
-template struct SetConstant<phi::GPUContext, uint8_t>;
-template struct SetConstant<phi::GPUContext, uint16_t>;
-template struct SetConstant<phi::GPUContext, uint32_t>;
-template struct SetConstant<phi::GPUContext, uint64_t>;
-template struct SetConstant<phi::GPUContext, int8_t>;
-template struct SetConstant<phi::GPUContext, int>;
-template struct SetConstant<phi::GPUContext, int16_t>;
-template struct SetConstant<phi::GPUContext, int64_t>;
-template struct SetConstant<phi::GPUContext, bool>;
-template struct SetConstant<phi::GPUContext, phi::complex64>;
-template struct SetConstant<phi::GPUContext, phi::complex128>;
+template struct SetConstant<GPUContext, float8_e4m3fn>;
+template struct SetConstant<GPUContext, float8_e5m2>;
+template struct SetConstant<GPUContext, float16>;
+template struct SetConstant<GPUContext, bfloat16>;
+template struct SetConstant<GPUContext, float>;
+template struct SetConstant<GPUContext, double>;
+template struct SetConstant<GPUContext, uint8_t>;
+template struct SetConstant<GPUContext, uint16_t>;
+template struct SetConstant<GPUContext, uint32_t>;
+template struct SetConstant<GPUContext, uint64_t>;
+template struct SetConstant<GPUContext, int8_t>;
+template struct SetConstant<GPUContext, int>;
+template struct SetConstant<GPUContext, int16_t>;
+template struct SetConstant<GPUContext, int64_t>;
+template struct SetConstant<GPUContext, bool>;
+template struct SetConstant<GPUContext, phi::complex64>;
+template struct SetConstant<GPUContext, phi::complex128>;
 
 #ifndef PADDLE_WITH_CUSTOM_DEVICE
 template struct SetConstant<phi::GPUPinnedContext, float16>;
@@ -181,24 +181,24 @@ template struct SetConstant<phi::GPUPinnedContext, phi::complex64>;
 template struct SetConstant<phi::GPUPinnedContext, phi::complex128>;
 #endif
 
-#define DEFINE_GPU_TRANS(RANK)                                      \
-  template struct Transpose<phi::GPUContext, bool, RANK>;           \
-  template struct Transpose<phi::GPUContext, uint8_t, RANK>;        \
-  template struct Transpose<phi::GPUContext, uint16_t, RANK>;       \
-  template struct Transpose<phi::GPUContext, uint32_t, RANK>;       \
-  template struct Transpose<phi::GPUContext, uint64_t, RANK>;       \
-  template struct Transpose<phi::GPUContext, float, RANK>;          \
-  template struct Transpose<phi::GPUContext, double, RANK>;         \
-  template struct Transpose<phi::GPUContext, float8_e4m3fn, RANK>;  \
-  template struct Transpose<phi::GPUContext, float8_e5m2, RANK>;    \
-  template struct Transpose<phi::GPUContext, float16, RANK>;        \
-  template struct Transpose<phi::GPUContext, bfloat16, RANK>;       \
-  template struct Transpose<phi::GPUContext, int8_t, RANK>;         \
-  template struct Transpose<phi::GPUContext, int16_t, RANK>;        \
-  template struct Transpose<phi::GPUContext, int32_t, RANK>;        \
-  template struct Transpose<phi::GPUContext, int64_t, RANK>;        \
-  template struct Transpose<phi::GPUContext, phi::complex64, RANK>; \
-  template struct Transpose<phi::GPUContext, phi::complex128, RANK>;
+#define DEFINE_GPU_TRANS(RANK)                                 \
+  template struct Transpose<GPUContext, bool, RANK>;           \
+  template struct Transpose<GPUContext, uint8_t, RANK>;        \
+  template struct Transpose<GPUContext, uint16_t, RANK>;       \
+  template struct Transpose<GPUContext, uint32_t, RANK>;       \
+  template struct Transpose<GPUContext, uint64_t, RANK>;       \
+  template struct Transpose<GPUContext, float, RANK>;          \
+  template struct Transpose<GPUContext, double, RANK>;         \
+  template struct Transpose<GPUContext, float8_e4m3fn, RANK>;  \
+  template struct Transpose<GPUContext, float8_e5m2, RANK>;    \
+  template struct Transpose<GPUContext, float16, RANK>;        \
+  template struct Transpose<GPUContext, bfloat16, RANK>;       \
+  template struct Transpose<GPUContext, int8_t, RANK>;         \
+  template struct Transpose<GPUContext, int16_t, RANK>;        \
+  template struct Transpose<GPUContext, int32_t, RANK>;        \
+  template struct Transpose<GPUContext, int64_t, RANK>;        \
+  template struct Transpose<GPUContext, phi::complex64, RANK>; \
+  template struct Transpose<GPUContext, phi::complex128, RANK>;
 
 DEFINE_GPU_TRANS(1);
 DEFINE_GPU_TRANS(2);
@@ -285,8 +285,8 @@ void TransposeNormal<DeviceContext, T>::operator()(
 }
 
 template <typename T>
-struct TransposeNormal<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext& dev_ctx,
+struct TransposeNormal<GPUContext, T> {
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& in,
                   DenseTensor* out,
                   const std::vector<int>& axis) {
@@ -337,7 +337,7 @@ struct TransposeNormal<phi::GPUContext, T> {
 
 // define transpose normal
 #define DEFINE_GPU_TRANS_NORMAL(TYPE) \
-  template struct TransposeNormal<phi::GPUContext, TYPE>
+  template struct TransposeNormal<GPUContext, TYPE>
 
 DEFINE_GPU_TRANS_NORMAL(phi::float8_e4m3fn);
 DEFINE_GPU_TRANS_NORMAL(phi::float8_e5m2);
@@ -365,8 +365,8 @@ struct TensorSetConstantGPU {
 
   template <typename T>
   void apply() const {
-    SetConstant<phi::GPUContext, T> functor;
-    functor(reinterpret_cast<const phi::GPUContext&>(dev_ctx_),
+    SetConstant<GPUContext, T> functor;
+    functor(reinterpret_cast<const GPUContext&>(dev_ctx_),
             tensor_,
             static_cast<T>(value_));
   }
@@ -396,8 +396,8 @@ __global__ void RowwiseAddKernel(
 }
 
 template <typename T>
-struct RowwiseAdd<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext& dev_ctx,
+struct RowwiseAdd<GPUContext, T> {
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& input,
                   const DenseTensor& vector,
                   DenseTensor* output) {
@@ -436,16 +436,16 @@ struct RowwiseAdd<phi::GPUContext, T> {
   }
 };
 
-template struct RowwiseAdd<phi::GPUContext, float>;
-template struct RowwiseAdd<phi::GPUContext, double>;
-template struct ColwiseSum<phi::GPUContext, float>;
-template struct ColwiseSum<phi::GPUContext, int>;
-template struct ColwiseSum<phi::GPUContext, int64_t>;
+template struct RowwiseAdd<GPUContext, float>;
+template struct RowwiseAdd<GPUContext, double>;
+template struct ColwiseSum<GPUContext, float>;
+template struct ColwiseSum<GPUContext, int>;
+template struct ColwiseSum<GPUContext, int64_t>;
 
-template struct RowwiseSum<phi::GPUContext, float>;
+template struct RowwiseSum<GPUContext, float>;
 
-template struct RowwiseMean<phi::GPUContext, float>;
-template struct RowwiseMean<phi::GPUContext, double>;
+template struct RowwiseMean<GPUContext, float>;
+template struct RowwiseMean<GPUContext, double>;
 
 }  // namespace funcs
 }  // namespace phi

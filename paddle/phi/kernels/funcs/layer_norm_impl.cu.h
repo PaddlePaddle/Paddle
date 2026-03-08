@@ -803,7 +803,7 @@ template <typename T,
           typename U,
           typename ScaleT = U,
           typename MaskType = uint8_t>
-void ln_bwd_fast_kernel_driver(const phi::GPUContext &dev_ctx,
+void ln_bwd_fast_kernel_driver(const GPUContext &dev_ctx,
                                const int64_t rows,
                                const int64_t cols,
                                float epsilon,
@@ -1728,7 +1728,7 @@ static void LayerNormBackward(
     float epsilon,
     int64_t batch_size,
     int64_t feature_size,
-    const phi::GPUContext &dev_ctx) {
+    const GPUContext &dev_ctx) {
   auto stream = dev_ctx.stream();
   const int kMaxBlockDim = 512;
   const int kMaxBlockNum = 128;

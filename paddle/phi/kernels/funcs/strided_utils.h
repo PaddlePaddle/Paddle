@@ -35,8 +35,8 @@ inline void StridedTensorCopy(const DenseTensor& input,
         *dev_ctx, input, dims, out_stride, offset, out);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   } else if (input.place().GetType() == AllocationType::GPU) {
-    auto* dev_ctx = static_cast<phi::GPUContext*>(pool.Get(input.place()));
-    phi::StridedCopyKernel<T, phi::GPUContext>(
+    auto* dev_ctx = static_cast<GPUContext*>(pool.Get(input.place()));
+    phi::StridedCopyKernel<T, GPUContext>(
         *dev_ctx, input, dims, out_stride, offset, out);
 #endif
 #ifdef PADDLE_WITH_XPU
@@ -85,8 +85,8 @@ inline void StridedTensorFill(const DenseTensor& x,
     phi::FillKernel<T, phi::CPUContext>(*dev_ctx, x, value, out);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   } else if (x.place().GetType() == AllocationType::GPU) {
-    auto* dev_ctx = static_cast<phi::GPUContext*>(pool.Get(x.place()));
-    phi::FillKernel<T, phi::GPUContext>(*dev_ctx, x, value, out);
+    auto* dev_ctx = static_cast<GPUContext*>(pool.Get(x.place()));
+    phi::FillKernel<T, GPUContext>(*dev_ctx, x, value, out);
 #endif
 #ifdef PADDLE_WITH_XPU
   } else if (x.place().GetType() == AllocationType::XPU) {
@@ -122,8 +122,8 @@ inline void StridedTensorContiguous(const DenseTensor& input,
     phi::ContiguousKernel<T, phi::CPUContext>(*dev_ctx, input, out);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   } else if (input.place().GetType() == AllocationType::GPU) {
-    auto* dev_ctx = static_cast<phi::GPUContext*>(pool.Get(input.place()));
-    phi::ContiguousKernel<T, phi::GPUContext>(*dev_ctx, input, out);
+    auto* dev_ctx = static_cast<GPUContext*>(pool.Get(input.place()));
+    phi::ContiguousKernel<T, GPUContext>(*dev_ctx, input, out);
 #endif
 #ifdef PADDLE_WITH_XPU
   } else if (input.place().GetType() == AllocationType::XPU) {

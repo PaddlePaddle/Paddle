@@ -24,8 +24,8 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 template <typename T>
-struct SelectedRowsAdd<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext& dev_ctx,
+struct SelectedRowsAdd<GPUContext, T> {
+  void operator()(const GPUContext& dev_ctx,
                   const SelectedRows& input1,
                   const SelectedRows& input2,
                   SelectedRows* output) {
@@ -108,8 +108,8 @@ struct SelectedRowsAdd<phi::GPUContext, T> {
   }
 };
 
-template struct PADDLE_API SelectedRowsAdd<phi::GPUContext, float>;
-template struct SelectedRowsAdd<phi::GPUContext, double>;
+template struct PADDLE_API SelectedRowsAdd<GPUContext, float>;
+template struct SelectedRowsAdd<GPUContext, double>;
 
 namespace {
 template <typename T, int block_size>
@@ -133,8 +133,8 @@ __global__ void SelectedRowsAddTensorKernel(const T* selected_rows,
 }  // namespace
 
 template <typename T>
-struct SelectedRowsAddTensor<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext& dev_ctx,
+struct SelectedRowsAddTensor<GPUContext, T> {
+  void operator()(const GPUContext& dev_ctx,
                   const SelectedRows& input1,
                   const DenseTensor& input2,
                   DenseTensor* output) {
@@ -183,7 +183,7 @@ struct SelectedRowsAddTensor<phi::GPUContext, T> {
     auto* in2_data = input2.data<T>();
     auto* out_data = output->data<T>();
 
-    funcs::SetConstant<phi::GPUContext, T> functor;
+    funcs::SetConstant<GPUContext, T> functor;
     functor(dev_ctx, output, static_cast<T>(0));
 
     const int block_size = 256;
@@ -203,14 +203,14 @@ struct SelectedRowsAddTensor<phi::GPUContext, T> {
   }
 };
 
-template struct PADDLE_API SelectedRowsAddTensor<phi::GPUContext, float>;
-template struct PADDLE_API SelectedRowsAddTensor<phi::GPUContext, double>;
-template struct SelectedRowsAdd<phi::GPUContext, phi::float16>;
-template struct SelectedRowsAddTensor<phi::GPUContext, phi::float16>;
+template struct PADDLE_API SelectedRowsAddTensor<GPUContext, float>;
+template struct PADDLE_API SelectedRowsAddTensor<GPUContext, double>;
+template struct SelectedRowsAdd<GPUContext, phi::float16>;
+template struct SelectedRowsAddTensor<GPUContext, phi::float16>;
 
 template <typename T>
-struct SelectedRowsAddTo<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext& dev_ctx,
+struct SelectedRowsAddTo<GPUContext, T> {
+  void operator()(const GPUContext& dev_ctx,
                   const SelectedRows& input1,
                   const int64_t input2_offset,
                   SelectedRows* input2) {
@@ -258,11 +258,11 @@ struct SelectedRowsAddTo<phi::GPUContext, T> {
   }
 };
 
-template struct PADDLE_API SelectedRowsAddTo<phi::GPUContext, float>;
-template struct SelectedRowsAddTo<phi::GPUContext, double>;
-template struct SelectedRowsAddTo<phi::GPUContext, int>;
-template struct SelectedRowsAddTo<phi::GPUContext, int64_t>;
-template struct SelectedRowsAddTo<phi::GPUContext, phi::float16>;
+template struct PADDLE_API SelectedRowsAddTo<GPUContext, float>;
+template struct SelectedRowsAddTo<GPUContext, double>;
+template struct SelectedRowsAddTo<GPUContext, int>;
+template struct SelectedRowsAddTo<GPUContext, int64_t>;
+template struct SelectedRowsAddTo<GPUContext, phi::float16>;
 
 namespace {
 template <typename T, int block_size>
@@ -285,8 +285,8 @@ __global__ void SelectedRowsAddToTensorKernel(const T* selected_rows,
 }  // namespace
 
 template <typename T>
-struct SelectedRowsAddToTensor<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext& dev_ctx,
+struct SelectedRowsAddToTensor<GPUContext, T> {
+  void operator()(const GPUContext& dev_ctx,
                   const SelectedRows& input1,
                   DenseTensor* input2) {
     auto in1_height = input1.height();
@@ -328,13 +328,13 @@ struct SelectedRowsAddToTensor<phi::GPUContext, T> {
   }
 };
 
-template struct PADDLE_API SelectedRowsAddToTensor<phi::GPUContext, float>;
-template struct PADDLE_API SelectedRowsAddToTensor<phi::GPUContext, double>;
-template struct SelectedRowsAddToTensor<phi::GPUContext, int>;
-template struct SelectedRowsAddToTensor<phi::GPUContext, int64_t>;
-template struct SelectedRowsAddToTensor<phi::GPUContext, phi::float16>;
-template struct SelectedRowsAddToTensor<phi::GPUContext, phi::complex64>;
-template struct SelectedRowsAddToTensor<phi::GPUContext, phi::complex128>;
+template struct PADDLE_API SelectedRowsAddToTensor<GPUContext, float>;
+template struct PADDLE_API SelectedRowsAddToTensor<GPUContext, double>;
+template struct SelectedRowsAddToTensor<GPUContext, int>;
+template struct SelectedRowsAddToTensor<GPUContext, int64_t>;
+template struct SelectedRowsAddToTensor<GPUContext, phi::float16>;
+template struct SelectedRowsAddToTensor<GPUContext, phi::complex64>;
+template struct SelectedRowsAddToTensor<GPUContext, phi::complex128>;
 
 namespace scatter {
 
@@ -502,33 +502,33 @@ struct MergeAddImpl {
 };
 
 template <typename T>
-struct MergeAdd<phi::GPUContext, T> {
+struct MergeAdd<GPUContext, T> {
   // unary functor, merge by adding duplicated rows in
   // the input SelectedRows object.
-  SelectedRows operator()(const phi::GPUContext& dev_ctx,
+  SelectedRows operator()(const GPUContext& dev_ctx,
                           const SelectedRows& input,
                           const bool sorted_result) {
-    return MergeAddImpl<phi::GPUContext, T>()(dev_ctx, input, sorted_result);
+    return MergeAddImpl<GPUContext, T>()(dev_ctx, input, sorted_result);
   }
 
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const SelectedRows& input,
                   SelectedRows* output,
                   const bool sorted_result) {
-    MergeAddImpl<phi::GPUContext, T>()(dev_ctx, input, output, sorted_result);
+    MergeAddImpl<GPUContext, T>()(dev_ctx, input, output, sorted_result);
   }
 
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const std::vector<const SelectedRows*>& inputs,
                   SelectedRows* output,
                   const bool sorted_result) {
-    MergeAddImpl<phi::GPUContext, T>()(dev_ctx, inputs, output, sorted_result);
+    MergeAddImpl<GPUContext, T>()(dev_ctx, inputs, output, sorted_result);
   }
 };
 
-#define TEMPLATE_SPECIALIZED_FOR_MERGEADD(dtype)        \
-  template struct MergeAddImpl<phi::GPUContext, dtype>; \
-  template struct PADDLE_API MergeAdd<phi::GPUContext, dtype>;
+#define TEMPLATE_SPECIALIZED_FOR_MERGEADD(dtype)   \
+  template struct MergeAddImpl<GPUContext, dtype>; \
+  template struct PADDLE_API MergeAdd<GPUContext, dtype>;
 
 TEMPLATE_SPECIALIZED_FOR_MERGEADD(float)
 TEMPLATE_SPECIALIZED_FOR_MERGEADD(double)
@@ -591,14 +591,14 @@ __global__ void UpdateToTensorKernel(const T* selected_rows,
 }
 
 template <typename T>
-struct UpdateToTensor<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext& dev_ctx,
+struct UpdateToTensor<GPUContext, T> {
+  void operator()(const GPUContext& dev_ctx,
                   const ScatterOps& op,
                   const SelectedRows& input1,
                   DenseTensor* input2) {
     // NOTE: Use SelectedRowsAddToTensor for better performance
     //       no additional MergeAdd called.
-    MergeAdd<phi::GPUContext, T> merge_func;
+    MergeAdd<GPUContext, T> merge_func;
     auto merged_in1 = merge_func(dev_ctx, input1);
 
     auto in1_height = merged_in1.height();
