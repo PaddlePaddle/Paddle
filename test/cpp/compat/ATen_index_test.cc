@@ -57,11 +57,11 @@ TEST(TensorIndexTest, SliceKeepsStrideWithoutContiguousCopy) {
   at::Tensor transposed = base.t();  // shape: [6, 4], strides: [1, 6]
   ASSERT_FALSE(transposed.is_contiguous());
 
-  at::Tensor sliced =
-      transposed.index({at::indexing::Slice(1, 5), at::indexing::Slice(0, 3)});
+  at::Tensor sliced = transposed.index(std::vector<at::indexing::Slice>{
+      at::indexing::Slice(1, 5), at::indexing::Slice(0, 3)});
 
-  ASSERT_EQ(sliced.sizes(), std::vector<int64_t>({4, 3}));
-  ASSERT_EQ(sliced.strides(), std::vector<int64_t>({1, 6}));
+  ASSERT_EQ(sliced.sizes(), c10::IntArrayRef({4, 3}));
+  ASSERT_EQ(sliced.strides(), c10::IntArrayRef({1, 6}));
   ASSERT_EQ(sliced.stride(0), transposed.stride(0));
   ASSERT_EQ(sliced.stride(1), transposed.stride(1));
   ASSERT_FALSE(sliced.is_contiguous());
