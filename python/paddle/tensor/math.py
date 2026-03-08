@@ -59,7 +59,6 @@ from paddle._C_ops import (  # noqa: F401
     maximum,
     minimum,
     multiply,
-    neg,
     nextafter,
     renorm,
     renorm_,
@@ -4248,6 +4247,57 @@ def multigammaln_(x: Tensor, p: int, name: str | None = None) -> Tensor:
     b = 0.5 * paddle.arange(start=(1 - p), end=1, step=1, dtype=x.dtype)
     paddle.assign((x.unsqueeze(-1) + b).lgamma_().sum(-1).add_(c), x)
     return x
+
+
+@param_one_alias(["x", "input"])
+def neg(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None
+) -> Tensor:
+    """
+    This function computes the negative of the Tensor elementwisely.
+
+    Args:
+        x (Tensor): Input of neg operator, an N-D Tensor, with data type bfloat16,
+            float16, float32, float64, int8, int16, int32, int64, uint8,
+            complex64, complex128.
+            Alias: ``input``.
+        name (str|None, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword args:
+        out (Tensor|None, optional): The output tensor. Default: None.
+
+    Returns:
+        out (Tensor): The negative of input Tensor. The shape and data type are the same with input Tensor.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.neg(x)
+            >>> out
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [ 0.40000001,  0.20000000, -0.10000000, -0.30000001])
+    """
+
+    ret = scale(
+        x,
+        scale=-1.0,
+        bias=0.0,
+        bias_after_scale=True,
+        act=None,
+        name=name,
+    )
+
+    if out is not None:
+        paddle.assign(ret, out)
+        return out
+
+    return ret
 
 
 @inplace_apis_in_dygraph_only

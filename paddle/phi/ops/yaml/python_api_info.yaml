@@ -461,12 +461,7 @@
   name : [paddle.poisson]
   args_alias :
     use_default_mapping : True
-
-- op: neg
-  name: [paddle.neg, paddle.Tensor.neg]
-  args_alias:
-    use_default_mapping: True
-    
+   
 - op : nextafter
   name : [paddle.nextafter, paddle.Tensor.nextafter]
   args_alias :
