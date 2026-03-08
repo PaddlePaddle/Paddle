@@ -80,6 +80,7 @@ from .conv import (
     conv2d_transpose,
     conv3d,
     conv3d_transpose,
+    conv_transpose2d,
 )
 from .distance import pairwise_distance, pdist  # noqa: F401
 from .extension import (
@@ -183,6 +184,7 @@ __all__ = [
     'conv2d_transpose',
     'conv3d',
     'conv3d_transpose',
+    'conv_transpose2d',
     'pairwise_distance',
     'elu',
     'elu_',

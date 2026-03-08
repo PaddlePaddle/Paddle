@@ -3275,5 +3275,85 @@ class TestVsplitAPI(unittest.TestCase):
                 np.testing.assert_allclose(fetches[i + 1], ref_out[1])
 
 
+# Test conv2d_transpose / conv_transpose2d compatibility
+class TestConv2dTransposeAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_x = np.random.rand(2, 3, 8, 8).astype(self.dtype)
+        self.np_weight = np.random.rand(3, 6, 3, 3).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        weight = paddle.to_tensor(self.np_weight)
+
+        # 1. Paddle positional arguments
+        out1 = paddle.nn.functional.conv2d_transpose(x, weight)
+
+        # 2. Paddle keyword arguments
+        out2 = paddle.nn.functional.conv2d_transpose(x=x, weight=weight)
+
+        # 3. PyTorch keyword arguments (alias: input)
+        out3 = paddle.nn.functional.conv2d_transpose(input=x, weight=weight)
+
+        # 4. PyTorch-style function name alias
+        out4 = paddle.nn.functional.conv_transpose2d(x, weight)
+
+        # 5. PyTorch-style alias with PyTorch keyword
+        out5 = paddle.nn.functional.conv_transpose2d(input=x, weight=weight)
+
+        # 6. Mixed arguments
+        out6 = paddle.nn.functional.conv2d_transpose(
+            x, weight, stride=1, padding=0
+        )
+
+        ref = out1.numpy()
+        for out in [out2, out3, out4, out5, out6]:
+            np.testing.assert_allclose(ref, out.numpy())
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x", shape=[2, 3, 8, 8], dtype=self.dtype
+            )
+            weight = paddle.static.data(
+                name="weight", shape=[3, 6, 3, 3], dtype=self.dtype
+            )
+
+            # Paddle style
+            out1 = paddle.nn.functional.conv2d_transpose(x, weight)
+
+            # Paddle keyword
+            out2 = paddle.nn.functional.conv2d_transpose(x=x, weight=weight)
+
+            # PyTorch keyword alias
+            out3 = paddle.nn.functional.conv2d_transpose(input=x, weight=weight)
+
+            # PyTorch function name alias
+            out4 = paddle.nn.functional.conv_transpose2d(x, weight)
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={
+                    "x": self.np_x,
+                    "weight": self.np_weight,
+                },
+                fetch_list=[out1, out2, out3, out4],
+            )
+
+            for i in range(1, len(fetches)):
+                np.testing.assert_allclose(fetches[0], fetches[i])
+
+
 if __name__ == '__main__':
     unittest.main()

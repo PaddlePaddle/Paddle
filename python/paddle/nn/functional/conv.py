@@ -1222,6 +1222,7 @@ def conv1d_transpose(
     return out
 
 
+@param_one_alias(["x", "input"])
 def conv2d_transpose(
     x: Tensor,
     weight: Tensor,
@@ -1298,6 +1299,7 @@ def conv2d_transpose(
     Args:
         x(Tensor): 4-D Tensor with [N, C, H, W] or [N, H, W, C] format,
             whose data type is float32 or float64.
+            Alias: ``input``.
         weight(Tensor): The convolution kernel, a Tensor with shape [C, M/g, kH, kW],
             where M is the number of output channels(filters), g is the number of groups,
             kH is the height of the kernel, and kW is the width of the kernel.
@@ -1530,6 +1532,9 @@ def conv2d_transpose(
             out = pre_bias
 
     return out
+
+
+conv_transpose2d = conv2d_transpose
 
 
 @param_one_alias(["x", "input"])
