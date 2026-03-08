@@ -306,6 +306,8 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
                 data = core.eager.read_next_tensor_list(
                     self._reader.read_next_list()[0]
                 )
+                if len(data) == 0 and len(self._structure_infos) == 0:
+                    raise StopIteration
                 data = _restore_batch(data, self._structure_infos.pop(0))
             else:
                 # in static graph mode
@@ -851,6 +853,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                 data = core.eager.read_next_tensor_list(
                     self._reader.read_next_list()[0]
                 )
+                if len(data) == 0 and len(self._structure_infos) == 0:
+                    raise StopIteration
                 data = _restore_batch(data, self._structure_infos.pop(0))
             else:
                 if self._return_list:
