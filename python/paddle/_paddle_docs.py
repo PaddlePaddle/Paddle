@@ -4660,15 +4660,6 @@ def i1e(
 """,
 )
 
-def digamma(
-    x: Tensor,
-    name: str | None = None,
-    *,
-    out: Tensor | None = None
-) -> Tensor
-""",
-)
-
 add_doc_and_signature(
     "addmm",
     r"""

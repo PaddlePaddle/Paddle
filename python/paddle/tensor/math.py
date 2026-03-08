@@ -4010,10 +4010,7 @@ def digamma(
     """
 
     if in_dynamic_or_pir_mode():
-        if out is None:
-            return _C_ops.digamma(x)
-        else:
-            return _C_ops.digamma(x, out)
+        return _C_ops.digamma(x, out)
     else:
         check_variable_and_dtype(
             x,
@@ -4033,17 +4030,10 @@ def digamma(
         )
         helper = LayerHelper('digamma', **locals())
         out_tensor = helper.create_variable_for_type_inference(x.dtype)
-        if out is not None:
-            helper.append_op(
-                type='digamma', inputs={'X': x}, outputs={'Out': out_tensor}
-            )
-            paddle.assign(out_tensor, out)
-            return out
-        else:
-            helper.append_op(
-                type='digamma', inputs={'X': x}, outputs={'Out': out_tensor}
-            )
-            return out_tensor
+        helper.append_op(
+            type='digamma', inputs={'X': x}, outputs={'Out': out_tensor}
+        )
+        return out_tensor
 
 
 @inplace_apis_in_dygraph_only
