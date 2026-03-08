@@ -553,7 +553,6 @@ class Tensor : public TensorBase {
 
   at::Tensor index(
       std::initializer_list<at::indexing::TensorIndex> indices) const;
-  at::Tensor index(const std::vector<at::indexing::Slice>& indices) const;
 
   at::Tensor& floor_divide_(const at::Scalar& other) const {
     paddle::experimental::floor_divide_(

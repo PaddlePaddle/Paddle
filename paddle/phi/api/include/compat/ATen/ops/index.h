@@ -83,45 +83,12 @@ inline at::Tensor index(
   return self.index(tensor_indices);
 }
 
-inline at::Tensor index(const at::Tensor& self,
-                        const std::vector<at::indexing::Slice>& indices) {
-  std::vector<at::indexing::TensorIndex> tensor_indices;
-  tensor_indices.reserve(indices.size());
-  for (const auto& index : indices) {
-    tensor_indices.emplace_back(index);
-  }
-  if (indices.empty()) {
-    return self;
-  }
-  std::vector<int64_t> axes;
-  std::vector<int64_t> starts;
-  std::vector<int64_t> ends;
-  std::vector<int64_t> strides;
-  axes.reserve(indices.size());
-  starts.reserve(indices.size());
-  ends.reserve(indices.size());
-  strides.reserve(indices.size());
-  for (size_t i = 0; i < indices.size(); ++i) {
-    axes.push_back(static_cast<int64_t>(i));
-    starts.push_back(indices[i].start().expect_int());
-    ends.push_back(indices[i].stop().expect_int());
-    strides.push_back(indices[i].step().expect_int());
-  }
-  return paddle::experimental::slice(
-      self._PD_GetInner(), axes, starts, ends, strides, {});
-}
-
 }  // namespace at
 
 namespace at {
 
 inline at::Tensor Tensor::index(
     std::initializer_list<at::indexing::TensorIndex> indices) const {
-  return at::index(*this, indices);
-}
-
-inline at::Tensor Tensor::index(
-    const std::vector<at::indexing::Slice>& indices) const {
   return at::index(*this, indices);
 }
 
