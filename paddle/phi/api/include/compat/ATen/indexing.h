@@ -94,8 +94,7 @@ struct TensorIndex final {
   TensorIndex(int integer) : TensorIndex(c10::SymInt(integer)) {}
 
   template <class T, class = std::enable_if_t<std::is_same_v<bool, T>>>
-  TensorIndex(T boolean)
-      : boolean_(boolean), type_(TensorIndexType::Boolean) {}
+  TensorIndex(T boolean) : boolean_(boolean), type_(TensorIndexType::Boolean) {}
 
   TensorIndex(Slice slice)
       : slice_(std::move(slice)), type_(TensorIndexType::Slice) {}

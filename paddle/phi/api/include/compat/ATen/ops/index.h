@@ -17,7 +17,6 @@
 #include <ATen/core/Tensor.h>
 #include <ATen/indexing.h>
 
-
 namespace at::indexing {
 
 inline TensorIndex::TensorIndex(const at::Tensor& tensor)
@@ -30,9 +29,8 @@ inline const at::Tensor& TensorIndex::tensor() const { return *tensor_; }
 
 namespace at {
 
-inline at::Tensor index(
-    const at::Tensor& self,
-    std::initializer_list<at::indexing::TensorIndex> indices) {
+inline at::Tensor index(const at::Tensor& self,
+                        ArrayRef<at::indexing::TensorIndex> indices) {
   if (indices.size() == 0) {
     return self;
   }
@@ -83,12 +81,18 @@ inline at::Tensor index(
   return self.index(tensor_indices);
 }
 
+inline at::Tensor index(
+    const at::Tensor& self,
+    std::initializer_list<at::indexing::TensorIndex> indices) {
+  return at::index(self, ArrayRef<at::indexing::TensorIndex>(indices));
+}
+
 }  // namespace at
 
 namespace at {
 
 inline at::Tensor Tensor::index(
-    std::initializer_list<at::indexing::TensorIndex> indices) const {
+    ArrayRef<at::indexing::TensorIndex> indices) const {
   return at::index(*this, indices);
 }
 
