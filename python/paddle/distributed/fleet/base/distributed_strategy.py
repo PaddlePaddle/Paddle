@@ -357,7 +357,7 @@ class DistributedStrategy:
         Serialize current DistributedStrategy to string and save to output file
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
@@ -376,7 +376,7 @@ class DistributedStrategy:
         Load from prototxt file for DistributedStrategy initialization
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
@@ -402,7 +402,7 @@ class DistributedStrategy:
         only if the property is non-distributed strategy.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> build_strategy = paddle.static.BuildStrategy()
@@ -450,7 +450,7 @@ class DistributedStrategy:
         Set the strategy of gradient scale
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
@@ -481,7 +481,7 @@ class DistributedStrategy:
         Default value: True
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> role_maker = fleet.PaddleCloudRoleMaker()
@@ -531,7 +531,7 @@ class DistributedStrategy:
             runtime_split_send_recv(bool): if we are using Tensor split for send and recv during runtime
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> role_maker = fleet.PaddleCloudRoleMaker()
@@ -572,7 +572,7 @@ class DistributedStrategy:
             stat_var_names(list(str)):
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> role_maker = fleet.PaddleCloudRoleMaker()
@@ -596,7 +596,7 @@ class DistributedStrategy:
         Default value: False
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> role_maker = fleet.PaddleCloudRoleMaker()
@@ -645,7 +645,7 @@ class DistributedStrategy:
             hadoop_bin(str):
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> role_maker = fleet.PaddleCloudRoleMaker()
@@ -1057,7 +1057,7 @@ class DistributedStrategy:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
@@ -1108,7 +1108,7 @@ class DistributedStrategy:
             Default True. Only takes effect when `use_pure_fp16` is turned on.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
                 :name: example_1
 
                 >>> import paddle.distributed.fleet as fleet
@@ -1119,7 +1119,7 @@ class DistributedStrategy:
                 ...     "custom_white_list": ['conv2d']
                 ... }
 
-            .. code-block:: python
+            .. code-block:: pycon
                 :name: example_2
 
                 >>> import paddle.distributed.fleet as fleet
@@ -1148,7 +1148,7 @@ class DistributedStrategy:
         Default Value: False
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
@@ -1173,7 +1173,7 @@ class DistributedStrategy:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
@@ -1202,7 +1202,7 @@ class DistributedStrategy:
             algo(str): Other quantization training algorithm.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
@@ -1229,7 +1229,7 @@ class DistributedStrategy:
         Default value: False
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
@@ -1256,7 +1256,7 @@ class DistributedStrategy:
         We note that system overhead is usually lower when sync_nccl_allreduce = True
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
@@ -1282,7 +1282,7 @@ class DistributedStrategy:
         allreduce among the leaders of each group
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
@@ -1309,7 +1309,7 @@ class DistributedStrategy:
         Default value: number of GPU cards on each single GPU machine
 
         Example:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
@@ -1337,7 +1337,7 @@ class DistributedStrategy:
         Default value: False
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
@@ -1363,7 +1363,7 @@ class DistributedStrategy:
         Default value: True
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
@@ -1389,7 +1389,7 @@ class DistributedStrategy:
         Default value: 32
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
@@ -1417,7 +1417,7 @@ class DistributedStrategy:
         Default value: 1
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
@@ -1444,7 +1444,7 @@ class DistributedStrategy:
         Default value: False
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
@@ -1487,7 +1487,7 @@ class DistributedStrategy:
         Default value: 1
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
@@ -1525,7 +1525,7 @@ class DistributedStrategy:
         specific here should be determined ("-1" is not allowed).
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
@@ -1561,7 +1561,7 @@ class DistributedStrategy:
         Default value: False
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
@@ -1619,7 +1619,7 @@ class DistributedStrategy:
 
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # sharding-DP, 2 nodes with 8 gpus per node
                 >>> import paddle.distributed.fleet as fleet
@@ -1651,7 +1651,7 @@ class DistributedStrategy:
         Run program using Executor other than ParallelExecutor.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
@@ -1679,7 +1679,7 @@ class DistributedStrategy:
         The default value for the calc_comm_same_stream is False
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
@@ -1707,7 +1707,7 @@ class DistributedStrategy:
         The default value for the fuse_grad_merge is False
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
@@ -1731,7 +1731,7 @@ class DistributedStrategy:
         This based on raw_program_optimizer program and allreduce the num of the fused op
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
 
@@ -1761,7 +1761,7 @@ class DistributedStrategy:
         device_guard information in user-defined program.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
@@ -1821,7 +1821,7 @@ class DistributedStrategy:
             **micro_batch_size**: the number of small batches in each user defined batch
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
@@ -1847,7 +1847,7 @@ class DistributedStrategy:
         Indicating whether we are using tensor parallel for distributed training.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
@@ -1879,7 +1879,7 @@ class DistributedStrategy:
 
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
@@ -1924,7 +1924,7 @@ class DistributedStrategy:
             **order(list(string))**: set hybrid parallel dimensions, the order is from outside to inside. Default ['dp','pp','sharding','sep', 'mp']
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
@@ -1975,7 +1975,7 @@ class DistributedStrategy:
         `Don't Use Large Mini-Batches, Use Local SGD <https://arxiv.org/pdf/1808.07217.pdf>`_.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
@@ -2004,7 +2004,7 @@ class DistributedStrategy:
             begin_step(int) The step of beginning training by localsgd. Default 1.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
@@ -2033,7 +2033,7 @@ class DistributedStrategy:
         the Best Error-Runtime Trade-off in Local-Update SGD <https://arxiv.org/pdf/1810.08313.pdf>`_.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
@@ -2065,7 +2065,7 @@ class DistributedStrategy:
             begin_step(int) The step of beginning training by adaptive localsgd. Default 1.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
@@ -2099,7 +2099,7 @@ class DistributedStrategy:
         Default Value: False
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
@@ -2136,7 +2136,7 @@ class DistributedStrategy:
                     element will be transmitted.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
@@ -2160,7 +2160,7 @@ class DistributedStrategy:
         Default Value: False
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
 
@@ -2191,7 +2191,7 @@ class DistributedStrategy:
         to model parameters.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
@@ -2221,7 +2221,7 @@ class DistributedStrategy:
             avg(bool): whether to average the gradients of each mini-batch, the default value is `True`
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
@@ -2250,7 +2250,7 @@ class DistributedStrategy:
         Default Value: False
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
@@ -2282,7 +2282,7 @@ class DistributedStrategy:
         will be exclude from weight decay in lars formula.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
@@ -2315,7 +2315,7 @@ class DistributedStrategy:
         Default Value: False
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
@@ -2345,7 +2345,7 @@ class DistributedStrategy:
         will be exclude from weight decay in lamb formula.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
@@ -2394,7 +2394,7 @@ class DistributedStrategy:
         Default Value: False
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.enable_static()
@@ -2430,7 +2430,7 @@ class DistributedStrategy:
         Default Value: False
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.enable_static()
@@ -2463,7 +2463,7 @@ class DistributedStrategy:
         Default Value: False
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -2490,7 +2490,7 @@ class DistributedStrategy:
         Default Value: True
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -2546,7 +2546,7 @@ class DistributedStrategy:
             algo(str): Other quantization training algorithm.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed.fleet as fleet
 
@@ -2577,7 +2577,7 @@ class DistributedStrategy:
         Default Value: False
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.distributed.fleet as fleet
@@ -2610,7 +2610,7 @@ class DistributedStrategy:
         Default Value: True
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.enable_static()
@@ -2646,7 +2646,7 @@ class DistributedStrategy:
         Default Value: 4000
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.enable_static()
@@ -2680,7 +2680,7 @@ class DistributedStrategy:
         Default Value: True
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.enable_static()
