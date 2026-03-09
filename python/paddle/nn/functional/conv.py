@@ -1534,7 +1534,38 @@ def conv2d_transpose(
     return out
 
 
-conv_transpose2d = conv2d_transpose
+def conv_transpose2d(
+    input: Tensor,
+    weight: Tensor,
+    bias: Tensor | None = None,
+    stride: Size2 = 1,
+    padding: _PaddingSizeMode | Size2 | Size4 | Sequence[Size2] = 0,
+    output_padding: Size2 = 0,
+    groups: int = 1,
+    dilation: Size2 = 1,
+    output_size: Size2 | None = None,
+    data_format: DataLayout2D = 'NCHW',
+    name: str | None = None,
+) -> Tensor:
+    r"""
+    PyTorch-compatible version of conv2d_transpose.
+
+    This wrapper accepts ``groups`` before ``dilation`` (matching PyTorch's
+    positional argument order) and delegates to :func:`conv2d_transpose`.
+    """
+    return conv2d_transpose(
+        input,
+        weight,
+        bias=bias,
+        stride=stride,
+        padding=padding,
+        output_padding=output_padding,
+        dilation=dilation,
+        groups=groups,
+        output_size=output_size,
+        data_format=data_format,
+        name=name,
+    )
 
 
 @param_one_alias(["x", "input"])
