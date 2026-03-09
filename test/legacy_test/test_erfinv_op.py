@@ -123,6 +123,33 @@ class TestErfinvAPIOp(unittest.TestCase):
         for place in self.place:
             run(place)
 
+    def test_out_of_domain_returns_nan(self):
+        def run(place):
+            paddle.disable_static(place)
+            x_np = np.array([-1.2, -0.5, 0.0, 0.5, 1.2], dtype=self.dtype)
+            out = paddle.erfinv(paddle.to_tensor(x_np)).numpy()
+            np.testing.assert_array_equal(np.isnan(out), np.isnan(erfinv(x_np)))
+            paddle.enable_static()
+
+        for place in self.place:
+            run(place)
+
+    def test_boundary_keeps_inf(self):
+        def run(place):
+            paddle.disable_static(place)
+            x_np = np.array([-1.0, 1.0], dtype=self.dtype)
+            out = paddle.erfinv(paddle.to_tensor(x_np)).numpy()
+            np.testing.assert_array_equal(
+                np.isneginf(out), np.array([True, False])
+            )
+            np.testing.assert_array_equal(
+                np.isposinf(out), np.array([False, True])
+            )
+            paddle.enable_static()
+
+        for place in self.place:
+            run(place)
+
 
 class TestErfinvFP16Op(TestErfinvOp):
     def init_dtype(self):

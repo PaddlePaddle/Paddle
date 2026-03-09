@@ -18,6 +18,8 @@
 
 #include "paddle/phi/kernels/erfinv_kernel.h"
 
+#include <limits>
+
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
@@ -36,7 +38,12 @@ void ErfinvKernel(const Context& dev_ctx,
   auto& place = *dev_ctx.eigen_device();
   constexpr T half = static_cast<T>(0.5);
   constexpr T half_sqrt = static_cast<T>(M_SQRT1_2);
-  eigen_out.device(place) = (eigen_in * half + half).ndtri() * half_sqrt;
+  constexpr T one = static_cast<T>(1);
+  constexpr T neg_one = static_cast<T>(-1);
+  const T nan = std::numeric_limits<T>::quiet_NaN();
+  auto invalid = (eigen_in > one) || (eigen_in < neg_one);
+  eigen_out.device(place) = invalid.select(
+      eigen_in.constant(nan), (eigen_in * half + half).ndtri() * half_sqrt);
 }
 
 }  // namespace phi
