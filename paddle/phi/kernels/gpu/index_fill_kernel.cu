@@ -24,6 +24,24 @@
 
 namespace phi {
 
+// GPU kernel for index_fill forward pass.
+//
+// Core idea — "Three-Segment Decomposition":
+//   For a tensor with shape [d0, d1, ..., d_{dim}, ..., d_{n-1}], we split
+//   the dimensions into three groups around the target `dim`:
+//
+//     outer_size = d0 * d1 * ... * d_{dim-1}    (all dims before `dim`)
+//     dim_size   = d_{dim}                       (the target dim itself)
+//     inner_size = d_{dim+1} * ... * d_{n-1}     (all dims after `dim`)
+//
+//   This lets us treat ANY N-dimensional tensor as a 3D logical block
+//   [outer_size, dim_size, inner_size], and locate any element with:
+//
+//     offset = outer_idx * (dim_size * inner_size) + dim_idx * inner_size +
+//     inner_idx
+//
+//   Total threads = outer_size * index_size * inner_size
+//   (one thread per element that needs to be filled)
 template <typename T>
 __global__ void IndexFillCudaKernel(const T* x,
                                     const int64_t* index,
@@ -40,21 +58,29 @@ __global__ void IndexFillCudaKernel(const T* x,
   int64_t total = index_size * outer_size * inner_size;
   if (idx >= total) return;
 
+  // Decompose the flat thread index into the three logical coordinates.
+  // The iteration order is: outer (slowest) → index → inner (fastest).
   int64_t inner_idx = idx % inner_size;
   int64_t temp = idx / inner_size;
   int64_t index_idx = temp % index_size;
   int64_t outer_idx = temp / index_size;
 
+  // Look up the actual position along the target dimension from the index
+  // tensor.
   int64_t dim_idx = index[index_idx];
-  if (dim_idx < 0) dim_idx += dim_size;
+  if (dim_idx < 0) dim_idx += dim_size;  // support negative indexing
 
-  if (dim_idx < 0 || dim_idx >= dim_size) return;
+  if (dim_idx < 0 || dim_idx >= dim_size) return;  // out-of-bounds guard
+
+  // Convert the 3D logical coordinate back to a flat memory offset.
   int64_t offset =
       outer_idx * dim_size * inner_size + dim_idx * inner_size + inner_idx;
 
   out[offset] = fill_value;
 }
 
+// Host-side launch function: computes the three-segment sizes and launches
+// the CUDA kernel.
 template <typename T, typename Context>
 void LaunchIndexFillCudaKernel(const Context& dev_ctx,
                                const DenseTensor& x,
@@ -65,6 +91,9 @@ void LaunchIndexFillCudaKernel(const Context& dev_ctx,
   auto* x_data = x.data<T>();
   T fill_value = value.to<T>();
 
+  // "Copy-then-modify" pattern: first copy x entirely into out, then
+  // overwrite only the positions specified by the index.
+  // Skip the copy if out already shares memory with x (inplace mode).
   bool is_initialized = out->initialized();
   T* out_data = dev_ctx.template Alloc<T>(out);
   if (!is_initialized || (x.data<T>() != out->data<T>())) {
@@ -78,6 +107,7 @@ void LaunchIndexFillCudaKernel(const Context& dev_ctx,
     return;
   }
 
+  // --- Three-segment decomposition ---
   auto x_dims = x.dims();
   const int rank = x_dims.size();
 
@@ -85,8 +115,8 @@ void LaunchIndexFillCudaKernel(const Context& dev_ctx,
     dim += rank;
   }
 
-  int64_t outer_size = 1;
-  int64_t inner_size = 1;
+  int64_t outer_size = 1;  // product of dims before `dim`
+  int64_t inner_size = 1;  // product of dims after `dim`
   int64_t dim_size = x_dims[dim];
 
   for (int i = 0; i < dim; ++i) {
@@ -96,6 +126,7 @@ void LaunchIndexFillCudaKernel(const Context& dev_ctx,
     inner_size *= x_dims[i];
   }
 
+  // Each thread handles one (outer, index_element, inner) triple.
   int64_t numel = outer_size * index_size * inner_size;
 
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
@@ -112,6 +143,7 @@ void LaunchIndexFillCudaKernel(const Context& dev_ctx,
           out_data);
 }
 
+// Top-level kernel entry: validates inputs and dispatches to the launcher.
 template <typename T, typename Context>
 void IndexFillKernel(const Context& dev_ctx,
                      const DenseTensor& x,
@@ -119,6 +151,7 @@ void IndexFillKernel(const Context& dev_ctx,
                      int dim,
                      const Scalar& value,
                      DenseTensor* out) {
+  // Early return for zero-element output tensor.
   if (out && out->numel() == 0) {
     dev_ctx.template Alloc<T>(out);
     return;
@@ -127,6 +160,7 @@ void IndexFillKernel(const Context& dev_ctx,
   auto x_dims = x.dims();
   const int rank = x_dims.size();
 
+  // Normalize negative dim and validate range.
   int real_dim = dim;
   if (real_dim < 0) {
     real_dim += rank;
@@ -147,17 +181,21 @@ void IndexFillKernel(const Context& dev_ctx,
                         rank,
                         dim));
 
+  // index_fill only supports 1-D index tensors (a list of positions along dim).
   PADDLE_ENFORCE_EQ(index.dims().size(),
                     1,
                     common::errors::InvalidArgument(
                         "The index tensor must be 1-D, but received %d-D.",
                         index.dims().size()));
 
+  // Empty index means nothing to fill; just copy x to out.
   if (index.numel() == 0) {
     Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     return;
   }
 
+  // The kernel requires int64 indices. If the user passes int32 indices,
+  // cast them to int64 via a lightweight GPU kernel (CastToInt64Kernel).
   DenseTensor index_int64;
   const DenseTensor* ptr_index = nullptr;
 

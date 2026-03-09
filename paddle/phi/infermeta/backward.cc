@@ -2103,22 +2103,6 @@ void IndexAddGradInferMeta(const MetaTensor& index,
   }
 }
 
-void IndexFillGradInferMeta(const MetaTensor& x,
-                            const MetaTensor& index,
-                            int dim,
-                            const Scalar& value,
-                            const MetaTensor& out_grad,
-                            MetaTensor* x_grad,
-                            MetaTensor* value_grad) {
-  if (x_grad) {
-    x_grad->share_meta(x);
-  }
-  if (value_grad) {
-    value_grad->set_dims(phi::make_ddim({}));
-    value_grad->set_dtype(out_grad.dtype());
-  }
-}
-
 void IndexPutGradInferMeta(const MetaTensor& x,
                            const std::vector<const MetaTensor*>& indices,
                            const MetaTensor& value,

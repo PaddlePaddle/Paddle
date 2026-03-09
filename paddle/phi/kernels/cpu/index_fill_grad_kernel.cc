@@ -19,6 +19,13 @@
 
 namespace phi {
 
+// CPU implementation of the index_fill backward kernel.
+// Same logic as the GPU version:
+//   For each position selected by the index, set x_grad to 0.
+//
+// The flat iteration index is decomposed into (outer, index, inner) using
+// the same three-segment scheme, with OMP parallelization on the outermost
+// loop.
 template <typename T>
 void index_fill_grad_kernel(const int64_t N,
                             const int64_t* index_data,
@@ -31,6 +38,7 @@ void index_fill_grad_kernel(const int64_t N,
 #pragma omp parallel for
 #endif
   for (int64_t idx = 0; idx < N; ++idx) {
+    // Decompose flat index → (outer_idx, index_idx, inner_idx)
     int64_t inner_idx = idx % inner_size;
     int64_t temp = idx / inner_size;
     int64_t index_idx = temp % index_size;
@@ -41,29 +49,29 @@ void index_fill_grad_kernel(const int64_t N,
       dim_idx += dim_size;
     }
 
-    if (dim_idx < 0 || dim_idx >= dim_size) {
-      continue;
-    }
-
     int64_t offset =
         outer_idx * dim_size * inner_size + dim_idx * inner_size + inner_idx;
 
+    // Zero out gradient at the filled position.
     *(x_grad + offset) = static_cast<T>(0);
   }
 }
 
+// CPU host-side launch function for the backward kernel.
 template <typename T, typename Context>
 void LaunchIndexFillGradKernel(const Context& dev_ctx,
                                const DenseTensor& index,
                                const DenseTensor& out_grad,
                                const int dim,
                                DenseTensor* x_grad) {
+  // Step 1: x_grad = out_grad (full copy).
   T* x_grad_data = dev_ctx.template Alloc<T>(x_grad);
   Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
 
   auto out_grad_dims = out_grad.dims();
   const int rank = out_grad_dims.size();
 
+  // Cast index to int64 if needed.
   DenseTensor index_int64;
   const DenseTensor* ptr_index = nullptr;
 
@@ -78,12 +86,8 @@ void LaunchIndexFillGradKernel(const Context& dev_ctx,
     }
 
     ptr_index = &index_int64;
-  } else if (index.dtype() == phi::DataType::INT64) {
-    ptr_index = &index;
   } else {
-    PADDLE_THROW(common::errors::InvalidArgument(
-        "The dtype of index must be int32 or int64, but received %s.",
-        phi::DataTypeToString(index.dtype())));
+    ptr_index = &index;
   }
 
   const int64_t* index_data = ptr_index->data<int64_t>();
@@ -93,6 +97,7 @@ void LaunchIndexFillGradKernel(const Context& dev_ctx,
     return;
   }
 
+  // Three-segment decomposition (same as forward).
   int64_t outer_size = 1;
   int64_t inner_size = 1;
   int64_t dim_size = out_grad_dims[dim];
@@ -104,6 +109,7 @@ void LaunchIndexFillGradKernel(const Context& dev_ctx,
     inner_size *= out_grad_dims[i];
   }
 
+  // Step 2: zero out the positions that were filled in forward pass.
   int64_t numel = outer_size * index_size * inner_size;
 
   index_fill_grad_kernel<T>(numel,
@@ -115,21 +121,19 @@ void LaunchIndexFillGradKernel(const Context& dev_ctx,
                             x_grad_data);
 }
 
+// Top-level CPU backward kernel entry.
 template <typename T, typename Context>
 void IndexFillGradKernel(const Context& dev_ctx,
                          const DenseTensor& index,
                          const DenseTensor& out_grad,
                          int dim,
                          DenseTensor* x_grad) {
-  if (x_grad && x_grad->numel() == 0) {
-    dev_ctx.template Alloc<T>(x_grad);
-    return;
-  }
-
   if (out_grad.numel() == 0) {
     dev_ctx.template Alloc<T>(x_grad);
     return;
   }
+
+  dev_ctx.template Alloc<T>(x_grad);
 
   auto out_grad_dims = out_grad.dims();
   const int rank = out_grad_dims.size();
@@ -137,28 +141,6 @@ void IndexFillGradKernel(const Context& dev_ctx,
   if (dim < 0) {
     dim += rank;
   }
-
-  PADDLE_ENFORCE_GE(
-      dim,
-      0,
-      common::errors::InvalidArgument("The dimension index should be greater "
-                                      "than or equal to 0, but got %d.",
-                                      dim));
-  PADDLE_ENFORCE_LT(
-      dim,
-      rank,
-      common::errors::InvalidArgument(
-          "The dimension index should be less than rank %d, but got %d.",
-          rank,
-          dim));
-
-  PADDLE_ENFORCE_LE(
-      rank,
-      DDim::kMaxRank,
-      common::errors::InvalidArgument("Dims of input tensor should be less "
-                                      "than or equal to %d, but got %d.",
-                                      DDim::kMaxRank,
-                                      rank));
 
   if (index.numel() == 0) {
     Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);

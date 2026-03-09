@@ -21,6 +21,20 @@
 
 namespace phi {
 
+// GPU kernel for index_fill backward pass.
+//
+// Gradient logic:
+//   Forward: out[..., index[i], ...] = fill_value (a constant scalar)
+//   Since the filled positions are overwritten with a constant, their
+//   gradient w.r.t. x is zero. All other positions have gradient = out_grad.
+//
+//   So the backward is:
+//     1) x_grad = copy(out_grad)
+//     2) x_grad[..., index[i], ...] = 0   (this kernel does step 2)
+//
+//   There is no value_grad because `value` is a scalar constant, not a tensor.
+//
+// Uses the same three-segment decomposition as the forward kernel.
 template <typename T>
 __global__ void IndexFillGradCudaKernel(const int64_t* index,
                                         const int64_t index_size,
@@ -37,6 +51,7 @@ __global__ void IndexFillGradCudaKernel(const int64_t* index,
     return;
   }
 
+  // Same three-segment coordinate decomposition as the forward kernel.
   int64_t inner_idx = idx % inner_size;
   int64_t temp = idx / inner_size;
   int64_t index_idx = temp % index_size;
@@ -54,20 +69,26 @@ __global__ void IndexFillGradCudaKernel(const int64_t* index,
   int64_t offset =
       outer_idx * dim_size * inner_size + dim_idx * inner_size + inner_idx;
 
+  // Zero out the gradient at filled positions, because forward wrote a
+  // constant.
   *(x_grad + offset) = static_cast<T>(0);
 }
 
+// Host-side launch function for the backward kernel.
 template <typename T, typename Context>
 void LaunchIndexFillGradCudaKernel(const Context& dev_ctx,
                                    const DenseTensor& index,
                                    const DenseTensor& out_grad,
                                    const int dim,
                                    DenseTensor* x_grad) {
+  // Step 1: x_grad = out_grad (full copy first, then zero out selected
+  // positions)
   Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
 
   auto out_grad_dims = out_grad.dims();
   const int rank = out_grad_dims.size();
 
+  // Cast index to int64 if needed (same logic as forward kernel).
   DenseTensor index_int64;
   const DenseTensor* ptr_index = nullptr;
 
@@ -101,6 +122,7 @@ void LaunchIndexFillGradCudaKernel(const Context& dev_ctx,
     return;
   }
 
+  // Three-segment decomposition (same as forward).
   int64_t outer_size = 1;
   int64_t inner_size = 1;
   int64_t dim_size = out_grad_dims[dim];
@@ -112,6 +134,7 @@ void LaunchIndexFillGradCudaKernel(const Context& dev_ctx,
     inner_size *= out_grad_dims[i];
   }
 
+  // Step 2: launch kernel to zero out gradients at the filled positions.
   int64_t numel = outer_size * index_size * inner_size;
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
 
@@ -127,6 +150,7 @@ void LaunchIndexFillGradCudaKernel(const Context& dev_ctx,
           x_grad_data);
 }
 
+// Top-level backward kernel entry: validates inputs and dispatches.
 template <typename T, typename Context>
 void IndexFillGradKernel(const Context& dev_ctx,
                          const DenseTensor& index,

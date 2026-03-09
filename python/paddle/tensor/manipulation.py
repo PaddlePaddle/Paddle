@@ -8116,6 +8116,11 @@ def _index_fill_impl(
     if axis < 0:
         axis = axis + x_dim
 
+    if len(index.shape) != 1:
+        raise ValueError(
+            f"The index tensor must be 1-D, but received {len(index.shape)}-D."
+        )
+
     if in_dynamic_mode() and (
         paddle.is_compiled_with_cuda() or x.place.is_cpu_place()
         if hasattr(x.place, 'is_cpu_place')
@@ -8127,7 +8132,22 @@ def _index_fill_impl(
         if isinstance(value, (Variable, paddle.pir.Value)):
             if value.numel() != 1:
                 raise ValueError("value must be scalar or 0-D tensor")
-            value = float(value)
+            value = value.item()
+        if x.dtype in [
+            paddle.int8,
+            paddle.int16,
+            paddle.int32,
+            paddle.int64,
+            paddle.uint8,
+        ]:
+            value = int(value)
+        elif x.dtype == paddle.bool:
+            value = bool(value)
+        elif x.dtype in [
+            paddle.complex64,
+            paddle.complex128,
+        ]:
+            value = complex(value)
         else:
             value = float(value)
 

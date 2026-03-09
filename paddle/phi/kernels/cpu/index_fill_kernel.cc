@@ -19,9 +19,16 @@
 
 namespace phi {
 
+// CPU implementation of the index_fill core loop.
+// Uses the same three-segment decomposition as the GPU kernel:
+//   offset = outer * (dim_size * inner_size) + idx * inner_size + inner
+//
+// Loop order: index (outermost, OMP-parallelized) → outer → inner (innermost).
+// Putting the index loop outermost ensures each OMP thread works on independent
+// slices. Putting inner loop innermost ensures contiguous memory writes,
+// which is cache-friendly on CPU.
 template <typename T>
-void index_fill_kernel(const int64_t numel,
-                       const int64_t* index_data,
+void index_fill_kernel(const int64_t* index_data,
                        const int64_t index_size,
                        const T fill_value,
                        const int64_t outer_size,
@@ -40,6 +47,7 @@ void index_fill_kernel(const int64_t numel,
     for (int64_t outer = 0; outer < outer_size; ++outer) {
       int64_t base_offset = outer * dim_size * inner_size + idx * inner_size;
 
+      // This innermost loop writes to contiguous memory (good for cache).
       for (int64_t inner = 0; inner < inner_size; ++inner) {
         out[base_offset + inner] = fill_value;
       }
@@ -47,6 +55,7 @@ void index_fill_kernel(const int64_t numel,
   }
 }
 
+// CPU host-side launch function.
 template <typename T, typename Context>
 void LaunchIndexFillKernel(const Context& dev_ctx,
                            const DenseTensor& x,
@@ -60,6 +69,8 @@ void LaunchIndexFillKernel(const Context& dev_ctx,
 
   T* out_data = dev_ctx.template Alloc<T>(out);
 
+  // Copy-then-modify: copy x to out first, skip if already sharing memory
+  // (inplace).
   if (!is_initialized || (x.data<T>() != out->data<T>())) {
     std::memcpy(out_data, x_data, numel * sizeof(T));
   }
@@ -68,6 +79,7 @@ void LaunchIndexFillKernel(const Context& dev_ctx,
     return;
   }
 
+  // Cast int32 index to int64 on CPU (simple loop, no GPU kernel needed).
   DenseTensor index_int64;
   const DenseTensor* ptr_index = nullptr;
 
@@ -82,34 +94,30 @@ void LaunchIndexFillKernel(const Context& dev_ctx,
     }
 
     ptr_index = &index_int64;
-  } else if (index.dtype() == phi::DataType::INT64) {
-    ptr_index = &index;
   } else {
-    PADDLE_THROW(common::errors::InvalidArgument(
-        "The dtype of index must be int32 or int64, but received %s.",
-        phi::DataTypeToString(index.dtype())));
+    ptr_index = &index;
   }
 
   const int64_t* index_data = ptr_index->data<int64_t>();
   const int64_t index_size = ptr_index->numel();
 
+  // Three-segment decomposition: split dims around the target axis.
   const auto& x_dims = x.dims();
   const int64_t x_dims_size = x_dims.size();
 
-  int64_t outer_size = 1;
+  int64_t outer_size = 1;  // product of dims before axis
   for (int64_t i = 0; i < axis; ++i) {
     outer_size *= x_dims[i];
   }
 
-  int64_t axis_size = x_dims[axis];
+  int64_t axis_size = x_dims[axis];  // the target dimension size
 
-  int64_t inner_size = 1;
+  int64_t inner_size = 1;  // product of dims after axis
   for (int64_t i = axis + 1; i < x_dims_size; ++i) {
     inner_size *= x_dims[i];
   }
 
-  index_fill_kernel<T>(numel,
-                       index_data,
+  index_fill_kernel<T>(index_data,
                        index_size,
                        fill_value,
                        outer_size,
@@ -132,38 +140,9 @@ void IndexFillKernel(const Context& dev_ctx,
 
   const int64_t x_dims_size = x.dims().size();
 
-  PADDLE_ENFORCE_EQ(index.dims().size(),
-                    1,
-                    common::errors::InvalidArgument(
-                        "The dimension of index should be 1, but received %d.",
-                        index.dims().size()));
-
-  PADDLE_ENFORCE_GT(
-      x_dims_size,
-      0,
-      common::errors::InvalidArgument(
-          "The dimension of x should be greater than 0, but received %d.",
-          x_dims_size));
-
   if (axis < 0) {
     axis += x_dims_size;
   }
-
-  PADDLE_ENFORCE_GE(axis,
-                    0,
-                    common::errors::InvalidArgument(
-                        "Axis should be in range [-%d, %d), but received %d.",
-                        x_dims_size,
-                        x_dims_size,
-                        axis));
-
-  PADDLE_ENFORCE_LT(axis,
-                    x_dims_size,
-                    common::errors::InvalidArgument(
-                        "Axis should be in range [-%d, %d), but received %d.",
-                        x_dims_size,
-                        x_dims_size,
-                        axis));
 
   T fill_value = value.to<T>();
 

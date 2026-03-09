@@ -17,6 +17,9 @@
 namespace phi {
 namespace funcs {
 
+// Cast index tensor elements from type T (e.g. int32) to int64_t on GPU.
+// This is needed because the index_fill kernel always works with int64 indices
+// internally, but users may pass int32 index tensors.
 template <typename T>
 __global__ void CastToInt64Kernel(const T* input,
                                   int64_t* output,
