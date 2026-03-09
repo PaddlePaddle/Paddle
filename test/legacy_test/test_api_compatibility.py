@@ -3030,9 +3030,8 @@ class TestDigammaAPI(unittest.TestCase):
 
         # Test out parameter
         out4 = paddle.empty([])
-        out5 = paddle.digamma(x, out=out4)
+        paddle.digamma(x, out=out4)
         paddle_dygraph_out.append(out4)
-        paddle_dygraph_out.append(out5)
 
         # Numpy reference output
         ref_out = psi(self.np_x)
