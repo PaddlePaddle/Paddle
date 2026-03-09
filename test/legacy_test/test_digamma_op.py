@@ -69,6 +69,18 @@ class TestDigammaFP16Op(TestDigammaOp):
     def init_dtype_type(self):
         self.dtype = np.float16
 
+    def test_check_output(self):
+        support_fp16 = core.is_float16_supported(get_device_place())
+        if not support_fp16:
+            return
+        super().test_check_output()
+
+    def test_check_grad_normal(self):
+        support_fp16 = core.is_float16_supported(get_device_place())
+        if not support_fp16:
+            return
+        super().test_check_grad_normal()
+
 
 class TestDigammaOp_ZeroSize(TestDigammaOp):
     def init_shape(self):
