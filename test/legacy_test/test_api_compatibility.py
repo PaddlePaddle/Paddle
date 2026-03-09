@@ -3055,7 +3055,9 @@ class TestLgammaAPI(unittest.TestCase):
 
         ref_out = out1.numpy()
         for out in paddle_dygraph_out:
-            np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-6, atol=1e-6)
+            np.testing.assert_allclose(
+                ref_out, out.numpy(), rtol=1e-6, atol=1e-6
+            )
 
         # Exception parameters
         with self.assertRaises(ValueError):
