@@ -59,9 +59,9 @@ inline at::Tensor index(const at::Tensor& self,
     for (const auto& index : indices) {
       const auto& slice = index.slice();
       axes.push_back(dim++);
-      starts.push_back(slice.start().expect_int());
-      ends.push_back(slice.stop().expect_int());
-      strides.push_back(slice.step().expect_int());
+      starts.push_back(static_cast<int64_t>(slice.start()));
+      ends.push_back(static_cast<int64_t>(slice.stop()));
+      strides.push_back(static_cast<int64_t>(slice.step()));
     }
 
     return paddle::experimental::slice(
