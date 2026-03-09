@@ -1724,7 +1724,7 @@ def uniform_(
 def randint(
     low: int = 0,
     high: int | None = None,
-    shape: ShapeLike = [1],
+    size: ShapeLike = [1],
     dtype: DTypeLike | None = None,
     name: str | None = None,
     *,
@@ -1738,39 +1738,10 @@ def randint(
 @overload
 def randint(
     high: int,
-    shape: ShapeLike,
-    dtype: DTypeLike | None = None,
-    name: str | None = None,
-    *,
-    out: Tensor | None = None,
-    device: PlaceLike | None = None,
-    pin_memory: bool = False,
-    requires_grad: bool = False,
-) -> Tensor: ...
-
-
-@overload
-def randint(
-    low: int = 0,
-    high: int | None = None,
-    *,
     size: ShapeLike,
     dtype: DTypeLike | None = None,
     name: str | None = None,
-    out: Tensor | None = None,
-    device: PlaceLike | None = None,
-    pin_memory: bool = False,
-    requires_grad: bool = False,
-) -> Tensor: ...
-
-
-@overload
-def randint(
-    high: int,
     *,
-    size: ShapeLike,
-    dtype: DTypeLike | None = None,
-    name: str | None = None,
     out: Tensor | None = None,
     device: PlaceLike | None = None,
     pin_memory: bool = False,
@@ -1830,8 +1801,8 @@ def randint(
             >>> import paddle
 
             >>> # example 1:
-            >>> # attr shape is a list which doesn't contain Tensor.
-            >>> out1 = paddle.randint(low=-5, high=5, shape=[2, 3])
+            >>> # attr size is a list which doesn't contain Tensor.
+            >>> out1 = paddle.randint(low=-5, high=5, size=[2, 3])
             >>> print(out1)
             >>> # doctest: +SKIP("Random output")
             Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
@@ -1840,10 +1811,10 @@ def randint(
             >>> # doctest: -SKIP
 
             >>> # example 2:
-            >>> # attr shape is a list which contains Tensor.
+            >>> # attr size is a list which contains Tensor.
             >>> dim1 = paddle.to_tensor(2, 'int64')
             >>> dim2 = paddle.to_tensor(3, 'int32')
-            >>> out2 = paddle.randint(low=-5, high=5, shape=[dim1, dim2])
+            >>> out2 = paddle.randint(low=-5, high=5, size=[dim1, dim2])
             >>> print(out2)
             >>> # doctest: +SKIP("Random output")
             Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
@@ -1852,9 +1823,9 @@ def randint(
             >>> # doctest: -SKIP
 
             >>> # example 3:
-            >>> # attr shape is a Tensor
+            >>> # attr size is a Tensor
             >>> shape_tensor = paddle.to_tensor([2, 3])
-            >>> out3 = paddle.randint(low=-5, high=5, shape=shape_tensor)
+            >>> out3 = paddle.randint(low=-5, high=5, size=shape_tensor)
             >>> print(out3)
             >>> # doctest: +SKIP("Random output")
             Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
@@ -1864,7 +1835,7 @@ def randint(
 
             >>> # example 4:
             >>> # data type is int32
-            >>> out4 = paddle.randint(low=-5, high=5, shape=[3], dtype='int32')
+            >>> out4 = paddle.randint(low=-5, high=5, size=[3], dtype='int32')
             >>> print(out4)
             >>> # doctest: +SKIP("Random output")
             Tensor(shape=[3], dtype=int32, place=Place(cpu), stop_gradient=True,
@@ -1889,7 +1860,7 @@ def randint(
 
             >>> # example 7:
             >>> # Use requires_grad=True so that stop_gradient=False
-            >>> out7 = paddle.randint(high=10, shape=[2, 3], requires_grad=True)
+            >>> out7 = paddle.randint(high=10, size=[2, 3], requires_grad=True)
             >>> print(out7.stop_gradient)
             False
 
