@@ -2379,7 +2379,13 @@ def stack(
     return out
 
 
-def hstack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
+@param_one_alias(["x", "tensors"])
+def hstack(
+    x: Sequence[Tensor],
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     """
     Stacks all the input tensors ``x`` along horizontal axis.
     All tensors must be of the same dtype.
@@ -2394,7 +2400,11 @@ def hstack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
     Args:
         x (list[Tensor]|tuple[Tensor]): Input ``x`` can be a ``list`` or ``tuple`` of tensors, the Tensors in ``x`` must be of the same
             shape and dtype. Supported data types: ``float16``, ``float32``, ``float64``, ``int8``, ``int32``, ``int64`` or ``bfloat16``.
+            Alias: ``tensors``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword args:
+        out(Tensor, optional): The output tensor.
 
     Returns:
         Tensor, The stacked tensor with same data type as input.
@@ -2447,7 +2457,13 @@ def hstack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
         return paddle.concat(arrays, axis=1, name=name)
 
 
-def vstack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
+@param_one_alias(["x", "tensors"])
+def vstack(
+    x: Sequence[Tensor],
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     """
     Stacks all the input tensors ``x`` along vertical axis.
     All tensors must be of the same dtype.
@@ -2462,7 +2478,11 @@ def vstack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
     Args:
         x (list[Tensor]|tuple[Tensor]): Input ``x`` can be a ``list`` or ``tuple`` of tensors, the Tensors in ``x`` must be of the same
             shape and dtype. Supported data types: ``float16``, ``float32``, ``float64``, ``int8``, ``int32``, ``int64`` or ``bfloat16``.
+            Alias: ``tensors``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword args:
+        out(Tensor, optional): The output tensor.
 
     Returns:
         Tensor, The stacked tensor with same data type as input.
@@ -2516,7 +2536,13 @@ def vstack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
     return paddle.concat(arrays, axis=0, name=name)
 
 
-def dstack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
+@param_one_alias(["x", "tensors"])
+def dstack(
+    x: Sequence[Tensor],
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     """
     Stacks all the input tensors ``x`` along depth axis.
     All tensors must be of the same dtype.
@@ -2524,7 +2550,11 @@ def dstack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
     Args:
         x (list[Tensor]|tuple[Tensor]): Input ``x`` can be a ``list`` or ``tuple`` of tensors, the Tensors in ``x`` must be of the same
             shape and dtype. Supported data types: ``float16``, ``float32``, ``float64``, ``int8``, ``int32``, ``int64`` or ``bfloat16``.
+            Alias: ``tensors``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword args:
+        out(Tensor, optional): The output tensor.
 
     Returns:
         Tensor, The stacked tensor with same data type as input.
@@ -2569,7 +2599,13 @@ def dstack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
     return paddle.concat(arrays, axis=2, name=name)
 
 
-def column_stack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
+@param_one_alias(["x", "tensors"])
+def column_stack(
+    x: Sequence[Tensor],
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     """
     Stacks all the input tensors ``x`` along horizontal axis. Each tensor in ``x`` will be first reshaped into ``(tensor.numel(), 1)``
     if ``tensor.ndim < 2`` before being stacked.
@@ -2578,7 +2614,11 @@ def column_stack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
     Args:
         x (list[Tensor]|tuple[Tensor]): Input ``x`` can be a ``list`` or ``tuple`` of tensors, the Tensors in ``x`` must be of the same
             shape and dtype. Supported data types: ``float16``, ``float32``, ``float64``, ``int32``, ``int64`` or ``bfloat16``.
+            Alias: ``tensors``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword args:
+        out(Tensor, optional): The output tensor.
 
     Returns:
         Tensor, The stacked tensor with same data type as input.
@@ -2629,7 +2669,13 @@ def column_stack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
     return paddle.concat(arrays, axis=1, name=name)
 
 
-def row_stack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
+@param_one_alias(["x", "tensors"])
+def row_stack(
+    x: Sequence[Tensor],
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     """
     Alias of `paddle.vstack()`.
     Stacks all the input tensors ``x`` along vertical axis.
@@ -2638,7 +2684,12 @@ def row_stack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
     Args:
         x (list[Tensor]|tuple[Tensor]): Input ``x`` can be a ``list`` or ``tuple`` of tensors, the Tensors in ``x`` must be of the same
             shape and dtype. Supported data types: ``float16``, ``float32``, ``float64``, ``int8``, ``int32``, ``int64`` or ``bfloat16``.
+            Alias: ``tensors``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword args:
+        out(Tensor, optional): The output tensor.
+
 
     Returns:
         Tensor, The stacked tensor with same data type as input.
@@ -3757,6 +3808,7 @@ def unique(
 ) -> Tensor | tuple[Tensor, ...]: ...
 
 
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def unique(
     x,
     return_index=False,
@@ -3770,8 +3822,13 @@ def unique(
     r"""
     Returns the unique elements of `x` in ascending order.
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``dim`` can be used as an alias for ``axis``.
+        For example, ``unique(input=tensor_x, dim=0)`` is equivalent to ``unique(x=tensor_x, axis=0)``.
+
     Args:
         x(Tensor): The input tensor, it's data type should be float32, float64, int32, int64.
+            alias: ``input``.
         return_index(bool, optional): If True, also return the indices of the input tensor that
             result in the unique Tensor.
         return_inverse(bool, optional): If True, also return the indices for where elements in
@@ -3779,6 +3836,7 @@ def unique(
         return_counts(bool, optional): If True, also return the counts for each unique element.
         axis(int, optional): The axis to apply unique. If None, the input will be flattened.
             Default: None.
+            alias: ``dim``.
         dtype(str|paddle.dtype|np.dtype, optional): The date type of `indices` or `inverse` tensor: int32 or int64.
             Default: int64.
         sorted(bool, optional): Does not affect the return result, same as PyTorch.

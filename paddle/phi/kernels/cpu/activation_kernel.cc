@@ -101,8 +101,36 @@ namespace phi {
         dev_ctx, x, out, functor);                          \
   }
 
-DEFINE_CPU_ACTIVATION_KERNEL(Sin, SinFunctor)
-DEFINE_CPU_ACTIVATION_KERNEL(Cos, CosFunctor)
+// Specialized Sin kernel with vectorized Sleef implementation for float/double
+// This ensures bit-level precision alignment with PyTorch
+template <typename T, typename Context>
+void SinKernel(const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) {
+  if constexpr (std::is_same<T, float>::value ||
+                std::is_same<T, double>::value) {
+    // Use vectorized Sleef path for float/double to match PyTorch precision
+    VectorizedSinImpl<T, Context>(dev_ctx, x, out);
+  } else {
+    // Use generic path for other types (float16, bfloat16, complex)
+    funcs::SinFunctor<T> functor;
+    ActivationImpl<T, T, Context, funcs::SinFunctor<T>>(
+        dev_ctx, x, out, functor);
+  }
+}
+
+// Specialized Cos kernel with vectorized Sleef implementation for float/double
+template <typename T, typename Context>
+void CosKernel(const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) {
+  if constexpr (std::is_same<T, float>::value ||
+                std::is_same<T, double>::value) {
+    // Use vectorized Sleef path for float/double to match PyTorch precision
+    VectorizedCosImpl<T, Context>(dev_ctx, x, out);
+  } else {
+    // Use generic path for other types (float16, bfloat16, complex)
+    funcs::CosFunctor<T> functor;
+    ActivationImpl<T, T, Context, funcs::CosFunctor<T>>(
+        dev_ctx, x, out, functor);
+  }
+}
 DEFINE_CPU_ACTIVATION_KERNEL(Tan, TanFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Asin, AsinFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Atan, AtanFunctor)

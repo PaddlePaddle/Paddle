@@ -18,6 +18,8 @@
 #include <ATen/ops/_nnz.h>
 #include <ATen/ops/_values.h>
 #include <ATen/ops/abs.h>
+#include <ATen/ops/all.h>
+#include <ATen/ops/allclose.h>
 #include <ATen/ops/any.h>
 #include <ATen/ops/arange.h>
 #include <ATen/ops/as_strided.h>

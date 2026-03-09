@@ -3098,6 +3098,121 @@ class TestLgammaAPI(unittest.TestCase):
                 )
 
 
+# Test unique compatibility
+class TestUniqueAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.x_1d = np.array([3, 1, 2, 1, 3]).astype('int64')
+        self.x_2d = np.array([[2, 1, 3], [3, 0, 1], [2, 1, 3]]).astype('int64')
+
+    def test_dygraph_input_alias(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x_1d)
+
+        # Paddle keyword args
+        out1 = paddle.unique(x=x)
+        # Torch keyword args (input alias)
+        out2 = paddle.unique(input=x)
+        np.testing.assert_array_equal(out1.numpy(), out2.numpy())
+        paddle.enable_static()
+
+    def test_dygraph_dim_alias(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x_2d)
+
+        # Paddle axis kwarg
+        out1 = paddle.unique(x, axis=0)
+        # Torch dim alias
+        out2 = paddle.unique(x, dim=0)
+        np.testing.assert_array_equal(out1.numpy(), out2.numpy())
+
+        # Tensor method - dim alias
+        out3 = x.unique(dim=0)
+        np.testing.assert_array_equal(out1.numpy(), out3.numpy())
+        paddle.enable_static()
+
+    def test_dygraph_sorted_param(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x_1d)
+
+        out1 = paddle.unique(x)
+        out2 = paddle.unique(x, sorted=True)
+        out3 = paddle.unique(x, sorted=False)
+        np.testing.assert_array_equal(out1.numpy(), out2.numpy())
+        np.testing.assert_array_equal(out1.numpy(), out3.numpy())
+
+        # Tensor method with sorted
+        out4 = x.unique(sorted=True)
+        out5 = x.unique(sorted=False)
+        np.testing.assert_array_equal(out1.numpy(), out4.numpy())
+        np.testing.assert_array_equal(out1.numpy(), out5.numpy())
+        paddle.enable_static()
+
+    def test_dygraph_combined_aliases(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x_2d)
+
+        # Both input and dim aliases together
+        out1 = paddle.unique(x, axis=0)
+        out2 = paddle.unique(input=x, dim=0)
+        np.testing.assert_array_equal(out1.numpy(), out2.numpy())
+        paddle.enable_static()
+
+    def test_static_input_alias(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=[5], dtype='int64')
+            out1 = paddle.unique(x=x)
+            out2 = paddle.unique(input=x)
+
+            exe = paddle.base.Executor(paddle.CPUPlace())
+            res = exe.run(
+                main,
+                feed={"x": self.x_1d},
+                fetch_list=[out1, out2],
+            )
+            np.testing.assert_array_equal(res[0], res[1])
+
+    def test_static_dim_alias(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=[3, 3], dtype='int64')
+            out1 = paddle.unique(x, axis=0)
+            out2 = paddle.unique(x, dim=0)
+
+            exe = paddle.base.Executor(paddle.CPUPlace())
+            res = exe.run(
+                main,
+                feed={"x": self.x_2d},
+                fetch_list=[out1, out2],
+            )
+            np.testing.assert_array_equal(res[0], res[1])
+
+    def test_static_sorted_param(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=[5], dtype='int64')
+            out1 = paddle.unique(x)
+            out2 = paddle.unique(x, sorted=True)
+            out3 = paddle.unique(x, sorted=False)
+
+            exe = paddle.base.Executor(paddle.CPUPlace())
+            res = exe.run(
+                main,
+                feed={"x": self.x_1d},
+                fetch_list=[out1, out2, out3],
+            )
+            np.testing.assert_array_equal(res[0], res[1])
+            np.testing.assert_array_equal(res[0], res[2])
+
+
 class TestCloneAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -3368,6 +3483,296 @@ class TestVsplitAPI(unittest.TestCase):
             for i in range(0, 8, 2):
                 np.testing.assert_allclose(fetches[i], ref_out[0])
                 np.testing.assert_allclose(fetches[i + 1], ref_out[1])
+
+
+# Test hstack compatibility
+class TestHstackAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.shapes = [[2, 3], [2, 4]]
+        self.dtype = 'float32'
+        self.inputs = []
+        for shape in self.shapes:
+            self.inputs.append(np.random.rand(*shape).astype(self.dtype))
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        tensors = [paddle.to_tensor(inp) for inp in self.inputs]
+
+        out1 = paddle.hstack(tuple(tensors))
+        out2 = paddle.hstack(tensors)
+        out3 = paddle.hstack(x=tuple(tensors))
+        out4 = paddle.hstack(x=tensors)
+        out5 = paddle.hstack(tensors=tuple(tensors))
+        out6 = paddle.hstack(tensors=tensors)
+
+        ref_out = np.hstack(tuple(inp for inp in self.inputs))
+        for out in [out1, out2, out3, out4, out5, out6]:
+            np.testing.assert_allclose(
+                ref_out, out.numpy(), rtol=1e-5, atol=1e-8
+            )
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            static_tensors = []
+            feed_dict = {}
+            for i, (shape, inp) in enumerate(zip(self.shapes, self.inputs)):
+                static_tensor = paddle.static.data(
+                    name=f"x{i}", shape=shape, dtype=self.dtype
+                )
+                static_tensors.append(static_tensor)
+                feed_dict[f"x{i}"] = inp
+
+            out1 = paddle.hstack(tuple(static_tensors))
+            out2 = paddle.hstack(static_tensors)
+            out3 = paddle.hstack(x=tuple(static_tensors))
+            out4 = paddle.hstack(tensors=tuple(static_tensors))
+
+            exe = paddle.base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main, feed=feed_dict, fetch_list=[out1, out2, out3, out4]
+            )
+            ref_out = np.hstack(tuple(inp for inp in self.inputs))
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out, rtol=1e-5, atol=1e-8)
+
+
+class TestVstackAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.shapes = [[2, 3], [3, 3]]
+        self.dtype = 'float32'
+        self.inputs = []
+        for shape in self.shapes:
+            self.inputs.append(np.random.rand(*shape).astype(self.dtype))
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        tensors = [paddle.to_tensor(inp) for inp in self.inputs]
+        out1 = paddle.vstack(tuple(tensors))
+        out2 = paddle.vstack(tensors)
+        out3 = paddle.vstack(x=tuple(tensors))
+        out4 = paddle.vstack(x=tensors)
+        out5 = paddle.vstack(tensors=tuple(tensors))
+        out6 = paddle.vstack(tensors=tensors)
+
+        ref_out = np.vstack(tuple(inp for inp in self.inputs))
+        for out in [out1, out2, out3, out4, out5, out6]:
+            np.testing.assert_allclose(
+                ref_out, out.numpy(), rtol=1e-5, atol=1e-8
+            )
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            static_tensors = []
+            feed_dict = {}
+            for i, (shape, inp) in enumerate(zip(self.shapes, self.inputs)):
+                static_tensor = paddle.static.data(
+                    name=f"x{i}", shape=shape, dtype=self.dtype
+                )
+                static_tensors.append(static_tensor)
+                feed_dict[f"x{i}"] = inp
+
+            out1 = paddle.vstack(tuple(static_tensors))
+            out2 = paddle.vstack(static_tensors)
+            out3 = paddle.vstack(x=tuple(static_tensors))
+            out4 = paddle.vstack(tensors=tuple(static_tensors))
+
+            exe = paddle.base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main, feed=feed_dict, fetch_list=[out1, out2, out3, out4]
+            )
+
+            ref_out = np.vstack(tuple(inp for inp in self.inputs))
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out, rtol=1e-5, atol=1e-8)
+
+
+# Test dstack compatibility
+class TestDstackAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.shapes = [[2, 3, 4], [2, 3, 4]]
+        self.dtype = 'float32'
+        self.inputs = []
+        for shape in self.shapes:
+            self.inputs.append(np.random.rand(*shape).astype(self.dtype))
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        tensors = [paddle.to_tensor(inp) for inp in self.inputs]
+        out1 = paddle.dstack(tuple(tensors))
+        out2 = paddle.dstack(tensors)
+        out3 = paddle.dstack(x=tuple(tensors))
+        out4 = paddle.dstack(x=tensors)
+        out5 = paddle.dstack(tensors=tuple(tensors))
+        out6 = paddle.dstack(tensors=tensors)
+
+        # Verify all outputs
+        ref_out = np.dstack(tuple(inp for inp in self.inputs))
+        for out in [out1, out2, out3, out4, out5, out6]:
+            np.testing.assert_allclose(
+                ref_out, out.numpy(), rtol=1e-5, atol=1e-8
+            )
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            static_tensors = []
+            feed_dict = {}
+            for i, (shape, inp) in enumerate(zip(self.shapes, self.inputs)):
+                static_tensor = paddle.static.data(
+                    name=f"x{i}", shape=shape, dtype=self.dtype
+                )
+                static_tensors.append(static_tensor)
+                feed_dict[f"x{i}"] = inp
+
+            out1 = paddle.dstack(tuple(static_tensors))
+            out2 = paddle.dstack(static_tensors)
+            out3 = paddle.dstack(x=tuple(static_tensors))
+            out4 = paddle.dstack(tensors=tuple(static_tensors))
+
+            exe = paddle.base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main, feed=feed_dict, fetch_list=[out1, out2, out3, out4]
+            )
+
+            ref_out = np.dstack(tuple(inp for inp in self.inputs))
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out, rtol=1e-5, atol=1e-8)
+
+
+# Test column_stack compatibility
+class TestColumnStackAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.shapes = [[3, 2], [3, 3]]
+        self.dtype = 'float32'
+        self.inputs = []
+        for shape in self.shapes:
+            self.inputs.append(np.random.rand(*shape).astype(self.dtype))
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        tensors = [paddle.to_tensor(inp) for inp in self.inputs]
+        out1 = paddle.column_stack(tuple(tensors))
+        out2 = paddle.column_stack(tensors)
+        out3 = paddle.column_stack(x=tuple(tensors))
+        out4 = paddle.column_stack(x=tensors)
+        out5 = paddle.column_stack(tensors=tuple(tensors))
+        out6 = paddle.column_stack(tensors=tensors)
+
+        # Verify all outputs
+        ref_out = np.column_stack(tuple(inp for inp in self.inputs))
+        for out in [out1, out2, out3, out4, out5, out6]:
+            np.testing.assert_allclose(
+                ref_out, out.numpy(), rtol=1e-5, atol=1e-8
+            )
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            static_tensors = []
+            feed_dict = {}
+            for i, (shape, inp) in enumerate(zip(self.shapes, self.inputs)):
+                static_tensor = paddle.static.data(
+                    name=f"x{i}", shape=shape, dtype=self.dtype
+                )
+                static_tensors.append(static_tensor)
+                feed_dict[f"x{i}"] = inp
+
+            out1 = paddle.column_stack(tuple(static_tensors))
+            out2 = paddle.column_stack(static_tensors)
+            out3 = paddle.column_stack(x=tuple(static_tensors))
+            out4 = paddle.column_stack(tensors=tuple(static_tensors))
+
+            exe = paddle.base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main, feed=feed_dict, fetch_list=[out1, out2, out3, out4]
+            )
+
+            ref_out = np.column_stack(tuple(inp for inp in self.inputs))
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out, rtol=1e-5, atol=1e-8)
+
+
+# Test row_stack compatibility
+class TestRowStackAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.shapes = [[2, 3], [4, 3]]
+        self.dtype = 'float32'
+        self.inputs = []
+        for shape in self.shapes:
+            self.inputs.append(np.random.rand(*shape).astype(self.dtype))
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        tensors = [paddle.to_tensor(inp) for inp in self.inputs]
+        out1 = paddle.row_stack(tuple(tensors))
+        out2 = paddle.row_stack(tensors)
+        out3 = paddle.row_stack(x=tuple(tensors))
+
+        out4 = paddle.row_stack(x=tensors)
+
+        out5 = paddle.row_stack(tensors=tuple(tensors))
+
+        out6 = paddle.row_stack(tensors=tensors)
+
+        # Verify all outputs
+        ref_out = np.vstack(tuple(inp for inp in self.inputs))
+        for out in [out1, out2, out3, out4, out5, out6]:
+            np.testing.assert_allclose(
+                ref_out, out.numpy(), rtol=1e-5, atol=1e-8
+            )
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            static_tensors = []
+            feed_dict = {}
+            for i, (shape, inp) in enumerate(zip(self.shapes, self.inputs)):
+                static_tensor = paddle.static.data(
+                    name=f"x{i}", shape=shape, dtype=self.dtype
+                )
+                static_tensors.append(static_tensor)
+                feed_dict[f"x{i}"] = inp
+
+            out1 = paddle.row_stack(tuple(static_tensors))
+            out2 = paddle.row_stack(static_tensors)
+            out3 = paddle.row_stack(x=tuple(static_tensors))
+            out4 = paddle.row_stack(tensors=tuple(static_tensors))
+
+            exe = paddle.base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main, feed=feed_dict, fetch_list=[out1, out2, out3, out4]
+            )
+
+            ref_out = np.vstack(tuple(inp for inp in self.inputs))
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out, rtol=1e-5, atol=1e-8)
 
 
 if __name__ == '__main__':

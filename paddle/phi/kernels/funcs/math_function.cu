@@ -358,7 +358,7 @@ DEFINE_GPU_TRANS_NORMAL(phi::complex64);
 DEFINE_GPU_TRANS_NORMAL(phi::complex128);
 
 struct TensorSetConstantGPU {
-  TensorSetConstantGPU(const phi::DeviceContext& dev_ctx,
+  TensorSetConstantGPU(const DeviceContext& dev_ctx,
                        DenseTensor* tensor,
                        float value)
       : dev_ctx_(dev_ctx), tensor_(tensor), value_(value) {}
@@ -371,13 +371,13 @@ struct TensorSetConstantGPU {
             static_cast<T>(value_));
   }
 
-  const phi::DeviceContext& dev_ctx_;
+  const DeviceContext& dev_ctx_;
   DenseTensor* tensor_;
   float value_;
 };
 
 template <>
-void set_constant_with_place<GPUPlace>(const phi::DeviceContext& dev_ctx,
+void set_constant_with_place<GPUPlace>(const DeviceContext& dev_ctx,
                                        DenseTensor* tensor,
                                        float value) {
   phi::VisitDataType(tensor->dtype(),
