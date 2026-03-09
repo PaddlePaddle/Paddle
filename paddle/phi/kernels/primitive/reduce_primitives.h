@@ -51,7 +51,7 @@ namespace detail {
 
 template <typename T>
 DEVICE inline bool IsNan(T val) {
-  if constexpr (std::is_integral_v<T>) {
+  if constexpr (std::is_integral_v<T> || std::is_same_v<T, bool>) {
     return false;
   }
 
