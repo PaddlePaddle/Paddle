@@ -1696,6 +1696,7 @@ def thresholded_relu_(
         return _C_ops.thresholded_relu_(x, threshold, value)
 
 
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def log_softmax(
     x: Tensor,
     axis: int = -1,
@@ -1715,10 +1716,11 @@ def log_softmax(
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
+            Alias: ``input``.
         axis (int, optional): The axis along which to perform log_softmax
             calculations. It should be in range [-D, D), where D is the
             dimensions of ``x`` . If ``axis`` < 0, it works the same way as
-            :math:`axis + D` . Default is -1.
+            :math:`axis + D` . Default is -1. Alias: ``dim``.
         dtype (str|np.dtype|core.VarDesc.VarType|core.DataType, optional): The desired data
             type of the output tensor. If dtype is specified, ``x`` is casted
             to ``dtype`` before the operation is performed. This is useful for
