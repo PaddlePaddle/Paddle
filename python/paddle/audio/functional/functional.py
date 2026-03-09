@@ -43,8 +43,7 @@ def hz_to_mel(freq: _TensorOrFloat, htk: bool = False) -> _TensorOrFloat:
 
             >>> val = 3.0
             >>> htk_flag = True
-            >>> mel_paddle_tensor = paddle.audio.functional.hz_to_mel(
-            ...     paddle.to_tensor(val), htk_flag)
+            >>> mel_paddle_tensor = paddle.audio.functional.hz_to_mel(paddle.to_tensor(val), htk_flag)
     """
 
     if htk:
@@ -97,9 +96,7 @@ def mel_to_hz(mel: _TensorOrFloat, htk: bool = False) -> _TensorOrFloat:
 
             >>> val = 3.0
             >>> htk_flag = True
-            >>> mel_paddle_tensor = paddle.audio.functional.mel_to_hz(
-            ...     paddle.to_tensor(val), htk_flag)
-            ...
+            >>> mel_paddle_tensor = paddle.audio.functional.mel_to_hz(paddle.to_tensor(val), htk_flag)
     """
     if htk:
         return 700.0 * (10.0 ** (mel / 2595.0) - 1.0)
@@ -152,8 +149,7 @@ def mel_frequencies(
             >>> f_max = 10000
             >>> htk_flag = True
 
-            >>> paddle_mel_freq = paddle.audio.functional.mel_frequencies(
-            ...     n_mels, f_min, f_max, htk_flag, 'float64')
+            >>> paddle_mel_freq = paddle.audio.functional.mel_frequencies(n_mels, f_min, f_max, htk_flag, 'float64')
     """
     # 'Center freqs' of mel bands - uniformly spaced between limits
     min_mel = hz_to_mel(f_min, htk=htk)
@@ -282,8 +278,7 @@ def power_to_db(
             >>> import paddle
 
             >>> val = 3.0
-            >>> decibel_paddle = paddle.audio.functional.power_to_db(
-            ...     paddle.to_tensor(val))
+            >>> decibel_paddle = paddle.audio.functional.power_to_db(paddle.to_tensor(val))
     """
     if amin <= 0:
         raise Exception("amin must be strictly positive")
@@ -588,9 +583,7 @@ def resample(
             paddle.Size([1, 3000])
 
             >>> # Use Kaiser window resampling
-            >>> resampled = resample(waveform, 16000, 8000,
-            ...                      resampling_method="sinc_interp_kaiser",
-            ...                      beta=12.0)
+            >>> resampled = resample(waveform, 16000, 8000, resampling_method="sinc_interp_kaiser", beta=12.0)
             >>> print(resampled.shape)
             paddle.Size([1, 500])
 
