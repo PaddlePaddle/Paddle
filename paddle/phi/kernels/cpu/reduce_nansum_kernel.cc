@@ -50,7 +50,7 @@ void NansumKernel(const Context& dev_ctx,
   T* clean_data = cleaned_x.data<T>();
   int64_t numel = x.numel();
   for (int64_t i = 0; i < numel; ++i) {
-    clean_data[i] = std::isnan(x_data[i]) ? static_cast<T>(0) : x_data[i];
+    clean_data[i] = (x_data[i] != x_data[i]) ? static_cast<T>(0) : x_data[i];
   }
 
   // Delegate to SumRawKernel
