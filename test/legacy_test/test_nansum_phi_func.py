@@ -121,6 +121,12 @@ class TestNansumForward(unittest.TestCase):
         self._run_test(x)
         self._run_test(x, axis=0)
 
+    def test_boolean_input(self):
+        """Integer types have no NaN; nansum == sum."""
+        x = np.array([False, True, True, False, True], dtype='bool')
+        self._run_test(x)
+        self._run_test(x, axis=0)
+
     def test_empty_tensor(self):
         """nansum of empty tensor should be 0."""
         for place in self.places:
