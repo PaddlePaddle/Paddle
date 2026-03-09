@@ -295,8 +295,12 @@ class TestLogSoftmaxParamAlias(unittest.TestCase):
     """Test parameter aliases: input=x, dim=axis."""
 
     def setUp(self):
+        paddle.disable_static()
         self.x_np = np.random.uniform(0.1, 1.0, [3, 4]).astype('float32')
         self.x3d_np = np.random.uniform(0.1, 1.0, [2, 3, 4]).astype('float32')
+
+    def tearDown(self):
+        paddle.enable_static()
 
     def _ref(self, x_np, axis):
         return np.apply_along_axis(ref_log_softmax, axis, x_np)
