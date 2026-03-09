@@ -18,6 +18,9 @@ from typing import TYPE_CHECKING, Any
 
 from typing_extensions import TypeGuard
 
+from ..framework import _C_ops, in_dynamic_or_pir_mode
+from ..utils import deprecate_utils
+
 import paddle
 from paddle import _C_ops
 from paddle._C_ops import (  # noqa: F401
@@ -875,3 +878,26 @@ def bitwise_invert_(x: Tensor, name: str | None = None) -> Tensor:
     """
     # Directly call bitwise_not_ for the implementation
     return bitwise_not_(x, name=name)
+
+@deprecate_utils.handle_input_alias(x='input')
+def is_real(x, name=None):
+    """
+    Check if every element of the input Tensor is a real number.
+
+    Args:
+        x (Tensor): The input Tensor. Supported data types: float32, float64, complex64, complex128.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: A boolean Tensor with the same shape as the input.
+    """
+    # If in dynamic or PIR mode, call the C++ operator directly
+    if in_dynamic_or_pir_mode():
+        return _C_ops.is_real(x)
+    else:
+        # For legacy static graph mode
+        from paddle.base.layer_helper import LayerHelper
+        helper = LayerHelper("is_real", **locals())
+        out = helper.create_variable_for_type_inference(dtype='bool')
+        helper.append_op(type='is_real', inputs={'X': x}, outputs={'Out': out})
+        return out
