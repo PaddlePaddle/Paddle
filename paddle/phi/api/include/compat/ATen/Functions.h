@@ -20,8 +20,10 @@
 #include <ATen/ops/abs.h>
 #include <ATen/ops/any.h>
 #include <ATen/ops/arange.h>
+#include <ATen/ops/as_strided.h>
 #include <ATen/ops/cat.h>
 #include <ATen/ops/chunk.h>
+#include <ATen/ops/clamp.h>
 #include <ATen/ops/coalesce.h>
 #include <ATen/ops/detach.h>
 #include <ATen/ops/dsplit.h>
@@ -36,6 +38,7 @@
 #include <ATen/ops/full.h>
 #include <ATen/ops/hsplit.h>
 #include <ATen/ops/index.h>
+#include <ATen/ops/index_put.h>
 #include <ATen/ops/is_coalesced.h>
 #include <ATen/ops/item.h>
 #include <ATen/ops/masked_select.h>
@@ -53,6 +56,7 @@
 #include <ATen/ops/split.h>
 #include <ATen/ops/split_with_sizes.h>
 #include <ATen/ops/squeeze.h>
+#include <ATen/ops/std.h>
 #include <ATen/ops/sum.h>
 #include <ATen/ops/t.h>
 #include <ATen/ops/tensor_split.h>
