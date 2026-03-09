@@ -1007,7 +1007,7 @@ Examples:
         >>> x = paddle.to_tensor([1.0, 2.0, 3.0])
         >>> x.stop_gradient = False
         >>> y = x + x
-        >>> y.retain_grad() # Use the new single name method
+        >>> y.retain_grad()
         >>> loss = y.sum()
         >>> loss.backward()
 

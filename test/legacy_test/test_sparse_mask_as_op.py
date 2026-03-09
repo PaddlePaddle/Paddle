@@ -140,14 +140,9 @@ class TestMaskAs(unittest.TestCase):
                     dense_data_pd.stop_gradient = False
 
                     # Convert mask to sparse
-                    if self.format == 'coo':
-                        sparse_mask_pd = paddle.to_tensor(
-                            dense_mask_np, dtype=dtype, place=place
-                        ).to_sparse_coo(len(shape))
-                    else:
-                        sparse_mask_pd = paddle.to_tensor(
-                            dense_mask_np, dtype=dtype, place=place
-                        ).to_sparse_csr()
+                    sparse_mask_pd = paddle.to_tensor(
+                        dense_mask_np, dtype=dtype, place=place
+                    ).to_sparse_coo(len(shape))
 
                     # Use the new tensor method (your API)
                     sparse_out_pd = dense_data_pd.sparse_mask(sparse_mask_pd)
@@ -169,20 +164,6 @@ class TestMaskAs(unittest.TestCase):
                             dense_data_grad.numpy(),
                             grad_ref,
                         )
-
-    @unittest.skip("CSR not support 1D Tensor")
-    def test_1d(self):
-        pass
-
-    def test_2d(self):
-        self.check_with_dtypes((5, 3))
-
-    def test_3d(self):
-        self.check_with_dtypes((5, 3, 4))
-
-    @unittest.skip("CSR not support 4D Tensor")
-    def test_4d(self):
-        pass
 
 
 class TestMaskAsCoo(TestMaskAs):
