@@ -165,6 +165,27 @@ class TestDigammaAPI(unittest.TestCase):
             input_t = paddle.to_tensor(input)
             res = paddle.digamma(input_t)
 
+    def test_out_parameter_in_dynamic_mode(self):
+        for dtype in self.dtypes:
+            input = np.random.random(self._shape).astype(dtype)
+            sc_res = psi(input)
+            for place in self.places:
+                with base.dygraph.guard(place):
+                    input_t = paddle.to_tensor(input)
+                    out_t = paddle.empty_like(input_t)
+                    paddle.digamma(input_t, out=out_t)
+                    np.testing.assert_allclose(out_t.numpy(), sc_res, rtol=1e-05)
+
+    def test_out_parameter_none_in_dynamic_mode(self):
+        for dtype in self.dtypes:
+            input = np.random.random(self._shape).astype(dtype)
+            sc_res = psi(input)
+            for place in self.places:
+                with base.dygraph.guard(place):
+                    input_t = paddle.to_tensor(input)
+                    out_t = paddle.digamma(input_t, out=None)
+                    np.testing.assert_allclose(out_t.numpy(), sc_res, rtol=1e-05)
+
 
 if __name__ == "__main__":
     unittest.main()
