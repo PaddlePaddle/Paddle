@@ -39,18 +39,21 @@ struct Device final {
             phiPlaceHasC10DeviceIndex(place.GetType(), place.GetDeviceId())) {}
 
   // PyTorch 兼容: Device(DeviceType, DeviceIndex)
-  // 注意：CPU 默认 index = -1，但转换为 phi::Place 时使用 0 以保持兼容性
-  // CUDA/GPU 默认 index = -1
-  Device(DeviceType type, DeviceIndex index = -1)
-      : inner_(c10DeviceTypeToPhiAllocationType(type),
-               type == DeviceType::CPU ? 0 : index),  // CPU 始终使用 device=0
-        has_index_(type == DeviceType::CPU ? false : (index != -1)) {}
+  // CPU / GPUPINNED / XPUPINNED 均为无索引设备，index 参数将被忽略。
+  // 其余设备（CUDA/XPU/IPU/CUSTOM）index=-1 表示未指定。
+  Device(DeviceType type, DeviceIndex index = -1) {
+    const phi::AllocationType alloc = c10DeviceTypeToPhiAllocationType(type);
+    // 无索引设备类型：固定使用 device_id=0
+    const bool no_index =
+        (type == DeviceType::CPU || type == DeviceType::GPUPINNED ||
+         type == DeviceType::XPUPINNED);
+    inner_ = phi::Place(alloc, no_index ? 0 : index);
+    has_index_ = !no_index && (index != -1);
+  }
 
   /// Constructs a `Device` from a string description, for convenience.
-  /// The string supplied must follow the following schema:
-  /// `(cpu|cuda)[:<device-index>]`
-  /// where `cpu` or `cuda` specifies the device type, and
-  /// `:<device-index>` optionally specifies a device index.
+  /// Supported formats: `(cpu|cuda|xpu|ipu|custom)[:<device-index>]`
+  /// e.g. "cuda:0", "xpu:1", "cpu", "custom:2"
   /* implicit */ Device(const std::string& device_string);
 
   DeviceIndex index() const noexcept {
@@ -65,14 +68,32 @@ struct Device final {
     return phiAllocationTypeToC10DeviceType(inner_.GetType());
   }
 
-  // PyTorch 兼容: is_cuda() 检查 CUDA 和 GPU 类型
+  // PyTorch 兼容: is_cuda() 检查底层是否为 GPU（phi::AllocationType::GPU）
   bool is_cuda() const noexcept {
-    auto t = inner_.GetType();
-    return t == phi::AllocationType::GPU;
+    return inner_.GetType() == phi::AllocationType::GPU;
   }
 
   bool is_cpu() const noexcept {
     return inner_.GetType() == phi::AllocationType::CPU;
+  }
+
+  bool is_xpu() const noexcept {
+    return inner_.GetType() == phi::AllocationType::XPU;
+  }
+
+  bool is_ipu() const noexcept {
+    return inner_.GetType() == phi::AllocationType::IPU;
+  }
+
+  bool is_custom() const noexcept {
+    return inner_.GetType() == phi::AllocationType::CUSTOM;
+  }
+
+  // 判断是否为固定内存设备（GPUPINNED 或 XPUPINNED）
+  bool is_pinned() const noexcept {
+    const auto t = inner_.GetType();
+    return t == phi::AllocationType::GPUPINNED ||
+           t == phi::AllocationType::XPUPINNED;
   }
 
   std::string str() const;

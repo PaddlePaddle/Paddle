@@ -406,94 +406,111 @@ TEST(TensorBaseTest, IsNonOverlappingAndDenseAPI) {
 }
 
 TEST(DeviceCompatTest, ParseTypeValid) {
-  // Test valid device types
+  // Test valid device types - only Paddle-supported backends
   ASSERT_EQ(c10::parse_type("cpu"), c10::DeviceType::CPU);
   ASSERT_EQ(c10::parse_type("cuda"), c10::DeviceType::CUDA);
-  ASSERT_EQ(c10::parse_type("gpu"), c10::DeviceType::GPU);
-  ASSERT_EQ(c10::parse_type("ipu"), c10::DeviceType::IPU);
   ASSERT_EQ(c10::parse_type("xpu"), c10::DeviceType::XPU);
+  ASSERT_EQ(c10::parse_type("ipu"), c10::DeviceType::IPU);
+  ASSERT_EQ(c10::parse_type("custom"), c10::DeviceType::CUSTOM);
 }
 
 TEST(DeviceCompatTest, ParseTypeInvalid) {
   // Test invalid device type throws exception
+  // "gpu" is not a valid string (Paddle uses "cuda" for GPU devices)
   ASSERT_THROW(c10::parse_type("invalid"), common::enforce::EnforceNotMet);
   ASSERT_THROW(c10::parse_type("dx11"), common::enforce::EnforceNotMet);
+  ASSERT_THROW(c10::parse_type("gpu"), common::enforce::EnforceNotMet);
+  ASSERT_THROW(c10::parse_type("hip"), common::enforce::EnforceNotMet);
 }
 
 TEST(DeviceCompatTest, DeviceFromStringBasic) {
   // Test creating Device from string without index
-  c10::Device dev1("cpu");
-  ASSERT_EQ(dev1.type(), c10::DeviceType::CPU);
-  ASSERT_FALSE(dev1.has_index());
-  ASSERT_EQ(dev1.index(), -1);
-  ASSERT_TRUE(dev1.is_cpu());
-  ASSERT_FALSE(dev1.is_cuda());
+  c10::Device dev_cpu("cpu");
+  ASSERT_EQ(dev_cpu.type(), c10::DeviceType::CPU);
+  ASSERT_FALSE(dev_cpu.has_index());
+  ASSERT_EQ(dev_cpu.index(), -1);
+  ASSERT_TRUE(dev_cpu.is_cpu());
+  ASSERT_FALSE(dev_cpu.is_cuda());
 
-  c10::Device dev2("cuda");
-  ASSERT_EQ(dev2.type(), c10::DeviceType::CUDA);
-  ASSERT_FALSE(dev2.has_index());
+  c10::Device dev_cuda("cuda");
+  ASSERT_EQ(dev_cuda.type(), c10::DeviceType::CUDA);
+  ASSERT_FALSE(dev_cuda.has_index());
+  ASSERT_TRUE(dev_cuda.is_cuda());
 
-  c10::Device dev3("gpu");
-  ASSERT_FALSE(dev3.has_index());
+  c10::Device dev_xpu("xpu");
+  ASSERT_EQ(dev_xpu.type(), c10::DeviceType::XPU);
+  ASSERT_FALSE(dev_xpu.has_index());
+  ASSERT_TRUE(dev_xpu.is_xpu());
+
+  c10::Device dev_custom("custom");
+  ASSERT_EQ(dev_custom.type(), c10::DeviceType::CUSTOM);
+  ASSERT_FALSE(dev_custom.has_index());
+  ASSERT_TRUE(dev_custom.is_custom());
 }
 
 TEST(DeviceCompatTest, DeviceFromStringWithIndex) {
   // Test creating Device from string with index
-  c10::Device dev1("cuda:0");
-  ASSERT_EQ(dev1.type(), c10::DeviceType::CUDA);
-  ASSERT_TRUE(dev1.has_index());
-  ASSERT_EQ(dev1.index(), 0);
+  c10::Device dev_cuda("cuda:0");
+  ASSERT_EQ(dev_cuda.type(), c10::DeviceType::CUDA);
+  ASSERT_TRUE(dev_cuda.has_index());
+  ASSERT_EQ(dev_cuda.index(), 0);
 
-  c10::Device dev2("gpu:0");
-  ASSERT_TRUE(dev2.has_index());
-  ASSERT_EQ(dev2.index(), 0);
+  c10::Device dev_xpu("xpu:1");
+  ASSERT_EQ(dev_xpu.type(), c10::DeviceType::XPU);
+  ASSERT_TRUE(dev_xpu.has_index());
+  ASSERT_EQ(dev_xpu.index(), 1);
 
-  c10::Device dev3("xpu:1");
-  ASSERT_EQ(dev3.type(), c10::DeviceType::XPU);
-  ASSERT_TRUE(dev3.has_index());
-  ASSERT_EQ(dev3.index(), 1);
+  c10::Device dev_ipu("ipu:2");
+  ASSERT_EQ(dev_ipu.type(), c10::DeviceType::IPU);
+  ASSERT_TRUE(dev_ipu.has_index());
+  ASSERT_EQ(dev_ipu.index(), 2);
 
-  c10::Device dev4("ipu:2");
-  ASSERT_EQ(dev4.type(), c10::DeviceType::IPU);
-  ASSERT_EQ(dev4.index(), 2);
+  c10::Device dev_custom("custom:3");
+  ASSERT_EQ(dev_custom.type(), c10::DeviceType::CUSTOM);
+  ASSERT_TRUE(dev_custom.has_index());
+  ASSERT_EQ(dev_custom.index(), 3);
 }
 
 TEST(DeviceCompatTest, DeviceFromStringInvalid) {
   // Test invalid device string throws exception
   ASSERT_THROW(c10::Device("cuda:abc"), common::enforce::EnforceNotMet);
+  // "gpu" is not a valid device string in Paddle compat layer
+  ASSERT_THROW(c10::Device("gpu:0"), common::enforce::EnforceNotMet);
 }
 
 TEST(DeviceCompatTest, DeviceStr) {
   // Test Device::str() method
-  c10::Device dev1("cpu");
-  ASSERT_EQ(dev1.str(), "cpu");
+  ASSERT_EQ(c10::Device("cpu").str(), "cpu");
+  ASSERT_EQ(c10::Device("cuda:0").str(), "cuda:0");
+  ASSERT_EQ(c10::Device("xpu:1").str(), "xpu:1");
+  ASSERT_EQ(c10::Device("ipu:2").str(), "ipu:2");
+  ASSERT_EQ(c10::Device("custom:3").str(), "custom:3");
 
-  c10::Device dev2("cuda:0");
-  ASSERT_EQ(dev2.str(), "cuda:0");
-
-  // Note: GPU type returns "cuda" in str() for compatibility
-  c10::Device dev3("gpu:1");
-  ASSERT_EQ(dev3.str(), "cuda:1");
-
-  c10::Device dev4("xpu:2");
-  ASSERT_EQ(dev4.str(), "xpu:2");
+  // Programmatic construction via DeviceType enum
+  ASSERT_EQ(c10::Device(c10::DeviceType::CPU).str(), "cpu");
+  ASSERT_EQ(c10::Device(c10::DeviceType::CUDA, 0).str(), "cuda:0");
 }
 
 TEST(DeviceCompatTest, DeviceStreamOutput) {
   // Test operator<< for Device
-  c10::Device dev1("cpu");
-  std::ostringstream oss1;
-  oss1 << dev1;
-  ASSERT_EQ(oss1.str(), "cpu");
-
-  // Note: GPU type returns "cuda" for compatibility
-  c10::Device dev2("gpu:0");
-  std::ostringstream oss2;
-  oss2 << dev2;
-  ASSERT_EQ(oss2.str(), "cuda:0");
-
-  c10::Device dev3("xpu:2");
-  std::ostringstream oss3;
-  oss3 << dev3;
-  ASSERT_EQ(oss3.str(), "xpu:2");
+  {
+    std::ostringstream oss;
+    oss << c10::Device("cpu");
+    ASSERT_EQ(oss.str(), "cpu");
+  }
+  {
+    std::ostringstream oss;
+    oss << c10::Device("cuda:0");
+    ASSERT_EQ(oss.str(), "cuda:0");
+  }
+  {
+    std::ostringstream oss;
+    oss << c10::Device("xpu:2");
+    ASSERT_EQ(oss.str(), "xpu:2");
+  }
+  {
+    std::ostringstream oss;
+    oss << c10::Device("custom:1");
+    ASSERT_EQ(oss.str(), "custom:1");
+  }
 }

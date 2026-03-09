@@ -29,9 +29,9 @@ DeviceType parse_type(const std::string& device_string) {
       types = {{
           {"cpu", DeviceType::CPU},
           {"cuda", DeviceType::CUDA},
-          {"gpu", DeviceType::GPU},
-          {"ipu", DeviceType::IPU},
           {"xpu", DeviceType::XPU},
+          {"ipu", DeviceType::IPU},
+          {"custom", DeviceType::CUSTOM},
       }};
   for (const auto& type_pair : types) {
     if (device_string == type_pair.first) {
@@ -40,12 +40,12 @@ DeviceType parse_type(const std::string& device_string) {
   }
   PADDLE_THROW(::common::errors::InvalidArgument(
       "Unknown device type: '%s'. Supported device types are "
-      "'cpu', 'cuda', 'gpu', 'ipu', and 'xpu'.",
+      "'cpu', 'cuda', 'xpu', 'ipu', and 'custom'.",
       device_string));
 }
 
 Device::Device(const std::string& device_string)
-    : inner_(phi::Place(phi::AllocationType::CPU, -1)), has_index_(false) {
+    : inner_(phi::Place(phi::AllocationType::CPU, 0)), has_index_(false) {
   TORCH_CHECK(!device_string.empty(), "Device string must not be empty");
   auto colon_pos = device_string.find(':');
   std::string type_str = colon_pos == std::string::npos
@@ -68,10 +68,11 @@ Device::Device(const std::string& device_string)
           "Invalid device index: '%s' is out of range.", index_str));
     }
   }
-  has_index_ = (index != -1);
 
-  // 设置 inner_
-  inner_ = phi::Place(c10DeviceTypeToPhiAllocationType(type), index);
+  // 固定内存类型（GPUPINNED/XPUPINNED）及 CPU 不携带有效的 device index
+  const phi::AllocationType alloc_type = c10DeviceTypeToPhiAllocationType(type);
+  has_index_ = phiPlaceHasC10DeviceIndex(alloc_type, index);
+  inner_ = phi::Place(alloc_type, has_index_ ? index : 0);
 }
 
 std::string Device::str() const {
@@ -81,14 +82,23 @@ std::string Device::str() const {
       str = "cpu";
       break;
     case DeviceType::CUDA:
-    case DeviceType::GPU:
       str = "cuda";
+      break;
+    case DeviceType::GPUPINNED:
+      // GPU 固定内存在物理上位于 CPU 侧，字符串表示与 PyTorch 保持一致
+      str = "cpu";
       break;
     case DeviceType::XPU:
       str = "xpu";
       break;
+    case DeviceType::XPUPINNED:
+      str = "xpu";
+      break;
     case DeviceType::IPU:
       str = "ipu";
+      break;
+    case DeviceType::CUSTOM:
+      str = "custom";
       break;
     default:
       str = "unknown";
