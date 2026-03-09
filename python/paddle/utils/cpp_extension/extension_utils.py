@@ -664,9 +664,12 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
         extra_link_args = kwargs.get('extra_link_args', [])
         extra_link_args.extend(MSVC_LINK_FLAGS)
         lib_core_name = create_sym_link_if_not_exist()
-        extra_link_args.append(f'{lib_core_name}')
+        required_link_args = [f'{lib_core_name}', 'phi.lib']
         if use_cuda:
-            extra_link_args.extend(['cudadevrt.lib', 'cudart_static.lib'])
+            required_link_args.extend(['cudadevrt.lib', 'cudart_static.lib'])
+        for link_arg in required_link_args:
+            if link_arg not in extra_link_args:
+                extra_link_args.append(link_arg)
         kwargs['extra_link_args'] = extra_link_args
 
     else:

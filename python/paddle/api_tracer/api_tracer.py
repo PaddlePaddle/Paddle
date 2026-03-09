@@ -12,10 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
 import math
+import threading
 
 import numpy as np
 import yaml
+
+import paddle
+
+_trace_guard = threading.local()
+_originals = {}  # {api_path: (parent_obj, method_name, original_fn)}
+_hooked_apis = []
 
 
 class HookAPIMap:
@@ -55,8 +63,6 @@ class ConfigDump:
         self.file.flush()
 
     def dump_item_str(self, api, item):
-        import paddle
-
         type_mapping = {
             np.int16: int,
             np.int32: int,
@@ -85,6 +91,8 @@ class ConfigDump:
             return "Dtype(" + str(item)[7:] + ")"
         elif isinstance(item, paddle.base.core.VarDesc.VarType):
             return "VarType(" + str(item)[7:] + ")"
+        elif isinstance(item, paddle.base.libpaddle.Place):
+            return str(item)
         elif isinstance(item, list):
             result = "list["
             for sub_item in item:
@@ -178,16 +186,22 @@ class APITemplate:
         self.api_name = api_name
 
     def __call__(self, *args, **kwargs):
-        output = getattr(HookAPIMap, self.api_name)(*args, **kwargs)
+        if getattr(_trace_guard, 'in_hook', False):
+            return getattr(HookAPIMap, self.api_name)(*args, **kwargs)
+        _trace_guard.in_hook = True
         try:
-            config_dump.dump_config(self.api_name, args, kwargs, output)
-        except Exception as err:
-            print(
-                "[api_tracer error] : config_dump.dump_config ",
-                self.api_name,
-                str(err),
-            )
-        return output
+            output = getattr(HookAPIMap, self.api_name)(*args, **kwargs)
+            try:
+                config_dump.dump_config(self.api_name, args, kwargs, output)
+            except Exception as err:
+                print(
+                    "[api_tracer error] : config_dump.dump_config ",
+                    self.api_name,
+                    str(err),
+                )
+            return output
+        finally:
+            _trace_guard.in_hook = False
 
 
 def wrapped_api(api_name):
@@ -197,21 +211,80 @@ def wrapped_api(api_name):
     return api_template
 
 
-def start_api_tracer(api_path, save_config_path):
-    import paddle
+def expand_wildcard(api_pattern):
+    if not api_pattern.endswith('.*'):
+        return [api_pattern]
+    module_path = api_pattern[:-2]
+    try:
+        module = eval(module_path)
+    except Exception as e:
+        print(f"[api_tracer error] : expand_wildcard {api_pattern}, {e}")
+        return []
+    apis = []
+    for name in dir(module):
+        if module_path.endswith('_C_ops'):
+            if name.startswith('__'):
+                continue
+        elif name.startswith('_'):
+            continue
+        try:
+            attr = getattr(module, name)
+            if (
+                callable(attr)
+                and not inspect.isclass(attr)
+                and not inspect.ismodule(attr)
+            ):
+                apis.append(f"{module_path}.{name}")
+        except Exception:
+            pass
+    return apis
 
+
+def start_api_tracer(api_path, save_config_path):
     print(paddle.__version__)
     with open(api_path, "r") as f:
-        apis = yaml.safe_load(f)
-        sample_apis = apis.get("apis")
-        f.close()
+        raw_apis = yaml.safe_load(f).get("apis") or []
+
+    sample_apis = []
+    for api in raw_apis:
+        sample_apis.extend(expand_wildcard(api))
+    sample_apis = list(dict.fromkeys(sample_apis))
+    print(f"[api_tracer] Expanded to {len(sample_apis)} APIs")
 
     for api in sample_apis:
         parent_package, method_name = api.rsplit(".", maxsplit=1)
         try:
-            setattr(HookAPIMap, api, getattr(eval(parent_package), method_name))
-            setattr(eval(parent_package), method_name, wrapped_api(api))
+            parent = eval(parent_package)
+            original = getattr(parent, method_name)
+            _originals[api] = (parent, method_name, original)
+            setattr(HookAPIMap, api, original)
+            setattr(parent, method_name, wrapped_api(api))
+            _hooked_apis.append(api)
         except Exception as err:
-            print("[api_tracer error] : start_api_tracer ", api, str(err))
+            print(
+                "[api_tracer error] : start_api_tracer ",
+                api,
+                str(err),
+            )
 
     config_dump.open_file(save_config_path)
+
+
+def stop_api_tracer():
+    for api in _hooked_apis:
+        entry = _originals.pop(api, None)
+        if entry:
+            parent, method_name, original = entry
+            try:
+                setattr(parent, method_name, original)
+            except Exception as err:
+                print(f"[api_tracer error] : stop_api_tracer {api} {err}")
+    _hooked_apis.clear()
+    if (
+        hasattr(config_dump, 'file')
+        and config_dump.file
+        and not config_dump.file.closed
+    ):
+        config_dump.file.flush()
+        config_dump.file.close()
+    print("[api_tracer] Stopped, all hooks removed.")

@@ -43,9 +43,9 @@ __global__ void SwiGLUGradCUDAKernel(const T *__restrict__ x,
 
       int64_t dz_offset = row_offset + col_offset;
       int64_t x_offset = dz_offset + row_offset;
-      phi::AlignedVector<T, VecSize> x_vec;
-      phi::AlignedVector<T, VecSize> y_vec;
-      phi::AlignedVector<T, VecSize> dz_vec;
+      AlignedVector<T, VecSize> x_vec;
+      AlignedVector<T, VecSize> y_vec;
+      AlignedVector<T, VecSize> dz_vec;
 
       phi::Load<T, VecSize>(x + x_offset, &x_vec);
       phi::Load<T, VecSize>(y + x_offset, &y_vec);
@@ -68,9 +68,9 @@ __global__ void SwiGLUGradCUDAKernel(const T *__restrict__ x,
     int64_t limit = numel - VecSize;
 
     while (idx <= limit) {
-      phi::AlignedVector<T, VecSize> x_vec;
-      phi::AlignedVector<T, VecSize> y_vec;
-      phi::AlignedVector<T, VecSize> dz_vec;
+      AlignedVector<T, VecSize> x_vec;
+      AlignedVector<T, VecSize> y_vec;
+      AlignedVector<T, VecSize> dz_vec;
 
       phi::Load<T, VecSize>(x + idx, &x_vec);
       if constexpr (HasDX) {
