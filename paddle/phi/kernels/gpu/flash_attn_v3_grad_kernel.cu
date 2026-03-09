@@ -1394,11 +1394,11 @@ void FlashMaskV2GradBaseKernel(
   DenseTensor tile_count_semaphore;
   if (arch >= 90) {
     tile_count_semaphore = phi::Full<int32_t, Context>(dev_ctx, {1}, 0);
-    phi::dynload::flashmaskv2_bwd_params_set_tile_count_semaphore(
+    dynload::flashmaskv2_bwd_params_set_tile_count_semaphore(
         params_handle, tile_count_semaphore.data<int>());
   } else {
-    phi::dynload::flashmaskv2_bwd_params_set_tile_count_semaphore(params_handle,
-                                                                  nullptr);
+    dynload::flashmaskv2_bwd_params_set_tile_count_semaphore(params_handle,
+                                                             nullptr);
   }
 
   DenseTensor dq_semaphore = Empty<int32_t>(

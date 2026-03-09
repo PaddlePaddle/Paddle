@@ -54,6 +54,7 @@ build_doc/
 
 .vscode
 .comate
+.claude
 .idea
 .project
 .cproject

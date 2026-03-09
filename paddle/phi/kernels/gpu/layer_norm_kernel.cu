@@ -101,7 +101,7 @@ struct LayerNormDataReader {
                                     const int last_tid_idx,
                                     const int read_times,
                                     const int cols_this_thread) {
-    using VecT = phi::AlignedVector<T, VecSize>;
+    using VecT = AlignedVector<T, VecSize>;
     const VecT* __restrict__ v_src =
         reinterpret_cast<const VecT* __restrict__>(row_src);
 
@@ -149,9 +149,9 @@ struct LayerNormDataWriter {
       const int last_tid_idx,
       const bool valid_scale,
       const bool valid_bias) {
-    using VecT = phi::AlignedVector<T, VecSize>;
+    using VecT = AlignedVector<T, VecSize>;
     using ScaleT = funcs::LayerNormScaleBiasT<T, U, IsSameType>;
-    using VecScaleT = phi::AlignedVector<ScaleT, VecSize>;
+    using VecScaleT = AlignedVector<ScaleT, VecSize>;
     VecT* v_dst = reinterpret_cast<VecT*>(row_dst);
 
     // cols_this_thread is just cols_per_thread

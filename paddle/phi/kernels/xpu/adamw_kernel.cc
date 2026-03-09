@@ -75,15 +75,15 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
                          DenseTensor* master_param_outs) {
   // TODO(houj04):
   // 当KL3稳定以后，并且不需要支持KL1和KL2的时候，拿这里的AdamwDenseKernelKL3替换掉AdamwDenseKernel
-  using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   const auto grad_type = grad.dtype();
 
   VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
 
-  MPDType coeff_ = static_cast<MPDType>(coeff);
-  MPDType lr_ratio_ = static_cast<MPDType>(lr_ratio);
+  MT coeff_ = static_cast<MT>(coeff);
+  MT lr_ratio_ = static_cast<MT>(lr_ratio);
 
   bool skip_update_ = false;
   if (skip_update.is_initialized()) {
@@ -112,12 +112,12 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
 
   // if with_decay = false, coeff = 0
   if (!with_decay) {
-    coeff_ = static_cast<MPDType>(0.0);
+    coeff_ = static_cast<MT>(0.0);
   }
 
-  MPDType beta1_ = beta1.to<MPDType>();
-  MPDType beta2_ = beta2.to<MPDType>();
-  MPDType epsilon_ = epsilon.to<MPDType>();
+  MT beta1_ = beta1.to<MT>();
+  MT beta2_ = beta2.to<MT>();
+  MT epsilon_ = epsilon.to<MT>();
   VLOG(3) << "beta1_pow.numel() : " << beta1_pow.numel()
           << "beta2_pow.numel() : " << beta2_pow.numel();
   VLOG(3) << "param.numel(): " << param.numel();
@@ -135,11 +135,10 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
                               "value is:%d.",
                               beta2_pow_out->numel()));
 
-  const MPDType* master_in_data =
-      multi_precision ? master_param->data<MPDType>() : nullptr;
-  MPDType* master_out_data =
-      multi_precision ? dev_ctx.template Alloc<MPDType>(master_param_outs)
-                      : nullptr;
+  const MT* master_in_data =
+      multi_precision ? master_param->data<MT>() : nullptr;
+  MT* master_out_data =
+      multi_precision ? dev_ctx.template Alloc<MT>(master_param_outs) : nullptr;
 
   // check moment_dtype
   auto moment1_dtype = moment1.dtype();
@@ -250,26 +249,24 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
   if (beta1_pow.place() == CPUPlace() && beta2_pow.place() == CPUPlace()) {
     // Compute with betapow in REG
     if (grad_type == phi::DataType::FLOAT32) {
-      int r = xpu::adamw<XPUType, float, MPDType>(
+      int r = xpu::adamw<XPUType, float, MT>(
           dev_ctx.x_context(),
           beta1_,
           beta2_,
           epsilon_,
           coeff_,
           lr_ratio_,
-          nullptr,                     // beta1_pow
-          *beta1_pow.data<MPDType>(),  // beta1_pow_scalar
-          nullptr,                     // beta2_pow
-          *beta2_pow.data<MPDType>(),  // beta2_pow_scalar
-          moment_in_fp16 ? moment1_input_for_xdnn
-                         : moment1.template data<MPDType>(),
+          nullptr,                // beta1_pow
+          *beta1_pow.data<MT>(),  // beta1_pow_scalar
+          nullptr,                // beta2_pow
+          *beta2_pow.data<MT>(),  // beta2_pow_scalar
+          moment_in_fp16 ? moment1_input_for_xdnn : moment1.template data<MT>(),
           moment_in_fp16 ? moment1_output_for_xdnn
-                         : dev_ctx.template Alloc<MPDType>(moment1_out),
-          moment_in_fp16 ? moment2_input_for_xdnn
-                         : moment2.template data<MPDType>(),
+                         : dev_ctx.template Alloc<MT>(moment1_out),
+          moment_in_fp16 ? moment2_input_for_xdnn : moment2.template data<MT>(),
           moment_in_fp16 ? moment2_output_for_xdnn
-                         : dev_ctx.template Alloc<MPDType>(moment2_out),
-          learning_rate.data<MPDType>(),
+                         : dev_ctx.template Alloc<MT>(moment2_out),
+          learning_rate.data<MT>(),
           grad.data<float>(),
           reinterpret_cast<const XPUType*>(param.data<T>()),
           reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(param_out)),
@@ -278,26 +275,24 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
           param.numel());
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "adamw");
     } else {
-      int r = xpu::adamw<XPUType, XPUType, MPDType>(
+      int r = xpu::adamw<XPUType, XPUType, MT>(
           dev_ctx.x_context(),
           beta1_,
           beta2_,
           epsilon_,
           coeff_,
           lr_ratio_,
-          nullptr,                     // beta1_pow
-          *beta1_pow.data<MPDType>(),  // beta1_pow_scalar
-          nullptr,                     // beta2_pow
-          *beta2_pow.data<MPDType>(),  // beta2_pow_scalar
-          moment_in_fp16 ? moment1_input_for_xdnn
-                         : moment1.template data<MPDType>(),
+          nullptr,                // beta1_pow
+          *beta1_pow.data<MT>(),  // beta1_pow_scalar
+          nullptr,                // beta2_pow
+          *beta2_pow.data<MT>(),  // beta2_pow_scalar
+          moment_in_fp16 ? moment1_input_for_xdnn : moment1.template data<MT>(),
           moment_in_fp16 ? moment1_output_for_xdnn
-                         : dev_ctx.template Alloc<MPDType>(moment1_out),
-          moment_in_fp16 ? moment2_input_for_xdnn
-                         : moment2.template data<MPDType>(),
+                         : dev_ctx.template Alloc<MT>(moment1_out),
+          moment_in_fp16 ? moment2_input_for_xdnn : moment2.template data<MT>(),
           moment_in_fp16 ? moment2_output_for_xdnn
-                         : dev_ctx.template Alloc<MPDType>(moment2_out),
-          learning_rate.data<MPDType>(),
+                         : dev_ctx.template Alloc<MT>(moment2_out),
+          learning_rate.data<MT>(),
           reinterpret_cast<const XPUType*>(grad.data<T>()),
           reinterpret_cast<const XPUType*>(param.data<T>()),
           reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(param_out)),
@@ -308,33 +303,31 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
     }
     if (!use_global_beta_pow) {
       // Cpu update
-      dev_ctx.template HostAlloc<MPDType>(beta1_pow_out)[0] =
-          beta1_ * beta1_pow.data<MPDType>()[0];
-      dev_ctx.template HostAlloc<MPDType>(beta2_pow_out)[0] =
-          beta2_ * beta2_pow.data<MPDType>()[0];
+      dev_ctx.template HostAlloc<MT>(beta1_pow_out)[0] =
+          beta1_ * beta1_pow.data<MT>()[0];
+      dev_ctx.template HostAlloc<MT>(beta2_pow_out)[0] =
+          beta2_ * beta2_pow.data<MT>()[0];
     }
   } else {
     if (grad_type == phi::DataType::FLOAT32) {
-      int r = xpu::adamw<XPUType, float, MPDType>(
+      int r = xpu::adamw<XPUType, float, MT>(
           dev_ctx.x_context(),
           beta1_,
           beta2_,
           epsilon_,
           coeff_,
           lr_ratio_,
-          beta1_pow.data<MPDType>(),  // beta1_pow
-          0.0f,                       // beta1_pow_scalar
-          beta2_pow.data<MPDType>(),  // beta2_pow
-          0.0f,                       // beta2_pow_scalar
-          moment_in_fp16 ? moment1_input_for_xdnn
-                         : moment1.template data<MPDType>(),
+          beta1_pow.data<MT>(),  // beta1_pow
+          0.0f,                  // beta1_pow_scalar
+          beta2_pow.data<MT>(),  // beta2_pow
+          0.0f,                  // beta2_pow_scalar
+          moment_in_fp16 ? moment1_input_for_xdnn : moment1.template data<MT>(),
           moment_in_fp16 ? moment1_output_for_xdnn
-                         : dev_ctx.template Alloc<MPDType>(moment1_out),
-          moment_in_fp16 ? moment2_input_for_xdnn
-                         : moment2.template data<MPDType>(),
+                         : dev_ctx.template Alloc<MT>(moment1_out),
+          moment_in_fp16 ? moment2_input_for_xdnn : moment2.template data<MT>(),
           moment_in_fp16 ? moment2_output_for_xdnn
-                         : dev_ctx.template Alloc<MPDType>(moment2_out),
-          learning_rate.data<MPDType>(),
+                         : dev_ctx.template Alloc<MT>(moment2_out),
+          learning_rate.data<MT>(),
           grad.data<float>(),
           reinterpret_cast<const XPUType*>(param.data<T>()),
           reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(param_out)),
@@ -343,26 +336,24 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
           param.numel());
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "adamw");
     } else {
-      int r = xpu::adamw<XPUType, XPUType, MPDType>(
+      int r = xpu::adamw<XPUType, XPUType, MT>(
           dev_ctx.x_context(),
           beta1_,
           beta2_,
           epsilon_,
           coeff_,
           lr_ratio_,
-          beta1_pow.data<MPDType>(),  // beta1_pow
-          0.0f,                       // beta1_pow_scalar
-          beta2_pow.data<MPDType>(),  // beta2_pow
-          0.0f,                       // beta2_pow_scalar
-          moment_in_fp16 ? moment1_input_for_xdnn
-                         : moment1.template data<MPDType>(),
+          beta1_pow.data<MT>(),  // beta1_pow
+          0.0f,                  // beta1_pow_scalar
+          beta2_pow.data<MT>(),  // beta2_pow
+          0.0f,                  // beta2_pow_scalar
+          moment_in_fp16 ? moment1_input_for_xdnn : moment1.template data<MT>(),
           moment_in_fp16 ? moment1_output_for_xdnn
-                         : dev_ctx.template Alloc<MPDType>(moment1_out),
-          moment_in_fp16 ? moment2_input_for_xdnn
-                         : moment2.template data<MPDType>(),
+                         : dev_ctx.template Alloc<MT>(moment1_out),
+          moment_in_fp16 ? moment2_input_for_xdnn : moment2.template data<MT>(),
           moment_in_fp16 ? moment2_output_for_xdnn
-                         : dev_ctx.template Alloc<MPDType>(moment2_out),
-          learning_rate.data<MPDType>(),
+                         : dev_ctx.template Alloc<MT>(moment2_out),
+          learning_rate.data<MT>(),
           reinterpret_cast<const XPUType*>(grad.data<T>()),
           reinterpret_cast<const XPUType*>(param.data<T>()),
           reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(param_out)),
@@ -374,16 +365,16 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
     if (!use_global_beta_pow) {
       // Update with xpu
       int r = xpu::scale(dev_ctx.x_context(),
-                         beta1_pow.data<MPDType>(),
-                         dev_ctx.template Alloc<MPDType>(beta1_pow_out),
+                         beta1_pow.data<MT>(),
+                         dev_ctx.template Alloc<MT>(beta1_pow_out),
                          beta1_pow.numel(),
                          false,
                          beta1_,
                          0.0f);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
       r = xpu::scale(dev_ctx.x_context(),
-                     beta2_pow.data<MPDType>(),
-                     dev_ctx.template Alloc<MPDType>(beta2_pow_out),
+                     beta2_pow.data<MT>(),
+                     dev_ctx.template Alloc<MT>(beta2_pow_out),
                      beta2_pow.numel(),
                      false,
                      beta2_,
