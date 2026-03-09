@@ -51,6 +51,8 @@ jobs:
         run: |
           set -euo pipefail
 
+          env | grep -i proxy
+
           AUTHORIZED_REVIEWERS=("YqGe585" "yongqiangma")
 
           echo "Authorized reviewers: ${AUTHORIZED_REVIEWERS[*]}"
@@ -119,6 +121,7 @@ jobs:
         timeout-minutes: 30
         run: |
           set -e
+          env | grep -i proxy
           echo "Downloading Paddle.tar.gz"
           wget -q --tries=5 --no-proxy \
             https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
