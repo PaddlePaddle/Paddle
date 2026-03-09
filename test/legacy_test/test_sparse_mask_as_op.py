@@ -123,7 +123,14 @@ class TestMaskAs(unittest.TestCase):
         # Test for 1D, 2D, 3D, 4D tensors
         shapes = [(5,), (5, 3), (5, 3, 4), (5, 3, 4, 2)]
         for shape in shapes:
-            for dtype in ['float32', 'float64', 'int32', 'int64', 'complex64', 'complex128']:
+            for dtype in [
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'complex64',
+                'complex128',
+            ]:
                 for place in self.places:
                     # Generate data
                     dense_data_np, dense_mask_np = generate_data(shape, dtype)
@@ -155,14 +162,16 @@ class TestMaskAs(unittest.TestCase):
                     if dtype not in ['int8', 'int16']:
                         sparse_out_pd.backward()
                         dense_data_grad = dense_data_pd.grad
-                        grad_ref = np.ones_like(dense_mask_np) * (dense_mask_np != 0)
+                        grad_ref = np.ones_like(dense_mask_np) * (
+                            dense_mask_np != 0
+                        )
                         np.testing.assert_allclose(
                             dense_data_grad.numpy(),
                             grad_ref,
                         )
 
     def test_1d(self):
-        self.check_with_dtypes((5,))
+        self.check_with_dtypes((5, 1))
 
     def test_2d(self):
         self.check_with_dtypes((5, 3))
@@ -172,6 +181,7 @@ class TestMaskAs(unittest.TestCase):
 
     def test_4d(self):
         self.check_with_dtypes((5, 3, 4, 2))
+
 
 class TestMaskAsCoo(TestMaskAs):
     def init_format(self):
