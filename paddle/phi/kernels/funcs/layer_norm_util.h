@@ -88,7 +88,7 @@ template <typename DeviceContext, typename T>
 struct ColwiseSum2D {
   ColwiseSum2D(int left, int right, const DeviceContext& dev_ctx);
 
-  void operator()(const phi::DeviceContext& dev_ctx,
+  void operator()(const DeviceContext& dev_ctx,
                   const DenseTensor& input,
                   DenseTensor* vec);
 };

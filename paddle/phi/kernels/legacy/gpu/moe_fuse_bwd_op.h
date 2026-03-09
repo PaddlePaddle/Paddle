@@ -62,8 +62,8 @@ __global__ void gather_with_mask_permute_kernel(
     }
     __syncthreads();
 
-    phi::AlignedVector<T, vec_size> in_vec;
-    phi::AlignedVector<T, vec_size> out_vec;
+    AlignedVector<T, vec_size> in_vec;
+    AlignedVector<T, vec_size> out_vec;
     for (int ii = 0; ii < vec_size; ++ii) {
       out_vec[ii] = static_cast<T>(0);
     }
@@ -134,8 +134,8 @@ __global__ void gather_with_mask_kernel(
     }
     __syncthreads();
 
-    phi::AlignedVector<T, vec_size> in_vec;
-    phi::AlignedVector<T, vec_size> out_vec;
+    AlignedVector<T, vec_size> in_vec;
+    AlignedVector<T, vec_size> out_vec;
     for (int ii = 0; ii < vec_size; ++ii) {
       out_vec[ii] = static_cast<T>(0);
     }

@@ -14,9 +14,10 @@
 
 #pragma once
 
-#include <ATen/Utils.h>
 #include <ATen/core/Tensor.h>
 #include <c10/core/TensorOptions.h>
+#include <utils/dense_sparse_conversion.h>
+
 #include <optional>
 #include <string_view>
 
@@ -52,7 +53,7 @@ inline at::Tensor zeros_like(
       base,
       compat::_PD_AtenScalarTypeToPhiDataType(dtype),
       options._PD_GetPlace());
-  return detail::_PD_ConvertToSparseIfNeeded(dense, layout);
+  return compat::_PD_ConvertToSparseIfNeeded(dense, layout);
 }
 
 inline at::Tensor zeros_like(const at::Tensor& self,
@@ -82,7 +83,7 @@ inline at::Tensor zeros_like(const at::Tensor& self,
       base,
       compat::_PD_AtenScalarTypeToPhiDataType(resolved_dtype),
       resolved_device._PD_GetInner());
-  return detail::_PD_ConvertToSparseIfNeeded(dense, resolved_layout);
+  return compat::_PD_ConvertToSparseIfNeeded(dense, resolved_layout);
 }
 
 }  // namespace at

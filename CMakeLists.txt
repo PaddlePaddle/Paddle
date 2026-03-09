@@ -127,6 +127,14 @@ if(WITH_GPU AND NOT APPLE)
                  "${CMAKE_CUDA_COMPILER_ID} ${CMAKE_CUDA_COMPILER_VERSION}")
 endif()
 
+if(WITH_CUSTOM_DEVICE_SUB_BUILD AND NOT WITH_GPU)
+  enable_language(CUDA)
+  if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES OR CMAKE_CUDA_ARCHITECTURES STREQUAL
+                                             "")
+    set(CMAKE_CUDA_ARCHITECTURES OFF)
+  endif()
+endif()
+
 message(STATUS "CXX compiler: ${CMAKE_CXX_COMPILER}, version: "
                "${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
 message(STATUS "C compiler: ${CMAKE_C_COMPILER}, version: "
@@ -345,6 +353,14 @@ option(WITH_POCKETFFT "Compile with pocketfft support" ON)
 option(WITH_RECORD_BUILDTIME
        "Compile PaddlePaddle with record all targets build time" OFF)
 option(WITH_CUSTOM_DEVICE "Compile with custom device support" OFF)
+option(WITH_CUSTOM_DEVICE_SUB_BUILD
+       "Compile PaddlePaddle with cuda custom device" OFF)
+set(CUSTOM_DEVICE_SOURCE_DIR
+    "${PADDLE_SOURCE_DIR}/../"
+    CACHE PATH "Path to cuda custom device source directory")
+set(CUSTOM_DEVICE_CMAKE_ARGS
+    ""
+    CACHE STRING "Extra CMake args forwarded to custom device sub-build")
 option(WITH_FLPS "FL PS mode" OFF)
 option(WITH_CUDNN_FRONTEND
        "Compile with CUDNN Frontend API support (experimental)" ON)
@@ -367,6 +383,12 @@ if(WIN32 OR NOT WITH_GPU)
   set(WITH_CUDNN_FRONTEND
       OFF
       CACHE BOOL "" FORCE)
+endif()
+
+if(WITH_CUSTOM_DEVICE_SUB_BUILD)
+  set(WITH_CUSTOM_DEVICE
+      ON
+      CACHE BOOL "Compile with custom device support" FORCE)
 endif()
 
 if(WITH_RECORD_BUILDTIME)
@@ -630,6 +652,11 @@ include_directories("${PADDLE_SOURCE_DIR}/paddle/phi/api/include/compat/")
 include_directories(
   "${PADDLE_SOURCE_DIR}/paddle/phi/api/include/compat/torch/csrc/api/include/")
 
+if(WITH_CUSTOM_DEVICE_SUB_BUILD AND EXISTS "${PADDLE_SOURCE_DIR}/../common")
+  add_definitions(-DPADDLE_WITH_CUSTOM_DEVICE_SUB_BUILD)
+  include_directories("${PADDLE_SOURCE_DIR}/..")
+endif()
+
 if(WITH_NV_JETSON)
   set(WITH_ARM
       ON
@@ -743,10 +770,23 @@ if(WITH_CPP_DIST)
 endif()
 
 add_subdirectory(paddle)
+if(WITH_CUSTOM_DEVICE_SUB_BUILD)
+  add_subdirectory(${CUSTOM_DEVICE_SOURCE_DIR}
+                   ${PADDLE_BINARY_DIR}/custom_device_build)
+endif()
 if(WITH_PYTHON)
   add_subdirectory(python)
 endif()
 add_subdirectory(test)
+
+if(WITH_CUSTOM_DEVICE_SUB_BUILD AND TARGET custom_device_package_copy)
+  if(TARGET paddle_python)
+    add_dependencies(paddle_python custom_device_package_copy)
+  endif()
+  if(TARGET paddle_copy)
+    add_dependencies(paddle_copy custom_device_package_copy)
+  endif()
+endif()
 
 get_directory_property(all_inc_dirs INCLUDE_DIRECTORIES)
 list(JOIN all_inc_dirs "\r\n" all_inc_dirs)

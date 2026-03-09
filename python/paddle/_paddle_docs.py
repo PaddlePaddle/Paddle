@@ -5091,3 +5091,43 @@ def renorm_(
 ) -> Tensor
 """,
 )
+
+add_doc_and_signature(
+    "poisson",
+    r"""
+    Returns a tensor filled with random number from a Poisson Distribution.
+
+    .. math::
+
+        out_i \sim Poisson (lambda = x_i)
+
+    Args:
+        x (Tensor): A tensor with rate parameter of poisson Distribution. The data type
+            should be bfloat16, float16, float32, float64.
+        name (str|None, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        For example, ``poisson(input=x)`` is equivalent to ``poisson(x=x)``.
+
+    Returns:
+        Tensor: A Tensor filled with random number with the same shape and dtype as ``x``.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+            >>> paddle.set_device('cpu')
+            >>> paddle.seed(100)
+
+            >>> x = paddle.uniform([2, 3], min=1.0, max=5.0)
+            >>> out = paddle.poisson(x)
+            >>> print(out)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[2., 5., 0.],
+             [5., 1., 3.]])
+    """,
+    """def poisson(x: Tensor, name: str | None = None) -> Tensor""",
+)

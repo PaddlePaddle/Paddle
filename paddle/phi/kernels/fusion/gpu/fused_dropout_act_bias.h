@@ -148,10 +148,10 @@ __global__ void FusedActBias(Functor act,
                              const float quant_max_bound = 127.0,
                              const float quant_min_bound = -127.0) {
   const int32_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
-  using LoadT = phi::AlignedVector<T, VecSize>;
-  using LoadInType = phi::AlignedVector<InType, VecSize>;
-  using LoadFloat = phi::AlignedVector<float, VecSize>;
-  using StoreOutType = phi::AlignedVector<OutType, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
+  using LoadInType = AlignedVector<InType, VecSize>;
+  using LoadFloat = AlignedVector<float, VecSize>;
+  using StoreOutType = AlignedVector<OutType, VecSize>;
 
   LoadInType src_vec;
   LoadT bias_vec;
@@ -313,9 +313,9 @@ __global__ void FusedDropoutActGrad(Functor act_grad,
                                     T *dx) {
   int64_t idx = static_cast<int64_t>(blockDim.x) * blockIdx.x + threadIdx.x;
 
-  using LoadT = phi::AlignedVector<T, VecSize>;
-  using StoreT = phi::AlignedVector<T, VecSize>;
-  using MaskLoadT = phi::AlignedVector<MaskType, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
+  using StoreT = AlignedVector<T, VecSize>;
+  using MaskLoadT = AlignedVector<MaskType, VecSize>;
   for (int64_t i = idx * VecSize; i < size;
        i += static_cast<int64_t>(blockDim.x) * gridDim.x * VecSize) {
     LoadT dout_vec;
@@ -362,9 +362,9 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void FusedDropoutActBiasGrad(
     T *dbias) {
   int64_t col_id = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
 
-  using LoadT = phi::AlignedVector<T, VecSize>;
-  using StoreT = phi::AlignedVector<T, VecSize>;
-  using MaskLoadT = phi::AlignedVector<MaskType, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
+  using StoreT = AlignedVector<T, VecSize>;
+  using MaskLoadT = AlignedVector<MaskType, VecSize>;
   T tmp_sum[VecSize] = {static_cast<T>(0)};
   // calculate the dx and temporary sum
   if (col_id * VecSize < cols) {

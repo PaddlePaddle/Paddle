@@ -79,12 +79,12 @@ def one_hot(
 
 
     Args:
-        x(Tensor): Tensor with shape :math:`[N_1, N_2, ..., N_k]` ,
+        x (Tensor): Tensor with shape :math:`[N_1, N_2, ..., N_k]` ,
             which contains at least one dimension. The data type is int32 or int64.
-            alias: ``input``.
-        num_classes(int): An integer defining the `num_classes` of the one hot dimension. If input `x`
+            Alias: ``input``.
+        num_classes (int): An integer defining the `num_classes` of the one hot dimension. If input `x`
             is word id, `num_classes` is generally the dictionary size. Default value: -1.
-        name(str|None, optional): For detailed information, please refer
+        name (str|None, optional): For detailed information, please refer
            to :ref:`api_guide_Name`. Usually name is no need to set and
            None by default.
 
@@ -147,12 +147,12 @@ def embedding_renorm_(
         In the dynamic graph mode, the input weight will be updated in-place, and the return value will be the changed weight.
 
     Args:
-        x(Tensor): A Tensor with type int32/int64, which contains the id information. The value of the input id should
+        x (Tensor): A Tensor with type int32/int64, which contains the id information. The value of the input id should
             satisfy :math:`0<= id < weight.shape[0]` .
         weight (Tensor): The weight. A Tensor with shape of lookup table parameter. It should have two elements which
             indicates the size of the dictionary of embeddings and the size of each embedding vector respectively.
-        max_norm(float): The maximum norm for each embedding vector.
-        norm_type(float, optional): The p of the p-norm to compute for the max_norm option. Default: 2.0.
+        max_norm (float): The maximum norm for each embedding vector.
+        norm_type (float, optional): The p of the p-norm to compute for the max_norm option. Default: 2.0.
 
     Returns:
         Tensor, The updated weight. The data type is the same as :attr:`weight`.
@@ -215,27 +215,27 @@ def embedding(
         For example, ``embedding(input=tensor_x, ...)`` is equivalent to ``embedding(x=tensor_x, ...)``.
 
     Args:
-        x(Tensor): A Tensor with type int32/int64, which contains the id information. The value of the input id should
+        x (Tensor): A Tensor with type int32/int64, which contains the id information. The value of the input id should
             satisfy :math:`0 <= id < weight.shape[0]` .
-            alias: ``input``.
+            Alias: ``input``.
         weight (Tensor): The weight. A Tensor with shape of lookup table parameter. It should have two elements which
             indicates the size of the dictionary of embeddings and the size of each embedding vector respectively.
-        sparse(bool, optional): The flag indicating whether to use sparse update. This parameter only
+        sparse (bool, optional): The flag indicating whether to use sparse update. This parameter only
             affects the performance of the backwards gradient update. It is recommended to set
             True because sparse update is faster. But some optimizers does not support sparse update,
             such as :ref:`api_paddle_optimizer_adadelta_Adadelta` , :ref:`api_paddle_optimizer_adamax_Adamax` , :ref:`api_paddle_optimizer_lamb_Lamb`.
             In these cases, sparse must be False. Default: False.
-        padding_idx(int|None, optional): padding_idx needs to be in the interval [-weight.shape[0], weight.shape[0]).
+        padding_idx (int|None, optional): padding_idx needs to be in the interval [-weight.shape[0], weight.shape[0]).
             If :math:`padding\_idx < 0`, the :math:`padding\_idx` will automatically be converted
             to :math:`weight.shape[0] + padding\_idx` . It will output all-zero padding data whenever lookup
             encounters :math:`padding\_idx` in id. And the padding data will not be updated while training.
             If set None, it makes no effect to output. Default: None.
-        max_norm(float, optional): If provided, will renormalize the embedding vectors to have a norm larger than
+        max_norm (float, optional): If provided, will renormalize the embedding vectors to have a norm larger than
             :attr:`max\_norm` . It will inplace update the input embedding weight in dynamic graph mode. Default: None.
-        norm_type(float, optional): The p of the p-norm to compute for the max_norm option. Default: 2.0.
-        scale_grad_by_freq(bool, optional): Indicating whether to scale the gradients by the inverse frequency of the
+        norm_type (float, optional): The p of the p-norm to compute for the max_norm option. Default: 2.0.
+        scale_grad_by_freq (bool, optional): Indicating whether to scale the gradients by the inverse frequency of the
             word ids in input `x`. Default: False.
-        name(str|None, optional): For detailed information, please refer
+        name (str|None, optional): For detailed information, please refer
            to :ref:`api_guide_Name`. Usually name is no need to set and
            None by default.
 

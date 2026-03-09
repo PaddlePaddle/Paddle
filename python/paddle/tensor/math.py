@@ -1842,6 +1842,7 @@ def nanmean(
     )
 
 
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def count_nonzero(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
@@ -1853,11 +1854,13 @@ def count_nonzero(
 
     Args:
         x (Tensor): An N-D Tensor, the data type is bool, float16, float32, float64, int32 or int64.
+            Alias: ``input``.
         axis (int|list|tuple, optional): The dimensions along which the sum is performed. If
             :attr:`None`, sum all elements of :attr:`x` and return a
             Tensor with a single element, otherwise must be in the
             range :math:`[-rank(x), rank(x))`. If :math:`axis[i] < 0`,
             the dimension to reduce is :math:`rank + axis[i]`.
+            Alias: ``dim``.
         keepdim (bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result Tensor will have one fewer dimension
             than the :attr:`x` unless :attr:`keepdim` is true, default
@@ -6204,7 +6207,14 @@ def copysign_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     return _C_ops.copysign_(x, y)
 
 
-def hypot(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+@param_two_alias(["x", "input"], ["y", "other"])
+def hypot(
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     """
     Calculate the length of the hypotenuse of a right-angle triangle. The equation is:
 
@@ -6213,8 +6223,13 @@ def hypot(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
     Args:
         x (Tensor): The input Tensor, the data type is float32, float64, int32 or int64.
+            Alias: ``input``.
         y (Tensor): The input Tensor, the data type is float32, float64, int32 or int64.
+            Alias: ``other``.
         name (str|None, optional): Name for the operation (optional, default is None).For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword args:
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         out (Tensor): An N-D Tensor. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape, its shape is the same as x and y. And the data type is float32 or float64.
@@ -6238,15 +6253,22 @@ def hypot(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     if not isinstance(y, (paddle.Tensor, Variable, paddle.pir.Value)):
         raise TypeError(f"y must be tensor type, but got {type(y)}")
 
-    out = (paddle.pow(x, 2) + paddle.pow(y, 2)).sqrt()
-    return out
+    ret = (paddle.pow(x, 2) + paddle.pow(y, 2)).sqrt()
+    if out is not None:
+        paddle.assign(ret, out)
+        return out
+    return ret
 
 
+@param_two_alias(["x", "input"], ["y", "other"])
 @inplace_apis_in_dygraph_only
 @param_one_alias(['y', 'other'])
 def hypot_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
     Inplace version of ``hypot`` API, the output Tensor will be inplaced with input ``x``.
+    Alias Support:
+    The parameter name ``input`` can be used as an alias for ``x``,
+    and ``other`` can be used as an alias for ``y``.
     Please refer to :ref:`api_paddle_hypot`.
     """
     if not isinstance(x, (paddle.Tensor, Variable)):

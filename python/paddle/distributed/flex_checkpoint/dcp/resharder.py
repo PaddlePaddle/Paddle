@@ -915,6 +915,7 @@ class ThreeDCommGroupStateResharder:
                 )
             else:
                 buffer = tensor_list[cnt]
+                cnt += 1
 
             received_sharded_weight = ShardedWeight(
                 key=read_item.tensor_name,

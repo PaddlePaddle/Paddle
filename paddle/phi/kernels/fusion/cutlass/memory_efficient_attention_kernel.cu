@@ -48,7 +48,7 @@ void MemoryEfficientAttentionForwardKernel(
     DenseTensor* output,
     DenseTensor* logsumexp,
     DenseTensor* seed_and_offset) {
-  phi::Dim<1> seed_dims;
+  Dim<1> seed_dims;
   seed_dims[0] = 2;
   seed_and_offset->Resize(seed_dims);
   dev_ctx.template HostAlloc<int64_t>(seed_and_offset);
@@ -140,7 +140,7 @@ void MemoryEfficientAttentionForwardKernel(
     output->Resize({q_dims[0], q_dims[1], q_dims[2], v_dims[3]});
 
     constexpr int64_t kAlignLSE = KernelType::kAlignLSE;
-    phi::Dim<3> logsumexp_dims;
+    Dim<3> logsumexp_dims;
     logsumexp_dims[0] =
         cu_seqlens_q ? cu_seqlens_q.get().dims()[0] - 1 : q_dims[0];
     logsumexp_dims[1] = q_dims[2];

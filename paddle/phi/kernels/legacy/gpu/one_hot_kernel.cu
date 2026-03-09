@@ -58,6 +58,8 @@ struct OneHotV2OpCUDAFunctor {
     auto* p_in_data = in_->data<InT>();
     auto numel = in_->numel();
     auto* p_out_data = dev_ctx_.template Alloc<OutT>(out_);
+    if (numel == 0) return;
+
     auto stream = dev_ctx_.stream();
     funcs::set_constant(dev_ctx_, out_, 0.0);
 
