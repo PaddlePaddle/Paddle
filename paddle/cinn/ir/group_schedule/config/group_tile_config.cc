@@ -912,9 +912,16 @@ TileConfigMap BuildStaticSpatialConfig(
     int max_warp_num = max_threads / warp_size;
     if (rd_block_num > 1 && base_info->can_apply_grid_reduce) {
       int64_t rd_threshold = rd_block_num * min_loops * max_threads;
-      
+
       collector({1, kMaxNumel, 2049, rd_threshold},
-                {max_warp_num, warp_size, max_threads, 1, 1, 1, -1, BlockReduceMethod()});
+                {max_warp_num,
+                 warp_size,
+                 max_threads,
+                 1,
+                 1,
+                 1,
+                 -1,
+                 BlockReduceMethod()});
       collector({1, kMaxNumel, rd_threshold + 1, kMaxNumel},
                 {max_warp_num,
                  warp_size,
@@ -926,7 +933,14 @@ TileConfigMap BuildStaticSpatialConfig(
                  BlockReduceMethod()});
     } else {
       collector({1, kMaxNumel, 2049, kMaxNumel},
-                {max_warp_num, warp_size, max_threads, 1, 1, 1, -1, BlockReduceMethod()});
+                {max_warp_num,
+                 warp_size,
+                 max_threads,
+                 1,
+                 1,
+                 1,
+                 -1,
+                 BlockReduceMethod()});
     }
 
   } else {  // last_dim == "S"
@@ -938,8 +952,9 @@ TileConfigMap BuildStaticSpatialConfig(
       int64_t rd_threshold = rd_block_num * min_loops * 16;
       collector({1, kMaxNumel, 1, rd_threshold},
                 {16, warp_size, 16, 1, 1, 1, -1, DiscreteReduceMethod()});
-      collector({1, kMaxNumel, rd_threshold + 1, kMaxNumel},
-                {16, warp_size, 16, rd_block_num, 1, 1, -1, DiscreteReduceMethod()});
+      collector(
+          {1, kMaxNumel, rd_threshold + 1, kMaxNumel},
+          {16, warp_size, 16, rd_block_num, 1, 1, -1, DiscreteReduceMethod()});
     } else {
       collector({1, kMaxNumel, 1, kMaxNumel},
                 {16, warp_size, 16, 1, 1, 1, -1, DiscreteReduceMethod()});
@@ -963,27 +978,50 @@ TileConfigMap BuildStaticReduceConfig(
     if (base_info->reduce_numel <= 256) {
       int64_t spatial_inner_num = 256 / CeilPow2(base_info->reduce_numel);
       collector({1, kMaxNumel, 1, 256},
-                {8, warp_size, 32, 1, spatial_inner_num, 1, -1, WarpReduceMethod()});
+                {8,
+                 warp_size,
+                 warp_size,
+                 1,
+                 spatial_inner_num,
+                 1,
+                 -1,
+                 WarpReduceMethod()});
     } else if (base_info->reduce_numel <= 2048) {
       int64_t reduce_block = CeilDiv(base_info->reduce_numel, 256) * 256;
       int64_t warp_num = reduce_block / 256;
       int64_t reduce_inner_num = 8;
       int64_t tree_reduce_num = reduce_block / reduce_inner_num;
       collector({1, kMaxNumel, 257, 2048},
-                {warp_num, warp_size, tree_reduce_num, 1, 1, 1, -1, BlockReduceMethod()});
+                {warp_num,
+                 warp_size,
+                 tree_reduce_num,
+                 1,
+                 1,
+                 1,
+                 -1,
+                 BlockReduceMethod()});
     } else {
       int max_warp_num = max_threads / warp_size;
       collector({1, kMaxNumel, 2049, kMaxNumel},
-                {max_warp_num, warp_size, max_threads, 1, 1, 1, -1, BlockReduceMethod()});
+                {max_warp_num,
+                 warp_size,
+                 max_threads,
+                 1,
+                 1,
+                 1,
+                 -1,
+                 BlockReduceMethod()});
     }
   } else {  // last_dim == "S"
     if (base_info->reduce_numel == 1) {
-      collector({1, 1023, 1, 1}, {-1, warp_size, 1, 1, 1, 1, -1, NoneReduceMethod()});
+      collector({1, 1023, 1, 1},
+                {-1, warp_size, 1, 1, 1, 1, -1, NoneReduceMethod()});
       int max_warp_num = max_threads / warp_size;
       collector({1024, kMaxNumel, 1, 1},
-          {max_warp_num, warp_size, 1, 1, 4, 1, -1, NoneReduceMethod()});
+                {max_warp_num, warp_size, 1, 1, 4, 1, -1, NoneReduceMethod()});
     } else if (base_info->reduce_numel <= 16) {
-      collector({1, kMaxNumel, 1, 1}, {8, warp_size, 1, 1, 1, 1, -1, NoneReduceMethod()});
+      collector({1, kMaxNumel, 1, 1},
+                {8, warp_size, 1, 1, 1, 1, -1, NoneReduceMethod()});
     } else {
       collector({1, kMaxNumel, 1, 1},
                 {16, warp_size, 16, 1, 1, 1, -1, DiscreteReduceMethod()});
@@ -1005,12 +1043,20 @@ TileConfigMap BuildDynamicShapeConfig(
   // { warp, rd_thread, rd_block, sp_inner, vec_factor, rd_inner, rd_method }
 
   if (last_dim == "R") {
-    collector({1, kMaxNumel, 1, 256}, {8, warp_size, 32, 1, 1, 1, 8, WarpReduceMethod()});
+    collector({1, kMaxNumel, 1, 256},
+              {8, warp_size, warp_size, 1, 1, 1, 8, WarpReduceMethod()});
     collector({1, kMaxNumel, 257, 2048},
               {8, warp_size, 256, 1, 1, 1, 8, BlockReduceMethod()});
     int max_warp_num = max_threads / warp_size;
     collector({1, kMaxNumel, 2049, kMaxNumel},
-              {max_warp_num, warp_size, max_threads, 1, 1, 1, -1, BlockReduceMethod()});
+              {max_warp_num,
+               warp_size,
+               max_threads,
+               1,
+               1,
+               1,
+               -1,
+               BlockReduceMethod()});
   } else {  // last_dim == "S"
     collector({1, kMaxNumel, 1, kMaxNumel},
               {16, warp_size, 16, 1, 1, 1, -1, DiscreteReduceMethod()});
