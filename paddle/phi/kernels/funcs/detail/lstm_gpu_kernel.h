@@ -218,7 +218,7 @@ __global__ void KeLstmBackward(Op op,
 }
 
 template <class T, class Op>
-void gpu_lstm_forward(const phi::DeviceContext& dev_ctx,
+void gpu_lstm_forward(const DeviceContext& dev_ctx,
                       Op op,
                       phi::funcs::LstmMetaValue<T> value,
                       int frame_size,
@@ -269,7 +269,7 @@ void gpu_lstm_forward(const phi::DeviceContext& dev_ctx,
 }
 
 template <class T, class Op>
-void gpu_lstm_backward(const phi::DeviceContext& dev_ctx,
+void gpu_lstm_backward(const DeviceContext& dev_ctx,
                        Op op,
                        phi::funcs::LstmMetaValue<T> value,
                        phi::funcs::LstmMetaGrad<T> grad,

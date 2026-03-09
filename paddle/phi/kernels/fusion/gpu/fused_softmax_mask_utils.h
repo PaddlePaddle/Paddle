@@ -150,7 +150,7 @@ __global__ void FusedSoftmaxMaskVecKernel(T* dst,
 
   static_assert(ELEMENTS_PER_THREADS % VEC_SIZE == 0, "");
   constexpr int VEC_NUMS = ELEMENTS_PER_THREADS / VEC_SIZE;
-  using VecT = phi::AlignedVector<T, VEC_SIZE>;
+  using VecT = AlignedVector<T, VEC_SIZE>;
 
   VecT elements[VEC_NUMS];
   VecT tmp_mask;

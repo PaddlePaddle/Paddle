@@ -226,8 +226,8 @@ __global__ void ReduceAbsMaxKernel(const T* x,
                                    float* row_ranges,
                                    int32_t* outlier_idx) {
 #if defined(PADDLE_WITH_CUDA)
-  using InVec = phi::AlignedVector<T, VecSize>;
-  using ComputeVec = phi::AlignedVector<ComputeType, VecSize>;
+  using InVec = AlignedVector<T, VecSize>;
+  using ComputeVec = AlignedVector<ComputeType, VecSize>;
 
   InVec in_vec;
   ComputeVec abs_max_vec;
@@ -274,8 +274,8 @@ __global__ void QuantActKernel(const T* x,
                                const float* row_ranges,
                                const int32_t* outlier_idx,
                                int8_t* quant_x) {
-  using InVec = phi::AlignedVector<T, VecSize>;
-  using OutVec = phi::AlignedVector<int8_t, VecSize>;
+  using InVec = AlignedVector<T, VecSize>;
+  using OutVec = AlignedVector<int8_t, VecSize>;
 
   InVec in_vec;
   OutVec out_vec;
@@ -394,7 +394,7 @@ __global__ void DequantActivationMergeKernel(const T* x,
                                              const T* x_fp,
                                              T* y,
                                              const int32_t elem_cnt) {
-  using FpVec = phi::AlignedVector<T, VecSize>;
+  using FpVec = AlignedVector<T, VecSize>;
 
   FpVec x_fp_vec;
   FpVec out_vec;
@@ -429,8 +429,8 @@ __global__ void DequantMergeKernel(const int32_t* x,
                                    int m,
                                    int n) {
 #if defined(PADDLE_WITH_CUDA)
-  using FpVec = phi::AlignedVector<T, VecSize>;
-  using IntVec = phi::AlignedVector<int32_t, VecSize>;
+  using FpVec = AlignedVector<T, VecSize>;
+  using IntVec = AlignedVector<int32_t, VecSize>;
 
   FpVec x_fp_vec;
   FpVec out_vec;

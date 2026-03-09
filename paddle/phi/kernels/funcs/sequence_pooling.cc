@@ -30,7 +30,7 @@ using EigenVector = EigenVector<T, MajorType, IndexType>;
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = phi::EigenMatrix<T, MajorType, IndexType>;
+using EigenMatrix = EigenMatrix<T, MajorType, IndexType>;
 
 template <typename T, bool is_test>
 class MaxSeqPoolFunctor {

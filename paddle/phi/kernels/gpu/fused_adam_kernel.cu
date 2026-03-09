@@ -124,12 +124,12 @@ struct FusedAdamFunctor {
     int idx = threadIdx.x * VecSize;
 
     for (; idx < n; idx += stride) {
-      phi::AlignedVector<T, VecSize> g_vec;
-      phi::AlignedVector<T, VecSize> p_vec;
-      phi::AlignedVector<MT, VecSize> mp_vec;
-      phi::AlignedVector<MT, VecSize> mom1_vec;
-      phi::AlignedVector<MT, VecSize> mom2_vec;
-      phi::AlignedVector<MT, VecSize> mom2_max_vec;
+      AlignedVector<T, VecSize> g_vec;
+      AlignedVector<T, VecSize> p_vec;
+      AlignedVector<MT, VecSize> mp_vec;
+      AlignedVector<MT, VecSize> mom1_vec;
+      AlignedVector<MT, VecSize> mom2_vec;
+      AlignedVector<MT, VecSize> mom2_max_vec;
       if (idx <= n - VecSize) {
         if (IsMultiPrecision) {
           phi::Load<MT, VecSize>(mp_ptr + idx, &mp_vec);

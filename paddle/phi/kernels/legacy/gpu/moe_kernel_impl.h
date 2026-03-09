@@ -603,7 +603,7 @@ __global__ void initialize_moe_routing_kernel(
     const int k,
     const int max_seq_len,
     bool ec_route) {
-  // using LoadT = phi::AlignedVector<T, VecSize>;
+  // using LoadT = AlignedVector<T, VecSize>;
   // LoadT src_vec;
 
   // Reverse permutation map.
