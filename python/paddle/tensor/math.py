@@ -3981,10 +3981,6 @@ def digamma(
     .. math::
         Out = \Psi(x) = \frac{ \Gamma^{'}(x) }{ \Gamma(x) }
 
-    .. note::
-        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
-        For example, ``digamma(input=tensor_x)`` is equivalent to ``digamma(x=tensor_x)``.
-
     Args:
         x (Tensor): Input Tensor. Must be one of the following types: bfloat16, float16, float32,
             float64, uint8, int8, int16, int32, int64.
@@ -4009,31 +4005,7 @@ def digamma(
              [-inf.      ,  5.32286835]])
     """
 
-    if in_dynamic_or_pir_mode():
-        return _C_ops.digamma(x, out)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'float32',
-                'float64',
-                'uint16',
-                'uint8',
-                'int8',
-                'int16',
-                'int32',
-                'int64',
-            ],
-            'digamma',
-        )
-        helper = LayerHelper('digamma', **locals())
-        out_tensor = helper.create_variable_for_type_inference(x.dtype)
-        helper.append_op(
-            type='digamma', inputs={'X': x}, outputs={'Out': out_tensor}
-        )
-        return out_tensor
+    return _C_ops.digamma(x, out=out)
 
 
 @inplace_apis_in_dygraph_only
