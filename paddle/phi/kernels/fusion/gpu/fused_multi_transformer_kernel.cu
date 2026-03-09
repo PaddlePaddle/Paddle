@@ -96,7 +96,7 @@ void FusedMultiTransformerOpKernel(
   if (sequence_lengths) {
     remove_padding = true;
   } else {
-    sequence_lengths_backup.Resize({{1}});
+    sequence_lengths_backup.Resize({1});
     auto *sequence_lengths_backup_data = dev_ctx.template Alloc<int>(
         &sequence_lengths_backup,
         sequence_lengths_backup.numel() * sizeof(int));
@@ -135,14 +135,14 @@ void FusedMultiTransformerOpKernel(
   // remove padding in encoder
   if (encoder_remove_padding) {
     // just for encoder
-    d_token_tensor.Resize({{1}});
+    d_token_tensor.Resize({1});
     auto *d_token_num = dev_ctx.template Alloc<int>(
         &d_token_tensor, d_token_tensor.numel() * sizeof(int));
     // alloc the max size of padding_offset_tensor
-    padding_offset_tensor.Resize({{bsz_seq}});
+    padding_offset_tensor.Resize({bsz_seq});
     dev_ctx.template Alloc<int>(&padding_offset_tensor,
                                 padding_offset_tensor.numel() * sizeof(int));
-    cu_seqlens_q.Resize({{bsz + 1}});
+    cu_seqlens_q.Resize({bsz + 1});
     dev_ctx.template Alloc<int32_t>(&cu_seqlens_q,
                                     cu_seqlens_q.numel() * sizeof(int32_t));
 
@@ -157,8 +157,8 @@ void FusedMultiTransformerOpKernel(
         bsz,
         seq_len);
     if (token_num == 0) return;
-    padding_offset_tensor.Resize({{token_num}});
-    x_remove_padding.Resize({{token_num, dim_embed}});
+    padding_offset_tensor.Resize({token_num});
+    x_remove_padding.Resize({token_num, dim_embed});
     dev_ctx.template Alloc<T>(&x_remove_padding,
                               x_remove_padding.numel() * sizeof(T));
     phi::fusion::InvokeRemovePadding(dev_ctx,
@@ -179,10 +179,10 @@ void FusedMultiTransformerOpKernel(
   phi::fusion::NormHelper<T> norm_helper(
       dev_ctx, norm_type, token_num, dim_embed, epsilon, residual_alpha);
   DenseTensor ln_mean, ln_var;
-  ln_mean.Resize({{token_num}});
+  ln_mean.Resize({token_num});
   auto *ln_mean_data =
       dev_ctx.template Alloc<U>(&ln_mean, ln_mean.numel() * sizeof(U));
-  ln_var.Resize({{token_num}});
+  ln_var.Resize({token_num});
   auto *ln_var_data =
       dev_ctx.template Alloc<U>(&ln_var, ln_var.numel() * sizeof(U));
 
@@ -221,9 +221,9 @@ void FusedMultiTransformerOpKernel(
 
   DenseTensor qkv_out;
   if (gqa_group_size > 0) {
-    qkv_out.Resize({{token_num, num_head + 2 * gqa_group_size, dim_head}});
+    qkv_out.Resize({token_num, num_head + 2 * gqa_group_size, dim_head});
   } else {
-    qkv_out.Resize({{token_num, 3, num_head, dim_head}});
+    qkv_out.Resize({token_num, 3, num_head, dim_head});
   }
   auto *qkv_out_data =
       dev_ctx.template Alloc<T>(&qkv_out, qkv_out.numel() * sizeof(T));
@@ -304,11 +304,11 @@ void FusedMultiTransformerOpKernel(
   }
 
   DenseTensor q_transpose_out, kv_transpose_out;
-  q_transpose_out.Resize({{bsz, num_head, seq_len, dim_head}});
+  q_transpose_out.Resize({bsz, num_head, seq_len, dim_head});
   auto *q_transpose_out_data = dev_ctx.template Alloc<T>(
       &q_transpose_out, q_transpose_out.numel() * sizeof(T));
 
-  kv_transpose_out.Resize({{2, bsz, num_head, seq_len, dim_head}});
+  kv_transpose_out.Resize({2, bsz, num_head, seq_len, dim_head});
   auto *kv_transpose_out_data = dev_ctx.template Alloc<T>(
       &kv_transpose_out, kv_transpose_out.numel() * sizeof(T));
 
@@ -339,13 +339,13 @@ void FusedMultiTransformerOpKernel(
   DenseTensor unpadding_q, unpadding_k, unpadding_v;
   DenseTensor softmax_lse, seed_offset;
 
-  unpadding_q.Resize({{token_num, num_head, dim_head}});
+  unpadding_q.Resize({token_num, num_head, dim_head});
   if (gqa_group_size > 0) {
-    unpadding_k.Resize({{token_num, gqa_group_size, dim_head}});
-    unpadding_v.Resize({{token_num, gqa_group_size, dim_head}});
+    unpadding_k.Resize({token_num, gqa_group_size, dim_head});
+    unpadding_v.Resize({token_num, gqa_group_size, dim_head});
   } else {
-    unpadding_k.Resize({{token_num, num_head, dim_head}});
-    unpadding_v.Resize({{token_num, num_head, dim_head}});
+    unpadding_k.Resize({token_num, num_head, dim_head});
+    unpadding_v.Resize({token_num, num_head, dim_head});
   }
   cu_seqlens_k.Resize(cu_seqlens_q.dims());
 
@@ -358,13 +358,13 @@ void FusedMultiTransformerOpKernel(
   T *attn_dropout_mask_out_data = nullptr;
   T *attn_dropout_data_data = nullptr;
 
-  qktv_out.Resize({{bsz, num_head, seq_len, dim_head}});
+  qktv_out.Resize({bsz, num_head, seq_len, dim_head});
   auto *qktv_out_data =
       dev_ctx.template Alloc<T>(&qktv_out, qktv_out.numel() * sizeof(T));
   if (remove_padding) {
-    fmha_out.Resize({{token_num, num_head, dim_head}});
+    fmha_out.Resize({token_num, num_head, dim_head});
   } else {
-    fmha_out.Resize({{bsz, seq_len, num_head, dim_head}});
+    fmha_out.Resize({bsz, seq_len, num_head, dim_head});
   }
   auto *fmha_out_data =
       dev_ctx.template Alloc<T>(&fmha_out, fmha_out.numel() * sizeof(T));
@@ -385,7 +385,7 @@ void FusedMultiTransformerOpKernel(
   DenseTensor bias_dropout_residual_out, dropout_mask_out;
   T *bias_dropout_residual_out_data = nullptr;
   if (pre_layer_norm) {
-    bias_dropout_residual_out.Resize({{token_num, dim_embed}});
+    bias_dropout_residual_out.Resize({token_num, dim_embed});
     bias_dropout_residual_out_data = dev_ctx.template Alloc<T>(
         &bias_dropout_residual_out,
         bias_dropout_residual_out.numel() * sizeof(T));
@@ -407,7 +407,7 @@ void FusedMultiTransformerOpKernel(
       dev_ctx, act_method, token_num, dim_ffn, dim_embed, "None");
 
   DenseTensor ffn1_out;
-  ffn1_out.Resize({{token_num, dim_ffn}});
+  ffn1_out.Resize({token_num, dim_ffn});
   auto *ffn1_out_data =
       dev_ctx.template Alloc<T>(&ffn1_out, ffn1_out.numel() * sizeof(T));
 
@@ -424,7 +424,7 @@ void FusedMultiTransformerOpKernel(
   int tmp_dim_ffn = dim_ffn;
   if (use_glu) tmp_dim_ffn /= 2;
   int8_t *ffn1_dropout_mask_data = nullptr;
-  ffn1_dropout_out.Resize({{token_num, tmp_dim_ffn}});
+  ffn1_dropout_out.Resize({token_num, tmp_dim_ffn});
   auto *ffn1_dropout_out_data = dev_ctx.template Alloc<T>(
       &ffn1_dropout_out, ffn1_dropout_out.numel() * sizeof(T));
 
@@ -446,9 +446,9 @@ void FusedMultiTransformerOpKernel(
           dev_ctx, token_num, dim_embed, ffn2_dropout_param, epsilon);
 
   DenseTensor tmp_out, tmp_out_rm_padding;
-  tmp_out.Resize({{token_num, dim_embed}});
+  tmp_out.Resize({token_num, dim_embed});
   if (encoder_remove_padding) {
-    tmp_out_rm_padding.Resize({{token_num, dim_embed}});
+    tmp_out_rm_padding.Resize({token_num, dim_embed});
     auto *tmp_out_rm_padding_data = dev_ctx.template Alloc<T>(
         &tmp_out_rm_padding, tmp_out_rm_padding.numel() * sizeof(T));
   }
@@ -499,11 +499,11 @@ void FusedMultiTransformerOpKernel(
       multi_block_attention_min_partition_size;
 
   DenseTensor partial_max_logits_tensor;
-  partial_max_logits_tensor.Resize({{bsz, num_head, max_num_partitions}});
+  partial_max_logits_tensor.Resize({bsz, num_head, max_num_partitions});
   DenseTensor partial_expsum_tensor;
-  partial_expsum_tensor.Resize({{bsz, num_head, max_num_partitions}});
+  partial_expsum_tensor.Resize({bsz, num_head, max_num_partitions});
   DenseTensor partial_out_tensor;
-  partial_out_tensor.Resize({{bsz, num_head, max_num_partitions, dim_head}});
+  partial_out_tensor.Resize({bsz, num_head, max_num_partitions, dim_head});
 
   dev_ctx.template Alloc<float>(
       &partial_max_logits_tensor,

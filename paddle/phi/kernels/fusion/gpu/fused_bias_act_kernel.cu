@@ -34,7 +34,7 @@ __global__ void ActFFNGlu(const T *bias,
                           const int64_t elem_num,
                           LoadFunc load_func,
                           StoreFunc store_func) {
-  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
   LoadT src_vec1;
   LoadT src_vec2;
   LoadT bias_vec1;
@@ -116,7 +116,7 @@ __global__ void BiasAct(const T *bias,
                         const int64_t elem_num,
                         LoadFunc load_func,
                         StoreFunc store_func) {
-  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
   LoadT src_vec;
   LoadT bias_vec;
 

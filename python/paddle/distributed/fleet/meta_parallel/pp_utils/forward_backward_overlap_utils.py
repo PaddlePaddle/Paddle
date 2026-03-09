@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import paddle
+
+from .utils import dict_to_tuple_helper
 
 
 class ScheduleChunk:
@@ -44,13 +47,24 @@ def detach_and_requires_grad(inputs):
         for input in inputs:
             if isinstance(input, (tuple, list)):
                 ret.append(detach_and_requires_grad(input))
-            else:
+            elif isinstance(input, paddle.Tensor):
                 tmp = input.detach() if input is not None else None
                 if tmp is not None:
                     tmp.stop_gradient = input.stop_gradient
                 ret.append(tmp)
+            else:
+                ret.append(input)
         if is_tuple:
             ret = tuple(ret)
+        return ret
+    elif isinstance(inputs, dict):
+        ret = {}
+        for key in inputs.keys():
+            input = inputs[key]
+            tmp = input.detach() if input is not None else None
+            if tmp is not None:
+                tmp.stop_gradient = input.stop_gradient
+            ret[key] = tmp
         return ret
     else:
         tmp = inputs.detach()
@@ -72,6 +86,16 @@ def clone_and_clear_dataptr(outputs, clear_dataptr=False):
                 o._clear_dataptr()
         if is_tuple:
             ret = tuple(ret)
+        return ret
+    elif isinstance(outputs, dict):
+        ret = {}
+        for key in outputs.keys():
+            o = outputs[key]
+            if o is not None and isinstance(o, paddle.Tensor):
+                ret[key] = FakeClone.apply(o)
+        if clear_dataptr:
+            for key in ret:
+                ret[key]._clear_dataptr()
         return ret
     else:
         ret = FakeClone.apply(outputs)
@@ -105,13 +129,13 @@ class ScheduleNode:
         self.labels = None
         self.scale_loss_factor = None
 
-    def forward(self, inputs=()):
+    def forward(self, inputs=(), **kwargs):
         detached_inputs = detach_and_requires_grad(inputs)
         self.inputs = detached_inputs
         if self.labels is not None:
-            outputs = self.fwd_func(self.inputs, self.labels)
+            outputs = self.fwd_func(self.inputs, self.labels, **kwargs)
         else:
-            outputs = self.fwd_func(self.inputs)
+            outputs = self.fwd_func(self.inputs, **kwargs)
         if self.scale_loss_factor is not None:
             outputs /= self.scale_loss_factor
 
@@ -136,24 +160,31 @@ class ScheduleNode:
             if not isinstance(output_grad, (tuple, list)):
                 output_grad = (output_grad,)
 
-            outputs = self.outputs
+            outputs = dict_to_tuple_helper(self.outputs)
             if not isinstance(outputs, (tuple, list)):
                 outputs = (outputs,)
+            outputs = [t for t in outputs if not t.stop_gradient]
             assert len(outputs) == len(output_grad), (
                 f"{len(outputs)} of {type(outputs[0])} vs {len(output_grad)} of {type(output_grad[0])}"
             )
 
             paddle.autograd.backward(outputs, output_grad)
 
-        if not isinstance(self.inputs, (tuple, list)):
-            inputs = (self.inputs,)
-        else:
-            inputs = self.inputs
-        grad = tuple([e.grad if e is not None else None for e in inputs])
+        inputs = dict_to_tuple_helper(self.inputs)
+        if not isinstance(inputs, (tuple, list)):
+            inputs = (inputs,)
+        grad = tuple(
+            [
+                t.grad
+                for t in inputs
+                if isinstance(t, paddle.Tensor) and not t.stop_gradient
+            ]
+        )
+        # grad = tuple([e.grad if e is not None and not e.stop_gradient else None for e in inputs])
         self._reset_states()
 
-        if len(grad) == 1:
-            grad = grad[0]
+        # if len(grad) == 1:
+        #     grad = grad[0]
         return grad
 
     def _reset_states(self):

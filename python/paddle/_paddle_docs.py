@@ -2253,9 +2253,6 @@ add_doc_and_signature(
     This API implements pixel shuffle operation.
     See more details in :ref:`PixelShuffle <api_paddle_nn_PixelShuffle>` .
 
-    .. note::
-        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
-
     Parameters:
         x (Tensor): 4-D tensor, the data type should be float32 or float64.
             alias: ``input``.
