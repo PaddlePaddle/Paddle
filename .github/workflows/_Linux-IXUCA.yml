@@ -200,7 +200,19 @@ jobs:
         if: steps.check-approval.outputs.can-skip != 'true'
         run: |
           pip install Paddle-iluvatar/Paddle/build/python/dist/paddlepaddle_iluvatar*.whl
-          pip install parameterized
+          retry_or_skip() {
+            if "$@"; then
+              return 0
+            fi
+            echo "WARN: command failed, retrying in 20s: $*"
+            sleep 20
+            if "$@"; then
+              return 0
+            fi
+            echo "WARN: command failed again, skip install: $*"
+            return 0
+          }
+          retry_or_skip pip install parameterized
 
       - name: Run tests
         if: steps.check-approval.outputs.can-skip != 'true'
@@ -407,11 +419,23 @@ jobs:
         if: steps.check-approval.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
+          retry_or_skip() {
+            if "$@"; then
+              return 0
+            fi
+            echo "WARN: command failed, retrying in 20s: $*"
+            sleep 20
+            if "$@"; then
+              return 0
+            fi
+            echo "WARN: command failed again, skip install: $*"
+            return 0
+          }
           export PATH=/usr/local/corex/bin:$PATH
           apt-get install -y patchelf
           bash build_paddle.sh
           pip install Paddle/build/python/dist/paddlepaddle_iluvatar*.whl
-          pip install parameterized
+          retry_or_skip pip install parameterized
           export FLAG_SKIP_FLOAT64=1
           cd tests && bash run_test.sh
           '
