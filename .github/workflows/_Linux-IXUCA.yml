@@ -165,9 +165,9 @@ jobs:
       - name: Clone Paddle-iluvatar and setup
         if: steps.check-approval.outputs.can-skip != 'true'
         run: |
+          env | grep -i proxy
           git config --global --get http.proxy
           git config --global --get https.proxy
-          env | grep -i proxy
           for i in 1 2 3; do
             git clone --depth=1 -b develop https://github.com/PaddlePaddle/Paddle-iluvatar.git && break
             echo "git clone attempt $i failed, retrying in 10s..."
