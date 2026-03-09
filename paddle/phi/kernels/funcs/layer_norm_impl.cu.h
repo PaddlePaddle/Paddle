@@ -414,9 +414,9 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_fast_kernel(
       !IsFusedDropoutResidualLn || NeedDDropoutSrcPtr,
       "When IsFusedDropoutResidualLn = true, NeedDDropoutSrcPtr must be true.");
 
-  using Vec = phi::AlignedVector<T, VecSize>;
-  using Vec_scale = phi::AlignedVector<ScaleT, VecSize>;
-  using MaskLoadT = phi::AlignedVector<MaskType, VecSize>;
+  using Vec = AlignedVector<T, VecSize>;
+  using Vec_scale = AlignedVector<ScaleT, VecSize>;
+  using MaskLoadT = AlignedVector<MaskType, VecSize>;
 
   const int64_t tidx = threadIdx.x;
   const int64_t bidx = blockIdx.x;
@@ -680,7 +680,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void ln_bwd_fast_final_kernel(
     U *__restrict__ db_part_,
     ScaleT *__restrict__ dg_,
     ScaleT *__restrict__ db_) {
-  using Vec = phi::AlignedVector<U, VecSize>;
+  using Vec = AlignedVector<U, VecSize>;
   static_assert(VEC_COLS == ELTS_PER_ROW / VecSize, "");
 
   const int tidx = threadIdx.x;
@@ -1306,8 +1306,8 @@ __global__ void LayerNormBackwardComputeGradInputWithSmallFeatureSize(
     T *k_grad_input = grad_input + bid * n2;
 
     // Data storage location in local register.
-    using VecT = phi::AlignedVector<T, DataPerTid>;
-    using VecScaleT = phi::AlignedVector<ScaleT, DataPerTid>;
+    using VecT = AlignedVector<T, DataPerTid>;
+    using VecScaleT = AlignedVector<ScaleT, DataPerTid>;
 
     const VecT *__restrict__ v_k_dout =
         reinterpret_cast<const VecT *__restrict__>(k_dout);

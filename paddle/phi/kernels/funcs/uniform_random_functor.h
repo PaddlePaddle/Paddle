@@ -68,8 +68,7 @@ inline void UniformRealDistribution(phi::bfloat16* data,
 inline std::vector<int64_t> GetNewDataFromShapeTensor(
     const DenseTensor* new_data_tensor) {
   DenseTensor cpu_starts_tensor;
-  auto* dev_ctx =
-      phi::DeviceContextPool::Instance().Get(cpu_starts_tensor.place());
+  auto* dev_ctx = DeviceContextPool::Instance().Get(cpu_starts_tensor.place());
   if (new_data_tensor->dtype() == phi::DataType::INT64) {
     auto* new_data = new_data_tensor->data<int64_t>();
     if (new_data_tensor->place().GetType() == AllocationType::GPU) {
@@ -103,7 +102,7 @@ inline std::vector<int64_t> GetNewDataFromShapeTensor(
 inline std::vector<int64_t> GetNewDataFromShapeTensorList(
     const std::vector<const DenseTensor*>& list_new_shape_tensor) {
   DenseTensor temp;
-  auto* dev_ctx = phi::DeviceContextPool::Instance().Get(temp.place());
+  auto* dev_ctx = DeviceContextPool::Instance().Get(temp.place());
   std::vector<int64_t> vec_new_shape;
   vec_new_shape.reserve(list_new_shape_tensor.size());
   for (size_t i = 0; i < list_new_shape_tensor.size(); ++i) {

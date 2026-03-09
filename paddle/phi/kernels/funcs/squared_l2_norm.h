@@ -33,9 +33,9 @@ void SquaredL2Norm(const phi::CPUContext& dev_ctx,
                    size_t numel,
                    memory_utils::Buffer* buffer UNUSED = nullptr) {
   if (std::is_same<T1, T2>::value) {
-    using EigenT = typename phi::EigenTensor<T1, 1>::Type;
-    using ConstEigenT = typename phi::EigenTensor<T1, 1>::ConstType;
-    using EigenDim = typename phi::EigenDim<1>::Type;
+    using EigenT = typename EigenTensor<T1, 1>::Type;
+    using ConstEigenT = typename EigenTensor<T1, 1>::ConstType;
+    using EigenDim = typename EigenDim<1>::Type;
     ConstEigenT input(x, EigenDim(numel));
     EigenT output(reinterpret_cast<T1*>(y), EigenDim(1));
     output.device(*dev_ctx.eigen_device()) = input.square().sum();

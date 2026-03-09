@@ -70,11 +70,11 @@ struct SetConstant<phi::XPUContext, T> {
 #endif
 
 template <typename Place>
-void set_constant_with_place(const phi::DeviceContext& dev_ctx,
+void set_constant_with_place(const DeviceContext& dev_ctx,
                              DenseTensor* tensor,
                              float value);
 
-PADDLE_API void set_constant(const phi::DeviceContext& dev_ctx,
+PADDLE_API void set_constant(const DeviceContext& dev_ctx,
                              DenseTensor* tensor,
                              float value);
 
@@ -114,7 +114,7 @@ struct TensorSetConstantXPU {
       : tensor_(tensor), value_(value), place_(place) {}
   template <typename T>
   void apply() const {
-    auto* dev_ctx = phi::DeviceContextPool::Instance().Get(place_);
+    auto* dev_ctx = DeviceContextPool::Instance().Get(place_);
     auto begin = dev_ctx->Alloc<T>(tensor_);
     int64_t numel = tensor_->numel();
     if (std::is_same<T, phi::complex64>::value ||
