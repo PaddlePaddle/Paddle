@@ -50,7 +50,7 @@ void NansumGradKernel(const Context& dev_ctx,
   T* x_grad_data = x_grad->data<T>();
   int64_t numel = x.numel();
   for (int64_t i = 0; i < numel; ++i) {
-    if (std::isnan(x_data[i])) {
+    if (x_data[i] != x_data[i]) {
       x_grad_data[i] = static_cast<T>(0);
     }
   }
