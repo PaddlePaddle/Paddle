@@ -1105,6 +1105,113 @@ __global__ void GroupNormForwardNoScaleBiasCUDAKernel(int64_t N_G,
   }
 }
 
+// Phase 2b vectorized: float4 version for T=float, HxW divisible by 4
+template <typename T, typename AccT>
+__global__ void GroupNormForwardElementwiseVec4CUDAKernel(
+    int64_t N_C,
+    int64_t HxW_vec,
+    const T* __restrict__ X,
+    const AccT* __restrict__ a,
+    const AccT* __restrict__ b,
+    T* __restrict__ Y) {
+  const int64_t total = N_C * HxW_vec;
+  for (int64_t idx =
+           static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+       idx < total;
+       idx += static_cast<int64_t>(gridDim.x) * blockDim.x) {
+    const int64_t nc = idx / HxW_vec;
+    const AccT a_val = a[nc];
+    const AccT b_val = b[nc];
+    float4 x4 = reinterpret_cast<const float4*>(X)[idx];
+    float4 y4;
+    y4.x = static_cast<float>(a_val * static_cast<AccT>(x4.x) + b_val);
+    y4.y = static_cast<float>(a_val * static_cast<AccT>(x4.y) + b_val);
+    y4.z = static_cast<float>(a_val * static_cast<AccT>(x4.z) + b_val);
+    y4.w = static_cast<float>(a_val * static_cast<AccT>(x4.w) + b_val);
+    reinterpret_cast<float4*>(Y)[idx] = y4;
+  }
+}
+
+// Phase 2b vectorized: double2 version for T=double, HxW divisible by 2
+template <typename T, typename AccT>
+__global__ void GroupNormForwardElementwiseVec2DoubleCUDAKernel(
+    int64_t N_C,
+    int64_t HxW_vec,
+    const T* __restrict__ X,
+    const AccT* __restrict__ a,
+    const AccT* __restrict__ b,
+    T* __restrict__ Y) {
+  const int64_t total = N_C * HxW_vec;
+  for (int64_t idx =
+           static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+       idx < total;
+       idx += static_cast<int64_t>(gridDim.x) * blockDim.x) {
+    const int64_t nc = idx / HxW_vec;
+    const AccT a_val = a[nc];
+    const AccT b_val = b[nc];
+    double2 x2 = reinterpret_cast<const double2*>(X)[idx];
+    double2 y2;
+    y2.x = static_cast<double>(a_val * static_cast<AccT>(x2.x) + b_val);
+    y2.y = static_cast<double>(a_val * static_cast<AccT>(x2.y) + b_val);
+    reinterpret_cast<double2*>(Y)[idx] = y2;
+  }
+}
+
+// Forward without gamma/beta vectorized: float4 version
+template <typename T, typename AccT>
+__global__ void GroupNormForwardNoScaleBiasVec4CUDAKernel(
+    int64_t N_G,
+    int64_t D_HxW_vec,
+    const T* __restrict__ X,
+    const AccT* __restrict__ mean,
+    const AccT* __restrict__ var,
+    AccT eps,
+    T* __restrict__ Y) {
+  const int64_t total = N_G * D_HxW_vec;
+  for (int64_t idx =
+           static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+       idx < total;
+       idx += static_cast<int64_t>(gridDim.x) * blockDim.x) {
+    const int64_t ng = idx / D_HxW_vec;
+    // Round through T to match PyTorch behavior
+    AccT mean_val = static_cast<AccT>(static_cast<T>(mean[ng]));
+    AccT rstd_val = static_cast<AccT>(static_cast<T>(rsqrt(var[ng] + eps)));
+    float4 x4 = reinterpret_cast<const float4*>(X)[idx];
+    float4 y4;
+    y4.x = static_cast<float>((static_cast<AccT>(x4.x) - mean_val) * rstd_val);
+    y4.y = static_cast<float>((static_cast<AccT>(x4.y) - mean_val) * rstd_val);
+    y4.z = static_cast<float>((static_cast<AccT>(x4.z) - mean_val) * rstd_val);
+    y4.w = static_cast<float>((static_cast<AccT>(x4.w) - mean_val) * rstd_val);
+    reinterpret_cast<float4*>(Y)[idx] = y4;
+  }
+}
+
+// Forward without gamma/beta vectorized: double2 version
+template <typename T, typename AccT>
+__global__ void GroupNormForwardNoScaleBiasVec2DoubleCUDAKernel(
+    int64_t N_G,
+    int64_t D_HxW_vec,
+    const T* __restrict__ X,
+    const AccT* __restrict__ mean,
+    const AccT* __restrict__ var,
+    AccT eps,
+    T* __restrict__ Y) {
+  const int64_t total = N_G * D_HxW_vec;
+  for (int64_t idx =
+           static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+       idx < total;
+       idx += static_cast<int64_t>(gridDim.x) * blockDim.x) {
+    const int64_t ng = idx / D_HxW_vec;
+    AccT mean_val = static_cast<AccT>(static_cast<T>(mean[ng]));
+    AccT rstd_val = static_cast<AccT>(static_cast<T>(rsqrt(var[ng] + eps)));
+    double2 x2 = reinterpret_cast<const double2*>(X)[idx];
+    double2 y2;
+    y2.x = static_cast<double>((static_cast<AccT>(x2.x) - mean_val) * rstd_val);
+    y2.y = static_cast<double>((static_cast<AccT>(x2.y) - mean_val) * rstd_val);
+    reinterpret_cast<double2*>(Y)[idx] = y2;
+  }
+}
+
 // Fused normalization kernel that computes Y on the fly without temp buffers
 // Rounds mean/rstd through T to match PyTorch's precision behavior.
 template <typename T, typename AccT>
@@ -1524,30 +1631,80 @@ void GroupNormGeneralCaseKernel(const Context& dev_ctx,
                 b_data);
 
         // Phase 2b: Element-wise Y = a * X + b
-        const int64_t total = N * C * imsize;
         constexpr int64_t kElemThreads = 256;
         int64_t max_grid_x = dev_ctx.GetCUDAMaxGridDimSize()[0];
-        const int64_t elem_blocks =
-            std::min((total + kElemThreads - 1) / kElemThreads, max_grid_x);
-        GroupNormForwardElementwiseCUDAKernel<T, AccT>
-            <<<elem_blocks, kElemThreads, 0, dev_ctx.stream()>>>(
-                N * C, imsize, x_data, a_data, b_data, y_data);
+
+        if (std::is_same<T, float>::value && (imsize % 4 == 0)) {
+          const int64_t HxW_vec = imsize / 4;
+          const int64_t total_vec = N * C * HxW_vec;
+          const int64_t elem_blocks = std::min(
+              (total_vec + kElemThreads - 1) / kElemThreads, max_grid_x);
+          GroupNormForwardElementwiseVec4CUDAKernel<T, AccT>
+              <<<elem_blocks, kElemThreads, 0, dev_ctx.stream()>>>(
+                  N * C, HxW_vec, x_data, a_data, b_data, y_data);
+        } else if (std::is_same<T, double>::value && (imsize % 2 == 0)) {
+          const int64_t HxW_vec = imsize / 2;
+          const int64_t total_vec = N * C * HxW_vec;
+          const int64_t elem_blocks = std::min(
+              (total_vec + kElemThreads - 1) / kElemThreads, max_grid_x);
+          GroupNormForwardElementwiseVec2DoubleCUDAKernel<T, AccT>
+              <<<elem_blocks, kElemThreads, 0, dev_ctx.stream()>>>(
+                  N * C, HxW_vec, x_data, a_data, b_data, y_data);
+        } else {
+          const int64_t total = N * C * imsize;
+          const int64_t elem_blocks =
+              std::min((total + kElemThreads - 1) / kElemThreads, max_grid_x);
+          GroupNormForwardElementwiseCUDAKernel<T, AccT>
+              <<<elem_blocks, kElemThreads, 0, dev_ctx.stream()>>>(
+                  N * C, imsize, x_data, a_data, b_data, y_data);
+        }
       } else {
         // No scale/bias: Y = (X - mean) * rstd
-        const int64_t D_total = N * G * D_times_HxW;
         constexpr int64_t kElemThreads = 256;
         int64_t max_grid_x = dev_ctx.GetCUDAMaxGridDimSize()[0];
-        const int64_t elem_blocks =
-            std::min((D_total + kElemThreads - 1) / kElemThreads, max_grid_x);
-        GroupNormForwardNoScaleBiasCUDAKernel<T, AccT>
-            <<<elem_blocks, kElemThreads, 0, dev_ctx.stream()>>>(
-                N * G,
-                D_times_HxW,
-                x_data,
-                mean_data,
-                var_data,
-                static_cast<AccT>(epsilon),
-                y_data);
+
+        if (std::is_same<T, float>::value && (D_times_HxW % 4 == 0)) {
+          const int64_t D_HxW_vec = D_times_HxW / 4;
+          const int64_t total_vec = N * G * D_HxW_vec;
+          const int64_t elem_blocks = std::min(
+              (total_vec + kElemThreads - 1) / kElemThreads, max_grid_x);
+          GroupNormForwardNoScaleBiasVec4CUDAKernel<T, AccT>
+              <<<elem_blocks, kElemThreads, 0, dev_ctx.stream()>>>(
+                  N * G,
+                  D_HxW_vec,
+                  x_data,
+                  mean_data,
+                  var_data,
+                  static_cast<AccT>(epsilon),
+                  y_data);
+        } else if (std::is_same<T, double>::value && (D_times_HxW % 2 == 0)) {
+          const int64_t D_HxW_vec = D_times_HxW / 2;
+          const int64_t total_vec = N * G * D_HxW_vec;
+          const int64_t elem_blocks = std::min(
+              (total_vec + kElemThreads - 1) / kElemThreads, max_grid_x);
+          GroupNormForwardNoScaleBiasVec2DoubleCUDAKernel<T, AccT>
+              <<<elem_blocks, kElemThreads, 0, dev_ctx.stream()>>>(
+                  N * G,
+                  D_HxW_vec,
+                  x_data,
+                  mean_data,
+                  var_data,
+                  static_cast<AccT>(epsilon),
+                  y_data);
+        } else {
+          const int64_t D_total = N * G * D_times_HxW;
+          const int64_t elem_blocks =
+              std::min((D_total + kElemThreads - 1) / kElemThreads, max_grid_x);
+          GroupNormForwardNoScaleBiasCUDAKernel<T, AccT>
+              <<<elem_blocks, kElemThreads, 0, dev_ctx.stream()>>>(
+                  N * G,
+                  D_times_HxW,
+                  x_data,
+                  mean_data,
+                  var_data,
+                  static_cast<AccT>(epsilon),
+                  y_data);
+        }
       }
     } else {
       // =========================================================
