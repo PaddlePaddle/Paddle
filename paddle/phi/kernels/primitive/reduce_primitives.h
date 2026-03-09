@@ -47,6 +47,47 @@ struct SumOps {
   SumOps() {}
 };
 
+namespace detail {
+
+template <typename T>
+DEVICE inline bool IsNan(T val) {
+  if constexpr (std::is_integral_v<T>) {
+    return false;
+  }
+
+  if constexpr (std::is_same_v<T, phi::dtype::float16> ||
+                std::is_same_v<T, phi::dtype::bfloat16> ||
+                std::is_same_v<T, phi::dtype::complex<float>> ||
+                std::is_same_v<T, phi::dtype::complex<double>>) {
+    return phi::dtype::isnan(val);
+  }
+
+  return isnan(val);
+}
+
+}  // namespace detail
+
+template <typename InT, typename MPType = InT, typename OutT = MPType>
+struct NansumOps {
+  inline DEVICE MPType compute(MPType a, InT b) const {
+    return reduce(a, static_cast<MPType>(b));
+  }
+
+  inline DEVICE MPType reduce(MPType a, MPType b) const {
+    return a + (detail::IsNan(b) ? MPType{0} : b);
+  }
+
+  inline DEVICE OutT post_process(MPType a) const {
+    return static_cast<OutT>(a);
+  }
+
+  inline DEVICE MPType shfl_sync(unsigned mask, MPType data, int offset) const {
+    return phi::backends::gpu::CudaShuffleDownSync(mask, data, offset);
+  }
+
+  NansumOps() {}
+};
+
 template <typename InT, typename MPType = InT, typename OutT = MPType>
 struct ProdOps {
   inline DEVICE MPType compute(MPType a, InT b) const {
