@@ -190,22 +190,14 @@ class TestRealAPI(unittest.TestCase):
         out3 = paddle.real(input=x)
         paddle_dygraph_out.append(out3)
 
-        # Mixed args
-        out4 = paddle.real(x, name="real_mixed")
+        # Tensor method - args
+        out4 = x.real()
         paddle_dygraph_out.append(out4)
 
-        # Tensor method - args
-        out5 = x.real()
-        paddle_dygraph_out.append(out5)
-
-        # Tensor method - kwargs
-        out6 = x.real(name="real_method")
-        paddle_dygraph_out.append(out6)
-
         # Test out parameter
-        out7 = paddle.empty(self.shape, dtype='float32')
-        paddle.real(x, out=out7)
-        paddle_dygraph_out.append(out7)
+        out5 = paddle.empty(self.shape, dtype='float32')
+        paddle.real(x, out=out5)
+        paddle_dygraph_out.append(out5)
 
         # Numpy reference output
         ref_out = np.real(self.np_x)
@@ -233,22 +225,18 @@ class TestRealAPI(unittest.TestCase):
 
             # Position args
             out1 = paddle.real(x)
+            # Paddle keyword args
+            out2 = paddle.real(x=x)
+            # Torch keyword args
+            out3 = paddle.real(input=x)
             # Tensor method
             out4 = x.real()
-            # Mixed args
-            out5 = paddle.real(x, name="real_static")
-
-            # Static graph currently only supports positional input for real.
-            with self.assertRaises(ValueError):
-                paddle.real(x=x)
-            with self.assertRaises(ValueError):
-                paddle.real(input=x)
 
             exe = paddle.base.Executor(paddle.CPUPlace())
             fetches = exe.run(
                 main,
                 feed={"x": self.np_x},
-                fetch_list=[out1, out4, out5],
+                fetch_list=[out1, out2, out3, out4],
             )
             ref_out = np.real(self.np_x)
             for out in fetches:
