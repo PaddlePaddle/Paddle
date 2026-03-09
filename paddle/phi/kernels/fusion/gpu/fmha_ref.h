@@ -83,7 +83,7 @@ __global__ void TransposeRemovingPadding(const T* input_data,
       static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
       static_cast<int64_t>(threadIdx.x);
   const int dim_embed = num_head * head_dim;
-  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
   LoadT src_vec;
 
   for (int32_t linear_index = idx * VecSize,

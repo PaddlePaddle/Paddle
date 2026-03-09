@@ -234,7 +234,7 @@ __global__ void initialize_moe_routing_kernel(
   // reduction and unpermuting. I need the reverse map for that reduction to
   // allow each threadblock to do 1 k-way reduce without atomics later in MoE. 1
   // thread block will be responsible for all k summations.
-  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
   LoadT src_vec;
   const int expanded_dest_row = blockIdx.x;
   const int expanded_source_row =
@@ -366,7 +366,7 @@ __global__ void initialize_moe_routing_permute_kernel(
   // thread block will be responsible for all k summations.
 #pragma unroll
   for (int i = 0; i < LoopSize; i++) {
-    using LoadT = phi::AlignedVector<T, VecSize>;
+    using LoadT = AlignedVector<T, VecSize>;
     LoadT src_vec;
     const int expanded_dest_row = blockIdx.x + i * gridDim.x;
     const int expanded_source_row =
@@ -740,7 +740,7 @@ __global__ void copy_unpermuted_to_permuted_kernel(
     const int64_t num_rows,
     const int64_t k,
     const int64_t cols) {
-  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
   LoadT src_vec;
   const int padded_dest_row = blockIdx.x;
   if (padded_out_to_unpermuted_input[padded_dest_row] == num_rows) {

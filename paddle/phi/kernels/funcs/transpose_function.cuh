@@ -1134,7 +1134,7 @@ __global__ void VectorizedPermuteKernel(PermuteParams<IndexT, Rank> params,
                                         const IndexT count,
                                         const T* __restrict__ src_data,
                                         T* dst_data) {
-  using VecT = phi::AlignedVector<T, VecSize>;
+  using VecT = AlignedVector<T, VecSize>;
   IndexT src_index[Rank];
   IndexT dst_index[Rank];
 
@@ -1163,7 +1163,7 @@ __global__ void GeneralPermuteKernel(PermuteParams<IndexT, Rank> params,
                                      const IndexT offset,
                                      const T* __restrict__ src,
                                      T* dst) {
-  using VecT = phi::AlignedVector<T, VecSize>;
+  using VecT = AlignedVector<T, VecSize>;
   VecT* vec_dst = reinterpret_cast<VecT*>(dst);
   IndexT src_index[VecSize][Rank];
   IndexT dst_index[VecSize][Rank];
@@ -1211,7 +1211,7 @@ struct TransposeDataWriter {
                                              const IndexT chs_stride,
                                              const IndexT round_tile_cols,
                                              const IndexT col_stride = 1) {
-    using OutVecT = phi::AlignedVector<T, WriteSize>;
+    using OutVecT = AlignedVector<T, WriteSize>;
     OutVecT* vec_dst = reinterpret_cast<OutVecT*>(dst_data);
 
     constexpr int kColTile = kTileSize * ReadSize;
@@ -1287,7 +1287,7 @@ struct TransposeDataReader {
                                              const IndexT chs_stride,
                                              const IndexT cols_thresh,
                                              const IndexT round_tile_rows) {
-    using VecT = phi::AlignedVector<T, VecSize>;
+    using VecT = AlignedVector<T, VecSize>;
     const VecT* __restrict__ v_src =
         reinterpret_cast<const VecT* __restrict__>(src);
     VecT* v_shared = reinterpret_cast<VecT*>(s_shared);

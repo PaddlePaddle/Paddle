@@ -23,7 +23,7 @@ void L1NormKernel(const Context& dev_ctx,
                   DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
   auto x_tmp = EigenVector<T>::Flatten(x);
-  auto out_tmp = phi::EigenScalar<T>::From(*out);
+  auto out_tmp = EigenScalar<T>::From(*out);
   auto& dev = *dev_ctx.eigen_device();
   funcs::EigenL1Norm<std::decay_t<decltype(dev)>, T>::Eval(dev, out_tmp, x_tmp);
 }

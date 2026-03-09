@@ -589,6 +589,17 @@ class Tensor : public TensorBase {
     return Tensor(cloned_tensor);
   }
 
+  // all: Check if all elements are true (non-zero)
+  at::Tensor all() const;
+  at::Tensor all(int64_t dim, bool keepdim = false) const;
+  at::Tensor all(at::OptionalIntArrayRef dim, bool keepdim = false) const;
+
+  // allclose: Check if two tensors are close to each other
+  bool allclose(const at::Tensor& other,
+                double rtol = 1e-05,
+                double atol = 1e-08,
+                bool equal_nan = false) const;
+
   at::Tensor abs() const;
 
   at::Tensor& abs_() const;
