@@ -106,3 +106,55 @@ def _all_gather(tensor, group=None, use_calc_stream=True):
         ring_id,
         nranks,
     )
+
+
+def tuple_to_dict_helper(input_tensor):
+    # recv tuple -> fwd input dict
+    use_dict = False
+    if isinstance(input_tensor, tuple):
+        use_dict = hasattr(input_tensor[0], "key")
+    else:  # single tensor
+        use_dict = hasattr(input_tensor, "key")
+    if use_dict:
+        input_tensor = convert_tensor_tuple_to_dict(input_tensor)
+    return input_tensor, use_dict
+
+
+def dict_to_tuple_helper(output_tensor):
+    if isinstance(output_tensor, dict):
+        output_tensor_tuple = convert_tensor_dict_to_tuple(
+            output_tensor_dict=output_tensor
+        )
+    else:  # single tensor or tensor tuple
+        output_tensor_tuple = output_tensor
+    return output_tensor_tuple
+
+
+def convert_tensor_dict_to_tuple(output_tensor_dict):
+    output_tensor = []
+    for key, tensor in output_tensor_dict.items():
+        if isinstance(tensor, (list, tuple)):
+            for idx, t in enumerate(tensor):
+                t.key = key + " " + str(idx)
+                output_tensor.append(t)
+        else:  # single tensor
+            tensor.key = key
+            output_tensor.append(tensor)
+
+    return tuple(output_tensor)
+
+
+def convert_tensor_tuple_to_dict(input_tensor_tuple):
+    input_tensor_dict = {}
+    for tensor in input_tensor_tuple:
+        key = tensor.key
+        if " " in key:
+            real_key, _ = key.split(" ")
+            if real_key in input_tensor_dict.keys():
+                input_tensor_dict[real_key].append(tensor)
+            else:
+                input_tensor_dict[real_key] = [tensor]
+        else:
+            input_tensor_dict[key] = tensor
+        delattr(tensor, "key")
+    return input_tensor_dict
