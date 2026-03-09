@@ -18,6 +18,7 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 #include <complex>
+#include <cstring>
 #include <type_traits>
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/enforce.h"
@@ -49,20 +50,34 @@ struct SumOps {
 
 namespace detail {
 
-template <typename T>
-DEVICE inline bool IsNan(T val) {
-  if constexpr (std::is_integral_v<T> || std::is_same_v<T, bool>) {
-    return false;
-  }
+// Bit-level NaN detection: immune to compiler optimizations (-ffast-math, etc.)
+// Uses memcpy for type punning (standard C++, no UB, optimized to register
+// move)
 
+HOSTDEVICE inline bool IsNanBitwise(float val) {
+  uint32_t bits;
+  memcpy(&bits, &val, sizeof(bits));
+  return (bits & 0x7FFFFFFFu) > 0x7F800000u;
+}
+
+HOSTDEVICE inline bool IsNanBitwise(double val) {
+  uint64_t bits;
+  memcpy(&bits, &val, sizeof(bits));
+  return (bits & 0x7FFFFFFFFFFFFFFFull) > 0x7FF0000000000000ull;
+}
+
+template <typename T>
+HOSTDEVICE inline bool IsNan(T val) {
+  if constexpr (std::is_same_v<T, float> || std::is_same_v<T, double>) {
+    return IsNanBitwise(val);
+  }
   if constexpr (std::is_same_v<T, phi::dtype::float16> ||
                 std::is_same_v<T, phi::dtype::bfloat16> ||
                 std::is_same_v<T, phi::dtype::complex<float>> ||
                 std::is_same_v<T, phi::dtype::complex<double>>) {
     return phi::dtype::isnan(val);
   }
-
-  return isnan(val);
+  return false;  // int or bool
 }
 
 }  // namespace detail
