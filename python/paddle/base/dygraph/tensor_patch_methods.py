@@ -1356,26 +1356,28 @@ def monkey_patch_tensor():
                 [3., 3.])
         """
         return _C_ops.sparse_coalesce(self)
-    
+
     @framework.dygraph_only
-    def sparse_mask(self: Tensor, mask: Tensor, name: str | None = None) -> Tensor:
+    def sparse_mask(
+        self: Tensor, mask: Tensor, name: str | None = None
+    ) -> Tensor:
         r"""
-        Mimics PyTorch's sparse tensor interface.
+        Encapsulation of the mask_as method in paddle.sparse.
         This is a Tensor method extension for convenience, equivalent to `paddle.sparse.mask_as`.
-    
+
         Args:
-        self (Tensor): The input dense tensor (will be filtered).
-            mask (Tensor): Sparse tensor (SparseCooTensor or SparseCsrTensor) used as mask.
-            name (str, optional): Operation name (ignored in this implementation).
+            self (Tensor): The input dense tensor (will be filtered).
+                mask (Tensor): Sparse tensor (SparseCooTensor or SparseCsrTensor) used as mask.
+                name (str, optional): Operation name (ignored in this implementation).
 
         Returns:
-            SparseTensor: A sparse tensor with the same indices as `mask`, 
+            SparseTensor: A sparse tensor with the same indices as `mask`,
             containing values from `self` at mask positions.
-        
+
         Examples:
             >>> import paddle
             >>> paddle.set_device('cpu')
-            >>> 
+            >>>
             >>> # CSR sparse tensor
             >>> crows = [0, 2, 3, 5]
             >>> cols = [1, 3, 2, 0, 1]

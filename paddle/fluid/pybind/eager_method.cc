@@ -1013,9 +1013,8 @@ Examples:
 
         >>> print(y.grad)
         Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=False,
-        [2., 2., 2.]) # Gradient w.r.t. y = 2 * x -> [2, 2, 2]
-
-)DOC");  
+        [1., 1., 1.])
+)DOC");
 
 PyDoc_STRVAR(tensor_clear_gradient__doc__,  // NOLINT
              R"DOC(clear_gradient($self, set_to_zero=True, /)
@@ -3937,9 +3936,9 @@ PyMethodDef variable_methods[] = {  // NOLINT
      (PyCFunction)(void (*)())tensor_retain_grads,
      METH_VARARGS | METH_KEYWORDS,
      tensor_method_retain_grads__doc__},
-    {"retain_grad",                    
-     (PyCFunction)(void (*)())tensor_retain_grads, 
-     METH_VARARGS | METH_KEYWORDS,     
+    {"retain_grad",
+     (PyCFunction)(void (*)())tensor_retain_grads,
+     METH_VARARGS | METH_KEYWORDS,
      tensor_method_retain_grad__doc__},
     {"clear_gradient",
      (PyCFunction)(void (*)())tensor_clear_gradient,

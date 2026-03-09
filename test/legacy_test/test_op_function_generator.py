@@ -100,7 +100,7 @@ class TestVariable(unittest.TestCase):
             x.retain_grad()
             y.retain_grad()
             loss_leaf.backward()
-            
+
             # Verify leaf node gradients (x.grad = y, y.grad = x)
             np.testing.assert_array_equal(x.gradient(), b)
             np.testing.assert_array_equal(y.gradient(), a)
@@ -109,11 +109,11 @@ class TestVariable(unittest.TestCase):
             # Create intermediate node z
             z = _legacy_C_ops.elementwise_mul(x, y)
             z.retain_grad()  # Retain gradient for intermediate node
-            
+
             # Create scalar loss for intermediate node
             loss_mid = paddle.sum(z)
             loss_mid.backward()
-            
+
             # Verify intermediate node gradient (d(loss_mid)/dz = 1)
             expected_z_grad = np.ones_like(a)
             np.testing.assert_array_equal(z.gradient(), expected_z_grad)
