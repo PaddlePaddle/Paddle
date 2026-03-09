@@ -351,7 +351,6 @@ class DistributedStrategy:
                 )
         object.__setattr__(self, key, value)
 
-
     def save_to_prototxt(self, output: str) -> None:
         """
 
@@ -1062,7 +1061,7 @@ class DistributedStrategy:
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
-                >>> strategy.amp = True # by default this is false
+                >>> strategy.amp = True  # by default this is false
 
         """
         return self.strategy.amp
@@ -1115,10 +1114,7 @@ class DistributedStrategy:
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
                 >>> strategy.amp = True
-                >>> strategy.amp_configs = {
-                ...     "init_loss_scaling": 32768,
-                ...     "custom_white_list": ['conv2d']
-                ... }
+                >>> strategy.amp_configs = {"init_loss_scaling": 32768, "custom_white_list": ['conv2d']}
 
             .. code-block:: pycon
                 :name: example_2
@@ -1127,10 +1123,7 @@ class DistributedStrategy:
                 >>> strategy = fleet.DistributedStrategy()
                 >>> strategy.amp = True
                 >>> # pure fp16
-                >>> strategy.amp_configs = {
-                ...     "init_loss_scaling": 32768,
-                ...     "use_pure_fp16": True
-                ... }
+                >>> strategy.amp_configs = {"init_loss_scaling": 32768, "use_pure_fp16": True}
 
         """
         return get_msg_dict(self.strategy.amp_configs)
@@ -1153,7 +1146,7 @@ class DistributedStrategy:
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
-                >>> strategy.asp = True # by default this is false
+                >>> strategy.asp = True  # by default this is false
 
         """
         return self.strategy.asp
@@ -1178,7 +1171,7 @@ class DistributedStrategy:
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
-                >>> strategy.qat = True # by default this is false
+                >>> strategy.qat = True  # by default this is false
 
         """
         return self.strategy.qat
@@ -1212,7 +1205,7 @@ class DistributedStrategy:
                 ...     "channel_wise_abs_max": True,
                 ...     "weight_bits": 8,
                 ...     "activation_bits": 8,
-                ...     "not_quant_pattern": ['skip_quant']
+                ...     "not_quant_pattern": ['skip_quant'],
                 ... }
 
         """
@@ -1531,11 +1524,7 @@ class DistributedStrategy:
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
                 >>> strategy.recompute = True
-                >>> strategy.recompute_configs = {
-                ...     "checkpoints": ["x", "y"],
-                ...     "enable_offload": True,
-                ...     "checkpoint_shape": [100, 512, 1024]
-                ... }
+                >>> strategy.recompute_configs = {"checkpoints": ["x", "y"], "enable_offload": True, "checkpoint_shape": [100, 512, 1024]}
 
         """
         return get_msg_dict(self.strategy.recompute_configs)
@@ -1885,8 +1874,7 @@ class DistributedStrategy:
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
                 >>> strategy.tensor_parallel = True
-                >>> strategy.tensor_parallel_configs = {"tensor_parallel_degree": 4,
-                ...                                     "tensor_init_seed": 123}
+                >>> strategy.tensor_parallel_configs = {"tensor_parallel_degree": 4, "tensor_init_seed": 123}
 
         """
         return get_msg_dict(self.strategy.tensor_parallel_configs)
@@ -1933,7 +1921,7 @@ class DistributedStrategy:
                 ...     "dp_degree": 1,
                 ...     "mp_degree": 2,
                 ...     "pp_degree": 1,
-                ...     "order":['dp','pp','sharding', 'sep', 'mp']
+                ...     "order": ['dp', 'pp', 'sharding', 'sep', 'mp'],
                 ... }
 
         """
@@ -1980,7 +1968,7 @@ class DistributedStrategy:
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
-                >>> strategy.localsgd = True # by default this is false
+                >>> strategy.localsgd = True  # by default this is false
 
         """
         return self.strategy.localsgd
@@ -2010,8 +1998,7 @@ class DistributedStrategy:
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
                 >>> strategy.localsgd = True
-                >>> strategy.localsgd_configs = {"k_steps": 4,
-                ...                             "begin_step": 30}
+                >>> strategy.localsgd_configs = {"k_steps": 4, "begin_step": 30}
 
         """
 
@@ -2038,7 +2025,7 @@ class DistributedStrategy:
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
-                >>> strategy.adaptive_localsgd = True # by default this is false
+                >>> strategy.adaptive_localsgd = True  # by default this is false
 
         """
         return self.strategy.adaptive_localsgd
@@ -2071,8 +2058,7 @@ class DistributedStrategy:
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
                 >>> strategy.adaptive_localsgd = True
-                >>> strategy.adaptive_localsgd_configs = {"init_k_steps": 1,
-                ...                                       "begin_step": 30}
+                >>> strategy.adaptive_localsgd_configs = {"init_k_steps": 1, "begin_step": 30}
 
         """
 
@@ -2104,7 +2090,7 @@ class DistributedStrategy:
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
-                >>> strategy.dgc = True # by default this is false
+                >>> strategy.dgc = True  # by default this is false
 
         """
         return self.strategy.dgc
@@ -2166,7 +2152,7 @@ class DistributedStrategy:
                 >>> import paddle.distributed.fleet as fleet
 
                 >>> strategy = fleet.DistributedStrategy()
-                >>> strategy.fp16_allreduce = True # by default this is false
+                >>> strategy.fp16_allreduce = True  # by default this is false
 
         """
         return self.strategy.fp16_allreduce
@@ -2255,7 +2241,7 @@ class DistributedStrategy:
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
-                >>> strategy.lars = True # by default this is false
+                >>> strategy.lars = True  # by default this is false
 
         """
         return self.strategy.lars
@@ -2289,10 +2275,10 @@ class DistributedStrategy:
                 >>> strategy = fleet.DistributedStrategy()
                 >>> strategy.lars = True
                 >>> strategy.lars_configs = {
-                ...             "lars_coeff": 0.01,
-                ...             "lars_weight_decay": 0.0005,
-                ...             "epsilon": 0,
-                ...             "exclude_from_weight_decay": ['batch_norm', '.b_0']
+                ...     "lars_coeff": 0.01,
+                ...     "lars_weight_decay": 0.0005,
+                ...     "epsilon": 0,
+                ...     "exclude_from_weight_decay": ['batch_norm', '.b_0'],
                 ... }
 
         """
@@ -2320,7 +2306,7 @@ class DistributedStrategy:
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
-                >>> strategy.lamb = True # by default this is false
+                >>> strategy.lamb = True  # by default this is false
 
         """
 
@@ -2352,8 +2338,8 @@ class DistributedStrategy:
                 >>> strategy = fleet.DistributedStrategy()
                 >>> strategy.lamb = True
                 >>> strategy.lamb_configs = {
-                ...         'lamb_weight_decay': 0.01,
-                ...         'exclude_from_weight_decay': [],
+                ...     'lamb_weight_decay': 0.01,
+                ...     'exclude_from_weight_decay': [],
                 ... }
 
         """
@@ -2557,7 +2543,7 @@ class DistributedStrategy:
                 ...     "channel_wise_abs_max": True,
                 ...     "weight_bits": 8,
                 ...     "activation_bits": 8,
-                ...     "not_quant_pattern": ['skip_quant']
+                ...     "not_quant_pattern": ['skip_quant'],
                 ... }
 
         """
