@@ -158,7 +158,6 @@ class TestAudioFunctions(unittest.TestCase):
         assert downsampled.shape[-1] == waveform.shape[-1] // 2
 
     @parameterize([("sinc_interp_hann"), ("sinc_interp_kaiser")])
-
     def test_resample_waveform_upsample_size(self, resampling_method):
         sr = 16000
         waveform = self.get_whitenoise(
@@ -171,7 +170,6 @@ class TestAudioFunctions(unittest.TestCase):
         assert downsampled.shape[-1] == waveform.shape[-1] * 2
 
     @parameterize([("sinc_interp_hann"), ("sinc_interp_kaiser")])
-
     def test_resample_waveform_identity_shape(self, resampling_method):
         sr = 16000
         waveform = self.get_whitenoise(
