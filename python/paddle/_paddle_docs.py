@@ -5131,34 +5131,3 @@ add_doc_and_signature(
     """,
     """def poisson(x: Tensor, name: str | None = None) -> Tensor""",
 )
-add_doc_and_signature(
-    "is_real",
-    r"""
-    Tests if each element of the input tensor is real or not.
-    For non-complex data types, this always returns a boolean tensor with all True values.
-    For complex data types, this returns True if the imaginary part of the element is zero, and False otherwise.
-
-    Args:
-        x (Tensor): The input tensor. Its data type should be float16, float32, float64, complex64, complex128, int32, int64.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor: A boolean tensor with the same shape as input.
-
-    Examples:
-        .. code-block:: pycon
-
-            >>> import paddle
-            >>> x = paddle.to_tensor([1, 1+1j, 2j, 0])
-            >>> res = paddle.is_real(x)
-            >>> print(res)
-            Tensor(shape=[4], dtype=bool, place=Place(cpu), stop_gradient=True,
-            [True , False, False, True ])
-""",
-    """
-def is_real(
-    x: Tensor,
-    name: str | None = None,
-) -> Tensor
-""",
-)
