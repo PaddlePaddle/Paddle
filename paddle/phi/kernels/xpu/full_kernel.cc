@@ -133,7 +133,7 @@ void FullLikeKernel(const Context& dev_ctx,
       int r = xpu::constant(dev_ctx.x_context(),
                             out_data,
                             out->numel(),
-                            static_cast<XPUInTDType>(value));
+                            static_cast<XPUInTDType>(val.to<T>()));
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
     }
   }
