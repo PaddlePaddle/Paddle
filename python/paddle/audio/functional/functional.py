@@ -37,7 +37,7 @@ def hz_to_mel(freq: _TensorOrFloat, htk: bool = False) -> _TensorOrFloat:
         Union[Tensor, float]: Frequency in mels.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -91,7 +91,7 @@ def mel_to_hz(mel: _TensorOrFloat, htk: bool = False) -> _TensorOrFloat:
         Union[float, Tensor]: Frequencies in Hz.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -143,7 +143,7 @@ def mel_frequencies(
         Tensor: Tensor of n_mels frequencies in Hz with shape `(n_mels,)`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -175,7 +175,7 @@ def fft_frequencies(sr: int, n_fft: int, dtype: str = 'float32') -> Tensor:
         Tensor: FFT frequencies in Hz with shape `(n_fft//2 + 1,)`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -212,7 +212,7 @@ def compute_fbank_matrix(
         Tensor: Mel transform matrix with shape `(n_mels, n_fft//2 + 1)`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -277,7 +277,7 @@ def power_to_db(
         Tensor: Power spectrogram in db scale.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -321,7 +321,7 @@ def create_dct(
         Tensor: The DCT matrix with shape `(n_mels, n_mfcc)`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> n_mfcc = 23
@@ -569,7 +569,7 @@ def resample(
         - This function does not support ONNX export now.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.audio.functional import resample
