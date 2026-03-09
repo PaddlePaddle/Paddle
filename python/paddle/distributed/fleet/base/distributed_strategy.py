@@ -1114,7 +1114,10 @@ class DistributedStrategy:
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
                 >>> strategy.amp = True
-                >>> strategy.amp_configs = {"init_loss_scaling": 32768, "custom_white_list": ['conv2d']}
+                >>> strategy.amp_configs = {
+                ...     "init_loss_scaling": 32768,
+                ...     "custom_white_list": ['conv2d'],
+                ... }
 
             .. code-block:: pycon
                 :name: example_2
@@ -1123,7 +1126,10 @@ class DistributedStrategy:
                 >>> strategy = fleet.DistributedStrategy()
                 >>> strategy.amp = True
                 >>> # pure fp16
-                >>> strategy.amp_configs = {"init_loss_scaling": 32768, "use_pure_fp16": True}
+                >>> strategy.amp_configs = {
+                ...     "init_loss_scaling": 32768,
+                ...     "use_pure_fp16": True,
+                ... }
 
         """
         return get_msg_dict(self.strategy.amp_configs)
@@ -1524,7 +1530,11 @@ class DistributedStrategy:
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
                 >>> strategy.recompute = True
-                >>> strategy.recompute_configs = {"checkpoints": ["x", "y"], "enable_offload": True, "checkpoint_shape": [100, 512, 1024]}
+                >>> strategy.recompute_configs = {
+                ...     "checkpoints": ["x", "y"],
+                ...     "enable_offload": True,
+                ...     "checkpoint_shape": [100, 512, 1024],
+                ... }
 
         """
         return get_msg_dict(self.strategy.recompute_configs)
@@ -1874,7 +1884,10 @@ class DistributedStrategy:
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
                 >>> strategy.tensor_parallel = True
-                >>> strategy.tensor_parallel_configs = {"tensor_parallel_degree": 4, "tensor_init_seed": 123}
+                >>> strategy.tensor_parallel_configs = {
+                ...     "tensor_parallel_degree": 4,
+                ...     "tensor_init_seed": 123,
+                ... }
 
         """
         return get_msg_dict(self.strategy.tensor_parallel_configs)
@@ -1998,7 +2011,10 @@ class DistributedStrategy:
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
                 >>> strategy.localsgd = True
-                >>> strategy.localsgd_configs = {"k_steps": 4, "begin_step": 30}
+                >>> strategy.localsgd_configs = {
+                ...     "k_steps": 4,
+                ...     "begin_step": 30,
+                ... }
 
         """
 
@@ -2058,7 +2074,10 @@ class DistributedStrategy:
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
                 >>> strategy.adaptive_localsgd = True
-                >>> strategy.adaptive_localsgd_configs = {"init_k_steps": 1, "begin_step": 30}
+                >>> strategy.adaptive_localsgd_configs = {
+                ...     "init_k_steps": 1,
+                ...     "begin_step": 30,
+                ... }
 
         """
 
