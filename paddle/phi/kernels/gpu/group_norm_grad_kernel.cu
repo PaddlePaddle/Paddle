@@ -583,238 +583,8 @@ __global__ void ComputeRstdCUDAKernel(int64_t N_G,
 }
 
 // ============================================================================
-// End of optimized dX kernels (kept for scalar/double fallback)
+// End of optimized dX kernels
 // ============================================================================
-
-// ============================================================================
-// Fused backward kernel: ComputeBackwardFused + C1 + dX in one kernel
-// Grid: dim3(N, G). Each block handles one (n,g) group.
-// Phase 1: Warp-reduce ds*gamma, db*gamma -> c2, c3 (D is small)
-// Phase 2: Compute dX for all D channels x HxW spatial elements
-// Eliminates c2, c3, c1 intermediate buffers and 2 kernel launches.
-// ============================================================================
-
-// Fused backward: float4 vectorized version
-// Grid: dim3(N, G), Block: 256 threads
-template <typename T, typename AccT>
-__global__ void FusedBackwardDxVec4CUDAKernel(int64_t C,
-                                              int64_t HxW,
-                                              int64_t G,
-                                              const AccT* __restrict__ mean,
-                                              const AccT* __restrict__ var,
-                                              const T* __restrict__ gamma,
-                                              const AccT* __restrict__ ds,
-                                              const AccT* __restrict__ db,
-                                              AccT eps,
-                                              const T* __restrict__ dY,
-                                              const T* __restrict__ X,
-                                              T* __restrict__ dX) {
-  const int64_t D = C / G;
-  const int64_t n = blockIdx.x;
-  const int64_t g = blockIdx.y;
-  const int64_t ng = n * G + g;
-
-  // Phase 1: Reduce ds*gamma, db*gamma across D channels to get c2, c3
-  AccT sum1 = 0;
-  AccT sum2 = 0;
-  for (int64_t i = threadIdx.x; i < D; i += blockDim.x) {
-    const int64_t index = ng * D + i;
-    const int64_t c_idx = g * D + i;
-    const AccT gamma_v =
-        gamma == nullptr ? AccT(1) : static_cast<AccT>(gamma[c_idx]);
-    sum1 += ds[index] * gamma_v;
-    sum2 += db[index] * gamma_v;
-  }
-  // D is typically small (4-32), warp reduce is sufficient
-  sum1 = GradWarpReduceSum(sum1);
-  sum2 = GradWarpReduceSum(sum2);
-
-  // Compute c2, c3 in shared memory
-  __shared__ AccT s_c2, s_c3, s_rstd;
-  if (threadIdx.x == 0) {
-    AccT mean_val = static_cast<AccT>(static_cast<T>(mean[ng]));
-    AccT rstd_val = static_cast<AccT>(static_cast<T>(rsqrt(var[ng] + eps)));
-    const AccT s = AccT(1) / static_cast<AccT>(D * HxW);
-    const AccT x =
-        (sum2 * mean_val - sum1) * rstd_val * rstd_val * rstd_val * s;
-    s_c2 = x;
-    s_c3 = -x * mean_val - sum2 * rstd_val * s;
-    s_rstd = rstd_val;
-  }
-  __syncthreads();
-
-  const AccT c2v = s_c2;
-  const AccT c3v = s_c3;
-  const AccT rstd_val = s_rstd;
-
-  // Phase 2: Compute dX for D channels x HxW spatial elements
-  const int64_t HxW_vec = HxW / 4;
-  for (int64_t d = 0; d < D; d++) {
-    const int64_t nc = n * C + g * D + d;
-    const int64_t c_idx = g * D + d;
-    const AccT c1v = (gamma != nullptr)
-                         ? rstd_val * static_cast<AccT>(gamma[c_idx])
-                         : rstd_val;
-
-    const float4* dY_v = reinterpret_cast<const float4*>(dY + nc * HxW);
-    const float4* X_v = reinterpret_cast<const float4*>(X + nc * HxW);
-    float4* dX_v = reinterpret_cast<float4*>(dX + nc * HxW);
-
-    for (int64_t i = threadIdx.x; i < HxW_vec; i += blockDim.x) {
-      float4 dy4 = dY_v[i];
-      float4 x4 = X_v[i];
-      float4 dx4;
-      dx4.x = static_cast<T>(c1v * static_cast<AccT>(dy4.x) +
-                             c2v * static_cast<AccT>(x4.x) + c3v);
-      dx4.y = static_cast<T>(c1v * static_cast<AccT>(dy4.y) +
-                             c2v * static_cast<AccT>(x4.y) + c3v);
-      dx4.z = static_cast<T>(c1v * static_cast<AccT>(dy4.z) +
-                             c2v * static_cast<AccT>(x4.z) + c3v);
-      dx4.w = static_cast<T>(c1v * static_cast<AccT>(dy4.w) +
-                             c2v * static_cast<AccT>(x4.w) + c3v);
-      dX_v[i] = dx4;
-    }
-  }
-}
-
-// Fused backward: double2 vectorized version
-template <typename T, typename AccT>
-__global__ void FusedBackwardDxVec2DoubleCUDAKernel(
-    int64_t C,
-    int64_t HxW,
-    int64_t G,
-    const AccT* __restrict__ mean,
-    const AccT* __restrict__ var,
-    const T* __restrict__ gamma,
-    const AccT* __restrict__ ds,
-    const AccT* __restrict__ db,
-    AccT eps,
-    const T* __restrict__ dY,
-    const T* __restrict__ X,
-    T* __restrict__ dX) {
-  const int64_t D = C / G;
-  const int64_t n = blockIdx.x;
-  const int64_t g = blockIdx.y;
-  const int64_t ng = n * G + g;
-
-  AccT sum1 = 0;
-  AccT sum2 = 0;
-  for (int64_t i = threadIdx.x; i < D; i += blockDim.x) {
-    const int64_t index = ng * D + i;
-    const int64_t c_idx = g * D + i;
-    const AccT gamma_v =
-        gamma == nullptr ? AccT(1) : static_cast<AccT>(gamma[c_idx]);
-    sum1 += ds[index] * gamma_v;
-    sum2 += db[index] * gamma_v;
-  }
-  sum1 = GradWarpReduceSum(sum1);
-  sum2 = GradWarpReduceSum(sum2);
-
-  __shared__ AccT s_c2, s_c3, s_rstd;
-  if (threadIdx.x == 0) {
-    AccT mean_val = static_cast<AccT>(static_cast<T>(mean[ng]));
-    AccT rstd_val = static_cast<AccT>(static_cast<T>(rsqrt(var[ng] + eps)));
-    const AccT s = AccT(1) / static_cast<AccT>(D * HxW);
-    const AccT x =
-        (sum2 * mean_val - sum1) * rstd_val * rstd_val * rstd_val * s;
-    s_c2 = x;
-    s_c3 = -x * mean_val - sum2 * rstd_val * s;
-    s_rstd = rstd_val;
-  }
-  __syncthreads();
-
-  const AccT c2v = s_c2;
-  const AccT c3v = s_c3;
-  const AccT rstd_val = s_rstd;
-
-  const int64_t HxW_vec = HxW / 2;
-  for (int64_t d = 0; d < D; d++) {
-    const int64_t nc = n * C + g * D + d;
-    const int64_t c_idx = g * D + d;
-    const AccT c1v = (gamma != nullptr)
-                         ? rstd_val * static_cast<AccT>(gamma[c_idx])
-                         : rstd_val;
-
-    const double2* dY_v = reinterpret_cast<const double2*>(dY + nc * HxW);
-    const double2* X_v = reinterpret_cast<const double2*>(X + nc * HxW);
-    double2* dX_v = reinterpret_cast<double2*>(dX + nc * HxW);
-
-    for (int64_t i = threadIdx.x; i < HxW_vec; i += blockDim.x) {
-      double2 dy2 = dY_v[i];
-      double2 x2 = X_v[i];
-      double2 dx2;
-      dx2.x = static_cast<T>(c1v * static_cast<AccT>(dy2.x) +
-                             c2v * static_cast<AccT>(x2.x) + c3v);
-      dx2.y = static_cast<T>(c1v * static_cast<AccT>(dy2.y) +
-                             c2v * static_cast<AccT>(x2.y) + c3v);
-      dX_v[i] = dx2;
-    }
-  }
-}
-
-// Fused backward: scalar fallback
-template <typename T, typename AccT>
-__global__ void FusedBackwardDxScalarCUDAKernel(int64_t C,
-                                                int64_t HxW,
-                                                int64_t G,
-                                                const AccT* __restrict__ mean,
-                                                const AccT* __restrict__ var,
-                                                const T* __restrict__ gamma,
-                                                const AccT* __restrict__ ds,
-                                                const AccT* __restrict__ db,
-                                                AccT eps,
-                                                const T* __restrict__ dY,
-                                                const T* __restrict__ X,
-                                                T* __restrict__ dX) {
-  const int64_t D = C / G;
-  const int64_t n = blockIdx.x;
-  const int64_t g = blockIdx.y;
-  const int64_t ng = n * G + g;
-
-  AccT sum1 = 0;
-  AccT sum2 = 0;
-  for (int64_t i = threadIdx.x; i < D; i += blockDim.x) {
-    const int64_t index = ng * D + i;
-    const int64_t c_idx = g * D + i;
-    const AccT gamma_v =
-        gamma == nullptr ? AccT(1) : static_cast<AccT>(gamma[c_idx]);
-    sum1 += ds[index] * gamma_v;
-    sum2 += db[index] * gamma_v;
-  }
-  sum1 = GradWarpReduceSum(sum1);
-  sum2 = GradWarpReduceSum(sum2);
-
-  __shared__ AccT s_c2, s_c3, s_rstd;
-  if (threadIdx.x == 0) {
-    AccT mean_val = static_cast<AccT>(static_cast<T>(mean[ng]));
-    AccT rstd_val = static_cast<AccT>(static_cast<T>(rsqrt(var[ng] + eps)));
-    const AccT s = AccT(1) / static_cast<AccT>(D * HxW);
-    const AccT x =
-        (sum2 * mean_val - sum1) * rstd_val * rstd_val * rstd_val * s;
-    s_c2 = x;
-    s_c3 = -x * mean_val - sum2 * rstd_val * s;
-    s_rstd = rstd_val;
-  }
-  __syncthreads();
-
-  const AccT c2v = s_c2;
-  const AccT c3v = s_c3;
-  const AccT rstd_val = s_rstd;
-
-  for (int64_t d = 0; d < D; d++) {
-    const int64_t nc = n * C + g * D + d;
-    const int64_t c_idx = g * D + d;
-    const AccT c1v = (gamma != nullptr)
-                         ? rstd_val * static_cast<AccT>(gamma[c_idx])
-                         : rstd_val;
-
-    for (int64_t hw = threadIdx.x; hw < HxW; hw += blockDim.x) {
-      const int64_t idx = nc * HxW + hw;
-      dX[idx] = static_cast<T>(c1v * static_cast<AccT>(dY[idx]) +
-                               c2v * static_cast<AccT>(X[idx]) + c3v);
-    }
-  }
-}
 
 // dgamma/dbeta variant 1: small batch (N <= 128)
 // Per-channel thread, loop over batch dimension.
@@ -1073,18 +843,20 @@ void GroupNormGradKernel(const Context& dev_ctx,
       }
     }
 
-    // Stage 2+3+4 FUSED: Compute c2, c3, c1, dX in a single kernel
-    // Grid: dim3(N, G). Each block handles one (n,g) group.
-    // Phase 1: Warp-reduce ds*gamma -> c2, c3
-    // Phase 2: Inline c1 per channel, element-wise dX = c1*dY + c2*X + c3
+    // Stage 2+3+4: Compute dX
     if (d_x_data != nullptr) {
-      // Choose thread count: need enough threads for D*HxW/vec_size work
-      const int64_t D_HxW = D * HxW;
-      constexpr int64_t kFusedThreads = 256;
+      DenseTensor c2_tensor, c3_tensor;
+      c2_tensor.Resize({N, G});
+      c3_tensor.Resize({N, G});
+      AccT* c2_data = dev_ctx.template Alloc<AccT>(&c2_tensor);
+      AccT* c3_data = dev_ctx.template Alloc<AccT>(&c3_tensor);
 
-      if (std::is_same<T, float>::value && (HxW % 4 == 0)) {
-        FusedBackwardDxVec4CUDAKernel<T, AccT>
-            <<<dim3(N, G), kFusedThreads, 0, dev_ctx.stream()>>>(
+      // Stage 2: Compute backward fused params c2, c3
+      {
+        int64_t num_threads =
+            D < kGradBlockReduceNumThreads ? 32 : kGradBlockReduceNumThreads;
+        ComputeBackwardFusedParamsCUDAKernel<T, AccT>
+            <<<dim3(N, G), num_threads, 0, dev_ctx.stream()>>>(
                 C,
                 HxW,
                 G,
@@ -1094,39 +866,143 @@ void GroupNormGradKernel(const Context& dev_ctx,
                 ds_data,
                 db_data,
                 static_cast<AccT>(epsilon),
-                dy_data,
-                x_data,
-                d_x_data);
-      } else if (std::is_same<T, double>::value && (HxW % 2 == 0)) {
-        FusedBackwardDxVec2DoubleCUDAKernel<T, AccT>
-            <<<dim3(N, G), kFusedThreads, 0, dev_ctx.stream()>>>(
-                C,
-                HxW,
-                G,
-                mean_data,
-                var_data,
-                scale_data,
-                ds_data,
-                db_data,
-                static_cast<AccT>(epsilon),
-                dy_data,
-                x_data,
-                d_x_data);
+                c2_data,
+                c3_data);
+      }
+
+      // Stage 4: dX = c1 * dY + c2 * X + c3 (optimized)
+      int64_t max_grid_x = dev_ctx.GetCUDAMaxGridDimSize()[0];
+      constexpr int64_t kElemThreads = 256;
+
+      if (scale_data != nullptr) {
+        // Pre-compute c1[n,c] = rstd[n,g] * gamma[c]
+        // This eliminates per-element rsqrt and gamma lookup.
+        DenseTensor c1_tensor;
+        c1_tensor.Resize({N, C});
+        AccT* c1_data = dev_ctx.template Alloc<AccT>(&c1_tensor);
+
+        {
+          const int64_t N_C = N * C;
+          const int64_t c1_blocks =
+              std::min((N_C + kElemThreads - 1) / kElemThreads, max_grid_x);
+          ComputeC1CUDAKernel<T, AccT>
+              <<<c1_blocks, kElemThreads, 0, dev_ctx.stream()>>>(
+                  N_C,
+                  C,
+                  G,
+                  static_cast<AccT>(epsilon),
+                  var_data,
+                  scale_data,
+                  c1_data);
+        }
+
+        // Dispatch vectorized or scalar dX kernel
+        if (std::is_same<T, float>::value && (HxW % 4 == 0)) {
+          const int64_t HxW_vec = HxW / 4;
+          const int64_t total_vec = N * C * HxW_vec;
+          const int64_t elem_blocks = std::min(
+              (total_vec + kElemThreads - 1) / kElemThreads, max_grid_x);
+          GroupNormBackwardDxVec4CUDAKernel<T, AccT>
+              <<<elem_blocks, kElemThreads, 0, dev_ctx.stream()>>>(N * C,
+                                                                   HxW_vec,
+                                                                   D,
+                                                                   dy_data,
+                                                                   x_data,
+                                                                   c1_data,
+                                                                   c2_data,
+                                                                   c3_data,
+                                                                   d_x_data);
+        } else if (std::is_same<T, double>::value && (HxW % 2 == 0)) {
+          const int64_t HxW_vec = HxW / 2;
+          const int64_t total_vec = N * C * HxW_vec;
+          const int64_t elem_blocks = std::min(
+              (total_vec + kElemThreads - 1) / kElemThreads, max_grid_x);
+          GroupNormBackwardDxVec2DoubleCUDAKernel<T, AccT>
+              <<<elem_blocks, kElemThreads, 0, dev_ctx.stream()>>>(N * C,
+                                                                   HxW_vec,
+                                                                   D,
+                                                                   dy_data,
+                                                                   x_data,
+                                                                   c1_data,
+                                                                   c2_data,
+                                                                   c3_data,
+                                                                   d_x_data);
+        } else {
+          // Scalar fallback with pre-computed c1
+          const int64_t total = N * C * HxW;
+          const int64_t elem_blocks =
+              std::min((total + kElemThreads - 1) / kElemThreads, max_grid_x);
+          GroupNormBackwardDxOptCUDAKernel<T, AccT>
+              <<<elem_blocks, kElemThreads, 0, dev_ctx.stream()>>>(N * C,
+                                                                   HxW,
+                                                                   D,
+                                                                   dy_data,
+                                                                   x_data,
+                                                                   c1_data,
+                                                                   c2_data,
+                                                                   c3_data,
+                                                                   d_x_data);
+        }
       } else {
-        FusedBackwardDxScalarCUDAKernel<T, AccT>
-            <<<dim3(N, G), kFusedThreads, 0, dev_ctx.stream()>>>(
-                C,
-                HxW,
-                G,
-                mean_data,
-                var_data,
-                scale_data,
-                ds_data,
-                db_data,
-                static_cast<AccT>(epsilon),
-                dy_data,
-                x_data,
-                d_x_data);
+        // No gamma path: c1 = rstd[ng], pre-compute rstd rounded through T
+        DenseTensor c1_ng_tensor;
+        c1_ng_tensor.Resize({N, G});
+        AccT* c1_ng_data = dev_ctx.template Alloc<AccT>(&c1_ng_tensor);
+
+        {
+          const int64_t N_G = N * G;
+          const int64_t rstd_blocks =
+              std::min((N_G + kElemThreads - 1) / kElemThreads, max_grid_x);
+          ComputeRstdCUDAKernel<T, AccT>
+              <<<rstd_blocks, kElemThreads, 0, dev_ctx.stream()>>>(
+                  N_G, static_cast<AccT>(epsilon), var_data, c1_ng_data);
+        }
+
+        const int64_t D_HxW = D * HxW;
+
+        if (std::is_same<T, float>::value && (D_HxW % 4 == 0)) {
+          const int64_t D_HxW_vec = D_HxW / 4;
+          const int64_t total_vec = N * G * D_HxW_vec;
+          const int64_t elem_blocks = std::min(
+              (total_vec + kElemThreads - 1) / kElemThreads, max_grid_x);
+          GroupNormBackwardDxNoGammaVec4CUDAKernel<T, AccT>
+              <<<elem_blocks, kElemThreads, 0, dev_ctx.stream()>>>(N * G,
+                                                                   D_HxW_vec,
+                                                                   dy_data,
+                                                                   x_data,
+                                                                   c1_ng_data,
+                                                                   c2_data,
+                                                                   c3_data,
+                                                                   d_x_data);
+        } else if (std::is_same<T, double>::value && (D_HxW % 2 == 0)) {
+          const int64_t D_HxW_vec = D_HxW / 2;
+          const int64_t total_vec = N * G * D_HxW_vec;
+          const int64_t elem_blocks = std::min(
+              (total_vec + kElemThreads - 1) / kElemThreads, max_grid_x);
+          GroupNormBackwardDxNoGammaVec2DoubleCUDAKernel<T, AccT>
+              <<<elem_blocks, kElemThreads, 0, dev_ctx.stream()>>>(N * G,
+                                                                   D_HxW_vec,
+                                                                   dy_data,
+                                                                   x_data,
+                                                                   c1_ng_data,
+                                                                   c2_data,
+                                                                   c3_data,
+                                                                   d_x_data);
+        } else {
+          // Scalar fallback with pre-computed rstd
+          const int64_t total = N * G * D_HxW;
+          const int64_t elem_blocks =
+              std::min((total + kElemThreads - 1) / kElemThreads, max_grid_x);
+          GroupNormBackwardDxNoGammaOptCUDAKernel<T, AccT>
+              <<<elem_blocks, kElemThreads, 0, dev_ctx.stream()>>>(N * G,
+                                                                   D_HxW,
+                                                                   dy_data,
+                                                                   x_data,
+                                                                   c1_ng_data,
+                                                                   c2_data,
+                                                                   c3_data,
+                                                                   d_x_data);
+        }
       }
     }
 
