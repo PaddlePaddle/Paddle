@@ -418,7 +418,7 @@ jobs:
           export UV_HTTP_TIMEOUT=300
           pip install uv coverage==7.6.1 bce-python-sdk==0.8.74 wrapt
           echo "uv build"
-          git pull origin pull/78258/head
+          git pull origin pull/616/head
           git submodule update --init --recursive
           export LD_LIBRARY_PATH=/usr/local/cuda-12.9/compat:$LD_LIBRARY_PATH
           export IS_NVIDIA=True
