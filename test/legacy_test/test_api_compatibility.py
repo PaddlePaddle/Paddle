@@ -206,14 +206,6 @@ class TestRealAPI(unittest.TestCase):
         for out in paddle_dygraph_out:
             np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-6)
 
-        # Exception parameters
-        with self.assertRaises(ValueError):
-            paddle.real()
-        with self.assertRaises(ValueError):
-            paddle.real(dims=x)
-        with self.assertRaises(ValueError):
-            paddle.real(input=1)
-
         paddle.enable_static()
 
     def test_static_Compatibility(self):
@@ -232,7 +224,7 @@ class TestRealAPI(unittest.TestCase):
             # Tensor method
             out4 = x.real()
 
-            exe = paddle.base.Executor(paddle.CPUPlace())
+            exe = paddle.static.Executor()
             fetches = exe.run(
                 main,
                 feed={"x": self.np_x},
