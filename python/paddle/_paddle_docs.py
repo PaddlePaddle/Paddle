@@ -2491,7 +2491,6 @@ add_doc_and_signature(
         x (Tensor): Input Tensor. Must be one of the following types: bfloat16, float16, float32, float64,
             uint8, int8, int16, int32, int64. Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
 
     Keyword args:
         out(Tensor, optional): The output tensor.

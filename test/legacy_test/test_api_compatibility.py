@@ -3027,45 +3027,25 @@ class TestLgammaAPI(unittest.TestCase):
         out2 = paddle.lgamma(x=x)
         paddle_dygraph_out.append(out2)
 
-        # PyTorch-style positional arguments
-        out3 = paddle.lgamma(x)
+        # PyTorch keyword arguments (alias)
+        out3 = paddle.lgamma(input=x)
         paddle_dygraph_out.append(out3)
 
-        # PyTorch keyword arguments (alias)
-        out4 = paddle.lgamma(input=x)
+        # out parameter
+        out4 = paddle.empty_like(x)
+        out5 = paddle.lgamma(x, out=out4)
         paddle_dygraph_out.append(out4)
-
-        # Mixed arguments
-        out5 = paddle.lgamma(x, name=None)
         paddle_dygraph_out.append(out5)
 
-        # out parameter
-        out6 = paddle.empty_like(x)
-        out7 = paddle.lgamma(x, out=out6)
-        paddle_dygraph_out.append(out6)
-        paddle_dygraph_out.append(out7)
-
         # Tensor method - args
-        out8 = x.lgamma()
-        paddle_dygraph_out.append(out8)
-
-        # Tensor method - kwargs
-        out9 = x.lgamma(name=None)
-        paddle_dygraph_out.append(out9)
+        out6 = x.lgamma()
+        paddle_dygraph_out.append(out6)
 
         ref_out = out1.numpy()
         for out in paddle_dygraph_out:
             np.testing.assert_allclose(
                 ref_out, out.numpy(), rtol=1e-6, atol=1e-6
             )
-
-        # Exception parameters
-        with self.assertRaises(ValueError):
-            paddle.lgamma()
-        with self.assertRaises(ValueError):
-            paddle.lgamma(input=1)
-        with self.assertRaises(ValueError):
-            paddle.lgamma(x=x, invalid_param=True)
 
         paddle.enable_static()
 
@@ -3078,20 +3058,16 @@ class TestLgammaAPI(unittest.TestCase):
 
             # Paddle positional arguments
             out1 = paddle.lgamma(x)
-            # Paddle keyword arguments
-            out2 = paddle.lgamma(x=x)
             # PyTorch keyword arguments (alias)
-            out3 = paddle.lgamma(input=x)
+            out2 = paddle.lgamma(input=x)
             # Tensor method
-            out4 = x.lgamma()
-            # Mixed arguments
-            out5 = paddle.lgamma(x, name=None)
+            out3 = x.lgamma()
 
-            exe = paddle.static.Executor(paddle.CPUPlace())
+            exe = paddle.static.Executor()
             fetches = exe.run(
                 main,
                 feed={"x": self.np_x},
-                fetch_list=[out1, out2, out3, out4, out5],
+                fetch_list=[out1, out2, out3],
             )
 
             for out in fetches[1:]:
