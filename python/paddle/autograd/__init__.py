@@ -21,6 +21,7 @@ from ..base.dygraph.base import (  # noqa: F401
 )
 from . import (  # noqa: F401
     backward_mode,
+    function,
     ir_backward,
 )
 from .autograd import hessian, jacobian

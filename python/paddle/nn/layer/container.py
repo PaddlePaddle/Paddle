@@ -434,6 +434,33 @@ class ParameterDict(Layer):
                     )
                 self.add_parameter(kv[0], kv[1])
 
+    def pop(self, key: str) -> Tensor:
+        """Remove key from the ParameterDict and return its parameter.
+
+        Parameters:
+            key (str): the key to be removed.
+        """
+        v = self[key]
+        del self._parameters[key]
+        return v
+
+    def keys(self) -> Iterable[str]:
+        """Return an iterable of the keys in the ParameterDict.
+
+        Parameters:
+            None.
+        """
+        return self._parameters.keys()
+
+    def values(self) -> Iterable[Tensor]:
+        """Return an iterable of the parameters in the ParameterDict.
+
+        Parameters:
+            None.
+        """
+        with param_guard(self._parameters):
+            return list(self._parameters.values())
+
 
 class ParameterList(Layer):
     """ParameterList Container.

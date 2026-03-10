@@ -175,7 +175,7 @@ struct UniformGenerator {
 };
 
 template <typename T>
-void UniformRandom(const phi::GPUContext& dev_ctx,
+void UniformRandom(const GPUContext& dev_ctx,
                    DenseTensor* tensor,
                    int attr_seed,
                    float attr_min,
