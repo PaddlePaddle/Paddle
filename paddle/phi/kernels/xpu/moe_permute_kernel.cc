@@ -140,6 +140,16 @@ void MoePermuteKernel(const Context &dev_ctx,
                       DenseTensor *token_prob_unzipped,
                       DenseTensor *XScale_unzipped,
                       DenseTensor *expert_indices) {
+  PADDLE_ENFORCE_EQ(
+      return_expert_indices,
+      false,
+      common::errors::Unimplemented("moe_permute on XPU does not support "
+                                    "return_expert_indices=true yet."));
+  PADDLE_ENFORCE_EQ(
+      override_buffer_size,
+      -1,
+      common::errors::Unimplemented(
+          "moe_permute on XPU does not support override_buffer_size yet."));
   const int64_t rows = X.dims()[0];
   const int64_t cols = X.dims()[1];
   PADDLE_ENFORCE_LE(
