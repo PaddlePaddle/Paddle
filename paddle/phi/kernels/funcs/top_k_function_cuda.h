@@ -912,7 +912,7 @@ __global__ void GatherKthValue(const T* input,
 }
 
 template <typename T, typename IndexType>
-void LaunchGatherKthValue(const phi::GPUContext& dev_ctx,
+void LaunchGatherKthValue(const GPUContext& dev_ctx,
                           const T* input_data,
                           const IndexType num_cols,
                           const IndexType num_rows,
@@ -1079,7 +1079,7 @@ __global__ void AssignGradWithAxis(const T* grad_out,
 }
 // use the radix sort for the topk
 template <typename T>
-bool SortTopk(const phi::GPUContext& dev_ctx,
+bool SortTopk(const GPUContext& dev_ctx,
               const DenseTensor* input_tensor,
               const int64_t num_cols,
               const int64_t num_rows,
