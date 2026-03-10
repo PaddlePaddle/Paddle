@@ -487,6 +487,7 @@ def create_hf_ckpt_metadata(
         'F32': 'float32',
         'F64': 'float64',
         'BF16': 'bfloat16',
+        'I64': 'int64',
     }
 
     use_dist = paddle.distributed.get_world_size() > 1
