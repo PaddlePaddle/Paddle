@@ -141,7 +141,7 @@ __global__ void bias_relu_v4_half2(const int num,
                                    const half2* bias,
                                    half2* data,
                                    int K) {
-  using LoadT = phi::AlignedVector<half2, Half2VecSize>;
+  using LoadT = AlignedVector<half2, Half2VecSize>;
   LoadT data_vec;
   LoadT bias_vec;
   const int32_t global_thread_idx = blockIdx.x * blockDim.x + threadIdx.x;

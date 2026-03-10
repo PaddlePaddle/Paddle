@@ -171,8 +171,8 @@ __global__ void initialize_moe_routing_kernel(
   static_assert(VecSize <= TileSize,
                 "VecSize must be less than or equal to TileSize");
 
-  using LoadT = phi::AlignedVector<__nv_bfloat16, VecSize>;
-  using StoreT = phi::AlignedVector<__nv_fp8_e4m3, VecSize>;
+  using LoadT = AlignedVector<__nv_bfloat16, VecSize>;
+  using StoreT = AlignedVector<__nv_fp8_e4m3, VecSize>;
   LoadT src_vec;
   StoreT dest_vec;
 

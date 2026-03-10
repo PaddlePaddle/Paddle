@@ -338,7 +338,7 @@ ThreadVecReduce(const T* data,
                 const int shift,
                 const Reduction<T, AccT>& functor,
                 AccT default_value) {
-  using VecT = phi::AlignedVector<T, VecSize>;
+  using VecT = AlignedVector<T, VecSize>;
   AccT thread_val = default_value;
 
   // for memory align, handle the unaligned data in first block.
@@ -383,7 +383,7 @@ __device__ __forceinline__ void ThreadVecWriteVec(T* out,
                                                   IndexType dim_size,
                                                   const int shift,
                                                   Reduction<AccT, T> functor) {
-  using VecT = phi::AlignedVector<T, VecSize>;
+  using VecT = AlignedVector<T, VecSize>;
 
   // for memory align, handle the unaligned data in first block.
   IndexType offset = threadIdx.x;
@@ -457,7 +457,7 @@ __global__ void KeMatrixSoftmaxForward(T* softmax,
                                        IndexType dim_size) {
   constexpr int kVecSize =
       MaxWithOne<MATRIX_SOFTMAX_ALIGN_BYTES / sizeof(T)>::kValue;
-  using VecT = phi::AlignedVector<T, kVecSize>;
+  using VecT = AlignedVector<T, kVecSize>;
 
   uint64_t bid = blockIdx.x;
   T* batch_input = const_cast<T*>(src) + (uint64_t)bid * dim_size;
@@ -1525,8 +1525,8 @@ __device__ __forceinline__ void WriteResultsVectorized(
     const T* input,
     T* output,
     Function<T, AccT, T> function) {
-  using LoadT = phi::AlignedVector<T, VecSize>;
-  using StoreT = phi::AlignedVector<T, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
+  using StoreT = AlignedVector<T, VecSize>;
 
   int offset = threadIdx.x;
 
@@ -1601,8 +1601,8 @@ __device__ __forceinline__ void WriteResultsVectorized(
     const T* output,
     const T* gradOut,
     Function<T, AccT, T> function) {
-  using gradInputT = phi::AlignedVector<T, VecSize>;
-  using outputT = phi::AlignedVector<T, VecSize>;
+  using gradInputT = AlignedVector<T, VecSize>;
+  using outputT = AlignedVector<T, VecSize>;
 
   IndexType offset = threadIdx.x;
 
@@ -1812,8 +1812,8 @@ __global__ void SoftMaxBackward(T* gradInput,
                                 const T* output,
                                 const T* gradOut,
                                 IndexType classes) {
-  using LoadT = phi::AlignedVector<T, VecSize>;
-  using StoreT = phi::AlignedVector<T, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
+  using StoreT = AlignedVector<T, VecSize>;
 
   extern __shared__ unsigned char shared_mem[];
   auto sdata = reinterpret_cast<AccT*>(shared_mem);
@@ -1875,7 +1875,7 @@ __global__ void SoftMaxForwardSmem(T* output,
   auto smem_reduction_cache =
       reinterpret_cast<AccT*>(shared_mem + classes * sizeof(T));
 
-  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
   const LoadT* const input_vec_ptr = reinterpret_cast<const LoadT*>(input);
   LoadT* const smem_input_cache_vec_ptr =
       reinterpret_cast<LoadT*>(smem_input_cache);
@@ -1916,7 +1916,7 @@ __global__ void SoftMaxForwardSmem(T* output,
   Function<T, AccT, T> function(max_k, sumAll);
 
   // Use vectorized stores to write the output.
-  using StoreT = phi::AlignedVector<T, VecSize>;
+  using StoreT = AlignedVector<T, VecSize>;
   StoreT* output_vec_ptr = reinterpret_cast<StoreT*>(output);
   for (IndexType offset = threadIdx.x; offset * VecSize < classes;
        offset += blockDim.x) {
@@ -1955,7 +1955,7 @@ __global__ void SoftMaxBackwardSmem(T* gradInput,
   gradOut += static_cast<int64_t>(blockIdx.x) * classes;
 
   AccT threadSum = 0;
-  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
   const LoadT* const gradOutput_vec_ptr =
       reinterpret_cast<const LoadT*>(gradOut);
   LoadT* const smem_gradOutput_cache_vec_ptr =
@@ -1983,7 +1983,7 @@ __global__ void SoftMaxBackwardSmem(T* gradInput,
   Function<T, AccT, T> function(sum_k);
 
   // Use vectorized stores to write the output.
-  using StoreT = phi::AlignedVector<T, VecSize>;
+  using StoreT = AlignedVector<T, VecSize>;
   StoreT* gradInput_vec_ptr = reinterpret_cast<StoreT*>(gradInput);
   const LoadT* const output_vec_ptr = reinterpret_cast<const LoadT*>(output);
   for (int32_t offset = threadIdx.x; offset * VecSize < classes;

@@ -32,8 +32,8 @@ void ReduceGradFunctor(const Context& dev_ctx,
                        DenseTensor* output,
                        Functor functor,
                        const std::vector<int>& dims) {
-  auto x = phi::EigenTensor<T, D>::From(input0);
-  auto x_grad = phi::EigenTensor<T, D>::From(*output);
+  auto x = EigenTensor<T, D>::From(input0);
+  auto x_grad = EigenTensor<T, D>::From(*output);
   auto x_rank = static_cast<int>(x.dimensions().size());
   auto x_dims = input0.dims();
   auto reduced_dims_v = common::vectorize(x_dims);

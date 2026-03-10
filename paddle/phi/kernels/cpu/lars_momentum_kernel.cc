@@ -57,8 +57,8 @@ void LarsMomentumKernel(
     g_norm_t.Resize({1});
     dev_ctx.template Alloc<T>(&p_norm_t);
     dev_ctx.template Alloc<T>(&g_norm_t);
-    auto ep_norm = phi::EigenScalar<T>::From(p_norm_t);
-    auto eg_norm = phi::EigenScalar<T>::From(g_norm_t);
+    auto ep_norm = EigenScalar<T>::From(p_norm_t);
+    auto eg_norm = EigenScalar<T>::From(g_norm_t);
     ep_norm = p.square().sum().sqrt();
     eg_norm = rescale_g.square().sum().sqrt();
 

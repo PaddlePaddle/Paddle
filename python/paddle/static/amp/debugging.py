@@ -121,7 +121,7 @@ def _extract_compute_dtype(op, block):
 
         if compute_dtype is None:
             # Kernel dtype is mostly decided by the input's dtype.
-            # When the operator has no input, it mightly has a attr
+            # When the operator has no input, it might have an attr
             # such as dtype to specify the output's dtype.
             compute_dtype = var_dtype
         else:

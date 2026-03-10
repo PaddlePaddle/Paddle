@@ -47,10 +47,10 @@ struct RmsFunctor<T, GPUContext> {
     size_t limit = static_cast<size_t>(ms_tensor.numel());
     DenseRmspropGradFunctor<T> grad_func(grad_tensor.data<T>());
     funcs::ForRange<GPUContext> for_range(dev_ctx, limit);
-    using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
-    MPDType *master_out_data =
-        multi_precision ? dev_ctx.template Alloc<MPDType>(master_param_outs)
-                        : nullptr;
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    MT *master_out_data = multi_precision
+                              ? dev_ctx.template Alloc<MT>(master_param_outs)
+                              : nullptr;
 
     if (centered) {
       auto mg_tensor = mean_grad_opt.get_ptr();
@@ -68,29 +68,28 @@ struct RmsFunctor<T, GPUContext> {
                 "MeanGrad and MeanGradOut must be the same Tensor"));
       }
 
-      for_range(CenteredRmspropFunctor<T, MPDType, DenseRmspropGradFunctor<T>>(
+      for_range(CenteredRmspropFunctor<T, MT, DenseRmspropGradFunctor<T>>(
           dev_ctx.template Alloc<T>(param_out),
-          dev_ctx.template Alloc<MPDType>(mean_square_out),
-          dev_ctx.template Alloc<MPDType>(moment_out),
-          dev_ctx.template Alloc<MPDType>(mean_grad_out),
-          lr_tensor.data<MPDType>(),
+          dev_ctx.template Alloc<MT>(mean_square_out),
+          dev_ctx.template Alloc<MT>(moment_out),
+          dev_ctx.template Alloc<MT>(mean_grad_out),
+          lr_tensor.data<MT>(),
           master_out_data,
-          static_cast<MPDType>(decay_t),
-          static_cast<MPDType>(epsilon_t),
-          static_cast<MPDType>(momentum_t),
+          static_cast<MT>(decay_t),
+          static_cast<MT>(epsilon_t),
+          static_cast<MT>(momentum_t),
           grad_func));
     } else {
-      for_range(
-          UncenteredRmspropFunctor<T, MPDType, DenseRmspropGradFunctor<T>>(
-              dev_ctx.template Alloc<T>(param_out),
-              dev_ctx.template Alloc<MPDType>(mean_square_out),
-              dev_ctx.template Alloc<MPDType>(moment_out),
-              lr_tensor.data<MPDType>(),
-              master_out_data,
-              static_cast<MPDType>(decay_t),
-              static_cast<MPDType>(epsilon_t),
-              static_cast<MPDType>(momentum_t),
-              grad_func));
+      for_range(UncenteredRmspropFunctor<T, MT, DenseRmspropGradFunctor<T>>(
+          dev_ctx.template Alloc<T>(param_out),
+          dev_ctx.template Alloc<MT>(mean_square_out),
+          dev_ctx.template Alloc<MT>(moment_out),
+          lr_tensor.data<MT>(),
+          master_out_data,
+          static_cast<MT>(decay_t),
+          static_cast<MT>(epsilon_t),
+          static_cast<MT>(momentum_t),
+          grad_func));
     }
   }
 };
