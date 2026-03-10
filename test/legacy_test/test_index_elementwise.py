@@ -189,6 +189,98 @@ class TestIndexElementwiseBool4D_k3_AllDtypes(TestIndexElementwiseBool):
             self.test_dygraph()
 
 
+class TestIndexElementwiseGet0SizeInput(unittest.TestCase):
+    """Test IndexElementwiseGetKernel with 0-size input tensor (forward).
+
+    Regression tests for the bug where indexing a 0-size tensor with a
+    list-of-list index (integer advanced indexing) triggered CUDA error(700)
+    due to dereferencing a null data pointer.
+
+    When x.numel() == 0, x.data<T>() returns nullptr. The kernel must
+    early-return and zero-fill the output instead of launching the GPU kernel.
+    """
+
+    def _check_0size_getitem(self, dtype, idx, expected_shape):
+        """Helper: index a [0,5,4,3] tensor and verify shape + zero values."""
+        paddle.disable_static()
+        x = paddle.zeros([0, 5, 4, 3], dtype=dtype)
+        out = x[idx]
+        self.assertEqual(
+            list(out.shape),
+            expected_shape,
+            f"dtype={dtype}: expected shape {expected_shape}, got {list(out.shape)}",
+        )
+        # All output elements must be zero (no garbage from uninitialized memory)
+        np.testing.assert_array_equal(
+            out.numpy(),
+            np.zeros(expected_shape, dtype=out.numpy().dtype),
+            err_msg=f"dtype={dtype}: output should be all zeros",
+        )
+        paddle.enable_static()
+
+    def test_complex128_positive_indices(self):
+        """Reproduces original CUDA error(700): complex128, positive indices."""
+        # [[2,3,4],[1,2,5]] is a 2D index of shape [2,3] applied to dim 0
+        # Output shape = [2,3] + x.shape[1:] = [2,3,5,4,3]
+        self._check_0size_getitem(
+            'complex128', [[2, 3, 4], [1, 2, 5]], [2, 3, 5, 4, 3]
+        )
+
+    def test_complex128_negative_indices(self):
+        """Test complex128 with negative indices in the index list."""
+        self._check_0size_getitem(
+            'complex128', [[2, -3, -4], [-1, 2, 5]], [2, 3, 5, 4, 3]
+        )
+
+    def test_bool_positive_indices(self):
+        """Test bool dtype with positive indices."""
+        self._check_0size_getitem(
+            'bool', [[2, 3, 4], [1, 2, 5]], [2, 3, 5, 4, 3]
+        )
+
+    def test_bool_negative_indices(self):
+        """Test bool dtype with negative indices."""
+        self._check_0size_getitem(
+            'bool', [[2, -3, -4], [-1, 2, 5]], [2, 3, 5, 4, 3]
+        )
+
+    def test_float32(self):
+        """Test float32 dtype."""
+        self._check_0size_getitem(
+            'float32', [[2, 3, 4], [1, 2, 5]], [2, 3, 5, 4, 3]
+        )
+
+    def test_float64(self):
+        """Test float64 dtype."""
+        self._check_0size_getitem(
+            'float64', [[2, 3, 4], [1, 2, 5]], [2, 3, 5, 4, 3]
+        )
+
+    def test_int64(self):
+        """Test int64 dtype."""
+        self._check_0size_getitem(
+            'int64', [[2, 3, 4], [1, 2, 5]], [2, 3, 5, 4, 3]
+        )
+
+    def test_float16(self):
+        """Test float16 dtype."""
+        self._check_0size_getitem(
+            'float16', [[2, 3, 4], [1, 2, 5]], [2, 3, 5, 4, 3]
+        )
+
+    def test_1d_index_on_0size_input(self):
+        """Test 1D integer index on 0-size input (single dim advanced index)."""
+        paddle.disable_static()
+        # x.shape=[0,5,4], index [2,3] for dim 0 → result [2,5,4]
+        x = paddle.zeros([0, 5, 4], dtype='float32')
+        out = x[[2, 3]]
+        self.assertEqual(list(out.shape), [2, 5, 4])
+        np.testing.assert_array_equal(
+            out.numpy(), np.zeros([2, 5, 4], dtype='float32')
+        )
+        paddle.enable_static()
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

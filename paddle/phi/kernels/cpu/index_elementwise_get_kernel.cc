@@ -117,6 +117,10 @@ void IndexElementwiseGetKernel(const Context& dev_ctx,
   }
   dev_ctx.template Alloc<T>(out);
   if (out->numel() == 0) return;
+  if (x.numel() == 0) {
+    memset(out->data<T>(), 0, out->numel() * sizeof(T));
+    return;
+  }
   CPUIndexElementwiseGetKernel<T, int64_t>(dev_ctx,
                                            x,
                                            index,

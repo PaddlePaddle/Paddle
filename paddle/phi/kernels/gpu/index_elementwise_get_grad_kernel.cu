@@ -418,6 +418,7 @@ void IndexElementwiseGetGradKernel(const Context& dev_ctx,
   }
   funcs::set_constant(dev_ctx, x_grad, static_cast<float>(0));
   if (out_grad.numel() == 0) return;
+  if (x_grad->numel() == 0) return;
 
   const auto& index_type = index[0]->dtype();
   PADDLE_ENFORCE_EQ(index_type == phi::DataType::INT64,

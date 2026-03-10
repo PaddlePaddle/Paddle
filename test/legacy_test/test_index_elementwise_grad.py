@@ -214,6 +214,49 @@ class TestIndexElementwiseGradAllIndex(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestIndexElementwiseGet0SizeInputGrad(unittest.TestCase):
+    """Test IndexElementwiseGetGradKernel with 0-size input tensor (backward).
+
+    When x.numel() == 0, x_grad has the same shape (also numel=0).
+    The grad kernel must not attempt to write to the null x_grad pointer.
+    """
+
+    def test_grad_0size_input_float32(self):
+        """Backward should not crash; x_grad is 0-size matching x."""
+        paddle.disable_static()
+        x = paddle.zeros([0, 5, 4, 3], dtype='float32')
+        x.stop_gradient = False
+        out = x[[[2, 3, 4], [1, 2, 5]]]
+        self.assertEqual(list(out.shape), [2, 3, 5, 4, 3])
+        out.backward(paddle.zeros_like(out))
+        self.assertIsNotNone(x.grad)
+        self.assertEqual(list(x.grad.shape), [0, 5, 4, 3])
+        self.assertEqual(x.grad.numel(), 0)
+        paddle.enable_static()
+
+    def test_grad_0size_input_float64(self):
+        """Backward with float64 on 0-size input."""
+        paddle.disable_static()
+        x = paddle.zeros([0, 5, 4, 3], dtype='float64')
+        x.stop_gradient = False
+        out = x[[[2, 3, 4], [1, 2, 5]]]
+        out.backward(paddle.zeros_like(out))
+        self.assertIsNotNone(x.grad)
+        self.assertEqual(list(x.grad.shape), [0, 5, 4, 3])
+        paddle.enable_static()
+
+    def test_grad_0size_input_negative_indices(self):
+        """Backward with negative indices; should not crash."""
+        paddle.disable_static()
+        x = paddle.zeros([0, 5, 4, 3], dtype='float32')
+        x.stop_gradient = False
+        out = x[[[2, -3, -4], [-1, 2, 5]]]
+        out.backward(paddle.zeros_like(out))
+        self.assertIsNotNone(x.grad)
+        self.assertEqual(list(x.grad.shape), [0, 5, 4, 3])
+        paddle.enable_static()
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

@@ -171,6 +171,11 @@ void IndexElementwiseGetKernel(const Context& dev_ctx,
 
   dev_ctx.template Alloc<T>(out);
   if (out->numel() == 0) return;
+  if (x.numel() == 0) {
+    phi::backends::gpu::GpuMemsetAsync(
+        out->data<T>(), 0, out->numel() * sizeof(T), dev_ctx.stream());
+    return;
+  }
 
   if (funcs::IsInUint32Range(x.numel() * sizeof(T), out->numel() * sizeof(T))) {
     GPUIndexElementwiseGetKernel<T>(dev_ctx,
