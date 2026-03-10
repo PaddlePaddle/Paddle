@@ -541,7 +541,7 @@ std::unique_ptr<DenseTensorIterator> DenseTensorIteratorBase::split(int dim) {
   int64_t remaining_size = shape_[dim] - split_size;
 
   split_iter->narrow(dim, 0, split_size);
-  split_iter->final_output_ = !has_overlap;
+  split_iter->final_output_ &= !has_overlap;
 
   narrow(dim, split_size, remaining_size);
   accumulate_ |= has_overlap;
