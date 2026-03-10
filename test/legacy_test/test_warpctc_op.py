@@ -873,7 +873,9 @@ class TestCTCLossZeroSizeTensor(unittest.TestCase):
             logits, labels, input_lengths, labels_length, 0, 'none'
         )
         self.assertEqual(loss.shape, [N])
-        np.testing.assert_array_equal(loss.numpy(), np.zeros(N, dtype='float32'))
+        np.testing.assert_array_equal(
+            loss.numpy(), np.zeros(N, dtype='float32')
+        )
 
     def test_zero_size_input_lengths(self):
         """input_lengths shape [0] -> logits_length_cpu.numel() == 0"""
@@ -888,7 +890,9 @@ class TestCTCLossZeroSizeTensor(unittest.TestCase):
             logits, labels, input_lengths, labels_length, 0, 'none'
         )
         self.assertEqual(loss.shape, [N])
-        np.testing.assert_array_equal(loss.numpy(), np.zeros(N, dtype='float32'))
+        np.testing.assert_array_equal(
+            loss.numpy(), np.zeros(N, dtype='float32')
+        )
 
     def test_zero_size_labels_length(self):
         """labels_length shape [0] -> labels_length_cpu.numel() == 0"""
@@ -903,7 +907,9 @@ class TestCTCLossZeroSizeTensor(unittest.TestCase):
             logits, labels, input_lengths, labels_length, 0, 'none'
         )
         self.assertEqual(loss.shape, [N])
-        np.testing.assert_array_equal(loss.numpy(), np.zeros(N, dtype='float32'))
+        np.testing.assert_array_equal(
+            loss.numpy(), np.zeros(N, dtype='float32')
+        )
 
     def test_zero_size_label_various_reductions(self):
         """0-size label with different reduction modes and norm_by_times"""
