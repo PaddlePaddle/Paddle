@@ -4380,11 +4380,11 @@ All parameter, weight, gradient are variables in Paddle.
       .value("FLOAT64", DataType::FLOAT64)
       .value("COMPLEX64", DataType::COMPLEX64)
       .value("COMPLEX128", DataType::COMPLEX128)
-      .value("PSTRING", DataType::PSTRING)
       .value("FLOAT16", DataType::FLOAT16)
       .value("BFLOAT16", DataType::BFLOAT16)
       .value("FLOAT8_E4M3FN", DataType::FLOAT8_E4M3FN)
       .value("FLOAT8_E5M2", DataType::FLOAT8_E5M2)
+      .value("PSTRING", DataType::PSTRING)
       .value("ALL_DTYPE", DataType::ALL_DTYPE)
       .export_values()
       .def("__dlpack_data_type__", [](const DataType &self) {

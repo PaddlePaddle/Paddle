@@ -1882,8 +1882,8 @@ __global__ void cache_int8_kernel(
     const int round_type,
     const float max_bound,
     const float min_bound) {
-  using LoadT = phi::AlignedVector<T, VecSize>;
-  using LoadKVT = phi::AlignedVector<uint8_t, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
+  using LoadKVT = AlignedVector<uint8_t, VecSize>;
   LoadT src_vec;
   LoadKVT cache_vec;
 
@@ -1981,7 +1981,7 @@ __global__ void cache_kernel(
     const int block_size,
     const int pre_cache_length,
     const int elem_cnt) {
-  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
   LoadT src_vec;
 
   uint32_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
@@ -2044,8 +2044,8 @@ __global__ void write_pre_cache_int8_to_cache(
     const int round_type,
     const float max_bound,
     const float min_bound) {
-  using LoadT = phi::AlignedVector<T, VecSize>;
-  using LoadKVT = phi::AlignedVector<uint8_t, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
+  using LoadKVT = AlignedVector<uint8_t, VecSize>;
   LoadT src_vec;
   LoadKVT cache_vec;
 
@@ -2135,7 +2135,7 @@ __global__ void write_pre_cache_to_cache(
     const int block_size,
     const int pre_cache_length,
     const int elem_cnt) {
-  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
   LoadT src_vec;
 
   int64_t global_thread_idx =
@@ -2347,8 +2347,8 @@ __global__ void quant_write_cache_int8_kernel(
   const int qkv_id = blockIdx.z;
   const int head_group_size = q_num_heads / kv_num_heads;
 
-  using InVec = phi::AlignedVector<T, VecSize>;
-  using OutVec = phi::AlignedVector<uint8_t, VecSize>;
+  using InVec = AlignedVector<T, VecSize>;
+  using OutVec = AlignedVector<uint8_t, VecSize>;
 
   InVec in_vec;
   OutVec out_vec;
@@ -2580,9 +2580,9 @@ __global__ void VariableLengthRotaryKernel(
     const int num_head,
     const int seq_len,
     const int last_dim) {
-  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
   constexpr int HalfVecSize = VecSize / 2;
-  using LoadEmbT = phi::AlignedVector<float, HalfVecSize>;
+  using LoadEmbT = AlignedVector<float, HalfVecSize>;
   LoadT src_vec;
   LoadEmbT cos_emb_vec;
   LoadEmbT sin_emb_vec;
@@ -2642,8 +2642,8 @@ __global__ void NeoxVariableLengthRotaryKernel(
     const int seq_len,
     const int last_dim) {
   // [token_num, 2, num_head, dim_head / 2]
-  using LoadT = phi::AlignedVector<T, VecSize>;
-  using LoadEmbT = phi::AlignedVector<float, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
+  using LoadEmbT = AlignedVector<float, VecSize>;
   LoadT left_vec;
   LoadT right_vec;
   LoadEmbT cos_emb_vec;
@@ -2764,9 +2764,9 @@ __global__ void GQAVariableLengthRotaryKernel(
     const int kv_num_head,
     const int seq_len,
     const int last_dim) {
-  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
   constexpr int HalfVecSize = VecSize / 2;
-  using LoadEmbT = phi::AlignedVector<float, HalfVecSize>;
+  using LoadEmbT = AlignedVector<float, HalfVecSize>;
   LoadT src_vec;
   LoadEmbT cos_emb_vec;
   LoadEmbT sin_emb_vec;
@@ -2826,8 +2826,8 @@ __global__ void GQANeoxVariableLengthRotaryKernel(
     const int seq_len,
     const int last_dim) {
   // [token_num, 2, q_num_head, dim_head / 2]
-  using LoadT = phi::AlignedVector<T, VecSize>;
-  using LoadEmbT = phi::AlignedVector<float, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
+  using LoadEmbT = AlignedVector<float, VecSize>;
   LoadT left_vec;
   LoadT right_vec;
   LoadEmbT cos_emb_vec;
@@ -2949,11 +2949,11 @@ __global__ void VariableLengthRotaryKernel(
     const int num_head,
     const int seq_len,
     const int last_dim) {
-  using LoadT = phi::AlignedVector<int, VecSize>;
-  using LoadBiasT = phi::AlignedVector<T, VecSize>;
-  using LoadScaleT = phi::AlignedVector<float, VecSize>;
+  using LoadT = AlignedVector<int, VecSize>;
+  using LoadBiasT = AlignedVector<T, VecSize>;
+  using LoadScaleT = AlignedVector<float, VecSize>;
   constexpr int HalfVecSize = VecSize / 2;
-  using LoadEmbT = phi::AlignedVector<float, HalfVecSize>;
+  using LoadEmbT = AlignedVector<float, HalfVecSize>;
   LoadT src_vec;
   LoadBiasT bias_vec;
   LoadScaleT out_scale_vec;
@@ -3030,10 +3030,10 @@ __global__ void NeoxVariableLengthRotaryKernel(
     const int num_head,
     const int seq_len,
     const int last_dim) {
-  using LoadT = phi::AlignedVector<int, VecSize>;
-  using LoadBiasT = phi::AlignedVector<T, VecSize>;
-  using LoadScaleT = phi::AlignedVector<float, VecSize>;
-  using LoadEmbT = phi::AlignedVector<float, VecSize>;
+  using LoadT = AlignedVector<int, VecSize>;
+  using LoadBiasT = AlignedVector<T, VecSize>;
+  using LoadScaleT = AlignedVector<float, VecSize>;
+  using LoadEmbT = AlignedVector<float, VecSize>;
   LoadT left_vec;
   LoadT right_vec;
   LoadBiasT left_bias_vec;
@@ -3184,11 +3184,11 @@ __global__ void GQAVariableLengthRotaryKernel(
     const int kv_num_head,
     const int seq_len,
     const int last_dim) {
-  using LoadT = phi::AlignedVector<int, VecSize>;
-  using LoadBiasT = phi::AlignedVector<T, VecSize>;
-  using LoadScaleT = phi::AlignedVector<float, VecSize>;
+  using LoadT = AlignedVector<int, VecSize>;
+  using LoadBiasT = AlignedVector<T, VecSize>;
+  using LoadScaleT = AlignedVector<float, VecSize>;
   constexpr int HalfVecSize = VecSize / 2;
-  using LoadEmbT = phi::AlignedVector<float, HalfVecSize>;
+  using LoadEmbT = AlignedVector<float, HalfVecSize>;
   LoadT src_vec;
   LoadBiasT bias_vec;
   LoadScaleT out_scale_vec;
@@ -3263,10 +3263,10 @@ __global__ void GQANeoxVariableLengthRotaryKernel(
     const int kv_num_head,
     const int seq_len,
     const int last_dim) {
-  using LoadT = phi::AlignedVector<int, VecSize>;
-  using LoadBiasT = phi::AlignedVector<T, VecSize>;
-  using LoadScaleT = phi::AlignedVector<float, VecSize>;
-  using LoadEmbT = phi::AlignedVector<float, VecSize>;
+  using LoadT = AlignedVector<int, VecSize>;
+  using LoadBiasT = AlignedVector<T, VecSize>;
+  using LoadScaleT = AlignedVector<float, VecSize>;
+  using LoadEmbT = AlignedVector<float, VecSize>;
   LoadT left_vec;
   LoadT right_vec;
   LoadBiasT left_bias_vec;
@@ -3414,9 +3414,9 @@ __global__ void VariableLengthRotaryKernel(
     const int num_head,
     const int seq_len,
     const int last_dim) {
-  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
   constexpr int HalfVecSize = VecSize / 2;
-  using LoadEmbT = phi::AlignedVector<float, HalfVecSize>;
+  using LoadEmbT = AlignedVector<float, HalfVecSize>;
   LoadT src_vec;
   LoadT bias_vec;
   LoadEmbT cos_emb_vec;
@@ -3486,8 +3486,8 @@ __global__ void NeoxVariableLengthRotaryKernel(
     const int num_head,
     const int seq_len,
     const int last_dim) {
-  using LoadT = phi::AlignedVector<T, VecSize>;
-  using LoadEmbT = phi::AlignedVector<float, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
+  using LoadEmbT = AlignedVector<float, VecSize>;
   LoadT left_vec;
   LoadT right_vec;
   LoadT left_bias_vec;
@@ -3624,9 +3624,9 @@ __global__ void GQAVariableLengthRotaryKernel(
     const int kv_num_head,
     const int seq_len,
     const int last_dim) {
-  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
   constexpr int HalfVecSize = VecSize / 2;
-  using LoadEmbT = phi::AlignedVector<float, HalfVecSize>;
+  using LoadEmbT = AlignedVector<float, HalfVecSize>;
   LoadT src_vec;
   LoadT bias_vec;
   LoadEmbT cos_emb_vec;
@@ -3694,8 +3694,8 @@ __global__ void GQANeoxVariableLengthRotaryKernel(
     const int kv_num_head,
     const int seq_len,
     const int last_dim) {
-  using LoadT = phi::AlignedVector<T, VecSize>;
-  using LoadEmbT = phi::AlignedVector<float, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
+  using LoadEmbT = AlignedVector<float, VecSize>;
   LoadT left_vec;
   LoadT right_vec;
   LoadT left_bias_vec;
@@ -3827,10 +3827,10 @@ __global__ void ShiftSmoothQuant(const T *input,
                                  int cols,
                                  float quant_max_bound,
                                  float quant_min_bound) {
-  phi::AlignedVector<T, VecSize> in_vec;
-  phi::AlignedVector<T, VecSize> shift_vec;
-  phi::AlignedVector<T, VecSize> smooth_vec;
-  phi::AlignedVector<int8_t, VecSize> out_vec;
+  AlignedVector<T, VecSize> in_vec;
+  AlignedVector<T, VecSize> shift_vec;
+  AlignedVector<T, VecSize> smooth_vec;
+  AlignedVector<int8_t, VecSize> out_vec;
 
   for (int64_t linear_id =
            static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
@@ -3867,10 +3867,10 @@ __global__ void ShiftSmooth(const T *input,
                             T *out,
                             int num,
                             int cols) {
-  phi::AlignedVector<T, VecSize> in_vec;
-  phi::AlignedVector<T, VecSize> shift_vec;
-  phi::AlignedVector<T, VecSize> smooth_vec;
-  phi::AlignedVector<T, VecSize> out_vec;
+  AlignedVector<T, VecSize> in_vec;
+  AlignedVector<T, VecSize> shift_vec;
+  AlignedVector<T, VecSize> smooth_vec;
+  AlignedVector<T, VecSize> out_vec;
 
   for (int64_t linear_id =
            static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
@@ -3998,7 +3998,7 @@ __global__ void fusedQKV_transpose_split_kernel(T *q_buf,
   int64_t global_thread_idx =
       static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
       static_cast<int64_t>(threadIdx.x);
-  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
   LoadT src_vec;
 
   const int fused_hidden_size = (q_head_num + 2 * kv_head_num) * size_per_head;
@@ -4101,7 +4101,7 @@ __global__ void write_pre_cache_to_kv_buffer(
   int64_t global_thread_idx =
       static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
       static_cast<int64_t>(threadIdx.x);
-  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
   LoadT src_vec;
 
   for (int32_t linear_index = global_thread_idx * VecSize,
@@ -4159,7 +4159,7 @@ __global__ void fusedQKV_transpose_split_kernel(T *q_buf,
   int64_t global_thread_idx =
       static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
       static_cast<int64_t>(threadIdx.x);
-  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
   LoadT src_vec;
 
   for (int32_t linear_index = global_thread_idx * VecSize,
@@ -4287,7 +4287,7 @@ __global__ void GetDecoderTensorKernel(const T *qkv_out,
                                        const int dim_head,
                                        const int elem_nums,
                                        const int qkv_out_nums) {
-  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
   LoadT src_vec;
   const int32_t fused_hidden_size = (q_head_num + 2 * kv_head_num) * dim_head;
   const int global_idx = blockDim.x * blockIdx.x + threadIdx.x;
@@ -4311,7 +4311,7 @@ __global__ void GetDecoderRoPEKernel(const T *rope_emb,
                                      const int seq_len,
                                      const int dim_head,
                                      const int elem_nums) {
-  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
   LoadT src_vec;
   const T *rope_cos_emb = rope_emb;
   const T *rope_sin_emb = rope_emb + rope_bsz * seq_len * dim_head;
@@ -4474,7 +4474,7 @@ __global__ void TransposeRemovingPadding(const T *input_data,
       static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
       static_cast<int64_t>(threadIdx.x);
   const int dim_embed = num_head * head_dim;
-  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
   LoadT src_vec;
 
   for (int32_t linear_index = idx * VecSize,

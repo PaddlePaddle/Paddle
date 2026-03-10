@@ -1109,13 +1109,13 @@ void DispatchWithDtype(const Context &dev_ctx,
 
     DenseTensor qk_sum_max_split_seq;
     // 2 means sum and max.
-    qk_sum_max_split_seq.Resize({{bsz, num_head, split_seq, 2}});
+    qk_sum_max_split_seq.Resize({bsz, num_head, split_seq, 2});
     dev_ctx.template Alloc<float>(&qk_sum_max_split_seq,
                                   qk_sum_max_split_seq.numel() * sizeof(float));
     params.qk_sum_max_split_seq = qk_sum_max_split_seq.data<float>();
 
     DenseTensor split_out;
-    split_out.Resize({{bsz, num_head, split_seq, dim_head}});
+    split_out.Resize({bsz, num_head, split_seq, dim_head});
     dev_ctx.template Alloc<float>(&split_out,
                                   split_out.numel() * sizeof(float));
     params.split_out = split_out.data<float>();

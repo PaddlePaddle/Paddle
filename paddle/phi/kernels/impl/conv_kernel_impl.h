@@ -28,17 +28,17 @@ namespace phi {
 template <typename T, typename Context>
 void ConvKernelImpl(const Context& dev_ctx,
                     const DenseTensor& input,
-                    const DenseTensor& filter_t,
+                    const DenseTensor& filter,
                     const std::vector<int>& strides,
-                    const std::vector<int>& paddings_t,
+                    const std::vector<int>& paddings,
                     const std::string& padding_algorithm,
                     int groups,
-                    const std::vector<int>& dilations_t,
+                    const std::vector<int>& dilations,
                     const std::string& data_format,
                     DenseTensor* output) {
-  std::vector<int> paddings = paddings_t;
-  std::vector<int> dilations = dilations_t;
-  DenseTensor filter = filter_t;
+  std::vector<int> paddings_ = paddings;
+  std::vector<int> dilations_ = dilations;
+  DenseTensor filter_ = filter;
   if (input.numel() == 0 || filter.numel() == 0) {
     Full<T, Context>(dev_ctx, output->dims(), 0, output);
     return;
@@ -73,7 +73,7 @@ void ConvKernelImpl(const Context& dev_ctx,
 
   std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
-      &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
+      &paddings_, &dilations_, padding_algorithm, in_data_dims, strides, ksize);
 
   const int64_t batch_size = transformed_input.dims()[0];
 
@@ -108,7 +108,7 @@ void ConvKernelImpl(const Context& dev_ctx,
 
   DDim col_matrix_shape = flatten_to_2d(col_shape, data_dim);
 
-  bool is_expand = IsExpand(filter_shape_vec, strides, paddings, dilations);
+  bool is_expand = IsExpand(filter_shape_vec, strides, paddings_, dilations_);
 
   DenseTensor col;
   // col_matrix shares the same piece of data with col,
@@ -128,7 +128,7 @@ void ConvKernelImpl(const Context& dev_ctx,
 
   DDim filter_matrix_shape = {filter.dims()[0],
                               filter.numel() / filter.dims()[0]};
-  filter.Resize(filter_matrix_shape);
+  filter_.Resize(filter_matrix_shape);
 
   DDim output_matrix_shape = {
       transformed_output.dims()[1],
@@ -159,19 +159,20 @@ void ConvKernelImpl(const Context& dev_ctx,
       } else if (data_dim == 2U) {
         im2col(dev_ctx,
                in_slice,
-               dilations,
+               dilations_,
                strides,
                std::vector<int>{
-                   paddings[0], paddings[2], paddings[1], paddings[3]},
+                   paddings_[0], paddings_[2], paddings_[1], paddings_[3]},
                &col);
 
       } else if (data_dim == 3U) {
-        vol2col(dev_ctx, in_slice, dilations, strides, paddings, &col);
+        vol2col(dev_ctx, in_slice, dilations_, strides, paddings_, &col);
       }
 
       // gemm
       DenseTensor out_slice = out_batch.Slice(g * out_step, (g + 1) * out_step);
-      DenseTensor filter_slice = filter.Slice(g * out_step, (g + 1) * out_step);
+      DenseTensor filter_slice =
+          filter_.Slice(g * out_step, (g + 1) * out_step);
       blas.MatMul(
           filter_slice, false, col_matrix, false, T(1.0), &out_slice, T(0.0));
     }

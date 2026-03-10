@@ -13,6 +13,8 @@
 # limitations under the License.
 
 # isort: skip_file
+from .meta_parallel_base import MetaParallelBase  # noqa: F401
+
 from .parallel_layers import (  # noqa: F401
     ColumnParallelLinear,
     LayerDesc,
@@ -25,8 +27,13 @@ from .parallel_layers import (  # noqa: F401
     VocabParallelEmbedding,
     get_rng_state_tracker,
     model_parallel_random_seed,
+    LayerSpec,
+    import_spec_layer,
+    get_spec_layer,
+    build_spec_layer,
 )
 from .pipeline_parallel import (  # noqa: F401
+    NoPipelineParallel,
     PipelineParallel,
     PipelineParallelMicroStepLocations,
     PipelineParallelWithInterleave,
@@ -42,6 +49,9 @@ from .tensor_parallel import TensorParallel  # noqa: F401
 from .pp_utils.forward_backward_overlap_utils import (  # noqa: F401
     ScheduleNode,
     ScheduleChunk,
+)
+from .pp_utils.utils import (  # noqa: F401
+    dict_to_tuple_helper,
 )
 
 __all__ = []

@@ -44,7 +44,7 @@ void UpdateLossScalingKernel(const Context& dev_ctx,
                              DenseTensor* loss_scaling,
                              DenseTensor* out_good_steps,
                              DenseTensor* out_bad_steps) {
-  using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   PADDLE_ENFORCE_EQ(found_infinite.numel(),
@@ -81,18 +81,17 @@ void UpdateLossScalingKernel(const Context& dev_ctx,
     return;
   }
 
-  const MPDType* pre_loss_scaling_data = prev_loss_scaling.data<MPDType>();
+  const MT* pre_loss_scaling_data = prev_loss_scaling.data<MT>();
   const int* good_in_data = in_good_steps.data<int>();
   const int* bad_in_data = in_bad_steps.data<int>();
-  MPDType* updated_loss_scaling_data =
-      dev_ctx.template Alloc<MPDType>(loss_scaling);
+  MT* updated_loss_scaling_data = dev_ctx.template Alloc<MT>(loss_scaling);
 
   int* good_out_data = dev_ctx.template Alloc<int>(out_good_steps);
   int* bad_out_data = dev_ctx.template Alloc<int>(out_bad_steps);
 
   int cpu_bad_in_data;
   int cpu_good_in_data;
-  MPDType cpu_pre_loss_scaling_data;
+  MT cpu_pre_loss_scaling_data;
   if (in_bad_steps.place().GetType() == AllocationType::XPU) {
     memory_utils::Copy(CPUPlace(),
                        static_cast<void*>(&cpu_bad_in_data),
@@ -118,30 +117,29 @@ void UpdateLossScalingKernel(const Context& dev_ctx,
                        static_cast<void*>(&cpu_pre_loss_scaling_data),
                        prev_loss_scaling.place(),
                        static_cast<const void*>(pre_loss_scaling_data),
-                       sizeof(MPDType));
+                       sizeof(MT));
   } else {
     cpu_pre_loss_scaling_data = (*pre_loss_scaling_data);
   }
   int cpu_good_out_data = 0;
   int cpu_bad_out_data = 0;
-  MPDType cpu_updated_loss_scaling_data = cpu_pre_loss_scaling_data;
+  MT cpu_updated_loss_scaling_data = cpu_pre_loss_scaling_data;
 
   if (cpu_found_inf_data) {
     cpu_good_out_data = 0;
     cpu_bad_out_data = cpu_bad_in_data + 1;
     if (cpu_bad_out_data == decr_every_n_nan_or_inf) {
-      MPDType new_loss_scaling = cpu_pre_loss_scaling_data * decr_ratio;
-      cpu_updated_loss_scaling_data =
-          (new_loss_scaling < static_cast<MPDType>(1))
-              ? (static_cast<MPDType>(1))
-              : (new_loss_scaling);
+      MT new_loss_scaling = cpu_pre_loss_scaling_data * decr_ratio;
+      cpu_updated_loss_scaling_data = (new_loss_scaling < static_cast<MT>(1))
+                                          ? (static_cast<MT>(1))
+                                          : (new_loss_scaling);
       cpu_bad_out_data = 0;
     }
   } else {
     cpu_bad_out_data = 0;
     cpu_good_out_data = cpu_good_in_data + 1;
     if (cpu_good_out_data == incr_every_n_steps) {
-      MPDType new_loss_scaling = cpu_pre_loss_scaling_data * incr_ratio;
+      MT new_loss_scaling = cpu_pre_loss_scaling_data * incr_ratio;
       cpu_updated_loss_scaling_data = (std::isfinite(new_loss_scaling))
                                           ? new_loss_scaling
                                           : cpu_pre_loss_scaling_data;
@@ -163,7 +161,7 @@ void UpdateLossScalingKernel(const Context& dev_ctx,
                      updated_loss_scaling_data,
                      CPUPlace(),
                      &cpu_updated_loss_scaling_data,
-                     sizeof(MPDType));
+                     sizeof(MT));
 }
 
 template <typename T, typename Context>
@@ -172,11 +170,11 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
                                  const DenseTensor& scale,
                                  std::vector<DenseTensor*> outs,
                                  DenseTensor* found_infinite) {
-  using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   using XPUType = typename XPUTypeTrait<T>::Type;
   using XPUTypeFP16 = typename XPUTypeTrait<phi::float16>::Type;
 
-  const MPDType* scale_data = scale.data<MPDType>();
+  const MT* scale_data = scale.data<MT>();
   bool* found_inf_data = dev_ctx.template Alloc<bool>(found_infinite);
 
   // cpy to cpu
@@ -184,18 +182,18 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
 
   // has nans or infs
   bool has_inf_nans = false;
-  MPDType cpu_scale_data;
+  MT cpu_scale_data;
   if (scale.place().GetType() == AllocationType::XPU) {
     memory_utils::Copy(CPUPlace(),
                        static_cast<void*>(&cpu_scale_data),
                        scale.place(),
                        static_cast<const void*>(scale_data),
-                       sizeof(MPDType));
+                       sizeof(MT));
 
   } else {
     cpu_scale_data = (*scale_data);
   }
-  MPDType inverse_scale = 1.0 / cpu_scale_data;
+  MT inverse_scale = 1.0 / cpu_scale_data;
   auto version =
       phi::backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId());
   if (version == phi::backends::xpu::XPUVersion::XPU3) {
@@ -265,19 +263,18 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
       DenseTensor float_out;
       if (std::is_same<T, phi::float16>::value &&
           (version == phi::backends::xpu::XPUVersion::XPU1)) {
-        dev_ctx.template Alloc<MPDType>(&float_x, x->numel() * sizeof(MPDType));
-        dev_ctx.template Alloc<MPDType>(&float_out,
-                                        out->numel() * sizeof(MPDType));
+        dev_ctx.template Alloc<MT>(&float_x, x->numel() * sizeof(MT));
+        dev_ctx.template Alloc<MT>(&float_out, out->numel() * sizeof(MT));
 
         int r = xpu::cast(dev_ctx.x_context(),
                           reinterpret_cast<const XPUTypeFP16*>(x->data<T>()),
-                          float_x.data<MPDType>(),
+                          float_x.data<MT>(),
                           x->numel());
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
 
         r = xpu::scale(dev_ctx.x_context(),
-                       float_x.data<MPDType>(),
-                       float_out.data<MPDType>(),
+                       float_x.data<MT>(),
+                       float_out.data<MT>(),
                        x->numel(),
                        false,
                        inverse_scale,
@@ -285,7 +282,7 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
 
         r = xpu::cast(dev_ctx.x_context(),
-                      float_out.data<MPDType>(),
+                      float_out.data<MT>(),
                       reinterpret_cast<XPUTypeFP16*>(out->data<T>()),
                       out->numel());
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
