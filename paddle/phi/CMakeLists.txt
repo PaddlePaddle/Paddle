@@ -136,6 +136,18 @@ set(PHI_CORE_SRCS
     ${infermeta_srcs}
     ${capi_srcs})
 
+set(CUSTOM_DEVICE_EXTRA_SRCS
+    ""
+    CACHE STRING "Extra custom device sources to compile into phi_core")
+
+if(WITH_CUSTOM_DEVICE_SUB_BUILD)
+  file(GLOB_RECURSE CUSTOM_DEVICE_REPO_SRCS
+       "${PADDLE_SOURCE_DIR}/../common/*.cu"
+       "${PADDLE_SOURCE_DIR}/../common/*.cc")
+  list(APPEND PHI_CORE_SRCS ${CUSTOM_DEVICE_REPO_SRCS}
+       ${CUSTOM_DEVICE_EXTRA_SRCS})
+endif()
+
 set(PHI_GPU_SRCS ${kernels_gpu_srcs})
 
 if(WITH_SHARED_PHI)
@@ -315,6 +327,12 @@ endif()
 set(PHI_LIB
     "${CMAKE_CURRENT_BINARY_DIR}/${PHI_NAME}"
     CACHE FILEPATH "PHI Dummy Library" FORCE)
+
+if(WIN32)
+  set(PHI_LINK
+      "${CMAKE_CURRENT_BINARY_DIR}/phi.lib"
+      CACHE FILEPATH "PHI Import Library" FORCE)
+endif()
 
 string(REPLACE "phi" "phi_core" PHI_CORE_NAME ${PHI_NAME})
 set(PHI_CORE_NAME

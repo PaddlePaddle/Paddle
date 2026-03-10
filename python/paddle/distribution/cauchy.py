@@ -47,7 +47,7 @@ class Cauchy(distribution.Distribution):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.distribution import Cauchy
@@ -263,7 +263,7 @@ class Cauchy(distribution.Distribution):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> from paddle.distribution import Cauchy
@@ -312,7 +312,7 @@ class Cauchy(distribution.Distribution):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> from paddle.distribution import Cauchy
@@ -379,7 +379,7 @@ class Cauchy(distribution.Distribution):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> from paddle.distribution import Cauchy
@@ -440,7 +440,7 @@ class Cauchy(distribution.Distribution):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> from paddle.distribution import Cauchy
@@ -479,7 +479,7 @@ class Cauchy(distribution.Distribution):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> from paddle.distribution import Cauchy

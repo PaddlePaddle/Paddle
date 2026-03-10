@@ -115,8 +115,8 @@ class ScopedRNNBase {
     size_t state_size;
     if (!initialized_) {
       PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::cudnnDropoutGetStatesSize(handle, &state_size));
-      phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+          dynload::cudnnDropoutGetStatesSize(handle, &state_size));
+      DeviceContextPool& pool = DeviceContextPool::Instance();
       auto* dev_ctx = reinterpret_cast<GPUContext*>(pool.Get(place));
       dropout_state->Resize({static_cast<int64_t>(state_size)});
       dev_ctx->template Alloc<uint8_t>(dropout_state);
@@ -131,7 +131,7 @@ class ScopedRNNBase {
 
     // ------------------- cudnn rnn descriptors ---------------------
 #if CUDNN_VERSION >= 90000
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetRNNDescriptor_v8(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSetRNNDescriptor_v8(
         rnn_desc_.desc(),
         CUDNN_RNN_ALGO_STANDARD,
         CUDNN_LSTM,
@@ -149,7 +149,7 @@ class ScopedRNNBase {
         seqlen_is_empty ? CUDNN_RNN_PADDED_IO_DISABLED
                         : CUDNN_RNN_PADDED_IO_ENABLED));
 #else
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetRNNDescriptor_v6(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSetRNNDescriptor_v6(
         handle,
         rnn_desc_.desc(),
         hidden_size_,
@@ -164,17 +164,17 @@ class ScopedRNNBase {
 
 #if CUDNN_VERSION < 90000 && CUDNN_VERSION >= 7201
     if (!sequence_length.empty()) {
-      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetRNNPaddingMode(
+      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSetRNNPaddingMode(
           rnn_desc_.desc(), CUDNN_RNN_PADDED_IO_ENABLED));
     }
 #endif
 
     // ------------------- cudnn weights_size ---------------------
 #if CUDNN_VERSION >= 90000
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnGetRNNWeightSpaceSize(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnGetRNNWeightSpaceSize(
         handle, rnn_desc_.desc(), &weights_size_));
 #else
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnGetRNNParamsSize(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnGetRNNParamsSize(
         handle, rnn_desc_.desc(), x_descs_[0], &weights_size_, cudnn_type));
 #endif
 
@@ -191,20 +191,20 @@ class ScopedRNNBase {
     // ------------------- cudnn workspace, reserve size ---------------------
 #if CUDNN_VERSION >= 90000
     PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::cudnnGetRNNTempSpaceSizes(handle,
-                                                rnn_desc_.desc(),
-                                                CUDNN_FWD_MODE_TRAINING,
-                                                x_seq_desc_.desc(),
-                                                workspace_size,
-                                                reserve_size));
+        dynload::cudnnGetRNNTempSpaceSizes(handle,
+                                           rnn_desc_.desc(),
+                                           CUDNN_FWD_MODE_TRAINING,
+                                           x_seq_desc_.desc(),
+                                           workspace_size,
+                                           reserve_size));
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::cudnnGetRNNWorkspaceSize(handle,
-                                               rnn_desc_.desc(),
-                                               seq_length_,
-                                               x_descs_.data(),
-                                               workspace_size));
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnGetRNNTrainingReserveSize(
+        dynload::cudnnGetRNNWorkspaceSize(handle,
+                                          rnn_desc_.desc(),
+                                          seq_length_,
+                                          x_descs_.data(),
+                                          workspace_size));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnGetRNNTrainingReserveSize(
         handle, rnn_desc_.desc(), seq_length_, x_descs_.data(), reserve_size));
 #endif
   }

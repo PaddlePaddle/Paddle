@@ -51,14 +51,14 @@ def gather(
         None, if not async_op
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle
             >>> import paddle.distributed as dist
 
             >>> dist.init_parallel_env()
-            >>> gather_list = [] # type: ignore
+            >>> gather_list = []  # type: ignore
             >>> if dist.get_rank() == 0:
             ...     data = paddle.to_tensor([1, 2, 3])
             ...     dist.gather(data, gather_list, dst=0)

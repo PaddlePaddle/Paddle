@@ -386,6 +386,24 @@ class TestPowOutAndParamDecorator(unittest.TestCase):
         else:
             raise ValueError(f"Unknown test type: {test_type}")
 
+    def test_param_error(self):
+        x = paddle.to_tensor(self.x_np)
+        x2 = paddle.to_tensor(self.x_np)
+        y = paddle.to_tensor(self.y_np)
+        y2 = paddle.to_tensor(self.y_np)
+        with self.assertRaises(ValueError) as context:
+            paddle.pow(x, y=y, exponent=y2)
+            self.assertIn(
+                "Cannot specify both 'y' and its alias 'exponent'",
+                str(context.exception),
+            )
+        with self.assertRaises(ValueError) as context:
+            paddle.pow(x=x, y=y, input=x2, exponent=y2)
+            self.assertIn(
+                "Cannot specify both 'x' and its alias 'input'",
+                str(context.exception),
+            )
+
     def test_all(self):
         out_std, x_grad_std, y_grad_std = self.do_test('raw')
         for test_type in self.test_types:
@@ -397,6 +415,137 @@ class TestPowOutAndParamDecorator(unittest.TestCase):
             np.testing.assert_allclose(
                 y_grad.numpy(), y_grad_std.numpy(), rtol=1e-6
             )
+
+
+class TestPowSleefVectorized(unittest.TestCase):
+    """Test pow with shapes that exercise Sleef vectorized paths on CPU.
+
+    For AVX2:
+    - float32: VEC_SIZE = 8, uses Sleef_powf8_u10 for vectorized loop
+    - float64: VEC_SIZE = 4, uses Sleef_powd4_u10 for vectorized loop
+
+    The sleef path is triggered when:
+    1. dtype is float32 or float64
+    2. Both x and y are contiguous tensors (same shape)
+    3. Running on CPU
+
+    Test both:
+    1. Shapes that are exact multiples of VEC_SIZE (only vectorized loop)
+    2. Shapes with remainder (vectorized loop + scalar tail)
+    """
+
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_pow_float32_vectorized_exact_cpu(self):
+        """Test float32 pow with shape that's exact multiple of 8.
+        Covers vpow_avx2_f32 main loop only.
+        """
+        # Shape 16 = 8 * 2, exercises only vectorized loop
+        x_np = np.random.uniform(0.5, 2.0, size=(16,)).astype(np.float32)
+        y_np = np.random.uniform(0.5, 2.0, size=(16,)).astype(np.float32)
+        x = paddle.to_tensor(x_np, place=paddle.CPUPlace())
+        y = paddle.to_tensor(y_np, place=paddle.CPUPlace())
+        result = paddle.pow(x, y)
+        expected = np.power(x_np, y_np)
+        np.testing.assert_allclose(
+            result.numpy(), expected, rtol=1e-5, atol=1e-5
+        )
+
+    def test_pow_float32_vectorized_with_tail_cpu(self):
+        """Test float32 pow with shape that has remainder when divided by 8.
+        Covers vpow_avx2_f32 both main loop and scalar tail.
+        """
+        # Shape 13 = 8 + 5, exercises both vectorized loop and scalar tail
+        x_np = np.random.uniform(0.5, 2.0, size=(13,)).astype(np.float32)
+        y_np = np.random.uniform(0.5, 2.0, size=(13,)).astype(np.float32)
+        x = paddle.to_tensor(x_np, place=paddle.CPUPlace())
+        y = paddle.to_tensor(y_np, place=paddle.CPUPlace())
+        result = paddle.pow(x, y)
+        expected = np.power(x_np, y_np)
+        np.testing.assert_allclose(
+            result.numpy(), expected, rtol=1e-5, atol=1e-5
+        )
+
+    def test_pow_float64_vectorized_exact_cpu(self):
+        """Test float64 pow with shape that's exact multiple of 4.
+        Covers vpow_avx2_f64 main loop only.
+        """
+        # Shape 12 = 4 * 3, exercises only vectorized loop
+        x_np = np.random.uniform(0.5, 2.0, size=(12,)).astype(np.float64)
+        y_np = np.random.uniform(0.5, 2.0, size=(12,)).astype(np.float64)
+        x = paddle.to_tensor(x_np, place=paddle.CPUPlace())
+        y = paddle.to_tensor(y_np, place=paddle.CPUPlace())
+        result = paddle.pow(x, y)
+        expected = np.power(x_np, y_np)
+        np.testing.assert_allclose(
+            result.numpy(), expected, rtol=1e-10, atol=1e-10
+        )
+
+    def test_pow_float64_vectorized_with_tail_cpu(self):
+        """Test float64 pow with shape that has remainder when divided by 4.
+        Covers vpow_avx2_f64 both main loop and scalar tail.
+        """
+        # Shape 11 = 4 * 2 + 3, exercises both vectorized loop and scalar tail
+        x_np = np.random.uniform(0.5, 2.0, size=(11,)).astype(np.float64)
+        y_np = np.random.uniform(0.5, 2.0, size=(11,)).astype(np.float64)
+        x = paddle.to_tensor(x_np, place=paddle.CPUPlace())
+        y = paddle.to_tensor(y_np, place=paddle.CPUPlace())
+        result = paddle.pow(x, y)
+        expected = np.power(x_np, y_np)
+        np.testing.assert_allclose(
+            result.numpy(), expected, rtol=1e-10, atol=1e-10
+        )
+
+    def test_pow_float32_large_shape_cpu(self):
+        """Test float32 pow with large shape on CPU for comprehensive coverage."""
+        x_np = np.random.uniform(0.5, 2.0, size=(1024,)).astype(np.float32)
+        y_np = np.random.uniform(0.5, 2.0, size=(1024,)).astype(np.float32)
+        x = paddle.to_tensor(x_np, place=paddle.CPUPlace())
+        y = paddle.to_tensor(y_np, place=paddle.CPUPlace())
+        result = paddle.pow(x, y)
+        expected = np.power(x_np, y_np)
+        np.testing.assert_allclose(
+            result.numpy(), expected, rtol=1e-5, atol=1e-5
+        )
+
+    def test_pow_float64_large_shape_cpu(self):
+        """Test float64 pow with large shape on CPU for comprehensive coverage."""
+        x_np = np.random.uniform(0.5, 2.0, size=(1024,)).astype(np.float64)
+        y_np = np.random.uniform(0.5, 2.0, size=(1024,)).astype(np.float64)
+        x = paddle.to_tensor(x_np, place=paddle.CPUPlace())
+        y = paddle.to_tensor(y_np, place=paddle.CPUPlace())
+        result = paddle.pow(x, y)
+        expected = np.power(x_np, y_np)
+        np.testing.assert_allclose(
+            result.numpy(), expected, rtol=1e-10, atol=1e-10
+        )
+
+    def test_pow_float32_2d_shape_cpu(self):
+        """Test float32 pow with 2D shape on CPU."""
+        # Shape (4, 5) = 20 elements, exercises vectorized path
+        x_np = np.random.uniform(0.5, 2.0, size=(4, 5)).astype(np.float32)
+        y_np = np.random.uniform(0.5, 2.0, size=(4, 5)).astype(np.float32)
+        x = paddle.to_tensor(x_np, place=paddle.CPUPlace())
+        y = paddle.to_tensor(y_np, place=paddle.CPUPlace())
+        result = paddle.pow(x, y)
+        expected = np.power(x_np, y_np)
+        np.testing.assert_allclose(
+            result.numpy(), expected, rtol=1e-5, atol=1e-5
+        )
+
+    def test_pow_float64_2d_shape_cpu(self):
+        """Test float64 pow with 2D shape on CPU."""
+        # Shape (3, 5) = 15 elements, exercises vectorized path with tail
+        x_np = np.random.uniform(0.5, 2.0, size=(3, 5)).astype(np.float64)
+        y_np = np.random.uniform(0.5, 2.0, size=(3, 5)).astype(np.float64)
+        x = paddle.to_tensor(x_np, place=paddle.CPUPlace())
+        y = paddle.to_tensor(y_np, place=paddle.CPUPlace())
+        result = paddle.pow(x, y)
+        expected = np.power(x_np, y_np)
+        np.testing.assert_allclose(
+            result.numpy(), expected, rtol=1e-10, atol=1e-10
+        )
 
 
 if __name__ == '__main__':

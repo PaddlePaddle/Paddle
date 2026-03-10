@@ -29,6 +29,14 @@ inline at::Tensor abs(const at::Tensor& self) {
 
 }  // namespace at
 
-namespace torch {
-using at::abs;
-}  // namespace torch
+namespace at {
+
+inline at::Tensor Tensor::abs() const { return at::abs(*this); }
+
+inline at::Tensor& Tensor::abs_() const {
+  PaddleTensor& inner = const_cast<PaddleTensor&>(tensor_);
+  paddle::experimental::abs_(inner);
+  return const_cast<at::Tensor&>(*this);
+}
+
+}  // namespace at

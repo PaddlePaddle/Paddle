@@ -526,6 +526,7 @@ XPUOpMap& get_kl3_ops() {
       {"matmul_v2_grad", XPUKernelSet({FLOAT32, BFLOAT16, FLOAT16})},
       {"matmul_v2", XPUKernelSet({FLOAT32, BFLOAT16, FLOAT16})},
       {"matmul", XPUKernelSet({FLOAT32, BFLOAT16, FLOAT16})},
+      {"batched_gemm", XPUKernelSet({FLOAT32, BFLOAT16})},
       {"mean_grad", XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16})},
       {"mean", XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16})},
       {"merged_momentum", XPUKernelSet({FLOAT32, FLOAT16})},
@@ -1013,6 +1014,7 @@ XPUOpMap& get_kl3_ops() {
       // AddMore
       {"sequence_unpad", XPUKernelSet({FLOAT32})},
       // Fused op
+      {"squeeze_excitation_block", XPUKernelSet({FLOAT32, FLOAT16})},
       {"resnet_basic_block_grad", XPUKernelSet({FLOAT32})},
       {"resnet_basic_block", XPUKernelSet({FLOAT32})},
       {"fused_bias_act", XPUKernelSet({FLOAT16, BFLOAT16})},

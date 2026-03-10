@@ -156,12 +156,12 @@ def resize(
         PIL.Image|np.array|paddle.Tensor: Resized image.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> from PIL import Image
             >>> from paddle.vision.transforms import functional as F
-            >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+            >>> fake_img = (np.random.rand(256, 300, 3) * 255.0).astype('uint8')
             >>> fake_img = Image.fromarray(fake_img)
             >>> converted_img = F.resize(fake_img, 224)
             >>> print(converted_img.size)
@@ -225,12 +225,12 @@ def pad(
         PIL.Image|np.array|paddle.Tensor: Padded image.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> from PIL import Image
             >>> from paddle.vision.transforms import functional as F
-            >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+            >>> fake_img = (np.random.rand(256, 300, 3) * 255.0).astype('uint8')
             >>> fake_img = Image.fromarray(fake_img)
             >>> padded_img = F.pad(fake_img, padding=1)
             >>> print(padded_img.size)
@@ -272,12 +272,12 @@ def crop(
         PIL.Image|np.array|paddle.Tensor: Cropped image.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> from PIL import Image
             >>> from paddle.vision.transforms import functional as F
-            >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+            >>> fake_img = (np.random.rand(256, 300, 3) * 255.0).astype('uint8')
             >>> fake_img = Image.fromarray(fake_img)
             >>> cropped_img = F.crop(fake_img, 56, 150, 200, 100)
             >>> print(cropped_img.size)
@@ -311,12 +311,12 @@ def center_crop(img: _ImageDataT, output_size: Size2) -> _ImageDataT:
         PIL.Image|np.array|paddle.Tensor: Cropped image.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> from PIL import Image
             >>> from paddle.vision.transforms import functional as F
-            >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+            >>> fake_img = (np.random.rand(256, 300, 3) * 255.0).astype('uint8')
             >>> fake_img = Image.fromarray(fake_img)
             >>> cropped_img = F.center_crop(fake_img, (150, 100))
             >>> print(cropped_img.size)
@@ -347,12 +347,12 @@ def hflip(img: _ImageDataT) -> _ImageDataT:
         PIL.Image|np.array|paddle.Tensor:  Horizontally flipped image.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> from PIL import Image
             >>> from paddle.vision.transforms import functional as F
-            >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+            >>> fake_img = (np.random.rand(256, 300, 3) * 255.0).astype('uint8')
             >>> fake_img = Image.fromarray(fake_img)
             >>> flipped_img = F.hflip(fake_img)
             >>> print(flipped_img.size)
@@ -384,12 +384,12 @@ def vflip(img: _ImageDataT) -> _ImageDataT:
         PIL.Image|np.array|paddle.Tensor:  Vertically flipped image.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> from PIL import Image
             >>> from paddle.vision.transforms import functional as F
-            >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+            >>> fake_img = (np.random.rand(256, 300, 3) * 255.0).astype('uint8')
             >>> fake_img = Image.fromarray(fake_img)
             >>> flipped_img = F.vflip(fake_img)
             >>> print(flipped_img.size)
@@ -426,18 +426,18 @@ def adjust_brightness(
         PIL.Image|np.array|paddle.Tensor: Brightness adjusted image.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example1
 
             >>> import numpy as np
             >>> from PIL import Image
             >>> from paddle.vision.transforms import functional as F
             >>> np.random.seed(2023)
-            >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+            >>> fake_img = (np.random.rand(256, 300, 3) * 255.0).astype('uint8')
             >>> fake_img = Image.fromarray(fake_img)
             >>> print(fake_img.size)
             (300, 256)
-            >>> print(fake_img.load()[1, 1]) # type: ignore[index]
+            >>> print(fake_img.load()[1, 1])  # type: ignore[index]
             (61, 155, 171)
             >>> converted_img = F.adjust_brightness(fake_img, 0.5)
             >>> print(converted_img.size)
@@ -473,12 +473,12 @@ def adjust_contrast(img: _ImageDataT, contrast_factor: float) -> _ImageDataT:
         PIL.Image|np.array|paddle.Tensor: Contrast adjusted image.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> from PIL import Image
             >>> from paddle.vision.transforms import functional as F
-            >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+            >>> fake_img = (np.random.rand(256, 300, 3) * 255.0).astype('uint8')
             >>> fake_img = Image.fromarray(fake_img)
             >>> converted_img = F.adjust_contrast(fake_img, 0.4)
             >>> print(converted_img.size)
@@ -514,12 +514,12 @@ def adjust_saturation(
         PIL.Image|np.array|paddle.Tensor: Saturation adjusted image.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> from PIL import Image
             >>> from paddle.vision.transforms import functional as F
-            >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+            >>> fake_img = (np.random.rand(256, 300, 3) * 255.0).astype('uint8')
             >>> fake_img = Image.fromarray(fake_img)
             >>> converted_img = F.adjust_saturation(fake_img, 0.4)
             >>> print(converted_img.size)
@@ -563,12 +563,12 @@ def adjust_hue(img: _ImageDataT, hue_factor: float) -> _ImageDataT:
         PIL.Image|np.array|paddle.Tensor: Hue adjusted image.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> from PIL import Image
             >>> from paddle.vision.transforms import functional as F
-            >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+            >>> fake_img = (np.random.rand(256, 300, 3) * 255.0).astype('uint8')
             >>> fake_img = Image.fromarray(fake_img)
             >>> converted_img = F.adjust_hue(fake_img, 0.4)
             >>> print(converted_img.size)
@@ -802,12 +802,12 @@ def rotate(
         PIL.Image|np.array|paddle.Tensor: Rotated image.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> from PIL import Image
             >>> from paddle.vision.transforms import functional as F
-            >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+            >>> fake_img = (np.random.rand(256, 300, 3) * 255.0).astype('uint8')
             >>> fake_img = Image.fromarray(fake_img)
             >>> rotated_img = F.rotate(fake_img, 90)
             >>> print(rotated_img.size)
@@ -957,12 +957,12 @@ def to_grayscale(img: _ImageDataT, num_output_channels: int = 1) -> _ImageDataT:
             if num_output_channels = 3 : returned image is 3 channel with r = g = b
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> from PIL import Image
             >>> from paddle.vision.transforms import functional as F
-            >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+            >>> fake_img = (np.random.rand(256, 300, 3) * 255.0).astype('uint8')
             >>> fake_img = Image.fromarray(fake_img)
             >>> gray_img = F.to_grayscale(fake_img)
             >>> print(gray_img.size)
@@ -1026,12 +1026,12 @@ def normalize(
         PIL.Image|np.array|paddle.Tensor: Normalized mage. Data format is same as input img.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> from PIL import Image
             >>> from paddle.vision.transforms import functional as F
-            >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+            >>> fake_img = (np.random.rand(256, 300, 3) * 255.0).astype('uint8')
             >>> fake_img = Image.fromarray(fake_img)
             >>> mean = [127.5, 127.5, 127.5]
             >>> std = [127.5, 127.5, 127.5]
@@ -1077,7 +1077,7 @@ def erase(
         paddle.Tensor | np.array | PIL.Image: Erased image. The type is same with input image.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(2023)
@@ -1091,7 +1091,7 @@ def erase(
             [[ 0.67233968, -1.07747352,  0.80170447, -0.06695852],
              [-1.85003340, -0.23008066,  0.65083790,  0.75387722]]])
 
-            >>> values = paddle.zeros((1,1,1), dtype=paddle.float32)
+            >>> values = paddle.zeros((1, 1, 1), dtype=paddle.float32)
             >>> result = paddle.vision.transforms.erase(fake_img, 0, 1, 1, 2, values)
             >>> print(result)
             Tensor(shape=[3, 2, 4], dtype=float32, place=Place(cpu), stop_gradient=True,

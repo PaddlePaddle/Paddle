@@ -469,6 +469,31 @@ class TestDeviceDvice(unittest.TestCase):
             self.assertEqual(paddle.device.get_device(), 'cpu')
         self.assertEqual(paddle.device.get_device(), current)
 
+        paddle.disable_static()
+        current = paddle.device.get_device()
+
+        # Test: passing cpu tensor.place to device context manager
+        cpu_tensor = paddle.empty(1, dtype="float32", device='cpu')
+        with paddle.device.device(cpu_tensor.place):
+            self.assertEqual(paddle.device.get_device(), 'cpu')
+        self.assertEqual(paddle.device.get_device(), current)
+
+        if paddle.is_compiled_with_cuda() and paddle.cuda.is_available():
+            device_count = paddle.device.cuda.device_count()
+
+            # Test: passing gpu:0 tensor.place to cuda.device context manager
+            gpu_tensor_0 = paddle.empty(1, dtype="float32", device='cuda:0')
+            with paddle.cuda.device(gpu_tensor_0.place):
+                self.assertEqual(paddle.device.get_device(), 'gpu:0')
+            self.assertEqual(paddle.device.get_device(), current)
+
+            # Test: passing gpu tensor.place with non-zero device id
+            if device_count > 1:
+                gpu_tensor_1 = paddle.empty(1, dtype="float32", device='cuda:1')
+                with paddle.device.device(gpu_tensor_1.place):
+                    self.assertEqual(paddle.device.get_device(), 'gpu:1')
+                self.assertEqual(paddle.device.get_device(), current)
+
 
 class TestCudaDvice(unittest.TestCase):
     def test_device_device(self):

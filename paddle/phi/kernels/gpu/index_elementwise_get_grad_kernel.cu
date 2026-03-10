@@ -405,7 +405,17 @@ void IndexElementwiseGetGradKernel(const Context& dev_ctx,
                                    const bool accumulate,
                                    const bool is_combined,
                                    DenseTensor* x_grad) {
-  dev_ctx.template Alloc<T>(x_grad);
+  // CudaAtomicAdd for sub-4-byte types (bool, int8_t, uint8_t, int16_t) uses
+  // atomicCAS on uint32_t, which reads 4 bytes at a 4-byte-aligned address.
+  // If the total allocation size is not a multiple of 4, the last few elements
+  // may cause out-of-bounds reads. Pad the allocation to prevent this.
+  if (sizeof(T) < 4 && accumulate) {
+    size_t alloc_bytes = static_cast<size_t>(x_grad->numel()) * sizeof(T);
+    size_t padded_bytes = (alloc_bytes + 3) & ~static_cast<size_t>(3);
+    dev_ctx.template Alloc<T>(x_grad, padded_bytes);
+  } else {
+    dev_ctx.template Alloc<T>(x_grad);
+  }
   funcs::set_constant(dev_ctx, x_grad, static_cast<float>(0));
   if (out_grad.numel() == 0) return;
 

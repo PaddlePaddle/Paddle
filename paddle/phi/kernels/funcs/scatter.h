@@ -54,10 +54,10 @@ elementwise_inner_add(const phi::CPUContext& dev_ctx UNUSED,
                       size_t src_index,
                       IndexT dst_index,
                       size_t slice_size) {
-  using EigenVector = typename phi::EigenTensor<T, 1>::Type;
-  using ConstEigenVector = typename phi::EigenTensor<T, 1>::ConstType;
+  using EigenVector = typename EigenTensor<T, 1>::Type;
+  using ConstEigenVector = typename EigenTensor<T, 1>::ConstType;
 
-  phi::EigenDim<1>::Type dim;
+  EigenDim<1>::Type dim;
   dim[0] = slice_size;
 
   ConstEigenVector eigen_src(src_pointer + src_index * slice_size, dim);

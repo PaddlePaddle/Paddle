@@ -53,8 +53,8 @@ void Transpose<DeviceContext, T, Rank>::operator()(
   for (int i = 0; i < Rank; i++) {
     permute[i] = axis[i];
   }
-  auto eigen_in = phi::EigenTensor<T, Rank>::From(in);
-  auto eigen_out = phi::EigenTensor<T, Rank>::From(*out);
+  auto eigen_in = EigenTensor<T, Rank>::From(in);
+  auto eigen_out = EigenTensor<T, Rank>::From(*out);
   auto* dev = dev_ctx.eigen_device();
   // use 32bit index to speed up computation
   bool use_32bit_index = eigen_out.size() < Eigen::NumTraits<int>::highest();
@@ -82,7 +82,7 @@ void ColwiseSum<DeviceContext, T>::operator()(const DeviceContext& dev_ctx,
                         size,
                         out->numel()));
 
-  auto in = phi::EigenMatrix<T>::From(input);
+  auto in = EigenMatrix<T>::From(input);
   auto vec = EigenVector<T>::Flatten(*out);
 
   vec.device(*dev_ctx.eigen_device()) = in.sum(Eigen::array<int, 1>({{0}}));
@@ -145,7 +145,7 @@ void RowwiseMean<DeviceContext, T>::operator()(const DeviceContext& dev_ctx,
                         in_dims[0],
                         out->numel()));
 
-  auto in = phi::EigenMatrix<T>::From(input);
+  auto in = EigenMatrix<T>::From(input);
   auto vec = EigenVector<T>::Flatten(*out);
 
   vec.device(*dev_ctx.eigen_device()) = in.mean(Eigen::array<int, 1>({{1}}));
@@ -212,7 +212,7 @@ void RowwiseSum<DeviceContext, T>::operator()(const DeviceContext& dev_ctx,
                         in_dims[0],
                         out->numel()));
 
-  auto in = phi::EigenMatrix<T>::From(input);
+  auto in = EigenMatrix<T>::From(input);
   auto vec = EigenVector<T>::Flatten(*out);
 
   vec.device(*dev_ctx.eigen_device()) = in.sum(Eigen::array<int, 1>({{1}}));

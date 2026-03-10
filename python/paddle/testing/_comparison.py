@@ -963,7 +963,7 @@ def assert_close(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import numpy as np
@@ -1007,9 +1007,7 @@ def assert_close(
             >>> expected = paddle.to_tensor([1.0, 2.0, 3.0])
             >>> actual = paddle.to_tensor([1.0, 4.0, 5.0])
             >>> try:
-            ...     paddle.testing.assert_close(
-            ...         actual, expected, msg="Argh, the tensors are not close!"
-            ...     )
+            ...     paddle.testing.assert_close(actual, expected, msg="Argh, the tensors are not close!")
             ... except AssertionError as e:
             ...     print(e)
             Argh, the tensors are not close!

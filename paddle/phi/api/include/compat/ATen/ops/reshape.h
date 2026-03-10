@@ -34,7 +34,11 @@ inline at::Tensor reshape_symint(const at::Tensor& self,
 }
 
 }  // namespace at
-namespace torch {
-using at::reshape;
-using at::reshape_symint;
-}  // namespace torch
+
+namespace at {
+
+inline at::Tensor Tensor::reshape(at::IntArrayRef shape) const {
+  return at::reshape(*this, shape);
+}
+
+}  // namespace at
