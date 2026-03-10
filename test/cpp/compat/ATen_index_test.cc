@@ -98,8 +98,8 @@ TEST(TensorIndexTest, IndexWithTensorInitializerList) {
 TEST(TensorIndexTest, MemberIndexWithArrayRefTensorIndices) {
   at::Tensor base = at::arange(24, at::kFloat).reshape({4, 6});
   at::Tensor transposed = base.t();
-  std::vector<at::indexing::TensorIndex> indices = {
-      at::indexing::Slice(1, 5), at::indexing::Slice(0, 3)};
+  std::vector<at::indexing::TensorIndex> indices = {at::indexing::Slice(1, 5),
+                                                    at::indexing::Slice(0, 3)};
 
   at::Tensor sliced = transposed.index(indices);
 
