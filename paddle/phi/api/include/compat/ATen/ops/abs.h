@@ -19,11 +19,19 @@
 #include <optional>
 #include <string_view>
 
+#include "glog/logging.h"
 #include "paddle/phi/api/include/api.h"
 
 namespace at {
 
 inline at::Tensor abs(const at::Tensor& self) {
+  if (!self.is_contiguous()) {
+    LOG(WARNING)
+        << "at::abs: input tensor is non-contiguous. PyTorch and Paddle handle "
+           "non-contiguous tensors differently, which may produce logically "
+           "incorrect results even though the code is syntactically valid. "
+           "See https://github.com/PaddlePaddle/Paddle/pull/78099 for details.";
+  }
   return paddle::experimental::abs(self._PD_GetInner());
 }
 
@@ -34,6 +42,13 @@ namespace at {
 inline at::Tensor Tensor::abs() const { return at::abs(*this); }
 
 inline at::Tensor& Tensor::abs_() const {
+  if (!is_contiguous()) {
+    LOG(WARNING)
+        << "Tensor::abs_: tensor is non-contiguous. PyTorch and Paddle handle "
+           "non-contiguous tensors differently, which may produce logically "
+           "incorrect results even though the code is syntactically valid. "
+           "See https://github.com/PaddlePaddle/Paddle/pull/78099 for details.";
+  }
   PaddleTensor& inner = const_cast<PaddleTensor&>(tensor_);
   paddle::experimental::abs_(inner);
   return const_cast<at::Tensor&>(*this);
