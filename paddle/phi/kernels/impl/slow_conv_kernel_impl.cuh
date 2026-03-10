@@ -418,7 +418,7 @@ void SlowConvDilatedAllCUDAImpl(const Context& dev_ctx,
           phi::Sum<T, Context>(dev_ctx,
                                grad_output_n,
                                phi::IntArray(sum_axes),
-                               phi::CppTypeToDataType<T>::Type(),
+                               CppTypeToDataType<T>::Type(),
                                false);
       phi::Add<T, Context>(dev_ctx, *grad_bias, sum_result, grad_bias);
     }

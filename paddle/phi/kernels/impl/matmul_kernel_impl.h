@@ -997,7 +997,7 @@ struct MatMulDispatcher<phi::GPUContext, T> {
                                         y_dims,
                                         trans_x,
                                         trans_y,
-                                        phi::CppTypeToDataType<T>::Type(),
+                                        CppTypeToDataType<T>::Type(),
                                         funcs::MatmulFusedType::kMatmul,
                                         /* bias_data */ nullptr,
                                         /* reserve_data */ nullptr,
