@@ -817,24 +817,9 @@ void GroupNormGradKernel(const Context& dev_ctx,
     AccT* db_data = dev_ctx.template Alloc<AccT>(&db_tensor);
 
     {
-      // Dispatch vectorized or scalar internal gradients kernel
-      if (std::is_same<T, float>::value && (HxW % 4 == 0)) {
-        const int64_t HxW_vec = HxW / 4;
-        int64_t num_threads = HxW_vec < kGradBlockReduceNumThreads
-                                  ? 32
-                                  : kGradBlockReduceNumThreads;
-        ComputeInternalGradientsVec4CUDAKernel<T, AccT>
-            <<<N * C, num_threads, 0, dev_ctx.stream()>>>(
-                HxW_vec, dy_data, x_data, ds_data, db_data);
-      } else if (std::is_same<T, double>::value && (HxW % 2 == 0)) {
-        const int64_t HxW_vec = HxW / 2;
-        int64_t num_threads = HxW_vec < kGradBlockReduceNumThreads
-                                  ? 32
-                                  : kGradBlockReduceNumThreads;
-        ComputeInternalGradientsVec2DoubleCUDAKernel<T, AccT>
-            <<<N * C, num_threads, 0, dev_ctx.stream()>>>(
-                HxW_vec, dy_data, x_data, ds_data, db_data);
-      } else {
+      // Use scalar kernel to match PyTorch's exact accumulation order
+      // (Vec4 changes thread-to-element mapping, causing 1-2 ULP differences)
+      {
         int64_t num_threads =
             HxW < kGradBlockReduceNumThreads ? 32 : kGradBlockReduceNumThreads;
         ComputeInternalGradientsCUDAKernel<T, AccT>
