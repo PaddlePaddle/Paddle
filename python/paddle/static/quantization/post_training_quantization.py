@@ -246,7 +246,7 @@ class PostTrainingQuantization:
             None
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP("There are some example variables in the code.")
                 >>> import paddle.static as static
@@ -280,7 +280,7 @@ class PostTrainingQuantization:
                 ...     batch_size=batch_size,
                 ...     batch_nums=batch_nums,
                 ...     algo=algo,
-                ...     quantizable_op_type=quantizable_op_type
+                ...     quantizable_op_type=quantizable_op_type,
                 ... )
                 >>> ptq.quantize()
                 >>> ptq.save_quantized_model(save_model_path)

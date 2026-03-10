@@ -140,7 +140,7 @@ void BeamSearchDecoder<T>::ConvertSentenceVectorToDenseTensor(
   lod.push_back(source_level_lod);
   lod.push_back(sentence_level_lod);
 
-  auto& cpu_ctx = *(phi::DeviceContextPool::Instance().Get(CPUPlace()));
+  auto& cpu_ctx = *(DeviceContextPool::Instance().Get(CPUPlace()));
 
   id_tensor->set_lod(lod);
   id_tensor->Resize({static_cast<int64_t>(id_data.size())});

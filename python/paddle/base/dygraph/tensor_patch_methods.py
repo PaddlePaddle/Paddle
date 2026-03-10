@@ -424,7 +424,7 @@ def monkey_patch_tensor():
             None
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:GPU)
                 >>> import paddle
@@ -472,7 +472,7 @@ def monkey_patch_tensor():
             None
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:GPU)
                 >>> import paddle
@@ -753,7 +753,7 @@ def monkey_patch_tensor():
             Tensor: self
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:GPU)
                 >>> import paddle
@@ -1135,7 +1135,7 @@ def monkey_patch_tensor():
             device_id(int, optional): The destination GPU device id. Default: None, means current device.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:GPU)
                 >>> import paddle

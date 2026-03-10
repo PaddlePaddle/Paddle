@@ -78,17 +78,45 @@ inline at::Tensor sparse_csr_tensor(const at::Tensor& crow_indices,
                                     const at::Tensor& col_indices,
                                     const at::Tensor& values,
                                     at::TensorOptions options = {}) {
-  // Infer size from crow_indices and col_indices
-  // nrows = crow_indices.size(0) - 1
-  // ncols = max(col_indices) + 1 (approximated by col_indices for now)
+  // Infer size from crow_indices and col_indices:
+  //   nrows = crow_indices.size(0) - 1
+  //   ncols = max(col_indices) + 1
   int64_t nrows = crow_indices.size(0) - 1;
+  int64_t ncols = 0;
 
-  // For ncols, we need to find the maximum value in col_indices + 1
-  // For simplicity, we require explicit size in this case
-  PD_CHECK(false,
-           "sparse_csr_tensor without explicit size is not supported. "
-           "Please provide the size parameter.");
-  return at::Tensor();
+  if (col_indices.numel() > 0) {
+    auto* dense_cols = dynamic_cast<phi::DenseTensor*>(
+        col_indices._PD_GetInner().impl().get());
+    PD_CHECK(dense_cols != nullptr,
+             "col_indices must be a dense tensor for sparse_csr_tensor.");
+    PD_CHECK(
+        dense_cols->place().GetType() == phi::AllocationType::CPU,
+        "sparse_csr_tensor without explicit size only supports CPU "
+        "col_indices for automatic size inference. Please provide the size "
+        "parameter explicitly for non-CPU tensors.");
+
+    int64_t n = dense_cols->numel();
+    if (dense_cols->dtype() == phi::DataType::INT64) {
+      const int64_t* data = dense_cols->data<int64_t>();
+      for (int64_t i = 0; i < n; ++i) {
+        if (data[i] + 1 > ncols) ncols = data[i] + 1;
+      }
+    } else if (dense_cols->dtype() == phi::DataType::INT32) {
+      const int32_t* data = dense_cols->data<int32_t>();
+      for (int64_t i = 0; i < n; ++i) {
+        int64_t val = static_cast<int64_t>(data[i]) + 1;
+        if (val > ncols) ncols = val;
+      }
+    } else {
+      PD_CHECK(false,
+               "col_indices must have dtype int32 or int64 for automatic "
+               "size inference in sparse_csr_tensor.");
+    }
+  }
+
+  std::vector<int64_t> size_vec = {nrows, ncols};
+  return sparse_csr_tensor(
+      crow_indices, col_indices, values, at::IntArrayRef(size_vec), options);
 }
 
 }  // namespace at

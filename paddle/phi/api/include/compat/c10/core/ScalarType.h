@@ -371,6 +371,7 @@ inline bool isSignedType(ScalarType t) {
       // explicitly handled.
   }
 #undef CASE_ISSIGNED
+  return false;  // Unreachable, but satisfies compiler
 }
 
 inline std::ostream& operator<<(std::ostream& stream, ScalarType scalar_type) {

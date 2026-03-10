@@ -55,7 +55,7 @@ def accuracy(input, label, k=1, correct=None, total=None):
         Tensor, The correct rate. A Tensor with type float32.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> import paddle
@@ -64,7 +64,7 @@ def accuracy(input, label, k=1, correct=None, total=None):
             >>> paddle.seed(2023)
             >>> paddle.enable_static()
             >>> data = static.data(name="input", shape=[-1, 32, 32], dtype="float32")
-            >>> label = static.data(name="label", shape=[-1,1], dtype="int64")
+            >>> label = static.data(name="label", shape=[-1, 1], dtype="int64")
             >>> fc_out = static.nn.fc(x=data, size=10)
             >>> predict = F.softmax(x=fc_out)
             >>> result = static.accuracy(input=predict, label=label, k=5)
@@ -73,9 +73,11 @@ def accuracy(input, label, k=1, correct=None, total=None):
             >>> exe.run(static.default_startup_program())
             >>> np.random.seed(1107)
             >>> x = np.random.rand(3, 32, 32).astype("float32")
-            >>> y = np.array([[1],[0],[1]])
-            >>> output = exe.run(feed={"input": x,"label": y},
-            ...                  fetch_list=[result])
+            >>> y = np.array([[1], [0], [1]])
+            >>> output = exe.run(
+            ...     feed={"input": x, "label": y},
+            ...     fetch_list=[result],
+            ... )
             >>> print(output)
             [array(0.33333334, dtype=float32)]
 
@@ -188,7 +190,7 @@ def auc(
 
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
             :name: example-1
 
             >>> # doctest: +SKIP("This has diff in xdoctest env")
@@ -216,7 +218,7 @@ def auc(
             [array(1.)]
 
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: example-2
 
             # you can learn the usage of ins_tag_weight by the following code.
@@ -404,7 +406,7 @@ def ctr_metric_bundle(input, label, ins_tag_weight=None):
         local_ins_num (Tensor): Local number of instances
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
             :name: example-1
 
             >>> # doctest: +SKIP("This has diff in xdoctest env")
@@ -415,7 +417,7 @@ def ctr_metric_bundle(input, label, ins_tag_weight=None):
             >>> predict = paddle.nn.functional.sigmoid(paddle.static.nn.fc(x=data, size=1))
             >>> auc_out = paddle.static.ctr_metric_bundle(input=predict, label=label)
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: example-2
 
             >>> # doctest: +SKIP("This has diff in xdoctest env")

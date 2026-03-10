@@ -84,7 +84,7 @@ class LayerHelperBase:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import numpy as np
                 >>> import paddle.base as base
@@ -92,7 +92,6 @@ class LayerHelperBase:
                 >>> with base.dygraph.guard():
                 ...     x = np.ones([2, 2], np.float32)
                 ...     y = base.dygraph.to_variable(x)
-                ...
         """
         if isinstance(value, np.ndarray):
             return core.eager.Tensor(

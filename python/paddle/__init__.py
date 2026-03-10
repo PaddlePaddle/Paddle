@@ -304,6 +304,7 @@ from .nn.functional import (
     conv3d,
     group_norm,
     layer_norm,
+    relu,
 )
 from .nn.functional.distance import (
     pdist,
@@ -410,7 +411,6 @@ from .tensor.logic import (
     greater_equal_,
     greater_than,
     greater_than_,
-    gt,
     is_empty,
     is_tensor,
     isclose,
@@ -454,7 +454,6 @@ from .tensor.manipulation import (
     flatten,
     flatten_,
     flip,
-    flip as reverse,
     gather,
     gather_nd,
     hsplit,
@@ -1009,7 +1008,6 @@ ne = not_equal
 lt = less_than
 less = less_than
 le = less_equal
-greater = gt
 ge = greater_equal
 swapdims = transpose
 swapaxes = transpose
@@ -1339,7 +1337,6 @@ __all__ = [
     'chunk',
     'tolist',
     'tensordot',
-    "greater",
     'greater_than',
     'greater_than_',
     'shard_index',
@@ -1527,6 +1524,7 @@ __all__ = [
     'conv3d',
     'group_norm',
     'layer_norm',
+    'relu',
     'manual_seed',
     'softmax',
     'Generator',

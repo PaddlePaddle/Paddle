@@ -42,7 +42,7 @@ def _patch_grads_for_step(
         function: Decorated step method that handles None gradients.
 
     Example:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> from __future__ import annotations
             >>> import paddle.distributed as dist
@@ -53,7 +53,7 @@ def _patch_grads_for_step(
             ...     learning_rate=0.001,
             ...     parameters=self.model.parameters(),
             ...     grad_clip=paddle.nn.ClipGradByGlobalNorm(1.0),
-            ...     )
+            ... )
             >>> if dist.in_auto_parallel_align_mode():
             >>>     orig_step = (
             ...         opt.step.__func__ if hasattr(opt.step, "__func__") else opt.step

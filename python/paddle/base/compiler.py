@@ -593,7 +593,7 @@ class IpuStrategy:
         The IpuStrategy instance.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:IPU)
 
@@ -639,7 +639,7 @@ class IpuStrategy:
         Use `release_patch` to release the patch.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:IPU)
 
@@ -657,7 +657,7 @@ class IpuStrategy:
         Release the registered IPU functions.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:IPU)
 
@@ -681,15 +681,17 @@ class IpuStrategy:
               None.
 
           Examples:
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> # doctest: +REQUIRES(env:IPU)
                     >>> import paddle
                     >>> import paddle.static as static
 
                     >>> linear = paddle.nn.Linear(10, 10)
-                    >>> optimizer = paddle.optimizer.SGD(learning_rate=0.01,
-                    ...                                 parameters=linear.parameters())
+                    >>> optimizer = paddle.optimizer.SGD(
+                    ...     learning_rate=0.01,
+                    ...     parameters=linear.parameters(),
+                    ... )
                     >>> ipu_strategy = static.IpuStrategy()
                     >>> ipu_strategy.set_optimizer(optimizer)
         """
@@ -713,7 +715,7 @@ class IpuStrategy:
               Dict.
 
           Examples:
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> # doctest: +REQUIRES(env:IPU)
 
@@ -721,8 +723,10 @@ class IpuStrategy:
                     >>> import paddle.static as static
 
                     >>> linear = paddle.nn.Linear(10, 10)
-                    >>> optimizer = paddle.optimizer.SGD(learning_rate=0.01,
-                    ...                                 parameters=linear.parameters())
+                    >>> optimizer = paddle.optimizer.SGD(
+                    ...     learning_rate=0.01,
+                    ...     parameters=linear.parameters(),
+                    ... )
                     >>> ipu_strategy = static.IpuStrategy()
                     >>> attrs = ipu_strategy.parse_optimizer(optimizer)
         """
@@ -763,7 +767,7 @@ class IpuStrategy:
             None.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:IPU)
 
@@ -773,10 +777,12 @@ class IpuStrategy:
                 >>> paddle.enable_static()
 
                 >>> ipu_strategy = static.IpuStrategy()
-                >>> ipu_strategy.set_graph_config(num_ipus=1,
-                ...                             is_training=True,
-                ...                             micro_batch_size=1,
-                ...                             enable_manual_shard=False)
+                >>> ipu_strategy.set_graph_config(
+                ...     num_ipus=1,
+                ...     is_training=True,
+                ...     micro_batch_size=1,
+                ...     enable_manual_shard=False,
+                ... )
         """
         if num_ipus == 1 and enable_manual_shard:
             raise RuntimeError(
@@ -814,7 +820,7 @@ class IpuStrategy:
             None.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:IPU)
 
@@ -824,10 +830,12 @@ class IpuStrategy:
                 >>> paddle.enable_static()
 
                 >>> ipu_strategy = static.IpuStrategy()
-                >>> ipu_strategy.set_pipelining_config(enable_pipelining=False,
-                ...                                     batches_per_step=1,
-                ...                                     enable_gradient_accumulation=False,
-                ...                                     accumulation_factor=1)
+                >>> ipu_strategy.set_pipelining_config(
+                ...     enable_pipelining=False,
+                ...     batches_per_step=1,
+                ...     enable_gradient_accumulation=False,
+                ...     accumulation_factor=1,
+                ... )
         """
         enable_manual_shard = self.get_option('enable_manual_shard')
         if not enable_manual_shard and enable_pipelining:
@@ -853,7 +861,7 @@ class IpuStrategy:
             None.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:IPU)
 
@@ -893,7 +901,7 @@ class IpuStrategy:
             None.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:IPU)
 
@@ -929,7 +937,7 @@ class IpuStrategy:
             None.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:IPU)
 
@@ -939,7 +947,7 @@ class IpuStrategy:
                 >>> paddle.enable_static()
 
                 >>> ipu_strategy = static.IpuStrategy()
-                >>> options = {'num_ipus':1, 'enable_fp16': True}
+                >>> options = {'num_ipus': 1, 'enable_fp16': True}
                 >>> ipu_strategy.set_options(options)  # type: ignore[arg-type]
         """
         self._ipu_strategy.set_options(options)
@@ -959,7 +967,7 @@ class IpuStrategy:
             option value.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:IPU)
 
@@ -984,7 +992,7 @@ class IpuStrategy:
             None.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:IPU)
 
@@ -1009,7 +1017,7 @@ class IpuStrategy:
             None.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:IPU)
 
@@ -1072,7 +1080,7 @@ class IpuCompiledProgram:
         IpuCompiledProgram
 
     Example:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:IPU)
 
@@ -1087,12 +1095,18 @@ class IpuCompiledProgram:
 
             >>> ipu_strategy = static.IpuStrategy()
             >>> ipu_strategy.set_graph_config(num_ipus=1, is_training=True, micro_batch_size=1)
-            >>> ipu_strategy.set_pipelining_config(enable_pipelining=False, batches_per_step=1, enable_gradient_accumulation=False, accumulation_factor=1)
+            >>> ipu_strategy.set_pipelining_config(
+            ...     enable_pipelining=False,
+            ...     batches_per_step=1,
+            ...     enable_gradient_accumulation=False,
+            ...     accumulation_factor=1,
+            ... )
             >>> ipu_strategy.set_precision_config(enable_fp16=False)
 
             >>> ipu_compiled_program = static.IpuCompiledProgram(
             ...     main_prog,
-            ...     ipu_strategy=ipu_strategy)
+            ...     ipu_strategy=ipu_strategy,
+            ... )
     """
 
     def __init__(
@@ -1152,7 +1166,7 @@ class IpuCompiledProgram:
             Program
 
         Example:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:IPU)
 
@@ -1167,12 +1181,18 @@ class IpuCompiledProgram:
 
                 >>> ipu_strategy = static.IpuStrategy()
                 >>> ipu_strategy.set_graph_config(num_ipus=1, is_training=True, micro_batch_size=1)
-                >>> ipu_strategy.set_pipelining_config(enable_pipelining=False, batches_per_step=1, enable_gradient_accumulation=False, accumulation_factor=1)
+                >>> ipu_strategy.set_pipelining_config(
+                ...     enable_pipelining=False,
+                ...     batches_per_step=1,
+                ...     enable_gradient_accumulation=False,
+                ...     accumulation_factor=1,
+                ... )
                 >>> ipu_strategy.set_precision_config(enable_fp16=False)
 
                 >>> program = static.IpuCompiledProgram(
                 ...     main_prog,
-                ...     ipu_strategy=ipu_strategy).compile([a.name], [b.name])
+                ...     ipu_strategy=ipu_strategy,
+                ... ).compile([a.name], [b.name])
         """
         self._backend.set_scope(self._scope)
         self._backend.set_ipu_strategy(self._ipu_strategy._ipu_strategy)

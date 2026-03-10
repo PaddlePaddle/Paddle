@@ -142,8 +142,6 @@ def __bootstrap__():
     Returns:
         None
     """
-    in_test = 'unittest' in sys.modules
-
     try:
         num_threads = int(os.getenv('OMP_NUM_THREADS', '1'))
     except ValueError:
@@ -160,9 +158,6 @@ def __bootstrap__():
         print('PLEASE USE OMP_NUM_THREADS WISELY.', file=sys.stderr)
 
     os.environ['OMP_NUM_THREADS'] = str(num_threads)
-
-    if os.getenv('NVIDIA_TF32_OVERRIDE', None) is None:
-        os.environ['NVIDIA_TF32_OVERRIDE'] = '0'
 
     flag_prefix = "FLAGS_"
     read_env_flags = [

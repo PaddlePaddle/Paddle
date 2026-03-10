@@ -300,7 +300,7 @@ def to_distributed(
         dataloader. The dataloader can be used in distributed training.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('run in distributed env')
             >>> import math
@@ -320,13 +320,15 @@ def to_distributed(
             >>> SEQ_LENGTH = 1024
             >>> N_HEAD = 32
             >>> NUM_HIDDEN_LAYERS = 4
-            >>> class RandomDataset(paddle.io.Dataset): # type: ignore[type-arg]
+            >>> class RandomDataset(paddle.io.Dataset):  # type: ignore[type-arg]
             ...     def __init__(self, inputs, labels, num_samples):
             ...         self.inputs = inputs
             ...         self.labels = labels
             ...         self.num_samples = num_samples
+            ...
             ...     def __getitem__(self, idx):
             ...         return self.inputs[idx], self.labels[idx]
+            ...
             ...     def __len__(self):
             ...         return self.num_samples
 
@@ -336,12 +338,7 @@ def to_distributed(
             ...         self.dim = dim
             ...         self.max_position_embeddings = max_position_embeddings
             ...         self.base = base
-            ...         self.inv_freq = 1.0 / (
-            ...             self.base ** (
-            ...                 paddle.cast(paddle.arange(0, self.dim, 2), dtype="float32")
-            ...                 / self.dim
-            ...             )
-            ...         )
+            ...         self.inv_freq = 1.0 / (self.base ** (paddle.cast(paddle.arange(0, self.dim, 2), dtype="float32") / self.dim))
             ...         self._set_cos_sin_cache(seq_len=max_position_embeddings)
 
             ...     def _set_cos_sin_cache(self, seq_len):
@@ -389,20 +386,14 @@ def to_distributed(
             ...     query_states = paddle.transpose(query_states, [0, 2, 1, 3])
             ...     key_states = paddle.transpose(key_states, [0, 2, 1, 3])
             ...     value_states = paddle.transpose(value_states, [0, 2, 1, 3])
-            ...     attn_weights = paddle.matmul(
-            ...         query_states / math.sqrt(head_dim), key_states.transpose([0, 1, 3, 2])
-            ...     )
+            ...     attn_weights = paddle.matmul(query_states / math.sqrt(head_dim), key_states.transpose([0, 1, 3, 2]))
             ...     attention_mask = attention_mask.reshape([bsz, 1, q_len, kv_seq_len])
             ...     attn_weights = attn_weights + attention_mask
             ...     if not paddle.in_dynamic_mode():
-            ...         attn_weights = F.softmax(attn_weights, axis=-1, dtype="float32").astype(
-            ...             query_states.dtype
-            ...         )
+            ...         attn_weights = F.softmax(attn_weights, axis=-1, dtype="float32").astype(query_states.dtype)
             ...     else:
             ...         with paddle.amp.auto_cast(False):
-            ...             attn_weights = F.softmax(
-            ...                 attn_weights, axis=-1, dtype="float32"
-            ...             ).astype(query_states.dtype)
+            ...             attn_weights = F.softmax(attn_weights, axis=-1, dtype="float32").astype(query_states.dtype)
             ...     attn_output = paddle.matmul(attn_weights, value_states)
             ...     attn_output = attn_output.transpose([0, 2, 1, 3])
             ...     attn_output = attn_output.reshape([bsz, q_len, head_dim * num_heads])
@@ -414,21 +405,11 @@ def to_distributed(
             ...         self.hidden_size = hidden_size
             ...         self.num_heads = n_head
             ...         self.head_dim = hidden_size // n_head
-            ...         self.q_proj = nn.Linear(
-            ...             hidden_size, hidden_size, bias_attr=False
-            ...         )
-            ...         self.k_proj = nn.Linear(
-            ...             hidden_size, hidden_size, bias_attr=False
-            ...         )
-            ...         self.v_proj = nn.Linear(
-            ...             hidden_size, hidden_size, bias_attr=False
-            ...         )
-            ...         self.o_proj = nn.Linear(
-            ...             hidden_size, hidden_size, bias_attr=False
-            ...         )
-            ...         self.rotary_emb = RotaryEmbedding(
-            ...             self.head_dim, max_position_embeddings=SEQ_LENGTH, base=10000
-            ...         )
+            ...         self.q_proj = nn.Linear(hidden_size, hidden_size, bias_attr=False)
+            ...         self.k_proj = nn.Linear(hidden_size, hidden_size, bias_attr=False)
+            ...         self.v_proj = nn.Linear(hidden_size, hidden_size, bias_attr=False)
+            ...         self.o_proj = nn.Linear(hidden_size, hidden_size, bias_attr=False)
+            ...         self.rotary_emb = RotaryEmbedding(self.head_dim, max_position_embeddings=SEQ_LENGTH, base=10000)
 
             ...     def forward(
             ...         self,
@@ -468,15 +449,9 @@ def to_distributed(
             ...         super().__init__()
             ...         self.hidden_size = hidden_size
             ...         self.intermediate_size = intermediate_size
-            ...         self.gate_proj = nn.Linear(
-            ...             hidden_size, intermediate_size, bias_attr=False
-            ...         )
-            ...         self.up_proj = nn.Linear(
-            ...             hidden_size, intermediate_size, bias_attr=False
-            ...         )
-            ...         self.down_proj = nn.Linear(
-            ...             intermediate_size, hidden_size, bias_attr=False
-            ...         )
+            ...         self.gate_proj = nn.Linear(hidden_size, intermediate_size, bias_attr=False)
+            ...         self.up_proj = nn.Linear(hidden_size, intermediate_size, bias_attr=False)
+            ...         self.down_proj = nn.Linear(intermediate_size, hidden_size, bias_attr=False)
 
             ...     def forward(self, x):
             ...         x = paddle.nn.functional.swiglu(
@@ -539,22 +514,16 @@ def to_distributed(
             ...         hidden_states = residual + hidden_states
             ...         return hidden_states
 
-            >>> def _prepare_decoder_attention_mask(
-            ...     attention_mask, input_shape, dtype
-            ... ):
+            >>> def _prepare_decoder_attention_mask(attention_mask, input_shape, dtype):
             ...     batch_size, src_length = attention_mask.shape[0], attention_mask.shape[-1]
             ...     batch_size, target_length = input_shape
             ...     attention_mask = attention_mask[:, None, None, :].astype("bool")
             ...     attention_mask.stop_gradient = True
             ...     expanded_attn_mask = attention_mask.expand([batch_size, 1, target_length, src_length])
             ...     mask = paddle.tril(paddle.ones((target_length, target_length), dtype="bool"))
-            ...     combined_attention_mask = mask[None, None, :, :].expand(
-            ...         [batch_size, 1, target_length, target_length]
-            ...     )
-            ...     expanded_attn_mask = (expanded_attn_mask & combined_attention_mask)
-            ...     expanded_attn_mask = paddle.where(
-            ...         expanded_attn_mask, 0.0, paddle.finfo(dtype).min
-            ...     ).astype(dtype)
+            ...     combined_attention_mask = mask[None, None, :, :].expand([batch_size, 1, target_length, target_length])
+            ...     expanded_attn_mask = expanded_attn_mask & combined_attention_mask
+            ...     expanded_attn_mask = paddle.where(expanded_attn_mask, 0.0, paddle.finfo(dtype).min).astype(dtype)
             ...     return expanded_attn_mask
 
             >>> class Model(nn.Layer):
@@ -572,21 +541,14 @@ def to_distributed(
             ...             vocab_size,
             ...             hidden_size,
             ...         )
-            ...         self.layers = nn.LayerList(
-            ...             [
-            ...                 DecoderLayer()
-            ...                 for i in range(NUM_HIDDEN_LAYERS)
-            ...             ]
-            ...         )
+            ...         self.layers = nn.LayerList([DecoderLayer() for i in range(NUM_HIDDEN_LAYERS)])
             ...         self.norm = RMSNorm(hidden_size)
             ...         self.weight = self.create_parameter(
             ...             shape=[hidden_size, vocab_size],
             ...             dtype=paddle.get_default_dtype(),
             ...         )
             ...         self.ignore_index = -100
-            ...         self.loss_func = paddle.nn.CrossEntropyLoss(
-            ...             reduction="none", ignore_index=self.ignore_index
-            ...         )
+            ...         self.loss_func = paddle.nn.CrossEntropyLoss(reduction="none", ignore_index=self.ignore_index)
 
             ...     def forward(
             ...         self,
@@ -637,28 +599,19 @@ def to_distributed(
             ...                 loss = paddle.sum(masked_lm_loss * binary_sequence) / count
             ...         return (loss, logits)
 
-            >>> model = Model() # There is no distributed code or markup in Model
-            >>> input_seqs = np.random.randint(
-            ...     low=0, high=1024, size=(BATCH_SIZE * BATCH_NUM, SEQ_LENGTH)
-            ... ).astype("int64")
-            >>> labels = np.random.randint(
-            ...     low=0, high=1024, size=(BATCH_SIZE * BATCH_NUM, SEQ_LENGTH)
-            ... ).astype("int64")
-            >>> dataset = RandomDataset(
-            ...     input_seqs, labels, BATCH_SIZE * BATCH_NUM
-            ... )
+            >>> model = Model()  # There is no distributed code or markup in Model
+            >>> input_seqs = np.random.randint(low=0, high=1024, size=(BATCH_SIZE * BATCH_NUM, SEQ_LENGTH)).astype("int64")
+            >>> labels = np.random.randint(low=0, high=1024, size=(BATCH_SIZE * BATCH_NUM, SEQ_LENGTH)).astype("int64")
+            >>> dataset = RandomDataset(input_seqs, labels, BATCH_SIZE * BATCH_NUM)
             >>> sampler = paddle.io.BatchSampler(
-            ...     dataset, batch_size=BATCH_SIZE, shuffle=False, drop_last=True
+            ...     dataset,
+            ...     batch_size=BATCH_SIZE,
+            ...     shuffle=False,
+            ...     drop_last=True,
             ... )
-            >>> loader = paddle.io.DataLoader(
-            ...     dataset, batch_sampler=sampler
-            ... )
-            >>> opt = paddle.optimizer.SGD(
-            ...     learning_rate=0.1, parameters=model.parameters()
-            ... )
-            >>> input_seq_spec = paddle.static.InputSpec(
-            ...     [BATCH_SIZE, SEQ_LENGTH], 'float32', 'input_seq', True
-            ... )
+            >>> loader = paddle.io.DataLoader(dataset, batch_sampler=sampler)
+            >>> opt = paddle.optimizer.SGD(learning_rate=0.1, parameters=model.parameters())
+            >>> input_seq_spec = paddle.static.InputSpec([BATCH_SIZE, SEQ_LENGTH], 'float32', 'input_seq', True)
             >>> dist_config = ToDistributedConfig()
             >>> dist_config.sequence_parallel = True
 

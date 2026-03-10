@@ -1165,7 +1165,7 @@ def get_paddle_extra_install_requirements():
                     "nvidia-cusolver-cu12==11.7.1.2; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-cusparse-cu12==12.5.4.2; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-cusparselt-cu12==0.6.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                    "nvidia-nccl-cu12==2.28.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-nccl-cu12==2.25.1; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-nvtx-cu12==12.6.77; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-nvjitlink-cu12==12.6.85; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-cufile-cu12==1.11.1.6; platform_system == 'Linux' and platform_machine == 'x86_64'"
@@ -1478,6 +1478,12 @@ def get_package_data_and_package_dir():
                 env_dict.get("FLUID_CORE_NAME") + '.lib',
             ]
         }
+    custom_device_dir = (
+        env_dict.get("PADDLE_BINARY_DIR")
+        + '/python/paddle/paddle_custom_device'
+    )
+    if os.path.isdir(custom_device_dir):
+        package_data['paddle.paddle_custom_device'] = ['*.so', 'include/**']
     package_data['paddle.base'] += [
         paddle_binary_dir + '/python/paddle/cost_model/static_op_benchmark.json'
     ]
@@ -1514,6 +1520,8 @@ def get_package_data_and_package_dir():
             'paddle.base': env_dict.get("PADDLE_BINARY_DIR")
             + '/python/paddle/base',
         }
+        if os.path.isdir(custom_device_dir):
+            package_dir['paddle.paddle_custom_device'] = custom_device_dir
     # put all thirdparty libraries in paddle.libs
     libs_path = paddle_binary_dir + '/python/paddle/libs'
     package_data['paddle.libs'] = []
@@ -2697,6 +2705,13 @@ def get_setup_parameters():
         'paddle.api_tracer',
         'paddle.testing',
     ]
+
+    custom_device_dir = (
+        env_dict.get("PADDLE_BINARY_DIR")
+        + '/python/paddle/paddle_custom_device'
+    )
+    if os.path.isdir(custom_device_dir):
+        packages.append('paddle.paddle_custom_device')
 
     if (
         env_dict.get("WITH_GPU") == 'ON'

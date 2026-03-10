@@ -1,0 +1,47 @@
+// Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#pragma once
+
+#include <ATen/core/Tensor.h>
+#include <ATen/ops/tensor_split.h>
+
+namespace at {
+
+inline std::vector<at::Tensor> hsplit(const at::Tensor& self,
+                                      int64_t sections) {
+  // For 1D tensors, split along dim 0; otherwise split along dim 1
+  int64_t dim = self._PD_GetInner().dims().size() == 1 ? 0 : 1;
+  return at::tensor_split(self, sections, dim);
+}
+
+inline std::vector<at::Tensor> hsplit(const at::Tensor& self,
+                                      at::IntArrayRef indices) {
+  int64_t dim = self._PD_GetInner().dims().size() == 1 ? 0 : 1;
+  return at::tensor_split(self, indices, dim);
+}
+
+}  // namespace at
+
+namespace at {
+
+inline std::vector<at::Tensor> Tensor::hsplit(int64_t sections) const {
+  return at::hsplit(*this, sections);
+}
+
+inline std::vector<at::Tensor> Tensor::hsplit(at::IntArrayRef indices) const {
+  return at::hsplit(*this, indices);
+}
+
+}  // namespace at

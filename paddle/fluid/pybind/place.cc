@@ -275,7 +275,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
     It represents a custom device on which a tensor will be allocated and a model will run.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
             >>> import paddle
@@ -394,7 +394,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
         id (int): GPU device ID.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -485,7 +485,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
     Return a Baidu Kunlun Place
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:XPU)
             >>> import paddle.base as base
@@ -592,7 +592,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
     It represents a CPU device on which a tensor will be allocated and a model will run.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> cpu_place = paddle.CPUPlace()
@@ -631,7 +631,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
     please refer to `official document <https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#pinned-memory>`_ .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -670,7 +670,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
     please refer to `official document <https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#pinned-memory>`_ .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:XPU)
             >>> import paddle
@@ -704,7 +704,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
     It represents a IPU device on which a tensor will be allocated and a model will run.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:IPU)
             >>> import paddle

@@ -580,16 +580,6 @@ void FlashAttnV3GradKernel(const Context &dev_ctx,
                            DenseTensor *dk,
                            DenseTensor *dv) {
 #ifdef PADDLE_WITH_FLASHATTN_V3
-  PADDLE_ENFORCE_EQ(
-      window_size_left,
-      -1,
-      common::errors::InvalidArgument("window_size is not supported, please "
-                                      "set window_size_left/right to -1"));
-  PADDLE_ENFORCE_EQ(
-      window_size_right,
-      -1,
-      common::errors::InvalidArgument("window_size is not supported, please "
-                                      "set window_size_left/right to -1"));
   PADDLE_ENFORCE_EQ(softcap,
                     0,
                     common::errors::InvalidArgument(
@@ -713,16 +703,6 @@ void FlashAttnV3VarlenGradKernel(const Context &dev_ctx,
                                  DenseTensor *dk,
                                  DenseTensor *dv) {
 #ifdef PADDLE_WITH_FLASHATTN_V3
-  PADDLE_ENFORCE_EQ(
-      window_size_left,
-      -1,
-      common::errors::InvalidArgument("window_size is not supported, please "
-                                      "set window_size_left/right to -1"));
-  PADDLE_ENFORCE_EQ(
-      window_size_right,
-      -1,
-      common::errors::InvalidArgument("window_size is not supported, please "
-                                      "set window_size_left/right to -1"));
   PADDLE_ENFORCE_EQ(softcap,
                     0,
                     common::errors::InvalidArgument(
@@ -1414,11 +1394,11 @@ void FlashMaskV2GradBaseKernel(
   DenseTensor tile_count_semaphore;
   if (arch >= 90) {
     tile_count_semaphore = phi::Full<int32_t, Context>(dev_ctx, {1}, 0);
-    phi::dynload::flashmaskv2_bwd_params_set_tile_count_semaphore(
+    dynload::flashmaskv2_bwd_params_set_tile_count_semaphore(
         params_handle, tile_count_semaphore.data<int>());
   } else {
-    phi::dynload::flashmaskv2_bwd_params_set_tile_count_semaphore(params_handle,
-                                                                  nullptr);
+    dynload::flashmaskv2_bwd_params_set_tile_count_semaphore(params_handle,
+                                                             nullptr);
   }
 
   DenseTensor dq_semaphore = Empty<int32_t>(
