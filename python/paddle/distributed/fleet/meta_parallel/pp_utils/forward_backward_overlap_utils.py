@@ -186,13 +186,7 @@ class ScheduleNode:
         inputs = dict_to_tuple_helper(self.inputs)
         if not isinstance(inputs, (tuple, list)):
             inputs = (inputs,)
-        grad = tuple(
-            [
-                t.grad
-                for t in inputs
-                if isinstance(t, paddle.Tensor) and not t.stop_gradient
-            ]
-        )
+        grad = tuple([e.grad if e is not None else None for e in inputs])
         # grad = tuple([e.grad if e is not None and not e.stop_gradient else None for e in inputs])
         self._reset_states()
 
