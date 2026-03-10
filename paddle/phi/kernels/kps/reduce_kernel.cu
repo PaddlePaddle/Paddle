@@ -300,7 +300,7 @@ void NansumKernel(const Context& dev_ctx,
   phi::Reduce<T, kps::AddFunctor, kps::NanToZeroFunctor>(
       dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
 #else
-  phi::Reduce<T, kps::SumOps>(
+  phi::Reduce<T, kps::NansumOps>(
       dev_ctx, x, reduce_all, dims.GetData(), out_dtype, out);
 #endif
 }
