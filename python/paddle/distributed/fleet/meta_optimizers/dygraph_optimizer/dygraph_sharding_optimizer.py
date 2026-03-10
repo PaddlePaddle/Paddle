@@ -1249,8 +1249,17 @@ class DygraphShardingOptimizerV2:
         self._collect_comm_buffers()
         self._assign_slice_grad()
 
+        # Detect Muon by walking the wrapper chain; use name comparison to avoid
+        # a hard circular import.
+        core_opt = self._inner_opt
+        while hasattr(core_opt, '_inner_opt'):
+            core_opt = core_opt._inner_opt
+        is_muon = type(core_opt).__name__ == 'Muon'
+
         if not isinstance(self._parameter_list[0], dict):
             params_grads = []
+            # Build name→original-param map so Muon can recover full 2-D shape.
+            global_param_map = {p.name: p for p in self._parameter_list}
             for param in self._parameter_list:
                 if (
                     hasattr(param, "regularizer")
@@ -1268,8 +1277,25 @@ class DygraphShardingOptimizerV2:
                 if hasattr(param, "main_grad") and param.main_grad is not None:
                     grad_var = param.main_grad
                 if grad_var is not None:
+                    if is_muon:
+                        from .muon_sharding_annotations import (
+                            annotate_muon_params,
+                        )
+
+                        original_p = global_param_map[param.name]
+                        if not annotate_muon_params(
+                            param, original_p, self._hcg, self.param2bucket
+                        ):
+                            continue
+
                     params_grads.append((param, grad_var))
 
+            if is_muon and params_grads:
+                from .muon_sharding_annotations import (
+                    sort_muon_params_grads,
+                )
+
+                sort_muon_params_grads(params_grads)
             if self._enable_timer:
                 self.timers("apply-optimize").start()
 

@@ -23,6 +23,9 @@ from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.dygraph_sharding
     DygraphShardingOptimizer,
     DygraphShardingOptimizerV2,
 )
+from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.dygraph_sharding_optimizer_v3 import (
+    DygraphShardingOptimizerV3,
+)
 from paddle.distributed.fleet.utils.hybrid_parallel_util import (
     obtain_optimizer_parameters_list,
 )
@@ -284,11 +287,13 @@ class HybridParallelOptimizer:
             split_param = strategy.hybrid_configs[
                 'sharding_configs'
             ].split_param
-            ShardingOptimizer = (
-                DygraphShardingOptimizerV2
-                if split_param
-                else DygraphShardingOptimizer
-            )
+            use_sharding_v3 = os.environ.get("FLAGS_sharding_v3", "0") == "1"
+            if use_sharding_v3 and split_param:
+                ShardingOptimizer = DygraphShardingOptimizerV3
+            elif split_param:
+                ShardingOptimizer = DygraphShardingOptimizerV2
+            else:
+                ShardingOptimizer = DygraphShardingOptimizer
             optimizer = ShardingOptimizer(optimizer, hcg)
 
         self._enable_timer = strategy.hybrid_configs["enable_optimizer_timer"]
@@ -335,6 +340,7 @@ class HybridParallelOptimizer:
                     MixPrecisionOptimizer,
                     DygraphShardingOptimizer,
                     DygraphShardingOptimizerV2,
+                    DygraphShardingOptimizerV3,
                 ),
             )
 
@@ -628,7 +634,11 @@ class HybridParallelOptimizer:
         if self._sharding_enable:
             assert isinstance(
                 self._inner_opt,
-                (DygraphShardingOptimizer, DygraphShardingOptimizerV2),
+                (
+                    DygraphShardingOptimizer,
+                    DygraphShardingOptimizerV2,
+                    DygraphShardingOptimizerV3,
+                ),
             )
             self._inner_opt.reduce_gradients(parameter_list, self._hcg)
             dp_parameter_list = self._inner_opt.filter_parameters(
