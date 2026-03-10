@@ -37,8 +37,8 @@ void MatmulKernelImpl(const Context& dev_ctx,
                       const DenseTensor& y,
                       DenseTensor* out) {
 #if defined(PADDLE_WITH_CUDA) || HIP_VERSION >= 402
-  std::vector<int64_t> xdim_vec = common::vectorize(x.dims());
-  std::vector<int64_t> ydim_vec = common::vectorize(y.dims());
+  std::vector<int64_t> xdim_vec = vectorize(x.dims());
+  std::vector<int64_t> ydim_vec = vectorize(y.dims());
   auto x_ndims = xdim_vec.size();
   auto y_ndims = ydim_vec.size();
   PADDLE_ENFORCE_EQ(x_ndims,
@@ -175,9 +175,9 @@ void MaskedMatmulCsrKernel(const Context& dev_ctx,
                            const SparseCsrTensor& mask,
                            SparseCsrTensor* out) {
 #if defined(PADDLE_WITH_CUDA)
-  std::vector<int64_t> xdim_vec = common::vectorize(x.dims());
-  std::vector<int64_t> ydim_vec = common::vectorize(y.dims());
-  std::vector<int64_t> maskdim_vec = common::vectorize(mask.dims());
+  std::vector<int64_t> xdim_vec = vectorize(x.dims());
+  std::vector<int64_t> ydim_vec = vectorize(y.dims());
+  std::vector<int64_t> maskdim_vec = vectorize(mask.dims());
 
   auto x_ndims = xdim_vec.size();
   auto y_ndims = ydim_vec.size();

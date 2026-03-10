@@ -59,8 +59,8 @@ void TensorUnfoldGradKernel(const Context& dev_ctx,
   PD_VISIT_ALL_TYPES(out_grad.dtype(), "TensorUnfoldGradKernel", ([&] {
                        phi::StridedTensorCopy<data_t>(
                            out_grad,
-                           common::vectorize<int64_t>(tmp.dims()),
-                           common::vectorize<int64_t>(tmp.strides()),
+                           vectorize<int64_t>(tmp.dims()),
+                           vectorize<int64_t>(tmp.strides()),
                            tmp.offset(),
                            &tmp);
                      }));

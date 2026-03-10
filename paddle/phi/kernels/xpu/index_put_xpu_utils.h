@@ -42,11 +42,10 @@ void XPUDealWithIndices(const Context& dev_ctx,
       expanded_index = casted_index;
     } else {
       expanded_index.Resize(bd_dim);
-      ExpandKernel<int64_t, Context>(
-          dev_ctx,
-          casted_index,
-          IntArray(common::vectorize<int64_t>(bd_dim)),
-          &expanded_index);
+      ExpandKernel<int64_t, Context>(dev_ctx,
+                                     casted_index,
+                                     IntArray(vectorize<int64_t>(bd_dim)),
+                                     &expanded_index);
     }
 
     tmp_indices_v.emplace_back(expanded_index);

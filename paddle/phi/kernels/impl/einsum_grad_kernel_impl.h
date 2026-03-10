@@ -37,13 +37,12 @@ DenseTensor PerformTileAndReduction(const Context& dev_ctx,
   auto op_label = std::string(tmp_union.begin(), tmp_union.end());
   VLOG(5) << "Start PerformTileAndReduction equation " << equ
           << " with operand shape: "
-          << paddle::string::join_strings(common::vectorize<int64_t>(t.dims()),
-                                          ",");
+          << paddle::string::join_strings(vectorize<int64_t>(t.dims()), ",");
   DenseTensor ret;
   std::vector<int64_t> repeat_times;
   std::vector<int64_t> resize_dims;
   std::vector<int64_t> recover_shape;
-  std::vector<int64_t> t_shape = common::vectorize<int64_t>(t.dims());
+  std::vector<int64_t> t_shape = vectorize<int64_t>(t.dims());
   for (size_t i = 0; i < op_label.size(); i++) {
     int c = op_label[i];
     if (label2type[c] == LabelType::Reduction) {
@@ -101,7 +100,7 @@ DenseTensor PerformTileAndReduction(const Context& dev_ctx,
   // call TileGradKernel to reverse broadcast operation.
   VLOG(5) << "After diagonalize, we have tensor with shape: "
           << paddle::string::join_strings(
-                 common::vectorize<int64_t>(undiagonal_out.dims()), ',');
+                 vectorize<int64_t>(undiagonal_out.dims()), ',');
   repeat_times.clear();
   for (size_t i = 0; i < x_shape.size(); ++i) {
     VLOG(4) << "broadcast shape is " << broadcast_shape[i] << ", x_shape is "
@@ -123,7 +122,7 @@ DenseTensor PerformTileAndReduction(const Context& dev_ctx,
       dev_ctx, tmp_x, undiagonal_out, repeat_times, &broadcast_out);
   VLOG(5) << "After broadcast recover, we have tensor with shape: "
           << paddle::string::join_strings(
-                 common::vectorize<int64_t>(broadcast_out.dims()), ',');
+                 vectorize<int64_t>(broadcast_out.dims()), ',');
   return broadcast_out;
 }
 
@@ -189,14 +188,14 @@ void EinsumGradKernel(const Context& dev_ctx,
     VLOG(5) << "new_equation is " << new_equation;
     EinsumInferKernel<T, Context>(
         dev_ctx, new_operands, new_equation, &before_tile);
-    *(x_grad[0]) = PerformTileAndReduction<T, Context>(
-        dev_ctx,
-        labeltype,
-        labelshape,
-        broadcast_shapes[0],
-        common::vectorize<int64_t>(x[0]->dims()),
-        left,
-        before_tile);
+    *(x_grad[0]) =
+        PerformTileAndReduction<T, Context>(dev_ctx,
+                                            labeltype,
+                                            labelshape,
+                                            broadcast_shapes[0],
+                                            vectorize<int64_t>(x[0]->dims()),
+                                            left,
+                                            before_tile);
 #ifndef PADDLE_WITH_XPU  // xpu is not support conj now, we just disable it.
     *(x_grad[0]) = Conj<T, Context>(dev_ctx, *x_grad[0]);
 #endif
@@ -252,28 +251,28 @@ void EinsumGradKernel(const Context& dev_ctx,
     // now.
     cache.clear();
     if (x_grad[0]) {
-      *(x_grad[0]) = PerformTileAndReduction<T, Context>(
-          dev_ctx,
-          labeltype,
-          labelshape,
-          broadcast_shapes[0],
-          common::vectorize<int64_t>(x[0]->dims()),
-          ops[0],
-          dA);
+      *(x_grad[0]) =
+          PerformTileAndReduction<T, Context>(dev_ctx,
+                                              labeltype,
+                                              labelshape,
+                                              broadcast_shapes[0],
+                                              vectorize<int64_t>(x[0]->dims()),
+                                              ops[0],
+                                              dA);
       VLOG(4) << "After call dA";
 #ifndef PADDLE_WITH_XPU  // xpu is not support conj now, we just disable it.
       *(x_grad[0]) = Conj<T, Context>(dev_ctx, *x_grad[0]);
 #endif
     }
     if (x_grad[1]) {
-      *(x_grad[1]) = PerformTileAndReduction<T, Context>(
-          dev_ctx,
-          labeltype,
-          labelshape,
-          broadcast_shapes[1],
-          common::vectorize<int64_t>(x[1]->dims()),
-          ops[1],
-          dB);
+      *(x_grad[1]) =
+          PerformTileAndReduction<T, Context>(dev_ctx,
+                                              labeltype,
+                                              labelshape,
+                                              broadcast_shapes[1],
+                                              vectorize<int64_t>(x[1]->dims()),
+                                              ops[1],
+                                              dB);
 #ifndef PADDLE_WITH_XPU  // xpu is not support conj now, we just disable it.
       *(x_grad[1]) = Conj<T, Context>(dev_ctx, *x_grad[1]);
 #endif

@@ -44,7 +44,7 @@ void RMSLnFwd(const Context &dev_ctx,
               DenseTensor *invvar) {
   const auto &scale_shape = scale.dims();
   int rows, cols;
-  GetRowsCols(common::vectorize(x.dims()), &rows, &cols);
+  GetRowsCols(vectorize(x.dims()), &rows, &cols);
   if (scale.dtype() == phi::DataType::BFLOAT16) {
     dev_ctx.template Alloc<phi::bfloat16>(y);
   } else if (scale.dtype() == phi::DataType::FLOAT32) {
@@ -69,7 +69,7 @@ void RMSLnBwd(const Context &dev_ctx,
               DenseTensor *x_grad,
               DenseTensor *scale_grad) {
   int rows, cols;
-  GetRowsCols(common::vectorize(x.dims()), &rows, &cols);
+  GetRowsCols(vectorize(x.dims()), &rows, &cols);
   dev_ctx.template Alloc<T>(x_grad);
   if (scale_grad) {
     if (scale.dtype() == phi::DataType::BFLOAT16) {

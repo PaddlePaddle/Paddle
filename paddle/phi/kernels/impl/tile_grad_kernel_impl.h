@@ -92,7 +92,7 @@ void TileGradKernel(const Context& dev_ctx,
     return;
   }
   auto x_dims = x.dims();
-  auto vec_x_dims = common::vectorize<int64_t>(x_dims);
+  auto vec_x_dims = vectorize<int64_t>(x_dims);
   auto repeat_times_data = repeat_times.GetData();
   if (repeat_times_data.size() < vec_x_dims.size()) {
     int diff = vec_x_dims.size() - repeat_times_data.size();

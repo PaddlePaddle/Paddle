@@ -17,7 +17,7 @@
 
 namespace phi {
 
-using common::vectorize;
+using vectorize;
 using funcs::OneDNNGetDataType;
 using funcs::OneDNNMemDesc;
 using Direction = dnnl::rnn_direction;

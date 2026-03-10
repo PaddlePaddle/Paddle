@@ -427,7 +427,7 @@ static void UniqueDimsCUDATensor(const Context& dev_ctx,
   // 1. Transpose & reshape
   // Transpose tensor: eg. axis=1, [dim0, dim1, dim2] -> [dim1, dim0, dim2]
   DenseTensor in_trans;
-  std::vector<int64_t> in_trans_dims_vec(common::vectorize(in.dims()));
+  std::vector<int64_t> in_trans_dims_vec(vectorize(in.dims()));
   auto in_trans_dims = make_ddim(in_trans_dims_vec);
   std::vector<int> permute(in.dims().size());
   bool is_transpose = axis != 0;

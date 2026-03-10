@@ -187,9 +187,9 @@ void SolveGradKernel(const Context& dev_ctx,
     Copy(dev_ctx, tmp_dy, dev_ctx.GetPlace(), false, &dy_help);
 
     // get dims
-    std::vector<std::int64_t> x_dims = common::vectorize(x.dims());
-    std::vector<std::int64_t> y_dims = common::vectorize(y.dims());
-    std::vector<std::int64_t> dout_dims = common::vectorize(dout.dims());
+    std::vector<std::int64_t> x_dims = vectorize(x.dims());
+    std::vector<std::int64_t> y_dims = vectorize(y.dims());
+    std::vector<std::int64_t> dout_dims = vectorize(dout.dims());
 
     if (is_vector_rhs(x, y)) {
       dout_dims.push_back(1);
@@ -198,8 +198,7 @@ void SolveGradKernel(const Context& dev_ctx,
     int y_ndim = y_dims.size();
     int ndim = dout_dims.size();
 
-    const std::vector<std::int64_t> dy_help_dims =
-        common::vectorize(dy_help.dims());
+    const std::vector<std::int64_t> dy_help_dims = vectorize(dy_help.dims());
     std::vector<std::int64_t> dy_broadcast_dims(ndim);
 
     std::fill(
@@ -238,14 +237,13 @@ void SolveGradKernel(const Context& dev_ctx,
     dev_ctx.Alloc(&dx_help, tmp_dx.dtype());
     Copy(dev_ctx, tmp_dx, dev_ctx.GetPlace(), false, &dx_help);
     // get dims
-    std::vector<std::int64_t> x_dims = common::vectorize(x.dims());
-    std::vector<std::int64_t> y_dims = common::vectorize(y.dims());
+    std::vector<std::int64_t> x_dims = vectorize(x.dims());
+    std::vector<std::int64_t> y_dims = vectorize(y.dims());
 
     int x_ndim = x_dims.size();
     int ndim = x_broadcast_dims.size();
 
-    const std::vector<std::int64_t> dx_help_dims =
-        common::vectorize(dx_help.dims());
+    const std::vector<std::int64_t> dx_help_dims = vectorize(dx_help.dims());
     std::vector<std::int64_t> dx_broadcast_dims(ndim);
     std::fill(
         dx_broadcast_dims.data(), dx_broadcast_dims.data() + ndim - x_ndim, 1);

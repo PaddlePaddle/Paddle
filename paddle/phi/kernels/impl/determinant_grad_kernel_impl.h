@@ -140,8 +140,7 @@ void DeterminantGradKernel(const Context& dev_ctx,
     // The matrix is not invertible
     VLOG(3) << "The input matrix not invertible!";
     x_grad->Resize(x.dims());
-    phi::Full<T>(
-        dev_ctx, common::vectorize(x.dims()), static_cast<T>(0.0f), x_grad);
+    phi::Full<T>(dev_ctx, vectorize(x.dims()), static_cast<T>(0.0f), x_grad);
     return;
   }
 

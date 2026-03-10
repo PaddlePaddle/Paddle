@@ -29,7 +29,7 @@ void AsRealStridedKernel(const Context& dev_ctx,
         "FLAGS_use_stride_kernel is closed. Strided kernel "
         "be called, something wrong has happened!"));
   }
-  auto out_stride_v = common::vectorize(x.strides());
+  auto out_stride_v = vectorize(x.strides());
   for (auto& v : out_stride_v) {
     v *= 2;
   }

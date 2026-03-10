@@ -125,7 +125,7 @@ template <typename T, typename Context>
 void SlogDeterminantKernel(const Context& dev_ctx,
                            const DenseTensor& x,
                            DenseTensor* out) {
-  auto input_dim = common::vectorize(x.dims());
+  auto input_dim = vectorize(x.dims());
   auto input_dim_size = input_dim.size();
 
   // shape [*, M, M], check whether it contains 0 in '*'.
@@ -290,7 +290,7 @@ void SlogDeterminantV2Kernel(const Context& dev_ctx,
                              const DenseTensor& x,
                              DenseTensor* sign,
                              DenseTensor* logdet) {
-  auto input_dim = common::vectorize(x.dims());
+  auto input_dim = vectorize(x.dims());
   auto input_dim_size = input_dim.size();
 
   auto batch_count = detail::GetBatchCount(x.dims());

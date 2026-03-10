@@ -34,7 +34,7 @@ void CTCAlignKernel(const Context& dev_ctx,
                     DenseTensor* output,
                     DenseTensor* output_length) {
   T* output_data = dev_ctx.template Alloc<T>(output);
-  auto input_dims = common::vectorize<int>(input.dims());
+  auto input_dims = vectorize<int>(input.dims());
   const T* input_data = input.data<T>();
 
   // support tensor input, no lod information
