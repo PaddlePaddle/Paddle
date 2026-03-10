@@ -89,7 +89,8 @@ struct NansumOps {
   }
 
   inline DEVICE MPType reduce(MPType a, MPType b) const {
-    return a + (detail::IsNan(b) ? MPType{0} : b);
+    if (detail::IsNan(b)) return a;
+    return a + b;
   }
 
   inline DEVICE OutT post_process(MPType a) const {

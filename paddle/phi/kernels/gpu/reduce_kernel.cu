@@ -14,7 +14,6 @@
 
 #include "paddle/phi/kernels/reduce_kernel.h"
 #include "paddle/phi/kernels/reduce_nansum_grad_kernel.h"
-#include "paddle/phi/kernels/reduce_nansum_kernel.h"
 
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
@@ -228,32 +227,6 @@ void ReduceKernel(const Context& dev_ctx,
 #endif
 }
 
-template <typename T, typename Context>
-void NansumKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const IntArray& dims,
-                  DataType out_dtype,
-                  bool keep_dim,
-                  DenseTensor* out) {
-  if (out_dtype == DataType::UNDEFINED && out->dtype() != x.dtype()) {
-    out_dtype = out->dtype();
-  }
-
-  if (x.numel() == 0) {
-    dev_ctx.template Alloc<T>(out);
-    if (out_dtype == DataType::INT64) {
-      Full<int64_t, Context>(dev_ctx, out->dims(), 0, out);
-    } else {
-      Full<T, Context>(dev_ctx, out->dims(), 0, out);
-    }
-    return;
-  }
-
-  bool reduce_all = recompute_reduce_all(x, dims);
-  phi::Reduce<T, kps::NansumOps>(
-      dev_ctx, x, reduce_all, dims.GetData(), out_dtype, out);
-}
-
 template <typename T>
 struct NanMaskFunctor {
   const T* x_data;
@@ -407,25 +380,6 @@ PD_REGISTER_KERNEL(sum_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::ReduceSumGradKernel,
-                   bool,
-                   float,
-                   double,
-                   phi::float16,
-                   phi::bfloat16,
-                   int8_t,
-                   uint8_t,
-                   int16_t,
-                   int,
-                   int64_t,
-                   phi::complex64,
-                   phi::complex128) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
-}
-
-PD_REGISTER_KERNEL(nansum,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::NansumKernel,
                    bool,
                    float,
                    double,
