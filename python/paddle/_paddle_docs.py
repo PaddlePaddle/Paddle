@@ -2278,7 +2278,7 @@ add_doc_and_signature(
 def pixel_shuffle(
     x: Tensor,
     upscale_factor: int,
-    data_format: str = 'NCHW',
+    data_format: DataLayout2D = 'NCHW',
     name: str | None = None,
 ) -> Tensor
 """,
