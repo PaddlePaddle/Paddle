@@ -447,6 +447,7 @@ class FSDPCommManager:
         gid = self.buffer_manager.param_to_buffer_id[param.name]
         group = self.buffer_manager.buffer_groups[gid]
         group.grads_use_cnt += 1
+        param.main_grad = None
 
         if group.grads_use_cnt == group.grads_use_sum:
             group.grads_use_cnt = 0
@@ -458,10 +459,12 @@ class FSDPCommManager:
             self._wait_for_grad_comm()
 
             tmp_buffer = grads_buffer.get_tmp_buffer()
+            shard_size = grads_buffer.data_buffer.shape[0]
+            rs_output = tmp_buffer._slice(0, shard_size)
             if self.enable_overlap:
                 # Comm grads async and check all comm_task before optimizer update
                 grads_buffer.comm_task = paddle.distributed.reduce_scatter(
-                    grads_buffer.data_buffer,
+                    rs_output,
                     tmp_buffer,
                     op=paddle.distributed.ReduceOp.SUM,
                     group=self.buffer_manager._fsdp_group,
@@ -472,13 +475,14 @@ class FSDPCommManager:
                 self.grad_reduce_queue.append(grads_buffer)
             else:
                 paddle.distributed.reduce_scatter(
-                    grads_buffer.data_buffer,
+                    rs_output,
                     tmp_buffer,
                     op=paddle.distributed.ReduceOp.SUM,
                     group=self.buffer_manager._fsdp_group,
                     sync_op=False,
                 ).wait()
 
+                grads_buffer.data_buffer.add_(rs_output)
                 grads_buffer.clear_tmp_buffer()
 
     def _wait_for_grad_comm(self, queue_limit=2):
@@ -489,6 +493,9 @@ class FSDPCommManager:
             if grads_buffer.comm_task is not None:
                 grads_buffer.comm_task.wait()
                 grads_buffer.comm_task = None
+            shard_size = grads_buffer.data_buffer.shape[0]
+            rs_output = grads_buffer.tmp_data_buffer._slice(0, shard_size)
+            grads_buffer.data_buffer.add_(rs_output)
             grads_buffer.clear_tmp_buffer()
 
     def finish_grads_sync(self):
@@ -613,15 +620,13 @@ class FullyShardFusion:
             def comm_hook(grad):
                 if grad is not None and grad._is_initialized():
                     # Share mem with grads_tmp_buffer
-                    if param.main_grad is None:
-                        # Reset main_grad to None after each step and rebind it here
-                        _main_grad = param.get_main_grad()
-                        _main_grad.get_tensor()._set_dims(grad._local_shape)
-                        param.main_grad = _dtensor_from_local(
-                            _main_grad,
-                            grad.process_mesh,
-                            grad.placements,
-                        )
+                    _main_grad = param.get_main_grad()
+                    _main_grad.get_tensor()._set_dims(grad._local_shape)
+                    param.main_grad = _dtensor_from_local(
+                        _main_grad,
+                        grad.process_mesh,
+                        grad.placements,
+                    )
                     param.main_grad._local_value().add_(grad._local_value())
                     grad._clear_data()
                 comm_manager.shard_params([param], is_backward=True)
