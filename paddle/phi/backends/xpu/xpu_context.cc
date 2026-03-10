@@ -739,11 +739,6 @@ XPUEventHandle::XPUEventHandle(XPUStream stream) {
 }
 
 void XPUEventHandle::record(XPUStream stream) {
-  // Wait for the previous record to complete before re-recording.
-  // Use xpu_event_wait instead of xpu_event_query to correctly handle
-  // events that have never been recorded (xpu_event_query returns an
-  // error for unrecorded events, causing test_event_stream_apis to fail).
-  PADDLE_ENFORCE_XRE_SUCCESS(xpu_event_wait(event_));
   PADDLE_ENFORCE_XRE_SUCCESS(xpu_event_record(event_, stream));
 }
 
