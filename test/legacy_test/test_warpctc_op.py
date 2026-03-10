@@ -843,5 +843,93 @@ class TestCTCLossAPICase(unittest.TestCase):
         np.testing.assert_allclose(loss.numpy(), [0.0], rtol=1e-6)
 
 
+class TestCTCLossZeroSizeTensor(unittest.TestCase):
+    """Test that ctc_loss handles 0-size tensors gracefully without crash.
+
+    Three 0-size scenarios are covered:
+      1. label has shape [0, max_label_len]  -> label.numel() == 0
+         Previously caused SIGFPE (0/0 division) or CUDA error(700)
+         (illegal memory access) in UnpaddingDenseTensorFunctor.
+      2. input_lengths has shape [0]         -> logits_length_cpu.numel() == 0
+         Previously caused SIGSEGV via null-pointer dereference in the
+         lod-building loop.
+      3. labels_length has shape [0]         -> labels_length_cpu.numel() == 0
+         Same SIGSEGV root cause as scenario 2.
+    """
+
+    def _make_logits(self, T, N, C, dtype="float32"):
+        return paddle.zeros([T, N, C], dtype=dtype)
+
+    def test_zero_size_label(self):
+        """label shape [0, max_label_len] -> numel == 0"""
+        paddle.disable_static()
+        T, N, C = 40, 128, 6625
+        logits = self._make_logits(T, N, C)
+        labels = paddle.zeros([0, 25], dtype='int32')
+        input_lengths = paddle.full([N], T, dtype='int64')
+        labels_length = paddle.full([N], 5, dtype='int64')
+
+        loss = paddle.nn.functional.ctc_loss(
+            logits, labels, input_lengths, labels_length, 0, 'none'
+        )
+        self.assertEqual(loss.shape, [N])
+        np.testing.assert_array_equal(loss.numpy(), np.zeros(N, dtype='float32'))
+
+    def test_zero_size_input_lengths(self):
+        """input_lengths shape [0] -> logits_length_cpu.numel() == 0"""
+        paddle.disable_static()
+        T, N, C = 40, 128, 6625
+        logits = self._make_logits(T, N, C)
+        labels = paddle.zeros([N, 25], dtype='int32')
+        input_lengths = paddle.zeros([0], dtype='int64')
+        labels_length = paddle.full([N], 5, dtype='int64')
+
+        loss = paddle.nn.functional.ctc_loss(
+            logits, labels, input_lengths, labels_length, 0, 'none'
+        )
+        self.assertEqual(loss.shape, [N])
+        np.testing.assert_array_equal(loss.numpy(), np.zeros(N, dtype='float32'))
+
+    def test_zero_size_labels_length(self):
+        """labels_length shape [0] -> labels_length_cpu.numel() == 0"""
+        paddle.disable_static()
+        T, N, C = 40, 128, 6625
+        logits = self._make_logits(T, N, C)
+        labels = paddle.zeros([N, 25], dtype='int32')
+        input_lengths = paddle.full([N], T, dtype='int64')
+        labels_length = paddle.zeros([0], dtype='int64')
+
+        loss = paddle.nn.functional.ctc_loss(
+            logits, labels, input_lengths, labels_length, 0, 'none'
+        )
+        self.assertEqual(loss.shape, [N])
+        np.testing.assert_array_equal(loss.numpy(), np.zeros(N, dtype='float32'))
+
+    def test_zero_size_label_various_reductions(self):
+        """0-size label with different reduction modes and norm_by_times"""
+        paddle.disable_static()
+        T, N, C = 10, 4, 8
+        logits = self._make_logits(T, N, C)
+        labels = paddle.zeros([0, 5], dtype='int32')
+        input_lengths = paddle.full([N], T, dtype='int64')
+        labels_length = paddle.full([N], 3, dtype='int64')
+
+        for reduction in ['none', 'sum', 'mean']:
+            for norm_by_times in [False, True]:
+                loss = paddle.nn.functional.ctc_loss(
+                    logits,
+                    labels,
+                    input_lengths,
+                    labels_length,
+                    0,
+                    reduction,
+                    norm_by_times=norm_by_times,
+                )
+                self.assertFalse(
+                    np.any(np.isnan(loss.numpy())),
+                    f"NaN with reduction={reduction}, norm_by_times={norm_by_times}",
+                )
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -279,6 +279,22 @@ void WarpctcKernel(const Context& dev_ctx,
     Copy(dev_ctx, *logits_length, CPUPlace(), false, &logits_length_cpu);
     Copy(dev_ctx, *labels_length, CPUPlace(), false, &labels_length_cpu);
 
+    // Handle 0-size logits_length or labels_length tensors: accessing data()
+    // of empty tensors yields a null pointer, causing SIGSEGV in the loop.
+    if (logits_length_cpu.numel() == 0 || labels_length_cpu.numel() == 0) {
+      auto early_loss_dims =
+          make_ddim({static_cast<int64_t>(num_sequences), 1});
+      loss->Resize(early_loss_dims);
+      dev_ctx.template Alloc<T>(loss);
+      funcs::SetConstant<Context, T>()(dev_ctx, loss, static_cast<T>(0));
+      warpctcgrad->Resize({static_cast<int64_t>(max_sequence_length),
+                           static_cast<int64_t>(num_sequences),
+                           static_cast<int64_t>(sequence_width)});
+      dev_ctx.template Alloc<T>(warpctcgrad);
+      funcs::SetConstant<Context, T>()(dev_ctx, warpctcgrad, static_cast<T>(0));
+      return;
+    }
+
     logits_lod.push_back(0);
     label_lod.push_back(0);
     for (size_t i = 0; i < num_sequences; i++) {
@@ -341,6 +357,20 @@ void WarpctcKernel(const Context& dev_ctx,
   }
 
   auto loss_dims = make_ddim({static_cast<int64_t>(num_sequences), 1});
+
+  // Handle 0-size label tensor: avoid division by zero or illegal GPU memory
+  // access in UnpaddingDenseTensorFunctor when label.numel()==0.
+  if (label.numel() == 0) {
+    loss->Resize(loss_dims);
+    dev_ctx.template Alloc<T>(loss);
+    funcs::SetConstant<Context, T>()(dev_ctx, loss, static_cast<T>(0));
+    warpctcgrad->Resize({static_cast<int64_t>(max_sequence_length),
+                         static_cast<int64_t>(num_sequences),
+                         static_cast<int64_t>(sequence_width)});
+    dev_ctx.template Alloc<T>(warpctcgrad);
+    funcs::SetConstant<Context, T>()(dev_ctx, warpctcgrad, static_cast<T>(0));
+    return;
+  }
 
   // warpctc needs sequences data stored in transposed padding format
   DenseTensor warpctc_logits_tmp =

@@ -77,6 +77,12 @@ class PaddingDenseTensorFunctor<phi::GPUContext, T> {
     if (pad_seq_len == -1) {
       pad_seq_len = max_seq_len;
     }
+    // Guard against 0-size tensors: avoid division by zero (SIGFPE) when
+    // seq_tensor_dims[0]==0, and avoid invalid GPU memory access when
+    // seq_tensor or pad_tensor has no backing memory (numel==0).
+    if (seq_tensor.numel() == 0 || pad_tensor->numel() == 0) {
+      return;
+    }
     PADDLE_ENFORCE_GE(
         pad_seq_len,
         max_seq_len,
@@ -156,6 +162,12 @@ class UnpaddingDenseTensorFunctor<phi::GPUContext, T> {
     int max_seq_len = MaximumSequenceLength(seq_offsets);
     if (pad_seq_len == -1) {
       pad_seq_len = max_seq_len;
+    }
+    // Guard against 0-size tensors: avoid division by zero (SIGFPE) when
+    // seq_tensor_dims[0]==0, and avoid illegal GPU memory access (CUDA
+    // error 700) when pad_tensor has no backing memory (numel==0).
+    if (seq_tensor->numel() == 0 || pad_tensor.numel() == 0) {
+      return;
     }
     int64_t step_width = seq_tensor->numel() / seq_tensor_dims[0];
     int seq_num = seq_offsets.size() - 1;
