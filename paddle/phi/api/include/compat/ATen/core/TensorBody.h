@@ -31,13 +31,35 @@
 #endif
 
 #include <c10/core/Device.h>
+#include <c10/core/List.h>
+#include <c10/core/ScalarType.h>
+#include <c10/core/SymIntArrayRef.h>
+#include <limits>
+#include <optional>
 #include <utility>
 #include <vector>
+#include "paddle/common/ddim.h"
 #include "paddle/phi/common/place.h"
+
+namespace at {
+class Tensor;
+
+// Type aliases for ATen compatibility
+using Scalar = c10::Scalar;
+using TensorOptions = c10::TensorOptions;
+using MemoryFormat = c10::MemoryFormat;
+using IntArrayRef = c10::IntArrayRef;
+using OptionalIntArrayRef = c10::OptionalIntArrayRef;
+using ScalarType = c10::ScalarType;
+}  // namespace at
 
 namespace at {  // NOLINT(build/namespaces)
 using PaddleTensor = paddle::Tensor;
 using PaddlePlace = phi::Place;
+
+// Stub for DimnameList (not supported in Paddle)
+using DimnameList = c10::ArrayRef<std::string>;
+
 class Tensor : public TensorBase {
  public:
   Tensor() = default;
@@ -204,6 +226,119 @@ class Tensor : public TensorBase {
   T item() const;
 
   bool equal(const at::Tensor& other) const;
+
+  // Clamp functions
+  at::Tensor clamp(
+      const ::std::optional<at::Scalar>& min,
+      const ::std::optional<at::Scalar>& max = ::std::nullopt) const;
+
+  at::Tensor clamp(const ::std::optional<at::Tensor>& min = {},
+                   const ::std::optional<at::Tensor>& max = {}) const;
+
+  at::Tensor& clamp_(
+      const ::std::optional<at::Scalar>& min,
+      const ::std::optional<at::Scalar>& max = ::std::nullopt) const;
+
+  at::Tensor& clamp_(const ::std::optional<at::Tensor>& min = {},
+                     const ::std::optional<at::Tensor>& max = {}) const;
+
+  at::Tensor clamp_max(const at::Scalar& max) const;
+  at::Tensor clamp_max(const at::Tensor& max) const;
+  at::Tensor& clamp_max_(const at::Scalar& max) const;
+  at::Tensor& clamp_max_(const at::Tensor& max) const;
+
+  at::Tensor clamp_min(const at::Scalar& min) const;
+  at::Tensor clamp_min(const at::Tensor& min) const;
+  at::Tensor& clamp_min_(const at::Scalar& min) const;
+  at::Tensor& clamp_min_(const at::Tensor& min) const;
+
+  // as_strided: Create a tensor view with custom size, stride, and
+  // storage_offset
+  at::Tensor as_strided(
+      at::IntArrayRef size,
+      at::IntArrayRef stride,
+      ::std::optional<int64_t> storage_offset = ::std::nullopt) const;
+
+  // as_strided_: Inplace version
+  const at::Tensor& as_strided_(
+      at::IntArrayRef size,
+      at::IntArrayRef stride,
+      ::std::optional<int64_t> storage_offset = ::std::nullopt) const;
+
+  // as_strided_scatter: Scatter src into a strided view
+  at::Tensor as_strided_scatter(
+      const at::Tensor& src,
+      at::IntArrayRef size,
+      at::IntArrayRef stride,
+      ::std::optional<int64_t> storage_offset = ::std::nullopt) const;
+
+  // Standard deviation functions
+  Tensor std(int dim) const;
+  Tensor std(bool unbiased = true) const;
+  Tensor std(at::OptionalIntArrayRef dim,
+             bool unbiased = true,
+             bool keepdim = false) const;
+  Tensor std(at::OptionalIntArrayRef dim,
+             const ::std::optional<at::Scalar>& correction,
+             bool keepdim = false) const;
+
+  Tensor tensor_data() const {
+    PaddleTensor result;
+    if (tensor_.initialized()) {
+      auto src_impl = tensor_.impl();
+      auto* src_tensor =
+          std::dynamic_pointer_cast<phi::DenseTensor>(src_impl).get();
+      if (src_tensor && src_tensor->meta().is_contiguous()) {
+        result.set_impl(std::make_shared<phi::DenseTensor>());
+        auto* dst_tensor =
+            std::dynamic_pointer_cast<phi::DenseTensor>(result.impl()).get();
+        dst_tensor->ShareDataWith(*src_tensor);
+      } else {
+        result = paddle::experimental::assign(tensor_);
+      }
+    }
+    // For uninitialized tensor, return an uninitialized tensor (no assign
+    // needed)
+    return Tensor(result);
+  }
+
+  Tensor variable_data() const {
+    PaddleTensor result;
+    if (tensor_.initialized()) {
+      auto src_impl = tensor_.impl();
+      auto* src_tensor =
+          std::dynamic_pointer_cast<phi::DenseTensor>(src_impl).get();
+      if (src_tensor && src_tensor->meta().is_contiguous()) {
+        result.set_impl(std::make_shared<phi::DenseTensor>());
+        auto* dst_tensor =
+            std::dynamic_pointer_cast<phi::DenseTensor>(result.impl()).get();
+        dst_tensor->ShareDataWith(*src_tensor);
+      } else {
+        result = paddle::experimental::assign(tensor_);
+      }
+    }
+    // For uninitialized tensor, return an uninitialized tensor (no assign
+    // needed)
+    return Tensor(result);
+  }
+
+  // index: Get values at specified tensor indices
+  at::Tensor index(const c10::List<::std::optional<at::Tensor>>& indices) const;
+
+  // index_put_: Set values at specified indices in-place
+  at::Tensor& index_put_(const c10::List<::std::optional<at::Tensor>>& indices,
+                         const at::Tensor& values,
+                         bool accumulate = false) const;
+
+  // index_put_: Set scalar value at specified indices in-place
+  at::Tensor& index_put_(const c10::List<::std::optional<at::Tensor>>& indices,
+                         const at::Scalar& v,
+                         bool accumulate = false) const;
+
+  // index_put: Non-inplace version of index_put_
+  at::Tensor index_put(const c10::List<::std::optional<at::Tensor>>& indices,
+                       const at::Tensor& values,
+                       bool accumulate = false) const;
 
   Tensor toType(ScalarType t) const {
     return Tensor(paddle::experimental::cast(
@@ -454,6 +589,17 @@ class Tensor : public TensorBase {
     return Tensor(cloned_tensor);
   }
 
+  // all: Check if all elements are true (non-zero)
+  at::Tensor all() const;
+  at::Tensor all(int64_t dim, bool keepdim = false) const;
+  at::Tensor all(at::OptionalIntArrayRef dim, bool keepdim = false) const;
+
+  // allclose: Check if two tensors are close to each other
+  bool allclose(const at::Tensor& other,
+                double rtol = 1e-05,
+                double atol = 1e-08,
+                bool equal_nan = false) const;
+
   at::Tensor abs() const;
 
   at::Tensor& abs_() const;
@@ -603,6 +749,72 @@ class Tensor : public TensorBase {
                                                                  PtrTraits,
                                                                  index_t>
   packed_accessor() && = delete;
+
+  // register_hook - throws exception for Paddle compatibility
+  // Paddle does not support gradient hooks
+  template <typename T>
+  unsigned register_hook(T&&) const {
+    throw std::runtime_error(
+        "register_hook is not supported in Paddle, this is an ATen "
+        "compatibility API that is not available");
+  }
+
+  // any - returns true if any element is non-zero
+  Tensor any(int64_t dim, bool keepdim = false) const;
+  Tensor any(at::OptionalIntArrayRef dim, bool keepdim = false) const;
+  Tensor any() const;
+
+  // chunk - splits tensor into chunks
+  std::vector<Tensor> chunk(int64_t chunks, int64_t dim = 0) const;
+
+  // rename - stub for Paddle (Dimname not supported)
+  Tensor rename(::std::optional<at::DimnameList> names) const;
+
+  // new_empty - creates uninitialized tensor with same dtype/device
+  Tensor new_empty(at::IntArrayRef size, at::TensorOptions options = {}) const;
+  Tensor new_empty(at::IntArrayRef size,
+                   ::std::optional<at::ScalarType> dtype,
+                   ::std::optional<at::Layout> layout,
+                   ::std::optional<at::Device> device,
+                   ::std::optional<bool> pin_memory) const;
+
+  // new_full - creates tensor filled with fill_value
+  Tensor new_full(at::IntArrayRef size,
+                  const at::Scalar& fill_value,
+                  at::TensorOptions options = {}) const;
+  Tensor new_full(at::IntArrayRef size,
+                  const at::Scalar& fill_value,
+                  ::std::optional<at::ScalarType> dtype,
+                  ::std::optional<at::Layout> layout,
+                  ::std::optional<at::Device> device,
+                  ::std::optional<bool> pin_memory) const;
+
+  // new_zeros - creates zero tensor
+  Tensor new_zeros(at::IntArrayRef size, at::TensorOptions options = {}) const;
+  Tensor new_zeros(at::IntArrayRef size,
+                   ::std::optional<at::ScalarType> dtype,
+                   ::std::optional<at::Layout> layout,
+                   ::std::optional<at::Device> device,
+                   ::std::optional<bool> pin_memory) const;
+
+  // new_ones - creates tensor filled with ones
+  Tensor new_ones(at::IntArrayRef size, at::TensorOptions options = {}) const;
+  Tensor new_ones(at::IntArrayRef size,
+                  ::std::optional<at::ScalarType> dtype,
+                  ::std::optional<at::Layout> layout,
+                  ::std::optional<at::Device> device,
+                  ::std::optional<bool> pin_memory) const;
+
+  // resize_ - in-place resize
+  const Tensor& resize_(
+      at::IntArrayRef size,
+      ::std::optional<at::MemoryFormat> memory_format = ::std::nullopt) const;
+
+  // expand - expands tensor to new size
+  Tensor expand(at::IntArrayRef size, bool implicit = false) const;
+
+  // expand_as - expands to same size as another tensor
+  Tensor expand_as(const Tensor& other) const;
 
   PaddleTensor _PD_GetInner() const { return tensor_; }
   PaddleTensor& _PD_GetInner() { return tensor_; }

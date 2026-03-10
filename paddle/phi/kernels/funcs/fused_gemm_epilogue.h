@@ -393,7 +393,7 @@ static GPU(blasLtEpilogue_t)
 }
 
 template <typename T>
-void ComputeFusedGemmEpilogueForward(const phi::GPUContext& dev_ctx,
+void ComputeFusedGemmEpilogueForward(const GPUContext& dev_ctx,
                                      const DenseTensor* x,
                                      const DenseTensor* y,
                                      const DenseTensor* bias,
@@ -586,7 +586,7 @@ struct BwdFusedEpilogueSetter {
   }
 
   template <typename DYT, bool TransY>
-  static funcs::MatmulFusedType SetForDy(const phi::GPUContext& dev_ctx,
+  static funcs::MatmulFusedType SetForDy(const GPUContext& dev_ctx,
                                          DenseTensor* dbias) {
     if (dbias != nullptr) {
       dev_ctx.Alloc<DYT>(dbias, dbias->numel() * sizeof(DYT));
@@ -598,7 +598,7 @@ struct BwdFusedEpilogueSetter {
 };
 
 template <typename T, typename DXT, typename DYT, bool TransX, bool TransY>
-void ComputeFusedGemmEpilogueBackwardImpl(const phi::GPUContext& dev_ctx,
+void ComputeFusedGemmEpilogueBackwardImpl(const GPUContext& dev_ctx,
                                           const DenseTensor* dout,
                                           const DenseTensor* x,
                                           const DenseTensor* y,
@@ -695,7 +695,7 @@ static GPU(blasLtEpilogue_t)
 }
 
 template <typename T, typename DXT, typename DYT, bool TransX, bool TransY>
-void ComputeFusedGemmEpilogueBackwardImplDev(const phi::GPUContext& dev_ctx,
+void ComputeFusedGemmEpilogueBackwardImplDev(const GPUContext& dev_ctx,
                                              const DenseTensor* dout,
                                              const DenseTensor* x,
                                              const DenseTensor* y,
@@ -1021,7 +1021,7 @@ void ComputeFusedGemmEpilogueBackwardImplDev(const phi::GPUContext& dev_ctx,
 }
 
 template <typename T, typename DXT = T, typename DYT = T>
-void ComputeFusedGemmEpilogueBackward(const phi::GPUContext& dev_ctx,
+void ComputeFusedGemmEpilogueBackward(const GPUContext& dev_ctx,
                                       const DenseTensor* dout,
                                       const DenseTensor* x,
                                       const DenseTensor* y,

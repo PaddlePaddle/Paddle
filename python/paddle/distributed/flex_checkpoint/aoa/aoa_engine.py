@@ -263,6 +263,12 @@ class AOAShardInfoContext:
 
             mapped_vars = mapping_dict[current_key]
             if mapped_vars and len(mapped_vars) > 0:
+                assert len(mapped_vars) == 1, (
+                    f"Reference chain resolution failed: "
+                    f"Unable to determine which leaf node the intermediate node '{key}' is directly associated with, "
+                    f"because a many-to-one mapping was found in the mapping relationship. "
+                    f"The many-to-one mapping is {current_key} : {mapped_vars}."
+                )
                 current_key = mapped_vars[0]
             else:
                 break

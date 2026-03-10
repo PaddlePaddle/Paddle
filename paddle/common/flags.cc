@@ -281,6 +281,40 @@ PHI_DEFINE_EXPORTED_int64(cudnn_exhaustive_search_times,
                           "Exhaustive search times for cuDNN convolution, "
                           "default is -1, not exhaustive search");
 
+/**
+ * CUDNN related FLAG
+ * Name: FLAGS_cudnn_allow_tf32
+ * Since Version: 3.3.0
+ * Value Range: bool, default=true
+ * Example:
+ * Note: whether to allow using TensorFloat-32 (TF32) in cudnn convolution.
+ * TF32 is only available on Ampere or newer GPUs.
+ * It provides better performance but lower precision than FP32.
+ */
+PHI_DEFINE_EXPORTED_bool(
+    cudnn_allow_tf32,
+    true,
+    "Whether to allow using TensorFloat-32 (TF32) tensor cores for "
+    "convolution operators in cuDNN on Ampere or newer GPUs. "
+    "Default is true.");
+
+/**
+ * CUBLAS related FLAG
+ * Name: FLAGS_cublas_allow_tf32
+ * Since Version: 3.3.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: whether to allow using TensorFloat-32 (TF32) in cublas matmul.
+ * TF32 is only available on Ampere or newer GPUs.
+ * It provides better performance but lower precision than FP32.
+ */
+PHI_DEFINE_EXPORTED_bool(
+    cublas_allow_tf32,
+    false,
+    "Whether to allow using TensorFloat-32 (TF32) tensor cores for "
+    "matrix multiplication operators in cuBLAS on Ampere or newer GPUs. "
+    "Default is false.");
+
 #ifdef PADDLE_WITH_HIP
 /**
  * MIOPEN related FLAG

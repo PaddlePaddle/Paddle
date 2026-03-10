@@ -303,6 +303,45 @@ class TestBCEWithLogitsLoss(unittest.TestCase):
 
         test_static_or_pir_mode()
 
+    def test_binary_cross_entropy_with_logits_alias(self):
+        paddle.disable_static()
+        self.addCleanup(paddle.enable_static)
+
+        logit = paddle.randn([4, 6], dtype="float32")
+        label = (paddle.rand([4, 6]) > 0.5).astype("float32")
+
+        out1 = paddle.nn.functional.binary_cross_entropy_with_logits(
+            logit=logit, label=label, reduction="none"
+        )
+        out2 = paddle.nn.functional.binary_cross_entropy_with_logits(
+            input=logit, target=label, reduction="none"
+        )
+        np.testing.assert_allclose(
+            out1.numpy(), out2.numpy(), rtol=1e-6, atol=1e-6
+        )
+
+        out1_mean = paddle.nn.functional.binary_cross_entropy_with_logits(
+            logit=logit, label=label, reduction="mean"
+        )
+        out2_mean = paddle.nn.functional.binary_cross_entropy_with_logits(
+            input=logit, target=label, reduction="mean"
+        )
+        np.testing.assert_allclose(
+            out1_mean.numpy(),
+            out2_mean.numpy(),
+            rtol=1e-6,
+            atol=1e-6,
+        )
+
+        with self.assertRaises(ValueError):
+            paddle.nn.functional.binary_cross_entropy_with_logits(
+                logit=logit, input=logit, label=label, reduction="none"
+            )
+        with self.assertRaises(ValueError):
+            paddle.nn.functional.binary_cross_entropy_with_logits(
+                logit=logit, label=label, target=label, reduction="none"
+            )
+
     def test_BCEWithLogitsLoss_error(self):
         paddle.disable_static()
         self.assertRaises(

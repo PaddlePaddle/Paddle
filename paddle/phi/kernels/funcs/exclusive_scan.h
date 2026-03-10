@@ -36,7 +36,7 @@ static void CubExclusiveScan(InputIterator x_iter,
                              size_t n,
                              T init,
                              BinaryOp op,
-                             const phi::GPUContext &dev_ctx) {
+                             const GPUContext &dev_ctx) {
   phi::Allocator::AllocationPtr allocation;
   void *temp_storage = nullptr;
   size_t temp_storage_bytes = 0;
@@ -211,7 +211,7 @@ static void ExclusiveScanInnerDim(const T *x,
                                   T init,
                                   BinaryOp op,
                                   bool reverse,
-                                  const phi::GPUContext &dev_ctx) {
+                                  const GPUContext &dev_ctx) {
   constexpr size_t kThreadNumX = 16;
   constexpr size_t kThreadNumY = 32;
 
@@ -246,7 +246,7 @@ void ExclusiveScan(const T *x,
                    T init,
                    BinaryOp op,
                    bool reverse,
-                   const phi::GPUContext &dev_ctx) {
+                   const GPUContext &dev_ctx) {
   if (outer_dim == 0 || mid_dim == 0 || inner_dim == 0) return;
 
   if (outer_dim == 1 && inner_dim == 1) {
@@ -259,7 +259,7 @@ void ExclusiveScan(const T *x,
       CubExclusiveScan(x, y, mid_dim, init, op, dev_ctx);
     }
   } else if (inner_dim != 1) {
-    funcs::ForRange<phi::GPUContext> for_range(dev_ctx, outer_dim * inner_dim);
+    funcs::ForRange<GPUContext> for_range(dev_ctx, outer_dim * inner_dim);
     if (reverse) {
       for_range(
           ExclusiveScanOuterOrMidDimFunctor<T, BinaryOp, /*kReverse=*/true>(

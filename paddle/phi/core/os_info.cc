@@ -33,8 +33,6 @@ limitations under the License. */
 namespace phi {
 namespace internal {
 
-using phi::ThreadDataRegistry;
-
 class InternalThreadId {
  public:
   InternalThreadId();
@@ -65,29 +63,28 @@ InternalThreadId::InternalThreadId() {
 }  // namespace internal
 
 uint64_t GetCurrentThreadSysId() {
-  return internal::ThreadDataRegistry<internal::InternalThreadId>::GetInstance()
+  return ThreadDataRegistry<internal::InternalThreadId>::GetInstance()
       .GetCurrentThreadData()
       .GetTid()
       .sys_tid;
 }
 
 uint64_t GetCurrentThreadStdId() {
-  return internal::ThreadDataRegistry<internal::InternalThreadId>::GetInstance()
+  return ThreadDataRegistry<internal::InternalThreadId>::GetInstance()
       .GetCurrentThreadData()
       .GetTid()
       .std_tid;
 }
 
 ThreadId GetCurrentThreadId() {
-  return internal::ThreadDataRegistry<internal::InternalThreadId>::GetInstance()
+  return ThreadDataRegistry<internal::InternalThreadId>::GetInstance()
       .GetCurrentThreadData()
       .GetTid();
 }
 
 std::unordered_map<uint64_t, ThreadId> GetAllThreadIds() {
-  auto tids =
-      internal::ThreadDataRegistry<internal::InternalThreadId>::GetInstance()
-          .GetAllThreadDataByValue();
+  auto tids = ThreadDataRegistry<internal::InternalThreadId>::GetInstance()
+                  .GetAllThreadDataByValue();
   std::unordered_map<uint64_t, ThreadId> res;
   for (const auto& kv : tids) {
     res[kv.first] = kv.second.GetTid();
@@ -97,18 +94,17 @@ std::unordered_map<uint64_t, ThreadId> GetAllThreadIds() {
 
 std::string GetCurrentThreadName() {
   const auto& thread_name =
-      internal::ThreadDataRegistry<std::string>::GetInstance()
-          .GetCurrentThreadData();
+      ThreadDataRegistry<std::string>::GetInstance().GetCurrentThreadData();
   return thread_name.empty() ? kDefaultThreadName : thread_name;
 }
 
 std::unordered_map<uint64_t, std::string> GetAllThreadNames() {
-  return internal::ThreadDataRegistry<std::string>::GetInstance()
+  return ThreadDataRegistry<std::string>::GetInstance()
       .GetAllThreadDataByValue();
 }
 
 bool SetCurrentThreadName(const std::string& name) {
-  auto& instance = internal::ThreadDataRegistry<std::string>::GetInstance();
+  auto& instance = ThreadDataRegistry<std::string>::GetInstance();
   const auto& cur_name = instance.GetCurrentThreadData();
   if (!cur_name.empty() || name.empty() || name == kDefaultThreadName) {
     return false;

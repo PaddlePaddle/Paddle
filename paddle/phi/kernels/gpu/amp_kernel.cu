@@ -270,15 +270,15 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
                                  const DenseTensor& scale,
                                  std::vector<DenseTensor*> outs,
                                  DenseTensor* found_infinite) {
-  using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
-  const MPDType* scale_data = scale.data<MPDType>();
+  const MT* scale_data = scale.data<MT>();
   bool* found_inf_data = dev_ctx.template Alloc<bool>(found_infinite);
 
-  DenseTensor inverse_scale = Empty<MPDType>(dev_ctx, {1});
-  MPDType* inverse_scale_v = inverse_scale.template data<MPDType>();
+  DenseTensor inverse_scale = Empty<MT>(dev_ctx, {1});
+  MT* inverse_scale_v = inverse_scale.template data<MT>();
 
-  InverseAndMemset<MPDType><<<1, 1, 0, dev_ctx.stream()>>>(
+  InverseAndMemset<MT><<<1, 1, 0, dev_ctx.stream()>>>(
       scale_data, inverse_scale_v, found_inf_data);
 
   size_t xs_size = xs.size();
@@ -340,10 +340,10 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
       threads_per_block * 20;  // each thread deal with 20 number
   int blocks_per_grid =
       (total_num + elements_per_block - 1) / elements_per_block;
-  CheckFiniteAndUnscale<T, MPDType><<<blocks_per_grid,
-                                      threads_per_block,
-                                      (xs_size + 1) * sizeof(int64_t),
-                                      dev_ctx.stream()>>>(
+  CheckFiniteAndUnscale<T, MT><<<blocks_per_grid,
+                                 threads_per_block,
+                                 (xs_size + 1) * sizeof(int64_t),
+                                 dev_ctx.stream()>>>(
       d_xs, inverse_scale_v, xs_size, d_starts, found_inf_data, d_outs);
 }
 
