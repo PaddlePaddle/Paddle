@@ -2965,7 +2965,7 @@ def diag_embed(
     out.stop_gradient = True
     return out
 
-
+@param_one_alias(["x", "input"])
 def diagflat(
     x: paddle.Tensor, offset: int = 0, name: str | None = None
 ) -> paddle.Tensor:
@@ -2982,6 +2982,10 @@ def diagflat(
     If ``offset`` > 0, it is superdiagonal.
 
     If ``offset`` < 0, it is subdiagonal.
+
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        For example, ``diagflat(input=tensor_x)`` is equivalent to ``diagflat(x=tensor_x)``.
 
     Args:
         x (Tensor): The input tensor. It can be any shape. Its data type should be float16, float32, float64, int32, int64.
