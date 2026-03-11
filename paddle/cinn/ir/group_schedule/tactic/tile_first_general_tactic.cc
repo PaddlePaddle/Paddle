@@ -503,7 +503,7 @@ void ReduceRegionVectorizeTilingSchedule(
 
 void TileFirstGeneralTactic::ApplyVectorize(ir::IRSchedule* sch,
                                             const std::string& block_id) {
-  const auto sp_thread = context_->config.tile_config.warp_num * 
+  const auto sp_thread = context_->config.tile_config.warp_num *
                          context_->config.tile_config.warp_size /
                          context_->config.tile_config.tree_reduce_num;
   const auto rd_thread = context_->config.tile_config.tree_reduce_num;
