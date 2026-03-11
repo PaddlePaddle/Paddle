@@ -299,7 +299,7 @@ def monkey_patch_math_tensor():
         return TensorSize(var.shape)
 
     def nelement(var: Tensor) -> int:
-        return TensorSize(var.shape)
+        return var.size
 
     @property
     def _T_(var: Tensor) -> Tensor:
