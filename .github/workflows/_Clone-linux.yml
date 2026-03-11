@@ -35,7 +35,7 @@ env:
 jobs:
   check-bypass:
     name: Check bypass
-    if: ${{ github.repository_owner == 'PaddlePaddle' && inputs.is_pr == 'true' }}
+    if: ${{ github.repository_owner == 'PaddlePaddle' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
       workflow-name: ${{ inputs.workflow-name }}

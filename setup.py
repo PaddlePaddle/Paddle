@@ -2521,6 +2521,7 @@ def get_setup_parameters():
         'paddle.libs',
         'paddle.utils',
         'paddle.utils.data',
+        'paddle.utils.data._utils',
         'paddle.utils.gast',
         'paddle.utils.cpp_extension',
         'paddle.dataset',

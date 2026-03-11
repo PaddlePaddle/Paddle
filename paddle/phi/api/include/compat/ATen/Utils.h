@@ -70,24 +70,24 @@ Tensor tensor_complex_backend(ArrayRef<T> values,
 
 }  // namespace detail
 
-#define TENSOR(T, _1)                                               \
-  Tensor tensor(ArrayRef<T> values, const TensorOptions& options) { \
-    if (options.device().type() != c10::DeviceType::CPU) {          \
-      return at::detail::tensor_backend(values, options);           \
-    } else {                                                        \
-      return at::detail::tensor_cpu(values, options);               \
-    }                                                               \
+#define TENSOR(T, _1)                                                      \
+  inline Tensor tensor(ArrayRef<T> values, const TensorOptions& options) { \
+    if (options.device().type() != c10::DeviceType::CPU) {                 \
+      return at::detail::tensor_backend(values, options);                  \
+    } else {                                                               \
+      return at::detail::tensor_cpu(values, options);                      \
+    }                                                                      \
   }
 AT_FORALL_SCALAR_TYPES_AND3(Bool, Half, BFloat16, TENSOR)
 #undef TENSOR
 
-#define TENSOR(T, _1)                                               \
-  Tensor tensor(ArrayRef<T> values, const TensorOptions& options) { \
-    if (options.device().type() != c10::DeviceType::CPU) {          \
-      return at::detail::tensor_complex_backend(values, options);   \
-    } else {                                                        \
-      return at::detail::tensor_complex_cpu(values, options);       \
-    }                                                               \
+#define TENSOR(T, _1)                                                      \
+  inline Tensor tensor(ArrayRef<T> values, const TensorOptions& options) { \
+    if (options.device().type() != c10::DeviceType::CPU) {                 \
+      return at::detail::tensor_complex_backend(values, options);          \
+    } else {                                                               \
+      return at::detail::tensor_complex_cpu(values, options);              \
+    }                                                                      \
   }
 AT_FORALL_COMPLEX_TYPES(TENSOR)
 #undef TENSOR
