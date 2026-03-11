@@ -1702,6 +1702,8 @@ def log_softmax(
     axis: int = -1,
     dtype: DTypeLike | None = None,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     r"""
     This operator implements the log_softmax layer. The calculation process is
@@ -1728,6 +1730,7 @@ def log_softmax(
             If ``dtype`` is None, the output Tensor has the same dtype as x.
             Default is None.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        out (Tensor, optional): The output Tensor.
 
     Returns:
         A Tensor with the same shape and data type (use ``dtype`` if it is

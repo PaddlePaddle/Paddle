@@ -319,7 +319,7 @@ from .tensor.attribute import (
     real,
     shape,
 )
-from .tensor.compat_softmax import softmax
+from .tensor.compat_softmax import log_softmax, softmax
 from .tensor.creation import (
     BFloat16Tensor,
     BoolTensor,
@@ -1527,6 +1527,7 @@ __all__ = [
     'relu',
     'manual_seed',
     'softmax',
+    'log_softmax',
     'Generator',
     'adaptive_avg_pool1d',
     'autocast',

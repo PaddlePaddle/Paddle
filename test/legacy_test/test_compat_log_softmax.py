@@ -171,6 +171,38 @@ class TestCompatLogSoftmaxStacklevel(unittest.TestCase):
         np.testing.assert_allclose(out1.numpy(), out2.numpy())
 
 
+class TestCompatLogSoftmaxOutParam(unittest.TestCase):
+    """Test that the out parameter is accepted for PyTorch API compatibility."""
+
+    def test_out_param_accepted(self):
+        x = paddle.randn([3, 4], dtype=paddle.float32)
+        out_tensor = paddle.empty([3, 4], dtype=paddle.float32)
+        result = paddle.compat.nn.functional.log_softmax(
+            x, dim=-1, out=out_tensor
+        )
+        expected = F.log_softmax(x, axis=-1)
+        np.testing.assert_allclose(
+            result.numpy(), expected.numpy(), rtol=1e-6, atol=1e-6
+        )
+
+    def test_out_param_none(self):
+        x = paddle.randn([3, 4], dtype=paddle.float32)
+        result = paddle.compat.nn.functional.log_softmax(x, dim=-1, out=None)
+        expected = F.log_softmax(x, axis=-1)
+        np.testing.assert_allclose(
+            result.numpy(), expected.numpy(), rtol=1e-6, atol=1e-6
+        )
+
+    def test_nn_functional_log_softmax_out_param(self):
+        x = paddle.randn([3, 4], dtype=paddle.float32)
+        out_tensor = paddle.empty([3, 4], dtype=paddle.float32)
+        result = F.log_softmax(x, axis=-1, out=out_tensor)
+        expected = F.log_softmax(x, axis=-1)
+        np.testing.assert_allclose(
+            result.numpy(), expected.numpy(), rtol=1e-6, atol=1e-6
+        )
+
+
 class TestCompatLogSoftmaxErrorHandling(unittest.TestCase):
     """Test that paddle-style keyword arguments are rejected."""
 
