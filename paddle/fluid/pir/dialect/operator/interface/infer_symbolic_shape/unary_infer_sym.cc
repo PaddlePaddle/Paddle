@@ -2455,19 +2455,15 @@ bool NansumOpInferSymbolicShape(pir::Operation *op,
   bool keepdim = GetBoolAttr(op, "keepdim");
 
   std::vector<int64_t> axis;
-  if (paddle::dialect::details::GetAxisFromOpInput(
-          op->operand_source(1), infer_context, &axis)) {
-    bool reduce_all = (axis.size() == 0);
-
-    return details::ReduceInferDim(
-        op, infer_context, axis, keepdim, reduce_all);
-  } else {
-    PADDLE_THROW(common::errors::Unimplemented(
-        "NansumOpInferSymbolicShape: 'axis' only "
-        "support FullIntArrayOp's result or constant DimExpr now."));
+  const auto attributes = op->attributes();
+  if (attributes.find("axis") != attributes.end()) {
+    axis = op->attribute<paddle::dialect::IntArrayAttribute>("axis")
+               .data()
+               .GetData();
   }
+  bool reduce_all = axis.size() == 0;
 
-  return false;
+  return details::ReduceInferDim(op, infer_context, axis, keepdim, reduce_all);
 }
 
 bool NormOpInferSymbolicShape(pir::Operation *op,

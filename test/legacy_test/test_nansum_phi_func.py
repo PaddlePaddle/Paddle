@@ -129,6 +129,15 @@ class TestNansumForward(unittest.TestCase):
             out = paddle.nansum(x)
             self.assertEqual(out.item(), 0.0)
 
+    def test_empty_tensor_int64(self):
+        """nansum of empty int32 tensor with dtype=int64 should be 0."""
+        for place in self.places:
+            paddle.device.set_device(str(place))
+            x = paddle.empty([0, 3], dtype='int32')
+            out = paddle.nansum(x, dtype=paddle.int64)
+            self.assertEqual(out.item(), 0)
+            self.assertEqual(out.dtype, paddle.int64)
+
     def test_neg_nan(self):
         """-NaN should also be treated as 0."""
         x = np.array([1.0, float('-nan'), 3.0], dtype='float32')
@@ -227,6 +236,16 @@ class TestNansumBackward(unittest.TestCase):
         x = np.array([float('nan'), 1.0, 2.0], dtype='float64')
         self._check_grad(x)
 
+    def test_grad_empty_tensor(self):
+        """Backward on empty tensor: x_grad should be empty with correct shape."""
+        for place in self.places:
+            paddle.device.set_device(str(place))
+            x = paddle.empty([0, 3], dtype='float32')
+            x.stop_gradient = False
+            out = paddle.nansum(x)
+            out.backward()
+            self.assertEqual(list(x.grad.shape), [0, 3])
+
 
 class TestNansumAlignPyTorch(unittest.TestCase):
     """Explicit alignment tests with known PyTorch outputs."""
@@ -268,6 +287,30 @@ class TestNansumAlignPyTorch(unittest.TestCase):
             x = paddle.to_tensor([float('nan'), 1.0, 2.0], place=place)
             out = paddle.nansum(x)
             self.assertEqual(out.shape, [])
+
+
+class TestNansumStaticGraph(unittest.TestCase):
+    """Test nansum under jit.to_static to trigger InferSymbolicShape."""
+
+    def test_to_static(self):
+        class NansumLayer(paddle.nn.Layer):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                return paddle.nansum(x, axis=1, keepdim=True)
+
+        net = NansumLayer()
+        x_spec = paddle.static.InputSpec(
+            shape=[None, None, None], dtype='float32'
+        )
+        static_net = paddle.jit.to_static(
+            net, input_spec=[x_spec], full_graph=True
+        )
+        x = paddle.randn([2, 3, 4])
+        out = static_net(x)
+        expected = paddle.nansum(x, axis=1, keepdim=True)
+        np.testing.assert_allclose(out.numpy(), expected.numpy())
 
 
 if __name__ == '__main__':
