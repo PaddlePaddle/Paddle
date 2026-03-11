@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/layer_norm_grad_kernel.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cast_kernel.h"
@@ -23,6 +24,8 @@
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
 #include "paddle/phi/kernels/funcs/fast_ln_v2.h"
 #endif
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
+
 namespace phi {
 enum class LayerNormGadKernelVariant { FAST_LN_V2, GENERIC };
 static inline LayerNormGadKernelVariant LayerNormGradKernelDispatch(
@@ -34,6 +37,11 @@ static inline LayerNormGadKernelVariant LayerNormGradKernelDispatch(
     const int64_t x_numel,
     const DenseTensor* scale,
     const DenseTensor* bias) {
+  // Precision alignment: when accuracy compatible mode is enabled,
+  // bypass FAST_LN_V2 backward and use the generic backward kernel.
+  if (FLAGS_use_accuracy_compatible_kernel) {
+    return LayerNormGadKernelVariant::GENERIC;
+  }
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
   if (scale != nullptr && bias != nullptr &&
       input_type != paddle::DataType::FLOAT32 && hidden_size != 4096 &&

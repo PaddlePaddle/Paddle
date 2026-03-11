@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "paddle/common/ddim.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
@@ -26,6 +27,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/fake_quantize_functor.h"
 #include "paddle/phi/kernels/funcs/fast_ln_v1.h"
+
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 
 namespace phi {
 namespace funcs {
@@ -1955,11 +1958,16 @@ static void LayerNormBackward(
     {
 #ifdef PADDLE_WITH_CUDA
       bool can_call_fast_kernel = false;
-      // todo: rule out double type.
-      if ((feature_size == 1024 || feature_size == 384 ||
-           feature_size == 256) &&
-          sizeof(T) <= 4) {
-        can_call_fast_kernel = true;
+      // Precision alignment: when accuracy compatible mode is enabled,
+      // bypass the fused fast backward kernel and use the generic path
+      // to match PyTorch's backward computation order.
+      if (!FLAGS_use_accuracy_compatible_kernel) {
+        // todo: rule out double type.
+        if ((feature_size == 1024 || feature_size == 384 ||
+             feature_size == 256) &&
+            sizeof(T) <= 4) {
+          can_call_fast_kernel = true;
+        }
       }
 
       VLOG(6) << "can_call_fast_kernel = " << can_call_fast_kernel;
