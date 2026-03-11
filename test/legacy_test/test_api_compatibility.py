@@ -3220,11 +3220,11 @@ class TestDigammaAPI(unittest.TestCase):
         self.init_data()
 
     def init_data(self):
-        from scipy.special import psi
         self.np_x = (np.random.rand(*self.shape) + 1.0).astype(self.dtype)
 
     def test_dygraph_Compatibility(self):
         from scipy.special import psi
+
         paddle.disable_static()
         x = paddle.to_tensor(self.np_x)
         paddle_dygraph_out = []
@@ -3256,6 +3256,7 @@ class TestDigammaAPI(unittest.TestCase):
 
     def test_static_Compatibility(self):
         from scipy.special import psi
+
         paddle.enable_static()
         main = paddle.static.Program()
         startup = paddle.static.Program()
