@@ -554,8 +554,8 @@ void ConvCudnnGradKernel(const Context& dev_ctx,
   // So we create a new padded input tensor.
   int data_dim = strides.size();  // 2d or 3d
   bool is_sys_pad = funcs::IsSymmetricPadding(paddings, data_dim);
-  Tensor transformed_input(input.type());
-  Tensor transformed_input_grad(input.type());
+  DenseTensor transformed_input(input.type());
+  DenseTensor transformed_input_grad(input.type());
   std::vector<int> padding_common(data_dim, 0);
   std::vector<int> input_pad(transformed_input_channel.dims().size() * 2, 0);
 

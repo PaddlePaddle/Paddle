@@ -35,7 +35,6 @@ defaults:
 jobs:
   check-bypass:
     name: Check bypass
-    if: ${{ inputs.is_pr == 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
       workflow-name: build

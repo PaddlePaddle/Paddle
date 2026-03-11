@@ -51,6 +51,7 @@ from paddle._C_ops import (  # noqa: F401
     isfinite,
     isinf,
     isnan,
+    lgamma,
     log,
     log1p,
     log2,
@@ -4136,59 +4137,6 @@ def gammainc_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         .multiply_(paddle.full_like(x, -1.0))
         .add_(paddle.full_like(x, 1.0))
     )
-
-
-def lgamma(x: Tensor, name: str | None = None) -> Tensor:
-    r"""
-    Calculates the lgamma of the given input tensor, element-wise.
-
-    This operator performs elementwise lgamma for input $X$.
-    :math:`out = log\Gamma(x)`
-
-
-    Args:
-        x (Tensor): Input Tensor. Must be one of the following types: bfloat16, float16, float32, float64,
-            uint8, int8, int16, int32, int64.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor, the lgamma of the input Tensor, the shape and data type is the same with input
-            (integer types are autocasted into float32).
-
-    Examples:
-        .. code-block:: pycon
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            >>> out = paddle.lgamma(x)
-            >>> out
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [1.31452465, 1.76149750, 2.25271273, 1.09579802])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.lgamma(x)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'float32',
-                'float64',
-                'uint16',
-                'uint8',
-                'int8',
-                'int16',
-                'int32',
-                'int64',
-            ],
-            'lgamma',
-        )
-        helper = LayerHelper('lgamma', **locals())
-        out = helper.create_variable_for_type_inference(x.dtype)
-        helper.append_op(type='lgamma', inputs={'X': x}, outputs={'Out': out})
-        return out
 
 
 @inplace_apis_in_dygraph_only
