@@ -14,7 +14,10 @@
 
 #pragma once
 
-#ifdef PADDLE_WITH_MKLML
+// MKL VML runtime detection is only supported on Linux/Unix systems
+// because it requires dlfcn.h (dlopen/dlsym) which is not available on Windows.
+#if defined(PADDLE_WITH_MKLML) && !defined(_WIN32)
+#define PADDLE_MKL_VML_RUNTIME_DETECTION 1
 #include <dlfcn.h>
 #include <mkl.h>
 
@@ -42,15 +45,13 @@ namespace detail {
 
 // One-time initialization: try to make MKL VML functions available in global
 // symbol scope. This handles the case where MKL VML symbols (vmsSin, etc.)
-// are not directly exported globally, e.g. when libtorch_cpu.so is loaded
+// are not directly exported globally, e.g. when other libraries are loaded
 // with RTLD_LOCAL.
 //
 // Strategies tried in order:
 // 1. Check if symbols are already visible via RTLD_DEFAULT (normal case).
 // 2. Try to load the full Intel MKL runtime (libmkl_rt.so) and promote it
 //    to global scope so its symbols become visible.
-// 3. Try to promote an already-loaded libtorch_cpu.so (which bundles MKL)
-//    to global scope using RTLD_NOLOAD | RTLD_GLOBAL.
 //
 // Thread safety: C++11 guarantees function-local statics are initialized
 // exactly once, even under concurrent access.
@@ -73,13 +74,6 @@ inline void ensure_mkl_vml_probed() {
     dlopen("libmkl_rt.so", RTLD_LAZY | RTLD_GLOBAL);
     return;
   }
-
-  // Strategy 3: Promote libtorch_cpu.so (which bundles full MKL) to global
-  // scope. RTLD_NOLOAD ensures we do NOT load the library - we only get a
-  // handle if it is already loaded in this process. RTLD_GLOBAL makes its
-  // symbols visible to subsequent dlsym(RTLD_DEFAULT, ...) calls.
-  dlopen("libtorch_cpu.so", RTLD_LAZY | RTLD_NOLOAD | RTLD_GLOBAL);
-  // Whether or not this succeeded, we have tried our best.
 }
 
 }  // namespace detail
@@ -177,7 +171,7 @@ inline bool mkl_vml_exp_available() {
   return available;
 }
 
-#endif  // PADDLE_WITH_MKLML
+#endif  // PADDLE_WITH_MKLML && !_WIN32
 
 #ifdef PADDLE_WITH_SLEEF
 #include <sleef.h>
@@ -611,7 +605,7 @@ inline void vexp_scalar_f64(double* out, const double* in, int64_t n) {
 
 // Vectorized sin for float - dispatches to best available implementation
 inline void vsin(float* out, const float* in, int64_t n) {
-#ifdef PADDLE_WITH_MKLML
+#ifdef PADDLE_MKL_VML_RUNTIME_DETECTION
   auto mkl_sin = get_vmsSin();
   if (mkl_sin) {
     mkl_sin(static_cast<MKL_INT>(n), in, out, VML_MODE_HA_FTZDAZ_OFF_ERRIGNORE);
@@ -629,7 +623,7 @@ inline void vsin(float* out, const float* in, int64_t n) {
 
 // Vectorized cos for float
 inline void vcos(float* out, const float* in, int64_t n) {
-#ifdef PADDLE_WITH_MKLML
+#ifdef PADDLE_MKL_VML_RUNTIME_DETECTION
   auto mkl_cos = get_vmsCos();
   if (mkl_cos) {
     mkl_cos(static_cast<MKL_INT>(n), in, out, VML_MODE_HA_FTZDAZ_OFF_ERRIGNORE);
@@ -647,7 +641,7 @@ inline void vcos(float* out, const float* in, int64_t n) {
 
 // Vectorized sin for double
 inline void vsin(double* out, const double* in, int64_t n) {
-#ifdef PADDLE_WITH_MKLML
+#ifdef PADDLE_MKL_VML_RUNTIME_DETECTION
   auto mkl_sin = get_vmdSin();
   if (mkl_sin) {
     mkl_sin(static_cast<MKL_INT>(n), in, out, VML_MODE_HA_FTZDAZ_OFF_ERRIGNORE);
@@ -665,7 +659,7 @@ inline void vsin(double* out, const double* in, int64_t n) {
 
 // Vectorized cos for double
 inline void vcos(double* out, const double* in, int64_t n) {
-#ifdef PADDLE_WITH_MKLML
+#ifdef PADDLE_MKL_VML_RUNTIME_DETECTION
   auto mkl_cos = get_vmdCos();
   if (mkl_cos) {
     mkl_cos(static_cast<MKL_INT>(n), in, out, VML_MODE_HA_FTZDAZ_OFF_ERRIGNORE);
@@ -705,7 +699,7 @@ inline void vpow(double* out, const double* x, const double* y, int64_t n) {
 
 // Vectorized exp for float - dispatches to best available implementation
 inline void vexp(float* out, const float* in, int64_t n) {
-#ifdef PADDLE_WITH_MKLML
+#ifdef PADDLE_MKL_VML_RUNTIME_DETECTION
   auto mkl_exp = get_vmsExp();
   if (mkl_exp) {
     mkl_exp(static_cast<MKL_INT>(n), in, out, VML_MODE_HA_FTZDAZ_OFF_ERRIGNORE);
@@ -723,7 +717,7 @@ inline void vexp(float* out, const float* in, int64_t n) {
 
 // Vectorized exp for double
 inline void vexp(double* out, const double* in, int64_t n) {
-#ifdef PADDLE_WITH_MKLML
+#ifdef PADDLE_MKL_VML_RUNTIME_DETECTION
   auto mkl_exp = get_vmdExp();
   if (mkl_exp) {
     mkl_exp(static_cast<MKL_INT>(n), in, out, VML_MODE_HA_FTZDAZ_OFF_ERRIGNORE);
@@ -745,7 +739,7 @@ inline void vexp(double* out, const double* in, int64_t n) {
 #include <cmath>
 
 inline void vsin(float* out, const float* in, int64_t n) {
-#ifdef PADDLE_WITH_MKLML
+#ifdef PADDLE_MKL_VML_RUNTIME_DETECTION
   auto mkl_sin = get_vmsSin();
   if (mkl_sin) {
     mkl_sin(static_cast<MKL_INT>(n), in, out, VML_MODE_HA_FTZDAZ_OFF_ERRIGNORE);
@@ -758,7 +752,7 @@ inline void vsin(float* out, const float* in, int64_t n) {
 }
 
 inline void vcos(float* out, const float* in, int64_t n) {
-#ifdef PADDLE_WITH_MKLML
+#ifdef PADDLE_MKL_VML_RUNTIME_DETECTION
   auto mkl_cos = get_vmsCos();
   if (mkl_cos) {
     mkl_cos(static_cast<MKL_INT>(n), in, out, VML_MODE_HA_FTZDAZ_OFF_ERRIGNORE);
@@ -771,7 +765,7 @@ inline void vcos(float* out, const float* in, int64_t n) {
 }
 
 inline void vsin(double* out, const double* in, int64_t n) {
-#ifdef PADDLE_WITH_MKLML
+#ifdef PADDLE_MKL_VML_RUNTIME_DETECTION
   auto mkl_sin = get_vmdSin();
   if (mkl_sin) {
     mkl_sin(static_cast<MKL_INT>(n), in, out, VML_MODE_HA_FTZDAZ_OFF_ERRIGNORE);
@@ -784,7 +778,7 @@ inline void vsin(double* out, const double* in, int64_t n) {
 }
 
 inline void vcos(double* out, const double* in, int64_t n) {
-#ifdef PADDLE_WITH_MKLML
+#ifdef PADDLE_MKL_VML_RUNTIME_DETECTION
   auto mkl_cos = get_vmdCos();
   if (mkl_cos) {
     mkl_cos(static_cast<MKL_INT>(n), in, out, VML_MODE_HA_FTZDAZ_OFF_ERRIGNORE);
@@ -809,7 +803,7 @@ inline void vpow(double* out, const double* x, const double* y, int64_t n) {
 }
 
 inline void vexp(float* out, const float* in, int64_t n) {
-#ifdef PADDLE_WITH_MKLML
+#ifdef PADDLE_MKL_VML_RUNTIME_DETECTION
   auto mkl_exp = get_vmsExp();
   if (mkl_exp) {
     mkl_exp(static_cast<MKL_INT>(n), in, out, VML_MODE_HA_FTZDAZ_OFF_ERRIGNORE);
@@ -822,7 +816,7 @@ inline void vexp(float* out, const float* in, int64_t n) {
 }
 
 inline void vexp(double* out, const double* in, int64_t n) {
-#ifdef PADDLE_WITH_MKLML
+#ifdef PADDLE_MKL_VML_RUNTIME_DETECTION
   auto mkl_exp = get_vmdExp();
   if (mkl_exp) {
     mkl_exp(static_cast<MKL_INT>(n), in, out, VML_MODE_HA_FTZDAZ_OFF_ERRIGNORE);
@@ -845,7 +839,7 @@ inline bool should_use_vectorized_path(const void* in_ptr,
   // Use vectorized path when:
   // 1. MKL VML sin/cos functions are available at runtime (works for any size)
   // 2. SLEEF is available and element count is large enough for SIMD
-#ifdef PADDLE_WITH_MKLML
+#ifdef PADDLE_MKL_VML_RUNTIME_DETECTION
   if (mkl_vml_sincos_available()) {
     return true;  // MKL VML works for any size
   }
@@ -865,7 +859,7 @@ inline bool should_use_vectorized_path_for_exp(const void* in_ptr,
   // Use vectorized path when:
   // 1. MKL VML exp functions are available at runtime (works for any size)
   // 2. SLEEF is available and element count is large enough for SIMD
-#ifdef PADDLE_WITH_MKLML
+#ifdef PADDLE_MKL_VML_RUNTIME_DETECTION
   if (mkl_vml_exp_available()) {
     return true;  // MKL VML works for any size
   }
