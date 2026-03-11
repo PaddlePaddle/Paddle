@@ -30,6 +30,7 @@ jobs:
     steps:
       - name: Print vars values
         run: |
+          echo "print"
           echo "IXUCA_FORCE_FALLBACK: ${{ vars.IXUCA_FORCE_FALLBACK }}"
           echo "SKIP_IXUCA_CI: ${{ vars.SKIP_IXUCA_CI }}"
           echo ""
