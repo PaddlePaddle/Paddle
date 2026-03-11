@@ -728,11 +728,13 @@ TileConfigMap BuildVectorizeConfig(
   return {{bucket_info, tile_config}};
 }
 
-std::pair<int64_t, int64_t> FindBestReduceBlockThreadNum(int64_t reduce_numel,
-                                                         int64_t sp_thread_num,
-                                                         int64_t rd_thread_num,
-                                                         int64_t sp_block_num,
-                                                         int sm_count) {
+std::pair<int64_t, int64_t> FindBestReduceBlockThreadNum(
+    int64_t reduce_numel,
+    int64_t sp_thread_num,
+    int64_t rd_thread_num,
+    int64_t sp_block_num,
+    int sm_count,
+    int max_threads_per_sm) {
   float max_sm_occupacy = 0.0f;
   int64_t best_rd_block_num = 1;
   int64_t best_rd_thread_num = rd_thread_num;
@@ -759,7 +761,8 @@ std::pair<int64_t, int64_t> FindBestReduceBlockThreadNum(int64_t reduce_numel,
   for (int factor = 1; factor <= 4; factor *= 2) {
     if (factor > rd_thread_num) break;
     int64_t new_rd_thread_num = rd_thread_num / factor;
-    int64_t avail_blocks_per_sm = 1024 / (sp_thread_num * new_rd_thread_num);
+    int64_t avail_blocks_per_sm =
+        max_threads_per_sm / (sp_thread_num * new_rd_thread_num);
     int64_t avail_blocks = sm_count * avail_blocks_per_sm;
 
     // First, assign all remaining available blocks to rd_block_num.
@@ -805,6 +808,7 @@ TileConfigMap BuildPureStaticShapeConfig(
   int max_warp_cnt = max_threads / warp_size;
   const auto& last_dim = base_info->iter_space_type.back().first;
   const int sm_count = target.get_multi_processor_count();
+  const int max_threads_per_sm = target.get_max_threads_per_sm();
   int64_t spatial_numel = base_info->spatial_numel;
   int64_t reduce_numel = base_info->reduce_numel;
   ReduceMethod reduce_method = NoneReduceMethod();
@@ -852,8 +856,13 @@ TileConfigMap BuildPureStaticShapeConfig(
   int64_t rd_block_num = 1;
   if (base_info->can_apply_grid_reduce) {
     int64_t sp_block_num = std::max(spatial_numel, int64_t(1));
-    std::pair<int64_t, int64_t> res = FindBestReduceBlockThreadNum(
-        reduce_numel, sp_thread_num, rd_thread_num, sp_block_num, sm_count);
+    std::pair<int64_t, int64_t> res =
+        FindBestReduceBlockThreadNum(reduce_numel,
+                                     sp_thread_num,
+                                     rd_thread_num,
+                                     sp_block_num,
+                                     sm_count,
+                                     max_threads_per_sm);
     rd_block_num = res.first;
     rd_thread_num = res.second;
   }
@@ -894,6 +903,9 @@ TileConfigMap BuildStaticSpatialConfig(
     const common::Target& target) {
   int warp_size = GetWarpSize(target);
   int max_threads = target.max_num_threads();
+  int max_warp_cnt = max_threads / warp_size;
+  int small_bucket_threshold = warp_size * 8;     // e.g., 32 * 8 = 256
+  int medium_bucket_threshold = max_threads * 2;  // e.g., 1024 * 2 = 2048
   const auto& last_dim = base_info->iter_space_type.back().first;
   const int sm_count = target.get_multi_processor_count();
   const int64_t spatial_numel = base_info->spatial_numel;
@@ -907,13 +919,21 @@ TileConfigMap BuildStaticSpatialConfig(
     int64_t sp_block_num = std::max(spatial_numel, int64_t(1));
     int64_t rd_block_num = FloorPow2(sm_count / sp_block_num);
 
-    collector({1, kMaxNumel, 1, 2048},
-              {8, warp_size, 256, 1, 1, 1, -1, BlockReduceMethod()});
-    int max_warp_num = max_threads / warp_size;
+    int small_warp_num = std::min(8, max_warp_cnt);
+    collector({1, kMaxNumel, 1, medium_bucket_threshold},
+              {small_warp_num,
+               warp_size,
+               small_bucket_threshold,
+               1,
+               1,
+               1,
+               -1,
+               BlockReduceMethod()});
+    int max_warp_num = max_warp_cnt;
     if (rd_block_num > 1 && base_info->can_apply_grid_reduce) {
       int64_t rd_threshold = rd_block_num * min_loops * max_threads;
 
-      collector({1, kMaxNumel, 2049, rd_threshold},
+      collector({1, kMaxNumel, medium_bucket_threshold + 1, rd_threshold},
                 {max_warp_num,
                  warp_size,
                  max_threads,
@@ -932,7 +952,7 @@ TileConfigMap BuildStaticSpatialConfig(
                  -1,
                  BlockReduceMethod()});
     } else {
-      collector({1, kMaxNumel, 2049, kMaxNumel},
+      collector({1, kMaxNumel, medium_bucket_threshold + 1, kMaxNumel},
                 {max_warp_num,
                  warp_size,
                  max_threads,
@@ -947,17 +967,39 @@ TileConfigMap BuildStaticSpatialConfig(
     int64_t sp_block_num =
         std::max(CeilDiv(spatial_numel, warp_size), int64_t(1));
     int64_t rd_block_num = FloorPow2(sm_count / sp_block_num);
+    int spatial_warp_num = std::min(16, max_warp_cnt);
 
     if (rd_block_num > 1 && base_info->can_apply_grid_reduce) {
-      int64_t rd_threshold = rd_block_num * min_loops * 16;
+      int64_t rd_threshold =
+          rd_block_num * min_loops * (spatial_warp_num * warp_size);
       collector({1, kMaxNumel, 1, rd_threshold},
-                {16, warp_size, 16, 1, 1, 1, -1, DiscreteReduceMethod()});
-      collector(
-          {1, kMaxNumel, rd_threshold + 1, kMaxNumel},
-          {16, warp_size, 16, rd_block_num, 1, 1, -1, DiscreteReduceMethod()});
+                {spatial_warp_num,
+                 warp_size,
+                 spatial_warp_num,
+                 1,
+                 1,
+                 1,
+                 -1,
+                 DiscreteReduceMethod()});
+      collector({1, kMaxNumel, rd_threshold + 1, kMaxNumel},
+                {spatial_warp_num,
+                 warp_size,
+                 spatial_warp_num,
+                 rd_block_num,
+                 1,
+                 1,
+                 -1,
+                 DiscreteReduceMethod()});
     } else {
       collector({1, kMaxNumel, 1, kMaxNumel},
-                {16, warp_size, 16, 1, 1, 1, -1, DiscreteReduceMethod()});
+                {spatial_warp_num,
+                 warp_size,
+                 spatial_warp_num,
+                 1,
+                 1,
+                 1,
+                 -1,
+                 DiscreteReduceMethod()});
     }
   }
 
@@ -969,16 +1011,22 @@ TileConfigMap BuildStaticReduceConfig(
     const common::Target& target) {
   int warp_size = GetWarpSize(target);
   int max_threads = target.max_num_threads();
+  int max_warp_cnt = max_threads / warp_size;
+  int small_bucket_threshold = warp_size * 8;     // e.g., 32 * 8 = 256
+  int medium_bucket_threshold = max_threads * 2;  // e.g., 1024 * 2 = 2048
+  int small_warp_num = std::min(8, max_warp_cnt);
+  int medium_warp_num = std::min(16, max_warp_cnt);
   const auto& last_dim = base_info->iter_space_type.back().first;
 
   TileConfigCollector collector;
   // { sp_lower, sp_upper, rd_lower, rd_upper },
   // { warp, rd_thread, rd_block, sp_inner, vec_factor, rd_inner, rd_method }
   if (last_dim == "R") {
-    if (base_info->reduce_numel <= 256) {
-      int64_t spatial_inner_num = 256 / CeilPow2(base_info->reduce_numel);
-      collector({1, kMaxNumel, 1, 256},
-                {8,
+    if (base_info->reduce_numel <= small_bucket_threshold) {
+      int64_t spatial_inner_num =
+          small_bucket_threshold / CeilPow2(base_info->reduce_numel);
+      collector({1, kMaxNumel, 1, small_bucket_threshold},
+                {small_warp_num,
                  warp_size,
                  warp_size,
                  1,
@@ -986,23 +1034,26 @@ TileConfigMap BuildStaticReduceConfig(
                  1,
                  -1,
                  WarpReduceMethod()});
-    } else if (base_info->reduce_numel <= 2048) {
-      int64_t reduce_block = CeilDiv(base_info->reduce_numel, 256) * 256;
-      int64_t warp_num = reduce_block / 256;
-      int64_t reduce_inner_num = 8;
+    } else if (base_info->reduce_numel <= medium_bucket_threshold) {
+      int64_t reduce_block =
+          CeilDiv(base_info->reduce_numel, small_bucket_threshold) *
+          small_bucket_threshold;
+      int64_t warp_num = reduce_block / small_bucket_threshold;
+      int64_t reduce_inner_num = 8;  // This is reduce_inner_num, not warp_num
       int64_t tree_reduce_num = reduce_block / reduce_inner_num;
-      collector({1, kMaxNumel, 257, 2048},
-                {warp_num,
-                 warp_size,
-                 tree_reduce_num,
-                 1,
-                 1,
-                 1,
-                 -1,
-                 BlockReduceMethod()});
+      collector(
+          {1, kMaxNumel, small_bucket_threshold + 1, medium_bucket_threshold},
+          {warp_num,
+           warp_size,
+           tree_reduce_num,
+           1,
+           1,
+           1,
+           -1,
+           BlockReduceMethod()});
     } else {
-      int max_warp_num = max_threads / warp_size;
-      collector({1, kMaxNumel, 2049, kMaxNumel},
+      int max_warp_num = max_warp_cnt;
+      collector({1, kMaxNumel, medium_bucket_threshold + 1, kMaxNumel},
                 {max_warp_num,
                  warp_size,
                  max_threads,
@@ -1014,17 +1065,25 @@ TileConfigMap BuildStaticReduceConfig(
     }
   } else {  // last_dim == "S"
     if (base_info->reduce_numel == 1) {
-      collector({1, 1023, 1, 1},
+      collector({1, max_threads - 1, 1, 1},
                 {-1, warp_size, 1, 1, 1, 1, -1, NoneReduceMethod()});
-      int max_warp_num = max_threads / warp_size;
-      collector({1024, kMaxNumel, 1, 1},
+      int max_warp_num = max_warp_cnt;
+      collector({max_threads, kMaxNumel, 1, 1},
                 {max_warp_num, warp_size, 1, 1, 4, 1, -1, NoneReduceMethod()});
     } else if (base_info->reduce_numel <= 16) {
-      collector({1, kMaxNumel, 1, 1},
-                {8, warp_size, 1, 1, 1, 1, -1, NoneReduceMethod()});
+      collector(
+          {1, kMaxNumel, 1, 1},
+          {small_warp_num, warp_size, 1, 1, 1, 1, -1, NoneReduceMethod()});
     } else {
       collector({1, kMaxNumel, 1, 1},
-                {16, warp_size, 16, 1, 1, 1, -1, DiscreteReduceMethod()});
+                {medium_warp_num,
+                 warp_size,
+                 medium_warp_num,
+                 1,
+                 1,
+                 1,
+                 -1,
+                 DiscreteReduceMethod()});
     }
   }
 
@@ -1036,6 +1095,11 @@ TileConfigMap BuildDynamicShapeConfig(
     const common::Target& target) {
   int warp_size = GetWarpSize(target);
   int max_threads = target.max_num_threads();
+  int max_warp_cnt = max_threads / warp_size;
+  int small_bucket_threshold = warp_size * 8;     // e.g., 32 * 8 = 256
+  int medium_bucket_threshold = max_threads * 2;  // e.g., 1024 * 2 = 2048
+  int small_warp_num = std::min(8, max_warp_cnt);
+  int medium_warp_num = std::min(16, max_warp_cnt);
   const auto& last_dim = base_info->iter_space_type.back().first;
 
   TileConfigCollector collector;
@@ -1043,12 +1107,21 @@ TileConfigMap BuildDynamicShapeConfig(
   // { warp, rd_thread, rd_block, sp_inner, vec_factor, rd_inner, rd_method }
 
   if (last_dim == "R") {
-    collector({1, kMaxNumel, 1, 256},
-              {8, warp_size, warp_size, 1, 1, 1, 8, WarpReduceMethod()});
-    collector({1, kMaxNumel, 257, 2048},
-              {8, warp_size, 256, 1, 1, 1, 8, BlockReduceMethod()});
-    int max_warp_num = max_threads / warp_size;
-    collector({1, kMaxNumel, 2049, kMaxNumel},
+    collector(
+        {1, kMaxNumel, 1, small_bucket_threshold},
+        {small_warp_num, warp_size, warp_size, 1, 1, 1, 8, WarpReduceMethod()});
+    collector(
+        {1, kMaxNumel, small_bucket_threshold + 1, medium_bucket_threshold},
+        {small_warp_num,
+         warp_size,
+         small_bucket_threshold,
+         1,
+         1,
+         1,
+         8,
+         BlockReduceMethod()});
+    int max_warp_num = max_warp_cnt;
+    collector({1, kMaxNumel, medium_bucket_threshold + 1, kMaxNumel},
               {max_warp_num,
                warp_size,
                max_threads,
@@ -1059,7 +1132,14 @@ TileConfigMap BuildDynamicShapeConfig(
                BlockReduceMethod()});
   } else {  // last_dim == "S"
     collector({1, kMaxNumel, 1, kMaxNumel},
-              {16, warp_size, 16, 1, 1, 1, -1, DiscreteReduceMethod()});
+              {medium_warp_num,
+               warp_size,
+               medium_warp_num,
+               1,
+               1,
+               1,
+               -1,
+               DiscreteReduceMethod()});
   }
   return collector.GetResult();
 }
