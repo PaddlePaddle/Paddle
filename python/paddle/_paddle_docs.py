@@ -2248,6 +2248,43 @@ def grid_sample(
 )
 
 add_doc_and_signature(
+    "pixel_shuffle",
+    r"""
+    This API implements pixel shuffle operation.
+    See more details in :ref:`PixelShuffle <api_paddle_nn_PixelShuffle>` .
+
+    Parameters:
+        x (Tensor): 4-D tensor, the data type should be float32 or float64.
+            alias: ``input``.
+        upscale_factor (int): factor to increase spatial resolution.
+        data_format (str, optional): The data format of the input and output data. An optional string from: ``"NCHW"``, ``"NHWC"``. When it is ``"NCHW"``, the data is stored in the order of: [batch_size, input_channels, input_height, input_width]. Default: ``"NCHW"``.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Out (Tensor): Reshaped tensor according to the new dimension.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+            >>> import paddle.nn.functional as F
+
+            >>> x = paddle.randn(shape=[2, 9, 4, 4])
+            >>> out_var = F.pixel_shuffle(x, 3)
+            >>> print(out_var.shape)
+            paddle.Size([2, 1, 12, 12])
+""",
+    """
+def pixel_shuffle(
+    x: Tensor,
+    upscale_factor: int,
+    data_format: DataLayout2D = 'NCHW',
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
     "gelu",
     r"""
     gelu activation.

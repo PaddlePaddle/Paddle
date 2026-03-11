@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
+import paddle.nn.functional as F
 
 
 # Edit By AI Agent
@@ -2466,6 +2467,69 @@ class TestTensorHypotInplace(unittest.TestCase):
         paddle.enable_static()
 
 
+# Test pixel_shuffle compatibility
+class TestPixelShuffleAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.shape = [2, 9, 4, 4]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_input = np.random.randn(*self.shape).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_input)
+        paddle_dygraph_out = []
+
+        # Position args
+        out1 = F.pixel_shuffle(x, 3)
+        paddle_dygraph_out.append(out1)
+
+        # Paddle keyword args
+        out2 = F.pixel_shuffle(x=x, upscale_factor=3)
+        paddle_dygraph_out.append(out2)
+
+        # Torch keyword args (input alias)
+        out3 = F.pixel_shuffle(input=x, upscale_factor=3)
+        paddle_dygraph_out.append(out3)
+
+        # Mixed args
+        out4 = F.pixel_shuffle(x, upscale_factor=3)
+        paddle_dygraph_out.append(out4)
+
+        # Verify all outputs match
+        for out in paddle_dygraph_out:
+            np.testing.assert_array_equal(out1.numpy(), out.numpy())
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+
+            # Position args
+            out1 = F.pixel_shuffle(x, 3)
+            # Paddle keyword args
+            out2 = F.pixel_shuffle(x=x, upscale_factor=3)
+            # Torch keyword args (input alias)
+            out3 = F.pixel_shuffle(input=x, upscale_factor=3)
+
+            exe = paddle.base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_input},
+                fetch_list=[out1, out2, out3],
+            )
+            for out in fetches[1:]:
+                np.testing.assert_array_equal(fetches[0], out)
+
+
 # Test index_fill compatibility
 class TestIndexFillAPI(unittest.TestCase):
     def setUp(self):
@@ -3011,111 +3075,72 @@ class TestUniqueAPI_Compatibility(unittest.TestCase):
         self.x_1d = np.array([3, 1, 2, 1, 3]).astype('int64')
         self.x_2d = np.array([[2, 1, 3], [3, 0, 1], [2, 1, 3]]).astype('int64')
 
-    def test_dygraph_input_alias(self):
+    def test_dygraph_Compatibility(self):
         paddle.disable_static()
-        x = paddle.to_tensor(self.x_1d)
+        x_1d = paddle.to_tensor(self.x_1d)
+        x_2d = paddle.to_tensor(self.x_2d)
 
         # Paddle keyword args
-        out1 = paddle.unique(x=x)
+        out1 = paddle.unique(x=x_1d)
         # Torch keyword args (input alias)
-        out2 = paddle.unique(input=x)
+        out2 = paddle.unique(input=x_1d)
         np.testing.assert_array_equal(out1.numpy(), out2.numpy())
-        paddle.enable_static()
-
-    def test_dygraph_dim_alias(self):
-        paddle.disable_static()
-        x = paddle.to_tensor(self.x_2d)
 
         # Paddle axis kwarg
-        out1 = paddle.unique(x, axis=0)
+        out3 = paddle.unique(x_2d, axis=0)
         # Torch dim alias
-        out2 = paddle.unique(x, dim=0)
-        np.testing.assert_array_equal(out1.numpy(), out2.numpy())
+        out4 = paddle.unique(x_2d, dim=0)
+        np.testing.assert_array_equal(out3.numpy(), out4.numpy())
 
         # Tensor method - dim alias
-        out3 = x.unique(dim=0)
-        np.testing.assert_array_equal(out1.numpy(), out3.numpy())
-        paddle.enable_static()
+        out5 = x_2d.unique(dim=0)
+        np.testing.assert_array_equal(out3.numpy(), out5.numpy())
 
-    def test_dygraph_sorted_param(self):
-        paddle.disable_static()
-        x = paddle.to_tensor(self.x_1d)
-
-        out1 = paddle.unique(x)
-        out2 = paddle.unique(x, sorted=True)
-        out3 = paddle.unique(x, sorted=False)
-        np.testing.assert_array_equal(out1.numpy(), out2.numpy())
-        np.testing.assert_array_equal(out1.numpy(), out3.numpy())
+        # sorted param
+        out6 = paddle.unique(x_1d, sorted=True)
+        out7 = paddle.unique(x_1d, sorted=False)
+        np.testing.assert_array_equal(out1.numpy(), out6.numpy())
+        np.testing.assert_array_equal(out1.numpy(), out7.numpy())
 
         # Tensor method with sorted
-        out4 = x.unique(sorted=True)
-        out5 = x.unique(sorted=False)
-        np.testing.assert_array_equal(out1.numpy(), out4.numpy())
-        np.testing.assert_array_equal(out1.numpy(), out5.numpy())
-        paddle.enable_static()
-
-    def test_dygraph_combined_aliases(self):
-        paddle.disable_static()
-        x = paddle.to_tensor(self.x_2d)
+        out8 = x_1d.unique(sorted=True)
+        np.testing.assert_array_equal(out1.numpy(), out8.numpy())
 
         # Both input and dim aliases together
-        out1 = paddle.unique(x, axis=0)
-        out2 = paddle.unique(input=x, dim=0)
-        np.testing.assert_array_equal(out1.numpy(), out2.numpy())
+        out9 = paddle.unique(input=x_2d, dim=0)
+        np.testing.assert_array_equal(out3.numpy(), out9.numpy())
         paddle.enable_static()
 
-    def test_static_input_alias(self):
-        paddle.enable_static()
-        main = paddle.static.Program()
-        startup = paddle.static.Program()
-        with paddle.base.program_guard(main, startup):
-            x = paddle.static.data(name="x", shape=[5], dtype='int64')
-            out1 = paddle.unique(x=x)
-            out2 = paddle.unique(input=x)
-
-            exe = paddle.base.Executor(paddle.CPUPlace())
-            res = exe.run(
-                main,
-                feed={"x": self.x_1d},
-                fetch_list=[out1, out2],
-            )
-            np.testing.assert_array_equal(res[0], res[1])
-
-    def test_static_dim_alias(self):
+    def test_static_Compatibility(self):
         paddle.enable_static()
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.base.program_guard(main, startup):
-            x = paddle.static.data(name="x", shape=[3, 3], dtype='int64')
-            out1 = paddle.unique(x, axis=0)
-            out2 = paddle.unique(x, dim=0)
+            x_1d = paddle.static.data(name="x_1d", shape=[5], dtype='int64')
+            x_2d = paddle.static.data(name="x_2d", shape=[3, 3], dtype='int64')
+
+            # input alias
+            out1 = paddle.unique(x=x_1d)
+            out2 = paddle.unique(input=x_1d)
+
+            # dim alias
+            out3 = paddle.unique(x_2d, axis=0)
+            out4 = paddle.unique(x_2d, dim=0)
+
+            # sorted param
+            out5 = paddle.unique(x_1d, sorted=True)
+            out6 = paddle.unique(x_1d, sorted=False)
 
             exe = paddle.base.Executor(paddle.CPUPlace())
             res = exe.run(
                 main,
-                feed={"x": self.x_2d},
-                fetch_list=[out1, out2],
+                feed={"x_1d": self.x_1d, "x_2d": self.x_2d},
+                fetch_list=[out1, out2, out3, out4, out5, out6],
             )
             np.testing.assert_array_equal(res[0], res[1])
-
-    def test_static_sorted_param(self):
-        paddle.enable_static()
-        main = paddle.static.Program()
-        startup = paddle.static.Program()
-        with paddle.base.program_guard(main, startup):
-            x = paddle.static.data(name="x", shape=[5], dtype='int64')
-            out1 = paddle.unique(x)
-            out2 = paddle.unique(x, sorted=True)
-            out3 = paddle.unique(x, sorted=False)
-
-            exe = paddle.base.Executor(paddle.CPUPlace())
-            res = exe.run(
-                main,
-                feed={"x": self.x_1d},
-                fetch_list=[out1, out2, out3],
-            )
-            np.testing.assert_array_equal(res[0], res[1])
-            np.testing.assert_array_equal(res[0], res[2])
+            np.testing.assert_array_equal(res[2], res[3])
+            np.testing.assert_array_equal(res[0], res[4])
+            np.testing.assert_array_equal(res[0], res[5])
 
 
 class TestCloneAPI(unittest.TestCase):

@@ -467,6 +467,13 @@
   args_alias :
     use_default_mapping : True
 
+- op : pixel_shuffle
+  name : [paddle.nn.functional.pixel_shuffle]
+  args_alias :
+    use_default_mapping : True
+  pre_process :
+    func : PixelShufflePreProcess(data_format)
+
 - op : reciprocal
   name : [paddle.reciprocal, paddle.Tensor.reciprocal]
   args_alias :
