@@ -76,7 +76,7 @@ __global__ void GatherNdCUDAKernel(const T* input,
 }
 
 template <typename T, typename IndexT = int>
-void GPUGatherNd(const phi::GPUContext& dev_ctx,
+void GPUGatherNd(const GPUContext& dev_ctx,
                  const DenseTensor& input,
                  const DenseTensor& index,
                  DenseTensor* output) {
@@ -215,7 +215,7 @@ void GatherV2CUDAFunction(const DenseTensor* input,
                           const DenseTensor* index,
                           const int axis,
                           DenseTensor* out,
-                          const phi::GPUContext& dev_ctx) {
+                          const GPUContext& dev_ctx) {
   int64_t index_size = index->numel();
   int64_t input_size = input->numel();
   auto input_dim = input->dims();
@@ -290,7 +290,7 @@ void GatherV2CUDAFunction(const DenseTensor* input,
  * return: output tensor
  */
 template <typename T, typename IndexT = int>
-void GPUGather(const phi::GPUContext& dev_ctx,
+void GPUGather(const GPUContext& dev_ctx,
                const DenseTensor& src,
                const DenseTensor& index,
                DenseTensor* output) {
@@ -302,7 +302,7 @@ void GatherV2GradCUDAFunction(const DenseTensor* input,
                               const DenseTensor* index,
                               const int axis,
                               DenseTensor* out,
-                              const phi::GPUContext& dev_ctx) {
+                              const GPUContext& dev_ctx) {
   auto* index_data = index->data<U>();
   int64_t index_size = index->numel();
   int64_t input_size = input->numel();

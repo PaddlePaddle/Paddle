@@ -15,6 +15,7 @@
 #pragma once
 
 #include <ATen/core/Tensor.h>
+#include <ATen/native/RangeUtils.h>
 #include <c10/core/TensorOptions.h>
 #include <optional>
 
@@ -26,7 +27,7 @@ inline at::Tensor arange(const at::Scalar& end,
                          at::TensorOptions options = {}) {
   return paddle::experimental::arange(
       paddle::experimental::full({}, 0, phi::DataType::FLOAT64),
-      paddle::experimental::full({}, end.to<int64_t>(), phi::DataType::FLOAT64),
+      paddle::experimental::full({}, end.to<double>(), phi::DataType::FLOAT64),
       paddle::experimental::full({}, 1, phi::DataType::FLOAT64),
       compat::_PD_AtenScalarTypeToPhiDataType(options.dtype()),
       options._PD_GetPlace());
@@ -39,7 +40,7 @@ inline at::Tensor arange(const at::Scalar& end,
                          ::std::optional<bool> pin_memory) {
   return paddle::experimental::arange(
       paddle::experimental::full({}, 0, phi::DataType::FLOAT64),
-      paddle::experimental::full({}, end.to<int64_t>(), phi::DataType::FLOAT64),
+      paddle::experimental::full({}, end.to<double>(), phi::DataType::FLOAT64),
       paddle::experimental::full({}, 1, phi::DataType::FLOAT64),
       compat::_PD_AtenScalarTypeToPhiDataType(
           dtype.value_or(c10::get_default_dtype())),
@@ -51,8 +52,8 @@ inline at::Tensor arange(const at::Scalar& start,
                          at::TensorOptions options = {}) {
   return paddle::experimental::arange(
       paddle::experimental::full(
-          {}, start.to<int64_t>(), phi::DataType::FLOAT64),
-      paddle::experimental::full({}, end.to<int64_t>(), phi::DataType::FLOAT64),
+          {}, start.to<double>(), phi::DataType::FLOAT64),
+      paddle::experimental::full({}, end.to<double>(), phi::DataType::FLOAT64),
       paddle::experimental::full({}, 1, phi::DataType::FLOAT64),
       compat::_PD_AtenScalarTypeToPhiDataType(options.dtype()),
       options._PD_GetPlace());
@@ -66,8 +67,8 @@ inline at::Tensor arange(const at::Scalar& start,
                          ::std::optional<bool> pin_memory) {
   return paddle::experimental::arange(
       paddle::experimental::full(
-          {}, start.to<int64_t>(), phi::DataType::FLOAT64),
-      paddle::experimental::full({}, end.to<int64_t>(), phi::DataType::FLOAT64),
+          {}, start.to<double>(), phi::DataType::FLOAT64),
+      paddle::experimental::full({}, end.to<double>(), phi::DataType::FLOAT64),
       paddle::experimental::full({}, 1, phi::DataType::FLOAT64),
       compat::_PD_AtenScalarTypeToPhiDataType(
           dtype.value_or(c10::get_default_dtype())),
@@ -78,12 +79,13 @@ inline at::Tensor arange(const at::Scalar& start,
                          const at::Scalar& end,
                          const at::Scalar& step,
                          at::TensorOptions options = {}) {
+  // Match PyTorch: step must be non-zero and consistent with (end - start).
+  at::native::arange_check_bounds(start, end, step);
   return paddle::experimental::arange(
       paddle::experimental::full(
-          {}, start.to<int64_t>(), phi::DataType::FLOAT64),
-      paddle::experimental::full({}, end.to<int64_t>(), phi::DataType::FLOAT64),
-      paddle::experimental::full(
-          {}, step.to<int64_t>(), phi::DataType::FLOAT64),
+          {}, start.to<double>(), phi::DataType::FLOAT64),
+      paddle::experimental::full({}, end.to<double>(), phi::DataType::FLOAT64),
+      paddle::experimental::full({}, step.to<double>(), phi::DataType::FLOAT64),
       compat::_PD_AtenScalarTypeToPhiDataType(options.dtype()),
       options._PD_GetPlace());
 }
@@ -95,12 +97,13 @@ inline at::Tensor arange(const at::Scalar& start,
                          ::std::optional<at::Layout> layout,
                          ::std::optional<at::Device> device,
                          ::std::optional<bool> pin_memory) {
+  // Match PyTorch: step must be non-zero and consistent with (end - start).
+  at::native::arange_check_bounds(start, end, step);
   return paddle::experimental::arange(
       paddle::experimental::full(
-          {}, start.to<int64_t>(), phi::DataType::FLOAT64),
-      paddle::experimental::full({}, end.to<int64_t>(), phi::DataType::FLOAT64),
-      paddle::experimental::full(
-          {}, step.to<int64_t>(), phi::DataType::FLOAT64),
+          {}, start.to<double>(), phi::DataType::FLOAT64),
+      paddle::experimental::full({}, end.to<double>(), phi::DataType::FLOAT64),
+      paddle::experimental::full({}, step.to<double>(), phi::DataType::FLOAT64),
       compat::_PD_AtenScalarTypeToPhiDataType(
           dtype.value_or(c10::get_default_dtype())),
       device.value_or(at::kCPU)._PD_GetInner());

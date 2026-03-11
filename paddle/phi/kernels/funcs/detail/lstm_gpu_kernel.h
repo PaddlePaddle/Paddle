@@ -240,7 +240,7 @@ void gpu_lstm_forward(const DeviceContext& dev_ctx,
     grid = dim3((frame_size + 32 - 1) / 32, (batch_size + 16 - 1) / 16);
   }
 
-  auto stream = reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
+  auto stream = reinterpret_cast<const GPUContext&>(dev_ctx).stream();
   if (batch_size == 1) {
     KeLstmForward<T,
                   Op,
@@ -292,7 +292,7 @@ void gpu_lstm_backward(const DeviceContext& dev_ctx,
     grid = dim3((frame_size + 32 - 1) / 32, (batch_size + 16 - 1) / 16);
   }
 
-  auto stream = reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
+  auto stream = reinterpret_cast<const GPUContext&>(dev_ctx).stream();
   if (batch_size == 1) {
     KeLstmBackward<T,
                    Op,
