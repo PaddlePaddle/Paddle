@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/activation_kernel.h"
+#include "paddle/common/flags.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
@@ -22,6 +23,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/impl/activation_grad_impl.h"
 #include "paddle/phi/kernels/impl/activation_impl.h"
 
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 namespace phi {
 
 template <typename T, typename Context, typename Functor>
@@ -132,7 +134,16 @@ DEFINE_GPU_ACTIVATION_KERNEL(Acosh, CudaAcoshFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Atanh, CudaAtanhFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Relu, CudaReluFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Tanh, CudaTanhFunctor)
-DEFINE_GPU_ACTIVATION_KERNEL(TanhShrink, CudaTanhShrinkFunctor)
+// TanhShrink: custom kernel to support FLAGS_use_accuracy_compatible_kernel
+template <typename T, typename Context>
+void TanhShrinkKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      DenseTensor* out) {
+  funcs::CudaTanhShrinkFunctor<T> functor;
+  functor.compatible = FLAGS_use_accuracy_compatible_kernel;
+  ActivationGPUImpl<T, Context, funcs::CudaTanhShrinkFunctor<T>>(
+      dev_ctx, x, out, functor);
+}
 DEFINE_GPU_ACTIVATION_KERNEL(Silu, CudaSiluFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Reciprocal, CudaReciprocalFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Square, CudaSquareFunctor)
