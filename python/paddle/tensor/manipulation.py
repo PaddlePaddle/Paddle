@@ -3506,6 +3506,7 @@ def squeeze(
         return out
 
 
+@param_two_alias(["x", "input"], ["axis", "dim"])
 @inplace_apis_in_dygraph_only
 def squeeze_(
     x: Tensor, axis: int | Sequence[int] | None = None, name: str | None = None
@@ -4137,6 +4138,7 @@ def unsqueeze(
         return out
 
 
+@param_two_alias(["x", "input"], ["axis", "dim"])
 @inplace_apis_in_dygraph_only
 def unsqueeze_(
     x: Tensor, axis: int | Sequence[int] | Tensor, name: str | None = None
