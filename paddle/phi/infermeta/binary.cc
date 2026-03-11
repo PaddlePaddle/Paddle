@@ -644,6 +644,18 @@ void ConvInferMeta(const MetaTensor& input,
         0,
         common::errors::InvalidArgument(
             "the size of filter at axis 0 should be greater than 0"));
+    for (int i = 2; i < filter_dims.size(); ++i) {
+      PADDLE_ENFORCE_GT(
+          filter_dims[i],
+          0,
+          common::errors::InvalidArgument(
+              "The kernel size of Op(Conv) should be greater than 0, but "
+              "received kernel size at dimension %d is %d. The filter's shape "
+              "is [%s].",
+              i,
+              filter_dims[i],
+              filter_dims));
+    }
   }
 
   DDim in_data_dims;

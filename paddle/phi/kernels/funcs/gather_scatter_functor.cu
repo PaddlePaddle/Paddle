@@ -527,7 +527,7 @@ struct gpu_gather_scatter_functor {
 
     constexpr int block = 512;
     int64_t grid = (index_size + block - 1) / block;
-    auto stream = reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
+    auto stream = reinterpret_cast<const GPUContext&>(dev_ctx).stream();
 
     int64_t ndim = index.dims().size();
 
@@ -789,7 +789,7 @@ void gpu_scatter_input_grad_kernel(DenseTensor self,
   constexpr int block = 512;
   int64_t n = inner_dim_size * select_dim_size * outer_dim_size;
   int64_t grid = (n + block - 1) / block;
-  auto stream = reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
+  auto stream = reinterpret_cast<const GPUContext&>(dev_ctx).stream();
 
   int64_t ndim = index_dims.size();
 
@@ -951,7 +951,7 @@ void gpu_scatter_mul_min_max_input_grad_kernel(DenseTensor self,
   constexpr int block = 512;
   int64_t n = inner_dim_size * select_dim_size * outer_dim_size;
   int64_t grid = (n + block - 1) / block;
-  auto stream = reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
+  auto stream = reinterpret_cast<const GPUContext&>(dev_ctx).stream();
   DenseTensor aux_tensor;
   aux_tensor.Resize({grad.numel()});
   dev_ctx.Alloc<int>(&aux_tensor);
@@ -1086,7 +1086,7 @@ void gpu_scatter_mean_input_grad_kernel(DenseTensor self,
 
   constexpr int block = 512;
   int64_t grid_memset = (grad_size + block - 1) / block;
-  auto stream = reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
+  auto stream = reinterpret_cast<const GPUContext&>(dev_ctx).stream();
   // TODO(heqianyue): This kernel can be fused
   CudaMemsetAsync<<<grid_memset, block, 0, stream>>>(
       aux_buffer + grad_size, 1, sizeof(int) * grad_size);
@@ -1188,7 +1188,7 @@ void gpu_scatter_value_grad_kernel(DenseTensor self,
   constexpr int block = 512;
   int64_t n = inner_dim_size * select_dim_size * outer_dim_size;
   int64_t grid = (n + block - 1) / block;
-  auto stream = reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
+  auto stream = reinterpret_cast<const GPUContext&>(dev_ctx).stream();
 
   int64_t ndim = index_dims.size();
 
@@ -1300,7 +1300,7 @@ void gpu_scatter_add_mean_value_grad_kernel(DenseTensor self,
   int64_t ndim = index_dims.size();
   int64_t n = inner_dim_size * select_dim_size * outer_dim_size;
   int64_t grid = (n + block - 1) / block;
-  auto stream = reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
+  auto stream = reinterpret_cast<const GPUContext&>(dev_ctx).stream();
 
   DenseTensor shape_stride_dev;
   shape_stride_dev.Resize({3 * ndim});
@@ -1436,7 +1436,7 @@ void gpu_scatter_mul_min_max_value_grad_kernel(DenseTensor self,
   int64_t ndim = index_dims.size();
   int64_t n = inner_dim_size * select_dim_size * outer_dim_size;
   int64_t grid = (n + block - 1) / block;
-  auto stream = reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
+  auto stream = reinterpret_cast<const GPUContext&>(dev_ctx).stream();
 
   DenseTensor shape_stride_dev;
   shape_stride_dev.Resize({3 * ndim});
