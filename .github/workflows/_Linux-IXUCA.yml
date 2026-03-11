@@ -23,9 +23,22 @@ jobs:
     secrets:
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
+  print-vars:
+    name: Print PaddlePaddle Variables
+    needs: check-bypass
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print vars values
+        run: |
+          echo "IXUCA_FORCE_FALLBACK: ${{ vars.IXUCA_FORCE_FALLBACK }}"
+          echo "SKIP_IXUCA_CI: ${{ vars.SKIP_IXUCA_CI }}"
+          echo ""
+          echo "Checking if IXUCA_FORCE_FALLBACK is 'true': ${{ vars.IXUCA_FORCE_FALLBACK == 'true' }}"
+          echo "Checking if SKIP_IXUCA_CI is 'true': ${{ vars.SKIP_IXUCA_CI == 'true' }}"
+
   test-primary:
     name: Build and Test
-    needs: check-bypass
+    needs: [check-bypass, print-vars]
     if: >-
       ${{ needs.check-bypass.outputs.can-skip != 'true'
           && vars.IXUCA_FORCE_FALLBACK != 'true'
