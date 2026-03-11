@@ -220,6 +220,7 @@ __global__ void LayerNormForward(
     U *var,
     float epsilon,
     int64_t feature_size,
+    const bool use_accuracy_compatible = false,
     const float *dequant_out_scale_data = nullptr,
     const int quant_out_scale_offset = 0,
     const float quant_in_scale = 1.0,
@@ -240,24 +241,37 @@ __global__ void LayerNormForward(
       (static_cast<int64_t>(blockIdx.x) * gridDim.y + blockIdx.y + 1) *
       feature_size;
 
-  // Step 1: Reduce to calculate mean and var
+  // Precision alignment: two-pass approach for numerically stable variance.
+  // Pass 1: Compute sum -> mean
   U mean_val = 0;
-  U var_val = 0;
   for (int64_t i = beg_idx; i < end_idx; i += BlockDim) {
-    U tmp = static_cast<U>(x[i]);
-    mean_val += tmp;
-    var_val += (tmp * tmp);
+    mean_val += static_cast<U>(x[i]);
   }
 
   mean_val = BlockReduceSum<U>(mean_val, shared_mean);
+
+  if (threadIdx.x == 0) {
+    auto inv_feature_size = static_cast<U>(static_cast<float>(1.) /
+                                           static_cast<float>(feature_size));
+    mean[blockIdx.x] = mean_share = static_cast<U>(mean_val * inv_feature_size);
+  }
+  __syncthreads();
+
+  // Pass 2: Compute sum of (x - mean)^2 -> variance
+  // Re-read data from global memory for numerical stability.
+  U local_mean = mean_share;
+  U var_val = 0;
+  for (int64_t i = beg_idx; i < end_idx; i += BlockDim) {
+    U diff = static_cast<U>(x[i]) - local_mean;
+    var_val += diff * diff;
+  }
+
   var_val = BlockReduceSum<U>(var_val, shared_var);
 
   if (threadIdx.x == 0) {
-    auto scale = static_cast<U>(static_cast<float>(1.) /
-                                static_cast<float>(feature_size));
-    auto tmp = mean_val * scale;
-    mean[blockIdx.x] = mean_share = static_cast<U>(tmp);
-    var_share = static_cast<U>(var_val * scale - mean_share * mean_share);
+    auto inv_feature_size = static_cast<U>(static_cast<float>(1.) /
+                                           static_cast<float>(feature_size));
+    var_share = static_cast<U>(var_val * inv_feature_size);
     var_share = var_share > U(0) ? var_share : U(0);
     var[blockIdx.x] = var_share;
   }
@@ -267,41 +281,51 @@ __global__ void LayerNormForward(
   U invvar = rsqrt_<U>(var_share + static_cast<U>(epsilon));
 
   // Step 2: Calculate y
+  // Precision alignment: when use_accuracy_compatible is true, match PyTorch
+  // evaluation order: scale * (invvar * (x - mean)) + bias
+  // Default Paddle order: scale * (x - mean) * invvar + bias
   if (scale != nullptr) {
     if (bias != nullptr) {
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
+        U normalized;
+        if (use_accuracy_compatible) {
+          normalized = invvar * (static_cast<U>(x[i]) - mean_val);
+        } else {
+          normalized = (static_cast<U>(x[i]) - mean_val) * invvar;
+        }
         if (std::is_same<OutType, int8_t>::value) {
           y[i] = quant_helper(
-              static_cast<T>(static_cast<U>(scale[j]) *
-                                 (static_cast<U>(x[i]) - mean_val) * invvar +
+              static_cast<T>(static_cast<U>(scale[j]) * normalized +
                              static_cast<U>(bias[j])),
               quant_in_scale,
               quant_round_type,
               quant_max_bound,
               quant_min_bound);
         } else {
-          y[i] = static_cast<OutType>(static_cast<U>(scale[j]) *
-                                          (static_cast<U>(x[i]) - mean_val) *
-                                          invvar +
+          y[i] = static_cast<OutType>(static_cast<U>(scale[j]) * normalized +
                                       static_cast<U>(bias[j]));
         }
       }
     } else {
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
+        U normalized;
+        if (use_accuracy_compatible) {
+          normalized = invvar * (static_cast<U>(x[i]) - mean_val);
+        } else {
+          normalized = (static_cast<U>(x[i]) - mean_val) * invvar;
+        }
         if (std::is_same<OutType, int8_t>::value) {
           y[i] = quant_helper(
-              static_cast<T>(static_cast<U>(scale[j]) *
-                             (static_cast<U>(x[i]) - mean_val) * invvar),
+              static_cast<T>(static_cast<U>(scale[j]) * normalized),
               quant_in_scale,
               quant_round_type,
               quant_max_bound,
               quant_min_bound);
         } else {
           y[i] =
-              static_cast<OutType>(static_cast<U>(scale[j]) *
-                                   (static_cast<U>(x[i]) - mean_val) * invvar);
+              static_cast<OutType>(static_cast<U>(scale[j]) * normalized);
         }
       }
     }
@@ -309,33 +333,42 @@ __global__ void LayerNormForward(
     if (bias != nullptr) {
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
+        U normalized;
+        if (use_accuracy_compatible) {
+          normalized = invvar * (static_cast<U>(x[i]) - mean_val);
+        } else {
+          normalized = (static_cast<U>(x[i]) - mean_val) * invvar;
+        }
         if (std::is_same<OutType, int8_t>::value) {
           y[i] = quant_helper(
-              static_cast<T>((static_cast<U>(x[i]) - mean_val) * invvar +
-                             static_cast<U>(bias[j])),
+              static_cast<T>(normalized + static_cast<U>(bias[j])),
               quant_in_scale,
               quant_round_type,
               quant_max_bound,
               quant_min_bound);
         } else {
           y[i] =
-              static_cast<OutType>((static_cast<U>(x[i]) - mean_val) * invvar +
-                                   static_cast<U>(bias[j]));
+              static_cast<OutType>(normalized + static_cast<U>(bias[j]));
         }
       }
     } else {
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
+        U normalized;
+        if (use_accuracy_compatible) {
+          normalized = invvar * (static_cast<U>(x[i]) - mean_val);
+        } else {
+          normalized = (static_cast<U>(x[i]) - mean_val) * invvar;
+        }
         if (std::is_same<OutType, int8_t>::value) {
           y[i] = quant_helper(
-              static_cast<T>((static_cast<U>(x[i]) - mean_val) * invvar),
+              static_cast<T>(normalized),
               quant_in_scale,
               quant_round_type,
               quant_max_bound,
               quant_min_bound);
         } else {
-          y[i] =
-              static_cast<OutType>((static_cast<U>(x[i]) - mean_val) * invvar);
+          y[i] = static_cast<OutType>(normalized);
         }
       }
     }

@@ -22,6 +22,7 @@
 #include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
 #include "paddle/phi/kernels/funcs/layer_norm_util.h"
 COMMON_DECLARE_bool(use_fast_math);
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 
 namespace phi {
 
@@ -503,6 +504,11 @@ static inline LayerNormKernelVariant LayerNormKernelDispatch(
     const int64_t x_numel,
     const DenseTensor* scale,
     const DenseTensor* bias) {
+  // Precision alignment: when accuracy compatible mode is enabled,
+  // bypass FAST_LN_V1/V2 and use the generic (two-pass) kernel.
+  if (FLAGS_use_accuracy_compatible_kernel) {
+    return LayerNormKernelVariant::GENERIC;
+  }
   if (scale == nullptr || bias == nullptr) {
     return LayerNormKernelVariant::GENERIC;
   }
@@ -600,7 +606,8 @@ void LayerNormKernel(const Context& dev_ctx,
               mean_data,                                                      \
               var_data,                                                       \
               epsilon,                                                        \
-              feature_size));                                                 \
+              feature_size,                                                   \
+              FLAGS_use_accuracy_compatible_kernel));                          \
       default:                                                                \
         PADDLE_THROW(common::errors::InvalidArgument(                         \
             "Product from begin_norm_axis to end must be larger than 1"));    \
@@ -698,7 +705,11 @@ void LayerNormKernel(const Context& dev_ctx,
     default:
 #ifdef PADDLE_WITH_CUDA
       // WarpShuffle intrinsics is involved in LaunchLayerNormKernel.
-      if (FLAGS_use_fast_math && feature_size <= 1024 &&
+      // Precision alignment: skip Welford fast-math path when accuracy
+      // compatible mode is enabled, to ensure the generic two-pass kernel
+      // is used for maximum precision alignment with PyTorch.
+      if (!FLAGS_use_accuracy_compatible_kernel &&
+          FLAGS_use_fast_math && feature_size <= 1024 &&
           (!std::is_same<T, int8_t>::value)) {
         LaunchLayerNormKernel<Context, T, U>(dev_ctx,
                                              x_data,

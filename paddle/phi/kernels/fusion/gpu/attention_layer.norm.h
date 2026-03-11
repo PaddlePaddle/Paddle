@@ -67,6 +67,7 @@ class AttnLayerNorm {
                                                   var_data,
                                                   epsilon_,
                                                   feature_size_,
+                                                  false,
                                                   dequant_out_scale_data,
                                                   quant_out_scale_offset,
                                                   quant_in_scale,
