@@ -23,27 +23,10 @@ jobs:
     secrets:
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
-  print-vars:
-    name: Print PaddlePaddle Variables
-    needs: check-bypass
-    runs-on: ubuntu-latest
-    steps:
-      - name: Print vars values
-        run: |
-          echo "print"
-          echo "IXUCA_FORCE_FALLBACK: ${{ vars.IXUCA_FORCE_FALLBACK }}"
-          echo "SKIP_IXUCA_CI: ${{ vars.SKIP_IXUCA_CI }}"
-          echo ""
-          echo "Checking if IXUCA_FORCE_FALLBACK is 'true': ${{ vars.IXUCA_FORCE_FALLBACK == 'true' }}"
-          echo "Checking if SKIP_IXUCA_CI is 'true': ${{ vars.SKIP_IXUCA_CI == 'true' }}"
-
   test-primary:
     name: Build and Test
-    needs: [check-bypass, print-vars]
-    if: >-
-      ${{ needs.check-bypass.outputs.can-skip != 'true'
-          && vars.IXUCA_FORCE_FALLBACK != 'true'
-          && vars.SKIP_IXUCA_CI != 'true' }}
+    needs: check-bypass
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on: iluvatar-gpu-2
     continue-on-error: true
     timeout-minutes: 120
@@ -65,8 +48,6 @@ jobs:
         id: check-approval
         run: |
           set -euo pipefail
-
-          env | grep -i proxy
 
           AUTHORIZED_REVIEWERS=("YqGe585" "yongqiangma")
 
@@ -257,9 +238,7 @@ jobs:
       ${{ always()
           && needs.check-bypass.result == 'success'
           && needs.check-bypass.outputs.can-skip != 'true'
-          && vars.SKIP_IXUCA_CI != 'true'
-          && (vars.IXUCA_FORCE_FALLBACK == 'true'
-              || needs.test-primary.outputs.result != 'success') }}
+          && needs.test-primary.outputs.result != 'success' }}
     runs-on:
       group: test2
     timeout-minutes: 120
