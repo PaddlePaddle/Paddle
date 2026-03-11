@@ -132,7 +132,7 @@ void MaxPoolV2GradCUDNNKernel(const Context& dev_ctx,
 
   // Create feature vector for plan caching
   cudnn_frontend::feature_vector_t feature_vector;
-  auto dim_x = phi::vectorize<int64_t>(x.dims());
+  auto dim_x = vectorize<int64_t>(x.dims());
   phi::autotune::BuildFeatureVector(&feature_vector,
                                     dim_x,
                                     kernel_size_int64,

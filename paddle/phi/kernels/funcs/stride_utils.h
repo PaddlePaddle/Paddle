@@ -653,7 +653,7 @@ transposeToFrontAndInvPerm(const GPUContext& dev_ctx,
 
 static inline std::vector<int64_t> computeLinearStride(
     const DenseTensor& tensor) {
-  auto sizes = phi::vectorize<int64_t>(tensor.dims());
+  auto sizes = vectorize<int64_t>(tensor.dims());
   std::vector<int64_t> stride(sizes.size());
   if (stride.empty()) {
     return stride;
