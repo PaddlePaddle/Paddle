@@ -551,9 +551,11 @@ class Tensor : public TensorBase {
                    ::std::optional<int64_t> end = ::std::nullopt,
                    int64_t step = 1);
 
-  // TODO(wangyanpeng04): modify the api to
-  // Tensor index(ArrayRef<at::indexing::TensorIndex> indices) const;
-  at::Tensor index(const std::vector<at::indexing::Slice>& indices) const;
+  at::Tensor index(ArrayRef<at::indexing::TensorIndex> indices) const;
+  inline at::Tensor index(
+      std::initializer_list<at::indexing::TensorIndex> indices) const {
+    return index(ArrayRef<at::indexing::TensorIndex>(indices));
+  }
 
   at::Tensor& floor_divide_(const at::Scalar& other) const {
     paddle::experimental::floor_divide_(

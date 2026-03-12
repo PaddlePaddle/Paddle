@@ -14,6 +14,7 @@
 
 #include <ATen/Functions.h>
 #include <ATen/core/TensorBody.h>
+#include <ATen/indexing.h>
 #include <ATen/ops/tensor.h>
 #include <c10/core/List.h>
 #include <c10/core/ScalarType.h>
@@ -49,6 +50,71 @@ TEST(TensorIndexTest, IndexWithSingleTensor) {
   ASSERT_FLOAT_EQ(result_data[0], 0.0f);
   ASSERT_FLOAT_EQ(result_data[1], 20.0f);
   ASSERT_FLOAT_EQ(result_data[2], 40.0f);
+}
+
+TEST(TensorIndexTest, SliceKeepsStrideWithoutContiguousCopy) {
+  at::Tensor base = at::arange(24, at::kFloat).reshape({4, 6});
+  at::Tensor transposed = base.t();  // shape: [6, 4], strides: [1, 6]
+  ASSERT_FALSE(transposed.is_contiguous());
+
+  at::Tensor sliced =
+      transposed.index({at::indexing::Slice(1, 5), at::indexing::Slice(0, 3)});
+
+  ASSERT_EQ(sliced.sizes(), c10::IntArrayRef({4, 3}));
+  ASSERT_EQ(sliced.strides(), c10::IntArrayRef({1, 6}));
+  ASSERT_EQ(sliced.stride(0), transposed.stride(0));
+  ASSERT_EQ(sliced.stride(1), transposed.stride(1));
+  ASSERT_FALSE(sliced.is_contiguous());
+}
+
+TEST(TensorIndexTest, IndexWithEmptyInitializerListReturnsSelf) {
+  at::Tensor t = at::arange(5, at::kFloat);
+
+  at::Tensor result =
+      at::index(t, std::initializer_list<at::indexing::TensorIndex>{});
+
+  ASSERT_EQ(result.numel(), t.numel());
+  ASSERT_EQ(result.data_ptr<float>(), t.data_ptr<float>());
+}
+
+TEST(TensorIndexTest, IndexWithTensorInitializerList) {
+  at::Tensor t = at::arange(5, at::kFloat);
+
+  at::Tensor idx = at::empty({3}, at::kLong);
+  int64_t* idx_data = idx.data_ptr<int64_t>();
+  idx_data[0] = 0;
+  idx_data[1] = 2;
+  idx_data[2] = 4;
+
+  at::Tensor result = at::index(t, {idx});
+
+  ASSERT_EQ(result.numel(), 3);
+  float* result_data = result.data_ptr<float>();
+  ASSERT_FLOAT_EQ(result_data[0], 0.0f);
+  ASSERT_FLOAT_EQ(result_data[1], 2.0f);
+  ASSERT_FLOAT_EQ(result_data[2], 4.0f);
+}
+
+TEST(TensorIndexTest, MemberIndexWithArrayRefTensorIndices) {
+  at::Tensor base = at::arange(24, at::kFloat).reshape({4, 6});
+  at::Tensor transposed = base.t();
+  std::vector<at::indexing::TensorIndex> indices = {at::indexing::Slice(1, 5),
+                                                    at::indexing::Slice(0, 3)};
+
+  at::Tensor sliced = transposed.index(indices);
+
+  ASSERT_EQ(sliced.sizes(), c10::IntArrayRef({4, 3}));
+  ASSERT_EQ(sliced.strides(), c10::IntArrayRef({1, 6}));
+}
+
+TEST(TensorIndexTest, MixedSliceAndTensorIndicesThrows) {
+  at::Tensor t = at::arange(12, at::kFloat).reshape({3, 4});
+
+  at::Tensor idx = at::empty({2}, at::kLong);
+  idx.data_ptr<int64_t>()[0] = 0;
+  idx.data_ptr<int64_t>()[1] = 2;
+
+  ASSERT_THROW(at::index(t, {at::indexing::Slice(0, 2), idx}), std::exception);
 }
 
 // ======================== index_put_ tests ========================
