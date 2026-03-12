@@ -2031,12 +2031,12 @@ static void InterpolateAA2DCPUFwd(
   }
   auto* input_data = input.data<T>();
 
-  const DataLayout data_layout = StringToDataLayout(data_layout_str);
-  int64_t n, c, in_d, in_h, in_w;
+  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  int64_t n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
-  double scale_w = -1;
   double scale_h = -1;
+  double scale_w = -1;
   if (size_tensor && !size_tensor->empty()) {
     auto new_size = funcs::get_new_shape(size_tensor.get());
     out_h = new_size[0];
@@ -2087,8 +2087,8 @@ static void InterpolateAA2DCPUFwd(
       }
     }
     if (scale_w > 0. && scale_h > 0.) {
-      out_h = static_cast<int>(in_h * scale_h);
-      out_w = static_cast<int>(in_w * scale_w);
+      out_h = static_cast<int>(in_h * scale_h);  // NOLINT
+      out_w = static_cast<int>(in_w * scale_w);  // NOLINT
     }
     if (out_size) {
       auto out_size_data =
@@ -2118,7 +2118,7 @@ static void InterpolateAA2DCPUFwd(
   auto output_data = dev_ctx.template Alloc<T>(output);
 
   if (in_h == out_h && in_w == out_w) {
-    Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
+    phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
     return;
   }
 

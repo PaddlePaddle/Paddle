@@ -1507,8 +1507,8 @@ static void InterpolateAA2DCPUBwd(
     return;
   }
 
-  const DataLayout data_layout = StringToDataLayout(data_layout_str);
-  int64_t n, c, in_d, in_h, in_w;
+  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  int64_t n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
   double scale_h = -1;
@@ -1563,8 +1563,8 @@ static void InterpolateAA2DCPUBwd(
       }
     }
     if (scale_w > 0. && scale_h > 0.) {
-      out_h = static_cast<int>(in_h * scale_h);
-      out_w = static_cast<int>(in_w * scale_w);
+      out_h = static_cast<int>(in_h * scale_h);  // NOLINT
+      out_w = static_cast<int>(in_w * scale_w);  // NOLINT
     }
     if (out_size) {
       auto out_size_data =
@@ -1587,7 +1587,7 @@ static void InterpolateAA2DCPUBwd(
   zero(dev_ctx, input_grad, static_cast<T>(0.0));
 
   if (in_h == out_h && in_w == out_w) {
-    Copy(dev_ctx, output_grad, dev_ctx.GetPlace(), false, input_grad);
+    phi::Copy(dev_ctx, output_grad, dev_ctx.GetPlace(), false, input_grad);
     return;
   }
 
