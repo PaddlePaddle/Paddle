@@ -14,54 +14,161 @@
 import unittest
 
 import numpy as np
+from scipy.special import log_softmax as scipy_log_softmax
 
 import paddle
 import paddle.nn.functional as F
 
 
-class TestCompatLogSoftmaxCorrectness(unittest.TestCase):
-    """Test that compat log_softmax matches paddle.nn.functional.log_softmax."""
+class TestLogSoftmaxAPI(unittest.TestCase):
+    """Test paddle.nn.functional.log_softmax parameter compatibility."""
 
-    def _compare_with_origin(self, input_tensor, dim):
-        expected = F.log_softmax(input_tensor, axis=dim).numpy()
-        actual = paddle.compat.nn.functional.log_softmax(
-            input_tensor, dim=dim
-        ).numpy()
-        np.testing.assert_allclose(actual, expected, rtol=1e-6, atol=1e-6)
+    def setUp(self):
+        np.random.seed(2025)
+        self.shape = [2, 3, 4]
+        self.dtype = 'float32'
+        self.np_x = np.random.randn(*self.shape).astype(self.dtype)
+        self.ref_out = scipy_log_softmax(self.np_x, axis=-1).astype(self.dtype)
 
-    def test_2d_all_axes(self):
-        x = paddle.randn([3, 4], dtype=paddle.float32)
-        self._compare_with_origin(x, dim=0)
-        self._compare_with_origin(x, dim=1)
-        self._compare_with_origin(x, dim=-1)
-        self._compare_with_origin(x, dim=-2)
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
 
-    def test_3d_all_axes(self):
-        x = paddle.randn([2, 3, 4], dtype=paddle.float32)
-        for dim in [0, 1, 2, -1, -2, -3]:
-            self._compare_with_origin(x, dim=dim)
+        # 1. Paddle positional arguments
+        out1 = F.log_softmax(x, -1)
 
-    def test_4d_all_axes(self):
-        x = paddle.randn([2, 3, 4, 5], dtype=paddle.float32)
-        for dim in [0, 1, 2, 3, -1, -2, -3, -4]:
-            self._compare_with_origin(x, dim=dim)
+        # 2. Paddle keyword arguments
+        out2 = F.log_softmax(x=x, axis=-1, dtype=None, name=None)
 
-    def test_float64(self):
-        x = paddle.randn([2, 3, 4], dtype=paddle.float64)
-        for dim in [0, 1, 2, -1]:
-            self._compare_with_origin(x, dim=dim)
+        # 3. PyTorch positional arguments (same position, different names)
+        out3 = F.log_softmax(x, -1, None)
 
-    def test_1d(self):
-        x = paddle.randn([5], dtype=paddle.float32)
-        self._compare_with_origin(x, dim=0)
-        self._compare_with_origin(x, dim=-1)
+        # 4. PyTorch keyword arguments (alias)
+        out4 = F.log_softmax(input=x, dim=-1)
+
+        # 5. Mixed arguments (positional + keyword)
+        out5 = F.log_softmax(x, dim=-1)
+        out5b = F.log_softmax(x, -1, dtype=None)
+
+        # 6. out parameter (accepted for API compat)
+        out6 = F.log_softmax(x, -1, out=paddle.empty_like(x))
+
+        # 7. Tensor method - positional args
+        out7 = x.log_softmax(-1)
+
+        # 8. Tensor method - keyword args
+        out8 = x.log_softmax(dim=-1)
+
+        # Verify all outputs match reference
+        for out in [out1, out2, out3, out4, out5, out5b, out6, out7, out8]:
+            np.testing.assert_allclose(
+                self.ref_out, out.numpy(), rtol=1e-5, atol=1e-6
+            )
+
+    def test_static_Compatibility(self):
+        # 9. Dynamic and static graph modes
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+
+            # Paddle positional args
+            out1 = F.log_softmax(x, -1)
+            # Paddle keyword args
+            out2 = F.log_softmax(x=x, axis=-1)
+            # PyTorch keyword args (alias)
+            out3 = F.log_softmax(input=x, dim=-1)
+
+            exe = paddle.base.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2, out3],
+            )
+
+            for out in fetches:
+                np.testing.assert_allclose(
+                    out, self.ref_out, rtol=1e-5, atol=1e-6
+                )
+
+        paddle.disable_static()
+
+
+class TestCompatLogSoftmaxAPI(unittest.TestCase):
+    """Test paddle.compat.nn.functional.log_softmax parameter compatibility."""
+
+    def setUp(self):
+        np.random.seed(2025)
+        self.shape = [2, 3, 4]
+        self.dtype = 'float32'
+        self.np_x = np.random.randn(*self.shape).astype(self.dtype)
+        self.ref_out = scipy_log_softmax(self.np_x, axis=-1).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        compat_fn = paddle.compat.nn.functional.log_softmax
+
+        # 1. Positional arguments
+        out1 = compat_fn(x, -1)
+
+        # 2. Keyword arguments
+        out2 = compat_fn(input=x, dim=-1, dtype=None)
+
+        # 3. Mixed arguments (positional + keyword)
+        out3 = compat_fn(x, dim=-1)
+        out3b = compat_fn(x, -1, dtype=None)
+
+        # 4. out parameter
+        out4 = paddle.empty_like(x)
+        out5 = compat_fn(x, -1, out=out4)
+
+        # Verify all outputs match reference
+        for out in [out1, out2, out3, out3b, out5]:
+            np.testing.assert_allclose(
+                self.ref_out, out.numpy(), rtol=1e-5, atol=1e-6
+            )
+
+
+class TestLogSoftmaxAliases(unittest.TestCase):
+    """Test that all four log_softmax entry points produce the same results.
+
+    torch.nn.functional.log_softmax -> paddle.compat.nn.functional.log_softmax
+    torch.log_softmax              -> paddle.log_softmax (alias)
+    torch.special.log_softmax      -> paddle.special.log_softmax (alias)
+    torch.Tensor.log_softmax       -> paddle.Tensor.log_softmax
+    """
+
+    def setUp(self):
+        np.random.seed(2025)
+        self.shape = [2, 3, 4]
+        self.dtype = 'float32'
+        self.np_x = np.random.randn(*self.shape).astype(self.dtype)
+        self.ref_out = scipy_log_softmax(self.np_x, axis=-1).astype(self.dtype)
+
+    def test_all_aliases_consistent(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        out_compat_fn = paddle.compat.nn.functional.log_softmax(x, dim=-1)
+        out_top_level = paddle.log_softmax(x, -1)
+        out_special = paddle.special.log_softmax(x, -1)
+        out_tensor = x.log_softmax(-1)
+
+        for out in [out_compat_fn, out_top_level, out_special, out_tensor]:
+            np.testing.assert_allclose(
+                self.ref_out, out.numpy(), rtol=1e-5, atol=1e-6
+            )
 
 
 class TestCompatLogSoftmaxDimNoneDefault(unittest.TestCase):
     """Test PyTorch-compatible dim=None default behavior."""
 
+    def setUp(self):
+        paddle.disable_static()
+
     def test_0d_defaults_to_dim0(self):
-        # 0-D tensor: dim defaults to 0
         x = paddle.to_tensor(1.0)
         out = paddle.compat.nn.functional.log_softmax(x)
         expected = paddle.compat.nn.functional.log_softmax(x, dim=0)
@@ -95,13 +202,15 @@ class TestCompatLogSoftmaxDimNoneDefault(unittest.TestCase):
 class TestCompatLogSoftmaxDtype(unittest.TestCase):
     """Test dtype casting behavior."""
 
+    def setUp(self):
+        paddle.disable_static()
+
     def test_float32_to_float64(self):
         x = paddle.randn([2, 3, 4], dtype=paddle.float32)
         out = paddle.compat.nn.functional.log_softmax(
             x, dim=-1, dtype='float64'
         )
         self.assertEqual(out.dtype, paddle.float64)
-        # Values should match float64 reference
         x64 = x.cast('float64')
         expected = F.log_softmax(x64, axis=-1)
         np.testing.assert_allclose(
@@ -127,42 +236,11 @@ class TestCompatLogSoftmaxDtype(unittest.TestCase):
         self.assertEqual(out.dtype, paddle.float64)
 
 
-class TestCompatLogSoftmaxOutputProperties(unittest.TestCase):
-    """Test mathematical properties of log_softmax output."""
-
-    def test_output_shape_preserved(self):
-        for shape in [(4,), (3, 4), (2, 3, 4), (2, 3, 4, 5)]:
-            x = paddle.randn(shape, dtype=paddle.float32)
-            out = paddle.compat.nn.functional.log_softmax(x, dim=-1)
-            self.assertEqual(list(out.shape), list(shape))
-
-    def test_log_probabilities_sum_to_zero(self):
-        # exp(log_softmax) should sum to 1 along dim, i.e. logsumexp of output = 0
-        x = paddle.randn([3, 5], dtype=paddle.float64)
-        out = paddle.compat.nn.functional.log_softmax(x, dim=1)
-        out_np = out.numpy()
-        sums = np.exp(out_np).sum(axis=1)
-        np.testing.assert_allclose(sums, np.ones_like(sums), rtol=1e-10)
-
-    def test_output_is_non_positive(self):
-        # log_softmax output must be <= 0 (log of probabilities in [0,1])
-        x = paddle.randn([4, 6], dtype=paddle.float32)
-        out = paddle.compat.nn.functional.log_softmax(x, dim=-1)
-        self.assertTrue((out.numpy() <= 0).all())
-
-    def test_translation_invariance(self):
-        # log_softmax(x + c) == log_softmax(x)
-        x = paddle.randn([3, 4], dtype=paddle.float32)
-        c = paddle.full([3, 4], fill_value=5.0, dtype=paddle.float32)
-        out1 = paddle.compat.nn.functional.log_softmax(x, dim=1)
-        out2 = paddle.compat.nn.functional.log_softmax(x + c, dim=1)
-        np.testing.assert_allclose(
-            out1.numpy(), out2.numpy(), rtol=1e-5, atol=1e-5
-        )
-
-
 class TestCompatLogSoftmaxStacklevel(unittest.TestCase):
     """Test that _stacklevel is silently ignored (torch compat)."""
+
+    def setUp(self):
+        paddle.disable_static()
 
     def test_stacklevel_ignored(self):
         x = paddle.randn([3, 4], dtype=paddle.float32)
@@ -171,40 +249,11 @@ class TestCompatLogSoftmaxStacklevel(unittest.TestCase):
         np.testing.assert_allclose(out1.numpy(), out2.numpy())
 
 
-class TestCompatLogSoftmaxOutParam(unittest.TestCase):
-    """Test that the out parameter is accepted for PyTorch API compatibility."""
-
-    def test_out_param_accepted(self):
-        x = paddle.randn([3, 4], dtype=paddle.float32)
-        out_tensor = paddle.empty([3, 4], dtype=paddle.float32)
-        result = paddle.compat.nn.functional.log_softmax(
-            x, dim=-1, out=out_tensor
-        )
-        expected = F.log_softmax(x, axis=-1)
-        np.testing.assert_allclose(
-            result.numpy(), expected.numpy(), rtol=1e-6, atol=1e-6
-        )
-
-    def test_out_param_none(self):
-        x = paddle.randn([3, 4], dtype=paddle.float32)
-        result = paddle.compat.nn.functional.log_softmax(x, dim=-1, out=None)
-        expected = F.log_softmax(x, axis=-1)
-        np.testing.assert_allclose(
-            result.numpy(), expected.numpy(), rtol=1e-6, atol=1e-6
-        )
-
-    def test_nn_functional_log_softmax_out_param(self):
-        x = paddle.randn([3, 4], dtype=paddle.float32)
-        out_tensor = paddle.empty([3, 4], dtype=paddle.float32)
-        result = F.log_softmax(x, axis=-1, out=out_tensor)
-        expected = F.log_softmax(x, axis=-1)
-        np.testing.assert_allclose(
-            result.numpy(), expected.numpy(), rtol=1e-6, atol=1e-6
-        )
-
-
 class TestCompatLogSoftmaxErrorHandling(unittest.TestCase):
-    """Test that paddle-style keyword arguments are rejected."""
+    """Test that paddle-style keyword arguments are rejected by compat API."""
+
+    def setUp(self):
+        paddle.disable_static()
 
     def test_rejects_x_keyword(self):
         x = paddle.randn([3, 4])

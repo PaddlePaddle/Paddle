@@ -320,6 +320,8 @@ from .tensor.attribute import (
     shape,
 )
 from .tensor.compat_softmax import log_softmax, softmax
+
+framework.core.eager.Tensor.log_softmax = log_softmax
 from .tensor.creation import (
     BFloat16Tensor,
     BoolTensor,
