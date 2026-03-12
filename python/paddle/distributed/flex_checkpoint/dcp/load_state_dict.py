@@ -773,6 +773,8 @@ def load_state_dict(
                 use_dist=use_dist,
             )
             logger.info("Checkpoint successfully loaded locally!")
+            _metadata_manager.clear()
+            gc.collect()
             return
 
     if not is_sharded_state_dict(state_dict, use_dist, process_group):
@@ -788,6 +790,8 @@ def load_state_dict(
             worker_groups=worker_groups,
             comm_method=comm_method,
         )
+        _metadata_manager.clear()
+        gc.collect()
         return
 
     if not use_dist:

@@ -152,6 +152,25 @@ TEST_CONFIGS = {
             "test_using_hv_group": 1,
         },
     ],
+    "2_card_hv_group_tests": [
+        {
+            "world_size": 2,
+            "tp": 2,
+            "pp": 1,
+            "sharding_degree": 1,
+            "has_bias": "True",
+            "test_using_hv_group": 1,
+        },
+    ],
+    "sharding3_with_convert2cpu_tests": [
+        {
+            "world_size": 2,
+            "tp": 1,
+            "pp": 1,
+            "sharding_degree": 2,
+            "has_bias": "True",
+        },
+    ],
 }
 
 
@@ -262,6 +281,20 @@ class TestFullParamWithSingleDevices(unittest.TestCase):
         assert full_param["fused_weight"]._md5sum() == answer._md5sum()
 
 
+class TestFullParamHVGroupWith2Devices(test_base.CommunicationTestDistBase):
+    def setUp(self):
+        super().setUp(num_of_devices=2, timeout=240)
+
+    def test_full_param(self):
+        for config in TEST_CONFIGS["2_card_hv_group_tests"]:
+            envs = {k: str(v) for k, v in config.items()}
+            envs["test_using_hv_group"] = "1"
+            self.run_test_case(
+                "model_full_param_logic.py",
+                user_defined_envs=envs,
+            )
+
+
 class TestFullParamHVGroupWith4Devices(test_base.CommunicationTestDistBase):
     def setUp(self):
         super().setUp(num_of_devices=4, timeout=240)
@@ -270,6 +303,21 @@ class TestFullParamHVGroupWith4Devices(test_base.CommunicationTestDistBase):
         for config in TEST_CONFIGS["4_card_hv_group_tests"]:
             envs = {k: str(v) for k, v in config.items()}
             envs["test_using_hv_group"] = "1"
+            self.run_test_case(
+                "model_full_param_logic.py",
+                user_defined_envs=envs,
+            )
+
+
+class TestFullParamWithSharding3(test_base.CommunicationTestDistBase):
+    def setUp(self):
+        super().setUp(num_of_devices=2, timeout=240)
+
+    def test_full_param(self):
+        for config in TEST_CONFIGS["sharding3_with_convert2cpu_tests"]:
+            envs = {k: str(v) for k, v in config.items()}
+            envs["test_using_hv_group"] = "0"
+            envs["test_with_sharding3"] = "1"
             self.run_test_case(
                 "model_full_param_logic.py",
                 user_defined_envs=envs,
