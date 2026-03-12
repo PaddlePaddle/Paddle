@@ -1223,9 +1223,6 @@ def conv1d_transpose(
     return out
 
 
-conv_transpose1d = conv1d_transpose
-
-
 @param_one_alias(["x", "input"])
 def conv2d_transpose(
     x: Tensor,
@@ -1536,9 +1533,6 @@ def conv2d_transpose(
             out = pre_bias
 
     return out
-
-
-conv_transpose2d = conv2d_transpose
 
 
 @param_one_alias(["x", "input"])
@@ -1986,6 +1980,3 @@ def conv3d_transpose(
             out = pre_bias
 
     return out
-
-
-conv_transpose3d = conv3d_transpose
