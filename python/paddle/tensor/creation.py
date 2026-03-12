@@ -15,6 +15,8 @@
 from __future__ import annotations
 
 import builtins
+import functools
+import inspect
 import math
 import numbers
 import os
@@ -2965,7 +2967,24 @@ def diag_embed(
     out.stop_gradient = True
     return out
 
-@param_one_alias(["x", "input"])
+def _diagflat_input_alias(func):
+    signature = inspect.signature(func)
+
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        if 'input' in kwargs:
+            if 'x' in kwargs or len(args) > 0:
+                raise ValueError(
+                    "Cannot specify both 'x' and its alias 'input'"
+                )
+            kwargs['x'] = kwargs.pop('input')
+        return func(*args, **kwargs)
+
+    wrapper.__signature__ = signature
+    return wrapper
+
+
+@_diagflat_input_alias
 def diagflat(
     x: paddle.Tensor, offset: int = 0, name: str | None = None
 ) -> paddle.Tensor:

@@ -174,26 +174,17 @@ def param_one_alias(
     alias_list,
 ) -> Callable[[Callable[_InputT, _RetT]], Callable[_InputT, _RetT]]:
     def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
-        parameters = tuple(inspect.signature(func).parameters)
-        original_index = (
-            parameters.index(alias_list[0])
-            if alias_list[0] in parameters
-            else None
-        )
-
         @functools.wraps(func)
         def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
             if not kwargs:
                 return func(*args, **kwargs)
             if alias_list[1] in kwargs:
-                if alias_list[0] in kwargs or (
-                    original_index is not None and original_index < len(args)
-                ):
+                if alias_list[0] not in kwargs:
+                    kwargs[alias_list[0]] = kwargs.pop(alias_list[1])
+                else:
                     raise ValueError(
                         f"Cannot specify both '{alias_list[0]}' and its alias '{alias_list[1]}'"
                     )
-                else:
-                    kwargs[alias_list[0]] = kwargs.pop(alias_list[1])
             return func(*args, **kwargs)
 
         wrapper.__signature__ = inspect.signature(func)
