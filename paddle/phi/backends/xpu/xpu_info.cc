@@ -44,6 +44,11 @@ PHI_DEFINE_EXPORTED_string(
     "between XPU devices, use XPU_VISIBLE_DEVICES can only use "
     "share-memory only.");
 
+PHI_DEFINE_EXPORTED_bool(
+    xpu_d2h_use_pinned_mem,
+    false,
+    "whether to force all XPU sync D2H to use pinned memory.");
+
 static std::once_flag g_device_props_size_init_flag;
 static std::vector<std::unique_ptr<std::once_flag>> g_device_props_init_flags;
 static std::vector<phi::gpuDeviceProp> g_device_props;
@@ -232,9 +237,16 @@ void MemcpySyncD2H(void* dst,
                    const phi::XPUContext& dev_ctx) {
   XPUDeviceGuard guard(src_place.GetDeviceId());
   dev_ctx.Wait();
+  if (FLAGS_xpu_d2h_use_pinned_mem) {
+    // NOTE(lijin23): avoid potential problem on hygron platform.
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_host_register(dst, count, 0));
+  }
   PADDLE_ENFORCE_XPU_SUCCESS(
       xpu_memcpy(dst, src, count, XPUMemcpyKind::XPU_DEVICE_TO_HOST));
   dev_ctx.Wait();
+  if (FLAGS_xpu_d2h_use_pinned_mem) {
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_host_unregister(dst));
+  }
 }
 
 // if src.device == dst.device and you need sync , after call this function,
