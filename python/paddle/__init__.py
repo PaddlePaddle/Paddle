@@ -39,59 +39,48 @@ except ImportError:
      import paddle from the source directory; please install paddlepaddle*.whl firstly.'''
     )
 
-# Preload cublasLt from pip package before loading C extensions,
-# to prevent LD_LIBRARY_PATH from pulling in a mismatched system version.
+
+# Preload CUDA libraries from pip package before loading C extensions,
+# to prevent LD_LIBRARY_PATH from pulling in mismatched system versions.
+# Also used later by CINN to preload libnvrtc-builtins.
+def _preload_nvidia_lib(lib_glob, sub_dirs=None):
+    """Search and preload a library from pip nvidia packages.
+
+    Searches nvidia/cu{major}/lib/ first (CUDA 13+),
+    then nvidia/{sub_dir}/lib/ for each sub_dir (CUDA 12).
+    """
+    import ctypes
+    import glob
+    import os
+
+    from .version import cuda as cuda_version
+
+    pkg_dir = os.path.dirname(os.path.abspath(__file__))
+    nvidia_dir = os.path.join(pkg_dir, '..', 'nvidia')
+    cuda_major = cuda_version().split('.')[0]
+
+    paths = glob.glob(
+        os.path.join(nvidia_dir, f'cu{cuda_major}', 'lib', lib_glob)
+    )
+    for sub_dir in sub_dirs or []:
+        paths += glob.glob(os.path.join(nvidia_dir, sub_dir, 'lib', lib_glob))
+    for path in paths:
+        ctypes.CDLL(path, mode=ctypes.RTLD_GLOBAL)
+        break
+
+
 if __is_metainfo_generated:
-    import os as _os
-    import platform as _platform
+    import platform
 
-    if _platform.system() == 'Linux' and _platform.machine() == 'x86_64':
+    if platform.system() == 'Linux' and platform.machine() == 'x86_64':
         try:
-            from .version import with_pip_cuda_libraries as _with_pip
+            from .version import with_pip_cuda_libraries
 
-            if _with_pip == 'ON':
-                import ctypes as _ctypes
-                import glob as _glob
-
-                from .version import cuda as _cuda_version
-
-                _pkg_dir = _os.path.dirname(_os.path.abspath(__file__))
-                _nvidia_dir = _os.path.join(_pkg_dir, '..', 'nvidia')
-                _cuda_major = _cuda_version().split('.')[0]
-                # CUDA 13+: nvidia/cu{major}/lib/
-                _lt_paths = _glob.glob(
-                    _os.path.join(
-                        _nvidia_dir,
-                        f'cu{_cuda_major}',
-                        'lib',
-                        'libcublasLt.so.*[0-9]',
-                    )
-                )
-                # CUDA 12: nvidia/cublas/lib/
-                _lt_paths += _glob.glob(
-                    _os.path.join(
-                        _nvidia_dir,
-                        'cublas',
-                        'lib',
-                        'libcublasLt.so.*[0-9]',
-                    )
-                )
-                for _lt_path in _lt_paths:
-                    _ctypes.CDLL(_lt_path, mode=_ctypes.RTLD_GLOBAL)
-                    break
-                del (
-                    _ctypes,
-                    _glob,
-                    _cuda_version,
-                    _pkg_dir,
-                    _nvidia_dir,
-                    _cuda_major,
-                    _lt_paths,
-                )
-            del _with_pip
+            if with_pip_cuda_libraries == 'ON':
+                _preload_nvidia_lib('libcublasLt.so.*[0-9]', ['cublas'])
+                _preload_nvidia_lib('libcublas.so.*[0-9]', ['cublas'])
         except Exception:
             pass
-    del _os, _platform
 
 # NOTE(SigureMo): We should place the import of base.core before other modules,
 # because there are some initialization codes in base/core/__init__.py.
@@ -892,33 +881,7 @@ if __is_metainfo_generated and is_compiled_with_cuda():
         if is_compiled_with_cinn():
             cuda_cccl_path = package_dir + "/.." + "/nvidia/cuda_cccl/include/"
             set_flags({"FLAGS_cuda_cccl_dir": cuda_cccl_path})
-
-            def _preload_nvidia_lib(nvidia_package_path: str, lib_glob: str):
-                import ctypes
-                import glob
-
-                from .version import cuda as cuda_version
-
-                cuda_major_version = cuda_version().split('.')[0]
-
-                lib_paths = []
-                lib_paths += glob.glob(
-                    os.path.join(
-                        nvidia_package_path,
-                        f'cu{cuda_major_version}',
-                        'lib',
-                        lib_glob,
-                    )
-                )
-                lib_paths += glob.glob(
-                    os.path.join(nvidia_package_path, 'lib', lib_glob)
-                )
-
-                for lib_path in lib_paths:
-                    ctypes.CDLL(lib_path)
-                    break
-
-            _preload_nvidia_lib(nvidia_package_path, "libnvrtc-builtins.so.*")
+            _preload_nvidia_lib("libnvrtc-builtins.so.*", ['cuda_nvrtc'])
 
     elif (
         platform.system() == 'Windows'
