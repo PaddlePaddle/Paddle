@@ -145,7 +145,7 @@ static void ModeAssign(const Type& input_height,
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 template <typename T>
-static void GetModebySort(const phi::GPUContext& dev_ctx,
+static void GetModebySort(const GPUContext& dev_ctx,
                           const DenseTensor* input_tensor,
                           const int64_t num_cols,
                           const int64_t num_rows,

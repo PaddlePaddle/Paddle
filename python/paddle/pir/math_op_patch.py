@@ -232,6 +232,26 @@ def monkey_patch_value():
             return isinstance(expected_place, framework.core.CUDAPlace)
 
     @property
+    def is_cpu(self):
+        """
+        Tensor don't have 'is_cpu' interface in static graph mode
+        But this interface can greatly facilitate dy2static.
+        So we give a warning here and return None.
+        """
+        warnings.warn(
+            "Tensor do not have 'is_cpu' interface for pir graph mode, try not to use it."
+        )
+        from paddle import framework
+
+        if hasattr(self, 'place') and isinstance(
+            self.place, framework.core.CPUPlace
+        ):
+            return True
+        else:
+            expected_place = framework._current_expected_place_()
+            return isinstance(expected_place, framework.core.CPUPlace)
+
+    @property
     def place(self):
         """
         Tensor don't have 'place' interface in static graph mode
@@ -1504,6 +1524,7 @@ def monkey_patch_value():
         ('device', device),
         ('contiguous', contiguous),
         ('is_cuda', is_cuda),
+        ('is_cpu', is_cpu),
         ('is_contiguous', is_contiguous),
         ('item', _item),
         ('dim', dim),

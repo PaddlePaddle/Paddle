@@ -20,8 +20,8 @@ namespace phi {
 namespace funcs {
 
 template <typename T>
-struct GRUUnitFunctor<phi::GPUContext, T> {
-  static void compute(const phi::GPUContext &dev_ctx,
+struct GRUUnitFunctor<GPUContext, T> {
+  static void compute(const GPUContext &dev_ctx,
                       GRUMetaValue<T> value,
                       int frame_size,
                       int batch_size,
@@ -93,7 +93,7 @@ struct GRUUnitFunctor<phi::GPUContext, T> {
       threads = dim3(32, 32);
       grid = dim3((frame_size + 32 - 1) / 32, (batch_size + 32 - 1) / 32);
     }
-    auto blas = funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
+    auto blas = funcs::GetBlas<GPUContext, T>(dev_ctx);
     if (value.prev_out_value) {
       blas.GEMM(false,
                 false,
@@ -183,8 +183,8 @@ struct GRUUnitFunctor<phi::GPUContext, T> {
 };
 
 template <typename T>
-struct GRUUnitGradFunctor<phi::GPUContext, T> {
-  static void compute(const phi::GPUContext &dev_ctx,
+struct GRUUnitGradFunctor<GPUContext, T> {
+  static void compute(const GPUContext &dev_ctx,
                       GRUMetaValue<T> value,
                       GRUMetaGrad<T> grad,
                       int frame_size,
@@ -235,7 +235,7 @@ struct GRUUnitGradFunctor<phi::GPUContext, T> {
               origin_mode);
     }
 
-    auto blas = funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
+    auto blas = funcs::GetBlas<GPUContext, T>(dev_ctx);
 
     if (value.prev_out_value && grad.prev_out_grad) {
       blas.GEMM(false,
@@ -331,10 +331,10 @@ struct GRUUnitGradFunctor<phi::GPUContext, T> {
   }
 };
 
-template struct GRUUnitFunctor<phi::GPUContext, float>;
-template struct GRUUnitFunctor<phi::GPUContext, double>;
-template struct GRUUnitGradFunctor<phi::GPUContext, float>;
-template struct GRUUnitGradFunctor<phi::GPUContext, double>;
+template struct GRUUnitFunctor<GPUContext, float>;
+template struct GRUUnitFunctor<GPUContext, double>;
+template struct GRUUnitGradFunctor<GPUContext, float>;
+template struct GRUUnitGradFunctor<GPUContext, double>;
 
 }  // namespace funcs
 }  // namespace phi
