@@ -28,7 +28,7 @@ namespace phi {
     defined(PADDLE_WITH_CUSTOM_DEVICE)
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
 bool allow_tf32_cublas = true;
-#else // PADDLE_WITH_CUSTOM_DEVICE
+#else
 bool allow_tf32_cublas = false;
 #endif
 void SetAllowTF32Cublas(bool active) { allow_tf32_cublas = active; }
