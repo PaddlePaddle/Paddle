@@ -16,6 +16,7 @@
 
 #include "paddle/common/layout.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -158,8 +159,8 @@ constexpr int kGradReduceTileSize = 32;
 template <typename AccT>
 __device__ __forceinline__ AccT GradWarpReduceSum(AccT val) {
 #pragma unroll
-  for (int offset = 16; offset > 0; offset >>= 1) {
-    val += __shfl_down_sync(0xffffffff, val, offset);
+  for (int offset = warpSize / 2; offset > 0; offset >>= 1) {
+    val += phi::backends::gpu::CudaShuffleDownSync(0xffffffff, val, offset);
   }
   return val;
 }
@@ -168,9 +169,9 @@ __device__ __forceinline__ AccT GradWarpReduceSum(AccT val) {
 template <typename AccT>
 __device__ __forceinline__ AccT GradBlockReduceSum(AccT val, AccT* shared) {
   const int tid = threadIdx.x;
-  const int lid = tid % 32;
-  const int wid = tid / 32;
-  const int num_warps = blockDim.x / 32;
+  const int lid = tid % warpSize;
+  const int wid = tid / warpSize;
+  const int num_warps = blockDim.x / warpSize;
   val = GradWarpReduceSum(val);
   __syncthreads();
   if (lid == 0) {
@@ -198,12 +199,13 @@ __global__ void ComputeInternalGradientsCUDAKernel(
     sum1 += static_cast<AccT>(dY[index]) * static_cast<AccT>(X[index]);
     sum2 += static_cast<AccT>(dY[index]);
   }
-  if (blockDim.x <= 32) {
+  if (blockDim.x <= static_cast<unsigned>(warpSize)) {
     sum1 = GradWarpReduceSum(sum1);
     sum2 = GradWarpReduceSum(sum2);
   } else {
-    __shared__ AccT ds_shared[32];
-    __shared__ AccT db_shared[32];
+    constexpr int kMaxWarps = 32;
+    __shared__ AccT ds_shared[kMaxWarps];
+    __shared__ AccT db_shared[kMaxWarps];
     sum1 = GradBlockReduceSum(sum1, ds_shared);
     sum2 = GradBlockReduceSum(sum2, db_shared);
   }
@@ -235,12 +237,13 @@ __global__ void ComputeInternalGradientsVec4CUDAKernel(
     sum2 += static_cast<AccT>(dy4.z);
     sum2 += static_cast<AccT>(dy4.w);
   }
-  if (blockDim.x <= 32) {
+  if (blockDim.x <= static_cast<unsigned>(warpSize)) {
     sum1 = GradWarpReduceSum(sum1);
     sum2 = GradWarpReduceSum(sum2);
   } else {
-    __shared__ AccT ds_shared[32];
-    __shared__ AccT db_shared[32];
+    constexpr int kMaxWarps = 32;
+    __shared__ AccT ds_shared[kMaxWarps];
+    __shared__ AccT db_shared[kMaxWarps];
     sum1 = GradBlockReduceSum(sum1, ds_shared);
     sum2 = GradBlockReduceSum(sum2, db_shared);
   }
@@ -268,12 +271,13 @@ __global__ void ComputeInternalGradientsVec2DoubleCUDAKernel(
     sum2 += static_cast<AccT>(dy2.x);
     sum2 += static_cast<AccT>(dy2.y);
   }
-  if (blockDim.x <= 32) {
+  if (blockDim.x <= static_cast<unsigned>(warpSize)) {
     sum1 = GradWarpReduceSum(sum1);
     sum2 = GradWarpReduceSum(sum2);
   } else {
-    __shared__ AccT ds_shared[32];
-    __shared__ AccT db_shared[32];
+    constexpr int kMaxWarps = 32;
+    __shared__ AccT ds_shared[kMaxWarps];
+    __shared__ AccT db_shared[kMaxWarps];
     sum1 = GradBlockReduceSum(sum1, ds_shared);
     sum2 = GradBlockReduceSum(sum2, db_shared);
   }
@@ -313,12 +317,13 @@ __global__ void ComputeBackwardFusedParamsCUDAKernel(int64_t C,
     sum1 += ds[index] * gamma_v;
     sum2 += db[index] * gamma_v;
   }
-  if (blockDim.x <= 32) {
+  if (blockDim.x <= static_cast<unsigned>(warpSize)) {
     sum1 = GradWarpReduceSum(sum1);
     sum2 = GradWarpReduceSum(sum2);
   } else {
-    __shared__ AccT ds_shared[32];
-    __shared__ AccT db_shared[32];
+    constexpr int kMaxWarps = 32;
+    __shared__ AccT ds_shared[kMaxWarps];
+    __shared__ AccT db_shared[kMaxWarps];
     sum1 = GradBlockReduceSum(sum1, ds_shared);
     sum2 = GradBlockReduceSum(sum2, db_shared);
   }

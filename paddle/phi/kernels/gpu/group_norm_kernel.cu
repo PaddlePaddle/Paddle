@@ -16,6 +16,7 @@
 
 #include "paddle/common/layout.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/gpu/group_norm_utils.h"
@@ -947,34 +948,37 @@ __device__ __forceinline__ WelfordData<AccT> WelfordCombine(
 template <typename AccT>
 __device__ __forceinline__ WelfordData<AccT> WelfordWarpReduce(
     WelfordData<AccT> val) {
-  constexpr int kWarpSize = 32;
 #pragma unroll
-  for (int offset = kWarpSize / 2; offset > 0; offset >>= 1) {
+  for (int offset = warpSize / 2; offset > 0; offset >>= 1) {
     WelfordData<AccT> other;
-    other.mean = __shfl_down_sync(0xffffffff, val.mean, offset);
-    other.m2 = __shfl_down_sync(0xffffffff, val.m2, offset);
-    other.n = __shfl_down_sync(0xffffffff, val.n, offset);
-    other.nf = __shfl_down_sync(0xffffffff, val.nf, offset);
+    other.mean =
+        phi::backends::gpu::CudaShuffleDownSync(0xffffffff, val.mean, offset);
+    other.m2 =
+        phi::backends::gpu::CudaShuffleDownSync(0xffffffff, val.m2, offset);
+    other.n =
+        phi::backends::gpu::CudaShuffleDownSync(0xffffffff, val.n, offset);
+    other.nf =
+        phi::backends::gpu::CudaShuffleDownSync(0xffffffff, val.nf, offset);
     val = WelfordCombine(val, other);
   }
   return val;
 }
 
-// Block-level Welford reduce (for > 32 threads)
+// Block-level Welford reduce (for > warpSize threads)
 template <typename AccT>
 __device__ __forceinline__ WelfordData<AccT> WelfordBlockReduce(
     WelfordData<AccT> val) {
-  constexpr int kWarpSize = 32;
-  // Shared memory for warp results
-  __shared__ AccT s_mean[kWarpSize];
-  __shared__ AccT s_m2[kWarpSize];
-  __shared__ int64_t s_n[kWarpSize];
-  __shared__ AccT s_nf[kWarpSize];
+  // Shared memory for warp results (max 32 warps = 1024/32 or 1024/64)
+  constexpr int kMaxWarps = 32;
+  __shared__ AccT s_mean[kMaxWarps];
+  __shared__ AccT s_m2[kMaxWarps];
+  __shared__ int64_t s_n[kMaxWarps];
+  __shared__ AccT s_nf[kMaxWarps];
 
   int tid = threadIdx.x;
-  int lid = tid % kWarpSize;
-  int wid = tid / kWarpSize;
-  int num_warps = blockDim.x / kWarpSize;
+  int lid = tid % warpSize;
+  int wid = tid / warpSize;
+  int num_warps = blockDim.x / warpSize;
 
   // First reduce within each warp
   val = WelfordWarpReduce(val);
@@ -1017,7 +1021,7 @@ __global__ void WelfordMomentsCUDAKernel(
     val = WelfordReduce(val, static_cast<AccT>(X[index]));
   }
 
-  if (blockDim.x <= 32) {
+  if (blockDim.x <= static_cast<unsigned>(warpSize)) {
     val = WelfordWarpReduce(val);
   } else {
     val = WelfordBlockReduce(val);
@@ -1447,11 +1451,19 @@ void GroupNormDirectCUDAFunctor<T, AccT>::operator()(
       }
 
       // Copy centered variance to variance output
+#ifdef PADDLE_WITH_HIP
+      hipMemcpyAsync(variance,
+                     temp_variance,
+                     N * G * sizeof(AccT),
+                     hipMemcpyDeviceToDevice,
+                     stream);
+#else
       cudaMemcpyAsync(variance,
                       temp_variance,
                       N * G * sizeof(AccT),
                       cudaMemcpyDeviceToDevice,
                       stream);
+#endif
     } else {
       // =========================================================
       // Original high-performance NCHW path

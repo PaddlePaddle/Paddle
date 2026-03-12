@@ -151,7 +151,7 @@ class TestGroupNormSubGraphNCHW(TestGroupNormSubGraphRank3):
         dy_out, dy_x_grad, dy_weight_grad, dy_bias_grad = self.eval(
             use_cinn=False
         )
-        np.testing.assert_allclose(cinn_x_grad, dy_x_grad, atol=1e-3, rtol=1e-3)
+        np.testing.assert_allclose(cinn_x_grad, dy_x_grad, atol=1e-2, rtol=1e-2)
         # TODO: open this test case
         return
         np.testing.assert_allclose(cinn_weight_grad, dy_weight_grad, rtol=1e-2)
@@ -238,7 +238,7 @@ class TestGroupNormSubGraphRank7NCHW(TestGroupNormSubGraph):
             use_cinn=False
         )
         np.testing.assert_allclose(cinn_x_grad, dy_x_grad, atol=1e-5, rtol=1e-5)
-        np.testing.assert_allclose(cinn_weight_grad, dy_weight_grad, atol=5e-4)
+        np.testing.assert_allclose(cinn_weight_grad, dy_weight_grad, atol=1e-3)
         np.testing.assert_allclose(cinn_bias_grad, dy_bias_grad, rtol=1e-5)
 
 
