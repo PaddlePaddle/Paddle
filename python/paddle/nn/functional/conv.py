@@ -1024,6 +1024,7 @@ def conv1d_transpose(
     Args:
         x(Tensor): 3-D tensor with [N, C, L] or [N, L, C] format,
                          its data type is float32 or float64.
+            Alias: ``input``.
         weight(Tensor): The convolution kernel, a Tensor with shape [C, M/g, K],
             where M is the number of output channels(filters), g is the number of groups,
             K is the size of the kernel.
@@ -1808,6 +1809,7 @@ def conv3d_transpose(
     Args:
         x (Tensor): The input is 5-D Tensor with shape [N, C, D, H, W] or [N, D, H, W, C], the data type
             of input is float32 or float64.
+            Alias: ``input``.
         weight (Tensor): The convolution kernel, a Tensor with shape [C, M/g, kD, kH, kW],
             where M is the number of filters (output channels), g is the number of groups,
             kD, kH, kW are the filter's depth, height and width respectively.
