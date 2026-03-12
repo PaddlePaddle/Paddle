@@ -39,6 +39,60 @@ except ImportError:
      import paddle from the source directory; please install paddlepaddle*.whl firstly.'''
     )
 
+# Preload cublasLt from pip package before loading C extensions,
+# to prevent LD_LIBRARY_PATH from pulling in a mismatched system version.
+if __is_metainfo_generated:
+    import os as _os
+    import platform as _platform
+
+    if _platform.system() == 'Linux' and _platform.machine() == 'x86_64':
+        try:
+            from .version import with_pip_cuda_libraries as _with_pip
+
+            if _with_pip == 'ON':
+                import ctypes as _ctypes
+                import glob as _glob
+
+                from .version import cuda as _cuda_version
+
+                _pkg_dir = _os.path.dirname(_os.path.abspath(__file__))
+                _nvidia_dir = _os.path.join(_pkg_dir, '..', 'nvidia')
+                _cuda_major = _cuda_version().split('.')[0]
+                # CUDA 13+: nvidia/cu{major}/lib/
+                _lt_paths = _glob.glob(
+                    _os.path.join(
+                        _nvidia_dir,
+                        f'cu{_cuda_major}',
+                        'lib',
+                        'libcublasLt.so.*[0-9]',
+                    )
+                )
+                # CUDA 12: nvidia/cublas/lib/
+                _lt_paths += _glob.glob(
+                    _os.path.join(
+                        _nvidia_dir,
+                        'cublas',
+                        'lib',
+                        'libcublasLt.so.*[0-9]',
+                    )
+                )
+                for _lt_path in _lt_paths:
+                    _ctypes.CDLL(_lt_path, mode=_ctypes.RTLD_GLOBAL)
+                    break
+                del (
+                    _ctypes,
+                    _glob,
+                    _cuda_version,
+                    _pkg_dir,
+                    _nvidia_dir,
+                    _cuda_major,
+                    _lt_paths,
+                )
+            del _with_pip
+        except Exception:
+            pass
+    del _os, _platform
+
 # NOTE(SigureMo): We should place the import of base.core before other modules,
 # because there are some initialization codes in base/core/__init__.py.
 from .base import core  # noqa: F401
