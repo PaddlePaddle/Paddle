@@ -908,3 +908,41 @@ if((WITH_GPU) AND LOCAL_ALL_PLAT)
   )
   set_tests_properties(test_sharding_stage3_bugfix PROPERTIES TIMEOUT "500")
 endif()
+if((WITH_GPU) AND LOCAL_ALL_PLAT)
+  bash_test_modules(
+    test_pp_layers
+    START_BASH
+    ../../legacy_test/dist_test.sh
+    TIMEOUT
+    "500"
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=21282;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+  )
+  set_tests_properties(test_pp_layers PROPERTIES TIMEOUT "500")
+endif()
+if((WITH_GPU) AND LOCAL_ALL_PLAT)
+  bash_test_modules(
+    test_pp_with_shared_weight
+    START_BASH
+    ../../legacy_test/dist_test.sh
+    TIMEOUT
+    "500"
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=21282;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+  )
+  set_tests_properties(test_pp_with_shared_weight PROPERTIES TIMEOUT "500")
+endif()
+if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
+  py_test_modules(
+    test_layer_spec MODULES test_layer_spec ENVS
+    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+endif()
+if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
+  py_test_modules(
+    test_schedule_node MODULES test_schedule_node ENVS
+    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+endif()

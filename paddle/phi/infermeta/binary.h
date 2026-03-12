@@ -770,6 +770,30 @@ PADDLE_API void ShuffleBatchInferMeta(const MetaTensor& x,
 
 );
 
+PADDLE_API void SlowConvDilatedInferMeta(const MetaTensor& input,
+                                         const MetaTensor& filter,
+                                         const MetaTensor& bias,
+                                         const std::vector<int>& strides,
+                                         const std::vector<int>& paddings,
+                                         const std::string& padding_algorithm,
+                                         const std::vector<int>& dilations,
+                                         int groups,
+                                         const std::string& data_format,
+                                         MetaTensor* out,
+                                         MetaConfig config = MetaConfig());
+
+PADDLE_API void SlowConv3DDilatedInferMeta(const MetaTensor& input,
+                                           const MetaTensor& filter,
+                                           const MetaTensor& bias,
+                                           const std::vector<int>& strides,
+                                           const std::vector<int>& paddings,
+                                           const std::string& padding_algorithm,
+                                           int groups,
+                                           const std::vector<int>& dilations,
+                                           const std::string& data_format,
+                                           MetaTensor* out,
+                                           MetaConfig config = MetaConfig());
+
 PADDLE_API void ReduceAsInferMeta(const MetaTensor& x,
                                   const MetaTensor& target,
                                   MetaTensor* out);

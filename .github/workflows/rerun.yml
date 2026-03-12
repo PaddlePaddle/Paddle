@@ -82,6 +82,16 @@ jobs:
           REPO: ${{ github.event.repository.name }}
           JOB_NAME: 'Linux-NPU / Test'
 
+      - name: Rerun IXUCA
+        if: ${{ contains(github.event.comment.body, 'ixuca') }}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'Linux-IXUCA / Check bypass / Check bypass'
+
       - name: Rerun Inference
         if: ${{ contains(github.event.comment.body, 'inference') && !contains(github.event.comment.body, 'build') && !contains(github.event.comment.body, 'test') }}
         uses: ./.github/actions/rerun-workflow

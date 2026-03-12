@@ -94,9 +94,7 @@ struct MinOps {
   }
 
   inline DEVICE MPType reduce(MPType a, MPType b) const {
-    if constexpr ((std::is_floating_point<InT>::value) &&
-                  (!(std::is_same<InT, int32_t>::value ||
-                     (std::is_same<InT, int64_t>::value)))) {
+    if constexpr (std::is_floating_point<InT>::value) {
       if (isnan(a)) {
         return a;
       }
@@ -144,9 +142,7 @@ struct MaxOps {
   }
 
   inline DEVICE MPType reduce(MPType a, MPType b) const {
-    if constexpr ((std::is_floating_point<InT>::value) &&
-                  (!(std::is_same<InT, int32_t>::value ||
-                     (std::is_same<InT, int64_t>::value)))) {
+    if constexpr (std::is_floating_point<InT>::value) {
       if (isnan(a)) {
         return a;
       }
@@ -193,9 +189,7 @@ struct AbsMaxOps {
   }
 
   inline DEVICE MPType reduce(MPType a, MPType b) const {
-    if constexpr ((std::is_floating_point<InT>::value) &&
-                  (!(std::is_same<InT, int32_t>::value ||
-                     (std::is_same<InT, int64_t>::value)))) {
+    if constexpr (std::is_floating_point<InT>::value) {
       if (isnan(a)) {
         return a;
       }
@@ -225,9 +219,7 @@ struct AbsMinOps {
   }
 
   inline DEVICE MPType reduce(MPType a, MPType b) const {
-    if constexpr ((std::is_floating_point<InT>::value) &&
-                  (!(std::is_same<InT, int32_t>::value ||
-                     (std::is_same<InT, int64_t>::value)))) {
+    if constexpr (std::is_floating_point<InT>::value) {
       if (isnan(a)) {
         return a;
       }

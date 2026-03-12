@@ -457,15 +457,15 @@ template <typename T, typename OutT = T, class MatmulDescT = MatmulDescriptor>
 struct CublasLtBase {
  public:
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-  static phi::Allocator::AllocationPtr GetWorkspace(
-      const phi::GPUContext& dev_ctx, size_t workspace_size) {
+  static phi::Allocator::AllocationPtr GetWorkspace(const GPUContext& dev_ctx,
+                                                    size_t workspace_size) {
     return phi::memory_utils::Alloc(
         dev_ctx.GetPlace(),
         workspace_size,
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   }
 
-  static void RunImpl(const phi::GPUContext& dev_ctx,
+  static void RunImpl(const GPUContext& dev_ctx,
                       MatmulDescT* desc,
                       const size_t sub_key,
                       const T* x_ptr,
@@ -557,7 +557,7 @@ struct CublasLtBase {
                                  dev_ctx.stream()));
   }
 
-  static void SearchBestAlgo(const phi::GPUContext& dev_ctx,
+  static void SearchBestAlgo(const GPUContext& dev_ctx,
                              const hipblasLtHandle_t& lt_handle,
                              MatmulDescT* desc,
                              const void* alpha,
@@ -631,7 +631,7 @@ struct CublasLtBase {
         dynload::hipblasLtMatmulPreferenceDestroy(preference));
   }
 
-  static float RunAndMeasureAlgo(const phi::GPUContext& dev_ctx,
+  static float RunAndMeasureAlgo(const GPUContext& dev_ctx,
                                  const hipblasLtHandle_t& lt_handle,
                                  MatmulDescT* desc,
                                  const void* alpha,
@@ -684,15 +684,15 @@ struct CublasLtBase {
 template <>
 struct CublasLtBase<int8_t, int32_t, MatmulDescriptor> {
  public:
-  static phi::Allocator::AllocationPtr GetWorkspace(
-      const phi::GPUContext& dev_ctx, size_t workspace_size) {
+  static phi::Allocator::AllocationPtr GetWorkspace(const GPUContext& dev_ctx,
+                                                    size_t workspace_size) {
     return phi::memory_utils::Alloc(
         dev_ctx.GetPlace(),
         workspace_size,
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   }
 
-  static void RunImpl(const phi::GPUContext& dev_ctx,
+  static void RunImpl(const GPUContext& dev_ctx,
                       MatmulDescriptor* desc,
                       const size_t sub_key,
                       const int8_t* x_ptr,
@@ -773,7 +773,7 @@ struct CublasLtBase<int8_t, int32_t, MatmulDescriptor> {
   // due to the incomplete capability of hipblaslt. Wait for hipblaslt to have
   // the corresponding capabilities before providing support.
   static void SearchBestAlgoGlobal(
-      const phi::GPUContext& dev_ctx,
+      const GPUContext& dev_ctx,
       const hipblasLtHandle_t& lt_handle,
       MatmulDescriptor* desc,
       const void* alpha,
@@ -787,7 +787,7 @@ struct CublasLtBase<int8_t, int32_t, MatmulDescriptor> {
         "blaslt global search is not supported on HIP platform."));
   }
 
-  static void SearchBestAlgo(const phi::GPUContext& dev_ctx,
+  static void SearchBestAlgo(const GPUContext& dev_ctx,
                              const hipblasLtHandle_t& lt_handle,
                              MatmulDescriptor* desc,
                              const void* alpha,
@@ -861,7 +861,7 @@ struct CublasLtBase<int8_t, int32_t, MatmulDescriptor> {
         dynload::hipblasLtMatmulPreferenceDestroy(preference));
   }
 
-  static float RunAndMeasureAlgo(const phi::GPUContext& dev_ctx,
+  static float RunAndMeasureAlgo(const GPUContext& dev_ctx,
                                  const hipblasLtHandle_t& lt_handle,
                                  MatmulDescriptor* desc,
                                  const void* alpha,
@@ -1033,7 +1033,7 @@ struct DescriptorSetter {
 template <typename T, typename OutT = T>
 struct MatmulWithCublasLt : public CublasLtBase<T, OutT> {
  public:
-  static void Run(const phi::GPUContext& dev_ctx,
+  static void Run(const GPUContext& dev_ctx,
                   const T* x_data,
                   const T* y_data,
                   OutT* out_data,
@@ -1054,7 +1054,7 @@ struct MatmulWithCublasLt : public CublasLtBase<T, OutT> {
                                    planner);
   }
 
-  static void RunWithBatch(const phi::GPUContext& dev_ctx,
+  static void RunWithBatch(const GPUContext& dev_ctx,
                            const T* x_data,
                            const T* y_data,
                            OutT* out_data,
@@ -1087,7 +1087,7 @@ struct MatmulWithCublasLt : public CublasLtBase<T, OutT> {
                                    planner);
   }
 
-  static void RunWithBatch(const phi::GPUContext& dev_ctx,
+  static void RunWithBatch(const GPUContext& dev_ctx,
                            const T** x_data,
                            const T** y_data,
                            OutT** out_data,
@@ -1116,7 +1116,7 @@ struct MatmulWithCublasLt : public CublasLtBase<T, OutT> {
 // As for just Linear fused ephilogue below: out = matmul(x, y) + bias.
 template <typename T>
 struct LinearWithCublasLt : public CublasLtBase<T> {
-  static void Run(const phi::GPUContext& dev_ctx,
+  static void Run(const GPUContext& dev_ctx,
                   const DenseTensor* x,
                   const DenseTensor* y,
                   DenseTensor* out,
@@ -1151,7 +1151,7 @@ struct LinearWithCublasLt : public CublasLtBase<T> {
 template <typename T, typename DXT, typename DYT, bool TransX, bool TransY>
 struct LinearGradWithCublasLt : public CublasLtBase<T> {
   static void Run(
-      const phi::GPUContext& dev_ctx,
+      const GPUContext& dev_ctx,
       const DenseTensor* x,
       const DenseTensor* y,
       DenseTensor* out,

@@ -150,8 +150,8 @@ void ModulatedDeformableIm2col(const Context& dev_ctx,
                                                  data_col);
 }
 
-template void ModulatedDeformableIm2col<float, phi::GPUContext, int>(
-    const phi::GPUContext& dev_ctx,
+template void ModulatedDeformableIm2col<float, GPUContext, int>(
+    const GPUContext& dev_ctx,
     const float* data_im,
     const float* data_offset,
     const float* data_mask,
@@ -164,8 +164,8 @@ template void ModulatedDeformableIm2col<float, phi::GPUContext, int>(
     const int deformable_groups,
     float* data_col);
 
-template void ModulatedDeformableIm2col<float, phi::GPUContext, int64_t>(
-    const phi::GPUContext& dev_ctx,
+template void ModulatedDeformableIm2col<float, GPUContext, int64_t>(
+    const GPUContext& dev_ctx,
     const float* data_im,
     const float* data_offset,
     const float* data_mask,
@@ -178,8 +178,8 @@ template void ModulatedDeformableIm2col<float, phi::GPUContext, int64_t>(
     const int deformable_groups,
     float* data_col);
 
-template void ModulatedDeformableIm2col<double, phi::GPUContext, int>(
-    const phi::GPUContext& dev_ctx,
+template void ModulatedDeformableIm2col<double, GPUContext, int>(
+    const GPUContext& dev_ctx,
     const double* data_im,
     const double* data_offset,
     const double* data_mask,
@@ -192,8 +192,8 @@ template void ModulatedDeformableIm2col<double, phi::GPUContext, int>(
     const int deformable_groups,
     double* data_col);
 
-template void ModulatedDeformableIm2col<double, phi::GPUContext, int64_t>(
-    const phi::GPUContext& dev_ctx,
+template void ModulatedDeformableIm2col<double, GPUContext, int64_t>(
+    const GPUContext& dev_ctx,
     const double* data_im,
     const double* data_offset,
     const double* data_mask,

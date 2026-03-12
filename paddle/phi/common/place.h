@@ -236,10 +236,6 @@ PADDLE_API bool is_accelerat_allocation_type(AllocationType type);
 }  // namespace phi
 
 namespace paddle {
-namespace experimental {
-using AllocationType = phi::AllocationType;
-}  // namespace experimental
-
 using AllocationType = phi::AllocationType;
 using Place = phi::Place;
 using CPUPlace = phi::CPUPlace;

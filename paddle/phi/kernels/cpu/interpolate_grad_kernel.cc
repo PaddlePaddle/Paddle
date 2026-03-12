@@ -14,6 +14,9 @@
 
 #include "paddle/phi/kernels/interpolate_grad_kernel.h"
 #include <array>
+#include <cmath>
+#include <type_traits>
+#include <vector>
 
 #include "paddle/common/layout.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
@@ -1130,6 +1133,528 @@ void BicubicInterpGradKernel(
                                     x_grad);
 }
 
+// CPU weight computation for antialias interpolation (backward uses same
+// weights).
+template <typename WT, typename InterpFilter>
+static void ComputeAAWeightsCPU(WT* wt_ptr,
+                                const WT scale,
+                                int interp_size,
+                                const InterpFilter& interp_filter,
+                                WT xmin_m_center,
+                                int xsize) {
+  WT invscale = (scale >= static_cast<WT>(1.0)) ? static_cast<WT>(1.0) / scale
+                                                : static_cast<WT>(1.0);
+  WT total_w = static_cast<WT>(0.0);
+  int j = 0;
+  for (j = 0; j < xsize; j++) {
+    WT w = interp_filter((j + xmin_m_center + static_cast<WT>(0.5)) * invscale);
+    wt_ptr[j] = w;
+    total_w += w;
+  }
+  for (j = 0; j < xsize; j++) {
+    if (total_w != static_cast<WT>(0.0)) {
+      wt_ptr[j] /= total_w;
+    }
+  }
+  for (; j < interp_size; j++) {
+    wt_ptr[j] = static_cast<WT>(0.0);
+  }
+}
+
+template <typename WT>
+static void ComputeAAWeightsSpanCPU(const int i,
+                                    const int input_size,
+                                    const WT scale,
+                                    const WT support,
+                                    int* xmin,
+                                    int* xsize,
+                                    WT* center) {
+  *center = scale * (i + static_cast<WT>(0.5));
+  *xmin = std::max(
+      static_cast<int>(std::floor(*center - support + static_cast<WT>(0.5))),
+      0);
+  *xsize = std::min(static_cast<int>(
+                        std::floor(*center + support + static_cast<WT>(0.5))),
+                    input_size) -
+           *xmin;
+}
+
+// =====================================================================
+// CPU Antialias Interpolation Backward Implementation
+// The backward pass of separable 2-pass AA interpolation.
+// For the forward: output = W_v * W_h * input (separable)
+// The backward: input_grad += W_h^T * W_v^T * output_grad
+// Since it's separable, we reverse the passes:
+//   Pass 1 (vertical backward): grad_output [N,C,H_out,W_out] -> temp
+//   [N,C,H_in,W_out] Pass 2 (horizontal backward): temp [N,C,H_in,W_out] ->
+//   input_grad [N,C,H_in,W_in]
+// =====================================================================
+
+// Backward pass for float types, NCHW layout.
+template <typename T, typename InterpFilter>
+static void AAInterpolation2DGradCPU_NCHW(const T* output_grad_data,
+                                          T* input_grad_data,
+                                          int64_t n,
+                                          int64_t c,
+                                          int in_h,
+                                          int in_w,
+                                          int out_h,
+                                          int out_w,
+                                          float ratio_h,
+                                          float ratio_w,
+                                          const InterpFilter& filter) {
+  using WT = typename phi::dtype::MPTypeTrait<T>::Type;
+  WT scale_h = static_cast<WT>(ratio_h);
+  WT scale_w = static_cast<WT>(ratio_w);
+
+  const WT half = static_cast<WT>(0.5);
+  const WT support_h = (scale_h >= static_cast<WT>(1.0))
+                           ? (filter.size * half) * scale_h
+                           : filter.size * half;
+  const WT support_w = (scale_w >= static_cast<WT>(1.0))
+                           ? (filter.size * half) * scale_w
+                           : filter.size * half;
+
+  const int interp_height = static_cast<int>(std::ceil(support_h)) * 2 + 1;
+  const int interp_width = static_cast<int>(std::ceil(support_w)) * 2 + 1;
+
+  struct SpanInfo {
+    int xmin;
+    int xsize;
+    WT center;
+  };
+
+  // Pre-compute horizontal weights
+  std::vector<SpanInfo> h_spans(out_w);
+  std::vector<std::vector<WT>> h_weights(out_w);
+  for (int ow = 0; ow < out_w; ow++) {
+    ComputeAAWeightsSpanCPU<WT>(ow,
+                                in_w,
+                                scale_w,
+                                support_w,
+                                &h_spans[ow].xmin,
+                                &h_spans[ow].xsize,
+                                &h_spans[ow].center);
+    h_weights[ow].resize(interp_width);
+    ComputeAAWeightsCPU<WT>(
+        h_weights[ow].data(),
+        scale_w,
+        interp_width,
+        filter,
+        static_cast<WT>(h_spans[ow].xmin) - h_spans[ow].center,
+        h_spans[ow].xsize);
+  }
+
+  // Pre-compute vertical weights
+  std::vector<SpanInfo> v_spans(out_h);
+  std::vector<std::vector<WT>> v_weights(out_h);
+  for (int oh = 0; oh < out_h; oh++) {
+    ComputeAAWeightsSpanCPU<WT>(oh,
+                                in_h,
+                                scale_h,
+                                support_h,
+                                &v_spans[oh].xmin,
+                                &v_spans[oh].xsize,
+                                &v_spans[oh].center);
+    v_weights[oh].resize(interp_height);
+    ComputeAAWeightsCPU<WT>(
+        v_weights[oh].data(),
+        scale_h,
+        interp_height,
+        filter,
+        static_cast<WT>(v_spans[oh].xmin) - v_spans[oh].center,
+        v_spans[oh].xsize);
+  }
+
+  // Temporary buffer for intermediate gradient [N, C, H_in, W_out]
+  std::vector<T> temp_grad(static_cast<size_t>(n) * c * in_h * out_w,
+                           static_cast<T>(0));
+
+  // Backward Pass 1: Vertical backward (transpose of vertical forward)
+  // Forward was: output[oh] = sum_j(temp[ymin+j] * wy[j])
+  // Backward: temp_grad[ymin+j] += output_grad[oh] * wy[j]
+  for (int64_t nc_idx = 0; nc_idx < n * c; nc_idx++) {
+    for (int oh = 0; oh < out_h; oh++) {
+      int ymin = v_spans[oh].xmin;
+      int ysize = v_spans[oh].xsize;
+      const WT* wts = v_weights[oh].data();
+
+      for (int ow = 0; ow < out_w; ow++) {
+        WT grad_val = static_cast<WT>(
+            output_grad_data[nc_idx * out_h * out_w + oh * out_w + ow]);
+
+        for (int j = 0; j < ysize; j++) {
+          T* temp_ptr = temp_grad.data() + nc_idx * in_h * out_w +
+                        (ymin + j) * out_w + ow;
+          *temp_ptr =
+              static_cast<T>(static_cast<WT>(*temp_ptr) + grad_val * wts[j]);
+        }
+      }
+    }
+  }
+
+  // Backward Pass 2: Horizontal backward (transpose of horizontal forward)
+  // Forward was: temp[ow] = sum_j(input[xmin+j] * wx[j])
+  // Backward: input_grad[xmin+j] += temp_grad[ow] * wx[j]
+  for (int64_t nc_idx = 0; nc_idx < n * c; nc_idx++) {
+    for (int ih = 0; ih < in_h; ih++) {
+      for (int ow = 0; ow < out_w; ow++) {
+        int xmin = h_spans[ow].xmin;
+        int xsize = h_spans[ow].xsize;
+        const WT* wts = h_weights[ow].data();
+
+        WT grad_val =
+            static_cast<WT>(temp_grad[nc_idx * in_h * out_w + ih * out_w + ow]);
+
+        for (int j = 0; j < xsize; j++) {
+          T* ig_ptr =
+              input_grad_data + nc_idx * in_h * in_w + ih * in_w + (xmin + j);
+          *ig_ptr =
+              static_cast<T>(static_cast<WT>(*ig_ptr) + grad_val * wts[j]);
+        }
+      }
+    }
+  }
+}
+
+// Backward pass for float types, NHWC layout.
+template <typename T, typename InterpFilter>
+static void AAInterpolation2DGradCPU_NHWC(const T* output_grad_data,
+                                          T* input_grad_data,
+                                          int64_t n,
+                                          int64_t c,
+                                          int in_h,
+                                          int in_w,
+                                          int out_h,
+                                          int out_w,
+                                          float ratio_h,
+                                          float ratio_w,
+                                          const InterpFilter& filter) {
+  using WT = typename phi::dtype::MPTypeTrait<T>::Type;
+  WT scale_h = static_cast<WT>(ratio_h);
+  WT scale_w = static_cast<WT>(ratio_w);
+
+  const WT half = static_cast<WT>(0.5);
+  const WT support_h = (scale_h >= static_cast<WT>(1.0))
+                           ? (filter.size * half) * scale_h
+                           : filter.size * half;
+  const WT support_w = (scale_w >= static_cast<WT>(1.0))
+                           ? (filter.size * half) * scale_w
+                           : filter.size * half;
+
+  const int interp_height = static_cast<int>(std::ceil(support_h)) * 2 + 1;
+  const int interp_width = static_cast<int>(std::ceil(support_w)) * 2 + 1;
+
+  struct SpanInfo {
+    int xmin;
+    int xsize;
+    WT center;
+  };
+
+  // Pre-compute horizontal weights
+  std::vector<SpanInfo> h_spans(out_w);
+  std::vector<std::vector<WT>> h_weights(out_w);
+  for (int ow = 0; ow < out_w; ow++) {
+    ComputeAAWeightsSpanCPU<WT>(ow,
+                                in_w,
+                                scale_w,
+                                support_w,
+                                &h_spans[ow].xmin,
+                                &h_spans[ow].xsize,
+                                &h_spans[ow].center);
+    h_weights[ow].resize(interp_width);
+    ComputeAAWeightsCPU<WT>(
+        h_weights[ow].data(),
+        scale_w,
+        interp_width,
+        filter,
+        static_cast<WT>(h_spans[ow].xmin) - h_spans[ow].center,
+        h_spans[ow].xsize);
+  }
+
+  // Pre-compute vertical weights
+  std::vector<SpanInfo> v_spans(out_h);
+  std::vector<std::vector<WT>> v_weights(out_h);
+  for (int oh = 0; oh < out_h; oh++) {
+    ComputeAAWeightsSpanCPU<WT>(oh,
+                                in_h,
+                                scale_h,
+                                support_h,
+                                &v_spans[oh].xmin,
+                                &v_spans[oh].xsize,
+                                &v_spans[oh].center);
+    v_weights[oh].resize(interp_height);
+    ComputeAAWeightsCPU<WT>(
+        v_weights[oh].data(),
+        scale_h,
+        interp_height,
+        filter,
+        static_cast<WT>(v_spans[oh].xmin) - v_spans[oh].center,
+        v_spans[oh].xsize);
+  }
+
+  // Temporary buffer [N, H_in, W_out, C]
+  std::vector<T> temp_grad(static_cast<size_t>(n) * in_h * out_w * c,
+                           static_cast<T>(0));
+
+  // Backward Pass 1: Vertical backward
+  for (int64_t bi = 0; bi < n; bi++) {
+    for (int oh = 0; oh < out_h; oh++) {
+      int ymin = v_spans[oh].xmin;
+      int ysize = v_spans[oh].xsize;
+      const WT* wts = v_weights[oh].data();
+
+      for (int ow = 0; ow < out_w; ow++) {
+        for (int64_t ch = 0; ch < c; ch++) {
+          int64_t og_idx = ((bi * out_h + oh) * out_w + ow) * c + ch;
+          WT grad_val = static_cast<WT>(output_grad_data[og_idx]);
+
+          for (int j = 0; j < ysize; j++) {
+            int64_t temp_idx = ((bi * in_h + (ymin + j)) * out_w + ow) * c + ch;
+            temp_grad[temp_idx] = static_cast<T>(
+                static_cast<WT>(temp_grad[temp_idx]) + grad_val * wts[j]);
+          }
+        }
+      }
+    }
+  }
+
+  // Backward Pass 2: Horizontal backward
+  for (int64_t bi = 0; bi < n; bi++) {
+    for (int ih = 0; ih < in_h; ih++) {
+      for (int ow = 0; ow < out_w; ow++) {
+        int xmin = h_spans[ow].xmin;
+        int xsize = h_spans[ow].xsize;
+        const WT* wts = h_weights[ow].data();
+
+        for (int64_t ch = 0; ch < c; ch++) {
+          int64_t temp_idx = ((bi * in_h + ih) * out_w + ow) * c + ch;
+          WT grad_val = static_cast<WT>(temp_grad[temp_idx]);
+
+          for (int j = 0; j < xsize; j++) {
+            int64_t ig_idx = ((bi * in_h + ih) * in_w + (xmin + j)) * c + ch;
+            input_grad_data[ig_idx] = static_cast<T>(
+                static_cast<WT>(input_grad_data[ig_idx]) + grad_val * wts[j]);
+          }
+        }
+      }
+    }
+  }
+}
+
+// Dispatcher for backward
+template <typename T, typename InterpFilter>
+static void AAInterpolation2DGradCPUDispatch(const T* output_grad_data,
+                                             T* input_grad_data,
+                                             int64_t n,
+                                             int64_t c,
+                                             int in_h,
+                                             int in_w,
+                                             int out_h,
+                                             int out_w,
+                                             float ratio_h,
+                                             float ratio_w,
+                                             const DataLayout data_layout,
+                                             const InterpFilter& filter) {
+  if (data_layout == DataLayout::NCHW) {
+    AAInterpolation2DGradCPU_NCHW<T>(output_grad_data,
+                                     input_grad_data,
+                                     n,
+                                     c,
+                                     in_h,
+                                     in_w,
+                                     out_h,
+                                     out_w,
+                                     ratio_h,
+                                     ratio_w,
+                                     filter);
+  } else {
+    AAInterpolation2DGradCPU_NHWC<T>(output_grad_data,
+                                     input_grad_data,
+                                     n,
+                                     c,
+                                     in_h,
+                                     in_w,
+                                     out_h,
+                                     out_w,
+                                     ratio_h,
+                                     ratio_w,
+                                     filter);
+  }
+}
+
+// Main CPU backward function for AA 2D interpolation.
+template <typename T, typename Context>
+static void InterpolateAA2DCPUBwd(
+    const Context& dev_ctx,
+    const DenseTensor& input,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
+    const DenseTensor& output_grad,
+    const std::string& data_layout_str,
+    int out_h,
+    int out_w,
+    const std::vector<double>& scale,
+    const std::string& interp_method,
+    bool align_corners,
+    int align_mode,
+    DenseTensor* input_grad) {
+  if (input_grad && input_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(input_grad);
+    return;
+  }
+
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
+  int64_t n, c, in_d, in_h, in_w;
+  funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
+
+  double scale_h = -1;
+  double scale_w = -1;
+  if (size_tensor && !size_tensor->empty()) {
+    auto new_size = funcs::get_new_shape(size_tensor.get());
+    out_h = new_size[0];
+    out_w = new_size[1];
+  } else {
+    if (scale_tensor) {
+      auto scale_data =
+          funcs::get_new_data_from_tensor<float>(scale_tensor.get_ptr());
+      if (scale_data.size() > 1) {
+        scale_h = scale_data[0];
+        scale_w = scale_data[1];
+      } else {
+        scale_h = scale_data[0];
+        scale_w = scale_data[0];
+      }
+      PADDLE_ENFORCE_EQ(
+          scale_w > 0,
+          true,
+          errors::InvalidArgument(
+              "The scale_w in input 'Scale' Tensor of Operator(interpolate) "
+              "should be greater than 0, but received value is %d.",
+              scale_w));
+      PADDLE_ENFORCE_EQ(
+          scale_h > 0,
+          true,
+          errors::InvalidArgument(
+              "The scale_h in input 'Scale' Tensor of Operator(interpolate) "
+              "should be greater than 0, but received value is %d.",
+              scale_h));
+    } else {
+      if (scale.size() > 1) {
+        scale_w = scale[1];
+        scale_h = scale[0];
+        PADDLE_ENFORCE_EQ(
+            scale_w > 0,
+            true,
+            errors::InvalidArgument(
+                "The scale_w in Attr(scale) of Operator(interpolate) "
+                "should be greater than 0, but received value is %d.",
+                scale_w));
+        PADDLE_ENFORCE_EQ(
+            scale_h > 0,
+            true,
+            errors::InvalidArgument(
+                "The scale_h in Attr(scale) of Operator(interpolate) "
+                "should be greater than 0, but received value is %d.",
+                scale_h));
+      }
+    }
+    if (scale_w > 0. && scale_h > 0.) {
+      out_h = static_cast<int>(in_h * scale_h);
+      out_w = static_cast<int>(in_w * scale_w);
+    }
+    if (out_size) {
+      auto out_size_data =
+          funcs::get_new_data_from_tensor<int>(out_size.get_ptr());
+      out_h = out_size_data[0];
+      out_w = out_size_data[1];
+    }
+  }
+
+  auto* output_grad_data = output_grad.data<T>();
+  DDim dim_grad;
+  if (data_layout == DataLayout::NCHW) {
+    dim_grad = {n, c, in_h, in_w};
+  } else {
+    dim_grad = {n, in_h, in_w, c};
+  }
+  input_grad->Resize(dim_grad);
+  auto* input_grad_data = dev_ctx.template Alloc<T>(input_grad);
+  funcs::SetConstant<Context, T> zero;
+  zero(dev_ctx, input_grad, static_cast<T>(0.0));
+
+  if (in_h == out_h && in_w == out_w) {
+    Copy(dev_ctx, output_grad, dev_ctx.GetPlace(), false, input_grad);
+    return;
+  }
+
+  // Use conditional type matching GPU: float for integral/half types, double
+  // for double
+  using MT =
+      typename std::conditional_t<std::is_integral<T>::value,
+                                  float,
+                                  typename phi::dtype::MPTypeTrait<T>::Type>;
+  MT ratio_h =
+      funcs::AreaPixelComputeScale<MT>(in_h, out_h, align_corners, scale_h);
+  MT ratio_w =
+      funcs::AreaPixelComputeScale<MT>(in_w, out_w, align_corners, scale_w);
+
+  auto launch_aa_bw = [&](auto filter_functor) {
+    AAInterpolation2DGradCPUDispatch<T>(output_grad_data,
+                                        input_grad_data,
+                                        n,
+                                        c,
+                                        in_h,
+                                        in_w,
+                                        out_h,
+                                        out_w,
+                                        static_cast<float>(ratio_h),
+                                        static_cast<float>(ratio_w),
+                                        data_layout,
+                                        filter_functor);
+  };
+
+  if ("bilinear" == interp_method) {
+    launch_aa_bw(funcs::antialias::BilinearFilterFunctor{});
+  } else if ("bicubic" == interp_method) {
+    launch_aa_bw(funcs::antialias::BicubicFilterFunctor{});
+  }
+}
+
+template <typename T, typename Context>
+void InterpAntialiasGradKernel(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
+    const DenseTensor& out_grad,
+    const std::string& data_layout,
+    int out_d,
+    int out_h,
+    int out_w,
+    const std::vector<double>& scale,
+    const std::string& interp_method,
+    bool align_corners,
+    int align_mode,
+    DenseTensor* x_grad) {
+  InterpolateAA2DCPUBwd<T, Context>(dev_ctx,
+                                    x,
+                                    out_size,
+                                    size_tensor,
+                                    scale_tensor,
+                                    out_grad,
+                                    data_layout,
+                                    out_h,
+                                    out_w,
+                                    scale,
+                                    interp_method,
+                                    align_corners,
+                                    align_mode,
+                                    x_grad);
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(bilinear_interp_grad,
@@ -1206,6 +1731,19 @@ PD_REGISTER_KERNEL(bicubic_interp_grad,
                    double,
                    phi::float16,
                    phi::bfloat16) {
+  kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
+}
+
+PD_REGISTER_KERNEL(interp_antialias_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::InterpAntialiasGradKernel,
+                   float,
+                   double,
+                   phi::float16,
+                   phi::bfloat16) {
+  kernel->InputAt(1).SetBackend(phi::Backend::CPU);
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }

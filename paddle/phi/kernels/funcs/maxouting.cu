@@ -172,13 +172,13 @@ void MaxOutGradFunctor<DeviceContext, T>::operator()(
                                                               axis);
 }
 
-template class MaxOutGradFunctor<phi::GPUContext, float>;
-template class MaxOutGradFunctor<phi::GPUContext, phi::float16>;
-template class MaxOutGradFunctor<phi::GPUContext, double>;
+template class MaxOutGradFunctor<GPUContext, float>;
+template class MaxOutGradFunctor<GPUContext, phi::float16>;
+template class MaxOutGradFunctor<GPUContext, double>;
 
-template class MaxOutFunctor<phi::GPUContext, float>;
-template class MaxOutFunctor<phi::GPUContext, phi::float16>;
-template class MaxOutFunctor<phi::GPUContext, double>;
+template class MaxOutFunctor<GPUContext, float>;
+template class MaxOutFunctor<GPUContext, phi::float16>;
+template class MaxOutFunctor<GPUContext, double>;
 
 }  // namespace funcs
 }  // namespace phi

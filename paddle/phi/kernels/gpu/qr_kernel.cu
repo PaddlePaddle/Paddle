@@ -423,18 +423,18 @@ void BatchedGeqrf<GPUContext, float>(const GPUContext& dev_ctx,
     size_t workspace_in_bytes_on_host = 0;
 
     PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::cusolverDnXgeqrf_bufferSize(handle,
-                                                  nullptr,
-                                                  m_64,
-                                                  n_64,
-                                                  CUDA_R_32F,
-                                                  a,
-                                                  lda_64,
-                                                  CUDA_R_32F,
-                                                  tau,
-                                                  CUDA_R_32F,
-                                                  &workspace_in_bytes_on_device,
-                                                  &workspace_in_bytes_on_host));
+        dynload::cusolverDnXgeqrf_bufferSize(handle,
+                                             nullptr,
+                                             m_64,
+                                             n_64,
+                                             CUDA_R_32F,
+                                             a,
+                                             lda_64,
+                                             CUDA_R_32F,
+                                             tau,
+                                             CUDA_R_32F,
+                                             &workspace_in_bytes_on_device,
+                                             &workspace_in_bytes_on_host));
 
     DenseTensor device_workspace;
     device_workspace.Resize(
@@ -460,21 +460,21 @@ void BatchedGeqrf<GPUContext, float>(const GPUContext& dev_ctx,
       float* tau_working_ptr = &tau[i * tau_stride_64];
 
       PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::cusolverDnXgeqrf(handle,
-                                         nullptr,
-                                         m_64,
-                                         n_64,
-                                         CUDA_R_32F,
-                                         a_working_ptr,
-                                         lda_64,
-                                         CUDA_R_32F,
-                                         tau_working_ptr,
-                                         CUDA_R_32F,
-                                         device_workspace_ptr,
-                                         workspace_in_bytes_on_device,
-                                         host_workspace_ptr,
-                                         workspace_in_bytes_on_host,
-                                         info_d));
+          dynload::cusolverDnXgeqrf(handle,
+                                    nullptr,
+                                    m_64,
+                                    n_64,
+                                    CUDA_R_32F,
+                                    a_working_ptr,
+                                    lda_64,
+                                    CUDA_R_32F,
+                                    tau_working_ptr,
+                                    CUDA_R_32F,
+                                    device_workspace_ptr,
+                                    workspace_in_bytes_on_device,
+                                    host_workspace_ptr,
+                                    workspace_in_bytes_on_host,
+                                    info_d));
 
       int info_h;
       memory_utils::Copy(CPUPlace(),
@@ -495,8 +495,8 @@ void BatchedGeqrf<GPUContext, float>(const GPUContext& dev_ctx,
     int lwork = 0;
 
     auto handle = dev_ctx.cusolver_dn_handle();
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnSgeqrf_bufferSize(
-        handle, m, n, a, lda, &lwork));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        dynload::cusolverDnSgeqrf_bufferSize(handle, m, n, a, lda, &lwork));
 
     DenseTensor workspace = DenseTensor();
     workspace.Resize(make_ddim({lwork}));
@@ -510,15 +510,15 @@ void BatchedGeqrf<GPUContext, float>(const GPUContext& dev_ctx,
       float* a_working_ptr = &a[i * a_stride];
       float* tau_working_ptr = &tau[i * tau_stride];
       // compute geqrf
-      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnSgeqrf(handle,
-                                                                m,
-                                                                n,
-                                                                a_working_ptr,
-                                                                lda,
-                                                                tau_working_ptr,
-                                                                workspace_ptr,
-                                                                lwork,
-                                                                info_d));
+      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnSgeqrf(handle,
+                                                           m,
+                                                           n,
+                                                           a_working_ptr,
+                                                           lda,
+                                                           tau_working_ptr,
+                                                           workspace_ptr,
+                                                           lwork,
+                                                           info_d));
       // Do we need synchronized here?
       // check the error info
       int info_h;
@@ -551,7 +551,7 @@ void BatchedGeqrf<GPUContext, double>(const GPUContext& dev_ctx,
 
   auto handle = dev_ctx.cusolver_dn_handle();
   PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::cusolverDnDgeqrf_bufferSize(handle, m, n, a, lda, &lwork));
+      dynload::cusolverDnDgeqrf_bufferSize(handle, m, n, a, lda, &lwork));
 
   DenseTensor workspace = DenseTensor();
   workspace.Resize(make_ddim({lwork}));
@@ -565,15 +565,15 @@ void BatchedGeqrf<GPUContext, double>(const GPUContext& dev_ctx,
     double* a_working_ptr = &a[i * a_stride];
     double* tau_working_ptr = &tau[i * tau_stride];
     // compute geqrf
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnDgeqrf(handle,
-                                                              m,
-                                                              n,
-                                                              a_working_ptr,
-                                                              lda,
-                                                              tau_working_ptr,
-                                                              workspace_ptr,
-                                                              lwork,
-                                                              info_d));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnDgeqrf(handle,
+                                                         m,
+                                                         n,
+                                                         a_working_ptr,
+                                                         lda,
+                                                         tau_working_ptr,
+                                                         workspace_ptr,
+                                                         lwork,
+                                                         info_d));
     // Do we need synchronized here?
     // check the error info
     int info_h;
@@ -604,7 +604,7 @@ void BatchedGeqrf<GPUContext, phi::complex64>(const GPUContext& dev_ctx,
   int lwork = 0;
 
   auto handle = dev_ctx.cusolver_dn_handle();
-  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnCgeqrf_bufferSize(
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnCgeqrf_bufferSize(
       handle, m, n, reinterpret_cast<cuComplex*>(a), lda, &lwork));
 
   DenseTensor workspace = DenseTensor();
@@ -620,16 +620,16 @@ void BatchedGeqrf<GPUContext, phi::complex64>(const GPUContext& dev_ctx,
     phi::complex64* a_working_ptr = &a[i * a_stride];
     phi::complex64* tau_working_ptr = &tau[i * tau_stride];
     // compute geqrf
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnCgeqrf(
-        handle,
-        m,
-        n,
-        reinterpret_cast<cuComplex*>(a_working_ptr),
-        lda,
-        reinterpret_cast<cuComplex*>(tau_working_ptr),
-        reinterpret_cast<cuComplex*>(workspace_ptr),
-        lwork,
-        info_d));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        dynload::cusolverDnCgeqrf(handle,
+                                  m,
+                                  n,
+                                  reinterpret_cast<cuComplex*>(a_working_ptr),
+                                  lda,
+                                  reinterpret_cast<cuComplex*>(tau_working_ptr),
+                                  reinterpret_cast<cuComplex*>(workspace_ptr),
+                                  lwork,
+                                  info_d));
     // Do we need synchronized here?
     // check the error info
     int info_h;
@@ -660,7 +660,7 @@ void BatchedGeqrf<GPUContext, phi::complex128>(const GPUContext& dev_ctx,
   int lwork = 0;
 
   auto handle = dev_ctx.cusolver_dn_handle();
-  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnZgeqrf_bufferSize(
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnZgeqrf_bufferSize(
       handle, m, n, reinterpret_cast<cuDoubleComplex*>(a), lda, &lwork));
 
   DenseTensor workspace = DenseTensor();
@@ -676,7 +676,7 @@ void BatchedGeqrf<GPUContext, phi::complex128>(const GPUContext& dev_ctx,
     phi::complex128* a_working_ptr = &a[i * a_stride];
     phi::complex128* tau_working_ptr = &tau[i * tau_stride];
     // compute geqrf
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnZgeqrf(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnZgeqrf(
         handle,
         m,
         n,
@@ -717,7 +717,7 @@ void BatchedOrgqr<GPUContext, float>(const GPUContext& dev_ctx,
   int lwork = 0;
 
   auto handle = dev_ctx.cusolver_dn_handle();
-  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnSorgqr_bufferSize(
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnSorgqr_bufferSize(
       handle, m, n, k, a, lda, tau, &lwork));
 
   DenseTensor workspace = DenseTensor();
@@ -732,16 +732,16 @@ void BatchedOrgqr<GPUContext, float>(const GPUContext& dev_ctx,
     float* a_working_ptr = &a[i * a_stride];
     float* tau_working_ptr = &tau[i * tau_stride];
     // compute orggr
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnSorgqr(handle,
-                                                              m,
-                                                              n,
-                                                              k,
-                                                              a_working_ptr,
-                                                              lda,
-                                                              tau_working_ptr,
-                                                              workspace_ptr,
-                                                              lwork,
-                                                              info_d));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnSorgqr(handle,
+                                                         m,
+                                                         n,
+                                                         k,
+                                                         a_working_ptr,
+                                                         lda,
+                                                         tau_working_ptr,
+                                                         workspace_ptr,
+                                                         lwork,
+                                                         info_d));
     // Do we need synchronized here?
     // check the error info
     int info_h;
@@ -773,7 +773,7 @@ void BatchedOrgqr<GPUContext, double>(const GPUContext& dev_ctx,
   int lwork = 0;
 
   auto handle = dev_ctx.cusolver_dn_handle();
-  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnDorgqr_bufferSize(
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnDorgqr_bufferSize(
       handle, m, n, k, a, lda, tau, &lwork));
 
   DenseTensor workspace = DenseTensor();
@@ -788,16 +788,16 @@ void BatchedOrgqr<GPUContext, double>(const GPUContext& dev_ctx,
     double* a_working_ptr = &a[i * a_stride];
     double* tau_working_ptr = &tau[i * tau_stride];
     // compute orggr
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnDorgqr(handle,
-                                                              m,
-                                                              n,
-                                                              k,
-                                                              a_working_ptr,
-                                                              lda,
-                                                              tau_working_ptr,
-                                                              workspace_ptr,
-                                                              lwork,
-                                                              info_d));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnDorgqr(handle,
+                                                         m,
+                                                         n,
+                                                         k,
+                                                         a_working_ptr,
+                                                         lda,
+                                                         tau_working_ptr,
+                                                         workspace_ptr,
+                                                         lwork,
+                                                         info_d));
     // Do we need synchronized here?
     // check the error info
     int info_h;
@@ -829,15 +829,15 @@ void BatchedOrgqr<GPUContext, phi::complex64>(const GPUContext& dev_ctx,
   int lwork = 0;
 
   auto handle = dev_ctx.cusolver_dn_handle();
-  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnCungqr_bufferSize(
-      handle,
-      m,
-      n,
-      k,
-      reinterpret_cast<cuComplex*>(a),
-      lda,
-      reinterpret_cast<cuComplex*>(tau),
-      &lwork));
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      dynload::cusolverDnCungqr_bufferSize(handle,
+                                           m,
+                                           n,
+                                           k,
+                                           reinterpret_cast<cuComplex*>(a),
+                                           lda,
+                                           reinterpret_cast<cuComplex*>(tau),
+                                           &lwork));
 
   DenseTensor workspace = DenseTensor();
   workspace.Resize(make_ddim({lwork}));
@@ -852,17 +852,17 @@ void BatchedOrgqr<GPUContext, phi::complex64>(const GPUContext& dev_ctx,
     phi::complex64* a_working_ptr = &a[i * a_stride];
     phi::complex64* tau_working_ptr = &tau[i * tau_stride];
     // compute orggr
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnCungqr(
-        handle,
-        m,
-        n,
-        k,
-        reinterpret_cast<cuComplex*>(a_working_ptr),
-        lda,
-        reinterpret_cast<cuComplex*>(tau_working_ptr),
-        reinterpret_cast<cuComplex*>(workspace_ptr),
-        lwork,
-        info_d));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        dynload::cusolverDnCungqr(handle,
+                                  m,
+                                  n,
+                                  k,
+                                  reinterpret_cast<cuComplex*>(a_working_ptr),
+                                  lda,
+                                  reinterpret_cast<cuComplex*>(tau_working_ptr),
+                                  reinterpret_cast<cuComplex*>(workspace_ptr),
+                                  lwork,
+                                  info_d));
     // Do we need synchronized here?
     // check the error info
     int info_h;
@@ -894,7 +894,7 @@ void BatchedOrgqr<GPUContext, phi::complex128>(const GPUContext& dev_ctx,
   int lwork = 0;
 
   auto handle = dev_ctx.cusolver_dn_handle();
-  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnZungqr_bufferSize(
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnZungqr_bufferSize(
       handle,
       m,
       n,
@@ -917,7 +917,7 @@ void BatchedOrgqr<GPUContext, phi::complex128>(const GPUContext& dev_ctx,
     phi::complex128* a_working_ptr = &a[i * a_stride];
     phi::complex128* tau_working_ptr = &tau[i * tau_stride];
     // compute orggr
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnZungqr(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnZungqr(
         handle,
         m,
         n,
