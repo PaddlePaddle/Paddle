@@ -54,6 +54,7 @@ def _fully_shard_manual_parallel(
     mp_policy,
     offload_policy,
     ignored_params,
+    enable_tensor_fusion_and_overlap,
 ):
     return FullyShard(module)
 
@@ -66,8 +67,13 @@ def _fully_shard_auto_parallel(
     mp_policy,
     offload_policy,
     ignored_params,
+    enable_tensor_fusion_and_overlap,
 ):
-    FullyShardAuto(module, mesh)
+    FullyShardAuto(
+        module,
+        mesh,
+        enable_tensor_fusion_and_overlap=enable_tensor_fusion_and_overlap,
+    )
     return module
 
 
@@ -81,6 +87,7 @@ def fully_shard(
     mp_policy: MixedPrecisionPolicy | None = None,
     offload_policy: OffloadPolicy | None = None,
     ignored_params: Iterable[paddle.Tensor] | None = None,
+    enable_tensor_fusion_and_overlap: bool = True,
 ) -> paddle.nn.Layer:
     """
     Apply fully sharded data parallel (FSDP) to the given module.
@@ -106,6 +113,11 @@ def fully_shard(
             If None, creates a default OffloadPolicy. Defaults to None.
         ignored_params (Iterable[paddle.Tensor] | None, optional): Parameters that should not be sharded.
             These parameters will be kept in full precision and not distributed. Defaults to None.
+        enable_tensor_fusion_and_overlap (bool, optional): Whether to enable tensor fusion and
+            communication/computation overlap optimization. When True, parameters are fused into
+            contiguous buffers for more efficient communication and memory access, and enables
+            prefetching and asynchronous communication to overlap with computation for better
+            performance. Defaults to True.
 
     Returns:
         module: A wrapper module that applies FSDP to the input module.
@@ -147,6 +159,7 @@ def fully_shard(
         mp_policy,
         offload_policy,
         ignored_params_set,
+        enable_tensor_fusion_and_overlap,
     )
 
     if in_auto_parallel_mode():
