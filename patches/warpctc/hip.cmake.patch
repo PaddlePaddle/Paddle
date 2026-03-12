@@ -1,17 +1,12 @@
 --- a/cmake/hip.cmake
 +++ b/cmake/hip.cmake
-@@ -64,8 +64,14 @@ set(HIP_CLANG_FLAGS ${HIP_CXX_FLAGS})
- # host linker to link.
- list(APPEND HIP_HCC_FLAGS -fno-gpu-rdc)
- list(APPEND HIP_HCC_FLAGS --amdgpu-target=gfx906)
+@@ -66,0 +67,4 @@
 +list(APPEND HIP_HCC_FLAGS --amdgpu-target=gfx926)
 +list(APPEND HIP_HCC_FLAGS --amdgpu-target=gfx928)
 +list(APPEND HIP_HCC_FLAGS --amdgpu-target=gfx936)
- list(APPEND HIP_CLANG_FLAGS -fno-gpu-rdc)
- list(APPEND HIP_CLANG_FLAGS --amdgpu-target=gfx906)
++list(APPEND HIP_HCC_FLAGS --amdgpu-target=gfx938)
+@@ -68,0 +74,4 @@
 +list(APPEND HIP_CLANG_FLAGS --amdgpu-target=gfx926)
 +list(APPEND HIP_CLANG_FLAGS --amdgpu-target=gfx928)
 +list(APPEND HIP_CLANG_FLAGS --amdgpu-target=gfx936)
-
-
- if(HIP_COMPILER STREQUAL clang)
++list(APPEND HIP_CLANG_FLAGS --amdgpu-target=gfx938)

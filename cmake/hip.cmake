@@ -163,11 +163,13 @@ list(APPEND HIP_HCC_FLAGS --offload-arch=gfx906) # Z100 (ZIFANG)
 list(APPEND HIP_HCC_FLAGS --offload-arch=gfx926) # K100 (KONGING)
 list(APPEND HIP_HCC_FLAGS --offload-arch=gfx928) # K100_AI (KONGING_AI)
 list(APPEND HIP_HCC_FLAGS --offload-arch=gfx936) # BW1000 (BOWEN)
+list(APPEND HIP_HCC_FLAGS --offload-arch=gfx938) # NMZ
 list(APPEND HIP_CLANG_FLAGS -fno-gpu-rdc)
 list(APPEND HIP_CLANG_FLAGS --offload-arch=gfx906) # Z100 (ZIFANG)
 list(APPEND HIP_CLANG_FLAGS --offload-arch=gfx926) # K100 (KONGING)
 list(APPEND HIP_CLANG_FLAGS --offload-arch=gfx928) # K100_AI (KONGING_AI)
 list(APPEND HIP_CLANG_FLAGS --offload-arch=gfx936) # BW1000 (BOWEN)
+list(APPEND HIP_CLANG_FLAGS --offload-arch=gfx938) # NMZ
 
 if(HIP_COMPILER STREQUAL clang)
   set(hip_library_name amdhip64)
