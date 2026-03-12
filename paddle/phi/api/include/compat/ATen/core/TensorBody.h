@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include <ATen/core/TensorBase.h>
 #include <ATen/TensorIndexing.h>
+#include <ATen/core/TensorBase.h>
 #include <c10/core/Backend.h>
 #include <c10/core/Scalar.h>
 #include <c10/util/OptionalArrayRef.h>
