@@ -13,6 +13,11 @@
 // limitations under the License.
 #pragma once
 
+#include <string>
+#include <unordered_set>
+#include <vector>
+
+#include "paddle/common/errors.h"
 #include "paddle/phi/common/data_type.h"
 namespace phi {
 
@@ -91,6 +96,7 @@ static std::unordered_set<std::string> support_promotion_ops = {
     "pow",       "elementwise_pow", "equal",           "not_equal",
     "less_than", "less_equal",      "greater_than",    "greater_equal",
     "copysign",  "cross",           "trunc_divide",    "equal_all",
+    "minimum",
 };
 
 static std::unordered_set<std::string> support_autocast_ops = {
@@ -140,26 +146,32 @@ inline bool is_common_dtype_for_scalar(DataType x, DataType y) {
   }
 }
 
+inline bool IsTrueDividePromotionOp(const std::string& op_name) {
+  // Keep all true-div aliases on the same promotion rule so eager/generated/PIR
+  // paths do not drift on integral inputs.
+  return op_name == "divide" || op_name == "divide_" ||
+         op_name == "elementwise_div" || op_name == "truediv";
+}
+
 inline phi::DataType GetPromoteDtype(
     const std::string& op_name,
     const DataType& x_dtype,
     const DataType& y_dtype,
     const std::vector<int64_t>& x_shape = std::vector<int64_t>(),
     const std::vector<int64_t>& y_shape = std::vector<int64_t>()) {
-  if (op_name == "divide" || op_name == "divide_" ||
-      op_name == "elementwise_div") {
+  if (IsTrueDividePromotionOp(op_name)) {
     if (is_support_int(x_dtype) && is_support_int(y_dtype)) {
       return DataType::FLOAT32;
     }
   }
   // Tensor + 0-d Tensor
   if (support_promotion_ops.find(op_name) != support_promotion_ops.end() &&
-      (x_shape.size() == 0 || y_shape.size() == 0)) {
+      (x_shape.empty() || y_shape.empty())) {
     if (!is_common_dtype_for_scalar(x_dtype, y_dtype) ||
-        (x_shape.size() == 0 && y_shape.size() == 0)) {
+        (x_shape.empty() && y_shape.empty())) {
       return phi::promoteTypes(x_dtype, y_dtype);
     } else {
-      if (x_shape.size() == 0) {
+      if (x_shape.empty()) {
         return y_dtype;
       } else {
         return x_dtype;
@@ -173,7 +185,7 @@ inline phi::DataType GetPromoteDtype(
 inline phi::DataType GetPromoteDtypeOldIr(const std::string& op_name,
                                           const DataType x,
                                           const DataType y) {
-  if (op_name == "divide" || op_name == "divide_") {
+  if (IsTrueDividePromotionOp(op_name)) {
     // only T+S can run into this branch
     if (is_support_int(x) && is_support_int(y)) {
       return DataType::FLOAT32;
@@ -189,7 +201,7 @@ inline bool NeedTypePromotion(
     const std::vector<int64_t>& x_shape = std::vector<int64_t>(),
     const std::vector<int64_t>& y_shape = std::vector<int64_t>()) {
   if (x_dtype == y_dtype) {
-    if (op_name == "divide" || op_name == "divide_") {
+    if (IsTrueDividePromotionOp(op_name)) {
       if (is_support_int(x_dtype) && is_support_int(y_dtype)) {
         return true;
       }
@@ -198,7 +210,7 @@ inline bool NeedTypePromotion(
   }
   // Tensor + 0-d Tensor
   if (support_promotion_ops.find(op_name) != support_promotion_ops.end() &&
-      (x_shape.size() == 0 || y_shape.size() == 0)) {
+      (x_shape.empty() || y_shape.empty())) {
     return true;
   }
   // Tensor + Tensor type promotion only support calculations between
@@ -232,6 +244,14 @@ inline bool NeedTypePromotion(
 inline bool NeedTypePromotionOldIr(const std::string& op_name,
                                    const DataType x,
                                    const DataType y) {
+  if (x == y) {
+    if (IsTrueDividePromotionOp(op_name)) {
+      if (is_support_int(x) && is_support_int(y)) {
+        return true;
+      }
+    }
+    return false;
+  }
   // Tensor + Tensor type promotion only support calculations between
   // floating-point numbers and between complex and real numbers.
   if (x != y) {

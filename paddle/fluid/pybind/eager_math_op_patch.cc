@@ -216,40 +216,35 @@ Tensor CallScalarFunction(const Tensor& self_tensor,
   return ret;
 }
 
-void TypePromotionForZeroDimTensor(std::string func,
-                                   Tensor& self_tensor,  // NOLINT
-                                   Tensor& other_tensor  // NOLINT
+void TypePromotionForTensorOperands(const std::string& op_name,
+                                    Tensor& self_tensor,  // NOLINT
+                                    Tensor& other_tensor  // NOLINT
 ) {
-  if ((self_tensor.shape().size() == 0 || other_tensor.shape().size() == 0) &&
-      self_tensor.dtype() != other_tensor.dtype()) {
-    VLOG(5) << "got 0-d tensor and need to do type promotion, x: "
-            << self_tensor.dtype() << " y: " << other_tensor.dtype();
+  if (!phi::NeedTypePromotion(op_name,
+                              self_tensor.dtype(),
+                              other_tensor.dtype(),
+                              self_tensor.shape(),
+                              other_tensor.shape())) {
+    return;
+  }
 
-    DataType promote_type;
-    // different major types or both 0-d tensor follow with T+T rule.
-    if (!is_common_dtype_for_scalar(self_tensor.dtype(),
-                                    other_tensor.dtype()) ||
-        (self_tensor.shape().size() == 0 && other_tensor.shape().size() == 0)) {
-      promote_type =
-          GetPromoteDtype(func, self_tensor.dtype(), other_tensor.dtype());
-    } else {
-      // common major types follow with tensor: int32(tensor) + int64(scalar)
-      // = int32
-      if (self_tensor.shape().size() == 0) {
-        promote_type = other_tensor.dtype();
-      } else {
-        promote_type = self_tensor.dtype();
-      }
-    }
-    SetPythonStack();
-    if (self_tensor.dtype() != promote_type) {
-      eager_gil_scoped_release guard;
-      self_tensor = cast_ad_func(self_tensor, promote_type);
-    }
-    if (other_tensor.dtype() != promote_type) {
-      eager_gil_scoped_release guard;
-      other_tensor = cast_ad_func(other_tensor, promote_type);
-    }
+  VLOG(5) << "Need to do type promotion for eager tensor method, op: "
+          << op_name << ", x: " << self_tensor.dtype()
+          << ", y: " << other_tensor.dtype();
+
+  auto promote_type = phi::GetPromoteDtype(op_name,
+                                           self_tensor.dtype(),
+                                           other_tensor.dtype(),
+                                           self_tensor.shape(),
+                                           other_tensor.shape());
+  SetPythonStack();
+  if (self_tensor.dtype() != promote_type) {
+    eager_gil_scoped_release guard;
+    self_tensor = cast_ad_func(self_tensor, promote_type);
+  }
+  if (other_tensor.dtype() != promote_type) {
+    eager_gil_scoped_release guard;
+    other_tensor = cast_ad_func(other_tensor, promote_type);
   }
 }
 
@@ -356,6 +351,8 @@ static PyObject* tensor__add__method(TensorObject* self,
 
   // 3. calculation
   VLOG(6) << "Calling add_ad_func in tensor__add__method";
+
+  TypePromotionForTensorOperands("add", self_tensor, other_tensor);
 
   {
     eager_gil_scoped_release guard;
@@ -469,6 +466,7 @@ static PyObject* tensor__sub__method(TensorObject* self,
 
   // 3. calculation
   VLOG(6) << "Calling subtract_ad_func in tensor__sub__method";
+  TypePromotionForTensorOperands("subtract", self_tensor, other_tensor);
   {
     eager_gil_scoped_release guard;
     ret = subtract_ad_func(self_tensor, other_tensor);
@@ -564,6 +562,7 @@ static PyObject* tensor__rsub__method(TensorObject* self,
 
   // 3. calculation
   VLOG(6) << "Calling subtract_ad_func in tensor__rsub__method";
+  TypePromotionForTensorOperands("subtract", self_tensor, other_tensor);
   {
     eager_gil_scoped_release guard;
     ret = subtract_ad_func(other_tensor, self_tensor);
@@ -696,6 +695,7 @@ static PyObject* tensor__mul__method(TensorObject* self,
 
   // 3. calculation
   VLOG(6) << "Calling multiply_ad_func in tensor__mul__method";
+  TypePromotionForTensorOperands("multiply", self_tensor, other_tensor);
   {
     eager_gil_scoped_release guard;
     ret = multiply_ad_func(self_tensor, other_tensor);
@@ -808,6 +808,7 @@ static PyObject* tensor__div__method(TensorObject* self,
 
   // 3. calculation
   VLOG(6) << "Calling divide_ad_func in tensor__div__method";
+  TypePromotionForTensorOperands("divide", self_tensor, other_tensor);
   {
     eager_gil_scoped_release guard;
     ret = divide_ad_func(self_tensor, other_tensor);
@@ -897,6 +898,7 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
 
   // 3. calculation
   VLOG(6) << "Calling divide_ad_func in tensor__rdiv__method";
+  TypePromotionForTensorOperands("divide", self_tensor, other_tensor);
   {
     eager_gil_scoped_release guard;
     ret = divide_ad_func(other_tensor, self_tensor);
