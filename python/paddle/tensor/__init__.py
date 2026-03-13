@@ -937,6 +937,7 @@ tensor_method_func = [
     'resize_',
     'argwhere',
     'softmax',
+    'log_softmax',
     'eq',
     'ne',
     'lt',

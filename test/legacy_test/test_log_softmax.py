@@ -390,6 +390,38 @@ class TestLogSoftmaxParamAlias(unittest.TestCase):
             F.log_softmax(x, axis=0, dim=1)
 
 
+class TestLogSoftmaxOutParam(unittest.TestCase):
+    """Test out parameter for F.log_softmax."""
+
+    def setUp(self):
+        paddle.disable_static()
+        self.x_np = np.random.uniform(0.1, 1.0, [3, 4]).astype('float32')
+
+    def tearDown(self):
+        paddle.enable_static()
+
+    def test_out_param(self):
+        x = paddle.to_tensor(self.x_np)
+        expected = F.log_softmax(x, axis=-1)
+        out = paddle.empty_like(x)
+        result = F.log_softmax(x, axis=-1, out=out)
+        np.testing.assert_allclose(out.numpy(), expected.numpy(), rtol=1e-6)
+        np.testing.assert_allclose(result.numpy(), expected.numpy(), rtol=1e-6)
+
+    def test_out_param_with_dim_alias(self):
+        x = paddle.to_tensor(self.x_np)
+        expected = F.log_softmax(x, axis=0)
+        out = paddle.empty_like(x)
+        F.log_softmax(x, dim=0, out=out)
+        np.testing.assert_allclose(out.numpy(), expected.numpy(), rtol=1e-6)
+
+    def test_out_param_with_dtype(self):
+        x = paddle.to_tensor(self.x_np)
+        out = paddle.empty([3, 4], dtype='float64')
+        F.log_softmax(x, axis=-1, dtype='float64', out=out)
+        self.assertEqual(out.dtype, paddle.float64)
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()
