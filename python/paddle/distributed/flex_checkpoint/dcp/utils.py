@@ -743,6 +743,9 @@ def check_resumable_locally(
 
 
 def need_transpose(postprocess_list):
+    if postprocess_list is None:
+        return False
+
     for pp in postprocess_list:
         if "[" in pp:
             return True
