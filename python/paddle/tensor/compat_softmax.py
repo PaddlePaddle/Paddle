@@ -258,4 +258,4 @@ def log_softmax(
 
     if in_dynamic_or_pir_mode():
         outs_cast = input if dtype is None else _C_ops.cast(input, dtype)
-        return _C_ops.log_softmax(outs_cast, dim)
+        return _C_ops.log_softmax(outs_cast, dim, out=out)
