@@ -17,6 +17,9 @@
 #include <c10/macros/Macros.h>
 #include <c10/util/Exception.h>
 #include <array>
+#ifdef _MSC_VER
+#include <intrin.h>
+#endif
 #include <cstddef>
 #include <cstdint>
 #include <initializer_list>
@@ -209,7 +212,13 @@ class DispatchKeySet final {
   uint8_t indexOfHighestBit() const {
     // Use compiler built-in instead of llvm::countLeadingZeros.
     if (repr_ == 0) return 0;
+#if defined(_MSC_VER)
+    unsigned long index;  // NOLINT(runtime/int)
+    _BitScanReverse64(&index, repr_);
+    return static_cast<uint8_t>(index + 1);
+#else
     return static_cast<uint8_t>(64 - __builtin_clzll(repr_));
+#endif
   }
 
 #if defined(C10_MOBILE_TRIM_DISPATCH_KEYS)

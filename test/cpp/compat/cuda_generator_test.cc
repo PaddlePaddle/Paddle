@@ -170,6 +170,30 @@ TEST(CUDAGeneratorTest, ClonePreservesState) {
   ASSERT_EQ(cloned_impl->current_seed(), 888u);
 }
 
+// Verify that CUDAGeneratorImpl::device_type() returns kCUDA.
+TEST(CUDAGeneratorTest, DeviceTypeStaticMethod) {
+  ASSERT_EQ(at::CUDAGeneratorImpl::device_type(), at::kCUDA);
+}
+
+// Verify that constructing CUDAGeneratorImpl with default device_index (-1)
+// uses the current GPU device.
+TEST(CUDAGeneratorTest, DefaultDeviceIndex) {
+  at::Generator gen = at::cuda::detail::createCUDAGenerator(-1);
+  ASSERT_TRUE(gen.defined());
+  ASSERT_EQ(gen.device().type(), at::kCUDA);
+  // device index should be the current device (>= 0).
+  ASSERT_GE(gen.device().index(), 0);
+}
+
+// Verify that getDefaultCUDAGenerator with default device (-1) resolves to
+// the current GPU device.
+TEST(CUDAGeneratorTest, GetDefaultCUDAGeneratorWithDefaultDevice) {
+  const at::Generator& gen = at::cuda::detail::getDefaultCUDAGenerator(-1);
+  ASSERT_TRUE(gen.defined());
+  ASSERT_EQ(gen.device().type(), at::kCUDA);
+  ASSERT_GE(gen.device().index(), 0);
+}
+
 // graphsafe_set_state / graphsafe_get_state round-trip.
 // NOTE: createCUDAGenerator on the same device shares the same underlying
 // phi::DefaultCUDAGenerator, so set_current_seed on one affects the other.
