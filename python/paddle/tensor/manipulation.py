@@ -7506,6 +7506,10 @@ def put_along_axis(
             "`indices` and `arr` must have the same number of dimensions!"
         )
     axis = non_negative_axis(arr, axis)
+    # Early return when the index tensor is empty (has a 0-size dimension).
+    # Nothing to scatter; the output is just a copy of the input.
+    if in_dynamic_mode() and 0 in indices.shape:
+        return arr.clone()
     if broadcast:
         if has_dynamic_shape(arr.shape) or has_dynamic_shape(indices.shape):
             arr_shape = paddle.shape(arr)
@@ -7625,6 +7629,10 @@ def put_along_axis_(
             "`indices` and `arr` must have the same number of dimensions!"
         )
     axis = non_negative_axis(arr, axis)
+    # Early return when the index tensor is empty (has a 0-size dimension).
+    # Nothing to scatter; return the original tensor unchanged.
+    if 0 in indices.shape:
+        return arr
     if broadcast:
         broadcast_shape = infer_broadcast_shape(arr, indices, axis)
         values = (

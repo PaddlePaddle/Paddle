@@ -35,6 +35,24 @@ void PutAlongAxisGradKernel(const Context& dev_ctx,
                             bool include_self,
                             DenseTensor* x_grad,
                             DenseTensor* value_grad) {
+  // Early return when x or index is empty (has a 0-size dimension).
+  // When index is empty, no scatter was performed in forward, so
+  // x_grad = out_grad and value_grad is all zeros (with 0-size shape).
+  if (x.numel() == 0 || index.numel() == 0) {
+    if (x_grad) {
+      dev_ctx.template Alloc<T>(x_grad);
+      if (x.numel() == 0) {
+        return;
+      }
+      Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    }
+    if (value_grad) {
+      value_grad->Resize(index.dims());
+      dev_ctx.template Alloc<T>(value_grad);
+      // value_grad has 0-size (since index has 0-size), no memset needed
+    }
+    return;
+  }
   const auto& index_type = index.dtype();
   if (x_grad) {
     Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
