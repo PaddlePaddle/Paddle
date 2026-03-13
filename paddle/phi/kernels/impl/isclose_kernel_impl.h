@@ -27,7 +27,6 @@
 #include "paddle/phi/common/memory_utils.h"
 
 namespace phi {
-using Tensor = DenseTensor;
 template <typename Context, typename T>
 struct GetTensorValue {
   T operator()(const Context& dev_ctx, const DenseTensor& tensor) const;

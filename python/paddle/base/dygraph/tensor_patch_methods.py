@@ -136,6 +136,7 @@ def monkey_patch_tensor():
             '__cuda_array_interface__',
             'itemsize',
             'is_cuda',
+            'is_cpu',
         ]
         param_keys = ['stop_gradient', 'trainable']
         if isinstance(self, EagerParamBase):
@@ -1193,6 +1194,10 @@ def monkey_patch_tensor():
     def is_cuda(self: Tensor) -> bool:
         return self.place.is_gpu_place()
 
+    @property
+    def is_cpu(self: Tensor) -> bool:
+        return self.place.is_cpu_place()
+
     @framework.dygraph_only
     def pin_memory(self: Tensor, blocking: bool = True) -> Tensor:
         if (
@@ -1637,6 +1642,7 @@ def monkey_patch_tensor():
         ("clear_grad", clear_grad),
         ("inplace_version", inplace_version),
         ("is_cuda", is_cuda),
+        ("is_cpu", is_cpu),
         ("gradient", gradient),
         ("apply_", apply_),
         ("apply", apply),
