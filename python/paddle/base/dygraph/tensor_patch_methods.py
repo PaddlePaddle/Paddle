@@ -33,6 +33,7 @@ from paddle.base.data_feeder import (
 from paddle.base.libpaddle import Place
 from paddle.profiler.utils import in_profiler_mode
 from paddle.utils import deprecated
+from paddle.utils.decorator_utils import tensor_cuda_decorator
 from paddle.utils.dlpack import DLDeviceType
 from paddle.utils.download import check_and_create_dir
 
@@ -1157,9 +1158,23 @@ def monkey_patch_tensor():
             res.persistable = self.persistable
             return res
 
-    @framework.dygraph_only
+    @overload
     def cuda(
-        self: Tensor, device_id: int | None = None, blocking: bool = True
+        self: Tensor, device_id: int | str | None = None, blocking: bool = True
+    ): ...
+
+    @overload
+    def cuda(
+        self: Tensor,
+        device: int | str | None = None,
+        non_blocking: bool = False,
+        memory_format=None,
+    ): ...
+
+    @framework.dygraph_only
+    @tensor_cuda_decorator()
+    def cuda(
+        self: Tensor, device_id: int | str | None = None, blocking: bool = True
     ) -> Tensor:
         device_type = paddle.device.get_all_device_type()
         if len(
@@ -1179,8 +1194,11 @@ def monkey_patch_tensor():
                 res_place = res_place_class(0)
         elif isinstance(device_id, int):
             res_place = res_place_class(device_id)
+        elif isinstance(device_id, str):
+            device = paddle.device(device_id)
+            res_place = device._to_place()
         else:
-            raise ValueError("device_id must be int|None")
+            raise ValueError("device_id must be int|str|None")
 
         if self.place._equals(res_place):
             return self

@@ -994,3 +994,51 @@ def index_fill_decorator() -> Callable[
         return wrapper
 
     return decorator
+
+
+def tensor_cuda_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    """
+    Usage Example:
+    PyTorch: Tensor.cuda(device: int | str | None, non_blocking: bool = False, memory_format)
+    Paddle: Tensor.cuda(device_id: int | None = None, blocking: bool = True)
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            if "device" in kwargs:
+                if "device_id" not in kwargs:
+                    kwargs["device_id"] = kwargs.pop("device")
+                else:
+                    raise ValueError(
+                        "Cannot specify both 'device' and its alias 'device_id'."
+                    )
+
+            if "non_blocking" in kwargs:
+                if "blocking" not in kwargs:
+                    kwargs["blocking"] = not (kwargs.pop("non_blocking"))
+                else:
+                    raise ValueError(
+                        "Cannot specify both 'blocking' and 'non_blocking'."
+                    )
+
+            if len(args) >= 3 and isinstance(args[1], str):
+                # using pytorch signature
+                warnings.warn(
+                    "The API paddle.Tensor.cuda() is using PyTorch-compatible signature, the second positional argument is being interpreted as 'non_blocking'.",
+                    category=Warning,
+                )
+                # args[0] is self
+                if "device_id" not in kwargs:
+                    kwargs["device_id"] = args[1]
+                if "blocking" not in kwargs:
+                    kwargs["blocking"] = not args[2]
+                args = args[:1]
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator

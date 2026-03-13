@@ -96,6 +96,14 @@ class TestEagerTensor(unittest.TestCase):
                     self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
                     y = x.cuda(device_id=0, blocking=False)
                     self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
+                    y = x.cuda("cuda:0")
+                    self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
+                    y = x.cuda(device=0, non_blocking=False)
+                    self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
+                    y = x.cuda(device=0, non_blocking=True, memory_format=None)
+                    self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
+                    y = x.cuda("cuda:0", False, None)
+                    self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
                     with self.assertRaises(ValueError):
                         y = x.cuda("test")
 
