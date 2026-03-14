@@ -16,6 +16,7 @@
 
 #include <ATen/core/Tensor.h>
 #include <c10/core/TensorOptions.h>
+#include <utils/pinned_place.h>
 #include <optional>
 
 #include "paddle/phi/api/include/sparse_api.h"
@@ -31,9 +32,7 @@ inline at::Tensor sparse_coo_tensor(const at::Tensor& indices,
   paddle::Tensor vals = values._PD_GetInner();
   if (options.pinned_memory()) {
     phi::Place base_place = options._PD_GetPlace();
-    phi::Place pinned_place = phi::is_xpu_place(base_place)
-                                  ? phi::Place(phi::XPUPinnedPlace())
-                                  : phi::Place(phi::GPUPinnedPlace());
+    phi::Place pinned_place = compat::_PD_GetCreatePinnedPlace(base_place);
     idx = idx.copy_to(pinned_place, /*blocking=*/true);
     vals = vals.copy_to(pinned_place, /*blocking=*/true);
   }

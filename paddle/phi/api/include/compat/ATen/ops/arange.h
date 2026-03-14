@@ -17,6 +17,7 @@
 #include <ATen/core/Tensor.h>
 #include <ATen/native/RangeUtils.h>
 #include <c10/core/TensorOptions.h>
+#include <utils/pinned_place.h>
 #include <optional>
 
 #include "paddle/phi/api/include/api.h"
@@ -28,9 +29,7 @@ inline at::Tensor arange(const at::Scalar& end,
                          at::TensorOptions options = {}) {
   if (options.pinned_memory()) {
     phi::Place base_place = options._PD_GetPlace();
-    phi::Place pinned_place = phi::is_xpu_place(base_place)
-                                  ? phi::Place(phi::XPUPinnedPlace())
-                                  : phi::Place(phi::GPUPinnedPlace());
+    phi::Place pinned_place = compat::_PD_GetCreatePinnedPlace(base_place);
     auto dense = paddle::experimental::arange(
         paddle::experimental::full({}, 0, phi::DataType::FLOAT64),
         paddle::experimental::full(
@@ -53,29 +52,12 @@ inline at::Tensor arange(const at::Scalar& end,
                          ::std::optional<at::Layout> layout,
                          ::std::optional<at::Device> device,
                          ::std::optional<bool> pin_memory) {
-  if (pin_memory.value_or(false)) {
-    phi::Place base_place =
-        device.has_value() ? device.value()._PD_GetInner() : phi::CPUPlace();
-    phi::Place pinned_place = phi::is_xpu_place(base_place)
-                                  ? phi::Place(phi::XPUPinnedPlace())
-                                  : phi::Place(phi::GPUPinnedPlace());
-    auto dense = paddle::experimental::arange(
-        paddle::experimental::full({}, 0, phi::DataType::FLOAT64),
-        paddle::experimental::full(
-            {}, end.to<double>(), phi::DataType::FLOAT64),
-        paddle::experimental::full({}, 1, phi::DataType::FLOAT64),
-        compat::_PD_AtenScalarTypeToPhiDataType(
-            dtype.value_or(c10::get_default_dtype())),
-        phi::CPUPlace());
-    return dense.copy_to(pinned_place, /*blocking=*/true);
-  }
-  return paddle::experimental::arange(
-      paddle::experimental::full({}, 0, phi::DataType::FLOAT64),
-      paddle::experimental::full({}, end.to<double>(), phi::DataType::FLOAT64),
-      paddle::experimental::full({}, 1, phi::DataType::FLOAT64),
-      compat::_PD_AtenScalarTypeToPhiDataType(
-          dtype.value_or(c10::get_default_dtype())),
-      device.value_or(at::kCPU)._PD_GetInner());
+  auto options = at::TensorOptions()
+                     .dtype(dtype.value_or(c10::get_default_dtype()))
+                     .layout(layout)
+                     .device(device.value_or(at::kCPU))
+                     .pinned_memory(pin_memory);
+  return arange(end, options);
 }
 
 inline at::Tensor arange(const at::Scalar& start,
@@ -83,9 +65,7 @@ inline at::Tensor arange(const at::Scalar& start,
                          at::TensorOptions options = {}) {
   if (options.pinned_memory()) {
     phi::Place base_place = options._PD_GetPlace();
-    phi::Place pinned_place = phi::is_xpu_place(base_place)
-                                  ? phi::Place(phi::XPUPinnedPlace())
-                                  : phi::Place(phi::GPUPinnedPlace());
+    phi::Place pinned_place = compat::_PD_GetCreatePinnedPlace(base_place);
     auto dense = paddle::experimental::arange(
         paddle::experimental::full(
             {}, start.to<double>(), phi::DataType::FLOAT64),
@@ -111,31 +91,12 @@ inline at::Tensor arange(const at::Scalar& start,
                          ::std::optional<at::Layout> layout,
                          ::std::optional<at::Device> device,
                          ::std::optional<bool> pin_memory) {
-  if (pin_memory.value_or(false)) {
-    phi::Place base_place =
-        device.has_value() ? device.value()._PD_GetInner() : phi::CPUPlace();
-    phi::Place pinned_place = phi::is_xpu_place(base_place)
-                                  ? phi::Place(phi::XPUPinnedPlace())
-                                  : phi::Place(phi::GPUPinnedPlace());
-    auto dense = paddle::experimental::arange(
-        paddle::experimental::full(
-            {}, start.to<double>(), phi::DataType::FLOAT64),
-        paddle::experimental::full(
-            {}, end.to<double>(), phi::DataType::FLOAT64),
-        paddle::experimental::full({}, 1, phi::DataType::FLOAT64),
-        compat::_PD_AtenScalarTypeToPhiDataType(
-            dtype.value_or(c10::get_default_dtype())),
-        phi::CPUPlace());
-    return dense.copy_to(pinned_place, /*blocking=*/true);
-  }
-  return paddle::experimental::arange(
-      paddle::experimental::full(
-          {}, start.to<double>(), phi::DataType::FLOAT64),
-      paddle::experimental::full({}, end.to<double>(), phi::DataType::FLOAT64),
-      paddle::experimental::full({}, 1, phi::DataType::FLOAT64),
-      compat::_PD_AtenScalarTypeToPhiDataType(
-          dtype.value_or(c10::get_default_dtype())),
-      device.value_or(at::kCPU)._PD_GetInner());
+  auto options = at::TensorOptions()
+                     .dtype(dtype.value_or(c10::get_default_dtype()))
+                     .layout(layout)
+                     .device(device.value_or(at::kCPU))
+                     .pinned_memory(pin_memory);
+  return arange(start, end, options);
 }
 
 inline at::Tensor arange(const at::Scalar& start,
@@ -146,9 +107,7 @@ inline at::Tensor arange(const at::Scalar& start,
   at::native::arange_check_bounds(start, end, step);
   if (options.pinned_memory()) {
     phi::Place base_place = options._PD_GetPlace();
-    phi::Place pinned_place = phi::is_xpu_place(base_place)
-                                  ? phi::Place(phi::XPUPinnedPlace())
-                                  : phi::Place(phi::GPUPinnedPlace());
+    phi::Place pinned_place = compat::_PD_GetCreatePinnedPlace(base_place);
     auto dense = paddle::experimental::arange(
         paddle::experimental::full(
             {}, start.to<double>(), phi::DataType::FLOAT64),
@@ -176,34 +135,12 @@ inline at::Tensor arange(const at::Scalar& start,
                          ::std::optional<at::Layout> layout,
                          ::std::optional<at::Device> device,
                          ::std::optional<bool> pin_memory) {
-  // Match PyTorch: step must be non-zero and consistent with (end - start).
-  at::native::arange_check_bounds(start, end, step);
-  if (pin_memory.value_or(false)) {
-    phi::Place base_place =
-        device.has_value() ? device.value()._PD_GetInner() : phi::CPUPlace();
-    phi::Place pinned_place = phi::is_xpu_place(base_place)
-                                  ? phi::Place(phi::XPUPinnedPlace())
-                                  : phi::Place(phi::GPUPinnedPlace());
-    auto dense = paddle::experimental::arange(
-        paddle::experimental::full(
-            {}, start.to<double>(), phi::DataType::FLOAT64),
-        paddle::experimental::full(
-            {}, end.to<double>(), phi::DataType::FLOAT64),
-        paddle::experimental::full(
-            {}, step.to<double>(), phi::DataType::FLOAT64),
-        compat::_PD_AtenScalarTypeToPhiDataType(
-            dtype.value_or(c10::get_default_dtype())),
-        phi::CPUPlace());
-    return dense.copy_to(pinned_place, /*blocking=*/true);
-  }
-  return paddle::experimental::arange(
-      paddle::experimental::full(
-          {}, start.to<double>(), phi::DataType::FLOAT64),
-      paddle::experimental::full({}, end.to<double>(), phi::DataType::FLOAT64),
-      paddle::experimental::full({}, step.to<double>(), phi::DataType::FLOAT64),
-      compat::_PD_AtenScalarTypeToPhiDataType(
-          dtype.value_or(c10::get_default_dtype())),
-      device.value_or(at::kCPU)._PD_GetInner());
+  auto options = at::TensorOptions()
+                     .dtype(dtype.value_or(c10::get_default_dtype()))
+                     .layout(layout)
+                     .device(device.value_or(at::kCPU))
+                     .pinned_memory(pin_memory);
+  return arange(start, end, step, options);
 }
 
 }  // namespace at

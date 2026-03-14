@@ -17,6 +17,7 @@
 #include <ATen/core/Tensor.h>
 #include <c10/core/TensorOptions.h>
 #include <utils/dense_sparse_conversion.h>
+#include <utils/pinned_place.h>
 
 #include <optional>
 #include <string_view>
@@ -55,9 +56,7 @@ inline at::Tensor zeros_like(
     auto dense_cpu = paddle::experimental::zeros_like(
         base, compat::_PD_AtenScalarTypeToPhiDataType(dtype), phi::CPUPlace());
     phi::Place base_place = options._PD_GetPlace();
-    phi::Place pinned_place = phi::is_xpu_place(base_place)
-                                  ? phi::Place(phi::XPUPinnedPlace())
-                                  : phi::Place(phi::GPUPinnedPlace());
+    phi::Place pinned_place = compat::_PD_GetCreatePinnedPlace(base_place);
     dense = dense_cpu.copy_to(pinned_place, /*blocking=*/true);
   } else {
     dense = paddle::experimental::zeros_like(

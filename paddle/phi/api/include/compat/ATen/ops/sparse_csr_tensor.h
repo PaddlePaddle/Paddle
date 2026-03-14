@@ -16,6 +16,7 @@
 
 #include <ATen/core/Tensor.h>
 #include <c10/core/TensorOptions.h>
+#include <utils/pinned_place.h>
 #include <optional>
 
 #include "paddle/phi/api/include/tensor.h"
@@ -36,9 +37,7 @@ inline at::Tensor sparse_csr_tensor(const at::Tensor& crow_indices,
 
   if (options.pinned_memory()) {
     phi::Place base_place = options._PD_GetPlace();
-    phi::Place pinned_place = phi::is_xpu_place(base_place)
-                                  ? phi::Place(phi::XPUPinnedPlace())
-                                  : phi::Place(phi::GPUPinnedPlace());
+    phi::Place pinned_place = compat::_PD_GetCreatePinnedPlace(base_place);
     crows = crows.copy_to(pinned_place, /*blocking=*/true);
     cols = cols.copy_to(pinned_place, /*blocking=*/true);
     vals = vals.copy_to(pinned_place, /*blocking=*/true);

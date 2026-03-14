@@ -56,28 +56,12 @@ inline at::Tensor empty(at::IntArrayRef size,
   PD_CHECK(!(memory_format.has_value() &&
              memory_format.value() != c10::MemoryFormat::Contiguous),
            "`MemoryFormat` other than Contiguous is not supported now.");
-  if (pin_memory.value_or(false)) {
-    phi::Place base_place =
-        device.has_value() ? device.value()._PD_GetInner() : phi::CPUPlace();
-    phi::Place pinned_place = phi::is_xpu_place(base_place)
-                                  ? phi::Place(phi::XPUPinnedPlace())
-                                  : phi::Place(phi::GPUPinnedPlace());
-    auto dense = paddle::experimental::empty(
-        size._PD_ToPaddleIntArray(),
-        compat::_PD_AtenScalarTypeToPhiDataType(
-            dtype.value_or(c10::get_default_dtype())),
-        phi::CPUPlace());
-    dense = dense.copy_to(pinned_place, /*blocking=*/true);
-    return compat::_PD_ConvertToSparseIfNeeded(dense,
-                                               layout.value_or(c10::kStrided));
-  }
-  auto dense =
-      paddle::experimental::empty(size._PD_ToPaddleIntArray(),
-                                  compat::_PD_AtenScalarTypeToPhiDataType(
-                                      dtype.value_or(c10::get_default_dtype())),
-                                  device.value_or(at::kCPU)._PD_GetInner());
-  return compat::_PD_ConvertToSparseIfNeeded(dense,
-                                             layout.value_or(c10::kStrided));
+  auto options = at::TensorOptions()
+                     .dtype(dtype.value_or(c10::get_default_dtype()))
+                     .layout(layout)
+                     .device(device.value_or(at::kCPU))
+                     .pinned_memory(pin_memory);
+  return empty(size, options, memory_format);
 }
 
 #define empty_symint empty  // SymIntArrayRef is same as IntArrayRef
