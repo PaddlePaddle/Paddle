@@ -62,7 +62,7 @@ class intrusive_ptr {
 
   explicit operator bool() const noexcept { return ptr_ != nullptr; }
 
-  int64_t use_count() const noexcept { return ptr_.use_count(); }
+  uint32_t use_count() const noexcept { return ptr_.use_count(); }
 
   bool defined() const noexcept { return ptr_ != nullptr; }
 
