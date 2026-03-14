@@ -592,5 +592,179 @@ class TestIsRealAPICompatibility(unittest.TestCase):
             np.testing.assert_array_equal(ref_out, out)
 
 
+class TestLayerToAPI(unittest.TestCase):
+    """Test paddle.nn.Layer.to alignment with torch.nn.Module.to."""
+
+    def setUp(self):
+        paddle.disable_static()
+
+    def tearDown(self):
+        paddle.enable_static()
+
+    def _make_model(self):
+        """Create a model with float params and an int buffer."""
+
+        class Model(paddle.nn.Layer):
+            def __init__(self):
+                super().__init__()
+                self.linear = paddle.nn.Linear(3, 2)
+                self.register_buffer(
+                    'int_buf', paddle.to_tensor([1, 2, 3], dtype='int32')
+                )
+
+            def forward(self, x):
+                return self.linear(x)
+
+        return Model()
+
+    # ---- Positional dtype ----
+
+    def test_positional_paddle_dtype(self):
+        """to(paddle.float64)"""
+        linear = paddle.nn.Linear(2, 2)
+        ret = linear.to(paddle.float64)
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+        self.assertEqual(linear.bias.dtype, paddle.float64)
+        self.assertIs(ret, linear)
+
+    def test_positional_dtype_string(self):
+        """to('float64')"""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to('float64')
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    def test_positional_dtype_float16(self):
+        """to(paddle.float16)"""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to(paddle.float16)
+        self.assertEqual(linear.weight.dtype, paddle.float16)
+
+    # ---- Positional tensor ----
+
+    def test_positional_tensor(self):
+        """to(tensor) — match tensor's dtype and device"""
+        linear = paddle.nn.Linear(2, 2)
+        ref = paddle.to_tensor([1.0], dtype='float64')
+        linear.to(ref)
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    # ---- Positional device ----
+
+    def test_positional_device_string(self):
+        """to('cpu')"""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to('cpu')
+        self.assertTrue(linear.weight.place.is_cpu_place())
+
+    def test_positional_device_and_dtype(self):
+        """to('cpu', 'float64')"""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to('cpu', 'float64')
+        self.assertTrue(linear.weight.place.is_cpu_place())
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    # ---- Keyword args (backward compat) ----
+
+    def test_keyword_device(self):
+        """to(device='cpu')"""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to(device='cpu')
+        self.assertTrue(linear.weight.place.is_cpu_place())
+
+    def test_keyword_dtype(self):
+        """to(dtype='float64')"""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to(dtype='float64')
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    def test_keyword_device_and_dtype(self):
+        """to(device='cpu', dtype='float64')"""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to(device='cpu', dtype='float64')
+        self.assertTrue(linear.weight.place.is_cpu_place())
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    def test_keyword_non_blocking(self):
+        """to(dtype='float64', non_blocking=False)"""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to(dtype='float64', non_blocking=False)
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    def test_keyword_blocking(self):
+        """to(device='cpu', blocking=True) — Paddle-specific kwarg"""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to(device='cpu', blocking=True)
+        self.assertTrue(linear.weight.place.is_cpu_place())
+
+    # ---- No args ----
+
+    def test_no_args(self):
+        """to() — returns self unchanged"""
+        linear = paddle.nn.Linear(2, 2)
+        original_dtype = linear.weight.dtype
+        ret = linear.to()
+        self.assertIs(ret, linear)
+        self.assertEqual(linear.weight.dtype, original_dtype)
+
+    # ---- floating_only behavior ----
+
+    def test_floating_only_with_positional_dtype(self):
+        """to(dtype) should only cast floating point params, not int buffers."""
+        model = self._make_model()
+        self.assertEqual(model.linear.weight.dtype, paddle.float32)
+        self.assertEqual(model.int_buf.dtype, paddle.int32)
+        model.to(paddle.float64)
+        self.assertEqual(model.linear.weight.dtype, paddle.float64)
+        self.assertEqual(model.int_buf.dtype, paddle.int32)
+
+    def test_floating_only_with_keyword_dtype(self):
+        """to(dtype='float64') should only cast floating point params."""
+        model = self._make_model()
+        model.to(dtype='float64')
+        self.assertEqual(model.linear.weight.dtype, paddle.float64)
+        self.assertEqual(model.int_buf.dtype, paddle.int32)
+
+    def test_floating_only_with_tensor(self):
+        """to(tensor) should only cast floating point params."""
+        model = self._make_model()
+        ref = paddle.to_tensor([1.0], dtype='float64')
+        model.to(ref)
+        self.assertEqual(model.linear.weight.dtype, paddle.float64)
+        self.assertEqual(model.int_buf.dtype, paddle.int32)
+
+    # ---- Sublayers ----
+
+    def test_sublayers_cast(self):
+        """to() should recurse into sublayers."""
+        model = paddle.nn.Sequential(
+            paddle.nn.Linear(3, 4),
+            paddle.nn.Linear(4, 2),
+        )
+        model.to(paddle.float64)
+        for sublayer in model.sublayers():
+            if hasattr(sublayer, 'weight'):
+                self.assertEqual(sublayer.weight.dtype, paddle.float64)
+
+    # ---- Return self ----
+
+    def test_returns_self(self):
+        """to() should return self for chaining."""
+        linear = paddle.nn.Linear(2, 2)
+        ret = linear.to(paddle.float64)
+        self.assertIs(ret, linear)
+
+    # ---- Multiple sequential to() calls ----
+
+    def test_sequential_to_calls(self):
+        """Multiple to() calls should work correctly."""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to(paddle.float64)
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+        linear.to('float32')
+        self.assertEqual(linear.weight.dtype, paddle.float32)
+        linear.to(paddle.float16)
+        self.assertEqual(linear.weight.dtype, paddle.float16)
+
+
 if __name__ == "__main__":
     unittest.main()

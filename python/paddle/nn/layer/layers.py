@@ -155,6 +155,82 @@ def _addindent(string, indent):
     return s1[0] + '\n' + '\n'.join(s2)
 
 
+def _parse_layer_to_args(*args, **kwargs):
+    """Parse arguments for Layer.to() to support multiple calling conventions.
+
+    Supported calling conventions::
+
+        to(device=None, dtype=None, blocking=None, non_blocking=False)
+        to(dtype, non_blocking=False)
+        to(tensor, non_blocking=False)
+        to(device, dtype=None, non_blocking=False)
+    """
+    device = None
+    dtype = None
+    blocking = None
+    non_blocking = None
+
+    if args:
+        first = args[0]
+        if isinstance(first, paddle.Tensor):
+            # to(tensor, non_blocking=False)
+            device = first.place
+            dtype = first.dtype
+            if len(args) > 1:
+                non_blocking = args[1]
+        elif isinstance(first, (core.DataType, VarDesc.VarType)):
+            # to(dtype, non_blocking=False)
+            dtype = first
+            if len(args) > 1:
+                non_blocking = args[1]
+        elif isinstance(first, str) and first in (
+            'float16',
+            'float32',
+            'float64',
+            'bfloat16',
+            'int8',
+            'int16',
+            'int32',
+            'int64',
+            'uint8',
+            'bool',
+            'complex64',
+            'complex128',
+        ):
+            # to('float32', non_blocking=False) — dtype string
+            dtype = first
+            if len(args) > 1:
+                non_blocking = args[1]
+        elif isinstance(first, (str, core.Place)):
+            # to(device, dtype=None, non_blocking=False)
+            device = first
+            if len(args) > 1:
+                dtype = args[1]
+            if len(args) > 2:
+                non_blocking = args[2]
+        else:
+            raise TypeError(
+                f"Layer.to() received an invalid combination of arguments: "
+                f"got ({', '.join(type(a).__name__ for a in args)},)"
+            )
+
+    # kwargs override positional args
+    if 'device' in kwargs:
+        device = kwargs['device']
+    if 'dtype' in kwargs:
+        dtype = kwargs['dtype']
+    if 'blocking' in kwargs:
+        blocking = kwargs['blocking']
+    if 'non_blocking' in kwargs:
+        non_blocking = kwargs['non_blocking']
+    if 'tensor' in kwargs:
+        t = kwargs['tensor']
+        device = t.place
+        dtype = t.dtype
+
+    return device, dtype, blocking, non_blocking
+
+
 def _layer_trans_dtype(layer, dtype, excluded_layers):
     if type(layer) in excluded_layers:
         return
@@ -2817,20 +2893,35 @@ class Layer:
             )
         return _IncompatibleKeys(missing_keys, unexpected_keys)
 
-    def to(
-        self,
-        device: PlaceLike | None = None,
-        dtype: DTypeLike | None = None,
-        blocking: bool | None = None,
-        non_blocking: bool | None = None,
-    ) -> Self:
+    def to(self, *args, **kwargs) -> Self:
         '''
-        Cast the parameters and buffers of Layer by the give device, dtype and blocking.
+        Move and/or cast the parameters and buffers.
+
+        This can be called as:
+
+        .. function:: to(device=None, dtype=None, blocking=None, non_blocking=False)
+           :noindex:
+
+        .. function:: to(dtype, non_blocking=False)
+           :noindex:
+
+        .. function:: to(tensor, non_blocking=False)
+           :noindex:
+
+        .. function:: to(device, dtype=None, non_blocking=False)
+           :noindex:
+
+        When ``dtype`` is provided, only floating point parameters and buffers
+        are cast to ``dtype``. Integral parameters and buffers are moved to
+        ``device`` (if given) but with dtypes unchanged.
+
+        .. note::
+            This method modifies the layer in-place.
 
         Parameters:
             device(str|paddle.CPUPlace()|paddle.CUDAPlace()|paddle.CUDAPinnedPlace()|paddle.XPUPlace()|None, optional): The device of the Layer which want to be stored.
-            If None, the device is the same with the original Tensor. If device is string, it can be ``cpu``, ``gpu:x`` and ``xpu:x``, where ``x`` is the
-            index of the GPUs or XPUs. Default: None.
+                If None, the device is the same with the original Tensor. If device is string, it can be ``cpu``, ``gpu:x`` and ``xpu:x``, where ``x`` is the
+                index of the GPUs or XPUs. Default: None.
 
             dtype(str|numpy.dtype|paddle.dtype|None, optional): The type of the data. If None, the dtype is the same with the original Tensor. Default: None.
 
@@ -2839,6 +2930,9 @@ class Layer:
 
             non_blocking(bool|None, optional): If True and the source is in pinned memory, the copy will be
               asynchronous with respect to the host. Otherwise, the argument has no effect. If None, the non_blocking is set False. Default: None.
+
+            tensor(Tensor, optional): Tensor whose dtype and device are the desired
+              dtype and device for all parameters and buffers in this layer.
 
         Returns:
             self
@@ -2883,13 +2977,17 @@ class Layer:
                  [-0.58883440,  0.99266374]])
 
         '''
+        device, dtype, blocking, non_blocking = _parse_layer_to_args(
+            *args, **kwargs
+        )
+        floating_only = dtype is not None
         return self._to_impl(
             device=device,
             dtype=dtype,
             blocking=blocking,
             non_blocking=non_blocking,
             include_sublayers=True,
-            floating_only=False,
+            floating_only=floating_only,
         )
 
     def _apply(
