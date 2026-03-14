@@ -60,9 +60,9 @@ template <typename T>
 using GeluType = typename GeluComputeType<T>::Type;
 
 using funcs::DequantLoad;
-using funcs::Load;
+using funcs::LoadF;
 using funcs::QuantStore;
-using funcs::Store;
+using funcs::StoreF;
 
 template <typename T>
 struct BaseActivationFunctor {
