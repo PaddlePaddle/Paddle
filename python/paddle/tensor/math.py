@@ -4200,8 +4200,13 @@ def negative(x: Tensor, name: str | None = None) -> Tensor:
     return -x
 
 
+@param_one_alias(["x", "input"])
 def logit(
-    x: Tensor, eps: float | None = None, name: str | None = None
+    x: Tensor,
+    eps: float | None = None,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     r"""
     This function generates a new tensor with the logit of the elements of input x. x is clamped to [eps, 1-eps] when eps is not zero. When eps is zero and x < 0 or x > 1, the function will yields NaN.
@@ -4225,9 +4230,12 @@ def logit(
     Args:
         x (Tensor): The input Tensor with data type bfloat16, float16, float32, float64,
             uint8, int8, int16, int32, int64.
+            alias: ``input``
         eps (float|None, optional):  the epsilon for input clamp bound. Default is None.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor.
+            Default is None.
 
     Returns:
         out(Tensor): A Tensor with the same data type and shape as ``x``
@@ -4248,7 +4256,7 @@ def logit(
     if eps is None:
         eps = 0.0
     if in_dynamic_or_pir_mode():
-        return _C_ops.logit(x, eps)
+        return _C_ops.logit(x, eps, out=out)
     else:
         check_variable_and_dtype(
             x,

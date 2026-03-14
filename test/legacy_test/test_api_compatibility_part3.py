@@ -592,5 +592,181 @@ class TestIsRealAPICompatibility(unittest.TestCase):
             np.testing.assert_array_equal(ref_out, out)
 
 
+class TestLogitAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.shape = [5, 6]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        # Values in (0, 1) for logit
+        self.np_x = np.random.uniform(0.1, 0.9, self.shape).astype(self.dtype)
+
+    def _ref_logit(self, x, eps=0.0):
+        if eps > 0.0:
+            x = np.clip(x, eps, 1.0 - eps)
+        return np.log(x / (1.0 - x))
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        paddle_dygraph_out = []
+
+        # Positional args
+        out1 = paddle.logit(x)
+        paddle_dygraph_out.append(out1)
+
+        # Paddle keyword args
+        out2 = paddle.logit(x=x)
+        paddle_dygraph_out.append(out2)
+
+        # Alias keyword args (input)
+        out3 = paddle.logit(input=x)
+        paddle_dygraph_out.append(out3)
+
+        # Test out parameter
+        out4 = paddle.empty_like(x)
+        ret4 = paddle.logit(x, out=out4)
+        paddle_dygraph_out.append(out4)
+        self.assertEqual(ret4.data_ptr(), out4.data_ptr())
+
+        # out parameter with alias keyword
+        out5 = paddle.empty_like(x)
+        ret5 = paddle.logit(input=x, out=out5)
+        paddle_dygraph_out.append(out5)
+        self.assertEqual(ret5.data_ptr(), out5.data_ptr())
+
+        ref_out = self._ref_logit(self.np_x)
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(
+                ref_out, out.numpy(), rtol=1e-5, atol=1e-6
+            )
+        paddle.enable_static()
+
+    def test_dygraph_with_eps(self):
+        paddle.disable_static()
+        x_data = np.array([0.0, 0.01, 0.5, 0.99, 1.0]).astype(self.dtype)
+        x = paddle.to_tensor(x_data)
+        eps = 1e-6
+        paddle_dygraph_out = []
+
+        # Positional eps
+        out1 = paddle.logit(x, eps)
+        paddle_dygraph_out.append(out1)
+
+        # Keyword eps
+        out2 = paddle.logit(x, eps=eps)
+        paddle_dygraph_out.append(out2)
+
+        # Alias keyword + eps
+        out3 = paddle.logit(input=x, eps=eps)
+        paddle_dygraph_out.append(out3)
+
+        # out + eps
+        out4 = paddle.empty_like(x)
+        ret4 = paddle.logit(x, eps, out=out4)
+        paddle_dygraph_out.append(out4)
+        self.assertEqual(ret4.data_ptr(), out4.data_ptr())
+
+        ref_out = self._ref_logit(x_data, eps)
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(
+                ref_out, out.numpy(), rtol=1e-5, atol=1e-6
+            )
+        paddle.enable_static()
+
+    def test_dygraph_no_eps_boundary(self):
+        """Without eps, values outside (0,1) should produce NaN/Inf."""
+        paddle.disable_static()
+        x = paddle.to_tensor(
+            np.array([-0.1, 0.0, 0.5, 1.0, 1.1]).astype(self.dtype)
+        )
+        out = paddle.logit(x)
+        result = out.numpy()
+        # x=0.5 should give 0
+        np.testing.assert_allclose(result[2], 0.0, atol=1e-6)
+        # x=0 -> -inf, x=1 -> +inf
+        self.assertTrue(np.isinf(result[1]) and result[1] < 0)
+        self.assertTrue(np.isinf(result[3]) and result[3] > 0)
+        # x < 0 or x > 1 -> NaN
+        self.assertTrue(np.isnan(result[0]))
+        self.assertTrue(np.isnan(result[4]))
+        paddle.enable_static()
+
+    def test_dygraph_special_alias(self):
+        """Test paddle.special.logit API alias."""
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        out1 = paddle.logit(x)
+        out2 = paddle.special.logit(x)
+        np.testing.assert_allclose(
+            out1.numpy(), out2.numpy(), rtol=1e-5, atol=1e-6
+        )
+
+        # With eps via special alias
+        out3 = paddle.special.logit(x, eps=1e-6)
+        out4 = paddle.logit(x, eps=1e-6)
+        np.testing.assert_allclose(
+            out3.numpy(), out4.numpy(), rtol=1e-5, atol=1e-6
+        )
+
+        # Alias keyword via special
+        out5 = paddle.special.logit(input=x)
+        np.testing.assert_allclose(
+            out1.numpy(), out5.numpy(), rtol=1e-5, atol=1e-6
+        )
+
+        # out parameter via special
+        out6 = paddle.empty_like(x)
+        ret6 = paddle.special.logit(x, out=out6)
+        self.assertEqual(ret6.data_ptr(), out6.data_ptr())
+        np.testing.assert_allclose(
+            out1.numpy(), out6.numpy(), rtol=1e-5, atol=1e-6
+        )
+        paddle.enable_static()
+
+    def test_dygraph_dtypes(self):
+        """Test logit works with float64."""
+        paddle.disable_static()
+        x_data = np.random.uniform(0.1, 0.9, self.shape).astype('float64')
+        x = paddle.to_tensor(x_data)
+        out = paddle.logit(x)
+        ref_out = self._ref_logit(x_data)
+        np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-10, atol=1e-10)
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            # Positional args
+            out1 = paddle.logit(x)
+            # Paddle keyword args
+            out2 = paddle.logit(x=x)
+            # Alias keyword args
+            out3 = paddle.logit(input=x)
+            # With eps via alias
+            out4 = paddle.logit(input=x, eps=1e-6)
+
+            exe = paddle.base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2, out3, out4],
+            )
+            ref_out = self._ref_logit(self.np_x)
+            ref_out_eps = self._ref_logit(self.np_x, 1e-6)
+            for out in fetches[:3]:
+                np.testing.assert_allclose(out, ref_out, rtol=1e-5, atol=1e-6)
+            np.testing.assert_allclose(
+                fetches[3], ref_out_eps, rtol=1e-5, atol=1e-6
+            )
+
+
 if __name__ == "__main__":
     unittest.main()
