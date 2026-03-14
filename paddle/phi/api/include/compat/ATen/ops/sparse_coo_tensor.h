@@ -19,6 +19,7 @@
 #include <optional>
 
 #include "paddle/phi/api/include/sparse_api.h"
+#include "paddle/phi/common/place.h"
 
 namespace at {
 
@@ -26,12 +27,21 @@ inline at::Tensor sparse_coo_tensor(const at::Tensor& indices,
                                     const at::Tensor& values,
                                     at::IntArrayRef size,
                                     at::TensorOptions options = {}) {
+  paddle::Tensor idx = indices._PD_GetInner();
+  paddle::Tensor vals = values._PD_GetInner();
+  if (options.pinned_memory()) {
+    phi::Place base_place = options._PD_GetPlace();
+    phi::Place pinned_place = phi::is_xpu_place(base_place)
+                                  ? phi::Place(phi::XPUPinnedPlace())
+                                  : phi::Place(phi::GPUPinnedPlace());
+    idx = idx.copy_to(pinned_place, /*blocking=*/true);
+    vals = vals.copy_to(pinned_place, /*blocking=*/true);
+  }
+
   // PyTorch: sparse_coo_tensor(indices, values, size)
   // Paddle:  sparse_coo_tensor(values, indices, shape)
   return paddle::experimental::sparse::sparse_coo_tensor(
-      values._PD_GetInner(),
-      indices._PD_GetInner(),
-      std::vector<int64_t>(size.begin(), size.end()));
+      vals, idx, std::vector<int64_t>(size.begin(), size.end()));
 }
 
 inline at::Tensor sparse_coo_tensor(const at::Tensor& indices,
@@ -43,15 +53,10 @@ inline at::Tensor sparse_coo_tensor(const at::Tensor& indices,
                                     ::std::optional<bool> pin_memory) {
   PD_CHECK(!layout.has_value() || layout.value() == c10::kSparse,
            "`layout` must be Sparse for sparse_coo_tensor.");
-  PD_CHECK(!(pin_memory.has_value() && pin_memory.value() != false),
-           "`pin_memory` other than False is not supported now.");
+  (void)dtype;
 
-  // Note: dtype and device are used for validation/casting if needed
-  // Currently, we use the values tensor's dtype and device
-  return paddle::experimental::sparse::sparse_coo_tensor(
-      values._PD_GetInner(),
-      indices._PD_GetInner(),
-      std::vector<int64_t>(size.begin(), size.end()));
+  auto options = at::TensorOptions().device(device).pinned_memory(pin_memory);
+  return sparse_coo_tensor(indices, values, size, options);
 }
 
 inline at::Tensor sparse_coo_tensor(const at::Tensor& indices,

@@ -19,6 +19,7 @@
 #include <optional>
 
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 
@@ -29,13 +30,24 @@ inline at::Tensor sparse_csr_tensor(const at::Tensor& crow_indices,
                                     const at::Tensor& values,
                                     at::IntArrayRef size,
                                     at::TensorOptions options = {}) {
+  paddle::Tensor crows = crow_indices._PD_GetInner();
+  paddle::Tensor cols = col_indices._PD_GetInner();
+  paddle::Tensor vals = values._PD_GetInner();
+
+  if (options.pinned_memory()) {
+    phi::Place base_place = options._PD_GetPlace();
+    phi::Place pinned_place = phi::is_xpu_place(base_place)
+                                  ? phi::Place(phi::XPUPinnedPlace())
+                                  : phi::Place(phi::GPUPinnedPlace());
+    crows = crows.copy_to(pinned_place, /*blocking=*/true);
+    cols = cols.copy_to(pinned_place, /*blocking=*/true);
+    vals = vals.copy_to(pinned_place, /*blocking=*/true);
+  }
+
   // Get the underlying DenseTensors
-  auto* dense_crows =
-      dynamic_cast<phi::DenseTensor*>(crow_indices._PD_GetInner().impl().get());
-  auto* dense_cols =
-      dynamic_cast<phi::DenseTensor*>(col_indices._PD_GetInner().impl().get());
-  auto* dense_values =
-      dynamic_cast<phi::DenseTensor*>(values._PD_GetInner().impl().get());
+  auto* dense_crows = dynamic_cast<phi::DenseTensor*>(crows.impl().get());
+  auto* dense_cols = dynamic_cast<phi::DenseTensor*>(cols.impl().get());
+  auto* dense_values = dynamic_cast<phi::DenseTensor*>(vals.impl().get());
 
   PD_CHECK(dense_crows != nullptr,
            "crow_indices must be a dense tensor for sparse_csr_tensor.");
@@ -68,10 +80,9 @@ inline at::Tensor sparse_csr_tensor(const at::Tensor& crow_indices,
                                     ::std::optional<bool> pin_memory) {
   PD_CHECK(!layout.has_value() || layout.value() == c10::kSparseCsr,
            "`layout` must be SparseCsr for sparse_csr_tensor.");
-  PD_CHECK(!(pin_memory.has_value() && pin_memory.value() != false),
-           "`pin_memory` other than False is not supported now.");
-
-  return sparse_csr_tensor(crow_indices, col_indices, values, size);
+  (void)dtype;
+  auto options = at::TensorOptions().device(device).pinned_memory(pin_memory);
+  return sparse_csr_tensor(crow_indices, col_indices, values, size, options);
 }
 
 inline at::Tensor sparse_csr_tensor(const at::Tensor& crow_indices,

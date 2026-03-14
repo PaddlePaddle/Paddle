@@ -21,12 +21,25 @@
 #include <string_view>
 
 #include "paddle/phi/api/include/api.h"
+#include "paddle/phi/common/place.h"
 
 namespace at {
 
 inline at::Tensor full(at::IntArrayRef size,
                        const at::Scalar& fill_value,
                        at::TensorOptions options = {}) {
+  if (options.pinned_memory()) {
+    phi::Place base_place = options._PD_GetPlace();
+    phi::Place pinned_place = phi::is_xpu_place(base_place)
+                                  ? phi::Place(phi::XPUPinnedPlace())
+                                  : phi::Place(phi::GPUPinnedPlace());
+    auto dense = paddle::experimental::full(
+        size._PD_ToPaddleIntArray(),
+        fill_value,
+        compat::_PD_AtenScalarTypeToPhiDataType(options.dtype()),
+        phi::CPUPlace());
+    return dense.copy_to(pinned_place, /*blocking=*/true);
+  }
   return paddle::experimental::full(
       size._PD_ToPaddleIntArray(),
       fill_value,
@@ -41,8 +54,20 @@ inline at::Tensor full(at::IntArrayRef size,
                        ::std::optional<at::Device> device,
                        ::std::optional<bool> pin_memory) {
   PD_CHECK(!layout.has_value(), "`layout` is not supported now.");
-  PD_CHECK(!(pin_memory.has_value() && pin_memory.value() != false),
-           "`pin_memory` other than False is not supported now.");
+  if (pin_memory.value_or(false)) {
+    phi::Place base_place =
+        device.has_value() ? device.value()._PD_GetInner() : phi::CPUPlace();
+    phi::Place pinned_place = phi::is_xpu_place(base_place)
+                                  ? phi::Place(phi::XPUPinnedPlace())
+                                  : phi::Place(phi::GPUPinnedPlace());
+    auto dense = paddle::experimental::full(
+        size._PD_ToPaddleIntArray(),
+        fill_value,
+        compat::_PD_AtenScalarTypeToPhiDataType(
+            dtype.value_or(c10::get_default_dtype())),
+        phi::CPUPlace());
+    return dense.copy_to(pinned_place, /*blocking=*/true);
+  }
   return paddle::experimental::full(
       size._PD_ToPaddleIntArray(),
       fill_value,
@@ -54,6 +79,18 @@ inline at::Tensor full(at::IntArrayRef size,
 inline at::Tensor full_symint(c10::SymIntArrayRef size,
                               const at::Scalar& fill_value,
                               at::TensorOptions options = {}) {
+  if (options.pinned_memory()) {
+    phi::Place base_place = options._PD_GetPlace();
+    phi::Place pinned_place = phi::is_xpu_place(base_place)
+                                  ? phi::Place(phi::XPUPinnedPlace())
+                                  : phi::Place(phi::GPUPinnedPlace());
+    auto dense = paddle::experimental::full(
+        size._PD_ToPaddleIntArray(),
+        fill_value,
+        compat::_PD_AtenScalarTypeToPhiDataType(options.dtype()),
+        phi::CPUPlace());
+    return dense.copy_to(pinned_place, /*blocking=*/true);
+  }
   return paddle::experimental::full(
       size._PD_ToPaddleIntArray(),
       fill_value,
@@ -68,8 +105,20 @@ inline at::Tensor full_symint(c10::SymIntArrayRef size,
                               ::std::optional<at::Device> device,
                               ::std::optional<bool> pin_memory) {
   PD_CHECK(!layout.has_value(), "`layout` is not supported now.");
-  PD_CHECK(!(pin_memory.has_value() && pin_memory.value() != false),
-           "`pin_memory` other than False is not supported now.");
+  if (pin_memory.value_or(false)) {
+    phi::Place base_place =
+        device.has_value() ? device.value()._PD_GetInner() : phi::CPUPlace();
+    phi::Place pinned_place = phi::is_xpu_place(base_place)
+                                  ? phi::Place(phi::XPUPinnedPlace())
+                                  : phi::Place(phi::GPUPinnedPlace());
+    auto dense = paddle::experimental::full(
+        size._PD_ToPaddleIntArray(),
+        fill_value,
+        compat::_PD_AtenScalarTypeToPhiDataType(
+            dtype.value_or(c10::get_default_dtype())),
+        phi::CPUPlace());
+    return dense.copy_to(pinned_place, /*blocking=*/true);
+  }
   return paddle::experimental::full(
       size._PD_ToPaddleIntArray(),
       fill_value,

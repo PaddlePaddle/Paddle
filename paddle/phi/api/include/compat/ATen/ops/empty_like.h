@@ -22,6 +22,7 @@
 #include <string_view>
 
 #include "paddle/phi/api/include/api.h"
+#include "paddle/phi/common/place.h"
 
 namespace at {
 
@@ -34,11 +35,24 @@ inline at::Tensor empty_like(
            "`MemoryFormat` other than Contiguous is not supported now.");
 
   auto dtype = options.dtype_opt().value_or(self.dtype());
-  auto place = options.device_opt().value_or(self.device());
-  auto dense = paddle::experimental::empty_like(
-      self._PD_GetInner(),
-      compat::_PD_AtenScalarTypeToPhiDataType(dtype),
-      place._PD_GetInner());
+  paddle::Tensor dense;
+  if (options.pinned_memory()) {
+    auto dense_cpu = paddle::experimental::empty_like(
+        self._PD_GetInner(),
+        compat::_PD_AtenScalarTypeToPhiDataType(dtype),
+        phi::CPUPlace());
+    phi::Place base_place = options._PD_GetPlace();
+    phi::Place pinned_place = phi::is_xpu_place(base_place)
+                                  ? phi::Place(phi::XPUPinnedPlace())
+                                  : phi::Place(phi::GPUPinnedPlace());
+    dense = dense_cpu.copy_to(pinned_place, /*blocking=*/true);
+  } else {
+    auto place = options.device_opt().value_or(self.device());
+    dense = paddle::experimental::empty_like(
+        self._PD_GetInner(),
+        compat::_PD_AtenScalarTypeToPhiDataType(dtype),
+        place._PD_GetInner());
+  }
   return compat::_PD_ConvertToSparseIfNeeded(dense, options.layout());
 }
 
@@ -48,18 +62,16 @@ inline at::Tensor empty_like(const at::Tensor& self,
                              ::std::optional<at::Device> device,
                              ::std::optional<bool> pin_memory,
                              ::std::optional<at::MemoryFormat> memory_format) {
-  PD_CHECK(!(pin_memory.has_value() && pin_memory.value() != false),
-           "`pin_memory` other than False is not supported now.");
   PD_CHECK(!(memory_format.has_value() &&
              memory_format.value() != c10::MemoryFormat::Contiguous),
            "`MemoryFormat` other than Contiguous is not supported now.");
 
-  auto dense = paddle::experimental::empty_like(
-      self._PD_GetInner(),
-      compat::_PD_AtenScalarTypeToPhiDataType(dtype.value_or(self.dtype())),
-      device.value_or(self.device())._PD_GetInner());
-  return compat::_PD_ConvertToSparseIfNeeded(dense,
-                                             layout.value_or(c10::kStrided));
+  auto options = at::TensorOptions()
+                     .dtype(dtype)
+                     .layout(layout)
+                     .device(device)
+                     .pinned_memory(pin_memory);
+  return empty_like(self, options, memory_format);
 }
 
 }  // namespace at
