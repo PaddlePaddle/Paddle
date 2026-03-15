@@ -142,7 +142,7 @@ class TestDiagFlatAPI(unittest.TestCase):
         t1 = paddle.to_tensor([1, 2])
         t2 = paddle.to_tensor([3, 4])
         with self.assertRaises(ValueError) as context:
-            paddle.diagflat(t1, input=t2)
+            paddle.diagflat(x=t1, input=t2)
         self.assertIn(
             "Cannot specify both 'x' and its alias 'input'",
             str(context.exception),
