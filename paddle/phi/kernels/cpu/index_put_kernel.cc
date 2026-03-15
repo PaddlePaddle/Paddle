@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/index_put_kernel.h"
 #include <array>
+#include <cinttypes>
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cast_kernel.h"
@@ -40,32 +41,37 @@ void index_put_kernel(const int64_t N,
 
     for (int i = 0; i < shape.size(); ++i) {
       cur_ix = (static_cast<int64_t>(*(indices[i] + idx)));
+      const int64_t axis_size = shape[i];
+      const int64_t lower_bound = -axis_size;
+      const int64_t upper_bound = axis_size;
       PADDLE_ENFORCE_GE(
           cur_ix,
-          -shape[i],
+          lower_bound,
           common::errors::OutOfRange(
-              "The index value %lld is out of bounds for axis %d with size "
-              "%lld in index_put. Expected the index to be in range [%lld, "
-              "%lld), where negative indices are normalized by adding the "
-              "axis size before writing.",
-              static_cast<long long>(cur_ix),
+              "The index value %" PRId64
+              " is out of bounds for axis %d with size %" PRId64
+              " in index_put. Expected the index to be in range [%" PRId64
+              ", %" PRId64 "), where negative indices are normalized by "
+              "adding the axis size before writing.",
+              cur_ix,
               i,
-              static_cast<long long>(shape[i]),
-              -static_cast<long long>(shape[i]),
-              static_cast<long long>(shape[i])));
+              axis_size,
+              lower_bound,
+              upper_bound));
       PADDLE_ENFORCE_LT(
           cur_ix,
-          shape[i],
+          upper_bound,
           common::errors::OutOfRange(
-              "The index value %lld is out of bounds for axis %d with size "
-              "%lld in index_put. Expected the index to be in range [%lld, "
-              "%lld), where negative indices are normalized by adding the "
-              "axis size before writing.",
-              static_cast<long long>(cur_ix),
+              "The index value %" PRId64
+              " is out of bounds for axis %d with size %" PRId64
+              " in index_put. Expected the index to be in range [%" PRId64
+              ", %" PRId64 "), where negative indices are normalized by "
+              "adding the axis size before writing.",
+              cur_ix,
               i,
-              static_cast<long long>(shape[i]),
-              -static_cast<long long>(shape[i]),
-              static_cast<long long>(shape[i])));
+              axis_size,
+              lower_bound,
+              upper_bound));
       if (cur_ix < 0) {
         cur_ix += shape[i];
       }
