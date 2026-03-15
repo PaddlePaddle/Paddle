@@ -24,6 +24,8 @@ inline void Tensor::record_stream(at::Stream s) const {
   PD_CHECK(dense_tensor != nullptr,
            "record_stream only supports DenseTensor, but got a non-dense "
            "tensor implementation.");
+  PD_CHECK(dense_tensor->place().GetType() != phi::AllocationType::CPU,
+           "record_stream is not supported for CPU tensors.");
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
     !defined(PADDLE_WITH_CUSTOM_DEVICE)
   paddle::memory::RecordStream(

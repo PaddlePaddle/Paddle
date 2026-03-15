@@ -143,8 +143,15 @@ struct Event final {
     // device_type is useless, only for compatibility
     cuda_event_ = EventPool::Instance().CreateCudaEventFromPool();
   }
-  void record(const cudaStream_t &stream) {
-    C10_CUDA_CHECK(cudaEventRecord(cuda_event_, stream));
+
+  void record(const Stream &stream) {
+    C10_CUDA_CHECK(cudaEventRecord(
+        cuda_event_, static_cast<cudaStream_t>(stream.native_handle())));
+  }
+
+  void block(const Stream &stream) const {
+    C10_CUDA_CHECK(cudaStreamWaitEvent(
+        static_cast<cudaStream_t>(stream.native_handle()), cuda_event_, 0));
   }
 
   cudaEvent_t cuda_event() const { return cuda_event_; }

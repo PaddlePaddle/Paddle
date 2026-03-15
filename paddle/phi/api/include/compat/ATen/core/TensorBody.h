@@ -17,8 +17,11 @@
 #include <ATen/TensorIndexing.h>
 #include <ATen/core/TensorBase.h>
 #include <c10/core/Backend.h>
+#include <c10/core/List.h>
 #include <c10/core/Scalar.h>
+#include <c10/core/ScalarType.h>
 #include <c10/core/Stream.h>
+#include <c10/core/SymIntArrayRef.h>
 #include <c10/util/OptionalArrayRef.h>
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/tensor.h"
@@ -31,6 +34,8 @@
 #include <cuda_runtime_api.h>
 #endif
 
+#include <limits>
+#include <optional>
 #include <utility>
 #include <vector>
 #include "paddle/common/ddim.h"
