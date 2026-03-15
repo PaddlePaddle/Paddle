@@ -307,9 +307,18 @@ void NansumKernel(const Context& dev_ctx,
   if (x.numel() == 0) {
     dev_ctx.template Alloc<T>(out);
     if (out_dtype == DataType::INT64) {
-      Full<int64_t, Context>(dev_ctx, out->dims(), 0, out);
+      FullKernel<int64_t, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(out->dims())),
+          0,
+          out_dtype,  // not used
+          out);
     } else {
-      Full<T, Context>(dev_ctx, out->dims(), 0, out);
+      FullKernel<T, Context>(dev_ctx,
+                             phi::IntArray(common::vectorize(out->dims())),
+                             0,
+                             out_dtype,  // not used
+                             out);
     }
     return;
   }
