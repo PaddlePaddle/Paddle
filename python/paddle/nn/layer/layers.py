@@ -176,13 +176,11 @@ def _parse_layer_to_args(*args, **kwargs):
             # to(tensor, non_blocking=False)
             device = first.place
             dtype = first.dtype
-            if len(args) > 1:
-                non_blocking = args[1]
+            non_blocking = args[1] if len(args) > 1 else None
         elif isinstance(first, (core.DataType, VarDesc.VarType)):
             # to(dtype, non_blocking=False)
             dtype = first
-            if len(args) > 1:
-                non_blocking = args[1]
+            non_blocking = args[1] if len(args) > 1 else None
         elif isinstance(first, str) and first in (
             'float16',
             'float32',
@@ -199,15 +197,12 @@ def _parse_layer_to_args(*args, **kwargs):
         ):
             # to('float32', non_blocking=False) — dtype string
             dtype = first
-            if len(args) > 1:
-                non_blocking = args[1]
+            non_blocking = args[1] if len(args) > 1 else None
         elif isinstance(first, (str, core.Place)):
             # to(device, dtype=None, non_blocking=False)
             device = first
-            if len(args) > 1:
-                dtype = args[1]
-            if len(args) > 2:
-                non_blocking = args[2]
+            dtype = args[1] if len(args) > 1 else None
+            non_blocking = args[2] if len(args) > 2 else None
         else:
             raise ValueError(
                 f"device should be type of str, paddle.CPUPlace, paddle.CUDAPlace, "
