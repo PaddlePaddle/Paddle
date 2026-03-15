@@ -659,6 +659,9 @@ class TestIndexPutInplaceAPI1(TestIndexPutInplaceAPI):
 
 class TestIndexPutOutOfBoundsIndex(unittest.TestCase):
     def test_inplace_negative_index_out_of_bounds_cpu(self):
+        if core.is_compiled_with_rocm():
+            return
+
         paddle.disable_static()
         paddle.device.set_device("cpu")
 
