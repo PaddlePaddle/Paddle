@@ -95,4 +95,4 @@ void OneDNN2PaddleLayout(const Context& dev_ctx,
 PD_REGISTER_KERNEL_FOR_ALL_DTYPE(onednn_to_paddle_layout,
                                  CPU,
                                  ALL_LAYOUT,
-                                 phi::OneDNN2PaddleLayout<phi::CPUContext>) {}
+                                 phi::OneDNN2PaddleLayout<CPUContext>) {}

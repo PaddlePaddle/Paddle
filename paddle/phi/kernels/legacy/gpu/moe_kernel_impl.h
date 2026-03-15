@@ -632,8 +632,8 @@ __global__ void initialize_moe_routing_kernel(
     for (int tid = threadIdx.x * VecSize; tid < cols;
          tid += blockDim.x * VecSize) {
       dest_row_ptr[tid] = source_row_ptr[tid];
-      // phi::Load<T, VecSize>(&source_row_ptr[tid], &src_vec);
-      // phi::Store<T, VecSize>(src_vec, &dest_row_ptr[tid]);
+      // Load<T, VecSize>(&source_row_ptr[tid], &src_vec);
+      // Store<T, VecSize>(src_vec, &dest_row_ptr[tid]);
     }
   }
 }

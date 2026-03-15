@@ -47,17 +47,17 @@ __global__ void SwiGLUGradCUDAKernel(const T *__restrict__ x,
       AlignedVector<T, VecSize> y_vec;
       AlignedVector<T, VecSize> dz_vec;
 
-      phi::Load<T, VecSize>(x + x_offset, &x_vec);
-      phi::Load<T, VecSize>(y + x_offset, &y_vec);
-      phi::Load<T, VecSize>(dz + dz_offset, &dz_vec);
+      Load<T, VecSize>(x + x_offset, &x_vec);
+      Load<T, VecSize>(y + x_offset, &y_vec);
+      Load<T, VecSize>(dz + dz_offset, &dz_vec);
 
 #pragma unroll
       for (int i = 0; i < VecSize; ++i) {
         functor(x_vec[i], y_vec[i], dz_vec[i], &x_vec[i], &y_vec[i]);
       }
 
-      phi::Store<T, VecSize>(x_vec, dx + x_offset);
-      phi::Store<T, VecSize>(y_vec, dy + x_offset);
+      Store<T, VecSize>(x_vec, dx + x_offset);
+      Store<T, VecSize>(y_vec, dy + x_offset);
       idx += stride;
     }
   } else {
@@ -72,11 +72,11 @@ __global__ void SwiGLUGradCUDAKernel(const T *__restrict__ x,
       AlignedVector<T, VecSize> y_vec;
       AlignedVector<T, VecSize> dz_vec;
 
-      phi::Load<T, VecSize>(x + idx, &x_vec);
+      Load<T, VecSize>(x + idx, &x_vec);
       if constexpr (HasDX) {
-        phi::Load<T, VecSize>(y + idx, &y_vec);
+        Load<T, VecSize>(y + idx, &y_vec);
       }
-      phi::Load<T, VecSize>(dz + idx, &dz_vec);
+      Load<T, VecSize>(dz + idx, &dz_vec);
 
 #pragma unroll
       for (int i = 0; i < VecSize; ++i) {
@@ -87,10 +87,10 @@ __global__ void SwiGLUGradCUDAKernel(const T *__restrict__ x,
                 &dz_vec[i]);
       }
       if constexpr (HasDX) {
-        phi::Store<T, VecSize>(x_vec, dx + idx);
+        Store<T, VecSize>(x_vec, dx + idx);
       }
       if constexpr (HasDY) {
-        phi::Store<T, VecSize>(dz_vec, dy + idx);
+        Store<T, VecSize>(dz_vec, dy + idx);
       }
       idx += stride;
     }

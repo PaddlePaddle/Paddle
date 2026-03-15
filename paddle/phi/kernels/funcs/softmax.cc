@@ -19,9 +19,9 @@ limitations under the License. */
 
 namespace phi::funcs {
 
-template class SoftmaxFunctor<phi::CPUContext, float>;
-template class SoftmaxFunctor<phi::CPUContext, double>;
-template class SoftmaxGradFunctor<phi::CPUContext, float>;
-template class SoftmaxGradFunctor<phi::CPUContext, double>;
+template class SoftmaxFunctor<CPUContext, float>;
+template class SoftmaxFunctor<CPUContext, double>;
+template class SoftmaxGradFunctor<CPUContext, float>;
+template class SoftmaxGradFunctor<CPUContext, double>;
 
 }  // namespace phi::funcs

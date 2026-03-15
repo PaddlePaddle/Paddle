@@ -382,8 +382,7 @@ void IndexPutWithSortKernel(const GPUContext& dev_ctx,
                      inversePerm_int.begin(),
                      [](int64_t x) { return static_cast<int>(x); });
 
-      phi::Transpose<T, GPUContext>(
-          dev_ctx, src_, inversePerm_int, &transposed_src);
+      Transpose<T, GPUContext>(dev_ctx, src_, inversePerm_int, &transposed_src);
       Copy(dev_ctx, transposed_src, dev_ctx.GetPlace(), false, output);
     } else if (!self_contiguous) {
       Copy(dev_ctx, self_, dev_ctx.GetPlace(), false, output);

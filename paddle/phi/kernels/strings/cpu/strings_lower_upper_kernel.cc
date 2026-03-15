@@ -49,14 +49,12 @@ template PADDLE_API void StringUpperKernel<CPUContext>(const CPUContext&,
 #endif
 }  // namespace phi::strings
 
-PD_REGISTER_KERNEL_FOR_ALL_DTYPE(
-    strings_lower,
-    CPU,
-    ALL_LAYOUT,
-    phi::strings::StringLowerKernel<phi::CPUContext>) {}
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(strings_lower,
+                                 CPU,
+                                 ALL_LAYOUT,
+                                 phi::strings::StringLowerKernel<CPUContext>) {}
 
-PD_REGISTER_KERNEL_FOR_ALL_DTYPE(
-    strings_upper,
-    CPU,
-    ALL_LAYOUT,
-    phi::strings::StringUpperKernel<phi::CPUContext>) {}
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(strings_upper,
+                                 CPU,
+                                 ALL_LAYOUT,
+                                 phi::strings::StringUpperKernel<CPUContext>) {}

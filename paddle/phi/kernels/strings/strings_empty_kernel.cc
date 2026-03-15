@@ -37,13 +37,12 @@ void EmptyLikeKernel(const Context& dev_ctx, StringTensor* out) {
 PD_REGISTER_KERNEL_FOR_ALL_DTYPE(strings_empty,
                                  CPU,
                                  ALL_LAYOUT,
-                                 phi::strings::EmptyKernel<phi::CPUContext>) {}
+                                 phi::strings::EmptyKernel<CPUContext>) {}
 
-PD_REGISTER_KERNEL_FOR_ALL_DTYPE(
-    strings_empty_like,
-    CPU,
-    ALL_LAYOUT,
-    phi::strings::EmptyLikeKernel<phi::CPUContext>) {}
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(strings_empty_like,
+                                 CPU,
+                                 ALL_LAYOUT,
+                                 phi::strings::EmptyLikeKernel<CPUContext>) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL_FOR_ALL_DTYPE(strings_empty,

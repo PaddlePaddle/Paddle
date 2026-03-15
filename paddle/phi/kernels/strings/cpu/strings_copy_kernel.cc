@@ -59,4 +59,4 @@ template PADDLE_API void Copy<CPUContext>(const CPUContext&,
 PD_REGISTER_KERNEL_FOR_ALL_DTYPE(strings_copy,
                                  CPU,
                                  ALL_LAYOUT,
-                                 phi::strings::Copy<phi::CPUContext>) {}
+                                 phi::strings::Copy<CPUContext>) {}

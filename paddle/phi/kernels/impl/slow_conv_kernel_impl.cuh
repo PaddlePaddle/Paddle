@@ -618,11 +618,10 @@ void SlowConvForward(const Context& dev_ctx,
   // Contiguous & Grouping
   // =================================================================
   DenseTensor input_contiguous;
-  phi::ContiguousKernel<T, Context>(
-      dev_ctx, transformed_input, &input_contiguous);
+  ContiguousKernel<T, Context>(dev_ctx, transformed_input, &input_contiguous);
 
   DenseTensor weight_contiguous;
-  phi::ContiguousKernel<T, Context>(dev_ctx, filter_t, &weight_contiguous);
+  ContiguousKernel<T, Context>(dev_ctx, filter_t, &weight_contiguous);
 
   auto to_int64_vec = [](const std::vector<int>& in) {
     return std::vector<int64_t>(in.begin(), in.end());
@@ -632,7 +631,7 @@ void SlowConvForward(const Context& dev_ctx,
   DenseTensor bias_contiguous;
 
   if (bias_ptr) {
-    phi::ContiguousKernel<T, Context>(dev_ctx, *bias_ptr, &bias_contiguous);
+    ContiguousKernel<T, Context>(dev_ctx, *bias_ptr, &bias_contiguous);
     bias_ptr = &bias_contiguous;
   }
 
@@ -812,14 +811,14 @@ void SlowConvBackward(const Context& dev_ctx,
 
   // Contiguous
   DenseTensor grad_output_cont;
-  phi::ContiguousKernel<T, Context>(
+  ContiguousKernel<T, Context>(
       dev_ctx, transformed_output_grad, &grad_output_cont);
 
   DenseTensor input_cont;
-  phi::ContiguousKernel<T, Context>(dev_ctx, transformed_input, &input_cont);
+  ContiguousKernel<T, Context>(dev_ctx, transformed_input, &input_cont);
 
   DenseTensor weight_cont;
-  phi::ContiguousKernel<T, Context>(dev_ctx, filter, &weight_cont);
+  ContiguousKernel<T, Context>(dev_ctx, filter, &weight_cont);
 
   auto to_int64_vec = [](const std::vector<int>& in) {
     return std::vector<int64_t>(in.begin(), in.end());

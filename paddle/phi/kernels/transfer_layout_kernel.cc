@@ -220,7 +220,7 @@ void TransferLayoutKernel(const Context& dev_ctx,
 PD_REGISTER_KERNEL_FOR_ALL_DTYPE(transfer_layout,
                                  CPU,
                                  ALL_LAYOUT,
-                                 phi::TransferLayoutKernel<phi::CPUContext>) {}
+                                 phi::TransferLayoutKernel<CPUContext>) {}
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL_FOR_ALL_DTYPE(transfer_layout,
                                  GPU,

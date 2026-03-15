@@ -646,7 +646,7 @@ transposeToFrontAndInvPerm(const GPUContext& dev_ctx,
   }
 
   DenseTensor transposed_self;
-  phi::TransposeKernel<T, GPUContext>(dev_ctx, self, dims, &transposed_self);
+  TransposeKernel<T, GPUContext>(dev_ctx, self, dims, &transposed_self);
 
   return std::make_tuple(transposed_self, transposed_indices, inv_perm);
 }
