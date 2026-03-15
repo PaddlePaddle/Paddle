@@ -245,7 +245,7 @@ void DispatchComputeImpl(const Context &dev_ctx,
                          const float quant_min_bound,
                          DenseTensor *out) {
   const T *bias_data = bias == nullptr ? nullptr : bias->data<T>();
-  Load<T> load_func(x.data<T>());
+  LoadFunc<T> load_func(x.data<T>());
   QuantStore<T, OutT> store_func(dev_ctx.template Alloc<OutT>(out),
                                  quant_round_type,
                                  quant_scale,
@@ -280,7 +280,7 @@ void DispatchComputeImpl(const Context &dev_ctx,
     ComputeImpl<T, Context, DequantLoad<T>, QuantStore<T, int8_t>, int32_t>(
         dev_ctx, bias_data, act_method, rows, cols, load_func, store_func);
   } else if (dequant_scales == nullptr && quant_scale > 0) {
-    Load<T> load_func(x.data<T>());
+    LoadFunc<T> load_func(x.data<T>());
     QuantStore<T, int8_t> store_func(dev_ctx.template Alloc<int8_t>(out),
                                      quant_round_type,
                                      quant_scale,
