@@ -35,7 +35,7 @@ void AssignKernel(const Context& dev_ctx,
 PD_REGISTER_KERNEL_FOR_ALL_DTYPE(assign_sr,
                                  CPU,
                                  ALL_LAYOUT,
-                                 phi::sr::AssignKernel<CPUContext>) {
+                                 phi::sr::AssignKernel<phi::CPUContext>) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
 
@@ -52,7 +52,7 @@ PD_REGISTER_KERNEL_FOR_ALL_DTYPE(assign_sr,
 PD_REGISTER_KERNEL_FOR_ALL_DTYPE(assign_sr,
                                  XPU,
                                  ALL_LAYOUT,
-                                 phi::sr::AssignKernel<XPUContext>) {
+                                 phi::sr::AssignKernel<phi::XPUContext>) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
 #endif
