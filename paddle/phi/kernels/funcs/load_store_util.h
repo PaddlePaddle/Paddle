@@ -56,8 +56,8 @@ __forceinline__ __device__ OutType FP8QuantHelperFunc(const InType input,
 }
 
 template <typename T>
-struct LoadF {
-  explicit LoadF(const T *src) : src_(src) {}
+struct LoadFunc {
+  explicit LoadFunc(const T *src) : src_(src) {}
 
   template <int VecSize>
   __device__ void load(AlignedVector<T, VecSize> *dst, int64_t idx) {
@@ -68,8 +68,8 @@ struct LoadF {
 };
 
 template <typename T, bool Smooth = false>
-struct StoreF {
-  explicit StoreF(T *dst) : dst_(dst) {}
+struct StoreFunc {
+  explicit StoreFunc(T *dst) : dst_(dst) {}
 
   template <int VecSize>
   __device__ void store(AlignedVector<T, VecSize> &src, int64_t idx) {
@@ -80,8 +80,8 @@ struct StoreF {
 };
 
 template <typename T>
-struct StoreF<T, true> {
-  StoreF(T *dst, const T *shift, const T *smooth, const int64_t cols)
+struct StoreFunc<T, true> {
+  StoreFunc(T *dst, const T *shift, const T *smooth, const int64_t cols)
       : dst_(dst), shift_(shift), smooth_(smooth), cols_(cols) {}
 
   template <int VecSize>
