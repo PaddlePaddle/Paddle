@@ -41,20 +41,21 @@ void SetValueImpl(const Context& dev_ctx,
                   const std::vector<int64_t>& none_axes,
                   DenseTensor* out) {
   auto in_dims = in.dims();
+  auto canonical_axes = funcs::CheckAndCanonicalizeSliceAxes(in_dims, axes);
   std::vector<int64_t> starts_local = starts.GetData();
   std::vector<int64_t> ends_local = ends.GetData();
   std::vector<int64_t> steps_local = steps.GetData();
   if (starts_local.empty() && ends_local.empty() && steps_local.empty() &&
-      axes.empty() && decrease_axes.empty() && none_axes.empty() &&
+      canonical_axes.empty() && decrease_axes.empty() && none_axes.empty() &&
       value.numel() == 1) {
     ExpandKernel<T, Context>(
         dev_ctx, value, IntArray{phi::vectorize<int64_t>(in.dims())}, out);
     return;
   }
   funcs::CheckAndUpdateSliceAttrs(
-      in_dims, axes, &starts_local, &ends_local, &steps_local);
+      in_dims, canonical_axes, &starts_local, &ends_local, &steps_local);
   auto slice_dims = funcs::GetSliceDims(
-      in_dims, axes, starts_local, ends_local, &steps_local);
+      in_dims, canonical_axes, starts_local, ends_local, &steps_local);
   auto decrease_slice_dims = funcs::GetDecreasedDims(slice_dims, decrease_axes);
   auto slice_dims_for_assign = decrease_slice_dims;
   if (!none_axes.empty()) {
@@ -121,8 +122,8 @@ void SetValueImpl(const Context& dev_ctx,
     ends_indices[i] = slice_dims[i];
     strides_indices[i] = 1;
   }
-  for (size_t i = 0; i < axes.size(); i++) {
-    int axis_index = axes[i];
+  for (size_t i = 0; i < canonical_axes.size(); i++) {
+    int axis_index = canonical_axes[i];
     starts_indices[axis_index] = starts_local[i];
     ends_indices[axis_index] = ends_local[i];
     strides_indices[axis_index] = steps_local[i];

@@ -46,18 +46,19 @@ void SetTensorValueKernel(const Context& dev_ctx,
   }
 
   auto in_dims = in.dims();
+  auto canonical_axes = funcs::CheckAndCanonicalizeSliceAxes(in_dims, axes);
   auto meta = in.meta();
   std::vector<int64_t> starts_local = starts.GetData();
   std::vector<int64_t> ends_local = ends.GetData();
   std::vector<int64_t> steps_local = steps.GetData();
   funcs::CheckAndUpdateSliceAttrs(
-      in_dims, axes, &starts_local, &ends_local, &steps_local);
+      in_dims, canonical_axes, &starts_local, &ends_local, &steps_local);
 
   std::vector<int64_t> output_dims = vectorize<int64_t>(in.dims());
   std::vector<int64_t> output_stride = vectorize<int64_t>(in.strides());
   int64_t output_offset = static_cast<int64_t>(in.offset());
-  for (size_t i = 0; i < axes.size(); ++i) {
-    int64_t axis_size = in.dims()[axes[i]];
+  for (size_t i = 0; i < canonical_axes.size(); ++i) {
+    int64_t axis_size = in.dims()[canonical_axes[i]];
     if (axis_size < 0) {
       continue;
     }
@@ -66,10 +67,11 @@ void SetTensorValueKernel(const Context& dev_ctx,
 
     auto out_dim =
         (std::abs(ends_local[i] - starts_local[i]) + step_size - 1) / step_size;
-    output_offset += static_cast<int64_t>(
-        starts_local[i] * output_stride[axes[i]] * SizeOf(out->dtype()));
-    output_dims[axes[i]] = out_dim;
-    output_stride[axes[i]] *= steps_local[i];
+    output_offset += static_cast<int64_t>(starts_local[i] *
+                                          output_stride[canonical_axes[i]] *
+                                          SizeOf(out->dtype()));
+    output_dims[canonical_axes[i]] = out_dim;
+    output_stride[canonical_axes[i]] *= steps_local[i];
   }
   // generate new shape
   std::vector<int64_t> new_out_shape;

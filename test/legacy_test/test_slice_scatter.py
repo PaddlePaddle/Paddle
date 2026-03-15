@@ -325,6 +325,24 @@ class TestSliceScatterApiError(unittest.TestCase):
                 x, value, axes=[0], starts=[0], ends=[8], strides=[1]
             )
 
+    def test_error_invalid_negative_axis(self):
+        for place in get_places():
+            paddle.disable_static(place)
+            try:
+                x = paddle.to_tensor([[-39.0625]], dtype='float32')
+                value = paddle.to_tensor([[-39.0625]], dtype='float32')
+                with self.assertRaises(ValueError):
+                    _ = paddle.slice_scatter(
+                        x,
+                        value,
+                        axes=[-4],
+                        starts=[-5],
+                        ends=[-5],
+                        strides=[1],
+                    )
+            finally:
+                paddle.enable_static()
+
     def test_error_index(self):
         paddle.disable_static()
         with self.assertRaises(ValueError):

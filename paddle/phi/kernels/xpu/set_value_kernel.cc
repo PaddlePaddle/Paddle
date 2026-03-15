@@ -81,6 +81,7 @@ void SetValueImpl(const Context& dev_ctx,
                   DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto in_dims = in.dims();
+  auto canonical_axes = funcs::CheckAndCanonicalizeSliceAxes(in_dims, axes);
 
   auto new_value_dims = value_dims;
 
@@ -93,9 +94,9 @@ void SetValueImpl(const Context& dev_ctx,
   std::vector<int64_t> ends_local = ends.GetData();
   std::vector<int64_t> steps_local = steps.GetData();
   funcs::CheckAndUpdateSliceAttrs(
-      in_dims, axes, &starts_local, &ends_local, &steps_local);
+      in_dims, canonical_axes, &starts_local, &ends_local, &steps_local);
   auto slice_dims = funcs::GetSliceDims(
-      in_dims, axes, starts_local, ends_local, &steps_local);
+      in_dims, canonical_axes, starts_local, ends_local, &steps_local);
   auto decrease_slice_dims = funcs::GetDecreasedDims(slice_dims, decrease_axes);
 
   auto slice_dims_for_assign = decrease_slice_dims;
@@ -164,8 +165,8 @@ void SetValueImpl(const Context& dev_ctx,
     ends_indices[i] = slice_dims[i];
     strides_indices[i] = 1;
   }
-  for (size_t i = 0; i < axes.size(); i++) {
-    int64_t axis_index = axes[i];
+  for (size_t i = 0; i < canonical_axes.size(); i++) {
+    int64_t axis_index = canonical_axes[i];
     starts_indices[axis_index] = starts_local[i];
     ends_indices[axis_index] = ends_local[i];
     strides_indices[axis_index] = steps_local[i];

@@ -241,23 +241,49 @@ void normalize_interval(
 }
 
 template <typename T = int64_t>
+inline std::vector<T> CheckAndCanonicalizeSliceAxes(const DDim& in_dims,
+                                                    const std::vector<T>& axes) {
+  std::vector<T> canonical_axes(axes);
+  const auto rank = in_dims.size();
+  for (size_t i = 0; i < canonical_axes.size(); ++i) {
+    auto axis = canonical_axes[i];
+    PADDLE_ENFORCE_GE(
+        axis,
+        -rank,
+        common::errors::InvalidArgument(
+            "The axis value should be in range [-%d, %d), but received "
+            "axes[%d] = %d.",
+            rank,
+            rank,
+            i,
+            axis));
+    PADDLE_ENFORCE_LT(
+        axis,
+        rank,
+        common::errors::InvalidArgument(
+            "The axis value should be in range [-%d, %d), but received "
+            "axes[%d] = %d.",
+            rank,
+            rank,
+            i,
+            axis));
+    if (axis < 0) {
+      canonical_axes[i] = axis + rank;
+    }
+  }
+  return canonical_axes;
+}
+
+template <typename T = int64_t>
 inline void CheckAndUpdateSliceAttrs(const DDim in_dims,
                                      const std::vector<T>& axes,
                                      std::vector<T>* starts,
                                      std::vector<T>* ends,
                                      std::vector<int64_t>* steps = nullptr,
                                      std::vector<T>* infer_flags = nullptr) {
-  for (size_t i = 0; i < axes.size(); ++i) {
-    T axis = axes[i];
-    PADDLE_ENFORCE_LT(
-        axis,
-        in_dims.size(),
-        common::errors::InvalidArgument(
-            "The axis value should be less than the rank of input, "
-            "but received axes[%d] = %d, rank of input is %d.",
-            i,
-            axis,
-            in_dims.size()));
+  auto canonical_axes = CheckAndCanonicalizeSliceAxes(in_dims, axes);
+  for (size_t i = 0; i < canonical_axes.size(); ++i) {
+    T axis = canonical_axes[i];
 
     if (infer_flags != nullptr && (*infer_flags)[i] == -1) {
       continue;
