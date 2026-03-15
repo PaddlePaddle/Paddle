@@ -114,8 +114,11 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
   std::vector<DenseTensor*> outputs = {x_grad};
 
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  funcs::BroadcastKernel<T>(
-      dev_ctx, inputs, &outputs, kps::DivideFunctor<T, MPType>(reduce_num), 0);
+  funcs::BroadcastKernel<T>(dev_ctx,
+                            inputs,
+                            &outputs,
+                            kps::MPTypeDivideFunctor<T, MPType>(reduce_num),
+                            0);
 }
 
 template <typename T, typename Context>
