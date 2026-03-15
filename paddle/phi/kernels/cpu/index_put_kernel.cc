@@ -22,25 +22,12 @@
 
 namespace phi {
 
-template <typename T>
-void index_put_kernel(const int64_t N,
-                      const T* x UNUSED,
-                      const T* vals,
-                      const int64_t** indices,
-                      const DDim& stride,
-                      const DDim& shape,
-                      int64_t is_single_val_tensor,
-                      bool accumulate,
-                      T* out) {
-#ifdef PADDLE_WITH_MKLML
-#pragma omp parallel for
-#endif
+inline void ValidateIndexPutIndices(const int64_t N,
+                                    const int64_t** indices,
+                                    const DDim& shape) {
   for (int64_t idx = 0; idx < N; ++idx) {
-    int64_t cur_ix = 0;
-    int64_t offset = 0;
-
     for (int i = 0; i < shape.size(); ++i) {
-      cur_ix = (static_cast<int64_t>(*(indices[i] + idx)));
+      const int64_t cur_ix = static_cast<int64_t>(*(indices[i] + idx));
       const int64_t axis_size = shape[i];
       const int64_t lower_bound = -axis_size;
       const int64_t upper_bound = axis_size;
@@ -72,6 +59,29 @@ void index_put_kernel(const int64_t N,
               axis_size,
               lower_bound,
               upper_bound));
+    }
+  }
+}
+
+template <typename T>
+void index_put_kernel(const int64_t N,
+                      const T* x UNUSED,
+                      const T* vals,
+                      const int64_t** indices,
+                      const DDim& stride,
+                      const DDim& shape,
+                      int64_t is_single_val_tensor,
+                      bool accumulate,
+                      T* out) {
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
+  for (int64_t idx = 0; idx < N; ++idx) {
+    int64_t cur_ix = 0;
+    int64_t offset = 0;
+
+    for (int i = 0; i < shape.size(); ++i) {
+      cur_ix = (static_cast<int64_t>(*(indices[i] + idx)));
       if (cur_ix < 0) {
         cur_ix += shape[i];
       }
@@ -118,6 +128,8 @@ void LaunchIndexPutKernel(const Context& dev_ctx,
   for (size_t i = 0; i < indices.size(); ++i) {
     pd_indices[i] = indices[i]->data<int64_t>();
   }
+
+  ValidateIndexPutIndices(numel, pd_indices.data(), x_dims);
 
   index_put_kernel<T>(numel,
                       x_data,
