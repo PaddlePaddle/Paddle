@@ -657,6 +657,31 @@ class TestIndexPutInplaceAPI1(TestIndexPutInplaceAPI):
         self.accumulate = True
 
 
+class TestIndexPutOutOfBoundsIndex(unittest.TestCase):
+    def test_inplace_negative_index_out_of_bounds(self):
+        paddle.disable_static()
+        paddle.device.set_device("cpu")
+
+        x = paddle.to_tensor([-39.0625], dtype="float64")
+        indices = (paddle.to_tensor([-2], dtype="int32"),)
+        value = paddle.to_tensor([-39.0625], dtype="float64")
+
+        with self.assertRaises(IndexError):
+            paddle.index_put_(x, indices, value, accumulate=False)
+
+    def test_valid_negative_index(self):
+        paddle.disable_static()
+        paddle.device.set_device("cpu")
+
+        x = paddle.to_tensor([1.0], dtype="float64")
+        indices = (paddle.to_tensor([-1], dtype="int32"),)
+        value = paddle.to_tensor([2.0], dtype="float64")
+
+        out = paddle.index_put_(x, indices, value, accumulate=False)
+
+        np.testing.assert_allclose(np.array([2.0]), out.numpy(), atol=1e-7)
+
+
 class TestIndexPutAPIBackward(unittest.TestCase):
     def setUp(self):
         self.setPlace()

@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/index_put_kernel.h"
 #include <array>
+#include <cinttypes>
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cast_kernel.h"
@@ -40,6 +41,24 @@ void index_put_kernel(const int64_t N,
 
     for (int i = 0; i < shape.size(); ++i) {
       cur_ix = (static_cast<int64_t>(*(indices[i] + idx)));
+      PADDLE_ENFORCE_GE(
+          cur_ix,
+          -shape[i],
+          common::errors::OutOfRange(
+              "The index %" PRId64
+              " is out of bounds for axis %d with size %" PRId64 ".",
+              cur_ix,
+              i,
+              shape[i]));
+      PADDLE_ENFORCE_LT(
+          cur_ix,
+          shape[i],
+          common::errors::OutOfRange(
+              "The index %" PRId64
+              " is out of bounds for axis %d with size %" PRId64 ".",
+              cur_ix,
+              i,
+              shape[i]));
       if (cur_ix < 0) {
         cur_ix += shape[i];
       }
