@@ -209,9 +209,10 @@ def _parse_layer_to_args(*args, **kwargs):
             if len(args) > 2:
                 non_blocking = args[2]
         else:
-            raise TypeError(
-                f"Layer.to() received an invalid combination of arguments: "
-                f"got ({', '.join(type(a).__name__ for a in args)},)"
+            raise ValueError(
+                f"device should be type of str, paddle.CPUPlace, paddle.CUDAPlace, "
+                f"paddle.CUDAPinnedPlace, paddle.XPUPlace, or paddle.base.libpaddle.Place, "
+                f"but got {type(first).__name__}"
             )
 
     # kwargs override positional args
