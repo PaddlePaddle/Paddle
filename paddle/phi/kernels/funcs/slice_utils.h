@@ -241,8 +241,8 @@ void normalize_interval(
 }
 
 template <typename T = int64_t>
-inline std::vector<T> CheckAndCanonicalizeSliceAxes(const DDim& in_dims,
-                                                    const std::vector<T>& axes) {
+inline std::vector<T> CheckAndCanonicalizeSliceAxes(
+    const DDim& in_dims, const std::vector<T>& axes) {
   std::vector<T> canonical_axes(axes);
   const auto rank = in_dims.size();
   for (size_t i = 0; i < canonical_axes.size(); ++i) {
