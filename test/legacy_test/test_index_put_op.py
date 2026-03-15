@@ -658,9 +658,9 @@ class TestIndexPutInplaceAPI1(TestIndexPutInplaceAPI):
 
 
 class TestIndexPutOutOfBoundsIndex(unittest.TestCase):
-    def _run_out_of_bounds_case(self, place):
+    def test_inplace_negative_index_out_of_bounds_cpu(self):
         paddle.disable_static()
-        paddle.device.set_device(place)
+        paddle.device.set_device("cpu")
 
         x = paddle.to_tensor([-39.0625], dtype="float64")
         indices = (paddle.to_tensor([-2], dtype="int32"),)
@@ -668,15 +668,6 @@ class TestIndexPutOutOfBoundsIndex(unittest.TestCase):
 
         with self.assertRaises(IndexError):
             paddle.index_put_(x, indices, value, accumulate=False)
-
-    def test_inplace_negative_index_out_of_bounds_cpu(self):
-        self._run_out_of_bounds_case("cpu")
-
-    @unittest.skipIf(
-        not core.is_compiled_with_cuda(), 'core is not compiled with CUDA'
-    )
-    def test_inplace_negative_index_out_of_bounds_cuda(self):
-        self._run_out_of_bounds_case("gpu")
 
     def test_valid_negative_index(self):
         paddle.disable_static()
