@@ -32,8 +32,8 @@ inline common::ErrorSummary IndexPutIndexOutOfRangeError(int64_t index,
   return common::errors::OutOfRange(
       "The index value %" PRId64
       " is out of bounds for axis %d with size %" PRId64
-      " in index_put. Expected the index to be in range [%" PRId64
-      ", %" PRId64 "), where negative indices are normalized by adding "
+      " in index_put. Expected the index to be in range [%" PRId64 ", %" PRId64
+      "), where negative indices are normalized by adding "
       "the axis size before writing.",
       index,
       axis,
@@ -49,10 +49,9 @@ inline void ValidateIndexPutIndices(const int64_t N,
     for (int i = 0; i < shape.size(); ++i) {
       const int64_t cur_ix = static_cast<int64_t>(*(indices[i] + idx));
       const int64_t axis_size = shape[i];
-      PADDLE_ENFORCE_EQ(
-          IsValidIndexPutIndex(cur_ix, axis_size),
-          true,
-          IndexPutIndexOutOfRangeError(cur_ix, i, axis_size));
+      PADDLE_ENFORCE_EQ(IsValidIndexPutIndex(cur_ix, axis_size),
+                        true,
+                        IndexPutIndexOutOfRangeError(cur_ix, i, axis_size));
     }
   }
 }
@@ -78,10 +77,9 @@ void index_put_kernel(const int64_t N,
       cur_ix = (static_cast<int64_t>(*(indices[i] + idx)));
 #ifndef PADDLE_WITH_MKLML
       const int64_t axis_size = shape[i];
-      PADDLE_ENFORCE_EQ(
-          IsValidIndexPutIndex(cur_ix, axis_size),
-          true,
-          IndexPutIndexOutOfRangeError(cur_ix, i, axis_size));
+      PADDLE_ENFORCE_EQ(IsValidIndexPutIndex(cur_ix, axis_size),
+                        true,
+                        IndexPutIndexOutOfRangeError(cur_ix, i, axis_size));
 #endif
       if (cur_ix < 0) {
         cur_ix += shape[i];
