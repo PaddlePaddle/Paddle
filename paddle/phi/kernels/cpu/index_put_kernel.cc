@@ -22,6 +22,26 @@
 
 namespace phi {
 
+inline bool IsValidIndexPutIndex(int64_t index, int64_t axis_size) {
+  return index >= -axis_size && index < axis_size;
+}
+
+inline common::ErrorSummary IndexPutIndexOutOfRangeError(int64_t index,
+                                                         int axis,
+                                                         int64_t axis_size) {
+  return common::errors::OutOfRange(
+      "The index value %" PRId64
+      " is out of bounds for axis %d with size %" PRId64
+      " in index_put. Expected the index to be in range [%" PRId64
+      ", %" PRId64 "), where negative indices are normalized by adding "
+      "the axis size before writing.",
+      index,
+      axis,
+      axis_size,
+      -axis_size,
+      axis_size);
+}
+
 inline void ValidateIndexPutIndices(const int64_t N,
                                     const int64_t** indices,
                                     const DDim& shape) {
@@ -29,36 +49,10 @@ inline void ValidateIndexPutIndices(const int64_t N,
     for (int i = 0; i < shape.size(); ++i) {
       const int64_t cur_ix = static_cast<int64_t>(*(indices[i] + idx));
       const int64_t axis_size = shape[i];
-      const int64_t lower_bound = -axis_size;
-      const int64_t upper_bound = axis_size;
-      PADDLE_ENFORCE_GE(
-          cur_ix,
-          lower_bound,
-          common::errors::OutOfRange(
-              "The index value %" PRId64
-              " is out of bounds for axis %d with size %" PRId64
-              " in index_put. Expected the index to be in range [%" PRId64
-              ", %" PRId64 "), where negative indices are normalized by "
-              "adding the axis size before writing.",
-              cur_ix,
-              i,
-              axis_size,
-              lower_bound,
-              upper_bound));
-      PADDLE_ENFORCE_LT(
-          cur_ix,
-          upper_bound,
-          common::errors::OutOfRange(
-              "The index value %" PRId64
-              " is out of bounds for axis %d with size %" PRId64
-              " in index_put. Expected the index to be in range [%" PRId64
-              ", %" PRId64 "), where negative indices are normalized by "
-              "adding the axis size before writing.",
-              cur_ix,
-              i,
-              axis_size,
-              lower_bound,
-              upper_bound));
+      PADDLE_ENFORCE_EQ(
+          IsValidIndexPutIndex(cur_ix, axis_size),
+          true,
+          IndexPutIndexOutOfRangeError(cur_ix, i, axis_size));
     }
   }
 }
@@ -82,6 +76,13 @@ void index_put_kernel(const int64_t N,
 
     for (int i = 0; i < shape.size(); ++i) {
       cur_ix = (static_cast<int64_t>(*(indices[i] + idx)));
+#ifndef PADDLE_WITH_MKLML
+      const int64_t axis_size = shape[i];
+      PADDLE_ENFORCE_EQ(
+          IsValidIndexPutIndex(cur_ix, axis_size),
+          true,
+          IndexPutIndexOutOfRangeError(cur_ix, i, axis_size));
+#endif
       if (cur_ix < 0) {
         cur_ix += shape[i];
       }
@@ -129,7 +130,9 @@ void LaunchIndexPutKernel(const Context& dev_ctx,
     pd_indices[i] = indices[i]->data<int64_t>();
   }
 
+#ifdef PADDLE_WITH_MKLML
   ValidateIndexPutIndices(numel, pd_indices.data(), x_dims);
+#endif
 
   index_put_kernel<T>(numel,
                       x_data,
