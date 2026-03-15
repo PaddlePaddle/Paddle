@@ -13,14 +13,48 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/index_put_kernel.h"
+#include <cinttypes>
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/index_put_utils.h"
 
 namespace phi {
+
+__global__ void ValidateIndexPutCudaKernel(
+    int64_t** indices,
+    Array<int64_t, DDim::kMaxRank> shape,
+    const int rank,
+    const int64_t numel,
+    int* has_error,
+    int64_t* invalid_index,
+    int* invalid_axis) {
+  int64_t idx =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x);
+
+  if (idx >= numel || *has_error) {
+    return;
+  }
+
+#pragma unroll
+  for (int i = 0; i < DDim::kMaxRank; ++i) {
+    if (i >= rank) {
+      break;
+    }
+    int64_t cur_ix = static_cast<int64_t>(*(indices[i] + idx));
+    if (cur_ix < -shape[i] || cur_ix >= shape[i]) {
+      if (atomicCAS(has_error, 0, 1) == 0) {
+        *invalid_index = cur_ix;
+        *invalid_axis = i;
+      }
+      return;
+    }
+  }
+}
 
 template <typename T>
 __global__ void IndexPutCudaKernel(const T* x,
@@ -94,7 +128,81 @@ void LaunchIndexPutCudaKernel(const Context& dev_ctx,
   auto pd_indices =
       funcs::GetDevicePointerArray<int64_t, Context>(dev_ctx, indices, &holder);
 
+  int host_has_error = 0;
+  int64_t host_invalid_index = 0;
+  int host_invalid_axis = 0;
+  auto error_flag = phi::memory_utils::Alloc(
+      dev_ctx.GetPlace(), sizeof(int), dev_ctx.stream());
+  auto invalid_index = phi::memory_utils::Alloc(
+      dev_ctx.GetPlace(), sizeof(int64_t), dev_ctx.stream());
+  auto invalid_axis = phi::memory_utils::Alloc(
+      dev_ctx.GetPlace(), sizeof(int), dev_ctx.stream());
+  phi::memory_utils::Copy(dev_ctx.GetPlace(),
+                          error_flag->ptr(),
+                          phi::CPUPlace(),
+                          &host_has_error,
+                          sizeof(int),
+                          dev_ctx.stream());
+  phi::memory_utils::Copy(dev_ctx.GetPlace(),
+                          invalid_index->ptr(),
+                          phi::CPUPlace(),
+                          &host_invalid_index,
+                          sizeof(int64_t),
+                          dev_ctx.stream());
+  phi::memory_utils::Copy(dev_ctx.GetPlace(),
+                          invalid_axis->ptr(),
+                          phi::CPUPlace(),
+                          &host_invalid_axis,
+                          sizeof(int),
+                          dev_ctx.stream());
+
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
+  ValidateIndexPutCudaKernel<<<config.block_per_grid,
+                               config.thread_per_block,
+                               0,
+                               dev_ctx.stream()>>>(pd_indices,
+                                                   shape_array,
+                                                   rank,
+                                                   numel,
+                                                   reinterpret_cast<int*>(
+                                                       error_flag->ptr()),
+                                                   reinterpret_cast<int64_t*>(
+                                                       invalid_index->ptr()),
+                                                   reinterpret_cast<int*>(
+                                                       invalid_axis->ptr()));
+  phi::memory_utils::Copy(phi::CPUPlace(),
+                          &host_has_error,
+                          dev_ctx.GetPlace(),
+                          error_flag->ptr(),
+                          sizeof(int),
+                          dev_ctx.stream());
+  dev_ctx.Wait();
+  if (host_has_error != 0) {
+    phi::memory_utils::Copy(phi::CPUPlace(),
+                            &host_invalid_index,
+                            dev_ctx.GetPlace(),
+                            invalid_index->ptr(),
+                            sizeof(int64_t),
+                            dev_ctx.stream());
+    phi::memory_utils::Copy(phi::CPUPlace(),
+                            &host_invalid_axis,
+                            dev_ctx.GetPlace(),
+                            invalid_axis->ptr(),
+                            sizeof(int),
+                            dev_ctx.stream());
+    dev_ctx.Wait();
+    PADDLE_THROW(common::errors::OutOfRange(
+        "The index value %" PRId64
+        " is out of bounds for axis %d with size %" PRId64
+        " in index_put. Expected the index to satisfy -%" PRId64
+        " <= index < %" PRId64 " before negative index normalization.",
+        host_invalid_index,
+        host_invalid_axis,
+        x_dims[host_invalid_axis],
+        x_dims[host_invalid_axis],
+        x_dims[host_invalid_axis]));
+  }
+
   IndexPutCudaKernel<T>
       <<<config.block_per_grid, config.thread_per_block, 0, dev_ctx.stream()>>>(
           x_data,

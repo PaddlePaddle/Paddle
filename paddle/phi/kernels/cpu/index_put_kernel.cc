@@ -45,19 +45,27 @@ void index_put_kernel(const int64_t N,
           cur_ix,
           -shape[i],
           common::errors::OutOfRange(
-              "The index %" PRId64
-              " is out of bounds for axis %d with size %" PRId64 ".",
+              "The index value %" PRId64
+              " is out of bounds for axis %d with size %" PRId64
+              " in index_put. Expected the index to satisfy -%" PRId64
+              " <= index < %" PRId64 " before negative index normalization.",
               cur_ix,
               i,
+              shape[i],
+              shape[i],
               shape[i]));
       PADDLE_ENFORCE_LT(
           cur_ix,
           shape[i],
           common::errors::OutOfRange(
-              "The index %" PRId64
-              " is out of bounds for axis %d with size %" PRId64 ".",
+              "The index value %" PRId64
+              " is out of bounds for axis %d with size %" PRId64
+              " in index_put. Expected the index to satisfy -%" PRId64
+              " <= index < %" PRId64 " before negative index normalization.",
               cur_ix,
               i,
+              shape[i],
+              shape[i],
               shape[i]));
       if (cur_ix < 0) {
         cur_ix += shape[i];
