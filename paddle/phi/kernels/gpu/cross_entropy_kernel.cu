@@ -35,12 +35,6 @@ namespace phi {
 
 #define ALIGN_BYTES 16
 
-#ifndef PADDLE_CROSS_ENTROPY_WARP_SIZE
-#define PADDLE_CROSS_ENTROPY_WARP_SIZE 32
-#endif
-#define PADDLE_CE_WARP_MASK (PADDLE_CROSS_ENTROPY_WARP_SIZE - 1)
-#define PADDLE_CE_WARP_SHIFT (PADDLE_CROSS_ENTROPY_WARP_SIZE == 64 ? 6 : 5)
-
 enum class SoftmaxMode { kSoftmax, kLogSoftmax, kCrossEntropy };
 
 // Wrapper of log function. Use log(float32) for float16
@@ -119,7 +113,7 @@ __global__ void CrossEntropySoftLabel(T* loss,
 
   const int kThreadPerBlock = 512;
   const int kBatchPerBlock = 1;
-  const int kWarpSize = PADDLE_CROSS_ENTROPY_WARP_SIZE;
+  const int kWarpSize = PADDLE_WARP_SIZE;
   const int kBatchSize = 1;
   const int kThreadPerBatch = kThreadPerBlock / kBatchPerBlock;
   const int kWarpPerBatch = kThreadPerBatch / kWarpSize;
@@ -336,17 +330,17 @@ __device__ __forceinline__ T WarpReduceMaxDown(T val) {
 
 template <typename T>
 __device__ __forceinline__ T BlockReduceSumDown(T val) {
-  __shared__ T shared[PADDLE_CROSS_ENTROPY_WARP_SIZE];
+  __shared__ T shared[PADDLE_WARP_SIZE];
   int tid = threadIdx.x;
-  int lane = tid & PADDLE_CE_WARP_MASK;
-  int wid = tid >> PADDLE_CE_WARP_SHIFT;
+  int lane = tid & PADDLE_WARP_MASK;
+  int wid = tid >> PADDLE_WARP_SHIFT;
   val = WarpReduceSumDown(val);
   __syncthreads();
   if (lane == 0) {
     shared[wid] = val;
   }
   __syncthreads();
-  int warps = (blockDim.x + warpSize - 1) >> PADDLE_CE_WARP_SHIFT;
+  int warps = (blockDim.x + warpSize - 1) >> PADDLE_WARP_SHIFT;
   val = (tid < warps) ? shared[lane] : static_cast<T>(0.0f);
   if (wid == 0) {
     val = WarpReduceSumDown(val);
@@ -360,17 +354,17 @@ __device__ __forceinline__ T BlockReduceSumDown(T val) {
 
 template <typename T>
 __device__ __forceinline__ T BlockReduceMaxDown(T val) {
-  __shared__ T shared[PADDLE_CROSS_ENTROPY_WARP_SIZE];
+  __shared__ T shared[PADDLE_WARP_SIZE];
   int tid = threadIdx.x;
-  int lane = tid & PADDLE_CE_WARP_MASK;
-  int wid = tid >> PADDLE_CE_WARP_SHIFT;
+  int lane = tid & PADDLE_WARP_MASK;
+  int wid = tid >> PADDLE_WARP_SHIFT;
   val = WarpReduceMaxDown(val);
   __syncthreads();
   if (lane == 0) {
     shared[wid] = val;
   }
   __syncthreads();
-  int warps = (blockDim.x + warpSize - 1) >> PADDLE_CE_WARP_SHIFT;
+  int warps = (blockDim.x + warpSize - 1) >> PADDLE_WARP_SHIFT;
   val = (tid < warps) ? shared[lane] : -std::numeric_limits<T>::infinity();
   if (wid == 0) {
     val = WarpReduceMaxDown(val);
@@ -787,9 +781,9 @@ __global__ void WarpSoftmaxForwardSoftLabel(T* loss,
   const bool LogMode = true;
 
   constexpr int kDimCeil = 1 << Log2Elements;
-  constexpr int kWarpSize = (kDimCeil < PADDLE_CROSS_ENTROPY_WARP_SIZE)
+  constexpr int kWarpSize = (kDimCeil < PADDLE_WARP_SIZE)
                                 ? kDimCeil
-                                : PADDLE_CROSS_ENTROPY_WARP_SIZE;
+                                : PADDLE_WARP_SIZE;
   constexpr int kVSize = sizeof(VecT) / sizeof(T);
   constexpr int kIterations = kDimCeil / kWarpSize;
   constexpr int kIterationsV =
@@ -1007,9 +1001,9 @@ static void SoftmaxWithCrossEntropySoftLabel(const GPUContext& dev_ctx,
   }
 
   if (D == 1 && dim <= max_dim) {
-    int kWarpSize = (kDimCeil < PADDLE_CROSS_ENTROPY_WARP_SIZE)
+    int kWarpSize = (kDimCeil < PADDLE_WARP_SIZE)
                         ? kDimCeil
-                        : PADDLE_CROSS_ENTROPY_WARP_SIZE;
+                        : PADDLE_WARP_SIZE;
     int batches_per_warp = (kDimCeil <= 128) ? 2 : 1;
 
     // use 128 threads per block to maximize gpu utilization
@@ -1112,9 +1106,9 @@ __global__ void WarpSoftmaxForward(T* loss,
                                    const int element_count,
                                    const int ignore_index) {
   constexpr int kDimCeil = 1 << Log2Elements;
-  constexpr int kWarpSize = (kDimCeil < PADDLE_CROSS_ENTROPY_WARP_SIZE)
+  constexpr int kWarpSize = (kDimCeil < PADDLE_WARP_SIZE)
                                 ? kDimCeil
-                                : PADDLE_CROSS_ENTROPY_WARP_SIZE;
+                                : PADDLE_WARP_SIZE;
   constexpr int kVSize = sizeof(VecT) / sizeof(T);
   constexpr int kIterations = kDimCeil / kWarpSize;
   constexpr int kIterationsV =
@@ -1354,9 +1348,9 @@ __global__ void WarpSoftmaxForwardCompatible(T* loss,
                                              const int element_count,
                                              const int ignore_index) {
   constexpr int kDimCeil = 1 << Log2Elements;
-  constexpr int kWarpSize = (kDimCeil < PADDLE_CROSS_ENTROPY_WARP_SIZE)
+  constexpr int kWarpSize = (kDimCeil < PADDLE_WARP_SIZE)
                                 ? kDimCeil
-                                : PADDLE_CROSS_ENTROPY_WARP_SIZE;
+                                : PADDLE_WARP_SIZE;
   constexpr int kVSize = sizeof(VecT) / sizeof(T);
   constexpr int kIterations = kDimCeil / kWarpSize;
   constexpr int kIterationsV =
@@ -1622,9 +1616,9 @@ void SwitchWarpSoftmaxForward(T* loss,
   // use 128 threads per block to maximimize gpu utilization
   const int log2_elements = static_cast<int>(Log2Ceil(element_count));
   const int kDimCeil = 1 << log2_elements;
-  int kWarpSize = (kDimCeil < PADDLE_CROSS_ENTROPY_WARP_SIZE)
+  int kWarpSize = (kDimCeil < PADDLE_WARP_SIZE)
                       ? kDimCeil
-                      : PADDLE_CROSS_ENTROPY_WARP_SIZE;
+                      : PADDLE_WARP_SIZE;
   int batches_per_warp = (kDimCeil <= 128) ? 2 : 1;
   constexpr int threads_per_block = 128;
   int warps_per_block = (threads_per_block / kWarpSize);
