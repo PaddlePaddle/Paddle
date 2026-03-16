@@ -3822,10 +3822,6 @@ def unique(
     r"""
     Returns the unique elements of `x` in ascending order.
 
-    .. note::
-        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``dim`` can be used as an alias for ``axis``.
-        For example, ``unique(input=tensor_x, dim=0)`` is equivalent to ``unique(x=tensor_x, axis=0)``.
-
     Args:
         x(Tensor): The input tensor, it's data type should be float32, float64, int32, int64.
             alias: ``input``.

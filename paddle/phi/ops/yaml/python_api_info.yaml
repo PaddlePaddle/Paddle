@@ -390,6 +390,11 @@
   args_alias:
     use_default_mapping : True
 
+- op : lgamma
+  name : [paddle.lgamma, paddle.Tensor.lgamma]
+  args_alias :
+    use_default_mapping : True
+
 - op : log
   name : [paddle.log, paddle.Tensor.log]
   args_alias :
@@ -466,6 +471,18 @@
   name : [paddle.nextafter, paddle.Tensor.nextafter]
   args_alias :
     use_default_mapping : True
+
+- op : real
+  name : [paddle.real, paddle.Tensor.real]
+  args_alias :
+    use_default_mapping : True
+
+- op : pixel_shuffle
+  name : [paddle.nn.functional.pixel_shuffle]
+  args_alias :
+    use_default_mapping : True
+  pre_process :
+    func : PixelShufflePreProcess(data_format)
 
 - op : reciprocal
   name : [paddle.reciprocal, paddle.Tensor.reciprocal]
