@@ -619,7 +619,8 @@ __global__ void WarpSoftmaxForward(T* softmax,
                                    const IndexType stride,
                                    const IndexType element_count) {
   constexpr IndexType kDimCeil = 1 << Log2Elements;
-  constexpr IndexType kWarpSize = (kDimCeil < PADDLE_WARP_SIZE) ? kDimCeil : PADDLE_WARP_SIZE;
+  constexpr IndexType kWarpSize =
+      (kDimCeil < PADDLE_WARP_SIZE) ? kDimCeil : PADDLE_WARP_SIZE;
   constexpr IndexType kVSize = sizeof(VecT) / sizeof(T);
   constexpr IndexType kLoops = kDimCeil / kWarpSize;
   constexpr IndexType kLoopsV = (kLoops >= kVSize) ? (kLoops / kVSize) : 1;
@@ -740,7 +741,8 @@ __global__ void WarpSoftmaxBackward(T* dst,
                                     IndexType element_count) {
   constexpr IndexType kVSize = sizeof(VecT) / sizeof(T);
   constexpr IndexType kDimCeil = 1 << Log2Elements;
-  constexpr IndexType kWarpSize = (kDimCeil < PADDLE_WARP_SIZE) ? kDimCeil : PADDLE_WARP_SIZE;
+  constexpr IndexType kWarpSize =
+      (kDimCeil < PADDLE_WARP_SIZE) ? kDimCeil : PADDLE_WARP_SIZE;
   constexpr IndexType kLoops = kDimCeil / kWarpSize;
   constexpr IndexType kBatchSize = (kDimCeil <= PADDLE_WARP_SIZE * 4) ? 2 : 1;
   constexpr IndexType kLoopsV = (kLoops >= kVSize) ? (kLoops / kVSize) : 1;
@@ -2220,10 +2222,12 @@ __global__ void softmax_warp_forward(T* dst,
   // warp_size_t and kWarpBatchSize must match the return values
   // batches_per_warp and warp_size of the warp_softmax_forward_kernel method.
   constexpr IndexType next_power_of_two = 1 << log2_elements;
-  constexpr IndexType warp_size_t =
-      (next_power_of_two < PADDLE_WARP_SIZE) ? next_power_of_two : PADDLE_WARP_SIZE;
+  constexpr IndexType warp_size_t = (next_power_of_two < PADDLE_WARP_SIZE)
+                                        ? next_power_of_two
+                                        : PADDLE_WARP_SIZE;
   constexpr IndexType kWarpIterationSize = next_power_of_two / warp_size_t;
-  constexpr IndexType kWarpBatchSize = (next_power_of_two <= PADDLE_WARP_SIZE * 4) ? 2 : 1;
+  constexpr IndexType kWarpBatchSize =
+      (next_power_of_two <= PADDLE_WARP_SIZE * 4) ? 2 : 1;
 
   IndexType first_batch =
       (static_cast<IndexType>(blockDim.y) * static_cast<IndexType>(blockIdx.x) +
@@ -2332,10 +2336,12 @@ __global__ void softmax_warp_backward(T* gradInput,
   // warp_size_t and kWarpBatchSize must match the return values
   // batches_per_warp and warp_size of the warp_softmax_backward_kernel method.
   constexpr IndexType next_power_of_two = 1 << log2_elements;
-  constexpr IndexType warp_size_t =
-      (next_power_of_two < PADDLE_WARP_SIZE) ? next_power_of_two : PADDLE_WARP_SIZE;
+  constexpr IndexType warp_size_t = (next_power_of_two < PADDLE_WARP_SIZE)
+                                        ? next_power_of_two
+                                        : PADDLE_WARP_SIZE;
   constexpr IndexType kWarpIterationSize = next_power_of_two / warp_size_t;
-  constexpr IndexType kWarpBatchSize = (next_power_of_two <= PADDLE_WARP_SIZE * 4) ? 2 : 1;
+  constexpr IndexType kWarpBatchSize =
+      (next_power_of_two <= PADDLE_WARP_SIZE * 4) ? 2 : 1;
 
   IndexType first_batch =
       (static_cast<IndexType>(blockDim.y) * static_cast<IndexType>(blockIdx.x) +
@@ -2422,11 +2428,14 @@ void dispatch_softmax_forward(const GPUContext& dev_ctx,
 
   // This value must match the warp_size_t constexpr value computed inside
   // softmax_warp_forward.
-  IndexType warp_size = (next_power_of_two < PADDLE_WARP_SIZE) ? next_power_of_two : PADDLE_WARP_SIZE;
+  IndexType warp_size = (next_power_of_two < PADDLE_WARP_SIZE)
+                            ? next_power_of_two
+                            : PADDLE_WARP_SIZE;
 
   // This value must match the kWarpBatchSize constexpr value computed inside
   // softmax_warp_forward.
-  IndexType batches_per_warp = (next_power_of_two <= PADDLE_WARP_SIZE * 4) ? 2 : 1;
+  IndexType batches_per_warp =
+      (next_power_of_two <= PADDLE_WARP_SIZE * 4) ? 2 : 1;
 
   // Use 128 threads per block to maximize GPU utilization.
   constexpr IndexType threads_per_block = PADDLE_WARP_SIZE * 4;
@@ -2476,8 +2485,11 @@ void dispatch_softmax_backward(const GPUContext& dev_ctx,
   IndexType log2_elements = Log2Ceil(softmax_elements);
   const IndexType next_power_of_two = 1 << log2_elements;
 
-  IndexType warp_size = (next_power_of_two < PADDLE_WARP_SIZE) ? next_power_of_two : PADDLE_WARP_SIZE;
-  IndexType batches_per_warp = (next_power_of_two <= PADDLE_WARP_SIZE * 4) ? 2 : 1;
+  IndexType warp_size = (next_power_of_two < PADDLE_WARP_SIZE)
+                            ? next_power_of_two
+                            : PADDLE_WARP_SIZE;
+  IndexType batches_per_warp =
+      (next_power_of_two <= PADDLE_WARP_SIZE * 4) ? 2 : 1;
   constexpr IndexType threads_per_block = PADDLE_WARP_SIZE * 4;
 
   IndexType warps_per_block = (threads_per_block / warp_size);
@@ -2751,7 +2763,8 @@ void SoftmaxForwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
         D > std::numeric_limits<int32_t>::max()) {
       int dim_log2 = static_cast<int>(Log2Ceil(dim));
       IndexType dim_ceil = 1 << dim_log2;
-      int warp_size = (dim_ceil < PADDLE_WARP_SIZE) ? dim_ceil : PADDLE_WARP_SIZE;
+      int warp_size =
+          (dim_ceil < PADDLE_WARP_SIZE) ? dim_ceil : PADDLE_WARP_SIZE;
       int batches_per_warp = (dim_ceil <= PADDLE_WARP_SIZE) ? 2 : 1;
 
       // use 128 threads per block to maximize gpu utilization
@@ -2890,7 +2903,8 @@ void SoftmaxBackwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
         D > std::numeric_limits<int32_t>::max()) {
       int dim_log2 = Log2Ceil(dim);
       IndexType dim_ceil = 1 << dim_log2;
-      int warp_size = (dim_ceil < PADDLE_WARP_SIZE) ? dim_ceil : PADDLE_WARP_SIZE;
+      int warp_size =
+          (dim_ceil < PADDLE_WARP_SIZE) ? dim_ceil : PADDLE_WARP_SIZE;
       int batches_per_warp = (dim_ceil <= PADDLE_WARP_SIZE * 4) ? 2 : 1;
 
       constexpr int threads_per_block = 4 * PADDLE_WARP_SIZE;
