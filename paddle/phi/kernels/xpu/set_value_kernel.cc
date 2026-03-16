@@ -93,7 +93,7 @@ void SetValueImpl(const Context& dev_ctx,
   std::vector<int64_t> starts_local = starts.GetData();
   std::vector<int64_t> ends_local = ends.GetData();
   std::vector<int64_t> steps_local = steps.GetData();
-  funcs::CheckAndUpdateSliceAttrs(
+  funcs::CheckAndUpdateSliceAttrsWithCanonicalAxes(
       in_dims, canonical_axes, &starts_local, &ends_local, &steps_local);
   auto slice_dims = funcs::GetSliceDims(
       in_dims, canonical_axes, starts_local, ends_local, &steps_local);

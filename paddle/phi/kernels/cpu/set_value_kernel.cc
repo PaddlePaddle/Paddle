@@ -52,7 +52,7 @@ void SetValueImpl(const Context& dev_ctx,
         dev_ctx, value, IntArray{phi::vectorize<int64_t>(in.dims())}, out);
     return;
   }
-  funcs::CheckAndUpdateSliceAttrs(
+  funcs::CheckAndUpdateSliceAttrsWithCanonicalAxes(
       in_dims, canonical_axes, &starts_local, &ends_local, &steps_local);
   auto slice_dims = funcs::GetSliceDims(
       in_dims, canonical_axes, starts_local, ends_local, &steps_local);

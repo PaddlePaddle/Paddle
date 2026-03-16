@@ -51,7 +51,7 @@ void SetTensorValueKernel(const Context& dev_ctx,
   std::vector<int64_t> starts_local = starts.GetData();
   std::vector<int64_t> ends_local = ends.GetData();
   std::vector<int64_t> steps_local = steps.GetData();
-  funcs::CheckAndUpdateSliceAttrs(
+  funcs::CheckAndUpdateSliceAttrsWithCanonicalAxes(
       in_dims, canonical_axes, &starts_local, &ends_local, &steps_local);
 
   std::vector<int64_t> output_dims = vectorize<int64_t>(in.dims());

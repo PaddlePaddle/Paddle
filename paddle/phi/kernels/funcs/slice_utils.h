@@ -241,8 +241,8 @@ void normalize_interval(
 }
 
 template <typename T = int64_t>
-inline std::vector<T> CheckAndCanonicalizeSliceAxes(
-    const DDim& in_dims, const std::vector<T>& axes) {
+std::vector<T> CheckAndCanonicalizeSliceAxes(const DDim& in_dims,
+                                             const std::vector<T>& axes) {
   std::vector<T> canonical_axes(axes);
   const auto rank = in_dims.size();
   for (size_t i = 0; i < canonical_axes.size(); ++i) {
@@ -275,13 +275,13 @@ inline std::vector<T> CheckAndCanonicalizeSliceAxes(
 }
 
 template <typename T = int64_t>
-inline void CheckAndUpdateSliceAttrs(const DDim in_dims,
-                                     const std::vector<T>& axes,
-                                     std::vector<T>* starts,
-                                     std::vector<T>* ends,
-                                     std::vector<int64_t>* steps = nullptr,
-                                     std::vector<T>* infer_flags = nullptr) {
-  auto canonical_axes = CheckAndCanonicalizeSliceAxes(in_dims, axes);
+inline void CheckAndUpdateSliceAttrsWithCanonicalAxes(
+    const DDim in_dims,
+    const std::vector<T>& canonical_axes,
+    std::vector<T>* starts,
+    std::vector<T>* ends,
+    std::vector<int64_t>* steps = nullptr,
+    std::vector<T>* infer_flags = nullptr) {
   for (size_t i = 0; i < canonical_axes.size(); ++i) {
     T axis = canonical_axes[i];
 
@@ -319,6 +319,18 @@ inline void CheckAndUpdateSliceAttrs(const DDim in_dims,
       (*ends)[i] = 0;
     }
   }
+}
+
+template <typename T = int64_t>
+inline void CheckAndUpdateSliceAttrs(const DDim in_dims,
+                                     const std::vector<T>& axes,
+                                     std::vector<T>* starts,
+                                     std::vector<T>* ends,
+                                     std::vector<int64_t>* steps = nullptr,
+                                     std::vector<T>* infer_flags = nullptr) {
+  auto canonical_axes = CheckAndCanonicalizeSliceAxes(in_dims, axes);
+  CheckAndUpdateSliceAttrsWithCanonicalAxes(
+      in_dims, canonical_axes, starts, ends, steps, infer_flags);
 }
 
 template <typename T = int64_t>
