@@ -18,6 +18,7 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 #include <complex>
+#include <cstring>
 #include <type_traits>
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/enforce.h"
@@ -45,6 +46,46 @@ struct SumOps {
   }
 
   SumOps() {}
+};
+
+namespace detail {
+
+template <typename T>
+HOSTDEVICE inline bool IsNan(T val) {
+  if constexpr (std::is_same_v<T, float> || std::is_same_v<T, double>) {
+    return isnan(val);
+  }
+  if constexpr (std::is_same_v<T, phi::dtype::float16> ||
+                std::is_same_v<T, phi::dtype::bfloat16> ||
+                std::is_same_v<T, phi::dtype::complex<float>> ||
+                std::is_same_v<T, phi::dtype::complex<double>>) {
+    return phi::dtype::isnan(val);
+  }
+  return false;  // int or bool
+}
+
+}  // namespace detail
+
+template <typename InT, typename MPType = InT, typename OutT = MPType>
+struct NansumOps {
+  inline DEVICE MPType compute(MPType a, InT b) const {
+    return reduce(a, static_cast<MPType>(b));
+  }
+
+  inline DEVICE MPType reduce(MPType a, MPType b) const {
+    if (detail::IsNan(b)) return a;
+    return a + b;
+  }
+
+  inline DEVICE OutT post_process(MPType a) const {
+    return static_cast<OutT>(a);
+  }
+
+  inline DEVICE MPType shfl_sync(unsigned mask, MPType data, int offset) const {
+    return phi::backends::gpu::CudaShuffleDownSync(mask, data, offset);
+  }
+
+  NansumOps() {}
 };
 
 template <typename InT, typename MPType = InT, typename OutT = MPType>
