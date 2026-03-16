@@ -35,9 +35,11 @@ namespace allocation {
 // management in VMMAutoGrowthBestFitAllocatorV2.
 class CUDAVirtualMemAllocatorV2 : public Allocator {
  public:
+  // Standalone use defaults to the transient pool. Upper layers may still
+  // override this explicitly when routing by lifecycle.
   CUDAVirtualMemAllocatorV2(const GPUPlace& place,
                             size_t handle_size,
-                            PoolType pool);
+                            PoolType pool = PoolType::kTransient);
 
   bool IsAllocThreadSafe() const override;
 
