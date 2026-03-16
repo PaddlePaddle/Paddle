@@ -5263,5 +5263,10 @@ add_doc_and_signature(
             [[2., 5., 0.],
              [5., 1., 3.]])
     """,
-    """def poisson(x: Tensor, name: str | None = None) -> Tensor""",
+    """
+def poisson(
+    x: Tensor,
+    name: str | None = None
+) -> Tensor
+""",
 )
