@@ -204,7 +204,7 @@ void LayerNormGradKernel(const Context& dev_ctx,
 #endif
     case LayerNormGadKernelVariant::GENERIC:
     default:
-#if defined(PADDLE_WITH_CUDA)
+#ifdef PADDLE_WITH_CUDA
       if (FLAGS_use_accuracy_compatible_kernel && scale_bias_dtype == x_dtype) {
         auto* scale_data = (scale == nullptr ? nullptr : scale->data<T>());
         auto* d_scale_data =
@@ -232,8 +232,9 @@ void LayerNormGradKernel(const Context& dev_ctx,
         } else {
           PADDLE_LAUNCH_LAYERNORM_BWD(U, false);
         }
-#if defined(PADDLE_WITH_CUDA)
+#ifdef PADDLE_WITH_CUDA
       }
+#endif
   }
 
 #undef PADDLE_LAUNCH_LAYERNORM_BWD
