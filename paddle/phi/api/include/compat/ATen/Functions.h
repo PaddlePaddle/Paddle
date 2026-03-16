@@ -46,11 +46,16 @@
 #include <ATen/ops/masked_select.h>
 #include <ATen/ops/narrow.h>
 #include <ATen/ops/narrow_copy.h>
+#include <ATen/ops/new_empty.h>
+#include <ATen/ops/new_full.h>
+#include <ATen/ops/new_ones.h>
+#include <ATen/ops/new_zeros.h>
 #include <ATen/ops/ones.h>
 #include <ATen/ops/permute.h>
 #include <ATen/ops/reciprocal.h>
 #include <ATen/ops/rename.h>
 #include <ATen/ops/reshape.h>
+#include <ATen/ops/resize.h>
 #include <ATen/ops/select.h>
 #include <ATen/ops/slice.h>
 #include <ATen/ops/sparse_coo_tensor.h>
