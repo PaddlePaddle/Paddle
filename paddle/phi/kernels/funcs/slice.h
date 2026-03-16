@@ -45,8 +45,8 @@ void EigenSliceWrapper(const Context& dev_ctx,
                         "argument must have the same length as input rank."));
   auto eigen_place_ptr = dev_ctx.eigen_device();
   auto eigen_place = *eigen_place_ptr;
-  auto out_t = phi::EigenTensor<T, D>::From(*out, out->dims());
-  auto in_t = phi::EigenTensor<T, D>::From(*in, in->dims());
+  auto out_t = EigenTensor<T, D>::From(*out, out->dims());
+  auto in_t = EigenTensor<T, D>::From(*in, in->dims());
   Eigen::DSizes<int, D> offsets_32bit, extents_32bit;
   for (size_t i = 0; i < D; i++) {
     offsets_32bit[i] = start[i];

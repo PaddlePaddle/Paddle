@@ -39,10 +39,10 @@ static void LerpFunction(const Context& dev_ctx,
   funcs::GetBroadcastDims<D>(y_dims, out_dims, &y_bcast_dims);
   funcs::GetBroadcastDims<D>(w_dims, out_dims, &w_bcast_dims);
 
-  auto eigen_x = phi::EigenTensor<T, D>::From(x, x_dims);
-  auto eigen_y = phi::EigenTensor<T, D>::From(y, y_dims);
-  auto eigen_w = phi::EigenTensor<T, D>::From(weight, w_dims);
-  auto eigen_out = phi::EigenTensor<T, D>::From(*out);
+  auto eigen_x = EigenTensor<T, D>::From(x, x_dims);
+  auto eigen_y = EigenTensor<T, D>::From(y, y_dims);
+  auto eigen_w = EigenTensor<T, D>::From(weight, w_dims);
+  auto eigen_out = EigenTensor<T, D>::From(*out);
 
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   auto& place = *dev_ctx.eigen_device();
@@ -63,10 +63,10 @@ static void LerpFunctionZero(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
 
   auto dim = make_ddim(std::vector<int64_t>(1, 1));
-  auto eigen_x = phi::EigenTensor<T, 1>::From(x, dim);
-  auto eigen_y = phi::EigenTensor<T, 1>::From(y, dim);
-  auto eigen_w = phi::EigenTensor<T, 1>::From(weight, dim);
-  auto eigen_out = phi::EigenTensor<T, 1>::From(*out, dim);
+  auto eigen_x = EigenTensor<T, 1>::From(x, dim);
+  auto eigen_y = EigenTensor<T, 1>::From(y, dim);
+  auto eigen_w = EigenTensor<T, 1>::From(weight, dim);
+  auto eigen_out = EigenTensor<T, 1>::From(*out, dim);
 
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   auto& place = *dev_ctx.eigen_device();

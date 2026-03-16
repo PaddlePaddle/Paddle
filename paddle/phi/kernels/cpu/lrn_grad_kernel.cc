@@ -45,11 +45,11 @@ struct LRNGradFunctor<phi::CPUContext, T> {
     auto x_g_e = EigenVector<T>::Flatten(*x_g);
     x_g_e = x_g_e.constant(0.0);
 
-    auto e_x = phi::EigenTensor<T, 4>::From(x);
-    auto e_x_g = phi::EigenTensor<T, 4>::From(*x_g);
-    auto e_out = phi::EigenTensor<T, 4>::From(out);
-    auto e_out_g = phi::EigenTensor<T, 4>::From(out_g);
-    auto e_mid = phi::EigenTensor<T, 4>::From(mid);
+    auto e_x = EigenTensor<T, 4>::From(x);
+    auto e_x_g = EigenTensor<T, 4>::From(*x_g);
+    auto e_out = EigenTensor<T, 4>::From(out);
+    auto e_out_g = EigenTensor<T, 4>::From(out_g);
+    auto e_mid = EigenTensor<T, 4>::From(mid);
 
     const int start = -(n - 1) / 2;
     const int end = start + n;

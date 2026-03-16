@@ -19,3 +19,4 @@
 
 #pragma once
 #include "xpu/bkcl.h"
+#include "xpu/deep_ep.h"

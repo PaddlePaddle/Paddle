@@ -435,14 +435,14 @@ void BatchNormDoubleGradKernel(const Context& dev_ctx,
   DenseTensor transformed_ddy(ddY->type());
   if (data_layout == DataLayout::NCHW && x_dims.size() > 2) {
     VLOG(3) << "Transform batchnorm output from NCHW to NHWC";
-    // Input Tensor
+    // Input DenseTensor
     ResizeToChannelLast<Context, T>(dev_ctx, X, &transformed_x);
     TransToChannelLast<Context, T>(dev_ctx, X, &transformed_x);
     ResizeToChannelLast<Context, T>(dev_ctx, dY, &transformed_dy);
     TransToChannelLast<Context, T>(dev_ctx, dY, &transformed_dy);
     ResizeToChannelLast<Context, T>(dev_ctx, ddX, &transformed_ddx);
     TransToChannelLast<Context, T>(dev_ctx, ddX, &transformed_ddx);
-    // Output Tensor
+    // Output DenseTensor
     ResizeToChannelLast<Context, T>(dev_ctx, dX, &transformed_dx);
     ResizeToChannelLast<Context, T>(dev_ctx, ddY, &transformed_ddy);
   } else {
@@ -458,7 +458,7 @@ void BatchNormDoubleGradKernel(const Context& dev_ctx,
   ConstEigenVectorArrayMap<T> mean_arr(mean_data, C);
   ConstEigenVectorArrayMap<T> inv_var_arr(inv_var_data, C);
 
-  Tensor mean_tile;
+  DenseTensor mean_tile;
   mean_tile.Resize({C, sample_size});
   EigenArrayMap<T> mean_tile_data(
       dev_ctx.template Alloc<T>(&mean_tile), C, sample_size);
@@ -480,7 +480,7 @@ void BatchNormDoubleGradKernel(const Context& dev_ctx,
   ConstEigenVectorArrayMap<T> scale_arr(
       Scale ? Scale->data<T>() : Scale_data.data<T>(), C);
 
-  Tensor scale_tile;
+  DenseTensor scale_tile;
   scale_tile.Resize({C, sample_size});
   EigenArrayMap<T> scale_tile_data(
       dev_ctx.template Alloc<T>(&scale_tile), C, sample_size);
@@ -505,7 +505,7 @@ void BatchNormDoubleGradKernel(const Context& dev_ctx,
       // math: dx = (ddscale * dy) * inv_var
       if (ddScale) {
         ConstEigenVectorArrayMap<T> ddscale_arr(ddScale->data<T>(), C);
-        Tensor ddscale_tile;
+        DenseTensor ddscale_tile;
         ddscale_tile.Resize({C, sample_size});
         EigenArrayMap<T> ddscale_tile_data(
             dev_ctx.template Alloc<T>(&ddscale_tile), C, sample_size);
@@ -557,7 +557,7 @@ void BatchNormDoubleGradKernel(const Context& dev_ctx,
       }
       if (ddScale) {
         ConstEigenVectorArrayMap<T> ddscale_arr(ddScale->data<T>(), C);
-        Tensor ddscale_tile;
+        DenseTensor ddscale_tile;
         ddscale_tile.Resize({C, sample_size});
         EigenArrayMap<T> ddscale_tile_data(
             dev_ctx.template Alloc<T>(&ddscale_tile), C, sample_size);
@@ -594,7 +594,7 @@ void BatchNormDoubleGradKernel(const Context& dev_ctx,
       //            inv_var.pow(2) * np.mean(dy * (x-mean), axis=(n,h,w)))) *
       //            ddx
       if (ddX) {
-        Tensor first_grad;
+        DenseTensor first_grad;
         first_grad.Resize({C, sample_size});
         EigenArrayMap<T> first_grad_arr(
             dev_ctx.template Alloc<T>(&first_grad), C, sample_size);
@@ -645,7 +645,7 @@ void BatchNormDoubleGradKernel(const Context& dev_ctx,
     }
     if (ddScale) {
       ConstEigenVectorArrayMap<T> ddscale_arr(ddScale->data<T>(), C);
-      Tensor ddscale_tile;
+      DenseTensor ddscale_tile;
       ddscale_tile.Resize({C, sample_size});
       EigenArrayMap<T> ddscale_tile_data(
           dev_ctx.template Alloc<T>(&ddscale_tile), C, sample_size);
@@ -656,7 +656,7 @@ void BatchNormDoubleGradKernel(const Context& dev_ctx,
 
     if (ddBias) {
       ConstEigenVectorArrayMap<T> ddbias_arr(ddBias->data<T>(), C);
-      Tensor ddbias_tile;
+      DenseTensor ddbias_tile;
       ddbias_tile.Resize({C, sample_size});
       EigenArrayMap<T> ddbias_tile_data(
           dev_ctx.template Alloc<T>(&ddbias_tile), C, sample_size);

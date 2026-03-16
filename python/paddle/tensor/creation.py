@@ -3686,6 +3686,7 @@ def assign(x: TensorLike, output: paddle.Tensor | None = None) -> paddle.Tensor:
     return output
 
 
+@param_one_alias(['x', 'input'])
 def clone(x: paddle.Tensor, name: str | None = None) -> paddle.Tensor:
     """
     Returns a copy of input Tensor. It will always have a Tensor copy.
@@ -3694,6 +3695,7 @@ def clone(x: paddle.Tensor, name: str | None = None) -> paddle.Tensor:
 
     Parameters:
         x (Tensor): The input Tensor.
+            Alias: ``input``.
         name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -4127,6 +4129,7 @@ def cauchy_(
 
 
 @dygraph_only
+@param_one_alias(['probs', 'p'])
 def geometric_(
     x: paddle.Tensor,
     probs: float | paddle.Tensor,
@@ -4138,6 +4141,7 @@ def geometric_(
         x (Tensor): the tensor will be filled, The data type is float32 or float64.
         probs (float|Tensor): Probability parameter.
             The value of probs must be positive. When the parameter is a tensor, probs is probability of success for each trial.
+            Alias: ``p``.
         name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:

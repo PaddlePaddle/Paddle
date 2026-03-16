@@ -76,7 +76,7 @@ static __global__ void FP16FastGeluFwdCUDAKernel(const __half* x,
       static_cast<size_t>(threadIdx.x + blockIdx.x * blockDim.x) * VecSize;
   size_t stride = static_cast<size_t>(blockDim.x * gridDim.x) * VecSize;
   for (; offset < n; offset += stride) {
-    using ArrT = phi::AlignedVector<__half, VecSize>;
+    using ArrT = AlignedVector<__half, VecSize>;
     ArrT in_arr = *reinterpret_cast<const ArrT*>(x + offset);
 #pragma unroll
     for (int i = 0; i < VecSize; ++i) {
@@ -99,7 +99,7 @@ static __global__ void FP16FastGeluBwdCUDAKernel(const __half* x,
       static_cast<size_t>(threadIdx.x + blockIdx.x * blockDim.x) * VecSize;
   size_t stride = static_cast<size_t>(blockDim.x * gridDim.x) * VecSize;
   for (; offset < n; offset += stride) {
-    using ArrT = phi::AlignedVector<__half, VecSize>;
+    using ArrT = AlignedVector<__half, VecSize>;
     ArrT x_in_arr = *reinterpret_cast<const ArrT*>(x + offset);
     ArrT y_g_in_arr = *reinterpret_cast<const ArrT*>(y_g + offset);
 #pragma unroll
@@ -128,8 +128,7 @@ static bool TryLaunchFP16FastGeluFwdVectorizeCUDAKernel(
 
 #define PD_LAUNCH_FP16_FAST_GELU_FWD_KERNEL(__vec_size, __use_fast_math)      \
   do {                                                                        \
-    constexpr auto kAlignment =                                               \
-        alignof(phi::AlignedVector<__half, __vec_size>);                      \
+    constexpr auto kAlignment = alignof(AlignedVector<__half, __vec_size>);   \
     if (n % __vec_size == 0 && is_aligned(x, kAlignment) &&                   \
         is_aligned(y, kAlignment)) {                                          \
       size_t thread = std::min<size_t>(512, dev_ctx.GetMaxThreadsPerBlock()); \
@@ -165,8 +164,7 @@ static bool TryLaunchFP16FastGeluBwdVectorizeCUDAKernel(
 
 #define PD_LAUNCH_FP16_FAST_GELU_BWD_KERNEL(__vec_size, __use_fast_math)      \
   do {                                                                        \
-    constexpr auto kAlignment =                                               \
-        alignof(phi::AlignedVector<__half, __vec_size>);                      \
+    constexpr auto kAlignment = alignof(AlignedVector<__half, __vec_size>);   \
     if (n % __vec_size == 0 && is_aligned(x, kAlignment) &&                   \
         is_aligned(x, kAlignment) && is_aligned(y_g, kAlignment) &&           \
         is_aligned(x_g, kAlignment)) {                                        \

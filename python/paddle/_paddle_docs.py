@@ -2248,6 +2248,43 @@ def grid_sample(
 )
 
 add_doc_and_signature(
+    "pixel_shuffle",
+    r"""
+    This API implements pixel shuffle operation.
+    See more details in :ref:`PixelShuffle <api_paddle_nn_PixelShuffle>` .
+
+    Parameters:
+        x (Tensor): 4-D tensor, the data type should be float32 or float64.
+            alias: ``input``.
+        upscale_factor (int): factor to increase spatial resolution.
+        data_format (str, optional): The data format of the input and output data. An optional string from: ``"NCHW"``, ``"NHWC"``. When it is ``"NCHW"``, the data is stored in the order of: [batch_size, input_channels, input_height, input_width]. Default: ``"NCHW"``.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Out (Tensor): Reshaped tensor according to the new dimension.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+            >>> import paddle.nn.functional as F
+
+            >>> x = paddle.randn(shape=[2, 9, 4, 4])
+            >>> out_var = F.pixel_shuffle(x, 3)
+            >>> print(out_var.shape)
+            paddle.Size([2, 1, 12, 12])
+""",
+    """
+def pixel_shuffle(
+    x: Tensor,
+    upscale_factor: int,
+    data_format: DataLayout2D = 'NCHW',
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
     "gelu",
     r"""
     gelu activation.
@@ -2471,6 +2508,47 @@ add_doc_and_signature(
 """,
     """
 def sign(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "lgamma",
+    r"""
+    Calculates the lgamma of the given input tensor, element-wise.
+
+    This operator performs elementwise lgamma for input $X$.
+    :math:`out = log\Gamma(x)`
+
+    Args:
+        x (Tensor): Input Tensor. Must be one of the following types: bfloat16, float16, float32, float64,
+            uint8, int8, int16, int32, int64. Alias: ``input``.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword args:
+        out(Tensor, optional): The output tensor.
+
+    Returns:
+        Tensor, the lgamma of the input Tensor, the shape and data type is the same with input
+            (integer types are autocasted into float32).
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.lgamma(x)
+            >>> out
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [1.31452465, 1.76149750, 2.25271273, 1.09579802])
+""",
+    """
+def lgamma(
     x: Tensor,
     name: str | None = None,
     *,
@@ -3855,6 +3933,62 @@ def angle(
 )
 
 add_doc_and_signature(
+    "real",
+    r"""
+    Returns a new Tensor containing real values of the input Tensor.
+
+    Args:
+        x (Tensor): the input Tensor, its data type could be complex64 or complex128. Alias: ``input``.
+        name (str|None, optional): The default value is None. Normally there is no need for
+            user to set this property. For more information, please refer to :ref:`api_guide_Name` .
+
+    Keyword args:
+        out(Tensor, optional): The output tensor.
+
+    Returns:
+        Tensor: a Tensor containing real values of the input Tensor.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [1 + 6j, 2 + 5j, 3 + 4j],
+            ...         [4 + 3j, 5 + 2j, 6 + 1j],
+            ...     ]
+            ... )
+            >>> print(x)
+            Tensor(shape=[2, 3], dtype=complex64, place=Place(cpu), stop_gradient=True,
+             [[(1.00000000+6.00000000j), (2.00000000+5.00000000j),
+               (3.00000000+4.00000000j)],
+              [(4.00000000+3.00000000j), (5.00000000+2.00000000j),
+               (6.00000000+1.00000000j)]])
+
+            >>> real_res = paddle.real(x)
+            >>> print(real_res)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1., 2., 3.],
+             [4., 5., 6.]])
+
+            >>> real_t = x.real()
+            >>> print(real_t)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1., 2., 3.],
+             [4., 5., 6.]])
+""",
+    """
+def real(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
     "heaviside",
     r"""
     Computes the Heaviside step function determined by corresponding element in y for each element in x. The equation is
@@ -4597,10 +4731,12 @@ add_doc_and_signature(
         x (Tensor): The input tensor, it's data type should be float32, float64,
             uint8, int8, int16, int32, int64.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+    Keyword args:
+        out (Tensor), A Tensor. the value of the modified bessel function of order 1 at x
+            (integer types are autocasted into float32).
 
     Returns:
-        - out (Tensor), A Tensor. the value of the modified bessel function of order 1 at x
-            (integer types are autocasted into float32).
+        Tensor: The value of modified bessel function of order 1.
 
     Examples:
         .. code-block:: pycon
@@ -4628,14 +4764,15 @@ add_doc_and_signature(
     The function is used to calculate exponentially scaled modified Bessel function of order 1.
 
     Args:
-
         x (Tensor): The input tensor, it's data type should be float32, float64,
             uint8, int8, int16, int32, int64.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+    Keyword args:
+        out (Tensor), A Tensor. the value of the exponentially scaled modified Bessel function of order 1 at x
+            (integer types are autocasted into float32).
 
     Returns:
-        - out (Tensor), A Tensor. the value of the exponentially scaled modified Bessel function of order 1 at x
-            (integer types are autocasted into float32).
+        Tensor: The value of exponentially scaled modified Bessel function of order 1.
 
     Examples:
         .. code-block:: pycon
@@ -4805,4 +4942,326 @@ def baddbmm_(
     name: str | None = None,
 ) -> Tensor
 """,
+)
+
+add_doc_and_signature(
+    "cross",
+    r"""
+    Computes the cross product between two tensors along an axis.
+
+    Inputs must have the same shape, and the length of their axes should be equal to 3.
+    If `axis` is not given, it defaults to the first axis found with the length 3.
+
+    Args:
+        x (Tensor): The first input tensor, the data type is float16, float32, float64, int32, int64, complex64, complex128. Alias: ``input``.
+        y (Tensor): The second input tensor, the data type is float16, float32, float64, int32, int64, complex64, complex128. Alias: ``other``.
+        axis (int, optional): The axis along which to compute the cross product. It defaults to be 9 which indicates using the first axis found with the length 3. Alias: ``dim``.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor. A Tensor with same data type as `x`.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [1.0, 1.0, 1.0],
+            ...         [2.0, 2.0, 2.0],
+            ...         [3.0, 3.0, 3.0],
+            ...     ]
+            ... )
+            >>> y = paddle.to_tensor(
+            ...     [
+            ...         [1.0, 1.0, 1.0],
+            ...         [1.0, 1.0, 1.0],
+            ...         [1.0, 1.0, 1.0],
+            ...     ]
+            ... )
+            >>> z1 = paddle.cross(x, y)
+            >>> print(z1)
+            Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-1., -1., -1.],
+             [ 2.,  2.,  2.],
+             [-1., -1., -1.]])
+
+            >>> z2 = paddle.cross(x, y, axis=1)
+            >>> print(z2)
+            Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0., 0., 0.],
+             [0., 0., 0.],
+             [0., 0., 0.]])
+""",
+    """
+def cross(
+    x: Tensor,
+    y: Tensor,
+    axis: int = 9,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "dist",
+    r"""
+    Returns the p-norm of (x - y). It is not a norm in a strict sense, only as a measure
+    of distance. The shapes of x and y must be broadcastable. The definition is as follows, for
+    details, please refer to the `Introduction to Tensor <../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor>`_:
+
+    - Each input has at least one dimension.
+    - Match the two input dimensions from back to front, the dimension sizes must either be equal, one of them is 1, or one of them does not exist.
+
+    Where, z = x - y, the shapes of x and y are broadcastable, then the shape of z can be
+    obtained as follows:
+
+    1. If the number of dimensions of x and y are not equal, prepend 1 to the dimensions of the
+    tensor with fewer dimensions.
+
+    For example, The shape of x is [8, 1, 6, 1], the shape of y is [7, 1, 5], prepend 1 to the
+    dimension of y.
+
+    x (4-D Tensor):  8 x 1 x 6 x 1
+
+    y (4-D Tensor):  1 x 7 x 1 x 5
+
+    2. Determine the size of each dimension of the output z: choose the maximum value from the
+    two input dimensions.
+
+    z (4-D Tensor):  8 x 7 x 6 x 5
+
+    If the number of dimensions of the two inputs are the same, the size of the output can be
+    directly determined in step 2. When p takes different values, the norm formula is as follows:
+
+    When p = 0, defining $0^0=0$, the zero-norm of z is simply the number of non-zero elements of z.
+
+    .. math::
+
+        ||z||_{0}=\lim_{p \\rightarrow 0}\sum_{i=1}^{m}|z_i|^{p}
+
+    When p = inf, the inf-norm of z is the maximum element of the absolute value of z.
+
+    .. math::
+
+        ||z||_\infty=\max_i |z_i|
+
+    When p = -inf, the negative-inf-norm of z is the minimum element of the absolute value of z.
+
+    .. math::
+
+        ||z||_{-\infty}=\min_i |z_i|
+
+    Otherwise, the p-norm of z follows the formula,
+
+    .. math::
+
+        ||z||_{p}=(\sum_{i=1}^{m}|z_i|^p)^{\\frac{1}{p}}
+
+    Args:
+        x (Tensor): 1-D to 6-D Tensor, its data type is bfloat16, float16, float32 or float64. Alias: ``input``.
+        y (Tensor): 1-D to 6-D Tensor, its data type is bfloat16, float16, float32 or float64. Alias: ``other``.
+        p (float, optional): The norm to be computed, its data type is float32 or float64. Default: 2.
+        name (str|None, optional): The default value is `None`. Normally there is no need for
+            user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: Tensor that is the p-norm of (x - y).
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([[3, 3], [3, 3]], dtype="float32")
+            >>> y = paddle.to_tensor([[3, 3], [3, 1]], dtype="float32")
+            >>> out = paddle.dist(x, y, 0)
+            >>> print(out)
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            1.)
+
+            >>> out = paddle.dist(x, y, 2)
+            >>> print(out)
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            2.)
+
+            >>> out = paddle.dist(x, y, float("inf"))
+            >>> print(out)
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            2.)
+
+            >>> out = paddle.dist(x, y, float("-inf"))
+            >>> print(out)
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            0.)
+""",
+    """
+def dist(
+    x: Tensor,
+    y: Tensor,
+    p: float = 2,
+    name: str | None = None
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "flip",
+    r"""
+    Reverse the order of a n-D tensor along given axis in axis.
+
+    The image below illustrates how ``flip`` works.
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/flip.png
+        :width: 500
+        :alt: legend of flip API
+        :align: center
+
+    Args:
+        x (Tensor): A Tensor with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor x
+            should be float32, float64, int32, int64, bool. Alias: ``input``.
+        axis (list|tuple|int): The axis(axes) to flip on. Negative indices for indexing from the end are accepted. Alias: ``dims``.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, Tensor or DenseTensor calculated by flip layer. The data type is same with input x.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> # doctest: +SKIP("This has diff in xdoctest env")
+            >>> import paddle
+
+            >>> image_shape = (3, 2, 2)
+            >>> img = paddle.arange(image_shape[0] * image_shape[1] * image_shape[2]).reshape(image_shape)
+            >>> tmp = paddle.flip(img, [0, 1])
+            >>> print(tmp)
+            Tensor(shape=[3, 2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[[10, 11],
+              [8 , 9 ]],
+             [[6 , 7 ],
+              [4 , 5 ]],
+             [[2 , 3 ],
+              [0 , 1 ]]])
+
+            >>> out = paddle.flip(tmp, -1)
+            >>> print(out)
+            Tensor(shape=[3, 2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[[11, 10],
+              [9 , 8 ]],
+             [[7 , 6 ],
+              [5 , 4 ]],
+             [[3 , 2 ],
+              [1 , 0 ]]])
+""",
+    """
+def flip(
+    x: Tensor,
+    axis: Sequence[int] | int,
+    name: str | None = None
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "renorm",
+    r"""
+    This operator is used to calculate the p-norm along the axis,
+    suppose the input-shape on axis dimension has the value of T, then
+    the tensor is split into T parts, the p-norm should be calculated for each
+    part, if the p-norm for part i is larger than max-norm, then each element
+    in part i should be re-normalized at the same scale so that part-i' p-norm equals
+    max-norm exactly, otherwise part-i stays unchanged.
+
+    Args:
+        x (Tensor): The input Tensor. Alias: ``input``.
+        p (float): The power of the norm operation.
+        axis (int): the dimension to slice the tensor. Alias: ``dim``.
+        max_norm (float): the maximal norm limit. Alias: ``maxnorm``.
+
+    Returns:
+        Tensor: the renorm Tensor.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+            >>> input = [
+            ...     [[2.0, 2.0, -2.0], [3.0, 0.3, 3.0]],
+            ...     [[2.0, -8.0, 2.0], [3.1, 3.7, 3.0]],
+            ... ]
+            >>> x = paddle.to_tensor(input, dtype='float32')
+            >>> y = paddle.renorm(x, 1.0, 2, 2.05)
+            >>> print(y)
+            Tensor(shape=[2, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[ 0.40594056,  0.29285714, -0.41000000],
+              [ 0.60891086,  0.04392857,  0.61500001]],
+             [[ 0.40594056, -1.17142856,  0.41000000],
+              [ 0.62920785,  0.54178572,  0.61500001]]])
+""",
+    """
+def renorm(
+    x: Tensor,
+    p: float,
+    axis: int,
+    max_norm: float
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "renorm_",
+    r"""
+    Inplace version of ``renorm`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_renorm`.
+""",
+    """
+def renorm_(
+    x: Tensor,
+    p: float,
+    axis: int,
+    max_norm: float
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "poisson",
+    r"""
+    Returns a tensor filled with random number from a Poisson Distribution.
+
+    .. math::
+
+        out_i \sim Poisson (lambda = x_i)
+
+    Args:
+        x (Tensor): A tensor with rate parameter of poisson Distribution. The data type
+            should be bfloat16, float16, float32, float64.
+        name (str|None, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        For example, ``poisson(input=x)`` is equivalent to ``poisson(x=x)``.
+
+    Returns:
+        Tensor: A Tensor filled with random number with the same shape and dtype as ``x``.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+            >>> paddle.set_device('cpu')
+            >>> paddle.seed(100)
+
+            >>> x = paddle.uniform([2, 3], min=1.0, max=5.0)
+            >>> out = paddle.poisson(x)
+            >>> print(out)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[2., 5., 0.],
+             [5., 1., 3.]])
+    """,
+    """def poisson(x: Tensor, name: str | None = None) -> Tensor""",
 )

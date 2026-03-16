@@ -24,6 +24,7 @@ limitations under the License. */
 #endif
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/type_safe_sign_math.h"
+#include "paddle/phi/kernels/funcs/sleef_vectorized_math.h"
 
 #ifdef PADDLE_WITH_SLEEF
 #include <sleef.h>

@@ -125,29 +125,27 @@ void RAdamKernel(const Context& dev_ctx,
                  DenseTensor* moment1_out,
                  DenseTensor* moment2_out,
                  DenseTensor* master_param_out) {
-  using MPDType = typename phi::dtype::template MPTypeTrait<T>::Type;
+  using MT = typename phi::dtype::template MPTypeTrait<T>::Type;
   T* param_out_data = dev_ctx.template Alloc<T>(param_out);
 
-  MPDType* beta1_pow_out_data = dev_ctx.template Alloc<MPDType>(beta1_pow_out);
-  MPDType* beta2_pow_out_data = dev_ctx.template Alloc<MPDType>(beta2_pow_out);
-  MPDType* rho_out_data = dev_ctx.template Alloc<MPDType>(rho_out);
+  MT* beta1_pow_out_data = dev_ctx.template Alloc<MT>(beta1_pow_out);
+  MT* beta2_pow_out_data = dev_ctx.template Alloc<MT>(beta2_pow_out);
+  MT* rho_out_data = dev_ctx.template Alloc<MT>(rho_out);
 
-  MPDType* moment1_out_data = dev_ctx.template Alloc<MPDType>(moment1_out);
-  MPDType* moment2_out_data = dev_ctx.template Alloc<MPDType>(moment2_out);
+  MT* moment1_out_data = dev_ctx.template Alloc<MT>(moment1_out);
+  MT* moment2_out_data = dev_ctx.template Alloc<MT>(moment2_out);
 
-  const MPDType* master_in_data =
-      multi_precision ? master_param->data<MPDType>() : nullptr;
-  MPDType* master_out_data =
-      multi_precision ? dev_ctx.template Alloc<MPDType>(master_param_out)
-                      : nullptr;
+  const MT* master_in_data =
+      multi_precision ? master_param->data<MT>() : nullptr;
+  MT* master_out_data =
+      multi_precision ? dev_ctx.template Alloc<MT>(master_param_out) : nullptr;
 
-  MPDType beta1_ = static_cast<MPDType>(beta1);
-  MPDType beta2_ = static_cast<MPDType>(beta2);
-  MPDType epsilon_ = static_cast<MPDType>(epsilon);
+  MT beta1_ = static_cast<MT>(beta1);
+  MT beta2_ = static_cast<MT>(beta2);
+  MT epsilon_ = static_cast<MT>(epsilon);
 
-  MPDType rho_inf =
-      static_cast<MPDType>(2) / (static_cast<MPDType>(1) - beta2_) -
-      static_cast<MPDType>(1);
+  MT rho_inf =
+      static_cast<MT>(2) / (static_cast<MT>(1) - beta2_) - static_cast<MT>(1);
 
   int64_t numel = param.numel();
   int block = 512;
@@ -155,28 +153,27 @@ void RAdamKernel(const Context& dev_ctx,
   int grid = std::min((param.numel() + block - 1) / block, grid_max);
   auto stream = dev_ctx.stream();
 
-  RAdamGPUKernel<T, MPDType>
-      <<<block, grid, 0, stream>>>(param.data<T>(),
-                                   grad.data<T>(),
-                                   learning_rate.data<MPDType>(),
-                                   beta1_pow.data<MPDType>(),
-                                   beta2_pow.data<MPDType>(),
-                                   rho.data<MPDType>(),
-                                   moment1.data<MPDType>(),
-                                   moment2.data<MPDType>(),
-                                   master_in_data,
-                                   beta1_,
-                                   beta2_,
-                                   epsilon_,
-                                   rho_inf,
-                                   numel,
-                                   param_out_data,
-                                   beta1_pow_out_data,
-                                   beta2_pow_out_data,
-                                   rho_out_data,
-                                   moment1_out_data,
-                                   moment2_out_data,
-                                   master_out_data);
+  RAdamGPUKernel<T, MT><<<block, grid, 0, stream>>>(param.data<T>(),
+                                                    grad.data<T>(),
+                                                    learning_rate.data<MT>(),
+                                                    beta1_pow.data<MT>(),
+                                                    beta2_pow.data<MT>(),
+                                                    rho.data<MT>(),
+                                                    moment1.data<MT>(),
+                                                    moment2.data<MT>(),
+                                                    master_in_data,
+                                                    beta1_,
+                                                    beta2_,
+                                                    epsilon_,
+                                                    rho_inf,
+                                                    numel,
+                                                    param_out_data,
+                                                    beta1_pow_out_data,
+                                                    beta2_pow_out_data,
+                                                    rho_out_data,
+                                                    moment1_out_data,
+                                                    moment2_out_data,
+                                                    master_out_data);
 }
 }  // namespace phi
 

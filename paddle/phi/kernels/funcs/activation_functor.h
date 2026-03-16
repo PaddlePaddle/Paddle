@@ -29,6 +29,10 @@
 
 #include <type_traits>
 
+#ifdef PADDLE_WITH_SLEEF
+#include <sleef.h>
+#endif
+
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
@@ -61,17 +65,57 @@ struct Sine {
   HOSTDEVICE T operator()(const T& val) const { return sin(val); }
 };
 
+// Specialized Sine for float using Sleef (matches PyTorch's u35 precision)
+template <>
+struct Sine<float> {
+  HOSTDEVICE float operator()(const float& val) const {
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
+    return sin(val);
+#elif defined(PADDLE_WITH_SLEEF)
+    return Sleef_sinf1_u35(val);
+#else
+    return sin(val);
+#endif
+  }
+};
+
+// Specialized Sine for double using Sleef (matches PyTorch's u10 precision)
+template <>
+struct Sine<double> {
+  HOSTDEVICE double operator()(const double& val) const {
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
+    return sin(val);
+#elif defined(PADDLE_WITH_SLEEF)
+    return Sleef_sind1_u10(val);
+#else
+    return sin(val);
+#endif
+  }
+};
+
 template <>
 struct Sine<dtype::float16> {
   HOSTDEVICE dtype::float16 operator()(const dtype::float16& val) const {
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
     return dtype::float16(sin(static_cast<float>(val)));
+#elif defined(PADDLE_WITH_SLEEF)
+    return dtype::float16(Sleef_sinf1_u35(static_cast<float>(val)));
+#else
+    return dtype::float16(sin(static_cast<float>(val)));
+#endif
   }
 };
 
 template <>
 struct Sine<dtype::bfloat16> {
   HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16& val) const {
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
     return dtype::bfloat16(sin(static_cast<float>(val)));
+#elif defined(PADDLE_WITH_SLEEF)
+    return dtype::bfloat16(Sleef_sinf1_u35(static_cast<float>(val)));
+#else
+    return dtype::bfloat16(sin(static_cast<float>(val)));
+#endif
   }
 };
 
@@ -80,17 +124,57 @@ struct Cosine {
   HOSTDEVICE T operator()(const T& val) const { return cos(val); }
 };
 
+// Specialized Cosine for float using Sleef (matches PyTorch's u35 precision)
+template <>
+struct Cosine<float> {
+  HOSTDEVICE float operator()(const float& val) const {
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
+    return cos(val);
+#elif defined(PADDLE_WITH_SLEEF)
+    return Sleef_cosf1_u35(val);
+#else
+    return cos(val);
+#endif
+  }
+};
+
+// Specialized Cosine for double using Sleef (matches PyTorch's u10 precision)
+template <>
+struct Cosine<double> {
+  HOSTDEVICE double operator()(const double& val) const {
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
+    return cos(val);
+#elif defined(PADDLE_WITH_SLEEF)
+    return Sleef_cosd1_u10(val);
+#else
+    return cos(val);
+#endif
+  }
+};
+
 template <>
 struct Cosine<dtype::float16> {
   HOSTDEVICE dtype::float16 operator()(const dtype::float16& val) const {
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
     return dtype::float16(cos(static_cast<float>(val)));
+#elif defined(PADDLE_WITH_SLEEF)
+    return dtype::float16(Sleef_cosf1_u35(static_cast<float>(val)));
+#else
+    return dtype::float16(cos(static_cast<float>(val)));
+#endif
   }
 };
 
 template <>
 struct Cosine<dtype::bfloat16> {
   HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16& val) const {
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
     return dtype::bfloat16(cos(static_cast<float>(val)));
+#elif defined(PADDLE_WITH_SLEEF)
+    return dtype::bfloat16(Sleef_cosf1_u35(static_cast<float>(val)));
+#else
+    return dtype::bfloat16(cos(static_cast<float>(val)));
+#endif
   }
 };
 
@@ -2715,6 +2799,7 @@ struct Log10Functor : public BaseActivationFunctor<T> {
 };
 
 // the gradient of log10(x) is 1/(x*ln(10))
+// PyTorch formula: grad / (self * 2.3025850929940456)
 template <typename T>
 struct Log10GradFunctor : public BaseActivationFunctor<T> {
   template <typename Device,
@@ -2723,7 +2808,12 @@ struct Log10GradFunctor : public BaseActivationFunctor<T> {
             typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
-    dx.device(d) = dout * static_cast<T>(1) / (x * static_cast<T>(log(10)));
+    // Use PyTorch's exact constant (ln(10) to 16 significant digits) and
+    // matching evaluation order: dout / (x * ln10), i.e., multiply x by the
+    // constant first, then divide. This avoids runtime log(10) computation
+    // and aligns CPU/GPU paths with PyTorch's backward for bit-exact results.
+    T log_ten = static_cast<T>(2.3025850929940456);
+    dx.device(d) = dout / (x * log_ten);
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
@@ -3537,7 +3627,8 @@ struct CudaCosGradFunctor : public BaseActivationFunctor<T> {
                                           const T arg_x) const {
     MPType dout = static_cast<MPType>(arg_dout);
     MPType x = static_cast<MPType>(arg_x);
-    if constexpr (std::is_same<T, phi::float16>::value) {
+    if constexpr (std::is_same<T, phi::float16>::value ||
+                  std::is_same<T, phi::dtype::bfloat16>::value) {
       return static_cast<T>(-arg_dout * static_cast<T>(sin(x)));
     } else {
       return static_cast<T>(-dout * sin(x));
@@ -3888,7 +3979,8 @@ struct CudaSinGradFunctor : public BaseActivationFunctor<T> {
                                           const T arg_x) const {
     MPType dout = static_cast<MPType>(arg_dout);
     MPType x = static_cast<MPType>(arg_x);
-    if constexpr (std::is_same<T, phi::float16>::value) {
+    if constexpr (std::is_same<T, phi::float16>::value ||
+                  std::is_same<T, phi::dtype::bfloat16>::value) {
       return static_cast<T>(arg_dout * static_cast<T>(cos(x)));
     } else {
       return static_cast<T>(dout * cos(x));
@@ -5259,6 +5351,11 @@ __device__ __forceinline__
 }
 
 template <>
+__device__ __forceinline__ float log_local<float>(float x) {
+  return ::log(x);
+}
+
+template <>
 __device__ __forceinline__ double log_local<double>(double x) {
   return ::log(x);
 }
@@ -5432,12 +5529,7 @@ __device__ __forceinline__
   static_assert(!std::is_same<T, double>::value,
                 "this template must be used with float or less precise type");
 
-#if defined(__CUDA_ARCH__) || defined(__HIP_ARCH__)
-  // use __logf fast approximation for peak bandwidth
-  return __log10f(x);
-#else
   return ::log10(x);
-#endif
 }
 
 template <>
@@ -5453,7 +5545,11 @@ struct CudaLog10Functor : public BaseActivationFunctor<T> {
   // log10(x) = log10(x)
   __device__ __forceinline__ U operator()(const T arg_x) const {
     MPType x = static_cast<MPType>(arg_x);
-    return static_cast<U>(log10_local(x));
+    // Cast to floating-point before log10_local to avoid calling
+    // host-only ::log10(int) on Windows NVCC when MPType is integral
+    using FPType =
+        std::conditional_t<std::is_integral<MPType>::value, float, MPType>;
+    return static_cast<U>(log10_local(static_cast<FPType>(x)));
   }
 };
 
@@ -5464,16 +5560,24 @@ struct CudaLog10Functor<ComplexType<T>>
   __device__ __forceinline__ ComplexType<T> operator()(
       const ComplexType<T> arg_x) const {
     return static_cast<ComplexType<T>>(log(arg_x) /
-                                       static_cast<ComplexType<T>>(log(10.0f)));
+                                       static_cast<ComplexType<T>>(log(10.0)));
   }
 };
 
 template <typename T>
 struct CudaLog10GradFunctor : public BaseActivationFunctor<T> {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  T log_ten = static_cast<T>(log(static_cast<MPType>(10.0f)));
 
-  // dx = dout / (x * log(10))
+  // ln(10) = 2.30258509299404568402... (M_LN10)
+  // Using PyTorch's exact 16-digit literal from derivatives.yaml for bit-exact
+  // alignment: grad / (self * 2.3025850929940456)
+  T log_ten = static_cast<T>(2.3025850929940456);
+
+  // dx = dout / (x * ln(10))
+  // PyTorch computes: grad / (self * 2.3025850929940456)
+  //   i.e., multiply x by ln(10) first, then divide grad by the product.
+  // This matches PyTorch's evaluation order exactly: one multiplication
+  // followed by one division, rather than two sequential divisions.
   __device__ __forceinline__ T operator()(const T dout, const T x) const {
     return dout / (x * log_ten);
   }
@@ -5487,7 +5591,7 @@ struct CudaLog10GradFunctor<ComplexType<T>>
   // dx = dout / conj(x * log(10))
   __device__ __forceinline__ ComplexType<T> operator()(
       const ComplexType<T> dout, const ComplexType<T> x) const {
-    return dout / conj(x * static_cast<ComplexType<T>>(log(10.0f)));
+    return dout / conj(x * static_cast<ComplexType<T>>(log(10.0)));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }

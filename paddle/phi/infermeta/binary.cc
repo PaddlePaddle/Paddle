@@ -644,6 +644,18 @@ void ConvInferMeta(const MetaTensor& input,
         0,
         common::errors::InvalidArgument(
             "the size of filter at axis 0 should be greater than 0"));
+    for (int i = 2; i < filter_dims.size(); ++i) {
+      PADDLE_ENFORCE_GT(
+          filter_dims[i],
+          0,
+          common::errors::InvalidArgument(
+              "The kernel size of Op(Conv) should be greater than 0, but "
+              "received kernel size at dimension %d is %d. The filter's shape "
+              "is [%s].",
+              i,
+              filter_dims[i],
+              filter_dims));
+    }
   }
 
   DDim in_data_dims;
@@ -4113,6 +4125,52 @@ void ShuffleBatchInferMeta(const MetaTensor& x,
   seed_out->share_lod(seed);
   seed_out->set_dtype(seed.dtype());
   shuffle_idx->set_dims(make_ddim({-1}));
+}
+
+void SlowConvDilatedInferMeta(const MetaTensor& input,
+                              const MetaTensor& filter,
+                              const MetaTensor& bias,
+                              const std::vector<int>& strides,
+                              const std::vector<int>& paddings_t,
+                              const std::string& padding_algorithm,
+                              const std::vector<int>& dilations_t,
+                              int groups,
+                              const std::string& data_format,
+                              MetaTensor* out,
+                              MetaConfig config) {
+  ConvInferMeta(input,
+                filter,
+                strides,
+                paddings_t,
+                padding_algorithm,
+                dilations_t,
+                groups,
+                data_format,
+                out,
+                config);
+}
+
+void SlowConv3DDilatedInferMeta(const MetaTensor& input,
+                                const MetaTensor& filter,
+                                const MetaTensor& bias,
+                                const std::vector<int>& strides,
+                                const std::vector<int>& paddings,
+                                const std::string& padding_algorithm,
+                                int groups,
+                                const std::vector<int>& dilations,
+                                const std::string& data_format,
+                                MetaTensor* out,
+                                MetaConfig config) {
+  ConvInferMeta(input,
+                filter,
+                strides,
+                paddings,
+                padding_algorithm,
+                dilations,
+                groups,
+                data_format,
+                out,
+                config);
 }
 
 void SequenceMaskInferMeta(const MetaTensor& x,

@@ -635,7 +635,7 @@
     data_type : dtype
 
 - op : group_norm_silu_xpu
-  args : (Tensor x, Tensor scale, Tensor bias, int groups = -1, float epsilon = 1e-5)
+  args : (Tensor x, Tensor scale, Tensor bias, int groups = -1, double epsilon = 1e-5)
   output : Tensor(out)
   infer_meta :
     func : GroupNormalizeSiluXPUInferMeta
@@ -879,7 +879,7 @@
   optional : x_max
 
 - op: add_group_norm_silu
-  args : (Tensor x,Tensor residual, Tensor scale, Tensor bias, float epsilon = 1e-5, int groups = -1, str data_format = "NCHW", str activation = "")
+  args : (Tensor x,Tensor residual, Tensor scale, Tensor bias, double epsilon = 1e-5, int groups = -1, str data_format = "NCHW", str activation = "")
   output : Tensor(y), Tensor(residual_out), Tensor(mean), Tensor(variance)
   infer_meta :
     func : AddGroupNormSiluInferMeta
