@@ -124,6 +124,37 @@ class TestRemainderInplaceAPI(unittest.TestCase):
             np.testing.assert_array_equal(ref_out, out.numpy())
 
 
+# Test remainder_ inplace compatibility
+class TestModInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_x = np.random.randint(1, 20, [5, 6]).astype("int64")
+        self.np_y = np.random.randint(1, 10, [5, 6]).astype("int64")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        y = paddle.to_tensor(self.np_y)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.mod_(x.clone(), y)
+        # 2. Paddle keyword arguments
+        out2 = paddle.mod_(x=x.clone(), y=y)
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.floor_mod_(input=x.clone(), other=y)
+        # 4. Mixed arguments
+        out4 = paddle.floor_mod_(x.clone(), y=y)
+        # 5. Tensor method - args
+        out5 = x.clone().mod_(y)
+        # 6. Tensor method - kwargs (PyTorch alias)
+        out6 = x.clone().floor_mod_(other=y)
+
+        # Verify all outputs
+        ref_out = np.mod(self.np_x, self.np_y)
+        for out in [out1, out2, out3, out4, out5, out6]:
+            np.testing.assert_array_equal(ref_out, out.numpy())
+
+
 # Test squeeze compatibility
 class TestSqueezeAPI(unittest.TestCase):
     def setUp(self):
