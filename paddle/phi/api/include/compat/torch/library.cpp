@@ -117,6 +117,11 @@ FunctionResult ClassRegistry::call_method_with_args(
   for (size_t i = 0; i < args.size(); ++i) {
     full_args.add_arg(args.get_value(i));
   }
+  for (const auto& [name, value] : args.named_args()) {
+    torch::arg keyword(name);
+    keyword = value;
+    full_args.add_arg(std::move(keyword));
+  }
   return call_method_with_args(qualified_name, method_name, full_args);
 }
 

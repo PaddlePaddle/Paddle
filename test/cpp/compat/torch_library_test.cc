@@ -92,6 +92,32 @@ class TestClass : public torch::CustomClassHolder {
   }
 };
 
+torch::CppFunction MakeKwonlySchemaMethodForTestClass() {
+  torch::CppFunction method(
+      [](const torch::FunctionArgs& args) -> torch::IValue {
+        if (args.has_named_args()) {
+          throw std::runtime_error(
+              "Schema-normalized class method should not receive named args");
+        }
+        if (args.size() != 3) {
+          throw std::runtime_error("Expected 3 normalized arguments");
+        }
+
+        auto instance = args.get<torch::intrusive_ptr<TestClass>>(0);
+        const auto idx_repr = args.get_value(1).is_none()
+                                  ? std::string("none")
+                                  : std::to_string(args.get<int64_t>(1));
+        return torch::IValue(instance->name + "|" + idx_repr + "|" +
+                             args.get<std::string>(2));
+      });
+  // The self type is irrelevant here; this test only exercises kwarg
+  // forwarding and schema normalization on the instance-method overload.
+  method.bind_schema(torch::jit::parseSchema(
+      "kwonly_forwarding(Tensor self, *, int? idx=None, str mode=\"nearest\") "
+      "-> str"));
+  return method;
+}
+
 TORCH_LIBRARY(example_library, m) {
   // Note that "float" in the schema corresponds to the C++ double type
   // and the Python float type.
@@ -268,9 +294,8 @@ TORCH_LIBRARY_IMPL(example_library_with_mdef_cases, CUDA, m) {
 }
 
 TORCH_LIBRARY_IMPL(example_library_mdef_impl_block, CPU, m) {
-  // def(schema) in IMPL block is explicitly ignored.
+  // def() in IMPL block is explicitly ignored.
   m.def("impl_block_schema_only(int x) -> int");
-  // def(schema, fn) goes through template def() and still registers.
   m.def("impl_block_schema_and_fn(int x) -> int", &impl_block_schema_and_fn);
 }
 
@@ -399,11 +424,6 @@ TEST(test_torch_library, TestMDefRegistrationPathsCallResult) {
       {"example_library_with_mdef_cases::overload.name",
        {torch::IValue(40), torch::IValue(2)},
        42},
-      // def(schema, fn) inside IMPL block still registers through template
-      // def().
-      {"example_library_mdef_impl_block::impl_block_schema_and_fn",
-       {torch::IValue(21)},
-       42},
   };
 
   for (const auto& test_case : cases) {
@@ -454,12 +474,22 @@ TEST(test_torch_library, TestMDefRegistersMultipleDispatchImplementations) {
   EXPECT_EQ(cuda_result.get_value().to_int(), 43);
 }
 
-TEST(test_torch_library, TestMDefSchemaOnlyInImplBlockIsNoop) {
-  // def(schema) in IMPL block should not register anything.
-  auto qualified_name =
-      "example_library_mdef_impl_block::impl_block_schema_only";
-  auto* op = torch::OperatorRegistry::instance().find_operator(qualified_name);
-  EXPECT_EQ(op, nullptr);
+TEST(test_torch_library, TestMDefInImplBlockIsNoop) {
+  {
+    auto qualified_name =
+        "example_library_mdef_impl_block::impl_block_schema_only";
+    auto* op =
+        torch::OperatorRegistry::instance().find_operator(qualified_name);
+    EXPECT_EQ(op, nullptr);
+  }
+
+  {
+    auto qualified_name =
+        "example_library_mdef_impl_block::impl_block_schema_and_fn";
+    auto* op =
+        torch::OperatorRegistry::instance().find_operator(qualified_name);
+    EXPECT_EQ(op, nullptr);
+  }
 }
 
 TEST(test_torch_library, TestMDefSchemaMatrixBasicTypesCallResult) {
@@ -829,6 +859,47 @@ TEST(test_torch_library, TestClassMethodArityMismatchFromFunctionTraits) {
                                                    torch::FunctionArgs());
       },
       "Method expects 1 arguments");
+}
+
+TEST(test_torch_library,
+     TestClassMethodKwonlyArgsForwardedThroughInstanceOverload) {
+  auto qualified_name = "example_library::TestClass";
+  auto method_name = "kwonlyForwarding";
+  auto& class_registry = torch::ClassRegistry::instance();
+
+  class_registry.register_method(
+      qualified_name, method_name, MakeKwonlySchemaMethodForTestClass());
+
+  torch::FunctionArgs constructor_args;
+  constructor_args.add_arg(torch::IValue(10));
+  constructor_args.add_arg(torch::IValue("example"));
+  auto instance = class_registry.call_constructor_with_args(qualified_name,
+                                                            constructor_args);
+
+  {
+    torch::FunctionArgs kwonly_args;
+    kwonly_args.add_arg(torch::arg("idx") = int64_t(7));
+    kwonly_args.add_arg(torch::arg("mode") = "linear");
+
+    auto result = class_registry.call_method_with_args(
+        qualified_name, method_name, instance.get_value(), kwonly_args);
+    ASSERT_TRUE(result.get_value().is_string());
+    EXPECT_EQ(result.get_value().to_string(), "example|7|linear");
+  }
+
+  {
+    torch::FunctionArgs positional_kwonly_args;
+    positional_kwonly_args.add_arg(torch::IValue(int64_t(7)));
+
+    test::utils::ExpectThrowContains<std::runtime_error>(
+        [&]() {
+          (void)class_registry.call_method_with_args(qualified_name,
+                                                     method_name,
+                                                     instance.get_value(),
+                                                     positional_kwonly_args);
+        },
+        "keyword-only");
+  }
 }
 
 TEST(test_torch_library, TestMDefSchemaDefaultsAppliedByCallWithArgs) {
