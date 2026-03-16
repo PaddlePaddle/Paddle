@@ -21,7 +21,9 @@
 #endif
 #include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
 #include "paddle/phi/kernels/funcs/layer_norm_util.h"
+#include "paddle/phi/kernels/gpu/rms_norm_cuda_kernel.h"
 COMMON_DECLARE_bool(use_fast_math);
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 
 namespace phi {
 
@@ -369,7 +371,7 @@ void LaunchLayerNormKernel(const Context& dev_ctx,
                            const void* void_bias_data,
                            U* mean_data,
                            U* var_data,
-                           float epsilon,
+                           double epsilon,
                            const int64_t rows,
                            const int cols,
                            const bool valid_scale,
@@ -506,6 +508,9 @@ static inline LayerNormKernelVariant LayerNormKernelDispatch(
   if (scale == nullptr || bias == nullptr) {
     return LayerNormKernelVariant::GENERIC;
   }
+  if (FLAGS_use_accuracy_compatible_kernel) {
+    return LayerNormKernelVariant::GENERIC;
+  }
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
   if (input_type != paddle::DataType::FLOAT32 && hidden_size != 4096 &&
       hidden_size > 1024 && hidden_size <= 10240 &&
@@ -534,7 +539,7 @@ void LayerNormKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const optional<DenseTensor>& scale_opt,
                      const optional<DenseTensor>& bias_opt,
-                     float epsilon,
+                     double epsilon,
                      int begin_norm_axis,
                      DenseTensor* y,
                      DenseTensor* mean,
@@ -697,9 +702,21 @@ void LayerNormKernel(const Context& dev_ctx,
     case LayerNormKernelVariant::GENERIC:
     default:
 #ifdef PADDLE_WITH_CUDA
-      // WarpShuffle intrinsics is involved in LaunchLayerNormKernel.
-      if (FLAGS_use_fast_math && feature_size <= 1024 &&
-          (!std::is_same<T, int8_t>::value)) {
+      if (FLAGS_use_accuracy_compatible_kernel) {
+        LayerNormFwdCompatKernel<T, Context>(
+            dev_ctx,
+            x_data,
+            valid_scale ? static_cast<const T*>(void_scale_data) : nullptr,
+            valid_bias ? static_cast<const T*>(void_bias_data) : nullptr,
+            epsilon,
+            batch_size,
+            feature_size,
+            y_data,
+            mean_data,
+            var_data);
+      } else if (FLAGS_use_fast_math && feature_size <= 1024 &&
+                 (!std::is_same<T, int8_t>::value)) {
+        // WarpShuffle intrinsics is involved in LaunchLayerNormKernel.
         LaunchLayerNormKernel<Context, T, U>(dev_ctx,
                                              x_data,
                                              y_data,
@@ -735,7 +752,7 @@ template PADDLE_API void LayerNormKernel<float, GPUContext>(
     const DenseTensor& x,
     const optional<DenseTensor>& scale_opt,
     const optional<DenseTensor>& bias_opt,
-    float epsilon,
+    double epsilon,
     int begin_norm_axis,
     DenseTensor* y,
     DenseTensor* mean,
@@ -745,7 +762,7 @@ template PADDLE_API void LayerNormKernel<phi::dtype::float16, GPUContext>(
     const DenseTensor& x,
     const optional<DenseTensor>& scale_opt,
     const optional<DenseTensor>& bias_opt,
-    float epsilon,
+    double epsilon,
     int begin_norm_axis,
     DenseTensor* y,
     DenseTensor* mean,
@@ -755,7 +772,7 @@ template PADDLE_API void LayerNormKernel<double, GPUContext>(
     const DenseTensor& x,
     const optional<DenseTensor>& scale_opt,
     const optional<DenseTensor>& bias_opt,
-    float epsilon,
+    double epsilon,
     int begin_norm_axis,
     DenseTensor* y,
     DenseTensor* mean,
