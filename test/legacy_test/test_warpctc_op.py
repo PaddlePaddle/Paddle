@@ -677,17 +677,17 @@ class TestWarpCTCOpError(unittest.TestCase):
 
         self.assertRaisesRegex(
             ValueError,
-            f"Expected label to have size {max_sequence_length} at dimension 0, but got size 0",
+            f"Expected label to have size {batch_size} at dimension 0, but got size 0",
             test_zero_labels_batch_size,
         )
         self.assertRaisesRegex(
             ValueError,
-            f"Expected logits_length to have size {max_sequence_length} at dimension 0, but got size 0",
+            f"Expected logits_length to have size {batch_size} at dimension 0, but got size 0",
             test_zero_logits_length_batch_size,
         )
         self.assertRaisesRegex(
             ValueError,
-            f"Expected labels_length to have size {max_sequence_length} at dimension 0, but got size 0",
+            f"Expected labels_length to have size {batch_size} at dimension 0, but got size 0",
             test_zero_labels_length_batch_size,
         )
 

@@ -235,17 +235,13 @@ void WarpctcKernel(const Context& dev_ctx,
                    bool norm_by_times UNUSED,
                    DenseTensor* loss,
                    DenseTensor* warpctcgrad) {
-  size_t num_sequences, sequence_width, max_sequence_length, labels_batch_size,
-      logits_length_batch_size, labels_length_batch_size;
+  size_t num_sequences, sequence_width, max_sequence_length;
   phi::Vector<size_t> logits_lod;
   phi::Vector<size_t> label_lod;
   if (logits_length.is_initialized() && labels_length.is_initialized()) {
     num_sequences = logits.dims()[1];
     sequence_width = logits.dims()[2];
     max_sequence_length = logits.dims()[0];
-    labels_batch_size = label.dims()[0];
-    logits_length_batch_size = logits_length.get().dims()[0];
-    labels_length_batch_size = labels_length.get().dims()[0];
 
     PADDLE_ENFORCE_GT(max_sequence_length,
                       0,
@@ -277,30 +273,6 @@ void WarpctcKernel(const Context& dev_ctx,
             "but received %d",
             std::numeric_limits<int>::max(),
             num_sequences * sequence_width * max_sequence_length));
-
-    PADDLE_ENFORCE_GT(
-        labels_batch_size,
-        0,
-        common::errors::InvalidArgument(
-            "Expected label to have size %zu at dimension 0, but got size %d",
-            max_sequence_length,
-            labels_batch_size));
-
-    PADDLE_ENFORCE_GT(
-        logits_length_batch_size,
-        0,
-        common::errors::InvalidArgument("Expected logits_length to have size "
-                                        "%zu at dimension 0, but got size %d",
-                                        max_sequence_length,
-                                        logits_length_batch_size));
-
-    PADDLE_ENFORCE_GT(
-        labels_length_batch_size,
-        0,
-        common::errors::InvalidArgument("Expected labels_length to have size "
-                                        "%zu at dimension 0, but got size %d",
-                                        max_sequence_length,
-                                        labels_length_batch_size));
 
     DenseTensor logits_length_cpu;
     DenseTensor labels_length_cpu;
