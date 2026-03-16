@@ -2637,7 +2637,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
 - op : group_norm
-  args : (Tensor x, Tensor scale, Tensor bias, float epsilon = 1e-5, int groups = -1, str data_format = "NCHW")
+  args : (Tensor x, Tensor scale, Tensor bias, double epsilon = 1e-5, int groups = -1, str data_format = "NCHW")
   output : Tensor(y), Tensor(mean), Tensor(variance)
   infer_meta :
     func : GroupNormInferMeta

@@ -22,6 +22,7 @@
 - fused_bn_add_activation_grad
 - fused_softmax_mask_grad
 - fused_softmax_mask_upper_triangle_grad
+- group_norm_grad
 - hsigmoid_loss_grad
 - softplus_grad
 - softplus_double_grad

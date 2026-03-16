@@ -113,7 +113,11 @@ class DistributedSaver:
             state_dict = {}
             for file in file_list:
                 with open(file, 'rb') as f:
-                    state_dict_info = pickle.load(f, encoding='latin1')
+                    from paddle.framework.restricted_unpickler import (
+                        safe_load_pickle,
+                    )
+
+                    state_dict_info = safe_load_pickle(f, encoding='latin1')
                 for name, value in state_dict_info.items():
                     if name in state_dict:
                         state_dict[name].append(np.array(value))
@@ -144,7 +148,11 @@ class DistributedSaver:
         dist_attr = {}
         for dist_attr_file in dist_attr_file_list:
             with open(dist_attr_file, 'rb') as f:
-                dist_attr_info = pickle.load(f, encoding='latin1')
+                from paddle.framework.restricted_unpickler import (
+                    safe_load_pickle,
+                )
+
+                dist_attr_info = safe_load_pickle(f, encoding='latin1')
             for name, attr in dist_attr_info.items():
                 if name not in dist_attr:
                     dist_attr[name] = attr

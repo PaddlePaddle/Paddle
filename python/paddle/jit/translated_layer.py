@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import pickle
 
 import numpy as np
 
@@ -724,8 +723,10 @@ def _load_persistable_vars(
     model_path, var_info_path, program_holder, params_filename
 ):
     # 1. load extra var info
+    from paddle.framework.restricted_unpickler import safe_load_pickle
+
     with open(var_info_path, 'rb') as f:
-        extra_var_info = pickle.load(f)
+        extra_var_info = safe_load_pickle(f)
 
     # 2. construct var dict
     load_var_dict = {}
