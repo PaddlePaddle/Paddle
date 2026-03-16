@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
+import paddle.nn.functional as F
 
 
 # Edit By AI Agent
@@ -24,11 +25,8 @@ import paddle
 class TestNextafterAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        paddle.enable_static()
-        self.shape = [5, 6]
-        self.dtype = 'float32'
-        self.np_x = np.random.randint(0, 8, self.shape).astype(self.dtype)
-        self.np_y = np.random.randint(0, 8, self.shape).astype(self.dtype)
+        self.np_x = np.random.randint(0, 8, [5, 6]).astype('float32')
+        self.np_y = np.random.randint(0, 8, [5, 6]).astype('float32')
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
@@ -62,8 +60,8 @@ class TestNextafterAPI(unittest.TestCase):
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
-            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
-            y = paddle.static.data(name="y", shape=self.shape, dtype=self.dtype)
+            x = paddle.static.data(name="x", shape=[5, 6], dtype='float32')
+            y = paddle.static.data(name="y", shape=[5, 6], dtype='float32')
 
             # 1. Paddle positional arguments
             out1 = paddle.nextafter(x, y)
@@ -92,10 +90,8 @@ class TestNextafterAPI(unittest.TestCase):
 class TestAngleAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        paddle.enable_static()
-        shape = [5, 6]
-        np_x_real = np.random.randn(*shape).astype('float32')
-        np_x_imag = np.random.randn(*shape).astype('float32')
+        np_x_real = np.random.randn(5, 6).astype('float32')
+        np_x_imag = np.random.randn(5, 6).astype('float32')
         self.np_x = np_x_real + 1j * np_x_imag
 
     def test_dygraph_Compatibility(self):
@@ -126,9 +122,8 @@ class TestAngleAPI(unittest.TestCase):
         paddle.enable_static()
         main = paddle.static.Program()
         startup = paddle.static.Program()
-        shape = [5, 6]
         with paddle.static.program_guard(main, startup):
-            x = paddle.static.data(name="x", shape=shape, dtype='complex64')
+            x = paddle.static.data(name="x", shape=[5, 6], dtype='complex64')
 
             # 1. Paddle positional arguments
             out1 = paddle.angle(x)
@@ -155,10 +150,7 @@ class TestAngleAPI(unittest.TestCase):
 class TestAtanAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        paddle.enable_static()
-        self.shape = [5, 6]
-        self.dtype = 'float32'
-        self.np_x = np.random.randn(*self.shape).astype(self.dtype)
+        self.np_x = np.random.randn(5, 6).astype('float32')
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
@@ -187,7 +179,7 @@ class TestAtanAPI(unittest.TestCase):
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
-            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            x = paddle.static.data(name="x", shape=[5, 6], dtype='float32')
 
             out1 = paddle.atan(x)
             out2 = paddle.atan(x=x)
@@ -209,11 +201,8 @@ class TestAtanAPI(unittest.TestCase):
 class TestAtan2API(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        paddle.enable_static()
-        self.shape = [5, 6]
-        self.dtype = 'float32'
-        self.np_x = np.random.randn(*self.shape).astype(self.dtype)
-        self.np_y = np.random.randn(*self.shape).astype(self.dtype)
+        self.np_x = np.random.randn(5, 6).astype('float32')
+        self.np_y = np.random.randn(5, 6).astype('float32')
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
@@ -247,8 +236,8 @@ class TestAtan2API(unittest.TestCase):
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
-            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
-            y = paddle.static.data(name="y", shape=self.shape, dtype=self.dtype)
+            x = paddle.static.data(name="x", shape=[5, 6], dtype='float32')
+            y = paddle.static.data(name="y", shape=[5, 6], dtype='float32')
 
             # 1. Paddle positional arguments
             out1 = paddle.atan2(x, y)
@@ -275,11 +264,8 @@ class TestAtan2API(unittest.TestCase):
 class TestHypotAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        paddle.enable_static()
-        self.shape = [5, 6]
-        self.dtype = 'float32'
-        self.np_x = np.random.randn(*self.shape).astype(self.dtype)
-        self.np_y = np.random.randn(*self.shape).astype(self.dtype)
+        self.np_x = np.random.randn(5, 6).astype('float32')
+        self.np_y = np.random.randn(5, 6).astype('float32')
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
@@ -312,8 +298,8 @@ class TestHypotAPI(unittest.TestCase):
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
-            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
-            y = paddle.static.data(name="y", shape=self.shape, dtype=self.dtype)
+            x = paddle.static.data(name="x", shape=[5, 6], dtype='float32')
+            y = paddle.static.data(name="y", shape=[5, 6], dtype='float32')
 
             # 1. Paddle positional arguments
             out1 = paddle.hypot(x, y)
@@ -340,11 +326,11 @@ class TestHypotAPI(unittest.TestCase):
 class TestHypotInplaceAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        paddle.disable_static()
         self.np_x = np.random.randn(5, 6).astype('float32')
         self.np_y = np.random.randn(5, 6).astype('float32')
 
     def test_dygraph_InplaceCompatibility(self):
+        paddle.disable_static()
         x = paddle.to_tensor(self.np_x)
         y = paddle.to_tensor(self.np_y)
         ref_out = np.hypot(self.np_x, self.np_y)
@@ -370,11 +356,8 @@ class TestHypotInplaceAPI(unittest.TestCase):
 class TestFmaxAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        paddle.enable_static()
-        self.shape = [5, 6]
-        self.dtype = 'float32'
-        self.np_x = np.random.randn(*self.shape).astype(self.dtype)
-        self.np_y = np.random.randn(*self.shape).astype(self.dtype)
+        self.np_x = np.random.randn(5, 6).astype('float32')
+        self.np_y = np.random.randn(5, 6).astype('float32')
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
@@ -408,8 +391,8 @@ class TestFmaxAPI(unittest.TestCase):
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
-            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
-            y = paddle.static.data(name="y", shape=self.shape, dtype=self.dtype)
+            x = paddle.static.data(name="x", shape=[5, 6], dtype='float32')
+            y = paddle.static.data(name="y", shape=[5, 6], dtype='float32')
 
             # 1. Paddle positional arguments
             out1 = paddle.fmax(x, y)
@@ -438,11 +421,8 @@ class TestFmaxAPI(unittest.TestCase):
 class TestFminAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        paddle.enable_static()
-        self.shape = [5, 6]
-        self.dtype = 'float32'
-        self.np_x = np.random.randn(*self.shape).astype(self.dtype)
-        self.np_y = np.random.randn(*self.shape).astype(self.dtype)
+        self.np_x = np.random.randn(5, 6).astype('float32')
+        self.np_y = np.random.randn(5, 6).astype('float32')
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
@@ -476,8 +456,8 @@ class TestFminAPI(unittest.TestCase):
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
-            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
-            y = paddle.static.data(name="y", shape=self.shape, dtype=self.dtype)
+            x = paddle.static.data(name="x", shape=[5, 6], dtype='float32')
+            y = paddle.static.data(name="y", shape=[5, 6], dtype='float32')
 
             # 1. Paddle positional arguments
             out1 = paddle.fmin(x, y)
@@ -506,11 +486,8 @@ class TestFminAPI(unittest.TestCase):
 class TestBincountAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        paddle.enable_static()
-        self.shape = [10]
-        self.dtype = 'int64'
-        self.np_x = np.random.randint(0, 8, self.shape).astype(self.dtype)
-        self.np_weights = np.random.random(self.shape).astype('float32')
+        self.np_x = np.random.randint(0, 8, [10]).astype('int64')
+        self.np_weights = np.random.random([10]).astype('float32')
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
@@ -537,9 +514,9 @@ class TestBincountAPI(unittest.TestCase):
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
-            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            x = paddle.static.data(name="x", shape=[10], dtype='int64')
             weights = paddle.static.data(
-                name="weights", shape=self.shape, dtype='float32'
+                name="weights", shape=[10], dtype='float32'
             )
 
             # 1. Paddle positional arguments
@@ -567,11 +544,8 @@ class TestBincountAPI(unittest.TestCase):
 class TestDiagAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        paddle.enable_static()
-        self.shape = [3, 3]
-        self.dtype = 'float32'
-        self.np_x = np.random.randn(*self.shape).astype(self.dtype)
-        self.np_v = np.random.randn(3).astype(self.dtype)
+        self.np_x = np.random.randn(3, 3).astype('float32')
+        self.np_v = np.random.randn(3).astype('float32')
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
@@ -608,7 +582,7 @@ class TestDiagAPI(unittest.TestCase):
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
-            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            x = paddle.static.data(name="x", shape=[3, 3], dtype='float32')
 
             # 1. Paddle positional arguments
             out1 = paddle.diag(x, 1)
@@ -637,11 +611,8 @@ class TestDiagAPI(unittest.TestCase):
 class TestHeavisideAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        paddle.enable_static()
-        self.shape = [5, 6]
-        self.dtype = 'float32'
-        self.np_x = np.random.randn(*self.shape).astype(self.dtype)
-        self.np_y = np.random.randn(*self.shape).astype(self.dtype)
+        self.np_x = np.random.randn(5, 6).astype('float32')
+        self.np_y = np.random.randn(5, 6).astype('float32')
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
@@ -675,8 +646,8 @@ class TestHeavisideAPI(unittest.TestCase):
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
-            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
-            y = paddle.static.data(name="y", shape=self.shape, dtype=self.dtype)
+            x = paddle.static.data(name="x", shape=[5, 6], dtype='float32')
+            y = paddle.static.data(name="y", shape=[5, 6], dtype='float32')
 
             # 1. Paddle positional arguments
             out1 = paddle.heaviside(x, y)
@@ -703,14 +674,11 @@ class TestHeavisideAPI(unittest.TestCase):
 class TestAsinhAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        paddle.enable_static()
-        self.shape = [5, 6]
-        self.dtype = 'float32'
-        self.np_input = np.random.randint(0, 8, self.shape).astype(self.dtype)
+        self.np_x = np.random.randint(0, 8, [5, 6]).astype('float32')
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
-        x = paddle.to_tensor(self.np_input)
+        x = paddle.to_tensor(self.np_x)
 
         # 1. Paddle positional arguments
         out1 = paddle.asinh(x)
@@ -725,7 +693,7 @@ class TestAsinhAPI(unittest.TestCase):
         out5 = x.asinh()
 
         # Verify all outputs
-        ref_out = np.arcsinh(self.np_input)
+        ref_out = np.arcsinh(self.np_x)
         for out in [out1, out2, out3, out4, out5]:
             np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-6)
         paddle.enable_static()
@@ -735,7 +703,7 @@ class TestAsinhAPI(unittest.TestCase):
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
-            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            x = paddle.static.data(name="x", shape=[5, 6], dtype='float32')
 
             # 1. Paddle positional arguments
             out1 = paddle.asinh(x)
@@ -749,10 +717,10 @@ class TestAsinhAPI(unittest.TestCase):
             exe = paddle.static.Executor()
             fetches = exe.run(
                 main,
-                feed={"x": self.np_input},
+                feed={"x": self.np_x},
                 fetch_list=[out1, out2, out3, out4],
             )
-            ref_out = np.arcsinh(self.np_input)
+            ref_out = np.arcsinh(self.np_x)
             for out in fetches:
                 np.testing.assert_allclose(out, ref_out, rtol=1e-6)
 
@@ -760,14 +728,11 @@ class TestAsinhAPI(unittest.TestCase):
 class TestReciprocalAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        paddle.enable_static()
-        self.shape = [5, 6]
-        self.dtype = 'float32'
-        self.np_input = np.random.randint(1, 8, self.shape).astype(self.dtype)
+        self.np_x = np.random.randint(1, 8, [5, 6]).astype('float32')
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
-        x = paddle.to_tensor(self.np_input)
+        x = paddle.to_tensor(self.np_x)
 
         # 1. Paddle positional arguments
         out1 = paddle.reciprocal(x)
@@ -782,7 +747,7 @@ class TestReciprocalAPI(unittest.TestCase):
         out5 = x.reciprocal()
 
         # Verify all outputs
-        ref_out = 1.0 / self.np_input
+        ref_out = 1.0 / self.np_x
         for out in [out1, out2, out3, out4, out5]:
             np.testing.assert_allclose(ref_out, out.numpy())
         paddle.enable_static()
@@ -792,7 +757,7 @@ class TestReciprocalAPI(unittest.TestCase):
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
-            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            x = paddle.static.data(name="x", shape=[5, 6], dtype='float32')
 
             # 1. Paddle positional arguments
             out1 = paddle.reciprocal(x)
@@ -806,10 +771,10 @@ class TestReciprocalAPI(unittest.TestCase):
             exe = paddle.static.Executor()
             fetches = exe.run(
                 main,
-                feed={"x": self.np_input},
+                feed={"x": self.np_x},
                 fetch_list=[out1, out2, out3, out4],
             )
-            ref_out = 1.0 / self.np_input
+            ref_out = 1.0 / self.np_x
             for out in fetches:
                 np.testing.assert_allclose(out, ref_out)
 
@@ -817,14 +782,11 @@ class TestReciprocalAPI(unittest.TestCase):
 class TestSquareAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        paddle.enable_static()
-        self.shape = [5, 6]
-        self.dtype = 'float32'
-        self.np_input = np.random.randint(0, 8, self.shape).astype(self.dtype)
+        self.np_x = np.random.randint(0, 8, [5, 6]).astype('float32')
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
-        x = paddle.to_tensor(self.np_input)
+        x = paddle.to_tensor(self.np_x)
 
         # 1. Paddle positional arguments
         out1 = paddle.square(x)
@@ -839,7 +801,7 @@ class TestSquareAPI(unittest.TestCase):
         out5 = x.square()
 
         # Verify all outputs
-        ref_out = np.square(self.np_input)
+        ref_out = np.square(self.np_x)
         for out in [out1, out2, out3, out4, out5]:
             np.testing.assert_allclose(ref_out, out.numpy())
         paddle.enable_static()
@@ -849,7 +811,7 @@ class TestSquareAPI(unittest.TestCase):
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
-            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            x = paddle.static.data(name="x", shape=[5, 6], dtype='float32')
 
             # 1. Paddle positional arguments
             out1 = paddle.square(x)
@@ -863,10 +825,10 @@ class TestSquareAPI(unittest.TestCase):
             exe = paddle.static.Executor()
             fetches = exe.run(
                 main,
-                feed={"x": self.np_input},
+                feed={"x": self.np_x},
                 fetch_list=[out1, out2, out3, out4],
             )
-            ref_out = np.square(self.np_input)
+            ref_out = np.square(self.np_x)
             for out in fetches:
                 np.testing.assert_allclose(out, ref_out)
 
@@ -875,11 +837,8 @@ class TestSquareAPI(unittest.TestCase):
 class TestMaskedFillAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        paddle.enable_static()
-        self.shape = [3, 3]
-        self.dtype = 'float32'
-        self.np_x = np.random.randint(1, 10, self.shape).astype(self.dtype)
-        self.np_mask = np.random.randint(0, 2, self.shape).astype(bool)
+        self.np_x = np.random.randint(1, 10, [3, 3]).astype('float32')
+        self.np_mask = np.random.randint(0, 2, [3, 3]).astype(bool)
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
@@ -909,10 +868,8 @@ class TestMaskedFillAPI(unittest.TestCase):
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
-            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
-            mask = paddle.static.data(
-                name="mask", shape=self.shape, dtype='bool'
-            )
+            x = paddle.static.data(name="x", shape=[3, 3], dtype='float32')
+            mask = paddle.static.data(name="mask", shape=[3, 3], dtype='bool')
 
             # Position args
             out1 = paddle.masked_fill(x, mask, 0.0)
@@ -938,14 +895,11 @@ class TestMaskedFillAPI(unittest.TestCase):
 class TestTanAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        paddle.enable_static()
-        self.shape = [5, 6]
-        self.dtype = 'float32'
-        self.np_input = np.random.randint(0, 8, self.shape).astype(self.dtype)
+        self.np_x = np.random.randint(0, 8, [5, 6]).astype('float32')
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
-        x = paddle.to_tensor(self.np_input)
+        x = paddle.to_tensor(self.np_x)
 
         # 1. Paddle positional arguments
         out1 = paddle.tan(x)
@@ -960,7 +914,7 @@ class TestTanAPI(unittest.TestCase):
         out5 = x.tan()
 
         # Verify all outputs
-        ref_out = np.tan(self.np_input)
+        ref_out = np.tan(self.np_x)
         for out in [out1, out2, out3, out4, out5]:
             np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-6)
         paddle.enable_static()
@@ -970,7 +924,7 @@ class TestTanAPI(unittest.TestCase):
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
-            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            x = paddle.static.data(name="x", shape=[5, 6], dtype='float32')
 
             # 1. Paddle positional arguments
             out1 = paddle.tan(x)
@@ -984,10 +938,10 @@ class TestTanAPI(unittest.TestCase):
             exe = paddle.static.Executor()
             fetches = exe.run(
                 main,
-                feed={"x": self.np_input},
+                feed={"x": self.np_x},
                 fetch_list=[out1, out2, out3, out4],
             )
-            ref_out = np.tan(self.np_input)
+            ref_out = np.tan(self.np_x)
             for out in fetches:
                 np.testing.assert_allclose(out, ref_out, rtol=1e-6)
 
@@ -996,11 +950,8 @@ class TestTanAPI(unittest.TestCase):
 class TestBitwiseAndAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        paddle.enable_static()
-        self.shape = [5, 6]
-        self.dtype = 'int32'
-        self.np_x = np.random.randint(0, 8, self.shape).astype(self.dtype)
-        self.np_y = np.random.randint(0, 8, self.shape).astype(self.dtype)
+        self.np_x = np.random.randint(0, 8, [5, 6]).astype('int32')
+        self.np_y = np.random.randint(0, 8, [5, 6]).astype('int32')
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
@@ -1034,8 +985,8 @@ class TestBitwiseAndAPI(unittest.TestCase):
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
-            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
-            y = paddle.static.data(name="y", shape=self.shape, dtype=self.dtype)
+            x = paddle.static.data(name="x", shape=[5, 6], dtype='int32')
+            y = paddle.static.data(name="y", shape=[5, 6], dtype='int32')
 
             # 1. Paddle positional arguments
             out1 = paddle.bitwise_and(x, y)
@@ -1064,11 +1015,8 @@ class TestBitwiseAndAPI(unittest.TestCase):
 class TestBitwiseOrAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        paddle.enable_static()
-        self.shape = [5, 6]
-        self.dtype = 'int32'
-        self.np_x = np.random.randint(0, 8, self.shape).astype(self.dtype)
-        self.np_y = np.random.randint(0, 8, self.shape).astype(self.dtype)
+        self.np_x = np.random.randint(0, 8, [5, 6]).astype('int32')
+        self.np_y = np.random.randint(0, 8, [5, 6]).astype('int32')
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
@@ -1101,8 +1049,8 @@ class TestBitwiseOrAPI(unittest.TestCase):
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
-            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
-            y = paddle.static.data(name="y", shape=self.shape, dtype=self.dtype)
+            x = paddle.static.data(name="x", shape=[5, 6], dtype='int32')
+            y = paddle.static.data(name="y", shape=[5, 6], dtype='int32')
 
             # 1. Paddle positional arguments
             out1 = paddle.bitwise_or(x, y)
@@ -1130,10 +1078,7 @@ class TestBitwiseOrAPI(unittest.TestCase):
 class TestBitwiseNotAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        paddle.enable_static()
-        self.shape = [5, 6]
-        self.dtype = 'int32'
-        self.np_x = np.random.randint(0, 8, self.shape).astype(self.dtype)
+        self.np_x = np.random.randint(0, 8, [5, 6]).astype('int32')
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
@@ -1161,7 +1106,7 @@ class TestBitwiseNotAPI(unittest.TestCase):
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
-            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            x = paddle.static.data(name="x", shape=[5, 6], dtype='int32')
 
             # 1. Paddle positional arguments
             out1 = paddle.bitwise_not(x)
@@ -1187,11 +1132,8 @@ class TestBitwiseNotAPI(unittest.TestCase):
 class TestBitwiseXorAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        paddle.enable_static()
-        self.shape = [5, 6]
-        self.dtype = 'int32'
-        self.np_x = np.random.randint(0, 8, self.shape).astype(self.dtype)
-        self.np_y = np.random.randint(0, 8, self.shape).astype(self.dtype)
+        self.np_x = np.random.randint(0, 8, [5, 6]).astype('int32')
+        self.np_y = np.random.randint(0, 8, [5, 6]).astype('int32')
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
@@ -1224,8 +1166,8 @@ class TestBitwiseXorAPI(unittest.TestCase):
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
-            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
-            y = paddle.static.data(name="y", shape=self.shape, dtype=self.dtype)
+            x = paddle.static.data(name="x", shape=[5, 6], dtype='int32')
+            y = paddle.static.data(name="y", shape=[5, 6], dtype='int32')
 
             # 1. Paddle positional arguments
             out1 = paddle.bitwise_xor(x, y)
@@ -1253,11 +1195,11 @@ class TestBitwiseXorAPI(unittest.TestCase):
 class TestBitwiseAndInplaceAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        paddle.disable_static()
         self.np_x = np.random.randint(0, 8, [5, 6]).astype('int32')
         self.np_y = np.random.randint(0, 8, [5, 6]).astype('int32')
 
     def test_dygraph_InplaceCompatibility(self):
+        paddle.disable_static()
         x = paddle.to_tensor(self.np_x)
         y = paddle.to_tensor(self.np_y)
         ref_out = np.bitwise_and(self.np_x, self.np_y)
@@ -1283,11 +1225,11 @@ class TestBitwiseAndInplaceAPI(unittest.TestCase):
 class TestBitwiseOrInplaceAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        paddle.disable_static()
         self.np_x = np.random.randint(0, 8, [5, 6]).astype('int32')
         self.np_y = np.random.randint(0, 8, [5, 6]).astype('int32')
 
     def test_dygraph_InplaceCompatibility(self):
+        paddle.disable_static()
         x = paddle.to_tensor(self.np_x)
         y = paddle.to_tensor(self.np_y)
         ref_out = np.bitwise_or(self.np_x, self.np_y)
@@ -1313,11 +1255,11 @@ class TestBitwiseOrInplaceAPI(unittest.TestCase):
 class TestBitwiseXorInplaceAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        paddle.disable_static()
         self.np_x = np.random.randint(0, 8, [5, 6]).astype('int32')
         self.np_y = np.random.randint(0, 8, [5, 6]).astype('int32')
 
     def test_dygraph_InplaceCompatibility(self):
+        paddle.disable_static()
         x = paddle.to_tensor(self.np_x)
         y = paddle.to_tensor(self.np_y)
         ref_out = np.bitwise_xor(self.np_x, self.np_y)
@@ -1343,10 +1285,10 @@ class TestBitwiseXorInplaceAPI(unittest.TestCase):
 class TestBitwiseNotInplaceAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        paddle.disable_static()
         self.np_x = np.random.randint(0, 8, [5, 6]).astype('int32')
 
     def test_dygraph_InplaceCompatibility(self):
+        paddle.disable_static()
         x = paddle.to_tensor(self.np_x)
         ref_out = np.bitwise_not(self.np_x)
 
@@ -1366,11 +1308,8 @@ class TestBitwiseNotInplaceAPI(unittest.TestCase):
 class TestCdistAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        self.shape_x = [3, 5, 4]
-        self.shape_y = [3, 2, 4]
-        self.dtype = 'float32'
-        self.np_x = np.random.rand(*self.shape_x).astype(self.dtype)
-        self.np_y = np.random.rand(*self.shape_y).astype(self.dtype)
+        self.np_x = np.random.rand(3, 5, 4).astype('float32')
+        self.np_y = np.random.rand(3, 2, 4).astype('float32')
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
@@ -1395,12 +1334,8 @@ class TestCdistAPI(unittest.TestCase):
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
-            x = paddle.static.data(
-                name="x", shape=self.shape_x, dtype=self.dtype
-            )
-            y = paddle.static.data(
-                name="y", shape=self.shape_y, dtype=self.dtype
-            )
+            x = paddle.static.data(name="x", shape=[3, 5, 4], dtype='float32')
+            y = paddle.static.data(name="y", shape=[3, 2, 4], dtype='float32')
             out1 = paddle.cdist(x, y)
             out2 = paddle.cdist(x=x, y=y)
             out3 = paddle.cdist(x1=x, x2=y)
@@ -1424,18 +1359,18 @@ class TestCdistAPI(unittest.TestCase):
         """Test edge cases: r1==0, r2==0, c1==0."""
         paddle.disable_static()
         # r1==0 (3D batched)
-        x1 = paddle.to_tensor(np.random.rand(2, 0, 4).astype(self.dtype))
-        y1 = paddle.to_tensor(np.random.rand(2, 3, 4).astype(self.dtype))
+        x1 = paddle.to_tensor(np.random.rand(2, 0, 4).astype('float32'))
+        y1 = paddle.to_tensor(np.random.rand(2, 3, 4).astype('float32'))
         out1 = paddle.cdist(x1, y1)
         self.assertEqual(out1.shape, [2, 0, 3])
         # r2==0 (2D non-batched)
-        x2 = paddle.to_tensor(np.random.rand(3, 4).astype(self.dtype))
-        y2 = paddle.to_tensor(np.random.rand(0, 4).astype(self.dtype))
+        x2 = paddle.to_tensor(np.random.rand(3, 4).astype('float32'))
+        y2 = paddle.to_tensor(np.random.rand(0, 4).astype('float32'))
         out2 = paddle.cdist(x2, y2)
         self.assertEqual(out2.shape, [3, 0])
         # c1==0 (3D batched, should return zeros)
-        x3 = paddle.to_tensor(np.random.rand(2, 3, 0).astype(self.dtype))
-        y3 = paddle.to_tensor(np.random.rand(2, 2, 0).astype(self.dtype))
+        x3 = paddle.to_tensor(np.random.rand(2, 3, 0).astype('float32'))
+        y3 = paddle.to_tensor(np.random.rand(2, 2, 0).astype('float32'))
         out3 = paddle.cdist(x3, y3)
         self.assertEqual(out3.shape, [2, 3, 2])
         np.testing.assert_allclose(out3.numpy(), 0.0)
@@ -1445,11 +1380,9 @@ class TestCdistAPI(unittest.TestCase):
 class TestAddmmAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        paddle.enable_static()
-        self.dtype = 'float32'
-        self.np_input = np.random.rand(2, 3).astype(self.dtype)
-        self.np_x = np.random.rand(2, 4).astype(self.dtype)
-        self.np_y = np.random.rand(4, 3).astype(self.dtype)
+        self.np_input = np.random.rand(2, 3).astype('float32')
+        self.np_x = np.random.rand(2, 4).astype('float32')
+        self.np_y = np.random.rand(4, 3).astype('float32')
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
@@ -1484,7 +1417,7 @@ class TestAddmmAPI(unittest.TestCase):
         y = paddle.to_tensor(self.np_y)
 
         # Test 3D input (invalid)
-        input_3d = paddle.to_tensor(np.random.rand(2, 2, 3).astype(self.dtype))
+        input_3d = paddle.to_tensor(np.random.rand(2, 2, 3).astype('float32'))
         with self.assertRaises(ValueError):
             paddle.addmm(input_3d, x, y)
 
@@ -1496,10 +1429,10 @@ class TestAddmmAPI(unittest.TestCase):
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
             input = paddle.static.data(
-                name="input", shape=[2, 3], dtype=self.dtype
+                name="input", shape=[2, 3], dtype='float32'
             )
-            x = paddle.static.data(name="x", shape=[2, 4], dtype=self.dtype)
-            y = paddle.static.data(name="y", shape=[4, 3], dtype=self.dtype)
+            x = paddle.static.data(name="x", shape=[2, 4], dtype='float32')
+            y = paddle.static.data(name="y", shape=[4, 3], dtype='float32')
             # 1. Paddle positional arguments
             out1 = paddle.addmm(input, x, y, 1.0, 1.0)
             # 2. Paddle keyword arguments
@@ -1524,12 +1457,12 @@ class TestAddmmAPI(unittest.TestCase):
 class TestAddmmInplaceAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        paddle.disable_static()
         self.np_input = np.random.rand(2, 3).astype('float32')
         self.np_x = np.random.rand(2, 4).astype('float32')
         self.np_y = np.random.rand(4, 3).astype('float32')
 
     def test_dygraph_Compatibility(self):
+        paddle.disable_static()
         input = paddle.to_tensor(self.np_input)
         x = paddle.to_tensor(self.np_x)
         y = paddle.to_tensor(self.np_y)
@@ -1582,11 +1515,9 @@ class TestLdexpInplaceAPI(unittest.TestCase):
 class TestBaddbmmAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        paddle.enable_static()
-        self.dtype = 'float32'
-        self.np_input = np.random.rand(3, 2, 3).astype(self.dtype)
-        self.np_x = np.random.rand(3, 2, 4).astype(self.dtype)
-        self.np_y = np.random.rand(3, 4, 3).astype(self.dtype)
+        self.np_input = np.random.rand(3, 2, 3).astype('float32')
+        self.np_x = np.random.rand(3, 2, 4).astype('float32')
+        self.np_y = np.random.rand(3, 4, 3).astype('float32')
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
@@ -1615,7 +1546,7 @@ class TestBaddbmmAPI(unittest.TestCase):
             np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-6)
 
         # 2D input (1,1) broadcasts to result shape [3, 2, 3]
-        input_2d = paddle.to_tensor(np.array([[0.5]]).astype(self.dtype))
+        input_2d = paddle.to_tensor(np.array([[0.5]]).astype('float32'))
         out8 = paddle.baddbmm(input_2d, x, y)
         ref_out_2d = 0.5 + self.np_x @ self.np_y
         np.testing.assert_allclose(ref_out_2d, out8.numpy(), rtol=1e-6)
@@ -1628,7 +1559,7 @@ class TestBaddbmmAPI(unittest.TestCase):
         y = paddle.to_tensor(self.np_y)
 
         # Test 1D input (invalid)
-        input_1d = paddle.to_tensor(np.random.rand(3).astype(self.dtype))
+        input_1d = paddle.to_tensor(np.random.rand(3).astype('float32'))
         with self.assertRaises(ValueError):
             paddle.baddbmm(input_1d, x, y)
         paddle.enable_static()
@@ -1639,10 +1570,10 @@ class TestBaddbmmAPI(unittest.TestCase):
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
             input = paddle.static.data(
-                name="input", shape=[3, 2, 3], dtype=self.dtype
+                name="input", shape=[3, 2, 3], dtype='float32'
             )
-            x = paddle.static.data(name="x", shape=[3, 2, 4], dtype=self.dtype)
-            y = paddle.static.data(name="y", shape=[3, 4, 3], dtype=self.dtype)
+            x = paddle.static.data(name="x", shape=[3, 2, 4], dtype='float32')
+            y = paddle.static.data(name="y", shape=[3, 4, 3], dtype='float32')
             # 1. Paddle positional arguments
             out1 = paddle.baddbmm(input, x, y, 1.0, 1.0)
             # 2. Paddle keyword arguments
@@ -1670,12 +1601,12 @@ class TestBaddbmmAPI(unittest.TestCase):
 class TestBaddbmmInplaceAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        paddle.disable_static()
         self.np_input = np.random.rand(3, 2, 3).astype('float32')
         self.np_x = np.random.rand(3, 2, 4).astype('float32')
         self.np_y = np.random.rand(3, 4, 3).astype('float32')
 
     def test_dygraph_Compatibility(self):
+        paddle.disable_static()
         input = paddle.to_tensor(self.np_input)
         x = paddle.to_tensor(self.np_x)
         y = paddle.to_tensor(self.np_y)
@@ -1700,11 +1631,8 @@ class TestBaddbmmInplaceAPI(unittest.TestCase):
 class TestBitwiseLeftShiftAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        paddle.enable_static()
-        self.shape = [5, 6]
-        self.dtype = 'int32'
-        self.np_x = np.random.randint(1, 10, self.shape).astype(self.dtype)
-        self.np_y = np.random.randint(1, 5, self.shape).astype(self.dtype)
+        self.np_x = np.random.randint(1, 10, [5, 6]).astype('int32')
+        self.np_y = np.random.randint(1, 5, [5, 6]).astype('int32')
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
@@ -1720,7 +1648,7 @@ class TestBitwiseLeftShiftAPI(unittest.TestCase):
         # 4. Mixed arguments
         out4 = paddle.bitwise_left_shift(x, y=y)
         # 5. out parameter test
-        out5 = paddle.empty(self.shape, dtype=self.dtype)
+        out5 = paddle.empty([5, 6], dtype='int32')
         paddle.bitwise_left_shift(x, y, out=out5)
         # 6. Tensor method - args
         out6 = x.bitwise_left_shift(y)
@@ -1737,8 +1665,8 @@ class TestBitwiseLeftShiftAPI(unittest.TestCase):
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
-            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
-            y = paddle.static.data(name="y", shape=self.shape, dtype=self.dtype)
+            x = paddle.static.data(name="x", shape=[5, 6], dtype='int32')
+            y = paddle.static.data(name="y", shape=[5, 6], dtype='int32')
 
             # 1. Paddle positional arguments
             out1 = paddle.bitwise_left_shift(x, y)
@@ -1766,11 +1694,11 @@ class TestBitwiseLeftShiftAPI(unittest.TestCase):
 class TestBitwiseLeftShiftInplaceAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        paddle.disable_static()
         self.np_x = np.random.randint(1, 10, [5, 6]).astype('int32')
         self.np_y = np.random.randint(1, 5, [5, 6]).astype('int32')
 
     def test_dygraph_InplaceCompatibility(self):
+        paddle.disable_static()
         x = paddle.to_tensor(self.np_x)
         y = paddle.to_tensor(self.np_y)
         ref_out = np.left_shift(self.np_x, self.np_y)
@@ -1796,11 +1724,8 @@ class TestBitwiseLeftShiftInplaceAPI(unittest.TestCase):
 class TestBitwiseRightShiftAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        paddle.enable_static()
-        self.shape = [5, 6]
-        self.dtype = 'int32'
-        self.np_x = np.random.randint(10, 100, self.shape).astype(self.dtype)
-        self.np_y = np.random.randint(1, 5, self.shape).astype(self.dtype)
+        self.np_x = np.random.randint(10, 100, [5, 6]).astype('int32')
+        self.np_y = np.random.randint(1, 5, [5, 6]).astype('int32')
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
@@ -1816,7 +1741,7 @@ class TestBitwiseRightShiftAPI(unittest.TestCase):
         # 4. Mixed arguments
         out4 = paddle.bitwise_right_shift(x, y=y)
         # 5. out parameter test
-        out5 = paddle.empty(self.shape, dtype=self.dtype)
+        out5 = paddle.empty([5, 6], dtype='int32')
         paddle.bitwise_right_shift(x, y, out=out5)
         # 6. Tensor method - args
         out6 = x.bitwise_right_shift(y)
@@ -1834,8 +1759,8 @@ class TestBitwiseRightShiftAPI(unittest.TestCase):
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
-            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
-            y = paddle.static.data(name="y", shape=self.shape, dtype=self.dtype)
+            x = paddle.static.data(name="x", shape=[5, 6], dtype='int32')
+            y = paddle.static.data(name="y", shape=[5, 6], dtype='int32')
 
             # 1. Paddle positional arguments
             out1 = paddle.bitwise_right_shift(x, y)
@@ -1864,11 +1789,11 @@ class TestBitwiseRightShiftAPI(unittest.TestCase):
 class TestBitwiseRightShiftInplaceAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        paddle.disable_static()
         self.np_x = np.random.randint(10, 100, [5, 6]).astype('int32')
         self.np_y = np.random.randint(1, 5, [5, 6]).astype('int32')
 
     def test_dygraph_InplaceCompatibility(self):
+        paddle.disable_static()
         x = paddle.to_tensor(self.np_x)
         y = paddle.to_tensor(self.np_y)
         ref_out = np.right_shift(self.np_x, self.np_y)
@@ -1894,42 +1819,40 @@ class TestBitwiseRightShiftInplaceAPI(unittest.TestCase):
 class TestCauchyInplaceAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        paddle.disable_static()
-        self.shape = [3, 4]
-        self.dtype = 'float32'
 
     def test_dygraph_InplaceCompatibility(self):
+        paddle.disable_static()
         # 1. Tensor method - positional args
-        out1 = paddle.randn(self.shape, dtype=self.dtype)
+        out1 = paddle.randn([3, 4], dtype='float32')
         out1.cauchy_(1.0, 2.0)
         # 2. Tensor method - Paddle keyword args
-        out2 = paddle.randn(self.shape, dtype=self.dtype)
+        out2 = paddle.randn([3, 4], dtype='float32')
         out2.cauchy_(loc=1.0, scale=2.0)
         # 3. Tensor method - PyTorch keyword args (alias)
-        out3 = paddle.randn(self.shape, dtype=self.dtype)
+        out3 = paddle.randn([3, 4], dtype='float32')
         out3.cauchy_(median=1.0, sigma=2.0)
         # 4. Paddle function - positional args
-        out4 = paddle.randn(self.shape, dtype=self.dtype)
+        out4 = paddle.randn([3, 4], dtype='float32')
         paddle.cauchy_(out4, 1.0, 2.0)
         # 5. Paddle function - Paddle keyword args
-        out5 = paddle.randn(self.shape, dtype=self.dtype)
+        out5 = paddle.randn([3, 4], dtype='float32')
         paddle.cauchy_(out5, loc=1.0, scale=2.0)
         # 6. Paddle function - PyTorch keyword args (alias)
-        out6 = paddle.randn(self.shape, dtype=self.dtype)
+        out6 = paddle.randn([3, 4], dtype='float32')
         paddle.cauchy_(out6, median=1.0, sigma=2.0)
 
         for out in [out1, out2, out3, out4, out5, out6]:
-            self.assertEqual(out.shape, self.shape)
+            self.assertEqual(out.shape, [3, 4])
 
 
 class TestTensorCumsumInplaceAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        paddle.disable_static()
-        self.data = np.random.randint(1, 5, size=(3, 4)).astype('int64')
+        self.np_x = np.random.randint(1, 5, size=(3, 4)).astype('int64')
 
     def test_dygraph_InplaceCompatibility(self):
-        x = paddle.to_tensor(self.data)
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
 
         # 1. Tensor method - positional args
         out1 = x.clone()
@@ -1950,7 +1873,7 @@ class TestTensorCumsumInplaceAPI(unittest.TestCase):
         out6 = x.clone()
         paddle.cumsum_(out6, dim=1)
 
-        ref = np.cumsum(self.data, axis=1)
+        ref = np.cumsum(self.np_x, axis=1)
         for out in [out1, out2, out3, out4, out5, out6]:
             np.testing.assert_allclose(ref, out.numpy())
 
@@ -1958,9 +1881,9 @@ class TestTensorCumsumInplaceAPI(unittest.TestCase):
 # Test real compatibility
 class TestRealAPI(unittest.TestCase):
     def setUp(self):
-        np.random.seed(123)
-        np_x_real = np.random.randn([5, 6]).astype('float32')
-        np_x_imag = np.random.randn([5, 6]).astype('float32')
+        np.random.seed(2025)
+        np_x_real = np.random.randn(5, 6).astype('float32')
+        np_x_imag = np.random.randn(5, 6).astype('float32')
         self.np_x = np_x_real + 1j * np_x_imag
 
     def test_dygraph_Compatibility(self):
@@ -1974,7 +1897,7 @@ class TestRealAPI(unittest.TestCase):
         # 3. PyTorch keyword arguments (alias)
         out3 = paddle.real(input=x)
         # 4. out parameter test
-        out4 = paddle.empty(self.shape, dtype='float32')
+        out4 = paddle.empty([5, 6], dtype='float32')
         paddle.real(x, out=out4)
         # 5. Tensor method
         out5 = x.real()
@@ -2016,22 +1939,21 @@ class TestRealAPI(unittest.TestCase):
 # Test pixel_shuffle compatibility
 class TestPixelShuffleAPI(unittest.TestCase):
     def setUp(self):
-        np.random.seed(123)
-        paddle.enable_static()
-        self.np_x = np.random.randn([2, 9, 4, 4]).astype('float32')
+        np.random.seed(2025)
+        self.np_x = np.random.randn(2, 9, 4, 4).astype('float32')
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
         x = paddle.to_tensor(self.np_x)
 
         # 1. Paddle positional arguments
-        out1 = paddle.pixel_shuffle(x, 3)
+        out1 = F.pixel_shuffle(x, 3)
         # 2. Paddle keyword arguments
-        out2 = paddle.pixel_shuffle(x=x, upscale_factor=3)
+        out2 = F.pixel_shuffle(x=x, upscale_factor=3)
         # 3. PyTorch keyword arguments (alias)
-        out3 = paddle.pixel_shuffle(input=x, upscale_factor=3)
+        out3 = F.pixel_shuffle(input=x, upscale_factor=3)
         # 4. Mixed arguments
-        out4 = paddle.pixel_shuffle(x, upscale_factor=3)
+        out4 = F.pixel_shuffle(x, upscale_factor=3)
 
         # Verify all outputs match
         for out in [out2, out3, out4]:
@@ -2049,11 +1971,11 @@ class TestPixelShuffleAPI(unittest.TestCase):
             )
 
             # 1. Paddle positional arguments
-            out1 = paddle.pixel_shuffle(x, 3)
+            out1 = F.pixel_shuffle(x, 3)
             # 2. Paddle keyword arguments
-            out2 = paddle.pixel_shuffle(x=x, upscale_factor=3)
+            out2 = F.pixel_shuffle(x=x, upscale_factor=3)
             # 3. PyTorch keyword arguments (alias)
-            out3 = paddle.pixel_shuffle(input=x, upscale_factor=3)
+            out3 = F.pixel_shuffle(input=x, upscale_factor=3)
 
             exe = paddle.static.Executor()
             fetches = exe.run(

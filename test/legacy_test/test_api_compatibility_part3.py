@@ -22,8 +22,7 @@ import paddle
 # Test mv compatibility
 class TestMvAPI(unittest.TestCase):
     def setUp(self):
-        np.random.seed(123)
-        paddle.enable_static()
+        np.random.seed(2025)
         self.np_x = np.random.rand(3, 4).astype("float64")
         self.np_vec = np.random.rand(4).astype("float64")
 
@@ -97,12 +96,12 @@ class TestMvAPI(unittest.TestCase):
 # Test remainder_ inplace compatibility
 class TestRemainderInplaceAPI(unittest.TestCase):
     def setUp(self):
-        np.random.seed(123)
-        paddle.disable_static()
+        np.random.seed(2025)
         self.np_x = np.random.randint(1, 20, [5, 6]).astype("int64")
         self.np_y = np.random.randint(1, 10, [5, 6]).astype("int64")
 
     def test_dygraph_Compatibility(self):
+        paddle.disable_static()
         x = paddle.to_tensor(self.np_x)
         y = paddle.to_tensor(self.np_y)
 
@@ -129,7 +128,6 @@ class TestRemainderInplaceAPI(unittest.TestCase):
 class TestSqueezeAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        paddle.enable_static()
         self.np_x = np.random.rand(1, 3, 1, 5).astype("float32")
 
     def test_dygraph_Compatibility(self):
@@ -198,10 +196,10 @@ class TestSqueezeAPI(unittest.TestCase):
 class TestSqueezeInplaceAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        paddle.disable_static()
         self.np_x = np.random.rand(1, 3, 1, 5).astype("float32")
 
     def test_dygraph_Compatibility(self):
+        paddle.disable_static()
         x = paddle.to_tensor(self.np_x)
 
         # 1. Paddle Positional arguments
@@ -227,7 +225,6 @@ class TestSqueezeInplaceAPI(unittest.TestCase):
 class TestUnsqueezeAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        paddle.enable_static()
         self.np_x = np.random.rand(5, 10).astype("float32")
 
     def test_dygraph_Compatibility(self):
@@ -291,10 +288,10 @@ class TestUnsqueezeAPI(unittest.TestCase):
 class TestUnsqueezeInplaceAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        paddle.disable_static()
         self.np_x = np.random.rand(5, 10).astype("float32")
 
     def test_dygraph_Compatibility(self):
+        paddle.disable_static()
         x = paddle.to_tensor(self.np_x)
 
         # 1. Paddle Positional arguments
@@ -320,10 +317,10 @@ class TestUnsqueezeInplaceAPI(unittest.TestCase):
 class TestPowInplaceAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        paddle.disable_static()
         self.np_x = np.random.rand(5, 6).astype("float32")
 
     def test_dygraph_Compatibility(self):
+        paddle.disable_static()
         x = paddle.to_tensor(self.np_x)
         y_scalar = 2.0
 
@@ -350,11 +347,11 @@ class TestPowInplaceAPI(unittest.TestCase):
 class TestFloorDivideInplaceAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        paddle.disable_static()
         self.np_x = np.random.randint(10, 100, [5, 6]).astype("int64")
         self.np_y = np.random.randint(1, 10, [5, 6]).astype("int64")
 
     def test_dygraph_Compatibility(self):
+        paddle.disable_static()
         x = paddle.to_tensor(self.np_x)
         y = paddle.to_tensor(self.np_y)
 
