@@ -21,8 +21,7 @@ namespace memory {
 namespace allocation {
 
 TEST(CUDAVirtualMemAllocatorV2, HandleSizeAligned) {
-  CUDAVirtualMemAllocatorV2 allocator(
-      phi::GPUPlace(), 1, PoolType::kTransient);
+  CUDAVirtualMemAllocatorV2 allocator(phi::GPUPlace(), 1, PoolType::kTransient);
 
   auto allocation = allocator.Allocate(1);
   ASSERT_NE(allocation, nullptr);
