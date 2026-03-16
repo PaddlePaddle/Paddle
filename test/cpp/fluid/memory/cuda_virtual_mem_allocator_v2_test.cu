@@ -20,7 +20,7 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-TEST(CUDAVirtualMemAllocatorV2, HandleSizeAlignedAndCollectParts) {
+TEST(CUDAVirtualMemAllocatorV2, HandleSizeAligned) {
   CUDAVirtualMemAllocatorV2 allocator(
       phi::GPUPlace(), 1, PoolType::kTransient);
 
@@ -29,11 +29,18 @@ TEST(CUDAVirtualMemAllocatorV2, HandleSizeAlignedAndCollectParts) {
   ASSERT_NE(allocation->ptr(), nullptr);
   ASSERT_GT(allocator.handle_size(), 0UL);
   ASSERT_EQ(allocation->size() % allocator.handle_size(), 0UL);
+}
+
+TEST(CUDAVirtualMemAllocatorV2, CollectAllocationParts) {
+  CUDAVirtualMemAllocatorV2 allocator(
+      phi::GPUPlace(), 2UL << 20, PoolType::kTransient);
+
+  auto allocation = allocator.Allocate(allocator.handle_size() * 2);
+  ASSERT_NE(allocation, nullptr);
 
   std::vector<BlockPartV2> parts;
   ASSERT_TRUE(allocator.CollectAllocationParts(allocation->ptr(), &parts));
-  ASSERT_EQ(parts.size(), allocation->size() / allocator.handle_size());
-  ASSERT_FALSE(parts.empty());
+  ASSERT_EQ(parts.size(), 2UL);
 
   auto base = reinterpret_cast<VmmDevicePtr>(allocation->ptr());
   for (size_t i = 0; i < parts.size(); ++i) {
@@ -73,6 +80,30 @@ TEST(CUDAVirtualMemAllocatorV2, FreeRemovesHandleRegistration) {
   allocation.reset();
 
   EXPECT_FALSE(allocator.CollectAllocationParts(base_ptr, &parts));
+}
+
+TEST(CUDAVirtualMemAllocatorV2, UnmapAndMapHandleBackToSameVA) {
+  CUDAVirtualMemAllocatorV2 allocator(
+      phi::GPUPlace(), 2UL << 20, PoolType::kTransient);
+
+  auto allocation = allocator.Allocate(allocator.handle_size() * 2);
+  ASSERT_NE(allocation, nullptr);
+
+  std::vector<BlockPartV2> parts;
+  ASSERT_TRUE(allocator.CollectAllocationParts(allocation->ptr(), &parts));
+  ASSERT_EQ(parts.size(), 2UL);
+
+  const auto remap_ptr = parts[0].chunk->base;
+  const auto remap_handle = parts[0].chunk->handle;
+  allocator.UnmapHandle(remap_ptr, allocator.handle_size());
+  allocator.MapHandlesToVA(remap_ptr, {remap_handle});
+
+  std::vector<BlockPartV2> parts_after_remap;
+  EXPECT_TRUE(
+      allocator.CollectAllocationParts(allocation->ptr(), &parts_after_remap));
+  ASSERT_EQ(parts_after_remap.size(), parts.size());
+  EXPECT_EQ(parts_after_remap[0].chunk->base, parts[0].chunk->base);
+  EXPECT_EQ(parts_after_remap[0].chunk->handle, parts[0].chunk->handle);
 }
 
 }  // namespace allocation

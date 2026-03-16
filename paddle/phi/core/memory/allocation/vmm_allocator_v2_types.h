@@ -51,7 +51,7 @@ struct VmmHandleMeta {
 
 // A logical slice of one fixed-size VMM handle. Higher layers may split one
 // allocation into multiple BlockPartV2 entries and later reuse the same
-// representation for remap / GAP / IPC bookkeeping.
+// representation for remap / GAP / IPC state tracking.
 struct BlockPartV2 {
   std::shared_ptr<VmmHandleMeta> chunk;
   size_t chunk_rel_off;
