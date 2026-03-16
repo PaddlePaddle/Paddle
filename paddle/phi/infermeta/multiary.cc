@@ -6288,13 +6288,283 @@ void FusedRopeInferMeta(const MetaTensor& q,
                         MetaTensor* out_q,
                         MetaTensor* out_k,
                         MetaTensor* out_v) {
-  auto input_dims = q.dims();
-  PADDLE_ENFORCE_EQ(input_dims.size(),
+  // Validate q: must be 4-D [batch_size, seq_len, num_heads, head_dim]
+  // or [seq_len, batch_size, num_heads, head_dim]
+  auto q_dims = q.dims();
+  PADDLE_ENFORCE_EQ(q_dims.size(),
                     4,
                     common::errors::InvalidArgument(
-                        "Input should be a 4-D tensor of format [N, C, H, W] "
-                        "or [N, H, W, C], but got %u.",
-                        input_dims.size()));
+                        "Input q should be a 4-D tensor of format "
+                        "[batch_size, seq_len, num_heads, head_dim] "
+                        "or [seq_len, batch_size, num_heads, head_dim], "
+                        "but got %d-D.",
+                        q_dims.size()));
+
+  auto batch_size = time_major ? q_dims[1] : q_dims[0];
+  auto seq_len = time_major ? q_dims[0] : q_dims[1];
+  auto num_heads = q_dims[2];
+  auto head_dim = q_dims[3];
+
+  PADDLE_ENFORCE_EQ(head_dim % 2,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The head_dim of q must be a multiple of 2, "
+                        "but got head_dim = %d.",
+                        head_dim));
+
+  PADDLE_ENFORCE_GT(batch_size,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The batch_size of q must be greater than 0, "
+                        "but got %d.",
+                        batch_size));
+
+  PADDLE_ENFORCE_GT(seq_len,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The seq_len of q must be greater than 0, "
+                        "but got %d.",
+                        seq_len));
+
+  PADDLE_ENFORCE_GT(num_heads,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The num_heads of q must be greater than 0, "
+                        "but got %d.",
+                        num_heads));
+
+  PADDLE_ENFORCE_GT(head_dim,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The head_dim of q must be greater than 0, "
+                        "but got %d.",
+                        head_dim));
+
+  // Validate k (optional): must be 4-D with same head_dim as q
+  if (k) {
+    auto k_dims = k.dims();
+    PADDLE_ENFORCE_EQ(k_dims.size(),
+                      4,
+                      common::errors::InvalidArgument(
+                          "Input k should be a 4-D tensor of format "
+                          "[batch_size, seq_len, num_heads, head_dim] "
+                          "or [seq_len, batch_size, num_heads, head_dim], "
+                          "but got %d-D.",
+                          k_dims.size()));
+
+    auto k_head_dim = k_dims[3];
+    PADDLE_ENFORCE_EQ(k_head_dim % 2,
+                      0,
+                      common::errors::InvalidArgument(
+                          "The head_dim of k must be a multiple of 2, "
+                          "but got head_dim = %d.",
+                          k_head_dim));
+
+    PADDLE_ENFORCE_EQ(k_head_dim,
+                      head_dim,
+                      common::errors::InvalidArgument(
+                          "The head_dim of k (%d) must be equal to "
+                          "the head_dim of q (%d).",
+                          k_head_dim,
+                          head_dim));
+
+    auto k_batch_size = time_major ? k_dims[1] : k_dims[0];
+    auto k_seq_len = time_major ? k_dims[0] : k_dims[1];
+    auto k_num_heads = k_dims[2];
+
+    PADDLE_ENFORCE_GT(k_batch_size,
+                      0,
+                      common::errors::InvalidArgument(
+                          "The batch_size of k must be greater than 0, "
+                          "but got %d.",
+                          k_batch_size));
+
+    PADDLE_ENFORCE_GT(k_seq_len,
+                      0,
+                      common::errors::InvalidArgument(
+                          "The seq_len of k must be greater than 0, "
+                          "but got %d.",
+                          k_seq_len));
+
+    PADDLE_ENFORCE_GT(k_num_heads,
+                      0,
+                      common::errors::InvalidArgument(
+                          "The num_heads of k must be greater than 0, "
+                          "but got %d.",
+                          k_num_heads));
+
+    PADDLE_ENFORCE_EQ(k_seq_len,
+                      seq_len,
+                      common::errors::InvalidArgument(
+                          "The seq_len of k (%d) must be equal to "
+                          "the seq_len of q (%d).",
+                          k_seq_len,
+                          seq_len));
+  }
+
+  // Validate v (optional): must be 4-D with same head_dim and seq_len as q
+  if (v) {
+    auto v_dims = v.dims();
+    PADDLE_ENFORCE_EQ(v_dims.size(),
+                      4,
+                      common::errors::InvalidArgument(
+                          "Input v should be a 4-D tensor of format "
+                          "[batch_size, seq_len, num_heads, head_dim] "
+                          "or [seq_len, batch_size, num_heads, head_dim], "
+                          "but got %d-D.",
+                          v_dims.size()));
+
+    auto v_head_dim = v_dims[3];
+    PADDLE_ENFORCE_EQ(v_head_dim % 2,
+                      0,
+                      common::errors::InvalidArgument(
+                          "The head_dim of v must be a multiple of 2, "
+                          "but got head_dim = %d.",
+                          v_head_dim));
+
+    PADDLE_ENFORCE_EQ(v_head_dim,
+                      head_dim,
+                      common::errors::InvalidArgument(
+                          "The head_dim of v (%d) must be equal to "
+                          "the head_dim of q (%d).",
+                          v_head_dim,
+                          head_dim));
+
+    auto v_batch_size = time_major ? v_dims[1] : v_dims[0];
+    auto v_seq_len = time_major ? v_dims[0] : v_dims[1];
+    auto v_num_heads = v_dims[2];
+
+    PADDLE_ENFORCE_GT(v_batch_size,
+                      0,
+                      common::errors::InvalidArgument(
+                          "The batch_size of v must be greater than 0, "
+                          "but got %d.",
+                          v_batch_size));
+
+    PADDLE_ENFORCE_GT(v_seq_len,
+                      0,
+                      common::errors::InvalidArgument(
+                          "The seq_len of v must be greater than 0, "
+                          "but got %d.",
+                          v_seq_len));
+
+    PADDLE_ENFORCE_GT(v_num_heads,
+                      0,
+                      common::errors::InvalidArgument(
+                          "The num_heads of v must be greater than 0, "
+                          "but got %d.",
+                          v_num_heads));
+
+    PADDLE_ENFORCE_EQ(v_seq_len,
+                      seq_len,
+                      common::errors::InvalidArgument(
+                          "The seq_len of v (%d) must be equal to "
+                          "the seq_len of q (%d).",
+                          v_seq_len,
+                          seq_len));
+  }
+
+  // Validate sin (optional): must be 2-D [seq_len, head_dim] or
+  // 4-D [1, seq_len, 1, head_dim], head_dim must be a multiple of 2
+  if (sin) {
+    auto sin_dims = sin.dims();
+    PADDLE_ENFORCE_EQ(
+        (sin_dims.size() == 2 || sin_dims.size() == 4),
+        true,
+        common::errors::InvalidArgument(
+            "The dims of sin is expected to be 2 or 4, but received %d.",
+            sin_dims.size()));
+
+    auto sin_head_dim = sin_dims[sin_dims.size() - 1];
+    PADDLE_ENFORCE_EQ(sin_head_dim % 2,
+                      0,
+                      common::errors::InvalidArgument(
+                          "The last dim of sin must be a multiple of 2, "
+                          "but got %d.",
+                          sin_head_dim));
+
+    if (sin_dims.size() == 4) {
+      PADDLE_ENFORCE_EQ(
+          (sin_dims[0] == 1 && sin_dims[2] == 1),
+          true,
+          common::errors::InvalidArgument(
+              "When sin is 4-D, its shape must be [1, seq_len, 1, head_dim], "
+              "but got [%d, %d, %d, %d].",
+              sin_dims[0],
+              sin_dims[1],
+              sin_dims[2],
+              sin_dims[3]));
+    }
+  }
+
+  // Validate cos (optional): must be 2-D [seq_len, head_dim] or
+  // 4-D [1, seq_len, 1, head_dim], head_dim must be a multiple of 2
+  if (cos) {
+    auto cos_dims = cos.dims();
+    PADDLE_ENFORCE_EQ(
+        (cos_dims.size() == 2 || cos_dims.size() == 4),
+        true,
+        common::errors::InvalidArgument(
+            "The dims of cos is expected to be 2 or 4, but received %d.",
+            cos_dims.size()));
+
+    auto cos_head_dim = cos_dims[cos_dims.size() - 1];
+    PADDLE_ENFORCE_EQ(cos_head_dim % 2,
+                      0,
+                      common::errors::InvalidArgument(
+                          "The last dim of cos must be a multiple of 2, "
+                          "but got %d.",
+                          cos_head_dim));
+
+    if (cos_dims.size() == 4) {
+      PADDLE_ENFORCE_EQ(
+          (cos_dims[0] == 1 && cos_dims[2] == 1),
+          true,
+          common::errors::InvalidArgument(
+              "When cos is 4-D, its shape must be [1, seq_len, 1, head_dim], "
+              "but got [%d, %d, %d, %d].",
+              cos_dims[0],
+              cos_dims[1],
+              cos_dims[2],
+              cos_dims[3]));
+    }
+  }
+
+  // Validate sin and cos must be both provided or both absent
+  if (sin && cos) {
+    PADDLE_ENFORCE_EQ(
+        sin.dims(),
+        cos.dims(),
+        common::errors::InvalidArgument(
+            "The dims of sin and cos must be the same. "
+            "But received sin's dims is {%s}, cos's dims is {%s}.",
+            sin.dims(),
+            cos.dims()));
+  }
+
+  // Validate position_ids (optional): must be 2-D [batch_size, seq_len]
+  if (position_ids) {
+    auto pos_dims = position_ids.dims();
+    PADDLE_ENFORCE_EQ(
+        pos_dims.size(),
+        2,
+        common::errors::InvalidArgument(
+            "The dims of position_ids is expected to be 2, but received %d.",
+            pos_dims.size()));
+
+    PADDLE_ENFORCE_EQ(
+        (pos_dims[0] == batch_size && pos_dims[1] == seq_len),
+        true,
+        common::errors::InvalidArgument(
+            "The shape of position_ids must be [batch_size, seq_len], "
+            "i.e., [%d, %d], but got [%d, %d].",
+            batch_size,
+            seq_len,
+            pos_dims[0],
+            pos_dims[1]));
+  }
+
+  // Set output dims and dtype
   out_q->set_dims(q.dims());
   out_q->set_dtype(q.dtype());
   if (k) {
