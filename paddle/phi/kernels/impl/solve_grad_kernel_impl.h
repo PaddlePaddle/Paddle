@@ -79,7 +79,8 @@ void SolveGradKernel(const Context& dev_ctx,
                      const DenseTensor& dout,
                      DenseTensor* dx,
                      DenseTensor* dy) {
-  if (dout.numel() == 0) {
+  if (x.numel() == 0 || y.numel() == 0 || out.numel() == 0 ||
+      dout.numel() == 0) {
     if (dx) {
       dev_ctx.template Alloc<T>(dx);
       if (dx->numel() != 0) {
