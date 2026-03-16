@@ -31,5 +31,19 @@ class TestLoadStateDictTranspose(test_base.CommunicationTestDistBase):
         )
 
 
+class TestLoadStateDictTransposeCast(test_base.CommunicationTestDistBase):
+    def setUp(self):
+        super().setUp(num_of_devices=2)
+
+    def test_transpose_cast(self):
+        envs = {
+            "aoa_statements": 'linear.weight^T -> linear.weight, dtype="float16"',
+        }
+        self.run_test_case(
+            "load_state_dict_transpose_cast_logic.py",
+            user_defined_envs=envs,
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
