@@ -30,9 +30,9 @@ namespace memory {
 namespace allocation {
 
 // Compared with CUDAVirtualMemAllocator, V2 does not expose a single
-// VA<->handle mapping per allocation. Instead it splits one allocation into
-// fixed-size handles and records BlockPartV2 vectors for upper-layer block
-// management in VMMAutoGrowthBestFitAllocatorV2.
+// VA<->handle mapping per allocation. Instead it returns a lightweight
+// HandleLayout (a handle list) for one allocation. Upper layers later
+// transform that list into block-level BlockPartV2 state.
 class CUDAVirtualMemAllocatorV2 : public Allocator {
  public:
   // Standalone use defaults to the transient pool. Upper layers may still
@@ -55,9 +55,10 @@ class CUDAVirtualMemAllocatorV2 : public Allocator {
 
   void UnmapHandle(VmmDevicePtr ptr, size_t size);
   void MapHandlesToVA(VmmDevicePtr ptr, const std::vector<VmmAllocHandle>& hs);
-  // Exposes the fixed-handle decomposition to the upper best-fit layer.
-  bool CollectAllocationParts(void* base_ptr,
-                              std::vector<BlockPartV2>* parts) const;
+  // Exposes the allocation-level handle list for IPC/export or for the upper
+  // best-fit layer to bootstrap block-level parts.
+  bool CollectAllocationHandleLayout(void* base_ptr,
+                                     HandleLayout* layout) const;
 
  protected:
   phi::Allocation* AllocateImpl(size_t size) override;
@@ -65,8 +66,8 @@ class CUDAVirtualMemAllocatorV2 : public Allocator {
 
  private:
   void InitOnce();
-  void RegisterHandles(void* base_ptr, const std::vector<BlockPartV2>& parts);
-  void UnregisterHandles(void* base_ptr);
+  void RegisterHandleLayout(void* base_ptr, const HandleLayout& layout);
+  void UnregisterHandleLayout(void* base_ptr);
 
   GPUPlace place_;
   size_t handle_size_;
@@ -80,9 +81,8 @@ class CUDAVirtualMemAllocatorV2 : public Allocator {
   CUmemAllocationProp prop_{};
   std::vector<CUmemAccessDesc> access_desc_;
 
-  mutable std::unordered_map<void*, std::vector<BlockPartV2>>
-      base_ptr_parts_map_;
-  mutable std::mutex base_ptr_parts_mu_;
+  mutable std::unordered_map<void*, HandleLayout> base_ptr_layout_map_;
+  mutable std::mutex base_ptr_layout_mu_;
 };
 
 }  // namespace allocation

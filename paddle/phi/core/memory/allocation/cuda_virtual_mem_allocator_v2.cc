@@ -65,7 +65,7 @@ void CUDAVirtualMemAllocatorV2::InitOnce() {
         &granularity_, &prop_, CU_MEM_ALLOC_GRANULARITY_MINIMUM));
     // V2 uses a per-pool fixed handle size. Unlike V1, the allocator rounds
     // user input up to the device granularity so upper layers can treat every
-    // BlockPartV2 as a stable fixed-size building block.
+    // handle in one HandleLayout as a stable fixed-size building block.
     handle_size_ =
         AlignedSize(std::max(handle_size_, granularity_), granularity_);
     size_t actual_avail = 0;
@@ -103,26 +103,23 @@ phi::Allocation* CUDAVirtualMemAllocatorV2::AllocateImpl(size_t size) {
                                         place_));
 
   platform::CUDADeviceGuard guard(place_.device);
-  std::vector<BlockPartV2> parts;
-  parts.reserve(num_handles);
+  HandleLayout layout;
+  layout.reserve(num_handles);
   for (size_t i = 0; i < num_handles; ++i) {
     VmmAllocHandle handle;
     PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::cuMemCreate(&handle, handle_size_, &prop_, 0));
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cuMemMap(
         ptr + i * handle_size_, handle_size_, 0, handle, 0));
-    parts.push_back(BlockPartV2{
-        std::make_shared<VmmHandleMeta>(VmmHandleMeta{
-            ptr + i * handle_size_, handle_size_, handle, place_.device}),
-        0,
-        handle_size_});
+    layout.push_back(std::make_shared<VmmHandleMeta>(VmmHandleMeta{
+        ptr + i * handle_size_, handle_size_, handle, place_.device}));
   }
   // TODO(zhangting35): Roll back already-created / already-mapped handles if
   // cuMemCreate or cuMemMap fails part way through the loop.
   PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cuMemSetAccess(
       ptr, aligned, access_desc_.data(), access_desc_.size()));
 
-  RegisterHandles(reinterpret_cast<void*>(ptr), parts);
+  RegisterHandleLayout(reinterpret_cast<void*>(ptr), layout);
   AdvanceTailOffset(aligned);
   return new Allocation(reinterpret_cast<void*>(ptr),
                         reinterpret_cast<void*>(ptr),
@@ -132,29 +129,29 @@ phi::Allocation* CUDAVirtualMemAllocatorV2::AllocateImpl(size_t size) {
 
 void CUDAVirtualMemAllocatorV2::FreeImpl(phi::Allocation* allocation) {
   auto* base_ptr = static_cast<Allocation*>(allocation)->base_ptr();
-  std::vector<BlockPartV2> parts;
+  HandleLayout layout;
   {
-    std::lock_guard<std::mutex> guard(base_ptr_parts_mu_);
-    auto it = base_ptr_parts_map_.find(base_ptr);
+    std::lock_guard<std::mutex> guard(base_ptr_layout_mu_);
+    auto it = base_ptr_layout_map_.find(base_ptr);
     PADDLE_ENFORCE_NE(
-        it == base_ptr_parts_map_.end(),
+        it == base_ptr_layout_map_.end(),
         true,
         common::errors::NotFound(
-            "No VMMAllocatorV2 handle list found for allocation %p.",
+            "No VMMAllocatorV2 handle layout found for allocation %p.",
             base_ptr));
-    parts = it->second;
+    layout = it->second;
   }
 
   platform::CUDADeviceGuard guard(place_.device);
-  for (const auto& part : parts) {
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cuMemUnmap(
-        part.chunk->base + part.chunk_rel_off, part.len));
+  for (const auto& handle : layout) {
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cuMemUnmap(handle->base, handle->size));
     // TODO(zhangting35): Move handle release into shared handle lifetime
     // management once remap / IPC starts sharing one handle across multiple
     // BlockPartV2 objects.
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cuMemRelease(part.chunk->handle));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cuMemRelease(handle->handle));
   }
-  UnregisterHandles(base_ptr);
+  UnregisterHandleLayout(base_ptr);
   delete allocation;
 }
 
@@ -176,28 +173,28 @@ void CUDAVirtualMemAllocatorV2::MapHandlesToVA(
       ptr, hs.size() * handle_size_, access_desc_.data(), access_desc_.size()));
 }
 
-bool CUDAVirtualMemAllocatorV2::CollectAllocationParts(
-    void* base_ptr, std::vector<BlockPartV2>* parts) const {
-  std::lock_guard<std::mutex> guard(base_ptr_parts_mu_);
-  auto it = base_ptr_parts_map_.find(base_ptr);
-  if (it == base_ptr_parts_map_.end()) {
+bool CUDAVirtualMemAllocatorV2::CollectAllocationHandleLayout(
+    void* base_ptr, HandleLayout* layout) const {
+  std::lock_guard<std::mutex> guard(base_ptr_layout_mu_);
+  auto it = base_ptr_layout_map_.find(base_ptr);
+  if (it == base_ptr_layout_map_.end()) {
     return false;
   }
-  if (parts) {
-    *parts = it->second;
+  if (layout) {
+    *layout = it->second;
   }
   return true;
 }
 
-void CUDAVirtualMemAllocatorV2::RegisterHandles(
-    void* base_ptr, const std::vector<BlockPartV2>& parts) {
-  std::lock_guard<std::mutex> guard(base_ptr_parts_mu_);
-  base_ptr_parts_map_[base_ptr] = parts;
+void CUDAVirtualMemAllocatorV2::RegisterHandleLayout(
+    void* base_ptr, const HandleLayout& layout) {
+  std::lock_guard<std::mutex> guard(base_ptr_layout_mu_);
+  base_ptr_layout_map_[base_ptr] = layout;
 }
 
-void CUDAVirtualMemAllocatorV2::UnregisterHandles(void* base_ptr) {
-  std::lock_guard<std::mutex> guard(base_ptr_parts_mu_);
-  base_ptr_parts_map_.erase(base_ptr);
+void CUDAVirtualMemAllocatorV2::UnregisterHandleLayout(void* base_ptr) {
+  std::lock_guard<std::mutex> guard(base_ptr_layout_mu_);
+  base_ptr_layout_map_.erase(base_ptr);
 }
 
 }  // namespace allocation

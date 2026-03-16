@@ -30,24 +30,23 @@ TEST(CUDAVirtualMemAllocatorV2, HandleSizeAligned) {
   ASSERT_EQ(allocation->size() % allocator.handle_size(), 0UL);
 }
 
-TEST(CUDAVirtualMemAllocatorV2, CollectAllocationParts) {
+TEST(CUDAVirtualMemAllocatorV2, CollectAllocationHandleLayout) {
   CUDAVirtualMemAllocatorV2 allocator(
       phi::GPUPlace(), 2UL << 20, PoolType::kTransient);
 
   auto allocation = allocator.Allocate(allocator.handle_size() * 2);
   ASSERT_NE(allocation, nullptr);
 
-  std::vector<BlockPartV2> parts;
-  ASSERT_TRUE(allocator.CollectAllocationParts(allocation->ptr(), &parts));
-  ASSERT_EQ(parts.size(), 2UL);
+  HandleLayout layout;
+  ASSERT_TRUE(
+      allocator.CollectAllocationHandleLayout(allocation->ptr(), &layout));
+  ASSERT_EQ(layout.size(), 2UL);
 
   auto base = reinterpret_cast<VmmDevicePtr>(allocation->ptr());
-  for (size_t i = 0; i < parts.size(); ++i) {
-    EXPECT_EQ(parts[i].chunk_rel_off, 0UL);
-    EXPECT_EQ(parts[i].len, allocator.handle_size());
-    ASSERT_TRUE(parts[i].chunk);
-    EXPECT_EQ(parts[i].chunk->base, base + i * allocator.handle_size());
-    EXPECT_EQ(parts[i].chunk->size, allocator.handle_size());
+  for (size_t i = 0; i < layout.size(); ++i) {
+    ASSERT_TRUE(layout[i]);
+    EXPECT_EQ(layout[i]->base, base + i * allocator.handle_size());
+    EXPECT_EQ(layout[i]->size, allocator.handle_size());
   }
 }
 
@@ -72,13 +71,13 @@ TEST(CUDAVirtualMemAllocatorV2, FreeRemovesHandleRegistration) {
   ASSERT_NE(allocation, nullptr);
   void* base_ptr = allocation->ptr();
 
-  std::vector<BlockPartV2> parts;
-  ASSERT_TRUE(allocator.CollectAllocationParts(base_ptr, &parts));
-  ASSERT_EQ(parts.size(), 1UL);
+  HandleLayout layout;
+  ASSERT_TRUE(allocator.CollectAllocationHandleLayout(base_ptr, &layout));
+  ASSERT_EQ(layout.size(), 1UL);
 
   allocation.reset();
 
-  EXPECT_FALSE(allocator.CollectAllocationParts(base_ptr, &parts));
+  EXPECT_FALSE(allocator.CollectAllocationHandleLayout(base_ptr, &layout));
 }
 
 TEST(CUDAVirtualMemAllocatorV2, UnmapAndMapHandleBackToSameVA) {
@@ -88,21 +87,22 @@ TEST(CUDAVirtualMemAllocatorV2, UnmapAndMapHandleBackToSameVA) {
   auto allocation = allocator.Allocate(allocator.handle_size() * 2);
   ASSERT_NE(allocation, nullptr);
 
-  std::vector<BlockPartV2> parts;
-  ASSERT_TRUE(allocator.CollectAllocationParts(allocation->ptr(), &parts));
-  ASSERT_EQ(parts.size(), 2UL);
+  HandleLayout layout;
+  ASSERT_TRUE(
+      allocator.CollectAllocationHandleLayout(allocation->ptr(), &layout));
+  ASSERT_EQ(layout.size(), 2UL);
 
-  const auto remap_ptr = parts[0].chunk->base;
-  const auto remap_handle = parts[0].chunk->handle;
+  const auto remap_ptr = layout[0]->base;
+  const auto remap_handle = layout[0]->handle;
   allocator.UnmapHandle(remap_ptr, allocator.handle_size());
   allocator.MapHandlesToVA(remap_ptr, {remap_handle});
 
-  std::vector<BlockPartV2> parts_after_remap;
-  EXPECT_TRUE(
-      allocator.CollectAllocationParts(allocation->ptr(), &parts_after_remap));
-  ASSERT_EQ(parts_after_remap.size(), parts.size());
-  EXPECT_EQ(parts_after_remap[0].chunk->base, parts[0].chunk->base);
-  EXPECT_EQ(parts_after_remap[0].chunk->handle, parts[0].chunk->handle);
+  HandleLayout layout_after_remap;
+  EXPECT_TRUE(allocator.CollectAllocationHandleLayout(allocation->ptr(),
+                                                      &layout_after_remap));
+  ASSERT_EQ(layout_after_remap.size(), layout.size());
+  EXPECT_EQ(layout_after_remap[0]->base, layout[0]->base);
+  EXPECT_EQ(layout_after_remap[0]->handle, layout[0]->handle);
 }
 
 }  // namespace allocation

@@ -14,8 +14,13 @@
 
 #pragma once
 
+#include <atomic>
+#include <cstddef>
 #include <cstdint>
+#include <list>
 #include <memory>
+#include <unordered_map>
+#include <vector>
 
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/phi/backends/dynload/cuda_driver.h"
@@ -29,6 +34,8 @@ using VmmAllocHandle = uint64_t;
 namespace paddle {
 namespace memory {
 namespace allocation {
+
+struct ChunkV2;
 
 // V2 keeps the bottom-layer shared types independent from the best-fit layer
 // so that CUDAVirtualMemAllocatorV2 can be reviewed and compiled separately.
@@ -49,14 +56,58 @@ struct VmmHandleMeta {
   int device;
 };
 
-// A logical slice of one fixed-size VMM handle. Higher layers may split one
-// allocation into multiple BlockPartV2 entries and later reuse the same
-// representation for remap / GAP / IPC state tracking.
+// HandleLayout is a lightweight allocation-level handle list returned by the
+// bottom VMM provider. It is only used to bootstrap block-level BlockPartV2
+// state or answer allocation-level IPC/export queries.
+using HandleLayout = std::vector<std::shared_ptr<VmmHandleMeta>>;
+
+// A logical slice of one fixed-size VMM handle. This is the block-level view
+// owned by VMMAutoGrowthBestFitAllocatorV2 and is updated by split / merge /
+// remap after the initial HandleLayout has been consumed. Future IPC export
+// still exports whole handles at the driver layer; BlockPartV2 carries the
+// slice metadata needed to rebuild the logical tensor view on import.
 struct BlockPartV2 {
   std::shared_ptr<VmmHandleMeta> chunk;
   size_t chunk_rel_off;
   size_t len;
 };
+
+enum class BlockType : uint8_t {
+  kActive = 0,
+  kFree = 1,
+  kGap = 2,
+};
+
+struct PerPoolStats {
+  std::atomic<size_t> alloc_count{0};
+  std::atomic<size_t> alloc_bytes{0};
+  std::atomic<size_t> free_count{0};
+  std::atomic<size_t> remap_bytes{0};
+  std::atomic<size_t> offload_candidate_bytes{0};
+
+  std::atomic<size_t> live_bytes{0};
+  std::atomic<size_t> free_bytes{0};
+  std::atomic<size_t> gap_bytes{0};
+};
+
+struct BlockV2 {
+  void* ptr_{nullptr};
+  size_t size_{0};
+  BlockType type_{BlockType::kGap};
+  ChunkV2* chunk_{nullptr};
+  std::vector<BlockPartV2> parts_;
+  PoolType pool_type_{PoolType::kTransient};
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  gpuStream_t owning_stream_{nullptr};
+  gpuStream_t last_use_stream_{nullptr};
+  gpuEvent_t remap_safe_event_{nullptr};
+#endif
+  bool ipc_exported_{false};
+};
+
+using BlockList = std::list<BlockV2>;
+using BlockListIt = BlockList::iterator;
+using PtrBlockMap = std::unordered_map<void*, BlockListIt>;
 
 }  // namespace allocation
 }  // namespace memory
