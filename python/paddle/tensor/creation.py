@@ -2983,12 +2983,9 @@ def diagflat(
 
     If ``offset`` < 0, it is subdiagonal.
 
-    .. note::
-        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
-        For example, ``diagflat(input=tensor_x)`` is equivalent to ``diagflat(x=tensor_x)``.
-
     Args:
         x (Tensor): The input tensor. It can be any shape. Its data type should be float16, float32, float64, int32, int64.
+            Alias: ``input``.
         offset (int, optional): The diagonal offset. A positive value represents superdiagonal, 0 represents the main diagonal, and a negative value represents subdiagonal. Default: 0 (main diagonal).
         name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
