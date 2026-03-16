@@ -19,25 +19,7 @@
 #include <algorithm>
 #include <limits>
 
-#include "paddle/common/flags.h"
 #include "paddle/phi/core/platform/cuda_device_guard.h"
-
-PHI_DEFINE_EXPORTED_uint64(
-    vmm_va_multiplier_stable,
-    2,
-    "VA reserve multiplier for the Stable pool in VMM allocator v2.");
-PHI_DEFINE_EXPORTED_uint64(
-    vmm_va_multiplier_longlived,
-    3,
-    "VA reserve multiplier for the LongLived pool in VMM allocator v2.");
-PHI_DEFINE_EXPORTED_uint64(
-    vmm_va_multiplier_transient,
-    4,
-    "VA reserve multiplier for the Transient pool in VMM allocator v2.");
-PHI_DEFINE_EXPORTED_uint64(
-    vmm_va_multiplier_oversized,
-    1,
-    "VA reserve multiplier for the Oversized pool in VMM allocator v2.");
 
 namespace paddle {
 namespace memory {
@@ -48,13 +30,13 @@ namespace {
 size_t GetPoolVAMultiplier(PoolType pool_type) {
   switch (pool_type) {
     case PoolType::kStable:
-      return std::max<size_t>(1, FLAGS_vmm_va_multiplier_stable);
+      return 2;
     case PoolType::kLongLived:
-      return std::max<size_t>(1, FLAGS_vmm_va_multiplier_longlived);
+      return 3;
     case PoolType::kTransient:
-      return std::max<size_t>(1, FLAGS_vmm_va_multiplier_transient);
+      return 4;
     case PoolType::kOversized:
-      return std::max<size_t>(1, FLAGS_vmm_va_multiplier_oversized);
+      return 1;
   }
   return 1;
 }
