@@ -44,7 +44,7 @@ void PNormGradKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& out,
                      const DenseTensor& out_grad,
-                     float porder,
+                     double porder,
                      int axis,
                      float epsilon,
                      bool keepdim UNUSED,
@@ -88,8 +88,8 @@ void PNormGradKernel(const Context& dev_ctx,
                         xr.sign() * norm_dy.broadcast(bcast);
   } else {
     dx.device(*place) =
-        (xr.abs()).pow(porder - 1.0f) /
-        ((norm.broadcast(bcast)).pow(porder - 1.0f) + xr.constant(eps));
+        (xr.abs()).pow(porder - 1.0) /
+        ((norm.broadcast(bcast)).pow(porder - 1.0) + xr.constant(eps));
     dx.device(*place) = dx * norm_dy.broadcast(bcast) * xr.sign();
   }
 }
