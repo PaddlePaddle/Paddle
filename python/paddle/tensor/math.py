@@ -4230,12 +4230,13 @@ def logit(
     Args:
         x (Tensor): The input Tensor with data type bfloat16, float16, float32, float64,
             uint8, int8, int16, int32, int64.
-            alias: ``input``
+            Alias: ``input``
         eps (float|None, optional):  the epsilon for input clamp bound. Default is None.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
-        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor.
-            Default is None.
+
+    Keyword Args:
+        out (Tensor|optional): The output tensor.
 
     Returns:
         out(Tensor): A Tensor with the same data type and shape as ``x``
