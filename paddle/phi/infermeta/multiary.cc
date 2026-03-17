@@ -5698,9 +5698,9 @@ void WarpctcInferMeta(const MetaTensor& logits,
     num_sequences = logits_dims[1];
     sequence_width = logits_dims[2];
 
-    size_t labels_batch_size = label.dims()[0];
-    size_t logits_length_batch_size = logits_length.dims()[0];
-    size_t labels_length_batch_size = labels_length.dims()[0];
+    int64_t labels_batch_size = label.dims()[0];
+    int64_t logits_length_batch_size = logits_length.dims()[0];
+    int64_t labels_length_batch_size = labels_length.dims()[0];
 
     PADDLE_ENFORCE_EQ(
         labels_batch_size,
