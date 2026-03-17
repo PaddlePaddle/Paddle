@@ -142,7 +142,7 @@ void LayerNormKernel(const Context& dev_ctx,
       scale ? scale->data<T>() : nullptr,
       bias ? bias->data<T>() : nullptr,
       static_cast<int>(left),
-      static_cast<float>(epsilon),
+      static_cast<double>(epsilon),
       right);
 #endif
 }
