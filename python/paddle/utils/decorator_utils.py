@@ -1026,10 +1026,6 @@ def tensor_cuda_decorator() -> Callable[
 
             if len(args) >= 3 and isinstance(args[1], str):
                 # using pytorch signature
-                warnings.warn(
-                    "The API paddle.Tensor.cuda() is using PyTorch-compatible signature, the second positional argument is being interpreted as 'non_blocking'.",
-                    category=Warning,
-                )
                 # args[0] is self
                 if "device_id" not in kwargs:
                     kwargs["device_id"] = args[1]
