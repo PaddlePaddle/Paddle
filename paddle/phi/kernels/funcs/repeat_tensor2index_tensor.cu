@@ -42,10 +42,8 @@ __global__ void fill_array_kernel(T *output,
 }
 
 template <typename RepeatsT>
-void RepeatsTensor2IndexTensorFunctor<phi::GPUContext, RepeatsT>::operator()(
-    const phi::GPUContext &dev_ctx,
-    const DenseTensor &repeats,
-    DenseTensor *index) {
+void RepeatsTensor2IndexTensorFunctor<GPUContext, RepeatsT>::operator()(
+    const GPUContext &dev_ctx, const DenseTensor &repeats, DenseTensor *index) {
 #if defined(__NVCC__)
   const RepeatsT *repeats_ptr = repeats.data<RepeatsT>();
   int64_t num_reps = repeats.dims()[0];
@@ -127,8 +125,8 @@ void RepeatsTensor2IndexTensorFunctor<phi::GPUContext, RepeatsT>::operator()(
 #endif
 }
 
-template class RepeatsTensor2IndexTensorFunctor<phi::GPUContext, int>;
-template class RepeatsTensor2IndexTensorFunctor<phi::GPUContext, int64_t>;
+template class RepeatsTensor2IndexTensorFunctor<GPUContext, int>;
+template class RepeatsTensor2IndexTensorFunctor<GPUContext, int64_t>;
 
 }  // namespace funcs
 }  // namespace phi

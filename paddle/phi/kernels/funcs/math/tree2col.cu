@@ -50,9 +50,9 @@ __global__ void tree2col(const T* eta,
   }
 }
 template <typename T>
-class Tree2ColFunctor<phi::GPUContext, T> {
+class Tree2ColFunctor<GPUContext, T> {
  public:
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& EdgeSet,
                   const DenseTensor& node_features,
                   DenseTensor* patch,
@@ -62,7 +62,7 @@ class Tree2ColFunctor<phi::GPUContext, T> {
     auto cpu_place = CPUPlace();
     auto stream = dev_ctx.stream();
     auto feature_dims = node_features.dims();
-    funcs::SetConstant<phi::GPUContext, T> constant;
+    funcs::SetConstant<GPUContext, T> constant;
 
     DenseTensor EdgeSet_cpu;
     phi::Copy(dev_ctx, EdgeSet, cpu_place, false, &EdgeSet_cpu);
@@ -127,9 +127,9 @@ class Tree2ColFunctor<phi::GPUContext, T> {
   }
 };
 template <typename T>
-class Col2TreeFunctor<phi::GPUContext, T> {
+class Col2TreeFunctor<GPUContext, T> {
  public:
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& EdgeSet,
                   const DenseTensor& patch_grad,
                   DenseTensor* embedding_grad,
@@ -139,7 +139,7 @@ class Col2TreeFunctor<phi::GPUContext, T> {
     auto cpu_place = CPUPlace();
     auto stream = dev_ctx.stream();
     auto output_dims = patch_grad.dims();
-    funcs::SetConstant<phi::GPUContext, T> constant;
+    funcs::SetConstant<GPUContext, T> constant;
 
     DenseTensor EdgeSet_cpu;
     phi::Copy(dev_ctx, EdgeSet, cpu_place, false, &EdgeSet_cpu);
@@ -213,9 +213,9 @@ class Col2TreeFunctor<phi::GPUContext, T> {
   }
 };
 
-template class Tree2ColFunctor<phi::GPUContext, float>;
-template class Tree2ColFunctor<phi::GPUContext, double>;
-template class Col2TreeFunctor<phi::GPUContext, float>;
-template class Col2TreeFunctor<phi::GPUContext, double>;
+template class Tree2ColFunctor<GPUContext, float>;
+template class Tree2ColFunctor<GPUContext, double>;
+template class Col2TreeFunctor<GPUContext, float>;
+template class Col2TreeFunctor<GPUContext, double>;
 }  // namespace math
 }  // namespace phi

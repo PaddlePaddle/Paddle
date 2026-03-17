@@ -2248,6 +2248,43 @@ def grid_sample(
 )
 
 add_doc_and_signature(
+    "pixel_shuffle",
+    r"""
+    This API implements pixel shuffle operation.
+    See more details in :ref:`PixelShuffle <api_paddle_nn_PixelShuffle>` .
+
+    Parameters:
+        x (Tensor): 4-D tensor, the data type should be float32 or float64.
+            alias: ``input``.
+        upscale_factor (int): factor to increase spatial resolution.
+        data_format (str, optional): The data format of the input and output data. An optional string from: ``"NCHW"``, ``"NHWC"``. When it is ``"NCHW"``, the data is stored in the order of: [batch_size, input_channels, input_height, input_width]. Default: ``"NCHW"``.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Out (Tensor): Reshaped tensor according to the new dimension.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+            >>> import paddle.nn.functional as F
+
+            >>> x = paddle.randn(shape=[2, 9, 4, 4])
+            >>> out_var = F.pixel_shuffle(x, 3)
+            >>> print(out_var.shape)
+            paddle.Size([2, 1, 12, 12])
+""",
+    """
+def pixel_shuffle(
+    x: Tensor,
+    upscale_factor: int,
+    data_format: DataLayout2D = 'NCHW',
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
     "gelu",
     r"""
     gelu activation.
@@ -2471,6 +2508,47 @@ add_doc_and_signature(
 """,
     """
 def sign(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "lgamma",
+    r"""
+    Calculates the lgamma of the given input tensor, element-wise.
+
+    This operator performs elementwise lgamma for input $X$.
+    :math:`out = log\Gamma(x)`
+
+    Args:
+        x (Tensor): Input Tensor. Must be one of the following types: bfloat16, float16, float32, float64,
+            uint8, int8, int16, int32, int64. Alias: ``input``.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword args:
+        out(Tensor, optional): The output tensor.
+
+    Returns:
+        Tensor, the lgamma of the input Tensor, the shape and data type is the same with input
+            (integer types are autocasted into float32).
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.lgamma(x)
+            >>> out
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [1.31452465, 1.76149750, 2.25271273, 1.09579802])
+""",
+    """
+def lgamma(
     x: Tensor,
     name: str | None = None,
     *,
@@ -3846,6 +3924,62 @@ add_doc_and_signature(
 """,
     """
 def angle(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "real",
+    r"""
+    Returns a new Tensor containing real values of the input Tensor.
+
+    Args:
+        x (Tensor): the input Tensor, its data type could be complex64 or complex128. Alias: ``input``.
+        name (str|None, optional): The default value is None. Normally there is no need for
+            user to set this property. For more information, please refer to :ref:`api_guide_Name` .
+
+    Keyword args:
+        out(Tensor, optional): The output tensor.
+
+    Returns:
+        Tensor: a Tensor containing real values of the input Tensor.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [1 + 6j, 2 + 5j, 3 + 4j],
+            ...         [4 + 3j, 5 + 2j, 6 + 1j],
+            ...     ]
+            ... )
+            >>> print(x)
+            Tensor(shape=[2, 3], dtype=complex64, place=Place(cpu), stop_gradient=True,
+             [[(1.00000000+6.00000000j), (2.00000000+5.00000000j),
+               (3.00000000+4.00000000j)],
+              [(4.00000000+3.00000000j), (5.00000000+2.00000000j),
+               (6.00000000+1.00000000j)]])
+
+            >>> real_res = paddle.real(x)
+            >>> print(real_res)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1., 2., 3.],
+             [4., 5., 6.]])
+
+            >>> real_t = x.real()
+            >>> print(real_t)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1., 2., 3.],
+             [4., 5., 6.]])
+""",
+    """
+def real(
     x: Tensor,
     name: str | None = None,
     *,

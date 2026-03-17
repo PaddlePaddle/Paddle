@@ -46,6 +46,7 @@
 - fused_softmax_mask_upper_triangle
 - fused_softplus
 - gaussian
+- group_norm
 - hsigmoid_loss
 - softplus
 - increment

@@ -207,7 +207,7 @@ void ConvGradKernel(const Context& dev_ctx,
 
   if (filter_grad) {
     dev_ctx.template Alloc<T>(filter_grad);
-    Tensor filter_grad_ = *filter_grad;
+    DenseTensor filter_grad_ = *filter_grad;
     filter_grad_.Resize(filter_matrix_shape);
     set_zero(dev_ctx, filter_grad, static_cast<T>(0));
     funcs::Im2ColFunctor<funcs::ColFormat::CFO, Context, T> im2col;
@@ -369,7 +369,7 @@ void ConvGradGradKernel(const Context& dev_ctx,
   // dx = ddw * dy  ==> dx(N, Cin, H, W), ddw(Cout, Cin, kh, kw), dy(N, Cout,
   // oH, oW)
   if (dX && ddW_in) {
-    Tensor ddW;
+    DenseTensor ddW;
     ddW.ShareDataWith(*ddW_in).Resize(filter_matrix_shape);
     dev_ctx.template Alloc<T>(dX);
 
@@ -436,7 +436,8 @@ void ConvGradGradKernel(const Context& dev_ctx,
     for (int i = 0; i < batch_size; ++i) {
       DenseTensor dy_batch =
           transformed_dY.Slice(i, i + 1).Resize(output_matrix_shape);
-      Tensor ddx_batch = transformed_ddX.Slice(i, i + 1).Resize(input_shape);
+      DenseTensor ddx_batch =
+          transformed_ddX.Slice(i, i + 1).Resize(input_shape);
       for (int g = 0; g < groups; ++g) {
         // im2col
         DenseTensor dy_slice = dy_batch.Slice(g * out_step, (g + 1) * out_step);

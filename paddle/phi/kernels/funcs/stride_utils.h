@@ -561,8 +561,7 @@ static inline bool hasContiguousSubspace(const std::vector<DenseTensor>& tl) {
 #if defined(PADDLE_WITH_CUDA)
 
 static inline std::vector<DenseTensor> expandTensors(
-    const phi::GPUContext& dev_ctx,
-    const std::vector<const DenseTensor*>& indices) {
+    const GPUContext& dev_ctx, const std::vector<const DenseTensor*>& indices) {
   std::vector<DenseTensor> result;
   for (const auto& index : indices) {
     if (index == nullptr) {
@@ -572,11 +571,11 @@ static inline std::vector<DenseTensor> expandTensors(
 
     if (index->dtype() == phi::DataType::BOOL) {
       DenseTensor bool_2_idx;
-      phi::NonZeroKernel<bool, phi::GPUContext>(dev_ctx, *index, &bool_2_idx);
+      phi::NonZeroKernel<bool, GPUContext>(dev_ctx, *index, &bool_2_idx);
 
       for (int j = 0; j < index->dims().size(); ++j) {
         DenseTensor sliced_tensor;
-        phi::SliceKernel<int64_t, phi::GPUContext>(
+        phi::SliceKernel<int64_t, GPUContext>(
             dev_ctx, bool_2_idx, {1}, {j}, {j + 1}, {1}, {}, &sliced_tensor);
         result.emplace_back(sliced_tensor);
       }
@@ -588,7 +587,7 @@ static inline std::vector<DenseTensor> expandTensors(
 }
 
 static inline std::vector<DenseTensor> expand_outplace(
-    const phi::GPUContext& dev_ctx, const std::vector<DenseTensor>& to_expand) {
+    const GPUContext& dev_ctx, const std::vector<DenseTensor>& to_expand) {
   bool first = true;
   DDim target_shape;
   for (size_t i = 0; i < to_expand.size(); ++i) {
@@ -607,7 +606,7 @@ static inline std::vector<DenseTensor> expand_outplace(
     if (to_expand[i].dims() == target_shape) {
       result[i] = to_expand[i];
     } else {
-      phi::ExpandKernel<float, phi::GPUContext>(
+      phi::ExpandKernel<float, GPUContext>(
           dev_ctx,
           to_expand[i],
           phi::IntArray(common::vectorize<int64_t>(target_shape)),
@@ -619,7 +618,7 @@ static inline std::vector<DenseTensor> expand_outplace(
 
 template <typename T>
 inline std::tuple<DenseTensor, std::vector<DenseTensor>, std::vector<int64_t>>
-transposeToFrontAndInvPerm(const phi::GPUContext& dev_ctx,
+transposeToFrontAndInvPerm(const GPUContext& dev_ctx,
                            const DenseTensor& self,
                            const std::vector<DenseTensor>& indices) {
   std::vector<int> dims;
@@ -647,8 +646,7 @@ transposeToFrontAndInvPerm(const phi::GPUContext& dev_ctx,
   }
 
   DenseTensor transposed_self;
-  phi::TransposeKernel<T, phi::GPUContext>(
-      dev_ctx, self, dims, &transposed_self);
+  phi::TransposeKernel<T, GPUContext>(dev_ctx, self, dims, &transposed_self);
 
   return std::make_tuple(transposed_self, transposed_indices, inv_perm);
 }
@@ -668,7 +666,7 @@ static inline std::vector<int64_t> computeLinearStride(
   return stride;
 }
 
-static inline DenseTensor wrapIndexOnce(const phi::GPUContext& dev_ctx,
+static inline DenseTensor wrapIndexOnce(const GPUContext& dev_ctx,
                                         const DenseTensor& index,
                                         const int64_t& dim,
                                         const int64_t& dim_size,
@@ -691,7 +689,7 @@ static inline DenseTensor wrapIndexOnce(const phi::GPUContext& dev_ctx,
 }
 
 static inline std::tuple<DenseTensor, int64_t, int64_t, int64_t>
-computeLinearIndex(const phi::GPUContext& dev_ctx,
+computeLinearIndex(const GPUContext& dev_ctx,
                    const DenseTensor& src,
                    const std::vector<DenseTensor>& indices,
                    bool check_range) {
@@ -704,16 +702,16 @@ computeLinearIndex(const phi::GPUContext& dev_ctx,
       auto wrapped_index =
           wrapIndexOnce(dev_ctx, indices[i], i, src.dims()[i], check_range);
 
-      auto strides_tensor = phi::Full<int64_t, phi::GPUContext>(
+      auto strides_tensor = phi::Full<int64_t, GPUContext>(
           dev_ctx,
           common::vectorize<int64_t>(wrapped_index.dims()),
           phi::Scalar(strides[i]));
 
-      auto scaled_index = phi::Multiply<int64_t, phi::GPUContext>(
+      auto scaled_index = phi::Multiply<int64_t, GPUContext>(
           dev_ctx, wrapped_index, strides_tensor);
 
       if (linearIndex.initialized()) {
-        phi::AddKernel<int64_t, phi::GPUContext>(
+        phi::AddKernel<int64_t, GPUContext>(
             dev_ctx, linearIndex, scaled_index, &linearIndex);
       } else {
         linearIndex = scaled_index;
@@ -739,15 +737,14 @@ static inline std::tuple<DenseTensor,
                          int64_t,
                          int64_t,
                          std::vector<int64_t>>
-makeLinearIndex(const phi::GPUContext& dev_ctx,
+makeLinearIndex(const GPUContext& dev_ctx,
                 const DenseTensor& self,
                 const std::vector<const DenseTensor*>& orig,
                 bool check_range) {
   auto indices = expandTensors(dev_ctx, orig);
   for (auto& idx : indices) {
     if (idx.initialized() && idx.dtype() == phi::DataType::INT32) {
-      idx = phi::Cast<int32_t, phi::GPUContext>(
-          dev_ctx, idx, phi::DataType::INT64);
+      idx = phi::Cast<int32_t, GPUContext>(dev_ctx, idx, phi::DataType::INT64);
     }
   }
   indices = expand_outplace(dev_ctx, std::move(indices));

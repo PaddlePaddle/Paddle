@@ -22,6 +22,37 @@ inline at::Tensor narrow(const at::Tensor& self,
                          int64_t dim,
                          int64_t start,
                          int64_t length) {
+  // Bounds checks matching PyTorch behavior
+  PD_CHECK(self.dim() > 0, "narrow() cannot be applied to a 0-dim tensor.");
+  PD_CHECK(length >= 0, "narrow(): length must be non-negative.");
+
+  // Normalize negative dim
+  int64_t ndim = self.dim();
+  if (dim < 0) dim += ndim;
+  PD_CHECK(dim >= 0 && dim < ndim,
+           "start out of range (expected to be in range of [",
+           -ndim,
+           ", ",
+           ndim - 1,
+           "], but got ",
+           dim,
+           ")");
+
+  int64_t cur_size = self.sizes()[dim];
+
+  // Wrap negative start (matching PyTorch: only wrap when start != cur_size)
+  if (start < 0) {
+    start = start + cur_size;
+  }
+  PD_CHECK(start <= cur_size - length,
+           "start (",
+           start,
+           ") + length (",
+           length,
+           ") exceeds dimension size (",
+           cur_size,
+           ").");
+
   // Use slice to implement narrow: narrow(dim, start, length) is equivalent
   // to slice(dim, start, start + length)
   return Tensor(paddle::experimental::slice(
