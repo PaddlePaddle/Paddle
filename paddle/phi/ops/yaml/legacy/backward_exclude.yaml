@@ -36,7 +36,6 @@
 - mish_grad
 - mp_allreduce_sum_grad
 - norm_grad
-- layer_norm_grad
 - pad_double_grad
 - pad_grad
 - pool2d_double_grad

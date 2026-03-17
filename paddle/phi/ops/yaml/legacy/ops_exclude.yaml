@@ -69,7 +69,6 @@
 - mish
 - mp_allreduce_sum
 - norm
-- layer_norm
 - one_hot
 - ones
 - ones_like

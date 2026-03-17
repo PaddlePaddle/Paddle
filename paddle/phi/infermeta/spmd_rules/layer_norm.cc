@@ -28,7 +28,7 @@ using phi::distributed::auto_parallel::str_join;
 SpmdInfo LayerNormInferSpmd(const DistMetaTensor& x,
                             const DistMetaTensor& scale,
                             const DistMetaTensor& bias,
-                            float epsilon,
+                            double epsilon,
                             int begin_norm_axis) {
   // Step0: verify input args based on layer_norm logic
   auto x_shape = common::vectorize(x.dims());
@@ -298,7 +298,7 @@ SpmdInfo LayerNormGradInferSpmd(const DistMetaTensor& x,
                                 const DistMetaTensor& mean,
                                 const DistMetaTensor& variance,
                                 const DistMetaTensor out_grad,
-                                float epsilon,
+                                double epsilon,
                                 int begin_norm_axis) {
   auto get_shape = [](const auto& meta) {
     return common::vectorize<int64_t>(meta.dims());
