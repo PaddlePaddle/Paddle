@@ -619,4 +619,23 @@ Result<axpr::Value> SetAttr(axpr::InterpreterBase<axpr::Value>* interpreter,
   return ret;
 }
 
+Result<axpr::Value> GetHardwareDevice(const axpr::Value&,
+                                      const std::vector<axpr::Value>& args) {
+  if (!args.empty()) {
+    return TypeError{"get_hardware_device takes no arguments"};
+  }
+
+  std::string str = "cpu";
+
+#ifdef CINN_WITH_CUDA
+  str = "gpu";
+#endif
+
+#ifdef CINN_WITH_HIP
+  str = "dcu";
+#endif
+
+  return str;
+}
+
 }  // namespace ap::axpr
