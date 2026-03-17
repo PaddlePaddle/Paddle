@@ -219,7 +219,7 @@ jobs:
             echo "WARN: command failed again, skip install: $*"
             return 0
           }
-          retry_or_skip pip install parameterized pyyaml
+          retry_or_skip pip install parameterized pyyaml -i https://mirrors.aliyun.com/pypi/simple/
 
       - name: Run tests
         if: steps.check-approval.outputs.can-skip != 'true'
@@ -450,7 +450,7 @@ jobs:
           apt-get install -y patchelf
           bash build_paddle.sh
           pip install Paddle/build/python/dist/paddlepaddle_iluvatar*.whl
-          retry_or_skip pip install parameterized pyyaml
+          retry_or_skip pip install parameterized pyyaml -i https://mirrors.aliyun.com/pypi/simple/
           export FLAG_SKIP_FLOAT64=1
           cd tests && bash run_test.sh
           '
