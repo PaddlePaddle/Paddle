@@ -13,6 +13,7 @@
 # limitations under the License.
 import os
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 from op_test import get_device_place
@@ -53,7 +54,18 @@ class TestRawProgramOptimizer(unittest.TestCase):
             sharding_startup_program = paddle.static.Program()
             strategy = fleet.DistributedStrategy()
             strategy.without_graph_optimization = True
+
+            # Skip MuonShardingOptimizer as it's designed specifically for Muon optimizer
+            # This test uses Adam optimizer, not Muon
             with (
+                patch(
+                    'paddle.distributed.fleet.base.meta_optimizer_factory.meta_optimizer_names',
+                    [
+                        name
+                        for name in fleet.base.meta_optimizer_factory.meta_optimizer_names
+                        if name != 'MuonShardingOptimizer'
+                    ],
+                ),
                 base.program_guard(sharding_program, sharding_startup_program),
                 base.unique_name.guard(),
             ):
