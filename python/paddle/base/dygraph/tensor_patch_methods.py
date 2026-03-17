@@ -1197,13 +1197,13 @@ def monkey_patch_tensor():
             res_place = framework._current_expected_place()
             if not isinstance(res_place, res_place_class):
                 res_place = res_place_class(0)
+        elif isinstance(device_id, paddle.device.Device):
+            res_place = device_id._to_place()
         elif isinstance(device_id, int):
             res_place = res_place_class(device_id)
         elif isinstance(device_id, str):
             device = paddle.device(device_id)
             res_place = device._to_place()
-        elif isinstance(device_id, paddle.device.Device):
-            res_place = device_id._to_place()
         else:
             raise ValueError(
                 "device_id must be DeviceLike, which is paddle.device.Device|int|str|None"
