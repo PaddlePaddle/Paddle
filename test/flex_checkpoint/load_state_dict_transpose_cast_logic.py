@@ -17,6 +17,7 @@ import tempfile
 
 import numpy as np
 
+import paddle
 import paddle.distributed as dist
 from paddle.distributed import fleet
 from paddle.distributed.fleet.layers.mpu import (
@@ -77,6 +78,12 @@ class TestLoadStateDictTransposeCastLogic:
         self.run_save_state_dict()
         model = SimpleMLP()
         model_trans_cast = SimpleMLPTransCastWeight()
+        model_trans_cast = paddle.amp.decorate(
+            models=model_trans_cast,
+            optimizers=None,
+            level="O2",
+            dtype="float16",
+        )
         sharded_state_dict = model.sharded_state_dict()
         sharded_state_dict_trans = model_trans_cast.sharded_state_dict()
         dist.load_state_dict(sharded_state_dict, self.ckpt_path)
