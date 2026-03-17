@@ -592,5 +592,80 @@ class TestIsRealAPICompatibility(unittest.TestCase):
             np.testing.assert_array_equal(ref_out, out)
 
 
+# Edit By AI Agent
+# Test _assert compatibility
+class TestAssertAPI(unittest.TestCase):
+    def test_dygraph_non_tensor_pass(self):
+        """Test _assert with non-tensor condition that passes."""
+        paddle.disable_static()
+        # Should not raise
+        paddle._assert(True, "should pass")
+        paddle._assert(1, "should pass")
+        paddle._assert(1 == 1, "should pass")
+        paddle.enable_static()
+
+    def test_dygraph_non_tensor_fail(self):
+        """Test _assert with non-tensor condition that fails."""
+        paddle.disable_static()
+        with self.assertRaises(AssertionError) as ctx:
+            paddle._assert(False, "error message")
+        self.assertEqual(str(ctx.exception), "error message")
+
+        with self.assertRaises(AssertionError) as ctx:
+            paddle._assert(0, "zero is falsy")
+        self.assertEqual(str(ctx.exception), "zero is falsy")
+        paddle.enable_static()
+
+    def test_dygraph_tensor_pass(self):
+        """Test _assert with tensor condition that passes."""
+        paddle.disable_static()
+        cond = paddle.to_tensor([True])
+        # Should not raise
+        paddle._assert(cond, "tensor assert should pass")
+        paddle.enable_static()
+
+    def test_dygraph_tensor_fail(self):
+        """Test _assert with tensor condition that fails."""
+        paddle.disable_static()
+        cond = paddle.to_tensor([False])
+        with self.assertRaises(AssertionError):
+            paddle._assert(cond, "tensor assert should fail")
+        paddle.enable_static()
+
+    def test_dygraph_default_message(self):
+        """Test _assert with default empty message."""
+        paddle.disable_static()
+        with self.assertRaises(AssertionError) as ctx:
+            paddle._assert(False)
+        self.assertEqual(str(ctx.exception), "")
+        paddle.enable_static()
+
+    def test_dygraph_compatibility_with_torch(self):
+        """Test that paddle._assert matches torch._assert calling convention."""
+        paddle.disable_static()
+        # Positional args (matching torch._assert(condition, message))
+        paddle._assert(True, "positional args")
+
+        # Keyword args (matching torch._assert(condition=..., message=...))
+        paddle._assert(condition=True, message="keyword args")
+
+        # Mixed args
+        paddle._assert(True, message="mixed args")
+        paddle.enable_static()
+
+    def test_static_tensor_condition(self):
+        """Test _assert with tensor condition in static graph mode."""
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            cond = paddle.full(shape=[1], fill_value=True, dtype='bool')
+            paddle._assert(cond, "static assert")
+
+            exe = paddle.base.Executor(paddle.CPUPlace())
+            # Should run without error (condition is True)
+            exe.run(main)
+
+
 if __name__ == "__main__":
     unittest.main()

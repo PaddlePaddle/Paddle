@@ -119,6 +119,7 @@ from .logic import (  # noqa: F401
     __rand__,
     __ror__,
     __rxor__,
+    _assert,
     allclose,
     bitwise_and,
     bitwise_and_,

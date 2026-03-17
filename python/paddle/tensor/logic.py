@@ -875,3 +875,48 @@ def bitwise_invert_(x: Tensor, name: str | None = None) -> Tensor:
     """
     # Directly call bitwise_not_ for the implementation
     return bitwise_not_(x, name=name)
+
+
+def _assert(condition, message=""):
+    r"""
+    A wrapper around Python's assert which is symbolically traceable.
+
+    In dynamic graph mode, this function behaves like a regular Python assert.
+    In static graph mode, when the condition is a Tensor, it creates an Assert
+    op in the computation graph.
+
+    Args:
+        condition (bool or Tensor): The condition to assert. If a Tensor, it
+            must be a boolean scalar (numel=1).
+        message (str, optional): The error message to display when the assertion
+            fails. Default: "".
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+            >>> # Non-tensor condition
+            >>> paddle._assert(1 == 1, "This should pass")
+
+            >>> # Tensor condition
+            >>> x = paddle.to_tensor([True])
+            >>> paddle._assert(x, "Tensor assertion")
+
+    """
+    from paddle.base.framework import Variable
+    from paddle.pir import Value
+
+    if isinstance(condition, (Variable, Value)):
+        if in_dynamic_or_pir_mode() and isinstance(condition, paddle.Tensor):
+            # Dynamic mode: evaluate the tensor directly
+            if not condition:
+                raise AssertionError(message)
+        else:
+            # Static graph mode: create Assert op in the graph
+            condition = paddle.cast(condition, "bool")
+            from paddle.static.nn.control_flow import Assert
+
+            return Assert(condition)
+    else:
+        if not condition:
+            raise AssertionError(message)
