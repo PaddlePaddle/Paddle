@@ -58,7 +58,7 @@ ir::Tensor LogicalRightShift(const ir::Tensor &A,
       [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
         CINN_NOT_IMPLEMENTED
       },
-      [&](common::CustomDeviceArch) { extern_func += "customDevice_"; },
+      [&](common::CustomDeviceArch) { extern_func += "custom_device_"; },
       [&](common::HygonDCUArchHIP) { extern_func += "hip_"; },
       [&](common::HygonDCUArchSYCL) { extern_func += "sycl_"; });
 

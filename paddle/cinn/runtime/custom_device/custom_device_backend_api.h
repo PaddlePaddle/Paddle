@@ -80,23 +80,78 @@ class CustomCompileStrategy {
 // ============================================================
 // Part 2: Plugin Management Class
 // ============================================================
-// Top-level Plugin Management Class
+
+/// @brief Top-level CINN plugin management class for a custom hardware device.
+///
+/// CinnCustomDevicePlugin acts as the single entry point through which CINN's
+/// compiler and runtime subsystems access vendor-provided capabilities. Each
+/// custom device type (identified by its phi::Place) owns exactly one
+/// singleton instance.
+///
+/// A vendor plugin initialises the instance by calling InitWrappers() with a
+/// C_CinnInterface pointer obtained from C_DeviceInterface::cinn_interface.
+/// After initialisation, callers can retrieve the three strategy objects:
+///
+///   - CustomCompilerToolchain – invokes the vendor compiler to translate
+///     device-specific IR/source into an executable module.
+///   - CustomRuntimeStrategy   – loads a compiled module and dispatches
+///     kernel launches to the device.
+///   - CustomCompileStrategy   – applies vendor-specific fusion/schedule/pass
+///     optimisations at the CINN IR level.
+///
+/// Usage example:
+/// @code
+///   auto& plugin = CinnCustomDevicePlugin::GetInstance(place);
+///   plugin.GetToolchain()->Compile(source_code);
+///   plugin.GetRuntime()->LaunchKernel(...);
+/// @endcode
+///
+/// @note This class is non-copyable.  All three strategy objects are lazily
+///       constructed during InitWrappers(); if the vendor does not implement
+///       a given C hook the corresponding strategy pointer may be null.
 class PADDLE_API CinnCustomDevicePlugin {
  public:
   CinnCustomDevicePlugin() = default;
   ~CinnCustomDevicePlugin() = default;
 
-  // Retrieve the corresponding singleton plugin instance by Place
+  /// @brief Returns the per-place singleton CinnCustomDevicePlugin instance.
+  ///
+  /// @param[in] place  The phi::Place identifying the custom device type and
+  ///                   device index for which the plugin is requested.
+  /// @return Reference to the singleton plugin for the given place.
   static CinnCustomDevicePlugin& GetInstance(const phi::Place& place);
 
-  // Wrapper interfaces exposed for calls by Compiler/Codegen
+  /// @brief Returns the compiler toolchain strategy for this device.
+  ///
+  /// The toolchain is responsible for invoking the vendor compiler and
+  /// providing runtime source headers required by generated kernels.
+  /// Returns nullptr if the vendor plugin does not implement the compile hook.
   CustomCompilerToolchain* GetToolchain() { return toolchain_.get(); }
+
+  /// @brief Returns the runtime strategy for this device.
+  ///
+  /// The runtime strategy handles module loading and kernel launch dispatch.
+  /// Returns nullptr if the vendor plugin does not implement runtime hooks.
   CustomRuntimeStrategy* GetRuntime() { return runtime_strategy_.get(); }
+
+  /// @brief Returns the compile-time optimisation strategy for this device.
+  ///
+  /// The compile strategy allows vendors to inject custom IR passes (e.g.,
+  /// hardware-specific fusion rules) into the CINN compilation pipeline.
+  /// Returns nullptr if the vendor plugin does not implement the pass hook.
   CustomCompileStrategy* GetCompileStrategy() {
     return compile_strategy_.get();
   }
 
-  // Internal initialization
+  /// @brief Initialises the three strategy wrappers from a C_CinnInterface.
+  ///
+  /// Called once during plugin registration (triggered by
+  /// C_DeviceInterface::cinn_interface).  Constructs internal wrapper objects
+  /// that delegate to the function pointers provided by @p cif.
+  ///
+  /// @param[in] cif  Pointer to the vendor-supplied C_CinnInterface struct.
+  ///                 Must remain valid for the lifetime of this plugin
+  ///                 instance.  Passing nullptr is a no-op.
   void InitWrappers(C_CinnInterface* cif);
 
  private:

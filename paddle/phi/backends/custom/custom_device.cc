@@ -703,7 +703,7 @@ class CustomDevice : public DeviceInterface {
     if (pimpl_->get_max_block_dim_size) {
       pimpl_->get_max_block_dim_size(device, &block_dim_size);
     }
-    VLOG(10) << Type() << " get max grid dim size [" << block_dim_size[0]
+    VLOG(10) << Type() << " get max block dim size [" << block_dim_size[0]
              << ", " << block_dim_size[1] << ", " << block_dim_size[2] << "]";
     return block_dim_size;
   }
@@ -1318,7 +1318,7 @@ class CustomDevice : public DeviceInterface {
     }
   }
 
-  // 新增：获取 CINN 插件能力的接口
+  // Returns the CINN plugin interface registered by the vendor for this device.
   C_CinnInterface* GetCinnInterface() override {
     return pimpl_->cinn_interface;
   }

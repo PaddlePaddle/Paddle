@@ -42,10 +42,18 @@ BackendAPI* BackendAPI::get_backend(common::Arch arch) {
                           ::common::errors::InvalidArgument(
                               "global symbol (backend_api.sycl) not found!"));
       },
+      [&](common::CustomDeviceArch) {
+        temp_backend_api =
+            GlobalSymbolRegistry::Global().Lookup("backend_api.custom_device");
+        PADDLE_ENFORCE_NE(
+            temp_backend_api,
+            nullptr,
+            ::common::errors::InvalidArgument(
+                "global symbol (backend_api.custom_device) not found!"));
+      },
       [&](std::variant<common::UnknownArch,
                        common::X86Arch,
                        common::ARMArch,
-                       common::CustomDeviceArch,
                        common::NVGPUArch>) {
         std::stringstream ss;
         ss << "Target(" << arch << ") is not support get_backend now.";

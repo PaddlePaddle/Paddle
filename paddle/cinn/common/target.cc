@@ -127,6 +127,10 @@ int GetMaxNumThreadsImpl(CustomDeviceArch arch) {
 #ifdef CINN_WITH_CUSTOM_DEVICE
   return phi::DeviceManager::GetMaxThreadsPerBlock(
       phi::CustomPlace(arch.device_type, arch.device_id));
+#else
+  LOG(FATAL) << "GetMaxNumThreadsImpl(CustomDeviceArch) requires "
+                "CINN_WITH_CUSTOM_DEVICE to be enabled.";
+  return -1;
 #endif
 }
 
@@ -172,6 +176,10 @@ int GetMultiProcessCountImpl(CustomDeviceArch arch) {
 #ifdef CINN_WITH_CUSTOM_DEVICE
   return phi::DeviceManager::GetMultiProcessors(
       phi::CustomPlace(arch.device_type, arch.device_id));
+#else
+  LOG(FATAL) << "GetMultiProcessCountImpl(CustomDeviceArch) requires "
+                "CINN_WITH_CUSTOM_DEVICE to be enabled.";
+  return -1;
 #endif
 }
 
@@ -223,6 +231,10 @@ int GetMaxThreadsPerSmImpl(CustomDeviceArch arch) {
 #ifdef CINN_WITH_CUSTOM_DEVICE
   return phi::DeviceManager::GetMaxThreadsPerMultiProcessor(
       phi::CustomPlace(arch.device_type, arch.device_id));
+#else
+  LOG(FATAL) << "GetMaxThreadsPerSmImpl(CustomDeviceArch) requires "
+                "CINN_WITH_CUSTOM_DEVICE to be enabled.";
+  return -1;
 #endif
 }
 
@@ -272,6 +284,10 @@ int GetMaxBlocksPerSmImpl(CustomDeviceArch arch) {
 #ifdef CINN_WITH_CUSTOM_DEVICE
   return phi::DeviceManager::GetMaxBlocksPerMultiProcessor(
       phi::CustomPlace(arch.device_type, arch.device_id));
+#else
+  LOG(FATAL) << "GetMaxBlocksPerSmImpl(CustomDeviceArch) requires "
+                "CINN_WITH_CUSTOM_DEVICE to be enabled.";
+  return -1;
 #endif
 }
 

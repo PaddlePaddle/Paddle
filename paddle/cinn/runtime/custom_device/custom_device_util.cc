@@ -62,7 +62,7 @@ void cinn_call_custom_device_kernel(void *kernel_fn,
         cinn_buffer_t *buffer = static_cast<cinn_buffer_t *>(args[idx]);
         kernel_args.emplace_back(&(buffer->memory));
       } else {
-        kernel_args.emplace_back(const_cast<void *>(args[idx].data_addr()));
+        kernel_args.emplace_back(args[idx].data_addr());
       }
     }
   }

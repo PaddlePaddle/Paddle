@@ -15,6 +15,8 @@
 // paddle/cinn/runtime/custom_device/custom_device_backend_api.cc
 
 #include "paddle/cinn/runtime/custom_device/custom_device_backend_api.h"
+#include <mutex>
+#include <unordered_map>
 #include "glog/logging.h"
 #include "paddle/phi/backends/device_ext.h"
 #include "paddle/phi/backends/device_manager.h"
@@ -139,7 +141,7 @@ class DefaultRuntimeStrategy : public CustomRuntimeStrategy {
                     int shared_mem,
                     void* stream) override {
     if (cif_ && cif_->launch_kernel) {
-      // 调用 C 接口
+      // Dispatch to the vendor-provided C ABI entry point.
       cif_->launch_kernel(cif_->dev_ptr,
                           func_ptr,
                           args,

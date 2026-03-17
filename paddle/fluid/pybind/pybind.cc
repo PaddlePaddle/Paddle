@@ -299,7 +299,7 @@ bool IsCompiledWithAVX() {
 }
 
 bool IsCompiledWithCUDA() {
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   return true;
 #endif
   return false;
