@@ -19,6 +19,7 @@
 #include <utils/pinned_place.h>
 #include <optional>
 
+#include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/phi/common/place.h"
 
@@ -30,6 +31,14 @@ inline at::Tensor sparse_coo_tensor(const at::Tensor& indices,
                                     at::TensorOptions options = {}) {
   paddle::Tensor idx = indices._PD_GetInner();
   paddle::Tensor vals = values._PD_GetInner();
+
+  if (options.dtype_opt().has_value() &&
+      options.dtype_opt().value() != values.scalar_type()) {
+    vals = paddle::experimental::cast(
+        vals,
+        compat::_PD_AtenScalarTypeToPhiDataType(options.dtype_opt().value()));
+  }
+
   if (options.pinned_memory()) {
     phi::Place base_place = options._PD_GetPlace();
     phi::Place pinned_place = compat::_PD_GetCreatePinnedPlace(base_place);
@@ -52,18 +61,33 @@ inline at::Tensor sparse_coo_tensor(const at::Tensor& indices,
                                     ::std::optional<bool> pin_memory) {
   PD_CHECK(!layout.has_value() || layout.value() == c10::kSparse,
            "`layout` must be Sparse for sparse_coo_tensor.");
-  (void)dtype;
-
-  auto options = at::TensorOptions().device(device).pinned_memory(pin_memory);
+  auto options =
+      at::TensorOptions().dtype(dtype).device(device).pinned_memory(pin_memory);
   return sparse_coo_tensor(indices, values, size, options);
 }
 
 inline at::Tensor sparse_coo_tensor(const at::Tensor& indices,
                                     const at::Tensor& values,
                                     at::TensorOptions options = {}) {
+  paddle::Tensor idx = indices._PD_GetInner();
+  paddle::Tensor vals = values._PD_GetInner();
+
+  if (options.dtype_opt().has_value() &&
+      options.dtype_opt().value() != values.scalar_type()) {
+    vals = paddle::experimental::cast(
+        vals,
+        compat::_PD_AtenScalarTypeToPhiDataType(options.dtype_opt().value()));
+  }
+
+  if (options.pinned_memory()) {
+    phi::Place base_place = options._PD_GetPlace();
+    phi::Place pinned_place = compat::_PD_GetCreatePinnedPlace(base_place);
+    idx = idx.copy_to(pinned_place, /*blocking=*/true);
+    vals = vals.copy_to(pinned_place, /*blocking=*/true);
+  }
+
   // When size is not provided, Paddle will infer it from indices and values
-  return paddle::experimental::sparse::sparse_coo_tensor(
-      values._PD_GetInner(), indices._PD_GetInner(), {});
+  return paddle::experimental::sparse::sparse_coo_tensor(vals, idx, {});
 }
 
 }  // namespace at
