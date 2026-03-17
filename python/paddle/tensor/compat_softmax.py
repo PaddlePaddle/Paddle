@@ -178,3 +178,84 @@ def softmax(
     if in_dynamic_or_pir_mode():
         outs_cast = input if dtype is None else _C_ops.cast(input, dtype)
         return _C_ops.softmax(outs_cast, dim, out=out)
+
+
+@ForbidKeywordsIgnoreOneParamDecorator(
+    illegal_keys={"x", "axis", "name"},
+    ignore_param=('_stacklevel', 2, int),
+    func_name="paddle.compat.nn.functional.log_softmax",
+    correct_name="paddle.nn.functional.log_softmax",
+    url_suffix="torch.nn.functional.log_softmax",
+)
+def log_softmax(
+    input: Tensor,
+    dim: int | None = None,
+    dtype: DTypeLike | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
+    r"""
+    This operator implements PyTorch compatible log_softmax. The calculation process is as follows:
+
+    .. math::
+
+        \begin{aligned}
+        log\_softmax[i, j] &= log(softmax(input)) \\
+        &= log\left(\frac{\exp(input[i, j])}{\sum_j \exp(input[i, j])}\right)
+        \end{aligned}
+
+    Parameters:
+        input (Tensor): The input Tensor with data type float32, float64.
+        dim (int, optional): The dim along which to perform log_softmax
+            calculations. It should be in range [-D, D), where D is the
+            rank of ``input``. If ``dim`` < 0, it works the same way as
+            :math:`dim + D`. If ``dim`` is None, it defaults to 0 for
+            0-D, 1-D, and 3-D tensors, and 1 for 2-D tensors (same as
+            PyTorch behavior). Default is None.
+        dtype (str|np.dtype|core.VarDesc.VarType|core.DataType, optional):
+            The desired data type of the output tensor. If dtype is
+            specified, ``input`` is cast to ``dtype`` before the operation
+            is performed. Supported dtype: float32, float64. If ``dtype``
+            is None, the output Tensor has the same dtype as input.
+            Default is None.
+        out (Tensor, optional): The output Tensor.
+
+    Returns:
+        A Tensor with the same shape and data type (use ``dtype`` if it is
+        specified) as input.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [[2.0, 3.0, 4.0, 5.0], [3.0, 4.0, 5.0, 6.0], [7.0, 8.0, 8.0, 9.0]],
+            ...         [[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0], [6.0, 7.0, 8.0, 9.0]],
+            ...     ],
+            ...     dtype='float32',
+            ... )
+            >>> out1 = paddle.compat.nn.functional.log_softmax(x, -1)
+            >>> out2 = paddle.compat.nn.functional.log_softmax(x, -1, dtype='float64')
+            >>> # out1's data type is float32; out2's data type is float64
+            >>> print(out1)
+            >>> print(out2)
+    """
+    if dim is None:
+        ndim = input.ndim
+        if ndim == 0 or ndim == 1 or ndim == 3:
+            dim = 0
+        else:
+            dim = 1
+
+    if (
+        (dtype is not None)
+        and (not isinstance(dtype, core.VarDesc.VarType))
+        and (not isinstance(dtype, core.DataType))
+    ):
+        dtype = convert_np_dtype_to_dtype_(dtype)
+
+    if in_dynamic_or_pir_mode():
+        outs_cast = input if dtype is None else _C_ops.cast(input, dtype)
+        return _C_ops.log_softmax(outs_cast, dim, out=out)

@@ -93,9 +93,13 @@ class GroupNormSiluPattern : public paddle::drr::DrrPatternBase {
 
 #ifdef PADDLE_WITH_CUDA
     paddle::drr::ResultPattern res = pat.ResultPattern();
+    const auto &fused_epsilon = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> double {
+          return match_ctx.Attr<double>("epsilon");
+        });
     const auto &add_group_norm_silu_op =
         res.Op(paddle::dialect::AddGroupNormSiluOp::name(),
-               {{"epsilon", pat.Attr("epsilon")},
+               {{"epsilon", fused_epsilon},
                 {"groups", pat.Attr("groups")},
                 {"data_format", pat.Attr("data_format")},
                 {"activation", res.StrAttr("silu")}});
@@ -110,9 +114,13 @@ class GroupNormSiluPattern : public paddle::drr::DrrPatternBase {
 #endif
 #ifdef PADDLE_WITH_XPU
     paddle::drr::ResultPattern res = pat.ResultPattern();
-    const auto &group_norm_silu_xpu = res.Op(
-        paddle::dialect::GroupNormSiluXpuOp::name(),
-        {{{"epsilon", pat.Attr("epsilon")}, {"groups", pat.Attr("groups")}}});
+    const auto &fused_epsilon = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> double {
+          return match_ctx.Attr<double>("epsilon");
+        });
+    const auto &group_norm_silu_xpu =
+        res.Op(paddle::dialect::GroupNormSiluXpuOp::name(),
+               {{{"epsilon", fused_epsilon}, {"groups", pat.Attr("groups")}}});
     group_norm_silu_xpu(
         {&res.Tensor("X"), &res.Tensor("Scale"), &res.Tensor("Bias")},
         {&res.Tensor("Out")});
