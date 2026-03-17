@@ -39,7 +39,7 @@ class ColumnParallelLinearTransWeight(ColumnParallelLinear):
             if "weight" in k:
                 state_dict[k] = v.T
         return build_sharded_state_dict(
-            state_dict, {"weight": 0, "bias": 0}, structured_name_prefix
+            state_dict, {"weight": 0}, structured_name_prefix
         )
 
 
@@ -47,7 +47,7 @@ class SimpleMLP(Layer):
     def __init__(self, in_features=1024, out_features=1024):
         super().__init__()
         self.linear = ColumnParallelLinear(
-            in_features, out_features, has_bias=True
+            in_features, out_features, has_bias=False
         )
 
     def forward(self, x):
@@ -59,7 +59,7 @@ class SimpleMLPTransCastWeight(Layer):
     def __init__(self, in_features=1024, out_features=1024):
         super().__init__()
         self.linear = ColumnParallelLinearTransWeight(
-            in_features, out_features, has_bias=True
+            in_features, out_features, has_bias=False
         )
 
     def forward(self, x):
