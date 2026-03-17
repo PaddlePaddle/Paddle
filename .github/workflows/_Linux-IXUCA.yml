@@ -167,8 +167,6 @@ jobs:
         run: |
           git config --global --get http.proxy
           git config --global --get https.proxy
-          git config user.email "Paddle-CI@example.com"
-          git config user.name "Paddle-CI-Bot"
           for i in 1 2 3; do
             git clone --depth=1 -b develop https://github.com/PaddlePaddle/Paddle-iluvatar.git && break
             echo "git clone attempt $i failed, retrying in 10s..."
@@ -176,6 +174,8 @@ jobs:
             sleep 10
           done
           cd Paddle-iluvatar
+          git config user.email "Paddle-CI@example.com"
+          git config user.name "Paddle-CI-Bot"
 
           # If Paddle-iluvatar PR number exists, fetch and merge it
           PCD_PR_NUM="${{ steps.get-pcd-pr.outputs.pcd_pr_num }}"
