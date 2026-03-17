@@ -19,6 +19,7 @@
 #include <utils/pinned_place.h>
 #include <optional>
 
+#include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -34,6 +35,13 @@ inline at::Tensor sparse_csr_tensor(const at::Tensor& crow_indices,
   paddle::Tensor crows = crow_indices._PD_GetInner();
   paddle::Tensor cols = col_indices._PD_GetInner();
   paddle::Tensor vals = values._PD_GetInner();
+
+  if (options.dtype_opt().has_value() &&
+      options.dtype_opt().value() != values.scalar_type()) {
+    vals = paddle::experimental::cast(
+        vals,
+        compat::_PD_AtenScalarTypeToPhiDataType(options.dtype_opt().value()));
+  }
 
   if (options.pinned_memory()) {
     phi::Place base_place = options._PD_GetPlace();
@@ -79,8 +87,8 @@ inline at::Tensor sparse_csr_tensor(const at::Tensor& crow_indices,
                                     ::std::optional<bool> pin_memory) {
   PD_CHECK(!layout.has_value() || layout.value() == c10::kSparseCsr,
            "`layout` must be SparseCsr for sparse_csr_tensor.");
-  (void)dtype;
-  auto options = at::TensorOptions().device(device).pinned_memory(pin_memory);
+  auto options =
+      at::TensorOptions().dtype(dtype).device(device).pinned_memory(pin_memory);
   return sparse_csr_tensor(crow_indices, col_indices, values, size, options);
 }
 
@@ -130,7 +138,3 @@ inline at::Tensor sparse_csr_tensor(const at::Tensor& crow_indices,
 }
 
 }  // namespace at
-
-namespace torch {
-using at::sparse_csr_tensor;
-}  // namespace torch

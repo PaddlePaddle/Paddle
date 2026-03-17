@@ -1,4 +1,4 @@
-// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -91,7 +91,3 @@ inline at::Tensor sparse_coo_tensor(const at::Tensor& indices,
 }
 
 }  // namespace at
-
-namespace torch {
-using at::sparse_coo_tensor;
-}  // namespace torch
