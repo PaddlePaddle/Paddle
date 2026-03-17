@@ -20,11 +20,15 @@ import paddle
 
 
 # Test mv compatibility
+@unittest.skipIf(
+    paddle.is_compiled_with_custom_device('ixuca'),
+    "skip ixuca which not register mv kernel",
+)
 class TestMvAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        self.np_x = np.random.rand(3, 4).astype("float64")
-        self.np_vec = np.random.rand(4).astype("float64")
+        self.np_x = np.random.rand(3, 4).astype("float32")
+        self.np_vec = np.random.rand(4).astype("float32")
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
@@ -40,7 +44,7 @@ class TestMvAPI(unittest.TestCase):
         # 4. Mixed arguments
         out4 = paddle.mv(x, vec=vec)
         # 5. out parameter test
-        out5 = paddle.zeros([3], dtype="float64")
+        out5 = paddle.zeros([3], dtype="float32")
         paddle.mv(x, vec, out=out5)
         # 6. Tensor method - args
         out6 = x.mv(vec)

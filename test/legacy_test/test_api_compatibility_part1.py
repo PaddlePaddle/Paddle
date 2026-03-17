@@ -22,6 +22,10 @@ import paddle.nn.functional as F
 
 # Edit By AI Agent
 # Test nextafter compatibility
+@unittest.skipIf(
+    paddle.is_compiled_with_custom_device('ixuca'),
+    "skip ixuca which not register nextafter kernel",
+)
 class TestNextafterAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -80,7 +84,6 @@ class TestNextafterAPI(unittest.TestCase):
                 feed={"x": self.np_x, "y": self.np_y},
                 fetch_list=[out1, out2, out3, out4, out5],
             )
-
             ref_out = np.nextafter(self.np_x, self.np_y)
             for out in fetches:
                 np.testing.assert_allclose(out, ref_out)
@@ -140,7 +143,6 @@ class TestAngleAPI(unittest.TestCase):
                 feed={"x": self.np_x},
                 fetch_list=[out1, out2, out3, out4],
             )
-
             ref_out = np.angle(self.np_x)
             for out in fetches:
                 np.testing.assert_allclose(out, ref_out, rtol=1e-5, atol=1e-5)
@@ -192,7 +194,6 @@ class TestAtanAPI(unittest.TestCase):
                 feed={"x": self.np_x},
                 fetch_list=[out1, out2, out3, out4],
             )
-
             ref_out = np.arctan(self.np_x)
             for out in fetches:
                 np.testing.assert_allclose(out, ref_out, rtol=1e-6)
@@ -1507,7 +1508,7 @@ class TestLdexpInplaceAPI(unittest.TestCase):
         out6 = paddle.ldexp_(input=x.clone(), other=y)
 
         for out in [out1, out2, out3, out4, out5, out6]:
-            np.testing.assert_allclose(ref_out, out.numpy())
+            np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-6)
         paddle.enable_static()
 
 

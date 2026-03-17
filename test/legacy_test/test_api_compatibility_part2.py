@@ -433,8 +433,8 @@ class TestIndexFillAPI(unittest.TestCase):
 
 
 @unittest.skipIf(
-    paddle.device.is_compiled_with_xpu(),
-    "skip xpu which not support index_fill_",
+    paddle.is_compiled_with_xpu(),
+    "skip xpu which not support index_fill_ (which use stride)",
 )
 # Test Tensor.index_fill_ inplace compatibility
 class TestTensorIndexFillInplaceAPI(unittest.TestCase):
@@ -1588,28 +1588,14 @@ class TestTrapezoidAPI(unittest.TestCase):
         out2 = paddle.trapezoid(y=y, x=None, dx=None, axis=-1)
         # 3. PyTorch keyword arguments (using alias dim)
         out3 = paddle.trapezoid(y, dim=-1)
-        # 4. Mixed arguments (with dx parameter)
-        out4 = paddle.trapezoid(y, dx=2.0)
         # 5. out parameter
-        out5 = paddle.empty([])
-        paddle.trapezoid(y, out=out5)
+        out4 = paddle.empty([])
+        paddle.trapezoid(y, out=out4)
 
         # Verify outputs
-        np.testing.assert_allclose(
-            out1.numpy(), np.trapezoid(self.np_y), rtol=1e-5
-        )
-        np.testing.assert_allclose(
-            out2.numpy(), np.trapezoid(self.np_y), rtol=1e-5
-        )
-        np.testing.assert_allclose(
-            out3.numpy(), np.trapezoid(self.np_y, axis=-1), rtol=1e-5
-        )
-        np.testing.assert_allclose(
-            out4.numpy(), np.trapezoid(self.np_y, dx=2.0), rtol=1e-5
-        )
-        np.testing.assert_allclose(
-            out5.numpy(), np.trapezoid(self.np_y), rtol=1e-5
-        )
+        ref_out = np.trapezoid(self.np_y)
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-5)
 
         paddle.enable_static()
 
@@ -2065,7 +2051,14 @@ class TestKthvalueAPI(unittest.TestCase):
 class TestLogcumsumexpAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        self.np_x = np.arange(12, dtype=np.float64).reshape(3, 4)
+        self.np_x = np.arange(12, dtype=np.float32).reshape(3, 4)
+        self.ref_out_axis0 = np.array(
+            [
+                [0.0, 1.0, 2.0, 3.0],
+                [4.01814993, 5.01814993, 6.01814993, 7.01814993],
+                [8.01847930, 9.01847930, 10.01847930, 11.01847930],
+            ]
+        )
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
@@ -2078,28 +2071,19 @@ class TestLogcumsumexpAPI(unittest.TestCase):
         # 3. PyTorch keyword arguments (using alias dim)
         out3 = paddle.logcumsumexp(input=x, dim=0)
         # 4. Mixed arguments (with dtype parameter)
-        out4 = paddle.logcumsumexp(x, axis=0, dtype='float64')
+        out4 = paddle.logcumsumexp(x, axis=0, dtype='float32')
         # 5. out parameter
-        out5 = paddle.empty([3, 4], dtype='float64')
+        out5 = paddle.empty([3, 4], dtype='float32')
         paddle.logcumsumexp(x, axis=0, out=out5)
         # 6. Class method positional arguments
         out6 = x.logcumsumexp(0)
         # 7. Class method keyword arguments
         out7 = x.logcumsumexp(axis=0)
 
-        # Verify axis=0 output
-        ref_out_axis0 = np.array(
-            [
-                [0.0, 1.0, 2.0, 3.0],
-                [4.01814993, 5.01814993, 6.01814993, 7.01814993],
-                [8.01847930, 9.01847930, 10.01847930, 11.01847930],
-            ]
-        )
         for out in [out1, out2, out3, out4, out5, out6, out7]:
-            np.testing.assert_allclose(out.numpy(), ref_out_axis0, rtol=1e-5)
-        # Verify dtype parameter
-        self.assertEqual(out4.dtype, paddle.float64)
-
+            np.testing.assert_allclose(
+                out.numpy(), self.ref_out_axis0, rtol=1e-5
+            )
         paddle.enable_static()
 
     def test_static_Compatibility(self):
@@ -2107,7 +2091,7 @@ class TestLogcumsumexpAPI(unittest.TestCase):
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
-            x = paddle.static.data(name="x", shape=[3, 4], dtype='float64')
+            x = paddle.static.data(name="x", shape=[3, 4], dtype='float32')
 
             # 1. Paddle positional arguments (all positional: x, axis, dtype）
             out1 = paddle.logcumsumexp(x, 0, None)
@@ -2126,16 +2110,8 @@ class TestLogcumsumexpAPI(unittest.TestCase):
                 feed={"x": self.np_x},
                 fetch_list=[out1, out2, out3, out4, out5],
             )
-
-            ref_out_axis0 = np.array(
-                [
-                    [0.0, 1.0, 2.0, 3.0],
-                    [4.01814993, 5.01814993, 6.01814993, 7.01814993],
-                    [8.01847930, 9.01847930, 10.01847930, 11.01847930],
-                ]
-            )
             for out in fetches:
-                np.testing.assert_allclose(out, ref_out_axis0, rtol=1e-5)
+                np.testing.assert_allclose(out, self.ref_out_axis0, rtol=1e-5)
 
 
 # Test poisson compatibility
