@@ -76,6 +76,7 @@
 - pool2d
 - pool3d
 - prod
+- p_norm
 - randint
 - randperm
 - read_file
