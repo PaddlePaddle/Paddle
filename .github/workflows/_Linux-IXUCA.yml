@@ -57,10 +57,10 @@ jobs:
 
           response=""
           for i in 1 2 3; do
-            response=$(curl -s --fail --max-time 30 \
+            _tmp=$(curl -s --fail --max-time 30 \
               -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
               -H "Accept: application/vnd.github.v3+json" \
-              "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews") && break
+              "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews" 2>/dev/null) && { response="$_tmp"; break; }
             echo "Attempt $i to fetch PR reviews failed, retrying..."
             sleep 5
           done
@@ -270,10 +270,10 @@ jobs:
 
           response=""
           for i in 1 2 3; do
-            response=$(curl -s --fail --max-time 30 \
+            _tmp=$(curl -s --fail --max-time 30 \
               -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
               -H "Accept: application/vnd.github.v3+json" \
-              "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews") && break
+              "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews" 2>/dev/null) && { response="$_tmp"; break; }
             echo "Attempt $i to fetch PR reviews failed, retrying..."
             sleep 5
           done
@@ -393,6 +393,7 @@ jobs:
           export https_proxy=http://oversea-website-proxy.aistudio.public:8888
           export http_proxy=http://oversea-website-proxy.aistudio.public:8888
 
+          rm -rf Paddle-iluvatar
           git clone --depth=1 -b develop https://github.com/PaddlePaddle/Paddle-iluvatar.git
           cd Paddle-iluvatar
 
