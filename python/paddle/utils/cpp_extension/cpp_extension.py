@@ -1517,6 +1517,7 @@ def _get_cuda_arch_flags(cflags: list[str] | None = None) -> list[str]:
         '10.0',
         '10.0a',
         '10.1',
+        '10.3',
         '10.1a',
         '12.0',
         '12.0a',
