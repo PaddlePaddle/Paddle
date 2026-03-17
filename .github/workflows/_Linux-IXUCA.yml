@@ -150,11 +150,11 @@ jobs:
         id: get-pcd-pr
         run: |
           # Get Paddle PR description
-          PR_BODY=$(curl -s \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}" \
-            | python3 -c "import json,sys; data=json.load(sys.stdin); print(data.get('body', ''))")
+          # PR_BODY=$(curl -s \
+          #   -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          #   -H "Accept: application/vnd.github.v3+json" \
+          #   "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}" \
+          #   | python3 -c "import json,sys; data=json.load(sys.stdin); print(data.get('body', ''))")
 
           # Extract [Paddle-iluvatar PR] XXXX from description
           PCD_PR_NUM=$(echo "$PR_BODY" | grep -oP '\[Paddle-iluvatar PR\]\s*\K\d+' || echo "")
