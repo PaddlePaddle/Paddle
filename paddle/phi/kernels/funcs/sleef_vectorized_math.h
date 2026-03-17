@@ -330,23 +330,6 @@ inline void vexp_avx2_f32(float* out, const float* in, int64_t n) {
     out[i] = Sleef_expf1_u10(in[i]);
   }
 }
-
-// Vectorized exp for double using AVX2
-inline void vexp_avx2_f64(double* out, const double* in, int64_t n) {
-  constexpr int64_t VEC_SIZE = 4;  // AVX2: 256-bit = 4 doubles
-  int64_t i = 0;
-
-  for (; i + VEC_SIZE <= n; i += VEC_SIZE) {
-    __m256d vec_in = _mm256_loadu_pd(in + i);
-    __m256d vec_out = Sleef_expd4_u10(vec_in);
-    _mm256_storeu_pd(out + i, vec_out);
-  }
-
-  for (; i < n; ++i) {
-    out[i] = Sleef_expd1_u10(in[i]);
-  }
-}
-
 #endif  // PADDLE_SLEEF_HAS_AVX2
 
 // -----------------------------------------------------------------------------
@@ -726,8 +709,6 @@ inline void vexp(double* out, const double* in, int64_t n) {
 #endif
 #ifdef PADDLE_SLEEF_HAS_AVX512
   vexp_avx512_f64(out, in, n);
-#elif defined(PADDLE_SLEEF_HAS_AVX2)
-  vexp_avx2_f64(out, in, n);
 #else
   vexp_scalar_f64(out, in, n);
 #endif
