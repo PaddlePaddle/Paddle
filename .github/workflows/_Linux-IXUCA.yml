@@ -178,6 +178,7 @@ jobs:
           # If Paddle-iluvatar PR number exists, fetch and merge it
           PCD_PR_NUM="${{ steps.get-pcd-pr.outputs.pcd_pr_num }}"
           if [ -n "$PCD_PR_NUM" ]; then
+            git fetch --unshallow origin
             echo "Fetching and merging Paddle-iluvatar PR #$PCD_PR_NUM"
             git fetch origin pull/$PCD_PR_NUM/head:pr-$PCD_PR_NUM
             git merge pr-$PCD_PR_NUM --no-edit
