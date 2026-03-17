@@ -1174,7 +1174,9 @@ def monkey_patch_tensor():
     @framework.dygraph_only
     @tensor_cuda_decorator()
     def cuda(
-        self: Tensor, device_id: int | str | None = None, blocking: bool = True
+        self: Tensor,
+        device_id: int | str | paddle.device.Device | None = None,
+        blocking: bool = True,
     ) -> Tensor:
         device_type = paddle.device.get_all_device_type()
         if len(
@@ -1197,8 +1199,12 @@ def monkey_patch_tensor():
         elif isinstance(device_id, str):
             device = paddle.device(device_id)
             res_place = device._to_place()
+        elif isinstance(device_id, paddle.device.Device):
+            res_place = device_id._to_place()
         else:
-            raise ValueError("device_id must be int|str|None")
+            raise ValueError(
+                "device_id must be int|str|paddle.device.Device|None"
+            )
 
         if self.place._equals(res_place):
             return self
