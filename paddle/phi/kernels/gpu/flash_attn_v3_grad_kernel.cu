@@ -1171,7 +1171,7 @@ void FlashMaskV2GradBaseKernel(
   const int chunks_per_seg =
       dynload::flashmaskv2_get_segment_size(seqlen_k, nranks, num_heads_k);
   // seqlen scaler for dkv_accum and dkv, if H_k > 4: RS-overlap is used
-  bool const use_rs_overlap = nranks > 1 && num_heads_k >= 4;
+  bool const use_rs_overlap = nranks > 1 && chunks_per_seg > 1;
   VLOG(6) << "FlashMask RS overlap: use rs: " << use_rs_overlap
           << ", num chunk: " << chunks_per_seg;
   PADDLE_ENFORCE_GT(
@@ -1261,11 +1261,6 @@ void FlashMaskV2GradBaseKernel(
         false,
         common::errors::InvalidArgument(
             "when nranks > 1, FlashMask does not support varlen k."));
-    PADDLE_ENFORCE_EQ(
-        num_heads_k != num_heads,
-        true,
-        common::errors::InvalidArgument("FlashMask distributed overlap does "
-                                        "not support non-GQA currently."));
     PADDLE_ENFORCE_LT(rank,
                       nranks,
                       common::errors::InvalidArgument(

@@ -350,33 +350,6 @@ void FlashMaskV2GradInferMeta(const MetaTensor& q,
                               MetaTensor* dk,
                               MetaTensor* dv) {
   FlashAttnGradInferMeta(q, k, v, dq, dk, dv);
-
-  // TODO(large-tensor): downstream functors may still use int; guard until
-  // upgraded.
-  int64_t head_dim_k = k.dims()[2];
-  if (nranks > 1 && head_dim_k < 4) {  // ``nranks`` is 1, by default
-    // use non-splitted, shape of dK dV: (B, S_local * cp_size, H, D)
-    // if H_k > 4: RS-overlap is used, dK, dV is of shape (B, S_local, H, D)
-    // CP 4 will not use RS-overlap.
-    auto ProcessMetaTensor = [nranks](const MetaTensor& t, MetaTensor* dt) {
-      if (dt && t) {
-        auto dims = dt->dims();
-        PADDLE_ENFORCE_EQ(dims.size(),
-                          4,
-                          common::errors::InvalidArgument(
-                              "varlen shape (ndim < 4) is not supported."));
-        auto strides = dt->strides();
-        dims[1] *= nranks;
-        strides[0] *= nranks;  // assume contiguous (B, S, H, D)
-
-        // scale the seqlen by nranks (cp_size)
-        dt->set_dims(dims);
-        dt->set_strides(strides);
-      }
-    };
-    ProcessMetaTensor(k, dk);
-    ProcessMetaTensor(v, dv);
-  }
 }
 
 void FlashAttnQKVPackedGradInferMeta(const MetaTensor& qkv, MetaTensor* dqkv) {
