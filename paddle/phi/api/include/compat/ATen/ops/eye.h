@@ -27,6 +27,11 @@ namespace at {
 // eye(n) — n×n identity matrix
 inline at::Tensor eye(int64_t n, at::TensorOptions options = {}) {
   if (options.pinned_memory()) {
+    // Pinning memory is only supported for CPU tensors
+    if (options.has_device() && !options.device().is_cpu()) {
+      PD_THROW(
+          "pin_memory=true requires device to be CPU, but got non-CPU device");
+    }
     phi::Place base_place = options._PD_GetPlace();
     phi::Place pinned_place = compat::_PD_GetCreatePinnedPlace(base_place);
     auto dense = paddle::experimental::eye(
@@ -46,6 +51,11 @@ inline at::Tensor eye(int64_t n, at::TensorOptions options = {}) {
 // eye(n, m) — n×m identity-like matrix
 inline at::Tensor eye(int64_t n, int64_t m, at::TensorOptions options = {}) {
   if (options.pinned_memory()) {
+    // Pinning memory is only supported for CPU tensors
+    if (options.has_device() && !options.device().is_cpu()) {
+      PD_THROW(
+          "pin_memory=true requires device to be CPU, but got non-CPU device");
+    }
     phi::Place base_place = options._PD_GetPlace();
     phi::Place pinned_place = compat::_PD_GetCreatePinnedPlace(base_place);
     auto dense = paddle::experimental::eye(

@@ -38,6 +38,11 @@ inline at::Tensor empty_like(
   auto dtype = options.dtype_opt().value_or(self.dtype());
   paddle::Tensor dense;
   if (options.pinned_memory()) {
+    // Pinning memory is only supported for CPU tensors
+    if (options.has_device() && !options.device().is_cpu()) {
+      PD_THROW(
+          "pin_memory=true requires device to be CPU, but got non-CPU device");
+    }
     auto dense_cpu = paddle::experimental::empty_like(
         self._PD_GetInner(),
         compat::_PD_AtenScalarTypeToPhiDataType(dtype),

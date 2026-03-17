@@ -33,6 +33,11 @@ inline at::Tensor empty(
              memory_format.value() != c10::MemoryFormat::Contiguous),
            "`MemoryFormat` other than Contiguous is not supported now.");
   if (options.pinned_memory()) {
+    // Pinning memory is only supported for CPU tensors
+    if (options.has_device() && !options.device().is_cpu()) {
+      PD_THROW(
+          "pin_memory=true requires device to be CPU, but got non-CPU device");
+    }
     auto dense = paddle::experimental::empty(
         size._PD_ToPaddleIntArray(),
         compat::_PD_AtenScalarTypeToPhiDataType(options.dtype()),

@@ -30,6 +30,11 @@ inline at::Tensor full(at::IntArrayRef size,
                        const at::Scalar& fill_value,
                        at::TensorOptions options = {}) {
   if (options.pinned_memory()) {
+    // Pinning memory is only supported for CPU tensors
+    if (options.has_device() && !options.device().is_cpu()) {
+      PD_THROW(
+          "pin_memory=true requires device to be CPU, but got non-CPU device");
+    }
     phi::Place base_place = options._PD_GetPlace();
     phi::Place pinned_place = compat::_PD_GetCreatePinnedPlace(base_place);
     auto dense = paddle::experimental::full(

@@ -41,6 +41,11 @@ inline Tensor Tensor::new_zeros(at::IntArrayRef size,
 
   paddle::Tensor result;
   if (actual_pin_memory) {
+    // Pinning memory is only supported for CPU tensors
+    if (options.has_device() && !actual_device.is_cpu()) {
+      PD_THROW(
+          "pin_memory=true requires device to be CPU, but got non-CPU device");
+    }
     phi::Place pinned_place = compat::_PD_GetCreatePinnedPlace(pd_place);
     auto dense_cpu = paddle::experimental::zeros(
         size._PD_ToPaddleIntArray(), pd_dtype, phi::CPUPlace());

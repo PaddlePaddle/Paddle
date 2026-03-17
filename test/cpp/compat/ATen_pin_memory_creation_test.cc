@@ -40,17 +40,27 @@ void AssertNotPinned(const at::Tensor& t) { ASSERT_FALSE(t.is_pinned()); }
 }  // namespace
 
 TEST(ATenPinMemoryCreationTest, FullPinMemory) {
+  // Test using TensorOptions with pinned_memory
   auto by_options = at::full(
       {2, 3}, 1.5f, at::TensorOptions().dtype(at::kFloat).pinned_memory(true));
   AssertPinned(by_options);
 
+  // Test using explicit arguments with CPU device (should succeed)
   auto by_args =
-      at::full({2, 3}, 1.5f, at::kFloat, std::nullopt, at::kCUDA, true);
+      at::full({2, 3}, 1.5f, at::kFloat, std::nullopt, at::kCPU, true);
   AssertPinned(by_args);
 
+  // Test without pin_memory
   auto no_pin =
-      at::full({2, 3}, 1.5f, at::kFloat, std::nullopt, at::kCUDA, false);
+      at::full({2, 3}, 1.5f, at::kFloat, std::nullopt, at::kCPU, false);
   AssertNotPinned(no_pin);
+}
+
+TEST(ATenPinMemoryCreationTest, FullPinMemoryWithCUDADeviceErrors) {
+  // Test that pin_memory=true with explicit CUDA device throws error
+  ASSERT_THROW(
+      at::full({2, 3}, 1.5f, at::kFloat, std::nullopt, at::kCUDA, true),
+      std::exception);
 }
 
 TEST(ATenPinMemoryCreationTest, OnesPinMemory) {
@@ -58,11 +68,16 @@ TEST(ATenPinMemoryCreationTest, OnesPinMemory) {
       {4, 2}, at::TensorOptions().dtype(at::kFloat).pinned_memory(true));
   AssertPinned(by_options);
 
-  auto by_args = at::ones({4, 2}, at::kFloat, std::nullopt, at::kCUDA, true);
+  auto by_args = at::ones({4, 2}, at::kFloat, std::nullopt, at::kCPU, true);
   AssertPinned(by_args);
 
-  auto no_pin = at::ones({4, 2}, at::kFloat, std::nullopt, at::kCUDA, false);
+  auto no_pin = at::ones({4, 2}, at::kFloat, std::nullopt, at::kCPU, false);
   AssertNotPinned(no_pin);
+}
+
+TEST(ATenPinMemoryCreationTest, OnesPinMemoryWithCUDADeviceErrors) {
+  ASSERT_THROW(at::ones({4, 2}, at::kFloat, std::nullopt, at::kCUDA, true),
+               std::exception);
 }
 
 TEST(ATenPinMemoryCreationTest, ZerosPinMemory) {
@@ -70,11 +85,16 @@ TEST(ATenPinMemoryCreationTest, ZerosPinMemory) {
       {3, 5}, at::TensorOptions().dtype(at::kFloat).pinned_memory(true));
   AssertPinned(by_options);
 
-  auto by_args = at::zeros({3, 5}, at::kFloat, at::kStrided, at::kCUDA, true);
+  auto by_args = at::zeros({3, 5}, at::kFloat, at::kStrided, at::kCPU, true);
   AssertPinned(by_args);
 
-  auto no_pin = at::zeros({3, 5}, at::kFloat, at::kStrided, at::kCUDA, false);
+  auto no_pin = at::zeros({3, 5}, at::kFloat, at::kStrided, at::kCPU, false);
   AssertNotPinned(no_pin);
+}
+
+TEST(ATenPinMemoryCreationTest, ZerosPinMemoryWithCUDADeviceErrors) {
+  ASSERT_THROW(at::zeros({3, 5}, at::kFloat, at::kStrided, at::kCUDA, true),
+               std::exception);
 }
 
 TEST(ATenPinMemoryCreationTest, EyePinMemory) {
@@ -82,11 +102,16 @@ TEST(ATenPinMemoryCreationTest, EyePinMemory) {
       at::eye(6, at::TensorOptions().dtype(at::kFloat).pinned_memory(true));
   AssertPinned(by_options);
 
-  auto by_args = at::eye(6, at::kFloat, std::nullopt, at::kCUDA, true);
+  auto by_args = at::eye(6, at::kFloat, std::nullopt, at::kCPU, true);
   AssertPinned(by_args);
 
-  auto no_pin = at::eye(6, at::kFloat, std::nullopt, at::kCUDA, false);
+  auto no_pin = at::eye(6, at::kFloat, std::nullopt, at::kCPU, false);
   AssertNotPinned(no_pin);
+}
+
+TEST(ATenPinMemoryCreationTest, EyePinMemoryWithCUDADeviceErrors) {
+  ASSERT_THROW(at::eye(6, at::kFloat, std::nullopt, at::kCUDA, true),
+               std::exception);
 }
 
 TEST(ATenPinMemoryCreationTest, ArangePinMemory) {
@@ -94,11 +119,16 @@ TEST(ATenPinMemoryCreationTest, ArangePinMemory) {
       0, 10, at::TensorOptions().dtype(at::kFloat).pinned_memory(true));
   AssertPinned(by_options);
 
-  auto by_args = at::arange(0, 10, at::kFloat, std::nullopt, at::kCUDA, true);
+  auto by_args = at::arange(0, 10, at::kFloat, std::nullopt, at::kCPU, true);
   AssertPinned(by_args);
 
-  auto no_pin = at::arange(0, 10, at::kFloat, std::nullopt, at::kCUDA, false);
+  auto no_pin = at::arange(0, 10, at::kFloat, std::nullopt, at::kCPU, false);
   AssertNotPinned(no_pin);
+}
+
+TEST(ATenPinMemoryCreationTest, ArangePinMemoryWithCUDADeviceErrors) {
+  ASSERT_THROW(at::arange(0, 10, at::kFloat, std::nullopt, at::kCUDA, true),
+               std::exception);
 }
 
 TEST(ATenPinMemoryCreationTest, EmptyLikePinMemory) {
@@ -111,12 +141,23 @@ TEST(ATenPinMemoryCreationTest, EmptyLikePinMemory) {
   AssertPinned(by_options);
 
   auto by_args = at::empty_like(
-      base, at::kFloat, at::kStrided, at::kCUDA, true, std::nullopt);
+      base, at::kFloat, at::kStrided, at::kCPU, true, std::nullopt);
   AssertPinned(by_args);
 
   auto no_pin = at::empty_like(
-      base, at::kFloat, at::kStrided, at::kCUDA, false, std::nullopt);
+      base, at::kFloat, at::kStrided, at::kCPU, false, std::nullopt);
   AssertNotPinned(no_pin);
+}
+
+TEST(ATenPinMemoryCreationTest, EmptyLikePinMemoryWithCUDADeviceErrors) {
+  auto base = at::ones({2, 4}, at::kFloat);
+  ASSERT_THROW(at::empty_like(base,
+                              at::TensorOptions()
+                                  .dtype(at::kFloat)
+                                  .device(at::kCUDA)
+                                  .pinned_memory(true),
+                              std::nullopt),
+               std::exception);
 }
 
 TEST(ATenPinMemoryCreationTest, ZerosLikePinMemory) {
@@ -129,12 +170,23 @@ TEST(ATenPinMemoryCreationTest, ZerosLikePinMemory) {
   AssertPinned(by_options);
 
   auto by_args = at::zeros_like(
-      base, at::kFloat, at::kStrided, at::kCUDA, true, std::nullopt);
+      base, at::kFloat, at::kStrided, at::kCPU, true, std::nullopt);
   AssertPinned(by_args);
 
   auto no_pin = at::zeros_like(
-      base, at::kFloat, at::kStrided, at::kCUDA, false, std::nullopt);
+      base, at::kFloat, at::kStrided, at::kCPU, false, std::nullopt);
   AssertNotPinned(no_pin);
+}
+
+TEST(ATenPinMemoryCreationTest, ZerosLikePinMemoryWithCUDADeviceErrors) {
+  auto base = at::ones({2, 4}, at::kFloat);
+  ASSERT_THROW(at::zeros_like(base,
+                              at::TensorOptions()
+                                  .dtype(at::kFloat)
+                                  .device(at::kCUDA)
+                                  .pinned_memory(true),
+                              std::nullopt),
+               std::exception);
 }
 
 #endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP

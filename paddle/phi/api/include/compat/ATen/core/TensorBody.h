@@ -38,6 +38,7 @@
 #include <optional>
 #include <utility>
 #include <vector>
+#include "glog/logging.h"
 #include "paddle/common/ddim.h"
 #include "paddle/phi/common/place.h"
 
@@ -397,6 +398,11 @@ class Tensor : public TensorBase {
   bool is_cuda() const { return phi::is_gpu_place(tensor_.place()); }
 
   bool is_pinned(::std::optional<c10::Device> device = ::std::nullopt) const {
+    if (device.has_value()) {
+      LOG(WARNING) << "The argument 'device' of Tensor.is_pinned() "
+                   << "is deprecated. Please do not pass this argument.";
+    }
+
     const PaddlePlace place = tensor_.place();
     const bool is_gpu_pinned = phi::is_cuda_pinned_place(place);
     const bool is_xpu_pinned = phi::is_xpu_pinned_place(place);
@@ -423,6 +429,11 @@ class Tensor : public TensorBase {
 
   Tensor pin_memory(
       ::std::optional<c10::Device> device = ::std::nullopt) const {
+    if (device.has_value()) {
+      LOG(WARNING) << "The argument 'device' of Tensor.pin_memory() "
+                   << "is deprecated. Please do not pass this argument.";
+    }
+
     if (is_pinned(device)) {
       return *this;
     }

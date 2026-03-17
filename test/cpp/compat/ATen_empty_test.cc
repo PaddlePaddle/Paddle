@@ -63,12 +63,12 @@ TEST(ATenEmptyTest, PinMemoryViaTensorOptions) {
       << "Expected pinned memory tensor when TensorOptions.pinned_memory=true";
 }
 
-// 6-argument overload: pin_memory = true
+// 6-argument overload: pin_memory = true (must use CPU device)
 TEST(ATenEmptyTest, PinMemoryViaExplicitArgs) {
   at::Tensor t =
-      at::empty({8}, at::kFloat, at::kStrided, at::kCUDA, true, std::nullopt);
+      at::empty({8}, at::kFloat, at::kStrided, at::kCPU, true, std::nullopt);
   ASSERT_TRUE(t.is_pinned())
-      << "Expected pinned memory tensor when pin_memory=true";
+      << "Expected pinned memory tensor when pin_memory=true with CPU device";
 }
 
 // pin_memory = false must NOT produce a pinned tensor
