@@ -160,6 +160,81 @@ class TestAngleAPI(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestRealAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.shape = [5, 6]
+        self.dtype = 'complex64'
+        self.init_data()
+
+    def init_data(self):
+        self.np_x_real = np.random.randn(*self.shape).astype('float32')
+        self.np_x_imag = np.random.randn(*self.shape).astype('float32')
+        self.np_x = self.np_x_real + 1j * self.np_x_imag
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        paddle_dygraph_out = []
+
+        # Position args
+        out1 = paddle.real(x)
+        paddle_dygraph_out.append(out1)
+
+        # Paddle keyword args
+        out2 = paddle.real(x=x)
+        paddle_dygraph_out.append(out2)
+
+        # Torch keyword args
+        out3 = paddle.real(input=x)
+        paddle_dygraph_out.append(out3)
+
+        # Tensor method - args
+        out4 = x.real()
+        paddle_dygraph_out.append(out4)
+
+        # Test out parameter
+        out5 = paddle.empty(self.shape, dtype='float32')
+        paddle.real(x, out=out5)
+        paddle_dygraph_out.append(out5)
+
+        # Numpy reference output
+        ref_out = np.real(self.np_x)
+
+        # Verify all outputs
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+
+            # Position args
+            out1 = paddle.real(x)
+            # Paddle keyword args
+            out2 = paddle.real(x=x)
+            # Torch keyword args
+            out3 = paddle.real(input=x)
+            # Tensor method
+            out4 = x.real()
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2, out3, out4],
+            )
+            ref_out = np.real(self.np_x)
+            for out in fetches:
+                np.testing.assert_allclose(ref_out, out, rtol=1e-6)
+
+
 # Edit by AI Agent
 # Test atan compatibility
 class TestAtanAPI(unittest.TestCase):

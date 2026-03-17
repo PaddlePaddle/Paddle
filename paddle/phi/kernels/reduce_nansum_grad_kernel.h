@@ -1,4 +1,4 @@
-// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,23 +14,18 @@
 
 #pragma once
 
-#include <ATen/core/Tensor.h>
+#include "paddle/phi/common/int_array.h"
+#include "paddle/phi/core/dense_tensor.h"
 
-namespace at {
-namespace detail {
+namespace phi {
 
-template <typename T>
-Tensor tensor_cpu(ArrayRef<T> values, const TensorOptions& options);
+template <typename T, typename Context>
+void NansumGradKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& out_grad,
+                      const IntArray& dims,
+                      bool keep_dim,
+                      bool reduce_all,
+                      DenseTensor* x_grad);
 
-template <typename T>
-Tensor tensor_backend(ArrayRef<T> values, const TensorOptions& options);
-
-template <typename T>
-Tensor tensor_complex_cpu(ArrayRef<T> values, const TensorOptions& options);
-
-template <typename T>
-Tensor tensor_complex_backend(ArrayRef<T> values, const TensorOptions& options);
-
-}  // namespace detail
-
-}  // namespace at
+}  // namespace phi

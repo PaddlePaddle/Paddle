@@ -1742,6 +1742,11 @@ def nansum(
     )
     check_type(axis, 'axis', (int, list, tuple, type(None)), 'nansum')
 
+    if (
+        paddle.core.is_compiled_with_cuda()
+        or paddle.core.is_compiled_with_rocm()
+    ):
+        return _C_ops.nansum(x, axis, dtype, keepdim)
     zero_tensor = paddle.zeros_like(x)
     tmp_tensor = paddle.where(isnan(x), zero_tensor, x)
     return sum(tmp_tensor, axis, dtype, keepdim, name)
