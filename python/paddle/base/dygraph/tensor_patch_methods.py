@@ -18,7 +18,7 @@ import copy
 import hashlib
 import inspect
 import warnings
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any, Callable, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -54,6 +54,8 @@ if TYPE_CHECKING:
 
     from paddle import Tensor
     from paddle._typing import DTypeLike, PlaceLike, TensorIndex
+
+    DeviceLike = Union[paddle.device.Device, int, str, None]
 
 
 _grad_scalar = None
@@ -1160,13 +1162,13 @@ def monkey_patch_tensor():
 
     @overload
     def cuda(
-        self: Tensor, device_id: int | str | None = None, blocking: bool = True
+        self: Tensor, device_id: DeviceLike = None, blocking: bool = True
     ): ...
 
     @overload
     def cuda(
         self: Tensor,
-        device: int | str | None = None,
+        device: DeviceLike = None,
         non_blocking: bool = False,
         memory_format=None,
     ): ...
@@ -1175,8 +1177,9 @@ def monkey_patch_tensor():
     @tensor_cuda_decorator()
     def cuda(
         self: Tensor,
-        device_id: int | str | paddle.device.Device | None = None,
+        device_id: DeviceLike = None,
         blocking: bool = True,
+        memory_format=None,
     ) -> Tensor:
         device_type = paddle.device.get_all_device_type()
         if len(
@@ -1203,7 +1206,7 @@ def monkey_patch_tensor():
             res_place = device_id._to_place()
         else:
             raise ValueError(
-                "device_id must be int|str|paddle.device.Device|None"
+                "device_id must be DeviceLike, which is paddle.device.Device|int|str|None"
             )
 
         if self.place._equals(res_place):
