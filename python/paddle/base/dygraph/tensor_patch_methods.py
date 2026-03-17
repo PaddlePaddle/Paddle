@@ -18,7 +18,7 @@ import copy
 import hashlib
 import inspect
 import warnings
-from typing import TYPE_CHECKING, Any, Callable, Union
+from typing import TYPE_CHECKING, Any, Callable
 
 import numpy as np
 import numpy.typing as npt
@@ -54,8 +54,7 @@ if TYPE_CHECKING:
 
     from paddle import Tensor
     from paddle._typing import DTypeLike, PlaceLike, TensorIndex
-
-    DeviceLike = Union[paddle.device.Device, int, str, None]
+    from paddle.cuda import DeviceLike
 
 
 _grad_scalar = None
@@ -1194,19 +1193,28 @@ def monkey_patch_tensor():
             raise ValueError("No available device found.")
 
         if device_id is None:
+            # None
             res_place = framework._current_expected_place()
             if not isinstance(res_place, res_place_class):
                 res_place = res_place_class(0)
         elif isinstance(device_id, paddle.device.Device):
+            # Device
             res_place = device_id._to_place()
         elif isinstance(device_id, int):
+            # int
             res_place = res_place_class(device_id)
         elif isinstance(device_id, str):
+            # str
             device = paddle.device(device_id)
             res_place = device._to_place()
+        elif isinstance(
+            device_id, (core.CUDAPlace, core.CustomPlace, core.XPUPlace)
+        ):
+            # Place
+            res_place = device_id
         else:
             raise ValueError(
-                "device_id must be DeviceLike, which is paddle.device.Device|int|str|None"
+                "device_id must be DeviceLike, which is paddle.CUDAPlace|paddle.CustomPlace|paddle.XPUPlace|int|str|None"
             )
 
         if self.place._equals(res_place):
