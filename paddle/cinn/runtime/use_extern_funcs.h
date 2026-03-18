@@ -26,7 +26,3 @@
 #ifdef CINN_WITH_SYCL
 #include "paddle/cinn/runtime/sycl/use_extern_funcs.h"
 #endif
-
-#ifdef CINN_WITH_CUSTOM_DEVICE
-#include "paddle/cinn/runtime/custom_device/use_extern_funcs.h"
-#endif

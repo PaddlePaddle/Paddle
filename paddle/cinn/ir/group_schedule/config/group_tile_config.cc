@@ -17,8 +17,10 @@
 #include <variant>
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/hlir/framework/pir/op_lowering_impl.h"
+#ifdef CINN_WITH_CUSTOM_DEVICE
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/common/place.h"
+#endif  // CINN_WITH_CUSTOM_DEVICE
 
 namespace cinn {
 namespace ir {
@@ -32,11 +34,10 @@ using TileConfigMap =
 namespace {
 
 const int kMaxNumel = BucketInfo::kMaxNumel;
-// constexpr int warp_size = 32;
-// constexpr int KMaxWarpSizePerSM = 64;
-// constexpr int KMaxBlockSizePerSM = 32;
-// constexpr int KMaxRegistersPerSM = 65536;
-
+constexpr int kWarpSize = 32;
+constexpr int KMaxWarpSizePerSM = 64;
+constexpr int KMaxBlockSizePerSM = 32;
+constexpr int KMaxRegistersPerSM = 65536;
 int GetWarpSize(const common::Target& target) {
   return std::visit(
       [&](const auto& impl) -> int {
@@ -315,9 +316,9 @@ int CalculateWarpNums(const SMConfig& sm_config,
                       const common::Target& target) {
   int max_threads = target.max_num_threads();
   int max_warp_cnt = max_threads / warp_size;
-  int best_warp_nums = std::min(8, max_warp_cnt);
   int min_diff_to_full_sm = sm_config.sm_count;
-
+#ifdef CINN_WITH_CUSTOM_DEVICE
+  int best_warp_nums = std::min(8, max_warp_cnt);
   std::vector<int> thread_configs;
   if (max_threads >= 1024) thread_configs.push_back(1024);
   if (max_threads >= 512) thread_configs.push_back(512);
@@ -326,6 +327,10 @@ int CalculateWarpNums(const SMConfig& sm_config,
   if (thread_configs.empty() || thread_configs[0] != max_threads) {
     if (thread_configs.empty()) thread_configs.push_back(max_threads);
   }
+#else
+  int best_warp_nums = 8;
+  std::vector<int> thread_configs = {1024, 512, 256};
+#endif
 
   for (int threads_per_block : thread_configs) {
     int current_warp_count = threads_per_block / warp_size;
@@ -361,12 +366,24 @@ int UpdateWarpNumsInDifferentCase(
     int max_warp_cnt) {
   const auto& last_dim = base_info->iter_space_type.back().first;
   if (group_vectorize_info.has_if_else_op && last_dim == "R") {
+#ifdef CINN_WITH_CUSTOM_DEVICE
     warp_nums = Trim(warp_nums, 1, std::min(16, max_warp_cnt));
+#else
+    warp_nums = Trim(warp_nums, 1, 16);
+#endif
   } else if (!group_vectorize_info.args_broadcast_axis_info.empty() &&
              last_dim == "S") {
+#ifdef CINN_WITH_CUSTOM_DEVICE
     warp_nums = Trim(warp_nums, 1, std::min(8, max_warp_cnt));
+#else
+    warp_nums = Trim(warp_nums, 1, 8);
+#endif
   } else {
+#ifdef CINN_WITH_CUSTOM_DEVICE
     warp_nums = Trim(warp_nums, 1, max_warp_cnt);
+#else
+    warp_nums = Trim(warp_nums, 1, 32);
+#endif
   }
   return warp_nums;
 }
@@ -566,6 +583,7 @@ bool RegisterNumsLimitedCheckInCTACanApplyVectorize(
   thread_register_occupy_sum += other_register_occupy_sum;
   VLOG(5) << "calculate other registers is : " << other_register_occupy_sum
           << "\n";
+#ifdef CINN_WITH_CUSTOM_DEVICE
   int max_threads_per_sm = target.get_max_threads_per_sm();
   int max_warps_per_sm = max_threads_per_sm / warp_size;
   int max_blocks_per_sm_limit = target.get_max_blocks_per_sm();
@@ -574,6 +592,12 @@ bool RegisterNumsLimitedCheckInCTACanApplyVectorize(
       Trim(CeilDiv(max_warps_per_sm, warp_nums), 1, max_blocks_per_sm_limit);
   int best_register_nums_per_thread =
       max_regs_per_sm / max_blocks_per_sm / warp_nums / warp_size;
+#else
+  int max_blocks_per_sm =
+      Trim(CeilDiv(KMaxWarpSizePerSM, warp_nums), 1, KMaxBlockSizePerSM);
+  int best_register_nums_per_thread =
+      KMaxRegistersPerSM / max_blocks_per_sm / warp_nums / warp_size;
+#endif
   VLOG(5) << "calculatet thread register occupy sum is : "
           << thread_register_occupy_sum
           << ", best register nums per thread is : "
@@ -659,8 +683,12 @@ TileConfigMap BuildVectorizeConfig(
   SMConfig sm_config(target.get_max_threads_per_sm(),
                      target.get_max_blocks_per_sm(),
                      target.get_multi_processor_count());
+#ifdef CINN_WITH_CUSTOM_DEVICE
   int max_threads_per_block = target.max_num_threads();
   int max_warp_cnt = max_threads_per_block / warp_size;
+#else
+  int max_warp_cnt = 32;
+#endif
   // Reduce Region
   if (last_dim == "R") {
     for (auto factor : vectorize_factors) {
@@ -761,8 +789,12 @@ std::pair<int64_t, int64_t> FindBestReduceBlockThreadNum(
   for (int factor = 1; factor <= 4; factor *= 2) {
     if (factor > rd_thread_num) break;
     int64_t new_rd_thread_num = rd_thread_num / factor;
+#ifdef CINN_WITH_CUSTOM_DEVICE
     int64_t avail_blocks_per_sm =
         max_threads_per_sm / (sp_thread_num * new_rd_thread_num);
+#else
+    int64_t avail_blocks_per_sm = 1024 / (sp_thread_num * new_rd_thread_num);
+#endif
     int64_t avail_blocks = sm_count * avail_blocks_per_sm;
 
     // First, assign all remaining available blocks to rd_block_num.
@@ -826,19 +858,34 @@ TileConfigMap BuildPureStaticShapeConfig(
   int64_t sp_thread_num = 1;
   int64_t rd_thread_num = 1;
   if (last_dim == "R") {
+#ifdef CINN_WITH_CUSTOM_DEVICE
     rd_thread_num = warp_size;
     int64_t remain_reduce_numel = CeilDiv(reduce_numel, warp_size);
+#else
+    rd_thread_num = 32;
+    int64_t remain_reduce_numel = CeilDiv(reduce_numel, 32);
+#endif
+
     if ((remain_reduce_numel <= 8 && spatial_numel > 1) ||
         (spatial_numel > remain_reduce_numel * 128)) {
       sp_thread_num = Trim(spatial_numel, 1, 8);
       reduce_method = WarpReduceMethod();
     } else {
+#ifdef CINN_WITH_CUSTOM_DEVICE
       rd_thread_num *= Trim(remain_reduce_numel, 1, max_warp_cnt);
+#else
+      rd_thread_num *= Trim(remain_reduce_numel, 1, 32);
+#endif
       reduce_method = BlockReduceMethod();
     }
   } else {  // last_dim == "S"
+#ifdef CINN_WITH_CUSTOM_DEVICE
     sp_thread_num = warp_size;
     int64_t remain_spatial_numel = CeilDiv(spatial_numel, warp_size);
+#else
+    sp_thread_num = 32;
+    int64_t remain_spatial_numel = CeilDiv(spatial_numel, 32);
+#endif
     if (reduce_numel <= 16) {
       sp_thread_num *= Trim(remain_spatial_numel, 1, 8);
     } else {
@@ -884,8 +931,12 @@ TileConfigMap BuildPureStaticShapeConfig(
 
   int64_t sp_upper_bound = base_info->spatial_numel > 1 ? kMaxNumel : 1;
   int64_t rd_upper_bound = base_info->reduce_numel > 1 ? kMaxNumel : 1;
+#ifdef CINN_WITH_CUSTOM_DEVICE
   int64_t warp_num =
       Trim(sp_thread_num * rd_thread_num / warp_size, 1, max_warp_cnt);
+#else
+  int64_t warp_num = Trim(sp_thread_num * rd_thread_num / 32, 1, 32);
+#endif
   BucketInfo bucket_info{1, sp_upper_bound, 1, rd_upper_bound};
   TileConfig tile_config{warp_num,
                          warp_size,
@@ -904,8 +955,8 @@ TileConfigMap BuildStaticSpatialConfig(
   int warp_size = GetWarpSize(target);
   int max_threads = target.max_num_threads();
   int max_warp_cnt = max_threads / warp_size;
-  int small_bucket_threshold = warp_size * 8;     // e.g., 32 * 8 = 256
-  int medium_bucket_threshold = max_threads * 2;  // e.g., 1024 * 2 = 2048
+  int small_bucket_threshold = warp_size * 8;
+  int medium_bucket_threshold = max_threads * 2;
   const auto& last_dim = base_info->iter_space_type.back().first;
   const int sm_count = target.get_multi_processor_count();
   const int64_t spatial_numel = base_info->spatial_numel;
@@ -919,6 +970,7 @@ TileConfigMap BuildStaticSpatialConfig(
     int64_t sp_block_num = std::max(spatial_numel, int64_t(1));
     int64_t rd_block_num = FloorPow2(sm_count / sp_block_num);
 
+#ifdef CINN_WITH_CUSTOM_DEVICE
     int small_warp_num = std::min(8, max_warp_cnt);
     collector({1, kMaxNumel, 1, medium_bucket_threshold},
               {small_warp_num,
@@ -929,10 +981,14 @@ TileConfigMap BuildStaticSpatialConfig(
                1,
                -1,
                BlockReduceMethod()});
+#else
+    collector({1, kMaxNumel, 1, 2048},
+              {8, warp_size, 256, 1, 1, 1, -1, BlockReduceMethod()});
+#endif
     int max_warp_num = max_warp_cnt;
     if (rd_block_num > 1 && base_info->can_apply_grid_reduce) {
+#ifdef CINN_WITH_CUSTOM_DEVICE
       int64_t rd_threshold = rd_block_num * min_loops * max_threads;
-
       collector({1, kMaxNumel, medium_bucket_threshold + 1, rd_threshold},
                 {max_warp_num,
                  warp_size,
@@ -951,7 +1007,16 @@ TileConfigMap BuildStaticSpatialConfig(
                  1,
                  -1,
                  BlockReduceMethod()});
+#else
+      int64_t rd_threshold = rd_block_num * min_loops * 1024;
+      collector({1, kMaxNumel, 2049, rd_threshold},
+                {32, warp_size, 1024, 1, 1, 1, -1, BlockReduceMethod()});
+      collector(
+          {1, kMaxNumel, rd_threshold + 1, kMaxNumel},
+          {32, warp_size, 1024, rd_block_num, 1, 1, -1, BlockReduceMethod()});
+#endif
     } else {
+#ifdef CINN_WITH_CUSTOM_DEVICE
       collector({1, kMaxNumel, medium_bucket_threshold + 1, kMaxNumel},
                 {max_warp_num,
                  warp_size,
@@ -961,9 +1026,14 @@ TileConfigMap BuildStaticSpatialConfig(
                  1,
                  -1,
                  BlockReduceMethod()});
+#else
+      collector({1, kMaxNumel, 2049, kMaxNumel},
+                {32, warp_size, 1024, 1, 1, 1, -1, BlockReduceMethod()});
+#endif
     }
 
   } else {  // last_dim == "S"
+#ifdef CINN_WITH_CUSTOM_DEVICE
     int64_t sp_block_num =
         std::max(CeilDiv(spatial_numel, warp_size), int64_t(1));
     int64_t rd_block_num = FloorPow2(sm_count / sp_block_num);
@@ -1001,6 +1071,22 @@ TileConfigMap BuildStaticSpatialConfig(
                  -1,
                  DiscreteReduceMethod()});
     }
+#else
+    int64_t sp_block_num = std::max(CeilDiv(spatial_numel, 32), int64_t(1));
+    int64_t rd_block_num = FloorPow2(sm_count / sp_block_num);
+
+    if (rd_block_num > 1 && base_info->can_apply_grid_reduce) {
+      int64_t rd_threshold = rd_block_num * min_loops * 16;
+      collector({1, kMaxNumel, 1, rd_threshold},
+                {16, warp_size, 16, 1, 1, 1, -1, DiscreteReduceMethod()});
+      collector(
+          {1, kMaxNumel, rd_threshold + 1, kMaxNumel},
+          {16, warp_size, 16, rd_block_num, 1, 1, -1, DiscreteReduceMethod()});
+    } else {
+      collector({1, kMaxNumel, 1, kMaxNumel},
+                {16, warp_size, 16, 1, 1, 1, -1, DiscreteReduceMethod()});
+    }
+#endif
   }
 
   return collector.GetResult();
@@ -1012,8 +1098,8 @@ TileConfigMap BuildStaticReduceConfig(
   int warp_size = GetWarpSize(target);
   int max_threads = target.max_num_threads();
   int max_warp_cnt = max_threads / warp_size;
-  int small_bucket_threshold = warp_size * 8;     // e.g., 32 * 8 = 256
-  int medium_bucket_threshold = max_threads * 2;  // e.g., 1024 * 2 = 2048
+  int small_bucket_threshold = warp_size * 8;
+  int medium_bucket_threshold = max_threads * 2;
   int small_warp_num = std::min(8, max_warp_cnt);
   int medium_warp_num = std::min(16, max_warp_cnt);
   const auto& last_dim = base_info->iter_space_type.back().first;
@@ -1022,6 +1108,7 @@ TileConfigMap BuildStaticReduceConfig(
   // { sp_lower, sp_upper, rd_lower, rd_upper },
   // { warp, rd_thread, rd_block, sp_inner, vec_factor, rd_inner, rd_method }
   if (last_dim == "R") {
+#ifdef CINN_WITH_CUSTOM_DEVICE
     if (base_info->reduce_numel <= small_bucket_threshold) {
       int64_t spatial_inner_num =
           small_bucket_threshold / CeilPow2(base_info->reduce_numel);
@@ -1063,7 +1150,33 @@ TileConfigMap BuildStaticReduceConfig(
                  -1,
                  BlockReduceMethod()});
     }
+#else
+    if (base_info->reduce_numel <= 256) {
+      int64_t spatial_inner_num = 256 / CeilPow2(base_info->reduce_numel);
+      collector(
+          {1, kMaxNumel, 1, 256},
+          {8, warp_size, 32, 1, spatial_inner_num, 1, -1, WarpReduceMethod()});
+    } else if (base_info->reduce_numel <= 2048) {
+      int64_t reduce_block = CeilDiv(base_info->reduce_numel, 256) * 256;
+      int64_t warp_num = reduce_block / 256;
+      int64_t reduce_inner_num = 8;
+      int64_t tree_reduce_num = reduce_block / reduce_inner_num;
+      collector({1, kMaxNumel, 257, 2048},
+                {warp_num,
+                 warp_size,
+                 tree_reduce_num,
+                 1,
+                 1,
+                 1,
+                 -1,
+                 BlockReduceMethod()});
+    } else {
+      collector({1, kMaxNumel, 2049, kMaxNumel},
+                {32, warp_size, 1024, 1, 1, 1, -1, BlockReduceMethod()});
+    }
+#endif
   } else {  // last_dim == "S"
+#ifdef CINN_WITH_CUSTOM_DEVICE
     if (base_info->reduce_numel == 1) {
       collector({1, max_threads - 1, 1, 1},
                 {-1, warp_size, 1, 1, 1, 1, -1, NoneReduceMethod()});
@@ -1085,6 +1198,20 @@ TileConfigMap BuildStaticReduceConfig(
                  -1,
                  DiscreteReduceMethod()});
     }
+#else
+    if (base_info->reduce_numel == 1) {
+      collector({1, 1023, 1, 1},
+                {-1, warp_size, 1, 1, 1, 1, -1, NoneReduceMethod()});
+      collector({1024, kMaxNumel, 1, 1},
+                {32, warp_size, 1, 1, 4, 1, -1, NoneReduceMethod()});
+    } else if (base_info->reduce_numel <= 16) {
+      collector({1, kMaxNumel, 1, 1},
+                {8, warp_size, 1, 1, 1, 1, -1, NoneReduceMethod()});
+    } else {
+      collector({1, kMaxNumel, 1, 1},
+                {16, warp_size, 16, 1, 1, 1, -1, DiscreteReduceMethod()});
+    }
+#endif
   }
 
   return collector.GetResult();
@@ -1096,8 +1223,8 @@ TileConfigMap BuildDynamicShapeConfig(
   int warp_size = GetWarpSize(target);
   int max_threads = target.max_num_threads();
   int max_warp_cnt = max_threads / warp_size;
-  int small_bucket_threshold = warp_size * 8;     // e.g., 32 * 8 = 256
-  int medium_bucket_threshold = max_threads * 2;  // e.g., 1024 * 2 = 2048
+  int small_bucket_threshold = warp_size * 8;
+  int medium_bucket_threshold = max_threads * 2;
   int small_warp_num = std::min(8, max_warp_cnt);
   int medium_warp_num = std::min(16, max_warp_cnt);
   const auto& last_dim = base_info->iter_space_type.back().first;
@@ -1107,6 +1234,7 @@ TileConfigMap BuildDynamicShapeConfig(
   // { warp, rd_thread, rd_block, sp_inner, vec_factor, rd_inner, rd_method }
 
   if (last_dim == "R") {
+#ifdef CINN_WITH_CUSTOM_DEVICE
     collector(
         {1, kMaxNumel, 1, small_bucket_threshold},
         {small_warp_num, warp_size, warp_size, 1, 1, 1, 8, WarpReduceMethod()});
@@ -1130,7 +1258,16 @@ TileConfigMap BuildDynamicShapeConfig(
                1,
                -1,
                BlockReduceMethod()});
+#else
+    collector({1, kMaxNumel, 1, 256},
+              {8, warp_size, 32, 1, 1, 1, 8, WarpReduceMethod()});
+    collector({1, kMaxNumel, 257, 2048},
+              {8, warp_size, 256, 1, 1, 1, 8, BlockReduceMethod()});
+    collector({1, kMaxNumel, 2049, kMaxNumel},
+              {32, warp_size, 1024, 1, 1, 1, -1, BlockReduceMethod()});
+#endif
   } else {  // last_dim == "S"
+#ifdef CINN_WITH_CUSTOM_DEVICE
     collector({1, kMaxNumel, 1, kMaxNumel},
               {medium_warp_num,
                warp_size,
@@ -1140,6 +1277,10 @@ TileConfigMap BuildDynamicShapeConfig(
                1,
                -1,
                DiscreteReduceMethod()});
+#else
+    collector({1, kMaxNumel, 1, kMaxNumel},
+              {16, warp_size, 16, 1, 1, 1, -1, DiscreteReduceMethod()});
+#endif
   }
   return collector.GetResult();
 }

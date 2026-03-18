@@ -125,12 +125,12 @@ int GetMaxNumThreadsImpl(HygonDCUArchSYCL arch) { return 1024; }
 
 int GetMaxNumThreadsImpl(CustomDeviceArch arch) {
 #ifdef CINN_WITH_CUSTOM_DEVICE
-  return phi::DeviceManager::GetMaxThreadsPerBlock(
-      phi::CustomPlace(arch.device_type, arch.device_id));
+  return static_cast<int>(phi::DeviceManager::GetMaxThreadsPerBlock(
+      phi::CustomPlace(arch.device_type, arch.device_id)));
 #else
-  LOG(FATAL) << "GetMaxNumThreadsImpl(CustomDeviceArch) requires "
-                "CINN_WITH_CUSTOM_DEVICE to be enabled.";
-  return -1;
+  PADDLE_THROW(::common::errors::Unimplemented(
+      "GetMaxNumThreadsImpl(CustomDeviceArch) requires "
+      "CINN_WITH_CUSTOM_DEVICE to be enabled."));
 #endif
 }
 
@@ -174,12 +174,12 @@ int GetMultiProcessCountImpl(HygonDCUArchSYCL arch) {
 
 int GetMultiProcessCountImpl(CustomDeviceArch arch) {
 #ifdef CINN_WITH_CUSTOM_DEVICE
-  return phi::DeviceManager::GetMultiProcessors(
-      phi::CustomPlace(arch.device_type, arch.device_id));
+  return static_cast<int>(phi::DeviceManager::GetMultiProcessors(
+      phi::CustomPlace(arch.device_type, arch.device_id)));
 #else
-  LOG(FATAL) << "GetMultiProcessCountImpl(CustomDeviceArch) requires "
-                "CINN_WITH_CUSTOM_DEVICE to be enabled.";
-  return -1;
+  PADDLE_THROW(::common::errors::Unimplemented(
+      "GetMultiProcessCountImpl(CustomDeviceArch) requires "
+      "CINN_WITH_CUSTOM_DEVICE to be enabled."));
 #endif
 }
 
@@ -229,12 +229,12 @@ int GetMaxThreadsPerSmImpl(HygonDCUArchSYCL arch) {
 
 int GetMaxThreadsPerSmImpl(CustomDeviceArch arch) {
 #ifdef CINN_WITH_CUSTOM_DEVICE
-  return phi::DeviceManager::GetMaxThreadsPerMultiProcessor(
-      phi::CustomPlace(arch.device_type, arch.device_id));
+  return static_cast<int>(phi::DeviceManager::GetMaxThreadsPerMultiProcessor(
+      phi::CustomPlace(arch.device_type, arch.device_id)));
 #else
-  LOG(FATAL) << "GetMaxThreadsPerSmImpl(CustomDeviceArch) requires "
-                "CINN_WITH_CUSTOM_DEVICE to be enabled.";
-  return -1;
+  PADDLE_THROW(::common::errors::Unimplemented(
+      "GetMaxThreadsPerSmImpl(CustomDeviceArch) requires "
+      "CINN_WITH_CUSTOM_DEVICE to be enabled."));
 #endif
 }
 
@@ -282,12 +282,12 @@ int GetMaxBlocksPerSmImpl(HygonDCUArchSYCL arch) {
 
 int GetMaxBlocksPerSmImpl(CustomDeviceArch arch) {
 #ifdef CINN_WITH_CUSTOM_DEVICE
-  return phi::DeviceManager::GetMaxBlocksPerMultiProcessor(
-      phi::CustomPlace(arch.device_type, arch.device_id));
+  return static_cast<int>(phi::DeviceManager::GetMaxBlocksPerMultiProcessor(
+      phi::CustomPlace(arch.device_type, arch.device_id)));
 #else
-  LOG(FATAL) << "GetMaxBlocksPerSmImpl(CustomDeviceArch) requires "
-                "CINN_WITH_CUSTOM_DEVICE to be enabled.";
-  return -1;
+  PADDLE_THROW(::common::errors::Unimplemented(
+      "GetMaxBlocksPerSmImpl(CustomDeviceArch) requires "
+      "CINN_WITH_CUSTOM_DEVICE to be enabled."));
 #endif
 }
 
@@ -476,8 +476,9 @@ int GetMaxThreads() {
     int device_id = phi::DeviceManager::GetDevice(dev_types[0]);
     std::string dev_type = dev_types[0];
     auto place = phi::CustomPlace(dev_type, device_id);
-    max_threads = phi::DeviceManager::GetMultiProcessors(place) *
-                  phi::DeviceManager::GetMaxThreadsPerMultiProcessor(place);
+    max_threads = static_cast<int>(
+        phi::DeviceManager::GetMultiProcessors(place) *
+        phi::DeviceManager::GetMaxThreadsPerMultiProcessor(place));
   }
 #endif
   return max_threads;
@@ -502,8 +503,9 @@ int GetMaxBlocks() {
     int device_id = phi::DeviceManager::GetDevice(dev_types[0]);
     std::string dev_type = dev_types[0];
     auto place = phi::CustomPlace(dev_type, device_id);
-    max_blocks = phi::DeviceManager::GetMultiProcessors(place) *
-                 phi::DeviceManager::GetMaxBlocksPerMultiProcessor(place);
+    max_blocks = static_cast<int>(
+        phi::DeviceManager::GetMultiProcessors(place) *
+        phi::DeviceManager::GetMaxBlocksPerMultiProcessor(place));
   }
 #endif
   return max_blocks;

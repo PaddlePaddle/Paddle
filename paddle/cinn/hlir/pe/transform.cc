@@ -819,10 +819,11 @@ std::vector<Tensor> MulBaseCallImpl(common::ARMArch,
   LOG(FATAL) << "NotImplemented.";
 }
 
-std::vector<Tensor> MulBaseCallImplNvHygon(const Tensor& A,
-                                           const Tensor& B,
-                                           const std::string& name,
-                                           const cinn::common::Target& target) {
+std::vector<Tensor> MulBaseCallImplNvHygonCustom(
+    const Tensor& A,
+    const Tensor& B,
+    const std::string& name,
+    const cinn::common::Target& target) {
   std::vector<Expr> output_shape;
   PADDLE_ENFORCE_EQ(
       A->shape.size(),
@@ -869,7 +870,7 @@ std::vector<Tensor> MulBaseCallImpl(common::NVGPUArch,
                                     const Tensor& B,
                                     const std::string& name,
                                     const cinn::common::Target& target) {
-  MulBaseCallImplNvHygon(A, B, name, target);
+  MulBaseCallImplNvHygonCustom(A, B, name, target);
 }
 
 std::vector<Tensor> MulBaseCallImpl(common::CustomDeviceArch,
@@ -877,7 +878,7 @@ std::vector<Tensor> MulBaseCallImpl(common::CustomDeviceArch,
                                     const Tensor& B,
                                     const std::string& name,
                                     const cinn::common::Target& target) {
-  MulBaseCallImplNvHygon(A, B, name, target);
+  MulBaseCallImplNvHygonCustom(A, B, name, target);
 }
 
 std::vector<Tensor> MulBaseCallImpl(common::HygonDCUArchHIP,
@@ -885,7 +886,7 @@ std::vector<Tensor> MulBaseCallImpl(common::HygonDCUArchHIP,
                                     const Tensor& B,
                                     const std::string& name,
                                     const cinn::common::Target& target) {
-  MulBaseCallImplNvHygon(A, B, name, target);
+  MulBaseCallImplNvHygonCustom(A, B, name, target);
 }
 
 std::vector<Tensor> MulBaseCallImpl(common::HygonDCUArchSYCL,
@@ -893,7 +894,7 @@ std::vector<Tensor> MulBaseCallImpl(common::HygonDCUArchSYCL,
                                     const Tensor& B,
                                     const std::string& name,
                                     const cinn::common::Target& target) {
-  MulBaseCallImplNvHygon(A, B, name, target);
+  MulBaseCallImplNvHygonCustom(A, B, name, target);
 }
 
 std::vector<Tensor> MulBaseCall(const Tensor& A,
@@ -1710,7 +1711,7 @@ ir::Tensor ScatterAdd(const ir::Tensor& input,
                       const cinn::common::Target& target,
                       const int axis,
                       const std::string& output_name) {
-  auto ScatterAddNvHygon = [&] {
+  auto ScatterAddNvHygonCustom = [&] {
     PADDLE_ENFORCE_EQ(
         index->type(),
         cinn::common::Int(32),
@@ -1786,10 +1787,10 @@ ir::Tensor ScatterAdd(const ir::Tensor& input,
             "Op IndexAdd only support NVGPU and "
             "HygonDCU now ! Please Check.\n"));
       },
-      [&](common::NVGPUArch) { return ScatterAddNvHygon(); },
-      [&](common::CustomDeviceArch) { return ScatterAddNvHygon(); },
+      [&](common::NVGPUArch) { return ScatterAddNvHygonCustom(); },
+      [&](common::CustomDeviceArch) { return ScatterAddNvHygonCustom(); },
       [&](std::variant<common::HygonDCUArchHIP, common::HygonDCUArchSYCL>) {
-        return ScatterAddNvHygon();
+        return ScatterAddNvHygonCustom();
       });
 }
 

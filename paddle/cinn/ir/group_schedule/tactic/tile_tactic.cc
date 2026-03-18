@@ -66,6 +66,7 @@ void TileTactic::Init(ScheduleContext* context) {
                                                    : nums_thread_per_block;
   };
   auto GetNumThreadPerBlock = [&](int64_t lower_bound) -> int64_t {
+#ifdef CINN_WITH_CUSTOM_DEVICE
     const int64_t max_num_threads =
         cinn::common::DefaultDeviceTarget().max_num_threads();
     // When designing the tile config, we can further subdivided.
@@ -76,6 +77,16 @@ void TileTactic::Init(ScheduleContext* context) {
     } else {
       return 4;
     }
+#else
+    // When designing the tile config, we can further subdivided.
+    if (lower_bound >= 1024) {
+      return 256;
+    } else if (lower_bound >= 256) {
+      return 32;
+    } else {
+      return 4;
+    }
+#endif
   };
 
   bool has_rb_iter = !context_->iter_space_info.rb_space.empty();
