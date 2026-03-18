@@ -89,6 +89,180 @@ class TestNextafterAPI(unittest.TestCase):
                 np.testing.assert_allclose(out, ref_out)
 
 
+# Test round_ compatibility (inplace API)
+class TestRoundInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([1.5, 2.3, 3.7, -1.2, -2.8]).astype('float32')
+
+    def test_dygraph_InplaceCompatibility(self):
+        """Test round_ inplace API in dynamic mode"""
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Tensor method - Paddle positional args
+        x1 = x.clone()
+        out1 = x1.round_(0)
+        assert out1 is x1
+
+        # 2. Tensor method - Paddle keyword args
+        x2 = x.clone()
+        out2 = x2.round_(decimals=1)
+        assert out2 is x2
+
+        # 3. Paddle function - positional args
+        x3 = x.clone()
+        out3 = paddle.round_(x3, 1)
+        assert out3 is x3
+
+        # 4. Paddle function - keyword args
+        x4 = x.clone()
+        out4 = paddle.round_(x4, decimals=-1)
+        assert out4 is x4
+
+        # Verify all outputs
+        np.testing.assert_allclose(out1.numpy(), np.round(self.np_x), rtol=1e-6)
+        np.testing.assert_allclose(
+            out2.numpy(), np.around(self.np_x, decimals=1), rtol=1e-6
+        )
+        np.testing.assert_allclose(
+            out3.numpy(), np.around(self.np_x, decimals=1), rtol=1e-6
+        )
+        np.testing.assert_allclose(
+            out4.numpy(), np.around(self.np_x, decimals=-1), rtol=1e-6
+        )
+
+        paddle.enable_static()
+
+
+# Test erf compatibility
+class TestErfAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([-0.4, -0.2, 0.0, 0.1, 0.3]).astype('float32')
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle positional arguments
+        out1 = paddle.erf(x)
+        # 2. Paddle keyword arguments
+        out2 = paddle.erf(x=x)
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.erf(input=x)
+        # 4. out parameter test
+        out4 = paddle.empty_like(x)
+        paddle.erf(x, out=out4)
+        # 5. Tensor method - positional args
+        out5 = x.erf()
+
+        # Verify all outputs
+        ref_out = np.array(
+            [-0.42839241, -0.22270259, 0.0, 0.11246292, 0.32862678]
+        ).astype('float32')
+        for out in [out1, out2, out3, out4, out5]:
+            np.testing.assert_allclose(
+                out.numpy(), ref_out, rtol=1e-5, atol=1e-5
+            )
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        """Test erf API in static mode"""
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=[5], dtype='float32')
+
+            # 1. Paddle positional arguments
+            out1 = paddle.erf(x)
+            # 2. Paddle keyword arguments
+            out2 = paddle.erf(x=x)
+            # 3. PyTorch keyword arguments (alias)
+            out3 = paddle.erf(input=x)
+            # 4. Tensor method - positional args
+            out4 = x.erf()
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2, out3, out4],
+            )
+
+            # Verify all outputs match with loop
+            ref_out = np.array(
+                [-0.42839241, -0.22270259, 0.0, 0.11246292, 0.32862678]
+            ).astype('float32')
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out, rtol=1e-5)
+
+
+# Test erf_ inplace compatibility
+class TestErfInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([-0.4, -0.2, 0.0, 0.1, 0.3]).astype('float32')
+
+    def test_dygraph_InplaceCompatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = np.array(
+            [-0.42839241, -0.22270259, 0.0, 0.11246292, 0.32862678]
+        ).astype('float32')
+
+        # 1. Tensor method - positional args
+        x1 = x.clone()
+        out1 = x1.erf_()
+        assert out1 is x1
+
+        # 2. Paddle function - positional args
+        x2 = x.clone()
+        out2 = paddle.erf_(x2)
+        assert out2 is x2
+
+        # Verify all outputs with loop
+        for out in [out1, out2]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-5)
+
+        paddle.enable_static()
+
+
+# Test iinfo compatibility
+class TestIinfoAPI(unittest.TestCase):
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+
+        # 1. Paddle positional arguments
+        out1 = paddle.iinfo(paddle.int32)
+        # 2. Paddle keyword arguments
+        out2 = paddle.iinfo(dtype=paddle.int32)
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.iinfo(type=paddle.int32)
+
+        # Verify all outputs
+        for out in [out1, out2, out3]:
+            assert out.min == -2147483648
+            assert out.max == 2147483647
+            assert out.bits == 32
+            assert str(out.dtype) == 'int32'
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            # iinfo is a compile-time function, same in static mode
+            out1 = paddle.iinfo(paddle.int32)
+            out2 = paddle.iinfo(dtype=paddle.int32)
+            out3 = paddle.iinfo(type=paddle.int32)
+
+            for out in [out1, out2, out3]:
+                assert out.min == -2147483648
+                assert out.max == 2147483647
+
+
 # Test angle compatibility
 class TestAngleAPI(unittest.TestCase):
     def setUp(self):
@@ -1818,9 +1992,6 @@ class TestBitwiseRightShiftInplaceAPI(unittest.TestCase):
 
 # Test cauchy_ inplace compatibility
 class TestCauchyInplaceAPI(unittest.TestCase):
-    def setUp(self):
-        np.random.seed(2025)
-
     def test_dygraph_InplaceCompatibility(self):
         paddle.disable_static()
         # 1. Tensor method - positional args
