@@ -618,6 +618,8 @@ void EmptyCache() {
   }
 }
 
+void EmptyCUDAPinnedCache() { memory::Release(phi::GPUPinnedPlace()); }
+
 bool IsGPUManagedMemorySupported(int dev_id) {
   return phi::backends::gpu::IsGPUManagedMemorySupported(dev_id);
 }

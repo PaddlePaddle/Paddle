@@ -45,6 +45,7 @@ __all__ = [
     'synchronize',
     'device_count',
     'empty_cache',
+    'empty_pinned_cache',
     'max_memory_allocated',
     'max_memory_reserved',
     'memory_allocated',
@@ -208,6 +209,32 @@ def empty_cache() -> None:
 
     if core.is_compiled_with_cuda():
         core.cuda_empty_cache()
+
+
+def empty_pinned_cache() -> None:
+    '''
+    Releases idle cached pinned memory (page-locked host memory) held by the allocator.
+    Pinned memory is used for efficient DMA transfers between CPU and GPU.
+    This function frees unused pinned memory back to the OS.
+
+    In most cases you don't need to use this function. Paddle keeps pinned memory
+    in a pool so that next allocations can be done much faster.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
+
+            >>> tensor = paddle.randn([512, 512, 512], "float64")
+            >>> tensor = tensor.pin_memory()  # creates pinned memory
+            >>> del tensor
+            >>> paddle.device.cuda.empty_pinned_cache()
+    '''
+
+    if core.is_compiled_with_cuda():
+        core.cuda_pinned_empty_cache()
 
 
 def extract_cuda_device_id(device: _CudaPlaceLike, op_name: str) -> int:
