@@ -223,7 +223,7 @@ void TopkKernel(const Context& dev_ctx,
     int ndims = static_cast<int>(trans.size());
 
     // transpose the input value
-    funcs::TransCompute<phi::CPUContext, T>(
+    funcs::TransCompute<CPUContext, T>(
         ndims, dev_ctx, *input, &trans_inp, trans);
 
     const int64_t input_height =
@@ -249,10 +249,9 @@ void TopkKernel(const Context& dev_ctx,
                          largest,
                          sorted);
     // transpose back
-    funcs::TransCompute<phi::CPUContext, int64_t>(
+    funcs::TransCompute<CPUContext, int64_t>(
         ndims, dev_ctx, tmp_indices, indices, trans);
-    funcs::TransCompute<phi::CPUContext, T>(
-        ndims, dev_ctx, tmp_out, out, trans);
+    funcs::TransCompute<CPUContext, T>(ndims, dev_ctx, tmp_out, out, trans);
   }
 }
 

@@ -35,9 +35,9 @@ void SetConstant<DeviceContext, T>::operator()(const DeviceContext& dev_ctx,
 
 #ifdef PADDLE_WITH_XPU
 template <typename T>
-void SetConstant<phi::XPUContext, T>::operator()(const phi::XPUContext& dev_ctx,
-                                                 DenseTensor* tensor,
-                                                 T num) {
+void SetConstant<XPUContext, T>::operator()(const XPUContext& dev_ctx,
+                                            DenseTensor* tensor,
+                                            T num) {
   phi::VisitDataType(tensor->dtype(),
                      TensorSetConstantXPU<T>(tensor, num, dev_ctx.GetPlace()));
 }
@@ -92,9 +92,9 @@ void ColwiseSum<DeviceContext, T>::operator()(const DeviceContext& dev_ctx,
 // colwise-sum can be easily implemented. General reduce has a huge overhead in
 // CPU
 template <typename T>
-class ColwiseSum<phi::CPUContext, T> {
+class ColwiseSum<CPUContext, T> {
  public:
-  void operator()(const phi::CPUContext& dev_ctx,
+  void operator()(const CPUContext& dev_ctx,
                   const DenseTensor& input,
                   DenseTensor* out) {
     auto& in_dims = input.dims();
@@ -155,9 +155,9 @@ void RowwiseMean<DeviceContext, T>::operator()(const DeviceContext& dev_ctx,
 // rowwise-sum can be easily implemented. General reduce has a huge overhead in
 // CPU
 template <typename T>
-class RowwiseMean<phi::CPUContext, T> {
+class RowwiseMean<CPUContext, T> {
  public:
-  void operator()(const phi::CPUContext& dev_ctx,
+  void operator()(const CPUContext& dev_ctx,
                   const DenseTensor& input,
                   DenseTensor* out) {
     auto& in_dims = input.dims();
@@ -222,9 +222,9 @@ void RowwiseSum<DeviceContext, T>::operator()(const DeviceContext& dev_ctx,
 // rowwise-sum can be easily implemented. General reduce has a huge overhead in
 // CPU
 template <typename T>
-class RowwiseSum<phi::CPUContext, T> {
+class RowwiseSum<CPUContext, T> {
  public:
-  void operator()(const phi::CPUContext& dev_ctx,
+  void operator()(const CPUContext& dev_ctx,
                   const DenseTensor& input,
                   DenseTensor* out) {
     auto& in_dims = input.dims();

@@ -36,7 +36,7 @@ void ExpandAsKernel(const Context& dev_ctx,
   std::vector<int64_t> target_shape = target_shape_t;
 
   if (y.get_ptr()) {
-    target_shape = phi::vectorize<int64_t>(y.get_ptr()->dims());
+    target_shape = vectorize<int64_t>(y.get_ptr()->dims());
   }
 
   int rank = x.dims().size();

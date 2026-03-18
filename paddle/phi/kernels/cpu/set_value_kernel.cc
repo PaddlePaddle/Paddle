@@ -48,7 +48,7 @@ void SetValueImpl(const Context& dev_ctx,
       axes.empty() && decrease_axes.empty() && none_axes.empty() &&
       value.numel() == 1) {
     ExpandKernel<T, Context>(
-        dev_ctx, value, IntArray{phi::vectorize<int64_t>(in.dims())}, out);
+        dev_ctx, value, IntArray{vectorize<int64_t>(in.dims())}, out);
     return;
   }
   funcs::CheckAndUpdateSliceAttrs(
@@ -83,7 +83,7 @@ void SetValueImpl(const Context& dev_ctx,
   }
   funcs::CheckIsDimsMatch(slice_dims_for_assign, value.dims());
 
-  auto value_shape = phi::vectorize<int64_t>(value.dims());
+  auto value_shape = vectorize<int64_t>(value.dims());
 
   DenseTensor value_tensor = Empty<T>(dev_ctx, IntArray{value_shape});
   value_tensor = value;
@@ -94,7 +94,7 @@ void SetValueImpl(const Context& dev_ctx,
   if (value_shape.empty()) value_shape.push_back(1);
   value_tensor.Resize(phi::make_ddim(value_shape));
 
-  auto expand_shape = phi::vectorize<int64_t>(slice_dims_for_assign);
+  auto expand_shape = vectorize<int64_t>(slice_dims_for_assign);
   for (size_t i = 0; i < expand_shape.size(); i++) {
     if (expand_shape[i] == 0) expand_shape[i] = 1;
   }

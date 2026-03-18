@@ -280,5 +280,107 @@ class TestParameterDictForwardBackward(unittest.TestCase):
         self.assertEqual(out.dtype, paddle.float64)
 
 
+class TestParameterDictPopKeysValues(unittest.TestCase):
+    def setUp(self):
+        self.pd = paddle.nn.ParameterDict(
+            {
+                'w1': _make_param([2, 3]),
+                'w2': _make_param([3, 4]),
+                'w3': _make_param([4, 5]),
+            }
+        )
+
+    def test_pop_returns_correct_param(self):
+        p = self.pd.pop('w2')
+        self.assertEqual(list(p.shape), [3, 4])
+        self.assertEqual(len(self.pd), 2)
+        self.assertNotIn('w2', list(self.pd.keys()))
+
+    def test_pop_missing_key_raises(self):
+        with self.assertRaises(KeyError):
+            self.pd.pop('nonexistent')
+
+    def test_pop_all_items_leaves_empty(self):
+        for k in list(self.pd.keys()):
+            self.pd.pop(k)
+        self.assertEqual(len(self.pd), 0)
+
+    def test_keys_returns_all_in_order(self):
+        self.assertEqual(list(self.pd.keys()), ['w1', 'w2', 'w3'])
+
+    def test_keys_after_update(self):
+        self.pd.update({'w4': _make_param([5, 6])})
+        self.assertIn('w4', list(self.pd.keys()))
+        self.assertEqual(len(self.pd), 4)
+
+    def test_values_shapes(self):
+        shapes = [list(v.shape) for v in self.pd.values()]
+        self.assertEqual(shapes, [[2, 3], [3, 4], [4, 5]])
+
+    def test_values_are_parameters(self):
+        from paddle.base.framework import Parameter
+
+        for v in self.pd.values():
+            self.assertIsInstance(v, Parameter)
+
+    def test_values_count_matches_len(self):
+        self.assertEqual(len(self.pd.values()), len(self.pd))
+
+    def test_pop_reduces_values(self):
+        self.pd.pop('w1')
+        shapes = [list(v.shape) for v in self.pd.values()]
+        self.assertEqual(shapes, [[3, 4], [4, 5]])
+
+
+class TestParameterDictStateDictRoundtrip(unittest.TestCase):
+    def _make_model(self):
+        class M(paddle.nn.Layer):
+            def __init__(self):
+                super().__init__()
+                self.pd = paddle.nn.ParameterDict(
+                    {
+                        'w1': _make_param([2, 3]),
+                        'w2': _make_param([3, 4]),
+                    }
+                )
+
+            def forward(self, x):
+                return paddle.matmul(
+                    paddle.matmul(x, self.pd['w1']), self.pd['w2']
+                )
+
+        return M()
+
+    def test_state_dict_roundtrip_values(self):
+        model_a = self._make_model()
+        state_a = model_a.state_dict()
+        w1_a = state_a['pd.w1'].numpy().copy()
+        w2_a = state_a['pd.w2'].numpy().copy()
+
+        model_b = self._make_model()
+        model_b.set_state_dict(state_a)
+        state_b = model_b.state_dict()
+
+        np.testing.assert_array_equal(state_b['pd.w1'].numpy(), w1_a)
+        np.testing.assert_array_equal(state_b['pd.w2'].numpy(), w2_a)
+
+    def test_output_matches_after_load(self):
+        model_a = self._make_model()
+        model_b = self._make_model()
+        model_b.set_state_dict(model_a.state_dict())
+
+        x = paddle.uniform([2, 2])
+        np.testing.assert_array_almost_equal(
+            model_a(x).numpy(), model_b(x).numpy()
+        )
+
+    def test_state_dict_keys_present(self):
+        model = self._make_model()
+        state = model.state_dict()
+        self.assertIn('pd.w1', state)
+        self.assertIn('pd.w2', state)
+        self.assertEqual(len(state), 2)
+
+
 if __name__ == '__main__':
     unittest.main()

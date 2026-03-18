@@ -23,7 +23,7 @@ namespace phi {
 
 template <typename T, typename IndexT = int>
 void CPUIndexElementwisePutWithTensorKernel(
-    const phi::CPUContext& dev_ctx,
+    const CPUContext& dev_ctx,
     const DenseTensor& input,
     const DenseTensor& value,
     const std::vector<const DenseTensor*>& index,
@@ -101,7 +101,7 @@ void CPUIndexElementwisePutWithTensorKernel(
 }
 
 template <typename T, typename IndexT = int>
-void CPUIndexElementwisePutKernel(const phi::CPUContext& dev_ctx,
+void CPUIndexElementwisePutKernel(const CPUContext& dev_ctx,
                                   const DenseTensor& input,
                                   const Scalar& value,
                                   const std::vector<const DenseTensor*>& index,

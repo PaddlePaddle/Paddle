@@ -330,7 +330,7 @@ void ComputeRowImpl(const Context& dev_ctx,
     const auto& name = "Param";
     auto pn = funcs::ToVector(p_norm_ptr, 1, dev_ctx.GetPlace());
     auto tn = funcs::ToVector(trust_ratio_div_norm_ptr, 1, dev_ctx.GetPlace());
-    auto dtype = DataTypeToString(phi::CppTypeToDataType<T>::Type());
+    auto dtype = DataTypeToString(CppTypeToDataType<T>::Type());
     VLOG(1) << "Param " << dtype << " " << name << " pn = " << pn[0]
             << " , tn = " << tn[0];
   }

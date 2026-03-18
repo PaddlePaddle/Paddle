@@ -20,7 +20,6 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-using Tensor = DenseTensor;
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
@@ -126,8 +125,8 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
   }
 }
 
-template class CrossEntropyFunctor<phi::CPUContext, float>;
-template class CrossEntropyFunctor<phi::CPUContext, double>;
+template class CrossEntropyFunctor<CPUContext, float>;
+template class CrossEntropyFunctor<CPUContext, double>;
 
 }  // namespace funcs
 }  // namespace phi

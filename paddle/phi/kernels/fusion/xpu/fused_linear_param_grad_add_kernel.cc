@@ -93,7 +93,7 @@ void FusedLinearParamGradAddImpl(const Context &dev_ctx,
       phi::SumKernel<T, Context>(dev_ctx,
                                  dout_copy,
                                  {0},
-                                 phi::CppTypeToDataType<T>::Type(),
+                                 CppTypeToDataType<T>::Type(),
                                  false,
                                  dbias_tmp);
     }
@@ -180,7 +180,7 @@ void FusedLinearParamGradAdd(const Context &dev_ctx,
       } else {
         PADDLE_ENFORCE_EQ(
             dweight_out->dtype(),
-            phi::CppTypeToDataType<T>::Type(),
+            CppTypeToDataType<T>::Type(),
             common::errors::InvalidArgument("Invalid data type error."));
       }
     } else {
@@ -203,7 +203,7 @@ void FusedLinearParamGradAdd(const Context &dev_ctx,
       } else {
         PADDLE_ENFORCE_EQ(
             dbias_out->dtype(),
-            phi::CppTypeToDataType<T>::Type(),
+            CppTypeToDataType<T>::Type(),
             common::errors::InvalidArgument("Invalid data type error."));
       }
     } else {

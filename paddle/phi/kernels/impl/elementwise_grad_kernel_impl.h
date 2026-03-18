@@ -107,7 +107,7 @@ void AddDoubleGradImpl(const Context& dev_ctx,
         std::vector<DenseTensor*> outs = {ddout};
         ExpandKernel<T, Context>(dev_ctx,
                                  *ddy_tensor,
-                                 IntArray{phi::vectorize<int64_t>(out_shape)},
+                                 IntArray{vectorize<int64_t>(out_shape)},
                                  ddout);
       } else {
         VLOG(4) << "Special case when ddx is not needed and ddy doesn't need "
@@ -122,7 +122,7 @@ void AddDoubleGradImpl(const Context& dev_ctx,
         std::vector<DenseTensor*> outs = {ddout};
         ExpandKernel<T, Context>(dev_ctx,
                                  *ddx_tensor,
-                                 IntArray{phi::vectorize<int64_t>(out_shape)},
+                                 IntArray{vectorize<int64_t>(out_shape)},
                                  ddout);
       } else {
         VLOG(4) << "Special case when ddx is not needed and ddy doesn't need "

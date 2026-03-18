@@ -244,7 +244,7 @@ inline cudaDataType_t GetCublasLtDataType<phi::bfloat16>() {
 
 #if CUDA_VERSION >= 12010
 template <typename T>
-void CublasLtMatmulFP8(const phi::GPUContext& dev_ctx,
+void CublasLtMatmulFP8(const GPUContext& dev_ctx,
                        const DenseTensor& mat_a,
                        const DenseTensor& mat_b,
                        DenseTensor* workspace,
