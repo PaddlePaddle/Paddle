@@ -203,7 +203,8 @@ class WarpCTCFunctor {
   void init(const Context& dev_ctx, const size_t blank) {
     warpctc_version_ = phi::dynload::get_warpctc_version();
 
-    if (dev_ctx.GetPlace().GetType() == AllocationType::GPU) {
+    if (dev_ctx.GetPlace().GetType() == AllocationType::GPU ||
+        dev_ctx.GetPlace().GetType() == AllocationType::CUSTOM) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       options_.loc = CTC_GPU;
       options_.stream =
