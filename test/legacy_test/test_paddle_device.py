@@ -112,7 +112,7 @@ class TestDevice(unittest.TestCase):
         self.assertFalse(d_cpu.is_xpu_place())
 
         # Test CUDA device methods
-        if paddle.device.cuda.is_available() and paddle.is_compiled_with_cuda():
+        if paddle.device.is_available() and paddle.is_compiled_with_cuda():
             d_cuda = Device("cuda:0")
             self.assertFalse(d_cuda.is_cpu_place())
             self.assertTrue(d_cuda.is_gpu_place())
