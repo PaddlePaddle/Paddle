@@ -6,7 +6,7 @@ on:
     branches: [develop, release/**]
     paths-ignore:
       - 'skill/**'
-      - '*.yml'
+      - '**/*.yml'
 
 permissions: read-all
 
