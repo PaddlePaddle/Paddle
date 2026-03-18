@@ -1625,6 +1625,19 @@ void TransposeGPUKernelDriver(const phi::GPUContext& dev_ctx,
   if (!ret) {
     auto simplifier = phi::funcs::PermuteDimsSimplifier(
         rank, numel, perm, common::vectorize<int64_t>(in.dims()));
+
+    // If simplifier reduces to rank 1, the permutation is an identity
+    // (sequential perm). Just do a device-to-device memcpy instead of
+    // going through Eigen or the general permute path.
+    if (simplifier.GetRank() == 1) {
+      phi::backends::gpu::GpuMemcpyAsync(out->data<T>(),
+                                         in.data<T>(),
+                                         numel * sizeof(T),
+                                         phi::gpuMemcpyDeviceToDevice,
+                                         dev_ctx.stream());
+      return;
+    }
+
     auto* tuner = phi::autotune::MakeTransposeTuner<T>(PermuteWithEigen<T>);
     tuner->AddCallBack(PermuteAndTranspose<T>);
 
