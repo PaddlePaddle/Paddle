@@ -40,7 +40,7 @@ void FusedLayerNormKernel(const Context& dev_ctx,
                           DenseTensor* mean,
                           DenseTensor* variance) {
   int r = xpu::SUCCESS;
-  auto xpu_ctx = static_cast<const phi::XPUContext*>(&dev_ctx);
+  auto xpu_ctx = static_cast<const XPUContext*>(&dev_ctx);
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto x_shape = x.dims();
   int m = 1;

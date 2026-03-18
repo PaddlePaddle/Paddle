@@ -155,7 +155,7 @@ void CalculateXGrad(const Context& dev_ctx,
             phi::Sum<T, Context>(dev_ctx,
                                  x_grad_v2,
                                  phi::IntArray(reduce_idx),
-                                 phi::CppTypeToDataType<T>::Type(),
+                                 CppTypeToDataType<T>::Type(),
                                  true);
 #ifdef PADDLE_WITH_HIP
         hipMemcpy(x_grad,
@@ -232,7 +232,7 @@ void CalculateXGrad(const Context& dev_ctx,
             phi::Sum<T, Context>(dev_ctx,
                                  x_grad_v2,
                                  phi::IntArray(reduce_idx),
-                                 phi::CppTypeToDataType<T>::Type(),
+                                 CppTypeToDataType<T>::Type(),
                                  true);
 #ifdef PADDLE_WITH_HIP
         hipMemcpy(x_grad,
@@ -278,7 +278,7 @@ void CalculateXGrad(const Context& dev_ctx,
             phi::Sum<T, Context>(dev_ctx,
                                  x_grad_v2,
                                  phi::IntArray(reduce_idx),
-                                 phi::CppTypeToDataType<T>::Type(),
+                                 CppTypeToDataType<T>::Type(),
                                  true);
 #ifdef PADDLE_WITH_HIP
         hipMemcpy(x_grad,
@@ -346,7 +346,7 @@ void CalculateXGrad(const Context& dev_ctx,
             phi::Sum<T, Context>(dev_ctx,
                                  x_grad_v2,
                                  phi::IntArray(reduce_idx),
-                                 phi::CppTypeToDataType<T>::Type(),
+                                 CppTypeToDataType<T>::Type(),
                                  true);
         // TODO(daisiming): Whether use x_grad instead.
 #ifdef PADDLE_WITH_HIP

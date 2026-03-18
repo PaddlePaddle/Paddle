@@ -71,7 +71,7 @@ static void SortDescending(const XPUContext& dev_ctx,
 
 template <typename T>
 std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
-    const phi::XPUContext& dev_ctx,
+    const XPUContext& dev_ctx,
     const DenseTensor& im_shape_slice,
     const DenseTensor& anchors,
     const DenseTensor& variances,
@@ -187,7 +187,7 @@ std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
   DenseTensor scores_filter, proposals_filter;
   // Handle the case when there is no keep index left
   if (keep_num == 0) {
-    funcs::SetConstant<phi::XPUContext, T> set_zero;
+    funcs::SetConstant<XPUContext, T> set_zero;
     proposals_filter.Resize(make_ddim({1, 4}));
     dev_ctx.template Alloc<T>(&proposals_filter);
     scores_filter.Resize(make_ddim({1, 1}));

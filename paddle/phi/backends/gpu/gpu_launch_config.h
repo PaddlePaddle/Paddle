@@ -71,7 +71,7 @@ inline int64_t RoundToPowerOfTwo(int64_t n) {
 #ifdef WITH_NV_JETSON
 // The number of threads cannot be assigned 1024 in some cases when the device
 // is nano or tx2 .
-inline void ChangeThreadNum(const phi::GPUContext& dev_ctx,
+inline void ChangeThreadNum(const GPUContext& dev_ctx,
                             int* num_thread,
                             int alternative_num_thread = 512) {
   if (dev_ctx.GetComputeCapability() == 53 ||
@@ -104,7 +104,7 @@ struct GpuLaunchConfig {
  * cuda performs better. And number of blocks should be greater (at least
  * 2x~4x) than number of SMs. Hence, SM count is took into account within
  * this function to determine the right number of threads per block. */
-inline GpuLaunchConfig GetGpuLaunchConfig1D(const phi::GPUContext& dev_ctx,
+inline GpuLaunchConfig GetGpuLaunchConfig1D(const GPUContext& dev_ctx,
                                             int64_t numel,
                                             int vec_size = 1) {
   PADDLE_ENFORCE_GE(numel,
@@ -160,7 +160,7 @@ inline GpuLaunchConfig GetGpuLaunchConfig1D(const phi::GPUContext& dev_ctx,
   return config;
 }
 
-inline GpuLaunchConfig GetGpuLaunchConfig2D(const phi::GPUContext& dev_ctx,
+inline GpuLaunchConfig GetGpuLaunchConfig2D(const GPUContext& dev_ctx,
                                             int64_t x_dim,
                                             int64_t y_dim) {
   PADDLE_ENFORCE_GT(
@@ -204,7 +204,7 @@ static inline int GetLastPow2(int n) {
   return std::max(1, n - (n >> 1));
 }
 
-inline GpuLaunchConfig GetGpuLaunchConfig3D(const phi::GPUContext& dev_ctx,
+inline GpuLaunchConfig GetGpuLaunchConfig3D(const GPUContext& dev_ctx,
                                             int num_img,
                                             int height,
                                             int width) {
@@ -235,7 +235,7 @@ inline GpuLaunchConfig GetGpuLaunchConfig3D(const phi::GPUContext& dev_ctx,
 template <typename Context>
 void LimitGridDim(const Context& dev_ctx, dim3* grid_dim) {
   auto max_grid_dim =
-      reinterpret_cast<const phi::GPUContext&>(dev_ctx).GetCUDAMaxGridDimSize();
+      reinterpret_cast<const GPUContext&>(dev_ctx).GetCUDAMaxGridDimSize();
   grid_dim->x = grid_dim->x < max_grid_dim[0] ? grid_dim->x : max_grid_dim[0];
   grid_dim->y = grid_dim->y < max_grid_dim[1] ? grid_dim->y : max_grid_dim[1];
   grid_dim->z = grid_dim->z < max_grid_dim[2] ? grid_dim->z : max_grid_dim[2];

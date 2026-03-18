@@ -22,7 +22,7 @@ namespace phi {
 namespace fusion {
 
 template <typename T>
-static void DispatchComputeImpl(const phi::XPUContext *xpu_ctx,
+static void DispatchComputeImpl(const XPUContext *xpu_ctx,
                                 const DenseTensor &x,
                                 const DenseTensor *bias,
                                 const DenseTensor &dequant_scales,
@@ -40,7 +40,7 @@ static void DispatchComputeImpl(const phi::XPUContext *xpu_ctx,
 }
 
 template <typename T>
-static void ComputeImpl(const phi::XPUContext *xpu_ctx,
+static void ComputeImpl(const XPUContext *xpu_ctx,
                         const DenseTensor &x,
                         const optional<DenseTensor> &bias,
                         const std::string &act_method,
@@ -116,7 +116,7 @@ void FusedBiasActKernel(const Context &dev_ctx,
                         float quant_max_bound,
                         float quant_min_bound,
                         DenseTensor *out) {
-  auto xpu_ctx = static_cast<const phi::XPUContext *>(&dev_ctx);
+  auto xpu_ctx = static_cast<const XPUContext *>(&dev_ctx);
   dev_ctx.template Alloc<T>(out);
   if (out->numel() == 0) return;
 

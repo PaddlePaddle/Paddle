@@ -70,7 +70,7 @@ void LayerNormGradKernel(const Context& dev_ctx,
   auto variance_tmp = variance;
   variance_tmp.Resize(var_shape);
 
-  funcs::ColwiseSum2D<phi::CPUContext, T> colwise_sum(left, right, dev_ctx);
+  funcs::ColwiseSum2D<CPUContext, T> colwise_sum(left, right, dev_ctx);
   DenseTensor x_tmp = x;
 
   DenseTensor temp;
@@ -113,7 +113,7 @@ void LayerNormGradKernel(const Context& dev_ctx,
     temp_vec.Resize(vec_shape);
     dev_ctx.template Alloc<T>(&temp_vec);
 
-    funcs::RowwiseMean2D<phi::CPUContext, T> row_mean(left, right, dev_ctx);
+    funcs::RowwiseMean2D<CPUContext, T> row_mean(left, right, dev_ctx);
 
     if (d_scale) {
       // dy_dx
