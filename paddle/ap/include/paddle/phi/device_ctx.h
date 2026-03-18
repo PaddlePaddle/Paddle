@@ -16,6 +16,7 @@
 
 #include <any>
 #include "paddle/ap/include/kernel_dispatch/device_ctx.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
 
 namespace ap::paddle {
 
@@ -37,5 +38,10 @@ class DeviceCtx : public kernel_dispatch::DeviceCtxImpl {
     return axpr::PointerValue{stream_ptr};
   }
 };
+
+template <>
+adt::Result<axpr::PointerValue> DeviceCtx<phi::CPUContext>::GetStreamAddrAsVoidPtr() {
+  return axpr::PointerValue{(void*)nullptr};
+}
 
 }  // namespace ap::paddle

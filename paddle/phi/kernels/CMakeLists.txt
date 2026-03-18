@@ -368,6 +368,10 @@ if(NOT
   list(REMOVE_ITEM kernel_cc "fusion/cpu/fused_rms_norm_quant_avx_kernel.cc")
 endif()
 
+if(NOT WITH_CINN)
+  list(REMOVE_ITEM kernel_cc "cpu/ap_variadic_kernel.cc")
+endif()
+
 file(
   GLOB kernel_xpu
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"

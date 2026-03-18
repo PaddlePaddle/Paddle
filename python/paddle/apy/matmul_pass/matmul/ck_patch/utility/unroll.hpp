@@ -1,4 +1,4 @@
-// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,16 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 #pragma once
 
-#include "all_tuning_configs.h"  // NOLINT
+#include "ck/utility/functional2.hpp"
 
-namespace ap {
+namespace ck {
 
-struct DefaultConfig {
-  static constexpr int kConfigId = 0;
-  static constexpr int kSwizzleFactor = 1;
-  static constexpr bool kBatched = false;
-};
+template <int NUnroll>
+struct unroll {
 
-}  // namespace ap
+    template <class F>
+    __host__ __device__ constexpr void operator()(F f) const {
+        ck::static_for<0, NUnroll, 1>{}(f);
+    }
+
+}; 
+
+} // namespace ck

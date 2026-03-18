@@ -193,9 +193,18 @@ struct ArgSourceHelper {
       return MakeGetterAnfExprByDimSource(dispatch_ctx,
                                           *opt_dim_source.value());
     }
-    return dim_expr.Match([&](const auto& impl) {
-      return MakeGetterAnfExprByDimExprImpl(dispatch_ctx, impl);
-    });
+    ADT_LET_CONST_REF(
+      raw_ret, 
+      dim_expr.Match([&](const auto& impl) {
+        return MakeGetterAnfExprByDimExprImpl(dispatch_ctx, impl);
+      }));
+    
+    auto* ctx = dispatch_ctx->ctx();
+    auto* data_value = &ctx->Var("DataValue").Call(*raw_ret);
+    auto* ret = &ctx->Var(ctx->NewTmpVarName());
+    *ret = data_value->Attr("cast").Call(
+          ctx->Var("DataType").Attr("const_int64"));
+    return ret;
   }
 
   adt::Result<axpr::LetVar*> MakeGetterAnfExprByDimExprImpl(

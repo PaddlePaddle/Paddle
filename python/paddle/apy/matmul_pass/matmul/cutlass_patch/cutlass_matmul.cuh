@@ -14,8 +14,17 @@
 
 #pragma once
 
+#include <cuda.h>
+#include <cuda_bf16.h>
+#include <cuda_fp16.h>
+
+#include "cutlass/cutlass.h"
+#include "cutlass/gemm_coord.h"
+#include "cutlass/layout/matrix.h"
+
 #include "cutlass/epilogue/thread/linear_combination_bias_elementwise.h"
 #include "cutlass/util/device_memory.h"
+#include "cutlass/arch/memory.h"
 
 #include "cutlass/gemm/device/gemm_universal.h"
 #include "cutlass/gemm/device/gemm_universal_with_broadcast.h"
@@ -23,9 +32,39 @@
 #include "cutlass_patch/epilogue/thread/linear_combination_unary.h"
 #include "cutlass_patch/epilogue/thread/linear_combination_variadic.h"
 #include "cutlass_patch/gemm/device/gemm_universal_with_variadic.h"
+#include "cutlass_patch/math_function.h"
+#include "cutlass_patch/batched_matrix_coord.h"
+#include "cutlass_patch/all_tuning_configs.h"
+#include "cutlass_patch/check.h"
+#include "cutlass_patch/data_type.h"
+#include "cutlass_patch/unroll.h"
 
-#include "default_config_id.h"
-#include "matmul.h"
+#include "params.h"
+
+namespace ap {
+using MatrixCoord = cutlass::BatchedMatrixCoord;
+using bfloat16 = nv_bfloat16;
+}
+
+template <typename T, int VecSize>
+using VectorType = cutlass::Array<T, VecSize>;
+
+template <int NUnroll>
+using unroll = cutlass::Unroll<NUnroll>;
+
+template <typename T, int VecSize>
+__device__ __forceinline__ auto load_vector(const T* ptr, int64_t offset, bool valid, int64_t size) {
+  using AccessType = VectorType<T, VecSize>;
+  AccessType v;
+  cutlass::arch::global_load<AccessType, sizeof(AccessType)>(v, ptr + offset, valid);
+  return v;
+}
+
+template <typename T, int VecSize>
+__device__ __forceinline__ decltype(auto)
+extract_scalar(VectorType<T, VecSize>& vec, int i) {
+    return vec[i];  
+} 
 
 namespace ap {
 
@@ -98,6 +137,25 @@ cutlass::Status SetMaxDynamicSharedMemorySize() {
   return cutlass::Status::kSuccess;
 }
 
+
+
+
+// Convert to cutlass layout
+template <bool Transposed>
+struct MatrixLayout {
+  using Type = cutlass::layout::RowMajor;
+};
+
+template <>
+struct MatrixLayout<true> {
+  using Type = cutlass::layout::ColumnMajor;
+};
+
+
+template <typename T, int N>
+using Array = cutlass::Array<T, N>;
+
+
 template <typename ElementT,
           typename ElementComputeT,
           template <typename T>
@@ -107,22 +165,22 @@ template <typename ElementT,
           int ConfigId = DefaultConfig::kConfigId,
           int SwizzleFactor = DefaultConfig::kSwizzleFactor,
           bool Batched = DefaultConfig::kBatched>
-void CutlassMatmulAddVariadic(
+void MatmulAddVariadic(
     const GemmEpilogueParams &params,
     const typename VariadicFunctor<ElementComputeT>::Arguments &variadic_args) {
   using ElementAccumulator =
-      typename CutlassDataType<ElementComputeT>::Type;  // <- data type of
+      typename cutlass::CutlassDataType<ElementComputeT>::Type;  // <- data type of
                                                         // accumulator
   using ElementComputeEpilogue =
       ElementAccumulator;  // <- data type of epilogue operations
   using ElementInputA =
-      typename CutlassDataType<ElementT>::Type;  // <- data type of elements in
+      typename cutlass::CutlassDataType<ElementT>::Type;  // <- data type of elements in
                                                  // input matrix A
   using ElementInputB =
-      typename CutlassDataType<ElementT>::Type;  // <- data type of elements in
+      typename cutlass::CutlassDataType<ElementT>::Type;  // <- data type of elements in
                                                  // input matrix B
   using ElementOutput =
-      typename CutlassDataType<ElementT>::Type;  // <- data type of elements in
+      typename cutlass::CutlassDataType<ElementT>::Type;  // <- data type of elements in
                                                  // output matrix D
 
   constexpr int AlignC = AlignB;
@@ -202,15 +260,17 @@ void CutlassMatmulAddVariadic(
 
   GemmFunc device_gemm;
 
+  cudaStream_t* stream_ptr = reinterpret_cast<cudaStream_t*>(params.stream_ptr);
+
   CHECK_CUTLASS(device_gemm.can_implement(arguments));
-  CHECK_CUTLASS(device_gemm.initialize(arguments, workspace, params.stream));
+  CHECK_CUTLASS(device_gemm.initialize(arguments, workspace, *stream_ptr));
 
   //
   // Run the GEMM
   //
-  CHECK_CUTLASS(device_gemm(params.stream));
+  CHECK_CUTLASS(device_gemm(*stream_ptr));
 #if AP_ENABLE_DEBUG
-  CHECK_CUDA(cudaStreamSynchronize(params.stream));
+  CHECK_CUDA(cudaStreamSynchronize(*stream_ptr));
 #endif
 }
 

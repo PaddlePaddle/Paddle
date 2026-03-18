@@ -22,12 +22,16 @@ struct BatchedMatrixCoord {
   int batch;
   int row;
   int column;
+  bool is_valid;
 
   CUTLASS_HOST_DEVICE
-  BatchedMatrixCoord() : batch(0), row(0), column(0) {}
+  BatchedMatrixCoord() : batch(0), row(0), column(0), is_valid(false) {}
 
   CUTLASS_HOST_DEVICE
-  BatchedMatrixCoord(int b, int r, int c) : batch(b), row(r), column(c) {}
+  BatchedMatrixCoord(int b, int r, int c) : batch(b), row(r), column(c), is_valid(true) {}
+
+  CUTLASS_HOST_DEVICE
+  BatchedMatrixCoord(int b, int r, int c, bool valid) : batch(b), row(r), column(c), is_valid(valid) {}
 };
 
 };  // namespace cutlass

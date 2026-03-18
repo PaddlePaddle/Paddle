@@ -360,6 +360,8 @@ class RightDownSpiderAddAccessTopoPass(access_topo_drr.DrrPass):
 @access_topo_drr.register_drr_pass("expand_up_spider", tag="default")
 class ExpandUpSpiderAccessTopoPass(access_topo_drr.DrrPass):
     def source_pattern(self, o, t):
+        o.shape_op = o.ap_native_op("pd_op.full_int_array")
+        o.shape_op([], [t.input2])
         o.expand = o.ap_native_op("pd_op.expand")
         o.expand([t.input1, t.input2], [t.expanded_input])
         o.up_spider = o.ap_native_op("ap_op.up_spider")
