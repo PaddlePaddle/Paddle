@@ -110,8 +110,8 @@ __global__ void LogsumexpWarpImpl(const Context& dev_ctx,
   const int thread_id = threadIdx.x;
   const int step = num_thread_group * RowsPerThread;
 
-  using LoadType = phi::AlignedVector<SourceType, VecSize>;
-  using StoreType = phi::AlignedVector<SourceType, RowsPerThread>;
+  using LoadType = AlignedVector<SourceType, VecSize>;
+  using StoreType = AlignedVector<SourceType, RowsPerThread>;
 
   LoadType load_vec;
   StoreType store_vec;

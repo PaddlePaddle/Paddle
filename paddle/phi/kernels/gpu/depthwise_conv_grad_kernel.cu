@@ -40,8 +40,10 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
 
   if (!input_grad && !filter_grad) return;
   // 0-size
-  if (input.numel() == 0) {
-    if (input_grad) dev_ctx.template Alloc<T>(input_grad);
+  if (input.numel() == 0 || filter.numel() == 0) {
+    if (input_grad) {
+      Full<T, Context>(dev_ctx, input_grad->dims(), 0, input_grad);
+    }
     if (filter_grad) {
       Full<T, Context>(dev_ctx, filter_grad->dims(), 0, filter_grad);
     }

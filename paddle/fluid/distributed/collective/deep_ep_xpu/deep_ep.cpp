@@ -84,6 +84,8 @@ Buffer::Buffer(int rank,
       reinterpret_cast<paddle::distributed::ProcessGroupBKCL*>(pg)
           ->GetDeviceContext(place, true));
 
+  ep_runtime = std::make_unique<DeepEPBuffer>(comm_ctx->GetBKCLComm());
+
   VLOG(3) << "DeepEP buffer device_id " << device_id << " context_ring_id "
           << context_ring_id << " comm_stream "
           << reinterpret_cast<void*>(comm_stream) << " compute_stream "
@@ -283,8 +285,7 @@ Buffer::intranode_dispatch(
   // For int8 dispatch, the corresponding combine would be bf16,
   // so we must init buffer with bf16 here to avoid buffer overflow of combine.
   if (!init_normal_buffer) {
-    ret = bkcl_init_normal_buffer(
-        comm_ctx->GetBKCLComm(), hidden_size, num_ranks, BKCL_BFLOAT16);
+    ret = ep_runtime->init_normal_buffer(hidden_size, num_ranks, BKCL_BFLOAT16);
     EP_HOST_ASSERT(ret == 0 && "bkcl_init_normal_buffer failed");
     init_normal_buffer = true;
   }
@@ -330,23 +331,23 @@ Buffer::intranode_dispatch(
           {num_tokens, num_ranks}, phi::DataType::INT32, x.place()));
 
   int num_recv_tokens =
-      bkcl_notify_dispatch_standard_with_num_recv_tokens_per_expert_list_cpu(
-          comm_ctx->GetBKCLComm(),
-          x.data_ptr(),
-          curr_topk_idx->data_ptr<int>(),
-          curr_topk_weights->data_ptr<float>(),
-          num_scales,
-          hidden_size,
-          num_tokens,
-          num_topk,
-          curr_num_experts,
-          d_num_recv_tokens_per_expert_list
-              .data_ptr<int>(),  // should not be nullptr
-          h_num_recv_tokens_per_expert_list.data(),
-          ToBKCLDataType(x.dtype()),
-          use_int8,
-          async ? reinterpret_cast<XPUStream>(comm_stream)
-                : reinterpret_cast<XPUStream>(compute_stream));
+      ep_runtime
+          ->notify_dispatch_standard_with_num_recv_tokens_per_expert_list_cpu(
+              x.data_ptr(),
+              curr_topk_idx->data_ptr<int>(),
+              curr_topk_weights->data_ptr<float>(),
+              num_scales,
+              hidden_size,
+              num_tokens,
+              num_topk,
+              curr_num_experts,
+              d_num_recv_tokens_per_expert_list
+                  .data_ptr<int>(),  // should not be nullptr
+              h_num_recv_tokens_per_expert_list.data(),
+              ToBKCLDataType(x.dtype()),
+              use_int8,
+              async ? reinterpret_cast<XPUStream>(comm_stream)
+                    : reinterpret_cast<XPUStream>(compute_stream));
   // num_tokens maybe 0, and num_recv_tokens also can be 0.
   EP_HOST_ASSERT(num_recv_tokens >= 0 &&
                  "bkcl_notify_dispatch_standard failed");
@@ -385,8 +386,7 @@ Buffer::intranode_dispatch(
           << " curr_topk_idx dim " << curr_topk_idx->dim()
           << " curr_topk_weights dim " << curr_topk_weights->dim();
 
-  ret = bkcl_normal_dispatch_standard(
-      comm_ctx->GetBKCLComm(),
+  ret = ep_runtime->normal_dispatch_standard(
       x.data_ptr(),  // sendbuf
       x_scales_ptr,
       curr_topk_idx->data_ptr<int>(),
@@ -469,8 +469,7 @@ Buffer::intranode_combine(
 
   int ret = BKCL_SUCCESS;
   if (!init_normal_buffer) {
-    ret = bkcl_init_normal_buffer(
-        comm_ctx->GetBKCLComm(), hidden_size, num_ranks, BKCL_BFLOAT16);
+    ret = ep_runtime->init_normal_buffer(hidden_size, num_ranks, BKCL_BFLOAT16);
     EP_HOST_ASSERT(ret == 0 && "bkcl_init_normal_buffer failed");
     init_normal_buffer = true;
   }
@@ -519,8 +518,7 @@ Buffer::intranode_combine(
           << topk_weights_ptr << " combined_topk_weights_ptr "
           << combined_topk_weights_ptr;
 
-  ret = bkcl_normal_combine_standard(
-      comm_ctx->GetBKCLComm(),
+  ret = ep_runtime->normal_combine_standard(
       x.data_ptr(),
       topk_weights_ptr,
       recv_x.data_ptr(),
@@ -631,8 +629,7 @@ Buffer::internode_dispatch(
   // For int8 dispatch, the corresponding combine would be bf16,
   // so we must init buffer with bf16 here to avoid buffer overflow of combine.
   if (!init_normal_buffer) {
-    ret = bkcl_init_normal_buffer(
-        comm_ctx->GetBKCLComm(), hidden_size, num_ranks, BKCL_BFLOAT16);
+    ret = ep_runtime->init_normal_buffer(hidden_size, num_ranks, BKCL_BFLOAT16);
     EP_HOST_ASSERT(ret == 0 && "bkcl_init_normal_buffer failed");
     init_normal_buffer = true;
   }
@@ -675,23 +672,23 @@ Buffer::internode_dispatch(
   auto recv_gbl_rank_prefix_sum = curr_topk_idx;
 
   int num_recv_tokens =
-      bkcl_notify_dispatch_standard_with_num_recv_tokens_per_expert_list_cpu(
-          comm_ctx->GetBKCLComm(),
-          x.data_ptr(),  // x
-          curr_topk_idx->data_ptr<int>(),
-          curr_topk_weights->data_ptr<float>(),  // topk_weight
-          num_scales,
-          hidden_size,
-          num_tokens,
-          num_topk,
-          curr_num_experts,
-          d_num_recv_tokens_per_expert_list
-              .data_ptr<int>(),  // should not be nullptr
-          h_num_recv_tokens_per_expert_list.data(),
-          ToBKCLDataType(x.dtype()),
-          use_int8,
-          async ? reinterpret_cast<XPUStream>(comm_stream)
-                : reinterpret_cast<XPUStream>(compute_stream));
+      ep_runtime
+          ->notify_dispatch_standard_with_num_recv_tokens_per_expert_list_cpu(
+              x.data_ptr(),  // x
+              curr_topk_idx->data_ptr<int>(),
+              curr_topk_weights->data_ptr<float>(),  // topk_weight
+              num_scales,
+              hidden_size,
+              num_tokens,
+              num_topk,
+              curr_num_experts,
+              d_num_recv_tokens_per_expert_list
+                  .data_ptr<int>(),  // should not be nullptr
+              h_num_recv_tokens_per_expert_list.data(),
+              ToBKCLDataType(x.dtype()),
+              use_int8,
+              async ? reinterpret_cast<XPUStream>(comm_stream)
+                    : reinterpret_cast<XPUStream>(compute_stream));
   // num_tokens maybe 0, and num_recv_tokens also can be 0.
   EP_HOST_ASSERT(num_recv_tokens >= 0 &&
                  "bkcl_notify_dispatch_standard failed");
@@ -743,8 +740,7 @@ Buffer::internode_dispatch(
           << " num_tokens " << num_tokens << " curr_num_experts "
           << curr_num_experts << " num_recv_tokens " << num_recv_tokens;
 
-  ret = bkcl_normal_dispatch_standard(
-      comm_ctx->GetBKCLComm(),
+  ret = ep_runtime->normal_dispatch_standard(
       x.data_ptr(),  // sendbuf
       x_scales_ptr,
       curr_topk_idx->data_ptr<int>(),
@@ -835,8 +831,7 @@ Buffer::internode_combine(
 
   int ret = BKCL_SUCCESS;
   if (!init_normal_buffer) {
-    ret = bkcl_init_normal_buffer(
-        comm_ctx->GetBKCLComm(), hidden_size, num_ranks, BKCL_BFLOAT16);
+    ret = ep_runtime->init_normal_buffer(hidden_size, num_ranks, BKCL_BFLOAT16);
     EP_HOST_ASSERT(ret == 0 && "bkcl_init_normal_buffer failed");
     init_normal_buffer = true;
   }
@@ -885,8 +880,7 @@ Buffer::internode_combine(
           << topk_weights_ptr << " combined_topk_weights_ptr "
           << combined_topk_weights_ptr;
 
-  ret = bkcl_normal_combine_standard(
-      comm_ctx->GetBKCLComm(),
+  ret = ep_runtime->normal_combine_standard(
       x.data_ptr(),
       topk_weights_ptr,
       recv_x.data_ptr(),
@@ -989,11 +983,8 @@ Buffer::low_latency_dispatch(
   int num_local_experts = num_experts / num_ranks;
 
   if (!init_low_latency_buffer) {
-    int ret = bkcl_init_low_latency_buffer(comm_ctx->GetBKCLComm(),
-                                           num_max_dispatch_tokens_per_rank,
-                                           hidden_size,
-                                           num_ranks,
-                                           num_experts);
+    int ret = ep_runtime->init_low_latency_buffer(
+        num_max_dispatch_tokens_per_rank, hidden_size, num_ranks, num_experts);
     EP_HOST_ASSERT(ret == 0 && "bkcl_init_low_latency_buffer failed");
     init_low_latency_buffer = true;
   }
@@ -1048,8 +1039,8 @@ Buffer::low_latency_dispatch(
   const int* h_recv_count_ptr = nullptr;
   void* recv_count_ptr = nullptr;
   std::function<void()> recv_hook = [=]() {};
-  std::tie(recv_count_ptr, recv_hook) = bkcl_low_latency_dispatch(
-      comm_ctx->GetBKCLComm(),
+
+  std::tie(recv_count_ptr, recv_hook) = ep_runtime->low_latency_dispatch(
       const_cast<void*>(x.data_ptr()),
       num_tokens,
       const_cast<int*>(topk_idx.data_ptr<int>()),
@@ -1119,11 +1110,8 @@ Buffer::low_latency_combine(const deep_ep::detail::Tensor& x,
   auto num_combined_tokens = static_cast<int>(topk_weights.size(0));
 
   if (!init_low_latency_buffer) {
-    int ret = bkcl_init_low_latency_buffer(comm_ctx->GetBKCLComm(),
-                                           num_max_dispatch_tokens_per_rank,
-                                           hidden_size,
-                                           num_ranks,
-                                           num_experts);
+    int ret = ep_runtime->init_low_latency_buffer(
+        num_max_dispatch_tokens_per_rank, hidden_size, num_ranks, num_experts);
     EP_HOST_ASSERT(ret == 0 && "bkcl_init_low_latency_buffer failed");
     init_low_latency_buffer = true;
   }
@@ -1150,8 +1138,7 @@ Buffer::low_latency_combine(const deep_ep::detail::Tensor& x,
   }
 
   std::function<void()> recv_hook = [=]() {};
-  recv_hook = bkcl_low_latency_combine(
-      comm_ctx->GetBKCLComm(),
+  recv_hook = ep_runtime->low_latency_combine(
       const_cast<void*>(x.data_ptr()),
       const_cast<int*>(topk_idx.data_ptr<int>()),
       const_cast<float*>(topk_weights.data_ptr<float>()),

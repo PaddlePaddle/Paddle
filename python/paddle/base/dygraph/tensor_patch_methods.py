@@ -136,6 +136,7 @@ def monkey_patch_tensor():
             '__cuda_array_interface__',
             'itemsize',
             'is_cuda',
+            'is_cpu',
         ]
         param_keys = ['stop_gradient', 'trainable']
         if isinstance(self, EagerParamBase):
@@ -1193,6 +1194,10 @@ def monkey_patch_tensor():
     def is_cuda(self: Tensor) -> bool:
         return self.place.is_gpu_place()
 
+    @property
+    def is_cpu(self: Tensor) -> bool:
+        return self.place.is_cpu_place()
+
     @framework.dygraph_only
     def pin_memory(self: Tensor, blocking: bool = True) -> Tensor:
         if (
@@ -1356,6 +1361,58 @@ def monkey_patch_tensor():
                 [3., 3.])
         """
         return _C_ops.sparse_coalesce(self)
+
+    @framework.dygraph_only
+    def sparse_mask(
+        self: Tensor, mask: Tensor, name: str | None = None
+    ) -> Tensor:
+        r"""
+         constructs a sparse tensor by extracting values from a dense source at the unique, sorted indices defined by a sparse mask.
+
+        Args:
+            self (Tensor): The input dense tensor (will be filtered).
+            mask (Tensor): Sparse tensor (SparseCooTensor or SparseCsrTensor) used as mask.
+            name (str, optional): Operation name (ignored in this implementation).
+
+        Returns:
+            SparseTensor: A sparse tensor with the same indices as `mask`,
+            containing values from `self` at mask positions.
+
+        Examples:
+            .. code-block:: pycon
+
+                >>> import paddle
+                >>> paddle.set_device('cpu')
+                >>> paddle.seed(2024)
+
+                >>> crows = [0, 2, 3, 5]
+                >>> cols = [1, 3, 2, 0, 1]
+                >>> values = [1.0, 2.0, 3.0, 4.0, 5.0]
+                >>> dense_shape = [3, 4]
+                >>> csr = paddle.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
+                >>> x = paddle.rand(dense_shape)
+                >>> out = x.sparse_mask(csr)
+                >>> print(out)
+                Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
+                crows=[0, 2, 3, 5],
+                cols=[1, 3, 2, 0, 1],
+                values=[0.23659813, 0.08467803, 0.64152628, 0.66596609, 0.90394485])
+
+                >>> paddle.seed(2024)
+                >>> indices = [[0, 1, 2], [1, 2, 0]]
+                >>> values = [1.0, 2.0, 3.0]
+                >>> dense_shape = [3, 3]
+                >>> coo = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape)
+                >>> x = paddle.rand(dense_shape)
+                >>> out = x.sparse_mask(coo)
+                >>> print(out)
+                Tensor(shape=[3, 3], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
+                indices=[[0, 1, 2],
+                         [1, 2, 0]],
+                values=[0.23659813, 0.40340215, 0.64152628])
+
+        """
+        return _C_ops.sparse_mask_as(self, mask)
 
     @framework.dygraph_only
     def __dlpack_device__(self):
@@ -1637,6 +1694,7 @@ def monkey_patch_tensor():
         ("clear_grad", clear_grad),
         ("inplace_version", inplace_version),
         ("is_cuda", is_cuda),
+        ("is_cpu", is_cpu),
         ("gradient", gradient),
         ("apply_", apply_),
         ("apply", apply),
@@ -1656,6 +1714,7 @@ def monkey_patch_tensor():
         ("to_dense", to_dense),
         ("to_sparse_coo", to_sparse_coo),
         ("coalesce", coalesce),
+        ("sparse_mask", sparse_mask),
         ("_set_grad_ivar", _set_grad_ivar),
         ("value", value),
         ("cpu", cpu),

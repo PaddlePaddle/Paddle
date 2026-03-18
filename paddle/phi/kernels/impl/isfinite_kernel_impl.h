@@ -47,8 +47,6 @@ struct is_complex64_or_complex128
                                  std::is_same<T, phi::complex128>::value> {};
 
 namespace phi {
-using Tensor = DenseTensor;
-
 /*
 Codes for isfinite/isinf/isnan as constructed as below:
 1. A general template,

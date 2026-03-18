@@ -56,7 +56,7 @@ inline std::string MemoryDebugString(const DenseTensor& t) {
 }
 
 template <typename T>
-void AllocWithDebugInfo(const phi::GPUContext& dev_ctx,
+void AllocWithDebugInfo(const GPUContext& dev_ctx,
                         const std::string& info,
                         DenseTensor* t) {
   dev_ctx.Alloc<T>(t, t->numel() * sizeof(T));
@@ -81,7 +81,7 @@ inline std::string TensorDebugString(const DenseTensor* t,
   return ss.str();
 }
 
-inline void WaitWithDebugInfo(const phi::GPUContext& dev_ctx) {
+inline void WaitWithDebugInfo(const GPUContext& dev_ctx) {
   if (VLOG_IS_ON(5)) {
     dev_ctx.Wait();
     VLOG(5) << "[Flash attn Synchronize] ";
@@ -109,7 +109,7 @@ struct TernaryAddFunctor {
 template <typename T>
 struct GateAttentionConfig {
  public:
-  const phi::GPUContext& dev_ctx;
+  const GPUContext& dev_ctx;
 
   bool merge_qkv;
   bool has_gating;
@@ -137,7 +137,7 @@ struct GateAttentionConfig {
   DDim qktv_out_dims;
   DDim gate_out_dims;
 
-  GateAttentionConfig(const phi::GPUContext& dev_ctx,
+  GateAttentionConfig(const GPUContext& dev_ctx,
                       const DenseTensor* query,
                       const DenseTensor* key,
                       const DenseTensor* query_weight,
@@ -320,7 +320,7 @@ struct GateAttentionConfig {
 template <typename T>
 struct GateAttentionGradConfig : public GateAttentionConfig<T> {
  public:
-  GateAttentionGradConfig(const phi::GPUContext& dev_ctx,
+  GateAttentionGradConfig(const GPUContext& dev_ctx,
                           const DenseTensor* query,
                           const DenseTensor* key,
                           const DenseTensor* query_weight,
@@ -395,7 +395,7 @@ struct GateAttentionGradConfig : public GateAttentionConfig<T> {
 template <typename T>
 class FMHAGateRef {
  public:
-  FMHAGateRef(const phi::GPUContext& dev_ctx, bool merge_qkv)
+  FMHAGateRef(const GPUContext& dev_ctx, bool merge_qkv)
       : dev_ctx_(dev_ctx), merge_qkv_(merge_qkv) {}
 
   void ComputeForward(const DenseTensor* nonbatched_bias,
@@ -830,7 +830,7 @@ class FMHAGateRef {
 
     CBLAS_TRANSPOSE cblas_trans_a = trans_a ? CblasTrans : CblasNoTrans;
     CBLAS_TRANSPOSE cblas_trans_b = trans_b ? CblasTrans : CblasNoTrans;
-    auto blas = funcs::GetBlas<phi::GPUContext, T>(dev_ctx_);
+    auto blas = funcs::GetBlas<GPUContext, T>(dev_ctx_);
     blas.BatchedGEMM(cblas_trans_a,
                      cblas_trans_b,
                      m,
@@ -846,14 +846,14 @@ class FMHAGateRef {
                      stride_b);
   }
 
-  const phi::GPUContext& dev_ctx_;
+  const GPUContext& dev_ctx_;
   bool merge_qkv_;
 };
 
 template <typename T>
 class FlashAttnWithGating {
  public:
-  FlashAttnWithGating(const phi::GPUContext& dev_ctx, bool merge_qkv)
+  FlashAttnWithGating(const GPUContext& dev_ctx, bool merge_qkv)
       : dev_ctx_(dev_ctx), merge_qkv_(merge_qkv) {}
 
   void ComputeForward(const DenseTensor* nonbatched_bias,
@@ -1151,7 +1151,7 @@ class FlashAttnWithGating {
   DenseTensor CreateWorkspace(uint64_t workspace_size) {
     DenseTensor workspace;
     if (workspace_size > 0) {
-      workspace = Empty<float, phi::GPUContext>(
+      workspace = Empty<float, GPUContext>(
           dev_ctx_, {int64_t(workspace_size / sizeof(float))});
     }
     VLOG(5) << "Allocate workspace: workspace_size=" << workspace_size;
@@ -1187,13 +1187,13 @@ class FlashAttnWithGating {
     fa_dropout_prob_ = 0.0f;
     GenerateSeedAndOffset(fa_batch_size_, fa_num_heads_);
 
-    phi::ArangeNullaryKernel<int32_t, phi::GPUContext>(
+    phi::ArangeNullaryKernel<int32_t, GPUContext>(
         dev_ctx_,
         0,
         (fa_batch_size_ + 1) * fa_max_seqlen_q_,
         fa_max_seqlen_q_,
         cu_seq_q);
-    phi::ArangeNullaryKernel<int32_t, phi::GPUContext>(
+    phi::ArangeNullaryKernel<int32_t, GPUContext>(
         dev_ctx_,
         0,
         (fa_batch_size_ + 1) * fa_max_seqlen_k_,
@@ -1245,7 +1245,7 @@ class FlashAttnWithGating {
                            dev_ctx_.stream()>>>(numel, scale, ptr);
   }
 
-  const phi::GPUContext& dev_ctx_;
+  const GPUContext& dev_ctx_;
   bool merge_qkv_;
 
   int fa_batch_size_;

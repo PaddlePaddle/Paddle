@@ -38,7 +38,7 @@ namespace funcs {
 // NOTE: When use GPU, the memcpy is async. To sync memcpy, please invoke
 // `dev_ctx.Wait()`.
 template <typename T>
-inline void StridedMemcpy(const phi::DeviceContext& dev_ctx,
+inline void StridedMemcpy(const DeviceContext& dev_ctx,
                           const T* src,
                           const DDim& src_stride,
                           const DDim& dst_dim,

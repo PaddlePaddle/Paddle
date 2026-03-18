@@ -46,7 +46,7 @@ struct RangeInitFunctor {
 };
 
 template <typename T>
-static void SortDescending(const phi::GPUContext &dev_ctx,
+static void SortDescending(const GPUContext &dev_ctx,
                            const DenseTensor &value,
                            DenseTensor *value_out,
                            DenseTensor *index_out) {
@@ -54,7 +54,7 @@ static void SortDescending(const phi::GPUContext &dev_ctx,
   DenseTensor index_in_t;
   index_in_t.Resize({num});
   int *idx_in = dev_ctx.Alloc<int>(&index_in_t);
-  ForRange<phi::GPUContext> for_range(dev_ctx, num);
+  ForRange<GPUContext> for_range(dev_ctx, num);
   for_range(RangeInitFunctor{0, 1, idx_in});
 
   index_out->Resize({num});
@@ -289,7 +289,7 @@ static __global__ void NMSKernel(const int n_boxes,
 }
 
 template <typename T>
-static void NMS(const phi::GPUContext &dev_ctx,
+static void NMS(const GPUContext &dev_ctx,
                 const DenseTensor &proposals,
                 const DenseTensor &sorted_indices,
                 const T nms_threshold,

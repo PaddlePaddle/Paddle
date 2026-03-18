@@ -69,12 +69,16 @@ __global__ static void ForRangeElemwiseOpLargeSize(Function func,
 }
 
 template <>
-struct ForRange<phi::GPUContext> {
-  ForRange(const phi::GPUContext& dev_ctx, size_t limit)
+struct ForRange<GPUContext> {
+  ForRange(const GPUContext& dev_ctx, size_t limit)
       : dev_ctx_(dev_ctx), limit_(limit) {}
 
   template <typename Function>
   inline void operator()(Function func) const {
+    // Handle zero-size case: early return to avoid invalid CUDA kernel launch
+    if (limit_ == 0) {
+      return;
+    }
 #if WITH_NV_JETSON
     // JETSON_NANO will throw core dump when threads > 128
     int num_thread = 256;
@@ -101,7 +105,7 @@ struct ForRange<phi::GPUContext> {
     }
   }
 
-  const phi::GPUContext& dev_ctx_;
+  const GPUContext& dev_ctx_;
   size_t limit_;
 };
 
