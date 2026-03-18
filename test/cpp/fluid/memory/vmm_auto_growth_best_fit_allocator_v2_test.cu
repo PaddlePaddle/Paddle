@@ -351,6 +351,159 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, SetBlockRemapEventRejectsUnknownPtr) {
       reinterpret_cast<void*>(0x1), nullptr, nullptr));
 }
 
+TEST(VMMAutoGrowthBestFitAllocatorV2, GrowExactHandleMultipleNoSplit) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kTransient);
+
+  // Request exactly 1 handle_size — the bottom allocator returns the same
+  // amount, so grow-split should produce NO remaining FREE block.
+  auto allocation = allocator.Allocate(underlying->handle_size());
+  ASSERT_NE(allocation, nullptr);
+
+  EXPECT_EQ(allocator.all_blocks_.size(), 1UL);
+  EXPECT_EQ(allocator.all_blocks_.front().type_, BlockType::kActive);
+  EXPECT_EQ(allocator.all_blocks_.front().size_, underlying->handle_size());
+  EXPECT_EQ(allocator.free_blocks_.size(), 0UL);
+  EXPECT_EQ(allocator.allocated_blocks_.size(), 1UL);
+}
+
+TEST(VMMAutoGrowthBestFitAllocatorV2, AlignmentRoundsUpRequestedSize) {
+  auto underlying = CreateUnderlyingAllocator();
+  const size_t alignment = 512;
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, alignment, phi::GPUPlace(), PoolType::kTransient);
+
+  // Request 100 bytes with alignment=512 → AlignedSize(100,512) = 512.
+  auto allocation = allocator.Allocate(100);
+  ASSERT_NE(allocation, nullptr);
+
+  // The returned allocation size must be the aligned 512, not 100.
+  EXPECT_EQ(allocation->size(), 512UL);
+
+  // The ACTIVE block in all_blocks_ should also be 512.
+  auto it = allocator.all_blocks_.begin();
+  ASSERT_EQ(it->type_, BlockType::kActive);
+  EXPECT_EQ(it->size_, 512UL);
+}
+
+TEST(VMMAutoGrowthBestFitAllocatorV2, ExactFitReuseNoSplit) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kTransient);
+
+  // Allocate and free one handle — creates one FREE block of handle_size.
+  auto allocation = allocator.Allocate(underlying->handle_size());
+  ASSERT_NE(allocation, nullptr);
+  auto* original_ptr = allocation->ptr();
+  allocation.reset();
+  ASSERT_EQ(allocator.free_blocks_.size(), 1UL);
+
+  // Re-allocate exactly the same size — exact fit, no split needed.
+  auto reused = allocator.Allocate(underlying->handle_size());
+  ASSERT_NE(reused, nullptr);
+  EXPECT_EQ(reused->ptr(), original_ptr);
+
+  // Only one block: ACTIVE, no FREE remainder.
+  EXPECT_EQ(allocator.all_blocks_.size(), 1UL);
+  EXPECT_EQ(allocator.all_blocks_.front().type_, BlockType::kActive);
+  EXPECT_EQ(allocator.free_blocks_.size(), 0UL);
+}
+
+TEST(VMMAutoGrowthBestFitAllocatorV2, AllocFreeCycleConsistency) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kTransient);
+
+  // Perform several alloc/free cycles and verify invariants after each.
+  for (int round = 0; round < 3; ++round) {
+    auto a1 = allocator.Allocate(underlying->handle_size());
+    auto a2 = allocator.Allocate(underlying->handle_size());
+    ASSERT_NE(a1, nullptr);
+    ASSERT_NE(a2, nullptr);
+    EXPECT_EQ(allocator.allocated_blocks_.size(), 2UL);
+
+    a1.reset();
+    a2.reset();
+    // After freeing all, adjacent blocks merge — should be exactly 1 FREE.
+    EXPECT_EQ(allocator.allocated_blocks_.size(), 0UL);
+    EXPECT_EQ(allocator.free_blocks_.size(), 1UL);
+
+    size_t total_free = 0;
+    for (const auto& block : allocator.all_blocks_) {
+      EXPECT_EQ(block.type_, BlockType::kFree);
+      total_free += block.size_;
+    }
+    EXPECT_EQ(total_free, underlying->handle_size() * 2);
+  }
+}
+
+TEST(VMMAutoGrowthBestFitAllocatorV2, FreeBlockTooSmallFallsBackToGrow) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kTransient);
+
+  // Create a small free block (handle_size).
+  auto small = allocator.Allocate(underlying->handle_size());
+  ASSERT_NE(small, nullptr);
+  small.reset();
+  ASSERT_EQ(allocator.free_blocks_.size(), 1UL);
+
+  // Request 2*handle_size — free block is too small, must grow.
+  auto large = allocator.Allocate(underlying->handle_size() * 2);
+  ASSERT_NE(large, nullptr);
+
+  // The old free block should still exist, and a new block was grown.
+  EXPECT_EQ(allocator.free_blocks_.size(), 1UL);
+  EXPECT_EQ(allocator.allocated_blocks_.size(), 1UL);
+
+  // Verify total layout: 1 FREE (old) + 1 ACTIVE (new large).
+  size_t active_count = 0;
+  size_t free_count = 0;
+  for (const auto& block : allocator.all_blocks_) {
+    if (block.type_ == BlockType::kActive) {
+      ++active_count;
+      EXPECT_EQ(block.size_, underlying->handle_size() * 2);
+    } else if (block.type_ == BlockType::kFree) {
+      ++free_count;
+      EXPECT_EQ(block.size_, underlying->handle_size());
+    }
+  }
+  EXPECT_EQ(active_count, 1UL);
+  EXPECT_EQ(free_count, 1UL);
+}
+
+TEST(VMMAutoGrowthBestFitAllocatorV2, ThreeWayMerge) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kTransient);
+
+  // Allocate 3 consecutive handle-sized blocks.
+  auto a = allocator.Allocate(underlying->handle_size());
+  auto b = allocator.Allocate(underlying->handle_size());
+  auto c = allocator.Allocate(underlying->handle_size());
+  ASSERT_NE(a, nullptr);
+  ASSERT_NE(b, nullptr);
+  ASSERT_NE(c, nullptr);
+  ASSERT_EQ(allocator.all_blocks_.size(), 3UL);
+
+  // Free first and last — creates 2 non-adjacent FREE blocks.
+  a.reset();
+  c.reset();
+  EXPECT_EQ(allocator.free_blocks_.size(), 2UL);
+
+  // Free middle — TryMerge merges prev+it (left), then merged+next (right)
+  // into a single block spanning all 3 handles.
+  b.reset();
+  EXPECT_EQ(allocator.all_blocks_.size(), 1UL);
+  EXPECT_EQ(allocator.free_blocks_.size(), 1UL);
+
+  const auto& merged = allocator.all_blocks_.front();
+  EXPECT_EQ(merged.type_, BlockType::kFree);
+  EXPECT_EQ(merged.size_, underlying->handle_size() * 3);
+  EXPECT_EQ(merged.parts_.size(), 3UL);
+}
+
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle
