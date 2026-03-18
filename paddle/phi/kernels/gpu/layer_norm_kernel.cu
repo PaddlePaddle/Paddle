@@ -21,9 +21,11 @@
 #endif
 #include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
 #include "paddle/phi/kernels/funcs/layer_norm_util.h"
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/kernels/gpu/rms_norm_cuda_kernel.h"
-COMMON_DECLARE_bool(use_fast_math);
 COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
+#endif
+COMMON_DECLARE_bool(use_fast_math);
 
 namespace phi {
 

@@ -23,7 +23,9 @@
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
 #include "paddle/phi/kernels/funcs/fast_ln_v2.h"
 #endif
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/kernels/gpu/rms_norm_cuda_kernel.h"
+#endif
 
 namespace phi {
 enum class LayerNormGadKernelVariant { FAST_LN_V2, GENERIC };

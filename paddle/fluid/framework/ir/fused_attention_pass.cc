@@ -1045,7 +1045,7 @@ ir::Graph* FusedAttentionsPass::ForwardHandlerHelper(
         pre_layer_norm_variance_node);
     fused_attention_op_desc.SetAttr(
         "epsilon",
-        PADDLE_GET_CONST(float,
+        PADDLE_GET_CONST(double,
                          pre_layer_norm_op_node->Op()->GetAttr("epsilon")));
 
     fused_attention_op_desc.SetAttr("transpose_qkv_wb", true);
@@ -1510,7 +1510,7 @@ ir::Graph* FusedAttentionsPass::BackwardHandlerHelper(
     fused_attention_grad_op_desc.SetAttr(
         "epsilon",
         PADDLE_GET_CONST(
-            float, pre_layer_norm_grad_op_node->Op()->GetAttr("epsilon")));
+            double, pre_layer_norm_grad_op_node->Op()->GetAttr("epsilon")));
     std::vector<int> shape =
         PADDLE_GET_CONST(std::vector<int>,
                          fuse_qkv_reshape_grad_op_node->Op()->GetAttr("shape"));
@@ -1523,7 +1523,7 @@ ir::Graph* FusedAttentionsPass::BackwardHandlerHelper(
     fused_attention_grad_op_desc.SetAttr(
         "ln_epsilon",
         PADDLE_GET_CONST(
-            float, pre_layer_norm_grad_op_node->Op()->GetAttr("epsilon")));
+            double, pre_layer_norm_grad_op_node->Op()->GetAttr("epsilon")));
     fused_attention_grad_op_desc.SetAttr("ring_id", ring_id);
 
     GET_IR_NODE_FROM_SUBGRAPH(qkv_matmul_grad_x_grad_node,

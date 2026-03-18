@@ -169,8 +169,8 @@ void SplitLayerNormPass::ApplyImpl(Graph* graph) const {
     const std::vector<int64_t> input_shape = input_var->GetShape();
     int begin_norm_axis =
         PADDLE_GET_CONST(int, layer_norm_op->Op()->GetAttr("begin_norm_axis"));
-    float eps =
-        PADDLE_GET_CONST(float, layer_norm_op->Op()->GetAttr("epsilon"));
+    double eps =
+        PADDLE_GET_CONST(double, layer_norm_op->Op()->GetAttr("epsilon"));
 
     std::vector<int32_t> reduce_dim;
     std::vector<int64_t> shape_int64;

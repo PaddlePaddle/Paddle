@@ -369,7 +369,7 @@ struct Layers {
     op->SetOutput("Y", {y->Name()});
     op->SetOutput("Mean", {mean->Name()});
     op->SetOutput("Variance", {variance->Name()});
-    op->SetAttr("epsilon", static_cast<float>(1E-05));
+    op->SetAttr("epsilon", static_cast<double>(1E-05));
     op->SetAttr("begin_norm_axis", static_cast<int>(1));
     op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                 static_cast<int>(OpRole::kForward));
