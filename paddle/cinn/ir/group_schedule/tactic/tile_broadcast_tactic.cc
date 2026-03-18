@@ -15,10 +15,6 @@
 #include "paddle/cinn/ir/group_schedule/tactic/tile_broadcast_tactic.h"
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
 
-#ifdef CINN_WITH_CUSTOM_DEVICE
-#include "paddle/phi/backends/device_manager.h"
-#endif
-
 PD_DECLARE_bool(cinn_enable_tile_broadcast);
 
 namespace cinn {
@@ -108,8 +104,6 @@ class TileBroadcastTactic final : public ScheduleTactic {
                                              const int block_size,
                                              const int vetorize_factor);
 
-  // Get max threads per block for the current target
-  int GetMaxThreadsPerBlock() const;
   // Calculate number of warps for NHWC layout
   int CalcNumWarps(int64_t num_warps) const;
 
@@ -294,33 +288,10 @@ std::vector<int> GetCommonBroadcastAxis(ir::IRSchedule* sch) {
   return common_broadcast_axis;
 }
 
-int TileBroadcastTactic::GetMaxThreadsPerBlock() const {
-  return std::visit(
-      [&](const auto& impl) -> int {
-        // Retrieve the specific type stored in the current variant
-        using ArchT = std::decay_t<decltype(impl)>;
-
-        if constexpr (std::is_same_v<ArchT, common::NVGPUArch>) {
-          return 1024;
-        } else if constexpr (std::is_same_v<ArchT, common::CustomDeviceArch>) {
-#ifdef CINN_WITH_CUSTOM_DEVICE
-          if (!impl.device_type.empty()) {
-            return phi::DeviceManager::GetMaxThreadsPerBlock(
-                phi::CustomPlace(impl.device_type, impl.device_id));
-          }
-#endif
-          return 1024;
-        } else {
-          return 1024;
-        }
-      },
-      context_->target.arch.variant());
-}
-
 int TileBroadcastTactic::CalcNumWarps(int64_t num_warps) const {
   // NHWC layout: calculate number of warps per block
-  const int MAX_WARP_BLOCK =
-      GetMaxThreadsPerBlock() / context_->config.tile_config.warp_size;
+  const int MAX_WARP_BLOCK = context_->target.max_num_threads() /
+                             context_->config.tile_config.warp_size;
   // the largest preserved size is 1024, for size bigger than 1024
   // TODO(heqianyue): the code should be revised to be a DP version
   if (num_warps > 1024) {
@@ -506,7 +477,7 @@ std::vector<std::string> TileBroadcastTactic::TileNCHW(
   if (low_broadcast_size_ <= (context_->config.tile_config.warp_size * 8)) {
     sch->Split(block_id, 0, {-1, 4});
     return {"blockIdx.y", "", "blockIdx.x", "threadIdx.x"};
-  } else if (low_broadcast_size_ <= (GetMaxThreadsPerBlock() * 2)) {
+  } else if (low_broadcast_size_ <= (context_->target.max_num_threads() * 2)) {
     sch->Split(block_id, 2, {-1, block_size});
     return {"blockIdx.y", "blockIdx.x", "", "threadIdx.x"};
   } else {
@@ -554,7 +525,8 @@ std::vector<std::string> TileBroadcastTactic::TileNHWC(
        */
       sch->Split(block_id, 1, {-1, block_size});
       sch->Fuse(block_id, {0, 1});
-      sch->Split(block_id, 0, {-1, 4, preserved_size_ / block_size});
+      sch->Split(
+          block_id, 0, {-1, 4, static_cast<int>(preserved_size_ / block_size)});
       return {"blockIdx.x", "", "blockIdx.y", "threadIdx.x"};
     }
   }
@@ -585,7 +557,7 @@ std::vector<std::string> TileBroadcastTactic::TileVectorizeNCHW(
   if (low_broadcast_size_ <= block_element_nums) {
     sch->Split(block_id, 2, {-1, vectorize_factor});
     return {"blockIdx.y", "blockIdx.x", "threadIdx.x", ""};
-  } else if (low_broadcast_size_ <= (GetMaxThreadsPerBlock() * 2)) {
+  } else if (low_broadcast_size_ <= (context_->target.max_num_threads() * 2)) {
     sch->Split(block_id, 2, {-1, block_size, vectorize_factor});
     sch->Fuse(block_id, {1, 2});
     return {"blockIdx.y", "blockIdx.x", "threadIdx.x", ""};
@@ -616,9 +588,10 @@ void TileBroadcastTactic::Apply(ir::IRSchedule* sch,
       return;
     }
 
-    block_size = std::clamp(num_warps * context_->config.tile_config.warp_size,
-                            context_->config.tile_config.warp_size * 4,
-                            static_cast<int64_t>(GetMaxThreadsPerBlock()));
+    block_size =
+        std::clamp(num_warps * context_->config.tile_config.warp_size,
+                   context_->config.tile_config.warp_size * 4,
+                   static_cast<int64_t>(context_->target.max_num_threads()));
   }
 
   // Cluster and fuse axis of the same type to get exactly 3 loops.
