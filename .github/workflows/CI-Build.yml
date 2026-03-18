@@ -4,9 +4,6 @@ on:
   pull_request:
     types: [opened, synchronize]
     branches: [develop, release/**, fleety_*]
-    paths-ignore:
-      - 'skill/**'
-      - '*.yml'
 
 permissions: read-all
 
