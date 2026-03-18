@@ -150,8 +150,7 @@ void CUDAVirtualMemAllocatorV2::FreeImpl(phi::Allocation* allocation) {
         it == allocation_layout_map_.end(),
         true,
         common::errors::NotFound(
-            "No VMMAllocatorV2 handle layout found for allocation %p.",
-            ptr));
+            "No VMMAllocatorV2 handle layout found for allocation %p.", ptr));
     layout = it->second;
   }
 

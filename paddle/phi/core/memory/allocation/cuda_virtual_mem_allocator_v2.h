@@ -57,8 +57,7 @@ class CUDAVirtualMemAllocatorV2 : public Allocator {
   void MapHandlesToVA(VmmDevicePtr ptr, const std::vector<VmmAllocHandle>& hs);
   // Exposes the allocation-level handle list for IPC/export queries. The key
   // is the raw allocation ptr returned by this allocator.
-  bool CollectAllocationHandleLayout(void* ptr,
-                                     HandleLayout* layout) const;
+  bool CollectAllocationHandleLayout(void* ptr, HandleLayout* layout) const;
 
  protected:
   phi::Allocation* AllocateImpl(size_t size) override;
