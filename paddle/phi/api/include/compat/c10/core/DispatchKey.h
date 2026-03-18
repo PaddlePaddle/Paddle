@@ -524,23 +524,23 @@ inline DispatchKey getAutogradKeyFromBackend(BackendComponent k) {
       return DispatchKey::AutogradCPU;
     case BackendComponent::CUDABit:
       return DispatchKey::AutogradCUDA;
-    case BackendComponent::XPU:
+    case BackendComponent::XPUBit:
       return DispatchKey::AutogradXPU;
-    case BackendComponent::IPU:
+    case BackendComponent::IPUBit:
       return DispatchKey::AutogradIPU;
-    case BackendComponent::HPU:
+    case BackendComponent::HPUBit:
       return DispatchKey::AutogradHPU;
-    case BackendComponent::Lazy:
+    case BackendComponent::LazyBit:
       return DispatchKey::AutogradLazy;
-    case BackendComponent::Meta:
+    case BackendComponent::MetaBit:
       return DispatchKey::AutogradMeta;
-    case BackendComponent::MPS:
+    case BackendComponent::MPSBit:
       return DispatchKey::AutogradMPS;
-    case BackendComponent::PrivateUse1:
+    case BackendComponent::PrivateUse1Bit:
       return DispatchKey::AutogradPrivateUse1;
-    case BackendComponent::PrivateUse2:
+    case BackendComponent::PrivateUse2Bit:
       return DispatchKey::AutogradPrivateUse2;
-    case BackendComponent::PrivateUse3:
+    case BackendComponent::PrivateUse3Bit:
       return DispatchKey::AutogradPrivateUse3;
     default:
       return DispatchKey::AutogradOther;

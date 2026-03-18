@@ -20,28 +20,7 @@
 
 namespace c10 {
 
-std::array<FunctionalityOffsetAndMask, num_functionality_keys>
-initializeFunctionalityOffsetsAndMasks() {
-  std::array<FunctionalityOffsetAndMask, num_functionality_keys>
-      offsets_and_masks;
-  uint16_t offset = 0;
-  for (uint8_t functionality_idx = 0;
-       functionality_idx < num_functionality_keys;
-       ++functionality_idx) {
-    auto functionality_k = static_cast<DispatchKey>(functionality_idx);
-    if (isPerBackendFunctionalityKey(functionality_k)) {
-      // Per-backend functionality keys expand into num_backends slots,
-      // one for each backend. The mask selects the backend bits.
-      offsets_and_masks[functionality_idx] = {
-          offset, static_cast<uint16_t>(full_backend_mask)};
-      offset += num_backends;
-    } else {
-      // Non-per-backend keys occupy exactly one slot; no backend bits needed.
-      offsets_and_masks[functionality_idx] = {offset, 0};
-      offset += 1;
-    }
-  }
-  return offsets_and_masks;
-}
+// All functions are now inline in the header file.
+// This file is kept for compatibility with the build system.
 
 }  // namespace c10
