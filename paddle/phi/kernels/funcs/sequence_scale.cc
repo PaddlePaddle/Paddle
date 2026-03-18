@@ -22,9 +22,9 @@ class DenseTensor;
 namespace phi::funcs {
 
 template <typename T>
-class ScaleDenseTensorFunctor<phi::CPUContext, T> {
+class ScaleDenseTensorFunctor<CPUContext, T> {
  public:
-  void operator()(const phi::CPUContext& dev_ctx,
+  void operator()(const CPUContext& dev_ctx,
                   const T* scales,
                   DenseTensor* seq) {
     const size_t level = 0;
@@ -44,7 +44,7 @@ class ScaleDenseTensorFunctor<phi::CPUContext, T> {
   }
 };
 
-template class ScaleDenseTensorFunctor<phi::CPUContext, float>;
-template class ScaleDenseTensorFunctor<phi::CPUContext, double>;
+template class ScaleDenseTensorFunctor<CPUContext, float>;
+template class ScaleDenseTensorFunctor<CPUContext, double>;
 
 }  // namespace phi::funcs

@@ -35,8 +35,8 @@ void GPUSeedKernel(const Context &dev_ctx,
     DeviceContextPool &pool = DeviceContextPool::Instance();
     auto &dev_ctx_cpu = *pool.Get(CPUPlace());
     dev_ctx_cpu.Alloc<T>(out);
-    funcs::SetConstant<phi::CPUContext, T> functor;
-    functor(reinterpret_cast<const phi::CPUContext &>(dev_ctx_cpu),
+    funcs::SetConstant<CPUContext, T> functor;
+    functor(reinterpret_cast<const CPUContext &>(dev_ctx_cpu),
             out,
             static_cast<T>(seed));
   } else {

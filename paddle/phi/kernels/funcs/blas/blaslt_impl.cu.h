@@ -1177,7 +1177,7 @@ struct LinearWithCublasLt : public CublasLtBase<T> {
                                         common::vectorize(y->dims()),
                                         trans_x,
                                         trans_y,
-                                        phi::CppTypeToDataType<T>::Type(),
+                                        CppTypeToDataType<T>::Type(),
                                         fused_type,
                                         bias_data,
                                         reserve_data);
@@ -1215,7 +1215,7 @@ struct LinearGradWithCublasLt : public CublasLtBase<T> {
                                         common::vectorize(y->dims()),
                                         trans_x,
                                         trans_y,
-                                        phi::CppTypeToDataType<T>::Type(),
+                                        CppTypeToDataType<T>::Type(),
                                         fused_type,
                                         bias_data,
                                         reserve_data,

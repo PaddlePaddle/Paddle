@@ -18,8 +18,8 @@
 namespace phi {
 
 template <typename T>
-struct SequenceExpandFunctor<phi::CPUContext, T> {
-  void operator()(const phi::CPUContext& context UNUSED,
+struct SequenceExpandFunctor<CPUContext, T> {
+  void operator()(const CPUContext& context UNUSED,
                   const DenseTensor& x,
                   const phi::Vector<size_t>& x_lod,   /*expand source lod*/
                   const phi::Vector<size_t>& ref_lod, /*expand referenced lod*/

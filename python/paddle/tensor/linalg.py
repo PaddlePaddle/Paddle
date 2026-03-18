@@ -29,6 +29,7 @@ from paddle._C_ops import (  # noqa: F401
     dist,
     dot,
     matmul,
+    mv,
 )
 from paddle.common_ops_import import VarDesc
 from paddle.tensor.math import broadcast_shape
@@ -2298,67 +2299,6 @@ def histogram_bin_edges(
         max = max + 0.5
         min = min - 0.5
     return paddle.linspace(min, max, bins + 1, name=name)
-
-
-def mv(x: Tensor, vec: Tensor, name: str | None = None) -> Tensor:
-    """
-    Performs a matrix-vector product of the matrix x and the vector vec.
-
-    Args:
-        x (Tensor): A tensor with shape :math:`[M, N]` , The data type of the input Tensor x
-            should be one of float32, float64.
-        vec (Tensor): A tensor with shape :math:`[N]` , The data type of the input Tensor x
-            should be one of float32, float64.
-        name (str|None, optional): Normally there is no need for user to set this property.
-            For more information, please refer to :ref:`api_guide_Name`. Default is None.
-
-    Returns:
-        Tensor: The tensor which is produced by x and vec.
-
-    Examples:
-        .. code-block:: pycon
-
-            >>> # x: [M, N], vec: [N]
-            >>> # paddle.mv(x, vec)  # out: [M]
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([[2, 1, 3], [3, 0, 1]]).astype("float64")
-            >>> vec = paddle.to_tensor([3, 5, 1]).astype("float64")
-            >>> out = paddle.mv(x, vec)
-            >>> print(out)
-            Tensor(shape=[2], dtype=float64, place=Place(cpu), stop_gradient=True,
-            [14., 10.])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.mv(x, vec)
-    else:
-
-        def __check_input(x, vec):
-            var_names = {'x': x, 'vec': vec}
-            for name, val in var_names.items():
-                check_variable_and_dtype(
-                    val, name, ['float32', 'float64'], 'mv'
-                )
-            x_shape = list(x.shape)
-            vec_shape = list(vec.shape)
-            if len(x_shape) != 2:
-                raise ValueError(
-                    f"x should be 2-dimensional. But received x's dimension: {x_shape}"
-                )
-            if len(vec_shape) != 1:
-                raise ValueError(
-                    f"vec should be 1-dimensional. But received vec's dimension: {vec_shape}"
-                )
-
-        __check_input(x, vec)
-
-        helper = LayerHelper('mv', **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(
-            type='mv', inputs={'X': x, 'Vec': vec}, outputs={'Out': out}
-        )
-        return out
 
 
 def det(x: Tensor, name: str | None = None) -> Tensor:

@@ -68,20 +68,20 @@ class RowwiseMean2D<GPUContext, T> {
 #endif
 
 template <typename T>
-class RowwiseMean2D<phi::CPUContext, T> {
+class RowwiseMean2D<CPUContext, T> {
  public:
   RowwiseMean2D(int left UNUSED,
                 int right UNUSED,
                 const DeviceContext& dev_ctx UNUSED) {}
 
-  void operator()(const phi::CPUContext& dev_ctx,
+  void operator()(const CPUContext& dev_ctx,
                   const DenseTensor& input,
                   DenseTensor* out) {
     row_mean_(dev_ctx, input, out);
   }
 
  private:
-  funcs::RowwiseMean<phi::CPUContext, T> row_mean_;
+  funcs::RowwiseMean<CPUContext, T> row_mean_;
 };
 
 template <typename DeviceContext, typename T>
@@ -126,20 +126,20 @@ class ColwiseSum2D<GPUContext, T> {
 #endif
 
 template <typename T>
-class ColwiseSum2D<phi::CPUContext, T> {
+class ColwiseSum2D<CPUContext, T> {
  public:
   ColwiseSum2D(int left UNUSED,
                int right UNUSED,
-               const phi::CPUContext& dev_ctx UNUSED) {}
+               const CPUContext& dev_ctx UNUSED) {}
 
-  void operator()(const phi::CPUContext& dev_ctx,
+  void operator()(const CPUContext& dev_ctx,
                   const DenseTensor& input,
                   DenseTensor* out) {
     col_wise_(dev_ctx, input, out);
   }
 
  private:
-  funcs::ColwiseSum<phi::CPUContext, T> col_wise_;
+  funcs::ColwiseSum<CPUContext, T> col_wise_;
 };
 
 template <typename T>

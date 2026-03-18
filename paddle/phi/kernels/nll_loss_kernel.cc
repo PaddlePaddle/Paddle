@@ -24,7 +24,7 @@ void NllLossKernel(const Context& dev_ctx,
                    const std::string& reduction,
                    DenseTensor* out) {
   DenseTensor total_weight;
-  total_weight.set_meta(DenseTensorMeta(phi::CppTypeToDataType<T>::Type(), {}));
+  total_weight.set_meta(DenseTensorMeta(CppTypeToDataType<T>::Type(), {}));
   dev_ctx.template Alloc<T>(total_weight);
   NllLossRawKernel(dev_ctx,
                    input,
