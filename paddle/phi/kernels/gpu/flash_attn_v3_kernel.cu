@@ -2354,6 +2354,7 @@ template <typename T, typename Context>
 void FlashMaskV2GetUniqueIdInplace(const Context &dev_ctx,
                                    const DenseTensor &x,
                                    DenseTensor *out) {
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_FLASHATTN_V3)
   bool valid_unique_id =
       dynload::flashmaskv2_get_nvshmem_unique_id(out->data<uint8_t>());
   if (!valid_unique_id) {
@@ -2362,6 +2363,10 @@ void FlashMaskV2GetUniqueIdInplace(const Context &dev_ctx,
     funcs::SetConstant<Context, uint8_t> set_zero;
     set_zero(dev_ctx, out, uint8_t{0});
   }
+#else
+  funcs::SetConstant<Context, uint8_t> set_zero;
+  set_zero(dev_ctx, out, uint8_t{0});
+#endif
 }
 
 }  // namespace phi
