@@ -149,7 +149,7 @@ def _ap_envs(ap_path, ap_workspace_dir):
     os.environ['AP_WORKSPACE_DIR'] = ap_workspace_dir
     old_flags = paddle.get_flags(['FLAGS_enable_ap'])
     flags = dict(old_flags)
-    flags['FLAGS_enable_ap'] = True
+    # flags['FLAGS_enable_ap'] = True
     paddle.set_flags(flags)
     yield
     if old_ap_path is not None:
