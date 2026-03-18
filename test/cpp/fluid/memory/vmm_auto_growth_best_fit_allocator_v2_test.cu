@@ -69,22 +69,30 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, ReuseSmallestSufficientFreeBlock) {
   VMMAutoGrowthBestFitAllocatorV2 allocator(
       underlying, 256, phi::GPUPlace(), PoolType::kTransient);
 
+  // Layout after allocation:
+  //   [ACTIVE 4MB] [ACTIVE 2MB separator] [ACTIVE 2MB small]
+  // The separator prevents TryMerge from coalescing large and small on free.
   auto large = allocator.Allocate(underlying->handle_size() * 2);
+  auto separator = allocator.Allocate(underlying->handle_size());
   auto small = allocator.Allocate(underlying->handle_size());
   ASSERT_NE(large, nullptr);
+  ASSERT_NE(separator, nullptr);
   ASSERT_NE(small, nullptr);
 
   auto* small_ptr = small->ptr();
   large.reset();
   small.reset();
+  // Layout: [FREE 4MB] [ACTIVE 2MB separator] [FREE 2MB]
+  // free_blocks_: {(2MB, ptr_small), (4MB, ptr_large)}
 
   auto reused = allocator.Allocate(underlying->handle_size());
   ASSERT_NE(reused, nullptr);
 
-  // lower_bound should choose the 2MB free block instead of splitting the 4MB
-  // one, so the reused allocation should land at the original small block.
+  // lower_bound({2MB, nullptr}) picks the exact-fit 2MB free block over the
+  // larger 4MB one.
   EXPECT_EQ(reused->ptr(), small_ptr);
-  ASSERT_EQ(allocator.all_blocks_.size(), 2UL);
+  // Layout: [FREE 4MB] [ACTIVE 2MB separator] [ACTIVE 2MB reused]
+  ASSERT_EQ(allocator.all_blocks_.size(), 3UL);
   size_t free_block_count = 0;
   for (const auto& block : allocator.all_blocks_) {
     if (block.type_ == BlockType::kFree) {
@@ -132,7 +140,8 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, ReturnedAllocationSizeMatchesRequest) {
   ASSERT_NE(allocation, nullptr);
 
   EXPECT_EQ(allocation->size(), 256UL);
-  EXPECT_EQ(allocation->ptr(), allocation->base_ptr());
+  auto* alloc = static_cast<Allocation*>(allocation.get());
+  EXPECT_EQ(alloc->ptr(), alloc->base_ptr());
 }
 
 TEST(VMMAutoGrowthBestFitAllocatorV2, SplitGrowBlockAcrossTwoHandles) {
@@ -307,9 +316,8 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, SetBlockRemapEventRejectsUnknownPtr) {
   VMMAutoGrowthBestFitAllocatorV2 allocator(
       underlying, 256, phi::GPUPlace(), PoolType::kTransient);
 
-  EXPECT_FALSE(
-      allocator.SetBlockRemapEvent(reinterpret_cast<void*>(0x1), nullptr,
-                                   nullptr));
+  EXPECT_FALSE(allocator.SetBlockRemapEvent(
+      reinterpret_cast<void*>(0x1), nullptr, nullptr));
 }
 
 }  // namespace allocation
