@@ -69,15 +69,15 @@ TEST(CUDAVirtualMemAllocatorV2, FreeRemovesHandleRegistration) {
 
   auto allocation = allocator.Allocate(allocator.handle_size());
   ASSERT_NE(allocation, nullptr);
-  void* base_ptr = allocation->ptr();
+  void* ptr = allocation->ptr();
 
   HandleLayout layout;
-  ASSERT_TRUE(allocator.CollectAllocationHandleLayout(base_ptr, &layout));
+  ASSERT_TRUE(allocator.CollectAllocationHandleLayout(ptr, &layout));
   ASSERT_EQ(layout.size(), 1UL);
 
   allocation.reset();
 
-  EXPECT_FALSE(allocator.CollectAllocationHandleLayout(base_ptr, &layout));
+  EXPECT_FALSE(allocator.CollectAllocationHandleLayout(ptr, &layout));
 }
 
 TEST(CUDAVirtualMemAllocatorV2, UnmapAndMapHandleBackToSameVA) {
