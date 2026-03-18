@@ -64,6 +64,37 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, SplitFreeBlockOnReuse) {
   EXPECT_EQ(free_bytes, underlying->handle_size());
 }
 
+TEST(VMMAutoGrowthBestFitAllocatorV2, ReuseSmallestSufficientFreeBlock) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kTransient);
+
+  auto large = allocator.Allocate(underlying->handle_size() * 2);
+  auto small = allocator.Allocate(underlying->handle_size());
+  ASSERT_NE(large, nullptr);
+  ASSERT_NE(small, nullptr);
+
+  auto* small_ptr = small->ptr();
+  large.reset();
+  small.reset();
+
+  auto reused = allocator.Allocate(underlying->handle_size());
+  ASSERT_NE(reused, nullptr);
+
+  // lower_bound should choose the 2MB free block instead of splitting the 4MB
+  // one, so the reused allocation should land at the original small block.
+  EXPECT_EQ(reused->ptr(), small_ptr);
+  ASSERT_EQ(allocator.all_blocks_.size(), 2UL);
+  size_t free_block_count = 0;
+  for (const auto& block : allocator.all_blocks_) {
+    if (block.type_ == BlockType::kFree) {
+      ++free_block_count;
+      EXPECT_EQ(block.size_, underlying->handle_size() * 2);
+    }
+  }
+  EXPECT_EQ(free_block_count, 1UL);
+}
+
 TEST(VMMAutoGrowthBestFitAllocatorV2, SplitGrowBlockOnFirstAllocation) {
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
@@ -90,6 +121,18 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, SplitGrowBlockOnFirstAllocation) {
   EXPECT_EQ(it->parts_[0].handle_rel_off, 256UL);
   EXPECT_EQ(it->parts_[0].len, underlying->handle_size() - 256UL);
   EXPECT_EQ(allocator.free_blocks_.size(), 1UL);
+}
+
+TEST(VMMAutoGrowthBestFitAllocatorV2, ReturnedAllocationSizeMatchesRequest) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kTransient);
+
+  auto allocation = allocator.Allocate(256UL);
+  ASSERT_NE(allocation, nullptr);
+
+  EXPECT_EQ(allocation->size(), 256UL);
+  EXPECT_EQ(allocation->ptr(), allocation->base_ptr());
 }
 
 TEST(VMMAutoGrowthBestFitAllocatorV2, SplitGrowBlockAcrossTwoHandles) {
@@ -162,6 +205,39 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, MergeAdjacentFreeBlocks) {
   EXPECT_EQ(merged.size_, underlying->handle_size() * 2);
   EXPECT_EQ(merged.parts_.size(), 2UL);
   EXPECT_EQ(allocator.free_blocks_.size(), 1UL);
+}
+
+TEST(VMMAutoGrowthBestFitAllocatorV2, NonAdjacentFreeBlocksDoNotMerge) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kTransient);
+
+  auto first = allocator.Allocate(underlying->handle_size());
+  auto middle = allocator.Allocate(underlying->handle_size());
+  auto third = allocator.Allocate(underlying->handle_size());
+  ASSERT_NE(first, nullptr);
+  ASSERT_NE(middle, nullptr);
+  ASSERT_NE(third, nullptr);
+
+  first.reset();
+  third.reset();
+
+  ASSERT_EQ(allocator.all_blocks_.size(), 3UL);
+  size_t free_count = 0;
+  size_t active_count = 0;
+  for (const auto& block : allocator.all_blocks_) {
+    if (block.type_ == BlockType::kFree) {
+      ++free_count;
+      EXPECT_EQ(block.size_, underlying->handle_size());
+      EXPECT_EQ(block.parts_.size(), 1UL);
+    } else if (block.type_ == BlockType::kActive) {
+      ++active_count;
+      EXPECT_EQ(block.ptr_, middle->ptr());
+    }
+  }
+  EXPECT_EQ(free_count, 2UL);
+  EXPECT_EQ(active_count, 1UL);
+  EXPECT_EQ(allocator.free_blocks_.size(), 2UL);
 }
 
 TEST(VMMAutoGrowthBestFitAllocatorV2, SplitFreeBlockClearsRuntimeState) {
