@@ -6307,54 +6307,47 @@ void FusedRopeInferMeta(const MetaTensor& q,
                         "but got head_dim = %d.",
                         head_dim));
 
-  PADDLE_ENFORCE_GT(batch_size,
-                    0,
-                    common::errors::InvalidArgument(
-                        "The batch_size of q must be greater than 0, "
-                        "but got %d.",
-                        batch_size));
+  // Note: We don't enforce batch_size, seq_len, num_heads, head_dim > 0 here
+  // because 0-sized tensors are valid in some cases (e.g., empty batch).
 
-  PADDLE_ENFORCE_GT(seq_len,
-                    0,
-                    common::errors::InvalidArgument(
-                        "The seq_len of q must be greater than 0, "
-                        "but got %d.",
-                        seq_len));
-
-  PADDLE_ENFORCE_GT(num_heads,
-                    0,
-                    common::errors::InvalidArgument(
-                        "The num_heads of q must be greater than 0, "
-                        "but got %d.",
-                        num_heads));
-
-  PADDLE_ENFORCE_GT(head_dim,
-                    0,
-                    common::errors::InvalidArgument(
-                        "The head_dim of q must be greater than 0, "
-                        "but got %d.",
-                        head_dim));
-
-  // Validate k (optional): must be 4-D with same head_dim as q
+  // Validate k (optional): must have same head_dim as q
+  // Note: k can have different num_heads (supports MQA/GQA)
   if (k) {
     auto k_dims = k.dims();
-    PADDLE_ENFORCE_EQ(k_dims,
-                      input_dims,
-                      common::errors::InvalidArgument(
-                          "The dims of k must be equal to the dims of q, "
-                          "but got [%s].",
-                          k_dims));
+    PADDLE_ENFORCE_EQ(
+        k_dims.size(),
+        4UL,
+        common::errors::InvalidArgument(
+            "The k should be a 4-D tensor, but got %u.", k_dims.size()));
+    auto k_head_dim = k_dims[3];
+    PADDLE_ENFORCE_EQ(
+        k_head_dim,
+        head_dim,
+        common::errors::InvalidArgument(
+            "The head_dim of k must be equal to the head_dim of q, "
+            "but got k's head_dim = %d, q's head_dim = %d.",
+            k_head_dim,
+            head_dim));
   }
 
-  // Validate v (optional): must be 4-D with same head_dim and seq_len as q
+  // Validate v (optional): must have same head_dim as q
+  // Note: v can have different num_heads (supports MQA/GQA)
   if (v) {
     auto v_dims = v.dims();
-    PADDLE_ENFORCE_EQ(v_dims,
-                      input_dims,
-                      common::errors::InvalidArgument(
-                          "The dims of v must be equal to the dims of q, "
-                          "but got [%s].",
-                          v_dims));
+    PADDLE_ENFORCE_EQ(
+        v_dims.size(),
+        4UL,
+        common::errors::InvalidArgument(
+            "The v should be a 4-D tensor, but got %u.", v_dims.size()));
+    auto v_head_dim = v_dims[3];
+    PADDLE_ENFORCE_EQ(
+        v_head_dim,
+        head_dim,
+        common::errors::InvalidArgument(
+            "The head_dim of v must be equal to the head_dim of q, "
+            "but got v's head_dim = %d, q's head_dim = %d.",
+            v_head_dim,
+            head_dim));
   }
 
   // Validate sin (optional): must be 2-D [seq_len, head_dim] or
