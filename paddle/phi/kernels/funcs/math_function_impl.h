@@ -59,12 +59,7 @@ void Transpose<DeviceContext, T, Rank>::operator()(
   // use 32bit index to speed up computation
   bool use_32bit_index = eigen_out.size() < Eigen::NumTraits<int>::highest();
   bool is_gpu_place = dev_ctx.GetPlace().GetType() == AllocationType::GPU;
-  if (use_32bit_index && is_gpu_place) {
-    To32BitIndex(eigen_out).device(*dev) =
-        To32BitIndex(eigen_in).shuffle(permute);
-  } else {
-    eigen_out.device(*dev) = eigen_in.shuffle(permute);
-  }
+  eigen_out.device(*dev) = eigen_in.shuffle(permute);
 }
 
 template <typename DeviceContext, typename T>
