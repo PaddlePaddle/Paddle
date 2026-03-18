@@ -249,7 +249,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, NonAdjacentFreeBlocksDoNotMerge) {
   EXPECT_EQ(allocator.free_blocks_.size(), 2UL);
 }
 
-TEST(VMMAutoGrowthBestFitAllocatorV2, SplitFreeBlockClearsRuntimeState) {
+TEST(VMMAutoGrowthBestFitAllocatorV2, SplitFreeBlockInheritsRemapEvent) {
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
       underlying, 256, phi::GPUPlace(), PoolType::kTransient);
@@ -257,17 +257,23 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, SplitFreeBlockClearsRuntimeState) {
   auto allocation = allocator.Allocate(underlying->handle_size());
   ASSERT_NE(allocation, nullptr);
 
+  // Simulate StreamSafeCUDAAllocator injecting remap-safety metadata on free.
   gpuEvent_t event = nullptr;
   ASSERT_EQ(cudaEventCreateWithFlags(&event, cudaEventDisableTiming),
             cudaSuccess);
   auto* ptr = allocation->ptr();
-  ASSERT_TRUE(allocator.SetBlockRemapEvent(ptr, nullptr, event));
+  gpuStream_t fake_stream = reinterpret_cast<gpuStream_t>(0x1);
+  ASSERT_TRUE(allocator.SetBlockRemapEvent(ptr, fake_stream, event));
   auto active_it = allocator.allocated_blocks_.find(ptr);
   ASSERT_NE(active_it, allocator.allocated_blocks_.end());
-  active_it->second->owning_stream_ = reinterpret_cast<gpuStream_t>(0x1);
+  active_it->second->owning_stream_ = fake_stream;
 
   allocation.reset();
 
+  // Reuse with a smaller size triggers split. The remaining FREE block must
+  // inherit last_use_stream_ / remap_safe_event_ from the original block so
+  // that the Compactor knows the old kernel may still be touching this memory
+  // (fast-GC same-stream reuse does not wait on the event).
   auto reused = allocator.Allocate(256UL);
   ASSERT_NE(reused, nullptr);
 
@@ -278,9 +284,12 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, SplitFreeBlockClearsRuntimeState) {
       continue;
     }
     ++free_count;
+    // owning_stream_ is cleared — nobody "owns" a free fragment.
     EXPECT_EQ(block.owning_stream_, nullptr);
-    EXPECT_EQ(block.last_use_stream_, nullptr);
-    EXPECT_EQ(block.remap_safe_event_, nullptr);
+    // last_use_stream_ and remap_safe_event_ are inherited — the old kernel
+    // may still be accessing this region until the event completes.
+    EXPECT_EQ(block.last_use_stream_, fake_stream);
+    EXPECT_EQ(block.remap_safe_event_, event);
   }
   EXPECT_EQ(free_count, 1UL);
 

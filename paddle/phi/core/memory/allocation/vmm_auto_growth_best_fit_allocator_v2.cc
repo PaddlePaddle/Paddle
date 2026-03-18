@@ -146,9 +146,8 @@ phi::Allocation* VMMAutoGrowthBestFitAllocatorV2::AllocateImpl(size_t size) {
     return allocation;
   }
 
-  auto allocation =
-      static_unique_ptr_cast<Allocation>(underlying_allocator_->Allocate(
-          requested_size));
+  auto allocation = static_unique_ptr_cast<Allocation>(
+      underlying_allocator_->Allocate(requested_size));
   HandleLayout layout;
   PADDLE_ENFORCE_EQ(underlying_allocator_->CollectAllocationHandleLayout(
                         allocation->ptr(), &layout),
@@ -201,10 +200,9 @@ void VMMAutoGrowthBestFitAllocatorV2::FreeImpl(phi::Allocation* allocation) {
   PADDLE_ENFORCE_NE(
       found,
       allocated_blocks_.end(),
-      common::errors::NotFound(
-          "Can not find active block for allocation %p in "
-          "VMMAutoGrowthBestFitAllocatorV2.",
-          ptr));
+      common::errors::NotFound("Can not find active block for allocation %p in "
+                               "VMMAutoGrowthBestFitAllocatorV2.",
+                               ptr));
   auto it = found->second;
   allocated_blocks_.erase(it->ptr_);
   it->type_ = BlockType::kFree;
@@ -256,12 +254,29 @@ phi::Allocation* VMMAutoGrowthBestFitAllocatorV2::AllocFromFreeBlocks(
         SlicePartsForRange(block_it->parts_, size, remaining_size);
     remaining_block.pool_type_ = block_it->pool_type_;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    // A newly split free fragment should not inherit stale runtime state from
-    // the previously allocated block. Its stream/event metadata will be
-    // refreshed when it is allocated and later released again.
+    // Inherit last_use_stream_ and remap_safe_event_ from the original block.
+    //
+    // Under fast-GC (same-stream reuse), StreamSafeCUDAAllocator hands this
+    // FREE block back without waiting on the recorded event — CUDA stream
+    // ordering alone guarantees that the NEW kernel (using the ACTIVE portion)
+    // runs after the old one.  However, the REMAINING free portion is still
+    // physically backed by memory the old kernel may still be touching.  If
+    // the Compactor saw remap_safe_event_ == nullptr it would assume "never
+    // used, safe to unmap" and cuMemUnmap while the old kernel is still
+    // reading — causing a GPU fault.
+    //
+    // Inheriting the event is correct because the event was recorded AFTER the
+    // last kernel that accessed the ENTIRE original block; the remaining
+    // portion is a subset, so the same event guards it.
+    //
+    // For grow-split (AllocateImpl), the remaining block comes from freshly
+    // allocated memory that was never used, so its event is naturally nullptr
+    // — which correctly means "safe to remap".
+    //
+    // owning_stream_ is cleared: nobody "owns" a free fragment.
     remaining_block.owning_stream_ = nullptr;
-    remaining_block.last_use_stream_ = nullptr;
-    remaining_block.remap_safe_event_ = nullptr;
+    remaining_block.last_use_stream_ = block_it->last_use_stream_;
+    remaining_block.remap_safe_event_ = block_it->remap_safe_event_;
 #endif
 
     block_it->size_ = size;
