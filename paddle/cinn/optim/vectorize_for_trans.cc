@@ -624,6 +624,7 @@ class VectorizeForTransMutator : public ir::IRMutator<ir::Expr *> {
     GET_CUDA_VECTOR_TYPE_NAME(type.is_float16(), "float16");
     GET_CUDA_VECTOR_TYPE_NAME(type.is_float(64), "double");
     GET_CUDA_VECTOR_TYPE_NAME(type.is_bfloat16(), "bfloat16");
+    GET_CUDA_VECTOR_TYPE_NAME(type.is_float8e4m3(), "float8e4m3");
 #undef GET_CUDA_VECTOR_TYPE_NAME
 
     // others are not implemented yet
@@ -646,12 +647,44 @@ class VectorizeForTransMutator : public ir::IRMutator<ir::Expr *> {
                         bool is_store) {
     auto *tensor = node->tensor.As<ir::_Tensor_>();
 
-    if (!tensor_to_vectorized_vars_.count(tensor->name)) {
+    std::vector<ir::Expr> converted_indices;
+    for (int i = 0; i < (*indices).size(); ++i) {
+      Expr converted_index = (*indices)[i];
+      cinn::ir::ir_utils::IrReplaceVarBroadcast(
+          &converted_index, loop_var_, Expr(int32_t(0)));
+      converted_indices.push_back(converted_index);
+    }
+
+    if (!tensor_to_vectorized_vars_.count(tensor->name) ||
+        !((tensor_to_vectorized_vars_.find(tensor->name)->second)
+              .count(VectorExprToString(converted_indices)))) {
       AppendCast(node->tensor, *indices, is_store);
     }
 
     if (!is_assignment_) {
-      auto vectorized_var = tensor_to_vectorized_vars_.at(tensor->name);
+      // 1. 检查外层键（tensor->name）
+      auto outer_it = tensor_to_vectorized_vars_.find(tensor->name);
+      if (outer_it == tensor_to_vectorized_vars_.end()) {
+        PADDLE_THROW(::common::errors::Fatal("Tensor " + tensor->name +
+                                             " not found in cache!"));
+        return;
+      }
+
+      // 2. 检查内层键（indices）
+      const auto &inner_map = outer_it->second;
+      auto inner_it = inner_map.find(
+          VectorExprToString(converted_indices));  // 内层找不到了 TODO(xuyuhan)
+      if (inner_it == inner_map.end()) {
+        VLOG(5) << "YUHAN!!! " << VectorExprToString(converted_indices)
+                << " not found!";
+        PADDLE_FATAL("Trigger call stack");
+        PADDLE_THROW(::common::errors::Fatal("Indices not found for tensor " +
+                                             tensor->name + "! "));
+        return;
+      }
+
+      // 3. 安全获取值
+      auto vectorized_var = inner_it->second;
       // substitute a new tensor with the vector name and dtype
       auto t = vectorized_var->type().is_cpp_handle()
                    ? node->tensor->type().PointerOf()
@@ -675,12 +708,15 @@ class VectorizeForTransMutator : public ir::IRMutator<ir::Expr *> {
                                 "Expected _Tensor_ node in deal with scalar "
                                 "tensor, but received nullptr."));
 
-    if (!scalar_tensor_to_local_var_.count(tensor->name)) {
+    if (!scalar_tensor_to_local_var_.count(tensor->name) ||
+        !((scalar_tensor_to_local_var_.find(tensor->name)->second)
+              .count(VectorExprToString(*indices)))) {
       PreLoadScalarTensorWithoutVectorizeAxisCastToLocalVar(node->tensor,
                                                             indices);
     }
 
-    *expr = Expr(scalar_tensor_to_local_var_[tensor->name]);
+    *expr = Expr(scalar_tensor_to_local_var_[tensor->name]
+                                            [VectorExprToString(*indices)]);
     return;
   }
 
@@ -693,12 +729,23 @@ class VectorizeForTransMutator : public ir::IRMutator<ir::Expr *> {
                                 "Expected _Tensor_ node in deal with scalar "
                                 "tensor, but received nullptr."));
 
-    if (!scalar_tensor_to_local_buffer_.count(tensor->name)) {
+    std::vector<ir::Expr> converted_indices;
+    for (int i = 0; i < (*indices).size(); ++i) {
+      Expr converted_index = (*indices)[i];
+      cinn::ir::ir_utils::IrReplaceVarBroadcast(
+          &converted_index, loop_var_, Expr(int32_t(0)));
+      converted_indices.push_back(converted_index);
+    }
+    if (!scalar_tensor_to_local_buffer_.count(tensor->name) ||
+        !((scalar_tensor_to_local_buffer_.find(tensor->name)->second)
+              .count(VectorExprToString(converted_indices)))) {
       PreLoadScalarTensorWithVectorizeAxisCastToLocalBuffer(
           node->tensor, indices, expr);
     }
 
-    auto local_buffer = scalar_tensor_to_local_buffer_.at(tensor->name);
+    auto local_buffer =
+        scalar_tensor_to_local_buffer_[tensor->name]
+                                      [VectorExprToString(converted_indices)];
     node->tensor = local_buffer;
     indices->assign({loop_var_});
     return;
@@ -715,7 +762,26 @@ class VectorizeForTransMutator : public ir::IRMutator<ir::Expr *> {
     std::string local_var_name =
         common::UniqName(node->name + "_local") + std::to_string(var_index_++);
     ir::Var local_var = ir::Var(local_var_name, node->buffer->dtype);
-    scalar_tensor_to_local_var_.emplace(node->name, local_var);
+    // 显式检查外层键是否存在
+    auto it = scalar_tensor_to_local_var_.find(node->name);
+    if (it != scalar_tensor_to_local_var_.end()) {
+      VLOG(5)
+          << "YUHAN!!! Append a key: value to in scalar_tensor_to_local_var_: "
+          << local_var_name;
+      VLOG(5) << "YUHAN!!! key1 is: " << node->name;
+      VLOG(5) << "YUHAN!!! key2 is: " << *indices;
+      it->second.emplace(VectorExprToString(*indices),
+                         local_var);  // 插入到现有map
+    } else {
+      // 按需初始化或报错
+      VLOG(5)
+          << "YUHAN!!! Create a key: value to in scalar_tensor_to_local_var_: "
+          << local_var_name;
+      VLOG(5) << "YUHAN!!! key1 is: " << node->name;
+      VLOG(5) << "YUHAN!!! key2 is: " << VectorExprToString(*indices);
+      scalar_tensor_to_local_var_[node->name] = {
+          {VectorExprToString(*indices), local_var}};
+    }
     Expr converted_scalar_tensor = ir::Load::Make(tensor, *indices);
     auto let_stmt = ir::Let::Make(Expr(local_var), converted_scalar_tensor);
     update_cast_stmts_.emplace_back(let_stmt);
@@ -730,6 +796,14 @@ class VectorizeForTransMutator : public ir::IRMutator<ir::Expr *> {
         ::common::errors::InvalidArgument(
             "Expected _Tensor_ node in pre fetch scalar tensor cast to local "
             "var, but received nullptr."));
+
+    std::vector<ir::Expr> converted_indices;
+    for (int i = 0; i < (*indices).size(); ++i) {
+      Expr converted_index = (*indices)[i];
+      cinn::ir::ir_utils::IrReplaceVarBroadcast(
+          &converted_index, loop_var_, Expr(int32_t(0)));
+      converted_indices.push_back(converted_index);
+    }
     std::string pre_load_tensor_name =
         "pre_load_" + common::UniqName(node->name + "_local");
     ir::Expr local_tensor = ir::_Tensor_::Make(pre_load_tensor_name,
@@ -748,10 +822,43 @@ class VectorizeForTransMutator : public ir::IRMutator<ir::Expr *> {
     ir::Expr local_buffer_body =
         ir::Store::Make(local_tensor, ir::ir_utils::IRCopy(*expr), {loop_var_});
 
+    // 显式检查外层键是否存在
+    auto it_preload = preload_scalar_tensor_stmts_.find(pre_load_tensor_name);
+    if (it_preload != preload_scalar_tensor_stmts_.end()) {
+      PADDLE_THROW(::common::errors::Fatal(
+          "Scalar A[i, j] = B[i, j] + B[i, j + offset], j is VetcorizeAxis "
+          "Loop Var. This is not supported yet!"));  // TODO(xuyuhan)
+    }
+
     preload_scalar_tensor_stmts_.emplace(pre_load_tensor_name,
                                          local_buffer_body);
-    scalar_tensor_to_local_buffer_.emplace(node->name, local_tensor);
+    // 显式检查外层键是否存在
+    auto it = scalar_tensor_to_local_buffer_.find(node->name);
+    if (it != scalar_tensor_to_local_buffer_.end()) {
+      VLOG(5) << "YUHAN!!! Append a key: value to in "
+                 "scalar_tensor_to_local_buffer_: "
+              << pre_load_buffer_name;
+      VLOG(5) << "YUHAN!!! key1 is: " << node->name;
+      VLOG(5) << "YUHAN!!! key2 is: " << converted_indices;
+      it->second.emplace(VectorExprToString(converted_indices),
+                         local_tensor);  // 插入到现有map
+    } else {
+      // 按需初始化或报错
+      VLOG(5) << "YUHAN!!! Create a key: value to in "
+                 "scalar_tensor_to_local_buffer_: "
+              << pre_load_buffer_name;
+      VLOG(5) << "YUHAN!!! key1 is: " << node->name;
+      VLOG(5) << "YUHAN!!! key2 is: " << VectorExprToString(converted_indices);
+      scalar_tensor_to_local_buffer_[node->name] = {
+          {VectorExprToString(converted_indices), local_tensor}};
+    }
     return;
+  }
+
+  std::string VectorExprToString(const std::vector<ir::Expr> &exprs) {
+    std::ostringstream oss;
+    oss << exprs;
+    return oss.str();
   }
 
   void AppendCast(ir::Expr tensor,
@@ -775,7 +882,34 @@ class VectorizeForTransMutator : public ir::IRMutator<ir::Expr *> {
         "vectorized_" + node->name + "_" + std::to_string(var_index_++);
     Var vectorized_var = ir::_Var_::Make(vectorized_name, vector_type);
     if (!is_assignment_) {
-      tensor_to_vectorized_vars_.emplace(node->name, vectorized_var);
+      std::vector<ir::Expr> converted_indices;
+      for (int i = 0; i < indices.size(); ++i) {
+        Expr converted_index = indices[i];
+        cinn::ir::ir_utils::IrReplaceVarBroadcast(
+            &converted_index, loop_var_, Expr(int32_t(0)));
+        converted_indices.push_back(converted_index);
+      }
+      // 显式检查外层键是否存在
+      auto it = tensor_to_vectorized_vars_.find(node->name);
+      if (it != tensor_to_vectorized_vars_.end()) {
+        VLOG(5)
+            << "YUHAN!!! Append a key: value to in tensor_to_vectorized_vars_: "
+            << vectorized_name;
+        VLOG(5) << "YUHAN!!! key1 is: " << node->name;
+        VLOG(5) << "YUHAN!!! key2 is: " << converted_indices;
+        it->second.emplace(VectorExprToString(converted_indices),
+                           vectorized_var);  // 插入到现有map
+      } else {
+        // 按需初始化或报错
+        VLOG(5)
+            << "YUHAN!!! Create a key: value to in tensor_to_vectorized_vars_: "
+            << vectorized_name;
+        VLOG(5) << "YUHAN!!! key1 is: " << node->name;
+        VLOG(5) << "YUHAN!!! key2 is: "
+                << VectorExprToString(converted_indices);
+        tensor_to_vectorized_vars_[node->name] = {
+            {VectorExprToString(converted_indices), vectorized_var}};
+      }
     }
 
     // generate a get_addr expr to get the address of the tensor
@@ -902,9 +1036,20 @@ class VectorizeForTransMutator : public ir::IRMutator<ir::Expr *> {
   // avoid to preload tensor which is written in schedule block.
   std::unordered_set<std::string> schedule_block_write_dependency_;
 
-  paddle::flat_hash_map<std::string, ir::Var> tensor_to_vectorized_vars_;
-  paddle::flat_hash_map<std::string, ir::Var> scalar_tensor_to_local_var_;
-  paddle::flat_hash_map<std::string, ir::Expr> scalar_tensor_to_local_buffer_;
+  // map from tensor name to vectorized var
+  // var_1 = A[indices_1]
+  // var_2 = A[indices_2]
+  // in which A : {indices_1 : var_1}, {indices_2 : var_2}
+  paddle::flat_hash_map<std::string, std::unordered_map<std::string, ir::Var>>
+      tensor_to_vectorized_vars_;
+  paddle::flat_hash_map<std::string,
+                        std::unordered_map<std::string,
+                                           ir::Var>>
+      scalar_tensor_to_local_var_;  // without VectorizeAxis
+  paddle::flat_hash_map<std::string,
+                        std::unordered_map<std::string,
+                                           ir::Expr>>
+      scalar_tensor_to_local_buffer_;  // with VectorizeAxis
   paddle::flat_hash_map<std::string, ir::Expr> preload_scalar_tensor_stmts_;
 
   int vectorize_factor_{0};
