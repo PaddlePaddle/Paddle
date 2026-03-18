@@ -172,6 +172,28 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, SplitGrowBlockAcrossTwoHandles) {
   EXPECT_EQ(it->parts_[0].len, underlying->handle_size() - 256UL);
 }
 
+TEST(VMMAutoGrowthBestFitAllocatorV2, SplitGrowBlockStartsWithEmptyRemapState) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kTransient);
+
+  auto allocation = allocator.Allocate(256UL);
+  ASSERT_NE(allocation, nullptr);
+
+  ASSERT_EQ(allocator.all_blocks_.size(), 2UL);
+  size_t free_count = 0;
+  for (const auto& block : allocator.all_blocks_) {
+    if (block.type_ != BlockType::kFree) {
+      continue;
+    }
+    ++free_count;
+    EXPECT_EQ(block.owning_stream_, nullptr);
+    EXPECT_EQ(block.last_use_stream_, nullptr);
+    EXPECT_EQ(block.remap_safe_event_, nullptr);
+  }
+  EXPECT_EQ(free_count, 1UL);
+}
+
 TEST(VMMAutoGrowthBestFitAllocatorV2,
      MergeSplitFreeSlicesIntoSingleHandlePart) {
   auto underlying = CreateUnderlyingAllocator();
