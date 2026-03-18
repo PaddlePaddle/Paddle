@@ -31,7 +31,7 @@ from .attribute import (  # noqa: F401
     real,
     shape,
 )
-from .compat_softmax import softmax as softmax
+from .compat_softmax import log_softmax, softmax  # noqa: F401
 from .creation import (  # noqa: F401
     MmapStorage,
     arange,
@@ -937,6 +937,7 @@ tensor_method_func = [
     'resize_',
     'argwhere',
     'softmax',
+    'log_softmax',
     'eq',
     'ne',
     'lt',

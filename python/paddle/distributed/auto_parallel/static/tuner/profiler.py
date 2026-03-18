@@ -15,7 +15,6 @@
 import argparse
 import json
 import os
-import pickle
 import sys
 import time
 import traceback
@@ -214,7 +213,9 @@ def profiler(args):
             f"There is no profile context named {args.ctx_filename}."
         )
     with open(args.ctx_filename, 'rb') as f:
-        profile_ctx = pickle.load(f, encoding='latin1')
+        from paddle.framework.restricted_unpickler import safe_load_pickle
+
+        profile_ctx = safe_load_pickle(f, encoding='latin1')
 
     init_comm(profile_ctx)
 

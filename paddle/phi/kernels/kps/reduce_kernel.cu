@@ -27,6 +27,7 @@
 #include "paddle/phi/kernels/reduce_max_kernel.h"
 #include "paddle/phi/kernels/reduce_mean_kernel.h"
 #include "paddle/phi/kernels/reduce_min_kernel.h"
+#include "paddle/phi/kernels/reduce_nansum_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 #ifndef PADDLE_WITH_XPU_KP
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -272,6 +273,37 @@ void SumRawKernel(const Context& dev_ctx,
       dev_ctx, x, reduce_all, dims.GetData(), out_dtype, out);
 #endif
 }
+
+template <typename T, typename Context>
+void NansumKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  const IntArray& dims,
+                  DataType out_dtype,
+                  bool keep_dim,
+                  DenseTensor* out) {
+  if (out_dtype == DataType::UNDEFINED && out->dtype() != x.dtype()) {
+    out_dtype = out->dtype();
+  }
+
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    if (out_dtype == DataType::INT64) {
+      Full<int64_t, Context>(dev_ctx, out->dims(), 0, out);
+    } else {
+      Full<T, Context>(dev_ctx, out->dims(), 0, out);
+    }
+    return;
+  }
+
+  bool reduce_all = recompute_reduce_all(x, dims);
+#ifdef PADDLE_WITH_XPU_KP
+  phi::Reduce<T, kps::AddFunctor, kps::NanToZeroFunctor>(
+      dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
+#else
+  phi::Reduce<T, kps::NansumOps>(
+      dev_ctx, x, reduce_all, dims.GetData(), out_dtype, out);
+#endif
+}
 }  // namespace phi
 
 #ifdef PADDLE_WITH_XPU_KP
@@ -294,6 +326,10 @@ PD_REGISTER_KERNEL(mean_raw, KPS, ALL_LAYOUT, phi::MeanRawKernel, float) {}
 PD_REGISTER_KERNEL(min_raw, KPS, ALL_LAYOUT, phi::MinRawKernel, float) {}
 
 PD_REGISTER_KERNEL(sum_raw, KPS, ALL_LAYOUT, phi::SumRawKernel, float) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}
+
+PD_REGISTER_KERNEL(nansum, KPS, ALL_LAYOUT, phi::NansumKernel, float) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
 #else
@@ -391,6 +427,25 @@ PD_REGISTER_KERNEL(sum_raw,
                    KPS,
                    ALL_LAYOUT,
                    phi::SumRawKernel,
+                   bool,
+                   float,
+                   double,
+                   float16,
+                   bfloat16,
+                   int8_t,
+                   uint8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   complex64,
+                   complex128) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}
+
+PD_REGISTER_KERNEL(nansum,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::NansumKernel,
                    bool,
                    float,
                    double,

@@ -26,7 +26,7 @@ namespace phi {
 namespace fusion {
 
 template <typename T, typename Context>
-void FFN(const phi::XPUContext& dev_ctx,
+void FFN(const XPUContext& dev_ctx,
          const DenseTensor* x,
          const DenseTensor* linear1_weight,
          const DenseTensor* linear1_bias,

@@ -115,8 +115,8 @@ void MatmulCsrCsrKernel(const Context& dev_ctx,
                         const SparseCsrTensor& y,
                         SparseCsrTensor* out) {
 #if defined(PADDLE_WITH_CUDA)
-  std::vector<int64_t> xdim_vec = phi::vectorize(x.dims());
-  std::vector<int64_t> ydim_vec = phi::vectorize(y.dims());
+  std::vector<int64_t> xdim_vec = vectorize(x.dims());
+  std::vector<int64_t> ydim_vec = vectorize(y.dims());
   auto x_ndims = xdim_vec.size();
   auto y_ndims = ydim_vec.size();
   PADDLE_ENFORCE_EQ(x_ndims,

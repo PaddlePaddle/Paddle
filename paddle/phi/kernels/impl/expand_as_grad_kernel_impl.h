@@ -54,8 +54,7 @@ void ExpandAsGradKernel(const Context& dev_ctx,
   }
   auto x_dims = x.dims();
   auto out_grad_dims = out_grad.dims();
-  std::vector<int64_t> real_target_shape =
-      phi::vectorize<int64_t>(out_grad_dims);
+  std::vector<int64_t> real_target_shape = vectorize<int64_t>(out_grad_dims);
 
   if (in_grad->dims() == out_grad_dims) {
     Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, in_grad);

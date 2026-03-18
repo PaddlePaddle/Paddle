@@ -646,14 +646,14 @@ transposeToFrontAndInvPerm(const GPUContext& dev_ctx,
   }
 
   DenseTensor transposed_self;
-  phi::TransposeKernel<T, GPUContext>(dev_ctx, self, dims, &transposed_self);
+  TransposeKernel<T, GPUContext>(dev_ctx, self, dims, &transposed_self);
 
   return std::make_tuple(transposed_self, transposed_indices, inv_perm);
 }
 
 static inline std::vector<int64_t> computeLinearStride(
     const DenseTensor& tensor) {
-  auto sizes = phi::vectorize<int64_t>(tensor.dims());
+  auto sizes = vectorize<int64_t>(tensor.dims());
   std::vector<int64_t> stride(sizes.size());
   if (stride.empty()) {
     return stride;

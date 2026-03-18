@@ -123,7 +123,7 @@ void MatmulCsrCsrGradKernel(const Context& dev_ctx,
 #if defined(PADDLE_WITH_CUDA)
   auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
 
-  std::vector<int64_t> xdim_vec = phi::vectorize(x.dims());
+  std::vector<int64_t> xdim_vec = vectorize(x.dims());
   auto x_ndims = xdim_vec.size();
   std::vector<int> perm;
   if (x_ndims == 2) {

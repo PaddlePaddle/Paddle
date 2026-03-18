@@ -98,6 +98,10 @@ if(WITH_GPU)
       vmm_allocator_tail_test
       SRCS vmm_allocator_tail_test.cc
       DEPS phi common)
+    nv_test(
+      cuda_virtual_mem_allocator_v2_test
+      SRCS cuda_virtual_mem_allocator_v2_test.cu
+      DEPS phi common)
   endif()
 endif()
 

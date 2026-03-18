@@ -129,7 +129,7 @@ void ExpandAsKernel(const Context& dev_ctx,
 
   std::vector<int64_t> real_target_shape = target_shape;
   if (y.get_ptr()) {
-    real_target_shape = phi::vectorize<int64_t>(y.get_ptr()->dims());
+    real_target_shape = vectorize<int64_t>(y.get_ptr()->dims());
   }
 
   switch (target_rank) {

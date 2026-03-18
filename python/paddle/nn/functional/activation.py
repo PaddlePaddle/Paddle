@@ -1696,11 +1696,14 @@ def thresholded_relu_(
         return _C_ops.thresholded_relu_(x, threshold, value)
 
 
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def log_softmax(
     x: Tensor,
     axis: int = -1,
     dtype: DTypeLike | None = None,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     r"""
     This operator implements the log_softmax layer. The calculation process is
@@ -1715,10 +1718,11 @@ def log_softmax(
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
+            Alias: ``input``.
         axis (int, optional): The axis along which to perform log_softmax
             calculations. It should be in range [-D, D), where D is the
             dimensions of ``x`` . If ``axis`` < 0, it works the same way as
-            :math:`axis + D` . Default is -1.
+            :math:`axis + D` . Default is -1. Alias: ``dim``.
         dtype (str|np.dtype|core.VarDesc.VarType|core.DataType, optional): The desired data
             type of the output tensor. If dtype is specified, ``x`` is casted
             to ``dtype`` before the operation is performed. This is useful for
@@ -1726,6 +1730,7 @@ def log_softmax(
             If ``dtype`` is None, the output Tensor has the same dtype as x.
             Default is None.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        out (Tensor, optional): The output Tensor.
 
     Returns:
         A Tensor with the same shape and data type (use ``dtype`` if it is
@@ -1770,7 +1775,7 @@ def log_softmax(
     if in_dynamic_or_pir_mode():
         if dtype is not None and x.dtype != dtype:
             x = _C_ops.cast(x, dtype)
-        return _C_ops.log_softmax(x, axis)
+        return _C_ops.log_softmax(x, axis, out=out)
     else:
         if dtype is None:
             check_variable_and_dtype(

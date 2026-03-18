@@ -164,7 +164,7 @@ void ProdGradKernel(const Context& dev_ctx,
         phi::FullLikeKernel<T, Context>(dev_ctx,
                                         x,
                                         Scalar(static_cast<T>(0)),
-                                        phi::CppTypeToDataType<T>::Type(),
+                                        CppTypeToDataType<T>::Type(),
                                         x_grad);
       } else {
         // Exactly one zero (or meta tensor): use safe cumprod backward

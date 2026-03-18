@@ -21,8 +21,8 @@ namespace phi::funcs {
  * each dimension must be the same, except the axis dimension.
  */
 template <typename T>
-struct ConcatFunctor<phi::CPUContext, T> {
-  void operator()(const phi::CPUContext& context,
+struct ConcatFunctor<CPUContext, T> {
+  void operator()(const CPUContext& context,
                   const std::vector<DenseTensor>& input,
                   int axis,
                   DenseTensor* output) {
@@ -72,9 +72,9 @@ struct ConcatFunctor<phi::CPUContext, T> {
  * each dimension must be the same, except the axis dimension.
  */
 template <typename T>
-struct SplitFunctor<phi::CPUContext, T> {
+struct SplitFunctor<CPUContext, T> {
  public:
-  void operator()(const phi::CPUContext& context,
+  void operator()(const CPUContext& context,
                   const DenseTensor& input,
                   const std::vector<const DenseTensor*>& ref_inputs,
                   int axis,
@@ -125,9 +125,9 @@ struct SplitFunctor<phi::CPUContext, T> {
   }
 };
 
-#define DEFINE_FUNCTOR(type)                                      \
-  template class PADDLE_API ConcatFunctor<phi::CPUContext, type>; \
-  template class PADDLE_API SplitFunctor<phi::CPUContext, type>;
+#define DEFINE_FUNCTOR(type)                                 \
+  template class PADDLE_API ConcatFunctor<CPUContext, type>; \
+  template class PADDLE_API SplitFunctor<CPUContext, type>;
 
 FOR_ALL_TYPES(DEFINE_FUNCTOR);
 

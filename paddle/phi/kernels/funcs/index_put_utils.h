@@ -117,7 +117,7 @@ std::vector<const DenseTensor*> DealWithBoolIndices(
         auto place = dev_ctx.GetPlace();
         if (place.GetType() == AllocationType::XPU) {
           auto& pool = DeviceContextPool::Instance();
-          auto* xpu_ctx = static_cast<phi::XPUContext*>(pool.Get(place));
+          auto* xpu_ctx = static_cast<XPUContext*>(pool.Get(place));
           if (xpu_ctx->x_context()->xpu_stream) {
             dev_ctx.Wait();
           }

@@ -17,9 +17,9 @@ limitations under the License. */
 namespace phi::funcs {
 
 template <typename T>
-class CopyMatrixRowsFunctor<phi::CPUContext, T> {
+class CopyMatrixRowsFunctor<CPUContext, T> {
  public:
-  void operator()(const phi::CPUContext& dev_ctx UNUSED,
+  void operator()(const CPUContext& dev_ctx UNUSED,
                   const DenseTensor& src,
                   phi::Vector<size_t> index_lod,
                   DenseTensor* dst,
@@ -68,12 +68,12 @@ class CopyMatrixRowsFunctor<phi::CPUContext, T> {
   }
 };
 
-template class CopyMatrixRowsFunctor<phi::CPUContext, float>;
-template class CopyMatrixRowsFunctor<phi::CPUContext, double>;
+template class CopyMatrixRowsFunctor<CPUContext, float>;
+template class CopyMatrixRowsFunctor<CPUContext, double>;
 
-template class DenseTensor2BatchFunctor<phi::CPUContext, float>;
-template class DenseTensor2BatchFunctor<phi::CPUContext, double>;
-template class Batch2DenseTensorFunctor<phi::CPUContext, float>;
-template class Batch2DenseTensorFunctor<phi::CPUContext, double>;
+template class DenseTensor2BatchFunctor<CPUContext, float>;
+template class DenseTensor2BatchFunctor<CPUContext, double>;
+template class Batch2DenseTensorFunctor<CPUContext, float>;
+template class Batch2DenseTensorFunctor<CPUContext, double>;
 
 }  // namespace phi::funcs

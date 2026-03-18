@@ -229,7 +229,7 @@ void SoftmaxFunctor<DeviceContext, T, Enable>::operator()(
 
 template <class DeviceContext>
 using enable_if_CPU = typename std::enable_if<
-    std::is_same<DeviceContext, phi::CPUContext>::value>::type;
+    std::is_same<DeviceContext, CPUContext>::value>::type;
 
 template <typename DeviceContext, typename T>
 class SoftmaxFunctor<DeviceContext, T, enable_if_CPU<DeviceContext>> {

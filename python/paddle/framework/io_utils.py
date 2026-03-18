@@ -207,13 +207,30 @@ def _legacy_static_save(param_dict, model_path, protocol=2):
             pickle.dump(param_dict, f, protocol=protocol)
 
 
+def _reconstruct_dense_tensor_data(data):
+    """Safe reconstruction function for DenseTensor data during unpickling.
+
+    This replaces the previous use of eval() in reduce_DenseTensor,
+    which was a security concern (CWE-502).
+
+    Args:
+        data: numpy array containing the tensor data.
+
+    Returns:
+        The data unchanged (identity function for pickle reconstruction).
+    """
+    return data
+
+
 def _pickle_loads_mac(path, f):
     pickle_bytes = bytearray(0)
     file_size = os.path.getsize(path)
     max_bytes = 2**30
     for _ in range(0, file_size, max_bytes):
         pickle_bytes += f.read(max_bytes)
-    load_result = pickle.loads(pickle_bytes, encoding='latin1')
+    from .restricted_unpickler import safe_loads_pickle
+
+    load_result = safe_loads_pickle(pickle_bytes, encoding='latin1')
     return load_result
 
 
