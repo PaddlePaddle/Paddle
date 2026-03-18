@@ -56,8 +56,15 @@ void Transpose<DeviceContext, T, Rank>::operator()(
   auto eigen_in = EigenTensor<T, Rank>::From(in);
   auto eigen_out = EigenTensor<T, Rank>::From(*out);
   auto* dev = dev_ctx.eigen_device();
-  // use 32bit index to speed up computation
-  bool use_32bit_index = eigen_out.size() < Eigen::NumTraits<int>::highest();
+  // use 32bit index to speed up computation.
+  // NOTE: Use INT32_MAX/2 as threshold instead of INT32_MAX to prevent int32
+  // overflow in Eigen's GPU grid-stride loop. The loop does `i += step_size`
+  // where step_size = blockDim.x * gridDim.x. When size is close to INT32_MAX,
+  // `i + step_size` can overflow int32 to a negative value, causing the loop
+  // condition `i < size` to remain true and producing illegal memory accesses.
+  bool use_32bit_index =
+      eigen_in.size() < Eigen::NumTraits<int>::highest() / 2 &&
+      eigen_out.size() < Eigen::NumTraits<int>::highest() / 2;
   bool is_gpu_place = dev_ctx.GetPlace().GetType() == AllocationType::GPU;
   if (use_32bit_index && is_gpu_place) {
     To32BitIndex(eigen_out).device(*dev) =
