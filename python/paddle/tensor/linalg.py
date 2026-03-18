@@ -510,12 +510,36 @@ def vector_norm(
         """
         NOTE:
             This function calculates the vector norm for dim >= 2.
+            To align with PyTorch precision, low-precision types (float16,
+            bfloat16) are promoted to float32 for intermediate computation,
+            then cast back to the result dtype.
         """
         if in_dynamic_or_pir_mode():
-            abs_out = _C_ops.abs(input)
-            pow_out = _C_ops.pow(abs_out, porder)
+            # Promote low-precision types to float32 for computation
+            # to match PyTorch's reduction_dtypes / get_computation_dtype
+            orig_dtype = input.dtype
+            need_promote = orig_dtype in (
+                paddle.float16,
+                paddle.bfloat16,
+            )
+            if need_promote:
+                input = _C_ops.cast(input, paddle.float32)
+
+            # Skip abs for even integer orders on real float tensors
+            # (x^even is always non-negative), matching PyTorch optimization
+            is_ord_even = (isinstance(porder, int) and porder % 2 == 0) or (
+                isinstance(porder, float) and porder % 2.0 == 0.0
+            )
+            if is_ord_even:
+                pow_out = _C_ops.pow(input, porder)
+            else:
+                abs_out = _C_ops.abs(input)
+                pow_out = _C_ops.pow(abs_out, porder)
             sum_out = _C_ops.sum(pow_out, axis, None, keepdim)
             out = _C_ops.pow(sum_out, float(1.0 / porder))
+
+            if need_promote:
+                out = _C_ops.cast(out, orig_dtype)
             return out
 
         block = LayerHelper('norm', **locals())
