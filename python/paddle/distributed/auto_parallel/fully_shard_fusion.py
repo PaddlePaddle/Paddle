@@ -208,14 +208,12 @@ class FSDPBufferManager:
         # Layer types to wrap as FSDP sharding layers
         # Note: 'Qwen3VLTextDecoderLayer' is temporary; fleet models all use 'TransformerLayer'
         self.fsdp_unit_layers = fsdp_unit_layers or [
-            'TransformerLayer',
             'Qwen3VLTextDecoderLayer',
+            'Qwen3VLTextTransformerLayer',
         ]
 
         # Get tie_param_name if using tie_weights
         self.tie_param_name = None
-        if hasattr(self.model, "get_input_embeddings"):
-            self.tie_param_name = self.model.get_input_embeddings().weight.name
 
         # Create buffer_groups
         grouped_params = self._build_groups()
@@ -340,12 +338,16 @@ class FSDPCommManager:
     def _release_one_buffer_if_needed(self):
         # Release a buffer with the READY status if needed
         while self.buffer_cnt_in_using >= self.double_buffer_limit:
+            found = False
             for group in self.buffer_manager.buffer_groups:
                 if group.params_buffer.status == BufferState.READY:
                     group.params_buffer.status = BufferState.FREED
                     group.params_buffer.clear_tmp_buffer()
                     self.buffer_cnt_in_using -= 1
+                    found = True
                     break
+            if not found:
+                break
 
     def _next_buffer_id(self, gid, is_backward):
         # Get next buffer id for prefetch
@@ -521,10 +523,10 @@ class FSDPCommManager:
 
 class FusionBackwardHook(PyLayer):
     @staticmethod
-    def forward(ctx, inputs, layer, comm_manager):
+    def forward(ctx, *inputs, layer, comm_manager):
         ctx.layer = layer
         ctx.comm_manager = comm_manager
-        return inputs
+        return inputs if len(inputs) > 1 else inputs[0]
 
     @staticmethod
     def backward(ctx, *args):
@@ -660,11 +662,21 @@ class FullyShardFusion:
 
     def _register_fusion_layer_hooks(self, layer, name="last_layer"):
         def _forward_post_hook(layer, inputs, outputs):
-            return FusionBackwardHook.apply(
-                outputs,
-                layer=layer,
-                comm_manager=self.comm_manager,
-            )
+            if isinstance(outputs, tuple):
+                result = FusionBackwardHook.apply(
+                    *outputs,
+                    layer=layer,
+                    comm_manager=self.comm_manager,
+                )
+                if not isinstance(result, tuple):
+                    result = (result,)
+                return result
+            else:
+                return FusionBackwardHook.apply(
+                    outputs,
+                    layer=layer,
+                    comm_manager=self.comm_manager,
+                )
 
         def _forward_pre_hook(layer, inputs):
             return FusionForwardHook.apply(
