@@ -17,7 +17,7 @@ from __future__ import annotations
 import math
 import numbers
 import warnings
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, NamedTuple
 
 import numpy as np
 from typing_extensions import overload
@@ -173,6 +173,20 @@ _supported_float_dtype_ = [
 ]
 
 
+class CummaxRetType(NamedTuple):
+    """Return type for cummax operation containing values and indices tensors."""
+
+    values: Tensor
+    indices: Tensor
+
+
+class CumminRetType(NamedTuple):
+    """Return type for cummin operation containing values and indices tensors."""
+
+    values: Tensor
+    indices: Tensor
+
+
 def _get_reduce_axis(axis, x):
     """
     Internal function for max, min, amax and amin.
@@ -227,6 +241,8 @@ def scale(
     bias_after_scale: bool = True,
     act: str | None = None,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Scale operator.
@@ -250,7 +266,10 @@ def scale(
         bias (float): The bias to be put on the input.
         bias_after_scale (bool): Apply bias addition after or before scaling. It is useful for numeric stability in some circumstances.
         act (str|None, optional): Activation applied to the output such as tanh, softmax, sigmoid, relu.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation. Default: None. For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword Args:
+        out (Tensor|None, optional): The output tensor. If set, the result will be stored in this Tensor. Default: None.
 
     Returns:
         Tensor: Output Tensor of scale operator, with shape and data type same as input.
@@ -292,10 +311,12 @@ def scale(
     """
 
     if in_dynamic_mode():
-        if act is None:
-            return _C_ops.scale(x, scale, float(bias), bias_after_scale)
-        out = _C_ops.scale(x, scale, float(bias), bias_after_scale)
-        return dygraph_utils._append_activation_in_dygraph(out, act)
+        ret = _C_ops.scale(x, scale, float(bias), bias_after_scale)
+        ret = dygraph_utils._append_activation_in_dygraph(ret, act)
+        if out is not None:
+            paddle.assign(ret, out)
+            return out
+        return ret
     elif in_pir_mode():
         out = _C_ops.scale(x, scale, float(bias), bias_after_scale)
         return paddle.pir_utils.append_activation_in_pir(out, act)
@@ -1167,6 +1188,8 @@ def floor_divide(
         y (Tensor|Number): the input tensor or number, it's data type should be uint8, int8, int32, int64, float32, float64, float16, bfloat16.
             alias: ``other``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword Args:
         out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
@@ -1232,6 +1255,8 @@ def remainder(
         x (Tensor): the input tensor, it's data type should be bfloat16, float16, float32, float64, int32, int64.
         y (Tensor): the input tensor, it's data type should be bfloat16, float16, float32, float64, int32, int64.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword Args:
         out (Tensor|None, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
 
     Returns:
@@ -1295,6 +1320,8 @@ def mul(
         x (Tensor): the input tensor, its data type should be one of bfloat16, float16, float32, float64, int32, int64, bool, complex64, complex128.
         y (Tensor): the input tensor, its data type should be one of bfloat16, float16, float32, float64, int32, int64, bool, complex64, complex128.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword Args:
         out (Tensor|None, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
 
     Returns:
@@ -2187,7 +2214,10 @@ def mm(
         return out
 
 
-def inner(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+@param_two_alias(["x", "input"], ["y", "other"])
+def inner(
+    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor:
     """
 
     Inner product of two input Tensor.
@@ -2196,8 +2226,13 @@ def inner(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
     Args:
         x (Tensor): An N-D Tensor or a Scalar Tensor. If its not a scalar Tensor, its last dimensions must match y's.
+            Alias: ``input``.
         y (Tensor): An N-D Tensor or a Scalar Tensor. If its not a scalar Tensor, its last dimensions must match x's.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+            Alias: ``other``.
+        name (str|None, optional): Name for the operation. Default: None. For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword Args:
+        out (Tensor|None, optional): The output tensor. If set, the result will be stored in this Tensor. Default: None.
 
     Returns:
         Tensor: The inner-product Tensor, the output shape is x.shape[:-1] + y.shape[:-1].
@@ -2219,7 +2254,7 @@ def inner(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     xshape = x.shape
     yshape = y.shape
     if in_dynamic_mode() and (x.size == 1 or y.size == 1):
-        return multiply(x, y)
+        return _C_ops.multiply(x, y, out=out)
     else:
         dstshape = list(xshape[:-1]) + list(yshape[:-1])
         if xshape[-1] == 0:  # If the last dimension is 0
@@ -2258,7 +2293,11 @@ def inner(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         __check_input(nx, ny)
 
         if in_dynamic_or_pir_mode():
-            return _C_ops.matmul(nx, ny, False, True).reshape(dstshape)
+            ret = _C_ops.matmul(nx, ny, False, True).reshape(dstshape)
+            if out is not None:
+                paddle.assign(ret, out)
+                return out
+            return ret
         else:
             helper = LayerHelper('inner', **locals())
             out = helper.create_variable_for_type_inference(dtype=nx.dtype)
@@ -2294,6 +2333,8 @@ def outer(
         y (Tensor): An N-D Tensor or a Scalar Tensor.
             alias: ``vec2``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword Args:
         out (Tensor|None, optional): The output Tensor. If set, the result will be stored in this Tensor.
 
     Returns:
@@ -3120,26 +3161,47 @@ def cumsum_(
         return _C_ops.cumsum_(x, axis, flatten, False, False)
 
 
+@param_two_alias(['x', 'input'], ['axis', 'dim'])
 def cummax(
     x: Tensor,
     axis: int | None = None,
     dtype: DTypeLike = 'int64',
     name: str | None = None,
-) -> tuple[Tensor, Tensor]:
+    *,
+    out: tuple[Tensor, Tensor] | None = None,
+) -> CummaxRetType:
     """
     The cumulative max of the elements along a given axis.
+
+    This API has two signatures:
+
+    1. ``paddle.cummax(x, axis=None, dtype='int64', name=None)`` (Paddle-style):
+       Compute cumulative max with optional axis parameter.
+
+    2. ``paddle.cummax(input, dim, *, out=None)`` (PyTorch-style):
+       Compute cumulative max with required dim parameter.
+       The parameter name ``input`` is an alias for ``x``, ``dim`` is an alias for ``axis``.
 
     Note:
         The first element of the result is the same as the first element of the input.
 
     Args:
         x (Tensor): The input tensor needed to be cummaxed.
-        axis (int, optional): The dimension to accumulate along. -1 means the last dimension. The default (None) is to compute the cummax over the flattened array.
-        dtype (str|paddle.dtype|np.dtype, optional): The data type of the indices tensor, can be int32, int64. The default value is int64.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+            Alias: ``input``.
+        axis (int, optional): The dimension to accumulate along. -1 means the last dimension.
+            The default (None) is to compute the cummax over the flattened array.
+            Alias: ``dim``.
+        dtype (str|paddle.dtype|np.dtype, optional): The data type of the indices tensor,
+            can be int32, int64. The default value is int64.
+        name (str|None, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword Args:
+        out (tuple[Tensor, Tensor]|None, optional): The output tuple of two tensors (values, indices).
+            Default: None.
 
     Returns:
-        out (Tensor), The result of cummax operation. The dtype of cummax result is same with input x.
+        values (Tensor), The result of cummax operation. The dtype of cummax result is same with input x.
 
         indices (Tensor), The corresponding index results of cummax operation.
 
@@ -3191,7 +3253,12 @@ def cummax(
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.cummax(x, axis, dtype)
+        if out is not None:
+            _C_ops.cummax(x, axis, dtype, out=tuple(out))
+            return CummaxRetType(values=out[0], indices=out[1])
+        else:
+            result_out, result_indices = _C_ops.cummax(x, axis, dtype)
+            return CummaxRetType(result_out, result_indices)
     else:
         check_variable_and_dtype(
             x,
@@ -3209,29 +3276,50 @@ def cummax(
             outputs={'out': out, 'indices': indices},
             attrs={'axis': axis, 'dtype': dtype},
         )
-        return out, indices
+        return CummaxRetType(out, indices)
 
 
+@param_two_alias(['x', 'input'], ['axis', 'dim'])
 def cummin(
     x: Tensor,
     axis: int | None = None,
     dtype: DTypeLike = 'int64',
     name: str | None = None,
-) -> tuple[Tensor, Tensor]:
+    *,
+    out: tuple[Tensor, Tensor] | None = None,
+) -> CumminRetType:
     """
     The cumulative min of the elements along a given axis.
+
+    This API has two signatures:
+
+    1. ``paddle.cummin(x, axis=None, dtype='int64', name=None)`` (Paddle-style):
+       Compute cumulative min with optional axis parameter.
+
+    2. ``paddle.cummin(input, dim, *, out=None)`` (PyTorch-style):
+       Compute cumulative min with required dim parameter.
+       The parameter name ``input`` is an alias for ``x``, ``dim`` is an alias for ``axis``.
 
     Note:
         The first element of the result is the same as the first element of the input.
 
     Args:
         x (Tensor): The input tensor needed to be cummined.
-        axis (int, optional): The dimension to accumulate along. -1 means the last dimension. The default (None) is to compute the cummin over the flattened array.
-        dtype (str|paddle.dtype|np.dtype, optional): The data type of the indices tensor, can be int32, int64. The default value is int64.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+            Alias: ``input``.
+        axis (int, optional): The dimension to accumulate along. -1 means the last dimension.
+            The default (None) is to compute the cummin over the flattened array.
+            Alias: ``dim``.
+        dtype (str|paddle.dtype|np.dtype, optional): The data type of the indices tensor,
+            can be int32, int64. The default value is int64.
+        name (str|None, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword Args:
+        out (tuple[Tensor, Tensor]|None, optional): The output tuple of two tensors (values, indices).
+            Default: None.
 
     Returns:
-        out (Tensor), The result of cummin operation. The dtype of cummin result is same with input x.
+        values (Tensor), The result of cummin operation. The dtype of cummin result is same with input x.
 
         indices (Tensor), The corresponding index results of cummin operation.
 
@@ -3282,7 +3370,12 @@ def cummin(
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.cummin(x, axis, dtype)
+        if out is not None:
+            _C_ops.cummin(x, axis, dtype, out=tuple(out))
+            return CumminRetType(values=out[0], indices=out[1])
+        else:
+            result_out, result_indices = _C_ops.cummin(x, axis, dtype)
+            return CumminRetType(result_out, result_indices)
     else:
         check_variable_and_dtype(
             x,
@@ -3300,7 +3393,7 @@ def cummin(
             outputs={'out': out, 'indices': indices},
             attrs={'axis': axis, 'dtype': dtype},
         )
-        return out, indices
+        return CumminRetType(out, indices)
 
 
 @param_two_alias(["x", "input"], ["axis", "dim"])
@@ -3434,6 +3527,8 @@ def cumprod(
                     This is useful for preventing data type overflows. The default value is None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information,
                     please refer to :ref:`api_guide_Name`.
+
+    Keyword Args:
         out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
@@ -3547,8 +3642,9 @@ def prod(
     axis: int | Sequence[int] | None = None,
     keepdim: bool = False,
     dtype: DTypeLike | None = None,
-    out: Tensor | None = None,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Compute the product of tensor elements over the given axis.
@@ -3571,8 +3667,10 @@ def prod(
             float16, float32, float64, int32, int64. If specified, the input tensor is casted to dtype before
             operator performed. This is very useful for avoiding data type overflows. The default value is None,
             the dtype of output is the same as input Tensor `x`.
-        out (Tensor|None, optional): The output tensor. Default: None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword Args:
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         Tensor, result of product on the specified dim of input tensor.
@@ -4094,14 +4192,21 @@ def multigammaln_(x: Tensor, p: int, name: str | None = None) -> Tensor:
     return x
 
 
-def neg(x: Tensor, name: str | None = None) -> Tensor:
+@param_one_alias(['x', 'input'])
+def neg(
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor:
     """
     This function computes the negative of the Tensor elementwisely.
 
     Args:
         x (Tensor): Input of neg operator, an N-D Tensor, with data type bfloat16, float16, float32, float64, int8, int16, int32,
             int64, uint8, complex64, complex128.
+            Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword Args:
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         out (Tensor): The negative of input Tensor. The shape and data type are the same with input Tensor.
@@ -4119,7 +4224,13 @@ def neg(x: Tensor, name: str | None = None) -> Tensor:
     """
 
     return scale(
-        x, scale=-1.0, bias=0.0, bias_after_scale=True, act=None, name=name
+        x,
+        scale=-1.0,
+        bias=0.0,
+        bias_after_scale=True,
+        act=None,
+        name=name,
+        out=out,
     )
 
 
@@ -4134,6 +4245,7 @@ def neg_(x: Tensor, name: str | None = None) -> Tensor:
     )
 
 
+@param_one_alias(['x', 'input'])
 def positive(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     Returns the input Tensor as it is. This is used in `Tensor.__pos__`, applying the
@@ -4144,6 +4256,7 @@ def positive(x: Tensor, name: str | None = None) -> Tensor:
 
     Args:
         x (Tensor): The input tensor. The tensor cannot be of type bool.
+            Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -4462,7 +4575,10 @@ def erfinv_(x: Tensor, name: str | None = None) -> Tensor:
     return _C_ops.erfinv_(x)
 
 
-def rad2deg(x: Tensor, name: str | None = None) -> Tensor:
+@param_one_alias(['x', 'input'])
+def rad2deg(
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor:
     r"""
     Convert each of the elements of input x from angles in radians to degrees.
 
@@ -4473,7 +4589,11 @@ def rad2deg(x: Tensor, name: str | None = None) -> Tensor:
 
     Args:
         x (Tensor): An N-D Tensor, the data type is float32, float64, int32, int64.
+            Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword Args:
+        out (Tensor|None, optional): The output Tensor. If set, the result will be stored in this Tensor.
 
     Returns:
         out (Tensor): An N-D Tensor, the shape and data type is the same with input (The output data type is float32 when the input data type is int).
@@ -4507,7 +4627,7 @@ def rad2deg(x: Tensor, name: str | None = None) -> Tensor:
     if in_dynamic_or_pir_mode():
         if convert_dtype(x.dtype) in ['int32', 'int64']:
             x = cast(x, dtype="float32")
-        return _C_ops.scale(x, rad2deg_scale, 0.0, True)
+        return _C_ops.scale(x, rad2deg_scale, 0.0, True, out=out)
     else:
         check_variable_and_dtype(
             x, 'x', ['int32', 'int64', 'float32', 'float64'], 'rad2deg'
@@ -4548,6 +4668,8 @@ def deg2rad(
     Args:
         x (Tensor): An N-D Tensor, the data type is float32, float64, int32, int64.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword Args:
         out (Tensor|None, optional): The output Tensor. If set, the result will be stored in this Tensor. Default is None.
 
     Returns:
@@ -5847,7 +5969,10 @@ def polygamma_(x: Tensor, n: int, name: str | None = None) -> Tensor:
             return _C_ops.polygamma_(x, n)
 
 
-def ldexp(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+@param_two_alias(['x', 'input'], ['y', 'other'])
+def ldexp(
+    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor:
     """
     Compute the result of multiplying x by 2 to the power of y. The equation is:
 
@@ -5856,8 +5981,13 @@ def ldexp(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
     Args:
         x (Tensor): The input Tensor, the data type is float32, float64, int32 or int64.
+            Alias: ``input``.
         y (Tensor):  A Tensor of exponents, typically integers.
-        name (str|None, optional): Name for the operation (optional, default is None).For more information, please refer to :ref:`api_guide_Name`.
+            Alias: ``other``.
+        name (str|None, optional): Name for the operation.
+
+    Keyword args:
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         out (Tensor): An N-D Tensor. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape, its shape is the same as x and y. And the data type is float32 or float64.
@@ -5898,7 +6028,11 @@ def ldexp(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     x = x.astype(dtype=out_dtype)
     y = y.astype(dtype=out_dtype)
     two = paddle.to_tensor(2, dtype=out_dtype)
-    return paddle.multiply(x, paddle.pow(two, y))
+    ret = paddle.multiply(x, paddle.pow(two, y))
+    if out is not None:
+        paddle.assign(ret, out)
+        return out
+    return ret
 
 
 @param_two_alias(['x', 'input'], ['y', 'other'])
@@ -6001,7 +6135,7 @@ def copysign(
             Alias: ``input``.
         y (Tensor|float): contains value(s) whose signbit(s) are applied to the magnitudes in input.
             Alias: ``other``.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation.
 
     Keyword args:
         out (Tensor, optional): The output tensor. Default: None.
@@ -6110,7 +6244,7 @@ def hypot(
             Alias: ``input``.
         y (Tensor): The input Tensor, the data type is float32, float64, int32 or int64.
             Alias: ``other``.
-        name (str|None, optional): Name for the operation (optional, default is None).For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation.
 
     Keyword args:
         out (Tensor|None, optional): The output tensor. Default: None.

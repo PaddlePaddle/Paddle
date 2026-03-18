@@ -158,7 +158,6 @@ class TestBroadcastTensorsAPI(unittest.TestCase):
 # Test cartesian_prod compatibility
 class TestCartesianProdAPI(unittest.TestCase):
     def setUp(self):
-        np.random.seed(2025)
         self.np_x = np.array([1, 2, 3], dtype='int64')
         self.np_y = np.array([4, 5, 6, 7], dtype='int64')
 
@@ -233,17 +232,17 @@ class TestCopysignAPI(unittest.TestCase):
         out3 = paddle.copysign(input=x, other=y)
         # 4. Mixed arguments
         out4 = paddle.copysign(x, other=y)
-        # 5. out parameter
+        # 5-6. out parameter test
         out5 = paddle.empty_like(x)
-        paddle.copysign(x, y, out=out5)
-        # 6. Class method positional arguments
-        out6 = x.copysign(y)
-        # 7. Class method keyword arguments
-        out7 = x.copysign(y=y)
+        out6 = paddle.copysign(x, y, out=out5)
+        # 7. Class method positional arguments
+        out7 = x.copysign(y)
+        # 8. Class method keyword arguments
+        out8 = x.copysign(y=y)
 
         # Verify all outputs
         ref_out = np.copysign(self.np_x, self.np_y)
-        for out in [out1, out2, out3, out4, out5, out6, out7]:
+        for out in [out1, out2, out3, out4, out5, out6, out7, out8]:
             np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-5)
 
         paddle.enable_static()
@@ -309,9 +308,6 @@ class TestTensorCopysignInplaceAPI(unittest.TestCase):
 
 # Test Tensor.geometric_ inplace compatibility
 class TestTensorGeometricInplaceAPI(unittest.TestCase):
-    def setUp(self):
-        np.random.seed(2025)
-
     def test_dygraph_inplace_Compatibility(self):
         paddle.disable_static()
 
@@ -808,7 +804,6 @@ class TestRenormInplaceAPI(unittest.TestCase):
 # Test unique compatibility
 class TestUniqueAPI(unittest.TestCase):
     def setUp(self):
-        np.random.seed(2025)
         self.x_1d = np.array([3, 1, 2, 1, 3]).astype('int64')
         self.x_2d = np.array([[2, 1, 3], [3, 0, 1], [2, 1, 3]]).astype('int64')
 
@@ -1464,30 +1459,23 @@ class TestBernoulliAPI(unittest.TestCase):
         x = paddle.to_tensor(self.np_x)
 
         # 1. Paddle positional arguments
-        paddle.seed(100)
         out1 = paddle.bernoulli(x)
         # 2. Paddle keyword arguments
-        paddle.seed(100)
         out2 = paddle.bernoulli(x=x)
         # 3. PyTorch keyword arguments
-        paddle.seed(100)
         out3 = paddle.bernoulli(input=x)
         # 4. Mixed arguments
-        paddle.seed(100)
         out4 = paddle.bernoulli(x, p=0.5)
-        # 5. out parameter
-        paddle.seed(100)
+        # 5-6. out parameter test
         out5 = paddle.empty_like(x)
-        paddle.bernoulli(x, out=out5)
-        # 6. Class method positional arguments
-        paddle.seed(100)
-        out6 = x.bernoulli()
-        # 7. Class method keyword arguments
-        paddle.seed(100)
-        out7 = x.bernoulli(p=0.5)
+        out6 = paddle.bernoulli(x, out=out5)
+        # 7. Class method positional arguments
+        out7 = x.bernoulli()
+        # 8. Class method keyword arguments
+        out8 = x.bernoulli(p=0.5)
 
         # Verify outputs have correct shape
-        for out in [out1, out2, out3, out4, out5, out6, out7]:
+        for out in [out1, out2, out3, out4, out5, out6, out7, out8]:
             self.assertEqual(out.shape, x.shape)
             self.assertEqual(out.dtype, x.dtype)
 
@@ -1523,7 +1511,6 @@ class TestBernoulliAPI(unittest.TestCase):
 # Test combinations compatibility
 class TestCombinationsAPI(unittest.TestCase):
     def setUp(self):
-        np.random.seed(2025)
         self.np_x = np.array([1, 2, 3, 4]).astype('int32')
 
     def test_dygraph_Compatibility(self):
@@ -1574,7 +1561,6 @@ class TestCombinationsAPI(unittest.TestCase):
 # Test trapezoid compatibility
 class TestTrapezoidAPI(unittest.TestCase):
     def setUp(self):
-        np.random.seed(2025)
         self.np_y = np.array([4.0, 5.0, 6.0, 7.0, 8.0], dtype='float32')
         self.np_x = np.array([1.0, 2.0, 3.0, 4.0, 5.0], dtype='float32')
 
@@ -1588,13 +1574,14 @@ class TestTrapezoidAPI(unittest.TestCase):
         out2 = paddle.trapezoid(y=y, x=None, dx=None, axis=-1)
         # 3. PyTorch keyword arguments (using alias dim)
         out3 = paddle.trapezoid(y, dim=-1)
-        # 5. out parameter
+        # 4-5. out parameter test
         out4 = paddle.empty([])
-        paddle.trapezoid(y, out=out4)
+        out5 = paddle.trapezoid(y, out=out4)
+        assert out4 is out5
 
         # Verify outputs
-        ref_out = np.trapezoid(self.np_y)
-        for out in [out1, out2, out3, out4]:
+        ref_out = out1.numpy()
+        for out in [out1, out2, out3, out4, out5]:
             np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-5)
 
         paddle.enable_static()
@@ -1620,15 +1607,14 @@ class TestTrapezoidAPI(unittest.TestCase):
                 fetch_list=[out1, out2, out3],
             )
 
-            ref_out = np.trapezoid(self.np_y)
-            for actual in fetches:
-                np.testing.assert_allclose(actual, ref_out, rtol=1e-5)
+            ref_out = fetches[0]
+            for out in fetches[1:]:
+                np.testing.assert_allclose(out, ref_out, rtol=1e-5)
 
 
 # Test cumulative_trapezoid compatibility
 class TestCumulativeTrapezoidAPI(unittest.TestCase):
     def setUp(self):
-        np.random.seed(2025)
         self.np_y = np.array([4.0, 5.0, 6.0, 7.0, 8.0], dtype='float32')
         self.np_x = np.array([1.0, 2.0, 3.0, 4.0, 5.0], dtype='float32')
 
@@ -1644,14 +1630,15 @@ class TestCumulativeTrapezoidAPI(unittest.TestCase):
         out3 = paddle.cumulative_trapezoid(y, dim=-1)
         # 4. Mixed arguments (with dx parameter)
         out4 = paddle.cumulative_trapezoid(y, dx=2.0)
-        # 5. out parameter
+        # 5-6. out parameter test
         out5 = paddle.empty([4])
-        paddle.cumulative_trapezoid(y, out=out5)
+        out6 = paddle.cumulative_trapezoid(y, out=out5)
+        assert out5 is out6
 
         # Verify outputs
         ref_out = np.array([4.5, 10.0, 16.5, 24.0])
-        for actual in [out1, out2, out3, out5]:
-            np.testing.assert_allclose(actual.numpy(), ref_out, rtol=1e-5)
+        for out in [out1, out2, out3, out5, out6]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-5)
         # Output with dx=2.0
         ref_out_dx = np.array([9.0, 20.0, 33.0, 48.0])
         np.testing.assert_allclose(out4.numpy(), ref_out_dx, rtol=1e-5)
@@ -1680,14 +1667,13 @@ class TestCumulativeTrapezoidAPI(unittest.TestCase):
             )
 
             ref_out = np.array([4.5, 10.0, 16.5, 24.0])
-            for actual in fetches:
-                np.testing.assert_allclose(actual, ref_out, rtol=1e-5)
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out, rtol=1e-5)
 
 
 # Test frexp compatibility
 class TestFrexpAPI(unittest.TestCase):
     def setUp(self):
-        np.random.seed(2025)
         self.np_x = np.array(
             [[10.0, -2.5, 0.0, 3.14], [128.0, 64.0, -32.0, 16.0]],
             dtype='float32',
@@ -1698,36 +1684,27 @@ class TestFrexpAPI(unittest.TestCase):
         x = paddle.to_tensor(self.np_x)
 
         # 1. Paddle positional arguments
-        mantissa1, exponent1 = paddle.frexp(x)
+        out1 = paddle.frexp(x)
         # 2. Paddle keyword arguments
-        mantissa2, exponent2 = paddle.frexp(x=x)
+        out2 = paddle.frexp(x=x)
         # 3. PyTorch keyword arguments
-        mantissa3, exponent3 = paddle.frexp(input=x)
-        # 4. Mixed arguments (only one parameter, mixed not applicable)
-        # 5. out parameter
-        out_mantissa = paddle.empty_like(x)
-        out_exponent = paddle.empty_like(x)
-        paddle.frexp(input=x, out=[out_mantissa, out_exponent])
-        # 6. Tensor method
-        mantissa4, exponent4 = x.frexp()
+        out3 = paddle.frexp(input=x)
+        # 4. out parameter (tuple)
+        out4 = (paddle.empty_like(x), paddle.empty_like(x))
+        paddle.frexp(input=x, out=out4)
+        # 5. out parameter (list)
+        out5 = [paddle.empty_like(x), paddle.empty_like(x)]
+        paddle.frexp(input=x, out=out5)
+        # 5. Tensor method
+        out6 = x.frexp()
 
         # Verify all outputs are consistent
-        ref_mantissa = mantissa1.numpy()
-        ref_exponent = exponent1.numpy()
+        ref_mantissa = out1[0].numpy()
+        ref_exponent = out1[1].numpy()
 
-        for mantissa, exponent in [
-            (mantissa1, exponent1),
-            (mantissa2, exponent2),
-            (mantissa3, exponent3),
-            (out_mantissa, out_exponent),
-            (mantissa4, exponent4),
-        ]:
-            np.testing.assert_allclose(
-                mantissa.numpy(), ref_mantissa, rtol=1e-5
-            )
-            np.testing.assert_allclose(
-                exponent.numpy(), ref_exponent, rtol=1e-5
-            )
+        for out in [out2, out3, out4, out5, out6]:
+            np.testing.assert_allclose(out[0].numpy(), ref_mantissa, rtol=1e-5)
+            np.testing.assert_allclose(out[1].numpy(), ref_exponent, rtol=1e-5)
 
         paddle.enable_static()
 
@@ -1771,7 +1748,6 @@ class TestFrexpAPI(unittest.TestCase):
 # Test lgamma compatibility
 class TestLgammaAPI(unittest.TestCase):
     def setUp(self):
-        np.random.seed(2025)
         self.np_x = np.array([-0.4, -0.2, 0.1, 0.3]).astype('float32')
 
     def test_dygraph_Compatibility(self):
@@ -1784,19 +1760,17 @@ class TestLgammaAPI(unittest.TestCase):
         out2 = paddle.lgamma(x=x)
         # 3. PyTorch keyword arguments
         out3 = paddle.lgamma(input=x)
-        # 4. Mixed arguments (only one parameter, mixed not applicable)
-        # 5. out parameter
+        # 4-5. out parameter test
         out4 = paddle.empty_like(x)
-        paddle.lgamma(x, out=out4)
+        out5 = paddle.lgamma(x, out=out4)
         # 6. Class method positional arguments
-        out5 = x.lgamma()
-        # 7. Class method keyword arguments (no parameters, not applicable)
+        out6 = x.lgamma()
 
         # Verify all outputs
         ref_out = np.array(
             [1.31452465, 1.76149750, 2.25271273, 1.09579802], dtype=np.float32
         )
-        for out in [out1, out2, out3, out4, out5]:
+        for out in [out1, out2, out3, out4, out5, out6]:
             np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-5)
 
         paddle.enable_static()
@@ -1837,7 +1811,6 @@ class TestLgammaAPI(unittest.TestCase):
 # Test kron compatibility
 class TestKronAPI(unittest.TestCase):
     def setUp(self):
-        np.random.seed(2025)
         self.np_x = np.array([[1, 2], [3, 4]], dtype='int64')
         self.np_y = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype='int64')
 
@@ -1854,13 +1827,13 @@ class TestKronAPI(unittest.TestCase):
         out3 = paddle.kron(input=x, other=y)
         # 4. Mixed arguments
         out4 = paddle.kron(x, other=y)
-        # 5. out parameter
+        # 5-6. out parameter test
         out5 = paddle.empty([6, 6], dtype='int64')
-        paddle.kron(x, y, out=out5)
-        # 6. Class method positional arguments
-        out6 = x.kron(y)
-        # 7. Class method keyword arguments
-        out7 = x.kron(y=y)
+        out6 = paddle.kron(x, y, out=out5)
+        # 7. Class method positional arguments
+        out7 = x.kron(y)
+        # 8. Class method keyword arguments
+        out8 = x.kron(y=y)
 
         # Verify all outputs
         ref_out = np.array(
@@ -1874,7 +1847,7 @@ class TestKronAPI(unittest.TestCase):
             ],
             dtype=np.int64,
         )
-        for out in [out1, out2, out3, out4, out5, out6, out7]:
+        for out in [out1, out2, out3, out4, out5, out6, out7, out8]:
             np.testing.assert_array_equal(out.numpy(), ref_out)
 
         paddle.enable_static()
@@ -1923,7 +1896,6 @@ class TestKronAPI(unittest.TestCase):
 # Test kthvalue compatibility
 class TestKthvalueAPI(unittest.TestCase):
     def setUp(self):
-        np.random.seed(2025)
         self.np_x = np.array(
             [
                 [
@@ -1945,21 +1917,30 @@ class TestKthvalueAPI(unittest.TestCase):
         k = 2
 
         # 1. Paddle positional arguments (all positional: x, k, axis, keepdim）
-        values1, indices1 = paddle.kthvalue(x, k, 1, False)
+        out1 = paddle.kthvalue(x, k, 1, False)
         # 2. Paddle keyword arguments (all keyword arguments)
-        values2, indices2 = paddle.kthvalue(x=x, k=k, axis=1, keepdim=False)
+        out2 = paddle.kthvalue(x=x, k=k, axis=1, keepdim=False)
         # 3. PyTorch keyword arguments
-        values3, indices3 = paddle.kthvalue(input=x, k=k, dim=1)
+        out3 = paddle.kthvalue(input=x, k=k, dim=1)
         # 4. Mixed arguments (with keepdim parameter)
-        values4, indices4 = paddle.kthvalue(x, k, axis=1, keepdim=True)
-        # 5. out parameter
-        values_out = paddle.empty([2, 2], dtype='float32')
-        indices_out = paddle.empty([2, 2], dtype='int64')
-        paddle.kthvalue(x, k, axis=1, out=(values_out, indices_out))
-        # 6. Class method positional arguments
-        values6, indices6 = x.kthvalue(k, 1)
-        # 7. Class method keyword arguments
-        values7, indices7 = x.kthvalue(k, axis=1, keepdim=True)
+        out4 = paddle.kthvalue(x, k, axis=1, keepdim=True)
+        # 5. out parameter test (tuple)
+        out5 = (
+            paddle.empty([2, 2], dtype='float32'),
+            paddle.empty([2, 2], dtype='int64'),
+        )
+        paddle.kthvalue(x, k, axis=1, out=out5)
+        # 6. out parameter test (list)
+        # TODO(zhwesky2010): should fix out is list
+        # out6 = [
+        #     paddle.empty([2, 2], dtype='float32'),
+        #     paddle.empty([2, 2], dtype='int64'),
+        # ]
+        # paddle.kthvalue(x, k, axis=1, out=out6)
+        # 7. Class method positional arguments
+        out7 = x.kthvalue(k, 1)
+        # 8. Class method keyword arguments
+        out8 = x.kthvalue(k, axis=1, keepdim=True)
 
         # Verify outputs
         ref_values = np.array(
@@ -1967,25 +1948,17 @@ class TestKthvalueAPI(unittest.TestCase):
             dtype=np.float32,
         ).reshape(2, 2)
         ref_indices = np.array([[0, 1], [1, 1]], dtype=np.int64)
-        for values, indices in [
-            (values1, indices1),
-            (values2, indices2),
-            (values3, indices3),
-            (values6, indices6),
-        ]:
-            np.testing.assert_allclose(values.numpy(), ref_values, rtol=1e-5)
-            np.testing.assert_array_equal(indices.numpy(), ref_indices)
+        for out in [out1, out2, out3, out5, out7]:
+            np.testing.assert_allclose(out[0].numpy(), ref_values, rtol=1e-5)
+            np.testing.assert_array_equal(out[1].numpy(), ref_indices)
         # Verify keepdim=True
-        for values, indices in [(values4, indices4), (values7, indices7)]:
+        for out in [out4, out8]:
             np.testing.assert_allclose(
-                values.numpy(), ref_values.reshape(2, 1, 2), rtol=1e-5
+                out[0].numpy(), ref_values.reshape(2, 1, 2), rtol=1e-5
             )
             np.testing.assert_array_equal(
-                indices.numpy(), ref_indices.reshape(2, 1, 2)
+                out[1].numpy(), ref_indices.reshape(2, 1, 2)
             )
-        # Verify out parameter
-        np.testing.assert_allclose(values_out.numpy(), ref_values, rtol=1e-5)
-        np.testing.assert_array_equal(indices_out.numpy(), ref_indices)
 
         paddle.enable_static()
 
@@ -2050,7 +2023,6 @@ class TestKthvalueAPI(unittest.TestCase):
 # Test logcumsumexp compatibility
 class TestLogcumsumexpAPI(unittest.TestCase):
     def setUp(self):
-        np.random.seed(2025)
         self.np_x = np.arange(12, dtype=np.float32).reshape(3, 4)
         self.ref_out_axis0 = np.array(
             [
@@ -2072,15 +2044,15 @@ class TestLogcumsumexpAPI(unittest.TestCase):
         out3 = paddle.logcumsumexp(input=x, dim=0)
         # 4. Mixed arguments (with dtype parameter)
         out4 = paddle.logcumsumexp(x, axis=0, dtype='float32')
-        # 5. out parameter
+        # 5-6. out parameter test
         out5 = paddle.empty([3, 4], dtype='float32')
-        paddle.logcumsumexp(x, axis=0, out=out5)
-        # 6. Class method positional arguments
-        out6 = x.logcumsumexp(0)
-        # 7. Class method keyword arguments
-        out7 = x.logcumsumexp(axis=0)
+        out6 = paddle.logcumsumexp(x, axis=0, out=out5)
+        # 7. Class method positional arguments
+        out7 = x.logcumsumexp(0)
+        # 8. Class method keyword arguments
+        out8 = x.logcumsumexp(axis=0)
 
-        for out in [out1, out2, out3, out4, out5, out6, out7]:
+        for out in [out1, out2, out3, out4, out5, out6, out7, out8]:
             np.testing.assert_allclose(
                 out.numpy(), self.ref_out_axis0, rtol=1e-5
             )
@@ -2167,10 +2139,181 @@ class TestPoissonAPI(unittest.TestCase):
                 self.assertEqual(out.shape, (3, 4))
 
 
+# Test cummax compatibility
+class TestCummaxAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([[-1, 5, 0], [-2, -3, 2]], dtype='float32')
+        self.ref_values = np.array([[-1, 5, 5], [-2, -2, 2]], dtype='float32')
+        self.ref_indices = np.array([[0, 1, 1], [0, 0, 2]], dtype=np.int64)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle positional arguments
+        out1 = paddle.cummax(x, 1, 'int64')
+        # 2. Paddle keyword arguments
+        out2 = paddle.cummax(x=x, axis=1, dtype='int64')
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.cummax(input=x, dim=1)
+        # 4. Mixed arguments
+        out4 = paddle.cummax(x, axis=1, dtype='int64')
+        # 5. out parameter (tuple)
+        out5 = (
+            paddle.empty([2, 3], dtype='float32'),
+            paddle.empty([2, 3], dtype='int64'),
+        )
+        paddle.cummax(x, 1, out=out5)
+        # 6. out parameter (list)
+        out6 = [
+            paddle.empty([2, 3], dtype='float32'),
+            paddle.empty([2, 3], dtype='int64'),
+        ]
+        paddle.cummax(x, 1, out=out6)
+        # 7. Tensor method - positional
+        out7 = x.cummax(1)
+        # 8. Tensor method - keyword
+        out8 = x.cummax(axis=1, dtype='int64')
+
+        # Verify all outputs
+        for out in [out1, out2, out3, out4, out7, out8]:
+            np.testing.assert_array_equal(out.values.numpy(), self.ref_values)
+            np.testing.assert_array_equal(out.indices.numpy(), self.ref_indices)
+        for out in [out5, out6]:
+            np.testing.assert_array_equal(out[0].numpy(), self.ref_values)
+            np.testing.assert_array_equal(out[1].numpy(), self.ref_indices)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main, startup = paddle.static.Program(), paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=[2, 3], dtype='float32')
+            # 1. Paddle positional arguments
+            out1 = paddle.cummax(x, 1, 'int64')
+            # 2. Paddle keyword arguments
+            out2 = paddle.cummax(x=x, axis=1, dtype='int64')
+            # 3. PyTorch keyword arguments
+            out3 = paddle.cummax(input=x, dim=1)
+            # 4. Tensor method - positional
+            out4 = x.cummax(1)
+            # 5. Tensor method - keyword
+            out5 = x.cummax(axis=1)
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[
+                    out1[0],
+                    out1[1],
+                    out2[0],
+                    out2[1],
+                    out3[0],
+                    out3[1],
+                    out4[0],
+                    out4[1],
+                    out5[0],
+                    out5[1],
+                ],
+            )
+
+        for i in range(0, len(fetches), 2):
+            np.testing.assert_array_equal(fetches[i], self.ref_values)
+            np.testing.assert_array_equal(fetches[i + 1], self.ref_indices)
+
+
+# Test cummin compatibility
+class TestCumminAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([[-1, 5, 0], [-2, -3, 2]], dtype='float32')
+        self.ref_values = np.array(
+            [[-1, -1, -1], [-2, -3, -3]], dtype='float32'
+        )
+        self.ref_indices = np.array([[0, 0, 0], [0, 1, 1]], dtype=np.int64)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle positional arguments
+        out1 = paddle.cummin(x, 1, 'int64')
+        # 2. Paddle keyword arguments
+        out2 = paddle.cummin(x=x, axis=1, dtype='int64')
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.cummin(input=x, dim=1)
+        # 4. Mixed arguments
+        out4 = paddle.cummin(x, axis=1, dtype='int64')
+        # 5. out parameter (tuple)
+        out5 = (
+            paddle.empty([2, 3], dtype='float32'),
+            paddle.empty([2, 3], dtype='int64'),
+        )
+        out5 = paddle.cummin(x, 1, out=out5)
+        # 6. out parameter (list)
+        out6 = [
+            paddle.empty([2, 3], dtype='float32'),
+            paddle.empty([2, 3], dtype='int64'),
+        ]
+        paddle.cummin(x, 1, out=out6)
+        # 7. Tensor method - positional
+        out7 = x.cummin(1)
+        # 8. Tensor method - keyword
+        out8 = x.cummin(axis=1, dtype='int64')
+
+        # Verify all outputs
+        for out in [out1, out2, out3, out4, out7, out8]:
+            np.testing.assert_array_equal(out.values.numpy(), self.ref_values)
+            np.testing.assert_array_equal(out.indices.numpy(), self.ref_indices)
+        for out in [out5, out6]:
+            np.testing.assert_array_equal(out[0].numpy(), self.ref_values)
+            np.testing.assert_array_equal(out[1].numpy(), self.ref_indices)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main, startup = paddle.static.Program(), paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=[2, 3], dtype='float32')
+            # 1. Paddle positional arguments
+            out1 = paddle.cummin(x, 1, 'int64')
+            # 2. Paddle keyword arguments
+            out2 = paddle.cummin(x=x, axis=1, dtype='int64')
+            # 3. PyTorch keyword arguments
+            out3 = paddle.cummin(input=x, dim=1)
+            # 4. Tensor method - positional
+            out4 = x.cummin(1)
+            # 5. Tensor method - keyword
+            out5 = x.cummin(axis=1)
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[
+                    out1[0],
+                    out1[1],
+                    out2[0],
+                    out2[1],
+                    out3[0],
+                    out3[1],
+                    out4[0],
+                    out4[1],
+                    out5[0],
+                    out5[1],
+                ],
+            )
+
+        for i in range(0, len(fetches), 2):
+            np.testing.assert_array_equal(fetches[i], self.ref_values)
+            np.testing.assert_array_equal(fetches[i + 1], self.ref_indices)
+
+
 # Test mode compatibility
 class TestModeAPI(unittest.TestCase):
     def setUp(self):
-        np.random.seed(2025)
         # Use fixed data for precise comparison
         self.np_x = np.array(
             [
@@ -2186,20 +2329,12 @@ class TestModeAPI(unittest.TestCase):
                 ],
             ]
         ).astype('float32')
-
-    def compute_mode_along_axis(self):
-        """Compute mode along axis=1"""
-        # For axis=1, we find the most frequent value along that dimension
-        # When there are ties, paddle returns the last occurrence index
-        # [0,0,:]: [0.5, 0.5, 0.1] -> mode=0.5, index=1 (last 0.5)
-        # [0,1,:]: [0.3, 0.8, 0.3] -> mode=0.3, index=2 (last 0.3)
-        # [0,2,:]: [0.7, 0.7, 0.4] -> mode=0.7, index=1 (last 0.7)
-        # [0,3,:]: [0.2, 0.9, 0.2] -> mode=0.2, index=2 (last 0.2)
-        ref_values = np.array(
+        self.ref_values = np.array(
             [[0.5, 0.3, 0.7, 0.2], [0.6, 0.4, 0.5, 0.3]], dtype='float32'
         )
-        ref_indices = np.array([[1, 2, 1, 2], [1, 2, 1, 2]], dtype=np.int64)
-        return ref_values, ref_indices
+        self.ref_indices = np.array(
+            [[1, 2, 1, 2], [1, 2, 1, 2]], dtype=np.int64
+        )
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
@@ -2230,27 +2365,23 @@ class TestModeAPI(unittest.TestCase):
         # 8. Class method keyword arguments
         out8 = x.mode(axis=1, keepdim=True)
 
-        ref_values, ref_indices = self.compute_mode_along_axis()
-
         # Verify outputs with keepdim=False
         for out in [out1, out2, out3, out7]:
-            np.testing.assert_array_equal(out.values.numpy(), ref_values)
-            np.testing.assert_array_equal(out.indices.numpy(), ref_indices)
-            np.testing.assert_array_equal(out[0].numpy(), ref_values)
-            np.testing.assert_array_equal(out[1].numpy(), ref_indices)
+            np.testing.assert_array_equal(out.values.numpy(), self.ref_values)
+            np.testing.assert_array_equal(out.indices.numpy(), self.ref_indices)
 
         # Verify outputs with out parameter
         for out in [out5, out6]:
-            np.testing.assert_array_equal(out[0].numpy(), ref_values)
-            np.testing.assert_array_equal(out[1].numpy(), ref_indices)
+            np.testing.assert_array_equal(out[0].numpy(), self.ref_values)
+            np.testing.assert_array_equal(out[1].numpy(), self.ref_indices)
 
         # Verify outputs with keepdim=True
         for out in [out4, out8]:
             np.testing.assert_array_equal(
-                out[0].numpy(), ref_values.reshape(2, 1, 4)
+                out[0].numpy(), self.ref_values.reshape(2, 1, 4)
             )
             np.testing.assert_array_equal(
-                out[1].numpy(), ref_indices.reshape(2, 1, 4)
+                out[1].numpy(), self.ref_indices.reshape(2, 1, 4)
             )
 
         paddle.enable_static()
@@ -2291,28 +2422,28 @@ class TestModeAPI(unittest.TestCase):
                 ],
             )
 
-            ref_values, ref_indices = self.compute_mode_along_axis()
-
             # Verify outputs with keepdim=False: out1, out2, out3, out4
             for i in [0, 2, 4, 6]:
                 np.testing.assert_allclose(
-                    fetches[i], ref_values, rtol=1e-5, atol=1e-5
+                    fetches[i], self.ref_values, rtol=1e-5, atol=1e-5
                 )
-                np.testing.assert_array_equal(fetches[i + 1], ref_indices)
+                np.testing.assert_array_equal(fetches[i + 1], self.ref_indices)
 
             # Verify output with keepdim=True: out5
             np.testing.assert_allclose(
-                fetches[8], ref_values.reshape(2, 1, 4), rtol=1e-5, atol=1e-5
+                fetches[8],
+                self.ref_values.reshape(2, 1, 4),
+                rtol=1e-5,
+                atol=1e-5,
             )
             np.testing.assert_array_equal(
-                fetches[9], ref_indices.reshape(2, 1, 4)
+                fetches[9], self.ref_indices.reshape(2, 1, 4)
             )
 
 
 # Test topk compatibility
 class TestTopkAPI(unittest.TestCase):
     def setUp(self):
-        np.random.seed(2025)
         self.np_x = np.array(
             [[0.5, 0.3, 0.9, 0.2], [0.6, 0.8, 0.4, 0.7], [0.1, 0.4, 0.3, 0.5]]
         ).astype('float32')
@@ -2336,13 +2467,17 @@ class TestTopkAPI(unittest.TestCase):
         # 4. Mixed arguments
         out4 = paddle.topk(x, k=2, axis=1)
         # 5. out parameter (tuple)
-        out5_values = paddle.empty([3, 2], dtype='float32')
-        out5_indices = paddle.empty([3, 2], dtype='int64')
-        paddle.topk(x, 2, 1, out=(out5_values, out5_indices))
+        out5 = (
+            paddle.empty([3, 2], dtype='float32'),
+            paddle.empty([3, 2], dtype='int64'),
+        )
+        paddle.topk(x, 2, 1, out=out5)
         # 6. out parameter (list)
-        out6_values = paddle.empty([3, 2], dtype='float32')
-        out6_indices = paddle.empty([3, 2], dtype='int64')
-        paddle.topk(x, 2, 1, out=[out6_values, out6_indices])
+        out6 = [
+            paddle.empty([3, 2], dtype='float32'),
+            paddle.empty([3, 2], dtype='int64'),
+        ]
+        paddle.topk(x, 2, 1, out=out6)
         # 7. Class method positional arguments
         out7 = x.topk(2, 1)
         # 8. Class method keyword arguments
@@ -2352,14 +2487,9 @@ class TestTopkAPI(unittest.TestCase):
         for out in [out1, out2, out3, out4, out7, out8]:
             np.testing.assert_array_equal(out.values.numpy(), ref_values)
             np.testing.assert_array_equal(out.indices.numpy(), ref_indices)
+        for out in [out5, out6]:
             np.testing.assert_array_equal(out[0].numpy(), ref_values)
             np.testing.assert_array_equal(out[1].numpy(), ref_indices)
-
-        # Verify outputs with out parameter
-        np.testing.assert_array_equal(out5_values.numpy(), ref_values)
-        np.testing.assert_array_equal(out5_indices.numpy(), ref_indices)
-        np.testing.assert_array_equal(out6_values.numpy(), ref_values)
-        np.testing.assert_array_equal(out6_indices.numpy(), ref_indices)
 
         paddle.enable_static()
 
