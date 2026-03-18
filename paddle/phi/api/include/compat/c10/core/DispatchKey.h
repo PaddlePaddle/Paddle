@@ -304,7 +304,18 @@ constexpr DispatchKey toFunctionalityKey(DispatchKey k) {
   }
 }
 
-BackendComponent toBackendComponent(DeviceType device_type);
+inline BackendComponent toBackendComponent(DeviceType device_type) {
+  switch (device_type) {
+    case DeviceType::CPU:
+      return BackendComponent::CPUBit;
+    case DeviceType::CUDA:
+      return BackendComponent::CUDABit;
+    case DeviceType::XPU:
+      return BackendComponent::XPUBit;
+    default:
+      return BackendComponent::InvalidBit;
+  }
+}
 
 constexpr DispatchKey toRuntimePerBackendFunctionalityKey(
     DispatchKey functionality_k, BackendComponent backend_k) {
@@ -339,6 +350,234 @@ constexpr DispatchKey toRuntimePerBackendFunctionalityKey(
             DispatchKey::StartOfAutogradFunctionalityBackends) +
         static_cast<uint8_t>(backend_k));
   }
+  return DispatchKey::Undefined;
+}
+
+// toString implementations
+inline const char* toString(DispatchKey t) {
+  switch (t) {
+    case DispatchKey::Undefined:
+      return "Undefined";
+    case DispatchKey::Dense:
+      return "Dense";
+    case DispatchKey::FPGA:
+      return "FPGA";
+    case DispatchKey::Vulkan:
+      return "Vulkan";
+    case DispatchKey::Metal:
+      return "Metal";
+    case DispatchKey::Quantized:
+      return "Quantized";
+    case DispatchKey::CustomRNGKeyId:
+      return "CustomRNGKeyId";
+    case DispatchKey::MkldnnCPU:
+      return "MkldnnCPU";
+    case DispatchKey::Sparse:
+      return "Sparse";
+    case DispatchKey::SparseCsr:
+      return "SparseCsr";
+    case DispatchKey::NestedTensor:
+      return "NestedTensor";
+    case DispatchKey::BackendSelect:
+      return "BackendSelect";
+    case DispatchKey::Python:
+      return "Python";
+    case DispatchKey::Fake:
+      return "Fake";
+    case DispatchKey::FuncTorchDynamicLayerBackMode:
+      return "FuncTorchDynamicLayerBackMode";
+    case DispatchKey::Functionalize:
+      return "Functionalize";
+    case DispatchKey::Named:
+      return "Named";
+    case DispatchKey::Conjugate:
+      return "Conjugate";
+    case DispatchKey::Negative:
+      return "Negative";
+    case DispatchKey::ZeroTensor:
+      return "ZeroTensor";
+    case DispatchKey::ADInplaceOrView:
+      return "ADInplaceOrView";
+    case DispatchKey::AutogradOther:
+      return "AutogradOther";
+    case DispatchKey::AutogradFunctionality:
+      return "AutogradFunctionality";
+    case DispatchKey::AutogradNestedTensor:
+      return "AutogradNestedTensor";
+    case DispatchKey::Tracer:
+      return "Tracer";
+    case DispatchKey::AutocastCPU:
+      return "AutocastCPU";
+    case DispatchKey::AutocastMTIA:
+      return "AutocastMTIA";
+    case DispatchKey::AutocastMAIA:
+      return "AutocastMAIA";
+    case DispatchKey::AutocastXPU:
+      return "AutocastXPU";
+    case DispatchKey::AutocastIPU:
+      return "AutocastIPU";
+    case DispatchKey::AutocastHPU:
+      return "AutocastHPU";
+    case DispatchKey::AutocastXLA:
+      return "AutocastXLA";
+    case DispatchKey::AutocastMPS:
+      return "AutocastMPS";
+    case DispatchKey::AutocastCUDA:
+      return "AutocastCUDA";
+    case DispatchKey::AutocastPrivateUse1:
+      return "AutocastPrivateUse1";
+    case DispatchKey::FuncTorchBatched:
+      return "FuncTorchBatched";
+    case DispatchKey::BatchedNestedTensor:
+      return "BatchedNestedTensor";
+    case DispatchKey::FuncTorchVmapMode:
+      return "FuncTorchVmapMode";
+    case DispatchKey::Batched:
+      return "Batched";
+    case DispatchKey::VmapMode:
+      return "VmapMode";
+    case DispatchKey::FuncTorchGradWrapper:
+      return "FuncTorchGradWrapper";
+    case DispatchKey::DeferredInit:
+      return "DeferredInit";
+    case DispatchKey::PythonTLSSnapshot:
+      return "PythonTLSSnapshot";
+    case DispatchKey::FuncTorchDynamicLayerFrontMode:
+      return "FuncTorchDynamicLayerFrontMode";
+    case DispatchKey::TESTING_ONLY_GenericWrapper:
+      return "TESTING_ONLY_GenericWrapper";
+    case DispatchKey::TESTING_ONLY_GenericMode:
+      return "TESTING_ONLY_GenericMode";
+    case DispatchKey::PreDispatch:
+      return "PreDispatch";
+    case DispatchKey::PythonDispatcher:
+      return "PythonDispatcher";
+    case DispatchKey::Autograd:
+      return "Autograd";
+    case DispatchKey::CompositeImplicitAutograd:
+      return "CompositeImplicitAutograd";
+    case DispatchKey::FuncTorchBatchedDecomposition:
+      return "FuncTorchBatchedDecomposition";
+    case DispatchKey::CompositeImplicitAutogradNestedTensor:
+      return "CompositeImplicitAutogradNestedTensor";
+    case DispatchKey::CompositeExplicitAutograd:
+      return "CompositeExplicitAutograd";
+    case DispatchKey::CompositeExplicitAutogradNonFunctional:
+      return "CompositeExplicitAutogradNonFunctional";
+    default:
+      return "Unknown";
+  }
+}
+
+inline const char* toString(BackendComponent t) {
+  switch (t) {
+    case BackendComponent::CPUBit:
+      return "CPUBit";
+    case BackendComponent::CUDABit:
+      return "CUDABit";
+    case BackendComponent::HIPBit:
+      return "HIPBit";
+    case BackendComponent::XLABit:
+      return "XLABit";
+    case BackendComponent::MPSBit:
+      return "MPSBit";
+    case BackendComponent::IPUBit:
+      return "IPUBit";
+    case BackendComponent::XPUBit:
+      return "XPUBit";
+    case BackendComponent::HPUBit:
+      return "HPUBit";
+    case BackendComponent::VEBit:
+      return "VEBit";
+    case BackendComponent::LazyBit:
+      return "LazyBit";
+    case BackendComponent::MTIABit:
+      return "MTIABit";
+    case BackendComponent::MAIABit:
+      return "MAIABit";
+    case BackendComponent::PrivateUse1Bit:
+      return "PrivateUse1Bit";
+    case BackendComponent::PrivateUse2Bit:
+      return "PrivateUse2Bit";
+    case BackendComponent::PrivateUse3Bit:
+      return "PrivateUse3Bit";
+    case BackendComponent::MetaBit:
+      return "MetaBit";
+    default:
+      return "InvalidBit";
+  }
+}
+
+// operator<< implementations
+inline std::ostream& operator<<(std::ostream& str, DispatchKey rhs) {
+  return str << toString(rhs);
+}
+
+inline std::ostream& operator<<(std::ostream& str, BackendComponent rhs) {
+  return str << toString(rhs);
+}
+
+// getAutogradKeyFromBackend implementation
+inline DispatchKey getAutogradKeyFromBackend(BackendComponent k) {
+  switch (k) {
+    case BackendComponent::CPUBit:
+      return DispatchKey::AutogradCPU;
+    case BackendComponent::CUDABit:
+      return DispatchKey::AutogradCUDA;
+    case BackendComponent::XPU:
+      return DispatchKey::AutogradXPU;
+    case BackendComponent::IPU:
+      return DispatchKey::AutogradIPU;
+    case BackendComponent::HPU:
+      return DispatchKey::AutogradHPU;
+    case BackendComponent::Lazy:
+      return DispatchKey::AutogradLazy;
+    case BackendComponent::Meta:
+      return DispatchKey::AutogradMeta;
+    case BackendComponent::MPS:
+      return DispatchKey::AutogradMPS;
+    case BackendComponent::PrivateUse1:
+      return DispatchKey::AutogradPrivateUse1;
+    case BackendComponent::PrivateUse2:
+      return DispatchKey::AutogradPrivateUse2;
+    case BackendComponent::PrivateUse3:
+      return DispatchKey::AutogradPrivateUse3;
+    default:
+      return DispatchKey::AutogradOther;
+  }
+}
+
+// parseDispatchKey implementation
+inline c10::DispatchKey parseDispatchKey(const std::string& k) {
+  if (k == "Undefined") return DispatchKey::Undefined;
+  if (k == "Dense") return DispatchKey::Dense;
+  if (k == "FPGA") return DispatchKey::FPGA;
+  if (k == "Vulkan") return DispatchKey::Vulkan;
+  if (k == "Metal") return DispatchKey::Metal;
+  if (k == "Quantized") return DispatchKey::Quantized;
+  if (k == "Sparse") return DispatchKey::Sparse;
+  if (k == "SparseCsr") return DispatchKey::SparseCsr;
+  if (k == "NestedTensor") return DispatchKey::NestedTensor;
+  if (k == "BackendSelect") return DispatchKey::BackendSelect;
+  if (k == "Python") return DispatchKey::Python;
+  if (k == "Fake") return DispatchKey::Fake;
+  if (k == "Functionalize") return DispatchKey::Functionalize;
+  if (k == "Named") return DispatchKey::Named;
+  if (k == "Conjugate") return DispatchKey::Conjugate;
+  if (k == "Negative") return DispatchKey::Negative;
+  if (k == "ZeroTensor") return DispatchKey::ZeroTensor;
+  if (k == "ADInplaceOrView") return DispatchKey::ADInplaceOrView;
+  if (k == "AutogradOther") return DispatchKey::AutogradOther;
+  if (k == "AutogradFunctionality") return DispatchKey::AutogradFunctionality;
+  if (k == "AutogradNestedTensor") return DispatchKey::AutogradNestedTensor;
+  if (k == "Tracer") return DispatchKey::Tracer;
+  if (k == "AutocastCPU") return DispatchKey::AutocastCPU;
+  if (k == "AutocastCUDA") return DispatchKey::AutocastCUDA;
+  if (k == "Autograd") return DispatchKey::Autograd;
+  if (k == "CompositeImplicitAutograd")
+    return DispatchKey::CompositeImplicitAutograd;
+  if (k == "CompositeExplicitAutograd")
+    return DispatchKey::CompositeExplicitAutograd;
   return DispatchKey::Undefined;
 }
 

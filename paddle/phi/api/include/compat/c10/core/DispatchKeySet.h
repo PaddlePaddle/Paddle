@@ -25,6 +25,7 @@
 #include <initializer_list>
 #include <iterator>
 #include <ostream>
+#include <sstream>
 #include <string>
 #include <type_traits>
 
@@ -300,7 +301,36 @@ class DispatchKeySet final {
       ++(*this);
     }
 
-    self_type& operator++();
+    self_type& operator++() {
+      // Find the next set bit in the functionality keys
+      while (next_functionality_ < end_iter_mask_val) {
+        if (*data_ptr_ & (1ULL << next_functionality_)) {
+          current_dispatchkey_idx_ =
+              static_cast<uint8_t>(next_functionality_ - num_backends);
+          // For per-backend functionality keys, iterate through backends
+          if (isPerBackendFunctionalityKey(
+                  static_cast<DispatchKey>(current_dispatchkey_idx_))) {
+            while (next_backend_ < num_backends) {
+              if (*data_ptr_ & (1ULL << next_backend_)) {
+                current_backendcomponent_idx_ = next_backend_;
+                ++next_backend_;
+                return *this;
+              }
+              ++next_backend_;
+            }
+            next_backend_ = 0;
+            current_backendcomponent_idx_ = end_iter_key_val;
+          }
+          ++next_functionality_;
+          return *this;
+        }
+        ++next_functionality_;
+      }
+      // Reached the end
+      current_dispatchkey_idx_ = end_iter_key_val;
+      current_backendcomponent_idx_ = end_iter_key_val;
+      return *this;
+    }
 
     self_type operator++(int) {
       self_type previous_iterator = *this;
@@ -600,5 +630,111 @@ using is_not_DispatchKeySet = std::negation<std::is_same<DispatchKeySet, T>>;
 // c10::guts type-list utilities are not yet ported.  The template is
 // only used by the PyTorch dispatcher internals, which are not part
 // of this compatibility layer.
+
+// toString and operator<< for DispatchKeySet
+inline std::string toString(DispatchKeySet ts) {
+  std::ostringstream oss;
+  oss << ts;
+  return oss.str();
+}
+
+inline std::ostream& operator<<(std::ostream& os, DispatchKeySet ts) {
+  os << "DispatchKeySet(";
+  bool first = true;
+  for (auto k : ts) {
+    if (!first) os << ", ";
+    os << toString(k);
+    first = false;
+  }
+  os << ")";
+  return os;
+}
+
+// isBackendDispatchKey implementation
+inline bool isBackendDispatchKey(DispatchKey t) {
+  return t >= DispatchKey::StartOfDenseBackends &&
+         t <= DispatchKey::EndOfRuntimeBackendKeys;
+}
+
+// getRuntimeDispatchKeySet implementation
+inline DispatchKeySet getRuntimeDispatchKeySet(DispatchKey t) {
+  if (isPerBackendFunctionalityKey(t)) {
+    // Return all backend variants of this functionality key
+    DispatchKeySet result;
+    for (uint8_t backend = 1; backend <= num_backends; ++backend) {
+      result = result.add(toRuntimePerBackendFunctionalityKey(
+          t, static_cast<BackendComponent>(backend)));
+    }
+    return result;
+  }
+  return DispatchKeySet(t);
+}
+
+// runtimeDispatchKeySetHas implementation
+inline bool runtimeDispatchKeySetHas(DispatchKey t, DispatchKey k) {
+  return getRuntimeDispatchKeySet(t).has(k);
+}
+
+// getBackendKeySetFromAutograd implementation
+inline DispatchKeySet getBackendKeySetFromAutograd(DispatchKey t) {
+  if (t == DispatchKey::AutogradCPU) {
+    return DispatchKeySet(DispatchKey::CPU);
+  } else if (t == DispatchKey::AutogradCUDA) {
+    return DispatchKeySet(DispatchKey::CUDA);
+  } else if (t == DispatchKey::AutogradXPU) {
+    return DispatchKeySet(DispatchKey::XPU);
+  } else if (t == DispatchKey::AutogradIPU) {
+    return DispatchKeySet(DispatchKey::IPU);
+  } else if (t == DispatchKey::AutogradHPU) {
+    return DispatchKeySet(DispatchKey::HPU);
+  } else if (t == DispatchKey::AutogradLazy) {
+    return DispatchKeySet(DispatchKey::Lazy);
+  } else if (t == DispatchKey::AutogradMeta) {
+    return DispatchKeySet(DispatchKey::Meta);
+  } else if (t == DispatchKey::AutogradMPS) {
+    return DispatchKeySet(DispatchKey::MPS);
+  } else if (t == DispatchKey::AutogradPrivateUse1) {
+    return DispatchKeySet(DispatchKey::PrivateUse1);
+  } else if (t == DispatchKey::AutogradPrivateUse2) {
+    return DispatchKeySet(DispatchKey::PrivateUse2);
+  } else if (t == DispatchKey::AutogradPrivateUse3) {
+    return DispatchKeySet(DispatchKey::PrivateUse3);
+  } else if (t == DispatchKey::AutogradNestedTensor) {
+    return DispatchKeySet(DispatchKey::NestedTensor);
+  } else if (t == DispatchKey::AutogradOther) {
+    return autogradother_backends;
+  }
+  return DispatchKeySet();
+}
+
+// isIncludedInAlias implementation
+inline bool isIncludedInAlias(DispatchKey k, DispatchKey alias) {
+  if (alias == DispatchKey::Autograd) {
+    return autograd_dispatch_keyset.has(k);
+  } else if (alias == DispatchKey::CompositeImplicitAutograd) {
+    return true;  // All keys are included in CompositeImplicitAutograd
+  } else if (alias == DispatchKey::CompositeExplicitAutograd) {
+    return k != DispatchKey::Autograd && !autograd_dispatch_keyset.has(k);
+  }
+  return false;
+}
+
+// initializeFunctionalityOffsetsAndMasks implementation
+inline std::array<FunctionalityOffsetAndMask, num_functionality_keys>
+initializeFunctionalityOffsetsAndMasks() {
+  std::array<FunctionalityOffsetAndMask, num_functionality_keys> result{};
+  uint16_t offset = 0;
+  for (uint8_t i = 0; i < num_functionality_keys; ++i) {
+    DispatchKey key = static_cast<DispatchKey>(i);
+    if (isPerBackendFunctionalityKey(key)) {
+      result[i] = FunctionalityOffsetAndMask(offset, full_backend_mask);
+      offset += num_backends;
+    } else {
+      result[i] = FunctionalityOffsetAndMask(offset, 0);
+      offset += 1;
+    }
+  }
+  return result;
+}
 
 }  // namespace c10

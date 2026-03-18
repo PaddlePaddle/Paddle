@@ -18,7 +18,9 @@
 
 #pragma once
 
+#include <cstdint>
 #include <memory>
+#include <type_traits>
 #include <utility>
 
 namespace c10 {
@@ -72,13 +74,17 @@ class intrusive_ptr {
   // ---- mutators ------------------------------------------------------------
 
   /// Releases ownership and returns the raw pointer.
-  /// After this call, the intrusive_ptr is empty.
-  /// NOTE: Unlike unique_ptr::release(), the reference count is NOT
-  /// decremented — the caller is responsible for the lifetime.
-  T* release() noexcept {
-    T* raw = ptr_.get();
-    ptr_.reset();
-    return raw;
+  /// NOTE: This implementation returns the raw pointer but keeps the
+  /// shared_ptr reference to prevent object deletion. This is different
+  /// from unique_ptr::release() which truly transfers ownership.
+  /// For compatibility with PyTorch's API while using std::shared_ptr backend.
+  [[deprecated(
+      "release() does not transfer ownership with shared_ptr backend. "
+      "Use get_shared() or get() instead.")]] T*
+  release() noexcept {
+    // Keep the shared_ptr alive to prevent object deletion
+    // Return the raw pointer for API compatibility
+    return ptr_.get();
   }
 
   void reset() noexcept { ptr_.reset(); }
