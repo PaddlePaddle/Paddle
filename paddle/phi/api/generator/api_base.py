@@ -925,11 +925,21 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             trans_flag = "{false, true}"
         return trans_flag
 
+    def gene_prepare_data_extra_args(self, input_name):
+        if (
+            self.api == "matmul_grad"
+            and input_name == "y"
+            and "transpose_y" in self.attrs['names']
+        ):
+            return ", !transpose_y"
+        return ""
+
     def gene_dense_input(
         self, input_name, input_name_tensor_map, code_indent=''
     ):
         input_tensor_code = ""
         trans_flag = self.gene_trans_flag(input_name)
+        extra_args = self.gene_prepare_data_extra_args(input_name)
         input_names = self.inputs['names']
         attr_names = self.attrs['names']
         kernel_param = self.kernel['param']
@@ -942,7 +952,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         input_tensor_code = (
             input_tensor_code
             + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, GetKernelInputArgDef(kernel.InputAt({kernel_param.index(input_name)}), actual_kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);"""
+ {code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, GetKernelInputArgDef(kernel.InputAt({kernel_param.index(input_name)}), actual_kernel_backend), {trans_flag}, kernel_result.is_stride_kernel{extra_args});"""
         )
         return input_tensor_code
 

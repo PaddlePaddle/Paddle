@@ -398,11 +398,11 @@ VIEW_OUTPUT_SHARE_MEM_WITH_INPUT_TEMPLATE = """
       {dense_out}->ShareInplaceVersionCounterWith({dense_input});
 """
 SINGLE_PREPARE_DATA_TEMPLATE = """
-      dist_input_{name} = PrepareDataForDistTensor(dist_input_{name}, GetKernelInputArgDef(kernel.InputAt({idx}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
+      dist_input_{name} = PrepareDataForDistTensor(dist_input_{name}, GetKernelInputArgDef(kernel.InputAt({idx}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel{extra_args});
       auto input_{name} = &dist_input_{name}->value();
 """
 SINGLE_PREPARE_DATA_TEMPLATE_NO_RESHARD = """
-      auto dist_input_{name} = PrepareDataForDistTensor({name}, GetKernelInputArgDef(kernel.InputAt({idx}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
+      auto dist_input_{name} = PrepareDataForDistTensor({name}, GetKernelInputArgDef(kernel.InputAt({idx}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel{extra_args});
       auto input_{name} = &dist_input_{name}->value();
 """
 VECTOR_PREPARE_DATA_TEMPLATE = """
@@ -1516,6 +1516,7 @@ class DistForwardAPI(ForwardAPI):
     def generate_single_dense_input(self, input_name, input_name_tensor_map):
         input_tensor_code = ""
         trans_flag = self.gene_trans_flag(input_name)
+        extra_args = self.gene_prepare_data_extra_args(input_name)
         input_names = self.inputs['names']
         attr_names = self.attrs['names']
         kernel_param = self.kernel['param']
@@ -1527,12 +1528,14 @@ class DistForwardAPI(ForwardAPI):
                 name=input_name,
                 idx=kernel_param.index(input_name),
                 trans_flag=trans_flag,
+                extra_args=extra_args,
             )
         else:
             input_tensor_code += SINGLE_PREPARE_DATA_TEMPLATE_NO_RESHARD.format(
-                arg=input_name,
+                name=input_name,
                 idx=kernel_param.index(input_name),
                 trans_flag=trans_flag,
+                extra_args=extra_args,
             )
         input_name_tensor_map[input_name].append((f'input_{input_name}', False))
 

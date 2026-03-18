@@ -211,6 +211,75 @@ static void ReshapeXYOutIntoMatrixSequence(DenseTensor* x,
   ReshapeTensorIntoMatrixSequence(y, mat_dim_y);
 }
 
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
+static bool NormalizePureLast2DimsTransposeView(const DenseTensor& input,
+                                                DenseTensor* normalized) {
+  const auto& meta = input.meta();
+  if (meta.dims.size() < 2 || meta.offset != 0 ||
+      meta.strides == DenseTensorMeta::calc_strides(meta.dims)) {
+    return false;
+  }
+
+  DDim src_shape(meta.dims);
+  DDim src_stride(meta.strides);
+  std::vector<bool> visited_idx(meta.strides.size(), false);
+  std::vector<int> axis(meta.strides.size(), -1);
+
+  for (int i = 0; i < meta.strides.size(); ++i) {
+    int64_t max_num = 0;
+    int max_idx = -1;
+    for (int j = 0; j < meta.strides.size(); ++j) {
+      if (visited_idx[j]) {
+        continue;
+      }
+      if (meta.strides[j] < 1) {
+        return false;
+      }
+      if (meta.strides[j] > max_num) {
+        max_num = meta.strides[j];
+        max_idx = j;
+      }
+    }
+
+    if (max_idx == -1) {
+      return false;
+    }
+
+    if (i != 0 && src_stride[i - 1] == max_num && src_shape[i - 1] != 1 &&
+        meta.dims[max_idx] != 1) {
+      return false;
+    }
+
+    visited_idx[max_idx] = true;
+    src_stride[i] = max_num;
+    src_shape[i] = meta.dims[max_idx];
+    axis[max_idx] = i;
+  }
+
+  if (DenseTensorMeta::calc_strides(src_shape) != src_stride) {
+    return false;
+  }
+
+  const int last_axis = static_cast<int>(axis.size()) - 1;
+  for (size_t i = 0; i + 2 < axis.size(); ++i) {
+    if (axis[i] != static_cast<int>(i)) {
+      return false;
+    }
+  }
+  if (axis[axis.size() - 2] != last_axis ||
+      axis[axis.size() - 1] != last_axis - 1) {
+    return false;
+  }
+
+  *normalized = input;
+  auto normalized_meta = normalized->meta();
+  normalized_meta.dims = src_shape;
+  normalized_meta.strides = src_stride;
+  normalized->set_meta(normalized_meta);
+  return true;
+}
+#endif
+
 template <typename T, typename Context>
 void CalcInputGrad(const Context& dev_ctx,
                    const DenseTensor& a,
@@ -360,10 +429,29 @@ void MatmulGradKernel(const Context& dev_ctx,
     DenseTensor y_help = y;
     DenseTensor out_grad_help = out_grad;
 
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
+    if (!transpose_y) {
+      DenseTensor normalized_y_help;
+      if (NormalizePureLast2DimsTransposeView(y_help, &normalized_y_help)) {
+        y_help = normalized_y_help;
+        transpose_y = true;
+      }
+    }
+#endif
+
     ReshapeXYOutIntoMatrixSequence(
         &x_help, &y_help, &out_grad_help, transpose_x, transpose_y);
 
     DDim dx_dims;
+    DenseTensor y_help_for_dx = y_help;
+    DenseTensor y_conj_for_dx;
+    bool use_transpose_view_y_for_dx = false;
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
+    if (!transpose_x && !transpose_y && dx) {
+      use_transpose_view_y_for_dx =
+          NormalizePureLast2DimsTransposeView(y_help, &y_help_for_dx);
+    }
+#endif
     if (dx) {
       dx_dims = dx->dims();
       if (dx_dims != x_help.dims()) {
@@ -371,6 +459,9 @@ void MatmulGradKernel(const Context& dev_ctx,
       }
 
       y_conj = Conj<T>(dev_ctx, y_help);
+      if (use_transpose_view_y_for_dx) {
+        y_conj_for_dx = Conj<T>(dev_ctx, y_help_for_dx);
+      }
     }
 
     DDim dy_dims;
@@ -530,16 +621,29 @@ void MatmulGradKernel(const Context& dev_ctx,
                          true);
       }
     } else {
-      CalcInputGrad<T>(dev_ctx,
-                       out_grad_help,
-                       false,
-                       false,
-                       y_conj,
-                       true,
-                       false,
-                       dx,
-                       false,
-                       true);
+      if (use_transpose_view_y_for_dx) {
+        CalcInputGrad<T>(dev_ctx,
+                         out_grad_help,
+                         false,
+                         false,
+                         y_conj_for_dx,
+                         false,
+                         true,
+                         dx,
+                         false,
+                         true);
+      } else {
+        CalcInputGrad<T>(dev_ctx,
+                         out_grad_help,
+                         false,
+                         false,
+                         y_conj,
+                         true,
+                         false,
+                         dx,
+                         false,
+                         true);
+      }
       CalcInputGrad<T>(dev_ctx,
                        x_conj,
                        true,
