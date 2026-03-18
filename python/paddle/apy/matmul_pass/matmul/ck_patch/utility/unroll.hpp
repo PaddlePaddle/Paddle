@@ -1,4 +1,4 @@
-// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,15 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 #pragma once
 
-#if defined(__HIPCC__)
-#include "ck_patch/ck_matmul.h"
+#include "ck/utility/functional2.hpp"
 
-#elif defined(__NVCC__)
-#include "cutlass_patch/cutlass_matmul.cuh"
+namespace ck {
 
-#else
-#include "cpu_patch/cpu_matmul.h"
-#endif
+template <int NUnroll>
+struct unroll {
 
+    template <class F>
+    __host__ __device__ constexpr void operator()(F f) const {
+        ck::static_for<0, NUnroll, 1>{}(f);
+    }
+
+}; 
+
+} // namespace ck

@@ -60,6 +60,7 @@ void VisitEachBuiltinFrameAttr(const YieldT& Yield) {
   YieldTwice("filter", &Filter);
   YieldTwice("reduce", &Reduce);
   YieldTwice("zip", &Zip);
+  YieldTwice("get_hardware_device", &GetHardwareDevice);
 }
 
 template <typename ValueT>

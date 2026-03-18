@@ -40,13 +40,13 @@ class MatmulVariadicTemplate:
             [
                 [ap.PointerType.const_float_ptr, "const float*"],
                 [ap.PointerType.const_float16_ptr, "const half*"],
-                [ap.PointerType.const_bfloat16_ptr, "const nv_bfloat16*"],
+                [ap.PointerType.const_bfloat16_ptr, "const bfloat16*"],
                 [ap.PointerType.float_ptr, "float*"],
                 [ap.PointerType.float16_ptr, "half*"],
-                [ap.PointerType.bfloat16_ptr, "nv_bfloat16*"],
+                [ap.PointerType.bfloat16_ptr, "bfloat16*"],
                 [ap.DataType.float, "float"],
                 [ap.DataType.float16, "half"],
-                [ap.DataType.bfloat16, "nv_bfloat16"],
+                [ap.DataType.bfloat16, "bfloat16"],
                 [ap.DataType.int64_t, "int64_t"],
             ]
         )
@@ -59,7 +59,52 @@ class MatmulVariadicTemplate:
         registry.get_or_create_kernel_arg_id_manul_var_name(
             kernel_arg_id=pair[0], cpp_var_name=pair[1]
         )
+    
+    def make_cuda_compile_cmd(self, dir_name, source_dir):
+        cutlass_dir = f"{dir_name}/matmul/cutlass-3.7.0"
+        compile_cmd = "nvcc -std=c++20 -O3 -Xcompiler=-fPIC -arch=sm_80 --expt-relaxed-constexpr"
+        compile_cmd = compile_cmd + " -I " + cutlass_dir + "/include"
+        compile_cmd = compile_cmd + " -I " + cutlass_dir + "/tools/util/include"
+        compile_cmd = compile_cmd + " -I " + source_dir
+        compile_cmd = (
+            compile_cmd
+            + " -DCUTLASS_ENABLE_TENSOR_CORE_MMA=1 -DCUTLASS_DEBUG_TRACE_LEVEL=0"
+        )
+        compile_cmd = (
+            compile_cmd + " -DAP_ENABLE_AUTOTUNE=0 -DAP_ENABLE_DEBUG=0"
+        )
+        compile_cmd = (
+            compile_cmd
+            + f" --shared {self.library_name}.cu -o lib{self.library_name}.so"
+        )
+        return compile_cmd
 
+    def make_rocm_compile_cmd(self, dir_name, source_dir):
+        ck_dir = f"{dir_name}/matmul/composable_kernel"
+        compile_cmd = "hipcc -std=c++20 -O3 -fPIC --offload-arch=gfx906"
+        compile_cmd = compile_cmd + " -I " + ck_dir + "/include"
+        compile_cmd = compile_cmd + " -I " + source_dir
+        compile_cmd = (
+            compile_cmd + " -DAP_ENABLE_AUTOTUNE=0 -DAP_ENABLE_DEBUG=0"
+        )
+        compile_cmd = (
+            compile_cmd
+            + f" --shared {self.library_name}.cpp -o lib{self.library_name}.so"
+        )
+        return compile_cmd
+
+    def make_cpu_compile_cmd(self, dir_name, source_dir):
+        # gops_dir = f"{dir_name}/matmul/gemm-ops"
+        compile_cmd = "g++ -std=c++17 -O3 -fPIC -march=native -mno-avx512f -fopenmp"
+        # compile_cmd = compile_cmd + " -I " + gops_dir + "/include"
+        compile_cmd = compile_cmd + " -I " + source_dir
+        compile_cmd = compile_cmd + " -DAP_ENABLE_AUTOTUNE=0 -DAP_ENABLE_DEBUG=0"
+        compile_cmd = (
+            compile_cmd
+            + f" --shared {self.library_name}.cpp -o lib{self.library_name}.so"
+        )
+        return compile_cmd
+    
     def compile(
         self,
         input0_karg,
@@ -223,14 +268,8 @@ class MatmulVariadicTemplate:
     ):
         code_template = """
 // auto generated codes
-#include <cuda.h>
-#include <cuda_fp16.h>
-#include <cuda_bf16.h>
+#include "matmul.h"
 #include <vector>
-
-#include "cutlass_matmul.cuh"
-#include "math_function.h"
-#include "profile.h"
 
 namespace ap {
 
@@ -251,7 +290,7 @@ struct VariadicEpilogueFunctor {
 
 template <int TuningConfigId>
 static void RunMatmulWithVariadicKernel(const GemmEpilogueParams &params, ${AP_KERNEL_ARGS_DECLARE}) {
-  using ElementT = ${output_dtype};
+  using ElementT = ${input0_dtype};
   using ElementComputeT = float;
 
   typename VariadicEpilogueFunctor<ElementComputeT>::Arguments epilogue_args;
@@ -261,7 +300,7 @@ static void RunMatmulWithVariadicKernel(const GemmEpilogueParams &params, ${AP_K
   constexpr int AlignA = Alignment<ElementT, ${k_value}>::kValue;
   constexpr int AlignB = Alignment<ElementT, ${n_value}>::kValue;
 
-  CutlassMatmulAddVariadic<ElementT, ElementComputeT, VariadicEpilogueFunctor,
+  MatmulAddVariadic<ElementT, ElementComputeT, VariadicEpilogueFunctor,
                            AlignA, AlignB, TuningConfigId>(params, epilogue_args);
 }
 
@@ -276,12 +315,11 @@ void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
   std::vector<int64_t> ${input1}_shape;
   ${AP_PARAMS_INPUT1_SHAPE_INIT}
 
-  cudaStream_t* cuda_stream_ptr = reinterpret_cast<cudaStream_t*>(stream_ptr);
   ap::GemmEpilogueParams params(
-      *cuda_stream_ptr, ${input0}, ${input1}, nullptr, ${output}, ${input0}_shape, ${input1}_shape, std::vector<int64_t>{});
+      stream_ptr, ${input0}, ${input1}, nullptr, ${output}, ${input0}_shape, ${input1}_shape, std::vector<int64_t>{});
 
 #if AP_ENABLE_AUTOTUNE
-  AP_AUTOTUNE_${output_dtype}(ap::RunMatmulWithVariadicKernel, *cuda_stream_ptr, params, ${AP_KERNEL_ARGS_CALL});
+  AP_AUTOTUNE_${output_dtype}(ap::RunMatmulWithVariadicKernel, stream_ptr, params, ${AP_KERNEL_ARGS_CALL});
 #else
   ap::RunMatmulWithVariadicKernel<ap::DefaultConfig::kConfigId>(params, ${AP_KERNEL_ARGS_CALL});
 #endif
@@ -289,7 +327,9 @@ void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
 }
   """
 
+        
         output_dtype = self.dtype2type_name[output_karg.type.data_type]
+        input0_dtype = self.dtype2type_name[input0_karg.type.data_type]
         code = (
             code_template.replace(
                 "${AP_EPILOGUE_COMPUTATION_STATEMENTS}", trivial_code_str
@@ -329,28 +369,26 @@ void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
             .replace("${input1}", self.get_kernel_arg_id_var_name(input1_karg))
             .replace("${output}", self.get_kernel_arg_id_var_name(output_karg))
             .replace("${output_dtype}", output_dtype)
+            .replace("${input0_dtype}", input0_dtype)
             .replace("${k_value}", f"{input0_shape_kargs[-1].value}")
             .replace("${n_value}", f"{input1_shape_kargs[-1].value}")
         )
 
+        device_type = get_hardware_device()
+
         dir_name = ap.dirname(__file__)
         source_dir = f"{dir_name}/matmul"
-        cutlass_dir = f"{dir_name}/matmul/cutlass-3.7.0"
-        compile_cmd = "nvcc -std=c++17 -O3 -Xcompiler=-fPIC -arch=sm_80 --expt-relaxed-constexpr"
-        compile_cmd = compile_cmd + " -I " + cutlass_dir + "/include"
-        compile_cmd = compile_cmd + " -I " + cutlass_dir + "/tools/util/include"
-        compile_cmd = compile_cmd + " -I " + source_dir
-        compile_cmd = (
-            compile_cmd
-            + " -DCUTLASS_ENABLE_TENSOR_CORE_MMA=1 -DCUTLASS_DEBUG_TRACE_LEVEL=0"
+
+        compile_cmds = ap.OrderedDict(
+            [
+                ["cpu", self.make_cpu_compile_cmd(dir_name, source_dir)],
+                ["rocm", self.make_rocm_compile_cmd(dir_name, source_dir)],
+                ["cuda", self.make_cuda_compile_cmd(dir_name, source_dir)],
+            ]
         )
-        compile_cmd = (
-            compile_cmd + " -DAP_ENABLE_AUTOTUNE=0 -DAP_ENABLE_DEBUG=0"
-        )
-        compile_cmd = (
-            compile_cmd
-            + f" --shared {self.library_name}.cu -o lib{self.library_name}.so"
-        )
+        compile_cmd = compile_cmds[device_type]
+
+        file_ext = "cu" if device_type == "cuda" else "cpp"
 
         return CodeModule(  # noqa: F821
             FuncDeclare(  # noqa: F821
@@ -361,7 +399,7 @@ void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
             Project(  # noqa: F821
                 nested_files=Project.Directory(  # noqa: F821
                     [
-                        f"{self.library_name}.cu",
+                        f"{self.library_name}.{file_ext}",
                         Project.FileContent(code),  # noqa: F821
                     ],
                     ["make.sh", Project.FileContent(compile_cmd)],  # noqa: F821

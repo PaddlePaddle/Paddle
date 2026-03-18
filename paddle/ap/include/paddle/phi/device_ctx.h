@@ -38,4 +38,9 @@ class DeviceCtx : public kernel_dispatch::DeviceCtxImpl {
   }
 };
 
+template <>
+adt::Result<axpr::PointerValue> DeviceCtx<phi::CPUContext>::GetStreamAddrAsVoidPtr() {
+  return axpr::PointerValue{(void*)nullptr};
+}
+
 }  // namespace ap::paddle
