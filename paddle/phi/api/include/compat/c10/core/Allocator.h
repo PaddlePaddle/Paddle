@@ -97,6 +97,17 @@ class DataPtr {
 
   DeleterFnPtr get_deleter() const { return ptr_.get_deleter(); }
 
+  /**
+   * Compare the deleter in a DataPtr to expected_deleter.
+   * If it matches, replace the deleter with new_deleter
+   * and return true; otherwise, does nothing and returns
+   * false.
+   */
+  [[nodiscard]] bool compare_exchange_deleter(DeleterFnPtr expected_deleter,
+                                              DeleterFnPtr new_deleter) {
+    return ptr_.compare_exchange_deleter(expected_deleter, new_deleter);
+  }
+
   Device device() const {
     if (phi::is_cpu_place(device_)) {
       return Device(DeviceType::CPU);

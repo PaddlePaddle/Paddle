@@ -212,20 +212,14 @@ struct Storage {
            isSharedStorageAlias(*this, other);
   }
 
-  // Set data pointer (swap and return old) - accepts DataPtr
-  DataPtr set_data_ptr(DataPtr&& new_data_ptr) {
-    DataPtr old_data_ptr = data_ptr();
-    // DataPtr does not expose allocation(); just reset the internal pointer
-    // by wrapping the raw pointer without ownership transfer
-    allocation_.reset(static_cast<phi::Allocation*>(new_data_ptr.get()),
-                      [](phi::Allocation*) {});
+  // Set data pointer (swap and return old) - accepts shared_ptr
+  // Note: DataPtr version removed due to unsafe cast from raw pointer to
+  // phi::Allocation*. Use shared_ptr<phi::Allocation> version instead.
+  std::shared_ptr<phi::Allocation> set_data_ptr(
+      std::shared_ptr<phi::Allocation> data_ptr) {
+    std::shared_ptr<phi::Allocation> old_data_ptr = std::move(allocation_);
+    allocation_ = std::move(data_ptr);
     return old_data_ptr;
-  }
-
-  // Set data pointer (no swap) - accepts DataPtr
-  void set_data_ptr_noswap(DataPtr&& new_data_ptr) {
-    allocation_.reset(static_cast<phi::Allocation*>(new_data_ptr.get()),
-                      [](phi::Allocation*) {});
   }
 
   // Set data pointer (no swap) - accepts shared_ptr

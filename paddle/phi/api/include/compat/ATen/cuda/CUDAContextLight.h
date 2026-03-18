@@ -22,7 +22,8 @@
 // cublasLT was introduced in CUDA 10.1 but we enable only for 11.1 that also
 // added bf16 support
 
-#if defined(USE_CUDSS)
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
+    defined(USE_CUDSS)
 #include <cudss.h>
 #endif
 
@@ -32,6 +33,7 @@
 #include <cstdint>
 #include <map>
 #include <shared_mutex>
+#include <tuple>
 
 #include "paddle/phi/backends/gpu/forwards.h"
 
