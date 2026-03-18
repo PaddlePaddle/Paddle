@@ -27,9 +27,10 @@ class LayerNormOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     auto* X = engine_->GetITensor(op_desc.Input("X")[0]);
     std::string output_name = op_desc.Output("Y")[0];
-    const float eps = op_desc.HasAttr("epsilon")
-                          ? PADDLE_GET_CONST(float, op_desc.GetAttr("epsilon"))
-                          : 1e-5f;
+    const double eps =
+        op_desc.HasAttr("epsilon")
+            ? PADDLE_GET_CONST(double, op_desc.GetAttr("epsilon"))
+            : 1e-5f;
 #if IS_TRT_VERSION_GE(8600)
     auto* Scale = engine_->GetITensor(op_desc.Input("Scale")[0]);
     auto* Bias = engine_->GetITensor(op_desc.Input("Bias")[0]);

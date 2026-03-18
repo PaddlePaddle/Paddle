@@ -64,7 +64,6 @@ AttrType InferSpmdContext::AttrAt(size_t idx) const {
 }
 
 template float InferSpmdContext::AttrAt(size_t idx) const;
-template double InferSpmdContext::AttrAt(size_t idx) const;
 template int InferSpmdContext::AttrAt(size_t idx) const;
 template int64_t InferSpmdContext::AttrAt(size_t idx) const;
 template DataType InferSpmdContext::AttrAt(size_t idx) const;
@@ -82,6 +81,23 @@ bool InferSpmdContext::AttrAt(size_t idx) const {
     PADDLE_THROW(common::errors::InvalidArgument(
         "Attribute cast error in InferSpmd Context, the input attr type is "
         "`%s`, but the expected attribute type is `bool`.",
+        attrs_.at(idx).type().name()));
+  }
+}
+
+template <>
+double InferSpmdContext::AttrAt(size_t idx) const {
+  try {
+    auto attr = attrs_.at(idx);
+    if (attr.type() == typeid(float)) {
+      return static_cast<double>(paddle::get<float>(attr));
+    } else {
+      return paddle::get<double>(attr);
+    }
+  } catch (paddle::bad_variant_access const& e) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Attribute cast error in InferSpmd Context, the input attr type is "
+        "`%s`, but the expected attribute type is `double`.",
         attrs_.at(idx).type().name()));
   }
 }
