@@ -52,8 +52,8 @@ SplitLayerNormPass::SplitLayerNormPass() {
       .IsOptional()
       .End()
       .AddAttr("epsilon")
-      .IsNumGE(0.0f)
-      .IsNumLE(0.001f)
+      .IsNumGE(0.0)
+      .IsNumLE(0.001)
       .End()
       .AddAttr("begin_norm_axis")
       .End();

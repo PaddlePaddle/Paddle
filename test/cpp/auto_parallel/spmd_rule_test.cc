@@ -425,7 +425,7 @@ TEST(LayerNormSPMDRule, Ctor) {
   bias_dist_attr.set_dims_mapping(std::vector<int64_t>({-1}));
   bias_dist_attr.set_dynamic_dims(std::vector<bool>({false}));
 
-  float epsilon = 1e-5;
+  double epsilon = 1e-5;
   int begin_norm_axis = 2;
 
   auto layer_norm_rule =
