@@ -2,6 +2,11 @@ name: Windows-GPU
 
 on:
   workflow_call:
+    inputs:
+      can-skip:
+        type: string
+        required: false
+        default: 'false'
 
 permissions: read-all
 
@@ -32,7 +37,7 @@ jobs:
   build-and-test:
     name: Build and test
     needs: check-bypass
-    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' && inputs.can-skip != 'true' }}
     runs-on:
       group: win-openblas
     timeout-minutes: 120
