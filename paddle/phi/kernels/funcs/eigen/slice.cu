@@ -18,7 +18,7 @@ namespace funcs {
 
 template <typename T, int Rank>
 struct EigenSlice<Eigen::GpuDevice, T, Rank> {
-  using Array = Eigen::DSizes<Eigen::DenseIndex, Rank>;
+  using Array = Eigen::DSizes<int64_t, Rank>;
   using Array32Bit = Eigen::DSizes<int64_t, Rank>;
   using InType =
       Eigen::TensorMap<Eigen::Tensor<const T, Rank, Eigen::RowMajor, int64_t>>;

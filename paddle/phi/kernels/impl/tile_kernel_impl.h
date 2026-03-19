@@ -62,7 +62,7 @@ void Tile(const Context& dev_ctx,
     Copy<DeviceContext>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     return;
   }
-  Eigen::DSizes<Eigen::DenseIndex, Rank> bcast_dims;
+  Eigen::DSizes<int64_t, Rank> bcast_dims;
   for (size_t i = 0; i < repeat_times.size(); ++i) {
     bcast_dims[i] = repeat_times[i];
   }

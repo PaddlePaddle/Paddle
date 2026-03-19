@@ -30,7 +30,7 @@ struct EigenL1Norm<Eigen::DefaultDevice, T> {
 
 template <typename T>
 struct EigenL1NormGrad<Eigen::DefaultDevice, T> {
-  using Array = Eigen::DSizes<Eigen::DenseIndex, 1>;
+  using Array = Eigen::DSizes<int64_t, 1>;
   using InType =
       Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor, int64_t>>;
   using OutType =

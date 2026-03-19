@@ -25,7 +25,7 @@ namespace phi {
 // EigenDim converts DDim into Eigen::DSizes.
 template <int D>
 struct EigenDim {
-  using Type = Eigen::DSizes<Eigen::DenseIndex, D>;
+  using Type = Eigen::DSizes<int64_t, D>;
 
   static Type From(const DDim& dims) {
     PADDLE_ENFORCE_EQ(arity(dims),

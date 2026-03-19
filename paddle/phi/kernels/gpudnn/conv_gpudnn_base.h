@@ -192,8 +192,8 @@ static void RemovePaddingSlice(const GPUContext& dev_ctx,
   auto& place = *dev_ctx.eigen_device();
   auto in_dims = input->dims();
   auto new_out_dims = out->dims();
-  auto offsets = Eigen::DSizes<Eigen::DenseIndex, D>();
-  auto extents = Eigen::DSizes<Eigen::DenseIndex, D>();
+  auto offsets = Eigen::DSizes<int64_t, D>();
+  auto extents = Eigen::DSizes<int64_t, D>();
   for (size_t i = 0; i < D; ++i) {
     offsets[i] = 0;
     extents[i] = new_out_dims[i];

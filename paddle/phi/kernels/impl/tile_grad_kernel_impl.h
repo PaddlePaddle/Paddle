@@ -43,11 +43,11 @@ void TileBackward(const Context& dev_ctx,
     x_grad_fp32.Resize(x_grad->dims());
     dev_ctx.template Alloc<float>(&x_grad_fp32);
     auto eigen_x_grad = EigenVector<float>::Flatten(x_grad_fp32);
-    Eigen::DSizes<Eigen::DenseIndex, Dims * 2> reshape_dims;
+    Eigen::DSizes<int64_t, Dims * 2> reshape_dims;
     for (size_t i = 0; i < reshape_size; ++i) {
       reshape_dims[i] = reshape_dims_vec[i];
     }
-    Eigen::DSizes<Eigen::DenseIndex, Dims> reduce_dims;
+    Eigen::DSizes<int64_t, Dims> reduce_dims;
     for (size_t i = 0; i < reduce_size; ++i) {
       reduce_dims[i] = reduce_dims_vec[i];
     }
@@ -64,11 +64,11 @@ void TileBackward(const Context& dev_ctx,
     }
   } else {
     auto eigen_x_grad = EigenVector<T>::Flatten(*x_grad);
-    Eigen::DSizes<Eigen::DenseIndex, Dims * 2> reshape_dims;
+    Eigen::DSizes<int64_t, Dims * 2> reshape_dims;
     for (size_t i = 0; i < reshape_size; ++i) {
       reshape_dims[i] = reshape_dims_vec[i];
     }
-    Eigen::DSizes<Eigen::DenseIndex, Dims> reduce_dims;
+    Eigen::DSizes<int64_t, Dims> reduce_dims;
     for (size_t i = 0; i < reduce_size; ++i) {
       reduce_dims[i] = reduce_dims_vec[i];
     }

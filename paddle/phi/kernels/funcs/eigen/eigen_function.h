@@ -26,7 +26,7 @@ namespace funcs {
 
 template <typename EigenDevice, typename T, int Rank>
 struct EigenBroadcast {
-  using Array = Eigen::DSizes<Eigen::DenseIndex, Rank>;
+  using Array = Eigen::DSizes<int64_t, Rank>;
   using InType =
       Eigen::TensorMap<Eigen::Tensor<const T, Rank, Eigen::RowMajor, int64_t>>;
   using InType32BitIndex =
@@ -49,8 +49,8 @@ struct EigenBroadcast {
 
 template <typename EigenDevice, typename T, int Rank>
 struct EigenBroadcastGrad {
-  using Array = Eigen::DSizes<Eigen::DenseIndex, Rank>;
-  using Array2 = Eigen::DSizes<Eigen::DenseIndex, Rank * 2>;
+  using Array = Eigen::DSizes<int64_t, Rank>;
+  using Array2 = Eigen::DSizes<int64_t, Rank * 2>;
   using InType =
       Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor, int64_t>>;
   using OutType =
@@ -130,7 +130,7 @@ struct EigenDiv {
 
 template <typename EigenDevice, typename T, int Rank>
 struct EigenSlice {
-  using Array = Eigen::DSizes<Eigen::DenseIndex, Rank>;
+  using Array = Eigen::DSizes<int64_t, Rank>;
   using Array32Bit = Eigen::DSizes<int64_t, Rank>;
   using InType =
       Eigen::TensorMap<Eigen::Tensor<const T, Rank, Eigen::RowMajor, int64_t>>;
@@ -311,7 +311,7 @@ struct EigenL1Norm {
 
 template <typename EigenDevice, typename T>
 struct EigenL1NormGrad {
-  using Array = Eigen::DSizes<Eigen::DenseIndex, 1>;
+  using Array = Eigen::DSizes<int64_t, 1>;
   using InType =
       Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor, int64_t>>;
   using OutType =
