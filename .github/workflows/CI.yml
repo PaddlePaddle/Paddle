@@ -16,11 +16,30 @@ env:
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
 
 jobs:
+  check-skill:
+    name: Check file paths
+    if: ${{ github.repository_owner == 'PaddlePaddle' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      can-skip: ${{ steps.skip-skill.outputs.should-skip }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Run skip check
+        id: skip-skill
+        uses: ./.github/actions/skip-skill
+        with:
+          ignore-paths: 'skill/**,.github/**'
+
   clone:
     name: Clone-linux
+    needs: check-skill
     uses: ./.github/workflows/_Clone-linux.yml
     with:
       workflow-name: 'CI'
+      skill-can-skip: ${{ needs.check-skill.outputs.can-skip }}
 
   build-docker:
     name: build docker images

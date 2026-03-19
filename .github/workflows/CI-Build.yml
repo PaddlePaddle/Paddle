@@ -39,10 +39,10 @@ jobs:
     name: Clone-linux
     needs: check-skill
     uses: ./.github/workflows/_Clone-linux.yml
-    if: ${{ needs.check-skill.outputs.can-skip != 'true'}}
     with:
       clone_dir: Paddle-build
       workflow-name: 'CI-build'
+      skill-can-skip: ${{ needs.check-skill.outputs.can-skip }}
 
   build-docker:
     name: build docker images
