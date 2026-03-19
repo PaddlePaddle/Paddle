@@ -618,6 +618,23 @@ if [ -n "${BIGTENSOR_CHANGED}" ]; then
 fi
 
 
+HAS_MODIFIED_PHI_DIR=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/" || true`
+if [ "${HAS_MODIFIED_PHI_DIR}" != "" ] && [ "${PR_ID}" != "" ]; then
+    echo_line="You modified files in paddle/phi/ directory. You must have one RD (wanghuancoder, zrr1999, DanielSun11) approval.\n"
+    echo_line="${echo_line}[IMPORTANT] Please ensure you have run the following tests before merging:\n"
+    echo_line="${echo_line}  1. 0-Size Tensor test\n"
+    echo_line="${echo_line}  2. BigTensor test\n"
+    echo_line="${echo_line}  3. Precision test\n"
+    echo_line="${echo_line}You can copy the following prompt to your AI agent to help run these tests:\n"
+    echo_line="${echo_line}---\n"
+    echo_line="${echo_line}Please run the following tests for my paddle/phi changes and report results:\n"
+    echo_line="${echo_line}1) 0-Size Tensor test: verify all modified ops handle empty tensors (shape with 0) without crashing.\n"
+    echo_line="${echo_line}2) BigTensor test: verify all modified ops handle large tensors (with numel > INT32_MAX) correctly, especially checking for int32 index overflow.\n"
+    echo_line="${echo_line}3) Precision test: verify all modified ops produce numerically consistent results against the baseline (develop branch), checking both float32 and float16/bfloat16 dtypes.\n"
+    echo_line="${echo_line}---\n"
+    check_approval 1 wanghuancoder zrr1999 DanielSun11
+fi
+
 if [ -n "${echo_list}" ];then
   echo "****************"
   echo -e "${echo_list[@]}"
