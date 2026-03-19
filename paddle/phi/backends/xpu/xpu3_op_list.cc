@@ -25,7 +25,15 @@ XPUOpMap& get_kl3_ops() {
       {"acos", XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16})},
       {"add_act_xpu", XPUKernelSet({FLOAT32, FLOAT16})},
       {"add_layernorm_xpu", XPUKernelSet({FLOAT32, FLOAT16})},
-      {"abs", XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16})},
+      {"abs",
+       XPUKernelSet({FLOAT32,
+                     FLOAT16,
+                     BFLOAT16
+#ifdef PADDLE_WITH_XPU_FFT
+                     ,
+                     phi::DataType::COMPLEX64
+#endif
+       })},
       {"abs_grad", XPUKernelSet({FLOAT32, FLOAT16})},
       {"accuracy", XPUKernelSet({FLOAT32, FLOAT16})},
       {"adadelta", XPUKernelSet({FLOAT32})},

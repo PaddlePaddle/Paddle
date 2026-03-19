@@ -15,7 +15,23 @@
 #include "paddle/phi/kernels/abs_kernel.h"
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/backends/xpu/xpu_context.h"
+#include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
+
+#ifdef PADDLE_WITH_XPU_FFT
+#include "fft/cuComplex.h"
+namespace xfft_internal::xpu {
+// just for declaration here, the real implementation is in libcufft.so
+template <typename TComplex, typename T>
+int complex_spilt(
+    const XPUStream stream, int N, const TComplex* in, T* real, T* imag);
+template <>
+int complex_spilt(
+    const XPUStream stream, int N, const float2* in, float* real, float* imag);
+}  // namespace xfft_internal::xpu
+#endif
 
 namespace phi {
 
@@ -32,6 +48,49 @@ void AbsKernel(const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) {
                             x.numel());
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "abs");
 }
+
+#ifdef PADDLE_WITH_XPU_FFT
+template <>
+void AbsKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
+                                           const DenseTensor& x,
+                                           DenseTensor* out) {
+  using T = phi::complex64;
+  using RealT = phi::dtype::Real<T>;
+  using XPUComplexType = cuFloatComplex;
+
+  dev_ctx.template Alloc<RealT>(out);
+  if (x.numel() == 0) {
+    return;
+  }
+
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+  RealT* real = RAII_GUARD.alloc_l3_or_gm<RealT>(x.numel());
+  RealT* imag = RAII_GUARD.alloc_l3_or_gm<RealT>(x.numel());
+  RealT* imag_sq = RAII_GUARD.alloc_l3_or_gm<RealT>(x.numel());
+  PADDLE_ENFORCE_XDNN_NOT_NULL(real);
+  PADDLE_ENFORCE_XDNN_NOT_NULL(imag);
+  PADDLE_ENFORCE_XDNN_NOT_NULL(imag_sq);
+
+  int r = xfft_internal::xpu::complex_spilt(
+      dev_ctx.x_context()->xpu_stream,
+      x.numel(),
+      reinterpret_cast<const XPUComplexType*>(x.data<T>()),
+      real,
+      imag);
+  PADDLE_ENFORCE_XPU_SUCCESS(r);
+
+  r = xpu::mul(dev_ctx.x_context(), real, real, real, x.numel());
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "mul");
+  r = xpu::mul(dev_ctx.x_context(), imag, imag, imag_sq, x.numel());
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "mul");
+  r = xpu::add(
+      dev_ctx.x_context(), real, imag_sq, out->data<RealT>(), x.numel());
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "add");
+  r = xpu::sqrt<RealT>(
+      dev_ctx.x_context(), out->data<RealT>(), out->data<RealT>(), x.numel());
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "sqrt");
+}
+#endif
 }  // namespace phi
 
 PD_REGISTER_KERNEL(abs,
@@ -43,4 +102,11 @@ PD_REGISTER_KERNEL(abs,
                    phi::bfloat16,
                    int8_t,
                    int32_t,
-                   int64_t) {}
+                   int64_t
+#ifdef PADDLE_WITH_XPU_FFT
+                   ,
+                   phi::complex64
+#endif
+) {
+  kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
+}
