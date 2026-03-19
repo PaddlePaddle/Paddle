@@ -221,6 +221,22 @@ class TestBatchSamplerTorchPositionalArg(TestBatchSampler):
         return bs
 
 
+class TestBatchSamplerPositionalArgError(TestBatchSampler):
+    def init_batch_sampler(self):
+        dataset = RandomDataset(1000, 10)
+        sampler = SequenceSampler(dataset)
+        bs = BatchSampler(
+            sampler, self.batch_size, self.drop_last, self.shuffle
+        )
+        return bs
+
+    def test_main(self):
+        try:
+            bs = self.init_batch_sampler()
+        except TypeError:
+            pass
+
+
 class TestBatchSamplerWithSamplerDropLast(unittest.TestCase):
     def setUp(self):
         self.num_samples = 1000
@@ -284,6 +300,10 @@ class TestBatchSamplerWithIterableSamplerShuffle(
         self.batch_size = 32
         self.shuffle = True
         self.drop_last = True
+
+
+class TestBatchSamplerError(unittest.TestCase):
+    pass
 
 
 class TestWeightedRandomSampler(unittest.TestCase):

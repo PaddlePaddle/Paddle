@@ -1009,13 +1009,20 @@ def batch_sampler_decorator() -> Callable[
         @functools.wraps(func)
         def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
             # args[0] is self
+            # args[1] is sampler, use torch signature
             # args[2] is batch_size, use torch signature
-            if len(args) <= 4 and isinstance(args[2], int):
+            if (
+                len(args) > 1
+                and isinstance(args[1], paddle.io.dataloader.Sampler)
+            ) or (len(args) > 2 and isinstance(args[2], int)):
                 kwargs["sampler"] = args[1]
                 kwargs["batch_size"] = args[2]
-                if len(args) == 4:
+                if len(args) == 3:
                     kwargs["drop_last"] = args[3]
-                args = ()
+                if len(args) > 3:
+                    raise TypeError(
+                        "BatchSampler() received too many arguments"
+                    )
 
             return func(*args, **kwargs)
 
