@@ -68,34 +68,34 @@ if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
         check_files() {
             local non_ignored=""
 
-            echo "🔍 [DEBUG] Starting to check files..."
+            echo "🔍 [DEBUG] Starting to check files..." >&2
 
             while IFS= read -r file; do
                 [ -z "$file" ] && continue
-                echo "🔍 [DEBUG] Checking file: '$file'"
+                echo "🔍 [DEBUG] Checking file: '$file'" >&2
 
                 is_ignored=false
-                echo "🔍 [DEBUG] IGNORE_PATHS length: ${#IGNORE_PATHS[@]}"
+                echo "🔍 [DEBUG] IGNORE_PATHS length: ${#IGNORE_PATHS[@]}" >&2
                 for pattern in "${IGNORE_PATHS[@]}"; do
                     pattern=$(echo "$pattern" | xargs)
-                    echo "🔍 [DEBUG] Original pattern: '$pattern'"
+                    echo "🔍 [DEBUG] Original pattern: '$pattern'" >&2
                     if [ -n "$pattern" ]; then
                         # Replace ** with * for bash pattern matching
                         bash_pattern="${pattern//\**/*}"
-                        echo "🔍 [DEBUG] bash_pattern: '$bash_pattern'"
+                        echo "🔍 [DEBUG] bash_pattern: '$bash_pattern'" >&2
                         # Debug: show pattern matching
                         if [[ "$file" == $bash_pattern ]]; then
                             is_ignored=true
-                            echo "  ✅ Ignored: $file (pattern: $pattern -> $bash_pattern)"
+                            echo "  ✅ Ignored: $file (pattern: $pattern -> $bash_pattern)" >&2
                             break
                         else
-                            echo "  🔍 Check: $file (pattern: $pattern -> $bash_pattern) - no match"
+                            echo "  🔍 Check: $file (pattern: $pattern -> $bash_pattern) - no match" >&2
                         fi
                     fi
                 done
 
                 if [ "$is_ignored" = false ]; then
-                    echo "  ❌ Not ignored: $file"
+                    echo "  ❌ Not ignored: $file" >&2
                     if [ -z "$non_ignored" ]; then
                         non_ignored="$file"
                     else
