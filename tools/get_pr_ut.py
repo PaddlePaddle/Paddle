@@ -298,8 +298,7 @@ class PRChecker:
 
     def get_pr_ut(self):
         """Get unit tests in pull request."""
-        # liuhao
-        return ''
+
         if self.full_case:
             return ''
         check_added_ut = False
