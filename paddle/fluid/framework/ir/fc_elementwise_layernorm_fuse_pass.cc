@@ -173,8 +173,8 @@ FCElementwiseLayerNormFusePass::FCElementwiseLayerNormFusePass() {
       .End()
 
       .AddAttr("epsilon")
-      .IsNumGE(0.0)
-      .IsNumLE(0.001)
+      .IsNumGE(0.0f)
+      .IsNumLE(0.001f)
       .End()
       .AddAttr("begin_norm_axis")
       .IsNumGT(0)

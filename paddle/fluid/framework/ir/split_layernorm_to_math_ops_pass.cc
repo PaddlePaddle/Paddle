@@ -52,8 +52,8 @@ SplitLayerNormPass::SplitLayerNormPass() {
       .IsOptional()
       .End()
       .AddAttr("epsilon")
-      .IsNumGE(0.0)
-      .IsNumLE(0.001)
+      .IsNumGE(0.0f)
+      .IsNumLE(0.001f)
       .End()
       .AddAttr("begin_norm_axis")
       .End();
@@ -170,7 +170,7 @@ void SplitLayerNormPass::ApplyImpl(Graph* graph) const {
     int begin_norm_axis =
         PADDLE_GET_CONST(int, layer_norm_op->Op()->GetAttr("begin_norm_axis"));
     double eps =
-        PADDLE_GET_CONST(double, layer_norm_op->Op()->GetAttr("epsilon"));
+        PADDLE_GET_CONST(float, layer_norm_op->Op()->GetAttr("epsilon"));
 
     std::vector<int32_t> reduce_dim;
     std::vector<int64_t> shape_int64;

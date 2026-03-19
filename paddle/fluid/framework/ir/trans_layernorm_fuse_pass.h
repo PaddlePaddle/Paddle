@@ -116,8 +116,8 @@ class TransLayernormFusePass : public FusePassBase {
         .IsNumGT(0)
         .End()
         .AddAttr("epsilon")
-        .IsNumGE(0.0)
-        .IsNumLE(1.0)
+        .IsNumGE(0.0f)
+        .IsNumLE(1.0f)
         .End();
   }
   virtual ~TransLayernormFusePass() {}

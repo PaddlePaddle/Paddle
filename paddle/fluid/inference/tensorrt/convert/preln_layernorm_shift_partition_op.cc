@@ -36,10 +36,9 @@ class PrelnLayerNormShiftPartitionOpConverter : public OpConverter {
     auto* Bias_v = scope.FindVar(op_desc.Input("Bias").front());
     auto* Scale_v = scope.FindVar(op_desc.Input("Scale").front());
 
-    const double eps =
-        op_desc.HasAttr("epsilon")
-            ? PADDLE_GET_CONST(double, op_desc.GetAttr("epsilon"))
-            : 1e-5f;
+    const double eps = op_desc.HasAttr("epsilon")
+                           ? PADDLE_GET_CONST(float, op_desc.GetAttr("epsilon"))
+                           : 1e-5f;
     const int window_size =
         PADDLE_GET_CONST(int, op_desc.GetAttr("window_size"));
     const int input_resolution =

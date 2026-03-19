@@ -34,7 +34,6 @@ namespace platform = paddle::platform;
 namespace memory = paddle::memory;
 
 USE_OP_ITSELF(dropout);
-USE_OP_ITSELF(layer_norm);
 
 template <typename T>
 using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
