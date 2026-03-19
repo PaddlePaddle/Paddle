@@ -30,29 +30,8 @@ defaults:
     shell: bash
 
 jobs:
-  check-skill:
-    name: Check file paths
-    if: ${{ github.repository_owner == 'PaddlePaddle' }}
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    permissions:
-      contents: read
-      actions: read
-    outputs:
-      can-skip: ${{ steps.skip-skill.outputs.should-skip || 'false' }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Run skip check
-        id: skip-skill
-        uses: ./.github/actions/skip-skill
-        with:
-          ignore-paths: 'skill/**,.github/**'
-
   clone:
     name: Coverage clone
-    needs: check-skill
-    if: ${{ needs.check-skill.outputs.can-skip != 'true' }}
     uses: ./.github/workflows/_Clone-linux.yml
     with:
       workflow-name: "coverage"
