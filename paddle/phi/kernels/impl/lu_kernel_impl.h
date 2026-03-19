@@ -313,24 +313,8 @@ void SliceCompute(const Context& dev_ctx,
   auto out_t = EigenTensor<T, D>::From(*out, slice_dims);
   auto& eigen_place = *dev_ctx.eigen_device();
 
-  if (in->numel() <= Eigen::NumTraits<int>::highest()) {
-    // similar to tf.slice:
-    // if element number less than INT_MAX, change the type of index to int
-    Eigen::DSizes<int, D> offsets_32bit, extents_32bit;
-    for (size_t i = 0; i < D; i++) {
-      offsets_32bit[i] = offsets[i];
-      extents_32bit[i] = extents[i];
-    }
-    funcs::EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
-        eigen_place,
-        To32BitIndex(out_t),
-        To32BitIndex(in_t),
-        offsets_32bit,
-        extents_32bit);
-  } else {
-    funcs::EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
-        eigen_place, out_t, in_t, offsets, extents);
-  }
+  funcs::EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
+      eigen_place, out_t, in_t, offsets, extents);
 
   out->Resize(out_dims);
   dev_ctx.template Alloc<T>(out);
