@@ -59,8 +59,8 @@ void SliceCompute(const Context& dev_ctx,
   out_dims = funcs::GetDecreasedDims<int64_t>(slice_dims, decrease_axis);
 
   // 2.2 Get output
-  auto offsets = Eigen::DSizes<Eigen::DenseIndex, D>();
-  auto extents = Eigen::DSizes<Eigen::DenseIndex, D>();
+  auto offsets = Eigen::DSizes<int64_t, D>();
+  auto extents = Eigen::DSizes<int64_t, D>();
 
   for (size_t i = 0; i < D; ++i) {
     offsets[i] = 0;

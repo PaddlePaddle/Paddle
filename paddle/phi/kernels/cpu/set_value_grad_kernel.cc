@@ -98,9 +98,9 @@ void SetValueGradImpl(const Context& dev_ctx,
                              decrease_axis_int32,
                              starts_local.size());
 
-  auto starts_indices = Eigen::DSizes<Eigen::DenseIndex, RANK>();
-  auto ends_indices = Eigen::DSizes<Eigen::DenseIndex, RANK>();
-  auto steps_indices = Eigen::DSizes<Eigen::DenseIndex, RANK>();
+  auto starts_indices = Eigen::DSizes<int64_t, RANK>();
+  auto ends_indices = Eigen::DSizes<int64_t, RANK>();
+  auto steps_indices = Eigen::DSizes<int64_t, RANK>();
   auto reverse_axis = Eigen::array<bool, RANK>();
 
   for (size_t axis = 0; axis < RANK; axis++) {
@@ -203,7 +203,7 @@ void SetValueGradImpl(const Context& dev_ctx,
               << "([" << value_grad_dims << "])is broadcasted into ["
               << fake_value_grad_dims << "].";
 
-      auto extent = Eigen::DSizes<Eigen::DenseIndex, RANK>();
+      auto extent = Eigen::DSizes<int64_t, RANK>();
       auto offset = out_dims;
       for (int i = 0; i < out_dims_size; i++) {
         offset[i] = 0;

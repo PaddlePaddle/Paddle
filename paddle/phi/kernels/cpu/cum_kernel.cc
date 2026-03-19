@@ -98,7 +98,7 @@ void ScanKernel(const Context& dev_ctx,
   auto out0 = EigenVector<T>::Flatten(*out);
   auto& place = *dev_ctx.eigen_device();
 
-  using IndexT = Eigen::DenseIndex;
+  using IndexT = int64_t;
   if (pre == 1) {
     if (post == 1) {
       ComputeImp(place,

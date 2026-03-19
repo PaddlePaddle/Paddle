@@ -47,7 +47,7 @@ void ApplyBroadcast(const Context& dev_ctx,
   // 2. Collect new_input_dims_vec. Eigen::broadcast requires same rank for
   // both input and output tensors, so we need to initialize input X with
   // expanded dims: "new_input_dims_vec"
-  Eigen::DSizes<Eigen::DenseIndex, OutRank> bcast_dims;
+  Eigen::DSizes<int64_t, OutRank> bcast_dims;
   std::vector<int64_t> new_input_dims_vec(out_rank);
   for (int i = 0; i < out_rank; i++) {
     int in_axis = in_rank - i - 1;

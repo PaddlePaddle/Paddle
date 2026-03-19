@@ -17,7 +17,7 @@ namespace funcs {
 
 template <typename T, int Rank>
 struct EigenBroadcast<Eigen::GpuDevice, T, Rank> {
-  using Array = Eigen::DSizes<Eigen::DenseIndex, Rank>;
+  using Array = Eigen::DSizes<int64_t, Rank>;
   using InType =
       Eigen::TensorMap<Eigen::Tensor<const T, Rank, Eigen::RowMajor, int64_t>>;
   using InType32BitIndex =
@@ -46,8 +46,8 @@ struct EigenBroadcast<Eigen::GpuDevice, T, Rank> {
 
 template <typename T, int Rank>
 struct EigenBroadcastGrad<Eigen::GpuDevice, T, Rank> {
-  using Array = Eigen::DSizes<Eigen::DenseIndex, Rank>;
-  using Array2 = Eigen::DSizes<Eigen::DenseIndex, Rank * 2>;
+  using Array = Eigen::DSizes<int64_t, Rank>;
+  using Array2 = Eigen::DSizes<int64_t, Rank * 2>;
   using InType =
       Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor, int64_t>>;
   using OutType =

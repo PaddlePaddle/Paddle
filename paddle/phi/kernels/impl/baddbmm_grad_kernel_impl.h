@@ -48,9 +48,9 @@ struct BCopyOrScaleFunctor {
 template <typename T, size_t D, int MajorType = Eigen::RowMajor>
 using PhiEigenTensor = EigenTensor<T, D, MajorType>;
 
-using Array1 = Eigen::DSizes<Eigen::DenseIndex, 1>;
-using Array2 = Eigen::DSizes<Eigen::DenseIndex, 2>;
-using Array3 = Eigen::DSizes<Eigen::DenseIndex, 3>;
+using Array1 = Eigen::DSizes<int64_t, 1>;
+using Array2 = Eigen::DSizes<int64_t, 2>;
+using Array3 = Eigen::DSizes<int64_t, 3>;
 
 template <typename T, typename Context>
 void BaddbmmGradKernel(const Context& dev_ctx,

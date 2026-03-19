@@ -133,8 +133,8 @@ static void Slice(const Context& dev_ctx,
                   const std::vector<int64_t>& axes_vec) {
   auto& place = *dev_ctx.eigen_device();
   auto in_dims = input->dims();
-  auto offsets = Eigen::DSizes<Eigen::DenseIndex, D>();
-  auto extents = Eigen::DSizes<Eigen::DenseIndex, D>();
+  auto offsets = Eigen::DSizes<int64_t, D>();
+  auto extents = Eigen::DSizes<int64_t, D>();
   for (size_t i = 0; i < D; ++i) {
     offsets[i] = 0;
     extents[i] = in_dims[i];
