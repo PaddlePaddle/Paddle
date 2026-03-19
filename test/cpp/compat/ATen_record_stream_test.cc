@@ -42,15 +42,15 @@ class RecordStreamTest : public ::testing::Test {
 #endif
 };
 
-// --- 正常路径：CUDA tensor + 当前 CUDA stream，应当成功 ---
+// --- Happy path: CUDA tensor + current CUDA stream should succeed ---
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST_F(RecordStreamTest, CudaTensorCurrentCudaStream) {
   auto stream = at::cuda::getCurrentCUDAStream();
-  // record_stream 不应抛出异常
+  // record_stream should not throw
   EXPECT_NO_THROW(cuda_tensor.record_stream(stream));
 }
 
-// --- 正常路径：CUDA tensor + 非当前 CUDA stream（默认 stream），应当成功 ---
+// --- Happy path: CUDA tensor + default CUDA stream should succeed ---
 TEST_F(RecordStreamTest, CudaTensorDefaultCudaStream) {
   c10::DeviceIndex dev = c10::cuda::current_device();
   c10::Stream default_stream(c10::Stream::DEFAULT,
@@ -59,14 +59,16 @@ TEST_F(RecordStreamTest, CudaTensorDefaultCudaStream) {
 }
 #endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
 
-// --- 异常路径：CPU tensor + CPU stream，record_stream 不支持 CPU tensor ---
+// --- Error path: CPU tensor + CPU stream (record_stream does not support CPU
+// tensors) ---
 TEST_F(RecordStreamTest, CpuTensorCpuStream) {
   c10::Stream cpu_stream(c10::Stream::DEFAULT,
                          c10::Device(c10::DeviceType::CPU, 0));
   EXPECT_THROW(cpu_tensor.record_stream(cpu_stream), std::exception);
 }
 
-// --- 异常路径：CPU tensor + CUDA stream，record_stream 不支持 CPU tensor ---
+// --- Error path: CPU tensor + CUDA stream (record_stream does not support CPU
+// tensors) ---
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST_F(RecordStreamTest, CpuTensorCudaStream) {
   auto cuda_stream = at::cuda::getCurrentCUDAStream();
