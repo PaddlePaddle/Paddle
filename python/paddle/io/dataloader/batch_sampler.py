@@ -16,8 +16,11 @@ from __future__ import annotations
 
 import math
 from collections.abc import Iterable, Iterator, Sequence, Sized
+from typing import overload
 
 import numpy as np
+
+from paddle.utils.decorator_utils import batch_sampler_decorator
 
 from .dataset import IterableDataset
 from .sampler import RandomSampler, Sampler, SequenceSampler
@@ -107,6 +110,25 @@ class BatchSampler(Sampler[Sequence[int]]):
     shuffle: bool
     drop_last: bool
 
+    @overload
+    def __init__(
+        self,
+        dataset: Sized | None = None,
+        sampler: Sampler | Iterable[int] | None = None,
+        shuffle: bool = False,
+        batch_size: int = 1,
+        drop_last: bool = False,
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        sampler: Sampler | Iterable[int] | None = None,
+        batch_size: int = 1,
+        drop_last: bool = False,
+    ) -> None: ...
+
+    @batch_sampler_decorator()
     def __init__(
         self,
         dataset: Sized | None = None,

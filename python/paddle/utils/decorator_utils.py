@@ -994,3 +994,32 @@ def index_fill_decorator() -> Callable[
         return wrapper
 
     return decorator
+
+
+def batch_sampler_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    """
+    Usage Example:
+    PyTorch: torch.utils.data.BatchSampler(sampler, batch_size, drop_last)
+    Paddle: paddle.utils.data.BatchSampler(dataset, sampler, shuffle, batch_size, drop_last)
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            # args[0] is self
+            # args[2] is batch_size, use torch signature
+            if len(args) <= 4 and isinstance(args[2], int):
+                kwargs["sampler"] = args[1]
+                kwargs["batch_size"] = args[2]
+                if len(args) == 4:
+                    kwargs["drop_last"] = args[3]
+                args = ()
+
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator

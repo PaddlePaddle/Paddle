@@ -213,6 +213,14 @@ class TestBatchSamplerWithSampler(TestBatchSampler):
         return bs
 
 
+class TestBatchSamplerTorchPositionalArg(TestBatchSampler):
+    def init_batch_sampler(self):
+        dataset = RandomDataset(1000, 10)
+        sampler = SequenceSampler(dataset)
+        bs = BatchSampler(sampler, self.batch_size, self.drop_last)
+        return bs
+
+
 class TestBatchSamplerWithSamplerDropLast(unittest.TestCase):
     def setUp(self):
         self.num_samples = 1000
