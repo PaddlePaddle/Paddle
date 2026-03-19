@@ -47,7 +47,7 @@ jobs:
     if: ${{ github.repository_owner == 'PaddlePaddle' }}
     needs: [check-bypass]
     outputs:
-      can-skip: ${{ needs.check-bypass.outputs.can-skip == 'true' }}
+      can-skip: ${{ needs.check-bypass.outputs.can-skip }}
       slice-check: ${{ steps.check-execution.outputs.slice-check }}
     runs-on:
       group: HK-Clone
