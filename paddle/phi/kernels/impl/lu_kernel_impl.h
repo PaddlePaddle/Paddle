@@ -319,7 +319,7 @@ void SliceCompute(const Context& dev_ctx,
   if (in->numel() <= Eigen::NumTraits<int>::highest()) {
     // similar to tf.slice:
     // if element number less than INT_MAX, change the type of index to int
-    Eigen::DSizes<int, D> offsets_32bit, extents_32bit;
+    Eigen::DSizes<int64_t, D> offsets_32bit, extents_32bit;
     for (size_t i = 0; i < D; i++) {
       offsets_32bit[i] = offsets[i];
       extents_32bit[i] = extents[i];

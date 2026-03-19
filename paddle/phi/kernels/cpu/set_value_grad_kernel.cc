@@ -133,12 +133,10 @@ void SetValueGradImpl(const Context& dev_ctx,
     // Set gradient of `Input`
     Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
 
-    auto x_grad_t =
-        EigenTensor<T, RANK, Eigen::RowMajor, Eigen::DenseIndex>::From(*x_grad);
+    auto x_grad_t = EigenTensor<T, RANK, Eigen::RowMajor>::From(*x_grad);
 
     DenseTensor tmp = Full<T>(dev_ctx, out_dims_vector, static_cast<T>(0));
-    auto tmp_t =
-        EigenTensor<T, RANK, Eigen::RowMajor, Eigen::DenseIndex>::From(tmp);
+    auto tmp_t = EigenTensor<T, RANK, Eigen::RowMajor>::From(tmp);
 
     x_grad_t.stridedSlice(starts_indices, ends_indices, steps_indices)
         .device(place) = tmp_t;
@@ -147,17 +145,14 @@ void SetValueGradImpl(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(value_grad);
     set_zero(dev_ctx, value_grad, static_cast<T>(0));
 
-    auto in_t = EigenTensor<T, RANK, Eigen::RowMajor, Eigen::DenseIndex>::From(
-        out_grad);
+    auto in_t = EigenTensor<T, RANK, Eigen::RowMajor>::From(out_grad);
 
     if (value_grad->dims() == out_dims) {
       auto value_grad_t =
-          EigenTensor<T, RANK, Eigen::RowMajor, Eigen::DenseIndex>::From(
-              *value_grad);
+          EigenTensor<T, RANK, Eigen::RowMajor>::From(*value_grad);
       if (need_reverse) {
         DenseTensor tmp = Full<T>(dev_ctx, out_dims_vector, static_cast<T>(0));
-        auto tmp_t =
-            EigenTensor<T, RANK, Eigen::RowMajor, Eigen::DenseIndex>::From(tmp);
+        auto tmp_t = EigenTensor<T, RANK, Eigen::RowMajor>::From(tmp);
 
         tmp_t.device(place) =
             in_t.stridedSlice(starts_indices, ends_indices, steps_indices);
@@ -217,13 +212,11 @@ void SetValueGradImpl(const Context& dev_ctx,
       std::vector<DDim> offsets;
       GetOffsets(out_dims, fake_value_grad_dims, offset, 0, &offsets);
 
-      auto value_grad_t =
-          EigenTensor<T, RANK, Eigen::RowMajor, Eigen::DenseIndex>::From(
-              *value_grad, fake_value_grad_dims);
+      auto value_grad_t = EigenTensor<T, RANK, Eigen::RowMajor>::From(
+          *value_grad, fake_value_grad_dims);
 
       DenseTensor tmp = Full<T>(dev_ctx, out_dims_vector, static_cast<T>(0));
-      auto tmp_t =
-          EigenTensor<T, RANK, Eigen::RowMajor, Eigen::DenseIndex>::From(tmp);
+      auto tmp_t = EigenTensor<T, RANK, Eigen::RowMajor>::From(tmp);
 
       tmp_t.device(place) =
           in_t.stridedSlice(starts_indices, ends_indices, steps_indices);
@@ -239,8 +232,7 @@ void SetValueGradImpl(const Context& dev_ctx,
                     {fake_value_grad_dims.Get(), fake_value_grad_dims.size()},
                     static_cast<T>(0));
         auto tmp_value_t =
-            EigenTensor<T, RANK, Eigen::RowMajor, Eigen::DenseIndex>::From(
-                tmp_value);
+            EigenTensor<T, RANK, Eigen::RowMajor>::From(tmp_value);
         tmp_value_t.device(place) = value_grad_t.reverse(reverse_axis);
         value_grad_t.device(place) = tmp_value_t;
       }

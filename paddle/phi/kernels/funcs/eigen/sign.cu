@@ -19,10 +19,10 @@ namespace funcs {
 
 template <typename T>
 struct EigenSign<Eigen::GpuDevice, T> {
-  using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using InType =
+      Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor, int64_t>>;
   using OutType =
-      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, int64_t>>;
   static void Eval(const Eigen::GpuDevice& dev, OutType out, const InType& in) {
     out.device(dev) = in.sign();
   }
@@ -30,14 +30,10 @@ struct EigenSign<Eigen::GpuDevice, T> {
 
 template <typename T>
 struct EigenSign<Eigen::GpuDevice, phi::dtype::complex<T>> {
-  using InType = Eigen::TensorMap<Eigen::Tensor<const phi::dtype::complex<T>,
-                                                1,
-                                                Eigen::RowMajor,
-                                                Eigen::DenseIndex>>;
-  using OutType = Eigen::TensorMap<Eigen::Tensor<phi::dtype::complex<T>,
-                                                 1,
-                                                 Eigen::RowMajor,
-                                                 Eigen::DenseIndex>>;
+  using InType = Eigen::TensorMap<
+      Eigen::Tensor<const phi::dtype::complex<T>, 1, Eigen::RowMajor, int64_t>>;
+  using OutType = Eigen::TensorMap<
+      Eigen::Tensor<phi::dtype::complex<T>, 1, Eigen::RowMajor, int64_t>>;
   static void Eval(const Eigen::GpuDevice& dev, OutType out, const InType& in) {
     out.device(dev) = in.unaryExpr(
         [] __host__ __device__(

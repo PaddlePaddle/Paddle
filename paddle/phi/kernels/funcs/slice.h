@@ -45,9 +45,9 @@ void EigenSliceWrapper(const Context& dev_ctx,
                         "argument must have the same length as input rank."));
   auto eigen_place_ptr = dev_ctx.eigen_device();
   auto eigen_place = *eigen_place_ptr;
-  auto out_t = phi::EigenTensor<T, D>::From(*out, out->dims());
-  auto in_t = phi::EigenTensor<T, D>::From(*in, in->dims());
-  Eigen::DSizes<int, D> offsets_32bit, extents_32bit;
+  auto out_t = EigenTensor<T, D>::From(*out, out->dims());
+  auto in_t = EigenTensor<T, D>::From(*in, in->dims());
+  Eigen::DSizes<int64_t, D> offsets_32bit, extents_32bit;
   for (size_t i = 0; i < D; i++) {
     offsets_32bit[i] = start[i];
     extents_32bit[i] = end[i];
@@ -151,10 +151,8 @@ static void Slice(const Context& dev_ctx,
   out->Resize(out_dims);
   dev_ctx.template Alloc<T>(out);
 
-  auto in_t =
-      EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(*input);
-  auto out_t = EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-      *out, out_dims);
+  auto in_t = EigenTensor<T, D, Eigen::RowMajor>::From(*input);
+  auto out_t = EigenTensor<T, D, Eigen::RowMajor>::From(*out, out_dims);
 
   funcs::EigenSlice<std::decay_t<decltype(place)>, T, D>::Eval(
       place, out_t, in_t, offsets, extents);
