@@ -1530,7 +1530,7 @@ class DistForwardAPI(ForwardAPI):
             )
         else:
             input_tensor_code += SINGLE_PREPARE_DATA_TEMPLATE_NO_RESHARD.format(
-                name=input_name,
+                arg=input_name,
                 idx=kernel_param.index(input_name),
                 trans_flag=trans_flag,
             )

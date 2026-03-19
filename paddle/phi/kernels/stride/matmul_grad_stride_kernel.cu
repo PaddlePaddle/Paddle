@@ -29,6 +29,15 @@ COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace phi {
 
+inline void PrepareStridedOut(DenseTensor* out) {
+  if (out == nullptr) {
+    return;
+  }
+  auto meta = out->meta();
+  meta.strides = meta.calc_strides(out->dims());
+  out->set_meta(meta);
+}
+
 template <typename Context>
 DenseTensor Tensor2Contiguous(const Context& dev_ctx,
                               const DenseTensor& tensor) {
@@ -147,6 +156,9 @@ void MatmulGradStrideKernel(const Context& dev_ctx,
   if (!out_grad_.meta().is_contiguous()) {
     out_grad_ = Tensor2Contiguous<Context>(dev_ctx, out_grad_);
   }
+
+  PrepareStridedOut(dx);
+  PrepareStridedOut(dy);
 
   phi::MatmulGradKernel<T, Context>(
       dev_ctx, x_, y_, out_grad_, transpose_x, transpose_y, dx, dy);
