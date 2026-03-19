@@ -38,9 +38,9 @@
 #include <optional>
 #include <utility>
 #include <vector>
-#include "glog/logging.h"
 #include "paddle/common/ddim.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace at {
 class Tensor;
@@ -399,8 +399,9 @@ class Tensor : public TensorBase {
 
   bool is_pinned(::std::optional<c10::Device> device = ::std::nullopt) const {
     if (device.has_value()) {
-      LOG(WARNING) << "The argument 'device' of Tensor.is_pinned() "
-                   << "is deprecated. Please do not pass this argument.";
+      phi::enforce::ThrowWarnInternal(
+          "The argument 'device' of Tensor.is_pinned() is deprecated. "
+          "Please do not pass this argument.");
     }
 
     const PaddlePlace place = tensor_.place();
@@ -430,8 +431,9 @@ class Tensor : public TensorBase {
   Tensor pin_memory(
       ::std::optional<c10::Device> device = ::std::nullopt) const {
     if (device.has_value()) {
-      LOG(WARNING) << "The argument 'device' of Tensor.pin_memory() "
-                   << "is deprecated. Please do not pass this argument.";
+      phi::enforce::ThrowWarnInternal(
+          "The argument 'device' of Tensor.pin_memory() is deprecated. "
+          "Please do not pass this argument.");
     }
 
     if (is_pinned(device)) {
