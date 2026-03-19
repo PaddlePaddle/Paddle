@@ -1022,7 +1022,7 @@ def batch_sampler_decorator() -> Callable[
                     raise TypeError(
                         "BatchSampler() received too many arguments"
                     )
-                args = ()
+                args = (args[0],)
 
             return func(*args, **kwargs)
 
