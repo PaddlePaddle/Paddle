@@ -38,18 +38,8 @@ void LaunchEigenPadding(
       *d_out, out_dims);
 
   if (d_input->numel() <= Eigen::NumTraits<int>::highest()) {
-    // similar to tf.pad:
-    // if element number less than INT_MAX, change the type of index to int
-    std::array<std::pair<int, int>, D> paddings_32bit;
-    for (size_t i = 0; i < D; i++) {
-      paddings_32bit[i] = std::make_pair(paddings[i].first, paddings[i].second);
-    }
-    funcs::EigenPad<std::decay_t<decltype(place)>, T, D>::Eval32(
-        place,
-        To32BitIndex(d_in_t),
-        To32BitIndex(d_out_t),
-        paddings_32bit,
-        static_cast<T>(0));
+    funcs::EigenPad<std::decay_t<decltype(place)>, T, D>::Eval(
+        place, d_in_t, d_out_t, paddings, static_cast<T>(0));
   } else {
     funcs::EigenPad<std::decay_t<decltype(place)>, T, D>::Eval(
         place, d_in_t, d_out_t, paddings, static_cast<T>(0));
