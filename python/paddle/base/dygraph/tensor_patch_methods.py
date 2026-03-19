@@ -1162,7 +1162,7 @@ def monkey_patch_tensor():
     @overload
     def cuda(
         self: Tensor, device_id: DeviceLike = None, blocking: bool = True
-    ): ...
+    ) -> Tensor: ...
 
     @overload
     def cuda(
@@ -1170,7 +1170,7 @@ def monkey_patch_tensor():
         device: DeviceLike = None,
         non_blocking: bool = False,
         memory_format=None,
-    ): ...
+    ) -> Tensor: ...
 
     @framework.dygraph_only
     @tensor_cuda_decorator()
