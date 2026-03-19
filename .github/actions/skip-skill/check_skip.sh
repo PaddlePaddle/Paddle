@@ -77,10 +77,13 @@ if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
                     if [ -n "$pattern" ]; then
                         # Replace ** with * for bash pattern matching
                         bash_pattern="${pattern//\**/*}"
+                        # Debug: show pattern matching
                         if [[ "$file" == $bash_pattern ]]; then
                             is_ignored=true
-                            echo "  ✅ Ignored: $file (matches: $pattern)"
+                            echo "  ✅ Ignored: $file (pattern: $pattern -> $bash_pattern)"
                             break
+                        else
+                            echo "  🔍 Check: $file (pattern: $pattern -> $bash_pattern) - no match"
                         fi
                     fi
                 done
