@@ -886,16 +886,16 @@ def cinn_is_available():
         return False
 
     curr_place = paddle.framework._current_expected_place_()
-    device_type = curr_place.get_device_type()
-    if not (
-        paddle.is_compiled_with_cuda()
-        or paddle.is_compiled_with_custom_device(device_type)
-    ):
-        return False
     if not isinstance(
-        paddle.framework._current_expected_place_(),
+        curr_place,
         (paddle.base.core.CUDAPlace, paddle.base.core.CustomPlace),
     ):
+        return False
+    if isinstance(curr_place, paddle.base.core.CustomPlace):
+        device_type = curr_place.get_device_type()
+        if not paddle.is_compiled_with_custom_device(device_type):
+            return False
+    elif not paddle.is_compiled_with_cuda():
         return False
 
     if platform.system() != "Linux":
