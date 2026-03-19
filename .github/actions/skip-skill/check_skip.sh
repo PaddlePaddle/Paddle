@@ -75,9 +75,9 @@ if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
                 for pattern in "${IGNORE_PATHS[@]}"; do
                     pattern=$(echo "$pattern" | xargs)
                     if [ -n "$pattern" ]; then
-                        # Convert glob pattern to regex
-                        regex_pattern=$(echo "$pattern" | sed 's/\*\*/.*/g' | sed 's/\*/[^/]*/g' | sed 's/^/\^/g' | sed 's/$/\$/g')
-                        if [[ "$file" =~ $regex_pattern ]]; then
+                        # Replace ** with * for bash pattern matching
+                        bash_pattern="${pattern//\**/*}"
+                        if [[ "$file" == $bash_pattern ]]; then
                             is_ignored=true
                             echo "  ✅ Ignored: $file (matches: $pattern)"
                             break
