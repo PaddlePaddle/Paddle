@@ -154,21 +154,21 @@ class Col2ImFunctor<funcs::ColFormat::CFO, DeviceContext, T> {
 };
 
 template class PADDLE_API
-    Im2ColFunctor<funcs::ColFormat::CFO, phi::CPUContext, float>;
+    Im2ColFunctor<funcs::ColFormat::CFO, CPUContext, float>;
 template class PADDLE_API
-    Im2ColFunctor<funcs::ColFormat::CFO, phi::CPUContext, double>;
+    Im2ColFunctor<funcs::ColFormat::CFO, CPUContext, double>;
 template class PADDLE_API
-    Im2ColFunctor<funcs::ColFormat::CFO, phi::CPUContext, phi::complex64>;
+    Im2ColFunctor<funcs::ColFormat::CFO, CPUContext, phi::complex64>;
 template class PADDLE_API
-    Im2ColFunctor<funcs::ColFormat::CFO, phi::CPUContext, phi::complex128>;
+    Im2ColFunctor<funcs::ColFormat::CFO, CPUContext, phi::complex128>;
 template class PADDLE_API
-    Col2ImFunctor<funcs::ColFormat::CFO, phi::CPUContext, float>;
+    Col2ImFunctor<funcs::ColFormat::CFO, CPUContext, float>;
 template class PADDLE_API
-    Col2ImFunctor<funcs::ColFormat::CFO, phi::CPUContext, double>;
+    Col2ImFunctor<funcs::ColFormat::CFO, CPUContext, double>;
 template class PADDLE_API
-    Col2ImFunctor<funcs::ColFormat::CFO, phi::CPUContext, phi::complex64>;
+    Col2ImFunctor<funcs::ColFormat::CFO, CPUContext, phi::complex64>;
 template class PADDLE_API
-    Col2ImFunctor<funcs::ColFormat::CFO, phi::CPUContext, phi::complex128>;
+    Col2ImFunctor<funcs::ColFormat::CFO, CPUContext, phi::complex128>;
 
 /*
  * im = [input_channels, input_height, input_width]
@@ -329,19 +329,19 @@ class Col2ImFunctor<funcs::ColFormat::OCF, DeviceContext, T> {
 };
 
 template class PADDLE_API
-    Im2ColFunctor<funcs::ColFormat::OCF, phi::CPUContext, float>;
+    Im2ColFunctor<funcs::ColFormat::OCF, CPUContext, float>;
 template class PADDLE_API
-    Im2ColFunctor<funcs::ColFormat::OCF, phi::CPUContext, double>;
+    Im2ColFunctor<funcs::ColFormat::OCF, CPUContext, double>;
 template class PADDLE_API
-    Im2ColFunctor<funcs::ColFormat::OCF, phi::CPUContext, phi::complex64>;
+    Im2ColFunctor<funcs::ColFormat::OCF, CPUContext, phi::complex64>;
 template class PADDLE_API
-    Im2ColFunctor<funcs::ColFormat::OCF, phi::CPUContext, phi::complex128>;
+    Im2ColFunctor<funcs::ColFormat::OCF, CPUContext, phi::complex128>;
 template class PADDLE_API
-    Col2ImFunctor<funcs::ColFormat::OCF, phi::CPUContext, float>;
+    Col2ImFunctor<funcs::ColFormat::OCF, CPUContext, float>;
 template class PADDLE_API
-    Col2ImFunctor<funcs::ColFormat::OCF, phi::CPUContext, double>;
+    Col2ImFunctor<funcs::ColFormat::OCF, CPUContext, double>;
 template class PADDLE_API
-    Col2ImFunctor<funcs::ColFormat::OCF, phi::CPUContext, phi::complex64>;
+    Col2ImFunctor<funcs::ColFormat::OCF, CPUContext, phi::complex64>;
 template class PADDLE_API
-    Col2ImFunctor<funcs::ColFormat::OCF, phi::CPUContext, phi::complex128>;
+    Col2ImFunctor<funcs::ColFormat::OCF, CPUContext, phi::complex128>;
 }  // namespace phi::funcs

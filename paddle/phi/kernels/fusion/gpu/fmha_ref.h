@@ -100,8 +100,8 @@ __global__ void TransposeRemovingPadding(const T* input_data,
     const int ori_idx = ori_batch_id * num_head * seq_len * head_dim +
                         ori_head_id * seq_len * head_dim +
                         ori_seq_id * head_dim + ori_head_lane;
-    phi::Load<T, VecSize>(&input_data[ori_idx], &src_vec);
-    phi::Store<T, VecSize>(src_vec, &output_data[linear_index]);
+    Load<T, VecSize>(&input_data[ori_idx], &src_vec);
+    Store<T, VecSize>(src_vec, &output_data[linear_index]);
   }
 }
 

@@ -161,7 +161,7 @@ void ComplexGradKernel(const Context& dev_ctx,
       dx->ShareDataWith(real_dout);
     } else {
       ExpandGradKernel<T, Context>(
-          dev_ctx, x, real_dout, phi::IntArray(phi::vectorize(x.dims())), dx);
+          dev_ctx, x, real_dout, phi::IntArray(vectorize(x.dims())), dx);
     }
   }
 
@@ -170,7 +170,7 @@ void ComplexGradKernel(const Context& dev_ctx,
       dy->ShareDataWith(imag_dout);
     } else {
       ExpandGradKernel<T, Context>(
-          dev_ctx, y, imag_dout, phi::IntArray(phi::vectorize(y.dims())), dy);
+          dev_ctx, y, imag_dout, phi::IntArray(vectorize(y.dims())), dy);
     }
   }
 }

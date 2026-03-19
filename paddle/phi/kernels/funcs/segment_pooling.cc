@@ -22,9 +22,9 @@ limitations under the License. */
 namespace phi::funcs {
 
 template <typename T, typename IndexT>
-class SegmentPoolFunctor<phi::CPUContext, T, IndexT> {
+class SegmentPoolFunctor<CPUContext, T, IndexT> {
  public:
-  void operator()(const phi::CPUContext& dev_ctx,
+  void operator()(const CPUContext& dev_ctx,
                   const DenseTensor& input,
                   const DenseTensor& segments,
                   DenseTensor* output,
@@ -79,9 +79,9 @@ class SegmentPoolFunctor<phi::CPUContext, T, IndexT> {
 };
 
 template <typename T, typename IndexT>
-class SegmentPoolGradFunctor<phi::CPUContext, T, IndexT> {
+class SegmentPoolGradFunctor<CPUContext, T, IndexT> {
  public:
-  void operator()(const phi::CPUContext& dev_ctx,
+  void operator()(const CPUContext& dev_ctx,
                   const DenseTensor& input,
                   const DenseTensor& output,
                   const DenseTensor& out_grad,
@@ -141,7 +141,7 @@ class SegmentPoolGradFunctor<phi::CPUContext, T, IndexT> {
   }
 };
 
-using CPU = phi::CPUContext;
+using CPU = CPUContext;
 using float16 = phi::float16;
 template class SegmentPoolFunctor<CPU, float, int>;
 template class SegmentPoolFunctor<CPU, float, int64_t>;

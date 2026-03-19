@@ -356,8 +356,7 @@ void MemoryEfficientAttentionGradKernel(
           {delta_mul.dims()[0], delta_mul.dims()[2], delta_mul.dims()[1]},
           DataType::FLOAT32,
           &delta);
-      phi::TransposeKernel<float, Context>(
-          dev_ctx, delta_sum, {0, 2, 1}, &delta);
+      TransposeKernel<float, Context>(dev_ctx, delta_sum, {0, 2, 1}, &delta);
     }
     VLOG(3) << "p.output" << output.dtype();
     VLOG(3) << "p.output_grad" << output_grad.dtype();

@@ -790,10 +790,6 @@ add_doc_and_signature(
             &\text{undefined} & x=0, y = 0
             \end{matrix}\right.
 
-    .. note::
-        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and the parameter name ``other`` can be used as an alias for ``y``.
-        For example, ``atan2(input=tensor_x, other=tensor_y)`` is equivalent to ``atan2(x=tensor_x, y=tensor_y)``.
-
     Args:
         x (Tensor): An N-D Tensor, the data type is int32, int64, float16, float32, float64.
             Alias: ``input``.
@@ -1590,10 +1586,6 @@ add_doc_and_signature(
     r"""
     Return whether every element of input tensor is finite number or not.
 
-    .. note::
-        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
-        For example, ``isfinite(input=tensor_x)`` is equivalent to ``isfinite(x=tensor_x)``.
-
     Args:
         x (Tensor): The input tensor, it's data type should be float16, float32, float64, int32, int64, complex64, complex128.
             alias: ``input``.
@@ -1625,10 +1617,6 @@ add_doc_and_signature(
     r"""
     Return whether every element of input tensor is `+/-INF` or not.
 
-    .. note::
-        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
-        For example, ``isinf(input=tensor_x)`` is equivalent to ``isinf(x=tensor_x)``.
-
     Args:
         x (Tensor): The input tensor, it's data type should be float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
             alias: ``input``.
@@ -1659,10 +1647,6 @@ add_doc_and_signature(
     "isnan",
     r"""
     Return whether every element of input tensor is `NaN` or not.
-
-    .. note::
-        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
-        For example, ``isnan(input=tensor_x)`` is equivalent to ``isnan(x=tensor_x)``.
 
     Args:
         x (Tensor): The input tensor, it's data type should be float16, float32, float64, int32, int64, complex64, complex128.
@@ -1699,13 +1683,8 @@ add_doc_and_signature(
     If a axis is not specified,
     the tensor will be flattened before rolling and then restored to the original shape.
 
-    .. note::
-        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and the parameter name ``dim`` can be used as an alias for ``axis``.
-        For example, ``roll(input=tensor_x, dim=1)`` is equivalent to ``roll(x=tensor_x, axis=1)``.
-
     Args:
-        x (Tensor): The x tensor as input.
-            alias: ``input``.
+        x (Tensor): The x tensor as input. alias: ``input``.
         shifts (int|list|tuple): The number of places by which the elements
                            of the `x` tensor are shifted.
         axis (int|list|tuple, optional): axis(axes) along which to roll. Default: None
@@ -1800,11 +1779,10 @@ add_doc_and_signature(
     r"""
     Computes the sum of tensor elements over the given dimension.
 
-    .. note::
-        | Parameter order support: When passing positional parameters, it is possible to support swapping the positional order of dtype and axis.
-        | For example, ``sum(x, axis, keepdim, dtype)`` is equivalent to ``sum(x, axis, dtype, keepdim)``.
-        | Alias Support: The parameter name ``input`` can be used as an alias for ``x`` and the parameter name ``dim`` can be used as an alias for ``axis``.
-        | For example, ``sum(input=tensor_x, dim=1)`` is equivalent to ``sum(x=tensor_x, axis=1)``.
+    This API has two signatures:
+
+    1. ``paddle.sum(x, axis=None, dtype=None, keepdim=False, name=None, *, out=None)`` (Paddle-style)
+    2. ``paddle.sum(input, dim=None, keepdim=False, dtype=None, *, out=None)`` (PyTorch-style)
 
     Args:
         x (Tensor): An N-D Tensor, the data type is bool, bfloat16, float16, float32, float64,
@@ -1980,10 +1958,6 @@ add_doc_and_signature(
     "any",
     r"""
     Computes the ``logical or`` of tensor elements over the given dimension, and return the result.
-
-    .. note::
-        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and the parameter name ``dim`` can be used as an alias for ``axis``.
-        For example, ``any(input=tensor_x, dim=1)`` is equivalent to ``any(x=tensor_x, axis=1)``.
 
     Args:
         x (Tensor): An N-D Tensor, the input data type should be 'bool', 'float32', 'float64', 'int32', 'int64', 'complex64', 'complex128'.
@@ -2168,16 +2142,13 @@ add_doc_and_signature(
         output = wn * d_e * d_s + en * d_w * d_s
                 + ws * d_e * d_n + es * d_w * d_n
 
-    .. note::
-        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
-
     Args:
         x(Tensor): The input tensor, which is a 4-D tensor with shape
                      [N, C, H, W] or a 5-D tensor with shape [N, C, D, H, W],
                      N is the batch size, C is the channel number,
                      D, H and W is the feature depth, height and width.
                      The data type is float32 or float64.
-            alias: ``input``.
+                    alias: ``input``.
         grid(Tensor): Input grid tensor, which is a 4-D tensor with shape [N, grid_H,
                         grid_W, 2] or a 5-D tensor with shape [N, grid_D, grid_H,
                         grid_W, 3]. The data type is float32 or float64.
@@ -2305,10 +2276,6 @@ add_doc_and_signature(
 
         gelu(x) = 0.5 * x * (1 + erf(\\frac{x}{\\sqrt{2}}))
 
-     .. note::
-        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
-        For example, ``gelu(input=tensor_x)`` is equivalent to ``gelu(x=tensor_x)``.
-
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
             alias: ``input``.
@@ -2363,13 +2330,9 @@ add_doc_and_signature(
     .. math::
        out = \\frac{1}{1 + e^{-x}}
 
-    .. note::
-        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
-        For example, ``sigmoid(input=tensor_x)`` is equivalent to ``sigmoid(x=tensor_x)``.
-
     Args:
         x (Tensor): Input of Sigmoid operator, an N-D Tensor, with data type bfloat16, float16, float32, float64,
-            uint8, int8, int16, int32, int64, complex64 or complex128.
+            uint8, int8, int16, int32, int64, complex64 or complex128. Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
     Keyword Args:
         out (Tensor|optional): The output tensor.
@@ -3151,11 +3114,6 @@ add_doc_and_signature(
 
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
-    .. note::
-        Alias Support:
-        1. The parameter name ``input`` can be used as an alias for ``x``.
-        2. The parameter name ``other`` can be used as an alias for ``y``.
-
     Args:
         x (Tensor): the input tensor, it's data type should be one of bool, int8, int16, int32, int64, bfloat16, float16, float32, float64, complex64, complex128.
             Alias: ``input``.
@@ -3204,11 +3162,6 @@ add_doc_and_signature(
         ``paddle.logical_or`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
 
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
-
-    .. note::
-        Alias Support:
-        1. The parameter name ``input`` can be used as an alias for ``x``.
-        2. The parameter name ``other`` can be used as an alias for ``y``.
 
     Args:
         x (Tensor): the input tensor, it's data type should be one of bool, int8, int16, int32, int64, bfloat16, float16, float32, float64, complex64, complex128.
@@ -3260,10 +3213,6 @@ add_doc_and_signature(
 
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
-    .. note::
-        Alias Support:
-        1. The parameter name ``input`` can be used as an alias for ``x``.
-
     Args:
         x(Tensor):  Operand of logical_not operator. Must be a Tensor of type bool, int8, int16, int32, int64, bfloat16, float16, float32, or float64, complex64, complex128.
             Alias: ``input``.
@@ -3309,11 +3258,6 @@ add_doc_and_signature(
 
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
-    .. note::
-        Alias Support:
-        1. The parameter name ``input`` can be used as an alias for ``x``.
-        2. The parameter name ``other`` can be used as an alias for ``y``.
-
     Args:
         x (Tensor): the input tensor, it's data type should be one of bool, int8, int16, int32, int64, bfloat16, float16, float32, float64, complex64, complex128.
             Alias: ``input``.
@@ -3357,11 +3301,6 @@ add_doc_and_signature(
     Note:
        Support 1-d and 2-d Tensor. When it is 2d, the first dimension of this matrix
        is the batch dimension, which means that the vectors of multiple batches are dotted.
-
-    .. note::
-        Alias Support:
-        1. The parameter name ``input`` can be used as an alias for ``x``.
-        2. The parameter name ``other`` can be used as an alias for ``y``.
 
     Parameters:
         x (Tensor): 1-D or 2-D ``Tensor``. Its dtype should be ``float32``, ``float64``, ``int32``, ``int64``, ``complex64``, ``complex128``
@@ -3418,10 +3357,6 @@ add_doc_and_signature(
     .. math::
         out = \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}
 
-    .. note::
-        Alias Support:
-        1. The parameter name ``input`` can be used as an alias for ``x``.
-
     Args:
         x (Tensor): Input of Tanh operator, an N-D Tensor, with data type bfloat16, float32, float64,
             float16, uint8, int8, int16, int32, int64. Alias: ``input``.
@@ -3462,10 +3397,6 @@ add_doc_and_signature(
     .. math::
         out = e^x
 
-    .. note::
-        Alias Support:
-        1. The parameter name ``input`` can be used as an alias for ``x``.
-
     Args:
         x (Tensor): Input of Exp operator, an N-D Tensor, with data type int32, int64, bfloat16, float16, float32, float64, complex64 or complex128.
             Alias: ``input``.
@@ -3504,10 +3435,6 @@ add_doc_and_signature(
 
     .. math::
         out = e^x - 1
-
-    .. note::
-        Alias Support:
-        1. The parameter name ``input`` can be used as an alias for ``x``.
 
     Args:
         x (Tensor): Input of Expm1 operator, an N-D Tensor, with data type int32, int64, bfloat16, float16, float32, float64, complex64 or complex128.
@@ -3553,14 +3480,9 @@ add_doc_and_signature(
 
     If ``offset`` < 0, it is subdiagonal.
 
-    .. note::
-        Alias Support:
-        1. The parameter name ``input`` can be used as an alias for ``x``.
-        2. The parameter name ``diagonal`` can be used as an alias for ``offset``.
-
     Args:
-        x (Tensor): The input tensor. Its shape is either 1-D or 2-D. Its data type should be float16, float32, float64, int32, int64, complex64, complex128.
-        offset (int, optional): The diagonal offset. A positive value represents superdiagonal, 0 represents the main diagonal, and a negative value represents subdiagonal.
+        x (Tensor): The input tensor. Its shape is either 1-D or 2-D. Its data type should be float16, float32, float64, int32, int64, complex64, complex128. Alias: ``input``.
+        offset (int, optional): The diagonal offset. A positive value represents superdiagonal, 0 represents the main diagonal, and a negative value represents subdiagonal. Alias: ``diagonal``. Default: 0.
         padding_value (int|float, optional): Use this value to fill the area outside the specified diagonal band. Only takes effect when the input is a 1-D Tensor. The default value is 0.
         name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
         out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
@@ -3663,12 +3585,6 @@ add_doc_and_signature(
     - If offset > 0, it is above the main diagonal.
     - If offset < 0, it is below the main diagonal.
 
-    .. note::
-        Alias Support:
-        1. The parameter name ``input`` can be used as an alias for ``x``.
-        2. The parameter name ``dim1`` can be used as an alias for ``axis1``.
-        3. The parameter name ``dim2`` can be used as an alias for ``axis2``.
-
     Args:
         x (Tensor): The input tensor x. Must be at least 2-dimensional. The input data type should be bool, int32,
             int64, bfloat16, float16, float32, float64. Alias: ``input``.
@@ -3747,10 +3663,6 @@ add_doc_and_signature(
           out.shape = [4]
           out.data = [1., -1., 3., 1.]
 
-    .. note::
-        Alias Support:
-        1. The parameter name ``input`` can be used as an alias for ``x``.
-
     Args:
         x (Tensor): Input of Round operator, an N-D Tensor, with data type bfloat16, int32, int64, float32, float64, float16, complex64 or complex128.
             Alias: ``input``.
@@ -3791,10 +3703,6 @@ add_doc_and_signature(
     .. math::
 
         out = |x|
-
-    .. note::
-        Alias Support:
-        1. The parameter name ``input`` can be used as an alias for ``x``.
 
     Args:
         x (Tensor): The input Tensor with data type int32, int64, float16, float32, float64, complex64 and complex128.
@@ -4009,8 +3917,8 @@ add_doc_and_signature(
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
-        x (Tensor): The input tensor of Heaviside step function, it's data type should be bfloat16, float16, float32, float64, int32 or int64.
-        y (Tensor): The tensor that determines a Heaviside step function, it's data type should be bfloat16, float16, float32, float64, int32 or int64.
+        x (Tensor): The input tensor of Heaviside step function, it's data type should be bfloat16, float16, float32, float64, int32 or int64. Alias: ``input``.
+        y (Tensor): The tensor that determines a Heaviside step function, it's data type should be bfloat16, float16, float32, float64, int32 or int64. Alias: ``values``.
         name (str|None, optional): Name for the operation (optional, default is None). Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
         out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
 
@@ -4196,8 +4104,8 @@ add_doc_and_signature(
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
-        x (Tensor): the input tensor, it's data type should be bfloat16, float16, float32, float64, int32, int64.
-        y (Tensor): the input tensor, it's data type should be bfloat16, float16, float32, float64, int32, int64.
+        x (Tensor): the input tensor, it's data type should be bfloat16, float16, float32, float64, int32, int64. Alias: ``input``.
+        y (Tensor): the input tensor, it's data type should be bfloat16, float16, float32, float64, int32, int64. Alias: ``other``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -4303,8 +4211,8 @@ add_doc_and_signature(
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
-        x (Tensor): Input Tensor of ``bitwise_and``. It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
-        y (Tensor): Input Tensor of ``bitwise_and``. It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        x (Tensor): Input Tensor of ``bitwise_and``. It is a N-D Tensor of bool, uint8, int8, int16, int32, int64. Alias: ``input``.
+        y (Tensor): Input Tensor of ``bitwise_and``. It is a N-D Tensor of bool, uint8, int8, int16, int32, int64. Alias: ``other``.
         name (str|None, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
     Keyword args:
@@ -4364,8 +4272,8 @@ add_doc_and_signature(
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
-        x (Tensor): Input Tensor of ``bitwise_or``. It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
-        y (Tensor): Input Tensor of ``bitwise_or``. It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        x (Tensor): Input Tensor of ``bitwise_or``. It is a N-D Tensor of bool, uint8, int8, int16, int32, int64. Alias: ``input``.
+        y (Tensor): Input Tensor of ``bitwise_or``. It is a N-D Tensor of bool, uint8, int8, int16, int32, int64. Alias: ``other``.
         name (str|None, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
     Keyword args:
@@ -4426,8 +4334,8 @@ add_doc_and_signature(
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
-        x (Tensor): Input Tensor of ``bitwise_xor``. It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
-        y (Tensor): Input Tensor of ``bitwise_xor``. It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        x (Tensor): Input Tensor of ``bitwise_xor``. It is a N-D Tensor of bool, uint8, int8, int16, int32, int64. Alias: ``input``.
+        y (Tensor): Input Tensor of ``bitwise_xor``. It is a N-D Tensor of bool, uint8, int8, int16, int32, int64. Alias: ``other``.
         name (str|None, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
     Keyword args:
@@ -4487,7 +4395,7 @@ add_doc_and_signature(
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
-        x (Tensor): Input Tensor of ``bitwise_not``. It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        x (Tensor): Input Tensor of ``bitwise_not``. It is a N-D Tensor of bool, uint8, int8, int16, int32, int64. Alias: ``input``.
         name (str|None, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
     Keyword args:
@@ -4546,8 +4454,8 @@ add_doc_and_signature(
     .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
-        x (Tensor): Input Tensor of ``bitwise_left_shift`` . It is a N-D Tensor of uint8, int8, int16, int32, int64.
-        y (Tensor): Input Tensor of ``bitwise_left_shift`` . It is a N-D Tensor of uint8, int8, int16, int32, int64.
+        x (Tensor): Input Tensor of ``bitwise_left_shift`` . It is a N-D Tensor of uint8, int8, int16, int32, int64. Alias: ``input``.
+        y (Tensor): Input Tensor of ``bitwise_left_shift`` . It is a N-D Tensor of uint8, int8, int16, int32, int64. Alias: ``other``.
         is_arithmetic (bool, optional): A boolean indicating whether to choose arithmetic shift, if False, means logic shift. Default True.
         name (str|None, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
     Keyword args:
@@ -4623,8 +4531,8 @@ add_doc_and_signature(
     .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
-        x (Tensor): Input Tensor of ``bitwise_right_shift`` . It is a N-D Tensor of uint8, int8, int16, int32, int64.
-        y (Tensor): Input Tensor of ``bitwise_right_shift`` . It is a N-D Tensor of uint8, int8, int16, int32, int64.
+        x (Tensor): Input Tensor of ``bitwise_right_shift`` . It is a N-D Tensor of uint8, int8, int16, int32, int64. Alias: ``input``.
+        y (Tensor): Input Tensor of ``bitwise_right_shift`` . It is a N-D Tensor of uint8, int8, int16, int32, int64. Alias: ``other``.
         is_arithmetic (bool, optional): A boolean indicating whether to choose arithmetic shift, if False, means logic shift. Default True.
         name (str|None, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
     Keyword args:
@@ -5237,14 +5145,10 @@ add_doc_and_signature(
 
     Args:
         x (Tensor): A tensor with rate parameter of poisson Distribution. The data type
-            should be bfloat16, float16, float32, float64.
+            should be bfloat16, float16, float32, float64. Alias: ``input``.
         name (str|None, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
-
-    .. note::
-        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
-        For example, ``poisson(input=x)`` is equivalent to ``poisson(x=x)``.
 
     Returns:
         Tensor: A Tensor filled with random number with the same shape and dtype as ``x``.
@@ -5262,6 +5166,278 @@ add_doc_and_signature(
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[2., 5., 0.],
              [5., 1., 3.]])
-    """,
-    """def poisson(x: Tensor, name: str | None = None) -> Tensor""",
+""",
+    """
+def poisson(
+    x: Tensor,
+    name: str | None = None
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "kthvalue",
+    r"""
+    Find values and indices of the k-th smallest at the axis.
+
+    Args:
+        x (Tensor): A N-D Tensor with type float16, float32, float64, int32, int64. Alias: ``input``.
+        k (int): The k for the k-th smallest number to look for along the axis.
+        axis (int, optional): Axis to compute indices along. The effective range
+            is [-R, R), where R is x.ndim. when axis < 0, it works the same way
+            as axis + R. The default is None. And if the axis is None, it will computed as -1 by default. Alias: ``dim``.
+        keepdim (bool, optional): Whether to keep the given axis in output. If it is True, the dimensions will be same as input x and with size one in the axis. Otherwise the output dimensions is one fewer than x since the axis is squeezed. Default is False.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Keyword args:
+        out(Tensor, optional): The output tensor.
+
+    Returns:
+        tuple(Tensor), return the values and indices. The value data type is the same as the input `x`. The indices data type is int64.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> x = paddle.randn((2, 3, 2))
+            >>> print(x)
+            >>> # doctest: +SKIP('Different environments yield different output.')
+            Tensor(shape=[2, 3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[ 0.11855337, -0.30557564],
+              [-0.09968963,  0.41220093],
+              [ 1.24004936,  1.50014710]],
+             [[ 0.08612321, -0.92485696],
+              [-0.09276631,  1.15149164],
+              [-1.46587241,  1.22873247]]])
+            >>> # doctest: -SKIP
+            >>> y = paddle.kthvalue(x, 2, 1)
+            >>> print(y)
+            >>> # doctest: +SKIP('Different environments yield different output.')
+            (Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[ 0.11855337,  0.41220093],
+             [-0.09276631,  1.15149164]]), Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 1],
+             [1, 1]]))
+            >>> # doctest: -SKIP
+""",
+    """
+def kthvalue(
+    x: Tensor,
+    k: int,
+    axis: int | None = None,
+    keepdim: bool = False,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> tuple[Tensor, Tensor]
+""",
+)
+
+add_doc_and_signature(
+    "kron",
+    r"""
+    Compute the Kronecker product of two tensors, a
+    composite tensor made of blocks of the second tensor scaled by the
+    first.
+    Assume that the rank of the two tensors, $X$ and $Y$
+    are the same, if necessary prepending the smallest with ones. If the
+    shape of $X$ is [$r_0$, $r_1$, ..., $r_N$] and the shape of $Y$ is
+    [$s_0$, $s_1$, ..., $s_N$], then the shape of the output tensor is
+    [$r_{0}s_{0}$, $r_{1}s_{1}$, ..., $r_{N}s_{N}$]. The elements are
+    products of elements from $X$ and $Y$.
+    The equation is:
+    $$
+    output[k_{0}, k_{1}, ..., k_{N}] = X[i_{0}, i_{1}, ..., i_{N}] *
+    Y[j_{0}, j_{1}, ..., j_{N}]
+    $$
+    where
+    $$
+    k_{t} = i_{t} * s_{t} + j_{t}, t = 0, 1, ..., N
+    $$
+
+    Args:
+        x (Tensor): the first operand of kron op, data type: bfloat16, float16, float32, float64, int32 or int64. Alias: ``input``.
+        y (Tensor): the second operand of kron op, data type: bfloat16, float16, float32, float64, int32 or int64. Its data type should be the same with x. Alias: ``other``.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword args:
+        out(Tensor, optional): The output tensor.
+
+    Returns:
+        Tensor: The output of kron, data type: bfloat16, float16, float32, float64, int32 or int64. Its data is the same with x.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+            >>> x = paddle.to_tensor([[1, 2], [3, 4]], dtype='int64')
+            >>> y = paddle.to_tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype='int64')
+            >>> out = paddle.kron(x, y)
+            >>> out
+            Tensor(shape=[6, 6], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1 , 2 , 3 , 2 , 4 , 6 ],
+             [4 , 5 , 6 , 8 , 10, 12],
+             [7 , 8 , 9 , 14, 16, 18],
+             [3 , 6 , 9 , 4 , 8 , 12],
+             [12, 15, 18, 16, 20, 24],
+             [21, 24, 27, 28, 32, 36]])
+""",
+    """
+def kron(
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "mv",
+    r"""
+    Performs a matrix-vector product of the matrix x and the vector vec.
+
+    Args:
+        x (Tensor): A tensor with shape :math:`[M, N]` , The data type of the input Tensor x
+            should be one of float32, float64. Alias: ``input``.
+        vec (Tensor): A tensor with shape :math:`[N]` , The data type of the input Tensor x
+            should be one of float32, float64.
+        name (str|None, optional): Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name`. Default is None.
+
+    Keyword args:
+        out(Tensor, optional): The output tensor.
+
+    Returns:
+        Tensor: The tensor which is produced by x and vec.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> # x: [M, N], vec: [N]
+            >>> # paddle.mv(x, vec)  # out: [M]
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([[2, 1, 3], [3, 0, 1]]).astype("float64")
+            >>> vec = paddle.to_tensor([3, 5, 1]).astype("float64")
+            >>> out = paddle.mv(x, vec)
+            >>> print(out)
+            Tensor(shape=[2], dtype=float64, place=Place(cpu), stop_gradient=True,
+            [14., 10.])
+""",
+    """
+def mv(
+    x: Tensor,
+    vec: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "remainder_",
+    r"""
+    Inplace version of ``remainder`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_remainder`.
+
+    Args:
+        x (Tensor): the input tensor, it's data type should be bfloat16, float16, float32, float64, int32, int64. Alias: ``input``.
+        y (Tensor): the input tensor, it's data type should be bfloat16, float16, float32, float64, int32, int64. Alias: ``other``.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The output tensor with the same shape and dtype as x.
+""",
+    """
+def remainder_(
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "mod_",
+    r"""
+    Inplace version of ``mod`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_mod`.
+""",
+    """
+def mod_(
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "floor_mod_",
+    r"""
+    Inplace version of ``floor_mod`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_floor_mod_`.
+""",
+    """
+def floor_mod_(
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "pow_",
+    r"""
+    Inplace version of ``pow`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_pow`.
+
+    Args:
+        x (Tensor): The input Tensor. It can be any dimension. The data type should be bfloat16, float16, float32, float64, int32 or int64.
+            alias: ``input``.
+        y (float|int): The exponent value. The data type should be float or int.
+            alias: ``exponent``.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The output tensor with the same shape and dtype as x.
+""",
+    """
+def pow_(
+    x: Tensor,
+    y: float | int,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "floor_divide_",
+    r"""
+    Inplace version of ``floor_divide`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_floor_divide`.
+
+    Args:
+        x (Tensor): The input tensor, it's data type should be bfloat16, float16, float32, float64, int32, int64.
+            alias: ``input``.
+        y (Tensor|int): The input tensor or scalar. If y is a tensor, its shape should be broadcastable with x.
+            alias: ``other``.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The output tensor with the same shape and dtype as x.
+""",
+    """
+def floor_divide_(
+    x: Tensor,
+    y: Tensor | int,
+    name: str | None = None,
+) -> Tensor
+""",
 )

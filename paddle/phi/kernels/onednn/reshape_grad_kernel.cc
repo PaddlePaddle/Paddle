@@ -48,7 +48,7 @@ void ReshapeGradKernel(const Context& dev_ctx,
   astream.wait();
 
   auto grad_shape = x.dims().size() == 0 ? std::vector<int64_t>{1}
-                                         : phi::vectorize<int64_t>(x.dims());
+                                         : vectorize<int64_t>(x.dims());
   reorder_dst_memory_p->get_desc().reshape(grad_shape);
 }
 

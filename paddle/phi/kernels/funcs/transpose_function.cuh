@@ -1627,7 +1627,7 @@ void TransposeGPUKernelDriver(const GPUContext& dev_ctx,
 
     size_t key = phi::autotune::TransposeKey(simplifier.GetSrcDims(),
                                              simplifier.GetPerm(),
-                                             phi::CppTypeToDataType<T>::Type());
+                                             CppTypeToDataType<T>::Type());
 
     tuner->Run(dev_ctx,
                phi::autotune::AlgorithmType::kTranspose,
