@@ -3813,6 +3813,50 @@ void LegacyInterpolateInferMeta(
                        config);
 }
 
+void IndexFillInferMeta(const MetaTensor& x,
+                        const MetaTensor& index,
+                        int dim,
+                        const Scalar& value,
+                        MetaTensor* out) {
+  auto in_dims = x.dims();
+  auto index_dims = index.dims();
+  int rank = in_dims.size();
+
+  PADDLE_ENFORCE_LT(
+      rank,
+      7,
+      common::errors::InvalidArgument(
+          "The rank of Input(X) should be less than 7, but received %d.",
+          rank));
+
+  if (dim < 0) {
+    dim += rank;
+  }
+
+  PADDLE_ENFORCE_GE(dim,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The dim must be >= -%d and < %d, but received %d.",
+                        rank,
+                        rank,
+                        dim));
+  PADDLE_ENFORCE_LT(dim,
+                    rank,
+                    common::errors::InvalidArgument(
+                        "The dim must be >= -%d and < %d, but received %d.",
+                        rank,
+                        rank,
+                        dim));
+
+  PADDLE_ENFORCE_EQ(index_dims.size(),
+                    1,
+                    common::errors::InvalidArgument(
+                        "The index tensor must be 1-D, but received %d-D.",
+                        index_dims.size()));
+
+  out->share_meta(x);
+}
+
 void IndexPutInferMeta(const MetaTensor& x,
                        const std::vector<const MetaTensor*>& indices,
                        const MetaTensor& value,
