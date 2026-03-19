@@ -23,10 +23,8 @@
 
 namespace phi {
 
-template <typename T,
-          int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrixTemplate = EigenMatrix<T, MajorType, IndexType>;
+template <typename T, int MajorType = Eigen::RowMajor>
+using EigenMatrixTemplate = EigenMatrix<T, MajorType>;
 
 template <typename Context, typename T>
 struct LogSoftmaxGradFunctor {
