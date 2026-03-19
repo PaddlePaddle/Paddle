@@ -39,6 +39,7 @@
 #endif
 #ifdef CINN_WITH_CUSTOM_DEVICE
 #include "paddle/cinn/backends/custom_device/codegen_custom_device_dev.h"
+#include "paddle/cinn/backends/custom_device/compiler_custom_device.h"
 #include "paddle/cinn/runtime/custom_device/custom_device_backend_api.h"
 #include "paddle/phi/backends/device_manager.h"
 #endif
@@ -551,35 +552,28 @@ void Compiler::RegisterCudaModuleSymbol() {
 
 void Compiler::RegisterCustomDeviceModuleSymbol() {
 #ifdef CINN_WITH_CUSTOM_DEVICE
-  // 1. Get the plugin instance
+  // 1. Get the plugin instance (needed for LoadModule later)
   auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
   PADDLE_ENFORCE_EQ(!dev_types.empty(),
                     true,
                     ::common::errors::NotFound(
                         "No custom device registered in DeviceManager."));
-  // Default to the first registered custom device
-  // Notice: Multi-vendor Environment not supported yet
   std::string dev_type = dev_types[0];
   auto place = phi::CustomPlace(dev_type, 0);
   auto& plugin =
       cinn::runtime::custom_device::CinnCustomDevicePlugin::GetInstance(place);
 
-  // 2. Prepare the source code
-  // device_fn_code_ already contains the CustomDevice Runtime Source
-  // appended during the Codegen phase.
-  std::string source_code = device_fn_code_;
-
-  // 3. Invoke the plugin toolchain to perform compilation
-  std::string lib_path = plugin.GetToolchain()->Compile(source_code);
+  // 2. Invoke cdrtc::Compiler to compile source → shared lib
+  common::Target target = common::DefaultCustomDeviceTarget();
+  cdrtc::Compiler compiler(target);
+  std::string lib_path = compiler(device_fn_code_);
 
   PADDLE_ENFORCE_EQ(
       !lib_path.empty(),
       true,
       ::common::errors::External("Custom Device Toolchain compile failed."));
 
-  // 4. Invoke the plugin runtime to load the module
-  // device_module_ is a member variable of the Compiler class:
-  // std::unique_ptr<CustomModule> device_module_;
+  // 3. Invoke the plugin runtime to load the module
   this->device_module_ = plugin.GetRuntime()->LoadModule(lib_path);
   PADDLE_ENFORCE_NOT_NULL(
       this->device_module_,
@@ -587,7 +581,7 @@ void Compiler::RegisterCustomDeviceModuleSymbol() {
           "Custom Device Runtime failed to load module from %s",
           lib_path.c_str()));
 
-  // 5. Register Kernel symbols
+  // 4. Register Kernel symbols
   // Retrieve the device function pointers (handles) and register them
   // as [kernel_name]_ptr_
   RuntimeSymbols symbols;
@@ -599,7 +593,7 @@ void Compiler::RegisterCustomDeviceModuleSymbol() {
                                 "Custom Device Runtime cannot find kernel: %s",
                                 kernel_fn_name.c_str()));
 
-    // Store the pointer for use by the ExecutionEngine
+    // 5. Store the pointer for use by the ExecutionEngine
     fn_ptr_.push_back(fn_kernel);
     symbols.RegisterVar(kernel_fn_name + "_ptr_", fn_kernel);
   }

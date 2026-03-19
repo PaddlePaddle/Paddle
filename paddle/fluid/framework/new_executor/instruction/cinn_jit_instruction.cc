@@ -158,6 +158,7 @@ class CinnJitInstruction::FnPtrImpl {
       }
       phi::backends::gpu::GpuDeviceSync();
     } else {
+#endif  // defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (is_gpu) {
         ((lower_func_ptr_g)cinn_kernel_info_.fn_ptr)(
             static_cast<void*>(func_args_.data()), func_args_.size(), stream);
@@ -165,15 +166,7 @@ class CinnJitInstruction::FnPtrImpl {
         ((lower_func_ptr_g)cinn_kernel_info_.CX86_fn_ptr)(
             static_cast<void*>(func_args_.data()), func_args_.size(), stream);
       }
-    }
-#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
-    // Custom Device not support CINN Tuning and CUDA Graph
-    if (is_gpu) {
-      ((lower_func_ptr_g)cinn_kernel_info_.fn_ptr)(
-          static_cast<void*>(func_args_.data()), func_args_.size(), stream);
-    } else {
-      ((lower_func_ptr_g)cinn_kernel_info_.CX86_fn_ptr)(
-          static_cast<void*>(func_args_.data()), func_args_.size(), stream);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     }
 #endif  // defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     VLOG(6) << "End Run: " << cinn_kernel_info_.fn_name;
