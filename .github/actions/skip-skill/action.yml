@@ -40,7 +40,7 @@ runs:
     - name: Run PR skip check script
       id: check
       shell: bash
-      run: ${{ github.action_path }}/check_skip.sh
+      run: bash ${{ github.action_path }}/check_skip.sh
       env:
         IGNORE_PATHS: ${{ inputs.ignore-paths }}
         BASE_REF: ${{ inputs.base-ref }}
