@@ -62,6 +62,7 @@ jobs:
     name: Linux-CPU
     uses: ./.github/workflows/_Linux-CPU.yml
     needs: [clone, build-docker]
+    if: needs.clone.outputs.can-skip != 'true'
     with:
       docker_cpu_image: ${{ needs.build-docker.outputs.docker_cpu_image }}
 

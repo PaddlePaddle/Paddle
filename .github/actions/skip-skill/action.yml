@@ -1,0 +1,47 @@
+name: 'PR Skip Check'
+description: '检查PR是否应该跳过CI（基于文件路径）'
+author: 'Your Team'
+
+inputs:
+  ignore-paths:
+    description: '要忽略的路径，用逗号分隔 (例如: "skill/**,docs/**,**.md")'
+    required: true
+    default: 'skill/**'
+  base-ref:
+    description: '基础分支（默认使用 PR 的目标分支）'
+    required: false
+    default: ${{ github.event.pull_request.base.ref }}
+
+outputs:
+  should-skip:
+    description: '是否应该跳过 CI (true/false)'
+    value: ${{ steps.check.outputs.should-skip }}
+  is-pr:
+    description: '是否是 PR 事件'
+    value: ${{ steps.check.outputs.is-pr }}
+  changed-files:
+    description: '所有变更文件列表（换行分隔）'
+    value: ${{ steps.check.outputs.changed-files }}
+  non-ignored-files:
+    description: '不在忽略路径中的文件列表'
+    value: ${{ steps.check.outputs.non-ignored-files }}
+  total-count:
+    description: '变更文件总数'
+    value: ${{ steps.check.outputs.total-count }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Run PR skip check script
+      id: check
+      shell: bash
+      run: ${{ github.action_path }}/check_skip.sh
+      env:
+        IGNORE_PATHS: ${{ inputs.ignore-paths }}
+        BASE_REF: ${{ inputs.base-ref }}
+        GITHUB_EVENT_NAME: ${{ github.event_name }}
