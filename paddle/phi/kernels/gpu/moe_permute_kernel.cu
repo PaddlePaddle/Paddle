@@ -724,7 +724,7 @@ void MoePermuteKernel(const Context &dev_ctx,
   // 0xFF byte-pattern on int32 = 0xFFFFFFFF = -1 in two's complement.
   // This offloads the bulk -1 fill (~10K-500K int32s) from SM compute to the
   // DMA copy engine, running in parallel with subsequent kernel execution.
-  if (return_expert_indices) {
+  if (is_buffer_overridden && return_expert_indices) {
     PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(
         expert_indices->data<int32_t>(),
         0xFF,
