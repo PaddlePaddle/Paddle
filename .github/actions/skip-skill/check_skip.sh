@@ -68,15 +68,21 @@ if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
         check_files() {
             local non_ignored=""
 
+            echo "🔍 [DEBUG] Starting to check files..."
+
             while IFS= read -r file; do
                 [ -z "$file" ] && continue
+                echo "🔍 [DEBUG] Checking file: '$file'"
 
                 is_ignored=false
+                echo "🔍 [DEBUG] IGNORE_PATHS length: ${#IGNORE_PATHS[@]}"
                 for pattern in "${IGNORE_PATHS[@]}"; do
                     pattern=$(echo "$pattern" | xargs)
+                    echo "🔍 [DEBUG] Original pattern: '$pattern'"
                     if [ -n "$pattern" ]; then
                         # Replace ** with * for bash pattern matching
                         bash_pattern="${pattern//\**/*}"
+                        echo "🔍 [DEBUG] bash_pattern: '$bash_pattern'"
                         # Debug: show pattern matching
                         if [[ "$file" == $bash_pattern ]]; then
                             is_ignored=true
