@@ -32,6 +32,19 @@
 
 namespace at {
 
+// Forward declaration
+struct CUDAGeneratorImpl;
+
+// ---- Helper functions ------------------------------------------------------
+
+/// Resolve device_index: if < 0, use current GPU device.
+inline DeviceIndex resolve_device_index(DeviceIndex idx) {
+  if (idx < 0) {
+    return static_cast<DeviceIndex>(phi::backends::gpu::GetCurrentDeviceId());
+  }
+  return idx;
+}
+
 /**
  * CUDAGeneratorImpl — CUDA-specific GeneratorImpl backed by Paddle.
  *
@@ -42,11 +55,16 @@ struct CUDAGeneratorImpl : public c10::GeneratorImpl {
   // ------- constructors -----------------------------------------------------
 
   /// Construct for a specific device (or current device if -1).
+  /// If use_default_gen is true, uses phi::DefaultCUDAGenerator (shared state).
+  /// If false, creates a new independent Generator instance.
   explicit CUDAGeneratorImpl(
-      DeviceIndex device_index = -1)  // NOLINT(runtime/int)
+      DeviceIndex device_index = -1,  // NOLINT(runtime/int)
+      bool use_default_gen = true)
       : c10::GeneratorImpl(
             c10::Device(c10::kCUDA, resolve_device(device_index)),
-            get_or_create_paddle_gen(resolve_device(device_index))),
+            use_default_gen
+                ? get_default_paddle_gen(resolve_device(device_index))
+                : create_new_paddle_gen(resolve_device(device_index))),
         philox_offset_per_thread_(0) {}
 
   ~CUDAGeneratorImpl() override = default;
@@ -119,16 +137,21 @@ struct CUDAGeneratorImpl : public c10::GeneratorImpl {
 
   /// Resolve device_index: if < 0, use current GPU device.
   static DeviceIndex resolve_device(DeviceIndex idx) {
-    if (idx < 0) {
-      return static_cast<DeviceIndex>(phi::backends::gpu::GetCurrentDeviceId());
-    }
-    return idx;
+    return resolve_device_index(idx);
   }
 
-  /// Get or lazily create a Paddle phi::Generator for the given device.
-  static std::shared_ptr<phi::Generator> get_or_create_paddle_gen(
+  /// Get the default Paddle phi::Generator for the given device (shared state).
+  static std::shared_ptr<phi::Generator> get_default_paddle_gen(
       DeviceIndex device_index) {
     return phi::DefaultCUDAGenerator(static_cast<int64_t>(device_index));
+  }
+
+  /// Create a new independent Paddle phi::Generator for the given device.
+  static std::shared_ptr<phi::Generator> create_new_paddle_gen(
+      DeviceIndex /*device_index*/) {
+    // Create a new Generator with a random seed (similar to PyTorch behavior)
+    // Use default constructor which generates a random seed
+    return std::make_shared<phi::Generator>();
   }
 };
 
@@ -140,10 +163,7 @@ namespace detail {
 /// Return a reference to the default CUDA Generator for `device_index`.
 /// If device_index < 0, uses the current CUDA device.
 inline const Generator& getDefaultCUDAGenerator(DeviceIndex device_index = -1) {
-  auto idx = device_index;
-  if (idx < 0) {
-    idx = static_cast<DeviceIndex>(phi::backends::gpu::GetCurrentDeviceId());
-  }
+  auto idx = resolve_device_index(device_index);
   // One Generator per device, lazily initialised.
   // We use a function-local static vector guarded by call_once.
   static std::vector<Generator> generators;
@@ -154,8 +174,8 @@ inline const Generator& getDefaultCUDAGenerator(DeviceIndex device_index = -1) {
     num_devices = phi::backends::gpu::GetGPUDeviceCount();
     generators.reserve(num_devices);
     for (int64_t i = 0; i < num_devices; ++i) {
-      generators.emplace_back(
-          c10::make_intrusive<CUDAGeneratorImpl>(static_cast<DeviceIndex>(i)));
+      generators.emplace_back(c10::make_intrusive<CUDAGeneratorImpl>(
+          static_cast<DeviceIndex>(i), /*use_default_gen=*/true));
     }
   });
 
@@ -166,8 +186,10 @@ inline const Generator& getDefaultCUDAGenerator(DeviceIndex device_index = -1) {
 }
 
 /// Create a new (non-default) CUDA Generator for `device_index`.
+/// The created generator has independent state from the default generator.
 inline Generator createCUDAGenerator(DeviceIndex device_index = -1) {
-  return Generator(c10::make_intrusive<CUDAGeneratorImpl>(device_index));
+  return Generator(c10::make_intrusive<CUDAGeneratorImpl>(
+      device_index, /*use_default_gen=*/false));
 }
 
 }  // namespace detail

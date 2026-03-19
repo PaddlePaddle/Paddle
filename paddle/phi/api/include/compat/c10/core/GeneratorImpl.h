@@ -46,8 +46,10 @@ namespace c10 {
  *
  * Subclasses (e.g., CPUGeneratorImpl, CUDAGeneratorImpl) may extend
  * this to add backend-specific functionality.
+ *
+ * Note: Inherits from intrusive_ptr_target to support intrusive_ptr.
  */
-class GeneratorImpl {
+class GeneratorImpl : public intrusive_ptr_target {
  public:
   // ------- constructors / destructor ----------------------------------------
 
@@ -62,7 +64,10 @@ class GeneratorImpl {
     }
   }
 
-  virtual ~GeneratorImpl() = default;
+  // Virtual destructor required for polymorphic base class
+  // Note: intrusive_ptr_target destructor is protected, but we need public
+  // destructor for delete to work through base pointer
+  ~GeneratorImpl() override = default;
 
   // Non-copyable / non-movable (mirroring PyTorch semantics).
   GeneratorImpl(const GeneratorImpl&) = delete;

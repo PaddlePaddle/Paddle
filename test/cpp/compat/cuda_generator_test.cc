@@ -195,9 +195,6 @@ TEST(CUDAGeneratorTest, GetDefaultCUDAGeneratorWithDefaultDevice) {
 }
 
 // graphsafe_set_state / graphsafe_get_state round-trip.
-// NOTE: createCUDAGenerator on the same device shares the same underlying
-// phi::DefaultCUDAGenerator, so set_current_seed on one affects the other.
-// We use clone() to create truly independent generators for this test.
 TEST(CUDAGeneratorTest, GraphsafeStateTransfer) {
   at::Generator gen_a = at::cuda::detail::createCUDAGenerator(0);
   gen_a.set_current_seed(111);
@@ -216,4 +213,109 @@ TEST(CUDAGeneratorTest, GraphsafeStateTransfer) {
   gen_a.set_current_seed(333);
   ASSERT_EQ(snapshot.current_seed(), 111u);
   ASSERT_EQ(gen_a.current_seed(), 333u);
+}
+
+// ============================================================================
+// Test for createCUDAGenerator independence (AC-2 verification)
+// ============================================================================
+
+// Verify that createCUDAGenerator creates a generator with independent state
+// that does not share RNG state with the default generator.
+TEST(CUDAGeneratorTest, CreateGeneratorDoesNotShareDefaultState) {
+  // Get the default generator and set its seed.
+  at::Generator default_gen = at::cuda::detail::getDefaultCUDAGenerator(0);
+  default_gen.set_current_seed(1000);
+  ASSERT_EQ(default_gen.current_seed(), 1000u);
+
+  // Create a user generator and set a different seed.
+  at::Generator user_gen = at::cuda::detail::createCUDAGenerator(0);
+  user_gen.set_current_seed(2000);
+
+  // Verify the user generator has the new seed.
+  ASSERT_EQ(user_gen.current_seed(), 2000u);
+
+  // Verify the default generator's seed is unchanged (independence).
+  ASSERT_EQ(default_gen.current_seed(), 1000u);
+
+  // Now change the default generator's seed and verify user is unaffected.
+  default_gen.set_current_seed(3000);
+  ASSERT_EQ(default_gen.current_seed(), 3000u);
+  ASSERT_EQ(user_gen.current_seed(), 2000u);  // Still 2000, not affected
+}
+
+// ============================================================================
+// Tests for unsafeReleaseGeneratorImpl (AC-3 verification)
+// ============================================================================
+
+// Verify that unsafeReleaseGeneratorImpl transfers ownership and makes
+// the generator undefined.
+TEST(CUDAGeneratorTest, UnsafeReleaseMakesGeneratorUndefined) {
+  at::Generator gen = at::cuda::detail::createCUDAGenerator(0);
+  gen.set_current_seed(42);
+  ASSERT_TRUE(gen.defined());
+
+  // Release the implementation - this transfers ownership to us.
+  c10::GeneratorImpl* raw_impl = gen.unsafeReleaseGeneratorImpl();
+  ASSERT_NE(raw_impl, nullptr);
+
+  // After release, generator should be undefined.
+  ASSERT_FALSE(gen.defined());
+
+  // We can still access the released impl via the raw pointer.
+  ASSERT_EQ(raw_impl->current_seed(), 42u);
+
+  // Clean up: properly delete the released implementation.
+  delete raw_impl;
+}
+
+// Verify that the released pointer can be reclaimed into a new intrusive_ptr
+// without double-free.
+TEST(CUDAGeneratorTest, UnsafeReleaseAndReclaim) {
+  at::Generator gen = at::cuda::detail::createCUDAGenerator(0);
+  gen.set_current_seed(123);
+  ASSERT_TRUE(gen.defined());
+
+  // Release the implementation.
+  c10::GeneratorImpl* raw_impl = gen.unsafeReleaseGeneratorImpl();
+  ASSERT_NE(raw_impl, nullptr);
+  ASSERT_FALSE(gen.defined());
+
+  // Reclaim the raw pointer into a new intrusive_ptr.
+  // This should not cause double-free or crashes.
+  c10::intrusive_ptr<c10::GeneratorImpl> reclaimed(
+      c10::intrusive_ptr<c10::GeneratorImpl>::reclaim(raw_impl));
+  ASSERT_TRUE(reclaimed.defined());
+  ASSERT_EQ(reclaimed->current_seed(), 123u);
+
+  // reclaimed will be properly destroyed when it goes out of scope.
+}
+
+// Verify that the generator is undefined after release and can be properly
+// reclaimed.
+TEST(CUDAGeneratorTest, UnsafeReleaseAndReclaimRoundTrip) {
+  at::Generator gen = at::cuda::detail::createCUDAGenerator(0);
+  gen.set_current_seed(789);
+  ASSERT_TRUE(gen.defined());
+
+  // Release ownership.
+  c10::GeneratorImpl* raw_impl = gen.unsafeReleaseGeneratorImpl();
+  ASSERT_NE(raw_impl, nullptr);
+  ASSERT_FALSE(gen.defined());
+
+  // Verify we can access the impl via raw pointer.
+  ASSERT_EQ(raw_impl->current_seed(), 789u);
+
+  // Reclaim into a new intrusive_ptr.
+  c10::intrusive_ptr<c10::GeneratorImpl> reclaimed(
+      c10::intrusive_ptr<c10::GeneratorImpl>::reclaim(raw_impl));
+  ASSERT_TRUE(reclaimed.defined());
+
+  // Create a new Generator from the reclaimed impl.
+  at::Generator new_gen(reclaimed);
+  ASSERT_TRUE(new_gen.defined());
+  ASSERT_EQ(new_gen.current_seed(), 789u);
+
+  // Modifying new_gen should not affect the old (already undefined) gen.
+  new_gen.set_current_seed(999);
+  ASSERT_EQ(new_gen.current_seed(), 999u);
 }
