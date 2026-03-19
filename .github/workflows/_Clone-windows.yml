@@ -2,9 +2,6 @@ name: Clone-windows
 
 on:
   workflow_call:
-    outputs:
-      can-skip:
-        value: ${{ jobs.clone.outputs.can-skip }}
 
 permissions: read-all
 
@@ -20,40 +17,8 @@ defaults:
     shell: cmd
 
 jobs:
-  check-bypass:
-    name: Check bypass
-    if: ${{ github.repository_owner == 'PaddlePaddle' }}
-    uses: ./.github/workflows/check-bypass.yml
-    with:
-      workflow-name: "windows"
-    secrets:
-      github-token: ${{ secrets.GITHUB_TOKEN }}
-
-  check-skill:
-    name: Check file paths
-    if: ${{ github.repository_owner == 'PaddlePaddle' }}
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    permissions:
-      contents: read
-      actions: read
-    outputs:
-      can-skip: ${{ steps.skip-skill.outputs.should-skip || 'false' }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Run skip check
-        id: skip-skill
-        uses: ./.github/actions/skip-skill
-        with:
-          ignore-paths: 'skill/**,.github/**'
-
   clone:
     name: Clone Paddle
-    if: ${{ github.repository_owner == 'PaddlePaddle' }}
-    needs: [check-bypass, check-skill]
-    outputs:
-      can-skip: ${{ needs.check-bypass.outputs.can-skip == 'true' || needs.check-skill.outputs.can-skip == 'true' }}
     runs-on:
       group: win-clone
     timeout-minutes: 30
