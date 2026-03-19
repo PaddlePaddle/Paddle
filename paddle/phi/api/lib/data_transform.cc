@@ -69,72 +69,6 @@ inline bool NeedTransform2Contiguous(bool is_stride_kernel,
   return FLAGS_use_stride_kernel && !is_stride_kernel && !is_contiguous;
 }
 
-inline bool IsPureLast2DimsTransposeView(const phi::DenseTensor& tensor) {
-  const auto& meta = tensor.meta();
-  if (meta.dims.size() < 2 || meta.offset != 0 ||
-      meta.strides == phi::DenseTensorMeta::calc_strides(meta.dims)) {
-    return false;
-  }
-
-  phi::DDim src_shape(meta.dims);
-  phi::DDim src_stride(meta.strides);
-  std::vector<bool> visited_idx(meta.strides.size(), false);
-  std::vector<int> axis(meta.strides.size(), -1);
-
-  for (int i = 0; i < meta.strides.size(); ++i) {
-    int64_t max_num = 0;
-    int max_idx = -1;
-    for (int j = 0; j < meta.strides.size(); ++j) {
-      if (visited_idx[j]) {
-        continue;
-      }
-      if (meta.strides[j] < 1) {
-        return false;
-      }
-      if (meta.strides[j] > max_num) {
-        max_num = meta.strides[j];
-        max_idx = j;
-      }
-    }
-
-    if (max_idx == -1) {
-      return false;
-    }
-
-    if (i != 0 && src_stride[i - 1] == max_num && src_shape[i - 1] != 1 &&
-        meta.dims[max_idx] != 1) {
-      return false;
-    }
-
-    visited_idx[max_idx] = true;
-    src_stride[i] = max_num;
-    src_shape[i] = meta.dims[max_idx];
-    axis[max_idx] = i;
-  }
-
-  if (phi::DenseTensorMeta::calc_strides(src_shape) != src_stride) {
-    return false;
-  }
-
-  const int last_axis = static_cast<int>(axis.size()) - 1;
-  for (size_t i = 0; i + 2 < axis.size(); ++i) {
-    if (axis[i] != static_cast<int>(i)) {
-      return false;
-    }
-  }
-  return axis[axis.size() - 2] == last_axis &&
-         axis[axis.size() - 1] == last_axis - 1;
-}
-
-inline bool NeedTransform2Contiguous(bool is_stride_kernel,
-                                     const phi::DenseTensor& tensor,
-                                     bool keep_pure_transpose_view) {
-  const bool need_transform =
-      NeedTransform2Contiguous(is_stride_kernel, tensor.meta().is_contiguous());
-  return need_transform &&
-         !(keep_pure_transpose_view && IsPureLast2DimsTransposeView(tensor));
-}
-
 inline phi::DenseTensor TransDataLayout(const phi::DenseTensor& tensor,
                                         DataLayout layout) {
   auto& pool = phi::DeviceContextPool::Instance();
@@ -461,14 +395,13 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
     const Tensor& input,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag,
-    bool is_stride_kernel,
-    bool keep_pure_transpose_view) {
+    bool is_stride_kernel) {
   const auto& tensor_in = input.impl();
   if (tensor_in) {
     phi::DenseTensor& dense_tensor =
         *static_cast<phi::DenseTensor*>(tensor_in.get());
     const bool need_transform_2_contiguous = NeedTransform2Contiguous(
-        is_stride_kernel, dense_tensor, keep_pure_transpose_view);
+        is_stride_kernel, dense_tensor.meta().is_contiguous());
     if (!transform_flag.NeedTransform() || !dense_tensor.initialized() ||
         (!NeedTransformPlace(
              dense_tensor.place(), target_args_def.backend, transform_flag) &&
@@ -1056,13 +989,12 @@ std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
     std::shared_ptr<phi::distributed::DistTensor> input,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag,
-    bool is_stride_kernel,
-    bool keep_pure_transpose_view) {
+    bool is_stride_kernel) {
   if (input) {
     phi::distributed::DistTensor* dist_tensor = input.get();
     const phi::DenseTensor& dense_tensor = dist_tensor->value();
     const bool need_transform_2_contiguous = NeedTransform2Contiguous(
-        is_stride_kernel, dense_tensor, keep_pure_transpose_view);
+        is_stride_kernel, dense_tensor.meta().is_contiguous());
     if (!transform_flag.NeedTransform() || !dense_tensor.initialized() ||
         (!NeedTransformPlace(
              dense_tensor.place(), target_args_def.backend, transform_flag) &&

@@ -90,8 +90,7 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
     const Tensor& input,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag,
-    bool is_stride_kernel,
-    bool keep_pure_transpose_view = false);
+    bool is_stride_kernel);
 
 paddle::optional<phi::DenseTensor> PrepareData(
     const paddle::optional<Tensor>& input,
@@ -280,8 +279,7 @@ std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
     std::shared_ptr<phi::distributed::DistTensor> input,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag,
-    bool is_stride_kernel,
-    bool keep_pure_transpose_view = false);
+    bool is_stride_kernel);
 
 std::vector<std::shared_ptr<phi::distributed::DistTensor>>
 PrepareDataForDistTensor(
