@@ -27,6 +27,24 @@ defaults:
     shell: bash
 
 jobs:
+  check-skill:
+    name: Check file paths
+    if: ${{ github.repository_owner == 'PaddlePaddle' && inputs.can-skip != 'true' }}
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      can-skip: ${{ steps.skip-skill.outputs.can-skip || 'false' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Run skip check
+        id: skip-skill
+        uses: ./.github/actions/skip-skill
+        with:
+          ignore-paths: 'skill/**,.github/**'
 
   check-bypass:
     name: Check bypass
@@ -39,8 +57,8 @@ jobs:
 
   cinn:
     name: CINN
-    if: ${{ inputs.can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true' }}
-    needs: check-bypass
+    if: ${{ inputs.can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true' && needs.check-skill.outputs.can-skip != 'true' }}
+    needs: [check-skill, check-bypass]
     runs-on:
       group: BD_BJ-V100
     timeout-minutes: 120

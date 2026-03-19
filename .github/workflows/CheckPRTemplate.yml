@@ -14,10 +14,28 @@ jobs:
     secrets:
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
+  check-skill:
+    name: Check file paths
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      can-skip: ${{ steps.skip-skill.outputs.can-skip || 'false' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Run skip check
+        id: skip-skill
+        uses: ./.github/actions/skip-skill
+        with:
+          ignore-paths: 'skill/**,.github/**'
+
   check:
     name: Check
-    needs: check-bypass
-    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
+    needs: [check-bypass, check-skill]
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' && needs.check-skill.outputs.can-skip != 'true' }}
     runs-on:
       group: Template
     timeout-minutes: 10

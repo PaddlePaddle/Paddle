@@ -40,6 +40,25 @@ defaults:
     shell: bash
 
 jobs:
+  check-skill:
+    name: Check file paths
+    if: ${{ inputs.can-skip != 'true' }}
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      can-skip: ${{ steps.skip-skill.outputs.can-skip || 'false' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Run skip check
+        id: skip-skill
+        uses: ./.github/actions/skip-skill
+        with:
+          ignore-paths: 'skill/**,.github/**'
+
   check-bypass:
     name: Check bypass
     if: ${{ inputs.can-skip != 'true' }}
@@ -51,8 +70,8 @@ jobs:
 
   data-storage:
     name: Performance data storage
-    needs: check-bypass
-    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
+    needs: [check-bypass, check-skill]
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' || needs.check-skill.outputs.can-skip != 'true' }}
     runs-on:
       group: Api-bm
       labels: [self-hosted, "${{ inputs.run-labels }}"]

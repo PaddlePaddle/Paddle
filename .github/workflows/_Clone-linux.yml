@@ -33,6 +33,25 @@ env:
   BRANCH: ${{ github.event.pull_request.base.ref || github.ref_name }}
 
 jobs:
+  check-skill:
+    name: Check file paths
+    if: ${{ github.repository_owner == 'PaddlePaddle' }}
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      can-skip: ${{ steps.skip-skill.outputs.can-skip || 'false' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Run skip check
+        id: skip-skill
+        uses: ./.github/actions/skip-skill
+        with:
+          ignore-paths: 'skill/**,.github/**'
+
   check-bypass:
     name: Check bypass
     if: ${{ github.repository_owner == 'PaddlePaddle' }}
@@ -45,9 +64,9 @@ jobs:
   clone:
     name: Clone Paddle
     if: ${{ github.repository_owner == 'PaddlePaddle' }}
-    needs: [check-bypass]
+    needs: [check-bypass, check-skill]
     outputs:
-      can-skip: ${{ needs.check-bypass.outputs.can-skip }}
+      can-skip: ${{ needs.check-bypass.outputs.can-skip || needs.check-skill.outputs.can-skip || 'false' }}
       slice-check: ${{ steps.check-execution.outputs.slice-check }}
     runs-on:
       group: HK-Clone
