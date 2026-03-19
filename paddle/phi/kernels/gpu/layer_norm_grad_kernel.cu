@@ -207,7 +207,9 @@ void LayerNormGradKernel(const Context& dev_ctx,
     case LayerNormGadKernelVariant::GENERIC:
     default:
 #ifdef PADDLE_WITH_CUDA
-      if (FLAGS_use_accuracy_compatible_kernel && scale_bias_dtype == x_dtype) {
+      if ((FLAGS_use_accuracy_compatible_kernel ||
+           (!isPowerOfTwo(feature_size) && feature_size > 1024)) &&
+          scale_bias_dtype == x_dtype) {
         auto* scale_data = (scale == nullptr ? nullptr : scale->data<T>());
         auto* d_scale_data =
             (d_scale == nullptr ? nullptr : dev_ctx.template Alloc<T>(d_scale));

@@ -23,7 +23,6 @@
 #include "paddle/phi/kernels/funcs/layer_norm_util.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/kernels/gpu/rms_norm_cuda_kernel.h"
-COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 #endif
 COMMON_DECLARE_bool(use_fast_math);
 
@@ -706,7 +705,8 @@ void LayerNormKernel(const Context& dev_ctx,
     case LayerNormKernelVariant::GENERIC:
     default:
 #ifdef PADDLE_WITH_CUDA
-      if (FLAGS_use_accuracy_compatible_kernel) {
+      if (FLAGS_use_accuracy_compatible_kernel ||
+          (!isPowerOfTwo(feature_size) && feature_size > 1024)) {
         LayerNormFwdCompatKernel<T, Context>(
             dev_ctx,
             x_data,
