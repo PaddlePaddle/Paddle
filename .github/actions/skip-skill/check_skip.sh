@@ -43,12 +43,12 @@ if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
         local files=""
 
         if [ -n "$BASE_REF" ]; then
-            echo "📌 Base branch: $BASE_REF"
+            echo "📌 Base branch: $BASE_REF" >&2
             # Fetch base branch
             git fetch origin "$BASE_REF" --depth=1 2>/dev/null || true
             files=$(git diff --name-only "origin/$BASE_REF...HEAD" 2>/dev/null || git diff --name-only "origin/$BASE_REF"..HEAD)
         else
-            echo "⚠️ No base branch specified, using HEAD^..HEAD"
+            echo "⚠️ No base branch specified, using HEAD^..HEAD" >&2
             files=$(git diff --name-only HEAD^ HEAD 2>/dev/null || echo "")
         fi
 
@@ -108,6 +108,9 @@ if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
         }
 
         NON_IGNORED_FILES=$(check_files)
+
+        echo "📋 Non-ignored files:"
+        echo "$NON_IGNORED_FILES" | sed 's/^/  - /'
 
         # 判断是否应该跳过
         if [ -z "$NON_IGNORED_FILES" ]; then
