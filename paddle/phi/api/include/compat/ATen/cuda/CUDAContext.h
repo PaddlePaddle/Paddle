@@ -18,4 +18,6 @@
 
 #pragma once
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <ATen/cuda/CUDAContextLight.h>
+#endif

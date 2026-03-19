@@ -93,11 +93,6 @@ TEST(CUDAContextLightTest, CanDeviceAccessPeer) {
   ASSERT_FALSE(self_peer);
 }
 
-// getCUDADeviceAllocator() — returns nullptr in the Paddle compat layer
-TEST(CUDAContextLightTest, GetCUDADeviceAllocator) {
-  ASSERT_EQ(at::cuda::getCUDADeviceAllocator(), nullptr);
-}
-
 // Handle accessors — all must return non-null handles
 TEST(CUDAContextLightTest, GetCurrentCUDABlasHandle) {
   cublasHandle_t h = at::cuda::getCurrentCUDABlasHandle();

@@ -60,11 +60,6 @@ bool canDeviceAccessPeer(c10::DeviceIndex device,
   return can_access != 0;
 }
 
-c10::Allocator* getCUDADeviceAllocator() {
-  // Not directly bridged; callers should use Paddle's memory utilities.
-  return nullptr;
-}
-
 /* Handles */
 
 CUDAContextSparseHandle getCurrentCUDASparseHandle() {

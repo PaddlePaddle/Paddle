@@ -98,8 +98,6 @@ CUDAContextDeviceProp* getDeviceProperties(c10::DeviceIndex device);
 
 bool canDeviceAccessPeer(c10::DeviceIndex device, c10::DeviceIndex peer_device);
 
-c10::Allocator* getCUDADeviceAllocator();
-
 /* Handles */
 CUDAContextSparseHandle getCurrentCUDASparseHandle();
 CUDAContextBlasHandle getCurrentCUDABlasHandle();
