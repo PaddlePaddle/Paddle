@@ -108,6 +108,8 @@
       case_macro(4096);                              \
     case 5120:                                       \
       case_macro(5120);                              \
+    case 6144:                                       \
+      case_macro(6144);                              \
     case 7168:                                       \
       case_macro(7168);                              \
     case 8192:                                       \
@@ -128,6 +130,9 @@
     __VA_ARGS__                                    \
   } else if (hidden == 5120) {                     \
     constexpr size_t kHidden = 5120;               \
+    __VA_ARGS__                                    \
+  } else if (hidden == 6144) {                     \
+    constexpr size_t kHidden = 6144;               \
     __VA_ARGS__                                    \
   } else if (hidden == 7168) {                     \
     constexpr size_t kHidden = 7168;               \
@@ -193,6 +198,9 @@
     __VA_ARGS__                                             \
   } else if (num_experts == 192) {                          \
     constexpr int kNumExperts = 192;                        \
+    __VA_ARGS__                                             \
+  } else if (num_experts == 256) {                          \
+    constexpr int kNumExperts = 256;                        \
     __VA_ARGS__                                             \
   } else if (num_experts == 384) {                          \
     constexpr int kNumExperts = 384;                        \
