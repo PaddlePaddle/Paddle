@@ -1017,9 +1017,9 @@ def batch_sampler_decorator() -> Callable[
             ) or (len(args) > 2 and isinstance(args[2], int)):
                 kwargs["sampler"] = args[1]
                 kwargs["batch_size"] = args[2]
-                if len(args) == 3:
+                if len(args) == 4:
                     kwargs["drop_last"] = args[3]
-                if len(args) > 3:
+                if len(args) > 4:
                     raise TypeError(
                         "BatchSampler() received too many arguments"
                     )
