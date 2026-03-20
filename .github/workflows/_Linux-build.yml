@@ -48,6 +48,7 @@ jobs:
   build:
     name: Build
     needs: [check-bypass]
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' && inputs.clone-can-skip != 'true' }}
     outputs:
       can-skip: ${{ needs.check-bypass.outputs.can-skip == 'true' || inputs.clone-can-skip == 'true' }}
     runs-on:
