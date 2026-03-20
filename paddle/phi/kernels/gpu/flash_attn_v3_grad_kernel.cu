@@ -1168,17 +1168,19 @@ void FlashMaskV2GradBaseKernel(
   int const seqlen_q_rounded = round_multiple(seqlen_q, kBlockM);
 
   // if KV head >= 4, we will consider using RS overlap
-  const int chunks_per_seg =
-      dynload::flashmaskv2_get_segment_size(seqlen_k, nranks, num_heads_k);
-  // seqlen scaler for dkv_accum and dkv, if H_k > 4: RS-overlap is used
-  bool const use_rs_overlap = nranks > 1 && chunks_per_seg > 1;
-  VLOG(6) << "FlashMask RS overlap: use rs: " << use_rs_overlap
-          << ", num chunk: " << chunks_per_seg;
+  const int chunks_per_seg = dynload::flashmaskv2_get_num_chunks_per_stage(
+      seqlen_k, nranks, num_heads_k);
   PADDLE_ENFORCE_GT(
       chunks_per_seg,
       0,
       common::errors::InvalidArgument(
-          "chunks_per_seg should be at least 1, but got: %d.", chunks_per_seg));
+          "chunks_per_seg should be at least 1, but got: %d. Check whether "
+          "WITH_NVSHMEM is on for this Paddle compile.",
+          chunks_per_seg));
+  // seqlen scaler for dkv_accum and dkv, if H_k > 4: RS-overlap is used
+  bool const use_rs_overlap = nranks > 1;
+  VLOG(6) << "FlashMask RS overlap: use rs: " << use_rs_overlap
+          << ", num chunk: " << chunks_per_seg;
   int const dkv_accum_s_scaler =
       use_rs_overlap ? chunks_per_seg : nranks;  // * cp_size
   int const dkv_s_scaler =
