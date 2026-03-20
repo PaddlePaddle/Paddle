@@ -127,6 +127,136 @@ class TestSelectScatterAPICase3(TestSelectScatterAPI):
                         out_ref[i, j, index, k, w] = value_np[i, j, k, w]
 
 
+class TestSelectScatterCompatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.shape = [2, 3, 4]
+        self.type = np.float32
+        self.x_np = np.random.random(self.shape).astype(self.type)
+        self.place = get_places()
+        self.axis = 1
+        self.index = 1
+        self.value_shape = [2, 4]
+        self.value_np = np.random.random(self.value_shape).astype(self.type)
+
+    def get_out_ref(self):
+        out_ref = copy.deepcopy(self.x_np)
+        out_ref[:, self.index, :] = self.value_np
+        return out_ref
+
+    def test_api_dygraph_alias(self):
+        def run(place):
+            paddle.disable_static(place)
+            x_tensor = paddle.to_tensor(self.x_np)
+            value_tensor = paddle.to_tensor(self.value_np)
+
+            outputs = [
+                paddle.select_scatter(
+                    x_tensor, value_tensor, self.axis, self.index
+                ),
+                paddle.select_scatter(
+                    x=x_tensor,
+                    values=value_tensor,
+                    axis=self.axis,
+                    index=self.index,
+                ),
+                paddle.select_scatter(
+                    input=x_tensor,
+                    src=value_tensor,
+                    dim=self.axis,
+                    index=self.index,
+                ),
+                paddle.select_scatter(
+                    x_tensor,
+                    src=value_tensor,
+                    dim=self.axis,
+                    index=self.index,
+                ),
+                x_tensor.select_scatter(value_tensor, self.axis, self.index),
+                x_tensor.select_scatter(
+                    src=value_tensor, dim=self.axis, index=self.index
+                ),
+            ]
+
+            out_ref = self.get_out_ref()
+            for out in outputs:
+                np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
+
+            paddle.enable_static()
+
+        for place in self.place:
+            run(place)
+
+    def test_api_static_alias(self):
+        paddle.enable_static()
+
+        def run(place):
+            with paddle.static.program_guard(paddle.static.Program()):
+                x = paddle.static.data('Src', self.shape, self.type)
+                value = paddle.static.data(
+                    'Values', self.value_shape, self.type
+                )
+                outputs = [
+                    paddle.select_scatter(x, value, self.axis, self.index),
+                    paddle.select_scatter(
+                        x=x,
+                        values=value,
+                        axis=self.axis,
+                        index=self.index,
+                    ),
+                    paddle.select_scatter(
+                        input=x,
+                        src=value,
+                        dim=self.axis,
+                        index=self.index,
+                    ),
+                    paddle.select_scatter(
+                        x,
+                        src=value,
+                        dim=self.axis,
+                        index=self.index,
+                    ),
+                    x.select_scatter(value, self.axis, self.index),
+                    x.select_scatter(
+                        src=value, dim=self.axis, index=self.index
+                    ),
+                ]
+                exe = paddle.static.Executor(place)
+                res = exe.run(
+                    feed={
+                        'Src': self.x_np,
+                        'Values': self.value_np,
+                    },
+                    fetch_list=outputs,
+                )
+
+            out_ref = self.get_out_ref()
+            for out in res:
+                np.testing.assert_allclose(out, out_ref, rtol=0.001)
+
+        for place in self.place:
+            run(place)
+
+    def test_axis_alias_conflict(self):
+        paddle.disable_static()
+        x_tensor = paddle.to_tensor(self.x_np)
+        value_tensor = paddle.to_tensor(self.value_np)
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "Cannot specify both 'axis' and its alias 'dim'",
+        ):
+            paddle.select_scatter(
+                x_tensor,
+                value_tensor,
+                axis=self.axis,
+                dim=self.axis,
+                index=self.index,
+            )
+
+        paddle.enable_static()
+
+
 class TestSelectScatterAPIError(unittest.TestCase):
     def setUp(self):
         np.random.seed(0)
