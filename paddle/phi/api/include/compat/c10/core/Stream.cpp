@@ -36,6 +36,20 @@ void* Stream::native_handle() const {
     return reinterpret_cast<void*>(static_cast<intptr_t>(id_));
   }
 #endif
+#if defined(PADDLE_WITH_XPU)
+  if (device_type() == DeviceType::XPU) {
+    // XPUStream handle is stored in id_ following the same raw-pointer
+    // encoding as CUDA streams.
+    return reinterpret_cast<void*>(static_cast<intptr_t>(id_));
+  }
+#endif
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+  if (device_type() == DeviceType::CUSTOM) {
+    // phi::stream::stream_t is void*; id_ stores the handle via
+    // the same raw-pointer encoding as CUDA streams.
+    return reinterpret_cast<void*>(static_cast<intptr_t>(id_));
+  }
+#endif
   PADDLE_THROW(::common::errors::Unimplemented(
       "c10::Stream::native_handle() is not supported for device type %d",
       static_cast<int>(device_type())));
