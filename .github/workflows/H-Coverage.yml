@@ -48,9 +48,16 @@ jobs:
         uses: ./.github/actions/skip-skill
         with:
           ignore-paths: 'skill/**,.github/**'
+      - name: Print outputs
+        if: always()
+        run: |
+          echo "=== check-skill outputs ==="
+          echo "steps.skip-skill.outputs.should-skip: '${{ steps.skip-skill.outputs.should-skip }}'"
+          echo "============================"
 
   clone:
     name: Coverage clone
+    needs: [check-skill]
     uses: ./.github/workflows/_Clone-linux.yml
     with:
       workflow-name: "coverage"

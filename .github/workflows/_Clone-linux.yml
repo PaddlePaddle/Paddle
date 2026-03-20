@@ -58,6 +58,13 @@ jobs:
     timeout-minutes: 30
 
     steps:
+      - name: Debug - 打印 inputs 值
+        run: |
+          echo "=== Debug Info ==="
+          echo "inputs.skill-can-skip: '${{ inputs.skill-can-skip }}'"
+          echo "inputs.skill-can-skip length: $(echo '${{ inputs.skill-can-skip }}' | wc -c)"
+          echo "==================="
+
       - name: 设置环境变量并打印
         id: set-vars
         run: |
