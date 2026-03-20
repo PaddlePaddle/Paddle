@@ -21,4 +21,4 @@
 namespace phi {}  // namespace phi
 
 PD_REGISTER_KERNEL(
-    kldiv_loss, CPU, ALL_LAYOUT, KLDivLossKernel, float, double) {}
+    kldiv_loss, CPU, ALL_LAYOUT, phi::KLDivLossKernel, float, double) {}
