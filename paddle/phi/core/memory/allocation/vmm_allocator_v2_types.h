@@ -54,6 +54,54 @@ struct VmmHandleMeta {
 // answer allocation-level IPC/export queries.
 using HandleLayout = std::vector<std::shared_ptr<VmmHandleMeta>>;
 
+// A logical slice of one fixed-size VMM handle. This is the block-level view
+// owned by VMMAutoGrowthBestFitAllocatorV2 and is updated by split / merge /
+// remap after the initial HandleLayout has been consumed. Future IPC export
+// still exports whole handles at the driver layer; BlockPartV2 carries the
+// slice metadata needed to rebuild the logical tensor view on import.
+struct BlockPartV2 {
+  std::shared_ptr<VmmHandleMeta> handle;
+  size_t handle_rel_off;
+  size_t len;
+
+  // Return a sub-slice of this part in handle-relative coordinates.
+  BlockPartV2 Slice(size_t offset, size_t slice_len) const {
+    return {handle, handle_rel_off + offset, slice_len};
+  }
+
+  // Fold an adjacent slice from the same handle into this part.
+  bool TryExtend(const BlockPartV2& next) {
+    if (handle.get() != next.handle.get()) {
+      return false;
+    }
+    if (handle_rel_off + len != next.handle_rel_off) {
+      return false;
+    }
+    len += next.len;
+    return true;
+  }
+};
+
+enum class BlockType : uint8_t {
+  kActive = 0,
+  kFree = 1,
+  kGap = 2,
+};
+
+struct BlockV2 {
+  void* ptr_{nullptr};
+  size_t size_{0};
+  BlockType type_{BlockType::kGap};
+  std::vector<BlockPartV2> parts_;
+  PoolType pool_type_{PoolType::kTransient};
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  gpuStream_t owning_stream_{nullptr};
+  gpuStream_t last_use_stream_{nullptr};
+  gpuEvent_t remap_safe_event_{nullptr};
+#endif
+  bool ipc_exported_{false};
+};
+
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle
