@@ -44,13 +44,19 @@ jobs:
     name: Windows-OPENBLAS
     uses: ./.github/workflows/_Windows-OPENBLAS.yml
     needs: clone
+    with:
+      clone-can-skip: ${{ needs.clone.outputs.can-skip }}
 
   win-gpu:
     name: Windows-GPU
     uses: ./.github/workflows/_Windows-GPU.yml
     needs: clone
+    with:
+      clone-can-skip: ${{ needs.clone.outputs.can-skip }}
 
   win-inference:
     name: Windows-Inference
     uses: ./.github/workflows/_Windows-Inference.yml
     needs: clone
+    with:
+      clone-can-skip: ${{ needs.clone.outputs.can-skip }}

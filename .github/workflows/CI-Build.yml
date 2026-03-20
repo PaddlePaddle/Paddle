@@ -66,6 +66,7 @@ jobs:
     needs: [clone, build-docker]
     with:
       docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
+      clone-can-skip: ${{ needs.clone.outputs.can-skip }}
 
   static-check:
     name: Static-Check
