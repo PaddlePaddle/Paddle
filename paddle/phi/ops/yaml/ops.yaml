@@ -3569,6 +3569,17 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits : paddle::dialect::ForwardOnlyTrait
 
+- op : masked_scatter
+  args : (Tensor x, Tensor mask, Tensor value)
+  output : Tensor (out)
+  inplace: (x -> out)
+  infer_meta :
+    func : MaskedScatterInferMeta
+  kernel :
+    func : masked_scatter
+    data_type : x
+  backward : masked_scatter_grad
+
 - op : masked_select
   args : (Tensor x, Tensor mask)
   output : Tensor (out)
