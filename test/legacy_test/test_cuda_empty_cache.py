@@ -41,7 +41,7 @@ class TestEmptyCache(unittest.TestCase):
 
 @unittest.skipIf(
     platform.system() == "Windows",
-    "Skip on Windows because /proc/self/status is not available",
+    "Skip on Windows because /proc/self/status is not available.",
 )
 class TestEmptyPinnedCache(unittest.TestCase):
     @classmethod
