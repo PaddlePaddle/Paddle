@@ -68,7 +68,7 @@ Makefile
 third_party/
 *~
 bazel-*
-
+.humanize
 
 build_*
 # clion workspace.

@@ -40,6 +40,7 @@
 #include <vector>
 #include "paddle/common/ddim.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace at {
 class Tensor;
@@ -397,29 +398,75 @@ class Tensor : public TensorBase {
   bool is_cuda() const { return phi::is_gpu_place(tensor_.place()); }
 
   bool is_pinned(::std::optional<c10::Device> device = ::std::nullopt) const {
-    return phi::is_cuda_pinned_place(tensor_.place()) ||
-           phi::is_xpu_pinned_place(tensor_.place());
+    if (device.has_value()) {
+      phi::enforce::ThrowWarnInternal(
+          "The argument 'device' of Tensor.is_pinned() is deprecated. "
+          "Please do not pass this argument.");
+    }
+
+    const PaddlePlace place = tensor_.place();
+    const bool is_gpu_pinned = phi::is_cuda_pinned_place(place);
+    const bool is_xpu_pinned = phi::is_xpu_pinned_place(place);
+
+    // Keep parity with PyTorch behavior: only host tensors are pinnable.
+    if (!(phi::is_cpu_place(place) || is_gpu_pinned || is_xpu_pinned)) {
+      return false;
+    }
+
+    if (!device.has_value()) {
+      return is_gpu_pinned || is_xpu_pinned;
+    }
+
+    const auto device_type = device.value().type();
+    if (device_type == c10::DeviceType::GPU) {
+      return is_gpu_pinned;
+    }
+    if (device_type == c10::DeviceType::XPU) {
+      return is_xpu_pinned;
+    }
+    // CPU and non-accelerator devices are not valid pinned backends.
+    return false;
   }
 
   Tensor pin_memory(
       ::std::optional<c10::Device> device = ::std::nullopt) const {
+    if (device.has_value()) {
+      phi::enforce::ThrowWarnInternal(
+          "The argument 'device' of Tensor.pin_memory() is deprecated. "
+          "Please do not pass this argument.");
+    }
+
     if (is_pinned(device)) {
       return *this;
     }
 
-    PaddlePlace current_place = tensor_.place();
-    PaddlePlace pinned_place;
-    if (phi::is_cpu_place(current_place)) {
-      // CPU place cannot be directly converted to pinned place
-      PD_THROW(
-          "pin_memory: Pinning memory is not supported for CPUPlace. "
-          "Please use CUDAPlace or XPUPlace tensor, or specify "
-          "CUDAPinnedPlace/XPUPinnedPlace as device.");
-    } else {
-      // For GPU/XPU tensors, use GetPinnedPlace to get the appropriate pinned
-      // place
-      pinned_place = phi::GetPinnedPlace(current_place);
+    const PaddlePlace current_place = tensor_.place();
+    if (!phi::is_cpu_place(current_place)) {
+      PD_THROW("cannot pin '" + this->toString() +
+               "', only dense CPU tensors can be pinned");
     }
+
+    PaddlePlace pinned_place;
+
+    if (device.has_value()) {
+      const auto device_type = device.value().type();
+      if (device_type == c10::DeviceType::GPU) {
+        pinned_place = phi::Place(phi::GPUPinnedPlace());
+      } else if (device_type == c10::DeviceType::XPU) {
+        pinned_place = phi::Place(phi::XPUPinnedPlace());
+      } else {
+        PD_THROW("pin_memory device type must be an accelerator (GPU/XPU)");
+      }
+    } else {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      pinned_place = phi::Place(phi::GPUPinnedPlace());
+#elif defined(PADDLE_WITH_XPU)
+      pinned_place = phi::Place(phi::XPUPinnedPlace());
+#else
+      PD_THROW("pin_memory is not supported: no GPU/XPU backend enabled");
+#endif
+    }
+
     return tensor_.copy_to(pinned_place, true);
   }
 
@@ -822,6 +869,3 @@ class Tensor : public TensorBase {
   PaddleTensor& _PD_GetInner() { return tensor_; }
 };  // NOLINT(readability/braces)
 }  // namespace at
-namespace torch {
-using at::Tensor;
-}  // namespace torch

@@ -16,7 +16,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/sparse/convolution.h"
-#include "paddle/phi/kernels/funcs/transpose_function.cu.h"
+#include "paddle/phi/kernels/funcs/transpose_function.cuh"
 #include "paddle/phi/kernels/sparse/gpu/conv_kernel_impl.cuh"
 #include "paddle/phi/kernels/sparse/gpu/sparse_conv_hashmap.cuh"
 
