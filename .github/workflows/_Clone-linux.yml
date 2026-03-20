@@ -58,6 +58,20 @@ jobs:
     timeout-minutes: 30
 
     steps:
+      - name: 设置环境变量并打印
+        id: set-vars
+        run: |
+          # 计算 can-skip 的值并保存到环境变量
+          if [[ "${{ needs.check-bypass.outputs.can-skip }}" == "true" ]] || [[ "${{ inputs.skill-can-skip }}" == "true" ]]; then
+            echo "CAN_SKIP=true" >> $GITHUB_ENV
+          else
+            echo "CAN_SKIP=false" >> $GITHUB_ENV
+          fi
+
+      - name: 打印 can-skip 值
+        run: |
+          echo "can-skip 输出值: ${{ env.CAN_SKIP }}"
+
       - name: Check submodules status
         run: git submodule foreach --recursive 'git rev-parse HEAD || rm -rf $PWD' || true
 
