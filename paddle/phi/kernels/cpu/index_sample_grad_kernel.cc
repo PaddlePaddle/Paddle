@@ -27,8 +27,8 @@ void IndexSampleGradInner(const Context& context,
                           DenseTensor* x_grad) {
   std::vector<T> out_grad_vec;
   std::vector<IndexT> index_vec;
-  phi::TensorToVector(out_grad, context, &out_grad_vec);
-  phi::TensorToVector(index, context, &index_vec);
+  TensorToVector(out_grad, context, &out_grad_vec);
+  TensorToVector(index, context, &index_vec);
 
   auto index_dims = index.dims();
   auto x_grad_dims = x_grad->dims();
@@ -63,7 +63,7 @@ void IndexSampleGradInner(const Context& context,
     x_grad_vec[v_i] += out_grad_vec[i];
   }
   context.template Alloc<T>(x_grad);
-  phi::TensorFromVector(x_grad_vec, context, x_grad);
+  TensorFromVector(x_grad_vec, context, x_grad);
   x_grad->Resize(x_grad_dims);
 }
 

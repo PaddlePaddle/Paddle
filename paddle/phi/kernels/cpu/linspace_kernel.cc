@@ -28,9 +28,9 @@ void LinspaceKernel(const Context& dev_ctx,
                     DataType dtype,
                     DenseTensor* out) {
   int64_t num = 0;
-  if (number.dtype() == phi::DataType::INT64) {
+  if (number.dtype() == DataType::INT64) {
     num = number.data<int64_t>()[0];
-  } else if (number.dtype() == phi::DataType::INT32) {
+  } else if (number.dtype() == DataType::INT32) {
     num = number.data<int32_t>()[0];
   }
   PADDLE_ENFORCE_GE(num,

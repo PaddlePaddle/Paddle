@@ -101,8 +101,8 @@ void HistogramKernel(const Context& dev_ctx,
       }
     }
     if (density) {
-      DenseTensor sum = phi::Sum<float, Context>(
-          dev_ctx, *output, phi::IntArray({0}), phi::DataType::FLOAT32, false);
+      DenseTensor sum = Sum<float, Context>(
+          dev_ctx, *output, IntArray({0}), DataType::FLOAT32, false);
       float* sum_data = sum.data<float>();
       float gap = static_cast<float>(nbins) /
                   static_cast<float>((output_max - output_min)) / *sum_data;

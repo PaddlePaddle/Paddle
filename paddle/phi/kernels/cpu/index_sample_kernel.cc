@@ -44,8 +44,8 @@ void IndexSampleInner(const Context &context,
 
   std::vector<T> input_vec;
   std::vector<IndexT> index_vec;
-  phi::TensorToVector(input, context, &input_vec);
-  phi::TensorToVector<IndexT>(index, context, &index_vec);
+  TensorToVector(input, context, &input_vec);
+  TensorToVector<IndexT>(index, context, &index_vec);
 
   std::vector<T> res(index_ids_num);
   for (int64_t i = 0; i < index_ids_num; i++) {
@@ -78,7 +78,7 @@ void IndexSampleInner(const Context &context,
 
   auto ddim = make_ddim({batch_size, index_length});
   context.template Alloc<T>(output);
-  phi::TensorFromVector(res, context, output);
+  TensorFromVector(res, context, output);
   output->Resize(ddim);
 }
 

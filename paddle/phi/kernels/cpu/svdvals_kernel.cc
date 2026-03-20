@@ -31,42 +31,42 @@ void LapackSvdvals(const T* X, T* S, int rows, int cols) {
   std::vector<T> work(1);
   int info = 0;
   // Get the best lwork
-  funcs::lapackSvd<T, phi::dtype::Real<T>>(jobz,
-                                           rows,
-                                           cols,
-                                           a,
-                                           lda,
-                                           S,
-                                           nullptr,  // U is not needed
-                                           1,        // dummy dimension for U
-                                           nullptr,  // VH is not needed
-                                           1,        // dummy dimension for VH
-                                           work.data(),
-                                           lwork,
-                                           nullptr,  // rwork is not needed
-                                           nullptr,  // iwork is not needed
-                                           &info);
+  funcs::lapackSvd<T, dtype::Real<T>>(jobz,
+                                      rows,
+                                      cols,
+                                      a,
+                                      lda,
+                                      S,
+                                      nullptr,  // U is not needed
+                                      1,        // dummy dimension for U
+                                      nullptr,  // VH is not needed
+                                      1,        // dummy dimension for VH
+                                      work.data(),
+                                      lwork,
+                                      nullptr,  // rwork is not needed
+                                      nullptr,  // iwork is not needed
+                                      &info);
   if (info != 0) {
     PADDLE_THROW(common::errors::InvalidArgument(
         "Error during LAPACK lwork query. Invalid matrix or arguments."));
   }
   lwork = static_cast<int>(work[0]);
   work.resize(lwork);
-  funcs::lapackSvd<T, phi::dtype::Real<T>>(jobz,
-                                           rows,
-                                           cols,
-                                           a,
-                                           lda,
-                                           S,
-                                           nullptr,  // U is not needed
-                                           1,        // dummy dimension for U
-                                           nullptr,  // VH is not needed
-                                           1,        // dummy dimension for VH
-                                           work.data(),
-                                           lwork,
-                                           nullptr,  // rwork is not needed
-                                           nullptr,  // iwork is not needed
-                                           &info);
+  funcs::lapackSvd<T, dtype::Real<T>>(jobz,
+                                      rows,
+                                      cols,
+                                      a,
+                                      lda,
+                                      S,
+                                      nullptr,  // U is not needed
+                                      1,        // dummy dimension for U
+                                      nullptr,  // VH is not needed
+                                      1,        // dummy dimension for VH
+                                      work.data(),
+                                      lwork,
+                                      nullptr,  // rwork is not needed
+                                      nullptr,  // iwork is not needed
+                                      &info);
   if (info < 0) {
     PADDLE_THROW(common::errors::InvalidArgument(
         "This %s-th argument has an illegal value.", info));
@@ -92,7 +92,7 @@ void SvdvalsKernel(const Context& dev_ctx,
                    const DenseTensor& X,
                    DenseTensor* S) {
   if (S && S->numel() == 0) {
-    dev_ctx.template Alloc<phi::dtype::Real<T>>(S);
+    dev_ctx.template Alloc<dtype::Real<T>>(S);
     return;
   }
   auto x_dims = X.dims();
@@ -127,7 +127,7 @@ void SvdvalsKernel(const Context& dev_ctx,
   }
   S->Resize(s_dims);
   // Allocate memory for output
-  auto* S_out = dev_ctx.template Alloc<phi::dtype::Real<T>>(S);
+  auto* S_out = dev_ctx.template Alloc<dtype::Real<T>>(S);
 
   // Transpose the last two dimensions for LAPACK compatibility
   DenseTensor trans_x = TransposeLast2Dim<T>(dev_ctx, X);

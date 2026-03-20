@@ -108,9 +108,9 @@ typename std::enable_if<std::is_floating_point<T>::value>::type LapackEigvals(
                       static_cast<T*>(nullptr),
                       &info);
 
-  std::string name = "phi::backend::dynload::dgeev_";
+  std::string name = "backend::dynload::dgeev_";
   if (input.dtype() == DataType::FLOAT64) {
-    name = "phi::backend::dynload::sgeev_";
+    name = "backend::dynload::sgeev_";
   }
   CheckLapackEigResult(info, name);
 
@@ -172,9 +172,9 @@ LapackEigvals(const Context& dev_ctx,
                                       rwork->template data<dtype::Real<T>>(),
                                       &info);
 
-  std::string name = "phi::backend::dynload::cgeev_";
+  std::string name = "backend::dynload::cgeev_";
   if (input.dtype() == DataType::COMPLEX128) {
-    name = "phi::backend::dynload::zgeev_";
+    name = "backend::dynload::zgeev_";
   }
   CheckLapackEigResult(info, name);
 }
