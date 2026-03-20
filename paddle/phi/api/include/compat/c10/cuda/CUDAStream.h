@@ -229,13 +229,16 @@ inline void setCurrentCUDAStream(CUDAStream stream) {
   tls.has_stream[idx] = true;
 }
 
-#define getDefaultCUDAStream getCurrentCUDAStream;
+inline CUDAStream getDefaultCUDAStream(c10::DeviceIndex device_index = -1) {
+  return getCurrentCUDAStream(device_index);
+}
 
 }  // namespace c10::cuda
 
 namespace at::cuda {
 using c10::cuda::CUDAStream;
 using c10::cuda::getCurrentCUDAStream;
+using c10::cuda::getDefaultCUDAStream;
 using c10::cuda::getStreamFromPool;
 using c10::cuda::setCurrentCUDAStream;
 }  // namespace at::cuda
