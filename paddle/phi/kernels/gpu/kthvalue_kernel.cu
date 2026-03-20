@@ -139,14 +139,14 @@ bool SortKthvalue(const phi::GPUContext& dev_ctx,
   const Eigen::DSizes<int64_t, 2> slice_indices{0, k - 1};
   const Eigen::DSizes<int64_t, 2> slice_sizes{num_rows, 1};
   auto e_indices = EigenMatrix<int64_t>::From(*indices_tensor, dim);
-  auto e_tmp_indices =
-      EigenMatrix<int64_t>::From(static_cast<const DenseTensor>(temp_indices));
+  auto e_tmp_indices = EigenMatrix<int64_t>::From(
+      static_cast<const phi::DenseTensor>(temp_indices));
 
   std::vector<int64_t> odims = {num_rows, 1};
   dim = common::make_ddim(odims);
   auto e_values = EigenMatrix<T>::From(*out_tensor, dim);
   auto e_tmp_values =
-      EigenMatrix<T>::From(static_cast<const DenseTensor>(temp_values));
+      EigenMatrix<T>::From(static_cast<const phi::DenseTensor>(temp_values));
 
   funcs::EigenSlice<std::decay_t<decltype(dev)>, int64_t, 2>::Eval(
       dev, e_indices, e_tmp_indices, slice_indices, slice_sizes);

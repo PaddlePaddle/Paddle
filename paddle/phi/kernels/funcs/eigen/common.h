@@ -77,7 +77,7 @@ struct EigenTensor {
 
 template <typename T, int MajorType = Eigen::RowMajor>
 struct EigenMatrix : public EigenTensor<T, 2, MajorType> {
-  static typename EigenMatrix::Type Reshape(DenseTensor& tensor,  // NOLINT
+  static typename EigenMatrix::Type Reshape(phi::DenseTensor& tensor,  // NOLINT
                                             int num_col_dims) {
     int rank = tensor.dims().size();
     PADDLE_ENFORCE_EQ((num_col_dims > 0 && num_col_dims < rank),

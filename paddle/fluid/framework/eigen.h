@@ -73,7 +73,7 @@ struct EigenTensor {
 
 template <typename T, int MajorType = Eigen::RowMajor>
 struct EigenMatrix : public EigenTensor<T, 2, MajorType> {
-  static typename EigenMatrix::Type Reshape(DenseTensor& tensor,  // NOLINT
+  static typename EigenMatrix::Type Reshape(phi::DenseTensor& tensor,  // NOLINT
                                             int num_col_dims) {
     int rank = tensor.dims().size();
     PADDLE_ENFORCE_EQ((num_col_dims > 0 && num_col_dims < rank),
@@ -105,7 +105,8 @@ struct EigenMatrix : public EigenTensor<T, 2, MajorType> {
 template <typename T, int MajorType = Eigen::RowMajor>
 struct EigenVector : public EigenTensor<T, 1, MajorType> {
   // Flatten reshapes a DenseTensor into an EigenVector.
-  static typename EigenVector::Type Flatten(DenseTensor& tensor) {  // NOLINT
+  static typename EigenVector::Type Flatten(
+      phi::DenseTensor& tensor) {  // NOLINT
     return EigenVector::From(tensor, {product(tensor.dims())});
   }
 
