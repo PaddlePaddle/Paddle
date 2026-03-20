@@ -312,7 +312,12 @@ class DispatchKeySet final {
                   static_cast<DispatchKey>(current_dispatchkey_idx_))) {
             while (next_backend_ < num_backends) {
               if (*data_ptr_ & (1ULL << next_backend_)) {
-                current_backendcomponent_idx_ = next_backend_;
+                // BackendComponent is 1-based (InvalidBit=0, CPUBit=1, ...).
+                // The bit at position next_backend_ corresponds to enum value
+                // next_backend_+1, matching the
+                // DispatchKeySet(BackendComponent) constructor which stores bit
+                // (k-1) for component k.
+                current_backendcomponent_idx_ = next_backend_ + 1;
                 ++next_backend_;
                 return *this;
               }
