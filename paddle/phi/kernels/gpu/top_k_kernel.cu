@@ -53,14 +53,14 @@ namespace phi {
   FIXED_MAXLENGTH_BASE(5, ##__VA_ARGS__)
 
 template <typename T, typename Context>
-void TopkKernel(const Context& dev_ctx,
-                const DenseTensor& x,
-                const Scalar& k_scalar,
-                int axis,
-                bool largest,
-                bool sorted,
-                DenseTensor* out,
-                DenseTensor* indices) {
+void TopkKernelOld(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const Scalar& k_scalar,
+                   int axis,
+                   bool largest,
+                   bool sorted,
+                   DenseTensor* out,
+                   DenseTensor* indices) {
   if (out && out->numel() == 0) {
     dev_ctx.template Alloc<T>(out);
     dev_ctx.template Alloc<int64_t>(indices);
@@ -366,14 +366,14 @@ void TopkV1Kernel(const Context& dev_ctx,
                   const Scalar& k_scalar,
                   DenseTensor* out,
                   DenseTensor* indices) {
-  TopkKernel<T, Context>(dev_ctx, x, k_scalar, -1, true, true, out, indices);
+  TopkKernelOld<T, Context>(dev_ctx, x, k_scalar, -1, true, true, out, indices);
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(topk,
+PD_REGISTER_KERNEL(topk_old,
                    GPU,
                    ALL_LAYOUT,
-                   phi::TopkKernel,
+                   phi::TopkKernelOld,
                    float,
                    double,
                    int,
