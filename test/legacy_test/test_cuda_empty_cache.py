@@ -12,13 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import platform
 import unittest
 
 import paddle
 
 
 def get_process_memory_mb():
-    """Get current process memory usage in MB from /proc/self/status"""
+    """Get current process memory usage in MB from /proc/self/status (Linux only)"""
+    if platform.system() == "Windows":
+        raise NotImplementedError(
+            "get_process_memory_mb is not supported on Windows"
+        )
     with open('/proc/self/status', 'r') as f:
         for line in f:
             if line.startswith('VmRSS:'):
@@ -34,6 +39,10 @@ class TestEmptyCache(unittest.TestCase):
         self.assertIsNone(paddle.device.cuda.empty_cache())
 
 
+@unittest.skipIf(
+    platform.system() == "Windows",
+    "Skip on Windows because /proc/self/status is not available",
+)
 class TestEmptyPinnedCache(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
