@@ -45,17 +45,16 @@ struct Storage {
   };
 
   // Default constructor
-  Storage() = default;
+  Storage() : data_ptr_(std::make_shared<DataPtr>()) {}
 
-  // Copy constructor: shares allocation (increments refcount), creates
-  // independent DataPtr wrapping the shared allocation.
+  // Copy constructor: shares both allocation (increments refcount) and the
+  // DataPtr owner so that any context/deleter is preserved across copies.
   Storage(const Storage& other)
       : allocation_(other.allocation_),
         allocator_(other.allocator_),
         nbytes_(other.nbytes_),
-        resizable_(other.resizable_) {
-    data_ptr_ = sharedDataPtrFrom(other);
-  }
+        resizable_(other.resizable_),
+        data_ptr_(other.data_ptr_) {}
 
   // Copy assignment operator
   Storage& operator=(const Storage& other) {
@@ -64,7 +63,7 @@ struct Storage {
       allocator_ = other.allocator_;
       nbytes_ = other.nbytes_;
       resizable_ = other.resizable_;
-      data_ptr_ = sharedDataPtrFrom(other);
+      data_ptr_ = other.data_ptr_;
     }
     return *this;
   }
@@ -79,6 +78,7 @@ struct Storage {
     other.allocator_ = nullptr;
     other.nbytes_ = 0;
     other.resizable_ = false;
+    other.data_ptr_ = std::make_shared<DataPtr>();
   }
 
   // Move assignment operator
@@ -92,6 +92,7 @@ struct Storage {
       other.allocator_ = nullptr;
       other.nbytes_ = 0;
       other.resizable_ = false;
+      other.data_ptr_ = std::make_shared<DataPtr>();
     }
     return *this;
   }
@@ -102,7 +103,9 @@ struct Storage {
     if (alloc) {
       nbytes_ = alloc->size();
       allocation_ = alloc;
-      data_ptr_ = viewDataPtrFrom(std::move(alloc));
+      data_ptr_ = std::make_shared<DataPtr>(viewDataPtrFrom(std::move(alloc)));
+    } else {
+      data_ptr_ = std::make_shared<DataPtr>();
     }
   }
 
@@ -113,7 +116,9 @@ struct Storage {
           std::shared_ptr<phi::Allocation>(allocator->Allocate(size_bytes));
       allocator_ = allocator;
       nbytes_ = size_bytes;
-      data_ptr_ = viewDataPtrFrom(allocation_);
+      data_ptr_ = std::make_shared<DataPtr>(viewDataPtrFrom(allocation_));
+    } else {
+      data_ptr_ = std::make_shared<DataPtr>();
     }
   }
 
@@ -128,7 +133,9 @@ struct Storage {
     if (allocator) {
       allocation_ =
           std::shared_ptr<phi::Allocation>(allocator->Allocate(size_bytes));
-      data_ptr_ = viewDataPtrFrom(allocation_);
+      data_ptr_ = std::make_shared<DataPtr>(viewDataPtrFrom(allocation_));
+    } else {
+      data_ptr_ = std::make_shared<DataPtr>();
     }
   }
 
@@ -142,7 +149,7 @@ struct Storage {
     allocator_ = allocator;
     nbytes_ = size_bytes;
     resizable_ = resizable;
-    data_ptr_ = viewDataPtrFrom(std::move(alloc));
+    data_ptr_ = std::make_shared<DataPtr>(viewDataPtrFrom(std::move(alloc)));
   }
 
   // LibTorch compatible constructor with pre-allocated DataPtr
@@ -154,18 +161,18 @@ struct Storage {
     allocator_ = allocator;
     nbytes_ = size_bytes;
     resizable_ = resizable;
-    data_ptr_ = std::move(data_ptr);
+    data_ptr_ = std::make_shared<DataPtr>(std::move(data_ptr));
   }
 
  protected:
-  // Unsafe borrow constructor (for MaybeOwnedTraits): shares allocation
-  // without transfer of ownership.
+  // Unsafe borrow constructor (for MaybeOwnedTraits): shares DataPtr ownership
+  // so context/deleter is preserved without transfer of ownership.
   explicit Storage(unsafe_borrow_t, const Storage& rhs) {
     allocation_ = rhs.allocation_;
     allocator_ = rhs.allocator_;
     nbytes_ = rhs.nbytes_;
     resizable_ = rhs.resizable_;
-    data_ptr_ = sharedDataPtrFrom(rhs);
+    data_ptr_ = rhs.data_ptr_;
   }
 
   // Forward declare template and make specialization a friend
@@ -174,7 +181,10 @@ struct Storage {
 
  public:
   // Check if storage is valid (has allocation or data)
-  bool valid() const { return static_cast<bool>(data_ptr_) || allocation_; }
+  bool valid() const {
+    return static_cast<bool>(allocation_) ||
+           (data_ptr_ && static_cast<bool>(*data_ptr_));
+  }
 
   // Boolean conversion operator (LibTorch compatible)
   explicit operator bool() const { return valid(); }
@@ -187,7 +197,7 @@ struct Storage {
     if (resizable_ && allocator_) {
       allocation_ =
           std::shared_ptr<phi::Allocation>(allocator_->Allocate(size_bytes));
-      data_ptr_ = viewDataPtrFrom(allocation_);
+      data_ptr_ = std::make_shared<DataPtr>(viewDataPtrFrom(allocation_));
       nbytes_ = size_bytes;
     }
   }
@@ -196,16 +206,16 @@ struct Storage {
   bool resizable() const { return resizable_; }
 
   // Get mutable data pointer
-  void* mutable_data() const { return data_ptr_.get(); }
+  void* mutable_data() const { return data_ptr_->get(); }
 
   // Get const data pointer
-  const void* data() const { return data_ptr_.get(); }
+  const void* data() const { return data_ptr_->get(); }
 
   // Get a const reference to the underlying DataPtr (LibTorch compatible)
-  const DataPtr& data_ptr() const { return data_ptr_; }
+  const DataPtr& data_ptr() const { return *data_ptr_; }
 
   // Get a mutable reference to the underlying DataPtr (LibTorch compatible)
-  DataPtr& mutable_data_ptr() const { return const_cast<DataPtr&>(data_ptr_); }
+  DataPtr& mutable_data_ptr() const { return *data_ptr_; }
 
   // Get the underlying phi::Allocation (Paddle-specific)
   std::shared_ptr<phi::Allocation> allocation() const { return allocation_; }
@@ -243,16 +253,18 @@ struct Storage {
   // Set data pointer (swap and return old) - LibTorch compatible DataPtr
   // version. Clears allocation_ since the new DataPtr manages its own
   // lifecycle. Use set_data_ptr(shared_ptr<phi::Allocation>) for Paddle paths.
+  // Callers should ensure unique() before calling to avoid surprising shared
+  // copies.
   DataPtr set_data_ptr(DataPtr&& new_data_ptr) {
-    DataPtr old = std::move(data_ptr_);
-    data_ptr_ = std::move(new_data_ptr);
+    DataPtr old = std::move(*data_ptr_);
+    data_ptr_ = std::make_shared<DataPtr>(std::move(new_data_ptr));
     allocation_ = nullptr;
     return old;
   }
 
   // Set data pointer (no swap) - LibTorch compatible DataPtr version
   void set_data_ptr_noswap(DataPtr&& new_data_ptr) {
-    data_ptr_ = std::move(new_data_ptr);
+    data_ptr_ = std::make_shared<DataPtr>(std::move(new_data_ptr));
     allocation_ = nullptr;
   }
 
@@ -262,7 +274,8 @@ struct Storage {
     std::shared_ptr<phi::Allocation> old_alloc = std::move(allocation_);
     allocation_ = new_alloc;
     if (allocation_) nbytes_ = allocation_->size();
-    data_ptr_ = viewDataPtrFrom(std::move(new_alloc));
+    data_ptr_ =
+        std::make_shared<DataPtr>(viewDataPtrFrom(std::move(new_alloc)));
     return old_alloc;
   }
 
@@ -270,7 +283,8 @@ struct Storage {
   void set_data_ptr_noswap(std::shared_ptr<phi::Allocation> new_alloc) {
     allocation_ = new_alloc;
     if (allocation_) nbytes_ = allocation_->size();
-    data_ptr_ = viewDataPtrFrom(std::move(new_alloc));
+    data_ptr_ =
+        std::make_shared<DataPtr>(viewDataPtrFrom(std::move(new_alloc)));
   }
 
  private:
@@ -281,7 +295,11 @@ struct Storage {
   phi::Allocator* allocator_ = nullptr;
   size_t nbytes_ = 0;
   bool resizable_ = false;
-  DataPtr data_ptr_;
+  // Shared pointer to DataPtr — shared across Storage copies to preserve
+  // context/deleter on the external-DataPtr path.  For allocation-backed
+  // paths the pointed-to DataPtr is a non-owning view (no extra refcount on
+  // allocation_), so use_count() remains accurate.
+  std::shared_ptr<DataPtr> data_ptr_;
 
   // Create a non-owning DataPtr view of a phi::Allocation.
   // The allocation's lifetime is managed separately by allocation_.
@@ -291,18 +309,6 @@ struct Storage {
       const std::shared_ptr<phi::Allocation>& alloc) {
     if (!alloc) return DataPtr();
     return DataPtr(alloc->ptr(), c10::Device(alloc->place()));
-  }
-
-  // Create a DataPtr for the copy/borrow case.
-  static DataPtr sharedDataPtrFrom(const Storage& src) {
-    if (src.allocation_) {
-      return viewDataPtrFrom(src.allocation_);
-    }
-    if (src.data_ptr_) {
-      // Non-owning view: same pointer, no lifetime transfer.
-      return DataPtr(src.data_ptr_.get(), src.data_ptr_.device());
-    }
-    return DataPtr();
   }
 };
 
