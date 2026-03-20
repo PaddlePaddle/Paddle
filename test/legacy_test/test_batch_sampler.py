@@ -302,10 +302,6 @@ class TestBatchSamplerWithIterableSamplerShuffle(
         self.drop_last = True
 
 
-class TestBatchSamplerError(unittest.TestCase):
-    pass
-
-
 class TestWeightedRandomSampler(unittest.TestCase):
     def init_probs(self, total, pos):
         pos_probs = np.random.random((pos,)).astype('float32')
