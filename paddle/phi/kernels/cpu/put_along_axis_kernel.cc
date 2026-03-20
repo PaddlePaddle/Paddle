@@ -33,6 +33,11 @@ void PutAlongAxisKernel(const Context& dev_ctx,
                         bool include_self,
                         DenseTensor* out) {
   Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+  // Early return when the index tensor is empty (has a 0-size dimension).
+  // Nothing to scatter; the output is just a copy of the input.
+  if (index.numel() == 0) {
+    return;
+  }
   const auto& index_type = index.dtype();
   if (reduce == "add") {
     if (index_type == DataType::INT32) {

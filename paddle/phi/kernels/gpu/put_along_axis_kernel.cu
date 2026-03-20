@@ -35,6 +35,11 @@ void PutAlongAxisKernel(const Context& dev_ctx,
   const auto& index_type = index.dtype();
 
   Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+  // Early return when the index tensor is empty (has a 0-size dimension).
+  // Nothing to scatter; the output is just a copy of the input.
+  if (index.numel() == 0) {
+    return;
+  }
   if (reduce == "add") {
     if (index_type == DataType::INT32) {
       funcs::gpu_scatter_add_kernel<T, int32_t>(
