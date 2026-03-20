@@ -27,7 +27,6 @@ defaults:
 jobs:
   check-bypass:
     name: Check bypass
-    if: ${{ inputs.clone-can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
       workflow-name: "win-gpu"
@@ -38,7 +37,7 @@ jobs:
   build-and-test:
     name: Build and test
     needs: [check-bypass]
-    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' && inputs.clone-can-skip != 'true' }}
     runs-on:
       group: win-gpu
     timeout-minutes: 240

@@ -30,7 +30,7 @@ defaults:
 jobs:
   check-bypass:
     name: Check bypass
-    if: ${{ github.repository_owner == 'PaddlePaddle' && inputs.clone-can-skip != 'true' }}
+    if: ${{ github.repository_owner == 'PaddlePaddle' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
       workflow-name: distribute
