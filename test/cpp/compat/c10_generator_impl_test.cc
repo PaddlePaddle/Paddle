@@ -160,6 +160,34 @@ TEST(GeneratorImplTest, SetAndGetPyObj) {
   ASSERT_EQ(impl.pyobj(), fake_pyobj);
 }
 
+// ---------- intrusive_ptr refcount semantics --------------------------------
+
+TEST(GeneratorImplTest, MakeIntrusiveInitialRefcountIsOne) {
+  auto ptr = c10::make_intrusive<c10::GeneratorImpl>(c10::Device(c10::kCPU));
+  ASSERT_EQ(ptr.use_count(), 1u);
+}
+
+TEST(GeneratorImplTest, CopyIntrusivePtrIncrementsRefcount) {
+  auto ptr = c10::make_intrusive<c10::GeneratorImpl>(c10::Device(c10::kCPU));
+  ASSERT_EQ(ptr.use_count(), 1u);
+  {
+    auto copy = ptr;
+    ASSERT_EQ(ptr.use_count(), 2u);
+    ASSERT_EQ(copy.use_count(), 2u);
+  }
+  // After copy goes out of scope, refcount returns to 1.
+  ASSERT_EQ(ptr.use_count(), 1u);
+}
+
+TEST(GeneratorImplTest, MoveIntrusivePtrKeepsRefcount) {
+  auto ptr = c10::make_intrusive<c10::GeneratorImpl>(c10::Device(c10::kCPU));
+  c10::GeneratorImpl* raw = ptr.get();
+  auto moved = std::move(ptr);
+  ASSERT_FALSE(ptr.defined());
+  ASSERT_EQ(moved.use_count(), 1u);
+  ASSERT_EQ(moved.get(), raw);
+}
+
 // ---------- Internal accessor -----------------------------------------------
 
 TEST(GeneratorImplTest, PaddleGeneratorAccessor) {

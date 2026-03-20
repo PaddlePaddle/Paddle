@@ -208,7 +208,12 @@ class intrusive_ptr final {
 
   intrusive_ptr(std::nullptr_t) noexcept : target_(NullType::singleton()) {}
 
-  explicit intrusive_ptr(TTarget* raw) : target_(raw) { retain_(); }
+  explicit intrusive_ptr(TTarget* raw) : target_(raw) {
+    if (target_ != NullType::singleton()) {
+      target_->combined_refcount_.store(detail::kUniqueRef,
+                                        std::memory_order_relaxed);
+    }
+  }
 
   intrusive_ptr(const intrusive_ptr& rhs) : target_(rhs.target_) { retain_(); }
 
@@ -412,10 +417,10 @@ class weak_intrusive_ptr final {
   void reset() { reset_(); }
 };
 
-// Factory function
+// Creates a new T with an initial strong refcount of 1.
 template <typename T, typename... Args>
 intrusive_ptr<T> make_intrusive(Args&&... args) {
-  return intrusive_ptr<T>::reclaim(new T(std::forward<Args>(args)...));
+  return intrusive_ptr<T>(new T(std::forward<Args>(args)...));
 }
 
 // intrusive_ptr::make static method wrapper
