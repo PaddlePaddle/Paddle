@@ -53,7 +53,7 @@ def add_doc_and_signature(func_name: str, docstr: str, func_def: str) -> None:
             if inspect.isfunction(func):
                 func.__doc__ = docstr
             elif inspect.ismethod(func):
-                func.__self__.__doc__ = docstr
+                func.__func__.__doc__ = docstr
             elif inspect.isbuiltin(func):
                 _add_docstr(func, docstr)
     methods_dict = dict(methods_map)
