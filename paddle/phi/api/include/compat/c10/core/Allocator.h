@@ -43,34 +43,13 @@ class DataPtr {
  public:
   DataPtr() : device_(DeviceType::CPU) {}
 
-  DataPtr(void* data, Device device) : ptr_(data) {
-    switch (device.type()) {
-      case DeviceType::CPU:
-        device_ = phi::CPUPlace();
-        break;
-      case DeviceType::CUDA:
-        device_ = phi::GPUPlace();
-        break;
-      default:
-        device_ = phi::Place();
-        break;
-    }
-  }
+  DataPtr(void* data, Device device)
+      : ptr_(data), device_(device._PD_GetInner()) {}
 
   DataPtr(void* data, void* ctx, DeleterFnPtr ctx_deleter, Device device)
-      : ptr_(data, ctx, ctx_deleter), deleter_(ctx_deleter) {
-    switch (device.type()) {
-      case DeviceType::CPU:
-        device_ = phi::CPUPlace();
-        break;
-      case DeviceType::CUDA:
-        device_ = phi::GPUPlace();
-        break;
-      default:
-        device_ = phi::Place();
-        break;
-    }
-  }
+      : ptr_(data, ctx, ctx_deleter),
+        deleter_(ctx_deleter),
+        device_(device._PD_GetInner()) {}
 
   void* operator->() const { return ptr_.get(); }
 
@@ -108,21 +87,14 @@ class DataPtr {
     return ptr_.compare_exchange_deleter(expected_deleter, new_deleter);
   }
 
-  Device device() const {
-    if (phi::is_cpu_place(device_)) {
-      return Device(DeviceType::CPU);
-    } else if (phi::is_gpu_place(device_)) {
-      return Device(DeviceType::CUDA);
-    } else {
-      return Device(DeviceType::UNDEFINED);
-    }
-  }
+  Device device() const { return Device(device_); }
+
+  void unsafe_set_device(Device device) { device_ = device._PD_GetInner(); }
 
  private:
   c10::detail::UniqueVoidPtr ptr_;
   DeleterFnPtr deleter_ = nullptr;
   phi::Place device_;
-  std::shared_ptr<phi::Allocation> allocation_;
 };
 
 inline bool operator==(const DataPtr& dp, std::nullptr_t) noexcept {

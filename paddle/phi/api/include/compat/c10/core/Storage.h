@@ -47,18 +47,24 @@ struct Storage {
   // Default constructor
   Storage() = default;
 
-  // Copy constructor
+  // Copy constructor: shares allocation (increments refcount), creates
+  // independent DataPtr wrapping the shared allocation.
   Storage(const Storage& other)
       : allocation_(other.allocation_),
         allocator_(other.allocator_),
-        resizable_(other.resizable_) {}
+        nbytes_(other.nbytes_),
+        resizable_(other.resizable_) {
+    data_ptr_ = sharedDataPtrFrom(other);
+  }
 
   // Copy assignment operator
   Storage& operator=(const Storage& other) {
     if (this != &other) {
       allocation_ = other.allocation_;
       allocator_ = other.allocator_;
+      nbytes_ = other.nbytes_;
       resizable_ = other.resizable_;
+      data_ptr_ = sharedDataPtrFrom(other);
     }
     return *this;
   }
@@ -67,8 +73,11 @@ struct Storage {
   Storage(Storage&& other) noexcept
       : allocation_(std::move(other.allocation_)),
         allocator_(other.allocator_),
-        resizable_(other.resizable_) {
+        nbytes_(other.nbytes_),
+        resizable_(other.resizable_),
+        data_ptr_(std::move(other.data_ptr_)) {
     other.allocator_ = nullptr;
+    other.nbytes_ = 0;
     other.resizable_ = false;
   }
 
@@ -77,8 +86,11 @@ struct Storage {
     if (this != &other) {
       allocation_ = std::move(other.allocation_);
       allocator_ = other.allocator_;
+      nbytes_ = other.nbytes_;
       resizable_ = other.resizable_;
+      data_ptr_ = std::move(other.data_ptr_);
       other.allocator_ = nullptr;
+      other.nbytes_ = 0;
       other.resizable_ = false;
     }
     return *this;
@@ -86,8 +98,13 @@ struct Storage {
 
   // Constructor with allocation and optional storage properties
   Storage(std::shared_ptr<phi::Allocation> alloc,
-          std::unique_ptr<phi::StorageProperties> props = nullptr)
-      : allocation_(std::move(alloc)) {}
+          std::unique_ptr<phi::StorageProperties> props = nullptr) {
+    if (alloc) {
+      nbytes_ = alloc->size();
+      allocation_ = alloc;
+      data_ptr_ = viewDataPtrFrom(std::move(alloc));
+    }
+  }
 
   // Constructor with size and allocator (LibTorch compatible)
   explicit Storage(size_t size_bytes, phi::Allocator* allocator = nullptr) {
@@ -95,9 +112,8 @@ struct Storage {
       allocation_ =
           std::shared_ptr<phi::Allocation>(allocator->Allocate(size_bytes));
       allocator_ = allocator;
-    } else {
-      allocation_ = nullptr;
-      allocator_ = nullptr;
+      nbytes_ = size_bytes;
+      data_ptr_ = viewDataPtrFrom(allocation_);
     }
   }
 
@@ -105,52 +121,74 @@ struct Storage {
   Storage(use_byte_size_t /*use_byte_size*/,
           size_t size_bytes,
           phi::Allocator* allocator = nullptr,
-          bool resizable = false)
-      : allocator_(allocator), resizable_(resizable) {
+          bool resizable = false) {
+    allocator_ = allocator;
+    nbytes_ = size_bytes;
+    resizable_ = resizable;
     if (allocator) {
       allocation_ =
           std::shared_ptr<phi::Allocation>(allocator->Allocate(size_bytes));
-    } else {
-      allocation_ = nullptr;
+      data_ptr_ = viewDataPtrFrom(allocation_);
     }
   }
 
-  // LibTorch compatible constructor with pre-allocated memory
+  // LibTorch compatible constructor with pre-allocated phi::Allocation
   Storage(use_byte_size_t /*use_byte_size*/,
           size_t size_bytes,
-          std::shared_ptr<phi::Allocation> data_ptr,
+          std::shared_ptr<phi::Allocation> alloc,
           phi::Allocator* allocator = nullptr,
-          bool resizable = false)
-      : allocation_(std::move(data_ptr)),
-        allocator_(allocator),
-        resizable_(resizable) {}
+          bool resizable = false) {
+    allocation_ = alloc;
+    allocator_ = allocator;
+    nbytes_ = size_bytes;
+    resizable_ = resizable;
+    data_ptr_ = viewDataPtrFrom(std::move(alloc));
+  }
+
+  // LibTorch compatible constructor with pre-allocated DataPtr
+  Storage(use_byte_size_t /*use_byte_size*/,
+          size_t size_bytes,
+          DataPtr data_ptr,
+          phi::Allocator* allocator = nullptr,
+          bool resizable = false) {
+    allocator_ = allocator;
+    nbytes_ = size_bytes;
+    resizable_ = resizable;
+    data_ptr_ = std::move(data_ptr);
+  }
 
  protected:
-  // Unsafe borrow constructor (for MaybeOwnedTraits)
-  explicit Storage(unsafe_borrow_t, const Storage& rhs)
-      : allocation_(rhs.allocation_),
-        allocator_(rhs.allocator_),
-        resizable_(rhs.resizable_) {}
+  // Unsafe borrow constructor (for MaybeOwnedTraits): shares allocation
+  // without transfer of ownership.
+  explicit Storage(unsafe_borrow_t, const Storage& rhs) {
+    allocation_ = rhs.allocation_;
+    allocator_ = rhs.allocator_;
+    nbytes_ = rhs.nbytes_;
+    resizable_ = rhs.resizable_;
+    data_ptr_ = sharedDataPtrFrom(rhs);
+  }
 
   // Forward declare template and make specialization a friend
   template <typename T>
   friend struct MaybeOwnedTraits;
 
  public:
-  // Check if storage is valid (has allocation)
-  bool valid() const { return allocation_ != nullptr; }
+  // Check if storage is valid (has allocation or data)
+  bool valid() const { return static_cast<bool>(data_ptr_) || allocation_; }
 
   // Boolean conversion operator (LibTorch compatible)
-  explicit operator bool() const { return allocation_ != nullptr; }
+  explicit operator bool() const { return valid(); }
 
   // Get the number of bytes in the storage
-  size_t nbytes() const { return allocation_ ? allocation_->size() : 0; }
+  size_t nbytes() const { return nbytes_; }
 
   // Set the number of bytes (for resizable storage)
   void set_nbytes(size_t size_bytes) {
     if (resizable_ && allocator_) {
       allocation_ =
           std::shared_ptr<phi::Allocation>(allocator_->Allocate(size_bytes));
+      data_ptr_ = viewDataPtrFrom(allocation_);
+      nbytes_ = size_bytes;
     }
   }
 
@@ -158,28 +196,18 @@ struct Storage {
   bool resizable() const { return resizable_; }
 
   // Get mutable data pointer
-  void* mutable_data() const {
-    return allocation_ ? allocation_->ptr() : nullptr;
-  }
+  void* mutable_data() const { return data_ptr_.get(); }
 
   // Get const data pointer
-  const void* data() const {
-    return allocation_ ? allocation_->ptr() : nullptr;
-  }
+  const void* data() const { return data_ptr_.get(); }
 
-  // Get the underlying allocation as DataPtr (LibTorch compatible: data_ptr())
-  DataPtr data_ptr() const {
-    return allocation_ ? DataPtr(allocation_->ptr(), allocation_->place())
-                       : DataPtr();
-  }
+  // Get a const reference to the underlying DataPtr (LibTorch compatible)
+  const DataPtr& data_ptr() const { return data_ptr_; }
 
-  // Get the underlying allocation as mutable DataPtr reference
-  DataPtr mutable_data_ptr() const {
-    return allocation_ ? DataPtr(allocation_->ptr(), allocation_->place())
-                       : DataPtr();
-  }
+  // Get a mutable reference to the underlying DataPtr (LibTorch compatible)
+  DataPtr& mutable_data_ptr() const { return const_cast<DataPtr&>(data_ptr_); }
 
-  // Get the underlying allocation
+  // Get the underlying phi::Allocation (Paddle-specific)
   std::shared_ptr<phi::Allocation> allocation() const { return allocation_; }
 
   // Get the allocator
@@ -187,13 +215,14 @@ struct Storage {
 
   // Get the device/place type
   phi::AllocationType device_type() const {
-    return allocation_ ? allocation_->place().GetType()
-                       : phi::AllocationType::CPU;
+    if (allocation_) return allocation_->place().GetType();
+    return phi::AllocationType::CPU;
   }
 
   // Get the device/place
   phi::Place device() const {
-    return allocation_ ? allocation_->place() : phi::Place();
+    if (allocation_) return allocation_->place();
+    return phi::Place();
   }
 
   // Check if this storage is unique (use_count == 1)
@@ -204,33 +233,77 @@ struct Storage {
 
   // Check if this storage is an alias of another
   bool is_alias_of(const Storage& other) const {
-    if (!allocation_ || !other.allocation_) {
+    if (!valid() || !other.valid()) {
       return false;
     }
-    // Check if they share the same allocation or overlapping memory
     return allocation_ == other.allocation_ ||
            isSharedStorageAlias(*this, other);
   }
 
-  // Set data pointer (swap and return old) - accepts shared_ptr
-  // Note: DataPtr version removed due to unsafe cast from raw pointer to
-  // phi::Allocation*. Use shared_ptr<phi::Allocation> version instead.
-  std::shared_ptr<phi::Allocation> set_data_ptr(
-      std::shared_ptr<phi::Allocation> data_ptr) {
-    std::shared_ptr<phi::Allocation> old_data_ptr = std::move(allocation_);
-    allocation_ = std::move(data_ptr);
-    return old_data_ptr;
+  // Set data pointer (swap and return old) - LibTorch compatible DataPtr
+  // version. Clears allocation_ since the new DataPtr manages its own
+  // lifecycle. Use set_data_ptr(shared_ptr<phi::Allocation>) for Paddle paths.
+  DataPtr set_data_ptr(DataPtr&& new_data_ptr) {
+    DataPtr old = std::move(data_ptr_);
+    data_ptr_ = std::move(new_data_ptr);
+    allocation_ = nullptr;
+    return old;
   }
 
-  // Set data pointer (no swap) - accepts shared_ptr
-  void set_data_ptr_noswap(std::shared_ptr<phi::Allocation> data_ptr) {
-    allocation_ = std::move(data_ptr);
+  // Set data pointer (no swap) - LibTorch compatible DataPtr version
+  void set_data_ptr_noswap(DataPtr&& new_data_ptr) {
+    data_ptr_ = std::move(new_data_ptr);
+    allocation_ = nullptr;
+  }
+
+  // Set data pointer - Paddle-specific shared_ptr<phi::Allocation> version
+  std::shared_ptr<phi::Allocation> set_data_ptr(
+      std::shared_ptr<phi::Allocation> new_alloc) {
+    std::shared_ptr<phi::Allocation> old_alloc = std::move(allocation_);
+    allocation_ = new_alloc;
+    if (allocation_) nbytes_ = allocation_->size();
+    data_ptr_ = viewDataPtrFrom(std::move(new_alloc));
+    return old_alloc;
+  }
+
+  // Set data pointer (no swap) - Paddle-specific shared_ptr version
+  void set_data_ptr_noswap(std::shared_ptr<phi::Allocation> new_alloc) {
+    allocation_ = new_alloc;
+    if (allocation_) nbytes_ = allocation_->size();
+    data_ptr_ = viewDataPtrFrom(std::move(new_alloc));
   }
 
  private:
+  // Member declaration order matters for initializer-list initialization.
+  // allocation_ must come before data_ptr_ so that viewDataPtrFrom can
+  // use allocation_ in constructors that initialize data_ptr_ from it.
   std::shared_ptr<phi::Allocation> allocation_;
   phi::Allocator* allocator_ = nullptr;
+  size_t nbytes_ = 0;
   bool resizable_ = false;
+  DataPtr data_ptr_;
+
+  // Create a non-owning DataPtr view of a phi::Allocation.
+  // The allocation's lifetime is managed separately by allocation_.
+  // This does NOT increment the shared_ptr refcount, so use_count() stays
+  // accurate.
+  static DataPtr viewDataPtrFrom(
+      const std::shared_ptr<phi::Allocation>& alloc) {
+    if (!alloc) return DataPtr();
+    return DataPtr(alloc->ptr(), c10::Device(alloc->place()));
+  }
+
+  // Create a DataPtr for the copy/borrow case.
+  static DataPtr sharedDataPtrFrom(const Storage& src) {
+    if (src.allocation_) {
+      return viewDataPtrFrom(src.allocation_);
+    }
+    if (src.data_ptr_) {
+      // Non-owning view: same pointer, no lifetime transfer.
+      return DataPtr(src.data_ptr_.get(), src.data_ptr_.device());
+    }
+    return DataPtr();
+  }
 };
 
 // Implementation of isSharedStorageAlias
@@ -239,7 +312,6 @@ inline bool isSharedStorageAlias(const Storage& storage0,
   if (!storage0.valid() || !storage1.valid()) {
     return false;
   }
-  // Check if memory ranges overlap
   const void* ptr0 = storage0.data();
   const void* ptr1 = storage1.data();
   size_t size0 = storage0.nbytes();
@@ -254,12 +326,10 @@ inline bool isSharedStorageAlias(const Storage& storage0,
   const char* start1 = static_cast<const char*>(ptr1);
   const char* end1 = start1 + size1;
 
-  // Check for overlap
   return !(end0 <= start1 || end1 <= start0);
 }
 
 // Template specialization for MaybeOwnedTraits<c10::Storage>
-// Provides safe borrowing semantics for Storage objects
 template <typename T>
 struct MaybeOwnedTraits;
 
@@ -268,37 +338,28 @@ struct MaybeOwnedTraits<c10::Storage> {
   using owned_type = c10::Storage;
   using borrow_type = c10::Storage;
 
-  // Create a borrowed reference from an owned Storage
   static borrow_type createBorrow(const owned_type& from) {
     return borrow_type(borrow_type::unsafe_borrow_t{}, from);
   }
 
-  // Assign a borrowed reference (LibTorch compatible signature with pointer)
   static void assignBorrow(borrow_type* lhs, const borrow_type& rhs) {
     *lhs = borrow_type(borrow_type::unsafe_borrow_t{}, rhs);
   }
 
-  // Destroy a borrowed reference (release without deallocating)
-  static void destroyBorrow(borrow_type* toDestroy) {
-    *toDestroy = Storage();  // Reset to empty state
-  }
+  static void destroyBorrow(borrow_type* toDestroy) { *toDestroy = Storage(); }
 
-  // Get a reference to the owned object from a borrow
   static const owned_type& referenceFromBorrow(const borrow_type& borrow) {
     return borrow;
   }
 
-  // Get a pointer to the owned object from a borrow
   static const owned_type* pointerFromBorrow(const borrow_type& borrow) {
     return &borrow;
   }
 
-  // Debug check if borrow is valid
   static bool debugBorrowIsValid(const borrow_type& /*borrow*/) { return true; }
 };
 
 // Template specialization for ExclusivelyOwnedTraits<c10::Storage>
-// Provides exclusive ownership semantics for Storage objects
 template <typename T>
 struct ExclusivelyOwnedTraits;
 
@@ -308,25 +369,19 @@ struct ExclusivelyOwnedTraits<c10::Storage> {
   using pointer_type = c10::Storage*;
   using const_pointer_type = const c10::Storage*;
 
-  // Create a null/empty representation
   static repr_type nullRepr() { return c10::Storage(); }
 
-  // Create a Storage in place with given arguments
   template <class... Args>
   static repr_type createInPlace(Args&&... args) {
     return c10::Storage(std::forward<Args>(args)...);
   }
 
-  // Move a Storage into the representation
   static repr_type moveToRepr(c10::Storage&& x) { return std::move(x); }
 
-  // Take ownership from a Storage pointer (LibTorch compatible)
   static c10::Storage take(c10::Storage* x) { return std::move(*x); }
 
-  // Get a pointer to the representation (mutable)
   static pointer_type getImpl(repr_type* x) { return x; }
 
-  // Get a const pointer to the representation
   static const_pointer_type getImpl(const repr_type& x) { return &x; }
 };
 
