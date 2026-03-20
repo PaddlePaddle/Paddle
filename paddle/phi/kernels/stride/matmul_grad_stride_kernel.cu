@@ -134,6 +134,7 @@ void MatmulGradStrideKernel(const Context& dev_ctx,
                             bool transpose_y,
                             DenseTensor* dx,
                             DenseTensor* dy) {
+  // UNREACHABLE
   if (!FLAGS_use_stride_kernel) {
     PADDLE_THROW(common::errors::Fatal(
         "FLAGS_use_stride_kernel is closed. Strided kernel "
