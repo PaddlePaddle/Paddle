@@ -54,13 +54,13 @@ static void UniqueConsecutiveFlattenedCUDATensor(const Context& dev_ctx,
   auto in_data_hat = dev_ctx.template Alloc<InT>(&in_hat);
 
   DenseTensor sorted_indices;
-  sorted_indices.Resize(make_ddim({num_input}));
+  sorted_indices.Resize({num_input});
   auto sorted_indices_data = dev_ctx.template Alloc<IndexT>(&sorted_indices);
   thrust::sequence(
       thrust::device, sorted_indices_data, sorted_indices_data + num_input);
   // 1. Calculate op result: 'out'
   DenseTensor range;
-  range.Resize(make_ddim({num_input + 1}));
+  range.Resize({num_input + 1});
   auto range_data_ptr = dev_ctx.template Alloc<IndexT>(&range);
   thrust::sequence(
       thrust::device, range_data_ptr, range_data_ptr + num_input + 1);
@@ -72,14 +72,14 @@ static void UniqueConsecutiveFlattenedCUDATensor(const Context& dev_ctx,
           thrust::device, out_data, out_data + num_input, range_data_ptr, equal)
           .first -
       out_data;
-  out->Resize(make_ddim({num_out}));
+  out->Resize({num_out});
 
   // 2. Calculate inverse index: 'inverse'
   if (return_inverse) {
-    inverse->Resize(make_ddim({num_input}));
+    inverse->Resize({num_input});
     auto inverse_data = dev_ctx.template Alloc<IndexT>(inverse);
     DenseTensor inv_loc;
-    inv_loc.Resize(make_ddim({num_input}));
+    inv_loc.Resize({num_input});
     auto inv_loc_data_ptr = dev_ctx.template Alloc<IndexT>(&inv_loc);
     thrust::adjacent_difference(thrust::device,
                                 in_data_hat,
@@ -100,7 +100,7 @@ static void UniqueConsecutiveFlattenedCUDATensor(const Context& dev_ctx,
   }
   // 3. Calculate 'counts'
   if (return_counts) {
-    counts->Resize(make_ddim({num_out}));
+    counts->Resize({num_out});
     auto count_data = dev_ctx.template Alloc<IndexT>(counts);
     // init 'count_data' as 0
     thrust::fill(thrust::device, count_data, count_data + num_out, 0);
@@ -179,10 +179,10 @@ static void ComputeUniqueConsecutiveDims(const Context& dev_ctx,
     inverse = &tmp;
   }
 
-  inverse->Resize(make_ddim({row}));
+  inverse->Resize({row});
   auto inverse_data = dev_ctx.template Alloc<IndexT>(inverse);
   DenseTensor inv_loc;
-  inv_loc.Resize(make_ddim({row}));
+  inv_loc.Resize({row});
   auto inv_loc_data_ptr = dev_ctx.template Alloc<IndexT>(&inv_loc);
   thrust::adjacent_difference(thrust::device,
                               sorted_indices_data,
@@ -203,7 +203,7 @@ static void ComputeUniqueConsecutiveDims(const Context& dev_ctx,
 
   // 2. sorted indices
   DenseTensor range;
-  range.Resize(make_ddim({row + 1}));
+  range.Resize({row + 1});
   auto range_data_ptr = dev_ctx.template Alloc<IndexT>(&range);
   thrust::sequence(thrust::device, range_data_ptr, range_data_ptr + row + 1);
   int num_out;
@@ -216,11 +216,11 @@ static void ComputeUniqueConsecutiveDims(const Context& dev_ctx,
             sorted_indices_data;
   thrust::device_ptr<IndexT> range_data_ptr_dev(range_data_ptr);
   range_data_ptr_dev[num_out] = row;
-  sorted_indices->Resize(make_ddim({num_out}));
+  sorted_indices->Resize({num_out});
 
   // 3. counts: 'counts'
   if (return_counts) {
-    counts->Resize(make_ddim({num_out}));
+    counts->Resize({num_out});
     auto count_data = dev_ctx.template Alloc<IndexT>(counts);
     thrust::fill(thrust::device, count_data, count_data + row, 0);
     thrust::adjacent_difference(thrust::device,
@@ -386,7 +386,7 @@ static void UniqueConsecutiveDimsCUDATensor(const Context& dev_ctx,
   const InT* in_trans_data = in_trans.data<InT>();
 
   DenseTensor sorted_indices;
-  sorted_indices.Resize(make_ddim({row}));
+  sorted_indices.Resize({row});
   auto sorted_indices_data = dev_ctx.template Alloc<IndexT>(&sorted_indices);
 
   // 2. Calculate 'inverse', 'counts'
