@@ -7508,6 +7508,16 @@ def put_along_axis(
             "`indices` and `arr` must have the same number of dimensions!"
         )
     axis = non_negative_axis(arr, axis)
+    # When indices is empty (numel == 0) there are no scatter operations to
+    # perform.  Return a copy of arr immediately to avoid passing a 0-size
+    # index tensor through the broadcast path, which would attempt an invalid
+    # expand (e.g. values dim 4 -> 0) and raise an error.
+    # In dynamic mode use numel(); in static mode indices.numel() returns a
+    # symbolic Value so we check the shape directly instead.
+    if (paddle.in_dynamic_mode() and indices.numel() == 0) or (
+        not paddle.in_dynamic_mode() and 0 in indices.shape
+    ):
+        return paddle.assign(arr)
     if broadcast:
         if has_dynamic_shape(arr.shape) or has_dynamic_shape(indices.shape):
             arr_shape = paddle.shape(arr)
@@ -7627,6 +7637,10 @@ def put_along_axis_(
             "`indices` and `arr` must have the same number of dimensions!"
         )
     axis = non_negative_axis(arr, axis)
+    if (paddle.in_dynamic_mode() and indices.numel() == 0) or (
+        not paddle.in_dynamic_mode() and 0 in indices.shape
+    ):
+        return arr
     if broadcast:
         broadcast_shape = infer_broadcast_shape(arr, indices, axis)
         values = (

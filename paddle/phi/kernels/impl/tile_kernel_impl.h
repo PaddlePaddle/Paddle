@@ -80,15 +80,8 @@ void Tile(const Context& dev_ctx,
   auto eigen_out = EigenTensor<T, Rank>::From(*out, out_dims);
   auto& place = *dev_ctx.eigen_device();
 
-  // use 32-bit index to speed up
-  bool use_32bit_index = eigen_out.size() < Eigen::NumTraits<int>::highest();
-  if (use_32bit_index) {
-    funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
-        place, To32BitIndex(eigen_out), To32BitIndex(eigen_x), bcast_dims);
-  } else {
-    funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
-        place, eigen_out, eigen_x, bcast_dims);
-  }
+  funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
+      place, eigen_out, eigen_x, bcast_dims);
 }
 
 template <typename T, typename Context>
