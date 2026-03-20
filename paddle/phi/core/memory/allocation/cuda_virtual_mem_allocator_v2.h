@@ -55,10 +55,9 @@ class CUDAVirtualMemAllocatorV2 : public Allocator {
 
   void UnmapHandle(VmmDevicePtr ptr, size_t size);
   void MapHandlesToVA(VmmDevicePtr ptr, const std::vector<VmmAllocHandle>& hs);
-  // Exposes the allocation-level handle list for IPC/export or for the upper
-  // best-fit layer to bootstrap block-level parts.
-  bool CollectAllocationHandleLayout(void* base_ptr,
-                                     HandleLayout* layout) const;
+  // Exposes the allocation-level handle list for IPC/export queries. The key
+  // is the raw allocation ptr returned by this allocator.
+  bool CollectAllocationHandleLayout(void* ptr, HandleLayout* layout) const;
 
  protected:
   phi::Allocation* AllocateImpl(size_t size) override;
@@ -66,8 +65,8 @@ class CUDAVirtualMemAllocatorV2 : public Allocator {
 
  private:
   void InitOnce();
-  void RegisterHandleLayout(void* base_ptr, const HandleLayout& layout);
-  void UnregisterHandleLayout(void* base_ptr);
+  void RegisterHandleLayout(void* ptr, const HandleLayout& layout);
+  void UnregisterHandleLayout(void* ptr);
 
   GPUPlace place_;
   size_t handle_size_;
@@ -81,8 +80,8 @@ class CUDAVirtualMemAllocatorV2 : public Allocator {
   CUmemAllocationProp prop_{};
   std::vector<CUmemAccessDesc> access_desc_;
 
-  mutable std::unordered_map<void*, HandleLayout> base_ptr_layout_map_;
-  mutable std::mutex base_ptr_layout_mu_;
+  mutable std::unordered_map<void*, HandleLayout> allocation_layout_map_;
+  mutable std::mutex allocation_layout_mu_;
 };
 
 }  // namespace allocation
