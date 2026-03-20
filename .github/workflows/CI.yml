@@ -90,7 +90,7 @@ jobs:
     uses: ./.github/workflows/_Linux-NPU.yml
     needs: [clone, cpu, build-docker]
     with:
-      can-skip: ${{ needs.cpu.outputs.can-skip || needs.clone.outputs.can-skip || false }}
+      can-skip: ${{ needs.cpu.outputs.can-skip == 'true' || needs.clone.outputs.can-skip == 'true' }}
       docker_npu_image: ${{ needs.build-docker.outputs.docker_npu_image }}
 
   ixuca:
