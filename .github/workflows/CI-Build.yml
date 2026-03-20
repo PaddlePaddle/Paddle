@@ -25,7 +25,7 @@ jobs:
       contents: read
       actions: read
     outputs:
-      can-skip: ${{ steps.skip-skill.outputs.can-skip || 'false' }}
+      can-skip: ${{ steps.skip-skill.outputs.should-skip || 'false' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
