@@ -60,18 +60,18 @@ static void UniqueConsecutiveFlattenedTensor(const Context& dev_ctx,
   }
   out_vec.resize(output_size);
 
-  out->Resize(make_ddim({output_size}));
+  out->Resize({output_size});
   auto* out_data = dev_ctx.template Alloc<InT>(out);
   std::copy(out_vec.begin(), out_vec.end(), out_data);
 
   if (return_inverse) {
-    inverse->Resize(make_ddim({in.numel()}));
+    inverse->Resize({in.numel()});
     auto* inverse_data = dev_ctx.template Alloc<IndexT>(inverse);
     std::copy(inverse_vec.begin(), inverse_vec.end(), inverse_data);
   }
 
   if (return_counts) {
-    count->Resize(make_ddim({out->numel()}));
+    count->Resize({out->numel()});
     auto* counts_data = dev_ctx.template Alloc<IndexT>(count);
     std::copy(counts_vec.begin(), counts_vec.end(), counts_data);
   }
