@@ -1230,6 +1230,7 @@ endif()
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM STATIC_BUILD_TESTS test_c_embedding_op)
+  list(REMOVE_ITEM STATIC_BUILD_TESTS test_cuda_empty_cache)
 endif()
 
 foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
