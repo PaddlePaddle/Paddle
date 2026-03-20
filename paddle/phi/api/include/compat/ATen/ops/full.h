@@ -58,10 +58,11 @@ inline at::Tensor full(at::IntArrayRef size,
                        ::std::optional<at::Device> device,
                        ::std::optional<bool> pin_memory) {
   PD_CHECK(!layout.has_value(), "`layout` is not supported now.");
-  auto options = at::TensorOptions()
-                     .dtype(dtype.value_or(c10::get_default_dtype()))
-                     .device(device.value_or(at::kCPU))
-                     .pinned_memory(pin_memory);
+  auto options =
+      at::TensorOptions()
+          .dtype(dtype.value_or(c10::get_default_dtype_as_scalartype()))
+          .device(device.value_or(at::kCPU))
+          .pinned_memory(pin_memory);
   return full(size, fill_value, options);
 }
 
@@ -92,10 +93,11 @@ inline at::Tensor full_symint(c10::SymIntArrayRef size,
                               ::std::optional<at::Device> device,
                               ::std::optional<bool> pin_memory) {
   PD_CHECK(!layout.has_value(), "`layout` is not supported now.");
-  auto options = at::TensorOptions()
-                     .dtype(dtype.value_or(c10::get_default_dtype()))
-                     .device(device.value_or(at::kCPU))
-                     .pinned_memory(pin_memory);
+  auto options =
+      at::TensorOptions()
+          .dtype(dtype.value_or(c10::get_default_dtype_as_scalartype()))
+          .device(device.value_or(at::kCPU))
+          .pinned_memory(pin_memory);
   return full_symint(size, fill_value, options);
 }
 
