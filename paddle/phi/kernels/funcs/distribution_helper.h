@@ -29,7 +29,7 @@ limitations under the License. */
 #include "paddle/phi/core/generator.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-#include "paddle/phi/kernels/funcs/index_impl.cu.h"
+#include "paddle/phi/kernels/funcs/index_impl.cuh"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 #endif
 

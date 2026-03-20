@@ -24,7 +24,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
-#include "paddle/phi/kernels/funcs/select_impl.cu.h"
+#include "paddle/phi/kernels/funcs/select_impl.cuh"
 
 namespace phi {
 

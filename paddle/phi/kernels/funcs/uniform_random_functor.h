@@ -24,7 +24,7 @@
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
-#include "paddle/phi/kernels/funcs/index_impl.cu.h"
+#include "paddle/phi/kernels/funcs/index_impl.cuh"
 #endif
 
 #include "glog/logging.h"

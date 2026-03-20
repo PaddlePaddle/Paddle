@@ -23,14 +23,14 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/cub.h"
-#include "paddle/phi/kernels/funcs/index_impl.cu.h"
+#include "paddle/phi/kernels/funcs/index_impl.cuh"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/funcs/sparse/scatter.cu.h"
-#include "paddle/phi/kernels/funcs/sparse/utils.cu.h"
+#include "paddle/phi/kernels/funcs/sparse/scatter.cuh"
+#include "paddle/phi/kernels/funcs/sparse/utils.cuh"
 #include "paddle/phi/kernels/primitive/compute_primitives.h"
 #include "paddle/phi/kernels/sparse/conv_kernel.h"
 #include "paddle/phi/kernels/sparse/gpu/conv_host_buffer.h"
-#include "paddle/phi/kernels/sparse/gpu/conv_with_buffer.cu.h"
+#include "paddle/phi/kernels/sparse/gpu/conv_with_buffer.cuh"
 
 namespace phi {
 namespace sparse {

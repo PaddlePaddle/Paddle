@@ -25,9 +25,9 @@
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/dense_tensor_iterator.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
-#include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
+#include "paddle/phi/kernels/funcs/index_elementwise.cuh"
 #include "paddle/phi/kernels/selu_kernel.h"
-#include "paddle/phi/kernels/stride/elementwise_stride_base.cu.h"
+#include "paddle/phi/kernels/stride/elementwise_stride_base.cuh"
 
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 #include "paddle/phi/kernels/funcs/dims_simplifier.h"

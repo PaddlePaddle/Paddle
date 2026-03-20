@@ -16,7 +16,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
-#include "paddle/phi/kernels/funcs/strided_copy_kernel.cu.h"
+#include "paddle/phi/kernels/funcs/strided_copy_kernel.cuh"
 
 namespace phi {
 

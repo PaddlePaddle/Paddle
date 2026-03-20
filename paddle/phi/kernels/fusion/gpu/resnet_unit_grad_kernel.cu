@@ -15,9 +15,9 @@
 #pragma once
 
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/fusion/gpu/cudnn_bn_stats_finalize.cu.h"
-#include "paddle/phi/kernels/fusion/gpu/cudnn_norm_conv.cu.h"
-#include "paddle/phi/kernels/fusion/gpu/cudnn_scale_bias_add_relu.cu.h"
+#include "paddle/phi/kernels/fusion/gpu/cudnn_bn_stats_finalize.cuh"
+#include "paddle/phi/kernels/fusion/gpu/cudnn_norm_conv.cuh"
+#include "paddle/phi/kernels/fusion/gpu/cudnn_scale_bias_add_relu.cuh"
 #include "paddle/utils/optional.h"
 
 #if CUDNN_VERSION >= 8000

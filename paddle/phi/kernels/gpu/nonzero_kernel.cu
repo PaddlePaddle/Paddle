@@ -18,7 +18,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/funcs/select_impl.cu.h"
+#include "paddle/phi/kernels/funcs/select_impl.cuh"
 
 namespace phi {
 template <typename MaskT, typename IndexT, typename OutT>

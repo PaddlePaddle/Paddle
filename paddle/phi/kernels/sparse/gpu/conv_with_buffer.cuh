@@ -21,10 +21,10 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
-#include "paddle/phi/kernels/funcs/index_impl.cu.h"
+#include "paddle/phi/kernels/funcs/index_impl.cuh"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/funcs/sparse/scatter.cu.h"
-#include "paddle/phi/kernels/funcs/sparse/utils.cu.h"
+#include "paddle/phi/kernels/funcs/sparse/scatter.cuh"
+#include "paddle/phi/kernels/funcs/sparse/utils.cuh"
 #include "paddle/phi/kernels/primitive/compute_primitives.h"
 #include "paddle/phi/kernels/sparse/gpu/conv_host_buffer.h"
 

@@ -19,7 +19,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
-#include "paddle/phi/kernels/funcs/rank_attention.cu.h"
+#include "paddle/phi/kernels/funcs/rank_attention.cuh"
 
 namespace phi {
 

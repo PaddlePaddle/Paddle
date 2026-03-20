@@ -24,9 +24,9 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/tensor_utils.h"
-#include "paddle/phi/kernels/funcs/index_impl.cu.h"
+#include "paddle/phi/kernels/funcs/index_impl.cuh"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/funcs/sparse/utils.cu.h"
+#include "paddle/phi/kernels/funcs/sparse/utils.cuh"
 #include "paddle/phi/kernels/primitive/compute_primitives.h"
 #include "paddle/phi/kernels/sparse/conv_kernel.h"
 

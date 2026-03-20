@@ -16,7 +16,7 @@
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/correlation_funcs.cu.h"
+#include "paddle/phi/kernels/funcs/correlation_funcs.cuh"
 
 namespace phi {
 

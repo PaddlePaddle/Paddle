@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/funcs/scatter.cu.h"
+#include "paddle/phi/kernels/funcs/scatter.cuh"
 
 namespace phi {
 namespace funcs {

@@ -21,8 +21,8 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/mixed_vector.h"
-#include "paddle/phi/kernels/funcs/detection/bbox_util.cu.h"
-#include "paddle/phi/kernels/funcs/gather.cu.h"
+#include "paddle/phi/kernels/funcs/detection/bbox_util.cuh"
+#include "paddle/phi/kernels/funcs/gather.cuh"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {

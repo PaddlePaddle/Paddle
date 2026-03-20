@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/funcs/elementwise/elementwise_op_impl.cu.h"
+#include "paddle/phi/kernels/funcs/elementwise/elementwise_op_impl.cuh"
 
 namespace phi {
 namespace funcs {

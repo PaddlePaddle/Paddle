@@ -20,9 +20,9 @@ limitations under the License. */
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
-#include "paddle/phi/kernels/funcs/scatter.cu.h"
-#include "paddle/phi/kernels/funcs/sparse/scatter.cu.h"
-#include "paddle/phi/kernels/sparse/gpu/conv.cu.h"
+#include "paddle/phi/kernels/funcs/scatter.cuh"
+#include "paddle/phi/kernels/funcs/sparse/scatter.cuh"
+#include "paddle/phi/kernels/sparse/gpu/conv.cuh"
 #include "paddle/phi/kernels/sparse/gpu/conv_host_buffer.h"
 
 #include "glog/logging.h"

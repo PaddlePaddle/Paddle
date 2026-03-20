@@ -24,8 +24,8 @@ limitations under the License. */
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/fusion/gpu/cudnn_bn_stats_finalize.cu.h"
-#include "paddle/phi/kernels/fusion/gpu/cudnn_scale_bias_add_relu.cu.h"
+#include "paddle/phi/kernels/fusion/gpu/cudnn_bn_stats_finalize.cuh"
+#include "paddle/phi/kernels/fusion/gpu/cudnn_scale_bias_add_relu.cuh"
 
 COMMON_DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 

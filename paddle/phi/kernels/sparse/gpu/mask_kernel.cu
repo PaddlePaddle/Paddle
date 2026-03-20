@@ -27,8 +27,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/funcs/sparse/flatten_indices.cu.h"
-#include "paddle/phi/kernels/funcs/sparse/utils.cu.h"
+#include "paddle/phi/kernels/funcs/sparse/flatten_indices.cuh"
+#include "paddle/phi/kernels/funcs/sparse/utils.cuh"
 
 namespace phi {
 namespace sparse {

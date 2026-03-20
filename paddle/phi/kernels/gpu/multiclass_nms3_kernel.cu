@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/cub.h"
-#include "paddle/phi/kernels/funcs/gather.cu.h"
+#include "paddle/phi/kernels/funcs/gather.cuh"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/nonzero_kernel.h"
 

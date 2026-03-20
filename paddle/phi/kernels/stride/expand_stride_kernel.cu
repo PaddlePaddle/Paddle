@@ -18,7 +18,7 @@
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/stride/elementwise_stride_base.cu.h"
+#include "paddle/phi/kernels/stride/elementwise_stride_base.cuh"
 
 COMMON_DECLARE_bool(use_stride_kernel);
 COMMON_DECLARE_bool(use_stride_compute_kernel);

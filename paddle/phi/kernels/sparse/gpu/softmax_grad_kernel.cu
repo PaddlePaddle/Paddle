@@ -30,7 +30,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/funcs/sparse/softmax.cu.h"
+#include "paddle/phi/kernels/funcs/sparse/softmax.cuh"
 #include "paddle/phi/kernels/softmax_grad_kernel.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
 

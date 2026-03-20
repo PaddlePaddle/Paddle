@@ -12,7 +12,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
+#include "paddle/phi/kernels/funcs/index_elementwise.cuh"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 #include "paddle/phi/kernels/strided_copy_kernel.h"
 

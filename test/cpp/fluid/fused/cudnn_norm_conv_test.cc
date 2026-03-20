@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/fusion/gpu/cudnn_norm_conv.cu.h"
+#include "paddle/phi/kernels/fusion/gpu/cudnn_norm_conv.cuh"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;

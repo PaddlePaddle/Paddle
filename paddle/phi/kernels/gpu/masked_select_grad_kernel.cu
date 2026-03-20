@@ -27,7 +27,7 @@
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
-#include "paddle/phi/kernels/funcs/select_impl.cu.h"
+#include "paddle/phi/kernels/funcs/select_impl.cuh"
 namespace phi {
 
 template <typename MT, typename InT, typename OutT>

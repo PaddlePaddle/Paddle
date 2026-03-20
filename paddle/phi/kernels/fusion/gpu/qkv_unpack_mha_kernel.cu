@@ -15,7 +15,7 @@
 #include "paddle/phi/kernels/fusion/gpu/qkv_unpack_mha_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
-#include "paddle/phi/kernels/fusion/gpu/mmha_util.cu.h"
+#include "paddle/phi/kernels/fusion/gpu/mmha_util.cuh"
 
 namespace phi {
 namespace fusion {

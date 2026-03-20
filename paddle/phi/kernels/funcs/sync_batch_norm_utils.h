@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/funcs/cub.h"
-#include "paddle/phi/kernels/funcs/norm_utils.cu.h"
+#include "paddle/phi/kernels/funcs/norm_utils.cuh"
 #include "paddle/phi/kernels/funcs/norm_utils.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/core/distributed/nccl_comm_context.h"

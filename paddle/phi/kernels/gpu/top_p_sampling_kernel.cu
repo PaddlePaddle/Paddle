@@ -33,7 +33,7 @@
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
-#include "paddle/phi/kernels/funcs/gather.cu.h"
+#include "paddle/phi/kernels/funcs/gather.cuh"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/top_k_function_cuda.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"

@@ -22,7 +22,7 @@
 #include "paddle/phi/kernels/funcs/detection/bbox_util.h"
 #include "paddle/phi/kernels/funcs/distribute_fpn_proposals_functor.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
-#include "paddle/phi/kernels/funcs/gather.cu.h"
+#include "paddle/phi/kernels/funcs/gather.cuh"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {

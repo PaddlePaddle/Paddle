@@ -30,7 +30,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/reduce_functor.h"
-#include "paddle/phi/kernels/funcs/sparse/softmax.cu.h"
+#include "paddle/phi/kernels/funcs/sparse/softmax.cuh"
 #include "paddle/phi/kernels/gpu/reduce.h"
 #include "paddle/phi/kernels/softmax_kernel.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"

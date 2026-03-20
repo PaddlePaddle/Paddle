@@ -16,8 +16,8 @@
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
-#include "paddle/phi/kernels/funcs/gather.cu.h"
-#include "paddle/phi/kernels/funcs/scatter.cu.h"
+#include "paddle/phi/kernels/funcs/gather.cuh"
+#include "paddle/phi/kernels/funcs/scatter.cuh"
 #include "paddle/phi/kernels/gather_kernel.h"
 namespace phi {
 

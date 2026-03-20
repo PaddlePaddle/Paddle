@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/flash_attn_kernel.h"
 #include "paddle/phi/kernels/funcs/load_store_util.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_bias_act_utils.h"
-#include "paddle/phi/kernels/fusion/gpu/mmha_util.cu.h"
+#include "paddle/phi/kernels/fusion/gpu/mmha_util.cuh"
 #include "paddle/phi/kernels/gpu/flash_attn_utils.h"
 
 COMMON_DECLARE_bool(fused_multi_transformer_op_use_mbfmha);

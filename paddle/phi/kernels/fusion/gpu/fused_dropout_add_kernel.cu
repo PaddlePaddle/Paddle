@@ -20,7 +20,7 @@
 #include "paddle/phi/kernels/funcs/functors.h"
 #include "paddle/phi/kernels/primitive/compute_primitives.h"
 
-#include "paddle/phi/kernels/funcs/dropout_impl.cu.h"
+#include "paddle/phi/kernels/funcs/dropout_impl.cuh"
 
 namespace phi {
 namespace fusion {

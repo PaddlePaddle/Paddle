@@ -25,7 +25,7 @@
 #include "paddle/phi/kernels/funcs/dense_tensor_iterator.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
-#include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
+#include "paddle/phi/kernels/funcs/index_elementwise.cuh"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)

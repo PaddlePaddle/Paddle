@@ -18,7 +18,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/bitwise_kernel.h"
 #include "paddle/phi/kernels/funcs/logical_functor.h"
-#include "paddle/phi/kernels/stride/elementwise_stride_base.cu.h"
+#include "paddle/phi/kernels/stride/elementwise_stride_base.cuh"
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 #include "paddle/phi/kernels/funcs/dims_simplifier.h"
 #endif

@@ -18,7 +18,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/full_kernel.h"
-#include "paddle/phi/kernels/funcs/gather.cu.h"
+#include "paddle/phi/kernels/funcs/gather.cuh"
 namespace phi {
 
 template <typename T, typename Context>

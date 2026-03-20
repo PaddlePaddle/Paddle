@@ -31,7 +31,7 @@
 #include "paddle/phi/kernels/gpu/shuffle_batch_utils.h"
 #include "paddle/phi/kernels/shuffle_batch_kernel.h"
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/phi/kernels/funcs/shuffle_batch.cu.h"
+#include "paddle/phi/kernels/funcs/shuffle_batch.cuh"
 #endif
 
 namespace phi {

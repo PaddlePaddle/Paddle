@@ -21,10 +21,10 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
-#include "paddle/phi/kernels/funcs/index_impl.cu.h"
-#include "paddle/phi/kernels/funcs/sparse/flatten_indices.cu.h"
-#include "paddle/phi/kernels/funcs/sparse/scatter.cu.h"
-#include "paddle/phi/kernels/funcs/sparse/utils.cu.h"
+#include "paddle/phi/kernels/funcs/index_impl.cuh"
+#include "paddle/phi/kernels/funcs/sparse/flatten_indices.cuh"
+#include "paddle/phi/kernels/funcs/sparse/scatter.cuh"
+#include "paddle/phi/kernels/funcs/sparse/utils.cuh"
 
 namespace phi {
 namespace sparse {

@@ -24,7 +24,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
-#include "paddle/phi/kernels/funcs/index_impl.cu.h"
+#include "paddle/phi/kernels/funcs/index_impl.cuh"
 
 namespace phi {
 

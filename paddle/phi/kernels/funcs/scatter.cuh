@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
-#include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
+#include "paddle/phi/kernels/funcs/index_elementwise.cuh"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/stride_utils.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"

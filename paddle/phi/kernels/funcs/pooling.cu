@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include <algorithm>
 #include <vector>
-#include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
+#include "paddle/phi/kernels/funcs/index_elementwise.cuh"
 #ifdef __NVCC__
 #include <curand_kernel.h>
 #endif

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/logsumexp_kernel.h"
-#include "paddle/phi/kernels/gpu/logsumexp_function.cu.h"
+#include "paddle/phi/kernels/gpu/logsumexp_function.cuh"
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/activation_kernel.h"

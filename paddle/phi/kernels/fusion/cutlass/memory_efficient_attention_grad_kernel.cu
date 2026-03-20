@@ -20,7 +20,7 @@
 #include "paddle/phi/kernels/cum_kernel.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"
-#include "paddle/phi/kernels/funcs/get_pad_lse.cu.h"
+#include "paddle/phi/kernels/funcs/get_pad_lse.cuh"
 #include "paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/autogen/memory_efficient_attention.h"
 #include "paddle/phi/kernels/fusion/cutlass/memory_efficient_attention_utils.h"
 #include "paddle/phi/kernels/matmul_kernel.h"

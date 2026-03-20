@@ -18,7 +18,7 @@
 #include "paddle/phi/kernels/fusion/gpu/attn_gemm_int8.h"
 #include "paddle/phi/kernels/fusion/gpu/fmha_ref.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_attention_utils.h"
-#include "paddle/phi/kernels/fusion/gpu/fused_multi_transformer_helper.cu.h"
+#include "paddle/phi/kernels/fusion/gpu/fused_multi_transformer_helper.cuh"
 
 namespace phi {
 namespace fusion {

@@ -22,7 +22,7 @@
 #include "paddle/phi/kernels/contiguous_kernel.h"
 #include "paddle/phi/kernels/elementwise_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
-#include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
+#include "paddle/phi/kernels/funcs/index_elementwise.cuh"
 #include "paddle/phi/kernels/funcs/radix_sort.h"
 #include "paddle/phi/kernels/funcs/stride_utils.h"
 #include "paddle/phi/kernels/reshape_kernel.h"

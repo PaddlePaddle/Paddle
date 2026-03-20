@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/fusion/gpu/attn_gemm.h"
 #include "paddle/phi/kernels/fusion/gpu/attn_gemm_int8.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_dropout_helper.h"
-#include "paddle/phi/kernels/fusion/gpu/fused_multi_transformer_op.cu.h"
+#include "paddle/phi/kernels/fusion/gpu/fused_multi_transformer_op.cuh"
 #include "paddle/phi/kernels/rms_norm_kernel.h"
 
 /*

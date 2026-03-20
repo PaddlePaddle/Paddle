@@ -34,7 +34,7 @@
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
-#include "paddle/phi/kernels/funcs/gather.cu.h"
+#include "paddle/phi/kernels/funcs/gather.cuh"
 #include "paddle/phi/kernels/funcs/viterbi_decode_functor.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 
