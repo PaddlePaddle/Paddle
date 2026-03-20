@@ -47,7 +47,7 @@ def add_doc_and_signature(func_name: str, docstr: str, func_def: str) -> None:
     Add docstr for function (paddle.*) and method (paddle.Tensor.*) if method exists
     """
     python_api_sig = _parse_function_signature(func_name, func_def)
-    for module in [paddle, paddle.Tensor]:
+    for module in [paddle, paddle.Tensor, paddle.nn.functional]:
         if hasattr(module, func_name):
             func = getattr(module, func_name)
             if inspect.isfunction(func):
@@ -4054,6 +4054,11 @@ add_doc_and_signature(
 
     Returns:
         Tensor: The output tensor, it's data type is bool.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
 
             >>> x = paddle.to_tensor([10000., 1e-07])
             >>> y = paddle.to_tensor([10000.1, 1e-08])
