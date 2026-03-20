@@ -123,7 +123,8 @@ __device__ __forceinline__ unsigned int doLdg(const unsigned int* p) {
 #endif
 }
 template <>
-__device__ __forceinline__ int64_t doLdg(const int64_t* p) {
+__device__ __forceinline__ long long doLdg(  // NOLINT
+    const long long* p) {                    // NOLINT
 #if __CUDA_ARCH__ >= 350
   return __ldg(p);
 #else
@@ -131,7 +132,8 @@ __device__ __forceinline__ int64_t doLdg(const int64_t* p) {
 #endif
 }
 template <>
-__device__ __forceinline__ uint64_t doLdg(const uint64_t* p) {
+__device__ __forceinline__ unsigned long long doLdg(  // NOLINT
+    const unsigned long long* p) {                    // NOLINT
 #if __CUDA_ARCH__ >= 350
   return __ldg(p);
 #else
@@ -140,14 +142,6 @@ __device__ __forceinline__ uint64_t doLdg(const uint64_t* p) {
 }
 template <>
 __device__ __forceinline__ int16_t doLdg(const int16_t* p) {
-#if __CUDA_ARCH__ >= 350
-  return __ldg(p);
-#else
-  return *p;
-#endif
-}
-template <>
-__device__ __forceinline__ int64_t doLdg(const int64_t* p) {
 #if __CUDA_ARCH__ >= 350
   return __ldg(p);
 #else
