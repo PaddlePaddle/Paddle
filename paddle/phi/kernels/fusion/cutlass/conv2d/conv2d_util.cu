@@ -179,7 +179,9 @@ float conv2d_diff_gpu(const ConvAllParams &params, OpType op_type, T a) {
 
   constexpr int blockM = 16;
   constexpr int blockN = 16;
-  uint3 grid = {(M + blockM - 1) / blockM, (N + blockN - 1) / blockN, 1};
+  uint3 grid = {static_cast<unsigned int>((M + blockM - 1) / blockM),
+                static_cast<unsigned int>((N + blockN - 1) / blockN),
+                1};
   uint3 block = {blockM, blockN, 1};
 
   int output_size = batch * oc * oh * ow;

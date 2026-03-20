@@ -135,7 +135,7 @@ struct AccuracyCheckFunctor<phi::CPUContext, phi::dtype::complex<T>> {
   }
 };
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
 template <typename T>
 __global__ void AccuracyCheckCUDAKernel(const T* in_data,
                                         const T* other_data,

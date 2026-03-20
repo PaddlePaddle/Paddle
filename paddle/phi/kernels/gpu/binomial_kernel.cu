@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef __NVCC__
+#ifdef __CUDACC__ //1
 #include <curand_kernel.h>
 #endif
 #ifdef __HIPCC__
@@ -54,7 +54,7 @@ __device__ int64_t btrs(
   int64_t k;
   T U, V, us;
 
-#ifdef __NVCC__
+#ifdef __CUDACC__ //1
   curandStatePhilox4_32_10_t state;
   curand_init(seed, idx, offset, &state);
 #elif __HIPCC__
@@ -74,7 +74,7 @@ __device__ int64_t btrs(
   const T m = std::floor((n + 1) * p);
 
   while (1) {
-#ifdef __NVCC__
+#ifdef __CUDACC__ //1
     U = static_cast<T>(curand_uniform(&state)) - 0.5;
     V = static_cast<T>(curand_uniform(&state));
 #elif __HIPCC__
@@ -114,7 +114,7 @@ __device__ int64_t binomial_inversion(
   int64_t num_geom = 0;
   T logprob = std::log1p(-p);
 
-#ifdef __NVCC__
+#ifdef __CUDACC__ //1
   curandStatePhilox4_32_10_t state;
   curand_init(seed, idx, offset, &state);
 #elif __HIPCC__
@@ -123,7 +123,7 @@ __device__ int64_t binomial_inversion(
 #endif
 
   while (1) {
-#ifdef __NVCC__
+#ifdef __CUDACC__ //1
     unif = static_cast<T>(curand_uniform(&state));
 #elif __HIPCC__
     unif = static_cast<T>(hiprand_uniform(&state));

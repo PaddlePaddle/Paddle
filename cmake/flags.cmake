@@ -206,7 +206,7 @@ if(NOT WIN32)
       -Wdelete-non-virtual-dtor
       -Wno-unused-parameter
       -Wno-unused-function
-      -Wno-error=literal-suffix
+      # -Wno-error=literal-suffix #到不认识的警告参数，直接无视掉就好，不要报错。
       -Wno-error=unused-local-typedefs
       -Wno-error=unused-function # Warnings in Numpy Header.
       -Wno-error=array-bounds # Warnings in Eigen::array
@@ -248,7 +248,7 @@ if(APPLE)
 endif()
 
 if(LINUX)
-  set(GPU_COMMON_FLAGS -Wall -Wextra -Werror ${GPU_COMMON_FLAGS})
+  set(GPU_COMMON_FLAGS -Wall -Wextra ${GPU_COMMON_FLAGS})
 endif()
 
 foreach(flag ${COMMON_FLAGS})
@@ -289,3 +289,8 @@ if(WITH_TENSORRT)
   string(REPLACE "-Wnon-virtual-dtor" "-Wno-non-virtual-dtor" CMAKE_C_FLAGS
                  ${CMAKE_C_FLAGS})
 endif()
+
+add_definitions(-DCUB_DISABLE_CDP)
+
+string(APPEND CMAKE_CXX_FLAGS " -Wno-error")
+string(APPEND CMAKE_C_FLAGS " -Wno-error")

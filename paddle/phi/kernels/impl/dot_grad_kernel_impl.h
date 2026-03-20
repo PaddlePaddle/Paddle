@@ -43,7 +43,7 @@ struct DotGradFunction<Context, T, funcs::EnableComplex<T>> {
                   DenseTensor* tensor_dx,
                   DenseTensor* tensor_dy) {
     VLOG(1) << "enable route";
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
     if (1 >= tensor_dout->dims().size()) {
       auto dout = EigenVector<T>::Flatten(*tensor_dout);
 
@@ -141,7 +141,7 @@ struct DotGradFunction<Context, T, funcs::DisableComplex<T>> {
                   const DenseTensor* tensor_dout,
                   DenseTensor* tensor_dx,
                   DenseTensor* tensor_dy) {
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
     if (1 >= tensor_dout->dims().size()) {
       auto dout = EigenVector<T>::Flatten(*tensor_dout);
       if (tensor_dx) {
@@ -233,7 +233,7 @@ struct DotDoubleGradFunction<Context, T, funcs::EnableComplex<T>> {
                   DenseTensor* tensor_ddout) {
     const DenseTensor* tensor_ddx = tensor_ddx_opt->get_ptr();
     const DenseTensor* tensor_ddy = tensor_ddy_opt->get_ptr();
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
     if (1 >= tensor_dout->dims().size()) {
       DenseTensor tensor_dout_help;
       auto& dev = *dev_ctx.eigen_device();
@@ -440,7 +440,7 @@ struct DotDoubleGradFunction<Context, T, funcs::DisableComplex<T>> {
                   DenseTensor* tensor_ddout) {
     const DenseTensor* tensor_ddx = tensor_ddx_opt->get_ptr();
     const DenseTensor* tensor_ddy = tensor_ddy_opt->get_ptr();
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
     if (1 >= tensor_dout->dims().size()) {
       auto& dev = *dev_ctx.eigen_device();
       auto x = EigenVector<T>::Flatten(*tensor_x);
@@ -630,7 +630,7 @@ struct DotTripleGradFunction<Context, T, funcs::EnableComplex<T>> {
     const DenseTensor* in_tensor_d_dx = in_tensor_d_dx_opt->get_ptr();
     const DenseTensor* in_tensor_d_dy = in_tensor_d_dy_opt->get_ptr();
     const DenseTensor* in_tensor_d_ddout = in_tensor_d_ddout_opt->get_ptr();
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
     if (1 >= in_tensor_dout->dims().size()) {
       auto& dev = *dev_ctx.eigen_device();
       DenseTensor in_tensor_x_help = Conj<T, Context>(dev_ctx, *in_tensor_x);
@@ -1024,7 +1024,7 @@ struct DotTripleGradFunction<Context, T, funcs::DisableComplex<T>> {
     const DenseTensor* in_tensor_d_dx = in_tensor_d_dx_opt->get_ptr();
     const DenseTensor* in_tensor_d_dy = in_tensor_d_dy_opt->get_ptr();
     const DenseTensor* in_tensor_d_ddout = in_tensor_d_ddout_opt->get_ptr();
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
     if (1 >= in_tensor_dout->dims().size()) {
       auto& dev = *dev_ctx.eigen_device();
       bool d_dout_flag = false;

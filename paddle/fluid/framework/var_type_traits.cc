@@ -23,10 +23,11 @@
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
+#ifdef WITH_CUDNN_FRONTEND
 #include <cudnn.h>
-
 #include "paddle/phi/kernels/funcs/cudnn_rnn_cache.h"
 #include "paddle/phi/kernels/gpudnn/conv_gpudnn_info.h"
+#endif
 #endif
 #ifdef PADDLE_WITH_HIP
 #if defined(PADDLE_WITH_RCCL)

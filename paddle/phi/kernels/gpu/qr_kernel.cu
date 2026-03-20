@@ -424,7 +424,7 @@ void BatchedGeqrf<GPUContext, float>(const GPUContext& dev_ctx,
 
     PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::cusolverDnXgeqrf_bufferSize(handle,
-                                                  nullptr,
+                                                  0,
                                                   m_64,
                                                   n_64,
                                                   CUDA_R_32F,
@@ -461,7 +461,7 @@ void BatchedGeqrf<GPUContext, float>(const GPUContext& dev_ctx,
 
       PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::cusolverDnXgeqrf(handle,
-                                         nullptr,
+                                         0,
                                          m_64,
                                          n_64,
                                          CUDA_R_32F,

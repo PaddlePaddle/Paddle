@@ -18,6 +18,7 @@ endif()
 find_path(
   CUDNN_INCLUDE_DIR cudnn.h
   PATHS ${CUDNN_ROOT} ${CUDNN_ROOT}/include
+        ${CUDNN_ROOT}/include/cudnn_api
         ${CUDNN_ROOT}/include/${TARGET_ARCH}-linux-gnu $ENV{CUDNN_ROOT}
         $ENV{CUDNN_ROOT}/include ${CUDA_TOOLKIT_INCLUDE}
   NO_DEFAULT_PATH)

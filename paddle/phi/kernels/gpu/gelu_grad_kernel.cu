@@ -72,7 +72,7 @@ void GeluGradKernel(const Context& dev_ctx,
   std::vector<const DenseTensor*> ins = {&x, &out_grad};
   std::vector<DenseTensor*> outs = {x_grad};
   if (approximate) {
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
     if (std::is_same<T, dtype::float16>::value) {
       size_t n = x.numel();
       const auto* x_ptr = reinterpret_cast<const __half*>(x.data<T>());

@@ -28,7 +28,7 @@
 #include "paddle/phi/kernels/gpu/elementwise_grad.h"
 #include "paddle/phi/kernels/scale_kernel.h"
 
-#if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__) || defined(__xpu__)
 #include "paddle/phi/kernels/funcs/dims_simplifier.h"
 
 #endif

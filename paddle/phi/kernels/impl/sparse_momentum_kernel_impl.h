@@ -336,7 +336,7 @@ void InnerCompute(const Context& dev_ctx,
   auto grad_index_ptr = dev_ctx.template Alloc<IndexT>(&grad_index);
 
   if (dev_ctx.GetPlace().GetType() == AllocationType::GPU) {
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
     sort_value.Resize({num_index});
     auto sort_value_ptr = dev_ctx.template Alloc<IndexT>(&sort_value);
 

@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef __NVCC__
+#ifdef __CUDACC__ //1
 #include <curand_kernel.h>
 #endif
 #ifdef __HIPCC__
@@ -31,7 +31,7 @@ template <typename T>
 __global__ void GetPoisson(
     const T* in, T* out, const int N, unsigned int seed, unsigned int offset) {
   CUDA_KERNEL_LOOP_TYPE(idx, N, int64_t) {
-#ifdef __NVCC__
+#ifdef __CUDACC__ //1
     curandStatePhilox4_32_10_t state;
     curand_init(seed, idx, offset, &state);
     out[idx] = static_cast<T>(curand_poisson(&state, in[idx]));

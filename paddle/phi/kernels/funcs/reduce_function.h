@@ -15,7 +15,7 @@
 #pragma once
 
 // CUDA, XPU and HIP use same api
-#if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__) || defined(__xpu__)
 
 #include <algorithm>
 #include <cmath>
@@ -59,7 +59,7 @@ using dim3 = phi::kps::dim3;
 namespace phi {
 namespace funcs {
 
-#if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__) || defined(__xpu__)
 namespace details {
 
 // Check if reduce rand is valid

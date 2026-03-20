@@ -17,7 +17,7 @@
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
 #include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
@@ -145,7 +145,7 @@ void RenormGradFunc(const phi::CPUContext& dev_ctx UNUSED,
   }
 }
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
 __device__ __forceinline__ float inline_pow(float base, float exponent) {
   return pow(base, exponent);
 }

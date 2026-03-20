@@ -38,7 +38,9 @@
 #include "paddle/phi/backends/custom/cuda_graph.h"
 #include "paddle/phi/backends/dynload/cudnn.h"
 #else
+#ifdef WITH_CUDNN_FRONTEND
 #include "paddle/phi/backends/dynload/cudnn.h"
+#endif
 #include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
 #endif
 

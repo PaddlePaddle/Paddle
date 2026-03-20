@@ -14,7 +14,7 @@
 
 #pragma once
 
-#ifdef __NVCC__
+#ifdef __CUDACC__ //1
 #include "cub/cub.cuh"
 #endif
 #ifdef __HIPCC__

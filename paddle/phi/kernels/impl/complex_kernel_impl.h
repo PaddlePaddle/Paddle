@@ -103,7 +103,7 @@ void ComplexKernel(const Context& dev_ctx,
 
 // NOTE(chenfeiyu): be careful of the caveats of calling elementwise-related
 // facility functions
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
   funcs::ElementwiseCompute<RealAndImagToComplexFunctor<T>, T, C>(
       dev_ctx, x, y, RealAndImagToComplexFunctor<T>(), out);
 #else

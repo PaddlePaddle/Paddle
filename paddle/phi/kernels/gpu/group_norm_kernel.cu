@@ -927,7 +927,7 @@ __global__ void GroupNormForwardGetMeanAndVar(const T* x,
       x_mean /= number * imsize;
       x_var /= number * imsize;
 
-#ifdef __NVCC__
+#ifdef __CUDACC__ //1
       CudaAtomicAddWithWarp(&mean[bid * groups + gid], x_mean);
       CudaAtomicAddWithWarp(&var[bid * groups + gid], x_var);
 #endif

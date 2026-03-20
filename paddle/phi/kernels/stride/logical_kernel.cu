@@ -19,7 +19,7 @@
 #include "paddle/phi/kernels/bitwise_kernel.h"
 #include "paddle/phi/kernels/funcs/logical_functor.h"
 #include "paddle/phi/kernels/stride/elementwise_stride_base.cu.h"
-#if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__) || defined(__xpu__)
 #include "paddle/phi/kernels/funcs/dims_simplifier.h"
 #endif
 COMMON_DECLARE_bool(use_stride_kernel);

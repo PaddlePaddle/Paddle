@@ -17,7 +17,7 @@
 #include <cfloat>
 #include <string>
 #include <vector>
-#ifdef __NVCC__
+#ifdef __CUDACC__ //1
 #include "cub/cub.cuh"
 #endif
 #ifdef __HIPCC__

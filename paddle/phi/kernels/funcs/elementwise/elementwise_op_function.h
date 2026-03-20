@@ -31,8 +31,8 @@
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 
-#if defined(__NVCC__) || defined(__HIPCC__)
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
+#ifdef __CUDACC__ //1
 #include <cuda.h>
 #elif defined(__HIPCC__)
 #include <hip/hip_runtime.h>
@@ -201,7 +201,7 @@ static void FusedElemwiseAndActBroadcast2CPU(const T *x,
   }
 }
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
 template <typename T,
           typename CompoundFunctor,
           bool BcastY,
@@ -406,7 +406,7 @@ void FusedElemwiseAndActComputeWithBroadcast(const DeviceContext &dev_ctx,
     int h = pre;
     int w = n;
     if (dev_ctx.GetPlace().GetType() == AllocationType::GPU) {
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
       FusedElemwiseAndActBroadcast1CUDA<T,
                                         CompoundFunctor,
                                         BcastY,
@@ -441,7 +441,7 @@ void FusedElemwiseAndActComputeWithBroadcast(const DeviceContext &dev_ctx,
     }
   } else {
     if (dev_ctx.GetPlace().GetType() == AllocationType::GPU) {
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
       FusedElemwiseAndActBroadcast2CUDA<T,
                                         CompoundFunctor,
                                         BcastY,
@@ -768,7 +768,7 @@ static void FusedElemwiseAndActGradBroadcast2CPU(
   }
 }
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
 template <typename T,
           typename DX_OP,
           typename DY_OP,
@@ -1164,7 +1164,7 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
     int w = n;
 
     if (dev_ctx.GetPlace().GetType() == AllocationType::GPU) {
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
       FusedElemwiseAndActGradBroadcast1CUDA<T,
                                             DX_OP,
                                             DY_OP,
@@ -1213,7 +1213,7 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
     }
   } else {
     if (dev_ctx.GetPlace().GetType() == AllocationType::GPU) {
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
       FusedElemwiseAndActGradBroadcast2CUDA<T,
                                             DX_OP,
                                             DY_OP,
@@ -1471,7 +1471,7 @@ static inline void GetDoubleGradSafeTensor(const DeviceContext &dev_ctx,
   funcs::GetDoubleGradSafeTensor<DeviceContext, T>(dev_ctx, *x, ddx, ddx_safe);
 }
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
 
 template <typename T, typename Functor>
 void GetGradXAndYOut(const phi::GPUContext &dev_ctx,

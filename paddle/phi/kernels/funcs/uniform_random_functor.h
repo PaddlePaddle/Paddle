@@ -18,7 +18,7 @@
 #include <vector>
 
 #include "paddle/phi/backends/context_pool.h"
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
 #include <thrust/random.h>
 
 #include "paddle/phi/core/generator.h"
@@ -144,7 +144,7 @@ inline std::vector<int64_t> GetNewDataFromShapeTensorList(
   return vec_new_shape;
 }
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
 template <typename T>
 struct UniformGenerator {
   T min_, max_;

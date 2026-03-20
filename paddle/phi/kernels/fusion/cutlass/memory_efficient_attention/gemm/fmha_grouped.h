@@ -786,7 +786,7 @@ struct FMHAGrouped {
                               // Also updates `accum` with accum[i] <-
                               // exp(accum[i] * scale
                               // - mi)
-                              MM0::ScalingCoefsUpdater::update<
+                              MM0::ScalingCoefsUpdater::template update<
                                   kQueriesPerBlock,
                                   MM0::MmaCore::WarpCount::kCount,
                                   MM0::MmaCore::WarpCount::kN,

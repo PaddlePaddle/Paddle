@@ -28,13 +28,15 @@ using cudaStream_t = struct CUstream_st *;
 using cudaEvent_t = struct CUevent_st *;
 
 // Forward declaration of cuBLAS types.
-using cublasHandle_t = struct cublasContext *;
+// using cublasHandle_t = struct cublasContext *;
+using cublasHandle_t = void *;
 
 // Forward declaration of cuBLASLt types.
 using cublasLtHandle_t = struct cublasLtContext *;
 
 #ifndef PADDLE_WITH_CUSTOM_DEVICE
 // Forward declaration of cuDNN types.
+#ifdef WITH_CUDNN_FRONTEND
 using cudnnHandle_t = struct cudnnContext *;
 using cudnnTensorDescriptor_t = struct cudnnTensorStruct *;
 using cudnnConvolutionDescriptor_t = struct cudnnConvolutionStruct *;
@@ -60,12 +62,13 @@ using cudnnFusedOpsConstParamPack_t = struct cudnnFusedOpsConstParamStruct *;
 using cudnnFusedOpsVariantParamPack_t =
     struct cudnnFusedOpsVariantParamStruct *;
 using cudnnFusedOpsPlan_t = struct cudnnFusedOpsPlanStruct *;
+#endif
 
 // Forward declaration of cuSOLVER types.
-using cusolverDnHandle_t = struct cusolverDnContext *;
+using cusolverDnHandle_t = void *;
 
 // Forward declaration of cuSparse types.
-using cusparseHandle_t = struct cusparseContext *;
+using cusparseHandle_t = void *;
 
 // Forward declaration of NCCL types.
 using ncclComm_t = struct ncclComm *;

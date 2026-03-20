@@ -58,7 +58,9 @@ struct ExternalApiProtoType {};
 
 DEFINE_EXTERNAL_API_PROTO_TYPE(cudaError_t, CUDA);
 DEFINE_EXTERNAL_API_PROTO_TYPE(curandStatus_t, CURAND);
+#ifdef WITH_CUDNN_FRONTEND
 DEFINE_EXTERNAL_API_PROTO_TYPE(cudnnStatus_t, CUDNN);
+#endif
 DEFINE_EXTERNAL_API_PROTO_TYPE(cublasStatus_t, CUBLAS);
 DEFINE_EXTERNAL_API_PROTO_TYPE(cusparseStatus_t, CUSPARSE);
 DEFINE_EXTERNAL_API_PROTO_TYPE(cusolverStatus_t, CUSOLVER);
@@ -214,8 +216,10 @@ std::string GetExternalErrorMsg(T status) {
 template PADDLE_API std::string GetExternalErrorMsg<cudaError_t>(cudaError_t);
 template PADDLE_API std::string GetExternalErrorMsg<curandStatus_t>(
     curandStatus_t);
+#ifdef WITH_CUDNN_FRONTEND
 template PADDLE_API std::string GetExternalErrorMsg<cudnnStatus_t>(
     cudnnStatus_t);
+#endif
 template PADDLE_API std::string GetExternalErrorMsg<cublasStatus_t>(
     cublasStatus_t);
 template PADDLE_API std::string GetExternalErrorMsg<cusparseStatus_t>(

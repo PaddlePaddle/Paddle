@@ -4077,7 +4077,7 @@ __inline__ __device__ T WarpReduceAbsMax(T val, unsigned lane_mask) {
     }
 #else
     val =
-        MaxFunc<T>()(val, __shfl_xor_sync(lane_mask, val, mask, WARP_SIZE_TMP));
+        MaxFunc<T>()(val, __shfl_xor_sync(lane_mask, static_cast<float>(val), mask, WARP_SIZE_TMP));
 #endif
   }
   return val;

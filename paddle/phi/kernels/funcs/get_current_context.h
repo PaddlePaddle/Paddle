@@ -20,7 +20,7 @@
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
 #include "paddle/phi/backends/device_manager.h"
 #define CONTEXT_TYPE CustomContext
-#elif defined(__NVCC__) || defined(__HIPCC__)
+#elif defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #define CONTEXT_TYPE GPUContext
@@ -39,7 +39,7 @@ inline CONTEXT_TYPE *GetCurrentContext() {
   auto *dev_ctx = static_cast<CustomContext *>(
       phi::DeviceContextPool::Instance().Get(gplace));
   return dev_ctx;
-#elif defined(__NVCC__) || defined(__HIPCC__)
+#elif defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
   auto gplace = GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
   auto *dev_ctx =
       static_cast<GPUContext *>(phi::DeviceContextPool::Instance().Get(gplace));

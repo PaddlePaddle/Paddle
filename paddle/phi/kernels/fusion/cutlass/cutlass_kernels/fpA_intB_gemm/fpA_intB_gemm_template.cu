@@ -477,8 +477,7 @@ CutlassFpAIntBGemmRunner<T, WeightType>::~CutlassFpAIntBGemmRunner() {
 
 template <typename T, typename WeightType>
 template <typename EpilogueTag, bool FineGrained>
-void CutlassFpAIntBGemmRunner<T, WeightType>::dispatch_to_arch<EpilogueTag,
-                                                               FineGrained>(
+void CutlassFpAIntBGemmRunner<T, WeightType>::dispatch_to_arch(
     const T* A,
     const WeightType* B,
     const T* weight_scales,
@@ -578,8 +577,7 @@ void CutlassFpAIntBGemmRunner<T, WeightType>::dispatch_to_arch<EpilogueTag,
 
 template <typename T, typename WeightType>
 template <typename EpilogueTag, bool FineGrained>
-void CutlassFpAIntBGemmRunner<T, WeightType>::run_gemm<EpilogueTag,
-                                                       FineGrained>(
+void CutlassFpAIntBGemmRunner<T, WeightType>::run_gemm(
     const T* A,
     const WeightType* B,
     const T* weight_scales,

@@ -122,3 +122,15 @@ python/paddle/base/dygraph/generated_tensor_methods_patch.py
 #fp8
 paddle/fluid/fp8/deep_gemm/include/cute/*
 paddle/fluid/fp8/deep_gemm/include/cutlass/*
+
+# xtrans compiler intermediate files (generated in-tree during build)
+*.cu-*.d.houyi
+*.cu-*.h.houyi
+*.cu-*.houyifb
+*.cu-*.xcnd.o
+*.cu-*.d.ii
+*.cu-*.h.ii
+*.cu-*.d-*.ii.tmp
+*.cu-*.h-*.ii.tmp
+*.cu-*-*.o.tmp
+*.cu-*.o

@@ -294,7 +294,7 @@ struct IsinfFunctor<
   }
 };
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
 /* IsfiniteFunctor */
 template <typename T, typename IndexType>
 __global__ void IsfiniteCUDAKernel(

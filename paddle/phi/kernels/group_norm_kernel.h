@@ -18,7 +18,12 @@
 
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/core/dense_tensor.h"
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && defined(__CUDACC__)
+// Only include CUDA fp16 header when actually compiling with nvcc/clang-cuda.
+// Including cuda_fp16.h in a GCC-compiled CPU translation unit causes a
+// "static declaration follows non-static" conflict because xtrans cublas_v2.h
+// pulls in xpu_fp16.h -> xtdk_fp16_gcc.h which defines __float2half as a
+// non-static inline, while cuda_fp16.h then redeclares it as static.
 #include <cuda.h>
 #include <cuda_fp16.h>
 #endif

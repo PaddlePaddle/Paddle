@@ -321,7 +321,7 @@ __device__ __forceinline__ void BlockReduce(Pair<T> shared_max[],
 
 template <typename T>
 __device__ inline T exponential_transform(T val, T lambda) {
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
   T log = -std::numeric_limits<T>::epsilon() / 2;
   if (val < static_cast<T>(1.) - std::numeric_limits<T>::epsilon() / 2) {
     if (std::is_same<T, double>::value) {

@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/enforce.h"
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
 #include <thrust/execution_policy.h>
 #include <thrust/transform.h>
 #include "thrust/device_ptr.h"
@@ -92,7 +92,7 @@ struct Transform<CPUContext> {
   }
 };
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
 
 // PointerToThrustDevicePtr has two specializations, one casts a (CUDA
 // device) pointer into thrust::device_ptr, the other keeps rest types

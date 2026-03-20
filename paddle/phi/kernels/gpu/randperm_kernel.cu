@@ -14,7 +14,7 @@
 
 #include "paddle/phi/kernels/randperm_kernel.h"
 
-#ifdef __NVCC__
+#ifdef __CUDACC__ //1
 #include <curand_kernel.h>
 #endif
 #ifdef __HIPCC__
@@ -62,7 +62,7 @@ __global__ void SwapRepeatKernel(keyT* key_out_data,
     }
   }
 
-#ifdef __NVCC__
+#ifdef __CUDACC__ //1
   curandStatePhilox4_32_10_t state;
   curand_init(seed, idx, offset, &state);
   for (int i = repeat_size - 1; i > 0; i--) {

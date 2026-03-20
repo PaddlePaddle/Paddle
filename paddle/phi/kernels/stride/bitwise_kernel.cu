@@ -19,7 +19,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/bitwise_functors.h"
 #include "paddle/phi/kernels/stride/elementwise_stride_base.cu.h"
-#if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__) || defined(__xpu__)
 #include "paddle/phi/kernels/funcs/dims_simplifier.h"
 #endif
 COMMON_DECLARE_bool(use_stride_kernel);
@@ -149,7 +149,7 @@ DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(BitwiseXor)
     }                                                                         \
   }
 
-#if defined(__NVCC__)
+#if defined(__NVCC__) || defined(__CUDACC__)
 DEFINE_CUDA_BINARY_ELEMENTWISE_WITH_BOOL_STRIDE_OP(LeftShift)
 DEFINE_CUDA_BINARY_ELEMENTWISE_WITH_BOOL_STRIDE_OP(RightShift)
 #endif
@@ -234,7 +234,7 @@ PD_REGISTER_KERNEL(bitwise_xor,
                    int,
                    int64_t) {}
 
-#if defined(__NVCC__)
+#if defined(__NVCC__) || defined(__CUDACC__)
 PD_REGISTER_KERNEL(bitwise_left_shift,
                    GPU,
                    STRIDED,

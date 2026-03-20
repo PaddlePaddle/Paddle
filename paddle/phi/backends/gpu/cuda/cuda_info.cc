@@ -25,11 +25,15 @@ static std::vector<phi::gpuDeviceProp> g_device_props;
 
 namespace phi::backends::gpu {
 
+#ifdef WITH_CUDNN_FRONTEND
 #ifndef PADDLE_WITH_CUSTOM_DEVICE
 int DnnVersion() {
   if (!dynload::HasCUDNN()) return -1;
   return dynload::cudnnGetVersion();  // NOLINT
 }
+#endif
+#else
+int DnnVersion() { return -1; }
 #endif
 
 static int GetGPUDeviceCountImpl() {

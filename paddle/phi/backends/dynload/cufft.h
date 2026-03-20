@@ -83,26 +83,65 @@ extern void EnforceCUFFTLoaded(const char* fn_name);
   __macro(cufftDestroy);                 \
   __macro(cufftGetVersion);              \
   __macro(cufftGetProperty);             \
-  __macro(cufftXtSetGPUs);               \
-  __macro(cufftXtMalloc);                \
-  __macro(cufftXtMemcpy);                \
-  __macro(cufftXtFree);                  \
-  __macro(cufftXtSetWorkArea);           \
-  __macro(cufftXtExecDescriptorC2C);     \
-  __macro(cufftXtExecDescriptorR2C);     \
-  __macro(cufftXtExecDescriptorC2R);     \
-  __macro(cufftXtExecDescriptorZ2Z);     \
-  __macro(cufftXtExecDescriptorD2Z);     \
-  __macro(cufftXtExecDescriptorZ2D);     \
-  __macro(cufftXtQueryPlan);             \
   __macro(cufftXtSetCallback);           \
   __macro(cufftXtClearCallback);         \
   __macro(cufftXtSetCallbackSharedSize); \
   __macro(cufftXtMakePlanMany);          \
-  __macro(cufftXtGetSizeMany);           \
-  __macro(cufftXtExec);                  \
-  __macro(cufftXtExecDescriptor);        \
-  __macro(cufftXtSetWorkAreaPolicy);
+  __macro(cufftXtExec);               
+// #define CUFFT_FFT_ROUTINE_EACH(__macro)  \
+//   __macro(cufftPlan1d);                  \
+//   __macro(cufftPlan2d);                  \
+//   __macro(cufftPlan3d);                  \
+//   __macro(cufftPlanMany);                \
+//   __macro(cufftMakePlan1d);              \
+//   __macro(cufftMakePlan2d);              \
+//   __macro(cufftMakePlan3d);              \
+//   __macro(cufftMakePlanMany);            \
+//   __macro(cufftMakePlanMany64);          \
+//   __macro(cufftGetSizeMany64);           \
+//   __macro(cufftEstimate1d);              \
+//   __macro(cufftEstimate2d);              \
+//   __macro(cufftEstimate3d);              \
+//   __macro(cufftEstimateMany);            \
+//   __macro(cufftCreate);                  \
+//   __macro(cufftGetSize1d);               \
+//   __macro(cufftGetSize2d);               \
+//   __macro(cufftGetSize3d);               \
+//   __macro(cufftGetSizeMany);             \
+//   __macro(cufftGetSize);                 \
+//   __macro(cufftSetWorkArea);             \
+//   __macro(cufftSetAutoAllocation);       \
+//   __macro(cufftExecC2C);                 \
+//   __macro(cufftExecR2C);                 \
+//   __macro(cufftExecC2R);                 \
+//   __macro(cufftExecZ2Z);                 \
+//   __macro(cufftExecD2Z);                 \
+//   __macro(cufftExecZ2D);                 \
+//   __macro(cufftSetStream);               \
+//   __macro(cufftDestroy);                 \
+//   __macro(cufftGetVersion);              \
+//   __macro(cufftGetProperty);             \
+//   __macro(cufftXtSetGPUs);               \
+//   __macro(cufftXtMalloc);                \
+//   __macro(cufftXtMemcpy);                \
+//   __macro(cufftXtFree);                  \
+//   __macro(cufftXtSetWorkArea);           \
+//   __macro(cufftXtExecDescriptorC2C);     \
+//   __macro(cufftXtExecDescriptorR2C);     \
+//   __macro(cufftXtExecDescriptorC2R);     \
+//   __macro(cufftXtExecDescriptorZ2Z);     \
+//   __macro(cufftXtExecDescriptorD2Z);     \
+//   __macro(cufftXtExecDescriptorZ2D);     \
+//   __macro(cufftXtQueryPlan);             \
+//   __macro(cufftXtSetCallback);           \
+//   __macro(cufftXtClearCallback);         \
+//   __macro(cufftXtSetCallbackSharedSize); \
+//   __macro(cufftXtMakePlanMany);          \
+//   __macro(cufftXtGetSizeMany);           \
+//   __macro(cufftXtExec);                  \
+//   __macro(cufftXtExecDescriptor);        \
+//   __macro(cufftXtSetWorkAreaPolicy);
+
 
 CUFFT_FFT_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUFFT_WRAP)
 

@@ -19,7 +19,7 @@
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
 #include "thrust/device_vector.h"
 #endif
 
@@ -157,7 +157,7 @@ void FFTFillConj(const DeviceContext& dev_ctx,
     _is_fft_axis[i] = true;
   }
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
   DenseTensor src_strides_g;
   src_strides_g.Resize({(int64_t)src_strides_v.size()});
   int64_t* src_strides = dev_ctx.template Alloc<int64_t>(&src_strides_g);

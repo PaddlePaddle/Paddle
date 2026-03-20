@@ -1021,7 +1021,8 @@ __global__ void weight_only_batched_gemv_multi_warp(const T* in,
 
   // Each warp completes the internal reduce and writes the [Batch * NPerBlock *
   // Interleave] results to the corresponding address in shared memory
-  Details::Layout::sync<Num, WarpSize>(reses, sm);
+  // Details::Layout::sync<Num, WarpSize>(reses, sm);
+  Details::Layout::template sync<Num, WarpSize>(reses, sm);
 
   // Each thread is responsible for the accumulation and store to global memory
   // of one element

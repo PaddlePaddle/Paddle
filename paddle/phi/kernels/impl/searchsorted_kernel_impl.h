@@ -26,14 +26,14 @@ template <typename T1, typename T2, typename OutType>
 class GpuAndCpuSearchSortedCompute {
  public:
   static HOSTDEVICE bool IsNan(float x) {
-#ifdef __NVCC__
+#ifdef __CUDACC__ //1
     return ::isnan(x);
 #else
     return std::isnan(x);
 #endif
   }
   static HOSTDEVICE bool IsNan(double x) {
-#ifdef __NVCC__
+#ifdef __CUDACC__ //1
     return ::isnan(x);
 #else
     return std::isnan(x);
@@ -43,14 +43,14 @@ class GpuAndCpuSearchSortedCompute {
   static HOSTDEVICE bool IsNan(int64_t x UNUSED) { return false; }
 
   static HOSTDEVICE bool IsInf(float x) {
-#ifdef __NVCC__
+#ifdef __CUDACC__ //1
     return ::isinf(x);
 #else
     return std::isinf(x);
 #endif
   }
   static HOSTDEVICE bool IsInf(double x) {
-#ifdef __NVCC__
+#ifdef __CUDACC__ //1
     return ::isinf(x);
 #else
     return std::isinf(x);

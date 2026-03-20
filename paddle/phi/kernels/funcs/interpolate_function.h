@@ -22,7 +22,7 @@
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
 #include "paddle/phi/kernels/primitive/datamover_primitives.h"
 #endif
 
@@ -209,7 +209,7 @@ inline std::vector<T> get_new_data_from_tensor(
   return vec_new_data;
 }
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
 
 struct FastDivModForInterpolate {
  public:

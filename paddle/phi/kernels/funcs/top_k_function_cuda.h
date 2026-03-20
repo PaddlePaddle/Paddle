@@ -17,7 +17,7 @@ limitations under the License. */
 
 #include <cstdio>
 #include <vector>
-#ifdef __NVCC__
+#ifdef __CUDACC__ //1
 #include "cub/cub.cuh"
 #endif
 #ifdef __HIPCC__
@@ -884,7 +884,7 @@ __global__ void GatherKthValue(const T* input,
 
   // 1. Find the k-th value
   T kth_value = static_cast<T>(0);
-  RadixSearch<T, RadixTypeConfig<T>::RadixType, IndexType, false>(
+  RadixSearch<T, typename RadixTypeConfig<T>::RadixType, IndexType, false>(
       cur_input, k, num_cols, shared_mem, &kth_value);
 
   __shared__ int64_t block_min_idx;

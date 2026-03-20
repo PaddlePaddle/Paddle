@@ -46,7 +46,7 @@ void RepeatsTensor2IndexTensorFunctor<phi::GPUContext, RepeatsT>::operator()(
     const phi::GPUContext &dev_ctx,
     const DenseTensor &repeats,
     DenseTensor *index) {
-#if defined(__NVCC__)
+#if defined(__NVCC__) || defined(__CUDACC__)
   const RepeatsT *repeats_ptr = repeats.data<RepeatsT>();
   int64_t num_reps = repeats.dims()[0];
 

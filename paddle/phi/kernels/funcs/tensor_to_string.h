@@ -34,7 +34,7 @@ template <typename T>
 static std::vector<T> ToVector(const T *x,
                                size_t n,
                                const phi::Place &place UNUSED) {
-#ifdef __NVCC__
+#ifdef __CUDACC__ //1
   if (place.GetType() == AllocationType::GPU) {
     using CopyT = typename std::
         conditional<std::is_same<T, bool>::value, uint8_t, T>::type;

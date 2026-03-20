@@ -18,7 +18,7 @@
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/impl/gumbel_softmax_kernel_impl.h"
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/cub.h"

@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/pool_kernel.h"
 
-#if defined(__HIPCC__) || defined(__NVCC__)
+#if defined(__HIPCC__) || defined(__NVCC__) || defined(__CUDACC__)
 #include "paddle/phi/kernels/gpu/reduce.h"
 #endif
 
@@ -128,7 +128,7 @@ void PoolRawKernel(const Context& dev_ctx,
         int64_t reduce_num = GetReduceNum(x, out, channel_last, &reduce_dim);
         if (reduce_num > 0 &&
             adaptive) {  // for adaptive_avg_pool2d && output_size == 1
-#if defined(__HIPCC__) || defined(__NVCC__)
+#if defined(__HIPCC__) || defined(__NVCC__) || defined(__CUDACC__)
           auto stream = dev_ctx.stream();
           funcs::ReduceGpuKernel<T, T, kps::MeanOps>(
               dev_ctx, x, out, reduce_dim);

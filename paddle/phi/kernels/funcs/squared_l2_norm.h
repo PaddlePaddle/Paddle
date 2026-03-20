@@ -18,7 +18,7 @@
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
 #include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 #endif
@@ -49,7 +49,7 @@ void SquaredL2Norm(const phi::CPUContext& dev_ctx,
   }
 }
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
 template <typename T1, typename T2 = T1>
 void SquaredL2Norm(const phi::GPUContext& dev_ctx,
                    const T1* x,

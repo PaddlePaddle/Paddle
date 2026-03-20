@@ -33,6 +33,7 @@ DECLARE_TYPE_FOR_GPU(gpuStream_t, cudaStream_t, hipStream_t);
 DECLARE_TYPE_FOR_GPU(gpuEvent_t, cudaEvent_t, hipEvent_t);
 
 #ifndef PADDLE_WITH_CUSTOM_DEVICE
+#ifdef WITH_CUDNN_FRONTEND
 DECLARE_TYPE_FOR_GPU(dnnActivationDescriptor,
                      cudnnActivationStruct,
                      miopenActivationDescriptor);
@@ -57,6 +58,7 @@ DECLARE_TYPE_FOR_GPU(dnnPoolingDescriptor_t,
 DECLARE_TYPE_FOR_GPU(dnnDropoutDescriptor_t,
                      cudnnDropoutDescriptor_t,
                      miopenDropoutDescriptor_t);
+#endif
 
 DECLARE_TYPE_FOR_GPU(blasHandle_t, cublasHandle_t, rocblas_handle);
 

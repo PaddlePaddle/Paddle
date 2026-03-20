@@ -23,7 +23,7 @@ namespace phi {
 
 template <typename T>
 inline HOSTDEVICE bool CheckFinite(T value) {
-#if defined(PADDLE_WITH_CUDA) && defined(__NVCC__)
+#if defined(PADDLE_WITH_CUDA) && defined(__NVCC__) || defined(__CUDACC__)
   return isfinite(value);
 #else
   return std::isfinite(value);

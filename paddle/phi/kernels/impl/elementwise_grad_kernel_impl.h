@@ -320,7 +320,7 @@ void ComputeDDoutWithBroadcast(const CPUContext& dev_ctx UNUSED,
   }
 }
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
 
 /*
 Since __global__ does not allow std::vector as a type parameter,

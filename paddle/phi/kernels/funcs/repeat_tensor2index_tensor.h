@@ -32,7 +32,7 @@ class RepeatsTensor2IndexTensorFunctor {
                   DenseTensor *index);
 };
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
 template <typename RepeatsT>
 class RepeatsTensor2IndexTensorFunctor<phi::GPUContext, RepeatsT> {
  public:

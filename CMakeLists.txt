@@ -30,6 +30,7 @@ set(PADDLE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(PADDLE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
 
 include(system)
+add_compile_options("-fpermissive")
 
 # Note(zhouwei): Ninja Generator will set CMAKE_BUILD_TYPE to Debug
 if(NOT CMAKE_BUILD_TYPE)

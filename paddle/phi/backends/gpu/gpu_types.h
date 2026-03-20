@@ -25,7 +25,9 @@
 #else  // PADDLE_WITH_CUDA
 #ifndef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/backends/dynload/cublas.h"
+#ifdef WITH_CUDNN_FRONTEND
 #include "paddle/phi/backends/dynload/cudnn.h"
+#endif
 #else
 #include <cuda_runtime.h>
 #endif
@@ -50,6 +52,7 @@ DECLARE_TYPE_FOR_GPU(gpuError_t, cudaError_t, hipError_t);
 DECLARE_TYPE_FOR_GPU(gpuMemcpyKind, cudaMemcpyKind, hipMemcpyKind);
 DECLARE_TYPE_FOR_GPU(gpuDeviceProp, cudaDeviceProp, hipDeviceProp_t);
 #ifndef PADDLE_WITH_CUSTOM_DEVICE
+#ifdef WITH_CUDNN_FRONTEND
 DECLARE_TYPE_FOR_GPU(dnnDataType_t, cudnnDataType_t, miopenDataType_t);
 DECLARE_TYPE_FOR_GPU(dnnPoolingMode_t, cudnnPoolingMode_t, miopenPoolingMode_t);
 DECLARE_TYPE_FOR_GPU(dnnTensorFormat_t,
@@ -58,6 +61,7 @@ DECLARE_TYPE_FOR_GPU(dnnTensorFormat_t,
 DECLARE_TYPE_FOR_GPU(dnnActivationMode_t,
                      cudnnActivationMode_t,
                      miopenActivationMode_t);
+#endif
 #endif
 DECLARE_TYPE_FOR_GPU(gpuGraph_t, cudaGraph_t, hipGraph_t);
 DECLARE_TYPE_FOR_GPU(gpuFunction_t, cudaFunction_t, hipFunction_t);

@@ -237,6 +237,26 @@ if(UNIX AND NOT APPLE)
   target_link_libraries(phi_core rt)
 endif()
 
+# Link clang builtins (e.g. __truncsfhf2) when using clang with xtrans backend
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  get_filename_component(_CLANG_BIN_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
+  get_filename_component(_CLANG_ROOT "${_CLANG_BIN_DIR}" DIRECTORY)
+  find_library(
+    CLANG_RT_BUILTINS
+    NAMES clang_rt.builtins
+    PATHS
+      "${_CLANG_ROOT}/lib/clang/19/lib/x86_64-unknown-linux-gnu"
+      "${_CLANG_ROOT}/lib/clang/19/lib/x86_64-baidu-linux-gnu"
+      "${_CLANG_ROOT}/lib/clang/19/lib"
+    NO_DEFAULT_PATH)
+  if(CLANG_RT_BUILTINS)
+    message(STATUS "Found clang_rt.builtins: ${CLANG_RT_BUILTINS}")
+    target_link_libraries(phi_core ${CLANG_RT_BUILTINS})
+  else()
+    message(WARNING "clang_rt.builtins not found; __truncsfhf2 may be missing")
+  endif()
+endif()
+
 set(PHI_DUMMY_FILE ${CMAKE_CURRENT_BINARY_DIR}/phi_dummy.cpp)
 if(MSVC)
   set(PHI_DUMMY_FILE_CONTENT

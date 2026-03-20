@@ -75,6 +75,10 @@ function(kernel_declare TARGET_LIST)
   foreach(kernel_path ${TARGET_LIST})
     # message("kernel path ${kernel_path}" )
     file(READ ${kernel_path} kernel_impl)
+    # Remove single-line comments (//) to avoid matching commented-out kernel
+    # registrations, which would produce malformed PD_DECLARE_KERNEL entries
+    # (e.g. "PD_DECLARE_KERNEL(strings_copy, //GPU, )").
+    string(REGEX REPLACE "//[^\n]*" "" kernel_impl "${kernel_impl}")
     string(
       REGEX
         MATCH

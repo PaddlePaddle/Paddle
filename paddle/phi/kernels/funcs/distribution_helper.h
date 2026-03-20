@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#ifdef __NVCC__
+#ifdef __CUDACC__ //1
 #include <curand_kernel.h>
 #endif
 #ifdef __HIPCC__
@@ -28,7 +28,7 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/generator.h"
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 #endif
@@ -49,7 +49,7 @@ struct exponential_transform {
   explicit exponential_transform(T lambda) : lambda_(lambda) {}
 
   HOSTDEVICE inline T operator()(T val) const {
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
     T log = -std::numeric_limits<T>::epsilon() / 2;
     if (val < static_cast<T>(1.) - std::numeric_limits<T>::epsilon() / 2) {
       if (std::is_same<T, double>::value) {
@@ -127,7 +127,7 @@ struct normal_transform {
   T std_;
 };
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
 
 namespace kps = phi::kps;
 
@@ -136,7 +136,7 @@ namespace kps = phi::kps;
 template <typename T>
 struct normal_distribution;
 
-#if defined(__NVCC__)
+#if defined(__NVCC__) || defined(__CUDACC__)
 template <typename T>
 struct uniform_distribution {
   __device__ inline T operator()(curandStatePhilox4_32_10_t *state) const {
@@ -278,7 +278,7 @@ __global__ void DistributionKernel(size_t size,
                                    size_t stride) {
   size_t idx = static_cast<size_t>(BLOCK_ID_X * BLOCK_NUM_X);
   static constexpr int kCount = DistOp::kReturnsCount;
-#if defined(__NVCC__)
+#if defined(__NVCC__) || defined(__CUDACC__)
   curandStatePhilox4_32_10_t state;
   curand_init(seed, idx + THREAD_ID_X, offset, &state);
   using SType = curandStatePhilox4_32_10_t;

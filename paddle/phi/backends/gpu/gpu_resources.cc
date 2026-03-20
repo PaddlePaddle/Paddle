@@ -25,7 +25,9 @@
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/dynload/cublas.h"
 #include "paddle/phi/backends/dynload/cublasLt.h"
+#ifdef WITH_CUDNN_FRONTEND
 #include "paddle/phi/backends/dynload/cudnn.h"
+#endif
 #include "paddle/phi/backends/dynload/cusolver.h"
 #include "paddle/phi/backends/dynload/cusparse.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
@@ -171,9 +173,9 @@ void InitBlasHandle(blasHandle_t* blas_handle, gpuStream_t stream) {
   phi::dynload::rocblas_create_handle(blas_handle);
   phi::dynload::rocblas_set_stream(*blas_handle, stream);
 #else   // PADDLE_WITH_CUDA
-  PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasCreate(blas_handle));
+  PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasCreate_v2(blas_handle));
   PADDLE_RETRY_CUDA_SUCCESS(
-      phi::dynload::cublasSetStream(*blas_handle, stream));
+      phi::dynload::cublasSetStream_v2(*blas_handle, stream));
 #endif  // PADDLE_WITH_HIP
 }
 
@@ -185,7 +187,7 @@ void DestroyBlasHandle(blasHandle_t handle) {
   }
 #else
   if (handle != nullptr) {
-    phi::dynload::cublasDestroy(handle);
+    phi::dynload::cublasDestroy_v2(handle);
     handle = nullptr;
   }
 #endif  // PADDLE_WITH_HIP
@@ -213,6 +215,7 @@ void DestroyBlasLtHandle(blasLtHandle_t handle) {
 #endif
 }
 
+#ifdef WITH_CUDNN_FRONTEND
 void InitDnnHandle(dnnHandle_t* handle, gpuStream_t stream, Place place) {
   if (phi::dynload::HasCUDNN()) {
 #ifdef PADDLE_WITH_HIP
@@ -272,6 +275,12 @@ void DestroyDnnHandle(dnnHandle_t handle) {
   }
 #endif  // PADDLE_WITH_HIP
 }
+#else
+void InitDnnHandle(dnnHandle_t* handle, gpuStream_t stream, Place place) {
+  *handle = nullptr;
+}
+void DestroyDnnHandle(dnnHandle_t handle) {}
+#endif
 
 void InitSolverHandle(solverHandle_t* handle, gpuStream_t stream) {
 #if defined(PADDLE_WITH_CUDA)

@@ -28,8 +28,8 @@
 #include "paddle/phi/kernels/slice_kernel.h"
 #include "paddle/phi/kernels/split_kernel.h"
 
-#if defined(__NVCC__) || defined(__HIPCC__)
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__)
+#ifdef __CUDACC__ //1
 #include <cuda.h>
 #include <cuda_runtime.h>
 #elif defined(__HIPCC__)

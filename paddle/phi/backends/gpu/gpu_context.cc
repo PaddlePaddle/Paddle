@@ -35,7 +35,9 @@ limitations under the License. */
 #include "paddle/phi/core/memory/allocation/allocator_facade.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/dynload/cublas.h"
+#ifdef WITH_CUDNN_FRONTEND
 #include "paddle/phi/backends/dynload/cudnn.h"
+#endif
 #include "paddle/phi/backends/dynload/cusolver.h"
 #include "paddle/phi/backends/dynload/cusparse.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
@@ -483,6 +485,7 @@ struct GPUContext::Impl {
     return dnn_handle_;
   }
 
+  #ifdef WITH_CUDNN_FRONTEND
   void DestroyInternalDnnHandle() {
 #ifdef PADDLE_WITH_HIP
     if (owned_ && dnn_handle_ != nullptr) {
@@ -502,6 +505,7 @@ struct GPUContext::Impl {
   void SetDnnHandle(std::function<dnnHandle_t()>&& handle_creator) {
     dnn_handle_creator_ = std::move(handle_creator);
   }
+#endif
 
   solverHandle_t GetSolverHandle() {
     std::call_once(flag_solver_, [&]() {
@@ -1001,6 +1005,7 @@ void GPUContext::SetBlasLtHandle(std::function<blasLtHandle_t()>&& func) {
   impl_->SetBlasLtHandle(std::move(func));
 }
 
+#ifdef WITH_CUDNN_FRONTEND
 void GPUContext::SetDnnHandle(dnnHandle_t handle) {
   impl_->SetDnnHandle(handle);
 }
@@ -1008,6 +1013,7 @@ void GPUContext::SetDnnHandle(dnnHandle_t handle) {
 void GPUContext::SetDnnHandle(std::function<dnnHandle_t()>&& func) {
   impl_->SetDnnHandle(std::move(func));
 }
+#endif
 
 void GPUContext::SetSolverHandle(solverHandle_t handle) {
   impl_->SetSolverHandle(handle);

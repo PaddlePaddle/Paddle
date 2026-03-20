@@ -102,7 +102,7 @@ __global__ void sampleMultinomialWithReplacement(
       static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) +
       static_cast<size_t>(threadIdx.x);
 
-#if defined(__NVCC__)
+#if defined(__NVCC__) || defined(__CUDACC__)
   curandStatePhilox4_32_10_t state;
   curand_init(seed, idx, offset, &state);
 #else
@@ -115,7 +115,7 @@ __global__ void sampleMultinomialWithReplacement(
       static_cast<int64_t>(threadIdx.x);
   for (int64_t dist = blockIdx.y; dist < num_distributions; dist += gridDim.y) {
     if (sample < num_samples) {
-#if defined(__NVCC__)
+#if defined(__NVCC__) || defined(__CUDACC__)
       T rng_number = static_cast<T>(curand_uniform4(&state).x);
 #else
       T rng_number = static_cast<T>(hiprand_uniform4(&state).x);

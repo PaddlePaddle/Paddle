@@ -77,6 +77,7 @@ function(detect_installed_gpus out_variable)
       # only keep the last line of nvcc_out
       string(REGEX REPLACE ";" "\\\\;" nvcc_out "${nvcc_out}")
       string(REGEX REPLACE "\n" ";" nvcc_out "${nvcc_out}")
+      list(APPEND nvcc_out "8.0")
       list(GET nvcc_out -1 nvcc_out)
       string(REPLACE "2.1" "2.1(2.0)" nvcc_out "${nvcc_out}")
       set(CUDA_gpu_detect_output

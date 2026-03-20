@@ -51,9 +51,12 @@ __global__ void AccuracyCudaKernel(const int64_t N,
   __syncthreads();
 
 // reduce the count with init value 0, and output accuracy.
-#ifdef PADDLE_WITH_CUDA
-  int result = thrust::reduce(thrust::device, total, total + BlockSize, 0);
-#else
+// NOTE: thrust::reduce(thrust::device, ...) is a __host__ API and cannot be
+// called inside a __global__ kernel. Use shared memory reduction instead,
+// which works for both CUDA and HIP.
+// #ifdef PADDLE_WITH_CUDA
+//   int result = thrust::reduce(thrust::device, total, total + BlockSize, 0);
+// #else
   // HIP thrust::reduce not support __device__
   for (int s = BlockSize / 2; s > 0; s >>= 1) {
     if (threadIdx.x < s) {
@@ -62,7 +65,7 @@ __global__ void AccuracyCudaKernel(const int64_t N,
     __syncthreads();
   }
   int result = total[0];
-#endif
+// #endif
   if (threadIdx.x == 0) {
     *correct_data = result;
     *accuracy = static_cast<T>(static_cast<MT>(result) / static_cast<MT>(N));
