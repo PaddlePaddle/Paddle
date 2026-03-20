@@ -50,11 +50,14 @@ struct StreamPoolState {
 
 inline StreamPoolState& get_pool(int device_index) {
   const int device_count = phi::backends::gpu::GetGPUDeviceCount();
-  TORCH_CHECK(device_index >= 0 && device_index < device_count,
+  const int limit = std::min(device_count, kMaxDevices);
+  TORCH_CHECK(device_index >= 0 && device_index < limit,
               "CUDA device index out of range: ",
               device_index,
               " (available devices: ",
               device_count,
+              ", max supported by this build: ",
+              kMaxDevices,
               ")");
   static StreamPoolState states[kMaxDevices];
   return states[device_index];
@@ -145,11 +148,14 @@ inline CUDAStream getCurrentCUDAStream(c10::DeviceIndex device_index = -1) {
   }
   {
     const int device_count = phi::backends::gpu::GetGPUDeviceCount();
-    TORCH_CHECK(device_index >= 0 && device_index < device_count,
+    const int limit = std::min(device_count, detail::kMaxDevices);
+    TORCH_CHECK(device_index >= 0 && device_index < limit,
                 "CUDA device index out of range: ",
                 device_index,
                 " (available devices: ",
                 device_count,
+                ", max supported by this build: ",
+                detail::kMaxDevices,
                 ")");
   }
 
@@ -188,11 +194,14 @@ inline CUDAStream getStreamFromPool(const bool isHighPriority = false,
   }
   {
     const int device_count = phi::backends::gpu::GetGPUDeviceCount();
-    TORCH_CHECK(device_index >= 0 && device_index < device_count,
+    const int limit = std::min(device_count, detail::kMaxDevices);
+    TORCH_CHECK(device_index >= 0 && device_index < limit,
                 "CUDA device index out of range: ",
                 device_index,
                 " (available devices: ",
                 device_count,
+                ", max supported by this build: ",
+                detail::kMaxDevices,
                 ")");
   }
 
@@ -230,11 +239,14 @@ inline void setCurrentCUDAStream(CUDAStream stream) {
   c10::DeviceIndex idx = stream.unwrap().device_index();
   {
     const int device_count = phi::backends::gpu::GetGPUDeviceCount();
-    TORCH_CHECK(idx >= 0 && idx < device_count,
+    const int limit = std::min(device_count, detail::kMaxDevices);
+    TORCH_CHECK(idx >= 0 && idx < limit,
                 "CUDA device index out of range: ",
                 idx,
                 " (available devices: ",
                 device_count,
+                ", max supported by this build: ",
+                detail::kMaxDevices,
                 ")");
   }
   auto& tls = detail::get_tls();
