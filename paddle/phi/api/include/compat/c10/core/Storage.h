@@ -214,8 +214,21 @@ struct Storage {
   // Get a const reference to the underlying DataPtr (LibTorch compatible)
   const DataPtr& data_ptr() const { return *data_ptr_; }
 
-  // Get a mutable reference to the underlying DataPtr (LibTorch compatible)
-  DataPtr& mutable_data_ptr() const { return *data_ptr_; }
+  // Get a mutable reference to the underlying DataPtr (LibTorch compatible).
+  // Implements copy-on-write: if data_ptr_ is shared across copies, this
+  // storage detaches by creating a non-owning view so that mutations here do
+  // not affect other Storage copies that share the same DataPtr.  The owning
+  // DataPtr (and its context/deleter) remains held by the other copies,
+  // keeping the allocation alive.
+  DataPtr& mutable_data_ptr() const {
+    if (data_ptr_.use_count() > 1) {
+      void* raw = data_ptr_->get();
+      c10::Device dev = data_ptr_->device();
+      const_cast<Storage*>(this)->data_ptr_ =
+          std::make_shared<DataPtr>(DataPtr(raw, dev));
+    }
+    return *data_ptr_;
+  }
 
   // Get the underlying phi::Allocation (Paddle-specific)
   std::shared_ptr<phi::Allocation> allocation() const { return allocation_; }
@@ -252,19 +265,19 @@ struct Storage {
 
   // Set data pointer (swap and return old) - LibTorch compatible DataPtr
   // version. Clears allocation_ since the new DataPtr manages its own
-  // lifecycle. Use set_data_ptr(shared_ptr<phi::Allocation>) for Paddle paths.
-  // Callers should ensure unique() before calling to avoid surprising shared
-  // copies.
+  // lifecycle. Uses in-place replacement so that all Storage copies sharing
+  // this data_ptr_ see the new DataPtr rather than a moved-from empty state.
+  // Use set_data_ptr(shared_ptr<phi::Allocation>) for Paddle paths.
   DataPtr set_data_ptr(DataPtr&& new_data_ptr) {
     DataPtr old = std::move(*data_ptr_);
-    data_ptr_ = std::make_shared<DataPtr>(std::move(new_data_ptr));
+    *data_ptr_ = std::move(new_data_ptr);
     allocation_ = nullptr;
     return old;
   }
 
   // Set data pointer (no swap) - LibTorch compatible DataPtr version
   void set_data_ptr_noswap(DataPtr&& new_data_ptr) {
-    data_ptr_ = std::make_shared<DataPtr>(std::move(new_data_ptr));
+    *data_ptr_ = std::move(new_data_ptr);
     allocation_ = nullptr;
   }
 
