@@ -1001,8 +1001,8 @@ def tensor_cuda_decorator() -> Callable[
 ]:
     """
     Usage Example:
-    PyTorch: Tensor.cuda(device: int | str | None, non_blocking: bool = False, memory_format)
-    Paddle: Tensor.cuda(device_id: int | None = None, blocking: bool = True)
+    PyTorch: Tensor.cuda(device: DeviceLike, non_blocking: bool = False)
+    Paddle: Tensor.cuda(device_id: DeviceLike, blocking: bool = True)
     """
 
     def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
@@ -1031,6 +1031,8 @@ def tensor_cuda_decorator() -> Callable[
                     kwargs["device_id"] = args[1]
                 if "blocking" not in kwargs:
                     kwargs["blocking"] = not args[2]
+                if len(args) > 3:
+                    raise ValueError("cuda() received too many arguments")
                 args = args[:1]
             return func(*args, **kwargs)
 

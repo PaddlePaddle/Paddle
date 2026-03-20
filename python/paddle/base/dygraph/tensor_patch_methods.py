@@ -1169,7 +1169,6 @@ def monkey_patch_tensor():
         self: Tensor,
         device: DeviceLike = None,
         non_blocking: bool = False,
-        memory_format=None,
     ) -> Tensor: ...
 
     @framework.dygraph_only
@@ -1178,7 +1177,6 @@ def monkey_patch_tensor():
         self: Tensor,
         device_id: DeviceLike = None,
         blocking: bool = True,
-        memory_format=None,
     ) -> Tensor:
         device_type = paddle.device.get_all_device_type()
         if len(
