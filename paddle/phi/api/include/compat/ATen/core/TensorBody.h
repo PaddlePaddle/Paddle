@@ -34,6 +34,17 @@
 #include <cuda_runtime_api.h>
 #endif
 
+// Forward declaration to allow record_stream(at::cuda::CUDAStream) overload
+// without pulling in the full CUDAStream header here.
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+namespace c10::cuda {
+class CUDAStream;
+}  // namespace c10::cuda
+namespace at::cuda {
+using c10::cuda::CUDAStream;
+}  // namespace at::cuda
+#endif
+
 #include <limits>
 #include <optional>
 #include <utility>
@@ -669,6 +680,12 @@ class Tensor : public TensorBase {
   }
 
   void record_stream(at::Stream s) const;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  void record_stream(at::cuda::CUDAStream s) const;
+  // TODO(youge325): Remove after DeepEP paddle branch is updated to use
+  // at::Stream
+  void record_stream(cudaStream_t s) const;
+#endif
 
   Tensor var(int dim) const { return var(at::IntArrayRef{dim}, true, false); }
 

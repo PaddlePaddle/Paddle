@@ -17,8 +17,11 @@
 #include <c10/core/Device.h>
 #include <c10/core/Stream.h>
 #include <c10/cuda/CUDAException.h>
+
+#include <array>
+#include <atomic>
+#include <mutex>
 #include "paddle/phi/api/include/context_pool.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/cuda_stream.h"
@@ -27,12 +30,69 @@ namespace c10::cuda {
 
 using StreamId = int64_t;
 
+// ── Per-device stream pool and per-thread current stream ─────────────────────
+
+namespace detail {
+
+constexpr int kStreamsPerPool = 32;
+constexpr int kMaxDevices = 16;
+
+struct StreamPoolState {
+  cudaStream_t low_priority[kStreamsPerPool]{};
+  cudaStream_t high_priority[kStreamsPerPool]{};
+  std::atomic<uint32_t> lp_counter{0};
+  std::atomic<uint32_t> hp_counter{0};
+  std::once_flag init_flag;
+};
+
+inline StreamPoolState& get_pool(int device_index) {
+  static StreamPoolState states[kMaxDevices];
+  return states[device_index];
+}
+
+inline void init_pool(int device_index, StreamPoolState* state) {
+  phi::backends::gpu::GPUDeviceGuard guard(device_index);
+  int lo_pri = 0, hi_pri = 0;
+  cudaDeviceGetStreamPriorityRange(&lo_pri, &hi_pri);
+  for (int i = 0; i < kStreamsPerPool; ++i) {
+    C10_CUDA_CHECK(cudaStreamCreateWithPriority(
+        &state->low_priority[i], cudaStreamNonBlocking, lo_pri));
+    C10_CUDA_CHECK(cudaStreamCreateWithPriority(
+        &state->high_priority[i], cudaStreamNonBlocking, hi_pri));
+  }
+}
+
+// Per-thread, per-device current stream state.
+// thread_local inside an inline function is ODR-safe across translation units
+// (C++11 §3.2): all TUs share the same thread-local instance per thread.
+struct TLSStreamState {
+  cudaStream_t streams[kMaxDevices]{};
+  bool has_stream[kMaxDevices]{};
+};
+
+inline TLSStreamState& get_tls() {
+  thread_local TLSStreamState s;
+  return s;
+}
+
+}  // namespace detail
+
+// ── CUDAStream ───────────────────────────────────────────────────────────────
+
 class CUDAStream {
  public:
   CUDAStream() = delete;
 
   explicit CUDAStream(Stream stream) : stream_(stream) {
     TORCH_CHECK(stream_.device_type() == DeviceType::CUDA);
+  }
+
+  bool operator==(const CUDAStream& other) const noexcept {
+    return stream_ == other.stream_;
+  }
+
+  bool operator!=(const CUDAStream& other) const noexcept {
+    return stream_ != other.stream_;
   }
 
   StreamId id() const { return stream_.id(); }
@@ -49,27 +109,43 @@ class CUDAStream {
 
   DeviceType device_type() const { return DeviceType::CUDA; }
 
+  DeviceIndex device_index() const { return stream_.device_index(); }
+
+  Device device() const { return Device(DeviceType::CUDA, device_index()); }
+
+  // TODO(youge325): Remove after DeepEP paddle branch is updated to use
+  // stream()
+  cudaStream_t raw_stream() const { return stream(); }
+
  private:
   Stream stream_;
 };
 
 /**
- * Get the current CUDA stream, for the passed CUDA device, or for the
- * current device if no device index is passed.  The current CUDA stream
- * will usually be the default CUDA stream for the device, but it may
- * be different if someone called 'setCurrentCUDAStream' or used 'StreamGuard'
- * or 'CUDAStreamGuard'.
+ * Get the current CUDA stream for the given device (or the current device if
+ * device_index == -1).
+ *
+ * Returns the per-thread current stream if one has been set via
+ * setCurrentCUDAStream() for this thread and device; otherwise falls back to
+ * Paddle's default stream for the device.
  */
 inline CUDAStream getCurrentCUDAStream(c10::DeviceIndex device_index = -1) {
   if (device_index == -1) {
     device_index = phi::backends::gpu::GetCurrentDeviceId();
   }
 
-  // Encode the raw cudaStream_t handle as a c10::StreamId (int64_t) using the
-  // same reinterpret_cast convention as phi::Stream::id_ / raw_stream().
-  auto* phi_stream = paddle::GetCurrentCUDAStream(phi::GPUPlace(device_index));
-  c10::StreamId sid = static_cast<c10::StreamId>(
-      reinterpret_cast<intptr_t>(phi_stream->raw_stream()));
+  auto& tls = detail::get_tls();
+  cudaStream_t raw;
+  if (tls.has_stream[device_index]) {
+    raw = tls.streams[device_index];
+  } else {
+    auto* phi_stream =
+        paddle::GetCurrentCUDAStream(phi::GPUPlace(device_index));
+    raw = phi_stream->raw_stream();
+  }
+
+  c10::StreamId sid =
+      static_cast<c10::StreamId>(reinterpret_cast<intptr_t>(raw));
   return CUDAStream(
       c10::Stream(c10::Stream::UNSAFE,
                   c10::Device(c10::DeviceType::CUDA, device_index),
@@ -77,20 +153,37 @@ inline CUDAStream getCurrentCUDAStream(c10::DeviceIndex device_index = -1) {
 }
 
 /**
- * Get a stream from the pool in round-robin fashion.
+ * Get a stream from the per-device pool in round-robin fashion.
  * Returns a high priority stream if isHighPriority is true.
+ *
+ * The pool is lazily initialized on first use for each device.  Each device
+ * has kStreamsPerPool low-priority and kStreamsPerPool high-priority streams
+ * that are reused round-robin.  Pool streams are always distinct from the
+ * current stream, enabling cross-stream dependency management and correct
+ * record_stream lifetime semantics.
  */
 inline CUDAStream getStreamFromPool(const bool isHighPriority = false,
                                     c10::DeviceIndex device_index = -1) {
   if (device_index == -1) {
     device_index = phi::backends::gpu::GetCurrentDeviceId();
   }
-  // Get the raw cudaStream_t from paddle's stream pool
-  auto* phi_stream = paddle::GetCurrentCUDAStream(phi::GPUPlace(device_index));
-  // TODO(youge325): Implement proper stream pool with priority support
-  // For now, just return the current stream
-  c10::StreamId sid = static_cast<c10::StreamId>(
-      reinterpret_cast<intptr_t>(phi_stream->raw_stream()));
+
+  auto& state = detail::get_pool(device_index);
+  std::call_once(state.init_flag, [device_index, &state]() {
+    detail::init_pool(device_index, &state);
+  });
+
+  cudaStream_t raw;
+  if (isHighPriority) {
+    raw = state.high_priority[state.hp_counter.fetch_add(1) %
+                              detail::kStreamsPerPool];
+  } else {
+    raw = state.low_priority[state.lp_counter.fetch_add(1) %
+                             detail::kStreamsPerPool];
+  }
+
+  c10::StreamId sid =
+      static_cast<c10::StreamId>(reinterpret_cast<intptr_t>(raw));
   return CUDAStream(
       c10::Stream(c10::Stream::UNSAFE,
                   c10::Device(c10::DeviceType::CUDA, device_index),
@@ -98,31 +191,18 @@ inline CUDAStream getStreamFromPool(const bool isHighPriority = false,
 }
 
 /**
- * Set the current CUDA stream for the current device.
- * This affects all future CUDA operations on the current thread.
+ * Set the current CUDA stream for the device of the given stream in the
+ * calling thread.
  *
- * In Paddle, the "current stream" is a field inside GPUContext rather than a
- * per-thread TLS value.  We therefore obtain the mutable GPUContext for the
- * target device from DeviceContextPool and call SetStream() on it, which is
- * the canonical Paddle API for injecting an external stream.
+ * Implements per-thread, per-device current stream semantics: the change is
+ * local to the calling OS thread and does not affect any shared state such as
+ * Paddle's GPUContext.  Other threads continue to see their own current stream.
  */
 inline void setCurrentCUDAStream(CUDAStream stream) {
-  c10::DeviceIndex device_index = stream.unwrap().device_index();
-  cudaStream_t cuda_stream = stream.stream();
-
-  // Switch the active CUDA device so that subsequent CUDA runtime calls land
-  // on the correct device.
-  cudaSetDevice(device_index);
-
-  // Update the stream stored inside Paddle's GPUContext for this device.
-  auto& pool = paddle::experimental::DeviceContextPool::Instance();
-  auto* dev_ctx = static_cast<phi::GPUContext*>(
-      pool.GetMutable(phi::GPUPlace(device_index)));
-  PADDLE_ENFORCE_NOT_NULL(
-      dev_ctx,
-      phi::errors::NotFound("GPUContext not found for device %d.",
-                            device_index));
-  dev_ctx->SetStream(cuda_stream);
+  c10::DeviceIndex idx = stream.unwrap().device_index();
+  auto& tls = detail::get_tls();
+  tls.streams[idx] = stream.stream();
+  tls.has_stream[idx] = true;
 }
 
 #define getDefaultCUDAStream getCurrentCUDAStream;

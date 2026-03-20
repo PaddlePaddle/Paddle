@@ -32,6 +32,7 @@ inline bool isValidDeviceType(DeviceType d) {
     case DeviceType::CUDA:
     case DeviceType::XPU:
     case DeviceType::IPU:
+    case DeviceType::CUSTOM:
       return true;
     default:
       return false;

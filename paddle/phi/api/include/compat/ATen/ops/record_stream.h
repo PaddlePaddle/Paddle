@@ -16,6 +16,9 @@
 
 #include <ATen/core/Tensor.h>
 #include <c10/core/Device.h>
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include <c10/cuda/CUDAStream.h>
+#endif
 
 namespace at {
 inline void Tensor::record_stream(at::Stream s) const {
@@ -38,10 +41,30 @@ inline void Tensor::record_stream(at::Stream s) const {
       dense_tensor->Holder(),
       reinterpret_cast<phi::stream::stream_t>(s.native_handle()));
 #else
+  (void)s;
   (void)dense_tensor;
   PD_THROW(
       "record_stream is not supported: no GPU/XPU/Custom device enabled "
       "in this build.");
 #endif
 }
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+inline void Tensor::record_stream(at::cuda::CUDAStream s) const {
+  record_stream(static_cast<at::Stream>(s));
+}
+
+// TODO(youge325): Remove after DeepEP paddle branch is updated to use
+// at::Stream
+inline void Tensor::record_stream(cudaStream_t s) const {
+  auto dense_tensor =
+      std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl());
+  PD_CHECK(dense_tensor != nullptr,
+           "record_stream only supports DenseTensor, but got a non-dense "
+           "tensor implementation.");
+  PD_CHECK(dense_tensor->place().GetType() != phi::AllocationType::CPU,
+           "record_stream is not supported for CPU tensors.");
+  paddle::memory::RecordStream(dense_tensor->Holder(), s);
+}
+#endif
 }  // namespace at

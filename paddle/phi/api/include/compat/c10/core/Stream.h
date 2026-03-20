@@ -89,14 +89,19 @@ class Stream final {
   }
 };
 
-std::ostream& operator<<(std::ostream& stream, const Stream& s);
+inline std::ostream& operator<<(std::ostream& os, const Stream& s) {
+  os << "Stream(device_type=" << static_cast<int>(s.device_type())
+     << ", device_index=" << static_cast<int>(s.device_index())
+     << ", id=" << s.id() << ")";
+  return os;
+}
 
 }  // namespace c10
 
 namespace std {
 template <>
 struct hash<c10::Stream> {
-  size_t operator()(c10::Stream s) const noexcept {
+  size_t operator()(const c10::Stream& s) const noexcept {
     return std::hash<uint64_t>{}(s.hash());
   }
 };
