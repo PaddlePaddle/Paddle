@@ -26,14 +26,11 @@
 
 // ---------- Construction ----------------------------------------------------
 
-// When no phi::Generator is supplied, GeneratorImpl should create one
-// internally.
 TEST(GeneratorImplTest, ConstructWithNullptrCreatesDefaultGen) {
   c10::GeneratorImpl impl(c10::Device(c10::kCPU));
   ASSERT_NE(impl.paddle_generator(), nullptr);
 }
 
-// When an existing phi::Generator is supplied, GeneratorImpl should use it.
 TEST(GeneratorImplTest, ConstructWithExistingGen) {
   auto gen = std::make_shared<phi::Generator>(42u);
   c10::GeneratorImpl impl(c10::Device(c10::kCPU), gen);
@@ -67,7 +64,6 @@ TEST(GeneratorImplTest, SetOffsetForward) {
   auto gen = std::make_shared<phi::Generator>(100u);
   c10::GeneratorImpl impl(c10::Device(c10::kCUDA, 0), gen);
 
-  // Start with offset 0, set forward to 10.
   impl.set_offset(10);
   ASSERT_EQ(impl.get_offset(), 10u);
 }
@@ -76,11 +72,9 @@ TEST(GeneratorImplTest, SetOffsetBackward) {
   auto gen = std::make_shared<phi::Generator>(100u);
   c10::GeneratorImpl impl(c10::Device(c10::kCUDA, 0), gen);
 
-  // First move forward.
   impl.set_offset(20);
   ASSERT_EQ(impl.get_offset(), 20u);
 
-  // Now move backward (the else branch in set_offset).
   impl.set_offset(5);
   ASSERT_EQ(impl.get_offset(), 5u);
 }
@@ -90,7 +84,6 @@ TEST(GeneratorImplTest, SetOffsetSameValue) {
   c10::GeneratorImpl impl(c10::Device(c10::kCUDA, 0), gen);
 
   impl.set_offset(10);
-  // Setting offset to same value should take the else branch (offset <= cur).
   impl.set_offset(10);
   ASSERT_EQ(impl.get_offset(), 10u);
 }
@@ -136,7 +129,6 @@ TEST(GeneratorImplTest, ClonePreservesState) {
   ASSERT_EQ(cloned->current_seed(), 777u);
   ASSERT_EQ(cloned->device(), c10::Device(c10::kCPU));
 
-  // Modifying clone should not affect original.
   cloned->set_current_seed(888);
   ASSERT_EQ(impl.current_seed(), 777u);
   ASSERT_EQ(cloned->current_seed(), 888u);
@@ -175,7 +167,6 @@ TEST(GeneratorImplTest, CopyIntrusivePtrIncrementsRefcount) {
     ASSERT_EQ(ptr.use_count(), 2u);
     ASSERT_EQ(copy.use_count(), 2u);
   }
-  // After copy goes out of scope, refcount returns to 1.
   ASSERT_EQ(ptr.use_count(), 1u);
 }
 

@@ -302,29 +302,24 @@ class DispatchKeySet final {
     }
 
     self_type& operator++() {
-      // Find the next set bit in the functionality keys
       while (next_functionality_ < end_iter_mask_val) {
         if (*data_ptr_ & (1ULL << next_functionality_)) {
           current_dispatchkey_idx_ =
               static_cast<uint8_t>(next_functionality_ - num_backends);
-          // For per-backend functionality keys, iterate through backends
           if (isPerBackendFunctionalityKey(
                   static_cast<DispatchKey>(current_dispatchkey_idx_))) {
             while (next_backend_ < num_backends) {
               if (*data_ptr_ & (1ULL << next_backend_)) {
-                // BackendComponent is 1-based (InvalidBit=0, CPUBit=1, ...).
-                // The bit at position next_backend_ corresponds to enum value
-                // next_backend_+1, matching the
-                // DispatchKeySet(BackendComponent) constructor which stores bit
-                // (k-1) for component k.
+                // BackendComponent is 1-based (InvalidBit=0, CPUBit=1, ...),
+                // so bit position next_backend_ maps to enum value
+                // next_backend_+1.
                 current_backendcomponent_idx_ = next_backend_ + 1;
                 ++next_backend_;
                 return *this;
               }
               ++next_backend_;
             }
-            // All backend bits exhausted for this functionality key.
-            // Reset backend state and continue scanning for the next key.
+            // No backend bits set for this functionality key; advance.
             next_backend_ = 0;
             current_backendcomponent_idx_ = end_iter_key_val;
             ++next_functionality_;
@@ -335,7 +330,6 @@ class DispatchKeySet final {
         }
         ++next_functionality_;
       }
-      // Reached the end
       current_dispatchkey_idx_ = end_iter_key_val;
       current_backendcomponent_idx_ = end_iter_key_val;
       return *this;
@@ -640,7 +634,6 @@ using is_not_DispatchKeySet = std::negation<std::is_same<DispatchKeySet, T>>;
 // only used by the PyTorch dispatcher internals, which are not part
 // of this compatibility layer.
 
-// toString and operator<< for DispatchKeySet
 inline std::string toString(DispatchKeySet ts) {
   std::ostringstream oss;
   oss << ts;
@@ -659,16 +652,13 @@ inline std::ostream& operator<<(std::ostream& os, DispatchKeySet ts) {
   return os;
 }
 
-// isBackendDispatchKey implementation
 inline bool isBackendDispatchKey(DispatchKey t) {
   return t >= DispatchKey::StartOfDenseBackends &&
          t <= DispatchKey::EndOfRuntimeBackendKeys;
 }
 
-// getRuntimeDispatchKeySet implementation
 inline DispatchKeySet getRuntimeDispatchKeySet(DispatchKey t) {
   if (isPerBackendFunctionalityKey(t)) {
-    // Return all backend variants of this functionality key
     DispatchKeySet result;
     for (uint8_t backend = 1; backend <= num_backends; ++backend) {
       result = result.add(toRuntimePerBackendFunctionalityKey(
@@ -679,12 +669,10 @@ inline DispatchKeySet getRuntimeDispatchKeySet(DispatchKey t) {
   return DispatchKeySet(t);
 }
 
-// runtimeDispatchKeySetHas implementation
 inline bool runtimeDispatchKeySetHas(DispatchKey t, DispatchKey k) {
   return getRuntimeDispatchKeySet(t).has(k);
 }
 
-// getBackendKeySetFromAutograd implementation
 inline DispatchKeySet getBackendKeySetFromAutograd(DispatchKey t) {
   if (t == DispatchKey::AutogradCPU) {
     return DispatchKeySet(DispatchKey::CPU);
@@ -716,19 +704,17 @@ inline DispatchKeySet getBackendKeySetFromAutograd(DispatchKey t) {
   return DispatchKeySet();
 }
 
-// isIncludedInAlias implementation
 inline bool isIncludedInAlias(DispatchKey k, DispatchKey alias) {
   if (alias == DispatchKey::Autograd) {
     return autograd_dispatch_keyset.has(k);
   } else if (alias == DispatchKey::CompositeImplicitAutograd) {
-    return true;  // All keys are included in CompositeImplicitAutograd
+    return true;
   } else if (alias == DispatchKey::CompositeExplicitAutograd) {
     return k != DispatchKey::Autograd && !autograd_dispatch_keyset.has(k);
   }
   return false;
 }
 
-// initializeFunctionalityOffsetsAndMasks implementation
 inline std::array<FunctionalityOffsetAndMask, num_functionality_keys>
 initializeFunctionalityOffsetsAndMasks() {
   std::array<FunctionalityOffsetAndMask, num_functionality_keys> result{};

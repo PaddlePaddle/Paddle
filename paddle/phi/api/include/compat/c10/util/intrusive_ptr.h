@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// #The file has been adapted from pytorch project
-// #Licensed under  BSD-style license -
+// The file has been adapted from the PyTorch project.
+// Licensed under BSD-style license:
 // https://github.com/pytorch/pytorch/blob/main/LICENSE
 
 #pragma once
@@ -258,14 +258,13 @@ class intrusive_ptr final {
     return *this;
   }
 
-  // Takes ownership of a raw pointer without incrementing refcount
+  // Takes ownership of a raw pointer without incrementing the refcount.
   static intrusive_ptr reclaim(TTarget* raw_ptr) {
     intrusive_ptr result;
     result.target_ = raw_ptr;
     return result;
   }
 
-  // Alias for reclaim - creates intrusive_ptr from raw without incrementing
   static intrusive_ptr unsafe_adopt(TTarget* raw_ptr) {
     return reclaim(raw_ptr);
   }
@@ -298,8 +297,6 @@ class intrusive_ptr final {
     swap(target_, other.target_);
   }
 
-  // Releases ownership and returns raw pointer
-  // After this, the intrusive_ptr is empty (nullptr)
   [[deprecated(
       "intrusive_ptr::release is unsafe; use reclaim() or explicit ownership "
       "transfer instead")]] TTarget*
@@ -309,7 +306,6 @@ class intrusive_ptr final {
     return result;
   }
 
-  // Compare operations
   bool operator==(const intrusive_ptr& rhs) const noexcept {
     return target_ == rhs.target_;
   }
@@ -389,7 +385,6 @@ class weak_intrusive_ptr final {
     if (target_ == NullType::singleton()) {
       return intrusive_ptr<TTarget, NullType>();
     }
-    // Try to increment refcount if it's not zero
     auto& atomic = target_->combined_refcount_;
     uint64_t count = atomic.load(std::memory_order_relaxed);
     while (true) {
@@ -422,15 +417,5 @@ template <typename T, typename... Args>
 intrusive_ptr<T> make_intrusive(Args&&... args) {
   return intrusive_ptr<T>(new T(std::forward<Args>(args)...));
 }
-
-// intrusive_ptr::make static method wrapper
-template <typename T>
-class make_intrusive_wrapper {
- public:
-  template <typename... Args>
-  static intrusive_ptr<T> make(Args&&... args) {
-    return make_intrusive<T>(std::forward<Args>(args)...);
-  }
-};
 
 }  // namespace c10
