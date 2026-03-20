@@ -133,6 +133,7 @@ void IndexElementwiseGetGradKernel(const Context& dev_ctx,
                                    const bool is_combined,
                                    DenseTensor* x_grad) {
   dev_ctx.template Alloc<T>(x_grad);
+  if (x_grad->numel() == 0) return;
   auto dxt = EigenVector<T>::Flatten(*x_grad);
   auto& place = *dev_ctx.eigen_device();
   dxt.device(place) = dxt.constant(static_cast<T>(0));
