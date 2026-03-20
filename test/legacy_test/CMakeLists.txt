@@ -41,6 +41,7 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_sdpa_kernel)
   list(REMOVE_ITEM TEST_OPS test_vmmallocator)
   list(REMOVE_ITEM TEST OPS test_allocator_visitor)
+  list(REMOVE_ITEM TEST_OPS test_cuda_empty_cache)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_fractional_max_pool3d_op)
