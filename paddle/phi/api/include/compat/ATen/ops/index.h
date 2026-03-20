@@ -14,8 +14,8 @@
 
 #pragma once
 
+#include <ATen/TensorIndexing.h>
 #include <ATen/core/Tensor.h>
-#include <ATen/indexing.h>
 
 namespace at::indexing {
 

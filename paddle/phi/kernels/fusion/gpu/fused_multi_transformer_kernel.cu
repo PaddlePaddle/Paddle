@@ -327,7 +327,7 @@ void FusedMultiTransformerOpKernel(
   DenseTensor pre_cache_kv_out;
   if (cache_offset > 0) {
     pre_cache_kv_out.Resize(
-        {{2, bsz, num_head, seq_len + cache_offset, dim_head}});
+        {2, bsz, num_head, seq_len + cache_offset, dim_head});
     auto *pre_cache_kv_out_data = dev_ctx.template Alloc<T>(
         &pre_cache_kv_out, pre_cache_kv_out.numel() * sizeof(T));
   }

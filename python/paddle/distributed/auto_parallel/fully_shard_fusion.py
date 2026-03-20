@@ -223,15 +223,13 @@ class FSDPBufferManager:
         # Note: 'Qwen3VLTextDecoderLayer' is temporary; fleet models all use 'TransformerLayer'
         self.fsdp_unit_layers = fsdp_unit_layers or [
             'TransformerLayer',
-            'Qwen3VLTextDecoderLayer',
             'Qwen3MoeDecoderLayer',
+            'Qwen3VLTextTransformerLayer',
         ]
         self.moe_layers_name = ['Qwen3MoeMLP']
 
         # Get tie_param_name if using tie_weights
         self.tie_param_name = None
-        if hasattr(self.model, "get_input_embeddings"):
-            self.tie_param_name = self.model.get_input_embeddings().weight.name
 
         # Create buffer_groups
         grouped_params, group_is_expert = self._build_groups()
@@ -381,7 +379,7 @@ class FSDPCommManager:
         # Release a buffer with the READY status if needed
         while self.buffer_cnt_in_using >= self.double_buffer_limit:
             found = False
-            for gid_idx, group in enumerate(self.buffer_manager.buffer_groups):
+            for group in self.buffer_manager.buffer_groups:
                 if group.params_buffer.status == BufferState.READY:
                     group.params_buffer.status = BufferState.FREED
                     group.params_buffer.clear_tmp_buffer()

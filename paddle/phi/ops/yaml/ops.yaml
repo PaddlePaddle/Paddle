@@ -2637,7 +2637,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
 - op : group_norm
-  args : (Tensor x, Tensor scale, Tensor bias, float epsilon = 1e-5, int groups = -1, str data_format = "NCHW")
+  args : (Tensor x, Tensor scale, Tensor bias, double epsilon = 1e-5, int groups = -1, str data_format = "NCHW")
   output : Tensor(y), Tensor(mean), Tensor(variance)
   infer_meta :
     func : GroupNormInferMeta
@@ -2913,6 +2913,20 @@
     data_type : x
   inplace : (x -> out)
   backward : index_elementwise_put_with_tensor_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : index_fill
+  args : (Tensor x, Tensor index, int dim, Scalar value)
+  output : Tensor(out)
+  infer_meta :
+    func : IndexFillInferMeta
+  kernel :
+    func : index_fill
+    data_type : x
+  inplace : (x -> out)
+  backward : index_fill_grad
+  data_transform :
+    skip_transform : index
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : index_put
@@ -4030,6 +4044,18 @@
   kernel :
     func : nanmedian
   backward : nanmedian_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
+
+- op : nansum
+  args : (Tensor x, IntArray axis={}, DataType dtype=DataType::UNDEFINED, bool keepdim=false)
+  output : Tensor(out)
+  infer_meta :
+    func : SumInferMeta
+    spmd_rule : ReductionSumInferSpmdDynamic
+  kernel :
+    func : nansum
+    data_type : x
+  backward : nansum_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
 - op : nearest_interp

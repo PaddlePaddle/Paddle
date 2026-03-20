@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include <ATen/Functions.h>
+#include <ATen/TensorIndexing.h>
 #include <ATen/core/TensorBody.h>
-#include <ATen/indexing.h>
 #include <ATen/ops/tensor.h>
 #include <c10/core/List.h>
 #include <c10/core/ScalarType.h>
