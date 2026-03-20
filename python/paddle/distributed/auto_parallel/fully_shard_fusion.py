@@ -122,6 +122,8 @@ class TensorFusionBuffer:
                 stop_gradient = param.stop_gradient
                 local_shape = param._local_shape
                 param.stop_gradient = True
+                if hasattr(param, "is_moe_param") and param.is_moe_param:
+                    break
                 param._local_value().flatten_()
                 paddle.assign(
                     param._local_value(),
@@ -223,13 +225,16 @@ class FSDPBufferManager:
         # Note: 'Qwen3VLTextDecoderLayer' is temporary; fleet models all use 'TransformerLayer'
         self.fsdp_unit_layers = fsdp_unit_layers or [
             'TransformerLayer',
+            'Qwen3VLTextDecoderLayer',
             'Qwen3MoeDecoderLayer',
-            'Qwen3VLTextTransformerLayer',
         ]
-        self.moe_layers_name = ['Qwen3MoeMLP']
+        self.moe_layers_name = ['Qwen3MoeMLP', 'StandardMLPExpert']
 
         # Get tie_param_name if using tie_weights
         self.tie_param_name = None
+        # Note: need add get_input_embeddings in fleet modeling
+        # if hasattr(self.model, "get_input_embeddings"):
+        #     self.tie_param_name = self.model.get_input_embeddings().weight.name
 
         # Create buffer_groups
         grouped_params, group_is_expert = self._build_groups()
@@ -409,6 +414,8 @@ class FSDPCommManager:
         if len(params) == 0:
             return
         for param in params:
+            if hasattr(param, "is_moe_param"):
+                continue
             gid = self.buffer_manager.param_to_buffer_id[param.name]
             group = self.buffer_manager.buffer_groups[gid]
             group.params_use_cnt += 1
@@ -477,6 +484,8 @@ class FSDPCommManager:
     def shard_params(self, params, is_backward=False):
         affected_gids = set()
         for param in params:
+            if hasattr(param, "is_moe_param"):
+                continue
             gid = self.buffer_manager.param_to_buffer_id.get(param.name)
             if gid is None:
                 continue
@@ -600,8 +609,10 @@ class FusionForwardHook(PyLayer):
 
     @staticmethod
     def backward(ctx, *args):
-        params = list(ctx.layer.parameters(include_sublayers=ctx.recursive))
-        ctx.comm_manager.shard_params(params, is_backward=True)
+        ctx.comm_manager.shard_params(
+            ctx.layer.parameters(include_sublayers=ctx.recursive),
+            is_backward=True,
+        )
         return args
 
 
@@ -685,7 +696,7 @@ class FullyShardFusion:
                         grad.process_mesh,
                         grad.placements,
                     )
-                    param.main_grad._local_value().copy_(grad._local_value())
+                    param.main_grad._local_value().add_(grad._local_value())
                     grad._clear_data()
                 comm_manager.shard_params([param], is_backward=True)
                 comm_manager.reduce_scatter_grads(param)
@@ -731,25 +742,64 @@ class FullyShardFusion:
 
         _register_recursive(model)
 
+    @staticmethod
+    def _extract_tensors(outputs):
+        # Extract tensors from outputs, return (tensors, rebuild_func).
+        if isinstance(outputs, paddle.Tensor):
+            return [outputs], lambda ts: ts[0]
+        elif isinstance(outputs, tuple):
+            indices = []
+            tensors = []
+            for i, v in enumerate(outputs):
+                if isinstance(v, paddle.Tensor):
+                    indices.append(i)
+                    tensors.append(v)
+
+            def rebuild(hooked):
+                result = list(outputs)
+                for idx, t in zip(indices, hooked):
+                    result[idx] = t
+                return tuple(result)
+
+            return tensors, rebuild
+        elif isinstance(outputs, dict):
+            keys = []
+            tensors = []
+            for k, v in outputs.items():
+                if isinstance(v, paddle.Tensor):
+                    keys.append(k)
+                    tensors.append(v)
+
+            def rebuild(hooked):
+                result = dict(outputs)
+                for k, t in zip(keys, hooked):
+                    result[k] = t
+                return result
+
+            return tensors, rebuild
+        else:
+            return [], lambda ts: outputs
+
     def _register_fusion_layer_hooks(self, layer, recursive=False):
         def _forward_post_hook(layer, inputs, outputs):
-            if isinstance(outputs, tuple):
-                result = FusionBackwardHook.apply(
-                    *outputs,
-                    layer=layer,
-                    comm_manager=self.comm_manager,
-                    recursive=recursive,
-                )
-                if not isinstance(result, tuple):
-                    result = (result,)
-                return result
-            else:
-                return FusionBackwardHook.apply(
-                    outputs,
-                    layer=layer,
-                    comm_manager=self.comm_manager,
-                    recursive=recursive,
-                )
+            tensors, rebuild = self._extract_tensors(outputs)
+            if not tensors:
+                return outputs
+            # Hook only tensor that requires grad to call all_gather_params
+            hook_idx = None
+            for i, t in enumerate(tensors):
+                if not t.stop_gradient:
+                    hook_idx = i
+                    break
+            if hook_idx is None:
+                return outputs
+            tensors[hook_idx] = FusionBackwardHook.apply(
+                tensors[hook_idx],
+                layer=layer,
+                comm_manager=self.comm_manager,
+                recursive=recursive,
+            )
+            return rebuild(tensors)
 
         def _forward_pre_hook(layer, inputs):
             return FusionForwardHook.apply(
