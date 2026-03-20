@@ -102,12 +102,12 @@ namespace phi {
   }
 
 // Specialized Sin kernel with vectorized Sleef implementation for float/double
-// This ensures bit-level precision alignment with PyTorch
+// This ensures high precision computation
 template <typename T, typename Context>
 void SinKernel(const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) {
   if constexpr (std::is_same<T, float>::value ||
                 std::is_same<T, double>::value) {
-    // Use vectorized Sleef path for float/double to match PyTorch precision
+    // Use vectorized Sleef path for float/double for high precision
     VectorizedSinImpl<T, Context>(dev_ctx, x, out);
   } else {
     // Use generic path for other types (float16, bfloat16, complex)
@@ -122,7 +122,7 @@ template <typename T, typename Context>
 void CosKernel(const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) {
   if constexpr (std::is_same<T, float>::value ||
                 std::is_same<T, double>::value) {
-    // Use vectorized Sleef path for float/double to match PyTorch precision
+    // Use vectorized Sleef path for float/double for high precision
     VectorizedCosImpl<T, Context>(dev_ctx, x, out);
   } else {
     // Use generic path for other types (float16, bfloat16, complex)
@@ -160,8 +160,24 @@ DEFINE_CPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Log, LogFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Log2, Log2Functor)
 DEFINE_CPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Log10, Log10Functor)
 DEFINE_CPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Log1p, Log1pFunctor)
-DEFINE_CPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Exp, ExpFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Expm1, Expm1Functor)
+
+// Specialized Exp kernel with vectorized MKL VML/Sleef implementation
+// for float/double. This ensures high precision computation.
+template <typename T, typename Context>
+void ExpKernel(const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) {
+  if constexpr (std::is_same<T, float>::value ||
+                std::is_same<T, double>::value) {
+    // Use vectorized MKL VML/Sleef path for float/double for high precision
+    VectorizedExpImpl<T, Context>(dev_ctx, x, out);
+  } else {
+    // Use generic path for other types (int, int64, float16, complex)
+    funcs::ExpFunctor<T> functor;
+    using U = typename std::conditional_t<std::is_integral<T>::value, float, T>;
+    ActivationImpl<T, U, Context, funcs::ExpFunctor<T>>(
+        dev_ctx, x, out, functor);
+  }
+}
 
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_DOUBLE_ATTRS(LeakyRelu, LeakyReluFunctor, alpha)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(Mish, MishFunctor, threshold)

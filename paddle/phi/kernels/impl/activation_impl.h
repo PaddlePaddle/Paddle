@@ -50,7 +50,7 @@ void ActivationImpl(const Context& dev_ctx,
   }
 }
 
-// Vectorized Sin implementation for CPU - matches PyTorch precision
+// Vectorized Sin implementation for CPU - high precision
 // Only enabled for float/double on CPU to ensure bit-level alignment
 template <typename T, typename Context>
 void VectorizedSinImpl(const Context& dev_ctx,
@@ -80,7 +80,7 @@ void VectorizedSinImpl(const Context& dev_ctx,
   }
 }
 
-// Vectorized Cos implementation for CPU - matches PyTorch precision
+// Vectorized Cos implementation for CPU - high precision
 template <typename T, typename Context>
 void VectorizedCosImpl(const Context& dev_ctx,
                        const DenseTensor& X,
@@ -106,6 +106,36 @@ void VectorizedCosImpl(const Context& dev_ctx,
         EigenVector<T>::Flatten(GET_DATA_SAFELY(Out, "Output", "Out", "Cos"));
     auto* place = dev_ctx.eigen_device();
     out.device(*place) = x.unaryExpr(funcs::Cosine<T>()).eval();
+  }
+}
+
+// Vectorized Exp implementation for CPU - high precision
+template <typename T, typename Context>
+void VectorizedExpImpl(const Context& dev_ctx,
+                       const DenseTensor& X,
+                       DenseTensor* Out) {
+  PADDLE_ENFORCE_NOT_NULL(Out,
+                          errors::NotFound("Output Out should not be nullptr"));
+  dev_ctx.template Alloc<T>(Out);
+  if (Out->numel() == 0) {
+    return;
+  }
+
+  const T* x_data = X.data<T>();
+  T* out_data = Out->data<T>();
+  int64_t numel = X.numel();
+
+  // Check if data is contiguous and use vectorized path
+  if (funcs::sleef_vec::should_use_vectorized_path_for_exp(
+          x_data, out_data, numel)) {
+    funcs::sleef_vec::vexp(out_data, x_data, numel);
+  } else {
+    // Fallback to Eigen-based implementation
+    auto x = EigenVector<T>::Flatten(GET_DATA_SAFELY(&X, "Input", "X", "Exp"));
+    auto out =
+        EigenVector<T>::Flatten(GET_DATA_SAFELY(Out, "Output", "Out", "Exp"));
+    auto* place = dev_ctx.eigen_device();
+    out.device(*place) = x.exp();
   }
 }
 
