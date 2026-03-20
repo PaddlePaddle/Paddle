@@ -318,8 +318,12 @@ class DispatchKeySet final {
               }
               ++next_backend_;
             }
+            // All backend bits exhausted for this functionality key.
+            // Reset backend state and continue scanning for the next key.
             next_backend_ = 0;
             current_backendcomponent_idx_ = end_iter_key_val;
+            ++next_functionality_;
+            continue;
           }
           ++next_functionality_;
           return *this;
