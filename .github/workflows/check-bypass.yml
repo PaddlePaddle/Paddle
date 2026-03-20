@@ -10,18 +10,18 @@ on:
     outputs:
       can-skip:
         description: "Whether the workflow can be skipped."
-        value: ${{ jobs.check-bypass.outputs.can-skip }}
+        value: ${{ jobs.check-bypass.steps.merge-skip.outputs.can-skip }}
 
 jobs:
   check-bypass:
     name: Check bypass
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     env:
       CI_TEAM_MEMBERS: '["swgu98", "risemeup1" , "XieYunshen", "luotao1", "ooooo-create", "SigureMo"]'
     outputs:
-      can-skip: ${{ steps.check-bypass.outputs.can-skip }}
+      can-skip: ${{ steps.merge-skip.outputs.can-skip }}
     timeout-minutes: 3
     steps:
       - id: check-bypass
@@ -46,3 +46,28 @@ jobs:
                 }
               ]
             }
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run skip check
+        id: skip-skill
+        env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_BASE_REF: ${{ github.base_ref }}
+          IGNORE_PATHS: "skill/**,.github/**"
+        run: |
+          bash ci/check_skip.sh
+
+      - name: Merge skip decision
+        id: merge-skip
+        run: |
+          BYPASS_SKIP=${{ steps.check-bypass.outputs.can-skip }}
+          FILE_SKIP=${{ steps.skip-skill.outputs.should-skip }}
+          echo "Bypass skip: $BYPASS_SKIP, File skip: $FILE_SKIP"
+          # Skip if either condition is true
+          if [ "$BYPASS_SKIP" = "true" ] || [ "$FILE_SKIP" = "true" ]; then
+              echo "can-skip=true" >> $GITHUB_OUTPUT
+          else
+              echo "can-skip=false" >> $GITHUB_OUTPUT
+          fi
