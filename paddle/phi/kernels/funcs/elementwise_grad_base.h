@@ -116,12 +116,12 @@ void CommonGradBroadcastCPU(const DenseTensor &x,
   }
   if (dx != nullptr) {
     dev_ctx.Alloc<T>(dx);
-    phi::CastKernel<MPType, CPUContext>(
+    CastKernel<MPType, CPUContext>(
         dev_ctx, dx_mp, CppTypeToDataType<T>::Type(), dx);
   }
   if (dy != nullptr) {
     dev_ctx.Alloc<T>(dy);
-    phi::CastKernel<MPType, CPUContext>(
+    CastKernel<MPType, CPUContext>(
         dev_ctx, dy_mp, CppTypeToDataType<T>::Type(), dy);
   }
 }

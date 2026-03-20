@@ -36,7 +36,7 @@ void ExpandBackward(const Context& dev_ctx,
   if constexpr (std::is_same_v<T, dtype::float16> ||
                 std::is_same_v<T, dtype::bfloat16>) {
     const DenseTensor out_grad_fp32 =
-        phi::Cast<T, Context>(dev_ctx, out_grad, DataType::FLOAT32);
+        Cast<T, Context>(dev_ctx, out_grad, DataType::FLOAT32);
     DenseTensor in_grad_fp32;
     in_grad_fp32.Resize(in_grad->dims());
     dev_ctx.template Alloc<float>(&in_grad_fp32);
@@ -56,10 +56,10 @@ void ExpandBackward(const Context& dev_ctx,
         place, x_grad, out_grad0, reduce_dims, reshape_dims);
 
     if constexpr (std::is_same_v<T, dtype::float16>) {
-      phi::CastKernel<float, Context>(
+      CastKernel<float, Context>(
           dev_ctx, in_grad_fp32, DataType::FLOAT16, in_grad);
     } else {
-      phi::CastKernel<float, Context>(
+      CastKernel<float, Context>(
           dev_ctx, in_grad_fp32, DataType::BFLOAT16, in_grad);
     }
   } else {

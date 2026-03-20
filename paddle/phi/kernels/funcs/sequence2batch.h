@@ -38,7 +38,7 @@ class CopyMatrixRowsFunctor {
   // The indexed rows are based on the input index.
   void operator()(const DeviceContext& dev_ctx,
                   const DenseTensor& src,
-                  phi::Vector<size_t> index_lod,
+                  Vector<size_t> index_lod,
                   DenseTensor* dst,
                   bool is_src_index);
 };

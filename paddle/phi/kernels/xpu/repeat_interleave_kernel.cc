@@ -49,7 +49,7 @@ void RepeatInterleaveKernel(const Context& dev_ctx,
   }
   index.Resize(make_ddim({index_size}));
 
-  phi::TensorFromVector<int>(index_vec, dev_ctx, &index);
+  TensorFromVector<int>(index_vec, dev_ctx, &index);
   auto xshape = vectorize(input_dim);
   auto out_shape = xshape;
   out_shape[dim] = index_size;

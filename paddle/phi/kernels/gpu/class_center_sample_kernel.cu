@@ -344,7 +344,7 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
   std::vector<T> shard_dim_vec(nranks + 1, 0);
   shard_dim_vec[rank + 1] = num_classes;
   DenseTensor num_classes_per_device;
-  phi::TensorFromVector(shard_dim_vec, dev_ctx, &num_classes_per_device);
+  TensorFromVector(shard_dim_vec, dev_ctx, &num_classes_per_device);
   T* num_classes_per_device_ptr = num_classes_per_device.data<T>();
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)

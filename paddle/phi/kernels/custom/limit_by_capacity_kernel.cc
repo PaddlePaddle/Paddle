@@ -55,7 +55,7 @@ void LimitByCapacityKernel(const Context& dev_ctx,
   }
 
   auto out_dims = out->dims();
-  phi::TensorFromVector<T>(out_data, dev_ctx, out);
+  TensorFromVector<T>(out_data, dev_ctx, out);
   out->Resize(out_dims);
 }
 

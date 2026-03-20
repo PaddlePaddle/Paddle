@@ -84,7 +84,7 @@ struct DeterminantCudaFunctor {
                   DenseTensor* output) {
     std::vector<T> input_vec;
     std::vector<T> output_vec;
-    phi::TensorToVector(input, dev_ctx, &input_vec);
+    TensorToVector(input, dev_ctx, &input_vec);
     using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
     for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
       auto begin_iter = input_vec.begin() + i * rank * rank;
@@ -100,7 +100,7 @@ struct DeterminantCudaFunctor {
       output_vec.push_back(
           static_cast<T>(matrix.template cast<MPType>().determinant()));
     }
-    phi::TensorFromVector(output_vec, dev_ctx, output);
+    TensorFromVector(output_vec, dev_ctx, output);
   }
 };
 
@@ -195,7 +195,7 @@ struct DeterminantCudaFunctor<phi::dtype::complex<T>, Context> {
         Eigen::Matrix<std::complex<T>, Eigen::Dynamic, Eigen::Dynamic>;
     std::vector<phi::dtype::complex<T>> input_vec;
     std::vector<phi::dtype::complex<T>> output_vec;
-    phi::TensorToVector(a, dev_ctx, &input_vec);
+    TensorToVector(a, dev_ctx, &input_vec);
     for (int64_t i = 0; i < batch_size; ++i) {  // maybe can be parallel
       auto begin_iter = input_vec.begin() + i * n * n;
       auto end_iter = input_vec.begin() + (i + 1) * n * n;
@@ -211,7 +211,7 @@ struct DeterminantCudaFunctor<phi::dtype::complex<T>, Context> {
       output_vec.push_back(
           static_cast<phi::dtype::complex<T>>(matrix.determinant()));
     }
-    phi::TensorFromVector(output_vec, dev_ctx, output);
+    TensorFromVector(output_vec, dev_ctx, output);
 #endif
   }
 };

@@ -300,8 +300,8 @@ void IndexSelect(const Context& dev_ctx,
 
   std::vector<InT> input_vec;
   std::vector<IndexT> index_vec;
-  phi::TensorToVector(input, dev_ctx, &input_vec);
-  phi::TensorToVector(index, dev_ctx, &index_vec);
+  TensorToVector(input, dev_ctx, &input_vec);
+  TensorToVector(index, dev_ctx, &index_vec);
   std::vector<InT> out_vec(output->numel());
 
   for (int i = 0; i < index_size; i++) {
@@ -343,7 +343,7 @@ void IndexSelect(const Context& dev_ctx,
     }
   }
   dev_ctx.template Alloc<InT>(output);
-  phi::TensorFromVector(out_vec, dev_ctx, output);
+  TensorFromVector(out_vec, dev_ctx, output);
   output->Resize(output_dim);
 }
 

@@ -66,7 +66,7 @@ struct SequenceSoftmaxGradFunctor<GPUContext, T> {
   void operator()(const GPUContext &dev_ctx,
                   const DenseTensor &dout,
                   const DenseTensor &out,
-                  const phi::Vector<size_t> &ref_lod, /*referenced lod*/
+                  const Vector<size_t> &ref_lod, /*referenced lod*/
                   DenseTensor *dx) {
     size_t height = ref_lod.size() - 1;
 

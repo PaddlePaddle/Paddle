@@ -38,7 +38,7 @@ void TileBackward(const Context& dev_ctx,
   if constexpr (std::is_same_v<T, dtype::float16> ||
                 std::is_same_v<T, dtype::bfloat16>) {
     const DenseTensor out_grad_fp32 =
-        phi::Cast<T, Context>(dev_ctx, out_grad, DataType::FLOAT32);
+        Cast<T, Context>(dev_ctx, out_grad, DataType::FLOAT32);
     DenseTensor x_grad_fp32;
     x_grad_fp32.Resize(x_grad->dims());
     dev_ctx.template Alloc<float>(&x_grad_fp32);
@@ -56,10 +56,10 @@ void TileBackward(const Context& dev_ctx,
     funcs::EigenBroadcastGrad<std::decay_t<decltype(place)>, float, Dims>::Eval(
         place, eigen_x_grad, eigen_out_grad_fp32, reduce_dims, reshape_dims);
     if constexpr (std::is_same_v<T, dtype::float16>) {
-      phi::CastKernel<float, Context>(
+      CastKernel<float, Context>(
           dev_ctx, x_grad_fp32, DataType::FLOAT16, x_grad);
     } else {
-      phi::CastKernel<float, Context>(
+      CastKernel<float, Context>(
           dev_ctx, x_grad_fp32, DataType::BFLOAT16, x_grad);
     }
   } else {
