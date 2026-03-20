@@ -172,14 +172,13 @@ struct Storage {
   // Unsafe borrow constructor (for MaybeOwnedTraits): shares DataPtr and
   // external_ctx_ so context/deleter is preserved without transfer of
   // ownership.
-  explicit Storage(unsafe_borrow_t, const Storage& rhs) {
-    allocation_ = rhs.allocation_;
-    allocator_ = rhs.allocator_;
-    nbytes_ = rhs.nbytes_;
-    resizable_ = rhs.resizable_;
-    data_ptr_ = rhs.data_ptr_;
-    external_ctx_ = rhs.external_ctx_;
-  }
+  explicit Storage(unsafe_borrow_t, const Storage& rhs)
+      : allocation_(rhs.allocation_),
+        allocator_(rhs.allocator_),
+        nbytes_(rhs.nbytes_),
+        resizable_(rhs.resizable_),
+        data_ptr_(rhs.data_ptr_),
+        external_ctx_(rhs.external_ctx_) {}
 
   // Forward declare template and make specialization a friend
   template <typename T>
@@ -201,11 +200,8 @@ struct Storage {
   // Set the number of bytes (for resizable storage)
   void set_nbytes(size_t size_bytes) {
     if (resizable_ && allocator_) {
-      allocation_ =
-          std::shared_ptr<phi::Allocation>(allocator_->Allocate(size_bytes));
-      external_ctx_.reset();
-      data_ptr_ = std::make_shared<DataPtr>(viewDataPtrFrom(allocation_));
-      nbytes_ = size_bytes;
+      setAllocAndDataPtr(
+          std::shared_ptr<phi::Allocation>(allocator_->Allocate(size_bytes)));
     }
   }
 
@@ -287,21 +283,13 @@ struct Storage {
   std::shared_ptr<phi::Allocation> set_data_ptr(
       std::shared_ptr<phi::Allocation> new_alloc) {
     std::shared_ptr<phi::Allocation> old_alloc = std::move(allocation_);
-    allocation_ = new_alloc;
-    if (allocation_) nbytes_ = allocation_->size();
-    external_ctx_.reset();
-    data_ptr_ =
-        std::make_shared<DataPtr>(viewDataPtrFrom(std::move(new_alloc)));
+    setAllocAndDataPtr(std::move(new_alloc));
     return old_alloc;
   }
 
   // Set data pointer (no swap) - Paddle-specific shared_ptr version
   void set_data_ptr_noswap(std::shared_ptr<phi::Allocation> new_alloc) {
-    allocation_ = new_alloc;
-    if (allocation_) nbytes_ = allocation_->size();
-    external_ctx_.reset();
-    data_ptr_ =
-        std::make_shared<DataPtr>(viewDataPtrFrom(std::move(new_alloc)));
+    setAllocAndDataPtr(std::move(new_alloc));
   }
 
  private:
@@ -321,6 +309,16 @@ struct Storage {
   // context and its deleter so that after copy-on-write detach each storage
   // still keeps the allocation alive via its wrapper DataPtr.
   std::shared_ptr<void> external_ctx_;
+
+  // Update allocation_, nbytes_, external_ctx_, and data_ptr_ together.
+  // Used by both set_data_ptr and set_data_ptr_noswap (shared_ptr overloads).
+  void setAllocAndDataPtr(std::shared_ptr<phi::Allocation> new_alloc) {
+    allocation_ = new_alloc;
+    if (allocation_) nbytes_ = allocation_->size();
+    external_ctx_.reset();
+    data_ptr_ =
+        std::make_shared<DataPtr>(viewDataPtrFrom(std::move(new_alloc)));
+  }
 
   // Deleter used by wrapper DataPtrs: decrements the shared context owner.
   static void deleteSharedCtxHolder(void* p) {

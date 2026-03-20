@@ -47,19 +47,17 @@ class DataPtr {
       : ptr_(data), device_(device._PD_GetInner()) {}
 
   DataPtr(void* data, void* ctx, DeleterFnPtr ctx_deleter, Device device)
-      : ptr_(data, ctx, ctx_deleter),
-        deleter_(ctx_deleter),
-        device_(device._PD_GetInner()) {}
+      : ptr_(data, ctx, ctx_deleter), device_(device._PD_GetInner()) {}
 
   void* operator->() const { return ptr_.get(); }
 
-  inline bool /* success */ unsafe_reset_data_and_ctx(void* new_data_and_ctx) {
+  // Returns true on success.
+  bool unsafe_reset_data_and_ctx(void* new_data_and_ctx) {
     return ptr_.unsafe_reset_data_and_ctx(new_data_and_ctx);
   }
 
   void clear() { ptr_.clear(); }
   void* get() const { return ptr_.get(); }
-  void* mutable_get() { return ptr_.get(); }
   void* get_context() const { return ptr_.get_context(); }
   void* release_context() { return ptr_.release_context(); }
 
@@ -93,7 +91,6 @@ class DataPtr {
 
  private:
   c10::detail::UniqueVoidPtr ptr_;
-  DeleterFnPtr deleter_ = nullptr;
   phi::Place device_;
 };
 
