@@ -720,7 +720,7 @@ void MoePermuteKernel(const Context &dev_ctx,
         reinterpret_cast<void *>(XScale_unzipped->data<float>());
   }
   // Pre-fill expert_indices with -1 via hardware DMA engine (cudaMemsetAsync).
-  // (Even if input is 0-size)
+  // Even if input is 0-size
   // 0xFF byte-pattern on int32 = 0xFFFFFFFF = -1 in two's complement.
   // This offloads the bulk -1 fill (~10K-500K int32s) from SM compute to the
   // DMA copy engine, running in parallel with subsequent kernel execution.
