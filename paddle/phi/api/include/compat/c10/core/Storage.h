@@ -339,6 +339,8 @@ struct Storage {
   // Initialize data_ptr_ and external_ctx_ from an externally-provided
   // DataPtr.  Extracts the context/deleter into a shared_ptr<void> so
   // that copies can each wrap the same shared owner without UAF.
+  // Always assigns a fresh shared_ptr to data_ptr_ so it is safe to call
+  // even when data_ptr_ has not yet been initialized (e.g. constructors).
   void initFromExternalDataPtr(DataPtr&& dp) {
     void* raw = dp.get();
     c10::Device dev = dp.device();
@@ -346,10 +348,11 @@ struct Storage {
     void* ctx = dp.release_context();
     if (del != nullptr) {
       external_ctx_ = std::shared_ptr<void>(ctx, del);
-      *data_ptr_ = makeExternalDataPtr(raw, external_ctx_, dev);
+      data_ptr_ = std::make_shared<DataPtr>(
+          makeExternalDataPtr(raw, external_ctx_, dev));
     } else {
       external_ctx_.reset();
-      *data_ptr_ = DataPtr(raw, dev);
+      data_ptr_ = std::make_shared<DataPtr>(DataPtr(raw, dev));
     }
   }
 
