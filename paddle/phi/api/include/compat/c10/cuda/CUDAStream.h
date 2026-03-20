@@ -35,7 +35,10 @@ using StreamId = int64_t;
 namespace detail {
 
 constexpr int kStreamsPerPool = 32;
-constexpr int kMaxDevices = 16;
+// Upper bound for static pool/TLS arrays. 64 covers all current CUDA hardware.
+// Runtime checks use the actual device count (GetGPUDeviceCount()) instead of
+// this constant so the limit does not trigger a false panic on large systems.
+constexpr int kMaxDevices = 64;
 
 struct StreamPoolState {
   cudaStream_t low_priority[kStreamsPerPool]{};
@@ -46,11 +49,12 @@ struct StreamPoolState {
 };
 
 inline StreamPoolState& get_pool(int device_index) {
-  TORCH_CHECK(device_index >= 0 && device_index < kMaxDevices,
+  const int device_count = phi::backends::gpu::GetGPUDeviceCount();
+  TORCH_CHECK(device_index >= 0 && device_index < device_count,
               "CUDA device index out of range: ",
               device_index,
-              " (max supported: ",
-              kMaxDevices - 1,
+              " (available devices: ",
+              device_count,
               ")");
   static StreamPoolState states[kMaxDevices];
   return states[device_index];
@@ -139,12 +143,15 @@ inline CUDAStream getCurrentCUDAStream(c10::DeviceIndex device_index = -1) {
   if (device_index == -1) {
     device_index = phi::backends::gpu::GetCurrentDeviceId();
   }
-  TORCH_CHECK(device_index >= 0 && device_index < detail::kMaxDevices,
-              "CUDA device index out of range: ",
-              device_index,
-              " (max supported: ",
-              detail::kMaxDevices - 1,
-              ")");
+  {
+    const int device_count = phi::backends::gpu::GetGPUDeviceCount();
+    TORCH_CHECK(device_index >= 0 && device_index < device_count,
+                "CUDA device index out of range: ",
+                device_index,
+                " (available devices: ",
+                device_count,
+                ")");
+  }
 
   auto& tls = detail::get_tls();
   cudaStream_t raw;
@@ -179,12 +186,15 @@ inline CUDAStream getStreamFromPool(const bool isHighPriority = false,
   if (device_index == -1) {
     device_index = phi::backends::gpu::GetCurrentDeviceId();
   }
-  TORCH_CHECK(device_index >= 0 && device_index < detail::kMaxDevices,
-              "CUDA device index out of range: ",
-              device_index,
-              " (max supported: ",
-              detail::kMaxDevices - 1,
-              ")");
+  {
+    const int device_count = phi::backends::gpu::GetGPUDeviceCount();
+    TORCH_CHECK(device_index >= 0 && device_index < device_count,
+                "CUDA device index out of range: ",
+                device_index,
+                " (available devices: ",
+                device_count,
+                ")");
+  }
 
   auto& state = detail::get_pool(device_index);
   std::call_once(state.init_flag, [device_index, &state]() {
@@ -218,12 +228,15 @@ inline CUDAStream getStreamFromPool(const bool isHighPriority = false,
  */
 inline void setCurrentCUDAStream(CUDAStream stream) {
   c10::DeviceIndex idx = stream.unwrap().device_index();
-  TORCH_CHECK(idx >= 0 && idx < detail::kMaxDevices,
-              "CUDA device index out of range: ",
-              idx,
-              " (max supported: ",
-              detail::kMaxDevices - 1,
-              ")");
+  {
+    const int device_count = phi::backends::gpu::GetGPUDeviceCount();
+    TORCH_CHECK(idx >= 0 && idx < device_count,
+                "CUDA device index out of range: ",
+                idx,
+                " (available devices: ",
+                device_count,
+                ")");
+  }
   auto& tls = detail::get_tls();
   tls.streams[idx] = stream.stream();
   tls.has_stream[idx] = true;

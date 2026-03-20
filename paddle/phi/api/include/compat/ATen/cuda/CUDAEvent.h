@@ -104,6 +104,7 @@ struct CUDAEvent {
   void recordOnce(const CUDAStream& stream) {
     if (!was_recorded_) {
       record(stream);
+      was_recorded_ = true;
     }
   }
 
