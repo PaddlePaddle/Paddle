@@ -39,6 +39,8 @@ T GetValueOfExpectedType(const Context& dev_ctx, const DenseTensor& x) {
       return static_cast<T>(GetValue<bool, Context>(dev_ctx, x));
     case DataType::INT16:
       return static_cast<T>(GetValue<int16_t, Context>(dev_ctx, x));
+    case DataType::INT8:
+      return static_cast<T>(GetValue<int8_t, Context>(dev_ctx, x));
     case DataType::UINT8:
       return static_cast<T>(GetValue<uint8_t, Context>(dev_ctx, x));
     default:
@@ -81,8 +83,18 @@ void LinspaceKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    linspace, XPU, ALL_LAYOUT, phi::LinspaceKernel, float, int32_t, int64_t) {
+PD_REGISTER_KERNEL(linspace,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::LinspaceKernel,
+                   float,
+                   phi::float16,
+                   phi::bfloat16,
+                   int8_t,
+                   uint8_t,
+                   int16_t,
+                   int32_t,
+                   int64_t) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
