@@ -13,7 +13,12 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/kldiv_loss_kernel.h"
+
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/kldiv_loss_kernel_impl.h"
+
+namespace phi {}  // namespace phi
 
 PD_REGISTER_KERNEL(
     kldiv_loss, CPU, ALL_LAYOUT, phi::KLDivLossKernel, float, double) {}
