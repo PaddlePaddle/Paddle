@@ -238,6 +238,7 @@ jobs:
       ${{ always()
           && needs.check-bypass.result == 'success'
           && needs.check-bypass.outputs.can-skip != 'true'
+          && inputs.can-skip != 'true'
           && needs.test-primary.outputs.result != 'success' }}
     runs-on:
       group: test2
