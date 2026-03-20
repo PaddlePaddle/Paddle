@@ -36,9 +36,26 @@ namespace detail {
 
 constexpr int kStreamsPerPool = 32;
 // Upper bound for static pool/TLS arrays. 64 covers all current CUDA hardware.
-// Runtime checks use the actual device count (GetGPUDeviceCount()) instead of
-// this constant so the limit does not trigger a false panic on large systems.
 constexpr int kMaxDevices = 64;
+
+// Device count is invariant after CUDA initialization; cache it to avoid
+// repeated driver calls on the hot path.
+inline int gpu_device_count() {
+  static const int count = phi::backends::gpu::GetGPUDeviceCount();
+  return count;
+}
+
+inline void check_device_index(int device_index) {
+  const int limit = std::min(gpu_device_count(), kMaxDevices);
+  TORCH_CHECK(device_index >= 0 && device_index < limit,
+              "CUDA device index out of range: ",
+              device_index,
+              " (available devices: ",
+              gpu_device_count(),
+              ", max supported by this build: ",
+              kMaxDevices,
+              ")");
+}
 
 struct StreamPoolState {
   cudaStream_t low_priority[kStreamsPerPool]{};
@@ -49,16 +66,7 @@ struct StreamPoolState {
 };
 
 inline StreamPoolState& get_pool(int device_index) {
-  const int device_count = phi::backends::gpu::GetGPUDeviceCount();
-  const int limit = std::min(device_count, kMaxDevices);
-  TORCH_CHECK(device_index >= 0 && device_index < limit,
-              "CUDA device index out of range: ",
-              device_index,
-              " (available devices: ",
-              device_count,
-              ", max supported by this build: ",
-              kMaxDevices,
-              ")");
+  check_device_index(device_index);
   static StreamPoolState states[kMaxDevices];
   return states[device_index];
 }
@@ -146,18 +154,7 @@ inline CUDAStream getCurrentCUDAStream(c10::DeviceIndex device_index = -1) {
   if (device_index == -1) {
     device_index = phi::backends::gpu::GetCurrentDeviceId();
   }
-  {
-    const int device_count = phi::backends::gpu::GetGPUDeviceCount();
-    const int limit = std::min(device_count, detail::kMaxDevices);
-    TORCH_CHECK(device_index >= 0 && device_index < limit,
-                "CUDA device index out of range: ",
-                device_index,
-                " (available devices: ",
-                device_count,
-                ", max supported by this build: ",
-                detail::kMaxDevices,
-                ")");
-  }
+  detail::check_device_index(device_index);
 
   auto& tls = detail::get_tls();
   cudaStream_t raw;
@@ -192,20 +189,8 @@ inline CUDAStream getStreamFromPool(const bool isHighPriority = false,
   if (device_index == -1) {
     device_index = phi::backends::gpu::GetCurrentDeviceId();
   }
-  {
-    const int device_count = phi::backends::gpu::GetGPUDeviceCount();
-    const int limit = std::min(device_count, detail::kMaxDevices);
-    TORCH_CHECK(device_index >= 0 && device_index < limit,
-                "CUDA device index out of range: ",
-                device_index,
-                " (available devices: ",
-                device_count,
-                ", max supported by this build: ",
-                detail::kMaxDevices,
-                ")");
-  }
-
-  auto& state = detail::get_pool(device_index);
+  auto& state =
+      detail::get_pool(device_index);  // also bounds-checks device_index
   std::call_once(state.init_flag, [device_index, &state]() {
     detail::init_pool(device_index, &state);
   });
@@ -237,18 +222,7 @@ inline CUDAStream getStreamFromPool(const bool isHighPriority = false,
  */
 inline void setCurrentCUDAStream(CUDAStream stream) {
   c10::DeviceIndex idx = stream.unwrap().device_index();
-  {
-    const int device_count = phi::backends::gpu::GetGPUDeviceCount();
-    const int limit = std::min(device_count, detail::kMaxDevices);
-    TORCH_CHECK(idx >= 0 && idx < limit,
-                "CUDA device index out of range: ",
-                idx,
-                " (available devices: ",
-                device_count,
-                ", max supported by this build: ",
-                detail::kMaxDevices,
-                ")");
-  }
+  detail::check_device_index(idx);
   auto& tls = detail::get_tls();
   tls.streams[idx] = stream.stream();
   tls.has_stream[idx] = true;
