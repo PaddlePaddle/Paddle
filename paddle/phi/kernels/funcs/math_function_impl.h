@@ -56,9 +56,6 @@ void Transpose<DeviceContext, T, Rank>::operator()(
   auto eigen_in = EigenTensor<T, Rank>::From(in);
   auto eigen_out = EigenTensor<T, Rank>::From(*out);
   auto* dev = dev_ctx.eigen_device();
-  // use 32bit index to speed up computation
-  bool use_32bit_index = eigen_out.size() < Eigen::NumTraits<int>::highest();
-  bool is_gpu_place = dev_ctx.GetPlace().GetType() == AllocationType::GPU;
   eigen_out.device(*dev) = eigen_in.shuffle(permute);
 }
 
