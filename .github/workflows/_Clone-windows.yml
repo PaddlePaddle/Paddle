@@ -38,7 +38,8 @@ jobs:
 
       - name: Merge pr
         run: |
-          git config --unset http.https://github.com/.extraheader
+          REM checkout v6 stores credentials via includeIf, so extraheader may be absent.
+          git config --local --name-only --get-regexp http.https://github.com/.extraheader >nul 2>&1 && git config --unset http.https://github.com/.extraheader
           REM git submodule foreach --recursive sh -c "git config --local --unset-all 'http.https://github.com/.extraheader'"
           REM git submodule foreach --recursive sh -c "git config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'"
           git switch %BRANCH%
