@@ -78,6 +78,16 @@ class XPUTestSignOP(XPUOpTestWrapper):
             self.input_shape = [2, 2, 255]
 
 
+class TestSignApiEmptyDimXPU(unittest.TestCase):
+    def test_sign_empty_dim(self):
+        place = paddle.XPUPlace(0)
+        paddle.disable_static(place)
+        x = paddle.rand([0, 37], dtype='float32')
+        out = paddle.sign(x)
+        self.assertEqual(list(out.shape), [0, 37])
+        paddle.enable_static()
+
+
 support_types = get_xpu_op_support_types('sign')
 for stype in support_types:
     create_test_class(globals(), XPUTestSignOP, stype)
