@@ -79,7 +79,7 @@ PADDLE_API void GroupNormalizeSiluXPUInferMeta(const MetaTensor& x,
                                                const MetaTensor& scale,
                                                const MetaTensor& bias,
                                                int groups,
-                                               float epsilon,
+                                               double epsilon,
                                                MetaTensor* out);
 
 PADDLE_API void LayerNormalizeReluXPUInferMeta(const MetaTensor& x,

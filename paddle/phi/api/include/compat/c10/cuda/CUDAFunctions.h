@@ -18,6 +18,15 @@
 
 namespace c10::cuda {
 
+DeviceIndex current_device() {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  return static_cast<DeviceIndex>(paddle::platform::GetCurrentDeviceId());
+#else
+  PADDLE_THROW(common::errors::Unavailable(
+      "Paddle is not compiled with CUDA. Cannot get current device."));
+#endif
+}
+
 void device_synchronize() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   int curr_device_id = paddle::platform::GetCurrentDeviceId();

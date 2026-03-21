@@ -76,7 +76,7 @@ def op_position_inputs(op):
         Tensor(s): Inputs of the op
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> from paddle.incubate.autograd.primops import _simple_binop
             >>> from paddle.base.layer_helper import LayerHelper
@@ -122,7 +122,7 @@ def op_position_output(op):
         Tensor(s): Output of the op
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('Depends on external code.')
             >>> from paddle.incubate.autograd.primops import _simple_binop
@@ -165,7 +165,7 @@ def REGISTER_FN(op_type, *position_argnames):
         wrapper: Inner wrapper function
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('Depends on external code.')
             >>> from paddle.incubate.autograd.primops import _simple_binop
@@ -174,7 +174,7 @@ def REGISTER_FN(op_type, *position_argnames):
 
             >>> @REGISTER_FN('tanh_p', 'X', 'Y')
             >>> def tanh(x, out=None):
-            ...    return _simple_unop(LayerHelper('tanh_p', **locals()))
+            ...     return _simple_unop(LayerHelper('tanh_p', **locals()))
 
     """
 
@@ -201,7 +201,7 @@ def REGISTER_ORIG2PRIM(op_type):
         wrapper: Inner wrapper function
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('Depends on external code.')
             >>> from paddle.base.layer_helper import LayerHelper
@@ -211,7 +211,7 @@ def REGISTER_ORIG2PRIM(op_type):
 
             >>> @REGISTER_ORIG2PRIM('tanh')
             >>> def tanh_orig2prim(op):
-            ...     x, = get_input_var_list(op)
+            ...     (x,) = get_input_var_list(op)
             ...     return primops.tanh(x)
 
     """
@@ -241,7 +241,7 @@ def REGISTER_COMPOSITE(op_type):
         wrapper: Inner wrapper function
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('Depends on external code.')
             >>> import paddle
@@ -281,7 +281,7 @@ def REGISTER_PRIM2ORIG(op_type):
         wrapper: Inner wrapper function
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('Depends on external code.')
             >>> import paddle
@@ -290,9 +290,8 @@ def REGISTER_PRIM2ORIG(op_type):
 
             >>> @REGISTER_PRIM2ORIG('tanh_p')
             >>> def tanh_prim2orig(op):
-            ...     x, = get_input_var_list(op)
+            ...     (x,) = get_input_var_list(op)
             ...     return paddle.tanh(x)
-            ...
     """
     if not isinstance(op_type, str):
         raise TypeError(f'op_type must be str, but got {type(op_type)}.')
@@ -320,7 +319,7 @@ def REGISTER_JVP(op_type):
         wrapper: Inner wrapper function
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('Depends on external code.')
             >>> from paddle.incubate.autograd import primops
@@ -359,7 +358,7 @@ def REGISTER_TRANSPOSE(op_type):
         wrapper: Inner wrapper function
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('Depends on external code.')
             >>> from paddle.incubate.autograd.primreg import REGISTER_TRANSPOSE

@@ -51,12 +51,12 @@ inline int CopyTensorByXPU(const DenseTensor& srcTensor,
 
   if (flag == 0) {
     auto cpu_place = CPUPlace();
-    auto* dev_ctx = phi::DeviceContextPool::Instance().Get(cpu_place);
+    auto* dev_ctx = DeviceContextPool::Instance().Get(cpu_place);
     T* dstData = dev_ctx->HostAlloc<T>(dstTensor);
     phi::memory_utils::Copy(
         CPUPlace(), dstData, place, srcData, srcTensor.numel() * sizeof(T));
   } else {
-    auto* dev_ctx = phi::DeviceContextPool::Instance().Get(place);
+    auto* dev_ctx = DeviceContextPool::Instance().Get(place);
     T* dstData = dev_ctx->Alloc<T>(dstTensor);
     phi::memory_utils::Copy(
         place, dstData, CPUPlace(), srcData, srcTensor.numel() * sizeof(T));

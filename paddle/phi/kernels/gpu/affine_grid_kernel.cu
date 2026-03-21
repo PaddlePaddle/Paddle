@@ -63,13 +63,11 @@ void AffineGrid4DCUDAKernel(const Context& dev_ctx,
   // Transpose theta: [N, 2, 3] -> [N, 3, 2]
   DenseTensor theta_transposed;
   theta_transposed.Resize(make_ddim({n, 3, 2}));
-  phi::TransposeKernel<T, Context>(
-      dev_ctx, input, {0, 2, 1}, &theta_transposed);
+  TransposeKernel<T, Context>(dev_ctx, input, {0, 2, 1}, &theta_transposed);
 
   DenseTensor grid_flat;
   grid_flat.Resize(make_ddim({n, h * w, 2}));
-  phi::BmmKernel<T, Context>(
-      dev_ctx, base_grid_new, theta_transposed, &grid_flat);
+  BmmKernel<T, Context>(dev_ctx, base_grid_new, theta_transposed, &grid_flat);
 
   // Reshaping Output
   output->ShareDataWith(grid_flat);
@@ -111,14 +109,12 @@ void AffineGrid5DCUDAKernel(const Context& dev_ctx,
   // Transpose theta: [N, 3, 4] -> [N, 4, 3]
   DenseTensor theta_transposed;
   theta_transposed.Resize(make_ddim({n, 4, 3}));
-  phi::TransposeKernel<T, Context>(
-      dev_ctx, input, {0, 2, 1}, &theta_transposed);
+  TransposeKernel<T, Context>(dev_ctx, input, {0, 2, 1}, &theta_transposed);
 
   // Perform batch matrix multiplication
   DenseTensor grid_flat;
   grid_flat.Resize(make_ddim({n, d * h * w, 3}));
-  phi::BmmKernel<T, Context>(
-      dev_ctx, base_grid_new, theta_transposed, &grid_flat);
+  BmmKernel<T, Context>(dev_ctx, base_grid_new, theta_transposed, &grid_flat);
 
   // Reshaping Output
   output->ShareDataWith(grid_flat);

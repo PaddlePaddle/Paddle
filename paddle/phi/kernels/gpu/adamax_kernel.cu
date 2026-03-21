@@ -84,15 +84,14 @@ void AdamaxKernel(const Context& dev_ctx,
                   DenseTensor* moment_out,
                   DenseTensor* inf_norm_out,
                   DenseTensor* master_param_outs) {
-  using MPDType = typename phi::dtype::template MPTypeTrait<T>::Type;
+  using MT = typename phi::dtype::template MPTypeTrait<T>::Type;
   T* param_out_data = dev_ctx.template Alloc<T>(param_out);
-  MPDType* moment_out_data = dev_ctx.template Alloc<MPDType>(moment_out);
-  MPDType* inf_norm_out_data = dev_ctx.template Alloc<MPDType>(inf_norm_out);
-  const MPDType* master_in_data =
-      multi_precision ? master_param->data<MPDType>() : nullptr;
-  MPDType* master_out_data =
-      multi_precision ? dev_ctx.template Alloc<MPDType>(master_param_outs)
-                      : nullptr;
+  MT* moment_out_data = dev_ctx.template Alloc<MT>(moment_out);
+  MT* inf_norm_out_data = dev_ctx.template Alloc<MT>(inf_norm_out);
+  const MT* master_in_data =
+      multi_precision ? master_param->data<MT>() : nullptr;
+  MT* master_out_data =
+      multi_precision ? dev_ctx.template Alloc<MT>(master_param_outs) : nullptr;
   PADDLE_ENFORCE_EQ(
       beta1_pow.numel(),
       1,
@@ -100,9 +99,9 @@ void AdamaxKernel(const Context& dev_ctx,
                               "value is:%d.",
                               beta1_pow.numel()));
 
-  MPDType beta1_ = static_cast<MPDType>(beta1);
-  MPDType beta2_ = static_cast<MPDType>(beta2);
-  MPDType epsilon_ = static_cast<MPDType>(epsilon);
+  MT beta1_ = static_cast<MT>(beta1);
+  MT beta2_ = static_cast<MT>(beta2);
+  MT epsilon_ = static_cast<MT>(epsilon);
 
   int64_t numel = param.numel();
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, 1);
@@ -110,22 +109,21 @@ void AdamaxKernel(const Context& dev_ctx,
   int block = config.thread_per_block.x;
   auto stream = dev_ctx.stream();
 
-  AdamaxGPUKernel<T, MPDType>
-      <<<block, grid, 0, stream>>>(param.data<T>(),
-                                   grad.data<T>(),
-                                   learning_rate.data<MPDType>(),
-                                   moment.data<MPDType>(),
-                                   inf_norm.data<MPDType>(),
-                                   beta1_pow.data<MPDType>(),
-                                   master_in_data,
-                                   beta1_,
-                                   beta2_,
-                                   epsilon_,
-                                   numel,
-                                   param_out_data,
-                                   moment_out_data,
-                                   inf_norm_out_data,
-                                   master_out_data);
+  AdamaxGPUKernel<T, MT><<<block, grid, 0, stream>>>(param.data<T>(),
+                                                     grad.data<T>(),
+                                                     learning_rate.data<MT>(),
+                                                     moment.data<MT>(),
+                                                     inf_norm.data<MT>(),
+                                                     beta1_pow.data<MT>(),
+                                                     master_in_data,
+                                                     beta1_,
+                                                     beta2_,
+                                                     epsilon_,
+                                                     numel,
+                                                     param_out_data,
+                                                     moment_out_data,
+                                                     inf_norm_out_data,
+                                                     master_out_data);
 }
 }  // namespace phi
 PD_REGISTER_KERNEL(

@@ -148,8 +148,7 @@ struct ConvArgsBase {
     auto w_shape = common::vectorize(w->dims());
     VLOG(10) << "[ConvArgs] x_dims=" << x_shape << ", w_dims=" << w_shape
              << ", strides=" << s << ", paddings=" << p << ", dilations=" << d
-             << ", data=" << phi::CppTypeToDataType<T>::Type()
-             << ", group=" << group
+             << ", data=" << CppTypeToDataType<T>::Type() << ", group=" << group
              << ", data layout=" << static_cast<int64_t>(data_layout);
 
     return phi::autotune::ConvCacheKey(x_shape,
@@ -157,7 +156,7 @@ struct ConvArgsBase {
                                        p,
                                        s,
                                        d,
-                                       phi::CppTypeToDataType<T>::Type(),
+                                       CppTypeToDataType<T>::Type(),
                                        group,
                                        static_cast<int64_t>(data_layout));
   }
@@ -210,8 +209,8 @@ static void RemovePaddingSlice(const GPUContext& dev_ctx,
   }
 
   auto in_t =
-      phi::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(*input);
-  auto out_t = phi::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
+      EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(*input);
+  auto out_t = EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
       *out, new_out_dims);
 
   funcs::EigenSlice<std::decay_t<decltype(place)>, T, D>::Eval(

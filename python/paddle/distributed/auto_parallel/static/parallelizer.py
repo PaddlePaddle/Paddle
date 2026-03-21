@@ -433,7 +433,11 @@ class AutoParallelizer:
                 with open(
                     searched_dist_context_path, "rb"
                 ) as dist_context_file:
-                    saved_dist_context = pickle.load(dist_context_file)
+                    from paddle.framework.restricted_unpickler import (
+                        safe_load_pickle,
+                    )
+
+                    saved_dist_context = safe_load_pickle(dist_context_file)
                     dist_context = DistributedContext()
                     for op in self._main_program.global_block().ops:
                         dist_attr = saved_dist_context["ops_dist_attr"][

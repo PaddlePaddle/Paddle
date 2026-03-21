@@ -190,6 +190,8 @@ class TEST_API Tensor {
   static constexpr const char* SOURCE_OUTPUT_NONE_TENSOR_NAME =
       "__@source_output_none_tensor@__";
 
+  Tensor(const Tensor&) = default;
+
   bool is_none() const {
     return name_ == RESULT_INPUT_NONE_TENSOR_NAME ||
            name_ == RESULT_OUTPUT_NONE_TENSOR_NAME ||

@@ -123,11 +123,10 @@ def load_image_bytes(bytes, is_color=True):
 
     Example usage:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> with open('cat.jpg') as f:
         ...     im = load_image_bytes(f.read())
-        ...
     :param bytes: the input image bytes array.
     :type bytes: str
     :param is_color: If set is_color True, it will load and
@@ -148,7 +147,7 @@ def load_image(file, is_color=True):
 
     Example usage:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> im = load_image('cat.jpg')
 
@@ -178,7 +177,7 @@ def resize_short(im, size):
 
     Example usage:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> im = load_image('cat.jpg')
         >>> im = resize_short(im, 256)
@@ -208,7 +207,7 @@ def to_chw(im, order=(2, 0, 1)):
 
     Example usage:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> im = load_image('cat.jpg')
         >>> im = resize_short(im, 256)
@@ -230,7 +229,7 @@ def center_crop(im, size, is_color=True):
 
     Example usage:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> im = load_image('cat.jpg')
         >>> im = center_crop(im, 224)
@@ -259,7 +258,7 @@ def random_crop(im, size, is_color=True):
 
     Example usage:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> im = load_image('cat.jpg')
         >>> im = random_crop(im, 224)
@@ -289,7 +288,7 @@ def left_right_flip(im, is_color=True):
 
     Example usage:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> im = load_image('cat.jpg')
         >>> im = left_right_flip(im)
@@ -314,7 +313,7 @@ def simple_transform(
 
     Example usage:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> im = load_image('cat.jpg')
         >>> im = simple_transform(im, 256, 224, True)
@@ -369,7 +368,7 @@ def load_and_transform(
 
     Example usage:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> im = load_and_transform('cat.jpg', 256, 224, True)
 

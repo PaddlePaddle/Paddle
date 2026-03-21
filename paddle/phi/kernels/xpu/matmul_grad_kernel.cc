@@ -143,9 +143,9 @@ void MatmulWithFlattenGradKernel(const Context& dev_ctx,
                                  DenseTensor* y_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
-  auto x_matrix = x.dims().size() > 2 ? phi::ReshapeToMatrix(x, x_num_col_dims)
+  auto x_matrix = x.dims().size() > 2 ? ReshapeToMatrix(x, x_num_col_dims)
                                       : static_cast<const DenseTensor&>(x);
-  auto y_matrix = y.dims().size() > 2 ? phi::ReshapeToMatrix(y, y_num_col_dims)
+  auto y_matrix = y.dims().size() > 2 ? ReshapeToMatrix(y, y_num_col_dims)
                                       : static_cast<const DenseTensor&>(y);
   DenseTensor dout_mat;
   dout_mat.Resize({common::flatten_to_2d(x.dims(), x_num_col_dims)[0],

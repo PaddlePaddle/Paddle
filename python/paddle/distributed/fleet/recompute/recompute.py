@@ -48,6 +48,7 @@ if TYPE_CHECKING:
 
 
 __all__ = []
+_SIGNATURE_CACHE = weakref.WeakKeyDictionary()
 
 
 def _varbase_help(param):
@@ -157,10 +158,15 @@ def switch_rng_state_tracker(
     paddle.set_rng_state(rng_state)
     get_rng_state_tracker().set_states_tracker(tracker)
 
-    orig_numpy_state = np.random.get_state()
-    orig_random_state = random.getstate()
-    np.random.set_state(numpy_state)
-    random.setstate(random_state)
+    orig_numpy_state = None
+    orig_random_state = None
+
+    if numpy_state is not None:
+        orig_numpy_state = np.random.get_state()
+        np.random.set_state(numpy_state)
+    if random_state is not None:
+        orig_random_state = random.getstate()
+        random.setstate(random_state)
 
     if custom_state is not None:
         assert custom_get_state_func is not None
@@ -172,8 +178,10 @@ def switch_rng_state_tracker(
     finally:
         paddle.set_rng_state(orig_rng_state)
         get_rng_state_tracker().set_states_tracker(orig_rng_tracker)
-        np.random.set_state(orig_numpy_state)
-        random.setstate(orig_random_state)
+        if orig_numpy_state is not None:
+            np.random.set_state(orig_numpy_state)
+        if orig_random_state is not None:
+            random.setstate(orig_random_state)
 
         if custom_state is not None:
             custom_set_state_func(orig_custom_state)
@@ -185,6 +193,7 @@ class RecomputeFunction(PyLayer):
         ctx,
         run_function,
         preserve_rng_state,
+        preserve_external_rng_state,
         offload_indices,
         custom_get_state_func,
         custom_set_state_func,
@@ -194,6 +203,7 @@ class RecomputeFunction(PyLayer):
         # store for recomputing
         ctx.run_function = run_function
         ctx.preserve_rng_state = preserve_rng_state
+        ctx.preserve_external_rng_state = preserve_external_rng_state
         ctx.offload_indices = offload_indices
         ctx.kwargs = kwargs
 
@@ -208,8 +218,12 @@ class RecomputeFunction(PyLayer):
             ctx.fwd_rng_state_tracker = (
                 get_rng_state_tracker().get_states_tracker()
             )
-            ctx.fwd_numpy_state = np.random.get_state()
-            ctx.fwd_random_state = random.getstate()
+            if ctx.preserve_external_rng_state:
+                ctx.fwd_numpy_state = np.random.get_state()
+                ctx.fwd_random_state = random.getstate()
+            else:
+                ctx.fwd_numpy_state = None
+                ctx.fwd_random_state = None
             ctx.fwd_custom_state = custom_get_state_func()
             ctx.custom_get_state_func = custom_get_state_func
             ctx.custom_set_state_func = custom_set_state_func
@@ -403,6 +417,7 @@ def _recompute_without_reentrant(
     custom_get_state_func,
     custom_set_state_func,
     preserve_rng_state=True,
+    preserve_external_rng_state=True,
     *args,
     **kwargs,
 ):
@@ -430,8 +445,12 @@ def _recompute_without_reentrant(
         fwd_cuda_rng_state_tracker = (
             get_rng_state_tracker().get_states_tracker()
         )
-        fwd_numpy_state = np.random.get_state()
-        fwd_random_state = random.getstate()
+        if preserve_external_rng_state:
+            fwd_numpy_state = np.random.get_state()
+            fwd_random_state = random.getstate()
+        else:
+            fwd_numpy_state = None
+            fwd_random_state = None
         fwd_custom_state = custom_get_state_func()
 
     tracer = framework._dygraph_tracer()
@@ -551,21 +570,25 @@ def recompute(function, *args, **kwargs):
 
     Parameters:
         function(paddle.nn.Layer): layer of sequence of layers that describes part of forward pass of the model
-              whose intermediate activations will be released to save memory in forward stage and will be recomputed
-              in backward stage for gradient calculation.
+            whose intermediate activations will be released to save memory in forward stage and will be recomputed
+            in backward stage for gradient calculation.
         *args(Tensor): inputs to the function.
         **kwargs(Dict): Kwargs should only contain two kinds of key-value params, the one is part of function's key-value params,
-                        and the other contains 'preserve_rng_state' and 'use_reentrant'. the key-value pair of preserve_rng_state,
-                        which is used to indicate whether to save the forward rng. If it is True, then the last forward rng value
-                        will be restored when the forward recalculation of backpropagation is performed, its default value is True.
-                        the key-value pair of use_reentrant is used to indicate which implementation of recompute you will be used.
-                        'use_reentrant=True' means to use the PyLayer implementation of recompute, 'use_reentrant=False' means to
-                        use the Hook implementation of recompute, its default value is True.
+            and the other contains 'preserve_rng_state', 'preserve_external_rng_state' and 'use_reentrant'.
+            The key-value pair of preserve_rng_state is used to indicate whether to save the forward rng. If it is True,
+            then the last forward rng value will be restored when the forward recalculation of backpropagation is performed,
+            its default value is True.
+            The key-value pair of preserve_external_rng_state is used to indicate whether to save and restore the external
+            random number generator states (numpy.random and python random). If your forward function does not use numpy.random
+            or python random, you can set this to False to improve performance. Its default value is True.
+            The key-value pair of use_reentrant is used to indicate which implementation of recompute you will be used.
+            'use_reentrant=True' means to use the PyLayer implementation of recompute, 'use_reentrant=False' means to
+            use the Hook implementation of recompute, its default value is True.
     Returns:
         Output of function on args.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED, env:GPU)
             >>> import paddle
@@ -584,21 +607,22 @@ def recompute(function, *args, **kwargs):
             ...     if is_last:
             ...         block.add_sublayer(
             ...             block_name + "_fc_2",
-            ...             paddle.nn.Linear(
-            ...                 input_size, 1, bias_attr=False
-            ...             )
+            ...             paddle.nn.Linear(input_size, 1, bias_attr=False),
             ...         )
             ...     else:
             ...         block.add_sublayer(
             ...             block_name + "_fc_2",
-            ...             paddle.nn.Linear(input_size, input_size, bias_attr=False)
+            ...             paddle.nn.Linear(input_size, input_size, bias_attr=False),
             ...         )
             ...     return block
 
             >>> class Naive_fc_net(paddle.nn.Layer):
-            ...     def __init__(self, input_size=10,
-            ...                 recompute_blocks=[1, 3],
-            ...                 recompute_kwargs={}):
+            ...     def __init__(
+            ...         self,
+            ...         input_size=10,
+            ...         recompute_blocks=[1, 3],
+            ...         recompute_kwargs={},
+            ...     ):
             ...         super().__init__()
             ...         self.recompute_blocks = recompute_blocks
             ...         self.recompute_kwargs = recompute_kwargs
@@ -608,6 +632,7 @@ def recompute(function, *args, **kwargs):
             ...         self.runfunc3 = get_fc_block(3, input_size, is_last=False)
             ...         self.runfunc4 = get_fc_block(4, input_size, is_last=True)
             ...         self.total_func = [self.runfunc0, self.runfunc1, self.runfunc2, self.runfunc3, self.runfunc4]
+            ...
             ...     def forward(self, inputs):
             ...         nums = len(self.total_func)
             ...         for i in range(nums):
@@ -627,7 +652,8 @@ def recompute(function, *args, **kwargs):
             ...     model = Naive_fc_net(
             ...         input_size,
             ...         recompute_blocks=recompute_block,
-            ...         recompute_kwargs=recompute_kwargs)
+            ...         recompute_kwargs=recompute_kwargs,
+            ...     )
             ...     optimizer = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
             ...     loss_ = []
             ...     param_ = []
@@ -646,9 +672,7 @@ def recompute(function, *args, **kwargs):
 
             >>> cuda_state = paddle.get_cuda_rng_state()
             >>> # without recompute
-            >>> loss_ref, param_ref, grad_ref = run_model(
-            ...     cuda_state, recompute_block=[]
-            ... )
+            >>> loss_ref, param_ref, grad_ref = run_model(cuda_state, recompute_block=[])
 
             >>> loss, param, grad = run_model(cuda_state, recompute_block=[1, 2])
             >>> print("normal_loss: {}, recompute_loss: {}".format(loss_ref, loss))
@@ -658,6 +682,9 @@ def recompute(function, *args, **kwargs):
     """
     # Hack to mix *args with **kwargs in a python 2.7-compliant way
     preserve = kwargs.pop('preserve_rng_state', True)
+    preserve_external_rng_state = kwargs.pop(
+        'preserve_external_rng_state', True
+    )
 
     # whether to use reentrant method to implement recompute
     use_reentrant = kwargs.pop('use_reentrant', True)
@@ -684,7 +711,17 @@ def recompute(function, *args, **kwargs):
 
     if use_reentrant:
         offload_indices = kwargs.pop('offload_indices', [])
-        input_args = []
+        if not kwargs:  # fast path
+            return RecomputeFunction.apply(
+                function,
+                preserve,
+                preserve_external_rng_state,
+                offload_indices,
+                custom_get_state_func,
+                custom_set_state_func,
+                *args,
+            )
+
         # rearrange `position-args + keyword-args` into `position-args`
         target = (
             function.forward
@@ -693,11 +730,18 @@ def recompute(function, *args, **kwargs):
         )
         if isinstance(target, StaticFunction):
             target = target.dygraph_function
-        dyfunc_sig = inspect.signature(target)
+
+        # Use getattr to get the cached signature. If it doesn't exist, parse and mount it to the target.
+        # This avoids the heavy overhead of inspect.signature during repeated executions.
+        cache_key = getattr(target, "__func__", target)
+        dyfunc_sig = _SIGNATURE_CACHE.get(cache_key)
+        if dyfunc_sig is None:
+            dyfunc_sig = inspect.signature(target)
+            _SIGNATURE_CACHE[cache_key] = dyfunc_sig
 
         bound_args = dyfunc_sig.bind(*args, **kwargs)
         bound_args.apply_defaults()
-
+        input_args = []
         for arg, param in zip(
             bound_args.arguments.values(), dyfunc_sig.parameters.values()
         ):
@@ -716,10 +760,14 @@ def recompute(function, *args, **kwargs):
                 )
             else:
                 raise ValueError("Unknown parameter kind.")
-
+        # Make a shallow copy of each Tensor to prevent the release of some Tensors reserved for backward in some special scenarios (such as scheduling logic of parallel pipelines)
+        for idx, arg in enumerate(input_args):
+            if isinstance(arg, core.eager.Tensor):
+                input_args[idx] = arg._new_shared_tensor()
         return RecomputeFunction.apply(
             function,
             preserve,
+            preserve_external_rng_state,
             offload_indices,
             custom_get_state_func,
             custom_set_state_func,
@@ -731,6 +779,7 @@ def recompute(function, *args, **kwargs):
             custom_get_state_func,
             custom_set_state_func,
             preserve,
+            preserve_external_rng_state,
             *args,
             **kwargs,
         )
@@ -759,14 +808,14 @@ def recompute_sequential(
         Output of function on args and kwargs.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> import paddle
             >>> from paddle.incubate.distributed.fleet import recompute_sequential
             >>> input = paddle.ones(shape=[8, 10])
             >>> model = paddle.nn.Sequential(paddle.nn.Linear(10, 10), paddle.nn.Linear(10, 2))
-            >>> output = recompute_sequential({'segments' : 1}, model, input)
+            >>> output = recompute_sequential({'segments': 1}, model, input)
 
     """
     segments = ctx.get('segments', 1)

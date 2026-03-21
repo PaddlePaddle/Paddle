@@ -68,6 +68,12 @@ struct PADDLE_API TensorOptions {
     this->set_device(std::forward<T>(device));
   }
 
+  template <
+      typename... Args,
+      typename = std::enable_if_t<std::is_constructible_v<Device, Args&&...>>>
+  /* implicit */ TensorOptions(Args&&... args)  // NOLINT
+      : TensorOptions(Device(std::forward<Args>(args)...)) {}
+
   /* implicit */ TensorOptions(c10::ScalarType dtype)  // NOLINT
       : TensorOptions() {
     this->set_dtype(dtype);
@@ -83,6 +89,12 @@ struct PADDLE_API TensorOptions {
     TensorOptions r = *this;
     r.set_device(device);
     return r;
+  }
+
+  template <typename... Args>
+  [[nodiscard]] TensorOptions device(Args&&... args) const noexcept {
+    return device(
+        std::optional<Device>(std::in_place, std::forward<Args>(args)...));
   }
 
   [[nodiscard]] TensorOptions device_index(

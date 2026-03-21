@@ -85,7 +85,7 @@ def quanter(
         class_name (str): The name of factory class to be declared.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # type: ignore
             >>> # doctest: +SKIP('need 2 file to run example')

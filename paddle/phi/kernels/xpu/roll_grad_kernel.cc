@@ -45,7 +45,7 @@ void RollGradKernel(const Context& dev_ctx,
   // axis = none, reshape to 1-D tensor
   if (dims.size() == 0) {
     dims.push_back(0l);
-    input_dim = phi::Dim<1>(x.numel());
+    input_dim = Dim<1>(x.numel());
   }
   std::vector<int64_t> shifts_in;
   std::vector<int64_t> axis_in;

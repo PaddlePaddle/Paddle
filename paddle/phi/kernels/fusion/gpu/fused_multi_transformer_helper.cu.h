@@ -46,44 +46,44 @@ class BiasActHelper {
                const DenseTensor *bias,
                DenseTensor *output) {
     const T *bias_data = (bias == nullptr) ? nullptr : bias->data<T>();
-    funcs::Load<T> load_func(x->data<T>());
-    funcs::Store<T> store_func(output->data<T>());
+    funcs::LoadFunc<T> load_func(x->data<T>());
+    funcs::StoreFunc<T> store_func(output->data<T>());
     ComputeImpl(bias_data, load_func, store_func);
   }
 
  private:
-  template <typename LoadFunc, typename StoreFunc, typename LoadT = T>
+  template <typename LoadFuncT, typename StoreFuncT, typename LoadT = T>
   void ComputeImpl(const T *bias_data,
-                   LoadFunc load_func,
-                   StoreFunc store_func) {
+                   LoadFuncT load_func,
+                   StoreFuncT store_func) {
     if (act_method_ == "geglu") {
       // Note(Zhengzekang): For GLU structure, we need divide the cols by 2.
       VLOG(5) << "doing geglu";
       LaunchActFFNGlu<T,
                       phi::fusion::LayerNormParamTypeGeluFunctor<T>,
-                      LoadFunc,
-                      StoreFunc,
+                      LoadFuncT,
+                      StoreFuncT,
                       LoadT>(
           dev_ctx_, bias_data, rows_, cols_ / 2, load_func, store_func);
     } else if (act_method_ == "swiglu") {
       VLOG(5) << "doing swiglu";
-      LaunchActFFNGlu<T, CudaSwishFunctor<T>, LoadFunc, StoreFunc, LoadT>(
+      LaunchActFFNGlu<T, CudaSwishFunctor<T>, LoadFuncT, StoreFuncT, LoadT>(
           dev_ctx_, bias_data, rows_, cols_ / 2, load_func, store_func);
     } else if (act_method_ == "gelu") {
       if (FLAGS_use_fast_math) {
         VLOG(5) << "doing Fast GELU";
         LaunchBiasAct<T,
                       phi::fusion::FastGeluFunctor<T>,
-                      LoadFunc,
-                      StoreFunc,
+                      LoadFuncT,
+                      StoreFuncT,
                       LoadT>(
             dev_ctx_, bias_data, rows_, cols_, load_func, store_func);
       } else {
         VLOG(5) << "doing GELU";
         LaunchBiasAct<T,
                       phi::fusion::LayerNormParamTypeGeluFunctor<T>,
-                      LoadFunc,
-                      StoreFunc,
+                      LoadFuncT,
+                      StoreFuncT,
                       LoadT>(
             dev_ctx_, bias_data, rows_, cols_, load_func, store_func);
       }

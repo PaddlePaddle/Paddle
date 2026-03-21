@@ -51,7 +51,7 @@ class FusedDropout(paddle.nn.Layer):
 
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(2023)

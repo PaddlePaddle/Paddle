@@ -28,7 +28,7 @@ namespace phi {
 namespace funcs {
 
 template <typename T>
-void RenormFunc(const phi::CPUContext& dev_ctx UNUSED,
+void RenormFunc(const CPUContext& dev_ctx UNUSED,
                 const T* x_data,
                 T* out_data,
                 float p,
@@ -79,7 +79,7 @@ void RenormFunc(const phi::CPUContext& dev_ctx UNUSED,
 }
 
 template <typename T>
-void RenormGradFunc(const phi::CPUContext& dev_ctx UNUSED,
+void RenormGradFunc(const CPUContext& dev_ctx UNUSED,
                     const T* x_data,
                     const T* dout_data,
                     T* dx_data,

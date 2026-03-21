@@ -997,7 +997,7 @@ struct MatMulDispatcher<phi::GPUContext, T> {
                                         y_dims,
                                         trans_x,
                                         trans_y,
-                                        phi::CppTypeToDataType<T>::Type(),
+                                        CppTypeToDataType<T>::Type(),
                                         funcs::MatmulFusedType::kMatmul,
                                         /* bias_data */ nullptr,
                                         /* reserve_data */ nullptr,
@@ -2000,7 +2000,7 @@ DispatchMatmulFP8Kernel(const Context& dev_ctx,
 }
 
 template <typename Context>
-typename std::enable_if<std::is_same<Context, phi::CPUContext>::value>::type
+typename std::enable_if<std::is_same<Context, CPUContext>::value>::type
 DispatchMatmulFP8Kernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const DenseTensor& y,
@@ -2090,9 +2090,9 @@ void MatmulWithFlattenKernelImpl(const Context& dev_ctx,
                                  int y_num_col_dims,
                                  DenseTensor* out) {
   const DenseTensor x_matrix =
-      x.dims().size() > 2 ? phi::ReshapeToMatrix(x, x_num_col_dims) : x;
+      x.dims().size() > 2 ? ReshapeToMatrix(x, x_num_col_dims) : x;
   const DenseTensor y_matrix =
-      y.dims().size() > 2 ? phi::ReshapeToMatrix(y, y_num_col_dims) : y;
+      y.dims().size() > 2 ? ReshapeToMatrix(y, y_num_col_dims) : y;
 
   dev_ctx.template Alloc<T>(out);
   auto z_dim = out->dims();
@@ -2137,9 +2137,9 @@ void MatmulWithFlattenKernelInt8Impl(const Context& dev_ctx,
           y.dtype()));
 
   const DenseTensor x_matrix =
-      x.dims().size() > 2 ? phi::ReshapeToMatrix(x, x_num_col_dims) : x;
+      x.dims().size() > 2 ? ReshapeToMatrix(x, x_num_col_dims) : x;
   const DenseTensor y_matrix =
-      y.dims().size() > 2 ? phi::ReshapeToMatrix(y, y_num_col_dims) : y;
+      y.dims().size() > 2 ? ReshapeToMatrix(y, y_num_col_dims) : y;
 
   PADDLE_ENFORCE_EQ(
       x_matrix.dims()[1],
@@ -2225,9 +2225,8 @@ DispatchMatmulWithFlattenInt8Kernel(const phi::GPUContext& dev_ctx,
 #endif
 
 template <typename Context>
-typename std::enable_if<std::is_same<Context, phi::CPUContext>::value,
-                        void>::type
-DispatchMatmulWithFlattenInt8Kernel(const phi::CPUContext& dev_ctx,
+typename std::enable_if<std::is_same<Context, CPUContext>::value, void>::type
+DispatchMatmulWithFlattenInt8Kernel(const CPUContext& dev_ctx,
                                     const DenseTensor& x,
                                     const DenseTensor& y,
                                     int x_num_col_dims,

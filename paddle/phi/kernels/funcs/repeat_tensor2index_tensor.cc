@@ -55,10 +55,8 @@ void RepeatsTensor2IndexTensorFunctor<Context, RepeatsT>::operator()(
 }
 
 template <typename RepeatsT>
-void RepeatsTensor2IndexTensorFunctor<phi::CPUContext, RepeatsT>::operator()(
-    const phi::CPUContext &dev_ctx,
-    const DenseTensor &repeats,
-    DenseTensor *index) {
+void RepeatsTensor2IndexTensorFunctor<CPUContext, RepeatsT>::operator()(
+    const CPUContext &dev_ctx, const DenseTensor &repeats, DenseTensor *index) {
   const RepeatsT *repeats_data = repeats.data<RepeatsT>();
 
   int64_t index_size = 0;
@@ -81,15 +79,13 @@ void RepeatsTensor2IndexTensorFunctor<phi::CPUContext, RepeatsT>::operator()(
   phi::TensorFromVector<RepeatsT>(index_vec, dev_ctx, index);
 }
 
-template class RepeatsTensor2IndexTensorFunctor<phi::CPUContext, int>;
-template class RepeatsTensor2IndexTensorFunctor<phi::CPUContext, int64_t>;
+template class RepeatsTensor2IndexTensorFunctor<CPUContext, int>;
+template class RepeatsTensor2IndexTensorFunctor<CPUContext, int64_t>;
 
 #ifdef PADDLE_WITH_XPU
 template <typename RepeatsT>
-void RepeatsTensor2IndexTensorFunctor<phi::XPUContext, RepeatsT>::operator()(
-    const phi::XPUContext &dev_ctx,
-    const DenseTensor &repeats,
-    DenseTensor *index) {
+void RepeatsTensor2IndexTensorFunctor<XPUContext, RepeatsT>::operator()(
+    const XPUContext &dev_ctx, const DenseTensor &repeats, DenseTensor *index) {
   DenseTensor repeats_cpu_copy;
   phi::Copy(dev_ctx, repeats, CPUPlace(), true, &repeats_cpu_copy);
   const RepeatsT *repeats_data = repeats_cpu_copy.data<RepeatsT>();
@@ -114,8 +110,8 @@ void RepeatsTensor2IndexTensorFunctor<phi::XPUContext, RepeatsT>::operator()(
   phi::TensorFromVector<RepeatsT>(index_vec, dev_ctx, index);
 }
 
-template class RepeatsTensor2IndexTensorFunctor<phi::XPUContext, int>;
-template class RepeatsTensor2IndexTensorFunctor<phi::XPUContext, int64_t>;
+template class RepeatsTensor2IndexTensorFunctor<XPUContext, int>;
+template class RepeatsTensor2IndexTensorFunctor<XPUContext, int64_t>;
 #endif
 
 }  // namespace funcs

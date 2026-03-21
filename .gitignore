@@ -54,6 +54,7 @@ build_doc/
 
 .vscode
 .comate
+.claude
 .idea
 .project
 .cproject
@@ -67,7 +68,7 @@ Makefile
 third_party/
 *~
 bazel-*
-
+.humanize
 
 build_*
 # clion workspace.

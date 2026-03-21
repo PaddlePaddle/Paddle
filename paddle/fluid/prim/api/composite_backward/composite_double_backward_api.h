@@ -30,8 +30,7 @@
 
 namespace paddle {
 namespace prim {
-using Tensor = paddle::Tensor;
-using IntArray = paddle::experimental::IntArrayBase<paddle::Tensor>;
+using IntArray = paddle::experimental::IntArrayBase<Tensor>;
 //  This file define high level grad composite api for Higher order
 //  differentiation
 
@@ -114,8 +113,8 @@ void acos_double_grad(const Tensor& x,
 template <typename T>
 void minimum_double_grad(const Tensor& x,
                          const Tensor& y,
-                         const paddle::optional<Tensor>& grad_x_grad,
-                         const paddle::optional<Tensor>& grad_y_grad,
+                         const optional<Tensor>& grad_x_grad,
+                         const optional<Tensor>& grad_y_grad,
                          Tensor* grad_out_grad) {
   if (grad_out_grad) {
     if (grad_x_grad && grad_y_grad) {
@@ -158,8 +157,8 @@ void pow_double_grad(const Tensor& x,
 
 template <typename T>
 void masked_fill_double_grad(const Tensor& mask,
-                             const paddle::optional<Tensor>& grad_x_grad,
-                             const paddle::optional<Tensor>& grad_value_grad,
+                             const optional<Tensor>& grad_x_grad,
+                             const optional<Tensor>& grad_value_grad,
                              Tensor* grad_out_grad) {
   if (grad_out_grad) {
     Tensor grad_out_grad_tmp;
@@ -182,8 +181,8 @@ void masked_fill_double_grad(const Tensor& mask,
 template <typename T>
 void maximum_double_grad(const Tensor& x,
                          const Tensor& y,
-                         const paddle::optional<Tensor>& grad_x_grad,
-                         const paddle::optional<Tensor>& grad_y_grad,
+                         const optional<Tensor>& grad_x_grad,
+                         const optional<Tensor>& grad_y_grad,
                          Tensor* grad_out_grad) {
   if (grad_out_grad) {
     if (grad_x_grad && grad_y_grad) {
@@ -205,8 +204,8 @@ void maximum_double_grad(const Tensor& x,
 
 template <typename T>
 void where_double_grad(const Tensor& condition,
-                       const paddle::optional<Tensor>& grad_x_grad,
-                       const paddle::optional<Tensor>& grad_y_grad,
+                       const optional<Tensor>& grad_x_grad,
+                       const optional<Tensor>& grad_y_grad,
                        Tensor* grad_out_grad) {
   if (grad_out_grad) {
     Tensor ddout;
@@ -236,8 +235,8 @@ template <typename T>
 void tanh_triple_grad(const Tensor& out,
                       const Tensor& grad_out_forward,
                       const Tensor& grad_x_grad_forward,
-                      const paddle::optional<Tensor>& grad_out_new_grad,
-                      const paddle::optional<Tensor>& grad_out_grad_grad,
+                      const optional<Tensor>& grad_out_new_grad,
+                      const optional<Tensor>& grad_out_grad_grad,
                       Tensor* out_grad,
                       Tensor* grad_out_forward_grad,
                       Tensor* grad_x_grad_forward_grad) {
@@ -366,8 +365,8 @@ template <typename T>
 void matmul_double_grad(const Tensor& x,
                         const Tensor& y,
                         const Tensor& grad_out,
-                        const paddle::optional<Tensor>& grad_x_grad,
-                        const paddle::optional<Tensor>& grad_y_grad,
+                        const optional<Tensor>& grad_x_grad,
+                        const optional<Tensor>& grad_y_grad,
                         bool transpose_x,
                         bool transpose_y,
                         Tensor* x_grad,
@@ -715,8 +714,8 @@ template <typename T>
 void multiply_double_grad(const Tensor& x,
                           const Tensor& y,
                           const Tensor& grad_out,
-                          const paddle::optional<Tensor>& grad_x_grad,
-                          const paddle::optional<Tensor>& grad_y_grad,
+                          const optional<Tensor>& grad_x_grad,
+                          const optional<Tensor>& grad_y_grad,
                           int axis,
                           Tensor* x_grad,
                           Tensor* y_grad,
@@ -791,8 +790,8 @@ void multiply_double_grad(const Tensor& x,
 template <typename T>
 void add_double_grad(const Tensor& y,
                      const Tensor& grad_out,
-                     const paddle::optional<Tensor>& grad_x_grad,
-                     const paddle::optional<Tensor>& grad_y_grad,
+                     const optional<Tensor>& grad_x_grad,
+                     const optional<Tensor>& grad_y_grad,
                      int axis,
                      Tensor* grad_out_grad) {
   if (grad_out_grad) {
@@ -813,8 +812,8 @@ void add_double_grad(const Tensor& y,
 }
 
 template <typename T>
-void add_triple_grad(const paddle::optional<Tensor>& grad_grad_x,
-                     const paddle::optional<Tensor>& grad_grad_y,
+void add_triple_grad(const optional<Tensor>& grad_grad_x,
+                     const optional<Tensor>& grad_grad_y,
                      const Tensor& grad_grad_out_grad,
                      int axis,
                      Tensor* grad_grad_x_grad,
@@ -823,8 +822,8 @@ void add_triple_grad(const paddle::optional<Tensor>& grad_grad_x,
     if (grad_grad_y) {
       if (grad_grad_y.get().dims() != grad_grad_out_grad.dims()) {
         // Maybe need reduce here
-        phi::DDim reduce_dim = get_reduce_dims(grad_grad_y.get().dims(),
-                                               grad_grad_out_grad.dims());
+        DDim reduce_dim = get_reduce_dims(grad_grad_y.get().dims(),
+                                          grad_grad_out_grad.dims());
         if (!reduce_dim.size()) {
           by_pass<T>(grad_grad_out_grad, grad_grad_y_grad);
         } else {
@@ -875,9 +874,9 @@ template <typename T>
 void linear_v2_double_grad(const Tensor& input,
                            const Tensor& weight,
                            const Tensor& grad_out,
-                           const paddle::optional<Tensor>& grad_input_grad,
-                           const paddle::optional<Tensor>& grad_weight_grad,
-                           const paddle::optional<Tensor>& grad_bias_grad,
+                           const optional<Tensor>& grad_input_grad,
+                           const optional<Tensor>& grad_weight_grad,
+                           const optional<Tensor>& grad_bias_grad,
                            const bool transpose_weight,
                            Tensor* input_grad,
                            Tensor* weight_grad,
@@ -901,8 +900,8 @@ void linear_v2_double_grad(const Tensor& input,
 template <typename T>
 void subtract_double_grad(const Tensor& y,
                           const Tensor& grad_out,
-                          const paddle::optional<Tensor>& grad_x_grad,
-                          const paddle::optional<Tensor>& grad_y_grad,
+                          const optional<Tensor>& grad_x_grad,
+                          const optional<Tensor>& grad_y_grad,
                           int axis,
                           Tensor* grad_out_grad) {
   if (grad_out_grad) {
@@ -1058,8 +1057,8 @@ template <typename T>
 void bmm_double_grad(const Tensor& x,
                      const Tensor& y,
                      const Tensor& grad_out,
-                     const paddle::optional<Tensor>& grad_x_grad,
-                     const paddle::optional<Tensor>& grad_y_grad,
+                     const optional<Tensor>& grad_x_grad,
+                     const optional<Tensor>& grad_y_grad,
                      Tensor* x_grad,
                      Tensor* y_grad,
                      Tensor* grad_out_grad) {
@@ -1111,8 +1110,8 @@ template <typename T>
 void index_put_double_grad(const Tensor& x,
                            const std::vector<Tensor>& indices,
                            const Tensor& value,
-                           const paddle::optional<Tensor>& grad_x_grad,
-                           const paddle::optional<Tensor>& grad_value_grad,
+                           const optional<Tensor>& grad_x_grad,
+                           const optional<Tensor>& grad_value_grad,
                            const bool& accumulate,
                            Tensor* grad_out_grad) {
   if (grad_out_grad) {
@@ -1210,16 +1209,15 @@ void take_along_axis_double_grad(const Tensor& indices,
 }
 
 template <typename T>
-void put_along_axis_double_grad(
-    const Tensor& arr,
-    const Tensor& indices,
-    const Tensor& values,
-    const paddle::optional<Tensor>& grad_values_grad,
-    const paddle::optional<Tensor>& grad_arr_grad,
-    int axis,
-    const std::string& reduce,
-    bool include_self,
-    Tensor* grad_out_grad) {
+void put_along_axis_double_grad(const Tensor& arr,
+                                const Tensor& indices,
+                                const Tensor& values,
+                                const optional<Tensor>& grad_values_grad,
+                                const optional<Tensor>& grad_arr_grad,
+                                int axis,
+                                const std::string& reduce,
+                                bool include_self,
+                                Tensor* grad_out_grad) {
   if (grad_out_grad) {
     if (reduce != "add") {
       PADDLE_THROW(common::errors::InvalidArgument(
@@ -1264,8 +1262,8 @@ void put_along_axis_double_grad(
 template <typename T>
 void index_add_double_grad(const Tensor& index,
                            const Tensor& out_grad,
-                           const paddle::optional<Tensor>& grad_x_grad,
-                           const paddle::optional<Tensor>& grad_add_value_grad,
+                           const optional<Tensor>& grad_x_grad,
+                           const optional<Tensor>& grad_add_value_grad,
                            int axis,
                            Tensor* grad_out_grad) {
   if (grad_out_grad) {
@@ -1304,8 +1302,8 @@ void index_elementwise_put_with_tensor_double_grad(
     const Tensor& grad_out,
     const Tensor& value,
     const std::vector<Tensor>& index,
-    const paddle::optional<Tensor>& grad_x_grad,
-    const paddle::optional<Tensor>& grad_value_grad,
+    const optional<Tensor>& grad_x_grad,
+    const optional<Tensor>& grad_value_grad,
     const std::vector<int64_t>& input_dims,
     const std::vector<int64_t>& input_strides,
     const std::vector<int64_t>& index_dims,

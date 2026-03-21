@@ -410,7 +410,7 @@ class Layer:
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(100)
@@ -425,7 +425,6 @@ class Layer:
             ...         temp = self._linear(input)
             ...         temp = self._dropout(temp)
             ...         return temp
-            ...
             >>> x = paddle.randn([10, 1], 'float32')
             >>> mylayer = MyLayer()
             >>> mylayer.eval()  # set mylayer._dropout to eval mode
@@ -531,7 +530,7 @@ class Layer:
             Layer: self
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.seed(100)
@@ -546,7 +545,6 @@ class Layer:
                 ...         temp = self._linear(input)
                 ...         temp = self._dropout(temp)
                 ...         return temp
-                ...
                 >>> x = paddle.randn([10, 1], 'float32')
                 >>> mylayer = MyLayer()
                 >>> mylayer.eval()  # set mylayer._dropout to eval mode
@@ -594,7 +592,7 @@ class Layer:
             Layer: self
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.seed(100)
@@ -608,7 +606,6 @@ class Layer:
                 ...         temp = self._linear(input)
                 ...         temp = self._dropout(temp)
                 ...         return temp
-                ...
                 >>> x = paddle.randn([10, 1], 'float32')
                 >>> mylayer = MyLayer()
                 >>> mylayer.eval()  # set mylayer._dropout to eval mode
@@ -652,7 +649,7 @@ class Layer:
             Layer, self
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.nn as nn
@@ -666,7 +663,6 @@ class Layer:
                 ...         new_weight = paddle.full(shape=layer.weight.shape, dtype=layer.weight.dtype, fill_value=0.9)
                 ...         layer.weight.set_value(new_weight)
                 ...         print('after init weight:', layer.weight.numpy())
-                ...
                 >>> net.apply(init_weights)
 
                 >>> print(net.state_dict())
@@ -706,18 +702,17 @@ class Layer:
             str, full name of this layer.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
                 >>> class LinearNet(paddle.nn.Layer):
                 ...     def __init__(self):
-                ...         super().__init__(name_scope = "demo_linear_net")
+                ...         super().__init__(name_scope="demo_linear_net")
                 ...         self._linear = paddle.nn.Linear(1, 1)
                 ...
                 ...     def forward(self, x):
                 ...         return self._linear(x)
-                ...
                 >>> linear_net = LinearNet()
                 >>> print(linear_net.full_name())
                 demo_linear_net_0
@@ -759,7 +754,7 @@ class Layer:
             HookRemoveHelper, a HookRemoveHelper object that can be used to remove the added hook by calling `hook_remove_helper.remove()` .
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import numpy as np
@@ -770,7 +765,6 @@ class Layer:
                 ...
                 ...     # change the output
                 ...     return output * 2
-                ...
                 >>> linear = paddle.nn.Linear(13, 5)
 
                 >>> # register the hook
@@ -847,7 +841,7 @@ class Layer:
             HookRemoveHelper, a HookRemoveHelper object that can be used to remove the added hook by calling `hook_remove_helper.remove()` .
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import numpy as np
@@ -857,9 +851,8 @@ class Layer:
                 ...     # user can use layer and input for information statistics tasks
                 ...
                 ...     # change the input
-                ...     input_return = (input[0] * 2)
+                ...     input_return = input[0] * 2
                 ...     return input_return
-                ...
                 >>> linear = paddle.nn.Linear(13, 5)
 
                 >>> # register the hook
@@ -922,7 +915,7 @@ class Layer:
             :Tensor, created parameter.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.seed(2023)
@@ -931,15 +924,14 @@ class Layer:
                 ...     def __init__(self):
                 ...         super().__init__()
                 ...         self._linear = paddle.nn.Linear(1, 1)
-                ...         w_tmp = self.create_parameter([1,1])
+                ...         w_tmp = self.create_parameter([1, 1])
                 ...         self.add_parameter("w_tmp", w_tmp)
                 ...
                 ...     def forward(self, input):
                 ...         return self._linear(input)
-                ...
                 >>> mylayer = MyLayer()
                 >>> for name, param in mylayer.named_parameters():
-                ...     print(name, param)      # will print w_tmp,_linear.weight,_linear.bias
+                ...     print(name, param)  # will print w_tmp,_linear.weight,_linear.bias
                 w_tmp Parameter containing:
                 Tensor(shape=[1, 1], dtype=float32, place=Place(cpu), stop_gradient=False,
                 [[0.06979191]])
@@ -1008,22 +1000,20 @@ class Layer:
             Tensor, created Tensor.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
                 >>> class MyLinear(paddle.nn.Layer):
-                ...     def __init__(self,
-                ...                 in_features,
-                ...                 out_features):
+                ...     def __init__(self, in_features, out_features):
                 ...         super().__init__()
-                ...         self.linear = paddle.nn.Linear( 10, 10)
+                ...         self.linear = paddle.nn.Linear(10, 10)
                 ...
-                ...         self.back_var = self.create_variable(name = "linear_tmp_0", dtype=self._dtype)
+                ...         self.back_var = self.create_variable(name="linear_tmp_0", dtype=self._dtype)
                 ...
                 ...     def forward(self, input):
                 ...         out = self.linear(input)
-                ...         paddle.assign( out, self.back_var)
+                ...         paddle.assign(out, self.back_var)
                 ...
                 ...         return out
 
@@ -1065,18 +1055,16 @@ class Layer:
             Tensor, created Tensor.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
                 >>> class MyLinear(paddle.nn.Layer):
-                ...     def __init__(self,
-                ...                  in_features,
-                ...                  out_features):
+                ...     def __init__(self, in_features, out_features):
                 ...         super().__init__()
                 ...         self.linear = paddle.nn.Linear(10, 10)
                 ...
-                ...         self.back_var = self.create_tensor(name = "linear_tmp_0", dtype=self._dtype)
+                ...         self.back_var = self.create_tensor(name="linear_tmp_0", dtype=self._dtype)
                 ...
                 ...     def forward(self, input):
                 ...         out = self.linear(input)
@@ -1114,7 +1102,7 @@ class Layer:
             list, list of Tensor, a list of Parameters.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.seed(100)
@@ -1151,14 +1139,14 @@ class Layer:
             Layer, self
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.nn as nn
-                >>> weight_attr = paddle.ParamAttr(name="weight",initializer=paddle.nn.initializer.Constant(value=1.5))
-                >>> bias_attr = paddle.ParamAttr(name="bias",initializer=paddle.nn.initializer.Constant(value=2.5))
+                >>> weight_attr = paddle.ParamAttr(name="weight", initializer=paddle.nn.initializer.Constant(value=1.5))
+                >>> bias_attr = paddle.ParamAttr(name="bias", initializer=paddle.nn.initializer.Constant(value=2.5))
 
-                >>> linear = paddle.nn.Linear(2, 2, weight_attr=weight_attr, bias_attr=bias_attr).to(device="cpu",dtype="float32")
+                >>> linear = paddle.nn.Linear(2, 2, weight_attr=weight_attr, bias_attr=bias_attr).to(device="cpu", dtype="float32")
                 >>> print(linear)
                 Linear(in_features=2, out_features=2, dtype=float32)
                 >>> print(linear.parameters())
@@ -1169,7 +1157,7 @@ class Layer:
                 Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=False,
                     [2.50000000, 2.50000000])]
 
-                >>> linear=linear.astype("int8")
+                >>> linear = linear.astype("int8")
                 >>> print(linear)
                 Linear(in_features=2, out_features=2, dtype=paddle.int8)
                 >>> print(linear.parameters())
@@ -1227,7 +1215,7 @@ class Layer:
             Layer: a child layer
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -1252,7 +1240,7 @@ class Layer:
             (string, Layer): Tuple containing a name and child layer
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -1328,7 +1316,7 @@ class Layer:
             (string, Parameter): Tuple of name and Parameter
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.seed(100)
@@ -1406,7 +1394,7 @@ class Layer:
             (string, Layer): Tuple of name and Layer
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -1522,7 +1510,7 @@ class Layer:
             None
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import numpy as np
                 >>> import paddle
@@ -1579,7 +1567,7 @@ class Layer:
             list of Tensor, a list of buffers.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import numpy as np
                 >>> import paddle
@@ -1653,7 +1641,7 @@ class Layer:
             (string, Tensor): Tuple of name and tensor
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import numpy as np
                 >>> import paddle
@@ -1711,7 +1699,7 @@ class Layer:
             None
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import numpy as np
@@ -1719,8 +1707,10 @@ class Layer:
                 >>> value = np.arange(26).reshape(2, 13).astype("float32")
                 >>> a = paddle.to_tensor(value)
                 >>> linear = paddle.nn.Linear(13, 5)
-                >>> adam = paddle.optimizer.Adam(learning_rate=0.01,
-                ...                              parameters=linear.parameters())
+                >>> adam = paddle.optimizer.Adam(
+                ...     learning_rate=0.01,
+                ...     parameters=linear.parameters(),
+                ... )
                 >>> out = linear(a)
                 >>> out.backward()
                 >>> adam.step()
@@ -1862,7 +1852,7 @@ class Layer:
             Layer, the sublayer passed in.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -1880,7 +1870,6 @@ class Layer:
                 ...         for layer in self._sub_layers.values():
                 ...             input = layer(input)
                 ...         return input
-                ...
                 >>> fc1 = paddle.nn.Linear(10, 3)
                 >>> fc2 = paddle.nn.Linear(3, 10, bias_attr=False)
                 >>> model = MySequential(fc1, fc2)
@@ -1990,7 +1979,7 @@ class Layer:
         Returns:
             Parameter, the parameter passed in.
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.seed(100)
@@ -1999,12 +1988,11 @@ class Layer:
                 ...     def __init__(self):
                 ...         super().__init__()
                 ...         self._linear = paddle.nn.Linear(1, 1)
-                ...         w_tmp = self.create_parameter([1,1])
+                ...         w_tmp = self.create_parameter([1, 1])
                 ...         self.add_parameter("w_tmp", w_tmp)
                 ...
                 ...     def forward(self, input):
                 ...         return self._linear(input)
-                ...
                 >>> mylayer = MyLayer()
                 >>> for name, param in mylayer.named_parameters():
                 ...     print(name, param)
@@ -2457,14 +2445,14 @@ class Layer:
             dict, a dict contains all the parameters and persistable buffers.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
                 >>> emb = paddle.nn.Embedding(10, 10)
 
                 >>> state_dict = emb.to_static_state_dict()
-                >>> paddle.save( state_dict, "paddle_dy.pdparams")
+                >>> paddle.save(state_dict, "paddle_dy.pdparams")
 
         '''
         return self._state_dict_impl(
@@ -2522,7 +2510,7 @@ class Layer:
             dict: a dict contains all the parameters and persistable buffers.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -2650,7 +2638,7 @@ class Layer:
             unexpected_keys(list):A list of str containing the unexpected keys
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -2856,12 +2844,12 @@ class Layer:
             self
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.seed(2023)
 
-                >>> linear=paddle.nn.Linear(2, 2)
+                >>> linear = paddle.nn.Linear(2, 2)
                 >>> linear.weight
                 >>> print(linear.weight)
                 Parameter containing:
@@ -3237,7 +3225,7 @@ class Layer:
             Layer: self
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('Paddle compiled by the user does not support float16, so keep original data type.')
                 >>> import paddle
@@ -3252,7 +3240,6 @@ class Layer:
                 ...         out = self.linear(input)
                 ...         out = self.dropout(out)
                 ...         return out
-                ...
                 >>> model = Model()
                 >>> model.float16()
                 Model(
@@ -3303,7 +3290,7 @@ class Layer:
             Layer: self
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('bfloat need V100 compile')
                 >>> import paddle
@@ -3318,10 +3305,9 @@ class Layer:
                 ...         out = self.linear(input)
                 ...         out = self.dropout(out)
                 ...         return out
-                ...
                 >>> model = Model()
                 >>> model.bfloat16()
-                >>> #UserWarning: Paddle compiled by the user does not support bfloat16, so keep original data type.
+                >>> # UserWarning: Paddle compiled by the user does not support bfloat16, so keep original data type.
                 Model(
                     (linear): Linear(in_features=1, out_features=1, dtype=float32)
                     (dropout): Dropout(p=0.5, axis=None, mode=upscale_in_train)

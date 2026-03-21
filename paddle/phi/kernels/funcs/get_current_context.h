@@ -36,13 +36,13 @@ inline CONTEXT_TYPE *GetCurrentContext() {
   auto dev_types = DeviceManager::GetAllCustomDeviceTypes();
   int device_id = DeviceManager::GetDevice(dev_types[0]);
   auto gplace = CustomPlace(dev_types[0], device_id);
-  auto *dev_ctx = static_cast<CustomContext *>(
-      phi::DeviceContextPool::Instance().Get(gplace));
+  auto *dev_ctx =
+      static_cast<CustomContext *>(DeviceContextPool::Instance().Get(gplace));
   return dev_ctx;
 #elif defined(__NVCC__) || defined(__HIPCC__)
   auto gplace = GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
   auto *dev_ctx =
-      static_cast<GPUContext *>(phi::DeviceContextPool::Instance().Get(gplace));
+      static_cast<GPUContext *>(DeviceContextPool::Instance().Get(gplace));
   return dev_ctx;
 #else
   PADDLE_THROW(common::errors::Unimplemented(

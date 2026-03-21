@@ -36,7 +36,7 @@ void PRecv(const Context& dev_ctx,
            DenseTensor* out) {
   MetaTensor out_meta(*out);
   MetaTensor* out_meta_ptr = &out_meta;
-  DataType dtype = phi::CppTypeToDataType<T>::Type();
+  DataType dtype = CppTypeToDataType<T>::Type();
 
   PRecvInferMeta(peer, dtype, out_shape, dynamic_shape, out_meta_ptr);
   PRecvKernel<T, Context>(dev_ctx, peer, dtype, out_shape, dynamic_shape, out);

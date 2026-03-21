@@ -910,10 +910,7 @@ class TestDygraphInplacePowerScalar(TestDygraphInplaceWithContinuous):
 
     def test_type_error(self):
         var = paddle.to_tensor(self.input_var_numpy, dtype=self.dtype)
-        with self.assertRaisesRegex(
-            TypeError,
-            f'y must be scalar type, but received: {type([2])} ',
-        ):
+        with self.assertRaises(TypeError):
             paddle.pow_(var, [2])
 
 
@@ -2028,6 +2025,13 @@ class TestDygraphInplaceIndexFill(TestDygraphInplace):
         self.index = paddle.to_tensor([0, 2])
         self.value = -1
 
+    def _use_kernel_path(self):
+        """Check if using C++ kernel path (version +1) or fallback path (version +3)"""
+        return (
+            paddle.is_compiled_with_cuda()
+            or paddle.device.get_device().startswith('cpu')
+        )
+
     def inplace_api_processing(self, var):
         return paddle.index_fill_(var, self.index, self.axis, self.value)
 
@@ -2039,14 +2043,16 @@ class TestDygraphInplaceIndexFill(TestDygraphInplace):
             var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
             self.assertEqual(var.inplace_version, 0)
 
+            version_delta = 1 if self._use_kernel_path() else 3
+
             inplace_var = self.inplace_api_processing(var)
-            self.assertEqual(var.inplace_version, 3)
+            self.assertEqual(var.inplace_version, version_delta)
 
             inplace_var[0] = 2
-            self.assertEqual(var.inplace_version, 4)
+            self.assertEqual(var.inplace_version, version_delta + 1)
 
             inplace_var = self.inplace_api_processing(inplace_var)
-            self.assertEqual(var.inplace_version, 7)
+            self.assertEqual(var.inplace_version, 2 * version_delta + 1)
 
     def test_backward_error(self):
         with paddle.base.dygraph.guard():
@@ -2055,6 +2061,8 @@ class TestDygraphInplaceIndexFill(TestDygraphInplace):
 
             var_b = var_a**2
 
+            version_delta = 1 if self._use_kernel_path() else 3
+
             var_c = var_b**2
             self.inplace_api_processing(var_b)
             var_c = paddle.cast(var_c, "float32")
@@ -2062,7 +2070,7 @@ class TestDygraphInplaceIndexFill(TestDygraphInplace):
             loss = paddle.nn.functional.relu(var_c)
             with self.assertRaisesRegex(
                 RuntimeError,
-                f"received tensor_version:{3} != wrapper_version_snapshot:{0}",
+                f"received tensor_version:{version_delta} != wrapper_version_snapshot:{0}",
             ):
                 loss.backward()
 

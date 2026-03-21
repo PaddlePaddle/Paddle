@@ -18,6 +18,7 @@ from paddle.distributed import fleet
 from .base.topology import ParallelMode
 from .meta_parallel import (
     DualPipeVParallel,
+    NoPipelineParallel,
     PipelineLayer,
     PipelineParallel,
     PipelineParallelWithInterleave,
@@ -43,7 +44,7 @@ def distributed_model(model):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
@@ -54,6 +55,7 @@ def distributed_model(model):
             ...         super().__init__()
             ...         self._linear1 = nn.Linear(10, 10)
             ...         self._linear2 = nn.Linear(10, 1)
+            ...
             ...     def forward(self, x):
             ...         return self._linear2(self._linear1(x))
 
@@ -64,7 +66,9 @@ def distributed_model(model):
             >>> layer = LinearNet()
             >>> loss_fn = nn.MSELoss()
             >>> adam = paddle.optimizer.Adam(
-            ...     learning_rate=0.001, parameters=layer.parameters())
+            ...     learning_rate=0.001,
+            ...     parameters=layer.parameters(),
+            ... )
 
             >>> # 3. get data_parallel model using fleet
             >>> adam = fleet.distributed_optimizer(adam)
@@ -83,12 +87,12 @@ def distributed_model(model):
 
     """
     fleet_env = fleet.fleet
-
+    strategy = fleet_env._user_defined_strategy
     assert model is not None, "model should not be None"
     if paddle.distributed.get_world_size() <= 1:
+        model = NoPipelineParallel(model, strategy=strategy)
         return model
 
-    strategy = fleet_env._user_defined_strategy
     if strategy.amp:
         level = (
             "O2"
@@ -132,30 +136,7 @@ def distributed_model(model):
             use_dynamic_loss_scaling=use_dynamic_loss_scaling,
         )
 
-    if strategy.heter_ccl_mode:
-        distributed_model = paddle.DataParallel(
-            model,
-            comm_buffer_size=strategy.fuse_grad_size_in_MB,
-            last_comm_buffer_size=strategy.last_comm_group_size_MB,
-            find_unused_parameters=strategy.find_unused_parameters,
-        )
-        return distributed_model
-
-    if fleet_env._hcg.get_parallel_mode() == ParallelMode.SHARDING_PARALLEL:
-        model = ShardingParallel(model, fleet_env._hcg, strategy=strategy)
-    elif fleet_env._hcg.get_parallel_mode() == ParallelMode.DATA_PARALLEL:
-        model = paddle.DataParallel(
-            model,
-            comm_buffer_size=strategy.fuse_grad_size_in_MB,
-            last_comm_buffer_size=strategy.last_comm_group_size_MB,
-            find_unused_parameters=strategy.find_unused_parameters,
-            group=fleet_env._hcg.get_data_parallel_group(),
-        )
-    elif fleet_env._hcg.get_parallel_mode() == ParallelMode.SEGMENT_PARALLEL:
-        model = SegmentParallel(model, fleet_env._hcg, strategy=strategy)
-    elif fleet_env._hcg.get_parallel_mode() == ParallelMode.TENSOR_PARALLEL:
-        model = TensorParallel(model, fleet_env._hcg, strategy=strategy)
-    elif fleet_env._hcg.get_parallel_mode() == ParallelMode.PIPELINE_PARALLEL:
+    if fleet_env._hcg.get_parallel_mode() == ParallelMode.PIPELINE_PARALLEL:
         assert isinstance(model, PipelineLayer), (
             "For pipeline parallel, the model should an instance of PipelineLayer"
         )
@@ -187,5 +168,50 @@ def distributed_model(model):
                 raise ValueError(
                     f"The accumulate_steps({accumulate_steps}) should be greater than or equal to pp_degree({pp_degree})"
                 )
+    else:
+        if isinstance(model, PipelineLayer):
+            # PaddleFleet Model
+            model = NoPipelineParallel(
+                model, strategy=strategy, hcg=fleet_env._hcg
+            )
+        else:
+            if strategy.heter_ccl_mode:
+                distributed_model = paddle.DataParallel(
+                    model,
+                    comm_buffer_size=strategy.fuse_grad_size_in_MB,
+                    last_comm_buffer_size=strategy.last_comm_group_size_MB,
+                    find_unused_parameters=strategy.find_unused_parameters,
+                )
+                return distributed_model
+
+            if (
+                fleet_env._hcg.get_parallel_mode()
+                == ParallelMode.SHARDING_PARALLEL
+            ):
+                model = ShardingParallel(
+                    model, fleet_env._hcg, strategy=strategy
+                )
+            elif (
+                fleet_env._hcg.get_parallel_mode() == ParallelMode.DATA_PARALLEL
+            ):
+                model = paddle.DataParallel(
+                    model,
+                    comm_buffer_size=strategy.fuse_grad_size_in_MB,
+                    last_comm_buffer_size=strategy.last_comm_group_size_MB,
+                    find_unused_parameters=strategy.find_unused_parameters,
+                    group=fleet_env._hcg.get_data_parallel_group(),
+                )
+            elif (
+                fleet_env._hcg.get_parallel_mode()
+                == ParallelMode.SEGMENT_PARALLEL
+            ):
+                model = SegmentParallel(
+                    model, fleet_env._hcg, strategy=strategy
+                )
+            elif (
+                fleet_env._hcg.get_parallel_mode()
+                == ParallelMode.TENSOR_PARALLEL
+            ):
+                model = TensorParallel(model, fleet_env._hcg, strategy=strategy)
 
     return model

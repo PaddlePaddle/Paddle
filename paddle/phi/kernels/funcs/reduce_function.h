@@ -983,7 +983,7 @@ CubTensorReduceImpl(const Tx* x_data,
                             reducer,
                             reducer.initial(),
                             stream);
-  DenseTensor tmp = Empty<uint8_t, phi::GPUContext>(
+  DenseTensor tmp = Empty<uint8_t, GPUContext>(
       dev_ctx, {static_cast<int64_t>(temp_storage_bytes)});
 
   auto* temp_storage = dev_ctx.Alloc<uint8_t>(&tmp);
@@ -1296,7 +1296,7 @@ template <typename Tx,
           class ReduceOp,
           typename TransformOp,
           bool IsMean = false>
-void TensorReduceImpl(const phi::GPUContext& dev_ctx,
+void TensorReduceImpl(const GPUContext& dev_ctx,
                       const DenseTensor& x,
                       DenseTensor* y,
                       const TransformOp& transform,
@@ -1304,7 +1304,7 @@ void TensorReduceImpl(const phi::GPUContext& dev_ctx,
                       gpuStream_t stream) {
   dev_ctx.template Alloc<Ty>(y);
   ReduceKernel<Tx, Ty, ReduceOp, TransformOp, IsMean>(
-      static_cast<const phi::GPUContext&>(dev_ctx),
+      static_cast<const GPUContext&>(dev_ctx),
       x,
       y,
       transform,

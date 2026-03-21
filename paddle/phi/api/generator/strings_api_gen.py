@@ -268,7 +268,7 @@ class StringsAPI(ForwardAPI):
                     attrs['attr_info'][vars_list[0].strip()][0]
                     == 'const Place&'
                 ), (
-                    f"{api} api: When use '>' to set kernel backend, the first param should be a attribute with Place type."
+                    f"{api} api: When use '>' to set kernel backend, the first param should be an attribute with Place type."
                 )
                 kernel_select_code = (
                     kernel_select_code
