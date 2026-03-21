@@ -34,6 +34,8 @@ if(NOT WIN32)
     nv_test(ATen_rename_test SRCS ATen_rename_test.cc)
     nv_test(cuda_generator_test SRCS cuda_generator_test.cc)
     nv_test(c10_generator_impl_test SRCS c10_generator_impl_test.cc)
+    nv_test(c10_intrusive_ptr_lifecycle_test
+            SRCS c10_intrusive_ptr_lifecycle_test.cc)
     nv_test(c10_DispatchKey_test SRCS c10_DispatchKey_test.cc)
     nv_test(c10_DispatchKeySet_test SRCS c10_DispatchKeySet_test.cc)
     cc_test(torch_library_test SRCS torch_library_test.cc)

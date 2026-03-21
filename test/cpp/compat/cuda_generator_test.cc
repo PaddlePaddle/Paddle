@@ -319,3 +319,32 @@ TEST(CUDAGeneratorTest, UnsafeReleaseAndReclaimRoundTrip) {
   new_gen.set_current_seed(999);
   ASSERT_EQ(new_gen.current_seed(), 999u);
 }
+
+// ============================================================================
+// Tests for check_generator device_type validation
+// ============================================================================
+
+// check_generator should throw when the generator's device type does not match
+// the requested implementation type (CPU generator passed where CUDA expected).
+TEST(CUDAGeneratorTest, CheckGeneratorThrowsOnDeviceTypeMismatch) {
+  // Create a CPU generator (device_type = kCPU).
+  auto cpu_gen =
+      c10::make_intrusive<c10::GeneratorImpl>(c10::Device(c10::kCPU));
+  at::Generator cpu_wrapper(cpu_gen);
+  std::optional<at::Generator> opt = cpu_wrapper;
+
+  // Requesting CUDAGeneratorImpl from a CPU generator should throw.
+  EXPECT_THROW(at::check_generator<at::CUDAGeneratorImpl>(opt),
+               ::common::PD_Exception);
+}
+
+// check_generator with matching device type should succeed.
+TEST(CUDAGeneratorTest, CheckGeneratorSucceedsWithMatchingDeviceType) {
+  at::Generator cuda_gen = at::cuda::detail::createCUDAGenerator(0);
+  cuda_gen.set_current_seed(555);
+  std::optional<at::Generator> opt = cuda_gen;
+
+  at::CUDAGeneratorImpl* impl = at::check_generator<at::CUDAGeneratorImpl>(opt);
+  ASSERT_NE(impl, nullptr);
+  ASSERT_EQ(impl->current_seed(), 555u);
+}

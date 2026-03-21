@@ -145,7 +145,11 @@ inline void decref(intrusive_ptr_target* self) {
     uint64_t new_count = detail::atomic_combined_refcount_decrement(
         &self->combined_refcount_, detail::kReferenceCountOne);
     if (detail::refcount(new_count) == 0) {
-      delete self;
+      // All strong references gone; release the implicit weak reference
+      // (strong refs count as +1 to weakcount per the kUniqueRef invariant).
+      if (detail::atomic_weakcount_decrement(&self->combined_refcount_) == 0) {
+        delete self;
+      }
     }
   }
 }
@@ -158,7 +162,9 @@ inline void incref(intrusive_ptr_target* self) {
 }
 inline void decref(intrusive_ptr_target* self) {
   if (self) {
-    detail::atomic_weakcount_decrement(&self->combined_refcount_);
+    if (detail::atomic_weakcount_decrement(&self->combined_refcount_) == 0) {
+      delete self;
+    }
   }
 }
 }  // namespace weak_intrusive_ptr
@@ -194,7 +200,12 @@ class intrusive_ptr final {
       uint64_t new_count = detail::atomic_combined_refcount_decrement(
           &target_->combined_refcount_, detail::kReferenceCountOne);
       if (detail::refcount(new_count) == 0) {
-        delete target_;
+        // All strong references gone; release the implicit weak reference
+        // (strong refs count as +1 to weakcount per the kUniqueRef invariant).
+        if (detail::atomic_weakcount_decrement(&target_->combined_refcount_) ==
+            0) {
+          delete target_;
+        }
       }
       target_ = NullType::singleton();
     }
@@ -336,9 +347,12 @@ class weak_intrusive_ptr final {
     }
   }
 
-  void reset_() {
+  void reset_() noexcept {
     if (target_ != NullType::singleton()) {
-      detail::atomic_weakcount_decrement(&target_->combined_refcount_);
+      if (detail::atomic_weakcount_decrement(&target_->combined_refcount_) ==
+          0) {
+        delete target_;
+      }
       target_ = NullType::singleton();
     }
   }
