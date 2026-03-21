@@ -54,8 +54,7 @@ struct Storage {
         allocator_(other.allocator_),
         nbytes_(other.nbytes_),
         resizable_(other.resizable_),
-        data_ptr_(other.data_ptr_),
-        external_ctx_(other.external_ctx_) {}
+        data_ptr_(other.data_ptr_) {}
 
   // Copy assignment operator
   Storage& operator=(const Storage& other) {
@@ -65,7 +64,6 @@ struct Storage {
       nbytes_ = other.nbytes_;
       resizable_ = other.resizable_;
       data_ptr_ = other.data_ptr_;
-      external_ctx_ = other.external_ctx_;
     }
     return *this;
   }
@@ -76,8 +74,7 @@ struct Storage {
         allocator_(other.allocator_),
         nbytes_(other.nbytes_),
         resizable_(other.resizable_),
-        data_ptr_(std::move(other.data_ptr_)),
-        external_ctx_(std::move(other.external_ctx_)) {
+        data_ptr_(std::move(other.data_ptr_)) {
     other.allocator_ = nullptr;
     other.nbytes_ = 0;
     other.resizable_ = false;
@@ -92,7 +89,6 @@ struct Storage {
       nbytes_ = other.nbytes_;
       resizable_ = other.resizable_;
       data_ptr_ = std::move(other.data_ptr_);
-      external_ctx_ = std::move(other.external_ctx_);
       other.allocator_ = nullptr;
       other.nbytes_ = 0;
       other.resizable_ = false;
@@ -169,16 +165,14 @@ struct Storage {
   }
 
  protected:
-  // Unsafe borrow constructor (for MaybeOwnedTraits): shares DataPtr and
-  // external_ctx_ so context/deleter is preserved without transfer of
-  // ownership.
+  // Unsafe borrow constructor (for MaybeOwnedTraits): shares DataPtr
+  // so context/deleter is preserved without transfer of ownership.
   explicit Storage(unsafe_borrow_t, const Storage& rhs)
       : allocation_(rhs.allocation_),
         allocator_(rhs.allocator_),
         nbytes_(rhs.nbytes_),
         resizable_(rhs.resizable_),
-        data_ptr_(rhs.data_ptr_),
-        external_ctx_(rhs.external_ctx_) {}
+        data_ptr_(rhs.data_ptr_) {}
 
   // Forward declare template and make specialization a friend
   template <typename T>
@@ -220,8 +214,8 @@ struct Storage {
   // Get a mutable reference to the underlying DataPtr (LibTorch compatible).
   // Detaches this storage from shared state (copy-on-write) before returning
   // the mutable reference, so mutations do not affect other Storage copies.
-  // When external_ctx_ is set, the detached DataPtr wraps the shared context
-  // owner so the allocation stays alive even after detach.
+  // For external DataPtr with a deleter, CoW is skipped to preserve the
+  // original deleter and context.
   DataPtr& mutable_data_ptr() const {
     const_cast<Storage*>(this)->ensureUniqueDataPtr();
     return *data_ptr_;
@@ -249,16 +243,11 @@ struct Storage {
 
   // Get the reference count.
   // For allocation-backed storage, counts shared_ptr<phi::Allocation> holders.
-  // For external DataPtr storage with a deleter, counts shared context owners
-  // (external_ctx_), which is the accurate measure of how many Storage objects
-  // share the same underlying memory after copy-on-write detach.
-  // For external DataPtr storage without a deleter (non-owning raw pointer),
-  // counts shared DataPtr holders.
+  // For external DataPtr storage, counts shared DataPtr owners.
   // Returns 0 for default-constructed (empty) storage, matching PyTorch
   // semantics where an empty intrusive_ptr<StorageImpl> has use_count == 0.
   size_t use_count() const {
     if (allocation_) return allocation_.use_count();
-    if (external_ctx_) return external_ctx_.use_count();
     // data_ptr_ is always non-null (initialized in every constructor), but
     // *data_ptr_ is falsy for a default-constructed or empty DataPtr.
     // Only count as live when the DataPtr actually holds a pointer.
@@ -323,73 +312,41 @@ struct Storage {
   // paths the pointed-to DataPtr is a non-owning view (no extra refcount on
   // allocation_), so use_count() remains accurate.
   std::shared_ptr<DataPtr> data_ptr_;
-  // Shared context owner for the external-DataPtr path.  Holds the original
-  // context and its deleter so that after copy-on-write detach each storage
-  // still keeps the allocation alive via its wrapper DataPtr.
-  std::shared_ptr<void> external_ctx_;
 
-  // Update allocation_, nbytes_, external_ctx_, and data_ptr_ together.
+  // Update allocation_, nbytes_, and data_ptr_ together.
   // Used by both set_data_ptr and set_data_ptr_noswap (shared_ptr overloads).
   void setAllocAndDataPtr(std::shared_ptr<phi::Allocation> new_alloc) {
     allocation_ = new_alloc;
     if (allocation_) nbytes_ = allocation_->size();
-    external_ctx_.reset();
     data_ptr_ =
         std::make_shared<DataPtr>(viewDataPtrFrom(std::move(new_alloc)));
   }
 
-  // Deleter used by wrapper DataPtrs: decrements the shared context owner.
-  static void deleteSharedCtxHolder(void* p) {
-    delete static_cast<std::shared_ptr<void>*>(p);
-  }
-
-  // Create a DataPtr whose deleter decrements ctx_owner (the shared context).
-  // raw is the data pointer; ctx_owner keeps the original allocation alive.
-  static DataPtr makeExternalDataPtr(void* raw,
-                                     const std::shared_ptr<void>& ctx_owner,
-                                     c10::Device dev) {
-    auto* holder = new std::shared_ptr<void>(ctx_owner);
-    return DataPtr(raw, holder, &deleteSharedCtxHolder, dev);
-  }
-
-  // Initialize data_ptr_ and external_ctx_ from an externally-provided
-  // DataPtr.  Extracts the context/deleter into a shared_ptr<void> so
-  // that copies can each wrap the same shared owner without UAF.
+  // Initialize data_ptr_ from an externally-provided DataPtr.
+  // Directly stores the original DataPtr so that get_deleter() and
+  // get_context() return the original values (not a wrapper).
   // Always assigns a fresh shared_ptr to data_ptr_ so it is safe to call
   // even when data_ptr_ has not yet been initialized (e.g. constructors).
   void initFromExternalDataPtr(DataPtr&& dp) {
-    void* raw = dp.get();
-    c10::Device dev = dp.device();
-    DeleterFnPtr del = dp.get_deleter();
-    void* ctx = dp.release_context();
-    if (del != nullptr) {
-      external_ctx_ = std::shared_ptr<void>(ctx, del);
-      data_ptr_ = std::make_shared<DataPtr>(
-          makeExternalDataPtr(raw, external_ctx_, dev));
-    } else {
-      external_ctx_.reset();
-      data_ptr_ = std::make_shared<DataPtr>(DataPtr(raw, dev));
-    }
+    data_ptr_ = std::make_shared<DataPtr>(std::move(dp));
   }
 
   // Detach this storage from the shared DataPtr so that subsequent mutations
   // via mutable_data_ptr() or set_data_ptr() do not affect other Storage
   // copies.  After this call data_ptr_.use_count() == 1.
   //
-  // For the external-DataPtr path the detached DataPtr still wraps
-  // external_ctx_ so the allocation stays alive regardless of what the other
-  // copies do.  For the allocation-backed path a fresh non-owning view is
-  // created; allocation_ keeps the memory alive.
+  // For external DataPtr with a deleter, CoW is skipped because we cannot
+  // clone arbitrary deleters. The original DataPtr is preserved.
+  // For allocation-backed paths a fresh non-owning view is created;
+  // allocation_ keeps the memory alive.
   void ensureUniqueDataPtr() {
     if (data_ptr_.use_count() <= 1) return;
+    // Skip CoW for external DataPtr with deleter - cannot clone arbitrary
+    // deleters, so preserve the original DataPtr ownership
+    if (data_ptr_->get_deleter() != nullptr) return;
     void* raw = data_ptr_->get();
     c10::Device dev = data_ptr_->device();
-    if (external_ctx_) {
-      data_ptr_ = std::make_shared<DataPtr>(
-          makeExternalDataPtr(raw, external_ctx_, dev));
-    } else {
-      data_ptr_ = std::make_shared<DataPtr>(DataPtr(raw, dev));
-    }
+    data_ptr_ = std::make_shared<DataPtr>(DataPtr(raw, dev));
   }
 
   // Create a non-owning DataPtr view of a phi::Allocation.

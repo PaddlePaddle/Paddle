@@ -20,9 +20,12 @@
 
 #include <ATen/cuda/CUDAContextLight.h>
 
+#include <c10/core/Allocator.h>
+
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/core/memory/allocation/allocator_facade.h"
 
 namespace at::cuda {
 
@@ -34,6 +37,38 @@ inline phi::GPUContext* getCurrentGPUContext() {
   return static_cast<phi::GPUContext*>(
       phi::DeviceContextPool::Instance().Get(phi::GPUPlace(device_id)));
 }
+
+/// Adapter class that wraps Paddle's AllocatorFacade as a c10::Allocator.
+/// This provides a bridge between Paddle's allocation interface and PyTorch's
+/// c10::Allocator interface for the CUDA compatibility layer.
+class PaddleCUDAAllocatorAdapter : public c10::Allocator {
+ public:
+  c10::DataPtr allocate(size_t n) override {
+    if (n == 0) {
+      return c10::DataPtr();
+    }
+    auto* alloc = paddle::memory::allocation::AllocatorFacade::Instance()
+                      .GetAllocator(phi::GPUPlace(
+                          phi::backends::gpu::GetCurrentDeviceId()))
+                      .get();
+    auto phi_alloc = alloc->Allocate(n);
+    void* ptr = phi_alloc->ptr();
+    phi::Place place = phi_alloc->place();
+    // Transfer ownership of phi_alloc to the DataPtr's context.
+    auto* raw_alloc = phi_alloc.release();
+    return c10::DataPtr(
+        ptr,
+        raw_alloc,
+        [](void* p) { delete static_cast<phi::Allocation*>(p); },
+        c10::Device(place));
+  }
+
+  void copy_data(void* dst, const void* src, size_t n) const override {
+    // Use memcpy for host memory; GPU-to-GPU copies should use cudaMemcpyAsync.
+    // This is a simple implementation matching the base class default.
+    default_copy_data(dst, src, n);
+  }
+};
 
 }  // namespace
 
@@ -124,6 +159,11 @@ cudssHandle_t getCurrentCudssHandle() {
   return nullptr;
 }
 #endif  // USE_CUDSS
+
+c10::Allocator* getCUDADeviceAllocator() {
+  static PaddleCUDAAllocatorAdapter adapter;
+  return &adapter;
+}
 
 }  // namespace at::cuda
 

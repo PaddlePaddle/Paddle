@@ -344,3 +344,167 @@ TEST(StorageTest, ExclusivelyOwnedTraitsSpecialization) {
   ASSERT_NE(const_ptr, nullptr);
   ASSERT_EQ(const_ptr->allocation(), alloc);
 }
+
+// Custom deleter for testing external DataPtr
+static bool g_test_deleter_called = false;
+static void* g_test_deleter_context = nullptr;
+
+static void TestDeleter(void* ctx) {
+  g_test_deleter_called = true;
+  g_test_deleter_context = ctx;
+  // In real usage, would free the memory here
+}
+
+TEST(StorageTest, ExternalDataPtrUseCount) {
+  // Test use_count() semantics for external DataPtr (with deleter)
+  // This verifies AC-1: single Storage use_count == 1, copy == 2
+  g_test_deleter_called = false;
+  g_test_deleter_context = nullptr;
+
+  void* test_ptr = reinterpret_cast<void*>(0x12345678);
+  void* test_ctx = reinterpret_cast<void*>(0xABCDEF00);
+
+  // Create external DataPtr with custom deleter
+  c10::DataPtr external_ptr(
+      test_ptr, test_ctx, &TestDeleter, c10::Device(c10::DeviceType::CPU));
+
+  // Create Storage from external DataPtr
+  c10::Storage storage(c10::Storage::use_byte_size_t{},
+                       1024,
+                       std::move(external_ptr),
+                       nullptr,
+                       false);
+
+  // Verify single Storage has use_count == 1 and unique() == true
+  ASSERT_EQ(storage.use_count(), 1)
+      << "Single external DataPtr Storage should have use_count == 1";
+  ASSERT_TRUE(storage.unique())
+      << "Single external DataPtr Storage should be unique";
+
+  // Copy the storage
+  c10::Storage storage_copy(storage);
+
+  // Verify both Storages have use_count == 2
+  ASSERT_EQ(storage.use_count(), 2)
+      << "Original Storage should have use_count == 2 after copy";
+  ASSERT_EQ(storage_copy.use_count(), 2)
+      << "Copied Storage should have use_count == 2";
+  ASSERT_FALSE(storage.unique())
+      << "Original Storage should not be unique after copy";
+  ASSERT_FALSE(storage_copy.unique()) << "Copied Storage should not be unique";
+
+  // Verify both point to the same data
+  ASSERT_EQ(storage.data(), storage_copy.data());
+}
+
+TEST(StorageTest, ExternalDataPtrDeleterPreserved) {
+  // Test that data_ptr().get_deleter() returns original deleter (not wrapper)
+  // This verifies AC-2: data_ptr() returns original DataPtr with correct
+  // deleter
+  g_test_deleter_called = false;
+  g_test_deleter_context = nullptr;
+
+  void* test_ptr = reinterpret_cast<void*>(0x12345678);
+  void* test_ctx = reinterpret_cast<void*>(0xABCDEF00);
+
+  // Create external DataPtr with custom deleter
+  c10::DataPtr external_ptr(
+      test_ptr, test_ctx, &TestDeleter, c10::Device(c10::DeviceType::CPU));
+
+  // Verify the original DataPtr has our deleter
+  ASSERT_EQ(external_ptr.get_deleter(), &TestDeleter);
+
+  // Create Storage from external DataPtr
+  c10::Storage storage(c10::Storage::use_byte_size_t{},
+                       1024,
+                       std::move(external_ptr),
+                       nullptr,
+                       false);
+
+  // Get the DataPtr from storage
+  const c10::DataPtr& data_ptr = storage.data_ptr();
+
+  // Verify get_deleter() returns the original deleter (not a wrapper)
+  ASSERT_EQ(data_ptr.get_deleter(), &TestDeleter)
+      << "data_ptr().get_deleter() should return original deleter, not wrapper";
+
+  // Verify get_context() returns original context
+  ASSERT_EQ(data_ptr.get_context(), test_ctx)
+      << "data_ptr().get_context() should return original context";
+}
+
+TEST(StorageTest, ExternalDataPtrCopyPreservesDeleter) {
+  // Test that copying Storage preserves the original deleter
+  g_test_deleter_called = false;
+  g_test_deleter_context = nullptr;
+
+  void* test_ptr = reinterpret_cast<void*>(0x12345678);
+  void* test_ctx = reinterpret_cast<void*>(0xABCDEF00);
+
+  // Create external DataPtr with custom deleter
+  c10::DataPtr external_ptr(
+      test_ptr, test_ctx, &TestDeleter, c10::Device(c10::DeviceType::CPU));
+
+  // Create Storage from external DataPtr
+  c10::Storage storage(c10::Storage::use_byte_size_t{},
+                       1024,
+                       std::move(external_ptr),
+                       nullptr,
+                       false);
+
+  // Copy the storage
+  c10::Storage storage_copy(storage);
+
+  // Verify both have the same deleter
+  ASSERT_EQ(storage.data_ptr().get_deleter(), &TestDeleter);
+  ASSERT_EQ(storage_copy.data_ptr().get_deleter(), &TestDeleter);
+
+  // Verify both have the same context
+  ASSERT_EQ(storage.data_ptr().get_context(), test_ctx);
+  ASSERT_EQ(storage_copy.data_ptr().get_context(), test_ctx);
+}
+
+TEST(StorageTest, ExternalDataPtrMutableDataPtrCoW) {
+  // Test CoW behavior for external DataPtr with deleter
+  // With single-path design, CoW is skipped for DataPtr with deleter
+  g_test_deleter_called = false;
+
+  void* test_ptr = reinterpret_cast<void*>(0x12345678);
+  void* test_ctx = reinterpret_cast<void*>(0xABCDEF00);
+
+  // Create external DataPtr with custom deleter
+  c10::DataPtr external_ptr(
+      test_ptr, test_ctx, &TestDeleter, c10::Device(c10::DeviceType::CPU));
+
+  // Create Storage from external DataPtr
+  c10::Storage storage(c10::Storage::use_byte_size_t{},
+                       1024,
+                       std::move(external_ptr),
+                       nullptr,
+                       false);
+
+  // Copy the storage (now use_count should be 2)
+  c10::Storage storage_copy(storage);
+  ASSERT_EQ(storage.use_count(), 2);
+  ASSERT_EQ(storage_copy.use_count(), 2);
+
+  // Call mutable_data_ptr() - for external DataPtr with deleter, CoW is skipped
+  // because we cannot clone arbitrary deleters
+  c10::DataPtr& mutable_dp = storage_copy.mutable_data_ptr();
+
+  // The mutable_data_ptr should still point to the same data
+  ASSERT_EQ(mutable_dp.get(), test_ptr);
+
+  // The deleter should still be the original
+  ASSERT_EQ(mutable_dp.get_deleter(), &TestDeleter);
+}
+
+TEST(StorageTest, DefaultConstructedStorageUseCount) {
+  // Test that default constructed storage has use_count == 0
+  c10::Storage storage;
+
+  ASSERT_EQ(storage.use_count(), 0)
+      << "Default constructed Storage should have use_count == 0";
+  ASSERT_FALSE(storage.unique());
+  ASSERT_FALSE(storage.valid());
+}

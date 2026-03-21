@@ -117,6 +117,10 @@ void* getCUDABlasLtWorkspace();
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 CUDAContextSolverHandle getCurrentCUDASolverDnHandle();
+
+// Get the CUDA device allocator for the current device.
+// Returns a pointer to a c10::Allocator that allocates GPU memory.
+c10::Allocator* getCUDADeviceAllocator();
 #endif
 
 #if defined(USE_CUDSS)
