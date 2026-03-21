@@ -30,9 +30,7 @@ class TestTarget : public c10::intrusive_ptr_target {
       : destroy_count_(destroy_count) {}
 
   ~TestTarget() override {
-    if (destroy_count_) {
-      destroy_count_->fetch_add(1, std::memory_order_relaxed);
-    }
+    destroy_count_->fetch_add(1, std::memory_order_relaxed);
   }
 
  private:

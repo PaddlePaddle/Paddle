@@ -53,6 +53,10 @@ inline uint32_t refcount(uint64_t combined_refcount) {
 }
 
 inline uint32_t weakcount(uint64_t combined_refcount) {
+  // Bit 63 is reserved for kHasPyObject in PyTorch (a flag indicating a live
+  // Python wrapper). This compat layer does not implement the PyObject path,
+  // so the bit will never be set, but we mask it out here to match PyTorch's
+  // extraction logic and remain numerically correct if the bit were ever set.
   return static_cast<uint32_t>((combined_refcount & ~(uint64_t(1) << 63)) >>
                                32);
 }
@@ -276,6 +280,9 @@ class intrusive_ptr final {
     return result;
   }
 
+  // unsafe_adopt is a PyTorch API compatibility alias for reclaim().
+  // Both adopt a raw pointer without incrementing the refcount; prefer
+  // reclaim() in new code.
   static intrusive_ptr unsafe_adopt(TTarget* raw_ptr) {
     return reclaim(raw_ptr);
   }
