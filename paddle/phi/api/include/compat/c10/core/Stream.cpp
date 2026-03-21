@@ -25,10 +25,8 @@
 
 namespace c10 {
 
-// In Paddle's phi::Stream / phi::CUDAStream convention, the stream id_
-// directly encodes the raw gpuStream_t handle via
-//   id_ = reinterpret_cast<StreamId>(gpuStream_t)
-// A zero id_ corresponds to the null (default) CUDA/HIP stream.
+// id_ encodes the raw platform stream handle via reinterpret_cast<StreamId>.
+// A zero id_ corresponds to the null (default) stream on any backend.
 // native_handle() reverses that cast to expose the underlying platform handle.
 void* Stream::native_handle() const {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -38,15 +36,11 @@ void* Stream::native_handle() const {
 #endif
 #if defined(PADDLE_WITH_XPU)
   if (device_type() == DeviceType::XPU) {
-    // XPUStream handle is stored in id_ following the same raw-pointer
-    // encoding as CUDA streams.
     return reinterpret_cast<void*>(static_cast<intptr_t>(id_));
   }
 #endif
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
   if (device_type() == DeviceType::CUSTOM) {
-    // phi::stream::stream_t is void*; id_ stores the handle via
-    // the same raw-pointer encoding as CUDA streams.
     return reinterpret_cast<void*>(static_cast<intptr_t>(id_));
   }
 #endif
@@ -73,7 +67,7 @@ bool Stream::query() const {
     PADDLE_ENFORCE_GPU_SUCCESS(err);
   }
 #endif
-  // CPU streams are always ready
+  // CPU streams are always ready.
   return true;
 }
 
@@ -91,7 +85,7 @@ void Stream::synchronize() const {
     return;
   }
 #endif
-  // CPU streams: nothing to synchronize
+  // CPU streams: nothing to synchronize.
 }
 
 }  // namespace c10

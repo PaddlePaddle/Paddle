@@ -51,7 +51,7 @@ inline void check_device_index(int device_index) {
               "CUDA device index out of range: ",
               device_index,
               " (available devices: ",
-              gpu_device_count(),
+              limit,
               ", max supported by this build: ",
               kMaxDevices,
               ")");
@@ -142,6 +142,19 @@ class CUDAStream {
   Stream stream_;
 };
 
+// Build a CUDAStream from a raw platform stream handle and a device index.
+// The handle is encoded as a StreamId via reinterpret_cast, matching Paddle's
+// phi::Stream / phi::CUDAStream convention.
+inline CUDAStream make_cuda_stream(cudaStream_t raw,
+                                   c10::DeviceIndex device_index) {
+  c10::StreamId sid =
+      static_cast<c10::StreamId>(reinterpret_cast<intptr_t>(raw));
+  return CUDAStream(
+      c10::Stream(c10::Stream::UNSAFE,
+                  c10::Device(c10::DeviceType::CUDA, device_index),
+                  sid));
+}
+
 /**
  * Get the current CUDA stream for the given device (or the current device if
  * device_index == -1).
@@ -165,13 +178,7 @@ inline CUDAStream getCurrentCUDAStream(c10::DeviceIndex device_index = -1) {
         paddle::GetCurrentCUDAStream(phi::GPUPlace(device_index));
     raw = phi_stream->raw_stream();
   }
-
-  c10::StreamId sid =
-      static_cast<c10::StreamId>(reinterpret_cast<intptr_t>(raw));
-  return CUDAStream(
-      c10::Stream(c10::Stream::UNSAFE,
-                  c10::Device(c10::DeviceType::CUDA, device_index),
-                  sid));
+  return make_cuda_stream(raw, device_index);
 }
 
 /**
@@ -189,8 +196,8 @@ inline CUDAStream getStreamFromPool(const bool isHighPriority = false,
   if (device_index == -1) {
     device_index = phi::backends::gpu::GetCurrentDeviceId();
   }
-  auto& state =
-      detail::get_pool(device_index);  // also bounds-checks device_index
+  // get_pool also performs bounds-checking on device_index.
+  auto& state = detail::get_pool(device_index);
   std::call_once(state.init_flag, [device_index, &state]() {
     detail::init_pool(device_index, &state);
   });
@@ -203,13 +210,7 @@ inline CUDAStream getStreamFromPool(const bool isHighPriority = false,
     raw = state.low_priority[state.lp_counter.fetch_add(1) %
                              detail::kStreamsPerPool];
   }
-
-  c10::StreamId sid =
-      static_cast<c10::StreamId>(reinterpret_cast<intptr_t>(raw));
-  return CUDAStream(
-      c10::Stream(c10::Stream::UNSAFE,
-                  c10::Device(c10::DeviceType::CUDA, device_index),
-                  sid));
+  return make_cuda_stream(raw, device_index);
 }
 
 /**

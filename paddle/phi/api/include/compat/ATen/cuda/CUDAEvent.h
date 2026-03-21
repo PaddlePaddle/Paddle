@@ -27,28 +27,23 @@
 namespace at::cuda {
 
 /**
- * CUDAEvent is a movable not copyable wrapper around CUDA events.
- * This provides compatibility with PyTorch's CUDAEvent API.
+ * CUDAEvent is a movable, non-copyable wrapper around CUDA events.
+ * Provides compatibility with PyTorch's CUDAEvent API.
  */
 struct CUDAEvent {
-  // Default constructor
   CUDAEvent() noexcept = default;
 
-  // Constructor with flags (cudaEventDisableTiming, etc.)
   explicit CUDAEvent(unsigned int flags) noexcept : flags_(flags) {}
 
-  // Destructor
   ~CUDAEvent() {
     if (is_created_) {
       cudaEventDestroy(event_);
     }
   }
 
-  // Non-copyable
   CUDAEvent(const CUDAEvent&) = delete;
   CUDAEvent& operator=(const CUDAEvent&) = delete;
 
-  // Movable
   CUDAEvent(CUDAEvent&& other) noexcept { moveHelper(std::move(other)); }
   CUDAEvent& operator=(CUDAEvent&& other) noexcept {
     if (this != &other) {
@@ -57,36 +52,24 @@ struct CUDAEvent {
     return *this;
   }
 
-  // Implicit conversion to cudaEvent_t
   operator cudaEvent_t() const { return event(); }
 
-  // Get the underlying cuda event
   cudaEvent_t event() const { return event_; }
 
-  // Check if event has been created
   bool isCreated() const { return is_created_; }
 
-  // Get device index
   c10::DeviceIndex device_index() const { return device_index_; }
 
-  // Query if event is completed
   bool query() const {
-    if (!is_created_) {
-      return true;
-    }
+    if (!is_created_) return true;
     cudaError_t err = cudaEventQuery(event_);
-    if (err == cudaSuccess) {
-      return true;
-    } else if (err != cudaErrorNotReady) {
-      C10_CUDA_CHECK(err);
-    }
+    if (err == cudaSuccess) return true;
+    if (err != cudaErrorNotReady) C10_CUDA_CHECK(err);
     return false;
   }
 
-  // Record event on current stream
   void record() { record(getCurrentCUDAStream()); }
 
-  // Record event on specified stream
   void record(const CUDAStream& stream) {
     if (!is_created_) {
       createEvent(stream.unwrap().device_index());
@@ -101,7 +84,6 @@ struct CUDAEvent {
     C10_CUDA_CHECK(cudaEventRecord(event_, stream.stream()));
   }
 
-  // Record event once (only if not already recorded)
   void recordOnce(const CUDAStream& stream) {
     if (!was_recorded_) {
       record(stream);
@@ -109,7 +91,6 @@ struct CUDAEvent {
     }
   }
 
-  // Make a stream wait for this event
   void block(const CUDAStream& stream) {
     if (is_created_) {
       c10::cuda::CUDAGuard guard(stream.unwrap().device_index());
@@ -117,14 +98,12 @@ struct CUDAEvent {
     }
   }
 
-  // Synchronize on this event
   void synchronize() const {
     if (is_created_) {
       C10_CUDA_CHECK(cudaEventSynchronize(event_));
     }
   }
 
-  // Get elapsed time between two events
   float elapsed_time(const CUDAEvent& other) const {
     TORCH_CHECK(
         is_created_ && other.isCreated(),
@@ -154,18 +133,15 @@ struct CUDAEvent {
 
   void moveHelper(CUDAEvent&& other) {
     flags_ = other.flags_;
-    is_created_ = other.is_created_;
+    is_created_ = std::exchange(other.is_created_, false);
     was_recorded_ = other.was_recorded_;
     device_index_ = other.device_index_;
-    event_ = other.event_;
-    other.is_created_ = false;
-    other.event_ = cudaEvent_t{};
+    event_ = std::exchange(other.event_, cudaEvent_t{});
   }
 };
 
 }  // namespace at::cuda
 
-// torch::Event alias for compatibility
 namespace torch {
 using at::cuda::CUDAEvent;
 using at::cuda::CUDAStream;

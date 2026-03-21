@@ -86,28 +86,13 @@ EventPool::EventPool() {
 }
 
 EventPool::~EventPool() {
-  const auto &DestroyEvent = [](cudaEvent_t event) {
-    C10_CUDA_CHECK(cudaEventDestroy(event));
-  };
-  const auto &CheckComplishAndDestroy = [&](cudaEvent_t event) -> bool {
-    if (cudaEventQuery(event) == cudaSuccess) {
-      DestroyEvent(event);
-      return true;
-    }
-    if (cudaEventQuery(event) == cudaErrorNotReady) {
-      // LOG(ERROR) << "event is not completed or when destroying event pool.";
-      return false;
-    }
-    // LOG(ERROR) << "failed on cudaEventQuery when destroying event pool.";
-    return false;
-  };
   std::unique_lock<std::mutex> lock(mtx_);
   while (!incomplished_events_.empty()) {
     cudaEvent_t event = incomplished_events_.front();
-    if (!CheckComplishAndDestroy(event)) {
-      // LOG(ERROR) << "failed on destroying event when destroying event pool.";
-    }
     incomplished_events_.pop();
+    if (cudaEventQuery(event) == cudaSuccess) {
+      C10_CUDA_CHECK(cudaEventDestroy(event));
+    }
   }
 }
 
