@@ -236,20 +236,39 @@ struct Storage {
   // Get the device/place type
   phi::AllocationType device_type() const {
     if (allocation_) return allocation_->place().GetType();
+    if (data_ptr_ && *data_ptr_)
+      return data_ptr_->device()._PD_GetInner().GetType();
     return phi::AllocationType::CPU;
   }
 
   // Get the device/place
   phi::Place device() const {
     if (allocation_) return allocation_->place();
+    if (data_ptr_ && *data_ptr_) return data_ptr_->device()._PD_GetInner();
     return phi::Place();
   }
 
-  // Check if this storage is unique (use_count == 1)
-  bool unique() const { return allocation_.use_count() == 1; }
+  // Get the reference count.
+  // For allocation-backed storage, counts shared_ptr<phi::Allocation> holders.
+  // For external DataPtr storage with a deleter, counts shared context owners
+  // (external_ctx_), which is the accurate measure of how many Storage objects
+  // share the same underlying memory after copy-on-write detach.
+  // For external DataPtr storage without a deleter (non-owning raw pointer),
+  // counts shared DataPtr holders.
+  // Returns 0 for default-constructed (empty) storage, matching PyTorch
+  // semantics where an empty intrusive_ptr<StorageImpl> has use_count == 0.
+  size_t use_count() const {
+    if (allocation_) return allocation_.use_count();
+    if (external_ctx_) return external_ctx_.use_count();
+    // data_ptr_ is always non-null (initialized in every constructor), but
+    // *data_ptr_ is falsy for a default-constructed or empty DataPtr.
+    // Only count as live when the DataPtr actually holds a pointer.
+    if (data_ptr_ && *data_ptr_) return data_ptr_.use_count();
+    return 0;
+  }
 
-  // Get the reference count
-  size_t use_count() const { return allocation_.use_count(); }
+  // Check if this storage is unique (use_count == 1)
+  bool unique() const { return use_count() == 1; }
 
   // Check if this storage is an alias of another
   bool is_alias_of(const Storage& other) const {
