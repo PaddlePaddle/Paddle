@@ -100,6 +100,14 @@ TEST(CUDAGeneratorTest, CheckGeneratorThrowsOnNullopt) {
                ::common::PD_Exception);
 }
 
+// check_generator should throw when the optional holds a default-constructed
+// (undefined) Generator — exercises the gen->defined() TORCH_CHECK branch.
+TEST(CUDAGeneratorTest, CheckGeneratorThrowsOnUndefined) {
+  std::optional<at::Generator> undef_gen = at::Generator();  // undefined impl
+  EXPECT_THROW(at::check_generator<at::CUDAGeneratorImpl>(undef_gen),
+               ::common::PD_Exception);
+}
+
 // Verify Philox state management via the CUDAGeneratorImpl pointer returned
 // from get_generator_or_default.
 TEST(CUDAGeneratorTest, PhiloxStateThroughGetGeneratorOrDefault) {
