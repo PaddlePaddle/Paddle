@@ -236,8 +236,7 @@ struct Storage {
   // Get the device/place type
   phi::AllocationType device_type() const {
     if (allocation_) return allocation_->place().GetType();
-    if (data_ptr_ && *data_ptr_)
-      return data_ptr_->device()._PD_GetInner().GetType();
+    if (data_ptr_ && *data_ptr_) return data_ptr_->device().type();
     return phi::AllocationType::CPU;
   }
 
