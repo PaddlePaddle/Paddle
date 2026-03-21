@@ -40,14 +40,7 @@ void ActivationImpl(const Context& dev_ctx,
   auto out = EigenVector<U>::Flatten(
       GET_DATA_SAFELY(Out, "Output", "Out", "Activation"));
   auto* place = dev_ctx.eigen_device();
-  // use 32bit index to speed up computation
-  bool use_32bit_index = out.size() < Eigen::NumTraits<int>::highest();
-  bool is_gpu_place = dev_ctx.GetPlace().GetType() == AllocationType::GPU;
-  if (use_32bit_index && is_gpu_place) {
-    functor(*place, To32BitIndex(x), To32BitIndex(out));
-  } else {
-    functor(*place, x, out);
-  }
+  functor(*place, x, out);
 }
 
 // Vectorized Sin implementation for CPU - high precision

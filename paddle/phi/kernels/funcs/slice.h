@@ -47,17 +47,13 @@ void EigenSliceWrapper(const Context& dev_ctx,
   auto eigen_place = *eigen_place_ptr;
   auto out_t = EigenTensor<T, D>::From(*out, out->dims());
   auto in_t = EigenTensor<T, D>::From(*in, in->dims());
-  Eigen::DSizes<int, D> offsets_32bit, extents_32bit;
+  Eigen::DSizes<Eigen::DenseIndex, D> offsets_64bit, extents_64bit;
   for (size_t i = 0; i < D; i++) {
-    offsets_32bit[i] = start[i];
-    extents_32bit[i] = end[i];
+    offsets_64bit[i] = start[i];
+    extents_64bit[i] = end[i];
   }
   EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
-      eigen_place,
-      phi::To32BitIndex(out_t),
-      phi::To32BitIndex(in_t),
-      offsets_32bit,
-      extents_32bit);
+      eigen_place, out_t, in_t, offsets_64bit, extents_64bit);
 }
 
 #define SLICE_RANK_CASE(N)                                                \
