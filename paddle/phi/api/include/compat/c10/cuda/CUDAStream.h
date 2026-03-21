@@ -229,7 +229,18 @@ inline void setCurrentCUDAStream(CUDAStream stream) {
 }
 
 inline CUDAStream getDefaultCUDAStream(c10::DeviceIndex device_index = -1) {
-  return getCurrentCUDAStream(device_index);
+  if (device_index == -1) {
+    device_index = phi::backends::gpu::GetCurrentDeviceId();
+  }
+  detail::check_device_index(device_index);
+  // The default CUDA stream is always the null stream (cudaStreamDefault,
+  // handle == 0), regardless of any per-thread current stream override.
+  // This matches PyTorch semantics where getDefaultCUDAStream() returns the
+  // fixed device-level default stream, while getCurrentCUDAStream() returns
+  // the per-thread current stream (which may differ after
+  // setCurrentCUDAStream).
+  return CUDAStream(c10::Stream(
+      c10::Stream::DEFAULT, c10::Device(c10::DeviceType::CUDA, device_index)));
 }
 
 }  // namespace c10::cuda
