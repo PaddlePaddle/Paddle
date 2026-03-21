@@ -72,6 +72,16 @@ jobs:
           REPO: ${{ github.event.repository.name }}
           JOB_NAME: 'Linux-CPU / Build and test'
 
+      - name: Rerun Mac
+        if: ${{ contains(github.event.comment.body, 'mac') }}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'Mac-CPU / Build and test'
+
       - name: Rerun NPU
         if: ${{ contains(github.event.comment.body, 'npu')}}
         uses: ./.github/actions/rerun-workflow
