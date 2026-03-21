@@ -63,7 +63,7 @@ void SegmentKernelLaunchHelper(const Context& dev_ctx,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (!cpu_place) {
     DenseTensor length;
-    length.Resize(make_ddim({1}));
+    length.Resize({1});
     IndexT* length_data = dev_ctx.template HostAlloc<IndexT>(&length);
 
     const IndexT* segment_ids_ptr = segment_ids.data<IndexT>();

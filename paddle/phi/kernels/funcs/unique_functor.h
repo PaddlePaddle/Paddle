@@ -100,7 +100,7 @@ struct UniqueOpFunctor {
 
     if (count_ != nullptr) {
       // Resize the count tensor dims to allocate the memory
-      count_->Resize(make_ddim({static_cast<int64_t>(uniq.size())}));
+      count_->Resize({static_cast<int64_t>(uniq.size())});
       IndexT* count_data = dev_ctx_.template Alloc<IndexT>(count_);
       // init count_data to 0
       memset(count_data, 0, uniq.size() * sizeof(IndexT));
@@ -130,7 +130,7 @@ struct UniqueOpFunctor {
       }
     }
 
-    out_->Resize(make_ddim({static_cast<int64_t>(uniq.size())}));
+    out_->Resize({static_cast<int64_t>(uniq.size())});
     auto* out_data = dev_ctx_.template Alloc<InT>(out_);
     std::memcpy(out_data, uniq.data(), uniq.size() * sizeof(InT));
   }
@@ -178,12 +178,12 @@ static void UniqueFlattenedTensor(const Context& dev_ctx,
     unique.insert(in_data[i]);
   }
 
-  out->Resize(make_ddim({static_cast<int64_t>(unique.size())}));
+  out->Resize({static_cast<int64_t>(unique.size())});
   auto* out_data = dev_ctx.template Alloc<InT>(out);
   std::copy(unique.begin(), unique.end(), out_data);
 
   if (return_index) {
-    indices->Resize(make_ddim({out->numel()}));
+    indices->Resize({out->numel()});
     auto indices_data = dev_ctx.template Alloc<IndexT>(indices);
     std::unordered_map<InT, IndexT> indices_map;
     indices_map.reserve(out->numel());
@@ -197,7 +197,7 @@ static void UniqueFlattenedTensor(const Context& dev_ctx,
   }
 
   if (return_inverse) {
-    index->Resize(make_ddim({in.numel()}));
+    index->Resize({in.numel()});
     auto inverse_data = dev_ctx.template Alloc<IndexT>(index);
     for (int64_t i = 0; i < in.numel(); ++i) {
       for (int64_t j = 0; j < out->numel(); ++j) {
@@ -210,7 +210,7 @@ static void UniqueFlattenedTensor(const Context& dev_ctx,
   }
 
   if (return_counts) {
-    count->Resize(make_ddim({out->numel()}));
+    count->Resize({out->numel()});
     auto count_data = dev_ctx.template Alloc<IndexT>(count);
     for (int64_t i = 0; i < out->numel(); ++i) {
       IndexT cnt = 0;
