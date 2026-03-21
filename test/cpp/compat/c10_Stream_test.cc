@@ -28,8 +28,7 @@
 // encoded as void*. For the default (null) stream the id is 0, so the
 // pointer is nullptr; for a real stream it must be non-null.
 TEST(StreamTest, NativeHandleCudaDefaultStream) {
-  c10::DeviceIndex dev = c10::cuda::current_device();
-  c10::Stream s(c10::Stream::DEFAULT, c10::Device(c10::DeviceType::CUDA, dev));
+  c10::Stream s = c10::cuda::getDefaultCUDAStream().unwrap();
   // Default stream encodes nullptr (id == 0), so native_handle() == nullptr.
   EXPECT_EQ(s.native_handle(), nullptr);
 }

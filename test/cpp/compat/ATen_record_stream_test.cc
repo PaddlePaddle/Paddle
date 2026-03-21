@@ -52,9 +52,7 @@ TEST_F(RecordStreamTest, CudaTensorCurrentCudaStream) {
 
 // --- Happy path: CUDA tensor + default CUDA stream should succeed ---
 TEST_F(RecordStreamTest, CudaTensorDefaultCudaStream) {
-  c10::DeviceIndex dev = c10::cuda::current_device();
-  c10::Stream default_stream(c10::Stream::DEFAULT,
-                             c10::Device(c10::DeviceType::CUDA, dev));
+  c10::Stream default_stream = c10::cuda::getDefaultCUDAStream().unwrap();
   EXPECT_NO_THROW(cuda_tensor.record_stream(default_stream));
 }
 #endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
