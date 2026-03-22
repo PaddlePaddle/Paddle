@@ -311,15 +311,14 @@ struct Storage {
   // impl. Used by both set_data_ptr and set_data_ptr_noswap (shared_ptr
   // overloads) as well as set_nbytes for resizable storage.
   void setAllocAndDataPtr(std::shared_ptr<phi::Allocation> new_alloc) {
-    impl_->allocation_ = new_alloc;
+    impl_->allocation_ = std::move(new_alloc);
     if (impl_->allocation_) impl_->nbytes_ = impl_->allocation_->size();
-    impl_->data_ptr_ = viewDataPtrFrom(std::move(new_alloc));
+    impl_->data_ptr_ = viewDataPtrFrom(impl_->allocation_);
   }
 
   // Create a non-owning DataPtr view of a phi::Allocation.
-  // The allocation's lifetime is managed separately by impl_->allocation_.
-  // This does NOT add a deleter, so use_count() via allocation_.use_count()
-  // remains accurate — the DataPtr holds only a raw pointer, not a refcount.
+  // The allocation's lifetime is managed by impl_->allocation_.
+  // No deleter is installed so the DataPtr holds only a raw pointer.
   static DataPtr viewDataPtrFrom(
       const std::shared_ptr<phi::Allocation>& alloc) {
     if (!alloc) return DataPtr();

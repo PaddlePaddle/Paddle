@@ -125,7 +125,6 @@ class PADDLE_API TensorBase {
     std::string backend_str;
     const auto& place = tensor_.place();
 
-    // Convert place to backend string
     if (phi::is_cpu_place(place)) {
       backend_str = "CPU";
     } else if (phi::is_gpu_place(place)) {
@@ -134,7 +133,6 @@ class PADDLE_API TensorBase {
       backend_str = "Undefined";
     }
 
-    // Get scalar type string
     std::string scalar_type_str = at::toString(scalar_type());
 
     return backend_str + scalar_type_str + "Type";
@@ -237,23 +235,19 @@ class PADDLE_API TensorBase {
   }
 
   bool is_non_overlapping_and_dense() const {
-    // Empty or scalar tensors are always non-overlapping and dense
     if (numel() <= 1) {
       return true;
     }
-
-    // If the tensor is contiguous, it is non-overlapping and dense
     if (tensor_.is_contiguous()) {
       return true;
     }
 
-    // For non-contiguous tensors, check if sorted strides form a valid dense
-    // layout
+    // For non-contiguous tensors, verify sorted strides form a valid dense
+    // layout without gaps or overlaps.
     auto sizes_vec = sizes();
     auto strides_vec = strides();
     int64_t ndim = dim();
 
-    // Create a permutation sorted by strides (ascending order)
     std::vector<int64_t> perm(ndim);
     for (int64_t i = 0; i < ndim; ++i) {
       perm[i] = i;
@@ -262,15 +256,14 @@ class PADDLE_API TensorBase {
       return strides_vec[a] < strides_vec[b];
     });
 
-    // Check if sorted strides form a valid dense layout without gaps/overlaps
     int64_t expected_stride = 1;
     for (int64_t i = 0; i < ndim; ++i) {
       int64_t dim_idx = perm[i];
       if (sizes_vec[dim_idx] == 0) {
-        return true;  // Empty tensor
+        return true;
       }
       if (sizes_vec[dim_idx] == 1) {
-        continue;  // Size-1 dimensions don't affect density
+        continue;
       }
       if (strides_vec[dim_idx] != expected_stride) {
         return false;
@@ -428,11 +421,8 @@ class PADDLE_API TensorBase {
 
   bool has_storage() const { return tensor_.defined(); }
 
-  // Returns a Storage handle with PyTorch reference semantics.  All
-  // at::TensorBase wrappers that share the same underlying paddle::Tensor
-  // impl() return handles backed by the same c10::StorageImpl, so mutations
-  // through one handle (set_data_ptr_noswap, set_nbytes, …) are visible
-  // through every other handle and through data_ptr() on the same wrapper.
+  // Returns a Storage handle backed by the shared StorageImpl for this tensor.
+  // See TensorStorageRegistry at the top of this file for the sharing contract.
   const Storage storage() const {
     auto dense = std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl());
     if (!dense) return Storage();

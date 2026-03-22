@@ -60,9 +60,6 @@ TEST(StorageTest, BasicStorageAPIs) {
   ASSERT_NE(alloc, nullptr);
   ASSERT_EQ(alloc->size(), expected_nbytes);
 
-  // Test unique() and use_count()
-  // use_count() now returns impl_.use_count() — the number of c10::Storage
-  // handles sharing this StorageImpl, matching PyTorch's semantics.
   // Only `storage` holds the StorageImpl here, so use_count == 1.
   ASSERT_TRUE(storage.unique());
   ASSERT_EQ(storage.use_count(), 1);
@@ -79,11 +76,8 @@ TEST(StorageTest, StorageSharing) {
   // Test that storages are the same
   ASSERT_EQ(storage1.allocation(), storage2.allocation());
 
-  // Test use_count
-  // tensor1 and tensor2 share the same paddle::Tensor::impl(), so the global
-  // TensorStorageRegistry returns the same StorageImpl for both.  storage1 and
-  // storage2 are two c10::Storage handles backed by that single StorageImpl,
-  // giving use_count == 2 for each.
+  // storage1 and storage2 are two handles backed by the same StorageImpl
+  // (via TensorStorageRegistry), so both report use_count == 2.
   ASSERT_EQ(storage1.use_count(), 2);
   ASSERT_EQ(storage2.use_count(), 2);
 
