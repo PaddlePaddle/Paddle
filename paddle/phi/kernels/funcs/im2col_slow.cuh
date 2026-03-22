@@ -27,10 +27,10 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-#define CUDA_KERNEL_LOOP_TYPE(i, n, index_type)                          \
-  int64_t _i_n_d_e_x = ((int64_t)blockIdx.x) * blockDim.x + threadIdx.x; \
-  for (index_type i = _i_n_d_e_x; _i_n_d_e_x < (n);                      \
-       _i_n_d_e_x += blockDim.x * gridDim.x, i = _i_n_d_e_x)
+#define CUDA_KERNEL_LOOP_TYPE(i, n, index_type)                      \
+  int64_t index_ = ((int64_t)blockIdx.x) * blockDim.x + threadIdx.x; \
+  for (index_type i = index_; index_ < (n);                          \
+       index_ += blockDim.x * gridDim.x, i = index_)
 
 #define CUDA_KERNEL_LOOP(i, n) CUDA_KERNEL_LOOP_TYPE(i, n, int)
 
@@ -38,8 +38,6 @@ constexpr int CUDA_NUM_THREADS = 1024;
 
 inline int GET_BLOCKS(const int64_t N,
                       const int64_t max_threads_per_block = CUDA_NUM_THREADS) {
-  constexpr int64_t max_int = std::numeric_limits<int>::max();
-
   auto block_num = (N - 1) / max_threads_per_block + 1;
   return static_cast<int>(block_num);
 }
