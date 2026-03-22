@@ -230,7 +230,7 @@ bool Pool2dOpInferSymbolicShape(pir::Operation *op,
       paddle::dialect::details::GetExprVecFromData(kernel_size_shape_or_data);
   infer_context->SetShapeOrDataForValue(
       op->result(0),
-      Pool2dRawInferSymbolicShape(op, kernel_size, infer_context));
+      paddle::dialect::Pool2dRawInferSymbolicShape(op, kernel_size, infer_context));
   return true;
 }
 

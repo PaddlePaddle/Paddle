@@ -17,6 +17,12 @@
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 namespace paddle::dialect {
+
+symbol::ShapeOrDataDimExprs Pool2dRawInferSymbolicShape(
+    pir::Operation *op,
+    const std::vector<symbol::DimExpr> &kernel_size,
+    pir::InferSymbolicShapeContext *infer_context);
+
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(AffineGrid)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(All)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Amax)

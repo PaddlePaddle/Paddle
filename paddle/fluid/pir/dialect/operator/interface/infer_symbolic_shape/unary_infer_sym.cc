@@ -84,6 +84,9 @@ std::vector<symbol::DimExpr> GetRealPadding(
   UpdataPadding();
   return real_padding;
 }
+}  // namespace
+
+namespace paddle::dialect {
 
 symbol::ShapeOrDataDimExprs Pool2dRawInferSymbolicShape(
     pir::Operation *op,
@@ -216,9 +219,7 @@ symbol::ShapeOrDataDimExprs Pool2dRawInferSymbolicShape(
 
   return output_shape_or_data;
 }
-}  // namespace
 
-namespace paddle::dialect {
 using paddle::dialect::details::CreateShapeOrDataForXShape;
 
 bool AffineGridOpInferSymbolicShape(
