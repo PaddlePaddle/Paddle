@@ -18,6 +18,7 @@ import numpy as np
 from op_test import get_places
 
 import paddle
+from paddle import base
 
 
 def call_MultiMarginLoss_layer(
@@ -330,24 +331,35 @@ class TestMultiMarginLoss(unittest.TestCase):
         paddle.enable_static()
 
     def test_MultiMarginLoss_target_alias(self):
-        paddle.disable_static()
-        self.addCleanup(paddle.enable_static)
+        with base.dygraph.guard():
+            input = paddle.to_tensor(
+                [[0.2, 1.5, 0.7], [1.1, 0.4, 0.9]], dtype='float32'
+            )
+            label = paddle.to_tensor([1, 0], dtype='int64')
 
-        input = paddle.to_tensor(
-            [[0.2, 1.5, 0.7], [1.1, 0.4, 0.9]], dtype='float32'
-        )
-        label = paddle.to_tensor([1, 0], dtype='int64')
+            for reduction in ['none', 'mean', 'sum']:
+                with self.subTest(reduction=reduction):
+                    out_with_label = paddle.nn.functional.multi_margin_loss(
+                        input=input, label=label, reduction=reduction
+                    )
+                    out_with_target = paddle.nn.functional.multi_margin_loss(
+                        input=input, target=label, reduction=reduction
+                    )
+                    np.testing.assert_allclose(
+                        out_with_label.numpy(), out_with_target.numpy()
+                    )
 
-        for reduction in ['none', 'mean']:
-            out_with_label = paddle.nn.functional.multi_margin_loss(
-                input=input, label=label, reduction=reduction
-            )
-            out_with_target = paddle.nn.functional.multi_margin_loss(
-                input=input, target=label, reduction=reduction
-            )
-            np.testing.assert_allclose(
-                out_with_label.numpy(), out_with_target.numpy()
-            )
+    def test_MultiMarginLoss_target_alias_conflict(self):
+        with base.dygraph.guard():
+            input = paddle.to_tensor([[0.2, 1.5, 0.7]], dtype='float32')
+            label = paddle.to_tensor([1], dtype='int64')
+
+            with self.assertRaises(ValueError):
+                paddle.nn.functional.multi_margin_loss(
+                    input=input,
+                    label=label,
+                    target=label,
+                )
 
     def test_MultiMarginLoss_p(self):
         p = 2
