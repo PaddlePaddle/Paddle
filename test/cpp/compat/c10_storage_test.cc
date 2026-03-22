@@ -585,21 +585,27 @@ TEST(StorageTest, ReferenceSemanticsMutationNotVisibleAcrossIndependent) {
 }
 
 TEST(StorageTest, ReferenceSemanticsTwoIndependentStorageCalls) {
-  // Each call to tensor.storage() creates a fresh StorageImpl, so the two
-  // resulting handles are independent and mutations do not propagate.
+  // Multiple calls to tensor.storage() on the same tensor return handles
+  // sharing the same underlying StorageImpl, matching PyTorch's reference
+  // semantics where TensorBase::storage() always refers to the same storage.
   at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
   at::TensorBase tensor2 = at::ones({4, 5}, at::kFloat);
 
   c10::Storage storage_b = tensor.storage();
-  c10::Storage storage_c = tensor.storage();  // separate call → separate impl
+  c10::Storage storage_c = tensor.storage();  // same impl as storage_b
 
-  const void* original_c_data = storage_c.data();
+  // Both handles point to the same underlying data.
+  ASSERT_EQ(storage_b.data(), storage_c.data())
+      << "Two Storage handles from the same tensor should share the same data "
+         "pointer initially";
+
+  // Mutation through one handle is visible through the other.
   auto new_alloc = tensor2.storage().allocation();
   storage_b.set_data_ptr_noswap(new_alloc);
 
-  ASSERT_EQ(storage_c.data(), original_c_data)
-      << "Two Storage handles from separate storage() calls should not share "
-         "state";
+  ASSERT_EQ(storage_c.data(), storage_b.data())
+      << "Mutation through one Storage handle should be visible through "
+         "another handle obtained from the same tensor";
 }
 
 TEST(StorageTest, ReferenceSemanticsSetNbytesVisibleThroughCopy) {
@@ -633,14 +639,11 @@ TEST(StorageTest, CUDAAllocatorZeroBytePreservesDevice) {
   ASSERT_EQ(dp.get(), nullptr)
       << "Zero-byte allocation should return null pointer";
 
-  // Device type must be CUDA (or HIP), not CPU
-#ifdef PADDLE_WITH_HIP
-  ASSERT_EQ(dp.device().type(), c10::DeviceType::HIP)
-      << "Zero-byte CUDA allocator DataPtr should carry HIP device type";
-#else
+  // Device type must be CUDA, not CPU.  For HIP/ROCm builds, PyTorch's
+  // compatibility convention is to expose DeviceType::CUDA rather than a
+  // separate HIP device type, so we follow the same convention.
   ASSERT_EQ(dp.device().type(), c10::DeviceType::CUDA)
       << "Zero-byte CUDA allocator DataPtr should carry CUDA device type";
-#endif
 
   // Device index should match the current device
   int current_device = phi::backends::gpu::GetCurrentDeviceId();

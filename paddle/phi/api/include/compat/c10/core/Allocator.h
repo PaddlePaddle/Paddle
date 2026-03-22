@@ -49,6 +49,12 @@ class DataPtr {
   DataPtr(void* data, void* ctx, DeleterFnPtr ctx_deleter, Device device)
       : ptr_(data, ctx, ctx_deleter), device_(device._PD_GetInner()) {}
 
+  // DataPtr is move-only, matching PyTorch's c10::DataPtr interface.
+  DataPtr(const DataPtr&) = delete;
+  DataPtr& operator=(const DataPtr&) = delete;
+  DataPtr(DataPtr&&) = default;
+  DataPtr& operator=(DataPtr&&) = default;
+
   void* operator->() const { return ptr_.get(); }
 
   // Returns true on success.

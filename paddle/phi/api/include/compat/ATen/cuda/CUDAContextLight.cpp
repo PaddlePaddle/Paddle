@@ -55,17 +55,13 @@ class PaddleCUDAAllocatorAdapter : public c10::Allocator {
       // allocating any memory.  Callers that probe device identity via
       // DataPtr::device() (e.g. zero-byte tensor construction) will therefore
       // observe the correct CUDA device rather than a default CPU device.
-#ifdef PADDLE_WITH_HIP
-      return c10::DataPtr(nullptr,
-                          nullptr,
-                          nullptr,
-                          c10::Device(c10::DeviceType::HIP, device_id));
-#else
+      // NOTE: For HIP/ROCm builds, PyTorch's compatibility layer still
+      // exposes DeviceType::CUDA (kCUDA) rather than a separate HIP device
+      // type, so we follow the same convention here.
       return c10::DataPtr(nullptr,
                           nullptr,
                           nullptr,
                           c10::Device(c10::DeviceType::CUDA, device_id));
-#endif
     }
     auto* alloc = paddle::memory::allocation::AllocatorFacade::Instance()
                       .GetAllocator(phi::GPUPlace(device_id))
@@ -93,7 +89,13 @@ class PaddleCUDAAllocatorAdapter : public c10::Allocator {
   }
 
   c10::DeleterFnPtr raw_deleter() const override {
-    return deletePaddleCUDAAllocation;
+    // The c10::Allocator raw API contract requires that allocate(n) returns a
+    // DataPtr where get() == get_context().  Our allocate() returns a DataPtr
+    // where data is the raw device pointer and context is a phi::Allocation*,
+    // so get() != get_context() and the raw API cannot be safely used.
+    // Return nullptr to indicate that raw_allocate/raw_deallocate are not
+    // supported by this allocator.
+    return nullptr;
   }
 };
 
