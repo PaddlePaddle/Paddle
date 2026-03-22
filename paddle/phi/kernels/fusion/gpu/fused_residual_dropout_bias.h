@@ -60,13 +60,13 @@ __forceinline__ __device__ void FusedResidualDropoutBiasOneThread(
     const int quant_round_type = 1,
     const float quant_max_bound = 127.0,
     const float quant_min_bound = -127.0) {
-  using LoadT = phi::AlignedVector<T, VecSize>;
-  using LoadInType = phi::AlignedVector<InType, VecSize>;
-  using LoadFloat = phi::AlignedVector<float, VecSize>;
-  using StoreT = phi::AlignedVector<T, VecSize>;
-  using StoreOutType = phi::AlignedVector<OutType, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
+  using LoadInType = AlignedVector<InType, VecSize>;
+  using LoadFloat = AlignedVector<float, VecSize>;
+  using StoreT = AlignedVector<T, VecSize>;
+  using StoreOutType = AlignedVector<OutType, VecSize>;
 
-  using MaskStoreT = phi::AlignedVector<MaskType, VecSize>;
+  using MaskStoreT = AlignedVector<MaskType, VecSize>;
   using U = typename phi::dtype::MPTypeTrait<T>::Type;
 
   LoadInType src_vec;
@@ -176,9 +176,9 @@ __global__ void FusedResidualDropoutBiasGrad(const T *dout,
                                              T *dbias) {
   int64_t col_id = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
 
-  using LoadT = phi::AlignedVector<T, VecSize>;
-  using StoreT = phi::AlignedVector<T, VecSize>;
-  using MaskLoadT = phi::AlignedVector<MaskType, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
+  using StoreT = AlignedVector<T, VecSize>;
+  using MaskLoadT = AlignedVector<MaskType, VecSize>;
 
   T tmp_sum[VecSize] = {static_cast<T>(0)};
   // calculate the dx and temporary sum
@@ -232,9 +232,9 @@ __global__ void FusedResidualDropoutGrad(const T *dout,
       static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
       static_cast<int64_t>(threadIdx.x);
 
-  using LoadT = phi::AlignedVector<T, VecSize>;
-  using StoreT = phi::AlignedVector<T, VecSize>;
-  using MaskLoadT = phi::AlignedVector<MaskType, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
+  using StoreT = AlignedVector<T, VecSize>;
+  using MaskLoadT = AlignedVector<MaskType, VecSize>;
   for (int i = idx * VecSize; i < size; i += blockDim.x * gridDim.x * VecSize) {
     LoadT dout_vec;
     MaskLoadT mask_vec;

@@ -87,7 +87,7 @@ void ExpandGradKernel(const Context& dev_ctx,
                       DenseTensor* in_grad) {
   auto x_dims = x.dims();
   auto out_grad_dims = out_grad.dims();
-  std::vector<int64_t> expand_shape = phi::vectorize<int64_t>(out_grad_dims);
+  std::vector<int64_t> expand_shape = vectorize<int64_t>(out_grad_dims);
 
   if (x.numel() == 0 || out_grad.numel() == 0 ||
       (in_grad && in_grad->numel() == 0)) {

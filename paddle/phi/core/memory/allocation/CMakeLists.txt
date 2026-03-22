@@ -30,7 +30,9 @@ if(WITH_GPU OR WITH_ROCM)
 endif()
 
 if(CUDA_VERSION VERSION_GREATER_EQUAL 10.2)
-  list(APPEND ALLOCATOR_SRCS cuda_virtual_mem_allocator.cc)
+  list(APPEND ALLOCATOR_SRCS cuda_virtual_mem_allocator.cc
+       cuda_virtual_mem_allocator_v2.cc
+       vmm_auto_growth_best_fit_allocator_v2.cc)
 endif()
 
 if(NOT WIN32)

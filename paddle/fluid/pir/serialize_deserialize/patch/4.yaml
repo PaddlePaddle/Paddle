@@ -36,6 +36,21 @@ op_patches:
       - action : modify_attr
         object : pad_value
         type : pir::DoubleAttribute
+  - op_name : pd_op.group_norm
+    actions:
+      - action : modify_attr
+        object : epsilon
+        type : pir::DoubleAttribute
+  - op_name : pd_op.add_group_norm_silu
+    actions:
+      - action : modify_attr
+        object : epsilon
+        type : pir::DoubleAttribute
+  - op_name : pd_op.group_norm_silu_xpu
+    actions:
+      - action : modify_attr
+        object : epsilon
+        type : pir::DoubleAttribute
   - op_name : pd_op.top_p_sampling
     actions:
       - action : modify_attr

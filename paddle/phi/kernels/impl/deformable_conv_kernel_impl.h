@@ -169,7 +169,7 @@ void DeformableConvKernel(const Context& dev_ctx,
     axis[2] = 1;
     axis[3] = 3;
 
-    DenseTensor real_output_buffer = phi::Transpose<T, Context>(
+    DenseTensor real_output_buffer = Transpose<T, Context>(
         dev_ctx,
         output_4d.Resize(
             make_ddim({batch_size / im2col_step,

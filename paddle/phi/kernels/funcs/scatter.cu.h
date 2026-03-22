@@ -163,7 +163,7 @@ __global__ void ScatterNdCUDAKernel(const T* update,
  * return: output tensor
  */
 template <typename T, typename IndexT = int>
-void GPUScatterAssign(const phi::GPUContext& dev_ctx,
+void GPUScatterAssign(const GPUContext& dev_ctx,
                       const DenseTensor& src,
                       const DenseTensor& index,
                       DenseTensor* output,
@@ -261,7 +261,7 @@ void GPUScatterAssign(const phi::GPUContext& dev_ctx,
 // The function is only for scatter grad x,
 // however update grad use gather
 template <typename T, typename IndexT = int>
-void GPUScatterGradForX(const phi::GPUContext& dev_ctx,
+void GPUScatterGradForX(const GPUContext& dev_ctx,
                         const DenseTensor& index,
                         DenseTensor* output) {
   if (index.numel() == 0) {
@@ -289,7 +289,7 @@ void GPUScatterGradForX(const phi::GPUContext& dev_ctx,
 }
 
 template <typename T, typename IndexT = int>
-void GPUScatterNdAdd(const phi::GPUContext& dev_ctx,
+void GPUScatterNdAdd(const GPUContext& dev_ctx,
                      const DenseTensor& update,
                      const DenseTensor& index,
                      DenseTensor* output) {
@@ -417,7 +417,7 @@ __global__ void scatter_gather_elementwise_kernel(int N, func_t f) {
 }
 
 template <typename T, typename IndexT = int>
-void GPUScatterAdd(const phi::GPUContext& dev_ctx,
+void GPUScatterAdd(const GPUContext& dev_ctx,
                    const DenseTensor& src,
                    const DenseTensor& index,
                    DenseTensor* output,

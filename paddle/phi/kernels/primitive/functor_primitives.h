@@ -113,6 +113,28 @@ struct DivideFunctor {
 };
 
 /**
+ * @brief Divide with reciprocal computed in MPType.
+ */
+template <typename Tx, typename Ty = Tx>
+struct MPTypeDivideFunctor {
+ private:
+  using MPType = typename ::phi::dtype::MPTypeTrait<Tx>::Type;
+
+ public:
+  HOSTDEVICE inline MPTypeDivideFunctor() { n_inv = static_cast<MPType>(1.0f); }
+
+  HOSTDEVICE explicit inline MPTypeDivideFunctor(int64_t n)
+      : n_inv(static_cast<MPType>(1.0) / static_cast<MPType>(n)) {}
+
+  HOSTDEVICE inline Ty operator()(const Tx x) const {
+    return static_cast<Ty>(static_cast<MPType>(x) * n_inv);
+  }
+
+ private:
+  MPType n_inv;
+};
+
+/**
  * @brief Default inverse functor
  */
 template <typename Tx, typename Ty = Tx>

@@ -247,6 +247,7 @@ strided_compute_op_list = {
     "all",
     "sum",
     "mean",
+    "nansum",
     # logical
     "logical_and",
     "logical_or",

@@ -3732,7 +3732,7 @@ struct MMHAStore {
   template <typename Vec>
   __device__ void store(const Vec& src, float scale, size_t idx) {
     constexpr int VecSize = sizeof(Vec) / sizeof(T);
-    using TVec = phi::AlignedVector<T, VecSize>;
+    using TVec = AlignedVector<T, VecSize>;
     TVec src_vec;
     *reinterpret_cast<Vec*>(&src_vec) = src;
 #pragma unroll
@@ -3753,7 +3753,7 @@ struct MMHAStore<T, T, true> {
   template <typename Vec>
   __device__ void store(Vec& src, int idx) {  // NOLINT
     constexpr int VecSize = sizeof(Vec) / sizeof(T);
-    using TVec = phi::AlignedVector<T, VecSize>;
+    using TVec = AlignedVector<T, VecSize>;
     TVec src_vec;
     TVec shift_vec;
     TVec smooth_vec;
@@ -3784,9 +3784,9 @@ struct MMHALoad<T, int32_t> {
   template <typename Vec>
   __device__ void load(Vec& dst, int idx) {  // NOLINT
     constexpr int VecSize = sizeof(Vec) / sizeof(T);
-    using SrcVec = phi::AlignedVector<int32_t, VecSize>;
-    using DstVec = phi::AlignedVector<T, VecSize>;
-    using ScaleVec = phi::AlignedVector<float, VecSize>;
+    using SrcVec = AlignedVector<int32_t, VecSize>;
+    using DstVec = AlignedVector<T, VecSize>;
+    using ScaleVec = AlignedVector<float, VecSize>;
 
     SrcVec src_vec;
     DstVec dst_vec;
@@ -3823,8 +3823,8 @@ struct MMHAStore<T, int8_t> {
   template <typename Vec>
   __device__ void store(Vec& src, int idx) {  // NOLINT
     constexpr int VecSize = sizeof(Vec) / sizeof(T);
-    using SrcVec = phi::AlignedVector<T, VecSize>;
-    using DstVec = phi::AlignedVector<int8_t, VecSize>;
+    using SrcVec = AlignedVector<T, VecSize>;
+    using DstVec = AlignedVector<int8_t, VecSize>;
 
     SrcVec src_vec;
     *reinterpret_cast<Vec*>(&src_vec) = src;
@@ -3872,8 +3872,8 @@ struct MMHAStore<T, int8_t, true> {
   template <typename Vec>
   __device__ void store(Vec& src, int idx) {  // NOLINT
     constexpr int VecSize = sizeof(Vec) / sizeof(T);
-    using SrcVec = phi::AlignedVector<T, VecSize>;
-    using DstVec = phi::AlignedVector<int8_t, VecSize>;
+    using SrcVec = AlignedVector<T, VecSize>;
+    using DstVec = AlignedVector<int8_t, VecSize>;
 
     SrcVec src_vec;
     DstVec dst_vec;

@@ -26,9 +26,14 @@ void TrilTriuKernel(const Context& dev_ctx,
                     int diagonal,
                     bool lower,
                     DenseTensor* out) {
-  const auto* x_data = x.data<T>();
   auto* out_data = dev_ctx.template Alloc<T>(out);
 
+  // Early return for empty tensor to avoid invalid CUDA kernel launch
+  if (x.numel() == 0) {
+    return;
+  }
+
+  const auto* x_data = x.data<T>();
   const auto& dims = x.dims();
   const auto H = dims[dims.size() - 2];
   const auto W = dims[dims.size() - 1];

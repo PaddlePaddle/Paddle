@@ -208,14 +208,12 @@ class FSDPBufferManager:
         # Layer types to wrap as FSDP sharding layers
         # Note: 'Qwen3VLTextDecoderLayer' is temporary; fleet models all use 'TransformerLayer'
         self.fsdp_unit_layers = fsdp_unit_layers or [
-            'TransformerLayer',
             'Qwen3VLTextDecoderLayer',
+            'Qwen3VLTextTransformerLayer',
         ]
 
         # Get tie_param_name if using tie_weights
         self.tie_param_name = None
-        if hasattr(self.model, "get_input_embeddings"):
-            self.tie_param_name = self.model.get_input_embeddings().weight.name
 
         # Create buffer_groups
         grouped_params = self._build_groups()
@@ -335,16 +333,21 @@ class FSDPCommManager:
         # for double buffer mechanism config
         self.double_buffer_limit = double_buffer_limit
         self.buffer_cnt_in_using = 0
+        self.need_zero_grads = True
 
     def _release_one_buffer_if_needed(self):
         # Release a buffer with the READY status if needed
         while self.buffer_cnt_in_using >= self.double_buffer_limit:
+            found = False
             for group in self.buffer_manager.buffer_groups:
                 if group.params_buffer.status == BufferState.READY:
                     group.params_buffer.status = BufferState.FREED
                     group.params_buffer.clear_tmp_buffer()
                     self.buffer_cnt_in_using -= 1
+                    found = True
                     break
+            if not found:
+                break
 
     def _next_buffer_id(self, gid, is_backward):
         # Get next buffer id for prefetch
@@ -444,9 +447,15 @@ class FSDPCommManager:
                 group.params_buffer.status = BufferState.READY
 
     def reduce_scatter_grads(self, param):
+        if self.need_zero_grads:
+            self.need_zero_grads = False
+            for group in self.buffer_manager.buffer_groups:
+                if group.grads_buffer is not None:
+                    group.grads_buffer.data_buffer.zero_()
         gid = self.buffer_manager.param_to_buffer_id[param.name]
         group = self.buffer_manager.buffer_groups[gid]
         group.grads_use_cnt += 1
+        param.main_grad = None
 
         if group.grads_use_cnt == group.grads_use_sum:
             group.grads_use_cnt = 0
@@ -458,10 +467,12 @@ class FSDPCommManager:
             self._wait_for_grad_comm()
 
             tmp_buffer = grads_buffer.get_tmp_buffer()
+            shard_size = grads_buffer.data_buffer.shape[0]
+            grad_buffer_shard = tmp_buffer._slice(0, shard_size)
             if self.enable_overlap:
                 # Comm grads async and check all comm_task before optimizer update
                 grads_buffer.comm_task = paddle.distributed.reduce_scatter(
-                    grads_buffer.data_buffer,
+                    grad_buffer_shard,
                     tmp_buffer,
                     op=paddle.distributed.ReduceOp.SUM,
                     group=self.buffer_manager._fsdp_group,
@@ -472,13 +483,13 @@ class FSDPCommManager:
                 self.grad_reduce_queue.append(grads_buffer)
             else:
                 paddle.distributed.reduce_scatter(
-                    grads_buffer.data_buffer,
+                    grad_buffer_shard,
                     tmp_buffer,
                     op=paddle.distributed.ReduceOp.SUM,
                     group=self.buffer_manager._fsdp_group,
                     sync_op=False,
                 ).wait()
-
+                grads_buffer.data_buffer.add_(grad_buffer_shard)
                 grads_buffer.clear_tmp_buffer()
 
     def _wait_for_grad_comm(self, queue_limit=2):
@@ -489,6 +500,10 @@ class FSDPCommManager:
             if grads_buffer.comm_task is not None:
                 grads_buffer.comm_task.wait()
                 grads_buffer.comm_task = None
+                tmp_buffer = grads_buffer.get_tmp_buffer()
+                shard_size = grads_buffer.data_buffer.shape[0]
+                grad_buffer_shard = tmp_buffer._slice(0, shard_size)
+                grads_buffer.data_buffer.add_(grad_buffer_shard)
             grads_buffer.clear_tmp_buffer()
 
     def finish_grads_sync(self):
@@ -508,10 +523,10 @@ class FSDPCommManager:
 
 class FusionBackwardHook(PyLayer):
     @staticmethod
-    def forward(ctx, inputs, layer, comm_manager):
+    def forward(ctx, *inputs, layer, comm_manager):
         ctx.layer = layer
         ctx.comm_manager = comm_manager
-        return inputs
+        return inputs if len(inputs) > 1 else inputs[0]
 
     @staticmethod
     def backward(ctx, *args):
@@ -578,6 +593,7 @@ class FullyShardFusion:
     def comm_sync_and_reset_status(self):
         self.comm_manager.finish_grads_sync()
         self.comm_manager.reset_params_buffer_status()
+        self.comm_manager.need_zero_grads = True
         # Reset main_grad for all trainable parameters
         for param in self.model.parameters():
             if param.trainable:
@@ -613,16 +629,14 @@ class FullyShardFusion:
             def comm_hook(grad):
                 if grad is not None and grad._is_initialized():
                     # Share mem with grads_tmp_buffer
-                    if param.main_grad is None:
-                        # Reset main_grad to None after each step and rebind it here
-                        _main_grad = param.get_main_grad()
-                        _main_grad.get_tensor()._set_dims(grad._local_shape)
-                        param.main_grad = _dtensor_from_local(
-                            _main_grad,
-                            grad.process_mesh,
-                            grad.placements,
-                        )
-                    param.main_grad._local_value().add_(grad._local_value())
+                    _main_grad = param.get_main_grad()
+                    _main_grad.get_tensor()._set_dims(grad._local_shape)
+                    param.main_grad = _dtensor_from_local(
+                        _main_grad,
+                        grad.process_mesh,
+                        grad.placements,
+                    )
+                    param.main_grad._local_value().copy_(grad._local_value())
                     grad._clear_data()
                 comm_manager.shard_params([param], is_backward=True)
                 comm_manager.reduce_scatter_grads(param)
@@ -648,11 +662,21 @@ class FullyShardFusion:
 
     def _register_fusion_layer_hooks(self, layer, name="last_layer"):
         def _forward_post_hook(layer, inputs, outputs):
-            return FusionBackwardHook.apply(
-                outputs,
-                layer=layer,
-                comm_manager=self.comm_manager,
-            )
+            if isinstance(outputs, tuple):
+                result = FusionBackwardHook.apply(
+                    *outputs,
+                    layer=layer,
+                    comm_manager=self.comm_manager,
+                )
+                if not isinstance(result, tuple):
+                    result = (result,)
+                return result
+            else:
+                return FusionBackwardHook.apply(
+                    outputs,
+                    layer=layer,
+                    comm_manager=self.comm_manager,
+                )
 
         def _forward_pre_hook(layer, inputs):
             return FusionForwardHook.apply(

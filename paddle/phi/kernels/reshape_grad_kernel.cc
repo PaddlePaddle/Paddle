@@ -42,10 +42,10 @@ void ReshapeGradKernel(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_XPU
 template <>
-void ReshapeGradKernel<phi::XPUContext>(const XPUContext& dev_ctx,
-                                        const DenseTensor& x,
-                                        const DenseTensor& out_grad,
-                                        DenseTensor* x_grad) {
+void ReshapeGradKernel<XPUContext>(const XPUContext& dev_ctx,
+                                   const DenseTensor& x,
+                                   const DenseTensor& out_grad,
+                                   DenseTensor* x_grad) {
   if (x_grad->numel() == 0) {
     dev_ctx.Alloc(x_grad, x_grad->dtype());
     return;
