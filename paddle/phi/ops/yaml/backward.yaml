@@ -1825,6 +1825,19 @@
   no_need_buffer: x, value
   backward: index_elementwise_put_with_tensor_double_grad
 
+- backward_op : index_fill_grad
+  forward : index_fill (Tensor x, Tensor index, int dim, Scalar value) -> Tensor(out)
+  args : (Tensor index, Tensor out_grad, int dim)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out_grad]
+  kernel :
+    func : index_fill_grad
+    data_type : out_grad
+  data_transform :
+    skip_transform : index
+
 - backward_op : index_put_double_grad
   forward : index_put_grad (Tensor x, Tensor[] indices, Tensor value, Tensor grad_out, bool accumulate=false) -> Tensor(grad_x), Tensor(grad_value)
   args : (Tensor x, Tensor[] indices, Tensor value, Tensor grad_x_grad, Tensor grad_value_grad, bool accumulate=false)

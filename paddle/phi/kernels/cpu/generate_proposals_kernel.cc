@@ -36,7 +36,7 @@ static void AppendProposals(DenseTensor* dst,
 }
 
 template <class T>
-void ClipTiledBoxes(const phi::CPUContext& dev_ctx,
+void ClipTiledBoxes(const CPUContext& dev_ctx,
                     const DenseTensor& im_info,
                     const DenseTensor& input_boxes,
                     DenseTensor* out,
@@ -64,7 +64,7 @@ void ClipTiledBoxes(const phi::CPUContext& dev_ctx,
 
 // Filter the box with small area
 template <class T>
-void FilterBoxes(const phi::CPUContext& dev_ctx,
+void FilterBoxes(const CPUContext& dev_ctx,
                  const DenseTensor* boxes,
                  float min_size,
                  const DenseTensor& im_info,
@@ -105,7 +105,7 @@ void FilterBoxes(const phi::CPUContext& dev_ctx,
 }
 
 template <class T>
-static void BoxCoder(const phi::CPUContext& dev_ctx,
+static void BoxCoder(const CPUContext& dev_ctx,
                      DenseTensor* all_anchors,
                      DenseTensor* bbox_deltas,
                      DenseTensor* variances,
@@ -173,7 +173,7 @@ static void BoxCoder(const phi::CPUContext& dev_ctx,
 
 template <typename T>
 std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
-    const phi::CPUContext& dev_ctx,
+    const CPUContext& dev_ctx,
     const DenseTensor& im_shape_slice,
     const DenseTensor& anchors,
     const DenseTensor& variances,
@@ -244,7 +244,7 @@ std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
                  pixel_offset);
   // Handle the case when there is no keep index left
   if (keep.numel() == 0) {
-    funcs::SetConstant<phi::CPUContext, T> set_zero;
+    funcs::SetConstant<CPUContext, T> set_zero;
     bbox_sel.Resize(make_ddim({1, 4}));
     dev_ctx.template Alloc<T>(&bbox_sel);
     set_zero(dev_ctx, &bbox_sel, static_cast<T>(0));
@@ -331,7 +331,7 @@ void GenerateProposalsKernel(const Context& dev_ctx,
   scores_swap.Resize(make_ddim({num, h_score, w_score, c_score}));
   dev_ctx.template Alloc<T>(&scores_swap);
 
-  funcs::Transpose<phi::CPUContext, T, 4> trans;
+  funcs::Transpose<CPUContext, T, 4> trans;
   std::vector<int> axis = {0, 2, 3, 1};
   trans(dev_ctx, bbox_deltas, &bbox_deltas_swap, axis);
   trans(dev_ctx, scores, &scores_swap, axis);

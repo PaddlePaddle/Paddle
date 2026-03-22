@@ -739,6 +739,12 @@ PADDLE_API void LegacyInterpolateInferMeta(
     MetaTensor* output,
     MetaConfig config = MetaConfig());
 
+PADDLE_API void IndexFillInferMeta(const MetaTensor& x,
+                                   const MetaTensor& index,
+                                   int dim,
+                                   const Scalar& value,
+                                   MetaTensor* out);
+
 PADDLE_API void IndexPutInferMeta(const MetaTensor& x,
                                   const std::vector<const MetaTensor*>& indices,
                                   const MetaTensor& value,

@@ -30,8 +30,8 @@ namespace phi {
  *
  * */
 template <typename T>
-struct SequenceExpandGradFunctor<phi::CPUContext, T> {
-  void operator()(const phi::CPUContext& dev_ctx,
+struct SequenceExpandGradFunctor<CPUContext, T> {
+  void operator()(const CPUContext& dev_ctx,
                   const DenseTensor& dout,
                   const phi::Vector<size_t>& x_lod,   /*expand source lod*/
                   const phi::Vector<size_t>& ref_lod, /*expand referenced lod*/
@@ -49,7 +49,7 @@ struct SequenceExpandGradFunctor<phi::CPUContext, T> {
         int dout_end = dout_offset + repeat_num * x_seq_len;
         auto dout_sub = dout.Slice(dout_offset, dout_end);
         dout_sub.Resize({repeat_num, dx_sub.dims()[0]});
-        funcs::ColwiseSum<phi::CPUContext, T> col_sum;
+        funcs::ColwiseSum<CPUContext, T> col_sum;
         col_sum(dev_ctx, dout_sub, &dx_sub);
         dout_offset += repeat_num * x_seq_len;
       }

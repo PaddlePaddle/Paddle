@@ -20,9 +20,9 @@ namespace phi {
 namespace math {
 
 template <typename T>
-class BeamSearchFunctor<phi::CPUContext, T> {
+class BeamSearchFunctor<CPUContext, T> {
  public:
-  void operator()(const phi::CPUContext &dev_ctx UNUSED,
+  void operator()(const CPUContext &dev_ctx UNUSED,
                   const DenseTensor *pre_ids,
                   const DenseTensor *pre_scores,
                   const DenseTensor *ids,
@@ -302,10 +302,10 @@ class BeamSearchFunctor<phi::CPUContext, T> {
   }
 };
 
-template class PADDLE_API BeamSearchFunctor<phi::CPUContext, int>;
-template class PADDLE_API BeamSearchFunctor<phi::CPUContext, int64_t>;
-template class PADDLE_API BeamSearchFunctor<phi::CPUContext, float>;
-template class PADDLE_API BeamSearchFunctor<phi::CPUContext, double>;
+template class PADDLE_API BeamSearchFunctor<CPUContext, int>;
+template class PADDLE_API BeamSearchFunctor<CPUContext, int64_t>;
+template class PADDLE_API BeamSearchFunctor<CPUContext, float>;
+template class PADDLE_API BeamSearchFunctor<CPUContext, double>;
 
 }  // namespace math
 }  // namespace phi

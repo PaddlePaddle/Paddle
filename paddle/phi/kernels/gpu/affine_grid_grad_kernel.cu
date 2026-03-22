@@ -68,7 +68,7 @@ void AffineGridGrad4DCUDAKernel(const Context& dev_ctx,
   // 3. Transposition base_grid: [N, H * W, 3] ->[N, 3, H * W]
   DenseTensor base_grid_transposed;
   base_grid_transposed.Resize(make_ddim({n, 3, h * w}));
-  phi::TransposeKernel<T, Context>(
+  TransposeKernel<T, Context>(
       dev_ctx, base_grid_reshaped, {0, 2, 1}, &base_grid_transposed);
 
   // 4. Reshaping Output_grad to [N, H * W, 2]
@@ -80,12 +80,11 @@ void AffineGridGrad4DCUDAKernel(const Context& dev_ctx,
   DenseTensor grad_theta_temp;
   grad_theta_temp.Resize(make_ddim({n, 3, 2}));
 
-  phi::BmmKernel<T, Context>(
+  BmmKernel<T, Context>(
       dev_ctx, base_grid_transposed, grad_grid_reshaped, &grad_theta_temp);
 
   // 6. Transposition yields the final result: [N, 3, 2] ->[N, 2, 3]
-  phi::TransposeKernel<T, Context>(
-      dev_ctx, grad_theta_temp, {0, 2, 1}, input_grad);
+  TransposeKernel<T, Context>(dev_ctx, grad_theta_temp, {0, 2, 1}, input_grad);
 }
 
 template <typename T, typename Context>
@@ -127,7 +126,7 @@ void AffineGridGrad5DCUDAKernel(const Context& dev_ctx,
   // 3. Transpose base_grid:[N，D*H*W，4]->[N，4，D*H*W]
   DenseTensor base_grid_transposed;
   base_grid_transposed.Resize(make_ddim({n, 4, d * h * w}));
-  phi::TransposeKernel<T, Context>(
+  TransposeKernel<T, Context>(
       dev_ctx, base_grid_reshaped, {0, 2, 1}, &base_grid_transposed);
 
   // 4. Reshaping Output_grad to [N, D * H * W, 3]
@@ -140,12 +139,11 @@ void AffineGridGrad5DCUDAKernel(const Context& dev_ctx,
   DenseTensor grad_theta_temp;
   grad_theta_temp.Resize(make_ddim({n, 4, 3}));
 
-  phi::BmmKernel<T, Context>(
+  BmmKernel<T, Context>(
       dev_ctx, base_grid_transposed, grad_grid_reshaped, &grad_theta_temp);
 
   // 6. Transposition yields the final result: [N, 4, 3] ->[N, 3, 4]
-  phi::TransposeKernel<T, Context>(
-      dev_ctx, grad_theta_temp, {0, 2, 1}, input_grad);
+  TransposeKernel<T, Context>(dev_ctx, grad_theta_temp, {0, 2, 1}, input_grad);
 }
 
 template <typename T, typename Context>

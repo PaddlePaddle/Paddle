@@ -40,8 +40,8 @@ struct SequenceSoftmaxGradFunctor {
 };
 
 template <typename T>
-struct SequenceSoftmaxFunctor<phi::CPUContext, T> {
-  void operator()(const phi::CPUContext &dev_ctx,
+struct SequenceSoftmaxFunctor<CPUContext, T> {
+  void operator()(const CPUContext &dev_ctx,
                   const DenseTensor &x,
                   const phi::Vector<size_t> &ref_lod, /*referenced lod*/
                   DenseTensor *out) {
@@ -62,8 +62,8 @@ struct SequenceSoftmaxFunctor<phi::CPUContext, T> {
 };
 
 template <typename T>
-struct SequenceSoftmaxGradFunctor<phi::CPUContext, T> {
-  void operator()(const phi::CPUContext &dev_ctx,
+struct SequenceSoftmaxGradFunctor<CPUContext, T> {
+  void operator()(const CPUContext &dev_ctx,
                   const DenseTensor &dout,
                   const DenseTensor &out,
                   const phi::Vector<size_t> &ref_lod, /*referenced lod*/

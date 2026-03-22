@@ -22,7 +22,7 @@ from paddle.base.framework import Variable
 from paddle.framework import (
     in_dynamic_mode,
 )
-from paddle.tensor import softmax
+from paddle.tensor import log_softmax, softmax
 from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
 from .sdpa import scaled_dot_product_attention
@@ -41,7 +41,14 @@ if TYPE_CHECKING:
     ]
 
 
-__all__ = ['pad', 'softmax', 'linear', 'scaled_dot_product_attention', 'unfold']
+__all__ = [
+    'pad',
+    'softmax',
+    'log_softmax',
+    'linear',
+    'scaled_dot_product_attention',
+    'unfold',
+]
 
 
 def _check_valid_pad_len(pad_len, x_dim, is_constant):

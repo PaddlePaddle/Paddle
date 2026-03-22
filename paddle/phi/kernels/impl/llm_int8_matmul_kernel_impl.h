@@ -241,7 +241,7 @@ __global__ void ReduceAbsMaxKernel(const T* x,
     for (int col_idx = threadIdx.x * VecSize; col_idx < cols;
          col_idx += blockDim.x * VecSize) {
       int32_t linear_index = row_idx * cols + col_idx;
-      phi::Load<T, VecSize>(x + linear_index, &in_vec);
+      Load<T, VecSize>(x + linear_index, &in_vec);
 #pragma unroll
       for (int i = 0; i < VecSize; ++i) {
         in_vec[i] = AbsFunc<T>()(in_vec[i]);
@@ -289,7 +289,7 @@ __global__ void QuantActKernel(const T* x,
     int row_idx = linear_index / cols;
     int col_idx =
         linear_index - row_idx * cols;  // equal to linear_index % cols
-    phi::Load<T, VecSize>(x + linear_index, &in_vec);
+    Load<T, VecSize>(x + linear_index, &in_vec);
     int32_t local_outlier_idx = outlier_idx[col_idx / 32];
     float scale = 1.0f / row_ranges[row_idx];
 #pragma unroll

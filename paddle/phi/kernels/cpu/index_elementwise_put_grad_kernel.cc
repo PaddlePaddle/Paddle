@@ -27,7 +27,7 @@ namespace phi {
 
 template <typename T, typename IndexT = int>
 void CPUIndexElementwisePutGradKernel(
-    const phi::CPUContext& dev_ctx,
+    const CPUContext& dev_ctx,
     const DenseTensor& out_grad,
     const std::vector<const DenseTensor*>& index,
     const std::vector<int64_t>& input_dims,

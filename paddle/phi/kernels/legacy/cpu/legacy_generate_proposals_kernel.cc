@@ -28,7 +28,7 @@ namespace phi {
 
 template <typename T>
 std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
-    const phi::CPUContext &dev_ctx,
+    const CPUContext &dev_ctx,
     const DenseTensor &im_info_slice,
     const DenseTensor &anchors,
     const DenseTensor &variances,
@@ -88,7 +88,7 @@ std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
       dev_ctx, &proposals, min_size, im_info_slice, true, &keep);
   // Handle the case when there is no keep index left
   if (keep.numel() == 0) {
-    funcs::SetConstant<phi::CPUContext, T> set_zero;
+    funcs::SetConstant<CPUContext, T> set_zero;
     bbox_sel.Resize({1, 4});
     dev_ctx.Alloc<T>(&bbox_sel);
     set_zero(dev_ctx, &bbox_sel, static_cast<T>(0));
@@ -170,7 +170,7 @@ void GenerateProposalsKernel(const Context &dev_ctx,
   scores_swap.Resize({num, h_score, w_score, c_score});
   dev_ctx.template Alloc<T>(&scores_swap);
 
-  funcs::Transpose<phi::CPUContext, T, 4> trans;
+  funcs::Transpose<CPUContext, T, 4> trans;
   std::vector<int> axis = {0, 2, 3, 1};
   trans(dev_ctx, *bbox_deltas, &bbox_deltas_swap, axis);
   trans(dev_ctx, *scores, &scores_swap, axis);
