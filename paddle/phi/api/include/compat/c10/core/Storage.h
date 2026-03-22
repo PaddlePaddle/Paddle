@@ -165,6 +165,15 @@ struct Storage {
   friend struct MaybeOwnedTraits;
 
  public:
+  // Construct from a pre-existing shared StorageImpl (used by the global
+  // per-tensor storage registry to reuse an existing StorageImpl).
+  explicit Storage(std::shared_ptr<StorageImpl> impl)
+      : impl_(std::move(impl)) {}
+
+  // Returns the underlying shared StorageImpl (used by the global per-tensor
+  // storage registry).
+  std::shared_ptr<StorageImpl> get_impl() const { return impl_; }
+
   // Check if storage is valid (has allocation or data)
   bool valid() const {
     return impl_ && (static_cast<bool>(impl_->allocation_) ||
@@ -236,18 +245,13 @@ struct Storage {
     return phi::Place();
   }
 
-  // Get the reference count.
-  // For allocation-backed storage, counts shared_ptr<phi::Allocation> holders,
-  // which matches the observable use-count visible to DenseTensor and all
-  // Storage handles that originated from the same allocation.
-  // For external DataPtr storage, counts the number of Storage handles that
-  // share this StorageImpl (i.e. impl_.use_count()).
-  // Returns 0 for default-constructed (empty) storage.
+  // Returns the number of c10::Storage handles currently sharing this
+  // StorageImpl (i.e. impl_.use_count()), matching PyTorch's
+  // c10::Storage::use_count() semantics.  Returns 0 for empty / invalid
+  // storage (neither allocation nor data_ptr set).
   size_t use_count() const {
-    if (!impl_) return 0;
-    if (impl_->allocation_) return impl_->allocation_.use_count();
-    if (impl_->data_ptr_) return impl_.use_count();
-    return 0;
+    if (!valid()) return 0;
+    return impl_.use_count();
   }
 
   // Check if this storage is unique (use_count == 1)

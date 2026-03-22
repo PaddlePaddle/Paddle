@@ -61,17 +61,11 @@ TEST(StorageTest, BasicStorageAPIs) {
   ASSERT_EQ(alloc->size(), expected_nbytes);
 
   // Test unique() and use_count()
-  // Reference breakdown (allocation-backed path):
-  //  1. DenseTensor::holder_              (DenseTensor's internal reference)
-  //  2. TensorBase::storage_holder_cache_ (cache for storage() reference
-  //                                        semantics)
-  //  3. StorageImpl::allocation_          (shared between cached_storage_
-  //                                        and `storage`)
-  //  4. alloc                             (storage.allocation(), still in
-  //  scope)
-  // Total: 4
-  ASSERT_FALSE(storage.unique());
-  ASSERT_EQ(storage.use_count(), 4);
+  // use_count() now returns impl_.use_count() — the number of c10::Storage
+  // handles sharing this StorageImpl, matching PyTorch's semantics.
+  // Only `storage` holds the StorageImpl here, so use_count == 1.
+  ASSERT_TRUE(storage.unique());
+  ASSERT_EQ(storage.use_count(), 1);
 }
 
 TEST(StorageTest, StorageSharing) {
@@ -86,15 +80,12 @@ TEST(StorageTest, StorageSharing) {
   ASSERT_EQ(storage1.allocation(), storage2.allocation());
 
   // Test use_count
-  // Reference breakdown (both tensors share the same DenseTensor):
-  //  1. DenseTensor::holder_               (one shared internal reference)
-  //  2. tensor1.storage_holder_cache_      (cache for tensor1's storage())
-  //  3. tensor1.cached_storage_ ->alloc_   (shared StorageImpl with `storage1`)
-  //  4. tensor2.storage_holder_cache_      (cache for tensor2's storage())
-  //  5. tensor2.cached_storage_ ->alloc_   (shared StorageImpl with `storage2`)
-  // Total: 5
-  ASSERT_EQ(storage1.use_count(), 5);
-  ASSERT_EQ(storage2.use_count(), 5);
+  // tensor1 and tensor2 share the same paddle::Tensor::impl(), so the global
+  // TensorStorageRegistry returns the same StorageImpl for both.  storage1 and
+  // storage2 are two c10::Storage handles backed by that single StorageImpl,
+  // giving use_count == 2 for each.
+  ASSERT_EQ(storage1.use_count(), 2);
+  ASSERT_EQ(storage2.use_count(), 2);
 
   // Test unique() is false
   ASSERT_FALSE(storage1.unique());

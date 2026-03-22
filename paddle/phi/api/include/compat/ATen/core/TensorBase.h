@@ -28,12 +28,44 @@
 #include <utils/scalar_type_conversion.h>
 #include <algorithm>
 #include <iostream>
+#include <memory>
+#include <mutex>
+#include <unordered_map>
 #include <vector>
 #include "paddle/common/layout.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
+
+// Global registry that maps a phi::TensorBase* (the tensor's impl pointer) to
+// a weak reference to its compat StorageImpl.  All at::TensorBase wrappers
+// that share the same underlying paddle::Tensor::impl() will therefore share
+// the same c10::StorageImpl, matching PyTorch's reference semantics where
+// TensorBase::storage() always returns the same StorageImpl for a given tensor.
+//
+// A weak_ptr is used so that the StorageImpl is destroyed as soon as the last
+// c10::Storage handle drops its reference, with no permanent retention by the
+// registry itself.  Stale entries (expired weak_ptr or mismatched holder) are
+// silently replaced on next access.
+namespace at::detail {
+
+struct TensorStorageRegistry {
+  struct Entry {
+    phi::Allocation* original_alloc;  // holder.get() when entry was made
+    std::weak_ptr<c10::StorageImpl> impl;
+  };
+
+  std::mutex mu;
+  std::unordered_map<phi::TensorBase*, Entry> table;
+
+  static TensorStorageRegistry& get() {
+    static TensorStorageRegistry inst;
+    return inst;
+  }
+};
+
+}  // namespace at::detail
 
 namespace at {
 using PaddleTensor = paddle::Tensor;
@@ -49,14 +81,12 @@ class PADDLE_API TensorBase {
 #if defined(_MSC_VER)
   TensorBase& operator=(const TensorBase& x) & {
     tensor_ = x.tensor_;
-    storage_holder_cache_ = x.storage_holder_cache_;
-    cached_storage_ = x.cached_storage_;
+    active_storage_ = x.active_storage_;
     return *this;
   }
   TensorBase& operator=(TensorBase&& x) & noexcept {
     tensor_ = std::move(x.tensor_);
-    storage_holder_cache_ = std::move(x.storage_holder_cache_);
-    cached_storage_ = std::move(x.cached_storage_);
+    active_storage_ = std::move(x.active_storage_);
     return *this;
   }
 #else
@@ -110,15 +140,22 @@ class PADDLE_API TensorBase {
     return backend_str + scalar_type_str + "Type";
   }
 
-  void* data_ptr() const { return const_cast<void*>(tensor_.data()); }
-  template <typename T>
-  T* data_ptr() const {
-    return const_cast<T*>(tensor_.data<T>());
-  }
-
-  const void* const_data_ptr() const {
+  // Returns the tensor's data pointer.  If a StorageImpl was previously
+  // obtained via storage() and subsequently mutated (e.g. via
+  // set_data_ptr_noswap), the mutated pointer is returned so that
+  // tensor.data_ptr() stays consistent with tensor.storage().data().
+  void* data_ptr() const {
+    if (auto impl = active_storage_.lock()) {
+      if (void* p = impl->data_ptr_.get()) return p;
+    }
     return const_cast<void*>(tensor_.data());
   }
+  template <typename T>
+  T* data_ptr() const {
+    return static_cast<T*>(data_ptr());
+  }
+
+  const void* const_data_ptr() const { return data_ptr(); }
 
   template <typename T, std::enable_if_t<!std::is_const_v<T>, int> = 0>
   const T* const_data_ptr() const;
@@ -126,7 +163,7 @@ class PADDLE_API TensorBase {
   template <typename T, std::enable_if_t<std::is_const_v<T>, int> = 0>
   const std::remove_const_t<T>* const_data_ptr() const;
 
-  void* mutable_data_ptr() const { return const_cast<void*>(tensor_.data()); }
+  void* mutable_data_ptr() const { return data_ptr(); }
 
   template <typename T>
   T* mutable_data_ptr() const;
@@ -391,17 +428,41 @@ class PADDLE_API TensorBase {
 
   bool has_storage() const { return tensor_.defined(); }
 
-  // Returns a Storage handle with PyTorch reference semantics: repeated calls
-  // return handles that share the same StorageImpl while the allocation is
-  // unchanged, so mutations through one handle are visible through all others.
+  // Returns a Storage handle with PyTorch reference semantics.  All
+  // at::TensorBase wrappers that share the same underlying paddle::Tensor
+  // impl() return handles backed by the same c10::StorageImpl, so mutations
+  // through one handle (set_data_ptr_noswap, set_nbytes, …) are visible
+  // through every other handle and through data_ptr() on the same wrapper.
   const Storage storage() const {
-    auto holder =
-        std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl())->Holder();
-    if (holder != storage_holder_cache_) {
-      storage_holder_cache_ = holder;
-      cached_storage_ = Storage(holder);
+    auto dense = std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl());
+    if (!dense) return Storage();
+
+    phi::TensorBase* key = dense.get();
+    auto holder = dense->Holder();
+
+    auto& reg = at::detail::TensorStorageRegistry::get();
+    std::lock_guard<std::mutex> lock(reg.mu);
+
+    auto it = reg.table.find(key);
+    if (it != reg.table.end() && it->second.original_alloc == holder.get()) {
+      if (auto shared = it->second.impl.lock()) {
+        active_storage_ = shared;
+        return Storage(shared);
+      }
     }
-    return cached_storage_;
+
+    // Cache miss or stale entry: build a new StorageImpl from the current
+    // holder and register it.
+    auto new_impl = std::make_shared<c10::StorageImpl>();
+    if (holder) {
+      new_impl->allocation_ = holder;
+      new_impl->nbytes_ = holder->size();
+      new_impl->data_ptr_ =
+          c10::DataPtr(holder->ptr(), c10::Device(holder->place()));
+    }
+    reg.table[key] = {holder.get(), std::weak_ptr<c10::StorageImpl>(new_impl)};
+    active_storage_ = new_impl;
+    return Storage(std::move(new_impl));
   }
 
   bool is_alias_of(const at::TensorBase& other) const {
@@ -500,9 +561,10 @@ class PADDLE_API TensorBase {
 
  protected:
   PaddleTensor tensor_;
-  // Cache for storage() reference semantics; invalidated when Holder changes.
-  mutable std::shared_ptr<phi::Allocation> storage_holder_cache_;
-  mutable c10::Storage cached_storage_;
+  // Weak reference to the active StorageImpl for this wrapper.  Set whenever
+  // storage() is called so that data_ptr() can reflect mutations made through
+  // the returned Storage handle without a global registry lookup on every call.
+  mutable std::weak_ptr<c10::StorageImpl> active_storage_;
 };
 
 }  // namespace at
