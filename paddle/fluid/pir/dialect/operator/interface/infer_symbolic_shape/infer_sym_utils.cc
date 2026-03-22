@@ -375,8 +375,8 @@ std::vector<symbol::DimExpr> GetRealPadding(
     const std::vector<int> &origin_paddings,
     const bool global_pooling,
     const bool adaptive,
-    const std::string padding_algorithm,
-    const std::vector<symbol::DimExpr> data_dims,
+    const std::string &padding_algorithm,
+    const std::vector<symbol::DimExpr> &data_dims,
     const std::vector<int> &strides,
     const std::vector<symbol::DimExpr> &kernel_size) {
   const auto &GetInitPadding = [&]() -> std::vector<symbol::DimExpr> {
