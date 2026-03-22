@@ -381,6 +381,7 @@ std::vector<symbol::DimExpr> GetRealPadding(
     const std::vector<symbol::DimExpr> &kernel_size) {
   const auto &GetInitPadding = [&]() -> std::vector<symbol::DimExpr> {
     std::vector<symbol::DimExpr> res;
+    // set padding size == data_dims.size() * 2
     if (origin_paddings.size() == data_dims.size()) {
       for (std::size_t i = 0; i < origin_paddings.size(); ++i) {
         res.emplace_back(symbol::DimExpr{origin_paddings.at(i)});
@@ -407,6 +408,7 @@ std::vector<symbol::DimExpr> GetRealPadding(
   const auto &UpdataPadding = [&]() {
     symbol::DimExpr one_dimexpr{1};
     symbol::DimExpr zero_dimexpr{0};
+    // when padding_algorithm is "VALID" or "SAME"
     if (padding_algorithm == "SAME") {
       for (std::size_t i = 0; i < data_dims.size(); ++i) {
         symbol::DimExpr stride_dimexpr = symbol::DimExpr{strides[i]};
@@ -426,6 +428,7 @@ std::vector<symbol::DimExpr> GetRealPadding(
       real_padding.assign(real_padding.size(), zero_dimexpr);
     }
 
+    // if global_pooling == true or adaptive == true, padding will be ignore
     if (global_pooling || adaptive) {
       real_padding.assign(real_padding.size(), zero_dimexpr);
     }
@@ -553,6 +556,7 @@ symbol::ShapeOrDataDimExprs Pool2dRawInferSymbolicShape(
       }
     }
 
+    // output_N = input_N
     output_shape.insert(output_shape.begin(), x_dims[0]);
     if (channel_last) {
       output_shape.push_back(x_dims[x_dims.size() - 1]);
