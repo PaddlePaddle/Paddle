@@ -62,12 +62,13 @@ TEST(StorageTest, BasicStorageAPIs) {
 
   // Test unique() and use_count()
   // Reference breakdown (allocation-backed path):
-  //  1. DenseTensor::holder_             (DenseTensor's internal reference)
-  //  2. TensorBase::storage_holder_cache_ (cache introduced for storage()
-  //  reference semantics)
-  //  3. StorageImpl::allocation_          (shared between
-  //  tensor.cached_storage_ and `storage`)
-  //  4. alloc (storage.allocation() above, still in scope)
+  //  1. DenseTensor::holder_              (DenseTensor's internal reference)
+  //  2. TensorBase::storage_holder_cache_ (cache for storage() reference
+  //                                        semantics)
+  //  3. StorageImpl::allocation_          (shared between cached_storage_
+  //                                        and `storage`)
+  //  4. alloc                             (storage.allocation(), still in
+  //  scope)
   // Total: 4
   ASSERT_FALSE(storage.unique());
   ASSERT_EQ(storage.use_count(), 4);
@@ -85,17 +86,12 @@ TEST(StorageTest, StorageSharing) {
   ASSERT_EQ(storage1.allocation(), storage2.allocation());
 
   // Test use_count
-  // Reference breakdown (allocation-backed path, both tensors share same
-  // DenseTensor):
+  // Reference breakdown (both tensors share the same DenseTensor):
   //  1. DenseTensor::holder_               (one shared internal reference)
-  //  2. tensor1.storage_holder_cache_      (cache for tensor1's storage()
-  //  reference semantics)
-  //  3. tensor1.cached_storage_ impl->allocation_ (shared StorageImpl with
-  //  `storage1`)
-  //  4. tensor2.storage_holder_cache_      (cache for tensor2's storage()
-  //  reference semantics)
-  //  5. tensor2.cached_storage_ impl->allocation_ (shared StorageImpl with
-  //  `storage2`)
+  //  2. tensor1.storage_holder_cache_      (cache for tensor1's storage())
+  //  3. tensor1.cached_storage_ ->alloc_   (shared StorageImpl with `storage1`)
+  //  4. tensor2.storage_holder_cache_      (cache for tensor2's storage())
+  //  5. tensor2.cached_storage_ ->alloc_   (shared StorageImpl with `storage2`)
   // Total: 5
   ASSERT_EQ(storage1.use_count(), 5);
   ASSERT_EQ(storage2.use_count(), 5);

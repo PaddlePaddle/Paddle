@@ -57,7 +57,6 @@ class DataPtr {
 
   void* operator->() const { return ptr_.get(); }
 
-  // Returns true on success.
   bool unsafe_reset_data_and_ctx(void* new_data_and_ctx) {
     return ptr_.unsafe_reset_data_and_ctx(new_data_and_ctx);
   }
@@ -80,12 +79,9 @@ class DataPtr {
 
   DeleterFnPtr get_deleter() const { return ptr_.get_deleter(); }
 
-  /**
-   * Compare the deleter in a DataPtr to expected_deleter.
-   * If it matches, replace the deleter with new_deleter
-   * and return true; otherwise, does nothing and returns
-   * false.
-   */
+  // Atomically replaces the deleter if it matches expected_deleter.
+  // Returns true and installs new_deleter on match; does nothing and
+  // returns false otherwise.
   [[nodiscard]] bool compare_exchange_deleter(DeleterFnPtr expected_deleter,
                                               DeleterFnPtr new_deleter) {
     return ptr_.compare_exchange_deleter(expected_deleter, new_deleter);

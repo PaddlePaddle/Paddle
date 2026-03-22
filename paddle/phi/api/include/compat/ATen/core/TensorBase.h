@@ -391,11 +391,9 @@ class PADDLE_API TensorBase {
 
   bool has_storage() const { return tensor_.defined(); }
 
-  // Returns a Storage handle backed by this tensor's allocation.
-  // Multiple calls on the same tensor return handles sharing the same
-  // underlying StorageImpl, matching PyTorch's reference semantics:
-  // mutations through one handle are visible through all others obtained
-  // from the same tensor.
+  // Returns a Storage handle with PyTorch reference semantics: repeated calls
+  // return handles that share the same StorageImpl while the allocation is
+  // unchanged, so mutations through one handle are visible through all others.
   const Storage storage() const {
     auto holder =
         std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl())->Holder();
@@ -502,9 +500,7 @@ class PADDLE_API TensorBase {
 
  protected:
   PaddleTensor tensor_;
-  // Mutable cache for storage() reference semantics: multiple calls return
-  // handles sharing the same StorageImpl as long as the underlying allocation
-  // (Holder) has not changed.
+  // Cache for storage() reference semantics; invalidated when Holder changes.
   mutable std::shared_ptr<phi::Allocation> storage_holder_cache_;
   mutable c10::Storage cached_storage_;
 };

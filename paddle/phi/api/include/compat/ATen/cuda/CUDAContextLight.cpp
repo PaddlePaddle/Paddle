@@ -89,12 +89,9 @@ class PaddleCUDAAllocatorAdapter : public c10::Allocator {
   }
 
   c10::DeleterFnPtr raw_deleter() const override {
-    // The c10::Allocator raw API contract requires that allocate(n) returns a
-    // DataPtr where get() == get_context().  Our allocate() returns a DataPtr
-    // where data is the raw device pointer and context is a phi::Allocation*,
-    // so get() != get_context() and the raw API cannot be safely used.
-    // Return nullptr to indicate that raw_allocate/raw_deallocate are not
-    // supported by this allocator.
+    // allocate() returns data=device_ptr, context=phi::Allocation*, so
+    // get() != get_context() and the raw_allocate/raw_deallocate API is
+    // unsafe for this allocator.  Returning nullptr signals that.
     return nullptr;
   }
 };
@@ -173,11 +170,9 @@ void* getCUDABlasLtWorkspace() {
       .first;
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 CUDAContextSolverHandle getCurrentCUDASolverDnHandle() {
   return getCurrentGPUContext()->cusolver_dn_handle();
 }
-#endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
 
 #if defined(USE_CUDSS)
 cudssHandle_t getCurrentCudssHandle() {
