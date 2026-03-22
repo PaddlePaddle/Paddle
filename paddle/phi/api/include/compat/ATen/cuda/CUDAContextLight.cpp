@@ -38,18 +38,37 @@ inline phi::GPUContext* getCurrentGPUContext() {
       phi::DeviceContextPool::Instance().Get(phi::GPUPlace(device_id)));
 }
 
+/// Frees a phi::Allocation that was released with .release() during allocate().
+static void deletePaddleCUDAAllocation(void* p) {
+  delete static_cast<phi::Allocation*>(p);
+}
+
 /// Adapter class that wraps Paddle's AllocatorFacade as a c10::Allocator.
 /// This provides a bridge between Paddle's allocation interface and PyTorch's
 /// c10::Allocator interface for the CUDA compatibility layer.
 class PaddleCUDAAllocatorAdapter : public c10::Allocator {
  public:
   c10::DataPtr allocate(size_t n) override {
+    int device_id = phi::backends::gpu::GetCurrentDeviceId();
     if (n == 0) {
-      return c10::DataPtr();
+      // Return a DataPtr that carries the current CUDA device without
+      // allocating any memory.  Callers that probe device identity via
+      // DataPtr::device() (e.g. zero-byte tensor construction) will therefore
+      // observe the correct CUDA device rather than a default CPU device.
+#ifdef PADDLE_WITH_HIP
+      return c10::DataPtr(nullptr,
+                          nullptr,
+                          nullptr,
+                          c10::Device(c10::DeviceType::HIP, device_id));
+#else
+      return c10::DataPtr(nullptr,
+                          nullptr,
+                          nullptr,
+                          c10::Device(c10::DeviceType::CUDA, device_id));
+#endif
     }
     auto* alloc = paddle::memory::allocation::AllocatorFacade::Instance()
-                      .GetAllocator(phi::GPUPlace(
-                          phi::backends::gpu::GetCurrentDeviceId()))
+                      .GetAllocator(phi::GPUPlace(device_id))
                       .get();
     auto phi_alloc = alloc->Allocate(n);
     void* ptr = phi_alloc->ptr();
@@ -57,16 +76,24 @@ class PaddleCUDAAllocatorAdapter : public c10::Allocator {
     // Transfer ownership of phi_alloc to the DataPtr's context.
     auto* raw_alloc = phi_alloc.release();
     return c10::DataPtr(
-        ptr,
-        raw_alloc,
-        [](void* p) { delete static_cast<phi::Allocation*>(p); },
-        c10::Device(place));
+        ptr, raw_alloc, deletePaddleCUDAAllocation, c10::Device(place));
   }
 
   void copy_data(void* dst, const void* src, size_t n) const override {
-    // Use memcpy for host memory; GPU-to-GPU copies should use cudaMemcpyAsync.
-    // This is a simple implementation matching the base class default.
-    default_copy_data(dst, src, n);
+    if (n == 0) return;
+      // Use GPU device-to-device copy.  std::memcpy is not valid for device
+      // memory; callers such as c10::Allocator::clone() rely on this method to
+      // perform correct D2D copies on CUDA/HIP memory.
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpy(dst, src, n, hipMemcpyDeviceToDevice));
+#else
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        cudaMemcpy(dst, src, n, cudaMemcpyDeviceToDevice));
+#endif
+  }
+
+  c10::DeleterFnPtr raw_deleter() const override {
+    return deletePaddleCUDAAllocation;
   }
 };
 

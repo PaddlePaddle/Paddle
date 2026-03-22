@@ -36,6 +36,21 @@ struct Storage;
 inline bool isSharedStorageAlias(const Storage& storage0,
                                  const Storage& storage1);
 
+// Shared state for Storage handles. All Storage copies that refer to the
+// same logical storage share a single StorageImpl, so mutations via
+// set_data_ptr*(), set_nbytes(), or mutable_data_ptr() are visible to all
+// handles — matching the observable contract of c10::StorageImpl in PyTorch.
+struct StorageImpl {
+  std::shared_ptr<phi::Allocation> allocation_;
+  phi::Allocator* allocator_ = nullptr;
+  size_t nbytes_ = 0;
+  bool resizable_ = false;
+  // DataPtr is stored directly (not in a shared_ptr) because all Storage
+  // copies already share this StorageImpl, so one level of indirection
+  // suffices to propagate mutations.
+  DataPtr data_ptr_;
+};
+
 struct Storage {
  public:
   // Tag types for constructor disambiguation (LibTorch compatible)
@@ -44,55 +59,29 @@ struct Storage {
     unsafe_borrow_t() = default;
   };
 
-  // Default constructor
-  Storage() : data_ptr_(std::make_shared<DataPtr>()) {}
+  // Default constructor: empty storage, no allocation, no data.
+  Storage() : impl_(std::make_shared<StorageImpl>()) {}
 
-  // Copy constructor: shares allocation (increments refcount) and DataPtr
-  // ownership so that context/deleter is preserved across copies.
-  Storage(const Storage& other)
-      : allocation_(other.allocation_),
-        allocator_(other.allocator_),
-        nbytes_(other.nbytes_),
-        resizable_(other.resizable_),
-        data_ptr_(other.data_ptr_) {}
+  // Copy constructor: shares the StorageImpl so that mutations made through
+  // either handle are visible through the other.
+  Storage(const Storage& other) : impl_(other.impl_) {}
 
   // Copy assignment operator
   Storage& operator=(const Storage& other) {
     if (this != &other) {
-      allocation_ = other.allocation_;
-      allocator_ = other.allocator_;
-      nbytes_ = other.nbytes_;
-      resizable_ = other.resizable_;
-      data_ptr_ = other.data_ptr_;
+      impl_ = other.impl_;
     }
     return *this;
   }
 
-  // Move constructor
-  Storage(Storage&& other) noexcept
-      : allocation_(std::move(other.allocation_)),
-        allocator_(other.allocator_),
-        nbytes_(other.nbytes_),
-        resizable_(other.resizable_),
-        data_ptr_(std::move(other.data_ptr_)) {
-    other.allocator_ = nullptr;
-    other.nbytes_ = 0;
-    other.resizable_ = false;
-    other.data_ptr_ = std::make_shared<DataPtr>();
-  }
+  // Move constructor: transfers ownership of the StorageImpl.
+  // The moved-from object is left in an unspecified (but destructible) state.
+  Storage(Storage&& other) noexcept : impl_(std::move(other.impl_)) {}
 
   // Move assignment operator
   Storage& operator=(Storage&& other) noexcept {
     if (this != &other) {
-      allocation_ = std::move(other.allocation_);
-      allocator_ = other.allocator_;
-      nbytes_ = other.nbytes_;
-      resizable_ = other.resizable_;
-      data_ptr_ = std::move(other.data_ptr_);
-      other.allocator_ = nullptr;
-      other.nbytes_ = 0;
-      other.resizable_ = false;
-      other.data_ptr_ = std::make_shared<DataPtr>();
+      impl_ = std::move(other.impl_);
     }
     return *this;
   }
@@ -100,25 +89,24 @@ struct Storage {
   // Constructor with allocation and optional storage properties
   Storage(std::shared_ptr<phi::Allocation> alloc,
           std::unique_ptr<phi::StorageProperties> props = nullptr) {
+    impl_ = std::make_shared<StorageImpl>();
     if (alloc) {
-      nbytes_ = alloc->size();
-      allocation_ = alloc;
-      data_ptr_ = std::make_shared<DataPtr>(viewDataPtrFrom(std::move(alloc)));
-    } else {
-      data_ptr_ = std::make_shared<DataPtr>();
+      impl_->nbytes_ = alloc->size();
+      impl_->data_ptr_ = viewDataPtrFrom(alloc);
+      impl_->allocation_ = std::move(alloc);
     }
   }
 
   // Constructor with size and allocator (LibTorch compatible)
   explicit Storage(size_t size_bytes, phi::Allocator* allocator = nullptr) {
+    impl_ = std::make_shared<StorageImpl>();
     if (allocator) {
-      allocation_ =
+      auto alloc =
           std::shared_ptr<phi::Allocation>(allocator->Allocate(size_bytes));
-      allocator_ = allocator;
-      nbytes_ = size_bytes;
-      data_ptr_ = std::make_shared<DataPtr>(viewDataPtrFrom(allocation_));
-    } else {
-      data_ptr_ = std::make_shared<DataPtr>();
+      impl_->allocator_ = allocator;
+      impl_->nbytes_ = size_bytes;
+      impl_->data_ptr_ = viewDataPtrFrom(alloc);
+      impl_->allocation_ = std::move(alloc);
     }
   }
 
@@ -127,15 +115,15 @@ struct Storage {
           size_t size_bytes,
           phi::Allocator* allocator = nullptr,
           bool resizable = false) {
-    allocator_ = allocator;
-    nbytes_ = size_bytes;
-    resizable_ = resizable;
+    impl_ = std::make_shared<StorageImpl>();
+    impl_->allocator_ = allocator;
+    impl_->nbytes_ = size_bytes;
+    impl_->resizable_ = resizable;
     if (allocator) {
-      allocation_ =
+      auto alloc =
           std::shared_ptr<phi::Allocation>(allocator->Allocate(size_bytes));
-      data_ptr_ = std::make_shared<DataPtr>(viewDataPtrFrom(allocation_));
-    } else {
-      data_ptr_ = std::make_shared<DataPtr>();
+      impl_->data_ptr_ = viewDataPtrFrom(alloc);
+      impl_->allocation_ = std::move(alloc);
     }
   }
 
@@ -145,11 +133,12 @@ struct Storage {
           std::shared_ptr<phi::Allocation> alloc,
           phi::Allocator* allocator = nullptr,
           bool resizable = false) {
-    allocation_ = alloc;
-    allocator_ = allocator;
-    nbytes_ = size_bytes;
-    resizable_ = resizable;
-    data_ptr_ = std::make_shared<DataPtr>(viewDataPtrFrom(std::move(alloc)));
+    impl_ = std::make_shared<StorageImpl>();
+    impl_->allocator_ = allocator;
+    impl_->nbytes_ = size_bytes;
+    impl_->resizable_ = resizable;
+    impl_->data_ptr_ = viewDataPtrFrom(alloc);
+    impl_->allocation_ = std::move(alloc);
   }
 
   // LibTorch compatible constructor with pre-allocated DataPtr
@@ -158,21 +147,18 @@ struct Storage {
           DataPtr data_ptr,
           phi::Allocator* allocator = nullptr,
           bool resizable = false) {
-    allocator_ = allocator;
-    nbytes_ = size_bytes;
-    resizable_ = resizable;
-    initFromExternalDataPtr(std::move(data_ptr));
+    impl_ = std::make_shared<StorageImpl>();
+    impl_->allocator_ = allocator;
+    impl_->nbytes_ = size_bytes;
+    impl_->resizable_ = resizable;
+    impl_->data_ptr_ = std::move(data_ptr);
   }
 
  protected:
-  // Unsafe borrow constructor (for MaybeOwnedTraits): shares DataPtr
-  // so context/deleter is preserved without transfer of ownership.
-  explicit Storage(unsafe_borrow_t, const Storage& rhs)
-      : allocation_(rhs.allocation_),
-        allocator_(rhs.allocator_),
-        nbytes_(rhs.nbytes_),
-        resizable_(rhs.resizable_),
-        data_ptr_(rhs.data_ptr_) {}
+  // Unsafe borrow constructor (for MaybeOwnedTraits): shares the StorageImpl.
+  // With the shared-impl design this is equivalent to a regular copy, but the
+  // tag distinguishes "borrow" intent from ordinary copies at call sites.
+  explicit Storage(unsafe_borrow_t, const Storage& rhs) : impl_(rhs.impl_) {}
 
   // Forward declare template and make specialization a friend
   template <typename T>
@@ -181,77 +167,86 @@ struct Storage {
  public:
   // Check if storage is valid (has allocation or data)
   bool valid() const {
-    return static_cast<bool>(allocation_) ||
-           (data_ptr_ && static_cast<bool>(*data_ptr_));
+    return impl_ && (static_cast<bool>(impl_->allocation_) ||
+                     static_cast<bool>(impl_->data_ptr_));
   }
 
   // Boolean conversion operator (LibTorch compatible)
   explicit operator bool() const { return valid(); }
 
   // Get the number of bytes in the storage
-  size_t nbytes() const { return nbytes_; }
+  size_t nbytes() const { return impl_ ? impl_->nbytes_ : 0; }
 
-  // Set the number of bytes (for resizable storage)
+  // Set the number of bytes.
+  // For resizable storage with an allocator, reallocates; otherwise updates
+  // the byte count directly so the change is visible to all copies.
   void set_nbytes(size_t size_bytes) {
-    if (resizable_ && allocator_) {
-      setAllocAndDataPtr(
-          std::shared_ptr<phi::Allocation>(allocator_->Allocate(size_bytes)));
+    if (!impl_) return;
+    if (impl_->resizable_ && impl_->allocator_) {
+      setAllocAndDataPtr(std::shared_ptr<phi::Allocation>(
+          impl_->allocator_->Allocate(size_bytes)));
+    } else {
+      impl_->nbytes_ = size_bytes;
     }
   }
 
   // Check if storage is resizable
-  bool resizable() const { return resizable_; }
+  bool resizable() const { return impl_ ? impl_->resizable_ : false; }
 
   // Get mutable data pointer
-  void* mutable_data() const { return data_ptr_->get(); }
-
-  // Get const data pointer
-  const void* data() const { return data_ptr_->get(); }
-
-  // Get a const reference to the underlying DataPtr (LibTorch compatible)
-  const DataPtr& data_ptr() const { return *data_ptr_; }
-
-  // Get a mutable reference to the underlying DataPtr (LibTorch compatible).
-  // Detaches this storage from shared state (copy-on-write) before returning
-  // the mutable reference, so mutations do not affect other Storage copies.
-  // For external DataPtr with a deleter, CoW is skipped to preserve the
-  // original deleter and context.
-  DataPtr& mutable_data_ptr() const {
-    const_cast<Storage*>(this)->ensureUniqueDataPtr();
-    return *data_ptr_;
+  void* mutable_data() const {
+    return impl_ ? impl_->data_ptr_.get() : nullptr;
   }
 
+  // Get const data pointer
+  const void* data() const { return impl_ ? impl_->data_ptr_.get() : nullptr; }
+
+  // Get a const reference to the underlying DataPtr (LibTorch compatible)
+  const DataPtr& data_ptr() const { return impl_->data_ptr_; }
+
+  // Get a mutable reference to the underlying DataPtr (LibTorch compatible).
+  // Because all Storage copies share the same StorageImpl, this reference
+  // reflects and propagates changes to all handles — matching PyTorch's
+  // StorageImpl semantics where mutable_data_ptr() returns the member directly.
+  DataPtr& mutable_data_ptr() const { return impl_->data_ptr_; }
+
   // Get the underlying phi::Allocation (Paddle-specific)
-  std::shared_ptr<phi::Allocation> allocation() const { return allocation_; }
+  std::shared_ptr<phi::Allocation> allocation() const {
+    return impl_ ? impl_->allocation_ : nullptr;
+  }
 
   // Get the allocator
-  phi::Allocator* allocator() const { return allocator_; }
+  phi::Allocator* allocator() const {
+    return impl_ ? impl_->allocator_ : nullptr;
+  }
 
   // Get the device/place type
   phi::AllocationType device_type() const {
-    if (allocation_) return allocation_->place().GetType();
-    if (data_ptr_ && *data_ptr_) return data_ptr_->device().type();
+    if (!impl_) return phi::AllocationType::CPU;
+    if (impl_->allocation_) return impl_->allocation_->place().GetType();
+    if (impl_->data_ptr_) return impl_->data_ptr_.device().type();
     return phi::AllocationType::CPU;
   }
 
   // Get the device/place
   phi::Place device() const {
-    if (allocation_) return allocation_->place();
-    if (data_ptr_ && *data_ptr_) return data_ptr_->device()._PD_GetInner();
+    if (!impl_) return phi::Place();
+    if (impl_->allocation_) return impl_->allocation_->place();
+    if (impl_->data_ptr_) return impl_->data_ptr_.device()._PD_GetInner();
     return phi::Place();
   }
 
   // Get the reference count.
-  // For allocation-backed storage, counts shared_ptr<phi::Allocation> holders.
-  // For external DataPtr storage, counts shared DataPtr owners.
-  // Returns 0 for default-constructed (empty) storage, matching PyTorch
-  // semantics where an empty intrusive_ptr<StorageImpl> has use_count == 0.
+  // For allocation-backed storage, counts shared_ptr<phi::Allocation> holders,
+  // which matches the observable use-count visible to DenseTensor and all
+  // Storage handles that originated from the same allocation.
+  // For external DataPtr storage, counts the number of Storage handles that
+  // share this StorageImpl (i.e. impl_.use_count()).
+  // Returns 0 for default-constructed (empty) storage.
   size_t use_count() const {
-    if (allocation_) return allocation_.use_count();
-    // data_ptr_ is always non-null (initialized in every constructor), but
-    // *data_ptr_ is falsy for a default-constructed or empty DataPtr.
-    // Only count as live when the DataPtr actually holds a pointer.
-    if (data_ptr_ && *data_ptr_) return data_ptr_.use_count();
+    if (!impl_) return 0;
+    if (impl_->allocation_) return impl_->allocation_.use_count();
+    if (impl_->data_ptr_) return impl_.use_count();
     return 0;
   }
 
@@ -263,96 +258,64 @@ struct Storage {
     if (!valid() || !other.valid()) {
       return false;
     }
-    return allocation_ == other.allocation_ ||
-           isSharedStorageAlias(*this, other);
+    // Fast path: same StorageImpl (e.g. two copies of the same Storage handle)
+    if (impl_ == other.impl_) return true;
+    return isSharedStorageAlias(*this, other);
   }
 
   // Set data pointer (swap and return old) - LibTorch compatible DataPtr
   // version. Clears allocation_ since the new DataPtr manages its own
-  // lifecycle. Detaches from shared state first so only this storage is
-  // updated. Use set_data_ptr(shared_ptr<phi::Allocation>) for Paddle paths.
+  // lifecycle. The change is propagated to all Storage copies that share
+  // this StorageImpl. Use set_data_ptr(shared_ptr<phi::Allocation>) for
+  // Paddle paths.
   DataPtr set_data_ptr(DataPtr&& new_data_ptr) {
-    ensureUniqueDataPtr();
-    DataPtr old = std::move(*data_ptr_);
-    allocation_ = nullptr;
-    initFromExternalDataPtr(std::move(new_data_ptr));
+    DataPtr old = std::move(impl_->data_ptr_);
+    impl_->allocation_ = nullptr;
+    impl_->data_ptr_ = std::move(new_data_ptr);
     return old;
   }
 
-  // Set data pointer (no swap) - LibTorch compatible DataPtr version
+  // Set data pointer (no swap) - LibTorch compatible DataPtr version.
+  // Propagated to all Storage copies that share this StorageImpl.
   void set_data_ptr_noswap(DataPtr&& new_data_ptr) {
-    ensureUniqueDataPtr();
-    allocation_ = nullptr;
-    initFromExternalDataPtr(std::move(new_data_ptr));
+    impl_->allocation_ = nullptr;
+    impl_->data_ptr_ = std::move(new_data_ptr);
   }
 
-  // Set data pointer - Paddle-specific shared_ptr<phi::Allocation> version
+  // Set data pointer - Paddle-specific shared_ptr<phi::Allocation> version.
+  // Propagated to all Storage copies that share this StorageImpl.
   std::shared_ptr<phi::Allocation> set_data_ptr(
       std::shared_ptr<phi::Allocation> new_alloc) {
-    std::shared_ptr<phi::Allocation> old_alloc = std::move(allocation_);
+    std::shared_ptr<phi::Allocation> old_alloc = std::move(impl_->allocation_);
     setAllocAndDataPtr(std::move(new_alloc));
     return old_alloc;
   }
 
-  // Set data pointer (no swap) - Paddle-specific shared_ptr version
+  // Set data pointer (no swap) - Paddle-specific shared_ptr version.
+  // Propagated to all Storage copies that share this StorageImpl.
   void set_data_ptr_noswap(std::shared_ptr<phi::Allocation> new_alloc) {
     setAllocAndDataPtr(std::move(new_alloc));
   }
 
  private:
-  // Member declaration order matters for initializer-list initialization.
-  // allocation_ must come before data_ptr_ so that viewDataPtrFrom can
-  // use allocation_ in constructors that initialize data_ptr_ from it.
-  std::shared_ptr<phi::Allocation> allocation_;
-  phi::Allocator* allocator_ = nullptr;
-  size_t nbytes_ = 0;
-  bool resizable_ = false;
-  // Shared pointer to DataPtr — shared across Storage copies to preserve
-  // context/deleter on the external-DataPtr path.  For allocation-backed
-  // paths the pointed-to DataPtr is a non-owning view (no extra refcount on
-  // allocation_), so use_count() remains accurate.
-  std::shared_ptr<DataPtr> data_ptr_;
+  // Shared implementation state. All Storage copies that were created by
+  // copying this Storage share the same StorageImpl, so writes through any
+  // handle are immediately visible through all other handles.
+  std::shared_ptr<StorageImpl> impl_;
 
-  // Update allocation_, nbytes_, and data_ptr_ together.
-  // Used by both set_data_ptr and set_data_ptr_noswap (shared_ptr overloads).
+  // Update allocation_, nbytes_, and data_ptr_ together through the shared
+  // impl. Used by both set_data_ptr and set_data_ptr_noswap (shared_ptr
+  // overloads) as well as set_nbytes for resizable storage.
   void setAllocAndDataPtr(std::shared_ptr<phi::Allocation> new_alloc) {
-    allocation_ = new_alloc;
-    if (allocation_) nbytes_ = allocation_->size();
-    data_ptr_ =
-        std::make_shared<DataPtr>(viewDataPtrFrom(std::move(new_alloc)));
-  }
-
-  // Initialize data_ptr_ from an externally-provided DataPtr.
-  // Directly stores the original DataPtr so that get_deleter() and
-  // get_context() return the original values (not a wrapper).
-  // Always assigns a fresh shared_ptr to data_ptr_ so it is safe to call
-  // even when data_ptr_ has not yet been initialized (e.g. constructors).
-  void initFromExternalDataPtr(DataPtr&& dp) {
-    data_ptr_ = std::make_shared<DataPtr>(std::move(dp));
-  }
-
-  // Detach this storage from the shared DataPtr so that subsequent mutations
-  // via mutable_data_ptr() or set_data_ptr() do not affect other Storage
-  // copies.  After this call data_ptr_.use_count() == 1.
-  //
-  // For external DataPtr with a deleter, CoW is skipped because we cannot
-  // clone arbitrary deleters. The original DataPtr is preserved.
-  // For allocation-backed paths a fresh non-owning view is created;
-  // allocation_ keeps the memory alive.
-  void ensureUniqueDataPtr() {
-    if (data_ptr_.use_count() <= 1) return;
-    // Skip CoW for external DataPtr with deleter - cannot clone arbitrary
-    // deleters, so preserve the original DataPtr ownership
-    if (data_ptr_->get_deleter() != nullptr) return;
-    void* raw = data_ptr_->get();
-    c10::Device dev = data_ptr_->device();
-    data_ptr_ = std::make_shared<DataPtr>(DataPtr(raw, dev));
+    impl_->allocation_ = new_alloc;
+    if (impl_->allocation_) impl_->nbytes_ = impl_->allocation_->size();
+    impl_->data_ptr_ = viewDataPtrFrom(std::move(new_alloc));
   }
 
   // Create a non-owning DataPtr view of a phi::Allocation.
-  // The allocation's lifetime is managed separately by allocation_.
-  // This does NOT increment the shared_ptr refcount, so use_count() stays
-  // accurate.
+  // The allocation's lifetime is managed separately by impl_->allocation_.
+  // This does NOT add a deleter, so use_count() via allocation_.use_count()
+  // remains accurate — the DataPtr holds only a raw pointer, not a refcount.
   static DataPtr viewDataPtrFrom(
       const std::shared_ptr<phi::Allocation>& alloc) {
     if (!alloc) return DataPtr();

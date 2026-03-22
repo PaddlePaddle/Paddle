@@ -23,6 +23,14 @@
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <c10/cuda/CUDAFunctions.h>
 #include <c10/cuda/CUDAGuard.h>
+#include "paddle/phi/backends/gpu/gpu_info.h"
+
+// Forward-declare getCUDADeviceAllocator to avoid include-order conflicts
+// between ATen/cuda/CUDAContextLight.h (defines at::cuda::is_available inline)
+// and torch/cuda.h (adds `using torch::cuda::is_available` to at::cuda).
+namespace at::cuda {
+c10::Allocator* getCUDADeviceAllocator();
+}  // namespace at::cuda
 #endif
 #include "ATen/ATen.h"
 #include "gtest/gtest.h"
@@ -508,3 +516,135 @@ TEST(StorageTest, DefaultConstructedStorageUseCount) {
   ASSERT_FALSE(storage.unique());
   ASSERT_FALSE(storage.valid());
 }
+
+// ---------------------------------------------------------------------------
+// Reference Semantics Tests
+//
+// These tests verify that Storage copies share a single underlying
+// StorageImpl, so mutations via set_data_ptr*(), set_nbytes(), and
+// mutable_data_ptr() are visible through all handles — matching the
+// observable contract of PyTorch's c10::Storage (which wraps a shared
+// StorageImpl via intrusive_ptr).
+// ---------------------------------------------------------------------------
+
+TEST(StorageTest, ReferenceSemanticsMutationVisibleThroughCopy) {
+  // After copying a Storage, writing to one handle is visible via the other.
+  at::TensorBase tensor1 = at::ones({2, 3}, at::kFloat);
+  at::TensorBase tensor2 = at::ones({4, 5}, at::kFloat);
+
+  c10::Storage storage_a = tensor1.storage();
+  c10::Storage storage_b = storage_a;  // shares StorageImpl
+
+  ASSERT_EQ(storage_a.data(), storage_b.data())
+      << "Copies should start with the same data pointer";
+
+  // Replace allocation via the shared_ptr overload
+  auto new_alloc = tensor2.storage().allocation();
+  storage_a.set_data_ptr_noswap(new_alloc);
+
+  ASSERT_EQ(storage_b.allocation(), new_alloc)
+      << "storage_b should see the allocation change made through storage_a";
+  ASSERT_EQ(storage_a.data(), storage_b.data())
+      << "Both handles should point to the same data after mutation";
+}
+
+TEST(StorageTest, ReferenceSemanticsMutableDataPtrShared) {
+  // mutable_data_ptr() returns a reference into the shared StorageImpl,
+  // so the reference obtained from one handle is the same object as the
+  // data_ptr() accessed through its copy.
+  at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
+
+  c10::Storage storage_a = tensor.storage();
+  c10::Storage storage_b = storage_a;
+
+  c10::DataPtr& dp_via_a = storage_a.mutable_data_ptr();
+
+  ASSERT_EQ(&dp_via_a, &storage_b.data_ptr())
+      << "mutable_data_ptr() from one handle should be the same object as "
+         "data_ptr() from another handle that shares the StorageImpl";
+}
+
+TEST(StorageTest, ReferenceSemanticsMutationNotVisibleAcrossIndependent) {
+  // Two Storage objects constructed independently (not by copying one from the
+  // other) do NOT share a StorageImpl, so mutations through one do not affect
+  // the other.
+  at::TensorBase tensor1 = at::ones({2, 3}, at::kFloat);
+  at::TensorBase tensor2 = at::ones({4, 5}, at::kFloat);
+
+  // Two independently-created Storages — different StorageImpls
+  c10::Storage storage_a = tensor1.storage();
+  c10::Storage storage_b = tensor2.storage();
+
+  const void* original_b_data = storage_b.data();
+  auto new_alloc = tensor2.storage().allocation();
+  storage_a.set_data_ptr_noswap(new_alloc);
+
+  ASSERT_EQ(storage_b.data(), original_b_data)
+      << "Independently-constructed Storage should not be affected by "
+         "mutations to another Storage";
+}
+
+TEST(StorageTest, ReferenceSemanticsTwoIndependentStorageCalls) {
+  // Each call to tensor.storage() creates a fresh StorageImpl, so the two
+  // resulting handles are independent and mutations do not propagate.
+  at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
+  at::TensorBase tensor2 = at::ones({4, 5}, at::kFloat);
+
+  c10::Storage storage_b = tensor.storage();
+  c10::Storage storage_c = tensor.storage();  // separate call → separate impl
+
+  const void* original_c_data = storage_c.data();
+  auto new_alloc = tensor2.storage().allocation();
+  storage_b.set_data_ptr_noswap(new_alloc);
+
+  ASSERT_EQ(storage_c.data(), original_c_data)
+      << "Two Storage handles from separate storage() calls should not share "
+         "state";
+}
+
+TEST(StorageTest, ReferenceSemanticsSetNbytesVisibleThroughCopy) {
+  // set_nbytes() on one handle is visible through its copy.
+  at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
+
+  c10::Storage storage_a = tensor.storage();
+  c10::Storage storage_b = storage_a;
+
+  size_t new_size = 42;
+  storage_a.set_nbytes(new_size);
+
+  ASSERT_EQ(storage_b.nbytes(), new_size)
+      << "set_nbytes() change should be visible through all copies";
+}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+TEST(StorageTest, CUDAAllocatorZeroBytePreservesDevice) {
+  // getCUDADeviceAllocator()->allocate(0) must return a DataPtr whose device
+  // is the current CUDA device, not a default-constructed CPU DataPtr.
+  if (!at::cuda::is_available()) {
+    return;  // No CUDA device, skip
+  }
+
+  c10::Allocator* alloc = at::cuda::getCUDADeviceAllocator();
+  ASSERT_NE(alloc, nullptr);
+
+  c10::DataPtr dp = alloc->allocate(0);
+
+  // Pointer should be null for zero-byte allocation
+  ASSERT_EQ(dp.get(), nullptr)
+      << "Zero-byte allocation should return null pointer";
+
+  // Device type must be CUDA (or HIP), not CPU
+#ifdef PADDLE_WITH_HIP
+  ASSERT_EQ(dp.device().type(), c10::DeviceType::HIP)
+      << "Zero-byte CUDA allocator DataPtr should carry HIP device type";
+#else
+  ASSERT_EQ(dp.device().type(), c10::DeviceType::CUDA)
+      << "Zero-byte CUDA allocator DataPtr should carry CUDA device type";
+#endif
+
+  // Device index should match the current device
+  int current_device = phi::backends::gpu::GetCurrentDeviceId();
+  ASSERT_EQ(static_cast<int>(dp.device().index()), current_device)
+      << "Zero-byte DataPtr should carry the current CUDA device index";
+}
+#endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
