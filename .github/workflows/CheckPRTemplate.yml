@@ -36,24 +36,25 @@ jobs:
           GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BRANCH: ${{ github.base_ref }}
         run: |
-          python3 tools/CheckPRTemplate.py; EXCODE=$?
+          set +e
+          python3 tools/CheckPRTemplate.py
+          EXCODE=$?
+          set -e
           echo "EXCODE: $EXCODE"
           echo "ipipe_log_param_EXCODE: $EXCODE"
-          set +x
           if [[ "$EXCODE" != "0" ]];then
             echo -e "######################################################"
             echo -e "If you encounter a situation where the PR template does not match the error message, please use the following link to update your PR: [  https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/.github/PULL_REQUEST_TEMPLATE.md ]"
-            echo -e "##ReferenceDocumentation: ##"
+            echo -e "## Reference Documentation: ##"
             echo -e "[ https://github.com/PaddlePaddle/Paddle/wiki/PULL-REQUEST-TEMPLATE--REFERENCE ]"
             echo -e "[ https://github.com/PaddlePaddle/Paddle/wiki/paddle_ci_manual ]"
             echo -e "######################################################"
+            exit $EXCODE
           fi
-          [[ $EXCODE -eq 0 ]] && {
-            export method=$method
-            echo $method
-            set +x
-            source ~/.icafe
-            wget -q --no-check-certificate https://paddle-qa.bj.bcebos.com/baidu/cloud/modify_icafe.py
-            set -x
-            python3 modify_icafe.py
-          }
+          export method=$method
+          echo $method
+          set +x
+          source ~/.icafe
+          wget -q --no-check-certificate https://paddle-qa.bj.bcebos.com/baidu/cloud/modify_icafe.py
+          set -x
+          python3 modify_icafe.py
