@@ -86,6 +86,41 @@ TEST(StorageTest, StorageSharing) {
   ASSERT_FALSE(storage2.unique());
 }
 
+TEST(StorageTest, StorageDataPtrFollowsMutation) {
+  // AC-3: TensorBase::data_ptr() reflects mutations made via
+  // Storage::set_data_ptr_noswap on the same wrapper, and on a copy wrapper
+  // after its storage() has been called to establish active_storage_.
+  at::TensorBase tensor1 = at::ones({2, 3}, at::kFloat);
+  at::TensorBase tensor2 = tensor1;  // same underlying DenseTensor
+  at::TensorBase new_tensor = at::ones({4, 5}, at::kFloat);
+
+  // Calling storage() sets active_storage_ on tensor1.
+  c10::Storage storage = tensor1.storage();
+  const void* original_ptr = storage.data();
+
+  // Redirect the storage to a fresh allocation.
+  auto new_alloc = new_tensor.storage().allocation();
+  void* new_ptr = new_alloc->ptr();
+  storage.set_data_ptr_noswap(new_alloc);
+
+  ASSERT_NE(new_ptr, original_ptr) << "Precondition: new allocation differs";
+
+  // tensor1.data_ptr() must follow the mutation: active_storage_ is live and
+  // data_ptr_ was updated, so it is returned directly.
+  ASSERT_EQ(tensor1.data_ptr(), new_ptr)
+      << "tensor1.data_ptr() must reflect set_data_ptr_noswap mutation";
+
+  // tensor2 shares the same underlying DenseTensor, so its storage() call
+  // hits the TensorStorageRegistry cache and returns the already-mutated
+  // StorageImpl.  Afterward, tensor2.data_ptr() must also reflect the change.
+  c10::Storage storage2 = tensor2.storage();
+  ASSERT_EQ(storage2.data(), new_ptr)
+      << "storage2 obtained after mutation must already carry the new pointer";
+  ASSERT_EQ(tensor2.data_ptr(), new_ptr)
+      << "tensor2.data_ptr() must reflect mutation after storage() establishes "
+         "active_storage_";
+}
+
 TEST(StorageTest, StorageOffsetAPI) {
   // Test storage_offset() API
   at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
