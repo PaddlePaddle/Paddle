@@ -146,7 +146,7 @@ class PADDLE_API TensorBase {
   // tensor.data_ptr() stays consistent with tensor.storage().data().
   void* data_ptr() const {
     if (active_storage_) {
-      if (void* p = active_storage_->data_ptr_.get()) return p;
+      return active_storage_->data_ptr_.get();
     }
     return const_cast<void*>(tensor_.data());
   }

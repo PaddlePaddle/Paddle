@@ -157,7 +157,7 @@ TEST(StorageTest, StorageUseCountIncludesTensorRef) {
   c10::Storage storage = tensor.storage();
 
   // tensor.active_storage_ contributes 1, `storage` contributes 1.
-  ASSERT_EQ(storage.use_count(), 2u)
+  ASSERT_EQ(storage.use_count(), 2)
       << "use_count() must include the tensor's own StorageImpl reference";
   ASSERT_FALSE(storage.unique())
       << "unique() must be false because tensor also holds a reference";
