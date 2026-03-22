@@ -44,10 +44,12 @@
 // the same c10::StorageImpl, matching PyTorch's reference semantics where
 // TensorBase::storage() always returns the same StorageImpl for a given tensor.
 //
-// A weak_ptr is used so that the StorageImpl is destroyed as soon as the last
-// c10::Storage handle drops its reference, with no permanent retention by the
-// registry itself.  Stale entries (expired weak_ptr or mismatched holder) are
-// silently replaced on next access.
+// The registry itself holds only a weak_ptr so it does not extend the lifetime
+// of the StorageImpl.  The TensorBase's active_storage_ member holds a strong
+// reference, keeping the StorageImpl alive (and any mutations made via
+// set_data_ptr_noswap() persistent) as long as the TensorBase is alive.
+// Stale entries (expired weak_ptr or mismatched holder) are replaced on next
+// access.
 namespace at::detail {
 
 struct TensorStorageRegistry {
@@ -143,8 +145,8 @@ class PADDLE_API TensorBase {
   // set_data_ptr_noswap), the mutated pointer is returned so that
   // tensor.data_ptr() stays consistent with tensor.storage().data().
   void* data_ptr() const {
-    if (auto impl = active_storage_.lock()) {
-      if (void* p = impl->data_ptr_.get()) return p;
+    if (active_storage_) {
+      if (void* p = active_storage_->data_ptr_.get()) return p;
     }
     return const_cast<void*>(tensor_.data());
   }
@@ -551,10 +553,12 @@ class PADDLE_API TensorBase {
 
  protected:
   PaddleTensor tensor_;
-  // Weak reference to the active StorageImpl for this wrapper.  Set whenever
-  // storage() is called so that data_ptr() can reflect mutations made through
-  // the returned Storage handle without a global registry lookup on every call.
-  mutable std::weak_ptr<c10::StorageImpl> active_storage_;
+  // Strong reference to the active StorageImpl for this wrapper.  Set whenever
+  // storage() is called so that (1) the tensor itself counts as a storage owner
+  // in use_count(), matching PyTorch where TensorImpl holds a Storage handle,
+  // and (2) mutations via set_data_ptr_noswap() persist in active_storage_->
+  // data_ptr_ even after all external Storage handles are released.
+  mutable std::shared_ptr<c10::StorageImpl> active_storage_;
 };
 
 }  // namespace at

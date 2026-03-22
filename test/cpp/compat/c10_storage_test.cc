@@ -60,9 +60,11 @@ TEST(StorageTest, BasicStorageAPIs) {
   ASSERT_NE(alloc, nullptr);
   ASSERT_EQ(alloc->size(), expected_nbytes);
 
-  // Only `storage` holds the StorageImpl here, so use_count == 1.
-  ASSERT_TRUE(storage.unique());
-  ASSERT_EQ(storage.use_count(), 1);
+  // `tensor` holds one reference via active_storage_, and `storage` holds
+  // another, so use_count == 2.  This matches PyTorch where TensorImpl itself
+  // always holds a Storage handle that participates in use_count.
+  ASSERT_FALSE(storage.unique());
+  ASSERT_EQ(storage.use_count(), 2);
 }
 
 TEST(StorageTest, StorageSharing) {
@@ -76,10 +78,10 @@ TEST(StorageTest, StorageSharing) {
   // Test that storages are the same
   ASSERT_EQ(storage1.allocation(), storage2.allocation());
 
-  // storage1 and storage2 are two handles backed by the same StorageImpl
-  // (via TensorStorageRegistry), so both report use_count == 2.
-  ASSERT_EQ(storage1.use_count(), 2);
-  ASSERT_EQ(storage2.use_count(), 2);
+  // tensor1.active_storage_, tensor2.active_storage_, storage1, and storage2
+  // all hold the same StorageImpl, so use_count == 4.
+  ASSERT_EQ(storage1.use_count(), 4);
+  ASSERT_EQ(storage2.use_count(), 4);
 
   // Test unique() is false
   ASSERT_FALSE(storage1.unique());
@@ -119,6 +121,46 @@ TEST(StorageTest, StorageDataPtrFollowsMutation) {
   ASSERT_EQ(tensor2.data_ptr(), new_ptr)
       << "tensor2.data_ptr() must reflect mutation after storage() establishes "
          "active_storage_";
+}
+
+// Regression test (RT-1): After all external Storage handles are released,
+// mutations via set_data_ptr_noswap() must persist because TensorBase holds
+// a strong reference to the StorageImpl via active_storage_.
+TEST(StorageTest, StoragePersistsAfterHandleDestruction) {
+  at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
+  at::TensorBase src_tensor = at::ones({4, 5}, at::kFloat);
+
+  void* new_ptr;
+  {
+    c10::Storage storage = tensor.storage();
+    auto new_alloc = src_tensor.storage().allocation();
+    new_ptr = new_alloc->ptr();
+    storage.set_data_ptr_noswap(new_alloc);
+    // `storage` goes out of scope here; tensor.active_storage_ still holds
+    // a strong ref, so the StorageImpl and the mutated data_ptr_ survive.
+  }
+
+  ASSERT_EQ(tensor.data_ptr(), new_ptr)
+      << "tensor.data_ptr() must persist after all external Storage handles "
+         "are gone";
+
+  c10::Storage new_storage = tensor.storage();
+  ASSERT_EQ(new_storage.data(), new_ptr)
+      << "Fresh tensor.storage() must reflect the persisted mutation";
+}
+
+// Regression test (RT-2): tensor.storage() must count the tensor's own
+// StorageImpl ownership in use_count(), matching PyTorch where TensorImpl
+// holds a Storage handle that participates in use_count.
+TEST(StorageTest, StorageUseCountIncludesTensorRef) {
+  at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
+  c10::Storage storage = tensor.storage();
+
+  // tensor.active_storage_ contributes 1, `storage` contributes 1.
+  ASSERT_EQ(storage.use_count(), 2u)
+      << "use_count() must include the tensor's own StorageImpl reference";
+  ASSERT_FALSE(storage.unique())
+      << "unique() must be false because tensor also holds a reference";
 }
 
 TEST(StorageTest, StorageOffsetAPI) {
