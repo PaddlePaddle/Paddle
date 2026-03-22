@@ -61,10 +61,16 @@ TEST(StorageTest, BasicStorageAPIs) {
   ASSERT_EQ(alloc->size(), expected_nbytes);
 
   // Test unique() and use_count()
-  // Note: In PaddlePaddle, DenseTensor holds a reference, Storage holds one,
-  // and there may be additional internal references during tensor creation
+  // Reference breakdown (allocation-backed path):
+  //  1. DenseTensor::holder_             (DenseTensor's internal reference)
+  //  2. TensorBase::storage_holder_cache_ (cache introduced for storage()
+  //  reference semantics)
+  //  3. StorageImpl::allocation_          (shared between
+  //  tensor.cached_storage_ and `storage`)
+  //  4. alloc (storage.allocation() above, still in scope)
+  // Total: 4
   ASSERT_FALSE(storage.unique());
-  ASSERT_EQ(storage.use_count(), 3);
+  ASSERT_EQ(storage.use_count(), 4);
 }
 
 TEST(StorageTest, StorageSharing) {
@@ -79,13 +85,20 @@ TEST(StorageTest, StorageSharing) {
   ASSERT_EQ(storage1.allocation(), storage2.allocation());
 
   // Test use_count
-  // Note: In PaddlePaddle, the count includes:
-  // 1. DenseTensor's internal holder_
-  // 2. storage1's allocation_
-  // 3. storage2's allocation_
-  // Total: 3
-  ASSERT_EQ(storage1.use_count(), 3);
-  ASSERT_EQ(storage2.use_count(), 3);
+  // Reference breakdown (allocation-backed path, both tensors share same
+  // DenseTensor):
+  //  1. DenseTensor::holder_               (one shared internal reference)
+  //  2. tensor1.storage_holder_cache_      (cache for tensor1's storage()
+  //  reference semantics)
+  //  3. tensor1.cached_storage_ impl->allocation_ (shared StorageImpl with
+  //  `storage1`)
+  //  4. tensor2.storage_holder_cache_      (cache for tensor2's storage()
+  //  reference semantics)
+  //  5. tensor2.cached_storage_ impl->allocation_ (shared StorageImpl with
+  //  `storage2`)
+  // Total: 5
+  ASSERT_EQ(storage1.use_count(), 5);
+  ASSERT_EQ(storage2.use_count(), 5);
 
   // Test unique() is false
   ASSERT_FALSE(storage1.unique());
@@ -649,5 +662,20 @@ TEST(StorageTest, CUDAAllocatorZeroBytePreservesDevice) {
   int current_device = phi::backends::gpu::GetCurrentDeviceId();
   ASSERT_EQ(static_cast<int>(dp.device().index()), current_device)
       << "Zero-byte DataPtr should carry the current CUDA device index";
+}
+#endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+TEST(StorageTest, CUDAAllocatorRawDeleterIsNull) {
+  // PaddleCUDAAllocatorAdapter::raw_deleter() must return nullptr because the
+  // c10::Allocator raw API contract requires get()==get_context() in the
+  // returned DataPtr, but our adapter returns data=device_ptr,
+  // context=phi::Allocation*, which violates that contract.
+  // Returning nullptr signals that raw_allocate/raw_deallocate are unsafe.
+  c10::Allocator* alloc = at::cuda::getCUDADeviceAllocator();
+  ASSERT_NE(alloc, nullptr);
+  ASSERT_EQ(alloc->raw_deleter(), nullptr)
+      << "PaddleCUDAAllocatorAdapter::raw_deleter() must return nullptr "
+         "because get() != get_context() in its allocate() DataPtr";
 }
 #endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
