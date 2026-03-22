@@ -144,11 +144,11 @@ struct hash<c10::AliasInfo> {
       after_set_hash_seed = after_set_hash_seed ^ symbol_hash;
     }
 
-    hash_combine(hash, before_set_hash_seed);
-    hash_combine(hash, after_set_hash_seed);
+    hash = hash_combine(hash, before_set_hash_seed);
+    hash = hash_combine(hash, after_set_hash_seed);
     for (auto& e : aliasInfo.containedTypes()) {
       auto contained_type_hash = std::hash<c10::AliasInfo>()(e);
-      hash_combine(hash, contained_type_hash);
+      hash = hash_combine(hash, contained_type_hash);
     }
     return hash;
   }

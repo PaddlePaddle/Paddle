@@ -14,6 +14,9 @@
 
 #include <torch/library.h>
 
+#include <unordered_map>
+#include <unordered_set>
+
 #include "gtest/gtest.h"
 #include "test/cpp/utils/exception_test_utils.h"
 #include "torch/csrc/jit/schema_type_parser.h"
@@ -72,7 +75,7 @@ void ExpectTypeText(const c10::Type& type,
 
 TEST(schema_parser_type_test, ArgumentCopyAssignmentCoversAliasBranches) {
   // Reason: cover Argument::operator=(const Argument&) alias branches, plus
-  // AliasInfo stream/hash/equality branches in one place to reduce test split.
+  // AliasInfo stream/equality branches in one place to reduce test split.
   c10::AliasInfo alias(/*is_write=*/true, std::set<std::string>{"a"}, {"b"});
   c10::Argument assigned_arg;
   c10::Argument with_alias =
@@ -163,19 +166,54 @@ TEST(schema_parser_type_test, ArgumentCopyAssignmentCoversAliasBranches) {
   std::ostringstream no_arrow_stream;
   no_arrow_stream << no_arrow;
   EXPECT_EQ(no_arrow_stream.str(), "(z)");
+}
 
+TEST(schema_parser_type_test, AliasInfoHashWorksInUnorderedContainers) {
   EXPECT_NE(::hash_combine(1U, 2U), 1U);
 
+  c10::AliasInfo child(
+      /*is_write=*/false, std::set<std::string>{"inner"}, {"inner"});
+  c10::AliasInfo alias(
+      /*is_write=*/true, std::set<std::string>{"a", "b"}, {"c", "d"});
+  alias.addContainedType(child);
+
+  c10::AliasInfo same_alias(
+      /*is_write=*/true, std::set<std::string>{"b", "a"}, {"d", "c"});
+  same_alias.addContainedType(c10::AliasInfo(
+      /*is_write=*/false, std::set<std::string>{"inner"}, {"inner"}));
+
+  c10::AliasInfo different_alias(
+      /*is_write=*/true, std::set<std::string>{"a", "b"}, {"c", "d"});
+  different_alias.addContainedType(c10::AliasInfo(
+      /*is_write=*/true, std::set<std::string>{"inner"}, {"inner"}));
+
   std::hash<c10::AliasInfo> hasher;
-  const auto hash_alias = hasher(rich_alias);
+  const auto hash_alias = hasher(alias);
   const auto hash_same_alias = hasher(same_alias);
-  const auto hash_different_write = hasher(different_write);
+  const auto hash_different_alias = hasher(different_alias);
   EXPECT_EQ(hash_alias, hash_same_alias);
-  EXPECT_NE(hash_alias, hash_different_write);
+  EXPECT_NE(hash_alias, hash_different_alias);
 
   // Also hit zero-sized before/after/contained loops in std::hash<AliasInfo>.
   const auto hash_empty = hasher(c10::AliasInfo());
   EXPECT_NE(hash_empty, hash_alias);
+
+  std::unordered_set<c10::AliasInfo> alias_set;
+  alias_set.insert(alias);
+  alias_set.insert(same_alias);
+  alias_set.insert(different_alias);
+  EXPECT_EQ(alias_set.size(), 2UL);
+  EXPECT_EQ(alias_set.count(alias), 1UL);
+  EXPECT_EQ(alias_set.count(same_alias), 1UL);
+  EXPECT_EQ(alias_set.count(different_alias), 1UL);
+
+  std::unordered_map<c10::AliasInfo, int> alias_map;
+  alias_map.emplace(alias, 1);
+  ++alias_map[same_alias];
+  ++alias_map[different_alias];
+  EXPECT_EQ(alias_map.size(), 2UL);
+  EXPECT_EQ(alias_map.at(alias), 2);
+  EXPECT_EQ(alias_map.at(different_alias), 1);
 }
 
 TEST(schema_parser_type_test, TorchCodecSchemasSmoke) {
