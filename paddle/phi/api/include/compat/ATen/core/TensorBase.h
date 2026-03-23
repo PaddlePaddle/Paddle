@@ -29,8 +29,6 @@
 #include <algorithm>
 #include <iostream>
 #include <memory>
-#include <mutex>
-#include <unordered_map>
 #include <vector>
 #include "paddle/common/layout.h"
 #include "paddle/phi/api/include/api.h"
@@ -38,44 +36,15 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 
-// Global registry that maps a phi::TensorBase* (the tensor's impl pointer) to
-// a weak reference to its compat StorageImpl.  All at::TensorBase wrappers
-// that share the same underlying paddle::Tensor::impl() will therefore share
-// the same c10::StorageImpl, matching PyTorch's reference semantics where
-// TensorBase::storage() always returns the same StorageImpl for a given tensor.
-//
-// The registry itself holds only a weak_ptr so it does not extend the lifetime
-// of the StorageImpl.  The TensorBase's active_storage_ member holds a strong
-// reference, keeping the StorageImpl alive (and any mutations made via
-// set_data_ptr_noswap() persistent) as long as the TensorBase is alive.
-// Stale entries (expired weak_ptr or mismatched holder) are replaced on next
-// access.
-namespace at::detail {
-
-struct TensorStorageRegistry {
-  struct Entry {
-    phi::Allocation* original_alloc;  // holder.get() when entry was made
-    std::weak_ptr<c10::StorageImpl> impl;
-  };
-
-  std::mutex mu;
-  std::unordered_map<phi::TensorBase*, Entry> table;
-
-  static TensorStorageRegistry& get() {
-    static TensorStorageRegistry inst;
-    return inst;
-  }
-};
-
-}  // namespace at::detail
-
 namespace at {
 using PaddleTensor = paddle::Tensor;
 
 class PADDLE_API TensorBase {
  public:
   TensorBase() = default;
-  TensorBase(const PaddleTensor& tensor) : tensor_(tensor){};  // NOLINT
+  explicit TensorBase(const PaddleTensor& tensor) : tensor_(tensor) {
+    InitStorage();
+  }
   TensorBase(const TensorBase&) = default;
   TensorBase(TensorBase&&) noexcept = default;
   ~TensorBase() noexcept = default;
@@ -83,12 +52,12 @@ class PADDLE_API TensorBase {
 #if defined(_MSC_VER)
   TensorBase& operator=(const TensorBase& x) & {
     tensor_ = x.tensor_;
-    active_storage_ = x.active_storage_;
+    storage_ = x.storage_;
     return *this;
   }
   TensorBase& operator=(TensorBase&& x) & noexcept {
     tensor_ = std::move(x.tensor_);
-    active_storage_ = std::move(x.active_storage_);
+    storage_ = std::move(x.storage_);
     return *this;
   }
 #else
@@ -140,16 +109,8 @@ class PADDLE_API TensorBase {
     return backend_str + scalar_type_str + "Type";
   }
 
-  // Returns the tensor's data pointer.  If a StorageImpl was previously
-  // obtained via storage() and subsequently mutated (e.g. via
-  // set_data_ptr_noswap), the mutated pointer is returned so that
-  // tensor.data_ptr() stays consistent with tensor.storage().data().
-  void* data_ptr() const {
-    if (active_storage_) {
-      return active_storage_->data_ptr_.get();
-    }
-    return const_cast<void*>(tensor_.data());
-  }
+  // Returns the tensor's data pointer.
+  void* data_ptr() const { return const_cast<void*>(tensor_.data()); }
   template <typename T>
   T* data_ptr() const {
     return static_cast<T*>(data_ptr());
@@ -421,30 +382,24 @@ class PADDLE_API TensorBase {
     return c10::SymInt(storage_offset());
   }
 
-  bool has_storage() const { return tensor_.defined(); }
+  bool has_storage() const { return tensor_.defined() && storage_.valid(); }
 
   // Returns a Storage handle backed by the shared StorageImpl for this tensor.
-  // See TensorStorageRegistry at the top of this file for the sharing contract.
-  const Storage storage() const {
+  const c10::Storage& storage() const { return storage_; }
+
+  bool is_alias_of(const at::TensorBase& other) const {
+    return this->storage().allocation() == other.storage().allocation();
+  }
+
+ private:
+  void InitStorage() {
     auto dense = std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl());
-    if (!dense) return Storage();
-
-    phi::TensorBase* key = dense.get();
-    auto holder = dense->Holder();
-
-    auto& reg = at::detail::TensorStorageRegistry::get();
-    std::lock_guard<std::mutex> lock(reg.mu);
-
-    auto it = reg.table.find(key);
-    if (it != reg.table.end() && it->second.original_alloc == holder.get()) {
-      if (auto shared = it->second.impl.lock()) {
-        active_storage_ = shared;
-        return Storage(shared);
-      }
+    if (!dense) {
+      storage_ = c10::Storage();
+      return;
     }
 
-    // Cache miss or stale entry: build a new StorageImpl from the current
-    // holder and register it.
+    auto holder = dense->Holder();
     auto new_impl = std::make_shared<c10::StorageImpl>();
     if (holder) {
       new_impl->allocation_ = holder;
@@ -452,15 +407,10 @@ class PADDLE_API TensorBase {
       new_impl->data_ptr_ =
           c10::DataPtr(holder->ptr(), c10::Device(holder->place()));
     }
-    reg.table[key] = {holder.get(), std::weak_ptr<c10::StorageImpl>(new_impl)};
-    active_storage_ = new_impl;
-    return Storage(std::move(new_impl));
+    storage_ = c10::Storage(new_impl);
   }
 
-  bool is_alias_of(const at::TensorBase& other) const {
-    return this->storage().allocation() == other.storage().allocation();
-  }
-
+ public:
   // Return a `TensorAccessor` for CPU `Tensor`s. You have to specify scalar
   // type and
   // dimension.
@@ -553,12 +503,7 @@ class PADDLE_API TensorBase {
 
  protected:
   PaddleTensor tensor_;
-  // Strong reference to the active StorageImpl for this wrapper.  Set whenever
-  // storage() is called so that (1) the tensor itself counts as a storage owner
-  // in use_count(), matching PyTorch where TensorImpl holds a Storage handle,
-  // and (2) mutations via set_data_ptr_noswap() persist in active_storage_->
-  // data_ptr_ even after all external Storage handles are released.
-  mutable std::shared_ptr<c10::StorageImpl> active_storage_;
+  mutable c10::Storage storage_;
 };
 
 }  // namespace at
