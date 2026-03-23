@@ -388,9 +388,9 @@ void FlashAttnV3BaseKernel(
     }
   } else {
     if (!is_varlen_q) {
-      out->Resize(make_ddim({batch_size, seqlen_q, num_heads, head_size_v}));
+      out->Resize({batch_size, seqlen_q, num_heads, head_size_v});
     } else {
-      out->Resize(make_ddim({total_q, num_heads, head_size_v}));
+      out->Resize({total_q, num_heads, head_size_v});
     }
     if (q_type == phi::DataType::FLOAT8_E4M3FN) {
       dev_ctx.template Alloc<phi::bfloat16>(out);
@@ -407,9 +407,9 @@ void FlashAttnV3BaseKernel(
   int const seqlen_k_rounded = round_multiple(seqlen_k, 128);
 
   if (!is_varlen_q) {
-    softmax_lse->Resize(make_ddim({batch_size, num_heads, seqlen_q}));
+    softmax_lse->Resize({batch_size, num_heads, seqlen_q});
   } else {
-    softmax_lse->Resize(make_ddim({num_heads, total_q}));
+    softmax_lse->Resize({num_heads, total_q});
   }
   dev_ctx.template Alloc<float>(softmax_lse);
 
@@ -1538,9 +1538,9 @@ void FlashMaskV2BaseKernel(
     }
   } else {
     if (!is_varlen_q) {
-      out->Resize(make_ddim({batch_size, seqlen_q, num_heads, head_size_v}));
+      out->Resize({batch_size, seqlen_q, num_heads, head_size_v});
     } else {
-      out->Resize(make_ddim({total_q, num_heads, head_size_v}));
+      out->Resize({total_q, num_heads, head_size_v});
     }
     if (q_type == phi::DataType::FLOAT8_E4M3FN) {
       dev_ctx.template Alloc<phi::bfloat16>(out);
@@ -1557,9 +1557,9 @@ void FlashMaskV2BaseKernel(
   int const seqlen_k_rounded = round_multiple(seqlen_k, 128);
 
   if (!is_varlen_q) {
-    softmax_lse->Resize(make_ddim({batch_size, num_heads, seqlen_q}));
+    softmax_lse->Resize({batch_size, num_heads, seqlen_q});
   } else {
-    softmax_lse->Resize(make_ddim({num_heads, total_q}));
+    softmax_lse->Resize({num_heads, total_q});
   }
   dev_ctx.template Alloc<float>(softmax_lse);
 

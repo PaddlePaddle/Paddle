@@ -265,7 +265,7 @@ struct SelectedRowsSumTo<CPUContext, T> {
     std::vector<int64_t> in2_rows;
     in2_rows.reserve(in2_rows.size() + size);
     for (auto item : input1) {
-      const phi::Vector<int64_t>& in_rows = item->rows();
+      const Vector<int64_t>& in_rows = item->rows();
       in2_rows.insert(in2_rows.end(), in_rows.begin(), in_rows.end());
     }
     input2->set_rows(in2_rows);
@@ -661,7 +661,7 @@ struct MergeAdd<XPUContext, T> {
                   const SelectedRows& input,
                   SelectedRows* output,
                   const bool sorted_result = false) {
-    phi::Vector<int64_t> input_rows(input.rows());
+    Vector<int64_t> input_rows(input.rows());
     if (input_rows.size() == 0) {
       return;
     }

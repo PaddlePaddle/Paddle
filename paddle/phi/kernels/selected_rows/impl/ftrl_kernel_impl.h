@@ -22,10 +22,8 @@
 namespace phi {
 namespace sr {
 
-template <typename T,
-          int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = EigenVector<T, MajorType, IndexType>;
+template <typename T, int MajorType = Eigen::RowMajor>
+using EigenVector = EigenVector<T, MajorType>;
 
 template <typename T>
 class SparseFTRLFunctor {

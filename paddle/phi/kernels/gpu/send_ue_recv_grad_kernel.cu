@@ -43,7 +43,7 @@ void CalculateXEGradForMinMax(const Context& dev_ctx,
                               T* e_grad,
                               const DenseTensor* out = nullptr) {
   const T* out_data = out->data<T>();
-  const auto& bcast_info = phi::CalcBCastInfo(x_dims, e_dims);
+  const auto& bcast_info = CalcBCastInfo(x_dims, e_dims);
   thrust::device_vector<int64_t> l_bcastoff, r_bcastoff;
   if (bcast_info.use_bcast) {
     CopyBCastOff(bcast_info, &l_bcastoff, &r_bcastoff);
@@ -136,7 +136,7 @@ void CalculateXGrad(const Context& dev_ctx,
                                                    slice_size,
                                                    functor);
       } else {
-        const auto& bcast_info = phi::CalcBCastInfo(out_grad_dims, e_dims);
+        const auto& bcast_info = CalcBCastInfo(out_grad_dims, e_dims);
         DenseTensor x_grad_v2 = EmptyLike<T, Context>(dev_ctx, out_grad_tensor);
         funcs::SetConstant<Context, T>()(dev_ctx, &x_grad_v2, T(0));
         T* x_grad_v2_data = x_grad_v2.data<T>();
@@ -171,7 +171,7 @@ void CalculateXGrad(const Context& dev_ctx,
 #endif
       }
     } else if (message_op == "MUL") {
-      const auto& bcast_info = phi::CalcBCastInfo(out_grad_dims, e_dims);
+      const auto& bcast_info = CalcBCastInfo(out_grad_dims, e_dims);
       thrust::device_vector<int64_t> l_bcastoff, r_bcastoff;
       if (bcast_info.use_bcast) {
         CopyBCastOff(bcast_info, &l_bcastoff, &r_bcastoff);
@@ -261,7 +261,7 @@ void CalculateXGrad(const Context& dev_ctx,
                                                    slice_size,
                                                    s_count);
       } else {
-        const auto& bcast_info = phi::CalcBCastInfo(out_grad_dims, e_dims);
+        const auto& bcast_info = CalcBCastInfo(out_grad_dims, e_dims);
         DenseTensor x_grad_v2 = EmptyLike<T, Context>(dev_ctx, out_grad_tensor);
         funcs::SetConstant<Context, T>()(dev_ctx, &x_grad_v2, T(0));
         T* x_grad_v2_data = x_grad_v2.data<T>();
@@ -294,7 +294,7 @@ void CalculateXGrad(const Context& dev_ctx,
 #endif
       }
     } else if (message_op == "MUL") {
-      const auto& bcast_info = phi::CalcBCastInfo(out_grad_dims, e_dims);
+      const auto& bcast_info = CalcBCastInfo(out_grad_dims, e_dims);
       thrust::device_vector<int64_t> l_bcastoff, r_bcastoff;
       if (bcast_info.use_bcast) {
         CopyBCastOff(bcast_info, &l_bcastoff, &r_bcastoff);
@@ -380,7 +380,7 @@ void CalculateEGrad(const Context& dev_ctx,
                     int64_t index_size,
                     T* e_grad,
                     const DenseTensor* dst_count = nullptr) {
-  const auto& bcast_info = phi::CalcBCastInfo(x_dims, e_dims);
+  const auto& bcast_info = CalcBCastInfo(x_dims, e_dims);
   thrust::device_vector<int64_t> l_bcastoff, r_bcastoff;
   if (bcast_info.use_bcast) {
     CopyBCastOff(bcast_info, &l_bcastoff, &r_bcastoff);

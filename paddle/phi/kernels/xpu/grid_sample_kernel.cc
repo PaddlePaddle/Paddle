@@ -89,7 +89,7 @@ void GridSampleKernel(const Context& dev_ctx,
           data_format));
     }
 
-    out->Resize(make_ddim({n, c, out_h, out_w}));
+    out->Resize({n, c, out_h, out_w});
     T* output_data = dev_ctx.template Alloc<T>(out);
 
     int r = xpu::grid_sample(dev_ctx.x_context(),
@@ -115,7 +115,7 @@ void GridSampleKernel(const Context& dev_ctx,
     int64_t out_h = grid.dims()[2];
     int64_t out_w = grid.dims()[3];
 
-    out->Resize(make_ddim({n, c, out_d, out_h, out_w}));
+    out->Resize({n, c, out_d, out_h, out_w});
     T* output_data = dev_ctx.template Alloc<T>(out);
 
     int r = xpu::grid_sample3d(dev_ctx.x_context(),

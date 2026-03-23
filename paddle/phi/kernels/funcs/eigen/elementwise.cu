@@ -18,14 +18,11 @@ namespace funcs {
 
 template <typename T>
 struct EigenAdd<Eigen::GpuDevice, T> {
-  using InType = Eigen::TensorMap<Eigen::TensorFixedSize<const T,
-                                                         Eigen::Sizes<>,
-                                                         Eigen::RowMajor,
-                                                         Eigen::DenseIndex>>;
-  using OutType = Eigen::TensorMap<Eigen::TensorFixedSize<T,
-                                                          Eigen::Sizes<>,
-                                                          Eigen::RowMajor,
-                                                          Eigen::DenseIndex>>;
+  using InType = Eigen::TensorMap<
+      Eigen::
+          TensorFixedSize<const T, Eigen::Sizes<>, Eigen::RowMajor, int64_t>>;
+  using OutType = Eigen::TensorMap<
+      Eigen::TensorFixedSize<T, Eigen::Sizes<>, Eigen::RowMajor, int64_t>>;
   static void Eval(const Eigen::GpuDevice& dev,
                    OutType out,
                    const InType& in,
@@ -41,10 +38,10 @@ template struct EigenAdd<Eigen::GpuDevice, int64_t>;
 
 template <typename T>
 struct EigenSub<Eigen::GpuDevice, T> {
-  using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using InType =
+      Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor, int64_t>>;
   using OutType =
-      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, int64_t>>;
   static void Eval(const Eigen::GpuDevice& dev,
                    OutType out,
                    const InType& left,
@@ -57,10 +54,10 @@ template struct EigenSub<Eigen::GpuDevice, float>;
 
 template <typename T>
 struct EigenDiv<Eigen::GpuDevice, T> {
-  using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using InType =
+      Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor, int64_t>>;
   using OutType =
-      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, int64_t>>;
   static void Eval(const Eigen::GpuDevice& dev,
                    OutType out,
                    const InType& in,

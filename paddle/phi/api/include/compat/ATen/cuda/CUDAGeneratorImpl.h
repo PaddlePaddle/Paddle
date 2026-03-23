@@ -19,11 +19,11 @@
 #pragma once
 
 #include <ATen/core/Generator.h>
-#include <c10/cuda/PhiloxCudaState.h>
+#include <ATen/cuda/PhiloxCudaState.h>
 
 #include <cstdint>
 #include <memory>
-#include <mutex>  // NOLINT(build/c++11)
+#include <mutex>
 #include <utility>
 #include <vector>
 
@@ -35,9 +35,6 @@ namespace at {
 // Forward declaration
 struct CUDAGeneratorImpl;
 
-// ---- Helper functions ------------------------------------------------------
-
-/// Resolve device_index: if < 0, use current GPU device.
 inline DeviceIndex resolve_device_index(DeviceIndex idx) {
   if (idx < 0) {
     return static_cast<DeviceIndex>(phi::backends::gpu::GetCurrentDeviceId());
@@ -45,31 +42,18 @@ inline DeviceIndex resolve_device_index(DeviceIndex idx) {
   return idx;
 }
 
-/**
- * CUDAGeneratorImpl — CUDA-specific GeneratorImpl backed by Paddle.
- *
- * Wraps phi::DefaultCUDAGenerator for the given device and exposes the
- * PyTorch-compatible Philox-based random number generator interface.
- */
 struct CUDAGeneratorImpl : public c10::GeneratorImpl {
-  // ------- constructors -----------------------------------------------------
-
-  /// Construct for a specific device (or current device if -1).
-  /// If use_default_gen is true, uses phi::DefaultCUDAGenerator (shared state).
-  /// If false, creates a new independent Generator instance.
   explicit CUDAGeneratorImpl(
       DeviceIndex device_index = -1,  // NOLINT(runtime/int)
       bool use_default_gen = true)
       : c10::GeneratorImpl(
-            c10::Device(c10::kCUDA, resolve_device(device_index)),
+            c10::Device(c10::kCUDA, resolve_device_index(device_index)),
             use_default_gen
-                ? get_default_paddle_gen(resolve_device(device_index))
-                : create_new_paddle_gen(resolve_device(device_index))),
+                ? get_default_paddle_gen(resolve_device_index(device_index))
+                : create_new_paddle_gen(resolve_device_index(device_index))),
         philox_offset_per_thread_(0) {}
 
   ~CUDAGeneratorImpl() override = default;
-
-  // ------- seed / offset (override base) ------------------------------------
 
   void set_current_seed(uint64_t seed) override {
     gen_->SetCurrentSeed(seed);
@@ -90,8 +74,6 @@ struct CUDAGeneratorImpl : public c10::GeneratorImpl {
 
   uint64_t get_offset() const override { return philox_offset_per_thread_; }
 
-  // ------- Philox -----------------------------------------------------------
-
   void set_philox_offset_per_thread(uint64_t offset) {
     philox_offset_per_thread_ = offset;
   }
@@ -100,21 +82,17 @@ struct CUDAGeneratorImpl : public c10::GeneratorImpl {
     return philox_offset_per_thread_;
   }
 
-  /// Generate a PhiloxCudaState and advance the internal offset.
   PhiloxCudaState philox_cuda_state(uint64_t increment) {
     PhiloxCudaState state(gen_->GetCurrentSeed(), philox_offset_per_thread_);
     philox_offset_per_thread_ += increment;
     return state;
   }
 
-  /// Legacy helper — returns (seed, offset) and advances offset.
   std::pair<uint64_t, uint64_t> philox_engine_inputs(uint64_t increment) {
     uint64_t offset = philox_offset_per_thread_;
     philox_offset_per_thread_ += increment;
     return {gen_->GetCurrentSeed(), offset};
   }
-
-  // ------- clone ------------------------------------------------------------
 
   c10::intrusive_ptr<c10::GeneratorImpl> clone() const override {
     auto new_gen = std::make_shared<phi::Generator>(gen_->GetCurrentSeed());
@@ -128,44 +106,27 @@ struct CUDAGeneratorImpl : public c10::GeneratorImpl {
     return impl;
   }
 
-  // ------- device_type (static) ---------------------------------------------
-
   static c10::DeviceType device_type() { return c10::kCUDA; }
 
  private:
   uint64_t philox_offset_per_thread_;
 
-  /// Resolve device_index: if < 0, use current GPU device.
-  static DeviceIndex resolve_device(DeviceIndex idx) {
-    return resolve_device_index(idx);
-  }
-
-  /// Get the default Paddle phi::Generator for the given device (shared state).
   static std::shared_ptr<phi::Generator> get_default_paddle_gen(
       DeviceIndex device_index) {
     return phi::DefaultCUDAGenerator(static_cast<int64_t>(device_index));
   }
 
-  /// Create a new independent Paddle phi::Generator for the given device.
   static std::shared_ptr<phi::Generator> create_new_paddle_gen(
       DeviceIndex /*device_index*/) {
-    // Create a new Generator with a random seed (similar to PyTorch behavior)
-    // Use default constructor which generates a random seed
     return std::make_shared<phi::Generator>();
   }
 };
 
-// ---- Free functions --------------------------------------------------------
-
 namespace cuda {
 namespace detail {
 
-/// Return a reference to the default CUDA Generator for `device_index`.
-/// If device_index < 0, uses the current CUDA device.
 inline const Generator& getDefaultCUDAGenerator(DeviceIndex device_index = -1) {
   auto idx = resolve_device_index(device_index);
-  // One Generator per device, lazily initialised.
-  // We use a function-local static vector guarded by call_once.
   static std::vector<Generator> generators;
   static std::once_flag init_flag;
   static int64_t num_devices = 0;
@@ -185,8 +146,6 @@ inline const Generator& getDefaultCUDAGenerator(DeviceIndex device_index = -1) {
   return generators[static_cast<size_t>(idx)];
 }
 
-/// Create a new (non-default) CUDA Generator for `device_index`.
-/// The created generator has independent state from the default generator.
 inline Generator createCUDAGenerator(DeviceIndex device_index = -1) {
   return Generator(c10::make_intrusive<CUDAGeneratorImpl>(
       device_index, /*use_default_gen=*/false));

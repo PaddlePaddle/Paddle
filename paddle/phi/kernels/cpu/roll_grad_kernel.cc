@@ -32,7 +32,7 @@ void RollGradKernel(const Context& dev_ctx,
     return;
   }
   std::vector<T> out_vec;
-  phi::TensorToVector(out_grad, dev_ctx, &out_vec);
+  TensorToVector(out_grad, dev_ctx, &out_vec);
 
   auto shifts_data = shifts.GetData();
   size_t nums = shifts_data.size();
@@ -50,7 +50,7 @@ void RollGradKernel(const Context& dev_ctx,
   }
 
   dev_ctx.template Alloc<T>(x_grad);
-  phi::TensorFromVector(out_vec, dev_ctx, x_grad);
+  TensorFromVector(out_vec, dev_ctx, x_grad);
   x_grad->Resize(out_grad.dims());
 }
 

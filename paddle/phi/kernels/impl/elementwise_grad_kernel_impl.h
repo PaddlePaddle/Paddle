@@ -48,7 +48,7 @@ void MixedPrecisionAddGradImpl(const Context& dev_ctx,
   } else if (x_grad == nullptr && y_grad != nullptr &&
              y_grad->dims() == out_grad.dims()) {
     VLOG(4) << "Mixed precision: only y_grad needed, no reduce";
-    phi::CastKernel<T>(dev_ctx, out_grad, y.dtype(), y_grad);
+    CastKernel<T>(dev_ctx, out_grad, y.dtype(), y_grad);
   } else {
     grad_func(dev_ctx, x, y, *out, out_grad, x_grad, y_grad, axis);
   }
