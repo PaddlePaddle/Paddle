@@ -25,7 +25,7 @@ namespace phi {
 // EigenDim converts DDim into Eigen::DSizes.
 template <int D>
 struct EigenDim {
-  using Type = Eigen::DSizes<Eigen::DenseIndex, D>;
+  using Type = Eigen::DSizes<int64_t, D>;
 
   static Type From(const DDim& dims) {
     PADDLE_ENFORCE_EQ(arity(dims),
@@ -44,17 +44,14 @@ struct EigenDim {
 };
 
 // Interpret phi::Tensor as EigenTensor and EigenConstTensor.
-template <typename T,
-          size_t D,
-          int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
+template <typename T, size_t D, int MajorType = Eigen::RowMajor>
 struct EigenTensor {
   // TODO(qijun) Now, default type in unaligned, and we will make a benchmark on
   // the speed of aligned and unaligned version in future.
-  using Type = Eigen::TensorMap<Eigen::Tensor<T, D, MajorType, IndexType>>;
+  using Type = Eigen::TensorMap<Eigen::Tensor<T, D, MajorType, int64_t>>;
 
   using ConstType =
-      Eigen::TensorMap<Eigen::Tensor<const T, D, MajorType, IndexType>>;
+      Eigen::TensorMap<Eigen::Tensor<const T, D, MajorType, int64_t>>;
 
   static Type From(DenseTensor& tensor, DDim dims) {  // NOLINT
     // why tensor.data<T>() not work?
@@ -78,10 +75,8 @@ struct EigenTensor {
   }
 };
 
-template <typename T,
-          int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-struct EigenMatrix : public EigenTensor<T, 2, MajorType, IndexType> {
+template <typename T, int MajorType = Eigen::RowMajor>
+struct EigenMatrix : public EigenTensor<T, 2, MajorType> {
   static typename EigenMatrix::Type Reshape(DenseTensor& tensor,  // NOLINT
                                             int num_col_dims) {
     int rank = tensor.dims().size();
@@ -111,10 +106,8 @@ struct EigenMatrix : public EigenTensor<T, 2, MajorType, IndexType> {
   }
 };
 
-template <typename T,
-          int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-struct EigenVector : public EigenTensor<T, 1, MajorType, IndexType> {
+template <typename T, int MajorType = Eigen::RowMajor>
+struct EigenVector : public EigenTensor<T, 1, MajorType> {
   // Flatten reshapes a Tensor into an EigenVector.
   static typename EigenVector::Type Flatten(DenseTensor& tensor) {  // NOLINT
     return EigenVector::From(tensor, {product(tensor.dims())});
@@ -126,15 +119,13 @@ struct EigenVector : public EigenTensor<T, 1, MajorType, IndexType> {
   }
 };
 
-template <typename T,
-          int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
+template <typename T, int MajorType = Eigen::RowMajor>
 struct EigenScalar {
   // Scalar tensor (implemented as a rank-0 tensor) of scalar type T.
   using Type = Eigen::TensorMap<
-      Eigen::TensorFixedSize<T, Eigen::Sizes<>, MajorType, IndexType>>;
+      Eigen::TensorFixedSize<T, Eigen::Sizes<>, MajorType, int64_t>>;
   using ConstType = Eigen::TensorMap<
-      Eigen::TensorFixedSize<const T, Eigen::Sizes<>, MajorType, IndexType>>;
+      Eigen::TensorFixedSize<const T, Eigen::Sizes<>, MajorType, int64_t>>;
 
   static Type From(DenseTensor& tensor) {  // NOLINT
     return Type(const_cast<T*>(tensor.data<T>()));

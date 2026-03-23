@@ -64,7 +64,7 @@ __global__ void EmbeddingGrad(T* table,
     const T* out = output + idy * D;
     T* tab = table + id * D;
 #ifdef PADDLE_WITH_CUDA
-    phi::VectorizedAtomicAddPerBlock(D, idx, blockDim.x, out, tab);
+    VectorizedAtomicAddPerBlock(D, idx, blockDim.x, out, tab);
 #else
     for (int64_t i = idx; i < D; i += blockDim.x) {
       CudaAtomicAdd(&tab[i], out[i]);

@@ -17,7 +17,11 @@
 #include <ATen/TensorIndexing.h>
 #include <ATen/core/TensorBase.h>
 #include <c10/core/Backend.h>
+#include <c10/core/List.h>
 #include <c10/core/Scalar.h>
+#include <c10/core/ScalarType.h>
+#include <c10/core/Stream.h>
+#include <c10/core/SymIntArrayRef.h>
 #include <c10/util/OptionalArrayRef.h>
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/tensor.h"
@@ -30,10 +34,17 @@
 #include <cuda_runtime_api.h>
 #endif
 
-#include <c10/core/Device.h>
-#include <c10/core/List.h>
-#include <c10/core/ScalarType.h>
-#include <c10/core/SymIntArrayRef.h>
+// Forward declaration to allow record_stream(at::cuda::CUDAStream) overload
+// without pulling in the full CUDAStream header here.
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+namespace c10::cuda {
+class CUDAStream;
+}  // namespace c10::cuda
+namespace at::cuda {
+using c10::cuda::CUDAStream;
+}  // namespace at::cuda
+#endif
+
 #include <limits>
 #include <optional>
 #include <utility>
@@ -60,6 +71,8 @@ using PaddlePlace = phi::Place;
 
 // Stub for DimnameList (not supported in Paddle)
 using DimnameList = c10::ArrayRef<std::string>;
+
+using Stream = c10::Stream;
 
 class Tensor : public TensorBase {
  public:
@@ -666,12 +679,12 @@ class Tensor : public TensorBase {
                                        /*decrease_axis=*/{0});
   }
 
-#if defined(PADDLE_WITH_CUDA)
-  void record_stream(const cudaStream_t& stream) const {
-    paddle::memory::RecordStream(
-        std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl())->Holder(),
-        reinterpret_cast<gpuStream_t>(stream));
-  }
+  void record_stream(at::Stream s) const;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  void record_stream(at::cuda::CUDAStream s) const;
+  // TODO(youge325): Remove after DeepEP paddle branch is updated to use
+  // at::Stream
+  void record_stream(cudaStream_t s) const;
 #endif
 
   Tensor var(int dim) const { return var(at::IntArrayRef{dim}, true, false); }

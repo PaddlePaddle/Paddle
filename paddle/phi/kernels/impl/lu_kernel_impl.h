@@ -107,9 +107,9 @@ void SetValueCompute(const Context& dev_ctx,
   // Step 1: Set the value of out at `_index` to zero
   slice_e.device(eigen_place) = slice_e.constant(T(0));
 
-  auto starts_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
-  auto ends_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
-  auto strides_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
+  auto starts_indices = Eigen::DSizes<int64_t, D>();
+  auto ends_indices = Eigen::DSizes<int64_t, D>();
+  auto strides_indices = Eigen::DSizes<int64_t, D>();
 
   for (size_t i = 0; i < D; ++i) {
     starts_indices[i] = 0;
@@ -295,8 +295,8 @@ void SliceCompute(const Context& dev_ctx,
   out_dims = funcs::GetDecreasedDims(slice_dims, decrease_axis);
 
   // 2.2 Get output
-  auto offsets = Eigen::DSizes<Eigen::DenseIndex, D>();
-  auto extents = Eigen::DSizes<Eigen::DenseIndex, D>();
+  auto offsets = Eigen::DSizes<int64_t, D>();
+  auto extents = Eigen::DSizes<int64_t, D>();
 
   for (size_t i = 0; i < D; ++i) {
     offsets[i] = 0;

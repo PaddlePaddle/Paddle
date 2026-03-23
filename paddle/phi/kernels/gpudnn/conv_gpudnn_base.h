@@ -192,8 +192,8 @@ static void RemovePaddingSlice(const GPUContext& dev_ctx,
   auto& place = *dev_ctx.eigen_device();
   auto in_dims = input->dims();
   auto new_out_dims = out->dims();
-  auto offsets = Eigen::DSizes<Eigen::DenseIndex, D>();
-  auto extents = Eigen::DSizes<Eigen::DenseIndex, D>();
+  auto offsets = Eigen::DSizes<int64_t, D>();
+  auto extents = Eigen::DSizes<int64_t, D>();
   for (size_t i = 0; i < D; ++i) {
     offsets[i] = 0;
     extents[i] = new_out_dims[i];
@@ -208,10 +208,8 @@ static void RemovePaddingSlice(const GPUContext& dev_ctx,
     offsets[axes[i]] = start;
   }
 
-  auto in_t =
-      EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(*input);
-  auto out_t = EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-      *out, new_out_dims);
+  auto in_t = EigenTensor<T, D, Eigen::RowMajor>::From(*input);
+  auto out_t = EigenTensor<T, D, Eigen::RowMajor>::From(*out, new_out_dims);
 
   funcs::EigenSlice<std::decay_t<decltype(place)>, T, D>::Eval(
       place, out_t, in_t, offsets, extents);

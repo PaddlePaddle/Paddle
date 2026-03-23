@@ -54,7 +54,7 @@ void HSigmoidLossGradKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_NOT_NULL(
       path.get_ptr(),
       errors::NotFound("Custom tree must be set for sparse mode!"));
-  phi::Vector<int64_t> real_rows = PathToRows(*path);
+  Vector<int64_t> real_rows = PathToRows(*path);
   w_grad->set_rows(real_rows);
   // Build a map of id -> row_index to speed up finding the index of one id
   w_grad->set_height(w.dims()[0]);

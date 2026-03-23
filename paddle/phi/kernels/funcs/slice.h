@@ -47,7 +47,7 @@ void EigenSliceWrapper(const Context& dev_ctx,
   auto eigen_place = *eigen_place_ptr;
   auto out_t = EigenTensor<T, D>::From(*out, out->dims());
   auto in_t = EigenTensor<T, D>::From(*in, in->dims());
-  Eigen::DSizes<Eigen::DenseIndex, D> offsets_64bit, extents_64bit;
+  Eigen::DSizes<int64_t, D> offsets_64bit, extents_64bit;
   for (size_t i = 0; i < D; i++) {
     offsets_64bit[i] = start[i];
     extents_64bit[i] = end[i];
@@ -129,8 +129,8 @@ static void Slice(const Context& dev_ctx,
                   const std::vector<int64_t>& axes_vec) {
   auto& place = *dev_ctx.eigen_device();
   auto in_dims = input->dims();
-  auto offsets = Eigen::DSizes<Eigen::DenseIndex, D>();
-  auto extents = Eigen::DSizes<Eigen::DenseIndex, D>();
+  auto offsets = Eigen::DSizes<int64_t, D>();
+  auto extents = Eigen::DSizes<int64_t, D>();
   for (size_t i = 0; i < D; ++i) {
     offsets[i] = 0;
     extents[i] = in_dims[i];
@@ -147,10 +147,8 @@ static void Slice(const Context& dev_ctx,
   out->Resize(out_dims);
   dev_ctx.template Alloc<T>(out);
 
-  auto in_t =
-      EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(*input);
-  auto out_t = EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-      *out, out_dims);
+  auto in_t = EigenTensor<T, D, Eigen::RowMajor>::From(*input);
+  auto out_t = EigenTensor<T, D, Eigen::RowMajor>::From(*out, out_dims);
 
   funcs::EigenSlice<std::decay_t<decltype(place)>, T, D>::Eval(
       place, out_t, in_t, offsets, extents);

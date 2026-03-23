@@ -108,7 +108,7 @@ void SumCooGradGPUKernel(const Context& dev_ctx,
            dev_ctx.stream()>>>(dout_values_data, length, dx_values_data);
 
     if (dx_values->dtype() != dx->dtype()) {
-      *dx_values = phi::Cast<T, Context>(dev_ctx, *dx_values, dx->dtype());
+      *dx_values = Cast<T, Context>(dev_ctx, *dx_values, dx->dtype());
     }
     return;
   }
@@ -123,7 +123,7 @@ void SumCooGradGPUKernel(const Context& dev_ctx,
     *dx_values = dout_values;
   }
   if (dx_values->dtype() != dx->dtype()) {
-    *dx_values = phi::Cast<T, Context>(dev_ctx, *dx_values, dx->dtype());
+    *dx_values = Cast<T, Context>(dev_ctx, *dx_values, dx->dtype());
   }
 }
 
@@ -162,7 +162,7 @@ void SumCsrGradKernel(const Context& dev_ctx,
            dev_ctx.stream()>>>(dout_values_data, dx->nnz(), dx_values_data);
 
     if (dx_values->dtype() != dx->dtype()) {
-      *dx_values = phi::Cast<T, Context>(dev_ctx, *dx_values, dx->dtype());
+      *dx_values = Cast<T, Context>(dev_ctx, *dx_values, dx->dtype());
     }
     return;
   }
@@ -192,7 +192,7 @@ void SumCsrGradKernel(const Context& dev_ctx,
                                                     dx_values_data);
   }
   if (dx_values->dtype() != dx->dtype()) {
-    *dx_values = phi::Cast<T, Context>(dev_ctx, *dx_values, dx->dtype());
+    *dx_values = Cast<T, Context>(dev_ctx, *dx_values, dx->dtype());
   }
 }
 
