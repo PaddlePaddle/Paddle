@@ -81,7 +81,7 @@ jobs:
     uses: ./.github/workflows/_CE-Framework.yml
     needs: [clone, build-docker, build]
     with:
-      can-skip: ${{ needs.build.outputs.can-skip }}
+      can-skip: ${{ needs.build.outputs.can-skip == 'true' || needs.clone.outputs.can-skip == 'true' }}
       docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
 
   ce-cinn-framework:
@@ -89,7 +89,7 @@ jobs:
     uses: ./.github/workflows/_CE-CINN-Framework.yml
     needs: [clone, build-docker, build]
     with:
-      can-skip: ${{ needs.build.outputs.can-skip }}
+      can-skip: ${{ needs.build.outputs.can-skip == 'true' || needs.clone.outputs.can-skip == 'true' }}
       docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
 
   api-benchmark:
@@ -97,7 +97,7 @@ jobs:
     uses: ./.github/workflows/_Api-Benchmark.yml
     needs: [clone, build-docker, build]
     with:
-      can-skip: ${{ needs.build.outputs.can-skip }}
+      can-skip: ${{ needs.build.outputs.can-skip == 'true' || needs.clone.outputs.can-skip == 'true' }}
       docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
 
   # auto-parallel:
@@ -113,7 +113,7 @@ jobs:
     uses: ./.github/workflows/_Model-Benchmark.yml
     needs: [clone, build-docker, build]
     with:
-      can-skip: ${{ needs.build.outputs.can-skip }}
+      can-skip: ${{ needs.build.outputs.can-skip == 'true' || needs.clone.outputs.can-skip == 'true' }}
       docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
 
   doc-preview:
