@@ -28,10 +28,10 @@
 #include <cute/arch/copy_sm90_desc.hpp>
 #include <cute/arch/copy_sm90_tma.hpp>
 
-#include "deep_gemm/mma_utils.cuh"
-#include "deep_gemm/scheduler.cuh"
-#include "deep_gemm/tma_utils.cuh"
-#include "deep_gemm/utils.cuh"
+#include "mma_utils.cuh"
+#include "scheduler.cuh"
+#include "tma_utils.cuh"
+#include "utils.cuh"
 
 namespace deep_gemm {
 
@@ -77,7 +77,7 @@ __global__ void __launch_bounds__(
     defined(__CLION_IDE__)
   // Scaling checks
   DG_STATIC_ASSERT(BLOCK_K == 128, "Only support per-128-channel FP8 scaling");
-  DG_STATIC_ASSERT(ceil_div(BLOCK_N, BLOCK_K) == 1 ||
+  DG_STATIC_ASSERT(ceil_div(BLOCK_N, BLOCK_K) == 1 or
                        (constexpr_gcd(BLOCK_N, BLOCK_K) == BLOCK_N - BLOCK_K),
                    "Too much B scales in a single block");
 
@@ -202,8 +202,8 @@ __global__ void __launch_bounds__(
   auto launch_k_iterations =
       [](const auto& func, bool skip_computation, uint32_t num_former_iters) {
         constexpr bool kShouldOptimize =
-            BLOCK_K / constexpr_gcd(BLOCK_K, BLOCK_N) <= 4 &&
-            !kMustUseUniformedScaleB;
+            BLOCK_K / constexpr_gcd(BLOCK_K, BLOCK_N) <= 4 and
+            not kMustUseUniformedScaleB;
         constexpr uint32_t kGap = constexpr_gcd(BLOCK_K, BLOCK_N) / 8;
         constexpr uint32_t kEnd = kShouldOptimize ? BLOCK_K / 8 : 0;
 
@@ -276,11 +276,11 @@ __global__ void __launch_bounds__(
               const bool is_tma_multicast_valid =
                   scheduler.is_tma_multicast_valid(m_block_idx);
               const uint32_t num_tma_multicast_a =
-                  (kIsTMAMulticastOnA && is_tma_multicast_valid)
+                  (kIsTMAMulticastOnA and is_tma_multicast_valid)
                       ? kNumTMAMulticast
                       : 1;
               const uint32_t num_tma_multicast_b =
-                  (!kIsTMAMulticastOnA && is_tma_multicast_valid)
+                  (not kIsTMAMulticastOnA and is_tma_multicast_valid)
                       ? kNumTMAMulticast
                       : 1;
               DG_STATIC_ASSERT(kNumTMAMulticast <= 2,
@@ -362,7 +362,7 @@ __global__ void __launch_bounds__(
       DG_STATIC_ASSERT(SHAPE_N % 8 == 0, "Invalid shape N");
       uint32_t num_former_iters = BLOCK_N / 8,
                num_full_iters = num_former_iters;
-      if constexpr (!kMustUseUniformedScaleB) {
+      if constexpr (not kMustUseUniformedScaleB) {
         num_former_iters =
             min(BLOCK_N, BLOCK_K - n_block_idx * BLOCK_N % BLOCK_K) / 8;
         num_full_iters = min(SHAPE_N - n_block_idx * BLOCK_N, BLOCK_N) / 8;
@@ -428,7 +428,7 @@ __global__ void __launch_bounds__(
                     scale_b_1;
               // NOTES: even some blocks do not need to read the second row, but
               // we still load one to align with other blocks
-              if constexpr (!kMustUseUniformedScaleB)
+              if constexpr (not kMustUseUniformedScaleB)
                 scale_b_1 = ld_shared(smem_scales_b + k_iter * kNumStages + s +
                                       SHAPE_K_SCALES);
 
@@ -436,7 +436,7 @@ __global__ void __launch_bounds__(
               full_barriers[s]->wait(
                   (scheduler.current_iter * kNumIterations + k_iter) & 1);
 
-// TODO(ShigureNyako): remove some useless computation for unaligned Ms
+// TODO: remove some useless computation for unaligned Ms
 #pragma unroll
               for (uint32_t local_idx = 0; local_idx < BLOCK_M / WAVE_BLOCK_M;
                    ++local_idx) {
@@ -480,7 +480,7 @@ __global__ void __launch_bounds__(
                 float scale_0_0 = scale_a_0 * scale_b_0,
                       scale_1_0 = scale_a_1 * scale_b_0;
                 float scale_0_1, scale_1_1;
-                if constexpr (!kMustUseUniformedScaleB)
+                if constexpr (not kMustUseUniformedScaleB)
                   scale_0_1 = scale_a_0 * scale_b_1,
                   scale_1_1 = scale_a_1 * scale_b_1;
 
@@ -490,7 +490,7 @@ __global__ void __launch_bounds__(
                   // NOTES: for unrolled `num_former_iters` cases, we expect the
                   // compiler to automatically make it a constant
                   bool predicate =
-                      kMustUseUniformedScaleB || i < num_former_iters;
+                      kMustUseUniformedScaleB or i < num_former_iters;
                   shifted_accum[i * 4 + 0] +=
                       (predicate ? scale_0_0 : scale_0_1) * accum[i * 4 + 0];
                   shifted_accum[i * 4 + 1] +=
@@ -511,7 +511,8 @@ __global__ void __launch_bounds__(
               empty_barrier_arrive(s);
             }
           },
-          !scheduler.is_computation_valid(m_block_idx, math_wg_idx * WGMMA::M),
+          not scheduler.is_computation_valid(m_block_idx,
+                                             math_wg_idx * WGMMA::M),
           num_former_iters);
 
       // TMA checks
@@ -521,7 +522,7 @@ __global__ void __launch_bounds__(
       constexpr uint32_t WGMMA_M_PER_WARP = WGMMA::M / 4;
       DG_STATIC_ASSERT(BLOCK_M % 8 == 0, "Invalid swizzling atom");
       DG_STATIC_ASSERT(
-          BLOCK_N % TMA_D_BLOCK_N == 0 && BLOCK_N / TMA_D_BLOCK_N <= 32,
+          BLOCK_N % TMA_D_BLOCK_N == 0 and BLOCK_N / TMA_D_BLOCK_N <= 32,
           "Unaligned TMA store or too many TMA store instructions");
       DG_STATIC_ASSERT(TMA_D_BLOCK_N % 8 == 0, "Invalid TMA block N");
       DG_STATIC_ASSERT(static_cast<uint32_t>(kSwizzleDMode > 0) +
@@ -602,7 +603,7 @@ __global__ void __launch_bounds__(
       cutlass::arch::NamedBarrier(kNumMathThreads).sync();
 
       // Use TMA store to write back to global memory
-      // TODO(ShigureNyako): compatible with FP32 output
+      // TODO: compatible with FP32 output
       DG_STATIC_ASSERT(kNumMathThreads >= BLOCK_N / TMA_D_BLOCK_N,
                        "Too many TMA blocks");
       if (threadIdx.x < BLOCK_N / TMA_D_BLOCK_N) {
@@ -619,8 +620,8 @@ __global__ void __launch_bounds__(
     }
   }
 #else
-  if (blockIdx.x == 0 && threadIdx.x == 0)
-    DG_DEVICE_ASSERT(false && "This kernel only support sm_90a");
+  if (blockIdx.x == 0 and threadIdx.x == 0)
+    DG_DEVICE_ASSERT(false and "This kernel only support sm_90a");
 #endif
 }
 

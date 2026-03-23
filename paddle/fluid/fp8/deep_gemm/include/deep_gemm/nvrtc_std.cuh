@@ -23,13 +23,13 @@
 
 using int8_t = signed char;
 using uint8_t = unsigned char;
-using int16_t = signed short;     // NOLINT
-using uint16_t = unsigned short;  // NOLINT
+using int16_t = signed short;
+using uint16_t = unsigned short;
 using int32_t = signed int;
 using uint32_t = unsigned int;
-using int64_t = signed long long;       // NOLINT
-using uint64_t = unsigned long long;    // NOLINT
-using cuuint64_t = unsigned long long;  // NOLINT
+using int64_t = signed long long;
+using uint64_t = unsigned long long;
+using cuuint64_t = unsigned long long;
 
 #ifndef CU_TENSOR_MAP_NUM_QWORDS
 #define CU_TENSOR_MAP_NUM_QWORDS 16

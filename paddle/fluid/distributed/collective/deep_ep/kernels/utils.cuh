@@ -424,12 +424,11 @@ __host__ __device__ dtype_t align(dtype_t a, dtype_t b) {
   return cell_div<dtype_t>(a, b) * b;
 }
 
-__forceinline__ __device__ void get_channel_task_range(
-    int num_tokens,
-    int num_sms,
-    int sm_id,
-    int &token_start_idx,  // NOLINT
-    int &token_end_idx) {  // NOLINT
+__forceinline__ __device__ void get_channel_task_range(int num_tokens,
+                                                       int num_sms,
+                                                       int sm_id,
+                                                       int &token_start_idx,
+                                                       int &token_end_idx) {
   int num_tokens_per_sm = cell_div(num_tokens, num_sms);
   token_start_idx = min(num_tokens_per_sm * sm_id, num_tokens);
   token_end_idx = min(token_start_idx + num_tokens_per_sm, num_tokens);
@@ -448,8 +447,8 @@ __device__ __forceinline__ dtype_b_t pack2(const dtype_a_t &x,
 
 template <typename dtype_a_t, typename dtype_b_t>
 __device__ __forceinline__ void unpack2(const dtype_b_t &packed,
-                                        dtype_a_t &x,    // NOLINT
-                                        dtype_a_t &y) {  // NOLINT
+                                        dtype_a_t &x,
+                                        dtype_a_t &y) {
   EP_STATIC_ASSERT(sizeof(dtype_a_t) * 2 == sizeof(dtype_b_t),
                    "Invalid dtypes");
   auto unpacked_ptr = reinterpret_cast<const dtype_a_t *>(&packed);
@@ -457,8 +456,7 @@ __device__ __forceinline__ void unpack2(const dtype_b_t &packed,
 }
 
 template <typename dtype_t>
-__device__ __forceinline__ dtype_t broadcast(dtype_t &ptr,  // NOLINT
-                                             int src_lane_idx) {
+__device__ __forceinline__ dtype_t broadcast(dtype_t &ptr, int src_lane_idx) {
   EP_STATIC_ASSERT(sizeof(dtype_t) % sizeof(int) == 0, "");
   auto send_int_values = reinterpret_cast<int *>(&ptr);
   int recv_int_values[sizeof(dtype_t) / sizeof(int)];
@@ -504,7 +502,7 @@ __forceinline__ __device__ int get_lane_id() {
 }
 
 template <int kNumRanks>
-__forceinline__ __device__ void move_fifo_slots(int &head) {  // NOLINT
+__forceinline__ __device__ void move_fifo_slots(int &head) {
   head = (head + kNumRanks) % NUM_MAX_FIFO_SLOTS;
 }
 
@@ -522,7 +520,7 @@ __forceinline__ __device__ void timeout_check(
     int **task_fifo_ptrs, int head, int rank, int expected, int tag = 0) {
   auto start_time = clock64();
   while (not_finished<kNumRanks>(task_fifo_ptrs[rank] + head, expected)) {
-    if (clock64() - start_time > NUM_TIMEOUT_CYCLES && threadIdx.x == 0) {
+    if (clock64() - start_time > NUM_TIMEOUT_CYCLES and threadIdx.x == 0) {
       printf("DeepEP timeout check failed: %d (rank = %d)\n", tag, rank);
       trap();
     }

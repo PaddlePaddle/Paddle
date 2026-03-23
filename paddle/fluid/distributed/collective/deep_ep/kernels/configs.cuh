@@ -38,8 +38,8 @@
 
 // Make CLion CUDA indexing work
 #ifdef __CLION_IDE__
-#define __CUDA_ARCH__ 900  // NOLINT
-#define __CUDACC_RDC__     // NOLINT
+#define __CUDA_ARCH__ 900  // NOLINT(*-reserved-identifier)
+#define __CUDACC_RDC__     // NOLINT(*-reserved-identifier)
 __host__ __device__ __forceinline__ void host_device_printf(const char* format,
                                                             ...) {
   asm volatile("trap;");

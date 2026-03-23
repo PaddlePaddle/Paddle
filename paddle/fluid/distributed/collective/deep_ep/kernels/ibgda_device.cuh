@@ -65,7 +65,7 @@ __device__ static __forceinline__ uint32_t HtoBE32(uint32_t x) {
 }
 
 __device__ static __forceinline__ uint16_t HtoBE16(uint16_t x) {
-  // TODO(ShigureNyako): simplify PTX using 16-bit instructions
+  // TODO: simplify PTX using 16-bit instructions
   auto a = static_cast<uint32_t>(x);
   uint32_t d;
   asm volatile(
@@ -103,8 +103,8 @@ __device__ static __forceinline__ nvshmemi_ibgda_device_qp_t *ibgda_get_rc(
 }
 
 __device__ static __forceinline__ void ibgda_lock_acquire(int *lock) {
-  while (atomicCAS(lock, 0, 1) == 1) {
-  }
+  while (atomicCAS(lock, 0, 1) == 1)
+    ;
 
   // Prevent reordering before the lock is acquired
   memory_fence_cta();
@@ -154,8 +154,9 @@ __device__ static __forceinline__ void ibgda_post_send(
   // is needed in quiet/fence
   ibgda_lock_acquire(&mvars->post_send_lock);
 
-  old_prod_idx = atomicMax(reinterpret_cast<uint64_t *>(&mvars->tx_wq.prod_idx),
-                           new_prod_idx);
+  old_prod_idx = atomicMax(
+      reinterpret_cast<unsigned long long int *>(&mvars->tx_wq.prod_idx),
+      new_prod_idx);
   if (new_prod_idx > old_prod_idx) {
     ibgda_update_dbr(qp, new_prod_idx);
     ibgda_ring_db(qp, new_prod_idx);
@@ -176,13 +177,14 @@ __device__ static __forceinline__ void ibgda_submit_requests(
   __threadfence();
 
   // Wait for prior WQE slots to be filled first
-  auto *ready_idx = reinterpret_cast<uint64_t *>(&mvars->tx_wq.ready_head);
-  while (atomicCAS(ready_idx, base_wqe_idx, new_wqe_idx) != base_wqe_idx) {
-  }
+  auto *ready_idx =
+      reinterpret_cast<unsigned long long int *>(&mvars->tx_wq.ready_head);
+  while (atomicCAS(ready_idx, base_wqe_idx, new_wqe_idx) != base_wqe_idx)
+    ;
 
   // Always post, not in batch
   constexpr int kNumRequestInBatch = 4;
-  if (kAlwaysDoPostSend || (message_idx + 1) % kNumRequestInBatch == 0)
+  if (kAlwaysDoPostSend or (message_idx + 1) % kNumRequestInBatch == 0)
     ibgda_post_send(qp, new_wqe_idx);
 }
 
@@ -299,8 +301,9 @@ __device__ static __forceinline__ void ibgda_get_rkey(uint64_t addr,
 __device__ static __forceinline__ uint64_t
 ibgda_reserve_wqe_slots(nvshmemi_ibgda_device_qp_t *qp, uint32_t num_wqes) {
   auto mvars = &qp->mvars;
-  return atomicAdd(reinterpret_cast<uint64_t *>(&mvars->tx_wq.resv_head),
-                   static_cast<uint64_t>(num_wqes));
+  return atomicAdd(
+      reinterpret_cast<unsigned long long *>(&mvars->tx_wq.resv_head),
+      static_cast<unsigned long long>(num_wqes));
 }
 
 __device__ static __forceinline__ void *ibgda_get_wqe_ptr(

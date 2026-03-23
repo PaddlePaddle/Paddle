@@ -91,7 +91,9 @@ repos:
           (?x)^(
             paddle/utils/flat_hash_map\.h|
             paddle/utils/variant\.h|
-            paddle/utils/array_ref\.h
+            paddle/utils/array_ref\.h|
+            paddle/fluid/distributed/collective/deep_ep/.*|
+            paddle/fluid/fp8/deep_gemm/.*
           )$
   - repo: local
     hooks:
