@@ -41,7 +41,7 @@ using DeleterFnPtr = void (*)(void*);
 // Wraps a pointer with associated device and deleter
 class DataPtr {
  public:
-  DataPtr() : device_(DeviceType::CPU) {}
+  DataPtr() : device_(phi::CPUPlace()) {}
 
   DataPtr(void* data, Device device)
       : ptr_(data), device_(device._PD_GetInner()) {}

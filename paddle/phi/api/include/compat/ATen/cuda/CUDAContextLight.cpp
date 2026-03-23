@@ -21,6 +21,7 @@
 #include <ATen/cuda/CUDAContextLight.h>
 
 #include <c10/core/Allocator.h>
+#include <mutex>
 
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -31,8 +32,27 @@ namespace at::cuda {
 
 namespace {
 
+inline void ensureDeviceContextPoolInitialized() {
+  static std::once_flag init_pool_once;
+  std::call_once(init_pool_once, []() {
+    if (phi::DeviceContextPool::IsInitialized()) {
+      return;
+    }
+
+    std::vector<phi::Place> places;
+    int gpu_count = phi::backends::gpu::GetGPUDeviceCount();
+    for (int device = 0; device < gpu_count; ++device) {
+      places.emplace_back(phi::GPUPlace(device));
+    }
+    places.emplace_back(phi::CPUPlace());
+    places.emplace_back(phi::GPUPinnedPlace());
+    phi::DeviceContextPool::Init(places);
+  });
+}
+
 /// Returns the GPUContext for the current device.
 inline phi::GPUContext* getCurrentGPUContext() {
+  ensureDeviceContextPoolInitialized();
   int device_id = phi::backends::gpu::GetCurrentDeviceId();
   return static_cast<phi::GPUContext*>(
       phi::DeviceContextPool::Instance().Get(phi::GPUPlace(device_id)));

@@ -17,6 +17,7 @@
 #include <ATen/core/Tensor.h>
 #include <c10/core/TensorOptions.h>
 #include <utils/pinned_place.h>
+#include <algorithm>
 #include <optional>
 
 #include "paddle/phi/api/include/api.h"
@@ -24,6 +25,22 @@
 #include "paddle/phi/common/place.h"
 
 namespace at {
+
+inline std::vector<int64_t> infer_sparse_coo_size(const at::Tensor& indices) {
+  auto host_indices = indices.cpu().to(at::kLong);
+  int64_t sparse_dim = host_indices.dim() > 0 ? host_indices.size(0) : 0;
+  int64_t nnz = host_indices.dim() > 1 ? host_indices.size(1) : 0;
+
+  std::vector<int64_t> inferred_size(static_cast<size_t>(sparse_dim), 0);
+  const int64_t* data = host_indices.const_data_ptr<int64_t>();
+  for (int64_t dim = 0; dim < sparse_dim; ++dim) {
+    for (int64_t i = 0; i < nnz; ++i) {
+      inferred_size[static_cast<size_t>(dim)] = std::max(
+          inferred_size[static_cast<size_t>(dim)], data[dim * nnz + i] + 1);
+    }
+  }
+  return inferred_size;
+}
 
 inline at::Tensor sparse_coo_tensor(const at::Tensor& indices,
                                     const at::Tensor& values,
@@ -86,8 +103,8 @@ inline at::Tensor sparse_coo_tensor(const at::Tensor& indices,
     vals = vals.copy_to(pinned_place, /*blocking=*/true);
   }
 
-  // When size is not provided, Paddle will infer it from indices and values
-  return paddle::experimental::sparse::sparse_coo_tensor(vals, idx, {});
+  return paddle::experimental::sparse::sparse_coo_tensor(
+      vals, idx, infer_sparse_coo_size(indices));
 }
 
 }  // namespace at

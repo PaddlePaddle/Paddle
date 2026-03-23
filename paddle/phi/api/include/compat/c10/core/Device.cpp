@@ -23,6 +23,31 @@
 
 namespace c10 {
 
+namespace {
+
+DeviceIndex normalize_index(phi::AllocationType type, DeviceIndex index) {
+  return type == phi::AllocationType::CPU ? static_cast<DeviceIndex>(-1)
+                                          : index;
+}
+
+const char* DeviceTypeToString(DeviceType type) {
+  switch (type) {
+    case DeviceType::CPU:
+      return "cpu";
+    case DeviceType::CUDA:
+      return "cuda";
+    case DeviceType::XPU:
+      return "xpu";
+    case DeviceType::IPU:
+      return "ipu";
+    case DeviceType::CUSTOM:
+      return "privateuseone";
+  }
+  return "cpu";
+}
+
+}  // namespace
+
 DeviceType parse_type(const std::string& device_string) {
   static const std::array<std::pair<const char*, DeviceType>,
                           static_cast<size_t>(4)>
@@ -43,19 +68,23 @@ DeviceType parse_type(const std::string& device_string) {
       device_string));
 }
 
+Device::Device(phi::Place place)
+    : type_(PhiToDeviceType(place.GetType())),
+      index_(normalize_index(place.GetType(), place.GetDeviceId())),
+      custom_device_type_(place.GetDeviceType()) {}
+
 Device::Device(const std::string& device_string) : Device(Type::CPU) {
   TORCH_CHECK(!device_string.empty(), "Device string must not be empty");
   auto colon_pos = device_string.find(':');
   std::string type_str = colon_pos == std::string::npos
                              ? device_string
                              : device_string.substr(0, colon_pos);
-  DeviceType type = parse_type(type_str);
-  DeviceIndex index = 0;
+  type_ = parse_type(type_str);
+  index_ = -1;
   if (colon_pos != std::string::npos) {
     std::string index_str = device_string.substr(colon_pos + 1);
     try {
-      index = static_cast<DeviceIndex>(std::stoi(index_str));
-      inner_ = phi::Place(type, index);
+      index_ = static_cast<DeviceIndex>(std::stoi(index_str));
     } catch (const std::invalid_argument&) {
       PADDLE_THROW(::common::errors::InvalidArgument(
           "Invalid device index: '%s' is not a number.", index_str));
@@ -66,8 +95,26 @@ Device::Device(const std::string& device_string) : Device(Type::CPU) {
   }
 }
 
+phi::Place Device::_PD_GetInner() const {
+  switch (type_) {
+    case DeviceType::CPU:
+      return phi::CPUPlace();
+    case DeviceType::CUDA:
+      return phi::GPUPlace(has_index() ? index_ : 0);
+    case DeviceType::XPU:
+      return phi::XPUPlace(has_index() ? index_ : 0);
+    case DeviceType::IPU:
+      return phi::IPUPlace(has_index() ? index_ : 0);
+    case DeviceType::CUSTOM:
+      return phi::CustomPlace(
+          custom_device_type_.empty() ? "custom" : custom_device_type_,
+          has_index() ? index_ : 0);
+  }
+  return phi::CPUPlace();
+}
+
 std::string Device::str() const {
-  std::string str = phi::AllocationTypeStr(type());
+  std::string str = DeviceTypeToString(type());
   if (has_index()) {
     str.push_back(':');
     str.append(std::to_string(index()));

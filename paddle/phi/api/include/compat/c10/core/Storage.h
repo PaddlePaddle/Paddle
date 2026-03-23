@@ -305,7 +305,8 @@ struct Storage {
     if (!impl_) return phi::AllocationType::CPU;
     if (impl_->data_allocation_)
       return impl_->data_allocation_->place().GetType();
-    if (impl_->data_ptr_) return impl_->data_ptr_.device().type();
+    if (impl_->data_ptr_)
+      return c10::DeviceTypeToPhi(impl_->data_ptr_.device().type());
     return phi::AllocationType::CPU;
   }
 

@@ -21,6 +21,7 @@
 
 #include "gtest/gtest.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "test/cpp/compat/cuda_test_utils.h"
 
 // ---------------------------------------------------------------------------
 // CUDAFunctions.h — covers the 2 missing lines:
@@ -28,17 +29,20 @@
 // ---------------------------------------------------------------------------
 
 TEST(CUDAFunctionsTest, DeviceSynchronize) {
+  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   // Exercises the PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize()) branch
   ASSERT_NO_THROW(c10::cuda::device_synchronize());
 }
 
 TEST(CUDAFunctionsTest, StreamSynchronize) {
+  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   // Exercises phi::backends::gpu::GpuStreamSync()
   auto stream = c10::cuda::getCurrentCUDAStream();
   ASSERT_NO_THROW(c10::cuda::stream_synchronize(stream));
 }
 
 TEST(CUDAFunctionsTest, AtNamespaceAliases) {
+  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   // Exercises the using aliases in at::cuda namespace
   ASSERT_NO_THROW(at::cuda::device_synchronize());
   auto stream = c10::cuda::getCurrentCUDAStream();
@@ -61,12 +65,14 @@ TEST(CUDAContextLightTest, IsAvailable) {
 
 // getNumGPUs() delegages to c10::cuda::device_count()
 TEST(CUDAContextLightTest, GetNumGPUs) {
+  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   int64_t n = at::cuda::getNumGPUs();
   ASSERT_GE(n, 1);
 }
 
 // getCurrentDeviceProperties() / getDeviceProperties()
 TEST(CUDAContextLightTest, DeviceProperties) {
+  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   cudaDeviceProp* prop = at::cuda::getCurrentDeviceProperties();
   ASSERT_NE(prop, nullptr);
   // Sanity-check a few well-known fields
@@ -81,6 +87,7 @@ TEST(CUDAContextLightTest, DeviceProperties) {
 
 // warp_size()
 TEST(CUDAContextLightTest, WarpSize) {
+  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   int ws = at::cuda::warp_size();
   // All NVIDIA and AMD GPU architectures have warp size of 32 or 64
   ASSERT_TRUE(ws == 32 || ws == 64);
@@ -88,6 +95,7 @@ TEST(CUDAContextLightTest, WarpSize) {
 
 // canDeviceAccessPeer() — a device cannot peer-access itself
 TEST(CUDAContextLightTest, CanDeviceAccessPeer) {
+  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   int device_id = phi::backends::gpu::GetCurrentDeviceId();
   // Self-to-self peer access is always false per CUDA spec
   bool self_peer = at::cuda::canDeviceAccessPeer(device_id, device_id);
@@ -96,22 +104,26 @@ TEST(CUDAContextLightTest, CanDeviceAccessPeer) {
 
 // Handle accessors — all must return non-null handles
 TEST(CUDAContextLightTest, GetCurrentCUDABlasHandle) {
+  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   cublasHandle_t h = at::cuda::getCurrentCUDABlasHandle();
   ASSERT_NE(h, nullptr);
 }
 
 TEST(CUDAContextLightTest, GetCurrentCUDABlasLtHandle) {
+  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   cublasLtHandle_t h = at::cuda::getCurrentCUDABlasLtHandle();
   ASSERT_NE(h, nullptr);
 }
 
 TEST(CUDAContextLightTest, GetCurrentCUDASparseHandle) {
+  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   cusparseHandle_t h = at::cuda::getCurrentCUDASparseHandle();
   ASSERT_NE(h, nullptr);
 }
 
 #if defined(CUDART_VERSION) || defined(USE_ROCM)
 TEST(CUDAContextLightTest, GetCurrentCUDASolverDnHandle) {
+  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   cusolverDnHandle_t h = at::cuda::getCurrentCUDASolverDnHandle();
   ASSERT_NE(h, nullptr);
 }
@@ -148,6 +160,7 @@ TEST(CUDAContextLightTest, GetChosenWorkspaceSize) {
 
 // getCUDABlasLtWorkspaceSize() / getCUDABlasLtWorkspace()
 TEST(CUDAContextLightTest, CUDABlasLtWorkspace) {
+  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   size_t sz = at::cuda::getCUDABlasLtWorkspaceSize();
   ASSERT_GT(sz, 0UL);
 
@@ -163,6 +176,7 @@ TEST(CUDAContextLightTest, CUDADeviceAllocatorSingleton) {
 }
 
 TEST(CUDAContextLightTest, CUDADeviceAllocatorCloneAndCopyData) {
+  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   c10::Allocator* alloc = at::cuda::getCUDADeviceAllocator();
   ASSERT_NE(alloc, nullptr);
 
@@ -193,6 +207,7 @@ TEST(CUDAContextLightTest, CUDADeviceAllocatorCloneAndCopyData) {
 }
 
 TEST(CUDAContextLightTest, CUDADeviceAllocatorCloneZeroBytes) {
+  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   c10::Allocator* alloc = at::cuda::getCUDADeviceAllocator();
   ASSERT_NE(alloc, nullptr);
 
