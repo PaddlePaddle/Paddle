@@ -14,6 +14,12 @@
 
 #include "paddle/phi/kernels/fusion/cutlass/variable_length_memory_efficient_attention.h"
 
+#include <algorithm>
+#include <vector>
+
+#include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/kernels/full_kernel.h"
+
 namespace phi {
 namespace fusion {
 
@@ -31,6 +37,39 @@ void MultiHeadAttentionVariableForwardKernel(const Context& dev_ctx,
                                              DenseTensor* output) {
   dev_ctx.template Alloc<T>(output);
   if (output->numel() == 0) return;
+  if (seq_lens.numel() == 0 || kv_seq_lens.numel() == 0) {
+    Full<T, Context>(dev_ctx, output->dims(), 0, output);
+    return;
+  }
+
+  std::vector<int> seq_lens_host(seq_lens.numel());
+  std::vector<int> kv_seq_lens_host(kv_seq_lens.numel());
+  memory_utils::Copy(phi::CPUPlace(),
+                     seq_lens_host.data(),
+                     dev_ctx.GetPlace(),
+                     seq_lens.data<int>(),
+                     sizeof(int) * seq_lens_host.size(),
+                     dev_ctx.stream());
+  memory_utils::Copy(phi::CPUPlace(),
+                     kv_seq_lens_host.data(),
+                     dev_ctx.GetPlace(),
+                     kv_seq_lens.data<int>(),
+                     sizeof(int) * kv_seq_lens_host.size(),
+                     dev_ctx.stream());
+  dev_ctx.Wait();
+
+  const bool has_zero_effective_len =
+      std::any_of(seq_lens_host.begin(),
+                  seq_lens_host.end(),
+                  [](int len) { return len <= 0; }) ||
+      std::any_of(kv_seq_lens_host.begin(),
+                  kv_seq_lens_host.end(),
+                  [](int len) { return len <= 0; });
+  if (has_zero_effective_len) {
+    // Grouped FMHA does not safely handle zero-length members yet.
+    Full<T, Context>(dev_ctx, output->dims(), 0, output);
+    return;
+  }
 
   Params params{};
   // [B, N, S, H]

@@ -330,6 +330,26 @@ void FlashAttnVarlenQKVPackedKernel(
 }
 
 template <typename T, typename Context>
+void ZeroFlashAttnOutputs(const Context& dev_ctx,
+                          DenseTensor* out,
+                          DenseTensor* softmax,
+                          DenseTensor* softmax_lse,
+                          DenseTensor* seed_offset) {
+  if (out) {
+    Full<T, Context>(dev_ctx, out->dims(), 0, out);
+  }
+  if (softmax) {
+    Full<T, Context>(dev_ctx, softmax->dims(), 0, softmax);
+  }
+  if (softmax_lse) {
+    Full<T, Context>(dev_ctx, softmax_lse->dims(), 0, softmax_lse);
+  }
+  if (seed_offset) {
+    Full<T, Context>(dev_ctx, seed_offset->dims(), 0, seed_offset);
+  }
+}
+
+template <typename T, typename Context>
 void FlashAttnBaseKernel(const Context& dev_ctx,
                          const DenseTensor& q,
                          const DenseTensor& k,
@@ -369,6 +389,12 @@ void FlashAttnBaseKernel(const Context& dev_ctx,
                     common::errors::InvalidArgument(
                         "flash_attn receive input with dim "
                         "[batch_size, seq_len, num_heads, head_dim]"));
+  if (q.numel() == 0 || k.numel() == 0 || v.numel() == 0) {
+    // Skip flash-attn backend launches for degenerate Q/K/V layouts.
+    ZeroFlashAttnOutputs<T, Context>(
+        dev_ctx, out, softmax, softmax_lse, seed_offset);
+    return;
+  }
   const int64_t batch_size = dims[0];
   const int64_t seqlen_q = dims[1];
   const int64_t num_heads = dims[2];
@@ -641,18 +667,8 @@ void FlashAttnKernel(const Context& dev_ctx,
                      DenseTensor* softmax_lse,
                      DenseTensor* seed_offset) {
   if (q.numel() == 0 || k.numel() == 0 || v.numel() == 0) {
-    if (out) {
-      Full<T, Context>(dev_ctx, out->dims(), 0, out);
-    }
-    if (softmax) {
-      Full<T, Context>(dev_ctx, softmax->dims(), 0, softmax);
-    }
-    if (softmax_lse) {
-      Full<T, Context>(dev_ctx, softmax_lse->dims(), 0, softmax_lse);
-    }
-    if (seed_offset) {
-      Full<T, Context>(dev_ctx, seed_offset->dims(), 0, seed_offset);
-    }
+    ZeroFlashAttnOutputs<T, Context>(
+        dev_ctx, out, softmax, softmax_lse, seed_offset);
     return;
   }
   FlashAttnBaseKernel<T, Context>(dev_ctx,
@@ -730,6 +746,11 @@ void FlashMaskKernel(const Context& dev_ctx,
                      DenseTensor* softmax,
                      DenseTensor* softmax_lse,
                      DenseTensor* seed_offset) {
+  if (q.numel() == 0 || k.numel() == 0 || v.numel() == 0) {
+    ZeroFlashAttnOutputs<T, Context>(
+        dev_ctx, out, softmax, softmax_lse, seed_offset);
+    return;
+  }
   FlashAttnBaseKernel<T, Context>(dev_ctx,
                                   q,
                                   k,
