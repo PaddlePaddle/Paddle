@@ -1087,7 +1087,7 @@ class TestBook(LayerTest):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
             input_length = paddle.static.data(
-                name='logits_length', shape=[11], dtype='int64'
+                name='logits_length', shape=[12], dtype='int64'
             )
             label_length = paddle.static.data(
                 name='labels_length', shape=[12], dtype='int64'
@@ -1096,7 +1096,7 @@ class TestBook(LayerTest):
                 name='label', shape=[12, 1], dtype='int32'
             )
             predict = paddle.static.data(
-                name='predict', shape=[4, 4, 8], dtype='float32'
+                name='predict', shape=[4, 12, 8], dtype='float32'
             )
             output = paddle.nn.functional.ctc_loss(
                 log_probs=predict,
