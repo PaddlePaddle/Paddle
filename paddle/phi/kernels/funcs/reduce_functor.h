@@ -42,9 +42,17 @@ struct FrobeniusNormGradFunctor {
                   DY* dy,
                   const Dim& dim,
                   int size UNUSED) {
-    dx->device(place) = y->broadcast(dim);
-    dx->device(place) = *dx + dx->constant(1e-12f);
-    dx->device(place) = (*x / *dx) * (dy->broadcast(dim));
+    // Match PyTorch: grad * (x / norm).masked_fill_(norm == 0, 0)
+    auto norm_broadcast = y->broadcast(dim);
+    auto norm_is_zero =
+        norm_broadcast ==
+        norm_broadcast.constant(static_cast<typename X::Scalar>(0));
+    auto x_div_norm = *x / norm_broadcast;
+    dx->device(place) =
+        dy->broadcast(dim) *
+        norm_is_zero.select(
+            x_div_norm.constant(static_cast<typename X::Scalar>(0)),
+            x_div_norm);
   }
 };
 

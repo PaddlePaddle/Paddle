@@ -669,6 +669,18 @@ def vector_norm(
             tensor = zero_norm(
                 abs_x, porder=p, axis=axis, keepdim=keepdim, name=name
             )
+        elif p == 2 or p == 2.0:
+            # Use decomposed ops (pow + sum + sqrt) for p=2 multi-axis:
+            # mathematically equivalent to frobenius norm, and the decomposition
+            # matches PyTorch's forward and backward precision exactly.
+            if in_dynamic_or_pir_mode():
+                squared = _C_ops.pow(abs_x, 2.0)
+                summed = _C_ops.sum(squared, axis, None, keepdim)
+                tensor = _C_ops.sqrt(summed)
+            else:
+                tensor = vector_norm_axis_tuple(
+                    abs_x, porder=p, axis=axis, keepdim=keepdim, name=name
+                )
         else:
             tensor = vector_norm_axis_tuple(
                 abs_x, porder=p, axis=axis, keepdim=keepdim, name=name
@@ -779,9 +791,15 @@ def matrix_norm(
             )
 
         if in_dynamic_or_pir_mode():
+            # Use decomposed ops (pow + sum + sqrt) instead of frobenius_norm C++ kernel
+            # to match PyTorch's reduction precision. The C++ frobenius_norm kernel uses
+            # Eigen reduction which may produce different rounding from CUDA kernels.
+            squared = _C_ops.pow(input, 2.0)
             if dim is None:
-                return _C_ops.frobenius_norm(input, [], keepdim, True)
-            return _C_ops.frobenius_norm(input, dim, keepdim, False)
+                summed = _C_ops.sum(squared, [], None, keepdim)
+            else:
+                summed = _C_ops.sum(squared, dim, None, keepdim)
+            return _C_ops.sqrt(summed)
         else:
             attrs = {'dim': dim, 'keep_dim': keepdim, 'reduce_all': False}
             if dim is None:
