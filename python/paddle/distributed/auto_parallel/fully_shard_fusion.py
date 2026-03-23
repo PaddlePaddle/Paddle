@@ -133,8 +133,6 @@ class TensorFusionBuffer:
                 stop_gradient = param.stop_gradient
                 local_shape = param._local_shape
                 param.stop_gradient = True
-                if hasattr(param, "is_moe_param") and param.is_moe_param:
-                    break
                 param._local_value().flatten_()
                 paddle.assign(
                     param._local_value(),
@@ -322,7 +320,8 @@ class FSDPBufferManager:
         for param in parameters:
             name = param.name
             is_expert = getattr(param, "is_moe_param", False)
-
+            if is_expert:
+                continue
             is_tie = (
                 self.tie_param_name is not None and name == self.tie_param_name
             )
