@@ -40,6 +40,9 @@
 
 namespace {
 
+// Stream type alias: gpuStream_t is in phi:: namespace, bring it into scope
+using phi::gpuStream_t;
+
 // --- Constants ---
 constexpr int MAX_TENSORINFO_DIMS = 25;
 constexpr int64_t MAX_GRID_SIZE = 65535LL;
