@@ -109,8 +109,15 @@ class PADDLE_API TensorBase {
     return backend_str + scalar_type_str + "Type";
   }
 
-  // Returns the tensor's data pointer.
-  void* data_ptr() const { return const_cast<void*>(tensor_.data()); }
+  // Returns the tensor's current data pointer. Storage mutations flow through
+  // the compat holder view, so tensor.data_ptr() stays aligned with storage()
+  // while preserving tensor-specific offsets for views.
+  void* data_ptr() const {
+    if (!tensor_.defined()) {
+      return nullptr;
+    }
+    return const_cast<void*>(tensor_.data());
+  }
   template <typename T>
   T* data_ptr() const {
     return static_cast<T*>(data_ptr());
@@ -186,7 +193,7 @@ class PADDLE_API TensorBase {
     PD_CHECK(memory_format == c10::MemoryFormat::Contiguous,
              "`MemoryFormat` other than Contiguous");
 
-    return tensor_.contiguous();
+    return TensorBase(tensor_.contiguous());
   }
 
   bool is_contiguous(
@@ -281,8 +288,8 @@ class PADDLE_API TensorBase {
       PADDLE_THROW(common::errors::Unimplemented(
           "The `to` method with memory_format option is not supported yet."));
     }
-    return paddle::experimental::cast(
-        tensor_, compat::_PD_AtenScalarTypeToPhiDataType(options.dtype()));
+    return TensorBase(paddle::experimental::cast(
+        tensor_, compat::_PD_AtenScalarTypeToPhiDataType(options.dtype())));
   }
 
   bool is_complex() const { return at::isComplexType(this->scalar_type()); }
@@ -362,7 +369,10 @@ class PADDLE_API TensorBase {
     }
   }
 
-  void reset() { tensor_.reset(); }
+  void reset() {
+    tensor_.reset();
+    storage_ = c10::Storage();
+  }
 
   int64_t storage_offset() const {
     // Paddle DenseTensor stores offset in meta_.offset (in bytes)
@@ -382,17 +392,25 @@ class PADDLE_API TensorBase {
     return c10::SymInt(storage_offset());
   }
 
-  bool has_storage() const { return tensor_.defined() && storage_.valid(); }
+  bool has_storage() const {
+    SyncStorageFromTensor();
+    return tensor_.defined() && storage_.valid();
+  }
 
   // Returns a Storage handle backed by the shared StorageImpl for this tensor.
-  const c10::Storage& storage() const { return storage_; }
+  const c10::Storage& storage() const {
+    SyncStorageFromTensor();
+    return storage_;
+  }
 
   bool is_alias_of(const at::TensorBase& other) const {
-    return this->storage().allocation() == other.storage().allocation();
+    return this->storage().is_alias_of(other.storage());
   }
 
  private:
-  void InitStorage() {
+  void InitStorage() { SyncStorageFromTensor(); }
+
+  void SyncStorageFromTensor() const {
     auto dense = std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl());
     if (!dense) {
       storage_ = c10::Storage();
@@ -400,14 +418,20 @@ class PADDLE_API TensorBase {
     }
 
     auto holder = dense->Holder();
-    auto new_impl = std::make_shared<c10::StorageImpl>();
-    if (holder) {
-      new_impl->allocation_ = holder;
-      new_impl->nbytes_ = holder->size();
-      new_impl->data_ptr_ =
-          c10::DataPtr(holder->ptr(), c10::Device(holder->place()));
+    if (!holder) {
+      storage_ = c10::Storage();
+      return;
     }
-    storage_ = c10::Storage(new_impl);
+
+    c10::Storage live_storage = c10::Storage::createTensorStorage(holder);
+    auto compat_holder = live_storage.ensureTensorHolder();
+    if (holder != compat_holder) {
+      dense->ResetHolder(compat_holder);
+    }
+
+    if (storage_.get_impl() != live_storage.get_impl()) {
+      storage_ = std::move(live_storage);
+    }
   }
 
  public:

@@ -106,7 +106,7 @@ TEST(StorageTest, StorageUseCountIncludesTensorRef) {
   at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
   c10::Storage storage = tensor.storage();
 
-  // tensor.active_storage_ contributes 1, `storage` contributes 1.
+  // tensor.storage_ contributes 1, `storage` contributes 1.
   ASSERT_EQ(storage.use_count(), 2)
       << "use_count() must include the tensor's own StorageImpl reference";
   ASSERT_FALSE(storage.unique())
@@ -253,24 +253,18 @@ TEST(StorageTest, DefaultConstructedStorage) {
 }
 
 TEST(StorageTest, IsSharedStorageAliasFunction) {
-  // Test isSharedStorageAlias() function
-  at::TensorBase tensor1 = at::ones({2, 3}, at::kFloat);
-  at::TensorBase tensor2 = tensor1;                       // Shared storage
-  at::TensorBase tensor3 = at::ones({2, 3}, at::kFloat);  // Different storage
+  int* ctx = new int(21);
+  c10::DataPtr ptr(ctx, ctx, &DeleteIntPtr, c10::Device(c10::DeviceType::CPU));
+  c10::Storage storage1(
+      c10::Storage::use_byte_size_t{}, sizeof(int), std::move(ptr), nullptr);
+  c10::Storage storage2 = storage1;
+  c10::Storage storage3;
 
-  c10::Storage storage1 = tensor1.storage();
-  c10::Storage storage2 = tensor2.storage();
-  c10::Storage storage3 = tensor3.storage();
-
-  // Same allocation should return true
   ASSERT_TRUE(c10::isSharedStorageAlias(storage1, storage2));
   ASSERT_TRUE(c10::isSharedStorageAlias(storage2, storage1));
 
-  // Different allocations should return false
   ASSERT_FALSE(c10::isSharedStorageAlias(storage1, storage3));
-  ASSERT_FALSE(c10::isSharedStorageAlias(storage3, storage1));
 
-  // Empty storage should return false
   c10::Storage empty_storage;
   ASSERT_FALSE(c10::isSharedStorageAlias(storage1, empty_storage));
   ASSERT_FALSE(c10::isSharedStorageAlias(empty_storage, storage1));
@@ -280,7 +274,7 @@ TEST(StorageTest, IsSharedStorageAliasFunction) {
 TEST(StorageTest, StorageIsAliasOfMethod) {
   // Test Storage::is_alias_of() method
   at::TensorBase tensor1 = at::ones({2, 3}, at::kFloat);
-  at::TensorBase tensor2 = tensor1;
+  at::TensorBase tensor2 = tensor1.view({3, 2});
   at::TensorBase tensor3 = at::ones({2, 3}, at::kFloat);
 
   c10::Storage storage1 = tensor1.storage();
@@ -329,11 +323,11 @@ TEST(StorageTest, MaybeOwnedTraitsSpecialization) {
 
   // Test assignBorrow
   c10::Storage another_borrow;
-  Traits::assignBorrow(&another_borrow, borrowed);
+  Traits::assignBorrow(another_borrow, borrowed);
   ASSERT_EQ(another_borrow.allocation(), original.allocation());
 
   // Test destroyBorrow
-  Traits::destroyBorrow(&borrowed);
+  Traits::destroyBorrow(borrowed);
   ASSERT_FALSE(borrowed.valid());
 }
 
@@ -359,11 +353,11 @@ TEST(StorageTest, ExclusivelyOwnedTraitsSpecialization) {
   // Test take
   c10::Storage to_take = tensor.storage();
   alloc = to_take.allocation();
-  c10::Storage taken = Traits::take(&to_take);
+  c10::Storage taken = Traits::take(to_take);
   ASSERT_EQ(taken.allocation(), alloc);
 
   // Test getImpl (mutable)
-  Traits::pointer_type ptr = Traits::getImpl(&taken);
+  Traits::pointer_type ptr = Traits::getImpl(taken);
   ASSERT_NE(ptr, nullptr);
   ASSERT_EQ(ptr->allocation(), alloc);
 
@@ -731,6 +725,94 @@ TEST(StorageTest, ReferenceSemanticsTwoIndependentStorageCalls) {
   ASSERT_EQ(storage_c.data(), storage_b.data())
       << "Mutation through one Storage handle should be visible through "
          "another handle obtained from the same tensor";
+}
+
+TEST(StorageTest, StorageMutationUpdatesTensorDataPtr) {
+  at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
+  at::TensorBase other = at::ones({4, 5}, at::kFloat);
+
+  c10::Storage storage = tensor.storage();
+  auto new_alloc = other.storage().allocation();
+  ASSERT_NE(new_alloc, nullptr);
+  ASSERT_NE(tensor.data_ptr(), new_alloc->ptr());
+
+  storage.set_data_ptr_noswap(new_alloc);
+
+  ASSERT_EQ(tensor.data_ptr(), new_alloc->ptr())
+      << "tensor.data_ptr() must follow mutations made through "
+         "tensor.storage()";
+  ASSERT_EQ(tensor.storage().allocation(), new_alloc)
+      << "Repeated storage() calls should observe the live allocation";
+}
+
+TEST(StorageTest, StorageMutationPersistsAfterHandleDestruction) {
+  at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
+  at::TensorBase other = at::ones({4, 5}, at::kFloat);
+
+  auto new_alloc = other.storage().allocation();
+  ASSERT_NE(new_alloc, nullptr);
+  {
+    c10::Storage storage = tensor.storage();
+    storage.set_data_ptr_noswap(new_alloc);
+  }
+
+  ASSERT_EQ(tensor.data_ptr(), new_alloc->ptr())
+      << "Tensor should keep the storage alive after external handles die";
+  ASSERT_EQ(tensor.storage().allocation(), new_alloc);
+}
+
+TEST(StorageTest, RepeatedStorageCallsReturnSameReference) {
+  at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
+
+  const c10::Storage& storage_a = tensor.storage();
+  const c10::Storage& storage_b = tensor.storage();
+
+  ASSERT_EQ(&storage_a, &storage_b)
+      << "storage() must return the same reference for one tensor wrapper";
+  ASSERT_EQ(storage_a.get_impl(), storage_b.get_impl());
+}
+
+TEST(StorageTest, CopiedTensorWrappersShareStorageImpl) {
+  at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
+  at::TensorBase alias = tensor;
+  at::TensorBase other = at::ones({4, 5}, at::kFloat);
+
+  auto new_alloc = other.storage().allocation();
+  ASSERT_NE(new_alloc, nullptr);
+
+  c10::Storage storage = tensor.storage();
+  storage.set_data_ptr_noswap(new_alloc);
+
+  ASSERT_EQ(tensor.storage().get_impl(), alias.storage().get_impl());
+  ASSERT_EQ(alias.data_ptr(), new_alloc->ptr())
+      << "Copied TensorBase wrappers must observe shared storage mutations";
+}
+
+TEST(StorageTest, ViewTensorWrappersShareStorageImpl) {
+  at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
+  at::TensorBase alias = tensor.view({3, 2});
+
+  c10::Storage tensor_storage = tensor.storage();
+  c10::Storage alias_storage = alias.storage();
+
+  ASSERT_TRUE(tensor_storage.is_alias_of(alias_storage))
+      << "Fresh wrappers over the same underlying storage should share a "
+         "StorageImpl";
+  ASSERT_FALSE(c10::isSharedStorageAlias(tensor_storage, alias_storage))
+      << "isSharedStorageAlias() should follow DataPtr ownership semantics, "
+         "not overlapping ranges";
+}
+
+TEST(StorageTest, HasStorageTracksLiveStorageState) {
+  at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
+  ASSERT_TRUE(tensor.has_storage());
+
+  c10::Storage storage = tensor.storage();
+  storage.set_data_ptr(at::DataPtr());
+  ASSERT_FALSE(tensor.has_storage());
+
+  tensor.reset();
+  ASSERT_FALSE(tensor.has_storage());
 }
 
 TEST(StorageTest, ReferenceSemanticsSetNbytesVisibleThroughCopy) {

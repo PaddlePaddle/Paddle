@@ -31,6 +31,7 @@
 namespace c10 {
 
 struct Storage;
+class StorageHolderView;
 
 // Check if two storages share the same underlying allocation
 inline bool isSharedStorageAlias(const Storage& storage0,
@@ -41,14 +42,44 @@ inline bool isSharedStorageAlias(const Storage& storage0,
 // set_data_ptr*(), set_nbytes(), or mutable_data_ptr() are visible to all
 // handles — matching the observable contract of c10::StorageImpl in PyTorch.
 struct StorageImpl {
-  std::shared_ptr<phi::Allocation> allocation_;
+  std::shared_ptr<phi::Allocation> data_allocation_;
   phi::Allocator* allocator_ = nullptr;
   size_t nbytes_ = 0;
   bool resizable_ = false;
+  phi::Place place_;
   // DataPtr is stored directly (not in a shared_ptr) because all Storage
   // copies already share this StorageImpl, so one level of indirection
   // suffices to propagate mutations.
   DataPtr data_ptr_;
+  std::weak_ptr<StorageHolderView> tensor_holder_;
+};
+
+class StorageHolderView final : public phi::Allocation {
+ public:
+  explicit StorageHolderView(std::shared_ptr<StorageImpl> impl)
+      : impl_(std::move(impl)) {}
+
+  std::shared_ptr<StorageImpl> get_impl() const { return impl_; }
+
+  void* ptr() const noexcept override {
+    if (!impl_) {
+      return nullptr;
+    }
+    if (impl_->data_allocation_) {
+      return impl_->data_allocation_->ptr();
+    }
+    return impl_->data_ptr_.get();
+  }
+
+  size_t size() const noexcept override { return impl_ ? impl_->nbytes_ : 0; }
+
+  const Place& place() const noexcept override {
+    return impl_ ? impl_->place_ : place_;
+  }
+
+ private:
+  std::shared_ptr<StorageImpl> impl_;
+  Place place_;
 };
 
 struct Storage {
@@ -91,9 +122,7 @@ struct Storage {
           std::unique_ptr<phi::StorageProperties> props = nullptr) {
     impl_ = std::make_shared<StorageImpl>();
     if (alloc) {
-      impl_->nbytes_ = alloc->size();
-      impl_->data_ptr_ = viewDataPtrFrom(alloc);
-      impl_->allocation_ = std::move(alloc);
+      syncFromAllocation(std::move(alloc));
     }
   }
 
@@ -104,9 +133,8 @@ struct Storage {
       auto alloc =
           std::shared_ptr<phi::Allocation>(allocator->Allocate(size_bytes));
       impl_->allocator_ = allocator;
+      syncFromAllocation(std::move(alloc));
       impl_->nbytes_ = size_bytes;
-      impl_->data_ptr_ = viewDataPtrFrom(alloc);
-      impl_->allocation_ = std::move(alloc);
     }
   }
 
@@ -122,8 +150,8 @@ struct Storage {
     if (allocator) {
       auto alloc =
           std::shared_ptr<phi::Allocation>(allocator->Allocate(size_bytes));
-      impl_->data_ptr_ = viewDataPtrFrom(alloc);
-      impl_->allocation_ = std::move(alloc);
+      syncFromAllocation(std::move(alloc));
+      impl_->nbytes_ = size_bytes;
     }
   }
 
@@ -137,8 +165,8 @@ struct Storage {
     impl_->allocator_ = allocator;
     impl_->nbytes_ = size_bytes;
     impl_->resizable_ = resizable;
-    impl_->data_ptr_ = viewDataPtrFrom(alloc);
-    impl_->allocation_ = std::move(alloc);
+    syncFromAllocation(std::move(alloc));
+    impl_->nbytes_ = size_bytes;
   }
 
   // LibTorch compatible constructor with pre-allocated DataPtr
@@ -151,7 +179,7 @@ struct Storage {
     impl_->allocator_ = allocator;
     impl_->nbytes_ = size_bytes;
     impl_->resizable_ = resizable;
-    impl_->data_ptr_ = std::move(data_ptr);
+    syncFromDataPtr(std::move(data_ptr), size_bytes);
   }
 
  protected:
@@ -174,9 +202,37 @@ struct Storage {
   // storage registry).
   std::shared_ptr<StorageImpl> get_impl() const { return impl_; }
 
+  static Storage createTensorStorage(
+      const std::shared_ptr<phi::Allocation>& holder) {
+    if (!holder) {
+      return Storage();
+    }
+    if (auto storage_holder =
+            std::dynamic_pointer_cast<StorageHolderView>(holder)) {
+      return Storage(storage_holder->get_impl());
+    }
+    auto impl = std::make_shared<StorageImpl>();
+    Storage storage(std::move(impl));
+    storage.syncFromAllocation(holder);
+    storage.ensureTensorHolder();
+    return storage;
+  }
+
+  std::shared_ptr<phi::Allocation> ensureTensorHolder() const {
+    if (!impl_) {
+      return nullptr;
+    }
+    auto holder = impl_->tensor_holder_.lock();
+    if (!holder) {
+      holder = std::make_shared<StorageHolderView>(impl_);
+      impl_->tensor_holder_ = holder;
+    }
+    return holder;
+  }
+
   // Check if storage is valid (has allocation or data)
   bool valid() const {
-    return impl_ && (static_cast<bool>(impl_->allocation_) ||
+    return impl_ && (static_cast<bool>(impl_->data_allocation_) ||
                      static_cast<bool>(impl_->data_ptr_));
   }
 
@@ -192,8 +248,9 @@ struct Storage {
   void set_nbytes(size_t size_bytes) {
     if (!impl_) return;
     if (impl_->resizable_ && impl_->allocator_) {
-      setAllocAndDataPtr(std::shared_ptr<phi::Allocation>(
+      syncFromAllocation(std::shared_ptr<phi::Allocation>(
           impl_->allocator_->Allocate(size_bytes)));
+      impl_->nbytes_ = size_bytes;
     } else {
       impl_->nbytes_ = size_bytes;
     }
@@ -204,11 +261,25 @@ struct Storage {
 
   // Get mutable data pointer
   void* mutable_data() const {
-    return impl_ ? impl_->data_ptr_.get() : nullptr;
+    if (!impl_) {
+      return nullptr;
+    }
+    if (impl_->data_allocation_) {
+      return impl_->data_allocation_->ptr();
+    }
+    return impl_->data_ptr_.get();
   }
 
   // Get const data pointer
-  const void* data() const { return impl_ ? impl_->data_ptr_.get() : nullptr; }
+  const void* data() const {
+    if (!impl_) {
+      return nullptr;
+    }
+    if (impl_->data_allocation_) {
+      return impl_->data_allocation_->ptr();
+    }
+    return impl_->data_ptr_.get();
+  }
 
   // Get a const reference to the underlying DataPtr (LibTorch compatible)
   const DataPtr& data_ptr() const { return impl_->data_ptr_; }
@@ -221,7 +292,7 @@ struct Storage {
 
   // Get the underlying phi::Allocation (Paddle-specific)
   std::shared_ptr<phi::Allocation> allocation() const {
-    return impl_ ? impl_->allocation_ : nullptr;
+    return impl_ ? impl_->data_allocation_ : nullptr;
   }
 
   // Get the allocator
@@ -232,7 +303,8 @@ struct Storage {
   // Get the device/place type
   phi::AllocationType device_type() const {
     if (!impl_) return phi::AllocationType::CPU;
-    if (impl_->allocation_) return impl_->allocation_->place().GetType();
+    if (impl_->data_allocation_)
+      return impl_->data_allocation_->place().GetType();
     if (impl_->data_ptr_) return impl_->data_ptr_.device().type();
     return phi::AllocationType::CPU;
   }
@@ -240,9 +312,8 @@ struct Storage {
   // Get the device/place
   phi::Place device() const {
     if (!impl_) return phi::Place();
-    if (impl_->allocation_) return impl_->allocation_->place();
-    if (impl_->data_ptr_) return impl_->data_ptr_.device()._PD_GetInner();
-    return phi::Place();
+    if (impl_->data_allocation_) return impl_->data_allocation_->place();
+    return impl_->place_;
   }
 
   // Returns the number of c10::Storage handles currently sharing this
@@ -251,7 +322,11 @@ struct Storage {
   // storage (neither allocation nor data_ptr set).
   size_t use_count() const {
     if (!valid()) return 0;
-    return impl_.use_count();
+    size_t count = impl_.use_count();
+    if (!impl_->tensor_holder_.expired() && count > 0) {
+      --count;
+    }
+    return count;
   }
 
   // Check if this storage is unique (use_count == 1)
@@ -268,37 +343,38 @@ struct Storage {
   }
 
   // Set data pointer (swap and return old) - LibTorch compatible DataPtr
-  // version. Clears allocation_ since the new DataPtr manages its own
-  // lifecycle. The change is propagated to all Storage copies that share
+  // version. Clears allocation-backed state since the new DataPtr manages its
+  // own lifecycle. The change is propagated to all Storage copies that share
   // this StorageImpl. Use set_data_ptr(shared_ptr<phi::Allocation>) for
   // Paddle paths.
   DataPtr set_data_ptr(DataPtr&& new_data_ptr) {
     DataPtr old = std::move(impl_->data_ptr_);
-    impl_->allocation_ = nullptr;
-    impl_->data_ptr_ = std::move(new_data_ptr);
+    syncFromDataPtr(std::move(new_data_ptr), impl_->nbytes_);
     return old;
   }
+  DataPtr set_data_ptr(std::nullptr_t) = delete;
 
   // Set data pointer (no swap) - LibTorch compatible DataPtr version.
   // Propagated to all Storage copies that share this StorageImpl.
   void set_data_ptr_noswap(DataPtr&& new_data_ptr) {
-    impl_->allocation_ = nullptr;
-    impl_->data_ptr_ = std::move(new_data_ptr);
+    syncFromDataPtr(std::move(new_data_ptr), impl_->nbytes_);
   }
+  void set_data_ptr_noswap(std::nullptr_t) = delete;
 
   // Set data pointer - Paddle-specific shared_ptr<phi::Allocation> version.
   // Propagated to all Storage copies that share this StorageImpl.
   std::shared_ptr<phi::Allocation> set_data_ptr(
       std::shared_ptr<phi::Allocation> new_alloc) {
-    std::shared_ptr<phi::Allocation> old_alloc = std::move(impl_->allocation_);
-    setAllocAndDataPtr(std::move(new_alloc));
+    std::shared_ptr<phi::Allocation> old_alloc =
+        std::move(impl_->data_allocation_);
+    syncFromAllocation(std::move(new_alloc));
     return old_alloc;
   }
 
   // Set data pointer (no swap) - Paddle-specific shared_ptr version.
   // Propagated to all Storage copies that share this StorageImpl.
   void set_data_ptr_noswap(std::shared_ptr<phi::Allocation> new_alloc) {
-    setAllocAndDataPtr(std::move(new_alloc));
+    syncFromAllocation(std::move(new_alloc));
   }
 
  private:
@@ -307,17 +383,31 @@ struct Storage {
   // handle are immediately visible through all other handles.
   std::shared_ptr<StorageImpl> impl_;
 
-  // Update allocation_, nbytes_, and data_ptr_ together through the shared
-  // impl. Used by both set_data_ptr and set_data_ptr_noswap (shared_ptr
-  // overloads) as well as set_nbytes for resizable storage.
-  void setAllocAndDataPtr(std::shared_ptr<phi::Allocation> new_alloc) {
-    impl_->allocation_ = std::move(new_alloc);
-    if (impl_->allocation_) impl_->nbytes_ = impl_->allocation_->size();
-    impl_->data_ptr_ = viewDataPtrFrom(impl_->allocation_);
+  // Update allocation-backed storage state. The tensor holder stays attached
+  // to the shared StorageImpl, so tensors observe pointer changes without
+  // extra registry state.
+  void syncFromAllocation(std::shared_ptr<phi::Allocation> new_alloc) {
+    impl_->data_allocation_ = std::move(new_alloc);
+    if (impl_->data_allocation_) {
+      impl_->nbytes_ = impl_->data_allocation_->size();
+      impl_->place_ = impl_->data_allocation_->place();
+    } else {
+      impl_->nbytes_ = 0;
+      impl_->place_ = phi::Place();
+    }
+    impl_->data_ptr_ = viewDataPtrFrom(impl_->data_allocation_);
+  }
+
+  void syncFromDataPtr(DataPtr&& new_data_ptr, size_t size_bytes) {
+    impl_->data_allocation_ = nullptr;
+    impl_->nbytes_ = size_bytes;
+    impl_->place_ =
+        new_data_ptr ? new_data_ptr.device()._PD_GetInner() : phi::Place();
+    impl_->data_ptr_ = std::move(new_data_ptr);
   }
 
   // Create a non-owning DataPtr view of a phi::Allocation.
-  // The allocation's lifetime is managed by impl_->allocation_.
+  // The allocation's lifetime is managed by impl_->data_allocation_.
   // No deleter is installed so the DataPtr holds only a raw pointer.
   static DataPtr viewDataPtrFrom(
       const std::shared_ptr<phi::Allocation>& alloc) {
@@ -332,21 +422,14 @@ inline bool isSharedStorageAlias(const Storage& storage0,
   if (!storage0.valid() || !storage1.valid()) {
     return false;
   }
-  const void* ptr0 = storage0.data();
-  const void* ptr1 = storage1.data();
-  size_t size0 = storage0.nbytes();
-  size_t size1 = storage1.nbytes();
-
-  if (ptr0 == nullptr || ptr1 == nullptr || size0 == 0 || size1 == 0) {
+  c10::DeleterFnPtr deleter0 = storage0.data_ptr().get_deleter();
+  c10::DeleterFnPtr deleter1 = storage1.data_ptr().get_deleter();
+  if (deleter0 == nullptr || deleter1 == nullptr || deleter0 != deleter1) {
     return false;
   }
-
-  const char* start0 = static_cast<const char*>(ptr0);
-  const char* end0 = start0 + size0;
-  const char* start1 = static_cast<const char*>(ptr1);
-  const char* end1 = start1 + size1;
-
-  return !(end0 <= start1 || end1 <= start0);
+  void* context0 = storage0.data_ptr().get_context();
+  void* context1 = storage1.data_ptr().get_context();
+  return context0 != nullptr && context0 == context1;
 }
 
 // Template specialization for MaybeOwnedTraits<c10::Storage>
@@ -362,11 +445,13 @@ struct MaybeOwnedTraits<c10::Storage> {
     return borrow_type(borrow_type::unsafe_borrow_t{}, from);
   }
 
-  static void assignBorrow(borrow_type* lhs, const borrow_type& rhs) {
-    *lhs = borrow_type(borrow_type::unsafe_borrow_t{}, rhs);
+  static void assignBorrow(borrow_type& lhs,  // NOLINT(runtime/references)
+                           const borrow_type& rhs) {
+    lhs = borrow_type(borrow_type::unsafe_borrow_t{}, rhs);
   }
 
-  static void destroyBorrow(borrow_type* toDestroy) { *toDestroy = Storage(); }
+  // NOLINTNEXTLINE(runtime/references)
+  static void destroyBorrow(borrow_type& toDestroy) { toDestroy = Storage(); }
 
   static const owned_type& referenceFromBorrow(const borrow_type& borrow) {
     return borrow;
@@ -398,9 +483,13 @@ struct ExclusivelyOwnedTraits<c10::Storage> {
 
   static repr_type moveToRepr(c10::Storage&& x) { return std::move(x); }
 
-  static c10::Storage take(c10::Storage* x) { return std::move(*x); }
+  static c10::Storage take(c10::Storage& x) {  // NOLINT(runtime/references)
+    return std::move(x);
+  }
 
-  static pointer_type getImpl(repr_type* x) { return x; }
+  static pointer_type getImpl(repr_type& x) {  // NOLINT(runtime/references)
+    return &x;
+  }
 
   static const_pointer_type getImpl(const repr_type& x) { return &x; }
 };
