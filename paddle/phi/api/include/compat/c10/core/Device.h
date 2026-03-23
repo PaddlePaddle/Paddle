@@ -23,10 +23,10 @@ using gpuStream_t = cudaStream_t;
 using gpuStream_t = hipStream_t;
 #endif
 
+#include <c10/core/DeviceType.h>
+
 #include <string>
 #include <utility>
-
-#include <c10/core/DeviceType.h>  // NOLINT(build/include_order)
 
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/core/platform/device_event_base.h"
