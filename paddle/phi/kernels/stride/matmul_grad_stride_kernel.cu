@@ -28,8 +28,17 @@
 #include "paddle/phi/kernels/transpose_kernel.h"
 
 COMMON_DECLARE_bool(use_stride_kernel);
+COMMON_DECLARE_bool(use_legacy_gemm);
 
 namespace phi {
+
+inline bool UseCanonicalizedTransposeGradPath() {
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
+  return !FLAGS_use_legacy_gemm;
+#else
+  return false;
+#endif
+}
 
 inline void PrepareStridedOut(DenseTensor* out) {
   if (out == nullptr) {
@@ -152,8 +161,12 @@ void MatmulGradStrideKernel(const Context& dev_ctx,
   DenseTensor y_ = y;
   DenseTensor out_grad_ = out_grad;
 
-  auto x_info = CanonicalizePureTransposeView(x, &transpose_x, &x_);
-  auto y_info = CanonicalizePureTransposeView(y, &transpose_y, &y_);
+  CanonicalizedTransposeInfo x_info;
+  CanonicalizedTransposeInfo y_info;
+  if (UseCanonicalizedTransposeGradPath()) {
+    x_info = CanonicalizePureTransposeView(x, &transpose_x, &x_);
+    y_info = CanonicalizePureTransposeView(y, &transpose_y, &y_);
+  }
 
   if (!x_.meta().is_contiguous()) {
     x_ = Tensor2Contiguous<Context>(dev_ctx, x_);
