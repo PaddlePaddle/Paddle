@@ -31,19 +31,17 @@ COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace phi {
 
-struct CanonicalizedTransposeInfo {
-  bool applied{false};
-  std::vector<int> axis;
-};
-
 inline void PrepareStridedOut(DenseTensor* out) {
   if (out == nullptr) {
     return;
   }
-  auto meta = out->meta();
-  meta.strides = meta.calc_strides(out->dims());
-  out->set_meta(meta);
+  out->set_strides(DenseTensorMeta::calc_strides(out->dims()));
 }
+
+struct CanonicalizedTransposeInfo {
+  bool applied{false};
+  std::vector<int> axis;
+};
 
 template <typename Context>
 DenseTensor Tensor2Contiguous(const Context& dev_ctx,
@@ -190,10 +188,10 @@ void MatmulGradStrideKernel(const Context& dev_ctx,
       dev_ctx, x_, y_, out_grad_, transpose_x, transpose_y, dx_out, dy_out);
 
   if (dx != nullptr && x_info.applied) {
-    phi::TransposeKernel<T, Context>(dev_ctx, dx_tmp, x_info.axis, dx);
+    phi::Transpose<T, Context>(dev_ctx, dx_tmp, x_info.axis, dx);
   }
   if (dy != nullptr && y_info.applied) {
-    phi::TransposeKernel<T, Context>(dev_ctx, dy_tmp, y_info.axis, dy);
+    phi::Transpose<T, Context>(dev_ctx, dy_tmp, y_info.axis, dy);
   }
 }
 

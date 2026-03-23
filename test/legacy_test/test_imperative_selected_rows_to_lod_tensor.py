@@ -72,9 +72,7 @@ class SimpleNet(paddle.nn.Layer):
         x_emb = self.embedding(input)
         fc = paddle.matmul(x_emb, self.softmax_weight)
         fc = paddle.add(fc, self.softmax_bias)
-        projection = paddle.matmul(
-            fc, paddle.transpose(self.embedding.weight, perm=[1, 0])
-        )
+        projection = paddle.matmul(fc, self.embedding.weight, transpose_y=True)
         projection = paddle.reshape(projection, shape=[-1, self.vocab_size])
         loss = paddle.nn.functional.softmax_with_cross_entropy(
             logits=projection, label=label, soft_label=False
