@@ -71,7 +71,24 @@ class TestMaskedScatterError(unittest.TestCase):
         with np.testing.assert_raises(AssertionError):
             paddle.masked_scatter(x, mask, value)
 
+    @unittest.skipIf(
+        core.is_compiled_with_cuda(),
+        "core is compiled with CUDA",
+    )
     def test_numel_error(self):
+        paddle.disable_static()
+        self.value_np = np.random.randn(5, 5).astype(self.dtype)
+        x = paddle.to_tensor(self.x_np, dtype=self.dtype)
+        mask = paddle.to_tensor(self.mask_np).astype('bool')
+        value = paddle.to_tensor(self.value_np, dtype=self.dtype)
+        with np.testing.assert_raises(AssertionError):
+            paddle.masked_scatter(x, mask, value)
+
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda(),
+        "core is not compiled with CUDA",
+    )
+    def test_numel_error_cuda(self):
         # The size check kernel uses asm("trap;") which fatally corrupts the
         # CUDA context.  Run in a subprocess so the parent stays healthy.
         code = """
