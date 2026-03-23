@@ -309,6 +309,9 @@ bool ExecutionEngine::linkSharedLibrary(
     return false;
   }
   return true;
+#else
+  CINN_NOT_IMPLEMENTED;
+#endif  // CINN_WITH_CUDA
 }
 
 bool ExecutionEngine::AddModule(
