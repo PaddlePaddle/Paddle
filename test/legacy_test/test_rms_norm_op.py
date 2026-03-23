@@ -60,7 +60,9 @@ class TestRMSNormOp(OpTest):
         self.outputs = {'y': y_ref, 'invvar': invvar_ref}
 
         def rms_norm_wrapper(x, scale):
-            return rms_norm(x, scale.shape, scale, eps=self.epsilon)
+            from paddle import _C_ops
+
+            return _C_ops.rms_norm(x, scale, scale.shape, self.epsilon)
 
         self.python_api = rms_norm_wrapper
 
@@ -124,14 +126,11 @@ class TestRMSNormAPI(unittest.TestCase):
         scale.stop_gradient = False
 
         # Test forward
-        y_fused, invvar_fused = rms_norm(x, (cols,), scale)
-        y_ref, invvar_ref = self.rms_norm_reference(x, scale)
+        y_fused = rms_norm(x, (cols,), scale)
+        y_ref, _ = self.rms_norm_reference(x, scale)
 
         np.testing.assert_allclose(
             y_fused.numpy(), y_ref.numpy(), rtol=1e-5, atol=1e-5
-        )
-        np.testing.assert_allclose(
-            invvar_fused.numpy(), invvar_ref.numpy(), rtol=1e-5, atol=1e-5
         )
 
         # Test backward
