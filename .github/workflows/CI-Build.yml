@@ -73,7 +73,7 @@ jobs:
     uses: ./.github/workflows/_Static-Check.yml
     needs: [clone, build-docker, build]
     with:
-      can-skip: ${{ needs.build.outputs.can-skip }}
+      can-skip: ${{ needs.build.outputs.can-skip == 'true' || needs.clone.outputs.can-skip == 'true' }}
       docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
 
   ce-framework:
