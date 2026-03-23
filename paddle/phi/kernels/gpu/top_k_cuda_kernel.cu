@@ -1024,17 +1024,25 @@ __global__ void __launch_bounds__(32 * max_block_dim_y)
   const auto invalid_value = V{};
   LoadKeys(warp_storage.load_keys)
       .Load(keys_iter, local_keys, keySliceSize, invalid_key);
+#if !defined(__HIPCC__)
   __syncwarp();
+#endif
   LoadValues(warp_storage.load_values)
       .Load(values_iter, local_values, keySliceSize, invalid_value);
+#if !defined(__HIPCC__)
   __syncwarp();
+#endif
 
   Sort(warp_storage.sort)
       .StableSort(local_keys, local_values, comp, keySliceSize, invalid_key);
+#if !defined(__HIPCC__)
   __syncwarp();
+#endif
 
   StoreKeys(warp_storage.store_keys).Store(keys_iter, local_keys, keySliceSize);
+#if !defined(__HIPCC__)
   __syncwarp();
+#endif
   StoreValues(warp_storage.store_values)
       .Store(values_iter, local_values, keySliceSize);
 }
@@ -2188,8 +2196,17 @@ int get_items_per_thread(uint64_t num_slices,
   constexpr int REGS_PER_BLOCK = REGS_PER_THREAD * BLOCK_THREADS;
   const auto& prop = phi::backends::gpu::GetDeviceProperties(device_id);
   int mpc = prop.multiProcessorCount;
+#ifdef PADDLE_WITH_HIP
+  // HIP/DCU: hipDeviceProp_t lacks regsPerMultiprocessor and
+  // maxBlocksPerMultiProcessor. Use conservative defaults:
+  // 65536 registers per CU is typical for AMD GCN/CDNA architectures.
+  // maxThreadsPerMultiProcessor / BLOCK_THREADS as blocks_per_mp estimate.
+  int regs_per_mp = 65536;
+  int max_blocks_per_mp = prop.maxThreadsPerMultiProcessor / BLOCK_THREADS;
+#else
   int regs_per_mp = prop.regsPerMultiprocessor;
   int max_blocks_per_mp = prop.maxBlocksPerMultiProcessor;
+#endif
   int blocks_per_mp = std::min(regs_per_mp / REGS_PER_BLOCK, max_blocks_per_mp);
   int64_t items_per_thread =
       topk_ceil_div((int64_t)(slice_size * num_slices),
@@ -2244,7 +2261,11 @@ void launch(TensorInfo<const T, IndexType> input,
   auto semaphores_buffer = phi::memory_utils::Alloc(
       place, numInputSlices * sizeof(uint32_t), phi_stream);
   uint32_t* semaphores = reinterpret_cast<uint32_t*>(semaphores_buffer->ptr());
+#ifdef PADDLE_WITH_HIP
+  hipMemsetAsync(semaphores, 0, numInputSlices * sizeof(uint32_t), stream);
+#else
   cudaMemsetAsync(semaphores, 0, numInputSlices * sizeof(uint32_t), stream);
+#endif
 
   auto ks_to_find_buffer = phi::memory_utils::Alloc(
       place, 2 * numInputSlices * sizeof(uint32_t), phi_stream);
@@ -2273,7 +2294,11 @@ void launch(TensorInfo<const T, IndexType> input,
       place, num_blocks * sizeof(uint32_t), phi_stream);
   uint32_t* withinKCounts =
       reinterpret_cast<uint32_t*>(withinKCounts_buffer->ptr());
+#ifdef PADDLE_WITH_HIP
+  hipMemsetAsync(withinKCounts, 0, num_blocks * sizeof(uint32_t), stream);
+#else
   cudaMemsetAsync(withinKCounts, 0, num_blocks * sizeof(uint32_t), stream);
+#endif
 
   auto kthCounts_buffer = phi::memory_utils::Alloc(
       place, num_blocks * sizeof(uint32_t), phi_stream);
@@ -2525,7 +2550,11 @@ void TopkKernel(const Context& dev_ctx,
     int64_t* indices_data = dev_ctx.template Alloc<int64_t>(indices);
     phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     // index is 0 for 0-d tensor
+#ifdef PADDLE_WITH_HIP
+    hipMemsetAsync(indices_data, 0, sizeof(int64_t), dev_ctx.stream());
+#else
     cudaMemsetAsync(indices_data, 0, sizeof(int64_t), dev_ctx.stream());
+#endif
     return;
   }
 
