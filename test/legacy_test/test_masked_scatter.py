@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import subprocess
+import sys
 import unittest
 
 import numpy as np
@@ -70,13 +72,36 @@ class TestMaskedScatterError(unittest.TestCase):
             paddle.masked_scatter(x, mask, value)
 
     def test_numel_error(self):
-        paddle.disable_static()
-        self.value_np = np.random.randn(5, 5).astype(self.dtype)
-        x = paddle.to_tensor(self.x_np, dtype=self.dtype)
-        mask = paddle.to_tensor(self.mask_np).astype('bool')
-        value = paddle.to_tensor(self.value_np, dtype=self.dtype)
-        with np.testing.assert_raises(AssertionError):
-            paddle.masked_scatter(x, mask, value)
+        # The size check kernel uses asm("trap;") which fatally corrupts the
+        # CUDA context.  Run in a subprocess so the parent stays healthy.
+        code = """
+import numpy as np
+import paddle
+paddle.disable_static()
+x_np = np.random.random((50, 3)).astype("float32")
+mask_np = np.ones((50, 3), dtype="bool")
+value_np = np.random.randn(5, 5).astype("float32")
+x = paddle.to_tensor(x_np)
+mask = paddle.to_tensor(mask_np)
+value = paddle.to_tensor(value_np)
+out = paddle.masked_scatter(x, mask, value)
+# Force synchronization so the device-side trap error surfaces.
+paddle.device.cuda.synchronize()
+"""
+        proc = subprocess.run(
+            [sys.executable, "-c", code],
+            capture_output=True,
+            text=True,
+        )
+        self.assertNotEqual(proc.returncode, 0)
+        # Device-side printf may go to stdout; the OSError traceback is
+        # on stderr.  Check both for the kernel error message.
+        combined = (proc.stdout + proc.stderr).lower()
+        self.assertTrue(
+            "number of true elements in mask" in combined
+            or "cuda error" in combined,
+            f"Expected masked_scatter size-check error, got:\n{combined}",
+        )
 
 
 class TestMaskedScatterAPI(unittest.TestCase):

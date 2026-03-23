@@ -51,6 +51,22 @@ static void MaskExclusiveSum(const bool* mask_data,
   }
 }
 
+// Asynchronously check that the number of `1` elements present in the mask
+// must be <= the number of elements available in `source`.
+// This mirrors PyTorch's masked_scatter_size_check kernel: a single-thread
+// kernel that avoids any D2H memcpy and stream synchronization.
+__global__ void MaskedScatterSizeCheck(const int64_t* mask_exclusive_sum,
+                                       const bool* mask,
+                                       int64_t srcSize) {
+  // Convert exclusive sum to inclusive sum
+  const auto totalElements = *mask_exclusive_sum + static_cast<int64_t>(*mask);
+  PADDLE_ENFORCE(totalElements <= srcSize,
+                 "The number of True elements in mask (%ld) exceeds "
+                 "the number of elements in source (%ld).",
+                 totalElements,
+                 srcSize);
+}
+
 template <typename T>
 __global__ void MaskedScatterCUDAKernel(const T* x_data,
                                         const bool* mask_data,
@@ -118,6 +134,11 @@ void MaskedScatterKernel(const Context& dev_ctx,
 
   MaskExclusiveSum(
       mask_bool_data, prefix_sum_data, total, dev_ctx.GetPlace(), stream);
+
+  // Asynchronously check that the number of `1` elements present in the mask
+  // must be <= the number of elements available in `source`.
+  MaskedScatterSizeCheck<<<1, 1, 0, stream>>>(
+      &prefix_sum_data[total - 1], &mask_bool_data[total - 1], value.numel());
 
   // Launch masked scatter kernel
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total);

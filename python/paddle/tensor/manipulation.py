@@ -5666,23 +5666,26 @@ def masked_scatter(
              [-0.31660911,  0.04793844]])
 
     """
-    if mask.dtype != paddle.bool:
-        mask = paddle.cast(mask, 'bool')
+    # make sure the dtype of x and value is the same
+    assert x.dtype == value.dtype, (
+        f'x and value must have the same dtype, but got x dtype is {x.dtype}, value dtype is {value.dtype}'
+    )
+    assert mask.dtype == paddle.bool
 
     if paddle.is_compiled_with_cuda() and in_dynamic_or_pir_mode():
         return _C_ops.masked_scatter(x, mask, value)
-    else:
-        zeros_like_x = paddle.zeros_like(x, dtype=int)
-        mask = paddle.add(paddle.cast(mask, dtype="int"), zeros_like_x)
-        mask_prefix = paddle.clip(mask.cumsum() - 1, min=0)
-        if in_dynamic_mode() and mask_prefix.numel() != 0:
-            assert mask_prefix[-1] <= value.numel(), (
-                f'mask true nums must be <= value size, but got mask true nums is {mask_prefix[-1].item()}, value size is {value.numel().item()}'
-            )
 
-        value = value.flatten()[mask_prefix].reshape(mask.shape)
-        mask = paddle.logical_not(mask.astype(bool))
-        return paddle.where(mask, x, value)
+    zeros_like_x = paddle.zeros_like(x, dtype=int)
+    mask = paddle.add(paddle.cast(mask, dtype="int"), zeros_like_x)
+    mask_prefix = paddle.clip(mask.cumsum() - 1, min=0)
+    if in_dynamic_mode() and mask_prefix.numel() != 0:
+        assert mask_prefix[-1] <= value.numel(), (
+            f'mask true nums must be <= value size, but got mask true nums is {mask_prefix[-1].item()}, value size is {value.numel().item()}'
+        )
+
+    value = value.flatten()[mask_prefix].reshape(mask.shape)
+    mask = paddle.logical_not(mask.astype(bool))
+    return paddle.where(mask, x, value)
 
 
 @inplace_apis_in_dygraph_only
@@ -5693,10 +5696,26 @@ def masked_scatter_(
     Inplace version of ``masked_scatter`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_masked_scatter`.
     """
-    if mask.dtype != paddle.bool:
-        mask = paddle.cast(mask, 'bool')
+    # make sure the dtype of x and value is the same
+    assert x.dtype == value.dtype, (
+        f'x and value must have the same dtype, but got x dtype is {x.dtype}, value dtype is {value.dtype}'
+    )
+    assert mask.dtype == paddle.bool
 
-    return _C_ops.masked_scatter_(x, mask, value)
+    if paddle.is_compiled_with_cuda() and in_dynamic_or_pir_mode():
+        return _C_ops.masked_scatter_(x, mask, value)
+
+    zeros_like_x = paddle.zeros_like(x, dtype=int)
+    mask = paddle.add(paddle.cast(mask, dtype="int"), zeros_like_x)
+    mask_prefix = paddle.clip(mask.cumsum() - 1, min=0)
+    assert mask_prefix[-1] <= value.numel(), (
+        f'mask true nums must be <= value size, but got mask true nums is {mask_prefix[-1].item()}, value size is {value.numel().item()}'
+    )
+
+    value = value.flatten()[mask_prefix].reshape(mask.shape)
+    mask = paddle.logical_not(mask.astype(bool))
+    out = paddle.where_(mask, x, value)
+    return out
 
 
 @inplace_apis_in_dygraph_only
