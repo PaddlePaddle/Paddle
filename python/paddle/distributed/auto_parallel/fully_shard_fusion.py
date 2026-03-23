@@ -92,11 +92,22 @@ def _dtensor_from_local(local_tensor, mesh, placements):
 
 
 class TensorFusionBuffer:
-    def __init__(self, unique_key, params, fsdp_degree, dtype, is_params=False):
+    def __init__(
+        self,
+        unique_key,
+        params,
+        fsdp_degree,
+        dtype,
+        is_params=False,
+        main_grad_dtype=None,
+    ):
         # Calculate total buffer size needed (with padding)
         self.unique_key = unique_key
         self.fsdp_degree = fsdp_degree
         self.dtype = dtype
+        self.main_grad_dtype = (
+            main_grad_dtype if main_grad_dtype is not None else dtype
+        )
         self.total_buffer_size = 0
         self.param_offsets = {}
         self.tmp_data_buffer = None
@@ -159,7 +170,7 @@ class TensorFusionBuffer:
             # Create fused grads_buffer with shard
             self.data_buffer = paddle.zeros(
                 shape=[self.total_buffer_size // self.fsdp_degree],
-                dtype=dtype,
+                dtype=self.main_grad_dtype,
             )
 
             # Register get_main_grad method for each param, returns view_slice of grad_buffer
@@ -208,6 +219,7 @@ class FSDPBufferManager:
     def __init__(self, model, mesh, fsdp_unit_layers=None):
         self.model = model
         self._fsdp_group = mesh.get_group("dp")
+        self.main_grad_dtype = paddle.float32
 
         # Get EP group if "ep" dimension exists in mesh
         if "ep" in mesh.dim_names:
@@ -260,7 +272,8 @@ class FSDPBufferManager:
                     gid,
                     params,
                     fsdp_group.nranks,
-                    paddle.float32,
+                    params[0].dtype,
+                    main_grad_dtype=self.main_grad_dtype,
                 )
             else:
                 grads_buffer = None
@@ -696,7 +709,7 @@ class FullyShardFusion:
                         grad.process_mesh,
                         grad.placements,
                     )
-                    param.main_grad._local_value().add_(grad._local_value())
+                    param.main_grad._local_value().copy_(grad._local_value())
                     grad._clear_data()
                 comm_manager.shard_params([param], is_backward=True)
                 comm_manager.reduce_scatter_grads(param)
