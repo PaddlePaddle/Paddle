@@ -138,21 +138,20 @@ void XPUReduce(const Context& dev_ctx,
   GetReduceDims(x.dims(), dims, reduce_all, &reduce_dims);
 
   // no need to cast dtype
-  if (out_dtype == phi::DataType::UNDEFINED || out_dtype == x.dtype()) {
+  if (out_dtype == DataType::UNDEFINED || out_dtype == x.dtype()) {
     // do reduce sum
-    PD_VISIT_XPU_REDUCE_TYPES(
-        x.dtype(), "ReduceKernelImpl", ([&] {
-          phi::ReduceKernelImpl<Context, T, data_t, Functor>(
-              dev_ctx, x, out, xdims, reduce_dims);
-        }));
+    PD_VISIT_XPU_REDUCE_TYPES(x.dtype(), "ReduceKernelImpl", ([&] {
+                                ReduceKernelImpl<Context, T, data_t, Functor>(
+                                    dev_ctx, x, out, xdims, reduce_dims);
+                              }));
   } else {
     // cast x tensor to out_dtype
-    auto tmp_tensor = phi::Cast<T, Context>(dev_ctx, x, out_dtype);
+    auto tmp_tensor = Cast<T, Context>(dev_ctx, x, out_dtype);
 
     // do reduce sum
     PD_VISIT_XPU_REDUCE_TYPES(
         out_dtype, "ReduceKernelImpl", ([&] {
-          phi::ReduceKernelImpl<Context, T, data_t, Functor>(
+          ReduceKernelImpl<Context, T, data_t, Functor>(
               dev_ctx, tmp_tensor, out, xdims, reduce_dims);
         }));
 

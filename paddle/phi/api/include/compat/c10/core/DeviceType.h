@@ -26,6 +26,19 @@ constexpr DeviceType kCUDA = DeviceType::GPU;
 constexpr DeviceType kCPU = DeviceType::CPU;
 constexpr DeviceType kCUSTOM = DeviceType::CUSTOM;
 
+inline bool isValidDeviceType(DeviceType d) {
+  switch (d) {
+    case DeviceType::CPU:
+    case DeviceType::CUDA:
+    case DeviceType::XPU:
+    case DeviceType::IPU:
+    case DeviceType::CUSTOM:
+      return true;
+    default:
+      return false;
+  }
+}
+
 }  // namespace c10
 
 namespace at {

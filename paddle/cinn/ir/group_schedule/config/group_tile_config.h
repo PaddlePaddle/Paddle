@@ -46,6 +46,7 @@ struct ScheduleConfig {
 
   struct TileConfig {
     int64_t warp_num{1};
+    int64_t warp_size{32};
     int64_t tree_reduce_num{1};
     int64_t grid_reduce_num{1};
     int64_t spatial_inner_num{1};

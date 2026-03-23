@@ -23,10 +23,8 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-template <typename T,
-          int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = EigenMatrix<T, MajorType, IndexType>;
+template <typename T, int MajorType = Eigen::RowMajor>
+using EigenMatrix = EigenMatrix<T, MajorType>;
 
 template <typename DeviceContext, typename T>
 class CopyMatrixRowsFunctor {
@@ -38,7 +36,7 @@ class CopyMatrixRowsFunctor {
   // The indexed rows are based on the input index.
   void operator()(const DeviceContext& dev_ctx,
                   const DenseTensor& src,
-                  phi::Vector<size_t> index_lod,
+                  Vector<size_t> index_lod,
                   DenseTensor* dst,
                   bool is_src_index);
 };

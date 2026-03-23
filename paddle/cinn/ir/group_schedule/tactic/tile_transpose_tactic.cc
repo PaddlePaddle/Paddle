@@ -554,9 +554,13 @@ void TileTransposeTactic::TileCacheBlock(ir::IRSchedule* sch,
   // Step 3. Do inner-block transpose.
   int offset = high_axis_.size();
   sch->Split(shared_cache_block_id, offset + 1, {-1, 4, 8});
-  sch->Split(shared_cache_block_id, offset, {-1, 32});
+  sch->Split(shared_cache_block_id,
+             offset,
+             {-1, static_cast<int>(context_->config.tile_config.warp_size)});
 
-  sch->Split(local_cache_block_id, offset + 1, {-1, 32});
+  sch->Split(local_cache_block_id,
+             offset + 1,
+             {-1, static_cast<int>(context_->config.tile_config.warp_size)});
   sch->Split(local_cache_block_id, offset, {-1, 4, 8});
 
   sch->Reorder(shared_cache_block_id, OffsetVec({0, 2, 3, 4, 1}, offset));
@@ -572,7 +576,9 @@ void TileTransposeTactic::TileBlock(ir::IRSchedule* sch,
   CanonicalizeLayout(sch, block_id);
 
   int offset = high_axis_.size();
-  sch->Split(block_id, offset + 1, {-1, 32});
+  sch->Split(block_id,
+             offset + 1,
+             {-1, static_cast<int>(context_->config.tile_config.warp_size)});
   sch->Split(block_id, offset, {-1, 4, 8});
 
   sch->Reorder(block_id, OffsetVec({0, 3, 1, 2, 4}, offset));

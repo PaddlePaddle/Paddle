@@ -1924,8 +1924,8 @@ MatmulJudgeDtypeKernel(const Context& dev_ctx,
   if (try_matmul_int8) {
     return;
   }
-  auto x_tmp = phi::Cast<T, Context>(dev_ctx, x, phi::DataType::FLOAT32);
-  auto y_tmp = phi::Cast<T, Context>(dev_ctx, y, phi::DataType::FLOAT32);
+  auto x_tmp = Cast<T, Context>(dev_ctx, x, phi::DataType::FLOAT32);
+  auto y_tmp = Cast<T, Context>(dev_ctx, y, phi::DataType::FLOAT32);
   DenseTensor out_tmp;
   MatMulFunction<Context, float>(dev_ctx,
                                  x_tmp,
@@ -1936,10 +1936,10 @@ MatmulJudgeDtypeKernel(const Context& dev_ctx,
                                  transpose_x,
                                  transpose_y);
   if (x.dtype() == phi::DataType::INT8) {
-    phi::CastKernel<float>(dev_ctx, out_tmp, phi::DataType::INT32, out);
+    CastKernel<float>(dev_ctx, out_tmp, phi::DataType::INT32, out);
     return;
   }
-  phi::CastKernel<float>(dev_ctx, out_tmp, x.dtype(), out);
+  CastKernel<float>(dev_ctx, out_tmp, x.dtype(), out);
 }
 
 #if defined(PADDLE_WITH_CUDA)

@@ -25,7 +25,7 @@
 #include "paddle/phi/kernels/funcs/math_function.h"
 #define SWITCH_RESHAPE_DIMS(n)                                                \
   case n: {                                                                   \
-    Eigen::DSizes<Eigen::DenseIndex, n> reshape_dims;                         \
+    Eigen::DSizes<int64_t, n> reshape_dims;                                   \
     for (size_t i = 0; i < reshape_dims_vec.size(); ++i) {                    \
       reshape_dims[i] = reshape_dims_vec[i];                                  \
     }                                                                         \
@@ -36,7 +36,7 @@
 
 #define UPPER_SWITCH_REDUCE_DIMS(m)                       \
   case m: {                                               \
-    Eigen::DSizes<Eigen::DenseIndex, m> reduce_dims;      \
+    Eigen::DSizes<int64_t, m> reduce_dims;                \
     for (size_t i = 0; i < reduce_dims_vec.size(); ++i) { \
       reduce_dims[i] = reduce_dims_vec[i];                \
     }                                                     \

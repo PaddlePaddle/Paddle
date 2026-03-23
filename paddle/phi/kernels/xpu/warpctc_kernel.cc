@@ -137,7 +137,7 @@ void WarpctcKernel(const Context& dev_ctx,
           256 * 1024,
           sm_workspace + lm_workspace));
 
-  loss->Resize(make_ddim({num_sequences, 1}));
+  loss->Resize({num_sequences, 1});
   dev_ctx.template Alloc<T>(loss);
   T* loss_data = loss->data<T>();
 

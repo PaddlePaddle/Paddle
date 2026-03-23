@@ -65,7 +65,7 @@ PADDLE_API void AdamwDenseKernel(const Context& dev_ctx,
         errors::InvalidArgument("Input(SkipUpdate) size must be 1, but get %d",
                                 skip_update->numel()));
     std::vector<bool> skip_update_vec;
-    phi::TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
+    TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
     skip_update_ = skip_update_vec[0];
   }
   VLOG(3) << "Skip update" << skip_update_;

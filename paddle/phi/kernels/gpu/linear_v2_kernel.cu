@@ -213,7 +213,7 @@ void LinearV2Kernel(const Context& dev_ctx,
       weight_processed.Resize(common::make_ddim({K, N}));
       DenseTensor bias_processed = bias;
       if (bias.numel() != (M * N)) {
-        bias_processed.Resize(make_ddim({1, bias.numel()}));
+        bias_processed.Resize({1, bias.numel()});
         phi::TileKernel<T, Context>(
             dev_ctx, bias_processed, {M, 1}, &bias_processed);
       }
