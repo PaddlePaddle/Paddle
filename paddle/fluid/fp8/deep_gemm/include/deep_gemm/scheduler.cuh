@@ -18,7 +18,7 @@
 // https://github.com/deepseek-ai/DeepGEMM/blob/main/LICENSE
 
 #pragma once
-#include "utils.cuh"
+#include "deep_gemm/utils.cuh"
 
 namespace deep_gemm {
 
@@ -81,7 +81,7 @@ struct Scheduler {
   __device__ __forceinline__ bool is_tma_multicast_valid(
       const uint32_t& m_block_idx) const {
     if (num_blocks_in_group == 1) return false;
-    if constexpr (kGemmType == GemmType::Normal or
+    if constexpr (kGemmType == GemmType::Normal ||
                   kGemmType == GemmType::GroupedMasked) {
       return true;
     } else {
@@ -101,8 +101,8 @@ struct Scheduler {
   __device__ __forceinline__ void get_swizzled_block_idx(
       const uint32_t& num_m_blocks,
       const uint32_t& block_idx,
-      uint32_t& m_block_idx,
-      uint32_t& n_block_idx) {
+      uint32_t& m_block_idx,    // NOLINT
+      uint32_t& n_block_idx) {  // NOLINT
     DG_STATIC_ASSERT(kNum1DBlocksPerGroup % kNumTMAMulticast == 0,
                      "Invalid group size");
 
@@ -117,7 +117,7 @@ struct Scheduler {
         min(kNum1DBlocksPerGroup, primary_num_blocks - first_block_idx);
 
     // Fix unaligned TMA multicast
-    if (kNumTMAMulticast > 1 and num_blocks_in_group % 2 != 0) {
+    if (kNumTMAMulticast > 1 && num_blocks_in_group % 2 != 0) {
       if (in_group_idx < (num_blocks_in_group ^ 1) * secondary_num_blocks) {
         num_blocks_in_group = num_blocks_in_group ^ 1;
       } else {
@@ -156,8 +156,9 @@ struct Scheduler {
     }
   }
 
-  __device__ __forceinline__ bool get_next_block(uint32_t& m_block_idx,
-                                                 uint32_t& n_block_idx) {
+  __device__ __forceinline__ bool get_next_block(
+      uint32_t& m_block_idx,    // NOLINT
+      uint32_t& n_block_idx) {  // NOLINT
     const auto next_block_idx = (++current_iter) * gridDim.x + blockIdx.x;
 
     if constexpr (kGemmType == GemmType::GroupedMasked) {
@@ -188,9 +189,9 @@ struct Scheduler {
       // GEMM, as it must be aligned
       is_peer_cta_alive =
           kNumNBlocks % kNumTMAMulticast ==
-              0 or  // Always aligned on N (constant bypass)
+              0 ||  // Always aligned on N (constant bypass)
           num_aligned_m_blocks % kNumTMAMulticast ==
-              0 or  // Always aligned on M (constant bypass)
+              0 ||  // Always aligned on M (constant bypass)
           (next_block_idx ^ 1) < num_blocks;  // Peer CTA in bound
       get_swizzled_block_idx(
           num_aligned_m_blocks, next_block_idx, m_block_idx, n_block_idx);

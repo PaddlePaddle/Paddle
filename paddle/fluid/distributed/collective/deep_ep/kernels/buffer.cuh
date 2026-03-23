@@ -42,7 +42,7 @@ struct Buffer {
     gbl_ptr = reinterpret_cast<uint8_t*>(gbl_ptr) + total_bytes;
   }
 
-  __device__ __forceinline__ Buffer advance_also(void*& gbl_ptr) {
+  __device__ __forceinline__ Buffer advance_also(void*& gbl_ptr) {  // NOLINT
     gbl_ptr = reinterpret_cast<uint8_t*>(gbl_ptr) + total_bytes;
     return *this;
   }
@@ -65,7 +65,7 @@ struct AsymBuffer {
  public:
   int total_bytes;
 
-  __device__ __forceinline__ AsymBuffer(void*& gbl_ptr,
+  __device__ __forceinline__ AsymBuffer(void*& gbl_ptr,  // NOLINT
                                         int num_elems,
                                         int num_ranks,
                                         int sm_id = 0,
@@ -105,7 +105,8 @@ struct AsymBuffer {
       ptrs[i] = ptrs[i] + shift * sizeof(dtype_t);
   }
 
-  __device__ __forceinline__ AsymBuffer advance_also(void*& gbl_ptr) {
+  __device__ __forceinline__ AsymBuffer
+  advance_also(void*& gbl_ptr) {  // NOLINT
     gbl_ptr = reinterpret_cast<uint8_t*>(gbl_ptr) + total_bytes;
     return *this;
   }
@@ -141,7 +142,7 @@ struct SymBuffer {
  public:
   int total_bytes;
 
-  __device__ __forceinline__ SymBuffer(void*& gbl_ptr,
+  __device__ __forceinline__ SymBuffer(void*& gbl_ptr,  // NOLINT
                                        int num_elems,
                                        int num_ranks,
                                        int sm_id = 0,
@@ -170,7 +171,7 @@ struct SymBuffer {
   }
 
   __device__ __forceinline__ dtype_t* buffer(int idx = 0) {
-    EP_STATIC_ASSERT(not kDecoupled,
+    EP_STATIC_ASSERT(!kDecoupled,
                      "`buffer` is only available for decoupled case");
     return reinterpret_cast<dtype_t*>(send_ptr + num_bytes * idx);
   }

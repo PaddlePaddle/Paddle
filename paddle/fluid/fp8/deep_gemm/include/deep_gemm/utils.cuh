@@ -32,7 +32,7 @@ __host__ __device__ __forceinline__ void host_device_printf(const char* format,
 #ifndef DG_DEVICE_ASSERT
 #define DG_DEVICE_ASSERT(cond)                           \
   do {                                                   \
-    if (not(cond)) {                                     \
+    if (!(cond)) {                                       \
       printf("Assertion failed: %s:%d, condition: %s\n", \
              __FILE__,                                   \
              __LINE__,                                   \

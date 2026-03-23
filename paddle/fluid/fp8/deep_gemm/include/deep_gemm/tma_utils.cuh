@@ -19,11 +19,11 @@
 
 #pragma once
 
-#include "utils.cuh"
+#include "deep_gemm/utils.cuh"
 
 namespace deep_gemm {
 
-// TODO: move this function to other files
+// TODO(ShigureNyako): move this helper into a dedicated header
 __device__ __forceinline__ void tma_copy(void const* desc_ptr,
                                          uint64_t* barrier_ptr,
                                          void* smem_ptr,

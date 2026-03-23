@@ -29,10 +29,10 @@
 #include <cute/arch/copy_sm90_desc.hpp>
 #include <cute/arch/copy_sm90_tma.hpp>
 
-#include "mma_utils.cuh"
-#include "scheduler.cuh"
-#include "tma_utils.cuh"
-#include "utils.cuh"
+#include "deep_gemm/mma_utils.cuh"
+#include "deep_gemm/scheduler.cuh"
+#include "deep_gemm/tma_utils.cuh"
+#include "deep_gemm/utils.cuh"
 
 namespace deep_gemm {
 
@@ -225,12 +225,11 @@ __global__ void __launch_bounds__(
           const bool is_tma_multicast_valid =
               scheduler.is_tma_multicast_valid(m_block_idx);
           const uint32_t num_tma_multicast_a =
-              (kIsTMAMulticastOnA and is_tma_multicast_valid) ? kNumTMAMulticast
-                                                              : 1;
+              (kIsTMAMulticastOnA && is_tma_multicast_valid) ? kNumTMAMulticast
+                                                             : 1;
           const uint32_t num_tma_multicast_b =
-              (not kIsTMAMulticastOnA and is_tma_multicast_valid)
-                  ? kNumTMAMulticast
-                  : 1;
+              (!kIsTMAMulticastOnA && is_tma_multicast_valid) ? kNumTMAMulticast
+                                                              : 1;
           DG_STATIC_ASSERT(kNumTMAMulticast <= 2,
                            "Scheduler does not support > 2 TMA multicast");
 
@@ -417,7 +416,7 @@ __global__ void __launch_bounds__(
         }
 
         // Wait last TMA store to be finished
-        if (k_iter == 0 and scheduler.current_iter > 0) {
+        if (k_iter == 0 && scheduler.current_iter > 0) {
           if (threadIdx.x == 0) {
             cute::tma_store_wait<0>();
             empty_barriers[kNumStages]->arrive();
@@ -475,7 +474,7 @@ __global__ void __launch_bounds__(
     }
   }
 #else
-  if (blockIdx.x == 0 and threadIdx.x == 0)
+  if (blockIdx.x == 0 && threadIdx.x == 0)
     DG_DEVICE_ASSERT(false && "This kernel only support sm_90a");
 #endif
 }
