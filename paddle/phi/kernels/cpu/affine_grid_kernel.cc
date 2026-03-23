@@ -22,13 +22,13 @@
 namespace phi {
 
 template <typename T>
-struct Linspace<phi::CPUContext, T> {
+struct Linspace<CPUContext, T> {
   void operator()(T start,
                   T end,
                   int count,
                   bool align_corners,
                   DenseTensor* numbers,
-                  const phi::CPUContext& dev_ctx) {
+                  const CPUContext& dev_ctx) {
     numbers->Resize(make_ddim({count}));
     T* number_data = dev_ctx.template Alloc<T>(numbers);
     T slice = (end - start) / (T)(count - 1);

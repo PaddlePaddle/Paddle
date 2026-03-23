@@ -33,8 +33,8 @@ void EditDistanceKernel(const Context& dev_ctx,
   int64_t* seq_num_data = dev_ctx.template Alloc<int64_t>(sequencenum);
   auto batch_size = hyps.dims()[0];
 
-  phi::Vector<size_t> hyp_lod(batch_size + 1);
-  phi::Vector<size_t> ref_lod(batch_size + 1);
+  Vector<size_t> hyp_lod(batch_size + 1);
+  Vector<size_t> ref_lod(batch_size + 1);
 
   bool use_length = hypslength.get_ptr() != nullptr;
 

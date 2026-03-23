@@ -176,9 +176,9 @@ void BipartiteMatchKernel(const Context& dev_ctx,
   match_dist->Resize({n, col});
   dev_ctx.template Alloc<T>(match_dist);
 
-  funcs::SetConstant<phi::CPUContext, int> iset;
+  funcs::SetConstant<CPUContext, int> iset;
   iset(dev_ctx, match_indices, static_cast<int>(-1));
-  funcs::SetConstant<phi::CPUContext, T> tset;
+  funcs::SetConstant<CPUContext, T> tset;
   tset(dev_ctx, match_dist, static_cast<T>(0));
 
   int* indices = match_indices->data<int>();

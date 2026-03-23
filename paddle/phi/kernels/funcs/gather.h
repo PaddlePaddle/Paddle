@@ -35,7 +35,7 @@ namespace funcs {
  * return: output tensor
  */
 template <typename T, typename IndexT = int>
-void CPUGather(const phi::CPUContext& dev_ctx UNUSED,
+void CPUGather(const CPUContext& dev_ctx UNUSED,
                const DenseTensor& src,
                const DenseTensor& index,
                DenseTensor* output) {
@@ -104,7 +104,7 @@ void CPUGather(const phi::CPUContext& dev_ctx UNUSED,
 }
 
 template <typename T, typename IndexT = int>
-void CPUGatherNd(const phi::CPUContext& dev_ctx UNUSED,
+void CPUGatherNd(const CPUContext& dev_ctx UNUSED,
                  const DenseTensor& input,
                  const DenseTensor& index,
                  DenseTensor* output) {
@@ -158,7 +158,7 @@ void CPUGatherNd(const phi::CPUContext& dev_ctx UNUSED,
 }
 
 template <typename T, typename U>
-void GatherV2Function(const phi::CPUContext& dev_ctx,
+void GatherV2Function(const CPUContext& dev_ctx,
                       const DenseTensor* input,
                       const DenseTensor* index,
                       int axis,
@@ -232,7 +232,7 @@ void GatherV2Function(const phi::CPUContext& dev_ctx,
 }
 
 template <typename T, typename U>
-void GatherV2GradFunction(const phi::CPUContext& dev_ctx,
+void GatherV2GradFunction(const CPUContext& dev_ctx,
                           const DenseTensor* input,
                           const DenseTensor* index,
                           const int axis,

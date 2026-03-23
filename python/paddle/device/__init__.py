@@ -396,7 +396,18 @@ def device_to_place(device: Place | int | str | None = None) -> Place:
 
 def _convert_to_place(device: PlaceLike) -> Place:
     if not isinstance(device, str):
-        return device  # return directly if not a string
+        if type(device) is core.Place:
+            if device.is_gpu_place():
+                return core.CUDAPlace(device.gpu_device_id())
+            elif device.is_cpu_place():
+                return core.CPUPlace()
+            elif device.is_xpu_place():
+                return core.XPUPlace(device.xpu_device_id())
+            elif device.is_custom_place():
+                return core.CustomPlace(
+                    device.custom_device_type(), device.custom_device_id()
+                )
+        return device
 
     lower_device = device.lower()
     if lower_device.startswith("cuda"):

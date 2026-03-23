@@ -34,6 +34,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/exception.h"
+#include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/fluid/pybind/slice_utils.h"
 #include "paddle/fluid/pybind/uva_utils.h"
 #include "paddle/phi/api/include/api.h"
@@ -140,7 +141,7 @@ Returns:
 
 Examples:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
         >>> x = paddle.to_tensor([[1.0, 2.0, 3.0],
@@ -671,7 +672,7 @@ Returns:
 
 Examples:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -765,6 +766,101 @@ static PyObject* tensor_method_copy_(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyDoc_STRVAR(tensor_method__new_shared_tensor__doc__,  // NOLINT
+             R"DOC(_new_shared_tensor($self, retain_holder=True, /)
+--
+
+Returns a new Tensor that shares data with the original Tensor.
+
+This method creates a new Tensor object that shares the underlying data storage
+with the original Tensor. The behavior depends on the `retain_holder` parameter.
+
+Notes:
+- The original Tensor's autograd metadata (including gradients and backward
+  propagation information) is also shared between the two Tensors.
+
+Args:
+    retain_holder (bool, optional): Controls whether to share the data holder.
+        - If True (default): The new Tensor shares the exact same underlying
+          data allocation with the original Tensor. Changes to one will affect
+          the other. Additionally, both Tensors share the same autograd metadata.
+        - If False: Creates a new Tensor with the same metadata but with an
+          empty data allocation. The autograd metadata is still shared.
+
+Returns:
+    Tensor: A new Tensor object that shares data and autograd metadata with
+            the original Tensor.
+
+Raises:
+    ValueError: If the original Tensor has not been initialized.
+
+Examples:
+    >>> # doctest: +REQUIRES(env:GPU)
+    >>> import paddle
+    >>> x = paddle.to_tensor([1, 2, 3], stop_gradient=False)
+    >>> y = x._new_shared_tensor()  # Shares data and autograd metadata with x
+    >>> y[0] = 10
+    >>> print(x)  # x is also modified
+    Tensor(shape=[3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+          [10, 2 , 3 ])
+    >>> z = x._new_shared_tensor(retain_holder=False)  # Creates a new Tensor
+    >>> print(z)  # z is an empty Tensor with the same metadata as x
+    Tensor(Not initialized)
+    >> x.stop_gradient = False
+    >> w = paddle.to_tensor([1,2,3])
+    >> w.stop_gradient = False
+    >> (x + w).sum().backward()
+    >> x.grad
+    Tensor(shape=[3], dtype=int64, place=Place(gpu:0), stop_gradient=False,
+       [1, 1, 1])
+    >> z.grad
+    Tensor(shape=[3], dtype=int64, place=Place(gpu:0), stop_gradient=False,
+       [1, 1, 1])
+
+)DOC");
+
+static PyObject* tensor_method__new_shared_tensor(TensorObject* self,
+                                                  PyObject* args,
+                                                  PyObject* kwargs) {
+  EAGER_TRY
+  PADDLE_ENFORCE_EQ(
+      self->tensor.defined(),
+      true,
+      common::errors::InvalidArgument("Tensor %s has not been initialized!",
+                                      self->tensor.name()));
+  bool retain_holder = true;
+  int nargs = args ? static_cast<int>(PyTuple_Size(args)) : 0;
+  int remaining_kwargs = kwargs ? static_cast<int>(PyDict_Size(kwargs)) : 0;
+  PyObject* retain_holder_obj = GetItemFromArgsOrKWArgs(
+      args, 0, kwargs, {"retain_holder"}, nargs, &remaining_kwargs);
+  retain_holder =
+      CastPyArg2Boolean(retain_holder_obj, "_new_shared_tensor", 0, true);
+  PyObject* obj = p_tensor_type->tp_alloc(p_tensor_type, 0);
+  if (obj) {
+    auto v = reinterpret_cast<TensorObject*>(obj);
+    new (&(v->tensor)) Tensor();
+    if (retain_holder) {
+      v->tensor.set_impl(self->tensor.impl());
+    } else {
+      auto* dense_tensor =
+          dynamic_cast<phi::DenseTensor*>(self->tensor.impl().get());
+      if (dense_tensor != nullptr && dense_tensor->Holder() != nullptr) {
+        auto tmp = std::make_shared<DenseTensor>(
+            std::make_shared<phi::Allocation>(
+                nullptr, 0, dense_tensor->Holder()->place()),
+            dense_tensor->meta());
+        v->tensor.set_impl(tmp);
+      }
+    }
+    v->tensor.set_name(self->tensor.name());
+    v->tensor.set_autograd_meta(self->tensor.mutable_autograd_meta());
+  } else {
+    PADDLE_THROW(
+        common::errors::Fatal("tp_alloc return null, can not new a PyObject."));
+  }
+  return obj;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
 PyDoc_STRVAR(tensor_method_clone__doc__,  // NOLINT
              R"DOC(clone($self, /)
 --
@@ -778,7 +874,7 @@ Returns:
 
 Examples:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -845,7 +941,7 @@ Returns:
 
 Examples:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -892,6 +988,34 @@ static PyObject* tensor_retain_grads(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyDoc_STRVAR(tensor_method_retain_grad__doc__, R"DOC(retain_grad($self, /)
+--
+
+Enables this Tensor to have their grad populated during backward(). It is a no-op for leaf tensors.
+
+This method is an alias for :code:`retain_grads()`.
+
+Returns:
+    None.
+
+Examples:
+
+    .. code-block:: pycon
+
+        >>> import paddle
+
+        >>> x = paddle.to_tensor([1.0, 2.0, 3.0])
+        >>> x.stop_gradient = False
+        >>> y = x + x
+        >>> y.retain_grad()
+        >>> loss = y.sum()
+        >>> loss.backward()
+
+        >>> print(y.grad)
+        Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=False,
+        [1., 1., 1.])
+)DOC");
+
 PyDoc_STRVAR(tensor_clear_gradient__doc__,  // NOLINT
              R"DOC(clear_gradient($self, set_to_zero=True, /)
 --
@@ -911,7 +1035,7 @@ Returns:
 
 Examples:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
         >>> input = paddle.uniform([10, 2])
@@ -1271,7 +1395,7 @@ Returns:
 
 Examples:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -2480,7 +2604,7 @@ Returns:
 
 Examples:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -2527,7 +2651,7 @@ Returns:
 
 Examples:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -2571,7 +2695,7 @@ Returns:
 
 Examples:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -2623,7 +2747,7 @@ Returns:
 
 Examples:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -2667,7 +2791,7 @@ Returns:
 
 Examples:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -2707,7 +2831,7 @@ Returns:
 
 Examples:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -2737,7 +2861,7 @@ Returns:
 
 Examples:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -2770,7 +2894,7 @@ Returns:
 
 Examples:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -2808,7 +2932,7 @@ Returns:
 
 Examples:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -2845,7 +2969,7 @@ Returns:
 
 Examples:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -2887,7 +3011,7 @@ Returns:
 
 Examples:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -2940,7 +3064,7 @@ Returns:
 
 Examples:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -2993,7 +3117,7 @@ Returns:
 
 Examples:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -3039,7 +3163,7 @@ Returns:
 
 Examples:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -3296,7 +3420,7 @@ Returns:
 
 Examples:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -3361,7 +3485,7 @@ Returns:
 
 Examples:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -3410,7 +3534,7 @@ Returns:
 
 Examples:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
         >>> x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
@@ -3484,7 +3608,7 @@ Returns:
 
 Examples:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -3536,7 +3660,7 @@ Returns:
 
 Examples:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -3578,7 +3702,7 @@ Returns:
 
 Examples:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
 
@@ -3635,7 +3759,7 @@ Returns:
 
 Examples:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> import paddle
         >>> import numpy as np
@@ -3800,6 +3924,10 @@ PyMethodDef variable_methods[] = {  // NOLINT
      (PyCFunction)(void (*)())tensor_method_clone,
      METH_VARARGS | METH_KEYWORDS,
      tensor_method_clone__doc__},
+    {"_new_shared_tensor",
+     (PyCFunction)(void (*)())tensor_method__new_shared_tensor,
+     METH_VARARGS | METH_KEYWORDS,
+     tensor_method__new_shared_tensor__doc__},
     {"reconstruct_from_",
      (PyCFunction)(void (*)())tensor_method_reconstruct_from_,
      METH_VARARGS | METH_KEYWORDS,
@@ -3808,6 +3936,10 @@ PyMethodDef variable_methods[] = {  // NOLINT
      (PyCFunction)(void (*)())tensor_retain_grads,
      METH_VARARGS | METH_KEYWORDS,
      tensor_method_retain_grads__doc__},
+    {"retain_grad",
+     (PyCFunction)(void (*)())tensor_retain_grads,
+     METH_VARARGS | METH_KEYWORDS,
+     tensor_method_retain_grad__doc__},
     {"clear_gradient",
      (PyCFunction)(void (*)())tensor_clear_gradient,
      METH_VARARGS | METH_KEYWORDS,

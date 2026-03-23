@@ -111,7 +111,7 @@ def parallelize(
         model, optimizer: the model and the optimizer after parallelize
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.distributed as dist
@@ -161,12 +161,10 @@ def parallelize(
             ...         self.gate_up_proj = paddle.nn.Linear(
             ...             model_config.hidden_size,
             ...             model_config.intermediate_size * 2,
-            ...             bias_attr=False
+            ...             bias_attr=False,
             ...         )
             ...
-            ...         self.down_proj = paddle.nn.Linear(
-            ...             model_config.intermediate_size, model_config.hidden_size, bias_attr=False
-            ...         )
+            ...         self.down_proj = paddle.nn.Linear(model_config.intermediate_size, model_config.hidden_size, bias_attr=False)
             ...
             ...     def forward(self, input):
             ...         pass
@@ -235,20 +233,18 @@ def parallelize(
             ...             "llama.layers.*.self_attn": dist.SequenceParallelDisable(),
             ...             "llama.layers.*.mlp.gate_up_proj": dist.ColWiseParallel(),
             ...             "llama.layers.*.mlp.down_proj": dist.RowWiseParallel(),
-            ...             "llama.layers.*.mlp": dist.SequenceParallelDisable(
-            ...                 need_transpose=False
-            ...             ),
+            ...             "llama.layers.*.mlp": dist.SequenceParallelDisable(need_transpose=False),
             ...             "lm_head.weight": dist.ColWiseParallel(),
             ...             "lm_head": dist.SequenceParallelEnd(),
             ...         }
             ...     },
-            ...     "pp_config": {'split_spec': "llama.layers"}
+            ...     "pp_config": {'split_spec': "llama.layers"},
             ... }
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> model = LlamaForCausalLM()
             >>> optimizer = paddle.optimizer.AdamW(parameters=model.parameters())
-            >>> dist_model, dist_optimizer = dist.parallelize(model, optimizer, config=parallel_config) # type: ignore[arg-type]
+            >>> dist_model, dist_optimizer = dist.parallelize(model, optimizer, config=parallel_config)  # type: ignore[arg-type]
             >>> # This case need to be executed in multi-card environment
             >>> # python -m paddle.distributed.launch --gpus=0,1,2,3,4,5,6,7 {test_case}.py
 

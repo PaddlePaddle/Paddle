@@ -46,7 +46,7 @@ void IndexEleGetGradAccKernel(
 }
 
 template <typename T, typename IndexT = int>
-void CPUIndexElementwiseGetGrad(const phi::CPUContext& dev_ctx,
+void CPUIndexElementwiseGetGrad(const CPUContext& dev_ctx,
                                 const DenseTensor& input,
                                 const DenseTensor& value,
                                 const std::vector<const DenseTensor*>& index,

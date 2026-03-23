@@ -66,8 +66,8 @@ static void LerpGradFunction(const Context& dev_ctx,
   funcs::GetBroadcastDims<D>(w_dims, out_dims, &w_bcast_dims);
   funcs::GetBroadcastDims<D>(g_dims, out_dims, &g_bcast_dims);
 
-  auto eigen_w = phi::EigenTensor<T, D>::From(w, w_dims);
-  auto eigen_dout = phi::EigenTensor<T, D>::From(dout, g_dims);
+  auto eigen_w = EigenTensor<T, D>::From(w, w_dims);
+  auto eigen_dout = EigenTensor<T, D>::From(dout, g_dims);
 
   Eigen::DSizes<int, D * 2> dx_reshape_dims;
   Eigen::DSizes<int, D * 2> dy_reshape_dims;
@@ -89,7 +89,7 @@ static void LerpGradFunction(const Context& dev_ctx,
 
   if (dx) {
     dev_ctx.template Alloc<T>(dx);
-    auto eigen_dx = phi::EigenTensor<T, D>::From(*dx, dx_dims);
+    auto eigen_dx = EigenTensor<T, D>::From(*dx, dx_dims);
     auto eigen_expr = (1 - eigen_w.broadcast(w_bcast_dims)) *
                       eigen_dout.broadcast(g_bcast_dims);
     eigen_dx.device(place) = eigen_expr.reshape(dx_reshape_dims)
@@ -98,7 +98,7 @@ static void LerpGradFunction(const Context& dev_ctx,
   }
   if (dy) {
     dev_ctx.template Alloc<T>(dy);
-    auto eigen_dy = phi::EigenTensor<T, D>::From(*dy, dy_dims);
+    auto eigen_dy = EigenTensor<T, D>::From(*dy, dy_dims);
     auto eigen_expr =
         eigen_w.broadcast(w_bcast_dims) * eigen_dout.broadcast(g_bcast_dims);
     eigen_dy.device(place) = eigen_expr.reshape(dy_reshape_dims)
@@ -117,18 +117,18 @@ static void LerpGradFunctionZero(const Context& dev_ctx,
                                  DenseTensor* x_grad,
                                  DenseTensor* y_grad) {
   auto dim = make_ddim(std::vector<int64_t>(1, 1));
-  auto eigen_w = phi::EigenTensor<T, 1>::From(weight, dim);
-  auto eigen_dout = phi::EigenTensor<T, 1>::From(out_grad, dim);
+  auto eigen_w = EigenTensor<T, 1>::From(weight, dim);
+  auto eigen_dout = EigenTensor<T, 1>::From(out_grad, dim);
 
   auto& place = *dev_ctx.eigen_device();
   if (x_grad) {
     dev_ctx.template Alloc<T>(x_grad);
-    auto eigen_dx = phi::EigenTensor<T, 1>::From(*x_grad, dim);
+    auto eigen_dx = EigenTensor<T, 1>::From(*x_grad, dim);
     eigen_dx.device(place) = (1 - eigen_w) * eigen_dout;
   }
   if (y_grad) {
     dev_ctx.template Alloc<T>(y_grad);
-    auto eigen_dy = phi::EigenTensor<T, 1>::From(*y_grad, dim);
+    auto eigen_dy = EigenTensor<T, 1>::From(*y_grad, dim);
     eigen_dy.device(place) = eigen_w * eigen_dout;
   }
 }

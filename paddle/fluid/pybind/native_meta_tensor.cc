@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/api/ext/native_meta_tensor.h"
+#include "paddle/fluid/pybind/data_type_caster.h"
 #include "paddle/fluid/pybind/native_meta_tensor.h"
 #include "paddle/utils/pybind.h"
 #include "pybind11/functional.h"

@@ -52,7 +52,7 @@ class Communicator:
             None
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -135,7 +135,7 @@ class Communicator:
             None
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -157,7 +157,7 @@ class Communicator:
             None
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -179,7 +179,7 @@ class Communicator:
             bool
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 

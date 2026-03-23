@@ -387,7 +387,7 @@ void FlashAttnV3GradBaseKernel(
     if (softmax_d) {
       // Need softmax_d to have seqlen_q_rounded since we want its address to be
       // aligned by 16/8 bytes for TMA / LDG.64
-      softmax_d->Resize(make_ddim({batch_size, num_heads, seqlen_q_rounded}));
+      softmax_d->Resize({batch_size, num_heads, seqlen_q_rounded});
     }
     if (softmax_lse_log2) {
       softmax_lse_log2->Resize(
@@ -395,10 +395,10 @@ void FlashAttnV3GradBaseKernel(
     }
   } else {
     if (softmax_d) {
-      softmax_d->Resize(make_ddim({num_heads, total_q_padded_rounded}));
+      softmax_d->Resize({num_heads, total_q_padded_rounded});
     }
     if (softmax_lse_log2) {
-      softmax_lse_log2->Resize(make_ddim({num_heads, total_q_padded_rounded}));
+      softmax_lse_log2->Resize({num_heads, total_q_padded_rounded});
     }
   }
   if (softmax_d) {
@@ -580,16 +580,6 @@ void FlashAttnV3GradKernel(const Context &dev_ctx,
                            DenseTensor *dk,
                            DenseTensor *dv) {
 #ifdef PADDLE_WITH_FLASHATTN_V3
-  PADDLE_ENFORCE_EQ(
-      window_size_left,
-      -1,
-      common::errors::InvalidArgument("window_size is not supported, please "
-                                      "set window_size_left/right to -1"));
-  PADDLE_ENFORCE_EQ(
-      window_size_right,
-      -1,
-      common::errors::InvalidArgument("window_size is not supported, please "
-                                      "set window_size_left/right to -1"));
   PADDLE_ENFORCE_EQ(softcap,
                     0,
                     common::errors::InvalidArgument(
@@ -713,16 +703,6 @@ void FlashAttnV3VarlenGradKernel(const Context &dev_ctx,
                                  DenseTensor *dk,
                                  DenseTensor *dv) {
 #ifdef PADDLE_WITH_FLASHATTN_V3
-  PADDLE_ENFORCE_EQ(
-      window_size_left,
-      -1,
-      common::errors::InvalidArgument("window_size is not supported, please "
-                                      "set window_size_left/right to -1"));
-  PADDLE_ENFORCE_EQ(
-      window_size_right,
-      -1,
-      common::errors::InvalidArgument("window_size is not supported, please "
-                                      "set window_size_left/right to -1"));
   PADDLE_ENFORCE_EQ(softcap,
                     0,
                     common::errors::InvalidArgument(
@@ -1297,7 +1277,7 @@ void FlashMaskV2GradBaseKernel(
     if (softmax_d) {
       // Need softmax_d to have seqlen_q_rounded since we want its address to be
       // aligned by 16/8 bytes for TMA / LDG.64
-      softmax_d->Resize(make_ddim({batch_size, num_heads, seqlen_q_rounded}));
+      softmax_d->Resize({batch_size, num_heads, seqlen_q_rounded});
     }
     if (softmax_lse_log2) {
       softmax_lse_log2->Resize(
@@ -1305,10 +1285,10 @@ void FlashMaskV2GradBaseKernel(
     }
   } else {
     if (softmax_d) {
-      softmax_d->Resize(make_ddim({num_heads, total_q_padded_rounded}));
+      softmax_d->Resize({num_heads, total_q_padded_rounded});
     }
     if (softmax_lse_log2) {
-      softmax_lse_log2->Resize(make_ddim({num_heads, total_q_padded_rounded}));
+      softmax_lse_log2->Resize({num_heads, total_q_padded_rounded});
     }
   }
   if (softmax_d) {
@@ -1414,11 +1394,11 @@ void FlashMaskV2GradBaseKernel(
   DenseTensor tile_count_semaphore;
   if (arch >= 90) {
     tile_count_semaphore = phi::Full<int32_t, Context>(dev_ctx, {1}, 0);
-    phi::dynload::flashmaskv2_bwd_params_set_tile_count_semaphore(
+    dynload::flashmaskv2_bwd_params_set_tile_count_semaphore(
         params_handle, tile_count_semaphore.data<int>());
   } else {
-    phi::dynload::flashmaskv2_bwd_params_set_tile_count_semaphore(params_handle,
-                                                                  nullptr);
+    dynload::flashmaskv2_bwd_params_set_tile_count_semaphore(params_handle,
+                                                             nullptr);
   }
 
   DenseTensor dq_semaphore = Empty<int32_t>(

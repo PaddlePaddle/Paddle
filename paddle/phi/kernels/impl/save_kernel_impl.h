@@ -57,7 +57,7 @@ void SaveKernel(const Context& dev_ctx,
   auto out_dtype = save_as_fp16 ? phi::DataType::FLOAT16 : in_dtype;
 
   if (in_dtype != out_dtype) {
-    auto out = phi::Cast<T>(dev_ctx, x, out_dtype);
+    auto out = Cast<T>(dev_ctx, x, out_dtype);
     phi::SerializeToStream(fout, out, dev_ctx);
   } else {
     phi::SerializeToStream(fout, x, dev_ctx);

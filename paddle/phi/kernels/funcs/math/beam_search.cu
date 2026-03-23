@@ -402,9 +402,9 @@ static inline int GetNumUsedThreads(const int max_threads_per_seq,
 }
 
 template <typename T>
-class BeamSearchFunctor<phi::GPUContext, T> {
+class BeamSearchFunctor<GPUContext, T> {
  public:
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor* pre_ids,
                   const DenseTensor* pre_scores,
                   const DenseTensor* ids,
@@ -532,10 +532,10 @@ class BeamSearchFunctor<phi::GPUContext, T> {
   }
 };
 
-template class BeamSearchFunctor<phi::GPUContext, int>;
-template class BeamSearchFunctor<phi::GPUContext, int64_t>;
-template class PADDLE_API BeamSearchFunctor<phi::GPUContext, float>;
-template class BeamSearchFunctor<phi::GPUContext, double>;
+template class BeamSearchFunctor<GPUContext, int>;
+template class BeamSearchFunctor<GPUContext, int64_t>;
+template class PADDLE_API BeamSearchFunctor<GPUContext, float>;
+template class BeamSearchFunctor<GPUContext, double>;
 
 }  // namespace math
 }  // namespace phi

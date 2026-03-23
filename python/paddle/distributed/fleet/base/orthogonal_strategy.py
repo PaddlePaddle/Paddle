@@ -34,7 +34,7 @@ class OrthogonalStrategy:
         The instance of strategy.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle
@@ -43,7 +43,14 @@ class OrthogonalStrategy:
             >>> from paddle.distributed.fleet.base.orthogonal_strategy import OrthogonalStrategy
 
             >>> dist.init_parallel_env()
-            >>> strategy = OrthogonalStrategy([("dp", 2, DPGroup), ("mp", 2, MPGroup), ("pp", 2, PPGroup)], fused_strategy_dict={"check": ["mp", "pp"]})
+            >>> strategy = OrthogonalStrategy(
+            ...     [
+            ...         ("dp", 2, DPGroup),
+            ...         ("mp", 2, MPGroup),
+            ...         ("pp", 2, PPGroup),
+            ...     ],
+            ...     fused_strategy_dict={"check": ["mp", "pp"]},
+            ... )
 
     """
 

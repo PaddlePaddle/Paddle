@@ -24,15 +24,14 @@ limitations under the License. */
 
 namespace phi {
 namespace funcs {
-// template struct ColwiseSum<phi::GPUContext, double>;
-// The ColwiseSum<phi::GPUContext, double> failed in debug
+// template struct ColwiseSum<GPUContext, double>;
+// The ColwiseSum<GPUContext, double> failed in debug
 // mode,
 // and only failed for this case. So reimplemented it.
 template <>
-void ColwiseSum<phi::GPUContext, double>::operator()(
-    const phi::GPUContext& dev_ctx,
-    const DenseTensor& input,
-    DenseTensor* vector) {
+void ColwiseSum<GPUContext, double>::operator()(const GPUContext& dev_ctx,
+                                                const DenseTensor& input,
+                                                DenseTensor* vector) {
   auto in_dims = input.dims();
   auto size = input.numel() / in_dims[0];
   PADDLE_ENFORCE_EQ(vector->numel(),
@@ -47,28 +46,26 @@ void ColwiseSum<phi::GPUContext, double>::operator()(
   one.Resize({in_dims[0]});
   dev_ctx.template Alloc<double>(&one);
 
-  SetConstant<phi::GPUContext, double> set;
+  SetConstant<GPUContext, double> set;
   set(dev_ctx, &one, static_cast<double>(1.0));
-  funcs::GetBlas<phi::GPUContext, double>(dev_ctx).GEMV(
-      true,
-      static_cast<int>(in_dims[0]),
-      static_cast<int>(in_dims[1]),
-      1.0,
-      input.data<double>(),
-      one.data<double>(),
-      0.0,
-      vector->data<double>());
+  funcs::GetBlas<GPUContext, double>(dev_ctx).GEMV(true,
+                                                   static_cast<int>(in_dims[0]),
+                                                   static_cast<int>(in_dims[1]),
+                                                   1.0,
+                                                   input.data<double>(),
+                                                   one.data<double>(),
+                                                   0.0,
+                                                   vector->data<double>());
 }
 
-// template struct RowwiseSum<phi::GPUContext, double>;
+// template struct RowwiseSum<GPUContext, double>;
 // TODO(zcd): Following ColwiseSum format, need to confirm.
-// The RowwiseSum<phi::GPUContext, double> failed in debug
+// The RowwiseSum<GPUContext, double> failed in debug
 // mode,
 template <>
-void RowwiseSum<phi::GPUContext, double>::operator()(
-    const phi::GPUContext& dev_ctx,
-    const DenseTensor& input,
-    DenseTensor* vector) {
+void RowwiseSum<GPUContext, double>::operator()(const GPUContext& dev_ctx,
+                                                const DenseTensor& input,
+                                                DenseTensor* vector) {
   auto in_dims = input.dims();
   auto size = input.numel() / in_dims[0];
   PADDLE_ENFORCE_EQ(vector->numel(),
@@ -83,17 +80,16 @@ void RowwiseSum<phi::GPUContext, double>::operator()(
   one.Resize({size});
   dev_ctx.template Alloc<double>(&one);
 
-  SetConstant<phi::GPUContext, double> set;
+  SetConstant<GPUContext, double> set;
   set(dev_ctx, &one, static_cast<double>(1.0));
-  funcs::GetBlas<phi::GPUContext, double>(dev_ctx).GEMV(
-      true,
-      static_cast<int>(in_dims[1]),
-      static_cast<int>(in_dims[0]),
-      1.0,
-      one.data<double>(),
-      input.data<double>(),
-      0.0,
-      vector->data<double>());
+  funcs::GetBlas<GPUContext, double>(dev_ctx).GEMV(true,
+                                                   static_cast<int>(in_dims[1]),
+                                                   static_cast<int>(in_dims[0]),
+                                                   1.0,
+                                                   one.data<double>(),
+                                                   input.data<double>(),
+                                                   0.0,
+                                                   vector->data<double>());
 }
 
 }  // namespace funcs

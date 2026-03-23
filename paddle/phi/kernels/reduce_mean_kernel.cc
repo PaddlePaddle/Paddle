@@ -36,13 +36,12 @@ void MeanKernel(const Context& dev_ctx,
                                       std::is_same<T, bool>::value,
                                   float,
                                   T>::type;
-    DenseTensor x_float =
-        phi::Cast<T, Context>(dev_ctx, x, phi::DataType::FLOAT32);
+    DenseTensor x_float = Cast<T, Context>(dev_ctx, x, phi::DataType::FLOAT32);
     DenseTensor out_float;
     out_float.Resize(out->dims());
     MeanRawKernel<Type>(
         dev_ctx, x_float, dims, keep_dim, reduce_all, &out_float);
-    phi::CastKernel<Type, Context>(dev_ctx, out_float, x.dtype(), out);
+    CastKernel<Type, Context>(dev_ctx, out_float, x.dtype(), out);
   } else {
     MeanRawKernel<T>(dev_ctx, x, dims, keep_dim, reduce_all, out);
   }

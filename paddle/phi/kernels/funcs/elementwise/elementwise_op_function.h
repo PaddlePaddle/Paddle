@@ -910,7 +910,7 @@ template <typename T,
           bool BcastY,
           bool SameShapeOfIntermediateOutAndOut>
 static void FusedElemwiseAndActGradBroadcast1CUDA(
-    const phi::GPUContext &dev_ctx,
+    const GPUContext &dev_ctx,
     const T *x,
     const T *y,
     const T *intermediate_out,
@@ -1172,7 +1172,7 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
                                             UseIntermediateOut,
                                             BcastY,
                                             SameShapeOfIntermediateOutAndOut>(
-          reinterpret_cast<const phi::GPUContext &>(dev_ctx),
+          reinterpret_cast<const GPUContext &>(dev_ctx),
           x_data,
           y_data,
           intermediate_out == nullptr ? nullptr : intermediate_out->data<T>(),
@@ -1221,7 +1221,7 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
                                             UseIntermediateOut,
                                             BcastY,
                                             SameShapeOfIntermediateOutAndOut>(
-          reinterpret_cast<const phi::GPUContext &>(dev_ctx).stream(),
+          reinterpret_cast<const GPUContext &>(dev_ctx).stream(),
           x_data,
           y_data,
           intermediate_out == nullptr ? nullptr : intermediate_out->data<T>(),
@@ -1474,7 +1474,7 @@ static inline void GetDoubleGradSafeTensor(const DeviceContext &dev_ctx,
 #if defined(__NVCC__) || defined(__HIPCC__)
 
 template <typename T, typename Functor>
-void GetGradXAndYOut(const phi::GPUContext &dev_ctx,
+void GetGradXAndYOut(const GPUContext &dev_ctx,
                      const phi::Place &place,
                      int axis,
                      std::vector<const DenseTensor *> ins,
@@ -1487,7 +1487,7 @@ void GetGradXAndYOut(const phi::GPUContext &dev_ctx,
 }
 
 template <typename T, typename Functor>
-void GetGradXOrYOut(const phi::GPUContext &dev_ctx,
+void GetGradXOrYOut(const GPUContext &dev_ctx,
                     const phi::Place &place,
                     int axis,
                     std::vector<const DenseTensor *> ins,

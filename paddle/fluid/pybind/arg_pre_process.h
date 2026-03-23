@@ -76,6 +76,12 @@ void BaddbmmPreProcess(Tensor* input, Tensor* x, Tensor* y);
 // Baddbmm broadcast validation for static graph
 void BaddbmmPreProcess(pir::Value* input, pir::Value* x, pir::Value* y);
 
+// Renorm preprocessing: handle negative axis
+void NegativeAxisPreProcess(Tensor* x, int* axis);
+void NegativeAxisPreProcess(Value* x, int* axis);
+
+void PixelShufflePreProcess(std::string* data_format);
+
 // Inplace API broadcast validation for dygraph
 void InplaceShapePreProcess(Tensor* x, Tensor* y);
 
@@ -83,5 +89,4 @@ void InplaceShapePreProcess(Tensor* x, Tensor* y);
 void InplaceShapePreProcess(pir::Value* x, pir::Value* y);
 
 }  // namespace pybind
-
 }  // namespace paddle

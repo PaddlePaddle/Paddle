@@ -121,7 +121,7 @@ def _extract_compute_dtype(op, block):
 
         if compute_dtype is None:
             # Kernel dtype is mostly decided by the input's dtype.
-            # When the operator has no input, it mightly has a attr
+            # When the operator has no input, it might have an attr
             # such as dtype to specify the output's dtype.
             compute_dtype = var_dtype
         else:
@@ -199,7 +199,7 @@ def collect_operator_stats(program=None, print_subblocks=False):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.enable_static()
@@ -222,9 +222,7 @@ def collect_operator_stats(program=None, print_subblocks=False):
             >>> with paddle.utils.unique_name.guard():
             ...     with paddle.static.program_guard(main_program, startup_program):
             ...         model = SimpleConvNet()
-            ...         x = paddle.static.data(
-            ...             name='input', shape=[None, 1, 28, 28], dtype='float32'
-            ...         )
+            ...         x = paddle.static.data(name='input', shape=[None, 1, 28, 28], dtype='float32')
             ...         out = model(x)
             ...         loss = paddle.mean(out)
             ...         optimizer = paddle.optimizer.AdamW()

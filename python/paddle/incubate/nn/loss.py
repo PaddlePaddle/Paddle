@@ -62,7 +62,7 @@ def identity_loss(x: Tensor, reduction: _ReduceMode = "none") -> Tensor:
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.enable_static()

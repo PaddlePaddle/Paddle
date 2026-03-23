@@ -50,7 +50,7 @@ def swiglu(
         A Tensor with the same data type with x and y.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.incubate.nn.functional as F

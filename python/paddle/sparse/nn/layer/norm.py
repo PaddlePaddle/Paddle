@@ -289,7 +289,7 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
         output: Tensor with the same shape as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -363,7 +363,7 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.sparse.nn as nn
