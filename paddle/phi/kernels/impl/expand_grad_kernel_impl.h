@@ -42,11 +42,11 @@ void ExpandBackward(const Context& dev_ctx,
     dev_ctx.template Alloc<float>(&in_grad_fp32);
 
     auto x_grad = EigenVector<float>::Flatten(in_grad_fp32);
-    Eigen::DSizes<Eigen::DenseIndex, Dims * 2> reshape_dims;
+    Eigen::DSizes<int64_t, Dims * 2> reshape_dims;
     for (size_t i = 0; i < reshape_size; ++i) {
       reshape_dims[i] = reshape_dims_vec[i];
     }
-    Eigen::DSizes<Eigen::DenseIndex, Dims> reduce_dims;
+    Eigen::DSizes<int64_t, Dims> reduce_dims;
     for (size_t i = 0; i < reduce_size; ++i) {
       reduce_dims[i] = reduce_dims_vec[i];
     }
@@ -64,11 +64,11 @@ void ExpandBackward(const Context& dev_ctx,
     }
   } else {
     auto x_grad = EigenVector<T>::Flatten(*in_grad);
-    Eigen::DSizes<Eigen::DenseIndex, Dims * 2> reshape_dims;
+    Eigen::DSizes<int64_t, Dims * 2> reshape_dims;
     for (size_t i = 0; i < reshape_size; ++i) {
       reshape_dims[i] = reshape_dims_vec[i];
     }
-    Eigen::DSizes<Eigen::DenseIndex, Dims> reduce_dims;
+    Eigen::DSizes<int64_t, Dims> reduce_dims;
     for (size_t i = 0; i < reduce_size; ++i) {
       reduce_dims[i] = reduce_dims_vec[i];
     }

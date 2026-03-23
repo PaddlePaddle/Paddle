@@ -18,8 +18,8 @@ namespace funcs {
 
 template <typename T, int Rank>
 struct EigenConstant<Eigen::GpuDevice, T, Rank> {
-  using Type = Eigen::TensorMap<
-      Eigen::Tensor<T, Rank, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using Type =
+      Eigen::TensorMap<Eigen::Tensor<T, Rank, Eigen::RowMajor, int64_t>>;
   static void Eval(const Eigen::GpuDevice& dev, Type out, const T value) {
     out.device(dev) = out.constant(value);
   }

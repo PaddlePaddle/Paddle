@@ -32,10 +32,8 @@ void LaunchEigenPadding(
     const DDim& out_dims,
     const std::array<std::pair<int64_t, int64_t>, D>& paddings) {
   auto& place = *dev_ctx.eigen_device();
-  auto d_in_t = EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-      *d_input, in_dims);
-  auto d_out_t = EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-      *d_out, out_dims);
+  auto d_in_t = EigenTensor<T, D, Eigen::RowMajor>::From(*d_input, in_dims);
+  auto d_out_t = EigenTensor<T, D, Eigen::RowMajor>::From(*d_out, out_dims);
 
   if (d_input->numel() <= Eigen::NumTraits<int>::highest()) {
     funcs::EigenPad<std::decay_t<decltype(place)>, T, D>::Eval(

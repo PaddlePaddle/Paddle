@@ -17,16 +17,16 @@ namespace phi::funcs {
 
 template <typename T, int Rank>
 struct EigenBroadcast<Eigen::DefaultDevice, T, Rank> {
-  using Array = Eigen::DSizes<Eigen::DenseIndex, Rank>;
-  using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, Rank, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using Array = Eigen::DSizes<int64_t, Rank>;
+  using InType =
+      Eigen::TensorMap<Eigen::Tensor<const T, Rank, Eigen::RowMajor, int64_t>>;
   using InType32BitIndex =
-      Eigen::TensorMap<Eigen::Tensor<const T, Rank, Eigen::RowMajor, int>,
+      Eigen::TensorMap<Eigen::Tensor<const T, Rank, Eigen::RowMajor, int64_t>,
                        Eigen::Aligned>;
-  using OutType = Eigen::TensorMap<
-      Eigen::Tensor<T, Rank, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using OutType =
+      Eigen::TensorMap<Eigen::Tensor<T, Rank, Eigen::RowMajor, int64_t>>;
   using OutType32BitIndex =
-      Eigen::TensorMap<Eigen::Tensor<T, Rank, Eigen::RowMajor, int>,
+      Eigen::TensorMap<Eigen::Tensor<T, Rank, Eigen::RowMajor, int64_t>,
                        Eigen::Aligned>;
 
   static void Eval(const Eigen::DefaultDevice& dev,
@@ -47,12 +47,12 @@ struct EigenBroadcast<Eigen::DefaultDevice, T, Rank> {
 
 template <typename T, int Rank>
 struct EigenBroadcastGrad<Eigen::DefaultDevice, T, Rank> {
-  using Array = Eigen::DSizes<Eigen::DenseIndex, Rank>;
-  using Array2 = Eigen::DSizes<Eigen::DenseIndex, Rank * 2>;
-  using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using Array = Eigen::DSizes<int64_t, Rank>;
+  using Array2 = Eigen::DSizes<int64_t, Rank * 2>;
+  using InType =
+      Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor, int64_t>>;
   using OutType =
-      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, int64_t>>;
   static void Eval(const Eigen::DefaultDevice& dev,
                    OutType out,
                    InType in,

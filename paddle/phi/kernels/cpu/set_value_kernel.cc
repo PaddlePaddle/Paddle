@@ -112,9 +112,9 @@ void SetValueImpl(const Context& dev_ctx,
   auto out_e = EigenTensor<T, RANK>::From(*out);
   auto value_e = EigenTensor<T, RANK>::From(expand_tensor);
 
-  auto starts_indices = Eigen::DSizes<Eigen::DenseIndex, RANK>();
-  auto ends_indices = Eigen::DSizes<Eigen::DenseIndex, RANK>();
-  auto strides_indices = Eigen::DSizes<Eigen::DenseIndex, RANK>();
+  auto starts_indices = Eigen::DSizes<int64_t, RANK>();
+  auto ends_indices = Eigen::DSizes<int64_t, RANK>();
+  auto strides_indices = Eigen::DSizes<int64_t, RANK>();
 
   for (size_t i = 0; i < RANK; ++i) {
     starts_indices[i] = 0;

@@ -183,9 +183,9 @@ void StridedSliceCompute(const Context& dev_ctx,
   auto ends_ = ends.GetData();
   auto strides_ = strides.GetData();
 
-  auto starts_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
-  auto ends_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
-  auto strides_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
+  auto starts_indices = Eigen::DSizes<int64_t, D>();
+  auto ends_indices = Eigen::DSizes<int64_t, D>();
+  auto strides_indices = Eigen::DSizes<int64_t, D>();
   auto reverse_axis = Eigen::array<bool, D>();
 
   std::vector<int64_t> out_dims_vector(in_dims.size(), -1);
@@ -260,16 +260,14 @@ void StridedSliceCompute(const Context& dev_ctx,
 
   out->Resize(out_dims);
   dev_ctx.template Alloc<T>(out);
-  auto in_t = EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(x);
-  auto out_t = EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-      *out, out_dims);
+  auto in_t = EigenTensor<T, D, Eigen::RowMajor>::From(x);
+  auto out_t = EigenTensor<T, D, Eigen::RowMajor>::From(*out, out_dims);
   if (need_reverse) {
     DenseTensor tmp;
     tmp.Resize(out_dims);
     dev_ctx.template Alloc<T>(&tmp);
 
-    auto tmp_t =
-        EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(tmp);
+    auto tmp_t = EigenTensor<T, D, Eigen::RowMajor>::From(tmp);
     tmp_t.device(place) =
         in_t.stridedSlice(starts_indices, ends_indices, strides_indices);
     out_t.device(place) = tmp_t.reverse(reverse_axis);
@@ -300,9 +298,9 @@ void StridedSliceCompute(const Context& dev_ctx,
   auto ends_ = ends.GetData();
   auto strides_ = strides.GetData();
 
-  auto starts_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
-  auto ends_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
-  auto strides_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
+  auto starts_indices = Eigen::DSizes<int64_t, D>();
+  auto ends_indices = Eigen::DSizes<int64_t, D>();
+  auto strides_indices = Eigen::DSizes<int64_t, D>();
   auto reverse_axis = Eigen::array<bool, D>();
 
   std::vector<int64_t> out_dims_vector(in_dims.size(), -1);
@@ -452,9 +450,9 @@ void StridedSliceGradCompute(const Context& dev_ctx,
   auto ends_ = ends.GetData();
   auto strides_ = strides.GetData();
 
-  auto starts_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
-  auto ends_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
-  auto strides_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
+  auto starts_indices = Eigen::DSizes<int64_t, D>();
+  auto ends_indices = Eigen::DSizes<int64_t, D>();
+  auto strides_indices = Eigen::DSizes<int64_t, D>();
 
   auto reverse_axis = Eigen::array<bool, D>();
   std::vector<int> reverse_vector(starts_.size(), 0);
@@ -496,18 +494,14 @@ void StridedSliceGradCompute(const Context& dev_ctx,
 
   auto out_grad_dims = out_grad.dims();
 
-  auto in_t =
-      EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(out_grad);
-  auto out_t = EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-      *x_grad, out_dims);
+  auto in_t = EigenTensor<T, D, Eigen::RowMajor>::From(out_grad);
+  auto out_t = EigenTensor<T, D, Eigen::RowMajor>::From(*x_grad, out_dims);
   if (need_reverse) {
     DenseTensor reverse_input;
     reverse_input.Resize(out_grad_dims);
     dev_ctx.template Alloc<T>(&reverse_input);
 
-    auto reverse_in_t =
-        EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-            reverse_input);
+    auto reverse_in_t = EigenTensor<T, D, Eigen::RowMajor>::From(reverse_input);
 
     reverse_in_t.device(place) = in_t.reverse(reverse_axis);
     out_t.stridedSlice(starts_indices, ends_indices, strides_indices)
@@ -541,9 +535,9 @@ void StridedSliceGradCompute(const Context& dev_ctx,
   auto ends_ = ends.GetData();
   auto strides_ = strides.GetData();
 
-  auto starts_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
-  auto ends_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
-  auto strides_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
+  auto starts_indices = Eigen::DSizes<int64_t, D>();
+  auto ends_indices = Eigen::DSizes<int64_t, D>();
+  auto strides_indices = Eigen::DSizes<int64_t, D>();
 
   auto reverse_axis = Eigen::array<bool, D>();
   std::vector<int> reverse_vector(starts_.size(), 0);
