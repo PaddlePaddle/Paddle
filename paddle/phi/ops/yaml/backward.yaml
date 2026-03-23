@@ -141,6 +141,16 @@
   kernel :
     func : amin_grad
 
+- backward_op : aminmax_grad
+  forward : aminmax (Tensor x, int64_t[] axis={}, bool keepdim=false) -> Tensor(min), Tensor(max)
+  args : (Tensor x, Tensor min, Tensor max, Tensor min_grad, Tensor max_grad, int64_t[] axis={}, bool keepdim=false, bool reduce_all=false)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : aminmax_grad
+
 - backward_op : angle_grad
   forward : angle (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)

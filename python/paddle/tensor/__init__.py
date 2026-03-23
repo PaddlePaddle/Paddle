@@ -625,6 +625,7 @@ tensor_method_func = [
     'maximum',
     'min',
     'amin',
+    'aminmax',
     'minimum',
     'fmax',
     'fmin',
