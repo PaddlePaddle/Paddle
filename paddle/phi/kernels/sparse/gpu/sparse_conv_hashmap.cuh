@@ -58,9 +58,11 @@ __inline__ __device__ int16_t atomicCAS(int16_t* address,
 __inline__ __device__ int64_t atomicCAS(int64_t* address,
                                         int64_t compare,
                                         int64_t val) {
-  return static_cast<int64_t>(atomicCAS(reinterpret_cast<uint64_t*>(address),
-                                        static_cast<uint64_t>(compare),
-                                        static_cast<uint64_t>(val)));
+  using AtomicCAS64Type = unsigned long long;  // NOLINT(runtime/int)
+  return static_cast<int64_t>(
+      atomicCAS(reinterpret_cast<AtomicCAS64Type*>(address),
+                static_cast<AtomicCAS64Type>(compare),
+                static_cast<AtomicCAS64Type>(val)));
 }
 
 namespace phi {
