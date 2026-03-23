@@ -578,7 +578,7 @@ void GenerateProposalsKernel(const Context &dev_ctx,
                        dev_ctx.stream());
     rpn_rois_num->Resize(make_ddim({num}));
   }
-  phi::LegacyLoD lod;
+  LegacyLoD lod;
   lod.emplace_back(offset);
   rpn_rois->Resize(make_ddim({num_proposals, 4}));
   rpn_roi_probs->Resize(make_ddim({num_proposals, 1}));

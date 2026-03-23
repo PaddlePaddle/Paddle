@@ -106,7 +106,7 @@ class PaddingDenseTensorFunctor<CPUContext, T> {
                   bool norm_by_times = false,
                   const PadLayout layout = kBatchLengthWidth) {
     auto seq_lod = seq_tensor.lod();
-    const auto seq_offsets = phi::ToAbsOffset(seq_lod)[lod_level];
+    const auto seq_offsets = ToAbsOffset(seq_lod)[lod_level];
     const auto& seq_tensor_dims = seq_tensor.dims();
     const auto& pad_tensor_dims = pad_tensor->dims();
     if (pad_seq_len == -1) {
@@ -164,7 +164,7 @@ class UnpaddingDenseTensorFunctor<CPUContext, T> {
                   int lod_level = 0,
                   bool norm_by_times = false,
                   const PadLayout layout = kBatchLengthWidth) {
-    auto seq_offsets = phi::ToAbsOffset(seq_tensor->lod())[lod_level];
+    auto seq_offsets = ToAbsOffset(seq_tensor->lod())[lod_level];
     const auto& seq_tensor_dims = seq_tensor->dims();
     const auto& pad_tensor_dims = pad_tensor.dims();
     if (pad_seq_len == -1) {
@@ -201,7 +201,7 @@ class UnpaddingDenseTensorFunctor<XPUContext, T> {
                   int lod_level = 0,
                   bool norm_by_times = false,
                   const PadLayout layout = kBatchLengthWidth) {
-    auto seq_offsets = phi::ToAbsOffset(seq_tensor->lod())[lod_level];
+    auto seq_offsets = ToAbsOffset(seq_tensor->lod())[lod_level];
     const auto& seq_tensor_dims = seq_tensor->dims();
     const auto& pad_tensor_dims = pad_tensor.dims();
     if (pad_seq_len == -1) {

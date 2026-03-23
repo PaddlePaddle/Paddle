@@ -112,7 +112,7 @@ void CTCAlignOpCUDAKernel(const Context& dev_ctx,
                                                            output_length_data);
   } else {
     const size_t level = 0;
-    auto input_lod = phi::ToAbsOffset(input.lod());
+    auto input_lod = ToAbsOffset(input.lod());
 
     const int64_t num_tokens = input.dims()[0];
     const size_t num_seq = input_lod[level].size() - 1;
@@ -139,7 +139,7 @@ void CTCAlignOpCUDAKernel(const Context& dev_ctx,
 
     // set output lod
     std::vector<size_t> host_out_lod0(dev_out_lod0.begin(), dev_out_lod0.end());
-    phi::LegacyLoD out_lod;
+    LegacyLoD out_lod;
     out_lod.push_back(host_out_lod0);
     output->set_lod(out_lod);
 
