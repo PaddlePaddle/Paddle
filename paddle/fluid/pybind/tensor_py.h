@@ -700,8 +700,8 @@ void _sliceCompute(const DenseTensor *in,
   auto out_dims = common::vectorize<int>(out->dims());
   auto in_dims = in->dims();
 
-  auto offsets = Eigen::DSizes<Eigen::DenseIndex, D>();
-  auto extents = Eigen::DSizes<Eigen::DenseIndex, D>();
+  auto offsets = Eigen::DSizes<int64_t, D>();
+  auto extents = Eigen::DSizes<int64_t, D>();
   for (size_t i = 0; i < D; ++i) {
     offsets[i] = 0;
     extents[i] = out_dims[i];
@@ -715,12 +715,8 @@ void _sliceCompute(const DenseTensor *in,
     start = std::max(start, 0);
     offsets[axes[i]] = start;
   }
-  auto in_t =
-      framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-          *in);
-  auto out_t =
-      framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-          *out);
+  auto in_t = framework::EigenTensor<T, D, Eigen::RowMajor>::From(*in);
+  auto out_t = framework::EigenTensor<T, D, Eigen::RowMajor>::From(*out);
   phi::funcs::EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
       eigen_place, out_t, in_t, offsets, extents);
 }

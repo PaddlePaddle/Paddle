@@ -41,6 +41,22 @@ size_t GetPoolVAMultiplier(PoolType pool_type) {
   return 1;
 }
 
+template <typename Map, typename Key, typename Value>
+void EmplaceOrEnforce(Map* map,
+                      Key&& key,
+                      Value&& value,
+                      const char* map_name) {
+  const bool inserted =
+      map->try_emplace(std::forward<Key>(key), std::forward<Value>(value))
+          .second;
+  PADDLE_ENFORCE_EQ(
+      inserted,
+      true,
+      common::errors::AlreadyExists(
+          "Duplicate key inserted into %s, allocator state is inconsistent.",
+          map_name));
+}
+
 }  // namespace
 
 CUDAVirtualMemAllocatorV2::CUDAVirtualMemAllocatorV2(const GPUPlace& place,
@@ -121,24 +137,20 @@ phi::Allocation* CUDAVirtualMemAllocatorV2::AllocateImpl(size_t size) {
 
   RegisterHandleLayout(reinterpret_cast<void*>(ptr), layout);
   AdvanceTailOffset(aligned);
-  return new Allocation(reinterpret_cast<void*>(ptr),
-                        reinterpret_cast<void*>(ptr),
-                        aligned,
-                        place_);
+  return new Allocation(reinterpret_cast<void*>(ptr), aligned, place_);
 }
 
 void CUDAVirtualMemAllocatorV2::FreeImpl(phi::Allocation* allocation) {
-  auto* base_ptr = static_cast<Allocation*>(allocation)->base_ptr();
+  auto* ptr = allocation->ptr();
   HandleLayout layout;
   {
-    std::lock_guard<std::mutex> guard(base_ptr_layout_mu_);
-    auto it = base_ptr_layout_map_.find(base_ptr);
+    std::lock_guard<std::mutex> guard(allocation_layout_mu_);
+    auto it = allocation_layout_map_.find(ptr);
     PADDLE_ENFORCE_NE(
-        it == base_ptr_layout_map_.end(),
+        it == allocation_layout_map_.end(),
         true,
         common::errors::NotFound(
-            "No VMMAllocatorV2 handle layout found for allocation %p.",
-            base_ptr));
+            "No VMMAllocatorV2 handle layout found for allocation %p.", ptr));
     layout = it->second;
   }
 
@@ -151,7 +163,7 @@ void CUDAVirtualMemAllocatorV2::FreeImpl(phi::Allocation* allocation) {
     // BlockPartV2 objects.
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cuMemRelease(handle->handle));
   }
-  UnregisterHandleLayout(base_ptr);
+  UnregisterHandleLayout(ptr);
   delete allocation;
 }
 
@@ -174,10 +186,10 @@ void CUDAVirtualMemAllocatorV2::MapHandlesToVA(
 }
 
 bool CUDAVirtualMemAllocatorV2::CollectAllocationHandleLayout(
-    void* base_ptr, HandleLayout* layout) const {
-  std::lock_guard<std::mutex> guard(base_ptr_layout_mu_);
-  auto it = base_ptr_layout_map_.find(base_ptr);
-  if (it == base_ptr_layout_map_.end()) {
+    void* ptr, HandleLayout* layout) const {
+  std::lock_guard<std::mutex> guard(allocation_layout_mu_);
+  auto it = allocation_layout_map_.find(ptr);
+  if (it == allocation_layout_map_.end()) {
     return false;
   }
   if (layout) {
@@ -187,14 +199,15 @@ bool CUDAVirtualMemAllocatorV2::CollectAllocationHandleLayout(
 }
 
 void CUDAVirtualMemAllocatorV2::RegisterHandleLayout(
-    void* base_ptr, const HandleLayout& layout) {
-  std::lock_guard<std::mutex> guard(base_ptr_layout_mu_);
-  base_ptr_layout_map_[base_ptr] = layout;
+    void* ptr, const HandleLayout& layout) {
+  std::lock_guard<std::mutex> guard(allocation_layout_mu_);
+  EmplaceOrEnforce(
+      &allocation_layout_map_, ptr, layout, "allocation_layout_map_");
 }
 
-void CUDAVirtualMemAllocatorV2::UnregisterHandleLayout(void* base_ptr) {
-  std::lock_guard<std::mutex> guard(base_ptr_layout_mu_);
-  base_ptr_layout_map_.erase(base_ptr);
+void CUDAVirtualMemAllocatorV2::UnregisterHandleLayout(void* ptr) {
+  std::lock_guard<std::mutex> guard(allocation_layout_mu_);
+  allocation_layout_map_.erase(ptr);
 }
 
 }  // namespace allocation

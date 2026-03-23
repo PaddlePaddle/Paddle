@@ -194,8 +194,7 @@ void CastCooKernel(const Context& dev_ctx,
     meta.set_dtype(index_dtype);
 
     PD_VISIT_INTEGRAL_TYPES(x_indices.dtype(), "CastCooKernel", [&] {
-      phi::CastKernel<data_t, Context>(
-          dev_ctx, x_indices, index_dtype, out_indices);
+      CastKernel<data_t, Context>(dev_ctx, x_indices, index_dtype, out_indices);
     });
   }
 
@@ -204,7 +203,7 @@ void CastCooKernel(const Context& dev_ctx,
   } else {
     phi::MetaTensor meta(out_values);
     meta.set_dims(x_values.dims());
-    phi::CastKernel<T, Context>(dev_ctx, x_values, value_dtype, out_values);
+    CastKernel<T, Context>(dev_ctx, x_values, value_dtype, out_values);
   }
   out->SetIndicesDict(x.GetIndicesDict());
   out->SetKmaps(x.GetKmaps());
@@ -232,8 +231,7 @@ void CastCsrKernel(const Context& dev_ctx,
     crows_meta.set_dtype(index_dtype);
 
     PD_VISIT_INTEGRAL_TYPES(x_crows.dtype(), "CastCsrKernel", [&] {
-      phi::CastKernel<data_t, Context>(
-          dev_ctx, x_crows, index_dtype, out_crows);
+      CastKernel<data_t, Context>(dev_ctx, x_crows, index_dtype, out_crows);
     });
 
     phi::MetaTensor cols_meta(out_cols);
@@ -241,7 +239,7 @@ void CastCsrKernel(const Context& dev_ctx,
     cols_meta.set_dtype(index_dtype);
 
     PD_VISIT_INTEGRAL_TYPES(x_cols.dtype(), "CastCsrKernel", [&] {
-      phi::CastKernel<data_t, Context>(dev_ctx, x_cols, index_dtype, out_cols);
+      CastKernel<data_t, Context>(dev_ctx, x_cols, index_dtype, out_cols);
     });
   }
 
@@ -250,7 +248,7 @@ void CastCsrKernel(const Context& dev_ctx,
   } else {
     phi::MetaTensor meta(out_values);
     meta.set_dims(x_values.dims());
-    phi::CastKernel<T, Context>(dev_ctx, x_values, value_dtype, out_values);
+    CastKernel<T, Context>(dev_ctx, x_values, value_dtype, out_values);
   }
 }
 

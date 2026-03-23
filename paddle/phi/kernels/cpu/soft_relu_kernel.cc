@@ -60,15 +60,7 @@ void SoftmaxKernel(const Context& dev_ctx,
   auto* eigen_dev = dev_ctx.eigen_device();
   SoftReluFunctor<T> functor;
   functor.SetAttrs(threshold);
-  // use 32bit index to speed up computation
-  bool use_32bit_index = out_flatten.size() < Eigen::NumTraits<int>::highest();
-  bool is_gpu_place = (dev_ctx.GetPlace().GetType() == AllocationType::GPU) ||
-                      (dev_ctx.GetPlace().GetType() == AllocationType::CUSTOM);
-  if (use_32bit_index && is_gpu_place) {
-    functor(*eigen_dev, To32BitIndex(x_flatten), To32BitIndex(out_flatten));
-  } else {
-    functor(*eigen_dev, x_flatten, out_flatten);
-  }
+  functor(*eigen_dev, x_flatten, out_flatten);
 }
 
 }  // namespace phi

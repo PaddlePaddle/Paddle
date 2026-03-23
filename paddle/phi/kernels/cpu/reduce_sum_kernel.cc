@@ -49,37 +49,35 @@ void SumRawKernel(const Context& dev_ctx,
   }
   if constexpr (std::is_same_v<T, phi::float16> ||
                 std::is_same_v<T, phi::bfloat16>) {
-    DenseTensor x_fp32 = phi::Cast<T, Context>(dev_ctx, x, DataType::FLOAT32);
+    DenseTensor x_fp32 = Cast<T, Context>(dev_ctx, x, DataType::FLOAT32);
     DataType final_out_dtype = out_dtype;
     if (final_out_dtype == DataType::UNDEFINED) {
       final_out_dtype = x.dtype();
     }
     if (final_out_dtype == DataType::FLOAT32) {
-      phi::Reduce<CPUContext, float, funcs::SumFunctor>(
-          dev_ctx,
-          x_fp32,
-          reduce_all,
-          dims.GetData(),
-          keep_dim,
-          phi::DataType::UNDEFINED,
-          out);
+      Reduce<CPUContext, float, funcs::SumFunctor>(dev_ctx,
+                                                   x_fp32,
+                                                   reduce_all,
+                                                   dims.GetData(),
+                                                   keep_dim,
+                                                   phi::DataType::UNDEFINED,
+                                                   out);
     } else {
       DenseTensor intermediate_result;
       intermediate_result.set_meta(out->meta());
-      phi::Reduce<CPUContext, float, funcs::SumFunctor>(
-          dev_ctx,
-          x_fp32,
-          reduce_all,
-          dims.GetData(),
-          keep_dim,
-          phi::DataType::UNDEFINED,
-          &intermediate_result);
+      Reduce<CPUContext, float, funcs::SumFunctor>(dev_ctx,
+                                                   x_fp32,
+                                                   reduce_all,
+                                                   dims.GetData(),
+                                                   keep_dim,
+                                                   phi::DataType::UNDEFINED,
+                                                   &intermediate_result);
 
-      phi::CastKernel<float, Context>(
+      CastKernel<float, Context>(
           dev_ctx, intermediate_result, final_out_dtype, out);
     }
   } else {
-    phi::Reduce<CPUContext, T, funcs::SumFunctor>(
+    Reduce<CPUContext, T, funcs::SumFunctor>(
         dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
   }
 }

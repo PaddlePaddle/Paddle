@@ -18,15 +18,32 @@
 #include <c10/core/SymIntArrayRef.h>
 #include <c10/core/TensorOptions.h>
 #include <utils/dense_sparse_conversion.h>
+#include <utils/pinned_place.h>
 
 #include <optional>
 #include <string_view>
 
 #include "paddle/phi/api/include/api.h"
+#include "paddle/phi/common/place.h"
 
 namespace at {
 
 inline at::Tensor zeros(at::IntArrayRef size, at::TensorOptions options = {}) {
+  if (options.pinned_memory()) {
+    // Pinning memory is only supported for CPU tensors
+    if (options.has_device() && !options.device().is_cpu()) {
+      PD_THROW(
+          "pin_memory=true requires device to be CPU, but got non-CPU device");
+    }
+    phi::Place base_place = options._PD_GetPlace();
+    phi::Place pinned_place = compat::_PD_GetCreatePinnedPlace(base_place);
+    auto dense = paddle::experimental::zeros(
+        size._PD_ToPaddleIntArray(),
+        compat::_PD_AtenScalarTypeToPhiDataType(options.dtype()),
+        phi::CPUPlace());
+    dense = dense.copy_to(pinned_place, /*blocking=*/true);
+    return compat::_PD_ConvertToSparseIfNeeded(dense, options.layout());
+  }
   auto dense = paddle::experimental::zeros(
       size._PD_ToPaddleIntArray(),
       compat::_PD_AtenScalarTypeToPhiDataType(options.dtype()),
@@ -39,19 +56,31 @@ inline at::Tensor zeros(at::IntArrayRef size,
                         ::std::optional<at::Layout> layout,
                         ::std::optional<at::Device> device,
                         ::std::optional<bool> pin_memory) {
-  PD_CHECK(!(pin_memory.has_value() && pin_memory.value() != false),
-           "`pin_memory` other than False is not supported now.");
-  auto dense =
-      paddle::experimental::zeros(size._PD_ToPaddleIntArray(),
-                                  compat::_PD_AtenScalarTypeToPhiDataType(
-                                      dtype.value_or(c10::get_default_dtype())),
-                                  device.value_or(at::kCPU)._PD_GetInner());
-  return compat::_PD_ConvertToSparseIfNeeded(dense,
-                                             layout.value_or(c10::kStrided));
+  auto options = at::TensorOptions()
+                     .dtype(dtype.value_or(c10::get_default_dtype()))
+                     .layout(layout)
+                     .device(device.value_or(at::kCPU))
+                     .pinned_memory(pin_memory);
+  return zeros(size, options);
 }
 
 inline at::Tensor zeros_symint(c10::SymIntArrayRef size,
                                at::TensorOptions options = {}) {
+  if (options.pinned_memory()) {
+    // Pinning memory is only supported for CPU tensors
+    if (options.has_device() && !options.device().is_cpu()) {
+      PD_THROW(
+          "pin_memory=true requires device to be CPU, but got non-CPU device");
+    }
+    phi::Place base_place = options._PD_GetPlace();
+    phi::Place pinned_place = compat::_PD_GetCreatePinnedPlace(base_place);
+    auto dense = paddle::experimental::zeros(
+        size._PD_ToPaddleIntArray(),
+        compat::_PD_AtenScalarTypeToPhiDataType(options.dtype()),
+        phi::CPUPlace());
+    dense = dense.copy_to(pinned_place, /*blocking=*/true);
+    return compat::_PD_ConvertToSparseIfNeeded(dense, options.layout());
+  }
   auto dense = paddle::experimental::zeros(
       size._PD_ToPaddleIntArray(),
       compat::_PD_AtenScalarTypeToPhiDataType(options.dtype()),
@@ -64,15 +93,12 @@ inline at::Tensor zeros_symint(c10::SymIntArrayRef size,
                                ::std::optional<at::Layout> layout,
                                ::std::optional<at::Device> device,
                                ::std::optional<bool> pin_memory) {
-  PD_CHECK(!(pin_memory.has_value() && pin_memory.value() != false),
-           "`pin_memory` other than False is not supported now.");
-  auto dense =
-      paddle::experimental::zeros(size._PD_ToPaddleIntArray(),
-                                  compat::_PD_AtenScalarTypeToPhiDataType(
-                                      dtype.value_or(c10::get_default_dtype())),
-                                  device.value_or(at::kCPU)._PD_GetInner());
-  return compat::_PD_ConvertToSparseIfNeeded(dense,
-                                             layout.value_or(c10::kStrided));
+  auto options = at::TensorOptions()
+                     .dtype(dtype.value_or(c10::get_default_dtype()))
+                     .layout(layout)
+                     .device(device.value_or(at::kCPU))
+                     .pinned_memory(pin_memory);
+  return zeros_symint(size, options);
 }
 
 }  // namespace at

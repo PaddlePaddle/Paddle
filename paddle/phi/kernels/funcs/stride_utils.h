@@ -744,7 +744,7 @@ makeLinearIndex(const GPUContext& dev_ctx,
   auto indices = expandTensors(dev_ctx, orig);
   for (auto& idx : indices) {
     if (idx.initialized() && idx.dtype() == phi::DataType::INT32) {
-      idx = phi::Cast<int32_t, GPUContext>(dev_ctx, idx, phi::DataType::INT64);
+      idx = Cast<int32_t, GPUContext>(dev_ctx, idx, phi::DataType::INT64);
     }
   }
   indices = expand_outplace(dev_ctx, std::move(indices));

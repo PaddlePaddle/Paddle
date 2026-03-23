@@ -209,9 +209,3 @@ inline at::Tensor Tensor::index_put(
 }
 
 }  // namespace at
-
-namespace torch {
-using at::index;
-using at::index_put;
-using at::index_put_;
-}  // namespace torch
