@@ -1,4 +1,4 @@
-// Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 #include <set>
+#include <vector>
 
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -24,10 +25,16 @@
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/contiguous_kernel.h"
 #include "paddle/phi/kernels/matmul_grad_kernel.h"
+#include "paddle/phi/kernels/transpose_kernel.h"
 
 COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace phi {
+
+struct CanonicalizedTransposeInfo {
+  bool applied{false};
+  std::vector<int> axis;
+};
 
 inline void PrepareStridedOut(DenseTensor* out) {
   if (out == nullptr) {
@@ -97,25 +104,25 @@ inline bool IsOnlyTransposedTensor(const DenseTensor& tensor,
   return DenseTensorMeta::calc_strides(*src_shape) == *src_stride;
 }
 
-inline void CanonicalizePureTransposeView(const DenseTensor& input,
-                                          bool* transpose,
-                                          DenseTensor* output) {
+inline CanonicalizedTransposeInfo CanonicalizePureTransposeView(
+    const DenseTensor& input, bool* transpose, DenseTensor* output) {
+  CanonicalizedTransposeInfo info;
   *output = input;
   if (input.meta().is_contiguous()) {
-    return;
+    return info;
   }
 
   DDim src_shape;
   DDim src_stride;
   std::vector<int> axis;
   if (!IsOnlyTransposedTensor(input, &src_shape, &src_stride, &axis)) {
-    return;
+    return info;
   }
 
   const auto trans_dims = axis.size();
   if (trans_dims < 2 || axis[trans_dims - 1] != trans_dims - 2 ||
       axis[trans_dims - 2] != trans_dims - 1) {
-    return;
+    return info;
   }
 
   auto meta = output->meta();
@@ -123,6 +130,9 @@ inline void CanonicalizePureTransposeView(const DenseTensor& input,
   meta.strides = src_stride;
   output->set_meta(meta);
   *transpose = !*transpose;
+  info.applied = true;
+  info.axis = axis;
+  return info;
 }
 
 template <typename T, typename Context>
@@ -144,8 +154,8 @@ void MatmulGradStrideKernel(const Context& dev_ctx,
   DenseTensor y_ = y;
   DenseTensor out_grad_ = out_grad;
 
-  CanonicalizePureTransposeView(x, &transpose_x, &x_);
-  CanonicalizePureTransposeView(y, &transpose_y, &y_);
+  auto x_info = CanonicalizePureTransposeView(x, &transpose_x, &x_);
+  auto y_info = CanonicalizePureTransposeView(y, &transpose_y, &y_);
 
   if (!x_.meta().is_contiguous()) {
     x_ = Tensor2Contiguous<Context>(dev_ctx, x_);
@@ -157,11 +167,34 @@ void MatmulGradStrideKernel(const Context& dev_ctx,
     out_grad_ = Tensor2Contiguous<Context>(dev_ctx, out_grad_);
   }
 
-  PrepareStridedOut(dx);
-  PrepareStridedOut(dy);
+  DenseTensor dx_tmp;
+  DenseTensor dy_tmp;
+  DenseTensor* dx_out = dx;
+  DenseTensor* dy_out = dy;
+
+  if (dx != nullptr && x_info.applied) {
+    dx_tmp.Resize(x_.dims());
+    dx_out = &dx_tmp;
+  } else {
+    PrepareStridedOut(dx_out);
+  }
+
+  if (dy != nullptr && y_info.applied) {
+    dy_tmp.Resize(y_.dims());
+    dy_out = &dy_tmp;
+  } else {
+    PrepareStridedOut(dy_out);
+  }
 
   phi::MatmulGradKernel<T, Context>(
-      dev_ctx, x_, y_, out_grad_, transpose_x, transpose_y, dx, dy);
+      dev_ctx, x_, y_, out_grad_, transpose_x, transpose_y, dx_out, dy_out);
+
+  if (dx != nullptr && x_info.applied) {
+    phi::TransposeKernel<T, Context>(dev_ctx, dx_tmp, x_info.axis, dx);
+  }
+  if (dy != nullptr && y_info.applied) {
+    phi::TransposeKernel<T, Context>(dev_ctx, dy_tmp, y_info.axis, dy);
+  }
 }
 
 }  // namespace phi
