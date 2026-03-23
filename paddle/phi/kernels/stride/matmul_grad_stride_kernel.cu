@@ -1,4 +1,4 @@
-// Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,15 +35,6 @@ struct CanonicalizedTransposeInfo {
   bool applied{false};
   std::vector<int> axis;
 };
-
-inline void PrepareStridedOut(DenseTensor* out) {
-  if (out == nullptr) {
-    return;
-  }
-  auto meta = out->meta();
-  meta.strides = meta.calc_strides(out->dims());
-  out->set_meta(meta);
-}
 
 template <typename Context>
 DenseTensor Tensor2Contiguous(const Context& dev_ctx,
@@ -175,25 +166,21 @@ void MatmulGradStrideKernel(const Context& dev_ctx,
   if (dx != nullptr && x_info.applied) {
     dx_tmp.Resize(x_.dims());
     dx_out = &dx_tmp;
-  } else {
-    PrepareStridedOut(dx_out);
   }
 
   if (dy != nullptr && y_info.applied) {
     dy_tmp.Resize(y_.dims());
     dy_out = &dy_tmp;
-  } else {
-    PrepareStridedOut(dy_out);
   }
 
   phi::MatmulGradKernel<T, Context>(
       dev_ctx, x_, y_, out_grad_, transpose_x, transpose_y, dx_out, dy_out);
 
   if (dx != nullptr && x_info.applied) {
-    phi::TransposeKernel<T, Context>(dev_ctx, dx_tmp, x_info.axis, dx);
+    phi::Transpose<T, Context>(dev_ctx, dx_tmp, x_info.axis, dx);
   }
   if (dy != nullptr && y_info.applied) {
-    phi::TransposeKernel<T, Context>(dev_ctx, dy_tmp, y_info.axis, dy);
+    phi::Transpose<T, Context>(dev_ctx, dy_tmp, y_info.axis, dy);
   }
 }
 
