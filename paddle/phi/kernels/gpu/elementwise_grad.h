@@ -172,7 +172,7 @@ void ElementwiseMixedPrecisionAddGrad(const GPUContext &dev_ctx,
   if (dx_data == dout_data) {
     VLOG(7) << "Special case when dx_data is the same as dout_data, "
                "need cast dout to dy.";
-    phi::CastKernel<T_dout>(dev_ctx, dout, dy->dtype(), dy);
+    CastKernel<T_dout>(dev_ctx, dout, dy->dtype(), dy);
     return;
   }
 
@@ -237,7 +237,7 @@ void DefaultMixedPrecisionAddGrad(const GPUContext &dev_ctx,
   if (dy != nullptr) {
     auto *dy_data = dev_ctx.template Alloc<T_dy>(dy);
     if (dy->dims() == dout.dims()) {
-      phi::CastKernel<T_dout>(dev_ctx, dout, dy->dtype(), dy);
+      CastKernel<T_dout>(dev_ctx, dout, dy->dtype(), dy);
     } else {
       DenseTensor dy_fp32;
       dy_fp32.Resize(dout.dims());
@@ -246,7 +246,7 @@ void DefaultMixedPrecisionAddGrad(const GPUContext &dev_ctx,
           funcs::GetReduceDim(y.dims(), dout.dims(), axis);
       phi::SumKernel<float, GPUContext>(
           dev_ctx, dout, reduce_dims, dout.dtype(), false, &dy_fp32);
-      phi::CastKernel<float>(dev_ctx, dy_fp32, dy->dtype(), dy);
+      CastKernel<float>(dev_ctx, dy_fp32, dy->dtype(), dy);
     }
   }
 }

@@ -51,7 +51,7 @@ void RepeatsTensor2IndexTensorFunctor<Context, RepeatsT>::operator()(
   }
   index->Resize(make_ddim({index_size}));
 
-  phi::TensorFromVector<RepeatsT>(index_vec, dev_ctx, index);
+  TensorFromVector<RepeatsT>(index_vec, dev_ctx, index);
 }
 
 template <typename RepeatsT>
@@ -76,7 +76,7 @@ void RepeatsTensor2IndexTensorFunctor<CPUContext, RepeatsT>::operator()(
   }
   index->Resize(make_ddim({index_size}));
 
-  phi::TensorFromVector<RepeatsT>(index_vec, dev_ctx, index);
+  TensorFromVector<RepeatsT>(index_vec, dev_ctx, index);
 }
 
 template class RepeatsTensor2IndexTensorFunctor<CPUContext, int>;
@@ -107,7 +107,7 @@ void RepeatsTensor2IndexTensorFunctor<XPUContext, RepeatsT>::operator()(
   }
   index->Resize(make_ddim({index_size}));
 
-  phi::TensorFromVector<RepeatsT>(index_vec, dev_ctx, index);
+  TensorFromVector<RepeatsT>(index_vec, dev_ctx, index);
 }
 
 template class RepeatsTensor2IndexTensorFunctor<XPUContext, int>;

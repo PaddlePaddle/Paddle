@@ -22,10 +22,10 @@ namespace funcs {
 
 template <typename T>
 struct EigenErf<Eigen::GpuDevice, T> {
-  using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using InType =
+      Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor, int64_t>>;
   using OutType =
-      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, int64_t>>;
   static void Eval(const Eigen::GpuDevice& dev, OutType out, const InType& in) {
     out.device(dev) = in.erf();
   }
@@ -33,10 +33,10 @@ struct EigenErf<Eigen::GpuDevice, T> {
 
 template <typename T>
 struct EigenErfGrad<Eigen::GpuDevice, T> {
-  using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using InType =
+      Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor, int64_t>>;
   using OutType =
-      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, int64_t>>;
   static void Eval(const Eigen::GpuDevice& dev,
                    OutType din,
                    const InType& in,

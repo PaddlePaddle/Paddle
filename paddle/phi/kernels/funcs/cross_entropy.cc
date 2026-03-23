@@ -20,10 +20,8 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-template <typename T,
-          int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = EigenMatrix<T, MajorType, IndexType>;
+template <typename T, int MajorType = Eigen::RowMajor>
+using EigenMatrix = EigenMatrix<T, MajorType>;
 
 template <typename T>
 struct HardLabelCrossEntropyCPUFunctorImpl {

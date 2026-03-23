@@ -24,11 +24,8 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-template <typename T,
-          size_t D,
-          int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenTensor = EigenTensor<T, D, MajorType, IndexType>;
+template <typename T, size_t D, int MajorType = Eigen::RowMajor>
+using EigenTensor = EigenTensor<T, D, MajorType>;
 
 template <typename DeviceContext, typename T, size_t D>
 void PadFunction(const DeviceContext& dev_ctx,

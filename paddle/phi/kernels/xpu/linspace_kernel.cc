@@ -68,7 +68,7 @@ void LinspaceKernel(const Context& dev_ctx,
                         "than or equal to 0, but received num is %d",
                         num));
 
-  out->Resize(make_ddim({num}));
+  out->Resize({num});
   T* out_data = dev_ctx.template Alloc<T>(out);
   if (num == 0) {
     return;
