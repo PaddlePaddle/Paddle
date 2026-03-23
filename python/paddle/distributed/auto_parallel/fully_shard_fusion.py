@@ -755,64 +755,38 @@ class FullyShardFusion:
 
         _register_recursive(model)
 
-    @staticmethod
-    def _extract_tensors(outputs):
-        # Extract tensors from outputs, return (tensors, rebuild_func).
-        if isinstance(outputs, paddle.Tensor):
-            return [outputs], lambda ts: ts[0]
-        elif isinstance(outputs, tuple):
-            indices = []
-            tensors = []
-            for i, v in enumerate(outputs):
-                if isinstance(v, paddle.Tensor):
-                    indices.append(i)
-                    tensors.append(v)
-
-            def rebuild(hooked):
-                result = list(outputs)
-                for idx, t in zip(indices, hooked):
-                    result[idx] = t
-                return tuple(result)
-
-            return tensors, rebuild
-        elif isinstance(outputs, dict):
-            keys = []
-            tensors = []
-            for k, v in outputs.items():
-                if isinstance(v, paddle.Tensor):
-                    keys.append(k)
-                    tensors.append(v)
-
-            def rebuild(hooked):
-                result = dict(outputs)
-                for k, t in zip(keys, hooked):
-                    result[k] = t
-                return result
-
-            return tensors, rebuild
-        else:
-            return [], lambda ts: outputs
-
     def _register_fusion_layer_hooks(self, layer, recursive=False):
         def _forward_post_hook(layer, inputs, outputs):
-            tensors, rebuild = self._extract_tensors(outputs)
-            if not tensors:
+            if isinstance(outputs, dict):
+                for key, value in outputs.items():
+                    if (
+                        isinstance(value, paddle.Tensor)
+                        and not value.stop_gradient
+                    ):
+                        outputs[key] = FusionBackwardHook.apply(
+                            value,
+                            layer=layer,
+                            comm_manager=self.comm_manager,
+                            recursive=recursive,
+                        )
                 return outputs
-            # Hook only tensor that requires grad to call all_gather_params
-            hook_idx = None
-            for i, t in enumerate(tensors):
-                if not t.stop_gradient:
-                    hook_idx = i
-                    break
-            if hook_idx is None:
-                return outputs
-            tensors[hook_idx] = FusionBackwardHook.apply(
-                tensors[hook_idx],
-                layer=layer,
-                comm_manager=self.comm_manager,
-                recursive=recursive,
-            )
-            return rebuild(tensors)
+            elif isinstance(outputs, tuple):
+                result = FusionBackwardHook.apply(
+                    *outputs,
+                    layer=layer,
+                    comm_manager=self.comm_manager,
+                    recursive=recursive,
+                )
+                if not isinstance(result, tuple):
+                    result = (result,)
+                return result
+            else:
+                return FusionBackwardHook.apply(
+                    outputs,
+                    layer=layer,
+                    comm_manager=self.comm_manager,
+                    recursive=recursive,
+                )
 
         def _forward_pre_hook(layer, inputs):
             return FusionForwardHook.apply(
