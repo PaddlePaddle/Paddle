@@ -92,7 +92,7 @@ void GPUIndexElementwisePutGradKernel(
   using dtype = funcs::OpaqueType<sizeof(T)>;
   if (!value_grad) {
     char* out_ptr = reinterpret_cast<char*>(x_grad->data<T>());
-    if (index.size() == 1 && index[0]->dtype() == phi::DataType::BOOL) {
+    if (index.size() == 1 && index[0]->dtype() == DataType::BOOL) {
       const bool* mask_data = index[0]->data<bool>();
       funcs::index_elementwise_with_tensor_kernel<nt, vt>
           <<<grid, block, 0, stream>>>(N, [=] __device__(int64_t idx) {
@@ -343,15 +343,14 @@ void IndexElementwisePutGradKernel(
     const int64_t slice_offset,
     DenseTensor* x_grad) {
   const auto& index_type = indices[0]->dtype();
-  PADDLE_ENFORCE_EQ(
-      index_type == phi::DataType::INT64 ||
-          (index_type == phi::DataType::BOOL && indices.size() == 1),
-      true,
-      common::errors::InvalidArgument(
-          "Index holds the wrong type, it holds [%s], but "
-          "desires to be [%s].",
-          index_type,
-          phi::DataType::INT64));
+  PADDLE_ENFORCE_EQ(index_type == DataType::INT64 ||
+                        (index_type == DataType::BOOL && indices.size() == 1),
+                    true,
+                    common::errors::InvalidArgument(
+                        "Index holds the wrong type, it holds [%s], but "
+                        "desires to be [%s].",
+                        index_type,
+                        DataType::INT64));
   std::vector<DenseTensor> tmp_args;
   if (indices.empty()) {
     if (x_grad) {
@@ -386,13 +385,13 @@ void IndexElementwisePutWithTensorGradKernel(
     DenseTensor* x_grad,
     DenseTensor* value_grad) {
   const auto& index_type = indices[0]->dtype();
-  PADDLE_ENFORCE_EQ(index_type == phi::DataType::INT64,
+  PADDLE_ENFORCE_EQ(index_type == DataType::INT64,
                     true,
                     common::errors::InvalidArgument(
                         "Index holds the wrong type, it holds [%s], but "
                         "desires to be [%s].",
                         index_type,
-                        phi::DataType::INT64));
+                        DataType::INT64));
 
   std::vector<DenseTensor> tmp_args;
   if (indices.empty()) {

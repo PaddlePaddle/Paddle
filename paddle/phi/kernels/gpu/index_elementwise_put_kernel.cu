@@ -95,7 +95,7 @@ void GPUIndexElementwisePutKernel(const GPUContext& dev_ctx,
   auto stream = dev_ctx.stream();
 
   char* out_ptr = reinterpret_cast<char*>(output_);
-  if (index.size() == 1 && index[0]->dtype() == phi::DataType::BOOL) {
+  if (index.size() == 1 && index[0]->dtype() == DataType::BOOL) {
     const bool* mask_data = index[0]->data<bool>();
     funcs::index_elementwise_with_tensor_kernel<nt, vt>
         <<<grid, block, 0, stream>>>(N, [=] __device__(int64_t idx) {
@@ -239,15 +239,14 @@ void IndexElementwisePutKernel(const Context& dev_ctx,
                                const int64_t slice_offset,
                                DenseTensor* out) {
   const auto& index_type = index[0]->dtype();
-  PADDLE_ENFORCE_EQ(
-      index_type == phi::DataType::INT64 ||
-          (index_type == phi::DataType::BOOL && index.size() == 1),
-      true,
-      common::errors::InvalidArgument(
-          "Index holds the wrong type, it holds [%s], but "
-          "desires to be [%s].",
-          index_type,
-          phi::DataType::INT64));
+  PADDLE_ENFORCE_EQ(index_type == DataType::INT64 ||
+                        (index_type == DataType::BOOL && index.size() == 1),
+                    true,
+                    common::errors::InvalidArgument(
+                        "Index holds the wrong type, it holds [%s], but "
+                        "desires to be [%s].",
+                        index_type,
+                        DataType::INT64));
 
   if (out->numel() == 0) return;
   if (funcs::IsInUint32Range(x.numel() * sizeof(T), out->numel() * sizeof(T))) {

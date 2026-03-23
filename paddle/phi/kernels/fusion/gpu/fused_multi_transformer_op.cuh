@@ -1827,8 +1827,8 @@ __global__ void gqa_write_cache_k_kernel(T *cache_k,
                         head_vec_id * max_seq_len * X_ELEMS +
                         local_token_id * X_ELEMS;
 
-    phi::Load(&k[linear_idx], &in_vec);
-    phi::Store(in_vec, &cache_k[tgt_idx]);
+    Load(&k[linear_idx], &in_vec);
+    Store(in_vec, &cache_k[tgt_idx]);
   }
 }
 
@@ -1865,8 +1865,8 @@ __global__ void gqa_write_cache_v_kernel(T *cache_v,
                         head_idx * max_seq_len * dim_head +
                         local_token_id * dim_head + head_offset;
 
-    phi::Load(&v[linear_idx], &in_vec);
-    phi::Store(in_vec, &cache_v[tgt_idx]);
+    Load(&v[linear_idx], &in_vec);
+    Store(in_vec, &cache_v[tgt_idx]);
   }
 }
 

@@ -158,7 +158,7 @@ void CPUIndexElementwisePutKernel(const CPUContext& dev_ctx,
                         "the value of N should be in [0, "
                         "std::numeric_limits<int32_t>::max()]"));
   char* out_ptr = reinterpret_cast<char*>(output_) + slice_offset;
-  if (index.size() == 1 && index[0]->dtype() == phi::DataType::BOOL) {
+  if (index.size() == 1 && index[0]->dtype() == DataType::BOOL) {
     const bool* mask_data = index[0]->data<bool>();
     for (int64_t idx = 0; idx < N; idx++) {
       const auto offsets = offset_calc.cpu_get(idx);
@@ -240,15 +240,14 @@ void IndexElementwisePutKernel(const Context& dev_ctx,
                                const int64_t slice_offset,
                                DenseTensor* out) {
   const auto& index_type = index[0]->dtype();
-  PADDLE_ENFORCE_EQ(
-      index_type == phi::DataType::INT64 ||
-          (index_type == phi::DataType::BOOL && index.size() == 1),
-      true,
-      common::errors::InvalidArgument(
-          "Index holds the wrong type, it holds [%s], but "
-          "desires to be [%s].",
-          index_type,
-          phi::DataType::INT64));
+  PADDLE_ENFORCE_EQ(index_type == DataType::INT64 ||
+                        (index_type == DataType::BOOL && index.size() == 1),
+                    true,
+                    common::errors::InvalidArgument(
+                        "Index holds the wrong type, it holds [%s], but "
+                        "desires to be [%s].",
+                        index_type,
+                        DataType::INT64));
   if (out && out->numel() == 0) {
     dev_ctx.template Alloc<T>(out);
     return;

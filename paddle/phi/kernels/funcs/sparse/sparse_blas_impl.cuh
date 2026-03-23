@@ -541,9 +541,9 @@ void SparseBlas<GPUContext>::SPGEMM(bool transa,
     phi::MetaTensor cols_meta(a_cols_int.get());
     cols_meta.set_dims(mat_a.cols().dims());
 
-    phi::CastKernel<int64_t>(
+    CastKernel<int64_t>(
         dev_ctx_, mat_a.crows(), phi::DataType::INT32, a_crows_int.get());
-    phi::CastKernel<int64_t>(
+    CastKernel<int64_t>(
         dev_ctx_, mat_a.cols(), phi::DataType::INT32, a_cols_int.get());
 
     a_crows_data = a_crows_int->data<int32_t>();
@@ -561,9 +561,9 @@ void SparseBlas<GPUContext>::SPGEMM(bool transa,
     phi::MetaTensor cols_meta(b_cols_int.get());
     cols_meta.set_dims(mat_b.cols().dims());
 
-    phi::CastKernel<int64_t>(
+    CastKernel<int64_t>(
         dev_ctx_, mat_b.crows(), phi::DataType::INT32, b_crows_int.get());
-    phi::CastKernel<int64_t>(
+    CastKernel<int64_t>(
         dev_ctx_, mat_b.cols(), phi::DataType::INT32, b_cols_int.get());
 
     b_crows_data = b_crows_int->data<int32_t>();
@@ -815,9 +815,9 @@ void SparseBlas<GPUContext>::SPGEMM(bool transa,
 
   if (mat_a.crows().dtype() == phi::DataType::INT64 ||
       mat_b.crows().dtype() == phi::DataType::INT64) {
-    phi::CastKernel<int32_t>(
+    CastKernel<int32_t>(
         dev_ctx_, *mat_out_crows, phi::DataType::INT64, mat_out_crows);
-    phi::CastKernel<int32_t>(
+    CastKernel<int32_t>(
         dev_ctx_, *mat_out_cols, phi::DataType::INT64, mat_out_cols);
   }
 }

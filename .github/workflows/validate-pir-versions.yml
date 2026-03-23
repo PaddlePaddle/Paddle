@@ -10,7 +10,7 @@ jobs:
     if: github.ref_type == 'branch' && startsWith(github.ref, 'refs/heads/release/') && github.repository_owner == 'PaddlePaddle'
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
 
       - name: Check DEVELOP_VERSION and RELEASE_VERSION equality
         id: check_versions
@@ -41,7 +41,7 @@ jobs:
 
       - name: Create Issue if versions not equal
         if: steps.check_versions.outputs.equal == 'false'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           DEVELOP_VERSION: ${{ steps.check_versions.outputs.develop_version }}
           RELEASE_VERSION: ${{ steps.check_versions.outputs.release_version }}
