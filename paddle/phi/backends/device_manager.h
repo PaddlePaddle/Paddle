@@ -29,6 +29,7 @@
 #include "paddle/phi/backends/stream.h"
 #include "paddle/phi/common/port.h"
 
+struct C_CinnInterface;
 namespace phi {
 class PADDLE_API Device final {
  public:
@@ -126,6 +127,10 @@ class PADDLE_API Device final {
 
   std::string Type();
 
+  struct C_CinnInterface* GetCinnInterface() const {
+    return impl_->GetCinnInterface();
+  }
+
  private:
   size_t dev_id_;
   DeviceInterface* impl_;
@@ -185,7 +190,19 @@ class PADDLE_API DeviceManager {
 
   static size_t GetMaxThreadsPerBlock(const Place& place);
 
+  static size_t GetMaxSharedMemPerBlock(const Place& place);
+
+  static size_t GetMaxBlocksPerMultiProcessor(const Place& place);
+
+  static size_t GetWarpSize(const Place& place);
+
+  static size_t GetMaxRegistersPerMultiProcessor(const Place& place);
+
+  static size_t GetPreferredVectorWidth(const Place& place);
+
   static std::array<unsigned int, 3> GetMaxGridDimSize(const Place& place);
+
+  static std::array<unsigned int, 3> GetMaxBlockDimSize(const Place& place);
 
   static bool IsFloat16Supported(const Place& place);
 

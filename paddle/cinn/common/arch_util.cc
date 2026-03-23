@@ -31,6 +31,8 @@ std::string GetArchNameImpl(HygonDCUArchHIP arch) { return "HygonDCU_HIP"; }
 
 std::string GetArchNameImpl(HygonDCUArchSYCL arch) { return "HygonDCU_SYCL"; }
 
+std::string GetArchNameImpl(CustomDeviceArch arch) { return arch.device_type; }
+
 std::string GetArchName(Arch arch) {
   return std::visit([](const auto& impl) { return GetArchNameImpl(impl); },
                     arch.variant());
