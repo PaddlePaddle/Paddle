@@ -37,7 +37,7 @@ inline Tensor expand(const Tensor& self,
   std::vector<int64_t> target_size_vec(size.begin(), size.end());
   auto target_rank = target_size_vec.size();
   auto input_dims = pd_tensor.dims();
-  auto input_rank = input_dims.size();
+  auto input_rank = static_cast<size_t>(input_dims.size());
 
   auto tile_and_slice_to_target =
       [&](const paddle::Tensor& input,

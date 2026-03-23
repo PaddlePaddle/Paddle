@@ -301,7 +301,7 @@ __global__ void QuantActKernel(const T* x,
         out_vec[i] = QuantFunc<T>()(in_vec[i], scale);
       }
     }
-    phi::Store(out_vec, quant_x + linear_index);
+    Store(out_vec, quant_x + linear_index);
   }
 }
 
@@ -406,14 +406,14 @@ __global__ void DequantActivationMergeKernel(const T* x,
                             VecSize;
        linear_idx < elem_cnt;
        linear_idx += gridDim.x * blockDim.x * VecSize) {
-    phi::Load(x_fp + linear_idx, &x_fp_vec);
-    phi::Load(x + linear_idx, &x_vec);
+    Load(x_fp + linear_idx, &x_fp_vec);
+    Load(x + linear_idx, &x_vec);
 
 #pragma unroll
     for (int i = 0; i < VecSize; ++i) {
       out_vec[i] = x_fp_vec[i] + (x_vec[i] / static_cast<T>(127.0f));
     }
-    phi::Store(out_vec, y + linear_idx);
+    Store(out_vec, y + linear_idx);
   }
 }
 
@@ -440,15 +440,15 @@ __global__ void DequantMergeKernel(const int32_t* x,
     for (int col_idx = threadIdx.x * VecSize; col_idx < n;
          col_idx += blockDim.x * VecSize) {
       int linear_idx = row_idx * n + col_idx;
-      phi::Load(x_fp + linear_idx, &x_fp_vec);
-      phi::Load(x + linear_idx, &x_vec);
+      Load(x_fp + linear_idx, &x_fp_vec);
+      Load(x + linear_idx, &x_vec);
 #pragma unroll
       for (int i = 0; i < VecSize; ++i) {
         T dequant_x_fp = DequantFunc<T>()(
             x_vec[i], input_range[row_idx], weight_scale[col_idx + i]);
         out_vec[i] = x_fp_vec[i] + dequant_x_fp;
       }
-      phi::Store(out_vec, y + linear_idx);
+      Store(out_vec, y + linear_idx);
     }
   }
 #endif

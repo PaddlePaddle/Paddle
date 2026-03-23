@@ -136,8 +136,8 @@ bool SortKthvalue(const GPUContext& dev_ctx,
   }
 #endif
   auto& dev = *dev_ctx.eigen_device();
-  const Eigen::DSizes<Eigen::DenseIndex, 2> slice_indices{0, k - 1};
-  const Eigen::DSizes<Eigen::DenseIndex, 2> slice_sizes{num_rows, 1};
+  const Eigen::DSizes<int64_t, 2> slice_indices{0, k - 1};
+  const Eigen::DSizes<int64_t, 2> slice_sizes{num_rows, 1};
   auto e_indices = EigenMatrix<int64_t>::From(*indices_tensor, dim);
   auto e_tmp_indices =
       EigenMatrix<int64_t>::From(static_cast<const DenseTensor>(temp_indices));

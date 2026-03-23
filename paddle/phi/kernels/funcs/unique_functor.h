@@ -349,15 +349,15 @@ static void UniqueDim(const Context& dev_ctx,
       out_trans.dims().size(), dev_ctx, out_trans, out, permute);
 
   if (return_inverse) {
-    phi::TensorFromVector(inverse_vec, dev_ctx, index);
+    TensorFromVector(inverse_vec, dev_ctx, index);
   }
 
   if (return_counts) {
-    phi::TensorFromVector(counts_vec, dev_ctx, count);
+    TensorFromVector(counts_vec, dev_ctx, count);
   }
 
   if (return_index) {
-    phi::TensorFromVector(indices_vec, dev_ctx, indices);
+    TensorFromVector(indices_vec, dev_ctx, indices);
   }
 }
 

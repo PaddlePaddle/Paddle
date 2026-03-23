@@ -466,5 +466,142 @@ class TestElementwiseHeavisideOp_Stride_ZeroSize1(
         self.y_trans = np.transpose(self.y, self.perm)
 
 
+@unittest.skipIf(
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
+)
+class TestHeavisideZeroSizeTensor(unittest.TestCase):
+    """Regression test for 0-size tensor in paddle.heaviside forward and backward.
+
+    When input has a dimension of 0, the broadcast backward kernels
+    (ElemwiseGradBroadcast1CUDA / ElemwiseGradBroadcast2CUDA) were incorrectly
+    launched with block_size=0 or grid_size=0, causing CUDA error(9)
+    (cudaErrorInvalidConfiguration).
+
+    Fix: add early-return guards in ElemwiseGradBroadcast1CUDA (h==0 || w==0)
+    and ElemwiseGradBroadcast2CUDA (pre==0 || n==0 || post==0).
+    """
+
+    def setUp(self):
+        self.place = get_device_place()
+        paddle.disable_static(place=self.place)
+
+    def _check_forward_backward(self, x_shape, y_shape, dtype='float32'):
+        """Run forward + backward and assert output shape and no CUDA error."""
+        x = paddle.zeros(x_shape, dtype=dtype)
+        y = paddle.ones(y_shape, dtype=dtype)
+        x.stop_gradient = False
+        y.stop_gradient = False
+
+        out = paddle.heaviside(x, y)
+        expected_shape = list(
+            np.broadcast_shapes(tuple(x_shape), tuple(y_shape))
+        )
+        self.assertEqual(list(out.shape), expected_shape)
+
+        out_grad = paddle.ones_like(out)
+        grads = paddle.grad(
+            [out],
+            [x, y],
+            grad_outputs=[out_grad],
+            allow_unused=True,
+        )
+        self.assertEqual(list(grads[0].shape), x_shape)
+        self.assertEqual(list(grads[1].shape), y_shape)
+
+        # Verify no sticky CUDA error was left by any kernel launch
+        core.eager._for_test_check_cuda_error()
+        return out
+
+    def _check_forward_only(self, x_shape, y_shape, dtype='int32'):
+        """Run forward-only for non-float dtypes and assert shape + no CUDA error."""
+        x = paddle.zeros(x_shape, dtype=dtype)
+        y = paddle.ones(y_shape, dtype=dtype)
+        out = paddle.heaviside(x, y)
+
+        expected_shape = list(
+            np.broadcast_shapes(tuple(x_shape), tuple(y_shape))
+        )
+        self.assertEqual(list(out.shape), expected_shape)
+        core.eager._for_test_check_cuda_error()
+        return out
+
+    # ---------------------------------------------------------------
+    # Same-shape 0-size (no broadcast) — ElemwiseGradComputeNoBroadcast
+    # ---------------------------------------------------------------
+
+    def test_same_shape_zero_leading_dim_float32(self):
+        """[0, 2048] x [0, 2048] – same shape, no broadcast."""
+        self._check_forward_backward([0, 2048], [0, 2048])
+
+    def test_same_shape_zero_leading_dim_float64(self):
+        """[0, 17] x [0, 17]."""
+        self._check_forward_backward([0, 17], [0, 17], 'float64')
+
+    def test_same_shape_zero_trailing_dim_float64(self):
+        """[13, 0] x [13, 0]."""
+        self._check_forward_backward([13, 0], [13, 0], 'float64')
+
+    def test_same_shape_zero_trailing_dim_int32(self):
+        """[13, 0] x [13, 0] – int32, forward only."""
+        self._check_forward_only([13, 0], [13, 0], 'int32')
+
+    def test_same_shape_zero_trailing_dim_int64(self):
+        """[13, 0] x [13, 0] – int64, forward only."""
+        self._check_forward_only([13, 0], [13, 0], 'int64')
+
+    def test_same_shape_zero_leading_dim_int32(self):
+        """[0, 17] x [0, 17] – int32, forward only."""
+        self._check_forward_only([0, 17], [0, 17], 'int32')
+
+    def test_same_shape_zero_leading_dim_int64(self):
+        """[0, 17] x [0, 17] – int64, forward only."""
+        self._check_forward_only([0, 17], [0, 17], 'int64')
+
+    # ---------------------------------------------------------------
+    # ElemwiseGradBroadcast1CUDA — h=0 (block_size would be 0)
+    # ---------------------------------------------------------------
+
+    def test_broadcast1_zero_trailing_dim_scalar(self):
+        """[300, 0] x [1] → Broadcast1CUDA(h=pre=0, w=n=1), block_size=0."""
+        self._check_forward_backward([300, 0], [1])
+
+    def test_broadcast1_zero_leading_dim_scalar(self):
+        """[0, 2048] x [1] → Broadcast1CUDA(h=pre=0, w=n=1), block_size=0."""
+        self._check_forward_backward([0, 2048], [1])
+
+    def test_broadcast1_zero_leading_dim_last_dim(self):
+        """[0, 2048] x [2048] → Broadcast1CUDA(h=pre=0, w=n=2048), block_size=0."""
+        self._check_forward_backward([0, 2048], [2048])
+
+    def test_broadcast1_scalar_zero_trailing_dim(self):
+        """[1] x [300, 0] – symmetric of test_broadcast1_zero_trailing_dim_scalar."""
+        self._check_forward_backward([1], [300, 0])
+
+    def test_broadcast1_scalar_zero_leading_dim(self):
+        """[1] x [0, 2048] – symmetric of test_broadcast1_zero_leading_dim_scalar."""
+        self._check_forward_backward([1], [0, 2048])
+
+    def test_broadcast1_last_dim_zero_leading_dim(self):
+        """[2048] x [0, 2048] – symmetric of test_broadcast1_zero_leading_dim_last_dim."""
+        self._check_forward_backward([2048], [0, 2048])
+
+    # ---------------------------------------------------------------
+    # ElemwiseGradBroadcast1CUDA — w=0 (grid_size would be 0)
+    # ---------------------------------------------------------------
+
+    def test_broadcast1_zero_mid_dim_w_zero(self):
+        """[2, 0, 3] x [0, 3] → Broadcast1CUDA(h=2, w=0), grid_size=0."""
+        self._check_forward_backward([2, 0, 3], [0, 3])
+
+    # ---------------------------------------------------------------
+    # ElemwiseGradBroadcast2CUDA — post=0 (block_size would be 0)
+    # ---------------------------------------------------------------
+
+    def test_broadcast2_zero_post_dim(self):
+        """[2, 3, 0] x [3, 1] → Broadcast2CUDA(pre=2, n=3, post=0), block_size=0."""
+        self._check_forward_backward([2, 3, 0], [3, 1])
+
+
 if __name__ == '__main__':
     unittest.main()

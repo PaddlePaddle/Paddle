@@ -137,7 +137,7 @@ void SumCooCPUKernel(const Context& dev_ctx,
   }
 
   if (dtype != phi::DataType::UNDEFINED && dtype != x.dtype()) {
-    out_values = phi::Cast<T, Context>(dev_ctx, out_values, dtype);
+    out_values = Cast<T, Context>(dev_ctx, out_values, dtype);
   }
   out->SetMember(out_indices, out_values, out_dims, x.coalesced());
 }
@@ -233,7 +233,7 @@ void SumCsrKernel(const Context& dev_ctx,
       out_values_data[i] = out_data[i];
     }
     if (dtype != phi::DataType::UNDEFINED && dtype != x.dtype()) {
-      out_values = phi::Cast<T, Context>(dev_ctx, out_values, dtype);
+      out_values = Cast<T, Context>(dev_ctx, out_values, dtype);
     }
   }
   out->SetMember(out_crows, out_cols, out_values, out_dims);
