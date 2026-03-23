@@ -16,6 +16,7 @@ import platform
 import unittest
 
 import paddle
+from paddle.base import core
 
 
 def get_process_memory_mb():
@@ -73,7 +74,7 @@ class TestEmptyPinnedCache(unittest.TestCase):
         self.assertGreaterEqual(mem_after_del, mem_after_alloc - 50)
 
         # Call empty_pinned_cache, memory should be returned to OS
-        paddle.device.cuda.empty_pinned_cache()
+        core.cuda_pinned_empty_cache()
         mem_after_empty = get_process_memory_mb()
 
         # Memory should be released (significantly reduced)
@@ -87,7 +88,7 @@ class TestEmptyPinnedCache(unittest.TestCase):
 
         # Call empty_pinned_cache without any pinned memory allocation
         # Should not crash
-        paddle.device.cuda.empty_pinned_cache()
+        core.cuda_pinned_empty_cache()
 
 
 if __name__ == '__main__':
