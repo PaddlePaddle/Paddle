@@ -17,14 +17,12 @@ from __future__ import annotations
 import functools
 import inspect
 import warnings
-from typing import TYPE_CHECKING, Any, Callable, TypeVar, cast
+from collections.abc import Iterable
+from typing import Any, Callable, TypeVar, cast
 
 from typing_extensions import ParamSpec, get_overloads
 
 import paddle
-
-if TYPE_CHECKING:
-    from collections.abc import Iterable
 
 _InputT = ParamSpec("_InputT")
 _RetT = TypeVar("_RetT")
@@ -1009,9 +1007,9 @@ def batch_sampler_decorator() -> Callable[
         @functools.wraps(func)
         def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
             # args[0] is self
-            # args[1] is sampler, use torch signature
+            # args[1] is Sampler / Iterable, use torch signature
             if len(args) >= 2 and isinstance(
-                args[1], paddle.io.dataloader.Sampler
+                args[1], (paddle.io.Sampler, Iterable)
             ):
                 kwargs["sampler"] = args[1]
                 if len(args) >= 3:

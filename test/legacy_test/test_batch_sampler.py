@@ -221,6 +221,13 @@ class TestBatchSamplerTorchPositionalArg(TestBatchSampler):
         return bs
 
 
+class TestBatchSamplerTorchPositionalArgWithIterableSampler(TestBatchSampler):
+    def init_batch_sampler(self):
+        sampler = range(1000)
+        bs = BatchSampler(sampler, self.batch_size, self.drop_last)
+        return bs
+
+
 class TestBatchSamplerPositionalArgError(TestBatchSampler):
     def init_batch_sampler(self):
         dataset = RandomDataset(1000, 10)
@@ -233,6 +240,7 @@ class TestBatchSamplerPositionalArgError(TestBatchSampler):
     def test_main(self):
         try:
             bs = self.init_batch_sampler()
+            self.assertTrue(False)
         except TypeError:
             pass
 
