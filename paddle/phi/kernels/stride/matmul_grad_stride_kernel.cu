@@ -1,4 +1,4 @@
-// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,6 +30,13 @@
 COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace phi {
+
+inline void PrepareStridedOut(DenseTensor* out) {
+  if (out == nullptr) {
+    return;
+  }
+  out->set_strides(DenseTensorMeta::calc_strides(out->dims()));
+}
 
 struct CanonicalizedTransposeInfo {
   bool applied{false};
@@ -166,11 +173,15 @@ void MatmulGradStrideKernel(const Context& dev_ctx,
   if (dx != nullptr && x_info.applied) {
     dx_tmp.Resize(x_.dims());
     dx_out = &dx_tmp;
+  } else {
+    PrepareStridedOut(dx_out);
   }
 
   if (dy != nullptr && y_info.applied) {
     dy_tmp.Resize(y_.dims());
     dy_out = &dy_tmp;
+  } else {
+    PrepareStridedOut(dy_out);
   }
 
   phi::MatmulGradKernel<T, Context>(
