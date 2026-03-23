@@ -37,6 +37,68 @@ c10::Allocator* getCUDADeviceAllocator();
 #include "paddle/phi/common/float16.h"
 #include "torch/all.h"
 
+namespace {
+
+void DeleteCharArray(void* p) { delete[] static_cast<char*>(p); }
+
+void DeleteIntPtr(void* p) { delete static_cast<int*>(p); }
+
+class RawCompatibleAllocator final : public c10::Allocator {
+ public:
+  c10::DataPtr allocate(size_t n) override {
+    size_t bytes = n == 0 ? 1 : n;
+    char* p = new char[bytes];
+    return c10::DataPtr(
+        p, p, &DeleteCharArray, c10::Device(c10::DeviceType::CPU));
+  }
+
+  void copy_data(void* dest,
+                 const void* src,
+                 std::size_t count) const override {
+    default_copy_data(dest, src, count);
+  }
+
+  c10::DeleterFnPtr raw_deleter() const override { return &DeleteCharArray; }
+};
+
+class RawIncompatibleAllocator final : public c10::Allocator {
+ public:
+  c10::DataPtr allocate(size_t /*n*/) override {
+    int* ctx = new int(7);
+    void* data = reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(ctx) + 1);
+    return c10::DataPtr(
+        data, ctx, &DeleteIntPtr, c10::Device(c10::DeviceType::CPU));
+  }
+
+  void copy_data(void* dest,
+                 const void* src,
+                 std::size_t count) const override {
+    default_copy_data(dest, src, count);
+  }
+
+  c10::DeleterFnPtr raw_deleter() const override { return &DeleteIntPtr; }
+};
+
+class NullRawDeleterAllocator final : public c10::Allocator {
+ public:
+  c10::DataPtr allocate(size_t n) override {
+    size_t bytes = n == 0 ? 1 : n;
+    char* p = new char[bytes];
+    return c10::DataPtr(
+        p, p, &DeleteCharArray, c10::Device(c10::DeviceType::CPU));
+  }
+
+  void copy_data(void* dest,
+                 const void* src,
+                 std::size_t count) const override {
+    default_copy_data(dest, src, count);
+  }
+
+  c10::DeleterFnPtr raw_deleter() const override { return nullptr; }
+};
+
+}  // namespace
+
 TEST(StorageTest, BasicStorageAPIs) {
   // Test basic Storage APIs through TensorBase
   at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
@@ -586,6 +648,110 @@ TEST(StorageTest, DefaultConstructedStorageUseCount) {
       << "Default constructed Storage should have use_count == 0";
   ASSERT_FALSE(storage.unique());
   ASSERT_FALSE(storage.valid());
+}
+
+TEST(StorageTest, MovedFromStorageIsGracefullyEmpty) {
+  at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
+  c10::Storage original = tensor.storage();
+
+  c10::Storage moved(std::move(original));
+  ASSERT_TRUE(moved.valid());
+
+  ASSERT_FALSE(original.valid());
+  ASSERT_EQ(original.nbytes(), 0UL);
+  ASSERT_FALSE(original.resizable());
+  ASSERT_EQ(original.data(), nullptr);
+  ASSERT_EQ(original.mutable_data(), nullptr);
+  ASSERT_EQ(original.allocation(), nullptr);
+  ASSERT_EQ(original.allocator(), nullptr);
+  ASSERT_EQ(original.device_type(), phi::AllocationType::CPU);
+  ASSERT_EQ(original.use_count(), 0UL);
+}
+
+TEST(StorageTest, DataPtrCompareExchangeDeleterAndCastContext) {
+  int* ctx = new int(42);
+  c10::DataPtr dp(ctx, ctx, &DeleteIntPtr, c10::Device(c10::DeviceType::CPU));
+
+  ASSERT_EQ(dp.cast_context<int>(&DeleteIntPtr), ctx);
+  ASSERT_EQ(dp.cast_context<int>(&DeleteCharArray), nullptr);
+
+  ASSERT_TRUE(dp.compare_exchange_deleter(&DeleteIntPtr, &DeleteCharArray));
+  ASSERT_EQ(dp.get_deleter(), &DeleteCharArray);
+
+  ASSERT_FALSE(dp.compare_exchange_deleter(&DeleteIntPtr, &DeleteIntPtr));
+}
+
+TEST(StorageTest, DataPtrUnsafeResetDataAndCtx) {
+  c10::DataPtr empty;
+  ASSERT_TRUE(empty == nullptr);
+  ASSERT_FALSE(empty != nullptr);
+
+  void* p = reinterpret_cast<void*>(0x1234);
+  ASSERT_TRUE(empty.unsafe_reset_data_and_ctx(p));
+  ASSERT_EQ(empty.get(), p);
+  ASSERT_EQ(empty.get_context(), p);
+
+  int* guarded_ctx = new int(5);
+  c10::DataPtr guarded(guarded_ctx,
+                       guarded_ctx,
+                       &DeleteIntPtr,
+                       c10::Device(c10::DeviceType::CPU));
+  ASSERT_FALSE(
+      guarded.unsafe_reset_data_and_ctx(reinterpret_cast<void*>(0x5678)));
+}
+
+TEST(StorageTest, DataPtrMoveAndReleaseContextHelpers) {
+  int* ctx = new int(9);
+  c10::DataPtr dp(ctx, ctx, &DeleteIntPtr, c10::Device(c10::DeviceType::CPU));
+
+  std::unique_ptr<void, c10::DeleterFnPtr> moved_ctx = dp.move_context();
+  ASSERT_EQ(moved_ctx.get(), ctx);
+  ASSERT_EQ(dp.get_context(), nullptr);
+
+  int* ctx2 = new int(11);
+  c10::DataPtr dp2(
+      ctx2, ctx2, &DeleteIntPtr, c10::Device(c10::DeviceType::CPU));
+  void* released = dp2.release_context();
+  ASSERT_EQ(released, ctx2);
+  ASSERT_EQ(dp2.get_context(), nullptr);
+  DeleteIntPtr(released);
+}
+
+TEST(StorageTest, AllocatorRawAllocateAndDeallocate) {
+  RawCompatibleAllocator alloc;
+  void* raw = alloc.raw_allocate(8);
+  ASSERT_NE(raw, nullptr);
+  alloc.raw_deallocate(raw);
+}
+
+TEST(StorageTest, AllocatorRawAllocateRejectsMismatchedContext) {
+  RawIncompatibleAllocator alloc;
+  EXPECT_THROW((void)alloc.raw_allocate(8), std::exception);
+}
+
+TEST(StorageTest, AllocatorRawDeallocateRequiresDeleter) {
+  NullRawDeleterAllocator alloc;
+  EXPECT_THROW(alloc.raw_deallocate(reinterpret_cast<void*>(0x1)),
+               std::exception);
+}
+
+TEST(StorageTest, AllocatorCloneCopiesBytes) {
+  RawCompatibleAllocator alloc;
+
+  c10::DataPtr src = alloc.allocate(4);
+  auto* src_bytes = static_cast<unsigned char*>(src.get());
+  src_bytes[0] = 1;
+  src_bytes[1] = 2;
+  src_bytes[2] = 3;
+  src_bytes[3] = 4;
+
+  c10::DataPtr cloned = alloc.clone(src.get(), 4);
+  auto* dst_bytes = static_cast<unsigned char*>(cloned.get());
+
+  ASSERT_EQ(dst_bytes[0], 1);
+  ASSERT_EQ(dst_bytes[1], 2);
+  ASSERT_EQ(dst_bytes[2], 3);
+  ASSERT_EQ(dst_bytes[3], 4);
 }
 
 // ---------------------------------------------------------------------------

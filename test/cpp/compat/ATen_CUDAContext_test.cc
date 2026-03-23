@@ -15,6 +15,7 @@
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 #include <ATen/cuda/CUDAContextLight.h>
+#include <c10/core/Allocator.h>
 #include <c10/cuda/CUDAFunctions.h>
 #include <c10/cuda/CUDAStream.h>
 
@@ -152,6 +153,55 @@ TEST(CUDAContextLightTest, CUDABlasLtWorkspace) {
 
   void* ptr = at::cuda::getCUDABlasLtWorkspace();
   ASSERT_NE(ptr, nullptr);
+}
+
+TEST(CUDAContextLightTest, CUDADeviceAllocatorSingleton) {
+  c10::Allocator* a0 = at::cuda::getCUDADeviceAllocator();
+  c10::Allocator* a1 = at::cuda::getCUDADeviceAllocator();
+  ASSERT_NE(a0, nullptr);
+  ASSERT_EQ(a0, a1);
+}
+
+TEST(CUDAContextLightTest, CUDADeviceAllocatorCloneAndCopyData) {
+  c10::Allocator* alloc = at::cuda::getCUDADeviceAllocator();
+  ASSERT_NE(alloc, nullptr);
+
+  constexpr size_t kBytes = 32;
+  c10::DataPtr src = alloc->allocate(kBytes);
+  ASSERT_NE(src.get(), nullptr);
+
+  uint8_t h_src[kBytes];
+  uint8_t h_dst[kBytes];
+  for (size_t i = 0; i < kBytes; ++i) {
+    h_src[i] = static_cast<uint8_t>(i + 1);
+    h_dst[i] = 0;
+  }
+
+  ASSERT_EQ(cudaMemcpy(src.get(), h_src, kBytes, cudaMemcpyHostToDevice),
+            cudaSuccess);
+
+  c10::DataPtr cloned = alloc->clone(src.get(), kBytes);
+  ASSERT_NE(cloned.get(), nullptr);
+
+  ASSERT_EQ(cudaMemcpy(h_dst, cloned.get(), kBytes, cudaMemcpyDeviceToHost),
+            cudaSuccess);
+  ASSERT_EQ(cudaDeviceSynchronize(), cudaSuccess);
+
+  for (size_t i = 0; i < kBytes; ++i) {
+    ASSERT_EQ(h_dst[i], h_src[i]);
+  }
+}
+
+TEST(CUDAContextLightTest, CUDADeviceAllocatorCloneZeroBytes) {
+  c10::Allocator* alloc = at::cuda::getCUDADeviceAllocator();
+  ASSERT_NE(alloc, nullptr);
+
+  c10::DataPtr src = alloc->allocate(0);
+  ASSERT_EQ(src.get(), nullptr);
+
+  c10::DataPtr cloned = alloc->clone(src.get(), 0);
+  ASSERT_EQ(cloned.get(), nullptr);
+  ASSERT_EQ(cloned.device().type(), c10::DeviceType::CUDA);
 }
 
 #endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP

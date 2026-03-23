@@ -205,4 +205,24 @@ TEST(CUDABlasTest, GemmComplexDoubleConjTransLower) {
   EXPECT_NEAR(h_c[1].imag, -3.0, 1e-6);
 }
 
+TEST(CUDABlasTest, GemmInvalidTransposeThrows) {
+  constexpr int64_t N = 1;
+  double alpha = 1.0;
+  double beta = 0.0;
+  EXPECT_THROW(at::cuda::blas::gemm<double>('X',
+                                            'N',
+                                            N,
+                                            N,
+                                            N,
+                                            alpha,
+                                            static_cast<const double*>(nullptr),
+                                            N,
+                                            static_cast<const double*>(nullptr),
+                                            N,
+                                            beta,
+                                            static_cast<double*>(nullptr),
+                                            N),
+               std::exception);
+}
+
 #endif  // PADDLE_WITH_CUDA
