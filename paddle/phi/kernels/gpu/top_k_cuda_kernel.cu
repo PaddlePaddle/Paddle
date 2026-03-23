@@ -29,6 +29,7 @@
 #include "paddle/phi/core/tensor_utils.h"
 
 #include "paddle/phi/kernels/argsort_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/take_along_axis_kernel.h"
 
 // ============================================================================
@@ -2470,29 +2471,46 @@ void TopkKernel(const Context& dev_ctx,
                 bool sorted,
                 DenseTensor* out,
                 DenseTensor* indices) {
-  T* output_data = dev_ctx.template Alloc<T>(out);
-  int64_t* indices_data = dev_ctx.template Alloc<int64_t>(indices);
   const auto& in_dims = x.dims();
+
+  // Handle empty output (e.g. when k comes from tensor, dims may contain -1)
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    dev_ctx.template Alloc<int64_t>(indices);
+    return;
+  }
 
   // 0d input tensor
   if (in_dims.size() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    int64_t* indices_data = dev_ctx.template Alloc<int64_t>(indices);
     phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     // index is 0 for 0-d tensor
     cudaMemsetAsync(indices_data, 0, sizeof(int64_t), dev_ctx.stream());
     return;
   }
 
-  int k = k_scalar.to<int>();
   if (axis < 0) axis += in_dims.size();
-  // Handle k from tensor
+  int k = k_scalar.to<int>();
+
+  // Handle k from tensor: output dims may contain -1, resize before Alloc
   if (k_scalar.FromTensor()) {
     DDim out_dims = out->dims();
     out_dims[axis] = k;
     out->Resize(out_dims);
     indices->Resize(out_dims);
-    output_data = dev_ctx.template Alloc<T>(out);
-    indices_data = dev_ctx.template Alloc<int64_t>(indices);
   }
+
+  // Handle empty input
+  if (x.numel() == 0) {
+    phi::Full<T, Context>(dev_ctx, out->dims(), NAN, out);
+    phi::Full<int64_t, Context>(dev_ctx, indices->dims(), 0, indices);
+    return;
+  }
+
+  // Now safe to allocate output memory
+  T* output_data = dev_ctx.template Alloc<T>(out);
+  int64_t* indices_data = dev_ctx.template Alloc<int64_t>(indices);
 
   phi::DenseTensor input_contiguous;
 
