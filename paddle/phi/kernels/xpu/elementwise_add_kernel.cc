@@ -78,7 +78,7 @@ void AddKernel(const Context& dev_ctx,
                   const std::vector<int64_t>& yshape) {
         return xpu::broadcast_add<XPUType>(xpu_ctx, x, y, z, xshape, yshape);
       };
-      auto casted_y = phi::Cast<T>(dev_ctx, y, phi::DataType::FLOAT32);
+      auto casted_y = Cast<T>(dev_ctx, y, phi::DataType::FLOAT32);
       XPUElementwise<Type, XPUType>(dev_ctx, x, casted_y, -1, out, f);
     }
   } else {

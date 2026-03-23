@@ -165,7 +165,7 @@ struct SparseAdagradFunctor<GPUContext, T> {
     funcs::scatter::MergeAdd<GPUContext, T> merge_func;
     auto grad_merge = merge_func(dev_ctx, grad);
     auto* grad_merge_data = grad_merge.mutable_value()->template data<T>();
-    phi::Vector<int64_t> merge_rows(grad_merge.rows());
+    Vector<int64_t> merge_rows(grad_merge.rows());
     // 2. m += g_m * g_m
     auto grad_square = SquareSelectedRows<GPUContext, T>(dev_ctx, grad_merge);
 

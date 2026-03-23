@@ -67,7 +67,7 @@ typename std::enable_if<std::is_same<T, bool>::value>::type CopyVectorToTensor(
   for (const auto& val : values) {
     assign_values.emplace_back(val.to<int>());
   }
-  phi::TensorFromVector(assign_values, dev_ctx, out);
+  TensorFromVector(assign_values, dev_ctx, out);
 
   // use the array to replace to vector
   bool* array_ptr = new T[assign_values.size()];
@@ -88,7 +88,7 @@ typename std::enable_if<!std::is_same<T, bool>::value>::type CopyVectorToTensor(
   for (const auto& val : values) {
     assign_values.emplace_back(val.to<T>());
   }
-  phi::TensorFromVector(assign_values, dev_ctx, out);
+  TensorFromVector(assign_values, dev_ctx, out);
 }
 
 template <typename T, typename Context>

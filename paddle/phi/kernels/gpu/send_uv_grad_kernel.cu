@@ -85,7 +85,7 @@ void CalculateGrad(const Context& dev_ctx,
           <<<grid_tmp, block_tmp, 0, dev_ctx.stream()>>>(
               out_grad, d_index, s_index, index_size, slice_size, x_grad);
     } else {
-      const auto& bcast_info = phi::CalcBCastInfo(out_grad_dims, x_grad_dims);
+      const auto& bcast_info = CalcBCastInfo(out_grad_dims, x_grad_dims);
       auto out_grad_dims_1 = vectorize<int>(out_grad_dims);
       std::vector<int> out_grad_dims_2(out_grad_dims_1.begin() + 1,
                                        out_grad_dims_1.end());
@@ -130,7 +130,7 @@ void CalculateGrad(const Context& dev_ctx,
 #endif
     }
   } else if (message_op == "MUL") {
-    const auto& bcast_info = phi::CalcBCastInfo(y.dims(), out_grad_dims);
+    const auto& bcast_info = CalcBCastInfo(y.dims(), out_grad_dims);
     thrust::device_vector<int64_t> l_bcastoff, r_bcastoff;
     if (bcast_info.use_bcast) {
       CopyBCastOff(bcast_info, &l_bcastoff, &r_bcastoff);

@@ -32,7 +32,7 @@ void MaskedSelectKernel(const Context& dev_ctx,
                         DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   if (x.numel() == 0 || mask.numel() == 0) {
-    out->Resize(make_ddim({0}));
+    out->Resize({0});
     dev_ctx.template Alloc<T>(out);
     return;
   }
