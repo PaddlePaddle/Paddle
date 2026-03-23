@@ -56,6 +56,13 @@ jobs:
     timeout-minutes: 120
 
     steps:
+      - name: Debug - Print outputs
+        run: |
+          echo "=== Build Job Debug Info ==="
+          echo "needs.check-bypass.outputs.can-skip: ${{ needs.check-bypass.outputs.can-skip }}"
+          echo "inputs.clone-can-skip: ${{ inputs.clone-can-skip }}"
+          echo "outputs.can-skip (will be): ${{ needs.check-bypass.outputs.can-skip == 'true' || inputs.clone-can-skip == 'true' }}"
+          echo "============================"
       - name: Check docker image and run container
         env:
           PADDLE_CUDA_INSTALL_REQUIREMENTS: "ON"
