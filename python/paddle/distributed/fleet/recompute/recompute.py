@@ -80,7 +80,19 @@ def detach_variable(inputs):
             detach_inp = []
             for i in inp:
                 # detach all tensors in the tuple
+                # Handle None values which may appear in pipeline parallel
+                if i is None:
+                    detach_inp.append(None)
+                    continue
+
                 assert isinstance(i, core.eager.Tensor)
+
+                # Check if tensor is initialized before detaching
+                # This handles the case where _release_input was called on the tensor
+                # causing it to be in "Not initialized" state
+                if not i._is_initialized():
+                    detach_inp.append(None)
+                    continue
 
                 if isinstance(i, EagerParamBase):
                     detach_inp.append(_varbase_help(i))
@@ -90,6 +102,18 @@ def detach_variable(inputs):
                     detach_inp.append(tmp_i)
 
             out.append(tuple(detach_inp))
+            continue
+
+        # Handle None value which may appear in pipeline parallel
+        if inp is None:
+            out.append(None)
+            continue
+
+        # Check if tensor is initialized before detaching
+        # This handles the case where _release_input was called on the tensor
+        # causing it to be in "Not initialized" state
+        if isinstance(inp, core.eager.Tensor) and not inp._is_initialized():
+            out.append(None)
             continue
 
         x = inp.detach()
