@@ -195,10 +195,4 @@ bool GetAxisFromOpInput(pir::Value in_value,
 
 std::vector<symbol::DimExpr> GetDataFromTensorOrTensorList(
     const symbol::ShapeOrDataDimExprs &shape_or_data);
-
-symbol::ShapeOrDataDimExprs Pool2dRawInferSymbolicShape(
-    pir::Operation *op,
-    const std::vector<symbol::DimExpr> &kernel_size,
-    pir::InferSymbolicShapeContext *infer_context);
-
 }  // namespace paddle::dialect::details
