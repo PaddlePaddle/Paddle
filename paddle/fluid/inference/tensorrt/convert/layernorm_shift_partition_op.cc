@@ -33,9 +33,9 @@ class LayerNormShiftPartitionOpConverter : public OpConverter {
         op_desc.HasAttr("begin_norm_axis")
             ? PADDLE_GET_CONST(int, op_desc.GetAttr("begin_norm_axis"))
             : 1;
-    const double eps = op_desc.HasAttr("epsilon")
-                           ? PADDLE_GET_CONST(float, op_desc.GetAttr("epsilon"))
-                           : 1e-5f;
+    const float eps = op_desc.HasAttr("epsilon")
+                          ? PADDLE_GET_CONST(float, op_desc.GetAttr("epsilon"))
+                          : 1e-5f;
     const int window_size =
         PADDLE_GET_CONST(int, op_desc.GetAttr("window_size"));
     const int shift_size = PADDLE_GET_CONST(int, op_desc.GetAttr("shift_size"));

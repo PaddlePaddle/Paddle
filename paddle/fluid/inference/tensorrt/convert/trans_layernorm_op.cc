@@ -28,9 +28,9 @@ class TransLayerNormOpConverter : public OpConverter {
     // we already check the begin_norm_axis in pass action.
     // here we set begin_norm_axis as 3 to fit the calculation in trt plugin.
     const int begin_norm_axis = 3;
-    const double eps = op_desc.HasAttr("epsilon")
-                           ? PADDLE_GET_CONST(float, op_desc.GetAttr("epsilon"))
-                           : 1e-5f;
+    const float eps = op_desc.HasAttr("epsilon")
+                          ? PADDLE_GET_CONST(float, op_desc.GetAttr("epsilon"))
+                          : 1e-5f;
     PADDLE_ENFORCE_NOT_NULL(
         Bias_v,
         common::errors::InvalidArgument(
