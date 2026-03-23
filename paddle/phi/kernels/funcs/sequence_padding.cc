@@ -26,7 +26,7 @@ namespace phi::funcs {
 template <typename T>
 void CopyValidData(DenseTensor* dst_tensor,
                    const DenseTensor* src_tensor,
-                   const phi::Vector<size_t>& seq_offsets,
+                   const Vector<size_t>& seq_offsets,
                    int pad_seq_len,
                    int step_width,
                    bool norm_by_len,

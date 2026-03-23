@@ -21,7 +21,7 @@ class CopyMatrixRowsFunctor<CPUContext, T> {
  public:
   void operator()(const CPUContext& dev_ctx UNUSED,
                   const DenseTensor& src,
-                  phi::Vector<size_t> index_lod,
+                  Vector<size_t> index_lod,
                   DenseTensor* dst,
                   bool is_src_index) {
     size_t* index = index_lod.data();

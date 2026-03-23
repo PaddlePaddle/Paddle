@@ -51,7 +51,7 @@ void Reduce(const KPDevice& dev_ctx,
       dev_ctx, x, out, TransformOp<T, MPType>(reduce_num), reduce_dims);
 #else
   if (out_dtype != phi::DataType::UNDEFINED && out_dtype != x.dtype()) {
-    auto tmp_tensor = phi::Cast<T>(dev_ctx, x, out_dtype);
+    auto tmp_tensor = Cast<T>(dev_ctx, x, out_dtype);
     PD_VISIT_BOOL_AND_FLOATING_AND_COMPLEX_AND_4_TYPES(
         phi::DataType::INT32,
         phi::DataType::INT64,
@@ -106,7 +106,7 @@ void Reduce(const KPDevice& dev_ctx,
       phi::funcs::ReduceGpuKernel<phi::float16, float, ReduceOp>(
           dev_ctx, x, out, reduce_dims);
     } else {
-      auto tmp_tensor = phi::Cast<T>(dev_ctx, x, out_dtype);
+      auto tmp_tensor = Cast<T>(dev_ctx, x, out_dtype);
       tmp_tensor.set_strides(x.strides());
 
       PD_VISIT_BOOL_AND_FLOATING_AND_COMPLEX_AND_4_TYPES(

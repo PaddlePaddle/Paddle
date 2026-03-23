@@ -76,7 +76,7 @@ void ExpandAs(const Context& dev_ctx,
       repeat_times[i] = 1;
     }
   }
-  Eigen::DSizes<Eigen::DenseIndex, Rank> bcast_dims;
+  Eigen::DSizes<int64_t, Rank> bcast_dims;
   for (size_t i = 0; i < repeat_times.size(); ++i) {
     bcast_dims[i] = repeat_times[i];
   }

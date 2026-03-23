@@ -62,7 +62,7 @@ void AssignPosKernel(const Context& dev_ctx,
       out_data[p] = i;
     }
   }
-  phi::TensorFromVector<int64_t>(out_data, dev_ctx, out);
+  TensorFromVector<int64_t>(out_data, dev_ctx, out);
 }
 
 }  // namespace phi

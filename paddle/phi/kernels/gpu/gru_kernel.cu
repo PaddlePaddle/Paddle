@@ -76,7 +76,7 @@ void GRUKernel(const Context &dev_ctx,
       const_cast<T *>(weight_data + 2 * frame_size * frame_size);
   DenseTensor ordered_h0;
 
-  phi::Vector<size_t> order(batch_gate->lod()[2]);
+  Vector<size_t> order(batch_gate->lod()[2]);
 
   if (h0) {
     // Since the batch computing for GRU reorders the input sequences

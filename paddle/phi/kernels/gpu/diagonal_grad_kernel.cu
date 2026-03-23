@@ -42,7 +42,7 @@ void DiagonalGradKernel(const Context& dev_ctx,
 
   std::vector<int64_t> res_dout = vectorize(common::stride(dout->dims()));
   DenseTensor dout_stride_tensor;
-  phi::TensorFromVector<int64_t>(res_dout, dev_ctx, &dout_stride_tensor);
+  TensorFromVector<int64_t>(res_dout, dev_ctx, &dout_stride_tensor);
   int64_t* dout_stride = dout_stride_tensor.data<int64_t>();
 
   auto* dx = in_grad;
@@ -52,7 +52,7 @@ void DiagonalGradKernel(const Context& dev_ctx,
 
   std::vector<int64_t> res_dx = vectorize(common::stride(dx->dims()));
   DenseTensor dx_stride_tensor;
-  phi::TensorFromVector<int64_t>(res_dx, dev_ctx, &dx_stride_tensor);
+  TensorFromVector<int64_t>(res_dx, dev_ctx, &dx_stride_tensor);
   int64_t* dx_stride = dx_stride_tensor.data<int64_t>();
 
   const int64_t offset_ = offset;

@@ -36,8 +36,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using phi::To32BitIndex;
-
 using ActBwdOpFwdDeps = phi::funcs::ActBwdOpFwdDeps;
 
 template <typename T>

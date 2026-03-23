@@ -109,7 +109,7 @@ void ReduceGradKernel(const Context& dev_ctx,
         reduce_all,
         &x_grad_tmp);
 
-    phi::CastKernel<T>(dev_ctx, x_grad_tmp, x.dtype(), x_grad);
+    CastKernel<T>(dev_ctx, x_grad_tmp, x.dtype(), x_grad);
   } else {
     ComputeFromInput<Context, T, Functor, kNoNeedBufferX, kNoNeedBufferY>(
         dev_ctx,

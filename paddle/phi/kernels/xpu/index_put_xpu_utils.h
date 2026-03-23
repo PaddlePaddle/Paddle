@@ -32,7 +32,7 @@ void XPUDealWithIndices(const Context& dev_ctx,
     DenseTensor casted_index;
     if (int_indices_v[i]->dtype() == DataType::INT32) {
       casted_index =
-          phi::Cast<int, Context>(dev_ctx, *int_indices_v[i], DataType::INT64);
+          Cast<int, Context>(dev_ctx, *int_indices_v[i], DataType::INT64);
     } else {
       casted_index = *int_indices_v[i];
     }

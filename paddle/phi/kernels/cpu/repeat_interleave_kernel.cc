@@ -56,7 +56,7 @@ void RepeatInterleaveKernel(const Context& dev_ctx,
   }
   index.Resize(make_ddim({index_size}));
   DenseTensor x_copy = x;
-  phi::TensorFromVector<int>(index_vec, dev_ctx, &index);
+  TensorFromVector<int>(index_vec, dev_ctx, &index);
 
   auto output_dim = vectorize(x.dims());
   output_dim[dim] = index_size;

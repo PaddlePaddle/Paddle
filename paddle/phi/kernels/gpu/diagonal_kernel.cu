@@ -39,7 +39,7 @@ void DiagonalKernel(const Context& dev_ctx,
 
   std::vector<int64_t> res_in = vectorize(common::stride(input->dims()));
   DenseTensor input_stride_tensor;
-  phi::TensorFromVector<int64_t>(res_in, dev_ctx, &input_stride_tensor);
+  TensorFromVector<int64_t>(res_in, dev_ctx, &input_stride_tensor);
   int64_t* input_stride = input_stride_tensor.data<int64_t>();
 
   auto* output = out;
@@ -49,7 +49,7 @@ void DiagonalKernel(const Context& dev_ctx,
 
   std::vector<int64_t> res_out = vectorize(common::stride(output->dims()));
   DenseTensor output_stride_tensor;
-  phi::TensorFromVector<int64_t>(res_out, dev_ctx, &output_stride_tensor);
+  TensorFromVector<int64_t>(res_out, dev_ctx, &output_stride_tensor);
   int64_t* output_stride = output_stride_tensor.data<int64_t>();
 
   const int64_t offset_ = offset;
