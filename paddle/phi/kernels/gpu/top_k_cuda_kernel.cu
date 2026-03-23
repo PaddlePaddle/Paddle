@@ -161,16 +161,25 @@ struct Bitfield<unsigned int> {
                                                              int pos,
                                                              int len) {
     unsigned int ret;
+#if defined(__HIPCC__)
+    ret = (val >> pos) & ((1u << len) - 1u);
+#else
     asm("bfe.u32 %0, %1, %2, %3;" : "=r"(ret) : "r"(val), "r"(pos), "r"(len));
+#endif
     return ret;
   }
 
   static __device__ __forceinline__ unsigned int setBitfield(
       unsigned int val, unsigned int to_insert, int pos, int len) {
     unsigned int ret;
+#if defined(__HIPCC__)
+    unsigned int mask = ((1u << len) - 1u) << pos;
+    ret = (val & ~mask) | ((to_insert << pos) & mask);
+#else
     asm("bfi.b32 %0, %1, %2, %3, %4;"
         : "=r"(ret)
         : "r"(to_insert), "r"(val), "r"(pos), "r"(len));
+#endif
     return ret;
   }
 };
@@ -181,7 +190,11 @@ struct Bitfield<uint64_t> {
                                                          int pos,
                                                          int len) {
     uint64_t ret;
+#if defined(__HIPCC__)
+    ret = (val >> pos) & ((1ULL << len) - 1ULL);
+#else
     asm("bfe.u64 %0, %1, %2, %3;" : "=l"(ret) : "l"(val), "r"(pos), "r"(len));
+#endif
     return ret;
   }
 
@@ -190,30 +203,49 @@ struct Bitfield<uint64_t> {
                                                          int pos,
                                                          int len) {
     uint64_t ret;
+#if defined(__HIPCC__)
+    uint64_t mask = ((1ULL << len) - 1ULL) << pos;
+    ret = (val & ~mask) | ((to_insert << pos) & mask);
+#else
     asm("bfi.b64 %0, %1, %2, %3, %4;"
         : "=l"(ret)
         : "l"(to_insert), "l"(val), "r"(pos), "r"(len));
+#endif
     return ret;
   }
 };
 
 // --- getLaneId / getLaneMaskLe ---
 __device__ __forceinline__ int getLaneId() {
+#if defined(__HIPCC__)
+  return __lane_id();
+#else
   int laneId;
   asm("mov.s32 %0, %%laneid;" : "=r"(laneId));
   return laneId;
+#endif
 }
 
 __device__ __forceinline__ unsigned getLaneMaskLe() {
+#if defined(__HIPCC__)
+  // HIP warp size is 64, construct mask for lanes <= current lane
+  return (getLaneId() == 63) ? 0xFFFFFFFFFFFFFFFFULL
+                             : (1ULL << (getLaneId() + 1)) - 1ULL;
+#else
   unsigned mask;
   asm("mov.u32 %0, %%lanemask_le;" : "=r"(mask));
   return mask;
+#endif
 }
 
 __device__ __forceinline__ unsigned getLaneMaskLt() {
+#if defined(__HIPCC__)
+  return (getLaneId() == 0) ? 0ULL : (1ULL << getLaneId()) - 1ULL;
+#else
   unsigned mask;
   asm("mov.u32 %0, %%lanemask_lt;" : "=r"(mask));
   return mask;
+#endif
 }
 
 // --- WARP macros ---
@@ -649,7 +681,7 @@ void launch_bitonic_sort(TensorInfo<T, IndexType> keyInfo,
                          TensorInfo<int64_t, IndexType> valueInfo,
                          IndexType valueSliceStride,
                          bool largest,
-                         cudaStream_t stream) {
+                         gpuStream_t stream) {
   constexpr int sort_size = 32;
   constexpr int max_block_y = 16;
   constexpr int items_per_thread = 2;
@@ -873,7 +905,11 @@ struct CubKeyType<phi::dtype::float16> {
 
 template <>
 struct CubKeyType<phi::dtype::bfloat16> {
+#if defined(__HIPCC__)
+  using type = hip_bfloat16;
+#else
   using type = __nv_bfloat16;
+#endif
 };
 
 // ============================================================================
@@ -1110,7 +1146,7 @@ void launch_warp_merge_sort(TensorInfo<T, IndexType> keyInfo,
                             TensorInfo<int64_t, IndexType> valueInfo,
                             IndexType valueSliceStride,
                             bool largest,
-                            cudaStream_t stream) {
+                            gpuStream_t stream) {
   constexpr int sort_size = 128;
   constexpr int max_block_dim_y = 16;
   constexpr int warp_size = 32;
@@ -1183,7 +1219,7 @@ void fixed_size_radix_sort(TensorInfo<K, IndexType> keyInfo,
                            TensorInfo<int64_t, IndexType> valueInfo,
                            IndexType valueSliceStride,
                            bool descending,
-                           cudaStream_t stream) {
+                           gpuStream_t stream) {
   static_assert(sort_size % items_per_thread == 0, "");
   constexpr int block = sort_size / items_per_thread;
   dim3 grid;
@@ -1207,7 +1243,7 @@ void launch_medium_radix_sort(TensorInfo<T, IndexType> keyInfo,
                               TensorInfo<int64_t, IndexType> valueInfo,
                               IndexType valueSliceStride,
                               bool descending,
-                              cudaStream_t stream) {
+                              gpuStream_t stream) {
   int64_t ceilPowerOf2 = nextHighestPowerOf2(keySliceSize);
   constexpr int default_ipt = 32;
 
@@ -1771,7 +1807,7 @@ void launch(TensorInfo<const T, IndexType> input,
             IndexType topKWithinSliceStride,
             TensorInfo<int64_t, IndexType> indices,
             IndexType indicesWithinSliceStride,
-            cudaStream_t stream) {
+            gpuStream_t stream) {
   dim3 grid;
   bool ok = getGridFromTiles(numInputSlices, &grid);
   assert(ok);
@@ -2183,7 +2219,7 @@ void launch(TensorInfo<const T, IndexType> input,
             IndexType topKWithinSliceStride,
             TensorInfo<int64_t, IndexType> indices,
             IndexType indicesWithinSliceStride,
-            cudaStream_t stream,
+            gpuStream_t stream,
             int device_id,
             const phi::Place& place) {
   int items_per_thread =
