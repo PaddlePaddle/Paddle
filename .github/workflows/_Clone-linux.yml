@@ -58,7 +58,7 @@ jobs:
         run: git submodule foreach --recursive 'git rev-parse HEAD || rm -rf $PWD' || true
 
       - name: Clone paddle
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.base.ref }}
           submodules: "recursive"
@@ -68,8 +68,6 @@ jobs:
         id: check-execution
         if: ${{ inputs.is_pr == 'true' }}
         run: |
-          git config --unset http.https://github.com/.extraheader
-          git submodule foreach --recursive sh -c "git config --local --unset-all 'http.https://github.com/.extraheader'"
           git submodule foreach --recursive sh -c "git config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'"
           git switch ${{ github.event.pull_request.base.ref }}
           set +e

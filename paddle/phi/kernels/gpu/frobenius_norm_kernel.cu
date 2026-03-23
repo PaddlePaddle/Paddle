@@ -35,7 +35,7 @@ void FrobeniusNormKernel(const Context& dev_ctx,
   }
   reduce_all = recompute_reduce_all(x, dims.GetData(), reduce_all);
   auto out_dtype = x.dtype();
-  phi::Reduce<T, kps::AddFunctor, kps::SquareFunctor>(
+  Reduce<T, kps::AddFunctor, kps::SquareFunctor>(
       dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
 
   SqrtKernel<T, Context>(dev_ctx, *out, out);

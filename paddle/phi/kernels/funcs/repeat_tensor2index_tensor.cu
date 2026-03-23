@@ -121,7 +121,7 @@ void RepeatsTensor2IndexTensorFunctor<GPUContext, RepeatsT>::operator()(
   }
   index->Resize(make_ddim({index_size}));
 
-  phi::TensorFromVector<RepeatsT>(index_vec, dev_ctx, index);
+  TensorFromVector<RepeatsT>(index_vec, dev_ctx, index);
 #endif
 }
 
