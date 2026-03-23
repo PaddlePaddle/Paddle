@@ -62,7 +62,7 @@ void IndexSampleGradInner(const Context& dev_ctx,
     int64_t v_i = b * value_length + static_cast<int64_t>(index_vec[i]);
     x_grad_vec[v_i] += out_grad_vec[i];
   }
-  context.template Alloc<T>(x_grad);
+  dev_ctx.template Alloc<T>(x_grad);
   TensorFromVector(x_grad_vec, dev_ctx, x_grad);
   x_grad->Resize(x_grad_dims);
 }

@@ -77,7 +77,7 @@ void IndexSampleInner(const Context &dev_ctx,
   }
 
   auto ddim = make_ddim({batch_size, index_length});
-  context.template Alloc<T>(output);
+  dev_ctx.template Alloc<T>(output);
   TensorFromVector(res, dev_ctx, output);
   output->Resize(ddim);
 }
