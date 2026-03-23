@@ -22,7 +22,7 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-inline bool GetSeedDataAndIncrement(const phi::GPUContext& dev_ctx,
+inline bool GetSeedDataAndIncrement(const GPUContext& dev_ctx,
                                     const DenseTensor* seed,
                                     const bool is_fix_seed,
                                     const int seed_val,

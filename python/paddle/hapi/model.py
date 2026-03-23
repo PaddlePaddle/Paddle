@@ -1958,8 +1958,12 @@ class Model:
         def _load_state_from_path(path):
             if not os.path.exists(path):
                 return
+            from paddle.framework.restricted_unpickler import (
+                safe_load_pickle,
+            )
+
             with open(path, 'rb') as f:
-                return pickle.load(f, encoding='latin1')
+                return safe_load_pickle(f, encoding='latin1')
 
         def _check_match(key, param):
             state = param_state.get(key, None)

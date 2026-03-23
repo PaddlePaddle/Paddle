@@ -28,8 +28,8 @@ KernelKey ElementwiseGetKernelTypeForVar(
   const KernelKey& expected_kernel_type = ctx->GetKernelKey();
   // Only input require reshaping, weights and
   // bias are having shape in NCHW order
-  if (expected_kernel_type.dtype() == phi::DataType::COMPLEX64 ||
-      expected_kernel_type.dtype() == phi::DataType::COMPLEX128) {
+  if (expected_kernel_type.dtype() == DataType::COMPLEX64 ||
+      expected_kernel_type.dtype() == DataType::COMPLEX128) {
     // only promote inputs's types when contains complex input
     return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
   } else {

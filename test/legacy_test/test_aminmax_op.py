@@ -164,5 +164,63 @@ class TestAminmaxAPI_DuplicateValues(TestAminmaxAPI):
         self.keepdim = False
 
 
+class TestAminmaxCompatibility(unittest.TestCase):
+    """Test paddle/torch keyword alias compatibility."""
+
+    def setUp(self):
+        self.np_x = np.array(
+            [[0.2, 0.3, 0.5, 0.9], [0.1, 0.2, 0.6, 0.7]], dtype='float64'
+        )
+
+    def test_dygraph_aliases(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        min1, max1 = paddle.aminmax(x)
+        min2, max2 = paddle.aminmax(x=x)
+        min3, max3 = paddle.aminmax(input=x)
+        min4, max4 = paddle.aminmax(x, axis=0)
+        min5, max5 = paddle.aminmax(x, dim=0)
+
+        ref_min = np.amin(self.np_x)
+        ref_max = np.amax(self.np_x)
+        for min_val in [min1, min2, min3]:
+            np.testing.assert_allclose(ref_min, min_val.numpy())
+        for max_val in [max1, max2, max3]:
+            np.testing.assert_allclose(ref_max, max_val.numpy())
+
+        ref_min_ax0 = np.amin(self.np_x, axis=0)
+        ref_max_ax0 = np.amax(self.np_x, axis=0)
+        for min_val in [min4, min5]:
+            np.testing.assert_allclose(ref_min_ax0, min_val.numpy())
+        for max_val in [max4, max5]:
+            np.testing.assert_allclose(ref_max_ax0, max_val.numpy())
+
+        paddle.enable_static()
+
+    def test_static(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=[2, 4], dtype='float64')
+            min1, max1 = paddle.aminmax(x)
+            min2, max2 = paddle.aminmax(x=x)
+            min3, max3 = paddle.aminmax(input=x)
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[min1, max1, min2, max2, min3, max3],
+            )
+
+            ref_min = np.amin(self.np_x)
+            ref_max = np.amax(self.np_x)
+            for i in range(0, len(fetches), 2):
+                np.testing.assert_allclose(fetches[i], ref_min)
+                np.testing.assert_allclose(fetches[i + 1], ref_max)
+
+
 if __name__ == '__main__':
     unittest.main()

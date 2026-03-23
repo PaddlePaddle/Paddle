@@ -146,7 +146,7 @@ void AttentionLSTMKernel(const Context& dev_ctx,
   T* lstm_out_data = dev_ctx.template Alloc<T>(lstm_out);
 
   // x(TxM) * fc (Mx1) part of atten_wgt(M+D)x1
-  auto blas = funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
+  auto blas = funcs::GetBlas<CPUContext, T>(dev_ctx);
 
   funcs::FCFunctor<Context, T> fc;
   fc(dev_ctx, total_T, 1, M, x_data, atten_w_data, atted_x_data, atten_b_data);

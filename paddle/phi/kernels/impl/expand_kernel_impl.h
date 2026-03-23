@@ -22,7 +22,6 @@
 #define MAX_RANK_SUPPORTED 8
 
 namespace phi {
-using Tensor = DenseTensor;
 
 template <typename Context, typename T, int Rank>
 void Expand(const Context& dev_ctx,
@@ -77,7 +76,7 @@ void Expand(const Context& dev_ctx,
       repeat_times[i] = 1;
     }
   }
-  Eigen::DSizes<Eigen::DenseIndex, Rank> bcast_dims;
+  Eigen::DSizes<int64_t, Rank> bcast_dims;
   for (size_t i = 0; i < repeat_times.size(); ++i) {
     bcast_dims[i] = repeat_times[i];
   }
@@ -101,15 +100,8 @@ void Expand(const Context& dev_ctx,
 
   auto y = EigenTensor<T, Rank>::From(*out, out_dims);
   auto& place = *dev_ctx.eigen_device();
-  // use 32-bit index to speed up
-  bool use_32bit_index = y.size() < Eigen::NumTraits<int>::highest();
-  if (use_32bit_index) {
-    funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
-        place, To32BitIndex(y), To32BitIndex(x0), bcast_dims);
-  } else {
-    funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
-        place, y, x0, bcast_dims);
-  }
+  funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
+      place, y, x0, bcast_dims);
 }
 
 template <typename T, typename Context>

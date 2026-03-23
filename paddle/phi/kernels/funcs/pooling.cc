@@ -479,22 +479,22 @@ template class Pool2dGradFunctor<CPUContext, MaxPoolGrad<double>, double>;
 template class Pool2dGradFunctor<CPUContext, AvgPoolGrad<double>, double>;
 template class Pool2dGradFunctor<CPUContext, LPPoolGrad<double>, double>;
 
-template class Pool2dFunctor<phi::CPUContext,
+template class Pool2dFunctor<CPUContext,
                              MaxPool<dtype::float16>,
                              dtype::float16>;
-template class Pool2dFunctor<phi::CPUContext,
+template class Pool2dFunctor<CPUContext,
                              AvgPool<dtype::float16>,
                              dtype::float16>;
-template class Pool2dFunctor<phi::CPUContext,
+template class Pool2dFunctor<CPUContext,
                              LPPool<dtype::float16>,
                              dtype::float16>;
-template class Pool2dGradFunctor<phi::CPUContext,
+template class Pool2dGradFunctor<CPUContext,
                                  MaxPoolGrad<dtype::float16>,
                                  dtype::float16>;
-template class Pool2dGradFunctor<phi::CPUContext,
+template class Pool2dGradFunctor<CPUContext,
                                  AvgPoolGrad<dtype::float16>,
                                  dtype::float16>;
-template class Pool2dGradFunctor<phi::CPUContext,
+template class Pool2dGradFunctor<CPUContext,
                                  LPPoolGrad<dtype::float16>,
                                  dtype::float16>;
 /*
@@ -1088,19 +1088,19 @@ template class Pool3dFunctor<CPUContext, AvgPool<double>, double>;
 template class Pool3dGradFunctor<CPUContext, MaxPoolGrad<double>, double>;
 template class Pool3dGradFunctor<CPUContext, AvgPoolGrad<double>, double>;
 
-template class Pool3dFunctor<phi::CPUContext,
+template class Pool3dFunctor<CPUContext,
                              MaxPool<dtype::float16>,
                              dtype::float16>;
-template class Pool3dFunctor<phi::CPUContext,
+template class Pool3dFunctor<CPUContext,
                              AvgPool<dtype::float16>,
                              dtype::float16>;
-template class Pool3dFunctor<phi::CPUContext,
+template class Pool3dFunctor<CPUContext,
                              LPPool<dtype::float16>,
                              dtype::float16>;
-template class Pool3dGradFunctor<phi::CPUContext,
+template class Pool3dGradFunctor<CPUContext,
                                  MaxPoolGrad<dtype::float16>,
                                  dtype::float16>;
-template class Pool3dGradFunctor<phi::CPUContext,
+template class Pool3dGradFunctor<CPUContext,
                                  AvgPoolGrad<dtype::float16>,
                                  dtype::float16>;
 /*

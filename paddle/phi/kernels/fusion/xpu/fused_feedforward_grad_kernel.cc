@@ -26,7 +26,7 @@ namespace phi {
 namespace fusion {
 
 template <typename T, typename Context>
-void FFNGrad(const phi::XPUContext& dev_ctx,
+void FFNGrad(const XPUContext& dev_ctx,
              const DenseTensor* d_out,
              const DenseTensor* x,
              const DenseTensor* dropout1_mask,

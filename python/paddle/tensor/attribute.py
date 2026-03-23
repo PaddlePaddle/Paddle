@@ -20,6 +20,7 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
+from paddle._C_ops import real  # noqa: F401
 from paddle.utils.decorator_utils import param_one_alias
 
 from ..base.data_feeder import check_type, check_variable_and_dtype
@@ -288,60 +289,6 @@ def is_integer(x: Tensor) -> bool:
         )
 
     return is_int_dtype
-
-
-def real(x: Tensor, name: str | None = None) -> Tensor:
-    """
-    Returns a new Tensor containing real values of the input Tensor.
-
-    Args:
-        x (Tensor): the input Tensor, its data type could be complex64 or complex128.
-        name (str|None, optional): The default value is None. Normally there is no need for
-            user to set this property. For more information, please refer to :ref:`api_guide_Name` .
-
-    Returns:
-        Tensor: a Tensor containing real values of the input Tensor.
-
-    Examples:
-        .. code-block:: pycon
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor(
-            ...     [
-            ...         [1 + 6j, 2 + 5j, 3 + 4j],
-            ...         [4 + 3j, 5 + 2j, 6 + 1j],
-            ...     ]
-            ... )
-            >>> print(x)
-            Tensor(shape=[2, 3], dtype=complex64, place=Place(cpu), stop_gradient=True,
-             [[(1.00000000+6.00000000j), (2.00000000+5.00000000j),
-               (3.00000000+4.00000000j)],
-              [(4.00000000+3.00000000j), (5.00000000+2.00000000j),
-               (6.00000000+1.00000000j)]])
-
-            >>> real_res = paddle.real(x)
-            >>> print(real_res)
-            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[1., 2., 3.],
-             [4., 5., 6.]])
-
-            >>> real_t = x.real()
-            >>> print(real_t)
-            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[1., 2., 3.],
-             [4., 5., 6.]])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.real(x)
-    else:
-        check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], 'real')
-        helper = LayerHelper('real', **locals())
-        out = helper.create_variable_for_type_inference(
-            dtype=_complex_to_real_dtype(helper.input_dtype())
-        )
-        helper.append_op(type='real', inputs={'X': x}, outputs={'Out': out})
-        return out
 
 
 def imag(x: Tensor, name: str | None = None) -> Tensor:

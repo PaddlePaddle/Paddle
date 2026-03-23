@@ -72,7 +72,8 @@ void FullLikeKernel(const Context& dev_ctx,
   int64_t numel = out->numel();
 
   if (!std::is_same<T, phi::complex64>::value &&
-      !std::is_same<T, phi::complex128>::value) {
+      !std::is_same<T, phi::complex128>::value &&
+      !std::is_same<T, int64_t>::value) {
     auto value = val.to<double>();
     using CommonType = typename std::common_type<
         float,

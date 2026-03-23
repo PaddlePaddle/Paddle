@@ -50,8 +50,10 @@ from .io_utils import (
     _open_file_buffer,
     _pack_loaded_dict,
     _pickle_loads_mac,
+    _reconstruct_dense_tensor_data,
     _unpack_saved_dict,
 )
+from .restricted_unpickler import safe_load_pickle
 
 if TYPE_CHECKING:
     from io import BytesIO
@@ -229,7 +231,7 @@ def _load_state_dict_from_save_inference_model(model_path, config):
         var_info_path = os.path.join(model_path, var_info_filename)
         if os.path.exists(var_info_path):
             with open(var_info_path, 'rb') as f:
-                extra_var_info = pickle.load(f)
+                extra_var_info = safe_load_pickle(f)
             structured_para_dict = {}
             for var_name in load_param_dict:
                 structured_name = extra_var_info[var_name].get(
@@ -450,7 +452,7 @@ def _pickle_save(obj, f, protocol):
         else:
             data = np.array(self._copy(p))
 
-        return (eval, ('data', {'data': data}))
+        return (_reconstruct_dense_tensor_data, (data,))
 
     def reduce_Layer(self):
         raise ValueError(
@@ -1266,7 +1268,7 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
                 ):
                     load_result = _pickle_loads_mac(path, f)
                 else:
-                    load_result = pickle.load(f, encoding='latin1')
+                    load_result = safe_load_pickle(f, encoding='latin1')
 
                 # TODO(weixin):If `obj` is any object, the judgment condition should be more precise.
                 if isinstance(load_result, dict):
@@ -1383,7 +1385,7 @@ def _legacy_load(path, **configs):
             load_result = load_file(path)
         else:
             with _open_file_buffer(path, 'rb') as f:
-                load_result = pickle.load(f, encoding='latin1')
+                load_result = safe_load_pickle(f, encoding='latin1')
         load_result = _pack_loaded_dict(load_result)
         if (
             not config.keep_name_table

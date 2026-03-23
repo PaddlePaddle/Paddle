@@ -25,10 +25,8 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-template <typename T,
-          int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = EigenMatrix<T, MajorType, IndexType>;
+template <typename T, int MajorType = Eigen::RowMajor>
+using EigenMatrix = EigenMatrix<T, MajorType>;
 
 template <typename T>
 struct ValueClip {
@@ -229,7 +227,7 @@ void SoftmaxFunctor<DeviceContext, T, Enable>::operator()(
 
 template <class DeviceContext>
 using enable_if_CPU = typename std::enable_if<
-    std::is_same<DeviceContext, phi::CPUContext>::value>::type;
+    std::is_same<DeviceContext, CPUContext>::value>::type;
 
 template <typename DeviceContext, typename T>
 class SoftmaxFunctor<DeviceContext, T, enable_if_CPU<DeviceContext>> {

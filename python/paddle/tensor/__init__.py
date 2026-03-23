@@ -31,7 +31,7 @@ from .attribute import (  # noqa: F401
     real,
     shape,
 )
-from .compat_softmax import softmax as softmax
+from .compat_softmax import log_softmax, softmax  # noqa: F401
 from .creation import (  # noqa: F401
     MmapStorage,
     arange,
@@ -316,7 +316,6 @@ from .math import (  # noqa: F401
     floor_divide,
     floor_divide_,
     floor_mod,
-    floor_mod_,
     fmax,
     fmin,
     frac,
@@ -376,7 +375,6 @@ from .math import (  # noqa: F401
     minimum,
     mm,
     mod,
-    mod_,
     mul,
     multigammaln,
     multigammaln_,
@@ -444,6 +442,7 @@ from .math import (  # noqa: F401
     vander,
 )
 from .random import (  # noqa: F401
+    bernoulli,
     bernoulli_,
     binomial,
     exponential_,
@@ -644,9 +643,7 @@ tensor_method_func = [
     'remainder',
     'remainder_',
     'mod',
-    'mod_',
     'floor_mod',
-    'floor_mod_',
     'multiply',
     'multiply_',
     'mul',
@@ -854,6 +851,7 @@ tensor_method_func = [
     'scatter_add',
     'select_scatter',
     'put_along_axis_',
+    'bernoulli',
     'bernoulli_',
     'exponential_',
     'heaviside',
@@ -938,6 +936,7 @@ tensor_method_func = [
     'resize_',
     'argwhere',
     'softmax',
+    'log_softmax',
     'eq',
     'ne',
     'lt',

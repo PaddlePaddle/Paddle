@@ -28,9 +28,6 @@ static void MGroupedGemmXPUFunction(const DenseTensor &a,
   const auto &a_shape = a.dims();
   const auto &b_shape = b.dims();
   const int64_t num_experts = batch_sizes.size();
-  const int64_t total_tokens = a_shape[0];
-  const int64_t input_hidden_size = a_shape[1];
-  const int64_t output_hidden_size = b_shape[2];
 
   int fc_calc_type = FCCalcType<XPUType>();
   decltype(&xblas_fc_wrapper<XPUType, int16_t>) xblas_fc_api_list[6] = {
@@ -43,10 +40,8 @@ static void MGroupedGemmXPUFunction(const DenseTensor &a,
   };
   auto xblas_fc_api = xblas_fc_api_list[fc_calc_type];
 
-  int64_t m = total_tokens;
-  int64_t n = output_hidden_size;
-  int64_t k = input_hidden_size;
-  int64_t batch_size = 0;
+  int64_t n = trans_rhs ? b_shape[1] : b_shape[2];
+  int64_t k = a_shape[1];
   int64_t ldx = k;
   int64_t ldy = trans_rhs ? k : n;
   int64_t ldout = n;
@@ -71,32 +66,35 @@ static void MGroupedGemmXPUFunction(const DenseTensor &a,
 #pragma unroll
     for (int64_t i = 0; i < num_experts; ++i) {
       const int64_t expert_bs = batch_sizes[i];
-      xblas_fc_api(xpu_ctx,
-                   reinterpret_cast<const XPUType *>(a_data),
-                   reinterpret_cast<const XPUType *>(b_data),
-                   reinterpret_cast<XPUType *>(output_data),
-                   m,
-                   n,
-                   k,
-                   trans_x,
-                   trans_y,
-                   max_x,
-                   max_y,
-                   max_out,
-                   ldx,
-                   ldy,
-                   ldout,
-                   1.0f,
-                   0.0f,
-                   bias,
-                   act,
-                   scale_x,
-                   scale_y,
-                   scale_x_mode,
-                   scale_y_mode);
-      a_data += expert_bs * input_hidden_size;
+      int64_t m = expert_bs;
+      if (expert_bs != 0) {
+        xblas_fc_api(xpu_ctx,
+                     reinterpret_cast<const XPUType *>(a_data),
+                     reinterpret_cast<const XPUType *>(b_data),
+                     reinterpret_cast<XPUType *>(output_data),
+                     m,
+                     n,
+                     k,
+                     trans_x,
+                     trans_y,
+                     max_x,
+                     max_y,
+                     max_out,
+                     ldx,
+                     ldy,
+                     ldout,
+                     1.0f,
+                     0.0f,
+                     bias,
+                     act,
+                     scale_x,
+                     scale_y,
+                     scale_x_mode,
+                     scale_y_mode);
+      }
+      a_data += expert_bs * a_shape[1];
       b_data += b_shape[1] * b_shape[2];
-      output_data += expert_bs * output_hidden_size;
+      output_data += expert_bs * n;
     }
 
   } else {
@@ -129,11 +127,11 @@ static void KGroupedGemmXPUFunction(const DenseTensor &a,
   };
   auto xblas_fc_api = xblas_fc_api_list[fc_calc_type];
 
+  int64_t m = input_hidden_size;
   int64_t n = output_hidden_size;
-  int64_t k = input_hidden_size;
-  int64_t batch_size = 0;
   int64_t ldy = n;
   int64_t ldout = n;
+  int64_t ldx = m;
   bool trans_x = true;
   bool trans_y = false;
   float *max_x = nullptr;
@@ -155,32 +153,32 @@ static void KGroupedGemmXPUFunction(const DenseTensor &a,
 #pragma unroll
     for (int64_t i = 0; i < num_experts; ++i) {
       const int64_t expert_bs = batch_sizes[i];
-      int64_t m = expert_bs;
-      int64_t ldx = m;
-      xblas_fc_api(xpu_ctx,
-                   reinterpret_cast<const XPUType *>(a_data),
-                   reinterpret_cast<const XPUType *>(b_data),
-                   reinterpret_cast<XPUType *>(output_data),
-                   m,
-                   n,
-                   k,
-                   trans_x,
-                   trans_y,
-                   max_x,
-                   max_y,
-                   max_out,
-                   ldx,
-                   ldy,
-                   ldout,
-                   1.0f,
-                   0.0f,
-                   bias,
-                   act,
-                   scale_x,
-                   scale_y,
-                   scale_x_mode,
-                   scale_y_mode);
-
+      int64_t k = expert_bs;
+      if (expert_bs != 0) {
+        xblas_fc_api(xpu_ctx,
+                     reinterpret_cast<const XPUType *>(a_data),
+                     reinterpret_cast<const XPUType *>(b_data),
+                     reinterpret_cast<XPUType *>(output_data),
+                     m,
+                     n,
+                     k,
+                     trans_x,
+                     trans_y,
+                     max_x,
+                     max_y,
+                     max_out,
+                     ldx,
+                     ldy,
+                     ldout,
+                     1.0f,
+                     0.0f,
+                     bias,
+                     act,
+                     scale_x,
+                     scale_y,
+                     scale_x_mode,
+                     scale_y_mode);
+      }
       a_data += expert_bs * input_hidden_size;
       b_data += expert_bs * output_hidden_size;
       output_data += input_hidden_size * output_hidden_size;

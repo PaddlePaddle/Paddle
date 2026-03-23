@@ -135,7 +135,7 @@ void TransposeTwoAxis(const DenseTensor& input,
   dev_ctx.template Alloc<T>(transposed_input);
 
 #ifdef PADDLE_WITH_XPU
-  phi::TransposeKernel<T, Context>(dev_ctx, input, permute, transposed_input);
+  TransposeKernel<T, Context>(dev_ctx, input, permute, transposed_input);
 #else
   funcs::TransCompute<Context, T>(
       input.dims().size(), dev_ctx, input, transposed_input, permute);
@@ -276,7 +276,7 @@ void MagmaEig(const Context& dev_ctx,
   rwork.Resize(make_ddim({lda * 2}));
   auto cpu_place = CPUPlace();
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-  auto* cpu_ctx = static_cast<phi::CPUContext*>(pool.Get(cpu_place));
+  auto* cpu_ctx = static_cast<CPUContext*>(pool.Get(cpu_place));
   rwork_data = (*cpu_ctx).template Alloc<phi::dtype::Real<T>>(&rwork);
 
   T computed_work_size;
@@ -347,14 +347,14 @@ void ApplyEigKernelMagma(const Context& dev_ctx,
   vectors_row_major_cpu.Resize(input.dims());
   auto cpu_place = CPUPlace();
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-  auto* cpu_ctx = static_cast<phi::CPUContext*>(pool.Get(cpu_place));
+  auto* cpu_ctx = static_cast<CPUContext*>(pool.Get(cpu_place));
   (*cpu_ctx).template Alloc<T>(&vectors_row_major_cpu);
 
   MagmaEig<T, Context>(
       dev_ctx, input_column_major_gpu, real_w_cpu, &vectors_row_major_cpu);
 
   // transfer column-major layout back
-  TransposeTwoAxis<T, phi::CPUContext>(
+  TransposeTwoAxis<T, CPUContext>(
       vectors_row_major_cpu, real_v_cpu, num_dims - 1, num_dims - 2, *cpu_ctx);
 }
 

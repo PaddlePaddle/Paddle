@@ -42,7 +42,7 @@ void L1NormGradKernel(const Context& dev_ctx,
   auto d_out_eigen = EigenVector<T>::Flatten(out_grad);
   auto dx_eigen = EigenVector<T>::Flatten(*x_grad);
   auto& dev = *dev_ctx.eigen_device();
-  Eigen::DSizes<Eigen::DenseIndex, 1> x_dsize(x.numel());
+  Eigen::DSizes<int64_t, 1> x_dsize(x.numel());
   funcs::EigenL1NormGrad<std::decay_t<decltype(dev)>, T>::Eval(
       dev, dx_eigen, d_out_eigen, x_eigen, x_dsize);
 }

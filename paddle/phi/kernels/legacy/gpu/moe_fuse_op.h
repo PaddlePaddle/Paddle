@@ -279,8 +279,8 @@ __global__ void initialize_moe_routing_kernel(
 
   for (int tid = threadIdx.x * VecSize; tid < cols;
        tid += blockDim.x * VecSize) {
-    phi::Load<T, VecSize>(&source_row_ptr[tid], &src_vec);
-    phi::Store<T, VecSize>(src_vec, &dest_row_ptr[tid]);
+    Load<T, VecSize>(&source_row_ptr[tid], &src_vec);
+    Store<T, VecSize>(src_vec, &dest_row_ptr[tid]);
   }
 }
 
@@ -404,8 +404,8 @@ __global__ void initialize_moe_routing_permute_kernel(
 
     for (int tid = threadIdx.x * VecSize; tid < cols;
          tid += blockDim.x * VecSize) {
-      phi::Load<T, VecSize>(&source_row_ptr[tid], &src_vec);
-      phi::Store<T, VecSize>(src_vec, &dest_row_ptr[tid]);
+      Load<T, VecSize>(&source_row_ptr[tid], &src_vec);
+      Store<T, VecSize>(src_vec, &dest_row_ptr[tid]);
     }
   }
 }
@@ -758,8 +758,8 @@ __global__ void copy_unpermuted_to_permuted_kernel(
 
   for (int tid = threadIdx.x * VecSize; tid < cols;
        tid += blockDim.x * VecSize) {
-    phi::Load<T, VecSize>(&source_row_ptr[tid], &src_vec);
-    phi::Store<T, VecSize>(src_vec, &padded_dest_row_ptr[tid]);
+    Load<T, VecSize>(&source_row_ptr[tid], &src_vec);
+    Store<T, VecSize>(src_vec, &padded_dest_row_ptr[tid]);
   }
   PADDLE_ENFORCE(
       (padded_dest_row < padded_len) && (source_row_expanded < num_rows * k),
