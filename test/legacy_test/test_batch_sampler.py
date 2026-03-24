@@ -17,6 +17,7 @@ import unittest
 
 import numpy as np
 
+import paddle
 from paddle.io import (
     BatchSampler,
     Dataset,
@@ -107,6 +108,17 @@ class TestRandomSampler(unittest.TestCase):
         for i in iter(sampler):
             rets.append(i)
         assert tuple(sorted(rets)) == tuple(range(0, 60))
+
+    def test_with_illegal_generator(self):
+        dataset = RandomDataset(100, 10)
+        generator = paddle.Generator()
+        sampler = RandomSampler(dataset, generator=generator)
+        assert len(sampler) == 100
+
+        rets = []
+        for i in iter(sampler):
+            rets.append(i)
+        assert tuple(sorted(rets)) == tuple(range(0, 100))
 
     def test_with_generator_num_samples(self):
         dataset = RandomDataset(100, 10)

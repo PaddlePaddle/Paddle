@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Rerun all failed jobs
         if: ${{ contains(github.event.comment.body, 'all-failed') }}
@@ -72,6 +72,16 @@ jobs:
           REPO: ${{ github.event.repository.name }}
           JOB_NAME: 'Linux-CPU / Build and test'
 
+      - name: Rerun Mac
+        if: ${{ contains(github.event.comment.body, 'mac') }}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'Mac-CPU / Build and test'
+
       - name: Rerun NPU
         if: ${{ contains(github.event.comment.body, 'npu')}}
         uses: ./.github/actions/rerun-workflow
@@ -81,6 +91,16 @@ jobs:
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
           JOB_NAME: 'Linux-NPU / Test'
+
+      - name: Rerun IXUCA
+        if: ${{ contains(github.event.comment.body, 'ixuca') }}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'Linux-IXUCA / Check bypass / Check bypass'
 
       - name: Rerun Inference
         if: ${{ contains(github.event.comment.body, 'inference') && !contains(github.event.comment.body, 'build') && !contains(github.event.comment.body, 'test') }}

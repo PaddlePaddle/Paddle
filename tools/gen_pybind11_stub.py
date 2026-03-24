@@ -720,24 +720,6 @@ class OpsYamlBaseAPI:
     def _make_sig(self, name: str, sig: tuple[str, str]) -> str:
         return self._make_sig_name(name) + ': ' + self._make_attr(sig)
 
-    def make_function_signature(
-        self,
-        raw_name: str,
-        name: str,
-        inputs: _OpsYamlInputs,
-        attrs: _OpsYamlAttr,
-        output_type_list: list[str],
-        python_api_info: dict[str, list[str]],
-    ):
-        if name in python_api_info:
-            return self.make_python_api_function(
-                name, python_api_info[raw_name]
-            )
-        else:
-            return self.make_op_function(
-                raw_name, inputs, attrs, output_type_list
-            )
-
     def make_op_function(
         self,
         name: str,
@@ -842,17 +824,19 @@ class OpsYamlBaseAPI:
                 for op_name in [raw_op_name, raw_op_name + '_']:
                     if op_name in ops_names:
                         try:
-                            # replace the line from stub file with full signature
-                            ops_file[ops_names[op_name]] = (
-                                self.make_function_signature(
+                            if op_name in python_api_info:
+                                op_signature = self.make_python_api_function(
+                                    op_name, python_api_info[op_name]
+                                )
+                            else:
+                                op_signature = self.make_op_function(
                                     raw_op_name,
-                                    op_name,
                                     op_inputs,
                                     op_attrs,
                                     output_type_list,
-                                    python_api_info,
                                 )
-                            )
+                            # replace the line from stub file with full signature
+                            ops_file[ops_names[op_name]] = op_signature
                         except:
                             print(
                                 op_name, op_inputs, op_attrs, output_type_list

@@ -145,7 +145,7 @@ void CPUMatchMatrixTensorOPKernel(const Context& dev_ctx,
   auto* bottom_l_trans_data = dev_ctx.template Alloc<T>(tmp);
   memset(bottom_l_trans_data, 0.0, tmp->dims()[0] * tmp->dims()[1] * sizeof(T));
 
-  auto blas = funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
+  auto blas = funcs::GetBlas<CPUContext, T>(dev_ctx);
 
   funcs::call_gemm(blas,
                    CblasNoTrans,
@@ -167,7 +167,7 @@ void CPUMatchMatrixTensorOPKernel(const Context& dev_ctx,
       const auto* l_t_data =
           bottom_l_trans_data + offset_l[b] * dim_t * dim_in + t * dim_in;
       const auto* r_data = bottom_r_data + offset_r[b] * dim_in;
-      auto blas_2 = funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
+      auto blas_2 = funcs::GetBlas<CPUContext, T>(dev_ctx);
       funcs::call_gemm_with_lda(blas_2,
                                 CblasNoTrans,
                                 CblasTrans,
@@ -262,7 +262,7 @@ void CPUMatchMatrixTensorOPGradKernel(const Context& dev_ctx,
     }
   }
 
-  auto blas = funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
+  auto blas = funcs::GetBlas<CPUContext, T>(dev_ctx);
 
   auto* t_data = w->data<T>();
   auto* d_w = w_grad;

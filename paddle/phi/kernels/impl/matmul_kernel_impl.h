@@ -997,7 +997,7 @@ struct MatMulDispatcher<phi::GPUContext, T> {
                                         y_dims,
                                         trans_x,
                                         trans_y,
-                                        phi::CppTypeToDataType<T>::Type(),
+                                        CppTypeToDataType<T>::Type(),
                                         funcs::MatmulFusedType::kMatmul,
                                         /* bias_data */ nullptr,
                                         /* reserve_data */ nullptr,
@@ -1924,8 +1924,8 @@ MatmulJudgeDtypeKernel(const Context& dev_ctx,
   if (try_matmul_int8) {
     return;
   }
-  auto x_tmp = phi::Cast<T, Context>(dev_ctx, x, phi::DataType::FLOAT32);
-  auto y_tmp = phi::Cast<T, Context>(dev_ctx, y, phi::DataType::FLOAT32);
+  auto x_tmp = Cast<T, Context>(dev_ctx, x, phi::DataType::FLOAT32);
+  auto y_tmp = Cast<T, Context>(dev_ctx, y, phi::DataType::FLOAT32);
   DenseTensor out_tmp;
   MatMulFunction<Context, float>(dev_ctx,
                                  x_tmp,
@@ -1936,10 +1936,10 @@ MatmulJudgeDtypeKernel(const Context& dev_ctx,
                                  transpose_x,
                                  transpose_y);
   if (x.dtype() == phi::DataType::INT8) {
-    phi::CastKernel<float>(dev_ctx, out_tmp, phi::DataType::INT32, out);
+    CastKernel<float>(dev_ctx, out_tmp, phi::DataType::INT32, out);
     return;
   }
-  phi::CastKernel<float>(dev_ctx, out_tmp, x.dtype(), out);
+  CastKernel<float>(dev_ctx, out_tmp, x.dtype(), out);
 }
 
 #if defined(PADDLE_WITH_CUDA)
@@ -2000,7 +2000,7 @@ DispatchMatmulFP8Kernel(const Context& dev_ctx,
 }
 
 template <typename Context>
-typename std::enable_if<std::is_same<Context, phi::CPUContext>::value>::type
+typename std::enable_if<std::is_same<Context, CPUContext>::value>::type
 DispatchMatmulFP8Kernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const DenseTensor& y,
@@ -2225,9 +2225,8 @@ DispatchMatmulWithFlattenInt8Kernel(const phi::GPUContext& dev_ctx,
 #endif
 
 template <typename Context>
-typename std::enable_if<std::is_same<Context, phi::CPUContext>::value,
-                        void>::type
-DispatchMatmulWithFlattenInt8Kernel(const phi::CPUContext& dev_ctx,
+typename std::enable_if<std::is_same<Context, CPUContext>::value, void>::type
+DispatchMatmulWithFlattenInt8Kernel(const CPUContext& dev_ctx,
                                     const DenseTensor& x,
                                     const DenseTensor& y,
                                     int x_num_col_dims,

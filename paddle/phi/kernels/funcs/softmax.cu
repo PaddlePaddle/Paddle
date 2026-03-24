@@ -136,29 +136,29 @@ void SoftmaxGradCUDNNFunctor<T, DeviceContext>::operator()(
 #endif
 }
 
-template class SoftmaxCUDNNFunctor<float, phi::GPUContext>;
-template class SoftmaxCUDNNFunctor<phi::float16, phi::GPUContext>;
-template class SoftmaxGradCUDNNFunctor<float, phi::GPUContext>;
-template class SoftmaxGradCUDNNFunctor<phi::float16, phi::GPUContext>;
+template class SoftmaxCUDNNFunctor<float, GPUContext>;
+template class SoftmaxCUDNNFunctor<phi::float16, GPUContext>;
+template class SoftmaxGradCUDNNFunctor<float, GPUContext>;
+template class SoftmaxGradCUDNNFunctor<phi::float16, GPUContext>;
 #if CUDNN_VERSION_MIN(8, 1, 0)
-template class SoftmaxCUDNNFunctor<phi::bfloat16, phi::GPUContext>;
-template class SoftmaxGradCUDNNFunctor<phi::bfloat16, phi::GPUContext>;
+template class SoftmaxCUDNNFunctor<phi::bfloat16, GPUContext>;
+template class SoftmaxGradCUDNNFunctor<phi::bfloat16, GPUContext>;
 #endif
 
 // MIOPEN do not support double
 #ifndef PADDLE_WITH_HIP
-template class SoftmaxCUDNNFunctor<double, phi::GPUContext>;
-template class SoftmaxGradCUDNNFunctor<double, phi::GPUContext>;
+template class SoftmaxCUDNNFunctor<double, GPUContext>;
+template class SoftmaxGradCUDNNFunctor<double, GPUContext>;
 #endif
 
-template class SoftmaxFunctor<phi::GPUContext, phi::float16>;
-template class SoftmaxFunctor<phi::GPUContext, phi::bfloat16>;
-template class SoftmaxFunctor<phi::GPUContext, float>;
-template class SoftmaxFunctor<phi::GPUContext, double>;
-template class SoftmaxGradFunctor<phi::GPUContext, float>;
-template class SoftmaxGradFunctor<phi::GPUContext, double>;
-template class SoftmaxGradFunctor<phi::GPUContext, phi::float16>;
-template class SoftmaxGradFunctor<phi::GPUContext, phi::bfloat16>;
+template class SoftmaxFunctor<GPUContext, phi::float16>;
+template class SoftmaxFunctor<GPUContext, phi::bfloat16>;
+template class SoftmaxFunctor<GPUContext, float>;
+template class SoftmaxFunctor<GPUContext, double>;
+template class SoftmaxGradFunctor<GPUContext, float>;
+template class SoftmaxGradFunctor<GPUContext, double>;
+template class SoftmaxGradFunctor<GPUContext, phi::float16>;
+template class SoftmaxGradFunctor<GPUContext, phi::bfloat16>;
 
 }  // namespace funcs
 }  // namespace phi

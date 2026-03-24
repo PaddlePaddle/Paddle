@@ -157,13 +157,26 @@ class ScheduleNode:
             else:
                 paddle.autograd.backward(outputs)
         else:
+            # Record the original type (tuple or list) to preserve it after filtering
+            is_output_grad_tuple = isinstance(output_grad, tuple)
             if not isinstance(output_grad, (tuple, list)):
+                is_output_grad_tuple = True  # Single value becomes tuple
                 output_grad = (output_grad,)
 
             outputs = dict_to_tuple_helper(self.outputs)
             if not isinstance(outputs, (tuple, list)):
                 outputs = (outputs,)
             outputs = [t for t in outputs if not t.stop_gradient]
+
+            # Filter None values from output_grad
+            output_grad = [grad for grad in output_grad if grad is not None]
+            # Preserve original type (tuple or list)
+            output_grad = (
+                tuple(output_grad)
+                if is_output_grad_tuple
+                else list(output_grad)
+            )
+
             assert len(outputs) == len(output_grad), (
                 f"{len(outputs)} of {type(outputs[0])} vs {len(output_grad)} of {type(output_grad[0])}"
             )
@@ -173,13 +186,7 @@ class ScheduleNode:
         inputs = dict_to_tuple_helper(self.inputs)
         if not isinstance(inputs, (tuple, list)):
             inputs = (inputs,)
-        grad = tuple(
-            [
-                t.grad
-                for t in inputs
-                if isinstance(t, paddle.Tensor) and not t.stop_gradient
-            ]
-        )
+        grad = tuple([e.grad if e is not None else None for e in inputs])
         # grad = tuple([e.grad if e is not None and not e.stop_gradient else None for e in inputs])
         self._reset_states()
 

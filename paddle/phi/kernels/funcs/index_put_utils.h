@@ -116,8 +116,8 @@ std::vector<const DenseTensor*> DealWithBoolIndices(
 #ifdef PADDLE_WITH_XPU
         auto place = dev_ctx.GetPlace();
         if (place.GetType() == AllocationType::XPU) {
-          auto& pool = phi::DeviceContextPool::Instance();
-          auto* xpu_ctx = static_cast<phi::XPUContext*>(pool.Get(place));
+          auto& pool = DeviceContextPool::Instance();
+          auto* xpu_ctx = static_cast<XPUContext*>(pool.Get(place));
           if (xpu_ctx->x_context()->xpu_stream) {
             dev_ctx.Wait();
           }
@@ -228,7 +228,7 @@ void DealWithIndices(const Context& dev_ctx,
     for (size_t i = 0; i < int_indices_v.size(); ++i) {
       DenseTensor index_tensor;
       if (int_indices_v[i]->dtype() == phi::DataType::INT32) {
-        index_tensor = phi::Cast<int, Context>(
+        index_tensor = Cast<int, Context>(
             dev_ctx, *int_indices_v[i], phi::DataType::INT64);
       } else {
         index_tensor = *int_indices_v[i];
@@ -251,7 +251,7 @@ void DealWithIndices(const Context& dev_ctx,
       DenseTensor index_tensor;
       DenseTensor expand_index;
       if (int_indices_v[i]->dtype() == phi::DataType::INT32) {
-        index_tensor = phi::Cast<int, Context>(
+        index_tensor = Cast<int, Context>(
             dev_ctx, *int_indices_v[i], phi::DataType::INT64);
       } else {
         index_tensor = *int_indices_v[i];

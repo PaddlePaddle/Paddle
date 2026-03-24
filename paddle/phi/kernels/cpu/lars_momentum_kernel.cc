@@ -48,8 +48,7 @@ void LarsMomentumKernel(
     auto v_out = EigenVector<T>::Flatten(*(velocity_out[i]));
     auto p = EigenVector<T>::Flatten(*(param[i]));
     auto v = EigenVector<T>::Flatten(*(velocity[i]));
-    Eigen::TensorMap<Eigen::Tensor<const T, 1, 1>> g =
-        EigenVector<T>::Flatten(*(grad[i]));
+    auto g = EigenVector<T>::Flatten(*(grad[i]));
     auto rescale_g = static_cast<T>(rescale_grad) * g;
 
     DenseTensor p_norm_t, g_norm_t;
@@ -57,8 +56,8 @@ void LarsMomentumKernel(
     g_norm_t.Resize({1});
     dev_ctx.template Alloc<T>(&p_norm_t);
     dev_ctx.template Alloc<T>(&g_norm_t);
-    auto ep_norm = phi::EigenScalar<T>::From(p_norm_t);
-    auto eg_norm = phi::EigenScalar<T>::From(g_norm_t);
+    auto ep_norm = EigenScalar<T>::From(p_norm_t);
+    auto eg_norm = EigenScalar<T>::From(g_norm_t);
     ep_norm = p.square().sum().sqrt();
     eg_norm = rescale_g.square().sum().sqrt();
 

@@ -194,7 +194,7 @@ class CudnnRNNCache {
         phi::dynload::cudnnCreateDropoutDescriptor(&dropout_desc_));
 
     size_t state_size;
-    auto *dev_ctx = phi::DeviceContextPool::Instance().Get(place);
+    auto *dev_ctx = DeviceContextPool::Instance().Get(place);
     if (!initialized) {
       PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::cudnnDropoutGetStatesSize(handle, &state_size));

@@ -603,7 +603,7 @@ void LaunchDepthwiseConv3dBackwardCompatible(const Context& dev_ctx,
     phi::SumKernel<T, Context>(dev_ctx,
                                out_grad_ncdhw,
                                phi::IntArray(reduce_dims),
-                               phi::CppTypeToDataType<T>::Type(),
+                               CppTypeToDataType<T>::Type(),
                                false,
                                bias_grad);
   }

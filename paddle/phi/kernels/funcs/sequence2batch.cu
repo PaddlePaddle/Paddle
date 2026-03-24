@@ -39,11 +39,11 @@ __global__ void CopyMatrixRowsKernel(const T* src,
 }
 
 template <typename T>
-class CopyMatrixRowsFunctor<phi::GPUContext, T> {
+class CopyMatrixRowsFunctor<GPUContext, T> {
  public:
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& src,
-                  phi::Vector<size_t> index_lod,
+                  Vector<size_t> index_lod,
                   DenseTensor* dst,
                   bool is_src_index) {
     auto src_dims = src.dims();
@@ -91,13 +91,13 @@ class CopyMatrixRowsFunctor<phi::GPUContext, T> {
   }
 };
 
-template class CopyMatrixRowsFunctor<phi::GPUContext, float>;
-template class CopyMatrixRowsFunctor<phi::GPUContext, double>;
+template class CopyMatrixRowsFunctor<GPUContext, float>;
+template class CopyMatrixRowsFunctor<GPUContext, double>;
 
-template class DenseTensor2BatchFunctor<phi::GPUContext, float>;
-template class DenseTensor2BatchFunctor<phi::GPUContext, double>;
-template class Batch2DenseTensorFunctor<phi::GPUContext, float>;
-template class Batch2DenseTensorFunctor<phi::GPUContext, double>;
+template class DenseTensor2BatchFunctor<GPUContext, float>;
+template class DenseTensor2BatchFunctor<GPUContext, double>;
+template class Batch2DenseTensorFunctor<GPUContext, float>;
+template class Batch2DenseTensorFunctor<GPUContext, double>;
 
 }  // namespace funcs
 }  // namespace phi

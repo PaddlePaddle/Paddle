@@ -140,17 +140,17 @@ void BeamSearchDecoder<T>::ConvertSentenceVectorToDenseTensor(
   lod.push_back(source_level_lod);
   lod.push_back(sentence_level_lod);
 
-  auto& cpu_ctx = *(phi::DeviceContextPool::Instance().Get(CPUPlace()));
+  auto& cpu_ctx = *(DeviceContextPool::Instance().Get(CPUPlace()));
 
   id_tensor->set_lod(lod);
   id_tensor->Resize({static_cast<int64_t>(id_data.size())});
   cpu_ctx.Alloc<int64_t>(id_tensor);
-  phi::TensorFromVector<int64_t>(id_data, cpu_ctx, id_tensor);
+  TensorFromVector<int64_t>(id_data, cpu_ctx, id_tensor);
 
   score_tensor->set_lod(lod);
   score_tensor->Resize({static_cast<int64_t>(score_data.size())});
   cpu_ctx.Alloc<int64_t>(score_tensor);
-  phi::TensorFromVector<T>(score_data, cpu_ctx, score_tensor);
+  TensorFromVector<T>(score_data, cpu_ctx, score_tensor);
 }
 
 template <typename T>

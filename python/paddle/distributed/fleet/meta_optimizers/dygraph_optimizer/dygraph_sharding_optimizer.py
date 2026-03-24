@@ -1196,6 +1196,9 @@ class DygraphShardingOptimizerV2:
         copy_attr("do_model_average")
         copy_attr("need_clip")
         copy_attr("no_sync")
+        assert param.name not in self._slice_params, (
+            f"Duplicate param.name {param.name} appeared, which will caused precision gap and ckpt bug."
+        )
 
         self._slice_params[param.name] = slice_param
         return slice_param

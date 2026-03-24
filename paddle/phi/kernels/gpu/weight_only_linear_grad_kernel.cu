@@ -59,7 +59,7 @@ void WeightOnlyLinearGradKernel(const Context& dev_ctx,
     return;
   }
   DenseTensor weight_dequantized;
-  weight_dequantized.Resize({{n, k}});
+  weight_dequantized.Resize({n, k});
   dev_ctx.template Alloc<T>(&weight_dequantized);
   std::string algo =
       weight_dtype == "int8" ? "weight_only_int8" : "weight_only_int4";

@@ -17,6 +17,9 @@
 #include "paddle/cinn/ir/schedule/impl/ir_schedule.h"
 #include "paddle/cinn/runtime/backend_api.h"
 #include "paddle/common/enforce.h"
+#ifdef CINN_WITH_CUSTOM_DEVICE
+#include "paddle/phi/backends/device_manager.h"
+#endif
 namespace cinn {
 namespace ir {
 
@@ -201,6 +204,23 @@ void DyScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
         const std::array<int, 3> kMaxBlockDims =
             cur_dev_info->GetMaxBlockDims();
         const std::array<int, 3> kMaxGridDims = cur_dev_info->GetMaxGridDims();
+        bindNvHygon(kMaxBlockDims, kMaxGridDims);
+#endif
+      },
+      [&](const common::CustomDeviceArch& arch) {
+#ifdef CINN_WITH_CUSTOM_DEVICE
+        auto place = phi::CustomPlace(arch.device_type, arch.device_id);
+
+        const std::array<int, 3> kMaxBlockDims = {
+            static_cast<int>(phi::DeviceManager::GetMaxBlockDimSize(place)[0]),
+            static_cast<int>(phi::DeviceManager::GetMaxBlockDimSize(place)[1]),
+            static_cast<int>(phi::DeviceManager::GetMaxBlockDimSize(place)[2])};
+
+        const std::array<int, 3> kMaxGridDims = {
+            static_cast<int>(phi::DeviceManager::GetMaxGridDimSize(place)[0]),
+            static_cast<int>(phi::DeviceManager::GetMaxGridDimSize(place)[1]),
+            static_cast<int>(phi::DeviceManager::GetMaxGridDimSize(place)[2])};
+
         bindNvHygon(kMaxBlockDims, kMaxGridDims);
 #endif
       },

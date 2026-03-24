@@ -79,16 +79,22 @@ class TestDistCheckpoint:
             offload=True,
             safetensors=False,
         )
-        import safetensors
 
-        load_result = {}
-        for i in range(1, 3):
-            load_result.update(
-                safetensors.paddle.load_file(
-                    f"{single_path}/model-0000{i}-of-00002.safetensors"
+        import paddle.distributed
+
+        paddle.distributed.barrier()
+
+        if paddle.distributed.get_rank() == 0:
+            import safetensors
+
+            load_result = {}
+            for i in range(1, 3):
+                load_result.update(
+                    safetensors.paddle.load_file(
+                        f"{single_path}/model-0000{i}-of-00002.safetensors"
+                    )
                 )
-            )
-        assert len(load_result) == 4
+            assert len(load_result) == 4
 
 
 if __name__ == '__main__':

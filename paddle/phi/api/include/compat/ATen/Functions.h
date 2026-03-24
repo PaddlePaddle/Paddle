@@ -18,6 +18,8 @@
 #include <ATen/ops/_nnz.h>
 #include <ATen/ops/_values.h>
 #include <ATen/ops/abs.h>
+#include <ATen/ops/all.h>
+#include <ATen/ops/allclose.h>
 #include <ATen/ops/any.h>
 #include <ATen/ops/arange.h>
 #include <ATen/ops/as_strided.h>
@@ -44,11 +46,17 @@
 #include <ATen/ops/masked_select.h>
 #include <ATen/ops/narrow.h>
 #include <ATen/ops/narrow_copy.h>
+#include <ATen/ops/new_empty.h>
+#include <ATen/ops/new_full.h>
+#include <ATen/ops/new_ones.h>
+#include <ATen/ops/new_zeros.h>
 #include <ATen/ops/ones.h>
 #include <ATen/ops/permute.h>
 #include <ATen/ops/reciprocal.h>
+#include <ATen/ops/record_stream.h>
 #include <ATen/ops/rename.h>
 #include <ATen/ops/reshape.h>
+#include <ATen/ops/resize.h>
 #include <ATen/ops/select.h>
 #include <ATen/ops/slice.h>
 #include <ATen/ops/sparse_coo_tensor.h>

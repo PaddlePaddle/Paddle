@@ -27,6 +27,7 @@
 #include "paddle/phi/kernels/reduce_max_kernel.h"
 #include "paddle/phi/kernels/reduce_mean_kernel.h"
 #include "paddle/phi/kernels/reduce_min_kernel.h"
+#include "paddle/phi/kernels/reduce_nansum_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 #ifndef PADDLE_WITH_XPU_KP
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -59,10 +60,10 @@ void ProdKernel(const Context& dev_ctx,
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
 
 #ifdef PADDLE_WITH_XPU_KP
-  phi::Reduce<T, kps::MulFunctor, kps::IdentityFunctor>(
+  Reduce<T, kps::MulFunctor, kps::IdentityFunctor>(
       dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
 #else
-  phi::Reduce<T, kps::ProdOps>(
+  Reduce<T, kps::ProdOps>(
       dev_ctx, x, reduce_all, dims.GetData(), out_dtype, out);
 #endif
 }
@@ -75,13 +76,12 @@ void AllRawKernel(const Context& dev_ctx,
                   bool reduce_all,
                   DenseTensor* out) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
-  auto out_dtype = phi::DataType::BOOL;
+  auto out_dtype = DataType::BOOL;
 #ifdef PADDLE_WITH_XPU_KP
-  phi::Reduce<T, kps::LogicalAndFunctor, kps::IdentityFunctor>(
+  Reduce<T, kps::LogicalAndFunctor, kps::IdentityFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 #else
-  phi::Reduce<T, kps::LogicalAndOps>(
-      dev_ctx, x, reduce_all, dims, out_dtype, out);
+  Reduce<T, kps::LogicalAndOps>(dev_ctx, x, reduce_all, dims, out_dtype, out);
 #endif
 }
 
@@ -95,10 +95,10 @@ void AMaxRawKernel(const Context& dev_ctx,
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   auto out_dtype = x.dtype();
 #ifdef PADDLE_WITH_XPU_KP
-  phi::Reduce<T, kps::MaxFunctor, kps::IdentityFunctor>(
+  Reduce<T, kps::MaxFunctor, kps::IdentityFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 #else
-  phi::Reduce<T, kps::MaxOps>(dev_ctx, x, reduce_all, dims, out_dtype, out);
+  Reduce<T, kps::MaxOps>(dev_ctx, x, reduce_all, dims, out_dtype, out);
 #endif
 }
 
@@ -112,10 +112,10 @@ void AMinRawKernel(const Context& dev_ctx,
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   auto out_dtype = x.dtype();
 #ifdef PADDLE_WITH_XPU_KP
-  phi::Reduce<T, kps::MinFunctor, kps::IdentityFunctor>(
+  Reduce<T, kps::MinFunctor, kps::IdentityFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 #else
-  phi::Reduce<T, kps::MinOps>(dev_ctx, x, reduce_all, dims, out_dtype, out);
+  Reduce<T, kps::MinOps>(dev_ctx, x, reduce_all, dims, out_dtype, out);
 #endif
 }
 
@@ -127,13 +127,12 @@ void AnyRawKernel(const Context& dev_ctx,
                   bool reduce_all,
                   DenseTensor* out) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
-  auto out_dtype = phi::DataType::BOOL;
+  auto out_dtype = DataType::BOOL;
 #ifdef PADDLE_WITH_XPU_KP
-  phi::Reduce<T, kps::LogicalOrFunctor, kps::IdentityFunctor>(
+  Reduce<T, kps::LogicalOrFunctor, kps::IdentityFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
 #else
-  phi::Reduce<T, kps::LogicalOrOps>(
-      dev_ctx, x, reduce_all, dims, out_dtype, out);
+  Reduce<T, kps::LogicalOrOps>(dev_ctx, x, reduce_all, dims, out_dtype, out);
 #endif
 }
 
@@ -166,10 +165,10 @@ void MeanRawKernel(const Context& dev_ctx,
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   auto out_dtype = x.dtype();
 #ifdef PADDLE_WITH_XPU_KP
-  phi::Reduce<T, kps::AddFunctor, kps::IdentityFunctor, true>(
+  Reduce<T, kps::AddFunctor, kps::IdentityFunctor, true>(
       dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
 #else
-  phi::Reduce<T, kps::MeanOps>(
+  Reduce<T, kps::MeanOps>(
       dev_ctx, x, reduce_all, dims.GetData(), out_dtype, out);
 #endif
 }
@@ -184,10 +183,10 @@ void MinRawKernel(const Context& dev_ctx,
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   auto out_dtype = x.dtype();
 #ifdef PADDLE_WITH_XPU_KP
-  phi::Reduce<T, kps::MinFunctor, kps::IdentityFunctor>(
+  Reduce<T, kps::MinFunctor, kps::IdentityFunctor>(
       dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
 #else
-  phi::Reduce<T, kps::MinOps>(
+  Reduce<T, kps::MinOps>(
       dev_ctx, x, reduce_all, dims.GetData(), out_dtype, out);
 #endif
 }
@@ -265,10 +264,41 @@ void SumRawKernel(const Context& dev_ctx,
 
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
 #ifdef PADDLE_WITH_XPU_KP
-  phi::Reduce<T, kps::AddFunctor, kps::IdentityFunctor>(
+  Reduce<T, kps::AddFunctor, kps::IdentityFunctor>(
       dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
 #else
-  phi::Reduce<T, kps::SumOps>(
+  Reduce<T, kps::SumOps>(
+      dev_ctx, x, reduce_all, dims.GetData(), out_dtype, out);
+#endif
+}
+
+template <typename T, typename Context>
+void NansumKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  const IntArray& dims,
+                  DataType out_dtype,
+                  bool keep_dim,
+                  DenseTensor* out) {
+  if (out_dtype == DataType::UNDEFINED && out->dtype() != x.dtype()) {
+    out_dtype = out->dtype();
+  }
+
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    if (out_dtype == DataType::INT64) {
+      Full<int64_t, Context>(dev_ctx, out->dims(), 0, out);
+    } else {
+      Full<T, Context>(dev_ctx, out->dims(), 0, out);
+    }
+    return;
+  }
+
+  bool reduce_all = recompute_reduce_all(x, dims);
+#ifdef PADDLE_WITH_XPU_KP
+  Reduce<T, kps::AddFunctor, kps::NanToZeroFunctor>(
+      dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
+#else
+  Reduce<T, kps::NansumOps>(
       dev_ctx, x, reduce_all, dims.GetData(), out_dtype, out);
 #endif
 }
@@ -294,6 +324,10 @@ PD_REGISTER_KERNEL(mean_raw, KPS, ALL_LAYOUT, phi::MeanRawKernel, float) {}
 PD_REGISTER_KERNEL(min_raw, KPS, ALL_LAYOUT, phi::MinRawKernel, float) {}
 
 PD_REGISTER_KERNEL(sum_raw, KPS, ALL_LAYOUT, phi::SumRawKernel, float) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}
+
+PD_REGISTER_KERNEL(nansum, KPS, ALL_LAYOUT, phi::NansumKernel, float) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
 #else
@@ -391,6 +425,25 @@ PD_REGISTER_KERNEL(sum_raw,
                    KPS,
                    ALL_LAYOUT,
                    phi::SumRawKernel,
+                   bool,
+                   float,
+                   double,
+                   float16,
+                   bfloat16,
+                   int8_t,
+                   uint8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   complex64,
+                   complex128) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}
+
+PD_REGISTER_KERNEL(nansum,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::NansumKernel,
                    bool,
                    float,
                    double,

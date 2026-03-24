@@ -30,7 +30,7 @@ struct OpaqueTypeRadix {
 };
 
 template <typename key_t, int kValueSize>
-void RadixSortPairsImpl(const phi::GPUContext& dev_ctx,
+void RadixSortPairsImpl(const GPUContext& dev_ctx,
                         const key_t* keys_in,
                         key_t* keys_out,
                         const OpaqueTypeRadix<kValueSize>* values_in,
@@ -41,7 +41,7 @@ void RadixSortPairsImpl(const phi::GPUContext& dev_ctx,
                         int64_t end_bit = sizeof(key_t) * 8);
 
 template <typename key_t, typename value_t>
-void RadixSortPairs(const phi::GPUContext& dev_ctx,
+void RadixSortPairs(const GPUContext& dev_ctx,
                     const key_t* keys_in,
                     key_t* keys_out,
                     const value_t* values_in,
