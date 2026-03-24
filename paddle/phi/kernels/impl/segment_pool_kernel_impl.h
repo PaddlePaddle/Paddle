@@ -19,6 +19,7 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/segment_pooling.h"
+#include <limits>
 
 namespace phi {
 
@@ -94,9 +95,9 @@ void SegmentKernelLaunchHelper(const Context& dev_ctx,
 
     T init_value = static_cast<T>(0);
     if (pooltype == "MAX") {
-      init_value = static_cast<T>(-FLT_MAX);
+      init_value = std::numeric_limits<T>::lowest();
     } else if (pooltype == "MIN") {
-      init_value = static_cast<T>(FLT_MAX);
+      init_value = std::numeric_limits<T>::max();
     }
     funcs::SetConstant<Context, T> setconst;
     setconst(dev_ctx, out, static_cast<T>(init_value));

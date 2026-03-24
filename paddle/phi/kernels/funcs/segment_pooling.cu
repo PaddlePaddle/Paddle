@@ -102,7 +102,8 @@ __global__ void SegmentMeanKernel(const Index* segment_ids,
         for (Index interval_id = last_segment_id + 1;
              interval_id < current_segment_id;
              ++interval_id) {
-          *(output + interval_id * inner_dim_size + segment_offset) = T(0);
+          *(output + interval_id * inner_dim_size + segment_offset) =
+              pool.initial();
         }
 
         if (j > 0) {
@@ -158,7 +159,8 @@ __global__ void __launch_bounds__(1024, 1) SegmentOpsKernel(
         for (Index interval_id = last_segment_id + 1;
              interval_id < current_segment_id;
              ++interval_id) {
-          *(output + interval_id * inner_dim_size + segment_offset) = T(0);
+          *(output + interval_id * inner_dim_size + segment_offset) =
+              pool.initial();
         }
         // don't update result when j=0
         if (j > 0) {
@@ -243,25 +245,30 @@ class ArrangeHelper {
   const T input_total_size;
   const T input_length_size;
   const T output_length_size;
-  T inner_dim_size;
-  T total_stripe_count;
+  int64_t inner_dim_size;
+  int64_t total_stripe_count;
   const T DimTileSize = 8;
 
   ArrangeHelper(T a, T b, T c)
       : input_total_size(a), input_length_size(b), output_length_size(c) {
     T input_outer_dim_num_stripe =
         (input_length_size + DimTileSize - 1) / DimTileSize;
-    inner_dim_size = input_total_size / input_length_size;
-    total_stripe_count = inner_dim_size * input_outer_dim_num_stripe;
+    inner_dim_size = static_cast<int64_t>(input_total_size) /
+                     static_cast<int64_t>(input_length_size);
+    total_stripe_count =
+        inner_dim_size * static_cast<int64_t>(input_outer_dim_num_stripe);
   }
 
   DEVICE inline void calculate(T stripe_index,
                                T* segment_offset,
                                T* dim_index_base,
                                T* actual_height) {
-    *segment_offset = stripe_index % inner_dim_size;
-    *dim_index_base = stripe_index / inner_dim_size * DimTileSize;
-    *actual_height = min(DimTileSize, input_length_size - *dim_index_base);
+    *segment_offset = static_cast<T>(stripe_index % inner_dim_size);
+    *dim_index_base = static_cast<T>(static_cast<int64_t>(stripe_index) /
+                                     inner_dim_size * DimTileSize);
+    *actual_height = min(static_cast<int64_t>(DimTileSize),
+                         static_cast<int64_t>(input_length_size) -
+                             static_cast<int64_t>(*dim_index_base));
   }
 };
 
