@@ -788,6 +788,22 @@ TEST(StorageTest, CopiedTensorWrappersShareStorageImpl) {
       << "Copied TensorBase wrappers must observe shared storage mutations";
 }
 
+TEST(StorageTest, AliasWrapperDoesNotIncreaseTensorOwnedStorageCount) {
+  at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
+
+  const c10::Storage& single_wrapper_storage = tensor.storage();
+  size_t single_wrapper_count = single_wrapper_storage.use_count();
+  ASSERT_GE(single_wrapper_count, 1UL);
+
+  at::TensorBase alias = tensor;
+  const c10::Storage& alias_storage = alias.storage();
+
+  ASSERT_EQ(single_wrapper_storage.get_impl(), alias_storage.get_impl());
+  ASSERT_EQ(single_wrapper_storage.use_count(), single_wrapper_count)
+      << "A copied TensorBase wrapper sharing the same tensor impl must not "
+         "add an extra tensor-owned Storage reference";
+}
+
 TEST(StorageTest, ViewTensorWrappersShareStorageImpl) {
   at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
   at::TensorBase alias = tensor.view({3, 2});

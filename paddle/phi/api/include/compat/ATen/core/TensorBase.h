@@ -371,7 +371,7 @@ class PADDLE_API TensorBase {
 
   void reset() {
     tensor_.reset();
-    storage_ = c10::Storage();
+    storage_.reset();
   }
 
   int64_t storage_offset() const {
@@ -394,13 +394,14 @@ class PADDLE_API TensorBase {
 
   bool has_storage() const {
     SyncStorageFromTensor();
-    return tensor_.defined() && storage_.valid();
+    return tensor_.defined() && storage_ && storage_->valid();
   }
 
   // Returns a Storage handle backed by the shared StorageImpl for this tensor.
   const c10::Storage& storage() const {
     SyncStorageFromTensor();
-    return storage_;
+    static const c10::Storage kEmptyStorage;
+    return storage_ ? *storage_ : kEmptyStorage;
   }
 
   bool is_alias_of(const at::TensorBase& other) const {
@@ -413,13 +414,13 @@ class PADDLE_API TensorBase {
   void SyncStorageFromTensor() const {
     auto dense = std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl());
     if (!dense) {
-      storage_ = c10::Storage();
+      storage_.reset();
       return;
     }
 
     auto holder = dense->Holder();
     if (!holder) {
-      storage_ = c10::Storage();
+      storage_.reset();
       return;
     }
 
@@ -429,8 +430,8 @@ class PADDLE_API TensorBase {
       dense->ResetHolder(compat_holder);
     }
 
-    if (storage_.get_impl() != live_storage.get_impl()) {
-      storage_ = std::move(live_storage);
+    if (!storage_ || storage_->get_impl() != live_storage.get_impl()) {
+      storage_ = std::make_shared<c10::Storage>(std::move(live_storage));
     }
   }
 
@@ -527,7 +528,10 @@ class PADDLE_API TensorBase {
 
  protected:
   PaddleTensor tensor_;
-  mutable c10::Storage storage_;
+  // Keep one canonical Storage owner per shared TensorBase wrapper family.
+  // Wrappers copy this shared_ptr, so wrapper count does not inflate
+  // Storage::use_count().
+  mutable std::shared_ptr<c10::Storage> storage_;
 };
 
 }  // namespace at
