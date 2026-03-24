@@ -59,6 +59,33 @@ class TestGenerateProposalsZeroSize(unittest.TestCase):
             rois_num.numpy(), np.array([0, 0], dtype=np.int32)
         )
 
+    def test_empty_scores_rois_num_is_scalar_int64_zero(self):
+        """Exact case from the precision-alignment report:
+        scores shape [1, 0, 10, 14] triggers empty_scores path.
+        rois_num must be scalar (shape []) with dtype int64 and value 0
+        to match PyTorch behavior.
+        """
+        rois, probs, rois_num = paddle.vision.ops.generate_proposals(
+            make_tensor([1, 0, 10, 14], "float32", self.place),
+            make_tensor([1, 12, 10, 14], "float32", self.place),
+            make_tensor([1, 2], "float32", self.place),
+            make_tensor([420, 4], "float32", self.place),
+            make_tensor([420, 4], "float32", self.place),
+            pre_nms_top_n=2000,
+            post_nms_top_n=2000,
+            nms_thresh=0.7,
+            min_size=0.0,
+            eta=1.0,
+            return_rois_num=True,
+        )
+        # rpn_rois and rpn_roi_probs must still be properly shaped empty tensors
+        self.assertEqual(list(rois.shape), [0, 4])
+        self.assertEqual(list(probs.shape), [0, 1])
+        # rois_num: scalar (0-d), dtype int64, value 0
+        self.assertEqual(list(rois_num.shape), [])
+        self.assertEqual(rois_num.dtype, paddle.int64)
+        self.assertEqual(int(rois_num), 0)
+
     def test_keep_num_zero_does_not_fabricate_dummy_boxes(self):
         rois, probs, rois_num = paddle.vision.ops.generate_proposals(
             make_tensor([1, 3, 4, 4], "float32", self.place),

@@ -505,7 +505,31 @@ void GenerateProposalsKernel(const Context &dev_ctx,
                                   im_shape.dims()[0] < num ||
                                   im_shape.dims()[1] < 2;
 
-  if (empty_scores || empty_bbox_deltas || empty_batch || empty_im_shape ||
+  // When scores is zero-size, restore the historical scalar-int64 rois_num
+  // behavior so that the return value matches PyTorch:
+  //   rpn_rois      shape {0, 4}  dtype T
+  //   rpn_roi_probs shape {0, 1}  dtype T
+  //   rois_num      shape {}      dtype int64  value 0
+  // This is kept separate from the shared helper below so the crash-fix
+  // for other empty conditions (bbox_deltas, batch, im_shape) is preserved
+  // with its {batch_size} / int32 rois_num contract.
+  if (empty_scores) {
+    rpn_rois->Resize({0, 4});
+    dev_ctx.template Alloc<T>(rpn_rois);
+    rpn_roi_probs->Resize({0, 1});
+    dev_ctx.template Alloc<T>(rpn_roi_probs);
+    if (rpn_rois_num != nullptr) {
+      // Scalar zero with dtype int64 to match PyTorch / historical behavior.
+      rpn_rois_num->Resize({});
+      Full<int64_t, Context>(dev_ctx, rpn_rois_num->dims(), 0, rpn_rois_num);
+    }
+    return;
+  }
+
+  // For the remaining empty-input conditions use the shared helper that sets
+  // rois_num to shape {batch_size} / int32 (crash-fix from prior zero-size
+  // fix; must not regress).
+  if (empty_bbox_deltas || empty_batch || empty_im_shape ||
       malformed_im_shape) {
     SetEmptyGenerateProposalsOutputs<T, Context>(
         dev_ctx, num, rpn_rois, rpn_roi_probs, rpn_rois_num);
