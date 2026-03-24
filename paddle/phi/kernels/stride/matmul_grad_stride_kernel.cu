@@ -32,9 +32,13 @@ COMMON_DECLARE_bool(use_legacy_gemm);
 
 namespace phi {
 
-inline bool UseCanonicalizedTransposeGradPath() {
-#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
-  return !FLAGS_use_legacy_gemm;
+constexpr int kAmpereMinComputeCapability = 80;
+
+template <typename Context>
+inline bool UseCanonicalizedTransposeGradPath(const Context& dev_ctx) {
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+  return !FLAGS_use_legacy_gemm &&
+         dev_ctx.GetComputeCapability() >= kAmpereMinComputeCapability;
 #else
   return false;
 #endif
@@ -161,7 +165,7 @@ void MatmulGradStrideKernel(const Context& dev_ctx,
   DenseTensor y_ = y;
   DenseTensor out_grad_ = out_grad;
 
-  if (!UseCanonicalizedTransposeGradPath()) {
+  if (!UseCanonicalizedTransposeGradPath(dev_ctx)) {
     if (!x_.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x_);
     }
