@@ -258,6 +258,11 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
 #ifdef CINN_WITH_SYCL
         shared_mem_bytes = Expr(0);
 #endif
+      },
+      [&](common::CustomDeviceArch) {
+#ifdef CINN_WITH_CUSTOM_DEVICE
+        shared_mem_bytes = CalculateSharedMemory(func);
+#endif
       });
 
   VLOG(6) << "Add a call node for func_node->name " << func_node->name << "\n"
@@ -283,6 +288,9 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
       },
       [&](common::HygonDCUArchSYCL) {
         call_kernel = runtime::intrinsic::call_sycl_kernel;
+      },
+      [&](common::CustomDeviceArch) {
+        call_kernel = runtime::intrinsic::call_custom_device_kernel;
       });
   // TODO(Dmovic): use new ir when backend update done.
   // Author(liujinnan): Copy args instead of use func args directly in host

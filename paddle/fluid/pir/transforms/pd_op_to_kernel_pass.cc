@@ -357,7 +357,7 @@ static bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
     if (shape[1] == 3) {
       use_cudnn = false;
     }
-#if defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_CUSTOM_DEVICE)
     use_cudnn = false;
 #endif
     return !use_cudnn;
