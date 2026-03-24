@@ -165,8 +165,13 @@ struct AbsGradFunctor<phi::complex64> {
     if (x_[idx] == phi::complex64(0)) {
       output_[idx] = phi::complex64(0);
     } else {
-      output_[idx] =
-          phi::complex64(dout_[idx]) * (x_[idx] / phi::complex64(abs(x_[idx])));
+      // Compute real and imaginary gradient components via separate real
+      // divisions to match PyTorch precision. Using complex division
+      // (x / complex(abs)) can introduce sub-ULP rounding differences on GPU.
+      float abs_val = abs(x_[idx]);
+      float grad_real = dout_[idx] * x_[idx].real / abs_val;
+      float grad_imag = dout_[idx] * x_[idx].imag / abs_val;
+      output_[idx] = phi::complex64(grad_real, grad_imag);
     }
   }
 
@@ -188,8 +193,13 @@ struct AbsGradFunctor<phi::complex128> {
     if (x_[idx] == phi::complex128(0)) {
       output_[idx] = phi::complex128(0);
     } else {
-      output_[idx] = phi::complex128(dout_[idx]) *
-                     (x_[idx] / phi::complex128(abs(x_[idx])));
+      // Compute real and imaginary gradient components via separate real
+      // divisions to match PyTorch precision. Using complex division
+      // (x / complex(abs)) can introduce sub-ULP rounding differences on GPU.
+      double abs_val = abs(x_[idx]);
+      double grad_real = dout_[idx] * x_[idx].real / abs_val;
+      double grad_imag = dout_[idx] * x_[idx].imag / abs_val;
+      output_[idx] = phi::complex128(grad_real, grad_imag);
     }
   }
 

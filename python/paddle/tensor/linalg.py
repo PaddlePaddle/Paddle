@@ -31,6 +31,7 @@ from paddle._C_ops import (  # noqa: F401
     matmul,
     mv,
 )
+from paddle.autograd import PyLayer
 from paddle.common_ops_import import VarDesc
 from paddle.tensor.math import broadcast_shape
 from paddle.utils.decorator_utils import (
@@ -394,6 +395,41 @@ def fp8_fp8_half_gemm_fused(
             return out
 
 
+class _ComplexAbsAligned(PyLayer):
+    """
+    Custom autograd for complex abs that matches PyTorch's backward precision.
+
+    The standard paddle.abs(complex_tensor) backward uses a fused C++ kernel
+    that computes z/|z| (complex sgn) with slightly different floating-point
+    rounding than PyTorch's kernel on GPU (up to 1 ULP for float64).
+
+    This implementation uses paddle.abs for the forward (which is bit-exact
+    with PyTorch), then decomposes the backward into separate real-valued
+    divisions (re/|z|, im/|z|) which match PyTorch exactly.
+    """
+
+    @staticmethod
+    def forward(ctx, x):
+        abs_x = paddle.abs(x)
+        ctx.save_for_backward(x, abs_x)
+        return abs_x
+
+    @staticmethod
+    def backward(ctx, grad_out):
+        x, abs_x = ctx.saved_tensor()
+        re = paddle.real(x)
+        im = paddle.imag(x)
+        safe_abs = paddle.where(abs_x == 0, paddle.ones_like(abs_x), abs_x)
+        # Compute sgn components first (re/|z|, im/|z|), then multiply
+        # by grad. This matches PyTorch's operation order: grad * (z/|z|)
+        # rather than (grad * z) / |z|, avoiding FP rounding differences.
+        sgn_re = re / safe_abs
+        sgn_im = im / safe_abs
+        grad_re = grad_out * sgn_re
+        grad_im = grad_out * sgn_im
+        return paddle.as_complex(paddle.stack([grad_re, grad_im], axis=-1))
+
+
 def _multi_axis_p_norm(x, porder, axis, keepdim):
     """
     Compute p-norm over multiple axes by transposing the target axes to be
@@ -713,7 +749,10 @@ def vector_norm(
         axis = axis[0]
 
     if paddle.is_complex(x):
-        abs_x = paddle.abs(x)
+        if in_dynamic_or_pir_mode():
+            abs_x = _ComplexAbsAligned.apply(x)
+        else:
+            abs_x = paddle.abs(x)
     else:
         abs_x = x
 
