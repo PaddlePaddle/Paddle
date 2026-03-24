@@ -71,6 +71,42 @@ class TestVariableLengthMemoryEfficientAttentionZeroSize(unittest.TestCase):
             out.numpy(), np.zeros([1, 1, 31, 64], dtype=np.float16)
         )
 
+    def test_empty_kv_storage_with_positive_kv_seq_lens_returns_zero_output(
+        self,
+    ):
+        query = paddle.to_tensor(
+            np.arange(1 * 1 * 31 * 64, dtype=np.float16).reshape(
+                [1, 1, 31, 64]
+            ),
+            place=self.place,
+        )
+        key = paddle.to_tensor(
+            np.zeros([1, 1, 0, 64], dtype=np.float16), place=self.place
+        )
+        value = paddle.to_tensor(
+            np.zeros([1, 1, 0, 64], dtype=np.float16), place=self.place
+        )
+        mask = paddle.to_tensor(
+            np.zeros([1, 1, 31, 0], dtype=np.float16), place=self.place
+        )
+        seq_lens = paddle.to_tensor([1], dtype="int32", place=self.place)
+        kv_seq_lens = paddle.to_tensor([1], dtype="int32", place=self.place)
+
+        out = variable_length_memory_efficient_attention(
+            query,
+            key,
+            value,
+            seq_lens,
+            kv_seq_lens,
+            mask=mask,
+            scale=0.125,
+        )
+
+        self.assertEqual(list(out.shape), [1, 1, 31, 64])
+        np.testing.assert_array_equal(
+            out.numpy(), np.zeros([1, 1, 31, 64], dtype=np.float16)
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

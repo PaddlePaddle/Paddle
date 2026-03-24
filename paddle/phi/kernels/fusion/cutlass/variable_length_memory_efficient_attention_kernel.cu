@@ -41,6 +41,11 @@ void MultiHeadAttentionVariableForwardKernel(const Context& dev_ctx,
     Full<T, Context>(dev_ctx, output->dims(), 0, output);
     return;
   }
+  if (key.dims()[2] == 0 || value.dims()[2] == 0) {
+    // Grouped FMHA does not safely handle structurally empty K/V storage.
+    Full<T, Context>(dev_ctx, output->dims(), 0, output);
+    return;
+  }
 
   std::vector<int> seq_lens_host(seq_lens.numel());
   std::vector<int> kv_seq_lens_host(kv_seq_lens.numel());
