@@ -224,7 +224,7 @@ inline AdvancedIndex<T, Context>::AdvancedIndex(
   std::vector<DenseTensor*> indices_int64;
   for (auto& indice : indices) {
     if (indice && indice->dtype() == paddle::DataType::INT32) {
-      *indice = phi::Cast<int, Context>(dev_ctx, *indice, phi::DataType::INT64);
+      *indice = Cast<int, Context>(dev_ctx, *indice, phi::DataType::INT64);
     }
     indices_int64.push_back(indice);
   }

@@ -31,15 +31,13 @@ jobs:
           git config --global core.longpaths true
 
       - name: Clone paddle
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.base.ref }}
           fetch-depth: 1000
 
       - name: Merge pr
         run: |
-          git config --unset http.https://github.com/.extraheader
-          REM git submodule foreach --recursive sh -c "git config --local --unset-all 'http.https://github.com/.extraheader'"
           REM git submodule foreach --recursive sh -c "git config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'"
           git switch %BRANCH%
           git branch -D test

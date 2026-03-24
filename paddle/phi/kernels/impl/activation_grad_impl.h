@@ -68,18 +68,7 @@ void ActivationGradImpl(const Context& dev_ctx,
   auto x = EigenVector<T>::Flatten(
       GET_DATA_SAFELY(X, "Input", "X", "ActivationGrad"));
   auto* place = dev_ctx.eigen_device();
-  // use 32bit index to speed up computation
-  bool use_32bit_index = out.size() < Eigen::NumTraits<int>::highest();
-  bool is_gpu_place = dev_ctx.GetPlace().GetType() == AllocationType::GPU;
-  if (use_32bit_index && is_gpu_place) {
-    functor(*place,
-            To32BitIndex(x),
-            To32BitIndex(out),
-            To32BitIndex(dout),
-            To32BitIndex(dx));
-  } else {
-    functor(*place, x, out, dout, dx);
-  }
+  functor(*place, x, out, dout, dx);
 }
 
 template <typename T, typename Context, typename Functor>

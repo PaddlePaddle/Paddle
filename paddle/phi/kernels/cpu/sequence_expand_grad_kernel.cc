@@ -33,8 +33,8 @@ template <typename T>
 struct SequenceExpandGradFunctor<CPUContext, T> {
   void operator()(const CPUContext& dev_ctx,
                   const DenseTensor& dout,
-                  const phi::Vector<size_t>& x_lod,   /*expand source lod*/
-                  const phi::Vector<size_t>& ref_lod, /*expand referenced lod*/
+                  const Vector<size_t>& x_lod,   /*expand source lod*/
+                  const Vector<size_t>& ref_lod, /*expand referenced lod*/
                   DenseTensor* dx) {
     int dout_offset = 0;
     for (size_t i = 1; i < ref_lod.size(); ++i) {

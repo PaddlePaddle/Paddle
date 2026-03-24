@@ -40,7 +40,7 @@ void Expand(const Context& dev_ctx,
                         expand_times.size(),
                         static_cast<size_t>(in_dims.size())));
   auto* out0 = out;
-  Eigen::DSizes<Eigen::DenseIndex, Rank> bcast_dims;
+  Eigen::DSizes<int64_t, Rank> bcast_dims;
   for (size_t i = 0; i < expand_times.size(); ++i) {
     bcast_dims[i] = expand_times[i];
   }
@@ -55,15 +55,8 @@ void Expand(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out0);
   auto y = EigenTensor<T, Rank>::From(*out0);
   auto& place = *dev_ctx.eigen_device();
-  // use 32-bit index to speed up
-  bool use_32bit_index = y.size() < Eigen::NumTraits<int>::highest();
-  if (use_32bit_index) {
-    funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
-        place, To32BitIndex(y), To32BitIndex(x), bcast_dims);
-  } else {
-    funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
-        place, y, x, bcast_dims);
-  }
+  funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
+      place, y, x, bcast_dims);
 }
 
 template <typename T, typename Context>
@@ -141,11 +134,11 @@ void ExpandBackward(const Context& dev_ctx,
   auto* out0 = in_grad;
   dev_ctx.template Alloc<T>(out0);
   auto x_grad = EigenVector<T>::Flatten(*out0);
-  Eigen::DSizes<Eigen::DenseIndex, Dims * 2> reshape_dims;
+  Eigen::DSizes<int64_t, Dims * 2> reshape_dims;
   for (size_t i = 0; i < reshape_size; ++i) {
     reshape_dims[i] = reshape_dims_vec[i];
   }
-  Eigen::DSizes<Eigen::DenseIndex, Dims> reduce_dims;
+  Eigen::DSizes<int64_t, Dims> reduce_dims;
   for (size_t i = 0; i < reduce_size; ++i) {
     reduce_dims[i] = reduce_dims_vec[i];
   }

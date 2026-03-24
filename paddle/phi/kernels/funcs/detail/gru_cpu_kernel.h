@@ -24,10 +24,8 @@ namespace phi {
 namespace funcs {
 namespace detail {
 using Array1 = Eigen::DSizes<int64_t, 1>;
-template <typename T,
-          int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = EigenVector<T, MajorType, IndexType>;
+template <typename T, int MajorType = Eigen::RowMajor>
+using EigenVector = EigenVector<T, MajorType>;
 
 #if !defined(__NVCC__) && !defined(__HIPCC___)  // @{ Group for GRU CPU
 template <class OpResetOutput, typename T>
