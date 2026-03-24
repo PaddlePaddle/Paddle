@@ -98,11 +98,10 @@ void ScanKernel(const Context& dev_ctx,
   auto out0 = EigenVector<T>::Flatten(*out);
   auto& place = *dev_ctx.eigen_device();
 
-  using IndexT = Eigen::DenseIndex;
   if (pre == 1) {
     if (post == 1) {
       ComputeImp(place,
-                 Eigen::DSizes<IndexT, 1>(mid),
+                 Eigen::DSizes<int64_t, 1>(mid),
                  x0,
                  out0,
                  /* axis= */ 0,
@@ -111,7 +110,7 @@ void ScanKernel(const Context& dev_ctx,
                  reducer);
     } else {
       ComputeImp(place,
-                 Eigen::DSizes<IndexT, 2>(mid, post),
+                 Eigen::DSizes<int64_t, 2>(mid, post),
                  x0,
                  out0,
                  /* axis= */ 0,
@@ -122,7 +121,7 @@ void ScanKernel(const Context& dev_ctx,
   } else {
     if (post == 1) {
       ComputeImp(place,
-                 Eigen::DSizes<IndexT, 2>(pre, mid),
+                 Eigen::DSizes<int64_t, 2>(pre, mid),
                  x0,
                  out0,
                  /* axis= */ 1,
@@ -131,7 +130,7 @@ void ScanKernel(const Context& dev_ctx,
                  reducer);
     } else {
       ComputeImp(place,
-                 Eigen::DSizes<IndexT, 3>(pre, mid, post),
+                 Eigen::DSizes<int64_t, 3>(pre, mid, post),
                  x0,
                  out0,
                  /* axis= */ 1,

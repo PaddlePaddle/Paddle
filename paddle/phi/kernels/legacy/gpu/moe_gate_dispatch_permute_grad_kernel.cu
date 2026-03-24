@@ -119,11 +119,9 @@ void MoeGateDispatchGradKernel(
   auto scatter_index_dims = scatter_index.dims();
 
   DenseTensor t_scatter_index;
-  phi::Transpose<int, Context>(
-      dev_ctx, scatter_index, {1, 0}, &t_scatter_index);
+  Transpose<int, Context>(dev_ctx, scatter_index, {1, 0}, &t_scatter_index);
   DenseTensor t_scatter_index_;
-  phi::ContiguousKernel<int, Context>(
-      dev_ctx, t_scatter_index, &t_scatter_index_);
+  ContiguousKernel<int, Context>(dev_ctx, t_scatter_index, &t_scatter_index_);
 
   dev_ctx.template Alloc<T>(x_grad);
   dev_ctx.template Alloc<float>(gate_logits_grad);

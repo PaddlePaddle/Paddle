@@ -110,6 +110,8 @@ const Target& DefaultHygonDcuSyclTarget();
 
 const Target& DefaultDeviceTarget();
 
+const Target& DefaultCustomDeviceTarget();
+
 const Target& DefaultTarget();
 
 int GetMaxThreads();

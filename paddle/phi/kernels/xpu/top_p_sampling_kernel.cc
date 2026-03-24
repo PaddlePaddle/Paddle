@@ -84,7 +84,7 @@ void TopPSamplingKernel(const Context& dev_ctx,
   }
   std::vector<int64_t> infer_seed(bs, random_seed);
   if (topp_seed.get_ptr() != nullptr) {
-    phi::TensorToVector(*topp_seed, dev_ctx, &infer_seed);
+    TensorToVector(*topp_seed, dev_ctx, &infer_seed);
   }
 
   std::uniform_real_distribution<float> dist(0.0, 1.0);

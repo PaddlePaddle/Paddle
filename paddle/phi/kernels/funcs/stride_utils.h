@@ -646,14 +646,14 @@ transposeToFrontAndInvPerm(const GPUContext& dev_ctx,
   }
 
   DenseTensor transposed_self;
-  phi::TransposeKernel<T, GPUContext>(dev_ctx, self, dims, &transposed_self);
+  TransposeKernel<T, GPUContext>(dev_ctx, self, dims, &transposed_self);
 
   return std::make_tuple(transposed_self, transposed_indices, inv_perm);
 }
 
 static inline std::vector<int64_t> computeLinearStride(
     const DenseTensor& tensor) {
-  auto sizes = phi::vectorize<int64_t>(tensor.dims());
+  auto sizes = vectorize<int64_t>(tensor.dims());
   std::vector<int64_t> stride(sizes.size());
   if (stride.empty()) {
     return stride;
@@ -744,7 +744,7 @@ makeLinearIndex(const GPUContext& dev_ctx,
   auto indices = expandTensors(dev_ctx, orig);
   for (auto& idx : indices) {
     if (idx.initialized() && idx.dtype() == phi::DataType::INT32) {
-      idx = phi::Cast<int32_t, GPUContext>(dev_ctx, idx, phi::DataType::INT64);
+      idx = Cast<int32_t, GPUContext>(dev_ctx, idx, phi::DataType::INT64);
     }
   }
   indices = expand_outplace(dev_ctx, std::move(indices));

@@ -22,8 +22,6 @@
 
 namespace phi {
 
-// Note: We should re-design this kernel's args when we abandon fluid op
-// definition
 template <typename T, typename Context>
 void DeQuantizeLinearKernel(const Context& dev_ctx,
                             const DenseTensor& x,
@@ -230,8 +228,6 @@ void QuantizeLinearInferKernel(const Context& dev_ctx,
   }
 }
 
-// Note: We should re-design this kernel's args when we abandon fluid op
-// definition
 template <typename T, typename Context>
 void QuantizeLinearKernel(const Context& dev_ctx,
                           const DenseTensor& x,
