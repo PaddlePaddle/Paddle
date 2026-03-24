@@ -154,6 +154,10 @@ struct EmbeddingWithScaledGradientGradCUDAFunctor {
           cudaMemsetAsync(d_table, 0, N * D * sizeof(T), dev_ctx_.stream()));
 #endif
 
+      // When input has 0 elements, d_table is already correctly zeroed.
+      // Skip all kernel launches to avoid CUDA error(9) from GET_BLOCKS(0)==0.
+      if (K == 0) return;
+
       if (FLAGS_embedding_deterministic == 1) {
         funcs::LaunchEmbeddingGradDeterministicKernel<T, IdT>(
             dev_ctx_, ids, d_output, d_table, N, D, K);
