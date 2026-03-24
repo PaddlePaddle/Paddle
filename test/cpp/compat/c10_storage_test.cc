@@ -113,6 +113,53 @@ TEST(StorageTest, StorageUseCountIncludesTensorRef) {
       << "unique() must be false because tensor also holds a reference";
 }
 
+// Regression test (RT-3): additional TensorBase wrappers that reference the
+// same underlying TensorImpl must not increase Storage owner count.
+TEST(StorageTest, StorageUseCountInvariantAcrossIndependentWrappers) {
+  at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
+  size_t baseline_count = 0;
+  {
+    c10::Storage baseline = tensor.storage();
+    baseline_count = baseline.use_count();
+  }
+
+  // Build a wrapper from the same Paddle tensor impl through a fresh
+  // TensorBase constructor path (not TensorBase copy ctor).
+  at::TensorBase independent_wrapper(tensor._PD_GetInner());
+  c10::Storage current = tensor.storage();
+
+  ASSERT_EQ(current.use_count(), baseline_count)
+      << "creating an independent wrapper around the same TensorImpl must not "
+         "change storage use_count()";
+}
+
+// Regression test (RT-4): storage pointer mutation through one wrapper must
+// persist for other wrappers that share the same TensorImpl, even after the
+// mutating wrapper and temporary handles are destroyed.
+TEST(StorageTest, StorageMutationPersistsAcrossWrappersAfterDestruction) {
+  at::TensorBase tensor = at::ones({4}, at::kFloat);
+  at::TensorBase peer_wrapper(tensor._PD_GetInner());
+
+  void* new_ptr = nullptr;
+  {
+    at::TensorBase mutating_wrapper(tensor._PD_GetInner());
+    c10::Storage storage = mutating_wrapper.storage();
+
+    RawCompatibleAllocator allocator;
+    c10::DataPtr new_data = allocator.allocate(storage.nbytes());
+    new_ptr = new_data.get();
+    storage.set_data_ptr_noswap(std::move(new_data));
+  }
+
+  ASSERT_EQ(peer_wrapper.data_ptr(), new_ptr)
+      << "peer wrapper must observe updated storage pointer after mutating "
+         "wrapper is destroyed";
+
+  c10::Storage peer_storage = peer_wrapper.storage();
+  ASSERT_EQ(peer_storage.data(), new_ptr)
+      << "storage() from peer wrapper must keep the updated pointer";
+}
+
 TEST(StorageTest, StorageOffsetAPI) {
   // Test storage_offset() API
   at::TensorBase tensor = at::ones({2, 3}, at::kFloat);

@@ -29,6 +29,8 @@
 #include <algorithm>
 #include <iostream>
 #include <memory>
+#include <mutex>
+#include <unordered_map>
 #include <vector>
 #include "paddle/common/layout.h"
 #include "paddle/phi/api/include/api.h"
@@ -411,6 +413,31 @@ class PADDLE_API TensorBase {
  private:
   void InitStorage() { SyncStorageFromTensor(); }
 
+  static std::shared_ptr<c10::Storage> GetOrCreateCanonicalStorage(
+      c10::Storage&& live_storage) {
+    auto impl = live_storage.get_impl();
+    if (!impl) {
+      return std::make_shared<c10::Storage>(std::move(live_storage));
+    }
+
+    static std::mutex registry_mu;
+    static std::unordered_map<c10::StorageImpl*, std::weak_ptr<c10::Storage>>
+        registry;
+
+    std::lock_guard<std::mutex> guard(registry_mu);
+    auto it = registry.find(impl.get());
+    if (it != registry.end()) {
+      if (auto cached = it->second.lock()) {
+        return cached;
+      }
+      registry.erase(it);
+    }
+
+    auto created = std::make_shared<c10::Storage>(std::move(live_storage));
+    registry.emplace(impl.get(), created);
+    return created;
+  }
+
   void SyncStorageFromTensor() const {
     auto dense = std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl());
     if (!dense) {
@@ -431,7 +458,7 @@ class PADDLE_API TensorBase {
     }
 
     if (!storage_ || storage_->get_impl() != live_storage.get_impl()) {
-      storage_ = std::make_shared<c10::Storage>(std::move(live_storage));
+      storage_ = GetOrCreateCanonicalStorage(std::move(live_storage));
     }
   }
 
@@ -528,9 +555,9 @@ class PADDLE_API TensorBase {
 
  protected:
   PaddleTensor tensor_;
-  // Keep one canonical Storage owner per shared TensorBase wrapper family.
-  // Wrappers copy this shared_ptr, so wrapper count does not inflate
-  // Storage::use_count().
+  // Cache a canonical Storage object shared by wrappers that reference the
+  // same StorageImpl. This prevents independently-constructed wrappers around
+  // one tensor impl from inflating Storage::use_count().
   mutable std::shared_ptr<c10::Storage> storage_;
 };
 
