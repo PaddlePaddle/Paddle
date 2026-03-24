@@ -12,6 +12,9 @@ jobs:
     name: Remove skip-ci labels on new commits
     runs-on: ubuntu-latest
     steps:
+      - name: Setup FastCI
+        uses: jfrog-fastci/fastci@main
+
       - name: Get PR labels
         id: get-labels
         uses: actions/github-script@v8

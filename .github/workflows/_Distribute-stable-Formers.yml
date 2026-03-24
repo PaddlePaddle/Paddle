@@ -45,6 +45,9 @@ jobs:
       group: Distribute
     timeout-minutes: 120
     steps:
+      - name: Setup FastCI
+        uses: jfrog-fastci/fastci@main
+
       - name: Check docker image and run container
         env:
           FLAGS_fraction_of_gpu_memory_to_use: 0.15

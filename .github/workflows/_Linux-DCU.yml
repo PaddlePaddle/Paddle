@@ -48,6 +48,9 @@ jobs:
       group: HK-CPU
     timeout-minutes: 180
     steps:
+      - name: Setup FastCI
+        uses: jfrog-fastci/fastci@main
+
       - name: Check docker image and run container
         env:
           WITH_DOC: "OFF"
@@ -201,6 +204,9 @@ jobs:
     timeout-minutes: 120
 
     steps:
+      - name: Setup FastCI
+        uses: jfrog-fastci/fastci@main
+
       - name: Determine the runner
         run: |
           set -x

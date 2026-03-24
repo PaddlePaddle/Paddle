@@ -24,6 +24,9 @@ jobs:
       )
     runs-on: ubuntu-latest
     steps:
+      - name: Setup FastCI
+        uses: jfrog-fastci/fastci@main
+
       - name: Checkout
         uses: actions/checkout@v6
         with:

@@ -63,6 +63,9 @@ jobs:
     timeout-minutes: 60
 
     steps:
+      - name: Setup FastCI
+        uses: jfrog-fastci/fastci@main
+
       - name: Check environment
         run: |
           set -x

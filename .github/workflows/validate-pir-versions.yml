@@ -9,6 +9,9 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref_type == 'branch' && startsWith(github.ref, 'refs/heads/release/') && github.repository_owner == 'PaddlePaddle'
     steps:
+      - name: Setup FastCI
+        uses: jfrog-fastci/fastci@main
+
       - name: Checkout code
         uses: actions/checkout@v6
 

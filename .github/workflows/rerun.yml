@@ -4,11 +4,21 @@ on:
   issue_comment:
     types: [created]
 
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   re-run:
     if: ${{ github.event.issue.pull_request && contains(github.event.comment.body, '/re-run')  && github.event.comment.user.login == github.event.issue.user.login }}
     runs-on: ubuntu-latest
     steps:
+      - uses: jfrog-fastci/fastci@v0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          create_issues_from_insights: "true"
+          accept_terms: "yes"
+
       - name: Checkout code
         uses: actions/checkout@v6
 

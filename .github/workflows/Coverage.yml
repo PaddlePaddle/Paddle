@@ -65,6 +65,9 @@ jobs:
       can-skip: ${{ needs.check-bypass.outputs.can-skip }}
 
     steps:
+      - name: Setup FastCI
+        uses: jfrog-fastci/fastci@main
+
       - name: Check docker image and run container
         env:
           CACHE_DIR: "/root/.cache/coverage"
@@ -260,6 +263,9 @@ jobs:
       group: BD_BJ-V100
     timeout-minutes: 240
     steps:
+      - name: Setup FastCI
+        uses: jfrog-fastci/fastci@main
+
       - name: Check docker image and run container
         env:
           CACHE_DIR: "/root/.cache/coverage"

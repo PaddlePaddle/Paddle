@@ -23,6 +23,9 @@ jobs:
     outputs:
       can-skip: ${{ steps.check-bypass.outputs.can-skip }}
     steps:
+      - name: Setup FastCI
+        uses: jfrog-fastci/fastci@main
+
       - id: check-bypass
         name: Check Bypass
         uses: PFCCLab/ci-bypass@v2

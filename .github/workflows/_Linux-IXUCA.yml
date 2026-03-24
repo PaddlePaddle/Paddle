@@ -44,6 +44,9 @@ jobs:
       result: ${{ steps.set-result.outputs.result }}
 
     steps:
+      - name: Setup FastCI
+        uses: jfrog-fastci/fastci@main
+
       - name: Check approval
         id: check-approval
         run: |

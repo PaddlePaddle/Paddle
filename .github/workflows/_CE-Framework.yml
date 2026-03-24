@@ -64,6 +64,9 @@ jobs:
     env:
       TASK: paddle-CI-${{ github.event.pull_request.number }}-CE-Framework-whl
     steps:
+      - name: Setup FastCI
+        uses: jfrog-fastci/fastci@main
+
       - name: Check docker image and run container
         env:
           CACHE_DIR: /home/data/cfs/.cache
@@ -131,6 +134,9 @@ jobs:
     env:
       TASK: paddle-CI-${{ github.event.pull_request.number }}-CE-Framework-infer
     steps:
+      - name: Setup FastCI
+        uses: jfrog-fastci/fastci@main
+
       - name: Check docker image and run container
         env:
           CACHE_DIR: /home/data/cfs/.cache
@@ -224,6 +230,9 @@ jobs:
     env:
       TASK: paddle-CI-${{ github.event.pull_request.number }}-CE-Framework-test
     steps:
+      - name: Setup FastCI
+        uses: jfrog-fastci/fastci@main
+
       - name: Check docker image and run container
         env:
           CACHE_DIR: /home/data/cfs/.cache

@@ -58,6 +58,9 @@ jobs:
       labels: [self-hosted, "${{ inputs.run-labels }}"]
     timeout-minutes: 60
     steps:
+      - name: Setup FastCI
+        uses: jfrog-fastci/fastci@main
+
       - name: Determine the runner
         run: |
           docker_image=${{ inputs.docker_build_image }}

@@ -41,6 +41,9 @@ jobs:
     timeout-minutes: 120
 
     steps:
+      - name: Setup FastCI
+        uses: jfrog-fastci/fastci@main
+
       - name: Download paddle.tar.gz and update test branch
         timeout-minutes: 30
         run: |
