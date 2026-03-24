@@ -329,7 +329,7 @@ void GenerateProposalsKernel(const Context& dev_ctx,
     rpn_roi_probs->Resize(make_ddim({0, 1}));
     if (rpn_rois_num != nullptr) {
       rpn_rois_num->Resize(make_ddim({num}));
-      int* num_data = dev_ctx.template Alloc<int>(rpn_rois_num);
+      int64_t* num_data = dev_ctx.template Alloc<int64_t>(rpn_rois_num);
       std::fill_n(num_data, num, 0);
     }
     return;
