@@ -85,7 +85,7 @@ void LayerNormKernel(const Context& dev_ctx,
 
   const auto& onednn_engine = dev_ctx.GetEngine();
 
-  auto src_tz = common::vectorize(x.dims());
+  auto src_tz = vectorize(x.dims());
   PADDLE_ENFORCE_EQ(begin_norm_axis,
                     (src_tz.size() - 1),
                     common::errors::InvalidArgument(

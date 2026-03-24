@@ -46,7 +46,7 @@ DenseTensor GetReshapeAndExpandTensor(const Context& dev_ctx,
                                       const DDim& res_dim,
                                       const DDim& bd_dim,
                                       int index) {
-  std::vector<int64_t> before_dims = common::vectorize(tensor.dims());
+  std::vector<int64_t> before_dims = vectorize(tensor.dims());
   std::vector<int64_t> mid_dims(res_dim.size(), 1);
 
   if (index == 0) {
@@ -64,7 +64,7 @@ DenseTensor GetReshapeAndExpandTensor(const Context& dev_ctx,
   DenseTensor res_tensor(tensor.dtype());
   res_tensor.Resize(res_dim);
   ExpandKernel<T, Context>(
-      dev_ctx, mid_tensor, IntArray(common::vectorize(res_dim)), &res_tensor);
+      dev_ctx, mid_tensor, IntArray(vectorize(res_dim)), &res_tensor);
   return res_tensor;
 }
 
@@ -219,7 +219,7 @@ void DealWithIndices(const Context& dev_ctx,
                      std::vector<int64_t>* res_dim_v) {
   size_t total_dims = x.dims().size();
   if (int_indices_v.size() < total_dims) {
-    std::vector<int64_t> tmp_x_dims = common::vectorize(x.dims());
+    std::vector<int64_t> tmp_x_dims = vectorize(x.dims());
     int len_bd_dim = bd_dim.size();
     res_dim_v->insert(res_dim_v->end(),
                       tmp_x_dims.begin() + int_indices_v.size(),
@@ -258,11 +258,10 @@ void DealWithIndices(const Context& dev_ctx,
       }
       if (bd_dim != int_indices_v[i]->dims()) {
         expand_index = DenseTensor(phi::DataType::INT64).Resize(bd_dim);
-        ExpandKernel<int64_t, Context>(
-            dev_ctx,
-            index_tensor,
-            IntArray(common::vectorize<int64_t>(bd_dim)),
-            &expand_index);
+        ExpandKernel<int64_t, Context>(dev_ctx,
+                                       index_tensor,
+                                       IntArray(vectorize<int64_t>(bd_dim)),
+                                       &expand_index);
       } else {
         expand_index = index_tensor;
       }

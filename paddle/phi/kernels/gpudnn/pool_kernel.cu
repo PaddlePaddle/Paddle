@@ -115,7 +115,7 @@ void PoolRawGPUDNNKernel(const Context& dev_ctx,
     // input
     transformed_input.Resize(input->dims());
 
-    auto in_dims_vec = common::vectorize(input->dims());
+    auto in_dims_vec = vectorize(input->dims());
     in_dims_vec[1] = input->dims()[4];
     in_dims_vec[2] = input->dims()[1];
     in_dims_vec[3] = input->dims()[2];
@@ -129,7 +129,7 @@ void PoolRawGPUDNNKernel(const Context& dev_ctx,
     // output
     transformed_output.Resize(output->dims());
 
-    auto out_dims_vec = common::vectorize(output->dims());
+    auto out_dims_vec = vectorize(output->dims());
     out_dims_vec[1] = output->dims()[4];
     out_dims_vec[2] = output->dims()[1];
     out_dims_vec[3] = output->dims()[2];
@@ -143,7 +143,7 @@ void PoolRawGPUDNNKernel(const Context& dev_ctx,
     std::vector<int> axis{0, 3, 1, 2};
 
     transformed_input.Resize(input->dims());
-    auto in_dims_vec = common::vectorize(input->dims());
+    auto in_dims_vec = vectorize(input->dims());
     in_dims_vec[1] = input->dims()[3];
     in_dims_vec[2] = input->dims()[1];
     in_dims_vec[3] = input->dims()[2];
@@ -154,7 +154,7 @@ void PoolRawGPUDNNKernel(const Context& dev_ctx,
     trans(dev_ctx, *input, &transformed_input, axis);
 
     transformed_output.Resize(output->dims());
-    auto out_dims_vec = common::vectorize(output->dims());
+    auto out_dims_vec = vectorize(output->dims());
     out_dims_vec[1] = output->dims()[3];
     out_dims_vec[2] = output->dims()[1];
     out_dims_vec[3] = output->dims()[2];
@@ -176,14 +176,14 @@ void PoolRawGPUDNNKernel(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_HIP
   miopenTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
-      layout, common::vectorize<int>(transformed_input.dims()));
+      layout, vectorize<int>(transformed_input.dims()));
   miopenTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
-      layout, common::vectorize<int>(transformed_output.dims()));
+      layout, vectorize<int>(transformed_output.dims()));
 #else
   cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
-      layout, common::vectorize<int>(transformed_input.dims()));
+      layout, vectorize<int>(transformed_input.dims()));
   cudnnTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
-      layout, common::vectorize<int>(transformed_output.dims()));
+      layout, vectorize<int>(transformed_output.dims()));
 #endif
   PoolingMode pooling_mode;
   if (pooling_type == "max") {

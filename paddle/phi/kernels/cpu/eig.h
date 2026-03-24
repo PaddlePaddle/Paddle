@@ -171,7 +171,7 @@ void LapackEig(DenseTensor* input,
   DenseTensor rwork;
   phi::dtype::Real<T>* rwork_data = nullptr;
 
-  rwork.Resize(make_ddim({lda * 2}));
+  rwork.Resize({lda * 2});
   rwork_data = dev_ctx.template Alloc<phi::dtype::Real<T>>(&rwork);
 
   // call lapackEig once to compute the size of work;
@@ -194,7 +194,7 @@ void LapackEig(DenseTensor* input,
   lwork = std::max<int>(
       1, static_cast<int>(phi::dtype::Real<T>(computed_work_size)));
   DenseTensor work;
-  work.Resize(make_ddim({lwork}));
+  work.Resize({lwork});
   T* work_data = dev_ctx.template Alloc<T>(&work);
 
   for (auto i = 0; i < batch_count; ++i) {
@@ -273,7 +273,7 @@ void MagmaEig(const Context& dev_ctx,
   DenseTensor rwork;
   phi::dtype::Real<T>* rwork_data = nullptr;
 
-  rwork.Resize(make_ddim({lda * 2}));
+  rwork.Resize({lda * 2});
   auto cpu_place = CPUPlace();
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* cpu_ctx = static_cast<CPUContext*>(pool.Get(cpu_place));
@@ -303,7 +303,7 @@ void MagmaEig(const Context& dev_ctx,
   lwork = std::max<magma_int_t>(
       1, static_cast<magma_int_t>(phi::dtype::Real<T>(computed_work_size)));
   DenseTensor work;
-  work.Resize(make_ddim({lwork}));
+  work.Resize({lwork});
   T* work_data = (*cpu_ctx).template Alloc<T>(&work);
 
   for (auto i = 0; i < batch_count; ++i) {

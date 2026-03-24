@@ -29,7 +29,6 @@ defaults:
 jobs:
   check-bypass-whl:
     name: Check bypass (ce-whl)
-    if: ${{ inputs.can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
       workflow-name: ce-whl
@@ -38,7 +37,6 @@ jobs:
 
   check-bypass-infer:
     name: Check bypass (ce-infer)
-    if: ${{ inputs.can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
       workflow-name: ce-infer
@@ -47,7 +45,6 @@ jobs:
 
   check-bypass-test:
     name: Check bypass (ce-test)
-    if: ${{ inputs.can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
       workflow-name: ce-test

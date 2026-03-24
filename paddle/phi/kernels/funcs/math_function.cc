@@ -233,7 +233,7 @@ void set_constant_with_place<CustomPlace>(const DeviceContext& dev_ctx,
                                     DenseTensor*);
   auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
   (*kernel_fn)(dev_ctx,
-               phi::IntArray(common::vectorize(tensor->dims())),
+               phi::IntArray(vectorize(tensor->dims())),
                phi::Scalar(value),
                tensor->dtype(),
                tensor);

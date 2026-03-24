@@ -44,7 +44,7 @@ void QuantOpKernel(const Context& dev_ctx,
                      "255 and greater or equal to 0, but got %f",
                      quantization_shift));
 
-  auto x_tz = common::vectorize<int64_t>(input.dims());
+  auto x_tz = vectorize<int64_t>(input.dims());
   dnnl::primitive_attr attrs;
   static constexpr int32_t mask = 0;
 

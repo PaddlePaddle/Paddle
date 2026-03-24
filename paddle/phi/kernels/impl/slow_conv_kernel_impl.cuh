@@ -610,7 +610,7 @@ void SlowConvForward(const Context& dev_ctx,
   DDim in_data_dims = slice_ddim(trans_in_dims, 2, trans_in_dims.size());
   DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
 
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
@@ -788,7 +788,7 @@ void SlowConvBackward(const Context& dev_ctx,
   auto filter_dims = filter.dims();
   DDim in_data_dims = slice_ddim(in_dims, 2, in_dims.size());
   DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation<int>(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 

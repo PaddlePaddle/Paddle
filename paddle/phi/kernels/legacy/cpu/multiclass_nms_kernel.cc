@@ -267,7 +267,7 @@ void MulticlassNMSv1Kernel(const Context& dev_ctx,
   auto* scores = &scores_in;
   auto* outs = out;
 
-  auto score_dims = common::vectorize<int>(scores->dims());
+  auto score_dims = vectorize<int>(scores->dims());
   auto score_size = score_dims.size();
 
   std::vector<std::map<int, std::vector<int>>> all_indices;
