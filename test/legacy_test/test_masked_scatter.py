@@ -116,7 +116,10 @@ paddle.device.cuda.synchronize()
         combined = (proc.stdout + proc.stderr).lower()
         self.assertTrue(
             "number of true elements in mask" in combined
-            or "cuda error" in combined,
+            or "cuda error" in combined
+            or "hip error" in combined
+            or "device-side assert" in combined
+            or "abort" in combined,
             f"Expected masked_scatter size-check error, got:\n{combined}",
         )
 

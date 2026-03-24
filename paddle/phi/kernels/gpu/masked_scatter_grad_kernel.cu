@@ -25,6 +25,13 @@
 
 namespace phi {
 
+__global__ void BoolToInt64GradKernel(const bool* in, int64_t* out, int64_t n) {
+  int64_t idx = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (idx < n) {
+    out[idx] = static_cast<int64_t>(in[idx]);
+  }
+}
+
 template <typename T>
 __global__ void MaskedScatterGradXKernel(const T* out_grad_data,
                                          const bool* mask_data,
@@ -94,14 +101,23 @@ void MaskedScatterGradKernel(const Context& dev_ctx,
     Full<T, Context>(
         dev_ctx, value_grad->dims(), static_cast<T>(0), value_grad);
 
-    // Compute prefix sum of mask for scatter index using CUB directly
-    // on bool mask (avoids extra bool->int64 transform kernel)
+    // Compute prefix sum of mask for scatter index.
+    // Convert bool mask to int64 first for hipcub compatibility on DCU/ROCm.
     DenseTensor prefix_sum;
     prefix_sum.Resize(mask_expand.dims());
     dev_ctx.template Alloc<int64_t>(&prefix_sum);
     auto* prefix_sum_data = prefix_sum.data<int64_t>();
 
     {
+      // Cast bool -> int64
+      auto mask_int64_alloc =
+          phi::memory_utils::Alloc(dev_ctx.GetPlace(), total * sizeof(int64_t));
+      int64_t* mask_int64_data = static_cast<int64_t*>(mask_int64_alloc->ptr());
+      int block = 256;
+      int grid = static_cast<int>((total + block - 1) / block);
+      BoolToInt64GradKernel<<<grid, block, 0, stream>>>(
+          mask_data, mask_int64_data, total);
+
       void* temp_storage = nullptr;
       size_t temp_storage_bytes = 0;
       phi::Allocator::AllocationPtr allocation;
@@ -109,7 +125,7 @@ void MaskedScatterGradKernel(const Context& dev_ctx,
         PADDLE_ENFORCE_GPU_SUCCESS(
             cub::DeviceScan::ExclusiveSum(temp_storage,
                                           temp_storage_bytes,
-                                          mask_data,
+                                          mask_int64_data,
                                           prefix_sum_data,
                                           static_cast<int>(total),
                                           stream));

@@ -24,13 +24,29 @@
 
 namespace phi {
 
-// CUB-based mask exclusive sum: directly scans bool input to int64 output
-// in a single pass, matching PyTorch's at::cuda::cub::mask_exclusive_sum.
+__global__ void BoolToInt64Kernel(const bool* in, int64_t* out, int64_t n) {
+  int64_t idx = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (idx < n) {
+    out[idx] = static_cast<int64_t>(in[idx]);
+  }
+}
+
+// Mask exclusive sum: converts bool mask to int64, then runs CUB ExclusiveSum.
+// hipcub on ROCm/DCU does not reliably handle mismatched input (bool*) and
+// output (int64_t*) types in ExclusiveSum, so we cast explicitly.
 static void MaskExclusiveSum(const bool* mask_data,
                              int64_t* prefix_sum_data,
                              int64_t n,
                              const phi::Place& place,
                              gpuStream_t stream) {
+  // Convert bool mask to int64 for CUB compatibility
+  auto mask_int64_alloc = phi::memory_utils::Alloc(place, n * sizeof(int64_t));
+  int64_t* mask_int64_data = static_cast<int64_t*>(mask_int64_alloc->ptr());
+
+  int block = 256;
+  int grid = static_cast<int>((n + block - 1) / block);
+  BoolToInt64Kernel<<<grid, block, 0, stream>>>(mask_data, mask_int64_data, n);
+
   void* temp_storage = nullptr;
   size_t temp_storage_bytes = 0;
   phi::Allocator::AllocationPtr allocation;
@@ -40,7 +56,7 @@ static void MaskExclusiveSum(const bool* mask_data,
     PADDLE_ENFORCE_GPU_SUCCESS(
         cub::DeviceScan::ExclusiveSum(temp_storage,
                                       temp_storage_bytes,
-                                      mask_data,
+                                      mask_int64_data,
                                       prefix_sum_data,
                                       static_cast<int>(n),
                                       stream));
@@ -124,9 +140,7 @@ void MaskedScatterKernel(const Context& dev_ctx,
   auto stream = dev_ctx.stream();
   auto* mask_bool_data = mask_expand.data<bool>();
 
-  // Use CUB ExclusiveSum directly on bool mask -> int64 prefix sum
-  // This avoids the extra bool->int64 transform kernel that the old
-  // thrust-based implementation required (matching PyTorch's approach).
+  // Compute exclusive prefix sum of the bool mask -> int64 prefix sum.
   DenseTensor prefix_sum;
   prefix_sum.Resize(mask_expand.dims());
   dev_ctx.template Alloc<int64_t>(&prefix_sum);
