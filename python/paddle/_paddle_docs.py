@@ -331,11 +331,13 @@ add_doc_and_signature(
 
     Args:
         x (Tensor): A tensor, the data type is float32, float64, int32, int64.
+            Alias: ``input``.
         axis (int|list|tuple|None, optional): The axis along which the minimum and maximum
             are computed. If :attr:`None`, compute over all elements of
             `x` and return Tensors with a single element,
             otherwise must be in the range :math:`[-x.ndim, x.ndim)`.
             If :math:`axis[i] < 0`, the axis to reduce is :math:`x.ndim + axis[i]`.
+            Alias: ``dim``.
         keepdim (bool, optional): Whether to reserve the reduced dimension in the
             output Tensors. The result tensors will have one fewer dimension
             than the `x` unless :attr:`keepdim` is true, default
