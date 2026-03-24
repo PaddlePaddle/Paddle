@@ -373,7 +373,13 @@ jobs:
           echo "Uploading night_coverage.txt"
           coverage_time=$(date +%Y-%m-%d)
           python ${{ env.bos_file }} night_coverage.txt paddle-github-action/night/coverage/${coverage_time}
-          echo "Uploading night_coverage.txt"
+          echo "Uploaded night_coverage.txt"
+          echo "Uploading coverage-full.info"
+          python ${{ env.bos_file }} build/coverage-full.info paddle-github-action/night/coverage/${coverage_time}
+          echo "Uploaded coverage-full.info"
+          echo "Uploading python-coverage-full.info"
+          python ${{ env.bos_file }} build/python-coverage-full.info paddle-github-action/night/coverage/${coverage_time}
+          echo "Uploaded python-coverage-full.info"
           '
 
       - name: Terminate and delete the container
