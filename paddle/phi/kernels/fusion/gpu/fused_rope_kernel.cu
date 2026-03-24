@@ -154,7 +154,7 @@ void FusedRopeKernel(const Context& dev_ctx,
 
   // K
   int k_num_heads = -1;
-  if (k) {
+  if (k && k->numel() > 0) {
     k_num_heads = k->dims()[2];
     auto k_batch_size = time_major ? k->dims()[1] : k->dims()[0];
     PADDLE_ENFORCE_LE(
@@ -205,7 +205,7 @@ void FusedRopeKernel(const Context& dev_ctx,
   }
 
   // V
-  if (v) {
+  if (v && v->numel() > 0) {
     auto v_num_heads = v->dims()[2];
     // Multi Query Attention (MQA) or Group Query Attention (GQA)
     if (k_num_heads != -1) {
