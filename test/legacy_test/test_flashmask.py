@@ -409,10 +409,18 @@ class TestFlashMaskAttentionZeroSize(unittest.TestCase):
         """Helper method to run a single test case."""
         paddle.disable_static()
 
-        q = paddle.randn(q_shape, dtype=self.dtype, place=self.place)
-        k = paddle.randn(k_shape, dtype=self.dtype, place=self.place)
-        v = paddle.randn(v_shape, dtype=self.dtype, place=self.place)
-        startend = paddle.ones(startend_shape, dtype="int32", place=self.place)
+        q = paddle.to_tensor(
+            np.random.randn(*q_shape).astype(self.dtype), place=self.place
+        )
+        k = paddle.to_tensor(
+            np.random.randn(*k_shape).astype(self.dtype), place=self.place
+        )
+        v = paddle.to_tensor(
+            np.random.randn(*v_shape).astype(self.dtype), place=self.place
+        )
+        startend = paddle.to_tensor(
+            np.ones(startend_shape, dtype="int32"), place=self.place
+        )
 
         result = flashmask_attention(
             q,
@@ -422,8 +430,17 @@ class TestFlashMaskAttentionZeroSize(unittest.TestCase):
             causal=causal,
         )
 
-        # Verify result shape matches query shape
-        self.assertEqual(list(result.shape), list(q.shape))
+        # According to FlashAttnInferMeta:
+        # - Output shape is based on q.shape
+        # - head_dim uses v's head_dim
+        # - If batch is 0 (q.batch=0 or k.batch=0 or v.batch=0), output batch is 0
+        expected_shape = list(q.shape)
+        expected_shape[3] = v_shape[3]  # head_dim from v
+        if q_shape[0] == 0 or k_shape[0] == 0 or v_shape[0] == 0:
+            expected_shape[0] = 0  # batch is 0
+
+        # Verify result shape
+        self.assertEqual(list(result.shape), expected_shape)
         # Verify result is all zeros
         self.assertTrue(paddle.all(result == 0).item())
 
