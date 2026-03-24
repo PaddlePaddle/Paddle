@@ -108,8 +108,6 @@
       case_macro(4096);                              \
     case 5120:                                       \
       case_macro(5120);                              \
-    case 6144:                                       \
-      case_macro(6144);                              \
     case 7168:                                       \
       case_macro(7168);                              \
     case 8192:                                       \
