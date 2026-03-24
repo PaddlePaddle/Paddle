@@ -211,11 +211,9 @@
   inputs :
     x : X
   outputs :
-    {out : Out, min : Min, max : Max}
+    {min : Min, max : Max}
   extra :
     attrs : [bool use_mkldnn = false, bool use_onednn = false]
-  get_expected_kernel_type :
-    aminmax_grad : GetReduceGradExpectedKernelType
   manual_signature : [aminmax]
 
 - op : anchor_generator

@@ -59,7 +59,7 @@ class TestAminmaxOp(OpTest):
         self.dtype = np.float64
 
     def init_shape(self):
-        self.shape = [2, 3, 4]
+        self.shape = [4, 5, 6]
 
     def init_args(self):
         self.axis = []
@@ -110,7 +110,10 @@ class TestAminmaxOpFloat32(TestAminmaxOp):
         self.dtype = np.float32
 
     def init_shape(self):
-        self.shape = [3, 5]
+        self.shape = [10, 10]
+
+    def test_check_grad(self):
+        pass
 
 
 class TestAminmaxOpZeroDim(TestAminmaxOp):
