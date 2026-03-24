@@ -37,7 +37,12 @@ using DeviceIndex = int8_t;
 struct Device final {
   using Type = DeviceType;
   Device() = default;
-  Device(phi::Place place);
+  Device(phi::Place place)
+      : type_(PhiToDeviceType(place.GetType())),
+        index_(place.GetType() == phi::AllocationType::CPU
+                   ? static_cast<DeviceIndex>(-1)
+                   : place.GetDeviceId()),
+        custom_device_type_(place.GetDeviceType()) {}
   Device(DeviceType type, DeviceIndex index = -1)
       : type_(type), index_(index) {}  // NOLINT
   Device(DeviceType type, DeviceIndex index, std::string custom_device_type)
@@ -69,7 +74,23 @@ struct Device final {
            custom_device_type_ == other.custom_device_type_;
   }
 
-  phi::Place _PD_GetInner() const;
+  phi::Place _PD_GetInner() const {
+    switch (type_) {
+      case DeviceType::CPU:
+        return phi::CPUPlace();
+      case DeviceType::CUDA:
+        return phi::GPUPlace(has_index() ? index_ : 0);
+      case DeviceType::XPU:
+        return phi::XPUPlace(has_index() ? index_ : 0);
+      case DeviceType::IPU:
+        return phi::IPUPlace(has_index() ? index_ : 0);
+      case DeviceType::CUSTOM:
+        return phi::CustomPlace(
+            custom_device_type_.empty() ? "custom" : custom_device_type_,
+            has_index() ? index_ : 0);
+    }
+    return phi::CPUPlace();
+  }
 
  private:
   DeviceType type_{DeviceType::CPU};
