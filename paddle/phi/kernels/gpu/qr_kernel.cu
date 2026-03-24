@@ -452,7 +452,7 @@ void BatchedGeqrf<GPUContext, float>(const GPUContext& dev_ctx,
     }
 
     DenseTensor info;
-    info.Resize(make_ddim({1}));
+    info.Resize({1});
     int* info_d = dev_ctx.template Alloc<int>(&info);
 
     for (int64_t i = 0; i < batch_size_64; ++i) {
@@ -499,11 +499,11 @@ void BatchedGeqrf<GPUContext, float>(const GPUContext& dev_ctx,
         dynload::cusolverDnSgeqrf_bufferSize(handle, m, n, a, lda, &lwork));
 
     DenseTensor workspace = DenseTensor();
-    workspace.Resize(make_ddim({lwork}));
+    workspace.Resize({lwork});
     float* workspace_ptr = dev_ctx.template Alloc<float>(&workspace);
 
     DenseTensor info = DenseTensor();
-    info.Resize(make_ddim({1}));
+    info.Resize({1});
     int* info_d = dev_ctx.template Alloc<int>(&info);
 
     for (int i = 0; i < batch_size; ++i) {
@@ -554,11 +554,11 @@ void BatchedGeqrf<GPUContext, double>(const GPUContext& dev_ctx,
       dynload::cusolverDnDgeqrf_bufferSize(handle, m, n, a, lda, &lwork));
 
   DenseTensor workspace = DenseTensor();
-  workspace.Resize(make_ddim({lwork}));
+  workspace.Resize({lwork});
   double* workspace_ptr = dev_ctx.template Alloc<double>(&workspace);
 
   DenseTensor info = DenseTensor();
-  info.Resize(make_ddim({1}));
+  info.Resize({1});
   int* info_d = dev_ctx.template Alloc<int>(&info);
 
   for (int i = 0; i < batch_size; ++i) {
@@ -608,12 +608,12 @@ void BatchedGeqrf<GPUContext, phi::complex64>(const GPUContext& dev_ctx,
       handle, m, n, reinterpret_cast<cuComplex*>(a), lda, &lwork));
 
   DenseTensor workspace = DenseTensor();
-  workspace.Resize(make_ddim({lwork}));
+  workspace.Resize({lwork});
   phi::complex64* workspace_ptr =
       dev_ctx.template Alloc<phi::complex64>(&workspace);
 
   DenseTensor info = DenseTensor();
-  info.Resize(make_ddim({1}));
+  info.Resize({1});
   int* info_d = dev_ctx.template Alloc<int>(&info);
 
   for (int i = 0; i < batch_size; ++i) {
@@ -664,12 +664,12 @@ void BatchedGeqrf<GPUContext, phi::complex128>(const GPUContext& dev_ctx,
       handle, m, n, reinterpret_cast<cuDoubleComplex*>(a), lda, &lwork));
 
   DenseTensor workspace = DenseTensor();
-  workspace.Resize(make_ddim({lwork}));
+  workspace.Resize({lwork});
   phi::complex128* workspace_ptr =
       dev_ctx.template Alloc<phi::complex128>(&workspace);
 
   DenseTensor info = DenseTensor();
-  info.Resize(make_ddim({1}));
+  info.Resize({1});
   int* info_d = dev_ctx.template Alloc<int>(&info);
 
   for (int i = 0; i < batch_size; ++i) {
@@ -721,11 +721,11 @@ void BatchedOrgqr<GPUContext, float>(const GPUContext& dev_ctx,
       handle, m, n, k, a, lda, tau, &lwork));
 
   DenseTensor workspace = DenseTensor();
-  workspace.Resize(make_ddim({lwork}));
+  workspace.Resize({lwork});
   float* workspace_ptr = dev_ctx.template Alloc<float>(&workspace);
 
   DenseTensor info = DenseTensor();
-  info.Resize(make_ddim({1}));
+  info.Resize({1});
   int* info_d = dev_ctx.template Alloc<int>(&info);
 
   for (int i = 0; i < batch_size; ++i) {
@@ -777,11 +777,11 @@ void BatchedOrgqr<GPUContext, double>(const GPUContext& dev_ctx,
       handle, m, n, k, a, lda, tau, &lwork));
 
   DenseTensor workspace = DenseTensor();
-  workspace.Resize(make_ddim({lwork}));
+  workspace.Resize({lwork});
   double* workspace_ptr = dev_ctx.template Alloc<double>(&workspace);
 
   DenseTensor info = DenseTensor();
-  info.Resize(make_ddim({1}));
+  info.Resize({1});
   int* info_d = dev_ctx.template Alloc<int>(&info);
 
   for (int i = 0; i < batch_size; ++i) {
@@ -840,12 +840,12 @@ void BatchedOrgqr<GPUContext, phi::complex64>(const GPUContext& dev_ctx,
                                            &lwork));
 
   DenseTensor workspace = DenseTensor();
-  workspace.Resize(make_ddim({lwork}));
+  workspace.Resize({lwork});
   phi::complex64* workspace_ptr =
       dev_ctx.template Alloc<phi::complex64>(&workspace);
 
   DenseTensor info = DenseTensor();
-  info.Resize(make_ddim({1}));
+  info.Resize({1});
   int* info_d = dev_ctx.template Alloc<int>(&info);
 
   for (int i = 0; i < batch_size; ++i) {
@@ -905,12 +905,12 @@ void BatchedOrgqr<GPUContext, phi::complex128>(const GPUContext& dev_ctx,
       &lwork));
 
   DenseTensor workspace = DenseTensor();
-  workspace.Resize(make_ddim({lwork}));
+  workspace.Resize({lwork});
   phi::complex128* workspace_ptr =
       dev_ctx.template Alloc<phi::complex128>(&workspace);
 
   DenseTensor info = DenseTensor();
-  info.Resize(make_ddim({1}));
+  info.Resize({1});
   int* info_d = dev_ctx.template Alloc<int>(&info);
 
   for (int i = 0; i < batch_size; ++i) {

@@ -20,6 +20,7 @@ from get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test import convert_float_to_uint16
 from op_test_xpu import XPUOpTest
 
 import paddle
@@ -36,8 +37,6 @@ class XPUTestLinspaceOp(XPUOpTestWrapper):
         def setUp(self):
             self.op_type = "linspace"
             self.dtype = self.in_type
-            self.set_attrs()
-
             self.atol = 1e-4
             np.random.seed(10)
             self.inputs = {
@@ -53,9 +52,25 @@ class XPUTestLinspaceOp(XPUOpTestWrapper):
                     )
                 )
             }
+            self.set_attrs()
+            self._maybe_convert_bf16_io()
 
         def set_attrs(self):
             pass
+
+        def _maybe_convert_bf16_io(self):
+            if self.dtype != np.uint16:
+                return
+
+            def to_bf16_bits(x):
+                x = np.asarray(x)
+                if x.size == 0:
+                    return x.astype(np.uint16)
+                return convert_float_to_uint16(x.astype("float32"))
+
+            self.inputs["Start"] = to_bf16_bits(self.inputs["Start"])
+            self.inputs["Stop"] = to_bf16_bits(self.inputs["Stop"])
+            self.outputs["Out"] = to_bf16_bits(self.outputs["Out"])
 
         def test_check_output(self):
             self.check_output_with_place(paddle.XPUPlace(0), atol=self.atol)
@@ -77,7 +92,7 @@ class XPUTestLinspaceOp(XPUOpTestWrapper):
                 'Stop': np.array([0]).astype(self.dtype),
                 'Num': np.array([1]).astype('int32'),
             }
-            self.outputs = {'Out': np.array(10, dtype=self.dtype)}
+            self.outputs = {'Out': np.array([10], dtype=self.dtype)}
 
     class TestXPULinespace4(TestXPULinespaceOp):
         def set_attrs(self):

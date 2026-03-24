@@ -40,6 +40,7 @@ from paddle._C_ops import (  # noqa: F401
     bitwise_right_shift,
     bitwise_right_shift_,
     conj,
+    floor_divide_,
     fmax,
     fmin,
     heaviside,
@@ -51,6 +52,7 @@ from paddle._C_ops import (  # noqa: F401
     isfinite,
     isinf,
     isnan,
+    kron,
     lgamma,
     log,
     log1p,
@@ -61,6 +63,8 @@ from paddle._C_ops import (  # noqa: F401
     minimum,
     multiply,
     nextafter,
+    pow_,
+    remainder_,
     renorm,
     renorm_,
     sign,
@@ -606,18 +610,6 @@ def pow(
             raise TypeError(
                 f"y must be scalar or tensor type, but received: {type(y)}"
             )
-
-
-@inplace_apis_in_dygraph_only
-def pow_(x: Tensor, y: float | Tensor, name: str | None = None) -> Tensor:
-    """
-    Inplace version of ``pow`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_pow`.
-    """
-    if isinstance(y, (int, float)):
-        return _C_ops.pow_(x, y)
-    else:
-        raise TypeError(f'y must be scalar type, but received: {type(y)} ')
 
 
 OP_NAMEMAPPING = {
@@ -1215,20 +1207,6 @@ def floor_divide(
         return _elementwise_op(LayerHelper('elementwise_floordiv', **locals()))
 
 
-@inplace_apis_in_dygraph_only
-def floor_divide_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
-    r"""
-    Inplace version of ``floor_divide`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_floor_divide`.
-    """
-    out_shape = broadcast_shape(x.shape, y.shape)
-    if out_shape != x.shape:
-        raise ValueError(
-            f"The shape of broadcast output {out_shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
-        )
-    return _C_ops.floor_divide_(x, y)
-
-
 @param_two_alias(["x", "input"], ["y", "other"])
 def remainder(
     x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
@@ -1291,32 +1269,8 @@ def remainder(
         return _elementwise_op(LayerHelper('elementwise_mod', **locals()))
 
 
-@inplace_apis_in_dygraph_only
-def remainder_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
-    r"""
-    Inplace version of ``remainder`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_remainder`.
-    """
-    out_shape = broadcast_shape(x.shape, y.shape)
-    if out_shape != x.shape:
-        raise ValueError(
-            f"The shape of broadcast output {out_shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
-        )
-    return _C_ops.remainder_(x, y)
-
-
 mod = remainder
 floor_mod = remainder
-mod_ = remainder_
-mod_.__doc__ = r"""
-    Inplace version of ``mod`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_mod`.
-    """
-floor_mod_ = remainder_
-floor_mod_.__doc__ = r"""
-    Inplace version of ``floor_mod_`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_floor_mod_`.
-    """
 
 
 @param_two_alias(["x", "input"], ["y", "other"])
@@ -3024,75 +2978,6 @@ def trace(
         return out
 
 
-def kron(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
-    r"""
-    Compute the Kronecker product of two tensors, a
-    composite tensor made of blocks of the second tensor scaled by the
-    first.
-    Assume that the rank of the two tensors, $X$ and $Y$
-    are the same, if necessary prepending the smallest with ones. If the
-    shape of $X$ is [$r_0$, $r_1$, ..., $r_N$] and the shape of $Y$ is
-    [$s_0$, $s_1$, ..., $s_N$], then the shape of the output tensor is
-    [$r_{0}s_{0}$, $r_{1}s_{1}$, ..., $r_{N}s_{N}$]. The elements are
-    products of elements from $X$ and $Y$.
-    The equation is:
-    $$
-    output[k_{0}, k_{1}, ..., k_{N}] = X[i_{0}, i_{1}, ..., i_{N}] *
-    Y[j_{0}, j_{1}, ..., j_{N}]
-    $$
-    where
-    $$
-    k_{t} = i_{t} * s_{t} + j_{t}, t = 0, 1, ..., N
-    $$
-
-    Args:
-        x (Tensor): the first operand of kron op, data type: bfloat16, float16, float32, float64, int32 or int64.
-        y (Tensor): the second operand of kron op, data type: bfloat16, float16, float32, float64, int32 or int64. Its data type should be the same with x.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor: The output of kron, data type: bfloat16, float16, float32, float64, int32 or int64. Its data is the same with x.
-
-    Examples:
-        .. code-block:: pycon
-
-            >>> import paddle
-            >>> x = paddle.to_tensor([[1, 2], [3, 4]], dtype='int64')
-            >>> y = paddle.to_tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype='int64')
-            >>> out = paddle.kron(x, y)
-            >>> out
-            Tensor(shape=[6, 6], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[1 , 2 , 3 , 2 , 4 , 6 ],
-             [4 , 5 , 6 , 8 , 10, 12],
-             [7 , 8 , 9 , 14, 16, 18],
-             [3 , 6 , 9 , 4 , 8 , 12],
-             [12, 15, 18, 16, 20, 24],
-             [21, 24, 27, 28, 32, 36]])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.kron(x, y)
-    else:
-        helper = LayerHelper('kron', **locals())
-        check_variable_and_dtype(
-            x,
-            'x',
-            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
-            'kron',
-        )
-        check_variable_and_dtype(
-            y,
-            'y',
-            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
-            'kron',
-        )
-
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(
-            type="kron", inputs={"X": x, "Y": y}, outputs={"Out": out}
-        )
-        return out
-
-
 @param_two_alias(["x", "input"], ["axis", "dim"])
 def cumsum(
     x: Tensor,
@@ -3418,11 +3303,14 @@ def cummin(
         return out, indices
 
 
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def logcumsumexp(
     x: Tensor,
     axis: int | None = None,
     dtype: DTypeLike | None = None,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     r"""
     The logarithm of the cumulative summation of the exponentiation of the elements along a given axis.
@@ -3438,10 +3326,13 @@ def logcumsumexp(
 
     Args:
         x (Tensor): The input tensor, with data type float32, float64, float16,
-            bfloat16, uint8, int8, int16, int32, int64
-        axis (int, optional): The dimension to do the operation along. -1 means the last dimension. The default (None) is to compute the cumsum over the flattened array.
+            bfloat16, uint8, int8, int16, int32, int64. Alias: ``input``.
+        axis (int, optional): The dimension to do the operation along. -1 means the last dimension. The default (None) is to compute the cumsum over the flattened array. Alias: ``dim``.
         dtype (str|core.VarDesc.VarType|core.DataType|np.dtype, optional): The data type of the output tensor, can be float16, float32, float64. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword args:
+        out(Tensor, optional): The output tensor.
 
     Returns:
         Tensor, the result of logcumsumexp operator (integer input types are autocasted into float32).
@@ -3473,7 +3364,7 @@ def logcumsumexp(
             Tensor(shape=[3, 4], dtype=float64, place=Place(cpu), stop_gradient=True,
             [[0.         , 1.31326169 , 2.40760596 , 3.44018970 ],
              [4.         , 5.31326169 , 6.40760596 , 7.44018970 ],
-             [8.         , 9.31326169 , 10.40760596, 11.44018970]])
+             [8.         , 9.31326169 , 10.40760596, 11.44018970 ]])
 
             >>> y = paddle.logcumsumexp(data, dtype='float64')
             >>> assert y.dtype == paddle.float64
@@ -3488,7 +3379,7 @@ def logcumsumexp(
     if in_dynamic_or_pir_mode():
         if axis is None:
             axis = -1
-        return _C_ops.logcumsumexp(x, axis, flatten, False, False)
+        return _C_ops.logcumsumexp(x, axis, flatten, False, False, out=out)
     else:
         check_variable_and_dtype(
             x,
@@ -5442,13 +5333,25 @@ def take(
     return out
 
 
-def frexp(x: Tensor, name: str | None = None) -> tuple[Tensor, Tensor]:
+@param_one_alias(['x', 'input'])
+def frexp(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: tuple[Tensor, Tensor] | None = None,
+) -> tuple[Tensor, Tensor]:
     """
     The function used to decompose a floating point number into mantissa and exponent.
 
     Args:
         x (Tensor): The input tensor, it's data type should be float32, float64.
+            Alias: ``input``.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Keyword args:
+        out (tuple[Tensor, Tensor]|None, optional): The output tuple of tensors. If provided, the result will be
+            assigned to the tensors in the tuple. The first tensor stores mantissa, the second tensor stores exponent.
+            Default: None.
 
     Returns:
 
@@ -5502,6 +5405,11 @@ def frexp(x: Tensor, name: str | None = None) -> tuple[Tensor, Tensor]:
     )
 
     mantissa = paddle.where((x < 0), mantissa * -1, mantissa)
+
+    if out is not None:
+        paddle.assign(mantissa, out[0])
+        paddle.assign(exponent, out[1])
+        return out
     return mantissa, exponent
 
 
@@ -5587,12 +5495,15 @@ def _trapezoid(
     )
 
 
+@param_one_alias(['axis', 'dim'])
 def trapezoid(
     y: Tensor,
     x: Tensor | None = None,
     dx: float | None = None,
     axis: int = -1,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Integrate along the given axis using the composite trapezoidal rule. Use the sum method.
@@ -5604,7 +5515,11 @@ def trapezoid(
             If :attr:`x` is None, the sample points are assumed to be evenly spaced :attr:`dx` apart. The default is None.
         dx (float|None, optional): The spacing between sample points when :attr:`x` is None. If neither :attr:`x` nor :attr:`dx` is provided then the default is :math:`dx = 1`.
         axis (int, optional): The axis along which to integrate. The default is -1.
+            Alias: ``dim``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword args:
+        out(Tensor, optional): The output tensor.
 
     Returns:
         Tensor, Definite integral of :attr:`y` is N-D tensor as approximated along a single axis by the trapezoidal rule.
@@ -5647,15 +5562,22 @@ def trapezoid(
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [2., 8.])
     """
-    return _trapezoid(y, x, dx, axis, mode='sum')
+    ret = _trapezoid(y, x, dx, axis, mode='sum')
+    if out is not None:
+        paddle.assign(ret, out)
+        return out
+    return ret
 
 
+@param_one_alias(['axis', 'dim'])
 def cumulative_trapezoid(
     y: Tensor,
     x: Tensor | None = None,
     dx: float | None = None,
     axis: int = -1,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Integrate along the given axis using the composite trapezoidal rule. Use the cumsum method
@@ -5667,7 +5589,11 @@ def cumulative_trapezoid(
             If :attr:`x` is None, the sample points are assumed to be evenly spaced :attr:`dx` apart. The default is None.
         dx (float|None, optional): The spacing between sample points when :attr:`x` is None. If neither :attr:`x` nor :attr:`dx` is provided then the default is :math:`dx = 1`.
         axis (int, optional): The axis along which to integrate. The default is -1.
+            Alias: ``dim``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword args:
+        out(Tensor, optional): The output tensor.
 
     Returns:
         Tensor, Definite integral of :attr:`y` is N-D tensor as approximated along a single axis by the trapezoidal rule.
@@ -5712,7 +5638,11 @@ def cumulative_trapezoid(
             [[0.50000000, 2.        ],
              [3.50000000, 8.        ]])
     """
-    return _trapezoid(y, x, dx, axis, mode='cumsum')
+    ret = _trapezoid(y, x, dx, axis, mode='cumsum')
+    if out is not None:
+        paddle.assign(ret, out)
+        return out
+    return ret
 
 
 def vander(
@@ -5971,7 +5901,7 @@ def ldexp(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     return paddle.multiply(x, paddle.pow(two, y))
 
 
-@param_one_alias(["y", "other"])
+@param_two_alias(['x', 'input'], ['y', 'other'])
 def ldexp_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
     Inplace version of ``ldexp`` API, the output Tensor will be inplaced with input ``x``.
@@ -6216,7 +6146,6 @@ def hypot(
 
 @param_two_alias(["x", "input"], ["y", "other"])
 @inplace_apis_in_dygraph_only
-@param_one_alias(['y', 'other'])
 def hypot_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
     Inplace version of ``hypot`` API, the output Tensor will be inplaced with input ``x``.
@@ -6234,6 +6163,7 @@ def hypot_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     return out
 
 
+@param_one_alias(['x', 'input'])
 def combinations(
     x: Tensor,
     r: int = 2,
@@ -6247,6 +6177,7 @@ def combinations(
 
     Args:
         x (Tensor): 1-D input Tensor, the data type is float16, float32, float64, int32 or int64.
+            Alias: ``input``.
         r (int, optional):  number of elements to combine, default value is 2.
         with_replacement (bool, optional):  whether to allow duplication in combination, default value is False.
         name (str|None, optional): Name for the operation (optional, default is None).For more information, please refer to :ref:`api_guide_Name`.
@@ -6361,13 +6292,23 @@ def signbit(x: Tensor, name: str | None = None) -> Tensor:
     return out
 
 
-def isposinf(x: Tensor, name: str | None = None) -> Tensor:
+@param_one_alias(["x", "input"])
+def isposinf(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     r"""
     Tests if each element of input is positive infinity or not.
 
     Args:
         x (Tensor): The input Tensor. Must be one of the following types: bfloat16, float16, float32, float64, int8, int16, int32, int64, uint8.
+            Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword args:
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         out (Tensor), The output Tensor. Each element of output indicates whether the input element is positive infinity or not.
@@ -6405,16 +6346,30 @@ def isposinf(x: Tensor, name: str | None = None) -> Tensor:
     )  ## dtype is the intersection of dtypes supported by isinf and signbit
     is_inf = paddle.isinf(x)
     signbit = ~paddle.signbit(x)
-    return paddle.logical_and(is_inf, signbit)
+    ret = paddle.logical_and(is_inf, signbit)
+    if out is not None:
+        paddle.assign(ret, out)
+        return out
+    return ret
 
 
-def isneginf(x: Tensor, name: str | None = None) -> Tensor:
+@param_one_alias(["x", "input"])
+def isneginf(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     r"""
     Tests if each element of input is negative infinity or not.
 
     Args:
         x (Tensor): The input Tensor. Must be one of the following types: bfloat16, float16, float32, float64, int8, int16, int32, int64, uint8.
+            Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword args:
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         out (Tensor), The output Tensor. Each element of output indicates whether the input element is negative infinity or not.
@@ -6452,15 +6407,20 @@ def isneginf(x: Tensor, name: str | None = None) -> Tensor:
     )
     is_inf = paddle.isinf(x)
     signbit = paddle.signbit(x)
-    return paddle.logical_and(is_inf, signbit)
+    ret = paddle.logical_and(is_inf, signbit)
+    if out is not None:
+        paddle.assign(ret, out)
+        return out
+    return ret
 
 
+@param_one_alias(["x", "input"])
 def isreal(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     Tests if each element of input is a real number or not.
 
     Args:
-        x (Tensor): The input Tensor.
+        x (Tensor): The input Tensor. Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:

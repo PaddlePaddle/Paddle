@@ -70,6 +70,11 @@ class TestCosSleefVectorized(unittest.TestCase):
     Test both:
     1. Shapes that are exact multiples of VEC_SIZE (only vectorized loop)
     2. Shapes with remainder (vectorized loop + scalar tail)
+
+    Note: If MKL is available at runtime, the MKL VML path (mkl_cos) will be
+    triggered instead (see sleef_vectorized_math.h L629-630 for float,
+    L665-666 for double). Both paths produce correct results and are
+    tested through these tests.
     """
 
     def setUp(self):
@@ -128,7 +133,10 @@ class TestCosSleefVectorized(unittest.TestCase):
         )
 
     def test_cos_float32_large_shape(self):
-        """Test float32 cos with large shape for comprehensive coverage."""
+        """Test float32 cos with large shape for comprehensive coverage.
+        Tests MKL VML path (mkl_cos at sleef_vectorized_math.h L629-630)
+        if MKL is available, otherwise Sleef vectorized path.
+        """
         x_np = np.random.uniform(-np.pi, np.pi, size=(1024,)).astype(np.float32)
         x = paddle.to_tensor(x_np, place=paddle.CPUPlace())
         result = paddle.cos(x)
@@ -138,7 +146,10 @@ class TestCosSleefVectorized(unittest.TestCase):
         )
 
     def test_cos_float64_large_shape(self):
-        """Test float64 cos with large shape for comprehensive coverage."""
+        """Test float64 cos with large shape for comprehensive coverage.
+        Tests MKL VML path (mkl_cos at sleef_vectorized_math.h L665-666)
+        if MKL is available, otherwise Sleef vectorized path.
+        """
         x_np = np.random.uniform(-np.pi, np.pi, size=(1024,)).astype(np.float64)
         x = paddle.to_tensor(x_np, place=paddle.CPUPlace())
         result = paddle.cos(x)

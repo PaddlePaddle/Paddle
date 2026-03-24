@@ -95,7 +95,7 @@ void LogspaceKernel(const Context& dev_ctx,
                                       "than 0, but received num is %d",
                                       num));
 
-  out->Resize(make_ddim({num}));
+  out->Resize({num});
   T* out_data = dev_ctx.template Alloc<T>(out);
 
   double step = 0;

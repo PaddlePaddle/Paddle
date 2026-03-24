@@ -116,13 +116,13 @@ void CommonGradBroadcastCPU(const DenseTensor &x,
   }
   if (dx != nullptr) {
     dev_ctx.Alloc<T>(dx);
-    phi::CastKernel<MPType, CPUContext>(
-        dev_ctx, dx_mp, phi::CppTypeToDataType<T>::Type(), dx);
+    CastKernel<MPType, CPUContext>(
+        dev_ctx, dx_mp, CppTypeToDataType<T>::Type(), dx);
   }
   if (dy != nullptr) {
     dev_ctx.Alloc<T>(dy);
-    phi::CastKernel<MPType, CPUContext>(
-        dev_ctx, dy_mp, phi::CppTypeToDataType<T>::Type(), dy);
+    CastKernel<MPType, CPUContext>(
+        dev_ctx, dy_mp, CppTypeToDataType<T>::Type(), dy);
   }
 }
 
@@ -1027,6 +1027,7 @@ static void ElemwiseGradBroadcast1CUDA(gpuStream_t stream,
                                        DY_OP dy_op,
                                        T *dx,
                                        T *dy) {
+  if (h == 0 || w == 0) return;
   // For small case use 1D block
   constexpr int half_walf = 16;
   if (w < half_walf || h < half_walf) {
@@ -1078,6 +1079,7 @@ static void ElemwiseGradBroadcast2CUDA(gpuStream_t stream,
                                        DY_OP dy_op,
                                        T *dx,
                                        T *dy) {
+  if (pre == 0 || n == 0 || post == 0) return;
   int block_size =
       std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), pre * post);
   int64_t grid_size = n;

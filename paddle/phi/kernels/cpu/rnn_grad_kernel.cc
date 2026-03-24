@@ -392,7 +392,7 @@ struct GradLayer {
     std::vector<DenseTensor> mask_tensor_list;
     int mask_min_length = time_step;
     if (has_sequence_length) {
-      mask_matrix.Resize(make_ddim({time_step, input->dims()[1]}));
+      mask_matrix.Resize({time_step, input->dims()[1]});
       CreateMaskMatrix<T>(
           dev_ctx, sequence_length, &mask_matrix, is_reverse, &mask_min_length);
       mask_tensor_list = Unbind(mask_matrix);

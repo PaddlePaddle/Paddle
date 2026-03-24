@@ -100,7 +100,7 @@ void Im2SequenceKernel(const Context& dev_ctx,
       funcs::Im2ColFunctor<funcs::ColFormat::OCF, Context, T> f;
       f(dev_ctx, src, dilations, strides, paddings, &dst);
     }
-    phi::LegacyLoD lod(1);
+    LegacyLoD lod(1);
     lod[0].reserve(batch_size + 1);
     int offset = 0;
     lod[0].push_back(offset);
@@ -131,7 +131,7 @@ void Im2SequenceKernel(const Context& dev_ctx,
       f(dev_ctx, src, dilations, strides, paddings, &dst);
     }
     out->Resize(out_dims);
-    phi::LegacyLoD lod(1);
+    LegacyLoD lod(1);
     lod[0].reserve(batch_size + 1);
     int offset = 0;
     lod[0].push_back(offset);

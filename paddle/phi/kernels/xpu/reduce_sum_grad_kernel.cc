@@ -80,7 +80,7 @@ void ReduceSumGradKernel(const Context& dev_ctx,
         dev_ctx.x_context(), out_data, x_grad_tmp_data, ydims, xdims);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast");
 
-    phi::CastKernel<T>(dev_ctx, x_grad_tmp, x.dtype(), x_grad);
+    CastKernel<T>(dev_ctx, x_grad_tmp, x.dtype(), x_grad);
   } else {
     int r = xpu::broadcast<XPUType>(
         dev_ctx.x_context(), out_data, x_grad_data, ydims, xdims);

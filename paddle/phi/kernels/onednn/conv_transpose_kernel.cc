@@ -34,7 +34,7 @@ struct DeconvolutionCache {
 
 inline dnnl::memory::dims GetWeightsTz(const DenseTensor* filter,
                                        const int groups) {
-  auto weights_tz = common::vectorize(filter->dims());
+  auto weights_tz = vectorize(filter->dims());
   int g = std::max(groups, 1);
   int g_dim = (g > 1) ? 1 : 0;
   funcs::GetGroupConvWeightsTz(weights_tz, g);
@@ -131,7 +131,7 @@ class ConvTransposeOneDNNHandlerT
     const auto filter_dims = filter->dims();
     const auto filter_data_dims =
         slice_ddim(filter_dims, 2, filter_dims.size());
-    const auto ksize = common::vectorize(filter_data_dims);
+    const auto ksize = vectorize(filter_data_dims);
     UpdatePaddingAndDilation(
         &paddings, &dilations, padding_algorithm, x_data_dims, strides, ksize);
 
@@ -140,9 +140,9 @@ class ConvTransposeOneDNNHandlerT
           return i - 1;
         });
 
-    const auto src_tz = common::vectorize(x->dims());
+    const auto src_tz = vectorize(x->dims());
     const auto weights_tz = GetWeightsTz(filter, groups);
-    const auto dst_tz = common::vectorize(out->dims());
+    const auto dst_tz = vectorize(out->dims());
     const auto onednn_paddings = funcs::ToOneDNNPadding(paddings);
 
     /* create memory descriptor for convolution without specified format
@@ -178,7 +178,7 @@ class ConvTransposeOneDNNHandlerT
                                   : dnnl::prop_kind::forward_training;
 
     if (bias) {
-      std::vector<int64_t> bias_tz = common::vectorize(bias->dims());
+      std::vector<int64_t> bias_tz = vectorize(bias->dims());
       const auto bias_md = funcs::OneDNNMemDesc(
           bias_tz, data_type, funcs::OneDNNMemoryFormat::x);
       this->AcquireForwardPrimitiveDescriptor(
@@ -326,7 +326,7 @@ class ConvTransposeOneDNNHandlerT
       const std::string& key,
       const DenseTensor* bias) {
     const K* bias_data = bias->data<K>();
-    auto user_bias_md = funcs::OneDNNMemDesc(common::vectorize(bias->dims()),
+    auto user_bias_md = funcs::OneDNNMemDesc(vectorize(bias->dims()),
                                              funcs::OneDNNGetDataType<K>(),
                                              funcs::OneDNNMemoryFormat::x);
     return this->AcquireMemoryWithReorder(dev_ctx,
@@ -384,8 +384,8 @@ void Execute(const OneDNNContext& dev_ctx,
                                            funcs::ThreadIDasStr(),
                                            dev_ctx.GetInputsName("Input")[0],
                                            dev_ctx.GetInputsName("Filter")[0],
-                                           common::vectorize(x->dims()),
-                                           common::vectorize(filter->dims()));
+                                           vectorize(x->dims()),
+                                           vectorize(filter->dims()));
   const auto& onednn_engine = dev_ctx.GetEngine();
 
   auto deconvolution_cache =

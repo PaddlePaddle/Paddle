@@ -143,10 +143,10 @@ void FFTFillConj(const DeviceContext& dev_ctx,
                  DenseTensor* dst,
                  const std::vector<int64_t>& axes) {
   std::vector<int64_t> src_strides_v =
-      common::vectorize<int64_t>(common::stride(src->dims()));
+      vectorize<int64_t>(common::stride(src->dims()));
   std::vector<int64_t> dst_strides_v =
-      common::vectorize<int64_t>(common::stride(dst->dims()));
-  std::vector<int64_t> dst_shape_v = common::vectorize<int64_t>(dst->dims());
+      vectorize<int64_t>(common::stride(dst->dims()));
+  std::vector<int64_t> dst_shape_v = vectorize<int64_t>(dst->dims());
   const auto src_data = src->data<C>();
   auto dst_data = dst->data<C>();
   const auto last_axis = axes.back();

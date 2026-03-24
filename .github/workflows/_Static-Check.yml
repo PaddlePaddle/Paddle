@@ -9,6 +9,7 @@ on:
       can-skip:
         type: string
         required: false
+        default: 'false'
 
 env:
   PR_ID: ${{ github.event.pull_request.number }}
@@ -29,22 +30,31 @@ defaults:
 jobs:
   check-bypass:
     name: Check bypass
-    if: ${{ github.repository_owner == 'PaddlePaddle' && inputs.can-skip != 'true' }}
+    if: ${{ github.repository_owner == 'PaddlePaddle' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
       workflow-name: static-check
     secrets:
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
+
   build:
     name: Test
     if: ${{ inputs.can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true' }}
-    needs: check-bypass
+    needs: [check-bypass]
     runs-on:
       group: BD_BJ-V100
     timeout-minutes: 30
 
     steps:
+      - name: Debug - Print inputs
+        run: |
+          echo "=== Static-Check Debug Info ==="
+          echo "inputs.can-skip: ${{ inputs.can-skip }}"
+          echo "needs.check-bypass.outputs.can-skip: ${{ needs.check-bypass.outputs.can-skip }}"
+          echo "needs.check-bypass.result: ${{ needs.check-bypass.result }}"
+          echo "==============================="
+
       - name: Check docker image and run container
         env:
           WITH_GPU: "ON"

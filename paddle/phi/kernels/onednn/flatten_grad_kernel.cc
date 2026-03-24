@@ -25,7 +25,7 @@ void FlattenGradKernel(const Context& dev_ctx,
                        const DenseTensor& out_grad,
                        DenseTensor* x_grad) {
   auto out_grad_vec_dims = out_grad.dims().size() != 0
-                               ? common::vectorize(out_grad.dims())
+                               ? vectorize(out_grad.dims())
                                : std::vector<int64_t>{1};
 
   auto out_grad_type = funcs::ToOneDNNDataType(out_grad.dtype());
@@ -48,7 +48,7 @@ void FlattenGradKernel(const Context& dev_ctx,
 
   const auto& x_grad_dims = x.dims();
   x_grad->Resize(x_grad_dims);
-  reorder_dst_memory_p->get_desc().reshape(common::vectorize(x_grad_dims));
+  reorder_dst_memory_p->get_desc().reshape(vectorize(x_grad_dims));
 }
 
 }  // namespace phi
