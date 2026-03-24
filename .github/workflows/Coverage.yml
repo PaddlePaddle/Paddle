@@ -45,7 +45,7 @@ jobs:
         id: skip-skill
         uses: ./.github/actions/skip-skill
         with:
-          ignore-paths: 'skill/**'
+          ignore-paths: 'skills/**'
 
   clone:
     name: Coverage clone
