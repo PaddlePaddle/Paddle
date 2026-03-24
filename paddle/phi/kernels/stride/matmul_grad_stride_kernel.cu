@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 #include <set>
 #include <vector>
@@ -161,12 +161,25 @@ void MatmulGradStrideKernel(const Context& dev_ctx,
   DenseTensor y_ = y;
   DenseTensor out_grad_ = out_grad;
 
-  CanonicalizedTransposeInfo x_info;
-  CanonicalizedTransposeInfo y_info;
-  if (UseCanonicalizedTransposeGradPath()) {
-    x_info = CanonicalizePureTransposeView(x, &transpose_x, &x_);
-    y_info = CanonicalizePureTransposeView(y, &transpose_y, &y_);
+  if (!UseCanonicalizedTransposeGradPath()) {
+    if (!x_.meta().is_contiguous()) {
+      x_ = Tensor2Contiguous<Context>(dev_ctx, x_);
+    }
+    if (!y_.meta().is_contiguous()) {
+      y_ = Tensor2Contiguous<Context>(dev_ctx, y_);
+    }
+    if (!out_grad_.meta().is_contiguous()) {
+      out_grad_ = Tensor2Contiguous<Context>(dev_ctx, out_grad_);
+    }
+    PrepareStridedOut(dx);
+    PrepareStridedOut(dy);
+    phi::MatmulGradKernel<T, Context>(
+        dev_ctx, x_, y_, out_grad_, transpose_x, transpose_y, dx, dy);
+    return;
   }
+
+  auto x_info = CanonicalizePureTransposeView(x, &transpose_x, &x_);
+  auto y_info = CanonicalizePureTransposeView(y, &transpose_y, &y_);
 
   if (!x_.meta().is_contiguous()) {
     x_ = Tensor2Contiguous<Context>(dev_ctx, x_);
