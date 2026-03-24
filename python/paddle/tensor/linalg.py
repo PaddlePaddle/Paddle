@@ -900,6 +900,12 @@ def matrix_norm(
             )
 
         if in_dynamic_or_pir_mode():
+            # For complex types, p_norm kernel doesn't support them on CPU,
+            # so fall back to the frobenius_norm op which handles complex natively
+            if input.dtype in (paddle.complex64, paddle.complex128):
+                if dim is None:
+                    return _C_ops.frobenius_norm(input, [], keepdim, True)
+                return _C_ops.frobenius_norm(input, dim, keepdim, False)
             # Use transpose + flatten + single-axis p_norm to match PyTorch
             # precision. The fused p_norm kernel (p=2) is already bit-exact
             # aligned, and this avoids multi-axis sum GPU reduction tree
