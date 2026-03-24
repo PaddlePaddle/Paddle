@@ -104,7 +104,7 @@ class TestEagerTensor(unittest.TestCase):
                     self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
                     y = x.cuda(device=0, non_blocking=False)
                     self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
-                    y = x.cuda("cuda:0", False, None)
+                    y = x.cuda("cuda:0", False)
                     self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
                     # non-existing place
                     with self.assertRaises(ValueError):
@@ -117,6 +117,9 @@ class TestEagerTensor(unittest.TestCase):
                         y = x.cuda(device="cuda:0", device_id="cuda:0")
                     with self.assertRaises(ValueError):
                         y = x.cuda(blocking=True, non_blocking=True)
+                    # too many positional args
+                    with self.assertRaises(ValueError):
+                        y = x.cuda("cuda:0", False, None)
 
                 # support 'dtype' is core.VarType
                 x = paddle.rand((2, 2))
