@@ -74,7 +74,7 @@ inline StreamPoolState& get_pool(int device_index) {
 inline void init_pool(int device_index, StreamPoolState* state) {
   phi::backends::gpu::GPUDeviceGuard guard(device_index);
   int lo_pri = 0, hi_pri = 0;
-  cudaDeviceGetStreamPriorityRange(&lo_pri, &hi_pri);
+  C10_CUDA_CHECK(cudaDeviceGetStreamPriorityRange(&lo_pri, &hi_pri));
   for (int i = 0; i < kStreamsPerPool; ++i) {
     C10_CUDA_CHECK(cudaStreamCreateWithPriority(
         &state->low_priority[i], cudaStreamNonBlocking, lo_pri));
@@ -134,10 +134,6 @@ class CUDAStream {
 
   Device device() const { return Device(DeviceType::CUDA, device_index()); }
 
-  // TODO(youge325): Remove after DeepEP paddle branch is updated to use
-  // stream()
-  cudaStream_t raw_stream() const { return stream(); }
-
  private:
   Stream stream_;
 };
@@ -192,6 +188,9 @@ inline CUDAStream getCurrentCUDAStream(c10::DeviceIndex device_index = -1) {
  * record_stream lifetime semantics.
  */
 inline CUDAStream getStreamFromPool(const bool isHighPriority = false,
+                                    c10::DeviceIndex device_index = -1);
+
+inline CUDAStream getStreamFromPool(const int priority,
                                     c10::DeviceIndex device_index = -1) {
   if (device_index == -1) {
     device_index = phi::backends::gpu::GetCurrentDeviceId();
@@ -203,7 +202,9 @@ inline CUDAStream getStreamFromPool(const bool isHighPriority = false,
   });
 
   cudaStream_t raw;
-  if (isHighPriority) {
+  // Keep parity with PyTorch API shape: negative priority selects the
+  // high-priority pool, non-negative selects the low-priority pool.
+  if (priority < 0) {
     raw = state.high_priority[state.hp_counter.fetch_add(1) %
                               detail::kStreamsPerPool];
   } else {
@@ -211,6 +212,11 @@ inline CUDAStream getStreamFromPool(const bool isHighPriority = false,
                              detail::kStreamsPerPool];
   }
   return make_cuda_stream(raw, device_index);
+}
+
+inline CUDAStream getStreamFromPool(const bool isHighPriority,
+                                    c10::DeviceIndex device_index) {
+  return getStreamFromPool(isHighPriority ? -1 : 0, device_index);
 }
 
 /**
