@@ -118,7 +118,9 @@ class TestActivationStaticGraph(unittest.TestCase):
         """
         input_data = np.array([[-1.0, 6.0], [1.0, 15.6]], dtype='float32')
         result = self._run_static(F.elu, input_data, alpha=0.2)
-        expected = np.where(input_data > 0, input_data, 0.2 * (np.exp(input_data) - 1))
+        expected = np.where(
+            input_data > 0, input_data, 0.2 * (np.exp(input_data) - 1)
+        )
         np.testing.assert_allclose(result, expected, rtol=1e-5)
 
     def test_hardshrink_static(self):
@@ -159,8 +161,11 @@ class TestActivationStaticGraph(unittest.TestCase):
         input_data = np.array([-4.0, 5.0, 1.0], dtype='float32')
         result = self._run_static(F.hardswish, input_data)
         expected = np.where(
-            input_data <= -3.0, 0,
-            np.where(input_data >= 3.0, input_data, input_data * (input_data + 3) / 6)
+            input_data <= -3.0,
+            0,
+            np.where(
+                input_data >= 3.0, input_data, input_data * (input_data + 3) / 6
+            ),
         )
         np.testing.assert_allclose(result, expected, rtol=1e-5)
 

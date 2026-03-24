@@ -31,8 +31,6 @@ This test covers the following functions:
 
 import unittest
 
-import numpy as np
-
 import paddle
 import paddle.nn.functional as F
 
@@ -131,8 +129,12 @@ class TestMultiLabelSoftMarginLoss(unittest.TestCase):
 
     def test_multi_label_basic(self):
         """基本多标签损失 / Basic multi-label loss"""
-        input_data = paddle.to_tensor([[0.5, -0.3, 0.8], [0.2, 0.1, -0.4]], dtype='float32')
-        label = paddle.to_tensor([[1.0, 0.0, 1.0], [0.0, 1.0, 0.0]], dtype='float32')
+        input_data = paddle.to_tensor(
+            [[0.5, -0.3, 0.8], [0.2, 0.1, -0.4]], dtype='float32'
+        )
+        label = paddle.to_tensor(
+            [[1.0, 0.0, 1.0], [0.0, 1.0, 0.0]], dtype='float32'
+        )
         loss = F.multi_label_soft_margin_loss(input_data, label)
         self.assertIsNotNone(loss)
 

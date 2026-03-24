@@ -110,7 +110,7 @@ class TestOrthogonalInitializerDynamic(unittest.TestCase):
         weight = linear.weight.numpy()
         # W * W^T / gain^2 应接近单位矩阵
         # W * W^T / gain^2 should be close to identity
-        wwt = np.matmul(weight, weight.T) / (gain ** 2)
+        wwt = np.matmul(weight, weight.T) / (gain**2)
         identity = np.eye(10)
         np.testing.assert_allclose(wwt, identity, atol=1e-5)
 
@@ -201,7 +201,7 @@ class TestOrthogonalInitializerStatic(unittest.TestCase):
             weight = result[0]
             # W * W^T / gain^2 应接近单位矩阵
             # W * W^T / gain^2 should be close to identity
-            wwt = np.matmul(weight, weight.T) / (gain ** 2)
+            wwt = np.matmul(weight, weight.T) / (gain**2)
             identity = np.eye(6)
             np.testing.assert_allclose(wwt, identity, atol=1e-4)
         finally:

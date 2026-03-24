@@ -77,11 +77,17 @@ class SimpleMapDataset(Dataset):
 
     def __getitem__(self, idx):
         if self.return_type == 'tuple':
-            return (np.array([idx], dtype='float32'), np.array([idx * 2], dtype='int64'))
+            return (
+                np.array([idx], dtype='float32'),
+                np.array([idx * 2], dtype='int64'),
+            )
         elif self.return_type == 'scalar':
             return np.array([idx], dtype='float32')
         elif self.return_type == 'list':
-            return [np.array([idx], dtype='float32'), np.array([idx * 2], dtype='int64')]
+            return [
+                np.array([idx], dtype='float32'),
+                np.array([idx * 2], dtype='int64'),
+            ]
 
     def __len__(self):
         return self.num_samples

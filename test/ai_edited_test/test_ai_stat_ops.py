@@ -69,7 +69,9 @@ class TestVarParameterConflict(unittest.TestCase):
         """
         x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0, 5.0])
         result = paddle.var(x)
-        np.testing.assert_allclose(result.numpy(), np.var([1, 2, 3, 4, 5], ddof=1), rtol=1e-5)
+        np.testing.assert_allclose(
+            result.numpy(), np.var([1, 2, 3, 4, 5], ddof=1), rtol=1e-5
+        )
 
     def test_var_with_correction_only(self):
         """var() with correction only (no unbiased) should work.
@@ -77,7 +79,9 @@ class TestVarParameterConflict(unittest.TestCase):
         """
         x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0, 5.0])
         result = paddle.var(x, correction=0)
-        np.testing.assert_allclose(result.numpy(), np.var([1, 2, 3, 4, 5], ddof=0), rtol=1e-5)
+        np.testing.assert_allclose(
+            result.numpy(), np.var([1, 2, 3, 4, 5], ddof=0), rtol=1e-5
+        )
 
 
 class TestNanmedianTypeError(unittest.TestCase):

@@ -64,8 +64,12 @@ class TestArgsort(unittest.TestCase):
         # In stable sort, equal elements maintain original order
         zeros_indices = out.numpy()[:10]
         ones_indices = out.numpy()[10:]
-        self.assertTrue(all(zeros_indices[i] < zeros_indices[i + 1] for i in range(9)))
-        self.assertTrue(all(ones_indices[i] < ones_indices[i + 1] for i in range(9)))
+        self.assertTrue(
+            all(zeros_indices[i] < zeros_indices[i + 1] for i in range(9))
+        )
+        self.assertTrue(
+            all(ones_indices[i] < ones_indices[i + 1] for i in range(9))
+        )
 
     def test_argsort_2d(self):
         """2D排序 / 2D argsort"""
@@ -101,7 +105,9 @@ class TestTopk(unittest.TestCase):
 
     def test_topk_2d(self):
         """2D topk / 2D topk"""
-        x = paddle.to_tensor([[3.0, 1.0, 5.0], [4.0, 2.0, 6.0]], dtype='float32')
+        x = paddle.to_tensor(
+            [[3.0, 1.0, 5.0], [4.0, 2.0, 6.0]], dtype='float32'
+        )
         values, indices = paddle.topk(x, k=2, axis=-1)
         self.assertEqual(list(values.shape), [2, 2])
 
@@ -115,7 +121,9 @@ class TestSearchsorted(unittest.TestCase):
 
     def test_searchsorted_basic(self):
         """基本searchsorted / Basic searchsorted"""
-        sorted_seq = paddle.to_tensor([1.0, 3.0, 5.0, 7.0, 9.0], dtype='float32')
+        sorted_seq = paddle.to_tensor(
+            [1.0, 3.0, 5.0, 7.0, 9.0], dtype='float32'
+        )
         values = paddle.to_tensor([2.0, 4.0, 6.0], dtype='float32')
         out = paddle.searchsorted(sorted_seq, values)
         np.testing.assert_array_equal(out.numpy(), [1, 2, 3])
@@ -138,7 +146,9 @@ class TestIndexSelect(unittest.TestCase):
 
     def test_index_select_axis0(self):
         """axis=0选择 / Index select along axis 0"""
-        x = paddle.to_tensor([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]], dtype='float32')
+        x = paddle.to_tensor(
+            [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]], dtype='float32'
+        )
         index = paddle.to_tensor([0, 2], dtype='int32')
         out = paddle.index_select(x, index, axis=0)
         expected = np.array([[1.0, 2.0], [5.0, 6.0]])
@@ -146,7 +156,9 @@ class TestIndexSelect(unittest.TestCase):
 
     def test_index_select_axis1(self):
         """axis=1选择 / Index select along axis 1"""
-        x = paddle.to_tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], dtype='float32')
+        x = paddle.to_tensor(
+            [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], dtype='float32'
+        )
         index = paddle.to_tensor([0, 2], dtype='int32')
         out = paddle.index_select(x, index, axis=1)
         expected = np.array([[1.0, 3.0], [4.0, 6.0]])

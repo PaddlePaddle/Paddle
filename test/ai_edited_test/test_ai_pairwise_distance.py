@@ -77,7 +77,9 @@ class TestPairwiseDistanceDynamic(unittest.TestCase):
         Test L-inf distance with p=inf"""
         x = paddle.to_tensor([[1.0, 3.0, 5.0]])
         y = paddle.to_tensor([[0.0, 0.0, 0.0]])
-        dist = paddle.nn.functional.pairwise_distance(x, y, p=float('inf'), epsilon=0.0)
+        dist = paddle.nn.functional.pairwise_distance(
+            x, y, p=float('inf'), epsilon=0.0
+        )
         np.testing.assert_allclose(dist.numpy(), [5.0], atol=1e-5)
 
     def test_zero_epsilon(self):
@@ -152,13 +154,17 @@ class TestPairwiseDistanceStatic(unittest.TestCase):
             with paddle.static.program_guard(main_prog, startup_prog):
                 x = paddle.static.data(name='x', shape=[2, 3], dtype='float32')
                 y = paddle.static.data(name='y', shape=[2, 3], dtype='float32')
-                dist = paddle.nn.functional.pairwise_distance(x, y, p=2.0, epsilon=1e-6, keepdim=False)
+                dist = paddle.nn.functional.pairwise_distance(
+                    x, y, p=2.0, epsilon=1e-6, keepdim=False
+                )
 
             exe = paddle.static.Executor(paddle.CPUPlace())
             exe.run(startup_prog)
             x_np = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], dtype='float32')
             y_np = np.array([[7.0, 8.0, 9.0], [1.0, 1.0, 1.0]], dtype='float32')
-            result = exe.run(main_prog, feed={'x': x_np, 'y': y_np}, fetch_list=[dist])
+            result = exe.run(
+                main_prog, feed={'x': x_np, 'y': y_np}, fetch_list=[dist]
+            )
             self.assertEqual(len(result[0].shape), 1)
             self.assertEqual(result[0].shape[0], 2)
         finally:
@@ -174,13 +180,17 @@ class TestPairwiseDistanceStatic(unittest.TestCase):
             with paddle.static.program_guard(main_prog, startup_prog):
                 x = paddle.static.data(name='x', shape=[2, 3], dtype='float64')
                 y = paddle.static.data(name='y', shape=[2, 3], dtype='float64')
-                dist = paddle.nn.functional.pairwise_distance(x, y, p=2.0, epsilon=0.0, keepdim=True)
+                dist = paddle.nn.functional.pairwise_distance(
+                    x, y, p=2.0, epsilon=0.0, keepdim=True
+                )
 
             exe = paddle.static.Executor(paddle.CPUPlace())
             exe.run(startup_prog)
             x_np = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], dtype='float64')
             y_np = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], dtype='float64')
-            result = exe.run(main_prog, feed={'x': x_np, 'y': y_np}, fetch_list=[dist])
+            result = exe.run(
+                main_prog, feed={'x': x_np, 'y': y_np}, fetch_list=[dist]
+            )
             self.assertEqual(list(result[0].shape), [2, 1])
         finally:
             paddle.disable_static()

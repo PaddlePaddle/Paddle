@@ -35,7 +35,6 @@ This test covers the following functions:
 import unittest
 
 import paddle
-from paddle.base import core
 
 
 class TestGetSetRngStateCPU(unittest.TestCase):
@@ -108,6 +107,7 @@ class TestManualProgramSeed(unittest.TestCase):
         paddle.enable_static()
         try:
             from paddle.framework.random import _manual_program_seed
+
             _manual_program_seed(12345)
 
             # 验证种子已设置到默认main program
@@ -134,8 +134,8 @@ class TestNamedRandomSeedGenerator(unittest.TestCase):
         """测试设置和获取命名随机种子生成器
         Test setting and getting a named random seed generator"""
         from paddle.framework.random import (
-            set_random_seed_generator,
             get_random_seed_generator,
+            set_random_seed_generator,
         )
 
         # 设置一个命名的随机种子生成器 / Set a named random seed generator

@@ -53,12 +53,15 @@ class TestOneHotDynamic(unittest.TestCase):
         Test basic one_hot encoding"""
         x = paddle.to_tensor([0, 1, 2, 3], dtype='int64')
         out = paddle.nn.functional.one_hot(x, num_classes=4)
-        expected = np.array([
-            [1, 0, 0, 0],
-            [0, 1, 0, 0],
-            [0, 0, 1, 0],
-            [0, 0, 0, 1],
-        ], dtype='float32')
+        expected = np.array(
+            [
+                [1, 0, 0, 0],
+                [0, 1, 0, 0],
+                [0, 0, 1, 0],
+                [0, 0, 0, 1],
+            ],
+            dtype='float32',
+        )
         np.testing.assert_array_equal(out.numpy(), expected)
 
     def test_one_hot_auto_num_classes(self):
@@ -115,14 +118,19 @@ class TestEmbeddingMaxNorm(unittest.TestCase):
         x = paddle.to_tensor([0, 1, 2], dtype='int64')
         # 创建一个权重矩阵，其中某些行的范数大于max_norm
         # Create a weight matrix where some rows have norm > max_norm
-        weight = paddle.to_tensor([
-            [10.0, 10.0, 10.0],  # norm = sqrt(300) ≈ 17.3
-            [1.0, 0.0, 0.0],    # norm = 1.0
-            [0.0, 2.0, 0.0],    # norm = 2.0
-        ], dtype='float32')
+        weight = paddle.to_tensor(
+            [
+                [10.0, 10.0, 10.0],  # norm = sqrt(300) ≈ 17.3
+                [1.0, 0.0, 0.0],  # norm = 1.0
+                [0.0, 2.0, 0.0],  # norm = 2.0
+            ],
+            dtype='float32',
+        )
         weight.stop_gradient = False
 
-        out = paddle.nn.functional.embedding(x, weight, max_norm=5.0, norm_type=2.0)
+        out = paddle.nn.functional.embedding(
+            x, weight, max_norm=5.0, norm_type=2.0
+        )
         self.assertEqual(list(out.shape), [3, 3])
         # 第一行的范数应被裁剪到不超过5.0
         # First row norm should be clipped to <= 5.0

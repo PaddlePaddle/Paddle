@@ -114,7 +114,9 @@ class TestArange(unittest.TestCase):
     def test_arange_with_step(self):
         """指定step / Arange with step"""
         out = paddle.arange(0, 10, 2, dtype='int32')
-        np.testing.assert_array_equal(out.numpy(), np.arange(0, 10, 2, dtype='int32'))
+        np.testing.assert_array_equal(
+            out.numpy(), np.arange(0, 10, 2, dtype='int32')
+        )
 
     def test_arange_float_step(self):
         """浮点步长 / Arange with float step"""
@@ -125,7 +127,9 @@ class TestArange(unittest.TestCase):
     def test_arange_negative_step(self):
         """负步长 / Arange with negative step"""
         out = paddle.arange(5, 0, -1, dtype='int32')
-        np.testing.assert_array_equal(out.numpy(), np.arange(5, 0, -1, dtype='int32'))
+        np.testing.assert_array_equal(
+            out.numpy(), np.arange(5, 0, -1, dtype='int32')
+        )
 
 
 class TestFullAndZerosOnes(unittest.TestCase):
@@ -143,21 +147,27 @@ class TestFullAndZerosOnes(unittest.TestCase):
     def test_full_int(self):
         """int类型full / Full with int dtype"""
         out = paddle.full([3], 7, dtype='int32')
-        np.testing.assert_array_equal(out.numpy(), np.array([7, 7, 7], dtype='int32'))
+        np.testing.assert_array_equal(
+            out.numpy(), np.array([7, 7, 7], dtype='int32')
+        )
 
     def test_zeros_various_shapes(self):
         """各种形状的zeros / Zeros with various shapes"""
         for shape in [[1], [2, 3], [2, 3, 4]]:
             out = paddle.zeros(shape, dtype='float32')
             self.assertEqual(list(out.shape), shape)
-            np.testing.assert_allclose(out.numpy(), np.zeros(shape, dtype='float32'))
+            np.testing.assert_allclose(
+                out.numpy(), np.zeros(shape, dtype='float32')
+            )
 
     def test_ones_various_shapes(self):
         """各种形状的ones / Ones with various shapes"""
         for shape in [[1], [2, 3], [2, 3, 4]]:
             out = paddle.ones(shape, dtype='float32')
             self.assertEqual(list(out.shape), shape)
-            np.testing.assert_allclose(out.numpy(), np.ones(shape, dtype='float32'))
+            np.testing.assert_allclose(
+                out.numpy(), np.ones(shape, dtype='float32')
+            )
 
 
 class TestMeshgrid(unittest.TestCase):

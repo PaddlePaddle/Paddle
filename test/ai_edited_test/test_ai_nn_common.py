@@ -46,27 +46,43 @@ class TestPadModes(unittest.TestCase):
 
     def test_pad_constant_1d(self):
         """1D常数填充 / 1D constant pad"""
-        x = paddle.to_tensor([1.0, 2.0, 3.0], dtype='float32').unsqueeze(0).unsqueeze(0)
+        x = (
+            paddle.to_tensor([1.0, 2.0, 3.0], dtype='float32')
+            .unsqueeze(0)
+            .unsqueeze(0)
+        )
         out = F.pad(x, [1, 2], mode='constant', value=0.0)
         self.assertEqual(out.shape[-1], 6)
 
     def test_pad_reflect_1d(self):
         """1D反射填充 / 1D reflect pad"""
-        x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0], dtype='float32').unsqueeze(0).unsqueeze(0)
+        x = (
+            paddle.to_tensor([1.0, 2.0, 3.0, 4.0], dtype='float32')
+            .unsqueeze(0)
+            .unsqueeze(0)
+        )
         out = F.pad(x, [1, 1], mode='reflect')
         expected = np.array([[[2.0, 1.0, 2.0, 3.0, 4.0, 3.0]]])
         np.testing.assert_allclose(out.numpy(), expected, rtol=1e-5)
 
     def test_pad_replicate_1d(self):
         """1D复制填充 / 1D replicate pad"""
-        x = paddle.to_tensor([1.0, 2.0, 3.0], dtype='float32').unsqueeze(0).unsqueeze(0)
+        x = (
+            paddle.to_tensor([1.0, 2.0, 3.0], dtype='float32')
+            .unsqueeze(0)
+            .unsqueeze(0)
+        )
         out = F.pad(x, [2, 2], mode='replicate')
         expected = np.array([[[1.0, 1.0, 1.0, 2.0, 3.0, 3.0, 3.0]]])
         np.testing.assert_allclose(out.numpy(), expected, rtol=1e-5)
 
     def test_pad_circular_1d(self):
         """1D循环填充 / 1D circular pad"""
-        x = paddle.to_tensor([1.0, 2.0, 3.0], dtype='float32').unsqueeze(0).unsqueeze(0)
+        x = (
+            paddle.to_tensor([1.0, 2.0, 3.0], dtype='float32')
+            .unsqueeze(0)
+            .unsqueeze(0)
+        )
         out = F.pad(x, [1, 1], mode='circular')
         expected = np.array([[[3.0, 1.0, 2.0, 3.0, 1.0]]])
         np.testing.assert_allclose(out.numpy(), expected, rtol=1e-5)
@@ -87,7 +103,9 @@ class TestLabelSmooth(unittest.TestCase):
 
     def test_label_smooth_basic(self):
         """基本标签平滑 / Basic label smoothing"""
-        label = paddle.to_tensor([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], dtype='float32')
+        label = paddle.to_tensor(
+            [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], dtype='float32'
+        )
         out = F.label_smooth(label, epsilon=0.1)
         self.assertIsNotNone(out)
         # 平滑后最大值应该小于1.0

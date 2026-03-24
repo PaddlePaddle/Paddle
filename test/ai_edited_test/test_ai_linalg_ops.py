@@ -103,8 +103,12 @@ class TestCrossProduct(unittest.TestCase):
 
     def test_cross_batched(self):
         """批量叉积 / Batched cross product"""
-        x = paddle.to_tensor([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], dtype='float32')
-        y = paddle.to_tensor([[0.0, 1.0, 0.0], [0.0, 0.0, 1.0]], dtype='float32')
+        x = paddle.to_tensor(
+            [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], dtype='float32'
+        )
+        y = paddle.to_tensor(
+            [[0.0, 1.0, 0.0], [0.0, 0.0, 1.0]], dtype='float32'
+        )
         out = paddle.cross(x, y, axis=-1)
         self.assertEqual(list(out.shape), [2, 3])
 

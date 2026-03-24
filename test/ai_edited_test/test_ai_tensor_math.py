@@ -198,7 +198,9 @@ class TestDiff(unittest.TestCase):
 
     def test_diff_2d(self):
         """2D差分 / 2D diff"""
-        x = paddle.to_tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], dtype='float32')
+        x = paddle.to_tensor(
+            [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], dtype='float32'
+        )
         out = paddle.diff(x, axis=1)
         expected = np.array([[1.0, 1.0], [1.0, 1.0]])
         np.testing.assert_allclose(out.numpy(), expected, rtol=1e-5)

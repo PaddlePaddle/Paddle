@@ -31,8 +31,6 @@ This test covers the following functions:
 
 import unittest
 
-import numpy as np
-
 import paddle
 
 
@@ -65,7 +63,9 @@ class TestTransformerEncoderLayer(unittest.TestCase):
 
     def test_encoder_layer_with_mask(self):
         """带mask的编码器层 / Encoder layer with attention mask"""
-        layer = paddle.nn.TransformerEncoderLayer(d_model=64, nhead=4, dim_feedforward=128)
+        layer = paddle.nn.TransformerEncoderLayer(
+            d_model=64, nhead=4, dim_feedforward=128
+        )
         layer.eval()
         src = paddle.randn([2, 5, 64])
         src_mask = paddle.zeros([5, 5])
@@ -82,7 +82,9 @@ class TestTransformerEncoder(unittest.TestCase):
 
     def test_encoder_basic(self):
         """基本编码器 / Basic encoder"""
-        encoder_layer = paddle.nn.TransformerEncoderLayer(d_model=64, nhead=4, dim_feedforward=128)
+        encoder_layer = paddle.nn.TransformerEncoderLayer(
+            d_model=64, nhead=4, dim_feedforward=128
+        )
         encoder = paddle.nn.TransformerEncoder(encoder_layer, num_layers=2)
         encoder.eval()
         src = paddle.randn([2, 5, 64])
@@ -91,9 +93,13 @@ class TestTransformerEncoder(unittest.TestCase):
 
     def test_encoder_with_norm(self):
         """带LayerNorm的编码器 / Encoder with final layer norm"""
-        encoder_layer = paddle.nn.TransformerEncoderLayer(d_model=64, nhead=4, dim_feedforward=128)
+        encoder_layer = paddle.nn.TransformerEncoderLayer(
+            d_model=64, nhead=4, dim_feedforward=128
+        )
         norm = paddle.nn.LayerNorm(64)
-        encoder = paddle.nn.TransformerEncoder(encoder_layer, num_layers=2, norm=norm)
+        encoder = paddle.nn.TransformerEncoder(
+            encoder_layer, num_layers=2, norm=norm
+        )
         encoder.eval()
         src = paddle.randn([2, 5, 64])
         out = encoder(src)
@@ -109,7 +115,9 @@ class TestTransformerDecoderLayer(unittest.TestCase):
 
     def test_decoder_layer_basic(self):
         """基本解码器层 / Basic decoder layer"""
-        layer = paddle.nn.TransformerDecoderLayer(d_model=64, nhead=4, dim_feedforward=128)
+        layer = paddle.nn.TransformerDecoderLayer(
+            d_model=64, nhead=4, dim_feedforward=128
+        )
         layer.eval()
         tgt = paddle.randn([2, 3, 64])
         memory = paddle.randn([2, 5, 64])
@@ -118,7 +126,9 @@ class TestTransformerDecoderLayer(unittest.TestCase):
 
     def test_decoder_layer_with_mask(self):
         """带mask的解码器层 / Decoder layer with masks"""
-        layer = paddle.nn.TransformerDecoderLayer(d_model=64, nhead=4, dim_feedforward=128)
+        layer = paddle.nn.TransformerDecoderLayer(
+            d_model=64, nhead=4, dim_feedforward=128
+        )
         layer.eval()
         tgt = paddle.randn([2, 3, 64])
         memory = paddle.randn([2, 5, 64])
@@ -137,9 +147,11 @@ class TestTransformer(unittest.TestCase):
     def test_transformer_basic(self):
         """基本Transformer / Basic Transformer"""
         transformer = paddle.nn.Transformer(
-            d_model=64, nhead=4,
-            num_encoder_layers=2, num_decoder_layers=2,
-            dim_feedforward=128
+            d_model=64,
+            nhead=4,
+            num_encoder_layers=2,
+            num_decoder_layers=2,
+            dim_feedforward=128,
         )
         transformer.eval()
         src = paddle.randn([2, 5, 64])

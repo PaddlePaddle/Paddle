@@ -247,7 +247,9 @@ class TestStaticGraphLogicOps(unittest.TestCase):
             exe.run(startup_prog)
             x_np = np.array([1, 2, 3], dtype='int32')
             y_np = np.array([1, 3, 3], dtype='int32')
-            result = exe.run(main_prog, feed={'x': x_np, 'y': y_np}, fetch_list=[out])
+            result = exe.run(
+                main_prog, feed={'x': x_np, 'y': y_np}, fetch_list=[out]
+            )
             np.testing.assert_array_equal(result[0], [True, False, True])
         finally:
             paddle.disable_static()
@@ -268,7 +270,9 @@ class TestStaticGraphLogicOps(unittest.TestCase):
             exe.run(startup_prog)
             x_np = np.array([1.0, 2.0, 3.0], dtype='float32')
             y_np = np.array([2.0, 2.0, 1.0], dtype='float32')
-            result = exe.run(main_prog, feed={'x': x_np, 'y': y_np}, fetch_list=[out])
+            result = exe.run(
+                main_prog, feed={'x': x_np, 'y': y_np}, fetch_list=[out]
+            )
             np.testing.assert_array_equal(result[0], [False, True, True])
         finally:
             paddle.disable_static()
@@ -289,7 +293,9 @@ class TestStaticGraphLogicOps(unittest.TestCase):
             exe.run(startup_prog)
             x_np = np.array([1.0, 2.0, 3.0], dtype='float32')
             y_np = np.array([2.0, 2.0, 1.0], dtype='float32')
-            result = exe.run(main_prog, feed={'x': x_np, 'y': y_np}, fetch_list=[out])
+            result = exe.run(
+                main_prog, feed={'x': x_np, 'y': y_np}, fetch_list=[out]
+            )
             np.testing.assert_array_equal(result[0], [True, True, False])
         finally:
             paddle.disable_static()
@@ -310,7 +316,9 @@ class TestStaticGraphLogicOps(unittest.TestCase):
             exe.run(startup_prog)
             x_np = np.array([1.0, 2.0, 3.0], dtype='float64')
             y_np = np.array([2.0, 2.0, 1.0], dtype='float64')
-            result = exe.run(main_prog, feed={'x': x_np, 'y': y_np}, fetch_list=[out])
+            result = exe.run(
+                main_prog, feed={'x': x_np, 'y': y_np}, fetch_list=[out]
+            )
             np.testing.assert_array_equal(result[0], [True, False, False])
         finally:
             paddle.disable_static()
@@ -331,7 +339,9 @@ class TestStaticGraphLogicOps(unittest.TestCase):
             exe.run(startup_prog)
             x_np = np.array([1, 2, 3], dtype='int64')
             y_np = np.array([1, 3, 3], dtype='int64')
-            result = exe.run(main_prog, feed={'x': x_np, 'y': y_np}, fetch_list=[out])
+            result = exe.run(
+                main_prog, feed={'x': x_np, 'y': y_np}, fetch_list=[out]
+            )
             np.testing.assert_array_equal(result[0], [False, True, False])
         finally:
             paddle.disable_static()
@@ -352,7 +362,9 @@ class TestStaticGraphLogicOps(unittest.TestCase):
             exe.run(startup_prog)
             x_np = np.array([1, 2, 3], dtype='int32')
             y_np = np.array([1, 2, 3], dtype='int32')
-            result = exe.run(main_prog, feed={'x': x_np, 'y': y_np}, fetch_list=[out])
+            result = exe.run(
+                main_prog, feed={'x': x_np, 'y': y_np}, fetch_list=[out]
+            )
             self.assertTrue(result[0].item())
         finally:
             paddle.disable_static()
