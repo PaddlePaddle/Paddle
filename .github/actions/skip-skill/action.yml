@@ -6,7 +6,7 @@ inputs:
   ignore-paths:
     description: 'Comma-separated paths to ignore (e.g., "skill/**,docs/**,**.md")'
     required: true
-    default: 'skill/**'
+    default: 'skills/**'
   base-ref:
     description: 'Base branch (defaults to PR target branch)'
     required: false
