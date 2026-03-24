@@ -210,7 +210,7 @@ __global__ void SegmentIndexGradKernel(const Index* segment_ids,
 template <class T>
 class MaxPool {
  public:
-  DEVICE inline T initial() { return static_cast<T>(-FLT_MAX); }
+  DEVICE inline T initial() { return std::numeric_limits<T>::lowest(); }
   DEVICE inline void compute(const T& x, T* y) { *y = *y > x ? *y : x; }
   DEVICE inline T atomic(T* address, const T val) {
     return phi::CudaAtomicMax(address, val);
@@ -220,7 +220,7 @@ class MaxPool {
 template <class T>
 class MinPool {
  public:
-  DEVICE inline T initial() { return static_cast<T>(FLT_MAX); }
+  DEVICE inline T initial() { return std::numeric_limits<T>::max(); }
   DEVICE inline void compute(const T& x, T* y) { *y = *y < x ? *y : x; }
   DEVICE inline T atomic(T* address, const T val) {
     return phi::CudaAtomicMin(address, val);
