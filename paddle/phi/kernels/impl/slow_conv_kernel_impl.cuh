@@ -17,7 +17,14 @@
 #include <numeric>
 #include <type_traits>
 
+#include <fstream>
+#include <iostream>
+#include <string>
+#include <vector>
+
 #include "paddle/common/flags.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/concat_kernel.h"
 #include "paddle/phi/kernels/contiguous_kernel.h"
 #include "paddle/phi/kernels/conv_kernel.h"
@@ -34,13 +41,6 @@
 #include "paddle/phi/kernels/slice_kernel.h"
 
 COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
-
-#include <fstream>
-#include <iostream>
-#include <string>
-#include <vector>
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 template <typename T>
