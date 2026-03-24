@@ -94,7 +94,7 @@ def _dtensor_from_local(local_tensor, mesh, placements):
 class TensorFusionBuffer:
     def __init__(
         self,
-        unique_key,
+        group_id,
         params,
         fsdp_degree,
         dtype,
@@ -102,7 +102,7 @@ class TensorFusionBuffer:
         main_grad_dtype=None,
     ):
         # Calculate total buffer size needed (with padding)
-        self.unique_key = unique_key
+        self.group_id = group_id
         self.fsdp_degree = fsdp_degree
         self.dtype = dtype
         self.main_grad_dtype = (
@@ -161,7 +161,7 @@ class TensorFusionBuffer:
                 ).clone()
 
             # Init params_buffer attr
-            self.data_buffer.name = "fuse_params_" + str(unique_key)
+            self.data_buffer.name = "fuse_params_" + str(group_id)
             self.data_buffer.stop_gradient = params[0].stop_gradient
             self.data_buffer.optimize_attr = params[0].optimize_attr
         else:
@@ -313,15 +313,15 @@ class FSDPBufferManager:
         curr_gid = 0
 
         param_to_unit_id = {}
-        for unit_id, m in enumerate(self.model.modules()):
-            if type(m).__name__ in self.fsdp_unit_layers:
-                for p in m.parameters():
-                    param_to_unit_id[p.name] = unit_id
-            if type(m).__name__ in self.moe_layers_name:
-                for p in m.parameters():
-                    p.is_moe_param = True
+        for unit_id, module in enumerate(self.model.modules()):
+            if type(module).__name__ in self.fsdp_unit_layers:
+                for param in module.parameters():
+                    param_to_unit_id[param.name] = unit_id
+            if type(module).__name__ in self.moe_layers_name:
+                for param in module.parameters():
+                    param.is_moe_param = True
 
-        param_groups = []
+        temp_groups = []
         for param in parameters:
             name = param.name
             is_expert = getattr(param, "is_moe_param", False)
@@ -340,7 +340,7 @@ class FSDPBufferManager:
             }
 
             found_group = False
-            for param_group in param_groups:
+            for param_group in temp_groups:
                 if (
                     param_group.dtype == param_attrs["dtype"]
                     and param_group.trainable == param_attrs["trainable"]
@@ -355,7 +355,7 @@ class FSDPBufferManager:
 
             # Create new group if no matching
             if not found_group:
-                param_groups.append(BufferGroup(params=[param], **param_attrs))
+                temp_groups.append(BufferGroup(params=[param], **param_attrs))
 
         def group_sort_key(group):
             priority = 0 if group.is_tie else (1 if not group.trainable else 2)
@@ -366,7 +366,7 @@ class FSDPBufferManager:
                 else float('inf'),
             )
 
-        sorted_groups = sorted(param_groups, key=group_sort_key)
+        sorted_groups = sorted(temp_groups, key=group_sort_key)
 
         # For each sorted parameter group, buffer them by execution order
         for param_group in sorted_groups:
