@@ -214,7 +214,9 @@ class TensorFusionBuffer:
 
 
 class FSDPBufferManager:
-    def __init__(self, model, mesh, fsdp_unit_layers=None):
+    def __init__(
+        self, model, mesh, fsdp_unit_layers=None, moe_layers_name=None
+    ):
         self.model = model
         self._fsdp_group = mesh.get_group("dp")
         self.main_grad_dtype = paddle.float32
@@ -238,7 +240,10 @@ class FSDPBufferManager:
             'Qwen3VLTextDecoderLayer',
             'Qwen3MoeDecoderLayer',
         ]
-        self.moe_layers_name = ['Qwen3MoeMLP', 'StandardMLPExpert']
+        # Layer types to identify MoE expert layers
+        self.moe_layers_name = moe_layers_name or [
+            'StandardMLPExpert',
+        ]
 
         # Get tie_param_name if using tie_weights
         self.tie_param_name = None
@@ -499,8 +504,7 @@ class FSDPCommManager:
             if hasattr(param, "is_moe_param"):
                 continue
             gid = self.buffer_manager.param_to_buffer_id.get(param.name)
-            if gid is None:
-                continue
+
             group = self.buffer_manager.buffer_groups[gid]
             stop_gradient = param.stop_gradient
             local_shape = param._local_shape
@@ -629,12 +633,14 @@ class FusionForwardHook(PyLayer):
 
 
 class FullyShardFusion:
-    def __init__(self, model, mesh, fsdp_unit_layers=None):
+    def __init__(
+        self, model, mesh, fsdp_unit_layers=None, moe_layers_name=None
+    ):
         self.model = model
         self.mesh = self._check_mesh(mesh)
         self._shard_all_params()
         self.buffer_manager = FSDPBufferManager(
-            self.model, self.mesh, fsdp_unit_layers
+            self.model, self.mesh, fsdp_unit_layers, moe_layers_name
         )
         self.comm_manager = FSDPCommManager(self.buffer_manager)
         self.register_tensor_fusion_hooks(self.model)
