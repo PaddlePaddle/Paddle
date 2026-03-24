@@ -13,11 +13,7 @@ if(WITH_NVSHMEM)
       kernels/internode_ll.cu
       kernels/internode_ll_two_stage.cu
       kernels/internode_ll.cu
-      kernels/m2n_ll_two_stage.cu
-      kernels/m2n_ll_two_stage_dispatch1.cu
-      kernels/m2n_ll_two_stage_dispatch2.cu
-      kernels/m2n_ll_two_stage_combine1.cu
-      kernels/m2n_ll_two_stage_combine2.cu)
+      kernels/m2n_ll_two_stage.cu)
   if(WITH_ONEDNN)
     cc_library(
       deepep_kernels
