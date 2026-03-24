@@ -6,6 +6,7 @@ on:
       can-skip:
         type: string
         required: false
+        default: "false"
 
 env:
   PR_ID: ${{ github.event.pull_request.number }}
@@ -16,7 +17,6 @@ env:
 jobs:
   check-bypass:
     name: Check bypass
-    if: ${{ inputs.can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
       workflow-name: "ixuca"
@@ -25,8 +25,8 @@ jobs:
 
   test-primary:
     name: Build and Test
-    needs: check-bypass
-    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
+    needs: [check-bypass]
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' && inputs.can-skip != 'true' }}
     runs-on: iluvatar-gpu-2
     continue-on-error: true
     timeout-minutes: 120
@@ -238,6 +238,7 @@ jobs:
       ${{ always()
           && needs.check-bypass.result == 'success'
           && needs.check-bypass.outputs.can-skip != 'true'
+          && inputs.can-skip != 'true'
           && needs.test-primary.outputs.result != 'success' }}
     runs-on:
       group: test2

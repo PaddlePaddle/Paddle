@@ -85,9 +85,9 @@ void ResNetUnitXPUKernel(const Context &dev_ctx,
       reinterpret_cast<XPUType *>(dev_ctx.template Alloc<T>(conv_out_x))};
 
   std::vector<std::vector<int64_t>> x_shape_list = {
-      common::vectorize<int64_t>(input_x->dims())};
+      vectorize<int64_t>(input_x->dims())};
 
-  auto filter_x_shape = common::vectorize<int64_t>(filter_x->dims());
+  auto filter_x_shape = vectorize<int64_t>(filter_x->dims());
   std::vector<int64_t> ksize = {filter_x_shape[2], filter_x_shape[3]};
   if (!is_nchw) {
     ksize[0] = filter_x_shape[1];
@@ -125,9 +125,9 @@ void ResNetUnitXPUKernel(const Context &dev_ctx,
     conv_y_list.push_back(
         reinterpret_cast<XPUType *>(dev_ctx.template Alloc<T>(conv_out_z)));
 
-    x_shape_list.push_back(common::vectorize<int64_t>(input_z->dims()));
+    x_shape_list.push_back(vectorize<int64_t>(input_z->dims()));
 
-    auto filter_z_shape = common::vectorize<int64_t>(filter_z->dims());
+    auto filter_z_shape = vectorize<int64_t>(filter_z->dims());
     std::vector<int64_t> ksize_z = {filter_z_shape[2], filter_z_shape[3]};
     if (!is_nchw) {
       ksize_z[0] = filter_z_shape[1];
@@ -146,7 +146,7 @@ void ResNetUnitXPUKernel(const Context &dev_ctx,
   } else {
     if (fuse_add) {
       const DenseTensor *input_z = z_in.get_ptr();
-      auto input_z_shape = common::vectorize<int64_t>(input_z->dims());
+      auto input_z_shape = vectorize<int64_t>(input_z->dims());
       x_list.push_back(reinterpret_cast<const XPUType *>(input_z->data<T>()));
       x_shape_list.push_back(input_z_shape);
       x_maxlist.push_back(nullptr);

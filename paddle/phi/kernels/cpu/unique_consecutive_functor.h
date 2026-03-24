@@ -156,7 +156,7 @@ static void UniqueConsecutiveDim(const Context& dev_ctx,
   std::iota(permute.begin(), permute.end(), 0);
   permute[axis] = 0;
   permute[0] = axis;
-  std::vector<int64_t> in_trans_dims_vec(common::vectorize(in.dims()));
+  std::vector<int64_t> in_trans_dims_vec(vectorize(in.dims()));
   in_trans_dims_vec[axis] = in.dims()[0];
   in_trans_dims_vec[0] = in.dims()[axis];
   DenseTensor in_trans;

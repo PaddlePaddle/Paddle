@@ -29,7 +29,7 @@ inline void ResizeToChannelFirst(const DeviceContext& dev_ctx,
     // input
     transformed_input->Resize(input->dims());
 
-    auto in_dims_vec = common::vectorize(input->dims());
+    auto in_dims_vec = vectorize(input->dims());
     in_dims_vec[1] = input->dims()[4];
     in_dims_vec[2] = input->dims()[1];
     in_dims_vec[3] = input->dims()[2];
@@ -40,7 +40,7 @@ inline void ResizeToChannelFirst(const DeviceContext& dev_ctx,
     // input
     transformed_input->Resize(input->dims());
 
-    auto in_dims_vec = common::vectorize(input->dims());
+    auto in_dims_vec = vectorize(input->dims());
     in_dims_vec[1] = input->dims()[3];
     in_dims_vec[2] = input->dims()[1];
     in_dims_vec[3] = input->dims()[2];
@@ -49,7 +49,7 @@ inline void ResizeToChannelFirst(const DeviceContext& dev_ctx,
   } else if (dim == 1) {
     transformed_input->Resize(input->dims());
 
-    auto in_dims_vec = common::vectorize(input->dims());
+    auto in_dims_vec = vectorize(input->dims());
     in_dims_vec[1] = input->dims()[2];
     in_dims_vec[2] = input->dims()[1];
     transformed_input->Resize(make_ddim(in_dims_vec));
@@ -66,7 +66,7 @@ inline void ResizeToChannelLast(const DeviceContext& dev_ctx,
     // input
     transformed_input->Resize(input->dims());
 
-    auto in_dims_vec = common::vectorize(input->dims());
+    auto in_dims_vec = vectorize(input->dims());
     in_dims_vec[1] = input->dims()[2];
     in_dims_vec[2] = input->dims()[3];
     in_dims_vec[3] = input->dims()[4];
@@ -78,7 +78,7 @@ inline void ResizeToChannelLast(const DeviceContext& dev_ctx,
     // input
     transformed_input->Resize(input->dims());
 
-    auto in_dims_vec = common::vectorize(input->dims());
+    auto in_dims_vec = vectorize(input->dims());
     in_dims_vec[1] = input->dims()[2];
     in_dims_vec[2] = input->dims()[3];
     in_dims_vec[3] = input->dims()[1];
@@ -87,7 +87,7 @@ inline void ResizeToChannelLast(const DeviceContext& dev_ctx,
   } else if (dim == 1) {
     transformed_input->Resize(input->dims());
 
-    auto in_dims_vec = common::vectorize(input->dims());
+    auto in_dims_vec = vectorize(input->dims());
     in_dims_vec[1] = input->dims()[2];
     in_dims_vec[2] = input->dims()[1];
     transformed_input->Resize(make_ddim(in_dims_vec));

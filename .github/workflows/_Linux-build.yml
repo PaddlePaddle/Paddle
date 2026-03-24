@@ -10,6 +10,10 @@ on:
         type: string
         required: false
         default: "true"
+      clone-can-skip:
+        default: "false"
+        required: false
+        type: string
     outputs:
       can-skip:
         description: "Whether to skip the job"
@@ -44,13 +48,21 @@ jobs:
   build:
     name: Build
     needs: [check-bypass]
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' && inputs.clone-can-skip != 'true' }}
     outputs:
-      can-skip: ${{ needs.check-bypass.outputs.can-skip }}
+      can-skip: ${{ needs.check-bypass.outputs.can-skip == 'true' || inputs.clone-can-skip == 'true' }}
     runs-on:
       group: GZ_BD-CPU
     timeout-minutes: 120
 
     steps:
+      - name: Debug - Print outputs
+        run: |
+          echo "=== Build Job Debug Info ==="
+          echo "needs.check-bypass.outputs.can-skip: ${{ needs.check-bypass.outputs.can-skip }}"
+          echo "inputs.clone-can-skip: ${{ inputs.clone-can-skip }}"
+          echo "outputs.can-skip (will be): ${{ needs.check-bypass.outputs.can-skip == 'true' || inputs.clone-can-skip == 'true' }}"
+          echo "============================"
       - name: Check docker image and run container
         env:
           PADDLE_CUDA_INSTALL_REQUIREMENTS: "ON"

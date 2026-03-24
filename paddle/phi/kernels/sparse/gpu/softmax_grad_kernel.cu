@@ -189,7 +189,7 @@ void SoftmaxCooGradGPUKernel(const Context& dev_ctx,
   const auto output_indices_dims = out.indices().dims();
   const auto out_dims = out.dims();
   auto sparse_dim = out.sparse_dim();
-  auto sizes = common::vectorize<IntT>(out_dims);
+  auto sizes = vectorize<IntT>(out_dims);
   auto grad_indices = dout.indices();
   auto grad_values = dout.values();
   auto grad_values_ptr = grad_values.data<T>();
