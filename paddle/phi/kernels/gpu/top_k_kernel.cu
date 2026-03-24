@@ -23,6 +23,9 @@
 #include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/top_k_function_cuda.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/phi/kernels/funcs/top_k_cuda_kernel.h"
+#endif
 namespace phi {
 
 #define FIXED_BLOCK_DIM_BASE(dim, ...) \
@@ -53,14 +56,14 @@ namespace phi {
   FIXED_MAXLENGTH_BASE(5, ##__VA_ARGS__)
 
 template <typename T, typename Context>
-void TopkKernelOld(const Context& dev_ctx,
-                   const DenseTensor& x,
-                   const Scalar& k_scalar,
-                   int axis,
-                   bool largest,
-                   bool sorted,
-                   DenseTensor* out,
-                   DenseTensor* indices) {
+void TopkKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                const Scalar& k_scalar,
+                int axis,
+                bool largest,
+                bool sorted,
+                DenseTensor* out,
+                DenseTensor* indices) {
   if (out && out->numel() == 0) {
     dev_ctx.template Alloc<T>(out);
     dev_ctx.template Alloc<int64_t>(indices);
@@ -363,14 +366,15 @@ void TopkV1Kernel(const Context& dev_ctx,
                   const Scalar& k_scalar,
                   DenseTensor* out,
                   DenseTensor* indices) {
-  TopkKernelOld<T, Context>(dev_ctx, x, k_scalar, -1, true, true, out, indices);
+  TopkKernel<T, Context>(dev_ctx, x, k_scalar, -1, true, true, out, indices);
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(topk_old,
+#ifdef PADDLE_WITH_CUDA
+PD_REGISTER_KERNEL(topk,
                    GPU,
                    ALL_LAYOUT,
-                   phi::TopkKernelOld,
+                   phi::TopkKernelCuda,
                    float,
                    double,
                    int,
@@ -379,6 +383,20 @@ PD_REGISTER_KERNEL(topk_old,
                    phi::bfloat16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
 }
+#else
+PD_REGISTER_KERNEL(topk,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::TopKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::float16,
+                   phi::bfloat16) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
+}
+#endif
 
 PD_REGISTER_KERNEL(topk_v1,
                    GPU,

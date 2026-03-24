@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef PADDLE_PHI_KERNELS_FUNCS_TOP_K_CUDA_KERNEL_H_
+#define PADDLE_PHI_KERNELS_FUNCS_TOP_K_CUDA_KERNEL_H_
+
 // GPU TopK kernel implementation using radix-select and multi-tier sorting.
 
 #include <algorithm>
@@ -38,7 +41,7 @@
 // with Paddle's existing implementations.
 // ============================================================================
 
-namespace {
+namespace topk_detail {
 
 // Stream type alias: gpuStream_t is in phi:: namespace, bring it into scope
 using phi::gpuStream_t;
@@ -1568,13 +1571,15 @@ __device__ void radixSelect(const T* data,
 #define TOPK_CUB_SUPPORTS_SCAN_BY_KEY() 0
 #endif
 
-}  // anonymous namespace
+}  // namespace topk_detail
 
 // ============================================================================
 // Main TopK implementation
 // ============================================================================
 
 namespace topk_impl {
+
+using namespace topk_detail;  // NOLINT
 
 // getTensorInfo: builds TensorInfo from DenseTensor
 template <typename T, typename IndexType>
@@ -2527,14 +2532,14 @@ bool canUse32BitIndexMath(
 namespace phi {
 
 template <typename T, typename Context>
-void TopkKernel(const Context& dev_ctx,
-                const DenseTensor& x,
-                const Scalar& k_scalar,
-                int axis,
-                bool largest,
-                bool sorted,
-                DenseTensor* out,
-                DenseTensor* indices) {
+void TopkKernelCuda(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const Scalar& k_scalar,
+                    int axis,
+                    bool largest,
+                    bool sorted,
+                    DenseTensor* out,
+                    DenseTensor* indices) {
   const auto& in_dims = x.dims();
 
   // Handle empty output (e.g. when k comes from tensor, dims may contain -1)
@@ -2759,15 +2764,4 @@ void TopkKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(topk,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::TopkKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   phi::float16,
-                   phi::bfloat16) {
-  kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
-}
+#endif  // PADDLE_PHI_KERNELS_FUNCS_TOP_K_CUDA_KERNEL_H_
