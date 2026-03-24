@@ -212,9 +212,14 @@ __global__ void KernelPool2D(const IndexT nthreads,
         pool_process.compute(input_data[input_idx], &ele);
       }
     }
-    IndexT pool_size = exclusive ? (hend - hstart) * (wend - wstart)
-                                 : ksize_height * ksize_width;
-    pool_process.finalize(static_cast<T>(pool_size), &ele);
+    if (exclusive) {
+      IndexT kh = hend - hstart;
+      IndexT kw = wend - wstart;
+      pool_process.finalize(static_cast<T>(kh), static_cast<T>(kw), &ele);
+    } else {
+      IndexT pool_size = ksize_height * ksize_width;
+      pool_process.finalize(static_cast<T>(pool_size), &ele);
+    }
     output_data[index] = ele;
   }
 }
@@ -274,8 +279,9 @@ __global__ void AdaptiveKernelPool2D(const IndexT nthreads,
           pool_process.compute(input_data[input_offset + input_idx], &ele);
         }
       }
-      IndexT pool_size = (hend - hstart) * (wend - wstart);
-      pool_process.finalize(static_cast<T>(pool_size), &ele);
+      IndexT kh = hend - hstart;
+      IndexT kw = wend - wstart;
+      pool_process.finalize(static_cast<T>(kh), static_cast<T>(kw), &ele);
       IndexT output_idx =
           channel_last
               ? (h_offset * output_width + w_offset) * channels + c_offset
@@ -354,17 +360,18 @@ __global__ void KernelPool2DGrad(
         for (IndexT pw = pwstart; pw < pwend; ++pw) {
           PreparationPoolSize(
               pw, input_width, output_width, divmods.ksize_w, &pool_width);
-          IndexT pool_size = pool_height * pool_width;
           IndexT tmp_idx = ph * output_width + pw;
           IndexT output_sub_idx =
               channel_last ? tmp_idx * divmods.channel.divisor + c_offset
                            : tmp_idx;
           T output_value = pool_process.use_x ? output_data[output_sub_idx]
                                               : static_cast<T>(0);
+          T scale = static_cast<T>(1) / static_cast<T>(pool_height) /
+                    static_cast<T>(pool_width);
           pool_process.compute(input,
                                output_value,
                                output_grad[output_sub_idx],
-                               static_cast<T>(1.0 / pool_size),
+                               scale,
                                &input_grad_data);
         }
       }
@@ -385,17 +392,20 @@ __global__ void KernelPool2DGrad(
             IndexT wend = min(wstart + ksize_width, input_width);
             hstart = max(hstart, static_cast<IndexT>(0));
             wstart = max(wstart, static_cast<IndexT>(0));
-            IndexT pool_size = (hend - hstart) * (wend - wstart);
+            IndexT kh = hend - hstart;
+            IndexT kw = wend - wstart;
             IndexT tmp_idx = ph * output_width + pw;
             IndexT output_sub_idx =
                 channel_last ? tmp_idx * divmods.channel.divisor + c_offset
                              : tmp_idx;
             T output_value = pool_process.use_x ? output_data[output_sub_idx]
                                                 : static_cast<T>(0);
+            T scale =
+                static_cast<T>(1) / static_cast<T>(kh) / static_cast<T>(kw);
             pool_process.compute(input,
                                  output_value,
                                  output_grad[output_sub_idx],
-                                 static_cast<T>(1.0 / pool_size),
+                                 scale,
                                  &input_grad_data);
           }
         }
@@ -409,10 +419,11 @@ __global__ void KernelPool2DGrad(
                              : tmp_idx;
             T output_value = pool_process.use_x ? output_data[output_sub_idx]
                                                 : static_cast<T>(0);
+            T scale = static_cast<T>(1) / static_cast<T>(pool_size);
             pool_process.compute(input,
                                  output_value,
                                  output_grad[output_sub_idx],
-                                 static_cast<T>(1.0 / pool_size),
+                                 scale,
                                  &input_grad_data);
           }
         }
@@ -1240,10 +1251,15 @@ __global__ void KernelPool3D(const IndexT nthreads,
         }
       }
     }
-    IndexT pool_size = (exclusive || adaptive)
-                           ? (dend - dstart) * (hend - hstart) * (wend - wstart)
-                           : ksize_depth * ksize_height * ksize_width;
-    pool_process.finalize(static_cast<T>(pool_size), &ele);
+    if (exclusive || adaptive) {
+      IndexT kd = dend - dstart;
+      IndexT kh = hend - hstart;
+      IndexT kw = wend - wstart;
+      pool_process.finalize(static_cast<T>(kd * kh * kw), &ele);
+    } else {
+      IndexT pool_size = ksize_depth * ksize_height * ksize_width;
+      pool_process.finalize(static_cast<T>(pool_size), &ele);
+    }
     output_data[index] = ele;
   }
 }
@@ -1341,7 +1357,7 @@ __global__ void KernelPool3DGrad(const IndexT nthreads,
     for (IndexT pd = pdstart; pd < pdend; ++pd) {
       for (IndexT ph = phstart; ph < phend; ++ph) {
         for (IndexT pw = pwstart; pw < pwend; ++pw) {
-          // figure out the pooling size
+          T scale;
           if (adaptive) {
             PreparationPoolSize(pd,
                                 input_depth,
@@ -1358,7 +1374,8 @@ __global__ void KernelPool3DGrad(const IndexT nthreads,
                                 output_height,
                                 FastDivMod<IndexT>(output_height),
                                 &pool_height);
-            pool_size = pool_depth * pool_height * pool_width;
+            scale = static_cast<T>(1) / static_cast<T>(pool_depth) /
+                    static_cast<T>(pool_height) / static_cast<T>(pool_width);
           } else {
             IndexT dstart = pd * stride_depth - padding_depth;
             IndexT hstart = ph * stride_height - padding_height;
@@ -1369,9 +1386,16 @@ __global__ void KernelPool3DGrad(const IndexT nthreads,
             dstart = max(dstart, static_cast<IndexT>(0));
             hstart = max(hstart, static_cast<IndexT>(0));
             wstart = max(wstart, static_cast<IndexT>(0));
-            pool_size =
-                exclusive ? (dend - dstart) * (hend - hstart) * (wend - wstart)
-                          : ksize_depth * ksize_height * ksize_width;
+            if (exclusive) {
+              IndexT kd = dend - dstart;
+              IndexT kh = hend - hstart;
+              IndexT kw = wend - wstart;
+              scale = static_cast<T>(1) / static_cast<T>(kd) /
+                      static_cast<T>(kh) / static_cast<T>(kw);
+            } else {
+              pool_size = ksize_depth * ksize_height * ksize_width;
+              scale = static_cast<T>(1) / static_cast<T>(pool_size);
+            }
           }
 
           IndexT output_sub_idx =
@@ -1384,7 +1408,7 @@ __global__ void KernelPool3DGrad(const IndexT nthreads,
           pool_process.compute(input,
                                output_value,
                                output_grad[output_sub_idx],
-                               static_cast<T>(1.0 / pool_size),
+                               scale,
                                &input_grad_data);
         }
       }

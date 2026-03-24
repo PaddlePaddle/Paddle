@@ -22,7 +22,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/pool_kernel.h"
 
 #if defined(__HIPCC__) || defined(__NVCC__)
-#include "paddle/phi/kernels/gpu/reduce.h"
+#include "paddle/phi/kernels/funcs/reduce_function.h"
+#include "paddle/phi/kernels/primitive/functor_primitives.h"
 #endif
 
 namespace phi {
@@ -124,42 +125,18 @@ void PoolRawKernel(const Context& dev_ctx,
                        pool_process);
 
       } else if (true_type == "avg") {
-        std::vector<int> reduce_dim;
-        int64_t reduce_num = GetReduceNum(x, out, channel_last, &reduce_dim);
-        if (reduce_num > 0 &&
-            adaptive) {  // for adaptive_avg_pool2d && output_size == 1
-#if defined(__HIPCC__) || defined(__NVCC__)
-          auto stream = dev_ctx.stream();
-          funcs::ReduceGpuKernel<T, T, kps::MeanOps>(
-              dev_ctx, x, out, reduce_dim);
-#else  // for cpu
-          funcs::Pool2dFunctor<Context, funcs::AvgPool<T>, T> pool2d_forward;
-          funcs::AvgPool<T> pool_process;
-          pool2d_forward(dev_ctx,
-                         x,
-                         kernel_size_,
-                         strides,
-                         paddings_,
-                         data_format,
-                         exclusive,
-                         adaptive,
-                         out,
-                         pool_process);
-#endif
-        } else {  // avgpool_2d or  adaptive_avg_pool2d && output_size != 1
-          funcs::Pool2dFunctor<Context, funcs::AvgPool<T>, T> pool2d_forward;
-          funcs::AvgPool<T> pool_process;
-          pool2d_forward(dev_ctx,
-                         x,
-                         kernel_size_,
-                         strides,
-                         paddings_,
-                         data_format,
-                         exclusive,
-                         adaptive,
-                         out,
-                         pool_process);
-        }
+        funcs::Pool2dFunctor<Context, funcs::AvgPool<T>, T> pool2d_forward;
+        funcs::AvgPool<T> pool_process;
+        pool2d_forward(dev_ctx,
+                       x,
+                       kernel_size_,
+                       strides,
+                       paddings_,
+                       data_format,
+                       exclusive,
+                       adaptive,
+                       out,
+                       pool_process);
       } else {  // lp_pool2d
         funcs::Pool2dFunctor<Context, funcs::LPPool<T>, T> pool2d_forward;
         funcs::LPPool<T> pool_process;
@@ -245,7 +222,7 @@ void MaxPoolWithIndexRawKernel(const Context& dev_ctx,
     for (size_t i = 0; i < kernel_size_.size(); ++i) {
       paddings_[i] = 0;
       kernel_size_[i] = static_cast<int>(x.dims()[i + 2]);
-      dilations_[i] = 1;  // Reset dilation for global pooling
+      dilations_[i] = 1;
     }
   }
 

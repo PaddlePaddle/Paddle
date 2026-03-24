@@ -46,6 +46,13 @@ class MaxPool {
   DEVICE inline T initial() { return static_cast<T>(-FLT_MAX); }
   HOSTDEVICE inline void compute(const T& x, T* y) { *y = *y > x ? *y : x; }
   DEVICE inline void finalize(const T& pool_field UNUSED, T* y UNUSED) {}
+  DEVICE inline void finalize(const T& kh UNUSED,
+                              const T& kw UNUSED,
+                              T* y UNUSED) {}
+  DEVICE inline void finalize(const T& kd UNUSED,
+                              const T& kh UNUSED,
+                              const T& kw UNUSED,
+                              T* y UNUSED) {}
 };
 
 template <class T>
@@ -66,6 +73,18 @@ class AvgPool {
   DEVICE inline void finalize(const T& pool_field, T* y) {
     *y = static_cast<T>(intermediate_res / (static_cast<MT>(pool_field)));
   }
+
+  // Sequential division for 2D pooling
+  DEVICE inline void finalize(const T& kh, const T& kw, T* y) {
+    *y = static_cast<T>(intermediate_res / static_cast<MT>(kh) /
+                        static_cast<MT>(kw));
+  }
+
+  // Sequential division for 3D pooling
+  DEVICE inline void finalize(const T& kd, const T& kh, const T& kw, T* y) {
+    *y = static_cast<T>(intermediate_res / static_cast<MT>(kd) /
+                        static_cast<MT>(kh) / static_cast<MT>(kw));
+  }
 };
 
 template <class T>
@@ -85,6 +104,15 @@ class LPPool {
   }
 
   DEVICE inline void finalize(const T& pool_field UNUSED, T* y) {
+    *y = static_cast<T>(powf(intermediate_res, 1.0 / norm_type));
+  }
+  DEVICE inline void finalize(const T& kh UNUSED, const T& kw UNUSED, T* y) {
+    *y = static_cast<T>(powf(intermediate_res, 1.0 / norm_type));
+  }
+  DEVICE inline void finalize(const T& kd UNUSED,
+                              const T& kh UNUSED,
+                              const T& kw UNUSED,
+                              T* y) {
     *y = static_cast<T>(powf(intermediate_res, 1.0 / norm_type));
   }
 };
@@ -128,7 +156,8 @@ class LPPoolGrad {
  */
 template <typename T = int64_t>
 HOSTDEVICE inline T AdaptStartIndex(T ph, T input_size, T output_size) {
-  return (ph * input_size) / output_size;
+  return (ph / output_size) * input_size +
+         ((ph % output_size) * input_size) / output_size;
 }
 
 template <typename T = int64_t>

@@ -107,9 +107,13 @@ class Pool2dFunctor<CPUContext, PoolProcess, T> {
                 }
               }
               if (exclusive || adaptive) {
-                pool_size = (hend - hstart) * (wend - wstart);
+                int64_t kh = hend - hstart;
+                int64_t kw = wend - wstart;
+                pool_process.finalize(
+                    static_cast<T>(kh), static_cast<T>(kw), &ele);
+              } else {
+                pool_process.finalize(static_cast<T>(pool_size), &ele);
               }
-              pool_process.finalize(static_cast<T>(pool_size), &ele);
               output_data[ph * output_width + pw] = ele;
             }
           }
@@ -157,9 +161,13 @@ class Pool2dFunctor<CPUContext, PoolProcess, T> {
                 }
               }
               if (exclusive || adaptive) {
-                pool_size = (hend - hstart) * (wend - wstart);
+                int64_t kh = hend - hstart;
+                int64_t kw = wend - wstart;
+                pool_process.finalize(
+                    static_cast<T>(kh), static_cast<T>(kw), &ele);
+              } else {
+                pool_process.finalize(static_cast<T>(pool_size), &ele);
               }
-              pool_process.finalize(static_cast<T>(pool_size), &ele);
               output_data[ph * output_width * output_channels +
                           pw * output_channels + c] = ele;
             }
@@ -257,17 +265,22 @@ class Pool2dGradFunctor<CPUContext, PoolProcess, T> {
                 hend = std::min(hend, input_height);
                 wend = std::min(wend, input_width);
               }
+              T scale;
               if (exclusive || adaptive) {
-                pool_size = (hend - hstart) * (wend - wstart);
+                int64_t kh = hend - hstart;
+                int64_t kw = wend - wstart;
+                scale =
+                    static_cast<T>(1) / static_cast<T>(kh) / static_cast<T>(kw);
+              } else {
+                scale = static_cast<T>(1) / static_cast<T>(pool_size);
               }
-              float scale = 1.0f / static_cast<float>(pool_size);
               for (int64_t h = hstart; h < hend; ++h) {
                 for (int64_t w = wstart; w < wend; ++w) {
                   pool_grad_process.compute(
                       input_data[h * input_width + w],
                       output_data[ph * output_width + pw],
                       output_grad_data[ph * output_width + pw],
-                      static_cast<T>(scale),
+                      scale,
                       input_grad_data + h * input_width + w);
                 }
               }
@@ -309,10 +322,15 @@ class Pool2dGradFunctor<CPUContext, PoolProcess, T> {
                 hend = std::min(hend, input_height);
                 wend = std::min(wend, input_width);
               }
+              T scale;
               if (exclusive || adaptive) {
-                pool_size = (hend - hstart) * (wend - wstart);
+                int64_t kh = hend - hstart;
+                int64_t kw = wend - wstart;
+                scale =
+                    static_cast<T>(1) / static_cast<T>(kh) / static_cast<T>(kw);
+              } else {
+                scale = static_cast<T>(1) / static_cast<T>(pool_size);
               }
-              float scale = 1.0f / static_cast<float>(pool_size);
               for (int64_t h = hstart; h < hend; ++h) {
                 for (int64_t w = wstart; w < wend; ++w) {
                   auto input_idx =
@@ -322,7 +340,7 @@ class Pool2dGradFunctor<CPUContext, PoolProcess, T> {
                   pool_grad_process.compute(input_data[input_idx],
                                             output_data[output_idx],
                                             output_grad_data[output_idx],
-                                            static_cast<T>(scale),
+                                            scale,
                                             input_grad_data + input_idx);
                 }
               }
@@ -613,10 +631,16 @@ class Pool3dFunctor<CPUContext, PoolProcess, T> {
                   }
                 }
                 if (exclusive || adaptive) {
-                  pool_size =
-                      (dend - dstart) * (hend - hstart) * (wend - wstart);
+                  int64_t kd = dend - dstart;
+                  int64_t kh = hend - hstart;
+                  int64_t kw = wend - wstart;
+                  pool_process.finalize(static_cast<T>(kd),
+                                        static_cast<T>(kh),
+                                        static_cast<T>(kw),
+                                        &ele);
+                } else {
+                  pool_process.finalize(static_cast<T>(pool_size), &ele);
                 }
-                pool_process.finalize(static_cast<T>(pool_size), &ele);
                 output_data[output_idx] = ele;
               }
             }
@@ -683,10 +707,16 @@ class Pool3dFunctor<CPUContext, PoolProcess, T> {
                   }
                 }
                 if (exclusive || adaptive) {
-                  pool_size =
-                      (dend - dstart) * (hend - hstart) * (wend - wstart);
+                  int64_t kd = dend - dstart;
+                  int64_t kh = hend - hstart;
+                  int64_t kw = wend - wstart;
+                  pool_process.finalize(static_cast<T>(kd),
+                                        static_cast<T>(kh),
+                                        static_cast<T>(kw),
+                                        &ele);
+                } else {
+                  pool_process.finalize(static_cast<T>(pool_size), &ele);
                 }
-                pool_process.finalize(static_cast<T>(pool_size), &ele);
                 int64_t output_idx =
                     ((pd * output_height + ph) * output_width + pw) *
                         output_channels +
@@ -810,11 +840,16 @@ class Pool3dGradFunctor<CPUContext, PoolProcess, T> {
                   wend = std::min(wend, input_width);
                 }
 
+                T scale;
                 if (exclusive || adaptive) {
-                  pool_size =
-                      (dend - dstart) * (hend - hstart) * (wend - wstart);
+                  int64_t kd = dend - dstart;
+                  int64_t kh = hend - hstart;
+                  int64_t kw = wend - wstart;
+                  scale = static_cast<T>(1) / static_cast<T>(kd) /
+                          static_cast<T>(kh) / static_cast<T>(kw);
+                } else {
+                  scale = static_cast<T>(1) / static_cast<T>(pool_size);
                 }
-                float scale = 1.0f / static_cast<float>(pool_size);
                 for (int64_t d = dstart; d < dend; ++d) {
                   for (int64_t h = hstart; h < hend; ++h) {
                     for (int64_t w = wstart; w < wend; ++w) {
@@ -825,7 +860,7 @@ class Pool3dGradFunctor<CPUContext, PoolProcess, T> {
                       pool_grad_process.compute(input_data[input_idx],
                                                 output_data[output_idx],
                                                 output_grad_data[output_idx],
-                                                static_cast<T>(scale),
+                                                scale,
                                                 input_grad_data + input_idx);
                     }
                   }
@@ -884,11 +919,16 @@ class Pool3dGradFunctor<CPUContext, PoolProcess, T> {
                   wend = std::min(wend, input_width);
                 }
 
+                T scale;
                 if (exclusive || adaptive) {
-                  pool_size =
-                      (dend - dstart) * (hend - hstart) * (wend - wstart);
+                  int64_t kd = dend - dstart;
+                  int64_t kh = hend - hstart;
+                  int64_t kw = wend - wstart;
+                  scale = static_cast<T>(1) / static_cast<T>(kd) /
+                          static_cast<T>(kh) / static_cast<T>(kw);
+                } else {
+                  scale = static_cast<T>(1) / static_cast<T>(pool_size);
                 }
-                float scale = 1.0f / static_cast<float>(pool_size);
                 for (int64_t d = dstart; d < dend; ++d) {
                   for (int64_t h = hstart; h < hend; ++h) {
                     for (int64_t w = wstart; w < wend; ++w) {
@@ -903,7 +943,7 @@ class Pool3dGradFunctor<CPUContext, PoolProcess, T> {
                       pool_grad_process.compute(input_data[input_idx],
                                                 output_data[output_idx],
                                                 output_grad_data[output_idx],
-                                                static_cast<T>(scale),
+                                                scale,
                                                 input_grad_data + input_idx);
                     }
                   }
