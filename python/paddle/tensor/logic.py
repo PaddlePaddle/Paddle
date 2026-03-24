@@ -896,23 +896,18 @@ def _assert(condition, message=""):
 
             >>> import paddle
             >>> # Non-tensor condition
-            >>> paddle._assert(1 == 1, "This should pass")
+            >>> paddle.tensor._assert(1 == 1, "This should pass")
 
             >>> # Tensor condition
             >>> x = paddle.to_tensor([True])
-            >>> paddle._assert(x, "Tensor assertion")
+            >>> paddle.tensor._assert(x, "Tensor assertion")
 
     """
-    from paddle.base.framework import Variable
-    from paddle.pir import Value
-
-    if isinstance(condition, (Variable, Value)):
-        if in_dynamic_or_pir_mode() and isinstance(condition, paddle.Tensor):
-            # Dynamic mode: evaluate the tensor directly
+    if isinstance(condition, (paddle.Tensor, paddle.pir.Value, Variable)):
+        if in_dynamic_mode():
             if not condition:
                 raise AssertionError(message)
         else:
-            # Static graph mode: create Assert op in the graph
             condition = paddle.cast(condition, "bool")
             from paddle.static.nn.control_flow import Assert
 
