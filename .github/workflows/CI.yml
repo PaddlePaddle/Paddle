@@ -31,7 +31,7 @@ jobs:
         id: skip-skill
         uses: ./.github/actions/skip-skill
         with:
-          ignore-paths: 'skill/**,.github/**'
+          ignore-paths: 'skill/**'
 
   clone:
     name: Clone-linux

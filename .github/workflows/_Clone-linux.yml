@@ -58,14 +58,14 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - name: Debug - 打印 inputs 值
+      - name: Debug - Print inputs values
         run: |
           echo "=== Debug Info ==="
           echo "inputs.skill-can-skip: '${{ inputs.skill-can-skip }}'"
           echo "inputs.skill-can-skip length: $(echo '${{ inputs.skill-can-skip }}' | wc -c)"
-          echo "==================="
+          echo "==="
 
-      - name: 设置环境变量并打印
+      - name: Set environment variables and print
         id: set-vars
         run: |
           # 计算 can-skip 的值并保存到环境变量
@@ -75,9 +75,9 @@ jobs:
             echo "CAN_SKIP=false" >> $GITHUB_ENV
           fi
 
-      - name: 打印 can-skip 值
+      - name: Print can-skip value
         run: |
-          echo "can-skip 输出值: ${{ env.CAN_SKIP }}"
+          echo "can-skip output: ${{ env.CAN_SKIP }}"
 
       - name: Check submodules status
         run: git submodule foreach --recursive 'git rev-parse HEAD || rm -rf $PWD' || true

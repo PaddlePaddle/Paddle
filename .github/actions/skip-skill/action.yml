@@ -1,32 +1,32 @@
 name: 'PR Skip Check'
-description: '检查PR是否应该跳过CI（基于文件路径）'
+description: 'Check if PR should skip CI based on file paths'
 author: 'Your Team'
 
 inputs:
   ignore-paths:
-    description: '要忽略的路径，用逗号分隔 (例如: "skill/**,docs/**,**.md")'
+    description: 'Comma-separated paths to ignore (e.g., "skill/**,docs/**,**.md")'
     required: true
     default: 'skill/**'
   base-ref:
-    description: '基础分支（默认使用 PR 的目标分支）'
+    description: 'Base branch (defaults to PR target branch)'
     required: false
     default: ${{ github.event.pull_request.base.ref }}
 
 outputs:
   should-skip:
-    description: '是否应该跳过 CI (true/false)'
+    description: 'Whether CI should be skipped (true/false)'
     value: ${{ steps.check.outputs.should-skip }}
   is-pr:
-    description: '是否是 PR 事件'
+    description: 'Whether it is a PR event'
     value: ${{ steps.check.outputs.is-pr }}
   changed-files:
-    description: '所有变更文件列表（换行分隔）'
+    description: 'List of all changed files (newline separated)'
     value: ${{ steps.check.outputs.changed-files }}
   non-ignored-files:
-    description: '不在忽略路径中的文件列表'
+    description: 'List of files not in ignored paths'
     value: ${{ steps.check.outputs.non-ignored-files }}
   total-count:
-    description: '变更文件总数'
+    description: 'Total number of changed files'
     value: ${{ steps.check.outputs.total-count }}
 
 runs:
