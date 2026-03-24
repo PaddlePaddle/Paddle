@@ -298,7 +298,7 @@ void WarpctcKernel(const Context& dev_ctx,
         common::errors::InvalidArgument("Input(Label) Tensor of WarpCTC "
                                         "does not contain LoD information."));
 
-    logits_lod = phi::ToAbsOffset(logits.lod())[0];
+    logits_lod = ToAbsOffset(logits.lod())[0];
     auto logits_dims = logits.dims();
 
     PADDLE_ENFORCE_GT(logits_dims[0],
@@ -318,7 +318,7 @@ void WarpctcKernel(const Context& dev_ctx,
             static_cast<int64_t>(logits_lod.back()),
             logits_dims[0]));
 
-    label_lod = phi::ToAbsOffset(label.lod())[0];
+    label_lod = ToAbsOffset(label.lod())[0];
     auto label_dims = label.dims();
     PADDLE_ENFORCE_EQ(label_dims[1],
                       1,

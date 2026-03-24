@@ -99,7 +99,7 @@ void CPUPyramidHashOPKernel(const Context& dev_ctx,
   const auto& offset = bottom->lod()[0];
   const auto* bottom_data_ori = bottom->data<int32_t>();
   auto* buff = x_temp_out;
-  buff->Resize(make_ddim({bottom->dims()[0], bottom->dims()[1]}));
+  buff->Resize({bottom->dims()[0], bottom->dims()[1]});
   float* bottom_data = dev_ctx.template Alloc<float>(buff);
   for (int i = 0; i < bottom->dims()[0]; i++) {
     bottom_data[i] = bottom_data_ori[i];  // NOLINT
@@ -182,7 +182,7 @@ void CPUPyramidHashOPKernel(const Context& dev_ctx,
   LegacyLoD top_lod;
   top_lod.push_back(top_offset);
   top->set_lod(top_lod);
-  top->Resize(make_ddim({top_l, _num_emb}));
+  top->Resize({top_l, _num_emb});
   auto* top_data = dev_ctx.template Alloc<T>(top);
 
   LegacyLoD drop_pos_lod;

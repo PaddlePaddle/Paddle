@@ -1621,7 +1621,7 @@ void TransposeGPUKernelDriver(const GPUContext& dev_ctx,
   bool ret = TransposeSimple<T>::Run(dev_ctx, in, perm, out, numel);
   if (!ret) {
     auto simplifier = funcs::PermuteDimsSimplifier(
-        rank, numel, perm, common::vectorize<int64_t>(in.dims()));
+        rank, numel, perm, vectorize<int64_t>(in.dims()));
     auto* tuner = phi::autotune::MakeTransposeTuner<T>(PermuteWithEigen<T>);
     tuner->AddCallBack(PermuteAndTranspose<T>);
 

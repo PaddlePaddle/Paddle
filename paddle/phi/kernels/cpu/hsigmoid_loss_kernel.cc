@@ -51,7 +51,7 @@ void HSigmoidLossKernel(const Context& dev_ctx,
           : static_cast<int64_t>(funcs::FindLastSet(num_classes_st - 1));
   int64_t batch_size = x.dims()[0];
   DenseTensor sum;
-  pre_out->Resize(make_ddim({batch_size, code_length}));
+  pre_out->Resize({batch_size, code_length});
   dev_ctx.template Alloc<T>(pre_out);
   auto* pre_out_data = pre_out->data<T>();
   auto pre_out_mat = EigenMatrix<T>::From(*pre_out);

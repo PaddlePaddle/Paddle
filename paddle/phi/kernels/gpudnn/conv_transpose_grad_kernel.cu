@@ -83,8 +83,8 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& dev_ctx,
   // if channel_last, transpose to channel_first
   DenseTensor x_transpose;
   DenseTensor dout_transpose;
-  std::vector<int> x_vec = common::vectorize<int>(x.dims());
-  std::vector<int> out_vec = common::vectorize<int>(dout.dims());
+  std::vector<int> x_vec = vectorize<int>(x.dims());
+  std::vector<int> out_vec = vectorize<int>(dout.dims());
   if (data_layout == DataLayout::NHWC) {
     if (strides.size() == 2U) {
       std::vector<int> axis = {0, 3, 1, 2};
@@ -114,7 +114,7 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& dev_ctx,
   DDim x_data_dims;
   x_data_dims = slice_ddim(x_dims, 2, x_dims.size());
   DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
       &paddings_, &dilations_, padding_algorithm, x_data_dims, strides, ksize);
 
@@ -172,7 +172,7 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& dev_ctx,
 
   const T* x_data = x_transpose.data<T>();
   const T* dout_data = transformed_dout.data<T>();
-  out_vec = common::vectorize<int>(transformed_dout.dims());
+  out_vec = vectorize<int>(transformed_dout.dims());
 
   // ------------------- cudnn descriptors ---------------------
 #ifndef PADDLE_WITH_HIP
@@ -586,14 +586,13 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
       transformed_dx_channel = *dx;
     }
   }
-  std::vector<int> out_vec =
-      common::vectorize<int>(transformed_dout_channel.dims());
+  std::vector<int> out_vec = vectorize<int>(transformed_dout_channel.dims());
 
   auto x_dims = transformed_x_channel.dims();
   auto filter_dims = filter.dims();
   DDim x_data_dims = slice_ddim(x_dims, 2, x_dims.size());
   DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
       &paddings_, &dilations_, padding_algorithm, x_data_dims, strides, ksize);
 

@@ -2,6 +2,14 @@ name: Clone-windows
 
 on:
   workflow_call:
+    inputs:
+      skill-can-skip:
+        type: string
+        required: false
+        default: "false"
+    outputs:
+      can-skip:
+        value: ${{ jobs.clone.outputs.can-skip }}
 
 permissions: read-all
 
@@ -19,6 +27,9 @@ defaults:
 jobs:
   clone:
     name: Clone Paddle
+    if: ${{ github.repository_owner == 'PaddlePaddle' }}
+    outputs:
+      can-skip: ${{ inputs.skill-can-skip == 'true' }}
     runs-on:
       group: win-clone
     timeout-minutes: 30

@@ -138,7 +138,7 @@ void IndexPutKernel(const Context& dev_ctx,
 
   auto bd_dim = funcs::BroadCastTensorsDims(int_indices_v);
 
-  std::vector<int64_t> res_dim_v(common::vectorize(bd_dim));
+  std::vector<int64_t> res_dim_v(vectorize(bd_dim));
   std::vector<const DenseTensor*> res_indices_v(x.dims().size(), nullptr);
   std::vector<DenseTensor> tmp_res_indices_v;
   std::vector<DenseTensor> tmp_value_v;

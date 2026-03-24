@@ -6,6 +6,7 @@ on:
       can-skip:
         type: string
         required: false
+        default: "false"
       docker_npu_image:
         type: string
         required: true
@@ -25,7 +26,6 @@ env:
 jobs:
   check-bypass:
     name: Check bypass
-    if: ${{ inputs.can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
       workflow-name: "npu"
@@ -34,8 +34,8 @@ jobs:
 
   test:
     name: Test
-    needs: check-bypass
-    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
+    needs: [check-bypass]
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' && inputs.can-skip != 'true' }}
     runs-on:
       group: NPU
     timeout-minutes: 120

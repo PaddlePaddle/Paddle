@@ -15,14 +15,15 @@
  */
 #pragma once
 
+#include <cstdint>
+
 #ifdef __NVCC__
 #include <cuda_runtime_api.h>  // NOLINT
 #endif
 
 class RandomNumGen {
  public:
-  __host__ __device__ __forceinline__ RandomNumGen(int gid,
-                                                   unsigned long long seed) {
+  __host__ __device__ __forceinline__ RandomNumGen(int gid, uint64_t seed) {
     next_random = seed + gid;
     next_random ^= next_random >> 33U;
     next_random *= 0xff51afd7ed558ccdUL;
@@ -35,14 +36,14 @@ class RandomNumGen {
     next_random = seed;
     NextValue();
   }
-  __host__ __device__ __forceinline__ unsigned long long SaveState() const {
+  __host__ __device__ __forceinline__ uint64_t SaveState() const {
     return next_random;
   }
-  __host__ __device__ __forceinline__ void LoadState(unsigned long long state) {
+  __host__ __device__ __forceinline__ void LoadState(uint64_t state) {
     next_random = state;
   }
   __host__ __device__ __forceinline__ int Random() {
-    int ret_value = (int)(next_random & 0x7fffffffULL);
+    int ret_value = static_cast<int>(next_random & 0x7fffffffULL);
     NextValue();
     return ret_value;
   }
@@ -59,8 +60,8 @@ class RandomNumGen {
   }
   __host__ __device__ __forceinline__ float RandomUniformFloat(
       float max = 1.0f, float min = 0.0f) {
-    int value = (int)(next_random & 0xffffff);
-    auto ret_value = (float)value;
+    int value = static_cast<int>(next_random & 0xffffff);
+    auto ret_value = static_cast<float>(value);
     ret_value /= 0xffffffL;
     ret_value *= (max - min);
     ret_value += min;
@@ -75,10 +76,10 @@ class RandomNumGen {
     // next_random = next_random * (unsigned long long)0xc4ceb9fe1a85ec53UL +
     // generator_id;
     // next_random = next_random * (unsigned long long)25214903917ULL + 11;
-    next_random = next_random * (unsigned long long)13173779397737131ULL +
+    next_random = next_random * static_cast<uint64_t>(13173779397737131ULL) +
                   1023456798976543201ULL;
   }
 
  private:
-  unsigned long long next_random = 1;
+  uint64_t next_random = 1;
 };

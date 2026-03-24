@@ -396,7 +396,7 @@ inline DenseTensor as_strided(const DenseTensor& src,
 inline DenseTensor restride_dim(const DenseTensor& src,
                                 int dim,
                                 const std::vector<int64_t>& replacement_shape) {
-  auto strides = ensure_nonempty_vec(common::vectorize(src.strides()));
+  auto strides = ensure_nonempty_vec(vectorize(src.strides()));
   strides[dim] = 0;
   return as_strided(src, replacement_shape, strides);
 }
@@ -425,9 +425,9 @@ void GPUScatterAdd(const GPUContext& dev_ctx,
   if (index.numel() == 0 || src.numel() == 0) return;
 
   auto index_dims = src.dims();
-  auto index_sizes = ensure_nonempty_vec(common::vectorize(index_dims));
-  auto self_strides = ensure_nonempty_vec(common::vectorize(output->strides()));
-  auto src_strides = ensure_nonempty_vec(common::vectorize(src.strides()));
+  auto index_sizes = ensure_nonempty_vec(vectorize(index_dims));
+  auto self_strides = ensure_nonempty_vec(vectorize(output->strides()));
+  auto src_strides = ensure_nonempty_vec(vectorize(src.strides()));
 
   auto self_restrided = restride_dim(*output, dim, index_sizes);
   auto src_restrided = as_strided(src, index_sizes, src_strides);
@@ -442,11 +442,11 @@ void GPUScatterAdd(const GPUContext& dev_ctx,
     new_strides[0] = index.strides()[0];
   }
 
-  ScatterAddStride<3>(common::vectorize(src_restrided.dims()),
-                      common::vectorize(src_restrided.strides()),
+  ScatterAddStride<3>(vectorize(src_restrided.dims()),
+                      vectorize(src_restrided.strides()),
                       phi::SizeOf(src_restrided.dtype()),
-                      common::vectorize(self_restrided.dims()),
-                      common::vectorize(self_restrided.strides()),
+                      vectorize(self_restrided.dims()),
+                      vectorize(self_restrided.strides()),
                       phi::SizeOf(self_restrided.dtype()),
                       index_sizes,
                       new_strides,
@@ -479,7 +479,7 @@ void GPUScatterAdd(const GPUContext& dev_ctx,
   };  // NOLINT
 
   int64_t N;
-  const auto output_dims = common::vectorize(output->dims());
+  const auto output_dims = vectorize(output->dims());
 
   if (index.numel() == output_dims[dim]) {
     N = output->numel();

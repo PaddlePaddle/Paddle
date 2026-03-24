@@ -38,7 +38,7 @@ PADDLE_API void AllKernel(const Context& dev_ctx,
   if (x.numel() == 0) {
     dev_ctx.template Alloc<bool>(out);
     if (out->numel() > 0) {
-      std::vector<int64_t> vec_dims = common::vectorize(out->dims());
+      std::vector<int64_t> vec_dims = vectorize(out->dims());
       phi::Full<bool, Context>(dev_ctx, phi::IntArray(vec_dims), 1, out);
     }
     return;

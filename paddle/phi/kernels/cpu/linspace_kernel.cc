@@ -40,7 +40,7 @@ void LinspaceKernel(const Context& dev_ctx,
                         "than or equal to 0, but received num is %d",
                         num));
   if (num == 0) {
-    out->Resize(make_ddim({0}));
+    out->Resize({0});
     dev_ctx.template Alloc<T>(out);
     return;
   }
@@ -51,7 +51,7 @@ void LinspaceKernel(const Context& dev_ctx,
   T start_data = start_t.template data<T>()[0];
   T stop_data = stop_t.template data<T>()[0];
 
-  out->Resize(make_ddim({num}));
+  out->Resize({num});
   T* out_data = dev_ctx.template Alloc<T>(out);
 
   if (num > 1) {

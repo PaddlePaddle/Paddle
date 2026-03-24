@@ -14,6 +14,10 @@ on:
         type: string
         required: false
         default: "true"
+      skill-can-skip:
+        type: string
+        required: false
+        default: "false"
     outputs:
       can-skip:
         value: ${{ jobs.clone.outputs.can-skip }}
@@ -47,13 +51,34 @@ jobs:
     if: ${{ github.repository_owner == 'PaddlePaddle' }}
     needs: [check-bypass]
     outputs:
-      can-skip: ${{ needs.check-bypass.outputs.can-skip }}
+      can-skip: ${{ needs.check-bypass.outputs.can-skip == 'true' || inputs.skill-can-skip == 'true' }}
       slice-check: ${{ steps.check-execution.outputs.slice-check }}
     runs-on:
       group: HK-Clone
     timeout-minutes: 30
 
     steps:
+      - name: Debug - Print inputs values
+        run: |
+          echo "=== Debug Info ==="
+          echo "inputs.skill-can-skip: '${{ inputs.skill-can-skip }}'"
+          echo "inputs.skill-can-skip length: $(echo '${{ inputs.skill-can-skip }}' | wc -c)"
+          echo "==="
+
+      - name: Set environment variables and print
+        id: set-vars
+        run: |
+          # Determine if can skip based on check-bypass and skill-can-skip
+          if [[ "${{ needs.check-bypass.outputs.can-skip }}" == "true" ]] || [[ "${{ inputs.skill-can-skip }}" == "true" ]]; then
+            echo "CAN_SKIP=true" >> $GITHUB_ENV
+          else
+            echo "CAN_SKIP=false" >> $GITHUB_ENV
+          fi
+
+      - name: Print can-skip value
+        run: |
+          echo "can-skip output: ${{ env.CAN_SKIP }}"
+
       - name: Check submodules status
         run: git submodule foreach --recursive 'git rev-parse HEAD || rm -rf $PWD' || true
 

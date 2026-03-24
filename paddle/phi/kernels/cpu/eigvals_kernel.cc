@@ -77,7 +77,7 @@ typename std::enable_if<std::is_floating_point<T>::value>::type LapackEigvals(
 
   DenseTensor w;
   int64_t n_dim = input.dims()[1];
-  w.Resize(make_ddim({n_dim << 1}));
+  w.Resize({n_dim << 1});
   T* w_data = dev_ctx.template Alloc<T>(&w);
 
   int64_t work_mem = static_cast<int64_t>(work->memory_size());
@@ -214,7 +214,7 @@ void EigvalsKernel(const Context& dev_ctx,
   int64_t n_dim = x_matrices[0].dims()[1];
   int64_t n_batch = static_cast<int64_t>(x_matrices.size());
   DDim out_dims = out->dims();
-  out->Resize(make_ddim({n_batch, n_dim}));
+  out->Resize({n_batch, n_dim});
   std::vector<DenseTensor> out_vectors = out->Split(1, 0);
 
   // query workspace size
@@ -238,11 +238,11 @@ void EigvalsKernel(const Context& dev_ctx,
 
   DenseTensor work, rwork;
 
-  work.Resize(make_ddim({lwork}));
+  work.Resize({lwork});
   dev_ctx.template Alloc<T>(&work);
 
   if (IsComplexType(x.dtype())) {
-    rwork.Resize(make_ddim({n_dim << 1}));
+    rwork.Resize({n_dim << 1});
     dev_ctx.template Alloc<dtype::Real<T>>(&rwork);
   }
 
