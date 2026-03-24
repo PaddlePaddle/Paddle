@@ -197,9 +197,6 @@
   } else if (num_experts == 192) {                          \
     constexpr int kNumExperts = 192;                        \
     __VA_ARGS__                                             \
-  } else if (num_experts == 256) {                          \
-    constexpr int kNumExperts = 256;                        \
-    __VA_ARGS__                                             \
   } else if (num_experts == 384) {                          \
     constexpr int kNumExperts = 384;                        \
     __VA_ARGS__                                             \
