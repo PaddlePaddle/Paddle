@@ -1,6 +1,6 @@
 name: 'PR Skip Check'
 description: 'Check if PR should skip CI based on file paths'
-author: 'Your Team'
+author: 'Paddle CI Team'
 
 inputs:
   ignore-paths:

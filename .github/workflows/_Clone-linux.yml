@@ -68,7 +68,7 @@ jobs:
       - name: Set environment variables and print
         id: set-vars
         run: |
-          # 计算 can-skip 的值并保存到环境变量
+          # Determine if can skip based on check-bypass and skill-can-skip
           if [[ "${{ needs.check-bypass.outputs.can-skip }}" == "true" ]] || [[ "${{ inputs.skill-can-skip }}" == "true" ]]; then
             echo "CAN_SKIP=true" >> $GITHUB_ENV
           else

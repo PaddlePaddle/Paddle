@@ -110,7 +110,7 @@ if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
         echo "📋 Non-ignored files:"
         echo "$NON_IGNORED_FILES" | sed 's/^/  - /'
 
-        # 判断是否应该跳过
+        # Determine if should skip
         if [ -z "$NON_IGNORED_FILES" ]; then
             SHOULD_SKIP="true"
             echo "✅ All PR changes are in ignored paths, can skip CI"
