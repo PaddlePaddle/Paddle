@@ -124,12 +124,14 @@ struct WelfordOps {
             new_count};
   }
   inline C10_DEVICE res_t post_process(acc_t acc) const {
-    const auto mean = static_cast<scalar_t>(acc.mean);
-    const auto divisor = acc.nf > correction ? acc.nf - correction : 0;
-    const auto var = static_cast<scalar_t>(acc.m2 / divisor);
-    const auto var_sqrt =
-        static_cast<scalar_t>(device_sqrt(static_cast<acc_scalar_t>(var)));
-    res_t results(take_sqrt ? var_sqrt : var, mean);
+    const acc_scalar_t divisor = acc.nf > correction ? acc.nf - correction : 0;
+    // Keep intermediate computation in acc_scalar_t (float32) to avoid
+    // overflow when casting low-precision types (e.g. float16) with large
+    // variance values.
+    const acc_scalar_t var = acc.m2 / divisor;
+    const acc_scalar_t var_sqrt = device_sqrt(var);
+    res_t results(static_cast<scalar_t>(take_sqrt ? var_sqrt : var),
+                  static_cast<scalar_t>(acc.mean));
     return results;
   }
 

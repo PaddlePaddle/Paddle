@@ -1255,9 +1255,11 @@ inline void GPUReduceScheduler(const KPDevice& dev_ctx,
     if (!can_accumulate_in_output && !can_use_32bit_indexing) {
       int64_t output_memory_size = phi::SizeOf(iter.dtype(0));
       for (int dim = 0; dim < iter.ndim(); dim++) {
-        output_memory_size = std::max(output_memory_size,
-                                      iter.shape()[dim] * iter.strides(0)[dim]);
+        output_memory_size = std::max(
+            output_memory_size,
+            static_cast<int64_t>(iter.shape()[dim]) * iter.strides(0)[dim]);
       }
+
       output_memory_size /= phi::SizeOf(iter.dtype(0));
       owned_buf_ptr.reset(
           new AccumulationBuffer(dev_ctx,
