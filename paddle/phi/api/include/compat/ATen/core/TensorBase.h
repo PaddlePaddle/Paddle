@@ -30,7 +30,6 @@
 #include <iostream>
 #include <memory>
 #include <mutex>
-#include <type_traits>
 #include <unordered_map>
 #include <vector>
 #include "paddle/common/layout.h"
@@ -412,16 +411,6 @@ class PADDLE_API TensorBase {
   }
 
  private:
-  template <typename DenseT>
-  static auto MaybeResetHolder(DenseT* dense,
-                               const std::shared_ptr<phi::Allocation>& holder,
-                               int)
-      -> decltype(dense->ResetHolder(holder), void()) {
-    dense->ResetHolder(holder);
-  }
-
-  static void MaybeResetHolder(...) {}
-
   void InitStorage() { SyncStorageFromTensor(); }
 
   static std::shared_ptr<c10::Storage> GetOrCreateCanonicalStorage(
@@ -465,7 +454,7 @@ class PADDLE_API TensorBase {
     c10::Storage live_storage = c10::Storage::createTensorStorage(holder);
     auto compat_holder = live_storage.ensureTensorHolder();
     if (holder != compat_holder) {
-      MaybeResetHolder(dense.get(), compat_holder, 0);
+      dense->ResetHolder(compat_holder);
     }
 
     if (!storage_ || storage_->get_impl() != live_storage.get_impl()) {
