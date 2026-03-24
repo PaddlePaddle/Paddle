@@ -41,7 +41,8 @@ gather_srcs(
   longlong2int_pass.cc
   vectorize_for_trans.cc
   if_fold_pass.cc
-  simplify_util.cc)
+  simplify_util.cc
+  pass_registry.cc)
 
 if(WITH_CUDA
    OR WITH_ROCM
