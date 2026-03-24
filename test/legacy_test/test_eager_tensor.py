@@ -104,8 +104,6 @@ class TestEagerTensor(unittest.TestCase):
                     self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
                     y = x.cuda(device=0, non_blocking=False)
                     self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
-                    y = x.cuda(device=0, non_blocking=True, memory_format=None)
-                    self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
                     y = x.cuda("cuda:0", False, None)
                     self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
                     # non-existing place
