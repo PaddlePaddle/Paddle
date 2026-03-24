@@ -22,6 +22,7 @@ from typing_extensions import overload
 
 import paddle
 from paddle import _C_ops, in_dynamic_mode
+from paddle.autograd import PyLayer
 from paddle.base.framework import (
     in_dygraph_mode,
     in_dynamic_or_pir_mode,
@@ -48,6 +49,52 @@ if TYPE_CHECKING:
     )
 
 __all__ = []
+
+
+class _DecomposedPNorm(PyLayer):
+    """
+    Custom autograd for p-norm with decomposed forward and PyTorch-compatible
+    backward formula. For float64 with non-integer p, the fused p_norm kernel
+    has GPU reduction tree ordering differences causing ~1e-08 forward error.
+    This uses decomposed ops for exact forward, and the same backward formula
+    as PyTorch's norm_backward (1 < p < 2 case):
+      self_scaled = sign(x) * |x|^(p-1)
+      scale_v = grad / norm^(p-1), masked to 0 where norm == 0
+      result = self_scaled * scale_v
+    """
+
+    @staticmethod
+    def forward(ctx, x, p_float, axis):
+        abs_x = _C_ops.abs(x)
+        pow_x = _C_ops.pow(abs_x, p_float)
+        sum_x = _C_ops.sum(pow_x, [axis], None, True)
+        norm = _C_ops.pow(sum_x, 1.0 / p_float)
+        ctx.save_for_backward(x, norm)
+        ctx.p_float = p_float
+        ctx.axis = axis
+        return norm
+
+    @staticmethod
+    def backward(ctx, grad_out):
+        x, norm = ctx.saved_tensor()
+        p = ctx.p_float
+        # PyTorch formula for 1 < p < 2:
+        #   self_scaled = sign(x) * |x|^(p-1)
+        #   scale_v = grad / norm^(p-1), masked to 0 where norm == 0
+        #   result = self_scaled * scale_v
+        x_sign = _C_ops.sign(x)
+        abs_x = _C_ops.abs(x)
+        pow_abs = _C_ops.pow(abs_x, p - 1.0)
+        self_scaled = x_sign * pow_abs
+
+        norm_pow = _C_ops.pow(norm, p - 1.0)
+        scale_v = grad_out / norm_pow
+        # Mask where norm == 0
+        zeros = _C_ops.full_like(norm, 0.0, norm.dtype, norm.place)
+        norm_is_zero = _C_ops.equal(norm, zeros)
+        scale_v = _C_ops.where(norm_is_zero, zeros, scale_v)
+
+        return self_scaled * scale_v
 
 
 @ParamAliasDecorator({"x": ["input"], "axis": ["dim"], "epsilon": ["eps"]})
@@ -116,7 +163,15 @@ def normalize(
 
     if in_dygraph_mode():
         eps = paddle.full(shape=[1], fill_value=epsilon, dtype=x.dtype)
-        ret = _C_ops.p_norm(x, float(p), axis, epsilon, True, False)
+        # For float64 with non-integer p, use custom autograd function
+        # with decomposed forward (matching PyTorch's reduction precision)
+        # and PyTorch-compatible backward formula using the exact forward
+        # norm result, ensuring both forward and backward match.
+        p_float = float(p)
+        if x.dtype == paddle.float64 and p_float != int(p_float):
+            ret = _DecomposedPNorm.apply(x, p_float, axis)
+        else:
+            ret = _C_ops.p_norm(x, p_float, axis, epsilon, True, False)
         ret = x / _C_ops.maximum(ret, eps)
 
     elif in_pir_mode():

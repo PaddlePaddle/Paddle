@@ -394,6 +394,75 @@ def fp8_fp8_half_gemm_fused(
             return out
 
 
+def _multi_axis_p_norm(x, porder, axis, keepdim):
+    """
+    Compute p-norm over multiple axes by transposing the target axes to be
+    adjacent, flattening them into a single axis, calling the fused single-axis
+    p_norm kernel, then reshaping back. This avoids multi-axis sum which has
+    GPU reduction tree ordering differences vs PyTorch.
+    """
+    ndim = len(x.shape)
+    # Normalize negative axes
+    norm_axes = sorted([a % ndim for a in axis])
+
+    # Check if target axes are already contiguous
+    contiguous = all(
+        norm_axes[i] + 1 == norm_axes[i + 1] for i in range(len(norm_axes) - 1)
+    )
+
+    if not contiguous:
+        # Build permutation to move target axes together at their earliest position
+        first_target = norm_axes[0]
+        other_axes = [i for i in range(ndim) if i not in norm_axes]
+        perm = other_axes[:first_target] + norm_axes + other_axes[first_target:]
+        x = _C_ops.transpose(x, perm)
+        # Update the merged axis position
+        merged_axis = first_target
+    else:
+        perm = None
+        merged_axis = norm_axes[0]
+
+    # Flatten the target axes into one
+    shape = x.shape
+    pre = shape[:merged_axis]
+    merged_size = 1
+    for i in range(len(norm_axes)):
+        merged_size *= shape[merged_axis + i]
+    post = shape[merged_axis + len(norm_axes) :]
+    new_shape = [*list(pre), merged_size, *list(post)]
+    x_flat = _C_ops.reshape(x, new_shape)
+
+    # Single-axis p_norm (fused kernel, already bit-exact aligned)
+    result = _C_ops.p_norm(x_flat, porder, merged_axis, 1e-12, False, False)
+
+    if keepdim:
+        # Restore the reduced axes as size-1 dimensions
+        kept_shape = [*list(pre), *([1] * len(norm_axes)), *list(post)]
+        result = _C_ops.reshape(result, kept_shape)
+        # Undo the transpose if we did one
+        if perm is not None:
+            inv_perm = [0] * ndim
+            for i, p_idx in enumerate(perm):
+                inv_perm[p_idx] = i
+            result = _C_ops.transpose(result, inv_perm)
+    else:
+        # If we transposed, undo it for the remaining dims
+        # After reduction without keepdim, the result shape is pre + post
+        # which corresponds to the non-target axes in transposed order.
+        # We need to permute back to the original non-target order.
+        if perm is not None:
+            # The result dims correspond to other_axes in the order they appear in perm.
+            # We need to map them back to their original relative order.
+            other_axes = [i for i in range(ndim) if i not in norm_axes]
+            # other_axes is already sorted, so the transposed output
+            # (other_axes[:first_target] + other_axes[first_target:])
+            # is actually in the same order as sorted other_axes.
+            # So no additional transpose needed.
+            pass
+
+    return result
+
+
 @param_two_alias(["p", "ord"], ["axis", "dim"])
 def vector_norm(
     x: Tensor,
@@ -670,13 +739,14 @@ def vector_norm(
                 abs_x, porder=p, axis=axis, keepdim=keepdim, name=name
             )
         elif p == 2 or p == 2.0:
-            # Use decomposed ops (pow + sum + sqrt) for p=2 multi-axis:
-            # mathematically equivalent to frobenius norm, and the decomposition
-            # matches PyTorch's forward and backward precision exactly.
+            # Use transpose + flatten + single-axis p_norm for p=2 multi-axis.
+            # This avoids multi-axis sum which has GPU reduction tree ordering
+            # differences vs PyTorch. The fused p_norm kernel is already
+            # bit-exact aligned for single-axis reduction.
             if in_dynamic_or_pir_mode():
-                squared = _C_ops.pow(abs_x, 2.0)
-                summed = _C_ops.sum(squared, axis, None, keepdim)
-                tensor = _C_ops.sqrt(summed)
+                tensor = _multi_axis_p_norm(
+                    abs_x, porder=2.0, axis=axis, keepdim=keepdim
+                )
             else:
                 tensor = vector_norm_axis_tuple(
                     abs_x, porder=p, axis=axis, keepdim=keepdim, name=name
@@ -791,15 +861,18 @@ def matrix_norm(
             )
 
         if in_dynamic_or_pir_mode():
-            # Use decomposed ops (pow + sum + sqrt) instead of frobenius_norm C++ kernel
-            # to match PyTorch's reduction precision. The C++ frobenius_norm kernel uses
-            # Eigen reduction which may produce different rounding from CUDA kernels.
-            squared = _C_ops.pow(input, 2.0)
+            # Use transpose + flatten + single-axis p_norm to match PyTorch
+            # precision. The fused p_norm kernel (p=2) is already bit-exact
+            # aligned, and this avoids multi-axis sum GPU reduction tree
+            # ordering differences.
             if dim is None:
-                summed = _C_ops.sum(squared, [], None, keepdim)
+                # Reduce all: flatten to 1-D, single-axis p_norm
+                x_flat = _C_ops.reshape(input, [-1])
+                return _C_ops.p_norm(x_flat, 2.0, 0, 1e-12, keepdim, False)
             else:
-                summed = _C_ops.sum(squared, dim, None, keepdim)
-            return _C_ops.sqrt(summed)
+                return _multi_axis_p_norm(
+                    input, porder=2.0, axis=dim, keepdim=keepdim
+                )
         else:
             attrs = {'dim': dim, 'keep_dim': keepdim, 'reduce_all': False}
             if dim is None:
