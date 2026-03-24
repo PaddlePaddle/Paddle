@@ -101,12 +101,6 @@ class CUDAStream {
 
   Device device() const { return Device(DeviceType::CUDA, device_index()); }
 
-#ifdef PADDLE_WITH_HIP
-  hipStream_t raw_stream() const { return stream(); }
-#else
-  cudaStream_t raw_stream() const { return stream(); }
-#endif
-
   struct c10::StreamData3 pack3() const {
     return stream_.pack3();
   }
