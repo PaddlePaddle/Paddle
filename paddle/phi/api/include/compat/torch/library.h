@@ -32,7 +32,6 @@
 #include <utility>
 #include <vector>
 #include "ATen/core/function_schema.h"
-#include "glog/logging.h"
 #include "paddle/common/macros.h"  // For macro PADDLE_API
 #include "torch/csrc/jit/function_schema_parser.h"
 
@@ -911,8 +910,6 @@ class Library {
   template <typename Func>
   Library& def(const std::string& name_or_schema, Func&& f) & {
     if (kind_ == IMPL) {
-      VLOG(3)
-          << "Warning: def() should not be called in TORCH_LIBRARY_IMPL block";
       return *this;
     }
 
