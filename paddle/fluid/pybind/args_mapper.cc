@@ -34,14 +34,10 @@ void ArgMaxMinMapper(PyObject* args,
                      bool* keepdims,
                      bool* flatten,
                      DataType* dtype) {
-  // The python params are (x, axis,keepdim,dtype,name) which haven't flatten
+  // The python params are (x, axis,keepdim,dtype) which haven't flatten
   // The _C_ops params are (x, axis,keepdim,flatten,dtype) which have flatten
-  // but haven't name We should parse the python params and convert them to the
-  // _C_ops params
   int nargs = args ? static_cast<int>(PyTuple_Size(args)) : 0;
   int remaining_kwargs = kwargs ? static_cast<int>(PyDict_Size(kwargs)) : 0;
-  // python params count only consider the python params(x, axis, keepdim,
-  // dtype), not include the name
   const int max_args = 4;
   CheckParamsCount(nargs, remaining_kwargs, max_args);
 
@@ -365,6 +361,95 @@ void GeluMapper(PyObject* args,
   }
 
   // Check Remaining Params validity if needed
+  CheckRemainingParamsValidity(args, kwargs, remaining_kwargs, nargs);
+}
+
+void KthvalueMapper(PyObject* args,
+                    PyObject* kwargs,
+                    Tensor** x_ptr_ptr,
+                    int64_t* k,
+                    int* axis,
+                    bool* keepdim) {
+  // Python params: (x, k, axis, keepdim)
+  // C++ _C_ops params: (x, k, axis, keepdim)
+  // When axis is None, set axis = -1
+  int nargs = args ? static_cast<int>(PyTuple_Size(args)) : 0;
+  int remaining_kwargs = kwargs ? static_cast<int>(PyDict_Size(kwargs)) : 0;
+  const int max_args = 4;  // x, k, axis, keepdim
+  CheckParamsCount(nargs, remaining_kwargs, max_args);
+
+  // Get Tensor x (support aliases: x, input)
+  auto& x = GetTensorFromArgsOrKWArgs("kthvalue",
+                                      "x",
+                                      args,
+                                      0,
+                                      kwargs,
+                                      {"x", "input"},
+                                      nargs,
+                                      &remaining_kwargs,
+                                      false);
+  *x_ptr_ptr = &x;
+
+  // Parse k parameter
+  PyObject* k_obj =
+      GetItemFromArgsOrKWArgs(args, 1, kwargs, {"k"}, nargs, &remaining_kwargs);
+  *k = CastPyArg2Long(k_obj, "kthvalue", 1);
+
+  // Parse axis parameter (support aliases: axis, dim)
+  // When axis is None, set axis = -1
+  PyObject* axis_obj = GetItemFromArgsOrKWArgs(
+      args, 2, kwargs, {"axis", "dim"}, nargs, &remaining_kwargs);
+  if (axis_obj == Py_None || axis_obj == nullptr) {
+    *axis = -1;
+  } else {
+    *axis = CastPyArg2Int(axis_obj, "kthvalue", 2);
+  }
+
+  // Parse keepdim parameter (support aliases: keepdim, keepdims)
+  PyObject* keepdim_obj = GetItemFromArgsOrKWArgs(
+      args, 3, kwargs, {"keepdim", "keepdims"}, nargs, &remaining_kwargs);
+  *keepdim = CastPyArg2Boolean(keepdim_obj, "kthvalue", 3, false);
+
+  // Check Remaining Params validity
+  CheckRemainingParamsValidity(args, kwargs, remaining_kwargs, nargs);
+}
+
+void KthvalueMapper(PyObject* args,
+                    PyObject* kwargs,
+                    pir::Value* x,
+                    int64_t* k,
+                    int* axis,
+                    bool* keepdim) {
+  // Static graph version
+  int nargs = args ? static_cast<int>(PyTuple_Size(args)) : 0;
+  int remaining_kwargs = kwargs ? static_cast<int>(PyDict_Size(kwargs)) : 0;
+  const int max_args = 4;
+  CheckParamsCount(nargs, remaining_kwargs, max_args);
+
+  // Get Value x (support aliases: x, input)
+  PyObject* x_obj = GetItemFromArgsOrKWArgs(
+      args, 0, kwargs, {"x", "input"}, nargs, &remaining_kwargs);
+  *x = CastPyArg2Value(x_obj, "kthvalue", 0, false);
+
+  // Parse k parameter
+  PyObject* k_obj =
+      GetItemFromArgsOrKWArgs(args, 1, kwargs, {"k"}, nargs, &remaining_kwargs);
+  *k = CastPyArg2Long(k_obj, "kthvalue", 1);
+
+  // Parse axis parameter (support aliases: axis, dim)
+  PyObject* axis_obj = GetItemFromArgsOrKWArgs(
+      args, 2, kwargs, {"axis", "dim"}, nargs, &remaining_kwargs);
+  if (axis_obj == Py_None || axis_obj == nullptr) {
+    *axis = -1;
+  } else {
+    *axis = CastPyArg2Int(axis_obj, "kthvalue", 2);
+  }
+
+  // Parse keepdim parameter
+  PyObject* keepdim_obj = GetItemFromArgsOrKWArgs(
+      args, 3, kwargs, {"keepdim", "keepdims"}, nargs, &remaining_kwargs);
+  *keepdim = CastPyArg2Boolean(keepdim_obj, "kthvalue", 3, false);
+
   CheckRemainingParamsValidity(args, kwargs, remaining_kwargs, nargs);
 }
 

@@ -1539,8 +1539,8 @@
     data_type : x
 
 - backward_op : group_norm_grad
-  forward : group_norm (Tensor x, Tensor scale, Tensor bias, float epsilon = 1e-5, int groups = -1, str data_format = "NCHW") -> Tensor(y), Tensor(mean), Tensor(variance)
-  args : (Tensor x, Tensor scale, Tensor bias, Tensor y, Tensor mean, Tensor variance, Tensor y_grad, float epsilon, int groups, str data_format)
+  forward : group_norm (Tensor x, Tensor scale, Tensor bias, double epsilon = 1e-5, int groups = -1, str data_format = "NCHW") -> Tensor(y), Tensor(mean), Tensor(variance)
+  args : (Tensor x, Tensor scale, Tensor bias, Tensor y, Tensor mean, Tensor variance, Tensor y_grad, double epsilon, int groups, str data_format)
   output : Tensor(x_grad), Tensor(scale_grad), Tensor(bias_grad)
   infer_meta :
     func : GeneralTernaryGradInferMeta
@@ -1824,6 +1824,19 @@
     data_type : out_grad
   no_need_buffer: x, value
   backward: index_elementwise_put_with_tensor_double_grad
+
+- backward_op : index_fill_grad
+  forward : index_fill (Tensor x, Tensor index, int dim, Scalar value) -> Tensor(out)
+  args : (Tensor index, Tensor out_grad, int dim)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out_grad]
+  kernel :
+    func : index_fill_grad
+    data_type : out_grad
+  data_transform :
+    skip_transform : index
 
 - backward_op : index_put_double_grad
   forward : index_put_grad (Tensor x, Tensor[] indices, Tensor value, Tensor grad_out, bool accumulate=false) -> Tensor(grad_x), Tensor(grad_value)
@@ -2623,6 +2636,17 @@
     func : NanmedianGradInferMeta
   kernel :
     func : nanmedian_grad
+
+- backward_op : nansum_grad
+  forward : nansum (Tensor x, IntArray axis={}, DataType dtype=DataType::UNDEFINED, bool keepdim=false) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, IntArray axis, bool keepdim, bool reduce_all=false)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+    spmd_rule : ReductionGradInferSpmd
+  kernel :
+    func : nansum_grad
 
 - backward_op : nearest_interp_grad
   forward : nearest_interp (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, double[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1) -> Tensor(output)

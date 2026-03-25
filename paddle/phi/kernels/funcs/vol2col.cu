@@ -432,16 +432,16 @@ void Col2VolFunctor<DeviceContext, T>::operator()(
 }
 // };
 
-template class PADDLE_API Vol2ColFunctor<phi::GPUContext, float>;
-template class PADDLE_API Vol2ColFunctor<phi::GPUContext, double>;
+template class PADDLE_API Vol2ColFunctor<GPUContext, float>;
+template class PADDLE_API Vol2ColFunctor<GPUContext, double>;
 
-template class PADDLE_API Col2VolFunctor<phi::GPUContext, float>;
-template class PADDLE_API Col2VolFunctor<phi::GPUContext, double>;
+template class PADDLE_API Col2VolFunctor<GPUContext, float>;
+template class PADDLE_API Col2VolFunctor<GPUContext, double>;
 
-template class PADDLE_API Vol2ColFunctor<phi::GPUContext, phi::dtype::float16>;
-template class PADDLE_API Vol2ColFunctor<phi::GPUContext, phi::dtype::bfloat16>;
+template class PADDLE_API Vol2ColFunctor<GPUContext, phi::dtype::float16>;
+template class PADDLE_API Vol2ColFunctor<GPUContext, phi::dtype::bfloat16>;
 
-template class PADDLE_API Col2VolFunctor<phi::GPUContext, phi::dtype::float16>;
-template class PADDLE_API Col2VolFunctor<phi::GPUContext, phi::dtype::bfloat16>;
+template class PADDLE_API Col2VolFunctor<GPUContext, phi::dtype::float16>;
+template class PADDLE_API Col2VolFunctor<GPUContext, phi::dtype::bfloat16>;
 }  // namespace funcs
 }  // namespace phi

@@ -35,7 +35,7 @@ void TraceKernel(const Context& dev_ctx,
   const DenseTensor diag =
       funcs::Diagonal<T, Context>(dev_ctx, &x, offset, axis1, axis2);
   if (diag.numel() > 0) {
-    auto x = phi::EigenMatrix<T>::Reshape(diag, diag.dims().size() - 1);
+    auto x = EigenMatrix<T>::Reshape(diag, diag.dims().size() - 1);
     auto output = EigenVector<T>::Flatten(*out);
     auto reduce_dim = Eigen::array<int, 1>({1});
     output.device(*dev_ctx.eigen_device()) = x.sum(reduce_dim);

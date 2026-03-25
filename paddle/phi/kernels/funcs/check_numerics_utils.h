@@ -186,7 +186,7 @@ inline std::string GetCpuHintString(const std::string& op_type,
                                     const phi::Place& place,
                                     int device_id = -1) {
   std::string dtype_str;
-  phi::DataType dtype = phi::CppTypeToDataType<T>::Type();
+  phi::DataType dtype = CppTypeToDataType<T>::Type();
   if (dtype == DataType::FLOAT32) {
     dtype_str = "fp32";
   } else if (dtype == DataType::FLOAT64) {

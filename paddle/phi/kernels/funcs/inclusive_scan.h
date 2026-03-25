@@ -46,7 +46,7 @@ static void CubInclusiveScan(InputIterator x_iter,
                              OutputIterator y_iter,
                              size_t n,
                              BinaryOp op,
-                             const phi::GPUContext &dev_ctx) {
+                             const GPUContext &dev_ctx) {
   phi::Allocator::AllocationPtr allocation;
   void *temp_storage = nullptr;
   size_t temp_storage_bytes = 0;
@@ -204,7 +204,7 @@ static void InclusiveScanInnerDim(const T *x,
                                   T init,
                                   BinaryOp op,
                                   bool reverse,
-                                  const phi::GPUContext &dev_ctx) {
+                                  const GPUContext &dev_ctx) {
   constexpr size_t kThreadNumX = 16;
   constexpr size_t kThreadNumY = 32;
 
@@ -372,7 +372,7 @@ void InclusiveScanInnerDimSklansky(const T *src,
                                    size_t inner_dim,
                                    T init,
                                    BinaryOp op,
-                                   const phi::GPUContext &dev_ctx) {
+                                   const GPUContext &dev_ctx) {
   int64_t num_rows = outer_dim;
   int64_t row_size = inner_dim;
 
@@ -409,7 +409,7 @@ void InclusiveScan(const T *x,
                    T init,
                    BinaryOp op,
                    bool reverse,
-                   const phi::GPUContext &dev_ctx) {
+                   const GPUContext &dev_ctx) {
   if (outer_dim == 0 || mid_dim == 0 || inner_dim == 0) return;
 
   if (outer_dim == 1 && inner_dim == 1) {
@@ -421,7 +421,7 @@ void InclusiveScan(const T *x,
       CubInclusiveScan(x, y, mid_dim, op, dev_ctx);
     }
   } else if (inner_dim != 1) {
-    funcs::ForRange<phi::GPUContext> for_range(dev_ctx, outer_dim * inner_dim);
+    funcs::ForRange<GPUContext> for_range(dev_ctx, outer_dim * inner_dim);
     if (reverse) {
       for_range(
           InclusiveScanOuterOrMidDimFunctor<T, BinaryOp, /*kReverse=*/true>(

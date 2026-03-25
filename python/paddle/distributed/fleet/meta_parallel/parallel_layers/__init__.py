@@ -29,5 +29,11 @@ from .random import (  # noqa: F401
     get_rng_state_tracker,
     model_parallel_random_seed,
 )
+from .spec_utils import (
+    LayerSpec as LayerSpec,
+    build_spec_layer as build_spec_layer,
+    get_spec_layer as get_spec_layer,
+    import_spec_layer as import_spec_layer,
+)
 
 __all__ = []

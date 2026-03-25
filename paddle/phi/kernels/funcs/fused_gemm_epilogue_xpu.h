@@ -24,7 +24,7 @@ namespace phi {
 namespace funcs {
 
 template <typename T>
-void ComputeFusedGemmEpilogueBackwardXPU(const phi::XPUContext& dev_ctx,
+void ComputeFusedGemmEpilogueBackwardXPU(const XPUContext& dev_ctx,
                                          const DenseTensor* dout,
                                          const DenseTensor* x,
                                          const DenseTensor* y,

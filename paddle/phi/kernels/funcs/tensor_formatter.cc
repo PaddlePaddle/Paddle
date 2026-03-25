@@ -64,7 +64,7 @@ std::string TensorFormatter::Format(const DenseTensor& print_tensor,
 
   if (print_tensor_lod_) {
     log_stream << "  - lod: {";
-    const phi::LegacyLoD& lod = print_tensor.lod();
+    const LegacyLoD& lod = print_tensor.lod();
     for (auto const& level : lod) {
       log_stream << "{";
       bool is_first = true;
@@ -138,7 +138,7 @@ void TensorFormatter::FormatData(const DenseTensor& print_tensor,
   } else {
     CPUPlace cpu_place;
 
-    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+    DeviceContextPool& pool = DeviceContextPool::Instance();
     auto dev_ctx = pool.Get(print_tensor.place());
 
     phi::Copy(*dev_ctx, print_tensor, cpu_place, true, &cpu_tensor);

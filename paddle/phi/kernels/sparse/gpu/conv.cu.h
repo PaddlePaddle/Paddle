@@ -52,11 +52,11 @@ __global__ void GatherKernel(const T* params,
     int slice_i = i - indices_i * vec_slice_size;  // offset inside the slice
     IndexT gather_i = indices[indices_i];
     int64_t params_i = gather_i * slice_size + slice_i * VecSize;
-    using LoadT = phi::AlignedVector<T, VecSize>;
-    using StoreT = phi::AlignedVector<T, VecSize>;
+    using LoadT = AlignedVector<T, VecSize>;
+    using StoreT = AlignedVector<T, VecSize>;
     LoadT params_vec;
-    phi::Load<T, VecSize>(params + params_i, &params_vec);
-    phi::Store<T, VecSize>(params_vec, output + i * VecSize);
+    Load<T, VecSize>(params + params_i, &params_vec);
+    Store<T, VecSize>(params_vec, output + i * VecSize);
   }
 }
 
@@ -72,15 +72,15 @@ __global__ void GatherKernelV2(const T* inputs,
                                T* output) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   const int vec_channels = channels / VecSize;
-  using LoadT = phi::AlignedVector<T, VecSize>;
-  using StoreT = phi::AlignedVector<T, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
+  using StoreT = AlignedVector<T, VecSize>;
   for (int i = tid; i < non_zero_num * vec_channels;
        i += gridDim.x * blockDim.x) {
     int indices_i = i / vec_channels;
     int channels_i = i - indices_i * vec_channels;
     LoadT in_vec;
-    phi::Load<T, VecSize>(inputs + indices_i * channels + channels_i * VecSize,
-                          &in_vec);
+    Load<T, VecSize>(inputs + indices_i * channels + channels_i * VecSize,
+                     &in_vec);
 #pragma unroll
     for (int it = 0; it < buffer_count; it++) {
       int len = index_counts[indices_i + it * non_zero_num];
@@ -88,8 +88,8 @@ __global__ void GatherKernelV2(const T* inputs,
 #pragma unroll
       for (int j = 0; j < len; j++) {
         int out_i = index_groups[indices_i * kernel_size + j + group_offset];
-        phi::Store<T, VecSize>(
-            in_vec, output + out_i * channels + channels_i * VecSize);
+        Store<T, VecSize>(in_vec,
+                          output + out_i * channels + channels_i * VecSize);
       }
     }
   }

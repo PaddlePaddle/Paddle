@@ -72,7 +72,7 @@ void AnchorGeneratorOpKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(anchors);
   dev_ctx.template Alloc<T>(vars);
 
-  auto e_anchors = phi::EigenTensor<T, 4>::From(*anchors);
+  auto e_anchors = EigenTensor<T, 4>::From(*anchors);
   for (int h_idx = 0; h_idx < feature_height; ++h_idx) {
     for (int w_idx = 0; w_idx < feature_width; ++w_idx) {
       T x_ctr = (w_idx * stride_width) + offset * (stride_width - 1);
@@ -107,7 +107,7 @@ void AnchorGeneratorOpKernel(const Context& dev_ctx,
   DenseTensor var_t;
   var_t.Resize(make_ddim({1, static_cast<int>(variances.size())}));
   dev_ctx.template Alloc<T>(&var_t);
-  auto var_et = phi::EigenTensor<T, 2>::From(var_t);
+  auto var_et = EigenTensor<T, 2>::From(var_t);
   for (size_t i = 0; i < variances.size(); ++i) {
     var_et(0, i) = variances[i];
   }
@@ -116,7 +116,7 @@ void AnchorGeneratorOpKernel(const Context& dev_ctx,
   auto var_dim = vars->dims();
   vars->Resize({anchor_num, static_cast<int>(variances.size())});
 
-  auto e_vars = phi::EigenMatrix<T, Eigen::RowMajor>::From(*vars);
+  auto e_vars = EigenMatrix<T, Eigen::RowMajor>::From(*vars);
   e_vars = var_et.broadcast(Eigen::DSizes<int, 2>(anchor_num, 1));
 
   vars->Resize(var_dim);

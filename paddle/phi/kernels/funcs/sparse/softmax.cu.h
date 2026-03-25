@@ -40,7 +40,7 @@ inline DenseTensor GetOffsets(const Context& dev_ctx,
     }
   }
 
-  const IntArray strides_shape(common::vectorize<IntT>(indices.dims()));
+  const IntArray strides_shape(vectorize<IntT>(indices.dims()));
   DenseTensor strides = Empty<IntT>(dev_ctx, strides_shape);
   auto strides_ptr = strides.data<IntT>();
   memory_utils::Copy(dev_ctx.GetPlace(),

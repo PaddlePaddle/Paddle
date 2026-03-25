@@ -58,12 +58,11 @@ __device__ void CalcLayernormY(
     const int64_t cols,
     const LayerNormParamType<T> mean_val,
     const LayerNormParamType<T> invvar) {
-  using LoadT = phi::AlignedVector<T, VecSize>;
-  using StoreT = phi::AlignedVector<T, VecSize>;
-  using LoadU = phi::AlignedVector<U, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
+  using StoreT = AlignedVector<T, VecSize>;
+  using LoadU = AlignedVector<U, VecSize>;
   using LoadScaleOrBias =
-      phi::AlignedVector<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>,
-                         VecSize>;
+      AlignedVector<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>, VecSize>;
   for (int64_t i = col_id * VecSize; i < cols; i += blockDim.x * VecSize) {
     LoadScaleOrBias scale_vec;
     LoadScaleOrBias bias_vec;
@@ -565,12 +564,12 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
     const float quant_min_bound = -127.0,
     const float residual_alpha = 1.0) {
   __shared__ U smem[WARPS_M * WARPS_N];
-  using Vec = phi::AlignedVector<T, VecSize>;
-  using Vec_scale = phi::AlignedVector<ScaleT, VecSize>;
-  using Vec_in_type = phi::AlignedVector<InType, VecSize>;
-  using Vec_out_type = phi::AlignedVector<OutType, VecSize>;
-  using Vec_float = phi::AlignedVector<float, VecSize>;
-  using MaskStoreT = phi::AlignedVector<MaskType, VecSize>;
+  using Vec = AlignedVector<T, VecSize>;
+  using Vec_scale = AlignedVector<ScaleT, VecSize>;
+  using Vec_in_type = AlignedVector<InType, VecSize>;
+  using Vec_out_type = AlignedVector<OutType, VecSize>;
+  using Vec_float = AlignedVector<float, VecSize>;
+  using MaskStoreT = AlignedVector<MaskType, VecSize>;
 
   const int tidx = threadIdx.x;
   const int bidx = blockIdx.x;

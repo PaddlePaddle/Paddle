@@ -353,7 +353,7 @@ if(WITH_GPU OR WITH_ROCM)
 endif()
 
 if(MKL_FOUND AND WITH_ONEMKL)
-  if(win32)
+  if(WIN32)
     target_include_directories(phi PRIVATE ${MKL_INCLUDE})
   else()
     target_include_directories(phi_core PRIVATE ${MKL_INCLUDE})

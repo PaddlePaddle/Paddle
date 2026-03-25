@@ -21,7 +21,9 @@ struct global_load;
 
 template <>
 struct global_load<16> {
-  __device__ __inline__ global_load(uint4 &D, void const *ptr, int pred_guard) {
+  __device__ __inline__ global_load(uint4 &D,  // NOLINT
+                                    void const *ptr,
+                                    int pred_guard) {
     uint4 &data = *reinterpret_cast<uint4 *>(&D);
     asm volatile(
         "{\n"
@@ -45,7 +47,9 @@ struct global_load<16> {
 
 template <>
 struct global_load<8> {
-  __device__ __inline__ global_load(uint4 &D, void const *ptr, int pred_guard) {
+  __device__ __inline__ global_load(uint4 &D,  // NOLINT
+                                    void const *ptr,
+                                    int pred_guard) {
     uint2 const *ptr_ldg = reinterpret_cast<uint2 const *>(ptr);
 #pragma unroll
     for (int ldg_idx = 0; ldg_idx < 2; ldg_idx++) {
@@ -69,7 +73,9 @@ struct global_load<8> {
 
 template <>
 struct global_load<4> {
-  __device__ __inline__ global_load(uint4 &D, void const *ptr, int pred_guard) {
+  __device__ __inline__ global_load(uint4 &D,  // NOLINT
+                                    void const *ptr,
+                                    int pred_guard) {
     unsigned const *ptr_ldg = reinterpret_cast<unsigned const *>(ptr);
 #pragma unroll
     for (int ldg_idx = 0; ldg_idx < 4; ldg_idx++) {
@@ -91,7 +97,9 @@ struct global_load<4> {
 
 template <>
 struct global_load<2> {
-  __device__ __inline__ global_load(uint4 &D, void const *ptr, int pred_guard) {
+  __device__ __inline__ global_load(uint4 &D,  // NOLINT
+                                    void const *ptr,
+                                    int pred_guard) {
     uint16_t const *ptr_ldg = reinterpret_cast<uint16_t const *>(ptr);
 #pragma unroll
     for (int ldg_idx = 0; ldg_idx < 8; ldg_idx++) {

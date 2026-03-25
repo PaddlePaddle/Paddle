@@ -69,7 +69,7 @@ void LayerNormKernel(const Context& dev_ctx,
 #if defined(PADDLE_WITH_CUDA) || defined(_WIN32) || defined(__APPLE__) || \
     defined(__OSX__)
 
-  funcs::RowwiseMean2D<phi::CPUContext, T> row_mean(left, right, dev_ctx);
+  funcs::RowwiseMean2D<CPUContext, T> row_mean(left, right, dev_ctx);
 
   // get mean
   row_mean(dev_ctx, x_tmp, &mean_tmp);

@@ -51,7 +51,7 @@ void MultiHeadAttentionVariableForwardKernel(const Context& dev_ctx,
   if (mask) {
     // [B, 1, S, D]
     auto mask_tensor = mask.get();
-    mask_shape = common::vectorize(mask_tensor.dims());
+    mask_shape = vectorize(mask_tensor.dims());
   }
 
   xpu::QKVAttnParam qkv_attn_param(

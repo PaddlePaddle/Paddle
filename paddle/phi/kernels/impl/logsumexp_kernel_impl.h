@@ -90,7 +90,7 @@ void LogsumexpKernel(const Context& dev_ctx,
   if (reduce_all) {
     // Flatten and reduce 1-D tensor
     auto input = EigenVector<T>::Flatten(x);
-    auto output = phi::EigenScalar<T>::From(*out);
+    auto output = EigenScalar<T>::From(*out);
     auto& place = *dev_ctx.eigen_device();
     auto reduce_dim = Eigen::array<int, 1>({{0}});
     LogsumexpFunctor<T>()(place, &input, &output, reduce_dim);

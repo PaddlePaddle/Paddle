@@ -68,19 +68,7 @@ void SoftmaxGradKernel(const Context& dev_ctx,
   auto* eigen_dev = dev_ctx.eigen_device();
   SoftReluGradFunctor<T> functor;
   functor.SetAttrs(threshold);
-  // use 32bit index to speed up computation
-  bool use_32bit_index = out.size() < Eigen::NumTraits<int>::highest();
-  bool is_gpu_place = (dev_ctx.GetPlace().GetType() == AllocationType::GPU) ||
-                      (dev_ctx.GetPlace().GetType() == AllocationType::CUSTOM);
-  if (use_32bit_index && is_gpu_place) {
-    functor(*eigen_dev,
-            To32BitIndex(x),
-            To32BitIndex(out),
-            To32BitIndex(dout),
-            To32BitIndex(dx));
-  } else {
-    functor(*eigen_dev, x, out, dout, dx);
-  }
+  functor(*eigen_dev, x, out, dout, dx);
 }
 }  // namespace phi
 
