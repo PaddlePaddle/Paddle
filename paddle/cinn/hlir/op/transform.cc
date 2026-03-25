@@ -128,6 +128,7 @@ std::shared_ptr<OpStrategy> StrategyForMatMul(
 #endif
         },
         [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+        [&](common::CustomDeviceArch) { CINN_NOT_IMPLEMENTED; },
         [&](common::NVGPUArch) {
           out = pe::Matmul(new_A, new_B, trans_a, trans_b, alpha, tensor_name);
         },
@@ -440,6 +441,7 @@ std::shared_ptr<OpStrategy> StrategyForMul(
 #endif
         },
         [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+        [&](common::CustomDeviceArch) { CINN_NOT_IMPLEMENTED; },
         [&](common::NVGPUArch) {
           out = pe::Matmul(new_A, new_B, false, is_infer, 1.0f, tensor_name);
         },

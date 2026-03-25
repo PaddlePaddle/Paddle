@@ -55,6 +55,10 @@ void CastBoolExprToInt8Impl(common::ARMArch, Expr* e) {
   // Do nothing.
 }
 
+void CastBoolExprToInt8Impl(common::CustomDeviceArch, Expr* e) {
+  // Do nothing.
+}
+
 void CastBoolExprToInt8Impl(common::NVGPUArch, Expr* e) {
   // Do nothing.
 }

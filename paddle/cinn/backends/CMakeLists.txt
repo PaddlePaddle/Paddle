@@ -30,6 +30,10 @@ if(WITH_SYCL)
   add_subdirectory(sycl)
 endif()
 
+if(WITH_CUSTOM_DEVICE)
+  add_subdirectory(custom_device)
+endif()
+
 if(WITH_OPENMP)
   cinn_cc_library(__x86_source_fake_lib SRCS _x86_builtin_source.cc)
 endif()
