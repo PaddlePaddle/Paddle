@@ -136,12 +136,6 @@ struct Event final {
 
   void record(const c10::cuda::CUDAStream &stream) { record(stream.unwrap()); }
 
-  // TODO(youge325): Remove after DeepEP paddle branch is updated to use
-  // c10::Stream
-  void record(const cudaStream_t &stream) {
-    C10_CUDA_CHECK(cudaEventRecord(cuda_event_, stream));
-  }
-
   void block(const Stream &stream) const {
     C10_CUDA_CHECK(cudaStreamWaitEvent(
         static_cast<cudaStream_t>(stream.native_handle()), cuda_event_, 0));
