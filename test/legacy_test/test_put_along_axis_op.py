@@ -1646,6 +1646,99 @@ class TestPutAlongAxisZeroSizeIndex(unittest.TestCase):
         )
 
 
+class TestPutAlongAxisMulIntegerDivByZero(unittest.TestCase):
+    """
+    Bug A: reduce='mul' backward with integer dtypes crashes (SIGFPE) when
+    x or value contains zero, because the grad formula divides by x or value
+    without a zero guard.
+
+    Fixed in gather_scatter_functor.cc/.cu by returning grad=0 when divisor is 0.
+    """
+
+    def setUp(self):
+        paddle.disable_static()
+
+    def _run_forward_backward(self, dtype, place):
+        x = paddle.to_tensor(
+            np.array([[[1, 0, 3], [0, 5, 6]]]), dtype=dtype
+        )
+        x.stop_gradient = False
+        index = paddle.to_tensor(
+            np.array([[[0, 1, 0], [1, 0, 1]]]), dtype='int64'
+        )
+        value = paddle.to_tensor(
+            np.array([[[2, 0, 4], [0, 3, 5]]]), dtype=dtype
+        )
+        value.stop_gradient = False
+        out = paddle.put_along_axis(
+            x, index, value, axis=2, reduce='mul', include_self=True
+        )
+        loss = out.sum()
+        loss.backward()
+        self.assertEqual(list(out.shape), [1, 2, 3])
+
+    def test_uint8_cpu(self):
+        self._run_forward_backward('uint8', 'cpu')
+
+    def test_int32_cpu(self):
+        self._run_forward_backward('int32', 'cpu')
+
+    def test_int64_cpu(self):
+        self._run_forward_backward('int64', 'cpu')
+
+    @unittest.skipIf(
+        not paddle.is_compiled_with_cuda(), "CUDA not available"
+    )
+    def test_uint8_gpu(self):
+        self._run_forward_backward('uint8', 'gpu')
+
+    @unittest.skipIf(
+        not paddle.is_compiled_with_cuda(), "CUDA not available"
+    )
+    def test_int32_gpu(self):
+        self._run_forward_backward('int32', 'gpu')
+
+
+class TestPutAlongAxisZeroSizeInputGrad(unittest.TestCase):
+    """
+    Bug B: when input has a 0-size dimension but index is non-empty,
+    CPU backward crashes due to out-of-bounds memory access because
+    the CPU grad kernel lacked a numel==0 early-return guard.
+
+    Fixed in put_along_axis_grad_kernel.cc by adding the same guard
+    that the GPU grad kernel already had.
+    """
+
+    def setUp(self):
+        paddle.disable_static()
+
+    def _run_zero_size_input(self, x_shape, idx_shape, val_shape, axis, reduce):
+        x = paddle.rand(x_shape, dtype='float32')
+        x.stop_gradient = False
+        index = paddle.zeros(idx_shape, dtype='int64')
+        value = paddle.rand(val_shape, dtype='float32')
+        value.stop_gradient = False
+        out = paddle.put_along_axis(
+            x, index, value, axis=axis, reduce=reduce, include_self=True
+        )
+        self.assertEqual(list(out.shape), x_shape)
+
+    def test_input_first_dim_zero_assign(self):
+        self._run_zero_size_input([0, 60], [0, 4], [0, 4], axis=1, reduce='assign')
+
+    def test_input_first_dim_zero_add(self):
+        self._run_zero_size_input([0, 60], [0, 4], [0, 4], axis=1, reduce='add')
+
+    def test_input_first_dim_zero_mul(self):
+        self._run_zero_size_input([0, 60], [0, 4], [0, 4], axis=1, reduce='mul')
+
+    def test_input_mid_dim_zero(self):
+        self._run_zero_size_input([4, 0, 4], [1, 0, 1], [1, 0, 1], axis=0, reduce='assign')
+
+    def test_input_last_dim_zero(self):
+        self._run_zero_size_input([4, 4, 0], [1, 1, 0], [1, 1, 0], axis=0, reduce='assign')
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()
