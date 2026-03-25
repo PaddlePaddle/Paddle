@@ -1800,22 +1800,29 @@ PYBIND11_MODULE(libpaddle, m) {
           }
 #endif
                   )
-      .def_static(
-          "begin_capture_with_pool_id",
+      .def_static("begin_capture_with_pool_id",
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-          [](GPUPlace place, int mode, std::optional<int64_t> pool_id) {
-            if (pool_id.has_value()) {
-              platform::BeginCUDAGraphCapture(
-                  place,
-                  static_cast<paddle::gpuStreamCaptureMode>(mode),
-                  pool_id.value());
-            } else {
-              platform::BeginCUDAGraphCapture(
-                  place, static_cast<paddle::gpuStreamCaptureMode>(mode));
-            }
-          }
+                  [](GPUPlace place,
+                     int mode,
+                     std::optional<int64_t> pool_id,
+                     bool enable_replace) {
+                    if (pool_id.has_value()) {
+                      platform::BeginCUDAGraphCapture(
+                          place,
+                          static_cast<paddle::gpuStreamCaptureMode>(mode),
+                          pool_id.value(),
+                          enable_replace);
+                    } else {
+                      platform::BeginCUDAGraphCapture(
+                          place,
+                          static_cast<paddle::gpuStreamCaptureMode>(mode),
+                          phi::backends::gpu::CUDAGraph::kInvalidPoolID,
+                          enable_replace);
+                    }
+                  }
 #else
-          [](phi::CustomPlace place, int mode, std::optional<int64_t> pool_id) {
+          [](phi::CustomPlace place, int mode, std::optional<int64_t> pool_id,
+             bool enable_replace) {
             if (pool_id.has_value()) {
               platform::BeginCUDAGraphCapture(
                   place,
@@ -1827,14 +1834,28 @@ PYBIND11_MODULE(libpaddle, m) {
             }
           }
 #endif
-          )
+                  )
       .def_static("end_capture", &platform::EndCUDAGraphCapture)
       .def_static("gen_new_memory_pool_id",
                   &phi::backends::gpu::CUDAGraph::UniqueMemoryPoolID)
       .def("replay", &phi::backends::gpu::CUDAGraph::Replay)
       .def("reset", &phi::backends::gpu::CUDAGraph::Reset)
       .def("print_to_dot_files",
-           &phi::backends::gpu::CUDAGraph::PrintToDotFiles);
+           &phi::backends::gpu::CUDAGraph::PrintToDotFiles)
+      .def("replace_input_ptrs",
+           [](phi::backends::gpu::CUDAGraph &self,
+              const std::vector<int64_t> &old_ptrs_int,
+              const std::vector<int64_t> &new_ptrs_int) {
+             std::vector<void *> old_ptrs(old_ptrs_int.size());
+             std::vector<void *> new_ptrs(new_ptrs_int.size());
+             for (size_t i = 0; i < old_ptrs_int.size(); ++i) {
+               old_ptrs[i] = reinterpret_cast<void *>(old_ptrs_int[i]);
+             }
+             for (size_t i = 0; i < new_ptrs_int.size(); ++i) {
+               new_ptrs[i] = reinterpret_cast<void *>(new_ptrs_int[i]);
+             }
+             self.ReplaceInputPtrs(old_ptrs, new_ptrs);
+           });
 #endif
 
 #ifdef PADDLE_WITH_XPU

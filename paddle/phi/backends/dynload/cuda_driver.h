@@ -77,7 +77,8 @@ extern bool HasCUDADriver();
 #define CUDA_ROUTINE_EACH_CUDA_GRAPH(__macro) \
   __macro(cuGraphNodeGetType);                \
   __macro(cuGraphKernelNodeGetParams);        \
-  __macro(cuGraphExecKernelNodeSetParams)
+  __macro(cuGraphExecKernelNodeSetParams);    \
+  __macro(cuFuncGetParamInfo);
 
 CUDA_ROUTINE_EACH_VVM(DECLARE_DYNAMIC_LOAD_CUDA_WRAP);
 CUDA_ROUTINE_EACH_CUDA_GRAPH(DECLARE_DYNAMIC_LOAD_CUDA_WRAP);
