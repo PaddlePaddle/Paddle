@@ -15,15 +15,16 @@
 # limitations under the License.
 
 #
-# check_xpu_only.sh - 判断 PR 是否为纯 XPU 改动
+# check_xpu_only.sh - Determine whether a PR only modifies XPU-specific files
 #
-# 当 PR 变更文件全部属于 XPU 专属路径时，其他硬件 CI 可以跳过。
+# When all changed files in a PR belong to XPU-specific paths,
+# other hardware CI jobs (GPU/DCU/NPU) can be safely skipped.
 #
 # Exit codes:
-#   0 = 纯 XPU 改动（其他硬件 CI 可跳过）
-#   1 = 非纯 XPU 改动（所有 CI 照常运行）
+#   0 = XPU-only changes (other hardware CI can be skipped)
+#   1 = Non-XPU-only changes (all CI should run as usual)
 #
-# Safety: 任何异常默认 exit 1（全量运行），绝不错跳。
+# Safety: Any error defaults to exit 1 (run all CI), never skip by mistake.
 #
 
 set -o pipefail
@@ -31,7 +32,7 @@ set -o pipefail
 LOG_PREFIX="[xpu-only]"
 
 # =============================================================================
-# 紧急开关：全局禁用跳过
+# Emergency kill switch: globally disable CI skipping
 # =============================================================================
 if [[ "${DISABLE_HW_CI_SKIP:-false}" == "true" ]]; then
     echo "$LOG_PREFIX Emergency override: DISABLE_HW_CI_SKIP=true, running all CI"
@@ -39,7 +40,7 @@ if [[ "${DISABLE_HW_CI_SKIP:-false}" == "true" ]]; then
 fi
 
 # =============================================================================
-# 强制全量运行：commit message 含 test=all
+# Force full CI run: commit message contains test=all
 # =============================================================================
 COMMIT_MSG=$(git log -1 --pretty=%B 2>/dev/null || echo "")
 if echo "$COMMIT_MSG" | grep -qiE 'test[=:] *all'; then
@@ -48,27 +49,27 @@ if echo "$COMMIT_MSG" | grep -qiE 'test[=:] *all'; then
 fi
 
 # =============================================================================
-# 获取变更文件
+# Collect changed files
 # =============================================================================
 
 CHANGED_FILES=""
 
-# Method 1: GitHub PR 上下文（对比 base branch）
+# Method 1: GitHub PR context (diff against base branch)
 if [[ -n "${GITHUB_BASE_REF:-}" ]]; then
     CHANGED_FILES=$(git diff --name-only "origin/${GITHUB_BASE_REF}...HEAD" 2>/dev/null || echo "")
 fi
 
-# Method 2: 对比 develop 分支
+# Method 2: Diff against develop branch
 if [[ -z "$CHANGED_FILES" ]]; then
     CHANGED_FILES=$(git diff --name-only origin/develop...HEAD 2>/dev/null || echo "")
 fi
 
-# Method 3: 对比上一个 commit（兜底）
+# Method 3: Diff against previous commit (fallback)
 if [[ -z "$CHANGED_FILES" ]]; then
     CHANGED_FILES=$(git diff --name-only HEAD~1 2>/dev/null || echo "")
 fi
 
-# 无法获取变更文件 → 全量运行
+# Cannot detect changed files -> run all CI
 if [[ -z "$CHANGED_FILES" ]]; then
     echo "$LOG_PREFIX WARN: No changed files detected, defaulting to full CI"
     exit 1
@@ -78,7 +79,7 @@ TOTAL_FILES=$(echo "$CHANGED_FILES" | wc -l | tr -d ' ')
 echo "$LOG_PREFIX Analyzing $TOTAL_FILES changed files"
 
 # =============================================================================
-# XPU 专属路径定义
+# XPU-specific path definitions
 # =============================================================================
 XPU_PATHS=(
     # phi kernels
@@ -90,7 +91,7 @@ XPU_PATHS=(
     # phi backends & device
     "paddle/phi/backends/xpu/"
     "paddle/phi/core/platform/device/xpu/"
-    # fluid (旧框架遗留)
+    # fluid (legacy framework)
     "paddle/fluid/pir/transforms/xpu/"
     "paddle/fluid/framework/ir/xpu/"
     "paddle/fluid/platform/device/xpu/"
@@ -108,7 +109,7 @@ XPU_PATHS=(
 )
 
 # =============================================================================
-# 逐文件判断：是否全部属于 XPU 专属路径
+# Check each file: verify all belong to XPU-specific paths
 # =============================================================================
 while IFS= read -r file; do
     [[ -z "$file" ]] && continue
