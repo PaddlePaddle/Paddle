@@ -62,8 +62,8 @@ class VMMAutoGrowthBestFitMultiPoolAllocatorV2 : public Allocator {
       const {
     return stable_allocator_;
   }
-  const std::shared_ptr<VMMAutoGrowthBestFitAllocatorV2>&
-  longlived_allocator() const {
+  const std::shared_ptr<VMMAutoGrowthBestFitAllocatorV2>& longlived_allocator()
+      const {
     return longlived_allocator_;
   }
   const std::shared_ptr<VMMAutoGrowthBestFitAllocatorV2>&

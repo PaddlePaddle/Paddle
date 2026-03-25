@@ -33,12 +33,13 @@ inline PoolHint& CurrentPoolHintStorage() {
 
 inline PoolHint GetCurrentPoolHint() { return CurrentPoolHintStorage(); }
 
-inline void SetCurrentPoolHint(PoolHint hint) { CurrentPoolHintStorage() = hint; }
+inline void SetCurrentPoolHint(PoolHint hint) {
+  CurrentPoolHintStorage() = hint;
+}
 
 class PoolHintGuard {
  public:
-  explicit PoolHintGuard(PoolHint hint)
-      : previous_hint_(GetCurrentPoolHint()) {
+  explicit PoolHintGuard(PoolHint hint) : previous_hint_(GetCurrentPoolHint()) {
     SetCurrentPoolHint(hint);
   }
 

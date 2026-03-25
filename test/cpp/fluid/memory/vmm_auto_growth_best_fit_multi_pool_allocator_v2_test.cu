@@ -207,7 +207,8 @@ TEST(VMMAutoGrowthBestFitMultiPoolAllocatorV2,
             allocator->transient_large_allocator_.get());
 }
 
-TEST(VMMAutoGrowthBestFitMultiPoolAllocatorV2, StableHintOverridesDefaultRoute) {
+TEST(VMMAutoGrowthBestFitMultiPoolAllocatorV2,
+     StableHintOverridesDefaultRoute) {
   auto allocator = CreateAllocator();
 
   PoolHintGuard guard(PoolHint::kStable);
