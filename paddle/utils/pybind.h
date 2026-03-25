@@ -43,22 +43,22 @@ typedef struct {
   return Py_None;
 
 // Internal use only, to expose the Tensor type to Python.
-bool PyCheckTensor(PyObject* obj);
+PADDLE_API bool PyCheckTensor(PyObject* obj);
 
 // Share Tensor for inplace.
-void ShareTensor(PyObject* src, PyObject* dst);
+PADDLE_API void ShareTensor(PyObject* src, PyObject* dst);
 
 // Internal use only, to expose the Tensor type to Python.
-paddle::Tensor& CastPyArg2Tensor(PyObject* obj, Py_ssize_t arg_pos);
+PADDLE_API paddle::Tensor& CastPyArg2Tensor(PyObject* obj, Py_ssize_t arg_pos);
 
 // Internal use only, to expose the Tensor type to Python.
-PyObject* ToPyObject(const paddle::Tensor& value,
+PADDLE_API PyObject* ToPyObject(const paddle::Tensor& value,
                      bool return_py_none_if_not_initialize = false);
 
 // Internal use only, switch tensor_operants_mode to phi
-void EnableTensorOperantsToPhiMode();
+PADDLE_API void EnableTensorOperantsToPhiMode();
 
-PyObject* ToPyObject(const phi::DataType& dtype);
+PADDLE_API PyObject* ToPyObject(const phi::DataType& dtype);
 
 }  // namespace pybind
 }  // namespace paddle

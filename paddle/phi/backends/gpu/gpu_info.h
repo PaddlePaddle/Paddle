@@ -34,7 +34,7 @@ int DnnVersion();
 PADDLE_API int GetGPUDeviceCount();
 
 //! Get the compute capability of the ith GPU (format: major * 10 + minor)
-int GetGPUComputeCapability(int id);
+PADDLE_API int GetGPUComputeCapability(int id);
 
 //! Get the runtime version of the ith GPU
 int GetGPURuntimeVersion(int id);
