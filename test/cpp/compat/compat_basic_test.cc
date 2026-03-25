@@ -514,3 +514,82 @@ TEST(DeviceCompatTest, DeviceStreamOutput) {
     ASSERT_EQ(oss.str(), "custom:1");
   }
 }
+
+TEST(CompatNewChangesTest, DeviceCpuIndexSemantics) {
+  // No explicit index: has_index=false, index=-1
+  c10::Device cpu_default("cpu");
+  ASSERT_FALSE(cpu_default.has_index());
+  ASSERT_EQ(cpu_default.index(), -1);
+  ASSERT_EQ(cpu_default.str(), "cpu");
+
+  // Explicit CPU index should be preserved and visible
+  c10::Device cpu_indexed("cpu:3");
+  ASSERT_TRUE(cpu_indexed.has_index());
+  ASSERT_EQ(cpu_indexed.index(), 3);
+  ASSERT_EQ(cpu_indexed.str(), "cpu:3");
+
+  c10::Device cpu_ctor(c10::DeviceType::CPU, 0);
+  ASSERT_TRUE(cpu_ctor.has_index());
+  ASSERT_EQ(cpu_ctor.index(), 0);
+  ASSERT_EQ(cpu_ctor.str(), "cpu:0");
+}
+
+TEST(CompatNewChangesTest, ScalarTypeEnumAlignment) {
+  // Validate key enum numeric ids aligned with PyTorch
+  ASSERT_EQ(static_cast<int>(c10::ScalarType::ComplexFloat), 9);
+  ASSERT_EQ(static_cast<int>(c10::ScalarType::ComplexDouble), 10);
+  ASSERT_EQ(static_cast<int>(c10::ScalarType::BFloat16), 15);
+  ASSERT_EQ(static_cast<int>(c10::ScalarType::QInt8), 12);
+  ASSERT_EQ(static_cast<int>(c10::ScalarType::QUInt8), 13);
+}
+
+TEST(CompatNewChangesTest, SparseCooTensorInferSize2D) {
+  // indices = [[0,1,1],[0,4,2]] -> inferred size should be [2,5]
+  at::Tensor indices = at::empty({2, 3}, at::TensorOptions().dtype(at::kLong));
+  int64_t* idx = indices.data_ptr<int64_t>();
+  idx[0] = 0;
+  idx[1] = 1;
+  idx[2] = 1;
+  idx[3] = 0;
+  idx[4] = 4;
+  idx[5] = 2;
+
+  at::Tensor values = at::empty({3}, at::TensorOptions().dtype(at::kFloat));
+  float* v = values.data_ptr<float>();
+  v[0] = 1.0f;
+  v[1] = 2.0f;
+  v[2] = 3.0f;
+  at::Tensor sparse = at::sparse_coo_tensor(indices, values);
+
+  ASSERT_TRUE(sparse.is_sparse());
+  ASSERT_EQ(sparse.layout(), c10::kSparse);
+  ASSERT_EQ(sparse.size(0), 2);
+  ASSERT_EQ(sparse.size(1), 5);
+}
+
+TEST(CompatNewChangesTest, SparseCooTensorInferSizeWithDenseDims) {
+  // sparse dims=2, nnz=3, values shape=[3,2] -> inferred size [2,5,2]
+  at::Tensor indices = at::empty({2, 3}, at::TensorOptions().dtype(at::kLong));
+  int64_t* idx = indices.data_ptr<int64_t>();
+  idx[0] = 0;
+  idx[1] = 1;
+  idx[2] = 1;
+  idx[3] = 0;
+  idx[4] = 4;
+  idx[5] = 2;
+
+  at::Tensor values = at::empty({3, 2}, at::TensorOptions().dtype(at::kFloat));
+  float* v = values.data_ptr<float>();
+  v[0] = 1.0f;
+  v[1] = 2.0f;
+  v[2] = 3.0f;
+  v[3] = 4.0f;
+  v[4] = 5.0f;
+  v[5] = 6.0f;
+  at::Tensor sparse = at::sparse_coo_tensor(indices, values);
+
+  ASSERT_TRUE(sparse.is_sparse());
+  ASSERT_EQ(sparse.size(0), 2);
+  ASSERT_EQ(sparse.size(1), 5);
+  ASSERT_EQ(sparse.size(2), 2);
+}
