@@ -65,7 +65,7 @@ TEST(TensorBaseTest, TypeDeviceAPIs) {
   ASSERT_EQ(cpu_tensor.device().type(), at::DeviceType::CPU);
 
   // Test get_device()
-  ASSERT_EQ(cpu_tensor.get_device(), 0);  // CPU device index is -1
+  ASSERT_EQ(cpu_tensor.get_device(), -1);  // CPU device index is -1
 
   // Test is_cpu()/is_cuda()
   ASSERT_TRUE(cpu_tensor.is_cpu());
