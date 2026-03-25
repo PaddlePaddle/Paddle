@@ -618,7 +618,7 @@ if [ -n "${BIGTENSOR_CHANGED}" ]; then
 fi
 
 
-HAS_MODIFIED_PHI_DIR=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/" | grep -v "paddle/phi/api/" || true`
+HAS_MODIFIED_PHI_DIR=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/" | grep -v "paddle/phi/api/" || grep -v "python_api_info.yaml" || true`
 if [ "${HAS_MODIFIED_PHI_DIR}" != "" ] && [ "${PR_ID}" != "" ]; then
     echo_line="You modified files in paddle/phi/ directory. You must have one RD (wanghuancoder, zrr1999, DanielSun11) approval.\n"
     echo_line="${echo_line}[IMPORTANT] Please ensure you have run the following tests before merging:\n"
