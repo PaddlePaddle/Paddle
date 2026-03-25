@@ -60,7 +60,7 @@ void MaskedScatterGradKernel(const Context& dev_ctx,
   int64_t total = out_grad.numel();
 
   if (x_grad) {
-    dev_ctx.template HostAlloc<T>(x_grad);
+    dev_ctx.template Alloc<T>(x_grad);
     auto* x_grad_data = x_grad->data<T>();
     for (int64_t i = 0; i < total; i++) {
       x_grad_data[i] = mask_data[i] ? static_cast<T>(0) : out_grad_data[i];
@@ -68,7 +68,7 @@ void MaskedScatterGradKernel(const Context& dev_ctx,
   }
 
   if (value_grad) {
-    dev_ctx.template HostAlloc<T>(value_grad);
+    dev_ctx.template Alloc<T>(value_grad);
     auto* value_grad_data = value_grad->data<T>();
     int64_t value_numel = value_grad->numel();
     std::memset(value_grad_data, 0, value_numel * sizeof(T));

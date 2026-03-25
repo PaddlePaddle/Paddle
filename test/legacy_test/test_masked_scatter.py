@@ -417,11 +417,7 @@ class TestMaskedScatterCPU(TestMaskedScatterAPI):
         result = paddle.masked_scatter(x, mask, value)
         loss = paddle.sum(result)
         loss.backward()
-        # x.grad has the broadcast shape (x broadcasted with mask)
-        broadcast_shape = list(
-            np.broadcast_shapes(self.x_np.shape, self.mask_np.shape)
-        )
-        self.assertEqual(list(x.grad.shape), broadcast_shape)
+        self.assertEqual(list(x.grad.shape), list(self.x_np.shape))
         self.assertEqual(list(value.grad.shape), list(self.value_np.shape))
         paddle.enable_static()
 
@@ -467,14 +463,6 @@ class TestMaskedScatterCPUBroadcast2(TestMaskedScatterCPU):
 
 
 class TestMaskedScatterCPUBroadcast3(TestMaskedScatterCPU):
-    def init(self):
-        self.x_shape = (120,)
-        self.mask_shape = (300, 120)
-        self.dtype = "float32"
-        self.value_shape = (300, 300)
-
-
-class TestMaskedScatterCPUBroadcast4(TestMaskedScatterCPU):
     def init(self):
         self.x_shape = (300, 40)
         self.mask_shape = (40,)

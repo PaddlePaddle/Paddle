@@ -54,7 +54,7 @@ void MaskedScatterKernel(const Context& dev_ctx,
   }
 
   out->Resize(expanded_dims);
-  auto* out_data = dev_ctx.template HostAlloc<T>(out);
+  auto* out_data = dev_ctx.template Alloc<T>(out);
   auto* x_data = x_expand.data<T>();
   auto* mask_data = mask_expand.data<bool>();
   auto* value_data = value.data<T>();
