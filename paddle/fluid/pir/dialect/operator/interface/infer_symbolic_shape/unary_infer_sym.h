@@ -183,4 +183,6 @@ OP_DECLARE_INFER_SYMBOLIC_SHAPE(WeightQuantize)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Var)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Std)
 
+// test
+
 }  // namespace paddle::dialect
