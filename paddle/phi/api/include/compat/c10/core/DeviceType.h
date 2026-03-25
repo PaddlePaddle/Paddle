@@ -49,6 +49,39 @@ constexpr DeviceType kXPUPINNED = DeviceType::XPUPINNED;
 constexpr DeviceType kIPU = DeviceType::IPU;
 constexpr DeviceType kCUSTOM = DeviceType::CUSTOM;
 
+inline bool isValidDeviceType(DeviceType type) noexcept {
+  return type == DeviceType::CPU || type == DeviceType::CUDA ||
+         type == DeviceType::GPUPINNED || type == DeviceType::XPU ||
+         type == DeviceType::XPUPINNED || type == DeviceType::IPU ||
+         type == DeviceType::CUSTOM;
+}
+
+inline const char* DeviceTypeName(DeviceType type) noexcept {
+  switch (type) {
+    case DeviceType::CPU:
+      return "cpu";
+    case DeviceType::CUDA:
+      return "cuda";
+    case DeviceType::GPUPINNED:
+      return "gpu_pinned";
+    case DeviceType::XPU:
+      return "xpu";
+    case DeviceType::XPUPINNED:
+      return "xpu_pinned";
+    case DeviceType::IPU:
+      return "ipu";
+    case DeviceType::CUSTOM:
+      return "custom";
+    default:
+      return "undefined";
+  }
+}
+
+inline std::ostream& operator<<(std::ostream& os, DeviceType type) {
+  os << DeviceTypeName(type);
+  return os;
+}
+
 // ── phi::AllocationType → c10::DeviceType ────────────────────────────
 inline DeviceType phiAllocationTypeToC10DeviceType(phi::AllocationType type) {
   switch (type) {

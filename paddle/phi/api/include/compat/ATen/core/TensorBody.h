@@ -431,7 +431,7 @@ class Tensor : public TensorBase {
     }
 
     const auto device_type = device.value().type();
-    if (device_type == c10::DeviceType::GPU) {
+    if (device_type == c10::DeviceType::CUDA) {
       return is_gpu_pinned;
     }
     if (device_type == c10::DeviceType::XPU) {
@@ -463,7 +463,7 @@ class Tensor : public TensorBase {
 
     if (device.has_value()) {
       const auto device_type = device.value().type();
-      if (device_type == c10::DeviceType::GPU) {
+      if (device_type == c10::DeviceType::CUDA) {
         pinned_place = phi::Place(phi::GPUPinnedPlace());
       } else if (device_type == c10::DeviceType::XPU) {
         pinned_place = phi::Place(phi::XPUPinnedPlace());
