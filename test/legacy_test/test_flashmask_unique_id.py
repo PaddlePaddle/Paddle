@@ -15,8 +15,13 @@
 import unittest
 
 import paddle
+from paddle.base import core
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "flashmask_get_unique_id requires CUDA",
+)
 class TestFlashmaskGetUniqueId(unittest.TestCase):
     """paddle.nn.functional.flashmask_get_unique_id returns a uint8 CPU tensor
     This tensor can either be all-zero (WITH_NVSHMEM=OFF) or valid NVSHMEM unique_id
