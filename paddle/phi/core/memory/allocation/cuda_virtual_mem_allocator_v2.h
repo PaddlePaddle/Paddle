@@ -16,13 +16,13 @@
 
 #if defined(PADDLE_WITH_CUDA)
 
-#include <mutex>
 #include <unordered_map>
 #include <vector>
 
 #include "paddle/phi/backends/dynload/cuda_driver.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/memory/allocation/allocator.h"
+#include "paddle/phi/core/memory/allocation/spin_lock.h"
 #include "paddle/phi/core/memory/allocation/vmm_allocator_v2_types.h"
 
 namespace paddle {
@@ -81,7 +81,7 @@ class CUDAVirtualMemAllocatorV2 : public Allocator {
   std::vector<CUmemAccessDesc> access_desc_;
 
   mutable std::unordered_map<void*, HandleLayout> allocation_layout_map_;
-  mutable std::mutex allocation_layout_mu_;
+  mutable SpinLock allocation_layout_mu_;
 };
 
 }  // namespace allocation

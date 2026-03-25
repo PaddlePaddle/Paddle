@@ -123,6 +123,13 @@ AllBlockInfoOfVmmAllocator(const GPUPlace& place) {
   return all_blocks_info_visitor.GetAllBlocksInfo();
 }
 
+std::vector<std::tuple<int, size_t, size_t, size_t, size_t, size_t, size_t>>
+VmmV2PoolStats(const GPUPlace& place) {
+  VMMV2PoolStatsVisitor pool_stats_visitor;
+  allocation::AllocatorFacade::Instance().Accept(place, &pool_stats_visitor);
+  return pool_stats_visitor.GetPoolStats();
+}
+
 std::vector<std::tuple<uintptr_t, bool, uint64_t, size_t, int64_t, int64_t>>
 GetAllocateEvent(const GPUPlace& place) {
   VMMAllocateRecordEventsVisitor allocate_record_event_visitor;

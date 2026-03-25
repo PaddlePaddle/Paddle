@@ -905,71 +905,77 @@ class Optimizer:
 
     def _create_master_weight(self, param):
         if param.name in self._master_weights:
-            var = self._master_weights[param.name]
-        else:
-            var_name = self._gen_master_weight_var_name(param)
-            if in_pir_mode():
-                startup_program = paddle.static.default_startup_program()
-                main_program = paddle.static.default_main_program()
-                with paddle.static.program_guard(startup_program):
+            return self._master_weights[param.name]
+        return self._do_create_master_weight(param)
 
-                    def get_param_from_startup(startup, name):
-                        for op in startup.global_block().ops:
-                            if (
-                                op.name() == 'builtin.set_parameter'
-                                and name == op.attrs()['parameter_name']
-                            ):
-                                return op.operand(0).source()
-                        return None
+    # Master weights are the "real" float32 parameters in AMP O2.
+    # They persist for the entire training run and should not be
+    # remapped, so they belong in the Stable pool alongside params.
+    @framework.vmm_pool_hint_guard('stable')
+    def _do_create_master_weight(self, param):
+        var_name = self._gen_master_weight_var_name(param)
+        if in_pir_mode():
+            startup_program = paddle.static.default_startup_program()
+            main_program = paddle.static.default_main_program()
+            with paddle.static.program_guard(startup_program):
 
-                    startup_param = get_param_from_startup(
-                        startup_program, param.name
-                    )
-                    startup_var = paddle.cast(startup_param, 'float32')
-                    startup_var.persistable = True
-                    paddle._pir_ops.set_persistable_value(startup_var, var_name)
-                with paddle.static.program_guard(main_program):
-                    paddle.pir.reset_insertion_point_to_start()
-                    var = paddle.static.data(
-                        var_name,
-                        startup_var.shape,
-                        startup_var.dtype,
-                        core.Place(),
-                    )
-                    if startup_var.is_dist():
-                        var.set_type(startup_var.type())
-                        op_dist_attr = (
-                            paddle.base.libpaddle.pir.create_op_dist_attribute(
-                                startup_var.dist_attr().process_mesh,
-                                [],
-                                [startup_var.dist_attr()],
-                            )
+                def get_param_from_startup(startup, name):
+                    for op in startup.global_block().ops:
+                        if (
+                            op.name() == 'builtin.set_parameter'
+                            and name == op.attrs()['parameter_name']
+                        ):
+                            return op.operand(0).source()
+                    return None
+
+                startup_param = get_param_from_startup(
+                    startup_program, param.name
+                )
+                startup_var = paddle.cast(startup_param, 'float32')
+                startup_var.persistable = True
+                paddle._pir_ops.set_persistable_value(startup_var, var_name)
+            with paddle.static.program_guard(main_program):
+                paddle.pir.reset_insertion_point_to_start()
+                var = paddle.static.data(
+                    var_name,
+                    startup_var.shape,
+                    startup_var.dtype,
+                    core.Place(),
+                )
+                if startup_var.is_dist():
+                    var.set_type(startup_var.type())
+                    op_dist_attr = (
+                        paddle.base.libpaddle.pir.create_op_dist_attribute(
+                            startup_var.dist_attr().process_mesh,
+                            [],
+                            [startup_var.dist_attr()],
                         )
-                        var.get_defining_op().dist_attr = op_dist_attr
-                    var.persistable = True
-            elif framework.in_dygraph_mode():
-                var = paddle.cast(param, 'float32')
-                var.name = var_name
-            else:
-                assert isinstance(self.helper, LayerHelper)
-                var = paddle.static.create_global_var(
-                    name=var_name,
-                    shape=param.shape,
-                    value=0,
-                    dtype='float32',
-                    persistable=True,
-                )
-                block = self.helper.startup_program.global_block()
-                block.append_op(
-                    type="cast",
-                    inputs={"X": [param]},
-                    outputs={"Out": [var]},
-                    attrs={
-                        "in_dtype": param.dtype,
-                        "out_dtype": core.VarDesc.VarType.FP32,
-                    },
-                )
-            self._master_weights[param.name] = var
+                    )
+                    var.get_defining_op().dist_attr = op_dist_attr
+                var.persistable = True
+        elif framework.in_dygraph_mode():
+            var = paddle.cast(param, 'float32')
+            var.name = var_name
+        else:
+            assert isinstance(self.helper, LayerHelper)
+            var = paddle.static.create_global_var(
+                name=var_name,
+                shape=param.shape,
+                value=0,
+                dtype='float32',
+                persistable=True,
+            )
+            block = self.helper.startup_program.global_block()
+            block.append_op(
+                type="cast",
+                inputs={"X": [param]},
+                outputs={"Out": [var]},
+                attrs={
+                    "in_dtype": param.dtype,
+                    "out_dtype": core.VarDesc.VarType.FP32,
+                },
+            )
+        self._master_weights[param.name] = var
         return var
 
     def _gen_master_weight_var_name(self, param):
@@ -1055,9 +1061,9 @@ class Optimizer:
             raise Exception(
                 f"Accumulator {name} already exists for parameter {param.name}"
             )
-        else:
-            # once master weights are created, accumulators must be created at the same time
-            self.need_refuse()
+
+        # once master weights are created, accumulators must be created at the same time
+        self.need_refuse()
         if shape is None:
             shape = param.shape
 
@@ -1068,6 +1074,18 @@ class Optimizer:
         if device is None:
             device = self._get_device_for_param(param.name)
 
+        var = self._do_create_accumulator(
+            name, param, var_name, dtype, fill_value, shape, device
+        )
+        return var
+
+    # Optimizer accumulators (moment1, moment2, beta_pow, …) are long-lived
+    # tensors that persist for the entire training run. Route them to the
+    # LongLived pool so they are not mixed with transient activations.
+    @framework.vmm_pool_hint_guard('longlived')
+    def _do_create_accumulator(
+        self, name, param, var_name, dtype, fill_value, shape, device
+    ):
         if in_pir_mode():
             if 'beta' not in var_name:
                 var = paddle.pir.core.create_persistable_value(

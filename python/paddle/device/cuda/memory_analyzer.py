@@ -127,6 +127,15 @@ class MemoryAnalysisTool:
         return core.vmm_all_block_info(device_id)
 
     @classmethod
+    def vmm_v2_pool_stats(
+        self,
+        device_id: int | None = None,
+    ) -> list[tuple[int, int, int, int, int, int, int]]:
+        from paddle.device.cuda import vmm_v2_pool_stats
+
+        return vmm_v2_pool_stats(device_id)
+
+    @classmethod
     def memory_summary(self, device_id: int | None = None) -> None:
         device_id = (
             device_id

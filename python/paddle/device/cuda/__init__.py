@@ -57,6 +57,7 @@ __all__ = [
     'reset_max_memory_reserved',
     'memory_summary',
     'vmm_compact',
+    'vmm_v2_pool_stats',
 ]
 
 
@@ -848,6 +849,49 @@ def vmm_compact(device: _CudaPlaceLike | None = None) -> int:
         )
     device_id = extract_cuda_device_id(device, op_name=name)
     return core.vmm_compact(device_id)
+
+
+def vmm_v2_pool_stats(
+    device: _CudaPlaceLike | None = None,
+) -> list[tuple[int, int, int, int, int, int, int]]:
+    '''
+    Query per-pool statistics of the VMM V2 multi-pool allocator.
+
+    Returns a list of tuples, one per pool, each containing
+    (pool_type, active_count, active_bytes,
+                free_count,   free_bytes,
+                gap_count,    gap_bytes).
+
+    Pool types: 0=Stable, 1=LongLived, 2=Transient, 3=Oversized.
+
+    Args:
+        device(paddle.CUDAPlace|int|str|None, optional): The device,
+            the id of the device or the string name of device like
+            'gpu:x'. If device is None, the device is the current
+            device. Default: None.
+
+    Returns:
+        list[tuple[int, int, int, int, int, int, int]]: Per-pool
+            statistics.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
+
+            >>> stats = paddle.device.cuda.vmm_v2_pool_stats(0)
+    '''
+    name = 'paddle.device.cuda.vmm_v2_pool_stats'
+    if not (core.is_compiled_with_cuda()):
+        raise ValueError(
+            f"The API {name} is not supported in CPU-only PaddlePaddle. "
+            "Please reinstall PaddlePaddle with GPU support to call "
+            "this API."
+        )
+    device_id = extract_cuda_device_id(device, op_name=name)
+    return core.vmm_v2_pool_stats(device_id)
 
 
 def memory_summary(device: _CudaPlaceLike | None = None) -> None:

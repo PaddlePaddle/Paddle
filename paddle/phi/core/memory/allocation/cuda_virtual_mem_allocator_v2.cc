@@ -20,6 +20,7 @@
 #include <limits>
 
 #include "paddle/phi/core/platform/cuda_device_guard.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 
 namespace paddle {
 namespace memory {
@@ -123,8 +124,8 @@ phi::Allocation* CUDAVirtualMemAllocatorV2::AllocateImpl(size_t size) {
   layout.reserve(num_handles);
   for (size_t i = 0; i < num_handles; ++i) {
     VmmAllocHandle handle;
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::cuMemCreate(&handle, handle_size_, &prop_, 0));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::RecordedGpuMemCreate(
+        &handle, handle_size_, &prop_, 0, place_.device));
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cuMemMap(
         ptr + i * handle_size_, handle_size_, 0, handle, 0));
     layout.push_back(std::make_shared<VmmHandleMeta>(VmmHandleMeta{
@@ -144,7 +145,7 @@ void CUDAVirtualMemAllocatorV2::FreeImpl(phi::Allocation* allocation) {
   auto* ptr = allocation->ptr();
   HandleLayout layout;
   {
-    std::lock_guard<std::mutex> guard(allocation_layout_mu_);
+    std::lock_guard<SpinLock> guard(allocation_layout_mu_);
     auto it = allocation_layout_map_.find(ptr);
     PADDLE_ENFORCE_NE(
         it == allocation_layout_map_.end(),
@@ -161,8 +162,10 @@ void CUDAVirtualMemAllocatorV2::FreeImpl(phi::Allocation* allocation) {
     // TODO(zhangting35): Move handle release into shared handle lifetime
     // management once remap / IPC starts sharing one handle across multiple
     // BlockPartV2 objects.
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cuMemRelease(handle->handle));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::RecordedGpuMemRelease(
+        handle->handle, handle->size, place_.device));
   }
+
   UnregisterHandleLayout(ptr);
   delete allocation;
 }
@@ -187,7 +190,7 @@ void CUDAVirtualMemAllocatorV2::MapHandlesToVA(
 
 bool CUDAVirtualMemAllocatorV2::CollectAllocationHandleLayout(
     void* ptr, HandleLayout* layout) const {
-  std::lock_guard<std::mutex> guard(allocation_layout_mu_);
+  std::lock_guard<SpinLock> guard(allocation_layout_mu_);
   auto it = allocation_layout_map_.find(ptr);
   if (it == allocation_layout_map_.end()) {
     return false;
@@ -200,13 +203,13 @@ bool CUDAVirtualMemAllocatorV2::CollectAllocationHandleLayout(
 
 void CUDAVirtualMemAllocatorV2::RegisterHandleLayout(
     void* ptr, const HandleLayout& layout) {
-  std::lock_guard<std::mutex> guard(allocation_layout_mu_);
+  std::lock_guard<SpinLock> guard(allocation_layout_mu_);
   EmplaceOrEnforce(
       &allocation_layout_map_, ptr, layout, "allocation_layout_map_");
 }
 
 void CUDAVirtualMemAllocatorV2::UnregisterHandleLayout(void* ptr) {
-  std::lock_guard<std::mutex> guard(allocation_layout_mu_);
+  std::lock_guard<SpinLock> guard(allocation_layout_mu_);
   allocation_layout_map_.erase(ptr);
 }
 

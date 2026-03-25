@@ -26,6 +26,10 @@ using VmmDevicePtr = uintptr_t;
 using VmmAllocHandle = uint64_t;
 #endif
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/phi/core/platform/device/gpu/gpu_types.h"
+#endif
+
 namespace paddle {
 namespace memory {
 namespace allocation {

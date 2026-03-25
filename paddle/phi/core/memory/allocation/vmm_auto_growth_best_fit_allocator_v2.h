@@ -23,6 +23,7 @@
 #include "paddle/phi/core/memory/allocation/cuda_virtual_mem_allocator_v2.h"
 #include "paddle/phi/core/memory/allocation/spin_lock.h"
 #include "paddle/phi/core/memory/allocation/vmm_allocator_v2_types.h"
+#include "paddle/phi/core/memory/mem_visitor.h"
 
 namespace paddle {
 namespace memory {
@@ -41,6 +42,7 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
       PoolType pool_type);
 
   bool IsAllocThreadSafe() const override { return true; }
+  void Accept(AllocatorVisitor* visitor) override { visitor->Visit(this); }
 
   const BlockList& all_blocks() const { return all_blocks_; }
   PoolType pool_type() const { return pool_type_; }

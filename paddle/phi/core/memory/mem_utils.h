@@ -106,6 +106,14 @@ FreeBlockInfoOfVmmAllocator(const GPUPlace& place);
 PADDLE_API extern std::vector<std::vector<std::tuple<size_t, uintptr_t, bool>>>
 AllBlockInfoOfVmmAllocator(const GPUPlace& place);
 
+// Get VMM V2 per-pool block statistics as tuples of
+// (pool_type, active_count, active_bytes,
+//             free_count,   free_bytes,
+//             gap_count,    gap_bytes).
+PADDLE_API extern std::vector<
+    std::tuple<int, size_t, size_t, size_t, size_t, size_t, size_t>>
+VmmV2PoolStats(const GPUPlace& place);
+
 // Get allocate event when start FLAGS_record_alloc_event.
 PADDLE_API extern std::vector<
     std::tuple<uintptr_t, bool, uint64_t, size_t, int64_t, int64_t>>

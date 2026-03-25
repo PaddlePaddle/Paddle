@@ -27,7 +27,7 @@ import threading
 import traceback
 import warnings
 from collections.abc import Iterable
-from contextlib import contextmanager
+from contextlib import ContextDecorator, contextmanager
 from types import FunctionType, MethodType
 from typing import TYPE_CHECKING, Callable, TypeVar, overload
 
@@ -62,6 +62,10 @@ GRAD_VAR_SUFFIX = core.kGradVarSuffix()
 ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 _global_flags_ = core.globals()
+
+_VMM_POOL_HINT_NONE = 0
+_VMM_POOL_HINT_STABLE = 1
+_VMM_POOL_HINT_LONGLIVED = 2
 
 SUPPORT_PROMOTION_OPS_AND_INPUTNAME = {
     "elementwise_add": ['X', 'Y'],
@@ -128,6 +132,89 @@ stride_ops = [
 
 def _global_flags():
     return _global_flags_
+
+
+def _vmm_pool_hint_to_int(hint: str | None) -> int:
+    if hint is None:
+        return _VMM_POOL_HINT_NONE
+    normalized = hint.lower()
+    if normalized == 'stable':
+        return _VMM_POOL_HINT_STABLE
+    if normalized == 'longlived':
+        return _VMM_POOL_HINT_LONGLIVED
+    raise ValueError(
+        f"Unsupported VMM pool hint {hint!r}, expected one of "
+        "None, 'stable', or 'longlived'."
+    )
+
+
+class vmm_pool_hint_guard(ContextDecorator):
+    """Set the VMM V2 pool hint for the duration of a block or function.
+
+    Can be used as a context manager or a decorator::
+
+        # Context manager
+        with vmm_pool_hint_guard('stable'):
+            ...
+
+        # Decorator – avoids an extra indentation level
+        @vmm_pool_hint_guard('stable')
+        def create_parameter(self, ...):
+            ...
+    """
+
+    def __init__(self, hint: str | None):
+        self._hint_int = _vmm_pool_hint_to_int(hint)
+        self._available = hasattr(core, '_get_vmm_pool_hint')
+
+    def __enter__(self):
+        if self._available:
+            self._previous = core._get_vmm_pool_hint()
+            core._set_vmm_pool_hint(self._hint_int)
+        return self
+
+    def __exit__(self, *exc):
+        if self._available:
+            core._set_vmm_pool_hint(self._previous)
+        return False
+
+
+@vmm_pool_hint_guard('stable')
+def cast_to_master_weight(param):
+    """Cast a parameter to float32 for AMP master weights.
+
+    Routes the allocation to the VMM V2 **Stable** pool.
+    ``paddle.cast`` allocates eagerly, so the pool hint is effective.
+    """
+    import paddle
+
+    return paddle.cast(param, 'float32')
+
+
+@vmm_pool_hint_guard('stable')
+def create_fused_param_buffer(shape, dtype):
+    """Allocate a fused parameter buffer for distributed sharding.
+
+    Routes the allocation to the VMM V2 **Stable** pool.
+    ``paddle.zeros`` allocates eagerly, so the pool hint is effective.
+    """
+    import paddle
+
+    return paddle.zeros(shape, dtype=dtype)
+
+
+@vmm_pool_hint_guard('stable')
+def create_param_slice(shape, dtype, name):
+    """Create a parameter slice for distributed sharding.
+
+    ``EagerParamBase`` uses lazy allocation, so we materialise the
+    storage up-front via ``paddle.zeros`` to ensure the VMM V2 Stable
+    pool hint is active when the GPU allocation actually occurs.
+    """
+    import paddle
+
+    data = paddle.zeros(shape, dtype=dtype)
+    return EagerParamBase(data=data, name=name)
 
 
 def set_flags(flags: dict[str, bool | str | float]) -> None:
@@ -4693,6 +4780,11 @@ class Block:
         self.desc._remove_var(name.encode())
         del self.vars[name]
 
+    # VMM V2: keep stable pool hint around the full parameter creation
+    # path (construction + initializer), so that both the tensor storage
+    # and any allocation triggered by the initializer kernel land in the
+    # Stable pool.
+    @vmm_pool_hint_guard('stable')
     def create_parameter(self, *args, **kwargs):
         global_block = self.program.global_block()
         param = None

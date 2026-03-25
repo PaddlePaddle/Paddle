@@ -20,8 +20,9 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-from paddle import framework, nn
+from paddle import nn
 from paddle.autograd import PyLayer
+from paddle.base import framework
 from paddle.base.framework import EagerParamBase
 from paddle.distributed import collective
 from paddle.distributed.flex_checkpoint.dcp.sharded_weight import (
@@ -69,7 +70,7 @@ def _all_gather(tensor, buffer_size, group):
     """
 
     assert group is not None
-    if framework.in_dynamic_mode():
+    if framework.in_dygraph_mode():
         out = paddle.zeros([buffer_size], dtype=tensor.dtype)
         task = group.process_group.all_gather(tensor, out)
         return out, task
@@ -401,7 +402,7 @@ class GroupShardedStage3(nn.Layer):
             if (
                 param.dtype == Type.fp16.value or param.dtype == Type.bf16.value
             ) and not self._offload:
-                master_tensor = paddle.cast(param, Type.fp32.value)
+                master_tensor = framework.cast_to_master_weight(param)
                 master_tensor.name = param.name
                 self._optim._master_weights[param.name] = master_tensor
             if self._offload:
@@ -559,7 +560,7 @@ class GroupShardedStage3(nn.Layer):
             )
             and not self._offload
         ):
-            master_tensor = paddle.cast(param.fw_storage, Type.fp32.value)
+            master_tensor = framework.cast_to_master_weight(param.fw_storage)
             master_tensor.name = param.name
             self._optim._master_weights[param.fw_storage.name] = master_tensor
         param._clear_data()
@@ -900,8 +901,10 @@ class GroupShardedStage3(nn.Layer):
         for param in self._optim._parameter_list:
             if hasattr(param, "fw_storage"):
                 var = param.fw_storage
-                tmp_param = EagerParamBase(
-                    shape=var.shape, dtype=var.dtype, name="slice@" + param.name
+                tmp_param = framework.create_param_slice(
+                    shape=var.shape,
+                    dtype=var.dtype,
+                    name="slice@" + param.name,
                 )
                 local_param_list.append(tmp_param)
             else:
