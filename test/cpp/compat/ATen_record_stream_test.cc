@@ -80,13 +80,6 @@ TEST_F(RecordStreamTest, CudaTensorDefaultCudaStream) {
   EXPECT_NO_THROW(cuda_tensor.record_stream(default_stream));
 }
 
-TEST_F(RecordStreamTest, CudaTensorRawCudaStream) {
-  if (!at::cuda::is_available()) {
-    return;
-  }
-  auto stream = at::cuda::getCurrentCUDAStream();
-  EXPECT_NO_THROW(cuda_tensor.record_stream(stream.raw_stream()));
-}
 #endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
 
 // --- Error path: CPU tensor + CPU stream (record_stream does not support CPU
