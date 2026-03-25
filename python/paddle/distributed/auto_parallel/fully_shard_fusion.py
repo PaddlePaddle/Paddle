@@ -395,7 +395,7 @@ class FSDPCommManager:
         # for double buffer mechanism config
         self.double_buffer_limit = double_buffer_limit
         self.buffer_cnt_in_using = 0
-        self.need_zero_grads = True
+        self._need_zero_grads = True
 
     def _release_one_buffer_if_needed(self):
         # Release a buffer with the READY status if needed
@@ -520,8 +520,8 @@ class FSDPCommManager:
                 group.params_buffer.status = BufferState.READY
 
     def reduce_scatter_grads(self, param):
-        if self.need_zero_grads:
-            self.need_zero_grads = False
+        if self._need_zero_grads:
+            self._need_zero_grads = False
             for group in self.buffer_manager.buffer_groups:
                 if group.grads_buffer is not None:
                     group.grads_buffer.data_buffer.zero_()
@@ -584,7 +584,7 @@ class FSDPCommManager:
         # Wait for all async reduce_scatter tasks, call before optimizer.step()
         self._wait_for_grad_comm(queue_limit=0)
 
-    def reset_params_buffer_status(self):
+    def _reset_params_buffer_status(self):
         for group in self.buffer_manager.buffer_groups:
             params_buffer = group.params_buffer
             if params_buffer.status in (BufferState.READY, BufferState.USING):
@@ -670,8 +670,8 @@ class FullyShardFusion:
 
     def comm_sync_and_reset_status(self):
         self.comm_manager._finish_grads_sync()
-        self.comm_manager.reset_params_buffer_status()
-        self.comm_manager.need_zero_grads = True
+        self.comm_manager._reset_params_buffer_status()
+        self.comm_manager._need_zero_grads = True
         # Reset main_grad for all trainable parameters
         for param in self.model.parameters():
             if param.trainable:
