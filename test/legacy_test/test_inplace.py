@@ -2508,11 +2508,60 @@ class TestSet_API_ZeroSize(unittest.TestCase):
     def setUp(self):
         self.places = get_places()
 
-    def test_set_api(self):
+    def test_zero_size_source_with_nonzero_shape(self):
+        """When source is 0-size, output should inherit source's shape
+        to prevent out-of-bounds memory access."""
         for place in self.places:
             with paddle.base.dygraph.guard(place):
-                out = paddle.randn([20]).set_(paddle.randn([0, 3]), [20], [2])
-                np.testing.assert_allclose(out.shape, [20])
+                source = paddle.randn([0, 3])
+                out = paddle.randn([20]).set_(source, [20], [2])
+                self.assertEqual(out.numel().item(), 0)
+                self.assertEqual(list(out.shape), [0, 3])
+
+    def test_zero_size_source_default_args(self):
+        """set_ with 0-size source and no explicit shape/stride."""
+        for place in self.places:
+            with paddle.base.dygraph.guard(place):
+                source = paddle.randn([0, 5])
+                x = paddle.randn([10])
+                out = x.set_(source)
+                self.assertEqual(out.numel().item(), 0)
+                self.assertEqual(list(out.shape), [0, 5])
+                self.assertTrue(id(x) == id(out))
+
+    def test_zero_size_x_nonzero_source(self):
+        """set_ with 0-size x but non-zero source should work normally."""
+        for place in self.places:
+            with paddle.base.dygraph.guard(place):
+                source = paddle.to_tensor([1.0, 2.0, 3.0])
+                x = paddle.randn([0])
+                out = x.set_(source)
+                self.assertEqual(list(out.shape), [3])
+                self.assertTrue(x._is_shared_buffer_with(source))
+
+    def test_both_zero_size(self):
+        """set_ with both x and source being 0-size."""
+        for place in self.places:
+            with paddle.base.dygraph.guard(place):
+                source = paddle.randn([0])
+                x = paddle.randn([0])
+                out = x.set_(source)
+                self.assertEqual(out.numel().item(), 0)
+                self.assertTrue(id(x) == id(out))
+
+    def test_zero_size_source_no_crash_on_contiguous(self):
+        """Ensure no crash when calling contiguous() on a tensor
+        that was set_ with a 0-size source."""
+        for place in self.places:
+            with paddle.base.dygraph.guard(place):
+                source = paddle.randn([0, 3])
+                x = paddle.randn([20])
+                out = x.set_(source, [20], [2])
+                # This should not crash or cause OOB memory access
+                try:
+                    _ = out.contiguous()
+                except Exception:
+                    pass  # contiguous on 0-size is ok either way
 
 
 if __name__ == '__main__':

@@ -29,13 +29,15 @@ void SetKernel(const Context& dev_ctx,
   meta.strides = DDim(stride.data(), static_cast<int>(stride.size()));
   meta.offset = offset;
   if (x.numel() == 0 || source.numel() == 0) {
-    if (source.numel() != 0) {
-      out->clear();
-      *out = DenseTensor{source.Holder(), meta};
-    } else if (x.numel() == 0) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    if (source.numel() == 0) {
+      // When source has no elements, force output to be 0-size
+      // to prevent out-of-bounds access with insufficient storage.
+      meta.dims = source.dims();
+      meta.strides = source.strides();
+      meta.offset = 0;
     }
+    out->clear();
+    *out = DenseTensor{source.Holder(), meta};
     out->ShareInplaceVersionCounterWith(x);
     return;
   }
