@@ -262,7 +262,7 @@ void GPUCollectFpnProposalsOpKernel(
                             dev_ctx.stream());
   }
 
-  phi::LegacyLoD lod;
+  LegacyLoD lod;
   lod.emplace_back(offset);
   fpn_rois->set_lod(lod);
 }

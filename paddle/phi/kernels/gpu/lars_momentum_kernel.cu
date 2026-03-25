@@ -94,8 +94,8 @@ __device__ inline void VectorizeLarsUpdate(const T* __restrict__ grad,
                                            const int grid_stride,
                                            const int64_t numel,
                                            MT* master_param_out = nullptr) {
-  using VecType = phi::AlignedVector<T, VecSize>;
-  using VecMType = phi::AlignedVector<MT, VecSize>;
+  using VecType = AlignedVector<T, VecSize>;
+  using VecMType = AlignedVector<MT, VecSize>;
   int main = numel >> (VecSize >> 1);
   int tail_offset = main * VecSize;
 

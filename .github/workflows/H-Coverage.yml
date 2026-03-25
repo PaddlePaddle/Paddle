@@ -30,17 +30,44 @@ defaults:
     shell: bash
 
 jobs:
+  check-skill:
+    name: Check file paths
+    if: ${{ github.repository_owner == 'PaddlePaddle' }}
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      can-skip: ${{ steps.skip-skill.outputs.should-skip }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Run skip check
+        id: skip-skill
+        uses: ./.github/actions/skip-skill
+        with:
+          ignore-paths: 'skill/**'
+      - name: Print outputs
+        if: always()
+        run: |
+          echo "=== check-skill outputs ==="
+          echo "steps.skip-skill.outputs.should-skip: '${{ steps.skip-skill.outputs.should-skip }}'"
+          echo "============================"
+
   clone:
     name: Coverage clone
+    needs: [check-skill]
     uses: ./.github/workflows/_Clone-linux.yml
     with:
       workflow-name: "coverage"
       clone_dir: h-ci
+      skill-can-skip: ${{ needs.check-skill.outputs.can-skip }}
 
   check-bypass:
     name: Check bypass
     needs: [clone]
-    if: needs.clone.outputs.can-skip != 'true'
+    if: ${{ needs.clone.outputs.can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
       workflow-name: h-ci
@@ -50,13 +77,12 @@ jobs:
   build:
     name: Coverage build
     needs: [clone, check-bypass]
-    if: needs.clone.outputs.can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true'
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' && needs.clone.outputs.can-skip != 'true' }}
     runs-on:
       group: GZ_BD-CPU
     timeout-minutes: 120
     outputs:
-      can-skip: ${{ needs.check-bypass.outputs.can-skip }}
-
+      can-skip: ${{ needs.check-bypass.outputs.can-skip == 'true' || needs.clone.outputs.can-skip == 'true' || 'false' }}
     steps:
       - name: Check docker image and run container
         env:
@@ -225,8 +251,8 @@ jobs:
 
   test:
     name: Coverage test
-    needs: [build]
-    if: needs.build.outputs.can-skip != 'true'
+    needs: [build, check-bypass, check-skill]
+    if: ${{ needs.build.outputs.can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true' && needs.check-skill.outputs.can-skip != 'true' }}
     runs-on:
       group: H-Coverage
     timeout-minutes: 120
@@ -353,8 +379,8 @@ jobs:
 
   fleet-build:
     name: Build Fleet whl
-    needs: [build]
-    if: needs.build.outputs.can-skip != 'true'
+    needs: [build, check-bypass, check-skill]
+    if: ${{ needs.build.outputs.can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true' && needs.check-skill.outputs.can-skip != 'true' }}
     runs-on:
       group: GZ_BD-CPU
     timeout-minutes: 60
@@ -563,8 +589,8 @@ jobs:
 
   fleet-multi-card_test:
     name: Fleet Unit test (multi-card)
-    needs: [build, fleet-build]
-    if: needs.build.outputs.can-skip != 'true'
+    needs: [build, fleet-build, check-bypass, check-skill]
+    if: ${{ needs.build.outputs.can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true' && needs.check-skill.outputs.can-skip != 'true' }}
     runs-on:
       group: Fleet-H-multi-card
     timeout-minutes: 60

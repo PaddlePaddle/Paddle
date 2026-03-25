@@ -47,12 +47,12 @@ defaults:
 jobs:
   check-bypass:
     name: Check bypass
-    if: ${{ inputs.clone-can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
       workflow-name: mac
     secrets:
       github-token: ${{ secrets.GITHUB_TOKEN }}
+
 
   build-and-test:
     name: Build and test

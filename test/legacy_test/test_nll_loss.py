@@ -1182,6 +1182,51 @@ class TestNLLLossName(unittest.TestCase):
                 self.assertTrue(res.name.startswith('nll_loss'))
 
 
+class TestNLLLossTargetAlias(unittest.TestCase):
+    def test_nll_loss_target_alias(self):
+        with base.dygraph.guard():
+            logits = paddle.randn([3, 5], dtype='float32')
+            log_probs = paddle.nn.functional.log_softmax(logits, axis=1)
+            label = paddle.to_tensor([0, 3, 4], dtype='int64')
+
+            out_with_label = paddle.nn.functional.nll_loss(
+                input=log_probs, label=label, reduction='none'
+            )
+            out_with_target = paddle.nn.functional.nll_loss(
+                input=log_probs, target=label, reduction='none'
+            )
+            np.testing.assert_allclose(
+                out_with_label.numpy(), out_with_target.numpy()
+            )
+
+            out_with_label = paddle.nn.functional.nll_loss(
+                input=log_probs, label=label, reduction='mean'
+            )
+            out_with_target = paddle.nn.functional.nll_loss(
+                input=log_probs, target=label, reduction='mean'
+            )
+            np.testing.assert_allclose(
+                out_with_label.numpy(), out_with_target.numpy()
+            )
+
+            label_with_ignore = paddle.to_tensor([0, -100, 4], dtype='int64')
+            out_with_label = paddle.nn.functional.nll_loss(
+                input=log_probs,
+                label=label_with_ignore,
+                ignore_index=-100,
+                reduction='sum',
+            )
+            out_with_target = paddle.nn.functional.nll_loss(
+                input=log_probs,
+                target=label_with_ignore,
+                ignore_index=-100,
+                reduction='sum',
+            )
+            np.testing.assert_allclose(
+                out_with_label.numpy(), out_with_target.numpy()
+            )
+
+
 class TestNLLLossInvalidArgs(unittest.TestCase):
     def test_x_dim_value_error(self):
         def test_x_dim_lt_2():

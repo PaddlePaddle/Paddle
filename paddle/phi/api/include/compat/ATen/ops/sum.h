@@ -26,11 +26,21 @@ namespace at {
 
 inline at::Tensor sum(const at::Tensor& self,
                       ::std::optional<at::ScalarType> dtype = ::std::nullopt) {
+  // Match PyTorch promotion: integer inputs -> int64; others -> keep input
+  // dtype.
+  at::ScalarType resolved_dtype;
+  if (dtype.has_value()) {
+    resolved_dtype = dtype.value();
+  } else {
+    at::ScalarType input_dtype = self.scalar_type();
+    resolved_dtype = at::isIntegralType(input_dtype, /*includeBool=*/true)
+                         ? at::kLong
+                         : input_dtype;
+  }
   return paddle::experimental::sum(
       self._PD_GetInner(),
       {},
-      compat::_PD_AtenScalarTypeToPhiDataType(
-          dtype.value_or(c10::get_default_dtype())),
+      compat::_PD_AtenScalarTypeToPhiDataType(resolved_dtype),
       /*keepdim=*/false);
 }
 
@@ -38,12 +48,22 @@ inline at::Tensor sum(const at::Tensor& self,
                       at::OptionalIntArrayRef dim,
                       bool keepdim = false,
                       ::std::optional<at::ScalarType> dtype = ::std::nullopt) {
+  // Match PyTorch promotion: integer inputs -> int64; others -> keep input
+  // dtype.
+  at::ScalarType resolved_dtype;
+  if (dtype.has_value()) {
+    resolved_dtype = dtype.value();
+  } else {
+    at::ScalarType input_dtype = self.scalar_type();
+    resolved_dtype = at::isIntegralType(input_dtype, /*includeBool=*/true)
+                         ? at::kLong
+                         : input_dtype;
+  }
   return paddle::experimental::sum(
       self._PD_GetInner(),
       dim.has_value() ? dim.value()._PD_ToPaddleIntArray()
                       : paddle::experimental::IntArray(),
-      compat::_PD_AtenScalarTypeToPhiDataType(
-          dtype.value_or(c10::get_default_dtype())),
+      compat::_PD_AtenScalarTypeToPhiDataType(resolved_dtype),
       keepdim);
 }
 

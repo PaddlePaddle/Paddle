@@ -58,7 +58,7 @@ static DenseTensor Unsqueeze(const DenseTensor& x, int axis = 0) {
   // don't copy data, only change the dims
   DenseTensor out;
   out.ShareDataWith(x);
-  std::vector<int64_t> out_shape = common::vectorize<int64_t>(x.dims());
+  std::vector<int64_t> out_shape = vectorize<int64_t>(x.dims());
   if (axis >= 0) {
     auto index = (out_shape.begin() + axis);
     out_shape.insert(index, 1);

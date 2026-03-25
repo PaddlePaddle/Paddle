@@ -1020,5 +1020,80 @@ class WeightOnlyLinear_stream_k_TestCase(unittest.TestCase):
         test_weightonly_linear_backward(self)
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "quantized_matmul requires CUDA_ARCH >= 8",
+)
+class WeightOnlyLinearZeroSizeWeightTestCase(unittest.TestCase):
+    """Test weight_only_linear with zero-size weight tensor (first dim = 0).
+
+    When weight has shape [0, k], the grad kernel (WeightOnlyLinearGradKernel)
+    must skip the WeightDequantize call to avoid launching CUDA kernels that
+    read from the empty weight buffer.
+    """
+
+    def _run_zero_weight_forward_and_grad(
+        self, dtype, weight_dtype, bias, in_features, out_features
+    ):
+        """Helper: forward + backward with weight.shape[0] == 0 must not crash."""
+        x = paddle.randn([2, 1, in_features], dtype=dtype)
+        x.stop_gradient = False
+
+        weight = paddle.zeros([0, in_features], dtype='int8')
+        weight_scale = paddle.randn([out_features], dtype=dtype)
+        bias_tensor = (
+            paddle.randn([out_features], dtype=dtype) if bias else None
+        )
+
+        out = Q.weight_only_linear(
+            x,
+            weight,
+            bias=bias_tensor,
+            weight_scale=weight_scale,
+            weight_dtype=weight_dtype,
+        )
+
+        # output should be all zeros since weight is empty
+        np.testing.assert_equal(
+            out.numpy(),
+            np.zeros(
+                out.shape,
+                dtype=np.float16 if dtype == 'float16' else np.float32,
+            ),
+        )
+
+        # backward should not crash
+        if out.numel() > 0:
+            paddle.grad(
+                [out],
+                [x],
+                grad_outputs=[paddle.ones_like(out)],
+                allow_unused=True,
+            )
+
+    def test_zero_weight_int8_fp16_with_bias(self):
+        self._run_zero_weight_forward_and_grad('float16', 'int8', True, 64, 192)
+
+    def test_zero_weight_int8_fp16_no_bias(self):
+        self._run_zero_weight_forward_and_grad(
+            'float16', 'int8', False, 512, 512
+        )
+
+    def test_zero_weight_int4_fp16_with_bias(self):
+        self._run_zero_weight_forward_and_grad('float16', 'int4', True, 64, 256)
+
+    def test_zero_weight_int8_fp16_large(self):
+        self._run_zero_weight_forward_and_grad(
+            'float16', 'int8', False, 768, 2304
+        )
+
+    def test_zero_weight_int8_fp16_3d_input(self):
+        """Specifically mirrors the original bug report shape."""
+        self._run_zero_weight_forward_and_grad(
+            'float16', 'int8', True, 128, 288
+        )
+
+
 if __name__ == '__main__':
     unittest.main()

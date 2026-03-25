@@ -35,7 +35,7 @@ MatDescriptor CreateMatrixDescriptor(const DDim &tensor_dim,
       retv.height_ = tensor_dim[0];
       retv.width_ = tensor_dim[1];
     } else {
-      auto dim_vec = common::vectorize(tensor_dim);
+      auto dim_vec = vectorize(tensor_dim);
       retv.batch_size_ = 1;
       for (size_t i = 0; i < dim_vec.size() - 2; ++i) {
         retv.batch_size_ *= dim_vec[i];

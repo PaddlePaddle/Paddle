@@ -52,7 +52,7 @@ void SumCooGradCPUKernel(const Context& dev_ctx,
     T value = dout_values.data<T>()[0];
     set_constant(dev_ctx, dx_values, value);
     if (dx_values->dtype() != dx->dtype()) {
-      *dx_values = phi::Cast<T, Context>(dev_ctx, *dx_values, dx->dtype());
+      *dx_values = Cast<T, Context>(dev_ctx, *dx_values, dx->dtype());
     }
     return;
   }
@@ -64,7 +64,7 @@ void SumCooGradCPUKernel(const Context& dev_ctx,
     phi::ReduceSumGradKernel<T, Context>(
         dev_ctx, x.values(), dout.values(), {dim}, keep_dim, false, dx_values);
     if (dx_values->dtype() != dx->dtype()) {
-      *dx_values = phi::Cast<T, Context>(dev_ctx, *dx_values, dx->dtype());
+      *dx_values = Cast<T, Context>(dev_ctx, *dx_values, dx->dtype());
     }
     return;
   }
@@ -103,7 +103,7 @@ void SumCooGradCPUKernel(const Context& dev_ctx,
     }
   }
   if (dx_values->dtype() != dx->dtype()) {
-    *dx_values = phi::Cast<T, Context>(dev_ctx, *dx_values, dx->dtype());
+    *dx_values = Cast<T, Context>(dev_ctx, *dx_values, dx->dtype());
   }
 }
 
@@ -134,7 +134,7 @@ void SumCsrGradKernel(const Context& dev_ctx,
     T value = dout_values.data<T>()[0];
     set_constant(dev_ctx, dx_values, value);
     if (dx_values->dtype() != dx->dtype()) {
-      *dx_values = phi::Cast<T, Context>(dev_ctx, *dx_values, dx->dtype());
+      *dx_values = Cast<T, Context>(dev_ctx, *dx_values, dx->dtype());
     }
     return;
   }
@@ -175,7 +175,7 @@ void SumCsrGradKernel(const Context& dev_ctx,
   }
 
   if (dx_values->dtype() != dx->dtype()) {
-    *dx_values = phi::Cast<T, Context>(dev_ctx, *dx_values, dx->dtype());
+    *dx_values = Cast<T, Context>(dev_ctx, *dx_values, dx->dtype());
   }
 }
 

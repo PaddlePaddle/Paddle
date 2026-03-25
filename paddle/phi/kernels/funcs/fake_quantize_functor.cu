@@ -704,7 +704,7 @@ void FindRangeAbsMaxFunctor<Context, T>::operator()(
                        sizeof(int),
                        dev_ctx.stream());
     dev_ctx.Wait();
-    funcs::FindAbsMaxFunctor<phi::GPUContext, T>()(
+    funcs::FindAbsMaxFunctor<GPUContext, T>()(
         dev_ctx, scale_arr, len, out_scale_data);
   }
 }

@@ -20,7 +20,6 @@
 namespace phi {
 namespace fusion {
 
-namespace dynload = phi::dynload;
 template <typename T>
 using BatchNormParamType =
     typename phi::backends::gpu::CudnnDataType<T>::BatchNormParamType;

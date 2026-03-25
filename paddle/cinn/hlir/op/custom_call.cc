@@ -125,6 +125,11 @@ std::shared_ptr<OpStrategy> StrategyForCustomCall(
           host_args.push_back(kernel_stream);
           arguments.emplace_back(kernel_stream, ir::Argument::IO::kOutput);
         },
+        [&](common::CustomDeviceArch) {
+          ir::Var kernel_stream(KERNEL_STREAM, type_of<void *>());
+          host_args.push_back(kernel_stream);
+          arguments.emplace_back(kernel_stream, ir::Argument::IO::kOutput);
+        },
         [&](std::variant<common::UnknownArch,
                          common::X86Arch,
                          common::ARMArch>) {},

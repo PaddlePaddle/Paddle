@@ -69,14 +69,14 @@ void LayerNormGradKernel(const Context& dev_ctx,
     if (scale_grad) {
       Full<T, Context>(dev_ctx, scale_grad->dims(), 0, scale_grad);
       if (scale_opt.get_ptr() && x.dtype() != scale_opt.get().dtype()) {
-        phi::CastKernel<T, Context>(
+        CastKernel<T, Context>(
             dev_ctx, *scale_grad, scale_opt.get().dtype(), scale_grad);
       }
     }
     if (bias_grad) {
       Full<T, Context>(dev_ctx, bias_grad->dims(), 0, bias_grad);
       if (bias_opt.get_ptr() && x.dtype() != bias_opt.get().dtype()) {
-        phi::CastKernel<T, Context>(
+        CastKernel<T, Context>(
             dev_ctx, *bias_grad, bias_opt.get().dtype(), bias_grad);
       }
     }

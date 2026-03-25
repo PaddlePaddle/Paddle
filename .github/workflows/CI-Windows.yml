@@ -16,21 +16,47 @@ env:
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
 
 jobs:
+  check-skill:
+    name: Check file paths
+    if: ${{ github.repository_owner == 'PaddlePaddle' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      can-skip: ${{ steps.skip-skill.outputs.should-skip }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Run skip check
+        id: skip-skill
+        uses: ./.github/actions/skip-skill
+        with:
+          ignore-paths: 'skill/**'
+
   clone:
     name: Clone-windows
+    needs: check-skill
     uses: ./.github/workflows/_Clone-windows.yml
+    with:
+      skill-can-skip: ${{ needs.check-skill.outputs.can-skip }}
 
   win-openblas:
     name: Windows-OPENBLAS
     uses: ./.github/workflows/_Windows-OPENBLAS.yml
     needs: clone
+    with:
+      clone-can-skip: ${{ needs.clone.outputs.can-skip }}
 
   win-gpu:
     name: Windows-GPU
     uses: ./.github/workflows/_Windows-GPU.yml
     needs: clone
+    with:
+      clone-can-skip: ${{ needs.clone.outputs.can-skip }}
 
   win-inference:
     name: Windows-Inference
     uses: ./.github/workflows/_Windows-Inference.yml
     needs: clone
+    with:
+      clone-can-skip: ${{ needs.clone.outputs.can-skip }}

@@ -60,7 +60,7 @@ void CalculateGrad(const Context& dev_ctx,
         }
       }
     } else {
-      const auto& bcast_info = phi::CalcBCastInfo(out_grad_dims, x_grad_dims);
+      const auto& bcast_info = CalcBCastInfo(out_grad_dims, x_grad_dims);
       auto out_grad_dims_1 = vectorize<int>(out_grad_dims);
       std::vector<int> out_grad_dims_2(out_grad_dims_1.begin() + 1,
                                        out_grad_dims_1.end());
@@ -88,12 +88,12 @@ void CalculateGrad(const Context& dev_ctx,
           phi::Sum<T, Context>(dev_ctx,
                                x_grad_v2,
                                phi::IntArray(reduce_idx),
-                               phi::CppTypeToDataType<T>::Type(),
+                               CppTypeToDataType<T>::Type(),
                                true);
       memcpy(x_grad, x_grad_out.data<T>(), x_grad_out.numel() * sizeof(T));
     }
   } else if (message_op == "MUL") {
-    const auto& bcast = phi::CalcBCastInfo(y.dims(), out_grad_dims);
+    const auto& bcast = CalcBCastInfo(y.dims(), out_grad_dims);
     const T* y_data = y.data<T>();
     if (!reduce) {
 #ifdef PADDLE_WITH_MKLML
@@ -150,7 +150,7 @@ void CalculateGrad(const Context& dev_ctx,
           phi::Sum<T, Context>(dev_ctx,
                                x_grad_v2,
                                phi::IntArray(reduce_idx),
-                               phi::CppTypeToDataType<T>::Type(),
+                               CppTypeToDataType<T>::Type(),
                                true);
       memcpy(x_grad, x_grad_out.data<T>(), x_grad_out.numel() * sizeof(T));
     }

@@ -275,7 +275,7 @@ static void UniqueDim(const Context& dev_ctx,
   std::iota(permute.begin(), permute.end(), 0);
   permute[axis] = 0;
   permute[0] = axis;
-  std::vector<int64_t> in_trans_dims_vec(common::vectorize(in.dims()));
+  std::vector<int64_t> in_trans_dims_vec(vectorize(in.dims()));
   in_trans_dims_vec[axis] = in.dims()[0];
   in_trans_dims_vec[0] = in.dims()[axis];
   DenseTensor in_trans;
@@ -349,15 +349,15 @@ static void UniqueDim(const Context& dev_ctx,
       out_trans.dims().size(), dev_ctx, out_trans, out, permute);
 
   if (return_inverse) {
-    phi::TensorFromVector(inverse_vec, dev_ctx, index);
+    TensorFromVector(inverse_vec, dev_ctx, index);
   }
 
   if (return_counts) {
-    phi::TensorFromVector(counts_vec, dev_ctx, count);
+    TensorFromVector(counts_vec, dev_ctx, count);
   }
 
   if (return_index) {
-    phi::TensorFromVector(indices_vec, dev_ctx, indices);
+    TensorFromVector(indices_vec, dev_ctx, indices);
   }
 }
 

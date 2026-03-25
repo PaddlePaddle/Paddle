@@ -29,12 +29,32 @@ defaults:
     shell: bash
 
 jobs:
+  check-skill:
+    name: Check file paths
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      can-skip: ${{ steps.skip-skill.outputs.should-skip || 'false' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Run skip check
+        id: skip-skill
+        uses: ./.github/actions/skip-skill
+        with:
+          ignore-paths: 'skill/**'
+
   clone:
     name: Coverage clone
+    needs: check-skill
     uses: ./.github/workflows/_Clone-linux.yml
     with:
       workflow-name: "coverage"
       clone_dir: Paddle-coverage
+      skill-can-skip: ${{ needs.check-skill.outputs.can-skip }}
 
   build-docker:
     name: Coverage build docker
@@ -57,7 +77,7 @@ jobs:
   build:
     name: Coverage build
     needs: [clone, build-docker, check-bypass]
-    if: needs.clone.outputs.can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true'
+    if: ${{ needs.clone.outputs.can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: GZ_BD-CPU
     timeout-minutes: 120
