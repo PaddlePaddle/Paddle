@@ -65,8 +65,14 @@ void MoeUnpermuteKernel(const Context &dev_ctx,
                         const int total_zipped_tokens_num,
                         const int num_experts,
                         const bool MP,
+                        const bool using_weighted_combine,
                         DenseTensor *zipped_tokens,
                         DenseTensor *zipped_probs_topk) {
+  PADDLE_ENFORCE_EQ(
+      using_weighted_combine,
+      false,
+      common::errors::Unimplemented("moe_unpermute on XPU does not support "
+                                    "using_weighted_combine=true yet."));
   const int64_t cols = unzipped_tokens.dims()[1];
   PADDLE_ENFORCE_LE(cols,
                     std::numeric_limits<int32_t>::max(),

@@ -101,7 +101,7 @@ void SetTensorValueKernel(const Context& dev_ctx,
     }
 
   } else {
-    auto value_dims = phi::vectorize<int64_t>(value.dims());
+    auto value_dims = vectorize<int64_t>(value.dims());
     DenseTensor value_tensor = Empty<T>(dev_ctx, IntArray{value_dims});
     value_tensor = value;
     auto it = value_dims.begin();
@@ -176,7 +176,7 @@ void SetValueKernel(const Context& dev_ctx,
   }
 
   DenseTensor value_tensor = Empty<T>(dev_ctx, shape);
-  phi::TensorFromVector(assign_values, dev_ctx, &value_tensor);
+  TensorFromVector(assign_values, dev_ctx, &value_tensor);
   value_tensor.Resize(make_ddim(shape));
   SetTensorValueKernel<T, Context>(dev_ctx,
                                    in,

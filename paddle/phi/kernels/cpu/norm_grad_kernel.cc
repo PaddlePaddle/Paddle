@@ -60,7 +60,7 @@ void NormGradKernel(const Context& dev_ctx,
   DenseTensor rsum;
   rsum.Resize({pre, post});
   dev_ctx.template Alloc<T>(&rsum);
-  auto sum = phi::EigenTensor<T, 2>::From(rsum);
+  auto sum = EigenTensor<T, 2>::From(rsum);
 
   Eigen::DSizes<int, 1> rdim(1);
   Eigen::DSizes<int, 3> bcast(1, n, 1);

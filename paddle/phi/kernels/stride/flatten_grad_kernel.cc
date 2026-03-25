@@ -32,10 +32,7 @@ void FlattenGradStridedKernel(const Context& dev_ctx,
         "be called, something wrong has happened!"));
   }
   ReshapeStridedKernel<Context>(
-      dev_ctx,
-      out_grad,
-      IntArray(common::vectorize<int64_t>(x_grad->dims())),
-      x_grad);
+      dev_ctx, out_grad, IntArray(vectorize<int64_t>(x_grad->dims())), x_grad);
 }
 
 }  // namespace phi

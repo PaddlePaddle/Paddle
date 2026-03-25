@@ -2206,6 +2206,9 @@ class Device(str):
         previous_device = Device._DEFAULT_DEVICE_STACK.pop()
         paddle.set_device(previous_device)
 
+    def __getattr__(self, name: str):
+        return getattr(self._to_place(), name)
+
 
 class _DeviceModule(types.ModuleType):
     """A callable package module: paddle.device(...) -> Device(...)"""

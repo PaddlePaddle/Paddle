@@ -25,7 +25,7 @@ void GroupNormalizeSiluXPUKernel(const Context& dev_ctx,
                                  const DenseTensor& scale,
                                  const DenseTensor& bias,
                                  int groups,
-                                 float epsilon,
+                                 double epsilon,
                                  DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
 

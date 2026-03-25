@@ -27,7 +27,6 @@
 #include "paddle/phi/common/memory_utils.h"
 
 namespace phi {
-using Tensor = DenseTensor;
 template <typename Context, typename T>
 struct GetTensorValue {
   T operator()(const Context& dev_ctx, const DenseTensor& tensor) const;
@@ -45,16 +44,15 @@ struct IscloseFunctor {
 };
 
 template <typename T>
-struct GetTensorValue<phi::CPUContext, T> {
-  T operator()(const phi::CPUContext& dev_ctx,
-               const DenseTensor& tensor) const {
+struct GetTensorValue<CPUContext, T> {
+  T operator()(const CPUContext& dev_ctx, const DenseTensor& tensor) const {
     return *(tensor.data<T>());
   }
 };
 
 template <typename T>
-struct IscloseFunctor<phi::CPUContext, T> {
-  void operator()(const phi::CPUContext& dev_ctx,
+struct IscloseFunctor<CPUContext, T> {
+  void operator()(const CPUContext& dev_ctx,
                   const DenseTensor& in,
                   const DenseTensor& other,
                   const double rtol,
@@ -87,8 +85,8 @@ struct IscloseFunctor<phi::CPUContext, T> {
 };
 
 template <typename T>
-struct IscloseFunctor<phi::CPUContext, phi::dtype::complex<T>> {
-  void operator()(const phi::CPUContext& dev_ctx,
+struct IscloseFunctor<CPUContext, phi::dtype::complex<T>> {
+  void operator()(const CPUContext& dev_ctx,
                   const DenseTensor& in,
                   const DenseTensor& other,
                   const double rtol,

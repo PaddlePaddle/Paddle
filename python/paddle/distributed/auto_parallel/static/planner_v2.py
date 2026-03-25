@@ -14,7 +14,6 @@
 
 import logging
 import os
-import pickle
 import sys
 
 import numpy as np
@@ -83,7 +82,11 @@ class Planner:
         if path and os.path.exists(path):
             try:
                 with open(path, "rb") as f:
-                    dist_attrs = pickle.load(f)
+                    from paddle.framework.restricted_unpickler import (
+                        safe_load_pickle,
+                    )
+
+                    dist_attrs = safe_load_pickle(f)
                 tensor_dist_attrs = dist_attrs["tensor"]
                 op_dist_attrs = dist_attrs["op"]
                 process_meshes = dist_attrs["process_meshes"]

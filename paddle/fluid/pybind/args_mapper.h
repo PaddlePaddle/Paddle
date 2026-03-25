@@ -59,6 +59,20 @@ void ArgSumMapper(PyObject* args,
                   pir::Value* axis,
                   DataType* dtype,
                   bool* keepdim);
+
+void KthvalueMapper(PyObject* args,
+                    PyObject* kwargs,
+                    Tensor** x_ptr_ptr,
+                    int64_t* k,
+                    int* axis,
+                    bool* keepdim);
+void KthvalueMapper(PyObject* args,
+                    PyObject* kwargs,
+                    pir::Value* x,
+                    int64_t* k,
+                    int* axis,
+                    bool* keepdim);
+
 }  // namespace pybind
 
 }  // namespace paddle

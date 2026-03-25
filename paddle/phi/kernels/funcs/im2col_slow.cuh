@@ -27,10 +27,10 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-#define CUDA_KERNEL_LOOP_TYPE(i, n, index_type)                          \
-  int64_t _i_n_d_e_x = ((int64_t)blockIdx.x) * blockDim.x + threadIdx.x; \
-  for (index_type i = _i_n_d_e_x; _i_n_d_e_x < (n);                      \
-       _i_n_d_e_x += blockDim.x * gridDim.x, i = _i_n_d_e_x)
+#define CUDA_KERNEL_LOOP_TYPE(i, n, index_type)                      \
+  int64_t index_ = ((int64_t)blockIdx.x) * blockDim.x + threadIdx.x; \
+  for (index_type i = index_; index_ < (n);                          \
+       index_ += blockDim.x * gridDim.x, i = index_)
 
 #define CUDA_KERNEL_LOOP(i, n) CUDA_KERNEL_LOOP_TYPE(i, n, int)
 
@@ -38,8 +38,6 @@ constexpr int CUDA_NUM_THREADS = 1024;
 
 inline int GET_BLOCKS(const int64_t N,
                       const int64_t max_threads_per_block = CUDA_NUM_THREADS) {
-  constexpr int64_t max_int = std::numeric_limits<int>::max();
-
   auto block_num = (N - 1) / max_threads_per_block + 1;
   return static_cast<int>(block_num);
 }
@@ -121,7 +119,7 @@ __forceinline__ __device__ void Col2imKernelImp(const int64_t index,
                                : (h_im - kernel_extent_h) / stride_height + 1;
   const int64_t h_col_end = ::min(h_im / stride_height + 1, height_col);
 
-  // TODO: use LCM of stride and dilation to avoid unnecessary loops
+  // TODO(dev): use the stride/dilation LCM to reduce loops
   for (int64_t h_col = h_col_start; h_col < h_col_end; h_col += 1) {
     for (int64_t w_col = w_col_start; w_col < w_col_end; w_col += 1) {
       int64_t h_k = (h_im - h_col * stride_height);

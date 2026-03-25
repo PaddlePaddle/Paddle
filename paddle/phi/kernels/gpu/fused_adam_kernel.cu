@@ -124,23 +124,23 @@ struct FusedAdamFunctor {
     int idx = threadIdx.x * VecSize;
 
     for (; idx < n; idx += stride) {
-      phi::AlignedVector<T, VecSize> g_vec;
-      phi::AlignedVector<T, VecSize> p_vec;
-      phi::AlignedVector<MT, VecSize> mp_vec;
-      phi::AlignedVector<MT, VecSize> mom1_vec;
-      phi::AlignedVector<MT, VecSize> mom2_vec;
-      phi::AlignedVector<MT, VecSize> mom2_max_vec;
+      AlignedVector<T, VecSize> g_vec;
+      AlignedVector<T, VecSize> p_vec;
+      AlignedVector<MT, VecSize> mp_vec;
+      AlignedVector<MT, VecSize> mom1_vec;
+      AlignedVector<MT, VecSize> mom2_vec;
+      AlignedVector<MT, VecSize> mom2_max_vec;
       if (idx <= n - VecSize) {
         if (IsMultiPrecision) {
-          phi::Load<MT, VecSize>(mp_ptr + idx, &mp_vec);
+          Load<MT, VecSize>(mp_ptr + idx, &mp_vec);
         } else {
-          phi::Load<T, VecSize>(p_ptr + idx, &p_vec);
+          Load<T, VecSize>(p_ptr + idx, &p_vec);
         }
-        phi::Load<T, VecSize>(g_ptr + idx, &g_vec);
-        phi::Load<MT, VecSize>(mom1_ptr + idx, &mom1_vec);
-        phi::Load<MT, VecSize>(mom2_ptr + idx, &mom2_vec);
+        Load<T, VecSize>(g_ptr + idx, &g_vec);
+        Load<MT, VecSize>(mom1_ptr + idx, &mom1_vec);
+        Load<MT, VecSize>(mom2_ptr + idx, &mom2_vec);
         if (AMSGrad) {
-          phi::Load<MT, VecSize>(mom2_max_ptr + idx, &mom2_max_vec);
+          Load<MT, VecSize>(mom2_max_ptr + idx, &mom2_max_vec);
         }
       } else {
         int size = n - idx;
@@ -191,13 +191,13 @@ struct FusedAdamFunctor {
       }
 
       if (idx <= n - VecSize) {
-        phi::Store<MT, VecSize>(mom1_vec, mom1_ptr + idx);
-        phi::Store<MT, VecSize>(mom2_vec, mom2_ptr + idx);
+        Store<MT, VecSize>(mom1_vec, mom1_ptr + idx);
+        Store<MT, VecSize>(mom2_vec, mom2_ptr + idx);
         if (AMSGrad) {
-          phi::Store<MT, VecSize>(mom2_max_vec, mom2_max_ptr + idx);
+          Store<MT, VecSize>(mom2_max_vec, mom2_max_ptr + idx);
         }
         if (IsMultiPrecision) {
-          phi::Store<MT, VecSize>(mp_vec, mp_ptr + idx);
+          Store<MT, VecSize>(mp_vec, mp_ptr + idx);
         }
         for (int j = 0; j < VecSize; j++) {
           p_ptr[idx + j] = static_cast<T>(mp_vec[j]);

@@ -32,7 +32,7 @@ void MeshgridKernel(const Context& dev_ctx,
 
   for (const auto& x : inputs) {
     x_list.push_back(reinterpret_cast<const XPUType*>(x->data<T>()));
-    xshape_list.emplace_back(common::vectorize<int64_t>(x->dims()));
+    xshape_list.emplace_back(vectorize<int64_t>(x->dims()));
   }
   for (auto& x : outputs) {
     dev_ctx.template Alloc<T>(x);

@@ -88,44 +88,54 @@ void FullLikeKernel(const Context& dev_ctx,
                     DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
   if (out->numel() > 0) {
-    auto value = val.to<double>();
-    using XPUInTDType = typename XPUTypeTrait<T>::Type;
-    using CommonType = typename std::common_type<
-        float,
-        typename std::conditional<std::is_same<T, phi::float16>::value,
-                                  float,
-                                  T>::type>::type;
+    if (!std::is_same<T, int64_t>::value) {
+      auto value = val.to<double>();
+      using XPUInTDType = typename XPUTypeTrait<T>::Type;
+      using CommonType = typename std::common_type<
+          float,
+          typename std::conditional<std::is_same<T, phi::float16>::value,
+                                    float,
+                                    T>::type>::type;
 
-    auto common_type_value = static_cast<CommonType>(value);
-    bool is_out_range = true;
-    if (std::isinf(value) || std::isnan(value)) {
-      is_out_range = false;
+      auto common_type_value = static_cast<CommonType>(value);
+      bool is_out_range = true;
+      if (std::isinf(value) || std::isnan(value)) {
+        is_out_range = false;
+      }
+      if ((common_type_value >=
+           static_cast<CommonType>(std::numeric_limits<T>::lowest())) &&
+          (common_type_value <=
+           static_cast<CommonType>(std::numeric_limits<T>::max()))) {
+        is_out_range = false;
+      }
+
+      PADDLE_ENFORCE_EQ(
+          is_out_range,
+          false,
+          common::errors::InvalidArgument(
+              "The filled value is out of range for target type, "
+              "current kernel type is %s, the range should between %f "
+              "and %f, but now value is %f.",
+              typeid(T).name(),
+              static_cast<CommonType>(std::numeric_limits<T>::lowest()),
+              static_cast<CommonType>(std::numeric_limits<T>::max()),
+              static_cast<float>(value)));
+
+      auto out_data = reinterpret_cast<XPUInTDType*>(out->data<T>());
+      int r = xpu::constant(dev_ctx.x_context(),
+                            out_data,
+                            out->numel(),
+                            static_cast<XPUInTDType>(value));
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
+    } else {
+      using XPUInTDType = typename XPUTypeTrait<T>::Type;
+      auto out_data = reinterpret_cast<XPUInTDType*>(out->data<T>());
+      int r = xpu::constant(dev_ctx.x_context(),
+                            out_data,
+                            out->numel(),
+                            static_cast<XPUInTDType>(val.to<T>()));
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
     }
-    if ((common_type_value >=
-         static_cast<CommonType>(std::numeric_limits<T>::lowest())) &&
-        (common_type_value <=
-         static_cast<CommonType>(std::numeric_limits<T>::max()))) {
-      is_out_range = false;
-    }
-
-    PADDLE_ENFORCE_EQ(
-        is_out_range,
-        false,
-        common::errors::InvalidArgument(
-            "The filled value is out of range for target type, "
-            "current kernel type is %s, the range should between %f "
-            "and %f, but now value is %f.",
-            typeid(T).name(),
-            static_cast<CommonType>(std::numeric_limits<T>::lowest()),
-            static_cast<CommonType>(std::numeric_limits<T>::max()),
-            static_cast<float>(value)));
-
-    auto out_data = reinterpret_cast<XPUInTDType*>(out->data<T>());
-    int r = xpu::constant(dev_ctx.x_context(),
-                          out_data,
-                          out->numel(),
-                          static_cast<XPUInTDType>(value));
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
   }
 }
 

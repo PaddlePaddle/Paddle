@@ -119,7 +119,8 @@ void TileFirstGeneralTactic::Apply(ir::IRSchedule* sch,
   }
 
   VLOG(4) << "Using ApplyContinuousDataTile";
-  const auto sp_thread = context_->config.tile_config.warp_num * 32 /
+  const auto sp_thread = context_->config.tile_config.warp_num *
+                         context_->config.tile_config.warp_size /
                          context_->config.tile_config.tree_reduce_num;
   const auto sp_loop = context_->config.tile_config.spatial_inner_num;
   const auto rd_thread = context_->config.tile_config.tree_reduce_num;
@@ -502,7 +503,8 @@ void ReduceRegionVectorizeTilingSchedule(
 
 void TileFirstGeneralTactic::ApplyVectorize(ir::IRSchedule* sch,
                                             const std::string& block_id) {
-  const auto sp_thread = context_->config.tile_config.warp_num * 32 /
+  const auto sp_thread = context_->config.tile_config.warp_num *
+                         context_->config.tile_config.warp_size /
                          context_->config.tile_config.tree_reduce_num;
   const auto rd_thread = context_->config.tile_config.tree_reduce_num;
   const auto vectorize_factor = context_->config.tile_config.vectorize_factor;

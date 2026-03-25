@@ -80,6 +80,13 @@ class TestGetWorkerInfoAlias(TestAlias):
         self.ioObject = paddle.io.get_worker_info
         self.utilsObject = paddle.utils.data.get_worker_info
         self.directObject = paddle.utils.data.dataloader.get_worker_info
+        self.internalUtilsObject = (
+            paddle.utils.data._utils.worker.get_worker_info
+        )
+
+    def test_compatibility(self):
+        super().test_compatibility()
+        self.assertTrue(type(self.ioObject) == type(self.internalUtilsObject))
 
 
 class TestRandomSplitAlias(TestAlias):
@@ -94,6 +101,27 @@ class TestDefaultCollateAlias(TestAlias):
         self.ioObject = paddle.io.dataloader.collate.default_collate_fn
         self.utilsObject = paddle.utils.data.default_collate
         self.directObject = paddle.utils.data.dataloader.default_collate
+        self.internalUtilsObject = (
+            paddle.utils.data._utils.collate.default_collate
+        )
+
+    def test_compatibility(self):
+        super().test_compatibility()
+        self.assertTrue(type(self.ioObject) == type(self.internalUtilsObject))
+
+
+class TestBatchSamplerAlias(TestAlias):
+    def setUp(self):
+        self.ioObject = paddle.io.BatchSampler
+        self.utilsObject = paddle.utils.data.BatchSampler
+        self.directObject = paddle.utils.data.sampler.BatchSampler
+
+
+class TestRandomSamplerAlias(TestAlias):
+    def setUp(self):
+        self.ioObject = paddle.io.RandomSampler
+        self.utilsObject = paddle.utils.data.RandomSampler
+        self.directObject = paddle.utils.data.sampler.RandomSampler
 
 
 if __name__ == "__main__":

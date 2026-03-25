@@ -16,8 +16,8 @@
 
 #pragma once
 
+#include <cublas_v2.h>
 #include <cub/cub.cuh>
-#include "cublas_v2.h"
 #include "paddle/phi/core/platform/device_context.h"
 
 using kv_float = cub::KeyValuePair<float, float>;
@@ -71,7 +71,7 @@ __device__ inline T operator+(const T& a, const T& b);
 template <typename T>
 __device__ inline T operator/(const T& a, const T& b);
 template <typename T>
-__device__ inline T& operator+=(T& a, const T& b);
+__device__ inline T& operator+=(T& a, const T& b);  // NOLINT
 template <typename T>
 __device__ inline T operator-(const T& a, const T& b);
 template <typename T>
@@ -81,7 +81,7 @@ __device__ inline half operator+(const half& a, const half& b) {
   return __float2half(__half2float(a) + __half2float(b));
 }
 template <>
-__device__ inline half& operator+=(half& a, const half& b) {
+__device__ inline half& operator+=(half& a, const half& b) {  // NOLINT
   a = __float2half(__half2float(a) + __half2float(b));
   return a;
 }

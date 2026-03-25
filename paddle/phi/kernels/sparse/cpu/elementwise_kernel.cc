@@ -238,8 +238,8 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
                                  make_ddim({static_cast<int64_t>(sparse_dim),
                                             static_cast<int64_t>(nnz)}),
                                  DataLayout::NCHW);
-    auto indices_dim = common::vectorize(
-        slice_ddim(x.values().dims(), 1, x.values().dims().size()));
+    auto indices_dim =
+        vectorize(slice_ddim(x.values().dims(), 1, x.values().dims().size()));
     indices_dim.insert(indices_dim.begin(), nnz);
     DenseTensorMeta values_meta(
         x.dtype(), make_ddim(indices_dim), DataLayout::NCHW);

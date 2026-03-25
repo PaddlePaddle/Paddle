@@ -47,7 +47,7 @@ void RangeTensorKernel(const Context& dev_ctx,
   }
   int64_t size =
       static_cast<int64_t>(((end_value - start_value) / step_value) + 1);
-  out->Resize(make_ddim({size}));
+  out->Resize({size});
   T* out_data = dev_ctx.template Alloc<T>(out);
 
   auto stream = dev_ctx.stream();
@@ -86,7 +86,7 @@ void RangeNullaryKernel(const Context& dev_ctx,
   }
   int64_t size = static_cast<int64_t>(
       ((end_value_mpt - start_value_mpt) / step_value_mpt) + 1);
-  out->Resize(make_ddim({size}));
+  out->Resize({size});
   T* out_data = dev_ctx.template Alloc<T>(out);
   if (size == 0) {
     return;

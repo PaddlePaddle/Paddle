@@ -25,6 +25,7 @@
 #include "paddle/phi/kernels/reduce_max_kernel.h"
 #include "paddle/phi/kernels/reduce_mean_kernel.h"
 #include "paddle/phi/kernels/reduce_min_kernel.h"
+#include "paddle/phi/kernels/reduce_nansum_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 COMMON_DECLARE_bool(use_stride_kernel);
@@ -135,6 +136,17 @@ void SumStrideKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+void NansumStrideKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const IntArray& dims,
+                        DataType out_dtype,
+                        bool keep_dim,
+                        DenseTensor* out) {
+  PrepareStridedOut(out);
+  phi::NansumKernel<T, Context>(dev_ctx, x, dims, out_dtype, keep_dim, out);
+}
+
+template <typename T, typename Context>
 void MeanStrideKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const IntArray& dims,
@@ -219,6 +231,25 @@ PD_REGISTER_KERNEL(sum,
                    int64_t,
                    uint8_t,
                    int8_t,
+                   phi::complex64,
+                   phi::complex128) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}
+
+PD_REGISTER_KERNEL(nansum,
+                   GPU,
+                   STRIDED,
+                   phi::NansumStrideKernel,
+                   bool,
+                   float,
+                   double,
+                   phi::float16,
+                   phi::bfloat16,
+                   int8_t,
+                   uint8_t,
+                   int16_t,
+                   int,
+                   int64_t,
                    phi::complex64,
                    phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
