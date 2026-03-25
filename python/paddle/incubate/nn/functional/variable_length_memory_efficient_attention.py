@@ -106,6 +106,9 @@ def variable_length_memory_efficient_attention(
         head_size = query.shape[3]
         scale = float(1.0 / math.sqrt(head_size))
 
+    if mask is not None and 0 in mask.shape:
+        mask = None
+
     if in_dynamic_or_pir_mode():
         return _C_ops.variable_length_memory_efficient_attention(
             query,

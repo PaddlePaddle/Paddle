@@ -33,9 +33,16 @@ class TestVariableLengthMemoryEfficientAttentionZeroSize(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
         self.place = get_device_place()
+        paddle.seed(2024)
+        self.rng = np.random.default_rng(2024)
 
     def tearDown(self):
         paddle.enable_static()
+
+    def _make_tensor(self, shape):
+        return paddle.to_tensor(
+            self.rng.standard_normal(shape).astype(np.float16), place=self.place
+        )
 
     def test_zero_effective_sequence_length_returns_zero_output(self):
         query = paddle.to_tensor(
@@ -106,6 +113,50 @@ class TestVariableLengthMemoryEfficientAttentionZeroSize(unittest.TestCase):
         np.testing.assert_array_equal(
             out.numpy(), np.zeros([1, 1, 31, 64], dtype=np.float16)
         )
+
+    def test_empty_mask_matches_no_mask_output(self):
+        query = self._make_tensor([1, 1, 31, 64])
+        key = self._make_tensor([1, 1, 31, 64])
+        value = self._make_tensor([1, 1, 31, 64])
+        seq_lens = paddle.to_tensor([31], dtype="int32", place=self.place)
+        kv_seq_lens = paddle.to_tensor([31], dtype="int32", place=self.place)
+
+        out_without_mask = variable_length_memory_efficient_attention(
+            query,
+            key,
+            value,
+            seq_lens,
+            kv_seq_lens,
+            mask=None,
+            scale=0.125,
+        )
+
+        for mask_shape in ([1, 1, 31, 0], [1, 1, 0, 31]):
+            with self.subTest(mask_shape=mask_shape):
+                empty_mask = paddle.to_tensor(
+                    np.zeros(mask_shape, dtype=np.float16), place=self.place
+                )
+                out_with_empty_mask = (
+                    variable_length_memory_efficient_attention(
+                        query,
+                        key,
+                        value,
+                        seq_lens,
+                        kv_seq_lens,
+                        mask=empty_mask,
+                        scale=0.125,
+                    )
+                )
+
+                self.assertEqual(
+                    list(out_with_empty_mask.shape), [1, 1, 31, 64]
+                )
+                np.testing.assert_allclose(
+                    out_with_empty_mask.numpy(),
+                    out_without_mask.numpy(),
+                    rtol=0.0,
+                    atol=0.0,
+                )
 
 
 if __name__ == "__main__":

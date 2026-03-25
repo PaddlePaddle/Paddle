@@ -110,8 +110,12 @@ void MultiHeadAttentionVariableForwardKernel(const Context& dev_ctx,
   params.causal = causal;
   params.pre_cache_length = pre_cache_length;
 
-  // if the mask is 0-size tensor, we don't need to set mask_ptr
-  if (mask && mask.get().numel() > 0) {
+  const bool has_nonempty_mask = mask && mask.get().numel() > 0;
+  params.mask_ptr = nullptr;
+  params.ldm = 0;
+  params.ElementM = 0;
+  params.mask_broadcast_head = false;
+  if (has_nonempty_mask) {
     // [B, 1, S, D]
     auto mask_tensor = mask.get();
     int64_t mask_num_heads = mask_tensor.dims()[1];
@@ -128,17 +132,18 @@ void MultiHeadAttentionVariableForwardKernel(const Context& dev_ctx,
     if (kernel_launched) {
       return;
     }
-    if (mask && !KernelType::kAddMask) {
+    if (has_nonempty_mask && !KernelType::kAddMask) {
       return;
     }
-    if (!mask && KernelType::kAddMask) {
+    if (!has_nonempty_mask && KernelType::kAddMask) {
       return;
     }
-    if (mask && reinterpret_cast<uintptr_t>(params.mask_ptr) % 16 == 0 &&
+    if (has_nonempty_mask &&
+        reinterpret_cast<uintptr_t>(params.mask_ptr) % 16 == 0 &&
         params.ldm % (16 / sizeof(T)) == 0 && !KernelType::kMaskIsAligned) {
       return;
     }
-    if (mask &&
+    if (has_nonempty_mask &&
         !(reinterpret_cast<uintptr_t>(params.mask_ptr) % 16 == 0 &&
           params.ldm % (16 / sizeof(T)) == 0) &&
         KernelType::kMaskIsAligned) {
