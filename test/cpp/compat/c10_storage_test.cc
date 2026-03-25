@@ -241,6 +241,22 @@ TEST(StorageTest, DeviceAndDeviceTypeAPIs) {
 #endif
 }
 
+TEST(StorageTest, DeviceAndAliasFallbackBranches) {
+  c10::Storage empty;
+  EXPECT_EQ(empty.device_type(), phi::AllocationType::CPU);
+  EXPECT_EQ(empty.device().GetType(), phi::AllocationType::UNDEFINED);
+  EXPECT_EQ(empty.use_count(), static_cast<size_t>(0));
+
+  auto base = at::ones({2, 2}, at::kFloat);
+  c10::Storage s0 = base.storage();
+  c10::Storage s1 = base.storage();
+  EXPECT_TRUE(s0.is_alias_of(s1));
+
+  auto holder = s0.ensureTensorHolder();
+  (void)holder;
+  EXPECT_GE(s0.use_count(), static_cast<size_t>(1));
+}
+
 TEST(StorageTest, AllocatorAPI) {
   // Test allocator() API
   at::TensorBase tensor = at::ones({2, 3}, at::kFloat);

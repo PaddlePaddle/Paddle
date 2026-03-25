@@ -25,6 +25,7 @@
 #include <c10/cuda/CUDAFunctions.h>
 #include <c10/cuda/CUDAGuard.h>
 #endif
+#include <sstream>
 #include "ATen/ATen.h"
 #include "gtest/gtest.h"
 #include "paddle/phi/common/float16.h"
@@ -89,4 +90,45 @@ TEST(TensorBaseTest, TypeCheckingAPIs) {
   // Unsigned types
   ASSERT_FALSE(uint8_tensor.is_signed());
   ASSERT_FALSE(bool_tensor.is_signed());
+}
+
+TEST(ScalarTypeCompatTest, ScalarTypeUtilityBranches) {
+  EXPECT_STREQ(c10::toString(c10::ScalarType::Bits1x8), "Bits1x8");
+  EXPECT_STREQ(c10::toString(c10::ScalarType::Bits16), "Bits16");
+  EXPECT_STREQ(c10::toString(c10::ScalarType::Float8_e5m2fnuz),
+               "Float8_e5m2fnuz");
+  EXPECT_STREQ(c10::toString(c10::ScalarType::Float8_e4m3fnuz),
+               "Float8_e4m3fnuz");
+  EXPECT_STREQ(c10::toString(c10::ScalarType::Float8_e8m0fnu),
+               "Float8_e8m0fnu");
+  EXPECT_STREQ(c10::toString(c10::ScalarType::Float4_e2m1fn_x2),
+               "Float4_e2m1fn_x2");
+  EXPECT_STREQ(c10::toString(c10::ScalarType::Undefined), "Undefined");
+  EXPECT_STREQ(c10::toString(static_cast<c10::ScalarType>(-1)),
+               "UNKNOWN_SCALAR");
+
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::QInt8), static_cast<size_t>(1));
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::QUInt4x2),
+            static_cast<size_t>(1));
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::QInt32), static_cast<size_t>(4));
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::Bits16), static_cast<size_t>(4));
+  EXPECT_THROW(c10::elementSize(c10::ScalarType::Undefined), ::std::exception);
+
+  EXPECT_TRUE(c10::isIntegralType(c10::ScalarType::Bool, true));
+  EXPECT_FALSE(c10::isIntegralType(c10::ScalarType::Bool, false));
+  EXPECT_TRUE(c10::isFloat8Type(c10::ScalarType::Float8_e5m2));
+  EXPECT_FALSE(c10::isFloat8Type(c10::ScalarType::Float8_e4m3fnuz));
+  EXPECT_TRUE(c10::isReducedFloatingType(c10::ScalarType::BFloat16));
+  EXPECT_TRUE(c10::isFloatingType(c10::ScalarType::Float));
+  EXPECT_FALSE(c10::isComplexType(c10::ScalarType::ComplexHalf));
+
+  EXPECT_TRUE(c10::isSignedType(c10::ScalarType::Int1));
+  EXPECT_FALSE(c10::isSignedType(c10::ScalarType::UInt3));
+  EXPECT_FALSE(c10::isSignedType(c10::ScalarType::QUInt8));
+  EXPECT_TRUE(c10::isSignedType(c10::ScalarType::Float8_e5m2fnuz));
+  EXPECT_THROW(c10::isSignedType(c10::ScalarType::Undefined), ::std::exception);
+
+  std::ostringstream oss;
+  oss << c10::ScalarType::UInt7;
+  EXPECT_EQ(oss.str(), "UInt7");
 }

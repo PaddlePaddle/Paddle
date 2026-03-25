@@ -134,6 +134,27 @@ TEST(TensorToTest, ToOptionalArgs_NothingSet_ReturnsSameType) {
   ASSERT_EQ(result.scalar_type(), at::kFloat);
 }
 
+TEST(TensorToTest, ToCopyAndUnsupportedDeviceBranches) {
+  at::Tensor t = at::ones({2, 3}, at::kFloat);
+
+  at::Tensor copied =
+      t.to(at::TensorOptions().dtype(at::kFloat), false, true, std::nullopt);
+  EXPECT_TRUE(copied.equal(t));
+
+  at::Tensor pinned = t.to(std::nullopt,
+                           std::nullopt,
+                           std::nullopt,
+                           true,
+                           false,
+                           false,
+                           std::nullopt);
+  EXPECT_TRUE(pinned.equal(t));
+
+  EXPECT_THROW(
+      t.to(at::TensorOptions().device(c10::Device(c10::DeviceType::XPU, 0))),
+      ::std::exception);
+}
+
 // ---- Overload 3: to(Device, ScalarType) ----
 
 TEST(TensorToTest, ToDeviceAndDtype) {

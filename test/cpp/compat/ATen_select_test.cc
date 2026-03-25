@@ -157,6 +157,22 @@ TEST(SelectTest, SelectSymInt2D) {
   EXPECT_FLOAT_EQ(selected[0].item<float>(), 4.0f);
 }
 
+TEST(SelectTest, SelectNegativeIndexBranches) {
+  auto tensor =
+      at::arange(12, at::TensorOptions().dtype(at::kFloat)).reshape({3, 4});
+
+  auto selected = tensor.select(-1, -1);
+  EXPECT_EQ(selected.dim(), 1);
+  EXPECT_EQ(selected.size(0), 3);
+  EXPECT_FLOAT_EQ(selected[0].item<float>(), 3.0f);
+  EXPECT_FLOAT_EQ(selected[2].item<float>(), 11.0f);
+
+  c10::SymInt index(-1);
+  auto selected_symint = tensor.select_symint(-1, index);
+  EXPECT_EQ(selected_symint.size(0), 3);
+  EXPECT_FLOAT_EQ(selected_symint[1].item<float>(), 7.0f);
+}
+
 // ==================== index_select tests ====================
 
 // Test for index_select on 1D tensor

@@ -219,4 +219,17 @@ TEST(CUDAContextLightTest, CUDADeviceAllocatorCloneZeroBytes) {
   ASSERT_EQ(cloned.device().type(), c10::DeviceType::CUDA);
 }
 
+TEST(CUDAContextLightTest, AllocatorZeroSizeAndNoopCopyBranches) {
+  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
+  c10::Allocator* alloc = at::cuda::getCUDADeviceAllocator();
+  ASSERT_NE(alloc, nullptr);
+
+  c10::DataPtr zero = alloc->allocate(0);
+  ASSERT_EQ(zero.device().type(), c10::DeviceType::CUDA);
+  ASSERT_EQ(alloc->raw_deleter(), nullptr);
+
+  // n==0 branch should early-return without touching pointers.
+  alloc->copy_data(nullptr, nullptr, 0);
+}
+
 #endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP

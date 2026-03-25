@@ -401,3 +401,19 @@ TEST(TensorBaseTest, IsNonOverlappingAndDenseAPI) {
   ASSERT_FALSE(permuted.is_contiguous());
   ASSERT_TRUE(permuted.is_non_overlapping_and_dense());
 }
+
+TEST(TensorBaseTest, UndefinedAndNonDenseBranchCoverage) {
+  at::TensorBase undefined;
+  ASSERT_EQ(undefined.toString(), std::string("UndefinedType"));
+  ASSERT_EQ(undefined.data_ptr(), nullptr);
+  ASSERT_FALSE(undefined.has_names());
+
+  at::Tensor non_dense = at::arange(6, at::TensorOptions().dtype(at::kFloat))
+                             .as_strided({2, 2}, {4, 1});
+  ASSERT_FALSE(non_dense.is_non_overlapping_and_dense());
+}
+
+TEST(TensorBodyTest, ToBackendUnsupportedBranch) {
+  at::Tensor t = at::ones({1}, at::kFloat);
+  ASSERT_THROW(t.toBackend(static_cast<c10::Backend>(-1)), ::std::exception);
+}
