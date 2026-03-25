@@ -2,6 +2,11 @@ name: Windows-GPU
 
 on:
   workflow_call:
+    inputs:
+      clone-can-skip:
+        type: string
+        required: false
+        default: "false"
 
 permissions: read-all
 
@@ -28,10 +33,11 @@ jobs:
     secrets:
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
+
   build-and-test:
     name: Build and test
-    needs: check-bypass
-    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
+    needs: [check-bypass]
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' && inputs.clone-can-skip != 'true' }}
     runs-on:
       group: win-gpu
     timeout-minutes: 240

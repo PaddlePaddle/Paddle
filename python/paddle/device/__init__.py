@@ -396,7 +396,18 @@ def device_to_place(device: Place | int | str | None = None) -> Place:
 
 def _convert_to_place(device: PlaceLike) -> Place:
     if not isinstance(device, str):
-        return device  # return directly if not a string
+        if type(device) is core.Place:
+            if device.is_gpu_place():
+                return core.CUDAPlace(device.gpu_device_id())
+            elif device.is_cpu_place():
+                return core.CPUPlace()
+            elif device.is_xpu_place():
+                return core.XPUPlace(device.xpu_device_id())
+            elif device.is_custom_place():
+                return core.CustomPlace(
+                    device.custom_device_type(), device.custom_device_id()
+                )
+        return device
 
     lower_device = device.lower()
     if lower_device.startswith("cuda"):
@@ -2194,6 +2205,9 @@ class Device(str):
     def __exit__(self, exc_type, exc_val, exc_tb):
         previous_device = Device._DEFAULT_DEVICE_STACK.pop()
         paddle.set_device(previous_device)
+
+    def __getattr__(self, name: str):
+        return getattr(self._to_place(), name)
 
 
 class _DeviceModule(types.ModuleType):

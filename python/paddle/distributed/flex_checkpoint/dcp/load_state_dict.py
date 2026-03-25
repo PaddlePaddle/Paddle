@@ -57,6 +57,7 @@ from .utils import (
     is_sharded_state_dict,
     merge_state_dict_metadata,
     minimal_nd_slice,
+    need_transpose,
     ravel_index,
 )
 
@@ -613,7 +614,9 @@ def _handle_aoa(
                 src_desc_to_postprocess_list[src_desc] = (
                     mapping.postprocess_list
                 )
-            if len(shard_mappings) == 1 and mapping.postprocess_list is None:
+            if len(shard_mappings) == 1 and not need_transpose(
+                mapping.postprocess_list
+            ):
                 if src_desc.global_shape != dst_desc.global_shape:
                     logger.warning(
                         f"Shape mismatch for parameter '{param_name}': "
@@ -822,6 +825,8 @@ def load_state_dict(
                 use_dist=use_dist,
             )
             logger.info("Checkpoint successfully loaded locally!")
+            _metadata_manager.clear()
+            gc.collect()
             return
 
     if not is_sharded_state_dict(state_dict, use_dist, process_group):
@@ -837,6 +842,8 @@ def load_state_dict(
             worker_groups=worker_groups,
             comm_method=comm_method,
         )
+        _metadata_manager.clear()
+        gc.collect()
         return
 
     if not use_dist:

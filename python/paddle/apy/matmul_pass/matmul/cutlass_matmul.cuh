@@ -24,8 +24,8 @@
 #include "cutlass_patch/epilogue/thread/linear_combination_variadic.h"
 #include "cutlass_patch/gemm/device/gemm_universal_with_variadic.h"
 
-#include "default_config_id.h"
-#include "matmul.h"
+#include "default_config_id.h"  // NOLINT(build/include_subdir)
+#include "matmul.h"             // NOLINT(build/include_subdir)
 
 namespace ap {
 

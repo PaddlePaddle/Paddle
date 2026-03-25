@@ -72,7 +72,7 @@ void GraphSendUVOpKernelLaunchHelper(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
   T* out_data = out->data<T>();
 
-  const auto& bcast_info = phi::CalcBCastInfo(x.dims(), y.dims());
+  const auto& bcast_info = CalcBCastInfo(x.dims(), y.dims());
   const T* x_data = x.data<T>();
   const T* y_data = y.data<T>();
   const IndexT* s_index = src_index.data<IndexT>();

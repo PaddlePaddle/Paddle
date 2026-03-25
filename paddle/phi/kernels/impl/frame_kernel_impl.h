@@ -66,7 +66,7 @@ void FrameKernel(const Context& dev_ctx,
       trans_x = x_tmp;
 
       std::vector<int> perm_out{1, 0};
-      auto out_dims_vec = common::vectorize(out->dims());
+      auto out_dims_vec = vectorize(out->dims());
       for (int i = 0; i < out->dims().size(); ++i) {
         out_dims_vec[i] = out->dims()[perm_out[i]];
       }
@@ -77,7 +77,7 @@ void FrameKernel(const Context& dev_ctx,
           perm_out.size(), dev_ctx, *out, &trans_out, perm_out);
     } else {
       std::vector<int> perm_x{1, 0};
-      auto x_dims_vec = common::vectorize(x_tmp.dims());
+      auto x_dims_vec = vectorize(x_tmp.dims());
       for (int i = 0; i < x_tmp.dims().size(); ++i) {
         x_dims_vec[i] = x_tmp.dims()[perm_x[i]];
       }
@@ -87,7 +87,7 @@ void FrameKernel(const Context& dev_ctx,
           perm_x.size(), dev_ctx, x_tmp, &trans_x, perm_x);
 
       std::vector<int> perm_out{2, 1, 0};
-      auto out_dims_vec = common::vectorize(out->dims());
+      auto out_dims_vec = vectorize(out->dims());
       for (int i = 0; i < out->dims().size(); ++i) {
         out_dims_vec[i] = out->dims()[perm_out[i]];
       }

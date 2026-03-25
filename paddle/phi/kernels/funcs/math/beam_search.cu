@@ -402,9 +402,9 @@ static inline int GetNumUsedThreads(const int max_threads_per_seq,
 }
 
 template <typename T>
-class BeamSearchFunctor<phi::GPUContext, T> {
+class BeamSearchFunctor<GPUContext, T> {
  public:
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor* pre_ids,
                   const DenseTensor* pre_scores,
                   const DenseTensor* ids,
@@ -416,7 +416,7 @@ class BeamSearchFunctor<phi::GPUContext, T> {
                   size_t beam_size,
                   int end_id,
                   bool is_accumulated) {
-    auto abs_lod = phi::ToAbsOffset(scores->lod());
+    auto abs_lod = ToAbsOffset(scores->lod());
 
     const int64_t* pre_ids_data = pre_ids->data<int64_t>();
     const float* pre_scores_data = pre_scores->data<float>();
@@ -443,7 +443,7 @@ class BeamSearchFunctor<phi::GPUContext, T> {
     int* parent_idx_data =
         parent_idx ? dev_ctx.template Alloc<int>(parent_idx) : nullptr;
 
-    phi::LegacyLoD selected_lod(2);
+    LegacyLoD selected_lod(2);
     selected_lod[0].assign(abs_lod[level].begin(), abs_lod[level].end());
     selected_lod[1].resize(scores->dims()[0] + 1);
     phi::MixVector<size_t> mix_vector(&selected_lod[1]);
@@ -532,10 +532,10 @@ class BeamSearchFunctor<phi::GPUContext, T> {
   }
 };
 
-template class BeamSearchFunctor<phi::GPUContext, int>;
-template class BeamSearchFunctor<phi::GPUContext, int64_t>;
-template class PADDLE_API BeamSearchFunctor<phi::GPUContext, float>;
-template class BeamSearchFunctor<phi::GPUContext, double>;
+template class BeamSearchFunctor<GPUContext, int>;
+template class BeamSearchFunctor<GPUContext, int64_t>;
+template class PADDLE_API BeamSearchFunctor<GPUContext, float>;
+template class BeamSearchFunctor<GPUContext, double>;
 
 }  // namespace math
 }  // namespace phi

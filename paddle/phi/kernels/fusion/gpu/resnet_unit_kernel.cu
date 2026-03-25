@@ -84,20 +84,20 @@ void ResNetUnitKernel(const Context &dev_ctx,
 
   bool is_train = !is_test && !use_global_stats;
 
-  auto input_x_shape = common::vectorize<int>(input_x->dims());
-  auto filter_x_shape = common::vectorize<int>(filter_x->dims());
+  auto input_x_shape = vectorize<int>(input_x->dims());
+  auto filter_x_shape = vectorize<int>(filter_x->dims());
   // std::swap used to convert shape of filter from conv2d when kernel size is
   // 1.
   if (filter_x_shape[1] != filter_x_shape[2] && 1 == filter_x_shape[2]) {
     std::swap(filter_x_shape[1], filter_x_shape[3]);
   }
   auto param_dims = scale_x->dims();
-  auto param_shape = common::vectorize<int>(scale_x->dims());
+  auto param_shape = vectorize<int>(scale_x->dims());
   if (1 == param_shape.size()) {
     param_shape = {1, 1, 1, param_shape[0]};
   }
-  auto output_shape = common::vectorize<int>(output->dims());
-  auto bitmask_shape = common::vectorize<int>(bitmask->dims());
+  auto output_shape = vectorize<int>(output->dims());
+  auto bitmask_shape = vectorize<int>(bitmask->dims());
   int output_channel = filter_x_shape[0];
   int64_t ele_count =
       std::accumulate(
@@ -159,8 +159,8 @@ void ResNetUnitKernel(const Context &dev_ctx,
     // norm conv
     DenseTensor *conv_out_z = conv_z;
 
-    auto input_z_shape = common::vectorize<int>(input_z->dims());
-    auto filter_z_shape = common::vectorize<int>(filter_z->dims());
+    auto input_z_shape = vectorize<int>(input_z->dims());
+    auto filter_z_shape = vectorize<int>(filter_z->dims());
 
     // 3.1 Conv for second input
     DenseTensor sum_z;

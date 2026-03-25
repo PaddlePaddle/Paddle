@@ -74,12 +74,12 @@ void LstsqKernel(const Context& dev_ctx,
   T rcond = rcond_scalar.to<T>();
 
   DenseTensor new_x;
-  new_x.Resize(make_ddim({batch_count, m, n}));
+  new_x.Resize({batch_count, m, n});
   dev_ctx.template Alloc<T>(&new_x);
   Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), true, &new_x);
 
   DenseTensor new_y;
-  new_y.Resize(make_ddim({batch_count, m, nrhs}));
+  new_y.Resize({batch_count, m, nrhs});
   dev_ctx.template Alloc<T>(&new_y);
   Copy<Context>(dev_ctx, y, dev_ctx.GetPlace(), true, &new_y);
 
@@ -121,7 +121,7 @@ void LstsqKernel(const Context& dev_ctx,
     DenseTensor slice_r =
         funcs::Slice<T>(dev_ctx, trans_r, {-2}, {0}, {min_mn});
     DenseTensor res_r;
-    res_r.Resize(make_ddim({batch_count, min_mn, min_mn}));
+    res_r.Resize({batch_count, min_mn, min_mn});
     dev_ctx.template Alloc<T>(&res_r);
     phi::TrilTriuKernel<T>(dev_ctx, slice_r, 0, false, &res_r);
 
@@ -146,7 +146,7 @@ void LstsqKernel(const Context& dev_ctx,
     DenseTensor slice_r =
         funcs::Slice<T>(dev_ctx, trans_r, {-2}, {0}, {min_mn});
     DenseTensor res_r;
-    res_r.Resize(make_ddim({batch_count, min_mn, min_mn}));
+    res_r.Resize({batch_count, min_mn, min_mn});
     dev_ctx.template Alloc<T>(&res_r);
     phi::TrilTriuKernel<T>(dev_ctx, slice_r, 0, false, &res_r);
 
@@ -171,7 +171,7 @@ void LstsqKernel(const Context& dev_ctx,
         phi::Matmul<T>(dev_ctx, slice_q, *solution, false, false);
     Copy<Context>(dev_ctx, solu_tensor, dev_ctx.GetPlace(), true, solution);
   }
-  if (batch_count == 1) solution->Resize(make_ddim({n, nrhs}));
+  if (batch_count == 1) solution->Resize({n, nrhs});
   GetResidualsTensor<Context, T>(
       dev_ctx, x, y, driver_string, solution, residuals, rank);
 }

@@ -98,6 +98,10 @@ if(WITH_GPU)
       vmm_allocator_tail_test
       SRCS vmm_allocator_tail_test.cc
       DEPS phi common)
+    nv_test(
+      cuda_virtual_mem_allocator_v2_test
+      SRCS cuda_virtual_mem_allocator_v2_test.cu
+      DEPS phi common)
   endif()
 endif()
 
@@ -203,6 +207,10 @@ if(WITH_GPU)
     nv_test(
       vmm_auto_growth_best_fit_allocator_test
       SRCS vmm_auto_growth_best_fit_allocator_test.cu
+      DEPS phi common)
+    nv_test(
+      vmm_auto_growth_best_fit_allocator_v2_test
+      SRCS vmm_auto_growth_best_fit_allocator_v2_test.cu
       DEPS phi common)
     if(WITH_TESTING AND TEST vmm_auto_growth_best_fit_allocator_test)
       set_tests_properties(

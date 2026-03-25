@@ -393,15 +393,25 @@ except Exception as e:
     raise e
 
 
-def set_paddle_custom_device_lib_path(lib_path):
+def set_paddle_custom_device_lib_path(lib_dir):
     if os.environ.get('CUSTOM_DEVICE_ROOT', None) is not None:
         # use set environment value
         return
-    if os.path.exists(lib_path):
-        # set CUSTOM_DEVICE_ROOT default path
-        os.environ['CUSTOM_DEVICE_ROOT'] = os.path.normpath(lib_path)
+    path1 = os.path.normpath(
+        os.path.join(lib_dir, '..', 'paddle_custom_device')
+    )
+    if os.path.exists(path1):
+        # set CUSTOM_DEVICE_ROOT default path (lib_dir/../paddle_custom_device)
+        os.environ['CUSTOM_DEVICE_ROOT'] = path1
     else:
-        os.environ['CUSTOM_DEVICE_ROOT'] = ''
+        path2 = os.path.normpath(
+            os.path.join(lib_dir, '..', '..', 'paddle_custom_device')
+        )
+        if os.path.exists(path2):
+            # set CUSTOM_DEVICE_ROOT default path (lib_dir/../../paddle_custom_device)
+            os.environ['CUSTOM_DEVICE_ROOT'] = path2
+        else:
+            os.environ['CUSTOM_DEVICE_ROOT'] = ''
 
 
 # set paddle lib path
@@ -411,17 +421,13 @@ def set_paddle_lib_path():
         lib_dir = os.path.sep.join([site_dir, 'paddle', 'libs'])
         if os.path.exists(lib_dir):
             _set_paddle_lib_path(lib_dir)
-            set_paddle_custom_device_lib_path(
-                os.path.sep.join([lib_dir, '..', '..', 'paddle_custom_device'])
-            )
+            set_paddle_custom_device_lib_path(lib_dir)
             return
     if hasattr(site, 'USER_SITE') and site.USER_SITE:
         lib_dir = os.path.sep.join([site.USER_SITE, 'paddle', 'libs'])
         if os.path.exists(lib_dir):
             _set_paddle_lib_path(lib_dir)
-            set_paddle_custom_device_lib_path(
-                os.path.sep.join([lib_dir, '..', '..', 'paddle_custom_device'])
-            )
+            set_paddle_custom_device_lib_path(lib_dir)
 
 
 set_paddle_lib_path()

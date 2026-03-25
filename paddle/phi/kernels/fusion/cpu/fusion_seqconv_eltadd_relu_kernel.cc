@@ -35,8 +35,8 @@ void FusionSeqConvEltAddReluKernel(const Context& dev_ctx,
                                    DenseTensor* out,
                                    DenseTensor* col_mat) {
   auto x_lod = x.lod();
-  auto x_dims = common::vectorize<int64_t>(x.dims());
-  auto w_dims = common::vectorize<int64_t>(filter.dims());
+  auto x_dims = vectorize<int64_t>(x.dims());
+  auto w_dims = vectorize<int64_t>(filter.dims());
   PADDLE_ENFORCE_EQ(
       bias.numel(),
       w_dims[1],

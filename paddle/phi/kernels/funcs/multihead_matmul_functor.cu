@@ -494,7 +494,7 @@ __global__ void softmax_kernel_with_mask(T *qk_buf_,
   } while (0)
 
 template <typename T>
-inline void MatmulWithHeadQK(const phi::GPUContext &dev_ctx,
+inline void MatmulWithHeadQK(const GPUContext &dev_ctx,
                              int head_num,
                              int seq_len,
                              int size_per_head,
@@ -512,7 +512,7 @@ inline void MatmulWithHeadQK(const phi::GPUContext &dev_ctx,
   CBLAS_TRANSPOSE transB = !k_trans ? CblasNoTrans : CblasTrans;
 
   typedef typename CUDATypeTraits<T>::TYPE run_type;
-  auto blas = funcs::GetBlas<phi::GPUContext, run_type>(dev_ctx);
+  auto blas = funcs::GetBlas<GPUContext, run_type>(dev_ctx);
   auto stream = dev_ctx.stream();
 
   blas.BatchedGEMM(transA,
@@ -629,7 +629,7 @@ inline void MatmulWithHeadQK(const phi::GPUContext &dev_ctx,
 }
 
 template <typename T>
-inline void MatmulWithHeadQKV(const phi::GPUContext &dev_ctx,
+inline void MatmulWithHeadQKV(const GPUContext &dev_ctx,
                               int head_num,
                               int seq_len,
                               int size_per_head,
@@ -645,7 +645,7 @@ inline void MatmulWithHeadQKV(const phi::GPUContext &dev_ctx,
   int k = head_num * size_per_head;
 
   typedef typename CUDATypeTraits<T>::TYPE run_type;
-  auto blas = funcs::GetBlas<phi::GPUContext, run_type>(dev_ctx);
+  auto blas = funcs::GetBlas<GPUContext, run_type>(dev_ctx);
   auto stream = dev_ctx.stream();
   CBLAS_TRANSPOSE transA = !qk_trans ? CblasNoTrans : CblasTrans;
   CBLAS_TRANSPOSE transB = !v_trans ? CblasNoTrans : CblasTrans;
@@ -666,7 +666,7 @@ inline void MatmulWithHeadQKV(const phi::GPUContext &dev_ctx,
 }
 
 template <typename T>
-void MultiheadGPUComputeFunctor<T>::operator()(const phi::GPUContext &dev_ctx,
+void MultiheadGPUComputeFunctor<T>::operator()(const GPUContext &dev_ctx,
                                                int batch,
                                                int seq_len,
                                                int head_num,

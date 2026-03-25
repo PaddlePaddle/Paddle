@@ -143,7 +143,7 @@ void FlashAttnUnpaddedBaseKernel(const Context& dev_ctx,
 
   VLOG(10) << "FlashAttn fwd seed: " << params.seed
            << ", offset: " << params.offset;
-  bool succ = phi::dynload::flash_attn_varlen_fwd(
+  bool succ = dynload::flash_attn_varlen_fwd(
       q.data(),
       k.data(),
       v.data(),
@@ -483,7 +483,7 @@ void FlashAttnBaseKernel(const Context& dev_ctx,
 #endif
 
 #ifdef PADDLE_WITH_HIP
-  bool succ = phi::dynload::flash_attn_fwd(
+  bool succ = dynload::flash_attn_fwd(
       q.data(),
       k.data(),
       v.data(),
@@ -568,7 +568,7 @@ void FlashAttnBaseKernel(const Context& dev_ctx,
     RaiseNotSupportedError(3);
 #endif
   } else {
-    succ = phi::dynload::flash_attn_fwd(
+    succ = dynload::flash_attn_fwd(
         q.data(),
         k.data(),
         v.data(),

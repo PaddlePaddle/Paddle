@@ -133,6 +133,26 @@ if(WITH_ROCM)
   file(COPY paddle/cinn/common/float16.h DESTINATION $ENV{runtime_include_dir})
 endif()
 
+if(WITH_CUSTOM_DEVICE)
+  message(STATUS "CINN Compile with custom device support")
+
+  add_definitions(-DCINN_WITH_CUSTOM_DEVICE)
+
+  if(NOT DEFINED ENV{runtime_include_dir})
+    set(ENV{runtime_include_dir}
+        "${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/custom_device")
+    add_definitions(
+      -DRUNTIME_INCLUDE_DIR="${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/custom_device"
+    )
+  endif()
+
+  message(STATUS "copy float16 headers for custom device")
+  file(MAKE_DIRECTORY $ENV{runtime_include_dir})
+  file(COPY paddle/cinn/common/float16.h paddle/cinn/common/bfloat16.h
+            paddle/cinn/common/float8e4m3.h
+       DESTINATION $ENV{runtime_include_dir})
+endif()
+
 set(cinnapi_src CACHE INTERNAL "" FORCE)
 set(core_src CACHE INTERNAL "" FORCE)
 set(core_includes CACHE INTERNAL "" FORCE)

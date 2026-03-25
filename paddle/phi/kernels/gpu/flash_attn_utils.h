@@ -400,7 +400,7 @@ static void CheckFlashAttnStatus(const bool status) {
                     true,
                     common::errors::External(
                         "Error in Flash-Attention, detail information is: %s",
-                        phi::dynload::flash_attn_error()));
+                        dynload::flash_attn_error()));
 }
 #endif
 

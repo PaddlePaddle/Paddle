@@ -140,9 +140,8 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
                           "has ring_id attr."));
 
     // use global calculate stream
-    stream =
-        static_cast<GPUContext*>(phi::DeviceContextPool::Instance().Get(place))
-            ->stream();
+    stream = static_cast<GPUContext*>(DeviceContextPool::Instance().Get(place))
+                 ->stream();
   }
 #endif
 

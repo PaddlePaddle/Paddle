@@ -84,8 +84,6 @@ struct NumericTraits<phi::bfloat16>
 namespace phi {
 namespace funcs {
 
-using Tensor = DenseTensor;
-
 inline void GetDims(
     const DDim& dim, int axis, int64_t* pre, int64_t* n, int64_t* post) {
   *pre = 1;
@@ -912,7 +910,7 @@ __global__ void GatherKthValue(const T* input,
 }
 
 template <typename T, typename IndexType>
-void LaunchGatherKthValue(const phi::GPUContext& dev_ctx,
+void LaunchGatherKthValue(const GPUContext& dev_ctx,
                           const T* input_data,
                           const IndexType num_cols,
                           const IndexType num_rows,
@@ -1079,7 +1077,7 @@ __global__ void AssignGradWithAxis(const T* grad_out,
 }
 // use the radix sort for the topk
 template <typename T>
-bool SortTopk(const phi::GPUContext& dev_ctx,
+bool SortTopk(const GPUContext& dev_ctx,
               const DenseTensor* input_tensor,
               const int64_t num_cols,
               const int64_t num_rows,
@@ -1089,7 +1087,7 @@ bool SortTopk(const phi::GPUContext& dev_ctx,
               bool largest = true) {
   auto cu_stream = dev_ctx.stream();
 
-  Tensor input_indices;
+  DenseTensor input_indices;
   const std::vector<int64_t> dims = {num_rows, num_cols};
   auto dim = make_ddim(dims);
   input_indices.Resize(dim);
@@ -1130,8 +1128,8 @@ bool SortTopk(const phi::GPUContext& dev_ctx,
   T* sorted_values_ptr;
   int64_t* sorted_indices_ptr;
 
-  Tensor temp_values;
-  Tensor temp_indices;
+  DenseTensor temp_values;
+  DenseTensor temp_indices;
 
   const T* input = input_tensor->data<T>();
   T* values = out_tensor->data<T>();
@@ -1217,7 +1215,7 @@ bool SortTopk(const phi::GPUContext& dev_ctx,
     }
 #endif
   }
-  Tensor temp_storage;
+  DenseTensor temp_storage;
   dev_ctx.template Alloc<uint8_t>(&temp_storage, temp_storage_bytes);
 
   if (largest) {
@@ -1296,17 +1294,17 @@ bool SortTopk(const phi::GPUContext& dev_ctx,
   auto& dev = *dev_ctx.eigen_device();
   if (k < num_cols) {
     // copy sliced data to output.
-    const Eigen::DSizes<Eigen::DenseIndex, 2> slice_indices{0, 0};
-    const Eigen::DSizes<Eigen::DenseIndex, 2> slice_sizes{num_rows, k};
-    auto e_indices = phi::EigenMatrix<int64_t>::From(*indices_tensor, dim);
-    auto e_tmp_indices = phi::EigenMatrix<int64_t>::From(
-        static_cast<const Tensor>(temp_indices));
+    const Eigen::DSizes<int64_t, 2> slice_indices{0, 0};
+    const Eigen::DSizes<int64_t, 2> slice_sizes{num_rows, k};
+    auto e_indices = EigenMatrix<int64_t>::From(*indices_tensor, dim);
+    auto e_tmp_indices = EigenMatrix<int64_t>::From(
+        static_cast<const DenseTensor>(temp_indices));
 
     std::vector<int> odims = {static_cast<int>(num_rows), static_cast<int>(k)};
     auto dim = make_ddim(odims);
-    auto e_values = phi::EigenMatrix<T>::From(*out_tensor, dim);
+    auto e_values = EigenMatrix<T>::From(*out_tensor, dim);
     auto e_tmp_values =
-        phi::EigenMatrix<T>::From(static_cast<const Tensor>(temp_values));
+        EigenMatrix<T>::From(static_cast<const DenseTensor>(temp_values));
 
     funcs::EigenSlice<std::decay_t<decltype(dev)>, int64_t, 2>::Eval(
         dev, e_indices, e_tmp_indices, slice_indices, slice_sizes);

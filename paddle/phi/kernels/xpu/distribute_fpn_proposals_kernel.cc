@@ -94,7 +94,7 @@ void DistributeFpnProposalsKernel(
   DenseTensor sub_lod_list;
   sub_lod_list.Resize({num_level, lod_size});
   int* sub_lod_list_data = dev_ctx.template Alloc<int>(&sub_lod_list);
-  funcs::SetConstant<phi::XPUContext, int> set_zero;
+  funcs::SetConstant<XPUContext, int> set_zero;
   set_zero(dev_ctx, &sub_lod_list, static_cast<int>(0));
 
   DenseTensor target_lvls;
@@ -129,7 +129,7 @@ void DistributeFpnProposalsKernel(
 
   int start = 0;
   std::vector<int> sub_lod_list_cpu(lod_size * num_level);
-  phi::TensorToVector<int>(sub_lod_list, dev_ctx, &sub_lod_list_cpu);
+  TensorToVector<int>(sub_lod_list, dev_ctx, &sub_lod_list_cpu);
 
   for (int i = 0; i < num_level; ++i) {
     DenseTensor sub_lod = sub_lod_list.Slice(i, i + 1);

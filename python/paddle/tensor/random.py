@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING, overload
 
 import paddle
 from paddle import _C_ops
+from paddle._C_ops import poisson  # noqa: F401
 from paddle.base.framework import _current_expected_place
 from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import Variable
@@ -56,8 +57,13 @@ if TYPE_CHECKING:
 __all__ = []
 
 
+@param_one_alias(['x', 'input'])
 def bernoulli(
-    x: Tensor, p: float | None = None, name: str | None = None
+    x: Tensor,
+    p: float | None = None,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     r"""
 
@@ -73,9 +79,13 @@ def bernoulli(
 
     Args:
         x (Tensor): The input Tensor, it's data type should be float32, float64.
+            Alias: ``input``.
         p (float|None, optional): If ``p`` is given, the success probability will always be ``p``. Default is None, which means
             to use the success probability specified by input ``x``.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Keyword args:
+        out(Tensor, optional): The output tensor.
 
     Returns:
         Tensor, A Tensor filled samples from Bernoulli distribution, whose shape and dtype are same as ``x``.
@@ -115,7 +125,7 @@ def bernoulli(
         x = paddle.full_like(x, p)
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.bernoulli(x)
+        return _C_ops.bernoulli(x, out=out)
     else:
         check_variable_and_dtype(
             x, "x", ["float32", "float64", "float16", "uint16"], "bernoulli"
@@ -249,52 +259,6 @@ def binomial(count: Tensor, prob: Tensor, name: str | None = None) -> Tensor:
             attrs={},
         )
         out.stop_gradient = True
-        return out
-
-
-def poisson(x: Tensor, name: str | None = None) -> Tensor:
-    r"""
-    Returns a tensor filled with random number from a Poisson Distribution.
-
-    .. math::
-
-        out_i \sim Poisson (lambda = x_i)
-
-    Args:
-        x(Tensor):  A tensor with rate parameter of poisson Distribution. The data type
-            should be bfloat16, float16, float32, float64.
-        name(str|None, optional): The default value is None. Normally there is no
-            need for user to set this property. For more information, please
-            refer to :ref:`api_guide_Name`.
-    Returns:
-        Tensor, A Tensor filled with random number with the same shape and dtype as ``x``.
-
-    Examples:
-        .. code-block:: pycon
-
-            >>> import paddle
-            >>> paddle.set_device('cpu')
-            >>> paddle.seed(100)
-
-            >>> x = paddle.uniform([2, 3], min=1.0, max=5.0)
-            >>> out = paddle.poisson(x)
-            >>> print(out)
-            >>> # doctest: +SKIP("Random output")
-            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[2., 5., 0.],
-             [5., 1., 3.]])
-            >>> # doctest: -SKIP
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.poisson(x)
-    else:
-        check_variable_and_dtype(x, "x", ["float32", "float64"], "poisson")
-
-        helper = LayerHelper("poisson", **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(
-            type='poisson', inputs={'X': x}, outputs={'Out': out}, attrs={}
-        )
         return out
 
 

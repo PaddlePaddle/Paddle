@@ -25,8 +25,8 @@
 namespace phi {
 
 template <typename T>
-struct DequantizeFunctor<phi::CPUContext, T> {
-  void operator()(const phi::CPUContext& dev_ctx,
+struct DequantizeFunctor<CPUContext, T> {
+  void operator()(const CPUContext& dev_ctx,
                   const DenseTensor* in,
                   const DenseTensor* scale,
                   T max_range,
@@ -41,8 +41,8 @@ struct DequantizeFunctor<phi::CPUContext, T> {
 };
 
 template <typename T>
-struct ChannelDequantizeFunctorV2<phi::CPUContext, T> {
-  void operator()(const phi::CPUContext& dev_ctx,
+struct ChannelDequantizeFunctorV2<CPUContext, T> {
+  void operator()(const CPUContext& dev_ctx,
                   const DenseTensor* in,
                   const DenseTensor* scale,
                   T max_range,
@@ -88,12 +88,12 @@ struct ChannelDequantizeFunctorV2<phi::CPUContext, T> {
   }
 };
 
-template struct DequantizeFunctor<phi::CPUContext, phi::float16>;
-template struct DequantizeFunctor<phi::CPUContext, float>;
-template struct DequantizeFunctor<phi::CPUContext, double>;
-template struct ChannelDequantizeFunctorV2<phi::CPUContext, phi::float16>;
-template struct ChannelDequantizeFunctorV2<phi::CPUContext, float>;
-template struct ChannelDequantizeFunctorV2<phi::CPUContext, double>;
+template struct DequantizeFunctor<CPUContext, phi::float16>;
+template struct DequantizeFunctor<CPUContext, float>;
+template struct DequantizeFunctor<CPUContext, double>;
+template struct ChannelDequantizeFunctorV2<CPUContext, phi::float16>;
+template struct ChannelDequantizeFunctorV2<CPUContext, float>;
+template struct ChannelDequantizeFunctorV2<CPUContext, double>;
 
 }  // namespace phi
 

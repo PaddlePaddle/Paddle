@@ -2379,7 +2379,13 @@ def stack(
     return out
 
 
-def hstack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
+@param_one_alias(["x", "tensors"])
+def hstack(
+    x: Sequence[Tensor],
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     """
     Stacks all the input tensors ``x`` along horizontal axis.
     All tensors must be of the same dtype.
@@ -2394,7 +2400,11 @@ def hstack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
     Args:
         x (list[Tensor]|tuple[Tensor]): Input ``x`` can be a ``list`` or ``tuple`` of tensors, the Tensors in ``x`` must be of the same
             shape and dtype. Supported data types: ``float16``, ``float32``, ``float64``, ``int8``, ``int32``, ``int64`` or ``bfloat16``.
+            Alias: ``tensors``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword args:
+        out(Tensor, optional): The output tensor.
 
     Returns:
         Tensor, The stacked tensor with same data type as input.
@@ -2447,7 +2457,13 @@ def hstack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
         return paddle.concat(arrays, axis=1, name=name)
 
 
-def vstack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
+@param_one_alias(["x", "tensors"])
+def vstack(
+    x: Sequence[Tensor],
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     """
     Stacks all the input tensors ``x`` along vertical axis.
     All tensors must be of the same dtype.
@@ -2462,7 +2478,11 @@ def vstack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
     Args:
         x (list[Tensor]|tuple[Tensor]): Input ``x`` can be a ``list`` or ``tuple`` of tensors, the Tensors in ``x`` must be of the same
             shape and dtype. Supported data types: ``float16``, ``float32``, ``float64``, ``int8``, ``int32``, ``int64`` or ``bfloat16``.
+            Alias: ``tensors``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword args:
+        out(Tensor, optional): The output tensor.
 
     Returns:
         Tensor, The stacked tensor with same data type as input.
@@ -2516,7 +2536,13 @@ def vstack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
     return paddle.concat(arrays, axis=0, name=name)
 
 
-def dstack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
+@param_one_alias(["x", "tensors"])
+def dstack(
+    x: Sequence[Tensor],
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     """
     Stacks all the input tensors ``x`` along depth axis.
     All tensors must be of the same dtype.
@@ -2524,7 +2550,11 @@ def dstack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
     Args:
         x (list[Tensor]|tuple[Tensor]): Input ``x`` can be a ``list`` or ``tuple`` of tensors, the Tensors in ``x`` must be of the same
             shape and dtype. Supported data types: ``float16``, ``float32``, ``float64``, ``int8``, ``int32``, ``int64`` or ``bfloat16``.
+            Alias: ``tensors``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword args:
+        out(Tensor, optional): The output tensor.
 
     Returns:
         Tensor, The stacked tensor with same data type as input.
@@ -2569,7 +2599,13 @@ def dstack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
     return paddle.concat(arrays, axis=2, name=name)
 
 
-def column_stack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
+@param_one_alias(["x", "tensors"])
+def column_stack(
+    x: Sequence[Tensor],
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     """
     Stacks all the input tensors ``x`` along horizontal axis. Each tensor in ``x`` will be first reshaped into ``(tensor.numel(), 1)``
     if ``tensor.ndim < 2`` before being stacked.
@@ -2578,7 +2614,11 @@ def column_stack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
     Args:
         x (list[Tensor]|tuple[Tensor]): Input ``x`` can be a ``list`` or ``tuple`` of tensors, the Tensors in ``x`` must be of the same
             shape and dtype. Supported data types: ``float16``, ``float32``, ``float64``, ``int32``, ``int64`` or ``bfloat16``.
+            Alias: ``tensors``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword args:
+        out(Tensor, optional): The output tensor.
 
     Returns:
         Tensor, The stacked tensor with same data type as input.
@@ -2629,7 +2669,13 @@ def column_stack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
     return paddle.concat(arrays, axis=1, name=name)
 
 
-def row_stack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
+@param_one_alias(["x", "tensors"])
+def row_stack(
+    x: Sequence[Tensor],
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     """
     Alias of `paddle.vstack()`.
     Stacks all the input tensors ``x`` along vertical axis.
@@ -2638,7 +2684,12 @@ def row_stack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
     Args:
         x (list[Tensor]|tuple[Tensor]): Input ``x`` can be a ``list`` or ``tuple`` of tensors, the Tensors in ``x`` must be of the same
             shape and dtype. Supported data types: ``float16``, ``float32``, ``float64``, ``int8``, ``int32``, ``int64`` or ``bfloat16``.
+            Alias: ``tensors``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword args:
+        out(Tensor, optional): The output tensor.
+
 
     Returns:
         Tensor, The stacked tensor with same data type as input.
@@ -3101,6 +3152,12 @@ def tensor_split(
         )
 
 
+@ParamAliasDecorator(
+    {
+        "x": ["input"],
+        "num_or_indices": ["indices", "sections"],
+    }
+)
 def hsplit(
     x: Tensor, num_or_indices: int | Sequence[int], name: str | None = None
 ) -> list[Tensor]:
@@ -3119,8 +3176,10 @@ def hsplit(
 
     Args:
         x (Tensor): A Tensor whose dimension must be greater than 0. The data type is bool, bfloat16, float16, float32, float64, uint8, int32 or int64.
+            Alias: ``input``.
         num_or_indices (int|list|tuple): If ``num_or_indices`` is an int ``n``, ``x`` is split into ``n`` sections.
             If ``num_or_indices`` is a list or tuple of integer indices, ``x`` is split at each of the indices.
+            Alias: ``indices``、``sections``.
         name (str|None, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
     Returns:
@@ -3166,6 +3225,12 @@ def hsplit(
         return tensor_split(x, num_or_indices, axis=0, name=name)
 
 
+@ParamAliasDecorator(
+    {
+        "x": ["input"],
+        "num_or_indices": ["indices", "sections"],
+    }
+)
 def dsplit(
     x: Tensor, num_or_indices: int | Sequence[int], name: str | None = None
 ) -> list[Tensor]:
@@ -3183,8 +3248,10 @@ def dsplit(
 
     Args:
         x (Tensor): A Tensor whose dimension must be greater than 2. The data type is bool, bfloat16, float16, float32, float64, uint8, int32 or int64.
+            Alias: ``input``.
         num_or_indices (int|list|tuple): If ``num_or_indices`` is an int ``n``, ``x`` is split into ``n`` sections.
             If ``num_or_indices`` is a list or tuple of integer indices, ``x`` is split at each of the indices.
+            Alias: ``indices``、``sections``.
         name (str|None, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
     Returns:
@@ -3219,6 +3286,12 @@ def dsplit(
     return tensor_split(x, num_or_indices, axis=2, name=name)
 
 
+@ParamAliasDecorator(
+    {
+        "x": ["input"],
+        "num_or_indices": ["indices", "sections"],
+    }
+)
 def vsplit(
     x: Tensor, num_or_indices: int | Sequence[int], name: str | None = None
 ) -> list[Tensor]:
@@ -3240,8 +3313,10 @@ def vsplit(
 
     Args:
         x (Tensor): A Tensor whose dimension must be greater than 1. The data type is bool, bfloat16, float16, float32, float64, uint8, int32 or int64.
+            Alias: ``input``.
         num_or_indices (int|list|tuple): If ``num_or_indices`` is an int ``n``, ``x`` is split into ``n`` sections.
             If ``num_or_indices`` is a list or tuple of integer indices, ``x`` is split at each of the indices.
+            Alias: ``indices``、``sections``.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
 
@@ -3431,6 +3506,7 @@ def squeeze(
         return out
 
 
+@param_two_alias(["x", "input"], ["axis", "dim"])
 @inplace_apis_in_dygraph_only
 def squeeze_(
     x: Tensor, axis: int | Sequence[int] | None = None, name: str | None = None
@@ -3733,6 +3809,7 @@ def unique(
 ) -> Tensor | tuple[Tensor, ...]: ...
 
 
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def unique(
     x,
     return_index=False,
@@ -3748,6 +3825,7 @@ def unique(
 
     Args:
         x(Tensor): The input tensor, it's data type should be float32, float64, int32, int64.
+            alias: ``input``.
         return_index(bool, optional): If True, also return the indices of the input tensor that
             result in the unique Tensor.
         return_inverse(bool, optional): If True, also return the indices for where elements in
@@ -3755,6 +3833,7 @@ def unique(
         return_counts(bool, optional): If True, also return the counts for each unique element.
         axis(int, optional): The axis to apply unique. If None, the input will be flattened.
             Default: None.
+            alias: ``dim``.
         dtype(str|paddle.dtype|np.dtype, optional): The date type of `indices` or `inverse` tensor: int32 or int64.
             Default: int64.
         sorted(bool, optional): Does not affect the return result, same as PyTorch.
@@ -4059,6 +4138,7 @@ def unsqueeze(
         return out
 
 
+@param_two_alias(["x", "input"], ["axis", "dim"])
 @inplace_apis_in_dygraph_only
 def unsqueeze_(
     x: Tensor, axis: int | Sequence[int] | Tensor, name: str | None = None
@@ -7428,6 +7508,16 @@ def put_along_axis(
             "`indices` and `arr` must have the same number of dimensions!"
         )
     axis = non_negative_axis(arr, axis)
+    # When indices is empty (numel == 0) there are no scatter operations to
+    # perform.  Return a copy of arr immediately to avoid passing a 0-size
+    # index tensor through the broadcast path, which would attempt an invalid
+    # expand (e.g. values dim 4 -> 0) and raise an error.
+    # In dynamic mode use numel(); in static mode indices.numel() returns a
+    # symbolic Value so we check the shape directly instead.
+    if (paddle.in_dynamic_mode() and indices.numel() == 0) or (
+        not paddle.in_dynamic_mode() and 0 in indices.shape
+    ):
+        return paddle.assign(arr)
     if broadcast:
         if has_dynamic_shape(arr.shape) or has_dynamic_shape(indices.shape):
             arr_shape = paddle.shape(arr)
@@ -7547,6 +7637,10 @@ def put_along_axis_(
             "`indices` and `arr` must have the same number of dimensions!"
         )
     axis = non_negative_axis(arr, axis)
+    if (paddle.in_dynamic_mode() and indices.numel() == 0) or (
+        not paddle.in_dynamic_mode() and 0 in indices.shape
+    ):
+        return arr
     if broadcast:
         broadcast_shape = infer_broadcast_shape(arr, indices, axis)
         values = (
@@ -8116,6 +8210,52 @@ def _index_fill_impl(
     if axis < 0:
         axis = axis + x_dim
 
+    if len(index.shape) != 1:
+        raise ValueError(
+            f"The index tensor must be 1-D, but received {len(index.shape)}-D."
+        )
+
+    if in_dynamic_mode() and (
+        paddle.is_compiled_with_cuda() or x.place.is_cpu_place()
+        if hasattr(x.place, 'is_cpu_place')
+        else True
+    ):
+        if index.numel() == 0:
+            return x if inplace else x.clone()
+
+        if isinstance(value, (Variable, paddle.pir.Value)):
+            if value.numel() != 1:
+                raise ValueError("value must be scalar or 0-D tensor")
+            value = value.item()
+        if x.dtype in [
+            paddle.int8,
+            paddle.int16,
+            paddle.int32,
+            paddle.int64,
+            paddle.uint8,
+        ]:
+            value = int(value)
+        elif x.dtype == paddle.bool:
+            value = bool(value)
+        elif x.dtype in [
+            paddle.complex64,
+            paddle.complex128,
+        ]:
+            value = complex(value)
+        else:
+            value = float(value)
+
+        if inplace:
+            return _C_ops.index_fill_(x, index, axis, value)
+        else:
+            return _C_ops.index_fill(x, index, axis, value)
+
+    if not isinstance(value, Variable):
+        value = paddle.to_tensor(value, dtype=x.dtype)
+    else:
+        if len(value.shape) > 0:
+            raise ValueError("value must be scalar or 0-D tensor")
+
     perm = list(range(len(x.shape)))
     perm[0] = axis
     perm[axis] = 0
@@ -8282,6 +8422,13 @@ def diagonal_scatter(
     return fill_diagonal_tensor(x, y, offset, axis1, axis2, name)
 
 
+@ParamAliasDecorator(
+    {
+        "x": ["input"],
+        "values": ["src"],
+        "axis": ["dim"],
+    }
+)
 def select_scatter(
     x: Tensor, values: Tensor, axis: int, index: int, name: str | None = None
 ) -> Tensor:
@@ -8289,9 +8436,9 @@ def select_scatter(
     Embeds the values of the values tensor into x at the given index of axis.
 
     Args:
-        x (Tensor) : The Destination Tensor. Supported data types are `bool`, `float16`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `bfloat16`, `complex64`, `complex128`.
-        values (Tensor) : The tensor to embed into x. Supported data types are `bool`, `float16`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `bfloat16`, `complex64`, `complex128`.
-        axis (int) : the dimension to insert the slice into.
+        x (Tensor) : The Destination Tensor. Supported data types are `bool`, `float16`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `bfloat16`, `complex64`, `complex128`. Alias: ``input``.
+        values (Tensor) : The tensor to embed into x. Supported data types are `bool`, `float16`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `bfloat16`, `complex64`, `complex128`. Alias: ``src``.
+        axis (int) : the dimension to insert the slice into. Alias: ``dim``.
         index (int) : the index to select with.
         name (str|None, optional): Name for the operation (optional, default is None).
 

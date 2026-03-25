@@ -9,6 +9,7 @@ on:
       can-skip:
         type: string
         required: false
+        default: "false"
       slice-check:
         type: string
         required: false
@@ -45,7 +46,6 @@ defaults:
 jobs:
   check-bypass:
     name: Check bypass
-    if: ${{ inputs.can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass-slice.yml
     with:
       workflow-name: "slice"
@@ -54,8 +54,8 @@ jobs:
 
   slice:
     name: Slice test
-    needs: check-bypass
-    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
+    needs: [check-bypass]
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' && inputs.can-skip != 'true' }}
     runs-on:
       group: slice
     timeout-minutes: 20

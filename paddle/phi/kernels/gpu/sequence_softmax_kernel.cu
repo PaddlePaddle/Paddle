@@ -78,7 +78,7 @@ template <typename T>
 struct SequenceSoftmaxFunctor<GPUContext, T> {
   void operator()(const GPUContext &dev_ctx,
                   const DenseTensor &x,
-                  const phi::Vector<size_t> &ref_lod, /*referenced lod*/
+                  const Vector<size_t> &ref_lod, /*referenced lod*/
                   DenseTensor *out) {
     int height = ref_lod.size() - 1;
 
