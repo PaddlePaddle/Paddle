@@ -362,6 +362,126 @@ class TestMaskedScatterBF16APIBroadcast2(TestMaskedScatterBF16):
         self.value_shape = (300, 300)
 
 
+class TestMaskedScatterCPU(TestMaskedScatterAPI):
+    """Explicitly run masked_scatter tests on CPUPlace to guarantee CPU
+    coverage regardless of whether the build includes CUDA."""
+
+    def test_static_graph(self):
+        paddle.enable_static()
+        startup_program = base.Program()
+        train_program = base.Program()
+        with base.program_guard(startup_program, train_program):
+            x = paddle.static.data(
+                name='x', dtype=self.dtype, shape=self.x_shape
+            )
+            mask = paddle.static.data(
+                name='mask', dtype='bool', shape=self.mask_shape
+            )
+            value = paddle.static.data(
+                name='value', dtype=self.dtype, shape=self.value_np.shape
+            )
+            out = paddle.masked_scatter(x, mask, value)
+
+            place = core.CPUPlace()
+            exe = base.Executor(place)
+            res = exe.run(
+                base.default_main_program(),
+                feed={
+                    'x': self.x_np,
+                    'mask': self.mask_np,
+                    'value': self.value_np,
+                },
+                fetch_list=[out],
+            )
+            np.testing.assert_allclose(
+                res[0], self.out_np, atol=1e-5, rtol=1e-5
+            )
+            paddle.disable_static()
+
+    def test_dygraph(self):
+        paddle.disable_static(paddle.CPUPlace())
+        x = paddle.to_tensor(self.x_np, dtype=self.dtype)
+        mask = paddle.to_tensor(self.mask_np).astype('bool')
+        value = paddle.to_tensor(self.value_np, dtype=self.dtype)
+        result = paddle.masked_scatter(x, mask, value)
+        np.testing.assert_allclose(self.out_np, result.numpy(), rtol=1e-05)
+        paddle.enable_static()
+
+    def test_dygraph_grad(self):
+        paddle.disable_static(paddle.CPUPlace())
+        x = paddle.to_tensor(self.x_np, dtype=self.dtype)
+        x.stop_gradient = False
+        mask = paddle.to_tensor(self.mask_np).astype('bool')
+        value = paddle.to_tensor(self.value_np, dtype=self.dtype)
+        value.stop_gradient = False
+        result = paddle.masked_scatter(x, mask, value)
+        loss = paddle.sum(result)
+        loss.backward()
+        # x.grad has the broadcast shape (x broadcasted with mask)
+        broadcast_shape = list(
+            np.broadcast_shapes(self.x_np.shape, self.mask_np.shape)
+        )
+        self.assertEqual(list(x.grad.shape), broadcast_shape)
+        self.assertEqual(list(value.grad.shape), list(self.value_np.shape))
+        paddle.enable_static()
+
+
+class TestMaskedScatterCPU1(TestMaskedScatterCPU):
+    def init(self):
+        self.x_shape = (6, 8, 9, 18)
+        self.mask_shape = self.x_shape
+        self.dtype = "float32"
+        self.value_shape = (300, 300)
+
+
+class TestMaskedScatterCPU2(TestMaskedScatterCPU):
+    def init(self):
+        self.x_shape = (168,)
+        self.mask_shape = self.x_shape
+        self.dtype = "float32"
+        self.value_shape = (300, 300)
+
+
+class TestMaskedScatterCPUFloat64(TestMaskedScatterCPU):
+    def init(self):
+        self.x_shape = (50, 3)
+        self.mask_shape = self.x_shape
+        self.dtype = "float64"
+        self.value_shape = (300, 300)
+
+
+class TestMaskedScatterCPUBroadcast(TestMaskedScatterCPU):
+    def init(self):
+        self.x_shape = (3, 40)
+        self.mask_shape = (3, 1)
+        self.dtype = "float32"
+        self.value_shape = (300, 300)
+
+
+class TestMaskedScatterCPUBroadcast2(TestMaskedScatterCPU):
+    def init(self):
+        self.x_shape = (3, 3)
+        self.mask_shape = (1, 3)
+        self.dtype = "float32"
+        self.value_shape = (300, 300)
+
+
+class TestMaskedScatterCPUBroadcast3(TestMaskedScatterCPU):
+    def init(self):
+        self.x_shape = (120,)
+        self.mask_shape = (300, 120)
+        self.dtype = "float32"
+        self.value_shape = (300, 300)
+
+
+class TestMaskedScatterCPUBroadcast4(TestMaskedScatterCPU):
+    def init(self):
+        self.x_shape = (300, 40)
+        self.mask_shape = (40,)
+        self.dtype = "float32"
+        self.value_shape = (300, 300)
+
+
 class TestMaskedScatterAPI_ZeroSize(unittest.TestCase):
     def setUp(self):
         self.init()

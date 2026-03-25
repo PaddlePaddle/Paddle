@@ -18,6 +18,7 @@
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/expand_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
 
 namespace phi {
@@ -29,6 +30,17 @@ void MaskedScatterGradKernel(const Context& dev_ctx,
                              const DenseTensor& out_grad,
                              DenseTensor* x_grad,
                              DenseTensor* value_grad) {
+  if (out_grad.numel() == 0 || mask.numel() == 0) {
+    if (x_grad) {
+      phi::Full<T, Context>(dev_ctx, x_grad->dims(), static_cast<T>(0), x_grad);
+    }
+    if (value_grad) {
+      phi::Full<T, Context>(
+          dev_ctx, value_grad->dims(), static_cast<T>(0), value_grad);
+    }
+    return;
+  }
+
   auto out_grad_dims = out_grad.dims();
   auto mask_dims = mask.dims();
   auto expanded_size =
