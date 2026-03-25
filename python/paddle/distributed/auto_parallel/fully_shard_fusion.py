@@ -580,7 +580,7 @@ class FSDPCommManager:
                 grads_buffer.data_buffer.add_(grad_buffer_shard)
             grads_buffer.clear_tmp_buffer()
 
-    def finish_grads_sync(self):
+    def _finish_grads_sync(self):
         # Wait for all async reduce_scatter tasks, call before optimizer.step()
         self._wait_for_grad_comm(queue_limit=0)
 
@@ -669,7 +669,7 @@ class FullyShardFusion:
             shard_layer_param(layer)
 
     def comm_sync_and_reset_status(self):
-        self.comm_manager.finish_grads_sync()
+        self.comm_manager._finish_grads_sync()
         self.comm_manager.reset_params_buffer_status()
         self.comm_manager.need_zero_grads = True
         # Reset main_grad for all trainable parameters
