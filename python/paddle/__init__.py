@@ -436,7 +436,6 @@ from .tensor.linalg import (  # noqa: F401
     vecdot,
 )
 from .tensor.logic import (
-    _assert as _assert,
     allclose,
     bitwise_and,
     bitwise_and_,
@@ -795,6 +794,7 @@ from .tensor.stat import (
     var,
 )
 from .tensor.to_string import set_printoptions
+from .testing import _assert as _assert
 from .utils.dlpack import (
     from_dlpack,
     to_dlpack,
