@@ -464,6 +464,14 @@ class TestMaskedScatterCPUBroadcast2(TestMaskedScatterCPU):
 
 class TestMaskedScatterCPUBroadcast3(TestMaskedScatterCPU):
     def init(self):
+        self.x_shape = (120,)
+        self.mask_shape = (300, 120)
+        self.dtype = "float32"
+        self.value_shape = (300, 300)
+
+
+class TestMaskedScatterCPUBroadcast4(TestMaskedScatterCPU):
+    def init(self):
         self.x_shape = (300, 40)
         self.mask_shape = (40,)
         self.dtype = "float32"

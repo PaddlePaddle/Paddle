@@ -20,11 +20,14 @@
 #include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
+#include "paddle/phi/kernels/funcs/elementwise_base.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 namespace phi {
 
 template <typename T, typename Context>
 void MaskedScatterGradKernel(const Context& dev_ctx,
+                             const DenseTensor& x,
                              const DenseTensor& mask,
                              const DenseTensor& value,
                              const DenseTensor& out_grad,
@@ -60,10 +63,32 @@ void MaskedScatterGradKernel(const Context& dev_ctx,
   int64_t total = out_grad.numel();
 
   if (x_grad) {
-    dev_ctx.template Alloc<T>(x_grad);
-    auto* x_grad_data = x_grad->data<T>();
-    for (int64_t i = 0; i < total; i++) {
-      x_grad_data[i] = mask_data[i] ? static_cast<T>(0) : out_grad_data[i];
+    auto x_grad_dims = x_grad->dims();
+    if (x_grad_dims == out_grad_dims) {
+      // No broadcast happened, compute directly into x_grad.
+      dev_ctx.template Alloc<T>(x_grad);
+      auto* x_grad_data = x_grad->data<T>();
+      for (int64_t i = 0; i < total; i++) {
+        x_grad_data[i] = mask_data[i] ? static_cast<T>(0) : out_grad_data[i];
+      }
+    } else {
+      // Broadcast happened: compute at broadcast shape, then reduce-sum.
+      DenseTensor x_grad_broadcast;
+      x_grad_broadcast.Resize(expanded_dims);
+      dev_ctx.template Alloc<T>(&x_grad_broadcast);
+      auto* x_grad_broadcast_data = x_grad_broadcast.data<T>();
+      for (int64_t i = 0; i < total; i++) {
+        x_grad_broadcast_data[i] =
+            mask_data[i] ? static_cast<T>(0) : out_grad_data[i];
+      }
+      std::vector<int> reduce_dims =
+          funcs::GetReduceDim(x_grad_dims, expanded_dims, -1);
+      phi::SumKernel<T, Context>(dev_ctx,
+                                 x_grad_broadcast,
+                                 reduce_dims,
+                                 x_grad_broadcast.dtype(),
+                                 false,
+                                 x_grad);
     }
   }
 
@@ -100,5 +125,5 @@ PD_REGISTER_KERNEL(masked_scatter_grad,
                    uint8_t,
                    phi::float16,
                    phi::bfloat16) {
-  kernel->InputAt(0).SetDataType(phi::DataType::BOOL);
+  kernel->InputAt(1).SetDataType(phi::DataType::BOOL);
 }

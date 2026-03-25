@@ -20,6 +20,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void MaskedScatterGradKernel(const Context& dev_ctx,
+                             const DenseTensor& x,
                              const DenseTensor& mask,
                              const DenseTensor& value,
                              const DenseTensor& out_grad,
