@@ -592,5 +592,92 @@ class TestIsRealAPICompatibility(unittest.TestCase):
             np.testing.assert_array_equal(ref_out, out)
 
 
+# Test select_scatter compatibility
+class TestSelectScatterAPICompatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_x = np.random.rand(2, 3, 4).astype("float32")
+        self.np_values = np.random.rand(2, 4).astype("float32")
+        self.axis = 1
+        self.index = 1
+
+    def get_ref_out(self):
+        ref_out = self.np_x.copy()
+        ref_out[:, self.index, :] = self.np_values
+        return ref_out
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        values = paddle.to_tensor(self.np_values)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.select_scatter(x, values, self.axis, self.index)
+        # 2. Paddle keyword arguments
+        out2 = paddle.select_scatter(
+            x=x, values=values, axis=self.axis, index=self.index
+        )
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.select_scatter(
+            input=x, src=values, dim=self.axis, index=self.index
+        )
+        # 4. Mixed arguments
+        out4 = paddle.select_scatter(
+            x, src=values, dim=self.axis, index=self.index
+        )
+        # 5. Tensor method - args
+        out5 = x.select_scatter(values, self.axis, self.index)
+        # 6. Tensor method - kwargs (PyTorch alias)
+        out6 = x.select_scatter(src=values, dim=self.axis, index=self.index)
+
+        # Verify all outputs
+        ref_out = self.get_ref_out()
+        for out in [out1, out2, out3, out4, out5, out6]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-5)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x", shape=self.np_x.shape, dtype=str(self.np_x.dtype)
+            )
+            values = paddle.static.data(
+                name="values",
+                shape=self.np_values.shape,
+                dtype=str(self.np_values.dtype),
+            )
+
+            # 1. Paddle Positional arguments
+            out1 = paddle.select_scatter(x, values, self.axis, self.index)
+            # 2. Paddle keyword arguments
+            out2 = paddle.select_scatter(
+                x=x, values=values, axis=self.axis, index=self.index
+            )
+            # 3. PyTorch keyword arguments (alias)
+            out3 = paddle.select_scatter(
+                input=x, src=values, dim=self.axis, index=self.index
+            )
+            # 4. Tensor method - args
+            out4 = x.select_scatter(values, self.axis, self.index)
+            # 5. Tensor method - kwargs (PyTorch alias)
+            out5 = x.select_scatter(src=values, dim=self.axis, index=self.index)
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x, "values": self.np_values},
+                fetch_list=[out1, out2, out3, out4, out5],
+            )
+
+        # Verify all outputs
+        ref_out = self.get_ref_out()
+        for out in fetches:
+            np.testing.assert_allclose(out, ref_out, rtol=1e-5)
+
+
 if __name__ == "__main__":
     unittest.main()
