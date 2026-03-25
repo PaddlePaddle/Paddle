@@ -188,7 +188,7 @@ fi
 
 HAS_CREATE_NEW_PASS=`git diff -U0 upstream/$BRANCH $CI_FILTER |grep "paddle/pir/include/pass/pass.h" || true`
 if [ "${HAS_CREATE_NEW_PASS}" != "" ] && [ "${PR_ID}" != "" ]; then
-    echo_line="If you implement a new Pass, you must be approved by yuanlehome. Thanks!\n"
+    echo_line="If you implement a new Pass, you must be approved by yuanlehome or zhangbo9674. Thanks!\n"
     check_approval 1 yuanlehome zhangbo9674
 fi
 
