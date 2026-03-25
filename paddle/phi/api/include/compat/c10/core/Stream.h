@@ -106,3 +106,7 @@ struct hash<c10::Stream> {
   }
 };
 }  // namespace std
+
+namespace at {
+using c10::Stream;
+}
