@@ -687,12 +687,6 @@ class Tensor : public TensorBase {
   }
 
   void record_stream(at::Stream s) const;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  void record_stream(at::cuda::CUDAStream s) const;
-  // TODO(youge325): Remove after DeepEP paddle branch is updated to use
-  // at::Stream
-  void record_stream(cudaStream_t s) const;
-#endif
 
   Tensor var(int dim) const { return var(at::IntArrayRef{dim}, true, false); }
 
