@@ -37,7 +37,7 @@ template <typename IndexT>
 struct FastDivMod {
   // 1st value represents the result of input number divides by recorded divisor
   // 2nd value represents the result of input number modulo by recorded divisor
-  using DivModT = phi::AlignedVector<uint32_t, 2>;
+  using DivModT = AlignedVector<uint32_t, 2>;
 
   FastDivMod() {}
   HOSTDEVICE FastDivMod(uint32_t d) : divisor(d) {
@@ -79,7 +79,7 @@ struct FastDivMod {
 
 template <>
 struct FastDivMod<int64_t> {
-  using DivModT = phi::AlignedVector<uint64_t, 2>;
+  using DivModT = AlignedVector<uint64_t, 2>;
 
   FastDivMod() {}
   HOSTDEVICE FastDivMod(uint64_t d) : divisor(d) {

@@ -150,15 +150,15 @@ __global__ void FusedSoftmaxMaskVecKernel(T* dst,
 
   static_assert(ELEMENTS_PER_THREADS % VEC_SIZE == 0, "");
   constexpr int VEC_NUMS = ELEMENTS_PER_THREADS / VEC_SIZE;
-  using VecT = phi::AlignedVector<T, VEC_SIZE>;
+  using VecT = AlignedVector<T, VEC_SIZE>;
 
   VecT elements[VEC_NUMS];
   VecT tmp_mask;
   float max_val = -std::numeric_limits<float>::infinity();
 
   for (int i = 0; (i * warp_size + threadIdx.x) * VEC_SIZE < seq_len; ++i) {
-    phi::Load(src + (i * warp_size + threadIdx.x) * VEC_SIZE, &elements[i]);
-    phi::Load(mask + (i * warp_size + threadIdx.x) * VEC_SIZE, &tmp_mask);
+    Load(src + (i * warp_size + threadIdx.x) * VEC_SIZE, &elements[i]);
+    Load(mask + (i * warp_size + threadIdx.x) * VEC_SIZE, &tmp_mask);
 #pragma unroll
     for (int j = 0; j < VEC_SIZE; ++j) {
       // TODO(wangxi): vec add
@@ -186,7 +186,7 @@ __global__ void FusedSoftmaxMaskVecKernel(T* dst,
       float tmp = static_cast<float>(elements[i][j]) * mean_val;
       elements[i][j] = static_cast<T>(tmp);
     }
-    phi::Store(elements[i], dst + (i * warp_size + threadIdx.x) * VEC_SIZE);
+    Store(elements[i], dst + (i * warp_size + threadIdx.x) * VEC_SIZE);
   }
 }
 

@@ -34,7 +34,7 @@ void EigKernel(const Context& dev_ctx,
 
   auto cpu_place = CPUPlace();
   DeviceContextPool& pool = DeviceContextPool::Instance();
-  auto* cpu_ctx = static_cast<phi::CPUContext*>(pool.Get(cpu_place));
+  auto* cpu_ctx = static_cast<CPUContext*>(pool.Get(cpu_place));
 
   // prepare cpu Tensor here, since magma requires output on cpu
   DenseTensor out_w_cpu, out_v_cpu;
@@ -71,7 +71,7 @@ void EigKernel(const Context& dev_ctx,
     auto* imag_part_data = imag_part_cpu.data<phi::dtype::Real<T>>();
     int64_t out_w_numel = static_cast<int64_t>(out_w->numel());
 
-    phi::funcs::ForRange<phi::CPUContext> for_range((*cpu_ctx), out_w_numel);
+    phi::funcs::ForRange<CPUContext> for_range((*cpu_ctx), out_w_numel);
     phi::funcs::RealImagToComplexFunctor<phi::dtype::Complex<T>> functor(
         real_part_data,
         imag_part_data,
@@ -81,27 +81,26 @@ void EigKernel(const Context& dev_ctx,
 
     // 3. construct complex vectors
     DenseTensor real_v_trans_cpu =
-        TransposeLast2Dim<phi::dtype::Real<T>, phi::CPUContext>((*cpu_ctx),
-                                                                real_v_cpu);
+        TransposeLast2Dim<phi::dtype::Real<T>, CPUContext>((*cpu_ctx),
+                                                           real_v_cpu);
     DenseTensor out_v_trans_cpu;
     out_v_trans_cpu.Resize(x.dims());
     (*cpu_ctx).template Alloc<phi::dtype::Complex<T>>(&out_v_trans_cpu);
 
     phi::ConstructComplexVectors<phi::dtype::Real<T>,
                                  phi::dtype::Complex<T>,
-                                 phi::CPUContext>(&out_v_trans_cpu,
-                                                  out_w_cpu,
-                                                  real_v_trans_cpu,
-                                                  (*cpu_ctx),
-                                                  batch_count,
-                                                  order);
+                                 CPUContext>(&out_v_trans_cpu,
+                                             out_w_cpu,
+                                             real_v_trans_cpu,
+                                             (*cpu_ctx),
+                                             batch_count,
+                                             order);
 
-    TransposeTwoAxis<phi::dtype::Complex<T>, phi::CPUContext>(
-        out_v_trans_cpu,
-        &out_v_cpu,
-        x.dims().size() - 1,
-        x.dims().size() - 2,
-        (*cpu_ctx));
+    TransposeTwoAxis<phi::dtype::Complex<T>, CPUContext>(out_v_trans_cpu,
+                                                         &out_v_cpu,
+                                                         x.dims().size() - 1,
+                                                         x.dims().size() - 2,
+                                                         (*cpu_ctx));
 
   } else {
     phi::ApplyEigKernelMagma<T, Context>(dev_ctx, x, &out_w_cpu, &out_v_cpu);

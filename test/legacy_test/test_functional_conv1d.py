@@ -144,5 +144,65 @@ class TestFunctionalConv1D_ZeroSize2(TestFunctionalConv1D_ZeroSize):
         self.np_out = np.zeros([0, 0, 1])
 
 
+class TestFunctionalConv1D_ZeroKernelError(TestCase):
+    """kernel_size=0 should raise InvalidArgument, not crash with CUDA error."""
+
+    def _assert_raises(self, x_shape, w_shape, **kwargs):
+        places = get_places()
+        for place in places:
+            with dg.guard(place):
+                x = paddle.randn(x_shape)
+                w = paddle.to_tensor(
+                    np.random.randn(*w_shape).astype('float32')
+                )
+                with self.assertRaises(ValueError):
+                    F.conv1d(x, w, **kwargs)
+
+    def test_depthwise_zero_kernel(self):
+        # depthwise path (groups == in_channels), kernel_size=0
+        self._assert_raises(
+            [13, 64, 1007],
+            [64, 1, 0],
+            padding=3,
+            stride=1,
+            dilation=1,
+            groups=64,
+            data_format='NCL',
+        )
+
+    def test_depthwise_zero_kernel_small(self):
+        # smaller depthwise, kernel_size=0, NCL
+        self._assert_raises(
+            [2, 3, 4],
+            [6, 1, 0],
+            padding=0,
+            stride=2,
+            dilation=1,
+            groups=3,
+            data_format='NCL',
+        )
+
+    def test_depthwise_zero_kernel_nlc(self):
+        # NLC data format, kernel_size=0
+        self._assert_raises(
+            [13, 7, 32],
+            [32, 1, 0],
+            padding=1,
+            stride=1,
+            dilation=1,
+            groups=32,
+            data_format='NLC',
+        )
+
+    def test_depthwise_zero_kernel_float64(self):
+        places = get_places()
+        for place in places:
+            with dg.guard(place):
+                x = paddle.randn([2, 3, 4]).cast('float64')
+                w = paddle.to_tensor(np.random.randn(6, 1, 0).astype('float64'))
+                with self.assertRaises(ValueError):
+                    F.conv1d(x, w, padding=0, stride=2, groups=3)
+
+
 if __name__ == "__main__":
     unittest.main()

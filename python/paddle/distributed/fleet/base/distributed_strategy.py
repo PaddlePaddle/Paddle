@@ -158,10 +158,7 @@ def get_repeated_msg_dict(msg):
         res_dict = {}
         for f in fields:
             v = getattr(item, f.name)
-            if (
-                f.label
-                == google.protobuf.descriptor.FieldDescriptor.LABEL_REPEATED
-            ):
+            if _is_repeated_field(f):
                 v = list(v)
             res_dict[f.name] = v
         res_list.append(res_dict)
@@ -178,7 +175,7 @@ def get_msg_dict(msg):
         # WHY?
         # I guess the type or value of protobuf item is NULL when
         # deallocated.
-        if f.label == google.protobuf.descriptor.FieldDescriptor.LABEL_REPEATED:
+        if _is_repeated_field(f):
             if (
                 f.type
                 != google.protobuf.descriptor.FieldDescriptor.TYPE_MESSAGE
@@ -190,16 +187,28 @@ def get_msg_dict(msg):
     return res_dict
 
 
+def _is_repeated_field(field_descriptor):
+    """Helper function to check if field is repeated, compatible with protobuf 6.x and 7.x"""
+    # protobuf 7.x uses 'is_repeated' as a boolean property (not callable)
+    # protobuf 6.x uses 'label' attribute (LABEL_REPEATED = 3)
+    if hasattr(field_descriptor, 'is_repeated'):
+        # In protobuf 7.x, is_repeated is a property that returns a bool
+        is_repeated = field_descriptor.is_repeated
+        if isinstance(is_repeated, bool):
+            return is_repeated
+        # In case it's a callable (older versions)
+        return is_repeated()
+    # protobuf 6.x and earlier use the 'label' attribute
+    return field_descriptor.label == 3
+
+
 def assign_repeated_msg(msg, config):
     for key in config:
         new_item = msg.add()
         fields = new_item.DESCRIPTOR.fields
         for f in fields:
             if key == f.name:
-                # LABEL_OPTIONAL = 1
-                # LABEL_REPEATED = 3
-                # LABEL_REQUIRED = 2
-                if f.label == 3:
+                if _is_repeated_field(f):
                     if config[f.name] is not None:
                         new_item = getattr(msg, f.name)
                         if (
@@ -209,8 +218,8 @@ def assign_repeated_msg(msg, config):
                             new_item.extend(config[f.name])
                         else:
                             assign_configs_value(new_item, config[f.name])
-                elif f.label == 1 or f.label == 2:
-                    setattr(msg, f.name, config[f.name])
+                else:
+                    setattr(new_item, f.name, config[f.name])
 
 
 def assign_configs_value(msg, config):
@@ -218,10 +227,7 @@ def assign_configs_value(msg, config):
     for key in config:
         for f in fields:
             if key == f.name:
-                # LABEL_OPTIONAL = 1
-                # LABEL_REPEATED = 3
-                # LABEL_REQUIRED = 2
-                if f.label == 3:
+                if _is_repeated_field(f):
                     if config[f.name] is not None:
                         new_item = getattr(msg, f.name)
                         # deal with repeated message
@@ -232,7 +238,7 @@ def assign_configs_value(msg, config):
                             new_item.extend(config[f.name])
                         else:
                             assign_repeated_msg(new_item, config[f.name])
-                elif f.label == 1 or f.label == 2:
+                else:
                     setattr(msg, f.name, config[f.name])
 
 
@@ -335,10 +341,14 @@ class DistributedStrategy:
         logger.info("distributed strategy initialized")
 
     def __setattr__(self, key: str, value: Any) -> None:
+        # Check if attribute exists in self or in the protobuf strategy object
+        # This fixes compatibility issues with protobuf 7.x where hasattr() behavior changed
         if self.__lock_attr and not hasattr(self, key):
-            raise TypeError(
-                f"{key} is not an attribute of {self.__class__.__name__}"
-            )
+            # Also check if it's a valid attribute in the protobuf strategy object
+            if not (hasattr(self, 'strategy') and hasattr(self.strategy, key)):
+                raise TypeError(
+                    f"{key} is not a attribute of {self.__class__.__name__}"
+                )
         object.__setattr__(self, key, value)
 
     def save_to_prototxt(self, output: str) -> None:
@@ -423,12 +433,12 @@ class DistributedStrategy:
     def build_strategy(self, strategy: BuildStrategy) -> None:
         fields = self.strategy.build_strategy.DESCRIPTOR.fields
         for f in fields:
-            if f.label == 1 or f.label == 2:  # optional and required field
+            if not _is_repeated_field(f):  # optional and required field
                 value = getattr(strategy, f.name)
                 if f.name == 'reduce_strategy':
                     value = ReduceStrategyFleet(value)
                 setattr(self.strategy.build_strategy, f.name, value)
-            elif f.label == 3:  # repeated field
+            else:  # repeated field
                 getattr(self.strategy.build_strategy, f.name).extend(
                     getattr(strategy, f.name)
                 )
@@ -675,7 +685,7 @@ class DistributedStrategy:
                 name = config_name + "." + field.name
                 if field.type == FieldDescriptor.TYPE_MESSAGE:
                     logger.debug(f"message: {name}")
-                    if field.label == FieldDescriptor.LABEL_REPEATED:
+                    if _is_repeated_field(field):
                         if name + ".num" not in configs:
                             continue
                         num = configs[name + ".num"]
@@ -691,7 +701,7 @@ class DistributedStrategy:
                     logger.debug("not message: %s", name)
                     if name not in configs:
                         continue
-                    if field.label == FieldDescriptor.LABEL_REPEATED:
+                    if _is_repeated_field(field):
                         getattr(msg, field.name).extend(configs[name])
                     else:
                         if type(configs[name]) == list:

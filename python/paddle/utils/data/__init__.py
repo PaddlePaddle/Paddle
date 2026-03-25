@@ -25,6 +25,8 @@ from .dataset import (
     random_split,
 )
 from .sampler import (
+    BatchSampler,
+    RandomSampler,
     Sampler,
     SequentialSampler,
 )
@@ -38,6 +40,8 @@ __all__ = [
     'IterableDataset',
     'Subset',
     'random_split',
+    'BatchSampler',
+    'RandomSampler',
     'Sampler',
     'SequentialSampler',
 ]

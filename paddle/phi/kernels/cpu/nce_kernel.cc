@@ -216,7 +216,7 @@ void NCEKernel(const Context &dev_ctx,
 
   auto weight_mat = EigenMatrix<T>::From(weight_in);
   for (int64_t i = 0; i < sample_labels->numel(); ++i) {
-    Eigen::Tensor<T, 0, Eigen::RowMajor, Eigen::DenseIndex> result =
+    Eigen::Tensor<T, 0, Eigen::RowMajor, int64_t> result =
         (input_mat.chip(static_cast<int>(i / sample_labels->dims()[1]), 0) *
          weight_mat.chip(sample_labels_data[i], 0))
             .sum();

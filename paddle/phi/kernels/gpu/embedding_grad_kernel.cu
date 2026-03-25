@@ -57,7 +57,7 @@ __global__ void EmbeddingGrad(T* table,
     const T* out = output + idy * D;
     T* tab = table + id * D;
 #ifdef PADDLE_WITH_CUDA
-    phi::VectorizedAtomicAddPerBlock(D, idx, blockDim.x, out, tab);
+    VectorizedAtomicAddPerBlock(D, idx, blockDim.x, out, tab);
 #else
     for (int64_t i = idx; i < D; i += blockDim.x) {
       CudaAtomicAdd(&tab[i], out[i]);
@@ -183,7 +183,7 @@ struct EmbeddingSparseGradCUDAFunctor {
     dim3 threads(128, 8);
     dim3 grids(8, 1);
     auto stream = dev_ctx_.stream();
-    phi::Vector<int64_t> new_rows;
+    Vector<int64_t> new_rows;
     new_rows.resize(ids_num);
     auto gpu_place = dev_ctx_.GetPlace();
 

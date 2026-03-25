@@ -39,15 +39,15 @@ __global__ void SwiGLUCUDAKernel(const T *__restrict__ x,
       int64_t col_offset = idx % n_vec_piece * VecSize;
       int64_t z_offset = row_offset + col_offset;
       int64_t x_offset = z_offset + row_offset;
-      phi::AlignedVector<T, VecSize> x_vec;
-      phi::AlignedVector<T, VecSize> y_vec;
+      AlignedVector<T, VecSize> x_vec;
+      AlignedVector<T, VecSize> y_vec;
       phi::Load<T, VecSize>(x + x_offset, &x_vec);
       phi::Load<T, VecSize>(y + x_offset, &y_vec);
 #pragma unroll
       for (int i = 0; i < VecSize; ++i) {
         y_vec[i] = functor(x_vec[i], y_vec[i]);
       }
-      phi::Store<T, VecSize>(y_vec, z + z_offset);
+      Store<T, VecSize>(y_vec, z + z_offset);
       idx += stride;
     }
   } else {
@@ -58,15 +58,15 @@ __global__ void SwiGLUCUDAKernel(const T *__restrict__ x,
     int64_t limit = numel - VecSize;
 
     while (idx <= limit) {
-      phi::AlignedVector<T, VecSize> x_vec;
-      phi::AlignedVector<T, VecSize> y_vec;
+      AlignedVector<T, VecSize> x_vec;
+      AlignedVector<T, VecSize> y_vec;
       phi::Load<T, VecSize>(x + idx, &x_vec);
       phi::Load<T, VecSize>(y + idx, &y_vec);
 #pragma unroll
       for (int i = 0; i < VecSize; ++i) {
         y_vec[i] = functor(x_vec[i], y_vec[i]);
       }
-      phi::Store<T, VecSize>(y_vec, z + idx);
+      Store<T, VecSize>(y_vec, z + idx);
       idx += stride;
     }
 

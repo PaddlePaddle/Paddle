@@ -21,7 +21,7 @@ from typing_extensions import overload
 
 import paddle
 from paddle import _C_ops
-from paddle._C_ops import argmax, argmin  # noqa: F401
+from paddle._C_ops import argmax, argmin, kthvalue  # noqa: F401
 from paddle.common_ops_import import VarDesc, Variable
 from paddle.utils.decorator_utils import (
     index_select_decorator,
@@ -661,19 +661,33 @@ def msort(input: Tensor, *, out: Tensor | None = None) -> Tensor:
         return assign(sort(input, axis=0), out)
 
 
+class ModeRetType(NamedTuple):
+    values: Tensor
+    indices: Tensor
+
+
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def mode(
-    x: Tensor, axis: int = -1, keepdim: bool = False, name: str | None = None
-) -> tuple[Tensor, Tensor]:
+    x: Tensor,
+    axis: int = -1,
+    keepdim: bool = False,
+    name: str | None = None,
+    *,
+    out: tuple[Tensor, Tensor] | None = None,
+) -> ModeRetType:
     """
     Used to find values and indices of the modes at the optional axis.
 
     Args:
-        x (Tensor): Tensor, an input N-D Tensor with type float32, float64, int32, int64.
+        x (Tensor): Tensor, an input N-D Tensor with type float32, float64, int32, int64. Alias: ``input``.
         axis (int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is x.ndim. when axis < 0, it works the same way
-            as axis + R. Default is -1.
+            as axis + R. Default is -1. Alias: ``dim``.
         keepdim (bool, optional): Whether to keep the given axis in output. If it is True, the dimensions will be same as input x and with size one in the axis. Otherwise the output dimensions is one fewer than x since the axis is squeezed. Default is False.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Keyword args:
+        out(tuple(Tensor), optional): The output tensor.
 
     Returns:
         tuple (Tensor), return the values and indices. The value data type is the same as the input `x`. The indices data type is int64.
@@ -691,17 +705,24 @@ def mode(
             ...     ],
             ...     dtype=paddle.float32,
             ... )
-            >>> res = paddle.mode(tensor, 2)
-            >>> print(res)
-            (Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            >>> values, indices = paddle.mode(tensor, 2)
+            >>> print(values)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[2., 3.],
-             [5., 9.]]), Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+             [5., 9.]])
+            >>> print(indices)
+            Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[2, 2],
-             [2, 1]]))
+             [2, 1]])
 
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.mode(x, axis, keepdim)
+        if out is not None:
+            _C_ops.mode(x, axis, keepdim, out=tuple(out))
+            return ModeRetType(values=out[0], indices=out[1])
+        else:
+            values, indices = _C_ops.mode(x, axis, keepdim)
+            return ModeRetType(values, indices)
     else:
         helper = LayerHelper("mode", **locals())
         inputs = {"X": [x]}
@@ -1159,16 +1180,19 @@ def topk(
     If the input is a Tensor with higher rank, this operator computes the top k values and indices along the :attr:`axis`.
 
     Args:
-        x (Tensor): Tensor, an input N-D Tensor with type float32, float64, int32, int64.
+        x (Tensor): Tensor, an input N-D Tensor with type float32, float64, int32, int64. Alias: ``input``.
         k (int, Tensor): The number of top elements to look for along the axis.
         axis (int|None, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is x.ndim. when axis < 0, it works the same way
-            as axis + R. Default is -1.
+            as axis + R. Default is -1. Alias: ``dim``.
         largest (bool, optional) : largest is a flag, if set to true,
             algorithm will sort by descending order, otherwise sort by
             ascending order. Default is True.
         sorted (bool, optional): controls whether to return the elements in sorted order, default value is True.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword args:
+        out(tuple(Tensor), optional): The output tensor.
 
     Returns:
         tuple(Tensor), return the values and indices. The value data type is the same as the input `x`. The indices data type is int64.
@@ -1223,10 +1247,12 @@ def topk(
     if in_dynamic_or_pir_mode():
         if axis is None:
             axis = -1
-        values, indices = _C_ops.topk(x, k, axis, largest, sorted, out=out)
         if out is not None:
+            _C_ops.topk(x, k, axis, largest, sorted, out=tuple(out))
             return TopKRetType(values=out[0], indices=out[1])
-        return TopKRetType(values=values, indices=indices)
+        else:
+            values, indices = _C_ops.topk(x, k, axis, largest, sorted)
+            return TopKRetType(values, indices)
     else:
         helper = LayerHelper("top_k_v2", **locals())
         inputs = {"X": [x]}
@@ -1428,79 +1454,6 @@ def searchsorted(
         )
 
         return out
-
-
-def kthvalue(
-    x: Tensor,
-    k: int,
-    axis: int | None = None,
-    keepdim: bool = False,
-    name: str | None = None,
-) -> tuple[Tensor, Tensor]:
-    """
-    Find values and indices of the k-th smallest at the axis.
-
-    Args:
-        x (Tensor): A N-D Tensor with type float16, float32, float64, int32, int64.
-        k (int): The k for the k-th smallest number to look for along the axis.
-        axis (int, optional): Axis to compute indices along. The effective range
-            is [-R, R), where R is x.ndim. when axis < 0, it works the same way
-            as axis + R. The default is None. And if the axis is None, it will computed as -1 by default.
-        keepdim (bool, optional): Whether to keep the given axis in output. If it is True, the dimensions will be same as input x and with size one in the axis. Otherwise the output dimensions is one fewer than x since the axis is squeezed. Default is False.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-
-    Returns:
-        tuple(Tensor), return the values and indices. The value data type is the same as the input `x`. The indices data type is int64.
-
-    Examples:
-
-        .. code-block:: pycon
-
-            >>> import paddle
-
-            >>> x = paddle.randn((2, 3, 2))
-            >>> print(x)
-            >>> # doctest: +SKIP('Different environments yield different output.')
-            Tensor(shape=[2, 3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[[ 0.11855337, -0.30557564],
-              [-0.09968963,  0.41220093],
-              [ 1.24004936,  1.50014710]],
-             [[ 0.08612321, -0.92485696],
-              [-0.09276631,  1.15149164],
-              [-1.46587241,  1.22873247]]])
-            >>> # doctest: -SKIP
-            >>> y = paddle.kthvalue(x, 2, 1)
-            >>> print(y)
-            >>> # doctest: +SKIP('Different environments yield different output.')
-            (Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[ 0.11855337,  0.41220093],
-             [-0.09276631,  1.15149164]]), Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[0, 1],
-             [1, 1]]))
-            >>> # doctest: -SKIP
-    """
-    if in_dynamic_or_pir_mode():
-        if axis is not None:
-            return _C_ops.kthvalue(x, k, axis, keepdim)
-        else:
-            return _C_ops.kthvalue(x, k, -1, keepdim)
-
-    helper = LayerHelper("kthvalue", **locals())
-    inputs = {"X": [x]}
-    attrs = {'k': k}
-    if axis is not None:
-        attrs['axis'] = axis
-    values = helper.create_variable_for_type_inference(dtype=x.dtype)
-    indices = helper.create_variable_for_type_inference(dtype="int64")
-
-    helper.append_op(
-        type="kthvalue",
-        inputs=inputs,
-        outputs={"Out": [values], "Indices": [indices]},
-        attrs=attrs,
-    )
-    indices.stop_gradient = True
-    return values, indices
 
 
 def top_p_sampling(

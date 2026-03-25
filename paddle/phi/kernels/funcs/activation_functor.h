@@ -29,6 +29,10 @@
 
 #include <type_traits>
 
+#ifdef PADDLE_WITH_SLEEF
+#include <sleef.h>
+#endif
+
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
@@ -61,17 +65,57 @@ struct Sine {
   HOSTDEVICE T operator()(const T& val) const { return sin(val); }
 };
 
+// Specialized Sine for float using Sleef (matches PyTorch's u35 precision)
 template <>
-struct Sine<dtype::float16> {
-  HOSTDEVICE dtype::float16 operator()(const dtype::float16& val) const {
-    return dtype::float16(sin(static_cast<float>(val)));
+struct Sine<float> {
+  HOSTDEVICE float operator()(const float& val) const {
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
+    return sin(val);
+#elif defined(PADDLE_WITH_SLEEF)
+    return Sleef_sinf1_u35(val);
+#else
+    return sin(val);
+#endif
+  }
+};
+
+// Specialized Sine for double using Sleef (matches PyTorch's u10 precision)
+template <>
+struct Sine<double> {
+  HOSTDEVICE double operator()(const double& val) const {
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
+    return sin(val);
+#elif defined(PADDLE_WITH_SLEEF)
+    return Sleef_sind1_u10(val);
+#else
+    return sin(val);
+#endif
   }
 };
 
 template <>
-struct Sine<dtype::bfloat16> {
-  HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16& val) const {
-    return dtype::bfloat16(sin(static_cast<float>(val)));
+struct Sine<float16> {
+  HOSTDEVICE float16 operator()(const float16& val) const {
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
+    return float16(sin(static_cast<float>(val)));
+#elif defined(PADDLE_WITH_SLEEF)
+    return float16(Sleef_sinf1_u35(static_cast<float>(val)));
+#else
+    return float16(sin(static_cast<float>(val)));
+#endif
+  }
+};
+
+template <>
+struct Sine<bfloat16> {
+  HOSTDEVICE bfloat16 operator()(const bfloat16& val) const {
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
+    return bfloat16(sin(static_cast<float>(val)));
+#elif defined(PADDLE_WITH_SLEEF)
+    return bfloat16(Sleef_sinf1_u35(static_cast<float>(val)));
+#else
+    return bfloat16(sin(static_cast<float>(val)));
+#endif
   }
 };
 
@@ -80,17 +124,57 @@ struct Cosine {
   HOSTDEVICE T operator()(const T& val) const { return cos(val); }
 };
 
+// Specialized Cosine for float using Sleef (matches PyTorch's u35 precision)
 template <>
-struct Cosine<dtype::float16> {
-  HOSTDEVICE dtype::float16 operator()(const dtype::float16& val) const {
-    return dtype::float16(cos(static_cast<float>(val)));
+struct Cosine<float> {
+  HOSTDEVICE float operator()(const float& val) const {
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
+    return cos(val);
+#elif defined(PADDLE_WITH_SLEEF)
+    return Sleef_cosf1_u35(val);
+#else
+    return cos(val);
+#endif
+  }
+};
+
+// Specialized Cosine for double using Sleef (matches PyTorch's u10 precision)
+template <>
+struct Cosine<double> {
+  HOSTDEVICE double operator()(const double& val) const {
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
+    return cos(val);
+#elif defined(PADDLE_WITH_SLEEF)
+    return Sleef_cosd1_u10(val);
+#else
+    return cos(val);
+#endif
   }
 };
 
 template <>
-struct Cosine<dtype::bfloat16> {
-  HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16& val) const {
-    return dtype::bfloat16(cos(static_cast<float>(val)));
+struct Cosine<float16> {
+  HOSTDEVICE float16 operator()(const float16& val) const {
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
+    return float16(cos(static_cast<float>(val)));
+#elif defined(PADDLE_WITH_SLEEF)
+    return float16(Sleef_cosf1_u35(static_cast<float>(val)));
+#else
+    return float16(cos(static_cast<float>(val)));
+#endif
+  }
+};
+
+template <>
+struct Cosine<bfloat16> {
+  HOSTDEVICE bfloat16 operator()(const bfloat16& val) const {
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
+    return bfloat16(cos(static_cast<float>(val)));
+#elif defined(PADDLE_WITH_SLEEF)
+    return bfloat16(Sleef_cosf1_u35(static_cast<float>(val)));
+#else
+    return bfloat16(cos(static_cast<float>(val)));
+#endif
   }
 };
 
@@ -685,9 +769,9 @@ struct Tangent {
 };
 
 template <>
-struct Tangent<dtype::float16> {
-  HOSTDEVICE dtype::float16 operator()(const dtype::float16& val) const {
-    return dtype::float16(tan(static_cast<float>(val)));
+struct Tangent<float16> {
+  HOSTDEVICE float16 operator()(const float16& val) const {
+    return float16(tan(static_cast<float>(val)));
   }
 };
 
@@ -1005,9 +1089,9 @@ struct Sinh {
 };
 
 template <>
-struct Sinh<dtype::float16> {
-  HOSTDEVICE dtype::float16 operator()(const dtype::float16& val) const {
-    return dtype::float16(sinhf(static_cast<float>(val)));
+struct Sinh<float16> {
+  HOSTDEVICE float16 operator()(const float16& val) const {
+    return float16(sinhf(static_cast<float>(val)));
   }
 };
 
@@ -1017,9 +1101,9 @@ struct Cosh {
 };
 
 template <>
-struct Cosh<dtype::float16> {
-  HOSTDEVICE dtype::float16 operator()(const dtype::float16& val) const {
-    return dtype::float16(coshf(static_cast<float>(val)));
+struct Cosh<float16> {
+  HOSTDEVICE float16 operator()(const float16& val) const {
+    return float16(coshf(static_cast<float>(val)));
   }
 };
 
@@ -1109,9 +1193,9 @@ struct Acos {
 };
 
 template <>
-struct Acos<dtype::float16> {
-  HOSTDEVICE dtype::float16 operator()(const dtype::float16& val) const {
-    return dtype::float16(acos(static_cast<float>(val)));
+struct Acos<float16> {
+  HOSTDEVICE float16 operator()(const float16& val) const {
+    return float16(acos(static_cast<float>(val)));
   }
 };
 
@@ -1164,9 +1248,9 @@ struct Asin {
 };
 
 template <>
-struct Asin<dtype::float16> {
-  HOSTDEVICE dtype::float16 operator()(const dtype::float16& val) const {
-    return dtype::float16(asin(static_cast<float>(val)));
+struct Asin<float16> {
+  HOSTDEVICE float16 operator()(const float16& val) const {
+    return float16(asin(static_cast<float>(val)));
   }
 };
 
@@ -1218,9 +1302,9 @@ struct Atan {
 };
 
 template <>
-struct Atan<dtype::float16> {
-  HOSTDEVICE dtype::float16 operator()(const dtype::float16& val) const {
-    return dtype::float16(atan(static_cast<float>(val)));
+struct Atan<float16> {
+  HOSTDEVICE float16 operator()(const float16& val) const {
+    return float16(atan(static_cast<float>(val)));
   }
 };
 
@@ -1290,9 +1374,9 @@ struct Acosh {
 };
 
 template <>
-struct Acosh<dtype::float16> {
-  HOSTDEVICE dtype::float16 operator()(const dtype::float16& val) const {
-    return dtype::float16(acosh(static_cast<float>(val)));
+struct Acosh<float16> {
+  HOSTDEVICE float16 operator()(const float16& val) const {
+    return float16(acosh(static_cast<float>(val)));
   }
 };
 
@@ -1344,9 +1428,9 @@ struct Asinh {
 };
 
 template <>
-struct Asinh<dtype::float16> {
-  HOSTDEVICE dtype::float16 operator()(const dtype::float16& val) const {
-    return dtype::float16(asinh(static_cast<float>(val)));
+struct Asinh<float16> {
+  HOSTDEVICE float16 operator()(const float16& val) const {
+    return float16(asinh(static_cast<float>(val)));
   }
 };
 
@@ -1398,9 +1482,9 @@ struct Atanh {
 };
 
 template <>
-struct Atanh<dtype::float16> {
-  HOSTDEVICE dtype::float16 operator()(const dtype::float16& val) const {
-    return dtype::float16(atanh(static_cast<float>(val)));
+struct Atanh<float16> {
+  HOSTDEVICE float16 operator()(const float16& val) const {
+    return float16(atanh(static_cast<float>(val)));
   }
 };
 
@@ -2553,16 +2637,16 @@ struct Log<ComplexType<T>> {
 };
 
 template <>
-struct Log<dtype::float16> {
-  HOSTDEVICE dtype::float16 operator()(const dtype::float16& val) const {
-    return dtype::float16(std::log(static_cast<float>(val)));
+struct Log<float16> {
+  HOSTDEVICE float16 operator()(const float16& val) const {
+    return float16(std::log(static_cast<float>(val)));
   }
 };
 
 template <>
-struct Log<dtype::bfloat16> {
-  HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16& val) const {
-    return dtype::bfloat16(std::log(static_cast<float>(val)));
+struct Log<bfloat16> {
+  HOSTDEVICE bfloat16 operator()(const bfloat16& val) const {
+    return bfloat16(std::log(static_cast<float>(val)));
   }
 };
 
@@ -2621,16 +2705,16 @@ struct Log2<ComplexType<T>> {
 };
 
 template <>
-struct Log2<dtype::float16> {
-  HOSTDEVICE dtype::float16 operator()(const dtype::float16& val) const {
-    return dtype::float16(std::log2(static_cast<float>(val)));
+struct Log2<float16> {
+  HOSTDEVICE float16 operator()(const float16& val) const {
+    return float16(std::log2(static_cast<float>(val)));
   }
 };
 
 template <>
-struct Log2<dtype::bfloat16> {
-  HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16& val) const {
-    return dtype::bfloat16(std::log2(static_cast<float>(val)));
+struct Log2<bfloat16> {
+  HOSTDEVICE bfloat16 operator()(const bfloat16& val) const {
+    return bfloat16(std::log2(static_cast<float>(val)));
   }
 };
 
@@ -2690,16 +2774,16 @@ struct Log10<ComplexType<T>> {
 };
 
 template <>
-struct Log10<dtype::float16> {
-  HOSTDEVICE dtype::float16 operator()(const dtype::float16& val) const {
-    return dtype::float16(std::log10(static_cast<float>(val)));
+struct Log10<float16> {
+  HOSTDEVICE float16 operator()(const float16& val) const {
+    return float16(std::log10(static_cast<float>(val)));
   }
 };
 
 template <>
-struct Log10<dtype::bfloat16> {
-  HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16& val) const {
-    return dtype::bfloat16(std::log10(static_cast<float>(val)));
+struct Log10<bfloat16> {
+  HOSTDEVICE bfloat16 operator()(const bfloat16& val) const {
+    return bfloat16(std::log10(static_cast<float>(val)));
   }
 };
 
@@ -2765,16 +2849,16 @@ struct Log1p<ComplexType<T>> {
 };
 
 template <>
-struct Log1p<dtype::float16> {
-  HOSTDEVICE dtype::float16 operator()(const dtype::float16& val) const {
-    return dtype::float16(std::log1p(static_cast<float>(val)));
+struct Log1p<float16> {
+  HOSTDEVICE float16 operator()(const float16& val) const {
+    return float16(std::log1p(static_cast<float>(val)));
   }
 };
 
 template <>
-struct Log1p<dtype::bfloat16> {
-  HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16& val) const {
-    return dtype::bfloat16(std::log1p(static_cast<float>(val)));
+struct Log1p<bfloat16> {
+  HOSTDEVICE bfloat16 operator()(const bfloat16& val) const {
+    return bfloat16(std::log1p(static_cast<float>(val)));
   }
 };
 
@@ -3543,7 +3627,8 @@ struct CudaCosGradFunctor : public BaseActivationFunctor<T> {
                                           const T arg_x) const {
     MPType dout = static_cast<MPType>(arg_dout);
     MPType x = static_cast<MPType>(arg_x);
-    if constexpr (std::is_same<T, phi::float16>::value) {
+    if constexpr (std::is_same<T, phi::float16>::value ||
+                  std::is_same<T, phi::bfloat16>::value) {
       return static_cast<T>(-arg_dout * static_cast<T>(sin(x)));
     } else {
       return static_cast<T>(-dout * sin(x));
@@ -3894,7 +3979,8 @@ struct CudaSinGradFunctor : public BaseActivationFunctor<T> {
                                           const T arg_x) const {
     MPType dout = static_cast<MPType>(arg_dout);
     MPType x = static_cast<MPType>(arg_x);
-    if constexpr (std::is_same<T, phi::float16>::value) {
+    if constexpr (std::is_same<T, phi::float16>::value ||
+                  std::is_same<T, phi::bfloat16>::value) {
       return static_cast<T>(arg_dout * static_cast<T>(cos(x)));
     } else {
       return static_cast<T>(dout * cos(x));
@@ -5262,6 +5348,11 @@ __device__ __forceinline__
 
   return static_cast<std::conditional_t<std::is_integral<T>::value, float, T>>(
       ::log(static_cast<double>(x)));
+}
+
+template <>
+__device__ __forceinline__ float log_local<float>(float x) {
+  return ::log(x);
 }
 
 template <>

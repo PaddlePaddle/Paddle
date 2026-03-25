@@ -107,9 +107,9 @@ void SetValueCompute(const Context& dev_ctx,
   // Step 1: Set the value of out at `_index` to zero
   slice_e.device(eigen_place) = slice_e.constant(T(0));
 
-  auto starts_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
-  auto ends_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
-  auto strides_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
+  auto starts_indices = Eigen::DSizes<int64_t, D>();
+  auto ends_indices = Eigen::DSizes<int64_t, D>();
+  auto strides_indices = Eigen::DSizes<int64_t, D>();
 
   for (size_t i = 0; i < D; ++i) {
     starts_indices[i] = 0;
@@ -295,8 +295,8 @@ void SliceCompute(const Context& dev_ctx,
   out_dims = funcs::GetDecreasedDims(slice_dims, decrease_axis);
 
   // 2.2 Get output
-  auto offsets = Eigen::DSizes<Eigen::DenseIndex, D>();
-  auto extents = Eigen::DSizes<Eigen::DenseIndex, D>();
+  auto offsets = Eigen::DSizes<int64_t, D>();
+  auto extents = Eigen::DSizes<int64_t, D>();
 
   for (size_t i = 0; i < D; ++i) {
     offsets[i] = 0;
@@ -313,24 +313,8 @@ void SliceCompute(const Context& dev_ctx,
   auto out_t = EigenTensor<T, D>::From(*out, slice_dims);
   auto& eigen_place = *dev_ctx.eigen_device();
 
-  if (in->numel() <= Eigen::NumTraits<int>::highest()) {
-    // similar to tf.slice:
-    // if element number less than INT_MAX, change the type of index to int
-    Eigen::DSizes<int, D> offsets_32bit, extents_32bit;
-    for (size_t i = 0; i < D; i++) {
-      offsets_32bit[i] = offsets[i];
-      extents_32bit[i] = extents[i];
-    }
-    funcs::EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
-        eigen_place,
-        To32BitIndex(out_t),
-        To32BitIndex(in_t),
-        offsets_32bit,
-        extents_32bit);
-  } else {
-    funcs::EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
-        eigen_place, out_t, in_t, offsets, extents);
-  }
+  funcs::EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
+      eigen_place, out_t, in_t, offsets, extents);
 
   out->Resize(out_dims);
   dev_ctx.template Alloc<T>(out);
@@ -474,7 +458,7 @@ void Unpack_Pivot(const Context& dev_ctx,
                   int h,
                   int w UNUSED) {
   auto dims = Pivot.dims();
-  auto Pdimvec = common::vectorize(dims);
+  auto Pdimvec = vectorize(dims);
   auto prank = Pdimvec.size();
   auto Pnum = dims[prank - 1];
   DenseTensor Pivot_cpu;
@@ -522,7 +506,7 @@ DenseTensor Transpose2DTo6D(const Context& dev_ctx, const DenseTensor& x) {
   // transpose the last two dimision
   DenseTensor ret;
   auto x_dim = x.dims();
-  auto x_vec = common::vectorize<int>(x_dim);
+  auto x_vec = vectorize<int>(x_dim);
   int rank = x_vec.size();
 
   for (int i = 0; i < x_dim.size(); i++) {

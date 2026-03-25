@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import pickle
 import warnings
 
 import paddle
@@ -83,5 +82,7 @@ def _get_valid_program(program=None):
 
 
 def _safe_load_pickle(file, encoding="ASCII"):
-    load_dict = pickle.Unpickler(file, encoding=encoding).load()
+    from paddle.framework.restricted_unpickler import RestrictedUnpickler
+
+    load_dict = RestrictedUnpickler(file, encoding=encoding).load()
     return load_dict
