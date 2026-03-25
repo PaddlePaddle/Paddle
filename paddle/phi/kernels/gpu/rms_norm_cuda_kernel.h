@@ -708,7 +708,6 @@ __device__ __forceinline__ void blockReduceScaleBackwardWithChecks(
     }
   }
 }
-
 template <typename T,
           typename T_ACC,
           unsigned int block_dim_x,
@@ -716,12 +715,13 @@ template <typename T,
           unsigned int rows_per_block_y,
           bool partial_reduction,
           bool aligned_grid>
-__global__ void ScaleBackwardCUDAKernelTemplate(int64_t M,
-                                                int64_t N,
-                                                const T* __restrict__ dY,
-                                                const T* __restrict__ X,
-                                                const T_ACC* __restrict__ rstd,
-                                                T* __restrict__ dscale) {
+__global__ void __launch_bounds__(block_dim_x* block_dim_y)
+    ScaleBackwardCUDAKernelTemplate(int64_t M,
+                                    int64_t N,
+                                    const T* __restrict__ dY,
+                                    const T* __restrict__ X,
+                                    const T_ACC* __restrict__ rstd,
+                                    T* __restrict__ dscale) {
   constexpr int rows_per_thread_y = rows_per_block_y / block_dim_y;
   static_assert(rows_per_thread_y <= kWarpSize);
 
