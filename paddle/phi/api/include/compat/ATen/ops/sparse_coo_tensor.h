@@ -86,25 +86,8 @@ inline at::Tensor sparse_coo_tensor(const at::Tensor& indices,
 inline at::Tensor sparse_coo_tensor(const at::Tensor& indices,
                                     const at::Tensor& values,
                                     at::TensorOptions options = {}) {
-  paddle::Tensor idx = indices._PD_GetInner();
-  paddle::Tensor vals = values._PD_GetInner();
-
-  if (options.dtype_opt().has_value() &&
-      options.dtype_opt().value() != values.scalar_type()) {
-    vals = paddle::experimental::cast(
-        vals,
-        compat::_PD_AtenScalarTypeToPhiDataType(options.dtype_opt().value()));
-  }
-
-  if (options.pinned_memory()) {
-    phi::Place base_place = options._PD_GetPlace();
-    phi::Place pinned_place = compat::_PD_GetCreatePinnedPlace(base_place);
-    idx = idx.copy_to(pinned_place, /*blocking=*/true);
-    vals = vals.copy_to(pinned_place, /*blocking=*/true);
-  }
-
-  return paddle::experimental::sparse::sparse_coo_tensor(
-      vals, idx, infer_sparse_coo_size(indices));
+  return sparse_coo_tensor(
+      indices, values, infer_sparse_coo_size(indices), options);
 }
 
 }  // namespace at
