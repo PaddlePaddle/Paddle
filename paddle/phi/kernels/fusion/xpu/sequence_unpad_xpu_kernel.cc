@@ -32,7 +32,7 @@ void SequenceUnpadXPUKernel(const Context& dev_ctx,
   for (int64_t i = 0; i < batch_size; ++i) {
     out_lod0[i + 1] = out_lod0[i] + seq_len_ptr[i];
   }
-  phi::LegacyLoD out_lod;
+  LegacyLoD out_lod;
   out_lod.push_back(out_lod0);
 
   int64_t out_dim0 = out_lod0.back();

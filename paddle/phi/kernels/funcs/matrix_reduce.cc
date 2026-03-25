@@ -27,10 +27,9 @@ class MatrixReduceSumFunctor<T, CPUContext> {
                   DenseTensor* out) {
     // For example: in's dim = [5, 3, 2, 7, 3] ; out's dim = [3, 1, 7, 3]
     // out_reduce_dim should be [0, 2]
-    const std::vector<int64_t> in_dims = common::vectorize<int64_t>(in.dims());
+    const std::vector<int64_t> in_dims = vectorize<int64_t>(in.dims());
     auto in_size = in_dims.size();
-    const std::vector<int64_t> out_dims =
-        common::vectorize<int64_t>(out->dims());
+    const std::vector<int64_t> out_dims = vectorize<int64_t>(out->dims());
     auto out_size = out_dims.size();
 
     std::vector<int64_t> out_bst_dims(in_size);

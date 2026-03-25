@@ -4559,18 +4559,20 @@ def cdist(
     p = float(p)
 
     if r1 == 0 or r2 == 0:
-        if x.ndim == 3 and y.ndim == 3:
-            batch_size = x.shape[0]
-            return paddle.empty((batch_size, r1, r2), dtype=x.dtype)
-        else:
-            return paddle.empty((r1, r2), dtype=x.dtype)
+        batch_shape = paddle.broadcast_shape(
+            list(x.shape[:-2]), list(y.shape[:-2])
+        )
+        res = paddle.empty([*batch_shape, r1, r2], dtype=x.dtype)
+        res.stop_gradient = x.stop_gradient and y.stop_gradient
+        return res
 
     if c1 == 0:
-        if x.ndim == 3 and y.ndim == 3:
-            batch_size = x.shape[0]
-            return paddle.zeros((batch_size, r1, r2), dtype=x.dtype)
-        else:
-            return paddle.zeros((r1, r2), dtype=x.dtype)
+        batch_shape = paddle.broadcast_shape(
+            list(x.shape[:-2]), list(y.shape[:-2])
+        )
+        res = paddle.zeros([*batch_shape, r1, r2], dtype=x.dtype)
+        res.stop_gradient = x.stop_gradient and y.stop_gradient
+        return res
 
     if p == 2.0 and (mode == 1 or (mode == 0 and (r1 > 25 or r2 > 25))):
         x_norm = paddle.sum(x.pow(2), axis=-1, keepdim=True)

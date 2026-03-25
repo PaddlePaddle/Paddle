@@ -48,7 +48,7 @@ void EighGradKernel(const Context& dev_ctx,
   result.Resize(dims);
   dev_ctx.template Alloc<T>(&result);
 
-  std::vector<int> out_shape = common::vectorize<int>(dims);
+  std::vector<int> out_shape = vectorize<int>(dims);
   DenseTensor constant;
   constant.Resize(make_ddim(out_shape));
   dev_ctx.template Alloc<T>(&constant);

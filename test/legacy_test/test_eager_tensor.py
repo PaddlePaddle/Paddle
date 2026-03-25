@@ -96,8 +96,30 @@ class TestEagerTensor(unittest.TestCase):
                     self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
                     y = x.cuda(device_id=0, blocking=False)
                     self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
+                    y = x.cuda(core.CUDAPlace(0))
+                    self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
+                    y = x.cuda(paddle.device("cuda:0"))
+                    self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
+                    y = x.cuda("cuda:0")
+                    self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
+                    y = x.cuda(device=0, non_blocking=False)
+                    self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
+                    y = x.cuda("cuda:0", False)
+                    self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
+                    # non-existing place
                     with self.assertRaises(ValueError):
                         y = x.cuda("test")
+                    # data type error
+                    with self.assertRaises(ValueError):
+                        y = x.cuda(["cuda:0", "cpu"])
+                    # arg error
+                    with self.assertRaises(ValueError):
+                        y = x.cuda(device="cuda:0", device_id="cuda:0")
+                    with self.assertRaises(ValueError):
+                        y = x.cuda(blocking=True, non_blocking=True)
+                    # too many positional args
+                    with self.assertRaises(ValueError):
+                        y = x.cuda("cuda:0", False, None)
 
                 # support 'dtype' is core.VarType
                 x = paddle.rand((2, 2))

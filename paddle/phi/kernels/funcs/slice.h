@@ -70,7 +70,7 @@ DenseTensor Slice(const Context& dev_ctx,
                   std::vector<int> ends) {
   DenseTensor ret;
   std::vector<int> new_axes = axes;
-  std::vector<int> out_shape = common::vectorize<int>(x.dims());
+  std::vector<int> out_shape = vectorize<int>(x.dims());
   size_t rank = out_shape.size();
   PADDLE_ENFORCE_EQ(
       axes.size(),
@@ -136,7 +136,7 @@ static void Slice(const Context& dev_ctx,
     extents[i] = in_dims[i];
   }
 
-  std::vector<int64_t> out_shape_vec = common::vectorize(in_dims);
+  std::vector<int64_t> out_shape_vec = vectorize(in_dims);
   for (size_t i = 0; i < axes_vec.size(); ++i) {
     offsets[axes_vec[i]] = begin_vec[i];
     extents[axes_vec[i]] = end_vec[i] - begin_vec[i];

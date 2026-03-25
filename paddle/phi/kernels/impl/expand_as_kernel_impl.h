@@ -29,7 +29,7 @@ void ExpandAs(const Context& dev_ctx,
               const std::vector<int64_t>& target_shape,
               DenseTensor* out) {
   auto in_dims = x.dims();
-  auto vec_in_dims = common::vectorize<int>(in_dims);
+  auto vec_in_dims = vectorize<int>(in_dims);
   auto diff = target_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
   std::vector<int64_t> repeat_times(vec_in_dims.size());

@@ -25,8 +25,8 @@ class CopyMatrixRowsFunctor<CPUContext, T> {
                   DenseTensor* dst,
                   bool is_src_index) {
     size_t* index = index_lod.data();
-    const auto& src_dims = common::vectorize<int>(src.dims());
-    const auto& dst_dims = common::vectorize<int>(dst->dims());
+    const auto& src_dims = vectorize<int>(src.dims());
+    const auto& dst_dims = vectorize<int>(dst->dims());
     PADDLE_ENFORCE_EQ(src_dims.size(),
                       2UL,
                       common::errors::InvalidArgument(

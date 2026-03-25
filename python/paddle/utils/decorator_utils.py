@@ -994,6 +994,52 @@ def index_fill_decorator() -> Callable[
     return decorator
 
 
+def tensor_cuda_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    """
+    Usage Example:
+    PyTorch: Tensor.cuda(device: DeviceLike, non_blocking: bool = False)
+    Paddle: Tensor.cuda(device_id: DeviceLike, blocking: bool = True)
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            if "device" in kwargs:
+                if "device_id" not in kwargs:
+                    kwargs["device_id"] = kwargs.pop("device")
+                else:
+                    raise ValueError(
+                        "Cannot specify both 'device' and its alias 'device_id'."
+                    )
+
+            if "non_blocking" in kwargs:
+                if "blocking" not in kwargs:
+                    kwargs["blocking"] = not (kwargs.pop("non_blocking"))
+                else:
+                    raise ValueError(
+                        "Cannot specify both 'blocking' and 'non_blocking'."
+                    )
+
+            if len(args) >= 3 and isinstance(args[1], str):
+                # using pytorch signature
+                # args[0] is self
+                if "device_id" not in kwargs:
+                    kwargs["device_id"] = args[1]
+                if "blocking" not in kwargs:
+                    kwargs["blocking"] = not args[2]
+                if len(args) > 3:
+                    raise ValueError("cuda() received too many arguments")
+                args = args[:1]
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
 def batch_sampler_decorator() -> Callable[
     [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
 ]:
@@ -1021,7 +1067,6 @@ def batch_sampler_decorator() -> Callable[
                         "BatchSampler() received too many arguments"
                     )
                 args = (args[0],)
-
             return func(*args, **kwargs)
 
         wrapper.__signature__ = inspect.signature(func)

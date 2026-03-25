@@ -30,7 +30,7 @@ void Expand(const Context& dev_ctx,
             DenseTensor* out) {
   auto in_dims = x.dims();
   auto expand_shape = shape.GetData();
-  auto vec_in_dims = common::vectorize<int64_t>(in_dims);
+  auto vec_in_dims = vectorize<int64_t>(in_dims);
   auto diff = expand_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
   std::vector<int> repeat_times(vec_in_dims.size());
