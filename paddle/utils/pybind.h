@@ -53,7 +53,7 @@ PADDLE_API paddle::Tensor& CastPyArg2Tensor(PyObject* obj, Py_ssize_t arg_pos);
 
 // Internal use only, to expose the Tensor type to Python.
 PADDLE_API PyObject* ToPyObject(const paddle::Tensor& value,
-                     bool return_py_none_if_not_initialize = false);
+                                bool return_py_none_if_not_initialize = false);
 
 // Internal use only, switch tensor_operants_mode to phi
 PADDLE_API void EnableTensorOperantsToPhiMode();
