@@ -1249,6 +1249,51 @@ def flash_attn_varlen_qkvpacked(
     return out, softmax if return_softmax else None
 
 
+# Global cache: group_id -> unique_id tensor (for NVSHMEM bootstrap).
+# Each distinct group needs its own unique_id, generated once by rank 0
+# and broadcast to all members via all_gather_object.
+_flashmask_unique_id_cache: dict[int, paddle.Tensor] = {}
+
+
+def _get_or_create_unique_id(group):
+    """Get or create the NVSHMEM unique_id for a communication group.
+
+    On first call for a given group: rank 0 generates the unique_id via
+    ``flashmask_get_unique_id()``, then broadcasts it to all group members
+    using ``all_gather_object`` (CPU tensor, so regular ``all_gather`` would
+    raise). The result is cached by ``group.id``.
+
+    On subsequent calls: returns the cached unique_id directly.
+
+    Args:
+        group: A ``paddle.distributed.Group`` instance.
+
+    Returns:
+        tuple[Tensor, bool]: ``(unique_id, is_new)`` where ``unique_id`` is
+        a 128-byte uint8 CPU tensor, and ``is_new`` indicates whether this
+        is the first time (True) or a cache hit (False).
+    """
+    import paddle.distributed as dist
+
+    gid = group.id
+    if gid in _flashmask_unique_id_cache:
+        return _flashmask_unique_id_cache[gid], False
+
+    # Rank 0 of this group generates the unique_id
+    if group.rank == 0:
+        unique_id = flashmask_get_unique_id()
+    else:
+        unique_id = paddle.zeros([128], dtype='uint8', device='cpu')
+
+    # Broadcast via all_gather_object (tensor is on CPU, dist env is GPU)
+    result_list = []
+    dist.all_gather_object(result_list, unique_id, group=group)
+    unique_id = result_list[0]
+
+    _flashmask_unique_id_cache[gid] = unique_id
+    return unique_id, True
+
+
 def flashmask_attention(
     query: Tensor,
     key: Tensor,
@@ -1266,9 +1311,7 @@ def flashmask_attention(
     name: str | None = None,
     softmax_scale: float | None = None,
     block_mask: Tensor | None = None,
-    unique_id: Tensor | None = None,
-    rank: int = 0,
-    nranks: int = 1,
+    group=None,
 ):
     r"""
     FlashMask: Official Implementation
@@ -1347,18 +1390,13 @@ def flashmask_attention(
             This argument must be provided together with flashmask.
             The mask will be applied at the block level: each [i, j] position in block_mask controls whether the corresponding [128 x 128] block in the attention matrix is masked.
             Any mismatch in expected shape or head dimension will raise an error.
-        unique_id (tensor, optional):
-            A 1D CPU tensor with exactly 128 elems (bytes). Generated from ``flashmask_generate_unique_id``, and is used for initializing
-            the NVSHMEM env for distributed overlap flashmask. This Tensor is only needed once: whenever users want to use overlapped flashmask,
-            they can pass in ``(unique_id, rank, nranks)``, and flashmask will automatically initialize an OverlapCommunicator instance under the hood.
-            Once it is initialized, only rank & nranks are needed every time. Note that the tensor resides on CPU **only**. Type: uint8_t. Default: None.
-
-            Usage Notes:
-            - When users haven't passed ``unique_id`` once, even if they passed ``rank``, ``nranks``, the flashmask does not come with distributed overlap
-            functionality. Users should pass ``unique_id`` at least for once (together with ``rank`` and ``nranks``), to initiate distributed overlap setups.
-            - Only useful when fa_version == 3, and we are using sparse masks (other than ``full`` and ``causal``)
-        rank (int, optional): self-rank. Used in distributed context parallelism. Informing the overlap communicator about the comm topology. Default: 0.
-        nranks (int, optional): number of PEs for the comm. Used in distributed context parallelism. Informing the overlap communicator about the comm topology. Default: 1.
+        group (paddle.distributed.Group, optional):
+            The communication group for distributed context parallelism (CP) overlap.
+            When provided, ``rank`` and ``nranks`` are automatically extracted from the group,
+            and the NVSHMEM unique_id is managed internally (generated once per group by rank 0,
+            broadcast to all members, and cached for subsequent calls). Users only need to pass
+            the CP group without worrying about low-level NVSHMEM initialization.
+            Default: None (no distributed overlap).
 
 
     Returns
@@ -1932,6 +1970,14 @@ def flashmask_attention(
                 startend_row_indices, min=0, max=sq
             ).repeat_interleave(bsz, 0)
 
+    # --- Distributed group resolution ---
+    if group is not None:
+        rank = group.rank
+        nranks = group.nranks
+    else:
+        rank = 0
+        nranks = 1
+
     if block_mask is not None:
         # xhy: can set a full startend_row_indices for block_mask_attn when using block_mask_attn?
         assert startend_row_indices is not None, (
@@ -2103,10 +2149,12 @@ def flashmask_attention(
                 "flashmask_attention_v2 does not support setting name"
             )
 
-            if unique_id is not None:
-                assert nranks > 1, (
-                    f"Meanless when initializing NVSHMEM with less than 2 ranks (Current nranks: {nranks})."
-                )
+            # Obtain unique_id from group (first call per group triggers
+            # NVSHMEM bootstrap; subsequent calls reuse cached state).
+            unique_id = None
+            if group is not None and nranks > 1:
+                uid, is_new = _get_or_create_unique_id(group)
+                unique_id = uid if is_new else None
 
             if softmax_scale is None:
                 softmax_scale = query.shape[-1] ** (-0.5)

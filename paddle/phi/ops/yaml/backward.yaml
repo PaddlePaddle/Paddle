@@ -1260,8 +1260,8 @@
   optional : block_mask
   output : Tensor(q_grad), Tensor(k_grad), Tensor(v_grad)
   infer_meta :
-    func : FlashMaskV2GradInferMeta
-    param : [q, k, v, nranks]
+    func : FlashAttnGradInferMeta
+    param : [q, k, v]
   kernel :
     func : flashmask_attention_v2_grad
     data_type: q

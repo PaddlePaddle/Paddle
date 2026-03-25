@@ -1168,6 +1168,20 @@ void FlashMaskV2GradBaseKernel(
   int const seqlen_q_rounded = round_multiple(seqlen_q, kBlockM);
 
   // if KV head >= 4, we will consider using RS overlap
+  PADDLE_ENFORCE_LE(
+      nranks,
+      64,
+      common::errors::InvalidArgument(
+          "nranks for FlashMask overlap should <= 64, got: %d", nranks));
+  PADDLE_ENFORCE_EQ(
+      (nranks == 1) || (seqlen_k >= 4096 && seqlen_k <= 131072 &&
+                        (seqlen_k & (seqlen_k - 1)) == 0),
+      true,
+      common::errors::InvalidArgument(
+          "If nranks > 1 (using overlap), currently only [4, 8, 16, 32, 64, "
+          "128]K seqlen_k is supported, got nranks = %d, seqlen_k = %d",
+          nranks,
+          seqlen_k));
   const int chunks_per_seg = dynload::flashmaskv2_get_num_chunks_per_stage(
       seqlen_k, nranks, num_heads_k);
   PADDLE_ENFORCE_GT(
@@ -1177,7 +1191,6 @@ void FlashMaskV2GradBaseKernel(
           "chunks_per_seg should be at least 1, but got: %d. Check whether "
           "WITH_NVSHMEM is on for this Paddle compile.",
           chunks_per_seg));
-  // seqlen scaler for dkv_accum and dkv, if H_k > 4: RS-overlap is used
   bool const use_rs_overlap = nranks > 1;
   VLOG(6) << "FlashMask RS overlap: use rs: " << use_rs_overlap
           << ", num chunk: " << chunks_per_seg;
@@ -1185,7 +1198,7 @@ void FlashMaskV2GradBaseKernel(
       use_rs_overlap ? chunks_per_seg : nranks;  // * cp_size
   int const dkv_s_scaler =
       use_rs_overlap ? 1 : nranks;  // dk, dv remains local seqlen
-  int const seqlen_k_rounded =
+  int const seqlen_k_rounded_cp =
       round_multiple(dkv_accum_s_scaler * seqlen_k, kBlockN);
   int const total_q_padded_rounded =
       round_multiple(total_q + batch_size * kBlockM, kBlockM);
@@ -1346,13 +1359,16 @@ void FlashMaskV2GradBaseKernel(
   }
   if (num_heads_k != num_heads) {  // MQA / GQA
     if (!is_varlen) {
+      // dk and dv accum should directly account for CP overlap
       if (dk_accum) {
-        dk_accum->Resize(make_ddim(
-            {batch_size, num_heads_k, seqlen_k_rounded * head_size_rounded}));
+        dk_accum->Resize(make_ddim({batch_size,
+                                    num_heads_k,
+                                    seqlen_k_rounded_cp * head_size_rounded}));
       }
       if (dv_accum) {
-        dv_accum->Resize(make_ddim(
-            {batch_size, num_heads_k, seqlen_k_rounded * head_size_rounded}));
+        dv_accum->Resize(make_ddim({batch_size,
+                                    num_heads_k,
+                                    seqlen_k_rounded_cp * head_size_rounded}));
       }
     } else {
       if (dk_accum) {
@@ -1386,10 +1402,10 @@ void FlashMaskV2GradBaseKernel(
       params_handle,
       batch_size,
       seqlen_q,
-      seqlen_k,  // in overlap mode: seqlen_k will be scaled in flash-attn
+      seqlen_k,
       seqlen_q_rounded,
-      seqlen_k_rounded,  // in overlap mode: seqlen_k is already scaled in
-                         // Paddle
+      seqlen_k_rounded_cp,  // length of grad accum will be scaled for CP
+                            // overlap
       num_heads,
       num_heads_k,
       head_size,

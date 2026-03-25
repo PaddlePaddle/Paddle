@@ -342,16 +342,6 @@ void FlashAttnGradInferMeta(const MetaTensor& q,
   }
 }
 
-void FlashMaskV2GradInferMeta(const MetaTensor& q,
-                              const MetaTensor& k,
-                              const MetaTensor& v,
-                              int nranks,
-                              MetaTensor* dq,
-                              MetaTensor* dk,
-                              MetaTensor* dv) {
-  FlashAttnGradInferMeta(q, k, v, dq, dk, dv);
-}
-
 void FlashAttnQKVPackedGradInferMeta(const MetaTensor& qkv, MetaTensor* dqkv) {
   if (dqkv) {
     dqkv->share_meta(qkv);

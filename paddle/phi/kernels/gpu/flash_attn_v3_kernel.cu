@@ -2197,6 +2197,11 @@ void FlashMaskV2BaseKernel(
 
     // distributed settings
 #ifdef PADDLE_WITH_NVSHMEM
+    PADDLE_ENFORCE_LE(
+        nranks,
+        64,
+        common::errors::InvalidArgument(
+            "nranks for FlashMask overlap should <= 64, got: %d", nranks));
     dynload::flashmaskv2_fwd_params_set_rank(params_handle, rank);
     dynload::flashmaskv2_fwd_params_set_nranks(params_handle, nranks);
     if (unique_id_.is_initialized()) {
