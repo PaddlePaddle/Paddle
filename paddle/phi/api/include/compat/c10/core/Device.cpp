@@ -69,9 +69,12 @@ Device::Device(const std::string& device_string)
     }
   }
 
-  // 固定内存类型（GPUPINNED/XPUPINNED）及 CPU 不携带有效的 device index
+  // 固定内存类型（GPUPINNED/XPUPINNED）不携带有效的 device index。
+  // 其余设备遵循 PyTorch 语义：index==-1 表示无显式 index。
   const phi::AllocationType alloc_type = c10DeviceTypeToPhiAllocationType(type);
-  has_index_ = phiPlaceHasC10DeviceIndex(alloc_type, index);
+  const bool no_index_type =
+      (type == DeviceType::GPUPINNED || type == DeviceType::XPUPINNED);
+  has_index_ = !no_index_type && (index != -1);
   inner_ = phi::Place(alloc_type, has_index_ ? index : 0);
 }
 

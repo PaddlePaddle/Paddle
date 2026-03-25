@@ -130,14 +130,48 @@ struct dummy_int1_7_t {};
   _(uint32_t, UINT32, UInt32)
 
 enum class PADDLE_API ScalarType : int8_t {
-#define DEFINE_ST_ENUM_VAL_(_1, _2, n) n,
-  AT_FORALL_SCALAR_TYPES_WITH_COMPLEX_AND_QINTS(DEFINE_ST_ENUM_VAL_)
-#undef DEFINE_ENUM_ST_ENUM_VAL_
-#define DEFINE_ST_ENUM_VAL_FOR_QINTS_(_1, n) n,
-      AT_FORALL_QINT_TYPES(DEFINE_ST_ENUM_VAL_FOR_QINTS_)
-#undef DEFINE_ST_ENUM_VAL_FOR_QINTS_
-          Undefined,
-  NumOptions
+  Byte = 0,
+  Char = 1,
+  Short = 2,
+  Int = 3,
+  Long = 4,
+  Half = 5,
+  Float = 6,
+  Double = 7,
+
+  // 8 is reserved by PyTorch for ComplexHalf.
+  ComplexFloat = 9,
+  ComplexDouble = 10,
+  Bool = 11,
+  QInt8 = 12,
+  QUInt8 = 13,
+  QInt32 = 14,
+  BFloat16 = 15,
+  QUInt4x2 = 16,
+  QUInt2x4 = 17,
+
+  Float8_e5m2 = 23,
+  Float8_e4m3fn = 24,
+  UInt16 = 27,
+  UInt32 = 28,
+  UInt64 = 29,
+  UInt1 = 30,
+  UInt2 = 31,
+  UInt3 = 32,
+  UInt4 = 33,
+  UInt5 = 34,
+  UInt6 = 35,
+  UInt7 = 36,
+  Int1 = 37,
+  Int2 = 38,
+  Int3 = 39,
+  Int4 = 40,
+  Int5 = 41,
+  Int6 = 42,
+  Int7 = 43,
+
+  Undefined = -1,
+  NumOptions = 44,
 };
 namespace impl {
 

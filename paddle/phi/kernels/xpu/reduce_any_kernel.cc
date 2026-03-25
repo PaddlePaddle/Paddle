@@ -46,7 +46,7 @@ void AnyRawKernel(const Context& dev_ctx,
 
   int r = 0;
   if (!std::is_same<T, bool>::value) {
-    auto x_bool = phi::Cast<T, Context>(dev_ctx, x, phi::DataType::BOOL);
+    auto x_bool = Cast<T, Context>(dev_ctx, x, DataType::BOOL);
     DenseTensor out_bool;
     out_bool.Resize(out->dims());
     r = XPUReduce<Context, Type>(

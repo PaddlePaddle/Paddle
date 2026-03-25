@@ -59,7 +59,7 @@ void DeformableConvKernel(const Context& dev_ctx,
                         "in deformable_conv op."));
 
   const int64_t batch_size = x.dims()[0];
-  std::vector<int64_t> output_shape_vec(common::vectorize(out->dims()));
+  std::vector<int64_t> output_shape_vec(vectorize(out->dims()));
 
   const T* input_ptr = x.data<T>();
   const T* filter_ptr = filter.data<T>();

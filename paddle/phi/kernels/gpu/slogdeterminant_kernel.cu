@@ -54,7 +54,7 @@ struct SlogDeterminantFunctor {
     std::vector<T> sign_vec;
     std::vector<T> log_vec;
     std::vector<T> output_vec;
-    phi::TensorToVector(input, dev_ctx, &input_vec);
+    TensorToVector(input, dev_ctx, &input_vec);
     for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
       auto begin_iter = input_vec.begin() + i * rank * rank;
       auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
@@ -78,7 +78,7 @@ struct SlogDeterminantFunctor {
     // merge sign_vec and log_vec as final output_vec
     output_vec.insert(output_vec.end(), sign_vec.begin(), sign_vec.end());
     output_vec.insert(output_vec.end(), log_vec.begin(), log_vec.end());
-    phi::TensorFromVector(output_vec, dev_ctx, output);
+    TensorFromVector(output_vec, dev_ctx, output);
   }
 };
 
@@ -178,7 +178,7 @@ struct SlogDeterminantFunctor<phi::dtype::complex<T>, Context> {
     std::vector<phi::dtype::complex<T>> sign_vec;
     std::vector<phi::dtype::complex<T>> log_vec;
     std::vector<phi::dtype::complex<T>> output_vec;
-    phi::TensorToVector(input, dev_ctx, &input_vec);
+    TensorToVector(input, dev_ctx, &input_vec);
     for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
       auto begin_iter = input_vec.begin() + i * rank * rank;
       auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
@@ -203,7 +203,7 @@ struct SlogDeterminantFunctor<phi::dtype::complex<T>, Context> {
     // merge sign_vec and log_vec as final output_vec
     output_vec.insert(output_vec.end(), sign_vec.begin(), sign_vec.end());
     output_vec.insert(output_vec.end(), log_vec.begin(), log_vec.end());
-    phi::TensorFromVector(output_vec, dev_ctx, output);
+    TensorFromVector(output_vec, dev_ctx, output);
 #endif
   }
 };
@@ -362,7 +362,7 @@ struct SlogDeterminantV2Functor {
     std::vector<T> sign_vec;
     std::vector<T> log_vec;
     DDim out_dims = sign->dims();
-    phi::TensorToVector(input, dev_ctx, &input_vec);
+    TensorToVector(input, dev_ctx, &input_vec);
     for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
       auto begin_iter = input_vec.begin() + i * rank * rank;
       auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
@@ -383,8 +383,8 @@ struct SlogDeterminantV2Functor {
           : log_vec.push_back(std::log(std::abs(
                 det_val)));  // for computing log value of a negative value.
     }
-    phi::TensorFromVector(sign_vec, dev_ctx, sign);
-    phi::TensorFromVector(log_vec, dev_ctx, logdet);
+    TensorFromVector(sign_vec, dev_ctx, sign);
+    TensorFromVector(log_vec, dev_ctx, logdet);
     if (out_dims == make_ddim({})) {
       // TensorFromVector Converting inputTensor dimensions from () (scalar) to
       // (1,)
@@ -521,7 +521,7 @@ struct SlogDeterminantV2Functor<phi::dtype::complex<T>, Context> {
     std::vector<phi::dtype::complex<T>> sign_vec;
     std::vector<phi::dtype::complex<T>> log_vec;
     DDim out_dims = sign->dims();
-    phi::TensorToVector(input, dev_ctx, &input_vec);
+    TensorToVector(input, dev_ctx, &input_vec);
     for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
       auto begin_iter = input_vec.begin() + i * rank * rank;
       auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
@@ -542,8 +542,8 @@ struct SlogDeterminantV2Functor<phi::dtype::complex<T>, Context> {
           phi::sign(det_val, static_cast<std::complex<T>>(abs_det_val))));
       log_vec.push_back(std::log(abs_det_val));
     }
-    phi::TensorFromVector(sign_vec, dev_ctx, sign);
-    phi::TensorFromVector(log_vec, dev_ctx, logdet);
+    TensorFromVector(sign_vec, dev_ctx, sign);
+    TensorFromVector(log_vec, dev_ctx, logdet);
     if (out_dims == make_ddim({})) {
       // TensorFromVector Converting inputTensor dimensions from () (scalar) to
       // (1,)

@@ -64,7 +64,7 @@ template <typename T, typename IntT>
 inline void CreateCsrDescriptor(const SparseCsrTensor& x,
                                 const GPUContext& dev_ctx,
                                 rocsparse_spmat_descr* descriptor) {
-  std::vector<int64_t> xdim_vec = common::vectorize(x.dims());
+  std::vector<int64_t> xdim_vec = vectorize(x.dims());
   auto x_ndims = xdim_vec.size();
   PADDLE_ENFORCE_GE(
       x_ndims,
@@ -115,7 +115,7 @@ template <typename T, typename IntT>
 inline void CreateCooDescriptor(const SparseCooTensor& x,
                                 const GPUContext& dev_ctx,
                                 rocsparse_spmat_descr* descriptor) {
-  std::vector<int64_t> xdim_vec = common::vectorize(x.dims());
+  std::vector<int64_t> xdim_vec = vectorize(x.dims());
   auto x_ndims = xdim_vec.size();
   PADDLE_ENFORCE_GE(
       x_ndims,
@@ -203,7 +203,7 @@ class RocSparseDnMatDescriptor {
   explicit RocSparseDnMatDescriptor(const DenseTensor& x,
                                     const GPUContext& dev_ctx)
       : dev_ctx_(dev_ctx) {
-    std::vector<int64_t> xdim_vec = common::vectorize(x.dims());
+    std::vector<int64_t> xdim_vec = vectorize(x.dims());
     auto x_ndims = xdim_vec.size();
     PADDLE_ENFORCE_GE(
         x_ndims,

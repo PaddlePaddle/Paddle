@@ -31,7 +31,6 @@ defaults:
 jobs:
   check-bypass:
     name: Check bypass
-    if: ${{ inputs.clone-can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
       workflow-name: "dcu"
@@ -40,8 +39,8 @@ jobs:
 
   build:
     name: Build
-    needs: check-bypass
-    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
+    needs: [check-bypass]
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' && inputs.clone-can-skip != 'true' }}
     env:
       TASK: paddle-CI-${{ github.event.pull_request.number }}-dcu_build
     runs-on:

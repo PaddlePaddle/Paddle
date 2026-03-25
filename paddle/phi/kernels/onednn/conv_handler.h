@@ -67,8 +67,7 @@ class ConvOneDNNHandlerT
             dev_ctx,
             onednn_engine,
             cpu_place,
-            funcs::CreateKey(
-                dev_ctx, common::vectorize(input->dims()), unique_name)) {
+            funcs::CreateKey(dev_ctx, vectorize(input->dims()), unique_name)) {
     if (unlikely(!this->isCached())) {
       PADDLE_ENFORCE_EQ(
           input->layout(),
@@ -125,8 +124,8 @@ class ConvOneDNNHandlerT
                 DataLayout::ONEDNN,
                 bias->layout()));
 
-        auto bias_shape = common::vectorize(bias->dims());
-        auto output_shape = common::vectorize(output->dims());
+        auto bias_shape = vectorize(bias->dims());
+        auto output_shape = vectorize(output->dims());
         // layout of bias is always NCHW/NCDHW, so channel is always at 1st dim
         if (bias_shape.size() != 1) {
           PADDLE_ENFORCE_EQ(
@@ -155,7 +154,7 @@ class ConvOneDNNHandlerT
       const auto filter_dims = filter->dims();
       const auto filter_data_dims =
           slice_ddim(filter_dims, 2, filter_dims.size());
-      const auto ksize = common::vectorize(filter_data_dims);
+      const auto ksize = vectorize(filter_data_dims);
       std::vector<int64_t> strides(begin(strides_in), end(strides_in));
       std::vector<int64_t> paddings(begin(paddings_in), end(paddings_in));
       std::vector<int64_t> dilations(begin(dilations_in), end(dilations_in));
@@ -166,12 +165,12 @@ class ConvOneDNNHandlerT
             return i - 1;
           });
 
-      const auto src_tz = common::vectorize(input->dims());
+      const auto src_tz = vectorize(input->dims());
 
-      auto weights_tz = common::vectorize(filter->dims());
+      auto weights_tz = vectorize(filter->dims());
       funcs::GetGroupConvWeightsTz(weights_tz, groups);
 
-      const auto dst_tz = common::vectorize(output->dims());
+      const auto dst_tz = vectorize(output->dims());
 
       const dnnl::memory::dims stride_dims = strides;
       const auto onednn_paddings = funcs::ToOneDNNPadding(paddings);
@@ -211,7 +210,7 @@ class ConvOneDNNHandlerT
                                                              fuse_activation);
 
       if (bias) {
-        auto bias_tz = common::vectorize(bias->dims());
+        auto bias_tz = vectorize(bias->dims());
         if (bias_tz.size() > 1) bias_tz = {bias_tz[1]};
         dnnl::memory::desc bias_md =
             funcs::OneDNNMemDesc(bias_tz,
@@ -269,8 +268,7 @@ class ConvOneDNNHandlerT
             dev_ctx,
             dev_ctx.GetEngine(),
             cpu_place,
-            funcs::CreateKey(
-                dev_ctx, common::vectorize(in->dims()), unique_name)) {
+            funcs::CreateKey(dev_ctx, vectorize(in->dims()), unique_name)) {
     if (unlikely(!this->isBwdCached())) {
       PADDLE_ENFORCE_EQ(
           in->layout(),
@@ -310,17 +308,17 @@ class ConvOneDNNHandlerT
       auto data_dims = slice_ddim(input_dims, 2, input_dims.size());
       auto filter_dims = filter->dims();
       auto filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
-      auto ksize = common::vectorize(filter_data_dims);
+      auto ksize = vectorize(filter_data_dims);
 
       UpdatePaddingAndDilation(
           &paddings, &dilations, padding_algorithm, data_dims, strides, ksize);
 
-      auto src_tz = common::vectorize(in->dims());
-      auto weights_tz = common::vectorize(filter->dims());
+      auto src_tz = vectorize(in->dims());
+      auto weights_tz = vectorize(filter->dims());
 
       int g = std::max(groups, 1);
       funcs::GetGroupConvWeightsTz(weights_tz, g);
-      auto dst_tz = common::vectorize(out_grad->dims());
+      auto dst_tz = vectorize(out_grad->dims());
 
       /* create memory descriptor for conv backward without specified format
        * ('any') which lets a primitive (conv backward in this case) choose
@@ -353,7 +351,7 @@ class ConvOneDNNHandlerT
       // Recreating FWD PD. For training there are no post ops in convolution
       dnnl::primitive_attr conv_attr;
       if (bias) {
-        auto bias_tz = common::vectorize(bias->dims());
+        auto bias_tz = vectorize(bias->dims());
         dnnl::memory::desc bias_md =
             funcs::OneDNNMemDesc(bias_tz,
                                  dnnl::memory::data_type::f32,
@@ -462,7 +460,7 @@ class ConvOneDNNHandlerT
                                                    const int groups,
                                                    const bool is_conv3d) {
     const K* filter_data = filter->data<K>();
-    auto weights_tz = common::vectorize(filter->dims());
+    auto weights_tz = vectorize(filter->dims());
     funcs::GetGroupConvWeightsTz(weights_tz, groups);
 
     auto user_src_md =
@@ -557,7 +555,7 @@ class ConvOneDNNHandlerT
       return weights_mem_p;
     } else if (is_test) {
       const K* filter_data = filter->data<K>();
-      auto weights_tz = common::vectorize(filter->dims());
+      auto weights_tz = vectorize(filter->dims());
       funcs::GetGroupConvWeightsTz(weights_tz, groups);
 
       auto user_src_md =
@@ -575,7 +573,7 @@ class ConvOneDNNHandlerT
                                             mask);
     } else {
       const T* filter_data = filter->data<T>();
-      auto weights_tz = common::vectorize(filter->dims());
+      auto weights_tz = vectorize(filter->dims());
       funcs::GetGroupConvWeightsTz(weights_tz, groups);
 
       auto user_src_md =
@@ -613,7 +611,7 @@ class ConvOneDNNHandlerT
       const K_Bias* bias_data = bias->data<K_Bias>();
 
       dnnl::memory::desc bias_md = bias->mem_desc();
-      auto bias_tz = common::vectorize(bias->dims());
+      auto bias_tz = vectorize(bias->dims());
       if (bias_tz.size() > 1) {
         bias_tz = {bias_tz[1]};
         bias_md = funcs::OneDNNMemDesc(bias_tz,

@@ -17,14 +17,12 @@ from __future__ import annotations
 import functools
 import inspect
 import warnings
-from typing import TYPE_CHECKING, Any, Callable, TypeVar, cast
+from collections.abc import Iterable
+from typing import Any, Callable, TypeVar, cast
 
 from typing_extensions import ParamSpec, get_overloads
 
 import paddle
-
-if TYPE_CHECKING:
-    from collections.abc import Iterable
 
 _InputT = ParamSpec("_InputT")
 _RetT = TypeVar("_RetT")
@@ -988,6 +986,87 @@ def index_fill_decorator() -> Callable[
                     kwargs["value"] = args[3]
                 args = args[4:] if len(args) > 4 else ()
 
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
+def tensor_cuda_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    """
+    Usage Example:
+    PyTorch: Tensor.cuda(device: DeviceLike, non_blocking: bool = False)
+    Paddle: Tensor.cuda(device_id: DeviceLike, blocking: bool = True)
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            if "device" in kwargs:
+                if "device_id" not in kwargs:
+                    kwargs["device_id"] = kwargs.pop("device")
+                else:
+                    raise ValueError(
+                        "Cannot specify both 'device' and its alias 'device_id'."
+                    )
+
+            if "non_blocking" in kwargs:
+                if "blocking" not in kwargs:
+                    kwargs["blocking"] = not (kwargs.pop("non_blocking"))
+                else:
+                    raise ValueError(
+                        "Cannot specify both 'blocking' and 'non_blocking'."
+                    )
+
+            if len(args) >= 3 and isinstance(args[1], str):
+                # using pytorch signature
+                # args[0] is self
+                if "device_id" not in kwargs:
+                    kwargs["device_id"] = args[1]
+                if "blocking" not in kwargs:
+                    kwargs["blocking"] = not args[2]
+                if len(args) > 3:
+                    raise ValueError("cuda() received too many arguments")
+                args = args[:1]
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
+def batch_sampler_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    """
+    Usage Example:
+    PyTorch: torch.utils.data.BatchSampler(sampler, batch_size, drop_last)
+    Paddle: paddle.utils.data.BatchSampler(dataset, sampler, shuffle, batch_size, drop_last)
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            # args[0] is self
+            # args[1] is Sampler / Iterable, use torch signature
+            if len(args) >= 2 and isinstance(
+                args[1], (paddle.io.Sampler, Iterable)
+            ):
+                kwargs["sampler"] = args[1]
+                if len(args) >= 3:
+                    kwargs["batch_size"] = args[2]
+                if len(args) == 4:
+                    kwargs["drop_last"] = args[3]
+                if len(args) > 4:
+                    raise TypeError(
+                        "BatchSampler() received too many arguments"
+                    )
+                args = (args[0],)
             return func(*args, **kwargs)
 
         wrapper.__signature__ = inspect.signature(func)

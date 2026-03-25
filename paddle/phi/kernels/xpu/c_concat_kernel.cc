@@ -85,7 +85,7 @@ void CConcatKernel(const Context& dev_ctx,
     offset += rows_per_tensor;
   }
 
-  funcs::ConcatFunctor<phi::XPUContext, T> functor;
+  funcs::ConcatFunctor<XPUContext, T> functor;
   out->Resize(out_dims);
   dev_ctx.Alloc(out, x->dtype());
   functor(dev_ctx, inputs, axis, out);

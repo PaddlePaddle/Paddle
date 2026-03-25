@@ -257,9 +257,8 @@ class PADDLE_API TensorBase {
     return false;
   }
 
-  c10::TensorOptions options() const {
-    // TODO(SigureMo): Implement layout
-    return c10::TensorOptions().dtype(dtype()).device(device());
+  TensorOptions options() const {
+    return TensorOptions().dtype(dtype()).device(device()).layout(layout());
   }
 
   const TensorBase& fill_(const at::Scalar& scalar) const {

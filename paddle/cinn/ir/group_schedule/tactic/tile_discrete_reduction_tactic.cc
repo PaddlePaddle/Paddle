@@ -171,7 +171,8 @@ void TileDiscreteReductionTactic::MergeReduceAxis(ir::IRSchedule* sch,
 
 void TileDiscreteReductionTactic::SplitSptialInner(
     ir::IRSchedule* sch, const std::string& block_id) {
-  const int64_t sp_thread = context_->config.tile_config.warp_num * 32 /
+  const int64_t sp_thread = context_->config.tile_config.warp_num *
+                            context_->config.tile_config.warp_size /
                             context_->config.tile_config.tree_reduce_num;
   auto loops = sch->GetLoops(block_id);
   if (loops.size() == 3) {

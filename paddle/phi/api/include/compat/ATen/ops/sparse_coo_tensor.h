@@ -1,4 +1,4 @@
-// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,9 +16,13 @@
 
 #include <ATen/core/Tensor.h>
 #include <c10/core/TensorOptions.h>
+#include <algorithm>
+#include <utils/pinned_place.h>
 #include <optional>
 
+#include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/sparse_api.h"
+#include "paddle/phi/common/place.h"
 
 namespace at {
 
@@ -26,12 +30,27 @@ inline at::Tensor sparse_coo_tensor(const at::Tensor& indices,
                                     const at::Tensor& values,
                                     at::IntArrayRef size,
                                     at::TensorOptions options = {}) {
+  paddle::Tensor idx = indices._PD_GetInner();
+  paddle::Tensor vals = values._PD_GetInner();
+
+  if (options.dtype_opt().has_value() &&
+      options.dtype_opt().value() != values.scalar_type()) {
+    vals = paddle::experimental::cast(
+        vals,
+        compat::_PD_AtenScalarTypeToPhiDataType(options.dtype_opt().value()));
+  }
+
+  if (options.pinned_memory()) {
+    phi::Place base_place = options._PD_GetPlace();
+    phi::Place pinned_place = compat::_PD_GetCreatePinnedPlace(base_place);
+    idx = idx.copy_to(pinned_place, /*blocking=*/true);
+    vals = vals.copy_to(pinned_place, /*blocking=*/true);
+  }
+
   // PyTorch: sparse_coo_tensor(indices, values, size)
   // Paddle:  sparse_coo_tensor(values, indices, shape)
   return paddle::experimental::sparse::sparse_coo_tensor(
-      values._PD_GetInner(),
-      indices._PD_GetInner(),
-      std::vector<int64_t>(size.begin(), size.end()));
+      vals, idx, std::vector<int64_t>(size.begin(), size.end()));
 }
 
 inline at::Tensor sparse_coo_tensor(const at::Tensor& indices,
@@ -43,27 +62,49 @@ inline at::Tensor sparse_coo_tensor(const at::Tensor& indices,
                                     ::std::optional<bool> pin_memory) {
   PD_CHECK(!layout.has_value() || layout.value() == c10::kSparse,
            "`layout` must be Sparse for sparse_coo_tensor.");
-  PD_CHECK(!(pin_memory.has_value() && pin_memory.value() != false),
-           "`pin_memory` other than False is not supported now.");
-
-  // Note: dtype and device are used for validation/casting if needed
-  // Currently, we use the values tensor's dtype and device
-  return paddle::experimental::sparse::sparse_coo_tensor(
-      values._PD_GetInner(),
-      indices._PD_GetInner(),
-      std::vector<int64_t>(size.begin(), size.end()));
+  auto options =
+      at::TensorOptions().dtype(dtype).device(device).pinned_memory(pin_memory);
+  return sparse_coo_tensor(indices, values, size, options);
 }
 
 inline at::Tensor sparse_coo_tensor(const at::Tensor& indices,
                                     const at::Tensor& values,
                                     at::TensorOptions options = {}) {
-  // When size is not provided, Paddle will infer it from indices and values
+    // PyTorch 语义：未提供 size 时根据 indices/values 推断完整 shape。
+    // size = [max(indices[d]) + 1 for d in sparse_dims] + values.shape[1:]
+    PD_CHECK(indices.dim() == 2,
+                     "`indices` for sparse_coo_tensor must be a 2-D tensor, but got ",
+                     indices.dim(),
+                     "-D tensor.");
+
+    PD_CHECK(indices.scalar_type() == at::kLong,
+                     "`indices` for sparse_coo_tensor must have dtype int64.");
+
+    const int64_t sparse_dims = indices.size(0);
+    const int64_t nnz = indices.size(1);
+    std::vector<int64_t> inferred_size;
+    inferred_size.reserve(
+            sparse_dims + std::max<int64_t>(int64_t(0), values.dim() - 1));
+
+    PD_CHECK(indices.is_cpu(),
+                     "`indices` must be on CPU when inferring sparse_coo_tensor size.");
+    auto idx_tensor = indices.contiguous()._PD_GetInner();
+    const int64_t* idx_data = idx_tensor.data<int64_t>();
+
+    for (int64_t d = 0; d < sparse_dims; ++d) {
+        int64_t dim_size = 0;
+        for (int64_t i = 0; i < nnz; ++i) {
+            dim_size = std::max(dim_size, idx_data[d * nnz + i] + 1);
+        }
+        inferred_size.push_back(dim_size);
+    }
+
+    for (int64_t d = 1; d < values.dim(); ++d) {
+        inferred_size.push_back(values.size(d));
+    }
+
   return paddle::experimental::sparse::sparse_coo_tensor(
-      values._PD_GetInner(), indices._PD_GetInner(), {});
+            values._PD_GetInner(), indices._PD_GetInner(), inferred_size);
 }
 
 }  // namespace at
-
-namespace torch {
-using at::sparse_coo_tensor;
-}  // namespace torch

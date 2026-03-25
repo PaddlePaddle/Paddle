@@ -39,16 +39,15 @@ struct Device final {
             phiPlaceHasC10DeviceIndex(place.GetType(), place.GetDeviceId())) {}
 
   // PyTorch 兼容: Device(DeviceType, DeviceIndex)
-  // CPU / GPUPINNED / XPUPINNED 均为无索引设备，index 参数将被忽略。
-  // 其余设备（CUDA/XPU/IPU/CUSTOM）index=-1 表示未指定。
+  // GPUPINNED / XPUPINNED 为无索引设备，index 参数将被忽略。
+  // 其余设备（含 CPU）index=-1 表示未指定。
   Device(DeviceType type, DeviceIndex index = -1) {
     const phi::AllocationType alloc = c10DeviceTypeToPhiAllocationType(type);
-    // 无索引设备类型：固定使用 device_id=0
-    const bool no_index =
-        (type == DeviceType::CPU || type == DeviceType::GPUPINNED ||
-         type == DeviceType::XPUPINNED);
-    inner_ = phi::Place(alloc, no_index ? 0 : index);
-    has_index_ = !no_index && (index != -1);
+    // 仅固定内存设备无 index 语义，其它设备遵循 PyTorch: index==-1 表示未显式指定。
+    const bool no_index_type =
+        (type == DeviceType::GPUPINNED || type == DeviceType::XPUPINNED);
+    has_index_ = !no_index_type && (index != -1);
+    inner_ = phi::Place(alloc, has_index_ ? index : 0);
   }
 
   /// Constructs a `Device` from a string description, for convenience.

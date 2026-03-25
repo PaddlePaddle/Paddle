@@ -75,7 +75,7 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& dev_ctx,
 
   if (index_size == 0) return;
 
-  const auto& bcast_info = phi::CalcBCastInfo(x.dims(), e.dims());
+  const auto& bcast_info = CalcBCastInfo(x.dims(), e.dims());
 
   const T* x_data = x.data<T>();
   const T* e_data = e.data<T>();

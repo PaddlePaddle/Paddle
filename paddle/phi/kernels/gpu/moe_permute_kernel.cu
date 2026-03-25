@@ -628,18 +628,6 @@ void dispatch_preprocess_w_override(const Context &dev_ctx,
                                     DenseTensor *expert_indices) {
   constexpr int BLOCK_SIZE = 1024;
 
-  // Pre-fill expert_indices with -1 via hardware DMA engine (cudaMemsetAsync).
-  // 0xFF byte-pattern on int32 = 0xFFFFFFFF = -1 in two's complement.
-  // This offloads the bulk -1 fill (~10K-500K int32s) from SM compute to the
-  // DMA copy engine, running in parallel with subsequent kernel execution.
-  if (return_expert_indices) {
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(
-        expert_indices->data<int32_t>(),
-        0xFF,
-        static_cast<size_t>(override_buffer_size) * sizeof(int32_t),
-        dev_ctx.stream()));
-  }
-
   dispatch::Bools(
       [&](auto fill_expert_indices_tag) {
         constexpr bool FillExpertIndices =
@@ -731,6 +719,20 @@ void MoePermuteKernel(const Context &dev_ctx,
     XScale_unzipped_ptr =
         reinterpret_cast<void *>(XScale_unzipped->data<float>());
   }
+  // Pre-fill expert_indices with -1 via hardware DMA engine (cudaMemsetAsync).
+  // (Even if input is 0-size)
+  // 0xFF byte-pattern on int32 = 0xFFFFFFFF = -1 in two's complement.
+  // This offloads the bulk -1 fill (~10K-500K int32s) from SM compute to the
+  // DMA copy engine, running in parallel with subsequent kernel execution.
+  if (is_buffer_overridden && return_expert_indices) {
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(
+        expert_indices->data<int32_t>(),
+        0xFF,
+        static_cast<size_t>(override_buffer_size) * sizeof(int32_t),
+        dev_ctx.stream()));
+  }
+
+  // Handle empty input: initialize all outputs properly
   if (X.numel() == 0) return;
 
   // Preprocess

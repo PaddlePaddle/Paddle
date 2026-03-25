@@ -70,11 +70,10 @@ void YoloBoxXPUKernel(const Context& dev_ctx,
     stride_data = stride.data<float>();
     anchor_grid_data = anchor_grid.data<float>();
   }
-  std::vector<int64_t> x_shape = common::vectorize(x.dims());
-  std::vector<int64_t> grid_shape = common::vectorize(grid.dims());
-  std::vector<int64_t> stride_shape = common::vectorize(stride.dims());
-  std::vector<int64_t> anchor_grid_shape =
-      common::vectorize(anchor_grid.dims());
+  std::vector<int64_t> x_shape = vectorize(x.dims());
+  std::vector<int64_t> grid_shape = vectorize(grid.dims());
+  std::vector<int64_t> stride_shape = vectorize(stride.dims());
+  std::vector<int64_t> anchor_grid_shape = vectorize(anchor_grid.dims());
   // yolo_box_coord only support fp32&&fp16 precision
   int r = xpu::yolo_box_coord<XPUType>(
       /* baidu::xpu::api::Context* ctx */ dev_ctx.x_context(),

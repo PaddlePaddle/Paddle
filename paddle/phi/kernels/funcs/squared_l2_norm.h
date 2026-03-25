@@ -27,7 +27,7 @@ namespace phi {
 namespace funcs {
 
 template <typename T1, typename T2 = T1>
-void SquaredL2Norm(const phi::CPUContext& dev_ctx,
+void SquaredL2Norm(const CPUContext& dev_ctx,
                    const T1* x,
                    T2* y,
                    size_t numel,
