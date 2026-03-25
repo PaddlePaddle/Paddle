@@ -33,3 +33,15 @@ def initial_seed() -> int:
             >>> s = paddle.random.initial_seed()
     """
     return core.default_cpu_generator().initial_seed()
+
+
+def __getattr__(name):
+    if name == "get_rng_state":
+        import sys
+        from importlib import import_module
+
+        mod = import_module("paddle", package=__name__)
+        attr = getattr(mod, "get_rng_state", mod)
+        setattr(sys.modules[__name__], name, attr)
+        return attr
+    raise AttributeError(f"module 'paddle.random' has no attribute '{name}'")
