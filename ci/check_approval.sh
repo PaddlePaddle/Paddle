@@ -109,7 +109,6 @@ fi
 
 FILTER=`git diff --name-only upstream/$BRANCH | grep -v "tools/" | grep -v "ci/"`
 
-HAS_CONST_CAST=`git diff -U0 upstream/$BRANCH $FILTER | grep '^\+' | grep -o -m 1 "const_cast" || true`
 
 HAS_PADDLE_GET=`git diff -U0 upstream/$BRANCH $FILTER |grep "^+" |grep -o -m 1 "paddle::get" || true`
 if [ ${HAS_PADDLE_GET} ] && [ "${PR_ID}" != "" ]; then
@@ -117,7 +116,6 @@ if [ ${HAS_PADDLE_GET} ] && [ "${PR_ID}" != "" ]; then
     check_approval 1 zhangbo9674
 fi
 
-HAS_LEGACY_KERNEL_REGISTRATION=`git diff -U0 upstream/$BRANCH $FILTER | grep '^\+' | grep -oE -m 1 "REGISTER_OP[A-Z_]{1,9}KERNEL[_FUNCTOR|_WITH_CUSTOM_TYPE|_EX]*" || true`
 
 PYTHON_FILE_ADDED_LINES=$(git diff -U0 upstream/$BRANCH -- 'python/*.py' |grep "^+")
 IF_USE_SUBPROCESS=`echo $PYTHON_FILE_ADDED_LINES | grep -B5 --no-group-separator "subprocess\." || true`
@@ -154,7 +152,6 @@ if [[ ${IF_ADD_LOG_INFO} ]]; then
     check_approval 1 SigureMo DrRyanHuang
 fi
 
-HAS_DEFINE_FLAG=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "DEFINE_int32" |grep -o -m 1 "DEFINE_bool" | grep -o -m 1 "DEFINE_string" || true`
 
 NO_NPU_FILE=`git diff --name-only upstream/$BRANCH | grep -v "_npu.py"`
 HAS_UNITTEST_SKIP=`git diff -U0 upstream/$BRANCH ${NO_NPU_FILE} | grep "^+[[:space:]]\{0,\}@unittest.skip" || true`
@@ -192,18 +189,18 @@ fi
 HAS_CREATE_NEW_PASS=`git diff -U0 upstream/$BRANCH $CI_FILTER |grep "paddle/pir/include/pass/pass.h" || true`
 if [ "${HAS_CREATE_NEW_PASS}" != "" ] && [ "${PR_ID}" != "" ]; then
     echo_line="If you implement a new Pass, you must be approved by yuanlehome. Thanks!\n"
-    check_approval 1 yuanlehome
+    check_approval 1 yuanlehome zhangbo9674
 fi
 
 HAS_MODIFIED_API_COMPAT_YAML=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/ops/yaml/op_compat.yaml" || true`
 if [ "${HAS_MODIFIED_API_COMPAT_YAML}" != "" ] && [ "${PR_ID}" != "" ]; then
-    echo_line="You must be approved by wanghuancoder for paddle/phi/ops/yaml/op_compat.yaml changes, which manages the extra params of Op and name mapping between Yaml and OpMaker. In order to ensure compatibility of framework, this file isn't allowed to be modified at will!\n"
-    check_approval 1 wanghuancoder
+    echo_line="You must be approved by wanghuancoder or zhangbo9674 for paddle/phi/ops/yaml/op_compat.yaml changes, which manages the extra params of Op and name mapping between Yaml and OpMaker. In order to ensure compatibility of framework, this file isn't allowed to be modified at will!\n"
+    check_approval 1 wanghuancoder zhangbo9674
 fi
 
 HAS_MODIFIED_API_FW_BW_YAML=`git diff --name-only upstream/$BRANCH | grep -E "paddle/phi/ops/yaml/ops.yaml|paddle/phi/ops/yaml/backward.yaml" || true`
 if [ "${HAS_MODIFIED_API_FW_BW_YAML}" != "" ] && [ "${PR_ID}" != "" ]; then
-    echo_line="You must be approved by wanghuancoder for paddle/phi/ops/yaml/ops.yaml or paddle/phi/ops/yaml/backward.yaml changes, which manage the generated code for the C++ OP. You can only change them according to the specification at the beginning of this two file.\n Recommend you obtain approval from gongshaotian, if only modified the InferSymbolicShapeInterface interfaces in the YAML file.\n"
+    echo_line="You must be approved by wanghuancoder or gongshaotian for paddle/phi/ops/yaml/ops.yaml or paddle/phi/ops/yaml/backward.yaml changes, which manage the generated code for the C++ OP. You can only change them according to the specification at the beginning of this two file.\n Recommend you obtain approval from gongshaotian, if only modified the InferSymbolicShapeInterface interfaces in the YAML file.\n"
     check_approval 1 wanghuancoder gongshaotian
 fi
 
@@ -227,8 +224,8 @@ fi
 
 HAS_MODIFIED_DRR_INCLUDE_DIR=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/pir/drr/include" || true`
 if [ "${HAS_MODIFIED_DRR_INCLUDE_DIR}" != "" ] && [ "${PR_ID}" != "" ]; then
-    echo_line="You must have one RD (yuanlehome) approval for file changes in paddle/fluid/pir/drr/include.\n"
-    check_approval 1 yuanlehome
+    echo_line="You must have one RD (yuanlehome, zhangbo9674) approval for file changes in paddle/fluid/pir/drr/include.\n"
+    check_approval 1 yuanlehome zhangbo9674
 fi
 
 
@@ -401,8 +398,8 @@ for CHANGE_FILE in ${HAS_MODIFIED_PHI_HEADER_FILES}; do
     fi
 done
 if [ "${PHI_INCLUDE_THIRD_PARTY_FILES}" != "" ] && [ "${PR_ID}" != "" ]; then
-    echo_line="You must have one RD (wanghuancoder) approval for including \"gflags/gflags.h\" or \"glog/logging.h\" headerfile in paddle/phi headerfiles(${PHI_INCLUDE_THIRD_PARTY_FILES}). Recommend including third party headers in phi source files(*.cc) instead of phi headerfiles(*.h). Because if phi headerfiles include third party headers like \"gflags.h\" or \"logging.h\", error might occur when outside developers use phi headerfiles directly.\n"
-    check_approval 1 wanghuancoder
+    echo_line="You must have one RD (wanghuancoder, SigureMo) approval for including \"gflags/gflags.h\" or \"glog/logging.h\" headerfile in paddle/phi headerfiles(${PHI_INCLUDE_THIRD_PARTY_FILES}). Recommend including third party headers in phi source files(*.cc) instead of phi headerfiles(*.h). Because if phi headerfiles include third party headers like \"gflags.h\" or \"logging.h\", error might occur when outside developers use phi headerfiles directly.\n"
+    check_approval 1 wanghuancoder SigureMo
 fi
 
 HAS_MODIFIED_PADDLE_API_FILES=`git diff --name-only upstream/$BRANCH | grep "paddle/.*\.h" || true`
@@ -414,8 +411,8 @@ for CHANGE_FILE in ${HAS_MODIFIED_PHI_HEADER_FILES}; do
     fi
 done
 if [ "${INCLUDE_PADDLE_API_FILES}" != "" ] && [ "${PR_ID}" != "" ]; then
-    echo_line="You must have one RD (wanghuancoder) or PM (sunzhongkai588) approval for code changes about PADDLE_API. If you add a new PADDLE_API, please make sure you have written detailed comments about the parameter and usage of this PADDLE_API .\n"
-    check_approval 1 sunzhongkai588 wanghuancoder
+    echo_line="You must have one RD (wanghuancoder, SigureMo) or PM (sunzhongkai588) approval for code changes about PADDLE_API. If you add a new PADDLE_API, please make sure you have written detailed comments about the parameter and usage of this PADDLE_API .\n"
+    check_approval 1 sunzhongkai588 wanghuancoder SigureMo
 fi
 
 HAS_MODIFIED_PHI_OR_FLUID_FILES=`git diff --name-only upstream/$BRANCH | grep -E "paddle/phi|paddle/fluid" || true`
@@ -428,7 +425,7 @@ for CHANGE_FILE in ${HAS_MODIFIED_PHI_OR_FLUID_FILES}; do
 done
 if [ "${USE_MUTABLE_DATA_FILES}" != "" ] && [ "${PR_ID}" != "" ]; then
     echo_line="You can not use the DenseTensor::mutable_data() method in files(${USE_MUTABLE_DATA_FILES}). If you want to alloc memory, use phi::DeviceContext::Alloc() or phi::DeviceContext::HostAlloc() instead and if you want to get mutable data, use DenseTensor::data(). If you have any questions, you can have one RD (From00) review and approve.\n"
-    check_approval 1 From00
+    check_approval 1 From00 SigureMo
 fi
 
 ALL_CHANGE_FILES=`git diff --numstat upstream/$BRANCH | awk '{print $3}' | grep ".py"`
