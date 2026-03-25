@@ -683,6 +683,73 @@ TEST(StorageTest, AllocatorCloneCopiesBytes) {
   ASSERT_EQ(dst_bytes[3], 4);
 }
 
+TEST(StorageTest, DataPtrHelpersAndAllocatorSimpleDataPtrChecks) {
+  // Cover DataPtr(data, Device) ctor path where context is nullptr.
+  int value = 7;
+  c10::DataPtr dp(&value, c10::Device(c10::DeviceType::CPU));
+  ASSERT_EQ(dp.operator->(), &value);
+  ASSERT_EQ(dp.get_context(), nullptr);
+
+  // unsafe_set_device is used by callers that update metadata only.
+  dp.unsafe_set_device(c10::Device(c10::DeviceType::CPU));
+  ASSERT_EQ(dp.device().type(), c10::DeviceType::CPU);
+
+  // is_simple_data_ptr: context==nullptr branch.
+  RawCompatibleAllocator compatible_alloc;
+  ASSERT_TRUE(compatible_alloc.is_simple_data_ptr(dp));
+
+  // is_simple_data_ptr: context!=data branch.
+  c10::DataPtr non_simple = RawIncompatibleAllocator().allocate(4);
+  ASSERT_FALSE(compatible_alloc.is_simple_data_ptr(non_simple));
+
+  dp.clear();
+  ASSERT_EQ(dp.get(), nullptr);
+}
+
+TEST(StorageTest, CreateTensorStorageNullAndHolderReuse) {
+  c10::Storage empty = c10::Storage::createTensorStorage(nullptr);
+  ASSERT_FALSE(empty.valid());
+
+  at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
+  c10::Storage base_storage = tensor.storage();
+
+  // ensureTensorHolder should be stable and reusable.
+  auto holder0 = base_storage.ensureTensorHolder();
+  auto holder1 = base_storage.ensureTensorHolder();
+  ASSERT_NE(holder0, nullptr);
+  ASSERT_EQ(holder0, holder1);
+
+  // createTensorStorage should reuse impl when holder is StorageHolderView.
+  c10::Storage from_holder = c10::Storage::createTensorStorage(holder0);
+  ASSERT_EQ(from_holder.get_impl(), base_storage.get_impl());
+}
+
+TEST(StorageTest, SetDataPtrReturnsOldValues) {
+  at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
+  at::TensorBase other = at::ones({2, 3}, at::kFloat);
+  c10::Storage storage = tensor.storage();
+
+  const void* old_ptr = storage.data();
+  auto old_alloc = storage.allocation();
+  auto new_alloc = other.storage().allocation();
+  ASSERT_NE(new_alloc, nullptr);
+
+  // shared_ptr overload returns previous allocation.
+  auto returned_alloc = storage.set_data_ptr(new_alloc);
+  ASSERT_EQ(returned_alloc, old_alloc);
+  ASSERT_EQ(storage.allocation(), new_alloc);
+
+  // DataPtr overload returns previous DataPtr and clears allocation-backed
+  // state on write.
+  c10::DataPtr new_data_ptr(other.data_ptr(),
+                            c10::Device(c10::DeviceType::CPU));
+  c10::DataPtr old_data_ptr = storage.set_data_ptr(std::move(new_data_ptr));
+  ASSERT_EQ(old_data_ptr.get(), new_alloc->ptr());
+  ASSERT_EQ(storage.data(), other.data_ptr());
+  ASSERT_EQ(storage.allocation(), nullptr);
+  ASSERT_NE(old_data_ptr.get(), old_ptr);
+}
+
 // ---------------------------------------------------------------------------
 // Reference Semantics Tests
 //

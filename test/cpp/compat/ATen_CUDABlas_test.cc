@@ -135,6 +135,27 @@ TEST(CUDABlasTest, GemmFloatTransA) {
   t.RunTransA();
 }
 
+TEST(CUDABlasTest, GemmFloatTransALowercase) {
+  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
+  constexpr int64_t N = 2;
+
+  std::vector<float> h_a = {1.F, 3.F, 2.F, 4.F};
+  std::vector<float> h_b = {5.F, 7.F, 6.F, 8.F};
+  std::vector<float> h_c(N * N, 0.F);
+
+  float alpha = 1.F;
+  float beta = 0.F;
+  runOnDevice(h_a, h_b, &h_c, [&](float* d_a, float* d_b, float* d_c) {
+    at::cuda::blas::gemm<float>(
+        't', 'n', N, N, N, alpha, d_a, N, d_b, N, beta, d_c, N);
+  });
+
+  EXPECT_NEAR(h_c[0], 26.0f, 1e-3f);
+  EXPECT_NEAR(h_c[1], 38.0f, 1e-3f);
+  EXPECT_NEAR(h_c[2], 30.0f, 1e-3f);
+  EXPECT_NEAR(h_c[3], 44.0f, 1e-3f);
+}
+
 TEST(CUDABlasTest, GemmComplexDouble) {
   GemmTester<c10::complex<double>> t;
   t.Run();
