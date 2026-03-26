@@ -190,6 +190,34 @@ class TestAminmaxAPI(unittest.TestCase):
         np.testing.assert_allclose(x.grad.numpy(), expected_grad, rtol=1e-05)
         paddle.enable_static()
 
+    def test_dygraph_out(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x_np)
+        min_out = paddle.empty([])
+        max_out = paddle.empty([])
+        min_val, max_val = paddle.aminmax(x, out=(min_out, max_out))
+
+        expected_min, expected_max = ref_aminmax(self.x_np)
+        np.testing.assert_allclose(min_val.numpy(), expected_min, rtol=1e-05)
+        np.testing.assert_allclose(max_val.numpy(), expected_max, rtol=1e-05)
+        np.testing.assert_allclose(min_out.numpy(), expected_min, rtol=1e-05)
+        np.testing.assert_allclose(max_out.numpy(), expected_max, rtol=1e-05)
+        paddle.enable_static()
+
+    def test_dygraph_out_with_axis(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x_np)
+        min_out = paddle.empty([2])
+        max_out = paddle.empty([2])
+        min_val, max_val = paddle.aminmax(x, axis=1, out=(min_out, max_out))
+
+        expected_min, expected_max = ref_aminmax(self.x_np, axis=1)
+        np.testing.assert_allclose(min_val.numpy(), expected_min, rtol=1e-05)
+        np.testing.assert_allclose(max_val.numpy(), expected_max, rtol=1e-05)
+        np.testing.assert_allclose(min_out.numpy(), expected_min, rtol=1e-05)
+        np.testing.assert_allclose(max_out.numpy(), expected_max, rtol=1e-05)
+        paddle.enable_static()
+
     def test_static(self):
         paddle.enable_static()
         main = paddle.static.Program()
