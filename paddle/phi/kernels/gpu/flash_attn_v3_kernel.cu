@@ -2272,6 +2272,21 @@ void FlashMaskV2Kernel(const Context &dev_ctx,
                        DenseTensor *out,
                        DenseTensor *softmax_lse) {
 #ifdef PADDLE_WITH_FLASHATTN_V3
+  // Handle 0-size tensors: return zeros without calling CUDA kernel
+  // to avoid invalid memory access
+  if (q.numel() == 0 || k.numel() == 0 || v.numel() == 0) {
+    if (out) {
+      funcs::SetConstant<Context, T> set_zero;
+      set_zero(dev_ctx, out, T{0});
+    }
+    if (softmax_lse) {
+      funcs::SetConstant<Context, float> set_infinity;
+      set_infinity(
+          dev_ctx, softmax_lse, std::numeric_limits<float>::infinity());
+    }
+    return;
+  }
+
   DenseTensor out_accum;
   DenseTensor softmax_lse_accum;
   FlashMaskV2BaseKernel<T, Context>(dev_ctx,

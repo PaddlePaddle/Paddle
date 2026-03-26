@@ -179,15 +179,21 @@ class Tensor : public TensorBase {
   }
 
   template <typename T, std::enable_if_t<!std::is_const_v<T>, int> = 0>
-  const T* const_data_ptr() const;
+  const T* const_data_ptr() const {
+    return TensorBase::const_data_ptr<T>();
+  }
 
   template <typename T, std::enable_if_t<std::is_const_v<T>, int> = 0>
-  const std::remove_const_t<T>* const_data_ptr() const;
+  const std::remove_const_t<T>* const_data_ptr() const {
+    return TensorBase::const_data_ptr<T>();
+  }
 
   void* mutable_data_ptr() const { return const_cast<void*>(tensor_.data()); }
 
   template <typename T>
-  T* mutable_data_ptr() const;
+  T* mutable_data_ptr() const {
+    return TensorBase::mutable_data_ptr<T>();
+  }
 
   using TensorBase::stride;
 

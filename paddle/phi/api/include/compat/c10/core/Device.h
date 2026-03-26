@@ -13,8 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include <c10/core/DeviceType.h>
-
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
 using gpuStream_t = cudaStream_t;
@@ -24,6 +22,11 @@ using gpuStream_t = cudaStream_t;
 #include <hip/hip_runtime.h>
 using gpuStream_t = hipStream_t;
 #endif
+
+#include <c10/core/DeviceType.h>
+
+#include <string>
+#include <utility>
 
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/core/platform/device_event_base.h"
@@ -98,10 +101,27 @@ struct Device final {
   std::string str() const;
 
   bool operator==(const Device& other) const noexcept {
-    return type() == other.type() && this->index() == other.index();
+    return type() == other.type() && this->index() == other.index() &&
+           custom_device_type_ == other.custom_device_type_;
   }
 
-  phi::Place _PD_GetInner() const { return inner_; }
+  phi::Place _PD_GetInner() const {
+    switch (type_) {
+      case DeviceType::CPU:
+        return phi::CPUPlace();
+      case DeviceType::CUDA:
+        return phi::GPUPlace(has_index() ? index_ : 0);
+      case DeviceType::XPU:
+        return phi::XPUPlace(has_index() ? index_ : 0);
+      case DeviceType::IPU:
+        return phi::IPUPlace(has_index() ? index_ : 0);
+      case DeviceType::CUSTOM:
+        return phi::CustomPlace(
+            custom_device_type_.empty() ? "custom" : custom_device_type_,
+            has_index() ? index_ : 0);
+    }
+    return phi::CPUPlace();
+  }
 
  private:
   phi::Place inner_;

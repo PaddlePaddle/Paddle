@@ -263,9 +263,13 @@ class AddLayerNormFusePattern : public paddle::drr::DrrPatternBase {
         });
     const auto cast_1_op =
         res.Op(paddle::dialect::CastOp::name(), {{"dtype", cast_op_dtype}});
+    const auto &fused_epsilon = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> float {
+          return static_cast<float>(match_ctx.Attr<double>("epsilon"));
+        });
     const auto &fuse_layer_norm =
         res.Op(paddle::dialect::FusedBiasResidualLayernormOp::name(),
-               {{"epsilon", pat.Attr("epsilon")},
+               {{"epsilon", fused_epsilon},
                 {"residual_alpha", res.Float32Attr(1.0)},
                 {"begin_norm_axis", pat.Attr("begin_norm_axis")},
                 {"quant_scale", res.Float32Attr(-1.0)},

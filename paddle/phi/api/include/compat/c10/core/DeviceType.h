@@ -48,6 +48,41 @@ constexpr DeviceType kXPU = DeviceType::XPU;
 constexpr DeviceType kXPUPINNED = DeviceType::XPUPINNED;
 constexpr DeviceType kIPU = DeviceType::IPU;
 constexpr DeviceType kCUSTOM = DeviceType::CUSTOM;
+constexpr DeviceType kXPU = DeviceType::XPU;
+constexpr DeviceType kIPU = DeviceType::IPU;
+
+inline phi::AllocationType DeviceTypeToPhi(DeviceType d) {
+  switch (d) {
+    case DeviceType::CPU:
+      return phi::AllocationType::CPU;
+    case DeviceType::CUDA:
+      return phi::AllocationType::GPU;
+    case DeviceType::XPU:
+      return phi::AllocationType::XPU;
+    case DeviceType::IPU:
+      return phi::AllocationType::IPU;
+    case DeviceType::CUSTOM:
+      return phi::AllocationType::CUSTOM;
+  }
+  return phi::AllocationType::UNDEFINED;
+}
+
+inline DeviceType PhiToDeviceType(phi::AllocationType d) {
+  switch (d) {
+    case phi::AllocationType::CPU:
+      return DeviceType::CPU;
+    case phi::AllocationType::GPU:
+      return DeviceType::CUDA;
+    case phi::AllocationType::XPU:
+      return DeviceType::XPU;
+    case phi::AllocationType::IPU:
+      return DeviceType::IPU;
+    case phi::AllocationType::CUSTOM:
+      return DeviceType::CUSTOM;
+    default:
+      return DeviceType::CPU;
+  }
+}
 
 inline bool isValidDeviceType(DeviceType type) noexcept {
   return type == DeviceType::CPU || type == DeviceType::CUDA ||
@@ -138,6 +173,27 @@ inline bool phiPlaceHasC10DeviceIndex(phi::AllocationType type,
     default:
       return index != -1;
   }
+}
+
+inline std::ostream& operator<<(std::ostream& os, DeviceType d) {
+  switch (d) {
+    case DeviceType::CPU:
+      os << "cpu";
+      break;
+    case DeviceType::CUDA:
+      os << "cuda";
+      break;
+    case DeviceType::XPU:
+      os << "xpu";
+      break;
+    case DeviceType::IPU:
+      os << "ipu";
+      break;
+    case DeviceType::CUSTOM:
+      os << "privateuseone";
+      break;
+  }
+  return os;
 }
 
 }  // namespace c10

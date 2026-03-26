@@ -23,6 +23,26 @@
 
 namespace c10 {
 
+namespace {
+
+const char* DeviceTypeToString(DeviceType type) {
+  switch (type) {
+    case DeviceType::CPU:
+      return "cpu";
+    case DeviceType::CUDA:
+      return "cuda";
+    case DeviceType::XPU:
+      return "xpu";
+    case DeviceType::IPU:
+      return "ipu";
+    case DeviceType::CUSTOM:
+      return "privateuseone";
+  }
+  return "cpu";
+}
+
+}  // namespace
+
 DeviceType parse_type(const std::string& device_string) {
   static const std::array<std::pair<const char*, DeviceType>,
                           static_cast<size_t>(5)>

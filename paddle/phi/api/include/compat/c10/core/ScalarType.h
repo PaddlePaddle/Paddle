@@ -173,6 +173,9 @@ enum class PADDLE_API ScalarType : int8_t {
   Undefined = -1,
   NumOptions = 44,
 };
+
+constexpr uint16_t NumScalarTypes =
+    static_cast<uint16_t>(ScalarType::NumOptions);
 namespace impl {
 
 // These are used to map ScalarTypes to C++ types.
@@ -272,6 +275,38 @@ inline const char* toString(ScalarType t) {
 
   switch (t) {
     AT_FORALL_SCALAR_TYPES_WITH_COMPLEX_AND_QINTS(DEFINE_CASE)
+    case ScalarType::QInt8:
+      return "QInt8";
+    case ScalarType::QUInt8:
+      return "QUInt8";
+    case ScalarType::QInt32:
+      return "QInt32";
+    case ScalarType::QUInt4x2:
+      return "QUInt4x2";
+    case ScalarType::QUInt2x4:
+      return "QUInt2x4";
+    case ScalarType::ComplexHalf:
+      return "ComplexHalf";
+    case ScalarType::Bits1x8:
+      return "Bits1x8";
+    case ScalarType::Bits2x4:
+      return "Bits2x4";
+    case ScalarType::Bits4x2:
+      return "Bits4x2";
+    case ScalarType::Bits8:
+      return "Bits8";
+    case ScalarType::Bits16:
+      return "Bits16";
+    case ScalarType::Float8_e5m2fnuz:
+      return "Float8_e5m2fnuz";
+    case ScalarType::Float8_e4m3fnuz:
+      return "Float8_e4m3fnuz";
+    case ScalarType::Float8_e8m0fnu:
+      return "Float8_e8m0fnu";
+    case ScalarType::Float4_e2m1fn_x2:
+      return "Float4_e2m1fn_x2";
+    case ScalarType::Undefined:
+      return "Undefined";
     default:
       return "UNKNOWN_SCALAR";
   }
@@ -285,6 +320,18 @@ inline size_t elementSize(ScalarType t) {
 
   switch (t) {
     AT_FORALL_SCALAR_TYPES_WITH_COMPLEX_AND_QINTS(CASE_ELEMENTSIZE_CASE)
+    case ScalarType::QInt8:
+    case ScalarType::QUInt8:
+    case ScalarType::QUInt4x2:
+    case ScalarType::QUInt2x4:
+    case ScalarType::Bits1x8:
+    case ScalarType::Bits2x4:
+    case ScalarType::Bits4x2:
+    case ScalarType::Bits8:
+      return 1;
+    case ScalarType::QInt32:
+    case ScalarType::Bits16:
+      return 4;
     default:
       TORCH_CHECK(false, "Unknown ScalarType");
   }
@@ -357,6 +404,7 @@ inline bool isSignedType(ScalarType t) {
     // Complex types (treated as signed)
     case ScalarType::ComplexFloat:
     case ScalarType::ComplexDouble:
+    case ScalarType::ComplexHalf:
       return true;
 
     // Signed quantized types (explicitly return true)
@@ -384,10 +432,21 @@ inline bool isSignedType(ScalarType t) {
     case ScalarType::QUInt8:
     case ScalarType::QUInt4x2:
     case ScalarType::QUInt2x4:
+    case ScalarType::Bits1x8:
+    case ScalarType::Bits2x4:
+    case ScalarType::Bits4x2:
+    case ScalarType::Bits8:
+    case ScalarType::Bits16:
       return false;
 
       // Bool is unsigned (using numeric_limits)
       CASE_ISSIGNED(Bool);
+
+    case ScalarType::Float8_e5m2fnuz:
+    case ScalarType::Float8_e4m3fnuz:
+    case ScalarType::Float8_e8m0fnu:
+    case ScalarType::Float4_e2m1fn_x2:
+      return true;
 
     // Invalid/undefined types - should not happen in normal usage
     // If this is hit, it indicates a programming error or unsupported type

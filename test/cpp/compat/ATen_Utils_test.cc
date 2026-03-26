@@ -28,6 +28,7 @@
 #include "ATen/ATen.h"
 #include "gtest/gtest.h"
 #include "paddle/phi/common/float16.h"
+#include "test/cpp/compat/cuda_test_utils.h"
 #include "torch/all.h"
 
 // ============================================================
@@ -152,6 +153,7 @@ TEST(ATenUtilsTest, TensorBackend_CPUDevice_MatchesTensorCPU) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(ATenUtilsTest, TensorBackend_GPUDevice) {
+  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   std::vector<float> data = {7.0f, 8.0f};
   at::TensorOptions opts =
       at::TensorOptions().dtype(at::kFloat).device(c10::Device(c10::kCUDA, 0));
@@ -162,6 +164,7 @@ TEST(ATenUtilsTest, TensorBackend_GPUDevice) {
 }
 
 TEST(ATenUtilsTest, TensorComplexBackend_GPUDevice) {
+  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   std::vector<c10::complex<float>> data = {{1.0f, 0.0f}};
   at::TensorOptions opts = at::TensorOptions()
                                .dtype(at::kComplexFloat)

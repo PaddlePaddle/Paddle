@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import collections
 import copyreg
+import dataclasses
 import os
 import pickle
 import sys
@@ -638,6 +639,9 @@ def _parse_every_object(obj, condition_func, convert_func):
     elif type(obj) == set:
         return set(_parse_every_object(list(obj), condition_func, convert_func))
     else:
+        # Support dataclass objects - return as-is without further parsing
+        if dataclasses.is_dataclass(obj):
+            return obj
         if isinstance(obj, Iterable) and not isinstance(
             obj,
             (str, np.ndarray, core.eager.Tensor, core.DenseTensor),
