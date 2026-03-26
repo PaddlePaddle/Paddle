@@ -95,19 +95,31 @@ void FlashAttnKernelBase(
   // to avoid invalid memory access
   if (q.numel() == 0 || k.numel() == 0 || v.numel() == 0) {
     if (out) {
-      Full<T, Context>(dev_ctx, out->dims(), 0, out);
+      Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
     }
     if (softmax) {
-      Full<T, Context>(dev_ctx, softmax->dims(), 0, softmax);
+      Full<T, Context>(dev_ctx,
+                       phi::IntArray(common::vectorize(softmax->dims())),
+                       0,
+                       softmax);
     }
     if (softmax_lse) {
       std::vector<int64_t> softmax_lse_dims = {
           batch_size, num_heads, max_seqlen_q_.to<int64_t>()};
       softmax_lse->Resize(phi::make_ddim(softmax_lse_dims));
-      Full<float, Context>(dev_ctx, softmax_lse->dims(), 0, softmax_lse);
+      Full<float, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(softmax_lse->dims())),
+          0,
+          softmax_lse);
     }
     if (seed_offset) {
-      Full<int64_t, Context>(dev_ctx, seed_offset->dims(), 0, seed_offset);
+      Full<int64_t, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(seed_offset->dims())),
+          0,
+          seed_offset);
     }
     return;
   }
@@ -459,16 +471,28 @@ void FlashMaskKernel(const Context& dev_ctx,
   // to avoid invalid memory access
   if (q.numel() == 0 || k.numel() == 0 || v.numel() == 0) {
     if (out) {
-      Full<T, Context>(dev_ctx, out->dims(), 0, out);
+      Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
     }
     if (softmax) {
-      Full<T, Context>(dev_ctx, softmax->dims(), 0, softmax);
+      Full<T, Context>(dev_ctx,
+                       phi::IntArray(common::vectorize(softmax->dims())),
+                       0,
+                       softmax);
     }
     if (softmax_lse) {
-      Full<float, Context>(dev_ctx, softmax_lse->dims(), 0, softmax_lse);
+      Full<float, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(softmax_lse->dims())),
+          0,
+          softmax_lse);
     }
     if (seed_offset) {
-      Full<int64_t, Context>(dev_ctx, seed_offset->dims(), 0, seed_offset);
+      Full<int64_t, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(seed_offset->dims())),
+          0,
+          seed_offset);
     }
     return;
   }
