@@ -27,6 +27,10 @@
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/runtime/backend_api.h"
 #include "paddle/cinn/utils/string.h"
+#ifdef CINN_WITH_CUSTOM_DEVICE
+#include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/common/place.h"
+#endif
 
 namespace cinn::optim {
 
@@ -185,6 +189,18 @@ LogicalResult TransBufferWithDynamicShapePass::Run(ir::LoweredFunc func) {
                   "The shared memory size used by current kernel is greater "
                   "than the max shared memory per block"));
         }
+#endif
+      },
+      [&](const common::CustomDeviceArch& arch) {
+#ifdef CINN_WITH_CUSTOM_DEVICE
+        size_t max_shm_per_block = phi::DeviceManager::GetMaxSharedMemPerBlock(
+            phi::CustomPlace(arch.device_type, arch.device_id));
+        PADDLE_ENFORCE_LE(
+            mutator.shared_mem_size_used(),
+            max_shm_per_block,
+            ::common::errors::InvalidArgument(
+                "The shared memory size used by current kernel is greater "
+                "than the max shared memory per block"));
 #endif
       },
       [&](common::HygonDCUArchHIP) {

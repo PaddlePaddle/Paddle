@@ -42,9 +42,9 @@ class RepeatsTensor2IndexTensorFunctor<GPUContext, RepeatsT> {
 };
 #else
 template <typename RepeatsT>
-class RepeatsTensor2IndexTensorFunctor<phi::CPUContext, RepeatsT> {
+class RepeatsTensor2IndexTensorFunctor<CPUContext, RepeatsT> {
  public:
-  void operator()(const phi::CPUContext &ctx,
+  void operator()(const CPUContext &ctx,
                   const DenseTensor &repeats,
                   DenseTensor *index);
 };
@@ -52,9 +52,9 @@ class RepeatsTensor2IndexTensorFunctor<phi::CPUContext, RepeatsT> {
 
 #ifdef PADDLE_WITH_XPU
 template <typename RepeatsT>
-class RepeatsTensor2IndexTensorFunctor<phi::XPUContext, RepeatsT> {
+class RepeatsTensor2IndexTensorFunctor<XPUContext, RepeatsT> {
  public:
-  void operator()(const phi::XPUContext &ctx,
+  void operator()(const XPUContext &ctx,
                   const DenseTensor &repeats,
                   DenseTensor *index);
 };

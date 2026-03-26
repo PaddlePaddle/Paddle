@@ -33,6 +33,7 @@ from paddle.base.data_feeder import (
 from paddle.base.libpaddle import Place
 from paddle.profiler.utils import in_profiler_mode
 from paddle.utils import deprecated
+from paddle.utils.decorator_utils import tensor_cuda_decorator
 from paddle.utils.dlpack import DLDeviceType
 from paddle.utils.download import check_and_create_dir
 
@@ -53,6 +54,7 @@ if TYPE_CHECKING:
 
     from paddle import Tensor
     from paddle._typing import DTypeLike, PlaceLike, TensorIndex
+    from paddle.cuda import DeviceLike
 
 
 _grad_scalar = None
@@ -1157,9 +1159,24 @@ def monkey_patch_tensor():
             res.persistable = self.persistable
             return res
 
-    @framework.dygraph_only
+    @overload
     def cuda(
-        self: Tensor, device_id: int | None = None, blocking: bool = True
+        self: Tensor, device_id: DeviceLike = None, blocking: bool = True
+    ) -> Tensor: ...
+
+    @overload
+    def cuda(
+        self: Tensor,
+        device: DeviceLike = None,
+        non_blocking: bool = False,
+    ) -> Tensor: ...
+
+    @framework.dygraph_only
+    @tensor_cuda_decorator()
+    def cuda(
+        self: Tensor,
+        device_id: DeviceLike = None,
+        blocking: bool = True,
     ) -> Tensor:
         device_type = paddle.device.get_all_device_type()
         if len(
@@ -1174,13 +1191,29 @@ def monkey_patch_tensor():
             raise ValueError("No available device found.")
 
         if device_id is None:
+            # None
             res_place = framework._current_expected_place()
             if not isinstance(res_place, res_place_class):
                 res_place = res_place_class(0)
+        elif isinstance(device_id, paddle.device.Device):
+            # Device
+            res_place = device_id._to_place()
         elif isinstance(device_id, int):
+            # int
             res_place = res_place_class(device_id)
+        elif isinstance(device_id, str):
+            # str
+            device = paddle.device(device_id)
+            res_place = device._to_place()
+        elif isinstance(
+            device_id, (core.CUDAPlace, core.CustomPlace, core.XPUPlace)
+        ):
+            # Place
+            res_place = device_id
         else:
-            raise ValueError("device_id must be int|None")
+            raise ValueError(
+                "device_id must be DeviceLike, which is paddle.CUDAPlace|paddle.CustomPlace|paddle.XPUPlace|int|str|None"
+            )
 
         if self.place._equals(res_place):
             return self

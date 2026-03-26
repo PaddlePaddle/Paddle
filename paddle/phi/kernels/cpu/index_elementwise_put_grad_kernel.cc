@@ -27,7 +27,7 @@ namespace phi {
 
 template <typename T, typename IndexT = int>
 void CPUIndexElementwisePutGradKernel(
-    const phi::CPUContext& dev_ctx,
+    const CPUContext& dev_ctx,
     const DenseTensor& out_grad,
     const std::vector<const DenseTensor*>& index,
     const std::vector<int64_t>& input_dims,
@@ -81,7 +81,7 @@ void CPUIndexElementwisePutGradKernel(
   using dtype = funcs::OpaqueType<sizeof(T)>;
   if (!value_grad) {
     char* out_ptr = reinterpret_cast<char*>(x_grad->data<T>());
-    if (index.size() == 1 && index[0]->dtype() == phi::DataType::BOOL) {
+    if (index.size() == 1 && index[0]->dtype() == DataType::BOOL) {
       const bool* mask_data = index[0]->data<bool>();
       for (int64_t idx = 0; idx < N; idx++) {
         const auto offsets = offset_calc.cpu_get(idx);

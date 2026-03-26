@@ -287,14 +287,14 @@ void CublasLtMatmulFP8(const GPUContext& dev_ctx,
   int returnedResults = 0;
   cublasLtMatmulHeuristicResult_t heuristicResult = {};
   cublasLtMatmulPreference_t preference = NULL;
-  size_t work_space_size = workspace->numel();
+  size_t workspace_size = workspace->numel();
 
   status = dynload::cublasLtMatmulPreferenceCreate(&preference);
   status = dynload::cublasLtMatmulPreferenceSetAttribute(
       preference,
       CUBLASLT_MATMUL_PREF_MAX_WORKSPACE_BYTES,
-      &work_space_size,
-      sizeof(work_space_size));
+      &workspace_size,
+      sizeof(workspace_size));
 
   status = dynload::cublasLtMatmulAlgoGetHeuristic(dev_ctx.cublaslt_handle(),
                                                    matmul_desc_,
@@ -330,7 +330,7 @@ void CublasLtMatmulFP8(const GPUContext& dev_ctx,
       //  nullptr,
       reinterpret_cast<void*>(workspace->data<int8_t>()),
       // 0,
-      work_space_size,
+      workspace_size,
       dev_ctx.stream());
 }
 #endif

@@ -28,6 +28,7 @@
 #include "ATen/ATen.h"
 #include "gtest/gtest.h"
 #include "paddle/phi/common/float16.h"
+#include "test/cpp/compat/cuda_test_utils.h"
 #include "torch/all.h"
 
 // ==================== is_pinned tests ====================
@@ -314,6 +315,7 @@ TEST(DetachInplaceTest, DetachInplaceChained) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 // Test reciprocal on CUDA
 TEST(ReciprocalTest, ReciprocalCUDA) {
+  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   auto tensor =
       at::empty({4}, at::TensorOptions().dtype(at::kFloat).device(at::kCUDA));
   auto cpu_tensor = at::empty({4}, at::TensorOptions().dtype(at::kFloat));
@@ -336,6 +338,7 @@ TEST(ReciprocalTest, ReciprocalCUDA) {
 
 // Test detach on CUDA
 TEST(DetachTest, DetachCUDA) {
+  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   auto tensor =
       at::arange(5, at::TensorOptions().dtype(at::kFloat).device(at::kCUDA));
 

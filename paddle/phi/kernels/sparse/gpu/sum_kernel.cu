@@ -272,7 +272,7 @@ void SumCooGPU1Kernel(const Context& dev_ctx,
                                                   out_indices_data,
                                                   out_values_data);
   if (dtype != phi::DataType::UNDEFINED && dtype != x.dtype()) {
-    out_values = phi::Cast<T, Context>(dev_ctx, out_values, dtype);
+    out_values = Cast<T, Context>(dev_ctx, out_values, dtype);
   }
   out->SetMember(out_indices, out_values, out_dims, x.coalesced());
 }
@@ -412,7 +412,7 @@ void SumCsr1Kernel(const Context& dev_ctx,
                                                 out_values_data);
   }
   if (dtype != phi::DataType::UNDEFINED && dtype != x.dtype()) {
-    out_values = phi::Cast<T, Context>(dev_ctx, out_values, dtype);
+    out_values = Cast<T, Context>(dev_ctx, out_values, dtype);
   }
   out->SetMember(out_crows, out_cols, out_values, out_dims);
 }

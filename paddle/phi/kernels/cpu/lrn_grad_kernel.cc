@@ -26,8 +26,8 @@
 namespace phi {
 
 template <typename T>
-struct LRNGradFunctor<phi::CPUContext, T> {
-  void operator()(const phi::CPUContext& dev_ctx,
+struct LRNGradFunctor<CPUContext, T> {
+  void operator()(const CPUContext& dev_ctx,
                   const DenseTensor& x,
                   const DenseTensor& out,
                   const DenseTensor& mid,
@@ -89,8 +89,8 @@ struct LRNGradFunctor<phi::CPUContext, T> {
     }
   }
 };
-template struct LRNGradFunctor<phi::CPUContext, float>;
-template struct LRNGradFunctor<phi::CPUContext, double>;
+template struct LRNGradFunctor<CPUContext, float>;
+template struct LRNGradFunctor<CPUContext, double>;
 }  // namespace phi
 
 PD_REGISTER_KERNEL(lrn_grad, CPU, ALL_LAYOUT, phi::LRNGradKernel, float) {}

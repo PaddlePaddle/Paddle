@@ -83,13 +83,13 @@ __global__ void gather_with_mask_permute_kernel(
         int64_t permuted_id = local_iexpert * (world_size * capacity) +
                               irank * capacity + row_in_expert;
         int64_t in_offset = permuted_id * dim + di_begin;
-        phi::Load<T, vec_size>(dy + in_offset, &in_vec);
+        Load<T, vec_size>(dy + in_offset, &in_vec);
         for (int64_t j = 0; j < vec_size; ++j) {
           out_vec[j] += in_vec[j];
         }
       }
     }
-    phi::Store<T, vec_size>(out_vec, dx + idx);
+    Store<T, vec_size>(out_vec, dx + idx);
     shared_idx_begin += blockDim.x * gridDim.x * vec_size;
   }
 }
@@ -148,13 +148,13 @@ __global__ void gather_with_mask_kernel(
       }
       if (combine_weights_shared[scatter_offset] > 0.f) {
         int64_t in_offset = id * dim + di_begin;
-        phi::Load<T, vec_size>(dy + in_offset, &in_vec);
+        Load<T, vec_size>(dy + in_offset, &in_vec);
         for (int64_t j = 0; j < vec_size; ++j) {
           out_vec[j] += in_vec[j];
         }
       }
     }
-    phi::Store<T, vec_size>(out_vec, dx + idx);
+    Store<T, vec_size>(out_vec, dx + idx);
     shared_idx_begin += blockDim.x * gridDim.x * vec_size;
   }
 }

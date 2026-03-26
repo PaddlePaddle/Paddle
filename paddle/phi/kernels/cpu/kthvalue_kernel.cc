@@ -150,8 +150,7 @@ void KthvalueKernel(const Context& dev_ctx,
     trans_inp.Resize(trans_dims);
     dev_ctx.template Alloc<T>(&trans_inp);
     int ndims = static_cast<int>(trans.size());
-    funcs::TransCompute<phi::CPUContext, T>(
-        ndims, dev_ctx, x, &trans_inp, trans);
+    funcs::TransCompute<CPUContext, T>(ndims, dev_ctx, x, &trans_inp, trans);
 
     const int64_t input_height =
         common::product(slice_ddim(trans_dims, 0, trans_dims.size() - 1));
@@ -163,10 +162,9 @@ void KthvalueKernel(const Context& dev_ctx,
     int64_t* t_ind = dev_ctx.template Alloc<int64_t>(&tmp_indices);
     getKthvalue<T, int64_t>(
         input_height, input_width, in_dims.size(), &trans_inp, t_out, t_ind, k);
-    funcs::TransCompute<phi::CPUContext, int64_t>(
+    funcs::TransCompute<CPUContext, int64_t>(
         ndims, dev_ctx, tmp_indices, indices, trans);
-    funcs::TransCompute<phi::CPUContext, T>(
-        ndims, dev_ctx, tmp_out, output, trans);
+    funcs::TransCompute<CPUContext, T>(ndims, dev_ctx, tmp_out, output, trans);
     if (!keepdim) {
       output->Resize(out_dims);
       indices->Resize(out_dims);

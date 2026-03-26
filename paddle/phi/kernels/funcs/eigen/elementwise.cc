@@ -17,14 +17,11 @@ namespace phi::funcs {
 
 template <typename T>
 struct EigenAdd<Eigen::DefaultDevice, T> {
-  using InType = Eigen::TensorMap<Eigen::TensorFixedSize<const T,
-                                                         Eigen::Sizes<>,
-                                                         Eigen::RowMajor,
-                                                         Eigen::DenseIndex>>;
-  using OutType = Eigen::TensorMap<Eigen::TensorFixedSize<T,
-                                                          Eigen::Sizes<>,
-                                                          Eigen::RowMajor,
-                                                          Eigen::DenseIndex>>;
+  using InType = Eigen::TensorMap<
+      Eigen::
+          TensorFixedSize<const T, Eigen::Sizes<>, Eigen::RowMajor, int64_t>>;
+  using OutType = Eigen::TensorMap<
+      Eigen::TensorFixedSize<T, Eigen::Sizes<>, Eigen::RowMajor, int64_t>>;
   static void Eval(const Eigen::DefaultDevice& dev,
                    OutType out,
                    const InType& in,
@@ -40,10 +37,10 @@ template struct EigenAdd<Eigen::DefaultDevice, int64_t>;
 
 template <typename T>
 struct EigenSub<Eigen::DefaultDevice, T> {
-  using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using InType =
+      Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor, int64_t>>;
   using OutType =
-      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, int64_t>>;
   static void Eval(const Eigen::DefaultDevice& dev,
                    OutType out,
                    const InType& left,
@@ -56,10 +53,10 @@ template struct EigenSub<Eigen::DefaultDevice, float>;
 
 template <typename T>
 struct EigenDiv<Eigen::DefaultDevice, T> {
-  using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using InType =
+      Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor, int64_t>>;
   using OutType =
-      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, int64_t>>;
   static void Eval(const Eigen::DefaultDevice& dev,
                    OutType out,
                    const InType& in,
