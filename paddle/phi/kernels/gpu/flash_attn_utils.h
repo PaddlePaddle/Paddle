@@ -307,7 +307,7 @@ struct FlashAttnFwdParamsV2 : public FlashAttnParamsBase {
     seed_offset_data[0] = static_cast<int64_t>(seed);
     seed_offset_data[1] = static_cast<int64_t>(offset);
 
-    softmax_lse->Resize(phi::make_ddim(softmax_lse_dims));
+    softmax_lse->Resize(softmax_lse_dims);
     dev_ctx.template Alloc<float>(softmax_lse);
 
     if (_version == 3) {

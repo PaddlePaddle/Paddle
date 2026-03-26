@@ -214,7 +214,7 @@ void SolveKernel(const Context& dev_ctx,
                       y_dims.Get() + y_dims.size() - 2,
                       y_dims.Get() + y_dims.size());
     }
-    out->Resize(phi::make_ddim(out_dims));
+    out->Resize(out_dims);
     dev_ctx.template Alloc<T>(out);
     return;
   }
