@@ -335,11 +335,11 @@ void MemoryEfficientAttentionGradKernel(
       DenseTensor output_grad_tmp =
           output_grad.dtype() == DataType::FLOAT32
               ? output_grad
-              : phi::Cast<T, Context>(dev_ctx, output_grad, DataType::FLOAT32);
+              : Cast<T, Context>(dev_ctx, output_grad, DataType::FLOAT32);
       DenseTensor output_tmp =
           output.dtype() == DataType::FLOAT32
               ? output
-              : phi::Cast<T, Context>(dev_ctx, output, DataType::FLOAT32);
+              : Cast<T, Context>(dev_ctx, output, DataType::FLOAT32);
       DenseTensor delta_mul =
           phi::Multiply<float, Context>(dev_ctx, output_grad_tmp, output_tmp);
 

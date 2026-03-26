@@ -7508,6 +7508,16 @@ def put_along_axis(
             "`indices` and `arr` must have the same number of dimensions!"
         )
     axis = non_negative_axis(arr, axis)
+    # When indices is empty (numel == 0) there are no scatter operations to
+    # perform.  Return a copy of arr immediately to avoid passing a 0-size
+    # index tensor through the broadcast path, which would attempt an invalid
+    # expand (e.g. values dim 4 -> 0) and raise an error.
+    # In dynamic mode use numel(); in static mode indices.numel() returns a
+    # symbolic Value so we check the shape directly instead.
+    if (paddle.in_dynamic_mode() and indices.numel() == 0) or (
+        not paddle.in_dynamic_mode() and 0 in indices.shape
+    ):
+        return paddle.assign(arr)
     if broadcast:
         if has_dynamic_shape(arr.shape) or has_dynamic_shape(indices.shape):
             arr_shape = paddle.shape(arr)
@@ -7627,6 +7637,10 @@ def put_along_axis_(
             "`indices` and `arr` must have the same number of dimensions!"
         )
     axis = non_negative_axis(arr, axis)
+    if (paddle.in_dynamic_mode() and indices.numel() == 0) or (
+        not paddle.in_dynamic_mode() and 0 in indices.shape
+    ):
+        return arr
     if broadcast:
         broadcast_shape = infer_broadcast_shape(arr, indices, axis)
         values = (
@@ -8408,6 +8422,13 @@ def diagonal_scatter(
     return fill_diagonal_tensor(x, y, offset, axis1, axis2, name)
 
 
+@ParamAliasDecorator(
+    {
+        "x": ["input"],
+        "values": ["src"],
+        "axis": ["dim"],
+    }
+)
 def select_scatter(
     x: Tensor, values: Tensor, axis: int, index: int, name: str | None = None
 ) -> Tensor:
@@ -8415,9 +8436,9 @@ def select_scatter(
     Embeds the values of the values tensor into x at the given index of axis.
 
     Args:
-        x (Tensor) : The Destination Tensor. Supported data types are `bool`, `float16`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `bfloat16`, `complex64`, `complex128`.
-        values (Tensor) : The tensor to embed into x. Supported data types are `bool`, `float16`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `bfloat16`, `complex64`, `complex128`.
-        axis (int) : the dimension to insert the slice into.
+        x (Tensor) : The Destination Tensor. Supported data types are `bool`, `float16`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `bfloat16`, `complex64`, `complex128`. Alias: ``input``.
+        values (Tensor) : The tensor to embed into x. Supported data types are `bool`, `float16`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `bfloat16`, `complex64`, `complex128`. Alias: ``src``.
+        axis (int) : the dimension to insert the slice into. Alias: ``dim``.
         index (int) : the index to select with.
         name (str|None, optional): Name for the operation (optional, default is None).
 

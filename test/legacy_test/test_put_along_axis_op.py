@@ -1586,6 +1586,66 @@ class TestPutAlongAxisDynamicShape_ZeroSize(TestPutAlongAxisDynamicShape):
         self.arr = np.random.random([0, 10, 10, 10]).astype(self.dtype)
 
 
+class TestPutAlongAxisZeroSizeIndex(unittest.TestCase):
+    """
+    When indices has a 0-size dimension (numel == 0), put_along_axis should
+    return a copy of arr unchanged regardless of the shape of values.
+
+    Before the fix, the Python wrapper tried to broadcast_to(values, [2, 0])
+    which failed because a non-1/non-0 input dimension cannot be expanded to 0
+    (that is a valid constraint in expand). The fix adds an early return when
+    indices.numel() == 0, matching PyTorch scatter_ behaviour.
+    """
+
+    def setUp(self):
+        paddle.disable_static()
+
+    def _check(self, arr_shape, index_shape, val_shape, axis):
+        arr = paddle.rand(arr_shape, dtype='float32')
+        idx = paddle.zeros(index_shape, dtype='int64')
+        val = paddle.rand(val_shape, dtype='float32')
+        out = paddle.put_along_axis(arr, idx, val, axis=axis)
+        # Output shape must equal arr shape; values must be unchanged.
+        np.testing.assert_equal(list(out.shape), arr_shape)
+        np.testing.assert_allclose(
+            out.numpy(), arr.numpy(), rtol=1e-6, atol=1e-6
+        )
+
+    def test_index_zero_dim_values_non_zero(self):
+        """Original bug: arr[2,60] idx[2,0] val[2,4] axis=1."""
+        self._check([2, 60], [2, 0], [2, 4], axis=1)
+
+    def test_index_zero_first_dim(self):
+        self._check([60, 2], [0, 2], [4, 2], axis=0)
+
+    def test_index_zero_mid_dim(self):
+        self._check([3, 5, 7], [3, 0, 7], [3, 4, 7], axis=1)
+
+    def test_all_zero_size(self):
+        self._check([2, 60], [2, 0], [2, 0], axis=1)
+
+    def test_inplace_zero_index(self):
+        """Inplace variant should also return arr unchanged."""
+        arr = paddle.rand([2, 60], dtype='float32')
+        arr_copy = arr.clone()
+        idx = paddle.zeros([2, 0], dtype='int64')
+        val = paddle.rand([2, 4], dtype='float32')
+        arr.put_along_axis_(idx, val, axis=1)
+        np.testing.assert_allclose(
+            arr.numpy(), arr_copy.numpy(), rtol=1e-6, atol=1e-6
+        )
+
+    def test_reduce_mul_zero_index(self):
+        arr = paddle.ones([2, 60], dtype='float32')
+        idx = paddle.zeros([2, 0], dtype='int64')
+        val = paddle.rand([2, 4], dtype='float32') + 2.0
+        out = paddle.put_along_axis(arr, idx, val, axis=1, reduce='mul')
+        np.testing.assert_equal(list(out.shape), [2, 60])
+        np.testing.assert_allclose(
+            out.numpy(), arr.numpy(), rtol=1e-6, atol=1e-6
+        )
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

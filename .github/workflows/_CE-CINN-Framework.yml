@@ -27,10 +27,9 @@ defaults:
     shell: bash
 
 jobs:
-
   check-bypass:
     name: Check bypass
-    if: ${{ github.repository_owner == 'PaddlePaddle' && inputs.can-skip != 'true' }}
+    if: ${{ github.repository_owner == 'PaddlePaddle' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
       workflow-name: ce-cinn-framework
@@ -40,7 +39,7 @@ jobs:
   cinn:
     name: CINN
     if: ${{ inputs.can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true' }}
-    needs: check-bypass
+    needs: [check-bypass]
     runs-on:
       group: BD_BJ-V100
     timeout-minutes: 120

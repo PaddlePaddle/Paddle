@@ -77,17 +77,17 @@ void ConvGradKernel(const Context& dev_ctx,
   auto filter_dims = filter.dims();
   DDim in_data_dims = slice_ddim(in_dims, 2, in_dims.size());
   DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation<int>(
       &paddings_, &dilations_, padding_algorithm, in_data_dims, strides, ksize);
 
   const int64_t batch_size = transformed_input.dims()[0];
 
   // filter_shape_vec: {k_o, k_i, k_h, k_w} or {k_o, k_i, k_d, k_h, k_w}
-  std::vector<int64_t> filter_shape_vec(common::vectorize(filter.dims()));
+  std::vector<int64_t> filter_shape_vec(vectorize(filter.dims()));
   // output_shape_vec: {o_n, o_c, o_h, o_w} or {o_n, o_c, o_d, o_h, o_w}
   std::vector<int64_t> output_shape_vec(
-      common::vectorize(transformed_output_grad.dims()));
+      vectorize(transformed_output_grad.dims()));
 
   // use col_shape in the im2col calculation
   // col_shape_vec: {i_c/g, k_h, k_w, o_h, o_w} or {i_c/g, k_d, k_h, k_w, o_d,
@@ -318,14 +318,13 @@ void ConvGradGradKernel(const Context& dev_ctx,
 
   DDim in_data_dims = slice_ddim(in_dims, 2, in_dims.size());
   DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
       &paddings_, &dilations_, padding_algorithm, in_data_dims, strides, ksize);
 
   const int64_t batch_size = transformed_X.dims()[0];
-  std::vector<int64_t> filter_shape_vec(common::vectorize(W.dims()));
-  std::vector<int64_t> output_shape_vec(
-      common::vectorize(transformed_dY.dims()));
+  std::vector<int64_t> filter_shape_vec(vectorize(W.dims()));
+  std::vector<int64_t> output_shape_vec(vectorize(transformed_dY.dims()));
 
   size_t data_dim = filter_shape_vec.size() - 2;
   std::vector<int64_t> col_shape_vec(1 + 2 * data_dim);

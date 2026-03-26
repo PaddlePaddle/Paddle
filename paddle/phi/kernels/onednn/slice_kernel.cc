@@ -21,7 +21,7 @@ namespace phi {
 
 bool SliceCheckIfOneDNNSupport(const KernelContext* ctx) {
   auto x = ctx->InputAt<DenseTensor>(0);
-  auto vec_dims = common::vectorize(x.dims());
+  auto vec_dims = vectorize(x.dims());
   bool all_zero_dims = std::all_of(
       vec_dims.cbegin(), vec_dims.cend(), [](int64_t i) { return i == 0; });
 
@@ -42,7 +42,7 @@ void SliceKernel(const Context& dev_ctx,
                  DenseTensor* out) {
   const auto& onednn_engine = dev_ctx.GetEngine();
 
-  auto x_vec_dims = common::vectorize(x.dims());
+  auto x_vec_dims = vectorize(x.dims());
 
   auto starts_vec = starts.GetData();
   auto ends_vec = ends.GetData();

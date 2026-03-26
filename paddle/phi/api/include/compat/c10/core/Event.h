@@ -86,28 +86,13 @@ EventPool::EventPool() {
 }
 
 EventPool::~EventPool() {
-  const auto &DestroyEvent = [](cudaEvent_t event) {
-    C10_CUDA_CHECK(cudaEventDestroy(event));
-  };
-  const auto &CheckComplishAndDestroy = [&](cudaEvent_t event) -> bool {
-    if (cudaEventQuery(event) == cudaSuccess) {
-      DestroyEvent(event);
-      return true;
-    }
-    if (cudaEventQuery(event) == cudaErrorNotReady) {
-      // LOG(ERROR) << "event is not completed or when destroying event pool.";
-      return false;
-    }
-    // LOG(ERROR) << "failed on cudaEventQuery when destroying event pool.";
-    return false;
-  };
   std::unique_lock<std::mutex> lock(mtx_);
   while (!incomplished_events_.empty()) {
     cudaEvent_t event = incomplished_events_.front();
-    if (!CheckComplishAndDestroy(event)) {
-      // LOG(ERROR) << "failed on destroying event when destroying event pool.";
-    }
     incomplished_events_.pop();
+    if (cudaEventQuery(event) == cudaSuccess) {
+      C10_CUDA_CHECK(cudaEventDestroy(event));
+    }
   }
 }
 
@@ -143,8 +128,23 @@ struct Event final {
     // device_type is useless, only for compatibility
     cuda_event_ = EventPool::Instance().CreateCudaEventFromPool();
   }
+
+  void record(const Stream &stream) {
+    C10_CUDA_CHECK(cudaEventRecord(
+        cuda_event_, static_cast<cudaStream_t>(stream.native_handle())));
+  }
+
+  void record(const c10::cuda::CUDAStream &stream) { record(stream.unwrap()); }
+
+  // TODO(youge325): Remove after DeepEP paddle branch is updated to use
+  // c10::Stream
   void record(const cudaStream_t &stream) {
     C10_CUDA_CHECK(cudaEventRecord(cuda_event_, stream));
+  }
+
+  void block(const Stream &stream) const {
+    C10_CUDA_CHECK(cudaStreamWaitEvent(
+        static_cast<cudaStream_t>(stream.native_handle()), cuda_event_, 0));
   }
 
   cudaEvent_t cuda_event() const { return cuda_event_; }

@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+import warnings
+from collections.abc import Iterator
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -27,7 +29,7 @@ from ...framework import core
 from ...tensor import randperm
 
 if TYPE_CHECKING:
-    from collections.abc import Generator, Iterator, Sequence, Sized
+    from collections.abc import Generator, Sequence, Sized
 
     import numpy.typing as npt
 
@@ -235,7 +237,13 @@ class RandomSampler(Sampler[int]):
         self.data_source = data_source
         self.replacement = replacement
         self._num_samples = num_samples
-        self.generator = generator
+        if isinstance(generator, Iterator):
+            self.generator = generator
+        else:
+            warnings.warn(
+                "the specified generator is not iterable and will be ignored"
+            )
+            self.generator = None
 
         if not isinstance(self.replacement, bool):
             raise TypeError(

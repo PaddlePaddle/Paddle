@@ -62,7 +62,7 @@ void MeshgridForward(const Context& dev_ctx,
     reshape_ins_tensor.Resize(out_dims_reshape);
     DDim out_dims = make_ddim(shape);
 
-    Eigen::DSizes<Eigen::DenseIndex, Rank> bcast_dims;
+    Eigen::DSizes<int64_t, Rank> bcast_dims;
     for (int64_t j = 0; j < size; j++) {
       bcast_dims[j] = shape[j];
     }

@@ -50,8 +50,8 @@ void DeformableConvKernel(const Context& dev_ctx,
     im2col_step = temp_step;
   }
 
-  std::vector<int64_t> filter_shape_vec(common::vectorize(filter.dims()));
-  std::vector<int64_t> output_shape_vec(common::vectorize(out->dims()));
+  std::vector<int64_t> filter_shape_vec(vectorize(filter.dims()));
+  std::vector<int64_t> output_shape_vec(vectorize(out->dims()));
 
   // col_shape_vec: {c_i * k_h * k_w, im2col_step, o_h, o_w}
   std::vector<int64_t> col_buffer_shape_vec(filter_shape_vec.size());
@@ -83,7 +83,7 @@ void DeformableConvKernel(const Context& dev_ctx,
       .Resize(make_ddim({batch_size / im2col_step, groups, M, N}));
 
   DDim input_shape = slice_ddim(x.dims(), 1, x.dims().size());
-  std::vector<int64_t> input_shape_vec = common::vectorize(input_shape);
+  std::vector<int64_t> input_shape_vec = vectorize(input_shape);
 
   int64_t input_dim = x.numel() / x.dims()[0];
   int64_t input_offset_dim = offset.numel() / offset.dims()[0];

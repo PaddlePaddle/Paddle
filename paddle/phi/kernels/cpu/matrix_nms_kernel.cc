@@ -297,21 +297,21 @@ void MatrixNMSKernel(const Context& dev_ctx,
 
   int64_t num_kept = static_cast<int64_t>(offsets.back());
   if (num_kept == 0) {
-    out->Resize(make_ddim({0, out_dim}));
+    out->Resize({0, out_dim});
     dev_ctx.template Alloc<T>(out);
-    index->Resize(make_ddim({0, 1}));
+    index->Resize({0, 1});
     dev_ctx.template Alloc<int>(index);
   } else {
-    out->Resize(make_ddim({num_kept, out_dim}));
+    out->Resize({num_kept, out_dim});
     dev_ctx.template Alloc<T>(out);
-    index->Resize(make_ddim({num_kept, 1}));
+    index->Resize({num_kept, 1});
     dev_ctx.template Alloc<int>(index);
     std::copy(detections.begin(), detections.end(), out->data<T>());
     std::copy(indices.begin(), indices.end(), index->data<int>());
   }
 
   if (roisnum != nullptr) {
-    roisnum->Resize(make_ddim({batch_size}));
+    roisnum->Resize({batch_size});
     dev_ctx.template Alloc<int>(roisnum);
     std::copy(num_per_batch.begin(), num_per_batch.end(), roisnum->data<int>());
   }

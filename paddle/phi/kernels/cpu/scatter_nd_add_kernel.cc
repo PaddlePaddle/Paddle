@@ -35,17 +35,17 @@ void ScatterNdAddKernel(const Context &dev_ctx,
   Copy(dev_ctx, x, dev_ctx.GetPlace(), true, out);
   const auto &index_type = index.dtype();
   bool index_type_match =
-      index_type == phi::DataType::INT32 || index_type == phi::DataType::INT64;
+      index_type == DataType::INT32 || index_type == DataType::INT64;
   PADDLE_ENFORCE_EQ(index_type_match,
                     true,
                     common::errors::InvalidArgument(
                         "Index holds the wrong type, it holds [%s], but "
                         "desires to be [%s] or [%s].",
                         index_type,
-                        phi::DataType::INT32,
-                        phi::DataType::INT64));
+                        DataType::INT32,
+                        DataType::INT64));
 
-  if (index_type == phi::DataType::INT32) {
+  if (index_type == DataType::INT32) {
     funcs::ScatterNdAdd<T, int32_t>(dev_ctx, updates, index, out);
   } else {
     funcs::ScatterNdAdd<T, int64_t>(dev_ctx, updates, index, out);

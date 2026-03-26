@@ -30,7 +30,6 @@ defaults:
 jobs:
   check-bypass:
     name: Check bypass
-    if: ${{ inputs.clone-can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
       workflow-name: distribute-test
@@ -39,8 +38,8 @@ jobs:
 
   test:
     name: Test
-    needs: check-bypass
-    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
+    needs: [check-bypass]
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' && inputs.clone-can-skip != 'true' }}
     runs-on:
       group: Distribute
     timeout-minutes: 120

@@ -416,7 +416,7 @@ class BeamSearchFunctor<GPUContext, T> {
                   size_t beam_size,
                   int end_id,
                   bool is_accumulated) {
-    auto abs_lod = phi::ToAbsOffset(scores->lod());
+    auto abs_lod = ToAbsOffset(scores->lod());
 
     const int64_t* pre_ids_data = pre_ids->data<int64_t>();
     const float* pre_scores_data = pre_scores->data<float>();
@@ -443,7 +443,7 @@ class BeamSearchFunctor<GPUContext, T> {
     int* parent_idx_data =
         parent_idx ? dev_ctx.template Alloc<int>(parent_idx) : nullptr;
 
-    phi::LegacyLoD selected_lod(2);
+    LegacyLoD selected_lod(2);
     selected_lod[0].assign(abs_lod[level].begin(), abs_lod[level].end());
     selected_lod[1].resize(scores->dims()[0] + 1);
     phi::MixVector<size_t> mix_vector(&selected_lod[1]);

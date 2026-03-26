@@ -54,9 +54,9 @@ void RepeatInterleaveKernel(const Context& dev_ctx,
   for (int i = 0; i < input_dim[dim]; i++) {
     std::fill_n(index_vec.begin() + i * repeats, repeats, i);
   }
-  index.Resize(make_ddim({index_size}));
+  index.Resize({index_size});
   DenseTensor x_copy = x;
-  phi::TensorFromVector<int>(index_vec, dev_ctx, &index);
+  TensorFromVector<int>(index_vec, dev_ctx, &index);
 
   auto output_dim = vectorize(x.dims());
   output_dim[dim] = index_size;
