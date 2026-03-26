@@ -187,10 +187,10 @@ void SolveKernel(const Context& dev_ctx,
   if (x.numel() == 0 || y.numel() == 0) {
     auto x_dims = x.dims();
     auto y_dims = y.dims();
-    std::vector<int> out_dims;
+    std::vector<int64_t> out_dims;
     if (y_dims.size() == 1) {
       out_dims =
-          std::vector<int>(x_dims.Get(), x_dims.Get() + x_dims.size() - 2);
+          std::vector<int64_t>(x_dims.Get(), x_dims.Get() + x_dims.size() - 2);
       out_dims.push_back(y_dims[y_dims.size() - 1]);
     } else {
       // broadcast
