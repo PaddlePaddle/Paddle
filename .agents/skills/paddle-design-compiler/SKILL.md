@@ -257,6 +257,7 @@ CINN 编译产物通过 `CinnJitInstruction` 执行：从 `CINNKernelInfo` 获�
 | PIR Program/Value/Operation 内存结构、ProgramTranslator | [references/pir-program.md](references/pir-program.md) |
 | CINN 从 GroupOp 到 CUDA Kernel 的完整编译流程 | [references/cinn-pipeline.md](references/cinn-pipeline.md) |
 | PIR 控制流（IfOp/WhileOp）、反向 Stack 机制 | [references/control-flow.md](references/control-flow.md) |
+| PIR 执行器（PirInterpreter）、Instruction 调度、Stream 分析、GC | [references/executor.md](references/executor.md) |
 
 ## 源码入口
 
