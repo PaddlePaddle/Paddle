@@ -40,7 +40,7 @@ enum class DeviceType : int8_t {
   Undefined = -1,
 };
 
-// ── 常量定义 ─────────────────────────────────────────────────────────
+// ── 常量定义 ───────────────────────────────────────────────────────
 constexpr DeviceType kCPU = DeviceType::CPU;
 constexpr DeviceType kCUDA = DeviceType::CUDA;
 constexpr DeviceType kGPUPINNED = DeviceType::GPUPINNED;
