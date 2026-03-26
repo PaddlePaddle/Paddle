@@ -10,4 +10,5 @@ file(COPY ${TEST_PY_FILES} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
+  set_tests_properties(${TEST_OP} PROPERTIES LABELS "RUN_TYPE=NIGHTLY")
 endforeach()
