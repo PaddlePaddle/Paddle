@@ -132,3 +132,37 @@ TEST(ScalarTypeCompatTest, ScalarTypeUtilityBranches) {
   oss << c10::ScalarType::UInt7;
   EXPECT_EQ(oss.str(), "UInt7");
 }
+
+TEST(ScalarTypeCompatTest, AdditionalEnumAndPredicateBranches) {
+  EXPECT_STREQ(c10::toString(c10::ScalarType::QInt8), "QInt8");
+  EXPECT_STREQ(c10::toString(c10::ScalarType::QUInt8), "QUInt8");
+  EXPECT_STREQ(c10::toString(c10::ScalarType::QInt32), "QInt32");
+  EXPECT_STREQ(c10::toString(c10::ScalarType::QUInt4x2), "QUInt4x2");
+  EXPECT_STREQ(c10::toString(c10::ScalarType::QUInt2x4), "QUInt2x4");
+  EXPECT_STREQ(c10::toString(c10::ScalarType::ComplexHalf), "ComplexHalf");
+  EXPECT_STREQ(c10::toString(c10::ScalarType::Bits2x4), "Bits2x4");
+  EXPECT_STREQ(c10::toString(c10::ScalarType::Bits4x2), "Bits4x2");
+  EXPECT_STREQ(c10::toString(c10::ScalarType::Bits8), "Bits8");
+
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::QUInt8), static_cast<size_t>(1));
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::QUInt2x4),
+            static_cast<size_t>(1));
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::Bits2x4), static_cast<size_t>(1));
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::Bits4x2), static_cast<size_t>(1));
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::Bits8), static_cast<size_t>(1));
+
+  EXPECT_TRUE(c10::isIntegralType(c10::ScalarType::UInt64, false));
+  EXPECT_FALSE(c10::isIntegralType(c10::ScalarType::Float, true));
+  EXPECT_TRUE(c10::isFloat8Type(c10::ScalarType::Float8_e4m3fn));
+  EXPECT_TRUE(c10::isReducedFloatingType(c10::ScalarType::Half));
+  EXPECT_FALSE(c10::isReducedFloatingType(c10::ScalarType::Float));
+  EXPECT_TRUE(c10::isFloatingType(c10::ScalarType::Half));
+  EXPECT_TRUE(c10::isComplexType(c10::ScalarType::ComplexFloat));
+
+  EXPECT_TRUE(c10::isSignedType(c10::ScalarType::QInt8));
+  EXPECT_TRUE(c10::isSignedType(c10::ScalarType::ComplexHalf));
+  EXPECT_FALSE(c10::isSignedType(c10::ScalarType::Byte));
+  EXPECT_FALSE(c10::isSignedType(c10::ScalarType::Bool));
+  EXPECT_THROW(c10::isSignedType(c10::ScalarType::NumOptions),
+               ::std::exception);
+}

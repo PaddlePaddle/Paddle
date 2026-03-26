@@ -54,6 +54,7 @@ if(NOT WIN32)
     nv_test(ATen_local_scalar_dense_test SRCS ATen_local_scalar_dense_test.cc)
     nv_test(ATen_cuda_test SRCS ATen_cuda_test.cc)
     nv_test(ATen_to_test SRCS ATen_to_test.cc)
+    nv_test(ATen_equal_test SRCS ATen_equal_test.cc)
     nv_test(ATen_Utils_test SRCS ATen_Utils_test.cc)
     nv_test(ATen_from_blob_test SRCS ATen_from_blob_test.cc)
     nv_test(compat_dense_sparse_conversion_test

@@ -232,4 +232,10 @@ TEST(CUDAContextLightTest, AllocatorZeroSizeAndNoopCopyBranches) {
   alloc->copy_data(nullptr, nullptr, 0);
 }
 
+#if defined(USE_CUDSS)
+TEST(CUDAContextLightTest, CudssHandleIsUnimplemented) {
+  ASSERT_THROW((void)at::cuda::getCurrentCudssHandle(), std::exception);
+}
+#endif
+
 #endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP

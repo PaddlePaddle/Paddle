@@ -97,6 +97,22 @@ class NullRawDeleterAllocator final : public c10::Allocator {
   c10::DeleterFnPtr raw_deleter() const override { return nullptr; }
 };
 
+class DefaultRawDeleterAllocator final : public c10::Allocator {
+ public:
+  c10::DataPtr allocate(size_t n) override {
+    size_t bytes = n == 0 ? 1 : n;
+    char* p = new char[bytes];
+    return c10::DataPtr(
+        p, p, &DeleteCharArray, c10::Device(c10::DeviceType::CPU));
+  }
+
+  void copy_data(void* dest,
+                 const void* src,
+                 std::size_t count) const override {
+    default_copy_data(dest, src, count);
+  }
+};
+
 }  // namespace
 
 // Regression test (RT-2): tensor.storage() must count the tensor's own
@@ -680,6 +696,11 @@ TEST(StorageTest, AllocatorRawDeallocateRequiresDeleter) {
                std::exception);
 }
 
+TEST(StorageTest, AllocatorDefaultRawDeleterIsNull) {
+  DefaultRawDeleterAllocator alloc;
+  ASSERT_EQ(alloc.raw_deleter(), nullptr);
+}
+
 TEST(StorageTest, AllocatorCloneCopiesBytes) {
   RawCompatibleAllocator alloc;
 
@@ -738,6 +759,47 @@ TEST(StorageTest, CreateTensorStorageNullAndHolderReuse) {
   // createTensorStorage should reuse impl when holder is StorageHolderView.
   c10::Storage from_holder = c10::Storage::createTensorStorage(holder0);
   ASSERT_EQ(from_holder.get_impl(), base_storage.get_impl());
+}
+
+TEST(StorageTest, MaybeOwnedAndExclusiveTraitsHelpers) {
+  c10::Storage src = at::ones({2, 2}, at::kFloat).storage();
+
+  c10::Storage borrowed =
+      c10::MaybeOwnedTraits<c10::Storage>::createBorrow(src);
+  ASSERT_EQ(borrowed.get_impl(), src.get_impl());
+
+  c10::Storage assigned;
+  c10::MaybeOwnedTraits<c10::Storage>::assignBorrow(assigned, borrowed);
+  ASSERT_EQ(assigned.get_impl(), src.get_impl());
+
+  ASSERT_EQ(c10::MaybeOwnedTraits<c10::Storage>::referenceFromBorrow(assigned)
+                .get_impl(),
+            src.get_impl());
+  ASSERT_EQ(c10::MaybeOwnedTraits<c10::Storage>::pointerFromBorrow(assigned)
+                ->get_impl(),
+            src.get_impl());
+  ASSERT_TRUE(
+      c10::MaybeOwnedTraits<c10::Storage>::debugBorrowIsValid(assigned));
+  c10::MaybeOwnedTraits<c10::Storage>::destroyBorrow(assigned);
+  ASSERT_FALSE(assigned.valid());
+
+  using ET = c10::ExclusivelyOwnedTraits<c10::Storage>;
+  c10::Storage null_repr = ET::nullRepr();
+  ASSERT_FALSE(null_repr.valid());
+
+  c10::Storage in_place = ET::createInPlace();
+  ASSERT_FALSE(in_place.valid());
+
+  c10::Storage moved = ET::moveToRepr(std::move(src));
+  ASSERT_TRUE(moved.valid());
+
+  c10::Storage taken = ET::take(moved);
+  ASSERT_TRUE(taken.valid());
+  ASSERT_FALSE(moved.valid());
+
+  ASSERT_NE(ET::getImpl(taken), nullptr);
+  const c10::Storage& c_taken = taken;
+  ASSERT_NE(ET::getImpl(c_taken), nullptr);
 }
 
 TEST(StorageTest, SetDataPtrReturnsOldValues) {

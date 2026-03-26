@@ -53,6 +53,15 @@ TEST(DeviceTypeCompatTest, DeviceTypeConversionAndStreamOperator) {
   std::ostringstream cpu_os;
   cpu_os << c10::DeviceType::CPU;
   EXPECT_EQ(cpu_os.str(), "cpu");
+  std::ostringstream cuda_os;
+  cuda_os << c10::DeviceType::CUDA;
+  EXPECT_EQ(cuda_os.str(), "cuda");
+  std::ostringstream xpu_os;
+  xpu_os << c10::DeviceType::XPU;
+  EXPECT_EQ(xpu_os.str(), "xpu");
+  std::ostringstream ipu_os;
+  ipu_os << c10::DeviceType::IPU;
+  EXPECT_EQ(ipu_os.str(), "ipu");
   std::ostringstream custom_os;
   custom_os << c10::DeviceType::CUSTOM;
   EXPECT_EQ(custom_os.str(), "privateuseone");
@@ -76,10 +85,12 @@ TEST(DeviceCompatTest, DeviceParseAndPlaceBranches) {
   c10::Device xpu("xpu:1");
   EXPECT_EQ(xpu.type(), c10::DeviceType::XPU);
   EXPECT_EQ(xpu.index(), 1);
+  EXPECT_EQ(xpu.str(), "xpu:1");
 
   c10::Device ipu("ipu:2");
   EXPECT_EQ(ipu.type(), c10::DeviceType::IPU);
   EXPECT_EQ(ipu.index(), 2);
+  EXPECT_EQ(ipu.str(), "ipu:2");
 
   EXPECT_THROW(c10::Device(""), ::std::exception);
   EXPECT_THROW(c10::Device("npu:0"), ::std::exception);
@@ -90,10 +101,22 @@ TEST(DeviceCompatTest, DeviceParseAndPlaceBranches) {
   phi::Place custom_place = custom._PD_GetInner();
   EXPECT_EQ(custom_place.GetType(), phi::AllocationType::CUSTOM);
   EXPECT_EQ(custom_place.GetDeviceId(), 5);
+  EXPECT_EQ(custom.str(), "privateuseone:5");
+
+  c10::Device cuda_no_index(c10::DeviceType::CUDA);
+  EXPECT_EQ(cuda_no_index._PD_GetInner().GetType(), phi::AllocationType::GPU);
+  EXPECT_EQ(cuda_no_index._PD_GetInner().GetDeviceId(), 0);
+  c10::Device xpu_no_index(c10::DeviceType::XPU);
+  EXPECT_EQ(xpu_no_index._PD_GetInner().GetType(), phi::AllocationType::XPU);
+  EXPECT_EQ(xpu_no_index._PD_GetInner().GetDeviceId(), 0);
+  c10::Device ipu_no_index(c10::DeviceType::IPU);
+  EXPECT_EQ(ipu_no_index._PD_GetInner().GetType(), phi::AllocationType::IPU);
+  EXPECT_EQ(ipu_no_index._PD_GetInner().GetDeviceId(), 0);
 
   c10::Device invalid(static_cast<c10::DeviceType>(-1), 0);
   phi::Place fallback_place = invalid._PD_GetInner();
   EXPECT_EQ(fallback_place.GetType(), phi::AllocationType::CPU);
+  EXPECT_EQ(invalid.str(), "cpu:0");
 
   std::ostringstream os;
   os << cuda;

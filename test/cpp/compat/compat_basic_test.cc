@@ -417,3 +417,28 @@ TEST(TensorBodyTest, ToBackendUnsupportedBranch) {
   at::Tensor t = at::ones({1}, at::kFloat);
   ASSERT_THROW(t.toBackend(static_cast<c10::Backend>(-1)), ::std::exception);
 }
+
+TEST(TensorBodyTest, MetaUnsupportedBranch) {
+  at::Tensor t = at::ones({1}, at::kFloat);
+  ASSERT_THROW((void)t.meta(), ::std::exception);
+}
+
+TEST(TensorBaseTest, ToDeviceAndMemoryFormatUnsupportedBranches) {
+  at::TensorBase base = at::ones({2, 2}, at::kFloat);
+
+  ASSERT_THROW(
+      (void)base.to(at::TensorOptions().device(c10::Device(c10::kCPU))),
+      ::std::exception);
+
+  ASSERT_THROW((void)base.to(at::TensorOptions().dtype(at::kFloat),
+                             false,
+                             false,
+                             at::MemoryFormat::Contiguous),
+               ::std::exception);
+}
+
+TEST(TensorBaseTest, ToDtypeCastsWhenSupported) {
+  at::TensorBase base = at::ones({2, 2}, at::kFloat);
+  at::TensorBase casted = base.to(at::TensorOptions().dtype(at::kDouble));
+  ASSERT_EQ(casted.scalar_type(), at::kDouble);
+}
