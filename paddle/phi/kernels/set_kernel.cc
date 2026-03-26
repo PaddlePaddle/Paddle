@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/phi/kernels/set_kernel.h"
+#include <cstring>
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
@@ -59,12 +60,16 @@ void SetKernel(const Context& dev_ctx,
         DenseTensor tmp;
         std::vector<int64_t> alloc_shape = {required_size};
         Full<T, Context>(dev_ctx, alloc_shape, 0, &tmp);
-        memory_utils::Copy(dev_ctx.GetPlace(),
-                           tmp.data<T>(),
-                           dev_ctx.GetPlace(),
-                           x.data<T>(),
-                           x.numel() * sizeof(T),
-                           nullptr);
+        if (dev_ctx.GetPlace().GetType() == phi::AllocationType::CPU) {
+          std::memcpy(tmp.data<T>(), x.data<T>(), x.numel() * sizeof(T));
+        } else {
+          memory_utils::Copy(dev_ctx.GetPlace(),
+                             tmp.data<T>(),
+                             dev_ctx.GetPlace(),
+                             x.data<T>(),
+                             x.numel() * sizeof(T),
+                             nullptr);
+        }
         out->clear();
         *out = DenseTensor{tmp.Holder(), meta};
       } else {
