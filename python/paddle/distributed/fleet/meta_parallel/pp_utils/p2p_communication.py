@@ -56,8 +56,9 @@ def initialize_p2p_groups(
 class SendRecvMeta:
     """Mainly used to help p2p communication context information"""
 
-    def __init__(self):
+    def __init__(self, full_recompute_overlap):
         self.init_or_erase_meta()
+        self.full_recompute_overlap = full_recompute_overlap
 
     def init_or_erase_meta(self):
         self.send_shape_message = None
@@ -226,7 +227,7 @@ class SendRecvMeta:
             keys = []
             for d in tensor:
                 assert isinstance(d, paddle.Tensor)
-                if d.stop_gradient:
+                if d.stop_gradient and not self.full_recompute_overlap:
                     continue
                 shape, dtype, key = self._obtain_send_message(d)
                 shapes.append(shape)
@@ -730,8 +731,10 @@ def _p2p_helper(
 
 
 class P2pHelper:
-    def __init__(self, use_cache=True, dynamic_shape=False):
-        self._send_recv_meta = SendRecvMeta()
+    def __init__(
+        self, use_cache=True, dynamic_shape=False, full_recompute_overlap=False
+    ):
+        self._send_recv_meta = SendRecvMeta(full_recompute_overlap)
         self._use_cache = use_cache
         self._dynamic_shape = dynamic_shape
 
