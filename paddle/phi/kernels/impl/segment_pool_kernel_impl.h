@@ -90,7 +90,17 @@ void SegmentKernelLaunchHelper(const Context& dev_ctx,
     auto dims = x.dims();
     dims[0] = static_cast<int64_t>(length_host);
     out->Resize({dims});
-    dev_ctx.template Alloc<T>(out);
+    // For MIN/MAX with sub-word types (float16/bfloat16), CudaAtomicMin/Max
+    // uses atomicCAS on uint32_t, which reads 4 bytes. When the last element
+    // sits at a 4-byte aligned offset near the end of the allocation, the
+    // 4-byte read can extend past the buffer. Pad to 4-byte alignment.
+    size_t alloc_bytes = out->numel() * sizeof(T);
+    if ((pooltype == "MAX" || pooltype == "MIN") &&
+        sizeof(T) < sizeof(uint32_t)) {
+      alloc_bytes = (alloc_bytes + sizeof(uint32_t) - 1) / sizeof(uint32_t) *
+                    sizeof(uint32_t);
+    }
+    dev_ctx.template Alloc<T>(out, alloc_bytes);
 
     T init_value = static_cast<T>(0);
     if (pooltype == "MAX") {
