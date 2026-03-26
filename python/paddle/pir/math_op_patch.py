@@ -1391,7 +1391,7 @@ def monkey_patch_value():
         return res
 
     @fake_interface_only
-    def numpy(self):
+    def numpy(self, *, force=True):
         """
         **Notes**:
             **This API is ONLY available in Dygraph mode**
