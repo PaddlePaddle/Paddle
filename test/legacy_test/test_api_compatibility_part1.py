@@ -2160,6 +2160,46 @@ class TestPixelShuffleAPI(unittest.TestCase):
             for out in fetches[1:]:
                 np.testing.assert_array_equal(fetches[0], out)
 
+# Test digamma compatibility
+class TestDigammaAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_x = np.random.rand(5, 6).astype('float32')
 
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle positional arguments
+        out1 = paddle.special.digamma(x)
+
+        # 2. Tensor method
+        out2 = x.digamma()
+
+        for out in [out1, out2]:
+            self.assertEqual(list(out.shape), list(x.shape))
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=[5, 6], dtype='float32')
+
+            # Paddle API
+            out1 = paddle.special.digamma(x)
+
+        exe = paddle.static.Executor()
+        exe.run(startup)
+
+        res = exe.run(main, feed={"x": self.np_x}, fetch_list=[out1])
+
+        self.assertEqual(list(res[0].shape), list(self.np_x.shape))
+
+        
 if __name__ == '__main__':
     unittest.main()
