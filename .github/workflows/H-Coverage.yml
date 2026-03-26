@@ -428,6 +428,7 @@ jobs:
           wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/h-coverage/${PR_ID}/${COMMIT_ID}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --no-check-certificate
           pip uninstall paddlepaddle-gpu -y
           pip install paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --force-reinstall --extra-index-url=https://www.paddlepaddle.org.cn/packages/nightly/cu129/
+          python -m pip install --upgrade pip
           uv build --wheel --no-build-isolation -v
           '
 
