@@ -771,7 +771,6 @@ template PADDLE_API void LayerNormKernel<double, GPUContext>(
     const DenseTensor& x,
     const paddle::optional<DenseTensor>& scale_opt,
     const paddle::optional<DenseTensor>& bias_opt,
-    float epsilon,
     double epsilon,
     int begin_norm_axis,
     DenseTensor* y,
