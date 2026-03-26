@@ -894,7 +894,8 @@ __global__ void ScatterMulInputGradGPUKernel(
   if (tid == aux_buffer[replace_index]) {
     if (x_data[replace_index] != static_cast<tensor_t>(0)) {
       grad_data[replace_index] = grad_data[replace_index] *
-                                 out_data[replace_index] / x_data[replace_index];
+                                 out_data[replace_index] /
+                                 x_data[replace_index];
     } else {
       grad_data[replace_index] = static_cast<tensor_t>(0);
     }
