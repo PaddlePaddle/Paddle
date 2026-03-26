@@ -121,6 +121,20 @@ class TestAminmaxOpZeroDim(TestAminmaxOp):
         self.shape = []
 
 
+class TestAminmaxOpEmptyTensor(unittest.TestCase):
+    """Test aminmax with empty tensor to cover the numel==0 early return in grad kernel."""
+
+    def test_empty_tensor_grad(self):
+        paddle.disable_static()
+        x = paddle.zeros([0, 3], dtype='float64')
+        x.stop_gradient = False
+        min_val, max_val = paddle.aminmax(x, axis=0)
+        loss = min_val.sum() + max_val.sum()
+        loss.backward()
+        self.assertEqual(list(x.grad.shape), [0, 3])
+        paddle.enable_static()
+
+
 class TestAminmaxAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
