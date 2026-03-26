@@ -424,7 +424,7 @@ for CHANGE_FILE in ${HAS_MODIFIED_PHI_OR_FLUID_FILES}; do
     fi
 done
 if [ "${USE_MUTABLE_DATA_FILES}" != "" ] && [ "${PR_ID}" != "" ]; then
-    echo_line="You can not use the DenseTensor::mutable_data() method in files(${USE_MUTABLE_DATA_FILES}). If you want to alloc memory, use phi::DeviceContext::Alloc() or phi::DeviceContext::HostAlloc() instead and if you want to get mutable data, use DenseTensor::data(). If you have any questions, you can have one RD (From00) review and approve.\n"
+    echo_line="You can not use the DenseTensor::mutable_data() method in files(${USE_MUTABLE_DATA_FILES}). If you want to alloc memory, use phi::DeviceContext::Alloc() or phi::DeviceContext::HostAlloc() instead and if you want to get mutable data, use DenseTensor::data(). If you have any questions, you can have one RD (From00 or SigureMo) review and approve.\n"
     check_approval 1 From00 SigureMo
 fi
 
