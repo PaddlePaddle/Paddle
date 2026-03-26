@@ -42,7 +42,7 @@ api_params_diff=`python ${PADDLE_ROOT}/tools/check_api_compatible.py ${PADDLE_RO
 api_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.api  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.api`
 api_annotation_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.annotations  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.annotations`
 if [ "$api_spec_diff" != "" -o "${api_params_diff}" != "" ]; then
-    echo_line="You must have one RD (XiaoguangHu01, jeff41404 or qingqing01) approval for API change.\n"
+    echo_line="You must have one RD (XiaoguangHu01, jeff41404, qingqing01, zhwesky2010) approval for API change.\n"
 
     check_approval 1 XiaoguangHu01 jeff41404 qingqing01 zhwesky2010
 fi
@@ -56,9 +56,9 @@ api_yaml_diff=`python ${PADDLE_ROOT}/tools/check_api_yaml_same.py ${PADDLE_ROOT}
 if [ "$api_yaml_diff" != "" ]; then
     echo_line="API's name and params should be consistent with op's name and params in yaml.
                 The API or Yaml file you changed may cause inconsistent.\n"
-    echo_line="${echo_line} please request one of the RD (YuanRisheng, zyfncg, zhwesky2010, zhangbo9674) review and approve.\n"
+    echo_line="${echo_line} please request one of the RD (jeff41404, zhwesky2010, zhangbo9674) review and approve.\n"
     echo_line="${echo_line}\r\n ${api_yaml_diff}\n"
-    check_approval 1 YuanRisheng zyfncg zhwesky2010 zhangbo9674
+    check_approval 1 jeff41404 zhwesky2010 zhangbo9674 XiaoguangHu01
 fi
 
 op_type_spec_diff=`python ${PADDLE_ROOT}/tools/check_op_register_type.py ${PADDLE_ROOT}/paddle/fluid/OP_TYPE_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/OP_TYPE_PR.spec`
