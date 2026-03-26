@@ -2604,14 +2604,18 @@ class TestSet_API_ZeroSize(unittest.TestCase):
         self.places = get_places()
 
     def test_zero_size_source_with_nonzero_shape(self):
-        """When source is 0-size, output should inherit source's shape
-        to prevent out-of-bounds memory access."""
+        """When source is 0-size but user specifies non-zero dims/stride,
+        output should respect user-specified shape (matching PyTorch behavior).
+        Storage is expanded if needed to avoid out-of-bounds access."""
         for place in self.places:
             with paddle.base.dygraph.guard(place):
                 source = paddle.randn([0, 3])
-                out = paddle.randn([20]).set_(source, [20], [2])
-                self.assertEqual(out.numel().item(), 0)
-                self.assertEqual(list(out.shape), [0, 3])
+                x = paddle.randn([20])
+                out = x.set_(source, [20], [2])
+                self.assertEqual(list(out.shape), [20])
+                # contiguous should work without OOB
+                c = out.contiguous()
+                self.assertEqual(list(c.shape), [20])
 
     def test_zero_size_source_default_args(self):
         """set_ with 0-size source and no explicit shape/stride."""
@@ -2645,18 +2649,16 @@ class TestSet_API_ZeroSize(unittest.TestCase):
                 self.assertTrue(id(x) == id(out))
 
     def test_zero_size_source_no_crash_on_contiguous(self):
-        """Ensure no crash when calling contiguous() on a tensor
-        that was set_ with a 0-size source."""
+        """Ensure contiguous() works correctly on a tensor
+        that was set_ with a 0-size source but user-specified shape."""
         for place in self.places:
             with paddle.base.dygraph.guard(place):
                 source = paddle.randn([0, 3])
                 x = paddle.randn([20])
                 out = x.set_(source, [20], [2])
-                # This should not crash or cause OOB memory access
-                try:
-                    _ = out.contiguous()
-                except Exception:
-                    pass  # contiguous on 0-size is ok either way
+                # contiguous should produce a valid tensor with correct shape
+                c = out.contiguous()
+                self.assertEqual(list(c.shape), [20])
 
 
 if __name__ == '__main__':
