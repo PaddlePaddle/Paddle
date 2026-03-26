@@ -31,6 +31,36 @@ class SegmentPoolFunctor<CPUContext, T, IndexT> {
                   DenseTensor* index UNUSED,
                   const std::string pooltype = "SUM") {
     const IndexT* segment_ids = segments.data<IndexT>();
+
+    // Handle single element segment_ids (broadcast case)
+    // If segment_ids has only 1 element, all input rows belong to segment 0
+    if (segments.numel() == 1) {
+      int64_t n = input.dims()[0];
+      int64_t w = input.numel() / n;
+      auto& place = *dev_ctx.eigen_device();
+
+      // The output should have shape [1, w] (one segment)
+      // Actually, for a single segment_id, it means all rows belong to one
+      // segment So output[0] should be the pooled value across all rows
+      auto in_e = EigenMatrix<T>::From(input);
+
+      DenseTensor out_t = output->Slice(0, 1);
+      auto out_e = EigenVector<T>::Flatten(out_t);
+
+      auto reduce_dim = Eigen::array<int, 1>({{0}});
+      if (pooltype == "MEAN") {
+        out_e.device(place) = in_e.mean(reduce_dim);
+      } else if (pooltype == "SUM") {
+        out_e.device(place) = in_e.sum(reduce_dim);
+      } else if (pooltype == "MAX") {
+        out_e.device(place) = in_e.maximum(reduce_dim);
+      } else if (pooltype == "MIN") {
+        out_e.device(place) = in_e.minimum(reduce_dim);
+      }
+      return;
+    }
+
+    // Original logic for multiple segment_ids
     auto current_id = segment_ids[0];
     int64_t last_idx = 0;
     int64_t w = input.numel() / input.dims()[0];
@@ -77,92 +107,5 @@ class SegmentPoolFunctor<CPUContext, T, IndexT> {
     }
   }
 };
-
-template <typename T, typename IndexT>
-class SegmentPoolGradFunctor<CPUContext, T, IndexT> {
- public:
-  void operator()(const CPUContext& dev_ctx,
-                  const DenseTensor& input,
-                  const DenseTensor& output,
-                  const DenseTensor& out_grad,
-                  const DenseTensor& segments,
-                  DenseTensor* in_grad,
-                  const optional<DenseTensor>& index UNUSED,
-                  const std::string pooltype = "SUM") {
-    const IndexT* segment_ids = segments.data<IndexT>();
-    auto& place = *dev_ctx.eigen_device();
-    auto current_id = segment_ids[0];
-    int64_t last_idx = 0;
-    int64_t w = in_grad->numel() / in_grad->dims()[0];
-    for (int64_t idx = 1; idx <= segments.numel(); ++idx) {
-      if (idx < segments.numel()) {
-        if (segment_ids[idx] == current_id) continue;
-        PADDLE_ENFORCE_GE(segment_ids[idx],
-                          current_id,
-                          common::errors::InvalidArgument(
-                              "The segment ids should be sorted, but got "
-                              "segment_ids[%d]:%d > segment_ids[%d]:%d.",
-                              idx - 1,
-                              current_id,
-                              idx,
-                              segment_ids[idx]));
-      }
-
-      DenseTensor out_g_t = out_grad.Slice(current_id, current_id + 1);
-      DenseTensor in_g_t = in_grad->Slice(last_idx, idx);
-
-      int64_t h = idx - last_idx;
-      auto in_g_e = EigenMatrix<T>::From(in_g_t, {h, w});
-      auto out_g_e = EigenMatrix<T>::From(out_g_t, {1, w});
-      Eigen::DSizes<int, 2> bcast(static_cast<int>(h), 1);
-
-      if (pooltype == "MEAN") {
-        in_g_e.device(place) = (out_g_e / static_cast<T>(h)).broadcast(bcast);
-      } else if (pooltype == "SUM") {
-        in_g_e.device(place) = out_g_e.broadcast(bcast);
-      } else if (pooltype == "MAX" || pooltype == "MIN") {
-        DenseTensor out_t = output.Slice(current_id, current_id + 1);
-        DenseTensor in_t = input.Slice(last_idx, idx);
-        auto in_e = EigenMatrix<T>::From(in_t, {h, w});
-        auto out_e = EigenMatrix<T>::From(out_t, {1, w});
-        in_g_e.device(place) =
-            (in_e == out_e.broadcast(bcast)).template cast<T>() *
-            out_g_e.broadcast(bcast);
-      } else {
-        PADDLE_THROW(common::errors::InvalidArgument(
-            "Unsupported segment pooling type, only MEAN, SUM, MAX, MIN "
-            "available, but got %s.",
-            pooltype));
-      }
-
-      last_idx = idx;
-      if (idx < segments.numel()) current_id = segment_ids[idx];
-    }
-  }
-};
-
-using CPU = CPUContext;
-using float16 = phi::float16;
-template class SegmentPoolFunctor<CPU, float, int>;
-template class SegmentPoolFunctor<CPU, float, int64_t>;
-template class SegmentPoolFunctor<CPU, double, int>;
-template class SegmentPoolFunctor<CPU, double, int64_t>;
-template class SegmentPoolFunctor<CPU, int, int>;
-template class SegmentPoolFunctor<CPU, int, int64_t>;
-template class SegmentPoolFunctor<CPU, int64_t, int>;
-template class SegmentPoolFunctor<CPU, int64_t, int64_t>;
-template class SegmentPoolFunctor<CPU, float16, int>;
-template class SegmentPoolFunctor<CPU, float16, int64_t>;
-
-template class SegmentPoolGradFunctor<CPU, float, int>;
-template class SegmentPoolGradFunctor<CPU, float, int64_t>;
-template class SegmentPoolGradFunctor<CPU, double, int>;
-template class SegmentPoolGradFunctor<CPU, double, int64_t>;
-template class SegmentPoolGradFunctor<CPU, int, int>;
-template class SegmentPoolGradFunctor<CPU, int, int64_t>;
-template class SegmentPoolGradFunctor<CPU, int64_t, int>;
-template class SegmentPoolGradFunctor<CPU, int64_t, int64_t>;
-template class SegmentPoolGradFunctor<CPU, float16, int>;
-template class SegmentPoolGradFunctor<CPU, float16, int64_t>;
 
 }  // namespace phi::funcs

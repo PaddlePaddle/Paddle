@@ -16,6 +16,7 @@
 
 #include <string>
 
+#include <limits>
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/segment_pooling.h"
@@ -30,11 +31,15 @@ void SegmentKernelLaunchHelper(const Context& dev_ctx,
                                DenseTensor* out,
                                DenseTensor* summed_ids) {
   int64_t num_indices = segment_ids.numel();
-  PADDLE_ENFORCE_EQ(
-      num_indices,
-      x.dims()[0],
-      common::errors::InvalidArgument(
-          "Segment_ids should be the same size as dimension 0 of input X."));
+  // Allow segment_ids with single element (broadcast to all rows)
+  // or segment_ids with same size as first dimension of x
+  PADDLE_ENFORCE(num_indices == 1 || num_indices == x.dims()[0],
+                 common::errors::InvalidArgument(
+                     "Segment_ids should be either size 1 or the same size as "
+                     "dimension 0 of input X, "
+                     "but got segment_ids size: %d and input dimension 0: %d.",
+                     num_indices,
+                     x.dims()[0]));
   PADDLE_ENFORCE_EQ(num_indices,
                     segment_ids.dims()[0],
                     common::errors::InvalidArgument(
@@ -94,9 +99,9 @@ void SegmentKernelLaunchHelper(const Context& dev_ctx,
 
     T init_value = static_cast<T>(0);
     if (pooltype == "MAX") {
-      init_value = static_cast<T>(-FLT_MAX);
+      init_value = std::numeric_limits<T>::lowest();
     } else if (pooltype == "MIN") {
-      init_value = static_cast<T>(FLT_MAX);
+      init_value = std::numeric_limits<T>::max();
     }
     funcs::SetConstant<Context, T> setconst;
     setconst(dev_ctx, out, static_cast<T>(init_value));
