@@ -231,7 +231,7 @@ class TestDistPPTraining(unittest.TestCase):
 
             for idx in range(2):
                 loss_b_shape = loss_b[idx].shape[0]
-                loss_b_idx = paddle.sum(loss_b[idx])
+                loss_b_idx = paddle.mean(loss_b[idx])
                 np.testing.assert_equal(
                     int(loss_b_shape), int(micro_batch_number)
                 )
