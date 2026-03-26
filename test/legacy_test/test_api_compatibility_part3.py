@@ -739,15 +739,11 @@ class TestConv2dTransposeAPI(unittest.TestCase):
             # 2. Paddle keyword arguments
             out2 = paddle.nn.functional.conv2d_transpose(x=x, weight=weight)
             # 3. PyTorch keyword arguments (alias: input)
-            out3 = paddle.nn.functional.conv2d_transpose(
-                input=x, weight=weight
-            )
+            out3 = paddle.nn.functional.conv2d_transpose(input=x, weight=weight)
             # 4. PyTorch function name alias
             out4 = paddle.nn.functional.conv_transpose2d(x, weight)
             # 5. PyTorch function name alias + PyTorch keyword
-            out5 = paddle.nn.functional.conv_transpose2d(
-                input=x, weight=weight
-            )
+            out5 = paddle.nn.functional.conv_transpose2d(input=x, weight=weight)
 
             exe = paddle.static.Executor()
             fetches = exe.run(
