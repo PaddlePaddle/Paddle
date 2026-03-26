@@ -48,8 +48,6 @@ constexpr DeviceType kXPU = DeviceType::XPU;
 constexpr DeviceType kXPUPINNED = DeviceType::XPUPINNED;
 constexpr DeviceType kIPU = DeviceType::IPU;
 constexpr DeviceType kCUSTOM = DeviceType::CUSTOM;
-constexpr DeviceType kXPU = DeviceType::XPU;
-constexpr DeviceType kIPU = DeviceType::IPU;
 
 inline phi::AllocationType DeviceTypeToPhi(DeviceType d) {
   switch (d) {
@@ -57,12 +55,18 @@ inline phi::AllocationType DeviceTypeToPhi(DeviceType d) {
       return phi::AllocationType::CPU;
     case DeviceType::CUDA:
       return phi::AllocationType::GPU;
+    case DeviceType::GPUPINNED:
+      return phi::AllocationType::GPUPINNED;
     case DeviceType::XPU:
       return phi::AllocationType::XPU;
+    case DeviceType::XPUPINNED:
+      return phi::AllocationType::XPUPINNED;
     case DeviceType::IPU:
       return phi::AllocationType::IPU;
     case DeviceType::CUSTOM:
       return phi::AllocationType::CUSTOM;
+    case DeviceType::Undefined:
+      return phi::AllocationType::UNDEFINED;
   }
   return phi::AllocationType::UNDEFINED;
 }
@@ -73,14 +77,18 @@ inline DeviceType PhiToDeviceType(phi::AllocationType d) {
       return DeviceType::CPU;
     case phi::AllocationType::GPU:
       return DeviceType::CUDA;
+    case phi::AllocationType::GPUPINNED:
+      return DeviceType::GPUPINNED;
     case phi::AllocationType::XPU:
       return DeviceType::XPU;
+    case phi::AllocationType::XPUPINNED:
+      return DeviceType::XPUPINNED;
     case phi::AllocationType::IPU:
       return DeviceType::IPU;
     case phi::AllocationType::CUSTOM:
       return DeviceType::CUSTOM;
     default:
-      return DeviceType::CPU;
+      return DeviceType::Undefined;
   }
 }
 
@@ -173,27 +181,6 @@ inline bool phiPlaceHasC10DeviceIndex(phi::AllocationType type,
     default:
       return index != -1;
   }
-}
-
-inline std::ostream& operator<<(std::ostream& os, DeviceType d) {
-  switch (d) {
-    case DeviceType::CPU:
-      os << "cpu";
-      break;
-    case DeviceType::CUDA:
-      os << "cuda";
-      break;
-    case DeviceType::XPU:
-      os << "xpu";
-      break;
-    case DeviceType::IPU:
-      os << "ipu";
-      break;
-    case DeviceType::CUSTOM:
-      os << "privateuseone";
-      break;
-  }
-  return os;
 }
 
 }  // namespace c10

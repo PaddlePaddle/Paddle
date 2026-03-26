@@ -46,7 +46,8 @@ struct Device final {
   // 其余设备（含 CPU）index=-1 表示未指定。
   Device(DeviceType type, DeviceIndex index = -1) {
     const phi::AllocationType alloc = c10DeviceTypeToPhiAllocationType(type);
-    // 仅固定内存设备无 index 语义，其它设备遵循 PyTorch: index==-1 表示未显式指定。
+    // 仅固定内存设备无 index 语义。
+    // 其它设备遵循 PyTorch: index==-1 表示未显式指定。
     const bool no_index_type =
         (type == DeviceType::GPUPINNED || type == DeviceType::XPUPINNED);
     has_index_ = !no_index_type && (index != -1);
@@ -101,27 +102,10 @@ struct Device final {
   std::string str() const;
 
   bool operator==(const Device& other) const noexcept {
-    return type() == other.type() && this->index() == other.index() &&
-           custom_device_type_ == other.custom_device_type_;
+    return inner_ == other.inner_ && has_index_ == other.has_index_;
   }
 
-  phi::Place _PD_GetInner() const {
-    switch (type_) {
-      case DeviceType::CPU:
-        return phi::CPUPlace();
-      case DeviceType::CUDA:
-        return phi::GPUPlace(has_index() ? index_ : 0);
-      case DeviceType::XPU:
-        return phi::XPUPlace(has_index() ? index_ : 0);
-      case DeviceType::IPU:
-        return phi::IPUPlace(has_index() ? index_ : 0);
-      case DeviceType::CUSTOM:
-        return phi::CustomPlace(
-            custom_device_type_.empty() ? "custom" : custom_device_type_,
-            has_index() ? index_ : 0);
-    }
-    return phi::CPUPlace();
-  }
+  phi::Place _PD_GetInner() const { return inner_; }
 
  private:
   phi::Place inner_;

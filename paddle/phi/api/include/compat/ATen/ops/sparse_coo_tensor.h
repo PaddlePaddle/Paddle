@@ -16,8 +16,8 @@
 
 #include <ATen/core/Tensor.h>
 #include <c10/core/TensorOptions.h>
-#include <algorithm>
 #include <utils/pinned_place.h>
+
 #include <algorithm>
 #include <optional>
 
@@ -87,41 +87,41 @@ inline at::Tensor sparse_coo_tensor(const at::Tensor& indices,
 inline at::Tensor sparse_coo_tensor(const at::Tensor& indices,
                                     const at::Tensor& values,
                                     at::TensorOptions options = {}) {
-    // PyTorch 语义：未提供 size 时根据 indices/values 推断完整 shape。
-    // size = [max(indices[d]) + 1 for d in sparse_dims] + values.shape[1:]
-    PD_CHECK(indices.dim() == 2,
-                     "`indices` for sparse_coo_tensor must be a 2-D tensor, but got ",
-                     indices.dim(),
-                     "-D tensor.");
+  // PyTorch 语义：未提供 size 时根据 indices/values 推断完整 shape。
+  // size = [max(indices[d]) + 1 for d in sparse_dims] + values.shape[1:]
+  PD_CHECK(indices.dim() == 2,
+           "`indices` for sparse_coo_tensor must be a 2-D tensor, but got ",
+           indices.dim(),
+           "-D tensor.");
 
-    PD_CHECK(indices.scalar_type() == at::kLong,
-                     "`indices` for sparse_coo_tensor must have dtype int64.");
+  PD_CHECK(indices.scalar_type() == at::kLong,
+           "`indices` for sparse_coo_tensor must have dtype int64.");
 
-    const int64_t sparse_dims = indices.size(0);
-    const int64_t nnz = indices.size(1);
-    std::vector<int64_t> inferred_size;
-    inferred_size.reserve(
-            sparse_dims + std::max<int64_t>(int64_t(0), values.dim() - 1));
+  const int64_t sparse_dims = indices.size(0);
+  const int64_t nnz = indices.size(1);
+  std::vector<int64_t> inferred_size;
+  inferred_size.reserve(sparse_dims + std::max<int64_t>(static_cast<int64_t>(0),
+                                                        values.dim() - 1));
 
-    PD_CHECK(indices.is_cpu(),
-                     "`indices` must be on CPU when inferring sparse_coo_tensor size.");
-    auto idx_tensor = indices.contiguous()._PD_GetInner();
-    const int64_t* idx_data = idx_tensor.data<int64_t>();
+  PD_CHECK(indices.is_cpu(),
+           "`indices` must be on CPU when inferring sparse_coo_tensor size.");
+  auto idx_tensor = indices.contiguous()._PD_GetInner();
+  const int64_t* idx_data = idx_tensor.data<int64_t>();
 
-    for (int64_t d = 0; d < sparse_dims; ++d) {
-        int64_t dim_size = 0;
-        for (int64_t i = 0; i < nnz; ++i) {
-            dim_size = std::max(dim_size, idx_data[d * nnz + i] + 1);
-        }
-        inferred_size.push_back(dim_size);
+  for (int64_t d = 0; d < sparse_dims; ++d) {
+    int64_t dim_size = 0;
+    for (int64_t i = 0; i < nnz; ++i) {
+      dim_size = std::max(dim_size, idx_data[d * nnz + i] + 1);
     }
+    inferred_size.push_back(dim_size);
+  }
 
-    for (int64_t d = 1; d < values.dim(); ++d) {
-        inferred_size.push_back(values.size(d));
-    }
+  for (int64_t d = 1; d < values.dim(); ++d) {
+    inferred_size.push_back(values.size(d));
+  }
 
   return paddle::experimental::sparse::sparse_coo_tensor(
-            values._PD_GetInner(), indices._PD_GetInner(), inferred_size);
+      values._PD_GetInner(), indices._PD_GetInner(), inferred_size);
 }
 
 }  // namespace at

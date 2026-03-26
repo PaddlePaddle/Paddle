@@ -405,8 +405,57 @@ TEST(TensorBaseTest, IsNonOverlappingAndDenseAPI) {
   ASSERT_TRUE(permuted.is_non_overlapping_and_dense());
 }
 
-TEST(DeviceCompatTest, ParseTypeValid) {
-  // Test valid device types - only Paddle-supported backends
+TEST(TensorBaseTest, UndefinedAndNonDenseBranchCoverage) {
+  at::TensorBase undefined;
+  ASSERT_EQ(undefined.toString(), std::string("UndefinedType"));
+  ASSERT_EQ(undefined.data_ptr(), nullptr);
+  ASSERT_FALSE(undefined.has_names());
+
+  at::Tensor non_dense = at::arange(6, at::TensorOptions().dtype(at::kFloat))
+                             .as_strided({2, 2}, {4, 1});
+  ASSERT_FALSE(non_dense.is_non_overlapping_and_dense());
+}
+
+TEST(TensorBodyTest, ToBackendUnsupportedBranch) {
+  at::Tensor t = at::ones({1}, at::kFloat);
+  ASSERT_THROW(t.toBackend(static_cast<c10::Backend>(-1)), ::std::exception);
+}
+
+TEST(TensorBodyTest, MetaUnsupportedBranch) {
+  at::Tensor t = at::ones({1}, at::kFloat);
+  ASSERT_THROW((void)t.meta(), ::std::exception);
+}
+
+TEST(TensorBaseTest, ToDeviceAndMemoryFormatUnsupportedBranches) {
+  at::TensorBase base = at::ones({2, 2}, at::kFloat);
+
+  ASSERT_THROW(
+      (void)base.to(at::TensorOptions().device(c10::Device(c10::kCPU))),
+      ::std::exception);
+
+  ASSERT_THROW((void)base.to(at::TensorOptions().dtype(at::kFloat),
+                             false,
+                             false,
+                             at::MemoryFormat::Contiguous),
+               ::std::exception);
+}
+
+TEST(TensorBaseTest, ToDtypeCastsWhenSupported) {
+  at::TensorBase base = at::ones({2, 2}, at::kFloat);
+  at::TensorBase casted = base.to(at::TensorOptions().dtype(at::kDouble));
+  ASSERT_EQ(casted.scalar_type(), at::kDouble);
+}
+
+namespace {
+
+at::Tensor MakeSparseIndices() {
+  return at::tensor({{0, 1, 1}, {0, 4, 2}},
+                    at::TensorOptions().dtype(at::kLong));
+}
+
+}  // namespace
+
+TEST(DeviceCompatCoverageTest, ParseTypeValid) {
   ASSERT_EQ(c10::parse_type("cpu"), c10::DeviceType::CPU);
   ASSERT_EQ(c10::parse_type("cuda"), c10::DeviceType::CUDA);
   ASSERT_EQ(c10::parse_type("xpu"), c10::DeviceType::XPU);
@@ -414,17 +463,14 @@ TEST(DeviceCompatTest, ParseTypeValid) {
   ASSERT_EQ(c10::parse_type("custom"), c10::DeviceType::CUSTOM);
 }
 
-TEST(DeviceCompatTest, ParseTypeInvalid) {
-  // Test invalid device type throws exception
-  // "gpu" is not a valid string (Paddle uses "cuda" for GPU devices)
+TEST(DeviceCompatCoverageTest, ParseTypeInvalid) {
   ASSERT_THROW(c10::parse_type("invalid"), common::enforce::EnforceNotMet);
   ASSERT_THROW(c10::parse_type("dx11"), common::enforce::EnforceNotMet);
   ASSERT_THROW(c10::parse_type("gpu"), common::enforce::EnforceNotMet);
   ASSERT_THROW(c10::parse_type("hip"), common::enforce::EnforceNotMet);
 }
 
-TEST(DeviceCompatTest, DeviceFromStringBasic) {
-  // Test creating Device from string without index
+TEST(DeviceCompatCoverageTest, DeviceFromStringBasic) {
   c10::Device dev_cpu("cpu");
   ASSERT_EQ(dev_cpu.type(), c10::DeviceType::CPU);
   ASSERT_FALSE(dev_cpu.has_index());
@@ -448,8 +494,7 @@ TEST(DeviceCompatTest, DeviceFromStringBasic) {
   ASSERT_TRUE(dev_custom.is_custom());
 }
 
-TEST(DeviceCompatTest, DeviceFromStringWithIndex) {
-  // Test creating Device from string with index
+TEST(DeviceCompatCoverageTest, DeviceFromStringWithIndex) {
   c10::Device dev_cuda("cuda:0");
   ASSERT_EQ(dev_cuda.type(), c10::DeviceType::CUDA);
   ASSERT_TRUE(dev_cuda.has_index());
@@ -471,58 +516,43 @@ TEST(DeviceCompatTest, DeviceFromStringWithIndex) {
   ASSERT_EQ(dev_custom.index(), 3);
 }
 
-TEST(DeviceCompatTest, DeviceFromStringInvalid) {
-  // Test invalid device string throws exception
+TEST(DeviceCompatCoverageTest, DeviceFromStringInvalid) {
   ASSERT_THROW(c10::Device("cuda:abc"), common::enforce::EnforceNotMet);
-  // "gpu" is not a valid device string in Paddle compat layer
   ASSERT_THROW(c10::Device("gpu:0"), common::enforce::EnforceNotMet);
 }
 
-TEST(DeviceCompatTest, DeviceStr) {
-  // Test Device::str() method
+TEST(DeviceCompatCoverageTest, DeviceStrAndStreamOutput) {
   ASSERT_EQ(c10::Device("cpu").str(), "cpu");
   ASSERT_EQ(c10::Device("cuda:0").str(), "cuda:0");
   ASSERT_EQ(c10::Device("xpu:1").str(), "xpu:1");
   ASSERT_EQ(c10::Device("ipu:2").str(), "ipu:2");
   ASSERT_EQ(c10::Device("custom:3").str(), "custom:3");
-
-  // Programmatic construction via DeviceType enum
   ASSERT_EQ(c10::Device(c10::DeviceType::CPU).str(), "cpu");
   ASSERT_EQ(c10::Device(c10::DeviceType::CUDA, 0).str(), "cuda:0");
+
+  std::ostringstream cpu_stream;
+  cpu_stream << c10::Device("cpu");
+  ASSERT_EQ(cpu_stream.str(), "cpu");
+
+  std::ostringstream cuda_stream;
+  cuda_stream << c10::Device("cuda:0");
+  ASSERT_EQ(cuda_stream.str(), "cuda:0");
+
+  std::ostringstream xpu_stream;
+  xpu_stream << c10::Device("xpu:2");
+  ASSERT_EQ(xpu_stream.str(), "xpu:2");
+
+  std::ostringstream custom_stream;
+  custom_stream << c10::Device("custom:1");
+  ASSERT_EQ(custom_stream.str(), "custom:1");
 }
 
-TEST(DeviceCompatTest, DeviceStreamOutput) {
-  // Test operator<< for Device
-  {
-    std::ostringstream oss;
-    oss << c10::Device("cpu");
-    ASSERT_EQ(oss.str(), "cpu");
-  }
-  {
-    std::ostringstream oss;
-    oss << c10::Device("cuda:0");
-    ASSERT_EQ(oss.str(), "cuda:0");
-  }
-  {
-    std::ostringstream oss;
-    oss << c10::Device("xpu:2");
-    ASSERT_EQ(oss.str(), "xpu:2");
-  }
-  {
-    std::ostringstream oss;
-    oss << c10::Device("custom:1");
-    ASSERT_EQ(oss.str(), "custom:1");
-  }
-}
-
-TEST(CompatNewChangesTest, DeviceCpuIndexSemantics) {
-  // No explicit index: has_index=false, index=-1
+TEST(DeviceCompatCoverageTest, DeviceCpuIndexSemantics) {
   c10::Device cpu_default("cpu");
   ASSERT_FALSE(cpu_default.has_index());
   ASSERT_EQ(cpu_default.index(), -1);
   ASSERT_EQ(cpu_default.str(), "cpu");
 
-  // Explicit CPU index should be preserved and visible
   c10::Device cpu_indexed("cpu:3");
   ASSERT_TRUE(cpu_indexed.has_index());
   ASSERT_EQ(cpu_indexed.index(), 3);
@@ -534,8 +564,7 @@ TEST(CompatNewChangesTest, DeviceCpuIndexSemantics) {
   ASSERT_EQ(cpu_ctor.str(), "cpu:0");
 }
 
-TEST(CompatNewChangesTest, ScalarTypeEnumAlignment) {
-  // Validate key enum numeric ids aligned with PyTorch
+TEST(DeviceCompatCoverageTest, ScalarTypeEnumAlignment) {
   ASSERT_EQ(static_cast<int>(c10::ScalarType::ComplexFloat), 9);
   ASSERT_EQ(static_cast<int>(c10::ScalarType::ComplexDouble), 10);
   ASSERT_EQ(static_cast<int>(c10::ScalarType::BFloat16), 15);
@@ -543,22 +572,10 @@ TEST(CompatNewChangesTest, ScalarTypeEnumAlignment) {
   ASSERT_EQ(static_cast<int>(c10::ScalarType::QUInt8), 13);
 }
 
-TEST(CompatNewChangesTest, SparseCooTensorInferSize2D) {
-  // indices = [[0,1,1],[0,4,2]] -> inferred size should be [2,5]
-  at::Tensor indices = at::empty({2, 3}, at::TensorOptions().dtype(at::kLong));
-  int64_t* idx = indices.data_ptr<int64_t>();
-  idx[0] = 0;
-  idx[1] = 1;
-  idx[2] = 1;
-  idx[3] = 0;
-  idx[4] = 4;
-  idx[5] = 2;
-
-  at::Tensor values = at::empty({3}, at::TensorOptions().dtype(at::kFloat));
-  float* v = values.data_ptr<float>();
-  v[0] = 1.0f;
-  v[1] = 2.0f;
-  v[2] = 3.0f;
+TEST(SparseTensorCoverageTest, SparseCooTensorInferSize2D) {
+  at::Tensor indices = MakeSparseIndices();
+  at::Tensor values =
+      at::tensor({1.0f, 2.0f, 3.0f}, at::TensorOptions().dtype(at::kFloat));
   at::Tensor sparse = at::sparse_coo_tensor(indices, values);
 
   ASSERT_TRUE(sparse.is_sparse());
@@ -567,25 +584,10 @@ TEST(CompatNewChangesTest, SparseCooTensorInferSize2D) {
   ASSERT_EQ(sparse.size(1), 5);
 }
 
-TEST(CompatNewChangesTest, SparseCooTensorInferSizeWithDenseDims) {
-  // sparse dims=2, nnz=3, values shape=[3,2] -> inferred size [2,5,2]
-  at::Tensor indices = at::empty({2, 3}, at::TensorOptions().dtype(at::kLong));
-  int64_t* idx = indices.data_ptr<int64_t>();
-  idx[0] = 0;
-  idx[1] = 1;
-  idx[2] = 1;
-  idx[3] = 0;
-  idx[4] = 4;
-  idx[5] = 2;
-
-  at::Tensor values = at::empty({3, 2}, at::TensorOptions().dtype(at::kFloat));
-  float* v = values.data_ptr<float>();
-  v[0] = 1.0f;
-  v[1] = 2.0f;
-  v[2] = 3.0f;
-  v[3] = 4.0f;
-  v[4] = 5.0f;
-  v[5] = 6.0f;
+TEST(SparseTensorCoverageTest, SparseCooTensorInferSizeWithDenseDims) {
+  at::Tensor indices = MakeSparseIndices();
+  at::Tensor values = at::tensor({{1.0f, 2.0f}, {3.0f, 4.0f}, {5.0f, 6.0f}},
+                                 at::TensorOptions().dtype(at::kFloat));
   at::Tensor sparse = at::sparse_coo_tensor(indices, values);
 
   ASSERT_TRUE(sparse.is_sparse());

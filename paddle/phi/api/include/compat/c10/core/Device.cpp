@@ -31,12 +31,18 @@ const char* DeviceTypeToString(DeviceType type) {
       return "cpu";
     case DeviceType::CUDA:
       return "cuda";
+    case DeviceType::GPUPINNED:
+      return "gpu_pinned";
     case DeviceType::XPU:
       return "xpu";
+    case DeviceType::XPUPINNED:
+      return "xpu_pinned";
     case DeviceType::IPU:
       return "ipu";
     case DeviceType::CUSTOM:
       return "privateuseone";
+    case DeviceType::Undefined:
+      return "undefined";
   }
   return "cpu";
 }
