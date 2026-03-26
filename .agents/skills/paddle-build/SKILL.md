@@ -81,7 +81,7 @@ uv pip install build/python/dist/*.whl --no-deps --force-reinstall
 ```dot
 digraph incremental {
   "修改了什么?" [shape=diamond];
-  "Python 代码" [shape=box, label="无需编译\npip install -e 或直接测试"];
+  "Python 代码" [shape=box, label="无需编译\n同步源码到构建目录后测试"];
   "C++/CUDA kernel" [shape=box, label="ninja → 安装 whl"];
   "CMakeLists / cmake 选项" [shape=box, label="重新 cmake → ninja → 安装 whl"];
   "YAML (ops/backward)" [shape=box, label="ninja（触发代码生成）→ 安装 whl"];
@@ -93,7 +93,7 @@ digraph incremental {
 }
 ```
 
-- **仅改 Python**：无需编译。如果已 `pip install -e .` 或在 `build/python` 下测试，改动即时生效。
+- **仅改 Python**：无需编译。如果直接在 `build/python` 下编辑测试，改动即时生效。也可以在源码目录编辑后通过 `cp python/<src> build/python/<src>` 或者 `cp test/<src> build/test/<src>` 同步到构建目录。
 - **改 C++/CUDA**：`cd build && ninja -j$(nproc)` + 重新安装 whl。
 - **改 CMake 配置**：需重新 `cmake ..` 再 `ninja`。
 - **改 YAML（ops.yaml / backward.yaml）**：ninja 会自动触发代码生成脚本。
@@ -151,3 +151,9 @@ Debug 模式编译产物更大、运行更慢，仅在需要调试时使用。
 | `paddle/phi/kernels/` | PHI kernel 源码 |
 | `paddle/phi/ops/yaml/` | 算子 YAML 定义 |
 | `cmake/` | CMake 模块和工具链 |
+
+## 平台特定指南
+
+| 平台 | 参考文档 |
+|------|---------|
+| macOS (Apple Silicon) CPU 编译 | [references/mac-build.md](references/mac-build.md) |

@@ -11,7 +11,7 @@
 | `paddle/fluid/pybind/ops_api.cc` | `paddle/fluid/pir/dialect/op_generator/ops_api_gen.py` |
 | `paddle/fluid/pybind/eager_op_function.cc` | `paddle/fluid/eager/auto_code_generator/generator/python_c_gen.py` |
 | `dygraph_functions.cc` | `paddle/fluid/eager/auto_code_generator/generator/eager_gen.py` |
-| `paddle/phi/api/lib/api.cc` | `paddle/phi/api/generator/tensor_operants_gen.py` |
+| `paddle/phi/api/lib/api.cc` | `paddle/phi/api/generator/api_gen.py` |
 
 ## 层① ops_api.cc — Python-C 映射
 

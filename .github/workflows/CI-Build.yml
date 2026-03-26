@@ -33,7 +33,7 @@ jobs:
         id: skip-skill
         uses: ./.github/actions/skip-skill
         with:
-          ignore-paths: 'skills/**'
+          ignore-paths: '.agents/skills/**'
 
   clone:
     name: Clone-linux
