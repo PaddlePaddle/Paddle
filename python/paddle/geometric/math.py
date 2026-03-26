@@ -60,7 +60,15 @@ def segment_sum(
              [4. 5. 6.]]
 
     """
+
+    # Add validation in dynamic/PIR mode
     if in_dynamic_or_pir_mode():
+        # Validate dimension matching
+        if segment_ids.shape[0] != data.shape[0]:
+            raise ValueError(
+                f"The size of 'segment_ids' in segment_sum must be the same as the first dimension of 'data'. "
+                f"Received segment_ids size: {segment_ids.shape[0]}, data first dimension size: {data.shape[0]}."
+            )
         return _C_ops.segment_pool(data, segment_ids, "SUM")
     else:
         check_variable_and_dtype(
@@ -121,7 +129,14 @@ def segment_mean(
 
     """
 
+    # Add validation in dynamic/PIR mode
     if in_dynamic_or_pir_mode():
+        # Validate dimension matching
+        if segment_ids.shape[0] != data.shape[0]:
+            raise ValueError(
+                f"The size of 'segment_ids' in segment_mean must be the same as the first dimension of 'data'. "
+                f"Received segment_ids size: {segment_ids.shape[0]}, data first dimension size: {data.shape[0]}."
+            )
         return _C_ops.segment_pool(data, segment_ids, "MEAN")
     else:
         check_variable_and_dtype(
@@ -181,7 +196,14 @@ def segment_min(
 
     """
 
+    # Add validation in dynamic/PIR mode
     if in_dynamic_or_pir_mode():
+        # Validate dimension matching
+        if segment_ids.shape[0] != data.shape[0]:
+            raise ValueError(
+                f"The size of 'segment_ids' in segment_min must be the same as the first dimension of 'data'. "
+                f"Received segment_ids size: {segment_ids.shape[0]}, data first dimension size: {data.shape[0]}."
+            )
         return _C_ops.segment_pool(data, segment_ids, "MIN")
     else:
         check_variable_and_dtype(
@@ -241,7 +263,14 @@ def segment_max(
 
     """
 
+    # Add validation in dynamic/PIR mode
     if in_dynamic_or_pir_mode():
+        # Validate dimension matching
+        if segment_ids.shape[0] != data.shape[0]:
+            raise ValueError(
+                f"The size of 'segment_ids' in segment_max must be the same as the first dimension of 'data'. "
+                f"Received segment_ids size: {segment_ids.shape[0]}, data first dimension size: {data.shape[0]}."
+            )
         return _C_ops.segment_pool(data, segment_ids, "MAX")
     else:
         check_variable_and_dtype(
