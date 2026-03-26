@@ -4232,7 +4232,10 @@ void SegmentPoolInferMeta(const MetaTensor& x,
                           MetaTensor* out,
                           MetaTensor* summed_ids,
                           MetaConfig config) {
-  auto dims = x.dims();
+  auto x_dims = x.dims();
+  auto seg_dims = segment_ids.dims();
+
+  auto dims = x_dims;
   dims[0] = -1;
   out->set_dims(dims);
   out->set_dtype(x.dtype());
@@ -4242,6 +4245,28 @@ void SegmentPoolInferMeta(const MetaTensor& x,
     summed_ids->set_dims({-1, 1});
     summed_ids->set_dtype(x.dtype());
     summed_ids->set_layout(x.layout());
+  }
+
+  // Dimension validation: check only at runtime or when dimensions are known
+  // Runtime: config.is_runtime = true (dynamic graph/PIR)
+  // Compile time: config.is_runtime = false (static graph building)
+  bool contain_unknown_dim = common::contain_unknown_dim(x_dims) ||
+                             common::contain_unknown_dim(seg_dims);
+  bool check = config.is_runtime || !contain_unknown_dim;
+
+  if (check) {
+    PADDLE_ENFORCE_EQ(
+        seg_dims[0],
+        x_dims[0],
+        common::errors::InvalidArgument(
+            "Segment_ids should be the same size as dimension 0 of input X."));
+
+    PADDLE_ENFORCE_EQ(seg_dims.size(),
+                      1UL,
+                      common::errors::InvalidArgument(
+                          "Segment_ids should be 1-D tensor, or it's other "
+                          "dimension size is 1. Segment_ids's shape is: [%s].",
+                          seg_dims));
   }
 }
 
