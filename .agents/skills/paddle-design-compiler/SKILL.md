@@ -140,7 +140,7 @@ Program
 将高层算子分解为基础算子（primitive operators），降低编译器 / 分布式 / 新硬件适配成本：
 
 - **前向分解**：`DecompInterface` → `call_decomp_rule()` → `composite.h`
-- **反向分解**（VJP）：`VjpInterface` / `DecompVjpInterface` → `call_vjp()` / `call_decomp_vjp()` → `details.h`
+- **反向分解**（VJP）：两条路径——`VjpInterface` 经 `call_vjp()` 处理前向 op 的反向；`DecompVjpInterface` 经 `call_decomp_vjp()` 分解反向 op。规则实现均在 `details.h`
 - **CustomVJP**：为 sigmoid、log_softmax 等数值敏感算子提供手写反向
 
 ### PIR Pass 框架

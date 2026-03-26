@@ -126,7 +126,7 @@ cmake .. \
     -DWITH_GPU=OFF \
     -DWITH_ARM=ON \
     -DWITH_AVX=OFF \
-    -DWITH_TESTING=OFF \    # 一键脚本默认关闭测试以加速编译；按需改为 ON
+    -DWITH_TESTING=OFF \
     -DWITH_DISTRIBUTE=OFF \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
