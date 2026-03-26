@@ -1,0 +1,163 @@
+# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import unittest
+
+import numpy as np
+from op_test import get_device_place, is_custom_device
+
+import paddle
+from paddle.base import core
+from paddle.incubate.nn.functional import (
+    variable_length_memory_efficient_attention,
+)
+
+
+@unittest.skipIf(
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or core.is_compiled_with_rocm(),
+    "variable_length_memory_efficient_attention zero-size regressions require CUDA",
+)
+class TestVariableLengthMemoryEfficientAttentionZeroSize(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.place = get_device_place()
+        paddle.seed(2024)
+        self.rng = np.random.default_rng(2024)
+
+    def tearDown(self):
+        paddle.enable_static()
+
+    def _make_tensor(self, shape):
+        return paddle.to_tensor(
+            self.rng.standard_normal(shape).astype(np.float16), place=self.place
+        )
+
+    def test_zero_effective_sequence_length_returns_zero_output(self):
+        query = paddle.to_tensor(
+            np.arange(1 * 1 * 31 * 64, dtype=np.float16).reshape(
+                [1, 1, 31, 64]
+            ),
+            place=self.place,
+        )
+        key = paddle.to_tensor(
+            np.ones([1, 1, 31, 64], dtype=np.float16), place=self.place
+        )
+        value = paddle.to_tensor(
+            np.full([1, 1, 31, 64], 2.0, dtype=np.float16), place=self.place
+        )
+        mask = paddle.to_tensor(
+            np.zeros([1, 1, 50, 50], dtype=np.float16), place=self.place
+        )
+        seq_lens = paddle.to_tensor([0, 1], dtype="int32", place=self.place)
+        kv_seq_lens = paddle.to_tensor([1, 1], dtype="int32", place=self.place)
+
+        out = variable_length_memory_efficient_attention(
+            query,
+            key,
+            value,
+            seq_lens,
+            kv_seq_lens,
+            mask=mask,
+            scale=0.125,
+        )
+
+        self.assertEqual(list(out.shape), [1, 1, 31, 64])
+        np.testing.assert_array_equal(
+            out.numpy(), np.zeros([1, 1, 31, 64], dtype=np.float16)
+        )
+
+    def test_empty_kv_storage_with_positive_kv_seq_lens_returns_zero_output(
+        self,
+    ):
+        query = paddle.to_tensor(
+            np.arange(1 * 1 * 31 * 64, dtype=np.float16).reshape(
+                [1, 1, 31, 64]
+            ),
+            place=self.place,
+        )
+        key = paddle.to_tensor(
+            np.zeros([1, 1, 0, 64], dtype=np.float16), place=self.place
+        )
+        value = paddle.to_tensor(
+            np.zeros([1, 1, 0, 64], dtype=np.float16), place=self.place
+        )
+        mask = paddle.to_tensor(
+            np.zeros([1, 1, 31, 0], dtype=np.float16), place=self.place
+        )
+        seq_lens = paddle.to_tensor([1], dtype="int32", place=self.place)
+        kv_seq_lens = paddle.to_tensor([1], dtype="int32", place=self.place)
+
+        out = variable_length_memory_efficient_attention(
+            query,
+            key,
+            value,
+            seq_lens,
+            kv_seq_lens,
+            mask=mask,
+            scale=0.125,
+        )
+
+        self.assertEqual(list(out.shape), [1, 1, 31, 64])
+        np.testing.assert_array_equal(
+            out.numpy(), np.zeros([1, 1, 31, 64], dtype=np.float16)
+        )
+
+    def test_empty_mask_matches_no_mask_output(self):
+        query = self._make_tensor([1, 1, 31, 64])
+        key = self._make_tensor([1, 1, 31, 64])
+        value = self._make_tensor([1, 1, 31, 64])
+        seq_lens = paddle.to_tensor([31], dtype="int32", place=self.place)
+        kv_seq_lens = paddle.to_tensor([31], dtype="int32", place=self.place)
+
+        out_without_mask = variable_length_memory_efficient_attention(
+            query,
+            key,
+            value,
+            seq_lens,
+            kv_seq_lens,
+            mask=None,
+            scale=0.125,
+        )
+
+        for mask_shape in ([1, 1, 31, 0], [1, 1, 0, 31]):
+            with self.subTest(mask_shape=mask_shape):
+                empty_mask = paddle.to_tensor(
+                    np.zeros(mask_shape, dtype=np.float16), place=self.place
+                )
+                out_with_empty_mask = (
+                    variable_length_memory_efficient_attention(
+                        query,
+                        key,
+                        value,
+                        seq_lens,
+                        kv_seq_lens,
+                        mask=empty_mask,
+                        scale=0.125,
+                    )
+                )
+
+                self.assertEqual(
+                    list(out_with_empty_mask.shape), [1, 1, 31, 64]
+                )
+                np.testing.assert_allclose(
+                    out_with_empty_mask.numpy(),
+                    out_without_mask.numpy(),
+                    rtol=0.0,
+                    atol=0.0,
+                )
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -34,6 +34,22 @@ int const kThreadsPerBlock = sizeof(uint64_t) * 8;
 
 static const double kBBoxClipDefault = std::log(1000.0 / 16.0);
 
+template <typename T, typename Context>
+static void SetEmptyGenerateProposalsOutputs(const Context &dev_ctx,
+                                             int64_t batch_size,
+                                             DenseTensor *rpn_rois,
+                                             DenseTensor *rpn_roi_probs,
+                                             DenseTensor *rpn_rois_num) {
+  rpn_rois->Resize({0, 4});
+  dev_ctx.template Alloc<T>(rpn_rois);
+  rpn_roi_probs->Resize({0, 1});
+  dev_ctx.template Alloc<T>(rpn_roi_probs);
+  if (rpn_rois_num != nullptr) {
+    rpn_rois_num->Resize({batch_size});
+    Full<int, Context>(dev_ctx, rpn_rois_num->dims(), 0, rpn_rois_num);
+  }
+}
+
 template <typename T>
 static void SortDescending(const GPUContext &dev_ctx,
                            const DenseTensor &value,
@@ -407,13 +423,10 @@ static std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
   DenseTensor scores_filter, proposals_filter;
   // Handle the case when there is no keep index left
   if (keep_num == 0) {
-    funcs::SetConstant<GPUContext, T> set_zero;
-    proposals_filter.Resize({1, 4});
+    proposals_filter.Resize({0, 4});
     dev_ctx.template Alloc<T>(&proposals_filter);
-    scores_filter.Resize({1, 1});
+    scores_filter.Resize({0, 1});
     dev_ctx.template Alloc<T>(&scores_filter);
-    set_zero(dev_ctx, &proposals_filter, static_cast<T>(0));
-    set_zero(dev_ctx, &scores_filter, static_cast<T>(0));
     return std::make_pair(proposals_filter, scores_filter);
   }
   proposals_filter.Resize({keep_num, 4});
@@ -484,19 +497,49 @@ void GenerateProposalsKernel(const Context &dev_ctx,
   int64_t h_bbox = bbox_dim[2];
   int64_t w_bbox = bbox_dim[3];
 
-  rpn_rois->Resize({bbox_deltas.numel() / 4, 4});
-  dev_ctx.template Alloc<T>(rpn_rois);
-  rpn_roi_probs->Resize({scores.numel(), 1});
-  dev_ctx.template Alloc<T>(rpn_roi_probs);
+  const bool empty_scores = scores.numel() == 0;
+  const bool empty_bbox_deltas = bbox_deltas.numel() == 0;
+  const bool empty_batch = num == 0;
+  const bool empty_im_shape = im_shape.numel() == 0;
+  const bool malformed_im_shape = im_shape.dims().size() < 2 ||
+                                  im_shape.dims()[0] < num ||
+                                  im_shape.dims()[1] < 2;
 
-  if (scores.numel() == 0) {
+  // When scores is zero-size, restore the historical scalar-int64 rois_num
+  // behavior so that the return value matches PyTorch:
+  //   rpn_rois      shape {0, 4}  dtype T
+  //   rpn_roi_probs shape {0, 1}  dtype T
+  //   rois_num      shape {}      dtype int64  value 0
+  // This is kept separate from the shared helper below so the crash-fix
+  // for other empty conditions (bbox_deltas, batch, im_shape) is preserved
+  // with its {batch_size} / int32 rois_num contract.
+  if (empty_scores) {
     rpn_rois->Resize({0, 4});
+    dev_ctx.template Alloc<T>(rpn_rois);
+    rpn_roi_probs->Resize({0, 1});
+    dev_ctx.template Alloc<T>(rpn_roi_probs);
     if (rpn_rois_num != nullptr) {
+      // Scalar zero with dtype int64 to match PyTorch / historical behavior.
       rpn_rois_num->Resize({});
       Full<int64_t, Context>(dev_ctx, rpn_rois_num->dims(), 0, rpn_rois_num);
     }
     return;
   }
+
+  // For the remaining empty-input conditions use the shared helper that sets
+  // rois_num to shape {batch_size} / int32 (crash-fix from prior zero-size
+  // fix; must not regress).
+  if (empty_bbox_deltas || empty_batch || empty_im_shape ||
+      malformed_im_shape) {
+    SetEmptyGenerateProposalsOutputs<T, Context>(
+        dev_ctx, num, rpn_rois, rpn_roi_probs, rpn_rois_num);
+    return;
+  }
+
+  rpn_rois->Resize({bbox_deltas.numel() / 4, 4});
+  dev_ctx.template Alloc<T>(rpn_rois);
+  rpn_roi_probs->Resize({scores.numel(), 1});
+  dev_ctx.template Alloc<T>(rpn_roi_probs);
 
   DenseTensor bbox_deltas_swap, scores_swap;
   bbox_deltas_swap.Resize({num, h_bbox, w_bbox, c_bbox});
@@ -549,19 +592,25 @@ void GenerateProposalsKernel(const Context &dev_ctx,
     DenseTensor &proposals = box_score_pair.first;
     DenseTensor &nscores = box_score_pair.second;
 
-    memory_utils::Copy(place,
-                       rpn_rois_data + num_proposals * 4,
-                       place,
-                       proposals.data<T>(),
-                       sizeof(T) * proposals.numel(),
-                       dev_ctx.stream());
-    memory_utils::Copy(place,
-                       rpn_roi_probs_data + num_proposals,
-                       place,
-                       nscores.data<T>(),
-                       sizeof(T) * nscores.numel(),
-                       dev_ctx.stream());
-    dev_ctx.Wait();
+    if (proposals.numel() > 0) {
+      memory_utils::Copy(place,
+                         rpn_rois_data + num_proposals * 4,
+                         place,
+                         proposals.data<T>(),
+                         sizeof(T) * proposals.numel(),
+                         dev_ctx.stream());
+    }
+    if (nscores.numel() > 0) {
+      memory_utils::Copy(place,
+                         rpn_roi_probs_data + num_proposals,
+                         place,
+                         nscores.data<T>(),
+                         sizeof(T) * nscores.numel(),
+                         dev_ctx.stream());
+    }
+    if (proposals.numel() > 0 || nscores.numel() > 0) {
+      dev_ctx.Wait();
+    }
     num_proposals += proposals.dims()[0];
     offset.emplace_back(num_proposals);
     tmp_num.push_back(proposals.dims()[0]);

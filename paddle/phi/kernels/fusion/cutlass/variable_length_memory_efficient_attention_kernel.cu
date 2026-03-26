@@ -14,6 +14,12 @@
 
 #include "paddle/phi/kernels/fusion/cutlass/variable_length_memory_efficient_attention.h"
 
+#include <algorithm>
+#include <vector>
+
+#include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/kernels/full_kernel.h"
+
 namespace phi {
 namespace fusion {
 
@@ -31,6 +37,44 @@ void MultiHeadAttentionVariableForwardKernel(const Context& dev_ctx,
                                              DenseTensor* output) {
   dev_ctx.template Alloc<T>(output);
   if (output->numel() == 0) return;
+  if (seq_lens.numel() == 0 || kv_seq_lens.numel() == 0) {
+    Full<T, Context>(dev_ctx, output->dims(), 0, output);
+    return;
+  }
+  if (key.dims()[2] == 0 || value.dims()[2] == 0) {
+    // Grouped FMHA does not safely handle structurally empty K/V storage.
+    Full<T, Context>(dev_ctx, output->dims(), 0, output);
+    return;
+  }
+
+  std::vector<int> seq_lens_host(seq_lens.numel());
+  std::vector<int> kv_seq_lens_host(kv_seq_lens.numel());
+  memory_utils::Copy(phi::CPUPlace(),
+                     seq_lens_host.data(),
+                     dev_ctx.GetPlace(),
+                     seq_lens.data<int>(),
+                     sizeof(int) * seq_lens_host.size(),
+                     dev_ctx.stream());
+  memory_utils::Copy(phi::CPUPlace(),
+                     kv_seq_lens_host.data(),
+                     dev_ctx.GetPlace(),
+                     kv_seq_lens.data<int>(),
+                     sizeof(int) * kv_seq_lens_host.size(),
+                     dev_ctx.stream());
+  dev_ctx.Wait();
+
+  const bool has_zero_effective_len =
+      std::any_of(seq_lens_host.begin(),
+                  seq_lens_host.end(),
+                  [](int len) { return len <= 0; }) ||
+      std::any_of(kv_seq_lens_host.begin(),
+                  kv_seq_lens_host.end(),
+                  [](int len) { return len <= 0; });
+  if (has_zero_effective_len) {
+    // Grouped FMHA does not safely handle zero-length members yet.
+    Full<T, Context>(dev_ctx, output->dims(), 0, output);
+    return;
+  }
 
   Params params{};
   // [B, N, S, H]
@@ -66,8 +110,12 @@ void MultiHeadAttentionVariableForwardKernel(const Context& dev_ctx,
   params.causal = causal;
   params.pre_cache_length = pre_cache_length;
 
-  // if the mask is 0-size tensor, we don't need to set mask_ptr
-  if (mask && mask.get().numel() > 0) {
+  const bool has_nonempty_mask = mask && mask.get().numel() > 0;
+  params.mask_ptr = nullptr;
+  params.ldm = 0;
+  params.ElementM = 0;
+  params.mask_broadcast_head = false;
+  if (has_nonempty_mask) {
     // [B, 1, S, D]
     auto mask_tensor = mask.get();
     int64_t mask_num_heads = mask_tensor.dims()[1];
@@ -84,17 +132,18 @@ void MultiHeadAttentionVariableForwardKernel(const Context& dev_ctx,
     if (kernel_launched) {
       return;
     }
-    if (mask && !KernelType::kAddMask) {
+    if (has_nonempty_mask && !KernelType::kAddMask) {
       return;
     }
-    if (!mask && KernelType::kAddMask) {
+    if (!has_nonempty_mask && KernelType::kAddMask) {
       return;
     }
-    if (mask && reinterpret_cast<uintptr_t>(params.mask_ptr) % 16 == 0 &&
+    if (has_nonempty_mask &&
+        reinterpret_cast<uintptr_t>(params.mask_ptr) % 16 == 0 &&
         params.ldm % (16 / sizeof(T)) == 0 && !KernelType::kMaskIsAligned) {
       return;
     }
-    if (mask &&
+    if (has_nonempty_mask &&
         !(reinterpret_cast<uintptr_t>(params.mask_ptr) % 16 == 0 &&
           params.ldm % (16 / sizeof(T)) == 0) &&
         KernelType::kMaskIsAligned) {
