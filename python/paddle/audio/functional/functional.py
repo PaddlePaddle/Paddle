@@ -343,7 +343,9 @@ def _get_sinc_resample_kernel(
     gcd: int,
     lowpass_filter_width: int = 6,
     rolloff: float = 0.99,
-    resampling_method: str = "sinc_interp_hann",
+    resampling_method: Literal[
+        "sinc_interp_hann", "sinc_interp_kaiser"
+    ] = "sinc_interp_hann",
     beta: float | None = None,
     dtype: paddle.dtype | None = None,
     name: str | None = None,
@@ -516,7 +518,9 @@ def resample(
     new_freq: int,
     lowpass_filter_width: int = 6,
     rolloff: float = 0.99,
-    resampling_method: str = "sinc_interp_hann",
+    resampling_method: Literal[
+        "sinc_interp_hann", "sinc_interp_kaiser"
+    ] = "sinc_interp_hann",
     beta: float | None = None,
     name: str | None = None,
 ) -> Tensor:
