@@ -3696,6 +3696,41 @@ def round(
 )
 
 add_doc_and_signature(
+    "round_",
+    r"""
+
+    Inplace version of ``round`` API, output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_round`.
+
+    Args:
+        x (Tensor): Input of Round operator, an N-D Tensor, with data type bfloat16, int32, int64, float32, float64, float16, complex64 or complex128. Alias: ``input``.
+        decimals(int): Rounded decimal place (default: 0).
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor. Output of Round operator, same as input ``x``.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([-0.5, -0.2, 0.6, 1.5])
+            >>> x.round_()
+            >>> print(x)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0., -0.,  1.,  2.])
+""",
+    """
+def round_(
+    x: Tensor,
+    decimals: int = 0,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
     "abs",
     r"""
     Perform elementwise abs for input `x`.
@@ -3733,22 +3768,20 @@ def abs(
 ) -> Tensor
 """,
 )
+
 add_doc_and_signature(
     "abs_",
-    """
+    r"""
     Inplace version of ``abs`` API, the output Tensor will be inplaced with input ``x``.
 """,
     """
-def abs_(x: Tensor, name: str | None = None) -> Tensor
+def abs_(
+    x: Tensor,
+    name: str | None = None,
+) -> Tensor
 """,
 )
-# lubingxin
 
-# chenhuangrun
-
-# zhanrongrun
-
-# other
 add_doc_and_signature(
     "nextafter",
     r"""
@@ -4115,6 +4148,42 @@ add_doc_and_signature(
 
     Returns:
         N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
+
+    Examples:
+
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([[1, 2], [7, 8]])
+            >>> y = paddle.to_tensor([[3, 4], [5, 6]])
+            >>> res = paddle.fmax(x, y)
+            >>> print(res)
+            Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[3, 4],
+             [7, 8]])
+
+            >>> x = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
+            >>> y = paddle.to_tensor([3, 0, 4])
+            >>> res = paddle.fmax(x, y)
+            >>> print(res)
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[3, 2, 4],
+             [3, 2, 4]])
+
+            >>> x = paddle.to_tensor([2, 3, 5], dtype='float32')
+            >>> y = paddle.to_tensor([1, float("nan"), float("nan")], dtype='float32')
+            >>> res = paddle.fmax(x, y)
+            >>> print(res)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [2., 3., 5.])
+
+            >>> x = paddle.to_tensor([5, 3, float("inf")], dtype='float32')
+            >>> y = paddle.to_tensor([1, -float("inf"), 5], dtype='float32')
+            >>> res = paddle.fmax(x, y)
+            >>> print(res)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [5.  , 3.  , inf.])
 """,
     """
 def fmax(
@@ -4149,6 +4218,42 @@ add_doc_and_signature(
 
     Returns:
         N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
+
+    Examples:
+
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([[1, 2], [7, 8]])
+            >>> y = paddle.to_tensor([[3, 4], [5, 6]])
+            >>> res = paddle.fmin(x, y)
+            >>> print(res)
+            Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1, 2],
+             [5, 6]])
+
+            >>> x = paddle.to_tensor([[[1, 2, 3], [1, 2, 3]]])
+            >>> y = paddle.to_tensor([3, 0, 4])
+            >>> res = paddle.fmin(x, y)
+            >>> print(res)
+            Tensor(shape=[1, 2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[[1, 0, 3],
+              [1, 0, 3]]])
+
+            >>> x = paddle.to_tensor([2, 3, 5], dtype='float32')
+            >>> y = paddle.to_tensor([1, float("nan"), float("nan")], dtype='float32')
+            >>> res = paddle.fmin(x, y)
+            >>> print(res)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [1., 3., 5.])
+
+            >>> x = paddle.to_tensor([5, 3, float("inf")], dtype='float64')
+            >>> y = paddle.to_tensor([1, -float("inf"), 5], dtype='float64')
+            >>> res = paddle.fmin(x, y)
+            >>> print(res)
+            Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
+            [ 1.  , -inf.,  5.  ])
 """,
     """
 def fmin(
@@ -5442,6 +5547,63 @@ add_doc_and_signature(
 def floor_divide_(
     x: Tensor,
     y: Tensor | int,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "erf",
+    r"""
+    The error function.
+
+    For more details, see `Error function <https://en.wikipedia.org/wiki/Error_function>`_.
+
+    .. math::
+
+        out = \frac{2}{\sqrt{\pi}} \int_{0}^{x}e^{- \eta^{2}}d\eta
+
+    Args:
+        x (Tensor): The input tensor, it's data type should be float32, float64, uint8, int8, int16, int32, int64. Alias: ``input``.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword Arguments:
+        out (Tensor, optional): The output tensor that has the computed result.
+
+    Returns:
+        Tensor. The output of Erf, dtype: float32 or float64 (integer types are autocasted into float32), shape: same as input.
+
+    Examples:
+
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.erf(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.42839241, -0.22270259,  0.11246292,  0.32862678])
+""",
+    """
+def erf(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
+
+add_doc_and_signature(
+    "erf_",
+    r"""
+    Inplace version of ``erf`` API, the output Tensor will be inplaced with input ``x``.
+""",
+    """
+def erf_(
+    x: Tensor,
     name: str | None = None,
 ) -> Tensor
 """,

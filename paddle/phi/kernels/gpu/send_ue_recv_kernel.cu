@@ -60,7 +60,16 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& dev_ctx,
     memset_size *= dims_[i];
   }
 
-  dev_ctx.template Alloc<T>(out);
+  // For float16/bfloat16 with reduce_op MIN/MAX, CudaAtomicMin/Max uses 4-byte
+  // atomicCAS on 2-byte values. When the total element count is odd, the last
+  // element's 4-byte CAS can read 2 bytes past the allocation boundary.
+  // Request extra padding to avoid this out-of-bounds access.
+  size_t requested_size = 0;
+  if (sizeof(T) == 2 && (memset_size % 2 != 0) &&
+      (reduce_op == "MAX" || reduce_op == "MIN")) {
+    requested_size = (memset_size + 1) * sizeof(T);
+  }
+  dev_ctx.template Alloc<T>(out, requested_size);
   T* out_data = out->data<T>();
   const size_t& memset_bytes = memset_size * sizeof(T);
   funcs::SetConstant<Context, T> constant_functor;

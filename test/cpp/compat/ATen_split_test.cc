@@ -28,6 +28,7 @@
 #include "ATen/ATen.h"
 #include "gtest/gtest.h"
 #include "paddle/phi/common/float16.h"
+#include "test/cpp/compat/cuda_test_utils.h"
 #include "torch/all.h"
 
 // Test for tensor_split with sections
@@ -309,6 +310,7 @@ TEST(SplitTest, SplitSymInt) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 // Test for split on CUDA
 TEST(SplitTest, SplitCUDA) {
+  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   auto tensor =
       at::arange(10, at::TensorOptions().dtype(at::kFloat).device(at::kCUDA));
 
@@ -327,6 +329,7 @@ TEST(SplitTest, SplitCUDA) {
 
 // Test for tensor_split on CUDA
 TEST(TensorSplitTest, TensorSplitCUDA) {
+  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   auto tensor =
       at::arange(12, at::TensorOptions().dtype(at::kFloat).device(at::kCUDA));
 
