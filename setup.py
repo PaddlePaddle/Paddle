@@ -2331,17 +2331,12 @@ def get_headers():
 
     if env_dict.get("WITH_ONEDNN") == 'ON':
         headers += list(
-            find_files('*', env_dict.get("ONEDNN_INSTALL_DIR") + '/include')
-        )  # mkldnn
-
-    if env_dict.get("WITH_MKL") == 'ON':
-        headers += list(
             find_files(
                 '*',
                 env_dict.get("ONEDNN_INSTALL_DIR") + '/include',
                 recursive=True,
             )
-        )
+        )  # mkldnn
 
     if env_dict.get("WITH_OPENVINO") == 'ON':
         headers += list(
