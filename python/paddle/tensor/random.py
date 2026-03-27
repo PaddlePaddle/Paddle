@@ -57,8 +57,13 @@ if TYPE_CHECKING:
 __all__ = []
 
 
+@param_one_alias(['x', 'input'])
 def bernoulli(
-    x: Tensor, p: float | None = None, name: str | None = None
+    x: Tensor,
+    p: float | None = None,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     r"""
 
@@ -74,9 +79,13 @@ def bernoulli(
 
     Args:
         x (Tensor): The input Tensor, it's data type should be float32, float64.
+            Alias: ``input``.
         p (float|None, optional): If ``p`` is given, the success probability will always be ``p``. Default is None, which means
             to use the success probability specified by input ``x``.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Keyword args:
+        out(Tensor, optional): The output tensor.
 
     Returns:
         Tensor, A Tensor filled samples from Bernoulli distribution, whose shape and dtype are same as ``x``.
@@ -116,7 +125,7 @@ def bernoulli(
         x = paddle.full_like(x, p)
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.bernoulli(x)
+        return _C_ops.bernoulli(x, out=out)
     else:
         check_variable_and_dtype(
             x, "x", ["float32", "float64", "float16", "uint16"], "bernoulli"

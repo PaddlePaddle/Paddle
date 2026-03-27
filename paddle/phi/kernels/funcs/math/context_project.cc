@@ -18,8 +18,8 @@
 namespace phi {
 namespace math {
 
-template class ContextProjectFunctor<phi::CPUContext, float>;
-template class ContextProjectFunctor<phi::CPUContext, double>;
+template class ContextProjectFunctor<CPUContext, float>;
+template class ContextProjectFunctor<CPUContext, double>;
 
 }  // namespace math
 }  // namespace phi

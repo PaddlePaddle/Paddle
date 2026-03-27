@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/new_executor/instruction/cinn_jit_instruction.h"
-
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
@@ -21,6 +20,7 @@
 #include "paddle/common/performance_statistician.h"
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
+#include "paddle/phi/backends/custom/custom_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_resources.h"
 #if defined(PADDLE_WITH_CUDA)
@@ -98,7 +98,8 @@ class CinnJitInstruction::FnPtrImpl {
     }
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
   void Run(const std::vector<phi::DenseTensor*>& kernel_tensor_args,
            void* stream,
            bool is_gpu) {
@@ -115,7 +116,7 @@ class CinnJitInstruction::FnPtrImpl {
             reinterpret_cast<uint8_t*>(kernel_tensor_args[i]->data());
       }
     }
-
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     // Launch host kernel
     if (FLAGS_cinn_measure_kernel_time ||
         FLAGS_tile_config_policy == "search") {
@@ -144,7 +145,7 @@ class CinnJitInstruction::FnPtrImpl {
         hipGraphInstantiate(&instance, graph, NULL, NULL, 0);
 #else
         CINN_NOT_IMPLEMENTED
-#endif
+#endif  // PADDLE_WITH_CUDA
         ps.CudaStart(FLAGS_cinn_kernel_execution_label);
         phi::gpuGraphLaunch(instance, stream);
         ps.CudaEnd(FLAGS_cinn_kernel_execution_label);
@@ -157,6 +158,7 @@ class CinnJitInstruction::FnPtrImpl {
       }
       phi::backends::gpu::GpuDeviceSync();
     } else {
+#endif  // defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (is_gpu) {
         ((lower_func_ptr_g)cinn_kernel_info_.fn_ptr)(
             static_cast<void*>(func_args_.data()), func_args_.size(), stream);
@@ -164,10 +166,13 @@ class CinnJitInstruction::FnPtrImpl {
         ((lower_func_ptr_g)cinn_kernel_info_.CX86_fn_ptr)(
             static_cast<void*>(func_args_.data()), func_args_.size(), stream);
       }
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     }
+#endif  // defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     VLOG(6) << "End Run: " << cinn_kernel_info_.fn_name;
   }
-#endif  // defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#endif  // defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) ||
+        // defined(PADDLE_WITH_CUSTOM_DEVICE)
 
   void InferShape(const std::vector<phi::DenseTensor*>& kernel_tensor_args,
                   const std::vector<phi::DDim>& ir_dim,
@@ -345,15 +350,24 @@ void CinnJitInstruction::Run() {
     CUDAErrorCheck("CinnJitInstruction begin");
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
   void* running_stream = nullptr;
   bool is_gpu = false;
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (place_.GetType() == phi::AllocationType::GPU) {
     is_gpu = true;
     running_stream =
         static_cast<void*>(static_cast<phi::GPUContext*>(dev_ctx_)->stream());
   }
+#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
+  if (place_.GetType() == phi::AllocationType::CUSTOM) {
+    is_gpu = true;  // CINN treat custom device as gpu device
+    running_stream = static_cast<void*>(
+        static_cast<phi::CustomContext*>(dev_ctx_)->stream());
+  }
+#endif  // defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
   // 1. prepare kernel arguments
   fn_ptr_impl_->InitFuncArgs(tensor_args_);
@@ -377,7 +391,8 @@ void CinnJitInstruction::Run() {
 #else
   VLOG(0) << "Not Supported: cinn jit instruction currently does not "
              "support CUDA/HIP kernel";
-#endif
+#endif  // defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) ||
+        // defined(PADDLE_WITH_CUSTOM_DEVICE)
 
   if (FLAGS_check_cuda_error) [[unlikely]] {
     CUDAErrorCheck("CinnJitInstruction finish");

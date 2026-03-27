@@ -535,6 +535,15 @@ static void ParseIndex(const Tensor& tensor,
           }
         } else {
           // int tensor consumes only one dimension of input tensor
+          // Check: if the dimension is valid and has size 0 while the
+          // index tensor has elements, any index is out of bounds.
+          // Skip this check when current_dim >= rank (too many indices),
+          // which is caught later at the end of ParseIndex.
+          if (current_dim < rank && dim_len == 0 && slice_tensor.numel() > 0) {
+            PADDLE_THROW(common::errors::OutOfRange(
+                "index is out of bounds for dimension %d with size 0",
+                static_cast<int>(current_dim)));
+          }
           (*advanced_index_dim)[estimated_dim] = estimated_dim;
           estimated_dim++;
           current_dim++;

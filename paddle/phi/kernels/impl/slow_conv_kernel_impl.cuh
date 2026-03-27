@@ -17,7 +17,14 @@
 #include <numeric>
 #include <type_traits>
 
+#include <fstream>
+#include <iostream>
+#include <string>
+#include <vector>
+
 #include "paddle/common/flags.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/concat_kernel.h"
 #include "paddle/phi/kernels/contiguous_kernel.h"
 #include "paddle/phi/kernels/conv_kernel.h"
@@ -34,13 +41,6 @@
 #include "paddle/phi/kernels/slice_kernel.h"
 
 COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
-
-#include <fstream>
-#include <iostream>
-#include <string>
-#include <vector>
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 template <typename T>
@@ -418,7 +418,7 @@ void SlowConvDilatedAllCUDAImpl(const Context& dev_ctx,
           phi::Sum<T, Context>(dev_ctx,
                                grad_output_n,
                                phi::IntArray(sum_axes),
-                               phi::CppTypeToDataType<T>::Type(),
+                               CppTypeToDataType<T>::Type(),
                                false);
       phi::Add<T, Context>(dev_ctx, *grad_bias, sum_result, grad_bias);
     }
@@ -610,7 +610,7 @@ void SlowConvForward(const Context& dev_ctx,
   DDim in_data_dims = slice_ddim(trans_in_dims, 2, trans_in_dims.size());
   DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
 
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
@@ -618,11 +618,10 @@ void SlowConvForward(const Context& dev_ctx,
   // Contiguous & Grouping
   // =================================================================
   DenseTensor input_contiguous;
-  phi::ContiguousKernel<T, Context>(
-      dev_ctx, transformed_input, &input_contiguous);
+  ContiguousKernel<T, Context>(dev_ctx, transformed_input, &input_contiguous);
 
   DenseTensor weight_contiguous;
-  phi::ContiguousKernel<T, Context>(dev_ctx, filter_t, &weight_contiguous);
+  ContiguousKernel<T, Context>(dev_ctx, filter_t, &weight_contiguous);
 
   auto to_int64_vec = [](const std::vector<int>& in) {
     return std::vector<int64_t>(in.begin(), in.end());
@@ -632,7 +631,7 @@ void SlowConvForward(const Context& dev_ctx,
   DenseTensor bias_contiguous;
 
   if (bias_ptr) {
-    phi::ContiguousKernel<T, Context>(dev_ctx, *bias_ptr, &bias_contiguous);
+    ContiguousKernel<T, Context>(dev_ctx, *bias_ptr, &bias_contiguous);
     bias_ptr = &bias_contiguous;
   }
 
@@ -789,7 +788,7 @@ void SlowConvBackward(const Context& dev_ctx,
   auto filter_dims = filter.dims();
   DDim in_data_dims = slice_ddim(in_dims, 2, in_dims.size());
   DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation<int>(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
@@ -812,14 +811,14 @@ void SlowConvBackward(const Context& dev_ctx,
 
   // Contiguous
   DenseTensor grad_output_cont;
-  phi::ContiguousKernel<T, Context>(
+  ContiguousKernel<T, Context>(
       dev_ctx, transformed_output_grad, &grad_output_cont);
 
   DenseTensor input_cont;
-  phi::ContiguousKernel<T, Context>(dev_ctx, transformed_input, &input_cont);
+  ContiguousKernel<T, Context>(dev_ctx, transformed_input, &input_cont);
 
   DenseTensor weight_cont;
-  phi::ContiguousKernel<T, Context>(dev_ctx, filter, &weight_cont);
+  ContiguousKernel<T, Context>(dev_ctx, filter, &weight_cont);
 
   auto to_int64_vec = [](const std::vector<int>& in) {
     return std::vector<int64_t>(in.begin(), in.end());

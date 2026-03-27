@@ -62,7 +62,7 @@ class InterpolateOneDNNHandler
                            DenseTensor* out)
       : OneDNNHandlerNoCachingT<T, dnnl::resampling_forward>(engine,
                                                              cpu_place) {
-    const auto dst_tz = common::vectorize(out->dims());
+    const auto dst_tz = vectorize(out->dims());
     const auto dst_md = dnnl::memory::desc(
         dst_tz, OneDNNGetDataType<T>(), OneDNNMemoryFormat::any);
     this->AcquireForwardPrimitiveDescriptor(
@@ -126,7 +126,7 @@ std::vector<int> ComputeOutputShape(
     if (scale.size() == 3 && scale[0] > 0.0f && scale[1] > 0.0f &&
         scale[2] > 0.0f) {
       int j = 0;
-      std::vector<int64_t> in_dhw_vec = common::vectorize(in_dhw_dims);
+      std::vector<int64_t> in_dhw_vec = vectorize(in_dhw_dims);
       std::transform(
           in_dhw_vec.begin(),
           in_dhw_vec.end(),

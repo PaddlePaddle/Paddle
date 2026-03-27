@@ -82,8 +82,8 @@ class FCOneDNNHandler
         dev_ctx_(dev_ctx) {
     this->memory_key_ = dev_ctx.GetInputsName("W")[0];
 
-    auto x_vec_dims = common::vectorize(x->dims());
-    auto weights_vec_dims = common::vectorize(weights->dims());
+    auto x_vec_dims = vectorize(x->dims());
+    auto weights_vec_dims = vectorize(weights->dims());
 
     int MB = 1;
     for (int i = 0; i < in_num_col_dims; ++i) {
@@ -434,8 +434,8 @@ void RunKernel(const phi::OneDNNContext& dev_ctx,
       funcs::CreateKey(dev_ctx,
                        dev_ctx.GetInputsName("Input")[0],
                        dev_ctx.GetInputsName("W")[0],
-                       common::vectorize(input.dims()),
-                       common::vectorize(w.dims())));
+                       vectorize(input.dims()),
+                       vectorize(w.dims())));
 
   auto inner_product_cache =
       std::static_pointer_cast<InnerProductCache>(dev_ctx.GetBlob(cache_key));
@@ -544,8 +544,7 @@ void RunKernel(const phi::OneDNNContext& dev_ctx,
     dev_ctx.SetBlob(cache_key, ip_cache);
   }
 
-  const auto out_md =
-      dst_memory_p->get_desc().reshape(common::vectorize(out->dims()));
+  const auto out_md = dst_memory_p->get_desc().reshape(vectorize(out->dims()));
 
   std::vector<int> reshape2_shape = {};
   if (dev_ctx.HasDnnAttr("fused_reshape2_shape")) {

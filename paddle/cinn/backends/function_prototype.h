@@ -84,11 +84,23 @@ struct FunctionProto {
       data_->ret_type = type_of<T>();
       return *this;
     }
+
+    Builder& SetRetType(const common::Type& t) {
+      data_->ret_type = t;
+      return *this;
+    }
+
     template <typename T>
     Builder& AddInputType() {
       data_->readonly_arg_types.push_back(type_of<T>());
       return *this;
     }
+
+    Builder& AddInputType(const common::Type& t) {
+      data_->readonly_arg_types.push_back(t);
+      return *this;
+    }
+
     template <typename T>
     Builder& AddOutputType() {
       data_->mutable_arg_types.push_back(type_of<T>());

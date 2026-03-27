@@ -116,6 +116,55 @@ class TestMaskAs(unittest.TestCase):
             place = get_device_place()
             self.check(shape, 'float16', place)
 
+    def test_tensor_sparse_mask(self):
+        """
+        Test the tensor method `sparse_mask` against the paddle.sparse.mask_as API
+        """
+        # Test for 1D, 2D, 3D, 4D tensors
+        shapes = [(5,), (5, 3), (5, 3, 4), (5, 3, 4, 2)]
+        for shape in shapes:
+            for dtype in [
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'complex64',
+                'complex128',
+            ]:
+                for place in self.places:
+                    # Generate data
+                    dense_data_np, dense_mask_np = generate_data(shape, dtype)
+                    dense_data_pd = paddle.to_tensor(
+                        dense_data_np, dtype=dtype, place=place
+                    )
+                    dense_data_pd.stop_gradient = False
+
+                    # Convert mask to sparse
+                    sparse_mask_pd = paddle.to_tensor(
+                        dense_mask_np, dtype=dtype, place=place
+                    ).to_sparse_coo(len(shape))
+
+                    # Use the new tensor method (your API)
+                    sparse_out_pd = dense_data_pd.sparse_mask(sparse_mask_pd)
+
+                    # Compare with reference (same as original test)
+                    dense_data_np_ref = dense_data_np * (dense_mask_np != 0)
+                    np.testing.assert_allclose(
+                        sparse_out_pd.to_dense().numpy(), dense_data_np_ref
+                    )
+
+                    # Check gradient (skip int8 and int16)
+                    if dtype not in ['int8', 'int16']:
+                        sparse_out_pd.backward()
+                        dense_data_grad = dense_data_pd.grad
+                        grad_ref = np.ones_like(dense_mask_np) * (
+                            dense_mask_np != 0
+                        )
+                        np.testing.assert_allclose(
+                            dense_data_grad.numpy(),
+                            grad_ref,
+                        )
+
 
 class TestMaskAsCoo(TestMaskAs):
     def init_format(self):

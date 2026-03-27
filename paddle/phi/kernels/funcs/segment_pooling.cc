@@ -21,12 +21,10 @@ limitations under the License. */
 
 namespace phi::funcs {
 
-using Tensor = DenseTensor;
-
 template <typename T, typename IndexT>
-class SegmentPoolFunctor<phi::CPUContext, T, IndexT> {
+class SegmentPoolFunctor<CPUContext, T, IndexT> {
  public:
-  void operator()(const phi::CPUContext& dev_ctx,
+  void operator()(const CPUContext& dev_ctx,
                   const DenseTensor& input,
                   const DenseTensor& segments,
                   DenseTensor* output,
@@ -51,8 +49,8 @@ class SegmentPoolFunctor<phi::CPUContext, T, IndexT> {
                               segment_ids[idx]));
       }
 
-      Tensor out_t = output->Slice(current_id, current_id + 1);
-      Tensor in_t = input.Slice(last_idx, idx);
+      DenseTensor out_t = output->Slice(current_id, current_id + 1);
+      DenseTensor in_t = input.Slice(last_idx, idx);
 
       int64_t h = idx - last_idx;
       auto in_e = EigenMatrix<T>::From(in_t, make_ddim({h, w}));
@@ -81,9 +79,9 @@ class SegmentPoolFunctor<phi::CPUContext, T, IndexT> {
 };
 
 template <typename T, typename IndexT>
-class SegmentPoolGradFunctor<phi::CPUContext, T, IndexT> {
+class SegmentPoolGradFunctor<CPUContext, T, IndexT> {
  public:
-  void operator()(const phi::CPUContext& dev_ctx,
+  void operator()(const CPUContext& dev_ctx,
                   const DenseTensor& input,
                   const DenseTensor& output,
                   const DenseTensor& out_grad,
@@ -110,8 +108,8 @@ class SegmentPoolGradFunctor<phi::CPUContext, T, IndexT> {
                               segment_ids[idx]));
       }
 
-      Tensor out_g_t = out_grad.Slice(current_id, current_id + 1);
-      Tensor in_g_t = in_grad->Slice(last_idx, idx);
+      DenseTensor out_g_t = out_grad.Slice(current_id, current_id + 1);
+      DenseTensor in_g_t = in_grad->Slice(last_idx, idx);
 
       int64_t h = idx - last_idx;
       auto in_g_e = EigenMatrix<T>::From(in_g_t, {h, w});
@@ -123,8 +121,8 @@ class SegmentPoolGradFunctor<phi::CPUContext, T, IndexT> {
       } else if (pooltype == "SUM") {
         in_g_e.device(place) = out_g_e.broadcast(bcast);
       } else if (pooltype == "MAX" || pooltype == "MIN") {
-        Tensor out_t = output.Slice(current_id, current_id + 1);
-        Tensor in_t = input.Slice(last_idx, idx);
+        DenseTensor out_t = output.Slice(current_id, current_id + 1);
+        DenseTensor in_t = input.Slice(last_idx, idx);
         auto in_e = EigenMatrix<T>::From(in_t, {h, w});
         auto out_e = EigenMatrix<T>::From(out_t, {1, w});
         in_g_e.device(place) =
@@ -143,7 +141,7 @@ class SegmentPoolGradFunctor<phi::CPUContext, T, IndexT> {
   }
 };
 
-using CPU = phi::CPUContext;
+using CPU = CPUContext;
 using float16 = phi::float16;
 template class SegmentPoolFunctor<CPU, float, int>;
 template class SegmentPoolFunctor<CPU, float, int64_t>;

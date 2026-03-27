@@ -25,7 +25,7 @@ namespace phi {
 template <typename Context, typename T>
 inline void ReorderInitState(const Context& dev_ctx,
                              const DenseTensor& src,
-                             phi::Vector<size_t> index_lod,
+                             Vector<size_t> index_lod,
                              DenseTensor* dst,
                              bool indexed_src) {
   funcs::CopyMatrixRowsFunctor<Context, T> row_shuffle;

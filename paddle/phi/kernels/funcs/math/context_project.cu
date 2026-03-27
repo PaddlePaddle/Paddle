@@ -17,8 +17,8 @@
 namespace phi {
 namespace math {
 
-template class ContextProjectFunctor<phi::GPUContext, float>;
-template class ContextProjectFunctor<phi::GPUContext, double>;
+template class ContextProjectFunctor<GPUContext, float>;
+template class ContextProjectFunctor<GPUContext, double>;
 
 }  // namespace math
 }  // namespace phi

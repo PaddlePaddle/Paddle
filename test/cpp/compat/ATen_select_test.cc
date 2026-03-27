@@ -28,6 +28,7 @@
 #include "ATen/ATen.h"
 #include "gtest/gtest.h"
 #include "paddle/phi/common/float16.h"
+#include "test/cpp/compat/cuda_test_utils.h"
 #include "torch/all.h"
 
 // ==================== select tests ====================
@@ -154,6 +155,22 @@ TEST(SelectTest, SelectSymInt2D) {
   EXPECT_EQ(selected.dim(), 1);
   EXPECT_EQ(selected.size(0), 4);
   EXPECT_FLOAT_EQ(selected[0].item<float>(), 4.0f);
+}
+
+TEST(SelectTest, SelectNegativeIndexBranches) {
+  auto tensor =
+      at::arange(12, at::TensorOptions().dtype(at::kFloat)).reshape({3, 4});
+
+  auto selected = tensor.select(-1, -1);
+  EXPECT_EQ(selected.dim(), 1);
+  EXPECT_EQ(selected.size(0), 3);
+  EXPECT_FLOAT_EQ(selected[0].item<float>(), 3.0f);
+  EXPECT_FLOAT_EQ(selected[2].item<float>(), 11.0f);
+
+  c10::SymInt index(-1);
+  auto selected_symint = tensor.select_symint(-1, index);
+  EXPECT_EQ(selected_symint.size(0), 3);
+  EXPECT_FLOAT_EQ(selected_symint[1].item<float>(), 7.0f);
 }
 
 // ==================== index_select tests ====================
@@ -363,6 +380,7 @@ TEST(MaskedSelectTest, MaskedSelectDifferentDtypes) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 // Test for select on CUDA
 TEST(SelectTest, SelectCUDA) {
+  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   auto tensor =
       at::arange(10, at::TensorOptions().dtype(at::kFloat).device(at::kCUDA));
 
@@ -377,6 +395,7 @@ TEST(SelectTest, SelectCUDA) {
 
 // Test for index_select on CUDA
 TEST(IndexSelectTest, IndexSelectCUDA) {
+  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   auto tensor =
       at::arange(10, at::TensorOptions().dtype(at::kFloat).device(at::kCUDA));
 
@@ -401,6 +420,7 @@ TEST(IndexSelectTest, IndexSelectCUDA) {
 
 // Test for masked_select on CUDA
 TEST(MaskedSelectTest, MaskedSelectCUDA) {
+  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   auto tensor =
       at::arange(10, at::TensorOptions().dtype(at::kFloat).device(at::kCUDA));
 

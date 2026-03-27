@@ -1060,3 +1060,46 @@ def assert_close(
 
     if error_metas:
         raise error_metas[0].to_error(msg)
+
+
+def _assert(condition, message=""):
+    r"""
+    A wrapper around Python's assert which is symbolically traceable.
+
+    In dynamic graph mode, this function behaves like a regular Python assert.
+    In static graph mode, when the condition is a Tensor, it creates an Assert
+    op in the computation graph.
+
+    Args:
+        condition (bool or Tensor): The condition to assert. If a Tensor, it
+            must be a boolean scalar (numel=1).
+        message (str, optional): The error message to display when the assertion
+            fails. Default: "".
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+            >>> # Non-tensor condition
+            >>> paddle._assert(1 == 1, "This should pass")
+
+            >>> # Tensor condition
+            >>> x = paddle.to_tensor([True])
+            >>> paddle._assert(x, "Tensor assertion")
+
+    """
+    from paddle.base.framework import Variable
+    from paddle.framework import in_dynamic_mode
+
+    if isinstance(condition, (paddle.Tensor, paddle.pir.Value, Variable)):
+        if in_dynamic_mode():
+            if not condition:
+                raise AssertionError(message)
+        else:
+            condition = paddle.cast(condition, "bool")
+            from paddle.static.nn.control_flow import Assert
+
+            return Assert(condition)
+    else:
+        if not condition:
+            raise AssertionError(message)

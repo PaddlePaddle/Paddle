@@ -567,7 +567,7 @@ void SolveLinearSystemGPU<phi::dtype::complex<float>>(
   // Check error info
   CPUPlace cpu_place;
   DeviceContextPool& pool = DeviceContextPool::Instance();
-  auto* cpu_ctx = static_cast<phi::CPUContext*>(pool.Get(cpu_place));
+  auto* cpu_ctx = static_cast<CPUContext*>(pool.Get(cpu_place));
 
   std::vector<rocblas_int> h_info(batch_count, 0);
   phi::memory_utils::Copy(
@@ -743,7 +743,7 @@ void SolveLinearSystemGPU<phi::dtype::complex<double>>(
   }
   CPUPlace cpu_place;
   DeviceContextPool& pool = DeviceContextPool::Instance();
-  auto* cpu_ctx = static_cast<phi::CPUContext*>(pool.Get(cpu_place));
+  auto* cpu_ctx = static_cast<CPUContext*>(pool.Get(cpu_place));
 
   std::vector<rocblas_int> h_info(batch_count, 0);
   phi::memory_utils::Copy(
@@ -799,7 +799,7 @@ void ComputeBackwardForComplexInputGPU(const DenseTensor& L,
 
   auto cpu_place = CPUPlace();
   DeviceContextPool& pool = DeviceContextPool::Instance();
-  auto* cpu_ctx = static_cast<phi::CPUContext*>(pool.Get(cpu_place));
+  auto* cpu_ctx = static_cast<CPUContext*>(pool.Get(cpu_place));
 
   DenseTensor diag_real_cpu;
   diag_real_cpu.Resize(diag_real.dims());
