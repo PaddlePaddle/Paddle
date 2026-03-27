@@ -119,7 +119,7 @@ void RowConvKernel(const Context &dev_ctx,
     batch_size = X->lod()[0].size() - 1;
   }
   int input_dim = 0;
-  phi::Vector<size_t> batch_indices(batch_size + 1);
+  Vector<size_t> batch_indices(batch_size + 1);
   int64_t timesteps = X->dims()[1];
 
   if (is_tensor) {

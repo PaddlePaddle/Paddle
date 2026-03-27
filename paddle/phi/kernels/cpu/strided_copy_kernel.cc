@@ -74,7 +74,7 @@ void StridedCopyKernel(const Context& dev_ctx,
 
     } else {
       DenseTensor cpu_out;
-      phi::ContiguousKernel<T, Context>(dev_ctx, input, &cpu_out);
+      ContiguousKernel<T, Context>(dev_ctx, input, &cpu_out);
       auto* src_ptr = cpu_out.data<T>();
       auto size = phi::SizeOf(input.dtype()) * cpu_out.numel();
       void* dst_ptr = gpu_dev_ctx->Alloc(

@@ -625,7 +625,6 @@ from .tensor.math import (  # noqa: F401
     floor_divide,
     floor_divide_,
     floor_mod,
-    floor_mod_,
     fmax,
     fmin,
     frac,
@@ -684,7 +683,6 @@ from .tensor.math import (  # noqa: F401
     minimum,
     mm,
     mod,
-    mod_,
     mul,
     multigammaln,
     multigammaln_,
@@ -796,6 +794,7 @@ from .tensor.stat import (
     var,
 )
 from .tensor.to_string import set_printoptions
+from .testing import _assert as _assert
 from .utils.dlpack import (
     from_dlpack,
     to_dlpack,

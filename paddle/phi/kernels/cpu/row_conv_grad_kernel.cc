@@ -44,7 +44,7 @@ void RowConvGradKernel(const Context &dev_ctx,
   } else {
     batch_size = static_cast<int>(x->lod()[0].size() - 1);
   }
-  phi::Vector<size_t> batch_indices(batch_size + 1);
+  Vector<size_t> batch_indices(batch_size + 1);
   int timesteps = 0;
   int input_dim = 0;
   if (is_tensor) {

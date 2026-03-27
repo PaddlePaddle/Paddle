@@ -274,8 +274,8 @@ void ConvTransposeRawGPUDNNKernel(const Context& dev_ctx,
   std::vector<int> dilations_ = dilations;
   const DataLayout data_layout =
       (data_format != "NHWC" ? DataLayout::NCHW : DataLayout::NHWC);
-  std::vector<int64_t> x_vec = common::vectorize<int64_t>(x.dims());
-  std::vector<int64_t> out_vec = common::vectorize<int64_t>(out->dims());
+  std::vector<int64_t> x_vec = vectorize<int64_t>(x.dims());
+  std::vector<int64_t> out_vec = vectorize<int64_t>(out->dims());
   // if channel_last, transpose to channel_first
   DenseTensor x_transpose;
   if (data_layout == DataLayout::NHWC) {
@@ -304,7 +304,7 @@ void ConvTransposeRawGPUDNNKernel(const Context& dev_ctx,
   DDim x_data_dims;
   x_data_dims = slice_ddim(x_dims, 2, x_dims.size());
   DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
       &paddings_, &dilations_, padding_algorithm, x_data_dims, strides, ksize);
 
@@ -368,7 +368,7 @@ void ConvTransposeRawGPUDNNKernel(const Context& dev_ctx,
     axes[i] = i + 2;
   }
 
-  x_vec = common::vectorize<int64_t>(transformed_x.dims());
+  x_vec = vectorize<int64_t>(transformed_x.dims());
 
   std::vector<int64_t> transformed_out_vec = out_vec;
   for (size_t i = 0; i < data_dim; ++i) {

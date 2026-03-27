@@ -1532,64 +1532,64 @@ struct CBlas<phi::float16> {
 #ifdef PADDLE_WITH_MKLML
 template <>
 template <typename T>
-T *Blas<phi::CPUContext>::GEMM_ALLOC(const CBLAS_IDENTIFIER id,
-                                     const int M,
-                                     const int N,
-                                     const int K) const {
+T *Blas<CPUContext>::GEMM_ALLOC(const CBLAS_IDENTIFIER id,
+                                const int M,
+                                const int N,
+                                const int K) const {
   return CBlas<T>::GEMM_ALLOC(id, M, N, K);
 }
 
 template <>
 template <typename T>
-void Blas<phi::CPUContext>::GEMM_PACK(const CBLAS_IDENTIFIER id,
-                                      const CBLAS_TRANSPOSE trans,
-                                      int M,
-                                      int N,
-                                      int K,
-                                      const T alpha,
-                                      const T *src,
-                                      const int ld,
-                                      T *dst) const {
+void Blas<CPUContext>::GEMM_PACK(const CBLAS_IDENTIFIER id,
+                                 const CBLAS_TRANSPOSE trans,
+                                 int M,
+                                 int N,
+                                 int K,
+                                 const T alpha,
+                                 const T *src,
+                                 const int ld,
+                                 T *dst) const {
   CBlas<T>::GEMM_PACK(CblasRowMajor, id, trans, M, N, K, alpha, src, ld, dst);
 }
 
 template <>
 template <typename T>
-void Blas<phi::CPUContext>::GEMM_COMPUTE(int transA,
-                                         int transB,
-                                         int M,
-                                         int N,
-                                         int K,
-                                         const T *A,
-                                         const int lda,
-                                         const T *B,
-                                         const int ldb,
-                                         T beta,
-                                         T *C,
-                                         const int ldc) const {
+void Blas<CPUContext>::GEMM_COMPUTE(int transA,
+                                    int transB,
+                                    int M,
+                                    int N,
+                                    int K,
+                                    const T *A,
+                                    const int lda,
+                                    const T *B,
+                                    const int ldb,
+                                    T beta,
+                                    T *C,
+                                    const int ldc) const {
   CBlas<T>::GEMM_COMPUTE(
       CblasRowMajor, transA, transB, M, N, K, A, lda, B, ldb, beta, C, ldc);
 }
 
 template <>
 template <typename T>
-void Blas<phi::CPUContext>::GEMM_FREE(T *data) const {
+void Blas<CPUContext>::GEMM_FREE(T *data) const {
   CBlas<T>::GEMM_FREE(data);
 }
 #endif
 
 template <>
 template <typename T>
-void Blas<phi::CPUContext>::GEMM(CBLAS_TRANSPOSE transA,
-                                 CBLAS_TRANSPOSE transB,
-                                 int64_t M,
-                                 int64_t N,
-                                 int64_t K,
-                                 T alpha,
-                                 const T *A,
-                                 const T *B,
-                                 T beta,
-                                 T *C) const {
+void Blas<CPUContext>::GEMM(CBLAS_TRANSPOSE transA,
+                            CBLAS_TRANSPOSE transB,
+                            int64_t M,
+                            int64_t N,
+                            int64_t K,
+                            T alpha,
+                            const T *A,
+                            const T *B,
+                            T beta,
+                            T *C) const {
   if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
     PADDLE_THROW(
         common::errors::Unimplemented("GEMM not supported for large tensor "
@@ -1616,16 +1616,16 @@ void Blas<phi::CPUContext>::GEMM(CBLAS_TRANSPOSE transA,
 
 template <>
 template <typename T, typename U>
-void Blas<phi::CPUContext>::GEMM(CBLAS_TRANSPOSE transA,
-                                 CBLAS_TRANSPOSE transB,
-                                 int64_t M,
-                                 int64_t N,
-                                 int64_t K,
-                                 U alpha,
-                                 const T *A,
-                                 const T *B,
-                                 U beta,
-                                 T *C) const {
+void Blas<CPUContext>::GEMM(CBLAS_TRANSPOSE transA,
+                            CBLAS_TRANSPOSE transB,
+                            int64_t M,
+                            int64_t N,
+                            int64_t K,
+                            U alpha,
+                            const T *A,
+                            const T *B,
+                            U beta,
+                            T *C) const {
   if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
     PADDLE_THROW(
         common::errors::Unimplemented("GEMM not supported for large tensor "
@@ -1652,19 +1652,19 @@ void Blas<phi::CPUContext>::GEMM(CBLAS_TRANSPOSE transA,
 
 template <>
 template <typename T>
-void Blas<phi::CPUContext>::GEMM(bool transA,
-                                 bool transB,
-                                 int M,
-                                 int N,
-                                 int K,
-                                 T alpha,
-                                 const T *A,
-                                 int lda,
-                                 const T *B,
-                                 int ldb,
-                                 T beta,
-                                 T *C,
-                                 int ldc) const {
+void Blas<CPUContext>::GEMM(bool transA,
+                            bool transB,
+                            int M,
+                            int N,
+                            int K,
+                            T alpha,
+                            const T *A,
+                            int lda,
+                            const T *B,
+                            int ldb,
+                            T beta,
+                            T *C,
+                            int ldc) const {
   CBlas<T>::GEMM(CblasRowMajor,
                  transA == false ? CblasNoTrans : CblasTrans,
                  transB == false ? CblasNoTrans : CblasTrans,
@@ -1683,19 +1683,19 @@ void Blas<phi::CPUContext>::GEMM(bool transA,
 
 template <>
 template <typename T>
-void Blas<phi::CPUContext>::GEMM(CBLAS_TRANSPOSE transA,
-                                 CBLAS_TRANSPOSE transB,
-                                 int M,
-                                 int N,
-                                 int K,
-                                 T alpha,
-                                 const T *A,
-                                 int lda,
-                                 const T *B,
-                                 int ldb,
-                                 T beta,
-                                 T *C,
-                                 int ldc) const {
+void Blas<CPUContext>::GEMM(CBLAS_TRANSPOSE transA,
+                            CBLAS_TRANSPOSE transB,
+                            int M,
+                            int N,
+                            int K,
+                            T alpha,
+                            const T *A,
+                            int lda,
+                            const T *B,
+                            int ldb,
+                            T beta,
+                            T *C,
+                            int ldc) const {
   CBlas<T>::GEMM(CblasRowMajor,
                  transA,
                  transB,
@@ -1762,19 +1762,19 @@ void Blas<DeviceContext>::MatMul(const DenseTensor &mat_a,
 
 template <>
 template <typename T>
-void Blas<phi::CPUContext>::AXPY(int n, T alpha, const T *x, T *y) const {
+void Blas<CPUContext>::AXPY(int n, T alpha, const T *x, T *y) const {
   CBlas<T>::AXPY(n, alpha, x, 1, y, 1);
 }
 
 template <>
 template <typename T>
-void Blas<phi::CPUContext>::VCOPY(int n, const T *x, T *y) const {
+void Blas<CPUContext>::VCOPY(int n, const T *x, T *y) const {
   CBlas<T>::VCOPY(n, x, 1, y, 1);
 }
 
 template <>
 template <typename T>
-void Blas<phi::CPUContext>::VADD(int n, const T *x, const T *y, T *z) const {
+void Blas<CPUContext>::VADD(int n, const T *x, const T *y, T *z) const {
 #if defined(PADDLE_WITH_MKLML) || defined(PADDLE_WITH_HML)
   CBlas<T>::VADD(n, x, y, z);
 #else
@@ -1789,7 +1789,7 @@ void Blas<phi::CPUContext>::VADD(int n, const T *x, const T *y, T *z) const {
 
 template <>
 template <typename T>
-void Blas<phi::CPUContext>::VSUB(int n, const T *x, const T *y, T *z) const {
+void Blas<CPUContext>::VSUB(int n, const T *x, const T *y, T *z) const {
 #if defined(PADDLE_WITH_MKLML) || defined(PADDLE_WITH_HML)
   CBlas<T>::VSUB(n, x, y, z);
 #else
@@ -1802,7 +1802,7 @@ void Blas<phi::CPUContext>::VSUB(int n, const T *x, const T *y, T *z) const {
 
 template <>
 template <typename T>
-void Blas<phi::CPUContext>::VMUL(int n, const T *x, const T *y, T *z) const {
+void Blas<CPUContext>::VMUL(int n, const T *x, const T *y, T *z) const {
 #if defined(PADDLE_WITH_MKLML) || defined(PADDLE_WITH_HML)
   CBlas<T>::VMUL(n, x, y, z);
 #else
@@ -1815,7 +1815,7 @@ void Blas<phi::CPUContext>::VMUL(int n, const T *x, const T *y, T *z) const {
 
 template <>
 template <typename T>
-void Blas<phi::CPUContext>::VDIV(int n, const T *x, const T *y, T *z) const {
+void Blas<CPUContext>::VDIV(int n, const T *x, const T *y, T *z) const {
 #if defined(PADDLE_WITH_MKLML) || defined(PADDLE_WITH_HML)
   CBlas<T>::VDIV(n, x, y, z);
 #else
@@ -1828,7 +1828,7 @@ void Blas<phi::CPUContext>::VDIV(int n, const T *x, const T *y, T *z) const {
 
 template <>
 template <typename T>
-void Blas<phi::CPUContext>::VEXP(int n, const T *x, T *y) const {
+void Blas<CPUContext>::VEXP(int n, const T *x, T *y) const {
 #if defined(PADDLE_WITH_MKLML) || defined(PADDLE_WITH_HML)
   CBlas<T>::VEXP(n, x, y);
 #else
@@ -1841,7 +1841,7 @@ void Blas<phi::CPUContext>::VEXP(int n, const T *x, T *y) const {
 
 template <>
 template <typename T>
-void Blas<phi::CPUContext>::VSQUARE(int n, const T *x, T *y) const {
+void Blas<CPUContext>::VSQUARE(int n, const T *x, T *y) const {
 #if defined(PADDLE_WITH_MKLML) || defined(PADDLE_WITH_HML)
   CBlas<T>::VSQUARE(n, x, y);
 #else
@@ -1853,7 +1853,7 @@ void Blas<phi::CPUContext>::VSQUARE(int n, const T *x, T *y) const {
 
 template <>
 template <typename T>
-void Blas<phi::CPUContext>::VPOW(int n, const T *x, T a, T *y) const {
+void Blas<CPUContext>::VPOW(int n, const T *x, T a, T *y) const {
 #if defined(PADDLE_WITH_MKLML) || defined(PADDLE_WITH_HML)
   CBlas<T>::VPOW(n, x, a, y);
 #else
@@ -1865,7 +1865,7 @@ void Blas<phi::CPUContext>::VPOW(int n, const T *x, T a, T *y) const {
 
 template <>
 template <typename T>
-T Blas<phi::CPUContext>::DOT(int n, const T *x, const T *y) const {
+T Blas<CPUContext>::DOT(int n, const T *x, const T *y) const {
 #if defined(PADDLE_WITH_MKLML) || defined(PADDLE_WITH_HML)
   return CBlas<T>::DOT(n, x, 1, y, 1);
 #else
@@ -1880,7 +1880,7 @@ T Blas<phi::CPUContext>::DOT(int n, const T *x, const T *y) const {
 
 template <>
 template <typename T>
-void Blas<phi::CPUContext>::SCAL(int n, const T a, T *x) const {
+void Blas<CPUContext>::SCAL(int n, const T a, T *x) const {
 #if defined(PADDLE_WITH_MKLML) || defined(PADDLE_WITH_HML)
   CBlas<T>::SCAL(n, a, x, 1);
 #else
@@ -1893,7 +1893,7 @@ void Blas<phi::CPUContext>::SCAL(int n, const T a, T *x) const {
 
 template <>
 template <typename T>
-T Blas<phi::CPUContext>::ASUM(int n, T *x, int inc) const {
+T Blas<CPUContext>::ASUM(int n, T *x, int inc) const {
   auto sum = static_cast<T>(0.0);
 #if defined(PADDLE_WITH_MKLML) || defined(PADDLE_WITH_HML)
   sum = CBlas<T>::ASUM(n, x, inc);
@@ -1908,33 +1908,33 @@ T Blas<phi::CPUContext>::ASUM(int n, T *x, int inc) const {
 
 template <>
 template <typename T>
-void Blas<phi::CPUContext>::GEMV(bool trans_a,
-                                 int M,
-                                 int N,
-                                 T alpha,
-                                 const T *A,
-                                 const T *B,
-                                 T beta,
-                                 T *C) const {
+void Blas<CPUContext>::GEMV(bool trans_a,
+                            int M,
+                            int N,
+                            T alpha,
+                            const T *A,
+                            const T *B,
+                            T beta,
+                            T *C) const {
   CBLAS_TRANSPOSE transA = !trans_a ? CblasNoTrans : CblasTrans;
   CBlas<T>::GEMV(CblasRowMajor, transA, M, N, alpha, A, N, B, 1, beta, C, 1);
 }
 
 template <>
 template <typename T>
-void Blas<phi::CPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
-                                        CBLAS_TRANSPOSE transB,
-                                        int64_t M,
-                                        int64_t N,
-                                        int64_t K,
-                                        T alpha,
-                                        const T *A,
-                                        const T *B,
-                                        T beta,
-                                        T *C,
-                                        int64_t batchCount,
-                                        int64_t strideA,
-                                        int64_t strideB) const {
+void Blas<CPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
+                                   CBLAS_TRANSPOSE transB,
+                                   int64_t M,
+                                   int64_t N,
+                                   int64_t K,
+                                   T alpha,
+                                   const T *A,
+                                   const T *B,
+                                   T beta,
+                                   T *C,
+                                   int64_t batchCount,
+                                   int64_t strideA,
+                                   int64_t strideB) const {
   PADDLE_ENFORCE_NOT_NULL(
       A, common::errors::InvalidArgument("Pointer A should not be null."));
   PADDLE_ENFORCE_NOT_NULL(
@@ -2001,19 +2001,19 @@ void Blas<phi::CPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
 
 template <>
 template <typename T, typename U>
-void Blas<phi::CPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
-                                        CBLAS_TRANSPOSE transB,
-                                        int64_t M,
-                                        int64_t N,
-                                        int64_t K,
-                                        U alpha,
-                                        const T *A,
-                                        const T *B,
-                                        U beta,
-                                        T *C,
-                                        int64_t batchCount,
-                                        int64_t strideA,
-                                        int64_t strideB) const {
+void Blas<CPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
+                                   CBLAS_TRANSPOSE transB,
+                                   int64_t M,
+                                   int64_t N,
+                                   int64_t K,
+                                   U alpha,
+                                   const T *A,
+                                   const T *B,
+                                   U beta,
+                                   T *C,
+                                   int64_t batchCount,
+                                   int64_t strideA,
+                                   int64_t strideB) const {
   PADDLE_ENFORCE_NOT_NULL(
       A, common::errors::InvalidArgument("Pointer A should not be null."));
   PADDLE_ENFORCE_NOT_NULL(
@@ -2079,17 +2079,17 @@ void Blas<phi::CPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
 
 template <>
 template <typename T>
-void Blas<phi::CPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
-                                        CBLAS_TRANSPOSE transB,
-                                        int M,
-                                        int N,
-                                        int K,
-                                        T alpha,
-                                        const T **A,
-                                        const T **B,
-                                        T beta,
-                                        T **C,
-                                        int batchCount) const {
+void Blas<CPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
+                                   CBLAS_TRANSPOSE transB,
+                                   int M,
+                                   int N,
+                                   int K,
+                                   T alpha,
+                                   const T **A,
+                                   const T **B,
+                                   T beta,
+                                   T **C,
+                                   int batchCount) const {
 #if defined(PADDLE_WITH_MKLML) || defined(PADDLE_WITH_HML)
   const int lda = (std::max)((transA == CblasNoTrans) ? K : M, 1);
   const int ldb = (std::max)((transB == CblasNoTrans) ? N : K, 1);
@@ -2122,22 +2122,22 @@ void Blas<phi::CPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
     !defined(PADDLE_WITH_HIP)  // @{ Group Blas MKLML: BatchedGEMMWithHead
 template <>
 template <typename T>
-void Blas<phi::CPUContext>::BatchedGEMMWithHead(CBLAS_TRANSPOSE transA,
-                                                CBLAS_TRANSPOSE transB,
-                                                int W1,
-                                                int H1,
-                                                int W2,
-                                                int H2,
-                                                T alpha,
-                                                const T *A,
-                                                const T *B,
-                                                T beta,
-                                                T *C,
-                                                int batchCount,
-                                                int64_t strideA,
-                                                int64_t strideB,
-                                                int64_t head_number,
-                                                bool split_b_vertical) const {
+void Blas<CPUContext>::BatchedGEMMWithHead(CBLAS_TRANSPOSE transA,
+                                           CBLAS_TRANSPOSE transB,
+                                           int W1,
+                                           int H1,
+                                           int W2,
+                                           int H2,
+                                           T alpha,
+                                           const T *A,
+                                           const T *B,
+                                           T beta,
+                                           T *C,
+                                           int batchCount,
+                                           int64_t strideA,
+                                           int64_t strideB,
+                                           int64_t head_number,
+                                           bool split_b_vertical) const {
   int lda = (transA == CblasNoTrans) ? W1 : H1;
   int ldb = (transB == CblasNoTrans) ? W2 : H2;
   auto a_array = std::vector<const T *>(batchCount);
@@ -2232,22 +2232,22 @@ void Blas<phi::CPUContext>::BatchedGEMMWithHead(CBLAS_TRANSPOSE transA,
     !defined(PADDLE_WITH_HIP)  // @{ Group Blas HML: BatchedGEMMWithHead
 template <>
 template <typename T>
-void Blas<phi::CPUContext>::BatchedGEMMWithHead(CBLAS_TRANSPOSE transA,
-                                                CBLAS_TRANSPOSE transB,
-                                                int W1,
-                                                int H1,
-                                                int W2,
-                                                int H2,
-                                                T alpha,
-                                                const T *A,
-                                                const T *B,
-                                                T beta,
-                                                T *C,
-                                                int batchCount,
-                                                int64_t strideA,
-                                                int64_t strideB,
-                                                int64_t head_number,
-                                                bool split_b_vertical) const {
+void Blas<CPUContext>::BatchedGEMMWithHead(CBLAS_TRANSPOSE transA,
+                                           CBLAS_TRANSPOSE transB,
+                                           int W1,
+                                           int H1,
+                                           int W2,
+                                           int H2,
+                                           T alpha,
+                                           const T *A,
+                                           const T *B,
+                                           T beta,
+                                           T *C,
+                                           int batchCount,
+                                           int64_t strideA,
+                                           int64_t strideB,
+                                           int64_t head_number,
+                                           bool split_b_vertical) const {
   int lda = (transA == CblasNoTrans) ? W1 : H1;
   int ldb = (transB == CblasNoTrans) ? W2 : H2;
   auto a_array = std::vector<const T *>(batchCount);
@@ -2360,7 +2360,7 @@ void Blas<DeviceContext>::MatMul(
 
 template <>
 template <typename T>
-void Blas<phi::CPUContext>::MatMul(
+void Blas<CPUContext>::MatMul(
     const int M, const int N, const int K, const T *A, const T *B, T *C) const {
 #ifdef PADDLE_WITH_LIBXSMM
   // Refer to https://github.com/hfp/libxsmm/blob/master/README.md
@@ -2814,7 +2814,7 @@ void Blas<DeviceContext>::VINV(int n, const T *a, T *y) const {
 
 template <>
 template <typename T>
-void Blas<phi::CPUContext>::VMERF(int n, const T *a, T *y, int64_t mode) const {
+void Blas<CPUContext>::VMERF(int n, const T *a, T *y, int64_t mode) const {
 #ifdef PADDLE_WITH_MKLML
   CBlas<T>::VMERF(n, a, y, mode);
 #else
@@ -2827,21 +2827,21 @@ void Blas<phi::CPUContext>::VMERF(int n, const T *a, T *y, int64_t mode) const {
 #ifdef PADDLE_WITH_MKLML
 template <>
 template <typename T>
-void Blas<phi::CPUContext>::CSRMM(const char *transa,
-                                  const int *m,
-                                  const int *n,
-                                  const int *k,
-                                  const T *alpha,
-                                  const char *matdescra,
-                                  const T *val,
-                                  const int *index,
-                                  const int *pntrb,
-                                  const int *pntre,
-                                  const T *b,
-                                  const int *ldb,
-                                  const T *beta,
-                                  T *c,
-                                  const int *ldc) const {
+void Blas<CPUContext>::CSRMM(const char *transa,
+                             const int *m,
+                             const int *n,
+                             const int *k,
+                             const T *alpha,
+                             const char *matdescra,
+                             const T *val,
+                             const int *index,
+                             const int *pntrb,
+                             const int *pntre,
+                             const T *b,
+                             const int *ldb,
+                             const T *beta,
+                             T *c,
+                             const int *ldc) const {
   CBlas<T>::CSRMM(transa,
                   m,
                   n,
@@ -2862,17 +2862,17 @@ void Blas<phi::CPUContext>::CSRMM(const char *transa,
 
 template <>
 template <typename T>
-void Blas<phi::CPUContext>::TRSM(CBLAS_SIDE side,
-                                 CBLAS_UPLO uplo,
-                                 CBLAS_TRANSPOSE transA,
-                                 CBLAS_DIAG diag,
-                                 int M,
-                                 int N,
-                                 T alpha,
-                                 const T *A,
-                                 int lda,
-                                 T *B,
-                                 int ldb) const {
+void Blas<CPUContext>::TRSM(CBLAS_SIDE side,
+                            CBLAS_UPLO uplo,
+                            CBLAS_TRANSPOSE transA,
+                            CBLAS_DIAG diag,
+                            int M,
+                            int N,
+                            T alpha,
+                            const T *A,
+                            int lda,
+                            T *B,
+                            int ldb) const {
   CBlas<T>::TRSM(
       CblasRowMajor, side, uplo, transA, diag, M, N, alpha, A, lda, B, ldb);
 }

@@ -48,8 +48,8 @@ void LinearV2Kernel(const Context& dev_ctx,
 
   // When in CPU, we use legacy linear_logic by default.
   // TODO(Pan Zhaowu): Adding more efficient kernel for CPU.
-  std::vector<std::int64_t> input_dims_vec = common::vectorize(input.dims());
-  std::vector<std::int64_t> weight_dims_vec = common::vectorize(weight.dims());
+  std::vector<std::int64_t> input_dims_vec = vectorize(input.dims());
+  std::vector<std::int64_t> weight_dims_vec = vectorize(weight.dims());
 
   MatMulFunction<Context, T>(dev_ctx,
                              input,

@@ -27,8 +27,8 @@ void MvKernelImpl(const Context& dev_ctx,
                   const DenseTensor& vec,
                   DenseTensor* out) {
 #if defined(PADDLE_WITH_CUDA)
-  std::vector<int64_t> x_dim = common::vectorize(x.dims());
-  std::vector<int64_t> vec_dim = common::vectorize(vec.dims());
+  std::vector<int64_t> x_dim = vectorize(x.dims());
+  std::vector<int64_t> vec_dim = vectorize(vec.dims());
   auto x_ndims = x_dim.size();
   auto vec_ndims = vec_dim.size();
   PADDLE_ENFORCE_EQ(x_ndims,

@@ -75,12 +75,12 @@ void CalculateXGrad(const Context& dev_ctx,
             phi::Sum<T, Context>(dev_ctx,
                                  x_grad_v2,
                                  phi::IntArray(reduce_idx),
-                                 phi::CppTypeToDataType<T>::Type(),
+                                 CppTypeToDataType<T>::Type(),
                                  true);
         memcpy(x_grad, x_grad_out.data<T>(), x_grad_out.numel() * sizeof(T));
       }
     } else if (message_op == "MUL") {
-      const auto& bcast = phi::CalcBCastInfo(out_grad_dims, e_dims);
+      const auto& bcast = CalcBCastInfo(out_grad_dims, e_dims);
       if (!reduce) {
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
@@ -133,7 +133,7 @@ void CalculateXGrad(const Context& dev_ctx,
             phi::Sum<T, Context>(dev_ctx,
                                  x_grad_v2,
                                  phi::IntArray(reduce_idx),
-                                 phi::CppTypeToDataType<T>::Type(),
+                                 CppTypeToDataType<T>::Type(),
                                  true);
         memcpy(x_grad, x_grad_out.data<T>(), x_grad_out.numel() * sizeof(T));
       }
@@ -168,12 +168,12 @@ void CalculateXGrad(const Context& dev_ctx,
             phi::Sum<T, Context>(dev_ctx,
                                  x_grad_v2,
                                  phi::IntArray(reduce_idx),
-                                 phi::CppTypeToDataType<T>::Type(),
+                                 CppTypeToDataType<T>::Type(),
                                  true);
         memcpy(x_grad, x_grad_out.data<T>(), x_grad_out.numel() * sizeof(T));
       }
     } else if (message_op == "MUL") {
-      const auto& bcast = phi::CalcBCastInfo(out_grad_dims, e_dims);
+      const auto& bcast = CalcBCastInfo(out_grad_dims, e_dims);
       if (!reduce) {
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
@@ -222,7 +222,7 @@ void CalculateXGrad(const Context& dev_ctx,
             phi::Sum<T, Context>(dev_ctx,
                                  x_grad_v2,
                                  phi::IntArray(reduce_idx),
-                                 phi::CppTypeToDataType<T>::Type(),
+                                 CppTypeToDataType<T>::Type(),
                                  true);
         memcpy(x_grad, x_grad_out.data<T>(), x_grad_out.numel() * sizeof(T));
       }
@@ -243,7 +243,7 @@ void CalculateEGrad(const T* out_grad_data,
                     int64_t index_size,
                     T* e_grad,
                     const DenseTensor* dst_count = nullptr) {
-  const auto& bcast = phi::CalcBCastInfo(x_dims, e_dims);
+  const auto& bcast = CalcBCastInfo(x_dims, e_dims);
   if (reduce_op == "SUM") {
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
@@ -315,7 +315,7 @@ void CalculateXEGradForMinMax(const T* out_grad,
                               T* e_grad,
                               const DenseTensor* out = nullptr) {
   const T* out_data = out->data<T>();
-  const auto& bcast = phi::CalcBCastInfo(x_dims, e_dims);
+  const auto& bcast = CalcBCastInfo(x_dims, e_dims);
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif

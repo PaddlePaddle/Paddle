@@ -39,7 +39,7 @@ DenseTensor Tensor2Contiguous(const Context& dev_ctx,
   MetaTensor meta_out(&dense_out);
   UnchangedInferMeta(meta_input, &meta_out);
   PD_VISIT_ALL_TYPES(tensor.dtype(), "Tensor2Contiguous", ([&] {
-                       phi::ContiguousKernel<data_t, Context>(
+                       ContiguousKernel<data_t, Context>(
                            dev_ctx, tensor, &dense_out);
                      }));
   return dense_out;
@@ -139,9 +139,9 @@ void ReduceSumGradStrideKernel(const Context& dev_ctx,
     DenseTensor out_tmp = CheckMultipleUnsqueeze<Context>(
         dev_ctx, out_grad, dims, x.dims().size(), keep_dim);
 
-    ExpandStrideKernel(common::vectorize<int64_t>(out_tmp.dims()),
-                       common::vectorize<int64_t>(out_tmp.strides()),
-                       common::vectorize<int64_t>(x.dims()),
+    ExpandStrideKernel(vectorize<int64_t>(out_tmp.dims()),
+                       vectorize<int64_t>(out_tmp.strides()),
+                       vectorize<int64_t>(x.dims()),
                        &out_dims,
                        &out_strides);
 

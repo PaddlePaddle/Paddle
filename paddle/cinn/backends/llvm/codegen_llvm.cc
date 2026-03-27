@@ -49,6 +49,7 @@
 #include "paddle/cinn/runtime/cinn_runtime.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 #include "paddle/cinn/utils/string.h"
+#include "paddle/phi/backends/device_manager.h"
 
 namespace cinn {
 namespace backends {
@@ -1510,6 +1511,16 @@ int GetNaiveVecAlignmentImpl(common::HygonDCUArchHIP, const Target &target) {
 
 int GetNaiveVecAlignmentImpl(common::HygonDCUArchSYCL, const Target &target) {
   return 128;
+}
+
+int GetNaiveVecAlignmentImpl(common::CustomDeviceArch arch,
+                             const Target &target) {
+#ifdef CINN_WITH_CUSTOM_DEVICE
+  auto place = phi::CustomPlace(arch.device_type, arch.device_id);
+  return phi::DeviceManager::GetPreferredVectorWidth(place);
+#else
+  return 128;
+#endif
 }
 
 int GetNaiveVecAlignment(const Target &target) {

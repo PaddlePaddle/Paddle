@@ -43,7 +43,7 @@ class CopyMatrixRowsFunctor<GPUContext, T> {
  public:
   void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& src,
-                  phi::Vector<size_t> index_lod,
+                  Vector<size_t> index_lod,
                   DenseTensor* dst,
                   bool is_src_index) {
     auto src_dims = src.dims();
