@@ -174,7 +174,8 @@ enum class PADDLE_API ScalarType : int8_t {
   NumOptions = 44,
 };
 
-constexpr uint16_t NumScalarTypes = uint16_t{ScalarType::NumOptions};
+constexpr uint16_t NumScalarTypes =
+    static_cast<uint16_t>(ScalarType::NumOptions);
 namespace impl {
 
 // These are used to map ScalarTypes to C++ types.
