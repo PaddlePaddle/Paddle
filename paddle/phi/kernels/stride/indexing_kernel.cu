@@ -136,8 +136,8 @@ void LaunchIndexPutKernel_V2(const Context& dev_ctx,
   if (!is_initialized) {
     if (!x.meta().is_contiguous()) {
       StridedTensorCopy<T>(x,
-                           common::vectorize<int64_t>(out->dims()),
-                           common::vectorize<int64_t>(out->strides()),
+                           vectorize<int64_t>(out->dims()),
+                           vectorize<int64_t>(out->strides()),
                            0,
                            out);
     } else {

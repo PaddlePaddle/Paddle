@@ -300,6 +300,67 @@ class TestFunctionalConv2D_ZeroSize2(TestFunctionalConv2D_ZeroSize):
         self.np_out = np.zeros([0, 0, 2, 2])
 
 
+class TestFunctionalConv2D_ZeroKernelError(TestCase):
+    """kernel_size=0 in any spatial dim should raise InvalidArgument."""
+
+    def _assert_raises(self, x_shape, w_shape, **kwargs):
+        places = get_places()
+        for place in places:
+            with dg.guard(place):
+                x = paddle.randn(x_shape)
+                w = paddle.to_tensor(
+                    np.random.randn(*w_shape).astype('float32')
+                )
+                with self.assertRaises(ValueError):
+                    F.conv2d(x, w, **kwargs)
+
+    def test_depthwise_zero_kH(self):
+        # depthwise, kernel_height=0
+        self._assert_raises(
+            [16, 3, 260, 260],
+            [3, 1, 0, 5],
+            groups=3,
+        )
+
+    def test_depthwise_zero_kW(self):
+        # depthwise, kernel_width=0
+        self._assert_raises(
+            [16, 3, 260, 260],
+            [3, 1, 5, 0],
+            groups=3,
+        )
+
+    def test_depthwise_large_zero_kH(self):
+        self._assert_raises(
+            [16, 3, 268, 268],
+            [3, 1, 0, 13],
+            groups=3,
+        )
+
+    def test_depthwise_large_zero_kW(self):
+        self._assert_raises(
+            [16, 3, 268, 268],
+            [3, 1, 13, 0],
+            groups=3,
+        )
+
+    def test_regular_conv_zero_kH(self):
+        # regular conv2d (groups=1), kernel_height=0
+        self._assert_raises(
+            [2, 3, 8, 8],
+            [6, 3, 0, 3],
+            groups=1,
+        )
+
+    def test_regular_conv_zero_kW(self):
+        # regular conv2d (groups=1), kernel_width=0
+        self._assert_raises(
+            [2, 3, 8, 8],
+            [6, 3, 3, 0],
+            groups=1,
+        )
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

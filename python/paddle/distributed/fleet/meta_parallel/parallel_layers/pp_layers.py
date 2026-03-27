@@ -417,7 +417,6 @@ class PipelineLayer(nn.Layer):
                 "virtual_pipeline_stage should be None or an int"
             )
             if num_virtual_pipeline_stages > 1:
-                assert num_stages > 1, "Cannot enable vpp under no pp."
                 logger.info(
                     "set num_virtual_pipeline_stages > 1 means using interleave scheduler instead of 1f1b scheduler"
                 )

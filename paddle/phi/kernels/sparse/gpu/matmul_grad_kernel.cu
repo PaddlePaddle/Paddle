@@ -123,7 +123,7 @@ void MatmulCsrCsrGradKernel(const Context& dev_ctx,
 #if defined(PADDLE_WITH_CUDA)
   auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
 
-  std::vector<int64_t> xdim_vec = phi::vectorize(x.dims());
+  std::vector<int64_t> xdim_vec = vectorize(x.dims());
   auto x_ndims = xdim_vec.size();
   std::vector<int> perm;
   if (x_ndims == 2) {
@@ -202,7 +202,7 @@ void MaskedMatmulCsrGradKernel(const Context& dev_ctx,
   // dy{Dense} = x'{Dense} * dout{SparseCsr}
   // That is: dy'{Dense} = dout'{SparseCsr} * x{Dense}
   if (dy) {
-    std::vector<int> trans_dim_vec = common::vectorize<int>(y.dims());
+    std::vector<int> trans_dim_vec = vectorize<int>(y.dims());
     size_t rank = trans_dim_vec.size();
     std::swap(trans_dim_vec[rank - 1], trans_dim_vec[rank - 2]);
     DenseTensor trans_dy = Empty<T, Context>(dev_ctx, trans_dim_vec);

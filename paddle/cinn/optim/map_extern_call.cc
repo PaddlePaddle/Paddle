@@ -108,6 +108,12 @@ void DealWithIntrinsicsImpl(common::NVGPUArch, ir::Call *node, Expr *expr) {
   DealWithIntrinsicsNvHygon(node, expr);
 }
 
+void DealWithIntrinsicsImpl(common::CustomDeviceArch,
+                            ir::Call *node,
+                            Expr *expr) {
+  DealWithIntrinsicsNvHygon(node, expr);
+}
+
 void DealWithIntrinsicsImpl(common::HygonDCUArchHIP,
                             ir::Call *node,
                             Expr *expr) {

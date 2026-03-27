@@ -41,8 +41,8 @@ struct AccuracyCheckFunctor {
 };
 
 template <typename T>
-struct AccuracyCheckFunctor<phi::CPUContext, T> {
-  void operator()(const phi::CPUContext& dev_ctx,
+struct AccuracyCheckFunctor<CPUContext, T> {
+  void operator()(const CPUContext& dev_ctx,
                   const DenseTensor& in,
                   const DenseTensor& other,
                   const std::string& fn_name,
@@ -90,8 +90,8 @@ struct AccuracyCheckFunctor<phi::CPUContext, T> {
 };
 
 template <typename T>
-struct AccuracyCheckFunctor<phi::CPUContext, phi::dtype::complex<T>> {
-  void operator()(const phi::CPUContext& dev_ctx,
+struct AccuracyCheckFunctor<CPUContext, phi::dtype::complex<T>> {
+  void operator()(const CPUContext& dev_ctx,
                   const DenseTensor& in,
                   const DenseTensor& other,
                   const std::string& fn_name,

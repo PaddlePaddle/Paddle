@@ -683,6 +683,7 @@ LogicalResult RealizeCompositeReducePass::Run(ir::LoweredFunc func) {
         ReplaceOutputBufferX86(body, output_buffers, typed_buffers);
       },
       [&](std::variant<common::NVGPUArch,
+                       common::CustomDeviceArch,
                        common::HygonDCUArchHIP,
                        common::HygonDCUArchSYCL,
                        common::ARMArch,

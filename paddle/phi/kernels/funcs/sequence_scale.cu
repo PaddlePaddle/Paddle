@@ -36,16 +36,16 @@ __global__ void SequenceScaleKernel(T* seq,
 }
 
 template <typename T>
-class ScaleDenseTensorFunctor<phi::GPUContext, T> {
+class ScaleDenseTensorFunctor<GPUContext, T> {
  public:
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const T* scales,
                   DenseTensor* seq) {
     const size_t level = 0;
     auto lod = seq->lod();
     const size_t num_seq = lod[level].size() - 1;
     const size_t seq_width = seq->numel() / seq->dims()[0];
-    auto abs_offset_lod = phi::ToAbsOffset(lod);
+    auto abs_offset_lod = ToAbsOffset(lod);
     T* seq_data = dev_ctx.template Alloc<T>(seq);
     phi::MixVector<size_t> mix_vector(&(abs_offset_lod[level]));
 
@@ -72,8 +72,8 @@ class ScaleDenseTensorFunctor<phi::GPUContext, T> {
   }
 };
 
-template class ScaleDenseTensorFunctor<phi::GPUContext, float>;
-template class ScaleDenseTensorFunctor<phi::GPUContext, double>;
+template class ScaleDenseTensorFunctor<GPUContext, float>;
+template class ScaleDenseTensorFunctor<GPUContext, double>;
 
 }  // namespace funcs
 }  // namespace phi

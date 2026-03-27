@@ -132,7 +132,7 @@ inline hipDataType_t GetCublasLtDataType<phi::bfloat16>() {
 }
 
 template <typename T>
-void CublasLtMatmulFP8(const phi::GPUContext& dev_ctx,
+void CublasLtMatmulFP8(const GPUContext& dev_ctx,
                        const DenseTensor& mat_a,
                        const DenseTensor& mat_b,
                        DenseTensor* workspace,

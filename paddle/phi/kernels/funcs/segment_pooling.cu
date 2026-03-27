@@ -25,8 +25,6 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-using Tensor = DenseTensor;
-
 template <typename T, typename Index, int DimTileSize>
 __global__ void SegmentSumIdsKernel(const Index* segment_ids,
                                     T* summed_ids,
@@ -268,7 +266,7 @@ class ArrangeHelper {
 };
 
 template <typename T, typename Index>
-void SegmentPoolCUDAGradFunctor(const phi::GPUContext& dev_ctx,
+void SegmentPoolCUDAGradFunctor(const GPUContext& dev_ctx,
                                 const DenseTensor& input,
                                 const DenseTensor& segment_ids,
                                 const DenseTensor& output,
@@ -317,9 +315,9 @@ __global__ void SimpleDiv(T* x,
 }
 
 template <typename T, typename IndexT>
-class SegmentPoolFunctor<phi::GPUContext, T, IndexT> {
+class SegmentPoolFunctor<GPUContext, T, IndexT> {
  public:
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& input,
                   const DenseTensor& segment_ids,
                   DenseTensor* output,
@@ -403,9 +401,9 @@ class SegmentPoolFunctor<phi::GPUContext, T, IndexT> {
 };
 
 template <typename T, typename IndexT>
-class SegmentPoolGradFunctor<phi::GPUContext, T, IndexT> {
+class SegmentPoolGradFunctor<GPUContext, T, IndexT> {
  public:
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& input,
                   const DenseTensor& output,
                   const DenseTensor& out_grad,
@@ -441,7 +439,7 @@ class SegmentPoolGradFunctor<phi::GPUContext, T, IndexT> {
   }
 };
 
-using GPU = phi::GPUContext;
+using GPU = GPUContext;
 using float16 = phi::float16;
 template class SegmentPoolFunctor<GPU, float, int>;
 template class SegmentPoolFunctor<GPU, float, int64_t>;

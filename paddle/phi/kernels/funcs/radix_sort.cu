@@ -42,7 +42,7 @@ struct CudaType<int64_t> {
 }  // namespace
 
 template <typename key_t, int value_size>
-void RadixSortPairsImpl(const phi::GPUContext& dev_ctx,
+void RadixSortPairsImpl(const GPUContext& dev_ctx,
                         const key_t* keys_in,
                         key_t* keys_out,
                         const OpaqueTypeRadix<value_size>* values_in,
@@ -94,7 +94,7 @@ void RadixSortPairsImpl(const phi::GPUContext& dev_ctx,
 
 #define INSTANTIATE_SORT_PAIRS(key_t, value_size)      \
   template void RadixSortPairsImpl<key_t, value_size>( \
-      const phi::GPUContext&,                          \
+      const GPUContext&,                               \
       const key_t*,                                    \
       key_t*,                                          \
       const OpaqueTypeRadix<value_size>*,              \

@@ -739,7 +739,6 @@ XPUEventHandle::XPUEventHandle(XPUStream stream) {
 }
 
 void XPUEventHandle::record(XPUStream stream) {
-  PADDLE_ENFORCE_XRE_SUCCESS(xpu_event_query(event_));
   PADDLE_ENFORCE_XRE_SUCCESS(xpu_event_record(event_, stream));
 }
 

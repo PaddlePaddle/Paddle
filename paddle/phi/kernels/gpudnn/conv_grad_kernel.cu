@@ -546,7 +546,7 @@ void ConvCudnnGradKernel(const Context& dev_ctx,
     in_data_dims = slice_ddim(in_dims, 1, in_dims.size() - 1);
     filter_data_dims = slice_ddim(filter_dims, 1, filter_dims.size() - 1);
   }
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
@@ -554,8 +554,8 @@ void ConvCudnnGradKernel(const Context& dev_ctx,
   // So we create a new padded input tensor.
   int data_dim = strides.size();  // 2d or 3d
   bool is_sys_pad = funcs::IsSymmetricPadding(paddings, data_dim);
-  Tensor transformed_input(input.type());
-  Tensor transformed_input_grad(input.type());
+  DenseTensor transformed_input(input.type());
+  DenseTensor transformed_input_grad(input.type());
   std::vector<int> padding_common(data_dim, 0);
   std::vector<int> input_pad(transformed_input_channel.dims().size() * 2, 0);
 
@@ -884,7 +884,7 @@ void ConvCudnnGradGradKernel(const Context& dev_ctx,
   auto filter_dims = W->dims();
   DDim in_data_dims = slice_ddim(in_dims, 2, in_dims.size());
   DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
