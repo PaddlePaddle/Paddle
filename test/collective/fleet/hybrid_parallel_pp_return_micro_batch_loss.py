@@ -391,6 +391,21 @@ class TestNoPipelineParallelTraining(unittest.TestCase):
         }
         fleet.init(is_collective=True, strategy=strategy)
 
+    @staticmethod
+    def _sync_params_by_shape(src_model, dst_model):
+        """Sync parameters from src_model to dst_model by matching shapes.
+
+        SimpleNet and SimpleNetPipe have identical parameters but in different
+        order.  Match them by shape to avoid index-order mismatches.
+        """
+        src_params = {tuple(p.shape): p.numpy() for p in src_model.parameters()}
+        for p in dst_model.parameters():
+            key = tuple(p.shape)
+            assert key in src_params, (
+                f"No matching param with shape {key} in source model"
+            )
+            p.set_value(src_params.pop(key))
+
     def test_no_pipeline_train_loss(self):
         """Verify NoPipelineParallel.train_batch returns correct average loss."""
         hcg = fleet.get_hybrid_communicate_group()
@@ -406,15 +421,10 @@ class TestNoPipelineParallelTraining(unittest.TestCase):
 
         # Build reference model with same parameters
         model_a = SimpleNet()
-        params_a = [p.numpy() for p in model_a.parameters()]
 
-        # Sync parameters: NoPipelineParallel has all params on one stage
-        # SimpleNetPipe layer order: EmbeddingNet, MatmulNet, BiasNet
-        # params: [embedding_weight, softmax_weight, softmax_bias]
-        # SimpleNet params: [embedding_weight, softmax_weight, softmax_bias]
-        no_pp_params = no_pp_model.parameters()
-        for i, p in enumerate(no_pp_params):
-            p.set_value(params_a[i])
+        # Sync parameters by shape: SimpleNet and SimpleNetPipe have the same
+        # set of parameter shapes but enumerate them in different order.
+        self._sync_params_by_shape(model_a, no_pp_model)
 
         scheduler_a = paddle.optimizer.lr.PiecewiseDecay(
             boundaries=[2, 3, 4], values=[0.01, 0.02, 0.03, 0.04], verbose=True
@@ -453,9 +463,10 @@ class TestNoPipelineParallelTraining(unittest.TestCase):
                 [(x1, x2), (y1,)], optimizer_b, scheduler_b
             )
 
-            print("no_pp loss:", loss_a[0].numpy(), loss_b.numpy())
+            # train_batch returns a list when there are multiple loss functions
+            print("no_pp loss:", loss_a[0].numpy(), loss_b[0].numpy())
             np.testing.assert_allclose(
-                loss_a[0].numpy(), loss_b.numpy(), rtol=1e-6, atol=1e-6
+                loss_a[0].numpy(), loss_b[0].numpy(), rtol=1e-6, atol=1e-6
             )
 
     def test_no_pipeline_eval_loss(self):
@@ -471,10 +482,7 @@ class TestNoPipelineParallelTraining(unittest.TestCase):
         no_pp_model = NoPipelineParallel(pipe_model, strategy, hcg)
 
         model_a = SimpleNet()
-        params_a = [p.numpy() for p in model_a.parameters()]
-        no_pp_params = no_pp_model.parameters()
-        for i, p in enumerate(no_pp_params):
-            p.set_value(params_a[i])
+        self._sync_params_by_shape(model_a, no_pp_model)
 
         optimizer_b = paddle.optimizer.SGD(
             learning_rate=0.01, parameters=no_pp_model.parameters()
@@ -497,9 +505,10 @@ class TestNoPipelineParallelTraining(unittest.TestCase):
         # NoPipelineParallel: eval_batch
         loss_b = no_pp_model.eval_batch([(x1, x2), (y1,)], compute_loss=True)
 
-        print("no_pp eval loss:", loss_a[0].numpy(), loss_b.numpy())
+        # eval_batch returns a list when there are multiple loss functions
+        print("no_pp eval loss:", loss_a[0].numpy(), loss_b[0].numpy())
         np.testing.assert_allclose(
-            loss_a[0].numpy(), loss_b.numpy(), rtol=1e-6, atol=1e-6
+            loss_a[0].numpy(), loss_b[0].numpy(), rtol=1e-6, atol=1e-6
         )
 
     def test_no_pipeline_return_micro_batch_loss(self):
@@ -517,10 +526,7 @@ class TestNoPipelineParallelTraining(unittest.TestCase):
         no_pp_model = NoPipelineParallel(pipe_model, strategy, hcg)
 
         model_a = SimpleNet()
-        params_a = [p.numpy() for p in model_a.parameters()]
-        no_pp_params = no_pp_model.parameters()
-        for i, p in enumerate(no_pp_params):
-            p.set_value(params_a[i])
+        self._sync_params_by_shape(model_a, no_pp_model)
 
         scheduler_b = paddle.optimizer.lr.PiecewiseDecay(
             boundaries=[2, 3, 4], values=[0.01, 0.02, 0.03, 0.04], verbose=True
@@ -601,9 +607,10 @@ class TestDistPPEvalBatch(TestDistPPTraining):
         loss_a = model_a(x1, x2, y1)
         loss_b = model_b.eval_batch([(x1, x2), (y1,)], compute_loss=True)
 
-        print("eval loss:", loss_a[0].numpy(), loss_b.numpy())
+        # eval_batch returns a list when there are multiple loss functions
+        print("eval loss:", loss_a[0].numpy(), loss_b[0].numpy())
         np.testing.assert_allclose(
-            loss_a[0].numpy(), loss_b.numpy(), rtol=1e-6, atol=1e-6
+            loss_a[0].numpy(), loss_b[0].numpy(), rtol=1e-6, atol=1e-6
         )
 
 
