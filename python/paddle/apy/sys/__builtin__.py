@@ -38,3 +38,5 @@ sorted = __builtin__sorted  # noqa: F821
 
 dirname = __builtin__dirname  # noqa: F821
 basename = __builtin__basename  # noqa: F821
+
+get_hardware_device = __builtin__get_hardware_device  # noqa: F821

@@ -81,7 +81,7 @@ class MatmulVariadicTemplate:
 
     # cpu -> custom device
     def make_cpu_compile_cmd(self, dir_name, source_dir):
-        cutlass_dir = "/data/cutlass-workspace/cutlass"
+        cutlass_dir = f"{dir_name}/matmul/cutlass"
         compile_cmd = "clang++ -x ivcore -L/usr/local/corex/lib -lcudart --cuda-path=/usr/local/corex -std=c++17 -O3 -fPIC --cuda-gpu-arch=ivcore11 -Xclang=-fcuda-allow-variadic-functions"
         compile_cmd = compile_cmd + " -I " + cutlass_dir + "/include"
         compile_cmd = compile_cmd + " -I " + cutlass_dir + "/tools/util/include"
@@ -100,9 +100,10 @@ class MatmulVariadicTemplate:
         return compile_cmd
 
     def make_dcu_compile_cmd(self, dir_name, source_dir):
-        ck_dir = f"{dir_name}/matmul/composable_kernel"
-        compile_cmd = "hipcc -std=c++20 -O3 -fPIC --offload-arch=gfx906"
-        compile_cmd = compile_cmd + " -I " + ck_dir + "/include"
+        hytlass_dir = f"{dir_name}/matmul/hytlass"
+        compile_cmd = "hipcc -std=c++17 -O3 -fPIC --offload-arch=gfx928 -Wno-return-type"
+        compile_cmd = compile_cmd + " -I " + hytlass_dir + "/include"
+        compile_cmd = compile_cmd + " -I " + hytlass_dir + "/tools/util/include"
         compile_cmd = compile_cmd + " -I " + source_dir
         compile_cmd = (
             compile_cmd + " -DAP_ENABLE_AUTOTUNE=0 -DAP_ENABLE_DEBUG=0"
@@ -381,8 +382,7 @@ void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
 
         device_type = get_hardware_device()  # noqa: F821
 
-        # dir_name = ap.dirname(__file__)
-        dir_name = "/data/liuyiqun/Paddle/python/paddle/apy/matmul_pass"
+        dir_name = ap.dirname(__file__)
         source_dir = f"{dir_name}/matmul"
 
         compile_cmds = ap.OrderedDict(
@@ -394,7 +394,7 @@ void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
         )
         compile_cmd = compile_cmds[device_type]
 
-        file_ext = "cu"
+        file_ext = "cu" if device_type == "cuda" else "cpp"
 
         return CodeModule(  # noqa: F821
             FuncDeclare(  # noqa: F821
