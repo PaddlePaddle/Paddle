@@ -2648,6 +2648,57 @@ class TestSet_API_ZeroSize(unittest.TestCase):
                 self.assertEqual(out.numel().item(), 0)
                 self.assertTrue(id(x) == id(out))
 
+    def test_both_zero_size_with_nonzero_shape(self):
+        """Both x and source are 0-size but user specifies non-zero dims/stride.
+        This covers the branch that allocates zero-filled storage when both
+        tensors are empty but a non-zero output shape is requested."""
+        for place in self.places:
+            with paddle.base.dygraph.guard(place):
+                source = paddle.randn([0])
+                x = paddle.randn([0])
+                out = x.set_(source, [4], [1])
+                self.assertEqual(list(out.shape), [4])
+                self.assertTrue(id(x) == id(out))
+                # The allocated storage should be zero-filled and accessible
+                c = out.contiguous()
+                self.assertEqual(list(c.shape), [4])
+                np.testing.assert_array_equal(
+                    c.numpy(), np.zeros([4], dtype='float32')
+                )
+
+    def test_both_zero_size_with_nonzero_shape_and_offset(self):
+        """Both x and source are 0-size, user specifies non-zero shape with
+        a non-zero offset. Verifies storage is large enough to accommodate
+        the offset without out-of-bounds access."""
+        for place in self.places:
+            with paddle.base.dygraph.guard(place):
+                source = paddle.randn([0])
+                x = paddle.randn([0])
+                out = x.set_(source, [3], [2], 1)
+                self.assertEqual(list(out.shape), [3])
+                self.assertTrue(id(x) == id(out))
+                c = out.contiguous()
+                self.assertEqual(list(c.shape), [3])
+                np.testing.assert_array_equal(
+                    c.numpy(), np.zeros([3], dtype='float32')
+                )
+
+    def test_both_zero_size_with_nonzero_2d_shape(self):
+        """Both x and source are 0-size, user specifies a 2D non-zero shape.
+        Verifies multi-dimensional strided view is allocated correctly."""
+        for place in self.places:
+            with paddle.base.dygraph.guard(place):
+                source = paddle.randn([0, 0])
+                x = paddle.randn([0])
+                out = x.set_(source, [2, 3], [3, 1])
+                self.assertEqual(list(out.shape), [2, 3])
+                self.assertTrue(id(x) == id(out))
+                c = out.contiguous()
+                self.assertEqual(list(c.shape), [2, 3])
+                np.testing.assert_array_equal(
+                    c.numpy(), np.zeros([2, 3], dtype='float32')
+                )
+
     def test_zero_size_source_no_crash_on_contiguous(self):
         """Ensure contiguous() works correctly on a tensor
         that was set_ with a 0-size source but user-specified shape."""
