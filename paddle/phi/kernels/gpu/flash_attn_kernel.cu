@@ -730,6 +730,24 @@ void FlashMaskKernel(const Context& dev_ctx,
                      DenseTensor* softmax,
                      DenseTensor* softmax_lse,
                      DenseTensor* seed_offset) {
+  // Handle 0-size tensors: return zeros without calling CUDA kernel
+  // to avoid invalid memory access
+  if (q.numel() == 0 || k.numel() == 0 || v.numel() == 0) {
+    if (out) {
+      Full<T, Context>(dev_ctx, out->dims(), 0, out);
+    }
+    if (softmax) {
+      Full<T, Context>(dev_ctx, softmax->dims(), 0, softmax);
+    }
+    if (softmax_lse) {
+      Full<T, Context>(dev_ctx, softmax_lse->dims(), 0, softmax_lse);
+    }
+    if (seed_offset) {
+      Full<T, Context>(dev_ctx, seed_offset->dims(), 0, seed_offset);
+    }
+    return;
+  }
+
   FlashAttnBaseKernel<T, Context>(dev_ctx,
                                   q,
                                   k,

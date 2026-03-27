@@ -132,6 +132,20 @@ class TestSaveLoadStateDict(test_base.CommunicationTestDistBase):
         )
         ckpt_path.cleanup()
 
+    def test_save_safetensors_load_fc_with_index(self):
+        """Test saving safetensors files and loading with flex checkpoint when model.safetensors.index.json exists."""
+        ckpt_path = tempfile.TemporaryDirectory()
+        super().setUp(num_of_devices=2, timeout=120, nnode=1)
+        self.run_test_case(
+            "save_safetensors_load_fc.py",
+            user_defined_envs={
+                "device_num": "2",
+                "ckpt_path": ckpt_path.name,
+                "test_func": "test_save_safetensors_load_fc_with_index",
+            },
+        )
+        ckpt_path.cleanup()
+
     def test_save_load_state_dict_with_aoa_config_reverse(self):
         """Test saving state dict and loading with flex checkpoint."""
         ckpt_path = tempfile.TemporaryDirectory()

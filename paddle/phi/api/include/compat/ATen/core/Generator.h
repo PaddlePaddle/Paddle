@@ -173,11 +173,12 @@ inline T* check_generator(std::optional<Generator> gen) {
   TORCH_CHECK(gen.has_value(), "Expected Generator but received nullopt");
   TORCH_CHECK(gen->defined(),
               "Generator with undefined implementation is not allowed");
-  TORCH_CHECK(T::device_type() == gen->device().type(),
-              "Expected a generator for ",
-              phi::AllocationTypeStr(T::device_type()),
-              " but found one for ",
-              phi::AllocationTypeStr(gen->device().type()));
+  TORCH_CHECK(
+      T::device_type() == gen->device().type(),
+      "Expected a generator for ",
+      phi::AllocationTypeStr(c10::DeviceTypeToPhi(T::device_type())),
+      " but found one for ",
+      phi::AllocationTypeStr(c10::DeviceTypeToPhi(gen->device().type())));
   return gen->get<T>();
 }
 
