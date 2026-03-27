@@ -21,6 +21,7 @@
 #include <string_view>
 
 #include "paddle/phi/api/include/api.h"
+#include "paddle/phi/common/place.h"
 
 namespace at {
 
@@ -31,6 +32,19 @@ inline at::Tensor empty(
   PD_CHECK(!(memory_format.has_value() &&
              memory_format.value() != c10::MemoryFormat::Contiguous),
            "`MemoryFormat` other than Contiguous is not supported now.");
+  if (options.pinned_memory()) {
+    // Pinning memory is only supported for CPU tensors
+    if (options.has_device() && !options.device().is_cpu()) {
+      PD_THROW(
+          "pin_memory=true requires device to be CPU, but got non-CPU device");
+    }
+    auto dense = paddle::experimental::empty(
+        size._PD_ToPaddleIntArray(),
+        compat::_PD_AtenScalarTypeToPhiDataType(options.dtype()),
+        phi::CPUPlace());
+    dense = dense.copy_to(phi::GPUPinnedPlace(), /*blocking=*/true);
+    return compat::_PD_ConvertToSparseIfNeeded(dense, options.layout());
+  }
   auto dense = paddle::experimental::empty(
       size._PD_ToPaddleIntArray(),
       compat::_PD_AtenScalarTypeToPhiDataType(options.dtype()),
@@ -44,19 +58,15 @@ inline at::Tensor empty(at::IntArrayRef size,
                         ::std::optional<at::Device> device,
                         ::std::optional<bool> pin_memory,
                         ::std::optional<at::MemoryFormat> memory_format) {
-  PD_CHECK(!(pin_memory.has_value() && pin_memory.value() != false),
-           "`pin_memory` other than False is not supported now.");
   PD_CHECK(!(memory_format.has_value() &&
              memory_format.value() != c10::MemoryFormat::Contiguous),
            "`MemoryFormat` other than Contiguous is not supported now.");
-
-  auto dense =
-      paddle::experimental::empty(size._PD_ToPaddleIntArray(),
-                                  compat::_PD_AtenScalarTypeToPhiDataType(
-                                      dtype.value_or(c10::get_default_dtype())),
-                                  device.value_or(at::kCPU)._PD_GetInner());
-  return compat::_PD_ConvertToSparseIfNeeded(dense,
-                                             layout.value_or(c10::kStrided));
+  auto options = at::TensorOptions()
+                     .dtype(dtype.value_or(c10::get_default_dtype()))
+                     .layout(layout)
+                     .device(device.value_or(at::kCPU))
+                     .pinned_memory(pin_memory);
+  return empty(size, options, memory_format);
 }
 
 #define empty_symint empty  // SymIntArrayRef is same as IntArrayRef

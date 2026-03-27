@@ -320,7 +320,11 @@ class AutoAlignTool:
             if "vars" in filename:
                 assert filename.endswith("pkl")
                 with open(filepath, "rb") as f:
-                    vars_list.append(pickle.load(f))
+                    from paddle.framework.restricted_unpickler import (
+                        safe_load_pickle,
+                    )
+
+                    vars_list.append(safe_load_pickle(f))
             elif "program" in filename:
                 assert filename.endswith("pdmodel")
                 with open(filepath, "rb") as f:
@@ -329,7 +333,11 @@ class AutoAlignTool:
             elif "dist_attr" in filename:
                 assert filename.endswith("pkl")
                 with open(filepath, "rb") as f:
-                    dist_attr_list.append(pickle.load(f))
+                    from paddle.framework.restricted_unpickler import (
+                        safe_load_pickle,
+                    )
+
+                    dist_attr_list.append(safe_load_pickle(f))
 
         dist_attr_map = {}
         for dist_attrs in dist_attr_list:

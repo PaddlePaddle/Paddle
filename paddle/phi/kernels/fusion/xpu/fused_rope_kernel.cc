@@ -68,7 +68,7 @@ void FusedRopeKernel(const Context& dev_ctx,
       LAUNCH_XPU_FUSED_ROPE(T, float);
     } else {
       PADDLE_ENFORCE_EQ(
-          phi::CppTypeToDataType<T>::Type(),
+          CppTypeToDataType<T>::Type(),
           sin->dtype(),
           common::errors::InvalidArgument(
               "The embedding dtype and sin/cos dtype mismatched."));

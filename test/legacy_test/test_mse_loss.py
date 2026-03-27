@@ -19,6 +19,7 @@ from op_test import get_device_place, is_custom_device
 from utils import dygraph_guard
 
 import paddle
+import paddle.nn.functional as F
 from paddle import base
 from paddle.base import core
 from paddle.base.executor import Executor
@@ -350,6 +351,25 @@ class TestNNFunctionalMseLoss_ZeroSize(unittest.TestCase):
             loss = paddle.sum(dy_ret)
             loss.backward()
             np.testing.assert_allclose(x.grad.shape, x.shape)
+
+
+class TestNNFunctionalMseLossAlias(unittest.TestCase):
+    def test_target_alias_dygraph(self):
+        with base.dygraph.guard():
+            x = paddle.randn([4, 5], dtype="float32")
+            y = paddle.randn([4, 5], dtype="float32")
+
+            out1 = F.mse_loss(input=x, label=y, reduction="none")
+            out2 = F.mse_loss(input=x, target=y, reduction="none")
+            np.testing.assert_allclose(
+                out1.numpy(), out2.numpy(), rtol=1e-6, atol=0.0
+            )
+
+            out3 = F.mse_loss(input=x, label=y, reduction="mean")
+            out4 = F.mse_loss(input=x, target=y, reduction="mean")
+            np.testing.assert_allclose(
+                out3.numpy(), out4.numpy(), rtol=1e-6, atol=0.0
+            )
 
 
 if __name__ == "__main__":

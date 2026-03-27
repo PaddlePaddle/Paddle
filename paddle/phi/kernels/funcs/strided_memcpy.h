@@ -66,13 +66,12 @@ inline void CopyWithContext(const Context& dev_ctx,
 }
 
 template <>
-inline void CopyWithContext<phi::CPUContext>(const phi::CPUContext& dev_ctx
-                                                 UNUSED,
-                                             const Place& dst_place,
-                                             void* dst,
-                                             const Place& src_place,
-                                             const void* src,
-                                             size_t num) {
+inline void CopyWithContext<CPUContext>(const CPUContext& dev_ctx UNUSED,
+                                        const Place& dst_place,
+                                        void* dst,
+                                        const Place& src_place,
+                                        const void* src,
+                                        size_t num) {
   memory_utils::Copy(dst_place, dst, src_place, src, num);
 }
 

@@ -27,7 +27,7 @@ namespace phi {
 template <typename Context, typename T>
 void ReorderInitState(const Context &dev_ctx,
                       const DenseTensor &src,
-                      phi::Vector<size_t> index_lod,
+                      Vector<size_t> index_lod,
                       DenseTensor *dst,
                       bool indexed_src) {
   funcs::CopyMatrixRowsFunctor<Context, T> row_shuffle;
@@ -79,7 +79,7 @@ void GRUGradKernel(const Context &dev_ctx,
 
   DenseTensor ordered_h0, ordered_h0_grad;
 
-  phi::Vector<size_t> order(batch_gate.lod()[2]);
+  Vector<size_t> order(batch_gate.lod()[2]);
 
   if (h0) {
     ReorderInitState<Context, T>(dev_ctx, *h0, order, &ordered_h0, true);

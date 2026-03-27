@@ -99,7 +99,7 @@ void QKVAttentionXPUKernelImpl(const Context& dev_ctx,
         if (qkv_fc_fusion) {
           x_fp16.Resize(q.dims());
         } else {
-          std::vector<int64_t> out_dims = common::vectorize(q.dims());
+          std::vector<int64_t> out_dims = vectorize(q.dims());
           out_dims.insert(out_dims.begin(), 3);
           x_fp16.Resize(make_ddim(out_dims));
         }

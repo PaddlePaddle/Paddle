@@ -23,8 +23,8 @@
 // Pack two half values.
 static inline __device__ __host__ unsigned __pack_half2(const half x,
                                                         const half y) {
-  unsigned v0 = *((unsigned short *)&x);
-  unsigned v1 = *((unsigned short *)&y);
+  unsigned v0 = *reinterpret_cast<const uint16_t *>(&x);
+  unsigned v1 = *reinterpret_cast<const uint16_t *>(&y);
   return (v1 << 16) | v0;
 }
 
@@ -52,7 +52,7 @@ __global__ void __launch_bounds__(64)
   for (int i0_0_3_init = 0; i0_0_3_init < 4; ++i0_0_3_init) {
     for (int i = 0; i < 8; ++i) {
       C_warp[(i0_0_3_init * 8) + i] = 0.0;
-    };
+    }
   }
 
   int j_factors1 = (N + 15) / 16 / 1;
@@ -80,13 +80,12 @@ __global__ void __launch_bounds__(64)
     B_ld_start = (blockIdx.x % j_factors1) * 16 + (threadIdx.x * 8) % 16;
     B_ld_amount_N = max(0, min(B_ld_start + 8, N) - B_ld_start);
     B_ld_K_bound = K_original;
-  } else
+  } else {
     B_pred_guard = 1;
+  }
 
   //+ (threadIdx.x / 4) * N;
-  for (int i2_0_0 = 0; i2_0_0 < K_implicit / K_tile; ++i2_0_0)
-
-  {
+  for (int i2_0_0 = 0; i2_0_0 < K_implicit / K_tile; ++i2_0_0) {
     if constexpr (K_ld_check) {
       A_ld_start = (i2_0_0 * K_tile % K_tile_padded) + ((threadIdx.x * 8) % 16);
       A_ld_amount = max(0, min(A_ld_start + 8, K_original) - A_ld_start);
@@ -100,7 +99,7 @@ __global__ void __launch_bounds__(64)
     if constexpr (K_ld_check || N_ld_check) {
       B_ld_K = ((i2_0_0 * K_tile % K_tile_padded) + threadIdx.x * 8 / 16) <
                B_ld_K_bound;
-      B_ld_amount = B_ld_amount_N * (int)B_ld_K;
+      B_ld_amount = B_ld_amount_N * static_cast<int>(B_ld_K);
       B_ld_bound = B_ld_amount / (N_ld_factor / 2);
       B_pred_guard = 0;
       for (int i = 0; i < B_ld_bound; i++) B_pred_guard |= (1 << i);
@@ -129,15 +128,18 @@ __global__ void __launch_bounds__(64)
             A_ptr_local + input_idx * K_original +
                 ((ax0_ax1_fused_0 * 512 % 16) % K_tile_padded),
             A_pred_guard);
-        *(uint4 *)(A_shared +
-                   ((((ax0_ax1_fused_0 * 1280) + (((int)threadIdx.y) * 640)) +
-                     ((((int)threadIdx.x) >> 1) * 40)) +
-                    ((((int)threadIdx.x) & 1) * 8))) = A_loaded;
+        *reinterpret_cast<uint4 *>(
+            A_shared + ((((ax0_ax1_fused_0 * 1280) +
+                          ((static_cast<int>(threadIdx.y)) * 640)) +
+                         (((static_cast<int>(threadIdx.x)) >> 1) * 40)) +
+                        (((static_cast<int>(threadIdx.x)) & 1) * 8))) =
+            A_loaded;
       } else {
-        *(uint4 *)(A_shared +
-                   ((((ax0_ax1_fused_0 * 1280) + (((int)threadIdx.y) * 640)) +
-                     ((((int)threadIdx.x) >> 1) * 40)) +
-                    ((((int)threadIdx.x) & 1) * 8))) =
+        *reinterpret_cast<uint4 *>(
+            A_shared + ((((ax0_ax1_fused_0 * 1280) +
+                          ((static_cast<int>(threadIdx.y)) * 640)) +
+                         (((static_cast<int>(threadIdx.x)) >> 1) * 40)) +
+                        (((static_cast<int>(threadIdx.x)) & 1) * 8))) =
             make_uint4(__pack_half2(__float2half_rn(0.000000e+00f),
                                     __float2half_rn(0.000000e+00f)),
                        __pack_half2(__float2half_rn(0.000000e+00f),
@@ -152,9 +154,10 @@ __global__ void __launch_bounds__(64)
     if (threadIdx.y == 0) {
       uint4 B_loaded = make_uint4(0, 0, 0, 0);
       global_load<N_ld_factor>(B_loaded, B_ptr_local, B_pred_guard);
-      *(uint4 *)(B_shared + (((((int)threadIdx.y) * 640) +
-                              ((((int)threadIdx.x) >> 1) * 40)) +
-                             ((((int)threadIdx.x) & 1) * 8))) = B_loaded;
+      *reinterpret_cast<uint4 *>(
+          B_shared + ((((static_cast<int>(threadIdx.y)) * 640) +
+                       (((static_cast<int>(threadIdx.x)) >> 1) * 40)) +
+                      (((static_cast<int>(threadIdx.x)) & 1) * 8))) = B_loaded;
     }
 
     __syncthreads();
@@ -166,10 +169,11 @@ __global__ void __launch_bounds__(64)
             "{ .reg .u64 addr; cvta.to.shared.u64 addr, %1; cvt.u32.u64 %0, "
             "addr; }"
             : "=r"(addr)
-            : "l"((void *)((&(A_shared[((((int)threadIdx.y) * 2560) +
-                                        (ax0_0 * 640))])) +
-                           (((((int)threadIdx.x) & 15) * 40) +
-                            ((((int)threadIdx.x) >> 4) * 8)))));
+            : "l"(
+                (void *)((&(A_shared[(((static_cast<int>(threadIdx.y)) * 2560) +
+                                      (ax0_0 * 640))])) +
+                         ((((static_cast<int>(threadIdx.x)) & 15) * 40) +
+                          (((static_cast<int>(threadIdx.x)) >> 4) * 8)))));
 #if __CUDA_ARCH__ >= 750
         __asm__ __volatile__(
             "ldmatrix.sync.aligned.m8n8.x4.shared.b16"
@@ -189,9 +193,9 @@ __global__ void __launch_bounds__(64)
           "{ .reg .u64 addr; cvta.to.shared.u64 addr, %1; cvt.u32.u64 %0, "
           "addr; }"
           : "=r"(addr)
-          : "l"(
-              (void *)((&(B_shared[0])) + (((((int)threadIdx.x) & 15) * 40) +
-                                           ((((int)threadIdx.x) >> 4) * 8)))));
+          : "l"((void *)((&(B_shared[0])) +
+                         ((((static_cast<int>(threadIdx.x)) & 15) * 40) +
+                          (((static_cast<int>(threadIdx.x)) >> 4) * 8)))));
 #if __CUDA_ARCH__ >= 750
       __asm__ __volatile__(
           "ldmatrix.sync.aligned.m8n8.x4.trans.shared.b16"
@@ -336,7 +340,7 @@ __global__ void __launch_bounds__(64)
                 (local_id / 4) * 8] =
               __float2half(C_warp[(ax0_0_1 * 8) + local_id]);
       }
-    };
+    }
   }
 }
 
@@ -360,7 +364,7 @@ __global__ void __launch_bounds__(64)
   for (int i0_0_3_init = 0; i0_0_3_init < 4; ++i0_0_3_init) {
     for (int i = 0; i < 8; ++i) {
       C_warp[(i0_0_3_init * 8) + i] = 0.0;
-    };
+    }
   }
 
   // hoisting shared pointer offsets
@@ -380,9 +384,7 @@ __global__ void __launch_bounds__(64)
                            (threadIdx.y % 2) * 4 * 16 + (threadIdx.x / 4);
   half *C_ptr = C + (blockIdx.x % j_factors1) * 16 + threadIdx.y / 2 * 16 +
                 (threadIdx.x % 4) * 2;
-  for (int i2_0_0 = 0; i2_0_0 < K_implicit / 32; ++i2_0_0)
-
-  {
+  for (int i2_0_0 = 0; i2_0_0 < K_implicit / 32; ++i2_0_0) {
     int *out_in_map_ptr_local = out_in_map_ptr + i2_0_0 * 32 / K_original;
     half *A_ptr_local = A_ptr + (i2_0_0 * 32 % K_original);
     half *B_ptr_local = B_ptr + i2_0_0 * 32 * N;
@@ -393,17 +395,20 @@ __global__ void __launch_bounds__(64)
                                (ax0_ax1_fused_0 * 512 % 32) / K_original];
 
       if (input_idx != -1) {
-        *(uint4 *)(A_shared +
-                   ((((ax0_ax1_fused_0 * 640) + (((int)threadIdx.y) * 320)) +
-                     ((((int)threadIdx.x) >> 2) * 40)) +
-                    ((((int)threadIdx.x) & 3) * 8))) =
-            *(uint4 *)(A_ptr_local + input_idx * K_original +
-                       ((ax0_ax1_fused_0 * 512 % 32) % K_original));
+        *reinterpret_cast<uint4 *>(
+            A_shared + ((((ax0_ax1_fused_0 * 640) +
+                          ((static_cast<int>(threadIdx.y)) * 320)) +
+                         (((static_cast<int>(threadIdx.x)) >> 2) * 40)) +
+                        (((static_cast<int>(threadIdx.x)) & 3) * 8))) =
+            *reinterpret_cast<uint4 *>(
+                A_ptr_local + input_idx * K_original +
+                ((ax0_ax1_fused_0 * 512 % 32) % K_original));
       } else {
-        *(uint4 *)(A_shared +
-                   ((((ax0_ax1_fused_0 * 640) + (((int)threadIdx.y) * 320)) +
-                     ((((int)threadIdx.x) >> 2) * 40)) +
-                    ((((int)threadIdx.x) & 3) * 8))) =
+        *reinterpret_cast<uint4 *>(
+            A_shared + ((((ax0_ax1_fused_0 * 640) +
+                          ((static_cast<int>(threadIdx.y)) * 320)) +
+                         (((static_cast<int>(threadIdx.x)) >> 2) * 40)) +
+                        (((static_cast<int>(threadIdx.x)) & 3) * 8))) =
             make_uint4(__pack_half2(__float2half_rn(0.000000e+00f),
                                     __float2half_rn(0.000000e+00f)),
                        __pack_half2(__float2half_rn(0.000000e+00f),
@@ -415,10 +420,11 @@ __global__ void __launch_bounds__(64)
       }
     }
 
-    *(uint4 *)(B_shared + (((((int)threadIdx.y) * 640) +
-                            ((((int)threadIdx.x) >> 1) * 40)) +
-                           ((((int)threadIdx.x) & 1) * 8))) =
-        *(uint4 *)(B_ptr_local);
+    *reinterpret_cast<uint4 *>(
+        B_shared + ((((static_cast<int>(threadIdx.y)) * 640) +
+                     (((static_cast<int>(threadIdx.x)) >> 1) * 40)) +
+                    (((static_cast<int>(threadIdx.x)) & 1) * 8))) =
+        *reinterpret_cast<uint4 *>(B_ptr_local);
 
     __syncthreads();
     for (int i2_0_1 = 0; i2_0_1 < 2; ++i2_0_1) {
@@ -429,11 +435,13 @@ __global__ void __launch_bounds__(64)
               "{ .reg .u64 addr; cvta.to.shared.u64 addr, %1; cvt.u32.u64 %0, "
               "addr; }"
               : "=r"(addr)
-              : "l"((void *)((&(A_shared[((((((int)threadIdx.y) & 1) * 2560) +
-                                           (ax0_0 * 640)) +
-                                          (i2_0_1 * 16))])) +
-                             (((((int)threadIdx.x) & 15) * 40) +
-                              ((((int)threadIdx.x) >> 4) * 8)))));
+              : "l"(
+                  (void *)((&(A_shared[(
+                               ((((static_cast<int>(threadIdx.y)) & 1) * 2560) +
+                                (ax0_0 * 640)) +
+                               (i2_0_1 * 16))])) +
+                           ((((static_cast<int>(threadIdx.x)) & 15) * 40) +
+                            (((static_cast<int>(threadIdx.x)) >> 4) * 8)))));
 #if __CUDA_ARCH__ >= 750
           __asm__ __volatile__(
               "ldmatrix.sync.aligned.m8n8.x4.shared.b16"
@@ -454,8 +462,8 @@ __global__ void __launch_bounds__(64)
             "addr; }"
             : "=r"(addr)
             : "l"((void *)((&(B_shared[(i2_0_1 * 640)])) +
-                           (((((int)threadIdx.x) & 15) * 40) +
-                            ((((int)threadIdx.x) >> 4) * 8)))));
+                           ((((static_cast<int>(threadIdx.x)) & 15) * 40) +
+                            (((static_cast<int>(threadIdx.x)) >> 4) * 8)))));
 #if __CUDA_ARCH__ >= 750
         __asm__ __volatile__(
             "ldmatrix.sync.aligned.m8n8.x4.trans.shared.b16"
@@ -587,7 +595,7 @@ __global__ void __launch_bounds__(64)
       if (reorder_location_cur < M)
         C_ptr[reorder_location_cur * N + (local_id % 2) + (local_id / 4) * 8] =
             __float2half(C_warp[(ax0_0_1 * 8) + local_id]);
-    };
+    }
   }
 }
 
@@ -611,7 +619,7 @@ __global__ void __launch_bounds__(128)
     for (int i1_0_4_init = 0; i1_0_4_init < 2; ++i1_0_4_init) {
       for (int i = 0; i < 8; ++i) {
         C_warp[((i0_0_3_init * 16) + (i1_0_4_init * 8)) + i] = 0.0;
-      };
+      }
     }
   }
 
@@ -635,9 +643,7 @@ __global__ void __launch_bounds__(128)
 
   int B_kernel_offset = threadIdx.y * 256 / 64 + threadIdx.x * 8 / 64;
 
-  for (int i2_0_0 = 0; i2_0_0 < K_implicit / 32; ++i2_0_0)
-
-  {
+  for (int i2_0_0 = 0; i2_0_0 < K_implicit / 32; ++i2_0_0) {
     int *out_in_map_ptr_local = out_in_map_ptr + i2_0_0 * 32 / K_original;
     half *A_ptr_local = A_ptr + (i2_0_0 * 32 % K_original);
     half *B_ptr_local = B_ptr + i2_0_0 * 32 * N;
@@ -649,17 +655,20 @@ __global__ void __launch_bounds__(128)
                                (ax0_ax1_fused_0 * 1024 % 32) / K_original];
 
       if (input_idx != -1) {
-        *(uint4 *)(A_shared +
-                   ((((ax0_ax1_fused_0 * 1280) + (((int)threadIdx.y) * 320)) +
-                     ((((int)threadIdx.x) >> 2) * 40)) +
-                    ((((int)threadIdx.x) & 3) * 8))) =
-            *(uint4 *)(A_ptr_local + input_idx * K_original +
-                       ((ax0_ax1_fused_0 * 1024 % 32) % K_original));
+        *reinterpret_cast<uint4 *>(
+            A_shared + ((((ax0_ax1_fused_0 * 1280) +
+                          ((static_cast<int>(threadIdx.y)) * 320)) +
+                         (((static_cast<int>(threadIdx.x)) >> 2) * 40)) +
+                        (((static_cast<int>(threadIdx.x)) & 3) * 8))) =
+            *reinterpret_cast<uint4 *>(
+                A_ptr_local + input_idx * K_original +
+                ((ax0_ax1_fused_0 * 1024 % 32) % K_original));
       } else {
-        *(uint4 *)(A_shared +
-                   ((((ax0_ax1_fused_0 * 1280) + (((int)threadIdx.y) * 320)) +
-                     ((((int)threadIdx.x) >> 2) * 40)) +
-                    ((((int)threadIdx.x) & 3) * 8))) =
+        *reinterpret_cast<uint4 *>(
+            A_shared + ((((ax0_ax1_fused_0 * 1280) +
+                          ((static_cast<int>(threadIdx.y)) * 320)) +
+                         (((static_cast<int>(threadIdx.x)) >> 2) * 40)) +
+                        (((static_cast<int>(threadIdx.x)) & 3) * 8))) =
             make_uint4(__pack_half2(__float2half_rn(0.000000e+00f),
                                     __float2half_rn(0.000000e+00f)),
                        __pack_half2(__float2half_rn(0.000000e+00f),
@@ -676,11 +685,13 @@ __global__ void __launch_bounds__(128)
       int B_kernel_offset_local =
           (B_kernel_offset + i2_0_0 * 32 + ax0_ax1_fused_0_1 * 1024 / 64) /
           K_original;
-      *(uint4 *)(B_shared +
-                 ((((ax0_ax1_fused_0_1 * 1152) + (((int)threadIdx.y) * 288)) +
-                   ((((int)threadIdx.x) >> 3) * 72)) +
-                  ((((int)threadIdx.x) & 7) * 8))) =
-          *(uint4 *)(B_ptr_local + ax0_ax1_fused_0_1 * 1024 * N / 64);
+      *reinterpret_cast<uint4 *>(
+          B_shared + ((((ax0_ax1_fused_0_1 * 1152) +
+                        ((static_cast<int>(threadIdx.y)) * 288)) +
+                       (((static_cast<int>(threadIdx.x)) >> 3) * 72)) +
+                      (((static_cast<int>(threadIdx.x)) & 7) * 8))) =
+          *reinterpret_cast<uint4 *>(B_ptr_local +
+                                     ax0_ax1_fused_0_1 * 1024 * N / 64);
     }
     __syncthreads();
 
@@ -692,11 +703,13 @@ __global__ void __launch_bounds__(128)
               "{ .reg .u64 addr; cvta.to.shared.u64 addr, %1; cvt.u32.u64 %0, "
               "addr; }"
               : "=r"(addr)
-              : "l"((void *)((&(A_shared[((((((int)threadIdx.y) & 1) * 2560) +
-                                           (ax0_0 * 640)) +
-                                          (i2_0_1 * 16))])) +
-                             (((((int)threadIdx.x) & 15) * 40) +
-                              ((((int)threadIdx.x) >> 4) * 8)))));
+              : "l"(
+                  (void *)((&(A_shared[(
+                               ((((static_cast<int>(threadIdx.y)) & 1) * 2560) +
+                                (ax0_0 * 640)) +
+                               (i2_0_1 * 16))])) +
+                           ((((static_cast<int>(threadIdx.x)) & 15) * 40) +
+                            (((static_cast<int>(threadIdx.x)) >> 4) * 8)))));
 #if __CUDA_ARCH__ >= 750
           __asm__ __volatile__(
               "ldmatrix.sync.aligned.m8n8.x4.shared.b16"
@@ -716,11 +729,13 @@ __global__ void __launch_bounds__(128)
               "{ .reg .u64 addr; cvta.to.shared.u64 addr, %1; cvt.u32.u64 %0, "
               "addr; }"
               : "=r"(addr)
-              : "l"((void *)((&(B_shared[(((i2_0_1 * 1152) +
-                                           ((((int)threadIdx.y) >> 1) * 32)) +
-                                          (ax1_0 * 16))])) +
-                             (((((int)threadIdx.x) & 15) * 72) +
-                              ((((int)threadIdx.x) >> 4) * 8)))));
+              : "l"(
+                  (void *)((&(B_shared[(
+                               ((i2_0_1 * 1152) +
+                                (((static_cast<int>(threadIdx.y)) >> 1) * 32)) +
+                               (ax1_0 * 16))])) +
+                           ((((static_cast<int>(threadIdx.x)) & 15) * 72) +
+                            (((static_cast<int>(threadIdx.x)) >> 4) * 8)))));
 #if __CUDA_ARCH__ >= 750
           __asm__ __volatile__(
               "ldmatrix.sync.aligned.m8n8.x4.trans.shared.b16"
@@ -884,7 +899,7 @@ __global__ void __launch_bounds__(128)
                 //+ (((local_id / 2) % 2) * 8) * N
                 + (local_id % 2) + (local_id / 4) * 8] =
               __float2half(C_warp[((ax0_0_1 * 16) + (ax1_0_1 * 8)) + local_id]);
-      };
+      }
     }
   }
 }
@@ -915,9 +930,9 @@ __global__ void __launch_bounds__(64)
 
   int K_loops = K_implicit / 16;
   int block_num_n = (N - 1) / 16 + 1;
-  int blockIdx_m = (int)blockIdx.x / block_num_n;
-  int blockIdx_n = (int)blockIdx.x % block_num_n;
-  int threadIdx_x = (int)threadIdx.x;
+  int blockIdx_m = static_cast<int>(blockIdx.x) / block_num_n;
+  int blockIdx_n = static_cast<int>(blockIdx.x) % block_num_n;
+  int threadIdx_x = static_cast<int>(threadIdx.x);
 
   // hoisting shared pointer offsets
   int *out_in_map_ptr =
@@ -945,8 +960,9 @@ __global__ void __launch_bounds__(64)
     B_ld_start = (blockIdx_n * 16) + ((threadIdx_x * 4) % 16);
     B_ld_amount_N = max(0, min(B_ld_start + 4, N) - B_ld_start);
     B_ld_K_bound = K_original;
-  } else
+  } else {
     B_pred_guard = 1;
+  }
 
 #pragma unroll
   for (int k_0 = 0; k_0 < K_loops; ++k_0) {
@@ -965,7 +981,7 @@ __global__ void __launch_bounds__(64)
       if constexpr (K_ld_check || N_ld_check) {
         B_ld_K = ((k_0 * K_tile % K_tile_padded) + threadIdx.x * 4 / 16) <
                  B_ld_K_bound;
-        B_ld_amount = B_ld_amount_N * (int)B_ld_K;
+        B_ld_amount = B_ld_amount_N * static_cast<int>(B_ld_K);
         B_ld_bound = B_ld_amount / (N_ld_factor / 4);
         B_pred_guard = 0;
         for (int i = 0; i < B_ld_bound; i++) B_pred_guard |= (1 << i);
@@ -991,9 +1007,10 @@ __global__ void __launch_bounds__(64)
           uint4 A_loaded = make_uint4(0, 0, 0, 0);
           global_load<K_ld_factor>(
               A_loaded, A_ptr_local + (input_idx * K_original), A_pred_guard);
-          *(uint4 *)(A_shared_ptr + (ax0_ax1_fused_0 * 256)) = A_loaded;
+          *reinterpret_cast<uint4 *>(A_shared_ptr + (ax0_ax1_fused_0 * 256)) =
+              A_loaded;
         } else {
-          *(uint4 *)(A_shared_ptr + (ax0_ax1_fused_0 * 256)) =
+          *reinterpret_cast<uint4 *>(A_shared_ptr + (ax0_ax1_fused_0 * 256)) =
               make_uint4(0, 0, 0, 0);
         }
       }
@@ -1004,7 +1021,8 @@ __global__ void __launch_bounds__(64)
         uint4 B_loaded = make_uint4(0, 0, 0, 0);
         global_load<N_ld_factor>(
             B_loaded, B_ptr_local + (ax0_ax1_fused_0_1 * 16) * N, B_pred_guard);
-        *(uint4 *)(B_shared_ptr + (ax0_ax1_fused_0_1 * 256)) = B_loaded;
+        *reinterpret_cast<uint4 *>(B_shared_ptr + (ax0_ax1_fused_0_1 * 256)) =
+            B_loaded;
       }
 
       __syncthreads();
@@ -1059,9 +1077,9 @@ __global__ void __launch_bounds__(64)
 
   int K_loops = (K_original * kernel_volume - 1) / 32 + 1;
   int block_num_n = (N - 1) / 16 + 1;
-  int blockIdx_m = (int)blockIdx.x / block_num_n;
-  int blockIdx_n = (int)blockIdx.x % block_num_n;
-  int threadIdx_x = (int)threadIdx.x;
+  int blockIdx_m = static_cast<int>(blockIdx.x) / block_num_n;
+  int blockIdx_n = static_cast<int>(blockIdx.x) % block_num_n;
+  int threadIdx_x = static_cast<int>(threadIdx.x);
 
   // hoisting shared pointer offsets
   int *out_in_map_ptr =
@@ -1094,13 +1112,15 @@ __global__ void __launch_bounds__(64)
         int input_idx =
             *(out_in_map_ptr_k + (ax0_ax1_fused_0 * 8) * kernel_volume);
         if (input_idx != -1) {
-          *(float4 *)(A_shared_ptr +
-                      (ax0_ax1_fused_0 * 256)) =  // ax0_ax1_fused_0 * elements
-                                                  // loaded in each loop
-              *(float4 *)(A + (input_idx * K_original) + channel_offset);
+          *reinterpret_cast<float4 *>(
+              A_shared_ptr +
+              (ax0_ax1_fused_0 * 256)) =  // ax0_ax1_fused_0 * elements
+                                          // loaded in each loop
+              *reinterpret_cast<float4 *>(A + (input_idx * K_original) +
+                                          channel_offset);
 
         } else {
-          *(float4 *)(A_shared_ptr + (ax0_ax1_fused_0 * 256)) =
+          *reinterpret_cast<float4 *>(A_shared_ptr + (ax0_ax1_fused_0 * 256)) =
               make_float4(0.0, 0.0, 0.0, 0.0);
         }
       }
@@ -1108,10 +1128,12 @@ __global__ void __launch_bounds__(64)
 #pragma unroll
       for (int ax0_ax1_fused_0_1 = 0; ax0_ax1_fused_0_1 < 2;
            ++ax0_ax1_fused_0_1) {
-        *(float4 *)(B_shared_ptr + (ax0_ax1_fused_0_1 *
-                                    256)) =  // ax0_ax1_fused_0_1 * elements
-                                             // loaded in each loop
-            *(float4 *)(B_ptr + ((k_0 * 32) + (ax0_ax1_fused_0_1 * 16)) * N);
+        *reinterpret_cast<float4 *>(
+            B_shared_ptr +
+            (ax0_ax1_fused_0_1 * 256)) =  // ax0_ax1_fused_0_1 * elements
+                                          // loaded in each loop
+            *reinterpret_cast<float4 *>(
+                B_ptr + ((k_0 * 32) + (ax0_ax1_fused_0_1 * 16)) * N);
       }
 
       __syncthreads();
@@ -1161,9 +1183,9 @@ __global__ void __launch_bounds__(128)
 
   int K_loops = (K_original * kernel_volume - 1) / 32 + 1;
   int block_num_n = (N - 1) / 64 + 1;
-  int blockIdx_m = (int)blockIdx.x / block_num_n;
-  int blockIdx_n = (int)blockIdx.x % block_num_n;
-  int threadIdx_x = (int)threadIdx.x;
+  int blockIdx_m = static_cast<int>(blockIdx.x) / block_num_n;
+  int blockIdx_n = static_cast<int>(blockIdx.x) % block_num_n;
+  int threadIdx_x = static_cast<int>(threadIdx.x);
 
   // hoisting shared pointer offsets
   int *out_in_map_ptr =
@@ -1196,13 +1218,15 @@ __global__ void __launch_bounds__(128)
         int input_idx =
             *(out_in_map_ptr_k + (ax0_ax1_fused_0 * 16) * kernel_volume);
         if (input_idx != -1) {
-          *(float4 *)(A_shared_ptr +
-                      (ax0_ax1_fused_0 * 512)) =  // ax0_ax1_fused_0 * elements
-                                                  // loaded in each loop
-              *(float4 *)(A + (input_idx * K_original) + channel_offset);
+          *reinterpret_cast<float4 *>(
+              A_shared_ptr +
+              (ax0_ax1_fused_0 * 512)) =  // ax0_ax1_fused_0 * elements
+                                          // loaded in each loop
+              *reinterpret_cast<float4 *>(A + (input_idx * K_original) +
+                                          channel_offset);
 
         } else {
-          *(float4 *)(A_shared_ptr + (ax0_ax1_fused_0 * 512)) =
+          *reinterpret_cast<float4 *>(A_shared_ptr + (ax0_ax1_fused_0 * 512)) =
               make_float4(0.0, 0.0, 0.0, 0.0);
         }
       }
@@ -1210,10 +1234,12 @@ __global__ void __launch_bounds__(128)
 #pragma unroll
       for (int ax0_ax1_fused_0_1 = 0; ax0_ax1_fused_0_1 < 4;
            ++ax0_ax1_fused_0_1) {
-        *(float4 *)(B_shared_ptr + (ax0_ax1_fused_0_1 *
-                                    512)) =  // ax0_ax1_fused_0_1 * elements
-                                             // loaded in each loop
-            *(float4 *)(B_ptr + ((k_0 * 32) + (ax0_ax1_fused_0_1 * 8)) * N);
+        *reinterpret_cast<float4 *>(
+            B_shared_ptr +
+            (ax0_ax1_fused_0_1 * 512)) =  // ax0_ax1_fused_0_1 * elements
+                                          // loaded in each loop
+            *reinterpret_cast<float4 *>(
+                B_ptr + ((k_0 * 32) + (ax0_ax1_fused_0_1 * 8)) * N);
       }
 
       __syncthreads();
@@ -1248,7 +1274,7 @@ void conv_forward_implicit_gemm_cuda(const phi::GPUContext &dev_ctx,
                                      const phi::DenseTensor &_out_in_map,
                                      int num_out_feats,
                                      int num_out_channels,
-                                     phi::DenseTensor &_out_feats) {
+                                     phi::DenseTensor &_out_feats) {  // NOLINT
   auto compute_capability = dev_ctx.GetComputeCapability();
   bool allow_fp16 = compute_capability >= 75;
   bool is_half = _in_feats.dtype() == phi::DataType::FLOAT16;
@@ -1600,8 +1626,7 @@ void conv_forward_implicit_gemm_cuda(const phi::GPUContext &dev_ctx,
         }
       }
     }
-  } else  // fp32fp32fp32
-  {
+  } else {  // fp32fp32fp32
     auto in_feats = const_cast<float *>(_in_feats.data<float>());
     auto kernel = const_cast<float *>(_kernel.data<float>());
     auto out_feats = _out_feats.data<float>();

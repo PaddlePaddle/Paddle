@@ -65,7 +65,7 @@ void FrameGradKernel(const Context& dev_ctx,
       trans_dx = *dx;
 
       std::vector<int> perm_dout{1, 0};
-      auto dout_dims_vec = common::vectorize(dout_tmp.dims());
+      auto dout_dims_vec = vectorize(dout_tmp.dims());
       for (int i = 0; i < dout_tmp.dims().size(); ++i) {
         dout_dims_vec[i] = dout_tmp.dims()[perm_dout[i]];
       }
@@ -75,7 +75,7 @@ void FrameGradKernel(const Context& dev_ctx,
           perm_dout.size(), dev_ctx, dout_tmp, &trans_dout, perm_dout);
     } else {
       std::vector<int> perm_dx{1, 0};
-      auto dx_dims_vec = common::vectorize(dx->dims());
+      auto dx_dims_vec = vectorize(dx->dims());
       for (int i = 0; i < dx->dims().size(); ++i) {
         dx_dims_vec[i] = dx->dims()[perm_dx[i]];
       }
@@ -85,7 +85,7 @@ void FrameGradKernel(const Context& dev_ctx,
           perm_dx.size(), dev_ctx, *dx, &trans_dx, perm_dx);
 
       std::vector<int> perm_dout{2, 1, 0};
-      auto dout_dims_vec = common::vectorize(dout_tmp.dims());
+      auto dout_dims_vec = vectorize(dout_tmp.dims());
       for (int i = 0; i < dout_tmp.dims().size(); ++i) {
         dout_dims_vec[i] = dout_tmp.dims()[perm_dout[i]];
       }

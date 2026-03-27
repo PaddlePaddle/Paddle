@@ -132,7 +132,7 @@ __global__ void LogsumexpWarpImpl(const Context& dev_ctx,
         const int cur_col = (read_id * ThreadGroupWidth + thread_id) * VecSize;
         if (!NeedPadding || cur_col < num_col) {
           int64_t load_offset = ((cur_row + row_id) * num_col + cur_col);
-          phi::Load<SourceType, VecSize>(in + load_offset, &load_vec);
+          Load<SourceType, VecSize>(in + load_offset, &load_vec);
 #pragma unroll
           for (int i = 0; i < VecSize; i++) {
             row_buffer[offset + i] = static_cast<T>(load_vec[i]);
@@ -173,7 +173,7 @@ __global__ void LogsumexpWarpImpl(const Context& dev_ctx,
       store_vec[row_id] = static_cast<SourceType>(res + warp_max[row_id]);
     }
     if (thread_id == 0 && cur_row < num_row) {
-      phi::Store<SourceType, RowsPerThread>(store_vec, out + cur_row);
+      Store<SourceType, RowsPerThread>(store_vec, out + cur_row);
     }
   }
 }

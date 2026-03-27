@@ -89,8 +89,8 @@ DenseTensor Diagonal(const DeviceContext& dev_ctx,
   int diag_size = len2 < len1 ? len2 : len1;
 
   if (diag_size > 0) {
-    auto ret_strides = common::vectorize(input_stride);
-    auto ret_dims = common::vectorize(input_dims);
+    auto ret_strides = vectorize(input_stride);
+    auto ret_dims = vectorize(input_dims);
     ret_strides.erase(ret_strides.begin() + std::max(dim1_, dim2_));
     ret_strides.erase(ret_strides.begin() + std::min(dim1_, dim2_));
     ret_dims.erase(ret_dims.begin() + std::max(dim1_, dim2_));
@@ -110,7 +110,7 @@ DenseTensor Diagonal(const DeviceContext& dev_ctx,
     int64_t pos = std::abs(offset) * offset_stride;
     int64_t dim_size = ret_strides.size();
 #if defined(__NVCC__) || defined(__HIPCC__)
-    thrust::device_vector<int64_t> diag_vec(common::vectorize(dig_stride));
+    thrust::device_vector<int64_t> diag_vec(vectorize(dig_stride));
     const int64_t* diag_arr = thrust::raw_pointer_cast(diag_vec.data());
     thrust::device_vector<int64_t> ret_vec(ret_strides);
     const int64_t* ret_arr = thrust::raw_pointer_cast(ret_vec.data());

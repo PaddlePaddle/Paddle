@@ -16,7 +16,17 @@
 #include <c10/core/SymInt.h>
 
 #include <cstdint>
+#include <cstring>
+#include <limits>
+#include <memory>
 #include <optional>
+#include <stdexcept>
+#include <type_traits>
+#include <utility>
+
+namespace at {
+class Tensor;
+}
 
 namespace at::indexing {
 
@@ -58,15 +68,56 @@ struct Slice final {
   }
 
   inline c10::SymInt start() const { return start_; }
-
   inline c10::SymInt stop() const { return stop_; }
-
   inline c10::SymInt step() const { return step_; }
 
  private:
   c10::SymInt start_;
   c10::SymInt stop_;
   c10::SymInt step_;
+};
+
+struct TensorIndex final {
+  TensorIndex(std::nullopt_t /*unused*/) : type_(TensorIndexType::None) {}
+
+  TensorIndex(at::indexing::EllipsisIndexType /*unused*/)
+      : type_(TensorIndexType::Ellipsis) {}
+  TensorIndex(const char* str) : TensorIndex(at::indexing::Ellipsis) {
+    if (std::strcmp(str, "...") != 0) {
+      throw std::invalid_argument(
+          "Expected \"...\" to represent an ellipsis index.");
+    }
+  }
+
+  TensorIndex(c10::SymInt integer)
+      : integer_(std::move(integer)), type_(TensorIndexType::SymInt) {}
+  TensorIndex(int integer) : TensorIndex(c10::SymInt(integer)) {}
+
+  template <class T, class = std::enable_if_t<std::is_same_v<bool, T>>>
+  TensorIndex(T boolean) : boolean_(boolean), type_(TensorIndexType::Boolean) {}
+
+  TensorIndex(Slice slice)
+      : slice_(std::move(slice)), type_(TensorIndexType::Slice) {}
+
+  TensorIndex(const at::Tensor& tensor);
+
+  inline bool is_none() const { return type_ == TensorIndexType::None; }
+  inline bool is_ellipsis() const { return type_ == TensorIndexType::Ellipsis; }
+  inline bool is_integer() const { return type_ == TensorIndexType::SymInt; }
+  inline c10::SymInt integer() const { return integer_; }
+  inline bool is_boolean() const { return type_ == TensorIndexType::Boolean; }
+  inline bool boolean() const { return boolean_; }
+  inline bool is_slice() const { return type_ == TensorIndexType::Slice; }
+  inline const Slice& slice() const { return slice_; }
+  inline bool is_tensor() const { return type_ == TensorIndexType::Tensor; }
+  const at::Tensor& tensor() const;
+
+ private:
+  c10::SymInt integer_ = 0;
+  bool boolean_ = false;
+  Slice slice_;
+  std::shared_ptr<at::Tensor> tensor_;
+  TensorIndexType type_;
 };
 
 }  // namespace at::indexing

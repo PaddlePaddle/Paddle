@@ -139,7 +139,7 @@ struct MatrixBitCodeFunctorMul {
 
   template <typename CodeTable>
   void operator()(const CodeTable &code_table) {
-    auto blas = funcs::GetBlas<phi::CPUContext, T>(phi::CPUContext());
+    auto blas = funcs::GetBlas<CPUContext, T>(CPUContext());
     size_t num_samples = tmat_->dims()[0];
     size_t tmat_width = tmat_->dims()[1];
     size_t input_width = input_.dims()[1];
@@ -186,7 +186,7 @@ struct MatrixBitCodeFunctorMulGradWeight {
       : tmat_(tmat), weight_(weight), input_(input) {}
   template <typename CodeTable>
   void operator()(const CodeTable &code_table) {
-    auto blas = funcs::GetBlas<phi::CPUContext, T>(phi::CPUContext());
+    auto blas = funcs::GetBlas<CPUContext, T>(CPUContext());
     size_t num_samples = tmat_.dims()[0];
     size_t input_width = input_.dims()[1];
     size_t tmat_width = tmat_.dims()[1];
@@ -238,7 +238,7 @@ struct MatrixBitCodeFunctorMulGradWeightSR {
 
   template <typename CodeTable>
   void operator()(const CodeTable &code_table) {
-    auto blas = funcs::GetBlas<phi::CPUContext, T>(phi::CPUContext());
+    auto blas = funcs::GetBlas<CPUContext, T>(CPUContext());
     size_t num_samples = tmat_.dims()[0];
     size_t input_width = input_.dims()[1];
     size_t tmat_width = tmat_.dims()[1];

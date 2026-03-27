@@ -52,8 +52,8 @@ __global__ void CosSimDyKernel(const T* x_norm,
 }
 
 template <typename T>
-struct CosSimDyFunctor<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext& dev_ctx,
+struct CosSimDyFunctor<GPUContext, T> {
+  void operator()(const GPUContext& dev_ctx,
                   const T* x_norm,
                   const T* y_norm,
                   const T* x,
@@ -71,7 +71,7 @@ struct CosSimDyFunctor<phi::GPUContext, T> {
   }
 };
 
-template struct CosSimDyFunctor<phi::GPUContext, float>;
-template struct CosSimDyFunctor<phi::GPUContext, double>;
+template struct CosSimDyFunctor<GPUContext, float>;
+template struct CosSimDyFunctor<GPUContext, double>;
 }  // namespace math
 }  // namespace phi

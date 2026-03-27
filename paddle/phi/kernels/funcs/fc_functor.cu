@@ -149,9 +149,9 @@ __global__ void bias_relu_v4_half2(const int num,
 
   for (int32_t linear_idx = global_thread_idx * Half2VecSize; linear_idx < num;
        linear_idx += grid_stride * Half2VecSize) {
-    phi::Load<half2, Half2VecSize>(&data[linear_idx], &data_vec);
+    Load<half2, Half2VecSize>(&data[linear_idx], &data_vec);
     const int bias_idx = linear_idx % K;
-    phi::Load<half2, Half2VecSize>(&bias[bias_idx], &bias_vec);
+    Load<half2, Half2VecSize>(&bias[bias_idx], &bias_vec);
 
 #pragma unroll
     for (int unroll_idx = 0; unroll_idx < Half2VecSize; unroll_idx++) {
@@ -183,7 +183,7 @@ __global__ void bias_relu_v4_half2(const int num,
 #endif
       }
     }
-    phi::Store<half2, Half2VecSize>(data_vec, &data[linear_idx]);
+    Store<half2, Half2VecSize>(data_vec, &data[linear_idx]);
   }
 }
 

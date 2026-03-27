@@ -389,7 +389,7 @@ struct LayerNormTuple {
   typedef T data_type;
   typedef int attr_type;
   typedef void (*func_type)(
-      T*, T*, T*, T*, const T*, const T*, int, const float, int);
+      T*, T*, T*, T*, const T*, const T*, int, const double, int);
 };
 
 // Just for adding to kernel pool without template

@@ -60,18 +60,18 @@ static void UniqueConsecutiveFlattenedTensor(const Context& dev_ctx,
   }
   out_vec.resize(output_size);
 
-  out->Resize(make_ddim({output_size}));
+  out->Resize({output_size});
   auto* out_data = dev_ctx.template Alloc<InT>(out);
   std::copy(out_vec.begin(), out_vec.end(), out_data);
 
   if (return_inverse) {
-    inverse->Resize(make_ddim({in.numel()}));
+    inverse->Resize({in.numel()});
     auto* inverse_data = dev_ctx.template Alloc<IndexT>(inverse);
     std::copy(inverse_vec.begin(), inverse_vec.end(), inverse_data);
   }
 
   if (return_counts) {
-    count->Resize(make_ddim({out->numel()}));
+    count->Resize({out->numel()});
     auto* counts_data = dev_ctx.template Alloc<IndexT>(count);
     std::copy(counts_vec.begin(), counts_vec.end(), counts_data);
   }
@@ -156,7 +156,7 @@ static void UniqueConsecutiveDim(const Context& dev_ctx,
   std::iota(permute.begin(), permute.end(), 0);
   permute[axis] = 0;
   permute[0] = axis;
-  std::vector<int64_t> in_trans_dims_vec(common::vectorize(in.dims()));
+  std::vector<int64_t> in_trans_dims_vec(vectorize(in.dims()));
   in_trans_dims_vec[axis] = in.dims()[0];
   in_trans_dims_vec[0] = in.dims()[axis];
   DenseTensor in_trans;
@@ -211,10 +211,10 @@ static void UniqueConsecutiveDim(const Context& dev_ctx,
   funcs::TransCompute<Context, InT>(
       out_trans.dims().size(), dev_ctx, out_trans, out, permute);
   if (return_inverse) {
-    phi::TensorFromVector(inverse_vec, dev_ctx, inverse);
+    TensorFromVector(inverse_vec, dev_ctx, inverse);
   }
   if (return_counts) {
-    phi::TensorFromVector(counts_vec, dev_ctx, count);
+    TensorFromVector(counts_vec, dev_ctx, count);
   }
 }
 

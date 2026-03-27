@@ -222,7 +222,7 @@ __global__ void initialize_moe_routing_kernel(
        element_id += blockDim.x * VecSize) {
     // Each thread reads VecSize elements, totaling ThreadNum*VecSize elements
     // read Note: A single thread can compute at most one scale value
-    phi::Load<__nv_bfloat16, VecSize>(&source_row_ptr[element_id], &src_vec);
+    Load<__nv_bfloat16, VecSize>(&source_row_ptr[element_id], &src_vec);
 
     int64_t local_scale_id =
         VecSize * static_cast<int64_t>(threadIdx.x) / TileSize;
@@ -237,7 +237,7 @@ __global__ void initialize_moe_routing_kernel(
                                                  cols / TileSize);
     ApplyScale<VecSize>(src_vec.val, dest_vec.val, scale, local_scale_id);
 
-    phi::Store<__nv_fp8_e4m3, VecSize>(dest_vec, &dest_row_ptr[element_id]);
+    Store<__nv_fp8_e4m3, VecSize>(dest_vec, &dest_row_ptr[element_id]);
   }
 }
 

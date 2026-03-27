@@ -385,8 +385,8 @@ __global__ void MaskCopy(const IntT* mask_indices,
       int j = table[mask_index];
       for (int k = 0; k < stride; k += VecSize) {
         LoadT vec_x;
-        phi::Load<T, VecSize>(x_values + j * stride + k, &vec_x);
-        phi::Store<T, VecSize>(vec_x, out_values + i * stride + k);
+        Load<T, VecSize>(x_values + j * stride + k, &vec_x);
+        Store<T, VecSize>(vec_x, out_values + i * stride + k);
       }
     }
   }
