@@ -54,7 +54,7 @@ void ReQuantOpKernel(const Context& dev_ctx,
                                       "shift for signed input."));
   }
 
-  auto src_tz = common::vectorize(input.dims());
+  auto src_tz = vectorize(input.dims());
 
   auto src_paddle_dt = input.dtype();
   auto dst_paddle_dt = with_shift ? DataType::UINT8 : src_paddle_dt;

@@ -80,11 +80,11 @@ void LstsqKernel(const Context& dev_ctx,
   int ldb = std::max<int>(1, std::max(m, n));
 
   DenseTensor new_x;
-  new_x.Resize(make_ddim({batch_count, m, n}));
+  new_x.Resize({batch_count, m, n});
   dev_ctx.template Alloc<T>(&new_x);
   Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), true, &new_x);
 
-  solution->Resize(make_ddim({batch_count, std::max(m, n), nrhs}));
+  solution->Resize({batch_count, std::max(m, n), nrhs});
   dev_ctx.template Alloc<T>(solution);
 
   if (m >= n) {
@@ -131,7 +131,7 @@ void LstsqKernel(const Context& dev_ctx,
   DenseTensor jpvt;
   int* jpvt_data = nullptr;
   if (driver == LapackDriverType::Gelsy) {
-    jpvt.Resize(make_ddim({std::max<int>(1, n)}));
+    jpvt.Resize({std::max<int>(1, n)});
     jpvt_data = dev_ctx.template Alloc<int>(&jpvt);
   }
 
@@ -194,7 +194,7 @@ void LstsqKernel(const Context& dev_ctx,
 
   lwork = std::max<int>(1, static_cast<int>(phi::dtype::Real<T>(wkopt)));
   DenseTensor work;
-  work.Resize(make_ddim({lwork}));
+  work.Resize({lwork});
   T* work_data = dev_ctx.template Alloc<T>(&work);
 
   // "rwork" only used for complex inputs and "gelsy/gelsd/gelss" drivers
@@ -209,7 +209,7 @@ void LstsqKernel(const Context& dev_ctx,
     } else if (driver == LapackDriverType::Gelsd) {
       rwork_len = std::max<int>(1, rwkopt);
     }
-    rwork.Resize(make_ddim({rwork_len}));
+    rwork.Resize({rwork_len});
     rwork_data = dev_ctx.template Alloc<ValueType>(&rwork);
   }
 
@@ -217,7 +217,7 @@ void LstsqKernel(const Context& dev_ctx,
   DenseTensor iwork;
   int* iwork_data = nullptr;
   if (driver == LapackDriverType::Gelsd) {
-    iwork.Resize(make_ddim({std::max<int>(1, iwkopt)}));
+    iwork.Resize({std::max<int>(1, iwkopt)});
     iwork_data = dev_ctx.template Alloc<int>(&iwork);
   }
 
@@ -302,7 +302,7 @@ void LstsqKernel(const Context& dev_ctx,
   if (batch_count > 1) {
     solution->Resize(solution_dim);
   } else {
-    solution->Resize(make_ddim({n, nrhs}));
+    solution->Resize({n, nrhs});
   }
 
   GetResidualsTensor<Context, T>(

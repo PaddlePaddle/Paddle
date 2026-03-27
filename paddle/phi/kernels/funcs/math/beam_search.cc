@@ -20,9 +20,9 @@ namespace phi {
 namespace math {
 
 template <typename T>
-class BeamSearchFunctor<phi::CPUContext, T> {
+class BeamSearchFunctor<CPUContext, T> {
  public:
-  void operator()(const phi::CPUContext &dev_ctx UNUSED,
+  void operator()(const CPUContext &dev_ctx UNUSED,
                   const DenseTensor *pre_ids,
                   const DenseTensor *pre_scores,
                   const DenseTensor *ids,
@@ -34,7 +34,7 @@ class BeamSearchFunctor<phi::CPUContext, T> {
                   size_t beam_size,
                   int end_id,
                   bool is_accumulated) {
-    auto abs_lod = phi::ToAbsOffset(scores->lod());
+    auto abs_lod = ToAbsOffset(scores->lod());
     auto &high_level = abs_lod[level];
 
     auto items = SelectTopBeamSizeItems(pre_ids,
@@ -93,7 +93,7 @@ class BeamSearchFunctor<phi::CPUContext, T> {
     low_level.push_back(low_offset);
 
     // fill lod
-    phi::LegacyLoD lod(2);
+    LegacyLoD lod(2);
     lod[0].assign(high_level.begin(), high_level.end());
     lod[1].assign(low_level.begin(), low_level.end());
     if (!CheckLegacyLoD(lod)) {
@@ -155,7 +155,7 @@ class BeamSearchFunctor<phi::CPUContext, T> {
    * since the end tokens must be written out.
    */
   void PruneEndBeams(const DenseTensor *pre_ids,
-                     const phi::LegacyLoD &abs_lod,
+                     const LegacyLoD &abs_lod,
                      std::vector<std::vector<Item>> *items,
                      size_t lod_level,
                      int end_id) {
@@ -242,7 +242,7 @@ class BeamSearchFunctor<phi::CPUContext, T> {
     std::vector<std::vector<Item>> result;
 
     // find the current candidates
-    auto abs_lod = phi::ToAbsOffset(scores->lod());
+    auto abs_lod = ToAbsOffset(scores->lod());
 
     auto *pre_ids_data = pre_ids->data<int64_t>();
     auto *pre_scores_data = pre_scores->data<float>();
@@ -302,10 +302,10 @@ class BeamSearchFunctor<phi::CPUContext, T> {
   }
 };
 
-template class PADDLE_API BeamSearchFunctor<phi::CPUContext, int>;
-template class PADDLE_API BeamSearchFunctor<phi::CPUContext, int64_t>;
-template class PADDLE_API BeamSearchFunctor<phi::CPUContext, float>;
-template class PADDLE_API BeamSearchFunctor<phi::CPUContext, double>;
+template class PADDLE_API BeamSearchFunctor<CPUContext, int>;
+template class PADDLE_API BeamSearchFunctor<CPUContext, int64_t>;
+template class PADDLE_API BeamSearchFunctor<CPUContext, float>;
+template class PADDLE_API BeamSearchFunctor<CPUContext, double>;
 
 }  // namespace math
 }  // namespace phi

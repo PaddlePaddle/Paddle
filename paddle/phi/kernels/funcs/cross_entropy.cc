@@ -20,10 +20,8 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-template <typename T,
-          int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = EigenMatrix<T, MajorType, IndexType>;
+template <typename T, int MajorType = Eigen::RowMajor>
+using EigenMatrix = EigenMatrix<T, MajorType>;
 
 template <typename T>
 struct HardLabelCrossEntropyCPUFunctorImpl {
@@ -125,8 +123,8 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
   }
 }
 
-template class CrossEntropyFunctor<phi::CPUContext, float>;
-template class CrossEntropyFunctor<phi::CPUContext, double>;
+template class CrossEntropyFunctor<CPUContext, float>;
+template class CrossEntropyFunctor<CPUContext, double>;
 
 }  // namespace funcs
 }  // namespace phi

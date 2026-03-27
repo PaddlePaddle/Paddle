@@ -19,8 +19,8 @@
 #include "paddle/phi/kernels/impl/rmsprop_kernel_impl.h"
 namespace phi {
 template <typename T>
-struct RmsFunctor<T, phi::CPUContext> {
-  RmsFunctor(const phi::CPUContext &dev_ctx,
+struct RmsFunctor<T, CPUContext> {
+  RmsFunctor(const CPUContext &dev_ctx,
              const DenseTensor &param,
              const DenseTensor &mean_square,
              const DenseTensor &grad,

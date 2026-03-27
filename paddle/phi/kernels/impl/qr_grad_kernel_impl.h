@@ -106,7 +106,7 @@ void QrGradKernel(const Context& dev_ctx,
                                   TransposeLast2Dim<T, Context>(
                                       dev_ctx, Conj<T, Context>(dev_ctx, dR)));
     } else {
-      R_term = Fill<T, Context>(dev_ctx, common::vectorize<int>(R.dims()), 0);
+      R_term = Fill<T, Context>(dev_ctx, vectorize<int>(R.dims()), 0);
     }
 
     // dQ^H * Q
@@ -117,7 +117,7 @@ void QrGradKernel(const Context& dev_ctx,
           TransposeLast2Dim<T, Context>(dev_ctx, Conj<T, Context>(dev_ctx, dQ)),
           Q);
     } else {
-      Q_term = Fill<T, Context>(dev_ctx, common::vectorize<int>(R.dims()), 0);
+      Q_term = Fill<T, Context>(dev_ctx, vectorize<int>(R.dims()), 0);
     }
 
     DenseTensor M_tmp1 = Subtract<T, Context>(dev_ctx, R_term, Q_term);
@@ -143,7 +143,7 @@ void QrGradKernel(const Context& dev_ctx,
           Diagonal<T, Context>(dev_ctx, M_tmp1, 0, rank - 2, rank - 1);
       DenseTensor M_diag_real = Real<T, Context>(dev_ctx, M_diag_tmp);
       DenseTensor M_diag_imag = Fill<phi::dtype::Real<T>, Context>(
-          dev_ctx, common::vectorize<int>(M_diag_real.dims()), 0);
+          dev_ctx, vectorize<int>(M_diag_real.dims()), 0);
 
       DenseTensor M_diag;
       M_diag.Resize(M_diag_real.dims());
@@ -207,8 +207,8 @@ void QrGradKernel(const Context& dev_ctx,
                              TransposeLast2Dim<T, Context>(
                                  dev_ctx, Conj<T, Context>(dev_ctx, dV)));
     } else {
-      dV = Fill<T, Context>(dev_ctx, common::vectorize<int>(Y.dims()), 0);
-      dQ_prime = Fill<T, Context>(dev_ctx, common::vectorize<int>(Q.dims()), 0);
+      dV = Fill<T, Context>(dev_ctx, vectorize<int>(Y.dims()), 0);
+      dQ_prime = Fill<T, Context>(dev_ctx, vectorize<int>(Q.dims()), 0);
     }
 
     if (dQ.initialized()) {

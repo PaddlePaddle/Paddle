@@ -21,7 +21,7 @@
 
 namespace phi {
 template <typename T, typename IndexT = int>
-void CPUIndexElementwiseGetKernel(const phi::CPUContext& dev_ctx,
+void CPUIndexElementwiseGetKernel(const CPUContext& dev_ctx,
                                   const DenseTensor& input,
                                   const std::vector<const DenseTensor*>& index,
                                   const std::vector<int64_t>& input_dims,

@@ -96,8 +96,30 @@ class TestEagerTensor(unittest.TestCase):
                     self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
                     y = x.cuda(device_id=0, blocking=False)
                     self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
+                    y = x.cuda(core.CUDAPlace(0))
+                    self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
+                    y = x.cuda(paddle.device("cuda:0"))
+                    self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
+                    y = x.cuda("cuda:0")
+                    self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
+                    y = x.cuda(device=0, non_blocking=False)
+                    self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
+                    y = x.cuda("cuda:0", False)
+                    self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
+                    # non-existing place
                     with self.assertRaises(ValueError):
                         y = x.cuda("test")
+                    # data type error
+                    with self.assertRaises(ValueError):
+                        y = x.cuda(["cuda:0", "cpu"])
+                    # arg error
+                    with self.assertRaises(ValueError):
+                        y = x.cuda(device="cuda:0", device_id="cuda:0")
+                    with self.assertRaises(ValueError):
+                        y = x.cuda(blocking=True, non_blocking=True)
+                    # too many positional args
+                    with self.assertRaises(ValueError):
+                        y = x.cuda("cuda:0", False, None)
 
                 # support 'dtype' is core.VarType
                 x = paddle.rand((2, 2))
@@ -2172,6 +2194,16 @@ class TestEagerTensorNumel(unittest.TestCase):
         x_without_holder = core.eager.Tensor()
         x_actual_numel = x_without_holder._numel()
         self.assertEqual(x_actual_numel, 0)
+
+
+class TestEagerTensorNelement(unittest.TestCase):
+    def test_nelement(self):
+        paddle.disable_static()
+        np_x = np.random.random((3, 8, 4))
+        x = paddle.to_tensor(np_x, dtype="float64")
+        x_actual_nelement = x.nelement()
+        x_expected_nelement = np.prod((3, 8, 4))
+        self.assertEqual(x_actual_nelement, x_expected_nelement)
 
 
 class TestEagerTensorStride(unittest.TestCase):

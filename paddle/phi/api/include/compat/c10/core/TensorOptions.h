@@ -91,6 +91,12 @@ struct PADDLE_API TensorOptions {
     return r;
   }
 
+  template <typename... Args>
+  [[nodiscard]] TensorOptions device(Args&&... args) const noexcept {
+    return device(
+        std::optional<Device>(std::in_place, std::forward<Args>(args)...));
+  }
+
   [[nodiscard]] TensorOptions device_index(
       c10::DeviceIndex device_index) const noexcept {
     return device(Device(kCUDA, device_index));

@@ -96,8 +96,8 @@ void EditDistanceKernel(const Context& dev_ctx,
 
   auto stream = reinterpret_cast<const GPUContext&>(dev_ctx).stream();
 
-  phi::Vector<size_t> hyp_lod(batch_size + 1);
-  phi::Vector<size_t> ref_lod(batch_size + 1);
+  Vector<size_t> hyp_lod(batch_size + 1);
+  Vector<size_t> ref_lod(batch_size + 1);
 
   bool use_length = hypslength.get_ptr() != nullptr;
 

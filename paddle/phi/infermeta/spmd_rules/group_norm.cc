@@ -137,7 +137,7 @@ SpmdInfo GroupNormInferSpmdBase(const DistMetaTensor& x,
 SpmdInfo GroupNormInferSpmd(const DistMetaTensor& x,
                             const DistMetaTensor& scale,
                             const DistMetaTensor& bias,
-                            float epsilon,
+                            double epsilon,
                             int groups,
                             const std::string& data_format) {
   return GroupNormInferSpmdBase(x, scale, bias);
@@ -341,7 +341,7 @@ SpmdInfo GroupNormGradInferSpmd(const DistMetaTensor& x,
                                 const DistMetaTensor& mean,
                                 const DistMetaTensor& variance,
                                 const DistMetaTensor y_grad,
-                                float epsilon,
+                                double epsilon,
                                 int groups,
                                 const std::string& data_format) {
   return GroupNormGradInferSpmdBase(x, scale, bias, y, mean, variance, y_grad);

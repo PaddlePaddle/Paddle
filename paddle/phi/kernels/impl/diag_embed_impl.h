@@ -102,11 +102,11 @@ void DiagEmbedKernel(const Context& dev_ctx,
   } else {
     storage_offset -= offset * stride[dim1_];
   }
-  auto strides = common::vectorize(stride);
+  auto strides = vectorize(stride);
   strides.erase(strides.begin() + std::max(dim1_, dim2_));
   strides.erase(strides.begin() + std::min(dim1_, dim2_));
   strides.push_back(stride[dim1_] + stride[dim2_]);
-  const auto dims = common::vectorize(x.dims());
+  const auto dims = vectorize(x.dims());
 
 #if defined(__NVCC__) || defined(__HIPCC__)
   thrust::device_vector<int64_t> dims_vec(dims);

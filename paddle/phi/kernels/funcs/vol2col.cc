@@ -26,9 +26,9 @@ namespace phi::funcs {
  *                    output_depth, output_height, output_width]
  */
 template <class T>
-class Vol2ColFunctor<phi::CPUContext, T> {
+class Vol2ColFunctor<CPUContext, T> {
  public:
-  void operator()(const phi::CPUContext& context UNUSED,
+  void operator()(const CPUContext& context UNUSED,
                   const DenseTensor& vol,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,
@@ -152,9 +152,9 @@ class Vol2ColFunctor<phi::CPUContext, T> {
  *                    output_depth, output_height, output_width]
  */
 template <class T>
-class Col2VolFunctor<phi::CPUContext, T> {
+class Col2VolFunctor<CPUContext, T> {
  public:
-  void operator()(const phi::CPUContext& context UNUSED,
+  void operator()(const CPUContext& context UNUSED,
                   const DenseTensor& col,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,
@@ -271,10 +271,10 @@ class Col2VolFunctor<phi::CPUContext, T> {
   }
 };
 
-template class PADDLE_API Vol2ColFunctor<phi::CPUContext, float>;
-template class PADDLE_API Vol2ColFunctor<phi::CPUContext, double>;
+template class PADDLE_API Vol2ColFunctor<CPUContext, float>;
+template class PADDLE_API Vol2ColFunctor<CPUContext, double>;
 
-template class PADDLE_API Col2VolFunctor<phi::CPUContext, float>;
-template class PADDLE_API Col2VolFunctor<phi::CPUContext, double>;
+template class PADDLE_API Col2VolFunctor<CPUContext, float>;
+template class PADDLE_API Col2VolFunctor<CPUContext, double>;
 
 }  // namespace phi::funcs

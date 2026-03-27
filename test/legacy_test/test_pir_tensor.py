@@ -14,6 +14,7 @@
 
 import unittest
 
+import numpy as np
 from utils import static_guard
 
 import paddle
@@ -54,6 +55,18 @@ class TestPirTensor(unittest.TestCase):
 
             x = paddle.to_tensor(1, dtype="complex128")
             self.assertEqual(x.itemsize, 16)
+
+
+class TestPirTensorNelement(unittest.TestCase):
+    def test_nelement(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            x = paddle.assign(np.random.rand(2, 8, 4).astype("float32"))
+            exe = paddle.base.Executor(paddle.CPUPlace())
+            fetches = exe.run(main, fetch_list=[x.nelement()])
+            self.assertEqual(fetches[0], np.prod((2, 8, 4)))
 
 
 if __name__ == '__main__':

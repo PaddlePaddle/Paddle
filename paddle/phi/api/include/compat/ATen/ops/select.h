@@ -19,6 +19,9 @@
 namespace at {
 
 inline at::Tensor select(const at::Tensor& self, int64_t dim, int64_t index) {
+  if (dim < 0) {
+    dim += self.dim();
+  }
   // Handle negative indexing
   if (index < 0) {
     int64_t dim_size = self.size(dim);
