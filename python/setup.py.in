@@ -1543,6 +1543,11 @@ for f in jit_layer_headers:
 if '${WITH_ONEDNN}' == 'ON':
     headers += list(find_files('*', '${ONEDNN_INSTALL_DIR}/include')) # mkldnn
 
+if '${WITH_MKL}' == 'ON':
+    onednn_include_dir = '@PADDLE_SOURCE_DIR@/third_party/onednn/include'
+    headers += list(find_files('*.h', onednn_include_dir, recursive=True))
+    headers += list(find_files('*.hpp', onednn_include_dir, recursive=True))
+
 if '${WITH_OPENVINO}' == 'ON':
     headers += list(
         find_files('*', '${OPENVINO_INC_DIR}')

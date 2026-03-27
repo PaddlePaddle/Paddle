@@ -2334,6 +2334,11 @@ def get_headers():
             find_files('*', env_dict.get("ONEDNN_INSTALL_DIR") + '/include')
         )  # mkldnn
 
+    if env_dict.get("WITH_MKL") == 'ON':
+        onednn_include_dir = paddle_source_dir + '/third_party/onednn/include'
+        headers += list(find_files('*.h', onednn_include_dir, recursive=True))
+        headers += list(find_files('*.hpp', onednn_include_dir, recursive=True))
+
     if env_dict.get("WITH_OPENVINO") == 'ON':
         headers += list(
             find_files('*', env_dict.get("OPENVINO_INC_DIR"))
