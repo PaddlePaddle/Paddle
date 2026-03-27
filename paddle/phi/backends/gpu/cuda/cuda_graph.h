@@ -319,13 +319,13 @@ class CUDAGraph {
 
   struct KernelNodeInfo {
     cudaGraphNode_t node;
-    cudaKernelNodeParams params;
+    CUDA_KERNEL_NODE_PARAMS params;
     std::vector<KernelParamInfo> param_infos;
   };
 
  private:
   static CUDAGraphID UniqueID();
-  std::vector<KernelParamInfo> GetKernelParamInfos(void *runtime_func_ptr);
+  std::vector<KernelParamInfo> GetKernelParamInfos(CUfunction func);
   void CacheKernelNodeInfos(size_t segment_idx);
 
  private:

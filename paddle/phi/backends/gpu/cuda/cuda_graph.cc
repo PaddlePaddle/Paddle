@@ -330,8 +330,13 @@ void CUDAGraph::CacheKernelNodeInfos(size_t segment_idx) {
       KernelNodeInfo info;
       info.node = node;
       memset(&info.params, 0, sizeof(info.params));
-      cudaGraphKernelNodeGetParams(node, &info.params);
-      info.param_infos = GetKernelParamInfos(info.params.func);
+      // Use Driver API to get params (works for both Runtime and Driver API
+      // kernels, unlike Runtime API which may return invalid kernelParams
+      // for JIT kernels such as DeepGEMM)
+      dynload::cuGraphKernelNodeGetParams(static_cast<CUgraphNode>(node),
+                                          &info.params);
+      info.param_infos =
+          GetKernelParamInfos(static_cast<CUfunction>(info.params.func));
       kernel_nodes.emplace_back(std::move(info));
     }
   }
@@ -373,28 +378,26 @@ void CUDAGraph::ReplaceInputPtrs(const std::vector<void*>& old_ptrs,
         }
       }
       if (modified) {
-        cudaGraphExecKernelNodeSetParams(
-            exec_graphs_[i], kernel_info.node, &params);
+        dynload::cuGraphExecKernelNodeSetParams(
+            static_cast<CUgraphExec>(exec_graphs_[i]),
+            static_cast<CUgraphNode>(kernel_info.node),
+            &params);
       }
     }
   }
 }
 
 std::vector<CUDAGraph::KernelParamInfo> CUDAGraph::GetKernelParamInfos(
-    void* runtime_func_ptr) {
-  cudaFunction_t cudaFunc;
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaGetFuncBySymbol(&cudaFunc, runtime_func_ptr));
-
+    CUfunction func) {
   std::vector<KernelParamInfo> infos;
   size_t paramOffset, paramSize;
   int k = 0;
 
-  while (dynload::cuFuncGetParamInfo(
-             static_cast<CUfunction>(cudaFunc), k, &paramOffset, &paramSize) ==
+  while (dynload::cuFuncGetParamInfo(func, k, &paramOffset, &paramSize) ==
          CUDA_SUCCESS) {
     infos.push_back({paramOffset, paramSize});
-    VLOG(4) << "[GetKernelParamInfos] func " << runtime_func_ptr << " param["
-            << k << "] offset=" << paramOffset << " size=" << paramSize;
+    VLOG(4) << "[GetKernelParamInfos] func " << func << " param[" << k
+            << "] offset=" << paramOffset << " size=" << paramSize;
     k++;
   }
   return infos;
