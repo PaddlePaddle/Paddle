@@ -44,10 +44,10 @@ void RMSLnFwd(const Context &dev_ctx,
               DenseTensor *invvar) {
   const auto &scale_shape = scale.dims();
   int rows, cols;
-  GetRowsCols(common::vectorize(x.dims()), &rows, &cols);
-  if (scale.dtype() == phi::DataType::BFLOAT16) {
-    dev_ctx.template Alloc<phi::bfloat16>(y);
-  } else if (scale.dtype() == phi::DataType::FLOAT32) {
+  GetRowsCols(vectorize(x.dims()), &rows, &cols);
+  if (scale.dtype() == DataType::BFLOAT16) {
+    dev_ctx.template Alloc<bfloat16>(y);
+  } else if (scale.dtype() == DataType::FLOAT32) {
     dev_ctx.template Alloc<float>(y);
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
@@ -69,12 +69,12 @@ void RMSLnBwd(const Context &dev_ctx,
               DenseTensor *x_grad,
               DenseTensor *scale_grad) {
   int rows, cols;
-  GetRowsCols(common::vectorize(x.dims()), &rows, &cols);
+  GetRowsCols(vectorize(x.dims()), &rows, &cols);
   dev_ctx.template Alloc<T>(x_grad);
   if (scale_grad) {
-    if (scale.dtype() == phi::DataType::BFLOAT16) {
+    if (scale.dtype() == DataType::BFLOAT16) {
       dev_ctx.template Alloc<phi::bfloat16>(scale_grad);
-    } else if (scale.dtype() == phi::DataType::FLOAT32) {
+    } else if (scale.dtype() == DataType::FLOAT32) {
       dev_ctx.template Alloc<float>(scale_grad);
     } else {
       PADDLE_THROW(common::errors::InvalidArgument(
@@ -93,7 +93,7 @@ void RMSLnBwd(const Context &dev_ctx,
                                        scale_grad);
   } else {
     // lora specific
-    if (scale.dtype() == phi::DataType::BFLOAT16) {
+    if (scale.dtype() == DataType::BFLOAT16) {
       DenseTensor scale_grad_tmp =
           EmptyLike<phi::bfloat16, Context>(dev_ctx, scale);
       cuda_rms_norm_gradient<T, Context>(dev_ctx,
@@ -106,7 +106,7 @@ void RMSLnBwd(const Context &dev_ctx,
                                          epsilon,
                                          x_grad,
                                          &scale_grad_tmp);
-    } else if (scale.dtype() == phi::DataType::FLOAT32) {
+    } else if (scale.dtype() == DataType::FLOAT32) {
       DenseTensor scale_grad_tmp = EmptyLike<float, Context>(dev_ctx, scale);
       cuda_rms_norm_gradient<T, Context>(dev_ctx,
                                          x,

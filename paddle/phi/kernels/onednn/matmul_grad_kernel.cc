@@ -120,9 +120,9 @@ void MatmulGradKernel(const Context &dev_ctx,
                       bool transpose_y,
                       DenseTensor *dx,
                       DenseTensor *dy) {
-  auto x_dims = common::vectorize(x.dims());
-  auto y_dims = common::vectorize(y.dims());
-  auto dout_dims = common::vectorize(dout.dims());
+  auto x_dims = vectorize(x.dims());
+  auto y_dims = vectorize(y.dims());
+  auto dout_dims = vectorize(dout.dims());
 
   size_t ndims = std::max(x_dims.size(), y_dims.size());
   ndims = std::max<size_t>(ndims, 3);

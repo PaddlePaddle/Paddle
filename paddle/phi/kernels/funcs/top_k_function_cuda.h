@@ -1294,8 +1294,8 @@ bool SortTopk(const GPUContext& dev_ctx,
   auto& dev = *dev_ctx.eigen_device();
   if (k < num_cols) {
     // copy sliced data to output.
-    const Eigen::DSizes<Eigen::DenseIndex, 2> slice_indices{0, 0};
-    const Eigen::DSizes<Eigen::DenseIndex, 2> slice_sizes{num_rows, k};
+    const Eigen::DSizes<int64_t, 2> slice_indices{0, 0};
+    const Eigen::DSizes<int64_t, 2> slice_sizes{num_rows, k};
     auto e_indices = EigenMatrix<int64_t>::From(*indices_tensor, dim);
     auto e_tmp_indices = EigenMatrix<int64_t>::From(
         static_cast<const DenseTensor>(temp_indices));

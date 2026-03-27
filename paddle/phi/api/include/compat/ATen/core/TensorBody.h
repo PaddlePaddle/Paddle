@@ -14,10 +14,14 @@
 
 #pragma once
 
+#include <ATen/TensorIndexing.h>
 #include <ATen/core/TensorBase.h>
-#include <ATen/indexing.h>
 #include <c10/core/Backend.h>
+#include <c10/core/List.h>
 #include <c10/core/Scalar.h>
+#include <c10/core/ScalarType.h>
+#include <c10/core/Stream.h>
+#include <c10/core/SymIntArrayRef.h>
 #include <c10/util/OptionalArrayRef.h>
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/tensor.h"
@@ -30,16 +34,24 @@
 #include <cuda_runtime_api.h>
 #endif
 
-#include <c10/core/Device.h>
-#include <c10/core/List.h>
-#include <c10/core/ScalarType.h>
-#include <c10/core/SymIntArrayRef.h>
+// Forward declaration to allow record_stream(at::cuda::CUDAStream) overload
+// without pulling in the full CUDAStream header here.
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+namespace c10::cuda {
+class CUDAStream;
+}  // namespace c10::cuda
+namespace at::cuda {
+using c10::cuda::CUDAStream;
+}  // namespace at::cuda
+#endif
+
 #include <limits>
 #include <optional>
 #include <utility>
 #include <vector>
 #include "paddle/common/ddim.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace at {
 class Tensor;
@@ -59,6 +71,8 @@ using PaddlePlace = phi::Place;
 
 // Stub for DimnameList (not supported in Paddle)
 using DimnameList = c10::ArrayRef<std::string>;
+
+using Stream = c10::Stream;
 
 class Tensor : public TensorBase {
  public:
@@ -165,15 +179,21 @@ class Tensor : public TensorBase {
   }
 
   template <typename T, std::enable_if_t<!std::is_const_v<T>, int> = 0>
-  const T* const_data_ptr() const;
+  const T* const_data_ptr() const {
+    return TensorBase::const_data_ptr<T>();
+  }
 
   template <typename T, std::enable_if_t<std::is_const_v<T>, int> = 0>
-  const std::remove_const_t<T>* const_data_ptr() const;
+  const std::remove_const_t<T>* const_data_ptr() const {
+    return TensorBase::const_data_ptr<T>();
+  }
 
   void* mutable_data_ptr() const { return const_cast<void*>(tensor_.data()); }
 
   template <typename T>
-  T* mutable_data_ptr() const;
+  T* mutable_data_ptr() const {
+    return TensorBase::mutable_data_ptr<T>();
+  }
 
   using TensorBase::stride;
 
@@ -397,29 +417,75 @@ class Tensor : public TensorBase {
   bool is_cuda() const { return phi::is_gpu_place(tensor_.place()); }
 
   bool is_pinned(::std::optional<c10::Device> device = ::std::nullopt) const {
-    return phi::is_cuda_pinned_place(tensor_.place()) ||
-           phi::is_xpu_pinned_place(tensor_.place());
+    if (device.has_value()) {
+      phi::enforce::ThrowWarnInternal(
+          "The argument 'device' of Tensor.is_pinned() is deprecated. "
+          "Please do not pass this argument.");
+    }
+
+    const PaddlePlace place = tensor_.place();
+    const bool is_gpu_pinned = phi::is_cuda_pinned_place(place);
+    const bool is_xpu_pinned = phi::is_xpu_pinned_place(place);
+
+    // Keep parity with PyTorch behavior: only host tensors are pinnable.
+    if (!(phi::is_cpu_place(place) || is_gpu_pinned || is_xpu_pinned)) {
+      return false;
+    }
+
+    if (!device.has_value()) {
+      return is_gpu_pinned || is_xpu_pinned;
+    }
+
+    const auto device_type = device.value().type();
+    if (device_type == c10::DeviceType::CUDA) {
+      return is_gpu_pinned;
+    }
+    if (device_type == c10::DeviceType::XPU) {
+      return is_xpu_pinned;
+    }
+    // CPU and non-accelerator devices are not valid pinned backends.
+    return false;
   }
 
   Tensor pin_memory(
       ::std::optional<c10::Device> device = ::std::nullopt) const {
+    if (device.has_value()) {
+      phi::enforce::ThrowWarnInternal(
+          "The argument 'device' of Tensor.pin_memory() is deprecated. "
+          "Please do not pass this argument.");
+    }
+
     if (is_pinned(device)) {
       return *this;
     }
 
-    PaddlePlace current_place = tensor_.place();
-    PaddlePlace pinned_place;
-    if (phi::is_cpu_place(current_place)) {
-      // CPU place cannot be directly converted to pinned place
-      PD_THROW(
-          "pin_memory: Pinning memory is not supported for CPUPlace. "
-          "Please use CUDAPlace or XPUPlace tensor, or specify "
-          "CUDAPinnedPlace/XPUPinnedPlace as device.");
-    } else {
-      // For GPU/XPU tensors, use GetPinnedPlace to get the appropriate pinned
-      // place
-      pinned_place = phi::GetPinnedPlace(current_place);
+    const PaddlePlace current_place = tensor_.place();
+    if (!phi::is_cpu_place(current_place)) {
+      PD_THROW("cannot pin '" + this->toString() +
+               "', only dense CPU tensors can be pinned");
     }
+
+    PaddlePlace pinned_place;
+
+    if (device.has_value()) {
+      const auto device_type = device.value().type();
+      if (device_type == c10::DeviceType::CUDA) {
+        pinned_place = phi::Place(phi::GPUPinnedPlace());
+      } else if (device_type == c10::DeviceType::XPU) {
+        pinned_place = phi::Place(phi::XPUPinnedPlace());
+      } else {
+        PD_THROW("pin_memory device type must be an accelerator (GPU/XPU)");
+      }
+    } else {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      pinned_place = phi::Place(phi::GPUPinnedPlace());
+#elif defined(PADDLE_WITH_XPU)
+      pinned_place = phi::Place(phi::XPUPinnedPlace());
+#else
+      PD_THROW("pin_memory is not supported: no GPU/XPU backend enabled");
+#endif
+    }
+
     return tensor_.copy_to(pinned_place, true);
   }
 
@@ -551,9 +617,11 @@ class Tensor : public TensorBase {
                    ::std::optional<int64_t> end = ::std::nullopt,
                    int64_t step = 1);
 
-  // TODO(wangyanpeng04): modify the api to
-  // Tensor index(ArrayRef<at::indexing::TensorIndex> indices) const;
-  at::Tensor index(const std::vector<at::indexing::Slice>& indices) const;
+  at::Tensor index(ArrayRef<at::indexing::TensorIndex> indices) const;
+  inline at::Tensor index(
+      std::initializer_list<at::indexing::TensorIndex> indices) const {
+    return index(ArrayRef<at::indexing::TensorIndex>(indices));
+  }
 
   at::Tensor& floor_divide_(const at::Scalar& other) const {
     paddle::experimental::floor_divide_(
@@ -617,12 +685,12 @@ class Tensor : public TensorBase {
                                        /*decrease_axis=*/{0});
   }
 
-#if defined(PADDLE_WITH_CUDA)
-  void record_stream(const cudaStream_t& stream) const {
-    paddle::memory::RecordStream(
-        std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl())->Holder(),
-        reinterpret_cast<gpuStream_t>(stream));
-  }
+  void record_stream(at::Stream s) const;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  void record_stream(at::cuda::CUDAStream s) const;
+  // TODO(youge325): Remove after DeepEP paddle branch is updated to use
+  // at::Stream
+  void record_stream(cudaStream_t s) const;
 #endif
 
   Tensor var(int dim) const { return var(at::IntArrayRef{dim}, true, false); }
@@ -820,6 +888,3 @@ class Tensor : public TensorBase {
   PaddleTensor& _PD_GetInner() { return tensor_; }
 };  // NOLINT(readability/braces)
 }  // namespace at
-namespace torch {
-using at::Tensor;
-}  // namespace torch

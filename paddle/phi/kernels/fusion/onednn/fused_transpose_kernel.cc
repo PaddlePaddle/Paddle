@@ -75,7 +75,7 @@ void FusedTransposeKernel(const Context& dev_ctx,
         formatted_axis[i] = axis[i] + axis_size;
       }
     }
-    auto dims = common::vectorize<int>(x_dims);
+    auto dims = vectorize<int>(x_dims);
 
     std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
     x_dims = x_dims.reshape(dims);
@@ -105,7 +105,7 @@ void FusedTransposeKernel(const Context& dev_ctx,
     return;
   }
 
-  auto x_vec_dims = common::vectorize(x.dims());
+  auto x_vec_dims = vectorize(x.dims());
   auto x_type = funcs::ToOneDNNDataType(x.dtype());
 
   dnnl::primitive_attr attrs;

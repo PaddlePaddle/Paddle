@@ -84,16 +84,16 @@ void Tree2ColUtil::construct_tree(const DenseTensor &EdgeSet,
 }
 
 template <typename T>
-class Tree2ColFunctor<phi::CPUContext, T> {
+class Tree2ColFunctor<CPUContext, T> {
  public:
-  void operator()(const phi::CPUContext &dev_ctx,
+  void operator()(const CPUContext &dev_ctx,
                   const DenseTensor &EdgeSet,
                   const DenseTensor &node_features,
                   DenseTensor *patch,
                   int max_depth) {
     std::vector<std::vector<int>> tr;
     const auto &feature_dims = node_features.dims();
-    funcs::SetConstant<phi::CPUContext, T> constant;
+    funcs::SetConstant<CPUContext, T> constant;
     int64_t feature_size = feature_dims[1];
     size_t patch_elem_size = 3 * static_cast<size_t>(feature_size);
     size_t node_count = 0, patch_count = 0, patch_size = 0;
@@ -136,16 +136,16 @@ class Tree2ColFunctor<phi::CPUContext, T> {
   }
 };
 template <typename T>
-class Col2TreeFunctor<phi::CPUContext, T> {
+class Col2TreeFunctor<CPUContext, T> {
  public:
-  void operator()(const phi::CPUContext &dev_ctx,
+  void operator()(const CPUContext &dev_ctx,
                   const DenseTensor &EdgeSet,
                   const DenseTensor &out_grad,
                   DenseTensor *in_grad,
                   int max_depth) {
     std::vector<std::vector<int>> tr;
     const auto &output_dims = out_grad.dims();
-    funcs::SetConstant<phi::CPUContext, T> constant;
+    funcs::SetConstant<CPUContext, T> constant;
     int64_t output_size = output_dims[1];
     size_t grad_elem_size = 3 * static_cast<size_t>(output_size);
     size_t node_count = 0, grad_count = 0;
@@ -191,9 +191,9 @@ class Col2TreeFunctor<phi::CPUContext, T> {
   }
 };
 
-template class Tree2ColFunctor<phi::CPUContext, float>;
-template class Tree2ColFunctor<phi::CPUContext, double>;
-template class Col2TreeFunctor<phi::CPUContext, float>;
-template class Col2TreeFunctor<phi::CPUContext, double>;
+template class Tree2ColFunctor<CPUContext, float>;
+template class Tree2ColFunctor<CPUContext, double>;
+template class Col2TreeFunctor<CPUContext, float>;
+template class Col2TreeFunctor<CPUContext, double>;
 }  // namespace math
 }  // namespace phi

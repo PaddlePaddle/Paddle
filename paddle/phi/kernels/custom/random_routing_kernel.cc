@@ -46,7 +46,7 @@ void RandomRoutingKernel(const Context& dev_ctx,
     }
   }
   auto out_dims = out->dims();
-  phi::TensorFromVector<int64_t>(out_data, dev_ctx, out);
+  TensorFromVector<int64_t>(out_data, dev_ctx, out);
   out->Resize(out_dims);
 }
 

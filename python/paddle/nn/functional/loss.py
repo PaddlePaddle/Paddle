@@ -610,6 +610,7 @@ def edit_distance(
     return edit_distance_out, sequence_num
 
 
+@param_one_alias(["label", "target"])
 def binary_cross_entropy(
     input: Tensor,
     label: Tensor,
@@ -652,7 +653,7 @@ def binary_cross_entropy(
             should always be the output of sigmoid.  Available dtype is float16, float32, float64.
         label (Tensor): The target labels tensor. 2-D tensor with the same shape as
             ``input``. The target labels which values should be numbers between 0 and 1.
-            Available dtype is float16, float32, float64.
+            Available dtype is float16, float32, float64. Alias: ``target``.
         weight (Tensor, optional): A manual rescaling weight given to the loss of each
             batch element. If given, has to be a Tensor of size nbatch and the data type
             is float32, float64. Default is ``'None'``.
@@ -1474,6 +1475,7 @@ def l1_loss(
             return paddle.abs(paddle.subtract(x=input, y=label, name=name))
 
 
+@param_one_alias(["label", "target"])
 def nll_loss(
     input: Tensor,
     label: Tensor,
@@ -1492,7 +1494,7 @@ def nll_loss(
              But in K-dimension situation, the shape is :math:`[N, C, d_1, d_2, ..., d_K]`.
              The data type is float32, float64.
          label (Tensor): Label tensor, the shape is :math:`[N,]` or :math:`[N, d_1, d_2, ..., d_K]`.
-             The data type is int64.
+             The data type is int64. Alias: ``target``.
          weight (Tensor, optional): Weight tensor, a manual rescaling weight given
              to each class. If given, it has to be a 1D Tensor whose size is `[C, ]`. Otherwise,
              it treated as if having all ones. the data type is
@@ -1607,6 +1609,7 @@ def nll_loss(
         return out
 
 
+@param_two_alias(["label", "target"], ["epsilon", "eps"])
 def poisson_nll_loss(
     input: Tensor,
     label: Tensor,
@@ -1628,6 +1631,7 @@ def poisson_nll_loss(
             Label tensor, random sampled from Poisson distribution :math:`label \sim \text{Poisson}(input)`.
             The shape of input tensor should be `(N, *)` or `(*)`, same shape as the input tensor.
             It's data type should be float16, bfloat16, float32, float64.
+            Alias: ``target``.
          log_input (bool, optional):
             Whether to the treat input tensor as log input.
             If ``True`` the loss is computed as, :math:`\exp(\text{input}) - \text{label} * \text{input}` .
@@ -1641,6 +1645,7 @@ def poisson_nll_loss(
          epsilon (float, optional):
             A small value to avoid evaluation of :math:`\log(0)` when `log_input`\ =\ ``False``. ``epsilon > 0``.
             Default: 1e-8.
+            Alias: ``eps``.
          reduction (str, optional):
             Indicate how to reduce the loss, the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If `reduction` is ``'mean'``, the reduced mean loss is returned;
@@ -4174,6 +4179,7 @@ def triplet_margin_loss(
         return loss
 
 
+@param_one_alias(["label", "target"])
 def multi_margin_loss(
     input: Tensor,
     label: Tensor,
@@ -4206,7 +4212,7 @@ def multi_margin_loss(
     Parameters:
         input (Tensor): Input tensor, the data type is float32 or float64. Shape is (N, C), where C is number of classes.
 
-        label (Tensor): Label tensor, the data type is int32 or int64. The shape of label is (N,)
+        label (Tensor): Label tensor, the data type is int32 or int64. The shape of label is (N,). Alias: ``target``.
 
         p (int, optional): The power num. Default: :math:`1`.
 

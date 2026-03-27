@@ -60,7 +60,7 @@ void RMSNormFwdKernel(const Context &dev_ctx,
   const DenseTensor &scale = *scale_ptr;
 
   int64_t rows, cols;
-  GetRowsCols(common::vectorize(x.dims()), &rows, &cols);
+  GetRowsCols(vectorize(x.dims()), &rows, &cols);
 
   if (scale.dtype() == phi::DataType::BFLOAT16) {
     dev_ctx.template Alloc<phi::bfloat16>(y);
@@ -164,7 +164,7 @@ void RMSNormBwdKernel(const Context &dev_ctx,
   const DenseTensor &scale = *scale_ptr;
 
   int64_t rows, cols;
-  GetRowsCols(common::vectorize(x.dims()), &rows, &cols);
+  GetRowsCols(vectorize(x.dims()), &rows, &cols);
   dev_ctx.template Alloc<T>(x_grad);
   DenseTensor actual_scale_grad;
   if (scale_grad) {

@@ -18,7 +18,13 @@
 
 #pragma once
 
+#include <c10/core/Device.h>
+#include <c10/core/DeviceType.h>
+#include <c10/util/Exception.h>
+#include <c10/util/UniqueVoidPtr.h>
+
 #include <cstddef>
+#include <cstring>
 #include <functional>
 #include <memory>
 #include <utility>
@@ -35,56 +41,59 @@ using DeleterFnPtr = void (*)(void*);
 // Wraps a pointer with associated device and deleter
 class DataPtr {
  public:
-  DataPtr() : ptr_(nullptr), device_(phi::CPUPlace()) {}
+  DataPtr() : device_(phi::CPUPlace()) {}
 
-  explicit DataPtr(void* data, phi::Place device = phi::CPUPlace())
-      : ptr_(data), device_(device) {}
+  DataPtr(void* data, Device device)
+      : ptr_(data), device_(device._PD_GetInner()) {}
 
-  DataPtr(void* data,
-          void* ctx,
-          DeleterFnPtr ctx_deleter,
-          phi::Place device = phi::CPUPlace())
-      : ptr_(data), ctx_(ctx), deleter_(ctx_deleter), device_(device) {}
+  DataPtr(void* data, void* ctx, DeleterFnPtr ctx_deleter, Device device)
+      : ptr_(data, ctx, ctx_deleter), device_(device._PD_GetInner()) {}
 
-  // Construct from phi::Allocation
-  explicit DataPtr(const std::shared_ptr<phi::Allocation>& alloc)
-      : ptr_(alloc ? alloc->ptr() : nullptr),
-        device_(alloc ? alloc->place() : phi::CPUPlace()),
-        allocation_(alloc) {}
-
-  DataPtr(const DataPtr&) = default;
-  DataPtr& operator=(const DataPtr&) = default;
+  // DataPtr is move-only, matching PyTorch's c10::DataPtr interface.
+  DataPtr(const DataPtr&) = delete;
+  DataPtr& operator=(const DataPtr&) = delete;
   DataPtr(DataPtr&&) = default;
   DataPtr& operator=(DataPtr&&) = default;
 
-  void* get() const { return ptr_; }
+  void* operator->() const { return ptr_.get(); }
 
-  void* operator->() const { return ptr_; }
-
-  explicit operator bool() const { return ptr_ != nullptr; }
-
-  phi::Place device() const { return device_; }
-
-  DeleterFnPtr get_deleter() const { return deleter_; }
-
-  void* get_context() const { return ctx_; }
-
-  void clear() {
-    ptr_ = nullptr;
-    ctx_ = nullptr;
-    deleter_ = nullptr;
-    allocation_.reset();
+  bool unsafe_reset_data_and_ctx(void* new_data_and_ctx) {
+    return ptr_.unsafe_reset_data_and_ctx(new_data_and_ctx);
   }
 
-  // Get the underlying allocation (if available)
-  std::shared_ptr<phi::Allocation> allocation() const { return allocation_; }
+  void clear() { ptr_.clear(); }
+  void* get() const { return ptr_.get(); }
+  void* get_context() const { return ptr_.get_context(); }
+  void* release_context() { return ptr_.release_context(); }
+
+  std::unique_ptr<void, DeleterFnPtr>&& move_context() {
+    return ptr_.move_context();
+  }
+
+  operator bool() const { return static_cast<bool>(ptr_); }
+
+  template <typename T>
+  T* cast_context(DeleterFnPtr expected_deleter) const {
+    return ptr_.cast_context<T>(expected_deleter);
+  }
+
+  DeleterFnPtr get_deleter() const { return ptr_.get_deleter(); }
+
+  // Atomically replaces the deleter if it matches expected_deleter.
+  // Returns true and installs new_deleter on match; does nothing and
+  // returns false otherwise.
+  [[nodiscard]] bool compare_exchange_deleter(DeleterFnPtr expected_deleter,
+                                              DeleterFnPtr new_deleter) {
+    return ptr_.compare_exchange_deleter(expected_deleter, new_deleter);
+  }
+
+  Device device() const { return Device(device_); }
+
+  void unsafe_set_device(Device device) { device_ = device._PD_GetInner(); }
 
  private:
-  void* ptr_ = nullptr;
-  void* ctx_ = nullptr;
-  DeleterFnPtr deleter_ = nullptr;
+  c10::detail::UniqueVoidPtr ptr_;
   phi::Place device_;
-  std::shared_ptr<phi::Allocation> allocation_;
 };
 
 inline bool operator==(const DataPtr& dp, std::nullptr_t) noexcept {
@@ -102,6 +111,70 @@ inline bool operator!=(const DataPtr& dp, std::nullptr_t) noexcept {
 inline bool operator!=(std::nullptr_t, const DataPtr& dp) noexcept {
   return static_cast<bool>(dp);
 }
+
+struct Allocator {
+  virtual ~Allocator() = default;
+
+  virtual DataPtr allocate(size_t n) = 0;
+
+  // Clones an allocation that came from this allocator.
+  //
+  // To perform the copy, this function calls `copy_data`, which
+  // must be implemented by derived classes.
+  //
+  // Note that this explicitly ignores any context that may have been
+  // attached to the input data.
+  //
+  // Requires: input data was allocated by the same allocator.
+  DataPtr clone(const void* data, std::size_t n) {
+    auto new_data = allocate(n);
+    copy_data(new_data.get(), data, n);
+    return new_data;
+  }
+
+  // Checks if DataPtr has a simple context, not wrapped with any out of the
+  // ordinary contexts.
+  virtual bool is_simple_data_ptr(const DataPtr& data_ptr) const {
+    return data_ptr.get_context() == nullptr ||
+           data_ptr.get_context() == data_ptr.get();
+  }
+
+  // If this returns a non nullptr, it means that allocate()
+  // is guaranteed to return a unique_ptr with this deleter attached;
+  // it means the rawAllocate and rawDeallocate APIs are safe to use.
+  // This function MUST always return the same BoundDeleter.
+  virtual DeleterFnPtr raw_deleter() const { return nullptr; }
+  void* raw_allocate(size_t n) {
+    auto dptr = allocate(n);
+    TORCH_CHECK(dptr.get() == dptr.get_context(),
+                "raw_allocate: DataPtr context must equal data pointer");
+    return dptr.release_context();
+  }
+  void raw_deallocate(void* ptr) {
+    auto d = raw_deleter();
+    TORCH_CHECK(d != nullptr, "raw_deallocate: deleter must not be null");
+    d(ptr);
+  }
+
+  // Copies data from one allocation to another.
+  // Pure virtual, so derived classes must define behavior.
+  // Derived class implementation can simply call `default_copy_data`
+  // to use `std::memcpy`.
+  //
+  // Requires: src and dest were allocated by this allocator
+  // Requires: src and dest both have length >= count
+  virtual void copy_data(void* dest,
+                         const void* src,
+                         std::size_t count) const = 0;
+
+ protected:
+  // Uses `std::memcpy` to copy data.
+  // Child classes can use this as `copy_data` when an alternative copy
+  // API is not needed.
+  void default_copy_data(void* dest, const void* src, std::size_t count) const {
+    std::memcpy(dest, src, count);
+  }
+};
 
 }  // namespace c10
 

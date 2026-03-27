@@ -17,12 +17,10 @@ namespace phi::funcs {
 
 template <typename T>
 struct EigenL1Norm<Eigen::DefaultDevice, T> {
-  using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
-  using OutType = Eigen::TensorMap<Eigen::TensorFixedSize<T,
-                                                          Eigen::Sizes<>,
-                                                          Eigen::RowMajor,
-                                                          Eigen::DenseIndex>>;
+  using InType =
+      Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor, int64_t>>;
+  using OutType = Eigen::TensorMap<
+      Eigen::TensorFixedSize<T, Eigen::Sizes<>, Eigen::RowMajor, int64_t>>;
   static void Eval(const Eigen::DefaultDevice& dev,
                    OutType out,
                    const InType& in) {
@@ -32,11 +30,11 @@ struct EigenL1Norm<Eigen::DefaultDevice, T> {
 
 template <typename T>
 struct EigenL1NormGrad<Eigen::DefaultDevice, T> {
-  using Array = Eigen::DSizes<Eigen::DenseIndex, 1>;
-  using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using Array = Eigen::DSizes<int64_t, 1>;
+  using InType =
+      Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor, int64_t>>;
   using OutType =
-      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, int64_t>>;
   static void Eval(const Eigen::DefaultDevice& dev,
                    OutType din,
                    const InType& dout,

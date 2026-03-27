@@ -245,7 +245,7 @@ void CrossEntropyWithSoftmaxGradKernel(const Context& dev_ctx,
   if (soft_label) {
     PADDLE_ENFORCE_EQ(
         dtype,
-        phi::CppTypeToDataType<T>::Type(),
+        CppTypeToDataType<T>::Type(),
         common::errors::InvalidArgument("The Input(Label) should be with the "
                                         "same data type as kernel data type."));
     CrossEntropyWithSoftmaxGradGPUKernel<T, T>(dev_ctx,

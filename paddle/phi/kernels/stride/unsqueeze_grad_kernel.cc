@@ -36,7 +36,7 @@ void UnsqueezeGradStridedKernel(const Context& dev_ctx,
   // we need fix it into x.dims() after cleaning old IR system.
   const auto& x_dims = dx->dims();
   ReshapeStridedKernel<Context>(
-      dev_ctx, dout, IntArray(common::vectorize<int64_t>(x_dims)), dx);
+      dev_ctx, dout, IntArray(vectorize<int64_t>(x_dims)), dx);
 }
 
 }  // namespace phi

@@ -1300,11 +1300,11 @@ if '${WITH_CINN}' == 'ON':
 
     if '${CMAKE_BUILD_TYPE}' == 'Release' and os.name != 'nt':
         if ('@WITH_GPU@' == 'ON' and tuple(map(int, '@CUDA_VERSION@'.split('.'))) >= (13, 0) and tuple(map(int, '@CUDA_VERSION@'.split('.'))) < (14, 0)):
-            command = "patchelf --set-rpath '$ORIGIN/../../nvidia/cu13/lib/:$ORIGIN/../../nvidia/cudnn/lib/:$ORIGIN/' %s/${CINN_LIB_NAME}" % libs_path
+            command = "patchelf --force-rpath --set-rpath '$ORIGIN/../../nvidia/cu13/lib/:$ORIGIN/../../nvidia/cudnn/lib/:$ORIGIN/' %s/${CINN_LIB_NAME}" % libs_path
             if os.system(command) != 0:
                 raise Exception("patch %s/${CINN_LIB_NAME} failed, command: %s" % (libs_path, command))
         else:
-            command = "patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_nvrtc/lib/:$ORIGIN/../../nvidia/cuda_runtime/lib/:$ORIGIN/../../nvidia/cublas/lib/:$ORIGIN/../../nvidia/cudnn/lib/:$ORIGIN/../../nvidia/curand/lib/:$ORIGIN/../../nvidia/cusolver/lib/:$ORIGIN/../../nvidia/nvtx/lib/:$ORIGIN/' %s/${CINN_LIB_NAME}" % libs_path
+            command = "patchelf --force-rpath --set-rpath '$ORIGIN/../../nvidia/cuda_nvrtc/lib/:$ORIGIN/../../nvidia/cuda_runtime/lib/:$ORIGIN/../../nvidia/cublas/lib/:$ORIGIN/../../nvidia/cudnn/lib/:$ORIGIN/../../nvidia/curand/lib/:$ORIGIN/../../nvidia/cusolver/lib/:$ORIGIN/../../nvidia/nvtx/lib/:$ORIGIN/' %s/${CINN_LIB_NAME}" % libs_path
             if os.system(command) != 0:
                 raise Exception("patch %s/${CINN_LIB_NAME} failed, command: %s" % (libs_path, command))
 
@@ -1318,7 +1318,7 @@ if '${WITH_ONEDNN}' == 'ON':
         # change rpath of libdnnl.so.1, add $ORIGIN/ to it.
         # The reason is that all thirdparty libraries in the same directory,
         # thus, libdnnl.so.1 will find libmklml_intel.so and libiomp5.so.
-        command = "patchelf --set-rpath '$ORIGIN/' ${ONEDNN_SHARED_LIB}"
+        command = "patchelf --force-rpath --set-rpath '$ORIGIN/' ${ONEDNN_SHARED_LIB}"
         if os.system(command) != 0:
             raise Exception("patch libdnnl.so failed, command: %s" % command)
     shutil.copy('${ONEDNN_SHARED_LIB}', libs_path)
@@ -1430,24 +1430,24 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
                 commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${IR_NAME}")
         else:
             if ('@WITH_GPU@' == 'ON' and tuple(map(int, '@CUDA_VERSION@'.split('.'))) >= (13, 0) and tuple(map(int, '@CUDA_VERSION@'.split('.'))) < (14, 0)):
-                commands = ["patchelf --set-rpath '$ORIGIN/../../nvidia/cu13/lib:$ORIGIN/../../nvidia/cudnn/lib:$ORIGIN/../../nvidia/nccl/lib:$ORIGIN/../../nvidia/cusparselt/lib:$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/base/${FLUID_CORE_NAME}" + '.so']
+                commands = ["patchelf --force-rpath --set-rpath '$ORIGIN/../../nvidia/cu13/lib:$ORIGIN/../../nvidia/cudnn/lib:$ORIGIN/../../nvidia/nccl/lib:$ORIGIN/../../cusparselt/lib:$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/base/${FLUID_CORE_NAME}" + '.so']
                 if('${WITH_SHARED_PHI}' == 'ON'):
                     # change rpath of phi.ext for loading 3rd party lib
-                    commands.append("patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib/:$ORIGIN/../../nvidia/cu13/lib:$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
-                    commands.append("patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib/:$ORIGIN/../../nvidia/cu13/lib:$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_CORE_NAME}")
+                    commands.append("patchelf --force-rpath --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib/:$ORIGIN/../../nvidia/cu13/lib:$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
+                    commands.append("patchelf --force-rpath --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib/:$ORIGIN/../../nvidia/cu13/lib:$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_CORE_NAME}")
                     if('${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON'):
-                        commands.append("patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib/:$ORIGIN/../../nvidia/cu13/lib:$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_GPU_NAME}")
+                        commands.append("patchelf --force-rpath --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib/:$ORIGIN/../../nvidia/cu13/lib:$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_GPU_NAME}")
             else:
-                commands = ["patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN/../../nvidia/cuda_nvrtc/lib:$ORIGIN/../../nvidia/cublas/lib:$ORIGIN/../../nvidia/cudnn/lib:$ORIGIN/../../nvidia/curand/lib:$ORIGIN/../../nvidia/cusparse/lib:$ORIGIN/../../nvidia/nvjitlink/lib:$ORIGIN/../../nvidia/cuda_cupti/lib:$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN/../../nvidia/cufft/lib:$ORIGIN/../../nvidia/cufft/lib:$ORIGIN/../../nvidia/cusolver/lib:$ORIGIN/../../nvidia/nccl/lib:$ORIGIN/../../nvidia/nvtx/lib:$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/base/${FLUID_CORE_NAME}" + '.so']
+                commands = ["patchelf --force-rpath --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN/../../nvidia/cuda_nvrtc/lib:$ORIGIN/../../nvidia/cublas/lib:$ORIGIN/../../nvidia/cudnn/lib:$ORIGIN/../../nvidia/curand/lib:$ORIGIN/../../nvidia/cusparse/lib:$ORIGIN/../../nvidia/nvjitlink/lib:$ORIGIN/../../nvidia/cuda_cupti/lib:$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN/../../nvidia/cufft/lib:$ORIGIN/../../nvidia/cufft/lib:$ORIGIN/../../nvidia/cusolver/lib:$ORIGIN/../../nvidia/nccl/lib:$ORIGIN/../../nvidia/nvtx/lib:$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/base/${FLUID_CORE_NAME}" + '.so']
                 if('${WITH_SHARED_PHI}' == 'ON'):
                     # change rpath of phi.ext for loading 3rd party lib
-                    commands.append("patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
-                    commands.append("patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_CORE_NAME}")
+                    commands.append("patchelf --force-rpath --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
+                    commands.append("patchelf --force-rpath --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_CORE_NAME}")
                     if('${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON'):
-                        commands.append("patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_GPU_NAME}")
+                        commands.append("patchelf --force-rpath --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_GPU_NAME}")
             if('${WITH_SHARED_IR}' == 'ON'):
                 # change rpath of pir.ext for loading 3rd party lib
-                commands.append("patchelf --set-rpath '$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${IR_NAME}")
+                commands.append("patchelf --force-rpath --set-rpath '$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${IR_NAME}")
         # The sw_64 not support patchelf, so we just disable that.
         if platform.machine() != 'sw_64' and platform.machine() != 'mips64':
             for command in commands:
@@ -1677,6 +1677,7 @@ class InstallCommand(InstallCommandBase):
         self.install_lib = self.install_platlib
         self.install_headers = os.path.join(self.install_platlib, 'paddle', 'include')
         return ret
+
 
 class InstallHeaders(Command):
     """Override how headers are copied.

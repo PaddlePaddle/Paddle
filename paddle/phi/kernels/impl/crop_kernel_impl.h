@@ -125,8 +125,8 @@ void CropTensorFunction(const Context& dev_ctx,
 
   auto x_tensor = EigenTensor<T, D>::From(x);
   auto out_tensor = EigenTensor<T, D>::From(*out);
-  Eigen::DSizes<Eigen::DenseIndex, D> e_offsets;
-  Eigen::DSizes<Eigen::DenseIndex, D> e_shape;
+  Eigen::DSizes<int64_t, D> e_offsets;
+  Eigen::DSizes<int64_t, D> e_shape;
   for (size_t i = 0; i < D; ++i) {
     e_offsets[i] = offsets_vec[i];
     e_shape[i] = out->dims()[i];

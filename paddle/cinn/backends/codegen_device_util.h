@@ -26,6 +26,9 @@
 #ifdef CINN_WITH_SYCL
 #include "paddle/cinn/backends/sycl/codegen_sycl_dev.h"
 #endif
+#ifdef CINN_WITH_CUSTOM_DEVICE
+#include "paddle/cinn/backends/custom_device/codegen_custom_device_dev.h"
+#endif
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_mutator.h"
@@ -127,6 +130,14 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
         [&](std::variant<common::UnknownArch,
                          common::X86Arch,
                          common::ARMArch>) { CINN_NOT_IMPLEMENTED; },
+        [&](common::CustomDeviceArch) {
+#ifdef CINN_WITH_CUSTOM_DEVICE
+          custom_device::CodeGenCustomDevice codegen_dev(
+              cinn::common::DefaultCustomDeviceTarget());
+          codegen_dev.Compile(ir::LoweredFunc(func));
+          shared_mem_bytes = codegen_dev.GetDynSharedMemOffset();
+#endif
+        },
         [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
           CodeGenCudaDev codegen_dev(cinn::common::DefaultNVGPUTarget());
@@ -165,6 +176,9 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
         [&](std::variant<common::UnknownArch,
                          common::X86Arch,
                          common::ARMArch>) { CINN_NOT_IMPLEMENTED; },
+        [&](common::CustomDeviceArch) {
+          call_kernel = runtime::intrinsic::call_custom_device_kernel;
+        },
         [&](common::NVGPUArch) {
           call_kernel = runtime::intrinsic::call_cuda_kernel;
         },

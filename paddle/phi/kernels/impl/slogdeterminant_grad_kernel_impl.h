@@ -68,7 +68,7 @@ void SlogDeterminantGradKernel(const Context& dev_ctx,
     VLOG(3) << "The input matrix not invertible!";
     x_grad->Resize(x.dims());
     phi::Full<T>(dev_ctx,
-                 common::vectorize(x.dims()),
+                 vectorize(x.dims()),
                  std::numeric_limits<T>::quiet_NaN(),
                  x_grad);
     return;
@@ -224,7 +224,7 @@ void SlogDeterminantV2GradKernel(const Context& dev_ctx,
     // The matrix is not invertible
     VLOG(3) << "The input matrix not invertible!";
     phi::Full<T>(dev_ctx,
-                 common::vectorize(x.dims()),
+                 vectorize(x.dims()),
                  std::numeric_limits<T>::quiet_NaN(),
                  x_grad);
     return;
@@ -268,8 +268,7 @@ void SlogDeterminantV2GradKernel(const Context& dev_ctx,
   DenseTensor logdet_grad_term = logdet_grad;
   if constexpr (is_complex64_or_complex128<T>::value) {
     // change logdet_grad datatype from <RealT> to <ComplexT>
-    DenseTensor logdet_grad_complex =
-        Empty<T>(dev_ctx, common::vectorize(grad_dims));
+    DenseTensor logdet_grad_complex = Empty<T>(dev_ctx, vectorize(grad_dims));
 
     int64_t logdet_numel = logdet_grad.numel();
     funcs::ForRange<Context> for_range(dev_ctx, logdet_numel);

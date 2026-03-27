@@ -29,8 +29,8 @@ size_t FindPos(const std::vector<int64_t>& rows, int64_t value) {
 }  // namespace
 
 template <typename T>
-struct DenseAdagradFunctor<phi::CPUContext, T> {
-  void operator()(const phi::CPUContext& dev_ctx,
+struct DenseAdagradFunctor<CPUContext, T> {
+  void operator()(const CPUContext& dev_ctx,
                   const DenseTensor& param_t,
                   const DenseTensor& grad_t,
                   const DenseTensor& moment_t,
@@ -65,8 +65,8 @@ struct DenseAdagradFunctor<phi::CPUContext, T> {
 };
 
 template <typename T>
-struct SparseAdagradFunctor<phi::CPUContext, T> {
-  void operator()(const phi::CPUContext& dev_ctx,
+struct SparseAdagradFunctor<CPUContext, T> {
+  void operator()(const CPUContext& dev_ctx,
                   const SelectedRows& grad,
                   const DenseTensor& learning_rate,
                   T epsilon,
@@ -74,16 +74,15 @@ struct SparseAdagradFunctor<phi::CPUContext, T> {
                   DenseTensor* param) {
     // 1. g_m.rows = set(g.rows)
     auto grad_width = grad.value().dims()[1];
-    funcs::scatter::MergeAdd<phi::CPUContext, T> merge_func;
+    funcs::scatter::MergeAdd<CPUContext, T> merge_func;
     auto grad_merge = merge_func(dev_ctx, grad);
     auto& merge_rows = grad_merge.rows();
     auto* grad_merge_data = grad_merge.mutable_value()->template data<T>();
 
     // 2. m += g_m * g_m
-    auto grad_square =
-        SquareSelectedRows<phi::CPUContext, T>(dev_ctx, grad_merge);
+    auto grad_square = SquareSelectedRows<CPUContext, T>(dev_ctx, grad_merge);
 
-    funcs::SelectedRowsAddToTensor<phi::CPUContext, T> functor;
+    funcs::SelectedRowsAddToTensor<CPUContext, T> functor;
     functor(dev_ctx, grad_square, moment);
 
     // 3. update parameter
@@ -101,10 +100,10 @@ struct SparseAdagradFunctor<phi::CPUContext, T> {
   }
 };
 
-template struct SparseAdagradFunctor<phi::CPUContext, float>;
-template struct SparseAdagradFunctor<phi::CPUContext, double>;
-template struct DenseAdagradFunctor<phi::CPUContext, float>;
-template struct DenseAdagradFunctor<phi::CPUContext, double>;
+template struct SparseAdagradFunctor<CPUContext, float>;
+template struct SparseAdagradFunctor<CPUContext, double>;
+template struct DenseAdagradFunctor<CPUContext, float>;
+template struct DenseAdagradFunctor<CPUContext, double>;
 
 }  // namespace phi
 

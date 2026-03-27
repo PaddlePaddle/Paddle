@@ -263,10 +263,10 @@ void ProcessMedianKernel(const Context& dev_ctx,
   int64_t* nan_indices_ptr;
   int64_t max_valid_num = 0;
 
-  nan_counts.Resize(make_ddim({pre_dim}));
+  nan_counts.Resize({pre_dim});
   dev_ctx.template Alloc<int64_t>(&nan_counts);
   nan_counts_ptr = nan_counts.data<int64_t>();
-  nan_indices.Resize(make_ddim({pre_dim}));
+  nan_indices.Resize({pre_dim});
   dev_ctx.template Alloc<int64_t>(&nan_indices);
   funcs::SetConstant<GPUContext, int64_t> set_const;
   set_const(dev_ctx, &nan_indices, numel);
