@@ -1865,7 +1865,7 @@ def randint(
             >>> # Use 'size' as an alias for 'shape'
             >>> out6 = paddle.randint(high=10, size=[2, 3])
             >>> print(out6.shape)
-            [2, 3]
+            paddle.Size([2, 3])
 
             >>> # example 7:
             >>> # Use requires_grad=True so that stop_gradient=False
