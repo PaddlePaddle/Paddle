@@ -24,6 +24,7 @@
 #include <c10/util/Float8_e4m3fn.h>
 #include <c10/util/Float8_e5m2.h>
 #include <c10/util/Half.h>
+#include <c10/util/TypeIndex.h>
 
 #include <c10/core/ScalarType.h>
 
@@ -91,8 +92,7 @@
 namespace caffe2 {
 
 /**
- * A unique run-time type identifier.  Unlike std::type_index it is stable
- * across shared libraries (uses the address of a per-type static object).
+ * A unique run-time type identifier.
  */
 class C10_API TypeIdentifier final {
  public:
@@ -100,18 +100,15 @@ class C10_API TypeIdentifier final {
   friend bool operator<(TypeIdentifier lhs, TypeIdentifier rhs) noexcept;
 
   template <typename T>
-  static TypeIdentifier Get() noexcept {
-    // Each specialisation gets its own unique static → unique address.
-    struct Tag {};
-    static const Tag instance;
-    return TypeIdentifier(reinterpret_cast<std::size_t>(&instance));
+  static constexpr TypeIdentifier Get() noexcept {
+    return TypeIdentifier(c10::util::get_type_index<T>());
   }
 
   static constexpr TypeIdentifier uninitialized() noexcept {
-    return TypeIdentifier(static_cast<std::size_t>(0));
+    return TypeIdentifier(c10::util::type_index{0});
   }
 
-  std::size_t underlyingId() const noexcept { return id_; }
+  uint64_t underlyingId() const noexcept { return id_.underlyingId(); }
 
   bool operator==(TypeIdentifier other) const noexcept {
     return id_ == other.id_;
@@ -121,15 +118,16 @@ class C10_API TypeIdentifier final {
   }
 
  private:
-  constexpr explicit TypeIdentifier(std::size_t id) noexcept : id_(id) {}
-  std::size_t id_;
+  constexpr explicit TypeIdentifier(c10::util::type_index id) noexcept
+      : id_(id) {}
+  c10::util::type_index id_;
 };
 
 inline bool operator<(TypeIdentifier lhs, TypeIdentifier rhs) noexcept {
   return lhs.id_ < rhs.id_;
 }
 inline std::ostream& operator<<(std::ostream& stream, TypeIdentifier typeId) {
-  return stream << typeId.id_;
+  return stream << typeId.underlyingId();
 }
 
 }  // namespace caffe2
@@ -462,10 +460,9 @@ class C10_API TypeMeta final {
     // Check whether already registered (e.g. from another DSO).
     const uint16_t existing = existingMetaDataIndexForType(identifier);
     if (existing != kMaxTypeIndex) return existing;
-    uint16_t& nxt = mutableNextTypeIndex();
-    TORCH_CHECK(nxt <= kMaxTypeIndex,
+    const uint16_t index = nextTypeIndex++;
+    TORCH_CHECK(index <= kMaxTypeIndex,
                 "Maximum number of CAFFE_KNOWN_TYPE declarations exceeded.");
-    const uint16_t index = nxt++;
     typeMetaDatas()[index] =
         detail::TypeMetaData{sizeof(T),
                              detail::_PickNew<T>(),
@@ -484,67 +481,13 @@ class C10_API TypeMeta final {
   // Maximum number of type-metadata slots (scalar + custom).
   static constexpr uint16_t kMaxTypeIndex = 255;
 
-  static std::mutex& getTypeMetaDatasLock() {
-    static std::mutex m;
-    return m;
-  }
+  static std::mutex& getTypeMetaDatasLock();
 
-  // Next free slot for custom (non-scalar) types.
-  static uint16_t& mutableNextTypeIndex() {
-    // Initialised to NumOptions = first slot after all scalar+qint+Undefined.
-    static uint16_t idx = static_cast<uint16_t>(c10::ScalarType::NumOptions);
-    return idx;
-  }
+  static uint16_t nextTypeIndex;
 
-  static uint16_t existingMetaDataIndexForType(TypeIdentifier identifier) {
-    const uint16_t nxt = mutableNextTypeIndex();
-    const uint16_t start = static_cast<uint16_t>(c10::ScalarType::NumOptions);
-    auto* metas = typeMetaDatas();
-    for (uint16_t i = start; i < nxt; ++i) {
-      if (metas[i].id_ == identifier) return i;
-    }
-    return kMaxTypeIndex;
-  }
+  static detail::TypeMetaData* typeMetaDatas();
 
-  // The single type-metadata table.  Static local → thread-safe init in C++11.
-  static detail::TypeMetaData* typeMetaDatas() {
-    static std::once_flag flag;
-    static detail::TypeMetaData data[kMaxTypeIndex + 1];
-
-    std::call_once(flag, [] {
-    // Fill entries for all ScalarType values (non-qint).
-#define INIT_SCALAR_TYPE_META(T, _NUM, name)                  \
-  data[static_cast<uint16_t>(c10::ScalarType::name)] =        \
-      detail::TypeMetaData{sizeof(T),                         \
-                           detail::_PickNew<T>(),             \
-                           detail::_PickPlacementNew<T>(),    \
-                           detail::_PickCopy<T>(),            \
-                           detail::_PickPlacementDelete<T>(), \
-                           detail::_PickDelete<T>(),          \
-                           TypeIdentifier::Get<T>(),          \
-                           #name};
-      AT_FORALL_SCALAR_TYPES_WITH_COMPLEX_AND_QINTS(INIT_SCALAR_TYPE_META)
-#undef INIT_SCALAR_TYPE_META
-
-      // Note: qint types (QInt8, QUInt8, ...) are present in the ScalarType
-      // enum but their C++ types (c10::qint8 etc.) are not defined in this
-      // compat layer. Those typeMetaDatas slots remain zero-initialised (empty
-      // TypeMetaData).
-
-      // Undefined / _Uninitialized sentinel.
-      data[static_cast<uint16_t>(c10::ScalarType::Undefined)] =
-          detail::TypeMetaData{0,
-                               nullptr,
-                               nullptr,
-                               nullptr,
-                               nullptr,
-                               nullptr,
-                               TypeIdentifier::Get<detail::_Uninitialized>(),
-                               "Undefined"};
-    });
-
-    return data;
-  }
+  static uint16_t existingMetaDataIndexForType(TypeIdentifier identifier);
 
   // Template specialisations return indexes into typeMetaDatas().
   // Defined below the class for scalar types; compiled-in for custom types.
@@ -646,20 +589,41 @@ inline std::ostream& operator<<(std::ostream& stream,
   }
 
 // ---------------------------------------------------------------------------
-// Built-in known types (header-safe, lazy-registration)
+// Built-in known types
 // ---------------------------------------------------------------------------
 
-CAFFE_KNOWN_TYPE_NOEXPORT(std::string)
-CAFFE_KNOWN_TYPE_NOEXPORT(char)
-CAFFE_KNOWN_TYPE_NOEXPORT(std::unique_ptr<std::mutex>)
-CAFFE_KNOWN_TYPE_NOEXPORT(std::unique_ptr<std::atomic<bool>>)
-CAFFE_KNOWN_TYPE_NOEXPORT(std::vector<int32_t>)
-CAFFE_KNOWN_TYPE_NOEXPORT(std::vector<int64_t>)
-CAFFE_KNOWN_TYPE_NOEXPORT(std::vector<unsigned long>)  // NOLINT
-CAFFE_KNOWN_TYPE_NOEXPORT(bool*)
-CAFFE_KNOWN_TYPE_NOEXPORT(char*)
-CAFFE_KNOWN_TYPE_NOEXPORT(int*)
-CAFFE_KNOWN_TYPE_NOEXPORT(float*)
-CAFFE_KNOWN_TYPE_NOEXPORT(at::Half*)
+namespace detail {
+template <class T>
+class _guard_long_unique_dummy final {};
+
+template <class T>
+using _guard_long_unique =
+    std::conditional_t<std::is_same_v<long, int32_t> ||  // NOLINT(runtime/int)
+                           std::is_same_v<long,          // NOLINT(runtime/int)
+                                          int64_t>,
+                       _guard_long_unique_dummy<T>,
+                       T>;
+}  // namespace detail
+
+CAFFE_DECLARE_KNOWN_TYPE(std::string, std_string)
+CAFFE_DECLARE_KNOWN_TYPE(char, char)
+CAFFE_DECLARE_KNOWN_TYPE(std::unique_ptr<std::mutex>, std_unique_ptr_std_mutex)
+CAFFE_DECLARE_KNOWN_TYPE(std::unique_ptr<std::atomic<bool>>,
+                         std_unique_ptr_std_atomic_bool)
+CAFFE_DECLARE_KNOWN_TYPE(std::vector<int32_t>, std_vector_int32_t)
+CAFFE_DECLARE_KNOWN_TYPE(std::vector<int64_t>, std_vector_int64_t)
+CAFFE_DECLARE_KNOWN_TYPE(std::vector<unsigned long>,  // NOLINT(runtime/int)
+                         std_vector_unsigned_long)
+CAFFE_DECLARE_KNOWN_TYPE(bool*, bool_ptr)
+CAFFE_DECLARE_KNOWN_TYPE(char*, char_ptr)
+CAFFE_DECLARE_KNOWN_TYPE(int*, int_ptr)
+CAFFE_DECLARE_KNOWN_TYPE(
+    detail::_guard_long_unique<long>,  // NOLINT(runtime/int)
+    detail_guard_long_unique_long)
+CAFFE_DECLARE_KNOWN_TYPE(
+    detail::_guard_long_unique<std::vector<long>>,  // NOLINT(runtime/int)
+    detail_guard_long_unique_std_vector_long)
+CAFFE_DECLARE_KNOWN_TYPE(float*, float_ptr)
+CAFFE_DECLARE_KNOWN_TYPE(at::Half*, at_Half)
 
 }  // namespace caffe2
