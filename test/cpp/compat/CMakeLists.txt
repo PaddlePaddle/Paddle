@@ -35,6 +35,8 @@ if(NOT WIN32)
     nv_test(ATen_hook_test SRCS ATen_hook_test.cc)
     nv_test(ATen_new_test SRCS ATen_new_test.cc)
     nv_test(ATen_empty_test SRCS ATen_empty_test.cc)
+    nv_test(ATen_factory_default_dtype_test
+            SRCS ATen_factory_default_dtype_test.cc)
     nv_test(ATen_pin_memory_creation_test SRCS ATen_pin_memory_creation_test.cc)
     nv_test(ATen_resize_test SRCS ATen_resize_test.cc)
     nv_test(ATen_rename_test SRCS ATen_rename_test.cc)
