@@ -28,6 +28,10 @@
 #include <utils/scalar_type_conversion.h>
 #include <algorithm>
 #include <iostream>
+#include <memory>
+#include <mutex>
+#include <type_traits>
+#include <unordered_map>
 #include <vector>
 #include "paddle/common/layout.h"
 #include "paddle/phi/api/include/api.h"
@@ -41,7 +45,9 @@ using PaddleTensor = paddle::Tensor;
 class PADDLE_API TensorBase {
  public:
   TensorBase() = default;
-  TensorBase(const PaddleTensor& tensor) : tensor_(tensor){};  // NOLINT
+  explicit TensorBase(const PaddleTensor& tensor) : tensor_(tensor) {
+    InitStorage();
+  }
   TensorBase(const TensorBase&) = default;
   TensorBase(TensorBase&&) noexcept = default;
   ~TensorBase() noexcept = default;
@@ -49,10 +55,12 @@ class PADDLE_API TensorBase {
 #if defined(_MSC_VER)
   TensorBase& operator=(const TensorBase& x) & {
     tensor_ = x.tensor_;
+    storage_ = x.storage_;
     return *this;
   }
   TensorBase& operator=(TensorBase&& x) & noexcept {
     tensor_ = std::move(x.tensor_);
+    storage_ = std::move(x.storage_);
     return *this;
   }
 #else
@@ -91,7 +99,6 @@ class PADDLE_API TensorBase {
     std::string backend_str;
     const auto& place = tensor_.place();
 
-    // Convert place to backend string
     if (phi::is_cpu_place(place)) {
       backend_str = "CPU";
     } else if (phi::is_gpu_place(place)) {
@@ -100,21 +107,26 @@ class PADDLE_API TensorBase {
       backend_str = "Undefined";
     }
 
-    // Get scalar type string
     std::string scalar_type_str = at::toString(scalar_type());
 
     return backend_str + scalar_type_str + "Type";
   }
 
-  void* data_ptr() const { return const_cast<void*>(tensor_.data()); }
-  template <typename T>
-  T* data_ptr() const {
-    return const_cast<T*>(tensor_.data<T>());
-  }
-
-  const void* const_data_ptr() const {
+  // Returns the tensor's current data pointer. Storage mutations flow through
+  // the compat holder view, so tensor.data_ptr() stays aligned with storage()
+  // while preserving tensor-specific offsets for views.
+  void* data_ptr() const {
+    if (!tensor_.defined()) {
+      return nullptr;
+    }
     return const_cast<void*>(tensor_.data());
   }
+  template <typename T>
+  T* data_ptr() const {
+    return static_cast<T*>(data_ptr());
+  }
+
+  const void* const_data_ptr() const { return data_ptr(); }
 
   template <typename T, std::enable_if_t<!std::is_const_v<T>, int> = 0>
   const T* const_data_ptr() const;
@@ -122,7 +134,7 @@ class PADDLE_API TensorBase {
   template <typename T, std::enable_if_t<std::is_const_v<T>, int> = 0>
   const std::remove_const_t<T>* const_data_ptr() const;
 
-  void* mutable_data_ptr() const { return const_cast<void*>(tensor_.data()); }
+  void* mutable_data_ptr() const { return data_ptr(); }
 
   template <typename T>
   T* mutable_data_ptr() const;
@@ -184,7 +196,7 @@ class PADDLE_API TensorBase {
     PD_CHECK(memory_format == c10::MemoryFormat::Contiguous,
              "`MemoryFormat` other than Contiguous");
 
-    return tensor_.contiguous();
+    return TensorBase(tensor_.contiguous());
   }
 
   bool is_contiguous(
@@ -196,23 +208,19 @@ class PADDLE_API TensorBase {
   }
 
   bool is_non_overlapping_and_dense() const {
-    // Empty or scalar tensors are always non-overlapping and dense
     if (numel() <= 1) {
       return true;
     }
-
-    // If the tensor is contiguous, it is non-overlapping and dense
     if (tensor_.is_contiguous()) {
       return true;
     }
 
-    // For non-contiguous tensors, check if sorted strides form a valid dense
-    // layout
+    // For non-contiguous tensors, verify sorted strides form a valid dense
+    // layout without gaps or overlaps.
     auto sizes_vec = sizes();
     auto strides_vec = strides();
     int64_t ndim = dim();
 
-    // Create a permutation sorted by strides (ascending order)
     std::vector<int64_t> perm(ndim);
     for (int64_t i = 0; i < ndim; ++i) {
       perm[i] = i;
@@ -221,15 +229,14 @@ class PADDLE_API TensorBase {
       return strides_vec[a] < strides_vec[b];
     });
 
-    // Check if sorted strides form a valid dense layout without gaps/overlaps
     int64_t expected_stride = 1;
     for (int64_t i = 0; i < ndim; ++i) {
       int64_t dim_idx = perm[i];
       if (sizes_vec[dim_idx] == 0) {
-        return true;  // Empty tensor
+        return true;
       }
       if (sizes_vec[dim_idx] == 1) {
-        continue;  // Size-1 dimensions don't affect density
+        continue;
       }
       if (strides_vec[dim_idx] != expected_stride) {
         return false;
@@ -284,8 +291,8 @@ class PADDLE_API TensorBase {
       PADDLE_THROW(common::errors::Unimplemented(
           "The `to` method with memory_format option is not supported yet."));
     }
-    return paddle::experimental::cast(
-        tensor_, compat::_PD_AtenScalarTypeToPhiDataType(options.dtype()));
+    return TensorBase(paddle::experimental::cast(
+        tensor_, compat::_PD_AtenScalarTypeToPhiDataType(options.dtype())));
   }
 
   bool is_complex() const { return at::isComplexType(this->scalar_type()); }
@@ -365,7 +372,10 @@ class PADDLE_API TensorBase {
     }
   }
 
-  void reset() { tensor_.reset(); }
+  void reset() {
+    tensor_.reset();
+    storage_.reset();
+  }
 
   int64_t storage_offset() const {
     // Paddle DenseTensor stores offset in meta_.offset (in bytes)
@@ -385,17 +395,85 @@ class PADDLE_API TensorBase {
     return c10::SymInt(storage_offset());
   }
 
-  bool has_storage() const { return tensor_.defined(); }
+  bool has_storage() const {
+    SyncStorageFromTensor();
+    return tensor_.defined() && storage_ && storage_->valid();
+  }
 
-  const Storage storage() const {
-    return Storage(
-        std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl())->Holder());
+  // Returns a Storage handle backed by the shared StorageImpl for this tensor.
+  const c10::Storage& storage() const {
+    SyncStorageFromTensor();
+    static const c10::Storage kEmptyStorage;
+    return storage_ ? *storage_ : kEmptyStorage;
   }
 
   bool is_alias_of(const at::TensorBase& other) const {
-    return this->storage().allocation() == other.storage().allocation();
+    return this->storage().is_alias_of(other.storage());
   }
 
+ private:
+  template <typename DenseT>
+  static auto MaybeResetHolder(DenseT* dense,
+                               const std::shared_ptr<phi::Allocation>& holder,
+                               int)
+      -> decltype(dense->ResetHolder(holder), void()) {
+    dense->ResetHolder(holder);
+  }
+
+  static void MaybeResetHolder(...) {}
+
+  void InitStorage() { SyncStorageFromTensor(); }
+
+  static std::shared_ptr<c10::Storage> GetOrCreateCanonicalStorage(
+      c10::Storage&& live_storage) {
+    auto impl = live_storage.get_impl();
+    if (!impl) {
+      return std::make_shared<c10::Storage>(std::move(live_storage));
+    }
+
+    static std::mutex registry_mu;
+    static std::unordered_map<c10::StorageImpl*, std::weak_ptr<c10::Storage>>
+        registry;
+
+    std::lock_guard<std::mutex> guard(registry_mu);
+    auto it = registry.find(impl.get());
+    if (it != registry.end()) {
+      if (auto cached = it->second.lock()) {
+        return cached;
+      }
+      registry.erase(it);
+    }
+
+    auto created = std::make_shared<c10::Storage>(std::move(live_storage));
+    registry.emplace(impl.get(), created);
+    return created;
+  }
+
+  void SyncStorageFromTensor() const {
+    auto dense = std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl());
+    if (!dense) {
+      storage_.reset();
+      return;
+    }
+
+    auto holder = dense->Holder();
+    if (!holder) {
+      storage_.reset();
+      return;
+    }
+
+    c10::Storage live_storage = c10::Storage::createTensorStorage(holder);
+    auto compat_holder = live_storage.ensureTensorHolder();
+    if (holder != compat_holder) {
+      MaybeResetHolder(dense.get(), compat_holder, 0);
+    }
+
+    if (!storage_ || storage_->get_impl() != live_storage.get_impl()) {
+      storage_ = GetOrCreateCanonicalStorage(std::move(live_storage));
+    }
+  }
+
+ public:
   // Return a `TensorAccessor` for CPU `Tensor`s. You have to specify scalar
   // type and
   // dimension.
@@ -488,6 +566,10 @@ class PADDLE_API TensorBase {
 
  protected:
   PaddleTensor tensor_;
+  // Cache a canonical Storage object shared by wrappers that reference the
+  // same StorageImpl. This prevents independently-constructed wrappers around
+  // one tensor impl from inflating Storage::use_count().
+  mutable std::shared_ptr<c10::Storage> storage_;
 };
 
 }  // namespace at

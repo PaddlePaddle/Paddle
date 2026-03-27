@@ -39,15 +39,15 @@ struct BroadcastDimsSimplifier {
     N = std::max(static_cast<int>(ins.size()), 2);
     in_dims.resize(N);
     rank = dims.size();
-    out_dims = common::vectorize<int64_t>(dims);
+    out_dims = vectorize<int64_t>(dims);
     if (ins.size() == 1) {
       // When ins.size() = 1, broadcast input to output.
-      in_dims[0] = common::vectorize<int64_t>(ins[0]->dims());
+      in_dims[0] = vectorize<int64_t>(ins[0]->dims());
       // Add out_dims to in_dims to avoid errors in dims merging.
       in_dims[1] = out_dims;
     } else {
       for (int j = 0; j < N; ++j) {
-        in_dims[j] = common::vectorize<int64_t>(ins[j]->dims());
+        in_dims[j] = vectorize<int64_t>(ins[j]->dims());
       }
     }
     ExtendInputDimensions(axis);

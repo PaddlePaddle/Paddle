@@ -373,6 +373,10 @@ void WeightDequantize(const Context& dev_ctx,
   // TODO(large-tensor): downstream functors may still use int
   int64_t k = x.dims()[1];
 
+  if (n == 0 || k == 0) {
+    return;
+  }
+
   dim3 block(512);
   dim3 grid(n / 32);
   auto stream = dev_ctx.stream();

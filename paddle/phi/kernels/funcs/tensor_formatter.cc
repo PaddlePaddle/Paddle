@@ -64,7 +64,7 @@ std::string TensorFormatter::Format(const DenseTensor& print_tensor,
 
   if (print_tensor_lod_) {
     log_stream << "  - lod: {";
-    const phi::LegacyLoD& lod = print_tensor.lod();
+    const LegacyLoD& lod = print_tensor.lod();
     for (auto const& level : lod) {
       log_stream << "{";
       bool is_first = true;

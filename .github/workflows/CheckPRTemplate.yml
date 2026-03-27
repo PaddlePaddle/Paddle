@@ -14,9 +14,10 @@ jobs:
     secrets:
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
+
   check:
     name: Check
-    needs: check-bypass
+    needs: [check-bypass]
     if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: Template

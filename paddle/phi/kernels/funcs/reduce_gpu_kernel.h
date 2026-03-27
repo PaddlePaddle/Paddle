@@ -1365,7 +1365,7 @@ void ReduceGpuKernel(const KPDevice& dev_ctx,
   auto mask = MakeDimMask(positive_reduce_dims, ndim);
   auto viewed_result = ReviewReduceResult(x, *(y), ndim, mask);
 
-  auto x_dim = common::vectorize<int64_t>(x.dims());
+  auto x_dim = vectorize<int64_t>(x.dims());
 
   DenseTensorIteratorConfig dense_iter_config;
   dense_iter_config.is_reduction(true);

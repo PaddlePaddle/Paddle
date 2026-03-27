@@ -61,12 +61,11 @@ void StridedSliceRawGradStridedKernel(const Context& dev_ctx,
                                         &tmp);
   PD_VISIT_ALL_TYPES(
       out_grad.dtype(), "StridedSliceRawGradStridedKernel", ([&] {
-        phi::StridedTensorCopy<data_t>(
-            out_grad,
-            common::vectorize<int64_t>(tmp.dims()),
-            common::vectorize<int64_t>(tmp.strides()),
-            tmp.offset(),
-            &tmp);
+        phi::StridedTensorCopy<data_t>(out_grad,
+                                       vectorize<int64_t>(tmp.dims()),
+                                       vectorize<int64_t>(tmp.strides()),
+                                       tmp.offset(),
+                                       &tmp);
       }));
 }
 

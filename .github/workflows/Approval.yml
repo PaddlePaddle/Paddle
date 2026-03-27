@@ -22,7 +22,7 @@ jobs:
 
   check-approvers:
     name: Check approval
-    needs: check-bypass
+    needs: [check-bypass]
     if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10

@@ -228,7 +228,7 @@ struct FFTC2CFunctor<XPUContext, Ti, To> {
       }
     }
 
-    std::vector<int64_t> out_dims = common::vectorize(x.dims());
+    std::vector<int64_t> out_dims = vectorize(x.dims());
     detail::exec_normalization<To>(
         dev_ctx, *out, out, normalization, out_dims, axes);
   }
@@ -242,7 +242,7 @@ struct FFTC2RFunctor<XPUContext, Ti, To> {
                   const std::vector<int64_t>& axes,
                   FFTNormMode normalization,
                   bool forward) {
-    std::vector<int64_t> out_dims = common::vectorize(out->dims());
+    std::vector<int64_t> out_dims = vectorize(out->dims());
 
     if (detail::use_optimized_fft_path(axes)) {
       DenseTensor x_copy = Assign(dev_ctx, x);
@@ -287,7 +287,7 @@ struct FFTR2CFunctor<XPUContext, Ti, To> {
                    forward);
     }
 
-    const auto in_dims = common::vectorize(x.dims());
+    const auto in_dims = vectorize(x.dims());
     detail::exec_normalization<To>(
         dev_ctx, *out, out, normalization, in_dims, axes);
   }

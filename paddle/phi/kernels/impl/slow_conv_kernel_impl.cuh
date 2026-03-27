@@ -17,7 +17,14 @@
 #include <numeric>
 #include <type_traits>
 
+#include <fstream>
+#include <iostream>
+#include <string>
+#include <vector>
+
 #include "paddle/common/flags.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/concat_kernel.h"
 #include "paddle/phi/kernels/contiguous_kernel.h"
 #include "paddle/phi/kernels/conv_kernel.h"
@@ -34,13 +41,6 @@
 #include "paddle/phi/kernels/slice_kernel.h"
 
 COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
-
-#include <fstream>
-#include <iostream>
-#include <string>
-#include <vector>
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 template <typename T>
@@ -610,7 +610,7 @@ void SlowConvForward(const Context& dev_ctx,
   DDim in_data_dims = slice_ddim(trans_in_dims, 2, trans_in_dims.size());
   DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
 
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
@@ -788,7 +788,7 @@ void SlowConvBackward(const Context& dev_ctx,
   auto filter_dims = filter.dims();
   DDim in_data_dims = slice_ddim(in_dims, 2, in_dims.size());
   DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation<int>(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 

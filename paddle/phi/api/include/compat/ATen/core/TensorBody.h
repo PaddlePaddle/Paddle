@@ -179,15 +179,21 @@ class Tensor : public TensorBase {
   }
 
   template <typename T, std::enable_if_t<!std::is_const_v<T>, int> = 0>
-  const T* const_data_ptr() const;
+  const T* const_data_ptr() const {
+    return TensorBase::const_data_ptr<T>();
+  }
 
   template <typename T, std::enable_if_t<std::is_const_v<T>, int> = 0>
-  const std::remove_const_t<T>* const_data_ptr() const;
+  const std::remove_const_t<T>* const_data_ptr() const {
+    return TensorBase::const_data_ptr<T>();
+  }
 
   void* mutable_data_ptr() const { return const_cast<void*>(tensor_.data()); }
 
   template <typename T>
-  T* mutable_data_ptr() const;
+  T* mutable_data_ptr() const {
+    return TensorBase::mutable_data_ptr<T>();
+  }
 
   using TensorBase::stride;
 
@@ -431,7 +437,7 @@ class Tensor : public TensorBase {
     }
 
     const auto device_type = device.value().type();
-    if (device_type == c10::DeviceType::GPU) {
+    if (device_type == c10::DeviceType::CUDA) {
       return is_gpu_pinned;
     }
     if (device_type == c10::DeviceType::XPU) {
@@ -463,7 +469,7 @@ class Tensor : public TensorBase {
 
     if (device.has_value()) {
       const auto device_type = device.value().type();
-      if (device_type == c10::DeviceType::GPU) {
+      if (device_type == c10::DeviceType::CUDA) {
         pinned_place = phi::Place(phi::GPUPinnedPlace());
       } else if (device_type == c10::DeviceType::XPU) {
         pinned_place = phi::Place(phi::XPUPinnedPlace());

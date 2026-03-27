@@ -54,7 +54,8 @@ build_doc/
 
 .vscode
 .comate
-.claude
+.claude/*
+!.claude/skills
 .idea
 .project
 .cproject

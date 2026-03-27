@@ -17,7 +17,7 @@ jobs:
   pre-commit:
     name: Pre Commit
     if: ${{ github.repository_owner == 'PaddlePaddle' && needs.check-bypass.outputs.can-skip != 'true' }}
-    needs: check-bypass
+    needs: [check-bypass]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
