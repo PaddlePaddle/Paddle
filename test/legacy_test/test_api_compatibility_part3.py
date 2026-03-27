@@ -676,9 +676,9 @@ class TestConv2dTransposeAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
         self.dtype = 'float32'
-        self.np_x = np.random.rand(2, 3, 8, 8).astype(self.dtype)
-        self.np_weight = np.random.rand(3, 6, 3, 3).astype(self.dtype)
-        self.np_bias = np.random.rand(6).astype(self.dtype)
+        self.np_x = np.random.rand(1, 2, 4, 4).astype(self.dtype)
+        self.np_weight = np.random.rand(2, 2, 3, 3).astype(self.dtype)
+        self.np_bias = np.random.rand(2).astype(self.dtype)
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
@@ -720,10 +720,10 @@ class TestConv2dTransposeAPI(unittest.TestCase):
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
             x = paddle.static.data(
-                name="x", shape=[2, 3, 8, 8], dtype=self.dtype
+                name="x", shape=[1, 2, 4, 4], dtype=self.dtype
             )
             weight = paddle.static.data(
-                name="weight", shape=[3, 6, 3, 3], dtype=self.dtype
+                name="weight", shape=[2, 2, 3, 3], dtype=self.dtype
             )
 
             # 1. Paddle Positional arguments
@@ -757,9 +757,9 @@ class TestConv3dTransposeAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
         self.dtype = 'float32'
-        self.np_x = np.random.rand(2, 3, 4, 4, 4).astype(self.dtype)
-        self.np_weight = np.random.rand(3, 6, 3, 3, 3).astype(self.dtype)
-        self.np_bias = np.random.rand(6).astype(self.dtype)
+        self.np_x = np.random.rand(1, 2, 3, 3, 3).astype(self.dtype)
+        self.np_weight = np.random.rand(2, 2, 3, 3, 3).astype(self.dtype)
+        self.np_bias = np.random.rand(2).astype(self.dtype)
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
@@ -801,10 +801,10 @@ class TestConv3dTransposeAPI(unittest.TestCase):
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
             x = paddle.static.data(
-                name="x", shape=[2, 3, 4, 4, 4], dtype=self.dtype
+                name="x", shape=[1, 2, 3, 3, 3], dtype=self.dtype
             )
             weight = paddle.static.data(
-                name="weight", shape=[3, 6, 3, 3, 3], dtype=self.dtype
+                name="weight", shape=[2, 2, 3, 3, 3], dtype=self.dtype
             )
 
             # 1. Paddle Positional arguments
