@@ -50,7 +50,7 @@ PHI 体系通过 YAML 驱动代码生成，覆盖三个子系统：
 将 1061 个原生算子分解为约 200 个基础算子（primitive operators），降低分布式 / 编译器 / 新硬件适配成本。
 
 - **前向分解**：`DecompInterface` → `call_decomp_rule()` → `composite.h` 实现
-- **反向分解**（VJP）：`VjpInterface` → `call_vjp()` → `details.h` 实现
+- **反向分解**（VJP）：`VjpInterface` / `DecompVjpInterface` → `call_decomp_vjp()` → `details.h` 实现
 - **CustomVJP**：为 sigmoid、log_softmax 等数值敏感算子提供手写反向
 
 ## 什么场景看什么文件
@@ -68,6 +68,6 @@ PHI 体系通过 YAML 驱动代码生成，覆盖三个子系统：
 - Kernel 注册宏: `paddle/phi/core/kernel_registry.h`
 - KernelFactory: `paddle/phi/core/kernel_factory.h`, `kernel_factory.cc`
 - YAML 定义: `paddle/phi/ops/yaml/ops.yaml`, `backward.yaml`
-- 代码生成脚本: `paddle/phi/api/yaml/generator/`
-- 组合算子前向: `paddle/fluid/primitive/composite/composite.h`
-- 组合算子反向: `paddle/fluid/primitive/rule/vjp/details.h`
+- 代码生成脚本: `paddle/phi/api/generator/` — `api_gen.py`, `backward_api_gen.py`, `tensor_operants_gen.py`
+- 组合算子前向: `paddle/fluid/primitive/decomp_rule/decomp_rule/composite.h`
+- 组合算子反向: `paddle/fluid/primitive/decomp_rule/decomp_vjp/details.h`

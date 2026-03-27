@@ -101,18 +101,18 @@ class OpInfoImpl {
 
 ## 权重与参数管理
 
-PIR Program 通过 `hash_map<StrAttribute, Variable*>` 管理模型权重：
+PIR Program 通过 `ParameterMap`（`unordered_map<string, shared_ptr<Parameter>>`）管理模型权重：
 
 ```
 Program
 ├── computation graph (ModuleOp → Block → Operations)
-└── weights: {"linear.weight" → Variable*, "linear.bias" → Variable*, ...}
+└── parameters_: {"linear.weight" → Parameter*, "linear.bias" → Parameter*, ...}
 ```
 
 两个专用 Op 桥接计算图与权重：
 
-- **`builtin.get_parameter("linear.weight")`** → 从权重表读取，产生一个 `Value`
-- **`builtin.set_parameter(value, "linear.weight")`** → 将计算结果写回权重表
+- **`builtin.parameter("linear.weight")`** → 从参数表读取，产生一个 `Value`
+- **`builtin.set_parameter(value, "linear.weight")`** → 将计算结果写回参数表
 
 这种设计将权重存储与计算图解耦，便于序列化和分布式场景下的参数分片。
 
@@ -123,9 +123,9 @@ Program
 └── ModuleOp (顶层 Operation)
     └── Region[0]
         └── Block[0]
-            ├── builtin.get_parameter("w")  → %0
+            ├── builtin.parameter("w")      → %0
             ├── pd_op.matmul(%input, %0)    → %1
-            ├── cf.if(%cond)                → %2
+            ├── pd_op.if(%cond)              → %2
             │   ├── Region[0] (then)
             │   │   └── Block[0]
             │   │       ├── pd_op.relu(%1) → %3
@@ -175,9 +175,9 @@ ProgramDesc (旧 IR)
 
 - **通用处理器**：按 OpDesc 的 inputs/outputs/attrs 一一映射，适用于大部分算术算子
 - **特化处理器**：处理语义差异较大的 Op，如：
-  - `while` → `cf.while`（需要构造 Region 和 BlockArgument）
+  - `while` → `pd_op.while`（需要构造 Region 和 BlockArgument）
   - `fetch` → `builtin.set_parameter`
-  - `feed` → `builtin.get_parameter`
-  - `conditional_block` → `cf.if`
+  - `feed` → `builtin.parameter`
+  - `conditional_block` → `pd_op.if`
 
 特化处理器通过注册表 `OpTranslator::special_handlers_` 管理，翻译时优先查找特化处理器，找不到则走通用路径。

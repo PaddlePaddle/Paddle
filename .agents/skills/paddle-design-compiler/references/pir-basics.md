@@ -184,6 +184,7 @@ class Dialect {
 | `BuiltinDialect` | PIR 内置基础类型 | `Float32Type`, `Int64Type`, `VectorType`, `DenseTensorType` |
 | `PaddleDialect` | Paddle 算子定义 | `pd_op.matmul`, `pd_op.relu`, `pd_op.conv2d` 等 |
 | `CinnDialect` | CINN 编译器专用 | `cinn_op.group`, `cinn_op.yield`, `cinn_op.generate_shape` |
-| `ControlFlowDialect` | 控制流 | `cf.if`, `cf.while`, `cf.yield`, `cf.cond_yield` |
+| `ControlFlowDialect` | 控制流辅助 | `cf.yield`, `cf.stack_create`, `cf.tuple_push`, `cf.tuple_pop` |
+| `PaddleDialect`（控制流部分）| 控制流算子 | `pd_op.if`, `pd_op.while` |
 
 Dialect 的模块化设计使得第三方可以定义自己的 Dialect 并注册到 `IRContext`，无需修改 PIR 核心代码。

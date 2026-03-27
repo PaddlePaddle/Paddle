@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import os
 
 import paddle
@@ -153,5 +154,70 @@ def test_save_safetensors_load_fc():
     dist.barrier()
 
 
+def create_index_json(ckpt_path):
+    """Create model.safetensors.index.json that maps keys to their safetensors files."""
+    index_data = {
+        "weight_map": {
+            "tensor1": "tensor1.safetensors",
+            "tensor2": "tensor2.safetensors",
+        }
+    }
+    index_file_path = os.path.join(ckpt_path, "model.safetensors.index.json")
+    if dist.get_rank() == 0:
+        with open(index_file_path, "w") as f:
+            json.dump(index_data, f)
+    dist.barrier()
+
+
+def test_save_safetensors_load_fc_with_index():
+    """Test saving safetensors and loading with flex checkpoint when model.safetensors.index.json exists."""
+    ckpt_path = os.getenv("ckpt_path")
+    dist.init_parallel_env()
+
+    save_safetensors_to_ranks(ckpt_path)
+
+    # Create index json to exercise the integrity check branch
+    create_index_json(ckpt_path)
+
+    sharded_state_dict = create_sharded_state_dict_for_loading()
+
+    from paddle.distributed.flex_checkpoint.dcp.load_state_dict import (
+        load_state_dict,
+    )
+
+    load_state_dict(sharded_state_dict, ckpt_path, safetensors=True)
+
+    loaded_tensor1 = sharded_state_dict["tensor1"].local_tensor
+    loaded_tensor2 = sharded_state_dict["tensor2"].local_tensor
+
+    if dist.get_rank() == 0:
+        expected_tensor1 = paddle.to_tensor([[0], [2]], dtype='float32')
+        expected_tensor2 = paddle.to_tensor([[4], [6]], dtype='float32')
+
+        assert paddle.allclose(loaded_tensor1, expected_tensor1), (
+            f"Rank 0 tensor1 mismatch: got {loaded_tensor1}, expected {expected_tensor1}"
+        )
+        assert paddle.allclose(loaded_tensor2, expected_tensor2), (
+            f"Rank 0 tensor2 mismatch: got {loaded_tensor2}, expected {expected_tensor2}"
+        )
+
+    elif dist.get_rank() == 1:
+        expected_tensor1 = paddle.to_tensor([[1], [3]], dtype='float32')
+        expected_tensor2 = paddle.to_tensor([[5], [7]], dtype='float32')
+
+        assert paddle.allclose(loaded_tensor1, expected_tensor1), (
+            f"Rank 1 tensor1 mismatch: got {loaded_tensor1}, expected {expected_tensor1}"
+        )
+        assert paddle.allclose(loaded_tensor2, expected_tensor2), (
+            f"Rank 1 tensor2 mismatch: got {loaded_tensor2}, expected {expected_tensor2}"
+        )
+
+    dist.barrier()
+
+
 if __name__ == "__main__":
-    test_save_safetensors_load_fc()
+    test_func = os.getenv("test_func", "test_save_safetensors_load_fc")
+    if test_func == "test_save_safetensors_load_fc_with_index":
+        test_save_safetensors_load_fc_with_index()
+    else:
+        test_save_safetensors_load_fc()

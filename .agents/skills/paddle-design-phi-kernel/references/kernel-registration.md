@@ -139,6 +139,6 @@ PD_REGISTER_KERNEL(my_kernel, GPU, ALL_LAYOUT, phi::MyKernel, float) {
 | `paddle/phi/core/kernel_factory.h` | KernelFactory、KernelKey、Kernel 类 |
 | `paddle/phi/core/kernel_factory.cc` | KernelFactory 实现 |
 | `paddle/phi/core/kernel_context.h` | KernelContext，运行时参数容器 |
-| `paddle/phi/kernels/add_kernel.h` | 典型 kernel 头文件示例 |
-| `paddle/phi/kernels/gpu/add_kernel.cu` | 典型 GPU kernel 实现 |
-| `paddle/phi/kernels/cpu/add_kernel.cc` | 典型 CPU kernel 注册示例 |
+| `paddle/phi/kernels/elementwise_add_kernel.h` | 典型 kernel 头文件示例 |
+| `paddle/phi/kernels/kps/elementwise_kernel.cu` | 典型 GPU kernel 实现 |
+| `paddle/phi/kernels/cpu/elementwise_add_kernel.cc` | 典型 CPU kernel 注册示例 |

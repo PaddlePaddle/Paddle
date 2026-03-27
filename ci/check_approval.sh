@@ -304,13 +304,13 @@ if [ "${HAS_MODIFIED_PADDLE_DISTRIBUTED}" != "" ] && [ "${PR_ID}" != "" ]; then
     check_approval 1 From00 ForFishes gongweibao sneaxiy
 fi
 
-ALL_PADDLE_ENFORCE=`git diff -U0 upstream/$BRANCH -- . ':!skills/' |grep "^+" |grep -zoE "PADDLE_ENFORCE\(.[^,\);]+.[^;]*\);\s" || true`
+ALL_PADDLE_ENFORCE=`git diff -U0 upstream/$BRANCH -- . ':!.agents/skills/' |grep "^+" |grep -zoE "PADDLE_ENFORCE\(.[^,\);]+.[^;]*\);\s" || true`
 if [ "${ALL_PADDLE_ENFORCE}" != "" ] && [ "${PR_ID}" != "" ]; then
     echo_line="PADDLE_ENFORCE is not recommended. Please use PADDLE_ENFORCE_EQ/NE/GT/GE/LT/LE or PADDLE_ENFORCE_NOT_NULL or PADDLE_ENFORCE_GPU_SUCCESS instead, see [ https://github.com/PaddlePaddle/Paddle/wiki/PADDLE_ENFORCE-Rewriting-Specification ] for details.\nYou must have one RD (luotao1 (Recommend) or zhangbo9674) approval for the usage (either add or delete) of PADDLE_ENFORCE.\n${ALL_PADDLE_ENFORCE}\n"
     check_approval 1 luotao1 zhangbo9674
 fi
 
-CHINESE_CHECK=$(git diff -U0 upstream/$BRANCH -- . ':!skills/' |grep "^+" |grep -P '[\p{Han}]')
+CHINESE_CHECK=$(git diff -U0 upstream/$BRANCH -- . ':!.agents/skills/' |grep "^+" |grep -P '[\p{Han}]')
 if [ "${CHINESE_CHECK}" != "" ] && [ "${PR_ID}" != "" ]; then
     echo_line="Not recommended to use Chinese. You must have one RD (swgu98 or zhangbo9674 or risemeup1) approval.\n"
     check_approval 1 swgu98 zhangbo9674 risemeup1

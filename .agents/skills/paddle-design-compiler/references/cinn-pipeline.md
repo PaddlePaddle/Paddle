@@ -113,7 +113,7 @@ GenerateFunctionBody
 - Block Reduce / Warp Reduce / Discrete Reduce
 - 根据 reduce 轴大小和数据量选择策略
 
-#### Group-level Schedule（StaticShapeGroupScheduler）
+#### Group-level Schedule（DynamicShapeGroupScheduler）
 
 针对整个融合组的全局调度，按顺序执行：
 
@@ -153,12 +153,15 @@ ir::Module (包含多个 LoweredFunc)
 
 ### JitKernelOp
 
-编译产物通过 `cinn_op.jit_kernel` 在 PIR 中表示：
+编译产物通过 `cinn_runtime.jit_kernel` 在 PIR 中表示：
 
 ```cpp
 struct CINNKernelInfo {
+  std::string fn_name;
   void *fn_ptr;                    // CUfunction 指针
-  std::map<int, int> int_args_map; // 动态 shape 参数的位置映射
+  void *infer_shape_fn_ptr;        // shape 推导函数指针
+  // 动态 shape 符号参数映射：kernel 参数位置 → 来源（ArgDimIdx 或 ArgValueIdx）
+  std::map<int, SymbolArgBindInfo> symbol_args_map;
 };
 ```
 
@@ -167,7 +170,7 @@ struct CINNKernelInfo {
 将整个 PIR Program 中的 GroupOp 替换为 JitKernelOp：
 
 ```
-cinn_op.group { ... }  →  cinn_op.jit_kernel (携带 CINNKernelInfo)
+cinn_op.group { ... }  →  cinn_runtime.jit_kernel (携带 CINNKernelInfo)
 ```
 
 ### CinnJitInstruction

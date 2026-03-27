@@ -40,18 +40,22 @@ Paddle PHI 体系采用 YAML 驱动的代码生成方式，从算子定义文件
 - `kernel.data_type`：kernel DataType 推断来源（此处取输入 `x` 的 dtype）
 - `backward`：关联的反向算子名
 
-## 新动态图 CodeGen（三层架构）
+## 代码生成体系（两套并行）
 
-### 第一层：C++ API 生成
+当前 Paddle 有两套代码生成管线并行工作：**PHI API 层**和 **PIR Op 层**。
 
-**生成器**：`paddle/phi/api/yaml/generator/api_gen.py`
+### PHI API 层（paddle/phi/api/）
 
-**输入**：`ops.yaml`, `backward.yaml`, `op_compat.yaml`
+生成器脚本位于 `paddle/phi/api/generator/`，产出 C++ API 函数：
 
-**产出**：
-- `paddle/phi/api/lib/api.cc`（前向 API）
-- `paddle/phi/api/lib/api.h`（头文件）
-- `paddle/phi/api/lib/backward_api.cc`（反向 API）
+| 生成器脚本 | 产出文件 | 说明 |
+|-----------|---------|------|
+| `api_gen.py` | `paddle/phi/api/lib/api.cc` | 前向 C++ API |
+| `backward_api_gen.py` | `paddle/phi/api/lib/backward_api.cc` | 反向 C++ API |
+| `intermediate_api_gen.py` | `paddle/phi/api/lib/dygraph_api.{h,cc}` | 动态图中间 API |
+| `sparse_api_gen.py` | `paddle/phi/api/lib/sparse_api.cc` | 稀疏前向 API |
+| `sparse_bw_api_gen.py` | `paddle/phi/api/lib/sparse_bw_api.cc` | 稀疏反向 API |
+| `tensor_operants_gen.py` | `paddle/phi/api/lib/tensor_api.cc`, `tensor_operants.h` | Tensor 运算符重载 |
 
 **生成内容**：每个算子对应一个 C++ 函数，内部包含完整的 kernel 选择 + 数据准备 + kernel 调用逻辑：
 
@@ -67,11 +71,21 @@ Tensor add(const Tensor& x, const Tensor& y) {
 }
 ```
 
-### 第二层：动态图函数生成
+### PIR Op 层（paddle/fluid/pir/dialect/op_generator/）
+
+生成 PIR 算子定义和 Python-C 绑定：
+
+| 生成器脚本 | 产出文件 | 说明 |
+|-----------|---------|------|
+| `api_gen.py` | PIR Op C++ API | PIR 算子接口 |
+| `python_c_gen.py` | Python-C 绑定 | PIR 算子的 Python 调用入口 |
+| `ops_api_gen.py` | `paddle/fluid/pybind/ops_api.cc` | Python 层算子分发 |
+
+### 动态图函数层
 
 **生成器**：`paddle/fluid/eager/auto_code_generator/generator/eager_gen.py`
 
-**输入**：与第一层相同的 YAML 文件
+**输入**：与 PHI API 层相同的 YAML 文件
 
 **产出**：
 - `paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.cc`
@@ -81,11 +95,11 @@ Tensor add(const Tensor& x, const Tensor& y) {
 - 前向函数：调用 C++ API 层 + 构建反向计算图（创建 GradNode、保存前向 Tensor）
 - 反向 Node 类：继承 `egr::GradNodeBase`，实现 `operator()()` 调用反向 C++ API
 
-### 第三层：Python-C 绑定生成
+### Python-C 绑定层（动态图）
 
-**生成器**：`paddle/fluid/pybind/generator/python_c_gen.py`
+**生成器**：`paddle/fluid/eager/auto_code_generator/generator/python_c_gen.py`
 
-**输入**：同上 YAML + 第二层生成的函数签名
+**输入**：同上 YAML + 动态图函数签名
 
 **产出**：
 - `paddle/fluid/pybind/eager_op_function.cc`
@@ -104,13 +118,15 @@ Tensor add(const Tensor& x, const Tensor& y) {
 |------|------|
 | `parse_op.py` | 解析 YAML 为内部 OpDef 数据结构 |
 | `cross_validate.py` | 校验 ops.yaml 与 op_compat.yaml 一致性 |
-| `generate_op.py` | 从 Jinja 模板生成 `generated_op.cc` |
+| `generate_op.py` | 从 Jinja 模板生成 `generated_op*.cc` |
+| `generate_static_op.py` | 生成静态图 Op |
 
 模板文件位于 `paddle/fluid/operators/generator/templates/`，包含：
-- `op.cc.j2`：OpMaker、InferShape、GetExpectedKernelType
-- `op.h.j2`：Op 类声明
+- `op.c.j2`：OpMaker、InferShape、GetExpectedKernelType
+- `ks.c.j2`：Kernel 签名
+- `operator_utils.c.j2`：算子工具函数
 
-生成的文件注册到 fluid 的 `OpRegistry` 中，主要用于静态图执行和 save/load 兼容。
+生成的文件位于 `paddle/fluid/operators/` 目录下（如 `generated_op1.cc`...`generated_op4.cc`、`generated_static_op.cc`），注册到 fluid 的 `OpRegistry` 中。
 
 ## CMake 构建集成
 
@@ -156,15 +172,18 @@ execute_process(
 
 | 层级 | 生成器脚本 | 产出目录 |
 |------|-----------|---------|
-| C++ API | `paddle/phi/api/yaml/generator/api_gen.py` | `paddle/phi/api/lib/` |
+| PHI C++ API | `paddle/phi/api/generator/api_gen.py` | `paddle/phi/api/lib/` |
+| PHI 中间 API | `paddle/phi/api/generator/intermediate_api_gen.py` | `paddle/phi/api/lib/` |
 | 动态图函数 | `paddle/fluid/eager/auto_code_generator/generator/eager_gen.py` | `paddle/fluid/eager/api/generated/` |
-| Python-C | `paddle/fluid/pybind/generator/python_c_gen.py` | `paddle/fluid/pybind/` |
-| 静态图 | `paddle/fluid/operators/generator/generate_op.py` | `paddle/fluid/operators/generated/` |
+| Python-C（动态图）| `paddle/fluid/eager/auto_code_generator/generator/python_c_gen.py` | `paddle/fluid/pybind/` |
+| PIR Op API | `paddle/fluid/pir/dialect/op_generator/api_gen.py` | PIR Op 定义 |
+| PIR ops_api | `paddle/fluid/pir/dialect/op_generator/ops_api_gen.py` | `paddle/fluid/pybind/` |
+| 静态图 | `paddle/fluid/operators/generator/generate_op.py` | `paddle/fluid/operators/` |
 | YAML 定义 | — | `paddle/phi/ops/yaml/` |
 
 ## 调试与开发建议
 
-1. **修改 YAML 后重新生成**：执行 `make api_gen` 或完整 `make` 即可触发
+1. **修改 YAML 后重新生成**：完整 `make` 即可触发，代码生成通过 CMake 依赖自动处理
 2. **查看生成结果**：到 `build/` 目录下对应路径查看 `.cc` 文件
 3. **调试生成器**：直接用 Python 运行生成器脚本，添加 `--help` 查看参数
 4. **新增算子**：只需在 `ops.yaml` + `backward.yaml` 添加条目，编写 kernel 和 infer_meta，其余全部自动生成

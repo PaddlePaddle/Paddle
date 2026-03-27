@@ -30,8 +30,8 @@ Python paddle.add(x, y)
 |------|---------|-----------|
 | ① Python-C 映射 | `paddle/fluid/pybind/ops_api.cc` | `ops_api_gen.py` |
 | ② 动态图 C++ 接口 | `paddle/fluid/pybind/eager_op_function.cc` | `python_c_gen.py` |
-| ③ 自动微分函数 | `paddle/fluid/eager/api/generated/.../dygraph_functions.cc` | `eager_gen.py` |
-| ④ PHI 算子库接口 | `paddle/phi/api/lib/api.cc` | `tensor_operants_gen.py` |
+| ③ 自动微分函数 | `paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.cc` | `eager_gen.py` |
+| ④ PHI 算子库接口 | `paddle/phi/api/lib/api.cc` | `api_gen.py` |
 
 ## 反向关键数据结构
 
