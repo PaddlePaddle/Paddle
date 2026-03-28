@@ -2674,7 +2674,9 @@ class TestSet_API_ZeroSize(unittest.TestCase):
             with paddle.base.dygraph.guard(place):
                 source = paddle.randn([0])
                 x = paddle.randn([0])
-                out = x.set_(source, [3], [2], 1)
+                # offset must be a multiple of element size (4 bytes for
+                # float32) to avoid misaligned GPU memory access.
+                out = x.set_(source, [3], [2], 4)
                 self.assertEqual(list(out.shape), [3])
                 self.assertTrue(id(x) == id(out))
                 c = out.contiguous()
