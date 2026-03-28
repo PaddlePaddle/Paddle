@@ -449,8 +449,8 @@ TEST(TensorBaseTest, ToDtypeCastsWhenSupported) {
 namespace {
 
 at::Tensor MakeSparseIndices() {
-  return at::tensor({{0, 1, 1}, {0, 4, 2}},
-                    at::TensorOptions().dtype(at::kLong));
+  return at::tensor({0, 1, 1, 0, 4, 2}, at::TensorOptions().dtype(at::kLong))
+      .reshape({2, 3});
 }
 
 }  // namespace
