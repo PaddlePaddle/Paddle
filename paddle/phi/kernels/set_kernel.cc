@@ -52,6 +52,12 @@ void SetKernel(const Context& dev_ctx,
     if (source.numel() == 0 && x.numel() != 0) {
       // Source is empty but x has storage. Reuse x's storage and apply
       // the user-specified meta, matching PyTorch behavior.
+      if (out_numel == 0) {
+        // Output has 0 elements — no storage needed, just set meta.
+        out->set_meta(meta);
+        out->ShareInplaceVersionCounterWith(x);
+        return;
+      }
       // If the strided view requires more storage than x provides,
       // allocate a larger zero-filled buffer and copy x's data into it
       // to avoid out-of-bounds reads on elements beyond x's allocation.
