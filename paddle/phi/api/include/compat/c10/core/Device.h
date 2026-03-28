@@ -54,6 +54,26 @@ struct Device final {
     inner_ = phi::Place(alloc, has_index_ ? index : 0);
   }
 
+  // PyTorch 兼容: Device(DeviceType::CUSTOM, index, custom_device_type)
+  Device(DeviceType type,
+         DeviceIndex index,
+         const std::string& custom_device_type) {
+    const phi::AllocationType alloc = c10DeviceTypeToPhiAllocationType(type);
+    const bool no_index_type =
+        (type == DeviceType::GPUPINNED || type == DeviceType::XPUPINNED);
+    has_index_ = !no_index_type && (index != -1);
+
+    if (type == DeviceType::CUSTOM) {
+      inner_ =
+          phi::Place(alloc,
+                     has_index_ ? index : 0,
+                     custom_device_type.empty() ? std::string("privateuseone")
+                                                : custom_device_type);
+    } else {
+      inner_ = phi::Place(alloc, has_index_ ? index : 0);
+    }
+  }
+
   /// Constructs a `Device` from a string description, for convenience.
   /// Supported formats: `(cpu|cuda|xpu|ipu|custom)[:<device-index>]`
   /// e.g. "cuda:0", "xpu:1", "cpu", "custom:2"

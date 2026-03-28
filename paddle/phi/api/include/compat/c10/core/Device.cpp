@@ -127,7 +127,7 @@ std::string Device::str() const {
       str = "ipu";
       break;
     case DeviceType::CUSTOM:
-      str = "custom";
+      str = "privateuseone";
       break;
     default:
       str = "unknown";

@@ -88,7 +88,7 @@ inline DeviceType PhiToDeviceType(phi::AllocationType d) {
     case phi::AllocationType::CUSTOM:
       return DeviceType::CUSTOM;
     default:
-      return DeviceType::Undefined;
+      return DeviceType::CPU;
   }
 }
 
@@ -114,9 +114,9 @@ inline const char* DeviceTypeName(DeviceType type) noexcept {
     case DeviceType::IPU:
       return "ipu";
     case DeviceType::CUSTOM:
-      return "custom";
+      return "privateuseone";
     default:
-      return "undefined";
+      return "";
   }
 }
 
@@ -165,7 +165,7 @@ inline phi::AllocationType c10DeviceTypeToPhiAllocationType(DeviceType type) {
     case DeviceType::CUSTOM:
       return phi::AllocationType::CUSTOM;
     default:
-      return phi::AllocationType::UNDEFINED;
+      return phi::AllocationType::CPU;
   }
 }
 
