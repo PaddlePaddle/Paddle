@@ -586,8 +586,9 @@ TEST(SparseTensorCoverageTest, SparseCooTensorInferSize2D) {
 
 TEST(SparseTensorCoverageTest, SparseCooTensorInferSizeWithDenseDims) {
   at::Tensor indices = MakeSparseIndices();
-  at::Tensor values = at::tensor({{1.0f, 2.0f}, {3.0f, 4.0f}, {5.0f, 6.0f}},
-                                 at::TensorOptions().dtype(at::kFloat));
+  at::Tensor values = at::tensor({1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f},
+                                 at::TensorOptions().dtype(at::kFloat))
+                          .reshape({3, 2});
   at::Tensor sparse = at::sparse_coo_tensor(indices, values);
 
   ASSERT_TRUE(sparse.is_sparse());
