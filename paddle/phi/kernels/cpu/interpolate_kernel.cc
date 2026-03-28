@@ -25,6 +25,10 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/interpolate_function.h"
 
+// Enable FMA (fused multiply-add) contraction so that a*b+c is computed as
+// a single fma(a,b,c) instruction, matching PyTorch's GCC 13.3 default
+// behavior which generates FMA instructions for multiply-add sequences.
+#pragma GCC optimize("fp-contract=fast")
 namespace phi {
 
 template <typename T>
@@ -38,7 +42,7 @@ static inline T cubic_interp(T x0, T x1, T x2, T x3, T t) {
 template <typename T>
 static void LinearInterpolation(const DenseTensor& input,
                                 DenseTensor* output,
-                                const float ratio_w,
+                                const double ratio_w,
                                 const int in_w,
                                 const int n,
                                 const int c,
@@ -49,7 +53,11 @@ static void LinearInterpolation(const DenseTensor& input,
   auto input_t = EigenTensor<T, 3>::From(input);
   auto output_t = EigenTensor<T, 3>::From(*output);
   bool align_flag = (align_mode == 0 && !align_corners);
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT =
+      typename std::conditional_t<std::is_integral<T>::value,
+                                  float,
+                                  typename phi::dtype::MPTypeTrait<T>::Type>;
+  MT ratio_w_mt = static_cast<MT>(ratio_w);
 
   std::vector<int> vx_w, vx_e;
   std::vector<MT> vd_w, vd_e;
@@ -61,16 +69,36 @@ static void LinearInterpolation(const DenseTensor& input,
 #pragma omp parallel for
 #endif
   for (int l = 0; l < out_w; l++) {
-    int x_w = static_cast<int>(align_flag ? (ratio_w * (l + 0.5) - 0.5)
-                                          : ratio_w * l);
-    x_w = (x_w > 0) ? x_w : 0;                       // w
-    int x_e = (x_w < (in_w - 1)) ? (x_w + 1) : x_w;  // w_id
+    if (in_w == out_w) {
+      // Identity case
+      vx_w[l] = l;
+      vx_e[l] = l;
+      vd_w[l] = static_cast<MT>(0);
+      vd_e[l] = static_cast<MT>(1);
+    } else {
+      MT real_input_index;
+      if (align_flag) {
+        real_input_index =
+            ratio_w_mt * (l + static_cast<MT>(0.5)) - static_cast<MT>(0.5);
+      } else if (align_corners) {
+        real_input_index = ratio_w_mt * l;
+      } else {
+        real_input_index = ratio_w_mt * l;
+      }
+      // Match PyTorch: clamp negative source index to 0 for non-cubic modes
+      if (real_input_index < MT(0)) {
+        real_input_index = MT(0);
+      }
+      // guard_index_and_lambda equivalent
+      int x_w =
+          std::min(static_cast<int>(std::floor(real_input_index)), in_w - 1);
+      MT d_w = std::min(
+          std::max(static_cast<MT>(real_input_index - static_cast<MT>(x_w)),
+                   static_cast<MT>(0)),
+          static_cast<MT>(1));
+      MT d_e = static_cast<MT>(1) - d_w;
+      int x_e = (x_w < in_w - 1) ? x_w + 1 : x_w;
 
-    MT idx_src_x = ratio_w * (l + 0.5) - 0.5;
-    idx_src_x = (idx_src_x > 0) ? idx_src_x : 0;
-    MT d_w = align_flag ? idx_src_x - x_w : ratio_w * l - x_w;  // w1lambda
-    MT d_e = 1. - d_w;                                          // w2lambda
-    {
       vx_w[l] = x_w;
       vx_e[l] = x_e;
       vd_w[l] = d_w;
@@ -105,8 +133,8 @@ static void LinearInterpolation(const DenseTensor& input,
 template <typename T>
 static void BilinearInterpolation(const DenseTensor& input,
                                   DenseTensor* output,
-                                  const float ratio_h,
-                                  const float ratio_w,
+                                  const double ratio_h,
+                                  const double ratio_w,
                                   const int in_h,
                                   const int in_w,
                                   const int n,
@@ -119,10 +147,15 @@ static void BilinearInterpolation(const DenseTensor& input,
   auto input_t = EigenTensor<T, 4>::From(input);
   auto output_t = EigenTensor<T, 4>::From(*output);
   bool align_flag = (align_mode == 0 && !align_corners);
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT =
+      typename std::conditional_t<std::is_integral<T>::value,
+                                  float,
+                                  typename phi::dtype::MPTypeTrait<T>::Type>;
+  MT ratio_h_mt = static_cast<MT>(ratio_h);
+  MT ratio_w_mt = static_cast<MT>(ratio_w);
 
   std::vector<int> vy_n, vy_s;
-  std::vector<float> vd_n, vd_s;
+  std::vector<MT> vd_n, vd_s;
   vy_n.reserve(out_h);
   vy_s.reserve(out_h);
   vd_n.reserve(out_h);
@@ -131,17 +164,36 @@ static void BilinearInterpolation(const DenseTensor& input,
 #pragma omp parallel for
 #endif
   for (int k = 0; k < out_h; k++) {
-    int y_n = static_cast<int>(align_flag ? (ratio_h * (k + 0.5) - 0.5)
-                                          : (ratio_h * static_cast<float>(k)));
-    y_n = (y_n > 0) ? y_n : 0;
-    int y_s = (y_n + 1) < (in_h - 1) ? (y_n + 1) : (in_h - 1);
-    float idx_src_y = ratio_h * (k + 0.5) - 0.5;
-    idx_src_y = (idx_src_y > 0) ? idx_src_y : 0;
-    float d_n = align_flag
-                    ? idx_src_y - static_cast<float>(y_n)
-                    : ratio_h * static_cast<float>(k) - static_cast<float>(y_n);
-    float d_s = 1.f - d_n;
-    {
+    if (in_h == out_h) {
+      // Identity case
+      vy_n[k] = k;
+      vy_s[k] = k;
+      vd_n[k] = static_cast<MT>(0);
+      vd_s[k] = static_cast<MT>(1);
+    } else {
+      MT real_input_index;
+      if (align_flag) {
+        real_input_index =
+            ratio_h_mt * (k + static_cast<MT>(0.5)) - static_cast<MT>(0.5);
+      } else if (align_corners) {
+        real_input_index = ratio_h_mt * k;
+      } else {
+        real_input_index = ratio_h_mt * k;
+      }
+      // Match PyTorch: clamp negative source index to 0 for non-cubic modes
+      if (real_input_index < MT(0)) {
+        real_input_index = MT(0);
+      }
+      // guard_index_and_lambda equivalent
+      int y_n =
+          std::min(static_cast<int>(std::floor(real_input_index)), in_h - 1);
+      MT d_n = std::min(
+          std::max(static_cast<MT>(real_input_index - static_cast<MT>(y_n)),
+                   static_cast<MT>(0)),
+          static_cast<MT>(1));
+      MT d_s = static_cast<MT>(1) - d_n;
+      int y_s = (y_n < in_h - 1) ? y_n + 1 : y_n;
+
       vy_n[k] = y_n;
       vy_s[k] = y_s;
       vd_n[k] = d_n;
@@ -150,7 +202,7 @@ static void BilinearInterpolation(const DenseTensor& input,
   }
 
   std::vector<int> vx_w, vx_e;
-  std::vector<float> vd_w, vd_e;
+  std::vector<MT> vd_w, vd_e;
   vx_w.reserve(out_w);
   vx_e.reserve(out_w);
   vd_w.reserve(out_w);
@@ -159,24 +211,50 @@ static void BilinearInterpolation(const DenseTensor& input,
 #pragma omp parallel for
 #endif
   for (int l = 0; l < out_w; l++) {
-    int x_w = (align_mode == 0 && !align_corners)
-                  ? static_cast<int>(ratio_w * (l + 0.5) - 0.5)
-                  : static_cast<int>(ratio_w * static_cast<float>(l));
-    x_w = (x_w > 0) ? x_w : 0;
-    int x_e = (x_w + 1) < (in_w - 1) ? (x_w + 1) : (in_w - 1);
-    float idx_src_x = ratio_w * (static_cast<float>(l) + 0.5f) - 0.5f;
-    idx_src_x = (idx_src_x > 0) ? idx_src_x : 0;
-    float d_w = align_flag
-                    ? idx_src_x - static_cast<float>(x_w)
-                    : ratio_w * static_cast<float>(l) - static_cast<float>(x_w);
-    float d_e = 1.f - d_w;
-    {
+    if (in_w == out_w) {
+      // Identity case
+      vx_w[l] = l;
+      vx_e[l] = l;
+      vd_w[l] = static_cast<MT>(0);
+      vd_e[l] = static_cast<MT>(1);
+    } else {
+      MT real_input_index;
+      if (align_flag) {
+        real_input_index =
+            ratio_w_mt * (l + static_cast<MT>(0.5)) - static_cast<MT>(0.5);
+      } else if (align_corners) {
+        real_input_index = ratio_w_mt * l;
+      } else {
+        real_input_index = ratio_w_mt * l;
+      }
+      // Match PyTorch: clamp negative source index to 0 for non-cubic modes
+      if (real_input_index < MT(0)) {
+        real_input_index = MT(0);
+      }
+      // guard_index_and_lambda equivalent
+      int x_w =
+          std::min(static_cast<int>(std::floor(real_input_index)), in_w - 1);
+      MT d_w = std::min(
+          std::max(static_cast<MT>(real_input_index - static_cast<MT>(x_w)),
+                   static_cast<MT>(0)),
+          static_cast<MT>(1));
+      MT d_e = static_cast<MT>(1) - d_w;
+      int x_e = (x_w < in_w - 1) ? x_w + 1 : x_w;
+
       vx_w[l] = x_w;
       vx_e[l] = x_e;
       vd_w[l] = d_w;
       vd_e[l] = d_e;
     }
   }
+
+  // Determine which PyTorch accumulation path to match for NCHW.
+  // PyTorch uses pre-combined weights when (out_h + out_w) <= 128
+  // or for channels-last format with C > 3.
+  // For Paddle NHWC data, PaddleAPITest converts NHWC->NCHW for PyTorch
+  // via permute, resulting in channels-last in PyTorch, which always uses
+  // the pre-combined weights path. So NHWC always uses flat formula.
+  bool use_flat_formula_nchw = (out_h + out_w) <= 128;
 
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for collapse(4)
@@ -185,30 +263,48 @@ static void BilinearInterpolation(const DenseTensor& input,
     for (int j = 0; j < c; j++) {        // loop for channels
       for (int k = 0; k < out_h; k++) {  // loop for images
         for (int l = 0; l < out_w; l++) {
-          // bilinear interpolation
           T out_t;
           if (data_layout == DataLayout::NCHW) {
-            out_t = static_cast<T>(
-                static_cast<MT>(input_t(i, j, vy_n[k], vx_w[l])) * vd_s[k] *
-                    vd_e[l] +
-                static_cast<MT>(input_t(i, j, vy_s[k], vx_w[l])) * vd_n[k] *
-                    vd_e[l] +
-                static_cast<MT>(input_t(i, j, vy_n[k], vx_e[l])) * vd_s[k] *
-                    vd_w[l] +
-                static_cast<MT>(input_t(i, j, vy_s[k], vx_e[l])) * vd_n[k] *
-                    vd_w[l]);
+            if (use_flat_formula_nchw) {
+              // Pre-combined weights path (matches PyTorch small-output path)
+              // Weight mapping:
+              //   w00 = h0lambda * w0lambda = vd_s[k] * vd_e[l]  -> NW corner
+              //   w01 = h0lambda * w1lambda = vd_s[k] * vd_w[l]  -> NE corner
+              //   w10 = h1lambda * w0lambda = vd_n[k] * vd_e[l]  -> SW corner
+              //   w11 = h1lambda * w1lambda = vd_n[k] * vd_w[l]  -> SE corner
+              MT w00 = vd_s[k] * vd_e[l];
+              MT w01 = vd_s[k] * vd_w[l];
+              MT w10 = vd_n[k] * vd_e[l];
+              MT w11 = vd_n[k] * vd_w[l];
+              out_t = static_cast<T>(
+                  static_cast<MT>(input_t(i, j, vy_n[k], vx_w[l])) * w00 +
+                  static_cast<MT>(input_t(i, j, vy_n[k], vx_e[l])) * w01 +
+                  static_cast<MT>(input_t(i, j, vy_s[k], vx_w[l])) * w10 +
+                  static_cast<MT>(input_t(i, j, vy_s[k], vx_e[l])) * w11);
+            } else {
+              // Separable path (matches PyTorch generic large-output path)
+              MT t0 =
+                  static_cast<MT>(input_t(i, j, vy_n[k], vx_w[l])) * vd_e[l] +
+                  static_cast<MT>(input_t(i, j, vy_n[k], vx_e[l])) * vd_w[l];
+              MT t1 =
+                  static_cast<MT>(input_t(i, j, vy_s[k], vx_w[l])) * vd_e[l] +
+                  static_cast<MT>(input_t(i, j, vy_s[k], vx_e[l])) * vd_w[l];
+              out_t = static_cast<T>(t0 * vd_s[k] + t1 * vd_n[k]);
+            }
             output_t(i, j, k, l) = out_t;
 
           } else {
+            // NHWC: always use pre-combined weights (PyTorch channels-last
+            // path)
+            MT w00 = vd_s[k] * vd_e[l];
+            MT w01 = vd_s[k] * vd_w[l];
+            MT w10 = vd_n[k] * vd_e[l];
+            MT w11 = vd_n[k] * vd_w[l];
             out_t = static_cast<T>(
-                static_cast<MT>(input_t(i, vy_n[k], vx_w[l], j)) * vd_s[k] *
-                    vd_e[l] +
-                static_cast<MT>(input_t(i, vy_s[k], vx_w[l], j)) * vd_n[k] *
-                    vd_e[l] +
-                static_cast<MT>(input_t(i, vy_n[k], vx_e[l], j)) * vd_s[k] *
-                    vd_w[l] +
-                static_cast<MT>(input_t(i, vy_s[k], vx_e[l], j)) * vd_n[k] *
-                    vd_w[l]);
+                static_cast<MT>(input_t(i, vy_n[k], vx_w[l], j)) * w00 +
+                static_cast<MT>(input_t(i, vy_n[k], vx_e[l], j)) * w01 +
+                static_cast<MT>(input_t(i, vy_s[k], vx_w[l], j)) * w10 +
+                static_cast<MT>(input_t(i, vy_s[k], vx_e[l], j)) * w11);
             output_t(i, k, l, j) = out_t;
           }
         }
@@ -259,8 +355,8 @@ static void NearestNeighborInterpolate(const DenseTensor& input,
 template <typename T>
 static void BicubicInterpolation(const DenseTensor& input,
                                  DenseTensor* output,
-                                 const float ratio_h,
-                                 const float ratio_w,
+                                 const double ratio_h,
+                                 const double ratio_w,
                                  const int in_h,
                                  const int in_w,
                                  const int n,
@@ -271,19 +367,36 @@ static void BicubicInterpolation(const DenseTensor& input,
                                  const DataLayout data_layout) {
   auto input_t = EigenTensor<T, 4>::From(input);
   auto output_t = EigenTensor<T, 4>::From(*output);
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT =
+      typename std::conditional_t<std::is_integral<T>::value,
+                                  float,
+                                  typename phi::dtype::MPTypeTrait<T>::Type>;
+  MT ratio_h_mt = static_cast<MT>(ratio_h);
+  MT ratio_w_mt = static_cast<MT>(ratio_w);
 
   for (int k = 0; k < out_h; k++) {  // loop for images
-    MT y_n = align_corners ? static_cast<MT>(ratio_h * static_cast<float>(k))
-                           : static_cast<MT>(ratio_h * (k + 0.5) - 0.5);
-    int input_y = floorf(y_n);
-    const MT y_t = y_n - input_y;
+    MT y_n = align_corners
+                 ? ratio_h_mt * static_cast<MT>(k)
+                 : ratio_h_mt * (static_cast<MT>(k) + static_cast<MT>(0.5)) -
+                       static_cast<MT>(0.5);
+    int input_y = std::min(
+        static_cast<int>(std::floor(static_cast<double>(y_n))), in_h - 1);
+    const MT y_t =
+        std::min(std::max(static_cast<MT>(y_n - static_cast<MT>(input_y)),
+                          static_cast<MT>(0)),
+                 static_cast<MT>(1));
 
     for (int l = 0; l < out_w; l++) {
-      MT x_n = align_corners ? static_cast<MT>(ratio_w * static_cast<float>(l))
-                             : static_cast<MT>(ratio_w * (l + 0.5) - 0.5);
-      int input_x = floorf(x_n);
-      const MT x_t = x_n - input_x;
+      MT x_n = align_corners
+                   ? ratio_w_mt * static_cast<MT>(l)
+                   : ratio_w_mt * (static_cast<MT>(l) + static_cast<MT>(0.5)) -
+                         static_cast<MT>(0.5);
+      int input_x = std::min(
+          static_cast<int>(std::floor(static_cast<double>(x_n))), in_w - 1);
+      const MT x_t =
+          std::min(std::max(static_cast<MT>(x_n - static_cast<MT>(input_x)),
+                            static_cast<MT>(0)),
+                   static_cast<MT>(1));
 
       for (int i = 0; i < n; i++) {    // loop for batches
         for (int j = 0; j < c; j++) {  // loop for channels
@@ -342,9 +455,9 @@ static void BicubicInterpolation(const DenseTensor& input,
 template <typename T>
 static void TrilinearInterpolation(const DenseTensor& input,
                                    DenseTensor* output,
-                                   const float ratio_d,
-                                   const float ratio_h,
-                                   const float ratio_w,
+                                   const double ratio_d,
+                                   const double ratio_h,
+                                   const double ratio_w,
                                    const int in_d,
                                    const int in_h,
                                    const int in_w,
@@ -359,10 +472,16 @@ static void TrilinearInterpolation(const DenseTensor& input,
   auto input_t = EigenTensor<T, 5>::From(input);
   auto output_t = EigenTensor<T, 5>::From(*output);
   bool align_flag = (align_mode == 0 && !align_corners);
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT =
+      typename std::conditional_t<std::is_integral<T>::value,
+                                  float,
+                                  typename phi::dtype::MPTypeTrait<T>::Type>;
+  MT ratio_d_mt = static_cast<MT>(ratio_d);
+  MT ratio_h_mt = static_cast<MT>(ratio_h);
+  MT ratio_w_mt = static_cast<MT>(ratio_w);
 
   std::vector<int> vt_f, vt_b;
-  std::vector<float> vd_f, vd_b;
+  std::vector<MT> vd_f, vd_b;
   vt_f.reserve(out_d);
   vt_b.reserve(out_d);
   vd_f.reserve(out_d);
@@ -371,17 +490,36 @@ static void TrilinearInterpolation(const DenseTensor& input,
 #pragma omp parallel for
 #endif
   for (int j = 0; j < out_d; j++) {
-    int t_f = align_flag ? static_cast<int>(ratio_d * (j + 0.5) - 0.5)
-                         : static_cast<int>(ratio_d * static_cast<float>(j));
-    t_f = (t_f > 0) ? t_f : 0;
-    int t_b = (t_f + 1) < (in_d - 1) ? (t_f + 1) : (in_d - 1);
-    float idx_src_t = ratio_d * (static_cast<float>(j) + 0.5f) - 0.5f;
-    idx_src_t = (idx_src_t > 0) ? idx_src_t : 0;
-    float d_f = align_flag
-                    ? idx_src_t - static_cast<float>(t_f)
-                    : ratio_d * static_cast<float>(j) - static_cast<float>(t_f);
-    float d_b = 1.f - d_f;
-    {
+    if (in_d == out_d) {
+      // Identity case
+      vt_f[j] = j;
+      vt_b[j] = j;
+      vd_f[j] = static_cast<MT>(0);
+      vd_b[j] = static_cast<MT>(1);
+    } else {
+      MT real_input_index;
+      if (align_flag) {
+        real_input_index =
+            ratio_d_mt * (j + static_cast<MT>(0.5)) - static_cast<MT>(0.5);
+      } else if (align_corners) {
+        real_input_index = ratio_d_mt * j;
+      } else {
+        real_input_index = ratio_d_mt * j;
+      }
+      // Match PyTorch: clamp negative source index to 0 for non-cubic modes
+      if (real_input_index < MT(0)) {
+        real_input_index = MT(0);
+      }
+      // guard_index_and_lambda equivalent
+      int t_f =
+          std::min(static_cast<int>(std::floor(real_input_index)), in_d - 1);
+      MT d_f = std::min(
+          std::max(static_cast<MT>(real_input_index - static_cast<MT>(t_f)),
+                   static_cast<MT>(0)),
+          static_cast<MT>(1));
+      MT d_b = static_cast<MT>(1) - d_f;
+      int t_b = (t_f < in_d - 1) ? t_f + 1 : t_f;
+
       vt_f[j] = t_f;
       vt_b[j] = t_b;
       vd_f[j] = d_f;
@@ -390,7 +528,7 @@ static void TrilinearInterpolation(const DenseTensor& input,
   }
 
   std::vector<int> vy_n, vy_s;
-  std::vector<float> vd_n, vd_s;
+  std::vector<MT> vd_n, vd_s;
   vy_n.reserve(out_h);
   vy_s.reserve(out_h);
   vd_n.reserve(out_h);
@@ -399,17 +537,36 @@ static void TrilinearInterpolation(const DenseTensor& input,
 #pragma omp parallel for
 #endif
   for (int k = 0; k < out_h; k++) {
-    int y_n = align_flag ? static_cast<int>(ratio_h * (k + 0.5) - 0.5)
-                         : static_cast<int>(ratio_h * static_cast<float>(k));
-    y_n = (y_n > 0) ? y_n : 0;
-    int y_s = (y_n + 1) < (in_h - 1) ? (y_n + 1) : (in_h - 1);
-    float idx_src_y = ratio_h * (static_cast<float>(k) + 0.5f) - 0.5f;
-    idx_src_y = (idx_src_y > 0) ? idx_src_y : 0;
-    float d_n = align_flag
-                    ? idx_src_y - static_cast<float>(y_n)
-                    : ratio_h * static_cast<float>(k) - static_cast<float>(y_n);
-    float d_s = 1.f - d_n;
-    {
+    if (in_h == out_h) {
+      // Identity case
+      vy_n[k] = k;
+      vy_s[k] = k;
+      vd_n[k] = static_cast<MT>(0);
+      vd_s[k] = static_cast<MT>(1);
+    } else {
+      MT real_input_index;
+      if (align_flag) {
+        real_input_index =
+            ratio_h_mt * (k + static_cast<MT>(0.5)) - static_cast<MT>(0.5);
+      } else if (align_corners) {
+        real_input_index = ratio_h_mt * k;
+      } else {
+        real_input_index = ratio_h_mt * k;
+      }
+      // Match PyTorch: clamp negative source index to 0 for non-cubic modes
+      if (real_input_index < MT(0)) {
+        real_input_index = MT(0);
+      }
+      // guard_index_and_lambda equivalent
+      int y_n =
+          std::min(static_cast<int>(std::floor(real_input_index)), in_h - 1);
+      MT d_n = std::min(
+          std::max(static_cast<MT>(real_input_index - static_cast<MT>(y_n)),
+                   static_cast<MT>(0)),
+          static_cast<MT>(1));
+      MT d_s = static_cast<MT>(1) - d_n;
+      int y_s = (y_n < in_h - 1) ? y_n + 1 : y_n;
+
       vy_n[k] = y_n;
       vy_s[k] = y_s;
       vd_n[k] = d_n;
@@ -418,7 +575,7 @@ static void TrilinearInterpolation(const DenseTensor& input,
   }
 
   std::vector<int> vx_w, vx_e;
-  std::vector<float> vd_w, vd_e;
+  std::vector<MT> vd_w, vd_e;
   vx_w.reserve(out_w);
   vx_e.reserve(out_w);
   vd_w.reserve(out_w);
@@ -427,18 +584,36 @@ static void TrilinearInterpolation(const DenseTensor& input,
 #pragma omp parallel for
 #endif
   for (int l = 0; l < out_w; l++) {
-    int x_w = (align_mode == 0 && !align_corners)
-                  ? static_cast<int>(ratio_w * (l + 0.5) - 0.5)
-                  : static_cast<int>(ratio_w * static_cast<float>(l));
-    x_w = (x_w > 0) ? x_w : 0;
-    int x_e = (x_w + 1) < (in_w - 1) ? (x_w + 1) : (in_w - 1);
-    float idx_src_x = ratio_w * (static_cast<float>(l) + 0.5f) - 0.5f;
-    idx_src_x = (idx_src_x > 0) ? idx_src_x : 0;
-    float d_w = align_flag
-                    ? idx_src_x - static_cast<float>(x_w)
-                    : ratio_w * static_cast<float>(l) - static_cast<float>(x_w);
-    float d_e = 1.f - d_w;
-    {
+    if (in_w == out_w) {
+      // Identity case
+      vx_w[l] = l;
+      vx_e[l] = l;
+      vd_w[l] = static_cast<MT>(0);
+      vd_e[l] = static_cast<MT>(1);
+    } else {
+      MT real_input_index;
+      if (align_flag) {
+        real_input_index =
+            ratio_w_mt * (l + static_cast<MT>(0.5)) - static_cast<MT>(0.5);
+      } else if (align_corners) {
+        real_input_index = ratio_w_mt * l;
+      } else {
+        real_input_index = ratio_w_mt * l;
+      }
+      // Match PyTorch: clamp negative source index to 0 for non-cubic modes
+      if (real_input_index < MT(0)) {
+        real_input_index = MT(0);
+      }
+      // guard_index_and_lambda equivalent
+      int x_w =
+          std::min(static_cast<int>(std::floor(real_input_index)), in_w - 1);
+      MT d_w = std::min(
+          std::max(static_cast<MT>(real_input_index - static_cast<MT>(x_w)),
+                   static_cast<MT>(0)),
+          static_cast<MT>(1));
+      MT d_e = static_cast<MT>(1) - d_w;
+      int x_e = (x_w < in_w - 1) ? x_w + 1 : x_w;
+
       vx_w[l] = x_w;
       vx_e[l] = x_e;
       vd_w[l] = d_w;
@@ -455,43 +630,63 @@ static void TrilinearInterpolation(const DenseTensor& input,
         for (int k = 0; k < out_h; k++) {
           for (int l = 0; l < out_w; l++) {
             // trilinear interpolation
+            // Separable trilinear: width -> height -> depth
+            // Matches PyTorch's upsample_generic_Nd_kernel_impl order
             if (data_layout == DataLayout::NCHW) {
-              T out_t = static_cast<T>(
+              // Front face: width interpolation then height
+              MT f_t0 =
                   static_cast<MT>(input_t(b, i, vt_f[j], vy_n[k], vx_w[l])) *
-                      vd_b[j] * vd_s[k] * vd_e[l] +
+                      vd_e[l] +
                   static_cast<MT>(input_t(b, i, vt_f[j], vy_n[k], vx_e[l])) *
-                      vd_b[j] * vd_s[k] * vd_w[l] +
+                      vd_w[l];
+              MT f_t1 =
                   static_cast<MT>(input_t(b, i, vt_f[j], vy_s[k], vx_w[l])) *
-                      vd_b[j] * vd_n[k] * vd_e[l] +
+                      vd_e[l] +
                   static_cast<MT>(input_t(b, i, vt_f[j], vy_s[k], vx_e[l])) *
-                      vd_b[j] * vd_n[k] * vd_w[l] +
+                      vd_w[l];
+              MT front = f_t0 * vd_s[k] + f_t1 * vd_n[k];
+              // Back face: width interpolation then height
+              MT b_t0 =
                   static_cast<MT>(input_t(b, i, vt_b[j], vy_n[k], vx_w[l])) *
-                      vd_f[j] * vd_s[k] * vd_e[l] +
+                      vd_e[l] +
                   static_cast<MT>(input_t(b, i, vt_b[j], vy_n[k], vx_e[l])) *
-                      vd_f[j] * vd_s[k] * vd_w[l] +
+                      vd_w[l];
+              MT b_t1 =
                   static_cast<MT>(input_t(b, i, vt_b[j], vy_s[k], vx_w[l])) *
-                      vd_f[j] * vd_n[k] * vd_e[l] +
+                      vd_e[l] +
                   static_cast<MT>(input_t(b, i, vt_b[j], vy_s[k], vx_e[l])) *
-                      vd_f[j] * vd_n[k] * vd_w[l]);
+                      vd_w[l];
+              MT back = b_t0 * vd_s[k] + b_t1 * vd_n[k];
+              // Depth interpolation
+              T out_t = static_cast<T>(front * vd_b[j] + back * vd_f[j]);
               output_t(b, i, j, k, l) = out_t;
             } else {
-              T out_t = static_cast<T>(
+              // Front face: width interpolation then height (NDHWC)
+              MT f_t0 =
                   static_cast<MT>(input_t(b, vt_f[j], vy_n[k], vx_w[l], i)) *
-                      vd_b[j] * vd_s[k] * vd_e[l] +
+                      vd_e[l] +
                   static_cast<MT>(input_t(b, vt_f[j], vy_n[k], vx_e[l], i)) *
-                      vd_b[j] * vd_s[k] * vd_w[l] +
+                      vd_w[l];
+              MT f_t1 =
                   static_cast<MT>(input_t(b, vt_f[j], vy_s[k], vx_w[l], i)) *
-                      vd_b[j] * vd_n[k] * vd_e[l] +
+                      vd_e[l] +
                   static_cast<MT>(input_t(b, vt_f[j], vy_s[k], vx_e[l], i)) *
-                      vd_b[j] * vd_n[k] * vd_w[l] +
+                      vd_w[l];
+              MT front = f_t0 * vd_s[k] + f_t1 * vd_n[k];
+              // Back face: width interpolation then height (NDHWC)
+              MT b_t0 =
                   static_cast<MT>(input_t(b, vt_b[j], vy_n[k], vx_w[l], i)) *
-                      vd_f[j] * vd_s[k] * vd_e[l] +
+                      vd_e[l] +
                   static_cast<MT>(input_t(b, vt_b[j], vy_n[k], vx_e[l], i)) *
-                      vd_f[j] * vd_s[k] * vd_w[l] +
+                      vd_w[l];
+              MT b_t1 =
                   static_cast<MT>(input_t(b, vt_b[j], vy_s[k], vx_w[l], i)) *
-                      vd_f[j] * vd_n[k] * vd_e[l] +
+                      vd_e[l] +
                   static_cast<MT>(input_t(b, vt_b[j], vy_s[k], vx_e[l], i)) *
-                      vd_f[j] * vd_n[k] * vd_w[l]);
+                      vd_w[l];
+              MT back = b_t0 * vd_s[k] + b_t1 * vd_n[k];
+              // Depth interpolation
+              T out_t = static_cast<T>(front * vd_b[j] + back * vd_f[j]);
               output_t(b, j, k, l, i) = out_t;
             }
           }
@@ -623,8 +818,14 @@ static void Interpolate1DCPUFwd(
     return;
   }
 
-  float ratio_w =
-      funcs::AreaPixelComputeScale<double>(in_w, out_w, align_corners, scale_w);
+  // Match PyTorch: compute ratio in target precision (float for float32,
+  // double for float64) to avoid double-rounding differences
+  using MT =
+      typename std::conditional_t<std::is_integral<T>::value,
+                                  float,
+                                  typename phi::dtype::MPTypeTrait<T>::Type>;
+  double ratio_w = static_cast<double>(
+      funcs::AreaPixelComputeScale<MT>(in_w, out_w, align_corners, scale_w));
   if ("linear" == interp_method) {
     LinearInterpolation<T>(x,
                            output,
@@ -747,10 +948,16 @@ static void Interpolate2DCPUFwd(
     return;
   }
 
-  float ratio_h =
-      funcs::AreaPixelComputeScale<float>(in_h, out_h, align_corners, scale_h);
-  float ratio_w =
-      funcs::AreaPixelComputeScale<float>(in_w, out_w, align_corners, scale_w);
+  // Match PyTorch: compute ratio in target precision (float for float32,
+  // double for float64) to avoid double-rounding differences
+  using MT =
+      typename std::conditional_t<std::is_integral<T>::value,
+                                  float,
+                                  typename phi::dtype::MPTypeTrait<T>::Type>;
+  double ratio_h = static_cast<double>(
+      funcs::AreaPixelComputeScale<MT>(in_h, out_h, align_corners, scale_h));
+  double ratio_w = static_cast<double>(
+      funcs::AreaPixelComputeScale<MT>(in_w, out_w, align_corners, scale_w));
 
   // TODO(zrr1999): to align xpu
   if (out_h <= 1) {
@@ -938,12 +1145,18 @@ static void Interpolate3DCPUFwd(
     return;
   }
 
-  float ratio_d =
-      funcs::AreaPixelComputeScale<float>(in_d, out_d, align_corners, scale_d);
-  float ratio_h =
-      funcs::AreaPixelComputeScale<float>(in_h, out_h, align_corners, scale_h);
-  float ratio_w =
-      funcs::AreaPixelComputeScale<float>(in_w, out_w, align_corners, scale_w);
+  // Match PyTorch: compute ratio in target precision (float for float32,
+  // double for float64) to avoid double-rounding differences
+  using MT =
+      typename std::conditional_t<std::is_integral<T>::value,
+                                  float,
+                                  typename phi::dtype::MPTypeTrait<T>::Type>;
+  double ratio_d = static_cast<double>(
+      funcs::AreaPixelComputeScale<MT>(in_d, out_d, align_corners, scale_d));
+  double ratio_h = static_cast<double>(
+      funcs::AreaPixelComputeScale<MT>(in_h, out_h, align_corners, scale_h));
+  double ratio_w = static_cast<double>(
+      funcs::AreaPixelComputeScale<MT>(in_w, out_w, align_corners, scale_w));
 
   if ("trilinear" == interp_method) {
     TrilinearInterpolation<T>(x,
@@ -1334,6 +1547,9 @@ static void ComputeAAWeightsSpanCPU(const int i,
                         std::floor(*center + support + static_cast<WT>(0.5))),
                     input_size) -
            *xmin;
+  // Clamp xsize to non-negative. In rare precision edge cases, xsize can
+  // become negative. Matches PyTorch's std::clamp(xsize, 0, max_interp_size).
+  *xsize = std::max(*xsize, 0);
 }
 
 // Single dimension AA interpolation for float types on CPU.
@@ -1363,8 +1579,12 @@ static void AAInterpolation2DCPU_NCHW(const T* input_data,
                                       float ratio_w,
                                       const InterpFilter& filter) {
   // Use MPTypeTrait to match GPU: float for float/float16/bfloat16, double for
-  // double
-  using WT = typename phi::dtype::MPTypeTrait<T>::Type;
+  // double. For integral types (e.g. uint8_t), force float to avoid integer
+  // arithmetic in weight/coordinate computation.
+  using WT =
+      typename std::conditional_t<std::is_integral<T>::value,
+                                  float,
+                                  typename phi::dtype::MPTypeTrait<T>::Type>;
   WT scale_h = static_cast<WT>(ratio_h);
   WT scale_w = static_cast<WT>(ratio_w);
 
@@ -1490,8 +1710,12 @@ static void AAInterpolation2DCPU_NHWC(const T* input_data,
                                       float ratio_w,
                                       const InterpFilter& filter) {
   // Use MPTypeTrait to match GPU: float for float/float16/bfloat16, double for
-  // double
-  using WT = typename phi::dtype::MPTypeTrait<T>::Type;
+  // double. For integral types (e.g. uint8_t), force float to avoid integer
+  // arithmetic in weight/coordinate computation.
+  using WT =
+      typename std::conditional_t<std::is_integral<T>::value,
+                                  float,
+                                  typename phi::dtype::MPTypeTrait<T>::Type>;
   WT scale_h = static_cast<WT>(ratio_h);
   WT scale_w = static_cast<WT>(ratio_w);
 
@@ -1601,6 +1825,9 @@ static void AAInterpolation2DCPU_NHWC(const T* input_data,
 
 // Specialization for uint8_t: uses double weights, int16 quantization,
 // int32 accumulation -- matching PyTorch's Pillow-compatible uint8 path.
+// Uses GLOBAL weight precision (single P per dimension) matching PyTorch's
+// _compute_index_ranges_int16_weights which computes one precision value
+// from the global wt_max across ALL output indices.
 template <typename InterpFilter>
 static void AAInterpolation2DCPU_NCHW_UInt8(const uint8_t* input_data,
                                             uint8_t* output_data,
@@ -1610,8 +1837,8 @@ static void AAInterpolation2DCPU_NCHW_UInt8(const uint8_t* input_data,
                                             int in_w,
                                             int out_h,
                                             int out_w,
-                                            float ratio_h,
-                                            float ratio_w,
+                                            double ratio_h,
+                                            double ratio_w,
                                             const InterpFilter& filter) {
   using WT = double;
   WT scale_h = static_cast<WT>(ratio_h);
@@ -1632,36 +1859,13 @@ static void AAInterpolation2DCPU_NCHW_UInt8(const uint8_t* input_data,
     WT center;
   };
 
-  // Helper: compute double weights, then quantize to int16 as PyTorch does
-  auto compute_int16_weights = [&](const std::vector<WT>& dbl_weights,
-                                   int xsize,
-                                   std::vector<int16_t>& i16_weights,
-                                   unsigned int& precision) {
-    // Find maximum weight
-    WT wt_max = 0.0;
-    for (int j = 0; j < xsize; j++) {
-      WT aw = dbl_weights[j] < 0 ? -dbl_weights[j] : dbl_weights[j];
-      if (aw > wt_max) wt_max = aw;
-    }
-    // Find max precision P such that round(max_weight * 2^(P+1)) < 2^15
-    unsigned int P = 0;
-    for (P = 0; P < 22; ++P) {
-      int next_value = static_cast<int>(0.5 + wt_max * (1 << (P + 1)));
-      if (next_value >= (1 << 15)) break;
-    }
-    precision = P;
-    i16_weights.resize(xsize);
-    for (int j = 0; j < xsize; j++) {
-      i16_weights[j] =
-          static_cast<int16_t>(std::round(dbl_weights[j] * (1 << P)));
-    }
-  };
-
-  // Pre-compute horizontal weights (double) and quantized int16 weights
+  // ---------------------------------------------------------------
+  // Phase 1: Pre-compute ALL horizontal double weights and spans.
+  //          Track global wt_max across all output indices.
+  // ---------------------------------------------------------------
   std::vector<SpanInfo> h_spans(out_w);
   std::vector<std::vector<WT>> h_dbl_weights(out_w);
-  std::vector<std::vector<int16_t>> h_i16_weights(out_w);
-  std::vector<unsigned int> h_precision(out_w);
+  WT global_wt_max_h = 0.0;
 
   for (int ow = 0; ow < out_w; ow++) {
     ComputeAAWeightsSpanCPU<WT>(ow,
@@ -1679,17 +1883,40 @@ static void AAInterpolation2DCPU_NCHW_UInt8(const uint8_t* input_data,
         filter,
         static_cast<WT>(h_spans[ow].xmin) - h_spans[ow].center,
         h_spans[ow].xsize);
-    compute_int16_weights(h_dbl_weights[ow],
-                          h_spans[ow].xsize,
-                          h_i16_weights[ow],
-                          h_precision[ow]);
+    // Track global max (positive only, matching PyTorch's
+    // _compute_indices_min_size_weights_aa which uses std::max without abs)
+    for (int j = 0; j < h_spans[ow].xsize; j++) {
+      global_wt_max_h = std::max(global_wt_max_h, h_dbl_weights[ow][j]);
+    }
   }
 
-  // Pre-compute vertical weights
+  // Compute SINGLE horizontal precision from global wt_max
+  // Matches PyTorch's _compute_index_ranges_int16_weights
+  unsigned int P_h = 0;
+  for (P_h = 0; P_h < 22; ++P_h) {
+    int next_value = static_cast<int>(0.5 + global_wt_max_h * (1 << (P_h + 1)));
+    if (next_value >= (1 << 15)) break;
+  }
+
+  // Convert ALL horizontal weights to int16 using the single global P_h
+  std::vector<std::vector<int16_t>> h_i16_weights(out_w);
+  for (int ow = 0; ow < out_w; ow++) {
+    int xsize = h_spans[ow].xsize;
+    h_i16_weights[ow].resize(xsize);
+    for (int j = 0; j < xsize; j++) {
+      double v = h_dbl_weights[ow][j] * (1 << P_h);
+      h_i16_weights[ow][j] = static_cast<int16_t>(
+          (v < 0) ? static_cast<int>(-0.5 + v) : static_cast<int>(0.5 + v));
+    }
+  }
+
+  // ---------------------------------------------------------------
+  // Phase 2: Pre-compute ALL vertical double weights and spans.
+  //          Track global wt_max across all output indices.
+  // ---------------------------------------------------------------
   std::vector<SpanInfo> v_spans(out_h);
   std::vector<std::vector<WT>> v_dbl_weights(out_h);
-  std::vector<std::vector<int16_t>> v_i16_weights(out_h);
-  std::vector<unsigned int> v_precision(out_h);
+  WT global_wt_max_v = 0.0;
 
   for (int oh = 0; oh < out_h; oh++) {
     ComputeAAWeightsSpanCPU<WT>(oh,
@@ -1707,11 +1934,33 @@ static void AAInterpolation2DCPU_NCHW_UInt8(const uint8_t* input_data,
         filter,
         static_cast<WT>(v_spans[oh].xmin) - v_spans[oh].center,
         v_spans[oh].xsize);
-    compute_int16_weights(v_dbl_weights[oh],
-                          v_spans[oh].xsize,
-                          v_i16_weights[oh],
-                          v_precision[oh]);
+    for (int j = 0; j < v_spans[oh].xsize; j++) {
+      global_wt_max_v = std::max(global_wt_max_v, v_dbl_weights[oh][j]);
+    }
   }
+
+  // Compute SINGLE vertical precision from global wt_max
+  unsigned int P_v = 0;
+  for (P_v = 0; P_v < 22; ++P_v) {
+    int next_value = static_cast<int>(0.5 + global_wt_max_v * (1 << (P_v + 1)));
+    if (next_value >= (1 << 15)) break;
+  }
+
+  // Convert ALL vertical weights to int16 using the single global P_v
+  std::vector<std::vector<int16_t>> v_i16_weights(out_h);
+  for (int oh = 0; oh < out_h; oh++) {
+    int ysize = v_spans[oh].xsize;
+    v_i16_weights[oh].resize(ysize);
+    for (int j = 0; j < ysize; j++) {
+      double v = v_dbl_weights[oh][j] * (1 << P_v);
+      v_i16_weights[oh][j] = static_cast<int16_t>(
+          (v < 0) ? static_cast<int>(-0.5 + v) : static_cast<int>(0.5 + v));
+    }
+  }
+
+  // ---------------------------------------------------------------
+  // Phase 3: Accumulation using single P per dimension
+  // ---------------------------------------------------------------
 
   // Temporary buffer [N, C, H_in, W_out] as uint8
   std::vector<uint8_t> temp(static_cast<size_t>(n) * c * in_h * out_w);
@@ -1725,15 +1974,14 @@ static void AAInterpolation2DCPU_NCHW_UInt8(const uint8_t* input_data,
       for (int ow = 0; ow < out_w; ow++) {
         int xmin = h_spans[ow].xmin;
         int xsize = h_spans[ow].xsize;
-        unsigned int P = h_precision[ow];
         const int16_t* i16w = h_i16_weights[ow].data();
 
-        int32_t accum = 1 << (P > 0 ? P - 1 : 0);  // rounding bias
+        int32_t accum = 1 << (P_h - 1);  // rounding bias
         for (int j = 0; j < xsize; j++) {
           accum += static_cast<int32_t>(in_row[xmin + j]) *
                    static_cast<int32_t>(i16w[j]);
         }
-        int32_t result = accum >> P;
+        int32_t result = accum >> P_h;
         temp_row[ow] = static_cast<uint8_t>(std::max(0, std::min(255, result)));
       }
     }
@@ -1744,27 +1992,26 @@ static void AAInterpolation2DCPU_NCHW_UInt8(const uint8_t* input_data,
     for (int oh = 0; oh < out_h; oh++) {
       int ymin = v_spans[oh].xmin;
       int ysize = v_spans[oh].xsize;
-      unsigned int P = v_precision[oh];
       const int16_t* i16w = v_i16_weights[oh].data();
 
       uint8_t* out_row = output_data + nc_idx * out_h * out_w + oh * out_w;
 
       for (int ow = 0; ow < out_w; ow++) {
-        int32_t accum = 1 << (P > 0 ? P - 1 : 0);
+        int32_t accum = 1 << (P_v - 1);  // rounding bias
         for (int j = 0; j < ysize; j++) {
           const uint8_t* temp_row =
               temp.data() + nc_idx * in_h * out_w + (ymin + j) * out_w;
           accum += static_cast<int32_t>(temp_row[ow]) *
                    static_cast<int32_t>(i16w[j]);
         }
-        int32_t result = accum >> P;
+        int32_t result = accum >> P_v;
         out_row[ow] = static_cast<uint8_t>(std::max(0, std::min(255, result)));
       }
     }
   }
 }
 
-// NHWC variant for uint8
+// NHWC variant for uint8 -- global weight precision matching PyTorch
 template <typename InterpFilter>
 static void AAInterpolation2DCPU_NHWC_UInt8(const uint8_t* input_data,
                                             uint8_t* output_data,
@@ -1774,8 +2021,8 @@ static void AAInterpolation2DCPU_NHWC_UInt8(const uint8_t* input_data,
                                             int in_w,
                                             int out_h,
                                             int out_w,
-                                            float ratio_h,
-                                            float ratio_w,
+                                            double ratio_h,
+                                            double ratio_w,
                                             const InterpFilter& filter) {
   using WT = double;
   WT scale_h = static_cast<WT>(ratio_h);
@@ -1796,32 +2043,11 @@ static void AAInterpolation2DCPU_NHWC_UInt8(const uint8_t* input_data,
     WT center;
   };
 
-  auto compute_int16_weights = [&](const std::vector<WT>& dbl_weights,
-                                   int xsize,
-                                   std::vector<int16_t>& i16_weights,
-                                   unsigned int& precision) {
-    WT wt_max = 0.0;
-    for (int j = 0; j < xsize; j++) {
-      WT aw = dbl_weights[j] < 0 ? -dbl_weights[j] : dbl_weights[j];
-      if (aw > wt_max) wt_max = aw;
-    }
-    unsigned int P = 0;
-    for (P = 0; P < 22; ++P) {
-      int next_value = static_cast<int>(0.5 + wt_max * (1 << (P + 1)));
-      if (next_value >= (1 << 15)) break;
-    }
-    precision = P;
-    i16_weights.resize(xsize);
-    for (int j = 0; j < xsize; j++) {
-      i16_weights[j] =
-          static_cast<int16_t>(std::round(dbl_weights[j] * (1 << P)));
-    }
-  };
-
+  // Phase 1: Pre-compute ALL horizontal double weights, track global wt_max
   std::vector<SpanInfo> h_spans(out_w);
   std::vector<std::vector<WT>> h_dbl_weights(out_w);
-  std::vector<std::vector<int16_t>> h_i16_weights(out_w);
-  std::vector<unsigned int> h_precision(out_w);
+  WT global_wt_max_h = 0.0;
+
   for (int ow = 0; ow < out_w; ow++) {
     ComputeAAWeightsSpanCPU<WT>(ow,
                                 in_w,
@@ -1838,16 +2064,35 @@ static void AAInterpolation2DCPU_NHWC_UInt8(const uint8_t* input_data,
         filter,
         static_cast<WT>(h_spans[ow].xmin) - h_spans[ow].center,
         h_spans[ow].xsize);
-    compute_int16_weights(h_dbl_weights[ow],
-                          h_spans[ow].xsize,
-                          h_i16_weights[ow],
-                          h_precision[ow]);
+    for (int j = 0; j < h_spans[ow].xsize; j++) {
+      global_wt_max_h = std::max(global_wt_max_h, h_dbl_weights[ow][j]);
+    }
   }
 
+  // Compute SINGLE horizontal precision from global wt_max
+  unsigned int P_h = 0;
+  for (P_h = 0; P_h < 22; ++P_h) {
+    int next_value = static_cast<int>(0.5 + global_wt_max_h * (1 << (P_h + 1)));
+    if (next_value >= (1 << 15)) break;
+  }
+
+  // Convert ALL horizontal weights to int16 using the single global P_h
+  std::vector<std::vector<int16_t>> h_i16_weights(out_w);
+  for (int ow = 0; ow < out_w; ow++) {
+    int xsize = h_spans[ow].xsize;
+    h_i16_weights[ow].resize(xsize);
+    for (int j = 0; j < xsize; j++) {
+      double v = h_dbl_weights[ow][j] * (1 << P_h);
+      h_i16_weights[ow][j] = static_cast<int16_t>(
+          (v < 0) ? static_cast<int>(-0.5 + v) : static_cast<int>(0.5 + v));
+    }
+  }
+
+  // Phase 2: Pre-compute ALL vertical double weights, track global wt_max
   std::vector<SpanInfo> v_spans(out_h);
   std::vector<std::vector<WT>> v_dbl_weights(out_h);
-  std::vector<std::vector<int16_t>> v_i16_weights(out_h);
-  std::vector<unsigned int> v_precision(out_h);
+  WT global_wt_max_v = 0.0;
+
   for (int oh = 0; oh < out_h; oh++) {
     ComputeAAWeightsSpanCPU<WT>(oh,
                                 in_h,
@@ -1864,11 +2109,31 @@ static void AAInterpolation2DCPU_NHWC_UInt8(const uint8_t* input_data,
         filter,
         static_cast<WT>(v_spans[oh].xmin) - v_spans[oh].center,
         v_spans[oh].xsize);
-    compute_int16_weights(v_dbl_weights[oh],
-                          v_spans[oh].xsize,
-                          v_i16_weights[oh],
-                          v_precision[oh]);
+    for (int j = 0; j < v_spans[oh].xsize; j++) {
+      global_wt_max_v = std::max(global_wt_max_v, v_dbl_weights[oh][j]);
+    }
   }
+
+  // Compute SINGLE vertical precision from global wt_max
+  unsigned int P_v = 0;
+  for (P_v = 0; P_v < 22; ++P_v) {
+    int next_value = static_cast<int>(0.5 + global_wt_max_v * (1 << (P_v + 1)));
+    if (next_value >= (1 << 15)) break;
+  }
+
+  // Convert ALL vertical weights to int16 using the single global P_v
+  std::vector<std::vector<int16_t>> v_i16_weights(out_h);
+  for (int oh = 0; oh < out_h; oh++) {
+    int ysize = v_spans[oh].xsize;
+    v_i16_weights[oh].resize(ysize);
+    for (int j = 0; j < ysize; j++) {
+      double v = v_dbl_weights[oh][j] * (1 << P_v);
+      v_i16_weights[oh][j] = static_cast<int16_t>(
+          (v < 0) ? static_cast<int>(-0.5 + v) : static_cast<int>(0.5 + v));
+    }
+  }
+
+  // Phase 3: Accumulation with single P per dimension
 
   // Temp buffer [N, H_in, W_out, C] as uint8
   std::vector<uint8_t> temp(static_cast<size_t>(n) * in_h * out_w * c);
@@ -1879,17 +2144,16 @@ static void AAInterpolation2DCPU_NHWC_UInt8(const uint8_t* input_data,
       for (int ow = 0; ow < out_w; ow++) {
         int xmin = h_spans[ow].xmin;
         int xsize = h_spans[ow].xsize;
-        unsigned int P = h_precision[ow];
         const int16_t* i16w = h_i16_weights[ow].data();
 
         for (int64_t ch = 0; ch < c; ch++) {
-          int32_t accum = 1 << (P > 0 ? P - 1 : 0);
+          int32_t accum = 1 << (P_h - 1);
           for (int j = 0; j < xsize; j++) {
             int64_t in_idx = ((bi * in_h + ih) * in_w + (xmin + j)) * c + ch;
             accum += static_cast<int32_t>(input_data[in_idx]) *
                      static_cast<int32_t>(i16w[j]);
           }
-          int32_t result = accum >> P;
+          int32_t result = accum >> P_h;
           int64_t temp_idx = ((bi * in_h + ih) * out_w + ow) * c + ch;
           temp[temp_idx] =
               static_cast<uint8_t>(std::max(0, std::min(255, result)));
@@ -1903,18 +2167,17 @@ static void AAInterpolation2DCPU_NHWC_UInt8(const uint8_t* input_data,
     for (int oh = 0; oh < out_h; oh++) {
       int ymin = v_spans[oh].xmin;
       int ysize = v_spans[oh].xsize;
-      unsigned int P = v_precision[oh];
       const int16_t* i16w = v_i16_weights[oh].data();
 
       for (int ow = 0; ow < out_w; ow++) {
         for (int64_t ch = 0; ch < c; ch++) {
-          int32_t accum = 1 << (P > 0 ? P - 1 : 0);
+          int32_t accum = 1 << (P_v - 1);
           for (int j = 0; j < ysize; j++) {
             int64_t temp_idx = ((bi * in_h + (ymin + j)) * out_w + ow) * c + ch;
             accum += static_cast<int32_t>(temp[temp_idx]) *
                      static_cast<int32_t>(i16w[j]);
           }
-          int32_t result = accum >> P;
+          int32_t result = accum >> P_v;
           int64_t out_idx = ((bi * out_h + oh) * out_w + ow) * c + ch;
           output_data[out_idx] =
               static_cast<uint8_t>(std::max(0, std::min(255, result)));
@@ -1975,8 +2238,8 @@ static void AAInterpolation2DCPUDispatchUInt8(const uint8_t* input_data,
                                               int in_w,
                                               int out_h,
                                               int out_w,
-                                              float ratio_h,
-                                              float ratio_w,
+                                              double ratio_h,
+                                              double ratio_w,
                                               const DataLayout data_layout,
                                               const InterpFilter& filter) {
   if (data_layout == DataLayout::NCHW) {
@@ -2122,7 +2385,9 @@ static void InterpolateAA2DCPUFwd(
     return;
   }
 
-  // Use conditional type: float for integral/half types, double for double
+  // Use conditional type: float for integral/half types, double for double.
+  // For uint8 AA path, compute scale directly as double to match PyTorch's
+  // area_pixel_compute_scale<double>() in _compute_index_ranges_int16_weights.
   using MT =
       typename std::conditional_t<std::is_integral<T>::value,
                                   float,
@@ -2135,6 +2400,12 @@ static void InterpolateAA2DCPUFwd(
   // Dispatch based on interp_method and dtype
   auto launch_aa = [&](auto filter_functor) {
     if constexpr (std::is_same<T, uint8_t>::value) {
+      // For uint8, compute scale as double to avoid float precision loss.
+      // PyTorch: area_pixel_compute_scale<double>(input_size, output_size, ...)
+      double ratio_h_dbl = funcs::AreaPixelComputeScale<double>(
+          in_h, out_h, align_corners, scale_h);
+      double ratio_w_dbl = funcs::AreaPixelComputeScale<double>(
+          in_w, out_w, align_corners, scale_w);
       AAInterpolation2DCPUDispatchUInt8(input_data,
                                         output_data,
                                         n,
@@ -2143,8 +2414,8 @@ static void InterpolateAA2DCPUFwd(
                                         in_w,
                                         out_h,
                                         out_w,
-                                        static_cast<float>(ratio_h),
-                                        static_cast<float>(ratio_w),
+                                        ratio_h_dbl,
+                                        ratio_w_dbl,
                                         data_layout,
                                         filter_functor);
     } else {

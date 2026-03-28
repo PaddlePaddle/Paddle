@@ -176,6 +176,11 @@ if(WITH_AVX
                "${Wno_Maybe_Uninitialized} ${FMA_FLAG} ${AVX512F_FLAG}")
 endif()
 
+# Enable FMA contraction for interpolation kernels to match PyTorch's GCC 13.3 behavior
+set_source_files_properties(
+  kernels/cpu/interpolate_kernel.cc kernels/cpu/interpolate_grad_kernel.cc
+  PROPERTIES COMPILE_FLAGS "-ffp-contract=fast")
+
 if(WITH_GPU)
   set_source_files_properties(
     backends/gpu/gpu_resources.cc
