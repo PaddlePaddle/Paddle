@@ -167,17 +167,13 @@ TEST(TypeMetaCompatTest, BuiltinKnownTypeRepeatRegistrationIsStable) {
 TEST(TypeMetaCompatTest, DefaultConstructedTypeMetaIsUndefined) {
   caffe2::TypeMeta meta;
 
-  EXPECT_FALSE(meta.isScalarType());
+  EXPECT_TRUE(meta.isScalarType());
+  EXPECT_TRUE(meta.isScalarType(c10::ScalarType::Undefined));
   EXPECT_EQ(meta.itemsize(), 0U);
   EXPECT_EQ(meta.name(), "Undefined");
   EXPECT_EQ(meta.id(),
             caffe2::TypeIdentifier::Get<caffe2::detail::_Uninitialized>());
-  EXPECT_THROW(
-      {
-        const auto scalar_type = meta.toScalarType();
-        (void)scalar_type;
-      },
-      std::exception);
+  EXPECT_EQ(meta.toScalarType(), c10::ScalarType::Undefined);
 }
 
 TEST(TypeMetaCompatTest, AssignFromScalarTypeAndHelpersWork) {

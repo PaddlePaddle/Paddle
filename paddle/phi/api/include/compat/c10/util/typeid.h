@@ -383,7 +383,7 @@ class C10_API TypeMeta final {
   TypeIdentifier id() const noexcept { return data().id_; }
 
   inline bool isScalarType() const noexcept {
-    return index_ < static_cast<uint16_t>(c10::ScalarType::Undefined);
+    return index_ <= static_cast<uint16_t>(c10::ScalarType::Undefined);
   }
   inline bool isScalarType(c10::ScalarType scalar_type) const noexcept {
     return index_ == static_cast<uint16_t>(scalar_type);
