@@ -90,9 +90,8 @@ class Stream final {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Stream& s) {
-  os << "Stream(device_type=" << static_cast<int>(s.device_type())
-     << ", device_index=" << static_cast<int>(s.device_index())
-     << ", id=" << s.id() << ")";
+  // Format: "stream {id} on device {device_type}:{device_index}"
+  os << "stream " << s.id() << " on device " << s.device();
   return os;
 }
 
