@@ -43,6 +43,8 @@ gather_srcs(
   if_fold_pass.cc
   simplify_util.cc)
 
-if(WITH_CUDA OR WITH_ROCM)
+if(WITH_CUDA
+   OR WITH_ROCM
+   OR WITH_CUSTOM_DEVICE)
   gather_srcs(cinnapi_src SRCS transform_gpu_forloop.cc)
 endif()

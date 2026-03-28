@@ -1809,6 +1809,7 @@ def broadcast_tensors(
         return out
 
 
+@param_two_alias(["x", "input"], ["axes", "dims"])
 def rot90(
     x: Tensor, k: int = 1, axes: Sequence[int] = [0, 1], name: str | None = None
 ) -> Tensor:
@@ -1818,8 +1819,10 @@ def rot90(
     Args:
         x (Tensor): The input Tensor. The data type of the input Tensor x
             should be float16, float32, float64, int32, int64, bool. float16 is only supported on gpu.
+            Alias: ``input``.
         k (int, optional): Direction and number of times to rotate, default value: 1.
         axes (list|tuple, optional): Axes to rotate, dimension must be 2. default value: [0, 1].
+            Alias: ``dims``.
         name (str|None, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
 
@@ -8366,6 +8369,9 @@ def index_fill_(
     return _index_fill_impl(x, index, axis, value, True)
 
 
+@ParamAliasDecorator(
+    {"x": ["input"], "y": ["src"], "axis1": ["dim1"], "axis2": ["dim2"]}
+)
 def diagonal_scatter(
     x: Tensor,
     y: Tensor,
@@ -8397,10 +8403,14 @@ def diagonal_scatter(
 
     Args:
         x (Tensor): ``x`` is the original Tensor. Must be at least 2-dimensional.
-        y (Tensor): ``y`` is the Tensor to embed into ``x``
+            Alias: ``input``.
+        y (Tensor): ``y`` is the Tensor to embed into ``x``.
+            Alias: ``src``.
         offset (int, optional): which diagonal to consider. Default: 0 (main diagonal).
         axis1 (int, optional): first axis with respect to which to take diagonal. Default: 0.
+            Alias: ``dim1``.
         axis2 (int, optional): second axis with respect to which to take diagonal. Default: 1.
+            Alias: ``dim2``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -8422,6 +8432,13 @@ def diagonal_scatter(
     return fill_diagonal_tensor(x, y, offset, axis1, axis2, name)
 
 
+@ParamAliasDecorator(
+    {
+        "x": ["input"],
+        "values": ["src"],
+        "axis": ["dim"],
+    }
+)
 def select_scatter(
     x: Tensor, values: Tensor, axis: int, index: int, name: str | None = None
 ) -> Tensor:
@@ -8429,9 +8446,9 @@ def select_scatter(
     Embeds the values of the values tensor into x at the given index of axis.
 
     Args:
-        x (Tensor) : The Destination Tensor. Supported data types are `bool`, `float16`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `bfloat16`, `complex64`, `complex128`.
-        values (Tensor) : The tensor to embed into x. Supported data types are `bool`, `float16`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `bfloat16`, `complex64`, `complex128`.
-        axis (int) : the dimension to insert the slice into.
+        x (Tensor) : The Destination Tensor. Supported data types are `bool`, `float16`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `bfloat16`, `complex64`, `complex128`. Alias: ``input``.
+        values (Tensor) : The tensor to embed into x. Supported data types are `bool`, `float16`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `bfloat16`, `complex64`, `complex128`. Alias: ``src``.
+        axis (int) : the dimension to insert the slice into. Alias: ``dim``.
         index (int) : the index to select with.
         name (str|None, optional): Name for the operation (optional, default is None).
 

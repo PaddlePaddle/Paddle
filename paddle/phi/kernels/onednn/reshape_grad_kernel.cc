@@ -26,7 +26,7 @@ void ReshapeGradKernel(const Context& dev_ctx,
   }
 
   auto out_grad_vec_dims = out_grad.dims().size() != 0
-                               ? common::vectorize(out_grad.dims())
+                               ? vectorize(out_grad.dims())
                                : std::vector<int64_t>{1};
 
   auto out_grad_type = funcs::ToOneDNNDataType(out_grad.dtype());

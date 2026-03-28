@@ -452,7 +452,7 @@ void MatMulFunctionImplWithBlas(
         // transpose to (B, M, N), this requires batched transpose kernel
         // to be implemented in high efficiency.
         const auto out_original_shape = Out->dims();
-        std::vector<int64_t> actual_dim = common::vectorize(processedY.dims());
+        std::vector<int64_t> actual_dim = vectorize(processedY.dims());
         actual_dim[actual_dim.size() - 1] =
             out_original_shape[out_original_shape.size() - 2];
         Out->Resize(make_ddim(actual_dim));
@@ -1924,8 +1924,8 @@ MatmulJudgeDtypeKernel(const Context& dev_ctx,
   if (try_matmul_int8) {
     return;
   }
-  auto x_tmp = phi::Cast<T, Context>(dev_ctx, x, phi::DataType::FLOAT32);
-  auto y_tmp = phi::Cast<T, Context>(dev_ctx, y, phi::DataType::FLOAT32);
+  auto x_tmp = Cast<T, Context>(dev_ctx, x, phi::DataType::FLOAT32);
+  auto y_tmp = Cast<T, Context>(dev_ctx, y, phi::DataType::FLOAT32);
   DenseTensor out_tmp;
   MatMulFunction<Context, float>(dev_ctx,
                                  x_tmp,
@@ -1936,10 +1936,10 @@ MatmulJudgeDtypeKernel(const Context& dev_ctx,
                                  transpose_x,
                                  transpose_y);
   if (x.dtype() == phi::DataType::INT8) {
-    phi::CastKernel<float>(dev_ctx, out_tmp, phi::DataType::INT32, out);
+    CastKernel<float>(dev_ctx, out_tmp, phi::DataType::INT32, out);
     return;
   }
-  phi::CastKernel<float>(dev_ctx, out_tmp, x.dtype(), out);
+  CastKernel<float>(dev_ctx, out_tmp, x.dtype(), out);
 }
 
 #if defined(PADDLE_WITH_CUDA)
@@ -2076,8 +2076,8 @@ void MatmulKernel(const Context& dev_ctx,
       0,
       common::errors::InvalidArgument(
           "The dims of Input(Y) should be greater than or equal to 0."));
-  const std::vector<std::int64_t> x_dims = common::vectorize(x.dims());
-  const std::vector<std::int64_t> y_dims = common::vectorize(y.dims());
+  const std::vector<std::int64_t> x_dims = vectorize(x.dims());
+  const std::vector<std::int64_t> y_dims = vectorize(y.dims());
   MatmulJudgeDtypeKernel<Context, T>(
       dev_ctx, x, y, x_dims, y_dims, out, transpose_x, transpose_y);
 }

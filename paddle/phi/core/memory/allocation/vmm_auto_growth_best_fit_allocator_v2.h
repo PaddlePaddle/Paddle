@@ -24,6 +24,8 @@
 #include "paddle/phi/core/memory/allocation/spin_lock.h"
 #include "paddle/phi/core/memory/allocation/vmm_allocator_v2_types.h"
 
+#if defined(PADDLE_WITH_CUDA)
+
 namespace paddle {
 namespace memory {
 namespace allocation {
@@ -85,3 +87,5 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle
+
+#endif

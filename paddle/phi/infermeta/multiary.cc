@@ -5741,6 +5741,34 @@ void WarpctcInferMeta(const MetaTensor& logits,
     max_sequence_length = logits_dims[0];
     num_sequences = logits_dims[1];
     sequence_width = logits_dims[2];
+
+    int64_t labels_batch_size = label.dims()[0];
+    int64_t logits_length_batch_size = logits_length.dims()[0];
+    int64_t labels_length_batch_size = labels_length.dims()[0];
+
+    PADDLE_ENFORCE_EQ(
+        labels_batch_size,
+        num_sequences,
+        common::errors::InvalidArgument(
+            "Expected label to have size %lld at dimension 0, but got size %d",
+            num_sequences,
+            labels_batch_size));
+
+    PADDLE_ENFORCE_EQ(
+        logits_length_batch_size,
+        num_sequences,
+        common::errors::InvalidArgument("Expected logits_length to have size "
+                                        "%lld at dimension 0, but got size %d",
+                                        num_sequences,
+                                        logits_length_batch_size));
+
+    PADDLE_ENFORCE_EQ(
+        labels_length_batch_size,
+        num_sequences,
+        common::errors::InvalidArgument("Expected labels_length to have size "
+                                        "%lld at dimension 0, but got size %d",
+                                        num_sequences,
+                                        labels_length_batch_size));
   } else {
     max_sequence_length = -1;
     num_sequences = -1;

@@ -23,6 +23,26 @@
 
 namespace c10 {
 
+namespace {
+
+const char* DeviceTypeToString(DeviceType type) {
+  switch (type) {
+    case DeviceType::CPU:
+      return "cpu";
+    case DeviceType::CUDA:
+      return "cuda";
+    case DeviceType::XPU:
+      return "xpu";
+    case DeviceType::IPU:
+      return "ipu";
+    case DeviceType::CUSTOM:
+      return "privateuseone";
+  }
+  return "cpu";
+}
+
+}  // namespace
+
 DeviceType parse_type(const std::string& device_string) {
   static const std::array<std::pair<const char*, DeviceType>,
                           static_cast<size_t>(4)>
@@ -49,13 +69,12 @@ Device::Device(const std::string& device_string) : Device(Type::CPU) {
   std::string type_str = colon_pos == std::string::npos
                              ? device_string
                              : device_string.substr(0, colon_pos);
-  DeviceType type = parse_type(type_str);
-  DeviceIndex index = 0;
+  type_ = parse_type(type_str);
+  index_ = -1;
   if (colon_pos != std::string::npos) {
     std::string index_str = device_string.substr(colon_pos + 1);
     try {
-      index = static_cast<DeviceIndex>(std::stoi(index_str));
-      inner_ = phi::Place(type, index);
+      index_ = static_cast<DeviceIndex>(std::stoi(index_str));
     } catch (const std::invalid_argument&) {
       PADDLE_THROW(::common::errors::InvalidArgument(
           "Invalid device index: '%s' is not a number.", index_str));
@@ -67,7 +86,7 @@ Device::Device(const std::string& device_string) : Device(Type::CPU) {
 }
 
 std::string Device::str() const {
-  std::string str = phi::AllocationTypeStr(type());
+  std::string str = DeviceTypeToString(type());
   if (has_index()) {
     str.push_back(':');
     str.append(std::to_string(index()));

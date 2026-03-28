@@ -23,6 +23,7 @@ via malicious pickle payloads (CWE-502).
 from __future__ import annotations
 
 import pickle
+import types
 
 # Whitelist of allowed modules and their allowed classes.
 # Only these classes can be instantiated during deserialization.
@@ -108,6 +109,46 @@ _ALLOWED_CLASSES: dict[str, set[str]] = {
 }
 
 
+def _is_safe_class(cls) -> bool:
+    """Check if a class is safe to deserialize.
+
+    Returns True if the class is a user-defined class without dangerous methods.
+    Returns False for built-in functions, modules, and classes with __reduce__.
+
+    This allows paddle.load() to safely deserialize configuration classes
+    (like PreTrainingArguments) that are saved via paddle.save(), while
+    blocking potential RCE attacks through __reduce__ exploitation.
+    """
+    # Reject built-in functions and modules
+    if isinstance(
+        cls,
+        (types.BuiltinFunctionType, types.BuiltinMethodType, types.ModuleType),
+    ):
+        return False
+
+    # Only allow actual classes (types)
+    if not isinstance(cls, type):
+        return False
+
+    # Check if class has __dict__ (user-defined classes do)
+    cls_dict = getattr(cls, '__dict__', None)
+    if cls_dict is None:
+        return False
+
+    # Check for dangerous methods that could be exploited for RCE
+    dangerous_methods = {
+        '__reduce__',
+        '__reduce_ex__',
+        '__getstate__',
+        '__setstate__',
+    }
+    for method in dangerous_methods:
+        if method in cls_dict:
+            return False
+
+    return True
+
+
 class RestrictedUnpickler(pickle.Unpickler):
     """A restricted unpickler that only allows whitelisted classes.
 
@@ -128,15 +169,32 @@ class RestrictedUnpickler(pickle.Unpickler):
             name: The class name to load.
 
         Returns:
-            The class object if it is in the whitelist.
+            The class object if it is in the whitelist or is a safe class.
 
         Raises:
-            pickle.UnpicklingError: If the class is not in the whitelist.
+            pickle.UnpicklingError: If the class is not in the whitelist
+                and is not a safe user-defined class.
         """
         allowed_names = _ALLOWED_CLASSES.get(module)
         if allowed_names is not None:
             if '*' in allowed_names or name in allowed_names:
                 return super().find_class(module, name)
+
+        # Allow safe user-defined classes (without __reduce__)
+        # This supports loading configuration classes like PreTrainingArguments
+        try:
+            cls = super().find_class(module, name)
+            if _is_safe_class(cls):
+                return cls
+            else:
+                raise pickle.UnpicklingError(
+                    f"Forbidden class: {module}.{name}. "
+                    f"Only user-defined classes without __reduce__ are allowed."
+                )
+        except pickle.UnpicklingError:
+            raise
+        except (ImportError, AttributeError):
+            pass
 
         raise pickle.UnpicklingError(
             f"Forbidden class: {module}.{name}. "

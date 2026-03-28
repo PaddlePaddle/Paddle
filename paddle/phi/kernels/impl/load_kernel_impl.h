@@ -56,7 +56,7 @@ void LoadKernel(const Context& dev_ctx,
   auto in_dtype = out->dtype();
   auto out_dtype = load_as_fp16 ? phi::DataType::FLOAT16 : in_dtype;
   if (in_dtype != out_dtype) {
-    phi::CastKernel<T>(dev_ctx, *out, out_dtype, out);
+    CastKernel<T>(dev_ctx, *out, out_dtype, out);
   }
 }
 

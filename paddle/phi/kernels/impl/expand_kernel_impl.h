@@ -30,7 +30,7 @@ void Expand(const Context& dev_ctx,
             DenseTensor* out) {
   auto in_dims = x.dims();
   auto expand_shape = shape.GetData();
-  auto vec_in_dims = common::vectorize<int64_t>(in_dims);
+  auto vec_in_dims = vectorize<int64_t>(in_dims);
   auto diff = expand_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
   std::vector<int> repeat_times(vec_in_dims.size());
@@ -76,7 +76,7 @@ void Expand(const Context& dev_ctx,
       repeat_times[i] = 1;
     }
   }
-  Eigen::DSizes<Eigen::DenseIndex, Rank> bcast_dims;
+  Eigen::DSizes<int64_t, Rank> bcast_dims;
   for (size_t i = 0; i < repeat_times.size(); ++i) {
     bcast_dims[i] = repeat_times[i];
   }

@@ -962,9 +962,9 @@ void cuda_rms_norm(const Context& dev_ctx,
       const_cast<scalar_t_out*>(scale.data<scalar_t_out>()), \
       dev_ctx.stream())
   // scale.dtype() same as y->dtype()
-  if (scale.dtype() == phi::DataType::FLOAT32) {
+  if (scale.dtype() == DataType::FLOAT32) {
     DISPATCH_FWD_CASE(float);
-  } else if (scale.dtype() == phi::DataType::BFLOAT16) {
+  } else if (scale.dtype() == DataType::BFLOAT16) {
     DISPATCH_FWD_CASE(phi::bfloat16);
   }
 #undef DISPATCH_FWD_CASE
@@ -1061,9 +1061,9 @@ void cuda_rms_norm_gradient(const Context& dev_ctx,
       grad_x->data<T>(),                                \
       grad_scale->data<scalar_t_out>(),                 \
       dev_ctx.stream())
-  if (scale.dtype() == phi::DataType::FLOAT32) {
+  if (scale.dtype() == DataType::FLOAT32) {
     DISPATCH_BWD_CASE(float);
-  } else if (scale.dtype() == phi::DataType::BFLOAT16) {
+  } else if (scale.dtype() == DataType::BFLOAT16) {
     DISPATCH_BWD_CASE(phi::bfloat16);
   }
 #undef DISPATCH_BWD_CASE

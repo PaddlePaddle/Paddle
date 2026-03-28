@@ -140,8 +140,7 @@ void DeterminantGradKernel(const Context& dev_ctx,
     // The matrix is not invertible
     VLOG(3) << "The input matrix not invertible!";
     x_grad->Resize(x.dims());
-    phi::Full<T>(
-        dev_ctx, common::vectorize(x.dims()), static_cast<T>(0.0f), x_grad);
+    phi::Full<T>(dev_ctx, vectorize(x.dims()), static_cast<T>(0.0f), x_grad);
     return;
   }
 
@@ -163,8 +162,8 @@ void DeterminantGradKernel(const Context& dev_ctx,
 
     funcs::MatrixInverseFunctor<Context, MPType> mat_inv;
     if constexpr (!std::is_same_v<MPType, T>) {
-      auto x_mp = phi::Cast<T, Context>(
-          dev_ctx, x, phi::CppTypeToDataType<MPType>::Type());
+      auto x_mp =
+          Cast<T, Context>(dev_ctx, x, phi::CppTypeToDataType<MPType>::Type());
       mat_inv(dev_ctx, x_mp, &inverse_A);
     } else {
       mat_inv(dev_ctx, x, &inverse_A);
@@ -184,9 +183,9 @@ void DeterminantGradKernel(const Context& dev_ctx,
     DenseTensor mul_dA_detA;
     // Third: dA * |A|.conj()
     if constexpr (!std::is_same_v<MPType, T>) {
-      auto out_mp = phi::Cast<T, Context>(
+      auto out_mp = Cast<T, Context>(
           dev_ctx, out, phi::CppTypeToDataType<MPType>::Type());
-      auto out_grad_mp = phi::Cast<T, Context>(
+      auto out_grad_mp = Cast<T, Context>(
           dev_ctx, out_grad, phi::CppTypeToDataType<MPType>::Type());
 
       auto conj_out_mp = phi::Conj<MPType>(dev_ctx, out_mp);

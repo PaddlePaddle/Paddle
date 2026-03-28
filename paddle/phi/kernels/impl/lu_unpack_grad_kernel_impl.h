@@ -65,7 +65,7 @@ void LUUnpackGradKernel(const Context& dev_ctx,
   std::vector<int64_t> axes = {xrank - 2, xrank - 1};
   std::vector<int64_t> slice_starts(2, 0);
   std::vector<int64_t> slice_ends(2, 0);
-  auto valuedims = common::vectorize(xdims);
+  auto valuedims = vectorize(xdims);
 
   funcs::SetConstant<Context, T> setter;
   setter(dev_ctx, x_grad, static_cast<T>(0));

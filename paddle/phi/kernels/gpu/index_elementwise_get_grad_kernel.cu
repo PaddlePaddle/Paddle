@@ -321,7 +321,7 @@ void IndexPutWithSortKernel(const GPUContext& dev_ctx,
 
     auto stream = dev_ctx.stream();
 
-    auto shape = phi::IntArray(common::vectorize<int64_t>(linearIndex.dims()));
+    auto shape = phi::IntArray(vectorize<int64_t>(linearIndex.dims()));
     auto divisor =
         Full<IndexT, GPUContext>(dev_ctx, shape, phi::Scalar(sliceSize));
 

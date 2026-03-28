@@ -23,7 +23,7 @@ namespace distributed {
 SpmdInfo LayerNormInferSpmd(const DistMetaTensor& x,
                             const DistMetaTensor& scale,
                             const DistMetaTensor& bias,
-                            float epsilon,
+                            double epsilon,
                             int begin_norm_axis);
 
 SpmdInfo LayerNormGradInferSpmd(const DistMetaTensor& x,
@@ -32,7 +32,7 @@ SpmdInfo LayerNormGradInferSpmd(const DistMetaTensor& x,
                                 const DistMetaTensor& mean,
                                 const DistMetaTensor& variance,
                                 const DistMetaTensor out_grad,
-                                float epsilon = 1e-5,
+                                double epsilon = 1e-5,
                                 int begin_norm_axis = 1);
 
 SpmdInfo LayerNormInferSpmdReverse(const DistMetaTensor& x,
@@ -41,20 +41,20 @@ SpmdInfo LayerNormInferSpmdReverse(const DistMetaTensor& x,
                                    const DistMetaTensor& out,
                                    const DistMetaTensor& mean,
                                    const DistMetaTensor& variance,
-                                   float epsilon,
+                                   double epsilon,
                                    int begin_norm_axis);
 
 SpmdInfo FastLnInferSpmd(const DistMetaTensor& x,
                          const DistMetaTensor& scale,
                          const DistMetaTensor& bias,
-                         float epsilon);
+                         double epsilon);
 
 SpmdInfo FastLnGradInferSpmd(const DistMetaTensor& x,
                              const DistMetaTensor& scale,
                              const DistMetaTensor& mean,
                              const DistMetaTensor& invvar,
                              const DistMetaTensor& y_grad,
-                             float epsilon);
+                             double epsilon);
 
 }  // namespace distributed
 }  // namespace phi

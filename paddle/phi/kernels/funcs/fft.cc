@@ -224,9 +224,9 @@ struct FFTC2CFunctor<CPUContext, Ti, To> {
     using C = std::complex<R>;
 
     const auto& input_dim = x.dims();
-    const std::vector<size_t> in_sizes = common::vectorize<size_t>(input_dim);
+    const std::vector<size_t> in_sizes = vectorize<size_t>(input_dim);
     std::vector<std::ptrdiff_t> in_strides =
-        common::vectorize<std::ptrdiff_t>(common::stride(input_dim));
+        vectorize<std::ptrdiff_t>(common::stride(input_dim));
     const int64_t data_size = sizeof(C);
     std::transform(in_strides.begin(),
                    in_strides.end(),
@@ -267,9 +267,9 @@ struct FFTR2CFunctor<CPUContext, Ti, To> {
     using C = std::complex<R>;
 
     const auto& input_dim = x.dims();
-    const std::vector<size_t> in_sizes = common::vectorize<size_t>(input_dim);
+    const std::vector<size_t> in_sizes = vectorize<size_t>(input_dim);
     std::vector<std::ptrdiff_t> in_strides =
-        common::vectorize<std::ptrdiff_t>(common::stride(input_dim));
+        vectorize<std::ptrdiff_t>(common::stride(input_dim));
     {
       const int64_t data_size = sizeof(R);
       std::transform(in_strides.begin(),
@@ -279,9 +279,9 @@ struct FFTR2CFunctor<CPUContext, Ti, To> {
     }
 
     const auto& output_dim = out->dims();
-    const std::vector<size_t> out_sizes = common::vectorize<size_t>(output_dim);
+    const std::vector<size_t> out_sizes = vectorize<size_t>(output_dim);
     std::vector<std::ptrdiff_t> out_strides =
-        common::vectorize<std::ptrdiff_t>(common::stride(output_dim));
+        vectorize<std::ptrdiff_t>(common::stride(output_dim));
     {
       const int64_t data_size = sizeof(C);
       std::transform(out_strides.begin(),
@@ -324,9 +324,9 @@ struct FFTC2RFunctor<CPUContext, Ti, To> {
     using C = std::complex<R>;
 
     const auto& input_dim = x.dims();
-    const std::vector<size_t> in_sizes = common::vectorize<size_t>(input_dim);
+    const std::vector<size_t> in_sizes = vectorize<size_t>(input_dim);
     std::vector<std::ptrdiff_t> in_strides =
-        common::vectorize<std::ptrdiff_t>(common::stride(input_dim));
+        vectorize<std::ptrdiff_t>(common::stride(input_dim));
     {
       const int64_t data_size = sizeof(C);
       std::transform(in_strides.begin(),
@@ -336,9 +336,9 @@ struct FFTC2RFunctor<CPUContext, Ti, To> {
     }
 
     const auto& output_dim = out->dims();
-    const std::vector<size_t> out_sizes = common::vectorize<size_t>(output_dim);
+    const std::vector<size_t> out_sizes = vectorize<size_t>(output_dim);
     std::vector<std::ptrdiff_t> out_strides =
-        common::vectorize<std::ptrdiff_t>(common::stride(output_dim));
+        vectorize<std::ptrdiff_t>(common::stride(output_dim));
     {
       const int64_t data_size = sizeof(R);
       std::transform(out_strides.begin(),

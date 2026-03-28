@@ -36,11 +36,11 @@ void ArangeTensorKernel(const Context& dev_ctx,
   int64_t size = 0;
   funcs::GetSize(start_value, end_value, step_value, &size);
   if (size == 0) {
-    out->Resize(make_ddim({0}));
+    out->Resize({0});
     dev_ctx.template Alloc<T>(out);
     return;
   }
-  out->Resize(make_ddim({size}));
+  out->Resize({size});
   XPUType* out_data =
       reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out));
 

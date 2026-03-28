@@ -30,7 +30,7 @@ void LayerNorm(float* x,
                const float* scale,
                const float* bias,
                int height,
-               const float epsilon,
+               const double epsilon,
                int right);
 
 class LayerNormKernel : public KernelMore<LayerNormTuple<float>> {
