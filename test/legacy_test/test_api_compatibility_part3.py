@@ -706,31 +706,59 @@ class TestLayerToAPI(unittest.TestCase):
         self.assertIs(ret, linear)
         self.assertEqual(linear.weight.dtype, original_dtype)
 
-    # ---- floating_only behavior ----
+    # ---- all-dtype casting (floating_only=False) ----
 
-    def test_floating_only_with_positional_dtype(self):
-        """to(dtype) should only cast floating point params, not int buffers."""
+    def test_cast_all_with_positional_dtype(self):
+        """to(dtype) casts ALL params and buffers, including int buffers."""
         model = self._make_model()
         self.assertEqual(model.linear.weight.dtype, paddle.float32)
         self.assertEqual(model.int_buf.dtype, paddle.int32)
         model.to(paddle.float64)
         self.assertEqual(model.linear.weight.dtype, paddle.float64)
-        self.assertEqual(model.int_buf.dtype, paddle.int32)
+        self.assertEqual(model.int_buf.dtype, paddle.float64)
 
-    def test_floating_only_with_keyword_dtype(self):
-        """to(dtype='float64') should only cast floating point params."""
+    def test_cast_all_with_keyword_dtype(self):
+        """to(dtype='float64') casts ALL params and buffers."""
         model = self._make_model()
         model.to(dtype='float64')
         self.assertEqual(model.linear.weight.dtype, paddle.float64)
-        self.assertEqual(model.int_buf.dtype, paddle.int32)
+        self.assertEqual(model.int_buf.dtype, paddle.float64)
 
-    def test_floating_only_with_tensor(self):
-        """to(tensor) should only cast floating point params."""
+    def test_cast_all_with_tensor(self):
+        """to(tensor) casts ALL params and buffers."""
         model = self._make_model()
         ref = paddle.to_tensor([1.0], dtype='float64')
         model.to(ref)
         self.assertEqual(model.linear.weight.dtype, paddle.float64)
-        self.assertEqual(model.int_buf.dtype, paddle.int32)
+        self.assertEqual(model.int_buf.dtype, paddle.float64)
+
+    # ---- non_blocking keyword-only ----
+
+    def test_non_blocking_keyword(self):
+        """to(dtype='float64', non_blocking=True) should work."""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to(dtype='float64', non_blocking=True)
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    # ---- Error handling ----
+
+    def test_too_many_args(self):
+        """to() with too many arguments raises TypeError."""
+        linear = paddle.nn.Linear(2, 2)
+        with self.assertRaises(TypeError):
+            linear.to('cpu', 'float64', True, 'extra')
+
+    def test_unexpected_keyword(self):
+        """to() with unexpected keyword raises TypeError."""
+        linear = paddle.nn.Linear(2, 2)
+        with self.assertRaises(TypeError):
+            linear.to(foo='bar')
+
+    def test_invalid_first_arg(self):
+        """to() with invalid first arg raises TypeError."""
+        linear = paddle.nn.Linear(2, 2)
+        with self.assertRaises(TypeError):
+            linear.to(123)
 
     # ---- Sublayers ----
 
