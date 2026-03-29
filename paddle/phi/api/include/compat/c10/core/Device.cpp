@@ -101,7 +101,11 @@ Device::Device(const std::string& device_string)
   const bool no_index_type =
       (type == DeviceType::GPUPINNED || type == DeviceType::XPUPINNED);
   has_index_ = !no_index_type && (index != -1);
-  inner_ = phi::Place(alloc_type, has_index_ ? index : 0);
+  if (type == DeviceType::CUSTOM) {
+    inner_ = phi::Place(alloc_type, has_index_ ? index : 0, type_str);
+  } else {
+    inner_ = phi::Place(alloc_type, has_index_ ? index : 0);
+  }
 }
 
 std::string Device::str() const {
@@ -127,7 +131,12 @@ std::string Device::str() const {
       str = "ipu";
       break;
     case DeviceType::CUSTOM:
-      str = "privateuseone";
+      str = inner_.GetDeviceType();
+      if (str.empty() || str == "custom") {
+        str = "custom";
+      } else {
+        str = "privateuseone";
+      }
       break;
     default:
       str = "unknown";

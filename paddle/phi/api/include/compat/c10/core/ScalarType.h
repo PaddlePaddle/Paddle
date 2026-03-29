@@ -414,6 +414,11 @@ inline bool isSignedType(ScalarType t) {
       CASE_ISSIGNED(BFloat16);
       CASE_ISSIGNED(Float8_e5m2);
       CASE_ISSIGNED(Float8_e4m3fn);
+    case ScalarType::Float8_e5m2fnuz:
+    case ScalarType::Float8_e4m3fnuz:
+    case ScalarType::Float8_e8m0fnu:
+    case ScalarType::Float4_e2m1fn_x2:
+      return true;
 
     // Complex types (treated as signed)
     case ScalarType::ComplexHalf:

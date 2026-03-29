@@ -64,11 +64,10 @@ struct Device final {
     has_index_ = !no_index_type && (index != -1);
 
     if (type == DeviceType::CUSTOM) {
-      inner_ =
-          phi::Place(alloc,
-                     has_index_ ? index : 0,
-                     custom_device_type.empty() ? std::string("privateuseone")
-                                                : custom_device_type);
+      inner_ = phi::Place(alloc,
+                          has_index_ ? index : 0,
+                          custom_device_type.empty() ? std::string("custom")
+                                                     : custom_device_type);
     } else {
       inner_ = phi::Place(alloc, has_index_ ? index : 0);
     }
