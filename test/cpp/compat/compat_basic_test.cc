@@ -65,7 +65,7 @@ TEST(TensorBaseTest, TypeDeviceAPIs) {
   ASSERT_EQ(cpu_tensor.device().type(), at::DeviceType::CPU);
 
   // Test get_device()
-  ASSERT_EQ(cpu_tensor.get_device(), 0);  // CPU device index is -1
+  ASSERT_EQ(cpu_tensor.get_device(), -1);  // CPU device index is -1
 
   // Test is_cpu()/is_cuda()
   ASSERT_TRUE(cpu_tensor.is_cpu());
@@ -400,4 +400,45 @@ TEST(TensorBaseTest, IsNonOverlappingAndDenseAPI) {
   at::Tensor permuted = tensor_4d.permute({3, 1, 2, 0});
   ASSERT_FALSE(permuted.is_contiguous());
   ASSERT_TRUE(permuted.is_non_overlapping_and_dense());
+}
+
+TEST(TensorBaseTest, UndefinedAndNonDenseBranchCoverage) {
+  at::TensorBase undefined;
+  ASSERT_EQ(undefined.toString(), std::string("UndefinedType"));
+  ASSERT_EQ(undefined.data_ptr(), nullptr);
+  ASSERT_FALSE(undefined.has_names());
+
+  at::Tensor non_dense = at::arange(6, at::TensorOptions().dtype(at::kFloat))
+                             .as_strided({2, 2}, {4, 1});
+  ASSERT_FALSE(non_dense.is_non_overlapping_and_dense());
+}
+
+TEST(TensorBodyTest, ToBackendUnsupportedBranch) {
+  at::Tensor t = at::ones({1}, at::kFloat);
+  ASSERT_THROW(t.toBackend(static_cast<c10::Backend>(-1)), ::std::exception);
+}
+
+TEST(TensorBodyTest, MetaUnsupportedBranch) {
+  at::Tensor t = at::ones({1}, at::kFloat);
+  ASSERT_THROW((void)t.meta(), ::std::exception);
+}
+
+TEST(TensorBaseTest, ToDeviceAndMemoryFormatUnsupportedBranches) {
+  at::TensorBase base = at::ones({2, 2}, at::kFloat);
+
+  ASSERT_THROW(
+      (void)base.to(at::TensorOptions().device(c10::Device(c10::kCPU))),
+      ::std::exception);
+
+  ASSERT_THROW((void)base.to(at::TensorOptions().dtype(at::kFloat),
+                             false,
+                             false,
+                             at::MemoryFormat::Contiguous),
+               ::std::exception);
+}
+
+TEST(TensorBaseTest, ToDtypeCastsWhenSupported) {
+  at::TensorBase base = at::ones({2, 2}, at::kFloat);
+  at::TensorBase casted = base.to(at::TensorOptions().dtype(at::kDouble));
+  ASSERT_EQ(casted.scalar_type(), at::kDouble);
 }

@@ -57,11 +57,12 @@ inline at::Tensor arange(const at::Scalar& end,
                          ::std::optional<at::Layout> layout,
                          ::std::optional<at::Device> device,
                          ::std::optional<bool> pin_memory) {
-  auto options = at::TensorOptions()
-                     .dtype(dtype.value_or(c10::get_default_dtype()))
-                     .layout(layout)
-                     .device(device.value_or(at::kCPU))
-                     .pinned_memory(pin_memory);
+  auto options =
+      at::TensorOptions()
+          .dtype(dtype.value_or(c10::get_default_dtype_as_scalartype()))
+          .layout(layout)
+          .device(device.value_or(at::kCPU))
+          .pinned_memory(pin_memory);
   return arange(end, options);
 }
 
@@ -101,11 +102,12 @@ inline at::Tensor arange(const at::Scalar& start,
                          ::std::optional<at::Layout> layout,
                          ::std::optional<at::Device> device,
                          ::std::optional<bool> pin_memory) {
-  auto options = at::TensorOptions()
-                     .dtype(dtype.value_or(c10::get_default_dtype()))
-                     .layout(layout)
-                     .device(device.value_or(at::kCPU))
-                     .pinned_memory(pin_memory);
+  auto options =
+      at::TensorOptions()
+          .dtype(dtype.value_or(c10::get_default_dtype_as_scalartype()))
+          .layout(layout)
+          .device(device.value_or(at::kCPU))
+          .pinned_memory(pin_memory);
   return arange(start, end, options);
 }
 
@@ -150,11 +152,12 @@ inline at::Tensor arange(const at::Scalar& start,
                          ::std::optional<at::Layout> layout,
                          ::std::optional<at::Device> device,
                          ::std::optional<bool> pin_memory) {
-  auto options = at::TensorOptions()
-                     .dtype(dtype.value_or(c10::get_default_dtype()))
-                     .layout(layout)
-                     .device(device.value_or(at::kCPU))
-                     .pinned_memory(pin_memory);
+  auto options =
+      at::TensorOptions()
+          .dtype(dtype.value_or(c10::get_default_dtype_as_scalartype()))
+          .layout(layout)
+          .device(device.value_or(at::kCPU))
+          .pinned_memory(pin_memory);
   return arange(start, end, step, options);
 }
 

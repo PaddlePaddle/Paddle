@@ -20,6 +20,7 @@
 #endif
 
 #include "gtest/gtest.h"
+#include "test/cpp/compat/cuda_test_utils.h"
 
 // ==================== native_handle ====================
 
@@ -28,13 +29,14 @@
 // encoded as void*. For the default (null) stream the id is 0, so the
 // pointer is nullptr; for a real stream it must be non-null.
 TEST(StreamTest, NativeHandleCudaDefaultStream) {
-  c10::DeviceIndex dev = c10::cuda::current_device();
-  c10::Stream s(c10::Stream::DEFAULT, c10::Device(c10::DeviceType::CUDA, dev));
+  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
+  c10::Stream s = c10::cuda::getDefaultCUDAStream().unwrap();
   // Default stream encodes nullptr (id == 0), so native_handle() == nullptr.
   EXPECT_EQ(s.native_handle(), nullptr);
 }
 
 TEST(StreamTest, NativeHandleCudaCurrentStream) {
+  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   auto cuda_stream = c10::cuda::getCurrentCUDAStream();
   c10::Stream s = cuda_stream.unwrap();
   // getCurrentCUDAStream wraps the real phi stream handle; calling
@@ -62,6 +64,7 @@ TEST(StreamTest, QueryCpuStreamReturnsTrue) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 // A freshly-obtained CUDA stream with no pending work must report ready.
 TEST(StreamTest, QueryCudaStreamReady) {
+  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   auto cuda_stream = c10::cuda::getCurrentCUDAStream();
   c10::Stream s = cuda_stream.unwrap();
   // synchronize first to ensure no pending work, then query should be true.
@@ -82,6 +85,7 @@ TEST(StreamTest, SynchronizeCpuStream) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 // CUDA stream: synchronize() must complete without error.
 TEST(StreamTest, SynchronizeCudaStream) {
+  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   auto cuda_stream = c10::cuda::getCurrentCUDAStream();
   c10::Stream s = cuda_stream.unwrap();
   EXPECT_NO_THROW(s.synchronize());
@@ -94,6 +98,7 @@ TEST(StreamTest, SynchronizeCudaStream) {
 // getDefaultCUDAStream must always return the null stream (id == 0),
 // which corresponds to cudaStreamDefault on the device.
 TEST(CUDAStreamTest, DefaultStreamIsNullStream) {
+  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   auto default_stream = c10::cuda::getDefaultCUDAStream();
   // id == 0 encodes cudaStreamDefault (the null stream, handle nullptr).
   EXPECT_EQ(default_stream.id(), static_cast<c10::StreamId>(0));
@@ -101,6 +106,7 @@ TEST(CUDAStreamTest, DefaultStreamIsNullStream) {
 
 // getDefaultCUDAStream must be stable: calling it twice returns equal streams.
 TEST(CUDAStreamTest, DefaultStreamIsStable) {
+  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   auto s1 = c10::cuda::getDefaultCUDAStream();
   auto s2 = c10::cuda::getDefaultCUDAStream();
   EXPECT_EQ(s1, s2);
@@ -109,6 +115,7 @@ TEST(CUDAStreamTest, DefaultStreamIsStable) {
 // After setCurrentCUDAStream redirects the per-thread current stream,
 // getDefaultCUDAStream must still return the null stream.
 TEST(CUDAStreamTest, DefaultStreamUnaffectedBySetCurrentCUDAStream) {
+  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   // Snapshot the per-thread current stream before we touch it so we can
   // restore it afterward and avoid polluting subsequent tests.
   auto original_stream = c10::cuda::getCurrentCUDAStream();

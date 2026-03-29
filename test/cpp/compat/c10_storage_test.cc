@@ -23,65 +23,157 @@
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <c10/cuda/CUDAFunctions.h>
 #include <c10/cuda/CUDAGuard.h>
+#include "paddle/phi/backends/gpu/gpu_info.h"
+
+// Forward-declare getCUDADeviceAllocator to avoid include-order conflicts
+// between ATen/cuda/CUDAContextLight.h (defines at::cuda::is_available inline)
+// and torch/cuda.h (adds `using torch::cuda::is_available` to at::cuda).
+namespace at::cuda {
+c10::Allocator* getCUDADeviceAllocator();
+}  // namespace at::cuda
 #endif
 #include "ATen/ATen.h"
 #include "gtest/gtest.h"
 #include "paddle/phi/common/float16.h"
 #include "torch/all.h"
 
-TEST(StorageTest, BasicStorageAPIs) {
-  // Test basic Storage APIs through TensorBase
+namespace {
+
+void DeleteCharArray(void* p) { delete[] static_cast<char*>(p); }
+
+void DeleteIntPtr(void* p) { delete static_cast<int*>(p); }
+
+class RawCompatibleAllocator final : public c10::Allocator {
+ public:
+  c10::DataPtr allocate(size_t n) override {
+    size_t bytes = n == 0 ? 1 : n;
+    char* p = new char[bytes];
+    return c10::DataPtr(
+        p, p, &DeleteCharArray, c10::Device(c10::DeviceType::CPU));
+  }
+
+  void copy_data(void* dest,
+                 const void* src,
+                 std::size_t count) const override {
+    default_copy_data(dest, src, count);
+  }
+
+  c10::DeleterFnPtr raw_deleter() const override { return &DeleteCharArray; }
+};
+
+class RawIncompatibleAllocator final : public c10::Allocator {
+ public:
+  c10::DataPtr allocate(size_t /*n*/) override {
+    int* ctx = new int(7);
+    void* data = reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(ctx) + 1);
+    return c10::DataPtr(
+        data, ctx, &DeleteIntPtr, c10::Device(c10::DeviceType::CPU));
+  }
+
+  void copy_data(void* dest,
+                 const void* src,
+                 std::size_t count) const override {
+    default_copy_data(dest, src, count);
+  }
+
+  c10::DeleterFnPtr raw_deleter() const override { return &DeleteIntPtr; }
+};
+
+class NullRawDeleterAllocator final : public c10::Allocator {
+ public:
+  c10::DataPtr allocate(size_t n) override {
+    size_t bytes = n == 0 ? 1 : n;
+    char* p = new char[bytes];
+    return c10::DataPtr(
+        p, p, &DeleteCharArray, c10::Device(c10::DeviceType::CPU));
+  }
+
+  void copy_data(void* dest,
+                 const void* src,
+                 std::size_t count) const override {
+    default_copy_data(dest, src, count);
+  }
+
+  c10::DeleterFnPtr raw_deleter() const override { return nullptr; }
+};
+
+class DefaultRawDeleterAllocator final : public c10::Allocator {
+ public:
+  c10::DataPtr allocate(size_t n) override {
+    size_t bytes = n == 0 ? 1 : n;
+    char* p = new char[bytes];
+    return c10::DataPtr(
+        p, p, &DeleteCharArray, c10::Device(c10::DeviceType::CPU));
+  }
+
+  void copy_data(void* dest,
+                 const void* src,
+                 std::size_t count) const override {
+    default_copy_data(dest, src, count);
+  }
+};
+
+}  // namespace
+
+// Regression test (RT-2): tensor.storage() must count the tensor's own
+// StorageImpl ownership in use_count(), matching PyTorch where TensorImpl
+// holds a Storage handle that participates in use_count.
+TEST(StorageTest, StorageUseCountIncludesTensorRef) {
   at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
+  c10::Storage storage = tensor.storage();
 
-  const c10::Storage& storage = tensor.storage();
-
-  // Test valid()
-  ASSERT_TRUE(storage.valid());
-
-  // Test nbytes()
-  size_t expected_nbytes = 2 * 3 * sizeof(float);
-  ASSERT_EQ(storage.nbytes(), expected_nbytes);
-
-  // Test data() and mutable_data()
-  ASSERT_NE(storage.data(), nullptr);
-  ASSERT_NE(storage.mutable_data(), nullptr);
-  ASSERT_EQ(storage.data(), storage.mutable_data());
-
-  // Test allocation()
-  auto alloc = storage.allocation();
-  ASSERT_NE(alloc, nullptr);
-  ASSERT_EQ(alloc->size(), expected_nbytes);
-
-  // Test unique() and use_count()
-  // Note: In PaddlePaddle, DenseTensor holds a reference, Storage holds one,
-  // and there may be additional internal references during tensor creation
-  ASSERT_FALSE(storage.unique());
-  ASSERT_EQ(storage.use_count(), 3);
+  // tensor.storage_ contributes 1, `storage` contributes 1.
+  ASSERT_EQ(storage.use_count(), 2)
+      << "use_count() must include the tensor's own StorageImpl reference";
+  ASSERT_FALSE(storage.unique())
+      << "unique() must be false because tensor also holds a reference";
 }
 
-TEST(StorageTest, StorageSharing) {
-  // Test storage sharing between tensors
-  at::TensorBase tensor1 = at::ones({2, 3}, at::kFloat);
-  at::TensorBase tensor2 = tensor1;  // Shared storage
+// Regression test (RT-3): additional TensorBase wrappers that reference the
+// same underlying TensorImpl must not increase Storage owner count.
+TEST(StorageTest, StorageUseCountInvariantAcrossIndependentWrappers) {
+  at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
+  size_t baseline_count = 0;
+  {
+    c10::Storage baseline = tensor.storage();
+    baseline_count = baseline.use_count();
+  }
 
-  const c10::Storage& storage1 = tensor1.storage();
-  const c10::Storage& storage2 = tensor2.storage();
+  // Build a wrapper from the same Paddle tensor impl through a fresh
+  // TensorBase constructor path (not TensorBase copy ctor).
+  at::TensorBase independent_wrapper(tensor._PD_GetInner());
+  c10::Storage current = tensor.storage();
 
-  // Test that storages are the same
-  ASSERT_EQ(storage1.allocation(), storage2.allocation());
+  ASSERT_EQ(current.use_count(), baseline_count)
+      << "creating an independent wrapper around the same TensorImpl must not "
+         "change storage use_count()";
+}
 
-  // Test use_count
-  // Note: In PaddlePaddle, the count includes:
-  // 1. DenseTensor's internal holder_
-  // 2. storage1's allocation_
-  // 3. storage2's allocation_
-  // Total: 3
-  ASSERT_EQ(storage1.use_count(), 3);
-  ASSERT_EQ(storage2.use_count(), 3);
+// Regression test (RT-4): storage pointer mutation through one wrapper must
+// persist for other wrappers that share the same TensorImpl, even after the
+// mutating wrapper and temporary handles are destroyed.
+TEST(StorageTest, StorageMutationPersistsAcrossWrappersAfterDestruction) {
+  at::TensorBase tensor = at::ones({4}, at::kFloat);
+  at::TensorBase peer_wrapper(tensor._PD_GetInner());
 
-  // Test unique() is false
-  ASSERT_FALSE(storage1.unique());
-  ASSERT_FALSE(storage2.unique());
+  void* new_ptr = nullptr;
+  {
+    at::TensorBase mutating_wrapper(tensor._PD_GetInner());
+    c10::Storage storage = mutating_wrapper.storage();
+
+    RawCompatibleAllocator allocator;
+    c10::DataPtr new_data = allocator.allocate(storage.nbytes());
+    new_ptr = new_data.get();
+    storage.set_data_ptr_noswap(std::move(new_data));
+  }
+
+  ASSERT_EQ(peer_wrapper.data_ptr(), new_ptr)
+      << "peer wrapper must observe updated storage pointer after mutating "
+         "wrapper is destroyed";
+
+  c10::Storage peer_storage = peer_wrapper.storage();
+  ASSERT_EQ(peer_storage.data(), new_ptr)
+      << "storage() from peer wrapper must keep the updated pointer";
 }
 
 TEST(StorageTest, StorageOffsetAPI) {
@@ -165,6 +257,22 @@ TEST(StorageTest, DeviceAndDeviceTypeAPIs) {
 #endif
 }
 
+TEST(StorageTest, DeviceAndAliasFallbackBranches) {
+  c10::Storage empty;
+  EXPECT_EQ(empty.device_type(), phi::AllocationType::CPU);
+  EXPECT_EQ(empty.device().GetType(), phi::AllocationType::UNDEFINED);
+  EXPECT_EQ(empty.use_count(), static_cast<size_t>(0));
+
+  auto base = at::ones({2, 2}, at::kFloat);
+  c10::Storage s0 = base.storage();
+  c10::Storage s1 = base.storage();
+  EXPECT_TRUE(s0.is_alias_of(s1));
+
+  auto holder = s0.ensureTensorHolder();
+  (void)holder;
+  EXPECT_GE(s0.use_count(), static_cast<size_t>(1));
+}
+
 TEST(StorageTest, AllocatorAPI) {
   // Test allocator() API
   at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
@@ -175,41 +283,6 @@ TEST(StorageTest, AllocatorAPI) {
   phi::Allocator* allocator = storage.allocator();
   // Note: allocator can be nullptr, this is just to verify the API works
   (void)allocator;
-}
-
-TEST(StorageTest, UnsafeAllocationAPIs) {
-  // Test unsafeGetAllocation() API
-  at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
-  c10::Storage storage = tensor.storage();
-
-  // Test unsafeGetAllocation()
-  phi::Allocation* alloc_ptr = storage.unsafeGetAllocation();
-  ASSERT_NE(alloc_ptr, nullptr);
-  ASSERT_EQ(alloc_ptr->size(), 2 * 3 * sizeof(float));
-
-  // Test that the pointer matches the data pointer
-  ASSERT_EQ(alloc_ptr->ptr(), storage.data());
-}
-
-TEST(StorageTest, SetDataPtrAPIs) {
-  // Test set_data_ptr() and set_data_ptr_noswap() APIs
-  at::TensorBase tensor1 = at::ones({2, 3}, at::kFloat);
-  at::TensorBase tensor2 = at::ones({4, 5}, at::kFloat);
-
-  c10::Storage storage1 = tensor1.storage();
-  c10::Storage storage2 = tensor2.storage();
-
-  auto alloc1 = storage1.allocation();
-  auto alloc2 = storage2.allocation();
-
-  // Test set_data_ptr() - swaps and returns old
-  auto old_alloc = storage1.set_data_ptr(alloc2);
-  ASSERT_EQ(old_alloc, alloc1);
-  ASSERT_EQ(storage1.allocation(), alloc2);
-
-  // Test set_data_ptr_noswap()
-  storage1.set_data_ptr_noswap(alloc1);
-  ASSERT_EQ(storage1.allocation(), alloc1);
 }
 
 TEST(StorageTest, StorageCopyAndMove) {
@@ -259,24 +332,18 @@ TEST(StorageTest, DefaultConstructedStorage) {
 }
 
 TEST(StorageTest, IsSharedStorageAliasFunction) {
-  // Test isSharedStorageAlias() function
-  at::TensorBase tensor1 = at::ones({2, 3}, at::kFloat);
-  at::TensorBase tensor2 = tensor1;                       // Shared storage
-  at::TensorBase tensor3 = at::ones({2, 3}, at::kFloat);  // Different storage
+  int* ctx = new int(21);
+  c10::DataPtr ptr(ctx, ctx, &DeleteIntPtr, c10::Device(c10::DeviceType::CPU));
+  c10::Storage storage1(
+      c10::Storage::use_byte_size_t{}, sizeof(int), std::move(ptr), nullptr);
+  c10::Storage storage2 = storage1;
+  c10::Storage storage3;
 
-  c10::Storage storage1 = tensor1.storage();
-  c10::Storage storage2 = tensor2.storage();
-  c10::Storage storage3 = tensor3.storage();
-
-  // Same allocation should return true
   ASSERT_TRUE(c10::isSharedStorageAlias(storage1, storage2));
   ASSERT_TRUE(c10::isSharedStorageAlias(storage2, storage1));
 
-  // Different allocations should return false
   ASSERT_FALSE(c10::isSharedStorageAlias(storage1, storage3));
-  ASSERT_FALSE(c10::isSharedStorageAlias(storage3, storage1));
 
-  // Empty storage should return false
   c10::Storage empty_storage;
   ASSERT_FALSE(c10::isSharedStorageAlias(storage1, empty_storage));
   ASSERT_FALSE(c10::isSharedStorageAlias(empty_storage, storage1));
@@ -286,7 +353,7 @@ TEST(StorageTest, IsSharedStorageAliasFunction) {
 TEST(StorageTest, StorageIsAliasOfMethod) {
   // Test Storage::is_alias_of() method
   at::TensorBase tensor1 = at::ones({2, 3}, at::kFloat);
-  at::TensorBase tensor2 = tensor1;
+  at::TensorBase tensor2 = tensor1.view({3, 2});
   at::TensorBase tensor3 = at::ones({2, 3}, at::kFloat);
 
   c10::Storage storage1 = tensor1.storage();
@@ -335,11 +402,11 @@ TEST(StorageTest, MaybeOwnedTraitsSpecialization) {
 
   // Test assignBorrow
   c10::Storage another_borrow;
-  Traits::assignBorrow(&another_borrow, borrowed);
+  Traits::assignBorrow(another_borrow, borrowed);
   ASSERT_EQ(another_borrow.allocation(), original.allocation());
 
   // Test destroyBorrow
-  Traits::destroyBorrow(&borrowed);
+  Traits::destroyBorrow(borrowed);
   ASSERT_FALSE(borrowed.valid());
 }
 
@@ -365,11 +432,11 @@ TEST(StorageTest, ExclusivelyOwnedTraitsSpecialization) {
   // Test take
   c10::Storage to_take = tensor.storage();
   alloc = to_take.allocation();
-  c10::Storage taken = Traits::take(&to_take);
+  c10::Storage taken = Traits::take(to_take);
   ASSERT_EQ(taken.allocation(), alloc);
 
   // Test getImpl (mutable)
-  Traits::pointer_type ptr = Traits::getImpl(&taken);
+  Traits::pointer_type ptr = Traits::getImpl(taken);
   ASSERT_NE(ptr, nullptr);
   ASSERT_EQ(ptr->allocation(), alloc);
 
@@ -379,3 +446,638 @@ TEST(StorageTest, ExclusivelyOwnedTraitsSpecialization) {
   ASSERT_NE(const_ptr, nullptr);
   ASSERT_EQ(const_ptr->allocation(), alloc);
 }
+
+// Custom deleter for testing external DataPtr
+static bool g_test_deleter_called = false;
+static void* g_test_deleter_context = nullptr;
+
+static void TestDeleter(void* ctx) {
+  g_test_deleter_called = true;
+  g_test_deleter_context = ctx;
+  // In real usage, would free the memory here
+}
+
+TEST(StorageTest, ExternalDataPtrUseCount) {
+  // Test use_count() semantics for external DataPtr (with deleter)
+  // This verifies AC-1: single Storage use_count == 1, copy == 2
+  g_test_deleter_called = false;
+  g_test_deleter_context = nullptr;
+
+  void* test_ptr = reinterpret_cast<void*>(0x12345678);
+  void* test_ctx = reinterpret_cast<void*>(0xABCDEF00);
+
+  // Create external DataPtr with custom deleter
+  c10::DataPtr external_ptr(
+      test_ptr, test_ctx, &TestDeleter, c10::Device(c10::DeviceType::CPU));
+
+  // Create Storage from external DataPtr
+  c10::Storage storage(c10::Storage::use_byte_size_t{},
+                       1024,
+                       std::move(external_ptr),
+                       nullptr,
+                       false);
+
+  // Verify single Storage has use_count == 1 and unique() == true
+  ASSERT_EQ(storage.use_count(), 1)
+      << "Single external DataPtr Storage should have use_count == 1";
+  ASSERT_TRUE(storage.unique())
+      << "Single external DataPtr Storage should be unique";
+
+  // Copy the storage
+  c10::Storage storage_copy(storage);
+
+  // Verify both Storages have use_count == 2
+  ASSERT_EQ(storage.use_count(), 2)
+      << "Original Storage should have use_count == 2 after copy";
+  ASSERT_EQ(storage_copy.use_count(), 2)
+      << "Copied Storage should have use_count == 2";
+  ASSERT_FALSE(storage.unique())
+      << "Original Storage should not be unique after copy";
+  ASSERT_FALSE(storage_copy.unique()) << "Copied Storage should not be unique";
+
+  // Verify both point to the same data
+  ASSERT_EQ(storage.data(), storage_copy.data());
+}
+
+TEST(StorageTest, ExternalDataPtrDeleterPreserved) {
+  // Test that data_ptr().get_deleter() returns original deleter (not wrapper)
+  // This verifies AC-2: data_ptr() returns original DataPtr with correct
+  // deleter
+  g_test_deleter_called = false;
+  g_test_deleter_context = nullptr;
+
+  void* test_ptr = reinterpret_cast<void*>(0x12345678);
+  void* test_ctx = reinterpret_cast<void*>(0xABCDEF00);
+
+  // Create external DataPtr with custom deleter
+  c10::DataPtr external_ptr(
+      test_ptr, test_ctx, &TestDeleter, c10::Device(c10::DeviceType::CPU));
+
+  // Verify the original DataPtr has our deleter
+  ASSERT_EQ(external_ptr.get_deleter(), &TestDeleter);
+
+  // Create Storage from external DataPtr
+  c10::Storage storage(c10::Storage::use_byte_size_t{},
+                       1024,
+                       std::move(external_ptr),
+                       nullptr,
+                       false);
+
+  // Get the DataPtr from storage
+  const c10::DataPtr& data_ptr = storage.data_ptr();
+
+  // Verify get_deleter() returns the original deleter (not a wrapper)
+  ASSERT_EQ(data_ptr.get_deleter(), &TestDeleter)
+      << "data_ptr().get_deleter() should return original deleter, not wrapper";
+
+  // Verify get_context() returns original context
+  ASSERT_EQ(data_ptr.get_context(), test_ctx)
+      << "data_ptr().get_context() should return original context";
+}
+
+TEST(StorageTest, ExternalDataPtrCopyPreservesDeleter) {
+  // Test that copying Storage preserves the original deleter
+  g_test_deleter_called = false;
+  g_test_deleter_context = nullptr;
+
+  void* test_ptr = reinterpret_cast<void*>(0x12345678);
+  void* test_ctx = reinterpret_cast<void*>(0xABCDEF00);
+
+  // Create external DataPtr with custom deleter
+  c10::DataPtr external_ptr(
+      test_ptr, test_ctx, &TestDeleter, c10::Device(c10::DeviceType::CPU));
+
+  // Create Storage from external DataPtr
+  c10::Storage storage(c10::Storage::use_byte_size_t{},
+                       1024,
+                       std::move(external_ptr),
+                       nullptr,
+                       false);
+
+  // Copy the storage
+  c10::Storage storage_copy(storage);
+
+  // Verify both have the same deleter
+  ASSERT_EQ(storage.data_ptr().get_deleter(), &TestDeleter);
+  ASSERT_EQ(storage_copy.data_ptr().get_deleter(), &TestDeleter);
+
+  // Verify both have the same context
+  ASSERT_EQ(storage.data_ptr().get_context(), test_ctx);
+  ASSERT_EQ(storage_copy.data_ptr().get_context(), test_ctx);
+}
+
+TEST(StorageTest, ExternalDataPtrMutableDataPtrCoW) {
+  // Test CoW behavior for external DataPtr with deleter
+  // With single-path design, CoW is skipped for DataPtr with deleter
+  g_test_deleter_called = false;
+
+  void* test_ptr = reinterpret_cast<void*>(0x12345678);
+  void* test_ctx = reinterpret_cast<void*>(0xABCDEF00);
+
+  // Create external DataPtr with custom deleter
+  c10::DataPtr external_ptr(
+      test_ptr, test_ctx, &TestDeleter, c10::Device(c10::DeviceType::CPU));
+
+  // Create Storage from external DataPtr
+  c10::Storage storage(c10::Storage::use_byte_size_t{},
+                       1024,
+                       std::move(external_ptr),
+                       nullptr,
+                       false);
+
+  // Copy the storage (now use_count should be 2)
+  c10::Storage storage_copy(storage);
+  ASSERT_EQ(storage.use_count(), 2);
+  ASSERT_EQ(storage_copy.use_count(), 2);
+
+  // Call mutable_data_ptr() - for external DataPtr with deleter, CoW is skipped
+  // because we cannot clone arbitrary deleters
+  c10::DataPtr& mutable_dp = storage_copy.mutable_data_ptr();
+
+  // The mutable_data_ptr should still point to the same data
+  ASSERT_EQ(mutable_dp.get(), test_ptr);
+
+  // The deleter should still be the original
+  ASSERT_EQ(mutable_dp.get_deleter(), &TestDeleter);
+}
+
+TEST(StorageTest, DefaultConstructedStorageUseCount) {
+  // Test that default constructed storage has use_count == 0
+  c10::Storage storage;
+
+  ASSERT_EQ(storage.use_count(), 0)
+      << "Default constructed Storage should have use_count == 0";
+  ASSERT_FALSE(storage.unique());
+  ASSERT_FALSE(storage.valid());
+}
+
+TEST(StorageTest, MovedFromStorageIsGracefullyEmpty) {
+  at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
+  c10::Storage original = tensor.storage();
+
+  c10::Storage moved(std::move(original));
+  ASSERT_TRUE(moved.valid());
+
+  ASSERT_FALSE(original.valid());
+  ASSERT_EQ(original.nbytes(), 0UL);
+  ASSERT_FALSE(original.resizable());
+  ASSERT_EQ(original.data(), nullptr);
+  ASSERT_EQ(original.mutable_data(), nullptr);
+  ASSERT_EQ(original.allocation(), nullptr);
+  ASSERT_EQ(original.allocator(), nullptr);
+  ASSERT_EQ(original.device_type(), phi::AllocationType::CPU);
+  ASSERT_EQ(original.use_count(), 0UL);
+}
+
+TEST(StorageTest, DataPtrCompareExchangeDeleterAndCastContext) {
+  int* ctx = new int(42);
+  c10::DataPtr dp(ctx, ctx, &DeleteIntPtr, c10::Device(c10::DeviceType::CPU));
+
+  ASSERT_EQ(dp.cast_context<int>(&DeleteIntPtr), ctx);
+  ASSERT_EQ(dp.cast_context<int>(&DeleteCharArray), nullptr);
+
+  ASSERT_TRUE(dp.compare_exchange_deleter(&DeleteIntPtr, &DeleteCharArray));
+  ASSERT_EQ(dp.get_deleter(), &DeleteCharArray);
+
+  ASSERT_FALSE(dp.compare_exchange_deleter(&DeleteIntPtr, &DeleteIntPtr));
+}
+
+TEST(StorageTest, DataPtrUnsafeResetDataAndCtx) {
+  c10::DataPtr empty;
+  ASSERT_TRUE(empty == nullptr);
+  ASSERT_FALSE(empty != nullptr);
+
+  void* p = reinterpret_cast<void*>(0x1234);
+  ASSERT_TRUE(empty.unsafe_reset_data_and_ctx(p));
+  ASSERT_EQ(empty.get(), p);
+  ASSERT_EQ(empty.get_context(), p);
+
+  int* guarded_ctx = new int(5);
+  c10::DataPtr guarded(guarded_ctx,
+                       guarded_ctx,
+                       &DeleteIntPtr,
+                       c10::Device(c10::DeviceType::CPU));
+  ASSERT_FALSE(
+      guarded.unsafe_reset_data_and_ctx(reinterpret_cast<void*>(0x5678)));
+}
+
+TEST(StorageTest, DataPtrMoveAndReleaseContextHelpers) {
+  int* ctx = new int(9);
+  c10::DataPtr dp(ctx, ctx, &DeleteIntPtr, c10::Device(c10::DeviceType::CPU));
+
+  std::unique_ptr<void, c10::DeleterFnPtr> moved_ctx = dp.move_context();
+  ASSERT_EQ(moved_ctx.get(), ctx);
+  ASSERT_EQ(dp.get_context(), nullptr);
+
+  int* ctx2 = new int(11);
+  c10::DataPtr dp2(
+      ctx2, ctx2, &DeleteIntPtr, c10::Device(c10::DeviceType::CPU));
+  void* released = dp2.release_context();
+  ASSERT_EQ(released, ctx2);
+  ASSERT_EQ(dp2.get_context(), nullptr);
+  DeleteIntPtr(released);
+}
+
+TEST(StorageTest, AllocatorRawAllocateAndDeallocate) {
+  RawCompatibleAllocator alloc;
+  void* raw = alloc.raw_allocate(8);
+  ASSERT_NE(raw, nullptr);
+  alloc.raw_deallocate(raw);
+}
+
+TEST(StorageTest, AllocatorRawAllocateRejectsMismatchedContext) {
+  RawIncompatibleAllocator alloc;
+  EXPECT_THROW((void)alloc.raw_allocate(8), std::exception);
+}
+
+TEST(StorageTest, AllocatorRawDeallocateRequiresDeleter) {
+  NullRawDeleterAllocator alloc;
+  EXPECT_THROW(alloc.raw_deallocate(reinterpret_cast<void*>(0x1)),
+               std::exception);
+}
+
+TEST(StorageTest, AllocatorDefaultRawDeleterIsNull) {
+  DefaultRawDeleterAllocator alloc;
+  ASSERT_EQ(alloc.raw_deleter(), nullptr);
+}
+
+TEST(StorageTest, AllocatorCloneCopiesBytes) {
+  RawCompatibleAllocator alloc;
+
+  c10::DataPtr src = alloc.allocate(4);
+  auto* src_bytes = static_cast<unsigned char*>(src.get());
+  src_bytes[0] = 1;
+  src_bytes[1] = 2;
+  src_bytes[2] = 3;
+  src_bytes[3] = 4;
+
+  c10::DataPtr cloned = alloc.clone(src.get(), 4);
+  auto* dst_bytes = static_cast<unsigned char*>(cloned.get());
+
+  ASSERT_EQ(dst_bytes[0], 1);
+  ASSERT_EQ(dst_bytes[1], 2);
+  ASSERT_EQ(dst_bytes[2], 3);
+  ASSERT_EQ(dst_bytes[3], 4);
+}
+
+TEST(StorageTest, DataPtrHelpersAndAllocatorSimpleDataPtrChecks) {
+  // Cover DataPtr(data, Device) ctor path where context is nullptr.
+  int value = 7;
+  c10::DataPtr dp(&value, c10::Device(c10::DeviceType::CPU));
+  ASSERT_EQ(dp.operator->(), &value);
+  ASSERT_EQ(dp.get_context(), nullptr);
+
+  // unsafe_set_device is used by callers that update metadata only.
+  dp.unsafe_set_device(c10::Device(c10::DeviceType::CPU));
+  ASSERT_EQ(dp.device().type(), c10::DeviceType::CPU);
+
+  // is_simple_data_ptr: context==nullptr branch.
+  RawCompatibleAllocator compatible_alloc;
+  ASSERT_TRUE(compatible_alloc.is_simple_data_ptr(dp));
+
+  // is_simple_data_ptr: context!=data branch.
+  c10::DataPtr non_simple = RawIncompatibleAllocator().allocate(4);
+  ASSERT_FALSE(compatible_alloc.is_simple_data_ptr(non_simple));
+
+  dp.clear();
+  ASSERT_EQ(dp.get(), nullptr);
+}
+
+TEST(StorageTest, CreateTensorStorageNullAndHolderReuse) {
+  c10::Storage empty = c10::Storage::createTensorStorage(nullptr);
+  ASSERT_FALSE(empty.valid());
+
+  at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
+  c10::Storage base_storage = tensor.storage();
+
+  // ensureTensorHolder should be stable and reusable.
+  auto holder0 = base_storage.ensureTensorHolder();
+  auto holder1 = base_storage.ensureTensorHolder();
+  ASSERT_NE(holder0, nullptr);
+  ASSERT_EQ(holder0, holder1);
+
+  // createTensorStorage should reuse impl when holder is StorageHolderView.
+  c10::Storage from_holder = c10::Storage::createTensorStorage(holder0);
+  ASSERT_EQ(from_holder.get_impl(), base_storage.get_impl());
+}
+
+TEST(StorageTest, MaybeOwnedAndExclusiveTraitsHelpers) {
+  c10::Storage src = at::ones({2, 2}, at::kFloat).storage();
+
+  c10::Storage borrowed =
+      c10::MaybeOwnedTraits<c10::Storage>::createBorrow(src);
+  ASSERT_EQ(borrowed.get_impl(), src.get_impl());
+
+  c10::Storage assigned;
+  c10::MaybeOwnedTraits<c10::Storage>::assignBorrow(assigned, borrowed);
+  ASSERT_EQ(assigned.get_impl(), src.get_impl());
+
+  ASSERT_EQ(c10::MaybeOwnedTraits<c10::Storage>::referenceFromBorrow(assigned)
+                .get_impl(),
+            src.get_impl());
+  ASSERT_EQ(c10::MaybeOwnedTraits<c10::Storage>::pointerFromBorrow(assigned)
+                ->get_impl(),
+            src.get_impl());
+  ASSERT_TRUE(
+      c10::MaybeOwnedTraits<c10::Storage>::debugBorrowIsValid(assigned));
+  c10::MaybeOwnedTraits<c10::Storage>::destroyBorrow(assigned);
+  ASSERT_FALSE(assigned.valid());
+
+  using ET = c10::ExclusivelyOwnedTraits<c10::Storage>;
+  c10::Storage null_repr = ET::nullRepr();
+  ASSERT_FALSE(null_repr.valid());
+
+  c10::Storage in_place = ET::createInPlace();
+  ASSERT_FALSE(in_place.valid());
+
+  c10::Storage moved = ET::moveToRepr(std::move(src));
+  ASSERT_TRUE(moved.valid());
+
+  c10::Storage taken = ET::take(moved);
+  ASSERT_TRUE(taken.valid());
+  ASSERT_FALSE(moved.valid());
+
+  ASSERT_NE(ET::getImpl(taken), nullptr);
+  const c10::Storage& c_taken = taken;
+  ASSERT_NE(ET::getImpl(c_taken), nullptr);
+}
+
+TEST(StorageTest, SetDataPtrReturnsOldValues) {
+  at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
+  at::TensorBase other = at::ones({2, 3}, at::kFloat);
+  c10::Storage storage = tensor.storage();
+
+  const void* old_ptr = storage.data();
+  auto old_alloc = storage.allocation();
+  auto new_alloc = other.storage().allocation();
+  ASSERT_NE(new_alloc, nullptr);
+
+  // shared_ptr overload returns previous allocation.
+  auto returned_alloc = storage.set_data_ptr(new_alloc);
+  ASSERT_EQ(returned_alloc, old_alloc);
+  ASSERT_EQ(storage.allocation(), new_alloc);
+
+  // DataPtr overload returns previous DataPtr and clears allocation-backed
+  // state on write.
+  c10::DataPtr new_data_ptr(other.data_ptr(),
+                            c10::Device(c10::DeviceType::CPU));
+  c10::DataPtr old_data_ptr = storage.set_data_ptr(std::move(new_data_ptr));
+  ASSERT_EQ(old_data_ptr.get(), new_alloc->ptr());
+  ASSERT_EQ(storage.data(), other.data_ptr());
+  ASSERT_EQ(storage.allocation(), nullptr);
+  ASSERT_NE(old_data_ptr.get(), old_ptr);
+}
+
+// ---------------------------------------------------------------------------
+// Reference Semantics Tests
+//
+// These tests verify that Storage copies share a single underlying
+// StorageImpl, so mutations via set_data_ptr*(), set_nbytes(), and
+// mutable_data_ptr() are visible through all handles — matching the
+// observable contract of PyTorch's c10::Storage (which wraps a shared
+// StorageImpl via intrusive_ptr).
+// ---------------------------------------------------------------------------
+
+TEST(StorageTest, ReferenceSemanticsMutationVisibleThroughCopy) {
+  // After copying a Storage, writing to one handle is visible via the other.
+  at::TensorBase tensor1 = at::ones({2, 3}, at::kFloat);
+  at::TensorBase tensor2 = at::ones({4, 5}, at::kFloat);
+
+  c10::Storage storage_a = tensor1.storage();
+  c10::Storage storage_b = storage_a;  // shares StorageImpl
+
+  ASSERT_EQ(storage_a.data(), storage_b.data())
+      << "Copies should start with the same data pointer";
+
+  // Replace allocation via the shared_ptr overload
+  auto new_alloc = tensor2.storage().allocation();
+  storage_a.set_data_ptr_noswap(new_alloc);
+
+  ASSERT_EQ(storage_b.allocation(), new_alloc)
+      << "storage_b should see the allocation change made through storage_a";
+  ASSERT_EQ(storage_a.data(), storage_b.data())
+      << "Both handles should point to the same data after mutation";
+}
+
+TEST(StorageTest, ReferenceSemanticsMutableDataPtrShared) {
+  // mutable_data_ptr() returns a reference into the shared StorageImpl,
+  // so the reference obtained from one handle is the same object as the
+  // data_ptr() accessed through its copy.
+  at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
+
+  c10::Storage storage_a = tensor.storage();
+  c10::Storage storage_b = storage_a;
+
+  c10::DataPtr& dp_via_a = storage_a.mutable_data_ptr();
+
+  ASSERT_EQ(&dp_via_a, &storage_b.data_ptr())
+      << "mutable_data_ptr() from one handle should be the same object as "
+         "data_ptr() from another handle that shares the StorageImpl";
+}
+
+TEST(StorageTest, ReferenceSemanticsMutationNotVisibleAcrossIndependent) {
+  // Two Storage objects constructed independently (not by copying one from the
+  // other) do NOT share a StorageImpl, so mutations through one do not affect
+  // the other.
+  at::TensorBase tensor1 = at::ones({2, 3}, at::kFloat);
+  at::TensorBase tensor2 = at::ones({4, 5}, at::kFloat);
+
+  // Two independently-created Storages — different StorageImpls
+  c10::Storage storage_a = tensor1.storage();
+  c10::Storage storage_b = tensor2.storage();
+
+  const void* original_b_data = storage_b.data();
+  auto new_alloc = tensor2.storage().allocation();
+  storage_a.set_data_ptr_noswap(new_alloc);
+
+  ASSERT_EQ(storage_b.data(), original_b_data)
+      << "Independently-constructed Storage should not be affected by "
+         "mutations to another Storage";
+}
+
+TEST(StorageTest, ReferenceSemanticsTwoIndependentStorageCalls) {
+  // Multiple calls to tensor.storage() on the same tensor return handles
+  // sharing the same underlying StorageImpl, matching PyTorch's reference
+  // semantics where TensorBase::storage() always refers to the same storage.
+  at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
+  at::TensorBase tensor2 = at::ones({4, 5}, at::kFloat);
+
+  c10::Storage storage_b = tensor.storage();
+  c10::Storage storage_c = tensor.storage();  // same impl as storage_b
+
+  // Both handles point to the same underlying data.
+  ASSERT_EQ(storage_b.data(), storage_c.data())
+      << "Two Storage handles from the same tensor should share the same data "
+         "pointer initially";
+
+  // Mutation through one handle is visible through the other.
+  auto new_alloc = tensor2.storage().allocation();
+  storage_b.set_data_ptr_noswap(new_alloc);
+
+  ASSERT_EQ(storage_c.data(), storage_b.data())
+      << "Mutation through one Storage handle should be visible through "
+         "another handle obtained from the same tensor";
+}
+
+TEST(StorageTest, StorageMutationUpdatesTensorDataPtr) {
+  at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
+  at::TensorBase other = at::ones({4, 5}, at::kFloat);
+
+  c10::Storage storage = tensor.storage();
+  auto new_alloc = other.storage().allocation();
+  ASSERT_NE(new_alloc, nullptr);
+  ASSERT_NE(tensor.data_ptr(), new_alloc->ptr());
+
+  storage.set_data_ptr_noswap(new_alloc);
+
+  ASSERT_EQ(tensor.data_ptr(), new_alloc->ptr())
+      << "tensor.data_ptr() must follow mutations made through "
+         "tensor.storage()";
+  ASSERT_EQ(tensor.storage().allocation(), new_alloc)
+      << "Repeated storage() calls should observe the live allocation";
+}
+
+TEST(StorageTest, StorageMutationPersistsAfterHandleDestruction) {
+  at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
+  at::TensorBase other = at::ones({4, 5}, at::kFloat);
+
+  auto new_alloc = other.storage().allocation();
+  ASSERT_NE(new_alloc, nullptr);
+  {
+    c10::Storage storage = tensor.storage();
+    storage.set_data_ptr_noswap(new_alloc);
+  }
+
+  ASSERT_EQ(tensor.data_ptr(), new_alloc->ptr())
+      << "Tensor should keep the storage alive after external handles die";
+  ASSERT_EQ(tensor.storage().allocation(), new_alloc);
+}
+
+TEST(StorageTest, RepeatedStorageCallsReturnSameReference) {
+  at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
+
+  const c10::Storage& storage_a = tensor.storage();
+  const c10::Storage& storage_b = tensor.storage();
+
+  ASSERT_EQ(&storage_a, &storage_b)
+      << "storage() must return the same reference for one tensor wrapper";
+  ASSERT_EQ(storage_a.get_impl(), storage_b.get_impl());
+}
+
+TEST(StorageTest, CopiedTensorWrappersShareStorageImpl) {
+  at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
+  at::TensorBase alias = tensor;
+  at::TensorBase other = at::ones({4, 5}, at::kFloat);
+
+  auto new_alloc = other.storage().allocation();
+  ASSERT_NE(new_alloc, nullptr);
+
+  c10::Storage storage = tensor.storage();
+  storage.set_data_ptr_noswap(new_alloc);
+
+  ASSERT_EQ(tensor.storage().get_impl(), alias.storage().get_impl());
+  ASSERT_EQ(alias.data_ptr(), new_alloc->ptr())
+      << "Copied TensorBase wrappers must observe shared storage mutations";
+}
+
+TEST(StorageTest, AliasWrapperDoesNotIncreaseTensorOwnedStorageCount) {
+  at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
+
+  const c10::Storage& single_wrapper_storage = tensor.storage();
+  size_t single_wrapper_count = single_wrapper_storage.use_count();
+  ASSERT_GE(single_wrapper_count, 1UL);
+
+  at::TensorBase alias = tensor;
+  const c10::Storage& alias_storage = alias.storage();
+
+  ASSERT_EQ(single_wrapper_storage.get_impl(), alias_storage.get_impl());
+  ASSERT_EQ(single_wrapper_storage.use_count(), single_wrapper_count)
+      << "A copied TensorBase wrapper sharing the same tensor impl must not "
+         "add an extra tensor-owned Storage reference";
+}
+
+TEST(StorageTest, ViewTensorWrappersShareStorageImpl) {
+  at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
+  at::TensorBase alias = tensor.view({3, 2});
+
+  c10::Storage tensor_storage = tensor.storage();
+  c10::Storage alias_storage = alias.storage();
+
+  ASSERT_TRUE(tensor_storage.is_alias_of(alias_storage))
+      << "Fresh wrappers over the same underlying storage should share a "
+         "StorageImpl";
+  ASSERT_FALSE(c10::isSharedStorageAlias(tensor_storage, alias_storage))
+      << "isSharedStorageAlias() should follow DataPtr ownership semantics, "
+         "not overlapping ranges";
+}
+
+TEST(StorageTest, HasStorageTracksLiveStorageState) {
+  at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
+  ASSERT_TRUE(tensor.has_storage());
+
+  c10::Storage storage = tensor.storage();
+  storage.set_data_ptr(at::DataPtr());
+  ASSERT_FALSE(tensor.has_storage());
+
+  tensor.reset();
+  ASSERT_FALSE(tensor.has_storage());
+}
+
+TEST(StorageTest, ReferenceSemanticsSetNbytesVisibleThroughCopy) {
+  // set_nbytes() on one handle is visible through its copy.
+  at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
+
+  c10::Storage storage_a = tensor.storage();
+  c10::Storage storage_b = storage_a;
+
+  size_t new_size = 42;
+  storage_a.set_nbytes(new_size);
+
+  ASSERT_EQ(storage_b.nbytes(), new_size)
+      << "set_nbytes() change should be visible through all copies";
+}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+TEST(StorageTest, CUDAAllocatorZeroBytePreservesDevice) {
+  // getCUDADeviceAllocator()->allocate(0) must return a DataPtr whose device
+  // is the current CUDA device, not a default-constructed CPU DataPtr.
+  if (!at::cuda::is_available()) {
+    return;  // No CUDA device, skip
+  }
+
+  c10::Allocator* alloc = at::cuda::getCUDADeviceAllocator();
+  ASSERT_NE(alloc, nullptr);
+
+  c10::DataPtr dp = alloc->allocate(0);
+
+  // Pointer should be null for zero-byte allocation
+  ASSERT_EQ(dp.get(), nullptr)
+      << "Zero-byte allocation should return null pointer";
+
+  // Device type must be CUDA, not CPU.  For HIP/ROCm builds, PyTorch's
+  // compatibility convention is to expose DeviceType::CUDA rather than a
+  // separate HIP device type, so we follow the same convention.
+  ASSERT_EQ(dp.device().type(), c10::DeviceType::CUDA)
+      << "Zero-byte CUDA allocator DataPtr should carry CUDA device type";
+
+  // Device index should match the current device
+  int current_device = phi::backends::gpu::GetCurrentDeviceId();
+  ASSERT_EQ(static_cast<int>(dp.device().index()), current_device)
+      << "Zero-byte DataPtr should carry the current CUDA device index";
+}
+#endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+TEST(StorageTest, CUDAAllocatorRawDeleterIsNull) {
+  // PaddleCUDAAllocatorAdapter::raw_deleter() must return nullptr because the
+  // c10::Allocator raw API contract requires get()==get_context() in the
+  // returned DataPtr, but our adapter returns data=device_ptr,
+  // context=phi::Allocation*, which violates that contract.
+  // Returning nullptr signals that raw_allocate/raw_deallocate are unsafe.
+  c10::Allocator* alloc = at::cuda::getCUDADeviceAllocator();
+  ASSERT_NE(alloc, nullptr);
+  ASSERT_EQ(alloc->raw_deleter(), nullptr)
+      << "PaddleCUDAAllocatorAdapter::raw_deleter() must return nullptr "
+         "because get() != get_context() in its allocate() DataPtr";
+}
+#endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP

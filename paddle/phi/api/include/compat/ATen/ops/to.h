@@ -32,6 +32,7 @@ inline at::Tensor Tensor::to(
     ::std::optional<at::MemoryFormat> memory_format) const {
   // Handle device transfer
   PaddleTensor result = tensor_;
+  bool materialized_copy = false;
 
   if (options.has_device()) {
     const c10::Device& dev = options.device();
@@ -49,6 +50,7 @@ inline at::Tensor Tensor::to(
     }
     if (place != tensor_.place()) {
       result = result.copy_to(place, /*blocking=*/!non_blocking);
+      materialized_copy = true;
     }
   }
 
@@ -58,7 +60,12 @@ inline at::Tensor Tensor::to(
         compat::_PD_AtenScalarTypeToPhiDataType(options.dtype());
     if (target_dtype != result.dtype()) {
       result = paddle::experimental::cast(result, target_dtype);
+      materialized_copy = true;
     }
+  }
+
+  if (copy && !materialized_copy) {
+    result = paddle::experimental::assign(result);
   }
 
   return at::Tensor(result);

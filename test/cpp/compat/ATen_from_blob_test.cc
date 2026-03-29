@@ -26,6 +26,8 @@
 #include <hip/hip_runtime.h>
 #endif
 
+#include "test/cpp/compat/cuda_test_utils.h"
+
 // ======================== CPU place detection ========================
 
 // No device specified: CPU pointer → tensor must be on CPU.
@@ -117,6 +119,7 @@ TEST(ATenFromBlobTest, DeleterWithStrides) {
 
 // No device specified: GPU pointer → tensor must be on CUDA automatically.
 TEST(ATenFromBlobTest, GpuPtrDefaultsToCuda) {
+  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   float* d_data = nullptr;
 #if defined(PADDLE_WITH_CUDA)
   cudaMalloc(&d_data, 4 * sizeof(float));
@@ -141,6 +144,7 @@ TEST(ATenFromBlobTest, GpuPtrDefaultsToCuda) {
 
 // Explicit CUDA device option + GPU pointer → still CUDA.
 TEST(ATenFromBlobTest, GpuPtrWithCudaOptions) {
+  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   float* d_data = nullptr;
 #if defined(PADDLE_WITH_CUDA)
   cudaMalloc(&d_data, 4 * sizeof(float));
@@ -161,6 +165,7 @@ TEST(ATenFromBlobTest, GpuPtrWithCudaOptions) {
 
 // target_device overrides auto-detection.
 TEST(ATenFromBlobTest, TargetDeviceOverride) {
+  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   float* d_data = nullptr;
 #if defined(PADDLE_WITH_CUDA)
   cudaMalloc(&d_data, 4 * sizeof(float));
