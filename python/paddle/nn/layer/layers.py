@@ -223,7 +223,7 @@ def _parse_to_args(*args, **kwargs):
             # to(dtype, blocking=True)
             dtype = first
             blocking = args[1] if size_args > 1 else kwargs.get('blocking')
-        elif isinstance(first, (str, core.Place)):
+        elif first is None or isinstance(first, (str, core.Place)):
             # to(device, dtype=None, blocking=True)
             device = first
             if size_args == 2:
@@ -234,20 +234,30 @@ def _parse_to_args(*args, **kwargs):
                 dtype = kwargs.get('dtype')
                 blocking = kwargs.get('blocking')
         else:
-            raise TypeError(
-                "to() received an invalid combination of arguments - expected one of:\n"
-                "  to(device=None, dtype=None, blocking=True, *, non_blocking=False)\n"
-                "  to(dtype, blocking=True, *, non_blocking=False)\n"
-                "  to(tensor, blocking=True, *, non_blocking=False)"
+            raise ValueError(
+                f"device should be type of str, paddle.CPUPlace, paddle.CUDAPlace, "
+                f"paddle.CUDAPinnedPlace, paddle.XPUPlace, or paddle.base.libpaddle.Place, "
+                f"but got {type(first).__name__}"
             )
     else:
         device = kwargs.get('device')
         dtype = kwargs.get('dtype')
         blocking = kwargs.get('blocking')
-        tensor_arg = kwargs.get('other') or kwargs.get('tensor')
+        tensor_arg = kwargs.get('other')
+        if tensor_arg is None:
+            tensor_arg = kwargs.get('tensor')
         if tensor_arg is not None:
             device = tensor_arg.place
             dtype = tensor_arg.dtype
+
+    # Validate blocking / non_blocking types
+    if blocking is not None:
+        assert isinstance(blocking, bool), (
+            "blocking value error, must be the True, False or None"
+        )
+    assert isinstance(non_blocking, bool), (
+        "non_blocking value error, must be the True, False or None"
+    )
 
     # Resolve blocking: only block when both defaults are kept
     if blocking is None:
