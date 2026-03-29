@@ -23,7 +23,9 @@
 #include <c10/util/Exception.h>
 #include <c10/util/UniqueVoidPtr.h>
 
+#include <array>
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <functional>
 #include <memory>
@@ -36,6 +38,15 @@ namespace c10 {
 
 // Deleter function pointer type (compatible with LibTorch)
 using DeleterFnPtr = void (*)(void*);
+
+using CaptureId_t = uint64_t;
+using MempoolId_t = std::pair<CaptureId_t, CaptureId_t>;
+
+struct MempoolIdHash {
+  std::size_t operator()(const MempoolId_t& mempool_id) const noexcept {
+    return mempool_id.first != 0 ? mempool_id.first : mempool_id.second;
+  }
+};
 
 // DataPtr class compatible with LibTorch's c10::DataPtr
 // Wraps a pointer with associated device and deleter
@@ -63,6 +74,7 @@ class DataPtr {
 
   void clear() { ptr_.clear(); }
   void* get() const { return ptr_.get(); }
+  void* mutable_get() { return ptr_.get(); }
   void* get_context() const { return ptr_.get_context(); }
   void* release_context() { return ptr_.release_context(); }
 
@@ -128,15 +140,14 @@ struct Allocator {
   // Requires: input data was allocated by the same allocator.
   DataPtr clone(const void* data, std::size_t n) {
     auto new_data = allocate(n);
-    copy_data(new_data.get(), data, n);
+    copy_data(new_data.mutable_get(), data, n);
     return new_data;
   }
 
   // Checks if DataPtr has a simple context, not wrapped with any out of the
   // ordinary contexts.
   virtual bool is_simple_data_ptr(const DataPtr& data_ptr) const {
-    return data_ptr.get_context() == nullptr ||
-           data_ptr.get_context() == data_ptr.get();
+    return data_ptr.get() == data_ptr.get_context();
   }
 
   // If this returns a non nullptr, it means that allocate()
@@ -175,6 +186,90 @@ struct Allocator {
     std::memcpy(dest, src, count);
   }
 };
+
+struct InefficientStdFunctionContext {
+  void* ptr_{nullptr};
+  std::function<void(void*)> deleter_;
+
+  InefficientStdFunctionContext(void* ptr, std::function<void(void*)> deleter)
+      : ptr_(ptr), deleter_(std::move(deleter)) {}
+
+  InefficientStdFunctionContext(const InefficientStdFunctionContext&) = delete;
+
+  InefficientStdFunctionContext(InefficientStdFunctionContext&& rhs) noexcept
+      : ptr_(std::exchange(rhs.ptr_, nullptr)),
+        deleter_(std::move(rhs.deleter_)) {}
+
+  InefficientStdFunctionContext& operator=(
+      const InefficientStdFunctionContext&) = delete;
+
+  InefficientStdFunctionContext& operator=(
+      InefficientStdFunctionContext&& rhs) {
+    this->~InefficientStdFunctionContext();
+    ptr_ = std::exchange(rhs.ptr_, nullptr);
+    deleter_ = std::move(rhs.deleter_);
+    return *this;
+  }
+
+  ~InefficientStdFunctionContext() {
+    if (deleter_) {
+      deleter_(ptr_);
+    }
+  }
+
+  static DataPtr makeDataPtr(void* ptr,
+                             std::function<void(void*)> deleter,
+                             Device device) {
+    return DataPtr(ptr,
+                   new InefficientStdFunctionContext(ptr, std::move(deleter)),
+                   &deleteContext,
+                   device);
+  }
+
+ private:
+  static void deleteContext(void* ptr) {
+    delete static_cast<InefficientStdFunctionContext*>(ptr);
+  }
+};
+
+inline constexpr size_t kAllocatorRegistrySize =
+    static_cast<size_t>(DeviceType::CUSTOM) + 1;
+
+inline std::array<Allocator*, kAllocatorRegistrySize> g_allocator_array{};
+inline std::array<uint8_t, kAllocatorRegistrySize> g_allocator_priority{};
+
+inline size_t allocator_device_index(DeviceType t) {
+  const size_t index = static_cast<size_t>(t);
+  TORCH_CHECK(index < kAllocatorRegistrySize,
+              "Allocator device type index out of range: ",
+              index);
+  return index;
+}
+
+inline void SetAllocator(DeviceType t, Allocator* alloc, uint8_t priority = 0) {
+  const size_t index = allocator_device_index(t);
+  if (priority >= g_allocator_priority[index]) {
+    g_allocator_array[index] = alloc;
+    g_allocator_priority[index] = priority;
+  }
+}
+
+inline Allocator* GetAllocator(const DeviceType& t) {
+  const size_t index = allocator_device_index(t);
+  auto* alloc = g_allocator_array[index];
+  TORCH_CHECK(alloc != nullptr, "Allocator for ", t, " is not set.");
+  return alloc;
+}
+
+template <DeviceType t>
+struct AllocatorRegisterer {
+  explicit AllocatorRegisterer(Allocator* alloc) { SetAllocator(t, alloc); }
+};
+
+#define REGISTER_ALLOCATOR(t, f)                       \
+  namespace {                                          \
+  static c10::AllocatorRegisterer<t> g_allocator_d(f); \
+  }
 
 }  // namespace c10
 
