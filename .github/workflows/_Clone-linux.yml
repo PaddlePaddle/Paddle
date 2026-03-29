@@ -23,6 +23,8 @@ on:
         value: ${{ jobs.clone.outputs.can-skip }}
       slice-check:
         value: ${{ jobs.clone.outputs.slice-check }}
+      xpu-only:
+        value: ${{ jobs.clone.outputs.xpu-only }}
 
 permissions: read-all
 
@@ -53,6 +55,7 @@ jobs:
     outputs:
       can-skip: ${{ needs.check-bypass.outputs.can-skip == 'true' || inputs.skill-can-skip == 'true' }}
       slice-check: ${{ steps.check-execution.outputs.slice-check }}
+      xpu-only: ${{ steps.xpu-only-check.outputs.xpu-only }}
     runs-on:
       group: HK-Clone
     timeout-minutes: 30
@@ -108,6 +111,18 @@ jobs:
           git branch -d pr
           source ${ci_scripts}/check_execution.sh
           bash ${ci_scripts}/third_party_tag.sh
+
+      - name: Check if XPU-only PR
+        id: xpu-only-check
+        if: ${{ inputs.is_pr == 'true' }}
+        env:
+          DISABLE_HW_CI_SKIP: ${{ vars.DISABLE_HW_CI_SKIP || 'false' }}
+        run: |
+          if bash ci/check_xpu_only.sh; then
+            echo "xpu-only=true" >> $GITHUB_OUTPUT
+          else
+            echo "xpu-only=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Download bos client
         env:

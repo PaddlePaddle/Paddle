@@ -32,8 +32,14 @@ inline bool equal(const at::Tensor& self, const at::Tensor& other) {
     return false;
   }
 
-  auto result = paddle::experimental::equal_all(self._PD_GetInner(),
-                                                other._PD_GetInner());
+  auto lhs = self._PD_GetInner();
+  auto rhs = other._PD_GetInner();
+  if (self.scalar_type() != other.scalar_type()) {
+    rhs = paddle::experimental::cast(
+        rhs, compat::_PD_AtenScalarTypeToPhiDataType(self.scalar_type()));
+  }
+
+  auto result = paddle::experimental::equal_all(lhs, rhs);
   return at::Tensor(std::move(result)).item<bool>();
 }
 
