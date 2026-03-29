@@ -74,58 +74,58 @@ DeviceType parse_type(const std::string& device_string) {
               device_string);
 }
 
-enum DeviceStringParsingState { START, INDEX_START, INDEX_REST, ERROR };
+enum DeviceStringParsingState { kStart, kIndexStart, kIndexRest, kError };
 
 Device::Device(const std::string& device_string) : Device(Type::CPU) {
   TORCH_CHECK(!device_string.empty(), "Device string must not be empty");
 
   std::string device_name, device_index_str;
-  DeviceStringParsingState pstate = DeviceStringParsingState::START;
+  DeviceStringParsingState pstate = DeviceStringParsingState::kStart;
 
   for (size_t i = 0;
-       pstate != DeviceStringParsingState::ERROR && i < device_string.size();
+       pstate != DeviceStringParsingState::kError && i < device_string.size();
        ++i) {
     const char ch = device_string.at(i);
     const unsigned char uch = static_cast<unsigned char>(ch);
     switch (pstate) {
-      case DeviceStringParsingState::START:
+      case DeviceStringParsingState::kStart:
         if (ch != ':') {
           if (std::isalpha(uch) || ch == '_') {
             device_name.push_back(ch);
           } else {
-            pstate = DeviceStringParsingState::ERROR;
+            pstate = DeviceStringParsingState::kError;
           }
         } else {
-          pstate = DeviceStringParsingState::INDEX_START;
+          pstate = DeviceStringParsingState::kIndexStart;
         }
         break;
-      case DeviceStringParsingState::INDEX_START:
+      case DeviceStringParsingState::kIndexStart:
         if (std::isdigit(uch)) {
           device_index_str.push_back(ch);
-          pstate = DeviceStringParsingState::INDEX_REST;
+          pstate = DeviceStringParsingState::kIndexRest;
         } else {
-          pstate = DeviceStringParsingState::ERROR;
+          pstate = DeviceStringParsingState::kError;
         }
         break;
-      case DeviceStringParsingState::INDEX_REST:
+      case DeviceStringParsingState::kIndexRest:
         if (device_index_str.at(0) == '0') {
-          pstate = DeviceStringParsingState::ERROR;
+          pstate = DeviceStringParsingState::kError;
           break;
         }
         if (std::isdigit(uch)) {
           device_index_str.push_back(ch);
         } else {
-          pstate = DeviceStringParsingState::ERROR;
+          pstate = DeviceStringParsingState::kError;
         }
         break;
-      case DeviceStringParsingState::ERROR:
+      case DeviceStringParsingState::kError:
         break;
     }
   }
 
   const bool has_error = device_name.empty() ||
-                         pstate == DeviceStringParsingState::ERROR ||
-                         (pstate == DeviceStringParsingState::INDEX_START &&
+                         pstate == DeviceStringParsingState::kError ||
+                         (pstate == DeviceStringParsingState::kIndexStart &&
                           device_index_str.empty());
   TORCH_CHECK(!has_error, "Invalid device string: '", device_string, "'");
 
