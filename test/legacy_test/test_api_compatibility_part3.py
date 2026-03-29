@@ -1319,9 +1319,9 @@ class TestLayerToAPI(unittest.TestCase):
             linear.to(foo='bar')
 
     def test_invalid_first_arg(self):
-        """to() with invalid first arg raises TypeError."""
+        """to() with invalid first arg raises ValueError."""
         linear = paddle.nn.Linear(2, 2)
-        with self.assertRaises(TypeError):
+        with self.assertRaises(ValueError):
             linear.to(123)
 
     # ---- Sublayers ----
