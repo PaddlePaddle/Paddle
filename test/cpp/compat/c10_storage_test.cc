@@ -732,9 +732,13 @@ TEST(StorageTest, DataPtrHelpersAndAllocatorSimpleDataPtrChecks) {
   dp.unsafe_set_device(c10::Device(c10::DeviceType::CPU));
   ASSERT_EQ(dp.device().type(), c10::DeviceType::CPU);
 
-  // is_simple_data_ptr: context==nullptr branch.
+  // PyTorch only treats context==data as a simple DataPtr.
   RawCompatibleAllocator compatible_alloc;
-  ASSERT_TRUE(compatible_alloc.is_simple_data_ptr(dp));
+  ASSERT_FALSE(compatible_alloc.is_simple_data_ptr(dp));
+
+  // is_simple_data_ptr: context==data branch.
+  c10::DataPtr simple = compatible_alloc.allocate(4);
+  ASSERT_TRUE(compatible_alloc.is_simple_data_ptr(simple));
 
   // is_simple_data_ptr: context!=data branch.
   c10::DataPtr non_simple = RawIncompatibleAllocator().allocate(4);
