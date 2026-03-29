@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <cstdint>
+#include <functional>
 #include <ostream>
 
 #include "paddle/phi/common/place.h"
@@ -26,6 +28,7 @@ enum class DeviceType : int8_t {
   XPU = 12,
   IPU = 18,
   CUSTOM = 20,
+  PrivateUse1 = CUSTOM,
 };
 
 constexpr DeviceType kCUDA = DeviceType::CUDA;
@@ -33,6 +36,7 @@ constexpr DeviceType kCPU = DeviceType::CPU;
 constexpr DeviceType kCUSTOM = DeviceType::CUSTOM;
 constexpr DeviceType kXPU = DeviceType::XPU;
 constexpr DeviceType kIPU = DeviceType::IPU;
+constexpr DeviceType kPrivateUse1 = DeviceType::PrivateUse1;
 
 inline phi::AllocationType DeviceTypeToPhi(DeviceType d) {
   switch (d) {
@@ -103,12 +107,22 @@ inline std::ostream& operator<<(std::ostream& os, DeviceType d) {
 
 }  // namespace c10
 
+namespace std {
+template <>
+struct hash<c10::DeviceType> {
+  std::size_t operator()(c10::DeviceType k) const noexcept {
+    return std::hash<int>()(static_cast<int>(k));
+  }
+};
+}  // namespace std
+
 namespace at {
 using c10::DeviceType;
 using c10::kCPU;
 using c10::kCUDA;
 using c10::kCUSTOM;
 using c10::kIPU;
+using c10::kPrivateUse1;
 using c10::kXPU;
 }  // namespace at
 
@@ -118,5 +132,6 @@ using c10::kCPU;
 using c10::kCUDA;
 using c10::kCUSTOM;
 using c10::kIPU;
+using c10::kPrivateUse1;
 using c10::kXPU;
 }  // namespace torch
