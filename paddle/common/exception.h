@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <iostream>
+#include <optional>
 #include <sstream>
 #include <string>
 
@@ -63,6 +64,15 @@ class ErrorMessage {
   template <typename T>
   void build_string(const T& t) {
     oss << t;
+  }
+
+  template <typename T>
+  void build_string(const std::optional<T>& t) {
+    if (t.has_value()) {
+      build_string(*t);
+    } else {
+      oss << "nullopt";
+    }
   }
 
   template <typename T, typename... Args>
