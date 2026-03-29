@@ -180,8 +180,8 @@ enum class PADDLE_API ScalarType : int8_t {
   Float8_e8m0fnu = 44,
   Float4_e2m1fn_x2 = 45,
 
-  Undefined = -1,
-  NumOptions = 46,
+  Undefined = 46,
+  NumOptions = 47
 };
 
 constexpr uint16_t NumScalarTypes =
@@ -344,7 +344,6 @@ inline size_t elementSize(ScalarType t) {
     case ScalarType::Float4_e2m1fn_x2:
       return 1;
     case ScalarType::QInt32:
-    case ScalarType::ComplexHalf:
     case ScalarType::Bits16:
       return 4;
     default:
@@ -415,11 +414,6 @@ inline bool isSignedType(ScalarType t) {
       CASE_ISSIGNED(BFloat16);
       CASE_ISSIGNED(Float8_e5m2);
       CASE_ISSIGNED(Float8_e4m3fn);
-    case ScalarType::Float8_e5m2fnuz:
-    case ScalarType::Float8_e4m3fnuz:
-    case ScalarType::Float8_e8m0fnu:
-    case ScalarType::Float4_e2m1fn_x2:
-      return true;
 
     // Complex types (treated as signed)
     case ScalarType::ComplexHalf:
