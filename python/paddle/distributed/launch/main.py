@@ -1241,9 +1241,15 @@ def launch() -> None:
                     "fuser -v /dev/nvidia* |awk '{for(i=1;i<=NF;i++) print $i;}'"
                 ).readlines()
             for process in processes:
-                pid = str(process.strip())
-                if pid != self_pid:
-                    os.system("kill -9 " + pid)
+                pid = process.strip()
+                # Skip empty lines, non-numeric tokens, and the current process.
+                if not pid or not pid.isdigit() or pid == self_pid:
+                    continue
+                try:
+                    os.kill(int(pid), 9)
+                except (ProcessLookupError, PermissionError):
+                    # Target exited or no permission; match prior os.system behavior (no abort).
+                    pass
             time.sleep(3)
             end_time = time.time()
 
