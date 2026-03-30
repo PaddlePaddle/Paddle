@@ -49,7 +49,7 @@ inline void InplaceCompareKernelImpl(const Context& dev_ctx,
                                      int axis,
                                      DenseTensor* out) {
   auto x_origin = x;
-  out->set_type(phi::DataType::BOOL);
+  out->set_type(DataType::BOOL);
   dev_ctx.template Alloc<bool>(out);
   if (x_origin.dims().size() >= y.dims().size()) {
     funcs::ElementwiseCompute<Functor, T, bool>(

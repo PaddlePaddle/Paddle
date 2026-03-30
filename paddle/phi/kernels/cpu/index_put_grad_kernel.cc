@@ -217,7 +217,7 @@ void IndexPutGradKernel(const Context& dev_ctx,
   for (int i = static_cast<int>(int_indices_v.size()); i < x.dims().size();
        ++i) {
     range_tensor_v.emplace_back(funcs::GetRangeTensor<int64_t, Context>(
-        dev_ctx, x.dims()[i], phi::DataType::INT64));
+        dev_ctx, x.dims()[i], DataType::INT64));
   }
 
   funcs::DealWithIndices<T, Context>(dev_ctx,

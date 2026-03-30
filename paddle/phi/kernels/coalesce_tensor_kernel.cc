@@ -194,7 +194,7 @@ void CoalesceTensorKernel(const Context &dev_ctx,
 
   // Alloc the continuous space
   void *fused_tensor_ptr = dev_ctx.Alloc(
-      &fused_output->Resize(make_ddim({static_cast<int64_t>(numel)})), dtype);
+      &fused_output->Resize({static_cast<int64_t>(numel)}), dtype);
   VLOG(10) << "Fused tensor addr " << fused_tensor_ptr;
 
   // Init the continuous space

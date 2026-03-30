@@ -42,10 +42,10 @@ void GatherGradKernel(const Context& dev_ctx,
   }
 
   if (axis_v != 0) {
-    if (index_type == phi::DataType::INT32) {
+    if (index_type == DataType::INT32) {
       funcs::GatherV2GradFunction<T, int32_t>(
           dev_ctx, &out_grad, &index, axis_v, x_grad);
-    } else if (index_type == phi::DataType::INT64) {
+    } else if (index_type == DataType::INT64) {
       funcs::GatherV2GradFunction<T, int64_t>(
           dev_ctx, &out_grad, &index, axis_v, x_grad);
     }
@@ -59,9 +59,9 @@ void GatherGradKernel(const Context& dev_ctx,
   dxt.device(place) = dxt.constant(static_cast<T>(0));
   if (x_grad->numel() == 0) return;
 
-  if (index_type == phi::DataType::INT32) {
+  if (index_type == DataType::INT32) {
     funcs::ScatterAssignAdd<T, int32_t>(dev_ctx, out_grad, index, x_grad);
-  } else if (index_type == phi::DataType::INT64) {
+  } else if (index_type == DataType::INT64) {
     funcs::ScatterAssignAdd<T, int64_t>(dev_ctx, out_grad, index, x_grad);
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(

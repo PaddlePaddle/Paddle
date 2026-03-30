@@ -243,7 +243,7 @@ void SoftmaxCooGradGPUKernel(const Context& dev_ctx,
                                  std::multiplies<>());
 
   DenseTensor values_2(*values);
-  values_2.Resize(make_ddim({nnz, nvalues}));
+  values_2.Resize({nnz, nvalues});
 
   DenseTensor sorted_indices;
   DenseTensor pool_offsets;
