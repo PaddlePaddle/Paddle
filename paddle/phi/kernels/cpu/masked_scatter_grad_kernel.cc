@@ -35,11 +35,17 @@ void MaskedScatterGradKernel(const Context& dev_ctx,
                              DenseTensor* value_grad) {
   if (out_grad.numel() == 0 || mask.numel() == 0) {
     if (x_grad) {
-      phi::Full<T, Context>(dev_ctx, x_grad->dims(), static_cast<T>(0), x_grad);
+      phi::Full<T, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(x_grad->dims())),
+                            static_cast<T>(0),
+                            x_grad);
     }
     if (value_grad) {
       phi::Full<T, Context>(
-          dev_ctx, value_grad->dims(), static_cast<T>(0), value_grad);
+          dev_ctx,
+          phi::IntArray(common::vectorize(value_grad->dims())),
+          static_cast<T>(0),
+          value_grad);
     }
     return;
   }
