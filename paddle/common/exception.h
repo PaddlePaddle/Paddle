@@ -14,9 +14,16 @@ limitations under the License. */
 
 #pragma once
 
+#if defined(_MSVC_LANG)
+#define PD_CPLUSPLUS _MSVC_LANG
+#else
+#define PD_CPLUSPLUS __cplusplus
+#endif
+
 #include <iostream>
-#if __cplusplus >= 201703L
+#if PD_CPLUSPLUS >= 201703L
 #include <optional>
+#define PD_HAS_STD_OPTIONAL 1
 #endif
 #include <sstream>
 #include <string>
@@ -68,7 +75,7 @@ class ErrorMessage {
     oss << t;
   }
 
-#if __cplusplus >= 201703L
+#ifdef PD_HAS_STD_OPTIONAL
   template <typename T>
   void build_string(const std::optional<T>& t) {
     if (t.has_value()) {
@@ -109,5 +116,10 @@ class ErrorMessage {
     throw ::common::PD_Exception(                                       \
         __message__, __FILE__, __LINE__, "An error occurred.");         \
   } while (0)
+
+#ifdef PD_HAS_STD_OPTIONAL
+#undef PD_HAS_STD_OPTIONAL
+#endif
+#undef PD_CPLUSPLUS
 
 }  // namespace common
