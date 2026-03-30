@@ -23,13 +23,18 @@
 
 namespace at {
 
-// resize_ - in-place resize using reshape
+// resize_ - in-place resize using Paddle's set_ semantics
 inline const at::Tensor& Tensor::resize_(
     at::IntArrayRef size,
     ::std::optional<at::MemoryFormat> memory_format) const {
-  auto result =
-      paddle::experimental::reshape(tensor_, size._PD_ToPaddleIntArray());
-  const_cast<Tensor*>(this)->tensor_ = result;
+  if (memory_format.has_value()) {
+    TORCH_CHECK(*memory_format == at::MemoryFormat::Contiguous,
+                "resize_ only supports contiguous memory format, but got ",
+                static_cast<int>(*memory_format));
+  }
+
+  std::vector<int64_t> dims(size.begin(), size.end());
+  paddle::experimental::set_(const_cast<Tensor*>(this)->tensor_, tensor_, dims);
   return *this;
 }
 

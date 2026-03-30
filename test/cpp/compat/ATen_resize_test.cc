@@ -24,8 +24,8 @@
 #include "torch/all.h"
 
 // ======================== resize_ tests ========================
-// Note: Paddle's resize_ is implemented via reshape, which requires
-// total element count to remain unchanged.
+// Note: compat resize_ is implemented via Paddle's set_ semantics, so it can
+// resize to a different element count while preserving the existing prefix.
 
 TEST(TensorResizeTest, ResizeBasic) {
   // Create a 2x3 tensor
@@ -107,6 +107,34 @@ TEST(TensorResizeTest, ResizePreservesData) {
   ASSERT_FLOAT_EQ(data[3], 3.0f);
   ASSERT_FLOAT_EQ(data[4], 4.0f);
   ASSERT_FLOAT_EQ(data[5], 5.0f);
+}
+
+TEST(TensorResizeTest, ResizeShrinkDifferentNumel) {
+  at::Tensor t = at::arange(24, at::kFloat).reshape({2, 3, 4});
+
+  t.resize_({4, 5});
+
+  ASSERT_EQ(t.sizes()[0], 4);
+  ASSERT_EQ(t.sizes()[1], 5);
+
+  float* data = t.data_ptr<float>();
+  for (int i = 0; i < 20; ++i) {
+    ASSERT_FLOAT_EQ(data[i], static_cast<float>(i));
+  }
+}
+
+TEST(TensorResizeTest, ResizeGrowDifferentNumelPreservesPrefix) {
+  at::Tensor t = at::arange(6, at::kFloat).reshape({2, 3});
+
+  t.resize_({2, 5});
+
+  ASSERT_EQ(t.sizes()[0], 2);
+  ASSERT_EQ(t.sizes()[1], 5);
+
+  float* data = t.data_ptr<float>();
+  for (int i = 0; i < 6; ++i) {
+    ASSERT_FLOAT_EQ(data[i], static_cast<float>(i));
+  }
 }
 
 TEST(TensorResizeTest, ResizeReturnReference) {
