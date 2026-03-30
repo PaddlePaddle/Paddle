@@ -22,12 +22,17 @@ c10::DeviceIndex device_count();
 
 void device_synchronize();
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 void __inline__ stream_synchronize(gpuStream_t stream) {
   phi::backends::gpu::GpuStreamSync(stream);
 }
+#endif
+
 }  // namespace c10::cuda
 
 namespace at::cuda {
 using c10::cuda::device_synchronize;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 using c10::cuda::stream_synchronize;
+#endif
 }  // namespace at::cuda
