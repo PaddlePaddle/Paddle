@@ -710,9 +710,28 @@ class BuildExtension(build_ext):
             # Return *all* object filenames, not just the ones we just built.
             return objects
 
-        def unix_custo_ninja_compiler(
-            self, objects, extra_postargs, pp_opts, build, cc_args
+        def unix_custom_ninja_compiler(
+            self,
+            sources,
+            output_dir=None,
+            macros=None,
+            include_dirs=None,
+            debug=False,
+            extra_preargs=None,
+            extra_postargs=None,
+            depends=None,
         ):
+            macros, objects, extra_postargs, pp_opts, build = (
+                self._setup_compile(
+                    output_dir,
+                    macros,
+                    include_dirs,
+                    sources,
+                    depends,
+                    extra_postargs,
+                )
+            )
+            cc_args = self._get_cc_args(pp_opts, debug, extra_preargs)
             build_directory = os.path.dirname(objects[0]) if objects else "."
             config = ['ninja_required_version = 1.3', '']
             ccache_home = _get_ccache_home()
@@ -1110,7 +1129,7 @@ class BuildExtension(build_ext):
                 self.compiler.compile = win_custom_single_compiler
         else:
             if self.use_ninja:
-                self.compiler.__class__.compile = unix_custo_ninja_compiler
+                self.compiler.__class__.compile = unix_custom_ninja_compiler
             else:
                 self.compiler.__class__.compile = unix_custom_single_compiler
 
