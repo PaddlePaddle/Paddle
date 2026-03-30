@@ -21,7 +21,6 @@ is built with WITH_MKL=ON.
 import os
 import unittest
 
-import paddle
 from paddle.base import core
 from paddle.utils.cpp_extension.extension_utils import (
     find_paddle_includes,
@@ -141,13 +140,13 @@ class TestOneDNNIncludePath(unittest.TestCase):
         onednn_dirs = [
             d
             for d in include_dirs
-            if os.path.join('third_party', 'install', 'onednn', 'include')
-            in d
+            if os.path.join('third_party', 'install', 'onednn', 'include') in d
         ]
 
         # The path is only appended when it exists on disk, so we first check
         # whether the expected directory is present in the installation.
         import paddle as _paddle
+
         paddle_include = os.path.join(
             os.path.dirname(_paddle.__file__), 'include'
         )
@@ -184,11 +183,7 @@ class TestOneDNNIncludePath(unittest.TestCase):
             self.skipTest("Paddle compiled with OneDNN, skipping.")
 
         include_dirs = find_paddle_includes(use_cuda=False)
-        onednn_dirs = [
-            d
-            for d in include_dirs
-            if 'onednn' in d.lower()
-        ]
+        onednn_dirs = [d for d in include_dirs if 'onednn' in d.lower()]
         self.assertEqual(
             len(onednn_dirs),
             0,
