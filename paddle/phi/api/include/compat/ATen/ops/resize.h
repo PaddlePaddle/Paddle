@@ -23,7 +23,8 @@
 
 namespace at {
 
-// resize_ - in-place resize using Paddle's set_ semantics
+// resize_ - use reshape for same-numel cases and set_ for storage-changing
+// cases so repeated resize_ calls stay stable.
 inline const at::Tensor& Tensor::resize_(
     at::IntArrayRef size,
     ::std::optional<at::MemoryFormat> memory_format) const {
@@ -34,7 +35,19 @@ inline const at::Tensor& Tensor::resize_(
   }
 
   std::vector<int64_t> dims(size.begin(), size.end());
-  paddle::experimental::set_(const_cast<Tensor*>(this)->tensor_, tensor_, dims);
+  int64_t new_numel = 1;
+  for (auto dim : dims) {
+    new_numel *= dim;
+  }
+
+  if (tensor_.numel() == new_numel) {
+    const_cast<Tensor*>(this)->tensor_ =
+        paddle::experimental::reshape(tensor_, phi::IntArray(dims));
+    return *this;
+  }
+
+  auto source = tensor_.copy_to(tensor_.place(), /*blocking=*/true);
+  paddle::experimental::set_(const_cast<Tensor*>(this)->tensor_, source, dims);
   return *this;
 }
 

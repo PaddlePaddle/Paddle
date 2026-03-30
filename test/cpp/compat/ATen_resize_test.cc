@@ -24,8 +24,8 @@
 #include "torch/all.h"
 
 // ======================== resize_ tests ========================
-// Note: compat resize_ is implemented via Paddle's set_ semantics, so it can
-// resize to a different element count while preserving the existing prefix.
+// Note: compat resize_ uses reshape when numel is unchanged, and falls back to
+// set_ for storage-changing cases so repeated resize_ calls remain stable.
 
 TEST(TensorResizeTest, ResizeBasic) {
   // Create a 2x3 tensor
