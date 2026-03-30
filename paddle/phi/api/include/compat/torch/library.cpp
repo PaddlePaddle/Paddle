@@ -234,7 +234,9 @@ void OperatorRegistry::register_schema(const std::string& qualified_name,
 }
 
 void OperatorRegistry::register_implementation(
-    const std::string& qualified_name, DispatchKey key, CppFunction&& func) {
+    const std::string& qualified_name,
+    c10::DispatchKey key,
+    CppFunction&& func) {
   auto& op = get_or_create_operator(qualified_name);
   op.implementations[key] = std::move(func);
   VLOG(3) << "Registered implementation: " << qualified_name << " for "
@@ -268,7 +270,7 @@ void OperatorRegistry::print_all_operators() const {
 // Library
 Library::Library(Kind kind,
                  const std::string& ns,
-                 std::optional<DispatchKey> dispatch_key,
+                 std::optional<c10::DispatchKey> dispatch_key,
                  const char* file,
                  uint32_t line)
     : kind_(kind),

@@ -731,7 +731,7 @@ class Library {
 
   Library(Kind kind,
           const std::string& ns,
-          std::optional<DispatchKey> dispatch_key = std::nullopt,
+          std::optional<c10::DispatchKey> dispatch_key = std::nullopt,
           const char* file = nullptr,
           uint32_t line = 0);
 
@@ -753,7 +753,7 @@ class Library {
     }
 
     // Register implementation
-    auto dispatch_key = dispatch_key_.value_or(DispatchKey::CPU);
+    auto dispatch_key = dispatch_key_.value_or(c10::DispatchKey::CPU);
     OperatorRegistry::instance().register_implementation(
         qualified_name, dispatch_key, CppFunction(std::forward<Func>(f)));
 
@@ -764,7 +764,7 @@ class Library {
   template <typename Func>
   Library& impl(const std::string& op_name, Func&& f) & {
     auto qualified_name = ns_ + "::" + op_name;
-    auto dispatch_key = dispatch_key_.value_or(DispatchKey::CPU);
+    auto dispatch_key = dispatch_key_.value_or(c10::DispatchKey::CPU);
 
     OperatorRegistry::instance().register_implementation(
         qualified_name, dispatch_key, CppFunction(std::forward<Func>(f)));
@@ -783,7 +783,7 @@ class Library {
  private:
   Kind kind_;
   std::string ns_;
-  std::optional<DispatchKey> dispatch_key_;
+  std::optional<c10::DispatchKey> dispatch_key_;
   const char* file_;
   uint32_t line_;
 
@@ -819,7 +819,7 @@ class TorchLibraryInit {
   TorchLibraryInit(Library::Kind kind,
                    InitFn* fn,
                    const char* ns,
-                   std::optional<DispatchKey> dispatch_key,
+                   std::optional<c10::DispatchKey> dispatch_key,
                    const char* file,
                    uint32_t line) {
     Library lib(kind, ns, dispatch_key, file, line);
