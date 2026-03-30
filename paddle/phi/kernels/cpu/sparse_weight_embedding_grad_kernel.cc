@@ -175,9 +175,9 @@ void SparseWeightEmbeddingGradKernel(const Context& dev_ctx,
   SparseWeightEmbeddingGradCPUFunctor<T, Context> functor(
       dev_ctx, input, weight, out_grad, padding_idx, weight_grad);
 
-  if (input.dtype() == phi::DataType::INT32) {
+  if (input.dtype() == DataType::INT32) {
     functor.template apply<int>();
-  } else if (input.dtype() == phi::DataType::INT64) {
+  } else if (input.dtype() == DataType::INT64) {
     functor.template apply<int64_t>();
   } else {
     PADDLE_THROW(common::errors::Unimplemented(
@@ -195,9 +195,9 @@ void SparseWeightEmbeddingSparseGradKernel(const Context& dev_ctx,
   SparseWeightEmbeddingSparseGradCPUFunctor<T, Context> functor(
       dev_ctx, input, weight, out_grad, padding_idx, weight_grad);
 
-  if (input.dtype() == phi::DataType::INT32) {
+  if (input.dtype() == DataType::INT32) {
     functor.template apply<int>();
-  } else if (input.dtype() == phi::DataType::INT64) {
+  } else if (input.dtype() == DataType::INT64) {
     functor.template apply<int64_t>();
   } else {
     PADDLE_THROW(common::errors::Unimplemented(

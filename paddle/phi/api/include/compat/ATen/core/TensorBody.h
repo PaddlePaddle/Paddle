@@ -367,8 +367,9 @@ class Tensor : public TensorBase {
 
   int64_t numel() const { return tensor_.numel(); }
 
-  c10::ScalarType dtype() const {  // Should we use `TypeMeta` here?
-    return compat::_PD_PhiDataTypeToAtenScalarType(tensor_.dtype());
+  caffe2::TypeMeta dtype() const {
+    return caffe2::TypeMeta::fromScalarType(
+        compat::_PD_PhiDataTypeToAtenScalarType(tensor_.dtype()));
   }
 
   c10::Device device() const { return c10::Device(tensor_.place()); }

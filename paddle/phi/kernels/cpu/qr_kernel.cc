@@ -71,14 +71,14 @@ struct QrFunctor {
     int x_stride = m * n;
     int q_stride = m * k;
     int r_stride = k * n;
-    auto* x_data = x.data<phi::dtype::Real<T>>();
+    auto* x_data = x.data<dtype::Real<T>>();
     T* q_data = nullptr;
     if (compute_q) {
-      q_data = dev_ctx.template Alloc<phi::dtype::Real<T>>(
-          q, batch_size * m * k * sizeof(phi::dtype::Real<T>));
+      q_data = dev_ctx.template Alloc<dtype::Real<T>>(
+          q, batch_size * m * k * sizeof(dtype::Real<T>));
     }
-    auto* r_data = dev_ctx.template Alloc<phi::dtype::Real<T>>(
-        r, batch_size * k * n * sizeof(phi::dtype::Real<T>));
+    auto* r_data = dev_ctx.template Alloc<dtype::Real<T>>(
+        r, batch_size * k * n * sizeof(dtype::Real<T>));
 
     // Implement QR by calling Eigen
     for (int i = 0; i < batch_size; ++i) {
@@ -120,7 +120,7 @@ struct QrFunctor {
 };
 
 template <typename T, typename Context>
-struct QrFunctor<phi::dtype::complex<T>, Context> {
+struct QrFunctor<dtype::complex<T>, Context> {
   void operator()(const Context& dev_ctx,
                   const DenseTensor& x,
                   bool compute_q,
@@ -137,19 +137,19 @@ struct QrFunctor<phi::dtype::complex<T>, Context> {
     int x_stride = m * n;
     int q_stride = m * k;
     int r_stride = k * n;
-    auto* x_data = x.data<phi::dtype::complex<T>>();
-    phi::dtype::complex<T>* q_data = nullptr;
+    auto* x_data = x.data<dtype::complex<T>>();
+    dtype::complex<T>* q_data = nullptr;
     if (compute_q) {
-      q_data = dev_ctx.template Alloc<phi::dtype::complex<T>>(
-          q, batch_size * m * k * sizeof(phi::dtype::complex<T>));
+      q_data = dev_ctx.template Alloc<dtype::complex<T>>(
+          q, batch_size * m * k * sizeof(dtype::complex<T>));
     }
-    auto* r_data = dev_ctx.template Alloc<phi::dtype::complex<T>>(
-        r, batch_size * k * n * sizeof(phi::dtype::complex<T>));
+    auto* r_data = dev_ctx.template Alloc<dtype::complex<T>>(
+        r, batch_size * k * n * sizeof(dtype::complex<T>));
 
     // Implement QR by calling Eigen
     for (int i = 0; i < batch_size; ++i) {
-      const phi::dtype::complex<T>* x_matrix_ptr = x_data + i * x_stride;
-      phi::dtype::complex<T>* r_matrix_ptr = r_data + i * r_stride;
+      const dtype::complex<T>* x_matrix_ptr = x_data + i * x_stride;
+      dtype::complex<T>* r_matrix_ptr = r_data + i * r_stride;
       using EigenDynamicMatrix = Eigen::Matrix<std::complex<T>,
                                                Eigen::Dynamic,
                                                Eigen::Dynamic,
@@ -164,32 +164,32 @@ struct QrFunctor<phi::dtype::complex<T>, Context> {
         auto r_matrix = EigenDynamicMatrix(r_matrix_view);
         memcpy(r_matrix_ptr,
                r_matrix.data(),
-               r_matrix.size() * sizeof(phi::dtype::complex<T>));
+               r_matrix.size() * sizeof(dtype::complex<T>));
       } else {
         auto r_matrix_view =
             qr.matrixQR().template triangularView<Eigen::Upper>();
         auto r_matrix = EigenDynamicMatrix(r_matrix_view);
         memcpy(r_matrix_ptr,
                r_matrix.data(),
-               r_matrix.size() * sizeof(phi::dtype::complex<T>));
+               r_matrix.size() * sizeof(dtype::complex<T>));
       }
 
       if (compute_q) {
-        phi::dtype::complex<T>* q_matrix_ptr = q_data + i * q_stride;
+        dtype::complex<T>* q_matrix_ptr = q_data + i * q_stride;
         if (reduced_mode) {
           auto q_matrix =
               qr.householderQ() * EigenDynamicMatrix::Identity(m, min_mn);
           q_matrix.transposeInPlace();
           memcpy(q_matrix_ptr,
                  q_matrix.data(),
-                 q_matrix.size() * sizeof(phi::dtype::complex<T>));
+                 q_matrix.size() * sizeof(dtype::complex<T>));
         } else {
           auto q_matrix =
               qr.householderQ() * EigenDynamicMatrix::Identity(m, m);
           q_matrix.transposeInPlace();
           memcpy(q_matrix_ptr,
                  q_matrix.data(),
-                 q_matrix.size() * sizeof(phi::dtype::complex<T>));
+                 q_matrix.size() * sizeof(dtype::complex<T>));
         }
       }
     }

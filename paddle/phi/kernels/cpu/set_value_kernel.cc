@@ -92,7 +92,7 @@ void SetValueImpl(const Context& dev_ctx,
     it = value_shape.erase(it);
   }
   if (value_shape.empty()) value_shape.push_back(1);
-  value_tensor.Resize(phi::make_ddim(value_shape));
+  value_tensor.Resize(make_ddim(value_shape));
 
   auto expand_shape = vectorize<int64_t>(slice_dims_for_assign);
   for (size_t i = 0; i < expand_shape.size(); i++) {

@@ -116,10 +116,10 @@ void SendUVKernel(const Context& dev_ctx,
     return;
   }
 
-  if (index_type == phi::DataType::INT32) {
+  if (index_type == DataType::INT32) {
     GraphSendUVOpKernelLaunchHelper<Context, T, int32_t>(
         dev_ctx, x, y, src_index, dst_index, message_op, out);
-  } else if (index_type == phi::DataType::INT64) {
+  } else if (index_type == DataType::INT64) {
     GraphSendUVOpKernelLaunchHelper<Context, T, int64_t>(
         dev_ctx, x, y, src_index, dst_index, message_op, out);
   }

@@ -5675,6 +5675,9 @@ def masked_scatter(
     )
     assert mask.dtype == paddle.bool
 
+    if paddle.is_compiled_with_cuda() and in_dynamic_or_pir_mode():
+        return _C_ops.masked_scatter(x, mask, value)
+
     zeros_like_x = paddle.zeros_like(x, dtype=int)
     mask = paddle.add(paddle.cast(mask, dtype="int"), zeros_like_x)
     mask_prefix = paddle.clip(mask.cumsum() - 1, min=0)
@@ -5696,10 +5699,15 @@ def masked_scatter_(
     Inplace version of ``masked_scatter`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_masked_scatter`.
     """
+    # make sure the dtype of x and value is the same
     assert x.dtype == value.dtype, (
         f'x and value must have the same dtype, but got x dtype is {x.dtype}, value dtype is {value.dtype}'
     )
     assert mask.dtype == paddle.bool
+
+    if paddle.is_compiled_with_cuda() and in_dynamic_or_pir_mode():
+        return _C_ops.masked_scatter_(x, mask, value)
+
     zeros_like_x = paddle.zeros_like(x, dtype=int)
     mask = paddle.add(paddle.cast(mask, dtype="int"), zeros_like_x)
     mask_prefix = paddle.clip(mask.cumsum() - 1, min=0)
