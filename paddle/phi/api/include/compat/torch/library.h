@@ -867,7 +867,7 @@ class TorchLibraryInit {
       torch::Library::IMPL,                                          \
       &C10_CONCATENATE(TORCH_LIBRARY_IMPL_init_##ns##_##k##_, uid),  \
       #ns,                                                           \
-      std::make_optional(torch::DispatchKey::k),                     \
+      std::make_optional(c10::DispatchKey::k),                       \
       __FILE__,                                                      \
       __LINE__);                                                     \
   void C10_CONCATENATE(TORCH_LIBRARY_IMPL_init_##ns##_##k##_,        \

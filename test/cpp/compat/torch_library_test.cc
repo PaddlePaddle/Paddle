@@ -111,7 +111,7 @@ TEST(test_torch_library, TestLibraryOperators) {
   auto qualified_name = "example_library::mymuladd";
   auto* op = torch::OperatorRegistry::instance().find_operator(qualified_name);
   ASSERT_NE(op, nullptr);
-  auto impl_it = op->implementations.find(torch::DispatchKey::CPU);
+  auto impl_it = op->implementations.find(c10::DispatchKey::CPU);
   ASSERT_NE(impl_it, op->implementations.end());
   torch::FunctionArgs function_args;
   function_args.add_arg(torch::IValue(at::ones({2, 2}, at::kFloat)));
@@ -207,7 +207,7 @@ TEST(test_torch_library, TestFragmentOperators) {
       torch::OperatorRegistry::instance().find_operator(qualified_name_int_add);
   ASSERT_NE(op_int_add, nullptr);
   auto impl_it_int_add =
-      op_int_add->implementations.find(torch::DispatchKey::CPU);
+      op_int_add->implementations.find(c10::DispatchKey::CPU);
   ASSERT_NE(impl_it_int_add, op_int_add->implementations.end());
   torch::FunctionArgs function_args;
   function_args.add_arg(torch::IValue(3));
@@ -222,7 +222,7 @@ TEST(test_torch_library, TestFragmentOperators) {
       qualified_name_string_concat);
   ASSERT_NE(op_string_concat, nullptr);
   auto impl_it_string_concat =
-      op_string_concat->implementations.find(torch::DispatchKey::CPU);
+      op_string_concat->implementations.find(c10::DispatchKey::CPU);
   ASSERT_NE(impl_it_string_concat, op_string_concat->implementations.end());
   torch::FunctionArgs string_args;
   string_args.add_arg(torch::IValue(std::string("Hello, ")));
@@ -247,7 +247,7 @@ TEST(test_torch_library, TestScalarTypeInput) {
       "example_library_with_scalar_type_input::cast_with_scalar_type";
   auto* op = torch::OperatorRegistry::instance().find_operator(qualified_name);
   ASSERT_NE(op, nullptr);
-  auto impl_it = op->implementations.find(torch::DispatchKey::CPU);
+  auto impl_it = op->implementations.find(c10::DispatchKey::CPU);
   ASSERT_NE(impl_it, op->implementations.end());
   torch::FunctionArgs function_args;
   function_args.add_arg(torch::IValue(at::ones({2, 2}, at::kFloat)));
@@ -268,7 +268,7 @@ TEST(test_torch_library, TestIntConst) {
   auto qualified_name = "example_library_with_int_const::fn_with_int_const";
   auto* op = torch::OperatorRegistry::instance().find_operator(qualified_name);
   ASSERT_NE(op, nullptr);
-  auto impl_it = op->implementations.find(torch::DispatchKey::CPU);
+  auto impl_it = op->implementations.find(c10::DispatchKey::CPU);
   ASSERT_NE(impl_it, op->implementations.end());
   torch::FunctionArgs function_args;
   function_args.add_arg(torch::IValue(3));
@@ -295,7 +295,7 @@ TEST(test_torch_library, TestOptionalInput) {
       "example_library_with_optional_input::fn_with_optional_input";
   auto* op = torch::OperatorRegistry::instance().find_operator(qualified_name);
   ASSERT_NE(op, nullptr);
-  auto impl_it = op->implementations.find(torch::DispatchKey::CPU);
+  auto impl_it = op->implementations.find(c10::DispatchKey::CPU);
   ASSERT_NE(impl_it, op->implementations.end());
 
   // Test with value
@@ -334,7 +334,7 @@ TEST(test_torch_library, TestArrayRefInput) {
       "example_library_with_arrayref_input::fn_with_arrayref_input";
   auto* op = torch::OperatorRegistry::instance().find_operator(qualified_name);
   ASSERT_NE(op, nullptr);
-  auto impl_it = op->implementations.find(torch::DispatchKey::CPU);
+  auto impl_it = op->implementations.find(c10::DispatchKey::CPU);
   ASSERT_NE(impl_it, op->implementations.end());
 
   torch::FunctionArgs function_args;
@@ -369,7 +369,7 @@ TEST(test_torch_library, TestMixOptionalArrayRefInput) {
       "fn_with_mix_optional_arrayref_input";
   auto* op = torch::OperatorRegistry::instance().find_operator(qualified_name);
   ASSERT_NE(op, nullptr);
-  auto impl_it = op->implementations.find(torch::DispatchKey::CPU);
+  auto impl_it = op->implementations.find(c10::DispatchKey::CPU);
   ASSERT_NE(impl_it, op->implementations.end());
 
   // Test with value
@@ -406,7 +406,7 @@ TEST(test_torch_library, TestOptionalTensorConstRefInput) {
       "fn_with_optional_tensor_const_ref_input";
   auto* op = torch::OperatorRegistry::instance().find_operator(qualified_name);
   ASSERT_NE(op, nullptr);
-  auto impl_it = op->implementations.find(torch::DispatchKey::CPU);
+  auto impl_it = op->implementations.find(c10::DispatchKey::CPU);
   ASSERT_NE(impl_it, op->implementations.end());
 
   // Test with value
@@ -465,7 +465,7 @@ TEST(test_torch_library, TestTupleReturn) {
   auto* op_list =
       torch::OperatorRegistry::instance().find_operator(qualified_name_list);
   ASSERT_NE(op_list, nullptr);
-  auto impl_it_list = op_list->implementations.find(torch::DispatchKey::CPU);
+  auto impl_it_list = op_list->implementations.find(c10::DispatchKey::CPU);
   ASSERT_NE(impl_it_list, op_list->implementations.end());
 
   // Create a test tensor [0, 1, 2, 3] with shape [4]
@@ -498,7 +498,7 @@ TEST(test_torch_library, TestTupleReturn) {
   auto* op_tuple =
       torch::OperatorRegistry::instance().find_operator(qualified_name_tuple);
   ASSERT_NE(op_tuple, nullptr);
-  auto impl_it_tuple = op_tuple->implementations.find(torch::DispatchKey::CPU);
+  auto impl_it_tuple = op_tuple->implementations.find(c10::DispatchKey::CPU);
   ASSERT_NE(impl_it_tuple, op_tuple->implementations.end());
 
   torch::FunctionArgs function_args_tuple;
@@ -528,7 +528,7 @@ TEST(test_torch_library, TestTupleReturn) {
       torch::OperatorRegistry::instance().find_operator(qualified_name_tuple_3);
   ASSERT_NE(op_tuple_3, nullptr);
   auto impl_it_tuple_3 =
-      op_tuple_3->implementations.find(torch::DispatchKey::CPU);
+      op_tuple_3->implementations.find(c10::DispatchKey::CPU);
   ASSERT_NE(impl_it_tuple_3, op_tuple_3->implementations.end());
 
   torch::FunctionArgs function_args_tuple_3;
@@ -571,7 +571,7 @@ TEST(test_torch_library, TestConstRefParameterFix) {
       "example_library_const_ref_fix::fn_with_const_ref_param";
   auto* op = torch::OperatorRegistry::instance().find_operator(qualified_name);
   ASSERT_NE(op, nullptr);
-  auto impl_it = op->implementations.find(torch::DispatchKey::CPU);
+  auto impl_it = op->implementations.find(c10::DispatchKey::CPU);
   ASSERT_NE(impl_it, op->implementations.end());
 
   // Test with const reference parameters
