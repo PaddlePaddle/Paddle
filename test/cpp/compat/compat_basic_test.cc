@@ -596,3 +596,22 @@ TEST(SparseTensorCoverageTest, SparseCooTensorInferSizeWithDenseDims) {
   ASSERT_EQ(sparse.size(1), 5);
   ASSERT_EQ(sparse.size(2), 2);
 }
+
+TEST(SparseTensorCoverageTest, SparseCooTensorInferSizeRejectsNon2DIndices) {
+  at::Tensor indices =
+      at::tensor({0, 1, 2}, at::TensorOptions().dtype(at::kLong));
+  at::Tensor values =
+      at::tensor({1.0f, 2.0f, 3.0f}, at::TensorOptions().dtype(at::kFloat));
+  ASSERT_THROW((void)at::sparse_coo_tensor(indices, values),
+               common::enforce::EnforceNotMet);
+}
+
+TEST(SparseTensorCoverageTest, SparseCooTensorInferSizeRejectsNonLongIndices) {
+  at::Tensor indices =
+      at::tensor({0, 1, 1, 0, 4, 2}, at::TensorOptions().dtype(at::kInt))
+          .reshape({2, 3});
+  at::Tensor values =
+      at::tensor({1.0f, 2.0f, 3.0f}, at::TensorOptions().dtype(at::kFloat));
+  ASSERT_THROW((void)at::sparse_coo_tensor(indices, values),
+               common::enforce::EnforceNotMet);
+}

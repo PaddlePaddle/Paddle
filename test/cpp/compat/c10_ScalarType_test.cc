@@ -166,3 +166,25 @@ TEST(ScalarTypeCompatTest, AdditionalEnumAndPredicateBranches) {
   EXPECT_THROW(c10::isSignedType(c10::ScalarType::NumOptions),
                ::std::exception);
 }
+
+TEST(ScalarTypeCompatTest, NewFloatAndBitsSignedSizeBranches) {
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::Float8_e5m2fnuz),
+            static_cast<size_t>(1));
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::Float8_e4m3fnuz),
+            static_cast<size_t>(1));
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::Float8_e8m0fnu),
+            static_cast<size_t>(1));
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::Float4_e2m1fn_x2),
+            static_cast<size_t>(1));
+
+  EXPECT_TRUE(c10::isSignedType(c10::ScalarType::Float8_e4m3fnuz));
+  EXPECT_TRUE(c10::isSignedType(c10::ScalarType::Float8_e8m0fnu));
+  EXPECT_TRUE(c10::isSignedType(c10::ScalarType::Float4_e2m1fn_x2));
+  EXPECT_FALSE(c10::isSignedType(c10::ScalarType::Bits1x8));
+  EXPECT_FALSE(c10::isSignedType(c10::ScalarType::Bits2x4));
+  EXPECT_FALSE(c10::isSignedType(c10::ScalarType::Bits4x2));
+  EXPECT_FALSE(c10::isSignedType(c10::ScalarType::Bits8));
+  EXPECT_FALSE(c10::isSignedType(c10::ScalarType::Bits16));
+
+  EXPECT_STREQ(c10::toString(c10::ScalarType::ComplexHalf), "ComplexHalf");
+}

@@ -122,3 +122,95 @@ TEST(DeviceCompatTest, DeviceParseAndPlaceBranches) {
   os << cuda;
   EXPECT_EQ(os.str(), "cuda:3");
 }
+
+TEST(DeviceTypeCompatTest, NewlyAddedDeviceTypeBranches) {
+  EXPECT_EQ(c10::DeviceTypeToPhi(c10::DeviceType::GPUPINNED),
+            phi::AllocationType::GPUPINNED);
+  EXPECT_EQ(c10::DeviceTypeToPhi(c10::DeviceType::XPUPINNED),
+            phi::AllocationType::XPUPINNED);
+  EXPECT_EQ(c10::DeviceTypeToPhi(c10::DeviceType::Undefined),
+            phi::AllocationType::UNDEFINED);
+
+  EXPECT_EQ(c10::PhiToDeviceType(phi::AllocationType::GPUPINNED),
+            c10::DeviceType::GPUPINNED);
+  EXPECT_EQ(c10::PhiToDeviceType(phi::AllocationType::XPUPINNED),
+            c10::DeviceType::XPUPINNED);
+
+  EXPECT_TRUE(c10::isValidDeviceType(c10::DeviceType::GPUPINNED));
+  EXPECT_TRUE(c10::isValidDeviceType(c10::DeviceType::XPUPINNED));
+  EXPECT_FALSE(c10::isValidDeviceType(c10::DeviceType::Undefined));
+
+  EXPECT_STREQ(c10::DeviceTypeName(c10::DeviceType::GPUPINNED), "gpu_pinned");
+  EXPECT_STREQ(c10::DeviceTypeName(c10::DeviceType::XPUPINNED), "xpu_pinned");
+  EXPECT_STREQ(c10::DeviceTypeName(c10::DeviceType::Undefined), "");
+
+  EXPECT_EQ(c10::phiAllocationTypeToC10DeviceType(phi::AllocationType::CPU),
+            c10::DeviceType::CPU);
+  EXPECT_EQ(c10::phiAllocationTypeToC10DeviceType(phi::AllocationType::GPU),
+            c10::DeviceType::CUDA);
+  EXPECT_EQ(
+      c10::phiAllocationTypeToC10DeviceType(phi::AllocationType::GPUPINNED),
+      c10::DeviceType::GPUPINNED);
+  EXPECT_EQ(
+      c10::phiAllocationTypeToC10DeviceType(phi::AllocationType::XPUPINNED),
+      c10::DeviceType::XPUPINNED);
+  EXPECT_EQ(c10::phiAllocationTypeToC10DeviceType(phi::AllocationType::XPU),
+            c10::DeviceType::XPU);
+  EXPECT_EQ(c10::phiAllocationTypeToC10DeviceType(phi::AllocationType::IPU),
+            c10::DeviceType::IPU);
+  EXPECT_EQ(c10::phiAllocationTypeToC10DeviceType(phi::AllocationType::CUSTOM),
+            c10::DeviceType::CUSTOM);
+  EXPECT_EQ(
+      c10::phiAllocationTypeToC10DeviceType(phi::AllocationType::UNDEFINED),
+      c10::DeviceType::Undefined);
+
+  EXPECT_EQ(c10::c10DeviceTypeToPhiAllocationType(c10::DeviceType::CPU),
+            phi::AllocationType::CPU);
+  EXPECT_EQ(c10::c10DeviceTypeToPhiAllocationType(c10::DeviceType::CUDA),
+            phi::AllocationType::GPU);
+  EXPECT_EQ(c10::c10DeviceTypeToPhiAllocationType(c10::DeviceType::GPUPINNED),
+            phi::AllocationType::GPUPINNED);
+  EXPECT_EQ(c10::c10DeviceTypeToPhiAllocationType(c10::DeviceType::XPU),
+            phi::AllocationType::XPU);
+  EXPECT_EQ(c10::c10DeviceTypeToPhiAllocationType(c10::DeviceType::XPUPINNED),
+            phi::AllocationType::XPUPINNED);
+  EXPECT_EQ(c10::c10DeviceTypeToPhiAllocationType(c10::DeviceType::IPU),
+            phi::AllocationType::IPU);
+  EXPECT_EQ(c10::c10DeviceTypeToPhiAllocationType(c10::DeviceType::CUSTOM),
+            phi::AllocationType::CUSTOM);
+  EXPECT_EQ(c10::c10DeviceTypeToPhiAllocationType(c10::DeviceType::Undefined),
+            phi::AllocationType::CPU);
+}
+
+TEST(DeviceCompatTest, PinnedAndUndefinedDeviceBranches) {
+  c10::Device gpu_pinned(c10::DeviceType::GPUPINNED, 7);
+  EXPECT_EQ(gpu_pinned.type(), c10::DeviceType::GPUPINNED);
+  EXPECT_TRUE(gpu_pinned.is_pinned());
+  EXPECT_FALSE(gpu_pinned.has_index());
+  EXPECT_EQ(gpu_pinned.index(), -1);
+  EXPECT_EQ(gpu_pinned.str(), "cpu");
+
+  c10::Device xpu_pinned(c10::DeviceType::XPUPINNED, 3);
+  EXPECT_EQ(xpu_pinned.type(), c10::DeviceType::XPUPINNED);
+  EXPECT_TRUE(xpu_pinned.is_pinned());
+  EXPECT_FALSE(xpu_pinned.has_index());
+  EXPECT_EQ(xpu_pinned.index(), -1);
+  EXPECT_EQ(xpu_pinned.str(), "xpu");
+
+  c10::Device custom_with_custom_name(c10::DeviceType::CUSTOM, 2, "custom");
+  EXPECT_EQ(custom_with_custom_name.str(), "custom:2");
+
+  c10::Device undefined_place_device(phi::Place());
+  EXPECT_EQ(undefined_place_device.type(), c10::DeviceType::Undefined);
+  EXPECT_EQ(undefined_place_device.str(), "unknown:0");
+}
+
+TEST(DeviceTypeCompatTest, PhiPlaceHasIndexBranches) {
+  EXPECT_FALSE(c10::phiPlaceHasC10DeviceIndex(phi::AllocationType::CPU, -1));
+  EXPECT_FALSE(
+      c10::phiPlaceHasC10DeviceIndex(phi::AllocationType::GPUPINNED, 0));
+  EXPECT_FALSE(
+      c10::phiPlaceHasC10DeviceIndex(phi::AllocationType::XPUPINNED, 0));
+  EXPECT_FALSE(c10::phiPlaceHasC10DeviceIndex(phi::AllocationType::GPU, -1));
+  EXPECT_TRUE(c10::phiPlaceHasC10DeviceIndex(phi::AllocationType::GPU, 0));
+}

@@ -109,26 +109,19 @@ Device::Device(const std::string& device_string)
 }
 
 std::string Device::str() const {
-  std::string str;
+  std::string str = DeviceTypeToString(type());
   switch (type()) {
     case DeviceType::CPU:
-      str = "cpu";
-      break;
     case DeviceType::CUDA:
-      str = "cuda";
+    case DeviceType::XPU:
+    case DeviceType::IPU:
       break;
     case DeviceType::GPUPINNED:
       // GPU 固定内存在物理上位于 CPU 侧，字符串表示与 PyTorch 保持一致
       str = "cpu";
       break;
-    case DeviceType::XPU:
-      str = "xpu";
-      break;
     case DeviceType::XPUPINNED:
       str = "xpu";
-      break;
-    case DeviceType::IPU:
-      str = "ipu";
       break;
     case DeviceType::CUSTOM:
       str = inner_.GetDeviceType();
@@ -137,6 +130,9 @@ std::string Device::str() const {
       } else {
         str = "privateuseone";
       }
+      break;
+    case DeviceType::Undefined:
+      str = "unknown";
       break;
     default:
       str = "unknown";
