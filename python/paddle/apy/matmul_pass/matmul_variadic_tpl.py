@@ -396,7 +396,7 @@ void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
         )
         compile_cmd = compile_cmds[device_type]
 
-        file_ext = "cu" if device_type == "cuda" else "cpp"
+        file_ext = "cu" if device_type == "gpu" else "cpp"
 
         return CodeModule(  # noqa: F821
             FuncDeclare(  # noqa: F821

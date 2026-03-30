@@ -625,14 +625,14 @@ Result<axpr::Value> GetHardwareDevice(const axpr::Value&,
     return TypeError{"get_hardware_device takes no arguments"};
   }
 
-  std::string str = "cpu";
+  std::string str = "cpu";  // LCOV_EXCL_LINE
 
 #ifdef CINN_WITH_CUDA
   str = "gpu";
 #endif
 
 #ifdef CINN_WITH_HIP
-  str = "dcu";
+  str = "dcu";  // LCOV_EXCL_LINE
 #endif
 
   return str;
