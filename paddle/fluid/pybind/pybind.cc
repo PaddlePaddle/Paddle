@@ -1786,7 +1786,9 @@ PYBIND11_MODULE(libpaddle, m) {
   m.def("is_cuda_graph_capturing", &platform::IsCUDAGraphCapturing);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_CUSTOM_DEVICE)
-  py::class_<phi::backends::gpu::CUDAGraph>(m, "CUDAGraph")
+  auto cuda_graph_class =
+      py::class_<phi::backends::gpu::CUDAGraph>(m, "CUDAGraph");
+  cuda_graph_class
       .def_static("begin_capture",
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
                   [](GPUPlace place, int mode) {
@@ -1841,21 +1843,24 @@ PYBIND11_MODULE(libpaddle, m) {
       .def("replay", &phi::backends::gpu::CUDAGraph::Replay)
       .def("reset", &phi::backends::gpu::CUDAGraph::Reset)
       .def("print_to_dot_files",
-           &phi::backends::gpu::CUDAGraph::PrintToDotFiles)
-      .def("replace_input_ptrs",
-           [](phi::backends::gpu::CUDAGraph &self,
-              const std::vector<int64_t> &old_ptrs_int,
-              const std::vector<int64_t> &new_ptrs_int) {
-             std::vector<void *> old_ptrs(old_ptrs_int.size());
-             std::vector<void *> new_ptrs(new_ptrs_int.size());
-             for (size_t i = 0; i < old_ptrs_int.size(); ++i) {
-               old_ptrs[i] = reinterpret_cast<void *>(old_ptrs_int[i]);
-             }
-             for (size_t i = 0; i < new_ptrs_int.size(); ++i) {
-               new_ptrs[i] = reinterpret_cast<void *>(new_ptrs_int[i]);
-             }
-             self.ReplaceInputPtrs(old_ptrs, new_ptrs);
-           });
+           &phi::backends::gpu::CUDAGraph::PrintToDotFiles);
+#if defined(PADDLE_WITH_CUDA)
+  cuda_graph_class.def(
+      "replace_input_ptrs",
+      [](phi::backends::gpu::CUDAGraph &self,
+         const std::vector<int64_t> &old_ptrs_int,
+         const std::vector<int64_t> &new_ptrs_int) {
+        std::vector<void *> old_ptrs(old_ptrs_int.size());
+        std::vector<void *> new_ptrs(new_ptrs_int.size());
+        for (size_t i = 0; i < old_ptrs_int.size(); ++i) {
+          old_ptrs[i] = reinterpret_cast<void *>(old_ptrs_int[i]);
+        }
+        for (size_t i = 0; i < new_ptrs_int.size(); ++i) {
+          new_ptrs[i] = reinterpret_cast<void *>(new_ptrs_int[i]);
+        }
+        self.ReplaceInputPtrs(old_ptrs, new_ptrs);
+      });
+#endif
 #endif
 
 #ifdef PADDLE_WITH_XPU
