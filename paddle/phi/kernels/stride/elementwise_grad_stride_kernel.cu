@@ -114,7 +114,7 @@ DenseTensor Tensor2Contiguous(const Context& dev_ctx,
   MetaTensor meta_out(&dense_out);
   UnchangedInferMeta(meta_input, &meta_out);
   PD_VISIT_ALL_TYPES(tensor.dtype(), "Tensor2Contiguous", ([&] {
-                       phi::ContiguousKernel<data_t, Context>(
+                       ContiguousKernel<data_t, Context>(
                            dev_ctx, tensor, &dense_out);
                      }));
   return dense_out;

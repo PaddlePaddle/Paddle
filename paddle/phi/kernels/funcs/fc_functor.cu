@@ -149,9 +149,9 @@ __global__ void bias_relu_v4_half2(const int num,
 
   for (int32_t linear_idx = global_thread_idx * Half2VecSize; linear_idx < num;
        linear_idx += grid_stride * Half2VecSize) {
-    phi::Load<half2, Half2VecSize>(&data[linear_idx], &data_vec);
+    Load<half2, Half2VecSize>(&data[linear_idx], &data_vec);
     const int bias_idx = linear_idx % K;
-    phi::Load<half2, Half2VecSize>(&bias[bias_idx], &bias_vec);
+    Load<half2, Half2VecSize>(&bias[bias_idx], &bias_vec);
 
 #pragma unroll
     for (int unroll_idx = 0; unroll_idx < Half2VecSize; unroll_idx++) {
@@ -183,7 +183,7 @@ __global__ void bias_relu_v4_half2(const int num,
 #endif
       }
     }
-    phi::Store<half2, Half2VecSize>(data_vec, &data[linear_idx]);
+    Store<half2, Half2VecSize>(data_vec, &data[linear_idx]);
   }
 }
 
@@ -399,8 +399,8 @@ void FCInt8Functor<DeviceContext, T>::operator()(
   const int8_t* W = w_tensor->data<int8_t>();
 
   DenseTensor quant_x_tensor, quant_y_tensor;
-  quant_x_tensor.Resize(make_ddim({M, K}));
-  quant_y_tensor.Resize(make_ddim({M, N}));
+  quant_x_tensor.Resize({M, K});
+  quant_y_tensor.Resize({M, N});
   dev_ctx.template Alloc<int8_t>(&quant_x_tensor,
                                  quant_x_tensor.numel() * sizeof(int8_t));
   dev_ctx.template Alloc<int32_t>(&quant_y_tensor,
@@ -419,7 +419,7 @@ void FCInt8Functor<DeviceContext, T>::operator()(
       dev_ctx, quant_x_tensor, *w_tensor, false, false, &quant_y_tensor);
 
   DenseTensor scale_weights_dev;
-  scale_weights_dev.Resize(make_ddim({N}));
+  scale_weights_dev.Resize({N});
   dev_ctx.template Alloc<float>(&scale_weights_dev,
                                 scale_weights_dev.numel() * sizeof(float));
   float* scale_weights_dev_ptr = scale_weights_dev.data<float>();

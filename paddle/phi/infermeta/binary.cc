@@ -532,15 +532,15 @@ void ComplexInferMeta(const MetaTensor& x,
 void ConvInferMeta(const MetaTensor& input,
                    const MetaTensor& filter,
                    const std::vector<int>& strides,
-                   const std::vector<int>& paddings_t,
+                   const std::vector<int>& paddings,
                    const std::string& padding_algorithm,
-                   const std::vector<int>& dilations_t,
+                   const std::vector<int>& dilations,
                    int groups,
                    const std::string& data_format,
                    MetaTensor* out,
                    MetaConfig config) {
-  std::vector<int> paddings = paddings_t;
-  std::vector<int> dilations = dilations_t;
+  std::vector<int> paddings_ = paddings;
+  std::vector<int> dilations_ = dilations;
   auto in_dims = input.dims();
   auto filter_dims = filter.dims();
   int dilation_size = static_cast<int>(dilations.size());
@@ -674,7 +674,7 @@ void ConvInferMeta(const MetaTensor& input,
 
   std::vector<int> ksize = vectorize<int>(filter_data_dims);
   phi::UpdatePaddingAndDilation(
-      &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
+      &paddings_, &dilations_, padding_algorithm, in_data_dims, strides, ksize);
 
   std::vector<int64_t> output_shape({in_dims[0]});
   if (!channel_last) {
@@ -689,11 +689,11 @@ void ConvInferMeta(const MetaTensor& input,
         (in_data_dims[i] < 0 || filter_dims[i + 2] < 0)) {
       output_shape.push_back(-1);
     } else {
-      const int64_t dkernel = dilations[i] * (filter_data_dims[i] - 1) + 1;
-      int64_t output_size =
-          (in_data_dims[i] + paddings[2 * i] + paddings[2 * i + 1] - dkernel) /
-              strides[i] +
-          1;
+      const int64_t dkernel = dilations_[i] * (filter_data_dims[i] - 1) + 1;
+      int64_t output_size = (in_data_dims[i] + paddings_[2 * i] +
+                             paddings_[2 * i + 1] - dkernel) /
+                                strides[i] +
+                            1;
       output_shape.push_back(output_size);
     }
   }
@@ -4131,9 +4131,9 @@ void SlowConvDilatedInferMeta(const MetaTensor& input,
                               const MetaTensor& filter,
                               const MetaTensor& bias,
                               const std::vector<int>& strides,
-                              const std::vector<int>& paddings_t,
+                              const std::vector<int>& paddings,
                               const std::string& padding_algorithm,
-                              const std::vector<int>& dilations_t,
+                              const std::vector<int>& dilations,
                               int groups,
                               const std::string& data_format,
                               MetaTensor* out,
@@ -4141,9 +4141,9 @@ void SlowConvDilatedInferMeta(const MetaTensor& input,
   ConvInferMeta(input,
                 filter,
                 strides,
-                paddings_t,
+                paddings,
                 padding_algorithm,
-                dilations_t,
+                dilations,
                 groups,
                 data_format,
                 out,
@@ -4232,7 +4232,10 @@ void SegmentPoolInferMeta(const MetaTensor& x,
                           MetaTensor* out,
                           MetaTensor* summed_ids,
                           MetaConfig config) {
-  auto dims = x.dims();
+  auto x_dims = x.dims();
+  auto seg_dims = segment_ids.dims();
+
+  auto dims = x_dims;
   dims[0] = -1;
   out->set_dims(dims);
   out->set_dtype(x.dtype());
@@ -4242,6 +4245,28 @@ void SegmentPoolInferMeta(const MetaTensor& x,
     summed_ids->set_dims({-1, 1});
     summed_ids->set_dtype(x.dtype());
     summed_ids->set_layout(x.layout());
+  }
+
+  // Dimension validation: check only at runtime or when dimensions are known
+  // Runtime: config.is_runtime = true (dynamic graph/PIR)
+  // Compile time: config.is_runtime = false (static graph building)
+  bool contain_unknown_dim = common::contain_unknown_dim(x_dims) ||
+                             common::contain_unknown_dim(seg_dims);
+  bool check = config.is_runtime || !contain_unknown_dim;
+
+  if (check) {
+    PADDLE_ENFORCE_EQ(
+        seg_dims[0],
+        x_dims[0],
+        common::errors::InvalidArgument(
+            "Segment_ids should be the same size as dimension 0 of input X."));
+
+    PADDLE_ENFORCE_EQ(seg_dims.size(),
+                      1UL,
+                      common::errors::InvalidArgument(
+                          "Segment_ids should be 1-D tensor, or it's other "
+                          "dimension size is 1. Segment_ids's shape is: [%s].",
+                          seg_dims));
   }
 }
 

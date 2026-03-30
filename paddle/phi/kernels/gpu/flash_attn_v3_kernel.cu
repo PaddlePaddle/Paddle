@@ -388,9 +388,9 @@ void FlashAttnV3BaseKernel(
     }
   } else {
     if (!is_varlen_q) {
-      out->Resize(make_ddim({batch_size, seqlen_q, num_heads, head_size_v}));
+      out->Resize({batch_size, seqlen_q, num_heads, head_size_v});
     } else {
-      out->Resize(make_ddim({total_q, num_heads, head_size_v}));
+      out->Resize({total_q, num_heads, head_size_v});
     }
     if (q_type == phi::DataType::FLOAT8_E4M3FN) {
       dev_ctx.template Alloc<phi::bfloat16>(out);
@@ -407,9 +407,9 @@ void FlashAttnV3BaseKernel(
   int const seqlen_k_rounded = round_multiple(seqlen_k, 128);
 
   if (!is_varlen_q) {
-    softmax_lse->Resize(make_ddim({batch_size, num_heads, seqlen_q}));
+    softmax_lse->Resize({batch_size, num_heads, seqlen_q});
   } else {
-    softmax_lse->Resize(make_ddim({num_heads, total_q}));
+    softmax_lse->Resize({num_heads, total_q});
   }
   dev_ctx.template Alloc<float>(softmax_lse);
 
@@ -1538,9 +1538,9 @@ void FlashMaskV2BaseKernel(
     }
   } else {
     if (!is_varlen_q) {
-      out->Resize(make_ddim({batch_size, seqlen_q, num_heads, head_size_v}));
+      out->Resize({batch_size, seqlen_q, num_heads, head_size_v});
     } else {
-      out->Resize(make_ddim({total_q, num_heads, head_size_v}));
+      out->Resize({total_q, num_heads, head_size_v});
     }
     if (q_type == phi::DataType::FLOAT8_E4M3FN) {
       dev_ctx.template Alloc<phi::bfloat16>(out);
@@ -1557,9 +1557,9 @@ void FlashMaskV2BaseKernel(
   int const seqlen_k_rounded = round_multiple(seqlen_k, 128);
 
   if (!is_varlen_q) {
-    softmax_lse->Resize(make_ddim({batch_size, num_heads, seqlen_q}));
+    softmax_lse->Resize({batch_size, num_heads, seqlen_q});
   } else {
-    softmax_lse->Resize(make_ddim({num_heads, total_q}));
+    softmax_lse->Resize({num_heads, total_q});
   }
   dev_ctx.template Alloc<float>(softmax_lse);
 
@@ -2272,6 +2272,21 @@ void FlashMaskV2Kernel(const Context &dev_ctx,
                        DenseTensor *out,
                        DenseTensor *softmax_lse) {
 #ifdef PADDLE_WITH_FLASHATTN_V3
+  // Handle 0-size tensors: return zeros without calling CUDA kernel
+  // to avoid invalid memory access
+  if (q.numel() == 0 || k.numel() == 0 || v.numel() == 0) {
+    if (out) {
+      funcs::SetConstant<Context, T> set_zero;
+      set_zero(dev_ctx, out, T{0});
+    }
+    if (softmax_lse) {
+      funcs::SetConstant<Context, float> set_infinity;
+      set_infinity(
+          dev_ctx, softmax_lse, std::numeric_limits<float>::infinity());
+    }
+    return;
+  }
+
   DenseTensor out_accum;
   DenseTensor softmax_lse_accum;
   FlashMaskV2BaseKernel<T, Context>(dev_ctx,

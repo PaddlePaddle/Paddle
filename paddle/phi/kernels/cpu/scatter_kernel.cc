@@ -42,23 +42,23 @@ void ScatterKernel(const Context &dev_ctx,
   // Apply ScatterUpdate: Out[index] = Updates[:]
   const auto &index_type = index.dtype();
   bool index_type_match =
-      index_type == phi::DataType::INT32 || index_type == phi::DataType::INT64;
+      index_type == DataType::INT32 || index_type == DataType::INT64;
   PADDLE_ENFORCE_EQ(index_type_match,
                     true,
                     common::errors::InvalidArgument(
                         "Index holds the wrong type, it holds [%s],"
                         "but desires to be [%s] or [%s].",
                         index_type,
-                        phi::DataType::INT32,
-                        phi::DataType::INT64));
+                        DataType::INT32,
+                        DataType::INT64));
   if (overwrite) {
-    if (index_type == phi::DataType::INT32) {
+    if (index_type == DataType::INT32) {
       funcs::ScatterAssign<T, int32_t>(dev_ctx, updates, index, out);
     } else {
       funcs::ScatterAssign<T, int64_t>(dev_ctx, updates, index, out);
     }
   } else {
-    if (index_type == phi::DataType::INT32) {
+    if (index_type == DataType::INT32) {
       funcs::ScatterAssignAdd<T, int32_t>(dev_ctx, updates, index, out);
     } else {
       funcs::ScatterAssignAdd<T, int64_t>(dev_ctx, updates, index, out);

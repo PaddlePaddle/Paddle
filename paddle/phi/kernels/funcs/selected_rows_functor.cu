@@ -40,7 +40,7 @@ struct SelectedRowsAdd<GPUContext, T> {
                                         input2.height()));
     output->set_height(in1_height);
 
-    phi::Vector<int64_t> in1_rows(input1.rows());
+    Vector<int64_t> in1_rows(input1.rows());
     auto& in2_rows = input2.rows();
     std::vector<int64_t> out_rows;
     out_rows.reserve(in1_rows.size() + in2_rows.size());
@@ -380,7 +380,7 @@ struct MergeAddImpl {
                   const SelectedRows& input,
                   SelectedRows* output,
                   const bool sorted_result = false) {
-    phi::Vector<int64_t> input_rows(input.rows());
+    Vector<int64_t> input_rows(input.rows());
     if (input_rows.size() == 0) {
       return;
     }
@@ -388,7 +388,7 @@ struct MergeAddImpl {
     SelectedRows& out = *output;
     std::set<int64_t> row_set(input_rows.begin(), input_rows.end());
     std::vector<int64_t> merge_rows_cpu(row_set.begin(), row_set.end());
-    phi::Vector<int64_t> merge_rows(merge_rows_cpu);
+    Vector<int64_t> merge_rows(merge_rows_cpu);
 
     auto input_width = input.value().dims()[1];
 
@@ -461,7 +461,7 @@ struct MergeAddImpl {
     }
     std::vector<int64_t> merge_rows_cpu(merged_row_set.begin(),
                                         merged_row_set.end());
-    phi::Vector<int64_t> merge_rows(merge_rows_cpu);
+    Vector<int64_t> merge_rows(merge_rows_cpu);
 
     out.set_rows(merge_rows);
     out.set_height(input_height);

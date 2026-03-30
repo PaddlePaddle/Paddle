@@ -125,9 +125,9 @@ void TraceGradKernel(const Context& dev_ctx,
   int64_t pos = std::abs(offset) * offset_stride;
   if (diag_size > 0) {
 #if defined(__NVCC__) || defined(__HIPCC__)
-    thrust::device_vector<int64_t> output_vec(common::vectorize(output_stride));
+    thrust::device_vector<int64_t> output_vec(vectorize(output_stride));
     const int64_t* output_arr = thrust::raw_pointer_cast(output_vec.data());
-    thrust::device_vector<int64_t> input_vec(common::vectorize(input_stride));
+    thrust::device_vector<int64_t> input_vec(vectorize(input_stride));
     const int64_t* input_arr = thrust::raw_pointer_cast(input_vec.data());
 
 #else

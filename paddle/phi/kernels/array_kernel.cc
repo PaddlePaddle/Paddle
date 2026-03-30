@@ -112,7 +112,7 @@ void ArrayToTensorKernel(const Context& dev_ctx,
   }
 
   if (use_stack) {
-    auto vec = common::vectorize<int>(x[0].dims());
+    auto vec = vectorize<int>(x[0].dims());
     vec.insert(vec.begin() + axis, x.size());  // NOLINT
     out->Resize(make_ddim(vec));
     StackKernel<T, Context>(dev_ctx, inputs, axis, out);
@@ -126,12 +126,12 @@ void ArrayToTensorKernel(const Context& dev_ctx,
         }
       }
     }
-    auto vec = common::vectorize<int>(out_dims);
+    auto vec = vectorize<int>(out_dims);
     out->Resize(make_ddim(vec));
     ConcatKernel<T, Context>(dev_ctx, inputs, axis, out);
   }
 
-  out_index->Resize(make_ddim({static_cast<int>(x.size())}));
+  out_index->Resize({static_cast<int64_t>(x.size())});
   StackKernel<int, Context>(dev_ctx, indices, 0, out_index);
 }
 

@@ -28,7 +28,7 @@ void RangeFunc(const Context& dev_ctx,
                DenseTensor* out) {
   int64_t size =
       static_cast<int64_t>((end_value - start_value) / step_value + 1);
-  out->Resize(make_ddim({size}));
+  out->Resize({size});
   T* out_data = dev_ctx.template Alloc<T>(out);
   if (size == 0) {
     return;

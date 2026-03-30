@@ -154,7 +154,7 @@ void ComplexKernel(const Context& dev_ctx,
   auto x_dims = x.dims();
   auto y_dims = y.dims();
   auto out_dims = funcs::BroadcastTwoDims(x_dims, y_dims);
-  std::vector<int64_t> out_dims_vec = phi::vectorize(out_dims);
+  std::vector<int64_t> out_dims_vec = vectorize(out_dims);
 
   DenseTensor broadcasted_x, broadcasted_y;
   const T* x_data = nullptr;

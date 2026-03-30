@@ -387,7 +387,7 @@ void FlashAttnV3GradBaseKernel(
     if (softmax_d) {
       // Need softmax_d to have seqlen_q_rounded since we want its address to be
       // aligned by 16/8 bytes for TMA / LDG.64
-      softmax_d->Resize(make_ddim({batch_size, num_heads, seqlen_q_rounded}));
+      softmax_d->Resize({batch_size, num_heads, seqlen_q_rounded});
     }
     if (softmax_lse_log2) {
       softmax_lse_log2->Resize(
@@ -395,10 +395,10 @@ void FlashAttnV3GradBaseKernel(
     }
   } else {
     if (softmax_d) {
-      softmax_d->Resize(make_ddim({num_heads, total_q_padded_rounded}));
+      softmax_d->Resize({num_heads, total_q_padded_rounded});
     }
     if (softmax_lse_log2) {
-      softmax_lse_log2->Resize(make_ddim({num_heads, total_q_padded_rounded}));
+      softmax_lse_log2->Resize({num_heads, total_q_padded_rounded});
     }
   }
   if (softmax_d) {
@@ -1277,7 +1277,7 @@ void FlashMaskV2GradBaseKernel(
     if (softmax_d) {
       // Need softmax_d to have seqlen_q_rounded since we want its address to be
       // aligned by 16/8 bytes for TMA / LDG.64
-      softmax_d->Resize(make_ddim({batch_size, num_heads, seqlen_q_rounded}));
+      softmax_d->Resize({batch_size, num_heads, seqlen_q_rounded});
     }
     if (softmax_lse_log2) {
       softmax_lse_log2->Resize(
@@ -1285,10 +1285,10 @@ void FlashMaskV2GradBaseKernel(
     }
   } else {
     if (softmax_d) {
-      softmax_d->Resize(make_ddim({num_heads, total_q_padded_rounded}));
+      softmax_d->Resize({num_heads, total_q_padded_rounded});
     }
     if (softmax_lse_log2) {
-      softmax_lse_log2->Resize(make_ddim({num_heads, total_q_padded_rounded}));
+      softmax_lse_log2->Resize({num_heads, total_q_padded_rounded});
     }
   }
   if (softmax_d) {

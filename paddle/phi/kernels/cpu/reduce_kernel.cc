@@ -56,7 +56,7 @@ void ReduceKernel(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 template <typename T>
-void ReduceKernel(const phi::CustomContext& dev_ctx,
+void ReduceKernel(const CustomContext& dev_ctx,
                   const DenseTensor& x,
                   int root,
                   int reduce_type,
@@ -76,7 +76,7 @@ void ReduceKernel(const phi::CustomContext& dev_ctx,
       errors::Unavailable("XCCLCommContext is nullptr, collective op should "
                           "has ring_id attr."));
   comm_ctx->Reduce(
-      out, x, phi::ccl::ToXCCLReduceOp(reduce_type), root, dev_ctx.stream());
+      out, x, ccl::ToXCCLReduceOp(reduce_type), root, dev_ctx.stream());
 }
 #endif
 

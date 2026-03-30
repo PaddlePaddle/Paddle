@@ -370,6 +370,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
             }
           },
           [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+          [&](common::CustomDeviceArch) { CINN_NOT_IMPLEMENTED; },
           [&](common::NVGPUArch) {
             if (conv_type == "forward") {
               out = pe::Conv2d_NCHW(A.as_tensor_ref(),
@@ -518,6 +519,7 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
     if (data_format == "NCHW") {
       target.arch.Match(
           [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+          [&](common::CustomDeviceArch) { CINN_NOT_IMPLEMENTED; },
           [&](common::X86Arch) {
             out = pe::Conv2d_NCHW_5D(A.as_tensor_ref(),
                                      B.as_tensor_ref(),
@@ -1005,6 +1007,7 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
       [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
       [&](common::X86Arch) { use_warp_reduce = false; },
       [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+      [&](common::CustomDeviceArch) { CINN_NOT_IMPLEMENTED; },
       [&](common::NVGPUArch) {
         if (global_pooling && data_format == "NCHW") {
           // TODO(hp03): 32 may not be the exact number, try

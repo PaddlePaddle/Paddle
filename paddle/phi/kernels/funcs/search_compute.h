@@ -59,8 +59,8 @@ void call_gemm(const Context& dev_ctx,
                T* C) {
   int lda = (TransA == CblasNoTrans) ? K : M;
   int ldb = (TransB == CblasNoTrans) ? N : K;
-  // auto& dev_ctx = dev_ctx.template device_context<phi::CPUContext>();
-  auto blas = funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
+  // auto& dev_ctx = dev_ctx.template device_context<CPUContext>();
+  auto blas = funcs::GetBlas<CPUContext, T>(dev_ctx);
   blas.GEMM(TransA, TransB, M, N, K, alpha, A, lda, B, ldb, beta, C, N);
 }
 

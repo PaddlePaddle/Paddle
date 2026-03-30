@@ -96,6 +96,109 @@ def _get_align_mode_scale():
     )
 
 
+def _can_free(t):
+    """
+    Check if a tensor can be freed.
+
+    A tensor can be freed only if all of the following conditions are met:
+    1. Tensor is not None
+    2. Is a paddle.Tensor type
+    3. Has been initialized
+    4. inplace_version is 0 (not using in-place ops) or explicitly marked as freeable
+
+    Args:
+        t: The tensor to check
+
+    Returns:
+        bool: True if the tensor can be freed, False otherwise
+    """
+    return (
+        t is not None
+        and isinstance(t, paddle.Tensor)
+        and t._is_initialized()
+        and (t.inplace_version == 0 or getattr(t, "pp_can_free", False))
+    )
+
+
+def _collect_all_tensors(obj, tensor_set):
+    """
+    Recursively collect all tensors from a complex object.
+
+    This function traverses nested data structures (tuple, list, dict) and finds
+    all paddle.Tensor instances, adding them to the tensor_set. Used in Pipeline
+    Parallel to identify all tensors that need to be managed.
+
+    Args:
+        obj: Any complex object that may contain nested tuple, list, dict and paddle.Tensor
+        tensor_set: A set to store the collected tensors
+    """
+    visited = set()
+    stack = [obj]
+
+    while stack:
+        current = stack.pop()
+        obj_id = id(current)
+        if obj_id in visited:
+            continue
+        visited.add(obj_id)
+
+        if isinstance(current, (tuple, list)):
+            stack.extend(current)
+        elif isinstance(current, dict):
+            stack.extend(current.values())
+        elif isinstance(current, paddle.Tensor):
+            # Check for duplicate addition
+            if current in tensor_set:
+                logger.debug(f"Duplicate tensor detected: {current}")
+            tensor_set.add(current)
+
+
+def _release_output(output):
+    """
+    Release the data pointer of output tensors.
+
+    Collects all tensors from output and frees the data pointer of those that
+    meet the release criteria. Used in Pipeline Parallel to release output
+    tensor memory after forward propagation to avoid unnecessary memory usage.
+
+    Args:
+        output: The output object, which can be a tensor, tuple, list, or dict
+    """
+    all_tensors = set()
+    _collect_all_tensors(output, all_tensors)
+    for t in all_tensors:
+        if _can_free(t):
+            t._clear_dataptr()
+
+
+def _release_input(input, output):
+    """
+    Release the data pointer of input tensors.
+
+    Only releases input tensors that do not appear in the output. This is because
+    in Pipeline Parallel, if an input tensor is used in the output (e.g., residual
+    connection), it cannot be freed early. This function ensures that input memory
+    is released without affecting tensors needed for subsequent computation.
+
+    Args:
+        input: The input object, which can be a tensor, tuple, list, or dict
+        output: The output object, used to determine which input tensors should not be freed
+    """
+    output_tensors = set()
+    _collect_all_tensors(output, output_tensors)
+
+    def can_release(t):
+        if not _can_free(t):
+            return False
+        return t not in output_tensors
+
+    input_tensors = set()
+    _collect_all_tensors(input, input_tensors)
+    for t in input_tensors:
+        if can_release(t):
+            t._clear_dataptr()
+
+
 # assume only the first stage and last stage need data, and data consumption is ordered
 # to be replaced by real micro dataset from reader
 class FakeMicroDataset:
@@ -309,9 +412,7 @@ class NoPipelineParallel(MetaParallelBase):
         self.accumulate_steps = self._strategy.pipeline_configs[
             "accumulate_steps"
         ]
-        self._delay_scale_loss = self._strategy.hybrid_configs[
-            "pp_configs"
-        ].delay_scale_loss
+
         self._dp_comm_overlap = False
         self._sharding_comm_overlap = False
 
@@ -384,13 +485,12 @@ class NoPipelineParallel(MetaParallelBase):
         return data
 
     def _optimizer_step(self):
-        if self._delay_scale_loss:
-            for p in self._layers.parameters():
-                if hasattr(p, "main_grad") and p.main_grad is not None:
-                    assert p.grad is None
-                    p.main_grad = p.main_grad.scale(1.0 / self.accumulate_steps)
-                elif p.grad is not None:
-                    p.grad = p.grad.scale(1.0 / self.accumulate_steps)
+        for p in self._layers.parameters():
+            if hasattr(p, "main_grad") and p.main_grad is not None:
+                assert p.grad is None
+                p.main_grad = p.main_grad.scale(1.0 / self.accumulate_steps)
+            elif p.grad is not None:
+                p.grad = p.grad.scale(1.0 / self.accumulate_steps)
 
         if self.scaler:
             self.scaler.step(self.optimizer)
@@ -446,9 +546,7 @@ class NoPipelineParallel(MetaParallelBase):
                 assert isinstance(loss_tensor, paddle.Tensor), (
                     "Currently, loss_fn should obtain Paddle.Tensor dtype"
                 )
-                with paddle.amp.auto_cast(enable=False):
-                    if self.accumulate_steps > 1 and not self._delay_scale_loss:
-                        loss_tensor = loss_tensor / self.accumulate_steps
+
                 if self.total_loss is None:
                     self.total_loss = []
                 # when self.total_loss length is less than idx, append a new tensor
@@ -480,10 +578,7 @@ class NoPipelineParallel(MetaParallelBase):
                     tmp = paddle.zeros_like(self.total_loss[idx][0])
                     for loss in self.total_loss[idx]:
                         tmp += loss.detach()
-                    if not self._delay_scale_loss:
-                        losses.append(tmp)
-                    else:
-                        losses.append(tmp / self.accumulate_steps)
+                    losses.append(tmp / self.accumulate_steps)
                 else:
                     losses.append(self.total_loss[idx].detach())
         return losses[0] if len(losses) == 1 else losses
@@ -561,9 +656,7 @@ class NoPipelineParallel(MetaParallelBase):
                 assert isinstance(loss_tensor, paddle.Tensor), (
                     "Currently, loss_fn should obtain Paddle.Tensor dtype"
                 )
-                with paddle.amp.auto_cast(enable=False):
-                    if self.accumulate_steps > 1 and not self._delay_scale_loss:
-                        loss_tensor = loss_tensor / self.accumulate_steps
+
                 if self.total_loss is None:
                     self.total_loss = []
                 # when self.total_loss length is less than idx, append a new tensor
@@ -588,10 +681,7 @@ class NoPipelineParallel(MetaParallelBase):
                 tmp = paddle.zeros_like(self.total_loss[idx][0])
                 for loss in self.total_loss[idx]:
                     tmp += loss.detach()
-                if not self._delay_scale_loss:
-                    losses.append(tmp)
-                else:
-                    losses.append(tmp / self.accumulate_steps)
+                losses.append(tmp / self.accumulate_steps)
             else:
                 losses.append(self.total_loss[idx].detach())
         return losses[0] if len(losses) == 1 else losses
@@ -649,9 +739,6 @@ class PipelineParallel(MetaParallelBase):
         self._real_pp_world_size = self.num_stages
         self._real_pp_rank = self.stage_id
 
-        self._delay_scale_loss = self._strategy.hybrid_configs[
-            "pp_configs"
-        ].delay_scale_loss
         # TODO(PP Dev): support dp_comm_overlap without use_main_grad training.
         # This combination will trigger inplace check error during `reshape_` in function `_split_tensors`.
         self._dp_comm_overlap = self._strategy.hybrid_configs[
@@ -1142,7 +1229,7 @@ class PipelineParallel(MetaParallelBase):
             output_buffers.append(output_tensor_tuple)
 
             if not self.is_pipeline_last_stage():
-                self._release_output(output_tensor_tuple)
+                _release_output(output_tensor_tuple)
 
         if steady_steps > 0 and not static_scheduler:
             input_tensor = self._p2p_helper.recv_forward(
@@ -1191,7 +1278,7 @@ class PipelineParallel(MetaParallelBase):
             output_buffers.append(output_tensor_tuple)
 
             if not self.is_pipeline_last_stage():
-                self._release_output(output_tensor_tuple)
+                _release_output(output_tensor_tuple)
 
             input_tensor, output_tensor = (
                 input_buffers.pop(0),
@@ -1442,7 +1529,7 @@ class PipelineParallel(MetaParallelBase):
                 batch_p2p_comm=self._use_batch_p2p_comm,
             )
             if not self.is_pipeline_last_stage():
-                self._release_output(output_tensor_tuple)
+                _release_output(output_tensor_tuple)
             else:
                 self._offload_tensors(output_tensor_tuple)
 
@@ -1472,7 +1559,7 @@ class PipelineParallel(MetaParallelBase):
                 batch_p2p_comm=self._use_batch_p2p_comm,
             )
             if not self.is_pipeline_last_stage():
-                self._release_output(output_tensor_tuple)
+                _release_output(output_tensor_tuple)
             else:
                 self._offload_tensors(output_tensor_tuple)
 
@@ -1512,28 +1599,12 @@ class PipelineParallel(MetaParallelBase):
                     if overlap_schedule_mode:
                         loss_fn_node = loss_fn.build_schedule_node()
                         loss_fn_node.labels = labels
-                        if (
-                            self.accumulate_steps > 1
-                            and not self._delay_scale_loss
-                        ):
-                            loss_fn_node.scale_loss_factor = (
-                                self.accumulate_steps
-                            )
                         loss_tensor = loss_fn_node.forward(output_tensor)
                     else:
                         loss_tensor = loss_fn(output_tensor, labels)
                         assert isinstance(loss_tensor, paddle.Tensor), (
                             "Currently, loss_fn should obtain Paddle.Tensor dtype"
                         )
-
-                        with paddle.amp.auto_cast(enable=False):
-                            if (
-                                self.accumulate_steps > 1
-                                and not self._delay_scale_loss
-                            ):
-                                loss_tensor = (
-                                    loss_tensor / self.accumulate_steps
-                                )
 
                     if self.total_loss is None:
                         self.total_loss = []
@@ -1599,6 +1670,7 @@ class PipelineParallel(MetaParallelBase):
             # Only increase micro batch id at virtual first/last pp stage.
             # The micro batch id is used to load data, therefore, only increase it when load data.
             self.micro_batch_id += 1
+        _release_input(input_tensor, output_tensor)
         if self._enable_timer:
             self.timers("forward_step").stop()
         if self.processed_steps < g_profile_pipeline_details_steps:
@@ -1737,10 +1809,7 @@ class PipelineParallel(MetaParallelBase):
                     tmp = paddle.zeros_like(self.total_loss[idx][0])
                     for loss in self.total_loss[idx]:
                         tmp += loss.detach()
-                    if not self._delay_scale_loss:
-                        losses.append(tmp)
-                    else:
-                        losses.append(tmp / self.accumulate_steps)
+                    losses.append(tmp / self.accumulate_steps)
                 else:
                     losses.append(self.total_loss[idx].detach())
 
@@ -1790,13 +1859,12 @@ class PipelineParallel(MetaParallelBase):
         return losses[0] if len(losses) == 1 else losses
 
     def _optimizer_step(self):
-        if self._delay_scale_loss:
-            for p in self._layers.parameters():
-                if hasattr(p, "main_grad") and p.main_grad is not None:
-                    assert p.grad is None
-                    p.main_grad = p.main_grad.scale(1.0 / self.accumulate_steps)
-                elif p.grad is not None:
-                    p.grad = p.grad.scale(1.0 / self.accumulate_steps)
+        for p in self._layers.parameters():
+            if hasattr(p, "main_grad") and p.main_grad is not None:
+                assert p.grad is None
+                p.main_grad = p.main_grad.scale(1.0 / self.accumulate_steps)
+            elif p.grad is not None:
+                p.grad = p.grad.scale(1.0 / self.accumulate_steps)
 
         if self.scaler:
             self.scaler.step(self.optimizer)
@@ -2330,10 +2398,6 @@ class PipelineParallelWithInterleave(PipelineParallel):
                     0
                 ].build_schedule_node()
                 forward_loss_fn_node.labels = labels
-                if self.accumulate_steps > 1 and not self._delay_scale_loss:
-                    forward_loss_fn_node.scale_loss_factor = (
-                        self.accumulate_steps
-                    )
             else:
                 forward_loss_fn_node = None
 
@@ -2768,7 +2832,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
                 # append input_tensor no matter none or not
                 self.input_tensors[next_virtual_pp_rank].append(input_tensor)
-            self._release_output(output_tensor)
+            _release_output(output_tensor)
 
         # run 1f1b steady steps
         for micro_step in range(steady_steps):
@@ -2808,11 +2872,10 @@ class PipelineParallelWithInterleave(PipelineParallel):
             if self._overlap_p2p_comm:
                 backward_micro_step_id = micro_step
 
-                def forward_handle_wait(fwd_wait_handles, output_tensor):
+                def forward_handle_wait(fwd_wait_handles):
                     if fwd_wait_handles is not None:
                         for req in fwd_wait_handles:
                             req.wait()
-                    self._release_output(output_tensor)
 
                 def forward_async_comm(forward_micro_step_id, output_tensor):
                     forward_virtual_pp_rank = self._get_virtual_pp_rank(
@@ -2858,6 +2921,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                         overlap_p2p_comm=True,
                         skip_check_meta=not self.training,
                     )
+                    _release_output(output_tensor)
                     return (
                         next_forward_virtual_pp_rank,
                         input_tensor,
@@ -2947,9 +3011,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                 # structure to simplify function parameter passing
                 p2p_async_handle = P2PAsyncHandle(
                     partial(
-                        forward_handle_wait,
-                        fwd_wait_handles=fwd_wait_handles,
-                        output_tensor=output_tensor,
+                        forward_handle_wait, fwd_wait_handles=fwd_wait_handles
                     ),
                     partial(
                         forward_async_comm,
@@ -3119,11 +3181,11 @@ class PipelineParallelWithInterleave(PipelineParallel):
                     output_tensor_grad
                 )
 
-            self._release_output(output_tensor)
+            _release_output(output_tensor)
 
         assert fwd_buffer_queue.empty(), "forward buffer should be empty"
         if not static_scheduler:
-            self._release_output(output_tensor)
+            _release_output(output_tensor)
 
         # remaining backward steps
         if not forward_only:
@@ -3544,7 +3606,7 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
             )
             self.input_tensors[next_virtual_pp_rank].append(input_tensor)
 
-            self._release_output(output_tensor)
+            _release_output(output_tensor)
 
         assert send_recv_buffer_queue.empty(), (
             "send_recv buffer should be empty"
@@ -3798,7 +3860,7 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
             self.input_tensors[next_forward_virtual_pp_rank].append(
                 input_tensor
             )
-            self._release_output(output_tensor)
+            _release_output(output_tensor)
 
         if self.is_pipeline_first_stage(ignore_virtual=True):
             assert (

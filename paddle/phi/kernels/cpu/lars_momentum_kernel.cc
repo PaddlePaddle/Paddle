@@ -48,8 +48,7 @@ void LarsMomentumKernel(
     auto v_out = EigenVector<T>::Flatten(*(velocity_out[i]));
     auto p = EigenVector<T>::Flatten(*(param[i]));
     auto v = EigenVector<T>::Flatten(*(velocity[i]));
-    Eigen::TensorMap<Eigen::Tensor<const T, 1, 1>> g =
-        EigenVector<T>::Flatten(*(grad[i]));
+    auto g = EigenVector<T>::Flatten(*(grad[i]));
     auto rescale_g = static_cast<T>(rescale_grad) * g;
 
     DenseTensor p_norm_t, g_norm_t;

@@ -85,11 +85,11 @@ void ResNetUnitGradKernel(const Context &dev_ctx,
   double eps = static_cast<double>(epsilon);
   double momentum = static_cast<double>(momentum_in);
 
-  auto x_shape = common::vectorize<int>(x->dims());
-  auto filter_x_shape = common::vectorize<int>(filter_x->dims());
-  auto param_shape = common::vectorize<int>(scale_x->dims());
-  auto output_shape = common::vectorize<int>(output->dims());
-  auto bitmask_shape = common::vectorize<int>(bitmask->dims());
+  auto x_shape = vectorize<int>(x->dims());
+  auto filter_x_shape = vectorize<int>(filter_x->dims());
+  auto param_shape = vectorize<int>(scale_x->dims());
+  auto output_shape = vectorize<int>(output->dims());
+  auto bitmask_shape = vectorize<int>(bitmask->dims());
 
   // 1. Backward of BN (+ Add + Relu) for x, get conv_out_x_grad,
   // scale_x_grad, bias_x_grad
@@ -158,8 +158,8 @@ void ResNetUnitGradKernel(const Context &dev_ctx,
                        eps);
 
     // 1.3 Backward of Conv for z, get z_grad and filter_z_grad
-    auto z_shape = common::vectorize<int>(z->dims());
-    auto filter_z_shape = common::vectorize<int>(filter_z->dims());
+    auto z_shape = vectorize<int>(z->dims());
+    auto filter_z_shape = vectorize<int>(filter_z->dims());
     phi::fusion::CudnnNormConvolutionGrad<T> conv_z_op(dev_ctx,
                                                        z_shape,
                                                        filter_z_shape,

@@ -2254,42 +2254,14 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
     }
 
     if (output_scale_transpose) {
-      PADDLE_ENFORCE_EQ(
-          scale_outer_dim % 4,
-          0,
-          common::errors::InvalidArgument(
-              "When use_ue8m0 is true, the outer dimension of scale "
-              "must be divisible by 4, but got %d",
-              scale_outer_dim));
-      scale_outer_dim /= 4;
+      scale_outer_dim = (scale_outer_dim + 3) / 4;
       if (input_transpose) {
-        PADDLE_ENFORCE_EQ(scale_transposed_outer_dim % 4,
-                          0,
-                          common::errors::InvalidArgument(
-                              "When use_ue8m0 is true, the outer dimension of "
-                              "transposed scale "
-                              "must be divisible by 4, but got %d",
-                              scale_transposed_outer_dim));
-        scale_transposed_outer_dim /= 4;
+        scale_transposed_outer_dim = (scale_transposed_outer_dim + 3) / 4;
       }
     } else {
-      PADDLE_ENFORCE_EQ(
-          scale_inner_dim % 4,
-          0,
-          common::errors::InvalidArgument(
-              "When use_ue8m0 is true, the inner dimension of scale "
-              "must be divisible by 4, but got %d",
-              scale_inner_dim));
-      scale_inner_dim /= 4;
+      scale_inner_dim = (scale_inner_dim + 3) / 4;
       if (input_transpose) {
-        PADDLE_ENFORCE_EQ(scale_transposed_inner_dim % 4,
-                          0,
-                          common::errors::InvalidArgument(
-                              "When use_ue8m0 is true, the inner dimension of "
-                              "transposed scale "
-                              "must be divisible by 4, but got %d",
-                              scale_transposed_inner_dim));
-        scale_transposed_inner_dim /= 4;
+        scale_transposed_inner_dim = (scale_transposed_inner_dim + 3) / 4;
       }
     }
   }
