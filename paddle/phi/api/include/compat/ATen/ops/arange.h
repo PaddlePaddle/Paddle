@@ -60,93 +60,6 @@ inline at::ScalarType _PD_ResolveArangeDtype(const at::Scalar& start,
 
 }  // namespace detail
 
-inline at::Tensor arange(const at::Scalar& end,
-                         at::TensorOptions options = {}) {
-  auto dtype =
-      detail::_PD_ResolveArangeDtype(/*start=*/0, end, /*step=*/1, options);
-  if (options.pinned_memory()) {
-    // Pinning memory is only supported for CPU tensors
-    if (options.has_device() && !options.device().is_cpu()) {
-      PD_THROW(
-          "pin_memory=true requires device to be CPU, but got non-CPU device");
-    }
-    phi::Place base_place = options._PD_GetPlace();
-    phi::Place pinned_place = compat::_PD_GetCreatePinnedPlace(base_place);
-    auto dense = paddle::experimental::arange(
-        paddle::experimental::full({}, 0, phi::DataType::FLOAT64),
-        paddle::experimental::full(
-            {}, end.to<double>(), phi::DataType::FLOAT64),
-        paddle::experimental::full({}, 1, phi::DataType::FLOAT64),
-        compat::_PD_AtenScalarTypeToPhiDataType(dtype),
-        phi::CPUPlace());
-    return dense.copy_to(pinned_place, /*blocking=*/true);
-  }
-  return paddle::experimental::arange(
-      paddle::experimental::full({}, 0, phi::DataType::FLOAT64),
-      paddle::experimental::full({}, end.to<double>(), phi::DataType::FLOAT64),
-      paddle::experimental::full({}, 1, phi::DataType::FLOAT64),
-      compat::_PD_AtenScalarTypeToPhiDataType(dtype),
-      options._PD_GetPlace());
-}
-
-inline at::Tensor arange(const at::Scalar& end,
-                         ::std::optional<at::ScalarType> dtype,
-                         ::std::optional<at::Layout> layout,
-                         ::std::optional<at::Device> device,
-                         ::std::optional<bool> pin_memory) {
-  auto options = at::TensorOptions()
-                     .dtype(dtype)
-                     .layout(layout)
-                     .device(device)
-                     .pinned_memory(pin_memory);
-  return arange(end, options);
-}
-
-inline at::Tensor arange(const at::Scalar& start,
-                         const at::Scalar& end,
-                         at::TensorOptions options = {}) {
-  auto dtype = detail::_PD_ResolveArangeDtype(start, end, /*step=*/1, options);
-  if (options.pinned_memory()) {
-    // Pinning memory is only supported for CPU tensors
-    if (options.has_device() && !options.device().is_cpu()) {
-      PD_THROW(
-          "pin_memory=true requires device to be CPU, but got non-CPU device");
-    }
-    phi::Place base_place = options._PD_GetPlace();
-    phi::Place pinned_place = compat::_PD_GetCreatePinnedPlace(base_place);
-    auto dense = paddle::experimental::arange(
-        paddle::experimental::full(
-            {}, start.to<double>(), phi::DataType::FLOAT64),
-        paddle::experimental::full(
-            {}, end.to<double>(), phi::DataType::FLOAT64),
-        paddle::experimental::full({}, 1, phi::DataType::FLOAT64),
-        compat::_PD_AtenScalarTypeToPhiDataType(dtype),
-        phi::CPUPlace());
-    return dense.copy_to(pinned_place, /*blocking=*/true);
-  }
-  return paddle::experimental::arange(
-      paddle::experimental::full(
-          {}, start.to<double>(), phi::DataType::FLOAT64),
-      paddle::experimental::full({}, end.to<double>(), phi::DataType::FLOAT64),
-      paddle::experimental::full({}, 1, phi::DataType::FLOAT64),
-      compat::_PD_AtenScalarTypeToPhiDataType(dtype),
-      options._PD_GetPlace());
-}
-
-inline at::Tensor arange(const at::Scalar& start,
-                         const at::Scalar& end,
-                         ::std::optional<at::ScalarType> dtype,
-                         ::std::optional<at::Layout> layout,
-                         ::std::optional<at::Device> device,
-                         ::std::optional<bool> pin_memory) {
-  auto options = at::TensorOptions()
-                     .dtype(dtype)
-                     .layout(layout)
-                     .device(device)
-                     .pinned_memory(pin_memory);
-  return arange(start, end, options);
-}
-
 inline at::Tensor arange(const at::Scalar& start,
                          const at::Scalar& end,
                          const at::Scalar& step,
@@ -180,6 +93,44 @@ inline at::Tensor arange(const at::Scalar& start,
       paddle::experimental::full({}, step.to<double>(), phi::DataType::FLOAT64),
       compat::_PD_AtenScalarTypeToPhiDataType(dtype),
       options._PD_GetPlace());
+}
+
+inline at::Tensor arange(const at::Scalar& end,
+                         at::TensorOptions options = {}) {
+  return arange(/*start=*/0, end, /*step=*/1, options);
+}
+
+inline at::Tensor arange(const at::Scalar& end,
+                         ::std::optional<at::ScalarType> dtype,
+                         ::std::optional<at::Layout> layout,
+                         ::std::optional<at::Device> device,
+                         ::std::optional<bool> pin_memory) {
+  auto options = at::TensorOptions()
+                     .dtype(dtype)
+                     .layout(layout)
+                     .device(device)
+                     .pinned_memory(pin_memory);
+  return arange(/*start=*/0, end, /*step=*/1, options);
+}
+
+inline at::Tensor arange(const at::Scalar& start,
+                         const at::Scalar& end,
+                         at::TensorOptions options = {}) {
+  return arange(start, end, /*step=*/1, options);
+}
+
+inline at::Tensor arange(const at::Scalar& start,
+                         const at::Scalar& end,
+                         ::std::optional<at::ScalarType> dtype,
+                         ::std::optional<at::Layout> layout,
+                         ::std::optional<at::Device> device,
+                         ::std::optional<bool> pin_memory) {
+  auto options = at::TensorOptions()
+                     .dtype(dtype)
+                     .layout(layout)
+                     .device(device)
+                     .pinned_memory(pin_memory);
+  return arange(start, end, /*step=*/1, options);
 }
 
 inline at::Tensor arange(const at::Scalar& start,
