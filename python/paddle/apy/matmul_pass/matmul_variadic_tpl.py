@@ -101,7 +101,9 @@ class MatmulVariadicTemplate:
 
     def make_dcu_compile_cmd(self, dir_name, source_dir):
         hytlass_dir = f"{dir_name}/matmul/hytlass"
-        compile_cmd = "hipcc -std=c++17 -O3 -fPIC --offload-arch=gfx928 -Wno-return-type"
+        compile_cmd = (
+            "hipcc -std=c++17 -O3 -fPIC --offload-arch=gfx928 -Wno-return-type"
+        )
         compile_cmd = compile_cmd + " -I " + hytlass_dir + "/include"
         compile_cmd = compile_cmd + " -I " + hytlass_dir + "/tools/util/include"
         compile_cmd = compile_cmd + " -I " + source_dir
