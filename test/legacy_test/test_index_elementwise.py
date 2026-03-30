@@ -189,6 +189,7 @@ class TestIndexElementwiseBool4D_k3_AllDtypes(TestIndexElementwiseBool):
             self.test_dygraph()
 
 
+@unittest.skipIf(not paddle.is_compiled_with_cuda(), "requires CUDA GPU")
 class TestIndexElementwiseGet0SizeInput(unittest.TestCase):
     """Test IndexElementwiseGetKernel with 0-size input tensor (forward).
 
@@ -277,6 +278,68 @@ class TestIndexElementwiseGet0SizeInput(unittest.TestCase):
         self.assertEqual(list(out.shape), [2, 5, 4])
         np.testing.assert_array_equal(
             out.numpy(), np.zeros([2, 5, 4], dtype='float32')
+        )
+        paddle.enable_static()
+
+
+@unittest.skipIf(not paddle.is_compiled_with_cuda(), "requires CUDA GPU")
+class TestIndexElementwiseGet0SizeInputGrad(unittest.TestCase):
+    """Test IndexElementwiseGetKernel backward with 0-size input tensor.
+
+    Regression tests for the bug where computing gradients for a 0-size tensor
+    indexed with a list-of-list index triggered CUDA error(700) due to
+    dereferencing a null data pointer in the backward kernel.
+
+    When x.numel() == 0, the grad_x should also be a 0-size tensor with zeros.
+    """
+
+    def _check_0size_grad(self, dtype, idx, x_shape):
+        """Helper: compute grad of indexing a 0-size tensor, verify no crash."""
+        paddle.disable_static()
+        x = paddle.zeros(x_shape, dtype=dtype)
+        x.stop_gradient = False
+        out = x[idx]
+        loss = out.sum()
+        loss.backward()
+        self.assertIsNotNone(x.grad)
+        self.assertEqual(list(x.grad.shape), x_shape)
+        np.testing.assert_array_equal(
+            x.grad.numpy(),
+            np.zeros(x_shape, dtype=x.grad.numpy().dtype),
+            err_msg=f"dtype={dtype}: grad should be all zeros for 0-size input",
+        )
+        paddle.enable_static()
+
+    def test_complex128_positive_indices(self):
+        """Backward: complex128, positive indices, 0-size input."""
+        self._check_0size_grad(
+            'complex128', [[2, 3, 4], [1, 2, 5]], [0, 5, 4, 3]
+        )
+
+    def test_float32(self):
+        """Backward: float32, positive indices, 0-size input."""
+        self._check_0size_grad('float32', [[2, 3, 4], [1, 2, 5]], [0, 5, 4, 3])
+
+    def test_float64(self):
+        """Backward: float64, positive indices, 0-size input."""
+        self._check_0size_grad('float64', [[2, 3, 4], [1, 2, 5]], [0, 5, 4, 3])
+
+    def test_float16(self):
+        """Backward: float16, positive indices, 0-size input."""
+        self._check_0size_grad('float16', [[2, 3, 4], [1, 2, 5]], [0, 5, 4, 3])
+
+    def test_1d_index_on_0size_input(self):
+        """Backward: 1D integer index on 0-size input."""
+        paddle.disable_static()
+        x = paddle.zeros([0, 5, 4], dtype='float32')
+        x.stop_gradient = False
+        out = x[[2, 3]]
+        loss = out.sum()
+        loss.backward()
+        self.assertIsNotNone(x.grad)
+        self.assertEqual(list(x.grad.shape), [0, 5, 4])
+        np.testing.assert_array_equal(
+            x.grad.numpy(), np.zeros([0, 5, 4], dtype='float32')
         )
         paddle.enable_static()
 

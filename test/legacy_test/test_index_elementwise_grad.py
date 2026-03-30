@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.base import core
 
 
 class TestIndexElementwiseGrad(unittest.TestCase):
@@ -214,6 +215,7 @@ class TestIndexElementwiseGradAllIndex(unittest.TestCase):
         paddle.enable_static()
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(), "requires CUDA GPU")
 class TestIndexElementwiseGet0SizeInputGrad(unittest.TestCase):
     """Test IndexElementwiseGetGradKernel with 0-size input tensor (backward).
 
