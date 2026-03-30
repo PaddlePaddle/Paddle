@@ -50,6 +50,7 @@ jobs:
     name: PR-CI-SOT
     uses: ./.github/workflows/_SOT.yml
     needs: [clone, build-docker]
+    if: ${{ needs.clone.outputs.xpu-only != 'true' }}
     with:
       docker_sot_image: ${{ needs.build-docker.outputs.docker_sot_image }}
       clone-can-skip: ${{ needs.clone.outputs.can-skip }}
@@ -58,6 +59,7 @@ jobs:
     name: Mac-CPU
     uses: ./.github/workflows/_Mac.yml
     needs: clone
+    if: ${{ needs.clone.outputs.xpu-only != 'true' }}
     with:
       clone-can-skip: ${{ needs.clone.outputs.can-skip }}
 
@@ -73,6 +75,7 @@ jobs:
     name: Linux-DCU
     uses: ./.github/workflows/_Linux-DCU.yml
     needs: [clone, build-docker]
+    if: ${{ needs.clone.outputs.xpu-only != 'true' }}
     with:
       docker_dcu_image: ${{ needs.build-docker.outputs.docker_dcu_image }}
       clone-can-skip: ${{ needs.clone.outputs.can-skip }}
@@ -81,6 +84,7 @@ jobs:
     name: Linux-CPU
     uses: ./.github/workflows/_Linux-CPU.yml
     needs: [clone, build-docker]
+    if: ${{ needs.clone.outputs.xpu-only != 'true' }}
     with:
       docker_cpu_image: ${{ needs.build-docker.outputs.docker_cpu_image }}
       clone-can-skip: ${{ needs.clone.outputs.can-skip }}
@@ -89,6 +93,7 @@ jobs:
     name: Linux-NPU
     uses: ./.github/workflows/_Linux-NPU.yml
     needs: [clone, cpu, build-docker]
+    if: ${{ needs.clone.outputs.xpu-only != 'true' }}
     with:
       can-skip: ${{ needs.cpu.outputs.can-skip == 'true' || needs.clone.outputs.can-skip == 'true' }}
       docker_npu_image: ${{ needs.build-docker.outputs.docker_npu_image }}
@@ -97,6 +102,7 @@ jobs:
     name: Linux-IXUCA
     uses: ./.github/workflows/_Linux-IXUCA.yml
     needs: [clone]
+    if: ${{ needs.clone.outputs.xpu-only != 'true' }}
     with:
       can-skip: ${{ needs.clone.outputs.can-skip }}
 
@@ -104,6 +110,7 @@ jobs:
     name: Distribute-stable-build
     uses: ./.github/workflows/_Distribute-stable.yml
     needs: [clone, build-docker]
+    if: ${{ needs.clone.outputs.xpu-only != 'true' }}
     with:
       docker_distribute_image: ${{ needs.build-docker.outputs.docker_distribute_image }}
       clone-can-skip: ${{ needs.clone.outputs.can-skip }}

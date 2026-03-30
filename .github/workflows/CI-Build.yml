@@ -56,6 +56,7 @@ jobs:
     name: PR-CI-Inference
     uses: ./.github/workflows/_Inference.yml
     needs: [clone, build-docker]
+    if: ${{ needs.clone.outputs.xpu-only != 'true' }}
     with:
       docker_inference_image: ${{ needs.build-docker.outputs.docker_build_image }}
       clone-can-skip: ${{ needs.clone.outputs.can-skip }}
@@ -80,6 +81,7 @@ jobs:
     name: CE-Framework
     uses: ./.github/workflows/_CE-Framework.yml
     needs: [clone, build-docker, build]
+    if: ${{ needs.clone.outputs.xpu-only != 'true' }}
     with:
       can-skip: ${{ needs.build.outputs.can-skip == 'true' || needs.clone.outputs.can-skip == 'true' }}
       docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
@@ -88,6 +90,7 @@ jobs:
     name: CE-CINN-Framework
     uses: ./.github/workflows/_CE-CINN-Framework.yml
     needs: [clone, build-docker, build]
+    if: ${{ needs.clone.outputs.xpu-only != 'true' }}
     with:
       can-skip: ${{ needs.build.outputs.can-skip == 'true' || needs.clone.outputs.can-skip == 'true' }}
       docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
@@ -96,6 +99,7 @@ jobs:
     name: Api-Benchmark
     uses: ./.github/workflows/_Api-Benchmark.yml
     needs: [clone, build-docker, build]
+    if: ${{ needs.clone.outputs.xpu-only != 'true' }}
     with:
       can-skip: ${{ needs.build.outputs.can-skip == 'true' || needs.clone.outputs.can-skip == 'true' }}
       docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
@@ -112,6 +116,7 @@ jobs:
     name: Model-Benchmark
     uses: ./.github/workflows/_Model-Benchmark.yml
     needs: [clone, build-docker, build]
+    if: ${{ needs.clone.outputs.xpu-only != 'true' }}
     with:
       can-skip: ${{ needs.build.outputs.can-skip == 'true' || needs.clone.outputs.can-skip == 'true' }}
       docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
@@ -120,6 +125,7 @@ jobs:
     name: Doc-Preview
     uses: ./.github/workflows/_Doc-Preview.yml
     needs: [clone, build-docker, build]
+    if: ${{ needs.clone.outputs.xpu-only != 'true' }}
     with:
       can-skip: ${{ needs.build.outputs.can-skip == 'true' || needs.clone.outputs.can-skip == 'true' }}
       docker_doc_image: ${{ needs.build-docker.outputs.docker_doc_image }}
@@ -128,6 +134,7 @@ jobs:
     name: Slice
     uses: ./.github/workflows/_Slice.yml
     needs: [clone, build-docker, build]
+    if: ${{ needs.clone.outputs.xpu-only != 'true' }}
     with:
       can-skip: ${{ needs.build.outputs.can-skip == 'true' || needs.clone.outputs.can-skip == 'true' }}
       docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
@@ -137,6 +144,7 @@ jobs:
     name: DeepMD-Kit-Test
     uses: ./.github/workflows/_Deepmd-pd-test.yml
     needs: [clone, build-docker, build]
+    if: ${{ needs.clone.outputs.xpu-only != 'true' }}
     with:
       can-skip: ${{ needs.build.outputs.can-skip == 'true' || needs.clone.outputs.can-skip == 'true' }}
       docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
