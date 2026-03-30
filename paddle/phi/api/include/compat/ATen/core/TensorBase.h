@@ -354,6 +354,12 @@ class PADDLE_API TensorBase {
   bool defined() const { return tensor_.defined(); }
 
   Layout layout() const {
+    if (tensor_.is_sparse_coo_tensor()) {
+      return c10::kSparse;
+    }
+    if (tensor_.is_sparse_csr_tensor()) {
+      return c10::kSparseCsr;
+    }
     switch (tensor_.layout()) {
       case common::DataLayout::STRIDED:
       case common::DataLayout::NCHW:

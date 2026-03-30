@@ -26,7 +26,7 @@ inline int64_t Tensor::_nnz() const {
   PD_CHECK(this->is_sparse(),
            "_nnz expected sparse tensor layout but got ",
            layout());
-  if (tensor_.layout() == common::DataLayout::SPARSE_COO) {
+  if (tensor_.is_sparse_coo_tensor()) {
     auto sparse_coo_tensor =
         std::dynamic_pointer_cast<phi::SparseCooTensor>(tensor_.impl());
     PD_CHECK(sparse_coo_tensor != nullptr,

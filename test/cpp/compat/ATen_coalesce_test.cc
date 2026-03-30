@@ -134,6 +134,19 @@ TEST(TensorCoalesceTest, CoalesceOutputMatchesTorchFormatting) {
   ASSERT_EQ(os.str(), "CoalesceTest 0 1 2");
 }
 
+TEST(TensorCoalesceTest, ExplicitSizeCoalesceMatchesExternalCoverage) {
+  at::Tensor indices =
+      at::tensor({0, 0, 1, 0, 0, 1}, at::kLong).reshape({2, 3});
+  at::Tensor values = at::tensor({1.0f, 2.0f, 3.0f}, at::kFloat);
+  at::Tensor sparse = at::sparse_coo_tensor(indices, values, {2, 2});
+
+  ASSERT_FALSE(sparse.is_coalesced());
+
+  at::Tensor coalesced = sparse.coalesce();
+  ASSERT_TRUE(coalesced.is_coalesced());
+  ASSERT_EQ(coalesced._values().size(0), 2);
+}
+
 TEST(TensorCoalesceTest, CoalesceOnDenseTensorThrows) {
   // coalesce() on a dense tensor must throw.
   at::Tensor dense = at::ones({3, 3}, at::kFloat);

@@ -22,7 +22,7 @@ namespace at {}  // namespace at
 namespace at {
 
 inline bool Tensor::is_coalesced() const {
-  PD_CHECK(tensor_.layout() == common::DataLayout::SPARSE_COO,
+  PD_CHECK(tensor_.is_sparse_coo_tensor(),
            "is_coalesced expected sparse coordinate tensor layout but got ",
            layout());
   auto sparse_coo_tensor =
