@@ -1232,8 +1232,8 @@ def conv2d_transpose(
     stride: Size2 = 1,
     padding: _PaddingSizeMode | Size2 | Size4 | Sequence[Size2] = 0,
     output_padding: Size2 = 0,
-    groups: int = 1,
     dilation: Size2 = 1,
+    groups: int = 1,
     output_size: Size2 | None = None,
     data_format: DataLayout2D = 'NCHW',
     name: str | None = None,
@@ -1321,15 +1321,15 @@ def conv2d_transpose(
             Default: padding = 0.
         output_padding(int|list|tuple, optional): Additional size added to one side
             of each dimension in the output shape. Default: 0.
+        dilation(int|list|tuple, optional): The dilation size. It means the spacing between the kernel points.
+            If dilation is a list/tuple, it must contain two integers, (dilation_height, dilation_width).
+            Otherwise, dilation_height = dilation_width = dilation. Default: dilation = 1.
         groups(int, optional): The groups number of the Conv2D transpose layer. Inspired by
             grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
             when group=2, the first half of the filters is only connected to the
             first half of the input channels, while the second half of the
             filters is only connected to the second half of the input channels.
             Default: groups = 1.
-        dilation(int|list|tuple, optional): The dilation size. It means the spacing between the kernel points.
-            If dilation is a list/tuple, it must contain two integers, (dilation_height, dilation_width).
-            Otherwise, dilation_height = dilation_width = dilation. Default: dilation = 1.
         output_size(int|tuple|list, optional): The output image size. If output size is a
             tuple/list, it must contain two integers, (image_height, image_width). None if use
             filter_size(shape of weight), padding, and stride to calculate output_size.
