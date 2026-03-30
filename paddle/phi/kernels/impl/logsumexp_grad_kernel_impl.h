@@ -16,7 +16,6 @@
 #include <type_traits>
 #include <vector>
 
-#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/reduce_grad_functions.h"
@@ -24,6 +23,10 @@
 
 namespace phi {
 
+// Gradient functor for logsumexp: computes in native precision (no MPType
+// promotion). Matches PyTorch's logsumexp_backward:
+//   grad * (self - result).exp()
+// where all arithmetic is in the tensor's native dtype.
 template <typename T>
 struct LogsumexpGradFunctor {
   template <typename Context,
@@ -39,13 +42,8 @@ struct LogsumexpGradFunctor {
                   DY* dy,
                   const Dim& dim,
                   int size UNUSED) {
-    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-    auto x_mt = (*x).template cast<MT>();
-    auto y_mt = (*y).template cast<MT>();
-    auto dy_mt = (*dy).template cast<MT>();
     dx->device(place) =
-        (dy_mt.broadcast(dim) * (x_mt - y_mt.broadcast(dim)).exp())
-            .template cast<T>();
+        (*dy).broadcast(dim) * ((*x) - (*y).broadcast(dim)).exp();
   }
 };
 
