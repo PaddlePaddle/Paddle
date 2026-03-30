@@ -133,6 +133,31 @@ class TensorSize(int):
         return shape[dim]
 
 
+class TensorType:
+    tensor: Tensor
+    _value_: core.VarDesc.VarType
+
+    def __repr__(self):
+        return repr(self._value_)
+
+    def __str__(self):
+        return str(self._value_)
+
+    def __new__(cls, tensor):
+        instance = super().__new__(cls)
+        instance._value_ = core.VarDesc.VarType.DENSE_TENSOR
+        instance.tensor = tensor
+        return instance
+
+    def __call__(self, dtype=None, blocking=None):
+        if dtype is None:
+            return self
+        return self.tensor.astype(dtype)
+
+    def __eq__(self, other):
+        return self._value_ == other
+
+
 def monkey_patch_math_tensor():
     """
     Similar to monkey_patch_variable.
@@ -172,6 +197,10 @@ def monkey_patch_math_tensor():
             return self
 
         return _C_ops.cast(self, dtype)
+
+    @property
+    def _type_(self: Tensor) -> core.VarDesc.VarType:
+        return TensorType(self)
 
     def byte(self: Tensor) -> Tensor:
         # since paddle don't support float to uint8, so we need to convert it to int8 first
@@ -622,6 +651,7 @@ def monkey_patch_math_tensor():
         ('astype', astype),
         ('byte', byte),
         ('uint8', byte),
+        ('type', _type_),
         ('type_as', type_as),
         ('dim', dim),
         ('ndimension', ndimension),

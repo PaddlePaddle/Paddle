@@ -676,6 +676,17 @@ class TestEagerTensor(unittest.TestCase):
         var = paddle.to_tensor(self.array)
         self.assertTrue(isinstance(str(var), str))
 
+    def test_tensor_type(self):
+        var = paddle.to_tensor(self.array)
+        type_attr = var.type
+        type_method_call = var.type()
+        astype_method_call = var.type("float16")
+        astype_ref = var.astype("float16")
+        self.assertEqual(type_attr, type_method_call)
+        np.testing.assert_array_equal(
+            astype_method_call.numpy(), astype_ref.numpy()
+        )
+
     def test_element_size(self):
         with base.dygraph.guard():
             x = paddle.to_tensor(1, dtype="bool")
