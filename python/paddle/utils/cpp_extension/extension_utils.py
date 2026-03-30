@@ -716,6 +716,8 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
     if compile_dir is None:
         # Add this compile option to isolate base headers
         add_compile_flag(extra_compile_args, ['-DPADDLE_WITH_CUSTOM_KERNEL'])
+        if core.is_compiled_with_onednn():
+            add_compile_flag(extra_compile_args, ['-DPADDLE_WITH_DNNL'])
 
     kwargs['extra_compile_args'] = extra_compile_args
 
@@ -928,6 +930,17 @@ def find_paddle_includes(use_cuda=False):
     include_dirs = _get_all_paddle_includes_from_include_root(
         paddle_include_dir
     )
+
+    if core.is_compiled_with_onednn():
+        onednn_include_dir = os.path.join(
+            paddle_include_dir,
+            'third_party',
+            'install',
+            'onednn',
+            'include',
+        )
+        if os.path.exists(onednn_include_dir):
+            include_dirs.append(onednn_include_dir)
 
     if use_cuda:
         if core.is_compiled_with_rocm():
