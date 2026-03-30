@@ -84,12 +84,11 @@ void CalculateGrad(const Context& dev_ctx,
           }
         }
       }
-      DenseTensor x_grad_out =
-          phi::Sum<T, Context>(dev_ctx,
-                               x_grad_v2,
-                               phi::IntArray(reduce_idx),
-                               CppTypeToDataType<T>::Type(),
-                               true);
+      DenseTensor x_grad_out = Sum<T, Context>(dev_ctx,
+                                               x_grad_v2,
+                                               IntArray(reduce_idx),
+                                               CppTypeToDataType<T>::Type(),
+                                               true);
       memcpy(x_grad, x_grad_out.data<T>(), x_grad_out.numel() * sizeof(T));
     }
   } else if (message_op == "MUL") {
@@ -146,12 +145,11 @@ void CalculateGrad(const Context& dev_ctx,
           }
         }
       }
-      DenseTensor x_grad_out =
-          phi::Sum<T, Context>(dev_ctx,
-                               x_grad_v2,
-                               phi::IntArray(reduce_idx),
-                               CppTypeToDataType<T>::Type(),
-                               true);
+      DenseTensor x_grad_out = Sum<T, Context>(dev_ctx,
+                                               x_grad_v2,
+                                               IntArray(reduce_idx),
+                                               CppTypeToDataType<T>::Type(),
+                                               true);
       memcpy(x_grad, x_grad_out.data<T>(), x_grad_out.numel() * sizeof(T));
     }
   }
@@ -248,7 +246,7 @@ void SendUVGradKernel(const Context& dev_ctx,
     return;
   }
 
-  if (index_type == phi::DataType::INT32) {
+  if (index_type == DataType::INT32) {
     GraphSendUVGradOpKernelLaunchHelper<Context, T, int32_t>(dev_ctx,
                                                              x,
                                                              y,
@@ -258,7 +256,7 @@ void SendUVGradKernel(const Context& dev_ctx,
                                                              message_op,
                                                              x_grad,
                                                              y_grad);
-  } else if (index_type == phi::DataType::INT64) {
+  } else if (index_type == DataType::INT64) {
     GraphSendUVGradOpKernelLaunchHelper<Context, T, int64_t>(dev_ctx,
                                                              x,
                                                              y,

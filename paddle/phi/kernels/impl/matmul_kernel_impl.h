@@ -145,7 +145,7 @@ void MatMulFunctionImplWithBlas(
             M,
             N));
     VLOG(3) << "MatMul's case 1";
-    Out->Resize(make_ddim({}));
+    Out->Resize({});
     dev_ctx.template Alloc<T>(Out);
     if (FLAGS_use_legacy_gemm) {
       blas.GEMM(CblasNoTrans,
@@ -589,7 +589,7 @@ void MatMulFunctionImplWithCublasLt(
             N));
 
     // MatMul's case 0  =>  vector * vector
-    Out->Resize(make_ddim({}));
+    Out->Resize({});
     dev_ctx.template Alloc<T>(Out);
     VLOG(3) << "MatMul with blaslt case 1";
     blaslt::Run(dev_ctx,
@@ -1097,7 +1097,7 @@ bool inline MatMulInt8Function(const phi::GPUContext& dev_ctx,
       return false;
     }
 
-    out->Resize(make_ddim({}));
+    out->Resize({});
     dev_ctx.template Alloc<int32_t>(out);
     blaslt::Run(dev_ctx,
                 y_data,
@@ -1526,7 +1526,7 @@ bool inline MatMulInt8Function(const phi::GPUContext& dev_ctx,
             M,
             N));
     VLOG(3) << "MatMul's case 1";
-    out->Resize(make_ddim({}));
+    out->Resize({});
     dev_ctx.template Alloc<int32_t>(out);
     funcs::Int8GEMM(dev_ctx,
                     CblasNoTrans,

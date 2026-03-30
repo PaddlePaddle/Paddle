@@ -74,13 +74,13 @@ void CPUIndexElementwiseGetGrad(const CPUContext& dev_ctx,
   std::array<std::vector<int64_t>, 3> strides_vec;
   funcs::IndexPutStride<3>(input_dims,
                            input_strides,
-                           phi::SizeOf(input.dtype()),
+                           SizeOf(input.dtype()),
                            vectorize<int64_t>(value.dims()),
                            vectorize<int64_t>(value.strides()),
-                           phi::SizeOf(value.dtype()),
+                           SizeOf(value.dtype()),
                            shape_tmp,
                            stride_tmp,
-                           phi::SizeOf(index[0]->dtype()),
+                           SizeOf(index[0]->dtype()),
                            &desired_shape,
                            &strides_array,
                            &numel,
@@ -138,14 +138,14 @@ void IndexElementwiseGetGradKernel(const Context& dev_ctx,
   dxt.device(place) = dxt.constant(static_cast<T>(0));
   if (out_grad.numel() == 0) return;
   const auto& index_type = index[0]->dtype();
-  PADDLE_ENFORCE_EQ(index_type == phi::DataType::INT64,
+  PADDLE_ENFORCE_EQ(index_type == DataType::INT64,
                     true,
                     common::errors::InvalidArgument(
                         "Index holds the wrong type, it holds [%s], but "
                         "desires to be [%s].",
                         index_type,
-                        phi::DataType::INT32,
-                        phi::DataType::INT64));
+                        DataType::INT32,
+                        DataType::INT64));
   CPUIndexElementwiseGetGrad<T, int64_t>(dev_ctx,
                                          x,
                                          out_grad,
