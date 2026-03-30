@@ -29,6 +29,7 @@
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
+#include "c10/core/DispatchKey.h"
 #include "paddle/common/macros.h"  // For macro PADDLE_API
 
 namespace torch {
@@ -658,28 +659,11 @@ class class_ {
   std::string qualified_name_;
 };
 
-enum class DispatchKey {
-  Undefined = 0,
-  CPU,
-  CUDA,
-};
-
-inline std::string dispatch_key_to_string(DispatchKey key) {
-  switch (key) {
-    case DispatchKey::CPU:
-      return "CPU";
-    case DispatchKey::CUDA:
-      return "CUDA";
-    default:
-      return "Undefined";
-  }
-}
-
 // Operator Registration
 struct OperatorRegistration {
   std::string qualified_name;  // namespace::op_name
   std::string schema;
-  std::unordered_map<DispatchKey, CppFunction> implementations;
+  std::unordered_map<c10::DispatchKey, CppFunction> implementations;
 
   OperatorRegistration(const std::string& name,
                        const std::string& schema_str = "")
@@ -696,7 +680,7 @@ class PADDLE_API OperatorRegistry {
                        const std::string& schema);
 
   void register_implementation(const std::string& qualified_name,
-                               DispatchKey key,
+                               c10::DispatchKey key,
                                CppFunction&& func);
 
   bool has_operator(const std::string& qualified_name) const {
