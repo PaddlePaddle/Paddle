@@ -15,7 +15,9 @@ limitations under the License. */
 #pragma once
 
 #include <iostream>
+#if __cplusplus >= 201703L
 #include <optional>
+#endif
 #include <sstream>
 #include <string>
 
@@ -66,6 +68,7 @@ class ErrorMessage {
     oss << t;
   }
 
+#if __cplusplus >= 201703L
   template <typename T>
   void build_string(const std::optional<T>& t) {
     if (t.has_value()) {
@@ -74,6 +77,7 @@ class ErrorMessage {
       oss << "nullopt";
     }
   }
+#endif
 
   template <typename T, typename... Args>
   void build_string(const T& t, const Args&... args) {
