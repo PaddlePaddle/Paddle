@@ -207,7 +207,7 @@ TEST(DeviceCompatTest, PinnedAndUndefinedDeviceBranches) {
   c10::Device custom_with_custom_name(c10::DeviceType::CUSTOM, 2, "custom");
   EXPECT_EQ(custom_with_custom_name.str(), "custom:2");
 
-  c10::Device undefined_place_device(phi::Place());
+  c10::Device undefined_place_device{phi::Place()};
   EXPECT_EQ(undefined_place_device.type(), c10::DeviceType::Undefined);
   EXPECT_EQ(undefined_place_device.str(), "unknown");
 }
