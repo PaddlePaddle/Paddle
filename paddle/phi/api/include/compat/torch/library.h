@@ -19,6 +19,7 @@
 #pragma once
 
 #include <ATen/core/ivalue.h>
+#include <c10/core/DispatchKey.h>
 #include <c10/macros/Macros.h>
 #include <functional>
 #include <iostream>
@@ -29,7 +30,6 @@
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
-#include "c10/core/DispatchKey.h"
 #include "paddle/common/macros.h"  // For macro PADDLE_API
 
 namespace torch {
