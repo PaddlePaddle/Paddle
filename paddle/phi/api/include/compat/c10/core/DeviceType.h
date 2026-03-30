@@ -88,7 +88,7 @@ inline DeviceType PhiToDeviceType(phi::AllocationType d) {
     case phi::AllocationType::CUSTOM:
       return DeviceType::CUSTOM;
     default:
-      return DeviceType::CPU;
+      return DeviceType::Undefined;
   }
 }
 
@@ -165,7 +165,7 @@ inline phi::AllocationType c10DeviceTypeToPhiAllocationType(DeviceType type) {
     case DeviceType::CUSTOM:
       return phi::AllocationType::CUSTOM;
     default:
-      return phi::AllocationType::CPU;
+      return phi::AllocationType::UNDEFINED;
   }
 }
 
@@ -177,6 +177,7 @@ inline bool phiPlaceHasC10DeviceIndex(phi::AllocationType type,
     case phi::AllocationType::CPU:
     case phi::AllocationType::GPUPINNED:
     case phi::AllocationType::XPUPINNED:
+    case phi::AllocationType::UNDEFINED:
       return false;
     default:
       return index != -1;

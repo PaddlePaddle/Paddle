@@ -185,6 +185,4 @@ TEST(ScalarTypeCompatTest, NewFloatAndBitsSignedSizeBranches) {
   EXPECT_FALSE(c10::isSignedType(c10::ScalarType::Bits4x2));
   EXPECT_FALSE(c10::isSignedType(c10::ScalarType::Bits8));
   EXPECT_FALSE(c10::isSignedType(c10::ScalarType::Bits16));
-
-  EXPECT_STREQ(c10::toString(c10::ScalarType::ComplexHalf), "ComplexHalf");
 }

@@ -27,8 +27,41 @@
 
 namespace at {
 
+inline paddle::Tensor copy_dense_tensor_for_sparse_coo_if_needed(
+    const paddle::Tensor& tensor, const phi::Place& place) {
+  if (tensor.place() == place) {
+    return tensor;
+  }
+  return tensor.copy_to(place, /*blocking=*/true);
+}
+
+inline void apply_sparse_coo_creation_options(
+    paddle::Tensor* indices,
+    paddle::Tensor* values,
+    const at::TensorOptions& options) {
+  if (options.pinned_memory()) {
+    if (options.has_device() && !options.device().is_cpu()) {
+      PD_THROW(
+          "pin_memory=true requires device to be CPU, but got non-CPU device");
+    }
+    phi::Place pinned_place =
+        compat::_PD_GetCreatePinnedPlace(options._PD_GetPlace());
+    *indices =
+        copy_dense_tensor_for_sparse_coo_if_needed(*indices, pinned_place);
+    *values = copy_dense_tensor_for_sparse_coo_if_needed(*values, pinned_place);
+    return;
+  }
+
+  if (options.has_device()) {
+    const phi::Place target_place = options.device()._PD_GetInner();
+    *indices =
+        copy_dense_tensor_for_sparse_coo_if_needed(*indices, target_place);
+    *values = copy_dense_tensor_for_sparse_coo_if_needed(*values, target_place);
+  }
+}
+
 inline std::vector<int64_t> infer_sparse_coo_size(const at::Tensor& indices) {
-  auto host_indices = indices.cpu().to(at::kLong);
+  auto host_indices = indices.cpu().to(at::kLong).contiguous();
   int64_t sparse_dim = host_indices.dim() > 0 ? host_indices.size(0) : 0;
   int64_t nnz = host_indices.dim() > 1 ? host_indices.size(1) : 0;
 
@@ -56,13 +89,7 @@ inline at::Tensor sparse_coo_tensor(const at::Tensor& indices,
         vals,
         compat::_PD_AtenScalarTypeToPhiDataType(options.dtype_opt().value()));
   }
-
-  if (options.pinned_memory()) {
-    phi::Place base_place = options._PD_GetPlace();
-    phi::Place pinned_place = compat::_PD_GetCreatePinnedPlace(base_place);
-    idx = idx.copy_to(pinned_place, /*blocking=*/true);
-    vals = vals.copy_to(pinned_place, /*blocking=*/true);
-  }
+  apply_sparse_coo_creation_options(&idx, &vals, options);
 
   // PyTorch: sparse_coo_tensor(indices, values, size)
   // Paddle:  sparse_coo_tensor(values, indices, shape)
@@ -97,31 +124,13 @@ inline at::Tensor sparse_coo_tensor(const at::Tensor& indices,
   PD_CHECK(indices.scalar_type() == at::kLong,
            "`indices` for sparse_coo_tensor must have dtype int64.");
 
-  const int64_t sparse_dims = indices.size(0);
-  const int64_t nnz = indices.size(1);
-  std::vector<int64_t> inferred_size;
-  inferred_size.reserve(sparse_dims + std::max<int64_t>(static_cast<int64_t>(0),
-                                                        values.dim() - 1));
-
-  PD_CHECK(indices.is_cpu(),
-           "`indices` must be on CPU when inferring sparse_coo_tensor size.");
-  auto idx_tensor = indices.contiguous()._PD_GetInner();
-  const int64_t* idx_data = idx_tensor.data<int64_t>();
-
-  for (int64_t d = 0; d < sparse_dims; ++d) {
-    int64_t dim_size = 0;
-    for (int64_t i = 0; i < nnz; ++i) {
-      dim_size = std::max(dim_size, idx_data[d * nnz + i] + 1);
-    }
-    inferred_size.push_back(dim_size);
-  }
-
+  std::vector<int64_t> inferred_size = infer_sparse_coo_size(indices);
   for (int64_t d = 1; d < values.dim(); ++d) {
     inferred_size.push_back(values.size(d));
   }
 
-  return paddle::experimental::sparse::sparse_coo_tensor(
-      values._PD_GetInner(), indices._PD_GetInner(), inferred_size);
+  return sparse_coo_tensor(
+      indices, values, at::IntArrayRef(inferred_size), options);
 }
 
 }  // namespace at

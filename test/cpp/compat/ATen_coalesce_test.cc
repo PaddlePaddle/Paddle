@@ -102,6 +102,38 @@ TEST(TensorCoalesceTest, CoalesceIdempotent) {
   ASSERT_TRUE(coalesced2.is_coalesced());
 }
 
+TEST(TensorCoalesceTest, CoalescePreservesUniqueValuesOrder) {
+  at::Tensor indices =
+      at::tensor({0, 1, 2, 0, 1, 2}, at::kLong).reshape({2, 3});
+  at::Tensor values = at::tensor({0.0f, 1.0f, 2.0f}, at::kFloat);
+  at::Tensor sparse = at::sparse_coo_tensor(indices, values);
+
+  at::Tensor coalesced = sparse.coalesce();
+  at::Tensor coalesced_values = coalesced._values();
+
+  ASSERT_TRUE(coalesced.is_coalesced());
+  ASSERT_EQ(coalesced_values.numel(), 3);
+  ASSERT_FLOAT_EQ(coalesced_values[0].item<float>(), 0.0f);
+  ASSERT_FLOAT_EQ(coalesced_values[1].item<float>(), 1.0f);
+  ASSERT_FLOAT_EQ(coalesced_values[2].item<float>(), 2.0f);
+}
+
+TEST(TensorCoalesceTest, CoalesceOutputMatchesTorchFormatting) {
+  at::Tensor indices =
+      at::tensor({0, 1, 2, 0, 1, 2}, at::kLong).reshape({2, 3});
+  at::Tensor values = at::tensor({0.0f, 1.0f, 2.0f}, at::kFloat);
+  at::Tensor sparse = at::sparse_coo_tensor(indices, values);
+  at::Tensor coalesced = sparse.coalesce();
+
+  std::ostringstream os;
+  os << "CoalesceTest";
+  for (int64_t i = 0; i < coalesced._values().numel(); ++i) {
+    os << ' ' << coalesced._values()[i].item<int>();
+  }
+
+  ASSERT_EQ(os.str(), "CoalesceTest 0 1 2");
+}
+
 TEST(TensorCoalesceTest, CoalesceOnDenseTensorThrows) {
   // coalesce() on a dense tensor must throw.
   at::Tensor dense = at::ones({3, 3}, at::kFloat);

@@ -17,6 +17,8 @@
 #include <ATen/core/Tensor.h>
 #include <c10/core/TensorOptions.h>
 #include <utils/pinned_place.h>
+
+#include <algorithm>
 #include <optional>
 
 #include "paddle/phi/api/include/api.h"
@@ -26,6 +28,67 @@
 #include "paddle/phi/core/sparse_csr_tensor.h"
 
 namespace at {
+
+inline paddle::Tensor copy_dense_tensor_for_sparse_csr_if_needed(
+    const paddle::Tensor& tensor, const phi::Place& place) {
+  if (tensor.place() == place) {
+    return tensor;
+  }
+  return tensor.copy_to(place, /*blocking=*/true);
+}
+
+inline void apply_sparse_csr_creation_options(
+    paddle::Tensor* crow_indices,
+    paddle::Tensor* col_indices,
+    paddle::Tensor* values,
+    const at::TensorOptions& options) {
+  if (options.pinned_memory()) {
+    if (options.has_device() && !options.device().is_cpu()) {
+      PD_THROW(
+          "pin_memory=true requires device to be CPU, but got non-CPU device");
+    }
+    phi::Place pinned_place =
+        compat::_PD_GetCreatePinnedPlace(options._PD_GetPlace());
+    *crow_indices =
+        copy_dense_tensor_for_sparse_csr_if_needed(*crow_indices, pinned_place);
+    *col_indices =
+        copy_dense_tensor_for_sparse_csr_if_needed(*col_indices, pinned_place);
+    *values = copy_dense_tensor_for_sparse_csr_if_needed(*values, pinned_place);
+    return;
+  }
+
+  if (options.has_device()) {
+    const phi::Place target_place = options.device()._PD_GetInner();
+    *crow_indices =
+        copy_dense_tensor_for_sparse_csr_if_needed(*crow_indices, target_place);
+    *col_indices =
+        copy_dense_tensor_for_sparse_csr_if_needed(*col_indices, target_place);
+    *values = copy_dense_tensor_for_sparse_csr_if_needed(*values, target_place);
+  }
+}
+
+inline int64_t infer_sparse_csr_ncols(const at::Tensor& col_indices) {
+  auto host_cols = col_indices.cpu().contiguous();
+  int64_t ncols = 0;
+  if (host_cols.scalar_type() == at::kLong) {
+    const int64_t* data = host_cols.const_data_ptr<int64_t>();
+    for (int64_t i = 0; i < host_cols.numel(); ++i) {
+      ncols = std::max(ncols, data[i] + 1);
+    }
+    return ncols;
+  }
+  if (host_cols.scalar_type() == at::kInt) {
+    const int32_t* data = host_cols.const_data_ptr<int32_t>();
+    for (int64_t i = 0; i < host_cols.numel(); ++i) {
+      ncols = std::max(ncols, static_cast<int64_t>(data[i]) + 1);
+    }
+    return ncols;
+  }
+  PD_CHECK(false,
+           "col_indices must have dtype int32 or int64 for automatic "
+           "size inference in sparse_csr_tensor.");
+  return 0;
+}
 
 inline at::Tensor sparse_csr_tensor(const at::Tensor& crow_indices,
                                     const at::Tensor& col_indices,
@@ -42,14 +105,7 @@ inline at::Tensor sparse_csr_tensor(const at::Tensor& crow_indices,
         vals,
         compat::_PD_AtenScalarTypeToPhiDataType(options.dtype_opt().value()));
   }
-
-  if (options.pinned_memory()) {
-    phi::Place base_place = options._PD_GetPlace();
-    phi::Place pinned_place = compat::_PD_GetCreatePinnedPlace(base_place);
-    crows = crows.copy_to(pinned_place, /*blocking=*/true);
-    cols = cols.copy_to(pinned_place, /*blocking=*/true);
-    vals = vals.copy_to(pinned_place, /*blocking=*/true);
-  }
+  apply_sparse_csr_creation_options(&crows, &cols, &vals, options);
 
   // Get the underlying DenseTensors
   auto* dense_crows = dynamic_cast<phi::DenseTensor*>(crows.impl().get());
@@ -100,37 +156,8 @@ inline at::Tensor sparse_csr_tensor(const at::Tensor& crow_indices,
   //   nrows = crow_indices.size(0) - 1
   //   ncols = max(col_indices) + 1
   int64_t nrows = crow_indices.size(0) - 1;
-  int64_t ncols = 0;
-
-  if (col_indices.numel() > 0) {
-    auto* dense_cols = dynamic_cast<phi::DenseTensor*>(
-        col_indices._PD_GetInner().impl().get());
-    PD_CHECK(dense_cols != nullptr,
-             "col_indices must be a dense tensor for sparse_csr_tensor.");
-    PD_CHECK(
-        dense_cols->place().GetType() == phi::AllocationType::CPU,
-        "sparse_csr_tensor without explicit size only supports CPU "
-        "col_indices for automatic size inference. Please provide the size "
-        "parameter explicitly for non-CPU tensors.");
-
-    int64_t n = dense_cols->numel();
-    if (dense_cols->dtype() == phi::DataType::INT64) {
-      const int64_t* data = dense_cols->data<int64_t>();
-      for (int64_t i = 0; i < n; ++i) {
-        if (data[i] + 1 > ncols) ncols = data[i] + 1;
-      }
-    } else if (dense_cols->dtype() == phi::DataType::INT32) {
-      const int32_t* data = dense_cols->data<int32_t>();
-      for (int64_t i = 0; i < n; ++i) {
-        int64_t val = static_cast<int64_t>(data[i]) + 1;
-        if (val > ncols) ncols = val;
-      }
-    } else {
-      PD_CHECK(false,
-               "col_indices must have dtype int32 or int64 for automatic "
-               "size inference in sparse_csr_tensor.");
-    }
-  }
+  int64_t ncols =
+      col_indices.numel() > 0 ? infer_sparse_csr_ncols(col_indices) : 0;
 
   std::vector<int64_t> size_vec = {nrows, ncols};
   return sparse_csr_tensor(

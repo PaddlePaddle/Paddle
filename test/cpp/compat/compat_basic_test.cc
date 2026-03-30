@@ -597,6 +597,34 @@ TEST(SparseTensorCoverageTest, SparseCooTensorInferSizeWithDenseDims) {
   ASSERT_EQ(sparse.size(2), 2);
 }
 
+TEST(SparseTensorCoverageTest, SparseCooTensorInferSizeHonorsOptionsDtype) {
+  at::Tensor indices = MakeSparseIndices();
+  at::Tensor values =
+      at::tensor({1.0f, 2.0f, 3.0f}, at::TensorOptions().dtype(at::kFloat));
+  at::Tensor sparse = at::sparse_coo_tensor(
+      indices, values, at::TensorOptions().dtype(at::kDouble));
+
+  ASSERT_TRUE(sparse.is_sparse());
+  ASSERT_EQ(sparse.scalar_type(), at::kDouble);
+  ASSERT_EQ(sparse.size(0), 2);
+  ASSERT_EQ(sparse.size(1), 5);
+}
+
+TEST(SparseTensorCoverageTest, SparseCsrTensorInferSizeHonorsOptionsDtype) {
+  at::Tensor crow =
+      at::tensor({0, 2, 3, 3}, at::TensorOptions().dtype(at::kLong));
+  at::Tensor col = at::tensor({1, 3, 2}, at::TensorOptions().dtype(at::kInt));
+  at::Tensor values =
+      at::tensor({1.0f, 2.0f, 3.0f}, at::TensorOptions().dtype(at::kFloat));
+  at::Tensor sparse = at::sparse_csr_tensor(
+      crow, col, values, at::TensorOptions().dtype(at::kDouble));
+
+  ASSERT_TRUE(sparse.is_sparse_csr());
+  ASSERT_EQ(sparse.scalar_type(), at::kDouble);
+  ASSERT_EQ(sparse.size(0), 3);
+  ASSERT_EQ(sparse.size(1), 4);
+}
+
 TEST(SparseTensorCoverageTest, SparseCooTensorInferSizeRejectsNon2DIndices) {
   at::Tensor indices =
       at::tensor({0, 1, 2}, at::TensorOptions().dtype(at::kLong));

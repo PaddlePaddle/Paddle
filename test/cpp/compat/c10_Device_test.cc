@@ -44,7 +44,7 @@ TEST(DeviceTypeCompatTest, DeviceTypeConversionAndStreamOperator) {
   EXPECT_EQ(c10::PhiToDeviceType(phi::AllocationType::CUSTOM),
             c10::DeviceType::CUSTOM);
   EXPECT_EQ(c10::PhiToDeviceType(phi::AllocationType::UNDEFINED),
-            c10::DeviceType::CPU);
+            c10::DeviceType::Undefined);
 
   EXPECT_TRUE(c10::isValidDeviceType(c10::DeviceType::CPU));
   EXPECT_TRUE(c10::isValidDeviceType(c10::DeviceType::CUSTOM));
@@ -115,12 +115,19 @@ TEST(DeviceCompatTest, DeviceParseAndPlaceBranches) {
 
   c10::Device invalid(static_cast<c10::DeviceType>(-1), 0);
   phi::Place fallback_place = invalid._PD_GetInner();
-  EXPECT_EQ(fallback_place.GetType(), phi::AllocationType::CPU);
-  EXPECT_EQ(invalid.str(), "cpu:0");
+  EXPECT_EQ(fallback_place.GetType(), phi::AllocationType::UNDEFINED);
+  EXPECT_EQ(invalid.str(), "unknown:0");
 
   std::ostringstream os;
   os << cuda;
   EXPECT_EQ(os.str(), "cuda:3");
+}
+
+TEST(DeviceCompatTest, DeviceStringMatchesTorchFormatting) {
+  std::ostringstream os;
+  os << "DeviceStr " << c10::Device("cpu") << ' ' << c10::Device("cpu:0") << ' '
+     << c10::Device("cuda:0") << ' ' << c10::Device("cuda:1");
+  EXPECT_EQ(os.str(), "DeviceStr cpu cpu:0 cuda:0 cuda:1");
 }
 
 TEST(DeviceTypeCompatTest, NewlyAddedDeviceTypeBranches) {
@@ -179,7 +186,7 @@ TEST(DeviceTypeCompatTest, NewlyAddedDeviceTypeBranches) {
   EXPECT_EQ(c10::c10DeviceTypeToPhiAllocationType(c10::DeviceType::CUSTOM),
             phi::AllocationType::CUSTOM);
   EXPECT_EQ(c10::c10DeviceTypeToPhiAllocationType(c10::DeviceType::Undefined),
-            phi::AllocationType::CPU);
+            phi::AllocationType::UNDEFINED);
 }
 
 TEST(DeviceCompatTest, PinnedAndUndefinedDeviceBranches) {
@@ -202,7 +209,7 @@ TEST(DeviceCompatTest, PinnedAndUndefinedDeviceBranches) {
 
   c10::Device undefined_place_device(phi::Place());
   EXPECT_EQ(undefined_place_device.type(), c10::DeviceType::Undefined);
-  EXPECT_EQ(undefined_place_device.str(), "unknown:0");
+  EXPECT_EQ(undefined_place_device.str(), "unknown");
 }
 
 TEST(DeviceTypeCompatTest, PhiPlaceHasIndexBranches) {
@@ -211,6 +218,8 @@ TEST(DeviceTypeCompatTest, PhiPlaceHasIndexBranches) {
       c10::phiPlaceHasC10DeviceIndex(phi::AllocationType::GPUPINNED, 0));
   EXPECT_FALSE(
       c10::phiPlaceHasC10DeviceIndex(phi::AllocationType::XPUPINNED, 0));
+  EXPECT_FALSE(
+      c10::phiPlaceHasC10DeviceIndex(phi::AllocationType::UNDEFINED, 0));
   EXPECT_FALSE(c10::phiPlaceHasC10DeviceIndex(phi::AllocationType::GPU, -1));
   EXPECT_TRUE(c10::phiPlaceHasC10DeviceIndex(phi::AllocationType::GPU, 0));
 }
