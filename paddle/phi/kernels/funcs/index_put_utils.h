@@ -93,7 +93,7 @@ std::vector<const DenseTensor*> DealWithBoolIndices(
                               "the only bool tensor in indices should "
                               "have number of dimension at least 1"));
         DenseTensor nonzero_indices(phi::DataType::INT64);
-        nonzero_indices.Resize(make_ddim({-1, rank}));
+        nonzero_indices.Resize({-1, rank});
         NonZeroKernel<bool, Context>(dev_ctx, *indices_v[i], &nonzero_indices);
 
         if (nonzero_indices.numel() == 0) {
@@ -104,9 +104,8 @@ std::vector<const DenseTensor*> DealWithBoolIndices(
         std::vector<DenseTensor*> integer_indices(rank, nullptr);
         const int tmp_ix = tmp_indices_v->size();
         for (int i = 0; i < rank; ++i) {
-          tmp_indices_v->emplace_back(
-              DenseTensor(phi::DataType::INT64)
-                  .Resize(make_ddim({nonzero_indices.dims()[0]})));
+          tmp_indices_v->emplace_back(DenseTensor(phi::DataType::INT64)
+                                          .Resize({nonzero_indices.dims()[0]}));
         }
         for (int i = 0; i < rank; ++i) {
           integer_indices[i] = &((*tmp_indices_v)[i + tmp_ix]);
@@ -322,7 +321,7 @@ DenseTensor GetRangeCudaTensor(const Context& dev_ctx,
                                int64_t N,
                                phi::DataType dtype) {
   DenseTensor res(dtype);
-  res.Resize(make_ddim({N}));
+  res.Resize({N});
   DenseTensor* p_res = &res;
   T* out = dev_ctx.template Alloc<T>(p_res);
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, N);
@@ -345,7 +344,7 @@ DenseTensor GetRangeTensor(const Context& dev_ctx,
                            int64_t N,
                            phi::DataType dtype) {
   DenseTensor res(dtype);
-  res.Resize(make_ddim({N}));
+  res.Resize({N});
   DenseTensor* p_res = &res;
   T* out = dev_ctx.template Alloc<T>(p_res);
   range_kernel<T>(N, out);

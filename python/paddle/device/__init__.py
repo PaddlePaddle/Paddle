@@ -27,6 +27,7 @@ from typing_extensions import TypeAlias
 
 import paddle
 from paddle.amp import autocast as _autocast
+from paddle.amp.grad_scaler import GradScaler as _GradScaler
 from paddle.base import core, framework
 from paddle.base.framework import (
     is_compiled_with_cinn,
@@ -1976,14 +1977,14 @@ class _AutocastMode:
                 >>> conv2d = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
                 >>> data = paddle.rand([10, 3, 32, 32])
 
-                >>> with paddle.device.amp.auto_cast():
+                >>> with paddle.device.amp.autocast():
                 ...     conv = conv2d(data)
                 ...     print(conv.dtype)
                 >>> # doctest: +SKIP("This has diff in xdoctest env")
                 paddle.float16
                 >>> # doctest: -SKIP
 
-                >>> with paddle.device.amp.auto_cast(enable=False):
+                >>> with paddle.device.amp.autocast(enabled=False):
                 ...     conv = conv2d(data)
                 ...     print(conv.dtype)
                 >>> # doctest: +SKIP("This has diff in xdoctest env")
@@ -1999,6 +2000,7 @@ class amp:
 
     autocast = staticmethod(_AutocastMode.autocast)
     autocast_mode = _AutocastMode()
+    GradScaler = _GradScaler
 
 
 class nvtx:

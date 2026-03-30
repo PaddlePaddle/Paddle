@@ -66,7 +66,7 @@ void CEmbeddingGradKernel(const Context& dev_ctx,
   const int64_t width = w.dims()[1];
 
   const auto& index_type = ids.dtype();
-  if (index_type == phi::DataType::INT32) {
+  if (index_type == DataType::INT32) {
     UpdateEmbedding(ids.data<int32_t>(),
                     ids.numel(),
                     start_index,
@@ -74,7 +74,7 @@ void CEmbeddingGradKernel(const Context& dev_ctx,
                     height,
                     width,
                     d_output_data);
-  } else if (index_type == phi::DataType::INT64) {
+  } else if (index_type == DataType::INT64) {
     UpdateEmbedding(ids.data<int64_t>(),
                     ids.numel(),
                     start_index,

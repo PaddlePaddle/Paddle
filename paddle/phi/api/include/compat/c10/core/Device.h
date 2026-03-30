@@ -13,8 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include <c10/core/DeviceType.h>
-
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
 using gpuStream_t = cudaStream_t;
@@ -25,6 +23,11 @@ using gpuStream_t = cudaStream_t;
 using gpuStream_t = hipStream_t;
 #endif
 
+#include <c10/core/DeviceType.h>
+
+#include <string>
+#include <utility>
+
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/core/platform/device_event_base.h"
 
@@ -33,9 +36,19 @@ using DeviceIndex = int8_t;
 
 struct Device final {
   using Type = DeviceType;
-  Device(phi::Place place) : inner_(place) {}
-  Device(DeviceType type, DeviceIndex index = 0)
-      : inner_(phi::Place(type, index)) {}  // NOLINT
+  Device() = default;
+  Device(phi::Place place)
+      : type_(PhiToDeviceType(place.GetType())),
+        index_(place.GetType() == phi::AllocationType::CPU
+                   ? static_cast<DeviceIndex>(-1)
+                   : place.GetDeviceId()),
+        custom_device_type_(place.GetDeviceType()) {}
+  Device(DeviceType type, DeviceIndex index = -1)
+      : type_(type), index_(index) {}  // NOLINT
+  Device(DeviceType type, DeviceIndex index, std::string custom_device_type)
+      : type_(type),
+        index_(index),
+        custom_device_type_(std::move(custom_device_type)) {}  // NOLINT
 
   /// Constructs a `Device` from a string description, for convenience.
   /// The string supplied must follow the following schema:
@@ -44,26 +57,45 @@ struct Device final {
   /// `:<device-index>` optionally specifies a device index.
   /* implicit */ Device(const std::string& device_string);
 
-  DeviceIndex index() const noexcept { return inner_.GetDeviceId(); }
+  DeviceIndex index() const noexcept { return index_; }
 
   bool has_index() const noexcept { return index() != -1; }
 
-  DeviceType type() const { return inner_.GetType(); }
+  DeviceType type() const noexcept { return type_; }
 
-  bool is_cuda() const noexcept { return phi::is_gpu_place(inner_); }
+  bool is_cuda() const noexcept { return type_ == DeviceType::CUDA; }
 
-  bool is_cpu() const noexcept { return phi::is_cpu_place(inner_); }
+  bool is_cpu() const noexcept { return type_ == DeviceType::CPU; }
 
   std::string str() const;
 
   bool operator==(const Device& other) const noexcept {
-    return type() == other.type() && this->index() == other.index();
+    return type() == other.type() && this->index() == other.index() &&
+           custom_device_type_ == other.custom_device_type_;
   }
 
-  phi::Place _PD_GetInner() const { return inner_; }
+  phi::Place _PD_GetInner() const {
+    switch (type_) {
+      case DeviceType::CPU:
+        return phi::CPUPlace();
+      case DeviceType::CUDA:
+        return phi::GPUPlace(has_index() ? index_ : 0);
+      case DeviceType::XPU:
+        return phi::XPUPlace(has_index() ? index_ : 0);
+      case DeviceType::IPU:
+        return phi::IPUPlace(has_index() ? index_ : 0);
+      case DeviceType::CUSTOM:
+        return phi::CustomPlace(
+            custom_device_type_.empty() ? "custom" : custom_device_type_,
+            has_index() ? index_ : 0);
+    }
+    return phi::CPUPlace();
+  }
 
  private:
-  phi::Place inner_;
+  DeviceType type_{DeviceType::CPU};
+  DeviceIndex index_{-1};
+  std::string custom_device_type_;
 };
 
 std::ostream& operator<<(std::ostream& stream, const Device& device);

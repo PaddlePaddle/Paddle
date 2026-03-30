@@ -47,8 +47,7 @@ void SumRawKernel(const Context& dev_ctx,
     }
     return;
   }
-  if constexpr (std::is_same_v<T, phi::float16> ||
-                std::is_same_v<T, phi::bfloat16>) {
+  if constexpr (std::is_same_v<T, float16> || std::is_same_v<T, bfloat16>) {
     DenseTensor x_fp32 = Cast<T, Context>(dev_ctx, x, DataType::FLOAT32);
     DataType final_out_dtype = out_dtype;
     if (final_out_dtype == DataType::UNDEFINED) {
@@ -60,7 +59,7 @@ void SumRawKernel(const Context& dev_ctx,
                                                    reduce_all,
                                                    dims.GetData(),
                                                    keep_dim,
-                                                   phi::DataType::UNDEFINED,
+                                                   DataType::UNDEFINED,
                                                    out);
     } else {
       DenseTensor intermediate_result;
@@ -70,7 +69,7 @@ void SumRawKernel(const Context& dev_ctx,
                                                    reduce_all,
                                                    dims.GetData(),
                                                    keep_dim,
-                                                   phi::DataType::UNDEFINED,
+                                                   DataType::UNDEFINED,
                                                    &intermediate_result);
 
       CastKernel<float, Context>(

@@ -34,7 +34,7 @@ void UniqueConsecutiveKernel(const Context& dev_ctx,
                              DenseTensor* out,
                              DenseTensor* index,
                              DenseTensor* counts) {
-  if (dtype == phi::DataType::INT32) {
+  if (dtype == DataType::INT32) {
     PADDLE_ENFORCE_LE(
         x.numel(),
         INT_MAX,
@@ -46,23 +46,22 @@ void UniqueConsecutiveKernel(const Context& dev_ctx,
   }
 
   if (axis.empty()) {
-    phi::VisitDataTypeTiny(
+    VisitDataTypeTiny(
         dtype,
         UniqueConsecutiveFlattenedTensorFunctor<Context, T>(
             dev_ctx, x, out, return_inverse, return_counts, index, counts));
   } else {
     int valid_axis = axis[0];
     if (valid_axis < 0) valid_axis += x.dims().size();
-    phi::VisitDataTypeTiny(
-        dtype,
-        UniqueConsecutiveDimFunctor<Context, T>(dev_ctx,
-                                                x,
-                                                out,
-                                                valid_axis,
-                                                return_inverse,
-                                                return_counts,
-                                                index,
-                                                counts));
+    VisitDataTypeTiny(dtype,
+                      UniqueConsecutiveDimFunctor<Context, T>(dev_ctx,
+                                                              x,
+                                                              out,
+                                                              valid_axis,
+                                                              return_inverse,
+                                                              return_counts,
+                                                              index,
+                                                              counts));
   }
 }
 

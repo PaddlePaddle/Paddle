@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/flash_attn_kernel.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/slice_kernel.h"
 #include "paddle/phi/kernels/xpu/flash_attn_utils.h"
 #include "xfa/flash_api.h"
@@ -158,6 +159,27 @@ void FlashAttnKernelBase(const Context& dev_ctx,
                          DenseTensor* softmax,
                          DenseTensor* softmax_lse,
                          DenseTensor* seed_offset) {
+  // Handle 0-size tensors: return zeros without calling XPU kernel
+  // to avoid invalid memory access
+  if (q.numel() == 0 || k.numel() == 0 || v.numel() == 0) {
+    if (out) {
+      Full<T, Context>(dev_ctx, out->dims(), 0, out);
+    }
+    if (softmax) {
+      Full<T, Context>(dev_ctx, softmax->dims(), 0, softmax);
+    }
+    if (softmax_lse) {
+      std::vector<int64_t> softmax_lse_dims = {
+          batch_size, num_heads, max_seqlen_q_.to<int64_t>()};
+      softmax_lse->Resize(phi::make_ddim(softmax_lse_dims));
+      Full<float, Context>(dev_ctx, softmax_lse->dims(), 0, softmax_lse);
+    }
+    if (seed_offset) {
+      Full<int64_t, Context>(dev_ctx, seed_offset->dims(), 0, seed_offset);
+    }
+    return;
+  }
+
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   float real_scale = scale == 0.0f ? 1.0f / std::sqrt(head_size) : scale;
   float real_dropout = is_test ? 0.0f : dropout;
@@ -498,6 +520,24 @@ void FlashMaskKernel(const Context& dev_ctx,
   if (return_softmax == true) {
     PADDLE_THROW(
         common::errors::Unimplemented("return_softmax should be false"));
+  }
+
+  // Handle 0-size tensors: return zeros without calling XPU kernel
+  // to avoid invalid memory access
+  if (q.numel() == 0 || k.numel() == 0 || v.numel() == 0) {
+    if (out) {
+      Full<T, Context>(dev_ctx, out->dims(), 0, out);
+    }
+    if (softmax) {
+      Full<T, Context>(dev_ctx, softmax->dims(), 0, softmax);
+    }
+    if (softmax_lse) {
+      Full<float, Context>(dev_ctx, softmax_lse->dims(), 0, softmax_lse);
+    }
+    if (seed_offset) {
+      Full<int64_t, Context>(dev_ctx, seed_offset->dims(), 0, seed_offset);
+    }
+    return;
   }
 
   // q, k, v [batch_size, seq_len, num_heads, head_dim]

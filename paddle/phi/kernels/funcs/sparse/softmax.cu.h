@@ -125,10 +125,10 @@ std::tuple<DenseTensor, DenseTensor, DenseTensor, DenseTensor> ComputePoolMax(
                             });
   auto new_sz =
       thrust::distance(thrust_ptr(pool_sizes.data<IntT>()), new_end.second);
-  pool_sizes.Resize(make_ddim({new_sz}));
+  pool_sizes.Resize({new_sz});
 
   DenseTensor pool_offsets;
-  pool_offsets.Resize(make_ddim({new_sz}));
+  pool_offsets.Resize({new_sz});
   dev_ctx.template Alloc<T>(&pool_offsets);
   phi::Copy(dev_ctx, pool_sizes, dev_ctx.GetPlace(), false, &pool_offsets);
 

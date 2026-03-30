@@ -280,7 +280,7 @@ void SendUERecvKernel(const Context& dev_ctx,
     return;
   }
 
-  if (index_type == phi::DataType::INT32) {
+  if (index_type == DataType::INT32) {
     GraphSendUERecvOpKernelLaunchHelper<Context, T, int32_t>(dev_ctx,
                                                              x,
                                                              y,
@@ -291,7 +291,7 @@ void SendUERecvKernel(const Context& dev_ctx,
                                                              out_size_data[0],
                                                              out,
                                                              dst_count);
-  } else if (index_type == phi::DataType::INT64) {
+  } else if (index_type == DataType::INT64) {
     GraphSendUERecvOpKernelLaunchHelper<Context, T, int64_t>(dev_ctx,
                                                              x,
                                                              y,

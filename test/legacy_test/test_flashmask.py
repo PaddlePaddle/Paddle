@@ -388,5 +388,125 @@ class TestFlashMaskAttentionFP16API6(TestFlashMaskAttentionAPI):
         self.mask_func = gen_global_slide_window_mask
 
 
+@unittest.skipIf(
+    not is_flashattn_supported(),
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
+    "and device's compute capability must be 7.5 or 8.x",
+)
+class TestFlashMaskAttentionZeroSize(unittest.TestCase):
+    """Test flashmask_attention with 0-size tensors.
+
+    When any input tensor has a dimension of size 0, the function should
+    return a zero tensor with the same shape as query without calling
+    the CUDA kernel to avoid invalid memory access.
+    """
+
+    def setUp(self):
+        self.place = get_device_place()
+        self.dtype = 'float16'
+
+    def _run_test(self, q_shape, k_shape, v_shape, startend_shape, causal=True):
+        """Helper method to run a single test case."""
+        paddle.disable_static()
+
+        q = paddle.to_tensor(
+            np.random.randn(*q_shape).astype(self.dtype), place=self.place
+        )
+        k = paddle.to_tensor(
+            np.random.randn(*k_shape).astype(self.dtype), place=self.place
+        )
+        v = paddle.to_tensor(
+            np.random.randn(*v_shape).astype(self.dtype), place=self.place
+        )
+        startend = paddle.to_tensor(
+            np.ones(startend_shape, dtype="int32"), place=self.place
+        )
+
+        result = flashmask_attention(
+            q,
+            k,
+            v,
+            startend_row_indices=startend,
+            causal=causal,
+        )
+
+        # According to FlashAttnInferMeta:
+        # - Output shape is based on q.shape
+        # - head_dim uses v's head_dim
+        # - If batch is 0 (q.batch=0 or k.batch=0 or v.batch=0), output batch is 0
+        expected_shape = list(q.shape)
+        expected_shape[3] = v_shape[3]  # head_dim from v
+        if q_shape[0] == 0 or k_shape[0] == 0 or v_shape[0] == 0:
+            expected_shape[0] = 0  # batch is 0
+
+        # Verify result shape
+        self.assertEqual(list(result.shape), expected_shape)
+        # Verify result is all zeros
+        self.assertTrue(paddle.all(result == 0).item())
+
+    def test_query_zero_seqlen(self):
+        """Test when query sequence length is 0."""
+        self._run_test(
+            q_shape=[1, 128, 8, 96],
+            k_shape=[1, 128, 8, 96],
+            v_shape=[1, 0, 8, 96],  # query seqlen = 0
+            startend_shape=[1, 1, 128, 1],
+        )
+
+    def test_key_zero_seqlen(self):
+        """Test when key sequence length is 0."""
+        self._run_test(
+            q_shape=[1, 128, 8, 96],
+            k_shape=[1, 0, 8, 96],  # key seqlen = 0
+            v_shape=[1, 0, 8, 96],  # value must have same seqlen as key
+            startend_shape=[1, 1, 0, 1],
+        )
+
+    def test_key_zero_head_dim(self):
+        """Test when key head_dim is 0."""
+        self._run_test(
+            q_shape=[1, 128, 8, 96],
+            k_shape=[1, 128, 8, 0],  # key head_dim = 0
+            v_shape=[1, 128, 8, 96],
+            startend_shape=[1, 1, 128, 1],
+        )
+
+    def test_value_zero_batch(self):
+        """Test when value batch size is 0."""
+        self._run_test(
+            q_shape=[1, 128, 8, 96],
+            k_shape=[1, 128, 8, 96],
+            v_shape=[0, 128, 8, 96],  # value batch = 0
+            startend_shape=[1, 1, 128, 1],
+        )
+
+    def test_value_zero_seqlen(self):
+        """Test when value sequence length is 0."""
+        self._run_test(
+            q_shape=[1, 128, 8, 96],
+            k_shape=[1, 128, 8, 96],
+            v_shape=[1, 0, 8, 96],  # value seqlen = 0
+            startend_shape=[1, 1, 128, 1],
+        )
+
+    def test_value_zero_head_dim(self):
+        """Test when value head_dim is 0."""
+        self._run_test(
+            q_shape=[1, 128, 8, 96],
+            k_shape=[1, 128, 8, 96],
+            v_shape=[1, 128, 8, 0],  # value head_dim = 0
+            startend_shape=[1, 1, 128, 1],
+        )
+
+    def test_all_zero_batch(self):
+        """Test when all tensors have batch size 0."""
+        self._run_test(
+            q_shape=[0, 128, 8, 96],
+            k_shape=[0, 128, 8, 96],
+            v_shape=[0, 128, 8, 96],
+            startend_shape=[0, 1, 128, 1],
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
