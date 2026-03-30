@@ -1733,6 +1733,61 @@ class TestPutAlongAxisZeroSizeInputGrad(unittest.TestCase):
         )
 
 
+class TestPutAlongAxisMulFloat32DivByZeroGrad(unittest.TestCase):
+    """
+    Bug A (float32 backward path): verify that the div-by-zero guard in
+    gather_scatter_functor.cc is exercised when x or value contains 0.
+
+    - cpu_scatter_mul_min_max_input_grad_kernel: x==0 → grad=0 (line 524)
+      and x!=0 → normal division (line 520-522).
+    - cpu_scatter_mul_min_max_value_grad_kernel: value==0 → grad=0 (line 698)
+      and value!=0 → normal division (line 694-696).
+
+    Both tests must not crash and must return finite gradients.
+    """
+
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_x_grad_with_zero_in_x(self):
+        """x contains 0: covers x==0 branch (grad=0) and x!=0 branch."""
+        x = paddle.to_tensor(
+            [[[1.0, 0.0, 3.0], [0.0, 5.0, 6.0]]], dtype='float32'
+        )
+        x.stop_gradient = False
+        index = paddle.to_tensor([[[0, 1, 0], [1, 0, 1]]], dtype='int64')
+        value = paddle.to_tensor(
+            [[[2.0, 1.0, 4.0], [1.0, 3.0, 5.0]]], dtype='float32'
+        )
+        value.stop_gradient = True
+        out = paddle.put_along_axis(
+            x, index, value, axis=2, reduce='mul', include_self=True
+        )
+        loss = out.sum()
+        loss.backward()
+        self.assertIsNotNone(x.grad)
+        self.assertTrue(paddle.isfinite(x.grad).all())
+
+    def test_value_grad_with_zero_in_value(self):
+        """value contains 0: covers value==0 branch (grad=0) and value!=0 branch."""
+        x = paddle.to_tensor(
+            [[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]], dtype='float32'
+        )
+        x.stop_gradient = True
+        index = paddle.to_tensor([[[0, 1, 0], [1, 0, 1]]], dtype='int64')
+        value = paddle.to_tensor(
+            [[[2.0, 0.0, 4.0], [0.0, 3.0, 5.0]]], dtype='float32'
+        )
+        value.stop_gradient = False
+        out = paddle.put_along_axis(
+            x, index, value, axis=2, reduce='mul', include_self=True
+        )
+        loss = out.sum()
+        loss.backward()
+        self.assertIsNotNone(value.grad)
+        self.assertTrue(paddle.isfinite(value.grad).all())
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()
