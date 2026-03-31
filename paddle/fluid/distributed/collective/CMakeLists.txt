@@ -1,8 +1,9 @@
-string(FIND "${COMPILED_CUDA_ARCHS}" "90" ARCH_BIN_CONTAINS_90)
+string(REGEX MATCH "9[0-9]|1[0-9][0-9]" ARCH_BIN_CONTAINS_GE_90
+             "${COMPILED_CUDA_ARCHS}")
 
 if(WITH_DISTRIBUTE
    AND WITH_GPU
-   AND (ARCH_BIN_CONTAINS_90 GREATER -1))
+   AND ARCH_BIN_CONTAINS_GE_90)
   message(STATUS "Enable DeepEP alltoall communication.")
   add_subdirectory(deep_ep)
   set(DEEPEP_LIB deep_ep)

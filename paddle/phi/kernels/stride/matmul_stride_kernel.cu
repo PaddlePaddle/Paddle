@@ -34,11 +34,11 @@ COMMON_DECLARE_bool(use_stride_compute_kernel);
 namespace phi {
 
 template <typename Context>
-phi::DenseTensor Tensor2Contiguous(const Context &dev_ctx,
-                                   const phi::DenseTensor &tensor) {
-  phi::DenseTensor dense_out;
-  phi::MetaTensor meta_input(tensor);
-  phi::MetaTensor meta_out(&dense_out);
+DenseTensor Tensor2Contiguous(const Context &dev_ctx,
+                              const DenseTensor &tensor) {
+  DenseTensor dense_out;
+  MetaTensor meta_input(tensor);
+  MetaTensor meta_out(&dense_out);
   UnchangedInferMeta(meta_input, &meta_out);
   PD_VISIT_ALL_TYPES(tensor.dtype(), "Tensor2Contiguous", ([&] {
                        phi::ContiguousKernel<data_t, Context>(
@@ -80,7 +80,12 @@ inline bool is_only_transposed_tensor(const DDim &shape,
     if (max_idx == -1) {
       return false;
     }
-    if (i != 0 && (*src_stride)[i - 1] == max_num) {
+    // For contiguous tensors, size-1 dimensions can legally share the same
+    // stride with their neighbor. Do not reject these cases, otherwise a pure
+    // transpose view like [1, 1, S, D] -> [1, 1, D, S] is misclassified as a
+    // generic strided tensor and falls back to a different matmul path.
+    if (i != 0 && (*src_stride)[i - 1] == max_num && (*src_shape)[i - 1] != 1 &&
+        shape[max_idx] != 1) {
       return false;
     }
     visited_idx.insert(max_idx);
