@@ -349,6 +349,21 @@ class TestGetItemErrorCase(unittest.TestCase):
         with self.assertRaises(IndexError):
             res = x[0]  # IndexError: (OutOfRange)
 
+    def test_0size_advanced_index(self):
+        # Indexing into a 0-size dimension with non-empty int indices
+        # should raise IndexError, not segfault.
+        x_bool = paddle.empty([0, 5, 4, 3], dtype='bool')
+        with self.assertRaises(IndexError):
+            res = x_bool[[[2, -3, -4], [-1, 2, 5]]]
+        with self.assertRaises(IndexError):
+            res = x_bool[[[2, 3, 4], [1, 2, 5]]]
+
+        x_complex = paddle.empty([0, 5, 4, 3], dtype='complex128')
+        with self.assertRaises(IndexError):
+            res = x_complex[[[2, -3, -4], [-1, 2, 5]]]
+        with self.assertRaises(IndexError):
+            res = x_complex[[[2, 3, 4], [1, 2, 5]]]
+
 
 if __name__ == '__main__':
     unittest.main()
