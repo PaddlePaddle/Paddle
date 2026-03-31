@@ -1243,5 +1243,98 @@ class TestSelectScatterAPICompatibility(unittest.TestCase):
             np.testing.assert_allclose(out, ref_out, rtol=1e-5)
 
 
+# Test logit compatibility
+class TestLogitAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.shape = [5, 6]
+        self.dtype = 'float32'
+        self.np_x = np.random.uniform(0.1, 0.9, self.shape).astype(self.dtype)
+
+    def _ref_logit(self, x, eps=0.0):
+        if eps > 0.0:
+            x = np.clip(x, eps, 1.0 - eps)
+        return np.log(x / (1.0 - x))
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.logit(x)
+        # 2. Paddle keyword arguments
+        out2 = paddle.logit(x=x)
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.logit(input=x)
+        # 4. Mixed arguments (positional x + keyword eps)
+        out4 = paddle.logit(x, eps=1e-6)
+        # 5. out parameter test
+        out5 = paddle.empty_like(x)
+        paddle.logit(x, out=out5)
+        # 6. out parameter with alias keyword
+        out6 = paddle.empty_like(x)
+        paddle.logit(input=x, out=out6)
+        # 7. Tensor method - args
+        out7 = x.logit()
+        # 8. Tensor method - kwargs
+        out8 = x.logit(eps=1e-6)
+        # 9. paddle.special.logit alias
+        out9 = paddle.special.logit(x)
+        # 10. paddle.special.logit with alias keyword
+        out10 = paddle.special.logit(input=x)
+
+        # Verify outputs without eps
+        ref_out = self._ref_logit(self.np_x)
+        for out in [out1, out2, out3, out5, out6, out7, out9, out10]:
+            np.testing.assert_allclose(
+                out.numpy(), ref_out, rtol=1e-5, atol=1e-6
+            )
+
+        # Verify outputs with eps
+        ref_out_eps = self._ref_logit(self.np_x, 1e-6)
+        for out in [out4, out8]:
+            np.testing.assert_allclose(
+                out.numpy(), ref_out_eps, rtol=1e-5, atol=1e-6
+            )
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+
+            # 1. Paddle Positional arguments
+            out1 = paddle.logit(x)
+            # 2. Paddle keyword arguments
+            out2 = paddle.logit(x=x)
+            # 3. PyTorch keyword arguments (alias)
+            out3 = paddle.logit(input=x)
+            # 4. Mixed arguments (positional x + keyword eps)
+            out4 = paddle.logit(x, eps=1e-6)
+            # 5. Tensor method - args
+            out5 = x.logit()
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2, out3, out4, out5],
+            )
+
+        # Verify outputs without eps
+        ref_out = self._ref_logit(self.np_x)
+        for out in [fetches[0], fetches[1], fetches[2], fetches[4]]:
+            np.testing.assert_allclose(out, ref_out, rtol=1e-5, atol=1e-6)
+
+        # Verify output with eps
+        ref_out_eps = self._ref_logit(self.np_x, 1e-6)
+        np.testing.assert_allclose(
+            fetches[3], ref_out_eps, rtol=1e-5, atol=1e-6
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

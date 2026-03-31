@@ -39,7 +39,7 @@ void LstsqKernel(const Context& dev_ctx,
                  DenseTensor* residuals,
                  DenseTensor* rank,
                  DenseTensor* singular_values) {
-  using ValueType = phi::dtype::Real<T>;
+  using ValueType = dtype::Real<T>;
   if (x.numel() == 0 || y.numel() == 0) {
     if (solution) Full<T, Context>(dev_ctx, solution->dims(), 0, solution);
     if (rank) Full<int64_t, Context>(dev_ctx, rank->dims(), 0, rank);
@@ -62,11 +62,11 @@ void LstsqKernel(const Context& dev_ctx,
   auto x_dims = x.dims();
   auto y_dims = y.dims();
   int dim_size = x_dims.size();
-  int x_stride = phi::GetMatrixStride(x_dims);
-  int y_stride = phi::GetMatrixStride(y_dims);
-  int batch_count = phi::GetBatchCount(x_dims);
+  int x_stride = GetMatrixStride(x_dims);
+  int y_stride = GetMatrixStride(y_dims);
+  int batch_count = GetBatchCount(x_dims);
   auto solution_dim = solution->dims();
-  int ori_solu_stride = phi::GetMatrixStride(solution_dim);
+  int ori_solu_stride = GetMatrixStride(solution_dim);
   int max_solu_stride = std::max(y_stride, ori_solu_stride);
   int min_solu_stride = std::min(y_stride, ori_solu_stride);
 
@@ -192,7 +192,7 @@ void LstsqKernel(const Context& dev_ctx,
                        &info);
   }
 
-  lwork = std::max<int>(1, static_cast<int>(phi::dtype::Real<T>(wkopt)));
+  lwork = std::max<int>(1, static_cast<int>(dtype::Real<T>(wkopt)));
   DenseTensor work;
   work.Resize({lwork});
   T* work_data = dev_ctx.template Alloc<T>(&work);

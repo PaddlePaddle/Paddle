@@ -83,7 +83,7 @@ void LaunchIndexFillKernel(const Context& dev_ctx,
   DenseTensor index_int64;
   const DenseTensor* ptr_index = nullptr;
 
-  if (index.dtype() == phi::DataType::INT32) {
+  if (index.dtype() == DataType::INT32) {
     index_int64.Resize(index.dims());
     int64_t* index_int64_data = dev_ctx.template Alloc<int64_t>(&index_int64);
     const int32_t* index_int32_data = index.data<int32_t>();

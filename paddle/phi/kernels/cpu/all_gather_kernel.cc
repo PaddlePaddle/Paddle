@@ -54,7 +54,7 @@ void AllGatherKernel(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 template <typename T>
-void AllGatherKernel(const phi::CustomContext& dev_ctx,
+void AllGatherKernel(const CustomContext& dev_ctx,
                      const DenseTensor& x,
                      int nranks,
                      DenseTensor* out) {
