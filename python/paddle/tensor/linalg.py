@@ -749,7 +749,7 @@ def vector_norm(
         axis = axis[0]
 
     if paddle.is_complex(x):
-        if in_dynamic_or_pir_mode():
+        if in_dynamic_mode():
             abs_x = _ComplexAbsAligned.apply(x)
         else:
             abs_x = paddle.abs(x)
