@@ -20,7 +20,6 @@ import subprocess
 import sys
 import time
 from contextlib import closing
-from typing import List
 
 from paddle.distributed.fleet.launch_utils import get_backend_by_compile_flag
 from paddle.utils import strtobool
@@ -555,7 +554,7 @@ def _print_arguments(args):
     print("------------------------------------------------")
 
 
-def terminate_other_processes(processes: List[str], self_pid: str) -> None:
+def terminate_other_processes(processes: list[str], self_pid: str) -> None:
     for process in processes:
         pid = process.strip()
         # Skip empty lines, non-numeric tokens, and the current process.

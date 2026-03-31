@@ -40,7 +40,9 @@ class TestLaunchMainProcessCleanup(unittest.TestCase):
         try:
             launch_utils.terminate_other_processes(processes, self_pid)
         except PermissionError:
-            self.fail("terminate_other_processes should swallow PermissionError")
+            self.fail(
+                "terminate_other_processes should swallow PermissionError"
+            )
         self.assertEqual(mock_kill.call_count, 2)
         mock_kill.assert_has_calls(expected_calls, any_order=False)
 
