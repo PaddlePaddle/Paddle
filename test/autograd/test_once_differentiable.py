@@ -12,7 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .py_layer import (
-    PyLayerContext as FunctionCtx,  # noqa: F401
-    once_differentiable as once_differentiable,
-)
+import unittest
+
+import paddle
+
+
+class TestOnceDifferentiable(unittest.TestCase):
+    def test_once_differentiable_compatibility(self):
+        pyLayerObj = paddle.autograd.py_layer.once_differentiable
+        functionObj = paddle.autograd.function.once_differentiable
+        self.assertEqual(pyLayerObj, functionObj)
+
+
+if __name__ == '__main__':
+    unittest.main()
