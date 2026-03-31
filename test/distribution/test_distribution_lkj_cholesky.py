@@ -139,7 +139,7 @@ class TestLKJCholeskyLogProb(unittest.TestCase):
         diag = (1 - (x * x).sum(-1)).sqrt().diag_embed()
         x = x + diag
         x = x.reshape((self.dim, self.dim))
-        return tril_matrix_to_vec(x @ x.T, -1)
+        return tril_matrix_to_vec(paddle.matmul(x, x, transpose_y=True), -1)
 
     def _compute_jacobian(self, x):
         if x.stop_gradient is not False:
