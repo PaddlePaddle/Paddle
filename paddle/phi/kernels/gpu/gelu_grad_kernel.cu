@@ -22,6 +22,7 @@
 #include "paddle/phi/kernels/gpu/gelu_funcs.h"
 
 COMMON_DECLARE_bool(use_fast_math);
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 
 namespace phi {
 
@@ -31,17 +32,23 @@ struct GeluWithApproximateGradFunctor {
   inline HOSTDEVICE T operator()(T arg_x, T arg_dout) {
     MPType x = static_cast<MPType>(arg_x);
     MPType dout = static_cast<MPType>(arg_dout);
-    MPType one = static_cast<MPType>(1);
-    MPType half = static_cast<MPType>(0.5);
-    MPType kAlpha = M_SQRT2 * M_2_SQRTPI * static_cast<MPType>(0.5);
-    MPType kBeta = static_cast<MPType>(GELU_CONSTANT);
-    auto x_seq = x * x;
-    auto cube_x = x * x * x;
-    auto tanh_out = tanh(kAlpha * ((kBeta * cube_x) + x));
-    auto ans = half * (one + tanh_out) +
-               half * x * (one - tanh_out * tanh_out) *
-                   (kAlpha * (one + static_cast<MPType>(3) * kBeta * x_seq));
-    return static_cast<T>(ans * dout);
+    MPType kBeta = M_SQRT2 * M_2_SQRTPI * static_cast<MPType>(0.5);
+    MPType kKappa = static_cast<MPType>(GELU_CONSTANT);
+    auto x_sq = x * x;
+    auto x_cube = x_sq * x;
+    auto inner = kBeta * (x + kKappa * x_cube);
+    auto tanh_inner = tanh(inner);
+
+    auto left = static_cast<MPType>(0.5) * x;
+    auto right = static_cast<MPType>(1) + tanh_inner;
+
+    auto left_derivative = static_cast<MPType>(0.5) * right;
+    auto tanh_derivative = static_cast<MPType>(1) - tanh_inner * tanh_inner;
+    auto inner_derivative = kBeta * (static_cast<MPType>(1) +
+                                     static_cast<MPType>(3) * kKappa * x_sq);
+    auto right_derivative = left * tanh_derivative * inner_derivative;
+
+    return static_cast<T>(dout * (left_derivative + right_derivative));
   }
 };
 
@@ -73,7 +80,8 @@ void GeluGradKernel(const Context& dev_ctx,
   std::vector<DenseTensor*> outs = {x_grad};
   if (approximate) {
 #if defined(__NVCC__) || defined(__HIPCC__)
-    if (std::is_same<T, dtype::float16>::value) {
+    if (std::is_same<T, dtype::float16>::value &&
+        !FLAGS_use_accuracy_compatible_kernel) {
       size_t n = x.numel();
       const auto* x_ptr = reinterpret_cast<const __half*>(x.data<T>());
       const auto* y_g_ptr = reinterpret_cast<const __half*>(out_grad.data<T>());
