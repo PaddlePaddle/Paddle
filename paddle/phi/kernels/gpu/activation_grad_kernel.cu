@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/activation_grad_kernel.h"
+#include "paddle/common/flags.h"
 
 #include "glog/logging.h"
 
@@ -23,6 +24,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/impl/activation_grad_impl.h"
 
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 namespace phi {
 
 template <typename T, typename Context, typename Functor>
@@ -239,7 +241,17 @@ DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(Cosh, CudaCoshGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(Asinh, CudaAsinhGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(Acosh, CudaAcoshGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(Atanh, CudaAtanhGradFunctor);
-DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(TanhShrink, CudaTanhShrinkGradFunctor);
+// TanhShrinkGrad: custom kernel to support FLAGS_use_accuracy_compatible_kernel
+template <typename T, typename Context>
+void TanhShrinkGradKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const DenseTensor& dout,
+                          DenseTensor* dx) {
+  funcs::CudaTanhShrinkGradFunctor<T> functor;
+  functor.compatible = FLAGS_use_accuracy_compatible_kernel;
+  ActivationGradGPUImpl<T, Context, funcs::CudaTanhShrinkGradFunctor<T>>(
+      dev_ctx, &x, nullptr, &dout, dx, functor);
+}
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(Square, CudaSquareGradFunctor);
 
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Exp, CudaExpGradFunctor);
