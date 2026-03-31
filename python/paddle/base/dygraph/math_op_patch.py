@@ -133,9 +133,20 @@ class TensorSize(int):
         return shape[dim]
 
 
-class TensorType:
+class TensorType(core.VarDesc.VarType):
     tensor: Tensor
     _value_: core.VarDesc.VarType
+
+    def __new__(cls, tensor):
+        obj = super().__new__(cls, int(core.VarDesc.VarType.DENSE_TENSOR))
+        return obj
+
+    def __init__(self, tensor):
+        core.VarDesc.VarType.__init__(
+            self, int(core.VarDesc.VarType.DENSE_TENSOR)
+        )
+        self._value_ = core.VarDesc.VarType.DENSE_TENSOR
+        self.tensor = tensor
 
     def __repr__(self):
         return repr(self._value_)
@@ -143,19 +154,16 @@ class TensorType:
     def __str__(self):
         return str(self._value_)
 
-    def __new__(cls, tensor):
-        instance = super().__new__(cls)
-        instance._value_ = core.VarDesc.VarType.DENSE_TENSOR
-        instance.tensor = tensor
-        return instance
-
     def __call__(self, dtype=None, blocking=None):
         if dtype is None:
             return self
         return self.tensor.astype(dtype)
 
     def __eq__(self, other):
-        return self._value_ == other
+        try:
+            return int(self._value_) == int(other)
+        except Exception:
+            return self._value_ == other
 
 
 def monkey_patch_math_tensor():
