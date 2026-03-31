@@ -20,6 +20,7 @@ import subprocess
 import sys
 import time
 from contextlib import closing
+from typing import List
 
 from paddle.distributed.fleet.launch_utils import get_backend_by_compile_flag
 from paddle.utils import strtobool
@@ -552,3 +553,16 @@ def _print_arguments(args):
     for arg, value in sorted(vars(args).items()):
         print(f"{arg}: {value}")
     print("------------------------------------------------")
+
+
+def terminate_other_processes(processes: List[str], self_pid: str) -> None:
+    for process in processes:
+        pid = process.strip()
+        # Skip empty lines, non-numeric tokens, and the current process.
+        if not pid or not pid.isdigit() or pid == self_pid:
+            continue
+        try:
+            os.kill(int(pid), 9)
+        except (ProcessLookupError, PermissionError):
+            # Target exited or no permission; match prior os.system behavior (no abort).
+            pass

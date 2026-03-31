@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import paddle
 from paddle.distributed.launch.context import Context
+from paddle.distributed.utils.launch_utils import terminate_other_processes
 
 ctx = None
 
@@ -1240,16 +1241,7 @@ def launch() -> None:
                 processes = os.popen(
                     "fuser -v /dev/nvidia* |awk '{for(i=1;i<=NF;i++) print $i;}'"
                 ).readlines()
-            for process in processes:
-                pid = process.strip()
-                # Skip empty lines, non-numeric tokens, and the current process.
-                if not pid or not pid.isdigit() or pid == self_pid:
-                    continue
-                try:
-                    os.kill(int(pid), 9)
-                except (ProcessLookupError, PermissionError):
-                    # Target exited or no permission; match prior os.system behavior (no abort).
-                    pass
+            terminate_other_processes(processes, self_pid)
             time.sleep(3)
             end_time = time.time()
 
