@@ -2773,5 +2773,165 @@ class TestCrossEntropyFAPIError(unittest.TestCase):
             self.assertRaises(ValueError, static_test_WeightLength_NotEqual)
 
 
+class CrossEntropyLossCompatible(unittest.TestCase):
+    """
+    Minimal tests for cross_entropy under FLAGS_use_accuracy_compatible_kernel.
+    Covers all branches in the compatible path (loss.py):
+      - basic mean/sum path (float64)
+      - weight passthrough
+      - float16 dtype promotion + weight cast + cast-back (GPU only)
+      - label squeeze (shape [N,1])
+      - 3D input reshape
+      - reduction='none' with reshape-back and unsqueeze
+    """
+
+    def setUp(self):
+        paddle.set_flags({'FLAGS_use_accuracy_compatible_kernel': True})
+        self.dtype = (
+            'float32' if base.core.is_compiled_with_rocm() else 'float64'
+        )
+
+    def tearDown(self):
+        paddle.set_flags({'FLAGS_use_accuracy_compatible_kernel': False})
+
+    def test_compatible_mean_and_sum(self):
+        """Covers basic path: mean/sum reduction with float64."""
+        N, C = 8, 5
+        np.random.seed(0)
+        input_np = np.random.random([N, C]).astype(self.dtype)
+        label_np = np.random.randint(0, C, size=(N,)).astype(np.int64)
+
+        paddle.disable_static()
+        for reduction in ['mean', 'sum']:
+            dy_ret = paddle.nn.functional.cross_entropy(
+                paddle.to_tensor(input_np),
+                paddle.to_tensor(label_np),
+                reduction=reduction,
+            )
+            expected = cross_entropy_loss_1d(
+                input_np, label_np, reduction=reduction
+            )[0]
+            np.testing.assert_allclose(dy_ret.numpy(), expected, rtol=1e-05)
+
+    def test_compatible_weight(self):
+        """Covers weight branch."""
+        N, C = 8, 5
+        np.random.seed(0)
+        input_np = np.random.random([N, C]).astype(self.dtype)
+        label_np = np.random.randint(0, C, size=(N,)).astype(np.int64)
+        weight_np = np.random.random([C]).astype(self.dtype)
+
+        paddle.disable_static()
+        dy_ret = paddle.nn.functional.cross_entropy(
+            paddle.to_tensor(input_np),
+            paddle.to_tensor(label_np),
+            weight=paddle.to_tensor(weight_np),
+            reduction='sum',
+        )
+        expected = cross_entropy_loss_1d(
+            input_np, label_np, weight=weight_np, reduction='sum'
+        )[0]
+        np.testing.assert_allclose(dy_ret.numpy(), expected, rtol=1e-05)
+
+    @unittest.skipIf(
+        not base.core.is_compiled_with_cuda(),
+        "float16 cross_entropy kernel is only registered on GPU",
+    )
+    def test_compatible_float16_weight(self):
+        """Covers float16 promotion + weight cast + cast-back."""
+        N, C = 8, 5
+        np.random.seed(0)
+        input_np = np.random.random([N, C]).astype('float16')
+        label_np = np.random.randint(0, C, size=(N,)).astype(np.int64)
+        weight_np = np.random.random([C]).astype('float16')
+
+        paddle.disable_static()
+        paddle.set_device('gpu')
+        dy_ret = paddle.nn.functional.cross_entropy(
+            paddle.to_tensor(input_np, place=paddle.CUDAPlace(0)),
+            paddle.to_tensor(label_np, place=paddle.CUDAPlace(0)),
+            weight=paddle.to_tensor(weight_np, place=paddle.CUDAPlace(0)),
+            reduction='mean',
+        )
+        self.assertEqual(dy_ret.dtype, paddle.float16)
+        self.assertFalse(np.isnan(dy_ret.numpy()).any())
+        paddle.set_device('cpu')
+
+    def test_compatible_label_squeeze(self):
+        """Covers label squeeze branch: label shape [N,1]."""
+        N, C = 8, 5
+        np.random.seed(0)
+        input_np = np.random.random([N, C]).astype(self.dtype)
+        label_np = np.random.randint(0, C, size=(N, 1)).astype(np.int64)
+
+        paddle.disable_static()
+        dy_ret = paddle.nn.functional.cross_entropy(
+            paddle.to_tensor(input_np),
+            paddle.to_tensor(label_np),
+            reduction='mean',
+        )
+        expected = cross_entropy_loss_1d(
+            input_np, label_np.flatten(), reduction='mean'
+        )[0]
+        np.testing.assert_allclose(dy_ret.numpy(), expected, rtol=1e-05)
+
+    def test_compatible_3d_reshape(self):
+        """Covers 3D input reshape branch."""
+        B, S, C = 2, 3, 5
+        np.random.seed(0)
+        input_np = np.random.random([B, S, C]).astype(self.dtype)
+        label_np = np.random.randint(0, C, size=(B, S)).astype(np.int64)
+
+        paddle.disable_static()
+        dy_ret = paddle.nn.functional.cross_entropy(
+            paddle.to_tensor(input_np),
+            paddle.to_tensor(label_np),
+            reduction='mean',
+        )
+        input_2d = input_np.reshape(-1, C)
+        label_1d = label_np.reshape(-1)
+        expected = cross_entropy_loss_1d(input_2d, label_1d, reduction='mean')[
+            0
+        ]
+        np.testing.assert_allclose(dy_ret.numpy(), expected, rtol=1e-05)
+
+    def test_compatible_none_reduction_3d(self):
+        """Covers reduction='none' + 3D reshape-back branch."""
+        B, S, C = 2, 3, 5
+        np.random.seed(0)
+        input_np = np.random.random([B, S, C]).astype(self.dtype)
+        label_np = np.random.randint(0, C, size=(B, S)).astype(np.int64)
+
+        paddle.disable_static()
+        dy_ret = paddle.nn.functional.cross_entropy(
+            paddle.to_tensor(input_np),
+            paddle.to_tensor(label_np),
+            reduction='none',
+        )
+        self.assertEqual(list(dy_ret.shape), [B, S])
+        input_2d = input_np.reshape(-1, C)
+        label_1d = label_np.reshape(-1)
+        expected = cross_entropy_loss_1d(
+            input_2d, label_1d, reduction='none'
+        ).reshape(B, S)
+        np.testing.assert_allclose(dy_ret.numpy(), expected, rtol=1e-05)
+
+    def test_compatible_none_reduction_unsqueeze(self):
+        """Covers reduction='none' + unsqueeze when input_dims==label_dims."""
+        N, C = 8, 5
+        np.random.seed(0)
+        input_np = np.random.random([N, C]).astype(self.dtype)
+        label_np = np.random.randint(0, C, size=(N, 1)).astype(np.int64)
+
+        paddle.disable_static()
+        dy_ret = paddle.nn.functional.cross_entropy(
+            paddle.to_tensor(input_np),
+            paddle.to_tensor(label_np),
+            reduction='none',
+        )
+        # When input_dims == label_dims, output should keep trailing 1
+        self.assertEqual(list(dy_ret.shape), [N, 1])
+
+
 if __name__ == "__main__":
     unittest.main()
