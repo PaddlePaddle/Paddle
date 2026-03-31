@@ -22,8 +22,12 @@ import paddle
 def ref_cdist(x, y, p=2.0):
     r1 = x.shape[-2]
     r2 = y.shape[-2]
+    c1 = x.shape[-1]
+    batch_shape = np.broadcast_shapes(x.shape[:-2], y.shape[:-2])
     if r1 == 0 or r2 == 0:
-        return np.empty((r1, r2), x.dtype)
+        return np.empty((*batch_shape, r1, r2), x.dtype)
+    if c1 == 0:
+        return np.zeros((*batch_shape, r1, r2), x.dtype)
     return np.linalg.norm(x[..., None, :] - y[..., None, :, :], ord=p, axis=-1)
 
 
