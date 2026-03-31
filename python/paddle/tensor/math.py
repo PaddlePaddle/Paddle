@@ -40,6 +40,7 @@ from paddle._C_ops import (  # noqa: F401
     bitwise_right_shift,
     bitwise_right_shift_,
     conj,
+    digamma,
     floor_divide_,
     fmax,
     fmin,
@@ -3967,41 +3968,7 @@ def gammaln_(x: Tensor, name: str | None = None) -> Tensor:
         return _C_ops.gammaln_(x)
 
 
-@param_one_alias(["x", "input"])
-def digamma(
-    x: Tensor, name: str | None = None, *, out: Tensor | None = None
-) -> Tensor:
-    r"""
-    Calculates the digamma of the given input tensor, element-wise.
 
-    .. math::
-        Out = \Psi(x) = \frac{ \Gamma^{'}(x) }{ \Gamma(x) }
-
-    Args:
-        x (Tensor): Input Tensor. Must be one of the following types: bfloat16, float16, float32,
-            float64, uint8, int8, int16, int32, int64.
-            alias: ``input``.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-        out (Tensor, optional): The output Tensor. If set, result will be stored in this Tensor. Default: None.
-
-    Returns:
-        Tensor, the digamma of the input Tensor, the shape and data type is the same with input
-            (integer types are autocasted into float32).
-
-    Examples:
-        .. code-block:: pycon
-
-            >>> import paddle
-
-            >>> data = paddle.to_tensor([[1, 1.5], [0, -2.2]], dtype='float32')
-            >>> res = paddle.digamma(data)
-            >>> res
-            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[-0.57721591,  0.03648996],
-             [-inf.      ,  5.32286835]])
-    """
-
-    return _C_ops.digamma(x, out=out)
 
 
 @inplace_apis_in_dygraph_only
