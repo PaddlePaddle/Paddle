@@ -1751,13 +1751,20 @@ class TestPutAlongAxisMulFloat32DivByZeroGrad(unittest.TestCase):
 
     def test_x_grad_with_zero_in_x(self):
         """x contains 0: covers x==0 branch (grad=0) and x!=0 branch."""
+        cpu = paddle.CPUPlace()
         x = paddle.to_tensor(
-            [[[1.0, 0.0, 3.0], [0.0, 5.0, 6.0]]], dtype='float32'
+            [[[1.0, 0.0, 3.0], [0.0, 5.0, 6.0]]],
+            dtype='float32',
+            place=cpu,
         )
         x.stop_gradient = False
-        index = paddle.to_tensor([[[0, 1, 0], [1, 0, 1]]], dtype='int64')
+        index = paddle.to_tensor(
+            [[[0, 1, 0], [1, 0, 1]]], dtype='int64', place=cpu
+        )
         value = paddle.to_tensor(
-            [[[2.0, 1.0, 4.0], [1.0, 3.0, 5.0]]], dtype='float32'
+            [[[2.0, 1.0, 4.0], [1.0, 3.0, 5.0]]],
+            dtype='float32',
+            place=cpu,
         )
         value.stop_gradient = True
         out = paddle.put_along_axis(
@@ -1770,13 +1777,20 @@ class TestPutAlongAxisMulFloat32DivByZeroGrad(unittest.TestCase):
 
     def test_value_grad_with_zero_in_value(self):
         """value contains 0: covers value==0 branch (grad=0) and value!=0 branch."""
+        cpu = paddle.CPUPlace()
         x = paddle.to_tensor(
-            [[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]], dtype='float32'
+            [[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]],
+            dtype='float32',
+            place=cpu,
         )
         x.stop_gradient = True
-        index = paddle.to_tensor([[[0, 1, 0], [1, 0, 1]]], dtype='int64')
+        index = paddle.to_tensor(
+            [[[0, 1, 0], [1, 0, 1]]], dtype='int64', place=cpu
+        )
         value = paddle.to_tensor(
-            [[[2.0, 0.0, 4.0], [0.0, 3.0, 5.0]]], dtype='float32'
+            [[[2.0, 0.0, 4.0], [0.0, 3.0, 5.0]]],
+            dtype='float32',
+            place=cpu,
         )
         value.stop_gradient = False
         out = paddle.put_along_axis(
