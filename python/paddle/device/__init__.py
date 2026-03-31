@@ -726,7 +726,11 @@ def get_default_device() -> paddle.device:
 
             >>> print(paddle.get_default_device())
     """
-    return paddle.device(get_device().replace("gpu", "cuda"))
+    dev = get_device()
+    # Only replace exact "gpu" device type, not substrings in custom device names
+    if dev.startswith("gpu"):
+        dev = "cuda" + dev[3:]
+    return paddle.device(dev)
 
 
 def set_default_device(device: PlaceLike | int) -> None:
@@ -2138,21 +2142,25 @@ class Device(str):
 
         elif isinstance(type, str):
             t = type.lower()
-            if t not in cls._SUPPORTED_TYPES and ":" not in t:
-                raise ValueError(f"Unsupported device type: {t}")
-            if index is not None:
+            if ":" in t:
+                dev_type, idx = t.split(":")
+                dev_type = dev_type.lower()
+                if (
+                    dev_type not in cls._SUPPORTED_TYPES
+                    and dev_type not in core.get_all_custom_device_type()
+                ):
+                    raise ValueError(f"Unsupported device type: {dev_type}")
+                dev_index = int(idx)
+            elif t in cls._SUPPORTED_TYPES:
                 dev_type = t
-                dev_index = index if t != "cpu" else None
+                dev_index = (
+                    index if (index is not None and t != "cpu") else None
+                )
+            elif t in core.get_all_custom_device_type():
+                dev_type = t
+                dev_index = index
             else:
-                if ":" in t:
-                    dev_type, idx = t.split(":")
-                    dev_type = dev_type.lower()
-                    if dev_type not in cls._SUPPORTED_TYPES:
-                        raise ValueError(f"Unsupported device type: {dev_type}")
-                    dev_index = int(idx)
-                else:
-                    dev_type = t
-                    dev_index = None
+                raise ValueError(f"Unsupported device type: {t}")
 
         elif isinstance(type, int):
             dev_type = "cuda"
@@ -2187,6 +2195,8 @@ class Device(str):
             return core.CUDAPlace(self.index)
         elif self.type == "xpu":
             return core.XPUPlace(self.index)
+        elif self.type in core.get_all_custom_device_type():
+            return core.CustomPlace(self.type, self.index)
         else:
             raise ValueError(f"Unsupported device type: {self.type}")
 
