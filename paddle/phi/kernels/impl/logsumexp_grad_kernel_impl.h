@@ -16,19 +16,51 @@
 #include <type_traits>
 #include <vector>
 
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/reduce_grad_functions.h"
 #include "paddle/phi/kernels/logsumexp_grad_kernel.h"
 
+#include "paddle/common/flags.h"
+
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
+
 namespace phi {
 
-// Gradient functor for logsumexp: computes in native precision (no MPType
+// Original gradient functor: uses MPType promotion (float16->float32,
+// float32->float64) for intermediate computation, then casts back.
+template <typename T>
+struct LogsumexpGradFunctor {
+  template <typename Context,
+            typename X,
+            typename Y,
+            typename DX,
+            typename DY,
+            typename Dim>
+  void operator()(const Context& place,
+                  X* x,
+                  Y* y,
+                  DX* dx,
+                  DY* dy,
+                  const Dim& dim,
+                  int size UNUSED) {
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    auto x_mt = (*x).template cast<MT>();
+    auto y_mt = (*y).template cast<MT>();
+    auto dy_mt = (*dy).template cast<MT>();
+    dx->device(place) =
+        (dy_mt.broadcast(dim) * (x_mt - y_mt.broadcast(dim)).exp())
+            .template cast<T>();
+  }
+};
+
+// PyTorch-compatible gradient functor: computes in native precision (no MPType
 // promotion). Matches PyTorch's logsumexp_backward:
 //   grad * (self - result).exp()
 // where all arithmetic is in the tensor's native dtype.
 template <typename T>
-struct LogsumexpGradFunctor {
+struct LogsumexpGradCompatibleFunctor {
   template <typename Context,
             typename X,
             typename Y,
@@ -46,6 +78,56 @@ struct LogsumexpGradFunctor {
         (*dy).broadcast(dim) * ((*x) - (*y).broadcast(dim)).exp();
   }
 };
+
+template <typename T, typename Context, typename Functor>
+void LogsumexpGradImpl(const Context& dev_ctx,
+                       const DenseTensor& in,
+                       const DenseTensor& out,
+                       const DenseTensor& out_grad,
+                       const std::vector<int64_t>& axis,
+                       bool reduce_all,
+                       DenseTensor* in_grad) {
+  if (reduce_all) {
+    auto x = EigenVector<T>::Flatten(in);
+    auto y = EigenVector<T>::Flatten(out);
+    auto dy = EigenVector<T>::Flatten(out_grad);
+    auto dx = EigenVector<T>::Flatten(*in_grad);
+    auto& place = *dev_ctx.eigen_device();
+    auto broadcast_dim = Eigen::array<int, 1>({{static_cast<int>(in.numel())}});
+    Functor()(place, &x, &y, &dx, &dy, broadcast_dim, broadcast_dim[0]);
+  } else {
+    int rank = in.dims().size();
+    Functor functor;
+    std::vector<int32_t> axis32;
+    axis32.reserve(axis.size());
+    std::for_each(axis.begin(), axis.end(), [&axis32](const int64_t& t) {
+      axis32.push_back(static_cast<int32_t>(t));
+    });
+    switch (rank) {
+      case 1:
+        funcs::ReduceGradFunctor<Context, T, 1, Functor>(
+            dev_ctx, in, out, out_grad, in_grad, functor, axis32);
+        break;
+      case 2:
+        funcs::ReduceGradFunctor<Context, T, 2, Functor>(
+            dev_ctx, in, out, out_grad, in_grad, functor, axis32);
+        break;
+      case 3:
+        funcs::ReduceGradFunctor<Context, T, 3, Functor>(
+            dev_ctx, in, out, out_grad, in_grad, functor, axis32);
+        break;
+      case 4:
+        funcs::ReduceGradFunctor<Context, T, 4, Functor>(
+            dev_ctx, in, out, out_grad, in_grad, functor, axis32);
+        break;
+      default:
+        PADDLE_THROW(common::errors::Unimplemented(
+            "Unsupported dimensions, please keep maximum dimensions of input "
+            "data less than 4."));
+        break;
+    }
+  }
+}
 
 template <typename T, typename Context>
 void LogsumexpGradKernel(const Context& dev_ctx,
@@ -69,46 +151,12 @@ void LogsumexpGradKernel(const Context& dev_ctx,
 
   reduce_all = recompute_reduce_all(in, axis, reduce_all);
 
-  if (reduce_all) {
-    auto x = EigenVector<T>::Flatten(in);
-    auto y = EigenVector<T>::Flatten(out);
-    auto dy = EigenVector<T>::Flatten(out_grad);
-    auto dx = EigenVector<T>::Flatten(*in_grad);
-    auto& place = *dev_ctx.eigen_device();
-    auto broadcast_dim = Eigen::array<int, 1>({{static_cast<int>(in.numel())}});
-    LogsumexpGradFunctor<T>()(
-        place, &x, &y, &dx, &dy, broadcast_dim, broadcast_dim[0]);
+  if (FLAGS_use_accuracy_compatible_kernel) {
+    LogsumexpGradImpl<T, Context, LogsumexpGradCompatibleFunctor<T>>(
+        dev_ctx, in, out, out_grad, axis, reduce_all, in_grad);
   } else {
-    int rank = in.dims().size();
-    LogsumexpGradFunctor<T> functor;
-    std::vector<int32_t> axis32;
-    axis32.reserve(axis.size());
-    std::for_each(axis.begin(), axis.end(), [&axis32](const int64_t& t) {
-      axis32.push_back(t);
-    });
-    switch (rank) {
-      case 1:
-        funcs::ReduceGradFunctor<Context, T, 1, LogsumexpGradFunctor<T>>(
-            dev_ctx, in, out, out_grad, in_grad, functor, axis32);
-        break;
-      case 2:
-        funcs::ReduceGradFunctor<Context, T, 2, LogsumexpGradFunctor<T>>(
-            dev_ctx, in, out, out_grad, in_grad, functor, axis32);
-        break;
-      case 3:
-        funcs::ReduceGradFunctor<Context, T, 3, LogsumexpGradFunctor<T>>(
-            dev_ctx, in, out, out_grad, in_grad, functor, axis32);
-        break;
-      case 4:
-        funcs::ReduceGradFunctor<Context, T, 4, LogsumexpGradFunctor<T>>(
-            dev_ctx, in, out, out_grad, in_grad, functor, axis32);
-        break;
-      default:
-        PADDLE_THROW(common::errors::Unimplemented(
-            "Unsupported dimensions, please keep maximum dimensions of input "
-            "data less than 4."));
-        break;
-    }
+    LogsumexpGradImpl<T, Context, LogsumexpGradFunctor<T>>(
+        dev_ctx, in, out, out_grad, axis, reduce_all, in_grad);
   }
 }
 
