@@ -343,3 +343,72 @@ dev_ctx.Alloc<int64_t>(&shape_stride_dev);
 3. **同文件中重复模式需全部修复**：本案例中 7 处完全相同的代码模式均存在同一问题，不能只修前向不修反向
 4. **compute-sanitizer 是定位 CUDA Graph 内存问题的利器**：普通运行不报错（垃圾偏移可能"碰巧"落在合法范围内），但 `compute-sanitizer --tool memcheck` 能精确检测到越界访问
 5. **非 CUDA Graph 正常 + CUDA Graph 异常 → 优先排查 H2D/D2H memcpy 和 host 内存生命周期**：这是 CUDA Graph 模式最常见的兼容性问题类别
+
+---
+
+## 案例：put_along_axis CUDA Graph 模式下 Python API 层隐式 D2H 同步导致 error(906)
+
+### 问题描述
+```bash
+PYTHONPATH=build/python python test_put_along_axis.py
+```
+在 CUDA Graph capture 区间内调用 `paddle.put_along_axis(x, index, value, axis=1)` 时，抛出 `CUDA error(906): cudaErrorStreamCaptureImplicit`。
+
+### 关键现象
+
+- 不使用 CUDA Graph 时完全正常
+- 错误栈指向 Python API 层（`manipulation.py`），而非 C++ kernel
+- 错误信息：`operation would make the legacy stream depend on a capturing blocking stream`
+
+### 根因分析
+
+**问题代码**（`python/paddle/tensor/manipulation.py`，`put_along_axis` 函数中）：
+```python
+if (paddle.in_dynamic_mode() and indices.numel() == 0) or (
+    not paddle.in_dynamic_mode() and 0 in indices.shape
+):
+    return paddle.assign(arr)
+```
+
+**触发链**：
+1. `indices.numel()` 返回一个 0-d GPU Tensor
+2. `== 0` 触发 `Tensor.__eq__` → 返回 boolean GPU Tensor
+3. `if` 语句触发 `Tensor.__bool__()` → `__nonzero__()`
+4. `__nonzero__()` 内部调用 `np.array(self)` → `self.numpy(False)`
+5. `numpy()` 需要 GPU→CPU 数据拷贝（D2H memcpy + stream sync on legacy stream）
+6. CUDA Graph capture 期间，legacy stream 上的 D2H 操作违反 capture 约束 → error 906
+
+**影响范围**：`put_along_axis` 和 `put_along_axis_`（inplace 版本）均受影响。
+
+### 修复方案
+
+将 `indices.numel() == 0` 替换为 `0 in indices.shape`。`shape` 是 host 端 Python tuple，不触发任何 GPU 同步：
+
+```python
+# 修复前（触发 D2H sync，CUDA Graph 不兼容）
+if (paddle.in_dynamic_mode() and indices.numel() == 0) or (
+    not paddle.in_dynamic_mode() and 0 in indices.shape
+):
+
+# 修复后（纯 host 端操作，CUDA Graph safe）
+if 0 in indices.shape:
+```
+
+### 修复文件
+- `python/paddle/tensor/manipulation.py`（`put_along_axis` 和 `put_along_axis_` 两处）
+
+### 验证结果
+
+| 测试 | 修复前 | 修复后 |
+|------|--------|--------|
+| `put_along_axis` 普通模式 | PASS | PASS |
+| `put_along_axis_` (inplace) 普通模式 | PASS | PASS |
+| `put_along_axis` CUDA Graph capture + replay | **CUDA error(906)** | PASS |
+| `put_along_axis_` (inplace) CUDA Graph capture + replay | **CUDA error(906)** | PASS |
+
+### 经验总结
+
+1. **CUDA Graph 不兼容 Python API 层的隐式 D2H 同步**：`Tensor.__bool__()`、`Tensor.__nonzero__()`、`Tensor.numpy()` 等方法会触发 GPU→CPU 数据拷贝，在 CUDA Graph capture 期间使用会导致 error 906。这类问题的根因在 Python 层而非 C++ kernel 层，容易被忽略
+2. **`tensor.numel() == 0` 是常见的 CUDA Graph 不兼容模式**：`numel()` 返回 GPU Tensor → `== 0` 触发 `__bool__` → `numpy()` → D2H sync。应替换为 `0 in tensor.shape`（host 端 tuple 操作，零 GPU 开销）
+3. **CUDA Graph 调试时 `FLAGS_check_cuda_error=1` 不可用**：该 flag 会在每个算子前后插入 `cudaDeviceSynchronize()`，这在 capture 期间本身就会触发 error 906，不能用于定位 CUDA Graph 相关问题。应直接运行并观察原始错误栈
+4. **排查 CUDA Graph error 906 的优先级**：先检查 Python API 层是否有隐式 D2H 同步（`numpy()`、`__bool__()`、`item()`、`tolist()` 等），再检查 C++ 层的 H2D/D2H memcpy 和 stream 使用
