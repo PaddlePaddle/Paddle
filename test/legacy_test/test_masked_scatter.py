@@ -478,6 +478,30 @@ class TestMaskedScatterCPUBroadcast4(TestMaskedScatterCPU):
         self.value_shape = (300, 300)
 
 
+class TestMaskedScatterCPUZeroSize(TestMaskedScatterCPU):
+    def init(self):
+        self.x_shape = (3, 0)
+        self.mask_shape = self.x_shape
+        self.dtype = "float32"
+        self.value_shape = (300, 300)
+
+
+class TestMaskedScatterCPUZeroSize2(TestMaskedScatterCPU):
+    def init(self):
+        self.x_shape = (0,)
+        self.mask_shape = self.x_shape
+        self.dtype = "float32"
+        self.value_shape = (300, 300)
+
+
+class TestMaskedScatterCPUZeroSize3(TestMaskedScatterCPU):
+    def init(self):
+        self.x_shape = (0, 5, 3)
+        self.mask_shape = self.x_shape
+        self.dtype = "float64"
+        self.value_shape = (300, 300)
+
+
 class TestMaskedScatterAPI_ZeroSize(unittest.TestCase):
     def setUp(self):
         self.init()
