@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <optional>
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/phi/common/place.h"
@@ -104,8 +105,10 @@ inline at::Tensor sparse_coo_tensor(const at::Tensor& indices,
                                     ::std::optional<at::Layout> layout,
                                     ::std::optional<at::Device> device,
                                     ::std::optional<bool> pin_memory) {
-  PD_CHECK(!layout.has_value() || layout.value() == c10::kSparse,
-           "`layout` must be Sparse for sparse_coo_tensor.");
+  if (layout.has_value() && layout.value() != c10::kSparse) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "`layout` must be Sparse for sparse_coo_tensor."));
+  }
   auto options =
       at::TensorOptions().dtype(dtype).device(device).pinned_memory(pin_memory);
   return sparse_coo_tensor(indices, values, size, options);
@@ -116,13 +119,17 @@ inline at::Tensor sparse_coo_tensor(const at::Tensor& indices,
                                     at::TensorOptions options = {}) {
   // PyTorch 语义：未提供 size 时根据 indices/values 推断完整 shape。
   // size = [max(indices[d]) + 1 for d in sparse_dims] + values.shape[1:]
-  PD_CHECK(indices.dim() == 2,
-           "`indices` for sparse_coo_tensor must be a 2-D tensor, but got ",
-           indices.dim(),
-           "-D tensor.");
+  if (indices.dim() != 2) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "`indices` for sparse_coo_tensor must be a 2-D tensor, but got %d-D "
+        "tensor.",
+        indices.dim()));
+  }
 
-  PD_CHECK(indices.scalar_type() == at::kLong,
-           "`indices` for sparse_coo_tensor must have dtype int64.");
+  if (indices.scalar_type() != at::kLong) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "`indices` for sparse_coo_tensor must have dtype int64."));
+  }
 
   std::vector<int64_t> inferred_size = infer_sparse_coo_size(indices);
   for (int64_t d = 1; d < values.dim(); ++d) {
