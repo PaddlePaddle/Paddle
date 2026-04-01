@@ -96,14 +96,10 @@ class Fused2EmbeddingEltwiseLayernormPattern
         res.Op(paddle::dialect::CastOp::name(), {{"dtype", cast_op_dtype}});
     res.Tensor("casted_scale") = cast_op_2(res.Tensor("scale"));
 
-    const auto &fused_epsilon = res.ComputeAttr(
-        [](const paddle::drr::MatchContext &match_ctx) -> float {
-          return static_cast<float>(match_ctx.Attr<double>("epsilon"));
-        });
     const auto &fused_embedding_eltwise_layernorm_op =
         res.Op(paddle::dialect::FusedEmbeddingEltwiseLayernormOp::name(),
                {{
-                   {"epsilon", fused_epsilon},
+                   {"epsilon", pat.Attr("epsilon")},
                }});
     fused_embedding_eltwise_layernorm_op({&res.Tensor("combine1_out"),
                                           &res.Tensor("combine2_out"),
@@ -192,14 +188,10 @@ class Fused3EmbeddingEltwiseLayernormPattern
         res.Op(paddle::dialect::CastOp::name(), {{"dtype", cast_op_dtype}});
     res.Tensor("casted_scale") = cast_op_2(res.Tensor("scale"));
 
-    const auto &fused_epsilon = res.ComputeAttr(
-        [](const paddle::drr::MatchContext &match_ctx) -> float {
-          return static_cast<float>(match_ctx.Attr<double>("epsilon"));
-        });
     const auto &fused_embedding_eltwise_layernorm_op =
         res.Op(paddle::dialect::FusedEmbeddingEltwiseLayernormOp::name(),
                {{
-                   {"epsilon", fused_epsilon},
+                   {"epsilon", pat.Attr("epsilon")},
                }});
     fused_embedding_eltwise_layernorm_op({&res.Tensor("combine1_out"),
                                           &res.Tensor("combine2_out"),
