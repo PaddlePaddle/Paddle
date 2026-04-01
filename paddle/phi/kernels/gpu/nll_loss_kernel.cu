@@ -112,7 +112,14 @@ void NllLossRawKernel(const Context& dev_ctx,
                                                      in_dim3,
                                                      ignore_index);
     } else {
-      int blocks_per_sample = NumBlocks(map_size) / 128;
+      // Use kNumCUDAThreads4D=1024 to match PyTorch's CUDA_NUM_THREADS in
+      // NLLLoss2d.cu, and compute blocks_per_sample the same way PyTorch does:
+      //   GET_BLOCKS(map_nelem) / 128  where GET_BLOCKS uses 1024 threads.
+      int threads4d = kNumCUDAThreads4D;
+      int blocks_per_sample =
+          static_cast<int>((map_size + kNumCUDAThreads4D - 1) /
+                           kNumCUDAThreads4D) /
+          128;
       blocks_per_sample = (blocks_per_sample == 0) ? 1 : blocks_per_sample;
       int64_t total_blocks = blocks_per_sample * batch_size;
 #ifdef PADDLE_WITH_HIP
@@ -130,16 +137,16 @@ void NllLossRawKernel(const Context& dev_ctx,
       // over the full batch*map_nelem which diverges from PyTorch accumulation
       // order and is the dominant source of accuracy_error for rank>2 inputs.
       GPUNLLLossForward2D_with_reduce<T, AccT>
-          <<<total_blocks, threads, 0, dev_ctx.stream()>>>(out_data,
-                                                           total_weight_data,
-                                                           x_data,
-                                                           label_data,
-                                                           weight_data,
-                                                           batch_size,
-                                                           n_classes,
-                                                           map_size,
-                                                           blocks_per_sample,
-                                                           ignore_index);
+          <<<total_blocks, threads4d, 0, dev_ctx.stream()>>>(out_data,
+                                                             total_weight_data,
+                                                             x_data,
+                                                             label_data,
+                                                             weight_data,
+                                                             batch_size,
+                                                             n_classes,
+                                                             map_size,
+                                                             blocks_per_sample,
+                                                             ignore_index);
       if (size_average) {
         GPUNLLLossForward2D_size_average<T>
             <<<1, 1, 0, dev_ctx.stream()>>>(out_data, total_weight_data);
