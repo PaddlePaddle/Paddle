@@ -1843,35 +1843,16 @@ def _run_ninja_build(
         command.extend(['-j', str(num_workers)])
 
     try:
-        if verbose:
-            subprocess.run(
-                command,
-                cwd=build_directory,
-                env=env,
-                check=True,
-            )
-        else:
-            completed = subprocess.run(
-                command,
-                cwd=build_directory,
-                env=env,
-                check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-            )
-            if completed.stdout:
-                log_v(completed.stdout.rstrip(), verbose=False)
+        subprocess.run(
+            command,
+            cwd=build_directory,
+            env=env,
+            check=True,
+            stdout=None if verbose else subprocess.DEVNULL,
+            stderr=None if verbose else subprocess.STDOUT,
+        )
     except subprocess.CalledProcessError as error:
-        details = ""
-        output = getattr(error, 'stdout', None)
-        if output:
-            output = output.rstrip()
-            tail = '\n'.join(output.splitlines()[-40:])
-            details = f"\nNinja output (last 40 lines):\n{tail}"
-        raise RuntimeError(
-            f"{error_prefix}: {error}.{details}\nBuild directory: {build_directory}"
-        ) from error
+        raise RuntimeError(f"{error_prefix}: {error}") from error
 
 
 def _get_pybind11_abi_build_flags():
