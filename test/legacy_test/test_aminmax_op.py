@@ -364,16 +364,6 @@ def aminmax_net(x):
     return paddle.aminmax(x, axis=1)
 
 
-def apply_to_static(net, use_cinn, input_spec=None):
-    backend = "CINN" if use_cinn else None
-    return paddle.jit.to_static(
-        net,
-        input_spec=input_spec,
-        backend=backend,
-        full_graph=True,
-    )
-
-
 class TestAminmaxDynamicShape(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -382,28 +372,30 @@ class TestAminmaxDynamicShape(unittest.TestCase):
         self.init_shape = [None, None, 6]
         self.x = np.random.random(self.shape).astype(self.dtype)
         self.net = aminmax_net
-        self.enable_cinn = False
+        self.enable_cinn = True
         self.tol = 1e-6
 
     def base_net(self, flag=None):
         x = paddle.to_tensor(self.x)
         if flag == "static":
-            fn = apply_to_static(
+            fn = paddle.jit.to_static(
                 self.net,
-                use_cinn=self.enable_cinn,
                 input_spec=[
                     InputSpec(shape=self.init_shape, dtype=self.dtype),
                 ],
+                backend="CINN" if self.enable_cinn else None,
+                full_graph=True,
             )
             fn.eval()
-        else:
+            res = fn(x)
+        elif flag == "dygraph":
             fn = self.net
-        res = fn(x)
+            res = fn(x)
         return res
 
     def test_all_dynamic(self):
         with dygraph_guard():
-            res_ref = self.base_net()
+            res_ref = self.base_net("dygraph")
             res = self.base_net("static")
             for ref, actual in zip(res_ref, res):
                 np.testing.assert_allclose(ref, actual, rtol=self.tol)
