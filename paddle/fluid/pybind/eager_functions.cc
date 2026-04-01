@@ -569,87 +569,6 @@ static Tensor MinimalEmptyTensor() {
   return tensor;
 }
 
-// ParsedOpMeta: parsed once at plugin load time, zero string overhead on the
-// hot path.
-namespace {
-
-enum class CustomAttrType : uint8_t {
-  BOOL,
-  INT,
-  FLOAT,
-  DOUBLE,
-  INT64,
-  STRING,
-  VEC_INT,
-  VEC_FLOAT,
-  VEC_INT64,
-  VEC_STRING,
-};
-
-struct ParsedOpMeta {
-  // Value-stored: deep-copied from vec_map in BuildParsedOpMeta so lifetime
-  // is independent of the source map.
-  std::vector<paddle::OpMetaInfo> vec_map;
-  std::vector<std::string> inputs;
-  std::vector<std::string> outputs;
-  std::unordered_map<std::string, std::string> inplace_map;
-  std::vector<std::string> attr_names;  // pre-parsed, used in error messages
-  std::vector<CustomAttrType>
-      attr_types;  // pre-parsed enum, replaces ParseAttrStr
-  bool has_grad_op = false;
-};
-
-static CustomAttrType ParseAttrTypeToEnum(const std::string& t) {
-  if (t == "bool") return CustomAttrType::BOOL;
-  if (t == "int") return CustomAttrType::INT;
-  if (t == "float") return CustomAttrType::FLOAT;
-  if (t == "double") return CustomAttrType::DOUBLE;
-  if (t == "int64_t") return CustomAttrType::INT64;
-  if (t == "std::string") return CustomAttrType::STRING;
-  if (t == "std::vector<int>") return CustomAttrType::VEC_INT;
-  if (t == "std::vector<float>") return CustomAttrType::VEC_FLOAT;
-  if (t == "std::vector<int64_t>") return CustomAttrType::VEC_INT64;
-  if (t == "std::vector<std::string>") return CustomAttrType::VEC_STRING;
-  PADDLE_THROW(common::errors::Unimplemented(
-      "Unknown attr type for ParsedOpMeta: %s", t));
-}
-
-static ParsedOpMeta BuildParsedOpMeta(
-    const std::string& /* op_name */,
-    const std::vector<paddle::OpMetaInfo>& vec_map) {
-  ParsedOpMeta meta;
-  meta.vec_map = vec_map;  // deep copy, lifetime independent of source
-  meta.inputs = paddle::OpMetaInfoHelper::GetInputs(vec_map[0]);
-  meta.outputs = paddle::OpMetaInfoHelper::GetOutputs(vec_map[0]);
-  meta.inplace_map = paddle::OpMetaInfoHelper::GetInplaceMap(vec_map[0]);
-  meta.has_grad_op = (vec_map.size() > 1);
-  for (const auto& attr_str : paddle::OpMetaInfoHelper::GetAttrs(vec_map[0])) {
-    auto parts = paddle::ParseAttrStr(attr_str);  // "name:type" -> [name, type]
-    meta.attr_names.push_back(parts[0]);
-    meta.attr_types.push_back(ParseAttrTypeToEnum(parts[1]));
-  }
-  return meta;
-}
-
-// Global cache: populated by RegisterParsedOpMetaCache at plugin load time.
-// Used by eager_api_run_custom_op for O(1) lookup instead of per-call string
-// hash lookup into OpMetaInfoMap.
-static std::unordered_map<std::string, ParsedOpMeta> g_parsed_op_meta_cache;
-
-}  // anonymous namespace
-
-// No Python dependency. Called unconditionally from
-// LoadOpMetaInfoAndRegisterOp in custom_operator.cc (not gated by
-// Py_IsInitialized()).
-void RegisterParsedOpMetaCache(
-    const std::unordered_map<std::string, std::vector<paddle::OpMetaInfo>>&
-        diff_map) {
-  for (const auto& [op_name, vec_map] : diff_map) {
-    g_parsed_op_meta_cache[op_name] = BuildParsedOpMeta(op_name, vec_map);
-    VLOG(3) << "RegisterParsedOpMetaCache: cached " << op_name;
-  }
-}
-
 PyObject* eager_api_run_custom_op(PyObject* self,
                                   PyObject* args,
                                   PyObject* kwargs) {
@@ -678,16 +597,16 @@ PyObject* eager_api_run_custom_op(PyObject* self,
   paddle::CustomOpKernelContext ctx;
 
   // O(1) cache lookup; replaces per-call meta_info_map.at() + GetInputs/Attrs.
-  auto it = g_parsed_op_meta_cache.find(op_type);
+  auto it = paddle::framework::g_parsed_op_meta_cache.find(op_type);
 
   PADDLE_ENFORCE_NE(it,
-                    g_parsed_op_meta_cache.end(),
+                    paddle::framework::g_parsed_op_meta_cache.end(),
                     common::errors::NotFound(
                         "Can't find %s in ParsedOpMetaCache which should be "
                         "created by RegisterParsedOpMetaCache, please make "
                         "sure you registered your op first and try again. ",
                         op_type));
-  const ParsedOpMeta& meta = it->second;
+  const paddle::framework::ParsedOpMeta& meta = it->second;
   const auto& inputs = meta.inputs;
   const auto& outputs = meta.outputs;
   const auto& inplace_map = meta.inplace_map;

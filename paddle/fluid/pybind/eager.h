@@ -11,15 +11,12 @@ limitations under the License. */
 #pragma once
 
 #include <Python.h>
-#include <unordered_map>
-#include <vector>
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/eager/activation_offloader.h"
 #endif
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/fluid/eager/pylayer/py_layer_node.h"
-#include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/utils/pybind.h"
 #include "pybind11/pybind11.h"
@@ -51,10 +48,5 @@ void BindEagerPyLayer(PyObject* module);
 void BindEagerOpFunctions(pybind11::module* module);
 void BindFinalStateEagerOpFunctions(pybind11::module* module);
 
-// Populate global ParsedOpMeta cache for eager_api_run_custom_op.
-// No Python dependency, called unconditionally.
-void RegisterParsedOpMetaCache(
-    const std::unordered_map<std::string, std::vector<paddle::OpMetaInfo>>&
-        diff_map);
 }  // namespace pybind
 }  // namespace paddle
