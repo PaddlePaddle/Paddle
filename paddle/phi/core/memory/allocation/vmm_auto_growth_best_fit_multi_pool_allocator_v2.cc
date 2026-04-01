@@ -143,6 +143,15 @@ void VMMAutoGrowthBestFitMultiPoolAllocatorV2::ImportFromIpc() {
       "FLAGS_use_vmm_auto_growth_best_fit_allocator_v2=0 or wait for W5."));
 }
 
+uint64_t VMMAutoGrowthBestFitMultiPoolAllocatorV2::ReleaseImpl(
+    const Place& place) {
+  return stable_allocator_->Release(place) +
+         longlived_allocator_->Release(place) +
+         transient_small_allocator_->Release(place) +
+         transient_large_allocator_->Release(place) +
+         oversized_allocator_->Release(place);
+}
+
 VMMAutoGrowthBestFitMultiPoolAllocatorV2::AllocationRoute
 VMMAutoGrowthBestFitMultiPoolAllocatorV2::RouteAllocation(size_t size) const {
   // PR3 keeps routing intentionally minimal:

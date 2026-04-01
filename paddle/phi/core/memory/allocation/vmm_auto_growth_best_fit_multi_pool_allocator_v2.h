@@ -82,6 +82,7 @@ class VMMAutoGrowthBestFitMultiPoolAllocatorV2 : public Allocator {
  protected:
   phi::Allocation* AllocateImpl(size_t size) override;
   void FreeImpl(phi::Allocation* allocation) override;
+  uint64_t ReleaseImpl(const Place& place) override;
 
  private:
   struct AllocationRoute {

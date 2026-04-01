@@ -61,12 +61,16 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
  protected:
   phi::Allocation* AllocateImpl(size_t size) override;
   void FreeImpl(phi::Allocation* allocation) override;
+  uint64_t ReleaseImpl(const Place& place) override;
 
  private:
   phi::Allocation* AllocFromFreeBlocks(size_t size);
   void InsertFreeBlock(BlockListIt it);
   void EraseFreeBlock(BlockListIt it);
   void TryMerge(BlockListIt it);
+  uint64_t FreeIdleChunks();
+  bool IsRangeEntirelyFree(uint8_t* base, size_t size) const;
+  void SplitAndRemoveRange(uint8_t* base, size_t size);
 
   // Best-fit V2 only grows from the fixed-handle CUDA VMM provider. This
   // keeps the layer boundary explicit: the bottom allocator owns allocation

@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <iterator>
 
+#include "glog/logging.h"
 #include "paddle/phi/core/enforce.h"
 namespace paddle {
 namespace memory {
@@ -332,6 +333,137 @@ void VMMAutoGrowthBestFitAllocatorV2::TryMerge(BlockListIt it) {
   }
 
   InsertFreeBlock(it);
+}
+
+// ---------------------------------------------------------------------------
+// ReleaseImpl / FreeIdleChunks – release underlying allocations whose entire
+// VA range is covered by FREE blocks back to the CUDA VMM driver.
+//
+// Because TryMerge may have merged FREE blocks across allocation boundaries,
+// we must split the spanning block at the allocation edges before removing
+// the inner portion and freeing the allocation.
+// ---------------------------------------------------------------------------
+
+uint64_t VMMAutoGrowthBestFitAllocatorV2::ReleaseImpl(
+    const Place& place UNUSED) {
+  std::lock_guard<SpinLock> guard(spinlock_);
+  return FreeIdleChunks();
+}
+
+uint64_t VMMAutoGrowthBestFitAllocatorV2::FreeIdleChunks() {
+  uint64_t released = 0;
+
+  for (auto alloc_it = underlying_allocations_.begin();
+       alloc_it != underlying_allocations_.end();) {
+    auto* base = reinterpret_cast<uint8_t*>((*alloc_it)->ptr());
+    const size_t alloc_size = (*alloc_it)->size();
+
+    if (!IsRangeEntirelyFree(base, alloc_size)) {
+      ++alloc_it;
+      continue;
+    }
+
+    SplitAndRemoveRange(base, alloc_size);
+    released += alloc_size;
+    VLOG(5) << "VMM V2 pool " << static_cast<int>(pool_type_)
+            << " released idle chunk: " << alloc_size << " bytes";
+    // Erasing the DecoratedAllocationPtr triggers its deleter, which calls
+    // CUDAVirtualMemAllocatorV2::FreeImpl → cuMemUnmap + cuMemRelease.
+    alloc_it = underlying_allocations_.erase(alloc_it);
+  }
+
+  return released;
+}
+
+bool VMMAutoGrowthBestFitAllocatorV2::IsRangeEntirelyFree(uint8_t* base,
+                                                          size_t size) const {
+  auto* end = base + size;
+  size_t covered = 0;
+  for (const auto& block : all_blocks_) {
+    auto* bptr = reinterpret_cast<uint8_t*>(block.ptr_);
+    auto* bend = bptr + block.size_;
+    if (bend <= base) continue;
+    if (bptr >= end) break;
+    if (block.type_ != BlockType::kFree) return false;
+    covered += static_cast<size_t>(std::min(bend, end) - std::max(bptr, base));
+  }
+  return covered == size;
+}
+
+void VMMAutoGrowthBestFitAllocatorV2::SplitAndRemoveRange(uint8_t* base,
+                                                          size_t size) {
+  auto* end = base + size;
+
+  for (auto it = all_blocks_.begin(); it != all_blocks_.end();) {
+    auto* bptr = reinterpret_cast<uint8_t*>(it->ptr_);
+    auto* bend = bptr + it->size_;
+
+    if (bend <= base) {
+      ++it;
+      continue;
+    }
+    if (bptr >= end) break;
+
+    // Case 1: block entirely within [base, end) → remove it.
+    if (bptr >= base && bend <= end) {
+      EraseFreeBlock(it);
+      it = all_blocks_.erase(it);
+      continue;
+    }
+
+    // Case 2: block straddles left boundary only → keep left remnant.
+    if (bptr < base && bend <= end) {
+      const size_t keep = static_cast<size_t>(base - bptr);
+      EraseFreeBlock(it);
+      it->parts_ = SlicePartsForRange(it->parts_, 0, keep);
+      it->size_ = keep;
+      InsertFreeBlock(it);
+      ++it;
+      continue;
+    }
+
+    // Case 3: block straddles right boundary only → keep right remnant.
+    if (bptr >= base && bend > end) {
+      const size_t trim = static_cast<size_t>(end - bptr);
+      const size_t keep = it->size_ - trim;
+      EraseFreeBlock(it);
+      it->parts_ = SlicePartsForRange(it->parts_, trim, keep);
+      it->ptr_ = end;
+      it->size_ = keep;
+      InsertFreeBlock(it);
+      break;  // nothing more in range
+    }
+
+    // Case 4: block fully encompasses [base, end) → split into two.
+    if (bptr < base && bend > end) {
+      const auto orig_parts = it->parts_;
+      const size_t left_size = static_cast<size_t>(base - bptr);
+      const size_t right_offset = static_cast<size_t>(end - bptr);
+      const size_t right_size = it->size_ - right_offset;
+
+      EraseFreeBlock(it);
+      it->parts_ = SlicePartsForRange(orig_parts, 0, left_size);
+      it->size_ = left_size;
+      InsertFreeBlock(it);
+
+      BlockV2 right;
+      right.ptr_ = end;
+      right.size_ = right_size;
+      right.type_ = BlockType::kFree;
+      right.parts_ = SlicePartsForRange(orig_parts, right_offset, right_size);
+      right.pool_type_ = it->pool_type_;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      right.owning_stream_ = nullptr;
+      right.last_use_stream_ = it->last_use_stream_;
+      right.remap_safe_event_ = it->remap_safe_event_;
+#endif
+      auto right_it = all_blocks_.insert(std::next(it), std::move(right));
+      InsertFreeBlock(right_it);
+      break;  // done
+    }
+
+    ++it;
+  }
 }
 
 }  // namespace allocation

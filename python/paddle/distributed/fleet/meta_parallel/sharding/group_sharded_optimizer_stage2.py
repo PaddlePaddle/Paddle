@@ -458,6 +458,8 @@ class GroupShardedOptimizerStage2(Optimizer):
             if dtype not in self.param_storages.keys():
                 self.param_storages[dtype] = {}
 
+            # Phase 1: stage all params to CPU, free GPU originals
+            pending_storages = []
             for dst_rank, params in enumerate(per_rank_params):
                 if len(params) > 0:
                     # Merge all the trainable params in a single InternalStorage
@@ -474,9 +476,36 @@ class GroupShardedOptimizerStage2(Optimizer):
                         )
 
                         param_storage.add_rank_params(
-                            trainable_params, self._param2align
+                            trainable_params,
+                            self._param2align,
+                            defer_gpu_transfer=True,
                         )
                         self.param_storages[dtype][dst_rank] = param_storage
+                        pending_storages.append(param_storage)
+
+            # Phase 2: allocate ONE contiguous GPU buffer for all
+            # ranks, then slice to each ParamStorage. This avoids
+            # per-buffer 128MB handle rounding in the VMM Stable pool.
+            paddle.device.cuda.empty_cache()
+            if pending_storages and self._default_device == "gpu":
+                total_numel = sum(ps.buffer._numel() for ps in pending_storages)
+                fused_gpu = framework.create_fused_param_buffer(
+                    [total_numel], dtype
+                )
+                offset = 0
+                for ps in pending_storages:
+                    n = ps.buffer._numel()
+                    gpu_slice = fused_gpu._slice(offset, offset + n)
+                    ps.finalize_with_gpu_slice(gpu_slice)
+                    offset += n
+                # Keep a reference to the fused buffer so it is not
+                # garbage-collected while the slices are still in use.
+                if not hasattr(self, '_fused_param_buffers'):
+                    self._fused_param_buffers = []
+                self._fused_param_buffers.append(fused_gpu)
+            else:
+                for ps in pending_storages:
+                    ps.finalize_gpu_transfer()
 
         # Clear the InternalStorage keys which are not in use anymore
         dtype_in_use = list(self.dtype_rank_params.keys())
