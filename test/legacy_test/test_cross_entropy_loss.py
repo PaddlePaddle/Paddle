@@ -2825,6 +2825,144 @@ class CrossEntropyLossCompatible(unittest.TestCase):
             expected = paddle.unsqueeze(expected, axis=-1)
         return expected.numpy()
 
+    def _run_cross_entropy_dy_static(
+        self,
+        input_np,
+        label_np,
+        reduction='mean',
+        weight_np=None,
+        soft_label=False,
+        label_smoothing=0.0,
+    ):
+        paddle.disable_static()
+        dy_ret = paddle.nn.functional.cross_entropy(
+            paddle.to_tensor(input_np),
+            paddle.to_tensor(label_np),
+            weight=(
+                paddle.to_tensor(weight_np) if weight_np is not None else None
+            ),
+            reduction=reduction,
+            soft_label=soft_label,
+            label_smoothing=label_smoothing,
+        )
+        dy_np = dy_ret.numpy()
+
+        paddle.enable_static()
+        prog = base.Program()
+        startup_prog = base.Program()
+        place = get_device_place()
+        with base.program_guard(prog, startup_prog):
+            input = paddle.static.data(
+                name='input', shape=input_np.shape, dtype=str(input_np.dtype)
+            )
+            label = paddle.static.data(
+                name='label', shape=label_np.shape, dtype=str(label_np.dtype)
+            )
+            weight = (
+                paddle.static.data(
+                    name='weight',
+                    shape=weight_np.shape,
+                    dtype=str(weight_np.dtype),
+                )
+                if weight_np is not None
+                else None
+            )
+            ret = paddle.nn.functional.cross_entropy(
+                input,
+                label,
+                weight=weight,
+                reduction=reduction,
+                soft_label=soft_label,
+                label_smoothing=label_smoothing,
+            )
+            exe = base.Executor(place)
+            feed = {'input': input_np, 'label': label_np}
+            if weight_np is not None:
+                feed['weight'] = weight_np
+            static_np = exe.run(prog, feed=feed, fetch_list=[ret])[0]
+        paddle.disable_static()
+        return dy_np, static_np
+
+    def _expected_soft_label_compatible(
+        self, input_np, label_np, reduction='mean', weight_np=None
+    ):
+        log_prob = log_softmax(input_np, axis=-1)
+        loss = -(label_np * log_prob).sum(axis=-1)
+        if weight_np is not None:
+            weight_view = weight_np.reshape([1] * (label_np.ndim - 1) + [-1])
+            loss_weight = (label_np * weight_view).sum(axis=-1)
+            loss = loss * loss_weight
+
+        if reduction == 'none':
+            return np.expand_dims(loss, axis=-1)
+        if reduction == 'sum':
+            return np.sum(loss)
+        if weight_np is not None:
+            total_weight = np.sum(loss_weight)
+            return (
+                np.sum(loss) / total_weight
+                if total_weight != 0
+                else np.sum(loss)
+            )
+        return np.mean(loss)
+
+    def _expected_label_smoothing_compatible(
+        self,
+        input_np,
+        label_np,
+        reduction='mean',
+        weight_np=None,
+        ignore_index=-100,
+        label_smoothing=0.0,
+    ):
+        hard_label = (
+            np.squeeze(label_np, axis=-1)
+            if label_np.ndim == input_np.ndim
+            else label_np
+        )
+        log_prob = log_softmax(input_np, axis=-1)
+        n_classes = input_np.shape[-1]
+        ignore_mask = hard_label == ignore_index
+        nll_loss = np.zeros_like(hard_label, dtype=np.float64)
+        if np.any(~ignore_mask):
+            valid_log_prob = log_prob[~ignore_mask]
+            valid_label = hard_label[~ignore_mask].astype(np.int64)
+            nll_loss[~ignore_mask] = -valid_log_prob[
+                np.arange(valid_label.shape[0]), valid_label
+            ]
+
+        if weight_np is not None:
+            target_weight = np.zeros_like(nll_loss, dtype=np.float64)
+            target_weight[~ignore_mask] = weight_np[
+                hard_label[~ignore_mask].astype(np.int64)
+            ]
+            nll_loss *= target_weight
+            smooth_loss = -(
+                log_prob * weight_np.reshape([1] * (input_np.ndim - 1) + [-1])
+            ).sum(axis=-1)
+        else:
+            target_weight = None
+            smooth_loss = -log_prob.sum(axis=-1)
+        smooth_loss[ignore_mask] = 0.0
+
+        def _reduce(value):
+            if reduction == 'none':
+                return value
+            if reduction == 'sum':
+                return np.sum(value)
+            if target_weight is not None:
+                denom = np.sum(target_weight)
+            else:
+                denom = np.sum(~ignore_mask)
+            return np.sum(value) / denom if denom != 0 else np.sum(value)
+
+        loss = (1.0 - label_smoothing) * _reduce(nll_loss) + (
+            label_smoothing / n_classes
+        ) * _reduce(smooth_loss)
+        if reduction == 'none' and label_np.ndim == input_np.ndim:
+            loss = np.expand_dims(loss, axis=-1)
+        return loss
+
     def test_compatible_mean_and_sum(self):
         """Covers basic path: mean/sum reduction with float64."""
         N, C = 8, 5
@@ -2961,6 +3099,79 @@ class CrossEntropyLossCompatible(unittest.TestCase):
             input_np, label_np, reduction='none'
         )
         np.testing.assert_allclose(dy_ret.numpy(), expected, rtol=1e-05)
+
+    def test_compatible_soft_label_weight_mean(self):
+        """Covers soft-label weighted mean decomposition in dygraph/static."""
+        np.random.seed(1)
+        N, C = 6, 5
+        input_np = np.random.uniform(0.1, 1.0, [N, C]).astype('float64')
+        label_np = np.random.uniform(0.1, 1.0, [N, C]).astype('float64')
+        label_np /= np.sum(label_np, axis=-1, keepdims=True)
+        weight_np = np.random.uniform(0.1, 1.0, [C]).astype('float64')
+
+        dy_np, static_np = self._run_cross_entropy_dy_static(
+            input_np,
+            label_np,
+            reduction='mean',
+            weight_np=weight_np,
+            soft_label=True,
+        )
+        expected = self._expected_soft_label_compatible(
+            input_np, label_np, reduction='mean', weight_np=weight_np
+        )
+        np.testing.assert_allclose(dy_np, expected, rtol=1e-07, atol=0.0)
+        np.testing.assert_allclose(static_np, expected, rtol=1e-07, atol=0.0)
+
+    def test_compatible_soft_label_weight_rank3_none(self):
+        """Covers rank>2 soft-label weighted none reduction with trailing axis."""
+        np.random.seed(2)
+        B, S, C = 4, 3, 5
+        input_np = np.random.uniform(0.1, 1.0, [B, S, C]).astype('float64')
+        label_np = np.random.uniform(0.1, 1.0, [B, S, C]).astype('float64')
+        label_np /= np.sum(label_np, axis=-1, keepdims=True)
+        weight_np = np.random.uniform(0.1, 1.0, [C]).astype('float64')
+
+        dy_np, static_np = self._run_cross_entropy_dy_static(
+            input_np,
+            label_np,
+            reduction='none',
+            weight_np=weight_np,
+            soft_label=True,
+        )
+        self.assertEqual(list(dy_np.shape), [B, S, 1])
+        self.assertEqual(list(static_np.shape), [B, S, 1])
+        expected = self._expected_soft_label_compatible(
+            input_np, label_np, reduction='none', weight_np=weight_np
+        )
+        np.testing.assert_allclose(dy_np, expected, rtol=1e-07, atol=0.0)
+        np.testing.assert_allclose(static_np, expected, rtol=1e-07, atol=0.0)
+
+    def test_compatible_label_smoothing_weight_mean(self):
+        """Covers hard-label label_smoothing weighted mean decomposition."""
+        np.random.seed(3)
+        N, C = 7, 4
+        input_np = np.random.uniform(0.1, 1.0, [N, C]).astype('float64')
+        label_np = np.random.randint(0, C, size=(N,)).astype(np.int64)
+        weight_np = np.random.uniform(0.1, 1.0, [C]).astype('float64')
+        label_smoothing = 0.2
+
+        dy_np, static_np = self._run_cross_entropy_dy_static(
+            input_np,
+            label_np,
+            reduction='mean',
+            weight_np=weight_np,
+            soft_label=False,
+            label_smoothing=label_smoothing,
+        )
+        expected = self._expected_label_smoothing_compatible(
+            input_np,
+            label_np,
+            reduction='mean',
+            weight_np=weight_np,
+            label_smoothing=label_smoothing,
+        )
+        np.testing.assert_allclose(dy_np, expected, rtol=1e-07, atol=0.0)
+        np.testing.assert_allclose(static_np, expected, rtol=1e-07, atol=0.0)
 
 
 if __name__ == "__main__":
