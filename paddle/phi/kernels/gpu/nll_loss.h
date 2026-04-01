@@ -320,8 +320,6 @@ __global__ void GPUNLLLossForward2D_with_reduce(T* out_data,
   int64_t i;
   AccT input_sum = 0;
   AccT acc_weight = 0;
-  *out_data = 0;
-  *total_weight_data = 0;
 
   int64_t sample = static_cast<int64_t>(blockIdx.x) / blocks_per_sample;
   int64_t toffset = sample * map_nelem;

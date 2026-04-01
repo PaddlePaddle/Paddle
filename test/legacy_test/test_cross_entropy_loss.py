@@ -2781,8 +2781,8 @@ class CrossEntropyLossCompatible(unittest.TestCase):
       - weight passthrough
       - float16 dtype promotion + weight cast + cast-back (GPU only)
       - label squeeze (shape [N,1])
-      - 3D input reshape
-      - reduction='none' with reshape-back and unsqueeze
+      - rank>2 axis-last permutation to class-first
+      - reduction='none' output restoration with trailing singleton labels
     """
 
     def setUp(self):
@@ -2793,6 +2793,37 @@ class CrossEntropyLossCompatible(unittest.TestCase):
 
     def tearDown(self):
         paddle.set_flags({'FLAGS_use_accuracy_compatible_kernel': False})
+
+    def _expected_rank_gt_2_compatible(
+        self,
+        input_np,
+        label_np,
+        reduction='mean',
+        weight_np=None,
+        ignore_index=-100,
+    ):
+        input_tensor = paddle.to_tensor(input_np)
+        label_tensor = paddle.to_tensor(label_np)
+        nll_label = label_tensor
+        if nll_label.ndim > 1 and nll_label.shape[-1] == 1:
+            nll_label = paddle.squeeze(nll_label, axis=-1)
+        perm = [0, input_tensor.ndim - 1, *range(1, input_tensor.ndim - 1)]
+        log_softmax_out = paddle.nn.functional.log_softmax(
+            paddle.transpose(input_tensor, perm=perm), axis=1
+        )
+        weight_tensor = (
+            paddle.to_tensor(weight_np) if weight_np is not None else None
+        )
+        expected = paddle.nn.functional.nll_loss(
+            log_softmax_out,
+            paddle.cast(nll_label, 'int64'),
+            weight=weight_tensor,
+            ignore_index=ignore_index,
+            reduction=reduction,
+        )
+        if reduction == 'none' and label_tensor.ndim == input_tensor.ndim:
+            expected = paddle.unsqueeze(expected, axis=-1)
+        return expected.numpy()
 
     def test_compatible_mean_and_sum(self):
         """Covers basic path: mean/sum reduction with float64."""
@@ -2875,11 +2906,11 @@ class CrossEntropyLossCompatible(unittest.TestCase):
         )[0]
         np.testing.assert_allclose(dy_ret.numpy(), expected, rtol=1e-05)
 
-    def test_compatible_3d_reshape(self):
-        """Covers 3D input reshape branch."""
-        B, S, C = 2, 3, 5
+    def test_compatible_rank3_mean_matches_pytorch_layout(self):
+        """Covers rank>2 mean reduction via class-first compatible routing."""
+        B, S, C = 8, 109, 50
         np.random.seed(0)
-        input_np = np.random.random([B, S, C]).astype(self.dtype)
+        input_np = np.random.random([B, S, C]).astype('float32')
         label_np = np.random.randint(0, C, size=(B, S)).astype(np.int64)
 
         paddle.disable_static()
@@ -2888,18 +2919,16 @@ class CrossEntropyLossCompatible(unittest.TestCase):
             paddle.to_tensor(label_np),
             reduction='mean',
         )
-        input_2d = input_np.reshape(-1, C)
-        label_1d = label_np.reshape(-1)
-        expected = cross_entropy_loss_1d(input_2d, label_1d, reduction='mean')[
-            0
-        ]
+        expected = self._expected_rank_gt_2_compatible(
+            input_np, label_np, reduction='mean'
+        )
         np.testing.assert_allclose(dy_ret.numpy(), expected, rtol=1e-05)
 
-    def test_compatible_none_reduction_3d(self):
-        """Covers reduction='none' + 3D reshape-back branch."""
-        B, S, C = 2, 3, 5
+    def test_compatible_rank3_none_matches_pytorch_layout(self):
+        """Covers rank>2 reduction='none' via class-first compatible routing."""
+        B, S, C = 100, 4, 17
         np.random.seed(0)
-        input_np = np.random.random([B, S, C]).astype(self.dtype)
+        input_np = np.random.random([B, S, C]).astype('float32')
         label_np = np.random.randint(0, C, size=(B, S)).astype(np.int64)
 
         paddle.disable_static()
@@ -2909,19 +2938,17 @@ class CrossEntropyLossCompatible(unittest.TestCase):
             reduction='none',
         )
         self.assertEqual(list(dy_ret.shape), [B, S])
-        input_2d = input_np.reshape(-1, C)
-        label_1d = label_np.reshape(-1)
-        expected = cross_entropy_loss_1d(
-            input_2d, label_1d, reduction='none'
-        ).reshape(B, S)
+        expected = self._expected_rank_gt_2_compatible(
+            input_np, label_np, reduction='none'
+        )
         np.testing.assert_allclose(dy_ret.numpy(), expected, rtol=1e-05)
 
-    def test_compatible_none_reduction_unsqueeze(self):
-        """Covers reduction='none' + unsqueeze when input_dims==label_dims."""
-        N, C = 8, 5
+    def test_compatible_rank3_none_trailing_label_dim(self):
+        """Covers reduction='none' output restoration for trailing-1 labels."""
+        B, S, C = 7, 13, 11
         np.random.seed(0)
-        input_np = np.random.random([N, C]).astype(self.dtype)
-        label_np = np.random.randint(0, C, size=(N, 1)).astype(np.int64)
+        input_np = np.random.random([B, S, C]).astype('float32')
+        label_np = np.random.randint(0, C, size=(B, S, 1)).astype(np.int64)
 
         paddle.disable_static()
         dy_ret = paddle.nn.functional.cross_entropy(
@@ -2929,8 +2956,11 @@ class CrossEntropyLossCompatible(unittest.TestCase):
             paddle.to_tensor(label_np),
             reduction='none',
         )
-        # When input_dims == label_dims, output should keep trailing 1
-        self.assertEqual(list(dy_ret.shape), [N, 1])
+        self.assertEqual(list(dy_ret.shape), [B, S, 1])
+        expected = self._expected_rank_gt_2_compatible(
+            input_np, label_np, reduction='none'
+        )
+        np.testing.assert_allclose(dy_ret.numpy(), expected, rtol=1e-05)
 
 
 if __name__ == "__main__":

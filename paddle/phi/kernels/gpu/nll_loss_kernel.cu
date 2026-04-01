@@ -39,11 +39,6 @@ void NllLossRawKernel(const Context& dev_ctx,
   auto total_weight_data = dev_ctx.template Alloc<T>(total_weight);
   auto label_data = label.data<int64_t>();
   auto weight_data = weight.get_ptr() ? weight.get_ptr()->data<T>() : nullptr;
-#ifdef PADDLE_WITH_HIP
-  hipMemset(total_weight_data, 0, sizeof(T));
-#else
-  cudaMemset(total_weight_data, 0, sizeof(T));
-#endif
   auto x_dims = x->dims();
   auto batch_size = x_dims[0];
   auto n_classes = x_dims[1];
@@ -53,6 +48,11 @@ void NllLossRawKernel(const Context& dev_ctx,
     int64_t blocks = NumBlocks(batch_size);
     int threads = kNumCUDAThreads;
     if (reduction == "none") {
+#ifdef PADDLE_WITH_HIP
+      hipMemsetAsync(total_weight_data, 0, sizeof(T), dev_ctx.stream());
+#else
+      cudaMemsetAsync(total_weight_data, 0, sizeof(T), dev_ctx.stream());
+#endif
       GPUNLLLossForward1D_no_reduce<T>
           <<<blocks, threads, 0, dev_ctx.stream()>>>(out_data,
                                                      x_data,
@@ -96,6 +96,11 @@ void NllLossRawKernel(const Context& dev_ctx,
     int64_t blocks = NumBlocks(out_numel);
     int threads = kNumCUDAThreads;
     if (reduction == "none") {
+#ifdef PADDLE_WITH_HIP
+      hipMemsetAsync(total_weight_data, 0, sizeof(T), dev_ctx.stream());
+#else
+      cudaMemsetAsync(total_weight_data, 0, sizeof(T), dev_ctx.stream());
+#endif
       GPUNLLLossForward2D_no_reduce<T>
           <<<blocks, threads, 0, dev_ctx.stream()>>>(out_data,
                                                      x_data,
@@ -110,6 +115,13 @@ void NllLossRawKernel(const Context& dev_ctx,
       int blocks_per_sample = NumBlocks(map_size) / 128;
       blocks_per_sample = (blocks_per_sample == 0) ? 1 : blocks_per_sample;
       int64_t total_blocks = blocks_per_sample * batch_size;
+#ifdef PADDLE_WITH_HIP
+      hipMemsetAsync(out_data, 0, sizeof(T), dev_ctx.stream());
+      hipMemsetAsync(total_weight_data, 0, sizeof(T), dev_ctx.stream());
+#else
+      cudaMemsetAsync(out_data, 0, sizeof(T), dev_ctx.stream());
+      cudaMemsetAsync(total_weight_data, 0, sizeof(T), dev_ctx.stream());
+#endif
       GPUNLLLossForward2D_with_reduce<T, AccT>
           <<<total_blocks, threads, 0, dev_ctx.stream()>>>(out_data,
                                                            total_weight_data,
