@@ -50,6 +50,7 @@ limitations under the License. */
 #include "paddle/phi/api/include/tensor_operants.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
+#include "paddle/fluid/pybind/eager.h"
 
 COMMON_DECLARE_string(tensor_operants_mode);
 COMMON_DECLARE_bool(enable_pir_in_executor);
@@ -1325,6 +1326,10 @@ LoadOpMetaInfoAndRegisterOp(const std::string& dso_name) {
   auto diff_map = RegisterOperatorWithMetaInfoMap(op_meta_info_map, handle);
   for (auto& pair : diff_map) {
     VLOG(3) << "diff op name: " << pair.first;
+  }
+  // Populate global ParsedOpMeta cache (no Python dependency)
+  if (!diff_map.empty()) {
+    paddle::pybind::RegisterParsedOpMetaCache(diff_map);
   }
   // return op_meta_info_map.GetMap();
   return diff_map;
