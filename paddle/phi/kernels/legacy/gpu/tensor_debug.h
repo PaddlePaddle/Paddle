@@ -16,6 +16,7 @@
 
 #include <cuda_runtime.h>
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
@@ -25,6 +26,7 @@ namespace phi {
 // operations on that stream.  Output is flushed via cudaStreamSynchronize
 // before this function returns.
 // Only GPU DenseTensors are supported.
-void DebugPrintGPUTensor(const phi::DenseTensor& tensor, cudaStream_t stream);
+PADDLE_API void DebugPrintGPUTensor(const phi::DenseTensor& tensor,
+                                    cudaStream_t stream);
 
 }  // namespace phi
