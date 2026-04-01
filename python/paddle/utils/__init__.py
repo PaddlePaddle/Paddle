@@ -26,6 +26,7 @@ from .bwd_graph_utils import capture_backward_subgraph_guard  # noqa: F401
 from .deprecated import deprecated
 from .environments import strtobool as strtobool
 from .fwd_graph_utils import capture_forward_subgraph_guard  # noqa: F401
+from .gpu_utils import _print_tensor_in_gpu
 from .install_check import run_check
 from .layers_utils import (  # noqa: F401
     _contain_var,
@@ -58,7 +59,13 @@ from .layers_utils import (  # noqa: F401
 from .lazy_import import try_import
 from .op_version import OpLastCheckpointChecker  # noqa: F401
 
-__all__ = ['deprecated', 'run_check', 'require_version', 'try_import']
+__all__ = [
+    'deprecated',
+    'run_check',
+    'require_version',
+    'try_import',
+    '_print_tensor_in_gpu',
+]
 
 
 def __getattr__(name):
