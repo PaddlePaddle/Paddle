@@ -2806,8 +2806,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
       bool asvector = PADDLE_GET_CONST(bool, desc.GetAttr("asvector"));
       int axis = PADDLE_GET_CONST(int, desc.GetAttr("axis"));
-      float porder = PADDLE_GET_CONST(float, desc.GetAttr("porder"));
-      if (asvector || porder != 2.0f || axis != -1) {
+      double porder = PADDLE_GET_CONST(double, desc.GetAttr("porder"));
+      if (asvector || porder != 2.0 || axis != -1) {
         VLOG(3) << op_type
                 << " op only support asvector=False, porder=2, axis = -1.";
         return false;
