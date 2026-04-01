@@ -27,6 +27,10 @@
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 
+#include "paddle/common/flags.h"
+
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
+
 namespace phi {
 
 template <typename T>
@@ -121,7 +125,8 @@ void LogsumexpKernel(const Context& dev_ctx,
   auto outdim = make_ddim(outdim_vec);
 
   // Warp kernel: optimized single-kernel path for small reduction sizes.
-  if (compute_size <= 1024) {
+  // Skipped when flag is ON because warp kernel precision differs from PyTorch.
+  if (compute_size <= 1024 && !FLAGS_use_accuracy_compatible_kernel) {
     if (perm.size() != xdim.size())
       perm.insert(perm.end(), axis_vec.begin(), axis_vec.end());
     for (auto i : axis_vec) transpose_shape.push_back(xdim[i]);
