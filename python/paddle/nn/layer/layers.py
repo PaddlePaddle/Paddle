@@ -158,11 +158,11 @@ def _addindent(string, indent):
 def _parse_to_args(*args, **kwargs):
     """Parse arguments for .to(), shared by Tensor.to and Layer.to.
 
-    Three calling conventions::
+    Calling conventions::
 
-        to(device=None, dtype=None, blocking=True, *, non_blocking=False)
-        to(dtype, blocking=True, *, non_blocking=False)
-        to(tensor, blocking=True, *, non_blocking=False)
+        to(device=None, dtype=None, blocking=True, copy=False, *, non_blocking=False)
+        to(dtype, blocking=True, copy=False, *, non_blocking=False)
+        to(tensor, blocking=True, copy=False, *, non_blocking=False)
 
     Returns:
         tuple: (device, dtype, blocking, copy)
@@ -182,8 +182,8 @@ def _parse_to_args(*args, **kwargs):
         'bool',
     }
 
-    # Extract keyword-only parameters
-    non_blocking = kwargs.pop('non_blocking', False)
+    # Extract keyword-only parameter
+    non_blocking = kwargs.pop('non_blocking', None)
     copy = kwargs.pop('copy', False)
 
     device = None
@@ -193,12 +193,12 @@ def _parse_to_args(*args, **kwargs):
     size_args = len(args)
     size_kwargs = len(kwargs)
 
-    if size_args + size_kwargs > 3:
+    if size_args + size_kwargs > 4:
         raise TypeError(
             "to() received too many arguments - expected one of:\n"
             "  to(device=None, dtype=None, blocking=True, *, non_blocking=False)\n"
             "  to(dtype, blocking=True, *, non_blocking=False)\n"
-            "  to(tensor, blocking=True, *, non_blocking=False)"
+            "  to(tensor, blocking=True, copy=False, *, non_blocking=False)"
         )
 
     valid_keys = {'device', 'dtype', 'blocking', 'other', 'tensor'}
@@ -213,25 +213,38 @@ def _parse_to_args(*args, **kwargs):
     if size_args > 0:
         first = args[0]
         if isinstance(first, paddle.Tensor):
-            # to(tensor, blocking=True)
+            # to(tensor, blocking=True, copy=False)
             device = first.place
             dtype = first.dtype
-            blocking = args[1] if size_args > 1 else kwargs.get('blocking')
+            if size_args == 2:
+                blocking = args[1]
+            elif size_args == 3:
+                blocking, copy = args[1], args[2]
+            else:
+                blocking = kwargs.get('blocking')
         elif isinstance(first, (core.DataType, VarDesc.VarType, np.dtype)) or (
             isinstance(first, str) and first.lower() in valid_dtypes
         ):
-            # to(dtype, blocking=True)
+            # to(dtype, blocking=True, copy=False)
             dtype = first
-            blocking = args[1] if size_args > 1 else kwargs.get('blocking')
-        elif first is None or isinstance(first, (str, core.Place)):
-            # to(device, dtype=None, blocking=True)
-            device = first
-            if size_args == 2:
-                dtype = args[1]
-            elif size_args == 3:
-                dtype, blocking = args[1], args[2]
+            if size_args >= 2:
+                blocking = args[1]
             else:
+                blocking = kwargs.get('blocking')
+            if size_args >= 3:
+                copy = args[2]
+        elif first is None or isinstance(first, (str, core.Place)):
+            # to(device, dtype=None, blocking=True, copy=False)
+            device = first
+            if size_args >= 2:
+                dtype = args[1]
+            if size_args >= 3:
+                blocking = args[2]
+            if size_args >= 4:
+                copy = args[3]
+            if size_args < 2:
                 dtype = kwargs.get('dtype')
+            if size_args < 3:
                 blocking = kwargs.get('blocking')
         else:
             raise ValueError(
@@ -240,29 +253,40 @@ def _parse_to_args(*args, **kwargs):
                 f"but got {type(first).__name__}"
             )
     else:
-        device = kwargs.get('device')
-        dtype = kwargs.get('dtype')
-        blocking = kwargs.get('blocking')
         tensor_arg = kwargs.get('other')
         if tensor_arg is None:
             tensor_arg = kwargs.get('tensor')
         if tensor_arg is not None:
             device = tensor_arg.place
             dtype = tensor_arg.dtype
+            blocking = kwargs.get('blocking')
+        else:
+            device = kwargs.get('device')
+            dtype = kwargs.get('dtype')
+            blocking = kwargs.get('blocking')
 
     # Validate blocking / non_blocking types
     if blocking is not None:
         assert isinstance(blocking, bool), (
             "blocking value error, must be the True, False or None"
         )
-    assert isinstance(non_blocking, bool), (
-        "non_blocking value error, must be the True, False or None"
-    )
+    if non_blocking is not None:
+        assert isinstance(non_blocking, bool), (
+            "non_blocking value error, must be the True or False"
+        )
 
-    # Resolve blocking: only block when both defaults are kept
-    if blocking is None:
+    # blocking and non_blocking cannot both be explicitly set
+    if blocking is not None and non_blocking is not None:
+        raise TypeError(
+            "to() received both 'blocking' and 'non_blocking' arguments. "
+            "These are mutually exclusive, please use only one of them."
+        )
+
+    # Resolve blocking
+    if non_blocking is not None:
+        blocking = not non_blocking
+    elif blocking is None:
         blocking = True
-    blocking = False if not blocking or non_blocking else True
 
     return device, dtype, blocking, copy
 
@@ -2961,48 +2985,43 @@ class Layer:
         '''
         Move and/or cast the parameters and buffers.
 
-        This can be called as:
+        This API has three calling conventions:
 
-        .. function:: to(device=None, dtype=None, blocking=True, *, non_blocking=False)
-           :noindex:
+        1. ``to(device=None, dtype=None, blocking=True, *, non_blocking=False)``:
+            Moves and/or casts the parameters and buffers.
 
-        .. function:: to(dtype, blocking=True, *, non_blocking=False)
-           :noindex:
+        2. ``to(dtype, blocking=True, *, non_blocking=False)``:
+            Equivalent to ``self.to(device=None, dtype=dtype, ...)``.
 
-        .. function:: to(tensor, blocking=True, *, non_blocking=False)
-           :noindex:
-
-        Its signature is similar to :meth:`paddle.Tensor.to`, but only accepts
-        device and/or dtype as arguments. When ``dtype`` is provided, all
-        parameters and buffers are cast to ``dtype``.
+        3. ``to(tensor, blocking=True, *, non_blocking=False)``:
+            Equivalent to ``self.to(device=tensor.place, dtype=tensor.dtype, ...)``.
 
         .. note::
             This method modifies the layer in-place.
 
-        Parameters:
+        Args:
             device (str|paddle.CPUPlace()|paddle.CUDAPlace()|paddle.CUDAPinnedPlace()|paddle.XPUPlace()|None, optional):
                 The device of the Layer which want to be stored.
                 If None, the device is the same with the original Tensor.
                 If device is string, it can be ``cpu``, ``gpu:x`` and ``xpu:x``,
-                where ``x`` is the index of the GPUs or XPUs. Default: None.
-
+                where ``x`` is the index of the GPUs or XPUs. Default: ``None``.
             dtype (str|numpy.dtype|paddle.dtype|None, optional):
                 The type of the data. If None, the dtype is the same with the
-                original Tensor. Default: None.
-
+                original Tensor. Default: ``None``.
             blocking (bool, optional):
-                If False and the source is in pinned memory, the copy will be
+                If ``False`` and the source is in pinned memory, the copy will be
                 asynchronous with respect to the host. Otherwise, the argument
-                has no effect. Default: True.
-
-            non_blocking (bool, optional):
-                If True and the source is in pinned memory, the copy will be
-                asynchronous with respect to the host. Otherwise, the argument
-                has no effect. Default: False. This is a keyword-only argument.
-
+                has no effect. Default: ``True``.
             tensor (Tensor, optional):
                 Tensor whose dtype and device are the desired dtype and device
                 for all parameters and buffers in this layer.
+
+        Keyword args:
+            non_blocking (bool, optional):
+                If ``True`` and the source is in pinned memory, the copy will be
+                asynchronous with respect to the host. Default: ``False``.
+                ``non_blocking`` and ``blocking`` are mutually exclusive
+                and cannot both be set at the same time.
 
         Returns:
             self

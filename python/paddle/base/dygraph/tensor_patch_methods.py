@@ -724,6 +724,7 @@ def monkey_patch_tensor():
         device: PlaceLike,
         dtype: DTypeLike | None = ...,
         blocking: bool = ...,
+        copy: bool = ...,
         *,
         non_blocking: bool = ...,
     ) -> Tensor: ...
@@ -733,6 +734,7 @@ def monkey_patch_tensor():
         self: Tensor,
         dtype: DTypeLike,
         blocking: bool = ...,
+        copy: bool = ...,
         *,
         non_blocking: bool = ...,
     ) -> Tensor: ...
@@ -742,6 +744,7 @@ def monkey_patch_tensor():
         self: Tensor,
         other: Tensor,
         blocking: bool = ...,
+        copy: bool = ...,
         *,
         non_blocking: bool = ...,
     ) -> Tensor: ...
@@ -752,40 +755,42 @@ def monkey_patch_tensor():
         Performs Tensor dtype and/or device conversion. A paddle.dtype and place
         are inferred from the arguments of ``self.to(*args, **kwargs)``.
 
-        This can be called as:
+        This API has three calling conventions:
 
-        .. function:: to(device=None, dtype=None, blocking=True, *, non_blocking=False)
-           :noindex:
+        1. ``to(device=None, dtype=None, blocking=True, copy=False, *, non_blocking=False)``:
+            Moves and/or casts the Tensor.
 
-        .. function:: to(dtype, blocking=True, *, non_blocking=False)
-           :noindex:
+        2. ``to(dtype, blocking=True, copy=False, *, non_blocking=False)``:
+            Equivalent to ``self.to(device=None, dtype=dtype, ...)``.
 
-        .. function:: to(other, blocking=True, *, non_blocking=False)
-           :noindex:
+        3. ``to(other, blocking=True, copy=False, *, non_blocking=False)``:
+            Equivalent to ``self.to(device=other.place, dtype=other.dtype, ...)``.
 
         .. note::
             If the self Tensor already has the correct dtype and device,
             then self is returned. Otherwise, the returned tensor is a copy of
             self with the desired dtype and device.
 
-        Parameters:
+        Args:
             device (str|paddle.CPUPlace()|paddle.CUDAPlace()|paddle.CUDAPinnedPlace()|paddle.XPUPlace()|None, optional):
-                The device to move to. Default: None.
-
+                The device to move to. Default: ``None``.
             dtype (str|numpy.dtype|paddle.dtype|None, optional):
-                The desired data type. Default: None.
-
+                The desired data type. Default: ``None``.
             blocking (bool, optional):
-                If False and the source is in pinned memory, the copy will be
-                asynchronous with respect to the host. Default: True.
-
-            non_blocking (bool, optional):
-                If True and the source is in pinned memory, the copy will be
-                asynchronous with respect to the host. Default: False.
-                This is a keyword-only argument.
-
+                If ``False`` and the source is in pinned memory, the copy will be
+                asynchronous with respect to the host. Default: ``True``.
+            copy (bool, optional):
+                If ``True``, a new Tensor is created even when the Tensor
+                already matches the desired conversion. Default: ``False``.
             other (Tensor, optional):
                 Tensor whose dtype and device are the desired dtype and device.
+
+        Keyword args:
+            non_blocking (bool, optional):
+                If ``True`` and the source is in pinned memory, the copy will be
+                asynchronous with respect to the host. Default: ``False``.
+                ``non_blocking`` and ``blocking`` are mutually exclusive
+                and cannot both be set at the same time.
 
         Returns:
             Tensor: self

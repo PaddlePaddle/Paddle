@@ -1156,8 +1156,8 @@ class TestIsRealAPICompatibility(unittest.TestCase):
             np.testing.assert_array_equal(ref_out, out)
 
 
-class TestLayerToAPI(unittest.TestCase):
-    """Test paddle.nn.Layer.to alignment with torch.nn.Module.to."""
+class TestLayerAndTensorToAPI(unittest.TestCase):
+    """Test paddle.nn.Layer.to and paddle.Tensor.to alignment with PyTorch."""
 
     def setUp(self):
         paddle.disable_static()
@@ -1181,128 +1181,216 @@ class TestLayerToAPI(unittest.TestCase):
 
         return Model()
 
-    # ---- Positional dtype ----
+    # ---- Layer.to: Positional dtype ----
 
-    def test_positional_paddle_dtype(self):
-        """to(paddle.float64)"""
+    def test_layer_positional_paddle_dtype(self):
+        """Layer.to(paddle.float64)"""
         linear = paddle.nn.Linear(2, 2)
         ret = linear.to(paddle.float64)
         self.assertEqual(linear.weight.dtype, paddle.float64)
         self.assertEqual(linear.bias.dtype, paddle.float64)
         self.assertIs(ret, linear)
 
-    def test_positional_dtype_string(self):
-        """to('float64')"""
+    def test_layer_positional_dtype_string(self):
+        """Layer.to('float64')"""
         linear = paddle.nn.Linear(2, 2)
         linear.to('float64')
         self.assertEqual(linear.weight.dtype, paddle.float64)
 
-    def test_positional_dtype_float16(self):
-        """to(paddle.float16)"""
+    def test_layer_positional_dtype_float16(self):
+        """Layer.to(paddle.float16)"""
         linear = paddle.nn.Linear(2, 2)
         linear.to(paddle.float16)
         self.assertEqual(linear.weight.dtype, paddle.float16)
 
-    # ---- Positional tensor ----
+    # ---- Layer.to: Positional tensor ----
 
-    def test_positional_tensor(self):
-        """to(tensor) — match tensor's dtype and device"""
+    def test_layer_positional_tensor(self):
+        """Layer.to(tensor) -- match tensor's dtype and device"""
         linear = paddle.nn.Linear(2, 2)
         ref = paddle.to_tensor([1.0], dtype='float64')
         linear.to(ref)
         self.assertEqual(linear.weight.dtype, paddle.float64)
 
-    # ---- Positional device ----
+    # ---- Layer.to: Positional device ----
 
-    def test_positional_device_string(self):
-        """to('cpu')"""
+    def test_layer_positional_device_string(self):
+        """Layer.to('cpu')"""
         linear = paddle.nn.Linear(2, 2)
         linear.to('cpu')
         self.assertTrue(linear.weight.place.is_cpu_place())
 
-    def test_positional_device_and_dtype(self):
-        """to('cpu', 'float64')"""
+    def test_layer_positional_device_and_dtype(self):
+        """Layer.to('cpu', 'float64')"""
         linear = paddle.nn.Linear(2, 2)
         linear.to('cpu', 'float64')
         self.assertTrue(linear.weight.place.is_cpu_place())
         self.assertEqual(linear.weight.dtype, paddle.float64)
 
-    # ---- Keyword args (backward compat) ----
+    # ---- Layer.to: Keyword args ----
 
-    def test_keyword_device(self):
-        """to(device='cpu')"""
+    def test_layer_keyword_device(self):
+        """Layer.to(device='cpu')"""
         linear = paddle.nn.Linear(2, 2)
         linear.to(device='cpu')
         self.assertTrue(linear.weight.place.is_cpu_place())
 
-    def test_keyword_dtype(self):
-        """to(dtype='float64')"""
+    def test_layer_keyword_dtype(self):
+        """Layer.to(dtype='float64')"""
         linear = paddle.nn.Linear(2, 2)
         linear.to(dtype='float64')
         self.assertEqual(linear.weight.dtype, paddle.float64)
 
-    def test_keyword_device_and_dtype(self):
-        """to(device='cpu', dtype='float64')"""
+    def test_layer_keyword_device_and_dtype(self):
+        """Layer.to(device='cpu', dtype='float64')"""
         linear = paddle.nn.Linear(2, 2)
         linear.to(device='cpu', dtype='float64')
         self.assertTrue(linear.weight.place.is_cpu_place())
         self.assertEqual(linear.weight.dtype, paddle.float64)
 
-    def test_keyword_non_blocking(self):
-        """to(dtype='float64', non_blocking=False)"""
+    def test_layer_keyword_non_blocking(self):
+        """Layer.to(dtype='float64', non_blocking=False)"""
         linear = paddle.nn.Linear(2, 2)
         linear.to(dtype='float64', non_blocking=False)
         self.assertEqual(linear.weight.dtype, paddle.float64)
 
-    def test_keyword_blocking(self):
-        """to(device='cpu', blocking=True) — Paddle-specific kwarg"""
+    def test_layer_keyword_blocking(self):
+        """Layer.to(device='cpu', blocking=True)"""
         linear = paddle.nn.Linear(2, 2)
         linear.to(device='cpu', blocking=True)
         self.assertTrue(linear.weight.place.is_cpu_place())
 
-    # ---- No args ----
+    # ---- Layer.to: No args ----
 
-    def test_no_args(self):
-        """to() — returns self unchanged"""
+    def test_layer_no_args(self):
+        """Layer.to() -- returns self unchanged"""
         linear = paddle.nn.Linear(2, 2)
         original_dtype = linear.weight.dtype
         ret = linear.to()
         self.assertIs(ret, linear)
         self.assertEqual(linear.weight.dtype, original_dtype)
 
-    # ---- all-dtype casting (floating_only=False) ----
+    # ---- Layer.to: all-dtype casting ----
 
-    def test_cast_all_with_positional_dtype(self):
-        """to(dtype) casts ALL params and buffers, including int buffers."""
+    def test_layer_cast_all_with_positional_dtype(self):
+        """Layer.to(dtype) casts ALL params and buffers, including int buf."""
         model = self._make_model()
-        self.assertEqual(model.linear.weight.dtype, paddle.float32)
         self.assertEqual(model.int_buf.dtype, paddle.int32)
         model.to(paddle.float64)
         self.assertEqual(model.linear.weight.dtype, paddle.float64)
         self.assertEqual(model.int_buf.dtype, paddle.float64)
 
-    def test_cast_all_with_keyword_dtype(self):
-        """to(dtype='float64') casts ALL params and buffers."""
+    def test_layer_cast_all_with_keyword_dtype(self):
+        """Layer.to(dtype='float64') casts ALL params and buffers."""
         model = self._make_model()
         model.to(dtype='float64')
         self.assertEqual(model.linear.weight.dtype, paddle.float64)
         self.assertEqual(model.int_buf.dtype, paddle.float64)
 
-    def test_cast_all_with_tensor(self):
-        """to(tensor) casts ALL params and buffers."""
+    def test_layer_cast_all_with_tensor(self):
+        """Layer.to(tensor) casts ALL params and buffers."""
         model = self._make_model()
         ref = paddle.to_tensor([1.0], dtype='float64')
         model.to(ref)
         self.assertEqual(model.linear.weight.dtype, paddle.float64)
         self.assertEqual(model.int_buf.dtype, paddle.float64)
 
-    # ---- non_blocking keyword-only ----
+    # ---- Layer.to: sublayers and chaining ----
 
-    def test_non_blocking_keyword(self):
-        """to(dtype='float64', non_blocking=True) should work."""
+    def test_layer_sublayers_cast(self):
+        """Layer.to() should recurse into sublayers."""
+        model = paddle.nn.Sequential(
+            paddle.nn.Linear(3, 4), paddle.nn.Linear(4, 2)
+        )
+        model.to(paddle.float64)
+        for sub in model.sublayers():
+            if hasattr(sub, 'weight'):
+                self.assertEqual(sub.weight.dtype, paddle.float64)
+
+    def test_layer_returns_self(self):
+        """Layer.to() should return self for chaining."""
         linear = paddle.nn.Linear(2, 2)
-        linear.to(dtype='float64', non_blocking=True)
+        self.assertIs(linear.to(paddle.float64), linear)
+
+    def test_layer_sequential_to_calls(self):
+        """Multiple Layer.to() calls should work correctly."""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to(paddle.float64)
         self.assertEqual(linear.weight.dtype, paddle.float64)
+        linear.to('float32')
+        self.assertEqual(linear.weight.dtype, paddle.float32)
+
+    # ---- Tensor.to ----
+
+    def test_tensor_positional_dtype(self):
+        """Tensor.to(paddle.float64)"""
+        t = paddle.to_tensor([1.0, 2.0])
+        out = t.to(paddle.float64)
+        self.assertEqual(out.dtype, paddle.float64)
+
+    def test_tensor_positional_dtype_string(self):
+        """Tensor.to('float64')"""
+        t = paddle.to_tensor([1.0, 2.0])
+        out = t.to('float64')
+        self.assertEqual(out.dtype, paddle.float64)
+
+    def test_tensor_positional_device(self):
+        """Tensor.to('cpu')"""
+        t = paddle.to_tensor([1.0, 2.0])
+        out = t.to('cpu')
+        self.assertTrue(out.place.is_cpu_place())
+
+    def test_tensor_positional_device_and_dtype(self):
+        """Tensor.to('cpu', 'float64')"""
+        t = paddle.to_tensor([1.0, 2.0])
+        out = t.to('cpu', 'float64')
+        self.assertTrue(out.place.is_cpu_place())
+        self.assertEqual(out.dtype, paddle.float64)
+
+    def test_tensor_positional_other(self):
+        """Tensor.to(other_tensor)"""
+        t = paddle.to_tensor([1.0, 2.0])
+        ref = paddle.to_tensor([1], dtype='int32')
+        out = t.to(ref)
+        self.assertEqual(out.dtype, paddle.int32)
+
+    def test_tensor_keyword_dtype(self):
+        """Tensor.to(dtype='float64')"""
+        t = paddle.to_tensor([1.0, 2.0])
+        out = t.to(dtype='float64')
+        self.assertEqual(out.dtype, paddle.float64)
+
+    def test_tensor_keyword_device(self):
+        """Tensor.to(device='cpu')"""
+        t = paddle.to_tensor([1.0, 2.0])
+        out = t.to(device='cpu')
+        self.assertTrue(out.place.is_cpu_place())
+
+    def test_tensor_keyword_non_blocking(self):
+        """Tensor.to(dtype='float64', non_blocking=False)"""
+        t = paddle.to_tensor([1.0, 2.0])
+        out = t.to(dtype='float64', non_blocking=False)
+        self.assertEqual(out.dtype, paddle.float64)
+
+    def test_tensor_no_args(self):
+        """Tensor.to() -- returns self"""
+        t = paddle.to_tensor([1.0, 2.0])
+        out = t.to()
+        self.assertEqual(out.dtype, t.dtype)
+
+    # ---- blocking / non_blocking conflict ----
+
+    def test_blocking_non_blocking_conflict_raises(self):
+        """Setting both blocking and non_blocking raises TypeError."""
+        linear = paddle.nn.Linear(2, 2)
+        with self.assertRaises(TypeError):
+            linear.to(dtype='float64', blocking=True, non_blocking=False)
+
+    def test_tensor_blocking_non_blocking_conflict_raises(self):
+        """Tensor: setting both blocking and non_blocking raises TypeError."""
+        t = paddle.to_tensor([1.0])
+        with self.assertRaises(TypeError):
+            t.to(dtype='float64', blocking=True, non_blocking=False)
 
     # ---- Error handling ----
 
@@ -1310,7 +1398,7 @@ class TestLayerToAPI(unittest.TestCase):
         """to() with too many arguments raises TypeError."""
         linear = paddle.nn.Linear(2, 2)
         with self.assertRaises(TypeError):
-            linear.to('cpu', 'float64', True, 'extra')
+            linear.to('cpu', 'float64', True, False, 'extra')
 
     def test_unexpected_keyword(self):
         """to() with unexpected keyword raises TypeError."""
@@ -1323,39 +1411,6 @@ class TestLayerToAPI(unittest.TestCase):
         linear = paddle.nn.Linear(2, 2)
         with self.assertRaises(ValueError):
             linear.to(123)
-
-    # ---- Sublayers ----
-
-    def test_sublayers_cast(self):
-        """to() should recurse into sublayers."""
-        model = paddle.nn.Sequential(
-            paddle.nn.Linear(3, 4),
-            paddle.nn.Linear(4, 2),
-        )
-        model.to(paddle.float64)
-        for sublayer in model.sublayers():
-            if hasattr(sublayer, 'weight'):
-                self.assertEqual(sublayer.weight.dtype, paddle.float64)
-
-    # ---- Return self ----
-
-    def test_returns_self(self):
-        """to() should return self for chaining."""
-        linear = paddle.nn.Linear(2, 2)
-        ret = linear.to(paddle.float64)
-        self.assertIs(ret, linear)
-
-    # ---- Multiple sequential to() calls ----
-
-    def test_sequential_to_calls(self):
-        """Multiple to() calls should work correctly."""
-        linear = paddle.nn.Linear(2, 2)
-        linear.to(paddle.float64)
-        self.assertEqual(linear.weight.dtype, paddle.float64)
-        linear.to('float32')
-        self.assertEqual(linear.weight.dtype, paddle.float32)
-        linear.to(paddle.float16)
-        self.assertEqual(linear.weight.dtype, paddle.float16)
 
 
 # Test select_scatter compatibility
