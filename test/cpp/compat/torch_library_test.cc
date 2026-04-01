@@ -15,6 +15,8 @@
 #include <torch/all.h>
 #include <torch/library.h>
 
+#include <sstream>
+
 #include "gtest/gtest.h"
 
 at::Tensor mymuladd_cpu(at::Tensor a, const at::Tensor& b, double c) {
@@ -256,6 +258,47 @@ TEST(test_torch_library, TestScalarTypeInput) {
   ASSERT_TRUE(result.get_value().is_tensor());
   auto result_tensor = result.get_value().to_tensor();
   ASSERT_EQ(result_tensor.dtype(), at::kDouble);
+}
+
+TEST(test_torch_library, TestRegisterImplementationAtRuntime) {
+  auto qualified_name = "runtime_example::runtime_add";
+  auto& registry = torch::OperatorRegistry::instance();
+
+  registry.register_implementation(qualified_name,
+                                   c10::DispatchKey::CPU,
+                                   torch::CppFunction(&generic_add<int>));
+
+  auto* op = registry.find_operator(qualified_name);
+  ASSERT_NE(op, nullptr);
+
+  auto impl_it = op->implementations.find(c10::DispatchKey::CPU);
+  ASSERT_NE(impl_it, op->implementations.end());
+
+  torch::FunctionArgs function_args;
+  function_args.add_arg(torch::IValue(11));
+  function_args.add_arg(torch::IValue(31));
+  auto result = impl_it->second.call_with_args(function_args);
+
+  ASSERT_TRUE(result.get_value().is_int());
+  ASSERT_EQ(result.get_value().to_int(), 42);
+}
+
+TEST(test_torch_library, TestLibraryPrintInfoWithDispatchKey) {
+  torch::Library library(torch::Library::IMPL,
+                         "runtime_library_info",
+                         std::make_optional(c10::DispatchKey::CPU),
+                         __FILE__,
+                         __LINE__);
+
+  std::ostringstream captured_output;
+  auto* original_buffer = std::cout.rdbuf(captured_output.rdbuf());
+  library.print_info();
+  std::cout.rdbuf(original_buffer);
+
+  auto output = captured_output.str();
+  ASSERT_NE(output.find("Library Info: IMPL"), std::string::npos);
+  ASSERT_NE(output.find("namespace=runtime_library_info"), std::string::npos);
+  ASSERT_NE(output.find("dispatch_key="), std::string::npos);
 }
 
 int fn_with_int_const(int const x) { return x + 1; }
