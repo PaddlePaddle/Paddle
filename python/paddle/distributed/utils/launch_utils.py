@@ -563,11 +563,17 @@ def filter_pids(processes: list[str], self_pid: str) -> list[int]:
     ]
 
 
+def cleanup_processes(processes: list[str], self_pid: str) -> bool:
+    """Filter PIDs then terminate them; returns whether all terminations succeeded."""
+    pids_to_kill = filter_pids(processes, self_pid)
+    return terminate_processes(pids_to_kill)
+
+
 def terminate_processes(processes: Sequence[int]) -> bool:
     """
     Terminate a list of processes by their PIDs.
     Returns True if all processes were successfully terminated (or already dead).
-    Returns False if any process failed to terminate due to permissions or other errors.
+    Returns False if any process failed to terminate due to permissions.
     """
     success = True
     for pid in processes:

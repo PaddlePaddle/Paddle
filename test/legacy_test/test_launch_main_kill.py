@@ -19,6 +19,18 @@ from paddle.distributed.utils import launch_utils
 
 
 class TestLaunchMainProcessCleanup(unittest.TestCase):
+    @mock.patch("paddle.distributed.utils.launch_utils.terminate_processes")
+    @mock.patch("paddle.distributed.utils.launch_utils.filter_pids")
+    def test_cleanup_processes(self, mock_filter, mock_terminate):
+        mock_filter.return_value = [123, 456]
+        mock_terminate.return_value = True
+
+        result = launch_utils.cleanup_processes(["123", "456"], "999")
+
+        self.assertTrue(result)
+        mock_filter.assert_called_once_with(["123", "456"], "999")
+        mock_terminate.assert_called_once_with([123, 456])
+
     def test_filter_pids(self):
         processes = [" 123 ", "456", "abc", "", "789"]
         self_pid = "456"

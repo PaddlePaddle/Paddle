@@ -1241,8 +1241,7 @@ def launch() -> None:
                 processes = os.popen(
                     "fuser -v /dev/nvidia* |awk '{for(i=1;i<=NF;i++) print $i;}'"
                 ).readlines()
-            pids_to_kill = launch_utils.filter_pids(processes, self_pid)
-            launch_utils.terminate_processes(pids_to_kill)
+            launch_utils.cleanup_processes(processes, self_pid)
             time.sleep(3)
             end_time = time.time()
 
