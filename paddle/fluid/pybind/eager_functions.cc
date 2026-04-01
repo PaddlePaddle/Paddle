@@ -685,41 +685,41 @@ PyObject* eager_api_run_custom_op(PyObject* self,
     VLOG(7) << "Custom operator add attrs " << meta.attr_names[i]
             << " to CustomOpKernelContext.";
     switch (meta.attr_types[i]) {
-      case CustomAttrType::BOOL:
+      case paddle::framework::CustomAttrType::BOOL:
         ctx.EmplaceBackAttr(
             CastPyArg2AttrBoolean(obj, attr_start_idx + i));  // NOLINT
         break;
-      case CustomAttrType::INT:
+      case paddle::framework::CustomAttrType::INT:
         ctx.EmplaceBackAttr(
             CastPyArg2AttrInt(obj, attr_start_idx + i));  // NOLINT
         break;
-      case CustomAttrType::FLOAT:
+      case paddle::framework::CustomAttrType::FLOAT:
         ctx.EmplaceBackAttr(
             CastPyArg2AttrFloat(obj, attr_start_idx + i));  // NOLINT
         break;
-      case CustomAttrType::DOUBLE:
+      case paddle::framework::CustomAttrType::DOUBLE:
         ctx.EmplaceBackAttr(
             CastPyArg2AttrDouble(obj, attr_start_idx + i));  // NOLINT
         break;
-      case CustomAttrType::INT64:
+      case paddle::framework::CustomAttrType::INT64:
         ctx.EmplaceBackAttr(
             CastPyArg2Long(obj, op_type, attr_start_idx + i));  // NOLINT
         break;
-      case CustomAttrType::STRING:
+      case paddle::framework::CustomAttrType::STRING:
         ctx.EmplaceBackAttr(
             CastPyArg2AttrString(obj, attr_start_idx + i));  // NOLINT
         break;
-      case CustomAttrType::VEC_INT:
+      case paddle::framework::CustomAttrType::VEC_INT:
         ctx.EmplaceBackAttr(CastPyArg2VectorOfInt(obj, attr_start_idx + i));
         break;
-      case CustomAttrType::VEC_FLOAT:
+      case paddle::framework::CustomAttrType::VEC_FLOAT:
         ctx.EmplaceBackAttr(CastPyArg2VectorOfFloat(obj, attr_start_idx + i));
         break;
-      case CustomAttrType::VEC_INT64:
+      case paddle::framework::CustomAttrType::VEC_INT64:
         ctx.EmplaceBackAttr(
             CastPyArg2Longs(obj, op_type, attr_start_idx + i));  // NOLINT
         break;
-      case CustomAttrType::VEC_STRING:
+      case paddle::framework::CustomAttrType::VEC_STRING:
         ctx.EmplaceBackAttr(
             CastPyArg2VectorOfString(obj, attr_start_idx + i));  // NOLINT
         break;
