@@ -342,7 +342,6 @@ add_doc_and_signature(
             output Tensors. The result tensors will have one fewer dimension
             than the `x` unless :attr:`keepdim` is true, default
             value is False.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Keyword args:
         out(tuple(Tensor, Tensor), optional): The output tensors.
@@ -390,7 +389,6 @@ def aminmax(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
     keepdim: bool = False,
-    name: str | None = None,
     *,
     out: tuple[Tensor, Tensor] | None = None,
 ) -> tuple[Tensor, Tensor]

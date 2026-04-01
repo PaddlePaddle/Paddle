@@ -16,8 +16,11 @@ import unittest
 
 import numpy as np
 from op_test import OpTest
+from utils import dygraph_guard
 
 import paddle
+from paddle import base
+from paddle.static import InputSpec
 
 
 def ref_aminmax(x, axis=None, keepdim=False):
@@ -113,6 +116,9 @@ class TestAminmaxOpFloat32(TestAminmaxOp):
         self.shape = [10, 10]
 
     def test_check_grad(self):
+        # float32 numerical gradient is unreliable for aminmax:
+        # small perturbations can flip which element is min/max,
+        # causing the numerical and analytic gradients to diverge.
         pass
 
 
@@ -240,70 +246,92 @@ class TestAminmaxAPI(unittest.TestCase):
             np.testing.assert_allclose(fetches[1], expected_max, rtol=1e-05)
 
 
-class TestAminmaxCompatibility(unittest.TestCase):
-    """Test paddle/torch keyword alias compatibility."""
-
+class TestAminmaxAPI_Compatibility(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
-        self.np_x = np.array(
-            [[0.2, 0.3, 0.5, 0.9], [0.1, 0.2, 0.6, 0.7]], dtype='float64'
-        )
+        paddle.enable_static()
+        self.shape = [5, 6]
+        self.dtype = 'float64'
+        self.init_data()
+
+    def init_data(self):
+        self.np_input = np.random.random(self.shape).astype(self.dtype)
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
-        x = paddle.to_tensor(self.np_x)
-
+        x = paddle.to_tensor(self.np_input)
+        paddle_dygraph_min = []
+        paddle_dygraph_max = []
         # 1. Paddle Positional arguments
-        min1, max1 = paddle.aminmax(x)
+        min1, max1 = paddle.aminmax(x, 1, True)
+        paddle_dygraph_min.append(min1)
+        paddle_dygraph_max.append(max1)
         # 2. Paddle keyword arguments
-        min2, max2 = paddle.aminmax(x=x)
-        # 3. PyTorch keyword arguments (alias)
-        min3, max3 = paddle.aminmax(input=x)
-        # 4. Mixed arguments (positional x + keyword axis)
-        min4, max4 = paddle.aminmax(x, axis=0)
-        # 5. PyTorch keyword arguments (dim alias)
-        min5, max5 = paddle.aminmax(x, dim=0)
-        # 6. Tensor method
-        min6, max6 = x.aminmax()
-
-        # Verify outputs without axis
-        ref_min = np.amin(self.np_x)
-        ref_max = np.amax(self.np_x)
-        for min_val in [min1, min2, min3, min6]:
-            np.testing.assert_allclose(min_val.numpy(), ref_min)
-        for max_val in [max1, max2, max3, max6]:
-            np.testing.assert_allclose(max_val.numpy(), ref_max)
-
-        # Verify outputs with axis
-        ref_min_ax0 = np.amin(self.np_x, axis=0)
-        ref_max_ax0 = np.amax(self.np_x, axis=0)
-        for min_val in [min4, min5]:
-            np.testing.assert_allclose(min_val.numpy(), ref_min_ax0)
-        for max_val in [max4, max5]:
-            np.testing.assert_allclose(max_val.numpy(), ref_max_ax0)
-
+        min2, max2 = paddle.aminmax(x=x, axis=1, keepdim=True)
+        paddle_dygraph_min.append(min2)
+        paddle_dygraph_max.append(max2)
+        # 4. PyTorch keyword arguments (alias)
+        min3, max3 = paddle.aminmax(input=x, dim=1, keepdim=True)
+        paddle_dygraph_min.append(min3)
+        paddle_dygraph_max.append(max3)
+        # 5. Mixed arguments
+        min4, max4 = paddle.aminmax(x, dim=1, keepdim=True)
+        paddle_dygraph_min.append(min4)
+        paddle_dygraph_max.append(max4)
+        # 6. out parameter test
+        min_out = paddle.empty([])
+        max_out = paddle.empty([])
+        paddle.aminmax(x, 1, True, out=(min_out, max_out))
+        paddle_dygraph_min.append(min_out)
+        paddle_dygraph_max.append(max_out)
+        # 7. Tensor method - args
+        min5, max5 = x.aminmax(1, True)
+        paddle_dygraph_min.append(min5)
+        paddle_dygraph_max.append(max5)
+        # 8. Tensor method - kwargs
+        min6, max6 = x.aminmax(dim=1, keepdim=True)
+        paddle_dygraph_min.append(min6)
+        paddle_dygraph_max.append(max6)
+        # Test default value
+        min8, max8 = x.aminmax(1)
+        # Numpy reference out
+        ref_min = np.amin(self.np_input, 1, keepdims=True)
+        ref_max = np.amax(self.np_input, 1, keepdims=True)
+        # Check
+        for out in paddle_dygraph_min:
+            np.testing.assert_allclose(ref_min, out.numpy())
+        for out in paddle_dygraph_max:
+            np.testing.assert_allclose(ref_max, out.numpy())
+        ref_min = np.amin(self.np_input, 1, keepdims=False)
+        ref_max = np.amax(self.np_input, 1, keepdims=False)
+        np.testing.assert_allclose(ref_min, min8.numpy())
+        np.testing.assert_allclose(ref_max, max8.numpy())
         paddle.enable_static()
 
     def test_static_Compatibility(self):
-        paddle.enable_static()
         main = paddle.static.Program()
         startup = paddle.static.Program()
-        with paddle.static.program_guard(main, startup):
-            x = paddle.static.data(name="x", shape=[2, 4], dtype='float64')
-
+        with base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
             # 1. Paddle Positional arguments
-            min1, max1 = paddle.aminmax(x)
+            min1, max1 = paddle.aminmax(x, 1, True)
             # 2. Paddle keyword arguments
-            min2, max2 = paddle.aminmax(x=x)
-            # 3. PyTorch keyword arguments (alias)
-            min3, max3 = paddle.aminmax(input=x)
-            # 4. Tensor method
-            min4, max4 = x.aminmax()
-
-            exe = paddle.static.Executor()
+            min2, max2 = paddle.aminmax(x=x, axis=1, keepdim=True)
+            # 4. PyTorch keyword arguments (alias)
+            min3, max3 = paddle.aminmax(input=x, dim=1, keepdim=True)
+            # 5. Mixed arguments
+            min4, max4 = paddle.aminmax(x, dim=1, keepdim=True)
+            # 6. Do not support out in static
+            # 7. Tensor method - args
+            min5, max5 = x.aminmax(1, True)
+            # 8. Tensor method - kwargs
+            min6, max6 = x.aminmax(dim=1, keepdim=True)
+            # Test default value
+            min8, max8 = x.aminmax()
+            exe = base.Executor(paddle.CPUPlace())
             fetches = exe.run(
                 main,
-                feed={"x": self.np_x},
+                feed={"x": self.np_input},
                 fetch_list=[
                     min1,
                     max1,
@@ -313,14 +341,72 @@ class TestAminmaxCompatibility(unittest.TestCase):
                     max3,
                     min4,
                     max4,
+                    min5,
+                    max5,
+                    min6,
+                    max6,
+                    min8,
+                    max8,
                 ],
             )
-
-            ref_min = np.amin(self.np_x)
-            ref_max = np.amax(self.np_x)
-            for i in range(0, len(fetches), 2):
+            ref_min = np.amin(self.np_input, 1, keepdims=True)
+            ref_max = np.amax(self.np_input, 1, keepdims=True)
+            for i in range(0, len(fetches) - 2, 2):
                 np.testing.assert_allclose(fetches[i], ref_min)
                 np.testing.assert_allclose(fetches[i + 1], ref_max)
+            ref_min = np.amin(self.np_input)
+            ref_max = np.amax(self.np_input)
+            np.testing.assert_allclose(fetches[-2], ref_min)
+            np.testing.assert_allclose(fetches[-1], ref_max)
+
+
+def aminmax_net(x):
+    return paddle.aminmax(x, axis=1)
+
+
+def apply_to_static(net, use_cinn, input_spec=None):
+    backend = "CINN" if use_cinn else None
+    return paddle.jit.to_static(
+        net,
+        input_spec=input_spec,
+        backend=backend,
+        full_graph=True,
+    )
+
+
+class TestAminmaxDynamicShape(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.shape = [4, 5, 6]
+        self.dtype = "float32"
+        self.init_shape = [None, None, 6]
+        self.x = np.random.random(self.shape).astype(self.dtype)
+        self.net = aminmax_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+    def base_net(self, flag=None):
+        x = paddle.to_tensor(self.x)
+        if flag == "static":
+            fn = apply_to_static(
+                self.net,
+                use_cinn=self.enable_cinn,
+                input_spec=[
+                    InputSpec(shape=self.init_shape, dtype=self.dtype),
+                ],
+            )
+            fn.eval()
+        else:
+            fn = self.net
+        res = fn(x)
+        return res
+
+    def test_all_dynamic(self):
+        with dygraph_guard():
+            res_ref = self.base_net()
+            res = self.base_net("static")
+            for ref, actual in zip(res_ref, res):
+                np.testing.assert_allclose(ref, actual, rtol=self.tol)
 
 
 if __name__ == '__main__':

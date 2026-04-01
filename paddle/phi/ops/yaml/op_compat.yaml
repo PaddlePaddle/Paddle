@@ -212,8 +212,6 @@
     x : X
   outputs :
     {min : Min, max : Max}
-  extra :
-    attrs : [bool use_mkldnn = false, bool use_onednn = false]
   manual_signature : [aminmax]
 
 - op : anchor_generator
