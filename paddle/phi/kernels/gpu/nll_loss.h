@@ -350,6 +350,66 @@ __global__ void GPUNLLLossForward2D_with_reduce(T* out_data,
   }
 }
 
+template <typename T, typename AccT>
+__global__ void GPUNLLLossForward2D_with_reduce_compatible(
+    T* out_data,
+    T* total_weight_data,
+    const T* x_data,
+    const int64_t* label_data,
+    const T* weight_data,
+    const int64_t batch_size,
+    const int64_t n_classes,
+    const int64_t map_nelem,
+    const int64_t size_average,
+    const int64_t ignore_index) {
+  extern __shared__ char smem[];
+  AccT* sh_loss = reinterpret_cast<AccT*>(smem);
+  AccT* sh_weight = sh_loss + blockDim.x;
+
+  const int64_t total_nelem = batch_size * map_nelem;
+  const int64_t sample_size = map_nelem * n_classes;
+  AccT thread_loss = AccT(0);
+  AccT thread_weight = AccT(0);
+
+  for (int64_t index = threadIdx.x; index < total_nelem; index += blockDim.x) {
+    const int64_t cur_label = label_data[index];
+    if (cur_label != ignore_index) {
+      PADDLE_ENFORCE(cur_label >= 0 && cur_label < n_classes,
+                     "label should not be out of bounds.");
+      const int64_t sample = index / map_nelem;
+      const int64_t map_offset = index % map_nelem;
+      const AccT cur_weight =
+          weight_data ? static_cast<AccT>(weight_data[cur_label]) : AccT(1);
+      thread_loss -=
+          static_cast<AccT>(x_data[sample * sample_size + map_offset +
+                                   map_nelem * cur_label]) *
+          cur_weight;
+      thread_weight += cur_weight;
+    }
+  }
+
+  sh_loss[threadIdx.x] = thread_loss;
+  sh_weight[threadIdx.x] = thread_weight;
+  __syncthreads();
+
+  for (unsigned int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
+    if (threadIdx.x < stride) {
+      sh_loss[threadIdx.x] += sh_loss[threadIdx.x + stride];
+      sh_weight[threadIdx.x] += sh_weight[threadIdx.x + stride];
+    }
+    __syncthreads();
+  }
+
+  if (threadIdx.x == 0) {
+    if (size_average && sh_weight[0] != AccT(0)) {
+      *out_data = static_cast<T>(sh_loss[0] / sh_weight[0]);
+    } else {
+      *out_data = static_cast<T>(sh_loss[0]);
+    }
+    *total_weight_data = static_cast<T>(sh_weight[0]);
+  }
+}
+
 template <typename T>
 __global__ void GPUNLLLossForward2D_size_average(T* out_data,
                                                  T* total_weight_data) {

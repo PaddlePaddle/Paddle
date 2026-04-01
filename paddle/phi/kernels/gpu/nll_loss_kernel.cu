@@ -122,20 +122,36 @@ void NllLossRawKernel(const Context& dev_ctx,
       cudaMemsetAsync(out_data, 0, sizeof(T), dev_ctx.stream());
       cudaMemsetAsync(total_weight_data, 0, sizeof(T), dev_ctx.stream());
 #endif
-      GPUNLLLossForward2D_with_reduce<T, AccT>
-          <<<total_blocks, threads, 0, dev_ctx.stream()>>>(out_data,
-                                                           total_weight_data,
-                                                           x_data,
-                                                           label_data,
-                                                           weight_data,
-                                                           batch_size,
-                                                           n_classes,
-                                                           map_size,
-                                                           blocks_per_sample,
-                                                           ignore_index);
-      if (size_average) {
-        GPUNLLLossForward2D_size_average<T>
-            <<<1, 1, 0, dev_ctx.stream()>>>(out_data, total_weight_data);
+      if (FLAGS_use_accuracy_compatible_kernel) {
+        int nthreads = nll_loss_threads(batch_size * map_size);
+        GPUNLLLossForward2D_with_reduce_compatible<T, AccT>
+            <<<1, nthreads, nthreads * sizeof(AccT) * 2, dev_ctx.stream()>>>(
+                out_data,
+                total_weight_data,
+                x_data,
+                label_data,
+                weight_data,
+                batch_size,
+                n_classes,
+                map_size,
+                size_average,
+                ignore_index);
+      } else {
+        GPUNLLLossForward2D_with_reduce<T, AccT>
+            <<<total_blocks, threads, 0, dev_ctx.stream()>>>(out_data,
+                                                             total_weight_data,
+                                                             x_data,
+                                                             label_data,
+                                                             weight_data,
+                                                             batch_size,
+                                                             n_classes,
+                                                             map_size,
+                                                             blocks_per_sample,
+                                                             ignore_index);
+        if (size_average) {
+          GPUNLLLossForward2D_size_average<T>
+              <<<1, 1, 0, dev_ctx.stream()>>>(out_data, total_weight_data);
+        }
       }
     }
   }
