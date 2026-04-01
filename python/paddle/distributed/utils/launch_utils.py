@@ -12,16 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import annotations
-
 import copy
 import os
-import signal
 import socket
 import subprocess
 import sys
 import time
 from contextlib import closing
+from typing import Sequence
 
 from paddle.distributed.fleet.launch_utils import get_backend_by_compile_flag
 from paddle.utils import strtobool
@@ -556,14 +554,28 @@ def _print_arguments(args):
     print("------------------------------------------------")
 
 
-def terminate_other_processes(processes: list[str], self_pid: str) -> None:
-    for process in processes:
-        pid = process.strip()
-        # Skip empty lines, non-numeric tokens, and the current process.
-        if not pid or not pid.isdigit() or pid == self_pid:
-            continue
+def filter_pids(processes: list[str], self_pid: str) -> list[int]:
+    """Filter valid PIDs from a list of strings, excluding the current self_pid."""
+    return [
+        int(pid.strip())
+        for pid in processes
+        if pid.strip().isdigit() and pid.strip() != self_pid
+    ]
+
+
+def terminate_processes(processes: Sequence[int]) -> bool:
+    """
+    Terminate a list of processes by their PIDs.
+    Returns True if all processes were successfully terminated (or already dead).
+    Returns False if any process failed to terminate due to permissions or other errors.
+    """
+    success = True
+    for pid in processes:
         try:
-            os.kill(int(pid), 9)
-        except (ProcessLookupError, PermissionError):
-            # Target exited or no permission; match prior os.system behavior (no abort).
+            os.kill(pid, 9)
+        except ProcessLookupError:
+            # Target already exited.
             pass
+        except PermissionError:
+            success = False
+    return success

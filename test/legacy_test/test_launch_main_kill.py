@@ -19,32 +19,39 @@ from paddle.distributed.utils import launch_utils
 
 
 class TestLaunchMainProcessCleanup(unittest.TestCase):
+    def test_filter_pids(self):
+        processes = [" 123 ", "456", "abc", "", "789"]
+        self_pid = "456"
+
+        result = launch_utils.filter_pids(processes, self_pid)
+
+        self.assertEqual(result, [123, 789])
+
     @mock.patch("paddle.distributed.utils.launch_utils.os.kill")
-    def test_terminate_other_processes_swallow_errors(self, mock_kill):
-        processes = ["", "abc", "12345", " 67890 ", "99999"]
-        self_pid = "99999"
-        expected_calls = [mock.call(12345, 9), mock.call(67890, 9)]
+    def test_terminate_processes_process_lookup(self, mock_kill):
+        pids = [12345, 67890]
+        mock_kill.side_effect = [None, ProcessLookupError()]
 
-        mock_kill.side_effect = ProcessLookupError()
-        try:
-            launch_utils.terminate_other_processes(processes, self_pid)
-        except ProcessLookupError:
-            self.fail(
-                "terminate_other_processes should swallow ProcessLookupError"
-            )
-        self.assertEqual(mock_kill.call_count, 2)
-        mock_kill.assert_has_calls(expected_calls, any_order=False)
+        result = launch_utils.terminate_processes(pids)
 
-        mock_kill.reset_mock()
-        mock_kill.side_effect = PermissionError()
-        try:
-            launch_utils.terminate_other_processes(processes, self_pid)
-        except PermissionError:
-            self.fail(
-                "terminate_other_processes should swallow PermissionError"
-            )
+        self.assertTrue(result)
         self.assertEqual(mock_kill.call_count, 2)
-        mock_kill.assert_has_calls(expected_calls, any_order=False)
+        mock_kill.assert_has_calls(
+            [mock.call(12345, 9), mock.call(67890, 9)], any_order=False
+        )
+
+    @mock.patch("paddle.distributed.utils.launch_utils.os.kill")
+    def test_terminate_processes_permission_error(self, mock_kill):
+        pids = [12345, 67890]
+        mock_kill.side_effect = [ProcessLookupError(), PermissionError()]
+
+        result = launch_utils.terminate_processes(pids)
+
+        self.assertFalse(result)
+        self.assertEqual(mock_kill.call_count, 2)
+        mock_kill.assert_has_calls(
+            [mock.call(12345, 9), mock.call(67890, 9)], any_order=False
+        )
 
 
 if __name__ == "__main__":
