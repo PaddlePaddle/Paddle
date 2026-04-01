@@ -1701,15 +1701,22 @@ class TestPutAlongAxisZeroSizeInputGrad(unittest.TestCase):
         paddle.disable_static()
 
     def _run_zero_size_input(self, x_shape, idx_shape, val_shape, axis, reduce):
-        x = paddle.rand(x_shape, dtype='float32')
+        cpu = paddle.CPUPlace()
+        x = paddle.to_tensor(
+            np.random.rand(*x_shape).astype('float32'), place=cpu
+        )
         x.stop_gradient = False
-        index = paddle.zeros(idx_shape, dtype='int64')
-        value = paddle.rand(val_shape, dtype='float32')
+        index = paddle.to_tensor(np.zeros(idx_shape, dtype='int64'), place=cpu)
+        value = paddle.to_tensor(
+            np.random.rand(*val_shape).astype('float32'), place=cpu
+        )
         value.stop_gradient = False
         out = paddle.put_along_axis(
             x, index, value, axis=axis, reduce=reduce, include_self=True
         )
         self.assertEqual(list(out.shape), x_shape)
+        loss = out.sum()
+        loss.backward()
 
     def test_input_first_dim_zero_assign(self):
         self._run_zero_size_input(

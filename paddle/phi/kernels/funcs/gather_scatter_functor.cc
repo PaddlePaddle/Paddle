@@ -517,9 +517,10 @@ void cpu_scatter_mul_min_max_input_grad_kernel(DenseTensor self UNUSED,
     int64_t replace_index_grad = cm.offset1;
     if (is_mul && num_elements[replace_index_grad] == 0) {
       if (x_data[replace_index_grad] != static_cast<tensor_t>(0)) {
-        grad_data[replace_index_grad] = static_cast<tensor_t>(
-            grad_data[replace_index_grad] * out_data[replace_index_grad] /
-            x_data[replace_index_grad]);
+        tensor_t val = grad_data[replace_index_grad];
+        val *= out_data[replace_index_grad];
+        val /= x_data[replace_index_grad];
+        grad_data[replace_index_grad] = static_cast<tensor_t>(val);
       } else {
         grad_data[replace_index_grad] = static_cast<tensor_t>(0);
       }
