@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
 
 import numpy as np
@@ -914,13 +913,257 @@ class TestUnsqueezeInplaceAPI(unittest.TestCase):
             np.testing.assert_allclose(out.numpy(), ref_out)
 
 
-# Test conv3d_transpose / conv_transpose3d compatibility
-# conv3d_transpose crashes on Windows GPU (0xc0000409), all existing
-# conv3d_transpose tests are disabled on Windows CI.
-@unittest.skipIf(
-    sys.platform == 'win32',
-    "conv3d_transpose crashes on Windows GPU (known issue)",
-)
+# Test conv1d_transpose compatibility
+class TestConv1dTransposeAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.dtype = 'float32'
+        self.np_x = np.random.rand(2, 3, 8).astype(self.dtype)
+        self.np_weight = np.random.rand(3, 1, 3).astype(self.dtype)
+        self.np_bias = np.random.rand(1).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        weight = paddle.to_tensor(self.np_weight)
+        bias = paddle.to_tensor(self.np_bias)
+
+        # 1. Paddle positional arguments (all positional)
+        out1 = paddle.nn.functional.conv1d_transpose(
+            x, weight, bias, 1, 0, 0, 1, 1
+        )
+        # 2. Paddle keyword arguments
+        out2 = paddle.nn.functional.conv1d_transpose(
+            x=x,
+            weight=weight,
+            bias=bias,
+            stride=1,
+            padding=0,
+            output_padding=0,
+            groups=1,
+            dilation=1,
+        )
+        # 3. PyTorch keyword arguments (alias: input)
+        out3 = paddle.nn.functional.conv1d_transpose(
+            input=x, weight=weight, bias=bias
+        )
+        # 4. PyTorch function name alias
+        out4 = paddle.nn.functional.conv_transpose1d(x, weight, bias)
+        # 5. Mixed arguments (positional + keyword)
+        out5 = paddle.nn.functional.conv1d_transpose(
+            x, weight, bias=bias, stride=1, padding=0
+        )
+        # 6. PyTorch function name alias + PyTorch keyword
+        out6 = paddle.nn.functional.conv_transpose1d(
+            input=x, weight=weight, bias=bias
+        )
+
+        ref = out1.numpy()
+        for out in [out2, out3, out4, out5, out6]:
+            np.testing.assert_allclose(out.numpy(), ref, rtol=1e-5)
+
+        # 7. Class positional arguments
+        conv1 = paddle.nn.Conv1DTranspose(3, 1, 3, 1, 0, 0, 1, True, 1)
+        cls_out1 = conv1(x)
+        # 8. Class keyword arguments (with PyTorch-style bias param)
+        conv2 = paddle.nn.Conv1DTranspose(
+            in_channels=3,
+            out_channels=1,
+            kernel_size=3,
+            stride=1,
+            padding=0,
+            output_padding=0,
+            groups=1,
+            bias=True,
+            dilation=1,
+        )
+        conv2.weight.set_value(conv1.weight.numpy())
+        conv2.bias.set_value(conv1.bias.numpy())
+        cls_out2 = conv2(x)
+        np.testing.assert_allclose(
+            cls_out1.numpy(), cls_out2.numpy(), rtol=1e-5
+        )
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=[2, 3, 8], dtype=self.dtype)
+            weight = paddle.static.data(
+                name="weight", shape=[3, 1, 3], dtype=self.dtype
+            )
+            bias = paddle.static.data(name="bias", shape=[1], dtype=self.dtype)
+
+            # 1. Paddle positional arguments
+            out1 = paddle.nn.functional.conv1d_transpose(
+                x, weight, bias, 1, 0, 0, 1, 1
+            )
+            # 2. Paddle keyword arguments
+            out2 = paddle.nn.functional.conv1d_transpose(
+                x=x,
+                weight=weight,
+                bias=bias,
+                stride=1,
+                padding=0,
+                output_padding=0,
+                groups=1,
+                dilation=1,
+            )
+            # 3. PyTorch keyword arguments (alias: input)
+            out3 = paddle.nn.functional.conv1d_transpose(
+                input=x, weight=weight, bias=bias
+            )
+            # 4. PyTorch function name alias
+            out4 = paddle.nn.functional.conv_transpose1d(x, weight, bias)
+            # 5. Mixed arguments
+            out5 = paddle.nn.functional.conv1d_transpose(
+                x, weight, bias=bias, stride=1, padding=0
+            )
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={
+                    "x": self.np_x,
+                    "weight": self.np_weight,
+                    "bias": self.np_bias,
+                },
+                fetch_list=[out1, out2, out3, out4, out5],
+            )
+            for i in range(1, len(fetches)):
+                np.testing.assert_allclose(fetches[0], fetches[i], rtol=1e-5)
+
+
+# Test conv2d_transpose compatibility
+class TestConv2dTransposeAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.dtype = 'float32'
+        self.np_x = np.random.rand(2, 3, 8, 8).astype(self.dtype)
+        self.np_weight = np.random.rand(3, 1, 3, 3).astype(self.dtype)
+        self.np_bias = np.random.rand(1).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        weight = paddle.to_tensor(self.np_weight)
+        bias = paddle.to_tensor(self.np_bias)
+
+        # 1. Paddle positional arguments (all positional)
+        out1 = paddle.nn.functional.conv2d_transpose(
+            x, weight, bias, 1, 0, 0, 1, 1
+        )
+        # 2. Paddle keyword arguments
+        out2 = paddle.nn.functional.conv2d_transpose(
+            x=x,
+            weight=weight,
+            bias=bias,
+            stride=1,
+            padding=0,
+            output_padding=0,
+            groups=1,
+            dilation=1,
+        )
+        # 3. PyTorch keyword arguments (alias: input)
+        out3 = paddle.nn.functional.conv2d_transpose(
+            input=x, weight=weight, bias=bias
+        )
+        # 4. PyTorch function name alias
+        out4 = paddle.nn.functional.conv_transpose2d(x, weight, bias)
+        # 5. Mixed arguments (positional + keyword)
+        out5 = paddle.nn.functional.conv2d_transpose(
+            x, weight, bias=bias, stride=1, padding=0
+        )
+        # 6. PyTorch function name alias + PyTorch keyword
+        out6 = paddle.nn.functional.conv_transpose2d(
+            input=x, weight=weight, bias=bias
+        )
+
+        ref = out1.numpy()
+        for out in [out2, out3, out4, out5, out6]:
+            np.testing.assert_allclose(out.numpy(), ref, rtol=1e-5)
+
+        # 7. Class positional arguments
+        conv1 = paddle.nn.Conv2DTranspose(3, 1, 3, 1, 0, 0, 1, True, 1)
+        cls_out1 = conv1(x)
+        # 8. Class keyword arguments (with PyTorch-style bias param)
+        conv2 = paddle.nn.Conv2DTranspose(
+            in_channels=3,
+            out_channels=1,
+            kernel_size=3,
+            stride=1,
+            padding=0,
+            output_padding=0,
+            groups=1,
+            bias=True,
+            dilation=1,
+        )
+        conv2.weight.set_value(conv1.weight.numpy())
+        conv2.bias.set_value(conv1.bias.numpy())
+        cls_out2 = conv2(x)
+        np.testing.assert_allclose(
+            cls_out1.numpy(), cls_out2.numpy(), rtol=1e-5
+        )
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x", shape=[2, 3, 8, 8], dtype=self.dtype
+            )
+            weight = paddle.static.data(
+                name="weight", shape=[3, 1, 3, 3], dtype=self.dtype
+            )
+            bias = paddle.static.data(name="bias", shape=[1], dtype=self.dtype)
+
+            # 1. Paddle positional arguments
+            out1 = paddle.nn.functional.conv2d_transpose(
+                x, weight, bias, 1, 0, 0, 1, 1
+            )
+            # 2. Paddle keyword arguments
+            out2 = paddle.nn.functional.conv2d_transpose(
+                x=x,
+                weight=weight,
+                bias=bias,
+                stride=1,
+                padding=0,
+                output_padding=0,
+                groups=1,
+                dilation=1,
+            )
+            # 3. PyTorch keyword arguments (alias: input)
+            out3 = paddle.nn.functional.conv2d_transpose(
+                input=x, weight=weight, bias=bias
+            )
+            # 4. PyTorch function name alias
+            out4 = paddle.nn.functional.conv_transpose2d(x, weight, bias)
+            # 5. Mixed arguments
+            out5 = paddle.nn.functional.conv2d_transpose(
+                x, weight, bias=bias, stride=1, padding=0
+            )
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={
+                    "x": self.np_x,
+                    "weight": self.np_weight,
+                    "bias": self.np_bias,
+                },
+                fetch_list=[out1, out2, out3, out4, out5],
+            )
+            for i in range(1, len(fetches)):
+                np.testing.assert_allclose(fetches[0], fetches[i], rtol=1e-5)
+
+
+# Test conv3d_transpose compatibility
 class TestConv3dTransposeAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -935,31 +1178,61 @@ class TestConv3dTransposeAPI(unittest.TestCase):
         weight = paddle.to_tensor(self.np_weight)
         bias = paddle.to_tensor(self.np_bias)
 
-        # 1. Paddle Positional arguments
-        out1 = paddle.nn.functional.conv3d_transpose(x, weight)
+        # 1. Paddle positional arguments (all positional)
+        out1 = paddle.nn.functional.conv3d_transpose(
+            x, weight, bias, 1, 0, 0, 1, 1
+        )
         # 2. Paddle keyword arguments
-        out2 = paddle.nn.functional.conv3d_transpose(x=x, weight=weight)
+        out2 = paddle.nn.functional.conv3d_transpose(
+            x=x,
+            weight=weight,
+            bias=bias,
+            stride=1,
+            padding=0,
+            output_padding=0,
+            groups=1,
+            dilation=1,
+        )
         # 3. PyTorch keyword arguments (alias: input)
-        out3 = paddle.nn.functional.conv3d_transpose(input=x, weight=weight)
+        out3 = paddle.nn.functional.conv3d_transpose(
+            input=x, weight=weight, bias=bias
+        )
         # 4. PyTorch function name alias
-        out4 = paddle.nn.functional.conv_transpose3d(x, weight)
-        # 5. PyTorch function name alias + PyTorch keyword
-        out5 = paddle.nn.functional.conv_transpose3d(input=x, weight=weight)
-        # 6. Mixed arguments (positional + keyword)
-        out6 = paddle.nn.functional.conv3d_transpose(
+        out4 = paddle.nn.functional.conv_transpose3d(x, weight, bias)
+        # 5. Mixed arguments (positional + keyword)
+        out5 = paddle.nn.functional.conv3d_transpose(
             x, weight, bias=bias, stride=1, padding=0
         )
-        # 7. Positional arguments with bias
-        out7 = paddle.nn.functional.conv3d_transpose(x, weight, bias)
+        # 6. PyTorch function name alias + PyTorch keyword
+        out6 = paddle.nn.functional.conv_transpose3d(
+            input=x, weight=weight, bias=bias
+        )
 
-        # Verify outputs without bias
         ref = out1.numpy()
-        for out in [out2, out3, out4, out5]:
+        for out in [out2, out3, out4, out5, out6]:
             np.testing.assert_allclose(out.numpy(), ref, rtol=1e-5)
 
-        # Verify outputs with bias
-        ref_bias = out6.numpy()
-        np.testing.assert_allclose(out7.numpy(), ref_bias, rtol=1e-5)
+        # 7. Class positional arguments
+        conv1 = paddle.nn.Conv3DTranspose(2, 2, 3, 1, 0, 0, 1, True, 1)
+        cls_out1 = conv1(x)
+        # 8. Class keyword arguments (with PyTorch-style bias param)
+        conv2 = paddle.nn.Conv3DTranspose(
+            in_channels=2,
+            out_channels=2,
+            kernel_size=3,
+            stride=1,
+            padding=0,
+            output_padding=0,
+            groups=1,
+            bias=True,
+            dilation=1,
+        )
+        conv2.weight.set_value(conv1.weight.numpy())
+        conv2.bias.set_value(conv1.bias.numpy())
+        cls_out2 = conv2(x)
+        np.testing.assert_allclose(
+            cls_out1.numpy(), cls_out2.numpy(), rtol=1e-5
+        )
 
         paddle.enable_static()
 
@@ -974,17 +1247,33 @@ class TestConv3dTransposeAPI(unittest.TestCase):
             weight = paddle.static.data(
                 name="weight", shape=[2, 2, 3, 3, 3], dtype=self.dtype
             )
+            bias = paddle.static.data(name="bias", shape=[2], dtype=self.dtype)
 
-            # 1. Paddle Positional arguments
-            out1 = paddle.nn.functional.conv3d_transpose(x, weight)
+            # 1. Paddle positional arguments
+            out1 = paddle.nn.functional.conv3d_transpose(
+                x, weight, bias, 1, 0, 0, 1, 1
+            )
             # 2. Paddle keyword arguments
-            out2 = paddle.nn.functional.conv3d_transpose(x=x, weight=weight)
+            out2 = paddle.nn.functional.conv3d_transpose(
+                x=x,
+                weight=weight,
+                bias=bias,
+                stride=1,
+                padding=0,
+                output_padding=0,
+                groups=1,
+                dilation=1,
+            )
             # 3. PyTorch keyword arguments (alias: input)
-            out3 = paddle.nn.functional.conv3d_transpose(input=x, weight=weight)
+            out3 = paddle.nn.functional.conv3d_transpose(
+                input=x, weight=weight, bias=bias
+            )
             # 4. PyTorch function name alias
-            out4 = paddle.nn.functional.conv_transpose3d(x, weight)
-            # 5. PyTorch function name alias + PyTorch keyword
-            out5 = paddle.nn.functional.conv_transpose3d(input=x, weight=weight)
+            out4 = paddle.nn.functional.conv_transpose3d(x, weight, bias)
+            # 5. Mixed arguments
+            out5 = paddle.nn.functional.conv3d_transpose(
+                x, weight, bias=bias, stride=1, padding=0
+            )
 
             exe = paddle.static.Executor()
             fetches = exe.run(
@@ -992,11 +1281,10 @@ class TestConv3dTransposeAPI(unittest.TestCase):
                 feed={
                     "x": self.np_x,
                     "weight": self.np_weight,
+                    "bias": self.np_bias,
                 },
                 fetch_list=[out1, out2, out3, out4, out5],
             )
-
-            # Verify all outputs
             for i in range(1, len(fetches)):
                 np.testing.assert_allclose(fetches[0], fetches[i], rtol=1e-5)
 

@@ -537,6 +537,10 @@ class Conv1DTranspose(_ConvNd):
         dilation(int|tuple|list, optional): The dilation size. It means the spacing between the kernel points.
             If dilation is a tuple/list, it must contain one integer, (dilation_size).
             Default: dilation = 1.
+        device(str|paddle.CPUPlace()|paddle.CUDAPlace()|paddle.CUDAPinnedPlace()|None, optional):
+            The device on which to create the layer's parameters. Default: None.
+        dtype(str|paddle.dtype|None, optional): The data type of the layer's parameters.
+            Default: None.
         weight_attr (ParamAttr, optional): The parameter attribute for learnable parameters/weights
             of conv1d_transpose. If it is set to None or one attribute of ParamAttr, conv1d_transpose
             will create ParamAttr as param_attr. If the Initializer of the param_attr
@@ -594,11 +598,18 @@ class Conv1DTranspose(_ConvNd):
         padding: _PaddingSizeMode | Size1 | Size2 | Sequence[Size2] = 0,
         output_padding: _PaddingSizeMode | Size1 | Size2 | Sequence[Size2] = 0,
         groups: int = 1,
+        bias: bool = True,
         dilation: Size1 = 1,
+        padding_mode: _PaddingTensorMode = 'zeros',
+        device: PlaceLike | None = None,
+        dtype: DTypeLike | None = None,
+        *,
         weight_attr: ParamAttrLike | None = None,
         bias_attr: ParamAttrLike | None = None,
         data_format: DataLayout1D = "NCL",
     ) -> None:
+        if bias is False:
+            bias_attr = False
         super().__init__(
             in_channels,
             out_channels,
@@ -607,12 +618,15 @@ class Conv1DTranspose(_ConvNd):
             1,
             stride=stride,
             padding=padding,
+            padding_mode=padding_mode,
             dilation=dilation,
             output_padding=output_padding,
             groups=groups,
             weight_attr=weight_attr,
             bias_attr=bias_attr,
             data_format=data_format,
+            device=device,
+            dtype=dtype,
         )
 
     def forward(self, x: Tensor, output_size: Size1 | None = None) -> Tensor:
@@ -889,15 +903,20 @@ class Conv2DTranspose(_ConvNd):
             The default value is 0.
         output_padding(int|list|tuple, optional): Additional size added to one side
             of each dimension in the output shape. Default: 0.
-        dilation(int|list|tuple, optional): The dilation size. If dilation is a list/tuple, it must
-            contain two integers, (dilation_H, dilation_W). Otherwise, the
-            dilation_H = dilation_W = dilation. Default: 1.
         groups(int, optional): The groups number of the Conv2D transpose layer. Inspired by
             grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
             when group=2, the first half of the filters is only connected to the
             first half of the input channels, while the second half of the
             filters is only connected to the second half of the input channels.
             Default: 1.
+        bias(bool, optional): Whether to add a bias to the output. Default: True.
+        dilation(int|list|tuple, optional): The dilation size. If dilation is a list/tuple, it must
+            contain two integers, (dilation_H, dilation_W). Otherwise, the
+            dilation_H = dilation_W = dilation. Default: 1.
+        device(str|paddle.CPUPlace()|paddle.CUDAPlace()|paddle.CUDAPinnedPlace()|None, optional):
+            The device on which to create the layer's parameters. Default: None.
+        dtype(str|paddle.dtype|None, optional): The data type of the layer's parameters.
+            Default: None.
         weight_attr(ParamAttr, optional): The parameter attribute for learnable weights(Parameter)
             of conv2d_transpose. If it is set to None or one attribute of ParamAttr, conv2d_transpose
             will create ParamAttr as param_attr. If the Initializer of the param_attr
@@ -963,12 +982,19 @@ class Conv2DTranspose(_ConvNd):
         stride: Size2 = 1,
         padding: _PaddingSizeMode | Size2 | Size4 | Sequence[Size2] = 0,
         output_padding: _PaddingSizeMode | Size2 | Size4 | Sequence[Size2] = 0,
-        dilation: Size2 = 1,
         groups: int = 1,
+        bias: bool = True,
+        dilation: Size2 = 1,
+        padding_mode: _PaddingTensorMode = 'zeros',
+        device: PlaceLike | None = None,
+        dtype: DTypeLike | None = None,
+        *,
         weight_attr: ParamAttrLike | None = None,
         bias_attr: ParamAttrLike | None = None,
         data_format: DataLayout2D = "NCHW",
     ) -> None:
+        if bias is False:
+            bias_attr = False
         super().__init__(
             in_channels,
             out_channels,
@@ -977,12 +1003,15 @@ class Conv2DTranspose(_ConvNd):
             2,
             stride=stride,
             padding=padding,
+            padding_mode=padding_mode,
             dilation=dilation,
             output_padding=output_padding,
             groups=groups,
             weight_attr=weight_attr,
             bias_attr=bias_attr,
             data_format=data_format,
+            device=device,
+            dtype=dtype,
         )
 
     def forward(self, x: Tensor, output_size: Size2 | None = None) -> Tensor:
@@ -1241,15 +1270,20 @@ class Conv3DTranspose(_ConvNd):
             Default: 0.
         output_padding(int|list|tuple, optional): Additional size added to one side
             of each dimension in the output shape. Default: 0.
-        dilation(int|list|tuple, optional): The dilation size. If dilation is a list/tuple, it must
-            contain three integers, (dilation_D, dilation_H, dilation_W). Otherwise, the
-            dilation_D = dilation_H = dilation_W = dilation. Default: 1.
         groups(int, optional): The groups number of the Conv3D transpose layer. Inspired by
             grouped convolution in `Alex Krizhevsky's Deep CNN paper <https://papers.nips.cc/paper/2012/file/c399862d3b9d6b76c8436e924a68c45b-Paper.pdf>`_, in which
             when groups = 2, the first half of the filters is only connected to the
             first half of the input channels, while the second half of the
             filters is only connected to the second half of the input channels.
             Default: 1.
+        bias(bool, optional): Whether to add a bias to the output. Default: True.
+        dilation(int|list|tuple, optional): The dilation size. If dilation is a list/tuple, it must
+            contain three integers, (dilation_D, dilation_H, dilation_W). Otherwise, the
+            dilation_D = dilation_H = dilation_W = dilation. Default: 1.
+        device(str|paddle.CPUPlace()|paddle.CUDAPlace()|paddle.CUDAPinnedPlace()|None, optional):
+            The device on which to create the layer's parameters. Default: None.
+        dtype(str|paddle.dtype|None, optional): The data type of the layer's parameters.
+            Default: None.
         weight_attr(ParamAttr, optional): The parameter attribute for learnable parameters/weights
             of conv3d_transpose. If it is set to None or one attribute of ParamAttr, conv3d_transpose
             will create ParamAttr as param_attr. If the Initializer of the param_attr
@@ -1313,12 +1347,19 @@ class Conv3DTranspose(_ConvNd):
         stride: Size3 = 1,
         padding: _PaddingSizeMode | Size3 | Size6 | Sequence[Size2] = 0,
         output_padding: _PaddingSizeMode | Size3 | Size6 | Sequence[Size2] = 0,
-        dilation: Size3 = 1,
         groups: int = 1,
+        bias: bool = True,
+        dilation: Size3 = 1,
+        padding_mode: _PaddingTensorMode = 'zeros',
+        device: PlaceLike | None = None,
+        dtype: DTypeLike | None = None,
+        *,
         weight_attr: ParamAttrLike | None = None,
         bias_attr: ParamAttrLike | None = None,
         data_format: DataLayout3D = "NCDHW",
     ) -> None:
+        if bias is False:
+            bias_attr = False
         super().__init__(
             in_channels,
             out_channels,
@@ -1327,12 +1368,15 @@ class Conv3DTranspose(_ConvNd):
             3,
             stride=stride,
             padding=padding,
+            padding_mode=padding_mode,
             dilation=dilation,
             output_padding=output_padding,
             groups=groups,
             weight_attr=weight_attr,
             bias_attr=bias_attr,
             data_format=data_format,
+            device=device,
+            dtype=dtype,
         )
 
     def forward(self, x: Tensor, output_size: Size3 | None = None) -> Tensor:
