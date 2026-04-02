@@ -305,6 +305,14 @@ static void NMS(const GPUContext &dev_ctx,
   std::vector<uint64_t> remv(col_blocks);
   memset(&remv[0], 0, sizeof(uint64_t) * col_blocks);
 
+  PADDLE_ENFORCE_EQ(
+      phi::backends::gpu::IsCUDAGraphCapturing(),
+      false,
+      common::errors::InvalidArgument(
+          "GenerateProposals does not support CUDA Graph capture: async D2H "
+          "copy to local vector 'mask_host' will bake the destination address "
+          "into the graph; on replay the vector is re-created at a different "
+          "address, causing a dangling-pointer write."));
   std::vector<uint64_t> mask_host(boxes_num * col_blocks);
   memory_utils::Copy(CPUPlace(),
                      mask_host.data(),

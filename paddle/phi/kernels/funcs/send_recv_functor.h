@@ -156,6 +156,17 @@ DDim recv_shape_info(const Context& dev_ctx,
       &shape_size_tensortensor, shape_size_tensortensor.numel(), peer, stream);
 
   // copy the shape size tensor to cpu
+#ifdef PADDLE_WITH_CUDA
+  PADDLE_ENFORCE_EQ(
+      phi::backends::gpu::IsCUDAGraphCapturing(),
+      false,
+      common::errors::InvalidArgument(
+          "RecvShape does not support CUDA Graph capture: async D2H copy to "
+          "a locally allocated CPU DenseTensor 'cpu_shape_size_tensor' will "
+          "bake the destination address into the graph; on replay the tensor "
+          "is re-created at a different address, causing a dangling-pointer "
+          "write."));
+#endif
   DenseTensor cpu_shape_size_tensor(shape_dtype);
   cpu_shape_size_tensor.Resize({1});
   dev_ctx.HostAlloc(&cpu_shape_size_tensor, shape_dtype);

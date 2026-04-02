@@ -203,9 +203,13 @@ T** GetDevicePointerArray(const Context& dev_ctx,
       h_indices_v.size() * sizeof(T*),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   size_t nbytes_idx = h_indices_v.size() * sizeof(T*);
+#ifdef PADDLE_WITH_CUDA
   const void* stable_idx =
       phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
           reinterpret_cast<uint8_t*>(h_indices_v.data()), nbytes_idx);
+#else
+  const void* stable_idx = reinterpret_cast<const void*>(h_indices_v.data());
+#endif
   phi::memory_utils::Copy(dev_ctx.GetPlace(),
                           d_indices_data->ptr(),
                           CPUPlace(),
