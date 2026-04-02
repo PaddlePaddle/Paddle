@@ -16,7 +16,7 @@ set -e
 
 echo "=== preload data file from CACHE_DIR  ==="
 
-BASE_SRC=${CACHE_DIR}/preload_file
+BASE_SRC=${CFS_DIR}/preload_file
 BASE_DST=/paddle/build/third_party/inference_demo
 
 declare -A FILE_MAP=(
