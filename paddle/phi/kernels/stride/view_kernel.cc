@@ -49,10 +49,12 @@ void ViewShapeStridedKernel(const Context& dev_ctx,
       PADDLE_THROW(common::errors::OutOfRange("Tensor idx is out of range"));
     }
   }
-  PADDLE_ENFORCE_NE(new_size,
-                    0,
-                    common::errors::Unavailable(
-                        "cannot reshape tensor of 0 elements into shape "));
+  if (numel != 0) {
+    PADDLE_ENFORCE_NE(new_size,
+                      0,
+                      common::errors::Unavailable(
+                          "cannot reshape tensor of 0 elements into shape "));
+  }
   if (infer_dim >= 0 && new_size > 0 && numel % new_size == 0) {
     dims_copy[infer_dim] = numel / new_size;
   }

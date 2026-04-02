@@ -2360,6 +2360,7 @@ class TestDygraphInplaceSet(unittest.TestCase):
 
             x = self.inplace_api_processing(x)
             self.assertEqual(x.inplace_version, 2)
+            self.assertEqual(x.get_strides(), [1])
 
             x = self.inplace_api_processing(x, new_x=new_x)
             self.assertEqual(x.inplace_version, 3)
