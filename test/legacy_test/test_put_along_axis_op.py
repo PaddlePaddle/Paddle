@@ -1739,6 +1739,12 @@ class TestPutAlongAxisZeroSizeInputGrad(unittest.TestCase):
             [4, 4, 0], [1, 1, 0], [1, 1, 0], axis=0, reduce='assign'
         )
 
+    def test_mid_dim_zero_nonempty_index(self):
+        """x.numel()==0 but indices.numel()!=0, so C++ grad kernel is called."""
+        self._run_zero_size_input(
+            [2, 0, 3], [2, 1, 3], [2, 1, 3], axis=1, reduce='assign'
+        )
+
 
 class TestPutAlongAxisMulFloat32DivByZeroGrad(unittest.TestCase):
     """
