@@ -115,6 +115,42 @@ def check_recompute_necessary(inputs):
         )
 
 
+def _protect_tensors(seq):
+    """For each element in seq (a list or tuple of forward args), create a new
+    tensor Python object that shares the same underlying buffer via
+    _new_shared_tensor(), so that when pipeline-parallel calls
+    _release_input/_release_output (which clears the data pointer of the
+    original tensor), the copies held by recompute for backward are not
+    invalidated.  Non-tensor elements are kept as-is.
+    Returns a list with the same length as seq.
+    """
+    result = list(seq)
+    for idx, arg in enumerate(result):
+        if isinstance(arg, core.eager.Tensor):
+            # _new_shared_tensor() creates a new Python-level tensor object
+            # that shares the same C++ storage with arg, without cloning data.
+            shared = arg._new_shared_tensor()
+            assert shared is not arg, (
+                "_protect_tensors() must return a new Python object distinct from the original "
+                "tensor, otherwise the protection against pipeline-parallel tensor "
+                "release is ineffective."
+            )
+            result[idx] = shared
+        elif isinstance(arg, tuple):
+            # For tuple args (e.g., pipeline-parallel passes inputs as tuples),
+            # protect each tensor element inside the tuple individually;
+            # non-tensor elements (e.g., int, bool) are passed through unchanged.
+            protected_tuple = []
+            for t in arg:
+                if isinstance(t, core.eager.Tensor):
+                    shared = t._new_shared_tensor()
+                    protected_tuple.append(shared)
+                else:
+                    protected_tuple.append(t)
+            result[idx] = tuple(protected_tuple)
+    return result
+
+
 class CustomStatesManager:
     """CustomStatesManager"""
 
@@ -683,8 +719,8 @@ def recompute(function, *args, **kwargs):
 
     if use_reentrant:
         offload_indices = kwargs.pop('offload_indices', [])
-        input_args = []
         # rearrange `position-args + keyword-args` into `position-args`
+        input_args = []
         if isinstance(function, paddle.nn.Layer):
             dyfunc_sig = inspect.signature(function.forward)
         else:
@@ -712,16 +748,14 @@ def recompute(function, *args, **kwargs):
             else:
                 raise ValueError("Unknown parameter kind.")
         # Make a shallow copy of each Tensor to prevent the release of some Tensors reserved for backward in some special scenarios (such as scheduling logic of parallel pipelines)
-        for idx, arg in enumerate(input_args):
-            if isinstance(arg, core.eager.Tensor):
-                input_args[idx] = arg._new_shared_tensor()
+        protected_args = _protect_tensors(input_args)
         return RecomputeFunction.apply(
             function,
             preserve,
             offload_indices,
             custom_get_state_func,
             custom_set_state_func,
-            *input_args,
+            *protected_args,
         )
     else:
         return _recompute_without_reentrant(
