@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
+
 namespace phi {
 namespace funcs {
 namespace sparse {
@@ -43,10 +45,13 @@ inline DenseTensor GetOffsets(const Context& dev_ctx,
   const IntArray strides_shape(vectorize<IntT>(indices.dims()));
   DenseTensor strides = Empty<IntT>(dev_ctx, strides_shape);
   auto strides_ptr = strides.data<IntT>();
+  const IntT* stable_st =
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          host_strides.data(), host_strides.size());
   memory_utils::Copy(dev_ctx.GetPlace(),
                      strides_ptr,
                      CPUPlace(),
-                     host_strides.data(),
+                     stable_st,
                      sizeof(IntT) * host_strides.size(),
                      dev_ctx.stream());
 

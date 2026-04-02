@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/nms_kernel.h"
 
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/memory_utils.h"
@@ -105,10 +106,13 @@ void NMSKernel(const Context& dev_ctx,
   }
   output->Resize({last_box_num});
   auto* output_data = dev_ctx.template Alloc<int64_t>(output);
+  const int64_t* stable_output =
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(output_host,
+                                                             last_box_num);
   memory_utils::Copy(dev_ctx.GetPlace(),
                      output_data,
                      CPUPlace(),
-                     output_host,
+                     stable_output,
                      sizeof(int64_t) * last_box_num,
                      dev_ctx.stream());
 }

@@ -19,6 +19,7 @@
 #include <vector>
 #ifdef __NVCC__
 #include "cub/cub.cuh"
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #endif
 #ifdef __HIPCC__
 #include <hipcub/hipcub.hpp>
@@ -342,10 +343,12 @@ static void NMS(const GPUContext &dev_ctx,
   }
   keep_out->Resize({num_to_keep});
   int *keep = dev_ctx.Alloc<int>(keep_out);
+  const int *stable_kv = phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      const_cast<int *>(keep_vec.data()), keep_vec.size());
   phi::memory_utils::Copy(place,
                           keep,
                           CPUPlace(),
-                          keep_vec.data(),
+                          stable_kv,
                           sizeof(int) * num_to_keep,
                           dev_ctx.stream());
   dev_ctx.Wait();
