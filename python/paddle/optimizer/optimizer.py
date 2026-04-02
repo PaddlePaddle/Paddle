@@ -2037,12 +2037,21 @@ class Optimizer:
 
     @imperative_base.no_grad()
     @framework.non_static_only
-    def step(self) -> None:
+    def step(
+        self, closure: Callable[[], Tensor] | None = None
+    ) -> Tensor | None:
         """
         Execute the optimizer and update parameters once.
 
+        Args:
+            closure (Callable|None, optional): A closure that reevaluates the model
+                and returns the loss. It should be a callable that takes no arguments
+                and returns a Tensor. This is useful for optimizers that need to
+                evaluate the loss multiple times (e.g., line search). Default is None.
+
         Returns:
-            None
+            Tensor|None: If closure is provided, returns the loss value computed by
+                the closure. Otherwise returns None.
 
         Examples:
             .. code-block:: pycon
@@ -2060,10 +2069,24 @@ class Optimizer:
                 >>> out.backward()
                 >>> adam.step()
                 >>> adam.clear_grad()
+
+                >>> # With closure
+                >>> def closure():
+                ...     adam.clear_grad()
+                ...     out = linear(a)
+                ...     loss = paddle.mean(out)
+                ...     loss.backward()
+                ...     return loss
+                >>> adam.step(closure)
         """
+        if closure is not None:
+            with imperative_base.enable_grad():
+                loss = closure()
+                loss.backward()
+
         if paddle.base.dygraph.base.in_to_static_mode():
             self._declarative_step()
-            return
+            return None
 
         if not isinstance(self._param_groups[0], dict):
             params_grads = []
@@ -2111,6 +2134,9 @@ class Optimizer:
                     params_grads=params_grads,
                     param_group_idx=idx,
                 )
+        if closure is not None:
+            return loss
+        return None
 
     def _add_param_group(self, param_group):
         """

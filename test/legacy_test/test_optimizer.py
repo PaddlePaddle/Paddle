@@ -180,6 +180,43 @@ class TestOptimizerAPI(unittest.TestCase):
         adam.step()
         adam.zero_grad(False)
 
+    def test_step_without_closure(self):
+        paddle.disable_static()
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = paddle.to_tensor(value)
+        linear = paddle.nn.Linear(13, 5)
+        adam = paddle.optimizer.Adam(
+            learning_rate=0.01,
+            parameters=linear.parameters(),
+        )
+
+        out = linear(a)
+        loss = paddle.mean(out)
+        loss.backward()
+
+        result = adam.step()
+        self.assertIsNone(result)
+
+    def test_step_with_closure(self):
+        paddle.disable_static()
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = paddle.to_tensor(value)
+        linear = paddle.nn.Linear(13, 5)
+        adam = paddle.optimizer.Adam(
+            learning_rate=0.01,
+            parameters=linear.parameters(),
+        )
+
+        def closure():
+            return paddle.tensor([1])
+
+        out = linear(a)
+        loss = paddle.mean(out)
+        loss.backward()
+
+        result = adam.step(closure)
+        np.testing.assert_array_equal(result.cpu().numpy(), np.array([1]))
+
 
 if __name__ == '__main__':
     paddle.enable_static()
