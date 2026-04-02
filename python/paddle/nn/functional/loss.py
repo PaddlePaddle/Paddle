@@ -1639,6 +1639,7 @@ def _cross_entropy_compatible_soft_label_loss(
     label: Tensor,
     weight: Tensor | None,
     reduction: _ReduceMode,
+    label_smoothing: float = 0.0,
 ) -> Tensor:
     log_prob, class_axis = _cross_entropy_compatible_log_prob(input)
     if len(list(label.shape)) >= 3:
@@ -1648,16 +1649,24 @@ def _cross_entropy_compatible_soft_label_loss(
             *range(1, len(list(label.shape)) - 1),
         ]
         label = paddle.transpose(label, perm=perm)
-    label = paddle.cast(label, log_prob.dtype)
+    original_label = paddle.cast(label, log_prob.dtype)
+    label = original_label
+    if label_smoothing > 0.0:
+        # Keep smoothing on the compatible Python path so the weight reduction
+        # can still use the original pre-smoothed soft target semantics.
+        label = (1.0 - label_smoothing) * label + (
+            label_smoothing / label.shape[class_axis]
+        )
 
     loss = -paddle.sum(label * log_prob, axis=class_axis)
     if weight is not None:
         weight = paddle.cast(weight, log_prob.dtype)
+        weight = _reshape_weight_for_cross_entropy_compatible(
+            weight, len(list(label.shape)), class_axis
+        )
+        weighted_label = original_label if label_smoothing > 0.0 else label
         loss_weight = paddle.sum(
-            label
-            * _reshape_weight_for_cross_entropy_compatible(
-                weight, len(list(label.shape)), class_axis
-            ),
+            weighted_label * weight,
             axis=class_axis,
         )
         loss = loss * loss_weight
@@ -1672,7 +1681,12 @@ def _cross_entropy_compatible_soft_label_loss(
             loss = zero / zero
         else:
             if weight is not None:
-                total_weight = paddle.sum(loss_weight)
+                total_weight = paddle.sum(
+                    paddle.sum(
+                        weighted_label * weight,
+                        axis=class_axis,
+                    )
+                )
                 loss = paddle.sum(loss) / (
                     total_weight
                     + (total_weight == 0.0).astype(total_weight.dtype)
@@ -3246,6 +3260,16 @@ def cross_entropy(
     label_for_compatible_label_smoothing = (
         label if label_smoothing_from_hard_label else None
     )
+    class_axis = axis % input_dims
+    use_accuracy_compatible_kernel = paddle.get_flags(
+        ["FLAGS_use_accuracy_compatible_kernel"]
+    ).get("FLAGS_use_accuracy_compatible_kernel", False)
+    use_accuracy_compatible_soft_label_path = (
+        soft_label
+        and use_softmax
+        and class_axis == input_dims - 1
+        and use_accuracy_compatible_kernel
+    )
 
     if label_smoothing > 0.0:
         soft_label = True
@@ -3256,16 +3280,13 @@ def cross_entropy(
             label = paddle.squeeze(label, axis=axis)
             label = paddle.nn.functional.one_hot(label, input.shape[-1])
 
-        label = paddle.nn.functional.label_smooth(
-            label, epsilon=label_smoothing
-        )
-        label = label.astype(input.dtype)
-        label_dims = len(list(label.shape))
+        if not use_accuracy_compatible_soft_label_path:
+            label = paddle.nn.functional.label_smooth(
+                label, epsilon=label_smoothing
+            )
+            label = label.astype(input.dtype)
+            label_dims = len(list(label.shape))
 
-    class_axis = axis % input_dims
-    use_accuracy_compatible_kernel = paddle.get_flags(
-        ["FLAGS_use_accuracy_compatible_kernel"]
-    ).get("FLAGS_use_accuracy_compatible_kernel", False)
     if weight is not None and class_axis == input_dims - 1:
         if input.shape[class_axis] != weight.shape[-1]:
             raise ValueError(
@@ -3290,7 +3311,11 @@ def cross_entropy(
                 input_dims == original_label_dims,
             )
         return _cross_entropy_compatible_soft_label_loss(
-            input, label, weight, reduction
+            input,
+            label,
+            weight,
+            reduction,
+            label_smoothing if use_accuracy_compatible_soft_label_path else 0.0,
         )
 
     if in_dynamic_mode():
