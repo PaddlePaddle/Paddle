@@ -37,7 +37,7 @@ jobs:
     needs: [check-bypass]
     if: ${{ needs.check-bypass.outputs.can-skip != 'true' && inputs.clone-can-skip != 'true' }}
     runs-on:
-      group: SOT-314-debug
+      group: GZ_BD-CPU
     timeout-minutes: 120
 
     steps:
