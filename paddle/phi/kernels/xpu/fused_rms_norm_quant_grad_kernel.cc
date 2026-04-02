@@ -143,7 +143,7 @@ void RmsNormQuantGradKernel(const Context& dev_ctx,
       inv_var_data,
       reinterpret_cast<XPUType*>(norm_weight_grad_data),
       reinterpret_cast<XPUType*>(norm_bias_grad_data),
-      false);
+      true);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "rms_layer_norm_grad");
 }
 }  // namespace phi
