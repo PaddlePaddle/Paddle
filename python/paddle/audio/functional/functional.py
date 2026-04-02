@@ -348,7 +348,6 @@ def _get_sinc_resample_kernel(
     ] = "sinc_interp_hann",
     beta: float | None = None,
     dtype: paddle.dtype | None = None,
-    name: str | None = None,
 ):
     """
     Generate the sinc interpolation kernel for resampling.
@@ -373,7 +372,6 @@ def _get_sinc_resample_kernel(
         dtype (paddle.dtype, optional): Data type for kernel computation.
             If None, uses float64 for computation and converts to float32 for output.
             Default: None.
-        name (str, optional): Name prefix for the generated tensors. Default: None.
 
     Returns:
         tuple: (kernel, width)
@@ -411,26 +409,21 @@ def _get_sinc_resample_kernel(
     idx_dtype = dtype if dtype is not None else paddle.float64
 
     idx = (
-        paddle.arange(-width, width + orig_freq, dtype=idx_dtype, name=name)[
-            None, None
-        ]
+        paddle.arange(-width, width + orig_freq, dtype=idx_dtype)[None, None]
         / orig_freq
     )
 
     t = (
-        paddle.arange(0, -new_freq, -1, dtype=dtype, name=name)[:, None, None]
-        / new_freq
+        paddle.arange(0, -new_freq, -1, dtype=dtype)[:, None, None] / new_freq
         + idx
     )
     t *= base_freq
-    t = t.clip_(-lowpass_filter_width, lowpass_filter_width, name=name)
+    t = t.clip_(-lowpass_filter_width, lowpass_filter_width)
 
     # we do not use built-in paddle windows here as we need to evaluate the window
     # at specific positions, not over a regular grid.
     if resampling_method == "sinc_interp_hann":
-        window = (
-            paddle.cos(t * math.pi / lowpass_filter_width / 2, name=name) ** 2
-        )
+        window = paddle.cos(t * math.pi / lowpass_filter_width / 2) ** 2
     else:
         # sinc_interp_kaiser
         if beta is None:
@@ -438,14 +431,13 @@ def _get_sinc_resample_kernel(
         beta_tensor = paddle.to_tensor(float(beta))
         window = paddle.i0(
             beta_tensor * paddle.sqrt(1 - (t / lowpass_filter_width) ** 2),
-            name=name,
-        ) / paddle.i0(beta_tensor, name=name)
+        ) / paddle.i0(beta_tensor)
 
     t *= math.pi
 
     scale = base_freq / orig_freq
     kernels = paddle.where(
-        t == 0, paddle.to_tensor(1.0).cast(t.dtype), t.sin() / t, name=name
+        t == 0, paddle.to_tensor(1.0).cast(t.dtype), t.sin() / t
     )
     kernels *= window * scale
 
@@ -462,7 +454,6 @@ def _apply_sinc_resample_kernel(
     gcd: int,
     kernel: Tensor,
     width: int,
-    name: str | None = None,
 ):
     """
     Apply sinc interpolation resampling using precomputed kernel.
@@ -478,7 +469,6 @@ def _apply_sinc_resample_kernel(
         gcd (int): Greatest common divisor of orig_freq and new_freq.
         kernel (Tensor): Resampling kernel from _get_sinc_resample_kernel.
         width (int): Half-width of the filter from _get_sinc_resample_kernel.
-        name (str, optional): Name prefix for operations. Default: None.
 
     Returns:
         Tensor: Resampled waveform of shape (..., new_time).
@@ -490,25 +480,21 @@ def _apply_sinc_resample_kernel(
 
     # pack batch
     shape = waveform.shape
-    waveform = waveform.reshape([-1, shape[-1]], name=name)
+    waveform = waveform.reshape([-1, shape[-1]])
 
     num_wavs, length = waveform.shape
-    waveform = paddle.nn.functional.pad(
-        waveform, (width, width + orig_freq), name=name
-    )
+    waveform = paddle.nn.functional.pad(waveform, (width, width + orig_freq))
     resampled = paddle.nn.functional.conv1d(
-        waveform[:, None], kernel, stride=orig_freq, name=name
+        waveform[:, None], kernel, stride=orig_freq
     )
-    resampled = resampled.transpose([0, 2, 1], name=name).reshape(
-        (num_wavs, -1), name=name
-    )
+    resampled = resampled.transpose([0, 2, 1]).reshape((num_wavs, -1))
     target_length = paddle.ceil(
-        paddle.to_tensor(new_freq * length / orig_freq), name=name
+        paddle.to_tensor(new_freq * length / orig_freq)
     ).astype(paddle.int64)
     resampled = resampled[..., :target_length]
 
     # unpack batch
-    resampled = resampled.reshape(shape[:-1] + resampled.shape[-1:], name=name)
+    resampled = resampled.reshape(shape[:-1] + resampled.shape[-1:])
     return resampled
 
 
@@ -522,7 +508,6 @@ def resample(
         "sinc_interp_hann", "sinc_interp_kaiser"
     ] = "sinc_interp_hann",
     beta: float | None = None,
-    name: str | None = None,
 ) -> Tensor:
     """
     Resample the waveform from orig_freq to new_freq using bandlimited interpolation.
@@ -549,7 +534,6 @@ def resample(
         beta (float, optional): Shape parameter for the Kaiser window. Required only
             when resampling_method="sinc_interp_kaiser". If not provided for Kaiser,
             a default value of 14.769656459379492 is used. Default: None.
-        name (str, optional): Name prefix for the generated tensors. Default: None.
 
     Returns:
         Tensor: The waveform resampled to new_freq, with dimension (..., new_time).
@@ -620,9 +604,8 @@ def resample(
         resampling_method,
         beta,
         waveform.dtype,
-        name,
     )
     resampled = _apply_sinc_resample_kernel(
-        waveform, orig_freq, new_freq, gcd, kernel, width, name
+        waveform, orig_freq, new_freq, gcd, kernel, width
     )
     return resampled
