@@ -58,6 +58,12 @@ inline at::ScalarType _PD_ResolveArangeDtype(const at::Scalar& start,
   return c10::get_default_dtype_as_scalartype();
 }
 
+inline paddle::Tensor _PD_MakeArangeScalarTensor(const at::Scalar& scalar,
+                                                 phi::DataType dtype,
+                                                 const phi::Place& place) {
+  return paddle::experimental::full({}, scalar, dtype, place);
+}
+
 }  // namespace detail
 
 inline at::Tensor arange(const at::Scalar& start,
@@ -67,6 +73,7 @@ inline at::Tensor arange(const at::Scalar& start,
   // Match PyTorch: step must be non-zero and consistent with (end - start).
   at::native::arange_check_bounds(start, end, step);
   auto dtype = detail::_PD_ResolveArangeDtype(start, end, step, options);
+  auto pd_dtype = compat::_PD_AtenScalarTypeToPhiDataType(dtype);
   if (options.pinned_memory()) {
     // Pinning memory is only supported for CPU tensors
     if (options.has_device() && !options.device().is_cpu()) {
@@ -76,22 +83,20 @@ inline at::Tensor arange(const at::Scalar& start,
     phi::Place base_place = options._PD_GetPlace();
     phi::Place pinned_place = compat::_PD_GetCreatePinnedPlace(base_place);
     auto dense = paddle::experimental::arange(
-        paddle::experimental::full(
-            {}, start.to<double>(), phi::DataType::FLOAT64),
-        paddle::experimental::full(
-            {}, end.to<double>(), phi::DataType::FLOAT64),
-        paddle::experimental::full(
-            {}, step.to<double>(), phi::DataType::FLOAT64),
-        compat::_PD_AtenScalarTypeToPhiDataType(dtype),
+        detail::_PD_MakeArangeScalarTensor(start, pd_dtype, phi::CPUPlace()),
+        detail::_PD_MakeArangeScalarTensor(end, pd_dtype, phi::CPUPlace()),
+        detail::_PD_MakeArangeScalarTensor(step, pd_dtype, phi::CPUPlace()),
+        pd_dtype,
         phi::CPUPlace());
     return dense.copy_to(pinned_place, /*blocking=*/true);
   }
   return paddle::experimental::arange(
-      paddle::experimental::full(
-          {}, start.to<double>(), phi::DataType::FLOAT64),
-      paddle::experimental::full({}, end.to<double>(), phi::DataType::FLOAT64),
-      paddle::experimental::full({}, step.to<double>(), phi::DataType::FLOAT64),
-      compat::_PD_AtenScalarTypeToPhiDataType(dtype),
+      detail::_PD_MakeArangeScalarTensor(
+          start, pd_dtype, options._PD_GetPlace()),
+      detail::_PD_MakeArangeScalarTensor(end, pd_dtype, options._PD_GetPlace()),
+      detail::_PD_MakeArangeScalarTensor(
+          step, pd_dtype, options._PD_GetPlace()),
+      pd_dtype,
       options._PD_GetPlace());
 }
 

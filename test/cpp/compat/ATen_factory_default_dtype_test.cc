@@ -79,6 +79,26 @@ TEST(ATenFactoryDefaultDtypeTest, ArangeOmittedDtypeUsesLongForIntegralInputs) {
 }
 
 TEST(ATenFactoryDefaultDtypeTest,
+     ArangeOmittedDtypeKeepsLargeInt64InputsExact) {
+  constexpr int64_t kStart = (1LL << 53) + 1;
+  constexpr int64_t kEnd = kStart + 4;
+
+  at::Tensor by_default = at::arange(kStart, kEnd);
+  at::Tensor by_nullopt =
+      at::arange(kStart, kEnd, std::nullopt, std::nullopt, at::kCPU, false);
+
+  ASSERT_EQ(by_default.scalar_type(), at::kLong);
+  ASSERT_EQ(by_nullopt.scalar_type(), at::kLong);
+  ASSERT_EQ(by_default.numel(), 4);
+  ASSERT_EQ(by_nullopt.numel(), 4);
+
+  for (int64_t i = 0; i < 4; ++i) {
+    ASSERT_EQ(by_default.data_ptr<int64_t>()[i], kStart + i);
+    ASSERT_EQ(by_nullopt.data_ptr<int64_t>()[i], kStart + i);
+  }
+}
+
+TEST(ATenFactoryDefaultDtypeTest,
      ArangeOmittedDtypeUsesCurrentDefaultForFloatingInputs) {
   DefaultDtypeGuard guard(at::kDouble);
 
