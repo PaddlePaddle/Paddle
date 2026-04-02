@@ -406,13 +406,8 @@ endif()
 
 list(APPEND third_party_deps extern_eigen3 extern_gflags extern_glog
      extern_xxhash)
-list(
-  APPEND
-  third_party_deps
-  extern_zlib
-  extern_dlpack
-  extern_threadpool
-  extern_lapack)
+list(APPEND third_party_deps extern_zlib extern_dlpack extern_threadpool
+     extern_lapack)
 if(NOT WITH_ROCM)
   list(APPEND third_party_deps extern_warpctc extern_warprnnt)
 endif()

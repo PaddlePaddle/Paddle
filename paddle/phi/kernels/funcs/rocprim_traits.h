@@ -16,9 +16,9 @@
 
 #ifdef __HIPCC__
 
+#include <rocprim/config.hpp>
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
-#include <rocprim/config.hpp>
 
 // ROCm 7.0+ uses a new traits system based on rocprim::traits::define
 // This header provides trait definitions for phi::float16 and phi::bfloat16

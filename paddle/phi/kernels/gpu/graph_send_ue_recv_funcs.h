@@ -14,8 +14,8 @@
 // limitations under the License.
 
 #pragma once
-// thrust headers should only be included when compiled with nvcc/hipcc
-// because rocThrust >= 7.0 includes rocprim which requires HIP compiler built-ins
+// thrust headers require nvcc/hipcc
+// (rocThrust 7.0+ pulls in rocprim)
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include <thrust/device_vector.h>
 #include <thrust/fill.h>

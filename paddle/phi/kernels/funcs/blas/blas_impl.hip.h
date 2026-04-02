@@ -1038,8 +1038,8 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
           "but received %d",
           dev_ctx_.GetComputeCapability()));
 
-  // Use rocblas complex types instead of thrust::complex to avoid including
-  // thrust/complex.h which pulls in rocprim (incompatible with non-hipcc compilation)
+  // Use rocblas complex types directly to avoid pulling
+  // in rocprim via thrust/complex.h in non-hipcc builds.
   rocblas_float_complex c_alpha = {alpha.real, alpha.imag};
   rocblas_float_complex c_beta = {beta.real, beta.imag};
 
@@ -1100,8 +1100,8 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
           "but received %d",
           dev_ctx_.GetComputeCapability()));
 
-  // Use rocblas complex types instead of thrust::complex to avoid including
-  // thrust/complex.h which pulls in rocprim (incompatible with non-hipcc compilation)
+  // Use rocblas complex types directly to avoid pulling
+  // in rocprim via thrust/complex.h in non-hipcc builds.
   rocblas_double_complex c_alpha = {alpha.real, alpha.imag};
   rocblas_double_complex c_beta = {beta.real, beta.imag};
 

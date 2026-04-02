@@ -15,10 +15,14 @@ if(WITH_RCCL)
   # First try to find rccl.h directly (handles both old and new layouts)
   find_file(
     RCCL_HEADER_FILE rccl.h
-    PATHS ${ROCM_PATH}/include/rccl 
+    PATHS ${ROCM_PATH}/include/rccl
           ${ROCM_PATH}/include
-          ${RCCL_ROOT} ${RCCL_ROOT}/include ${RCCL_ROOT}/local/include
-          $ENV{RCCL_ROOT} $ENV{RCCL_ROOT}/include $ENV{RCCL_ROOT}/local/include
+          ${RCCL_ROOT}
+          ${RCCL_ROOT}/include
+          ${RCCL_ROOT}/local/include
+          $ENV{RCCL_ROOT}
+          $ENV{RCCL_ROOT}/include
+          $ENV{RCCL_ROOT}/local/include
     NO_DEFAULT_PATH)
 
   if(NOT RCCL_HEADER_FILE)
