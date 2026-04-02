@@ -14,12 +14,13 @@
 
 import copy
 import os
+import signal
 import socket
 import subprocess
 import sys
 import time
+from collections.abc import Sequence
 from contextlib import closing
-from typing import Sequence
 
 from paddle.distributed.fleet.launch_utils import get_backend_by_compile_flag
 from paddle.utils import strtobool
