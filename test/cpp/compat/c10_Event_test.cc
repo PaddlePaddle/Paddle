@@ -56,7 +56,7 @@ TEST(EventTest, CudaEventLazyCreateAndRecord) {
   EXPECT_EQ(event.eventId(), nullptr);
   EXPECT_FALSE(event.was_marked_for_recording());
 
-  EXPECT_NO_THROW(event.record(stream.unwrap()));
+  EXPECT_NO_THROW(event.record(stream));
   EXPECT_EQ(event.device_index(), stream.device_index());
   EXPECT_NE(event.eventId(), nullptr);
   EXPECT_TRUE(event.was_marked_for_recording());
@@ -71,8 +71,8 @@ TEST(EventTest, CudaEventElapsedTimeRequiresTimingFlag) {
   c10::Event start(c10::DeviceType::CUDA);
   c10::Event end(c10::DeviceType::CUDA);
 
-  start.record(stream.unwrap());
-  end.record(stream.unwrap());
+  start.record(stream);
+  end.record(stream);
   end.synchronize();
 
   EXPECT_THROW(start.elapsedTime(end), std::exception);
@@ -84,8 +84,8 @@ TEST(EventTest, CudaEventElapsedTimeWithTimingEnabled) {
   c10::Event start(c10::DeviceType::CUDA, c10::EventFlag::BACKEND_DEFAULT);
   c10::Event end(c10::DeviceType::CUDA, c10::EventFlag::BACKEND_DEFAULT);
 
-  start.record(stream.unwrap());
-  end.record(stream.unwrap());
+  start.record(stream);
+  end.record(stream);
   end.synchronize();
 
   double elapsed_ms = -1.0;
@@ -93,6 +93,7 @@ TEST(EventTest, CudaEventElapsedTimeWithTimingEnabled) {
   EXPECT_GE(elapsed_ms, 0.0);
 }
 
+#ifdef PADDLE_WITH_CUDA
 TEST(EventTest, CudaEventRawStreamRecordCompatibility) {
   SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   auto stream = c10::cuda::getCurrentCUDAStream();
@@ -101,6 +102,7 @@ TEST(EventTest, CudaEventRawStreamRecordCompatibility) {
   EXPECT_EQ(event.device_index(), stream.device_index());
   EXPECT_TRUE(event.was_marked_for_recording());
 }
+#endif
 
 TEST(EventTest, CudaEventRejectsDifferentDeviceRecord) {
   SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
@@ -112,7 +114,7 @@ TEST(EventTest, CudaEventRejectsDifferentDeviceRecord) {
   auto stream0 = c10::cuda::getDefaultCUDAStream(0);
   auto stream1 = c10::cuda::getDefaultCUDAStream(1);
 
-  EXPECT_NO_THROW(event.record(stream0.unwrap()));
-  EXPECT_THROW(event.record(stream1.unwrap()), std::exception);
+  EXPECT_NO_THROW(event.record(stream0));
+  EXPECT_THROW(event.record(stream1), std::exception);
 }
 #endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
