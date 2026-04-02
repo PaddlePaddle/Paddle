@@ -150,6 +150,8 @@ class CUDAStream {
 
   Device device() const { return Device(DeviceType::CUDA, device_index()); }
 
+  cudaStream_t raw_stream() const { return stream(); }
+
   struct c10::StreamData3 pack3() const {
     return stream_.pack3();
   }
@@ -228,15 +230,13 @@ inline CUDAStream getStreamFromPool(const int priority,
 }
 
 /**
- * Set the current CUDA stream for the device of the given stream in the
- * calling thread.
+ * Get a new stream from the CUDA stream pool.
  *
- * Implements per-thread, per-device current stream semantics: the change is
- * local to the calling OS thread and does not affect any shared state such as
- * Paddle's GPUContext.  Other threads continue to see their own current stream.
+ * This overload matches PyTorch's bool-based entry point and preserves the
+ * single-argument form `getStreamFromPool(true)` for high-priority requests.
  */
-inline CUDAStream getStreamFromPool(const bool isHighPriority,
-                                    c10::DeviceIndex device_index) {
+inline CUDAStream getStreamFromPool(const bool isHighPriority = false,
+                                    c10::DeviceIndex device_index = -1) {
   return getStreamFromPool(isHighPriority ? -1 : 0, device_index);
 }
 
@@ -246,6 +246,14 @@ inline CUDAStream getStreamFromExternal(cudaStream_t ext_stream,
   return make_cuda_stream(ext_stream, device_index);
 }
 
+/**
+ * Set the current CUDA stream for the device of the given stream in the
+ * calling thread.
+ *
+ * Implements per-thread, per-device current stream semantics: the change is
+ * local to the calling OS thread and does not affect any shared state such as
+ * Paddle's GPUContext.  Other threads continue to see their own current stream.
+ */
 inline void setCurrentCUDAStream(CUDAStream stream) {
   c10::DeviceIndex idx = stream.unwrap().device_index();
   detail::check_device_index(idx);
