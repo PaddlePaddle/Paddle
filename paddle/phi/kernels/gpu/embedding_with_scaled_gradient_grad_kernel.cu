@@ -64,7 +64,7 @@ __global__ void EmbeddingGrad(T* table,
     const T* out = output + idy * D;
     T* tab = table + id * D;
 #ifdef PADDLE_WITH_CUDA
-    phi::VectorizedAtomicAddPerBlock(D, idx, blockDim.x, out, tab);
+    VectorizedAtomicAddPerBlock(D, idx, blockDim.x, out, tab);
 #else
     for (int64_t i = idx; i < D; i += blockDim.x) {
       CudaAtomicAdd(&tab[i], out[i]);
@@ -153,6 +153,10 @@ struct EmbeddingWithScaledGradientGradCUDAFunctor {
       PADDLE_ENFORCE_GPU_SUCCESS(
           cudaMemsetAsync(d_table, 0, N * D * sizeof(T), dev_ctx_.stream()));
 #endif
+
+      // When input has 0 elements, d_table is already correctly zeroed.
+      // Skip all kernel launches to avoid CUDA error(9) from GET_BLOCKS(0)==0.
+      if (K == 0) return;
 
       if (FLAGS_embedding_deterministic == 1) {
         funcs::LaunchEmbeddingGradDeterministicKernel<T, IdT>(

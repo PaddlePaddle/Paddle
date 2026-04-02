@@ -18,8 +18,8 @@ limitations under the License. */
 namespace phi::funcs {
 
 template <typename T>
-struct GRUUnitFunctor<phi::CPUContext, T> {
-  static void compute(const phi::CPUContext &dev_ctx,
+struct GRUUnitFunctor<CPUContext, T> {
+  static void compute(const CPUContext &dev_ctx,
                       GRUMetaValue<T> value,
                       int frame_size,
                       int batch_size,
@@ -27,7 +27,7 @@ struct GRUUnitFunctor<phi::CPUContext, T> {
                       const funcs::detail::ActivationType active_gate,
                       bool origin_mode) {
 #if !defined(__NVCC__) && !defined(__HIPCC___)
-    auto blas = funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
+    auto blas = funcs::GetBlas<CPUContext, T>(dev_ctx);
     if (value.prev_out_value) {
       blas.GEMM(false,
                 false,
@@ -44,7 +44,7 @@ struct GRUUnitFunctor<phi::CPUContext, T> {
                 frame_size * 3);
     }
 
-    detail::forward_reset_output<phi::CPUContext>(
+    detail::forward_reset_output<CPUContext>(
         funcs::detail::forward::gru_resetOutput<T>(),
         value,
         frame_size,
@@ -69,7 +69,7 @@ struct GRUUnitFunctor<phi::CPUContext, T> {
                 frame_size * 3);
     }
 
-    detail::forward_final_output<phi::CPUContext>(
+    detail::forward_final_output<CPUContext>(
         funcs::detail::forward::gru_finalOutput<T>(),
         value,
         frame_size,
@@ -83,8 +83,8 @@ struct GRUUnitFunctor<phi::CPUContext, T> {
 };
 
 template <typename T>
-struct GRUUnitGradFunctor<phi::CPUContext, T> {
-  static void compute(const phi::CPUContext &dev_ctx,
+struct GRUUnitGradFunctor<CPUContext, T> {
+  static void compute(const CPUContext &dev_ctx,
                       GRUMetaValue<T> value,
                       GRUMetaGrad<T> grad,
                       int frame_size,
@@ -100,7 +100,7 @@ struct GRUUnitGradFunctor<phi::CPUContext, T> {
                                 batch_size,
                                 active_node,
                                 origin_mode);
-    auto blas = funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
+    auto blas = funcs::GetBlas<CPUContext, T>(dev_ctx);
     if (value.prev_out_value && grad.prev_out_grad) {
       blas.GEMM(false,
                 true,
@@ -349,10 +349,10 @@ struct GRUUnitGradFunctorV2<CPUContext, T> {
   }
 };
 
-template struct GRUUnitFunctor<phi::CPUContext, float>;
-template struct GRUUnitFunctor<phi::CPUContext, double>;
-template struct GRUUnitGradFunctor<phi::CPUContext, float>;
-template struct GRUUnitGradFunctor<phi::CPUContext, double>;
+template struct GRUUnitFunctor<CPUContext, float>;
+template struct GRUUnitFunctor<CPUContext, double>;
+template struct GRUUnitGradFunctor<CPUContext, float>;
+template struct GRUUnitGradFunctor<CPUContext, double>;
 
 template struct GRUUnitFunctorV2<CPUContext, float>;
 template struct GRUUnitFunctorV2<CPUContext, double>;

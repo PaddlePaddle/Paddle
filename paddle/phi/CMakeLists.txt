@@ -136,6 +136,18 @@ set(PHI_CORE_SRCS
     ${infermeta_srcs}
     ${capi_srcs})
 
+set(CUSTOM_DEVICE_EXTRA_SRCS
+    ""
+    CACHE STRING "Extra custom device sources to compile into phi_core")
+
+if(WITH_CUSTOM_DEVICE_SUB_BUILD)
+  file(GLOB_RECURSE CUSTOM_DEVICE_REPO_SRCS
+       "${PADDLE_SOURCE_DIR}/../common/*.cu"
+       "${PADDLE_SOURCE_DIR}/../common/*.cc")
+  list(APPEND PHI_CORE_SRCS ${CUSTOM_DEVICE_REPO_SRCS}
+       ${CUSTOM_DEVICE_EXTRA_SRCS})
+endif()
+
 set(PHI_GPU_SRCS ${kernels_gpu_srcs})
 
 if(WITH_SHARED_PHI)
@@ -341,7 +353,7 @@ if(WITH_GPU OR WITH_ROCM)
 endif()
 
 if(MKL_FOUND AND WITH_ONEMKL)
-  if(win32)
+  if(WIN32)
     target_include_directories(phi PRIVATE ${MKL_INCLUDE})
   else()
     target_include_directories(phi_core PRIVATE ${MKL_INCLUDE})
@@ -356,6 +368,20 @@ if(WITH_CUTLASS)
   add_definitions("-DPADDLE_WITH_MEMORY_EFFICIENT_ATTENTION"
   )# for memory_efficient_attention.h
 endif()
+# PADDLE_WARP_SIZE: warp size for the target GPU platform.
+# Default 32 (NVIDIA). Override via -DPADDLE_WARP_SIZE=64 for iluvatar (COREX).
+if(NOT DEFINED PADDLE_WARP_SIZE)
+  set(PADDLE_WARP_SIZE 32)
+endif()
+math(EXPR PADDLE_WARP_MASK "${PADDLE_WARP_SIZE} - 1")
+if(PADDLE_WARP_SIZE EQUAL 64)
+  set(PADDLE_WARP_SHIFT 6)
+else()
+  set(PADDLE_WARP_SHIFT 5)
+endif()
+add_definitions(-DPADDLE_WARP_SIZE=${PADDLE_WARP_SIZE})
+add_definitions(-DPADDLE_WARP_MASK=${PADDLE_WARP_MASK})
+add_definitions(-DPADDLE_WARP_SHIFT=${PADDLE_WARP_SHIFT})
 if(WITH_FLASHATTN)
   add_dependencies(phi flashattn)
 endif()

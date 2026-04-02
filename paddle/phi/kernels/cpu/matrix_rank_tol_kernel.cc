@@ -34,7 +34,7 @@ namespace phi {
 
 template <typename T>
 void LapackSVD(const T* x_data,
-               phi::dtype::Real<T>* eigenvalues_data,
+               dtype::Real<T>* eigenvalues_data,
                int rows,
                int cols) {
   char jobz = 'N';
@@ -43,27 +43,27 @@ void LapackSVD(const T* x_data,
   T* a = const_cast<T*>(x_data);  // NOLINT
   int lda = rows;
   int lwork = 3 * mn + std::max(mx, 7 * mn);
-  std::vector<phi::dtype::Real<T>> rwork(
+  std::vector<dtype::Real<T>> rwork(
       std::max(5 * mn * mn + 5 * mn, 2 * mx * mn + 2 * mn * mn + mn));
   std::vector<T> work(lwork);
   std::vector<int> iwork(8 * mn);
   int info = 0;
 
-  funcs::lapackSvd<T, phi::dtype::Real<T>>(jobz,
-                                           rows,
-                                           cols,
-                                           a,
-                                           lda,
-                                           eigenvalues_data,
-                                           nullptr,
-                                           1,
-                                           nullptr,
-                                           1,
-                                           work.data(),
-                                           lwork,
-                                           rwork.data(),
-                                           iwork.data(),
-                                           &info);
+  funcs::lapackSvd<T, dtype::Real<T>>(jobz,
+                                      rows,
+                                      cols,
+                                      a,
+                                      lda,
+                                      eigenvalues_data,
+                                      nullptr,
+                                      1,
+                                      nullptr,
+                                      1,
+                                      work.data(),
+                                      lwork,
+                                      rwork.data(),
+                                      iwork.data(),
+                                      &info);
 
   if (info < 0) {
     PADDLE_THROW(common::errors::InvalidArgument(
@@ -78,7 +78,7 @@ void LapackSVD(const T* x_data,
 
 template <typename T>
 void BatchSVD(const T* x_data,
-              phi::dtype::Real<T>* eigenvalues_data,
+              dtype::Real<T>* eigenvalues_data,
               int batches,
               int rows,
               int cols) {
@@ -96,7 +96,7 @@ void MatrixRankTolKernel(const Context& dev_ctx,
                          bool use_default_tol,
                          bool hermitian,
                          DenseTensor* out) {
-  using RealType = phi::dtype::Real<T>;
+  using RealType = dtype::Real<T>;
   dev_ctx.template Alloc<int64_t>(out);
   auto dim_x = x.dims();
   auto dim_out = out->dims();
@@ -126,7 +126,7 @@ void MatrixRankTolKernel(const Context& dev_ctx,
   if (hermitian) {
     funcs::MatrixEighFunctor<Context, T> functor;
     functor(dev_ctx, x, &eigenvalue_tensor, nullptr, true, false);
-    phi::AbsKernel<RealType, Context>(
+    AbsKernel<RealType, Context>(
         dev_ctx, eigenvalue_tensor, &eigenvalue_tensor);
   } else {
     DenseTensor trans_x = TransposeLast2Dim<T>(dev_ctx, x);
@@ -137,18 +137,18 @@ void MatrixRankTolKernel(const Context& dev_ctx,
   DenseTensor max_eigenvalue_tensor;
   max_eigenvalue_tensor.Resize(detail::RemoveLastDim(eigenvalue_tensor.dims()));
   dev_ctx.template Alloc<RealType>(&max_eigenvalue_tensor);
-  phi::MaxKernel<RealType, Context>(dev_ctx,
-                                    eigenvalue_tensor,
-                                    phi::IntArray({-1}),
-                                    false,
-                                    &max_eigenvalue_tensor);
+  MaxKernel<RealType, Context>(dev_ctx,
+                               eigenvalue_tensor,
+                               IntArray({-1}),
+                               false,
+                               &max_eigenvalue_tensor);
 
-  DenseTensor rtol_tensor = phi::Scale<RealType, Context>(
+  DenseTensor rtol_tensor = Scale<RealType, Context>(
       dev_ctx, max_eigenvalue_tensor, rtol_T, 0.0f, false);
   DenseTensor atol_tensor_real;
-  if (atol_tensor.dtype() == phi::DataType::COMPLEX64 ||
-      atol_tensor.dtype() == phi::DataType::COMPLEX128) {
-    atol_tensor_real = phi::Real<T, Context>(dev_ctx, atol_tensor);
+  if (atol_tensor.dtype() == DataType::COMPLEX64 ||
+      atol_tensor.dtype() == DataType::COMPLEX128) {
+    atol_tensor_real = Real<T, Context>(dev_ctx, atol_tensor);
   } else {
     atol_tensor_real = atol_tensor;
   }
@@ -190,12 +190,12 @@ void MatrixRankTolKernel(const Context& dev_ctx,
         axis);
   }
 
-  phi::SumKernel<int64_t>(dev_ctx,
-                          compare_result,
-                          std::vector<int64_t>{-1},
-                          compare_result.dtype(),
-                          false,
-                          out);
+  SumKernel<int64_t>(dev_ctx,
+                     compare_result,
+                     std::vector<int64_t>{-1},
+                     compare_result.dtype(),
+                     false,
+                     out);
 }
 
 template <typename T, typename Context>
@@ -205,7 +205,7 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
                               const optional<DenseTensor>& rtol,
                               bool hermitian,
                               DenseTensor* out) {
-  using RealType = phi::dtype::Real<T>;
+  using RealType = dtype::Real<T>;
   auto dim_x = x.dims();
   auto dim_out = out->dims();
   int rows = static_cast<int>(dim_x[dim_x.size() - 2]);
@@ -228,7 +228,7 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
   if (hermitian) {
     funcs::MatrixEighFunctor<Context, T> functor;
     functor(dev_ctx, x, &eigenvalue_tensor, nullptr, true, false);
-    phi::AbsKernel<RealType, Context>(
+    AbsKernel<RealType, Context>(
         dev_ctx, eigenvalue_tensor, &eigenvalue_tensor);
   } else {
     DenseTensor trans_x = TransposeLast2Dim<T>(dev_ctx, x);
@@ -239,16 +239,16 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
   DenseTensor max_eigenvalue_tensor;
   max_eigenvalue_tensor.Resize(detail::RemoveLastDim(eigenvalue_tensor.dims()));
   dev_ctx.template Alloc<RealType>(&max_eigenvalue_tensor);
-  phi::MaxKernel<RealType, Context>(dev_ctx,
-                                    eigenvalue_tensor,
-                                    phi::IntArray({-1}),
-                                    false,
-                                    &max_eigenvalue_tensor);
+  MaxKernel<RealType, Context>(dev_ctx,
+                               eigenvalue_tensor,
+                               IntArray({-1}),
+                               false,
+                               &max_eigenvalue_tensor);
 
   DenseTensor atol_tensor;
-  if (atol.dtype() == phi::DataType::COMPLEX64 ||
-      atol.dtype() == phi::DataType::COMPLEX128) {
-    atol_tensor = phi::Real<T, Context>(dev_ctx, atol);
+  if (atol.dtype() == DataType::COMPLEX64 ||
+      atol.dtype() == DataType::COMPLEX128) {
+    atol_tensor = Real<T, Context>(dev_ctx, atol);
   } else {
     atol_tensor = atol;
   }
@@ -258,13 +258,13 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
 
   if (rtol) {
     DenseTensor rtol_tensor = *rtol;
-    if (rtol_tensor.dtype() == phi::DataType::COMPLEX64 ||
-        rtol_tensor.dtype() == phi::DataType::COMPLEX128) {
-      rtol_tensor = phi::Real<T, Context>(dev_ctx, *rtol);
+    if (rtol_tensor.dtype() == DataType::COMPLEX64 ||
+        rtol_tensor.dtype() == DataType::COMPLEX128) {
+      rtol_tensor = Real<T, Context>(dev_ctx, *rtol);
     }
     DenseTensor tmp_rtol_tensor;
     tmp_rtol_tensor =
-        phi::Multiply<RealType>(dev_ctx, rtol_tensor, max_eigenvalue_tensor);
+        Multiply<RealType>(dev_ctx, rtol_tensor, max_eigenvalue_tensor);
     funcs::ElementwiseCompute<GreaterElementFunctor<RealType>, RealType>(
         dev_ctx,
         atol_tensor,
@@ -278,7 +278,7 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
     RealType rtol_T =
         std::numeric_limits<RealType>::epsilon() * std::max(rows, cols);
 
-    DenseTensor default_rtol_tensor = phi::Scale<RealType, Context>(
+    DenseTensor default_rtol_tensor = Scale<RealType, Context>(
         dev_ctx, max_eigenvalue_tensor, rtol_T, 0.0f, false);
 
     DenseTensor zero_tensor;
@@ -287,16 +287,16 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
 
     DenseTensor atol_compare_result;
     atol_compare_result.Resize(default_rtol_tensor.dims());
-    phi::EqualKernel<RealType, Context>(
+    EqualKernel<RealType, Context>(
         dev_ctx, atol_tensor, zero_tensor, &atol_compare_result);
 
     DenseTensor selected_rtol_tensor;
     selected_rtol_tensor.Resize(default_rtol_tensor.dims());
-    phi::WhereKernel<RealType, Context>(dev_ctx,
-                                        atol_compare_result,
-                                        default_rtol_tensor,
-                                        zero_tensor,
-                                        &selected_rtol_tensor);
+    WhereKernel<RealType, Context>(dev_ctx,
+                                   atol_compare_result,
+                                   default_rtol_tensor,
+                                   zero_tensor,
+                                   &selected_rtol_tensor);
     funcs::ElementwiseCompute<GreaterElementFunctor<RealType>, RealType>(
         dev_ctx,
         atol_tensor,
@@ -333,12 +333,12 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
         axis);
   }
 
-  phi::SumKernel<int64_t>(dev_ctx,
-                          compare_result,
-                          std::vector<int64_t>{-1},
-                          compare_result.dtype(),
-                          false,
-                          out);
+  SumKernel<int64_t>(dev_ctx,
+                     compare_result,
+                     std::vector<int64_t>{-1},
+                     compare_result.dtype(),
+                     false,
+                     out);
 }
 }  // namespace phi
 

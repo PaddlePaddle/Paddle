@@ -159,13 +159,13 @@ void ArgMinMaxKernel(const Context& dev_ctx,
       common::errors::InvalidArgument(
           "argmin/argmax input numel must > 0, bug got %d", x.numel()));
   if (dtype == DataType::UNDEFINED) {
-    phi::VisitDataTypeTiny(
-        phi::DataType::INT64,
+    VisitDataTypeTiny(
+        DataType::INT64,
         VisitDataArgMinMaxFunctor<Context, T, EnumArgMinMaxValue>(
             dev_ctx, x, axis.to<int64_t>(), keepdims, flatten, out));
     return;
   }
-  phi::VisitDataTypeTiny(
+  VisitDataTypeTiny(
       dtype,
       VisitDataArgMinMaxFunctor<Context, T, EnumArgMinMaxValue>(
           dev_ctx, x, axis.to<int64_t>(), keepdims, flatten, out));

@@ -376,8 +376,8 @@ __global__ void MaskCopy(const IntT* mask_indices,
                          const int stride,
                          const T* x_values,
                          T* out_values) {
-  using LoadT = phi::AlignedVector<T, VecSize>;
-  using StoreT = phi::AlignedVector<T, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
+  using StoreT = AlignedVector<T, VecSize>;
   CUDA_KERNEL_LOOP_TYPE(i, n, int64_t) {
     const int mask_index = mask_indices[i];
     const bool flag = funcs::sparse::TestBits(mask_index, index_flags);
@@ -385,8 +385,8 @@ __global__ void MaskCopy(const IntT* mask_indices,
       int j = table[mask_index];
       for (int k = 0; k < stride; k += VecSize) {
         LoadT vec_x;
-        phi::Load<T, VecSize>(x_values + j * stride + k, &vec_x);
-        phi::Store<T, VecSize>(vec_x, out_values + i * stride + k);
+        Load<T, VecSize>(x_values + j * stride + k, &vec_x);
+        Store<T, VecSize>(vec_x, out_values + i * stride + k);
       }
     }
   }

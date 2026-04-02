@@ -34,7 +34,7 @@ namespace funcs {
 template <typename T>
 class MultiheadGPUComputeFunctor {
  public:
-  void operator()(const phi::GPUContext &dev_ctx,
+  void operator()(const GPUContext &dev_ctx,
                   int batch,
                   int seq_len,
                   int head_num,

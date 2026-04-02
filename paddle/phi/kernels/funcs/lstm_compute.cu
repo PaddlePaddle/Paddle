@@ -20,8 +20,8 @@ namespace phi {
 namespace funcs {
 
 template <class T>
-struct LstmUnitFunctor<phi::GPUContext, T> {
-  static void compute(const phi::GPUContext& dev_ctx,
+struct LstmUnitFunctor<GPUContext, T> {
+  static void compute(const GPUContext& dev_ctx,
                       LstmMetaValue<T> value,
                       int frame_size,
                       int batch_size,
@@ -43,8 +43,8 @@ struct LstmUnitFunctor<phi::GPUContext, T> {
 };
 
 template <class T>
-struct LstmUnitGradFunctor<phi::GPUContext, T> {
-  static void compute(const phi::GPUContext& dev_ctx,
+struct LstmUnitGradFunctor<GPUContext, T> {
+  static void compute(const GPUContext& dev_ctx,
                       LstmMetaValue<T> value,
                       LstmMetaGrad<T> grad,
                       int frame_size,
@@ -67,10 +67,10 @@ struct LstmUnitGradFunctor<phi::GPUContext, T> {
   }
 };
 
-template class LstmUnitFunctor<phi::GPUContext, float>;
-template class LstmUnitFunctor<phi::GPUContext, double>;
-template class LstmUnitGradFunctor<phi::GPUContext, float>;
-template class LstmUnitGradFunctor<phi::GPUContext, double>;
+template class LstmUnitFunctor<GPUContext, float>;
+template class LstmUnitFunctor<GPUContext, double>;
+template class LstmUnitGradFunctor<GPUContext, float>;
+template class LstmUnitGradFunctor<GPUContext, double>;
 
 }  // namespace funcs
 }  // namespace phi

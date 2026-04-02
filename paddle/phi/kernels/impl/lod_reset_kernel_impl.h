@@ -105,7 +105,7 @@ void LodResetKernel(const Context& dev_ctx,
     auto* out_lod = out->mutable_lod();
     out_lod->push_back(ulevel0);
   } else {
-    phi::LegacyLoD target_lod;
+    LegacyLoD target_lod;
     target_lod.push_back(ulevel0);
     out->set_lod(target_lod);
   }

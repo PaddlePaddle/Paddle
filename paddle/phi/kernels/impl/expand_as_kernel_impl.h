@@ -29,7 +29,7 @@ void ExpandAs(const Context& dev_ctx,
               const std::vector<int64_t>& target_shape,
               DenseTensor* out) {
   auto in_dims = x.dims();
-  auto vec_in_dims = common::vectorize<int>(in_dims);
+  auto vec_in_dims = vectorize<int>(in_dims);
   auto diff = target_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
   std::vector<int64_t> repeat_times(vec_in_dims.size());
@@ -76,7 +76,7 @@ void ExpandAs(const Context& dev_ctx,
       repeat_times[i] = 1;
     }
   }
-  Eigen::DSizes<Eigen::DenseIndex, Rank> bcast_dims;
+  Eigen::DSizes<int64_t, Rank> bcast_dims;
   for (size_t i = 0; i < repeat_times.size(); ++i) {
     bcast_dims[i] = repeat_times[i];
   }
@@ -129,7 +129,7 @@ void ExpandAsKernel(const Context& dev_ctx,
 
   std::vector<int64_t> real_target_shape = target_shape;
   if (y.get_ptr()) {
-    real_target_shape = phi::vectorize<int64_t>(y.get_ptr()->dims());
+    real_target_shape = vectorize<int64_t>(y.get_ptr()->dims());
   }
 
   switch (target_rank) {

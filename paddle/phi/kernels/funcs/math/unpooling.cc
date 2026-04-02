@@ -17,9 +17,9 @@
 namespace phi {
 namespace math {
 template <typename T>
-class Unpool2dMaxFunctor<phi::CPUContext, T> {
+class Unpool2dMaxFunctor<CPUContext, T> {
  public:
-  void operator()(const phi::CPUContext& context,
+  void operator()(const CPUContext& context,
                   const DenseTensor& input,
                   const DenseTensor& indices,
                   DenseTensor* output) {
@@ -60,9 +60,9 @@ class Unpool2dMaxFunctor<phi::CPUContext, T> {
   }
 };
 template <class T>
-class Unpool2dMaxGradFunctor<phi::CPUContext, T> {
+class Unpool2dMaxGradFunctor<CPUContext, T> {
  public:
-  void operator()(const phi::CPUContext& context,
+  void operator()(const CPUContext& context,
                   const DenseTensor& input,
                   const DenseTensor& indices,
                   const DenseTensor& output,
@@ -106,9 +106,9 @@ class Unpool2dMaxGradFunctor<phi::CPUContext, T> {
 };
 
 template <typename T>
-class Unpool3dMaxFunctor<phi::CPUContext, T> {
+class Unpool3dMaxFunctor<CPUContext, T> {
  public:
-  void operator()(const phi::CPUContext& context,
+  void operator()(const CPUContext& context,
                   const DenseTensor& input,
                   const DenseTensor& indices,
                   DenseTensor* output) {
@@ -152,9 +152,9 @@ class Unpool3dMaxFunctor<phi::CPUContext, T> {
   }
 };
 template <class T>
-class Unpool3dMaxGradFunctor<phi::CPUContext, T> {
+class Unpool3dMaxGradFunctor<CPUContext, T> {
  public:
-  void operator()(const phi::CPUContext& context,
+  void operator()(const CPUContext& context,
                   const DenseTensor& input,
                   const DenseTensor& indices,
                   const DenseTensor& output,
@@ -200,13 +200,13 @@ class Unpool3dMaxGradFunctor<phi::CPUContext, T> {
   }
 };
 
-template class Unpool2dMaxGradFunctor<phi::CPUContext, float>;
-template class Unpool2dMaxGradFunctor<phi::CPUContext, double>;
-template class Unpool2dMaxFunctor<phi::CPUContext, float>;
-template class Unpool2dMaxFunctor<phi::CPUContext, double>;
-template class Unpool3dMaxGradFunctor<phi::CPUContext, float>;
-template class Unpool3dMaxGradFunctor<phi::CPUContext, double>;
-template class Unpool3dMaxFunctor<phi::CPUContext, float>;
-template class Unpool3dMaxFunctor<phi::CPUContext, double>;
+template class Unpool2dMaxGradFunctor<CPUContext, float>;
+template class Unpool2dMaxGradFunctor<CPUContext, double>;
+template class Unpool2dMaxFunctor<CPUContext, float>;
+template class Unpool2dMaxFunctor<CPUContext, double>;
+template class Unpool3dMaxGradFunctor<CPUContext, float>;
+template class Unpool3dMaxGradFunctor<CPUContext, double>;
+template class Unpool3dMaxFunctor<CPUContext, float>;
+template class Unpool3dMaxFunctor<CPUContext, double>;
 }  // namespace math
 }  // namespace phi

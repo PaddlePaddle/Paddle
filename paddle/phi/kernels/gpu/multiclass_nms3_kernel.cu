@@ -1018,22 +1018,22 @@ void MultiClassNMSGPUKernel(const Context& dev_ctx,
       rois_num_cpu = optional<DenseTensor>(rois_num_cpu_tenor);
     }
     dev_ctx.Wait();
-    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-    auto* cpu_ctx = static_cast<phi::CPUContext*>(pool.Get(cpu_place));
-    MultiClassNMSKernel<T, phi::CPUContext>(*cpu_ctx,
-                                            bboxes_cpu,
-                                            scores_cpu,
-                                            rois_num_cpu,
-                                            score_threshold,
-                                            nms_top_k,
-                                            keep_top_k,
-                                            nms_threshold,
-                                            normalized,
-                                            nms_eta,
-                                            background_label,
-                                            &out_cpu,
-                                            &index_cpu,
-                                            &nms_rois_num_cpu);
+    DeviceContextPool& pool = DeviceContextPool::Instance();
+    auto* cpu_ctx = static_cast<CPUContext*>(pool.Get(cpu_place));
+    MultiClassNMSKernel<T, CPUContext>(*cpu_ctx,
+                                       bboxes_cpu,
+                                       scores_cpu,
+                                       rois_num_cpu,
+                                       score_threshold,
+                                       nms_top_k,
+                                       keep_top_k,
+                                       nms_threshold,
+                                       normalized,
+                                       nms_eta,
+                                       background_label,
+                                       &out_cpu,
+                                       &index_cpu,
+                                       &nms_rois_num_cpu);
     // copy back
     Copy(dev_ctx, out_cpu, gpu_place, false, out);
     Copy(dev_ctx, index_cpu, gpu_place, false, index);

@@ -41,6 +41,7 @@ void SYCLBackendAPI::Init(Arch arch) {
       },
       [&](common::X86Arch) { CINN_NOT_IMPLEMENTED },
       [&](common::ARMArch) { CINN_NOT_IMPLEMENTED },
+      [&](common::CustomDeviceArch) { CINN_NOT_IMPLEMENTED },
       [&](common::NVGPUArch) { backend = ::sycl::backend::ext_oneapi_cuda; },
       [&](common::HygonDCUArchHIP) { CINN_NOT_IMPLEMENTED },
       [&](common::HygonDCUArchSYCL) {

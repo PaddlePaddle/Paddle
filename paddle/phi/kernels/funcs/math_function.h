@@ -38,7 +38,7 @@ void BatchTranspose(T* output,
                     int64_t batch,
                     int64_t m,
                     int64_t n,
-                    const phi::GPUContext* dev_ctx);
+                    const GPUContext* dev_ctx);
 #endif
 template <typename DeviceContext, typename T>
 struct TransposeNormal {
@@ -64,17 +64,17 @@ struct PADDLE_API SetConstant {
 
 #ifdef PADDLE_WITH_XPU
 template <typename T>
-struct SetConstant<phi::XPUContext, T> {
-  void operator()(const phi::XPUContext& dev_ctx, DenseTensor* tensor, T num);
+struct SetConstant<XPUContext, T> {
+  void operator()(const XPUContext& dev_ctx, DenseTensor* tensor, T num);
 };
 #endif
 
 template <typename Place>
-void set_constant_with_place(const phi::DeviceContext& dev_ctx,
+void set_constant_with_place(const DeviceContext& dev_ctx,
                              DenseTensor* tensor,
                              float value);
 
-PADDLE_API void set_constant(const phi::DeviceContext& dev_ctx,
+PADDLE_API void set_constant(const DeviceContext& dev_ctx,
                              DenseTensor* tensor,
                              float value);
 
@@ -114,7 +114,7 @@ struct TensorSetConstantXPU {
       : tensor_(tensor), value_(value), place_(place) {}
   template <typename T>
   void apply() const {
-    auto* dev_ctx = phi::DeviceContextPool::Instance().Get(place_);
+    auto* dev_ctx = DeviceContextPool::Instance().Get(place_);
     auto begin = dev_ctx->Alloc<T>(tensor_);
     int64_t numel = tensor_->numel();
     if (std::is_same<T, phi::complex64>::value ||
@@ -130,7 +130,7 @@ struct TensorSetConstantXPU {
                std::is_same<T, phi::float8_e5m2>::value) {
       PADDLE_THROW(common::errors::Fatal("XPU does not support fp8"));
     } else {
-      auto* dev_ctx2 = static_cast<phi::XPUContext*>(dev_ctx);
+      auto* dev_ctx2 = static_cast<XPUContext*>(dev_ctx);
       using XPUType = typename XPUTypeTrait<T>::Type;
       T val = static_cast<T>(value_);
       int r = xpu::constant<XPUType>(dev_ctx2->x_context(),

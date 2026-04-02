@@ -57,14 +57,13 @@ void FullLikeKernel(const Context& dev_ctx,
     out->Resize(x.dims());
     return;
   }
-  if (!std::is_same<T, phi::complex64>::value &&
-      !std::is_same<T, phi::complex128>::value) {
+  if (!std::is_same<T, complex64>::value &&
+      !std::is_same<T, complex128>::value && !std::is_same<T, int64_t>::value) {
     auto value = val.to<double>();
     using CommonType = typename std::common_type<
         float,
-        typename std::conditional<std::is_same<T, phi::float16>::value,
-                                  float,
-                                  T>::type>::type;
+        typename std::conditional<std::is_same<T, float16>::value, float, T>::
+            type>::type;
 
     auto common_type_value = static_cast<CommonType>(value);
 
@@ -103,7 +102,7 @@ void FullIntArrayKernel(const Context& dev_ctx,
                         const std::vector<int64_t>& shape,
                         DataType dtype UNUSED,
                         DenseTensor* out) {
-  out->Resize(make_ddim({static_cast<int64_t>(shape.size())}));
+  out->Resize({static_cast<int64_t>(shape.size())});
   T* out_data = dev_ctx.template Alloc<T>(out);
   if (out->numel() == 0) {
     return;

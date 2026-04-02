@@ -14,14 +14,18 @@
 
 #include "paddle/fluid/eager/backward.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/general_grad.h"
 #include "paddle/fluid/eager/pylayer/py_layer_node.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/inference/analysis/dot.h"
 #include "paddle/phi/core/memory/stats.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
+
 COMMON_DECLARE_int32(call_stack_level);
 COMMON_DECLARE_string(dump_grad_node_forward_stack_path);
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
+
 namespace egr {
 using paddle::inference::analysis::Dot;
 std::unordered_map<GradNodeBase*, int> getInDegreeMap(
@@ -280,7 +284,11 @@ std::vector<paddle::Tensor> RunBackward(
   std::unordered_map<GradNodeBase*, std::unique_ptr<GradTensorHolder>>
       node_input_buffers_dict;
   std::unordered_set<GradNodeBase*> visited;
-  for (size_t i = 0; i < tensors.size(); i++) {
+  for (size_t step = 0; step < tensors.size(); step++) {
+    int i = FLAGS_use_accuracy_compatible_kernel
+                ? static_cast<int>(tensors.size()) - 1 - static_cast<int>(step)
+                : static_cast<int>(step);
+
     const paddle::Tensor& tensor = tensors[i];
 
     AutogradMeta* auto_grad_meta = EagerUtils::nullable_autograd_meta(tensor);
@@ -647,7 +655,8 @@ std::vector<paddle::Tensor> RunBackward(
                   next_node->name()));
 
           auto add_next_node_func = [&queue](GradNodeBase* next_node) {
-            if (dynamic_cast<egr::GradNodeAccumulation*>(next_node)) {
+            if (dynamic_cast<egr::GradNodeAccumulation*>(next_node) ||
+                FLAGS_use_accuracy_compatible_kernel) {
               queue.push_front(next_node);
             } else {
               queue.push_back(next_node);

@@ -138,8 +138,8 @@ void ModulatedDeformableIm2col(const Context& dev_ctx UNUSED,
                                                 data_col);
 }
 
-template void ModulatedDeformableIm2col<float, phi::CPUContext, int>(
-    const phi::CPUContext& dev_ctx,
+template void ModulatedDeformableIm2col<float, CPUContext, int>(
+    const CPUContext& dev_ctx,
     const float* data_im,
     const float* data_offset,
     const float* data_mask,
@@ -152,8 +152,8 @@ template void ModulatedDeformableIm2col<float, phi::CPUContext, int>(
     const int deformable_groups,
     float* data_col);
 
-template void ModulatedDeformableIm2col<float, phi::CPUContext, int64_t>(
-    const phi::CPUContext& dev_ctx,
+template void ModulatedDeformableIm2col<float, CPUContext, int64_t>(
+    const CPUContext& dev_ctx,
     const float* data_im,
     const float* data_offset,
     const float* data_mask,
@@ -166,8 +166,8 @@ template void ModulatedDeformableIm2col<float, phi::CPUContext, int64_t>(
     const int deformable_groups,
     float* data_col);
 
-template void ModulatedDeformableIm2col<double, phi::CPUContext, int>(
-    const phi::CPUContext& dev_ctx,
+template void ModulatedDeformableIm2col<double, CPUContext, int>(
+    const CPUContext& dev_ctx,
     const double* data_im,
     const double* data_offset,
     const double* data_mask,
@@ -180,8 +180,8 @@ template void ModulatedDeformableIm2col<double, phi::CPUContext, int>(
     const int deformable_groups,
     double* data_col);
 
-template void ModulatedDeformableIm2col<double, phi::CPUContext, int64_t>(
-    const phi::CPUContext& dev_ctx,
+template void ModulatedDeformableIm2col<double, CPUContext, int64_t>(
+    const CPUContext& dev_ctx,
     const double* data_im,
     const double* data_offset,
     const double* data_mask,

@@ -24,7 +24,7 @@
 
 namespace phi {
 
-using Sampler = phi::math::Sampler;
+using Sampler = math::Sampler;
 
 template <typename Context, typename T>
 static void inline PrepareSamples(const Context &dev_ctx,
@@ -86,11 +86,11 @@ void NCEKernel(const Context &dev_ctx,
   Sampler *sampler;
   switch (sampler_type) {
     case 0: {
-      sampler = new phi::math::UniformSampler(num_total_classes - 1, seed);
+      sampler = new math::UniformSampler(num_total_classes - 1, seed);
       break;
     }
     case 1: {
-      sampler = new phi::math::LogUniformSampler(num_total_classes - 1, seed);
+      sampler = new math::LogUniformSampler(num_total_classes - 1, seed);
       break;
     }
     case 2: {
@@ -133,11 +133,11 @@ void NCEKernel(const Context &dev_ctx,
       const float *probs_data = dist_probs->data<float>();
       const int *alias_data = dist_alias->data<int>();
       const float *alias_probs_data = dist_alias_probs->data<float>();
-      sampler = new phi::math::CustomSampler(num_total_classes - 1,
-                                             probs_data,
-                                             alias_data,
-                                             alias_probs_data,
-                                             seed);
+      sampler = new math::CustomSampler(num_total_classes - 1,
+                                        probs_data,
+                                        alias_data,
+                                        alias_probs_data,
+                                        seed);
       break;
     }
     default: {
@@ -216,7 +216,7 @@ void NCEKernel(const Context &dev_ctx,
 
   auto weight_mat = EigenMatrix<T>::From(weight_in);
   for (int64_t i = 0; i < sample_labels->numel(); ++i) {
-    Eigen::Tensor<T, 0, Eigen::RowMajor, Eigen::DenseIndex> result =
+    Eigen::Tensor<T, 0, Eigen::RowMajor, int64_t> result =
         (input_mat.chip(static_cast<int>(i / sample_labels->dims()[1]), 0) *
          weight_mat.chip(sample_labels_data[i], 0))
             .sum();

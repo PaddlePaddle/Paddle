@@ -232,6 +232,26 @@ def monkey_patch_value():
             return isinstance(expected_place, framework.core.CUDAPlace)
 
     @property
+    def is_cpu(self):
+        """
+        Tensor don't have 'is_cpu' interface in static graph mode
+        But this interface can greatly facilitate dy2static.
+        So we give a warning here and return None.
+        """
+        warnings.warn(
+            "Tensor do not have 'is_cpu' interface for pir graph mode, try not to use it."
+        )
+        from paddle import framework
+
+        if hasattr(self, 'place') and isinstance(
+            self.place, framework.core.CPUPlace
+        ):
+            return True
+        else:
+            expected_place = framework._current_expected_place_()
+            return isinstance(expected_place, framework.core.CPUPlace)
+
+    @property
     def place(self):
         """
         Tensor don't have 'place' interface in static graph mode
@@ -615,6 +635,15 @@ def monkey_patch_value():
                 ...     (output_x,) = exe.run(main_program, fetch_list=[x.size])
                 ...     print(f"value's size is: {output_x}")
                 value's size is: 24
+        """
+        return paddle.numel(self)
+
+    def nelement(self):
+        """
+        Returns the number of elements for current Tensor, which is a int64 Tensor with shape [] . Alias for attribute `size`.
+
+        Returns:
+            Tensor, the number of elements for current Tensor
         """
         return paddle.numel(self)
 
@@ -1362,7 +1391,7 @@ def monkey_patch_value():
         return res
 
     @fake_interface_only
-    def numpy(self):
+    def numpy(self, *, force=True):
         """
         **Notes**:
             **This API is ONLY available in Dygraph mode**
@@ -1504,6 +1533,7 @@ def monkey_patch_value():
         ('device', device),
         ('contiguous', contiguous),
         ('is_cuda', is_cuda),
+        ('is_cpu', is_cpu),
         ('is_contiguous', is_contiguous),
         ('item', _item),
         ('dim', dim),
@@ -1514,6 +1544,7 @@ def monkey_patch_value():
         ('uint8', byte),
         ('type_as', type_as),
         ('size', _size_),
+        ('nelement', nelement),
         ('T', _T_),
         ('mT', _mT_),
         ('new_full', _new_full_),

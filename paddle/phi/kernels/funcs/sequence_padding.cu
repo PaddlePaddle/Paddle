@@ -59,9 +59,9 @@ __global__ void SequencePaddingKernel(T* dst,
 }
 
 template <typename T>
-class PaddingDenseTensorFunctor<phi::GPUContext, T> {
+class PaddingDenseTensorFunctor<GPUContext, T> {
  public:
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& seq_tensor,
                   DenseTensor* pad_tensor,
                   const DenseTensor& pad_value,
@@ -70,7 +70,7 @@ class PaddingDenseTensorFunctor<phi::GPUContext, T> {
                   bool norm_by_times = false,
                   const PadLayout layout = kBatchLengthWidth) {
     auto seq_lod = seq_tensor.lod();
-    auto seq_offsets = phi::ToAbsOffset(seq_lod)[lod_level];
+    auto seq_offsets = ToAbsOffset(seq_lod)[lod_level];
     const auto& seq_tensor_dims = seq_tensor.dims();
     const auto& pad_tensor_dims = pad_tensor->dims();
     int max_seq_len = MaximumSequenceLength(seq_offsets);
@@ -141,16 +141,16 @@ class PaddingDenseTensorFunctor<phi::GPUContext, T> {
 };
 
 template <typename T>
-class UnpaddingDenseTensorFunctor<phi::GPUContext, T> {
+class UnpaddingDenseTensorFunctor<GPUContext, T> {
  public:
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& pad_tensor,
                   DenseTensor* seq_tensor,
                   int pad_seq_len = -1,
                   int lod_level = 0,
                   bool norm_by_times = false,
                   const PadLayout layout = kBatchLengthWidth) {
-    auto seq_offsets = phi::ToAbsOffset(seq_tensor->lod())[lod_level];
+    auto seq_offsets = ToAbsOffset(seq_tensor->lod())[lod_level];
     const auto& seq_tensor_dims = seq_tensor->dims();
     const auto& pad_tensor_dims = pad_tensor.dims();
     int max_seq_len = MaximumSequenceLength(seq_offsets);
@@ -199,15 +199,15 @@ class UnpaddingDenseTensorFunctor<phi::GPUContext, T> {
   }
 };
 
-template class PaddingDenseTensorFunctor<phi::GPUContext, int>;
-template class PaddingDenseTensorFunctor<phi::GPUContext, int64_t>;
-template class PADDLE_API PaddingDenseTensorFunctor<phi::GPUContext, float>;
-template class PaddingDenseTensorFunctor<phi::GPUContext, double>;
+template class PaddingDenseTensorFunctor<GPUContext, int>;
+template class PaddingDenseTensorFunctor<GPUContext, int64_t>;
+template class PADDLE_API PaddingDenseTensorFunctor<GPUContext, float>;
+template class PaddingDenseTensorFunctor<GPUContext, double>;
 
-template class UnpaddingDenseTensorFunctor<phi::GPUContext, int>;
-template class UnpaddingDenseTensorFunctor<phi::GPUContext, int64_t>;
-template class PADDLE_API UnpaddingDenseTensorFunctor<phi::GPUContext, float>;
-template class UnpaddingDenseTensorFunctor<phi::GPUContext, double>;
+template class UnpaddingDenseTensorFunctor<GPUContext, int>;
+template class UnpaddingDenseTensorFunctor<GPUContext, int64_t>;
+template class PADDLE_API UnpaddingDenseTensorFunctor<GPUContext, float>;
+template class UnpaddingDenseTensorFunctor<GPUContext, double>;
 
 }  // namespace funcs
 }  // namespace phi

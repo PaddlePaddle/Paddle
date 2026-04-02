@@ -63,6 +63,9 @@ std::vector<ir::Tensor> ArgSort(const ir::Tensor &A,
       [&](common::NVGPUArch) {
         find_func_name.assign("cinn_nvgpu_next_smallest_int32");
       },
+      [&](common::CustomDeviceArch) {
+        find_func_name.assign("cinn_custom_device_next_smallest_int32");
+      },
       [&](common::HygonDCUArchHIP) {
         find_func_name.assign("cinn_hip_next_smallest_int32");
       },

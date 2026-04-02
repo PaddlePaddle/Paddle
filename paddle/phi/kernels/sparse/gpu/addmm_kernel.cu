@@ -32,9 +32,9 @@ void AddmmKernelImpl(const Context& dev_ctx,
                      float alpha,
                      DenseTensor* out) {
 #if defined(PADDLE_WITH_CUDA)
-  std::vector<int64_t> input_dim = common::vectorize(input.dims());
-  std::vector<int64_t> x_dim = common::vectorize(x.dims());
-  std::vector<int64_t> y_dim = common::vectorize(y.dims());
+  std::vector<int64_t> input_dim = vectorize(input.dims());
+  std::vector<int64_t> x_dim = vectorize(x.dims());
+  std::vector<int64_t> y_dim = vectorize(y.dims());
   auto rank = input_dim.size();
 
   PADDLE_ENFORCE_GE(

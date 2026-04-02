@@ -64,7 +64,7 @@ void Full(const Context& dev_ctx,
           DenseTensor* out) {
   if (!out) return;
   FullKernel<T, Context>(
-      dev_ctx, shape, val, phi::CppTypeToDataType<T>::Type(), out);
+      dev_ctx, shape, val, CppTypeToDataType<T>::Type(), out);
 }
 
 template <typename T, typename Context>
@@ -81,7 +81,7 @@ DenseTensor Full(const Context& dev_ctx,
                  const Scalar& val) {
   DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
-  DataType dtype = phi::CppTypeToDataType<T>::Type();
+  DataType dtype = CppTypeToDataType<T>::Type();
   CreateInferMeta(shape, dtype, &meta_out);
   FullKernel<T, Context>(dev_ctx, shape, val, dtype, &dense_out);
   return dense_out;
@@ -93,7 +93,7 @@ DenseTensor FullLike(const Context& dev_ctx,
                      const Scalar& val) {
   DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
-  DataType dtype = phi::CppTypeToDataType<T>::Type();
+  DataType dtype = CppTypeToDataType<T>::Type();
   CreateLikeInferMeta(x, dtype, &meta_out);
   FullLikeKernel<T, Context>(dev_ctx, x, val, dtype, &dense_out);
   return dense_out;

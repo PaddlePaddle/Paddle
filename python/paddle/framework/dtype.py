@@ -236,6 +236,7 @@ else:
     bind_vartype()
 
 
+@param_one_alias(["dtype", "type"])
 def iinfo(dtype: DTypeLike) -> core_iinfo:
     """
 
@@ -244,7 +245,7 @@ def iinfo(dtype: DTypeLike) -> core_iinfo:
     This is similar to `numpy.iinfo <https://numpy.org/doc/stable/reference/generated/numpy.iinfo.html#numpy-iinfo>`_.
 
     Args:
-        dtype(str|paddle.dtype|np.dtype):  One of paddle.uint8, paddle.int8, paddle.int16, paddle.int32, and paddle.int64.
+        dtype(str|paddle.dtype|np.dtype):  One of paddle.uint8, paddle.int8, paddle.int16, paddle.int32, and paddle.int64. Alias: ``type``.
 
     Returns:
         An iinfo object, which has the following 4 attributes:

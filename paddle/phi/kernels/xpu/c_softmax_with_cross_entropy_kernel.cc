@@ -58,7 +58,7 @@ void CSoftmaxWithCrossEntropyKernel(const Context& dev_ctx,
 }
 
 template <typename T>
-void FixLossAccordingToIgnoreIndex(const phi::XPUContext& dev_ctx,
+void FixLossAccordingToIgnoreIndex(const XPUContext& dev_ctx,
                                    const DenseTensor* labels,
                                    const DenseTensor* predicted_logits,
                                    DenseTensor* loss,
@@ -136,8 +136,8 @@ void FixLossAccordingToIgnoreIndex(const phi::XPUContext& dev_ctx,
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "where");
 }
 template <typename T>
-struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
-  void operator()(const phi::XPUContext& dev_ctx,
+struct CSoftmaxWithCrossEntropyFunctor<XPUContext, T> {
+  void operator()(const XPUContext& dev_ctx,
                   const DenseTensor& logits_in,
                   const DenseTensor& label_in,
                   int64_t ignore_index,
@@ -196,14 +196,13 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
                                         xdims,
                                         reduce_dims);
       };
-      ret = phi::XPUReduce<phi::XPUContext, T>(
-          dev_ctx,
-          logits_2d,
-          std::vector<int64_t>(dims, dims + 1),
-          false,
-          false,
-          &logits_max,
-          f);
+      ret = phi::XPUReduce<XPUContext, T>(dev_ctx,
+                                          logits_2d,
+                                          std::vector<int64_t>(dims, dims + 1),
+                                          false,
+                                          false,
+                                          &logits_max,
+                                          f);
       PADDLE_ENFORCE_XDNN_SUCCESS(ret, "reduce_max");
     }
     comm_ctx->AllReduce(&logits_max, logits_max, BKCL_MAX, stream);
@@ -289,14 +288,13 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
                                         xdims,
                                         reduce_dims);
       };
-      ret = phi::XPUReduce<phi::XPUContext, T>(
-          dev_ctx,
-          softmax_2d,
-          std::vector<int64_t>(dims, dims + 1),
-          false,
-          false,
-          &sum_exp_logits,
-          f);
+      ret = phi::XPUReduce<XPUContext, T>(dev_ctx,
+                                          softmax_2d,
+                                          std::vector<int64_t>(dims, dims + 1),
+                                          false,
+                                          false,
+                                          &sum_exp_logits,
+                                          f);
       PADDLE_ENFORCE_XDNN_SUCCESS(ret, "reduce_sum");
     }
 

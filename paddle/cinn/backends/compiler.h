@@ -29,6 +29,9 @@
 #ifdef CINN_WITH_CUDA
 #include "paddle/cinn/runtime/cuda/cuda_module.h"
 #endif
+#ifdef CINN_WITH_CUSTOM_DEVICE
+#include "paddle/cinn/runtime/custom_device/custom_device_backend_api.h"
+#endif
 #ifdef CINN_WITH_HIP
 #include "paddle/cinn/runtime/hip/hip_module.h"
 #endif
@@ -174,12 +177,17 @@ class Compiler final {
 
   void RegisterCudaModuleSymbol();
 
+  void RegisterCustomDeviceModuleSymbol();
+
   void RegisterHipModuleSymbol();
 
   void RegisterSyclModuleSymbol();
 
   void CompileCudaModule(const ir::Module& module,
                          const std::string& code = "");
+
+  void CompileCustomDeviceModule(const ir::Module& module,
+                                 const std::string& code = "");
 
   void CompileHipModule(const ir::Module& module, const std::string& code = "");
 
@@ -211,6 +219,11 @@ class Compiler final {
   std::unique_ptr<runtime::cuda::CUDAModule> cuda_module_;
   void* cuda_module_handle_{nullptr};
 #endif
+
+#ifdef CINN_WITH_CUSTOM_DEVICE
+  std::unique_ptr<runtime::CustomModule> device_module_;
+#endif
+
 #ifdef CINN_WITH_HIP
   std::unique_ptr<runtime::hip::HIPModule> hip_module_;
 #endif
