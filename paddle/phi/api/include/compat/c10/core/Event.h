@@ -18,105 +18,37 @@
 #include <c10/core/DeviceType.h>
 #include <c10/core/Stream.h>
 
+#include <utility>
+
 #ifdef PADDLE_WITH_CUDA
+#include <c10/cuda/CUDAGuard.h>
 #include <c10/cuda/CUDAStream.h>
-#include <queue>
 #endif
 
 namespace c10 {
 
 enum class EventFlag { PYTORCH_DEFAULT, BACKEND_DEFAULT, INVALID };
 
-#ifdef PADDLE_WITH_CUDA
-
-class EventPool {
- public:
-  EventPool();
-  EventPool(const EventPool &) = delete;
-  EventPool(EventPool &&) = delete;
-  ~EventPool();
-
-  cudaEvent_t CreateCudaEventFromPool();
-
-  static EventPool &Instance();
-
- private:
-  std::queue<cudaEvent_t> incomplished_events_;
-  std::mutex mtx_;
-};
-
-EventPool &EventPool::Instance() {
-  static EventPool pool;
-  return pool;
-}
-
-EventPool::EventPool() {
-  for (size_t i = 0; i < 1000; ++i) {
-    cudaEvent_t new_event;
-    C10_CUDA_CHECK(cudaEventCreate(&new_event));
-
-    cudaEventRecord(new_event, 0);
-    incomplished_events_.push(new_event);
-  }
-}
-
-EventPool::~EventPool() {
-  std::unique_lock<std::mutex> lock(mtx_);
-  while (!incomplished_events_.empty()) {
-    cudaEvent_t event = incomplished_events_.front();
-    incomplished_events_.pop();
-    if (cudaEventQuery(event) == cudaSuccess) {
-      C10_CUDA_CHECK(cudaEventDestroy(event));
-    }
-  }
-}
-
-cudaEvent_t EventPool::CreateCudaEventFromPool() {
-  std::unique_lock<std::mutex> lock(mtx_);
-
-  const auto &CreateNewEvent = [&]() -> cudaEvent_t {
-    cudaEvent_t new_event;
-    C10_CUDA_CHECK(cudaEventCreate(&new_event));
-    incomplished_events_.push(new_event);
-    return new_event;
-  };
-
-  const auto &CreateNewOrReuseEvent = [&]() -> cudaEvent_t {
-    cudaEvent_t front_event = incomplished_events_.front();
-    incomplished_events_.pop();
-    incomplished_events_.push(front_event);
-    if (cudaEventQuery(front_event) == cudaSuccess) {
-      return front_event;
-    }
-    return CreateNewEvent();
-  };
-
-  if (incomplished_events_.empty()) {
-    return CreateNewEvent();
-  }
-  return CreateNewOrReuseEvent();
-}
-
-#endif  // PADDLE_WITH_CUDA
-
 struct Event final {
  public:
   Event() = delete;
   Event(const DeviceType device_type,
         const EventFlag flag = EventFlag::PYTORCH_DEFAULT)
-      : device_type_(device_type), flag_(flag) {
-#ifdef PADDLE_WITH_CUDA
-    if (device_type == DeviceType::CUDA) {
-      cuda_event_ = EventPool::Instance().CreateCudaEventFromPool();
+      : device_type_(device_type), flag_(flag) {}
+
+  Event(const Event&) = delete;
+  Event& operator=(const Event&) = delete;
+
+  Event(Event&& other) noexcept { MoveFrom(std::move(other)); }
+  Event& operator=(Event&& other) noexcept {
+    if (this != &other) {
+      DestroyCudaEvent();
+      MoveFrom(std::move(other));
     }
-#endif
+    return *this;
   }
 
-  Event(const Event &) = delete;
-  Event &operator=(const Event &) = delete;
-  Event(Event &&) = default;
-  Event &operator=(Event &&) = default;
-  ~Event() = default;
+  ~Event() { DestroyCudaEvent(); }
 
   Device device() const noexcept { return Device(device_type_, device_index_); }
   DeviceType device_type() const noexcept { return device_type_; }
@@ -126,20 +58,23 @@ struct Event final {
     return was_marked_for_recording_;
   }
 
-  void recordOnce(const Stream &stream) {
-    if (!was_marked_for_recording_) record(stream);
+  void recordOnce(const Stream& stream) {
+    if (!was_marked_for_recording_) {
+      record(stream);
+    }
   }
 
-  void record(const Stream &stream) {
-    TORCH_CHECK(
-        stream.device_type() == device_type_,
-        "Event device type does not match recording stream's device type.");
+  void record(const Stream& stream) {
+    TORCH_CHECK(stream.device_type() == device_type_,
+                "Event device type ",
+                device_type_,
+                " does not match recording stream's device type ",
+                stream.device_type(),
+                ".");
 #ifdef PADDLE_WITH_CUDA
-    if (device_type_ == DeviceType::CUDA && cuda_event_) {
-      C10_CUDA_CHECK(cudaEventRecord(
-          cuda_event_, static_cast<cudaStream_t>(stream.native_handle())));
-      was_marked_for_recording_ = true;
-      device_index_ = stream.device_index();
+    if (device_type_ == DeviceType::CUDA) {
+      RecordCudaEvent(static_cast<cudaStream_t>(stream.native_handle()),
+                      stream.device_index());
       return;
     }
 #endif
@@ -147,16 +82,37 @@ struct Event final {
   }
 
 #ifdef PADDLE_WITH_CUDA
-  void record(const c10::cuda::CUDAStream &stream) { record(stream.unwrap()); }
+  void record(const c10::cuda::CUDAStream& stream) { record(stream.unwrap()); }
+
+  // TODO(youge325): Remove after DeepEP paddle branch is updated to use
+  // c10::Stream
+  void record(const cudaStream_t& stream) {
+    TORCH_CHECK(
+        device_type_ == DeviceType::CUDA,
+        "Raw cudaStream_t recording is only supported for CUDA events.");
+    RecordCudaEvent(stream, phi::backends::gpu::GetCurrentDeviceId());
+  }
 #endif
 
-  void block(const Stream &stream) const {
-    if (!was_marked_for_recording_) return;
-    TORCH_CHECK(
-        stream.device_type() == device_type_,
-        "Event device type does not match blocking stream's device type.");
+  void block(const Stream& stream) const {
+    if (!was_marked_for_recording_) {
+      return;
+    }
+    TORCH_CHECK(stream.device_type() == device_type_,
+                "Event device type ",
+                device_type_,
+                " does not match blocking stream's device type ",
+                stream.device_type(),
+                ".");
 #ifdef PADDLE_WITH_CUDA
     if (device_type_ == DeviceType::CUDA && cuda_event_) {
+      TORCH_CHECK(device_index_ == stream.device_index(),
+                  "Event device index ",
+                  static_cast<int>(device_index_),
+                  " does not match blocking stream's device index ",
+                  static_cast<int>(stream.device_index()),
+                  ".");
+      c10::cuda::CUDAGuard guard(device_index_);
       C10_CUDA_CHECK(cudaStreamWaitEvent(
           static_cast<cudaStream_t>(stream.native_handle()), cuda_event_, 0));
       return;
@@ -166,22 +122,64 @@ struct Event final {
   }
 
   bool query() const {
-    if (!was_marked_for_recording_) return true;
+    if (!was_marked_for_recording_) {
+      return true;
+    }
 #ifdef PADDLE_WITH_CUDA
     if (device_type_ == DeviceType::CUDA && cuda_event_) {
-      return cudaEventQuery(cuda_event_) == cudaSuccess;
+      const auto err = cudaEventQuery(cuda_event_);
+      if (err == cudaSuccess) {
+        return true;
+      }
+      if (err != cudaErrorNotReady) {
+        C10_CUDA_CHECK(err);
+      } else {
+        (void)cudaGetLastError();
+      }
+      return false;
     }
 #endif
     TORCH_CHECK(false, "Backend doesn't support events.");
     return true;
   }
 
-  double elapsedTime(const Event &event) const {
-    (void)event;
+  double elapsedTime(const Event& event) const {
+    TORCH_CHECK(event.device_type() == device_type_,
+                "Event device type ",
+                device_type_,
+                " does not match other's device type ",
+                event.device_type(),
+                ".");
+    TORCH_CHECK(
+        flag_ == EventFlag::BACKEND_DEFAULT &&
+            event.flag_ == EventFlag::BACKEND_DEFAULT,
+        "Both events must be created with argument 'enable_timing=True'.");
+    TORCH_CHECK(
+        was_marked_for_recording_ && event.was_marked_for_recording_,
+        "Both events must be recorded before calculating elapsed time.");
+    TORCH_CHECK(
+        query() && event.query(),
+        "Both events must be completed before calculating elapsed time.");
+#ifdef PADDLE_WITH_CUDA
+    if (device_type_ == DeviceType::CUDA && cuda_event_ && event.cuda_event_) {
+      TORCH_CHECK(device_index_ == event.device_index_,
+                  "Event device index ",
+                  static_cast<int>(device_index_),
+                  " does not match other's device index ",
+                  static_cast<int>(event.device_index_),
+                  ".");
+      c10::cuda::CUDAGuard guard(device_index_);
+      float time_ms = 0.0f;
+      C10_CUDA_CHECK(
+          cudaEventElapsedTime(&time_ms, cuda_event_, event.cuda_event_));
+      return static_cast<double>(time_ms);
+    }
+#endif
+    TORCH_CHECK(false, "Backend doesn't support event elapsedTime.");
     return 0.0;
   }
 
-  void *eventId() const {
+  void* eventId() const {
 #ifdef PADDLE_WITH_CUDA
     return cuda_event_;
 #else
@@ -190,11 +188,16 @@ struct Event final {
   }
 
   void synchronize() const {
+    if (!was_marked_for_recording_) {
+      return;
+    }
 #ifdef PADDLE_WITH_CUDA
     if (device_type_ == DeviceType::CUDA && cuda_event_) {
       C10_CUDA_CHECK(cudaEventSynchronize(cuda_event_));
+      return;
     }
 #endif
+    TORCH_CHECK(false, "Backend doesn't support events.");
   }
 
 #ifdef PADDLE_WITH_CUDA
@@ -208,7 +211,67 @@ struct Event final {
   bool was_marked_for_recording_ = false;
 #ifdef PADDLE_WITH_CUDA
   cudaEvent_t cuda_event_ = nullptr;
+
+  static unsigned int CudaEventCreateFlags(EventFlag flag) {
+    switch (flag) {
+      case EventFlag::PYTORCH_DEFAULT:
+        return cudaEventDisableTiming;
+      case EventFlag::BACKEND_DEFAULT:
+        return cudaEventDefault;
+      default:
+        TORCH_CHECK(false, "CUDA event received unknown flag");
+    }
+  }
+
+  void EnsureCudaEventCreated(DeviceIndex stream_device_index) {
+    if (cuda_event_) {
+      return;
+    }
+    c10::cuda::CUDAGuard guard(stream_device_index);
+    C10_CUDA_CHECK(
+        cudaEventCreateWithFlags(&cuda_event_, CudaEventCreateFlags(flag_)));
+  }
+
+  void RecordCudaEvent(cudaStream_t stream, DeviceIndex stream_device_index) {
+    TORCH_CHECK(device_index_ == -1 || device_index_ == stream_device_index,
+                "Event device index ",
+                static_cast<int>(device_index_),
+                " does not match recording stream's device index ",
+                static_cast<int>(stream_device_index),
+                ".");
+    EnsureCudaEventCreated(stream_device_index);
+    c10::cuda::CUDAGuard guard(stream_device_index);
+    C10_CUDA_CHECK(cudaEventRecord(cuda_event_, stream));
+    device_index_ = stream_device_index;
+    was_marked_for_recording_ = true;
+  }
+
+  void DestroyCudaEvent() noexcept {
+    if (!cuda_event_) {
+      return;
+    }
+    try {
+      c10::cuda::CUDAGuard guard(device_index_);
+      C10_CUDA_CHECK(cudaEventDestroy(cuda_event_));
+    } catch (...) {
+    }
+    cuda_event_ = nullptr;
+  }
+#else
+  void DestroyCudaEvent() noexcept {}
 #endif
+
+  void MoveFrom(Event&& other) noexcept {
+    device_type_ = other.device_type_;
+    device_index_ = other.device_index_;
+    flag_ = other.flag_;
+    was_marked_for_recording_ = other.was_marked_for_recording_;
+#ifdef PADDLE_WITH_CUDA
+    cuda_event_ = std::exchange(other.cuda_event_, nullptr);
+#endif
+    other.device_index_ = -1;
+    other.was_marked_for_recording_ = false;
+  }
 };
 
 }  // namespace c10

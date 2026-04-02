@@ -134,6 +134,10 @@ class CUDAStream {
 
   Device device() const { return Device(DeviceType::CUDA, device_index()); }
 
+  // TODO(youge325): Remove after DeepEP paddle branch is updated to use
+  // stream()
+  cudaStream_t raw_stream() const { return stream(); }
+
  private:
   Stream stream_;
 };
