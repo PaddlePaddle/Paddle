@@ -50,10 +50,14 @@ void ViewShapeStridedKernel(const Context& dev_ctx,
     }
   }
   if (numel != 0) {
-    PADDLE_ENFORCE_NE(new_size,
-                      0,
-                      common::errors::Unavailable(
-                          "cannot reshape tensor of 0 elements into shape "));
+    PADDLE_ENFORCE_NE(
+        new_size,
+        0,
+        common::errors::InvalidArgument(
+            "cannot reshape tensor with %d elements into shape %s because "
+            "the target shape has 0 elements",
+            numel,
+            common::make_ddim(dims_copy)));
   }
   if (infer_dim >= 0 && new_size > 0 && numel % new_size == 0) {
     dims_copy[infer_dim] = numel / new_size;
