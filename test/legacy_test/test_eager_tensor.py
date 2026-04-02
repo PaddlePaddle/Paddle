@@ -2268,6 +2268,33 @@ class TestEagerTensorStride(unittest.TestCase):
         for i in range(4):
             self.assertEqual(x4d.stride(i), strides_4d[i])
 
+    def test_stride_zero_size_contiguous_view_reshape_and_slice(self):
+        paddle.disable_static()
+
+        x = paddle.zeros([0, 2048], dtype='float32')
+        self.assertEqual(x.stride(), [2048, 1])
+        self.assertEqual(x.get_strides(), [2048, 1])
+        self.assertTrue(x.is_contiguous())
+
+        viewed = x.view([0, 512, 4])
+        self.assertEqual(viewed.stride(), [2048, 4, 1])
+        self.assertEqual(viewed.get_strides(), [2048, 4, 1])
+        self.assertTrue(viewed.is_contiguous())
+
+        reshaped = x.reshape([0, 512, 4])
+        self.assertEqual(reshaped.stride(), [2048, 4, 1])
+        self.assertEqual(reshaped.get_strides(), [2048, 4, 1])
+        self.assertTrue(reshaped.is_contiguous())
+
+        sliced = x[:, ::2]
+        self.assertEqual(sliced.stride(), [2048, 2])
+        self.assertEqual(sliced.get_strides(), [2048, 2])
+        self.assertFalse(sliced.is_contiguous())
+
+        contiguous = sliced.contiguous()
+        self.assertEqual(contiguous.stride(), [1024, 1])
+        self.assertTrue(contiguous.is_contiguous())
+
     def test_stride_different_dtypes(self):
         paddle.disable_static()
 
