@@ -44,7 +44,7 @@ void SequenceUnpadXPUKernel(const Context& dev_ctx,
       out_dims.push_back(x_dims[i]);
     }
   }
-  out->Resize(phi::make_ddim(out_dims));
+  out->Resize(out_dims);
   out->set_lod(out_lod);
   XPUType* out_data =
       reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out));

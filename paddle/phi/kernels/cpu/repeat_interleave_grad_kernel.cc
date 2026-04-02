@@ -50,23 +50,23 @@ void RepeatInterleaveWithTensorIndexGradKernel(
   const auto& index_type = repeats_tensor.dtype();
 
   bool index_type_match =
-      index_type == phi::DataType::INT32 || index_type == phi::DataType::INT64;
+      index_type == DataType::INT32 || index_type == DataType::INT64;
   PADDLE_ENFORCE_EQ(index_type_match,
                     true,
                     common::errors::InvalidArgument(
                         "Input(Repeats) holds the wrong type, it holds %s, but "
                         "desires to be %s or %s",
                         DataTypeToString(index_type),
-                        DataTypeToString(phi::DataType::INT32),
-                        DataTypeToString(phi::DataType::INT64)));
+                        DataTypeToString(DataType::INT32),
+                        DataTypeToString(DataType::INT64)));
 
-  phi::DeviceContextPool::Instance().Get(repeats_tensor.place());
-  if (index_type == phi::DataType::INT32) {
+  DeviceContextPool::Instance().Get(repeats_tensor.place());
+  if (index_type == DataType::INT32) {
     funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
         dev_ctx, repeats_tensor, &index);
     IndexSelectGradInner<Context, T, int>(
         dev_ctx, out_grad, index, x_grad, dim);
-  } else if (index_type == phi::DataType::INT64) {
+  } else if (index_type == DataType::INT64) {
     funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
         dev_ctx, repeats_tensor, &index);
     IndexSelectGradInner<Context, T, int64_t>(

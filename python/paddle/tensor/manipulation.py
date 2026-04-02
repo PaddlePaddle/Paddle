@@ -5675,6 +5675,9 @@ def masked_scatter(
     )
     assert mask.dtype == paddle.bool
 
+    if paddle.is_compiled_with_cuda() and in_dynamic_or_pir_mode():
+        return _C_ops.masked_scatter(x, mask, value)
+
     zeros_like_x = paddle.zeros_like(x, dtype=int)
     mask = paddle.add(paddle.cast(mask, dtype="int"), zeros_like_x)
     mask_prefix = paddle.clip(mask.cumsum() - 1, min=0)
@@ -5696,10 +5699,15 @@ def masked_scatter_(
     Inplace version of ``masked_scatter`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_masked_scatter`.
     """
+    # make sure the dtype of x and value is the same
     assert x.dtype == value.dtype, (
         f'x and value must have the same dtype, but got x dtype is {x.dtype}, value dtype is {value.dtype}'
     )
     assert mask.dtype == paddle.bool
+
+    if paddle.is_compiled_with_cuda() and in_dynamic_or_pir_mode():
+        return _C_ops.masked_scatter_(x, mask, value)
+
     zeros_like_x = paddle.zeros_like(x, dtype=int)
     mask = paddle.add(paddle.cast(mask, dtype="int"), zeros_like_x)
     mask_prefix = paddle.clip(mask.cumsum() - 1, min=0)
@@ -7515,11 +7523,10 @@ def put_along_axis(
     # perform.  Return a copy of arr immediately to avoid passing a 0-size
     # index tensor through the broadcast path, which would attempt an invalid
     # expand (e.g. values dim 4 -> 0) and raise an error.
-    # In dynamic mode use numel(); in static mode indices.numel() returns a
-    # symbolic Value so we check the shape directly instead.
-    if (paddle.in_dynamic_mode() and indices.numel() == 0) or (
-        not paddle.in_dynamic_mode() and 0 in indices.shape
-    ):
+    # Use `0 in indices.shape` instead of `indices.numel() == 0` because
+    # numel() returns a GPU tensor whose __bool__ triggers D2H sync,
+    # which is forbidden during CUDA Graph capture (error 906).
+    if 0 in indices.shape:
         return paddle.assign(arr)
     if broadcast:
         if has_dynamic_shape(arr.shape) or has_dynamic_shape(indices.shape):
@@ -7640,9 +7647,7 @@ def put_along_axis_(
             "`indices` and `arr` must have the same number of dimensions!"
         )
     axis = non_negative_axis(arr, axis)
-    if (paddle.in_dynamic_mode() and indices.numel() == 0) or (
-        not paddle.in_dynamic_mode() and 0 in indices.shape
-    ):
+    if 0 in indices.shape:
         return arr
     if broadcast:
         broadcast_shape = infer_broadcast_shape(arr, indices, axis)

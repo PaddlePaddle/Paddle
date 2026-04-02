@@ -80,7 +80,12 @@ inline bool is_only_transposed_tensor(const DDim &shape,
     if (max_idx == -1) {
       return false;
     }
-    if (i != 0 && (*src_stride)[i - 1] == max_num) {
+    // For contiguous tensors, size-1 dimensions can legally share the same
+    // stride with their neighbor. Do not reject these cases, otherwise a pure
+    // transpose view like [1, 1, S, D] -> [1, 1, D, S] is misclassified as a
+    // generic strided tensor and falls back to a different matmul path.
+    if (i != 0 && (*src_stride)[i - 1] == max_num && (*src_shape)[i - 1] != 1 &&
+        shape[max_idx] != 1) {
       return false;
     }
     visited_idx.insert(max_idx);

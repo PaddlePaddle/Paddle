@@ -179,8 +179,9 @@ class PADDLE_API TensorBase {
 
   c10::SymInt sym_numel() const { return static_cast<c10::SymInt>(numel()); }
 
-  c10::ScalarType dtype() const {  // Should we use `caffe2::TypeMeta` here?
-    return compat::_PD_PhiDataTypeToAtenScalarType(tensor_.dtype());
+  caffe2::TypeMeta dtype() const {
+    return caffe2::TypeMeta::fromScalarType(
+        compat::_PD_PhiDataTypeToAtenScalarType(tensor_.dtype()));
   }
 
   c10::Device device() const { return c10::Device(tensor_.place()); }

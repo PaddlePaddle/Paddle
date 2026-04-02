@@ -27,9 +27,9 @@ PADDLE_API void AbsKernel(const Context& dev_ctx,
                           DenseTensor* out) {
   auto numel = x.numel();
   auto* x_data = x.data<T>();
-  dev_ctx.template Alloc<phi::dtype::Real<T>>(
-      out, size_t(x.numel() * sizeof(phi::dtype::Real<T>)));
-  auto* out_data = out->data<phi::dtype::Real<T>>();
+  dev_ctx.template Alloc<dtype::Real<T>>(
+      out, size_t(x.numel() * sizeof(dtype::Real<T>)));
+  auto* out_data = out->data<dtype::Real<T>>();
 
   funcs::ForRange<Context> for_range(dev_ctx, numel);
   funcs::AbsFunctor<T> functor(x_data, out_data, numel);

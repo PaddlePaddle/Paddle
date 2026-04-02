@@ -1541,7 +1541,7 @@ for f in jit_layer_headers:
     headers += list(find_files(f, '@PADDLE_SOURCE_DIR@/paddle/fluid/jit', recursive=True))
 
 if '${WITH_ONEDNN}' == 'ON':
-    headers += list(find_files('*', '${ONEDNN_INSTALL_DIR}/include')) # mkldnn
+    headers += list(find_files('*', '${ONEDNN_INSTALL_DIR}/include', recursive=True)) # mkldnn
 
 if '${WITH_OPENVINO}' == 'ON':
     headers += list(

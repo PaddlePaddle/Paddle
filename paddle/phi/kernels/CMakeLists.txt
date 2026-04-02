@@ -99,6 +99,12 @@ if(((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 11.8))
   list(REMOVE_ITEM kernel_cu "legacy/gpu/layer_norm_cuda_kernel.cu")
 endif()
 
+if(WIN32
+   OR WITH_ROCM
+   OR ((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0)))
+  list(REMOVE_ITEM kernel_cu "stride/matmul_grad_stride_kernel.cu")
+endif()
+
 # Get flag for CUDA arch >= 80
 set(has_arch_ge80 FALSE)
 foreach(arch ${NVCC_ARCH_BIN})
