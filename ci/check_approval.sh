@@ -289,6 +289,12 @@ if [ "${HAS_MODIFIED_PADDLE_DISTRIBUTED}" != "" ] && [ "${PR_ID}" != "" ]; then
     check_approval 1 From00 ForFishes gongweibao sneaxiy
 fi
 
+HAS_MODIFIED_AGENTS_SKILLS=`git diff --name-only upstream/$BRANCH | grep "^\\.agents/skills/" || true`
+if [ "${HAS_MODIFIED_AGENTS_SKILLS}" != "" ] && [ "${PR_ID}" != "" ]; then
+    echo_line="You must have one RD (zrr1999, SigureMo, ShigureNyako) approval for file changes in .agents/skills.\n"
+    check_approval 1 zrr1999 SigureMo ShigureNyako
+fi
+
 ALL_PADDLE_ENFORCE=`git diff -U0 upstream/$BRANCH -- . ':!.agents/skills/' |grep "^+" |grep -zoE "PADDLE_ENFORCE\(.[^,\);]+.[^;]*\);\s" || true`
 if [ "${ALL_PADDLE_ENFORCE}" != "" ] && [ "${PR_ID}" != "" ]; then
     echo_line="PADDLE_ENFORCE is not recommended. Please use PADDLE_ENFORCE_EQ/NE/GT/GE/LT/LE or PADDLE_ENFORCE_NOT_NULL or PADDLE_ENFORCE_GPU_SUCCESS instead, see [ https://github.com/PaddlePaddle/Paddle/wiki/PADDLE_ENFORCE-Rewriting-Specification ] for details.\nYou must have one RD (luotao1 (Recommend) or zhangbo9674) approval for the usage (either add or delete) of PADDLE_ENFORCE.\n${ALL_PADDLE_ENFORCE}\n"
