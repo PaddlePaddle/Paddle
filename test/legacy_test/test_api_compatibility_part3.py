@@ -963,7 +963,9 @@ class TestConv1dTransposeAPI(unittest.TestCase):
             np.testing.assert_allclose(out.numpy(), ref, rtol=1e-5)
 
         # 7. Class positional arguments
-        conv1 = paddle.nn.Conv1DTranspose(3, 1, 3, 1, 0, 0, 1, True, 1)
+        conv1 = paddle.nn.Conv1DTranspose(
+            3, 1, 3, 1, 0, 0, 1, bias=True, dilation=1
+        )
         cls_out1 = conv1(x)
         # 8. Class keyword arguments (with PyTorch-style bias param)
         conv2 = paddle.nn.Conv1DTranspose(
@@ -1087,7 +1089,9 @@ class TestConv2dTransposeAPI(unittest.TestCase):
             np.testing.assert_allclose(out.numpy(), ref, rtol=1e-5)
 
         # 7. Class positional arguments
-        conv1 = paddle.nn.Conv2DTranspose(3, 1, 3, 1, 0, 0, 1, True, 1)
+        conv1 = paddle.nn.Conv2DTranspose(
+            3, 1, 3, 1, 0, 0, 1, bias=True, dilation=1
+        )
         cls_out1 = conv1(x)
         # 8. Class keyword arguments (with PyTorch-style bias param)
         conv2 = paddle.nn.Conv2DTranspose(
@@ -1213,7 +1217,9 @@ class TestConv3dTransposeAPI(unittest.TestCase):
             np.testing.assert_allclose(out.numpy(), ref, rtol=1e-5)
 
         # 7. Class positional arguments
-        conv1 = paddle.nn.Conv3DTranspose(2, 2, 3, 1, 0, 0, 1, True, 1)
+        conv1 = paddle.nn.Conv3DTranspose(
+            2, 2, 3, 1, 0, 0, 1, bias=True, dilation=1
+        )
         cls_out1 = conv1(x)
         # 8. Class keyword arguments (with PyTorch-style bias param)
         conv2 = paddle.nn.Conv3DTranspose(
