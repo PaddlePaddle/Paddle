@@ -42,7 +42,7 @@ __all__ = []
 
 @dataclass
 class QKVInfo:
-    """Metadata for QKV weight matrices.
+    """Metadata for QKV weight matrices (GQA).
 
     Attributes:
         head_num: Number of attention heads (Q heads).
@@ -53,6 +53,19 @@ class QKVInfo:
     head_num: int
     kv_head_num: int
     num_key_value_groups: int
+
+
+@dataclass
+class MLAInfo:
+    """Metadata for MLA weight matrices needed for head-split.
+
+    Attributes:
+        param_name: Name of the parameter (q_b_proj, kv_b_proj, o_proj).
+        head_num: Number of attention heads.
+    """
+
+    param_name: str
+    head_num: int
 
 
 @dataclass
@@ -70,12 +83,18 @@ class MuonParamInfo:
 
     use_muon: bool = True
     qkv_info: QKVInfo | None = None
+    mla_info: MLAInfo | None = None
     intermediate_size: int | None = None
 
     @property
     def is_qkv(self) -> bool:
         """True if this is a QKV weight matrix."""
         return self.qkv_info is not None
+
+    @property
+    def is_mla(self) -> bool:
+        """True if this is an MLA weight matrix."""
+        return self.mla_info is not None
 
     @property
     def is_ffn_gate_up(self) -> bool:
@@ -549,6 +568,22 @@ class Muon(Optimizer):
                 f"FFN gate_up split expects 2D or 3D tensor, got shape {matrix.shape}"
             )
 
+    @staticmethod
+    def _ortho_mla_per_head(
+        matrix_2d_global,
+        head_num,
+        ortho_fn,
+        axis,
+    ):
+        """Orthogonalise each MLA head independently."""
+        groups = paddle.split(matrix_2d_global, head_num, axis=axis)
+
+        processed_groups = []
+        for group in groups:
+            processed_groups.append(ortho_fn(group))
+
+        return paddle.concat(processed_groups, axis=axis)
+
     # ------------------------------------------------------------------
     # Per-parameter update rules
     # ------------------------------------------------------------------
@@ -624,6 +659,7 @@ class Muon(Optimizer):
         param_shape = getattr(param, "original_shape", param.shape)
         param_info = self._muon_param_info_map.get(param.name)
         is_qkv = param_info is not None and param_info.is_qkv
+        is_mla: bool = param_info is not None and param_info.is_mla
         is_ffn_gate_up = param_info is not None and param_info.is_ffn_gate_up
 
         with paddle.no_grad():
@@ -729,6 +765,28 @@ class Muon(Optimizer):
                         num_key_value_groups,
                         ortho_fn,
                     )
+            elif is_mla and self._muon_qkv_update_mode == "split_head":
+                # MLA split_head update: each head of [q_b_proj, kv_b_proj, o_proj] orthogonalised independently.
+                mla_info = param_info.mla_info
+                param_name: str = mla_info.param_name
+                head_num = mla_info.head_num
+                if MUON_DEBUG:
+                    _global_rank = paddle.distributed.get_rank()
+                    if _global_rank == 0:
+                        _logger.info(
+                            f"[Muon] MLA split_head: param={param.name}, param_name={param_name}, "
+                            f"shape={matrix_2d_global.shape}, "
+                            f"head_num={head_num}"
+                        )
+                assert param_name in ("q_b_proj", "kv_b_proj", "o_proj"), (
+                    f"Unsupported MLA param name: {param_name}"
+                )
+                orthogonal_update = Muon._ortho_mla_per_head(
+                    matrix_2d_global,
+                    head_num,
+                    ortho_fn,
+                    0 if param_name == "o_proj" else 1,
+                )
             else:
                 # Standard 2D update: entire matrix as one Newton-Schulz call.
                 orthogonal_update = ortho_fn(matrix_2d_global)

@@ -55,6 +55,10 @@ from paddle.distributed.fleet.utils.tensor_fusion_helper import (
     assign_group_by_size,
 )
 
+g_shard_bypass_dygraph_optimizer = int(
+    os.environ.get("FLAGS_shard_bypass_dygraph_optimizer", 0)
+)
+
 
 def _is_trainable(param):
     return not param.stop_gradient
@@ -161,7 +165,8 @@ class MuonShardingOptimizer:
             list
         )  # color -> list of 2D params
         self._params_1d = []  # All non-2D params (single list, sharding_group only)
-
+        self.clear_color = set()
+        self._color_to_comm_buffer_list = {}
         for p in self._parameter_list:
             if not _is_trainable(p):
                 continue
@@ -488,7 +493,9 @@ class MuonShardingOptimizer:
                 )
                 group_idx += 1
                 self._comm_buffer_list.append(buffer)
-
+                if g_color not in self._color_to_comm_buffer_list.keys():
+                    self._color_to_comm_buffer_list[g_color] = []
+                self._color_to_comm_buffer_list[g_color].append(buffer)
                 for p in parameters:
                     if p.name in self.param2bucket:
                         self.param2bucket[p.name].append(buffer)
@@ -496,6 +503,32 @@ class MuonShardingOptimizer:
                         self.param2bucket[p.name] = [buffer]
 
         self._comm_buffer_list.sort(key=lambda x: x._dst)
+
+    def clear_param_storage(self, color):
+        self.clear_color.add(color)
+        if color in self._color_to_comm_buffer_list.keys():
+            for comm_buffer in self._color_to_comm_buffer_list[color]:
+                for param in comm_buffer.params:
+                    grad_view = comm_buffer._sharding_param_grad_view[
+                        param.name
+                    ]
+                    slice_param = self._slice_params[param.name]
+                    if (
+                        not g_shard_bypass_dygraph_optimizer
+                        and grad_view._param_begin < grad_view._param_end
+                    ):
+                        grad_view.fill_slice_param(slice_param)
+                        self._create_master_weight(slice_param)
+                    slice_param._clear_dataptr()
+                comm_buffer._clear_param_storage()
+
+    def reset_param_storage(self):
+        for color in self.clear_color:
+            if color is None:
+                continue
+            if color in self._color_to_comm_buffer_list.keys():
+                for comm_buffer in self._color_to_comm_buffer_list[color]:
+                    comm_buffer._reset_param_storage()
 
     # ------------------------------------------------------------------
     # Gradient communication
