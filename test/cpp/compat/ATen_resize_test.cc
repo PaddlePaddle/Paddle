@@ -19,13 +19,17 @@
 #include <c10/core/ScalarType.h>
 #include <c10/core/TensorOptions.h>
 
+#include <limits>
+#include <vector>
+
 #include "ATen/ATen.h"
 #include "gtest/gtest.h"
 #include "torch/all.h"
 
 // ======================== resize_ tests ========================
-// Note: Paddle's resize_ is implemented via reshape, which requires
-// total element count to remain unchanged.
+// Note: compat resize_ mutates the underlying DenseTensor directly so
+// shrink/grow round-trips preserve storage semantics without introducing new
+// memory_format hard errors in this split PR.
 
 TEST(TensorResizeTest, ResizeBasic) {
   // Create a 2x3 tensor
@@ -107,6 +111,92 @@ TEST(TensorResizeTest, ResizePreservesData) {
   ASSERT_FLOAT_EQ(data[3], 3.0f);
   ASSERT_FLOAT_EQ(data[4], 4.0f);
   ASSERT_FLOAT_EQ(data[5], 5.0f);
+}
+
+TEST(TensorResizeTest, ResizeShrinkDifferentNumel) {
+  at::Tensor t = at::arange(24, at::kFloat).reshape({2, 3, 4});
+
+  t.resize_({4, 5});
+
+  ASSERT_EQ(t.sizes()[0], 4);
+  ASSERT_EQ(t.sizes()[1], 5);
+
+  float* data = t.data_ptr<float>();
+  for (int i = 0; i < 20; ++i) {
+    ASSERT_FLOAT_EQ(data[i], static_cast<float>(i));
+  }
+}
+
+TEST(TensorResizeTest, ResizeGrowDifferentNumelPreservesPrefix) {
+  at::Tensor t = at::arange(6, at::kFloat).reshape({2, 3});
+
+  t.resize_({2, 5});
+
+  ASSERT_EQ(t.sizes()[0], 2);
+  ASSERT_EQ(t.sizes()[1], 5);
+
+  float* data = t.data_ptr<float>();
+  for (int i = 0; i < 6; ++i) {
+    ASSERT_FLOAT_EQ(data[i], static_cast<float>(i));
+  }
+}
+
+TEST(TensorResizeTest, ResizeShrinkGrowRoundTripPreservesTail) {
+  at::Tensor t = at::arange(24, at::kFloat).reshape({2, 3, 4});
+
+  t.resize_({4, 5});
+  t.resize_({2, 3, 4});
+
+  ASSERT_EQ(t.sizes()[0], 2);
+  ASSERT_EQ(t.sizes()[1], 3);
+  ASSERT_EQ(t.sizes()[2], 4);
+
+  float* data = t.data_ptr<float>();
+  for (int i = 0; i < 24; ++i) {
+    ASSERT_FLOAT_EQ(data[i], static_cast<float>(i));
+  }
+}
+
+TEST(TensorResizeTest, ResizeChannelsLastMemoryFormatDoesNotThrow) {
+  at::Tensor t = at::arange(24, at::kFloat).reshape({1, 2, 3, 4});
+
+  EXPECT_NO_THROW({
+    t.resize_(std::vector<int64_t>{1, 3, 2, 4}, at::MemoryFormat::ChannelsLast);
+  });
+
+  ASSERT_EQ(t.sizes()[0], 1);
+  ASSERT_EQ(t.sizes()[1], 3);
+  ASSERT_EQ(t.sizes()[2], 2);
+  ASSERT_EQ(t.sizes()[3], 4);
+}
+
+TEST(TensorResizeTest, ResizeChannelsLast3dMemoryFormatDoesNotThrow) {
+  at::Tensor t = at::arange(24, at::kFloat).reshape({1, 2, 2, 2, 3});
+
+  EXPECT_NO_THROW({
+    t.resize_(std::vector<int64_t>{1, 2, 2, 3, 2},
+              at::MemoryFormat::ChannelsLast3d);
+  });
+
+  ASSERT_EQ(t.sizes()[0], 1);
+  ASSERT_EQ(t.sizes()[1], 2);
+  ASSERT_EQ(t.sizes()[2], 2);
+  ASSERT_EQ(t.sizes()[3], 3);
+  ASSERT_EQ(t.sizes()[4], 2);
+}
+
+TEST(TensorResizeTest, ResizeRejectsNegativeDimension) {
+  at::Tensor t = at::arange(6, at::kFloat);
+  auto bad_size = std::vector<int64_t>{2, -1};
+
+  EXPECT_THROW(t.resize_(bad_size), std::exception);
+}
+
+TEST(TensorResizeTest, ResizeRejectsNumelOverflow) {
+  at::Tensor t = at::arange(1, at::kFloat);
+  auto huge_size = std::vector<int64_t>{std::numeric_limits<int64_t>::max(), 2};
+
+  EXPECT_THROW(t.resize_(huge_size), std::exception);
 }
 
 TEST(TensorResizeTest, ResizeReturnReference) {

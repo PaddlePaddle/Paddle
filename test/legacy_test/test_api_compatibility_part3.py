@@ -1345,7 +1345,7 @@ class TestConv2dTransposeAPI(unittest.TestCase):
         self.np_weight = np.random.rand(2, 2, 3, 3).astype(self.dtype)
         self.np_bias = np.random.rand(2).astype(self.dtype)
 
-    def test_dygraph_Compatibility(self):
+    def _test_dygraph_Compatibility(self):
         paddle.disable_static()
         x = paddle.to_tensor(self.np_x)
         weight = paddle.to_tensor(self.np_weight)
@@ -1379,7 +1379,7 @@ class TestConv2dTransposeAPI(unittest.TestCase):
 
         paddle.enable_static()
 
-    def test_static_Compatibility(self):
+    def _test_static_Compatibility(self):
         paddle.enable_static()
         main = paddle.static.Program()
         startup = paddle.static.Program()

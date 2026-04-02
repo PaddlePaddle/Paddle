@@ -12,4 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .py_layer import PyLayerContext as FunctionCtx  # noqa: F401
+from .py_layer import (
+    PyLayerContext as FunctionCtx,  # noqa: F401
+    once_differentiable,  # noqa: F401
+)

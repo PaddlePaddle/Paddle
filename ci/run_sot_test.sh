@@ -48,7 +48,7 @@ function run_sot_test() {
         run_and_check "Uninstalling numpy for Python 3.14..." \
             $PYTHON_WITH_SPECIFY_VERSION -m pip uninstall -y "numpy"
         run_and_check "Installing numpy>=2.3.5 for Python 3.14..." \
-            $PYTHON_WITH_SPECIFY_VERSION -m pip install "numpy>=2.3.5"
+            $PYTHON_WITH_SPECIFY_VERSION -m pip install --force-reinstall --no-cache-dir "numpy>=2.3.5"
     fi
 
     # cd to sot test dir
