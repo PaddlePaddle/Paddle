@@ -155,6 +155,13 @@ static PyObject* tensor_method_numpy(TensorObject* self,
                                      PyObject* args,
                                      PyObject* kwargs) {
   EAGER_TRY
+  if (kwargs) {
+    PyObject* arg = PyDict_GetItemString(kwargs, "force");
+    if (arg && arg == Py_False) {
+      LOG(WARNING) << "Warning: Currently paddle.Tensor.numpy() only supports "
+                      "force conversion i.e. t.detach().cpu().numpy().";
+    }
+  }
   auto& api = pybind11::detail::npy_api::get();
   if (!self->tensor.impl()) {
     Py_intptr_t py_dims[phi::DDim::kMaxRank];     // NOLINT

@@ -1181,6 +1181,9 @@ class TestEagerTensor(unittest.TestCase):
         with base.dygraph.guard():
             var = paddle.to_tensor(self.array)
             np.testing.assert_array_equal(var.numpy(), var.numpy(False))
+            np.testing.assert_array_equal(
+                var.numpy(force=True), var.numpy(force=False)
+            )
 
     def test_tensor_as_np(self):
         with base.dygraph.guard():

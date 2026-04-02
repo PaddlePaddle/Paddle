@@ -76,7 +76,7 @@ inline StreamPoolState& get_pool(int device_index) {
 inline void init_pool(int device_index, StreamPoolState* state) {
   phi::backends::gpu::GPUDeviceGuard guard(device_index);
   int lo_pri = 0, hi_pri = 0;
-  cudaDeviceGetStreamPriorityRange(&lo_pri, &hi_pri);
+  C10_CUDA_CHECK(cudaDeviceGetStreamPriorityRange(&lo_pri, &hi_pri));
   for (int i = 0; i < kStreamsPerPool; ++i) {
     C10_CUDA_CHECK(cudaStreamCreateWithPriority(
         &state->low_priority[i], cudaStreamNonBlocking, lo_pri));
@@ -219,6 +219,9 @@ inline CUDAStream getStreamFromPool(const int priority,
   });
 
   cudaStream_t raw;
+
+  // Keep parity with PyTorch API shape: negative priority selects the
+  // high-priority pool, non-negative selects the low-priority pool.
   if (priority < 0) {
     raw = state.high_priority[state.hp_counter.fetch_add(1) %
                               detail::kStreamsPerPool];

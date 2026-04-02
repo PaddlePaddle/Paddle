@@ -16,6 +16,7 @@
 #include <c10/core/DeviceType.h>
 
 #include <sstream>
+#include <unordered_map>
 
 #include "gtest/gtest.h"
 
@@ -68,6 +69,9 @@ TEST(DeviceTypeCompatTest, DeviceTypeConversionAndStreamOperator) {
   std::ostringstream invalid_os;
   invalid_os << static_cast<c10::DeviceType>(99);
   EXPECT_TRUE(invalid_os.str().empty());
+
+  EXPECT_EQ(c10::DeviceType::PrivateUse1, c10::DeviceType::CUSTOM);
+  EXPECT_EQ(c10::kPrivateUse1, c10::DeviceType::PrivateUse1);
 }
 
 TEST(DeviceCompatTest, DeviceParseAndPlaceBranches) {
@@ -121,4 +125,48 @@ TEST(DeviceCompatTest, DeviceParseAndPlaceBranches) {
   std::ostringstream os;
   os << cuda;
   EXPECT_EQ(os.str(), "cuda:3");
+}
+
+TEST(DeviceCompatTest, DeviceInterfaceParity) {
+  c10::Device cpu(c10::kCPU);
+  c10::Device cuda(c10::kCUDA, 0);
+  c10::Device xpu(c10::kXPU, 1);
+  c10::Device ipu(c10::kIPU, 2);
+  c10::Device privateuse(c10::kPrivateUse1, 4);
+
+  EXPECT_TRUE(cpu.is_cpu());
+  EXPECT_TRUE(cuda.is_cuda());
+  EXPECT_TRUE(xpu.is_xpu());
+  EXPECT_TRUE(ipu.is_ipu());
+  EXPECT_TRUE(privateuse.is_privateuseone());
+  EXPECT_FALSE(privateuse.is_mps());
+  EXPECT_FALSE(privateuse.is_hip());
+  EXPECT_FALSE(privateuse.is_meta());
+  EXPECT_TRUE(cpu.supports_as_strided());
+  EXPECT_FALSE(ipu.supports_as_strided());
+
+  c10::Device cpu_with_index(c10::kCPU);
+  cpu_with_index.set_index(0);
+  EXPECT_EQ(cpu_with_index.index(), 0);
+  EXPECT_EQ(cpu_with_index.str(), "cpu:0");
+
+  c10::Device cuda_with_index(c10::kCUDA);
+  cuda_with_index.set_index(2);
+  EXPECT_EQ(cuda_with_index.index(), 2);
+  EXPECT_EQ(cuda_with_index.str(), "cuda:2");
+
+  EXPECT_NE(cpu, cuda);
+  EXPECT_EQ(cuda, c10::Device(c10::kCUDA, 0));
+  EXPECT_EQ(privateuse.str(), "privateuseone:4");
+  EXPECT_TRUE(c10::Device("privateuseone:7").is_privateuseone());
+
+  EXPECT_THROW(c10::Device("cuda:-1"), ::std::exception);
+  EXPECT_THROW(c10::Device("cuda:01"), ::std::exception);
+  EXPECT_THROW(c10::Device("cuda:1:2"), ::std::exception);
+
+  std::unordered_map<c10::Device, int> device_map;
+  device_map.emplace(c10::Device(c10::kCUDA, 0), 7);
+  device_map.emplace(c10::Device(c10::kCPU), 3);
+  EXPECT_EQ(device_map.at(c10::Device(c10::kCUDA, 0)), 7);
+  EXPECT_EQ(device_map.at(c10::Device(c10::kCPU)), 3);
 }

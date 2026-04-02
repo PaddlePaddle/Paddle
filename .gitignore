@@ -70,6 +70,7 @@ third_party/
 *~
 bazel-*
 .humanize
+.codex
 
 build_*
 # clion workspace.
