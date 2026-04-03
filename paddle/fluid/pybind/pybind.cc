@@ -1874,7 +1874,10 @@ PYBIND11_MODULE(libpaddle, m) {
           })
       .def_static(
           "begin_capture_with_pool_id",
-          [](phi::XPUPlace place, int mode, std::optional<int64_t> pool_id) {
+          [](phi::XPUPlace place,
+             int mode,
+             std::optional<int64_t> pool_id,
+             bool enable_replace) {
             if (pool_id.has_value()) {
               platform::BeginCUDAGraphCapture(
                   place,
