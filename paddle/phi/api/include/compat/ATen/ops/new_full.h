@@ -29,11 +29,8 @@ namespace at {
 inline Tensor Tensor::new_full(at::IntArrayRef size,
                                const at::Scalar& fill_value,
                                at::TensorOptions options) const {
-  auto actual_dtype =
-      options.dtype_opt().has_value() ? options.dtype_opt().value() : dtype();
-  auto actual_device = options.device_opt().has_value()
-                           ? options.device_opt().value()
-                           : device();
+  caffe2::TypeMeta actual_dtype = options.dtype_opt().value_or(dtype());
+  auto actual_device = options.device_opt().value_or(device());
   auto actual_pin_memory = options.pinned_memory();
 
   auto pd_dtype = compat::_PD_AtenScalarTypeToPhiDataType(actual_dtype);
@@ -64,7 +61,7 @@ inline Tensor Tensor::new_full(at::IntArrayRef size,
                                ::std::optional<at::Device> device,
                                ::std::optional<bool> pin_memory) const {
   auto options = at::TensorOptions()
-                     .dtype(dtype.value_or(this->dtype()))
+                     .dtype(dtype.value_or(this->scalar_type()))
                      .device(device.value_or(this->device()))
                      .pinned_memory(pin_memory);
   return new_full(size, fill_value, options);

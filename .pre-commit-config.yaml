@@ -81,7 +81,7 @@ repos:
         description: Check C++ code style using cpplint.py.
         entry: bash ./tools/codestyle/cpplint_pre_commit.sh
         language: system
-        files: \.(cc|cxx|cpp|cu|h|hpp|hxx)$
+        files: \.(cc|cxx|cpp|cu|cuh|h|hpp|hxx)$
         args:
           - --extensions=cc,cxx,cpp,cu,cuh,h,hpp,hxx,kps
           - --filter=-readability/fn_size,-build/include_what_you_use,-build/c++11,-whitespace/parens
@@ -91,7 +91,9 @@ repos:
           (?x)^(
             paddle/utils/flat_hash_map\.h|
             paddle/utils/variant\.h|
-            paddle/utils/array_ref\.h
+            paddle/utils/array_ref\.h|
+            paddle/fluid/distributed/collective/deep_ep/.*|
+            paddle/fluid/fp8/deep_gemm/.*
           )$
   - repo: local
     hooks:

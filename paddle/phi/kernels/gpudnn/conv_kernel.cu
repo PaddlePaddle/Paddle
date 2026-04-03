@@ -400,7 +400,7 @@ void ConvCudnnKernel(const Context& dev_ctx,
     filter_data_dims = slice_ddim(filter_dims, 1, filter_dims.size() - 1);
   }
 
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 

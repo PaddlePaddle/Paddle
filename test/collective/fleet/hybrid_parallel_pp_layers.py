@@ -210,7 +210,6 @@ class TestPipeLayerAPI(unittest.TestCase):
         pipe_model.train_batch(data, optimizer, lr_scheduler)
         pipe_model.eval_batch(data, optimizer)
 
-        pipe_model._delay_scale_loss = True
         pipe_model.train_batch(data, optimizer)
         pipe_model.eval_batch(data, optimizer)
         pipe_model.is_pipeline_last_stage()

@@ -1,0 +1,44 @@
+// Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include <c10/cuda/CUDAFunctions.h>
+
+namespace c10::cuda {
+
+c10::DeviceIndex device_count() {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  return phi::backends::gpu::GetGPUDeviceCount();
+#else
+  // Return 0 instead of throwing to match PyTorch API semantics
+  // at::cuda::is_available() relies on this returning 0/false
+  return 0;
+#endif
+}
+
+void device_synchronize() {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  int curr_device_id = paddle::platform::GetCurrentDeviceId();
+  paddle::platform::SetDeviceId(curr_device_id);
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
+#else
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+#endif
+#else
+  PADDLE_THROW(common::errors::Unavailable(
+      "Paddle is not compiled with CUDA. Cannot visit device synchronize."));
+#endif
+}
+
+}  // namespace c10::cuda

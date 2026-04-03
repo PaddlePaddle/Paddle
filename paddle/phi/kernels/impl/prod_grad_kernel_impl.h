@@ -63,7 +63,7 @@ DenseTensor ProdSafeZerosBackward(const Context& dev_ctx,
   }
 
   // ones: shape same as inp but with size 1 along dim
-  auto ones_dims = common::vectorize(inp.dims());
+  auto ones_dims = vectorize(inp.dims());
   ones_dims[dim] = 1;
   DenseTensor ones =
       phi::Full<T, Context>(dev_ctx, IntArray(ones_dims), static_cast<T>(1));
@@ -140,7 +140,7 @@ void ProdGradKernel(const Context& dev_ctx,
 
       // Detect zeros: create (x == 0) mask and count via nonzero
       DenseTensor zeros_like_x = phi::Full<T, Context>(
-          dev_ctx, IntArray(common::vectorize(x.dims())), static_cast<T>(0));
+          dev_ctx, IntArray(vectorize(x.dims())), static_cast<T>(0));
 
       DenseTensor eq_mask;
       eq_mask.Resize(x.dims());
@@ -173,7 +173,7 @@ void ProdGradKernel(const Context& dev_ctx,
             dev_ctx, x, {static_cast<int64_t>(x.numel())});
         DenseTensor grad_result =
             ProdSafeZerosBackward<T, Context>(dev_ctx, out_grad, x_flat, 0);
-        auto x_shape = common::vectorize<int64_t>(x.dims());
+        auto x_shape = vectorize<int64_t>(x.dims());
         phi::Reshape<T, Context>(dev_ctx, grad_result, x_shape, x_grad);
       }
     } else {
@@ -195,12 +195,12 @@ void ProdGradKernel(const Context& dev_ctx,
         DenseTensor grad_expanded = out_grad;
         DenseTensor result_expanded = out;
         if (!keep_dim) {
-          auto grad_shape = common::vectorize<int64_t>(out_grad.dims());
+          auto grad_shape = vectorize<int64_t>(out_grad.dims());
           grad_shape.insert(grad_shape.begin() + dim, 1);
           grad_expanded =
               phi::Reshape<T, Context>(dev_ctx, out_grad, grad_shape);
 
-          auto result_shape = common::vectorize<int64_t>(out.dims());
+          auto result_shape = vectorize<int64_t>(out.dims());
           result_shape.insert(result_shape.begin() + dim, 1);
           result_expanded =
               phi::Reshape<T, Context>(dev_ctx, out, result_shape);
@@ -208,7 +208,7 @@ void ProdGradKernel(const Context& dev_ctx,
 
         // Detect zeros
         DenseTensor zeros_like_x = phi::Full<T, Context>(
-            dev_ctx, IntArray(common::vectorize(x.dims())), static_cast<T>(0));
+            dev_ctx, IntArray(vectorize(x.dims())), static_cast<T>(0));
 
         DenseTensor eq_mask;
         eq_mask.Resize(x.dims());

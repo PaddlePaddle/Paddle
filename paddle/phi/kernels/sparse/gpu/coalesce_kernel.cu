@@ -120,9 +120,9 @@ void CoalesceCooGPUKernel(const GPUContext& dev_ctx,
 
   out_indices.Resize({x_indices.dims()[0], out_nnz});
   if (out_values.dims().size() == 1) {
-    out_values.Resize(make_ddim({out_nnz}));
+    out_values.Resize({out_nnz});
   } else {
-    out_values.Resize(make_ddim({out_nnz, x_values.dims()[1]}));
+    out_values.Resize({out_nnz, x_values.dims()[1]});
   }
 
   // 5. scatter the values

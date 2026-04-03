@@ -63,7 +63,7 @@ void UniqueRawKernel(const Context& dev_ctx,
                      DenseTensor* indices,
                      DenseTensor* index,
                      DenseTensor* counts) {
-  if (dtype == phi::DataType::INT32) {
+  if (dtype == DataType::INT32) {
     PADDLE_ENFORCE_LE(
         x.numel(),
         INT_MAX,
@@ -74,13 +74,13 @@ void UniqueRawKernel(const Context& dev_ctx,
             x.numel()));
   }
   if (!is_sorted) {
-    phi::VisitDataType(
-        dtype, funcs::UniqueOpFunctor<Context, T>(dev_ctx, out, index, &x));
+    VisitDataType(dtype,
+                  funcs::UniqueOpFunctor<Context, T>(dev_ctx, out, index, &x));
     return;
   }
 
   if (axis.empty()) {
-    phi::VisitDataTypeTiny(
+    VisitDataTypeTiny(
         dtype,
         funcs::UniqueFlattenedTensorFunctor<Context, T>(dev_ctx,
                                                         x,
@@ -94,17 +94,17 @@ void UniqueRawKernel(const Context& dev_ctx,
   } else {
     int axis_value = axis[0];
     axis_value = (axis_value == -1) ? (x.dims().size() - 1) : axis_value;
-    phi::VisitDataTypeTiny(dtype,
-                           funcs::UniqueDimFunctor<Context, T>(dev_ctx,
-                                                               x,
-                                                               out,
-                                                               indices,
-                                                               index,
-                                                               counts,
-                                                               axis_value,
-                                                               return_index,
-                                                               return_inverse,
-                                                               return_counts));
+    VisitDataTypeTiny(dtype,
+                      funcs::UniqueDimFunctor<Context, T>(dev_ctx,
+                                                          x,
+                                                          out,
+                                                          indices,
+                                                          index,
+                                                          counts,
+                                                          axis_value,
+                                                          return_index,
+                                                          return_inverse,
+                                                          return_counts));
   }
 }
 

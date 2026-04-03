@@ -24,8 +24,8 @@ void EigKernel(const Context& dev_ctx,
                const DenseTensor& x,
                DenseTensor* out_w,
                DenseTensor* out_v) {
-  dev_ctx.template Alloc<phi::dtype::Complex<T>>(out_w);
-  dev_ctx.template Alloc<phi::dtype::Complex<T>>(out_v);
+  dev_ctx.template Alloc<dtype::Complex<T>>(out_w);
+  dev_ctx.template Alloc<dtype::Complex<T>>(out_v);
 
   if (x.numel() == 0) {
     return;
@@ -48,11 +48,11 @@ void EigKernel(const Context& dev_ctx,
     std::vector<int64_t> real_w_dims = vectorize<int64_t>(out_w->dims());
     real_w_dims.back() *= 2;
     out_w_real.Resize(make_ddim(real_w_dims));
-    dev_ctx.template Alloc<phi::dtype::Real<T>>(&out_w_real);
+    dev_ctx.template Alloc<dtype::Real<T>>(&out_w_real);
     out_v_real.Resize(x.dims());
-    dev_ctx.template Alloc<phi::dtype::Real<T>>(&out_v_real);
+    dev_ctx.template Alloc<dtype::Real<T>>(&out_v_real);
 
-    phi::ApplyEigKernel<phi::dtype::Real<T>, Context>(
+    ApplyEigKernel<dtype::Real<T>, Context>(
         x, &out_w_real, &out_v_real, dev_ctx);
 
     // 1. extract real part & imag part from out_w_real
@@ -62,15 +62,15 @@ void EigKernel(const Context& dev_ctx,
         funcs::Slice<T>(dev_ctx, out_w_real, {-1}, {order}, {order * 2});
 
     // 2. construct complex values
-    auto* out_w_real_part_ptr = out_w_real_part.data<phi::dtype::Real<T>>();
-    auto* out_w_imag_part_ptr = out_w_imag_part.data<phi::dtype::Real<T>>();
+    auto* out_w_real_part_ptr = out_w_real_part.data<dtype::Real<T>>();
+    auto* out_w_imag_part_ptr = out_w_imag_part.data<dtype::Real<T>>();
     int out_w_numel = static_cast<int>(out_w->numel());
 
     funcs::ForRange<Context> for_range(dev_ctx, out_w_numel);
-    funcs::RealImagToComplexFunctor<phi::dtype::Complex<T>> functor(
+    funcs::RealImagToComplexFunctor<dtype::Complex<T>> functor(
         out_w_real_part_ptr,
         out_w_imag_part_ptr,
-        dev_ctx.template Alloc<phi::dtype::Complex<T>>(out_w),
+        dev_ctx.template Alloc<dtype::Complex<T>>(out_w),
         out_w_numel);
 
     for_range(functor);
@@ -79,15 +79,13 @@ void EigKernel(const Context& dev_ctx,
     DenseTensor out_v_real_trans = TransposeLast2Dim<T>(dev_ctx, out_v_real);
     DenseTensor out_v_trans;
     out_v_trans.Resize(x.dims());
-    dev_ctx.template Alloc<phi::dtype::Complex<T>>(&out_v_trans);
-    phi::ConstructComplexVectors<phi::dtype::Real<T>,
-                                 phi::dtype::Complex<T>,
-                                 Context>(
+    dev_ctx.template Alloc<dtype::Complex<T>>(&out_v_trans);
+    ConstructComplexVectors<dtype::Real<T>, dtype::Complex<T>, Context>(
         &out_v_trans, *out_w, out_v_real_trans, dev_ctx, batch_count, order);
-    TransposeTwoAxis<phi::dtype::Complex<T>, Context>(
+    TransposeTwoAxis<dtype::Complex<T>, Context>(
         out_v_trans, out_v, x.dims().size() - 1, x.dims().size() - 2, dev_ctx);
   } else {
-    phi::ApplyEigKernel<T, Context>(x, out_w, out_v, dev_ctx);
+    ApplyEigKernel<T, Context>(x, out_w, out_v, dev_ctx);
   }
 }
 

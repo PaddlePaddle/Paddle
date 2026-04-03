@@ -140,7 +140,7 @@ void DeterminantKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(out);
     return;
   }
-  auto input_dim = common::vectorize(x.dims());
+  auto input_dim = vectorize(x.dims());
   auto input_dim_size = input_dim.size();
 
   auto batch_count = detail::GetBatchCount(x.dims());
@@ -161,7 +161,7 @@ void DeterminantKernel(const Context& dev_ctx,
     out->Resize(output_dims);
   } else {
     // when input is a two-dimension matrix, The det value is a number.
-    out->Resize(make_ddim({}));
+    out->Resize({});
   }
   VLOG(10) << "output dim:" << out->dims();
 }

@@ -21,14 +21,14 @@
 #include "paddle/phi/core/utils/data_type.h"
 namespace phi {
 template <typename T, typename Context, typename IndexT = int>
-void IndexSampleGradInner(const Context& context,
+void IndexSampleGradInner(const Context& dev_ctx,
                           const DenseTensor& out_grad,
                           const DenseTensor& index,
                           DenseTensor* x_grad) {
   std::vector<T> out_grad_vec;
   std::vector<IndexT> index_vec;
-  TensorToVector(out_grad, context, &out_grad_vec);
-  TensorToVector(index, context, &index_vec);
+  TensorToVector(out_grad, dev_ctx, &out_grad_vec);
+  TensorToVector(index, dev_ctx, &index_vec);
 
   auto index_dims = index.dims();
   auto x_grad_dims = x_grad->dims();
@@ -62,8 +62,8 @@ void IndexSampleGradInner(const Context& context,
     int64_t v_i = b * value_length + static_cast<int64_t>(index_vec[i]);
     x_grad_vec[v_i] += out_grad_vec[i];
   }
-  context.template Alloc<T>(x_grad);
-  TensorFromVector(x_grad_vec, context, x_grad);
+  dev_ctx.template Alloc<T>(x_grad);
+  TensorFromVector(x_grad_vec, dev_ctx, x_grad);
   x_grad->Resize(x_grad_dims);
 }
 

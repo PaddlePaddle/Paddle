@@ -54,7 +54,8 @@ build_doc/
 
 .vscode
 .comate
-.claude
+.claude/*
+!.claude/skills
 .idea
 .project
 .cproject
@@ -69,6 +70,7 @@ third_party/
 *~
 bazel-*
 .humanize
+.codex
 
 build_*
 # clion workspace.

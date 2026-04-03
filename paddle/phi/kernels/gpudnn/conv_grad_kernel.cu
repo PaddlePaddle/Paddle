@@ -546,7 +546,7 @@ void ConvCudnnGradKernel(const Context& dev_ctx,
     in_data_dims = slice_ddim(in_dims, 1, in_dims.size() - 1);
     filter_data_dims = slice_ddim(filter_dims, 1, filter_dims.size() - 1);
   }
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
@@ -884,7 +884,7 @@ void ConvCudnnGradGradKernel(const Context& dev_ctx,
   auto filter_dims = W->dims();
   DDim in_data_dims = slice_ddim(in_dims, 2, in_dims.size());
   DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 

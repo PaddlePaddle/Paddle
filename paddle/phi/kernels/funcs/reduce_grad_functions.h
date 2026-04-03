@@ -36,7 +36,7 @@ void ReduceGradFunctor(const Context& dev_ctx,
   auto x_grad = EigenTensor<T, D>::From(*output);
   auto x_rank = static_cast<int>(x.dimensions().size());
   auto x_dims = input0.dims();
-  auto reduced_dims_v = common::vectorize(x_dims);
+  auto reduced_dims_v = vectorize(x_dims);
   std::vector<int> dims_ref = dims;
   Eigen::array<int64_t, D> broadcast_dim;
   for (size_t i = 0; i < D; ++i) broadcast_dim[i] = 1;

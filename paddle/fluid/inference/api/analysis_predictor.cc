@@ -924,7 +924,8 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
       delete_assert_op_pm.Run(pir_program_.get());
     }
 
-    if (config_.use_gpu() && config_.cinn_enabled()) {
+    if ((config_.use_gpu() || config_.use_custom_device()) &&
+        config_.cinn_enabled()) {
       if (!config_.custom_pass_only_) {
         ::pir::PassManager fused_op_pm(::pir::IrContext::Instance(),
                                        config_.pm_opt_level_);

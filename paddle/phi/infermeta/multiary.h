@@ -1314,6 +1314,11 @@ PADDLE_API void MultiheadMatmulInferMeta(const MetaTensor& input,
                                          const int head_number,
                                          MetaTensor* out);
 
+PADDLE_API void MaskedScatterInferMeta(const MetaTensor& x,
+                                       const MetaTensor& mask,
+                                       const MetaTensor& value,
+                                       MetaTensor* out);
+
 PADDLE_API void MaskedMultiheadAttentionInferMeta(
     const MetaTensor& x,
     const MetaTensor& cache_kv,

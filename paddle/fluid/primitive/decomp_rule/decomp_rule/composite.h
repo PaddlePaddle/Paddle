@@ -553,7 +553,7 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
     const Tensor& x,
     const paddle::optional<Tensor>& scale,
     const paddle::optional<Tensor>& bias,
-    float epsilon,
+    double epsilon,
     int begin_norm_axis) {
   std::vector<int64_t> reduce_axis;
   auto org_dtype = x.dtype();

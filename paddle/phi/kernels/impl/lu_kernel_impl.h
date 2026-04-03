@@ -369,7 +369,7 @@ void arange(const Context& dev_ctx,
             int w,
             int batchsize = 1,
             int h = 1) {
-  tmp->Resize(make_ddim({batchsize * w}));
+  tmp->Resize({batchsize * w});
   dev_ctx.template HostAlloc<int32_t>(tmp);
   auto tmpdata = tmp->data<int32_t>();
   for (int b = 0; b < batchsize; b++) {
@@ -458,7 +458,7 @@ void Unpack_Pivot(const Context& dev_ctx,
                   int h,
                   int w UNUSED) {
   auto dims = Pivot.dims();
-  auto Pdimvec = common::vectorize(dims);
+  auto Pdimvec = vectorize(dims);
   auto prank = Pdimvec.size();
   auto Pnum = dims[prank - 1];
   DenseTensor Pivot_cpu;
@@ -506,7 +506,7 @@ DenseTensor Transpose2DTo6D(const Context& dev_ctx, const DenseTensor& x) {
   // transpose the last two dimision
   DenseTensor ret;
   auto x_dim = x.dims();
-  auto x_vec = common::vectorize<int>(x_dim);
+  auto x_vec = vectorize<int>(x_dim);
   int rank = x_vec.size();
 
   for (int i = 0; i < x_dim.size(); i++) {

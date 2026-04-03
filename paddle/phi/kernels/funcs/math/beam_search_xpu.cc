@@ -60,7 +60,7 @@ class BeamSearchFunctor<XPUContext, T> {
                   size_t beam_size,
                   int end_id,
                   bool is_accumulated) {
-    auto abs_lod = phi::ToAbsOffset(scores->lod());
+    auto abs_lod = ToAbsOffset(scores->lod());
     auto &high_level = abs_lod[level];
 
     auto items = SelectTopBeamSizeItems(pre_ids,
@@ -122,7 +122,7 @@ class BeamSearchFunctor<XPUContext, T> {
     low_level.push_back(low_offset);
 
     // fill lod
-    phi::LegacyLoD lod(2);
+    LegacyLoD lod(2);
     lod[0].assign(high_level.begin(), high_level.end());
     lod[1].assign(low_level.begin(), low_level.end());
     if (!CheckLegacyLoD(lod)) {
@@ -180,7 +180,7 @@ class BeamSearchFunctor<XPUContext, T> {
    * since the end tokens must be written out.
    */
   void PruneEndBeams(const DenseTensor *pre_ids,
-                     const phi::LegacyLoD &abs_lod,
+                     const LegacyLoD &abs_lod,
                      std::vector<std::vector<Item>> *items,
                      size_t lod_level,
                      int end_id,
@@ -275,7 +275,7 @@ class BeamSearchFunctor<XPUContext, T> {
     std::vector<std::vector<Item>> result;
 
     // find the current candidates
-    auto abs_lod = phi::ToAbsOffset(scores->lod());
+    auto abs_lod = ToAbsOffset(scores->lod());
 
     auto *pre_ids_data_xpu = pre_ids->data<int64_t>();
     int64_t *pre_ids_data = nullptr;

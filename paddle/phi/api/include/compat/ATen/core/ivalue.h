@@ -224,6 +224,16 @@ class IValue {
   bool is_custom_class() const { return tag_ == TypeTag::CustomClass; }
   bool is_tuple() const { return tag_ == TypeTag::Tuple; }
 
+  bool isNone() const { return is_none(); }
+  bool isBool() const { return is_bool(); }
+  bool isInt() const { return is_int(); }
+  bool isDouble() const { return is_double(); }
+  bool isString() const { return is_string(); }
+  bool isList() const { return is_list(); }
+  bool isTensor() const { return is_tensor(); }
+  bool isCustomClass() const { return is_custom_class(); }
+  bool isTuple() const { return is_tuple(); }
+
   bool to_bool() const {
     if (!is_bool()) throw std::runtime_error("Not a bool");
     return std::get<bool>(value_);
@@ -278,6 +288,39 @@ class IValue {
   at::ScalarType to_scalar_type() const {
     if (!is_int()) throw std::runtime_error("Not an int");
     return static_cast<at::ScalarType>(std::get<int64_t>(value_));
+  }
+
+  bool toBool() const { return to_bool(); }
+  int64_t toInt() const { return to_int(); }
+  double toDouble() const { return to_double(); }
+  const std::string& toStringRef() const { return to_string(); }
+  std::string_view toStringView() const { return to_string_view(); }
+  at::Tensor toTensor() const { return to_tensor(); }
+  at::ScalarType toScalarType() const { return to_scalar_type(); }
+
+  std::string tagKind() const {
+    switch (tag_) {
+      case TypeTag::None:
+        return "None";
+      case TypeTag::Bool:
+        return "Bool";
+      case TypeTag::Int:
+        return "Int";
+      case TypeTag::Double:
+        return "Double";
+      case TypeTag::String:
+        return "String";
+      case TypeTag::Tensor:
+        return "Tensor";
+      case TypeTag::GenericList:
+        return "GenericList";
+      case TypeTag::CustomClass:
+        return "CustomClass";
+      case TypeTag::Tuple:
+        return "Tuple";
+      default:
+        return "InvalidTag";
+    }
   }
 
   template <typename T>
@@ -637,3 +680,7 @@ intrusive_ptr<T> generic_to(const IValue& ivalue,
 }
 
 }  // namespace torch
+
+namespace c10 {
+using IValue = ::torch::IValue;
+}
