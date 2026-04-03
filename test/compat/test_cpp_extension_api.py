@@ -94,6 +94,10 @@ class TestGetCudaArchFlags(unittest.TestCase):
         flags = _get_cuda_arch_flags(cflags=["-DPADDLE_EXTENSION_NAME=my_ext"])
         self.assertNotEqual(flags, [])
 
+    def test_rocm_returns_empty_flags(self):
+        with mock.patch.object(core, "is_compiled_with_rocm", return_value=True):
+            self.assertEqual(_get_cuda_arch_flags(), [])
+
 
 class TestCppExtensionUtils(unittest.TestCase):
     def test_cuda_home(self):
