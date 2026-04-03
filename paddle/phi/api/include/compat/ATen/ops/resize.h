@@ -23,6 +23,7 @@
 
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace at {
 
@@ -77,7 +78,7 @@ inline const at::Tensor& Tensor::resize_(
   const size_t available_bytes =
       dense_tensor->Holder() == nullptr
           ? 0
-          : dense_tensor->Holder()->size() - dense_tensor->offset();
+          : dense_tensor->Holder()->size() - dense_tensor->meta().offset;
 
   if (required_bytes <= available_bytes || new_numel == 0) {
     dense_tensor->Resize(dims);
@@ -87,7 +88,7 @@ inline const at::Tensor& Tensor::resize_(
   const auto old_holder = dense_tensor->Holder();
   TORCH_CHECK(old_holder != nullptr,
               "resize_ cannot grow a tensor without allocated storage");
-  const size_t old_offset = dense_tensor->offset();
+  const size_t old_offset = dense_tensor->meta().offset;
   const size_t copy_bytes = std::min(old_numel, new_numel_size) * itemsize;
   const phi::Place place = old_holder->place();
   const void* old_data =
@@ -95,8 +96,8 @@ inline const at::Tensor& Tensor::resize_(
           ? nullptr
           : reinterpret_cast<const uint8_t*>(old_holder->ptr()) + old_offset;
 
-  dense_tensor->Resize(dims);
-  void* new_data = dense_tensor->mutable_data(place, dense_tensor->dtype());
+  dense_tensor->ResizeAndAllocate(phi::make_ddim(dims));
+  void* new_data = dense_tensor->data();
   if (copy_bytes > 0 && old_data != nullptr && old_data != new_data) {
     phi::memory_utils::Copy(place, new_data, place, old_data, copy_bytes);
   }
