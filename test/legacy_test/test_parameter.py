@@ -88,8 +88,7 @@ class ParameterChecks(unittest.TestCase):
                 )
                 self.assertEqual(zero_size_param.shape, shape)
                 self.assertEqual(zero_size_param.data_ptr(), 0)
-                # strides will be same with shape for 0-size tensor in paddle
-                self.assertEqual(zero_size_param.strides, shape)
+                self.assertEqual(zero_size_param.strides, [4, 1])
 
     def func_exception(self):
         b = main_program.global_block()
