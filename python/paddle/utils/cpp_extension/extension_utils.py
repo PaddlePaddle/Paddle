@@ -932,6 +932,7 @@ def find_paddle_includes(use_cuda=False):
     )
 
     if core.is_compiled_with_onednn():
+        # whl install: headers are packaged inside the paddle include directory
         onednn_include_dir = os.path.join(
             paddle_include_dir,
             'third_party',
@@ -941,6 +942,26 @@ def find_paddle_includes(use_cuda=False):
         )
         if os.path.exists(onednn_include_dir):
             include_dirs.append(onednn_include_dir)
+        else:
+            # source build: paddle is at build/python/paddle,
+            # onednn headers are at build/third_party/install/onednn/include
+            import paddle
+
+            paddle_dir = os.path.dirname(paddle.__file__)
+            source_build_dir = os.path.normpath(
+                os.path.join(
+                    paddle_dir,
+                    '..',
+                    '..',
+                    '..',
+                    'third_party',
+                    'install',
+                    'onednn',
+                    'include',
+                )
+            )
+            if os.path.exists(source_build_dir):
+                include_dirs.append(source_build_dir)
 
     if use_cuda:
         if core.is_compiled_with_rocm():
