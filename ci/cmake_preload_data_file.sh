@@ -14,7 +14,7 @@
 
 set -e
 
-echo "=== preload data file from CACHE_DIR  ==="
+echo "=== preload data file from CFS_DIR  ==="
 
 BASE_SRC=${CFS_DIR}/preload_file
 BASE_DST=/paddle/build/third_party/inference_demo
