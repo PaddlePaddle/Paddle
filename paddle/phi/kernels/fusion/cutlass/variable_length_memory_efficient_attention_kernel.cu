@@ -32,6 +32,9 @@ void MultiHeadAttentionVariableForwardKernel(
     DenseTensor* output) {
   dev_ctx.template Alloc<T>(output);
   if (output->numel() == 0) return;
+  // If seq_lens or kv_seq_lens is a 0-size tensor, no valid sequence lengths
+  // are provided, so there is nothing to compute.
+  if (seq_lens.numel() == 0 || kv_seq_lens.numel() == 0) return;
 
   Params params{};
   // [B, N, S, H]
