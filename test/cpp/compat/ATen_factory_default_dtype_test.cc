@@ -51,19 +51,79 @@ TEST(ATenFactoryDefaultDtypeTest, EmptyNulloptDtypeUsesCurrentDefault) {
   ASSERT_EQ(tensor.sizes(), c10::IntArrayRef({2, 3}));
 }
 
-TEST(ATenFactoryDefaultDtypeTest, ArangeNulloptDtypeUsesCurrentDefault) {
+TEST(ATenFactoryDefaultDtypeTest, ArangeOmittedDtypeUsesLongForIntegralInputs) {
   DefaultDtypeGuard guard(at::kDouble);
 
-  at::Tensor end_only =
+  at::Tensor end_only_default = at::arange(5);
+  at::Tensor start_end_default = at::arange(1, 6);
+  at::Tensor start_end_step_default = at::arange(1, 7, 2);
+  at::Tensor end_only_nullopt =
       at::arange(5, std::nullopt, std::nullopt, at::kCPU, false);
-  at::Tensor start_end =
+  at::Tensor start_end_nullopt =
       at::arange(1, 6, std::nullopt, std::nullopt, at::kCPU, false);
-  at::Tensor start_end_step =
+  at::Tensor start_end_step_nullopt =
       at::arange(1, 7, 2, std::nullopt, std::nullopt, at::kCPU, false);
 
-  ASSERT_EQ(end_only.scalar_type(), at::kDouble);
-  ASSERT_EQ(start_end.scalar_type(), at::kDouble);
-  ASSERT_EQ(start_end_step.scalar_type(), at::kDouble);
+  ASSERT_EQ(end_only_default.scalar_type(), at::kLong);
+  ASSERT_EQ(start_end_default.scalar_type(), at::kLong);
+  ASSERT_EQ(start_end_step_default.scalar_type(), at::kLong);
+  ASSERT_EQ(end_only_nullopt.scalar_type(), at::kLong);
+  ASSERT_EQ(start_end_nullopt.scalar_type(), at::kLong);
+  ASSERT_EQ(start_end_step_nullopt.scalar_type(), at::kLong);
+  ASSERT_EQ(end_only_default.data_ptr<int64_t>()[4], 4);
+  ASSERT_EQ(start_end_default.data_ptr<int64_t>()[0], 1);
+  ASSERT_EQ(start_end_step_default.data_ptr<int64_t>()[2], 5);
+  ASSERT_EQ(end_only_nullopt.data_ptr<int64_t>()[4], 4);
+  ASSERT_EQ(start_end_nullopt.data_ptr<int64_t>()[0], 1);
+  ASSERT_EQ(start_end_step_nullopt.data_ptr<int64_t>()[2], 5);
+}
+
+TEST(ATenFactoryDefaultDtypeTest,
+     ArangeOmittedDtypeKeepsLargeInt64InputsExact) {
+  constexpr int64_t kStart = (1LL << 53) + 1;
+  constexpr int64_t kEnd = kStart + 4;
+
+  at::Tensor by_default = at::arange(kStart, kEnd);
+  at::Tensor by_nullopt =
+      at::arange(kStart, kEnd, std::nullopt, std::nullopt, at::kCPU, false);
+
+  ASSERT_EQ(by_default.scalar_type(), at::kLong);
+  ASSERT_EQ(by_nullopt.scalar_type(), at::kLong);
+  ASSERT_EQ(by_default.numel(), 4);
+  ASSERT_EQ(by_nullopt.numel(), 4);
+
+  for (int64_t i = 0; i < 4; ++i) {
+    ASSERT_EQ(by_default.data_ptr<int64_t>()[i], kStart + i);
+    ASSERT_EQ(by_nullopt.data_ptr<int64_t>()[i], kStart + i);
+  }
+}
+
+TEST(ATenFactoryDefaultDtypeTest,
+     ArangeOmittedDtypeUsesCurrentDefaultForFloatingInputs) {
+  DefaultDtypeGuard guard(at::kDouble);
+
+  at::Tensor end_only_default = at::arange(5.0);
+  at::Tensor start_end_default = at::arange(1.0, 6.0);
+  at::Tensor start_end_step_default = at::arange(1.0, 7.0, 2.0);
+  at::Tensor end_only_nullopt =
+      at::arange(5.0, std::nullopt, std::nullopt, at::kCPU, false);
+  at::Tensor start_end_nullopt =
+      at::arange(1.0, 6.0, std::nullopt, std::nullopt, at::kCPU, false);
+  at::Tensor start_end_step_nullopt =
+      at::arange(1.0, 7.0, 2.0, std::nullopt, std::nullopt, at::kCPU, false);
+
+  ASSERT_EQ(end_only_default.scalar_type(), at::kDouble);
+  ASSERT_EQ(start_end_default.scalar_type(), at::kDouble);
+  ASSERT_EQ(start_end_step_default.scalar_type(), at::kDouble);
+  ASSERT_EQ(end_only_nullopt.scalar_type(), at::kDouble);
+  ASSERT_EQ(start_end_nullopt.scalar_type(), at::kDouble);
+  ASSERT_EQ(start_end_step_nullopt.scalar_type(), at::kDouble);
+  ASSERT_DOUBLE_EQ(end_only_default.data_ptr<double>()[4], 4.0);
+  ASSERT_DOUBLE_EQ(start_end_default.data_ptr<double>()[0], 1.0);
+  ASSERT_DOUBLE_EQ(start_end_step_default.data_ptr<double>()[2], 5.0);
+  ASSERT_DOUBLE_EQ(end_only_nullopt.data_ptr<double>()[4], 4.0);
+  ASSERT_DOUBLE_EQ(start_end_nullopt.data_ptr<double>()[0], 1.0);
+  ASSERT_DOUBLE_EQ(start_end_step_nullopt.data_ptr<double>()[2], 5.0);
 }
 
 TEST(ATenFactoryDefaultDtypeTest, FullNulloptDtypeUsesCurrentDefault) {

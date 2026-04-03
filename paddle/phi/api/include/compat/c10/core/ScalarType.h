@@ -225,6 +225,23 @@ AT_FORALL_SCALAR_TYPES_WITH_COMPLEX_AND_QINTS(SPECIALIZE_CppTypeToScalarType)
 AT_FORALL_SCALAR_TYPES_WITH_COMPLEX_AND_QINTS(DEFINE_CONSTANT)
 #undef DEFINE_CONSTANT
 
+constexpr ScalarType kComplexHalf = ScalarType::ComplexHalf;
+constexpr ScalarType kQInt8 = ScalarType::QInt8;
+constexpr ScalarType kQUInt8 = ScalarType::QUInt8;
+constexpr ScalarType kQInt32 = ScalarType::QInt32;
+constexpr ScalarType kQUInt4x2 = ScalarType::QUInt4x2;
+constexpr ScalarType kQUInt2x4 = ScalarType::QUInt2x4;
+constexpr ScalarType kBits1x8 = ScalarType::Bits1x8;
+constexpr ScalarType kBits2x4 = ScalarType::Bits2x4;
+constexpr ScalarType kBits4x2 = ScalarType::Bits4x2;
+constexpr ScalarType kBits8 = ScalarType::Bits8;
+constexpr ScalarType kBits16 = ScalarType::Bits16;
+constexpr ScalarType kFloat8_e5m2fnuz = ScalarType::Float8_e5m2fnuz;
+constexpr ScalarType kFloat8_e4m3fnuz = ScalarType::Float8_e4m3fnuz;
+constexpr ScalarType kFloat8_e8m0fnu = ScalarType::Float8_e8m0fnu;
+constexpr ScalarType kFloat4_e2m1fn_x2 = ScalarType::Float4_e2m1fn_x2;
+constexpr ScalarType kUndefined = ScalarType::Undefined;
+
 #define AT_FORALL_SCALAR_TYPES_AND(SCALARTYPE, _) \
   _(uint8_t, Byte)                                \
   _(int8_t, Char)                                 \
@@ -281,6 +298,8 @@ inline const char* toString(ScalarType t) {
 
   switch (t) {
     AT_FORALL_SCALAR_TYPES_WITH_COMPLEX_AND_QINTS(DEFINE_CASE)
+    case ScalarType::ComplexHalf:
+      return "ComplexHalf";
     case ScalarType::QInt8:
       return "QInt8";
     case ScalarType::QUInt8:
@@ -291,8 +310,6 @@ inline const char* toString(ScalarType t) {
       return "QUInt4x2";
     case ScalarType::QUInt2x4:
       return "QUInt2x4";
-    case ScalarType::ComplexHalf:
-      return "ComplexHalf";
     case ScalarType::Bits1x8:
       return "Bits1x8";
     case ScalarType::Bits2x4:
@@ -326,6 +343,8 @@ inline size_t elementSize(ScalarType t) {
 
   switch (t) {
     AT_FORALL_SCALAR_TYPES_WITH_COMPLEX_AND_QINTS(CASE_ELEMENTSIZE_CASE)
+    case ScalarType::ComplexHalf:
+      return sizeof(at::Half) * 2;
     case ScalarType::QInt8:
     case ScalarType::QUInt8:
     case ScalarType::QUInt4x2:
@@ -334,10 +353,15 @@ inline size_t elementSize(ScalarType t) {
     case ScalarType::Bits2x4:
     case ScalarType::Bits4x2:
     case ScalarType::Bits8:
+    case ScalarType::Float8_e5m2fnuz:
+    case ScalarType::Float8_e4m3fnuz:
+    case ScalarType::Float8_e8m0fnu:
+    case ScalarType::Float4_e2m1fn_x2:
       return 1;
     case ScalarType::QInt32:
-    case ScalarType::Bits16:
       return 4;
+    case ScalarType::Bits16:
+      return 2;
     default:
       TORCH_CHECK(false, "Unknown ScalarType");
   }
@@ -354,15 +378,14 @@ inline bool isIntegralType(ScalarType t, bool includeBool) {
 }
 
 inline bool isFloat8Type(ScalarType t) {
-  return t == ScalarType::Float8_e5m2 || t == ScalarType::Float8_e4m3fn;
-  //  ||  t == ScalarType::Float8_e5m2fnuz
-  //   ||  t == ScalarType::Float8_e4m3fnuz
-  //   || t == ScalarType::Float8_e8m0fnu
+  return t == ScalarType::Float8_e5m2 || t == ScalarType::Float8_e4m3fn ||
+         t == ScalarType::Float8_e5m2fnuz || t == ScalarType::Float8_e4m3fnuz ||
+         t == ScalarType::Float8_e8m0fnu;
 }
 
 inline bool isReducedFloatingType(ScalarType t) {
-  return t == ScalarType::Half || t == ScalarType::BFloat16 || isFloat8Type(t);
-  //||  t == ScalarType::Float4_e2m1fn_x2
+  return t == ScalarType::Half || t == ScalarType::BFloat16 ||
+         isFloat8Type(t) || t == ScalarType::Float4_e2m1fn_x2;
 }
 
 inline bool isFloatingType(ScalarType t) {
@@ -371,9 +394,8 @@ inline bool isFloatingType(ScalarType t) {
 }
 
 inline bool isComplexType(ScalarType t) {
-  return (
-      /* t == ScalarType::ComplexHalf || */ t == ScalarType::ComplexFloat ||
-      t == ScalarType::ComplexDouble);
+  return (t == ScalarType::ComplexHalf || t == ScalarType::ComplexFloat ||
+          t == ScalarType::ComplexDouble);
 }
 
 inline bool isSignedType(ScalarType t) {
@@ -408,9 +430,9 @@ inline bool isSignedType(ScalarType t) {
       CASE_ISSIGNED(Float8_e4m3fn);
 
     // Complex types (treated as signed)
+    case ScalarType::ComplexHalf:
     case ScalarType::ComplexFloat:
     case ScalarType::ComplexDouble:
-    case ScalarType::ComplexHalf:
       return true;
 
     // Signed quantized types (explicitly return true)

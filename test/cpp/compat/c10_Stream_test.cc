@@ -112,6 +112,26 @@ TEST(CUDAStreamTest, DefaultStreamIsStable) {
   EXPECT_EQ(s1, s2);
 }
 
+TEST(CUDAStreamTest, GetStreamFromPoolBoolOverloadPreservesHighPriority) {
+  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
+  auto low_priority_stream =
+      c10::cuda::getStreamFromPool(/*isHighPriority=*/false);
+  auto high_priority_stream =
+      c10::cuda::getStreamFromPool(/*isHighPriority=*/true);
+  auto explicit_high_priority_stream = c10::cuda::getStreamFromPool(-1);
+
+  const int low_priority = low_priority_stream.priority();
+  const int high_priority = high_priority_stream.priority();
+  const int explicit_high_priority = explicit_high_priority_stream.priority();
+
+  if (low_priority == explicit_high_priority) {
+    return;
+  }
+
+  EXPECT_EQ(high_priority, explicit_high_priority);
+  EXPECT_NE(high_priority, low_priority);
+}
+
 // After setCurrentCUDAStream redirects the per-thread current stream,
 // getDefaultCUDAStream must still return the null stream.
 TEST(CUDAStreamTest, DefaultStreamUnaffectedBySetCurrentCUDAStream) {

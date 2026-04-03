@@ -1,4 +1,4 @@
-// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,21 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// #The file has been adapted from pytorch project
+// #Licensed under  BSD-style license -
+// https://github.com/pytorch/pytorch/blob/main/LICENSE
+
 #pragma once
 
-#include <c10/core/Device.h>
-
-#include <cstdint>
-
-namespace torch::cuda {
-
-c10::DeviceIndex device_count();
-
-bool is_available();
-
-void synchronize(int64_t device_index = -1);
-
-}  // namespace torch::cuda
-namespace at::cuda {
-using torch::cuda::synchronize;
-}  // namespace at::cuda
+#include <torch/all.h>
+#include <torch/extension.h>

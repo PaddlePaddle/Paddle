@@ -26,8 +26,9 @@
 #include "paddle/phi/backends/gpu/gpu_info.h"
 
 // Forward-declare getCUDADeviceAllocator to avoid include-order conflicts
-// between ATen/cuda/CUDAContextLight.h (defines at::cuda::is_available inline)
-// and torch/cuda.h (adds `using torch::cuda::is_available` to at::cuda).
+// between ATen/cuda/CUDAContextLight.h (defines torch::cuda::is_available
+// inline) and torch/cuda.h (adds `using torch::cuda::is_available` to
+// at::cuda).
 namespace at::cuda {
 c10::Allocator* getCUDADeviceAllocator();
 }  // namespace at::cuda
@@ -242,7 +243,7 @@ TEST(StorageTest, DeviceAndDeviceTypeAPIs) {
   ASSERT_EQ(place.GetType(), phi::AllocationType::CPU);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (at::cuda::is_available()) {
+  if (torch::cuda::is_available()) {
     at::TensorBase cuda_tensor = at::ones(
         {2, 3}, c10::TensorOptions().dtype(at::kFloat).device(at::kCUDA));
     const c10::Storage& cuda_storage = cuda_tensor.storage();
@@ -731,9 +732,13 @@ TEST(StorageTest, DataPtrHelpersAndAllocatorSimpleDataPtrChecks) {
   dp.unsafe_set_device(c10::Device(c10::DeviceType::CPU));
   ASSERT_EQ(dp.device().type(), c10::DeviceType::CPU);
 
-  // is_simple_data_ptr: context==nullptr branch.
+  // PyTorch only treats context==data as a simple DataPtr.
   RawCompatibleAllocator compatible_alloc;
-  ASSERT_TRUE(compatible_alloc.is_simple_data_ptr(dp));
+  ASSERT_FALSE(compatible_alloc.is_simple_data_ptr(dp));
+
+  // is_simple_data_ptr: context==data branch.
+  c10::DataPtr simple = compatible_alloc.allocate(4);
+  ASSERT_TRUE(compatible_alloc.is_simple_data_ptr(simple));
 
   // is_simple_data_ptr: context!=data branch.
   c10::DataPtr non_simple = RawIncompatibleAllocator().allocate(4);
@@ -1041,7 +1046,7 @@ TEST(StorageTest, ReferenceSemanticsSetNbytesVisibleThroughCopy) {
 TEST(StorageTest, CUDAAllocatorZeroBytePreservesDevice) {
   // getCUDADeviceAllocator()->allocate(0) must return a DataPtr whose device
   // is the current CUDA device, not a default-constructed CPU DataPtr.
-  if (!at::cuda::is_available()) {
+  if (!torch::cuda::is_available()) {
     return;  // No CUDA device, skip
   }
 

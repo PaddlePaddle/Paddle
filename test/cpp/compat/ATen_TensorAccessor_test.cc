@@ -198,7 +198,7 @@ TEST(TensorAccessorTest, PackedAccessorWithIntType) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(TensorAccessorTest, PackedAccessorCUDA) {
-  if (at::cuda::is_available()) {
+  if (torch::cuda::is_available()) {
     // Create CUDA tensor
     at::Tensor tensor =
         at::arange(12, at::TensorOptions().dtype(at::kFloat).device(at::kCUDA))

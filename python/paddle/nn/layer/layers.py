@@ -155,6 +155,142 @@ def _addindent(string, indent):
     return s1[0] + '\n' + '\n'.join(s2)
 
 
+def _parse_to_args(*args, **kwargs):
+    """Parse arguments for .to(), shared by Tensor.to and Layer.to.
+
+    Calling conventions::
+
+        to(device=None, dtype=None, blocking=True, copy=False, *, non_blocking=False)
+        to(dtype, blocking=True, copy=False, *, non_blocking=False)
+        to(tensor, blocking=True, copy=False, *, non_blocking=False)
+
+    Returns:
+        tuple: (device, dtype, blocking, copy)
+    """
+    valid_dtypes = {
+        'bfloat16',
+        'float16',
+        'float32',
+        'float64',
+        'int8',
+        'int16',
+        'int32',
+        'int64',
+        'uint8',
+        'complex64',
+        'complex128',
+        'bool',
+    }
+
+    # Extract keyword-only parameter
+    non_blocking = kwargs.pop('non_blocking', None)
+    copy = kwargs.pop('copy', False)
+
+    device = None
+    dtype = None
+    blocking = None
+
+    size_args = len(args)
+    size_kwargs = len(kwargs)
+
+    if size_args + size_kwargs > 4:
+        raise TypeError(
+            "to() received too many arguments - expected one of:\n"
+            "  to(device=None, dtype=None, blocking=True, *, non_blocking=False)\n"
+            "  to(dtype, blocking=True, *, non_blocking=False)\n"
+            "  to(tensor, blocking=True, copy=False, *, non_blocking=False)"
+        )
+
+    valid_keys = {'device', 'dtype', 'blocking', 'other', 'tensor'}
+    invalid_keys = set(kwargs.keys()) - valid_keys
+    if invalid_keys:
+        raise TypeError(
+            "to() got an unexpected keyword argument '"
+            + next(iter(invalid_keys))
+            + "'"
+        )
+
+    if size_args > 0:
+        first = args[0]
+        if isinstance(first, paddle.Tensor):
+            # to(tensor, blocking=True, copy=False)
+            device = first.place
+            dtype = first.dtype
+            if size_args == 2:
+                blocking = args[1]
+            elif size_args == 3:
+                blocking, copy = args[1], args[2]
+            else:
+                blocking = kwargs.get('blocking')
+        elif isinstance(first, (core.DataType, VarDesc.VarType, np.dtype)) or (
+            isinstance(first, str) and first.lower() in valid_dtypes
+        ):
+            # to(dtype, blocking=True, copy=False)
+            dtype = first
+            if size_args >= 2:
+                blocking = args[1]
+            else:
+                blocking = kwargs.get('blocking')
+            if size_args >= 3:
+                copy = args[2]
+        elif first is None or isinstance(first, (str, core.Place)):
+            # to(device, dtype=None, blocking=True, copy=False)
+            device = first
+            if size_args >= 2:
+                dtype = args[1]
+            if size_args >= 3:
+                blocking = args[2]
+            if size_args >= 4:
+                copy = args[3]
+            if size_args < 2:
+                dtype = kwargs.get('dtype')
+            if size_args < 3:
+                blocking = kwargs.get('blocking')
+        else:
+            raise ValueError(
+                f"device should be type of str, paddle.CPUPlace, paddle.CUDAPlace, "
+                f"paddle.CUDAPinnedPlace, paddle.XPUPlace, or paddle.base.libpaddle.Place, "
+                f"but got {type(first).__name__}"
+            )
+    else:
+        tensor_arg = kwargs.get('other')
+        if tensor_arg is None:
+            tensor_arg = kwargs.get('tensor')
+        if tensor_arg is not None:
+            device = tensor_arg.place
+            dtype = tensor_arg.dtype
+            blocking = kwargs.get('blocking')
+        else:
+            device = kwargs.get('device')
+            dtype = kwargs.get('dtype')
+            blocking = kwargs.get('blocking')
+
+    # Validate blocking / non_blocking types
+    if blocking is not None:
+        assert isinstance(blocking, bool), (
+            "blocking value error, must be the True, False or None"
+        )
+    if non_blocking is not None:
+        assert isinstance(non_blocking, bool), (
+            "non_blocking value error, must be the True or False"
+        )
+
+    # blocking and non_blocking cannot both be explicitly set
+    if blocking is not None and non_blocking is not None:
+        raise TypeError(
+            "to() received both 'blocking' and 'non_blocking' arguments. "
+            "These are mutually exclusive, please use only one of them."
+        )
+
+    # Resolve blocking
+    if non_blocking is not None:
+        blocking = not non_blocking
+    elif blocking is None:
+        blocking = True
+
+    return device, dtype, blocking, copy
+
+
 def _layer_trans_dtype(layer, dtype, excluded_layers):
     if type(layer) in excluded_layers:
         return
@@ -2817,28 +2953,75 @@ class Layer:
             )
         return _IncompatibleKeys(missing_keys, unexpected_keys)
 
+    @overload
     def to(
         self,
-        device: PlaceLike | None = None,
-        dtype: DTypeLike | None = None,
-        blocking: bool | None = None,
-        non_blocking: bool | None = None,
-    ) -> Self:
+        device: PlaceLike | None = ...,
+        dtype: DTypeLike | None = ...,
+        blocking: bool = ...,
+        *,
+        non_blocking: bool = ...,
+    ) -> Self: ...
+
+    @overload
+    def to(
+        self,
+        dtype: DTypeLike,
+        blocking: bool = ...,
+        *,
+        non_blocking: bool = ...,
+    ) -> Self: ...
+
+    @overload
+    def to(
+        self,
+        tensor: Tensor,
+        blocking: bool = ...,
+        *,
+        non_blocking: bool = ...,
+    ) -> Self: ...
+
+    def to(self, *args, **kwargs) -> Self:
         '''
-        Cast the parameters and buffers of Layer by the give device, dtype and blocking.
+        Move and/or cast the parameters and buffers.
 
-        Parameters:
-            device(str|paddle.CPUPlace()|paddle.CUDAPlace()|paddle.CUDAPinnedPlace()|paddle.XPUPlace()|None, optional): The device of the Layer which want to be stored.
-            If None, the device is the same with the original Tensor. If device is string, it can be ``cpu``, ``gpu:x`` and ``xpu:x``, where ``x`` is the
-            index of the GPUs or XPUs. Default: None.
+        This API has three calling conventions:
 
-            dtype(str|numpy.dtype|paddle.dtype|None, optional): The type of the data. If None, the dtype is the same with the original Tensor. Default: None.
+        1. ``to(device=None, dtype=None, blocking=True, *, non_blocking=False)``:
+            Moves and/or casts the parameters and buffers.
 
-            blocking(bool|None, optional): If False and the source is in pinned memory, the copy will be
-              asynchronous with respect to the host. Otherwise, the argument has no effect. If None, the blocking is set True. Default: None.
+        2. ``to(dtype, blocking=True, *, non_blocking=False)``:
+            Equivalent to ``self.to(device=None, dtype=dtype, ...)``.
 
-            non_blocking(bool|None, optional): If True and the source is in pinned memory, the copy will be
-              asynchronous with respect to the host. Otherwise, the argument has no effect. If None, the non_blocking is set False. Default: None.
+        3. ``to(tensor, blocking=True, *, non_blocking=False)``:
+            Equivalent to ``self.to(device=tensor.place, dtype=tensor.dtype, ...)``.
+
+        .. note::
+            This method modifies the layer in-place.
+
+        Args:
+            device (str|paddle.CPUPlace()|paddle.CUDAPlace()|paddle.CUDAPinnedPlace()|paddle.XPUPlace()|None, optional):
+                The device of the Layer which want to be stored.
+                If None, the device is the same with the original Tensor.
+                If device is string, it can be ``cpu``, ``gpu:x`` and ``xpu:x``,
+                where ``x`` is the index of the GPUs or XPUs. Default: ``None``.
+            dtype (str|numpy.dtype|paddle.dtype|None, optional):
+                The type of the data. If None, the dtype is the same with the
+                original Tensor. Default: ``None``.
+            blocking (bool, optional):
+                If ``False`` and the source is in pinned memory, the copy will be
+                asynchronous with respect to the host. Otherwise, the argument
+                has no effect. Default: ``True``.
+            tensor (Tensor, optional):
+                Tensor whose dtype and device are the desired dtype and device
+                for all parameters and buffers in this layer.
+
+        Keyword args:
+            non_blocking (bool, optional):
+                If ``True`` and the source is in pinned memory, the copy will be
+                asynchronous with respect to the host. Default: ``False``.
+                ``non_blocking`` and ``blocking`` are mutually exclusive
+                and cannot both be set at the same time.
 
         Returns:
             self
@@ -2883,11 +3066,11 @@ class Layer:
                  [-0.58883440,  0.99266374]])
 
         '''
+        device, dtype, blocking, _ = _parse_to_args(*args, **kwargs)
         return self._to_impl(
             device=device,
             dtype=dtype,
             blocking=blocking,
-            non_blocking=non_blocking,
             include_sublayers=True,
             floating_only=False,
         )
@@ -2994,7 +3177,6 @@ class Layer:
         device: PlaceLike | None = None,
         dtype: DTypeLike | None = None,
         blocking: bool | None = None,
-        non_blocking: bool | None = None,
         include_sublayers: bool = True,
         floating_only: bool = False,
     ):
@@ -3002,33 +3184,25 @@ class Layer:
         Cast the parameters and buffers of Layer by the give device, dtype and blocking.
 
         Parameters:
-            device(str|paddle.CPUPlace()|paddle.CUDAPlace()|paddle.CUDAPinnedPlace()|paddle.XPUPlace()|None, optional): The device of the Layer which want to be stored.
-            If None, the device is the same with the original Tensor. If device is string, it can be ``cpu``, ``gpu:x`` and ``xpu:x``, where ``x`` is the
-            index of the GPUs or XPUs. Default: None.
-
-            dtype(str|numpy.dtype|paddle.dtype|None, optional): The type of the data. If None, the dtype is the same with the original Tensor. Default: None.
-
-            blocking(bool|None, optional): If False and the source is in pinned memory, the copy will be
-              asynchronous with respect to the host. Otherwise, the argument has no effect. If None, the blocking is set True. Default: None.
-
-            non_blocking(bool|None, optional): If True and the source is in pinned memory, the copy will be
-              asynchronous with respect to the host. Otherwise, the argument has no effect. If None, the non_blocking is set False. Default: None.
-
-            include_sublayers(bool, optional): If True, deal with self and all sublayers parameters and buffers, if not only deal with self parameters and buffers. Default: True.
-
-            floating_only(bool, optional): If True, only cast all floating point parameters and buffers of Layer by the give device, dtype and blocking.
+            device(str|paddle.CPUPlace()|paddle.CUDAPlace()|paddle.CUDAPinnedPlace()|paddle.XPUPlace()|None, optional):
+                The device of the Layer which want to be stored. Default: None.
+            dtype(str|numpy.dtype|paddle.dtype|None, optional):
+                The type of the data. Default: None.
+            blocking(bool|None, optional):
+                If False and the source is in pinned memory, the copy will be
+                asynchronous with respect to the host. Default: None.
+            include_sublayers(bool, optional):
+                If True, deal with self and all sublayers parameters and
+                buffers. Default: True.
+            floating_only(bool, optional):
+                If True, only cast floating point parameters and buffers.
 
         Returns:
             self
 
         '''
 
-        if (
-            device is None
-            and dtype is None
-            and blocking is None
-            and non_blocking is None
-        ):
+        if device is None and dtype is None and blocking is None:
             return self
 
         if device is not None:
@@ -3050,14 +3224,6 @@ class Layer:
             assert isinstance(blocking, bool), (
                 "blocking value error, must be the True, False or None"
             )
-
-        if non_blocking is None:
-            non_blocking = False
-        else:
-            assert isinstance(non_blocking, bool), (
-                "non_blocking value error, must be the True, False or None"
-            )
-        blocking = False if not blocking or non_blocking else True
 
         def transform(t, device, dtype, blocking):
             if floating_only and (not paddle.is_floating_point(t)):
