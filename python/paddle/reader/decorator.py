@@ -46,7 +46,7 @@ if TYPE_CHECKING:
 
 __all__ = []
 
-# On macOS, the 'spawn' start method is now the default in Python3.8 multiprocessing,
+# On macOS, Python uses the 'spawn' start method by default in multiprocessing.
 # Paddle is currently unable to solve this, so forces the process to start using
 # the 'fork' start method.
 #
@@ -56,7 +56,7 @@ __all__ = []
 # For more details, please refer to
 # https://docs.python.org/3/library/multiprocessing.html#contexts-and-start-methods
 # https://bugs.python.org/issue33725
-if sys.version_info >= (3, 8) and sys.platform == 'darwin':
+if sys.platform == 'darwin':
     fork_context = multiprocessing.get_context('fork')
 else:
     fork_context = multiprocessing

@@ -61,7 +61,7 @@ void RepeatInterleaveKernel(const Context& dev_ctx,
   auto output_dim = vectorize(x.dims());
   output_dim[dim] = index_size;
   out->Resize(make_ddim(output_dim));
-  phi::IndexSelectInner<Context, T, int>(dev_ctx, &x_copy, index, out, dim);
+  IndexSelectInner<Context, T, int>(dev_ctx, &x_copy, index, out, dim);
 }
 
 template <typename T, typename Context>
@@ -86,7 +86,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
                         x.dims()[dim]));
   const auto& index_type = repeats_tensor.dtype();
   bool index_type_match =
-      index_type == phi::DataType::INT32 || index_type == phi::DataType::INT64;
+      index_type == DataType::INT32 || index_type == DataType::INT64;
   PADDLE_ENFORCE_EQ(
       index_type_match,
       true,
@@ -94,16 +94,16 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
           "Input(RepeatsTensor) holds the wrong type, it holds %s, but "
           "desires to be %s or %s",
           DataTypeToString(index_type),
-          DataTypeToString(phi::DataType::INT32),
-          DataTypeToString(phi::DataType::INT64)));
+          DataTypeToString(DataType::INT32),
+          DataTypeToString(DataType::INT64)));
 
   if (x.numel() == 0) {
     // infer out shape
-    if (index_type == phi::DataType::INT32) {
+    if (index_type == DataType::INT32) {
       funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
           dev_ctx, repeats_tensor, &index);
 
-    } else if (index_type == phi::DataType::INT64) {
+    } else if (index_type == DataType::INT64) {
       funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
           dev_ctx, repeats_tensor, &index);
     }
@@ -127,7 +127,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
     return;
   }
   auto x_copy = x;
-  if (index_type == phi::DataType::INT32) {
+  if (index_type == DataType::INT32) {
     funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
         dev_ctx, repeats_tensor, &index);
     auto output_dim = vectorize(x.dims());
@@ -147,7 +147,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
     }
     out->Resize(make_ddim(output_dim));
     IndexSelectInner<Context, T, int>(dev_ctx, &x_copy, index, out, dim);
-  } else if (index_type == phi::DataType::INT64) {
+  } else if (index_type == DataType::INT64) {
     funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
         dev_ctx, repeats_tensor, &index);
     auto output_dim = vectorize(x.dims());

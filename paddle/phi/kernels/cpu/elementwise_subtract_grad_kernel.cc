@@ -58,7 +58,7 @@ void SubtractDoubleGradKernel(const Context& dev_ctx,
                               const optional<DenseTensor>& ddy,
                               int axis,
                               DenseTensor* ddout) {
-  phi::SubtractDoubleGradImpl<T>(dev_ctx, y, ddx, ddy, dout, axis, ddout);
+  SubtractDoubleGradImpl<T>(dev_ctx, y, ddx, ddy, dout, axis, ddout);
 }
 
 }  // namespace phi

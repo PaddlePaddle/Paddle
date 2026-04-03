@@ -758,6 +758,60 @@ class TestDeviceAPIs(unittest.TestCase):
         with self.assertRaises(ValueError):
             paddle.device.max_memory_allocated([1, 2, 3])
 
+    def test_get_default_device_cuda(self):
+        """Test get_default_device with CUDA."""
+        if not core.is_compiled_with_cuda():
+            self.skipTest("CUDA not available")
+        paddle.device.set_device('gpu')
+        dev = paddle.get_default_device()
+        self.assertIsInstance(dev, paddle.device.Device)
+        self.assertEqual(dev.type, 'cuda')
+
+    def test_get_default_device_customdevice(self):
+        """Test get_default_device with custom device."""
+        if not is_custom_device():
+            self.skipTest("Custom device not available")
+        paddle.device.set_device(self.default_custom_device)
+        dev = paddle.get_default_device()
+        self.assertIsInstance(dev, paddle.device.Device)
+        self.assertEqual(dev.type, self.default_custom_device)
+
+    def test_tensor_device_cuda(self):
+        """Test Tensor.device property with CUDA."""
+        if not core.is_compiled_with_cuda():
+            self.skipTest("CUDA not available")
+        paddle.device.set_device('gpu')
+        t = paddle.randn([2, 2])
+        dev = t.device
+        self.assertIsInstance(dev, paddle.device.Device)
+        self.assertEqual(dev.type, 'cuda')
+        self.assertIsNotNone(dev.index)
+        del t
+
+    def test_tensor_device_customdevice(self):
+        """Test Tensor.device property with custom device."""
+        if not is_custom_device():
+            self.skipTest("Custom device not available")
+        paddle.device.set_device(self.default_custom_device)
+        t = paddle.randn([2, 2])
+        dev = t.device
+        self.assertIsInstance(dev, paddle.device.Device)
+        self.assertEqual(dev.type, self.default_custom_device)
+        self.assertIsNotNone(dev.index)
+        del t
+
+    def test_device_class_customdevice(self):
+        """Test Device class with custom device type string and Place conversion."""
+        if not is_custom_device():
+            self.skipTest("Custom device not available")
+        # String construction
+        dev = paddle.device.Device(f'{self.default_custom_device}:0')
+        self.assertEqual(dev.type, self.default_custom_device)
+        self.assertEqual(dev.index, 0)
+        # _to_place round-trip
+        place = dev._to_place()
+        self.assertTrue(place.is_custom_place())
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -61,11 +61,12 @@ inline at::Tensor empty(at::IntArrayRef size,
   PD_CHECK(!(memory_format.has_value() &&
              memory_format.value() != c10::MemoryFormat::Contiguous),
            "`MemoryFormat` other than Contiguous is not supported now.");
-  auto options = at::TensorOptions()
-                     .dtype(dtype.value_or(c10::get_default_dtype()))
-                     .layout(layout)
-                     .device(device.value_or(at::kCPU))
-                     .pinned_memory(pin_memory);
+  auto options =
+      at::TensorOptions()
+          .dtype(dtype.value_or(c10::get_default_dtype_as_scalartype()))
+          .layout(layout)
+          .device(device.value_or(at::kCPU))
+          .pinned_memory(pin_memory);
   return empty(size, options, memory_format);
 }
 

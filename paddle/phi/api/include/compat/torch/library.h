@@ -19,6 +19,7 @@
 #pragma once
 
 #include <ATen/core/ivalue.h>
+#include <c10/core/DispatchKey.h>
 #include <c10/macros/Macros.h>
 #include <functional>
 #include <iostream>
@@ -658,28 +659,11 @@ class class_ {
   std::string qualified_name_;
 };
 
-enum class DispatchKey {
-  Undefined = 0,
-  CPU,
-  CUDA,
-};
-
-inline std::string dispatch_key_to_string(DispatchKey key) {
-  switch (key) {
-    case DispatchKey::CPU:
-      return "CPU";
-    case DispatchKey::CUDA:
-      return "CUDA";
-    default:
-      return "Undefined";
-  }
-}
-
 // Operator Registration
 struct OperatorRegistration {
   std::string qualified_name;  // namespace::op_name
   std::string schema;
-  std::unordered_map<DispatchKey, CppFunction> implementations;
+  std::unordered_map<c10::DispatchKey, CppFunction> implementations;
 
   OperatorRegistration(const std::string& name,
                        const std::string& schema_str = "")
@@ -696,7 +680,7 @@ class PADDLE_API OperatorRegistry {
                        const std::string& schema);
 
   void register_implementation(const std::string& qualified_name,
-                               DispatchKey key,
+                               c10::DispatchKey key,
                                CppFunction&& func);
 
   bool has_operator(const std::string& qualified_name) const {
@@ -747,7 +731,7 @@ class Library {
 
   Library(Kind kind,
           const std::string& ns,
-          std::optional<DispatchKey> dispatch_key = std::nullopt,
+          std::optional<c10::DispatchKey> dispatch_key = std::nullopt,
           const char* file = nullptr,
           uint32_t line = 0);
 
@@ -769,7 +753,7 @@ class Library {
     }
 
     // Register implementation
-    auto dispatch_key = dispatch_key_.value_or(DispatchKey::CPU);
+    auto dispatch_key = dispatch_key_.value_or(c10::DispatchKey::CPU);
     OperatorRegistry::instance().register_implementation(
         qualified_name, dispatch_key, CppFunction(std::forward<Func>(f)));
 
@@ -780,7 +764,7 @@ class Library {
   template <typename Func>
   Library& impl(const std::string& op_name, Func&& f) & {
     auto qualified_name = ns_ + "::" + op_name;
-    auto dispatch_key = dispatch_key_.value_or(DispatchKey::CPU);
+    auto dispatch_key = dispatch_key_.value_or(c10::DispatchKey::CPU);
 
     OperatorRegistry::instance().register_implementation(
         qualified_name, dispatch_key, CppFunction(std::forward<Func>(f)));
@@ -799,7 +783,7 @@ class Library {
  private:
   Kind kind_;
   std::string ns_;
-  std::optional<DispatchKey> dispatch_key_;
+  std::optional<c10::DispatchKey> dispatch_key_;
   const char* file_;
   uint32_t line_;
 
@@ -835,7 +819,7 @@ class TorchLibraryInit {
   TorchLibraryInit(Library::Kind kind,
                    InitFn* fn,
                    const char* ns,
-                   std::optional<DispatchKey> dispatch_key,
+                   std::optional<c10::DispatchKey> dispatch_key,
                    const char* file,
                    uint32_t line) {
     Library lib(kind, ns, dispatch_key, file, line);
@@ -883,7 +867,7 @@ class TorchLibraryInit {
       torch::Library::IMPL,                                          \
       &C10_CONCATENATE(TORCH_LIBRARY_IMPL_init_##ns##_##k##_, uid),  \
       #ns,                                                           \
-      std::make_optional(torch::DispatchKey::k),                     \
+      std::make_optional(c10::DispatchKey::k),                       \
       __FILE__,                                                      \
       __LINE__);                                                     \
   void C10_CONCATENATE(TORCH_LIBRARY_IMPL_init_##ns##_##k##_,        \

@@ -27,8 +27,8 @@ void BarrierKernel(const Context &dev_ctx,
                    const DenseTensor &x,
                    DenseTensor *out) {
 #if defined(PADDLE_WITH_GLOO)
-  auto comm_ctx = static_cast<phi::distributed::GlooCommContext *>(
-      dev_ctx.GetCommContext());
+  auto comm_ctx =
+      static_cast<distributed::GlooCommContext *>(dev_ctx.GetCommContext());
   PADDLE_ENFORCE_NE(comm_ctx,
                     nullptr,
                     ::common::errors::Unavailable(

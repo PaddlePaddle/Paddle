@@ -82,7 +82,7 @@ void UnpoolKernel(const Context& dev_ctx,
     return;
   }
   const auto& indices_type = indices.dtype();
-  if (indices_type == phi::DataType::INT32) {
+  if (indices_type == DataType::INT32) {
     Unpool<T, int, Context>(dev_ctx, x, indices, out);
   } else {
     Unpool<T, int64_t, Context>(dev_ctx, x, indices, out);
@@ -151,7 +151,7 @@ void Unpool3dKernel(const Context& dev_ctx,
     return;
   }
   const auto& indices_type = indices.dtype();
-  if (indices_type == phi::DataType::INT32) {
+  if (indices_type == DataType::INT32) {
     Unpool3d<T, int, Context>(dev_ctx, x, indices, out);
   } else {
     Unpool3d<T, int64_t, Context>(dev_ctx, x, indices, out);

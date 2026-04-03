@@ -121,6 +121,12 @@ op_patches:
         object : using_weighted_combine
         type : pir::BoolAttribute
         data : "false"
+  - op_name : pd_op.p_norm
+    actions :
+      - action : modify_attr
+        object : porder
+        type : pir::DoubleAttribute
+        data : 2
   - op_name : pd_op.layer_norm
     actions:
       - action : modify_attr
