@@ -1719,7 +1719,7 @@ class TestLogitAPI(unittest.TestCase):
 
 
 # Test conv2d_transpose / conv_transpose2d compatibility
-class TestConv2dTransposeAPI(unittest.TestCase):
+class TestConv2dTransposeCompatAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
         self.dtype = 'float32'
