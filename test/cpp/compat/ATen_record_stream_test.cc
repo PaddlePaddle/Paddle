@@ -20,6 +20,7 @@
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <c10/cuda/CUDAFunctions.h>
 #include <c10/cuda/CUDAStream.h>
+#include "paddle/phi/backends/gpu/gpu_info.h"
 #endif
 #include "ATen/ATen.h"
 #include "gtest/gtest.h"
@@ -31,7 +32,7 @@ class RecordStreamTest : public ::testing::Test {
     cpu_tensor =
         at::ones({4}, at::TensorOptions().dtype(at::kFloat).device(at::kCPU));
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (compat_test::CudaRuntimeAvailable()) {
+    if (phi::backends::gpu::GetGPUDeviceCount() > 0) {
       cuda_tensor = at::ones(
           {4}, at::TensorOptions().dtype(at::kFloat).device(at::kCUDA));
     }
