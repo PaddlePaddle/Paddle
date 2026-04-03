@@ -35,6 +35,7 @@ from paddle.utils.decorator_utils import (
     param_one_alias,
     param_two_alias,
     reshape_decorator,
+    tile_decorator,
     variadic_tensor_decorator,
     view_decorator,
 )
@@ -4977,8 +4978,7 @@ def tile(
 ) -> Tensor: ...
 
 
-@VariableArgsDecorator('repeat_times')
-@param_two_alias(["x", "input"], ["repeat_times", "dims"])
+@tile_decorator()
 def tile(
     x: Tensor,
     repeat_times: TensorOrTensors | Sequence[int],

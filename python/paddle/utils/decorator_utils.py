@@ -640,6 +640,47 @@ def expand_decorator() -> Callable[
     return decorator
 
 
+def tile_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    """
+    Usage Example:
+    paddle.tile(x=tensor_x, repeat_times=[2, 3], name=None)
+    paddle.tile(input=tensor_x, dims=[2, 3])
+    tensor_x.tile([2, 3]) -> paddle.tile(tensor_x, [2, 3])
+    tensor_x.tile(2, 3) -> paddle.tile(tensor_x, 2, 3)
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            if ("input" in kwargs) and ("x" not in kwargs):
+                kwargs["x"] = kwargs.pop("input")
+            elif ("input" in kwargs) and ("x" in kwargs):
+                raise ValueError(
+                    "Cannot specify both 'x' and its alias 'input'"
+                )
+
+            if ("dims" in kwargs) and ("repeat_times" not in kwargs):
+                kwargs["repeat_times"] = kwargs.pop("dims")
+            elif ("dims" in kwargs) and ("repeat_times" in kwargs):
+                raise ValueError(
+                    "Cannot specify both 'repeat_times' and its alias 'dims'"
+                )
+            elif len(args) >= 2 and all(
+                isinstance(arg, int) for arg in args[1:]
+            ):
+                kwargs["x"] = args[0]
+                kwargs["repeat_times"] = list(args[1:])
+                args = ()
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
 def index_select_decorator() -> Callable[
     [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
 ]:

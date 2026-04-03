@@ -1251,6 +1251,10 @@ class TestTileAPICompatibility(unittest.TestCase):
         self.repeat_times = [2, 3]
         self.shape = self.np_x.shape
         self.dtype = str(self.np_x.dtype)
+        self.np_x_3d = np.random.rand(1, 2, 2).astype("float64")
+        self.repeat_times_3d = [2, 1, 3]
+        self.shape_3d = self.np_x_3d.shape
+        self.dtype_3d = str(self.np_x_3d.dtype)
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
@@ -1281,9 +1285,7 @@ class TestTileAPICompatibility(unittest.TestCase):
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
-            x = paddle.static.data(
-                name="x", shape=self.shape, dtype=self.dtype
-            )
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
 
             # 1. Paddle Positional arguments
             out1 = paddle.tile(x, self.repeat_times)
@@ -1305,6 +1307,70 @@ class TestTileAPICompatibility(unittest.TestCase):
 
         # Verify all outputs
         ref_out = np.tile(self.np_x, self.repeat_times)
+        for out in fetches:
+            np.testing.assert_allclose(out, ref_out, rtol=1e-5)
+
+    def test_dygraph_HighDimCompatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x_3d)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.tile(x, self.repeat_times_3d)
+        # 2. Paddle keyword arguments
+        out2 = paddle.tile(x=x, repeat_times=self.repeat_times_3d)
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.tile(input=x, dims=self.repeat_times_3d)
+        # 4. Mixed arguments
+        out4 = paddle.tile(x, dims=self.repeat_times_3d)
+        # 5. Tensor method - args
+        out5 = x.tile(2, 1, 3)
+        # 6. Tensor method - kwargs (PyTorch alias)
+        out6 = x.tile(dims=self.repeat_times_3d)
+
+        dims = self.repeat_times_3d
+        # 7. Tensor method - args with variable expansion
+        out7 = x.tile(*dims)
+
+        # Verify all outputs
+        ref_out = np.tile(self.np_x_3d, self.repeat_times_3d)
+        for out in [out1, out2, out3, out4, out5, out6, out7]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-5)
+
+        paddle.enable_static()
+
+    def test_static_HighDimCompatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x", shape=self.shape_3d, dtype=self.dtype_3d
+            )
+
+            # 1. Paddle Positional arguments
+            out1 = paddle.tile(x, self.repeat_times_3d)
+            # 2. Paddle keyword arguments
+            out2 = paddle.tile(x=x, repeat_times=self.repeat_times_3d)
+            # 3. PyTorch keyword arguments (alias)
+            out3 = paddle.tile(input=x, dims=self.repeat_times_3d)
+            # 4. Tensor method - args
+            out4 = x.tile(2, 1, 3)
+            # 5. Tensor method - kwargs (PyTorch alias)
+            out5 = x.tile(dims=self.repeat_times_3d)
+
+            dims = self.repeat_times_3d
+            # 6. Tensor method - args with variable expansion
+            out6 = x.tile(*dims)
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x_3d},
+                fetch_list=[out1, out2, out3, out4, out5, out6],
+            )
+
+        # Verify all outputs
+        ref_out = np.tile(self.np_x_3d, self.repeat_times_3d)
         for out in fetches:
             np.testing.assert_allclose(out, ref_out, rtol=1e-5)
 
