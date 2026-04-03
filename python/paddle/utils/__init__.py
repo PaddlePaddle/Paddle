@@ -18,6 +18,7 @@ from . import (  # noqa: F401
     decorator_utils,
     dlpack,
     download,
+    gpu_utils,
     image_util,
     layers_utils,
     unique_name,
@@ -26,7 +27,6 @@ from .bwd_graph_utils import capture_backward_subgraph_guard  # noqa: F401
 from .deprecated import deprecated
 from .environments import strtobool as strtobool
 from .fwd_graph_utils import capture_forward_subgraph_guard  # noqa: F401
-from .gpu_utils import _print_tensor_in_gpu
 from .install_check import run_check
 from .layers_utils import (  # noqa: F401
     _contain_var,
@@ -64,7 +64,6 @@ __all__ = [
     'run_check',
     'require_version',
     'try_import',
-    '_print_tensor_in_gpu',
 ]
 
 
