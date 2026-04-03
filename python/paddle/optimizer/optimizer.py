@@ -1694,7 +1694,7 @@ class Optimizer:
                 paddle.static.default_startup_program(),
             ):
                 auto_dp = paddle.distributed.auto_parallel.auto_dp_utils.in_auto_dp_mode()
-                from paddle.distributed.auto_parallel.fully_shard_fusion import (
+                from paddle.distributed.fsdp.fully_shard_fusion import (
                     get_fsdp_context,
                 )
 
