@@ -64,7 +64,7 @@ inline T *RestoreHostMemIfCapturingCUDAGraph(T *host_mem, size_t size) {
     defined(PADDLE_WITH_CUSTOM_DEVICE)
   if (UNLIKELY(IsCUDAGraphCapturing())) {
     size_t nbytes = size * sizeof(T);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA)
     void *new_host_mem = nullptr;
     // NOTE: Use cudaMallocHost instead of cudaHostAlloc here.
     // cudaHostAlloc is a stream-aware API and is a "prohibited" operation
@@ -76,6 +76,14 @@ inline T *RestoreHostMemIfCapturingCUDAGraph(T *host_mem, size_t size) {
     AddPostResetCallbackIfCapturingCUDAGraph(
         [=](paddle::optional<const CUDAGraph &> graph) {
           PADDLE_ENFORCE_GPU_SUCCESS(cudaFreeHost(new_host_mem));
+        });
+#elif defined(PADDLE_WITH_HIP)
+    void *new_host_mem = nullptr;
+    PADDLE_ENFORCE_GPU_SUCCESS(hipMallocHost(&new_host_mem, nbytes));
+    std::memcpy(new_host_mem, host_mem, nbytes);
+    AddPostResetCallbackIfCapturingCUDAGraph(
+        [=](paddle::optional<const CUDAGraph &> graph) {
+          PADDLE_ENFORCE_GPU_SUCCESS(hipFreeHost(new_host_mem));
         });
 #else
     void *new_host_mem = new uint8_t[nbytes];
