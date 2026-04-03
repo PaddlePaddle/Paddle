@@ -18,37 +18,21 @@
 
 namespace c10::cuda {
 
-inline c10::DeviceIndex device_count() {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  return phi::backends::gpu::GetGPUDeviceCount();
-#else
-  // Return 0 instead of throwing to match PyTorch API semantics
-  // at::cuda::is_available() relies on this returning 0/false
-  return 0;
-#endif
-}
+c10::DeviceIndex device_count();
 
-inline void device_synchronize() {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  int curr_device_id = paddle::platform::GetCurrentDeviceId();
-  paddle::platform::SetDeviceId(curr_device_id);
-#ifdef PADDLE_WITH_HIP
-  PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
-#else
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
-#endif
-#else
-  PADDLE_THROW(common::errors::Unavailable(
-      "Paddle is not compiled with CUDA. Cannot visit device synchronize."));
-#endif
-}
+void device_synchronize();
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 void __inline__ stream_synchronize(gpuStream_t stream) {
   phi::backends::gpu::GpuStreamSync(stream);
 }
+#endif
+
 }  // namespace c10::cuda
 
 namespace at::cuda {
 using c10::cuda::device_synchronize;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 using c10::cuda::stream_synchronize;
+#endif
 }  // namespace at::cuda
