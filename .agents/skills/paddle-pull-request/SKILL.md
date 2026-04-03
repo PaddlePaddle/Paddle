@@ -7,8 +7,6 @@ description: |
 
 # Paddle 仓库 PR 创建与更新
 
-<!-- temporary verification for .agents/skills approval gate -->
-
 ## 流程
 
 ### 1. 检查分支状态
