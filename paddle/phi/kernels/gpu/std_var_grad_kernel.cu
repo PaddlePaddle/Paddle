@@ -14,7 +14,9 @@
 
 #include "paddle/phi/kernels/std_var_grad_kernel.h"
 
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/compare_kernel.h"
 #include "paddle/phi/kernels/elementwise_divide_kernel.h"
 #include "paddle/phi/kernels/elementwise_kernel.h"
@@ -90,13 +92,38 @@ void VarGradKernel(const Context& dev_ctx,
   }
 
   // (2.0 / denom) * grad * (x - x.mean());
+  // For float16/bfloat16, multiplications are performed in AccT (float32) to
+  // match PyTorch's opmath behavior, which uses float32 for intermediate
+  // multiply computations on float16 tensors.
+  using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
   DenseTensor x_mean = Mean<T, Context>(dev_ctx, x, axes64, /*keepdim=*/true);
   DenseTensor diff = Subtract<T, Context>(dev_ctx, x, x_mean);
-  DenseTensor scale =
-      phi::FullLike<T, Context>(dev_ctx, x, static_cast<T>(2.0 / denom));
-  DenseTensor tmp = Multiply<T, Context>(dev_ctx, scale, grad_expanded);
   dev_ctx.template Alloc<T>(x_grad);
-  MultiplyKernel<T, Context>(dev_ctx, tmp, diff, x_grad);
+  if (!std::is_same<T, AccT>::value) {
+    auto acc_dtype = phi::CppTypeToDataType<AccT>::Type();
+    DenseTensor grad_acc =
+        phi::Cast<T, Context>(dev_ctx, grad_expanded, acc_dtype);
+    DenseTensor diff_acc = phi::Cast<T, Context>(dev_ctx, diff, acc_dtype);
+    DenseTensor scale_acc = phi::FullLike<AccT, Context>(
+        dev_ctx, grad_acc, static_cast<AccT>(2.0 / denom));
+    // Compute scale*grad in AccT (float32), then cast back to T (float16).
+    // This matches PyTorch's opmath behavior: each element-wise multiply
+    // promotes inputs to float32, multiplies, then stores back as float16.
+    DenseTensor tmp_t = phi::Cast<AccT, Context>(
+        dev_ctx,
+        Multiply<AccT, Context>(dev_ctx, scale_acc, grad_acc),
+        x.dtype());
+    // Second multiply: promote T→AccT, multiply, store as float16 via Cast
+    DenseTensor tmp2_acc = phi::Cast<T, Context>(dev_ctx, tmp_t, acc_dtype);
+    DenseTensor result_acc =
+        Multiply<AccT, Context>(dev_ctx, tmp2_acc, diff_acc);
+    phi::CastKernel<AccT, Context>(dev_ctx, result_acc, x.dtype(), x_grad);
+  } else {
+    DenseTensor scale =
+        phi::FullLike<T, Context>(dev_ctx, x, static_cast<T>(2.0 / denom));
+    DenseTensor tmp = Multiply<T, Context>(dev_ctx, scale, grad_expanded);
+    MultiplyKernel<T, Context>(dev_ctx, tmp, diff, x_grad);
+  }
 }
 
 template <typename T, typename Context>
