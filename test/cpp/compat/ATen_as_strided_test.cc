@@ -84,6 +84,7 @@ TEST_F(TensorAsStridedTest, AsStridedInplaceWithOffset) {
   t.as_strided_({2, 3}, {3, 1}, 1);
 
   ASSERT_EQ(t.sizes(), c10::IntArrayRef({2, 3}));
+  ASSERT_NE(t.data_ptr<float>(), original_data_ptr);
 
   float* data = t.data_ptr<float>();
   ASSERT_FLOAT_EQ(data[0], 1.0f);

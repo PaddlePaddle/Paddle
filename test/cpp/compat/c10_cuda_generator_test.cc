@@ -132,6 +132,8 @@ TEST(CUDAGeneratorTest, PhiloxStateThroughGetGeneratorOrDefault) {
 
   // Further advance via philox_cuda_state.
   at::PhiloxCudaState state = impl->philox_cuda_state(8);
+  (void)state;  // Silence unused variable warning - state is used for its side
+                // effect
   ASSERT_EQ(impl->philox_offset_per_thread(), 12u);
 }
 

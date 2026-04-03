@@ -23,7 +23,6 @@
 #endif
 #include "ATen/ATen.h"
 #include "gtest/gtest.h"
-#include "test/cpp/compat/cuda_test_utils.h"
 #include "torch/all.h"
 
 class RecordStreamTest : public ::testing::Test {
@@ -56,7 +55,6 @@ using RecordRawCudaStreamMethod = void (at::Tensor::*)(cudaStream_t) const;
     g_record_raw_cuda_stream_method = &at::Tensor::record_stream;
 
 TEST_F(RecordStreamTest, CudaTensorCurrentCudaStream) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   auto stream = at::cuda::getCurrentCUDAStream();
   // record_stream should not throw
   EXPECT_NO_THROW(cuda_tensor.record_stream(stream));
@@ -64,13 +62,11 @@ TEST_F(RecordStreamTest, CudaTensorCurrentCudaStream) {
 
 // --- Happy path: CUDA tensor + default CUDA stream should succeed ---
 TEST_F(RecordStreamTest, CudaTensorDefaultCudaStream) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   c10::Stream default_stream = c10::cuda::getDefaultCUDAStream().unwrap();
   EXPECT_NO_THROW(cuda_tensor.record_stream(default_stream));
 }
 
 TEST_F(RecordStreamTest, CudaTensorRawCudaStream) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   auto stream = at::cuda::getCurrentCUDAStream();
   EXPECT_NO_THROW(cuda_tensor.record_stream(stream.raw_stream()));
 }
@@ -88,7 +84,6 @@ TEST_F(RecordStreamTest, CpuTensorCpuStream) {
 // tensors) ---
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST_F(RecordStreamTest, CpuTensorCudaStream) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   auto cuda_stream = at::cuda::getCurrentCUDAStream();
   EXPECT_THROW(cpu_tensor.record_stream(cuda_stream), std::exception);
 }
