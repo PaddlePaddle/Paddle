@@ -3270,6 +3270,7 @@ def cross_entropy(
         and label_smoothing > 0.0
         and use_softmax
         and class_axis == input_dims - 1
+        and use_accuracy_compatible_kernel
     )
     if label_smoothing > 0.0:
         soft_label = True
@@ -3300,7 +3301,7 @@ def cross_entropy(
         and class_axis == input_dims - 1
         and use_accuracy_compatible_kernel
     ) or use_compatible_soft_label_smoothing_path:
-        if label_smoothing_from_hard_label:
+        if label_smoothing_from_hard_label and use_accuracy_compatible_kernel:
             return _cross_entropy_compatible_label_smoothing_loss(
                 input,
                 label_for_compatible_label_smoothing,
