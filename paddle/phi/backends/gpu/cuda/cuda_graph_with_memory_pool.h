@@ -66,8 +66,12 @@ inline T *RestoreHostMemIfCapturingCUDAGraph(T *host_mem, size_t size) {
     size_t nbytes = size * sizeof(T);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     void *new_host_mem = nullptr;
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        cudaHostAlloc(&new_host_mem, nbytes, cudaHostAllocDefault));
+    // NOTE: Use cudaMallocHost instead of cudaHostAlloc here.
+    // cudaHostAlloc is a stream-aware API and is a "prohibited" operation
+    // during CUDA Graph stream capture (returns
+    // cudaErrorStreamCaptureUnsupported on CUDA 11.x). cudaMallocHost is
+    // stream-unaware and safe to call during capture.
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMallocHost(&new_host_mem, nbytes));
     std::memcpy(new_host_mem, host_mem, nbytes);
     AddPostResetCallbackIfCapturingCUDAGraph(
         [=](paddle::optional<const CUDAGraph &> graph) {
