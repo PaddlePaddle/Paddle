@@ -401,5 +401,36 @@ class TestAminmaxDynamicShape(unittest.TestCase):
                 np.testing.assert_allclose(ref, actual, rtol=self.tol)
 
 
+class TestAminmaxInferSymbolicShapePass(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.x_np = np.random.random((2, 4, 6)).astype("float32")
+
+    def test_infer_symbolic_shape_pass(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                name='x', shape=[None, 4, 6], dtype='float32'
+            )
+            min_val, max_val = paddle.aminmax(x, axis=1, keepdim=False)
+
+            pm = paddle.base.libpaddle.pir.PassManager()
+            paddle.base.libpaddle.pir.infer_symbolic_shape_pass(pm, main)
+            pm.run(main)
+
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={'x': self.x_np},
+                fetch_list=[min_val, max_val],
+            )
+
+            ref_min, ref_max = ref_aminmax(self.x_np, axis=1, keepdim=False)
+            np.testing.assert_allclose(fetches[0], ref_min, rtol=1e-05)
+            np.testing.assert_allclose(fetches[1], ref_max, rtol=1e-05)
+
+
 if __name__ == '__main__':
     unittest.main()
