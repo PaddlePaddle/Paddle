@@ -1243,6 +1243,72 @@ class TestSelectScatterAPICompatibility(unittest.TestCase):
             np.testing.assert_allclose(out, ref_out, rtol=1e-5)
 
 
+# Test tile compatibility
+class TestTileAPICompatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_x = np.random.rand(2, 3).astype("float32")
+        self.repeat_times = [2, 3]
+        self.shape = self.np_x.shape
+        self.dtype = str(self.np_x.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.tile(x, self.repeat_times)
+        # 2. Paddle keyword arguments
+        out2 = paddle.tile(x=x, repeat_times=self.repeat_times)
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.tile(input=x, dims=self.repeat_times)
+        # 4. Mixed arguments
+        out4 = paddle.tile(x, dims=self.repeat_times)
+        # 5. Tensor method - args
+        out5 = x.tile(2, 3)
+        # 6. Tensor method - kwargs (PyTorch alias)
+        out6 = x.tile(dims=self.repeat_times)
+
+        # Verify all outputs
+        ref_out = np.tile(self.np_x, self.repeat_times)
+        for out in [out1, out2, out3, out4, out5, out6]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-5)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x", shape=self.shape, dtype=self.dtype
+            )
+
+            # 1. Paddle Positional arguments
+            out1 = paddle.tile(x, self.repeat_times)
+            # 2. Paddle keyword arguments
+            out2 = paddle.tile(x=x, repeat_times=self.repeat_times)
+            # 3. PyTorch keyword arguments (alias)
+            out3 = paddle.tile(input=x, dims=self.repeat_times)
+            # 4. Tensor method - args
+            out4 = x.tile(2, 3)
+            # 5. Tensor method - kwargs (PyTorch alias)
+            out5 = x.tile(dims=self.repeat_times)
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2, out3, out4, out5],
+            )
+
+        # Verify all outputs
+        ref_out = np.tile(self.np_x, self.repeat_times)
+        for out in fetches:
+            np.testing.assert_allclose(out, ref_out, rtol=1e-5)
+
+
 # Test logit compatibility
 class TestLogitAPI(unittest.TestCase):
     def setUp(self):
