@@ -1722,8 +1722,8 @@ class Optimizer:
                     )
 
                 if isinstance(params_grads, list):
-                    if self._grad_clip is not None:
-                        params_grads = self._grad_clip(params_grads)
+                    # if self._grad_clip is not None:
+                    #     params_grads = self._grad_clip(params_grads)
                     params_grads = self.append_regularization_ops(
                         params_grads, self.regularization
                     )

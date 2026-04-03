@@ -280,7 +280,7 @@ class HybridParallelOptimizer:
     def __init__(self, optimizer, hcg, strategy):
         # Note: Only sharding stage 1 is considered in HybridParallelOptimizer.
         # The sharding stage2 and stage3 optimizers are invoked in other api.
-        if hcg.get_sharding_parallel_world_size() > 1:
+        if hcg.get_sharding_parallel_world_size() > 1 and False:
             split_param = strategy.hybrid_configs[
                 'sharding_configs'
             ].split_param
