@@ -69,7 +69,7 @@ PATH_TO_CHECKPOINT_FILES: dict[str, tuple[list, list]] = {}
 
 # When using the communication mode described below, newly created tensors will not be allocated GPU memory.
 # The allocation of GPU memory for these tensors will occur only when meaningful values are written to them.
-_UNINIT_TENSOR_MODES = ["send_recv", "grouped_send_recv", "parallel_broadcast"]
+_UNINIT_TENSOR_MODES = ["send_recv", "grouped_send_recv"]
 
 _metadata_manager = MetadataManager()
 
