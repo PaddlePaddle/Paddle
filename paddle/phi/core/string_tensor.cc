@@ -109,6 +109,10 @@ StringTensor& StringTensor::Resize(const DDim& dims) {
   return *this;
 }
 
+StringTensor& StringTensor::Resize(const std::initializer_list<int64_t> dims) {
+  return Resize(make_ddim(dims));
+}
+
 StringTensor& StringTensor::Resize(const std::vector<int64_t>& dims) {
   return Resize(make_ddim(dims));
 }

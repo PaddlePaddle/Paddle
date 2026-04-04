@@ -112,6 +112,8 @@ class PADDLE_API StringTensor
 
   StringTensor& Resize(const DDim& dims);
 
+  StringTensor& Resize(const std::initializer_list<int64_t> dims);
+
   StringTensor& Resize(const std::vector<int64_t>& dims);
 
   StringTensor& Resize(const std::vector<int>& dims);
