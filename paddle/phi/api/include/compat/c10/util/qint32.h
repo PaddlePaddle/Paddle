@@ -18,11 +18,14 @@
 
 namespace c10 {
 
-struct qint32 {
-  constexpr qint32() = default;
-  explicit constexpr qint32(int32_t value) : val_(value) {}
-
-  int32_t val_{0};
+/**
+ * qint32 is for signed 32 bit quantized Tensors
+ */
+struct alignas(4) qint32 {
+  using underlying = int32_t;
+  int32_t val_;
+  qint32() = default;
+  explicit constexpr qint32(int32_t val) : val_(val) {}
 };
 
 }  // namespace c10

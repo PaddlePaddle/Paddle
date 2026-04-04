@@ -18,11 +18,15 @@
 
 namespace c10 {
 
-struct quint4x2 {
-  constexpr quint4x2() = default;
-  explicit constexpr quint4x2(uint8_t value) : val_(value) {}
-
-  uint8_t val_{0};
+/**
+ * quint4x2 is for un-signed 4 bit quantized Tensors that are packed to byte
+ * boundary.
+ */
+struct alignas(1) quint4x2 {
+  using underlying = uint8_t;
+  uint8_t val_;
+  quint4x2() = default;
+  explicit constexpr quint4x2(uint8_t val) : val_(val) {}
 };
 
 }  // namespace c10

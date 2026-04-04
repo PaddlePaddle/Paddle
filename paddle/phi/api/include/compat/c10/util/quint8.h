@@ -18,11 +18,14 @@
 
 namespace c10 {
 
-struct quint8 {
-  constexpr quint8() = default;
-  explicit constexpr quint8(uint8_t value) : val_(value) {}
-
-  uint8_t val_{0};
+/**
+ * quint8 is for unsigned 8 bit quantized Tensors
+ */
+struct alignas(1) quint8 {
+  using underlying = uint8_t;
+  uint8_t val_;
+  quint8() = default;
+  explicit constexpr quint8(uint8_t val) : val_(val) {}
 };
 
 }  // namespace c10
