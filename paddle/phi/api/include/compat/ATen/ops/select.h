@@ -19,13 +19,35 @@
 namespace at {
 
 inline at::Tensor select(const at::Tensor& self, int64_t dim, int64_t index) {
+  // Normalize dim to positive value for error messages
+  int64_t orig_dim = dim;
   if (dim < 0) {
     dim += self.dim();
   }
-  // Handle negative indexing
+  // Check dim is valid
+  if (dim < 0 || dim >= self.dim()) {
+    PD_CHECK(false,
+             "select(): index ",
+             orig_dim,
+             " out of range for tensor of size ",
+             self.sizes(),
+             " at dimension ",
+             orig_dim);
+  }
+  // Handle negative index
+  int64_t orig_index = index;
   if (index < 0) {
-    int64_t dim_size = self.size(dim);
-    index = dim_size + index;
+    index = self.size(dim) + index;
+  }
+  // Check index is valid
+  if (index < 0 || index >= self.size(dim)) {
+    PD_CHECK(false,
+             "select(): index ",
+             orig_index,
+             " out of range for tensor of size ",
+             self.sizes(),
+             " at dimension ",
+             orig_dim < 0 ? orig_dim + self.dim() : orig_dim);
   }
 
   return Tensor(

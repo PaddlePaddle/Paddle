@@ -247,7 +247,9 @@ void OperatorRegistry::register_schema(const std::string& qualified_name,
 }
 
 void OperatorRegistry::register_implementation(
-    const std::string& qualified_name, DispatchKey key, CppFunction&& func) {
+    const std::string& qualified_name,
+    c10::DispatchKey key,
+    CppFunction&& func) {
   auto& op = get_or_create_operator(qualified_name);
   if (op.schemaOrName_.has_value() &&
       std::holds_alternative<c10::FunctionSchema>(op.schemaOrName_.value())) {
@@ -255,7 +257,7 @@ void OperatorRegistry::register_implementation(
   }
   op.implementations[key] = std::move(func);
   VLOG(3) << "Registered implementation: " << qualified_name << " for "
-          << dispatch_key_to_string(key);
+          << c10::toString(key);
 }
 
 OperatorRegistration* OperatorRegistry::find_operator(
@@ -281,7 +283,7 @@ void OperatorRegistry::print_all_operators() const {
     }
     oss << "  Implementations: ";
     for (const auto& [key, impl] : op.implementations) {
-      oss << dispatch_key_to_string(key) << " ";
+      oss << c10::toString(key) << " ";
     }
     oss << std::endl;
   }
@@ -292,7 +294,7 @@ void OperatorRegistry::print_all_operators() const {
 // Library
 Library::Library(Kind kind,
                  const std::string& ns,
-                 std::optional<DispatchKey> dispatch_key,
+                 std::optional<c10::DispatchKey> dispatch_key,
                  const char* file,
                  uint32_t line)
     : kind_(kind),
@@ -304,7 +306,7 @@ Library::Library(Kind kind,
   oss << "Created Library: kind=" << kind_to_string(kind)
       << ", namespace=" << ns;
   if (dispatch_key) {
-    oss << ", dispatch_key=" << dispatch_key_to_string(*dispatch_key);
+    oss << ", dispatch_key=" << c10::toString(*dispatch_key);
   }
   VLOG(3) << oss.str() << std::endl;
 }
@@ -333,7 +335,7 @@ void Library::print_info() const {
   std::ostringstream oss;
   oss << "Library Info: " << kind_to_string(kind_) << ", namespace=" << ns_;
   if (dispatch_key_) {
-    oss << ", dispatch_key=" << dispatch_key_to_string(*dispatch_key_);
+    oss << ", dispatch_key=" << c10::toString(*dispatch_key_);
   }
   std::cout << oss.str() << std::endl;
 }

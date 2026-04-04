@@ -674,6 +674,11 @@ class TestFunction(unittest.TestCase):
         b.sum().backward()
         self.assertEqual(x.grad, paddle.ones([1], dtype="float64"))
 
+    def test_once_differentiable_compatibility(self):
+        pyLayerObj = paddle.autograd.py_layer.once_differentiable
+        functionObj = paddle.autograd.function.once_differentiable
+        self.assertEqual(pyLayerObj, functionObj)
+
 
 if __name__ == '__main__':
     unittest.main()
