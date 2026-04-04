@@ -109,11 +109,11 @@ StringTensor& StringTensor::Resize(const DDim& dims) {
   return *this;
 }
 
-StringTensor& Resize(const std::vector<int64_t>& dims) {
+StringTensor& StringTensor::Resize(const std::vector<int64_t>& dims) {
   return Resize(make_ddim(dims));
 }
 
-StringTensor& Resize(const std::vector<int>& dims) {
+StringTensor& StringTensor::Resize(const std::vector<int>& dims) {
   return Resize(make_ddim(dims));
 }
 
