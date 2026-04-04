@@ -19,6 +19,10 @@ from typing import TYPE_CHECKING
 import paddle
 from paddle.base import core
 
+# Note: paddle.random.get_rng_state is an alias for paddle.get_rng_state
+# however due to circular import issues, implementation has been moved to paddle.random
+from paddle.random import get_rng_state  # noqa: F401
+
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
@@ -67,61 +71,6 @@ def seed(seed: int) -> paddle.base.core.Generator:
                 paddle.CustomPlace(place.get_device_type(), i)
             ).manual_seed(seed)
     return core.default_cpu_generator().manual_seed(seed)
-
-
-def get_rng_state(
-    device: str | None = None,
-) -> list[paddle.base.core.GeneratorState]:
-    """
-    Get all random states of random generators of specified device.
-
-    Args:
-        device(str): This parameter determines the specific running device.
-            It can be ``cpu``, ``gpu``, ``xpu``, Default is None.
-            If None, return the generators of current device (specified by ``set_device``).
-
-    Returns:
-        list[GeneratorState], object.
-
-    Examples:
-        .. code-block:: pycon
-
-            >>> import paddle
-            >>> sts = paddle.get_rng_state()
-    """
-    state_list = []
-    if device is None:
-        place = paddle.framework._current_expected_place_()
-    else:
-        place = paddle.device._convert_to_place(device)
-
-    if isinstance(place, paddle.CPUPlace):
-        state_list.append(core.default_cpu_generator().get_state())
-    elif isinstance(place, paddle.CUDAPlace):
-        for i in range(core.get_cuda_device_count()):
-            state_list.append(core.default_cuda_generator(i).get_state())
-    elif isinstance(place, paddle.XPUPlace):
-        for i in range(core.get_xpu_device_count()):
-            state_list.append(core.default_xpu_generator(i).get_state())
-    elif isinstance(place, paddle.CustomPlace):
-        dev_cnt = sum(
-            [
-                place.get_device_type() == s.split(':')[0]
-                for s in core.get_available_custom_device()
-            ]
-        )
-        for i in range(dev_cnt):
-            state_list.append(
-                core.default_custom_device_generator(
-                    core.CustomPlace(place.get_device_type(), i)
-                ).get_state()
-            )
-    else:
-        raise ValueError(
-            f"get_rng_state is not implemented for current device: {place}"
-        )
-
-    return state_list
 
 
 def get_cuda_rng_state() -> list[paddle.base.core.GeneratorState]:
