@@ -1,4 +1,4 @@
-// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,8 +18,26 @@
 
 #pragma once
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include <ATen/cuda/CUDAContextLight.h>
-#include <ATen/cuda/Exceptions.h>
-#include <c10/cuda/CUDAStream.h>
-#endif
+#include <cstdint>
+
+namespace c10 {
+
+/**
+ * qint32 is for signed 32 bit quantized Tensors
+ */
+struct alignas(4) qint32 {
+  using underlying = int32_t;
+  int32_t val_;
+  qint32() = default;
+  explicit constexpr qint32(int32_t val) : val_(val) {}
+};
+
+}  // namespace c10
+
+namespace at {
+using c10::qint32;
+}  // namespace at
+
+namespace torch {
+using c10::qint32;
+}  // namespace torch

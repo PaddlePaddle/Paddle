@@ -1,4 +1,4 @@
-// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,8 +18,23 @@
 
 #pragma once
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include <ATen/cuda/CUDAContextLight.h>
-#include <ATen/cuda/Exceptions.h>
-#include <c10/cuda/CUDAStream.h>
-#endif
+#include <cstdint>
+
+namespace c10 {
+
+struct Float8_e4m3fnuz {
+  constexpr Float8_e4m3fnuz() = default;
+  explicit constexpr Float8_e4m3fnuz(uint8_t value) : x(value) {}
+
+  uint8_t x{0};
+};
+
+}  // namespace c10
+
+namespace at {
+using c10::Float8_e4m3fnuz;
+}  // namespace at
+
+namespace torch {
+using c10::Float8_e4m3fnuz;
+}  // namespace torch
