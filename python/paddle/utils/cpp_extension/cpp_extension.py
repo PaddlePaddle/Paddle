@@ -86,10 +86,17 @@ if TYPE_CHECKING:
 # The solution is: 1.User add function PyInit_[name] 2. set not to export
 # refer to https://stackoverflow.com/questions/34689210/error-exporting-symbol-when-building-python-c-extension-in-windows
 if IS_WINDOWS:
+    from setuptools import distutils  # type: ignore[attr-defined]
+    from setuptools._distutils._msvccompiler import _get_vc_env
     from distutils.command.build_ext import build_ext as _du_build_ext
     from unittest.mock import Mock
 
     _du_build_ext.get_export_symbols = Mock(return_value=None)
+
+    PLAT_TO_VCVARS = {
+        'win32': 'x86',
+        'win-amd64': 'x86_amd64',
+    }
 
 CUDA_HOME = find_cuda_home()
 if core.is_compiled_with_rocm():
@@ -733,7 +740,7 @@ class BuildExtension(build_ext):
             )
             cc_args = self._get_cc_args(pp_opts, debug, extra_preargs)
             build_directory = os.path.dirname(objects[0]) if objects else "."
-            config = ['ninja_required_version = 1.3', '']
+            config = ['ninja_required_version = 1.5', '']
             ccache_home = _get_ccache_home()
             cxx = _as_command_list(self.compiler_so)
             if ccache_home is not None:
@@ -796,8 +803,10 @@ class BuildExtension(build_ext):
                             cflags = cflags['hipcc']
                         else:
                             cflags = cflags['nvcc']
-                    cuda_cflags = [*cc_args]
-                    cuda_post_cflags = prepare_unix_cudaflags(cflags)
+                    cuda_cflags = [shlex.quote(f) for f in cc_args]
+                    cuda_post_cflags = [
+                        shlex.quote(f) for f in prepare_unix_cudaflags(cflags)
+                    ]
                     config.append(
                         f'build {_ninja_escape_path(obj)}: cuda_compile {_ninja_escape_path(src)}'
                     )
@@ -825,11 +834,13 @@ class BuildExtension(build_ext):
                     add_std_without_repeat(
                         cflags, self.compiler_type, use_std17=True
                     )
+                    cflags = [shlex.quote(f) for f in cflags]
+                    quoted_cc_args = [shlex.quote(f) for f in cc_args]
                     config.append(
                         f'build {_ninja_escape_path(obj)}: compile {_ninja_escape_path(src)}'
                     )
                     config.append(
-                        f'  cflags = {_join_ninja_shell_list(cc_args)}'
+                        f'  cflags = {_join_ninja_shell_list(quoted_cc_args)}'
                     )
                     config.append(
                         f'  post_cflags = {_join_ninja_shell_list(cflags)}'
@@ -994,7 +1005,7 @@ class BuildExtension(build_ext):
                 )
 
             config = [
-                'ninja_required_version = 1.3',
+                'ninja_required_version = 1.5',
                 f'cxx = {_join_ninja_shell_list(_as_command_list(self.compiler.cc))}',
             ]
             if any(is_cuda_file(build[obj][0]) for obj in objects):
@@ -1042,11 +1053,13 @@ class BuildExtension(build_ext):
                             flag,
                             *cuda_post_cflags,
                         ]
+                    quoted_pp_opts = _nt_quote_args(pp_opts)
+                    cuda_post_cflags = _nt_quote_args(cuda_post_cflags)
                     config.append(
                         f'build {_ninja_escape_path(obj)}: cuda_compile {_ninja_escape_path(src)}'
                     )
                     config.append(
-                        f'  cuda_cflags = {_join_ninja_shell_list(pp_opts)}'
+                        f'  cuda_cflags = {_join_ninja_shell_list(quoted_pp_opts)}'
                     )
                     config.append(
                         f'  cuda_post_cflags = {_join_ninja_shell_list(cuda_post_cflags)}'
@@ -1059,11 +1072,13 @@ class BuildExtension(build_ext):
                     post_cflags = [*MSVC_COMPILE_FLAGS, *cflags]
                     if current_extension_builder.contain_cuda_file:
                         post_cflags.append('/DPADDLE_WITH_CUDA')
+                    cflags = _nt_quote_args([*compile_opts, *pp_opts])
+                    post_cflags = _nt_quote_args(post_cflags)
                     config.append(
                         f'build {_ninja_escape_path(obj)}: compile {_ninja_escape_path(src)}'
                     )
                     config.append(
-                        f'  cflags = {_join_ninja_shell_list([*compile_opts, *pp_opts])}'
+                        f'  cflags = {_join_ninja_shell_list(cflags)}'
                     )
                     config.append(
                         f'  post_cflags = {_join_ninja_shell_list(post_cflags)}'
@@ -1082,7 +1097,6 @@ class BuildExtension(build_ext):
                 build_directory,
                 verbose=bool(self.verbose),
                 error_prefix='Failed to compile C++ extension with ninja',
-                env=_get_windows_ninja_env(),
             )
             return objects
 
@@ -1780,16 +1794,20 @@ def _ninja_escape_path(path: str) -> str:
     return str(path).replace('$', '$$').replace(' ', '$ ').replace(':', '$:')
 
 
-def _ninja_escape_value(value: str) -> str:
-    return str(value).replace('$', '$$')
+def _nt_quote_args(args: Sequence[str] | None) -> list[str]:
+    if args is None:
+        return []
+    return [
+        f'"{arg}"' if ' ' in arg and not arg.startswith('"') else arg
+        for arg in args
+    ]
 
 
 def _join_ninja_shell_list(args: Sequence[str] | str) -> str:
     if isinstance(args, str):
-        return _ninja_escape_value(args)
+        return args
     items = [str(arg) for arg in args if str(arg)]
-    value = subprocess.list2cmdline(items) if IS_WINDOWS else shlex.join(items)
-    return _ninja_escape_value(value)
+    return subprocess.list2cmdline(items) if IS_WINDOWS else shlex.join(items)
 
 
 def _as_command_list(command: Sequence[str] | str) -> list[str]:
@@ -1808,39 +1826,27 @@ def _write_ninja_file(path: str, content: str) -> None:
         f.write(content)
 
 
-def _get_windows_ninja_env() -> dict[str, str] | None:
-    if not IS_WINDOWS or 'VSCMD_ARG_TGT_ARCH' in os.environ:
-        return None
-    try:
-        from distutils import util as distutils_util
-        from setuptools._distutils._msvccompiler import (
-            PLAT_TO_VCVARS,
-            _get_vc_env,
-        )
-    except Exception:
-        return None
-
-    plat_name = distutils_util.get_platform()
-    plat_spec = PLAT_TO_VCVARS.get(plat_name)
-    if plat_spec is None:
-        return None
-
-    vc_env = {k.upper(): v for k, v in _get_vc_env(plat_spec).items()}
-    env = os.environ.copy()
-    env.update(vc_env)
-    return env
-
-
 def _run_ninja_build(
     build_directory: str,
     verbose: bool,
     error_prefix: str,
-    env: dict[str, str] | None = None,
 ) -> None:
     command = ['ninja', '-v']
     num_workers = _get_num_workers(verbose)
     if num_workers is not None:
         command.extend(['-j', str(num_workers)])
+
+    env = os.environ.copy()
+    if IS_WINDOWS and 'VSCMD_ARG_TGT_ARCH' not in env:
+        plat_name = distutils.util.get_platform()
+        plat_spec = PLAT_TO_VCVARS.get(plat_name)
+        if plat_spec is not None:
+            vc_env = {k.upper(): v for k, v in _get_vc_env(plat_spec).items()}
+            for k, v in env.items():
+                uk = k.upper()
+                if uk not in vc_env:
+                    vc_env[uk] = v
+            env = vc_env
 
     try:
         subprocess.run(
