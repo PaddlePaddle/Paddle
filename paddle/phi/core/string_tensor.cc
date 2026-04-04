@@ -110,11 +110,11 @@ StringTensor& StringTensor::Resize(const DDim& dims) {
 }
 
 StringTensor& Resize(const std::vector<int64_t>& dims) {
-  return common::make_ddim(dims);
+  return Resize(common::make_ddim(dims));
 }
 
 StringTensor& Resize(const std::vector<int>& dims) {
-  return common::make_ddim(dims);
+  return Resize(common::make_ddim(dims));
 }
 
 // TODO(zhoushunjie): need to remove it for general space
