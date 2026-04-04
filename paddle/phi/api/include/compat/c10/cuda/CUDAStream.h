@@ -18,12 +18,16 @@
 #include <c10/core/Stream.h>
 #include <c10/cuda/CUDAException.h>
 
+#if defined(PADDLE_WITH_CUDA)
+#include <cuda_runtime_api.h>
+#elif defined(PADDLE_WITH_HIP)
+#include <hip/hip_runtime.h>
+#endif
+
 #include <ostream>
 
-#include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/phi/core/cuda_stream.h"
 
 namespace c10::cuda {
 
@@ -128,86 +132,35 @@ inline CUDAStream make_cuda_stream(cudaStream_t raw,
  * Get the current CUDA stream for the passed CUDA device, or for the
  * current device if no device index is passed.
  */
-inline CUDAStream getCurrentCUDAStream(c10::DeviceIndex device_index = -1) {
-  if (device_index == -1) {
-    device_index = phi::backends::gpu::GetCurrentDeviceId();
-  }
-  TORCH_CHECK(device_index >= 0 &&
-                  device_index < phi::backends::gpu::GetGPUDeviceCount(),
-              "CUDA device index out of range: ",
-              device_index);
-
-  auto* phi_stream = paddle::GetCurrentCUDAStream(phi::GPUPlace(device_index));
-  return make_cuda_stream(phi_stream->raw_stream(), device_index);
-}
+CUDAStream getCurrentCUDAStream(c10::DeviceIndex device_index = -1);
 
 /**
  * Get a new stream from the CUDA stream pool.
  * Priority -1 is high priority, 0 is default/low priority.
  * Matches PyTorch behavior where negative priority = high priority.
  */
-inline CUDAStream getStreamFromPool(const int priority = 0,
-                                    c10::DeviceIndex device_index = -1) {
-  if (device_index == -1) {
-    device_index = phi::backends::gpu::GetCurrentDeviceId();
-  }
-  TORCH_CHECK(device_index >= 0 &&
-                  device_index < phi::backends::gpu::GetGPUDeviceCount(),
-              "CUDA device index out of range: ",
-              device_index);
-
-  // Get current stream (Paddle manages stream pool internally)
-  auto* phi_stream = paddle::GetCurrentCUDAStream(phi::GPUPlace(device_index));
-  return make_cuda_stream(phi_stream->raw_stream(), device_index);
-}
+CUDAStream getStreamFromPool(const int priority = 0,
+                             c10::DeviceIndex device_index = -1);
 
 /**
  * Get a new stream from the CUDA stream pool.
  * Bool overload: true = high priority (-1), false = default priority (0).
  */
-inline CUDAStream getStreamFromPool(const bool isHighPriority,
-                                    c10::DeviceIndex device_index = -1) {
-  return getStreamFromPool(isHighPriority ? -1 : 0, device_index);
-}
+CUDAStream getStreamFromPool(const bool isHighPriority,
+                             c10::DeviceIndex device_index = -1);
 
-inline CUDAStream getStreamFromExternal(cudaStream_t ext_stream,
-                                        c10::DeviceIndex device_index) {
-  TORCH_CHECK(device_index >= 0 &&
-                  device_index < phi::backends::gpu::GetGPUDeviceCount(),
-              "CUDA device index out of range: ",
-              device_index);
-  return make_cuda_stream(ext_stream, device_index);
-}
+CUDAStream getStreamFromExternal(cudaStream_t ext_stream,
+                                 c10::DeviceIndex device_index);
 
 /**
  * Set the current CUDA stream for the device of the given stream in the
  * calling thread.
  *
- * Implements per-thread, per-device current stream semantics: the change is
- * local to the calling OS thread and does not affect any shared state such as
- * Paddle's GPUContext.  Other threads continue to see their own current stream.
+ * Implements per-thread, per-device current stream semantics.
  */
-inline void setCurrentCUDAStream(CUDAStream stream) {
-  c10::DeviceIndex idx = stream.unwrap().device_index();
-  TORCH_CHECK(idx >= 0 && idx < phi::backends::gpu::GetGPUDeviceCount(),
-              "CUDA device index out of range: ",
-              idx);
-  // Note: Paddle's stream management is global, not thread-local.
-  // This function provides the API compatibility but may not provide
-  // full thread-local semantics.
-}
+void setCurrentCUDAStream(CUDAStream stream);
 
-inline CUDAStream getDefaultCUDAStream(c10::DeviceIndex device_index = -1) {
-  if (device_index == -1) {
-    device_index = phi::backends::gpu::GetCurrentDeviceId();
-  }
-  TORCH_CHECK(device_index >= 0 &&
-                  device_index < phi::backends::gpu::GetGPUDeviceCount(),
-              "CUDA device index out of range: ",
-              device_index);
-  return CUDAStream(c10::Stream(
-      c10::Stream::DEFAULT, c10::Device(c10::DeviceType::CUDA, device_index)));
-}
+CUDAStream getDefaultCUDAStream(c10::DeviceIndex device_index = -1);
 
 inline std::ostream& operator<<(std::ostream& stream, const CUDAStream& s) {
   return stream << s.unwrap();
