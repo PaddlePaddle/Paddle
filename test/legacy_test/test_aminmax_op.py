@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 from op_test import OpTest
-from utils import dygraph_guard
+from utils import dygraph_guard, static_guard
 
 import paddle
 from paddle import base
@@ -407,29 +407,32 @@ class TestAminmaxInferSymbolicShapePass(unittest.TestCase):
         self.x_np = np.random.random((2, 4, 6)).astype("float32")
 
     def test_infer_symbolic_shape_pass(self):
-        paddle.enable_static()
-        main = paddle.static.Program()
-        startup = paddle.static.Program()
-        with paddle.static.program_guard(main, startup):
-            x = paddle.static.data(
-                name='x', shape=[None, 4, 6], dtype='float32'
-            )
-            min_val, max_val = paddle.aminmax(x, axis=1, keepdim=False)
+        with static_guard(), paddle.pir_utils.IrGuard():
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                x = paddle.static.data(
+                    name='x', shape=[None, 4, 6], dtype='float32'
+                )
+                min_val, max_val = paddle.aminmax(x, axis=1, keepdim=False)
 
-            pm = paddle.base.libpaddle.pir.PassManager()
-            paddle.base.libpaddle.pir.infer_symbolic_shape_pass(pm, main)
-            pm.run(main)
+                op_names = [op.name() for op in main.global_block().ops]
+                self.assertIn("pd_op.aminmax", op_names)
 
-            exe = paddle.static.Executor(paddle.CPUPlace())
-            fetches = exe.run(
-                main,
-                feed={'x': self.x_np},
-                fetch_list=[min_val, max_val],
-            )
+                pm = paddle.base.libpaddle.pir.PassManager()
+                paddle.base.libpaddle.pir.infer_symbolic_shape_pass(pm, main)
+                pm.run(main)
 
-            ref_min, ref_max = ref_aminmax(self.x_np, axis=1, keepdim=False)
-            np.testing.assert_allclose(fetches[0], ref_min, rtol=1e-05)
-            np.testing.assert_allclose(fetches[1], ref_max, rtol=1e-05)
+                exe = paddle.static.Executor(paddle.CPUPlace())
+                fetches = exe.run(
+                    main,
+                    feed={'x': self.x_np},
+                    fetch_list=[min_val, max_val],
+                )
+
+                ref_min, ref_max = ref_aminmax(self.x_np, axis=1, keepdim=False)
+                np.testing.assert_allclose(fetches[0], ref_min, rtol=1e-05)
+                np.testing.assert_allclose(fetches[1], ref_max, rtol=1e-05)
 
 
 if __name__ == '__main__':
