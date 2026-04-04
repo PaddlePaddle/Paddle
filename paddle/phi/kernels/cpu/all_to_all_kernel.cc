@@ -31,7 +31,7 @@ void AllToAllKernel(const Context& dev_ctx UNUSED,
 }
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 template <typename T>
-void AllToAllKernel(const phi::CustomContext& dev_ctx,
+void AllToAllKernel(const CustomContext& dev_ctx,
                     const DenseTensor& x,
                     DenseTensor* out) {
   out->Resize(x.dims());
@@ -45,7 +45,7 @@ void AllToAllKernel(const phi::CustomContext& dev_ctx,
 
   std::vector<void*> sendbuf, recvbuf;
   std::vector<size_t> sendsize(send_numel, nranks);
-  std::vector<phi::DataType> sendtype(x.dtype(), nranks);
+  std::vector<DataType> sendtype(x.dtype(), nranks);
   for (auto i = 0; i < nranks; ++i) {
     sendbuf.push_back(x.data<T>() + i * send_numel);
     recvbuf.push_back(out->data<T>() + i * send_numel);

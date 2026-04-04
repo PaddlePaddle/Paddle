@@ -39,7 +39,7 @@ void TruncatedGaussianRandomKernel(const Context& dev_ctx,
 
   T* data = dev_ctx.template Alloc<T>(tensor);
 
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
 
   std::uniform_real_distribution<MPType> dist(std::numeric_limits<float>::min(),
                                               1.0);

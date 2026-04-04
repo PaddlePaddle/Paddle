@@ -464,6 +464,18 @@
   kernel :
     func : norm_grad
 
+- backward_op : p_norm_grad
+  forward : p_norm(Tensor x,  double porder=2,  int axis=-1,  float epsilon=1.0e-12f,  bool keepdim=false,  bool asvector=false) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad,  double porder,  int axis,  float epsilon,  bool keepdim,  bool asvector)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : GeneralUnaryGradInferMeta
+    param: [x]
+    spmd_rule : PNormGradInferSpmd
+  kernel :
+    func : p_norm_grad
+  composite: p_norm_grad(x, out, out_grad, porder, axis, epsilon, keepdim, asvector, x_grad)
+
 - backward_op : pad3d_double_grad
   forward : pad3d_grad(Tensor x, Tensor grad_out, IntArray paddings, str mode="constant", float pad_value=0.0, str data_format="NCDHW") -> Tensor(grad_x)
   args : (Tensor grad_x_grad, IntArray paddings, str mode, float pad_value, str data_format)

@@ -369,7 +369,7 @@ void arange(const Context& dev_ctx,
             int w,
             int batchsize = 1,
             int h = 1) {
-  tmp->Resize(make_ddim({batchsize * w}));
+  tmp->Resize({batchsize * w});
   dev_ctx.template HostAlloc<int32_t>(tmp);
   auto tmpdata = tmp->data<int32_t>();
   for (int b = 0; b < batchsize; b++) {
