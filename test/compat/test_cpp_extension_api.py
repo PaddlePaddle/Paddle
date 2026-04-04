@@ -96,7 +96,7 @@ class TestGetCudaArchFlags(unittest.TestCase):
 
     def test_rocm_returns_empty_flags(self):
         with mock.patch.object(
-            core, "is_compiled_with_rocm", return_value=True
+            extension_utils.core, "is_compiled_with_rocm", return_value=True
         ):
             self.assertEqual(_get_cuda_arch_flags(), [])
 
