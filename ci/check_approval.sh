@@ -90,8 +90,8 @@ CI_OLD_SCRIPTS_COVERAGE=$(git diff --name-only upstream/$BRANCH | grep -E "tools
 CI_OLD_SCRIPTS_TOOLS=$(git diff --name-only upstream/$BRANCH | grep -E "tools" | grep "check_")
 
 if [ -n "$CI_OLD_SCRIPTS_PADDLE_BUILD" ] || [ -n "$CI_OLD_SCRIPTS_COVERAGE" ] || [ -n "$CI_OLD_SCRIPTS_TOOLS" ]; then
-    echo_line="You must have one RD (swgu98) approval for the old CI scripts.\n"
-    check_approval 1 swgu98
+    echo_line="You must have one RD (swgu98 or risemeup1) approval for the old CI scripts.\n"
+    check_approval 1 swgu98 risemeup1
 fi
 
 HAS_MODIFIED_LINUX_NPU_YML=$(git diff --name-only upstream/$BRANCH | grep ".github/workflows/_Linux-NPU.yml" || true)
