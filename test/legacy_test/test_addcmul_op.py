@@ -32,7 +32,6 @@ class TestAddcmulOp(OpTest):
 
     def setUp(self):
         self.op_type = "addcmul"
-        self.prim_op_type = "comp"
         self.python_api = paddle.addcmul
         self.public_python_api = paddle.addcmul
         self.init_dtype_type()
@@ -142,6 +141,58 @@ class TestAddcmulOp_0D(TestAddcmulOp):
         self.attrs = {'value': 0.5}
 
 
+class TestAddcmulOp_Int32(OpTest):
+    """Test int32 dtype - aligned with PyTorch integer type support"""
+
+    def setUp(self):
+        self.op_type = "addcmul"
+        self.python_api = paddle.addcmul
+        self.public_python_api = paddle.addcmul
+        self.dtype = np.int32
+
+        input_np = np.random.randint(1, 10, (10, 20)).astype(self.dtype)
+        tensor1_np = np.random.randint(1, 10, (10, 20)).astype(self.dtype)
+        tensor2_np = np.random.randint(1, 10, (10, 20)).astype(self.dtype)
+        value = 2
+
+        self.inputs = {
+            'input': input_np,
+            'tensor1': tensor1_np,
+            'tensor2': tensor2_np,
+        }
+        self.attrs = {'value': value}
+        self.outputs = {'out': input_np + value * tensor1_np * tensor2_np}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+
+class TestAddcmulOp_Int64(OpTest):
+    """Test int64 dtype - aligned with PyTorch integer type support"""
+
+    def setUp(self):
+        self.op_type = "addcmul"
+        self.python_api = paddle.addcmul
+        self.public_python_api = paddle.addcmul
+        self.dtype = np.int64
+
+        input_np = np.random.randint(1, 10, (10, 20)).astype(self.dtype)
+        tensor1_np = np.random.randint(1, 10, (10, 20)).astype(self.dtype)
+        tensor2_np = np.random.randint(1, 10, (10, 20)).astype(self.dtype)
+        value = 3
+
+        self.inputs = {
+            'input': input_np,
+            'tensor1': tensor1_np,
+            'tensor2': tensor2_np,
+        }
+        self.attrs = {'value': value}
+        self.outputs = {'out': input_np + value * tensor1_np * tensor2_np}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda(),
     "core is not compiled with CUDA",
@@ -171,7 +222,6 @@ class TestAddcmulBF16Op(OpTest):
 
     def setUp(self):
         self.op_type = "addcmul"
-        self.prim_op_type = "comp"
         self.python_api = paddle.addcmul
         self.public_python_api = paddle.addcmul
         self.dtype = np.uint16
@@ -209,7 +259,6 @@ class TestAddcmulBroadcast2D(OpTest):
 
     def setUp(self):
         self.op_type = "addcmul"
-        self.prim_op_type = "comp"
         self.python_api = paddle.addcmul
         self.public_python_api = paddle.addcmul
         self.dtype = np.float64
@@ -246,7 +295,6 @@ class TestAddcmulBroadcast3D(OpTest):
 
     def setUp(self):
         self.op_type = "addcmul"
-        self.prim_op_type = "comp"
         self.python_api = paddle.addcmul
         self.public_python_api = paddle.addcmul
         self.dtype = np.float64
@@ -284,11 +332,9 @@ class TestAddcmulOpError(unittest.TestCase):
     def test_type_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
-            input = paddle.static.data(
-                name='input', shape=[4, 4], dtype="int32"
-            )
-            x3 = paddle.static.data(name='x3', shape=[4, 4], dtype="int32")
-            x4 = paddle.static.data(name='x4', shape=[4, 4], dtype="int32")
+            input = paddle.static.data(name='input', shape=[4, 4], dtype="bool")
+            x3 = paddle.static.data(name='x3', shape=[4, 4], dtype="bool")
+            x4 = paddle.static.data(name='x4', shape=[4, 4], dtype="bool")
             self.assertRaises(TypeError, paddle.addcmul, input, x3, x4)
         paddle.disable_static()
 
@@ -334,8 +380,8 @@ class TestAddcmulAPI(unittest.TestCase):
     def test_static_api(self):
         """Test static graph API"""
         paddle.enable_static()
-        main = paddle.static.Program()
         startup = paddle.static.Program()
+        main = paddle.static.Program()
         with base.program_guard(main, startup):
             x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
             t1 = paddle.static.data(
@@ -346,9 +392,10 @@ class TestAddcmulAPI(unittest.TestCase):
             )
             out = paddle.addcmul(x, t1, t2, value=0.5)
 
-            exe = base.Executor(paddle.CPUPlace())
+            place = paddle.CPUPlace()
+            exe = base.Executor(place)
             result = exe.run(
-                main,
+                base.default_main_program(),
                 feed={
                     "x": self.np_input,
                     "tensor1": self.np_tensor1,
@@ -372,6 +419,22 @@ class TestAddcmulAPI(unittest.TestCase):
         paddle.addcmul(input, tensor1, tensor2, value=0.5, out=out)
         expected = self.np_input + 0.5 * self.np_tensor1 * self.np_tensor2
         np.testing.assert_allclose(out.numpy(), expected, rtol=1e-5)
+        paddle.enable_static()
+
+    def test_int_dtype(self):
+        """Test integer type support (aligned with PyTorch)"""
+        paddle.disable_static()
+        np_input = np.array([[1, 2], [3, 4]], dtype='int32')
+        np_t1 = np.array([[2, 3], [4, 5]], dtype='int32')
+        np_t2 = np.array([[1, 1], [2, 2]], dtype='int32')
+
+        x = paddle.to_tensor(np_input)
+        t1 = paddle.to_tensor(np_t1)
+        t2 = paddle.to_tensor(np_t2)
+
+        out = paddle.addcmul(x, t1, t2, value=2)
+        expected = np_input + 2 * np_t1 * np_t2
+        np.testing.assert_array_equal(out.numpy(), expected)
         paddle.enable_static()
 
 
@@ -513,6 +576,8 @@ class TestAddcmulCINNSymbolic(unittest.TestCase):
     def setUp(self):
         if not core.is_compiled_with_cuda():
             self.skipTest("CINN requires CUDA")
+        if not core.is_compiled_with_cinn():
+            self.skipTest("CINN is not compiled")
         paddle.disable_static()
         paddle.seed(2024)
 
@@ -648,6 +713,8 @@ class TestAddcmulCINNGrad(unittest.TestCase):
     def setUp(self):
         if not core.is_compiled_with_cuda():
             self.skipTest("CINN requires CUDA")
+        if not core.is_compiled_with_cinn():
+            self.skipTest("CINN is not compiled")
         paddle.disable_static()
         paddle.seed(2024)
 
@@ -720,7 +787,6 @@ class TestAddcmulCINNGrad(unittest.TestCase):
 
 # ============================================================
 # OpTest broadcast tests for high ranks (backward reduction)
-# These do NOT set prim_op_type to force C++ kernel backward path
 # ============================================================
 
 

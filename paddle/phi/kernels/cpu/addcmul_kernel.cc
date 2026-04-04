@@ -19,4 +19,5 @@
 #include "paddle/phi/kernels/impl/addcmul_kernel_impl.h"
 
 PD_REGISTER_KERNEL(
-    addcmul, CPU, ALL_LAYOUT, phi::AddcmulKernel, float, double) {}
+    addcmul, CPU, ALL_LAYOUT, phi::AddcmulKernel, float, double, int, int64_t) {
+}

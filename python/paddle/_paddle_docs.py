@@ -4720,11 +4720,11 @@ def addcmul(
 
     Args:
         input (Tensor): The input tensor to be added to the final result.
-            Its data type should be float16, float32, float64.
+            Its data type should be int32, int64, float16, float32, float64.
         tensor1 (Tensor): The first tensor for element-wise multiplication.
-            Its data type should be float16, float32, float64.
+            Its data type should be int32, int64, float16, float32, float64.
         tensor2 (Tensor): The second tensor for element-wise multiplication.
-            Its data type should be float16, float32, float64.
+            Its data type should be int32, int64, float16, float32, float64.
         value (float, optional): The scalar multiplier for tensor1 * tensor2. Default: 1.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
