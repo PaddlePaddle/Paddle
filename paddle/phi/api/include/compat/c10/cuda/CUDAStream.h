@@ -18,12 +18,6 @@
 #include <c10/core/Stream.h>
 #include <c10/cuda/CUDAException.h>
 
-#if defined(PADDLE_WITH_CUDA)
-#include <cuda_runtime_api.h>
-#elif defined(PADDLE_WITH_HIP)
-#include <hip/hip_runtime.h>
-#endif
-
 #include <ostream>
 
 #include "paddle/phi/backends/gpu/gpu_info.h"
