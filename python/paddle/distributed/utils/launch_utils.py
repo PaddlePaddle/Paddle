@@ -560,10 +560,12 @@ def filter_pids(processes: Sequence[str], self_pid: int) -> list[int]:
     pids_to_kill = []
     for process in processes:
         pid_str = process.strip()
-        if pid_str.isdigit():
-            pid_int = int(pid_str)
-            if pid_int != self_pid:
-                pids_to_kill.append(pid_int)
+        if not pid_str.isdigit():
+            continue
+        pid_int = int(pid_str)
+        if pid_int == self_pid:
+            continue
+        pids_to_kill.append(pid_int)
     return pids_to_kill
 
 
