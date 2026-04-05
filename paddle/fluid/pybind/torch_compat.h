@@ -17,6 +17,8 @@
 #include <pybind11/stl.h>
 #include <torch/library.h>
 
+#include <vector>
+
 #include "paddle/common/exception.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/op_function_common.h"
@@ -82,11 +84,27 @@ OperationInvoker::get_op_with_args(const std::string& qualified_name,
         "Operator '%s' not found in the registry", qualified_name.c_str()));
   }
 
-  auto impl_it = op->implementations.find(DispatchKey::CPU);
+  auto impl_it = op->implementations.end();
+  const std::vector<c10::DispatchKey> preferred_keys = {
+      c10::DispatchKey::CPU,
+      c10::DispatchKey::BackendSelect,
+      c10::DispatchKey::CatchAll};
+  for (const auto& key : preferred_keys) {
+    impl_it = op->implementations.find(key);
+    if (impl_it != op->implementations.end()) {
+      break;
+    }
+  }
+
+  // If no preferred dispatch key exists, fall back to the first registered
+  // implementation so dynamic registration remains callable from Python.
+  if (impl_it == op->implementations.end() && !op->implementations.empty()) {
+    impl_it = op->implementations.begin();
+  }
+
   if (impl_it == op->implementations.end()) {
     PADDLE_THROW(common::errors::NotFound(
-        "No CPU implementation found for operator '%s'",
-        qualified_name.c_str()));
+        "No implementation found for operator '%s'", qualified_name.c_str()));
   }
 
   FunctionArgs function_args =
