@@ -575,7 +575,7 @@ def terminate_processes(processes: Sequence[int]) -> bool:
     Returns True if all processes were successfully terminated (or already dead).
     Returns False if any process failed to terminate due to permissions.
     """
-    sig = getattr(signal, "SIGKILL", signal.SIGTERM)
+    sig = signal.SIGKILL if platform.system() != "Windows" else signal.SIGTERM
     success = True
     for pid in processes:
         try:
