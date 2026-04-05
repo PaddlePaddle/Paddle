@@ -31,10 +31,8 @@ class RecordStreamTest : public ::testing::Test {
     cpu_tensor =
         at::ones({4}, at::TensorOptions().dtype(at::kFloat).device(at::kCPU));
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (compat_test::CudaRuntimeAvailable()) {
-      cuda_tensor = at::ones(
-          {4}, at::TensorOptions().dtype(at::kFloat).device(at::kCUDA));
-    }
+    cuda_tensor =
+        at::ones({4}, at::TensorOptions().dtype(at::kFloat).device(at::kCUDA));
 #endif
   }
 
