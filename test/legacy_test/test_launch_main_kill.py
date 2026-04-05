@@ -32,6 +32,7 @@ class TestLaunchMainProcessCleanup(unittest.TestCase):
     def test_terminate_processes_process_lookup(self, mock_kill):
         pids = [12345, 67890]
         mock_kill.side_effect = [None, ProcessLookupError()]
+        expected_sig = getattr(signal, "SIGKILL", signal.SIGTERM)
 
         result = launch_utils.terminate_processes(pids)
 
@@ -39,8 +40,8 @@ class TestLaunchMainProcessCleanup(unittest.TestCase):
         self.assertEqual(mock_kill.call_count, 2)
         mock_kill.assert_has_calls(
             [
-                mock.call(12345, signal.SIGKILL),
-                mock.call(67890, signal.SIGKILL),
+                mock.call(12345, expected_sig),
+                mock.call(67890, expected_sig),
             ],
             any_order=False,
         )
@@ -49,6 +50,7 @@ class TestLaunchMainProcessCleanup(unittest.TestCase):
     def test_terminate_processes_permission_error(self, mock_kill):
         pids = [12345, 67890]
         mock_kill.side_effect = [ProcessLookupError(), PermissionError()]
+        expected_sig = getattr(signal, "SIGKILL", signal.SIGTERM)
 
         result = launch_utils.terminate_processes(pids)
 
@@ -56,8 +58,8 @@ class TestLaunchMainProcessCleanup(unittest.TestCase):
         self.assertEqual(mock_kill.call_count, 2)
         mock_kill.assert_has_calls(
             [
-                mock.call(12345, signal.SIGKILL),
-                mock.call(67890, signal.SIGKILL),
+                mock.call(12345, expected_sig),
+                mock.call(67890, expected_sig),
             ],
             any_order=False,
         )

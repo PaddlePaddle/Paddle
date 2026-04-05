@@ -575,10 +575,11 @@ def terminate_processes(processes: Sequence[int]) -> bool:
     Returns True if all processes were successfully terminated (or already dead).
     Returns False if any process failed to terminate due to permissions.
     """
+    sig = getattr(signal, "SIGKILL", signal.SIGTERM)
     success = True
     for pid in processes:
         try:
-            os.kill(pid, signal.SIGKILL)
+            os.kill(pid, sig)
         except ProcessLookupError:
             # Target already exited.
             pass
