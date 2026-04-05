@@ -15,13 +15,12 @@
 #pragma once
 
 #include <c10/core/Device.h>
-#include <c10/util/typeid.h>
 
 namespace c10::cuda {
 
-C10_API c10::DeviceIndex device_count();
+c10::DeviceIndex device_count();
 
-C10_API void device_synchronize();
+void device_synchronize();
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 void __inline__ stream_synchronize(gpuStream_t stream) {

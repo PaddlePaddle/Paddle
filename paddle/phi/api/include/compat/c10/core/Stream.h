@@ -17,7 +17,6 @@
 #include <c10/core/Device.h>
 #include <c10/core/DeviceType.h>
 #include <c10/util/Exception.h>
-#include <c10/util/typeid.h>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -60,16 +59,16 @@ class Stream final {
   DeviceIndex device_index() const noexcept { return device_.index(); }
   StreamId id() const noexcept { return id_; }
 
-  C10_API void* native_handle() const;
+  void* native_handle() const;
 
   template <typename T>
   void wait(const T& event) const {
     event.block(*this);
   }
 
-  C10_API bool query() const;
+  bool query() const;
 
-  C10_API void synchronize() const;
+  void synchronize() const;
 
   uint64_t hash() const noexcept {
     uint64_t bits = static_cast<uint64_t>(device_type()) << 56 |
