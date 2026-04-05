@@ -1,4 +1,4 @@
-// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,11 @@
 // Tests for the compat-layer dispatch key priority selection logic introduced
 // in OperationInvoker::get_op_with_args (torch_compat.h).
 //
-// The lookup order is: CPU → BackendSelect → CatchAll → first-registered.
+// The lookup order is: CPU → BackendSelect → CatchAll.
+// If none of those keys exist and exactly one implementation is registered it
+// is used directly (deterministic). If multiple unrecognised keys exist the
+// invoker raises an Ambiguous error rather than picking arbitrarily from an
+// unordered_map (which has no stable iteration order).
 // These tests exercise scenarios where the registrant uses BackendSelect
 // (e.g. TORCH_LIBRARY_IMPL(..., BackendSelect, m)) so that the Python-facing
 // invoker can reach it even when no CPU implementation exists.
@@ -39,9 +43,15 @@ int backend_select_and_cpu_bs_fn(int x) { return x + 2; }
 
 }  // namespace
 
+int unique_non_preferred_fn(int x) { return x + 7; }
+int ambiguous_cuda_fn(int x) { return x + 100; }
+int ambiguous_xpu_fn(int x) { return x + 200; }
+
 TORCH_LIBRARY(compat_dispatch_test_lib, m) {
   m.def("backend_select_only(int x) -> int");
   m.def("backend_select_and_cpu(int x) -> int");
+  m.def("unique_non_preferred(int x) -> int");
+  m.def("ambiguous_multi_key(int x) -> int");
 }
 
 TORCH_LIBRARY_IMPL(compat_dispatch_test_lib, BackendSelect, m) {
@@ -51,6 +61,15 @@ TORCH_LIBRARY_IMPL(compat_dispatch_test_lib, BackendSelect, m) {
 
 TORCH_LIBRARY_IMPL(compat_dispatch_test_lib, CPU, m) {
   m.impl("backend_select_and_cpu", &backend_select_and_cpu_cpu_fn);
+}
+
+TORCH_LIBRARY_IMPL(compat_dispatch_test_lib, CUDA, m) {
+  m.impl("unique_non_preferred", &unique_non_preferred_fn);
+  m.impl("ambiguous_multi_key", &ambiguous_cuda_fn);
+}
+
+TORCH_LIBRARY_IMPL(compat_dispatch_test_lib, XPU, m) {
+  m.impl("ambiguous_multi_key", &ambiguous_xpu_fn);
 }
 
 // ---------------------------------------------------------------------------
@@ -69,7 +88,8 @@ pick_impl(torch::OperatorRegistration* op) {
     chosen = op->implementations.find(key);
     if (chosen != op->implementations.end()) break;
   }
-  if (chosen == op->implementations.end() && !op->implementations.empty()) {
+  // Mirror the production rule: allow exactly-one-impl, reject ambiguous.
+  if (chosen == op->implementations.end() && op->implementations.size() == 1) {
     chosen = op->implementations.begin();
   }
   return chosen;
@@ -137,4 +157,40 @@ TEST(CompatTorchDispatchTest, BackendSelectPickedWhenCpuAbsent) {
   auto result = chosen->second.call_with_args(args);
   ASSERT_TRUE(result.get_value().is_int());
   EXPECT_EQ(result.get_value().to_int(), 42);  // BackendSelect impl: x + 10
+}
+
+// An operator registered only under one non-preferred key (e.g. CUDA) must
+// still be reachable when it's the sole implementation (deterministic).
+TEST(CompatTorchDispatchTest, UniqueNonPreferredKeyIsCallable) {
+  const auto qname = "compat_dispatch_test_lib::unique_non_preferred";
+  auto* op = torch::OperatorRegistry::instance().find_operator(qname);
+  ASSERT_NE(op, nullptr);
+  ASSERT_EQ(op->implementations.size(), 1UL);
+
+  auto chosen = pick_impl(op);
+  ASSERT_NE(chosen, op->implementations.end());
+
+  torch::FunctionArgs args;
+  args.add_arg(torch::IValue(int64_t(35)));
+  auto result = chosen->second.call_with_args(args);
+  ASSERT_TRUE(result.get_value().is_int());
+  EXPECT_EQ(result.get_value().to_int(), 42);  // unique impl: x + 7
+}
+
+// An operator with multiple non-preferred keys (CUDA + XPU) must produce
+// end() from pick_impl (the production code would raise an Ambiguous error).
+TEST(CompatTorchDispatchTest, AmbiguousMultiKeyProducesEnd) {
+  const auto qname = "compat_dispatch_test_lib::ambiguous_multi_key";
+  auto* op = torch::OperatorRegistry::instance().find_operator(qname);
+  ASSERT_NE(op, nullptr);
+  // Registered under CUDA and XPU – neither is in the preferred list.
+  ASSERT_GE(op->implementations.size(), 2UL);
+  EXPECT_EQ(op->implementations.find(torch::DispatchKey::CPU),
+            op->implementations.end());
+  EXPECT_EQ(op->implementations.find(torch::DispatchKey::BackendSelect),
+            op->implementations.end());
+
+  auto chosen = pick_impl(op);
+  // Must not resolve to any implementation – ambiguous.
+  EXPECT_EQ(chosen, op->implementations.end());
 }

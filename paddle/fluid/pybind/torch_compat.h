@@ -96,15 +96,30 @@ OperationInvoker::get_op_with_args(const std::string& qualified_name,
     }
   }
 
-  // If no preferred dispatch key exists, fall back to the first registered
-  // implementation so dynamic registration remains callable from Python.
-  if (impl_it == op->implementations.end() && !op->implementations.empty()) {
-    impl_it = op->implementations.begin();
-  }
-
+  // If no preferred dispatch key was found, allow the call only when exactly
+  // one implementation is registered (deterministic). With multiple unknown
+  // keys the choice would be arbitrary (unordered_map has no stable iteration
+  // order), so we surface an Ambiguous error instead.
   if (impl_it == op->implementations.end()) {
-    PADDLE_THROW(common::errors::NotFound(
-        "No implementation found for operator '%s'", qualified_name.c_str()));
+    if (op->implementations.size() == 1) {
+      impl_it = op->implementations.begin();
+    } else if (op->implementations.empty()) {
+      PADDLE_THROW(common::errors::NotFound(
+          "No implementation found for operator '%s'", qualified_name.c_str()));
+    } else {
+      std::string available_keys;
+      for (const auto& kv : op->implementations) {
+        if (!available_keys.empty()) available_keys += ", ";
+        available_keys += c10::toString(kv.first);
+      }
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "Operator '%s' has multiple implementations [%s] but none matches "
+          "the preferred dispatch keys (CPU, BackendSelect, CatchAll). "
+          "Register under one of those keys to make the operator callable "
+          "from Python.",
+          qualified_name.c_str(),
+          available_keys.c_str()));
+    }
   }
 
   FunctionArgs function_args =
