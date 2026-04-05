@@ -35,20 +35,28 @@ inline at::Tensor Tensor::as_strided(
   if (!src_tensor) {
     PD_THROW("as_strided: tensor must be a DenseTensor");
   }
-  auto new_tensor = std::make_shared<phi::DenseTensor>();
-  new_tensor->ShareDataWith(*src_tensor);
+  // Create new meta with desired shape and strides first
   std::vector<int64_t> size_vec(size.begin(), size.end());
   std::vector<int64_t> stride_vec(stride.begin(), stride.end());
-  new_tensor->Resize(common::make_ddim(size_vec));
-  new_tensor->set_strides(common::make_ddim(stride_vec));
+
+  // Create new DenseTensor with correct meta, then share data
+  // We need to create a temporary DenseTensor with the right meta
+  // because ShareDataWith copies the source meta which we don't want
+  auto new_tensor = std::make_shared<phi::DenseTensor>();
+
+  // First, set up the holder by sharing data (this copies src meta, we'll
+  // override)
+  new_tensor->ShareDataWith(*src_tensor);
+
+  // Now create the correct meta with new shape/strides
+  phi::DenseTensorMeta meta(src_tensor->dtype(),
+                            common::make_ddim(size_vec),
+                            common::make_ddim(stride_vec));
+  // Calculate offset in bytes
   int64_t offset = storage_offset.has_value() ? storage_offset.value() : 0;
-  if (offset != 0) {
-    auto meta = phi::DenseTensorMeta(new_tensor->meta());
-    // meta.offset is in bytes; storage_offset is in elements
-    meta.offset =
-        static_cast<size_t>(offset) * phi::SizeOf(new_tensor->dtype());
-    new_tensor->set_meta(meta);
-  }
+  meta.offset = src_tensor->meta().offset +
+                static_cast<size_t>(offset) * phi::SizeOf(src_tensor->dtype());
+  new_tensor->set_meta(meta);
   PaddleTensor result;
   result.set_impl(new_tensor);
   return Tensor(result);
@@ -67,16 +75,15 @@ inline const at::Tensor& Tensor::as_strided_(
   }
   std::vector<int64_t> size_vec(size.begin(), size.end());
   std::vector<int64_t> stride_vec(stride.begin(), stride.end());
-  src_tensor->Resize(common::make_ddim(size_vec));
-  src_tensor->set_strides(common::make_ddim(stride_vec));
+  // Use set_meta instead of Resize + set_strides to avoid contiguous check
+  phi::DenseTensorMeta meta(src_tensor->dtype(),
+                            common::make_ddim(size_vec),
+                            common::make_ddim(stride_vec));
+  meta.layout = src_tensor->layout();
   int64_t offset = storage_offset.has_value() ? storage_offset.value() : 0;
-  if (offset != 0) {
-    auto meta = phi::DenseTensorMeta(src_tensor->meta());
-    // meta.offset is in bytes; storage_offset is in elements
-    meta.offset =
-        static_cast<size_t>(offset) * phi::SizeOf(src_tensor->dtype());
-    src_tensor->set_meta(meta);
-  }
+  meta.offset = src_tensor->meta().offset +
+                static_cast<size_t>(offset) * phi::SizeOf(src_tensor->dtype());
+  src_tensor->set_meta(meta);
   return *this;
 }
 
