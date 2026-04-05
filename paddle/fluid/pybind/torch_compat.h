@@ -82,7 +82,7 @@ OperationInvoker::get_op_with_args(const std::string& qualified_name,
         "Operator '%s' not found in the registry", qualified_name.c_str()));
   }
 
-  auto impl_it = op->implementations.find(DispatchKey::CPU);
+  auto impl_it = op->implementations.find(c10::DispatchKey::CPU);
   if (impl_it == op->implementations.end()) {
     PADDLE_THROW(common::errors::NotFound(
         "No CPU implementation found for operator '%s'",
