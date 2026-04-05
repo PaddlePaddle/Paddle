@@ -130,25 +130,25 @@ inline CUDAStream make_cuda_stream(cudaStream_t raw,
  * Get the current CUDA stream for the passed CUDA device, or for the
  * current device if no device index is passed.
  */
-CUDAStream getCurrentCUDAStream(c10::DeviceIndex device_index = -1);
+C10_API CUDAStream getCurrentCUDAStream(c10::DeviceIndex device_index = -1);
 
 /**
  * Get a new stream from the CUDA stream pool.
  * Priority -1 is high priority, 0 is default/low priority.
  * Matches PyTorch behavior where negative priority = high priority.
  */
-CUDAStream getStreamFromPool(const int priority = 0,
-                             c10::DeviceIndex device_index = -1);
+C10_API CUDAStream getStreamFromPool(const int priority = 0,
+                                     c10::DeviceIndex device_index = -1);
 
 /**
  * Get a new stream from the CUDA stream pool.
  * Bool overload: true = high priority (-1), false = default priority (0).
  */
-CUDAStream getStreamFromPool(const bool isHighPriority,
-                             c10::DeviceIndex device_index = -1);
+C10_API CUDAStream getStreamFromPool(const bool isHighPriority,
+                                     c10::DeviceIndex device_index = -1);
 
-CUDAStream getStreamFromExternal(cudaStream_t ext_stream,
-                                 c10::DeviceIndex device_index);
+C10_API CUDAStream getStreamFromExternal(cudaStream_t ext_stream,
+                                         c10::DeviceIndex device_index);
 
 /**
  * Set the current CUDA stream for the device of the given stream in the
@@ -156,9 +156,9 @@ CUDAStream getStreamFromExternal(cudaStream_t ext_stream,
  *
  * Implements per-thread, per-device current stream semantics.
  */
-void setCurrentCUDAStream(CUDAStream stream);
+C10_API void setCurrentCUDAStream(CUDAStream stream);
 
-CUDAStream getDefaultCUDAStream(c10::DeviceIndex device_index = -1);
+C10_API CUDAStream getDefaultCUDAStream(c10::DeviceIndex device_index = -1);
 
 inline std::ostream& operator<<(std::ostream& stream, const CUDAStream& s) {
   return stream << s.unwrap();
