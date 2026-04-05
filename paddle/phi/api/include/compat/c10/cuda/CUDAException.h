@@ -17,6 +17,10 @@
 #include <exception>
 #include <string>
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include <cuda_runtime.h>
+#endif
+
 class CompatException : public std::exception {
  private:
   std::string message = {};

@@ -1,4 +1,4 @@
-// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,5 +18,27 @@
 
 #pragma once
 
-#include <torch/all.h>
-#include <torch/python.h>
+#include <cstdint>
+
+namespace c10 {
+
+/**
+ * quint2x4 is for un-signed 2 bit quantized Tensors that are packed to byte
+ * boundary.
+ */
+struct alignas(1) quint2x4 {
+  using underlying = uint8_t;
+  uint8_t val_;
+  quint2x4() = default;
+  explicit constexpr quint2x4(uint8_t val) : val_(val) {}
+};
+
+}  // namespace c10
+
+namespace at {
+using c10::quint2x4;
+}  // namespace at
+
+namespace torch {
+using c10::quint2x4;
+}  // namespace torch
