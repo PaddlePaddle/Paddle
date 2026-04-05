@@ -555,19 +555,16 @@ def _print_arguments(args):
     print("------------------------------------------------")
 
 
-def filter_pids(processes: list[str], self_pid: str) -> list[int]:
+def filter_pids(processes: Sequence[str], self_pid: int) -> list[int]:
     """Filter valid PIDs from a list of strings, excluding the current self_pid."""
-    return [
-        int(pid.strip())
-        for pid in processes
-        if pid.strip().isdigit() and pid.strip() != self_pid
-    ]
-
-
-def cleanup_processes(processes: list[str], self_pid: str) -> bool:
-    """Filter PIDs then terminate them; returns whether all terminations succeeded."""
-    pids_to_kill = filter_pids(processes, self_pid)
-    return terminate_processes(pids_to_kill)
+    pids_to_kill = []
+    for process in processes:
+        pid_str = process.strip()
+        if pid_str.isdigit():
+            pid_int = int(pid_str)
+            if pid_int != self_pid:
+                pids_to_kill.append(pid_int)
+    return pids_to_kill
 
 
 def terminate_processes(processes: Sequence[int]) -> bool:
@@ -579,7 +576,7 @@ def terminate_processes(processes: Sequence[int]) -> bool:
     success = True
     for pid in processes:
         try:
-            os.kill(pid, 9)
+            os.kill(pid, signal.SIGKILL)
         except ProcessLookupError:
             # Target already exited.
             pass

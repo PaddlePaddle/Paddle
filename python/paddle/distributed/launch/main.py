@@ -1228,7 +1228,7 @@ def launch() -> None:
             auto_tuner.add_cfg(cur_cfg)
 
             # per task launch interval
-            self_pid = str(os.getpid())
+            self_pid = os.getpid()
             if paddle.device.is_compiled_with_custom_device('npu'):
                 processes = os.popen(
                     "fuser -v /dev/davinci* |awk '{for(i=1;i<=NF;i++) print $i;}'"
@@ -1241,7 +1241,8 @@ def launch() -> None:
                 processes = os.popen(
                     "fuser -v /dev/nvidia* |awk '{for(i=1;i<=NF;i++) print $i;}'"
                 ).readlines()
-            launch_utils.cleanup_processes(processes, self_pid)
+            pids_to_kill = launch_utils.filter_pids(processes, self_pid)
+            launch_utils.terminate_processes(pids_to_kill)
             time.sleep(3)
             end_time = time.time()
 
