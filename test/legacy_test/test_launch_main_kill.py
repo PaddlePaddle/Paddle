@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import platform
 import signal
 import unittest
 from unittest import mock
@@ -32,7 +33,9 @@ class TestLaunchMainProcessCleanup(unittest.TestCase):
     def test_terminate_processes_process_lookup(self, mock_kill):
         pids = [12345, 67890]
         mock_kill.side_effect = [None, ProcessLookupError()]
-        expected_sig = getattr(signal, "SIGKILL", signal.SIGTERM)
+        expected_sig = (
+            signal.SIGKILL if platform.system() != "Windows" else signal.SIGTERM
+        )
 
         result = launch_utils.terminate_processes(pids)
 
@@ -50,7 +53,9 @@ class TestLaunchMainProcessCleanup(unittest.TestCase):
     def test_terminate_processes_permission_error(self, mock_kill):
         pids = [12345, 67890]
         mock_kill.side_effect = [ProcessLookupError(), PermissionError()]
-        expected_sig = getattr(signal, "SIGKILL", signal.SIGTERM)
+        expected_sig = (
+            signal.SIGKILL if platform.system() != "Windows" else signal.SIGTERM
+        )
 
         result = launch_utils.terminate_processes(pids)
 
