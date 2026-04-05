@@ -13,13 +13,13 @@
 // limitations under the License.
 
 #include <c10/core/Event.h>
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <c10/cuda/CUDAFunctions.h>
-#include <c10/cuda/CUDAStream.h>
-#endif
 
 #include "gtest/gtest.h"
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include <c10/cuda/CUDAStream.h>
+#endif
 
 TEST(EventTest, CpuEventDefaultProperties) {
   c10::Event event(c10::DeviceType::CPU);
@@ -37,6 +37,18 @@ TEST(EventTest, CpuEventRecordThrows) {
                      c10::Device(c10::DeviceType::CPU, 0));
   EXPECT_THROW(event.record(stream), std::exception);
   EXPECT_THROW(event.recordOnce(stream), std::exception);
+}
+
+// Test device_count() works in both CPU and CUDA builds
+TEST(EventTest, DeviceCount) {
+  c10::DeviceIndex count = c10::cuda::device_count();
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  // In CUDA builds, should return actual device count (>= 0)
+  EXPECT_GE(count, 0);
+#else
+  // In CPU-only builds, should return 0
+  EXPECT_EQ(count, 0);
+#endif
 }
 
 #ifdef PADDLE_WITH_CUDA

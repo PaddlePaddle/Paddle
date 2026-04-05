@@ -13,13 +13,25 @@
 // limitations under the License.
 
 #include <c10/core/Stream.h>
+#include <c10/cuda/CUDAFunctions.h>
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include <c10/cuda/CUDAFunctions.h>
 #include <c10/cuda/CUDAStream.h>
 #endif
 
 #include "gtest/gtest.h"
+
+// Test device_count() works in both CPU and CUDA builds
+TEST(StreamTest, DeviceCount) {
+  c10::DeviceIndex count = c10::cuda::device_count();
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  // In CUDA builds, should return actual device count (>= 0)
+  EXPECT_GE(count, 0);
+#else
+  // In CPU-only builds, should return 0
+  EXPECT_EQ(count, 0);
+#endif
+}
 
 // ==================== native_handle ====================
 

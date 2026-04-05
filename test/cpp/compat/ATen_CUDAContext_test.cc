@@ -12,15 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-
 #include <ATen/cuda/CUDAContextLight.h>
 #include <c10/core/Allocator.h>
 #include <c10/cuda/CUDAFunctions.h>
-#include <c10/cuda/CUDAStream.h>
 
 #include "gtest/gtest.h"
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include <c10/cuda/CUDAStream.h>
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#endif
 
 // ---------------------------------------------------------------------------
 // CUDAFunctions.h — covers the 2 missing lines:
@@ -28,21 +29,36 @@
 // ---------------------------------------------------------------------------
 
 TEST(CUDAFunctionsTest, DeviceSynchronize) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // Exercises the PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize()) branch
   ASSERT_NO_THROW(c10::cuda::device_synchronize());
+#else
+  // In CPU-only builds, device_synchronize throws
+  ASSERT_THROW(c10::cuda::device_synchronize(), std::exception);
+#endif
 }
 
 TEST(CUDAFunctionsTest, StreamSynchronize) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // Exercises phi::backends::gpu::GpuStreamSync()
   auto stream = c10::cuda::getCurrentCUDAStream();
   ASSERT_NO_THROW(c10::cuda::stream_synchronize(stream));
+#else
+  // In CPU-only builds, stream_synchronize throws
+  ASSERT_THROW(c10::cuda::stream_synchronize(nullptr), std::exception);
+#endif
 }
 
 TEST(CUDAFunctionsTest, AtNamespaceAliases) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // Exercises the using aliases in at::cuda namespace
   ASSERT_NO_THROW(at::cuda::device_synchronize());
   auto stream = c10::cuda::getCurrentCUDAStream();
   ASSERT_NO_THROW(at::cuda::stream_synchronize(stream));
+#else
+  // In CPU-only builds, these should throw
+  ASSERT_THROW(at::cuda::device_synchronize(), std::exception);
+#endif
 }
 
 // ---------------------------------------------------------------------------
@@ -50,9 +66,14 @@ TEST(CUDAFunctionsTest, AtNamespaceAliases) {
 // ---------------------------------------------------------------------------
 
 TEST(CUDAContextLightTest, IsAvailable) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // With GPU compilation and at least one device, this must be true.
   int gpu_count = phi::backends::gpu::GetGPUDeviceCount();
   ASSERT_EQ(at::cuda::is_available(), gpu_count > 0);
+#else
+  // In CPU-only builds, is_available() should return false
+  ASSERT_FALSE(at::cuda::is_available());
+#endif
 }
 
 // ---------------------------------------------------------------------------
@@ -62,8 +83,17 @@ TEST(CUDAContextLightTest, IsAvailable) {
 // getNumGPUs() delegages to c10::cuda::device_count()
 TEST(CUDAContextLightTest, GetNumGPUs) {
   int64_t n = at::cuda::getNumGPUs();
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   ASSERT_GE(n, 1);
+#else
+  // In CPU-only builds, device_count() returns 0
+  ASSERT_EQ(n, 0);
+#endif
 }
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
+// The following tests require CUDA runtime and can only run in CUDA builds
 
 // getCurrentDeviceProperties() / getDeviceProperties()
 TEST(CUDAContextLightTest, DeviceProperties) {
