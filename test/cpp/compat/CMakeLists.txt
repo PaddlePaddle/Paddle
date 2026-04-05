@@ -56,7 +56,6 @@ if(NOT WIN32)
   cc_test(ATen_viewAs_test SRCS ATen_viewAs_test.cc)
 
   # ATen tests with GPU code guarded by PADDLE_WITH_CUDA macros
-  cc_test(ATen_CUDAContext_test SRCS ATen_CUDAContext_test.cc)
   cc_test(ATen_TensorAccessor_test SRCS ATen_TensorAccessor_test.cc)
   cc_test(ATen_basic_test SRCS ATen_basic_test.cc)
   cc_test(ATen_local_scalar_dense_test SRCS ATen_local_scalar_dense_test.cc)
@@ -71,6 +70,7 @@ if(NOT WIN32)
 
   if(WITH_GPU)
     nv_test(ATen_CUDABlas_test SRCS ATen_CUDABlas_test.cc)
+    nv_test(ATen_CUDAContext_test SRCS ATen_CUDAContext_test.cc)
     nv_test(ATen_cuda_test SRCS ATen_cuda_test.cc)
     nv_test(c10_cuda_generator_test SRCS c10_cuda_generator_test.cc)
   endif()
