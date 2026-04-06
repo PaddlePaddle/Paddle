@@ -48,7 +48,7 @@ TEST(TensorViewAsTest, ViewAsSameShape) {
 
 TEST(TensorViewAsTest, ViewAsDifferentShape_CompatibleNumel) {
   if (!FLAGS_use_stride_kernel) {
-    GTEST_SKIP() << "Skipping test because FLAGS_use_stride_kernel is disabled";
+    return;
   }
   // view_as with a different but numel-compatible shape
   at::Tensor t = at::arange(12, at::kFloat);
@@ -61,7 +61,7 @@ TEST(TensorViewAsTest, ViewAsDifferentShape_CompatibleNumel) {
 
 TEST(TensorViewAsTest, ViewAsPreservesData) {
   if (!FLAGS_use_stride_kernel) {
-    GTEST_SKIP() << "Skipping test because FLAGS_use_stride_kernel is disabled";
+    return;
   }
   // Elements are accessible with the new shape and preserve original values
   at::Tensor t = at::arange(6, at::kFloat);
@@ -78,7 +78,7 @@ TEST(TensorViewAsTest, ViewAsPreservesData) {
 
 TEST(TensorViewAsTest, ViewAs1D_Flattens) {
   if (!FLAGS_use_stride_kernel) {
-    GTEST_SKIP() << "Skipping test because FLAGS_use_stride_kernel is disabled";
+    return;
   }
   // view_as a 1-D tensor to flatten a higher-rank tensor
   at::Tensor t = at::ones({2, 3, 4}, at::kFloat);

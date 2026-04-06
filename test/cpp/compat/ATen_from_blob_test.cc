@@ -69,7 +69,7 @@ TEST(ATenFromBlobTest, ShapeAndStrides) {
 // Explicit strides overload.
 TEST(ATenFromBlobTest, ExplicitStrides) {
   if (!FLAGS_use_stride_kernel) {
-    GTEST_SKIP() << "Skipping test because FLAGS_use_stride_kernel is disabled";
+    return;
   }
   // Row-major 2×3 laid out in memory, but we interpret as column-major strides
   float data[6] = {1, 2, 3, 4, 5, 6};

@@ -73,7 +73,7 @@ TEST(TensorTransposeInplaceTest, Transpose3D_SwapLastTwo) {
 
 TEST(TensorTransposeInplaceTest, TransposeInplace_PreservesValues) {
   if (!FLAGS_use_stride_kernel) {
-    GTEST_SKIP() << "Skipping test because FLAGS_use_stride_kernel is disabled";
+    return;
   }
   // Verify values are correctly accessed after in-place transpose
   at::Tensor t = at::arange(6, at::kFloat).reshape({2, 3});

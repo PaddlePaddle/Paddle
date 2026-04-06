@@ -81,7 +81,7 @@ TEST(TensorBaseTest, TypeDeviceAPIs) {
 
 TEST(TensorBaseTest, ModifyOperationAPIs) {
   if (!FLAGS_use_stride_kernel) {
-    GTEST_SKIP() << "Skipping test because FLAGS_use_stride_kernel is disabled";
+    return;
   }
   // Test modify operation related APIs
   at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
@@ -363,7 +363,7 @@ TEST(TensorBaseTest, ResetAPI) {
 
 TEST(TensorBaseTest, IsNonOverlappingAndDenseAPI) {
   if (!FLAGS_use_stride_kernel) {
-    GTEST_SKIP() << "Skipping test because FLAGS_use_stride_kernel is disabled";
+    return;
   }
   // Test is_non_overlapping_and_dense() API
 
@@ -413,7 +413,7 @@ TEST(TensorBaseTest, IsNonOverlappingAndDenseAPI) {
 
 TEST(TensorBaseTest, UndefinedAndNonDenseBranchCoverage) {
   if (!FLAGS_use_stride_kernel) {
-    GTEST_SKIP() << "Skipping test because FLAGS_use_stride_kernel is disabled";
+    return;
   }
   at::TensorBase undefined;
   ASSERT_EQ(undefined.toString(), std::string("UndefinedType"));

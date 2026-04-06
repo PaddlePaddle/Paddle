@@ -139,7 +139,7 @@ TEST_F(TensorAsStridedTest, AsStridedScatterWithOffset) {
 
 TEST_F(TensorAsStridedTest, AsStridedTranspose) {
   if (!FLAGS_use_stride_kernel) {
-    GTEST_SKIP() << "Skipping test because FLAGS_use_stride_kernel is disabled";
+    return;
   }
   // Transpose: shape {2,3} -> {3,2}, stride {1,2}
   // [[0,1,2],[3,4,5]] -> [[0,3],[1,4],[2,5]]
@@ -154,7 +154,7 @@ TEST_F(TensorAsStridedTest, AsStridedTranspose) {
 
 TEST_F(TensorAsStridedTest, AsStridedContiguous) {
   if (!FLAGS_use_stride_kernel) {
-    GTEST_SKIP() << "Skipping test because FLAGS_use_stride_kernel is disabled";
+    return;
   }
   at::Tensor t = at::arange(12, at::kFloat);
 

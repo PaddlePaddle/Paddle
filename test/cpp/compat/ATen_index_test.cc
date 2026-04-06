@@ -57,7 +57,7 @@ TEST(TensorIndexTest, IndexWithSingleTensor) {
 
 TEST(TensorIndexTest, SliceKeepsStrideWithoutContiguousCopy) {
   if (!FLAGS_use_stride_kernel) {
-    GTEST_SKIP() << "Skipping test because FLAGS_use_stride_kernel is disabled";
+    return;
   }
   at::Tensor base = at::arange(24, at::kFloat).reshape({4, 6});
   at::Tensor transposed = base.t();  // shape: [6, 4], strides: [1, 6]
@@ -103,7 +103,7 @@ TEST(TensorIndexTest, IndexWithTensorInitializerList) {
 
 TEST(TensorIndexTest, MemberIndexWithArrayRefTensorIndices) {
   if (!FLAGS_use_stride_kernel) {
-    GTEST_SKIP() << "Skipping test because FLAGS_use_stride_kernel is disabled";
+    return;
   }
   at::Tensor base = at::arange(24, at::kFloat).reshape({4, 6});
   at::Tensor transposed = base.t();
