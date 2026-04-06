@@ -53,6 +53,10 @@ if(NOT WIN32 AND NOT WITH_ROCM)
   cc_test(ATen_values_test SRCS ATen_values_test.cc)
   cc_test(ATen_viewAs_test SRCS ATen_viewAs_test.cc)
 
+  # torch library tests (CPU compatible)
+  cc_test(torch_library_test SRCS torch_library_test.cc)
+  cc_test(torch_library_dispatch_test SRCS torch_library_dispatch_test.cc)
+
   # ATen tests with GPU code guarded by PADDLE_WITH_CUDA macros
   cc_test(ATen_TensorAccessor_test SRCS ATen_TensorAccessor_test.cc)
   cc_test(ATen_basic_test SRCS ATen_basic_test.cc)
@@ -62,7 +66,6 @@ if(NOT WIN32 AND NOT WITH_ROCM)
   cc_test(ATen_record_stream_test SRCS ATen_record_stream_test.cc)
   cc_test(ATen_select_test SRCS ATen_select_test.cc)
   cc_test(ATen_split_test SRCS ATen_split_test.cc)
-  cc_test(ATen_torch_library_test SRCS ATen_torch_library_test.cc)
 
   cc_test(ATen_CUDAContext_test SRCS ATen_CUDAContext_test.cc)
   cc_test(ATen_philox_test SRCS ATen_philox_test.cc)
@@ -75,5 +78,4 @@ if(NOT WIN32 AND NOT WITH_ROCM)
     nv_test(c10_cuda_generator_test SRCS c10_cuda_generator_test.cc)
     nv_test(c10_generator_impl_test SRCS c10_generator_impl_test.cc)
   endif()
-
 endif()
