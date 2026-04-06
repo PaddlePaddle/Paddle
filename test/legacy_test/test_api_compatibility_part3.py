@@ -1381,15 +1381,15 @@ class TestLayerAndTensorToAPI(unittest.TestCase):
     # ---- blocking / non_blocking conflict ----
 
     def test_blocking_non_blocking_conflict_raises(self):
-        """Setting both blocking and non_blocking raises TypeError."""
+        """Setting both blocking and non_blocking raises ValueError."""
         linear = paddle.nn.Linear(2, 2)
-        with self.assertRaises(TypeError):
+        with self.assertRaises(ValueError):
             linear.to(dtype='float64', blocking=True, non_blocking=False)
 
     def test_tensor_blocking_non_blocking_conflict_raises(self):
-        """Tensor: setting both blocking and non_blocking raises TypeError."""
+        """Tensor: setting both blocking and non_blocking raises ValueError."""
         t = paddle.to_tensor([1.0])
-        with self.assertRaises(TypeError):
+        with self.assertRaises(ValueError):
             t.to(dtype='float64', blocking=True, non_blocking=False)
 
     # ---- Error handling ----
