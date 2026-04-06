@@ -64,8 +64,7 @@ bool Stream::query() const {
     if (err == cudaErrorNotReady) return false;
     PADDLE_ENFORCE_GPU_SUCCESS(err);
   }
-#endif
-#if defined(PADDLE_WITH_HIP)
+#elif defined(PADDLE_WITH_HIP)
   if (device_type() == DeviceType::CUDA) {
     hipStream_t s = reinterpret_cast<hipStream_t>(static_cast<intptr_t>(id_));
     hipError_t err = hipStreamQuery(s);
@@ -85,8 +84,7 @@ void Stream::synchronize() const {
     PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(s));
     return;
   }
-#endif
-#if defined(PADDLE_WITH_HIP)
+#elif defined(PADDLE_WITH_HIP)
   if (device_type() == DeviceType::CUDA) {
     hipStream_t s = reinterpret_cast<hipStream_t>(static_cast<intptr_t>(id_));
     PADDLE_ENFORCE_GPU_SUCCESS(hipStreamSynchronize(s));
