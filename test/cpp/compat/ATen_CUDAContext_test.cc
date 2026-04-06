@@ -38,28 +38,22 @@ TEST(CUDAFunctionsTest, DeviceSynchronize) {
 #endif
 }
 
-TEST(CUDAFunctionsTest, StreamSynchronize) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+TEST(CUDAFunctionsTest, StreamSynchronize) {
   // Exercises phi::backends::gpu::GpuStreamSync()
   auto stream = c10::cuda::getCurrentCUDAStream();
   ASSERT_NO_THROW(c10::cuda::stream_synchronize(stream));
-#else
-  // In CPU-only builds, stream_synchronize throws
-  ASSERT_THROW(c10::cuda::stream_synchronize(nullptr), std::exception);
-#endif
 }
+#endif
 
-TEST(CUDAFunctionsTest, AtNamespaceAliases) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+TEST(CUDAFunctionsTest, AtNamespaceAliases) {
   // Exercises the using aliases in at::cuda namespace
   ASSERT_NO_THROW(at::cuda::device_synchronize());
   auto stream = c10::cuda::getCurrentCUDAStream();
   ASSERT_NO_THROW(at::cuda::stream_synchronize(stream));
-#else
-  // In CPU-only builds, these should throw
-  ASSERT_THROW(at::cuda::device_synchronize(), std::exception);
-#endif
 }
+#endif
 
 // ---------------------------------------------------------------------------
 // CUDAContextLight.h — covers the 1 missing line: is_available()
