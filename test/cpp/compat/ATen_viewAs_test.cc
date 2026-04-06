@@ -25,8 +25,8 @@
 #include <c10/cuda/CUDAGuard.h>
 #endif
 #include "ATen/ATen.h"
-#include "common/macros.h"
 #include "gtest/gtest.h"
+#include "paddle/common/macros.h"
 #include "paddle/phi/common/float16.h"
 #include "torch/all.h"
 

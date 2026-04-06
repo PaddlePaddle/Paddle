@@ -19,8 +19,8 @@
 #include <c10/core/TensorOptions.h>
 
 #include "ATen/ATen.h"
-#include "common/macros.h"
 #include "gtest/gtest.h"
+#include "paddle/common/macros.h"
 #include "torch/all.h"
 
 COMMON_DECLARE_bool(use_stride_kernel);
