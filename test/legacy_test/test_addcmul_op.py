@@ -24,7 +24,6 @@ from op_test import (
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.base.framework import Program, program_guard
 
 
 class TestAddcmulOp(OpTest):
@@ -331,7 +330,10 @@ class TestAddcmulOpError(unittest.TestCase):
 
     def test_type_errors(self):
         paddle.enable_static()
-        with program_guard(Program(), Program()):
+        with (
+            paddle.pir_utils.IrGuard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
             input = paddle.static.data(name='input', shape=[4, 4], dtype="bool")
             x3 = paddle.static.data(name='x3', shape=[4, 4], dtype="bool")
             x4 = paddle.static.data(name='x4', shape=[4, 4], dtype="bool")
@@ -380,31 +382,35 @@ class TestAddcmulAPI(unittest.TestCase):
     def test_static_api(self):
         """Test static graph API"""
         paddle.enable_static()
-        startup = paddle.static.Program()
-        main = paddle.static.Program()
-        with base.program_guard(main, startup):
-            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
-            t1 = paddle.static.data(
-                name="tensor1", shape=self.shape, dtype=self.dtype
-            )
-            t2 = paddle.static.data(
-                name="tensor2", shape=self.shape, dtype=self.dtype
-            )
-            out = paddle.addcmul(x, t1, t2, value=0.5)
+        with paddle.pir_utils.IrGuard():
+            main = paddle.static.Program()
+            with paddle.static.program_guard(main):
+                x = paddle.static.data(
+                    name="x", shape=self.shape, dtype=self.dtype
+                )
+                t1 = paddle.static.data(
+                    name="tensor1", shape=self.shape, dtype=self.dtype
+                )
+                t2 = paddle.static.data(
+                    name="tensor2", shape=self.shape, dtype=self.dtype
+                )
+                out = paddle.addcmul(x, t1, t2, value=0.5)
 
-            place = paddle.CPUPlace()
-            exe = base.Executor(place)
-            result = exe.run(
-                base.default_main_program(),
-                feed={
-                    "x": self.np_input,
-                    "tensor1": self.np_tensor1,
-                    "tensor2": self.np_tensor2,
-                },
-                fetch_list=[out],
-            )
-            ref_out = self.np_input + 0.5 * self.np_tensor1 * self.np_tensor2
-            np.testing.assert_allclose(result[0], ref_out, rtol=1e-5)
+                place = paddle.CPUPlace()
+                exe = base.Executor(place)
+                result = exe.run(
+                    main,
+                    feed={
+                        "x": self.np_input,
+                        "tensor1": self.np_tensor1,
+                        "tensor2": self.np_tensor2,
+                    },
+                    fetch_list=[out],
+                )
+                ref_out = (
+                    self.np_input + 0.5 * self.np_tensor1 * self.np_tensor2
+                )
+                np.testing.assert_allclose(result[0], ref_out, rtol=1e-5)
         paddle.disable_static()
 
     def test_out_parameter(self):
