@@ -4256,7 +4256,7 @@ def set_(
         if source is None:
             source = paddle.empty([0], dtype=x.dtype)
             shape = [0]
-            stride = [0]
+            stride = source.strides
         else:
             if not isinstance(source, (Variable, core.eager.Tensor)):
                 raise ValueError(

@@ -262,7 +262,7 @@ void TDMSamplerKernel(const Context &dev_ctx,
                       DenseTensor *out,
                       DenseTensor *labels,
                       DenseTensor *mask) {
-  const auto &input_type = phi::TransToProtoVarType(x.dtype());
+  const auto &input_type = TransToProtoVarType(x.dtype());
   bool input_type_match =
       input_type == ProtoDataType::INT32 || input_type == ProtoDataType::INT64;
   PADDLE_ENFORCE_EQ(input_type_match,
@@ -270,11 +270,11 @@ void TDMSamplerKernel(const Context &dev_ctx,
                     common::errors::InvalidArgument(
                         "Input(X) holds the wrong type, it holds %s, but "
                         "desires to be %s or %s",
-                        phi::DataTypeToString(x.dtype()),
-                        phi::DataTypeToString(DataType::INT32),
-                        phi::DataTypeToString(DataType::INT64)));
+                        DataTypeToString(x.dtype()),
+                        DataTypeToString(DataType::INT32),
+                        DataTypeToString(DataType::INT64)));
 
-  const auto &travel_type = phi::TransToProtoVarType(travel.dtype());
+  const auto &travel_type = TransToProtoVarType(travel.dtype());
   bool travel_type_match = travel_type == ProtoDataType::INT32 ||
                            travel_type == ProtoDataType::INT64;
   PADDLE_ENFORCE_EQ(travel_type_match,
@@ -282,11 +282,11 @@ void TDMSamplerKernel(const Context &dev_ctx,
                     common::errors::InvalidArgument(
                         "Input(Travel) holds the wrong type, it holds %s, but "
                         "desires to be %s or %s",
-                        phi::DataTypeToString(travel.dtype()),
-                        phi::DataTypeToString(DataType::INT32),
-                        phi::DataTypeToString(DataType::INT64)));
+                        DataTypeToString(travel.dtype()),
+                        DataTypeToString(DataType::INT32),
+                        DataTypeToString(DataType::INT64)));
 
-  const auto &layer_type = phi::TransToProtoVarType(layer.dtype());
+  const auto &layer_type = TransToProtoVarType(layer.dtype());
   bool layer_type_match =
       layer_type == ProtoDataType::INT32 || layer_type == ProtoDataType::INT64;
   PADDLE_ENFORCE_EQ(layer_type_match,
@@ -294,16 +294,16 @@ void TDMSamplerKernel(const Context &dev_ctx,
                     common::errors::InvalidArgument(
                         "Input(Layer) holds the wrong type, it holds %s, but "
                         "desires to be %s or %s",
-                        phi::DataTypeToString(layer.dtype()),
-                        phi::DataTypeToString(DataType::INT32),
-                        phi::DataTypeToString(DataType::INT64)));
+                        DataTypeToString(layer.dtype()),
+                        DataTypeToString(DataType::INT32),
+                        DataTypeToString(DataType::INT64)));
   PADDLE_ENFORCE_EQ(travel_type,
                     layer_type,
                     common::errors::InvalidArgument(
                         "Input(Travel) must holds the same type with "
                         "Input(Layer), but Travel holds %s, and Layer holds %s",
-                        phi::DataTypeToString(travel.dtype()),
-                        phi::DataTypeToString(layer.dtype())));
+                        DataTypeToString(travel.dtype()),
+                        DataTypeToString(layer.dtype())));
 
   auto output_type = static_cast<ProtoDataType>(dtype);
 

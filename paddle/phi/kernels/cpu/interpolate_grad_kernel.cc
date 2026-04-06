@@ -41,7 +41,7 @@ static void LinearInterpolationGrad(const DenseTensor& output_grad,
   auto input_grad_t = EigenTensor<T, 3>::From(*input_grad);
   auto output_grad_t = EigenTensor<T, 3>::From(output_grad);
   bool align_flag = (align_mode == 0 && !align_corners);
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename dtype::MPTypeTrait<T>::Type;
   for (int l = 0; l < out_w; l++) {
     int x_w = static_cast<int>(align_flag ? (ratio_w * (l + 0.5) - 0.5)
                                           : (ratio_w * static_cast<float>(l)));
@@ -91,7 +91,7 @@ static void BilinearInterpolationGrad(const DenseTensor& output_grad,
   auto output_grad_t = EigenTensor<T, 4>::From(output_grad);
   bool align_flag = (align_mode == 0 && !align_corners);
 
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename dtype::MPTypeTrait<T>::Type;
 
   for (int k = 0; k < out_h; k++) {  // loop for images
     int y_n = static_cast<int>(align_flag ? (ratio_h * (k + 0.5) - 0.5)
@@ -192,7 +192,7 @@ static void BicubicInterpolationGrad(const DenseTensor& output_grad,
                                      const DataLayout data_layout) {
   auto input_grad_t = EigenTensor<T, 4>::From(*input_grad);
   auto output_grad_t = EigenTensor<T, 4>::From(output_grad);
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename dtype::MPTypeTrait<T>::Type;
 
   for (int k = 0; k < out_h; k++) {  // loop for images
     MT y_n = align_corners ? ratio_h * static_cast<float>(k)
@@ -258,7 +258,7 @@ static void TrilinearInterpolationGrad(const DenseTensor& output_grad,
   auto input_grad_t = EigenTensor<T, 5>::From(*input_grad);
   auto output_grad_t = EigenTensor<T, 5>::From(output_grad);
   bool align_flag = (align_mode == 0 && !align_corners);
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename dtype::MPTypeTrait<T>::Type;
   for (int j = 0; j < out_d; j++) {  // loop for D
     int t_f = static_cast<int>(
         align_flag ? (ratio_d * (static_cast<float>(j) + 0.5f) - 0.5f)
@@ -1203,7 +1203,7 @@ static void AAInterpolation2DGradCPU_NCHW(const T* output_grad_data,
                                           float ratio_h,
                                           float ratio_w,
                                           const InterpFilter& filter) {
-  using WT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using WT = typename dtype::MPTypeTrait<T>::Type;
   WT scale_h = static_cast<WT>(ratio_h);
   WT scale_w = static_cast<WT>(ratio_w);
 
@@ -1330,7 +1330,7 @@ static void AAInterpolation2DGradCPU_NHWC(const T* output_grad_data,
                                           float ratio_h,
                                           float ratio_w,
                                           const InterpFilter& filter) {
-  using WT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using WT = typename dtype::MPTypeTrait<T>::Type;
   WT scale_h = static_cast<WT>(ratio_h);
   WT scale_w = static_cast<WT>(ratio_w);
 
@@ -1591,10 +1591,9 @@ static void InterpolateAA2DCPUBwd(
 
   // Use conditional type matching GPU: float for integral/half types, double
   // for double
-  using MT =
-      typename std::conditional_t<std::is_integral<T>::value,
-                                  float,
-                                  typename phi::dtype::MPTypeTrait<T>::Type>;
+  using MT = typename std::conditional_t<std::is_integral<T>::value,
+                                         float,
+                                         typename dtype::MPTypeTrait<T>::Type>;
   MT ratio_h =
       funcs::AreaPixelComputeScale<MT>(in_h, out_h, align_corners, scale_h);
   MT ratio_w =

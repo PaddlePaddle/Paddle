@@ -3107,6 +3107,66 @@ def cross_entropy(
             input, label, soft_label, use_softmax, True, ignore_index, axis
         )
 
+        # Accuracy-compatible mode: decompose into log_softmax + nll_loss
+        # for precision alignment with mainstream frameworks.
+        if (
+            not soft_label
+            and use_softmax
+            and (axis == -1 or axis == len(input.shape) - 1)
+            and paddle.get_flags(["FLAGS_use_accuracy_compatible_kernel"]).get(
+                "FLAGS_use_accuracy_compatible_kernel", False
+            )
+        ):
+            _nll_input = input
+            _nll_orig_dtype = input.dtype
+            log_softmax_out = paddle.nn.functional.log_softmax(
+                _nll_input, axis=axis
+            )
+            _nll_weight = weight
+            # nll_loss does not support float16/bfloat16; promote to float32
+            if _nll_orig_dtype in (paddle.float16, paddle.bfloat16):
+                log_softmax_out = paddle.cast(log_softmax_out, paddle.float32)
+                # Cast weight to match promoted dtype if needed
+                if weight is not None:
+                    _nll_weight = paddle.cast(weight, paddle.float32)
+            # nll_loss expects label shape [N] for 2D input
+            nll_label = label
+            if nll_label.ndim > 1 and nll_label.shape[-1] == 1:
+                nll_label = paddle.squeeze(nll_label, axis=-1)
+            # Save original label shape before reshape for reduction='none'
+            _nll_label_shape = list(nll_label.shape)
+            _did_reshape = False
+            # nll_loss only accepts rank 2 or 4; reshape N-D [B,d1,...,dk,C] -> [B*d1*...*dk, C]
+            if log_softmax_out.ndim >= 3:
+                _C = log_softmax_out.shape[-1]
+                log_softmax_out = paddle.reshape(log_softmax_out, [-1, _C])
+                nll_label = paddle.reshape(nll_label, [-1])
+                _did_reshape = True
+            # nll_loss requires int64 labels
+            if nll_label.dtype != paddle.int64:
+                nll_label = paddle.cast(nll_label, paddle.int64)
+            loss, _ = _C_ops.nll_loss(
+                log_softmax_out,
+                nll_label,
+                _nll_weight,
+                ignore_index,
+                reduction,
+            )
+            # For reduction='none', reshape loss back to original label shape
+            if reduction == 'none' and _did_reshape:
+                loss = paddle.reshape(loss, _nll_label_shape)
+            # Match output shape with non-compatible path:
+            # - If user passed label without trailing 1 (input_dims-1==label_dims),
+            #   the non-compatible path squeezes; our output is already correct.
+            # - If user passed label with trailing 1 (input_dims==label_dims),
+            #   the non-compatible path keeps [B,S,1]; we need to unsqueeze back.
+            if reduction == 'none' and input_dims == label_dims:
+                loss = paddle.unsqueeze(loss, axis=axis)
+            # Cast back to original dtype if promoted
+            if _nll_orig_dtype in (paddle.float16, paddle.bfloat16):
+                loss = paddle.cast(loss, _nll_orig_dtype)
+            return loss
+
         if weight is not None:
             # trans weight from class to sample, shape:N or [N,H,W] for 1d and 2d cases.
             if soft_label:

@@ -26,6 +26,7 @@ from paddle.framework import core
 from ..meta_parallel.parallel_layers.random import get_rng_state_tracker
 from ..meta_parallel.pp_utils import utils
 from .recompute import (
+    _protect_tensors,
     check_recompute_necessary,
     custom_state_manager,
     detach_variable,
@@ -154,10 +155,13 @@ class _HPRecomputeFunction(PyLayer):
         ctx.amp_dtype = tracer._amp_dtype
         ctx.amp_white_list, ctx.amp_black_list = tracer._get_amp_op_list()
 
-        with paddle.no_grad():
-            outputs = run_function(*args, **kwargs)
+        # Protect input tensors before saving to prevent release by pipeline parallel
+        protected_args = _protect_tensors(args)
 
-        for i, arg in enumerate(args):
+        with paddle.no_grad():
+            outputs = run_function(*protected_args, **kwargs)
+
+        for i, arg in enumerate(protected_args):
             if paddle.is_tensor(arg):
                 state = arg.stop_gradient
                 if partition:

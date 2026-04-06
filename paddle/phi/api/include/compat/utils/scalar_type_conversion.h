@@ -15,6 +15,7 @@
 #pragma once
 #include <c10/core/ScalarType.h>
 #include <c10/util/Exception.h>
+#include <c10/util/typeid.h>
 #include <utils/macros.h>
 #include "paddle/phi/common/data_type.h"
 
@@ -47,6 +48,11 @@ inline c10::ScalarType _PD_PhiDataTypeToAtenScalarType(phi::DataType dtype) {
       UNSUPPORTED_FEATURE_IN_PADDLE("Unsupported DataType")
       return c10::ScalarType::Undefined;  // to avoid compile warning
   }
+}
+
+// Overload that accepts caffe2::TypeMeta directly.
+inline phi::DataType _PD_AtenScalarTypeToPhiDataType(caffe2::TypeMeta dtype) {
+  return _PD_AtenScalarTypeToPhiDataType(dtype.toScalarType());
 }
 
 }  // namespace compat

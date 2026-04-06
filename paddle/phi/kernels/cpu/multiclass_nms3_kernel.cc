@@ -234,14 +234,14 @@ T PolyIoU(const T* box1,
 
 inline std::vector<size_t> GetNmsLodFromRoisNum(const DenseTensor* rois_num) {
   std::vector<size_t> rois_lod;
-  if (rois_num->dtype() == phi::DataType::INT64) {
+  if (rois_num->dtype() == DataType::INT64) {
     auto* rois_num_data = rois_num->data<int64_t>();
     rois_lod.push_back(static_cast<size_t>(0));
     for (int64_t i = 0; i < rois_num->numel(); ++i) {
       rois_lod.push_back(rois_lod.back() +
                          static_cast<size_t>(rois_num_data[i]));
     }
-  } else if (rois_num->dtype() == phi::DataType::INT32) {
+  } else if (rois_num->dtype() == DataType::INT32) {
     auto* rois_num_data = rois_num->data<int>();
     rois_lod.push_back(static_cast<size_t>(0));
     for (int i = 0; i < rois_num->numel(); ++i) {

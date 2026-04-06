@@ -41,31 +41,46 @@ static __device__ __forceinline__ float FP32FastTanh(float x) {
 
 template <typename T, bool FastMode>
 static __device__ __forceinline__ T GeluFwd(T x) {
+  constexpr float kBeta = 0.7978845608f;  // M_SQRT2 * M_2_SQRTPI * 0.5
+  constexpr float kKappa = 0.044715f;
   const float cast_x = static_cast<float>(x);
-  auto tanh_out = FP32FastTanh<FastMode>(0.79788456f * cast_x *
-                                         (1.0f + 0.044715f * cast_x * cast_x));
-  return static_cast<T>(cast_x * 0.5f * (1.0f + tanh_out));
+  auto x_cube = cast_x * cast_x * cast_x;
+  auto inner = kBeta * (cast_x + kKappa * x_cube);
+  auto tanh_out = FP32FastTanh<FastMode>(inner);
+  return static_cast<T>(0.5f * cast_x * (1.0f + tanh_out));
 }
 
 #ifdef PADDLE_WITH_HIP
 template <bool FastMode>
 static __device__ __forceinline__ __half GeluFwdHalf(__half x) {
+  constexpr float kBeta = 0.7978845608f;
+  constexpr float kKappa = 0.044715f;
   const float cast_x = __half2float(x);
-  auto tanh_out = FP32FastTanh<FastMode>(0.79788456f * cast_x *
-                                         (1.0f + 0.044715f * cast_x * cast_x));
-  return __float2half(cast_x * 0.5f * (1.0f + tanh_out));
+  auto x_cube = cast_x * cast_x * cast_x;
+  auto inner = kBeta * (cast_x + kKappa * x_cube);
+  auto tanh_out = FP32FastTanh<FastMode>(inner);
+  return __float2half(0.5f * cast_x * (1.0f + tanh_out));
 }
 #endif
 
 template <bool FastMode>
 static __device__ __forceinline__ float FP32GeluBwd(float x, float y_g) {
-  auto tanh_out =
-      FP32FastTanh<FastMode>(0.79788456f * x * (1.0f + 0.044715f * x * x));
-  auto tmp = 0.5f * x *
-                 ((1.0f - tanh_out * tanh_out) *
-                  (0.79788456f + 0.1070322243f * x * x)) +
-             0.5f * (1.0f + tanh_out);
-  return tmp * y_g;
+  constexpr float kBeta = 0.7978845608f;  // M_SQRT2 * M_2_SQRTPI * 0.5
+  constexpr float kKappa = 0.044715f;
+  auto x_sq = x * x;
+  auto x_cube = x_sq * x;
+  auto inner = kBeta * (x + kKappa * x_cube);
+  auto tanh_inner = FP32FastTanh<FastMode>(inner);
+
+  auto left = 0.5f * x;
+  auto right = 1.0f + tanh_inner;
+
+  auto left_derivative = 0.5f * right;
+  auto tanh_derivative = 1.0f - tanh_inner * tanh_inner;
+  auto inner_derivative = kBeta * (1.0f + 3.0f * kKappa * x_sq);
+  auto right_derivative = left * tanh_derivative * inner_derivative;
+
+  return y_g * (left_derivative + right_derivative);
 }
 
 template <int VecSize, bool FastMode>

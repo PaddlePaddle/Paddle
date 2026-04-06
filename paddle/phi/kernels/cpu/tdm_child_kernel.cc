@@ -111,7 +111,7 @@ void TDMChildKernel(const Context &dev_ctx,
                     const DenseTensor &x,
                     const DenseTensor &tree_info,
                     int child_nums,
-                    phi::DataType dtype,
+                    DataType dtype,
                     DenseTensor *child,
                     DenseTensor *leaf_mask) {
   const auto &input_type = x.dtype();

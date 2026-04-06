@@ -22,6 +22,12 @@
 namespace at {
 
 inline bool equal(const at::Tensor& self, const at::Tensor& other) {
+  PD_CHECK(self.defined(),
+           "Expected a proper Tensor but got None (or an undefined Tensor in "
+           "C++)");
+  PD_CHECK(other.defined(),
+           "Expected a proper Tensor but got None (or an undefined Tensor in "
+           "C++)");
   PD_CHECK(self.device() == other.device(),
            "Cannot compare two tensors on "
            "different devices. Got: ",

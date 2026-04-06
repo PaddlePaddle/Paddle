@@ -65,6 +65,15 @@ TEST(TensorNewTest, NewEmptyWithDevice) {
   ASSERT_EQ(result.device().type(), at::kCPU);
 }
 
+TEST(TensorNewTest, NewEmptyNulloptDtypeInheritsSourceDtype) {
+  at::Tensor t = at::arange(6, at::kInt);
+
+  at::Tensor result =
+      t.new_empty({2, 2}, std::nullopt, std::nullopt, at::kCPU, false);
+
+  ASSERT_EQ(result.scalar_type(), at::kInt);
+}
+
 // ======================== new_full tests ========================
 
 TEST(TensorNewTest, NewFullBasic) {
@@ -102,6 +111,16 @@ TEST(TensorNewTest, NewFullScalarValue) {
   at::Tensor result = t.new_full({2, 2}, scalar_val);
 
   ASSERT_FLOAT_EQ(result.data_ptr<float>()[0], 3.14f);
+}
+
+TEST(TensorNewTest, NewFullNulloptDtypeInheritsSourceDtype) {
+  at::Tensor t = at::arange(6, at::kLong);
+
+  at::Tensor result =
+      t.new_full({2, 2}, 9, std::nullopt, std::nullopt, at::kCPU, false);
+
+  ASSERT_EQ(result.scalar_type(), at::kLong);
+  ASSERT_EQ(result.data_ptr<int64_t>()[0], 9);
 }
 
 // ======================== new_zeros tests ========================
@@ -143,6 +162,16 @@ TEST(TensorNewTest, NewZerosIntType) {
   ASSERT_EQ(result.data_ptr<int>()[0], 0);
 }
 
+TEST(TensorNewTest, NewZerosNulloptDtypeInheritsSourceDtype) {
+  at::Tensor t = at::arange(6, at::kDouble);
+
+  at::Tensor result =
+      t.new_zeros({2, 3}, std::nullopt, std::nullopt, at::kCPU, false);
+
+  ASSERT_EQ(result.scalar_type(), at::kDouble);
+  ASSERT_EQ(result.data_ptr<double>()[0], 0.0);
+}
+
 // ======================== new_ones tests ========================
 
 TEST(TensorNewTest, NewOnesBasic) {
@@ -181,4 +210,14 @@ TEST(TensorNewTest, NewOnesIntType) {
 
   ASSERT_EQ(result.dtype(), at::kInt);
   ASSERT_EQ(result.data_ptr<int>()[0], 1);
+}
+
+TEST(TensorNewTest, NewOnesNulloptDtypeInheritsSourceDtype) {
+  at::Tensor t = at::ones({6}, at::kDouble);
+
+  at::Tensor result =
+      t.new_ones({2, 3}, std::nullopt, std::nullopt, at::kCPU, false);
+
+  ASSERT_EQ(result.scalar_type(), at::kDouble);
+  ASSERT_EQ(result.data_ptr<double>()[0], 1.0);
 }

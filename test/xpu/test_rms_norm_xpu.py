@@ -33,30 +33,27 @@ class TestFusedRMSNorm(unittest.TestCase):
         if bias is not None:
             y = y + bias.reshape([1, -1])
 
-        return y, paddle.flatten(1.0 / rms)
+        return y
 
     def test_2d_input(self):
         rows, cols = 32, 64
         x = paddle.randn([rows, cols])
         scale = paddle.randn([cols])
 
-        y_fused, invvar_fused = rms_norm(x, (cols,), scale)
+        y_fused = rms_norm(x, (cols,), scale)
 
-        y_ref, invvar_ref = self.rms_norm_reference(x, scale)
+        y_ref = self.rms_norm_reference(x, scale)
 
         np.testing.assert_allclose(y_fused, y_ref, rtol=1e-5, atol=1e-5)
-        np.testing.assert_allclose(
-            invvar_fused, invvar_ref, rtol=1e-5, atol=1e-5
-        )
 
     def test_3d_input(self):
         batch, rows, cols = 16, 32, 64
         x = paddle.randn([batch, rows, cols])
         scale = paddle.randn([cols])
 
-        y_fused, invvar_fused = rms_norm(x, (cols,), scale)
+        y_fused = rms_norm(x, (cols,), scale)
 
-        y_ref, invvar_ref = self.rms_norm_reference(x, scale)
+        y_ref = self.rms_norm_reference(x, scale)
 
         np.testing.assert_allclose(
             y_fused.astype("float32"),
@@ -64,23 +61,17 @@ class TestFusedRMSNorm(unittest.TestCase):
             rtol=1e-5,
             atol=1e-5,
         )
-        np.testing.assert_allclose(
-            invvar_fused, invvar_ref, rtol=1e-5, atol=1e-5
-        )
 
     def test_without_bias(self):
         rows, cols = 32, 64
         x = paddle.randn([rows, cols])
         scale = paddle.randn([cols])
 
-        y_fused, invvar_fused = rms_norm(x, (cols,), scale)
+        y_fused = rms_norm(x, (cols,), scale)
 
-        y_ref, invvar_ref = self.rms_norm_reference(x, scale)
+        y_ref = self.rms_norm_reference(x, scale)
 
         np.testing.assert_allclose(y_fused, y_ref, rtol=1e-5, atol=1e-5)
-        np.testing.assert_allclose(
-            invvar_fused, invvar_ref, rtol=1e-5, atol=1e-5
-        )
 
     def test_3d_backward(self):
         batch, rows, cols = 8, 16, 32
@@ -89,7 +80,7 @@ class TestFusedRMSNorm(unittest.TestCase):
         scale = paddle.randn([cols], dtype='float32')
         scale.stop_gradient = False
 
-        y_fused, invvar = rms_norm(x, (cols,), scale)
+        y_fused = rms_norm(x, (cols,), scale)
 
         loss = paddle.mean(y_fused)
         loss.backward()
@@ -100,7 +91,7 @@ class TestFusedRMSNorm(unittest.TestCase):
         x.clear_gradient()
         scale.clear_gradient()
 
-        y_ref, invvar_ref = self.rms_norm_reference(x, scale)
+        y_ref = self.rms_norm_reference(x, scale)
         loss_ref = paddle.mean(y_ref)
         loss_ref.backward()
 
@@ -126,7 +117,7 @@ class TestFusedRMSNorm(unittest.TestCase):
             scale = paddle.randn([cols], dtype=scale_type)
             scale.stop_gradient = False
 
-            y_fused, invvar = rms_norm(x, (cols,), scale)
+            y_fused = rms_norm(x, (cols,), scale)
 
             loss = paddle.mean(y_fused)
             loss.backward()
@@ -141,9 +132,9 @@ class TestFusedRMSNorm(unittest.TestCase):
                 # FIXME(yangjianbang): XPU sqrt_grad does not support bfloat16
                 x_fp32 = x.cast("float32")
                 scale_fp32 = scale.cast("float32")
-                y_ref, invvar_ref = self.rms_norm_reference(x_fp32, scale_fp32)
+                y_ref = self.rms_norm_reference(x_fp32, scale_fp32)
             else:
-                y_ref, invvar_ref = self.rms_norm_reference(x, scale)
+                y_ref = self.rms_norm_reference(x, scale)
             loss_ref = paddle.mean(y_ref)
             loss_ref.backward()
 

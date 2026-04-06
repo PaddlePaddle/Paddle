@@ -231,7 +231,7 @@ TEST(compat_basic_test, BasicCase) {
 TEST(TestDevice, DeviceAPIsOnCUDA) {
   // Test device related APIs on CUDA if available
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (at::cuda::is_available()) {
+  if (torch::cuda::is_available()) {
     at::TensorBase cuda_tensor = at::ones(
         {2, 3}, c10::TensorOptions().dtype(at::kFloat).device(at::kCUDA));
 

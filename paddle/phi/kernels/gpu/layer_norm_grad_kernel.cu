@@ -39,6 +39,9 @@ static inline LayerNormGadKernelVariant LayerNormGradKernelDispatch(
     const DenseTensor* scale,
     const DenseTensor* bias) {
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
+  if (FLAGS_use_accuracy_compatible_kernel) {
+    return LayerNormGadKernelVariant::GENERIC;
+  }
   if (scale != nullptr && bias != nullptr &&
       input_type != paddle::DataType::FLOAT32 && hidden_size != 4096 &&
       hidden_size > 1024 && hidden_size <= 10240 &&
