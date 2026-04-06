@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// The file has been adapted from pytorch project
+// Licensed under BSD-style license -
+// https://github.com/pytorch/pytorch/blob/main/LICENSE
+
 // Tests for the compat-layer dispatch key priority selection logic introduced
 // in OperationInvoker::get_op_with_args (torch_compat.h).
 //
