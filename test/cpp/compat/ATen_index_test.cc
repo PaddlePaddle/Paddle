@@ -21,8 +21,11 @@
 #include <c10/core/TensorOptions.h>
 
 #include "ATen/ATen.h"
+#include "common/macros.h"
 #include "gtest/gtest.h"
 #include "torch/all.h"
+
+COMMON_DECLARE_bool(use_stride_kernel);
 
 // ======================== index tests ========================
 
@@ -53,6 +56,9 @@ TEST(TensorIndexTest, IndexWithSingleTensor) {
 }
 
 TEST(TensorIndexTest, SliceKeepsStrideWithoutContiguousCopy) {
+  if (!FLAGS_use_stride_kernel) {
+    GTEST_SKIP() << "Skipping test because FLAGS_use_stride_kernel is disabled";
+  }
   at::Tensor base = at::arange(24, at::kFloat).reshape({4, 6});
   at::Tensor transposed = base.t();  // shape: [6, 4], strides: [1, 6]
   ASSERT_FALSE(transposed.is_contiguous());
@@ -96,6 +102,9 @@ TEST(TensorIndexTest, IndexWithTensorInitializerList) {
 }
 
 TEST(TensorIndexTest, MemberIndexWithArrayRefTensorIndices) {
+  if (!FLAGS_use_stride_kernel) {
+    GTEST_SKIP() << "Skipping test because FLAGS_use_stride_kernel is disabled";
+  }
   at::Tensor base = at::arange(24, at::kFloat).reshape({4, 6});
   at::Tensor transposed = base.t();
   std::vector<at::indexing::TensorIndex> indices = {at::indexing::Slice(1, 5),

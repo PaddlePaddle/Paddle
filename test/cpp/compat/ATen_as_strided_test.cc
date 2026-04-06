@@ -19,8 +19,11 @@
 #include <c10/core/TensorOptions.h>
 
 #include "ATen/ATen.h"
+#include "common/macros.h"
 #include "gtest/gtest.h"
 #include "torch/all.h"
+
+COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace {
 
@@ -135,6 +138,9 @@ TEST_F(TensorAsStridedTest, AsStridedScatterWithOffset) {
 }
 
 TEST_F(TensorAsStridedTest, AsStridedTranspose) {
+  if (!FLAGS_use_stride_kernel) {
+    GTEST_SKIP() << "Skipping test because FLAGS_use_stride_kernel is disabled";
+  }
   // Transpose: shape {2,3} -> {3,2}, stride {1,2}
   // [[0,1,2],[3,4,5]] -> [[0,3],[1,4],[2,5]]
   at::Tensor t = at::arange(6, at::kFloat).view({2, 3});
@@ -147,6 +153,9 @@ TEST_F(TensorAsStridedTest, AsStridedTranspose) {
 }
 
 TEST_F(TensorAsStridedTest, AsStridedContiguous) {
+  if (!FLAGS_use_stride_kernel) {
+    GTEST_SKIP() << "Skipping test because FLAGS_use_stride_kernel is disabled";
+  }
   at::Tensor t = at::arange(12, at::kFloat);
 
   // Contiguous: {2,6}, stride {6,1}
