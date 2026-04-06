@@ -64,7 +64,8 @@ inline void Tensor::record_stream(cudaStream_t s) const {
            "tensor implementation.");
   PD_CHECK(dense_tensor->place().GetType() != phi::AllocationType::CPU,
            "record_stream is not supported for CPU tensors.");
-  paddle::memory::RecordStream(dense_tensor->Holder(), s);
+  paddle::memory::RecordStream(dense_tensor->Holder(),
+                               reinterpret_cast<gpuStream_t>(s));
 }
 #endif
 }  // namespace at
