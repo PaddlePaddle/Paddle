@@ -53,6 +53,7 @@ import glob
 import json
 import multiprocessing
 import os
+import queue
 import re
 import shutil
 import subprocess
@@ -61,17 +62,7 @@ import tempfile
 import threading
 import traceback
 
-try:
-    import yaml
-except ImportError:
-    yaml = None
-
-is_py2 = sys.version[0] == '2'
-
-if is_py2:
-    import Queue as queue
-else:
-    import queue
+import yaml
 
 
 def find_compilation_database(path, result="./"):
@@ -482,25 +473,4 @@ if __name__ == '__main__':
         )
         sys.exit(0)
 
-    target_version = "15.0"
-    try:
-        out = subprocess.check_output(['clang-tidy', '--version'], shell=True)
-        version = out.decode('utf-8')
-        if version.find(target_version) == -1:
-            print(
-                f"clang-tidy version == {target_version} not found, attempting auto-install...",
-                file=sys.stderr,
-            )
-            subprocess.check_output(
-                'pip install --no-cache clang-tidy=="15.0.2.1"',
-                shell=True,
-            )
-    except:
-        print(
-            "clang-tidy not found, attempting auto-install...", file=sys.stderr
-        )
-        subprocess.check_output(
-            'pip install --no-cache clang-tidy=="15.0.2.1"',
-            shell=True,
-        )
     main()

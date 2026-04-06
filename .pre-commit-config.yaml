@@ -46,7 +46,8 @@ repos:
       - id: copyright_checker
         name: copyright_checker
         entry: python ./tools/codestyle/copyright.py
-        language: system
+        language: python
+        language_version: python3
         files: \.(c|cc|cxx|cpp|cu|h|cuh|hpp|hxx|proto|xpu|kps|py|pyi|sh)$
         exclude: |
           (?x)^(
@@ -71,16 +72,22 @@ repos:
       - id: clang-format
         name: clang-format
         description: Format files with ClangFormat.
-        entry: bash ./tools/codestyle/clang_format.sh -i
-        language: system
+        entry: clang-format -i
+        language: python
+        language_version: python3
+        additional_dependencies:
+          - clang-format==13.0.0
         files: \.(c|cc|cxx|cpp|cu|h|cuh|hpp|hxx|xpu|kps)$
   - repo: local
     hooks:
-      - id: cpplint-cpp-source
+      - id: cpplint
         name: cpplint
         description: Check C++ code style using cpplint.py.
-        entry: bash ./tools/codestyle/cpplint_pre_commit.sh
-        language: system
+        entry: cpplint
+        language: python
+        language_version: python3
+        additional_dependencies:
+          - cpplint==1.6.0
         files: \.(cc|cxx|cpp|cu|cuh|h|hpp|hxx)$
         args:
           - --extensions=cc,cxx,cpp,cu,cuh,h,hpp,hxx,kps
@@ -101,7 +108,11 @@ repos:
         name: clang-tidy
         description: Parallel clang-tidy runner.
         entry: python ./tools/codestyle/clang-tidy.py
-        language: system
+        language: python
+        language_version: python3
+        additional_dependencies:
+          - pyyaml
+          - clang-tidy==15.0.2.1
         files: \.(c|cc|cxx|cpp|h|hpp|hxx)$
         args:
           - -p=build/
@@ -179,5 +190,6 @@ repos:
         description: Sorts each line string in a text file
         entry: python ./tools/codestyle/sort_txt_file.py
         language: python
+        language_version: python3
         files: test/white_list/pir_op_test_white_list
         args: []
