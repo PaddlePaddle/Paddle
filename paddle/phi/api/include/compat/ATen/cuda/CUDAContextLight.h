@@ -107,7 +107,6 @@ bool canDeviceAccessPeer(c10::DeviceIndex device, c10::DeviceIndex peer_device);
 CUDAContextSparseHandle getCurrentCUDASparseHandle();
 CUDAContextBlasHandle getCurrentCUDABlasHandle();
 CUDAContextBlasLtHandle getCurrentCUDABlasLtHandle();
-#endif
 
 void clearCublasWorkspaces();
 struct WorkspaceMapWithMutex {
@@ -123,13 +122,13 @@ void* getCUDABlasLtWorkspace();
 
 CUDAContextSolverHandle getCurrentCUDASolverDnHandle();
 
+#if defined(USE_CUDSS)
+cudssHandle_t getCurrentCudssHandle();
+#endif
+
 // Get the CUDA device allocator for the current device.
 // Returns a pointer to a c10::Allocator that allocates GPU memory.
 c10::Allocator* getCUDADeviceAllocator();
-#endif
-
-#if defined(USE_CUDSS)
-cudssHandle_t getCurrentCudssHandle();
 #endif
 
 }  // namespace at::cuda
