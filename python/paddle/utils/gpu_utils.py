@@ -119,24 +119,26 @@ def _parse_tensor_from_gpu_print(text):
             dtype, mismatched numel, …).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import os, sys, tempfile
             >>> # Capture the C-level stdout written by the CUDA printf kernel.
             >>> def capture(tensor):
-            ...     with tempfile.NamedTemporaryFile(mode='w+', suffix='.txt',
-            ...                                     delete=False) as f:
+            ...     with tempfile.NamedTemporaryFile(mode='w+', suffix='.txt', delete=False) as f:
             ...         path = f.name
             ...     sys.stdout.flush()
             ...     old = os.dup(1)
             ...     fd = os.open(path, os.O_WRONLY | os.O_TRUNC)
-            ...     os.dup2(fd, 1); os.close(fd)
+            ...     os.dup2(fd, 1)
+            ...     os.close(fd)
             ...     paddle.utils.gpu_utils._print_tensor_in_gpu(tensor)
             ...     paddle.device.synchronize()
             ...     sys.stdout.flush()
-            ...     os.dup2(old, 1); os.close(old)
-            ...     text = open(path).read(); os.remove(path)
+            ...     os.dup2(old, 1)
+            ...     os.close(old)
+            ...     text = open(path).read()
+            ...     os.remove(path)
             ...     return text
             >>> x = paddle.to_tensor([[1.0, 2.0], [3.0, 4.0]])
             >>> text = capture(x)
