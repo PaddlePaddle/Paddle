@@ -4200,7 +4200,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
 - op : p_norm
-  args : (Tensor x,  float porder=2,  int axis=-1,  float epsilon=1.0e-12f,  bool keepdim=false,  bool asvector=false)
+  args : (Tensor x,  double porder=2,  int axis=-1,  float epsilon=1.0e-12f,  bool keepdim=false,  bool asvector=false)
   output : Tensor(out)
   infer_meta :
     func : PNormInferMeta
@@ -6209,7 +6209,7 @@
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op: rms_norm
-  args: (Tensor x, Tensor scale, int64_t[] normalized_shape={}, double epsilon= 1e-5)
+  args: (Tensor x, Tensor scale, int64_t[] normalized_shape={}, double epsilon=1.19209289550781250e-7)
   output: Tensor(y), Tensor(invvar)
   infer_meta:
     func: RmsNormInferMeta

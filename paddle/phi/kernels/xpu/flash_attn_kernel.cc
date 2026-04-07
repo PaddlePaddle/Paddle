@@ -188,7 +188,7 @@ void FlashAttnKernelBase(const Context& dev_ctx,
   int64_t max_seqlen_q = max_seqlen_q_.to<int64_t>();
   int64_t max_seqlen_k = max_seqlen_k_.to<int64_t>();
   std::vector<int64_t> softmax_lse_dims = {batch_size, num_heads, max_seqlen_q};
-  softmax_lse->Resize(phi::make_ddim(softmax_lse_dims));
+  softmax_lse->Resize(softmax_lse_dims);
   dev_ctx.template Alloc<float>(softmax_lse);
 
   // output: o

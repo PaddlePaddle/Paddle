@@ -16,6 +16,7 @@
 #include <type_traits>
 
 #include "paddle/common/errors.h"
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
@@ -65,16 +66,22 @@ void EmbeddingEltWiseLayerNormKernel(
     in2s.push_back(reinterpret_cast<uintptr_t>(embs[i]->data<T>()));
   }
 
+  const int64_t* stable_in1s =
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          const_cast<int64_t*>(in1s.data()), in1s.size());
   phi::memory_utils::Copy(GPUPlace{},
                           in_ids_d,
                           CPUPlace{},
-                          in1s.data(),
+                          stable_in1s,
                           sizeof(int64_t) * input_num,
                           dev_ctx.stream());
+  const int64_t* stable_in2s =
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          const_cast<int64_t*>(in2s.data()), in2s.size());
   phi::memory_utils::Copy(GPUPlace{},
                           in_embs_d,
                           CPUPlace{},
-                          in2s.data(),
+                          stable_in2s,
                           sizeof(int64_t) * input_num,
                           dev_ctx.stream());
 

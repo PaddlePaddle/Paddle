@@ -252,3 +252,163 @@ CUDADeviceGuard guard(dev_id_);  // 现在安全了
 3. **`FLAGS_use_system_allocator=1` 绕过了缓存池**：使问题在正常路径下隐藏的 bug 暴露出来（默认分配器有缓存，不会每次都 `cudaFree`）
 4. **增量编译后必须验证 .so 部署**：Paddle 的构建产物和 Python 加载路径不同，`ninja` 只更新了前者，需要手动同步后者
 5. **修复必须覆盖所有并行路径**：`Free` 和 `FreeAsync` 都需要添加保护，不能只修一处
+
+---
+
+## 案例：put_along_axis (scatter) CUDA Graph 模式下内存越界修复
+
+### 问题描述
+```bash
+compute-sanitizer --tool memcheck --target-processes all python test_put_along_axis.py >run.log 2>&1
+```
+`compute-sanitizer` 报告大量 `Invalid __global__ atomic of size 4 bytes` 错误，出错 kernel 为 `phi::funcs::PickWinnersScatterKernel<long>`，访问地址远超分配大小（偏移数十亿字节）。**不使用 CUDA Graph 时完全正常**。
+
+### 关键现象
+
+- 仅在 CUDA Graph `graph.replay()` 阶段触发，capture 阶段无报错
+- 越界访问发生在 `atomicMax(&winners[replace_index_self], ...)` 处
+- `replace_index_self` 的值异常巨大，说明上游 `ComputeOffset` 的输入数据（`shape_strides`）是垃圾值
+- Host backtrace 中出现 `cudaGraphLaunch` → `CUDAGraph::Replay()`，确认是 graph replay 触发
+
+### 根因分析
+
+**问题代码**（`paddle/phi/kernels/funcs/gather_scatter_functor.cu`，`gpu_gather_scatter_functor::operator()` 中）：
+```cpp
+DenseTensor shape_stride_dev;
+shape_stride_dev.Resize({3 * ndim});
+dev_ctx.Alloc<int64_t>(&shape_stride_dev);
+{  // deallocate host once the copy is done
+    DenseTensor shape_stride_host;
+    shape_stride_host.Resize({3 * ndim});
+    dev_ctx.template HostAlloc<int64_t>(&shape_stride_host);
+    int64_t* host_data = shape_stride_host.data<int64_t>();
+    // ... 填充 host_data ...
+    phi::Copy(dev_ctx, shape_stride_host, dev_ctx.GetPlace(), false, &shape_stride_dev);
+}  // ← shape_stride_host 在此处析构，pinned memory 被释放
+```
+
+**触发链**：
+1. `phi::Copy` 在 CUDA Graph capture 期间被录制为 `cudaMemcpyAsync(H2D)` 节点
+2. CUDA Graph 录制的是 H2D memcpy 的**源地址指针**（host pinned memory 地址），而非数据内容
+3. `shape_stride_host` 是局部变量，在 `{}` 作用域结束后析构，pinned memory 被释放
+4. `graph.replay()` 时，CUDA runtime 从**已释放的 host 地址**读取垃圾数据到 device
+5. 垃圾 `shape_strides` → `ComputeOffset` 计算出错误的偏移 → `atomicMax` 严重越界 → CUDA error 719
+
+**影响范围**：文件中共有 **7 处**完全相同模式的 H2D 拷贝（前向 1 处 + 反向 6 处），均存在 CUDA Graph 不兼容问题。
+
+### 修复方案
+
+参照 Paddle 已有的 `concat_and_split_functor.cu` 中的做法，使用 `RestoreHostMemIfCapturingCUDAGraph` 在 CUDA Graph 捕获期间对 host 数据做快照，确保 graph replay 时 H2D memcpy 的源地址仍然有效。
+
+```cpp
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
+
+// 修复后：
+{
+    DenseTensor shape_stride_host;
+    shape_stride_host.Resize({3 * ndim});
+    dev_ctx.template HostAlloc<int64_t>(&shape_stride_host);
+    int64_t* host_data = shape_stride_host.data<int64_t>();
+    // ... 填充 host_data ...
+    auto* restored =
+        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+            host_data, 3 * ndim);
+    phi::backends::gpu::GpuMemcpyAsync(
+        shape_stride_dev.data<int64_t>(),
+        restored,
+        3 * ndim * sizeof(int64_t),
+        phi::gpuMemcpyHostToDevice,
+        stream);
+}
+```
+
+`RestoreHostMemIfCapturingCUDAGraph` 的原理：
+- 非 CUDA Graph 模式：直接返回原指针，零开销
+- CUDA Graph capture 模式：在堆上分配一份 host 数据快照（`new uint8_t[nbytes]` + `memcpy`），通过 `AddPostResetCallbackIfCapturingCUDAGraph` 注册回调在 graph 重置时释放，确保 graph 整个生命周期内源地址有效
+
+### 修复文件
+- `paddle/phi/kernels/funcs/gather_scatter_functor.cu`（7 处 H2D 拷贝全部修复）
+
+### 验证结果
+
+| 指标 | 修复前 | 修复后 |
+|------|--------|--------|
+| compute-sanitizer 错误数 | 大量 `Invalid __global__ atomic` | **0 errors** |
+| CUDA Graph replay | CUDA error 719 (launch failure) | **PASS** |
+
+### 经验总结
+
+1. **CUDA Graph 不兼容 H2D memcpy 中使用临时 host 内存**：CUDA Graph 录制的是地址而非数据，如果 host 源地址在 replay 时已失效，GPU 会读取垃圾数据。这不会在 capture 阶段报错，只会在 replay 时产生难以预料的内存越界
+2. **`RestoreHostMemIfCapturingCUDAGraph` 是 Paddle 标准的 CUDA Graph 安全 H2D 模式**：任何在 CUDA Graph capture 期间需要 H2D memcpy 且 host 源为临时变量的场景，都应使用此函数做快照保护
+3. **同文件中重复模式需全部修复**：本案例中 7 处完全相同的代码模式均存在同一问题，不能只修前向不修反向
+4. **compute-sanitizer 是定位 CUDA Graph 内存问题的利器**：普通运行不报错（垃圾偏移可能"碰巧"落在合法范围内），但 `compute-sanitizer --tool memcheck` 能精确检测到越界访问
+5. **非 CUDA Graph 正常 + CUDA Graph 异常 → 优先排查 H2D/D2H memcpy 和 host 内存生命周期**：这是 CUDA Graph 模式最常见的兼容性问题类别
+
+---
+
+## 案例：put_along_axis CUDA Graph 模式下 Python API 层隐式 D2H 同步导致 error(906)
+
+### 问题描述
+```bash
+PYTHONPATH=build/python python test_put_along_axis.py
+```
+在 CUDA Graph capture 区间内调用 `paddle.put_along_axis(x, index, value, axis=1)` 时，抛出 `CUDA error(906): cudaErrorStreamCaptureImplicit`。
+
+### 关键现象
+
+- 不使用 CUDA Graph 时完全正常
+- 错误栈指向 Python API 层（`manipulation.py`），而非 C++ kernel
+- 错误信息：`operation would make the legacy stream depend on a capturing blocking stream`
+
+### 根因分析
+
+**问题代码**（`python/paddle/tensor/manipulation.py`，`put_along_axis` 函数中）：
+```python
+if (paddle.in_dynamic_mode() and indices.numel() == 0) or (
+    not paddle.in_dynamic_mode() and 0 in indices.shape
+):
+    return paddle.assign(arr)
+```
+
+**触发链**：
+1. `indices.numel()` 返回一个 0-d GPU Tensor
+2. `== 0` 触发 `Tensor.__eq__` → 返回 boolean GPU Tensor
+3. `if` 语句触发 `Tensor.__bool__()` → `__nonzero__()`
+4. `__nonzero__()` 内部调用 `np.array(self)` → `self.numpy(False)`
+5. `numpy()` 需要 GPU→CPU 数据拷贝（D2H memcpy + stream sync on legacy stream）
+6. CUDA Graph capture 期间，legacy stream 上的 D2H 操作违反 capture 约束 → error 906
+
+**影响范围**：`put_along_axis` 和 `put_along_axis_`（inplace 版本）均受影响。
+
+### 修复方案
+
+将 `indices.numel() == 0` 替换为 `0 in indices.shape`。`shape` 是 host 端 Python tuple，不触发任何 GPU 同步：
+
+```python
+# 修复前（触发 D2H sync，CUDA Graph 不兼容）
+if (paddle.in_dynamic_mode() and indices.numel() == 0) or (
+    not paddle.in_dynamic_mode() and 0 in indices.shape
+):
+
+# 修复后（纯 host 端操作，CUDA Graph safe）
+if 0 in indices.shape:
+```
+
+### 修复文件
+- `python/paddle/tensor/manipulation.py`（`put_along_axis` 和 `put_along_axis_` 两处）
+
+### 验证结果
+
+| 测试 | 修复前 | 修复后 |
+|------|--------|--------|
+| `put_along_axis` 普通模式 | PASS | PASS |
+| `put_along_axis_` (inplace) 普通模式 | PASS | PASS |
+| `put_along_axis` CUDA Graph capture + replay | **CUDA error(906)** | PASS |
+| `put_along_axis_` (inplace) CUDA Graph capture + replay | **CUDA error(906)** | PASS |
+
+### 经验总结
+
+1. **CUDA Graph 不兼容 Python API 层的隐式 D2H 同步**：`Tensor.__bool__()`、`Tensor.__nonzero__()`、`Tensor.numpy()` 等方法会触发 GPU→CPU 数据拷贝，在 CUDA Graph capture 期间使用会导致 error 906。这类问题的根因在 Python 层而非 C++ kernel 层，容易被忽略
+2. **`tensor.numel() == 0` 是常见的 CUDA Graph 不兼容模式**：`numel()` 返回 GPU Tensor → `== 0` 触发 `__bool__` → `numpy()` → D2H sync。应替换为 `0 in tensor.shape`（host 端 tuple 操作，零 GPU 开销）
+3. **CUDA Graph 调试时 `FLAGS_check_cuda_error=1` 不可用**：该 flag 会在每个算子前后插入 `cudaDeviceSynchronize()`，这在 capture 期间本身就会触发 error 906，不能用于定位 CUDA Graph 相关问题。应直接运行并观察原始错误栈
+4. **排查 CUDA Graph error 906 的优先级**：先检查 Python API 层是否有隐式 D2H 同步（`numpy()`、`__bool__()`、`item()`、`tolist()` 等），再检查 C++ 层的 H2D/D2H memcpy 和 stream 使用

@@ -44,7 +44,7 @@ inline void GetDims(
 template <typename T, typename Context>
 void PNormKernel(const Context& dev_ctx,
                  const DenseTensor& x,
-                 float porder,
+                 double porder,
                  int axis,
                  float epsilon UNUSED,
                  bool keepdim UNUSED,
@@ -89,7 +89,7 @@ void PNormKernel(const Context& dev_ctx,
   } else if (porder == -INFINITY) {
     norm.device(*place) = xr.abs().minimum(rdim);
   } else {
-    norm.device(*place) = xr.abs().pow(porder).sum(rdim).pow(1.0f / porder);
+    norm.device(*place) = xr.abs().pow(porder).sum(rdim).pow(1.0 / porder);
   }
 }
 }  // namespace phi

@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// The file has been adapted from pytorch project
+// Licensed under BSD-style license -
+// https://github.com/pytorch/pytorch/blob/main/LICENSE
+
 #include <c10/core/Stream.h>
 
 #ifdef PADDLE_WITH_CUDA
@@ -44,9 +48,11 @@ void* Stream::native_handle() const {
     return reinterpret_cast<void*>(static_cast<intptr_t>(id_));
   }
 #endif
-  PADDLE_THROW(::common::errors::Unimplemented(
-      "c10::Stream::native_handle() is not supported for device type %d",
-      static_cast<int>(device_type())));
+  // Match PyTorch error message format for unsupported device types
+  PD_CHECK(false,
+           "native_handle() is not supported for this device type (",
+           static_cast<int>(device_type()),
+           ")");
 }
 
 bool Stream::query() const {

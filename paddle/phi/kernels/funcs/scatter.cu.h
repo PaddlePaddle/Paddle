@@ -388,7 +388,7 @@ inline DenseTensor as_strided(const DenseTensor& src,
                               const std::vector<int64_t>& strides) {
   DenseTensor out;
   out.ShareDataWith(src);
-  out.Resize(phi::make_ddim(shape));
+  out.Resize(shape);
   out.set_strides(phi::make_ddim(strides));
   return out;
 }

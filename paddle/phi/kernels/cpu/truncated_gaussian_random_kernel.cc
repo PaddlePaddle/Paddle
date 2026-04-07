@@ -39,11 +39,11 @@ void TruncatedGaussianRandomKernel(const Context& dev_ctx,
 
   T* data = dev_ctx.template Alloc<T>(tensor);
 
-  using MPType = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename dtype::MPTypeTrait<T>::Type;
 
-  std::uniform_real_distribution<MPType> dist(std::numeric_limits<float>::min(),
-                                              1.0);
-  TruncatedNormal<MPType> truncated_normal(mean, std, a, b);
+  std::uniform_real_distribution<MT> dist(std::numeric_limits<float>::min(),
+                                          1.0);
+  TruncatedNormal<MT> truncated_normal(mean, std, a, b);
   int64_t size = tensor->numel();
 
   std::shared_ptr<std::mt19937_64> engine;

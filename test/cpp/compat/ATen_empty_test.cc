@@ -20,7 +20,6 @@
 
 #include "ATen/ATen.h"
 #include "gtest/gtest.h"
-#include "test/cpp/compat/cuda_test_utils.h"
 #include "torch/all.h"
 
 // ======================== at::empty basic tests ========================
@@ -57,7 +56,6 @@ TEST(ATenEmptyTest, ExplicitArgsCpu) {
 
 // TensorOptions overload: pin_memory via options
 TEST(ATenEmptyTest, PinMemoryViaTensorOptions) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   at::TensorOptions opts =
       at::TensorOptions().dtype(at::kFloat).pinned_memory(true);
   at::Tensor t = at::empty({4, 4}, opts);
@@ -67,7 +65,6 @@ TEST(ATenEmptyTest, PinMemoryViaTensorOptions) {
 
 // 6-argument overload: pin_memory = true (must use CPU device)
 TEST(ATenEmptyTest, PinMemoryViaExplicitArgs) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   at::Tensor t =
       at::empty({8}, at::kFloat, at::kStrided, at::kCPU, true, std::nullopt);
   ASSERT_TRUE(t.is_pinned())
@@ -76,7 +73,6 @@ TEST(ATenEmptyTest, PinMemoryViaExplicitArgs) {
 
 // pin_memory = false must NOT produce a pinned tensor
 TEST(ATenEmptyTest, NoPinMemoryViaExplicitArgs) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   at::Tensor t =
       at::empty({8}, at::kFloat, at::kStrided, at::kCUDA, false, std::nullopt);
   ASSERT_FALSE(t.is_pinned())
@@ -85,7 +81,6 @@ TEST(ATenEmptyTest, NoPinMemoryViaExplicitArgs) {
 
 // Pinned tensor lives in pinned (host) memory, not on the GPU device itself
 TEST(ATenEmptyTest, PinnedTensorIsNotCuda) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   at::TensorOptions opts =
       at::TensorOptions().dtype(at::kFloat).pinned_memory(true);
   at::Tensor t = at::empty({16}, opts);
@@ -96,7 +91,6 @@ TEST(ATenEmptyTest, PinnedTensorIsNotCuda) {
 
 // Data pointer of a pinned tensor must be non-null
 TEST(ATenEmptyTest, PinnedTensorDataPtrNonNull) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   at::TensorOptions opts =
       at::TensorOptions().dtype(at::kFloat).pinned_memory(true);
   at::Tensor t = at::empty({32}, opts);

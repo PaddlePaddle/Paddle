@@ -2707,8 +2707,8 @@
     data_type : x
 
 - backward_op : p_norm_grad
-  forward : p_norm(Tensor x,  float porder=2,  int axis=-1,  float epsilon=1.0e-12f,  bool keepdim=false,  bool asvector=false) -> Tensor(out)
-  args : (Tensor x, Tensor out, Tensor out_grad,  float porder,  int axis,  float epsilon,  bool keepdim,  bool asvector)
+  forward : p_norm(Tensor x,  double porder=2,  int axis=-1,  float epsilon=1.0e-12f,  bool keepdim=false,  bool asvector=false) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad,  double porder,  int axis,  float epsilon,  bool keepdim,  bool asvector)
   output : Tensor(x_grad)
   infer_meta :
     func : GeneralUnaryGradInferMeta
@@ -4343,8 +4343,8 @@
     data_type: w
 
 - backward_op: rms_norm_grad
-  forward: rms_norm (Tensor x, Tensor scale, int64_t[] normalized_shape={}, double epsilon = 1e-5) -> Tensor(y), Tensor(invvar)
-  args: (Tensor x, Tensor scale, Tensor invvar, Tensor y_grad, int64_t[] normalized_shape={}, double epsilon = 1e-5)
+  forward: rms_norm (Tensor x, Tensor scale, int64_t[] normalized_shape={}, double epsilon = 1.19209289550781250e-7) -> Tensor(y), Tensor(invvar)
+  args: (Tensor x, Tensor scale, Tensor invvar, Tensor y_grad, int64_t[] normalized_shape={}, double epsilon = 1.19209289550781250e-7)
   output: Tensor(x_grad), Tensor(scale_grad)
   infer_meta:
     func: RMSNormGradInferMeta

@@ -20,6 +20,7 @@
 
 #include "glog/logging.h"
 
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -147,11 +148,17 @@ struct SlogDeterminantFunctor<phi::dtype::complex<T>, Context> {
         dev_ctx.GetPlace(),
         total_bytes,
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+    size_t nbytes_ptrs_c1 = cpu_ptrs.size() * sizeof(phi::dtype::complex<T>*);
+    const void* stable_ptrs_c1 =
+        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+            reinterpret_cast<uint8_t*>(
+                const_cast<phi::dtype::complex<T>**>(cpu_ptrs.data())),
+            nbytes_ptrs_c1);
     memory_utils::Copy(dev_ctx.GetPlace(),
                        tmp_gpu_ptrs_data->ptr(),
                        CPUPlace(),
-                       static_cast<void*>(cpu_ptrs.data()),
-                       cpu_ptrs.size() * sizeof(phi::dtype::complex<T>*),
+                       stable_ptrs_c1,
+                       nbytes_ptrs_c1,
                        dev_ctx.stream());
 
     phi::dtype::complex<T>** gpu_mat_ptr =
@@ -334,11 +341,16 @@ struct SlogDeterminantV2Functor {
         dev_ctx.GetPlace(),
         total_bytes,
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+    size_t nbytes_ptrs_v2 = cpu_ptrs.size() * sizeof(T*);
+    const void* stable_ptrs_v2 =
+        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+            reinterpret_cast<uint8_t*>(const_cast<T**>(cpu_ptrs.data())),
+            nbytes_ptrs_v2);
     memory_utils::Copy(dev_ctx.GetPlace(),
                        tmp_gpu_ptrs_data->ptr(),
                        CPUPlace(),
-                       static_cast<void*>(cpu_ptrs.data()),
-                       cpu_ptrs.size() * sizeof(T*),
+                       stable_ptrs_v2,
+                       nbytes_ptrs_v2,
                        dev_ctx.stream());
 
     T** gpu_mat_ptr = reinterpret_cast<T**>(tmp_gpu_ptrs_data->ptr());
@@ -488,11 +500,17 @@ struct SlogDeterminantV2Functor<phi::dtype::complex<T>, Context> {
         dev_ctx.GetPlace(),
         total_bytes,
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+    size_t nbytes_ptrs_v2c = cpu_ptrs.size() * sizeof(phi::dtype::complex<T>*);
+    const void* stable_ptrs_v2c =
+        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+            reinterpret_cast<uint8_t*>(
+                const_cast<phi::dtype::complex<T>**>(cpu_ptrs.data())),
+            nbytes_ptrs_v2c);
     memory_utils::Copy(dev_ctx.GetPlace(),
                        tmp_gpu_ptrs_data->ptr(),
                        CPUPlace(),
-                       static_cast<void*>(cpu_ptrs.data()),
-                       cpu_ptrs.size() * sizeof(phi::dtype::complex<T>*),
+                       stable_ptrs_v2c,
+                       nbytes_ptrs_v2c,
                        dev_ctx.stream());
 
     phi::dtype::complex<T>** gpu_mat_ptr =

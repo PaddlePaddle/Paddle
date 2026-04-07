@@ -25,7 +25,6 @@
 #include <optional>
 
 #include "gtest/gtest.h"
-#include "test/cpp/compat/cuda_test_utils.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
@@ -41,7 +40,6 @@ void AssertNotPinned(const at::Tensor& t) { ASSERT_FALSE(t.is_pinned()); }
 }  // namespace
 
 TEST(ATenPinMemoryCreationTest, FullPinMemory) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   // Test using TensorOptions with pinned_memory
   auto by_options = at::full(
       {2, 3}, 1.5f, at::TensorOptions().dtype(at::kFloat).pinned_memory(true));
@@ -59,7 +57,6 @@ TEST(ATenPinMemoryCreationTest, FullPinMemory) {
 }
 
 TEST(ATenPinMemoryCreationTest, FullPinMemoryWithCUDADeviceErrors) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   // Test that pin_memory=true with explicit CUDA device throws error
   ASSERT_THROW(
       at::full({2, 3}, 1.5f, at::kFloat, std::nullopt, at::kCUDA, true),
@@ -67,7 +64,6 @@ TEST(ATenPinMemoryCreationTest, FullPinMemoryWithCUDADeviceErrors) {
 }
 
 TEST(ATenPinMemoryCreationTest, OnesPinMemory) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   auto by_options = at::ones(
       {4, 2}, at::TensorOptions().dtype(at::kFloat).pinned_memory(true));
   AssertPinned(by_options);
@@ -80,13 +76,11 @@ TEST(ATenPinMemoryCreationTest, OnesPinMemory) {
 }
 
 TEST(ATenPinMemoryCreationTest, OnesPinMemoryWithCUDADeviceErrors) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   ASSERT_THROW(at::ones({4, 2}, at::kFloat, std::nullopt, at::kCUDA, true),
                std::exception);
 }
 
 TEST(ATenPinMemoryCreationTest, ZerosPinMemory) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   auto by_options = at::zeros(
       {3, 5}, at::TensorOptions().dtype(at::kFloat).pinned_memory(true));
   AssertPinned(by_options);
@@ -99,13 +93,11 @@ TEST(ATenPinMemoryCreationTest, ZerosPinMemory) {
 }
 
 TEST(ATenPinMemoryCreationTest, ZerosPinMemoryWithCUDADeviceErrors) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   ASSERT_THROW(at::zeros({3, 5}, at::kFloat, at::kStrided, at::kCUDA, true),
                std::exception);
 }
 
 TEST(ATenPinMemoryCreationTest, EyePinMemory) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   auto by_options =
       at::eye(6, at::TensorOptions().dtype(at::kFloat).pinned_memory(true));
   AssertPinned(by_options);
@@ -118,13 +110,19 @@ TEST(ATenPinMemoryCreationTest, EyePinMemory) {
 }
 
 TEST(ATenPinMemoryCreationTest, EyePinMemoryWithCUDADeviceErrors) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   ASSERT_THROW(at::eye(6, at::kFloat, std::nullopt, at::kCUDA, true),
                std::exception);
 }
 
-TEST(ATenPinMemoryCreationTest, ArangePinMemory) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
+TEST(ATenPinMemoryCreationTest, ArangePinMemoryOverloads) {
+  auto end_only_by_options =
+      at::arange(10, at::TensorOptions().dtype(at::kFloat).pinned_memory(true));
+  AssertPinned(end_only_by_options);
+
+  auto end_only_by_args =
+      at::arange(10, at::kFloat, std::nullopt, at::kCPU, true);
+  AssertPinned(end_only_by_args);
+
   auto by_options = at::arange(
       0, 10, at::TensorOptions().dtype(at::kFloat).pinned_memory(true));
   AssertPinned(by_options);
@@ -132,18 +130,32 @@ TEST(ATenPinMemoryCreationTest, ArangePinMemory) {
   auto by_args = at::arange(0, 10, at::kFloat, std::nullopt, at::kCPU, true);
   AssertPinned(by_args);
 
+  auto step_by_options = at::arange(
+      0, 10, 2, at::TensorOptions().dtype(at::kFloat).pinned_memory(true));
+  AssertPinned(step_by_options);
+
+  auto step_by_args =
+      at::arange(0, 10, 2, at::kFloat, std::nullopt, at::kCPU, true);
+  AssertPinned(step_by_args);
+
   auto no_pin = at::arange(0, 10, at::kFloat, std::nullopt, at::kCPU, false);
   AssertNotPinned(no_pin);
+
+  auto step_no_pin =
+      at::arange(0, 10, 2, at::kFloat, std::nullopt, at::kCPU, false);
+  AssertNotPinned(step_no_pin);
 }
 
 TEST(ATenPinMemoryCreationTest, ArangePinMemoryWithCUDADeviceErrors) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
+  ASSERT_THROW(at::arange(10, at::kFloat, std::nullopt, at::kCUDA, true),
+               std::exception);
   ASSERT_THROW(at::arange(0, 10, at::kFloat, std::nullopt, at::kCUDA, true),
+               std::exception);
+  ASSERT_THROW(at::arange(0, 10, 2, at::kFloat, std::nullopt, at::kCUDA, true),
                std::exception);
 }
 
 TEST(ATenPinMemoryCreationTest, EmptyLikePinMemory) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   auto base = at::ones({2, 4}, at::kFloat);
 
   auto by_options =
@@ -162,7 +174,6 @@ TEST(ATenPinMemoryCreationTest, EmptyLikePinMemory) {
 }
 
 TEST(ATenPinMemoryCreationTest, EmptyLikePinMemoryWithCUDADeviceErrors) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   auto base = at::ones({2, 4}, at::kFloat);
   ASSERT_THROW(at::empty_like(base,
                               at::TensorOptions()
@@ -174,7 +185,6 @@ TEST(ATenPinMemoryCreationTest, EmptyLikePinMemoryWithCUDADeviceErrors) {
 }
 
 TEST(ATenPinMemoryCreationTest, ZerosLikePinMemory) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   auto base = at::ones({2, 4}, at::kFloat);
 
   auto by_options =
@@ -193,7 +203,6 @@ TEST(ATenPinMemoryCreationTest, ZerosLikePinMemory) {
 }
 
 TEST(ATenPinMemoryCreationTest, ZerosLikePinMemoryWithCUDADeviceErrors) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   auto base = at::ones({2, 4}, at::kFloat);
   ASSERT_THROW(at::zeros_like(base,
                               at::TensorOptions()

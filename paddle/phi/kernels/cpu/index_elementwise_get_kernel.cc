@@ -113,7 +113,7 @@ void IndexElementwiseGetKernel(const Context& dev_ctx,
   auto out_dims = out->dims();
   if (out_dims.size() > 0) {
     std::vector<int64_t> output_dims(input_dims);
-    out->Resize(make_ddim(output_dims));
+    out->Resize(output_dims);
   }
   dev_ctx.template Alloc<T>(out);
   if (out->numel() == 0) return;

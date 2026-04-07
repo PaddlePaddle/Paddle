@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/gather_scatter_functor.h"
 #include <type_traits>
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -544,11 +545,13 @@ struct gpu_gather_scatter_functor {
         host_data[i + ndim] = src.strides()[i];
         host_data[i + (ndim << 1)] = self.strides()[i];
       }
-      phi::Copy(dev_ctx,
-                shape_stride_host,
-                dev_ctx.GetPlace(),
-                false,
-                &shape_stride_dev);
+      auto* restored = phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          host_data, 3 * ndim);
+      phi::backends::gpu::GpuMemcpyAsync(shape_stride_dev.data<int64_t>(),
+                                         restored,
+                                         3 * ndim * sizeof(int64_t),
+                                         phi::gpuMemcpyHostToDevice,
+                                         stream);
     }
     const int64_t* shape_strides = shape_stride_dev.data<int64_t>();
     const size_t shared_mem_bytes = sizeof(int64_t) * shape_stride_dev.numel();
@@ -805,11 +808,13 @@ void gpu_scatter_input_grad_kernel(DenseTensor self,
       host_data[i] = index_dims[i];
       host_data[i + ndim] = grad.strides()[i];
     }
-    phi::Copy(dev_ctx,
-              shape_stride_host,
-              dev_ctx.GetPlace(),
-              false,
-              &shape_stride_dev);
+    auto* restored = phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+        host_data, 2 * ndim);
+    phi::backends::gpu::GpuMemcpyAsync(shape_stride_dev.data<int64_t>(),
+                                       restored,
+                                       2 * ndim * sizeof(int64_t),
+                                       phi::gpuMemcpyHostToDevice,
+                                       stream);
   }
   const int64_t* shape_strides = shape_stride_dev.data<int64_t>();
   const size_t shared_mem_bytes = sizeof(int64_t) * shape_stride_dev.numel();
@@ -974,11 +979,13 @@ void gpu_scatter_mul_min_max_input_grad_kernel(DenseTensor self,
       host_data[i + ndim] = grad.strides()[i];
       host_data[i + (ndim << 1)] = value.strides()[i];
     }
-    phi::Copy(dev_ctx,
-              shape_stride_host,
-              dev_ctx.GetPlace(),
-              false,
-              &shape_stride_dev);
+    auto* restored = phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+        host_data, 3 * ndim);
+    phi::backends::gpu::GpuMemcpyAsync(shape_stride_dev.data<int64_t>(),
+                                       restored,
+                                       3 * ndim * sizeof(int64_t),
+                                       phi::gpuMemcpyHostToDevice,
+                                       stream);
   }
   const int64_t* shape_strides = shape_stride_dev.data<int64_t>();
   size_t shared_mem_bytes = sizeof(int64_t) * ndim;
@@ -1108,11 +1115,13 @@ void gpu_scatter_mean_input_grad_kernel(DenseTensor self,
       host_data[i] = index_dims[i];
       host_data[i + ndim] = grad.strides()[i];
     }
-    phi::Copy(dev_ctx,
-              shape_stride_host,
-              dev_ctx.GetPlace(),
-              false,
-              &shape_stride_dev);
+    auto* restored = phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+        host_data, 2 * ndim);
+    phi::backends::gpu::GpuMemcpyAsync(shape_stride_dev.data<int64_t>(),
+                                       restored,
+                                       2 * ndim * sizeof(int64_t),
+                                       phi::gpuMemcpyHostToDevice,
+                                       stream);
   }
   const int64_t* shape_strides = shape_stride_dev.data<int64_t>();
   size_t shared_mem_bytes = sizeof(int64_t) * ndim * 2;
@@ -1205,11 +1214,13 @@ void gpu_scatter_value_grad_kernel(DenseTensor self,
       host_data[i + ndim] = grad.strides()[i];
       host_data[i + (ndim << 1)] = self.strides()[i];
     }
-    phi::Copy(dev_ctx,
-              shape_stride_host,
-              dev_ctx.GetPlace(),
-              false,
-              &shape_stride_dev);
+    auto* restored = phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+        host_data, 3 * ndim);
+    phi::backends::gpu::GpuMemcpyAsync(shape_stride_dev.data<int64_t>(),
+                                       restored,
+                                       3 * ndim * sizeof(int64_t),
+                                       phi::gpuMemcpyHostToDevice,
+                                       stream);
   }
   const int64_t* shape_strides = shape_stride_dev.data<int64_t>();
   size_t shared_mem_bytes = sizeof(int64_t) * ndim * 3;
@@ -1315,11 +1326,13 @@ void gpu_scatter_add_mean_value_grad_kernel(DenseTensor self,
       host_data[i + ndim] = grad.strides()[i];
       host_data[i + (ndim << 1)] = self.strides()[i];
     }
-    phi::Copy(dev_ctx,
-              shape_stride_host,
-              dev_ctx.GetPlace(),
-              false,
-              &shape_stride_dev);
+    auto* restored = phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+        host_data, 3 * ndim);
+    phi::backends::gpu::GpuMemcpyAsync(shape_stride_dev.data<int64_t>(),
+                                       restored,
+                                       3 * ndim * sizeof(int64_t),
+                                       phi::gpuMemcpyHostToDevice,
+                                       stream);
   }
   const int64_t* shape_strides = shape_stride_dev.data<int64_t>();
   size_t shared_mem_bytes = sizeof(int64_t) * ndim * 3;
@@ -1451,11 +1464,13 @@ void gpu_scatter_mul_min_max_value_grad_kernel(DenseTensor self,
       host_data[i + ndim] = grad.strides()[i];
       host_data[i + (ndim << 1)] = self.strides()[i];
     }
-    phi::Copy(dev_ctx,
-              shape_stride_host,
-              dev_ctx.GetPlace(),
-              false,
-              &shape_stride_dev);
+    auto* restored = phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+        host_data, 3 * ndim);
+    phi::backends::gpu::GpuMemcpyAsync(shape_stride_dev.data<int64_t>(),
+                                       restored,
+                                       3 * ndim * sizeof(int64_t),
+                                       phi::gpuMemcpyHostToDevice,
+                                       stream);
   }
   const int64_t* shape_strides = shape_stride_dev.data<int64_t>();
   size_t shared_mem_bytes = sizeof(int64_t) * ndim * 3;

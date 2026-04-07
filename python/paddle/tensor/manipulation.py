@@ -7523,11 +7523,10 @@ def put_along_axis(
     # perform.  Return a copy of arr immediately to avoid passing a 0-size
     # index tensor through the broadcast path, which would attempt an invalid
     # expand (e.g. values dim 4 -> 0) and raise an error.
-    # In dynamic mode use numel(); in static mode indices.numel() returns a
-    # symbolic Value so we check the shape directly instead.
-    if (paddle.in_dynamic_mode() and indices.numel() == 0) or (
-        not paddle.in_dynamic_mode() and 0 in indices.shape
-    ):
+    # Use `0 in indices.shape` instead of `indices.numel() == 0` because
+    # numel() returns a GPU tensor whose __bool__ triggers D2H sync,
+    # which is forbidden during CUDA Graph capture (error 906).
+    if 0 in indices.shape:
         return paddle.assign(arr)
     if broadcast:
         if has_dynamic_shape(arr.shape) or has_dynamic_shape(indices.shape):
@@ -7648,9 +7647,7 @@ def put_along_axis_(
             "`indices` and `arr` must have the same number of dimensions!"
         )
     axis = non_negative_axis(arr, axis)
-    if (paddle.in_dynamic_mode() and indices.numel() == 0) or (
-        not paddle.in_dynamic_mode() and 0 in indices.shape
-    ):
+    if 0 in indices.shape:
         return arr
     if broadcast:
         broadcast_shape = infer_broadcast_shape(arr, indices, axis)
@@ -8231,7 +8228,7 @@ def _index_fill_impl(
         if hasattr(x.place, 'is_cpu_place')
         else True
     ):
-        if index.numel() == 0:
+        if 0 in index.shape:
             return x if inplace else x.clone()
 
         if isinstance(value, (Variable, paddle.pir.Value)):

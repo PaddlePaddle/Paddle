@@ -625,6 +625,45 @@ def _get_include_dirs_when_compiling(compile_dir):
     return all_include_dirs
 
 
+def _has_onednn_headers():
+    """
+    Check if OneDNN headers are available in the expected locations.
+    Returns True if Paddle is compiled with OneDNN AND the headers exist.
+    """
+    if not core.is_compiled_with_onednn():
+        return False
+
+    # Check whl install path first
+    paddle_include_dir = get_include()
+    onednn_include_dir = os.path.join(
+        paddle_include_dir,
+        'third_party',
+        'install',
+        'onednn',
+        'include',
+    )
+    if os.path.exists(onednn_include_dir):
+        return True
+
+    # Check source build fallback path
+    import paddle
+
+    paddle_dir = os.path.dirname(paddle.__file__)
+    source_build_dir = os.path.normpath(
+        os.path.join(
+            paddle_dir,
+            '..',
+            '..',
+            '..',
+            'third_party',
+            'install',
+            'onednn',
+            'include',
+        )
+    )
+    return os.path.exists(source_build_dir)
+
+
 def normalize_extension_kwargs(kwargs, use_cuda=False):
     """
     Normalize include_dirs, library_dir and other attributes in kwargs.
@@ -716,7 +755,7 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
     if compile_dir is None:
         # Add this compile option to isolate base headers
         add_compile_flag(extra_compile_args, ['-DPADDLE_WITH_CUSTOM_KERNEL'])
-        if core.is_compiled_with_onednn():
+        if _has_onednn_headers():
             add_compile_flag(extra_compile_args, ['-DPADDLE_WITH_DNNL'])
 
     kwargs['extra_compile_args'] = extra_compile_args
