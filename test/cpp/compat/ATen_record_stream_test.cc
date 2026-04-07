@@ -48,9 +48,16 @@ using RecordCudaStreamMethod = void (at::Tensor::*)(at::cuda::CUDAStream) const;
 [[maybe_unused]] static RecordCudaStreamMethod g_record_cuda_stream_method =
     &at::Tensor::record_stream;
 
+// Raw stream type is platform-specific:
+// - CUDA: cudaStream_t (CUstream_st*)
+// - HIP: hipStream_t (ihipStream_t*)
+// Only test the raw stream overload on CUDA builds where cudaStream_t is
+// consistently defined. HIP builds use hipStream_t which is a different type.
+#if defined(PADDLE_WITH_CUDA)
 using RecordRawCudaStreamMethod = void (at::Tensor::*)(cudaStream_t) const;
 [[maybe_unused]] static RecordRawCudaStreamMethod
     g_record_raw_cuda_stream_method = &at::Tensor::record_stream;
+#endif
 
 TEST_F(RecordStreamTest, CudaTensorCurrentCudaStream) {
   auto stream = at::cuda::getCurrentCUDAStream();
