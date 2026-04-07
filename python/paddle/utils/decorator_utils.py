@@ -654,22 +654,21 @@ def tile_decorator() -> Callable[
     def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
         @functools.wraps(func)
         def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
-            if ("input" in kwargs) and ("x" not in kwargs):
+            if "input" in kwargs:
+                if "x" in kwargs:
+                    raise ValueError(
+                        "Cannot specify both 'x' and its alias 'input'"
+                    )
                 kwargs["x"] = kwargs.pop("input")
-            elif ("input" in kwargs) and ("x" in kwargs):
-                raise ValueError(
-                    "Cannot specify both 'x' and its alias 'input'"
-                )
 
-            if ("dims" in kwargs) and ("repeat_times" not in kwargs):
+            if "dims" in kwargs:
+                if "repeat_times" in kwargs:
+                    raise ValueError(
+                        "Cannot specify both 'repeat_times' and its alias 'dims'"
+                    )
                 kwargs["repeat_times"] = kwargs.pop("dims")
-            elif ("dims" in kwargs) and ("repeat_times" in kwargs):
-                raise ValueError(
-                    "Cannot specify both 'repeat_times' and its alias 'dims'"
-                )
-            elif len(args) >= 2 and all(
-                isinstance(arg, int) for arg in args[1:]
-            ):
+
+            if len(args) >= 2 and isinstance(args[1], int):
                 kwargs["x"] = args[0]
                 kwargs["repeat_times"] = list(args[1:])
                 args = ()

@@ -4990,7 +4990,7 @@ def tile(
     1. ``paddle.tile(x, repeat_times, name=None)`` (Paddle-style):
         Construct a new Tensor by repeating ``x`` based on ``repeat_times``.
 
-    2. ``x.tile(*dims)`` (PyTorch-style Tensor method):
+    2. ``paddle.Tensor.tile(*dims)`` (PyTorch-style Tensor method):
         Construct a new Tensor by repeating ``x`` based on variadic repeat
         arguments.
 
