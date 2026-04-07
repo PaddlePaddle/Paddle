@@ -41,12 +41,12 @@ class CompatException : public std::exception {
 
 #ifndef C10_CUDA_CHECK
 #if defined(PADDLE_WITH_HIP)
-#define C10_CUDA_CHECK(cmd)                                                    \
-  do {                                                                         \
-    hipError_t e = (cmd);                                                      \
-    if (e != hipSuccess) {                                                     \
-      throw CompatException("CUDA", __FILE__, __LINE__, hipGetErrorString(e)); \
-    }                                                                          \
+#define C10_CUDA_CHECK(cmd)                                                   \
+  do {                                                                        \
+    hipError_t e = (cmd);                                                     \
+    if (e != hipSuccess) {                                                    \
+      throw CompatException("HIP", __FILE__, __LINE__, hipGetErrorString(e)); \
+    }                                                                         \
   } while (0)
 #elif defined(PADDLE_WITH_CUDA)
 #define C10_CUDA_CHECK(cmd)                                   \
