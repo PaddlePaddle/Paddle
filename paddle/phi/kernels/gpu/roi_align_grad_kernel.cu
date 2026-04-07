@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/roi_align_grad_kernel.h"
 
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
@@ -252,8 +253,15 @@ void RoiAlignGradKernel(const Context& dev_ctx,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
   int64_t bytes = box_batch_id_list.numel() * sizeof(int);
-  memory_utils::Copy(
-      gplace, roi_id_data, cplace, box_batch_size, bytes, dev_ctx.stream());
+  const int* stable_box_batch_size =
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          box_batch_size, static_cast<size_t>(bytes / sizeof(int)));
+  memory_utils::Copy(gplace,
+                     roi_id_data,
+                     cplace,
+                     stable_box_batch_size,
+                     bytes,
+                     dev_ctx.stream());
   dev_ctx.template Alloc<T>(dx);
 
   funcs::SetConstant<Context, T> set_zero;

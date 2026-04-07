@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/yolo_box_kernel.h"
 
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/memory_utils.h"
@@ -141,8 +142,11 @@ void YoloBoxKernel(const Context& dev_ctx,
   int* anchors_data = dev_ctx.template Alloc<int>(&tmp_anchors);
   const auto gplace = dev_ctx.GetPlace();
   const auto cplace = CPUPlace();
+  const int* stable_anchors =
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          const_cast<int*>(anchors.data()), anchors.size());
   memory_utils::Copy(
-      gplace, anchors_data, cplace, anchors.data(), bytes, dev_ctx.stream());
+      gplace, anchors_data, cplace, stable_anchors, bytes, dev_ctx.stream());
 
   const T* input_data = input->data<T>();
   const int* imgsize_data = img_size.data<int>();

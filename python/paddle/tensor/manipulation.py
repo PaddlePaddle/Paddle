@@ -8228,7 +8228,7 @@ def _index_fill_impl(
         if hasattr(x.place, 'is_cpu_place')
         else True
     ):
-        if index.numel() == 0:
+        if 0 in index.shape:
             return x if inplace else x.clone()
 
         if isinstance(value, (Variable, paddle.pir.Value)):
