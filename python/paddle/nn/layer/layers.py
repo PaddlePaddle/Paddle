@@ -184,11 +184,11 @@ def _parse_to_args(*args, **kwargs):
 
     # Extract keyword-only parameter
     non_blocking = kwargs.pop('non_blocking', None)
-    copy = kwargs.pop('copy', False)
 
     device = None
     dtype = None
     blocking = None
+    copy = None
 
     size_args = len(args)
     size_kwargs = len(kwargs)
@@ -201,7 +201,7 @@ def _parse_to_args(*args, **kwargs):
             "  to(tensor, blocking=True, copy=False, *, non_blocking=False)"
         )
 
-    valid_keys = {'device', 'dtype', 'blocking', 'other', 'tensor'}
+    valid_keys = {'device', 'dtype', 'blocking', 'copy', 'other', 'tensor'}
     invalid_keys = set(kwargs.keys()) - valid_keys
     if invalid_keys:
         raise TypeError(
@@ -217,23 +217,20 @@ def _parse_to_args(*args, **kwargs):
             device = first.place
             dtype = first.dtype
             blocking = args[1] if size_args >= 2 else kwargs.get('blocking')
-            if size_args >= 3:
-                copy = args[2]
+            copy = args[2] if size_args >= 3 else kwargs.get('copy')
         elif isinstance(first, (core.DataType, VarDesc.VarType, np.dtype)) or (
             isinstance(first, str) and first.lower() in valid_dtypes
         ):
             # to(dtype, blocking=True, copy=False)
             dtype = first
             blocking = args[1] if size_args >= 2 else kwargs.get('blocking')
-            if size_args >= 3:
-                copy = args[2]
+            copy = args[2] if size_args >= 3 else kwargs.get('copy')
         elif first is None or isinstance(first, (str, core.Place)):
             # to(device, dtype=None, blocking=True, copy=False)
             device = first
             dtype = args[1] if size_args >= 2 else kwargs.get('dtype')
             blocking = args[2] if size_args >= 3 else kwargs.get('blocking')
-            if size_args >= 4:
-                copy = args[3]
+            copy = args[3] if size_args >= 4 else kwargs.get('copy')
         else:
             raise ValueError(
                 f"device should be type of str, paddle.CPUPlace, paddle.CUDAPlace, "
@@ -248,10 +245,12 @@ def _parse_to_args(*args, **kwargs):
             device = tensor_arg.place
             dtype = tensor_arg.dtype
             blocking = kwargs.get('blocking')
+            copy = kwargs.get('copy')
         else:
             device = kwargs.get('device')
             dtype = kwargs.get('dtype')
             blocking = kwargs.get('blocking')
+            copy = kwargs.get('copy')
 
     # Validate and resolve blocking / non_blocking
     if blocking is not None and non_blocking is not None:
@@ -270,6 +269,11 @@ def _parse_to_args(*args, **kwargs):
             )
     else:
         blocking = True
+
+    if copy is None:
+        copy = False
+    elif not isinstance(copy, bool):
+        raise ValueError("copy value error, must be True or False")
 
     return device, dtype, blocking, copy
 

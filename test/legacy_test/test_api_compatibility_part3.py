@@ -1412,6 +1412,220 @@ class TestLayerAndTensorToAPI(unittest.TestCase):
         with self.assertRaises(ValueError):
             linear.to(123)
 
+    # ---- PyTorch keyword alias: other / tensor ----
+
+    def test_layer_keyword_other_alias(self):
+        """Layer.to(other=tensor) -- PyTorch alias for tensor overload."""
+        linear = paddle.nn.Linear(2, 2)
+        ref = paddle.to_tensor([1.0], dtype='float64')
+        linear.to(other=ref)
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    def test_layer_keyword_tensor_alias(self):
+        """Layer.to(tensor=tensor) -- PyTorch alias for tensor overload."""
+        linear = paddle.nn.Linear(2, 2)
+        ref = paddle.to_tensor([1.0], dtype='float64')
+        linear.to(tensor=ref)
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    def test_tensor_keyword_other_alias(self):
+        """Tensor.to(other=tensor) -- PyTorch alias for tensor overload."""
+        t = paddle.to_tensor([1.0, 2.0])
+        ref = paddle.to_tensor([1], dtype='int32')
+        out = t.to(other=ref)
+        self.assertEqual(out.dtype, paddle.int32)
+
+    def test_tensor_keyword_tensor_alias(self):
+        """Tensor.to(tensor=tensor) -- PyTorch alias for tensor overload."""
+        t = paddle.to_tensor([1.0, 2.0])
+        ref = paddle.to_tensor([1], dtype='int32')
+        out = t.to(tensor=ref)
+        self.assertEqual(out.dtype, paddle.int32)
+
+    # ---- copy parameter: Layer.to (tensor overload) ----
+
+    def test_layer_tensor_overload_copy_positional(self):
+        """Layer.to(tensor, blocking, copy) -- copy as 3rd positional."""
+        linear = paddle.nn.Linear(2, 2)
+        ref = paddle.to_tensor([1.0], dtype='float64')
+        linear.to(ref, True, True)
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    def test_layer_tensor_overload_copy_keyword(self):
+        """Layer.to(tensor, copy=True) -- copy as keyword."""
+        linear = paddle.nn.Linear(2, 2)
+        ref = paddle.to_tensor([1.0], dtype='float64')
+        linear.to(ref, copy=True)
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    def test_layer_tensor_overload_copy_mixed(self):
+        """Layer.to(tensor, blocking=True, copy=True) -- mixed."""
+        linear = paddle.nn.Linear(2, 2)
+        ref = paddle.to_tensor([1.0], dtype='float64')
+        linear.to(ref, blocking=True, copy=True)
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    def test_layer_tensor_overload_copy_false_keyword(self):
+        """Layer.to(tensor, copy=False) -- explicit copy=False."""
+        linear = paddle.nn.Linear(2, 2)
+        ref = paddle.to_tensor([1.0], dtype='float64')
+        linear.to(ref, copy=False)
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    # ---- copy parameter: Layer.to (dtype overload) ----
+
+    def test_layer_dtype_overload_copy_positional(self):
+        """Layer.to(dtype, blocking, copy) -- copy as 3rd positional."""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to('float64', True, True)
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    def test_layer_dtype_overload_copy_keyword(self):
+        """Layer.to(dtype, copy=True) -- copy as keyword."""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to('float64', copy=True)
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    def test_layer_dtype_overload_copy_mixed(self):
+        """Layer.to(dtype, blocking=True, copy=True) -- mixed."""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to(paddle.float64, blocking=True, copy=True)
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    # ---- copy parameter: Layer.to (device overload) ----
+
+    def test_layer_device_overload_copy_positional(self):
+        """Layer.to(device, dtype, blocking, copy) -- copy as 4th positional."""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to('cpu', 'float64', True, True)
+        self.assertTrue(linear.weight.place.is_cpu_place())
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    def test_layer_device_overload_copy_keyword(self):
+        """Layer.to(device, copy=True) -- copy as keyword only."""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to('cpu', copy=True)
+        self.assertTrue(linear.weight.place.is_cpu_place())
+
+    def test_layer_device_overload_all_kwargs(self):
+        """Layer.to(device=, dtype=, blocking=, copy=) -- all keywords."""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to(device='cpu', dtype='float64', blocking=True, copy=True)
+        self.assertTrue(linear.weight.place.is_cpu_place())
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    def test_layer_device_overload_mixed_copy_keyword(self):
+        """Layer.to(device, dtype, copy=True) -- 2 positional + copy kwarg."""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to('cpu', 'float64', copy=True)
+        self.assertTrue(linear.weight.place.is_cpu_place())
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    # ---- copy parameter: Tensor.to (tensor overload) ----
+
+    def test_tensor_tensor_overload_copy_positional(self):
+        """Tensor.to(other, blocking, copy) -- copy as 3rd positional."""
+        t = paddle.to_tensor([1.0, 2.0])
+        ref = paddle.to_tensor([1], dtype='int32')
+        out = t.to(ref, True, True)
+        self.assertEqual(out.dtype, paddle.int32)
+
+    def test_tensor_tensor_overload_copy_keyword(self):
+        """Tensor.to(other, copy=True) -- copy as keyword."""
+        t = paddle.to_tensor([1.0, 2.0])
+        ref = paddle.to_tensor([1], dtype='int32')
+        out = t.to(ref, copy=True)
+        self.assertEqual(out.dtype, paddle.int32)
+
+    def test_tensor_tensor_overload_copy_mixed(self):
+        """Tensor.to(other, blocking=True, copy=True) -- mixed."""
+        t = paddle.to_tensor([1.0, 2.0])
+        ref = paddle.to_tensor([1], dtype='int32')
+        out = t.to(ref, blocking=True, copy=True)
+        self.assertEqual(out.dtype, paddle.int32)
+
+    def test_tensor_tensor_overload_full_kwargs(self):
+        """Tensor.to(other=, blocking=, copy=) -- all keywords."""
+        t = paddle.to_tensor([1.0, 2.0])
+        ref = paddle.to_tensor([1], dtype='int32')
+        out = t.to(other=ref, blocking=True, copy=True)
+        self.assertEqual(out.dtype, paddle.int32)
+
+    # ---- copy parameter: Tensor.to (dtype overload) ----
+
+    def test_tensor_dtype_overload_copy_positional(self):
+        """Tensor.to(dtype, blocking, copy) -- copy as 3rd positional."""
+        t = paddle.to_tensor([1.0, 2.0])
+        out = t.to('float64', True, True)
+        self.assertEqual(out.dtype, paddle.float64)
+
+    def test_tensor_dtype_overload_copy_keyword(self):
+        """Tensor.to(dtype, copy=True) -- copy as keyword."""
+        t = paddle.to_tensor([1.0, 2.0])
+        out = t.to('float64', copy=True)
+        self.assertEqual(out.dtype, paddle.float64)
+
+    def test_tensor_dtype_overload_copy_mixed(self):
+        """Tensor.to(dtype, blocking=True, copy=True) -- mixed."""
+        t = paddle.to_tensor([1.0, 2.0])
+        out = t.to(paddle.float64, blocking=True, copy=True)
+        self.assertEqual(out.dtype, paddle.float64)
+
+    # ---- copy parameter: Tensor.to (device overload) ----
+
+    def test_tensor_device_overload_copy_positional(self):
+        """Tensor.to(device, dtype, blocking, copy) -- copy as 4th positional."""
+        t = paddle.to_tensor([1.0, 2.0])
+        out = t.to('cpu', 'float64', True, True)
+        self.assertTrue(out.place.is_cpu_place())
+        self.assertEqual(out.dtype, paddle.float64)
+
+    def test_tensor_device_overload_copy_keyword(self):
+        """Tensor.to(device, copy=True) -- copy as keyword only."""
+        t = paddle.to_tensor([1.0, 2.0])
+        out = t.to('cpu', copy=True)
+        self.assertTrue(out.place.is_cpu_place())
+
+    def test_tensor_device_overload_all_kwargs(self):
+        """Tensor.to(device=, dtype=, blocking=, copy=) -- all keywords."""
+        t = paddle.to_tensor([1.0, 2.0])
+        out = t.to(device='cpu', dtype='float64', blocking=True, copy=True)
+        self.assertTrue(out.place.is_cpu_place())
+        self.assertEqual(out.dtype, paddle.float64)
+
+    def test_tensor_device_overload_mixed_copy_keyword(self):
+        """Tensor.to(device, dtype, copy=True) -- 2 positional + copy kwarg."""
+        t = paddle.to_tensor([1.0, 2.0])
+        out = t.to('cpu', 'float64', copy=True)
+        self.assertTrue(out.place.is_cpu_place())
+        self.assertEqual(out.dtype, paddle.float64)
+
+    # ---- copy parameter defaults and validation ----
+
+    def test_copy_default_is_false_layer(self):
+        """Layer.to without copy should default copy=False (no error)."""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to('float64')
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    def test_copy_default_is_false_tensor(self):
+        """Tensor.to without copy should default copy=False (no error)."""
+        t = paddle.to_tensor([1.0, 2.0])
+        out = t.to('float64')
+        self.assertEqual(out.dtype, paddle.float64)
+
+    def test_copy_invalid_type_layer(self):
+        """Layer.to(dtype, copy='yes') raises ValueError for non-bool."""
+        linear = paddle.nn.Linear(2, 2)
+        with self.assertRaises(ValueError):
+            linear.to('float64', copy='yes')
+
+    def test_copy_invalid_type_tensor(self):
+        """Tensor.to(dtype, copy='yes') raises ValueError for non-bool."""
+        t = paddle.to_tensor([1.0, 2.0])
+        with self.assertRaises(ValueError):
+            t.to('float64', copy='yes')
+
 
 # Test select_scatter compatibility
 class TestSelectScatterAPICompatibility(unittest.TestCase):
