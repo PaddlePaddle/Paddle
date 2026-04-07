@@ -18,6 +18,8 @@
 
 #pragma once
 
+#include <c10/macros/Macros.h>
+
 #include <cstdint>
 #include <exception>
 #include <iostream>
@@ -84,14 +86,6 @@ inline void C10ThrowImpl(C10ErrorType err_type, const std::string& msg) {
 }
 
 #define C10_THROW_ERROR(err_type, msg) C10ThrowImpl(err_type, msg)
-
-// Helper macro for generating unique variable names
-#ifndef C10_CONCATENATE_IMPL
-#define C10_CONCATENATE_IMPL(s1, s2) s1##s2
-#endif
-#ifndef C10_CONCATENATE
-#define C10_CONCATENATE(s1, s2) C10_CONCATENATE_IMPL(s1, s2)
-#endif
 
 // Warning support - simplified implementation compatible with PyTorch API
 namespace c10 {
