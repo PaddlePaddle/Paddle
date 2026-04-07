@@ -195,6 +195,24 @@ TEST(dense_tensor, meta) {
                                       meta_5.valid()));
 }
 
+TEST(dense_tensor, zero_size_strides) {
+  const auto zero_size_dims = common::make_ddim({0, 2048});
+  const auto zero_size_strides = DenseTensorMeta::calc_strides(zero_size_dims);
+  const auto expected_zero_size_strides = common::make_ddim({2048, 1});
+  EXPECT_EQ(zero_size_strides, expected_zero_size_strides);
+
+  DenseTensorMeta zero_size_meta(DataType::FLOAT32, zero_size_dims);
+  EXPECT_EQ(zero_size_meta.strides, expected_zero_size_strides);
+  EXPECT_TRUE(zero_size_meta.is_contiguous());
+
+  const auto reshaped_zero_size_dims = common::make_ddim({0, 512, 4});
+  EXPECT_EQ(DenseTensorMeta::calc_strides(reshaped_zero_size_dims),
+            common::make_ddim({2048, 4, 1}));
+
+  const auto unknown_dims = common::make_ddim({-1, 2048});
+  EXPECT_EQ(DenseTensorMeta::calc_strides(unknown_dims), unknown_dims);
+}
+
 TEST(dense_tensor, def_ctor) {
   DenseTensor tensor_0;
   PADDLE_ENFORCE_EQ(
