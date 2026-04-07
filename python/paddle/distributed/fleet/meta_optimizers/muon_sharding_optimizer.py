@@ -661,9 +661,8 @@ class MuonShardingOptimizer:
 
     def clear_grad(self, set_to_zero=True):
         """Clear gradients for all parameters."""
-        # Clear 2D param grads (non-MoE + MoE)
-        all_2d_params = list(self._params_2d) + list(self._params_2d_moe)
-        for p in all_2d_params:
+
+        def clear_grad_func(p):
             if hasattr(p, "main_grad") and p.main_grad is not None:
                 assert p._grad_ivar() is None
                 if set_to_zero:
@@ -672,7 +671,17 @@ class MuonShardingOptimizer:
                     p.main_grad._clear()
                     p.main_grad = None
             elif not hasattr(p, "main_grad"):
-                p.clear_gradient(set_to_zero)
+                if self.tensor_fusion:
+                    if set_to_zero:
+                        p.grad.zero_()
+                    else:
+                        p.grad._clear()
+                        p.grad = None
+                else:
+                    p.clear_gradient(set_to_zero)
+
+        for p in self._parameter_list:
+            clear_grad_func(p)
 
         # 1D params are managed by comm buffers
         if self.sd_release_grads and not self.pp_overlap:
