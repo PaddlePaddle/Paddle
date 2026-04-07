@@ -25,6 +25,7 @@ import numpy as np
 
 import paddle
 from paddle.distributed import fleet
+from paddle.distributed.fleet.utils import mix_precision_utils
 from paddle.optimizer.muon import (
     MuonParamInfo,
     QKVInfo,
@@ -190,8 +191,9 @@ class TestDistShardingMuonTraining(unittest.TestCase):
         ]
 
     def train_batch(self, batch, model, optimizer):
-        output = model(batch)
-        loss = output.mean()
+        with paddle.amp.auto_cast(dtype='bfloat16'):
+            output = model(batch)
+            loss = output.mean()
         loss.backward()
         optimizer.step()
         optimizer.clear_grad()
@@ -262,11 +264,17 @@ class TestDistShardingMuonTraining(unittest.TestCase):
             np_down_proj,
             np_lm_head,
         )
+        model_a = mix_precision_utils.MixPrecisionLayer(
+            model_a, dtype="bfloat16"
+        )
+        model_a = paddle.amp.decorate(
+            models=model_a, level='O2', dtype='bfloat16'
+        )
         optimizer_a = self.build_optimizer(
             model_a, qkv_mode, ffn_split, ns_coeff
         )
 
-        # Single-GPU reference model
+        # Single-GPU reference model (same MixPrecisionLayer pattern for consistency)
         model_b = QKVFFNNet(
             self.config,
             np_embed,
@@ -276,9 +284,16 @@ class TestDistShardingMuonTraining(unittest.TestCase):
             np_down_proj,
             np_lm_head,
         )
+        model_b = mix_precision_utils.MixPrecisionLayer(
+            model_b, dtype="bfloat16"
+        )
+        model_b = paddle.amp.decorate(
+            models=model_b, level='O2', dtype='bfloat16'
+        )
         optimizer_b = self.build_optimizer(
             model_b, qkv_mode, ffn_split, ns_coeff
         )
+        optimizer_b = mix_precision_utils.MixPrecisionOptimizer(optimizer_b)
 
         # Distributed wrapper
         model_a = fleet.distributed_model(model_a)
@@ -302,10 +317,11 @@ class TestDistShardingMuonTraining(unittest.TestCase):
             for param_a, param_b in zip(
                 model_a.parameters(), model_b.parameters()
             ):
+                a_fp32 = param_a.cast('float32').numpy()
+                b_fp32 = param_b.cast('float32').numpy()
                 np.testing.assert_allclose(
-                    param_a.numpy(),
-                    param_b.numpy(),
-                    rtol=1e-3,
+                    a_fp32,
+                    b_fp32,
                     atol=1e-3,
                     err_msg=f"Param {param_a.name} mismatch at step {idx}!",
                 )
