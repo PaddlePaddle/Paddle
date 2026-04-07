@@ -810,7 +810,7 @@ class class_ {
 // Operator Registration
 struct OperatorRegistration {
   std::string qualified_name;  // namespace::op_name
-  std::optional<std::variant<std::string, FunctionSchema>> schemaOrName_;
+  std::optional<std::variant<std::string, c10::FunctionSchema>> schemaOrName_;
   std::unordered_map<c10::DispatchKey, CppFunction> implementations;
 
   OperatorRegistration(const std::string& name,

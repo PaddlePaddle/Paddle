@@ -26,14 +26,14 @@ namespace torch::jit {
 namespace {
 
 std::string parsedDeclarationToDebugString(
-    const std::variant<std::string, FunctionSchema>& parsed) {
+    const std::variant<std::string, c10::FunctionSchema>& parsed) {
   // Used only in parser debug logs so we can see whether we parsed
   // an operator name or a full function schema.
   std::ostringstream os;
   if (std::holds_alternative<std::string>(parsed)) {
     os << "name(" << std::get<std::string>(parsed) << ")";
   } else {
-    os << "schema" << std::get<FunctionSchema>(parsed);
+    os << "schema" << std::get<c10::FunctionSchema>(parsed);
   }
   return os.str();
 }
@@ -86,7 +86,7 @@ void appendTypeTree(std::ostringstream& os,
 }
 
 std::string buildFunctionSchemaTypeTreeDebugString(
-    const FunctionSchema& schema) {
+    const c10::FunctionSchema& schema) {
   std::ostringstream os;
   os << "schema_type_tree";
   for (size_t i = 0; i < schema.arguments().size(); ++i) {
@@ -106,7 +106,7 @@ class SchemaParser final {
  public:
   explicit SchemaParser(const std::string& schema) : schema_(schema) {}
 
-  std::variant<std::string, FunctionSchema> parseExactlyOneDeclaration() {
+  std::variant<std::string, c10::FunctionSchema> parseExactlyOneDeclaration() {
     // Parse exactly one declaration and reject trailing characters so callers
     // can treat a successful parse as fully validated schema text.
     skipWhitespace();
@@ -120,7 +120,7 @@ class SchemaParser final {
   }
 
  private:
-  std::variant<std::string, FunctionSchema> parseDeclaration() {
+  std::variant<std::string, c10::FunctionSchema> parseDeclaration() {
     // Declarations are either:
     // 1) operator name only
     // 2) full schema: name(args) -> returns
@@ -130,8 +130,8 @@ class SchemaParser final {
       return name;
     }
 
-    std::vector<Argument> arguments;
-    std::vector<Argument> returns;
+    std::vector<c10::Argument> arguments;
+    std::vector<c10::Argument> returns;
     bool kwarg_only = false;
     bool is_vararg = false;
     bool is_varret = false;
@@ -205,11 +205,11 @@ class SchemaParser final {
           parseArgument(0, /*is_return=*/true, /*kwarg_only=*/false));
     }
 
-    return FunctionSchema(
+    return c10::FunctionSchema(
         std::move(arguments), std::move(returns), is_vararg, is_varret);
   }
 
-  Argument parseArgument(size_t /*idx*/, bool is_return, bool kwarg_only) {
+  c10::Argument parseArgument(size_t /*idx*/, bool is_return, bool kwarg_only) {
     // Type and alias syntax is parsed by SchemaTypeParser. This method handles
     // argument-level decorations such as fixed-size list suffixes, names and
     // defaults.
@@ -265,13 +265,13 @@ class SchemaParser final {
       }
     }
 
-    return Argument(std::move(name),
-                    parsed.type,
-                    parsed.type,
-                    N,
-                    std::move(default_value),
-                    !is_return && kwarg_only,
-                    std::move(parsed.alias_info));
+    return c10::Argument(std::move(name),
+                         parsed.type,
+                         parsed.type,
+                         N,
+                         std::move(default_value),
+                         !is_return && kwarg_only,
+                         std::move(parsed.alias_info));
   }
 
   torch::IValue parseDefaultValue(const c10::Type& arg_type) {
@@ -549,9 +549,9 @@ std::variant<std::string, c10::FunctionSchema> parseSchemaOrName(
   auto parsed = SchemaParser(schemaOrName).parseExactlyOneDeclaration();
   VLOG(3) << "parseSchemaOrName input=`" << schemaOrName
           << "` parsed=" << parsedDeclarationToDebugString(parsed);
-  if (VLOG_IS_ON(4) && std::holds_alternative<FunctionSchema>(parsed)) {
+  if (VLOG_IS_ON(4) && std::holds_alternative<c10::FunctionSchema>(parsed)) {
     VLOG(4) << buildFunctionSchemaTypeTreeDebugString(
-        std::get<FunctionSchema>(parsed));
+        std::get<c10::FunctionSchema>(parsed));
   }
   return parsed;
 }
@@ -559,11 +559,11 @@ std::variant<std::string, c10::FunctionSchema> parseSchemaOrName(
 c10::FunctionSchema parseSchema(const std::string& schema) {
   auto parsed = parseSchemaOrName(schema);
   TORCH_CHECK(
-      std::holds_alternative<FunctionSchema>(parsed),
+      std::holds_alternative<c10::FunctionSchema>(parsed),
       "Tried to parse a function schema but only the operator name was given");
   VLOG(3) << "parseSchema input=`" << schema
-          << "` output=" << std::get<FunctionSchema>(parsed);
-  return std::get<FunctionSchema>(std::move(parsed));
+          << "` output=" << std::get<c10::FunctionSchema>(parsed);
+  return std::get<c10::FunctionSchema>(std::move(parsed));
 }
 
 std::string parseName(const std::string& name) {
