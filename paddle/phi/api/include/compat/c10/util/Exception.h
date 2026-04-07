@@ -18,11 +18,15 @@
 
 #pragma once
 
+#include <c10/macros/Macros.h>
+
 #include <cstdint>
 #include <exception>
+#include <iostream>
 #include <memory>
 #include <sstream>
 #include <string>
+#include <tuple>
 #include <variant>
 #include <vector>
 
@@ -82,6 +86,83 @@ inline void C10ThrowImpl(C10ErrorType err_type, const std::string& msg) {
 }
 
 #define C10_THROW_ERROR(err_type, msg) C10ThrowImpl(err_type, msg)
+
+// Warning support - simplified implementation compatible with PyTorch API
+namespace c10 {
+
+// Warning types
+struct UserWarning {};
+struct DeprecationWarning {};
+
+// Simple Warning class
+class Warning {
+ public:
+  template <typename WarningType, typename... Args>
+  Warning(WarningType type,
+          const std::tuple<const char*, const char*, uint32_t>& location,
+          const std::string& msg,
+          bool verbatim)
+      : msg_(msg), verbatim_(verbatim) {
+    (void)type;
+    (void)location;
+    (void)verbatim;
+  }
+
+  const std::string& msg() const { return msg_; }
+
+ private:
+  std::string msg_;
+  bool verbatim_;
+};
+
+// Warning handler - prints to stderr
+inline void warn(const Warning& warning) {
+  std::cerr << "Warning: " << warning.msg() << std::endl;
+}
+
+// Helper to concatenate message arguments
+template <typename... Args>
+inline std::string torch_warn_msg_impl(const Args&... args) {
+  std::ostringstream oss;
+  (oss << ... << args);
+  return oss.str();
+}
+
+inline std::string torch_warn_msg_impl() { return ""; }
+
+}  // namespace c10
+
+// TORCH_WARN macros
+#ifdef DISABLE_WARN
+#define _TORCH_WARN_WITH(...) ((void)0)
+#else
+#define _TORCH_WARN_WITH(warning_t, ...)                                      \
+  do {                                                                        \
+    ::c10::warn(::c10::Warning(                                               \
+        warning_t{},                                                          \
+        std::make_tuple(__func__, __FILE__, static_cast<uint32_t>(__LINE__)), \
+        ::c10::torch_warn_msg_impl(__VA_ARGS__),                              \
+        false));                                                              \
+  } while (0)
+#endif
+
+#define TORCH_WARN(...) _TORCH_WARN_WITH(::c10::UserWarning, __VA_ARGS__)
+
+#define TORCH_WARN_DEPRECATION(...) \
+  _TORCH_WARN_WITH(::c10::DeprecationWarning, __VA_ARGS__)
+
+// TORCH_WARN_ONCE - only warns once per call site
+#ifdef DISABLE_WARN
+#define TORCH_WARN_ONCE(...) ((void)0)
+#else
+#define TORCH_WARN_ONCE(...)                                    \
+  do {                                                          \
+    static bool C10_ANONYMOUS_VARIABLE(torch_warn_once_) = [] { \
+      TORCH_WARN(__VA_ARGS__);                                  \
+      return true;                                              \
+    }();                                                        \
+  } while (0)
+#endif
 
 // Deprecated attribute macro
 #define C10_DEPRECATED_MESSAGE(msg) [[deprecated(msg)]]

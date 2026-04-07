@@ -39,11 +39,11 @@ void AddNKernel(const Context& dev_ctx,
     }
   }
 
-  // using MPType to keep precision
-  using MPType = typename dtype::MPTypeTrait<T>::Type;
+  // using MT to keep precision
+  using MT = typename dtype::MPTypeTrait<T>::Type;
   auto& place = *dev_ctx.eigen_device();
 
-  if constexpr (std::is_same_v<MPType, T>) {
+  if constexpr (std::is_same_v<MT, T>) {
     // compute in out
     auto result = EigenVector<T>::Flatten(*out);
 
@@ -74,28 +74,28 @@ void AddNKernel(const Context& dev_ctx,
       }
     }
   } else {
-    // compute in temp_out by using MPType
+    // compute in temp_out by using MT
     DenseTensor temp_out;
     temp_out.Resize(out->dims());
-    dev_ctx.template Alloc<MPType>(&temp_out);
+    dev_ctx.template Alloc<MT>(&temp_out);
 
-    auto result_mp = EigenVector<MPType>::Flatten(temp_out);
+    auto result_mp = EigenVector<MT>::Flatten(temp_out);
 
     // set temp_out
-    funcs::SetConstant<Context, MPType> constant_functor;
+    funcs::SetConstant<Context, MT> constant_functor;
     if (in_place && DenseTensor::classof(x[0]) && x[0]->initialized()) {
       auto& in_0 = *(static_cast<const DenseTensor*>(x[0]));
       if (in_0.numel()) {
-        auto in_0_e = EigenVector<T>::Flatten(in_0).template cast<MPType>();
+        auto in_0_e = EigenVector<T>::Flatten(in_0).template cast<MT>();
         result_mp.device(place) = in_0_e;
       } else {
-        constant_functor(dev_ctx, &temp_out, static_cast<MPType>(0));
+        constant_functor(dev_ctx, &temp_out, static_cast<MT>(0));
       }
     } else {
-      constant_functor(dev_ctx, &temp_out, static_cast<MPType>(0));
+      constant_functor(dev_ctx, &temp_out, static_cast<MT>(0));
     }
 
-    funcs::SelectedRowsAddToTensor<Context, MPType> functor;
+    funcs::SelectedRowsAddToTensor<Context, MT> functor;
     size_t start = in_place ? 1 : 0;
     for (size_t i = start; i < in_num; i++) {
       if (DenseTensor::classof(x[i])) {
@@ -103,7 +103,7 @@ void AddNKernel(const Context& dev_ctx,
         if (!in_t.initialized() || in_t.numel() == 0) {
           continue;
         }
-        auto in = EigenVector<T>::Flatten(in_t).template cast<MPType>();
+        auto in = EigenVector<T>::Flatten(in_t).template cast<MT>();
         result_mp.device(place) = result_mp + in;
       } else if (SelectedRows::classof(x[i])) {
         auto& in_t = *(static_cast<const SelectedRows*>(x[i]));

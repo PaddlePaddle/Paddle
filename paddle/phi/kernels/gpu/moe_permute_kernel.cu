@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
@@ -582,8 +583,11 @@ void dispatch_preprocess(const Context &dev_ctx,
   padding_tokens_tensor.Resize({static_cast<int64_t>(padding_rows.size())});
   dev_ctx.template Alloc<int>(&padding_tokens_tensor);
 
+  auto *stable_padding_rows =
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          const_cast<int *>(padding_rows.data()), padding_rows.size());
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(padding_tokens_tensor.data<int>(),
-                                             padding_rows.data(),
+                                             stable_padding_rows,
                                              sizeof(int) * padding_rows.size(),
                                              cudaMemcpyHostToDevice,
                                              dev_ctx.stream()));
@@ -795,14 +799,20 @@ void MoePermuteKernel(const Context &dev_ctx,
         expert_offset[i] = 0;
       }
     }
+    auto *stable_expert_offset =
+        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(expert_offset,
+                                                               kMaxNumExperts);
     PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(expert_offset_tensor.data<int>(),
-                                               expert_offset,
+                                               stable_expert_offset,
                                                sizeof(int) * kMaxNumExperts,
                                                cudaMemcpyHostToDevice,
                                                dev_ctx.stream()));
+    auto *stable_expert_offset_end =
+        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+            expert_offset_end, kMaxNumExperts);
     PADDLE_ENFORCE_GPU_SUCCESS(
         cudaMemcpyAsync(expert_offset_end_tensor.data<int>(),
-                        expert_offset_end,
+                        stable_expert_offset_end,
                         sizeof(int) * kMaxNumExperts,
                         cudaMemcpyHostToDevice,
                         dev_ctx.stream()));

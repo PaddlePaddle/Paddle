@@ -21,7 +21,6 @@
 #include <c10/core/TensorOptions.h>
 
 #include "gtest/gtest.h"
-#include "test/cpp/compat/cuda_test_utils.h"
 
 TEST(TensorEqualTest, DifferentShapeReturnsFalse) {
   at::Tensor a = at::ones({2, 2}, at::kFloat);
@@ -41,8 +40,6 @@ TEST(TensorEqualTest, DtypeMismatchCastsOtherTensor) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(TensorEqualTest, DeviceMismatchThrows) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
-
   at::Tensor cpu = at::ones({2, 2}, at::kFloat);
   at::Tensor gpu =
       at::ones({2, 2}, at::TensorOptions().dtype(at::kFloat).device(at::kCUDA));

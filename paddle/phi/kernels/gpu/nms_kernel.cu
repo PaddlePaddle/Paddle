@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/nms_kernel.h"
 
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/memory_utils.h"
@@ -81,6 +82,14 @@ void NMSKernel(const Context& dev_ctx,
   uint64_t* mask_dev = reinterpret_cast<uint64_t*>(mask_data->ptr());
   NMS<T><<<grid, block, 0, dev_ctx.stream()>>>(
       boxes.data<T>(), threshold, num_boxes, mask_dev);
+  PADDLE_ENFORCE_EQ(
+      phi::backends::gpu::IsCUDAGraphCapturing(),
+      false,
+      common::errors::InvalidArgument(
+          "NMSKernel does not support CUDA Graph capture: async D2H copy to "
+          "local vector 'mask_host' will bake the destination address into the "
+          "graph; on replay the vector is re-created at a different address, "
+          "causing a dangling-pointer write."));
   std::vector<uint64_t> mask_host(num_boxes * blocks_per_line);
   memory_utils::Copy(CPUPlace(),
                      mask_host.data(),
@@ -105,10 +114,13 @@ void NMSKernel(const Context& dev_ctx,
   }
   output->Resize({last_box_num});
   auto* output_data = dev_ctx.template Alloc<int64_t>(output);
+  const int64_t* stable_output =
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(output_host,
+                                                             last_box_num);
   memory_utils::Copy(dev_ctx.GetPlace(),
                      output_data,
                      CPUPlace(),
-                     output_host,
+                     stable_output,
                      sizeof(int64_t) * last_box_num,
                      dev_ctx.stream());
 }

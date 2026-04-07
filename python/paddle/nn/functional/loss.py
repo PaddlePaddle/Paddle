@@ -4856,7 +4856,7 @@ def adaptive_log_softmax_with_loss(
         if row_indices.dim() == 0:
             row_indices.unsqueeze_(0)
 
-        if row_indices.numel() == 0:
+        if 0 in row_indices.shape:
             continue
 
         if i == 0:

@@ -71,6 +71,7 @@ third_party/
 bazel-*
 .humanize
 .codex
+.paddle-agent
 
 build_*
 # clion workspace.

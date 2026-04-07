@@ -18,15 +18,16 @@
 
 #include "ATen/ATen.h"
 #include "gtest/gtest.h"
+#include "paddle/common/macros.h"
 #include "torch/all.h"
+
+COMMON_DECLARE_bool(use_stride_kernel);
 
 #if defined(PADDLE_WITH_CUDA)
 #include <cuda_runtime.h>
 #elif defined(PADDLE_WITH_HIP)
 #include <hip/hip_runtime.h>
 #endif
-
-#include "test/cpp/compat/cuda_test_utils.h"
 
 // ======================== CPU place detection ========================
 
@@ -67,6 +68,9 @@ TEST(ATenFromBlobTest, ShapeAndStrides) {
 
 // Explicit strides overload.
 TEST(ATenFromBlobTest, ExplicitStrides) {
+  if (!FLAGS_use_stride_kernel) {
+    return;
+  }
   // Row-major 2×3 laid out in memory, but we interpret as column-major strides
   float data[6] = {1, 2, 3, 4, 5, 6};
   at::Tensor t = at::from_blob(data, {2, 3}, {1, 2}, at::kFloat);
@@ -119,7 +123,6 @@ TEST(ATenFromBlobTest, DeleterWithStrides) {
 
 // No device specified: GPU pointer → tensor must be on CUDA automatically.
 TEST(ATenFromBlobTest, GpuPtrDefaultsToCuda) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   float* d_data = nullptr;
 #if defined(PADDLE_WITH_CUDA)
   cudaMalloc(&d_data, 4 * sizeof(float));
@@ -144,7 +147,6 @@ TEST(ATenFromBlobTest, GpuPtrDefaultsToCuda) {
 
 // Explicit CUDA device option + GPU pointer → still CUDA.
 TEST(ATenFromBlobTest, GpuPtrWithCudaOptions) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   float* d_data = nullptr;
 #if defined(PADDLE_WITH_CUDA)
   cudaMalloc(&d_data, 4 * sizeof(float));
@@ -165,7 +167,6 @@ TEST(ATenFromBlobTest, GpuPtrWithCudaOptions) {
 
 // target_device overrides auto-detection.
 TEST(ATenFromBlobTest, TargetDeviceOverride) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   float* d_data = nullptr;
 #if defined(PADDLE_WITH_CUDA)
   cudaMalloc(&d_data, 4 * sizeof(float));

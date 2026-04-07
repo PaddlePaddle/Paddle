@@ -19,7 +19,7 @@ PaddlePaddle originates from industrial practices with dedication and commitment
 
 ## Installation
 
-### Latest PaddlePaddle Release: 3.2
+### Latest PaddlePaddle Release: 3.3
 Our vision is to enable deep learning for everyone via PaddlePaddle.
 Please refer to our [release announcement](https://github.com/PaddlePaddle/Paddle/releases) to track the latest features of PaddlePaddle.
 

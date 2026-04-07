@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/distribute_fpn_proposals_kernel.h"
 #include "paddle/common/enforce.h"
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/memory_utils.h"
@@ -226,6 +227,15 @@ void DistributeFpnProposalsKernel(
 
   size_t start = 0;
 
+  PADDLE_ENFORCE_EQ(
+      phi::backends::gpu::IsCUDAGraphCapturing(),
+      false,
+      common::errors::InvalidArgument(
+          "DistributeFpnProposals does not support CUDA Graph capture: async "
+          "D2H copy to local vector 'sub_lod_list_cpu' will bake the "
+          "destination address into the graph; on replay the vector is "
+          "re-created at a different address, causing a dangling-pointer "
+          "write."));
   std::vector<int> sub_lod_list_cpu(lod_size * num_level);
   memory_utils::Copy(CPUPlace(),
                      sub_lod_list_cpu.data(),

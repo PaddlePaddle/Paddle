@@ -373,7 +373,3 @@ inline std::string toString(const TensorOptions& options) {
 namespace at {
 using namespace c10;  // NOLINT
 }  // namespace at
-
-namespace torch {
-using namespace c10;  // NOLINT
-}  // namespace torch

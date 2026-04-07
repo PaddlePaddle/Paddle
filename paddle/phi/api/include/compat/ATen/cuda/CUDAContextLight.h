@@ -49,7 +49,7 @@ using CUDAContextSparseHandle = phi::sparseHandle_t;
 using CUDAContextBlasHandle = phi::blasHandle_t;
 using CUDAContextBlasLtHandle = phi::blasLtHandle_t;
 using CUDAContextSolverHandle = phi::solverHandle_t;
-#else
+#elif defined(PADDLE_WITH_CUDA)
 using CUDAContextDeviceProp = cudaDeviceProp;
 using CUDAContextSparseHandle = cusparseHandle_t;
 using CUDAContextBlasHandle = cublasHandle_t;
@@ -90,6 +90,7 @@ inline int64_t getNumGPUs() { return c10::cuda::device_count(); }
  */
 inline bool is_available() { return c10::cuda::device_count() > 0; }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 CUDAContextDeviceProp* getCurrentDeviceProperties();
 
 int warp_size();
@@ -115,7 +116,6 @@ size_t getChosenWorkspaceSize();
 size_t getCUDABlasLtWorkspaceSize();
 void* getCUDABlasLtWorkspace();
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 CUDAContextSolverHandle getCurrentCUDASolverDnHandle();
 
 // Get the CUDA device allocator for the current device.
