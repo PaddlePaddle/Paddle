@@ -1,4 +1,4 @@
-if(NOT WIN32 AND NOT WITH_ROCM)
+if(NOT WIN32)
   # c10 core tests (CPU compatible)
   cc_test(c10_Device_test SRCS c10_Device_test.cc)
   cc_test(c10_DispatchKeySet_test SRCS c10_DispatchKeySet_test.cc)
