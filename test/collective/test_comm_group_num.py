@@ -58,5 +58,69 @@ class CommGroupNumTest(unittest.TestCase):
         )
 
 
+class TestContextParallelRankID(unittest.TestCase):
+    def setUp(self):
+        self.world_size = paddle.distributed.get_world_size()
+        self.DTYPE = "bfloat16"
+        self.rtol = 1.0e-1
+        self.use_flash_attn = True
+
+        assert self.world_size == 8
+        (
+            self.pp_degree,
+            self.tp_degree,
+            self.dp_degree,
+            self.cp_degree,
+            self.sharding_degree,
+        ) = (1, 1, 1, 4, 1)
+
+        strategy = fleet.DistributedStrategy()
+        strategy.hybrid_configs = {
+            "dp_degree": 1,
+            "mp_degree": 1,
+            "pp_degree": 1,
+            "sharding_degree": 8,
+            "sep_degree": 1,
+            "ep_degree": 2,
+            "moe_sharding_degree": 4,
+            "cp_degree": 4,
+            "order": [
+                "sharding",
+                "moe_sharding",
+                "pp",
+                "sep",
+                "cp",
+                "dp",
+                "ep",
+                "mp",
+            ],
+        }
+        self.ACC = 2
+        strategy.pipeline_configs = {
+            "accumulate_steps": self.ACC,
+            "micro_batch_size": 1,
+            "enable_partial_send_recv": False,
+            "p2p_cache_shape": True,
+        }
+        strategy.tensor_parallel_configs = {"tensor_init_seed": 42}
+        fleet.init(is_collective=True, strategy=strategy)
+
+        self.hcg = fleet.get_hybrid_communicate_group()
+        self.dp_rank = self.hcg.get_data_parallel_rank()
+        self.mp_rank = self.hcg.get_model_parallel_rank()
+        self.pp_rank = self.hcg.get_stage_id()
+        self.group = self.hcg.get_context_parallel_group()
+        self.cp_degree = self.hcg.get_context_parallel_world_size()
+        self.cp_rank = self.hcg.get_context_parallel_rank()
+
+        self.strategy = strategy
+
+    def test_cp_rank_id(self):
+        assert (
+            self.hcg.get_context_parallel_rank()
+            == self.hcg._get_context_parallel_id()
+        )
+
+
 if __name__ == '__main__':
     unittest.main()
