@@ -1039,6 +1039,7 @@ class TestConv1dTransposeAPI(unittest.TestCase):
                 np.testing.assert_allclose(fetches[0], fetches[i], rtol=1e-5)
 
 
+'''
 # Test conv2d_transpose compatibility
 class TestConv2dTransposeAPI(unittest.TestCase):
     def setUp(self):
@@ -1167,7 +1168,7 @@ class TestConv2dTransposeAPI(unittest.TestCase):
                 np.testing.assert_allclose(fetches[0], fetches[i], rtol=1e-5)
 
 
-'''
+
 # Test conv3d_transpose compatibility
 class TestConv3dTransposeAPI(unittest.TestCase):
     def setUp(self):
