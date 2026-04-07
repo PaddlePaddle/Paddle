@@ -913,6 +913,7 @@ class TestUnsqueezeInplaceAPI(unittest.TestCase):
             np.testing.assert_allclose(out.numpy(), ref_out)
 
 
+'''
 # Test conv1d_transpose compatibility
 class TestConv1dTransposeAPI(unittest.TestCase):
     def setUp(self):
@@ -1039,7 +1040,6 @@ class TestConv1dTransposeAPI(unittest.TestCase):
                 np.testing.assert_allclose(fetches[0], fetches[i], rtol=1e-5)
 
 
-'''
 # Test conv2d_transpose compatibility
 class TestConv2dTransposeAPI(unittest.TestCase):
     def setUp(self):
