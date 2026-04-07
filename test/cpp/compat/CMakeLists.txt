@@ -1,85 +1,106 @@
-if(NOT WIN32 AND WITH_SHARED_PHI)
-  # These compat C++ tests rely on out-of-line symbols exported by the shared
-  # phi libraries. Static-phi builds, such as Linux-DCU CI, only link the
-  # dynamic cc_test targets against libpaddle.so and therefore cannot resolve
-  # these compat symbols at link time.
+if(NOT WIN32)
+  # Use paddle_test instead of cc_test to ensure phi libraries are properly
+  # linked in both shared and static phi builds. The DEPS phi ensures that:
+  # - In shared phi builds (WITH_SHARED_PHI=ON): links libphi.so which exports
+  #   the required c10::Stream and c10::cuda symbols
+  # - In static phi builds (WITH_SHARED_PHI=OFF): links libphi.a, libphi_core.a,
+  #   and libphi_gpu.a (when applicable) which contain the same symbols
+  # This allows these compat tests to run on both Linux-GPU and Linux-DCU CI.
+
   # c10 core tests (CPU compatible)
-  cc_test(c10_Device_test SRCS c10_Device_test.cc)
-  cc_test(c10_DispatchKeySet_test SRCS c10_DispatchKeySet_test.cc)
-  cc_test(c10_DispatchKey_test SRCS c10_DispatchKey_test.cc)
-  cc_test(c10_MemoryFormat_test SRCS c10_MemoryFormat_test.cc)
-  cc_test(c10_ScalarType_test SRCS c10_ScalarType_test.cc)
-  cc_test(c10_SizesAndStrides_test SRCS c10_SizesAndStrides_test.cc)
-  cc_test(c10_TensorOptions_test SRCS c10_TensorOptions_test.cc)
-  cc_test(c10_TypeMeta_test SRCS c10_TypeMeta_test.cc)
-  cc_test(c10_intrusive_ptr_lifecycle_test
-          SRCS c10_intrusive_ptr_lifecycle_test.cc)
-  cc_test(c10_layout_test SRCS c10_layout_test.cc)
-  cc_test(c10_ptr_test SRCS c10_ptr_test.cc)
-  cc_test(c10_storage_test SRCS c10_storage_test.cc)
+  paddle_test(c10_Device_test SRCS c10_Device_test.cc DEPS phi)
+  paddle_test(c10_DispatchKeySet_test SRCS c10_DispatchKeySet_test.cc DEPS phi)
+  paddle_test(c10_DispatchKey_test SRCS c10_DispatchKey_test.cc DEPS phi)
+  paddle_test(c10_MemoryFormat_test SRCS c10_MemoryFormat_test.cc DEPS phi)
+  paddle_test(c10_ScalarType_test SRCS c10_ScalarType_test.cc DEPS phi)
+  paddle_test(c10_SizesAndStrides_test SRCS c10_SizesAndStrides_test.cc DEPS
+              phi)
+  paddle_test(c10_TensorOptions_test SRCS c10_TensorOptions_test.cc DEPS phi)
+  paddle_test(c10_TypeMeta_test SRCS c10_TypeMeta_test.cc DEPS phi)
+  paddle_test(c10_intrusive_ptr_lifecycle_test SRCS
+              c10_intrusive_ptr_lifecycle_test.cc DEPS phi)
+  paddle_test(c10_layout_test SRCS c10_layout_test.cc DEPS phi)
+  paddle_test(c10_ptr_test SRCS c10_ptr_test.cc DEPS phi)
+  paddle_test(c10_storage_test SRCS c10_storage_test.cc DEPS phi)
 
   # ATen core tests (CPU compatible)
-  cc_test(ATen_all_test SRCS ATen_all_test.cc)
-  cc_test(ATen_any_test SRCS ATen_any_test.cc)
-  cc_test(ATen_as_strided_test SRCS ATen_as_strided_test.cc)
-  cc_test(ATen_autograd_test SRCS ATen_autograd_test.cc)
-  cc_test(ATen_chunk_test SRCS ATen_chunk_test.cc)
-  cc_test(ATen_clamp_test SRCS ATen_clamp_test.cc)
-  cc_test(ATen_coalesce_test SRCS ATen_coalesce_test.cc)
-  cc_test(ATen_dense_sparse_conversion_test
-          SRCS ATen_dense_sparse_conversion_test.cc)
-  cc_test(ATen_empty_test SRCS ATen_empty_test.cc)
-  cc_test(ATen_equal_test SRCS ATen_equal_test.cc)
-  cc_test(ATen_expand_test SRCS ATen_expand_test.cc)
-  cc_test(ATen_eye_test SRCS ATen_eye_test.cc)
-  cc_test(ATen_factory_default_dtype_test
-          SRCS ATen_factory_default_dtype_test.cc)
-  cc_test(ATen_flatten_test SRCS ATen_flatten_test.cc)
-  cc_test(ATen_from_blob_test SRCS ATen_from_blob_test.cc)
-  cc_test(ATen_hook_test SRCS ATen_hook_test.cc)
-  cc_test(ATen_index_test SRCS ATen_index_test.cc)
-  cc_test(ATen_item_test SRCS ATen_item_test.cc)
-  cc_test(ATen_narrow_test SRCS ATen_narrow_test.cc)
-  cc_test(ATen_new_test SRCS ATen_new_test.cc)
-  cc_test(ATen_nnz_test SRCS ATen_nnz_test.cc)
-  cc_test(ATen_rename_test SRCS ATen_rename_test.cc)
-  cc_test(ATen_reshape_test SRCS ATen_reshape_test.cc)
-  cc_test(ATen_resize_test SRCS ATen_resize_test.cc)
-  cc_test(ATen_squeeze_test SRCS ATen_squeeze_test.cc)
-  cc_test(ATen_std_var_test SRCS ATen_std_var_test.cc)
-  cc_test(ATen_sum_test SRCS ATen_sum_test.cc)
-  cc_test(ATen_t_test SRCS ATen_t_test.cc)
-  cc_test(ATen_tensor_data_test SRCS ATen_tensor_data_test.cc)
-  cc_test(ATen_toString_test SRCS ATen_toString_test.cc)
-  cc_test(ATen_to_test SRCS ATen_to_test.cc)
-  cc_test(ATen_transpose_test SRCS ATen_transpose_test.cc)
-  cc_test(ATen_Utils_test SRCS ATen_Utils_test.cc)
-  cc_test(ATen_values_test SRCS ATen_values_test.cc)
-  cc_test(ATen_viewAs_test SRCS ATen_viewAs_test.cc)
+  paddle_test(ATen_all_test SRCS ATen_all_test.cc DEPS phi)
+  paddle_test(ATen_any_test SRCS ATen_any_test.cc DEPS phi)
+  paddle_test(ATen_as_strided_test SRCS ATen_as_strided_test.cc DEPS phi)
+  paddle_test(ATen_autograd_test SRCS ATen_autograd_test.cc DEPS phi)
+  paddle_test(ATen_chunk_test SRCS ATen_chunk_test.cc DEPS phi)
+  paddle_test(ATen_clamp_test SRCS ATen_clamp_test.cc DEPS phi)
+  paddle_test(ATen_coalesce_test SRCS ATen_coalesce_test.cc DEPS phi)
+  paddle_test(ATen_dense_sparse_conversion_test SRCS
+              ATen_dense_sparse_conversion_test.cc DEPS phi)
+  paddle_test(ATen_empty_test SRCS ATen_empty_test.cc DEPS phi)
+  paddle_test(ATen_equal_test SRCS ATen_equal_test.cc DEPS phi)
+  paddle_test(ATen_expand_test SRCS ATen_expand_test.cc DEPS phi)
+  paddle_test(ATen_eye_test SRCS ATen_eye_test.cc DEPS phi)
+  paddle_test(ATen_factory_default_dtype_test SRCS
+              ATen_factory_default_dtype_test.cc DEPS phi)
+  paddle_test(ATen_flatten_test SRCS ATen_flatten_test.cc DEPS phi)
+  paddle_test(ATen_from_blob_test SRCS ATen_from_blob_test.cc DEPS phi)
+  paddle_test(ATen_hook_test SRCS ATen_hook_test.cc DEPS phi)
+  paddle_test(ATen_index_test SRCS ATen_index_test.cc DEPS phi)
+  paddle_test(ATen_item_test SRCS ATen_item_test.cc DEPS phi)
+  paddle_test(ATen_narrow_test SRCS ATen_narrow_test.cc DEPS phi)
+  paddle_test(ATen_new_test SRCS ATen_new_test.cc DEPS phi)
+  paddle_test(ATen_nnz_test SRCS ATen_nnz_test.cc DEPS phi)
+  paddle_test(ATen_rename_test SRCS ATen_rename_test.cc DEPS phi)
+  paddle_test(ATen_reshape_test SRCS ATen_reshape_test.cc DEPS phi)
+  paddle_test(ATen_resize_test SRCS ATen_resize_test.cc DEPS phi)
+  paddle_test(ATen_squeeze_test SRCS ATen_squeeze_test.cc DEPS phi)
+  paddle_test(ATen_std_var_test SRCS ATen_std_var_test.cc DEPS phi)
+  paddle_test(ATen_sum_test SRCS ATen_sum_test.cc DEPS phi)
+  paddle_test(ATen_t_test SRCS ATen_t_test.cc DEPS phi)
+  paddle_test(ATen_tensor_data_test SRCS ATen_tensor_data_test.cc DEPS phi)
+  paddle_test(ATen_toString_test SRCS ATen_toString_test.cc DEPS phi)
+  paddle_test(ATen_to_test SRCS ATen_to_test.cc DEPS phi)
+  paddle_test(ATen_transpose_test SRCS ATen_transpose_test.cc DEPS phi)
+  paddle_test(ATen_Utils_test SRCS ATen_Utils_test.cc DEPS phi)
+  paddle_test(ATen_values_test SRCS ATen_values_test.cc DEPS phi)
+  paddle_test(ATen_viewAs_test SRCS ATen_viewAs_test.cc DEPS phi)
 
   # torch library tests (CPU compatible)
-  cc_test(torch_library_test SRCS torch_library_test.cc)
-  cc_test(torch_library_dispatch_test SRCS torch_library_dispatch_test.cc)
+  paddle_test(torch_library_test SRCS torch_library_test.cc DEPS phi)
+  paddle_test(torch_library_dispatch_test SRCS torch_library_dispatch_test.cc
+              DEPS phi)
 
   # ATen tests with GPU code guarded by PADDLE_WITH_CUDA macros
-  cc_test(ATen_TensorAccessor_test SRCS ATen_TensorAccessor_test.cc)
-  cc_test(ATen_basic_test SRCS ATen_basic_test.cc)
-  cc_test(ATen_local_scalar_dense_test SRCS ATen_local_scalar_dense_test.cc)
-  cc_test(ATen_memory_test SRCS ATen_memory_test.cc)
-  cc_test(ATen_pin_memory_creation_test SRCS ATen_pin_memory_creation_test.cc)
-  cc_test(ATen_record_stream_test SRCS ATen_record_stream_test.cc)
-  cc_test(ATen_select_test SRCS ATen_select_test.cc)
-  cc_test(ATen_split_test SRCS ATen_split_test.cc)
+  paddle_test(ATen_TensorAccessor_test SRCS ATen_TensorAccessor_test.cc DEPS
+              phi)
+  paddle_test(ATen_basic_test SRCS ATen_basic_test.cc DEPS phi)
+  paddle_test(ATen_local_scalar_dense_test SRCS ATen_local_scalar_dense_test.cc
+              DEPS phi)
+  paddle_test(ATen_memory_test SRCS ATen_memory_test.cc DEPS phi)
+  paddle_test(ATen_pin_memory_creation_test SRCS
+              ATen_pin_memory_creation_test.cc DEPS phi)
+  paddle_test(ATen_record_stream_test SRCS ATen_record_stream_test.cc DEPS phi)
+  paddle_test(ATen_select_test SRCS ATen_select_test.cc DEPS phi)
+  paddle_test(ATen_split_test SRCS ATen_split_test.cc DEPS phi)
 
-  cc_test(ATen_CUDAContext_test SRCS ATen_CUDAContext_test.cc)
-  cc_test(ATen_philox_test SRCS ATen_philox_test.cc)
-  cc_test(c10_Event_test SRCS c10_Event_test.cc)
-  cc_test(c10_Stream_test SRCS c10_Stream_test.cc)
+  paddle_test(ATen_CUDAContext_test SRCS ATen_CUDAContext_test.cc DEPS phi)
+  paddle_test(ATen_philox_test SRCS ATen_philox_test.cc DEPS phi)
+  paddle_test(c10_Event_test SRCS c10_Event_test.cc DEPS phi)
+  paddle_test(c10_Stream_test SRCS c10_Stream_test.cc DEPS phi)
 
   if(WITH_GPU)
-    nv_test(ATen_CUDABlas_test SRCS ATen_CUDABlas_test.cc)
-    nv_test(ATen_cuda_test SRCS ATen_cuda_test.cc)
-    nv_test(c10_cuda_generator_test SRCS c10_cuda_generator_test.cc)
-    nv_test(c10_generator_impl_test SRCS c10_generator_impl_test.cc)
+    nv_test(
+      ATen_CUDABlas_test
+      SRCS ATen_CUDABlas_test.cc
+      DEPS phi)
+    nv_test(
+      ATen_cuda_test
+      SRCS ATen_cuda_test.cc
+      DEPS phi)
+    nv_test(
+      c10_cuda_generator_test
+      SRCS c10_cuda_generator_test.cc
+      DEPS phi)
+    nv_test(
+      c10_generator_impl_test
+      SRCS c10_generator_impl_test.cc
+      DEPS phi)
   endif()
 endif()
