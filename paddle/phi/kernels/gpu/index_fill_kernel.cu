@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/index_fill_kernel.h"
+#include <climits>
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/data_type.h"
@@ -20,7 +21,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
-#include "paddle/phi/kernels/funcs/index_fill_util.h"
+#include "paddle/phi/kernels/index_fill_kernel.h"
 
 namespace phi {
 
@@ -42,46 +43,77 @@ namespace phi {
 //
 //   Total threads = outer_size * index_size * inner_size
 //   (one thread per element that needs to be filled)
-template <typename T>
+//
+// IndexT: int32_t when numel <= INT32_MAX (faster mod/div on GPU),
+//         int64_t otherwise.
+// IndT:   matches index tensor dtype (int32_t or int64_t), avoids a
+//         CastToInt64 kernel launch when the user supplies int32 indices.
+template <typename T, typename IndexT, typename IndT>
 __global__ void IndexFillCudaKernel(const T* x,
-                                    const int64_t* index,
-                                    const int64_t index_size,
+                                    const IndT* index,
+                                    const IndexT index_size,
                                     const int dim,
-                                    const int64_t outer_size,
+                                    const IndexT outer_size,
                                     const int64_t dim_size,
-                                    const int64_t inner_size,
+                                    const IndexT inner_size,
                                     const T fill_value,
                                     T* out) {
-  int64_t idx =
-      static_cast<int64_t>(threadIdx.x) +
-      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
-  int64_t total = index_size * outer_size * inner_size;
+  IndexT idx =
+      static_cast<IndexT>(threadIdx.x) +
+      static_cast<IndexT>(blockIdx.x) * static_cast<IndexT>(blockDim.x);
+  IndexT total = index_size * outer_size * inner_size;
   if (idx >= total) return;
 
   // Decompose the flat thread index into the three logical coordinates.
   // The iteration order is: outer (slowest) → index → inner (fastest).
-  int64_t inner_idx = idx % inner_size;
-  int64_t temp = idx / inner_size;
-  int64_t index_idx = temp % index_size;
-  int64_t outer_idx = temp / index_size;
+  IndexT inner_idx = idx % inner_size;
+  IndexT temp = idx / inner_size;
+  IndexT index_idx = temp % index_size;
+  IndexT outer_idx = temp / index_size;
 
   // Look up the actual position along the target dimension from the index
-  // tensor.
-  int64_t dim_idx = index[index_idx];
+  // tensor. Widen to int64 for the bounds check against dim_size.
+  int64_t dim_idx = static_cast<int64_t>(index[index_idx]);
   if (dim_idx < 0) dim_idx += dim_size;  // support negative indexing
 
   if (dim_idx < 0 || dim_idx >= dim_size) return;  // out-of-bounds guard
 
   // Convert the 3D logical coordinate back to a flat memory offset.
-  int64_t offset =
-      outer_idx * dim_size * inner_size + dim_idx * inner_size + inner_idx;
+  IndexT offset = outer_idx * static_cast<IndexT>(dim_size) * inner_size +
+                  static_cast<IndexT>(dim_idx) * inner_size + inner_idx;
 
   out[offset] = fill_value;
 }
 
 // Host-side launch function: computes the three-segment sizes and launches
-// the CUDA kernel.
-template <typename T, typename Context>
+// the CUDA kernel with the appropriate index types (IndexT, IndT).
+template <typename T, typename Context, typename IndexT, typename IndT>
+void LaunchIndexFillCudaKernelImpl(const Context& dev_ctx,
+                                   const T* x_data,
+                                   const IndT* index_data,
+                                   IndexT index_size,
+                                   int dim,
+                                   IndexT outer_size,
+                                   int64_t dim_size,
+                                   IndexT inner_size,
+                                   T fill_value,
+                                   T* out_data) {
+  IndexT numel = outer_size * index_size * inner_size;
+  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
+  IndexFillCudaKernel<T, IndexT, IndT>
+      <<<config.block_per_grid, config.thread_per_block, 0, dev_ctx.stream()>>>(
+          x_data,
+          index_data,
+          index_size,
+          dim,
+          outer_size,
+          dim_size,
+          inner_size,
+          fill_value,
+          out_data);
+}
+
+template <typename T, typename Context, typename IndT>
 void LaunchIndexFillCudaKernel(const Context& dev_ctx,
                                const DenseTensor& x,
                                int dim,
@@ -100,7 +132,7 @@ void LaunchIndexFillCudaKernel(const Context& dev_ctx,
     Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   }
 
-  auto* index_data = index.data<int64_t>();
+  const IndT* index_data = index.data<IndT>();
   int64_t index_size = index.numel();
 
   if (index_size == 0) {
@@ -126,21 +158,35 @@ void LaunchIndexFillCudaKernel(const Context& dev_ctx,
     inner_size *= x_dims[i];
   }
 
-  // Each thread handles one (outer, index_element, inner) triple.
-  int64_t numel = outer_size * index_size * inner_size;
+  // Select int32 index arithmetic when the total work fits in 32 bits —
+  // GPU mod/div on 32-bit integers is significantly faster than on 64-bit.
+  const int64_t numel = x.numel();
+  constexpr int64_t kInt32Max = static_cast<int64_t>(INT32_MAX);
 
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
-  IndexFillCudaKernel<T>
-      <<<config.block_per_grid, config.thread_per_block, 0, dev_ctx.stream()>>>(
-          x_data,
-          index_data,
-          index_size,
-          dim,
-          outer_size,
-          dim_size,
-          inner_size,
-          fill_value,
-          out_data);
+  if (numel <= kInt32Max) {
+    LaunchIndexFillCudaKernelImpl<T, Context, int32_t, IndT>(
+        dev_ctx,
+        x_data,
+        index_data,
+        static_cast<int32_t>(index_size),
+        dim,
+        static_cast<int32_t>(outer_size),
+        dim_size,
+        static_cast<int32_t>(inner_size),
+        fill_value,
+        out_data);
+  } else {
+    LaunchIndexFillCudaKernelImpl<T, Context, int64_t, IndT>(dev_ctx,
+                                                             x_data,
+                                                             index_data,
+                                                             index_size,
+                                                             dim,
+                                                             outer_size,
+                                                             dim_size,
+                                                             inner_size,
+                                                             fill_value,
+                                                             out_data);
+  }
 }
 
 // Top-level kernel entry: validates inputs and dispatches to the launcher.
@@ -194,36 +240,18 @@ void IndexFillKernel(const Context& dev_ctx,
     return;
   }
 
-  // The kernel requires int64 indices. If the user passes int32 indices,
-  // cast them to int64 via a lightweight GPU kernel (CastToInt64Kernel).
-  DenseTensor index_int64;
-  const DenseTensor* ptr_index = nullptr;
-
+  // Dispatch directly on index dtype — no cast kernel needed.
   if (index.dtype() == phi::DataType::INT32) {
-    index_int64.Resize(index.dims());
-    dev_ctx.template Alloc<int64_t>(&index_int64);
-
-    int64_t index_numel = index.numel();
-    auto config =
-        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, index_numel);
-
-    phi::funcs::CastToInt64Kernel<int32_t><<<config.block_per_grid,
-                                             config.thread_per_block,
-                                             0,
-                                             dev_ctx.stream()>>>(
-        index.data<int32_t>(), index_int64.data<int64_t>(), index_numel);
-
-    ptr_index = &index_int64;
+    LaunchIndexFillCudaKernel<T, Context, int32_t>(
+        dev_ctx, x, real_dim, index, value, out);
   } else if (index.dtype() == phi::DataType::INT64) {
-    ptr_index = &index;
+    LaunchIndexFillCudaKernel<T, Context, int64_t>(
+        dev_ctx, x, real_dim, index, value, out);
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "The dtype of index must be int32 or int64, but received %s.",
         phi::DataTypeToString(index.dtype())));
   }
-
-  LaunchIndexFillCudaKernel<T, Context>(
-      dev_ctx, x, real_dim, *ptr_index, value, out);
 }
 }  // namespace phi
 
