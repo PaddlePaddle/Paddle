@@ -1,4 +1,8 @@
-if(NOT WIN32)
+if(NOT WIN32 AND WITH_SHARED_PHI)
+  # These compat C++ tests rely on out-of-line symbols exported by the shared
+  # phi libraries. Static-phi builds, such as Linux-DCU CI, only link the
+  # dynamic cc_test targets against libpaddle.so and therefore cannot resolve
+  # these compat symbols at link time.
   # c10 core tests (CPU compatible)
   cc_test(c10_Device_test SRCS c10_Device_test.cc)
   cc_test(c10_DispatchKeySet_test SRCS c10_DispatchKeySet_test.cc)
