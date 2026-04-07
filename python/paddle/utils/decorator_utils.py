@@ -1150,3 +1150,41 @@ def batch_sampler_decorator() -> Callable[
         return wrapper
 
     return decorator
+
+
+def tril_triu_indices_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    """
+    Decorator for tril_indices and triu_indices to handle PyTorch compatibility.
+
+    PyTorch: tril_indices(row, col, offset=0, *, dtype=torch.long, device='cpu', layout=torch.strided)
+    Paddle: tril_indices(row, col, offset=0, dtype='int64')
+
+    This decorator:
+    1. Removes PyTorch-only 'device' and 'layout' parameters
+    2. Converts torch.long dtype to int64
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            # Remove PyTorch-only parameters
+            kwargs.pop('device', None)
+            kwargs.pop('layout', None)
+
+            # Convert dtype if it's torch.long
+            if 'dtype' in kwargs:
+                dtype_val = kwargs['dtype']
+                if dtype_val == 'torch.long' or (
+                    hasattr(dtype_val, '__name__')
+                    and dtype_val.__name__ == 'long'
+                ):
+                    kwargs['dtype'] = 'int64'
+
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator

@@ -6394,6 +6394,8 @@ def tensordot(
     y: Tensor,
     axes: int | NestedSequence[int] | Tensor = 2,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     r"""
     This function computes a contraction, which sum the product of elements from two tensors along the given axes.
@@ -6419,6 +6421,9 @@ def tensordot(
                Note that the ``axes`` with Tensor type is ONLY available in Dygraph mode.
         name(str|None, optional): The default value is None.  Normally there is no need for user to set this property.
                              For more information, please refer to :ref:`api_guide_Name` .
+
+    Keyword Args:
+        out (Tensor, optional): The output tensor. Default: None.
 
     Return:
         Output (Tensor), The contraction result with the same data type as ``x`` and ``y``.
@@ -6618,8 +6623,11 @@ def tensordot(
     y = y.transpose(perm=perm_y).reshape(
         [contraction_size, not_contraction_size_y]
     )
-    out = x.matmul(y).reshape(shape_out)
-    return out
+    result = x.matmul(y).reshape(shape_out)
+    if out is not None:
+        paddle.assign(result, out)
+        return out
+    return result
 
 
 def as_complex(x: Tensor, name: str | None = None) -> Tensor:
@@ -6912,6 +6920,7 @@ def repeat_interleave(
     return out
 
 
+@param_one_alias(["x", "input"])
 def moveaxis(
     x: Tensor,
     source: int | Sequence[int],
@@ -6925,6 +6934,7 @@ def moveaxis(
 
     Args:
         x (Tensor): The input Tensor. It is a N-D Tensor of data types bool, int32, int64, float32, float64, complex64, complex128.
+            Alias: ``input``.
         source(int|tuple|list): ``source`` position of axis that will be moved. Each element must be unique and integer.
         destination(int|tuple|list): ``destination`` position of axis that has been moved. Each element must be unique and integer.
         name(str|None, optional): The default value is None.  Normally there is no need for user to set this
@@ -8444,6 +8454,7 @@ def diagonal_scatter(
         "axis": ["dim"],
     }
 )
+@ParamAliasDecorator({"x": ["input"], "values": ["src"], "axis": ["dim"]})
 def select_scatter(
     x: Tensor, values: Tensor, axis: int, index: int, name: str | None = None
 ) -> Tensor:

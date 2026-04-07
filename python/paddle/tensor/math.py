@@ -841,6 +841,7 @@ def add_(
     return _C_ops.add_(x, scaled_y)
 
 
+@param_two_alias(["x", "input"], ["y", "other"])
 def logaddexp(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
     Elementwise LogAddExp Operator.
@@ -878,7 +879,9 @@ def logaddexp(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
     Args:
         x (Tensor): Tensor of any dimensions. Its dtype should be int32, int64, bfloat16, float16, float32, float64.
+            Alias: ``input``.
         y (Tensor): Tensor of any dimensions. Its dtype should be int32, int64, bfloat16, float16, float32, float64.
+            Alias: ``other``.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -5287,7 +5290,13 @@ def frac_(x: Tensor, name: str | None = None) -> Tensor:
         return _C_ops.subtract_(x, y)
 
 
-def sgn(x: Tensor, name: str | None = None) -> Tensor:
+@param_one_alias(["x", "input"])
+def sgn(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     """
     For complex tensor, this API returns a new tensor whose elements have the same angles as the corresponding
     elements of input and absolute values of one.
@@ -5296,7 +5305,11 @@ def sgn(x: Tensor, name: str | None = None) -> Tensor:
 
     Args:
         x (Tensor): The input tensor, which data type should be float16, float32, float64, complex64, complex128.
+            Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword Args:
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         Tensor: A sign Tensor for real input, or normalized Tensor for complex input, shape and data type are same as input.
@@ -5339,15 +5352,21 @@ def sgn(x: Tensor, name: str | None = None) -> Tensor:
         expand_x = paddle.as_real(x)
         x_abs = paddle.abs(x)
         x_abs = paddle.unsqueeze(x_abs, axis=-1)
-        output = expand_x / x_abs
-        zeros = paddle.zeros_like(output)
-        output = paddle.where(paddle.isnan(output), zeros, output)
+        result = expand_x / x_abs
+        zeros = paddle.zeros_like(result)
+        result = paddle.where(paddle.isnan(result), zeros, result)
 
-        return paddle.as_complex(output)
+        result = paddle.as_complex(result)
     else:
-        return paddle.sign(x)
+        result = paddle.sign(x)
+
+    if out is not None:
+        paddle.assign(result, out)
+        return out
+    return result
 
 
+@param_one_alias(['x', 'input'])
 def take(
     x: Tensor,
     index: Tensor,
@@ -5361,6 +5380,7 @@ def take(
 
     Args:
         x (Tensor): An N-D Tensor, its data type should be int32, int64, float32, float64.
+            Alias: ``input``.
         index (Tensor): An N-D Tensor, its data type should be int32, int64.
         mode (str, optional): Specifies how out-of-bounds index will behave. the candidates are ``'raise'``, ``'wrap'`` and ``'clip'``.
 
@@ -5776,6 +5796,7 @@ def cumulative_trapezoid(
     return ret
 
 
+@param_one_alias(["n", "N"])
 def vander(
     x: Tensor,
     n: int | None = None,
@@ -5794,6 +5815,7 @@ def vander(
     Args:
         x (Tensor): The input tensor, it must be 1-D Tensor, and it's data type should be ['complex64', 'complex128', 'float32', 'float64', 'int32', 'int64'].
         n (int|None): Number of columns in the output. If n is not specified, a square array is returned (n = len(x)).
+            Alias: ``N``.
         increasing(bool): Order of the powers of the columns. If True, the powers increase from left to right, if False (the default) they are reversed.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
     Returns:
@@ -6374,13 +6396,23 @@ def combinations(
     return paddle.stack(grids, 1)
 
 
-def signbit(x: Tensor, name: str | None = None) -> Tensor:
+@param_one_alias(["x", "input"])
+def signbit(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     r"""
     Tests if each element of input has its sign bit set or not.
 
     Args:
         x (Tensor): The input Tensor. Must be one of the following types: float16, float32, float64, bfloat16, uint8, int8, int16, int32, int64.
+            Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None).For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword Args:
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         out (Tensor): The output Tensor. The sign bit of the corresponding element of the input tensor, True means negative, False means positive.
@@ -6431,8 +6463,12 @@ def signbit(x: Tensor, name: str | None = None) -> Tensor:
     ones = paddle.to_tensor(ones, x.dtype).reshape(x.shape)
     neg_zero_x = paddle.copysign(ones, x)
     x = paddle.sign(neg_zero_x)
-    out = paddle.cast(x < 0, dtype='bool')
-    return out
+    result = paddle.cast(x < 0, dtype='bool')
+
+    if out is not None:
+        paddle.assign(result, out)
+        return out
+    return result
 
 
 @param_one_alias(["x", "input"])

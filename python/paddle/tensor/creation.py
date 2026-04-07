@@ -32,6 +32,7 @@ from paddle.utils.decorator_utils import (
     param_one_alias,
     param_two_alias,
     size_args_decorator,
+    tril_triu_indices_decorator,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
@@ -553,6 +554,7 @@ def linspace(
         return out
 
 
+@param_two_alias(["stop", "end"], ["num", "steps"])
 def logspace(
     start: float | paddle.Tensor,
     stop: float | paddle.Tensor,
@@ -575,8 +577,10 @@ def logspace(
         stop(int|float|Tensor): The input :attr:`stop` is exponent of last entry in the \
             sequence. It is a scalar, or a 0-D Tensor of shape [] with input data \
             type int32, int64, float32 or float64.
+            Alias: ``end``.
         num(int|Tensor): The input :attr:`num` is given number of items in the sequence. \
             It is an int scalar, or a 0-D Tensor of shape [] with data type int32.
+            Alias: ``steps``.
         base(int|float|Tensor): The input :attr:`base` is base of the logarithm function. \
             It is a scalar, or a 0-D Tensor of shape [] with input data type int32, int64, \
             float32 or float64.
@@ -3875,6 +3879,7 @@ def complex(
         return out
 
 
+@tril_triu_indices_decorator()
 def tril_indices(
     row: int, col: int, offset: int = 0, dtype='int64'
 ) -> paddle.Tensor:
@@ -3960,6 +3965,7 @@ def tril_indices(
     return out
 
 
+@tril_triu_indices_decorator()
 def triu_indices(
     row: int, col: int | None = None, offset: int = 0, dtype='int64'
 ) -> paddle.Tensor:
