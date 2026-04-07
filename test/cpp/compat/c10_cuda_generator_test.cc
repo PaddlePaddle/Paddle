@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
 #include <ATen/cuda/CUDAGeneratorImpl.h>
 
 #include <optional>
@@ -132,6 +134,8 @@ TEST(CUDAGeneratorTest, PhiloxStateThroughGetGeneratorOrDefault) {
 
   // Further advance via philox_cuda_state.
   at::PhiloxCudaState state = impl->philox_cuda_state(8);
+  (void)state;  // Silence unused variable warning - state is used for its side
+                // effect
   ASSERT_EQ(impl->philox_offset_per_thread(), 12u);
 }
 
@@ -356,3 +360,5 @@ TEST(CUDAGeneratorTest, CheckGeneratorSucceedsWithMatchingDeviceType) {
   ASSERT_NE(impl, nullptr);
   ASSERT_EQ(impl->current_seed(), 555u);
 }
+
+#endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP

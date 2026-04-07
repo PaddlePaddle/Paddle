@@ -26,8 +26,12 @@ namespace at::cuda::philox {
 // In-kernel call to retrieve philox seed and offset from a PhiloxCudaState
 // instance whether that instance was created with graph capture underway or
 // not. See Note [CUDA Graph-safe RNG states].
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 __host__ __device__ __forceinline__ std::tuple<uint64_t, uint64_t> unpack(
     at::PhiloxCudaState arg) {
+#else
+inline std::tuple<uint64_t, uint64_t> unpack(at::PhiloxCudaState arg) {
+#endif
   if (arg.captured_) {
     // static_cast avoids "warning: invalid narrowing conversion from "long" to
     // "unsigned long".

@@ -121,7 +121,6 @@ size_t getChosenWorkspaceSize();
 size_t getCUDABlasLtWorkspaceSize();
 void* getCUDABlasLtWorkspace();
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 CUDAContextSolverHandle getCurrentCUDASolverDnHandle();
 
 // Get the CUDA device allocator for the current device.

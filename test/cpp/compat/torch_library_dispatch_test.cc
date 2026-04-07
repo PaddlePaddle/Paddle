@@ -84,7 +84,7 @@ static decltype(torch::OperatorRegistry::instance()
                     .find_operator("")
                     ->implementations.end())
 pick_impl(torch::OperatorRegistration* op) {
-  using DK = torch::DispatchKey;
+  using DK = c10::DispatchKey;
   const std::vector<DK> preferred_keys = {
       DK::CPU, DK::BackendSelect, DK::CatchAll};
   auto chosen = op->implementations.end();
@@ -110,10 +110,10 @@ TEST(CompatTorchDispatchTest, BackendSelectOnlyRegistration) {
   auto* op = torch::OperatorRegistry::instance().find_operator(qname);
   ASSERT_NE(op, nullptr);
 
-  EXPECT_EQ(op->implementations.find(torch::DispatchKey::CPU),
+  EXPECT_EQ(op->implementations.find(c10::DispatchKey::CPU),
             op->implementations.end());
 
-  auto bs_it = op->implementations.find(torch::DispatchKey::BackendSelect);
+  auto bs_it = op->implementations.find(c10::DispatchKey::BackendSelect);
   ASSERT_NE(bs_it, op->implementations.end());
 
   torch::FunctionArgs args;
@@ -130,14 +130,14 @@ TEST(CompatTorchDispatchTest, CpuPreferredOverBackendSelect) {
   auto* op = torch::OperatorRegistry::instance().find_operator(qname);
   ASSERT_NE(op, nullptr);
 
-  ASSERT_NE(op->implementations.find(torch::DispatchKey::CPU),
+  ASSERT_NE(op->implementations.find(c10::DispatchKey::CPU),
             op->implementations.end());
-  ASSERT_NE(op->implementations.find(torch::DispatchKey::BackendSelect),
+  ASSERT_NE(op->implementations.find(c10::DispatchKey::BackendSelect),
             op->implementations.end());
 
   auto chosen = pick_impl(op);
   ASSERT_NE(chosen, op->implementations.end());
-  EXPECT_EQ(chosen->first, torch::DispatchKey::CPU);
+  EXPECT_EQ(chosen->first, c10::DispatchKey::CPU);
 
   torch::FunctionArgs args;
   args.add_arg(torch::IValue(int64_t(41)));
@@ -154,7 +154,7 @@ TEST(CompatTorchDispatchTest, BackendSelectPickedWhenCpuAbsent) {
 
   auto chosen = pick_impl(op);
   ASSERT_NE(chosen, op->implementations.end());
-  EXPECT_EQ(chosen->first, torch::DispatchKey::BackendSelect);
+  EXPECT_EQ(chosen->first, c10::DispatchKey::BackendSelect);
 
   torch::FunctionArgs args;
   args.add_arg(torch::IValue(int64_t(32)));
@@ -189,9 +189,9 @@ TEST(CompatTorchDispatchTest, AmbiguousMultiKeyProducesEnd) {
   ASSERT_NE(op, nullptr);
   // Registered under CUDA and XPU – neither is in the preferred list.
   ASSERT_GE(op->implementations.size(), 2UL);
-  EXPECT_EQ(op->implementations.find(torch::DispatchKey::CPU),
+  EXPECT_EQ(op->implementations.find(c10::DispatchKey::CPU),
             op->implementations.end());
-  EXPECT_EQ(op->implementations.find(torch::DispatchKey::BackendSelect),
+  EXPECT_EQ(op->implementations.find(c10::DispatchKey::BackendSelect),
             op->implementations.end());
 
   auto chosen = pick_impl(op);

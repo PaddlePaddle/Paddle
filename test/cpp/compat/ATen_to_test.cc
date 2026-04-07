@@ -27,7 +27,6 @@
 #include "ATen/ATen.h"
 #include "gtest/gtest.h"
 #include "paddle/phi/common/float16.h"
-#include "test/cpp/compat/cuda_test_utils.h"
 #include "torch/all.h"
 
 // ============================================================
@@ -191,7 +190,6 @@ TEST(TensorToTest, ToOtherTensor_MatchesDevice) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(TensorToTest, ToDtype_GPU_FloatToDouble) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   at::Tensor t = at::tensor(
       {1.0f, 2.0f},
       at::TensorOptions().dtype(at::kFloat).device(c10::Device(c10::kCUDA, 0)));
@@ -202,7 +200,6 @@ TEST(TensorToTest, ToDtype_GPU_FloatToDouble) {
 }
 
 TEST(TensorToTest, ToDevice_CPUToGPU) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   at::Tensor t = at::tensor({5.0f}, at::kFloat);
   at::Tensor result = t.to(c10::Device(c10::kCUDA, 0),
                            at::kFloat,
@@ -213,7 +210,6 @@ TEST(TensorToTest, ToDevice_CPUToGPU) {
 }
 
 TEST(TensorToTest, ToDevice_GPUToCPU) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   at::Tensor t = at::tensor(
       {7.0f},
       at::TensorOptions().dtype(at::kFloat).device(c10::Device(c10::kCUDA, 0)));

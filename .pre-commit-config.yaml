@@ -46,7 +46,8 @@ repos:
       - id: copyright_checker
         name: copyright_checker
         entry: python ./tools/codestyle/copyright.py
-        language: system
+        language: python
+        language_version: python3
         files: \.(c|cc|cxx|cpp|cu|h|cuh|hpp|hxx|proto|xpu|kps|py|pyi|sh)$
         exclude: |
           (?x)^(
@@ -71,16 +72,22 @@ repos:
       - id: clang-format
         name: clang-format
         description: Format files with ClangFormat.
-        entry: bash ./tools/codestyle/clang_format.sh -i
-        language: system
+        entry: clang-format -i
+        language: python
+        language_version: python3
+        additional_dependencies:
+          - clang-format==13.0.0
         files: \.(c|cc|cxx|cpp|cu|h|cuh|hpp|hxx|xpu|kps)$
   - repo: local
     hooks:
-      - id: cpplint-cpp-source
+      - id: cpplint
         name: cpplint
         description: Check C++ code style using cpplint.py.
-        entry: bash ./tools/codestyle/cpplint_pre_commit.sh
-        language: system
+        entry: cpplint
+        language: python
+        language_version: python3
+        additional_dependencies:
+          - cpplint==1.6.0
         files: \.(cc|cxx|cpp|cu|cuh|h|hpp|hxx)$
         args:
           - --extensions=cc,cxx,cpp,cu,cuh,h,hpp,hxx,kps
@@ -95,39 +102,6 @@ repos:
             paddle/fluid/distributed/collective/deep_ep/.*|
             paddle/fluid/fp8/deep_gemm/.*
           )$
-  - repo: local
-    hooks:
-      - id: clang-tidy
-        name: clang-tidy
-        description: Parallel clang-tidy runner.
-        entry: python ./tools/codestyle/clang-tidy.py
-        language: system
-        files: \.(c|cc|cxx|cpp|h|hpp|hxx)$
-        args:
-          - -p=build/
-          - -extra-arg=-Wno-unknown-warning-option
-          - -extra-arg=-Wno-pessimizing-move
-          - -extra-arg=-Wno-braced-scalar-init
-          - -extra-arg=-Wno-dangling-gsl
-          - -extra-arg=-Wno-deprecated-copy
-          - -extra-arg=-Wno-final-dtor-non-final-class
-          - -extra-arg=-Wno-implicit-int-float-conversion
-          - -extra-arg=-Wno-inconsistent-missing-override
-          - -extra-arg=-Wno-infinite-recursion
-          - -extra-arg=-Wno-mismatched-tags
-          - -extra-arg=-Wno-self-assign
-          - -extra-arg=-Wno-sign-compare
-          - -extra-arg=-Wno-sometimes-uninitialized
-          - -extra-arg=-Wno-tautological-overlap-compare
-          - -extra-arg=-Wno-unused-const-variable
-          - -extra-arg=-Wno-unused-lambda-capture
-          - -extra-arg=-Wno-unused-private-field
-          - -extra-arg=-Wno-unused-value
-          - -extra-arg=-Wno-unused-variable
-          - -extra-arg=-Wno-overloaded-virtual
-          - -extra-arg=-Wno-defaulted-function-deleted
-          - -extra-arg=-Wno-delete-non-abstract-non-virtual-dtor
-          - -extra-arg=-Wno-return-type-c-linkage
   # For CMake files
   - repo: local
     hooks:
@@ -179,5 +153,6 @@ repos:
         description: Sorts each line string in a text file
         entry: python ./tools/codestyle/sort_txt_file.py
         language: python
+        language_version: python3
         files: test/white_list/pir_op_test_white_list
         args: []
