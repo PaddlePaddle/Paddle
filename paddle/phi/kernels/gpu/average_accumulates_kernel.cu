@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/average_accumulates_kernel.h"
 #include "paddle/phi/kernels/impl/average_accumulates_kernel_impl.h"
 
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -68,24 +69,32 @@ void SetAccumulators<phi::GPUContext>(const phi::GPUContext& dev_ctx,
   auto stream = dev_ctx.stream();
 
   auto cuda_place = out_old_num_accumulates->place();
+  const int64_t* stable_na =
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(&num_accumulates,
+                                                             1);
   memory_utils::Copy(dev_ctx.GetPlace(),
                      out_num_accumulates_ptr,
-                     phi::CPUPlace(),
-                     &num_accumulates,
+                     CPUPlace(),
+                     stable_na,
                      sizeof(int64_t),
                      stream);
 
+  const int64_t* stable_ona =
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          &old_num_accumulates, 1);
   memory_utils::Copy(dev_ctx.GetPlace(),
                      out_old_num_accumulates_ptr,
-                     phi::CPUPlace(),
-                     &old_num_accumulates,
+                     CPUPlace(),
+                     stable_ona,
                      sizeof(int64_t),
                      stream);
 
+  const int64_t* stable_nu =
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(&num_updates, 1);
   memory_utils::Copy(cuda_place,
                      out_num_updates_ptr,
-                     phi::CPUPlace(),
-                     &num_updates,
+                     CPUPlace(),
+                     stable_nu,
                      sizeof(int64_t),
                      stream);
 }

@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/fused_seqpool_cvm_kernel.h"
 #include <string>
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/memory_utils.h"
@@ -121,60 +122,78 @@ void FusedSeqpoolCVM(
 
 #ifdef PADDLE_WITH_HIP
   T **gpu_input_values = reinterpret_cast<T **>(temp_ptr->ptr());
-  phi::backends::gpu::GpuMemcpyAsync(gpu_input_values,
-                                     input_data.data(),
-                                     input_data.size() * sizeof(T *),
-                                     hipMemcpyHostToDevice,
-                                     stream);
+  phi::backends::gpu::GpuMemcpyAsync(
+      gpu_input_values,
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          const_cast<T **>(input_data.data()), input_data.size()),
+      input_data.size() * sizeof(T *),
+      hipMemcpyHostToDevice,
+      stream);
   T **gpu_output_values =
       reinterpret_cast<T **>(&gpu_input_values[input_data.size()]);
-  phi::backends::gpu::GpuMemcpyAsync(gpu_output_values,
-                                     output_data.data(),
-                                     output_data.size() * sizeof(T *),
-                                     hipMemcpyHostToDevice,
-                                     stream);
+  phi::backends::gpu::GpuMemcpyAsync(
+      gpu_output_values,
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          const_cast<T **>(output_data.data()), output_data.size()),
+      output_data.size() * sizeof(T *),
+      hipMemcpyHostToDevice,
+      stream);
   T **gpu_seqpool_output_values =
       reinterpret_cast<T **>(&gpu_output_values[output_data.size()]);
-  phi::backends::gpu::GpuMemcpyAsync(gpu_seqpool_output_values,
-                                     seqpool_output_data.data(),
-                                     seqpool_output_data.size() * sizeof(T *),
-                                     hipMemcpyHostToDevice,
-                                     stream);
+  phi::backends::gpu::GpuMemcpyAsync(
+      gpu_seqpool_output_values,
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          const_cast<T **>(seqpool_output_data.data()),
+          seqpool_output_data.size()),
+      seqpool_output_data.size() * sizeof(T *),
+      hipMemcpyHostToDevice,
+      stream);
   size_t **lods_values = reinterpret_cast<size_t **>(
       &gpu_seqpool_output_values[seqpool_output_data.size()]);
-  phi::backends::gpu::GpuMemcpyAsync(lods_values,
-                                     lods.data(),
-                                     lods.size() * sizeof(size_t *),
-                                     hipMemcpyHostToDevice,
-                                     stream);
+  phi::backends::gpu::GpuMemcpyAsync(
+      lods_values,
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          const_cast<size_t **>(lods.data()), lods.size()),
+      lods.size() * sizeof(size_t *),
+      hipMemcpyHostToDevice,
+      stream);
 #else
   T **gpu_input_values = reinterpret_cast<T **>(temp_ptr->ptr());
-  phi::backends::gpu::GpuMemcpyAsync(gpu_input_values,
-                                     input_data.data(),
-                                     input_data.size() * sizeof(T *),
-                                     cudaMemcpyHostToDevice,
-                                     stream);
+  phi::backends::gpu::GpuMemcpyAsync(
+      gpu_input_values,
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          const_cast<T **>(input_data.data()), input_data.size()),
+      input_data.size() * sizeof(T *),
+      cudaMemcpyHostToDevice,
+      stream);
   T **gpu_output_values =
       reinterpret_cast<T **>(&gpu_input_values[input_data.size()]);
-  phi::backends::gpu::GpuMemcpyAsync(gpu_output_values,
-                                     output_data.data(),
-                                     output_data.size() * sizeof(T *),
-                                     cudaMemcpyHostToDevice,
-                                     stream);
+  phi::backends::gpu::GpuMemcpyAsync(
+      gpu_output_values,
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          const_cast<T **>(output_data.data()), output_data.size()),
+      output_data.size() * sizeof(T *),
+      cudaMemcpyHostToDevice,
+      stream);
   T **gpu_seqpool_output_values =
       reinterpret_cast<T **>(&gpu_output_values[output_data.size()]);
-  phi::backends::gpu::GpuMemcpyAsync(gpu_seqpool_output_values,
-                                     seqpool_output_data.data(),
-                                     seqpool_output_data.size() * sizeof(T *),
-                                     cudaMemcpyHostToDevice,
-                                     stream);
+  phi::backends::gpu::GpuMemcpyAsync(
+      gpu_seqpool_output_values,
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          const_cast<T **>(seqpool_output_data.data()),
+          seqpool_output_data.size()),
+      seqpool_output_data.size() * sizeof(T *),
+      cudaMemcpyHostToDevice,
+      stream);
   size_t **lods_values = reinterpret_cast<size_t **>(
       &gpu_seqpool_output_values[seqpool_output_data.size()]);
-  phi::backends::gpu::GpuMemcpyAsync(lods_values,
-                                     lods.data(),
-                                     lods.size() * sizeof(size_t *),
-                                     cudaMemcpyHostToDevice,
-                                     stream);
+  phi::backends::gpu::GpuMemcpyAsync(
+      lods_values,
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          const_cast<size_t **>(lods.data()), lods.size()),
+      lods.size() * sizeof(size_t *),
+      cudaMemcpyHostToDevice,
+      stream);
 #endif
 
   size_t N = static_cast<size_t>(batch_size * slot_num * embedding_size);

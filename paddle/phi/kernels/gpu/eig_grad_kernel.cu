@@ -20,6 +20,7 @@
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/dynload/cublas.h"
 #include "paddle/phi/backends/dynload/cusolver.h"
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #endif  // PADDLE_WITH_CUDA
 
 #ifdef PADDLE_WITH_HIP
@@ -211,7 +212,15 @@ void SolveLinearSystemGPU<phi::dtype::complex<float>>(
   }
 
   std::vector<int> h_info(batch_count, 0);
-  phi::memory_utils::Copy(phi::CPUPlace(),
+  PADDLE_ENFORCE_EQ(
+      phi::backends::gpu::IsCUDAGraphCapturing(),
+      false,
+      common::errors::InvalidArgument(
+          "EigGradKernel does not support CUDA Graph capture: async D2H copy "
+          "to local vector 'h_info' will bake the destination address into the "
+          "graph; on replay the vector is re-created at a different address, "
+          "causing a dangling-pointer write."));
+  phi::memory_utils::Copy(CPUPlace(),
                           h_info.data(),
                           dev_ctx.GetPlace(),
                           d_info,
@@ -392,7 +401,15 @@ void SolveLinearSystemGPU<phi::dtype::complex<double>>(
   }
 
   std::vector<int> h_info(batch_count, 0);
-  phi::memory_utils::Copy(phi::CPUPlace(),
+  PADDLE_ENFORCE_EQ(
+      phi::backends::gpu::IsCUDAGraphCapturing(),
+      false,
+      common::errors::InvalidArgument(
+          "EigGradKernel does not support CUDA Graph capture: async D2H copy "
+          "to local vector 'h_info' will bake the destination address into the "
+          "graph; on replay the vector is re-created at a different address, "
+          "causing a dangling-pointer write."));
+  phi::memory_utils::Copy(CPUPlace(),
                           h_info.data(),
                           dev_ctx.GetPlace(),
                           d_info,
