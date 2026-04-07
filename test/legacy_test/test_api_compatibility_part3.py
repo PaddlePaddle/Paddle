@@ -913,7 +913,6 @@ class TestUnsqueezeInplaceAPI(unittest.TestCase):
             np.testing.assert_allclose(out.numpy(), ref_out)
 
 
-'''
 # Test conv1d_transpose compatibility
 class TestConv1dTransposeAPI(unittest.TestCase):
     def setUp(self):
@@ -922,6 +921,11 @@ class TestConv1dTransposeAPI(unittest.TestCase):
         self.np_x = np.random.rand(2, 3, 8).astype(self.dtype)
         self.np_weight = np.random.rand(3, 1, 3).astype(self.dtype)
         self.np_bias = np.random.rand(1).astype(self.dtype)
+        self._saved_device = paddle.get_device()
+        paddle.set_device('cpu')
+
+    def tearDown(self):
+        paddle.set_device(self._saved_device)
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
@@ -1048,6 +1052,11 @@ class TestConv2dTransposeAPI(unittest.TestCase):
         self.np_x = np.random.rand(2, 3, 8, 8).astype(self.dtype)
         self.np_weight = np.random.rand(3, 1, 3, 3).astype(self.dtype)
         self.np_bias = np.random.rand(1).astype(self.dtype)
+        self._saved_device = paddle.get_device()
+        paddle.set_device('cpu')
+
+    def tearDown(self):
+        paddle.set_device(self._saved_device)
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
@@ -1168,7 +1177,6 @@ class TestConv2dTransposeAPI(unittest.TestCase):
                 np.testing.assert_allclose(fetches[0], fetches[i], rtol=1e-5)
 
 
-
 # Test conv3d_transpose compatibility
 class TestConv3dTransposeAPI(unittest.TestCase):
     def setUp(self):
@@ -1177,6 +1185,11 @@ class TestConv3dTransposeAPI(unittest.TestCase):
         self.np_x = np.random.rand(1, 2, 3, 3, 3).astype(self.dtype)
         self.np_weight = np.random.rand(2, 2, 3, 3, 3).astype(self.dtype)
         self.np_bias = np.random.rand(2).astype(self.dtype)
+        self._saved_device = paddle.get_device()
+        paddle.set_device('cpu')
+
+    def tearDown(self):
+        paddle.set_device(self._saved_device)
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
@@ -1295,7 +1308,6 @@ class TestConv3dTransposeAPI(unittest.TestCase):
             )
             for i in range(1, len(fetches)):
                 np.testing.assert_allclose(fetches[0], fetches[i], rtol=1e-5)
-'''
 
 
 # Test pow_ inplace compatibility
