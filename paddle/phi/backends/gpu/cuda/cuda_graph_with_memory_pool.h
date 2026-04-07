@@ -64,35 +64,19 @@ inline T *RestoreHostMemIfCapturingCUDAGraph(T *host_mem, size_t size) {
     defined(PADDLE_WITH_CUSTOM_DEVICE)
   if (UNLIKELY(IsCUDAGraphCapturing())) {
     size_t nbytes = size * sizeof(T);
-#if defined(PADDLE_WITH_CUDA)
-    void *new_host_mem = nullptr;
-    // NOTE: Use cudaMallocHost instead of cudaHostAlloc here.
-    // cudaHostAlloc is a stream-aware API and is a "prohibited" operation
-    // during CUDA Graph stream capture (returns
-    // cudaErrorStreamCaptureUnsupported on CUDA 11.x). cudaMallocHost is
-    // stream-unaware and safe to call during capture.
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaMallocHost(&new_host_mem, nbytes));
-    std::memcpy(new_host_mem, host_mem, nbytes);
-    AddPostResetCallbackIfCapturingCUDAGraph(
-        [=](paddle::optional<const CUDAGraph &> graph) {
-          PADDLE_ENFORCE_GPU_SUCCESS(cudaFreeHost(new_host_mem));
-        });
-#elif defined(PADDLE_WITH_HIP)
-    void *new_host_mem = nullptr;
-    PADDLE_ENFORCE_GPU_SUCCESS(hipMallocHost(&new_host_mem, nbytes));
-    std::memcpy(new_host_mem, host_mem, nbytes);
-    AddPostResetCallbackIfCapturingCUDAGraph(
-        [=](paddle::optional<const CUDAGraph &> graph) {
-          PADDLE_ENFORCE_GPU_SUCCESS(hipFreeHost(new_host_mem));
-        });
-#else
+    // NOTE: Use new[]/delete[] (plain heap) instead of cudaMallocHost /
+    // hipMallocHost here. cudaMallocHost and hipMallocHost are prohibited
+    // operations during CUDA/HIP Graph stream capture on CUDA 12.x / HIP,
+    // returning cudaErrorStreamCaptureUnsupported (error 900). Plain heap
+    // memory is safe to allocate at any time, and the captured
+    // cudaMemcpyAsync node records the host pointer address; the buffer
+    // lifetime is guaranteed by the post-reset callback below.
     void *new_host_mem = new uint8_t[nbytes];
     std::memcpy(new_host_mem, host_mem, nbytes);
     AddPostResetCallbackIfCapturingCUDAGraph(
         [=](paddle::optional<const CUDAGraph &> graph) {
           delete[] reinterpret_cast<uint8_t *>(new_host_mem);
         });
-#endif
     return reinterpret_cast<T *>(new_host_mem);
   }
 #endif
