@@ -9,6 +9,10 @@ on:
       can-skip:
         type: string
         required: false
+      build-can-skip:
+        type: string
+        required: false
+        default: 'false'
 
 env:
   PR_ID: ${{ github.event.pull_request.number }}
@@ -29,6 +33,7 @@ defaults:
 jobs:
   check-bypass-whl:
     name: Check bypass (ce-whl)
+    if: ${{ inputs.build-can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
       workflow-name: ce-whl
@@ -37,6 +42,7 @@ jobs:
 
   check-bypass-infer:
     name: Check bypass (ce-infer)
+    if: ${{ inputs.build-can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
       workflow-name: ce-infer
@@ -45,6 +51,7 @@ jobs:
 
   check-bypass-test:
     name: Check bypass (ce-test)
+    if: ${{ inputs.build-can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
       workflow-name: ce-test

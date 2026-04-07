@@ -723,34 +723,74 @@ def monkey_patch_tensor():
         self: Tensor,
         device: PlaceLike,
         dtype: DTypeLike | None = ...,
-        blocking: bool | None = ...,
+        blocking: bool = ...,
+        copy: bool = ...,
+        *,
+        non_blocking: bool = ...,
     ) -> Tensor: ...
 
     @overload
     def to(
-        self: Tensor, dtype: DTypeLike, blocking: bool | None = ...
+        self: Tensor,
+        dtype: DTypeLike,
+        blocking: bool = ...,
+        copy: bool = ...,
+        *,
+        non_blocking: bool = ...,
     ) -> Tensor: ...
 
     @overload
     def to(
-        self: Tensor, other: Tensor, blocking: bool | None = ...
+        self: Tensor,
+        other: Tensor,
+        blocking: bool = ...,
+        copy: bool = ...,
+        *,
+        non_blocking: bool = ...,
     ) -> Tensor: ...
 
     @framework.dygraph_only
     def to(self: Tensor, *args, **kwargs):
         """
         Performs Tensor dtype and/or device conversion. A paddle.dtype and place
-        are inferred from the arguments of ``self.to(*args, **kwargs)``.There are
-        three ways to call `to`:
+        are inferred from the arguments of ``self.to(*args, **kwargs)``.
 
-            1. to(dtype, blocking=True)
-            2. to(device, dtype=None, blocking=True)
-            3. to(other, blocking=True)
+        This API has three calling conventions:
 
-        **Notes**:
-            **If the self Tensor already has the correct dtype and device,
-            then self is returned. Otherwise, the returned tensor is a copy of self with
-            the desired dtype and device.**
+        1. ``to(device=None, dtype=None, blocking=True, copy=False, *, non_blocking=False)``:
+            Moves and/or casts the Tensor.
+
+        2. ``to(dtype, blocking=True, copy=False, *, non_blocking=False)``:
+            Equivalent to ``self.to(device=None, dtype=dtype, ...)``.
+
+        3. ``to(other, blocking=True, copy=False, *, non_blocking=False)``:
+            Equivalent to ``self.to(device=other.place, dtype=other.dtype, ...)``.
+
+        .. note::
+            If the self Tensor already has the correct dtype and device,
+            then self is returned. Otherwise, the returned tensor is a copy of
+            self with the desired dtype and device.
+
+        Args:
+            device (str|paddle.CPUPlace()|paddle.CUDAPlace()|paddle.CUDAPinnedPlace()|paddle.XPUPlace()|None, optional):
+                The device to move to. Default: ``None``.
+            dtype (str|numpy.dtype|paddle.dtype|None, optional):
+                The desired data type. Default: ``None``.
+            blocking (bool, optional):
+                If ``False`` and the source is in pinned memory, the copy will be
+                asynchronous with respect to the host. Default: ``True``.
+            copy (bool, optional):
+                If ``True``, a new Tensor is created even when the Tensor
+                already matches the desired conversion. Default: ``False``.
+            other (Tensor, optional):
+                Tensor whose dtype and device are the desired dtype and device.
+
+        Keyword args:
+            non_blocking (bool, optional):
+                If ``True`` and the source is in pinned memory, the copy will be
+                asynchronous with respect to the host. Default: ``False``.
+                ``non_blocking`` and ``blocking`` are mutually exclusive
+                and cannot both be set at the same time.
 
         Returns:
             Tensor: self
@@ -786,95 +826,9 @@ def monkey_patch_tensor():
                 Tensor(shape=[3], dtype=int16, place=Place(gpu:0), stop_gradient=True,
                     [4, 5, 6])
         """
-        device = None
-        dtype = None
-        blocking = None
+        from paddle.nn.layer.layers import _parse_to_args
 
-        if "non_blocking" in kwargs:
-            non_blocking = kwargs.pop("non_blocking")
-        else:
-            non_blocking = False
-
-        if "copy" in kwargs:
-            copy_tensor = kwargs.pop("copy")
-        else:
-            copy_tensor = False
-
-        size_args = len(args)
-        size_kwargs = len(kwargs)
-
-        def get_device_dtype_from_tensor(other):
-            if other is not None:
-                device = str(other.place)[6:-1]
-                dtype = other.dtype
-                return device, dtype
-            else:
-                return None, None
-
-        if size_args + size_kwargs > 3 or size_args + size_kwargs == 0:
-            raise TypeError(
-                "to() received too many arguments - expected one of:\n  \
-                * (Union[str, paddle.CPUPlace(), paddle.CUDAPlace(), paddle.CUDAPinnedPlace(), paddle.XPUPlace(), paddle.CustomPlace()] \
-                device, Union[str, paddle.dtype, numpy.dtype] dtype, bool blocking)\n \
-                * (Union[str, paddle.dtype, numpy.dtype] dtype, bool blocking)\n \
-                * (paddle.Tensor other, bool blocking) "
-            )
-        valid_keys = {"device", "dtype", "blocking", "other"}
-        valid_dtypes = [
-            "bfloat16",
-            "float16",
-            "float32",
-            "float64",
-            "int8",
-            "int16",
-            "int32",
-            "int64",
-            "uint8",
-            "complex64",
-            "complex128",
-            "bool",
-        ]
-        invalid_keys = set(kwargs.keys()) - valid_keys
-        if len(invalid_keys) != 0:
-            raise TypeError(
-                "to() got an unexpected keyword argument "
-                + next(iter(invalid_keys))
-            )
-        if size_args > 0:
-            if isinstance(args[0], paddle.Tensor):
-                device, dtype = get_device_dtype_from_tensor(args[0])
-                if size_args == 2:
-                    blocking = args[1]
-                else:
-                    blocking = kwargs.get("blocking", None)
-            elif (
-                isinstance(args[0], (paddle.dtype, np.dtype))
-                or isinstance(args[0], str)
-                and args[0].lower() in valid_dtypes
-            ):
-                dtype = args[0]
-                if size_args == 2:
-                    blocking = args[1]
-                else:
-                    blocking = kwargs.get("blocking", None)
-            else:
-                device = args[0]
-                if size_args == 2:
-                    dtype = args[1]
-                elif size_args == 3:
-                    dtype, blocking = args[1], args[2]
-                else:
-                    dtype = kwargs.get("dtype", None)
-                    blocking = kwargs.get("blocking", None)
-        else:
-            device = kwargs.get("device", None)
-            dtype = kwargs.get("dtype", None)
-            blocking = kwargs.get("blocking", None)
-            if device is None and dtype is None:
-                device, dtype = get_device_dtype_from_tensor(
-                    kwargs.get("other", None)
-                )
-        blocking = False if not blocking or non_blocking else True
+        device, dtype, blocking, copy_tensor = _parse_to_args(*args, **kwargs)
         return self._to(device, dtype, blocking, copy_tensor)
 
     def clear_grad(self: Tensor) -> None:
