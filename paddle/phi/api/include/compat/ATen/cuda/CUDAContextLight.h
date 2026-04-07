@@ -22,9 +22,13 @@
 // cublasLT was introduced in CUDA 10.1 but we enable only for 11.1 that also
 // added bf16 support
 
-#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
-    defined(USE_CUDSS)
+#if defined(PADDLE_WITH_HIP)
+#include <hip/hip_runtime.h>
+#elif defined(PADDLE_WITH_CUDA)
+#if defined(USE_CUDSS)
 #include <cudss.h>
+#endif
+#include <driver_types.h>
 #endif
 
 #include <c10/core/Allocator.h>
@@ -49,7 +53,7 @@ using CUDAContextSparseHandle = phi::sparseHandle_t;
 using CUDAContextBlasHandle = phi::blasHandle_t;
 using CUDAContextBlasLtHandle = phi::blasLtHandle_t;
 using CUDAContextSolverHandle = phi::solverHandle_t;
-#else
+#elif defined(PADDLE_WITH_CUDA)
 using CUDAContextDeviceProp = cudaDeviceProp;
 using CUDAContextSparseHandle = cusparseHandle_t;
 using CUDAContextBlasHandle = cublasHandle_t;
@@ -90,6 +94,7 @@ inline int64_t getNumGPUs() { return c10::cuda::device_count(); }
  */
 inline bool is_available() { return c10::cuda::device_count() > 0; }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 CUDAContextDeviceProp* getCurrentDeviceProperties();
 
 int warp_size();
@@ -102,6 +107,7 @@ bool canDeviceAccessPeer(c10::DeviceIndex device, c10::DeviceIndex peer_device);
 CUDAContextSparseHandle getCurrentCUDASparseHandle();
 CUDAContextBlasHandle getCurrentCUDABlasHandle();
 CUDAContextBlasLtHandle getCurrentCUDABlasLtHandle();
+#endif
 
 void clearCublasWorkspaces();
 struct WorkspaceMapWithMutex {

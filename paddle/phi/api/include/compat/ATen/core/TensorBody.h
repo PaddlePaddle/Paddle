@@ -30,7 +30,9 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/memory/malloc.h"
 
-#ifdef PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
+#elif defined(PADDLE_WITH_CUDA)
 #include <cuda_runtime_api.h>
 #endif
 

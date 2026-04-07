@@ -95,15 +95,23 @@ struct Event final {
   void record(const c10::cuda::CUDAStream& stream) { record(stream.unwrap()); }
 #endif
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // TODO(youge325): Remove after DeepEP paddle branch is updated to use
   // c10::Stream
+#ifdef PADDLE_WITH_HIP
+  void record(const hipStream_t& stream) {
+    TORCH_CHECK(device_type_ == DeviceType::CUDA,
+                "Raw hipStream_t recording is only supported for CUDA events.");
+    RecordBackendEvent(stream, phi::backends::gpu::GetCurrentDeviceId());
+  }
+#else
   void record(const cudaStream_t& stream) {
     TORCH_CHECK(
         device_type_ == DeviceType::CUDA,
         "Raw cudaStream_t recording is only supported for CUDA events.");
     RecordBackendEvent(stream, phi::backends::gpu::GetCurrentDeviceId());
   }
+#endif
 #endif
 
   void block(const Stream& stream) const {
@@ -243,8 +251,12 @@ struct Event final {
     TORCH_CHECK(false, "Backend doesn't support events.");
   }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
+  hipEvent_t cuda_event() const { return backend_event_; }
+#else
   cudaEvent_t cuda_event() const { return backend_event_; }
+#endif
 #endif
 
  private:
