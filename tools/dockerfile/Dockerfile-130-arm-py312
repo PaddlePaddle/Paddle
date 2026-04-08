@@ -54,7 +54,7 @@ RUN apt-get update && \
     ln -sf /usr/bin/python${PYTHON_VERSION} /usr/bin/python && \
     ln -sf /usr/bin/python${PYTHON_VERSION} /usr/bin/python3 && \
     rm -rf /var/lib/apt/lists/*
-    
+
 WORKDIR /home
 
 RUN wget -q https://cmake.org/files/v3.31/cmake-3.31.0-linux-aarch64.tar.gz && \
