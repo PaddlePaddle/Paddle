@@ -277,9 +277,10 @@ TEST(TensorResizeTest, ResizeSliceSharedStorageCopiesFromStorageStart) {
   ASSERT_EQ(ta[2].item<int>(), 3);
   ASSERT_EQ(ta[3].item<int>(), 4);
 
-  // tb should preserve the expected sequence after resize.
+  // PyTorch only preserves the pre-existing prefix here. The newly exposed
+  // tail element after resize_ is uninitialized and should not be asserted.
   ASSERT_EQ(tb[0].item<int>(), 2);
   ASSERT_EQ(tb[1].item<int>(), 3);
   ASSERT_EQ(tb[2].item<int>(), 4);
-  ASSERT_EQ(tb[3].item<int>(), 4);
+  ASSERT_EQ(tb.numel(), 4);
 }
