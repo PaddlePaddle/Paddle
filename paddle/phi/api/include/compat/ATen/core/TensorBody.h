@@ -179,15 +179,21 @@ class Tensor : public TensorBase {
   }
 
   template <typename T, std::enable_if_t<!std::is_const_v<T>, int> = 0>
-  const T* const_data_ptr() const;
+  const T* const_data_ptr() const {
+    return TensorBase::const_data_ptr<T>();
+  }
 
   template <typename T, std::enable_if_t<std::is_const_v<T>, int> = 0>
-  const std::remove_const_t<T>* const_data_ptr() const;
+  const std::remove_const_t<T>* const_data_ptr() const {
+    return TensorBase::const_data_ptr<T>();
+  }
 
   void* mutable_data_ptr() const { return const_cast<void*>(tensor_.data()); }
 
   template <typename T>
-  T* mutable_data_ptr() const;
+  T* mutable_data_ptr() const {
+    return TensorBase::mutable_data_ptr<T>();
+  }
 
   using TensorBase::stride;
 
@@ -361,8 +367,9 @@ class Tensor : public TensorBase {
 
   int64_t numel() const { return tensor_.numel(); }
 
-  c10::ScalarType dtype() const {  // Should we use `TypeMeta` here?
-    return compat::_PD_PhiDataTypeToAtenScalarType(tensor_.dtype());
+  caffe2::TypeMeta dtype() const {
+    return caffe2::TypeMeta::fromScalarType(
+        compat::_PD_PhiDataTypeToAtenScalarType(tensor_.dtype()));
   }
 
   c10::Device device() const { return c10::Device(tensor_.place()); }
@@ -431,7 +438,7 @@ class Tensor : public TensorBase {
     }
 
     const auto device_type = device.value().type();
-    if (device_type == c10::DeviceType::GPU) {
+    if (device_type == c10::DeviceType::CUDA) {
       return is_gpu_pinned;
     }
     if (device_type == c10::DeviceType::XPU) {
@@ -463,7 +470,7 @@ class Tensor : public TensorBase {
 
     if (device.has_value()) {
       const auto device_type = device.value().type();
-      if (device_type == c10::DeviceType::GPU) {
+      if (device_type == c10::DeviceType::CUDA) {
         pinned_place = phi::Place(phi::GPUPinnedPlace());
       } else if (device_type == c10::DeviceType::XPU) {
         pinned_place = phi::Place(phi::XPUPinnedPlace());
@@ -671,12 +678,47 @@ class Tensor : public TensorBase {
   at::Tensor& absolute_() const { return abs_(); }
 
   Tensor operator[](int64_t index) const {
-    return paddle::experimental::slice(tensor_,
-                                       /*axes=*/{0},
-                                       /*starts=*/{index},
-                                       /*ends=*/{index + 1},
-                                       /*infer_flags=*/{1},
-                                       /*decrease_axis=*/{0});
+    // Use as_strided to create a view (shares storage with original tensor)
+    // This allows fill_ to modify the original tensor
+    int64_t numel = tensor_.numel();
+    if (numel == 0) {
+      PD_THROW("operator[]: cannot index empty tensor");
+    }
+
+    // Handle negative index
+    if (index < 0) {
+      index += tensor_.dims()[0];
+    }
+
+    // Check bounds
+    if (index < 0 || index >= tensor_.dims()[0]) {
+      PD_THROW("operator[]: index ",
+               index,
+               " out of range for tensor of size ",
+               tensor_.dims(),
+               " at dimension 0");
+    }
+
+    // For 1D tensor: create a scalar view (0-dim tensor) with proper offset
+    // For multi-D tensor: create a view of the row at index
+    std::vector<int64_t> new_sizes;
+    std::vector<int64_t> new_strides;
+
+    auto dims = tensor_.dims();
+    auto stride = tensor_.strides();
+
+    // Skip the first dimension (dim 0)
+    for (int i = 1; i < dims.size(); ++i) {
+      new_sizes.push_back(dims[i]);
+      new_strides.push_back(stride[i]);
+    }
+
+    // Calculate storage offset
+    int64_t storage_offset = index * stride[0];
+
+    return as_strided(c10::IntArrayRef(new_sizes),
+                      c10::IntArrayRef(new_strides),
+                      storage_offset);
   }
 
   void record_stream(at::Stream s) const;

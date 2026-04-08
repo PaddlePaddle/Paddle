@@ -402,6 +402,11 @@ def assign_sharded_weight(src, dst):
     starts, ends = [], []
     dst_starts, dst_ends = [], []
 
+    dest_tensor = dst.local_tensor
+    if not dest_tensor._is_initialized():
+        buffer = paddle.zeros_like(dest_tensor)
+        buffer._share_buffer_to(dest_tensor)
+
     for i in range(ndim):
         src_begin = src.global_offset[i]
         src_end = src_begin + src.local_shape[i]
@@ -929,10 +934,12 @@ class ThreeDCommGroupStateResharder:
                 read_item.tensor_name
             ]:
                 if not target_sharded_weight.local_tensor._is_initialized():
-                    buffer = paddle.zeros_like(
+                    buffer_t = paddle.zeros_like(
                         target_sharded_weight.local_tensor
                     )
-                    buffer._share_buffer_to(target_sharded_weight.local_tensor)
+                    buffer_t._share_buffer_to(
+                        target_sharded_weight.local_tensor
+                    )
 
                 src_tensor = received_sharded_weight.local_tensor
                 tgt_place = target_sharded_weight.local_tensor.place
@@ -985,6 +992,14 @@ class ThreeDCommGroupStateResharder:
             for target_sharded_weight in self.grouped_target_state_dict[
                 read_item.tensor_name
             ]:
+                if not target_sharded_weight.local_tensor._is_initialized():
+                    buffer_t = paddle.zeros_like(
+                        target_sharded_weight.local_tensor
+                    )
+                    buffer_t._share_buffer_to(
+                        target_sharded_weight.local_tensor
+                    )
+
                 assign_sharded_weight(
                     src=received_sharded_weight,
                     dst=target_sharded_weight,

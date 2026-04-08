@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/gpu/collect_fpn_proposals_kernel.h"
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/allocator.h"
@@ -236,6 +237,14 @@ void GPUCollectFpnProposalsOpKernel(
   // get length-based lod by batch ids
   GetLengthLoD<<<blocks, threads, 0, dev_ctx.stream()>>>(
       real_post_num, out_id_data, length_lod_data);
+  PADDLE_ENFORCE_EQ(
+      phi::backends::gpu::IsCUDAGraphCapturing(),
+      false,
+      common::errors::InvalidArgument(
+          "CollectFpnProposals does not support CUDA Graph capture: async D2H "
+          "copy to local vector 'length_lod_cpu' will bake the destination "
+          "address into the graph; on replay the vector is re-created at a "
+          "different address, causing a dangling-pointer write."));
   std::vector<int> length_lod_cpu(lod_size);
   phi::memory_utils::Copy(CPUPlace(),
                           length_lod_cpu.data(),

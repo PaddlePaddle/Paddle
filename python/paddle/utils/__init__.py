@@ -18,6 +18,7 @@ from . import (  # noqa: F401
     decorator_utils,
     dlpack,
     download,
+    gpu_utils,
     image_util,
     layers_utils,
     unique_name,
@@ -58,7 +59,12 @@ from .layers_utils import (  # noqa: F401
 from .lazy_import import try_import
 from .op_version import OpLastCheckpointChecker  # noqa: F401
 
-__all__ = ['deprecated', 'run_check', 'require_version', 'try_import']
+__all__ = [
+    'deprecated',
+    'run_check',
+    'require_version',
+    'try_import',
+]
 
 
 def __getattr__(name):

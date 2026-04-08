@@ -14,6 +14,7 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -107,11 +108,16 @@ void PartialConcatOpCUDAKernel(const Context &dev_ctx,
       dev_ctx.GetPlace(),
       in_data.size() * sizeof(T *),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+  size_t nbytes_in = in_data.size() * sizeof(T *);
+  const void *stable_in =
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          reinterpret_cast<uint8_t *>(const_cast<T **>(in_data.data())),
+          nbytes_in);
   phi::memory_utils::Copy(dev_ctx.GetPlace(),
                           tmp_in_array->ptr(),
                           CPUPlace(),
-                          reinterpret_cast<void *>(in_data.data()),
-                          in_data.size() * sizeof(T *),
+                          stable_in,
+                          nbytes_in,
                           dev_ctx.stream());
 
   T **in_array_data = reinterpret_cast<T **>(tmp_in_array->ptr());

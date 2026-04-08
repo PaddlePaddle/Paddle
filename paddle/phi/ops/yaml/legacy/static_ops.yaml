@@ -463,6 +463,20 @@
   backward : kthvalue_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
+- op : layer_norm
+  args : (Tensor x, Tensor scale, Tensor bias, float epsilon = 1e-5, int begin_norm_axis = 1)
+  output : Tensor(out), Tensor(mean), Tensor(variance)
+  infer_meta :
+    func : LayerNormInferMeta
+    spmd_rule : LayerNormInferSpmd
+  kernel :
+    func : layer_norm
+    data_type : x
+  backward : layer_norm_grad
+  intermediate : mean, variance
+  optional : scale, bias
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
+
 - op : leaky_relu
   args : (Tensor x, float negative_slope = 0.02)
   output : Tensor(out)
@@ -745,6 +759,17 @@
     func : one_hot_raw
     data_type : x
   traits : paddle::dialect::ForwardOnlyTrait
+
+- op : p_norm
+  args : (Tensor x,  double porder=2,  int axis=-1,  float epsilon=1.0e-12f,  bool keepdim=false,  bool asvector=false)
+  output : Tensor(out)
+  infer_meta :
+    func : PNormInferMeta
+    spmd_rule: PNormInferSpmd
+  kernel :
+    func : p_norm
+  backward : p_norm_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
 - op : p_recv
   args : (int ring_id = 0, int peer = 0, DataType dtype = DataType::FLOAT32, int[] out_shape = {}, bool dynamic_shape = false)

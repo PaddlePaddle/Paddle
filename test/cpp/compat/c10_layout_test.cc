@@ -368,6 +368,9 @@ TEST(SparseConstructorTest, SparseCooTensorInferSize) {
 
   ASSERT_TRUE(sparse.is_sparse());
   ASSERT_EQ(sparse.layout(), c10::kSparse);
+  ASSERT_EQ(sparse.dim(), 2);
+  ASSERT_EQ(sparse.size(0), 3);
+  ASSERT_EQ(sparse.size(1), 3);
 }
 
 TEST(SparseConstructorTest, SparseCooTensorDouble) {

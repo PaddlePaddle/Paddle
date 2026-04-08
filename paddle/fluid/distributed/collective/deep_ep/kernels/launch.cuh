@@ -129,6 +129,9 @@
   } else if (hidden == 5120) {                     \
     constexpr size_t kHidden = 5120;               \
     __VA_ARGS__                                    \
+  } else if (hidden == 6144) {                     \
+    constexpr size_t kHidden = 6144;               \
+    __VA_ARGS__                                    \
   } else if (hidden == 7168) {                     \
     constexpr size_t kHidden = 7168;               \
     __VA_ARGS__                                    \

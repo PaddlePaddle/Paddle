@@ -368,6 +368,20 @@ if(WITH_CUTLASS)
   add_definitions("-DPADDLE_WITH_MEMORY_EFFICIENT_ATTENTION"
   )# for memory_efficient_attention.h
 endif()
+# PADDLE_WARP_SIZE: warp size for the target GPU platform.
+# Default 32 (NVIDIA). Override via -DPADDLE_WARP_SIZE=64 for iluvatar (COREX).
+if(NOT DEFINED PADDLE_WARP_SIZE)
+  set(PADDLE_WARP_SIZE 32)
+endif()
+math(EXPR PADDLE_WARP_MASK "${PADDLE_WARP_SIZE} - 1")
+if(PADDLE_WARP_SIZE EQUAL 64)
+  set(PADDLE_WARP_SHIFT 6)
+else()
+  set(PADDLE_WARP_SHIFT 5)
+endif()
+add_definitions(-DPADDLE_WARP_SIZE=${PADDLE_WARP_SIZE})
+add_definitions(-DPADDLE_WARP_MASK=${PADDLE_WARP_MASK})
+add_definitions(-DPADDLE_WARP_SHIFT=${PADDLE_WARP_SHIFT})
 if(WITH_FLASHATTN)
   add_dependencies(phi flashattn)
 endif()

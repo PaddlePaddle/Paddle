@@ -4,6 +4,10 @@ file(
   "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
+if(NOT WITH_GPU AND NOT WITH_XPU)
+  list(REMOVE_ITEM TEST_OPS test_grad_scaler_out)
+endif()
+
 function(py_test_modules TARGET_NAME)
   if(WITH_TESTING)
     set(options SERIAL)

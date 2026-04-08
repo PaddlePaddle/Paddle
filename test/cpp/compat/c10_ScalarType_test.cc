@@ -90,3 +90,64 @@ TEST(TensorBaseTest, TypeCheckingAPIs) {
   ASSERT_FALSE(uint8_tensor.is_signed());
   ASSERT_FALSE(bool_tensor.is_signed());
 }
+
+TEST(ScalarTypeTest, RestoredCompatScalarTypesKeepSourceLevelSemantics) {
+  EXPECT_EQ(static_cast<int>(c10::ScalarType::ComplexHalf), 8);
+  EXPECT_EQ(static_cast<int>(c10::ScalarType::QInt8), 12);
+  EXPECT_EQ(static_cast<int>(c10::ScalarType::Bits16), 22);
+  EXPECT_EQ(static_cast<int>(c10::ScalarType::Float8_e5m2fnuz), 25);
+  EXPECT_EQ(static_cast<int>(c10::ScalarType::Float4_e2m1fn_x2), 45);
+  EXPECT_EQ(c10::NumScalarTypes, 47);
+
+  EXPECT_EQ(c10::kComplexHalf, c10::ScalarType::ComplexHalf);
+  EXPECT_EQ(c10::kQInt8, c10::ScalarType::QInt8);
+  EXPECT_EQ(c10::kBits16, c10::ScalarType::Bits16);
+  EXPECT_EQ(c10::kFloat8_e4m3fnuz, c10::ScalarType::Float8_e4m3fnuz);
+  EXPECT_EQ(c10::kFloat8_e8m0fnu, c10::ScalarType::Float8_e8m0fnu);
+  EXPECT_EQ(c10::kFloat4_e2m1fn_x2, c10::ScalarType::Float4_e2m1fn_x2);
+  EXPECT_EQ(c10::kUndefined, c10::ScalarType::Undefined);
+
+  EXPECT_STREQ(c10::toString(c10::ScalarType::ComplexHalf), "ComplexHalf");
+  EXPECT_STREQ(c10::toString(c10::ScalarType::QInt8), "QInt8");
+  EXPECT_STREQ(c10::toString(c10::ScalarType::QUInt8), "QUInt8");
+  EXPECT_STREQ(c10::toString(c10::ScalarType::QInt32), "QInt32");
+  EXPECT_STREQ(c10::toString(c10::ScalarType::QUInt4x2), "QUInt4x2");
+  EXPECT_STREQ(c10::toString(c10::ScalarType::QUInt2x4), "QUInt2x4");
+  EXPECT_STREQ(c10::toString(c10::ScalarType::Bits1x8), "Bits1x8");
+  EXPECT_STREQ(c10::toString(c10::ScalarType::Bits2x4), "Bits2x4");
+  EXPECT_STREQ(c10::toString(c10::ScalarType::Bits4x2), "Bits4x2");
+  EXPECT_STREQ(c10::toString(c10::ScalarType::Bits8), "Bits8");
+  EXPECT_STREQ(c10::toString(c10::ScalarType::Bits16), "Bits16");
+  EXPECT_STREQ(c10::toString(c10::ScalarType::Float8_e5m2fnuz),
+               "Float8_e5m2fnuz");
+  EXPECT_STREQ(c10::toString(c10::ScalarType::Float8_e4m3fnuz),
+               "Float8_e4m3fnuz");
+  EXPECT_STREQ(c10::toString(c10::ScalarType::Float8_e8m0fnu),
+               "Float8_e8m0fnu");
+  EXPECT_STREQ(c10::toString(c10::ScalarType::Float4_e2m1fn_x2),
+               "Float4_e2m1fn_x2");
+  EXPECT_STREQ(c10::toString(c10::ScalarType::Undefined), "Undefined");
+
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::ComplexHalf),
+            sizeof(at::Half) * 2);
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::QInt8), 1U);
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::QUInt8), 1U);
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::QInt32), 4U);
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::QUInt4x2), 1U);
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::QUInt2x4), 1U);
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::Bits1x8), 1U);
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::Bits2x4), 1U);
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::Bits4x2), 1U);
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::Bits8), 1U);
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::Bits16), 2U);
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::Float8_e5m2fnuz), 1U);
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::Float8_e4m3fnuz), 1U);
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::Float8_e8m0fnu), 1U);
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::Float4_e2m1fn_x2), 1U);
+
+  EXPECT_TRUE(c10::isComplexType(c10::ScalarType::ComplexHalf));
+  EXPECT_TRUE(c10::isFloat8Type(c10::ScalarType::Float8_e5m2fnuz));
+  EXPECT_TRUE(c10::isFloat8Type(c10::ScalarType::Float8_e4m3fnuz));
+  EXPECT_TRUE(c10::isFloat8Type(c10::ScalarType::Float8_e8m0fnu));
+  EXPECT_TRUE(c10::isReducedFloatingType(c10::ScalarType::Float4_e2m1fn_x2));
+}

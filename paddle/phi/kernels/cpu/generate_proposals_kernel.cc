@@ -324,6 +324,17 @@ void GenerateProposalsKernel(const Context& dev_ctx,
     return;
   }
 
+  if (bbox_deltas.numel() == 0 || im_shape.numel() == 0) {
+    rpn_rois->Resize(make_ddim({0, 4}));
+    rpn_roi_probs->Resize(make_ddim({0, 1}));
+    if (rpn_rois_num != nullptr) {
+      rpn_rois_num->Resize(make_ddim({num}));
+      int64_t* num_data = dev_ctx.template Alloc<int64_t>(rpn_rois_num);
+      std::fill_n(num_data, num, 0);
+    }
+    return;
+  }
+
   DenseTensor bbox_deltas_swap, scores_swap;
   bbox_deltas_swap.Resize({num, h_bbox, w_bbox, c_bbox});
   dev_ctx.template Alloc<T>(&bbox_deltas_swap);

@@ -32,6 +32,21 @@ inline Tensor std_impl(const Tensor& self,
                        const std::vector<int64_t>& dims_vec,
                        double correction_value,
                        bool keepdim) {
+  // Validate dimensions before processing
+  int64_t ndim = self.dim();
+  for (int64_t d : dims_vec) {
+    int64_t dim_idx = d < 0 ? d + ndim : d;
+    if (dim_idx < 0 || dim_idx >= ndim) {
+      PD_CHECK(false,
+               "Dimension out of range (expected to be in range of [",
+               -ndim,
+               ", ",
+               ndim - 1,
+               "], but got ",
+               d,
+               ")");
+    }
+  }
   phi::IntArray dims_int_array(dims_vec);
   paddle::Tensor tensor = self._PD_GetInner();
 

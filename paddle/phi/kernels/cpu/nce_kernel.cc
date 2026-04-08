@@ -24,7 +24,7 @@
 
 namespace phi {
 
-using Sampler = phi::math::Sampler;
+using Sampler = math::Sampler;
 
 template <typename Context, typename T>
 static void inline PrepareSamples(const Context &dev_ctx,
@@ -86,11 +86,11 @@ void NCEKernel(const Context &dev_ctx,
   Sampler *sampler;
   switch (sampler_type) {
     case 0: {
-      sampler = new phi::math::UniformSampler(num_total_classes - 1, seed);
+      sampler = new math::UniformSampler(num_total_classes - 1, seed);
       break;
     }
     case 1: {
-      sampler = new phi::math::LogUniformSampler(num_total_classes - 1, seed);
+      sampler = new math::LogUniformSampler(num_total_classes - 1, seed);
       break;
     }
     case 2: {
@@ -133,11 +133,11 @@ void NCEKernel(const Context &dev_ctx,
       const float *probs_data = dist_probs->data<float>();
       const int *alias_data = dist_alias->data<int>();
       const float *alias_probs_data = dist_alias_probs->data<float>();
-      sampler = new phi::math::CustomSampler(num_total_classes - 1,
-                                             probs_data,
-                                             alias_data,
-                                             alias_probs_data,
-                                             seed);
+      sampler = new math::CustomSampler(num_total_classes - 1,
+                                        probs_data,
+                                        alias_data,
+                                        alias_probs_data,
+                                        seed);
       break;
     }
     default: {

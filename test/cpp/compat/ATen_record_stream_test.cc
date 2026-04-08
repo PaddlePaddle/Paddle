@@ -44,6 +44,14 @@ class RecordStreamTest : public ::testing::Test {
 
 // --- Happy path: CUDA tensor + current CUDA stream should succeed ---
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+using RecordCudaStreamMethod = void (at::Tensor::*)(at::cuda::CUDAStream) const;
+[[maybe_unused]] static RecordCudaStreamMethod g_record_cuda_stream_method =
+    &at::Tensor::record_stream;
+
+using RecordRawCudaStreamMethod = void (at::Tensor::*)(cudaStream_t) const;
+[[maybe_unused]] static RecordRawCudaStreamMethod
+    g_record_raw_cuda_stream_method = &at::Tensor::record_stream;
+
 TEST_F(RecordStreamTest, CudaTensorCurrentCudaStream) {
   auto stream = at::cuda::getCurrentCUDAStream();
   // record_stream should not throw
@@ -52,10 +60,13 @@ TEST_F(RecordStreamTest, CudaTensorCurrentCudaStream) {
 
 // --- Happy path: CUDA tensor + default CUDA stream should succeed ---
 TEST_F(RecordStreamTest, CudaTensorDefaultCudaStream) {
-  c10::DeviceIndex dev = c10::cuda::current_device();
-  c10::Stream default_stream(c10::Stream::DEFAULT,
-                             c10::Device(c10::DeviceType::CUDA, dev));
+  c10::Stream default_stream = c10::cuda::getDefaultCUDAStream().unwrap();
   EXPECT_NO_THROW(cuda_tensor.record_stream(default_stream));
+}
+
+TEST_F(RecordStreamTest, CudaTensorRawCudaStream) {
+  auto stream = at::cuda::getCurrentCUDAStream();
+  EXPECT_NO_THROW(cuda_tensor.record_stream(stream.raw_stream()));
 }
 #endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
 

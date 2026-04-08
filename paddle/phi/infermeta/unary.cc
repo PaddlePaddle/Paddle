@@ -3790,7 +3790,7 @@ void PixelUnshuffleInferMeta(const MetaTensor& x,
 }
 
 void PNormInferMeta(const MetaTensor& x,
-                    float porder,
+                    double porder,
                     int axis,
                     float epsilon,
                     bool keepdim,

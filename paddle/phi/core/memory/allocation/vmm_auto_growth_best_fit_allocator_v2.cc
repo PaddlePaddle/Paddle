@@ -14,6 +14,8 @@
 
 #include "paddle/phi/core/memory/allocation/vmm_auto_growth_best_fit_allocator_v2.h"
 
+#if defined(PADDLE_WITH_CUDA)
+
 #include <algorithm>
 #include <iterator>
 
@@ -336,3 +338,5 @@ void VMMAutoGrowthBestFitAllocatorV2::TryMerge(BlockListIt it) {
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle
+
+#endif
