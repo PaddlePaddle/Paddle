@@ -640,6 +640,46 @@ def expand_decorator() -> Callable[
     return decorator
 
 
+def tile_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    """
+    Usage Example:
+    paddle.tile(x=tensor_x, repeat_times=[2, 3], name=None)
+    paddle.tile(input=tensor_x, dims=[2, 3])
+    tensor_x.tile([2, 3]) -> paddle.tile(tensor_x, [2, 3])
+    tensor_x.tile(2, 3) -> paddle.tile(tensor_x, 2, 3)
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            if "input" in kwargs:
+                if "x" in kwargs:
+                    raise ValueError(
+                        "Cannot specify both 'x' and its alias 'input'"
+                    )
+                kwargs["x"] = kwargs.pop("input")
+
+            if "dims" in kwargs:
+                if "repeat_times" in kwargs:
+                    raise ValueError(
+                        "Cannot specify both 'repeat_times' and its alias 'dims'"
+                    )
+                kwargs["repeat_times"] = kwargs.pop("dims")
+
+            if len(args) >= 2 and isinstance(args[1], int):
+                kwargs["x"] = args[0]
+                kwargs["repeat_times"] = list(args[1:])
+                args = ()
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
 def index_select_decorator() -> Callable[
     [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
 ]:
@@ -946,6 +986,83 @@ def variadic_tensor_decorator(
             elif len(args) >= 1 and isinstance(args[0], (list, tuple)):
                 kwargs[param_name] = args[0]
                 args = ()
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
+def grad_scaler_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    """Decorator for GradScaler.__init__ to support three calling conventions:
+
+    GradScaler(enable, init_loss_scaling, incr_ratio, decr_ratio, incr_every_n_steps, decr_every_n_nan_or_inf, use_dynamic_loss_scaling)
+    GradScaler(device, init_scale, growth_factor, backoff_factor, growth_interval, enabled)
+    GradScaler(init_scale, growth_factor, backoff_factor, growth_interval, enabled)
+    """
+
+    _ALIAS_MAP = {
+        'enabled': 'enable',
+        'init_scale': 'init_loss_scaling',
+        'growth_factor': 'incr_ratio',
+        'backoff_factor': 'decr_ratio',
+        'growth_interval': 'incr_every_n_steps',
+    }
+    # PyTorch positional order (device already stripped): init_scale, growth_factor, backoff_factor, growth_interval, enabled
+    _TORCH_POS_NAMES = [
+        'init_loss_scaling',
+        'incr_ratio',
+        'decr_ratio',
+        'incr_every_n_steps',
+        'enable',
+    ]
+
+    def _remap_kwargs(kwargs: dict[str, Any]) -> None:
+        for torch_key, paddle_key in _ALIAS_MAP.items():
+            if torch_key in kwargs:
+                if paddle_key not in kwargs:
+                    kwargs[paddle_key] = kwargs.pop(torch_key)
+                else:
+                    raise ValueError(
+                        f"Cannot specify both '{paddle_key}' and its alias '{torch_key}'"
+                    )
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> _RetT:
+            # args[0] is always `self` for a bound __init__ call
+            real_args = args[1:]
+
+            # Drop PyTorch-only 'device' kwarg (no Paddle equivalent)
+            kwargs.pop('device', None)
+
+            # Remap PyTorch keyword aliases to Paddle names unconditionally
+            _remap_kwargs(kwargs)
+
+            if real_args and isinstance(real_args[0], str):
+                # PyTorch with device prefix: GradScaler('cuda', init_scale=1024, ...)
+                # Strip device; remaining positional follow torch order
+                torch_pos = real_args[1:]
+                args = args[:1]  # keep only self
+                for i, val in enumerate(torch_pos):
+                    if i < len(_TORCH_POS_NAMES):
+                        name = _TORCH_POS_NAMES[i]
+                        if name not in kwargs:
+                            kwargs[name] = val
+            elif real_args and not isinstance(real_args[0], bool):
+                # PyTorch positional without device: GradScaler(1024, 2.0, 0.5, ...)
+                # int/float but not bool: first arg is init_scale (PyTorch), not enable (Paddle)
+                args = args[:1]  # keep only self
+                for i, val in enumerate(real_args):
+                    if i < len(_TORCH_POS_NAMES):
+                        name = _TORCH_POS_NAMES[i]
+                        if name not in kwargs:
+                            kwargs[name] = val
+            # else: Paddle call — pass through unchanged
+
             return func(*args, **kwargs)
 
         wrapper.__signature__ = inspect.signature(func)

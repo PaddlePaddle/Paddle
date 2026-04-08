@@ -1156,6 +1156,263 @@ class TestIsRealAPICompatibility(unittest.TestCase):
             np.testing.assert_array_equal(ref_out, out)
 
 
+class TestLayerAndTensorToAPI(unittest.TestCase):
+    """Test paddle.nn.Layer.to and paddle.Tensor.to alignment with PyTorch."""
+
+    def setUp(self):
+        paddle.disable_static()
+
+    def tearDown(self):
+        paddle.enable_static()
+
+    def _make_model(self):
+        """Create a model with float params and an int buffer."""
+
+        class Model(paddle.nn.Layer):
+            def __init__(self):
+                super().__init__()
+                self.linear = paddle.nn.Linear(3, 2)
+                self.register_buffer(
+                    'int_buf', paddle.to_tensor([1, 2, 3], dtype='int32')
+                )
+
+            def forward(self, x):
+                return self.linear(x)
+
+        return Model()
+
+    # ---- Layer.to: Positional dtype ----
+
+    def test_layer_positional_paddle_dtype(self):
+        """Layer.to(paddle.float64)"""
+        linear = paddle.nn.Linear(2, 2)
+        ret = linear.to(paddle.float64)
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+        self.assertEqual(linear.bias.dtype, paddle.float64)
+        self.assertIs(ret, linear)
+
+    def test_layer_positional_dtype_string(self):
+        """Layer.to('float64')"""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to('float64')
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    def test_layer_positional_dtype_float16(self):
+        """Layer.to(paddle.float16)"""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to(paddle.float16)
+        self.assertEqual(linear.weight.dtype, paddle.float16)
+
+    # ---- Layer.to: Positional tensor ----
+
+    def test_layer_positional_tensor(self):
+        """Layer.to(tensor) -- match tensor's dtype and device"""
+        linear = paddle.nn.Linear(2, 2)
+        ref = paddle.to_tensor([1.0], dtype='float64')
+        linear.to(ref)
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    # ---- Layer.to: Positional device ----
+
+    def test_layer_positional_device_string(self):
+        """Layer.to('cpu')"""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to('cpu')
+        self.assertTrue(linear.weight.place.is_cpu_place())
+
+    def test_layer_positional_device_and_dtype(self):
+        """Layer.to('cpu', 'float64')"""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to('cpu', 'float64')
+        self.assertTrue(linear.weight.place.is_cpu_place())
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    # ---- Layer.to: Keyword args ----
+
+    def test_layer_keyword_device(self):
+        """Layer.to(device='cpu')"""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to(device='cpu')
+        self.assertTrue(linear.weight.place.is_cpu_place())
+
+    def test_layer_keyword_dtype(self):
+        """Layer.to(dtype='float64')"""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to(dtype='float64')
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    def test_layer_keyword_device_and_dtype(self):
+        """Layer.to(device='cpu', dtype='float64')"""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to(device='cpu', dtype='float64')
+        self.assertTrue(linear.weight.place.is_cpu_place())
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    def test_layer_keyword_non_blocking(self):
+        """Layer.to(dtype='float64', non_blocking=False)"""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to(dtype='float64', non_blocking=False)
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    def test_layer_keyword_blocking(self):
+        """Layer.to(device='cpu', blocking=True)"""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to(device='cpu', blocking=True)
+        self.assertTrue(linear.weight.place.is_cpu_place())
+
+    # ---- Layer.to: No args ----
+
+    def test_layer_no_args(self):
+        """Layer.to() -- returns self unchanged"""
+        linear = paddle.nn.Linear(2, 2)
+        original_dtype = linear.weight.dtype
+        ret = linear.to()
+        self.assertIs(ret, linear)
+        self.assertEqual(linear.weight.dtype, original_dtype)
+
+    # ---- Layer.to: all-dtype casting ----
+
+    def test_layer_cast_all_with_positional_dtype(self):
+        """Layer.to(dtype) casts ALL params and buffers, including int buf."""
+        model = self._make_model()
+        self.assertEqual(model.int_buf.dtype, paddle.int32)
+        model.to(paddle.float64)
+        self.assertEqual(model.linear.weight.dtype, paddle.float64)
+        self.assertEqual(model.int_buf.dtype, paddle.float64)
+
+    def test_layer_cast_all_with_keyword_dtype(self):
+        """Layer.to(dtype='float64') casts ALL params and buffers."""
+        model = self._make_model()
+        model.to(dtype='float64')
+        self.assertEqual(model.linear.weight.dtype, paddle.float64)
+        self.assertEqual(model.int_buf.dtype, paddle.float64)
+
+    def test_layer_cast_all_with_tensor(self):
+        """Layer.to(tensor) casts ALL params and buffers."""
+        model = self._make_model()
+        ref = paddle.to_tensor([1.0], dtype='float64')
+        model.to(ref)
+        self.assertEqual(model.linear.weight.dtype, paddle.float64)
+        self.assertEqual(model.int_buf.dtype, paddle.float64)
+
+    # ---- Layer.to: sublayers and chaining ----
+
+    def test_layer_sublayers_cast(self):
+        """Layer.to() should recurse into sublayers."""
+        model = paddle.nn.Sequential(
+            paddle.nn.Linear(3, 4), paddle.nn.Linear(4, 2)
+        )
+        model.to(paddle.float64)
+        for sub in model.sublayers():
+            if hasattr(sub, 'weight'):
+                self.assertEqual(sub.weight.dtype, paddle.float64)
+
+    def test_layer_returns_self(self):
+        """Layer.to() should return self for chaining."""
+        linear = paddle.nn.Linear(2, 2)
+        self.assertIs(linear.to(paddle.float64), linear)
+
+    def test_layer_sequential_to_calls(self):
+        """Multiple Layer.to() calls should work correctly."""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to(paddle.float64)
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+        linear.to('float32')
+        self.assertEqual(linear.weight.dtype, paddle.float32)
+
+    # ---- Tensor.to ----
+
+    def test_tensor_positional_dtype(self):
+        """Tensor.to(paddle.float64)"""
+        t = paddle.to_tensor([1.0, 2.0])
+        out = t.to(paddle.float64)
+        self.assertEqual(out.dtype, paddle.float64)
+
+    def test_tensor_positional_dtype_string(self):
+        """Tensor.to('float64')"""
+        t = paddle.to_tensor([1.0, 2.0])
+        out = t.to('float64')
+        self.assertEqual(out.dtype, paddle.float64)
+
+    def test_tensor_positional_device(self):
+        """Tensor.to('cpu')"""
+        t = paddle.to_tensor([1.0, 2.0])
+        out = t.to('cpu')
+        self.assertTrue(out.place.is_cpu_place())
+
+    def test_tensor_positional_device_and_dtype(self):
+        """Tensor.to('cpu', 'float64')"""
+        t = paddle.to_tensor([1.0, 2.0])
+        out = t.to('cpu', 'float64')
+        self.assertTrue(out.place.is_cpu_place())
+        self.assertEqual(out.dtype, paddle.float64)
+
+    def test_tensor_positional_other(self):
+        """Tensor.to(other_tensor)"""
+        t = paddle.to_tensor([1.0, 2.0])
+        ref = paddle.to_tensor([1], dtype='int32')
+        out = t.to(ref)
+        self.assertEqual(out.dtype, paddle.int32)
+
+    def test_tensor_keyword_dtype(self):
+        """Tensor.to(dtype='float64')"""
+        t = paddle.to_tensor([1.0, 2.0])
+        out = t.to(dtype='float64')
+        self.assertEqual(out.dtype, paddle.float64)
+
+    def test_tensor_keyword_device(self):
+        """Tensor.to(device='cpu')"""
+        t = paddle.to_tensor([1.0, 2.0])
+        out = t.to(device='cpu')
+        self.assertTrue(out.place.is_cpu_place())
+
+    def test_tensor_keyword_non_blocking(self):
+        """Tensor.to(dtype='float64', non_blocking=False)"""
+        t = paddle.to_tensor([1.0, 2.0])
+        out = t.to(dtype='float64', non_blocking=False)
+        self.assertEqual(out.dtype, paddle.float64)
+
+    def test_tensor_no_args(self):
+        """Tensor.to() -- returns self"""
+        t = paddle.to_tensor([1.0, 2.0])
+        out = t.to()
+        self.assertEqual(out.dtype, t.dtype)
+
+    # ---- blocking / non_blocking conflict ----
+
+    def test_blocking_non_blocking_conflict_raises(self):
+        """Setting both blocking and non_blocking raises TypeError."""
+        linear = paddle.nn.Linear(2, 2)
+        with self.assertRaises(TypeError):
+            linear.to(dtype='float64', blocking=True, non_blocking=False)
+
+    def test_tensor_blocking_non_blocking_conflict_raises(self):
+        """Tensor: setting both blocking and non_blocking raises TypeError."""
+        t = paddle.to_tensor([1.0])
+        with self.assertRaises(TypeError):
+            t.to(dtype='float64', blocking=True, non_blocking=False)
+
+    # ---- Error handling ----
+
+    def test_too_many_args(self):
+        """to() with too many arguments raises TypeError."""
+        linear = paddle.nn.Linear(2, 2)
+        with self.assertRaises(TypeError):
+            linear.to('cpu', 'float64', True, False, 'extra')
+
+    def test_unexpected_keyword(self):
+        """to() with unexpected keyword raises TypeError."""
+        linear = paddle.nn.Linear(2, 2)
+        with self.assertRaises(TypeError):
+            linear.to(foo='bar')
+
+    def test_invalid_first_arg(self):
+        """to() with invalid first arg raises ValueError."""
+        linear = paddle.nn.Linear(2, 2)
+        with self.assertRaises(ValueError):
+            linear.to(123)
+
+
 # Test select_scatter compatibility
 class TestSelectScatterAPICompatibility(unittest.TestCase):
     def setUp(self):
@@ -1239,6 +1496,138 @@ class TestSelectScatterAPICompatibility(unittest.TestCase):
 
         # Verify all outputs
         ref_out = self.get_ref_out()
+        for out in fetches:
+            np.testing.assert_allclose(out, ref_out, rtol=1e-5)
+
+
+# Test tile compatibility
+class TestTileAPICompatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_x = np.random.rand(2, 3).astype("float32")
+        self.repeat_times = [2, 3]
+        self.shape = self.np_x.shape
+        self.dtype = str(self.np_x.dtype)
+        self.np_x_3d = np.random.rand(1, 2, 2).astype("float64")
+        self.repeat_times_3d = [2, 1, 3]
+        self.shape_3d = self.np_x_3d.shape
+        self.dtype_3d = str(self.np_x_3d.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.tile(x, self.repeat_times)
+        # 2. Paddle keyword arguments
+        out2 = paddle.tile(x=x, repeat_times=self.repeat_times)
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.tile(input=x, dims=self.repeat_times)
+        # 4. Mixed arguments
+        out4 = paddle.tile(x, dims=self.repeat_times)
+        # 5. Tensor method - args
+        out5 = x.tile(2, 3)
+        # 6. Tensor method - kwargs (PyTorch alias)
+        out6 = x.tile(dims=self.repeat_times)
+
+        # Verify all outputs
+        ref_out = np.tile(self.np_x, self.repeat_times)
+        for out in [out1, out2, out3, out4, out5, out6]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-5)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+
+            # 1. Paddle Positional arguments
+            out1 = paddle.tile(x, self.repeat_times)
+            # 2. Paddle keyword arguments
+            out2 = paddle.tile(x=x, repeat_times=self.repeat_times)
+            # 3. PyTorch keyword arguments (alias)
+            out3 = paddle.tile(input=x, dims=self.repeat_times)
+            # 4. Tensor method - args
+            out4 = x.tile(2, 3)
+            # 5. Tensor method - kwargs (PyTorch alias)
+            out5 = x.tile(dims=self.repeat_times)
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2, out3, out4, out5],
+            )
+
+        # Verify all outputs
+        ref_out = np.tile(self.np_x, self.repeat_times)
+        for out in fetches:
+            np.testing.assert_allclose(out, ref_out, rtol=1e-5)
+
+    def test_dygraph_HighDimCompatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x_3d)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.tile(x, self.repeat_times_3d)
+        # 2. Paddle keyword arguments
+        out2 = paddle.tile(x=x, repeat_times=self.repeat_times_3d)
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.tile(input=x, dims=self.repeat_times_3d)
+        # 4. Mixed arguments
+        out4 = paddle.tile(x, dims=self.repeat_times_3d)
+        # 5. Tensor method - args
+        out5 = x.tile(2, 1, 3)
+        # 6. Tensor method - kwargs (PyTorch alias)
+        out6 = x.tile(dims=self.repeat_times_3d)
+
+        dims = self.repeat_times_3d
+        # 7. Tensor method - args with variable expansion
+        out7 = x.tile(*dims)
+
+        # Verify all outputs
+        ref_out = np.tile(self.np_x_3d, self.repeat_times_3d)
+        for out in [out1, out2, out3, out4, out5, out6, out7]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-5)
+
+        paddle.enable_static()
+
+    def test_static_HighDimCompatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x", shape=self.shape_3d, dtype=self.dtype_3d
+            )
+
+            # 1. Paddle Positional arguments
+            out1 = paddle.tile(x, self.repeat_times_3d)
+            # 2. Paddle keyword arguments
+            out2 = paddle.tile(x=x, repeat_times=self.repeat_times_3d)
+            # 3. PyTorch keyword arguments (alias)
+            out3 = paddle.tile(input=x, dims=self.repeat_times_3d)
+            # 4. Tensor method - args
+            out4 = x.tile(2, 1, 3)
+            # 5. Tensor method - kwargs (PyTorch alias)
+            out5 = x.tile(dims=self.repeat_times_3d)
+
+            dims = self.repeat_times_3d
+            # 6. Tensor method - args with variable expansion
+            out6 = x.tile(*dims)
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x_3d},
+                fetch_list=[out1, out2, out3, out4, out5, out6],
+            )
+
+        # Verify all outputs
+        ref_out = np.tile(self.np_x_3d, self.repeat_times_3d)
         for out in fetches:
             np.testing.assert_allclose(out, ref_out, rtol=1e-5)
 
@@ -1334,6 +1723,87 @@ class TestLogitAPI(unittest.TestCase):
         np.testing.assert_allclose(
             fetches[3], ref_out_eps, rtol=1e-5, atol=1e-6
         )
+
+
+# Test conv2d_transpose / conv_transpose2d compatibility
+class TestConv2dTransposeAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.dtype = 'float32'
+        self.np_x = np.random.rand(1, 2, 4, 4).astype(self.dtype)
+        self.np_weight = np.random.rand(2, 2, 3, 3).astype(self.dtype)
+        self.np_bias = np.random.rand(2).astype(self.dtype)
+
+    def _test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        weight = paddle.to_tensor(self.np_weight)
+        bias = paddle.to_tensor(self.np_bias)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.nn.functional.conv2d_transpose(x, weight)
+        # 2. Paddle keyword arguments
+        out2 = paddle.nn.functional.conv2d_transpose(x=x, weight=weight)
+        # 3. PyTorch keyword arguments (alias: input)
+        out3 = paddle.nn.functional.conv2d_transpose(input=x, weight=weight)
+        # 4. PyTorch function name alias
+        out4 = paddle.nn.functional.conv_transpose2d(x, weight)
+        # 5. PyTorch function name alias + PyTorch keyword
+        out5 = paddle.nn.functional.conv_transpose2d(input=x, weight=weight)
+        # 6. Mixed arguments (positional + keyword)
+        out6 = paddle.nn.functional.conv2d_transpose(
+            x, weight, bias=bias, stride=1, padding=0
+        )
+        # 7. Positional arguments with bias
+        out7 = paddle.nn.functional.conv2d_transpose(x, weight, bias)
+
+        # Verify outputs without bias
+        ref = out1.numpy()
+        for out in [out2, out3, out4, out5]:
+            np.testing.assert_allclose(out.numpy(), ref, rtol=1e-5)
+
+        # Verify outputs with bias
+        ref_bias = out6.numpy()
+        np.testing.assert_allclose(out7.numpy(), ref_bias, rtol=1e-5)
+
+        paddle.enable_static()
+
+    def _test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x", shape=[1, 2, 4, 4], dtype=self.dtype
+            )
+            weight = paddle.static.data(
+                name="weight", shape=[2, 2, 3, 3], dtype=self.dtype
+            )
+
+            # 1. Paddle Positional arguments
+            out1 = paddle.nn.functional.conv2d_transpose(x, weight)
+            # 2. Paddle keyword arguments
+            out2 = paddle.nn.functional.conv2d_transpose(x=x, weight=weight)
+            # 3. PyTorch keyword arguments (alias: input)
+            out3 = paddle.nn.functional.conv2d_transpose(input=x, weight=weight)
+            # 4. PyTorch function name alias
+            out4 = paddle.nn.functional.conv_transpose2d(x, weight)
+            # 5. PyTorch function name alias + PyTorch keyword
+            out5 = paddle.nn.functional.conv_transpose2d(input=x, weight=weight)
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={
+                    "x": self.np_x,
+                    "weight": self.np_weight,
+                },
+                fetch_list=[out1, out2, out3, out4, out5],
+            )
+
+            # Verify all outputs
+            for i in range(1, len(fetches)):
+                np.testing.assert_allclose(fetches[0], fetches[i], rtol=1e-5)
 
 
 if __name__ == "__main__":

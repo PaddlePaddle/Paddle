@@ -36,6 +36,10 @@
 #endif
 #endif
 
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
+#endif
+
 namespace phi {
 
 namespace funcs {
@@ -93,7 +97,7 @@ std::vector<const DenseTensor*> DealWithBoolIndices(
                               "the only bool tensor in indices should "
                               "have number of dimension at least 1"));
         DenseTensor nonzero_indices(phi::DataType::INT64);
-        nonzero_indices.Resize(make_ddim({-1, rank}));
+        nonzero_indices.Resize({-1, rank});
         NonZeroKernel<bool, Context>(dev_ctx, *indices_v[i], &nonzero_indices);
 
         if (nonzero_indices.numel() == 0) {
@@ -104,9 +108,8 @@ std::vector<const DenseTensor*> DealWithBoolIndices(
         std::vector<DenseTensor*> integer_indices(rank, nullptr);
         const int tmp_ix = tmp_indices_v->size();
         for (int i = 0; i < rank; ++i) {
-          tmp_indices_v->emplace_back(
-              DenseTensor(phi::DataType::INT64)
-                  .Resize(make_ddim({nonzero_indices.dims()[0]})));
+          tmp_indices_v->emplace_back(DenseTensor(phi::DataType::INT64)
+                                          .Resize({nonzero_indices.dims()[0]}));
         }
         for (int i = 0; i < rank; ++i) {
           integer_indices[i] = &((*tmp_indices_v)[i + tmp_ix]);
@@ -199,11 +202,19 @@ T** GetDevicePointerArray(const Context& dev_ctx,
       dev_ctx.GetPlace(),
       h_indices_v.size() * sizeof(T*),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+  size_t nbytes_idx = h_indices_v.size() * sizeof(T*);
+#ifdef PADDLE_WITH_CUDA
+  const void* stable_idx =
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          reinterpret_cast<uint8_t*>(h_indices_v.data()), nbytes_idx);
+#else
+  const void* stable_idx = reinterpret_cast<const void*>(h_indices_v.data());
+#endif
   phi::memory_utils::Copy(dev_ctx.GetPlace(),
                           d_indices_data->ptr(),
                           CPUPlace(),
-                          reinterpret_cast<void*>(h_indices_v.data()),
-                          h_indices_v.size() * sizeof(T*),
+                          stable_idx,
+                          nbytes_idx,
                           dev_ctx.stream());
   return reinterpret_cast<T**>(d_indices_data->ptr());
 }
@@ -322,7 +333,7 @@ DenseTensor GetRangeCudaTensor(const Context& dev_ctx,
                                int64_t N,
                                phi::DataType dtype) {
   DenseTensor res(dtype);
-  res.Resize(make_ddim({N}));
+  res.Resize({N});
   DenseTensor* p_res = &res;
   T* out = dev_ctx.template Alloc<T>(p_res);
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, N);
@@ -345,7 +356,7 @@ DenseTensor GetRangeTensor(const Context& dev_ctx,
                            int64_t N,
                            phi::DataType dtype) {
   DenseTensor res(dtype);
-  res.Resize(make_ddim({N}));
+  res.Resize({N});
   DenseTensor* p_res = &res;
   T* out = dev_ctx.template Alloc<T>(p_res);
   range_kernel<T>(N, out);

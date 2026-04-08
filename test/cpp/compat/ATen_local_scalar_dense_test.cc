@@ -28,7 +28,6 @@
 #include "gtest/gtest.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
-#include "test/cpp/compat/cuda_test_utils.h"
 #include "torch/all.h"
 
 // ============================================================
@@ -130,7 +129,6 @@ TEST(LocalScalarDenseTest, ZeroValue_Int32) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(LocalScalarDenseTest, GPU_Float32_ReturnsCorrectValue) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   // _local_scalar_dense must copy to CPU when the tensor is on GPU.
   at::Tensor t = at::tensor(
       {7.0f},

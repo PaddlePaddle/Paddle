@@ -131,7 +131,7 @@ void ArrayToTensorKernel(const Context& dev_ctx,
     ConcatKernel<T, Context>(dev_ctx, inputs, axis, out);
   }
 
-  out_index->Resize(make_ddim({static_cast<int>(x.size())}));
+  out_index->Resize({static_cast<int64_t>(x.size())});
   StackKernel<int, Context>(dev_ctx, indices, 0, out_index);
 }
 

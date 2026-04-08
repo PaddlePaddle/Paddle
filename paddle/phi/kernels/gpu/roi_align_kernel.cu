@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/roi_align_kernel.h"
 
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/memory_utils.h"
@@ -266,8 +267,15 @@ void RoiAlignKernel(const Context& dev_ctx,
       bytes,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
-  memory_utils::Copy(
-      gplace, roi_id_data, cplace, roi_batch_id_data, bytes, dev_ctx.stream());
+  const int* stable_roi_batch_id =
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          roi_batch_id_data, static_cast<size_t>(bytes / sizeof(int)));
+  memory_utils::Copy(gplace,
+                     roi_id_data,
+                     cplace,
+                     stable_roi_batch_id,
+                     bytes,
+                     dev_ctx.stream());
   if (output_size > std::numeric_limits<int>::max() ||
       x.numel() > std::numeric_limits<int>::max()) {
     GPURoiAlignForward<T, int64_t><<<blocks, threads, 0, dev_ctx.stream()>>>(

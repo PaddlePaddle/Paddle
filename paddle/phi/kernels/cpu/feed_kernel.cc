@@ -18,7 +18,7 @@
 
 namespace phi {
 
-const phi::FeedType& CheckAndGetFeedItem(const phi::FeedList* x, int col) {
+const FeedType& CheckAndGetFeedItem(const FeedList* x, int col) {
   PADDLE_ENFORCE_GE(col,
                     0,
                     common::errors::InvalidArgument(
@@ -42,7 +42,7 @@ const phi::FeedType& CheckAndGetFeedItem(const phi::FeedList* x, int col) {
 
 template <typename Context>
 void FeedDenseTensorKernel(const Context& dev_ctx,
-                           const phi::ExtendedTensor& x,
+                           const ExtendedTensor& x,
                            int col,
                            DenseTensor* out) {
   PADDLE_ENFORCE_NOT_NULL(
@@ -50,10 +50,10 @@ void FeedDenseTensorKernel(const Context& dev_ctx,
       common::errors::NotFound(
           "Output cannot be found in scope for operator 'Feed'"));
   const auto& feed_item =
-      CheckAndGetFeedItem(reinterpret_cast<const phi::FeedList*>(&x), col);
+      CheckAndGetFeedItem(reinterpret_cast<const FeedList*>(&x), col);
   const auto& in_tensor = static_cast<DenseTensor>(feed_item);
   const auto& place = dev_ctx.GetPlace();
-  if (phi::is_same_place(in_tensor.place(), place)) {
+  if (is_same_place(in_tensor.place(), place)) {
     out->ShareDataWith(in_tensor);
   } else {
     Copy(dev_ctx, in_tensor, place, false, out);

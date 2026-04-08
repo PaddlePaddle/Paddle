@@ -73,14 +73,14 @@ void DeformableConvKernel(const Context& dev_ctx,
   int64_t K = x.dims()[1] * filter_shape_vec[2] * filter_shape_vec[3] / groups;
 
   DenseTensor weight_3d;
-  weight_3d.ShareDataWith(filter).Resize(make_ddim({groups, M, K}));
+  weight_3d.ShareDataWith(filter).Resize({groups, M, K});
 
   DenseTensor col_buffer_3d;
-  col_buffer_3d.ShareDataWith(col_buffer).Resize(make_ddim({groups, K, N}));
+  col_buffer_3d.ShareDataWith(col_buffer).Resize({groups, K, N});
 
   DenseTensor output_4d;
   output_4d.ShareDataWith(output_buffer)
-      .Resize(make_ddim({batch_size / im2col_step, groups, M, N}));
+      .Resize({batch_size / im2col_step, groups, M, N});
 
   DDim input_shape = slice_ddim(x.dims(), 1, x.dims().size());
   std::vector<int64_t> input_shape_vec = vectorize(input_shape);

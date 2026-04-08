@@ -25,7 +25,6 @@
 #include <c10/cuda/CUDAFunctions.h>
 #include <c10/cuda/CUDAGuard.h>
 #endif
-#include <sstream>
 #include "ATen/ATen.h"
 #include "gtest/gtest.h"
 #include "paddle/phi/common/float16.h"
@@ -92,8 +91,32 @@ TEST(TensorBaseTest, TypeCheckingAPIs) {
   ASSERT_FALSE(bool_tensor.is_signed());
 }
 
-TEST(ScalarTypeCompatTest, ScalarTypeUtilityBranches) {
+TEST(ScalarTypeTest, RestoredCompatScalarTypesKeepSourceLevelSemantics) {
+  EXPECT_EQ(static_cast<int>(c10::ScalarType::ComplexHalf), 8);
+  EXPECT_EQ(static_cast<int>(c10::ScalarType::QInt8), 12);
+  EXPECT_EQ(static_cast<int>(c10::ScalarType::Bits16), 22);
+  EXPECT_EQ(static_cast<int>(c10::ScalarType::Float8_e5m2fnuz), 25);
+  EXPECT_EQ(static_cast<int>(c10::ScalarType::Float4_e2m1fn_x2), 45);
+  EXPECT_EQ(c10::NumScalarTypes, 47);
+
+  EXPECT_EQ(c10::kComplexHalf, c10::ScalarType::ComplexHalf);
+  EXPECT_EQ(c10::kQInt8, c10::ScalarType::QInt8);
+  EXPECT_EQ(c10::kBits16, c10::ScalarType::Bits16);
+  EXPECT_EQ(c10::kFloat8_e4m3fnuz, c10::ScalarType::Float8_e4m3fnuz);
+  EXPECT_EQ(c10::kFloat8_e8m0fnu, c10::ScalarType::Float8_e8m0fnu);
+  EXPECT_EQ(c10::kFloat4_e2m1fn_x2, c10::ScalarType::Float4_e2m1fn_x2);
+  EXPECT_EQ(c10::kUndefined, c10::ScalarType::Undefined);
+
+  EXPECT_STREQ(c10::toString(c10::ScalarType::ComplexHalf), "ComplexHalf");
+  EXPECT_STREQ(c10::toString(c10::ScalarType::QInt8), "QInt8");
+  EXPECT_STREQ(c10::toString(c10::ScalarType::QUInt8), "QUInt8");
+  EXPECT_STREQ(c10::toString(c10::ScalarType::QInt32), "QInt32");
+  EXPECT_STREQ(c10::toString(c10::ScalarType::QUInt4x2), "QUInt4x2");
+  EXPECT_STREQ(c10::toString(c10::ScalarType::QUInt2x4), "QUInt2x4");
   EXPECT_STREQ(c10::toString(c10::ScalarType::Bits1x8), "Bits1x8");
+  EXPECT_STREQ(c10::toString(c10::ScalarType::Bits2x4), "Bits2x4");
+  EXPECT_STREQ(c10::toString(c10::ScalarType::Bits4x2), "Bits4x2");
+  EXPECT_STREQ(c10::toString(c10::ScalarType::Bits8), "Bits8");
   EXPECT_STREQ(c10::toString(c10::ScalarType::Bits16), "Bits16");
   EXPECT_STREQ(c10::toString(c10::ScalarType::Float8_e5m2fnuz),
                "Float8_e5m2fnuz");
@@ -104,65 +127,27 @@ TEST(ScalarTypeCompatTest, ScalarTypeUtilityBranches) {
   EXPECT_STREQ(c10::toString(c10::ScalarType::Float4_e2m1fn_x2),
                "Float4_e2m1fn_x2");
   EXPECT_STREQ(c10::toString(c10::ScalarType::Undefined), "Undefined");
-  EXPECT_STREQ(c10::toString(static_cast<c10::ScalarType>(-1)),
-               "UNKNOWN_SCALAR");
 
-  EXPECT_EQ(c10::elementSize(c10::ScalarType::QInt8), static_cast<size_t>(1));
-  EXPECT_EQ(c10::elementSize(c10::ScalarType::QUInt4x2),
-            static_cast<size_t>(1));
-  EXPECT_EQ(c10::elementSize(c10::ScalarType::QInt32), static_cast<size_t>(4));
-  EXPECT_EQ(c10::elementSize(c10::ScalarType::Bits16), static_cast<size_t>(4));
-  EXPECT_THROW(c10::elementSize(c10::ScalarType::Undefined), ::std::exception);
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::ComplexHalf),
+            sizeof(at::Half) * 2);
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::QInt8), 1U);
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::QUInt8), 1U);
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::QInt32), 4U);
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::QUInt4x2), 1U);
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::QUInt2x4), 1U);
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::Bits1x8), 1U);
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::Bits2x4), 1U);
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::Bits4x2), 1U);
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::Bits8), 1U);
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::Bits16), 2U);
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::Float8_e5m2fnuz), 1U);
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::Float8_e4m3fnuz), 1U);
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::Float8_e8m0fnu), 1U);
+  EXPECT_EQ(c10::elementSize(c10::ScalarType::Float4_e2m1fn_x2), 1U);
 
-  EXPECT_TRUE(c10::isIntegralType(c10::ScalarType::Bool, true));
-  EXPECT_FALSE(c10::isIntegralType(c10::ScalarType::Bool, false));
-  EXPECT_TRUE(c10::isFloat8Type(c10::ScalarType::Float8_e5m2));
-  EXPECT_FALSE(c10::isFloat8Type(c10::ScalarType::Float8_e4m3fnuz));
-  EXPECT_TRUE(c10::isReducedFloatingType(c10::ScalarType::BFloat16));
-  EXPECT_TRUE(c10::isFloatingType(c10::ScalarType::Float));
-  EXPECT_FALSE(c10::isComplexType(c10::ScalarType::ComplexHalf));
-
-  EXPECT_TRUE(c10::isSignedType(c10::ScalarType::Int1));
-  EXPECT_FALSE(c10::isSignedType(c10::ScalarType::UInt3));
-  EXPECT_FALSE(c10::isSignedType(c10::ScalarType::QUInt8));
-  EXPECT_TRUE(c10::isSignedType(c10::ScalarType::Float8_e5m2fnuz));
-  EXPECT_THROW(c10::isSignedType(c10::ScalarType::Undefined), ::std::exception);
-
-  std::ostringstream oss;
-  oss << c10::ScalarType::UInt7;
-  EXPECT_EQ(oss.str(), "UInt7");
-}
-
-TEST(ScalarTypeCompatTest, AdditionalEnumAndPredicateBranches) {
-  EXPECT_STREQ(c10::toString(c10::ScalarType::QInt8), "QInt8");
-  EXPECT_STREQ(c10::toString(c10::ScalarType::QUInt8), "QUInt8");
-  EXPECT_STREQ(c10::toString(c10::ScalarType::QInt32), "QInt32");
-  EXPECT_STREQ(c10::toString(c10::ScalarType::QUInt4x2), "QUInt4x2");
-  EXPECT_STREQ(c10::toString(c10::ScalarType::QUInt2x4), "QUInt2x4");
-  EXPECT_STREQ(c10::toString(c10::ScalarType::ComplexHalf), "ComplexHalf");
-  EXPECT_STREQ(c10::toString(c10::ScalarType::Bits2x4), "Bits2x4");
-  EXPECT_STREQ(c10::toString(c10::ScalarType::Bits4x2), "Bits4x2");
-  EXPECT_STREQ(c10::toString(c10::ScalarType::Bits8), "Bits8");
-
-  EXPECT_EQ(c10::elementSize(c10::ScalarType::QUInt8), static_cast<size_t>(1));
-  EXPECT_EQ(c10::elementSize(c10::ScalarType::QUInt2x4),
-            static_cast<size_t>(1));
-  EXPECT_EQ(c10::elementSize(c10::ScalarType::Bits2x4), static_cast<size_t>(1));
-  EXPECT_EQ(c10::elementSize(c10::ScalarType::Bits4x2), static_cast<size_t>(1));
-  EXPECT_EQ(c10::elementSize(c10::ScalarType::Bits8), static_cast<size_t>(1));
-
-  EXPECT_TRUE(c10::isIntegralType(c10::ScalarType::UInt64, false));
-  EXPECT_FALSE(c10::isIntegralType(c10::ScalarType::Float, true));
-  EXPECT_TRUE(c10::isFloat8Type(c10::ScalarType::Float8_e4m3fn));
-  EXPECT_TRUE(c10::isReducedFloatingType(c10::ScalarType::Half));
-  EXPECT_FALSE(c10::isReducedFloatingType(c10::ScalarType::Float));
-  EXPECT_TRUE(c10::isFloatingType(c10::ScalarType::Half));
-  EXPECT_TRUE(c10::isComplexType(c10::ScalarType::ComplexFloat));
-
-  EXPECT_TRUE(c10::isSignedType(c10::ScalarType::QInt8));
-  EXPECT_TRUE(c10::isSignedType(c10::ScalarType::ComplexHalf));
-  EXPECT_FALSE(c10::isSignedType(c10::ScalarType::Byte));
-  EXPECT_FALSE(c10::isSignedType(c10::ScalarType::Bool));
-  EXPECT_THROW(c10::isSignedType(c10::ScalarType::NumOptions),
-               ::std::exception);
+  EXPECT_TRUE(c10::isComplexType(c10::ScalarType::ComplexHalf));
+  EXPECT_TRUE(c10::isFloat8Type(c10::ScalarType::Float8_e5m2fnuz));
+  EXPECT_TRUE(c10::isFloat8Type(c10::ScalarType::Float8_e4m3fnuz));
+  EXPECT_TRUE(c10::isFloat8Type(c10::ScalarType::Float8_e8m0fnu));
+  EXPECT_TRUE(c10::isReducedFloatingType(c10::ScalarType::Float4_e2m1fn_x2));
 }
