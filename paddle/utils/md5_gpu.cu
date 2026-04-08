@@ -30,6 +30,7 @@
 #include <cstdlib>
 #include <string>
 
+#include "paddle/phi/core/enforce.h"
 #include "paddle/utils/md5.h"
 
 namespace paddle {
@@ -40,7 +41,7 @@ namespace {
 static constexpr size_t kPinnedThreshold = 1 * 1024 * 1024;  // 1 MB
 
 // Helper: D2H copy with size-adaptive strategy.
-// Returns a host pointer that the caller must free via the returned deleter.
+// Returns a host pointer that the caller must free via free_host_buffer.
 struct HostBuffer {
   void* ptr;
   bool pinned;
@@ -53,20 +54,22 @@ static HostBuffer d2h_copy(const void* dev_data,
   if (len < kPinnedThreshold) {
     buf.ptr = std::malloc(len);
     buf.pinned = false;
-    cudaMemcpyAsync(buf.ptr, dev_data, len, cudaMemcpyDeviceToHost, stream);
-    cudaStreamSynchronize(stream);
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(
+        buf.ptr, dev_data, len, cudaMemcpyDeviceToHost, stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
   } else {
-    cudaMallocHost(&buf.ptr, len);
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMallocHost(&buf.ptr, len));
     buf.pinned = true;
-    cudaMemcpyAsync(buf.ptr, dev_data, len, cudaMemcpyDeviceToHost, stream);
-    cudaStreamSynchronize(stream);
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(
+        buf.ptr, dev_data, len, cudaMemcpyDeviceToHost, stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
   }
   return buf;
 }
 
 static void free_host_buffer(HostBuffer* buf) {
   if (buf->pinned) {
-    cudaFreeHost(buf->ptr);
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaFreeHost(buf->ptr));
   } else {
     std::free(buf->ptr);
   }
