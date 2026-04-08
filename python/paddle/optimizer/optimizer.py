@@ -2058,35 +2058,42 @@ class Optimizer:
 
                 >>> import paddle
 
-                >>> a = paddle.arange(26, dtype="float32").reshape([2, 13])
+                >>> x = paddle.arange(26, dtype="float32").reshape([2, 13])
                 >>> linear = paddle.nn.Linear(13, 5)
                 >>> # This can be any optimizer supported by dygraph.
                 >>> adam = paddle.optimizer.Adam(
                 ...     learning_rate=0.01,
                 ...     parameters=linear.parameters(),
                 ... )
-                >>> out = linear(a)
+                >>> out = linear(x)
                 >>> out.backward()
                 >>> adam.step()
                 >>> adam.clear_grad()
 
-                >>> # With closure
+                >>> # usage 1: not use closure
+                >>> adam.zero_grad()
+                >>> output = linear(x)
+                >>> loss = paddle.mean(output)
+                >>> loss.backward()
+                >>> adam.step()
+
+                >>> # usage 2: use closure
                 >>> def closure():
-                ...     adam.clear_grad()
-                ...     out = linear(a)
-                ...     loss = paddle.mean(out)
+                ...     adam.zero_grad()
+                ...     output = linear(x)
+                ...     loss = paddle.mean(output)
                 ...     loss.backward()
                 ...     return loss
-                >>> adam.step(closure)
+                >>> loss = adam.step(closure)
         """
+        loss = None
         if closure is not None:
             with imperative_base.enable_grad():
                 loss = closure()
-                loss.backward()
 
         if paddle.base.dygraph.base.in_to_static_mode():
             self._declarative_step()
-            return None
+            return loss
 
         if not isinstance(self._param_groups[0], dict):
             params_grads = []
@@ -2134,9 +2141,7 @@ class Optimizer:
                     params_grads=params_grads,
                     param_group_idx=idx,
                 )
-        if closure is not None:
-            return loss
-        return None
+        return loss
 
     def _add_param_group(self, param_group):
         """

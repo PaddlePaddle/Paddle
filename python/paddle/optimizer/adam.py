@@ -491,26 +491,42 @@ class Adam(Optimizer):
 
                 >>> import paddle
 
-                >>> a = paddle.rand([2, 13], dtype="float32")
+                >>> x = paddle.rand([2, 13], dtype="float32")
                 >>> linear = paddle.nn.Linear(13, 5)
                 >>> # This can be any optimizer supported by dygraph.
                 >>> adam = paddle.optimizer.Adam(
                 ...     learning_rate=0.01,
                 ...     parameters=linear.parameters(),
                 ... )
-                >>> out = linear(a)
+                >>> out = linear(x)
                 >>> out.backward()
                 >>> adam.step()
                 >>> adam.clear_grad()
+
+                >>> # usage 1: not use closure
+                >>> adam.zero_grad()
+                >>> output = linear(x)
+                >>> loss = paddle.mean(output)
+                >>> loss.backward()
+                >>> adam.step()
+
+                >>> # usage 2: use closure
+                >>> def closure():
+                ...     adam.zero_grad()
+                ...     output = linear(x)
+                ...     loss = paddle.mean(output)
+                ...     loss.backward()
+                ...     return loss
+                >>> loss = adam.step(closure)
         """
+        loss = None
         if closure is not None:
             with imperative_base.enable_grad():
                 loss = closure()
-                loss.backward()
 
         if paddle.base.dygraph.base.in_to_static_mode():
             self._declarative_step()
-            return None
+            return loss
 
         if not isinstance(self._parameter_list[0], dict):
             params_grads = []
@@ -564,9 +580,7 @@ class Adam(Optimizer):
                     params_grads=params_grads,
                     param_group_idx=idx,
                 )
-        if closure is not None:
-            return loss
-        return None
+        return loss
 
     def _multi_tensor_init(self, target_block, parameters, param_group_idx):
         """

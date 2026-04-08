@@ -181,26 +181,27 @@ class TestOptimizerAPI(unittest.TestCase):
         adam.zero_grad(False)
 
     def test_step_without_closure(self):
+        paddle.seed(100)
+        numpy.random.seed(100)
         paddle.disable_static()
-        value = np.arange(26).reshape(2, 13).astype("float32")
-        a = paddle.to_tensor(value)
+        x = paddle.arange(26, dtype="float32").reshape([2, 13])
         linear = paddle.nn.Linear(13, 5)
         adam = paddle.optimizer.Adam(
             learning_rate=0.01,
             parameters=linear.parameters(),
         )
-
-        out = linear(a)
-        loss = paddle.mean(out)
+        adam.zero_grad()
+        output = linear(x)
+        loss = paddle.mean(output)
         loss.backward()
-
-        result = adam.step()
-        self.assertIsNone(result)
+        adam.step()
+        np.testing.assert_allclose(loss.item(), -0.6475906372070312)
 
     def test_step_with_closure(self):
+        paddle.seed(100)
+        numpy.random.seed(100)
         paddle.disable_static()
-        value = np.arange(26).reshape(2, 13).astype("float32")
-        a = paddle.to_tensor(value)
+        x = paddle.arange(26, dtype="float32").reshape([2, 13])
         linear = paddle.nn.Linear(13, 5)
         adam = paddle.optimizer.Adam(
             learning_rate=0.01,
@@ -208,14 +209,14 @@ class TestOptimizerAPI(unittest.TestCase):
         )
 
         def closure():
-            return paddle.tensor([1])
+            adam.zero_grad()
+            output = linear(x)
+            loss = paddle.mean(output)
+            loss.backward()
+            return loss
 
-        out = linear(a)
-        loss = paddle.mean(out)
-        loss.backward()
-
-        result = adam.step(closure)
-        np.testing.assert_array_equal(result.cpu().numpy(), np.array([1]))
+        loss = adam.step(closure)
+        np.testing.assert_allclose(loss.item(), -0.6475906372070312)
 
 
 if __name__ == '__main__':
