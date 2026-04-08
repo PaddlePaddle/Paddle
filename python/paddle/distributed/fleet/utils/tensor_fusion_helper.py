@@ -20,7 +20,6 @@ from collections import OrderedDict
 import numpy as np
 
 import paddle
-from paddle.base import framework
 from paddle.framework import (
     _current_expected_place_,
     base as imperative_base,
@@ -35,10 +34,6 @@ from .log_util import logger
 def _share_tensor_ipc_meta(tensor):
     if tensor is None:
         return None
-
-    if paddle.is_compiled_with_xpu():
-        return tensor.value().get_tensor()._share_xpu()
-
     if core.is_compiled_with_cuda() and not core.is_compiled_with_rocm():
         return tensor.value().get_tensor()._share_cuda()
     return None
@@ -398,9 +393,7 @@ def build_reduce_scatter_buffer(
 
     grad_dtype = paddle.float32 if use_main_grad else dtype
 
-    param_buffer = framework.create_fused_param_buffer(
-        shape=[total_buffer_size], dtype=dtype
-    )
+    param_buffer = paddle.zeros(shape=[total_buffer_size], dtype=dtype)
     param_buffer_ipc_meta = _share_tensor_ipc_meta(param_buffer)
     grad_buffer = (
         paddle.zeros(shape=[total_buffer_size], dtype=grad_dtype)

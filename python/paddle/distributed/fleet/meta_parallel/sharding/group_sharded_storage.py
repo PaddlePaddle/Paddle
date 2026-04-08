@@ -120,8 +120,6 @@ class ParamStorage(InternalStorage):
     def __init__(self, size, dtype, device):
         super().__init__(size, dtype, device, convert_cpu=True)
         self.param2align = None
-        self._pending_params = None
-        self._cpu_param_shapes = None
 
     def to(self, device, dtype=None, keep_alignment=True):
         """
@@ -134,20 +132,9 @@ class ParamStorage(InternalStorage):
             self._array_params()
 
     @paddle.autograd.no_grad()
-    def add_rank_params(
-        self,
-        trainable_params,
-        param2align,
-        convert_gpu=True,
-        defer_gpu_transfer=False,
-    ):
+    def add_rank_params(self, trainable_params, param2align, convert_gpu=True):
         """
         Add new parameters to the InternalStorage. Params becomes a view of this InternalStorage buffer.
-
-        When defer_gpu_transfer is True, the CPU-side staging buffer is
-        populated and the original GPU params are released first. The
-        caller can later invoke finalize_gpu_transfer() to materialize a
-        new contiguous GPU buffer after all old params have been cleared.
         """
 
         assert all(
@@ -156,85 +143,31 @@ class ParamStorage(InternalStorage):
         assert self.buffer is not None
 
         self.param2align = param2align
-        self._pending_params = list(trainable_params)
-        self._cpu_param_shapes = []
 
+        cpu_param_shape = []
         for param in trainable_params:
             p_shape = self._add_param_as_view(
                 param, param2align[param.name], convert_gpu
             )
-            self._cpu_param_shapes.append(p_shape)
+            cpu_param_shape.append(p_shape)
 
-        if defer_gpu_transfer and convert_gpu:
-            return
-
-        self._commit_gpu(convert_gpu)
-
-    @paddle.autograd.no_grad()
-    def finalize_gpu_transfer(self):
-        """Materialize the staged CPU buffer onto GPU and rebuild views."""
-        assert self._pending_params is not None
-        assert self._cpu_param_shapes is not None
-        self._commit_gpu(convert_gpu=True)
-
-    @paddle.autograd.no_grad()
-    def finalize_with_gpu_slice(self, gpu_slice):
-        """Use a pre-allocated GPU slice as the buffer.
-
-        The caller allocates ONE large GPU buffer for all ranks and
-        slices it, so only one handle-tail rounding occurs instead of
-        one per rank.  This method copies CPU data into the slice and
-        rebuilds param views.
-        """
-        assert self._pending_params is not None
-        assert self._cpu_param_shapes is not None
-        gpu_slice.set_value(self.buffer)
-        self.buffer = gpu_slice
-        self._fill = 0
-        for idx, param in enumerate(self._pending_params):
-            self._convert_buffer(
-                param,
-                self._cpu_param_shapes[idx],
-                self.param2align[param.name],
-            )
-            self._params.append(param)
-            self._param_ids.append(id(param))
-        self._pending_params = None
-        self._cpu_param_shapes = None
-
-    @paddle.autograd.no_grad()
-    def _commit_gpu(self, convert_gpu):
         if convert_gpu:
             if self._device in paddle.device.get_all_custom_device_type():
                 self.buffer = self.buffer._copy_to(
                     paddle.CustomPlace(self._device, self.dev_id), True
                 )
-            elif self._device == "gpu":
-                with device_guard(self.dev_id, self._device):
-                    gpu_buffer = paddle.zeros(
-                        [self.buffer._numel()], dtype=self.buffer.dtype
-                    )
-                gpu_buffer.set_value(self.buffer)
-                self.buffer = gpu_buffer
             else:
                 # buffer convert from cpu to cuda
                 self.buffer = cvt_to_device(self.buffer, self.dev_id)
 
         self._fill = 0
 
-        assert self._pending_params is not None
-        assert self._cpu_param_shapes is not None
-        for idx, param in enumerate(self._pending_params):
+        for idx, param in enumerate(trainable_params):
             self._convert_buffer(
-                param,
-                self._cpu_param_shapes[idx],
-                self.param2align[param.name],
+                param, cpu_param_shape[idx], param2align[param.name]
             )
             self._params.append(param)
             self._param_ids.append(id(param))
-
-        self._pending_params = None
-        self._cpu_param_shapes = None
 
     @paddle.autograd.no_grad()
     def _add_param_as_view(self, param, align, convert_gpu=True):

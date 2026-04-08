@@ -131,15 +131,15 @@ void AppendPartsTail(std::vector<BlockPartV2>* dst,
 }  // namespace
 
 VMMAutoGrowthBestFitAllocatorV2::
-    VMMAutoGrowthBestFitAllocatorV2(  // 构造函数，初始化分配器
+    VMMAutoGrowthBestFitAllocatorV2(
         const std::shared_ptr<CUDAVirtualMemAllocatorV2>& underlying_allocator,
         size_t alignment,
         const GPUPlace& place,
         PoolType pool_type)
-    : underlying_allocator_(underlying_allocator),  // 底层虚拟内存分配器
-      alignment_(alignment),                        // 内存对齐大小
-      place_(place),                                // GPU设备位置
-      pool_type_(pool_type) {}                      // 内存池类型
+    : underlying_allocator_(underlying_allocator),
+      alignment_(alignment),
+      place_(place),
+      pool_type_(pool_type) {}
 
 phi::Allocation* VMMAutoGrowthBestFitAllocatorV2::AllocateImpl(size_t size) {
   std::lock_guard<SpinLock> guard(spinlock_);
