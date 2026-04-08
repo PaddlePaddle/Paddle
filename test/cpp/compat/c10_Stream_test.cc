@@ -1,4 +1,4 @@
-// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,17 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <ATen/cuda/CUDAContext.h>
 #include <c10/core/Stream.h>
 #include <c10/cuda/CUDAFunctions.h>
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <c10/cuda/CUDAStream.h>
-
-namespace {
-
-bool HasVisibleCUDADevice() { return c10::cuda::device_count() > 0; }
-
-}  // namespace
 #endif
 
 #include "gtest/gtest.h"
@@ -46,7 +41,7 @@ TEST(StreamTest, DeviceCount) {
 // encoded as void*. For the default (null) stream the id is 0, so the
 // pointer is nullptr; for a real stream it must be non-null.
 TEST(StreamTest, NativeHandleCudaDefaultStream) {
-  if (!HasVisibleCUDADevice()) {
+  if (!at::cuda::is_available()) {
     return;
   }
   c10::Stream s = c10::cuda::getDefaultCUDAStream().unwrap();
@@ -55,7 +50,7 @@ TEST(StreamTest, NativeHandleCudaDefaultStream) {
 }
 
 TEST(StreamTest, NativeHandleCudaCurrentStream) {
-  if (!HasVisibleCUDADevice()) {
+  if (!at::cuda::is_available()) {
     return;
   }
   auto cuda_stream = c10::cuda::getCurrentCUDAStream();
@@ -85,7 +80,7 @@ TEST(StreamTest, QueryCpuStreamReturnsTrue) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 // A freshly-obtained CUDA stream with no pending work must report ready.
 TEST(StreamTest, QueryCudaStreamReady) {
-  if (!HasVisibleCUDADevice()) {
+  if (!at::cuda::is_available()) {
     return;
   }
   auto cuda_stream = c10::cuda::getCurrentCUDAStream();
@@ -108,7 +103,7 @@ TEST(StreamTest, SynchronizeCpuStream) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 // CUDA stream: synchronize() must complete without error.
 TEST(StreamTest, SynchronizeCudaStream) {
-  if (!HasVisibleCUDADevice()) {
+  if (!at::cuda::is_available()) {
     return;
   }
   auto cuda_stream = c10::cuda::getCurrentCUDAStream();
@@ -123,7 +118,7 @@ TEST(StreamTest, SynchronizeCudaStream) {
 // getDefaultCUDAStream must always return the null stream (id == 0),
 // which corresponds to cudaStreamDefault on the device.
 TEST(CUDAStreamTest, DefaultStreamIsNullStream) {
-  if (!HasVisibleCUDADevice()) {
+  if (!at::cuda::is_available()) {
     return;
   }
   auto default_stream = c10::cuda::getDefaultCUDAStream();
@@ -133,7 +128,7 @@ TEST(CUDAStreamTest, DefaultStreamIsNullStream) {
 
 // getDefaultCUDAStream must be stable: calling it twice returns equal streams.
 TEST(CUDAStreamTest, DefaultStreamIsStable) {
-  if (!HasVisibleCUDADevice()) {
+  if (!at::cuda::is_available()) {
     return;
   }
   auto s1 = c10::cuda::getDefaultCUDAStream();
@@ -142,7 +137,7 @@ TEST(CUDAStreamTest, DefaultStreamIsStable) {
 }
 
 TEST(CUDAStreamTest, GetStreamFromPoolBoolOverloadPreservesHighPriority) {
-  if (!HasVisibleCUDADevice()) {
+  if (!at::cuda::is_available()) {
     return;
   }
   auto low_priority_stream =
@@ -166,7 +161,7 @@ TEST(CUDAStreamTest, GetStreamFromPoolBoolOverloadPreservesHighPriority) {
 // After setCurrentCUDAStream redirects the per-thread current stream,
 // getDefaultCUDAStream must still return the null stream.
 TEST(CUDAStreamTest, DefaultStreamUnaffectedBySetCurrentCUDAStream) {
-  if (!HasVisibleCUDADevice()) {
+  if (!at::cuda::is_available()) {
     return;
   }
   // Snapshot the per-thread current stream before we touch it so we can

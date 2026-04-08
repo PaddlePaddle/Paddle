@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <ATen/cuda/CUDAContext.h>
 #include <c10/core/Event.h>
 #include <c10/cuda/CUDAFunctions.h>
 
@@ -19,12 +20,6 @@
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <c10/cuda/CUDAStream.h>
-
-namespace {
-
-bool HasVisibleCUDADevice() { return c10::cuda::device_count() > 0; }
-
-}  // namespace
 #endif
 
 TEST(EventTest, CpuEventDefaultProperties) {
@@ -65,7 +60,7 @@ using RawEventRecordMethod = void (c10::Event::*)(const cudaStream_t&);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(EventTest, CudaEventLazyCreateAndRecord) {
-  if (!HasVisibleCUDADevice()) {
+  if (!at::cuda::is_available()) {
     return;
   }
   c10::Event event(c10::DeviceType::CUDA);
@@ -85,7 +80,7 @@ TEST(EventTest, CudaEventLazyCreateAndRecord) {
 }
 
 TEST(EventTest, CudaEventElapsedTimeRequiresTimingFlag) {
-  if (!HasVisibleCUDADevice()) {
+  if (!at::cuda::is_available()) {
     return;
   }
   auto stream = c10::cuda::getCurrentCUDAStream();
@@ -100,7 +95,7 @@ TEST(EventTest, CudaEventElapsedTimeRequiresTimingFlag) {
 }
 
 TEST(EventTest, CudaEventElapsedTimeWithTimingEnabled) {
-  if (!HasVisibleCUDADevice()) {
+  if (!at::cuda::is_available()) {
     return;
   }
   auto stream = c10::cuda::getCurrentCUDAStream();
@@ -118,7 +113,7 @@ TEST(EventTest, CudaEventElapsedTimeWithTimingEnabled) {
 
 #ifdef PADDLE_WITH_CUDA
 TEST(EventTest, CudaEventRawStreamRecordCompatibility) {
-  if (!HasVisibleCUDADevice()) {
+  if (!at::cuda::is_available()) {
     return;
   }
   auto stream = c10::cuda::getCurrentCUDAStream();

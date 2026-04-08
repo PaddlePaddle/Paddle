@@ -14,6 +14,7 @@
 
 #include <ATen/Functions.h>
 #include <ATen/core/TensorBody.h>
+#include <ATen/cuda/CUDAContext.h>
 #include <ATen/cuda/EmptyTensor.h>
 #include <ATen/native/cuda/Resize.h>
 #include <ATen/ops/tensor.h>
@@ -158,6 +159,9 @@ TEST(ATenEyeTest, OneByOne) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(ATenEyeTest, SquareOnGPU) {
+  if (!at::cuda::is_available()) {
+    return;
+  }
   at::Tensor t =
       at::eye(4, at::TensorOptions().dtype(at::kFloat).device(at::kCUDA));
   at::Tensor t_cpu = t.to(at::kCPU);
@@ -165,6 +169,9 @@ TEST(ATenEyeTest, SquareOnGPU) {
 }
 
 TEST(ATenEyeTest, RectangularOnGPU) {
+  if (!at::cuda::is_available()) {
+    return;
+  }
   at::Tensor t =
       at::eye(3, 5, at::TensorOptions().dtype(at::kFloat).device(at::kCUDA));
   at::Tensor t_cpu = t.to(at::kCPU);

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <ATen/cuda/CUDAContextLight.h>
+#include <ATen/cuda/CUDAContext.h>
 #include <c10/core/Allocator.h>
 #include <c10/cuda/CUDAFunctions.h>
 
@@ -21,12 +21,6 @@
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <c10/cuda/CUDAStream.h>
 #include "paddle/phi/backends/gpu/gpu_info.h"
-
-namespace {
-
-bool HasVisibleCUDADevice() { return c10::cuda::device_count() > 0; }
-
-}  // namespace
 #endif
 
 // Platform-specific definitions for memory operations
@@ -52,7 +46,7 @@ bool HasVisibleCUDADevice() { return c10::cuda::device_count() > 0; }
 
 TEST(CUDAFunctionsTest, DeviceSynchronize) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (!HasVisibleCUDADevice()) {
+  if (!at::cuda::is_available()) {
     return;
   }
   // Exercises the PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize()) branch
@@ -65,7 +59,7 @@ TEST(CUDAFunctionsTest, DeviceSynchronize) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(CUDAFunctionsTest, StreamSynchronize) {
-  if (!HasVisibleCUDADevice()) {
+  if (!at::cuda::is_available()) {
     return;
   }
   // Exercises phi::backends::gpu::GpuStreamSync()
@@ -76,7 +70,7 @@ TEST(CUDAFunctionsTest, StreamSynchronize) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(CUDAFunctionsTest, AtNamespaceAliases) {
-  if (!HasVisibleCUDADevice()) {
+  if (!at::cuda::is_available()) {
     return;
   }
   // Exercises the using aliases in at::cuda namespace
@@ -123,7 +117,7 @@ TEST(CUDAContextLightTest, GetNumGPUs) {
 
 // getCurrentDeviceProperties() / getDeviceProperties()
 TEST(CUDAContextLightTest, DeviceProperties) {
-  if (!HasVisibleCUDADevice()) {
+  if (!at::cuda::is_available()) {
     return;
   }
   at::cuda::CUDAContextDeviceProp* prop =
@@ -142,7 +136,7 @@ TEST(CUDAContextLightTest, DeviceProperties) {
 
 // warp_size()
 TEST(CUDAContextLightTest, WarpSize) {
-  if (!HasVisibleCUDADevice()) {
+  if (!at::cuda::is_available()) {
     return;
   }
   int ws = at::cuda::warp_size();
@@ -152,7 +146,7 @@ TEST(CUDAContextLightTest, WarpSize) {
 
 // canDeviceAccessPeer() — a device cannot peer-access itself
 TEST(CUDAContextLightTest, CanDeviceAccessPeer) {
-  if (!HasVisibleCUDADevice()) {
+  if (!at::cuda::is_available()) {
     return;
   }
   int device_id = phi::backends::gpu::GetCurrentDeviceId();
@@ -163,7 +157,7 @@ TEST(CUDAContextLightTest, CanDeviceAccessPeer) {
 
 // Handle accessors — all must return non-null handles
 TEST(CUDAContextLightTest, GetCurrentCUDABlasHandle) {
-  if (!HasVisibleCUDADevice()) {
+  if (!at::cuda::is_available()) {
     return;
   }
   at::cuda::CUDAContextBlasHandle h = at::cuda::getCurrentCUDABlasHandle();
@@ -171,7 +165,7 @@ TEST(CUDAContextLightTest, GetCurrentCUDABlasHandle) {
 }
 
 TEST(CUDAContextLightTest, GetCurrentCUDABlasLtHandle) {
-  if (!HasVisibleCUDADevice()) {
+  if (!at::cuda::is_available()) {
     return;
   }
   at::cuda::CUDAContextBlasLtHandle h = at::cuda::getCurrentCUDABlasLtHandle();
@@ -179,7 +173,7 @@ TEST(CUDAContextLightTest, GetCurrentCUDABlasLtHandle) {
 }
 
 TEST(CUDAContextLightTest, GetCurrentCUDASparseHandle) {
-  if (!HasVisibleCUDADevice()) {
+  if (!at::cuda::is_available()) {
     return;
   }
   at::cuda::CUDAContextSparseHandle h = at::cuda::getCurrentCUDASparseHandle();
@@ -188,7 +182,7 @@ TEST(CUDAContextLightTest, GetCurrentCUDASparseHandle) {
 
 #if defined(CUDART_VERSION) || defined(USE_ROCM)
 TEST(CUDAContextLightTest, GetCurrentCUDASolverDnHandle) {
-  if (!HasVisibleCUDADevice()) {
+  if (!at::cuda::is_available()) {
     return;
   }
   at::cuda::CUDAContextSolverHandle h =
@@ -228,7 +222,7 @@ TEST(CUDAContextLightTest, GetChosenWorkspaceSize) {
 
 // getCUDABlasLtWorkspaceSize() / getCUDABlasLtWorkspace()
 TEST(CUDAContextLightTest, CUDABlasLtWorkspace) {
-  if (!HasVisibleCUDADevice()) {
+  if (!at::cuda::is_available()) {
     return;
   }
   size_t sz = at::cuda::getCUDABlasLtWorkspaceSize();
@@ -239,7 +233,7 @@ TEST(CUDAContextLightTest, CUDABlasLtWorkspace) {
 }
 
 TEST(CUDAContextLightTest, CUDADeviceAllocatorSingleton) {
-  if (!HasVisibleCUDADevice()) {
+  if (!at::cuda::is_available()) {
     return;
   }
   c10::Allocator* a0 = at::cuda::getCUDADeviceAllocator();
@@ -249,7 +243,7 @@ TEST(CUDAContextLightTest, CUDADeviceAllocatorSingleton) {
 }
 
 TEST(CUDAContextLightTest, CUDADeviceAllocatorCloneAndCopyData) {
-  if (!HasVisibleCUDADevice()) {
+  if (!at::cuda::is_available()) {
     return;
   }
   c10::Allocator* alloc = at::cuda::getCUDADeviceAllocator();
@@ -282,7 +276,7 @@ TEST(CUDAContextLightTest, CUDADeviceAllocatorCloneAndCopyData) {
 }
 
 TEST(CUDAContextLightTest, CUDADeviceAllocatorCloneZeroBytes) {
-  if (!HasVisibleCUDADevice()) {
+  if (!at::cuda::is_available()) {
     return;
   }
   c10::Allocator* alloc = at::cuda::getCUDADeviceAllocator();
@@ -297,7 +291,7 @@ TEST(CUDAContextLightTest, CUDADeviceAllocatorCloneZeroBytes) {
 }
 
 TEST(CUDAContextLightTest, AllocatorZeroSizeAndNoopCopyBranches) {
-  if (!HasVisibleCUDADevice()) {
+  if (!at::cuda::is_available()) {
     return;
   }
   c10::Allocator* alloc = at::cuda::getCUDADeviceAllocator();

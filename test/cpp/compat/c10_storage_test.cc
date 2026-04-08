@@ -14,6 +14,7 @@
 
 #include <ATen/Functions.h>
 #include <ATen/core/TensorBody.h>
+#include <ATen/cuda/CUDAContext.h>
 #include <ATen/cuda/EmptyTensor.h>
 #include <ATen/native/cuda/Resize.h>
 #include <ATen/ops/tensor.h>
@@ -24,14 +25,6 @@
 #include <c10/cuda/CUDAFunctions.h>
 #include <c10/cuda/CUDAGuard.h>
 #include "paddle/phi/backends/gpu/gpu_info.h"
-
-// Forward-declare getCUDADeviceAllocator to avoid include-order conflicts
-// between ATen/cuda/CUDAContextLight.h (defines torch::cuda::is_available
-// inline) and torch/cuda.h (adds `using torch::cuda::is_available` to
-// at::cuda).
-namespace at::cuda {
-c10::Allocator* getCUDADeviceAllocator();
-}  // namespace at::cuda
 #endif
 #include "ATen/ATen.h"
 #include "gtest/gtest.h"
@@ -243,7 +236,7 @@ TEST(StorageTest, DeviceAndDeviceTypeAPIs) {
   ASSERT_EQ(place.GetType(), phi::AllocationType::CPU);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (torch::cuda::is_available()) {
+  if (at::cuda::is_available()) {
     at::TensorBase cuda_tensor = at::ones(
         {2, 3}, c10::TensorOptions().dtype(at::kFloat).device(at::kCUDA));
     const c10::Storage& cuda_storage = cuda_tensor.storage();
@@ -1046,7 +1039,7 @@ TEST(StorageTest, ReferenceSemanticsSetNbytesVisibleThroughCopy) {
 TEST(StorageTest, CUDAAllocatorZeroBytePreservesDevice) {
   // getCUDADeviceAllocator()->allocate(0) must return a DataPtr whose device
   // is the current CUDA device, not a default-constructed CPU DataPtr.
-  if (!torch::cuda::is_available()) {
+  if (!at::cuda::is_available()) {
     return;  // No CUDA device, skip
   }
 

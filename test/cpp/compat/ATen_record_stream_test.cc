@@ -14,22 +14,17 @@
 
 #include <ATen/Functions.h>
 #include <ATen/core/TensorBody.h>
+#include <ATen/cuda/CUDAContext.h>
 #include <ATen/ops/record_stream.h>
 #include <c10/core/Device.h>
 #include <c10/core/Stream.h>
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include <c10/cuda/CUDAFunctions.h>
-#include <c10/cuda/CUDAStream.h>
-
-namespace {
-
-bool HasVisibleCUDADevice() { return c10::cuda::device_count() > 0; }
-
-}  // namespace
-#endif
 #include "ATen/ATen.h"
 #include "gtest/gtest.h"
 #include "torch/all.h"
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include <c10/cuda/CUDAFunctions.h>
+#include <c10/cuda/CUDAStream.h>
+#endif
 
 class RecordStreamTest : public ::testing::Test {
  protected:
@@ -37,7 +32,7 @@ class RecordStreamTest : public ::testing::Test {
     cpu_tensor =
         at::ones({4}, at::TensorOptions().dtype(at::kFloat).device(at::kCPU));
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (HasVisibleCUDADevice()) {
+    if (at::cuda::is_available()) {
       cuda_tensor = at::ones(
           {4}, at::TensorOptions().dtype(at::kFloat).device(at::kCUDA));
     }
@@ -68,7 +63,7 @@ using RecordRawCudaStreamMethod = void (at::Tensor::*)(cudaStream_t) const;
 #endif
 
 TEST_F(RecordStreamTest, CudaTensorCurrentCudaStream) {
-  if (!HasVisibleCUDADevice()) {
+  if (!at::cuda::is_available()) {
     return;
   }
   auto stream = at::cuda::getCurrentCUDAStream();
@@ -78,7 +73,7 @@ TEST_F(RecordStreamTest, CudaTensorCurrentCudaStream) {
 
 // --- Happy path: CUDA tensor + default CUDA stream should succeed ---
 TEST_F(RecordStreamTest, CudaTensorDefaultCudaStream) {
-  if (!HasVisibleCUDADevice()) {
+  if (!at::cuda::is_available()) {
     return;
   }
   c10::Stream default_stream = c10::cuda::getDefaultCUDAStream().unwrap();
@@ -86,7 +81,7 @@ TEST_F(RecordStreamTest, CudaTensorDefaultCudaStream) {
 }
 
 TEST_F(RecordStreamTest, CudaTensorRawCudaStream) {
-  if (!HasVisibleCUDADevice()) {
+  if (!at::cuda::is_available()) {
     return;
   }
   auto stream = at::cuda::getCurrentCUDAStream();
@@ -106,7 +101,7 @@ TEST_F(RecordStreamTest, CpuTensorCpuStream) {
 // tensors) ---
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST_F(RecordStreamTest, CpuTensorCudaStream) {
-  if (!HasVisibleCUDADevice()) {
+  if (!at::cuda::is_available()) {
     return;
   }
   auto cuda_stream = at::cuda::getCurrentCUDAStream();
