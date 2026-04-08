@@ -79,7 +79,7 @@ extern bool HasCUDADriver();
   __macro(cuGraphKernelNodeGetParams);        \
   __macro(cuGraphExecKernelNodeSetParams);
 
-#if CUDA_VERSION >= 12000
+#if CUDA_VERSION >= 12040
 #define CUDA_ROUTINE_EACH_CUDA_GRAPH_12(__macro) __macro(cuFuncGetParamInfo);
 #else
 #define CUDA_ROUTINE_EACH_CUDA_GRAPH_12(__macro)

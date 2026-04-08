@@ -390,7 +390,7 @@ void CUDAGraph::ReplaceInputPtrs(const std::vector<void*>& old_ptrs,
 std::vector<CUDAGraph::KernelParamInfo> CUDAGraph::GetKernelParamInfos(
     CUfunction func) {
   std::vector<KernelParamInfo> infos;
-#if CUDA_VERSION >= 12000
+#if CUDA_VERSION >= 12040
   size_t paramOffset, paramSize;
   int k = 0;
 
