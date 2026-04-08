@@ -86,4 +86,7 @@ if(NOT WIN32)
     nv_test(c10_cuda_generator_test SRCS c10_cuda_generator_test.cc)
     nv_test(c10_generator_impl_test SRCS c10_generator_impl_test.cc)
   endif()
+  cc_test(schema_parser_type_test SRCS schema_parser_type_test.cc)
 endif()
+
+add_subdirectory(torch)

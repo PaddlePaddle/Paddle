@@ -8223,16 +8223,19 @@ for name, func in __METHODS.items():
 
 
 def _index_fill_impl(
-    x: Tensor, index: Tensor, axis: int, value: Tensor, inplace: bool
+    x: Tensor,
+    index: Tensor,
+    axis: int,
+    value: bool | complex | Tensor,
+    inplace: bool,
 ) -> Tensor:
     if not isinstance(index, (Variable, paddle.pir.Value)):
         raise ValueError("index must be Tensor")
 
-    if not isinstance(value, Variable):
-        value = paddle.to_tensor(value, dtype=x.dtype)
-    else:
-        if len(value.shape) > 0:
+    if isinstance(value, (Variable, paddle.pir.Value)):
+        if value.numel() != 1:
             raise ValueError("value must be scalar or 0-D tensor")
+        value = value.item()
 
     x_dim = len(x.shape)
     if not (isinstance(axis, int)) or (axis > x_dim - 1) or axis < -x_dim:
@@ -8255,28 +8258,6 @@ def _index_fill_impl(
     ):
         if 0 in index.shape:
             return x if inplace else x.clone()
-
-        if isinstance(value, (Variable, paddle.pir.Value)):
-            if value.numel() != 1:
-                raise ValueError("value must be scalar or 0-D tensor")
-            value = value.item()
-        if x.dtype in [
-            paddle.int8,
-            paddle.int16,
-            paddle.int32,
-            paddle.int64,
-            paddle.uint8,
-        ]:
-            value = int(value)
-        elif x.dtype == paddle.bool:
-            value = bool(value)
-        elif x.dtype in [
-            paddle.complex64,
-            paddle.complex128,
-        ]:
-            value = complex(value)
-        else:
-            value = float(value)
 
         if inplace:
             return _C_ops.index_fill_(x, index, axis, value)

@@ -662,6 +662,72 @@ class TestNegAPI(unittest.TestCase):
                 np.testing.assert_allclose(out, expected, rtol=1e-5)
 
 
+# Test randint compatibility
+class TestRandintAPI(unittest.TestCase):
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        # basic shape
+        x = paddle.randint(high=10, shape=[2, 3])
+        self.assertEqual(x.shape, [2, 3])
+        self.assertTrue(x.stop_gradient)
+        # 'size' is an alias for 'shape'
+        x = paddle.randint(high=10, size=[3, 4])
+        self.assertEqual(x.shape, [3, 4])
+        # requires_grad
+        x = paddle.randint(high=10, shape=[2, 3], requires_grad=True)
+        self.assertFalse(x.stop_gradient)
+        x = paddle.randint(high=10, shape=[2, 3], requires_grad=False)
+        self.assertTrue(x.stop_gradient)
+        # value range
+        x = paddle.randint(low=5, high=10, shape=[100])
+        arr = x.numpy()
+        self.assertTrue(np.all(arr >= 5) and np.all(arr < 10))
+        # torch.randint(high, size) style: second positional arg as shape
+        x = paddle.randint(10, [3, 4])
+        self.assertEqual(x.shape, [3, 4])
+        self.assertTrue(np.all(x.numpy() >= 0) and np.all(x.numpy() < 10))
+        # dtype string
+        x = paddle.randint(high=10, shape=[3], dtype='int32')
+        self.assertEqual(x.dtype, paddle.int32)
+        # out param
+        out = paddle.zeros([2, 3], dtype='int64')
+        result = paddle.randint(high=10, shape=[2, 3], out=out)
+        self.assertEqual(out.shape, [2, 3])
+        np.testing.assert_array_equal(result.numpy(), out.numpy())
+        # out with requires_grad
+        out = paddle.zeros([2, 3], dtype='int64')
+        result = paddle.randint(
+            high=10, shape=[2, 3], out=out, requires_grad=True
+        )
+        self.assertFalse(result.stop_gradient)
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        # basic shape and stop_gradient
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.randint(high=10, shape=[2, 3])
+            self.assertEqual(x.shape, [2, 3])
+            self.assertTrue(x.stop_gradient)
+            # requires_grad
+            x_grad = paddle.randint(high=10, shape=[2, 3], requires_grad=True)
+            self.assertFalse(x_grad.stop_gradient)
+            x_no_grad = paddle.randint(
+                high=10, shape=[2, 3], requires_grad=False
+            )
+            self.assertTrue(x_no_grad.stop_gradient)
+            # size alias
+            x_size = paddle.randint(high=10, size=[2, 3])
+            self.assertEqual(x_size.shape, [2, 3])
+            # dtype string
+            x_dtype = paddle.randint(high=10, shape=[3], dtype='int32')
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            exe.run(startup)
+            result = exe.run(main, fetch_list=[x_dtype])
+            self.assertEqual(result[0].dtype, np.int32)
+
+
 # Test remainder_ inplace compatibility
 class TestRemainderInplaceAPI(unittest.TestCase):
     def setUp(self):
