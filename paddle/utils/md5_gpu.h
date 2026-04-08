@@ -18,8 +18,12 @@
 #include <string>
 
 namespace paddle {
-// Compute MD5 directly on GPU device memory.
+// Compute MD5 on GPU tensor data via D2H + CPU MD5.
 // |data|: device pointer; |len|: byte count; |stream|: CUDA stream.
 // Synchronizes stream before returning. Returns 32-char hex digest.
 std::string md5_gpu(const void* data, size_t len, void* stream);
+
+// Compute xxHash64 on GPU tensor data via D2H + CPU XXH64.
+// Returns 16-char hex string of the 64-bit hash.
+std::string xxhash64_gpu(const void* data, size_t len, void* stream);
 }  // namespace paddle

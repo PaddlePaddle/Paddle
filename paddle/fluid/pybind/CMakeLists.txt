@@ -57,6 +57,9 @@ if(WITH_GPU)
     endif()
   endif()
 endif()
+if(WITH_ROCM)
+  list(APPEND PYBIND_DEPS md5_gpu)
+endif()
 
 if(WITH_CINN)
   set(PYBIND_DEPS ${PYBIND_DEPS} pir_transforms cinn_transforms
