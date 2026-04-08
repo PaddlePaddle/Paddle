@@ -55,7 +55,7 @@ void SequenceMaskScalarKernel(const Context& dev_ctx,
     }
     auto y_dim = vectorize<int64_t>(x.dims());
     y_dim.push_back(maxlen);
-    y->Resize(make_ddim(y_dim));
+    y->Resize(y_dim);
   }
   if (x_numel == 0) {
     dev_ctx.Alloc(y, out_dtype);
@@ -86,7 +86,7 @@ void SequenceMaskKernel(const Context& dev_ctx,
 
     auto y_dim = vectorize<int64_t>(x.dims());
     y_dim.push_back(maxlen);
-    y->Resize(make_ddim(y_dim));
+    y->Resize(y_dim);
 
     PADDLE_ENFORCE_GT(
         maxlen,

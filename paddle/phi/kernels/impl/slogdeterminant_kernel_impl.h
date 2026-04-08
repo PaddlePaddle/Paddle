@@ -141,7 +141,7 @@ void SlogDeterminantKernel(const Context& dev_ctx,
     if (size_0) {
       tmp_dim_vec.insert(tmp_dim_vec.begin(),
                          2);  // make the output dims as same as numpy
-      out->Resize(make_ddim(tmp_dim_vec));
+      out->Resize(tmp_dim_vec);
       dev_ctx.template Alloc<T>(out);
       return;
     }

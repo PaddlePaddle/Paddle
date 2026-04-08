@@ -50,7 +50,7 @@ void EighGradKernel(const Context& dev_ctx,
 
   std::vector<int> out_shape = vectorize<int>(dims);
   DenseTensor constant;
-  constant.Resize(make_ddim(out_shape));
+  constant.Resize(out_shape);
   dev_ctx.template Alloc<T>(&constant);
   funcs::SetConstant<Context, T>()(dev_ctx, &constant, T(0.5));
   result = phi::Subtract<T>(

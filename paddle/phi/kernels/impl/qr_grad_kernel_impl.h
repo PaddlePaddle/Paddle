@@ -41,7 +41,7 @@ static DenseTensor Fill(const Context& dev_ctx,
                         std::vector<int> shape,
                         float fill_value) {
   DenseTensor ret;
-  ret.Resize(make_ddim(shape));
+  ret.Resize(shape);
   dev_ctx.template Alloc<T>(&ret);
   funcs::SetConstant<Context, T>()(dev_ctx, &ret, T(fill_value));
   return ret;

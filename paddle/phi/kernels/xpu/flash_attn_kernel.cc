@@ -171,7 +171,7 @@ void FlashAttnKernelBase(const Context& dev_ctx,
     if (softmax_lse) {
       std::vector<int64_t> softmax_lse_dims = {
           batch_size, num_heads, max_seqlen_q_.to<int64_t>()};
-      softmax_lse->Resize(phi::make_ddim(softmax_lse_dims));
+      softmax_lse->Resize(softmax_lse_dims);
       Full<float, Context>(dev_ctx, softmax_lse->dims(), 0, softmax_lse);
     }
     if (seed_offset) {

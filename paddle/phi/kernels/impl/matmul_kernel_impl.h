@@ -455,7 +455,7 @@ void MatMulFunctionImplWithBlas(
         std::vector<int64_t> actual_dim = vectorize(processedY.dims());
         actual_dim[actual_dim.size() - 1] =
             out_original_shape[out_original_shape.size() - 2];
-        Out->Resize(make_ddim(actual_dim));
+        Out->Resize(actual_dim);
         DenseTensor transposedOut = TransposeLast2Dim<T>(dev_ctx, *Out);
         *Out = transposedOut;
         Out->Resize(out_original_shape);

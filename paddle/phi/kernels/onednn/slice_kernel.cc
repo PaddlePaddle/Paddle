@@ -60,7 +60,7 @@ void SliceKernel(const Context& dev_ctx,
         std::max(static_cast<int64_t>(0), ends_vec[i] - starts_vec[i]);
   }
 
-  out->Resize(make_ddim(slice_dims));
+  out->Resize(slice_dims);
 
   // Note(0x45f): To support slice Tensors with shapes like [0, 0, 0].
   if (!x.initialized()) {
@@ -105,7 +105,7 @@ void SliceKernel(const Context& dev_ctx,
   }
 
   astream.wait();
-  out->Resize(make_ddim(new_out_dims));
+  out->Resize(new_out_dims);
   out->set_mem_desc(reorder_dst_memory_p->get_desc().reshape(new_out_dims));
 }
 

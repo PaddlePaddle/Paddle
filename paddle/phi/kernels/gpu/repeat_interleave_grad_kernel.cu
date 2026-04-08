@@ -226,7 +226,7 @@ void RepeatInterleaveGradKernel(const Context& dev_ctx,
   out_grad_copy.set_meta(out_grad.meta());
   out_grad_copy.ShareBufferWith(out_grad, true);
 
-  out_grad_copy.Resize(make_ddim(reshape_shape));
+  out_grad_copy.Resize(reshape_shape);
 
   SumKernel<T, Context>(dev_ctx,
                         out_grad_copy,

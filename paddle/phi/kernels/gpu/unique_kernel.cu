@@ -498,19 +498,19 @@ static void UniqueDimsCUDATensor(const Context& dev_ctx,
   out_trans_dims_vec[0] = indices->numel();
   if (is_transpose) {
     DenseTensor out_trans;
-    out_trans.Resize(make_ddim(out_trans_dims_vec));
+    out_trans.Resize(out_trans_dims_vec);
     dev_ctx.template Alloc<InT>(&out_trans);
 
     phi::IndexSelectKernel<InT, Context>(
         dev_ctx, in_trans, *indices, 0, &out_trans);
 
     std::swap(out_trans_dims_vec[0], out_trans_dims_vec[axis]);
-    out->Resize(make_ddim(out_trans_dims_vec));
+    out->Resize(out_trans_dims_vec);
     dev_ctx.template Alloc<InT>(out);
     funcs::TransCompute<Context, InT>(
         out_trans.dims().size(), dev_ctx, out_trans, out, permute);
   } else {
-    out->Resize(make_ddim(out_trans_dims_vec));
+    out->Resize(out_trans_dims_vec);
     dev_ctx.template Alloc<InT>(out);
 
     phi::IndexSelectKernel<InT, Context>(dev_ctx, in_trans, *indices, 0, out);

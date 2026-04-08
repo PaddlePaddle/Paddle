@@ -410,14 +410,14 @@ static void UniqueConsecutiveDimsCUDATensor(const Context& dev_ctx,
   DenseTensor out_trans;
   std::vector<int64_t> out_trans_dims_vec = in_trans_dims_vec;
   out_trans_dims_vec[0] = sorted_indices.numel();
-  out_trans.Resize(make_ddim(out_trans_dims_vec));
+  out_trans.Resize(out_trans_dims_vec);
   dev_ctx.template Alloc<InT>(&out_trans);
 
   IndexSelect<Context, InT, IndexT>(
       dev_ctx, in_trans, sorted_indices, &out_trans, 0);
 
   std::swap(out_trans_dims_vec[0], out_trans_dims_vec[axis]);
-  out->Resize(make_ddim(out_trans_dims_vec));
+  out->Resize(out_trans_dims_vec);
   dev_ctx.template Alloc<InT>(out);
   std::vector<DenseTensor> out_trans_unbind = funcs::Unbind(out_trans);
   funcs::ConcatFunctor<Context, InT> concat_functor;

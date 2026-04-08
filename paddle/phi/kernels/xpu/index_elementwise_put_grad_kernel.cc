@@ -162,7 +162,7 @@ void LaunchIndexElementwisePutWithTensorGradXPUKernel(
     }
     if (value_grad->numel() == 1) {
       DenseTensor tmp_value_grad(value_grad->dtype());
-      tmp_value_grad.Resize(make_ddim(input_dims));
+      tmp_value_grad.Resize(input_dims);
       dev_ctx.template Alloc<T>(&tmp_value_grad);
 
       XPUIndexElementwisePutGradKernel<T, Context, int64_t>(dev_ctx,
@@ -199,7 +199,7 @@ void LaunchIndexElementwisePutWithTensorGradXPUKernel(
                                                             value_grad);
     } else {
       DenseTensor tmp_value_grad(value_grad->dtype());
-      tmp_value_grad.Resize(make_ddim(input_dims));
+      tmp_value_grad.Resize(input_dims);
       dev_ctx.template Alloc<T>(&tmp_value_grad);
 
       XPUIndexElementwisePutGradKernel<T, Context, int64_t>(dev_ctx,
@@ -222,7 +222,7 @@ void LaunchIndexElementwisePutWithTensorGradXPUKernel(
           &after_dims, &before_dims, &compress_dims, &dims_without_1);
 
       auto pre_dims = value_grad->dims();
-      value_grad->Resize(make_ddim(dims_without_1));
+      value_grad->Resize(dims_without_1);
       IntArray v_axis(compress_dims);
       SumKernel<T, Context>(dev_ctx,
                             tmp_value_grad,

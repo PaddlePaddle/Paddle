@@ -53,7 +53,7 @@ void RepeatInterleaveKernel(const Context& dev_ctx,
   auto xshape = vectorize(input_dim);
   auto out_shape = xshape;
   out_shape[dim] = index_size;
-  out->Resize(make_ddim(out_shape));
+  out->Resize(out_shape);
   dev_ctx.template Alloc<T>(out);
   int ret = xpu::paddle_gather<XPUType, int>(
       dev_ctx.x_context(),
@@ -126,7 +126,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
     } else {
       output_dim[dim] = index.dims()[0];
     }
-    out->Resize(make_ddim(output_dim));
+    out->Resize(output_dim);
     dev_ctx.template Alloc<T>(out);
     return;
   }
@@ -147,7 +147,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
     } else {
       out_shape[dim] = index.dims()[0];
     }
-    out->Resize(make_ddim(out_shape));
+    out->Resize(out_shape);
     dev_ctx.template Alloc<T>(out);
     int ret = xpu::paddle_gather<XPUType, int64_t>(
         dev_ctx.x_context(),
@@ -175,7 +175,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
     } else {
       out_shape[dim] = index.dims()[0];
     }
-    out->Resize(make_ddim(out_shape));
+    out->Resize(out_shape);
     dev_ctx.template Alloc<T>(out);
     int ret = xpu::paddle_gather<XPUType, int>(
         dev_ctx.x_context(),

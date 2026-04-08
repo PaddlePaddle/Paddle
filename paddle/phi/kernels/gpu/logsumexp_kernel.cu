@@ -149,7 +149,7 @@ void LogsumexpKernel(const Context& dev_ctx,
         (axis_vec.size() == 1 && axis_vec[0] == xdim.size())) {
       transpose_x = x;
     } else {
-      transpose_x.Resize(make_ddim(transpose_shape));
+      transpose_x.Resize(transpose_shape);
       dev_ctx.template Alloc<T>(&transpose_x);
       funcs::TransposeGPUKernelDriver<T>(dev_ctx, x, perm, &transpose_x);
     }

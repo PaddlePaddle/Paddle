@@ -59,7 +59,7 @@ void QuantLinearKernel(const Context& dev_ctx,
   }
   output_dims.push_back(w_dims1);
 
-  y->Resize(make_ddim(output_dims));
+  y->Resize(output_dims);
   y->set_lod(x.lod());
 
   auto out_dims = y->dims();
