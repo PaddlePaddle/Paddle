@@ -98,7 +98,7 @@ inline const at::Tensor& Tensor::resize_(
 
   // Sync through the compat Storage path first so the DenseTensor holder is a
   // live StorageHolderView backed by shared StorageImpl.
-  auto& storage = const_cast<c10::Storage&>(this->storage());
+  auto storage = this->storage();
   const auto old_holder = dense_tensor->Holder();
   TORCH_CHECK(old_holder != nullptr,
               "resize_ cannot grow a tensor without allocated storage");
