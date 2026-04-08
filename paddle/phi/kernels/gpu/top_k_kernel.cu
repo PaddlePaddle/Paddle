@@ -70,6 +70,15 @@ void TopkKernel(const Context& dev_ctx,
     return;
   }
 
+  int k = k_scalar.to<int>();
+#ifdef PADDLE_WITH_CUDA
+  if (k > 1) {
+    TopkKernelCuda<T, Context>(
+        dev_ctx, x, k, axis, largest, sorted, out, indices);
+    return;
+  }
+#endif
+
   const auto* input = &x;
   // get the input dims
   const auto& in_dims = input->dims();
@@ -84,7 +93,6 @@ void TopkKernel(const Context& dev_ctx,
   // calculate the real axis
   if (axis < 0) axis += in_dims.size();
 
-  int k = k_scalar.to<int>();
   // out shape [-1]
   if (k_scalar.FromTensor()) {
     DDim out_dims = out->dims();
@@ -370,20 +378,6 @@ void TopkV1Kernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-#ifdef PADDLE_WITH_CUDA
-PD_REGISTER_KERNEL(topk,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::TopkKernelCuda,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   phi::float16,
-                   phi::bfloat16) {
-  kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
-}
-#else
 PD_REGISTER_KERNEL(topk,
                    GPU,
                    ALL_LAYOUT,
@@ -396,7 +390,6 @@ PD_REGISTER_KERNEL(topk,
                    phi::bfloat16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
 }
-#endif
 
 PD_REGISTER_KERNEL(topk_v1,
                    GPU,
