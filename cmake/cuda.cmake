@@ -291,6 +291,14 @@ elseif(${CMAKE_CUDA_COMPILER_VERSION} LESS 13.0) # CUDA 12.0+
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Wno-deprecated-gpu-targets")
 endif()
 
+# Fix ARM NEON conflict with CUDA on aarch64 platforms.
+# GCC predefines __ARM_NEON which causes arm_neon.h to be included
+# during CUDA compilation, but nvcc does not support ARM NEON builtins,
+# leading to type errors (e.g. float16x4x2_t undefined).
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -U__ARM_NEON -U__ARM_NEON_FP")
+endif()
+
 add_definitions("-DCUDA_VERSION_MAJOR=\"${CUDA_VERSION_MAJOR}\"")
 add_definitions("-DCUDA_VERSION_MINOR=\"${CUDA_VERSION_MINOR}\"")
 add_definitions("-DCUDA_TOOLKIT_ROOT_DIR=\"${CUDA_TOOLKIT_ROOT_DIR}\"")
