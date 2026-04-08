@@ -171,6 +171,13 @@ void CUDAVirtualMemAllocatorV2::UnmapHandle(VmmDevicePtr ptr, size_t size) {
   PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cuMemUnmap(ptr, size));
 }
 
+void CUDAVirtualMemAllocatorV2::UnmapAndReleaseHandle(VmmHandleMeta* meta) {
+  platform::CUDADeviceGuard guard(place_.device);
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cuMemUnmap(meta->base, meta->size));
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      platform::RecordedGpuMemRelease(meta->handle, meta->size, meta->device));
+}
+
 void CUDAVirtualMemAllocatorV2::MapHandlesToVA(
     VmmDevicePtr ptr, const std::vector<VmmAllocHandle>& hs) {
   platform::CUDADeviceGuard guard(place_.device);

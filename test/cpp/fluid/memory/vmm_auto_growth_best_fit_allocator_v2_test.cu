@@ -504,6 +504,122 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, ThreeWayMerge) {
   EXPECT_EQ(merged.parts_.size(), 3UL);
 }
 
+// ---------------------------------------------------------------------------
+// ReleaseImpl tests — per-allocation granularity release
+// ---------------------------------------------------------------------------
+
+TEST(VMMAutoGrowthBestFitAllocatorV2, ReleaseFreesFullyFreeAllocation) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+
+  // Allocate one handle-sized block, then free it.
+  auto allocation = allocator.Allocate(underlying->handle_size());
+  ASSERT_NE(allocation, nullptr);
+  allocation.reset();
+
+  // The single underlying allocation is entirely FREE.
+  ASSERT_EQ(allocator.all_blocks_.size(), 1UL);
+  ASSERT_EQ(allocator.all_blocks_.front().type_, BlockType::kFree);
+
+  uint64_t released = allocator.Release(phi::GPUPlace());
+  EXPECT_EQ(released, underlying->handle_size());
+
+  // After release: all blocks removed, underlying allocation erased.
+  EXPECT_EQ(allocator.all_blocks_.size(), 0UL);
+  EXPECT_EQ(allocator.free_blocks_.size(), 0UL);
+  EXPECT_EQ(allocator.underlying_allocations_.size(), 0UL);
+}
+
+TEST(VMMAutoGrowthBestFitAllocatorV2, ReleaseSkipsPartiallyActiveAllocation) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+
+  // Allocate a small block (< handle_size), so part of the underlying
+  // allocation is ACTIVE and part is FREE remainder.
+  auto allocation = allocator.Allocate(256UL);
+  ASSERT_NE(allocation, nullptr);
+
+  // There should be 1 ACTIVE + 1 FREE block, but the underlying allocation
+  // is not entirely free.
+  ASSERT_EQ(allocator.all_blocks_.size(), 2UL);
+
+  uint64_t released = allocator.Release(phi::GPUPlace());
+  EXPECT_EQ(released, 0UL);
+
+  // Nothing changed.
+  EXPECT_EQ(allocator.free_blocks_.size(), 1UL);
+  EXPECT_EQ(allocator.underlying_allocations_.size(), 1UL);
+}
+
+TEST(VMMAutoGrowthBestFitAllocatorV2, ReleaseMultipleAllocationsSelective) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+
+  // Allocate 3 handle-sized blocks from 3 separate underlying allocations.
+  auto a = allocator.Allocate(underlying->handle_size());
+  auto b = allocator.Allocate(underlying->handle_size());
+  auto c = allocator.Allocate(underlying->handle_size());
+  ASSERT_EQ(allocator.underlying_allocations_.size(), 3UL);
+
+  // Free only a and c — their underlying allocations become entirely free.
+  // b stays active — its underlying allocation is not released.
+  a.reset();
+  c.reset();
+
+  uint64_t released = allocator.Release(phi::GPUPlace());
+  EXPECT_EQ(released, underlying->handle_size() * 2);
+
+  // Only b's underlying allocation remains.
+  EXPECT_EQ(allocator.underlying_allocations_.size(), 1UL);
+  EXPECT_EQ(allocator.allocated_blocks_.size(), 1UL);
+  EXPECT_EQ(allocator.free_blocks_.size(), 0UL);
+}
+
+TEST(VMMAutoGrowthBestFitAllocatorV2, ReleaseNothingWhenAllActive) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+
+  auto allocation = allocator.Allocate(underlying->handle_size());
+  ASSERT_NE(allocation, nullptr);
+
+  // No FREE blocks at all — nothing to release.
+  uint64_t released = allocator.Release(phi::GPUPlace());
+  EXPECT_EQ(released, 0UL);
+  EXPECT_EQ(allocator.underlying_allocations_.size(), 1UL);
+}
+
+TEST(VMMAutoGrowthBestFitAllocatorV2, AllocAfterReleaseGrowsNewAllocation) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+
+  // Allocate and free, then release the underlying allocation.
+  auto allocation = allocator.Allocate(underlying->handle_size());
+  allocation.reset();
+
+  uint64_t released = allocator.Release(phi::GPUPlace());
+  EXPECT_EQ(released, underlying->handle_size());
+  EXPECT_EQ(allocator.underlying_allocations_.size(), 0UL);
+
+  // Allocate again — must grow a new underlying allocation.
+  auto new_alloc = allocator.Allocate(underlying->handle_size());
+  ASSERT_NE(new_alloc, nullptr);
+  EXPECT_EQ(allocator.underlying_allocations_.size(), 1UL);
+
+  // Verify the new block is ACTIVE.
+  bool found_active = false;
+  for (const auto& block : allocator.all_blocks_) {
+    if (block.type_ == BlockType::kActive && block.ptr_ == new_alloc->ptr()) {
+      found_active = true;
+    }
+  }
+  EXPECT_TRUE(found_active);
+}
+
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle

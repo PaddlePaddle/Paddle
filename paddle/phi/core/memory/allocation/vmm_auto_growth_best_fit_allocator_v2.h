@@ -68,9 +68,11 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
   void InsertFreeBlock(BlockListIt it);
   void EraseFreeBlock(BlockListIt it);
   void TryMerge(BlockListIt it);
+  // Per-allocation release: release entire underlying allocations whose VA
+  // range is completely covered by FREE blocks.
   uint64_t FreeIdleChunks();
-  bool IsRangeEntirelyFree(uint8_t* base, size_t size) const;
-  void SplitAndRemoveRange(uint8_t* base, size_t size);
+  bool IsRangeEntirelyFree(void* base, size_t size) const;
+  void SplitAndRemoveRange(void* base, size_t size);
 
   // Best-fit V2 only grows from the fixed-handle CUDA VMM provider. This
   // keeps the layer boundary explicit: the bottom allocator owns allocation

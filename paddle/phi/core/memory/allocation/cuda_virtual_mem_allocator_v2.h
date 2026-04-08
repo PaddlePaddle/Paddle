@@ -54,6 +54,10 @@ class CUDAVirtualMemAllocatorV2 : public Allocator {
   void AdvanceTailOffset(size_t bytes) { virtual_mem_alloced_offset_ += bytes; }
 
   void UnmapHandle(VmmDevicePtr ptr, size_t size);
+  // Unmap a single handle from VA and release its physical memory back to the
+  // CUDA driver.  Used by ReleaseImpl to free individual handles within a
+  // partially-free allocation.
+  void UnmapAndReleaseHandle(VmmHandleMeta* meta);
   void MapHandlesToVA(VmmDevicePtr ptr, const std::vector<VmmAllocHandle>& hs);
   // Exposes the allocation-level handle list for IPC/export queries. The key
   // is the raw allocation ptr returned by this allocator.
