@@ -148,29 +148,6 @@ def _vmm_pool_hint_to_int(hint: str | None) -> int:
     )
 
 
-_defer_stable_param_hint = threading.local()
-
-
-class defer_stable_param_hint(ContextDecorator):
-    """Skip the Stable-pool hint on ``create_parameter``.
-
-    When active, parameters are allocated via size-based routing
-    (typically landing in the Transient pool).  This is useful when
-    the caller knows that all parameters will be reorganised later
-    (e.g. sharding copies them to CPU and re-allocates fused
-    buffers in the Stable pool).
-    """
-
-    def __enter__(self):
-        self._prev = getattr(_defer_stable_param_hint, 'active', False)
-        _defer_stable_param_hint.active = True
-        return self
-
-    def __exit__(self, *exc):
-        _defer_stable_param_hint.active = self._prev
-        return False
-
-
 class vmm_pool_hint_guard(ContextDecorator):
     """Set the VMM V2 pool hint for the duration of a block or function.
 
@@ -202,40 +179,22 @@ class vmm_pool_hint_guard(ContextDecorator):
         return False
 
 
-@vmm_pool_hint_guard('longlived')
 def cast_to_master_weight(param):
-    """Cast a parameter to float32 for AMP master weights.
-
-    Routes the allocation to the VMM V2 **LongLived** pool.
-    Master weights have the same lifetime as optimizer states
-    (persist across training, released together at shutdown).
-    ``paddle.cast`` allocates eagerly, so the pool hint is effective.
-    """
+    """Cast a parameter to float32 for AMP master weights."""
     import paddle
 
     return paddle.cast(param, 'float32')
 
 
-@vmm_pool_hint_guard('stable')
 def create_fused_param_buffer(shape, dtype):
-    """Allocate a fused parameter buffer for distributed sharding.
-
-    Routes the allocation to the VMM V2 **Stable** pool.
-    ``paddle.zeros`` allocates eagerly, so the pool hint is effective.
-    """
+    """Allocate a fused parameter buffer for distributed sharding."""
     import paddle
 
     return paddle.zeros(shape, dtype=dtype)
 
 
-@vmm_pool_hint_guard('stable')
 def create_param_slice(shape, dtype, name):
-    """Create a parameter slice for distributed sharding.
-
-    ``EagerParamBase`` uses lazy allocation, so we materialise the
-    storage up-front via ``paddle.zeros`` to ensure the VMM V2 Stable
-    pool hint is active when the GPU allocation actually occurs.
-    """
+    """Create a parameter slice for distributed sharding."""
     import paddle
 
     data = paddle.zeros(shape, dtype=dtype)
@@ -4805,17 +4764,8 @@ class Block:
         self.desc._remove_var(name.encode())
         del self.vars[name]
 
-    # VMM V2: keep stable pool hint around the full parameter creation
-    # path (construction + initializer), so that both the tensor storage
-    # and any allocation triggered by the initializer kernel land in the
-    # Stable pool.  When ``defer_stable_param_hint`` is active the hint
-    # is skipped so that parameters land in the Transient pool instead
-    # (useful when sharding will reorganise them later).
     def create_parameter(self, *args, **kwargs):
-        if getattr(_defer_stable_param_hint, 'active', False):
-            return self._create_parameter_impl(*args, **kwargs)
-        with vmm_pool_hint_guard('stable'):
-            return self._create_parameter_impl(*args, **kwargs)
+        return self._create_parameter_impl(*args, **kwargs)
 
     def _create_parameter_impl(self, *args, **kwargs):
         global_block = self.program.global_block()

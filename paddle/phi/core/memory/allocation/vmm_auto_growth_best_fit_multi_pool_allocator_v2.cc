@@ -15,7 +15,6 @@
 #include "paddle/phi/core/memory/allocation/vmm_auto_growth_best_fit_multi_pool_allocator_v2.h"
 
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/memory/allocation/alloc_hint.h"
 
 namespace paddle {
 namespace memory {
@@ -44,25 +43,14 @@ void EmplaceOrEnforce(Map* map,
 VMMAutoGrowthBestFitMultiPoolAllocatorV2::
     VMMAutoGrowthBestFitMultiPoolAllocatorV2(
         const std::shared_ptr<VMMAutoGrowthBestFitAllocatorV2>&
-            stable_allocator,
+            small_allocator,
         const std::shared_ptr<VMMAutoGrowthBestFitAllocatorV2>&
-            longlived_allocator,
-        const std::shared_ptr<VMMAutoGrowthBestFitAllocatorV2>&
-            transient_small_allocator,
-        const std::shared_ptr<VMMAutoGrowthBestFitAllocatorV2>&
-            transient_large_allocator,
-        const std::shared_ptr<VMMAutoGrowthBestFitAllocatorV2>&
-            oversized_allocator,
-        size_t transient_small_threshold,
-        size_t oversized_threshold,
+            large_allocator,
+        size_t small_allocation_threshold,
         const GPUPlace& place)
-    : stable_allocator_(stable_allocator),
-      longlived_allocator_(longlived_allocator),
-      transient_small_allocator_(transient_small_allocator),
-      transient_large_allocator_(transient_large_allocator),
-      oversized_allocator_(oversized_allocator),
-      transient_small_threshold_(transient_small_threshold),
-      oversized_threshold_(oversized_threshold),
+    : small_allocator_(small_allocator),
+      large_allocator_(large_allocator),
+      small_allocation_threshold_(small_allocation_threshold),
       place_(place) {}
 
 phi::Allocation* VMMAutoGrowthBestFitMultiPoolAllocatorV2::AllocateImpl(
@@ -85,7 +73,7 @@ phi::Allocation* VMMAutoGrowthBestFitMultiPoolAllocatorV2::AllocateImpl(
 
 void VMMAutoGrowthBestFitMultiPoolAllocatorV2::FreeImpl(
     phi::Allocation* allocation) {
-  AllocationRoute route{PoolType::kTransient, nullptr};
+  AllocationRoute route{PoolType::kLarge, nullptr};
   {
     std::lock_guard<SpinLock> guard(spinlock_);
     auto it = active_allocations_.find(allocation->ptr());
@@ -115,7 +103,7 @@ bool VMMAutoGrowthBestFitMultiPoolAllocatorV2::SetBlockRemapEvent(
     void* event
 #endif
 ) {
-  AllocationRoute route{PoolType::kTransient, nullptr};
+  AllocationRoute route{PoolType::kLarge, nullptr};
   {
     std::lock_guard<SpinLock> guard(spinlock_);
     auto it = active_allocations_.find(ptr);
@@ -145,35 +133,15 @@ void VMMAutoGrowthBestFitMultiPoolAllocatorV2::ImportFromIpc() {
 
 uint64_t VMMAutoGrowthBestFitMultiPoolAllocatorV2::ReleaseImpl(
     const Place& place) {
-  return stable_allocator_->Release(place) +
-         longlived_allocator_->Release(place) +
-         transient_small_allocator_->Release(place) +
-         transient_large_allocator_->Release(place) +
-         oversized_allocator_->Release(place);
+  return small_allocator_->Release(place) + large_allocator_->Release(place);
 }
 
 VMMAutoGrowthBestFitMultiPoolAllocatorV2::AllocationRoute
 VMMAutoGrowthBestFitMultiPoolAllocatorV2::RouteAllocation(size_t size) const {
-  // PR3 keeps routing intentionally minimal:
-  // 1. explicit PoolHint routes parameters and optimizer state first
-  // 2. large requests above the oversized threshold use a dedicated pool
-  // 3. all remaining requests default to the transient pool
-  // 4. transient is split into small/large sub-pools by a fixed 2MB boundary
-  switch (GetCurrentPoolHint()) {
-    case PoolHint::kStable:
-      return {PoolType::kStable, stable_allocator_.get()};
-    case PoolHint::kLongLived:
-      return {PoolType::kLongLived, longlived_allocator_.get()};
-    case PoolHint::kNone:
-      break;
+  if (size < small_allocation_threshold_) {
+    return {PoolType::kSmall, small_allocator_.get()};
   }
-  if (size >= oversized_threshold_) {
-    return {PoolType::kOversized, oversized_allocator_.get()};
-  }
-  if (size < transient_small_threshold_) {
-    return {PoolType::kTransient, transient_small_allocator_.get()};
-  }
-  return {PoolType::kTransient, transient_large_allocator_.get()};
+  return {PoolType::kLarge, large_allocator_.get()};
 }
 
 }  // namespace allocation

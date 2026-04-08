@@ -74,11 +74,11 @@ void AllocatorVisitor::Visit(
   if (allocator->longlived_allocator()) {
     allocator->longlived_allocator()->Accept(this);
   }
-  if (allocator->transient_small_allocator()) {
-    allocator->transient_small_allocator()->Accept(this);
+  if (allocator->small_allocator()) {
+    allocator->small_allocator()->Accept(this);
   }
-  if (allocator->transient_large_allocator()) {
-    allocator->transient_large_allocator()->Accept(this);
+  if (allocator->large_allocator()) {
+    allocator->large_allocator()->Accept(this);
   }
   if (allocator->oversized_allocator()) {
     allocator->oversized_allocator()->Accept(this);
@@ -188,11 +188,11 @@ void VMMV2PoolStatsVisitor::Visit(
   if (allocator->longlived_allocator()) {
     Visit(allocator->longlived_allocator().get());
   }
-  if (allocator->transient_small_allocator()) {
-    Visit(allocator->transient_small_allocator().get());
+  if (allocator->small_allocator()) {
+    Visit(allocator->small_allocator().get());
   }
-  if (allocator->transient_large_allocator()) {
-    Visit(allocator->transient_large_allocator().get());
+  if (allocator->large_allocator()) {
+    Visit(allocator->large_allocator().get());
   }
   if (allocator->oversized_allocator()) {
     Visit(allocator->oversized_allocator().get());

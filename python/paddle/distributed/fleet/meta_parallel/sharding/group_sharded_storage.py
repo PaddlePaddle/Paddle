@@ -22,50 +22,13 @@
 # This source code is licensed under the BSD license found in the
 # LICENSE file in the root directory of this source tree.
 
-import logging
-
 import numpy as np
 
 import paddle
 from paddle.base import framework
-from paddle.distributed.utils.log_utils import get_logger
 from paddle.framework import core
 
 from .group_sharded_utils import Type, cvt_to_device, device_guard
-
-logger_ = get_logger(logging.INFO, __name__)
-
-
-def _format_pool_stats(device_id):
-    stats = paddle.device.cuda.vmm_v2_pool_stats(device_id)
-    names = {
-        0: "Stable",
-        1: "LongLived",
-        2: "Transient",
-        3: "Oversized",
-    }
-
-    def to_gib(x):
-        return x / float(1 << 30)
-
-    parts = []
-    for (
-        pool_type,
-        active_count,
-        active_bytes,
-        free_count,
-        free_bytes,
-        gap_count,
-        gap_bytes,
-    ) in stats:
-        del active_count, free_count, gap_count
-        parts.append(
-            f"{names.get(pool_type, pool_type)}"
-            f"(A={to_gib(active_bytes):.3f}G "
-            f"F={to_gib(free_bytes):.3f}G "
-            f"G={to_gib(gap_bytes):.3f}G)"
-        )
-    return " | ".join(parts)
 
 
 class BufferWarper(core.eager.Tensor):
@@ -248,34 +211,10 @@ class ParamStorage(InternalStorage):
                     paddle.CustomPlace(self._device, self.dev_id), True
                 )
             elif self._device == "gpu":
-                logger_.info(
-                    "[VMM_V2_POOL][ParamStorage] before_gpu_alloc: "
-                    "numel=%s dtype=%s place=%s | %s",
-                    self.buffer._numel(),
-                    self.buffer.dtype,
-                    self.buffer.place,
-                    _format_pool_stats(self.dev_id),
-                )
                 gpu_buffer = framework.create_fused_param_buffer(
                     [self.buffer._numel()], self.buffer.dtype
                 )
-                logger_.info(
-                    "[VMM_V2_POOL][ParamStorage] after_explicit_gpu_alloc: "
-                    "numel=%s dtype=%s place=%s | %s",
-                    gpu_buffer._numel(),
-                    gpu_buffer.dtype,
-                    gpu_buffer.place,
-                    _format_pool_stats(self.dev_id),
-                )
                 gpu_buffer.set_value(self.buffer)
-                logger_.info(
-                    "[VMM_V2_POOL][ParamStorage] after_set_value: "
-                    "numel=%s dtype=%s place=%s | %s",
-                    gpu_buffer._numel(),
-                    gpu_buffer.dtype,
-                    gpu_buffer.place,
-                    _format_pool_stats(self.dev_id),
-                )
                 self.buffer = gpu_buffer
             else:
                 # buffer convert from cpu to cuda

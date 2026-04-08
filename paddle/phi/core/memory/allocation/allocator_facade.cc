@@ -129,20 +129,11 @@ COMMON_DECLARE_bool(use_auto_growth_pinned_allocator);
 COMMON_DECLARE_bool(use_cuda_malloc_async_allocator);
 COMMON_DECLARE_bool(auto_free_cudagraph_allocations_on_launch);
 
-PHI_DEFINE_EXPORTED_uint64(
-    vmm_v2_oversized_threshold_in_mb,
-    256,
-    "Requests larger than or equal to this threshold in MiB are routed to the "
-    "Oversized pool of VMMAutoGrowthBestFitAllocatorV2.");
-
 namespace paddle::memory::allocation {
 namespace {
 
-constexpr size_t kVMMV2StableHandleSize = 128UL << 20;
-constexpr size_t kVMMV2LongLivedHandleSize = 32UL << 20;
 constexpr size_t kVMMV2TransientHandleSize = 2UL << 20;
 constexpr size_t kVMMV2TransientSmallThreshold = 2UL << 20;
-constexpr size_t kVMMV2OversizedHandleSize = 256UL << 20;
 
 }  // namespace
 
@@ -1032,24 +1023,14 @@ class AllocatorFacadePrivate {
 
   std::shared_ptr<Allocator> CreateVMMAutoGrowthBestFitAllocatorV2(
       GPUPlace p) {
-    auto stable_allocator = CreateVMMAutoGrowthBestFitPoolAllocatorV2(
-        p, kVMMV2StableHandleSize, PoolType::kStable);
-    auto longlived_allocator = CreateVMMAutoGrowthBestFitPoolAllocatorV2(
-        p, kVMMV2LongLivedHandleSize, PoolType::kLongLived);
     auto transient_small_allocator = CreateVMMAutoGrowthBestFitPoolAllocatorV2(
-        p, kVMMV2TransientHandleSize, PoolType::kTransient);
+        p, kVMMV2TransientHandleSize, PoolType::kSmall);
     auto transient_large_allocator = CreateVMMAutoGrowthBestFitPoolAllocatorV2(
-        p, kVMMV2TransientHandleSize, PoolType::kTransient);
-    auto oversized_allocator = CreateVMMAutoGrowthBestFitPoolAllocatorV2(
-        p, kVMMV2OversizedHandleSize, PoolType::kOversized);
+        p, kVMMV2TransientHandleSize, PoolType::kLarge);
     return std::make_shared<VMMAutoGrowthBestFitMultiPoolAllocatorV2>(
-        stable_allocator,
-        longlived_allocator,
         transient_small_allocator,
         transient_large_allocator,
-        oversized_allocator,
         kVMMV2TransientSmallThreshold,
-        static_cast<size_t>(FLAGS_vmm_v2_oversized_threshold_in_mb) << 20,
         p);
   }
 

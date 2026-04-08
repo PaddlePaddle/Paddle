@@ -483,10 +483,8 @@ class GroupShardedOptimizerStage2(Optimizer):
                         self.param_storages[dtype][dst_rank] = param_storage
                         pending_storages.append(param_storage)
 
-            # Phase 2: allocate ONE contiguous GPU buffer for all
-            # ranks, then slice to each ParamStorage. This avoids
-            # per-buffer 128MB handle rounding in the VMM Stable pool.
-            paddle.device.cuda.empty_cache()
+            # Phase 2: allocate one contiguous GPU buffer for all ranks,
+            # then slice it to each ParamStorage.
             if pending_storages and self._default_device == "gpu":
                 total_numel = sum(ps.buffer._numel() for ps in pending_storages)
                 fused_gpu = framework.create_fused_param_buffer(

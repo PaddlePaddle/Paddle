@@ -408,22 +408,19 @@ def amp_initialize(
                 layer._amp_decorate(dtype=dtype)
                 continue
 
-            # AMP O2 casts parameters to fp16/bf16. The new low-precision
-            # data should stay in the Stable pool alongside the originals.
-            with vmm_pool_hint_guard('stable'):
-                if in_pir_mode():
-                    _pir_to_impl(
-                        layer,
-                        dtype=dtype,
-                        include_sublayers=False,
-                        floating_only=True,
-                    )
-                else:
-                    layer._to_impl(
-                        dtype=dtype,
-                        include_sublayers=False,
-                        floating_only=True,
-                    )
+            if in_pir_mode():
+                _pir_to_impl(
+                    layer,
+                    dtype=dtype,
+                    include_sublayers=False,
+                    floating_only=True,
+                )
+            else:
+                layer._to_impl(
+                    dtype=dtype,
+                    include_sublayers=False,
+                    floating_only=True,
+                )
     return models
 
 

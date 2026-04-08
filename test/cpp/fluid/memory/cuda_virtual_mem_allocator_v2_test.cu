@@ -65,7 +65,7 @@ TEST(CUDAVirtualMemAllocatorV2, TailOffsetAdvancesWithAllocationSize) {
 
 TEST(CUDAVirtualMemAllocatorV2, FreeRemovesHandleRegistration) {
   CUDAVirtualMemAllocatorV2 allocator(
-      phi::GPUPlace(), 2UL << 20, PoolType::kLongLived);
+      phi::GPUPlace(), 2UL << 20, PoolType::kLarge);
 
   auto allocation = allocator.Allocate(allocator.handle_size());
   ASSERT_NE(allocation, nullptr);

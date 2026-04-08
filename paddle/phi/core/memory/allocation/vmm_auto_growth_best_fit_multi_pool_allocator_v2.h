@@ -29,17 +29,11 @@ namespace allocation {
 class VMMAutoGrowthBestFitMultiPoolAllocatorV2 : public Allocator {
  public:
   VMMAutoGrowthBestFitMultiPoolAllocatorV2(
-      const std::shared_ptr<VMMAutoGrowthBestFitAllocatorV2>& stable_allocator,
       const std::shared_ptr<VMMAutoGrowthBestFitAllocatorV2>&
-          longlived_allocator,
+          small_allocator,
       const std::shared_ptr<VMMAutoGrowthBestFitAllocatorV2>&
-          transient_small_allocator,
-      const std::shared_ptr<VMMAutoGrowthBestFitAllocatorV2>&
-          transient_large_allocator,
-      const std::shared_ptr<VMMAutoGrowthBestFitAllocatorV2>&
-          oversized_allocator,
-      size_t transient_small_threshold,
-      size_t oversized_threshold,
+          large_allocator,
+      size_t small_allocation_threshold,
       const GPUPlace& place);
 
   bool IsAllocThreadSafe() const override { return true; }
@@ -67,12 +61,12 @@ class VMMAutoGrowthBestFitMultiPoolAllocatorV2 : public Allocator {
     return longlived_allocator_;
   }
   const std::shared_ptr<VMMAutoGrowthBestFitAllocatorV2>&
-  transient_small_allocator() const {
-    return transient_small_allocator_;
+  small_allocator() const {
+    return small_allocator_;
   }
   const std::shared_ptr<VMMAutoGrowthBestFitAllocatorV2>&
-  transient_large_allocator() const {
-    return transient_large_allocator_;
+  large_allocator() const {
+    return large_allocator_;
   }
   const std::shared_ptr<VMMAutoGrowthBestFitAllocatorV2>& oversized_allocator()
       const {
@@ -90,19 +84,15 @@ class VMMAutoGrowthBestFitMultiPoolAllocatorV2 : public Allocator {
     VMMAutoGrowthBestFitAllocatorV2* allocator;
   };
 
-  // PR3 keeps routing minimal: explicit PoolHint routes parameters and
-  // optimizer state into Stable/LongLived, while all remaining requests still
-  // default to Transient/Oversized. Transient is split into small/large
-  // sub-allocators by a fixed size threshold.
+  // Requests are split into small/large pools by a fixed threshold.
   AllocationRoute RouteAllocation(size_t size) const;
 
   std::shared_ptr<VMMAutoGrowthBestFitAllocatorV2> stable_allocator_;
   std::shared_ptr<VMMAutoGrowthBestFitAllocatorV2> longlived_allocator_;
-  std::shared_ptr<VMMAutoGrowthBestFitAllocatorV2> transient_small_allocator_;
-  std::shared_ptr<VMMAutoGrowthBestFitAllocatorV2> transient_large_allocator_;
+  std::shared_ptr<VMMAutoGrowthBestFitAllocatorV2> small_allocator_;
+  std::shared_ptr<VMMAutoGrowthBestFitAllocatorV2> large_allocator_;
   std::shared_ptr<VMMAutoGrowthBestFitAllocatorV2> oversized_allocator_;
-  size_t transient_small_threshold_;
-  size_t oversized_threshold_;
+  size_t small_allocation_threshold_;
   GPUPlace place_;
   std::unordered_map<void*, AllocationRoute> active_allocations_;
   mutable SpinLock spinlock_;

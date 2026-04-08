@@ -908,10 +908,6 @@ class Optimizer:
             return self._master_weights[param.name]
         return self._do_create_master_weight(param)
 
-    # Master weights are the "real" float32 parameters in AMP O2.
-    # They persist for the entire training run and should not be
-    # remapped, so they belong in the Stable pool alongside params.
-    @framework.vmm_pool_hint_guard('stable')
     def _do_create_master_weight(self, param):
         var_name = self._gen_master_weight_var_name(param)
         if in_pir_mode():
@@ -1079,10 +1075,6 @@ class Optimizer:
         )
         return var
 
-    # Optimizer accumulators (moment1, moment2, beta_pow, …) are long-lived
-    # tensors that persist for the entire training run. Route them to the
-    # LongLived pool so they are not mixed with transient activations.
-    @framework.vmm_pool_hint_guard('longlived')
     def _do_create_accumulator(
         self, name, param, var_name, dtype, fill_value, shape, device
     ):

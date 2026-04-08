@@ -37,10 +37,9 @@ namespace allocation {
 // V2 keeps the bottom-layer shared types independent from the best-fit layer
 // so that CUDAVirtualMemAllocatorV2 can be reviewed and compiled separately.
 enum class PoolType : uint8_t {
-  kStable = 0,
-  kLongLived = 1,
+  kSmall = 0,
+  kLarge = 1,
   kTransient = 2,
-  kOversized = 3,
 };
 
 // Fixed-size handle metadata returned by the bottom VMM provider. Upper layers
@@ -97,7 +96,7 @@ struct BlockV2 {
   size_t size_{0};
   BlockType type_{BlockType::kGap};
   std::vector<BlockPartV2> parts_;
-  PoolType pool_type_{PoolType::kTransient};
+  PoolType pool_type_{PoolType::kLarge};
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   gpuStream_t owning_stream_{nullptr};
   gpuStream_t last_use_stream_{nullptr};
