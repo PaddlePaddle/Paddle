@@ -369,6 +369,7 @@ void TopkV1Kernel(const Context& dev_ctx,
   TopkKernel<T, Context>(dev_ctx, x, k_scalar, -1, true, true, out, indices);
 }
 
+#ifdef PADDLE_WITH_CUDA
 template <typename T, typename Context>
 void TopkKernelCuda(const Context& dev_ctx,
                     const DenseTensor& x,
@@ -599,6 +600,7 @@ void TopkKernelCuda(const Context& dev_ctx,
     }
   }
 }
+#endif
 }  // namespace phi
 
 #ifdef PADDLE_WITH_CUDA
