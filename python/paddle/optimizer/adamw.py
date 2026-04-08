@@ -680,7 +680,7 @@ class AdamW(Optimizer):
                 ...     loss = paddle.mean(output)
                 ...     loss.backward()
                 ...     return loss
-                >>> loss = opt.step(closure)
+                >>> step_loss = opt.step(closure)
         """
         loss = None
         if closure is not None:

@@ -2084,7 +2084,7 @@ class Optimizer:
                 ...     loss = paddle.mean(output)
                 ...     loss.backward()
                 ...     return loss
-                >>> loss = adam.step(closure)
+                >>> step_loss = adam.step(closure)
         """
         loss = None
         if closure is not None:
