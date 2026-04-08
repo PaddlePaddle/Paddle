@@ -20,6 +20,12 @@
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <c10/cuda/CUDAFunctions.h>
 #include <c10/cuda/CUDAStream.h>
+
+namespace {
+
+bool HasVisibleCUDADevice() { return c10::cuda::device_count() > 0; }
+
+}  // namespace
 #endif
 #include "ATen/ATen.h"
 #include "gtest/gtest.h"
@@ -31,8 +37,10 @@ class RecordStreamTest : public ::testing::Test {
     cpu_tensor =
         at::ones({4}, at::TensorOptions().dtype(at::kFloat).device(at::kCPU));
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    cuda_tensor =
-        at::ones({4}, at::TensorOptions().dtype(at::kFloat).device(at::kCUDA));
+    if (HasVisibleCUDADevice()) {
+      cuda_tensor = at::ones(
+          {4}, at::TensorOptions().dtype(at::kFloat).device(at::kCUDA));
+    }
 #endif
   }
 
@@ -60,6 +68,9 @@ using RecordRawCudaStreamMethod = void (at::Tensor::*)(cudaStream_t) const;
 #endif
 
 TEST_F(RecordStreamTest, CudaTensorCurrentCudaStream) {
+  if (!HasVisibleCUDADevice()) {
+    return;
+  }
   auto stream = at::cuda::getCurrentCUDAStream();
   // record_stream should not throw
   EXPECT_NO_THROW(cuda_tensor.record_stream(stream));
@@ -67,11 +78,17 @@ TEST_F(RecordStreamTest, CudaTensorCurrentCudaStream) {
 
 // --- Happy path: CUDA tensor + default CUDA stream should succeed ---
 TEST_F(RecordStreamTest, CudaTensorDefaultCudaStream) {
+  if (!HasVisibleCUDADevice()) {
+    return;
+  }
   c10::Stream default_stream = c10::cuda::getDefaultCUDAStream().unwrap();
   EXPECT_NO_THROW(cuda_tensor.record_stream(default_stream));
 }
 
 TEST_F(RecordStreamTest, CudaTensorRawCudaStream) {
+  if (!HasVisibleCUDADevice()) {
+    return;
+  }
   auto stream = at::cuda::getCurrentCUDAStream();
   EXPECT_NO_THROW(cuda_tensor.record_stream(stream.raw_stream()));
 }
@@ -89,6 +106,9 @@ TEST_F(RecordStreamTest, CpuTensorCpuStream) {
 // tensors) ---
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST_F(RecordStreamTest, CpuTensorCudaStream) {
+  if (!HasVisibleCUDADevice()) {
+    return;
+  }
   auto cuda_stream = at::cuda::getCurrentCUDAStream();
   EXPECT_THROW(cpu_tensor.record_stream(cuda_stream), std::exception);
 }

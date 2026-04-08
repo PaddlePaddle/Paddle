@@ -21,6 +21,12 @@
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <c10/cuda/CUDAStream.h>
 #include "paddle/phi/backends/gpu/gpu_info.h"
+
+namespace {
+
+bool HasVisibleCUDADevice() { return c10::cuda::device_count() > 0; }
+
+}  // namespace
 #endif
 
 // Platform-specific definitions for memory operations
@@ -46,6 +52,9 @@
 
 TEST(CUDAFunctionsTest, DeviceSynchronize) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (!HasVisibleCUDADevice()) {
+    return;
+  }
   // Exercises the PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize()) branch
   ASSERT_NO_THROW(c10::cuda::device_synchronize());
 #else
@@ -56,6 +65,9 @@ TEST(CUDAFunctionsTest, DeviceSynchronize) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(CUDAFunctionsTest, StreamSynchronize) {
+  if (!HasVisibleCUDADevice()) {
+    return;
+  }
   // Exercises phi::backends::gpu::GpuStreamSync()
   auto stream = c10::cuda::getCurrentCUDAStream();
   ASSERT_NO_THROW(c10::cuda::stream_synchronize(stream));
@@ -64,6 +76,9 @@ TEST(CUDAFunctionsTest, StreamSynchronize) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(CUDAFunctionsTest, AtNamespaceAliases) {
+  if (!HasVisibleCUDADevice()) {
+    return;
+  }
   // Exercises the using aliases in at::cuda namespace
   ASSERT_NO_THROW(at::cuda::device_synchronize());
   auto stream = c10::cuda::getCurrentCUDAStream();
@@ -94,7 +109,8 @@ TEST(CUDAContextLightTest, IsAvailable) {
 TEST(CUDAContextLightTest, GetNumGPUs) {
   int64_t n = at::cuda::getNumGPUs();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  ASSERT_GE(n, 1);
+  ASSERT_EQ(n, c10::cuda::device_count());
+  ASSERT_GE(n, 0);
 #else
   // In CPU-only builds, device_count() returns 0
   ASSERT_EQ(n, 0);
@@ -107,6 +123,9 @@ TEST(CUDAContextLightTest, GetNumGPUs) {
 
 // getCurrentDeviceProperties() / getDeviceProperties()
 TEST(CUDAContextLightTest, DeviceProperties) {
+  if (!HasVisibleCUDADevice()) {
+    return;
+  }
   at::cuda::CUDAContextDeviceProp* prop =
       at::cuda::getCurrentDeviceProperties();
   ASSERT_NE(prop, nullptr);
@@ -123,6 +142,9 @@ TEST(CUDAContextLightTest, DeviceProperties) {
 
 // warp_size()
 TEST(CUDAContextLightTest, WarpSize) {
+  if (!HasVisibleCUDADevice()) {
+    return;
+  }
   int ws = at::cuda::warp_size();
   // All NVIDIA and AMD GPU architectures have warp size of 32 or 64
   ASSERT_TRUE(ws == 32 || ws == 64);
@@ -130,6 +152,9 @@ TEST(CUDAContextLightTest, WarpSize) {
 
 // canDeviceAccessPeer() — a device cannot peer-access itself
 TEST(CUDAContextLightTest, CanDeviceAccessPeer) {
+  if (!HasVisibleCUDADevice()) {
+    return;
+  }
   int device_id = phi::backends::gpu::GetCurrentDeviceId();
   // Self-to-self peer access is always false per CUDA spec
   bool self_peer = at::cuda::canDeviceAccessPeer(device_id, device_id);
@@ -138,22 +163,34 @@ TEST(CUDAContextLightTest, CanDeviceAccessPeer) {
 
 // Handle accessors — all must return non-null handles
 TEST(CUDAContextLightTest, GetCurrentCUDABlasHandle) {
+  if (!HasVisibleCUDADevice()) {
+    return;
+  }
   at::cuda::CUDAContextBlasHandle h = at::cuda::getCurrentCUDABlasHandle();
   ASSERT_NE(h, nullptr);
 }
 
 TEST(CUDAContextLightTest, GetCurrentCUDABlasLtHandle) {
+  if (!HasVisibleCUDADevice()) {
+    return;
+  }
   at::cuda::CUDAContextBlasLtHandle h = at::cuda::getCurrentCUDABlasLtHandle();
   ASSERT_NE(h, nullptr);
 }
 
 TEST(CUDAContextLightTest, GetCurrentCUDASparseHandle) {
+  if (!HasVisibleCUDADevice()) {
+    return;
+  }
   at::cuda::CUDAContextSparseHandle h = at::cuda::getCurrentCUDASparseHandle();
   ASSERT_NE(h, nullptr);
 }
 
 #if defined(CUDART_VERSION) || defined(USE_ROCM)
 TEST(CUDAContextLightTest, GetCurrentCUDASolverDnHandle) {
+  if (!HasVisibleCUDADevice()) {
+    return;
+  }
   at::cuda::CUDAContextSolverHandle h =
       at::cuda::getCurrentCUDASolverDnHandle();
   ASSERT_NE(h, nullptr);
@@ -191,6 +228,9 @@ TEST(CUDAContextLightTest, GetChosenWorkspaceSize) {
 
 // getCUDABlasLtWorkspaceSize() / getCUDABlasLtWorkspace()
 TEST(CUDAContextLightTest, CUDABlasLtWorkspace) {
+  if (!HasVisibleCUDADevice()) {
+    return;
+  }
   size_t sz = at::cuda::getCUDABlasLtWorkspaceSize();
   ASSERT_GT(sz, 0UL);
 
@@ -199,6 +239,9 @@ TEST(CUDAContextLightTest, CUDABlasLtWorkspace) {
 }
 
 TEST(CUDAContextLightTest, CUDADeviceAllocatorSingleton) {
+  if (!HasVisibleCUDADevice()) {
+    return;
+  }
   c10::Allocator* a0 = at::cuda::getCUDADeviceAllocator();
   c10::Allocator* a1 = at::cuda::getCUDADeviceAllocator();
   ASSERT_NE(a0, nullptr);
@@ -206,6 +249,9 @@ TEST(CUDAContextLightTest, CUDADeviceAllocatorSingleton) {
 }
 
 TEST(CUDAContextLightTest, CUDADeviceAllocatorCloneAndCopyData) {
+  if (!HasVisibleCUDADevice()) {
+    return;
+  }
   c10::Allocator* alloc = at::cuda::getCUDADeviceAllocator();
   ASSERT_NE(alloc, nullptr);
 
@@ -236,6 +282,9 @@ TEST(CUDAContextLightTest, CUDADeviceAllocatorCloneAndCopyData) {
 }
 
 TEST(CUDAContextLightTest, CUDADeviceAllocatorCloneZeroBytes) {
+  if (!HasVisibleCUDADevice()) {
+    return;
+  }
   c10::Allocator* alloc = at::cuda::getCUDADeviceAllocator();
   ASSERT_NE(alloc, nullptr);
 
@@ -248,6 +297,9 @@ TEST(CUDAContextLightTest, CUDADeviceAllocatorCloneZeroBytes) {
 }
 
 TEST(CUDAContextLightTest, AllocatorZeroSizeAndNoopCopyBranches) {
+  if (!HasVisibleCUDADevice()) {
+    return;
+  }
   c10::Allocator* alloc = at::cuda::getCUDADeviceAllocator();
   ASSERT_NE(alloc, nullptr);
 
