@@ -134,28 +134,6 @@ class CUDAStream {
   Stream stream_;
 };
 
-#ifdef PADDLE_WITH_HIP
-inline CUDAStream make_cuda_stream(hipStream_t raw,
-                                   c10::DeviceIndex device_index) {
-  c10::StreamId sid =
-      static_cast<c10::StreamId>(reinterpret_cast<intptr_t>(raw));
-  return CUDAStream(
-      c10::Stream(c10::Stream::UNSAFE,
-                  c10::Device(c10::DeviceType::CUDA, device_index),
-                  sid));
-}
-#else
-inline CUDAStream make_cuda_stream(cudaStream_t raw,
-                                   c10::DeviceIndex device_index) {
-  c10::StreamId sid =
-      static_cast<c10::StreamId>(reinterpret_cast<intptr_t>(raw));
-  return CUDAStream(
-      c10::Stream(c10::Stream::UNSAFE,
-                  c10::Device(c10::DeviceType::CUDA, device_index),
-                  sid));
-}
-#endif
-
 /**
  * Get the current CUDA stream for the passed CUDA device, or for the
  * current device if no device index is passed.

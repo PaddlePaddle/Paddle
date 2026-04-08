@@ -123,6 +123,16 @@ inline cudaStream_t getPaddleCurrentStream(c10::DeviceIndex device_index) {
 
 }  // namespace
 
+inline CUDAStream make_cuda_stream(cudaStream_t raw,
+                                   c10::DeviceIndex device_index) {
+  c10::StreamId sid =
+      static_cast<c10::StreamId>(reinterpret_cast<intptr_t>(raw));
+  return CUDAStream(
+      c10::Stream(c10::Stream::UNSAFE,
+                  c10::Device(c10::DeviceType::CUDA, device_index),
+                  sid));
+}
+
 CUDAStream getStreamFromPool(const int priority,
                              c10::DeviceIndex device_index) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
