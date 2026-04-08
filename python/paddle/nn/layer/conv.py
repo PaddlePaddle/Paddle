@@ -21,7 +21,10 @@ import numpy as np
 import paddle
 from paddle import Tensor, get_flags
 from paddle.base.framework import in_dygraph_mode
-from paddle.utils.decorator_utils import param_one_alias
+from paddle.utils.decorator_utils import (
+    conv_transpose_layer_decorator,
+    param_one_alias,
+)
 
 from ...device import (
     get_cudnn_version,
@@ -589,6 +592,7 @@ class Conv1DTranspose(_ConvNd):
             [[[60., 16., 99., 75., 4. ]]])
     """
 
+    @conv_transpose_layer_decorator
     def __init__(
         self,
         in_channels: int,
@@ -598,7 +602,6 @@ class Conv1DTranspose(_ConvNd):
         padding: _PaddingSizeMode | Size1 | Size2 | Sequence[Size2] = 0,
         output_padding: _PaddingSizeMode | Size1 | Size2 | Sequence[Size2] = 0,
         groups: int = 1,
-        *,
         bias: bool = True,
         dilation: Size1 = 1,
         padding_mode: _PaddingTensorMode = 'zeros',
@@ -1339,6 +1342,7 @@ class Conv3DTranspose(_ConvNd):
             paddle.Size([2, 6, 10, 10, 10])
     """
 
+    @conv_transpose_layer_decorator
     def __init__(
         self,
         in_channels: int,
@@ -1348,7 +1352,6 @@ class Conv3DTranspose(_ConvNd):
         padding: _PaddingSizeMode | Size3 | Size6 | Sequence[Size2] = 0,
         output_padding: _PaddingSizeMode | Size3 | Size6 | Sequence[Size2] = 0,
         groups: int = 1,
-        *,
         bias: bool = True,
         dilation: Size3 = 1,
         padding_mode: _PaddingTensorMode = 'zeros',

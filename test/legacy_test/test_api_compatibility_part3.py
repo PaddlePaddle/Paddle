@@ -991,6 +991,21 @@ class TestConv1dTransposeAPI(unittest.TestCase):
             cls_out1.numpy(), cls_out2.numpy(), rtol=1e-5
         )
 
+        # 9. PyTorch-style fully positional class call: dispatch decorator
+        # detects args[8]=bias as bool and remaps to keyword arguments.
+        # Matches torch.nn.ConvTranspose1d(in, out, k, stride, padding,
+        # output_padding, groups, bias, dilation).
+        conv3 = paddle.nn.Conv1DTranspose(3, 1, 3, 1, 0, 0, 1, True, 1)
+        conv3.weight.set_value(conv1.weight.numpy())
+        conv3.bias.set_value(conv1.bias.numpy())
+        cls_out3 = conv3(x)
+        np.testing.assert_allclose(
+            cls_out1.numpy(), cls_out3.numpy(), rtol=1e-5
+        )
+        # 10. PyTorch-style positional without bias (bias=False → bias_attr=False)
+        conv4 = paddle.nn.Conv1DTranspose(3, 1, 3, 1, 0, 0, 1, False, 1)
+        self.assertIsNone(conv4.bias)
+
         paddle.enable_static()
 
     def test_static_Compatibility(self):
@@ -1254,6 +1269,23 @@ class TestConv3dTransposeAPI(unittest.TestCase):
         np.testing.assert_allclose(
             cls_out1.numpy(), cls_out2.numpy(), rtol=1e-5
         )
+
+        # 9. PyTorch-style fully positional class call: dispatch decorator
+        # detects args[8]=bias as bool and remaps to keyword arguments.
+        # Matches torch.nn.ConvTranspose3d(in, out, k, stride, padding,
+        # output_padding, groups, bias, dilation).
+        conv3 = paddle.nn.Conv3DTranspose(2, 2, 3, 1, 0, 0, 1, True, 1)
+        conv3.weight.set_value(conv1.weight.numpy())
+        conv3.bias.set_value(conv1.bias.numpy())
+        cls_out3 = conv3(x)
+        np.testing.assert_allclose(
+            cls_out1.numpy(), cls_out3.numpy(), rtol=1e-5
+        )
+        # 10. PyTorch-style positional with padding_mode (args[10])
+        conv4 = paddle.nn.Conv3DTranspose(
+            2, 2, 3, 1, 0, 0, 1, False, 1, 'zeros'
+        )
+        self.assertIsNone(conv4.bias)
 
         paddle.enable_static()
 

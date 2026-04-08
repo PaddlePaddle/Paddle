@@ -261,6 +261,46 @@ def lp_pool_function_decorator(
     return wrapper
 
 
+def conv_transpose_layer_decorator(
+    func: Callable[_InputT, _RetT],
+) -> Callable[_InputT, _RetT]:
+    """Dispatch decorator for ``Conv{1,3}DTranspose.__init__``.
+
+    PyTorch's ``ConvTranspose{1,2,3}d`` places ``bias`` (``bool``) at the 9th
+    positional argument (index 8 when ``self`` is counted), while Paddle's
+    native signature places ``dilation`` (``int``) at the same position.
+    When ``args[8]`` is a ``bool`` we interpret the call as the PyTorch
+    convention and remap positional arguments ``args[8:13]`` to keyword
+    arguments ``bias``, ``dilation``, ``padding_mode``, ``device``, ``dtype``
+    so the call succeeds against Paddle's signature.
+    """
+
+    @functools.wraps(func)
+    def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+        if len(args) >= 9 and isinstance(args[8], bool):
+            torch_names = (
+                "bias",
+                "dilation",
+                "padding_mode",
+                "device",
+                "dtype",
+            )
+            for i, name in enumerate(torch_names):
+                pos = 8 + i
+                if pos >= len(args):
+                    break
+                if name in kwargs:
+                    raise TypeError(
+                        f"__init__() got multiple values for argument '{name}'"
+                    )
+                kwargs[name] = args[pos]
+            args = args[:8]
+        return func(*args, **kwargs)
+
+    wrapper.__signature__ = inspect.signature(func)
+    return wrapper
+
+
 def param_two_alias_one_default(
     alias_list1: list[str], alias_list2: list[str], default_param: list[str]
 ) -> Callable[[Callable[_InputT, _RetT]], Callable[_InputT, _RetT]]:
