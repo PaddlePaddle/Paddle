@@ -270,5 +270,16 @@ TEST(TensorResizeTest, ResizeSliceSharedStorageCopiesFromStorageStart) {
 
   // After resize, tb[0] and ta[1] must point to the exact same address.
   ASSERT_EQ(tb.data_ptr<int>(), ta.data_ptr<int>() + 1);
-  // Data should be copied from storage[0], so ta[0] is unchanged.
+
+  // The original storage contents should remain unchanged.
+  ASSERT_EQ(ta[0].item<int>(), 1);
+  ASSERT_EQ(ta[1].item<int>(), 2);
+  ASSERT_EQ(ta[2].item<int>(), 3);
+  ASSERT_EQ(ta[3].item<int>(), 4);
+
+  // tb should preserve the expected sequence after resize.
+  ASSERT_EQ(tb[0].item<int>(), 2);
+  ASSERT_EQ(tb[1].item<int>(), 3);
+  ASSERT_EQ(tb[2].item<int>(), 4);
+  ASSERT_EQ(tb[3].item<int>(), 4);
 }
