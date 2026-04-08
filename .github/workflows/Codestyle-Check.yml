@@ -10,14 +10,14 @@ jobs:
     if: ${{ github.repository_owner == 'PaddlePaddle' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
-      workflow-name: 'codestyle'
+      workflow-name: "codestyle"
     secrets:
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
   pre-commit:
     name: Pre Commit
     if: ${{ github.repository_owner == 'PaddlePaddle' && needs.check-bypass.outputs.can-skip != 'true' }}
-    needs: check-bypass
+    needs: [check-bypass]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -26,7 +26,7 @@ jobs:
 
     steps:
       - name: Checkout base repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.base.ref }}
           fetch-depth: 1000
@@ -37,14 +37,14 @@ jobs:
           git checkout -b test FETCH_HEAD
 
       - name: Setup python3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: "pip"
 
       - name: Install dependencies
         run: |
-          pip install pre-commit==2.17.0 cpplint==1.6.0  clang-format==13.0.0
+          pip install pre-commit==2.17.0
           pip install ast-grep-cli==0.40.0 # This version should be consistent with the one in .pre-commit-config.yaml
 
       - name: Run ast-grep unit tests
@@ -52,8 +52,6 @@ jobs:
           ast-grep test
 
       - name: Check pre-commit
-        env:
-          SKIP_CLANG_TIDY_CHECK: "ON"
         run: |
           set +e
           bash -x tools/codestyle/pre_commit.sh;EXCODE=$?

@@ -136,7 +136,7 @@ void BeamSearchDecoder<T>::ConvertSentenceVectorToDenseTensor(
                                sentence_vector_list[src_idx].size());
   }
 
-  phi::LegacyLoD lod;
+  LegacyLoD lod;
   lod.push_back(source_level_lod);
   lod.push_back(sentence_level_lod);
 
@@ -145,12 +145,12 @@ void BeamSearchDecoder<T>::ConvertSentenceVectorToDenseTensor(
   id_tensor->set_lod(lod);
   id_tensor->Resize({static_cast<int64_t>(id_data.size())});
   cpu_ctx.Alloc<int64_t>(id_tensor);
-  phi::TensorFromVector<int64_t>(id_data, cpu_ctx, id_tensor);
+  TensorFromVector<int64_t>(id_data, cpu_ctx, id_tensor);
 
   score_tensor->set_lod(lod);
   score_tensor->Resize({static_cast<int64_t>(score_data.size())});
   cpu_ctx.Alloc<int64_t>(score_tensor);
-  phi::TensorFromVector<T>(score_data, cpu_ctx, score_tensor);
+  TensorFromVector<T>(score_data, cpu_ctx, score_tensor);
 }
 
 template <typename T>

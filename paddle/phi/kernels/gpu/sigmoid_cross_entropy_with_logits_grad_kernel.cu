@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/sigmoid_cross_entropy_with_logits_grad_kernel.h"
 
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/gpu/sigmoid_cross_entropy_with_logits.h"
 #include "paddle/phi/kernels/scale_kernel.h"
@@ -138,6 +139,15 @@ void SigmoidCrossEntropyWithLogitsGradKernel(
     funcs::ReduceKernel<T, T, kps::AddFunctor, NonzeroFunctor<T>>(
         dev_ctx, counts_tensor, &norm_tensor, NonzeroFunctor<T>(), reduce_dim);
     T *norm = dev_ctx.template Alloc<T>(&norm_tensor);
+    PADDLE_ENFORCE_EQ(
+        phi::backends::gpu::IsCUDAGraphCapturing(),
+        false,
+        common::errors::InvalidArgument(
+            "SigmoidCrossEntropyWithLogitsGrad does not support CUDA Graph "
+            "capture: async D2H copy to a locally allocated CPU buffer "
+            "'norm_cpu_mem' will bake the destination address into the graph; "
+            "on replay the allocation is re-created at a different address, "
+            "causing a dangling-pointer write."));
     auto norm_cpu_mem = phi::memory_utils::Alloc(CPUPlace(), sizeof(T));
     T *norm_cpu_ptr = reinterpret_cast<T *>(norm_cpu_mem->ptr());
     memory_utils::Copy(CPUPlace(),

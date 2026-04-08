@@ -26,9 +26,9 @@ class MatrixReduceSumFunctor<T, GPUContext> {
                   DenseTensor* out) {
     // For example: in's dim = [5, 3, 2, 7, 3] ; out's dim = [3, 1, 7, 3]
     // out_reduce_dim should be [0, 2]
-    const std::vector<int> in_dims = common::vectorize<int>(in.dims());
+    const std::vector<int> in_dims = vectorize<int>(in.dims());
     auto in_size = in_dims.size();
-    const std::vector<int> out_dims = common::vectorize<int>(out->dims());
+    const std::vector<int> out_dims = vectorize<int>(out->dims());
     auto out_size = out_dims.size();
 
     std::vector<int> out_bst_dims(in_size);

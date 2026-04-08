@@ -35,28 +35,34 @@
 __inline__ __device__ int8_t atomicCAS(int8_t* address,
                                        int8_t compare,
                                        int8_t val) {
-  int32_t* base_address = (int32_t*)((char*)address - ((size_t)address & 3));
-  int32_t int_val = (int32_t)val << (((size_t)address & 3) * 8);
-  int32_t int_comp = (int32_t)compare << (((size_t)address & 3) * 8);
-  return (int8_t)atomicCAS(base_address, int_comp, int_val);
+  auto address_value = reinterpret_cast<uintptr_t>(address);
+  int32_t* base_address = reinterpret_cast<int32_t*>(
+      reinterpret_cast<char*>(address) - (address_value & 3));
+  int32_t int_val = static_cast<int32_t>(val) << ((address_value & 3) * 8);
+  int32_t int_comp = static_cast<int32_t>(compare) << ((address_value & 3) * 8);
+  return static_cast<int8_t>(atomicCAS(base_address, int_comp, int_val));
 }
 
-// TODO: can we do this more efficiently?
+// TODO(ShigureNyako): can we do this more efficiently?
 __inline__ __device__ int16_t atomicCAS(int16_t* address,
                                         int16_t compare,
                                         int16_t val) {
-  int32_t* base_address = (int32_t*)((char*)address - ((size_t)address & 2));
-  int32_t int_val = (int32_t)val << (((size_t)address & 2) * 8);
-  int32_t int_comp = (int32_t)compare << (((size_t)address & 2) * 8);
-  return (int16_t)atomicCAS(base_address, int_comp, int_val);
+  auto address_value = reinterpret_cast<uintptr_t>(address);
+  int32_t* base_address = reinterpret_cast<int32_t*>(
+      reinterpret_cast<char*>(address) - (address_value & 2));
+  int32_t int_val = static_cast<int32_t>(val) << ((address_value & 2) * 8);
+  int32_t int_comp = static_cast<int32_t>(compare) << ((address_value & 2) * 8);
+  return static_cast<int16_t>(atomicCAS(base_address, int_comp, int_val));
 }
 
 __inline__ __device__ int64_t atomicCAS(int64_t* address,
                                         int64_t compare,
                                         int64_t val) {
-  return (int64_t)atomicCAS((unsigned long long*)address,
-                            (unsigned long long)compare,
-                            (unsigned long long)val);
+  using AtomicCAS64Type = unsigned long long;  // NOLINT(runtime/int)
+  return static_cast<int64_t>(
+      atomicCAS(reinterpret_cast<AtomicCAS64Type*>(address),
+                static_cast<AtomicCAS64Type>(compare),
+                static_cast<AtomicCAS64Type>(val)));
 }
 
 namespace phi {
@@ -64,10 +70,10 @@ namespace sparse {
 
 template <typename dtype = int>
 __device__ uint64_t hash_func_64b(dtype* data, int n = 4) {
-  uint64_t hash = 14695981039346656037UL;
+  uint64_t hash = UINT64_C(14695981039346656037);
   for (int j = 0; j < n; j++) {
-    hash ^= (unsigned int)data[j];
-    hash *= 1099511628211UL;
+    hash ^= static_cast<unsigned int>(data[j]);
+    hash *= UINT64_C(1099511628211);
   }
   // hash = (hash >> 60) ^ (hash & 0xFFFFFFFFFFFFFFF);
   return hash;
@@ -75,7 +81,7 @@ __device__ uint64_t hash_func_64b(dtype* data, int n = 4) {
 
 template <typename key_type>
 __device__ int hash(key_type key, int _capacity) {
-  return (uint64_t)key % _capacity;
+  return static_cast<uint64_t>(key) % _capacity;
 }
 
 template <typename key_type, typename val_type>
@@ -109,13 +115,13 @@ class GPUHashTable {
         table_keys(table_keys->data<key_type>()),
         table_vals(table_vals->data<val_type>()),
         _divisor(divisor),
-        _width(width){};
+        _width(width) {}
   ~GPUHashTable() {
     if (free_pointers) {
       cudaFree(table_keys);
       cudaFree(table_vals);
     }
-  };
+  }
   void insert_coords(const GPUContext& dev_ctx, const DenseTensor& coords);
   void lookup_coords(const GPUContext& dev_ctx,
                      const DenseTensor& coords,

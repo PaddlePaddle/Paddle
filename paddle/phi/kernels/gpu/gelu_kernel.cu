@@ -26,6 +26,7 @@
 // clang-format on
 
 COMMON_DECLARE_bool(use_fast_math);
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 
 namespace phi {
 
@@ -70,7 +71,8 @@ void GeluKernel(const Context& dev_ctx,
   std::vector<DenseTensor*> outs = {out};
   if (approximate) {
 #if defined(__NVCC__) || defined(__HIPCC__)
-    if (std::is_same<T, dtype::float16>::value) {
+    if (std::is_same<T, dtype::float16>::value &&
+        !FLAGS_use_accuracy_compatible_kernel) {
       size_t n = x.numel();
       const auto* in_ptr = reinterpret_cast<const __half*>(x.data<T>());
       auto* out_ptr = reinterpret_cast<__half*>(out->data<T>());

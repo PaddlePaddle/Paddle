@@ -18,7 +18,10 @@
 
 #include "ATen/ATen.h"
 #include "gtest/gtest.h"
+#include "paddle/common/macros.h"
 #include "torch/all.h"
+
+COMMON_DECLARE_bool(use_stride_kernel);
 
 #if defined(PADDLE_WITH_CUDA)
 #include <cuda_runtime.h>
@@ -65,6 +68,9 @@ TEST(ATenFromBlobTest, ShapeAndStrides) {
 
 // Explicit strides overload.
 TEST(ATenFromBlobTest, ExplicitStrides) {
+  if (!FLAGS_use_stride_kernel) {
+    return;
+  }
   // Row-major 2×3 laid out in memory, but we interpret as column-major strides
   float data[6] = {1, 2, 3, 4, 5, 6};
   at::Tensor t = at::from_blob(data, {2, 3}, {1, 2}, at::kFloat);

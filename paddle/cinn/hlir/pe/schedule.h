@@ -35,6 +35,11 @@ class ScheduleParam {
     static ScheduleParam instance{cinn::common::NVGPUArch{}};
     return instance;
   }
+
+  static ScheduleParam &get_customdevice_instance() {
+    static ScheduleParam instance{cinn::common::CustomDeviceArch{}};
+    return instance;
+  }
   static ScheduleParam &get_hip_instance() {
     static ScheduleParam instance{cinn::common::HygonDCUArchHIP{}};
     return instance;

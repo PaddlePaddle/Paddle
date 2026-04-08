@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include <cublasXt.h>
 #include <cublas_v2.h>
 #include <cuda.h>
 #if CUDA_VERSION >= 12030 && defined(__linux__)

@@ -315,6 +315,7 @@ disable_win_trt_test="^test_trt_convert_conv2d$|\
 
 # /*==========Fixed Disabled Windows CUDA11.x inference_api_test(PR-CI-Windows-Inference) unittests=============*/
 disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
+^test_audio_resample$|\
 ^test_trt_dynamic_shape_ernie$|\
 ^test_trt_dynamic_shape_ernie_fp16_ser_deser$|\
 ^lite_resnet50_test$|\

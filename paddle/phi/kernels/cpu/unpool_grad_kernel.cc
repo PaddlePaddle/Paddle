@@ -86,7 +86,7 @@ void UnpoolGradKernel(const Context& dev_ctx,
     return;
   }
   const auto& indices_type = indices.dtype();
-  if (indices_type == phi::DataType::INT32) {
+  if (indices_type == DataType::INT32) {
     UnpoolGrad<T, int, Context>(dev_ctx, x, indices, out, out_grad, x_grad);
   } else {
     UnpoolGrad<T, int64_t, Context>(dev_ctx, x, indices, out, out_grad, x_grad);
@@ -159,7 +159,7 @@ void Unpool3dGradKernel(const Context& dev_ctx,
     return;
   }
   const auto& indices_type = indices.dtype();
-  if (indices_type == phi::DataType::INT32) {
+  if (indices_type == DataType::INT32) {
     Unpool3dGrad<T, int, Context>(dev_ctx, x, indices, out, out_grad, x_grad);
   } else {
     Unpool3dGrad<T, int64_t, Context>(

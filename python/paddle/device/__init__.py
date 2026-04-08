@@ -27,6 +27,7 @@ from typing_extensions import TypeAlias
 
 import paddle
 from paddle.amp import autocast as _autocast
+from paddle.amp.grad_scaler import GradScaler as _GradScaler
 from paddle.base import core, framework
 from paddle.base.framework import (
     is_compiled_with_cinn,
@@ -725,7 +726,11 @@ def get_default_device() -> paddle.device:
 
             >>> print(paddle.get_default_device())
     """
-    return paddle.device(get_device().replace("gpu", "cuda"))
+    dev = get_device()
+    # Only replace exact "gpu" device type, not substrings in custom device names
+    if dev.startswith("gpu"):
+        dev = "cuda" + dev[3:]
+    return paddle.device(dev)
 
 
 def set_default_device(device: PlaceLike | int) -> None:
@@ -1976,14 +1981,14 @@ class _AutocastMode:
                 >>> conv2d = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
                 >>> data = paddle.rand([10, 3, 32, 32])
 
-                >>> with paddle.device.amp.auto_cast():
+                >>> with paddle.device.amp.autocast():
                 ...     conv = conv2d(data)
                 ...     print(conv.dtype)
                 >>> # doctest: +SKIP("This has diff in xdoctest env")
                 paddle.float16
                 >>> # doctest: -SKIP
 
-                >>> with paddle.device.amp.auto_cast(enable=False):
+                >>> with paddle.device.amp.autocast(enabled=False):
                 ...     conv = conv2d(data)
                 ...     print(conv.dtype)
                 >>> # doctest: +SKIP("This has diff in xdoctest env")
@@ -1999,6 +2004,7 @@ class amp:
 
     autocast = staticmethod(_AutocastMode.autocast)
     autocast_mode = _AutocastMode()
+    GradScaler = _GradScaler
 
 
 class nvtx:
@@ -2136,21 +2142,25 @@ class Device(str):
 
         elif isinstance(type, str):
             t = type.lower()
-            if t not in cls._SUPPORTED_TYPES and ":" not in t:
-                raise ValueError(f"Unsupported device type: {t}")
-            if index is not None:
+            if ":" in t:
+                dev_type, idx = t.split(":")
+                dev_type = dev_type.lower()
+                if (
+                    dev_type not in cls._SUPPORTED_TYPES
+                    and dev_type not in core.get_all_custom_device_type()
+                ):
+                    raise ValueError(f"Unsupported device type: {dev_type}")
+                dev_index = int(idx)
+            elif t in cls._SUPPORTED_TYPES:
                 dev_type = t
-                dev_index = index if t != "cpu" else None
+                dev_index = (
+                    index if (index is not None and t != "cpu") else None
+                )
+            elif t in core.get_all_custom_device_type():
+                dev_type = t
+                dev_index = index
             else:
-                if ":" in t:
-                    dev_type, idx = t.split(":")
-                    dev_type = dev_type.lower()
-                    if dev_type not in cls._SUPPORTED_TYPES:
-                        raise ValueError(f"Unsupported device type: {dev_type}")
-                    dev_index = int(idx)
-                else:
-                    dev_type = t
-                    dev_index = None
+                raise ValueError(f"Unsupported device type: {t}")
 
         elif isinstance(type, int):
             dev_type = "cuda"
@@ -2185,6 +2195,8 @@ class Device(str):
             return core.CUDAPlace(self.index)
         elif self.type == "xpu":
             return core.XPUPlace(self.index)
+        elif self.type in core.get_all_custom_device_type():
+            return core.CustomPlace(self.type, self.index)
         else:
             raise ValueError(f"Unsupported device type: {self.type}")
 
@@ -2205,6 +2217,9 @@ class Device(str):
     def __exit__(self, exc_type, exc_val, exc_tb):
         previous_device = Device._DEFAULT_DEVICE_STACK.pop()
         paddle.set_device(previous_device)
+
+    def __getattr__(self, name: str):
+        return getattr(self._to_place(), name)
 
 
 class _DeviceModule(types.ModuleType):

@@ -20,6 +20,7 @@
 
 #include "glog/logging.h"
 
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -54,7 +55,7 @@ struct SlogDeterminantFunctor {
     std::vector<T> sign_vec;
     std::vector<T> log_vec;
     std::vector<T> output_vec;
-    phi::TensorToVector(input, dev_ctx, &input_vec);
+    TensorToVector(input, dev_ctx, &input_vec);
     for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
       auto begin_iter = input_vec.begin() + i * rank * rank;
       auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
@@ -78,7 +79,7 @@ struct SlogDeterminantFunctor {
     // merge sign_vec and log_vec as final output_vec
     output_vec.insert(output_vec.end(), sign_vec.begin(), sign_vec.end());
     output_vec.insert(output_vec.end(), log_vec.begin(), log_vec.end());
-    phi::TensorFromVector(output_vec, dev_ctx, output);
+    TensorFromVector(output_vec, dev_ctx, output);
   }
 };
 
@@ -147,11 +148,17 @@ struct SlogDeterminantFunctor<phi::dtype::complex<T>, Context> {
         dev_ctx.GetPlace(),
         total_bytes,
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+    size_t nbytes_ptrs_c1 = cpu_ptrs.size() * sizeof(phi::dtype::complex<T>*);
+    const void* stable_ptrs_c1 =
+        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+            reinterpret_cast<uint8_t*>(
+                const_cast<phi::dtype::complex<T>**>(cpu_ptrs.data())),
+            nbytes_ptrs_c1);
     memory_utils::Copy(dev_ctx.GetPlace(),
                        tmp_gpu_ptrs_data->ptr(),
                        CPUPlace(),
-                       static_cast<void*>(cpu_ptrs.data()),
-                       cpu_ptrs.size() * sizeof(phi::dtype::complex<T>*),
+                       stable_ptrs_c1,
+                       nbytes_ptrs_c1,
                        dev_ctx.stream());
 
     phi::dtype::complex<T>** gpu_mat_ptr =
@@ -178,7 +185,7 @@ struct SlogDeterminantFunctor<phi::dtype::complex<T>, Context> {
     std::vector<phi::dtype::complex<T>> sign_vec;
     std::vector<phi::dtype::complex<T>> log_vec;
     std::vector<phi::dtype::complex<T>> output_vec;
-    phi::TensorToVector(input, dev_ctx, &input_vec);
+    TensorToVector(input, dev_ctx, &input_vec);
     for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
       auto begin_iter = input_vec.begin() + i * rank * rank;
       auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
@@ -203,7 +210,7 @@ struct SlogDeterminantFunctor<phi::dtype::complex<T>, Context> {
     // merge sign_vec and log_vec as final output_vec
     output_vec.insert(output_vec.end(), sign_vec.begin(), sign_vec.end());
     output_vec.insert(output_vec.end(), log_vec.begin(), log_vec.end());
-    phi::TensorFromVector(output_vec, dev_ctx, output);
+    TensorFromVector(output_vec, dev_ctx, output);
 #endif
   }
 };
@@ -334,11 +341,16 @@ struct SlogDeterminantV2Functor {
         dev_ctx.GetPlace(),
         total_bytes,
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+    size_t nbytes_ptrs_v2 = cpu_ptrs.size() * sizeof(T*);
+    const void* stable_ptrs_v2 =
+        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+            reinterpret_cast<uint8_t*>(const_cast<T**>(cpu_ptrs.data())),
+            nbytes_ptrs_v2);
     memory_utils::Copy(dev_ctx.GetPlace(),
                        tmp_gpu_ptrs_data->ptr(),
                        CPUPlace(),
-                       static_cast<void*>(cpu_ptrs.data()),
-                       cpu_ptrs.size() * sizeof(T*),
+                       stable_ptrs_v2,
+                       nbytes_ptrs_v2,
                        dev_ctx.stream());
 
     T** gpu_mat_ptr = reinterpret_cast<T**>(tmp_gpu_ptrs_data->ptr());
@@ -362,7 +374,7 @@ struct SlogDeterminantV2Functor {
     std::vector<T> sign_vec;
     std::vector<T> log_vec;
     DDim out_dims = sign->dims();
-    phi::TensorToVector(input, dev_ctx, &input_vec);
+    TensorToVector(input, dev_ctx, &input_vec);
     for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
       auto begin_iter = input_vec.begin() + i * rank * rank;
       auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
@@ -383,8 +395,8 @@ struct SlogDeterminantV2Functor {
           : log_vec.push_back(std::log(std::abs(
                 det_val)));  // for computing log value of a negative value.
     }
-    phi::TensorFromVector(sign_vec, dev_ctx, sign);
-    phi::TensorFromVector(log_vec, dev_ctx, logdet);
+    TensorFromVector(sign_vec, dev_ctx, sign);
+    TensorFromVector(log_vec, dev_ctx, logdet);
     if (out_dims == make_ddim({})) {
       // TensorFromVector Converting inputTensor dimensions from () (scalar) to
       // (1,)
@@ -488,11 +500,17 @@ struct SlogDeterminantV2Functor<phi::dtype::complex<T>, Context> {
         dev_ctx.GetPlace(),
         total_bytes,
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+    size_t nbytes_ptrs_v2c = cpu_ptrs.size() * sizeof(phi::dtype::complex<T>*);
+    const void* stable_ptrs_v2c =
+        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+            reinterpret_cast<uint8_t*>(
+                const_cast<phi::dtype::complex<T>**>(cpu_ptrs.data())),
+            nbytes_ptrs_v2c);
     memory_utils::Copy(dev_ctx.GetPlace(),
                        tmp_gpu_ptrs_data->ptr(),
                        CPUPlace(),
-                       static_cast<void*>(cpu_ptrs.data()),
-                       cpu_ptrs.size() * sizeof(phi::dtype::complex<T>*),
+                       stable_ptrs_v2c,
+                       nbytes_ptrs_v2c,
                        dev_ctx.stream());
 
     phi::dtype::complex<T>** gpu_mat_ptr =
@@ -521,7 +539,7 @@ struct SlogDeterminantV2Functor<phi::dtype::complex<T>, Context> {
     std::vector<phi::dtype::complex<T>> sign_vec;
     std::vector<phi::dtype::complex<T>> log_vec;
     DDim out_dims = sign->dims();
-    phi::TensorToVector(input, dev_ctx, &input_vec);
+    TensorToVector(input, dev_ctx, &input_vec);
     for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
       auto begin_iter = input_vec.begin() + i * rank * rank;
       auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
@@ -542,8 +560,8 @@ struct SlogDeterminantV2Functor<phi::dtype::complex<T>, Context> {
           phi::sign(det_val, static_cast<std::complex<T>>(abs_det_val))));
       log_vec.push_back(std::log(abs_det_val));
     }
-    phi::TensorFromVector(sign_vec, dev_ctx, sign);
-    phi::TensorFromVector(log_vec, dev_ctx, logdet);
+    TensorFromVector(sign_vec, dev_ctx, sign);
+    TensorFromVector(log_vec, dev_ctx, logdet);
     if (out_dims == make_ddim({})) {
       // TensorFromVector Converting inputTensor dimensions from () (scalar) to
       // (1,)

@@ -40,7 +40,12 @@ __global__ void SoftLabelCrossEntropyGradientKernel(T* logit_grad,
     int idx_n = ids / d;
     int idx_remain = ids % remain;
     int idx_loss = idx_n * remain + idx_remain;
-    logit_grad[ids] = loss_grad[idx_loss] * (-labels[ids] / logit_grad[ids]);
+    using AccT = typename dtype::MPTypeTrait<T>::Type;
+    AccT loss_g = static_cast<AccT>(loss_grad[idx_loss]);
+    AccT label_v = static_cast<AccT>(labels[ids]);
+    AccT softmax_v = static_cast<AccT>(logit_grad[ids]);
+    AccT grad = loss_g * (-label_v / softmax_v);
+    logit_grad[ids] = static_cast<T>(grad);
   }
 }
 
@@ -57,7 +62,10 @@ __global__ void HardLabelCrossEntropyGradientKernel(T* logit_grad,
     int tmp = static_cast<int>(labels[index]);
     int idx = idx_n * d + tmp * remain + idx_remain;
     if (ignore_index != tmp) {
-      logit_grad[idx] = -static_cast<T>(1.) / logit_grad[idx];
+      using AccT = typename dtype::MPTypeTrait<T>::Type;
+      AccT softmax_v = static_cast<AccT>(logit_grad[idx]);
+      AccT grad = static_cast<AccT>(-1.0) / softmax_v;
+      logit_grad[idx] = static_cast<T>(grad);
     }
   }
 }
@@ -79,7 +87,10 @@ __global__ void ScaleCrossEntropyGradient(T* logit_grad,
     if (lbl == ignore_index || lbl != k) {
       logit_grad[index] = static_cast<T>(0.);
     } else {
-      logit_grad[index] *= loss_grad[idx_lbl];
+      using AccT = typename dtype::MPTypeTrait<T>::Type;
+      AccT grad = static_cast<AccT>(logit_grad[index]) *
+                  static_cast<AccT>(loss_grad[idx_lbl]);
+      logit_grad[index] = static_cast<T>(grad);
     }
   }
 }
@@ -98,7 +109,12 @@ __global__ void SoftCrossEntropyGradientKernel(T* logit_grad,
     int64_t idx_n = ids / d;
     int64_t idx_remain = ids % remain;
     int64_t idx_loss = idx_n * remain + idx_remain;
-    logit_grad[ids] = loss_grad[idx_loss] * (logit_grad[ids] - labels[ids]);
+    using AccT = typename dtype::MPTypeTrait<T>::Type;
+    AccT loss_g = static_cast<AccT>(loss_grad[idx_loss]);
+    AccT softmax_v = static_cast<AccT>(logit_grad[ids]);
+    AccT label_v = static_cast<AccT>(labels[ids]);
+    AccT grad = loss_g * (softmax_v - label_v);
+    logit_grad[ids] = static_cast<T>(grad);
   }
 }
 
@@ -127,9 +143,17 @@ __global__ void SoftmaxWithCrossEntropyGradHardLabel(T* logits_grad,
     if (lbl == ignore_index) {
       logits_grad[idx] = static_cast<T>(0.0);
     } else if (lbl == idx_dim) {
-      logits_grad[idx] = (softmax[idx] - static_cast<T>(1.0)) * loss_grad[ids];
+      using AccT = typename dtype::MPTypeTrait<T>::Type;
+      AccT softmax_v = static_cast<AccT>(softmax[idx]);
+      AccT loss_g = static_cast<AccT>(loss_grad[ids]);
+      AccT grad = (softmax_v - static_cast<AccT>(1.0)) * loss_g;
+      logits_grad[idx] = static_cast<T>(grad);
     } else {
-      logits_grad[idx] = softmax[idx] * loss_grad[ids];
+      using AccT = typename dtype::MPTypeTrait<T>::Type;
+      AccT softmax_v = static_cast<AccT>(softmax[idx]);
+      AccT loss_g = static_cast<AccT>(loss_grad[ids]);
+      AccT grad = softmax_v * loss_g;
+      logits_grad[idx] = static_cast<T>(grad);
     }
   }
 }

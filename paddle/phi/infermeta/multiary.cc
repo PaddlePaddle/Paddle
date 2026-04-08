@@ -30,6 +30,7 @@ limitations under the License. */
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/infermeta/binary.h"
 #include "paddle/phi/infermeta/nullary.h"
+#include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 
@@ -5741,6 +5742,34 @@ void WarpctcInferMeta(const MetaTensor& logits,
     max_sequence_length = logits_dims[0];
     num_sequences = logits_dims[1];
     sequence_width = logits_dims[2];
+
+    int64_t labels_batch_size = label.dims()[0];
+    int64_t logits_length_batch_size = logits_length.dims()[0];
+    int64_t labels_length_batch_size = labels_length.dims()[0];
+
+    PADDLE_ENFORCE_EQ(
+        labels_batch_size,
+        num_sequences,
+        common::errors::InvalidArgument(
+            "Expected label to have size %lld at dimension 0, but got size %d",
+            num_sequences,
+            labels_batch_size));
+
+    PADDLE_ENFORCE_EQ(
+        logits_length_batch_size,
+        num_sequences,
+        common::errors::InvalidArgument("Expected logits_length to have size "
+                                        "%lld at dimension 0, but got size %d",
+                                        num_sequences,
+                                        logits_length_batch_size));
+
+    PADDLE_ENFORCE_EQ(
+        labels_length_batch_size,
+        num_sequences,
+        common::errors::InvalidArgument("Expected labels_length to have size "
+                                        "%lld at dimension 0, but got size %d",
+                                        num_sequences,
+                                        labels_length_batch_size));
   } else {
     max_sequence_length = -1;
     num_sequences = -1;
@@ -6437,6 +6466,17 @@ void MultiheadMatmulInferMeta(const MetaTensor& input,
   out->set_dims(input.dims());
   out->set_dtype(input.dtype());
   out->share_lod(input);
+}
+
+void MaskedScatterInferMeta(const MetaTensor& x,
+                            const MetaTensor& mask,
+                            const MetaTensor& value,
+                            MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto mask_dims = mask.dims();
+  auto expanded_dims = funcs::BroadcastTwoDims(x_dims, mask_dims, -1);
+  out->set_dims(expanded_dims);
+  out->set_dtype(x.dtype());
 }
 
 void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,

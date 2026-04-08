@@ -92,7 +92,7 @@ void SetValueImpl(const Context& dev_ctx,
     it = value_shape.erase(it);
   }
   if (value_shape.empty()) value_shape.push_back(1);
-  value_tensor.Resize(phi::make_ddim(value_shape));
+  value_tensor.Resize(value_shape);
 
   auto expand_shape = vectorize<int64_t>(slice_dims_for_assign);
   for (size_t i = 0; i < expand_shape.size(); i++) {
@@ -112,9 +112,9 @@ void SetValueImpl(const Context& dev_ctx,
   auto out_e = EigenTensor<T, RANK>::From(*out);
   auto value_e = EigenTensor<T, RANK>::From(expand_tensor);
 
-  auto starts_indices = Eigen::DSizes<Eigen::DenseIndex, RANK>();
-  auto ends_indices = Eigen::DSizes<Eigen::DenseIndex, RANK>();
-  auto strides_indices = Eigen::DSizes<Eigen::DenseIndex, RANK>();
+  auto starts_indices = Eigen::DSizes<int64_t, RANK>();
+  auto ends_indices = Eigen::DSizes<int64_t, RANK>();
+  auto strides_indices = Eigen::DSizes<int64_t, RANK>();
 
   for (size_t i = 0; i < RANK; ++i) {
     starts_indices[i] = 0;
@@ -214,7 +214,7 @@ void SetValueKernel(const Context& dev_ctx,
   }
 
   DenseTensor value_tensor = Empty<T>(dev_ctx, shape);
-  phi::TensorFromVector(assign_values, dev_ctx, &value_tensor);
+  TensorFromVector(assign_values, dev_ctx, &value_tensor);
   value_tensor.Resize(make_ddim(shape));
 
   SetTensorValueKernel<T, Context>(dev_ctx,

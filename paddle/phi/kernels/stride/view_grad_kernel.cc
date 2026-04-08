@@ -33,8 +33,7 @@ void ViewShapeGradKernel(const Context& dev_ctx,
         "FLAGS_use_stride_kernel is closed. Strided kernel "
         "be called, something wrong has happened!"));
   }
-  ReshapeStridedKernel(
-      dev_ctx, out_grad, common::vectorize(input.dims()), input_grad);
+  ReshapeStridedKernel(dev_ctx, out_grad, vectorize(input.dims()), input_grad);
 }
 
 template <typename Context>

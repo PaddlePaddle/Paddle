@@ -281,6 +281,16 @@
     x : [input]
     y : [tensor]
 
+- op : erf
+  name : [paddle.erf, paddle.Tensor.erf]
+  args_alias :
+    use_default_mapping : True
+
+- op : erf_
+  name : [paddle.erf_, paddle.Tensor.erf_]
+  args_alias :
+    use_default_mapping : True
+
 - op : exp
   name : [paddle.exp, paddle.Tensor.exp]
   args_alias :
@@ -534,6 +544,11 @@
 
 - op : round
   name : [paddle.round, paddle.Tensor.round]
+  args_alias :
+    use_default_mapping : True
+
+- op : round_
+  name : [paddle.round_, paddle.Tensor.round_]
   args_alias :
     use_default_mapping : True
 

@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/check_numerics_kernel.h"
 
 #include "glog/logging.h"
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/memory_utils.h"
@@ -323,8 +324,11 @@ static char* GetGpuHintStringPtr(const GPUContext& dev_ctx,
                                                 hipMemcpyHostToDevice,
                                                 dev_ctx.stream()));
 #else
+      const char* stable_str =
+          phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+              const_cast<char*>(iter->first.c_str()), op_var.length() + 1);
       PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(gpu_str_ptr,
-                                                 iter->first.c_str(),
+                                                 stable_str,
                                                  op_var.length() + 1,
                                                  cudaMemcpyHostToDevice,
                                                  dev_ctx.stream()));

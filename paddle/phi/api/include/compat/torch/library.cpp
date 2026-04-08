@@ -117,6 +117,11 @@ FunctionResult ClassRegistry::call_method_with_args(
   for (size_t i = 0; i < args.size(); ++i) {
     full_args.add_arg(args.get_value(i));
   }
+  for (const auto& [name, value] : args.named_args()) {
+    torch::arg keyword(name);
+    keyword = value;
+    full_args.add_arg(std::move(keyword));
+  }
   return call_method_with_args(qualified_name, method_name, full_args);
 }
 
@@ -229,16 +234,30 @@ OperatorRegistry& OperatorRegistry::instance() {
 void OperatorRegistry::register_schema(const std::string& qualified_name,
                                        const std::string& schema) {
   auto& op = get_or_create_operator(qualified_name);
-  op.schema = schema;
+  op.schemaOrName_ = torch::jit::parseSchemaOrName(schema);
+  if (std::holds_alternative<c10::FunctionSchema>(op.schemaOrName_.value())) {
+    const auto& parsed_schema =
+        std::get<c10::FunctionSchema>(op.schemaOrName_.value());
+    for (auto& [dispatch_key, impl] : op.implementations) {
+      (void)dispatch_key;
+      impl.bind_schema(parsed_schema);
+    }
+  }
   VLOG(3) << "Registered schema: " << qualified_name << " -> " << schema;
 }
 
 void OperatorRegistry::register_implementation(
-    const std::string& qualified_name, DispatchKey key, CppFunction&& func) {
+    const std::string& qualified_name,
+    c10::DispatchKey key,
+    CppFunction&& func) {
   auto& op = get_or_create_operator(qualified_name);
+  if (op.schemaOrName_.has_value() &&
+      std::holds_alternative<c10::FunctionSchema>(op.schemaOrName_.value())) {
+    func.bind_schema(std::get<c10::FunctionSchema>(op.schemaOrName_.value()));
+  }
   op.implementations[key] = std::move(func);
   VLOG(3) << "Registered implementation: " << qualified_name << " for "
-          << dispatch_key_to_string(key);
+          << c10::toString(key);
 }
 
 OperatorRegistration* OperatorRegistry::find_operator(
@@ -252,12 +271,19 @@ void OperatorRegistry::print_all_operators() const {
   oss << "\n=== Registered Operators ===" << std::endl;
   for (const auto& [name, op] : operators_) {
     oss << "Operator: " << name << std::endl;
-    if (!op.schema.empty()) {
-      oss << "  Schema: " << op.schema << std::endl;
+    if (op.schemaOrName_.has_value()) {
+      const auto& schema_or_name = op.schemaOrName_.value();
+      oss << "  Schema: ";
+      if (std::holds_alternative<std::string>(schema_or_name)) {
+        oss << std::get<std::string>(schema_or_name);
+      } else {
+        oss << std::get<c10::FunctionSchema>(schema_or_name);
+      }
+      oss << std::endl;
     }
     oss << "  Implementations: ";
     for (const auto& [key, impl] : op.implementations) {
-      oss << dispatch_key_to_string(key) << " ";
+      oss << c10::toString(key) << " ";
     }
     oss << std::endl;
   }
@@ -268,7 +294,7 @@ void OperatorRegistry::print_all_operators() const {
 // Library
 Library::Library(Kind kind,
                  const std::string& ns,
-                 std::optional<DispatchKey> dispatch_key,
+                 std::optional<c10::DispatchKey> dispatch_key,
                  const char* file,
                  uint32_t line)
     : kind_(kind),
@@ -280,7 +306,7 @@ Library::Library(Kind kind,
   oss << "Created Library: kind=" << kind_to_string(kind)
       << ", namespace=" << ns;
   if (dispatch_key) {
-    oss << ", dispatch_key=" << dispatch_key_to_string(*dispatch_key);
+    oss << ", dispatch_key=" << c10::toString(*dispatch_key);
   }
   VLOG(3) << oss.str() << std::endl;
 }
@@ -309,7 +335,7 @@ void Library::print_info() const {
   std::ostringstream oss;
   oss << "Library Info: " << kind_to_string(kind_) << ", namespace=" << ns_;
   if (dispatch_key_) {
-    oss << ", dispatch_key=" << dispatch_key_to_string(*dispatch_key_);
+    oss << ", dispatch_key=" << c10::toString(*dispatch_key_);
   }
   std::cout << oss.str() << std::endl;
 }

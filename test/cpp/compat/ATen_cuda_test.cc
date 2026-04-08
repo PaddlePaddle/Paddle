@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
 #include <ATen/Functions.h>
 #include <ATen/core/TensorBody.h>
 #include <ATen/ops/tensor.h>
 #include <c10/core/Device.h>
 #include <c10/core/DeviceType.h>
 #include <c10/core/ScalarType.h>
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <c10/cuda/CUDAFunctions.h>
-#endif
 
 #include "ATen/ATen.h"
 #include "gtest/gtest.h"
@@ -99,3 +99,5 @@ TEST(TensorCudaTest, IsCudaAndIsCpuMutuallyExclusive) {
   ASSERT_TRUE(cuda_t.is_cuda());
   ASSERT_FALSE(cuda_t.is_cpu());
 }
+
+#endif

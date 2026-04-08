@@ -63,23 +63,23 @@ void XPUFlattenUniqueKernelImpl(const Context& dev_ctx,
                        unique_len_xpu,
                        sizeof(int64_t));
   }
-  out->Resize(make_ddim({unique_len_cpu}));
+  out->Resize({unique_len_cpu});
   auto* out_data = dev_ctx.template Alloc<T>(out);
   IndexT* indices_data = nullptr;
   if (return_index) {
-    indices->Resize(make_ddim({unique_len_cpu}));
+    indices->Resize({unique_len_cpu});
     indices_data = dev_ctx.template Alloc<IndexT>(indices);
   }
 
   IndexT* inverse_data = nullptr;
   if (return_inverse) {
-    index->Resize(make_ddim({x_len}));
+    index->Resize({x_len});
     inverse_data = dev_ctx.template Alloc<IndexT>(index);
   }
 
   IndexT* counts_data = nullptr;
   if (return_counts) {
-    counts->Resize(make_ddim({unique_len_cpu}));
+    counts->Resize({unique_len_cpu});
     counts_data = dev_ctx.template Alloc<IndexT>(counts);
   }
   if (x_len == 0) {

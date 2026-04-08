@@ -26,10 +26,10 @@ namespace phi {
 template <typename T>
 inline void bias_relu(const int n, const T* x, const T* bias, T* y) {
   if (bias) {
-    funcs::vec_add_bias<T, phi::backends::cpu::avx>(n, *bias, x, y);
-    funcs::vec_relu<T, phi::backends::cpu::avx>(n, y, y);
+    funcs::vec_add_bias<T, backends::cpu::avx>(n, *bias, x, y);
+    funcs::vec_relu<T, backends::cpu::avx>(n, y, y);
   } else {
-    funcs::vec_relu<T, phi::backends::cpu::avx>(n, x, y);
+    funcs::vec_relu<T, backends::cpu::avx>(n, x, y);
   }
 }
 
@@ -40,8 +40,8 @@ inline void vec_softmax(const int n, const T* x, T* y) {
   for (int i = 1; i < n; ++i) {
     scalar = scalar < x[i] ? x[i] : scalar;
   }
-  funcs::vec_add_bias<T, phi::backends::cpu::avx>(n, -scalar, x, y);  // sub
-  funcs::vec_exp<T>(n, y, y);                                         // exp
+  funcs::vec_add_bias<T, backends::cpu::avx>(n, -scalar, x, y);  // sub
+  funcs::vec_exp<T>(n, y, y);                                    // exp
   // sum
   scalar = T(0);
   for (int i = 0; i < n; ++i) {
@@ -115,13 +115,13 @@ void AttentionLSTMKernel(const Context& dev_ctx,
   auto& act_gate_str = gate_activation;
   auto& act_cell_str = cell_activation;
   auto& act_cand_str = candidate_activation;
-  if (phi::backends::cpu::MayIUse(phi::backends::cpu::avx)) {
-    funcs::VecActivations<T, phi::backends::cpu::avx> act_functor;
+  if (backends::cpu::MayIUse(backends::cpu::avx)) {
+    funcs::VecActivations<T, backends::cpu::avx> act_functor;
     act_gate = act_functor(act_gate_str);
     act_cell = act_functor(act_cell_str);
     act_cand = act_functor(act_cand_str);
   } else {
-    funcs::VecActivations<T, phi::backends::cpu::isa_any> act_functor;
+    funcs::VecActivations<T, backends::cpu::isa_any> act_functor;
     act_gate = act_functor(act_gate_str);
     act_cell = act_functor(act_cell_str);
     act_cand = act_functor(act_cand_str);

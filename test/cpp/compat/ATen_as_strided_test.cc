@@ -20,7 +20,10 @@
 
 #include "ATen/ATen.h"
 #include "gtest/gtest.h"
+#include "paddle/common/macros.h"
 #include "torch/all.h"
+
+COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace {
 
@@ -84,6 +87,7 @@ TEST_F(TensorAsStridedTest, AsStridedInplaceWithOffset) {
   t.as_strided_({2, 3}, {3, 1}, 1);
 
   ASSERT_EQ(t.sizes(), c10::IntArrayRef({2, 3}));
+  ASSERT_NE(t.data_ptr<float>(), original_data_ptr);
 
   float* data = t.data_ptr<float>();
   ASSERT_FLOAT_EQ(data[0], 1.0f);
@@ -134,6 +138,9 @@ TEST_F(TensorAsStridedTest, AsStridedScatterWithOffset) {
 }
 
 TEST_F(TensorAsStridedTest, AsStridedTranspose) {
+  if (!FLAGS_use_stride_kernel) {
+    return;
+  }
   // Transpose: shape {2,3} -> {3,2}, stride {1,2}
   // [[0,1,2],[3,4,5]] -> [[0,3],[1,4],[2,5]]
   at::Tensor t = at::arange(6, at::kFloat).view({2, 3});
@@ -146,6 +153,9 @@ TEST_F(TensorAsStridedTest, AsStridedTranspose) {
 }
 
 TEST_F(TensorAsStridedTest, AsStridedContiguous) {
+  if (!FLAGS_use_stride_kernel) {
+    return;
+  }
   at::Tensor t = at::arange(12, at::kFloat);
 
   // Contiguous: {2,6}, stride {6,1}
