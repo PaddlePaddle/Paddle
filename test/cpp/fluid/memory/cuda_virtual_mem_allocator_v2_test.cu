@@ -21,7 +21,7 @@ namespace memory {
 namespace allocation {
 
 TEST(CUDAVirtualMemAllocatorV2, HandleSizeAligned) {
-  CUDAVirtualMemAllocatorV2 allocator(phi::GPUPlace(), 1, PoolType::kTransient);
+  CUDAVirtualMemAllocatorV2 allocator(phi::GPUPlace(), 1, PoolType::kLarge);
 
   auto allocation = allocator.Allocate(1);
   ASSERT_NE(allocation, nullptr);
@@ -32,7 +32,7 @@ TEST(CUDAVirtualMemAllocatorV2, HandleSizeAligned) {
 
 TEST(CUDAVirtualMemAllocatorV2, CollectAllocationHandleLayout) {
   CUDAVirtualMemAllocatorV2 allocator(
-      phi::GPUPlace(), 2UL << 20, PoolType::kTransient);
+      phi::GPUPlace(), 2UL << 20, PoolType::kLarge);
 
   auto allocation = allocator.Allocate(allocator.handle_size() * 2);
   ASSERT_NE(allocation, nullptr);
@@ -52,7 +52,7 @@ TEST(CUDAVirtualMemAllocatorV2, CollectAllocationHandleLayout) {
 
 TEST(CUDAVirtualMemAllocatorV2, TailOffsetAdvancesWithAllocationSize) {
   CUDAVirtualMemAllocatorV2 allocator(
-      phi::GPUPlace(), 2UL << 20, PoolType::kTransient);
+      phi::GPUPlace(), 2UL << 20, PoolType::kLarge);
 
   auto first = allocator.Allocate(1);
   ASSERT_NE(first, nullptr);
@@ -82,7 +82,7 @@ TEST(CUDAVirtualMemAllocatorV2, FreeRemovesHandleRegistration) {
 
 TEST(CUDAVirtualMemAllocatorV2, UnmapAndMapHandleBackToSameVA) {
   CUDAVirtualMemAllocatorV2 allocator(
-      phi::GPUPlace(), 2UL << 20, PoolType::kTransient);
+      phi::GPUPlace(), 2UL << 20, PoolType::kLarge);
 
   auto allocation = allocator.Allocate(allocator.handle_size() * 2);
   ASSERT_NE(allocation, nullptr);

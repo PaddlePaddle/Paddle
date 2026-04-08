@@ -34,8 +34,6 @@ size_t GetPoolVAMultiplier(PoolType pool_type) {
       return 2;
     case PoolType::kLarge:
       return 3;
-    case PoolType::kTransient:
-      return 4;
   }
   return 1;
 }

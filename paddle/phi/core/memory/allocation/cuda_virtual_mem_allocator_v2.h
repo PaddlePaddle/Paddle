@@ -35,11 +35,11 @@ namespace allocation {
 // transform that list into block-level BlockPartV2 state.
 class CUDAVirtualMemAllocatorV2 : public Allocator {
  public:
-  // Standalone use defaults to the generic transient pool. Higher layers may
-  // also use explicit small/large pool types.
+  // Standalone use defaults to the large pool. Upper layers may also choose
+  // explicit small/large pool types.
   CUDAVirtualMemAllocatorV2(const GPUPlace& place,
                             size_t handle_size,
-                            PoolType pool = PoolType::kTransient);
+                            PoolType pool = PoolType::kLarge);
 
   bool IsAllocThreadSafe() const override;
 

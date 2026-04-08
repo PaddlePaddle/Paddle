@@ -25,7 +25,6 @@
 import numpy as np
 
 import paddle
-from paddle.base import framework
 from paddle.framework import core
 
 from .group_sharded_utils import Type, cvt_to_device, device_guard
@@ -211,9 +210,10 @@ class ParamStorage(InternalStorage):
                     paddle.CustomPlace(self._device, self.dev_id), True
                 )
             elif self._device == "gpu":
-                gpu_buffer = framework.create_fused_param_buffer(
-                    [self.buffer._numel()], self.buffer.dtype
-                )
+                with device_guard(self.dev_id, self._device):
+                    gpu_buffer = paddle.zeros(
+                        [self.buffer._numel()], dtype=self.buffer.dtype
+                    )
                 gpu_buffer.set_value(self.buffer)
                 self.buffer = gpu_buffer
             else:

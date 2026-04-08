@@ -21,7 +21,6 @@ import numpy as np
 import paddle
 import paddle.distributed as dist
 from paddle import nn
-from paddle.base import framework
 from paddle.distributed import collective, fleet
 from paddle.framework import core
 from paddle.nn import ClipGradByGlobalNorm
@@ -175,7 +174,7 @@ class FullyShardOptimizer:
             if (
                 param.dtype == Type.fp16.value or param.dtype == Type.bf16.value
             ) and not self._offload:
-                master_tensor = framework.cast_to_master_weight(param)
+                master_tensor = paddle.cast(param, Type.fp32.value)
                 master_tensor.name = param.name
                 self._optim._master_weights[param.name] = master_tensor
 

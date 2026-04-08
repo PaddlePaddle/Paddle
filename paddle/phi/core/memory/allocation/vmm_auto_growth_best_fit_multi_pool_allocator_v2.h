@@ -52,14 +52,6 @@ class VMMAutoGrowthBestFitMultiPoolAllocatorV2 : public Allocator {
   [[noreturn]] void ExportForIpc();
   [[noreturn]] void ImportFromIpc();
 
-  const std::shared_ptr<VMMAutoGrowthBestFitAllocatorV2>& stable_allocator()
-      const {
-    return stable_allocator_;
-  }
-  const std::shared_ptr<VMMAutoGrowthBestFitAllocatorV2>& longlived_allocator()
-      const {
-    return longlived_allocator_;
-  }
   const std::shared_ptr<VMMAutoGrowthBestFitAllocatorV2>&
   small_allocator() const {
     return small_allocator_;
@@ -67,10 +59,6 @@ class VMMAutoGrowthBestFitMultiPoolAllocatorV2 : public Allocator {
   const std::shared_ptr<VMMAutoGrowthBestFitAllocatorV2>&
   large_allocator() const {
     return large_allocator_;
-  }
-  const std::shared_ptr<VMMAutoGrowthBestFitAllocatorV2>& oversized_allocator()
-      const {
-    return oversized_allocator_;
   }
 
  protected:
@@ -87,11 +75,8 @@ class VMMAutoGrowthBestFitMultiPoolAllocatorV2 : public Allocator {
   // Requests are split into small/large pools by a fixed threshold.
   AllocationRoute RouteAllocation(size_t size) const;
 
-  std::shared_ptr<VMMAutoGrowthBestFitAllocatorV2> stable_allocator_;
-  std::shared_ptr<VMMAutoGrowthBestFitAllocatorV2> longlived_allocator_;
   std::shared_ptr<VMMAutoGrowthBestFitAllocatorV2> small_allocator_;
   std::shared_ptr<VMMAutoGrowthBestFitAllocatorV2> large_allocator_;
-  std::shared_ptr<VMMAutoGrowthBestFitAllocatorV2> oversized_allocator_;
   size_t small_allocation_threshold_;
   GPUPlace place_;
   std::unordered_map<void*, AllocationRoute> active_allocations_;

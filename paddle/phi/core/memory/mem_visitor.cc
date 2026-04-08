@@ -68,20 +68,11 @@ void AllocatorVisitor::Visit(VMMAutoGrowthBestFitAllocatorV2* allocator) {
 
 void AllocatorVisitor::Visit(
     VMMAutoGrowthBestFitMultiPoolAllocatorV2* allocator) {
-  if (allocator->stable_allocator()) {
-    allocator->stable_allocator()->Accept(this);
-  }
-  if (allocator->longlived_allocator()) {
-    allocator->longlived_allocator()->Accept(this);
-  }
   if (allocator->small_allocator()) {
     allocator->small_allocator()->Accept(this);
   }
   if (allocator->large_allocator()) {
     allocator->large_allocator()->Accept(this);
-  }
-  if (allocator->oversized_allocator()) {
-    allocator->oversized_allocator()->Accept(this);
   }
 }
 
@@ -182,20 +173,11 @@ void VMMV2PoolStatsVisitor::Visit(VMMAutoGrowthBestFitAllocatorV2* allocator) {
 
 void VMMV2PoolStatsVisitor::Visit(
     VMMAutoGrowthBestFitMultiPoolAllocatorV2* allocator) {
-  if (allocator->stable_allocator()) {
-    Visit(allocator->stable_allocator().get());
-  }
-  if (allocator->longlived_allocator()) {
-    Visit(allocator->longlived_allocator().get());
-  }
   if (allocator->small_allocator()) {
     Visit(allocator->small_allocator().get());
   }
   if (allocator->large_allocator()) {
     Visit(allocator->large_allocator().get());
-  }
-  if (allocator->oversized_allocator()) {
-    Visit(allocator->oversized_allocator().get());
   }
 }
 

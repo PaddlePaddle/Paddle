@@ -28,7 +28,6 @@ from collections import OrderedDict
 
 import paddle
 import paddle.distributed as dist
-from paddle.base import framework
 from paddle.distributed import ParallelMode, fleet
 from paddle.distributed.flex_checkpoint.dcp.sharded_weight import (
     ShardedStateDict,
@@ -337,7 +336,7 @@ class GroupShardedOptimizerStage2(Optimizer):
                     param.dtype == Type.fp16.value
                     or param.dtype == Type.bf16.value
                 ):
-                    master_tensor = framework.cast_to_master_weight(param)
+                    master_tensor = paddle.cast(param, Type.fp32.value)
                     master_tensor.name = param.name
                     self._optim._master_weights[param.name] = master_tensor
 
@@ -487,9 +486,8 @@ class GroupShardedOptimizerStage2(Optimizer):
             # then slice it to each ParamStorage.
             if pending_storages and self._default_device == "gpu":
                 total_numel = sum(ps.buffer._numel() for ps in pending_storages)
-                fused_gpu = framework.create_fused_param_buffer(
-                    [total_numel], dtype
-                )
+                with device_guard(self._rank, self._default_device):
+                    fused_gpu = paddle.zeros([total_numel], dtype=dtype)
                 offset = 0
                 for ps in pending_storages:
                     n = ps.buffer._numel()

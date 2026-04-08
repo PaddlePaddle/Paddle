@@ -18,7 +18,6 @@
 #include "paddle/phi/core/memory/allocation/vmm_auto_growth_best_fit_multi_pool_allocator_v2.h"
 #undef private
 
-#include "paddle/phi/core/memory/allocation/alloc_hint.h"
 #include "paddle/phi/core/memory/allocation/cuda_virtual_mem_allocator_v2.h"
 
 namespace paddle {
@@ -153,36 +152,6 @@ TEST(VMMAutoGrowthBestFitMultiPoolAllocatorV2,
   ASSERT_NE(exact, nullptr);
   EXPECT_EQ(allocator->active_allocations_[exact->ptr()].allocator,
             allocator->large_allocator_.get());
-}
-
-TEST(VMMAutoGrowthBestFitMultiPoolAllocatorV2,
-     LifecycleHintsDoNotOverrideSizeRouteForSmallAllocations) {
-  auto allocator = CreateAllocator();
-
-  SetCurrentPoolHint(PoolHint::kStable);
-  auto allocation = allocator->Allocate(256UL);
-  ASSERT_NE(allocation, nullptr);
-
-  auto found = allocator->active_allocations_.find(allocation->ptr());
-  ASSERT_NE(found, allocator->active_allocations_.end());
-  EXPECT_EQ(found->second.pool_type, PoolType::kSmall);
-  EXPECT_EQ(found->second.allocator, allocator->small_allocator_.get());
-  SetCurrentPoolHint(PoolHint::kNone);
-}
-
-TEST(VMMAutoGrowthBestFitMultiPoolAllocatorV2,
-     LifecycleHintsDoNotOverrideSizeRouteForLargeAllocations) {
-  auto allocator = CreateAllocator();
-
-  SetCurrentPoolHint(PoolHint::kLongLived);
-  auto allocation = allocator->Allocate(8UL << 20);
-  ASSERT_NE(allocation, nullptr);
-
-  auto found = allocator->active_allocations_.find(allocation->ptr());
-  ASSERT_NE(found, allocator->active_allocations_.end());
-  EXPECT_EQ(found->second.pool_type, PoolType::kLarge);
-  EXPECT_EQ(found->second.allocator, allocator->large_allocator_.get());
-  SetCurrentPoolHint(PoolHint::kNone);
 }
 
 }  // namespace allocation

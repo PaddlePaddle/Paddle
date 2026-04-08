@@ -165,7 +165,7 @@ class Optimizer:
        Base class for optimizer.
 
     Examples:
-        .. code-block:: pycon
+        .. code-block:: python
 
             >>> # Take the subclass adam as an example
             >>> import paddle
@@ -406,7 +406,7 @@ class Optimizer:
             dict[str,Tensor], dict contains all the Tensor used by optimizer
 
         Examples:
-            .. code-block:: pycon
+            .. code-block:: python
 
                 >>> import paddle
                 >>> emb = paddle.nn.Embedding(10, 10)
@@ -453,7 +453,7 @@ class Optimizer:
             None
 
         Examples:
-            .. code-block:: pycon
+            .. code-block:: python
 
                 >>> import paddle
 
@@ -463,14 +463,10 @@ class Optimizer:
                 >>> paddle.save(layer_state_dict, "emb.pdparams")
 
                 >>> scheduler = paddle.optimizer.lr.NoamDecay(
-                ...     d_model=100,
-                ...     warmup_steps=100,
-                ...     verbose=True,
-                ... )
+                ...     d_model=100, warmup_steps=100, verbose=True)
                 >>> adam = paddle.optimizer.Adam(
                 ...     learning_rate=scheduler,
-                ...     parameters=emb.parameters(),
-                ... )
+                ...     parameters=emb.parameters())
                 >>> opt_state_dict = adam.state_dict()
                 >>> paddle.save(opt_state_dict, "adam.pdopt")
 
@@ -667,7 +663,7 @@ class Optimizer:
             None
 
         Examples:
-            .. code-block:: pycon
+            .. code-block:: python
 
                 >>> import paddle
                 >>> linear = paddle.nn.Linear(10, 10)
@@ -735,7 +731,7 @@ class Optimizer:
             None
 
         Examples:
-            .. code-block:: pycon
+            .. code-block:: python
 
                 >>> import paddle
                 >>> linear = paddle.nn.Linear(10, 10)
@@ -743,11 +739,7 @@ class Optimizer:
                 >>> adam = paddle.optimizer.Adam(0.1, parameters=linear.parameters())
 
                 >>> # set learning rate manually by class LRScheduler
-                >>> scheduler = paddle.optimizer.lr.MultiStepDecay(
-                ...     learning_rate=0.5,
-                ...     milestones=[2, 4, 6],
-                ...     gamma=0.8,
-                ... )
+                >>> scheduler = paddle.optimizer.lr.MultiStepDecay(learning_rate=0.5, milestones=[2,4,6], gamma=0.8)
                 >>> adam.set_lr_scheduler(scheduler)
                 >>> lr = adam.get_lr()
                 >>> print("current lr is {}".format(lr))
@@ -779,7 +771,7 @@ class Optimizer:
             float, The current learning rate of optimizer.
 
         Examples:
-            .. code-block:: pycon
+            .. code-block:: python
 
                 >>> # train on default dynamic graph mode
                 >>> import paddle
@@ -787,12 +779,12 @@ class Optimizer:
                 >>> emb = paddle.nn.Embedding(10, 3)
 
                 >>> ## example1: LRScheduler is not used, return the same value is all the same
-                >>> adam = paddle.optimizer.Adam(0.01, parameters=emb.parameters())
+                >>> adam = paddle.optimizer.Adam(0.01, parameters = emb.parameters())
                 >>> for batch in range(10):
                 ...     input = paddle.randint(low=0, high=5, shape=[5])
                 ...     out = emb(input)
                 ...     out.backward()
-                ...     print("Learning rate of step{}: {}".format(batch, adam.get_lr()))  # 0.01
+                ...     print("Learning rate of step{}: {}".format(batch, adam.get_lr())) # 0.01
                 ...     adam.step()
                 Learning rate of step0: 0.01
                 Learning rate of step1: 0.01
@@ -807,12 +799,12 @@ class Optimizer:
 
                 >>> ## example2: StepDecay is used, return the scheduled learning rate
                 >>> scheduler = paddle.optimizer.lr.StepDecay(learning_rate=0.5, step_size=2, gamma=0.1)
-                >>> adam = paddle.optimizer.Adam(scheduler, parameters=emb.parameters())
+                >>> adam = paddle.optimizer.Adam(scheduler, parameters = emb.parameters())
                 >>> for batch in range(10):
                 ...     input = paddle.randint(low=0, high=5, shape=[5])
                 ...     out = emb(input)
                 ...     out.backward()
-                ...     print("Learning rate of step{}: {}".format(batch, adam.get_lr()))  # 0.5->0.05...
+                ...     print("Learning rate of step{}: {}".format(batch, adam.get_lr())) # 0.5->0.05...
                 ...     adam.step()
                 ...     scheduler.step()
                 Learning rate of step0: 0.5
@@ -841,7 +833,7 @@ class Optimizer:
                 >>> exe = paddle.static.Executor()
                 >>> exe.run(start_prog)
                 >>> for batch in range(10):
-                ...     print("Learning rate of step{}: {}".format(batch, adam.get_lr()))  # 0.5->0.05->0.005...
+                ...     print("Learning rate of step{}: {}".format(batch, adam.get_lr())) # 0.5->0.05->0.005...
                 ...     out = exe.run(main_prog, feed={'x': np.random.randn(3, 10).astype('float32')})
                 ...     scheduler.step()
                 Learning rate of step0: 0.5
@@ -905,73 +897,71 @@ class Optimizer:
 
     def _create_master_weight(self, param):
         if param.name in self._master_weights:
-            return self._master_weights[param.name]
-        return self._do_create_master_weight(param)
-
-    def _do_create_master_weight(self, param):
-        var_name = self._gen_master_weight_var_name(param)
-        if in_pir_mode():
-            startup_program = paddle.static.default_startup_program()
-            main_program = paddle.static.default_main_program()
-            with paddle.static.program_guard(startup_program):
-
-                def get_param_from_startup(startup, name):
-                    for op in startup.global_block().ops:
-                        if (
-                            op.name() == 'builtin.set_parameter'
-                            and name == op.attrs()['parameter_name']
-                        ):
-                            return op.operand(0).source()
-                    return None
-
-                startup_param = get_param_from_startup(
-                    startup_program, param.name
-                )
-                startup_var = paddle.cast(startup_param, 'float32')
-                startup_var.persistable = True
-                paddle._pir_ops.set_persistable_value(startup_var, var_name)
-            with paddle.static.program_guard(main_program):
-                paddle.pir.reset_insertion_point_to_start()
-                var = paddle.static.data(
-                    var_name,
-                    startup_var.shape,
-                    startup_var.dtype,
-                    core.Place(),
-                )
-                if startup_var.is_dist():
-                    var.set_type(startup_var.type())
-                    op_dist_attr = (
-                        paddle.base.libpaddle.pir.create_op_dist_attribute(
-                            startup_var.dist_attr().process_mesh,
-                            [],
-                            [startup_var.dist_attr()],
-                        )
-                    )
-                    var.get_defining_op().dist_attr = op_dist_attr
-                var.persistable = True
-        elif framework.in_dygraph_mode():
-            var = paddle.cast(param, 'float32')
-            var.name = var_name
+            var = self._master_weights[param.name]
         else:
-            assert isinstance(self.helper, LayerHelper)
-            var = paddle.static.create_global_var(
-                name=var_name,
-                shape=param.shape,
-                value=0,
-                dtype='float32',
-                persistable=True,
-            )
-            block = self.helper.startup_program.global_block()
-            block.append_op(
-                type="cast",
-                inputs={"X": [param]},
-                outputs={"Out": [var]},
-                attrs={
-                    "in_dtype": param.dtype,
-                    "out_dtype": core.VarDesc.VarType.FP32,
-                },
-            )
-        self._master_weights[param.name] = var
+            var_name = self._gen_master_weight_var_name(param)
+            if in_pir_mode():
+                startup_program = paddle.static.default_startup_program()
+                main_program = paddle.static.default_main_program()
+                with paddle.static.program_guard(startup_program):
+
+                    def get_param_from_startup(startup, name):
+                        for op in startup.global_block().ops:
+                            if (
+                                op.name() == 'builtin.set_parameter'
+                                and name == op.attrs()['parameter_name']
+                            ):
+                                return op.operand(0).source()
+                        return None
+
+                    startup_param = get_param_from_startup(
+                        startup_program, param.name
+                    )
+                    startup_var = paddle.cast(startup_param, 'float32')
+                    startup_var.persistable = True
+                    paddle._pir_ops.set_persistable_value(startup_var, var_name)
+                with paddle.static.program_guard(main_program):
+                    paddle.pir.reset_insertion_point_to_start()
+                    var = paddle.static.data(
+                        var_name,
+                        startup_var.shape,
+                        startup_var.dtype,
+                        core.Place(),
+                    )
+                    if startup_var.is_dist():
+                        var.set_type(startup_var.type())
+                        op_dist_attr = (
+                            paddle.base.libpaddle.pir.create_op_dist_attribute(
+                                startup_var.dist_attr().process_mesh,
+                                [],
+                                [startup_var.dist_attr()],
+                            )
+                        )
+                        var.get_defining_op().dist_attr = op_dist_attr
+                    var.persistable = True
+            elif framework.in_dygraph_mode():
+                var = paddle.cast(param, 'float32')
+                var.name = var_name
+            else:
+                assert isinstance(self.helper, LayerHelper)
+                var = paddle.static.create_global_var(
+                    name=var_name,
+                    shape=param.shape,
+                    value=0,
+                    dtype='float32',
+                    persistable=True,
+                )
+                block = self.helper.startup_program.global_block()
+                block.append_op(
+                    type="cast",
+                    inputs={"X": [param]},
+                    outputs={"Out": [var]},
+                    attrs={
+                        "in_dtype": param.dtype,
+                        "out_dtype": core.VarDesc.VarType.FP32,
+                    },
+                )
+            self._master_weights[param.name] = var
         return var
 
     def _gen_master_weight_var_name(self, param):
@@ -1057,9 +1047,9 @@ class Optimizer:
             raise Exception(
                 f"Accumulator {name} already exists for parameter {param.name}"
             )
-
-        # once master weights are created, accumulators must be created at the same time
-        self.need_refuse()
+        else:
+            # once master weights are created, accumulators must be created at the same time
+            self.need_refuse()
         if shape is None:
             shape = param.shape
 
@@ -1070,14 +1060,6 @@ class Optimizer:
         if device is None:
             device = self._get_device_for_param(param.name)
 
-        var = self._do_create_accumulator(
-            name, param, var_name, dtype, fill_value, shape, device
-        )
-        return var
-
-    def _do_create_accumulator(
-        self, name, param, var_name, dtype, fill_value, shape, device
-    ):
         if in_pir_mode():
             if 'beta' not in var_name:
                 var = paddle.pir.core.create_persistable_value(
@@ -1549,17 +1531,15 @@ class Optimizer:
                 grad is the gradient value corresponding to the parameter.
 
         Examples:
-            .. code-block:: pycon
+            .. code-block:: python
 
                 >>> import paddle
                 >>> x = paddle.arange(26, dtype="float32").reshape([2, 13])
 
                 >>> linear = paddle.nn.Linear(13, 5)
                 >>> # This can be any optimizer supported by dygraph.
-                >>> adam = paddle.optimizer.Adam(
-                ...     learning_rate=0.01,
-                ...     parameters=linear.parameters(),
-                ... )
+                >>> adam = paddle.optimizer.Adam(learning_rate = 0.01,
+                ...                             parameters = linear.parameters())
                 >>> out = linear(x)
                 >>> out.backward()
                 >>> adam.step()
@@ -1642,7 +1622,7 @@ class Optimizer:
             list: A list of operators appended to the current program.
 
         Examples:
-            .. code-block:: pycon
+            .. code-block:: python
 
                 >>> import paddle
 
@@ -1650,10 +1630,8 @@ class Optimizer:
                 >>> linear = paddle.nn.Linear(10, 10)
                 >>> out = linear(inp)
                 >>> loss = paddle.mean(out)
-                >>> optimizer = paddle.optimizer.Adam(
-                ...     learning_rate=0.1,
-                ...     parameters=linear.parameters(),
-                ... )
+                >>> optimizer = paddle.optimizer.Adam(learning_rate=0.1,
+                ...         parameters=linear.parameters())
                 >>> params_grads = optimizer.backward(loss)
                 >>> optimizer.apply_gradients(params_grads)
 
@@ -1704,29 +1682,7 @@ class Optimizer:
                 paddle.static.default_startup_program(),
             ):
                 auto_dp = paddle.distributed.auto_parallel.auto_dp_utils.in_auto_dp_mode()
-                from paddle.distributed.auto_parallel.fully_shard_fusion import (
-                    get_fsdp_context,
-                )
-
-                fsdp_context = get_fsdp_context()
-                if fsdp_context is not None:
-                    fsdp_context.comm_sync_and_reset_status()
-                    new_params_grads = []
-                    for group in fsdp_context.buffer_manager.buffer_groups:
-                        if not group.params_buffer.data_buffer.stop_gradient:
-                            new_params_grads.append(
-                                (
-                                    group.params_buffer.data_buffer,
-                                    group.grads_buffer.data_buffer,
-                                )
-                            )
-                    params_grads = new_params_grads
-                    if self._grad_clip is not None:
-                        self._grad_clip.should_comm_on_shard_dim = True
-                        self._grad_clip.fsdp_group = (
-                            fsdp_context.buffer_manager._fsdp_group
-                        )
-                elif auto_dp:
+                if auto_dp:
                     paddle.distributed.auto_parallel.auto_dp_utils._convert_fake_replicate_grad_to_partial(
                         params_grads
                     )
@@ -1916,17 +1872,15 @@ class Optimizer:
             None
 
         Examples:
-            .. code-block:: pycon
+            .. code-block:: python
 
                 >>> import paddle
 
                 >>> a = paddle.arange(26, dtype="float32").reshape([2, 13])
                 >>> linear = paddle.nn.Linear(13, 5)
                 >>> # This can be any optimizer supported by dygraph.
-                >>> adam = paddle.optimizer.Adam(
-                ...     learning_rate=0.01,
-                ...     parameters=linear.parameters(),
-                ... )
+                >>> adam = paddle.optimizer.Adam(learning_rate = 0.01,
+                ...                             parameters = linear.parameters())
                 >>> out = linear(a)
                 >>> out.backward()
                 >>> adam.step()
@@ -1984,7 +1938,7 @@ class Optimizer:
                 ``fetch_list`` before run, see details in ``Executor``.
 
         Examples:
-            .. code-block:: pycon
+            .. code-block:: python
 
                 >>> import paddle
                 >>> linear = paddle.nn.Linear(10, 10)
@@ -1995,11 +1949,9 @@ class Optimizer:
                 >>> beta1 = paddle.to_tensor([0.9], dtype="float32")
                 >>> beta2 = paddle.to_tensor([0.99], dtype="float32")
 
-                >>> adam = paddle.optimizer.Adam(
-                ...     learning_rate=0.1,
-                ...     parameters=linear.parameters(),
-                ...     weight_decay=0.01,
-                ... )
+                >>> adam = paddle.optimizer.Adam(learning_rate=0.1,
+                ...         parameters=linear.parameters(),
+                ...         weight_decay=0.01)
                 >>> loss.backward()
                 >>> adam.minimize(loss)
                 >>> adam.clear_grad()
@@ -2055,17 +2007,15 @@ class Optimizer:
             None
 
         Examples:
-            .. code-block:: pycon
+            .. code-block:: python
 
                 >>> import paddle
 
                 >>> a = paddle.arange(26, dtype="float32").reshape([2, 13])
                 >>> linear = paddle.nn.Linear(13, 5)
                 >>> # This can be any optimizer supported by dygraph.
-                >>> adam = paddle.optimizer.Adam(
-                ...     learning_rate=0.01,
-                ...     parameters=linear.parameters(),
-                ... )
+                >>> adam = paddle.optimizer.Adam(learning_rate = 0.01,
+                ...                         parameters = linear.parameters())
                 >>> out = linear(a)
                 >>> out.backward()
                 >>> adam.step()

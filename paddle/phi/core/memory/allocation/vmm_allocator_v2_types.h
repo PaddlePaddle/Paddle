@@ -39,7 +39,6 @@ namespace allocation {
 enum class PoolType : uint8_t {
   kSmall = 0,
   kLarge = 1,
-  kTransient = 2,
 };
 
 // Fixed-size handle metadata returned by the bottom VMM provider. Upper layers

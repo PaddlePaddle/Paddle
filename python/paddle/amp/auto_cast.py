@@ -35,7 +35,6 @@ from paddle.base.framework import (
     dygraph_only,
     in_dynamic_or_pir_mode,
     in_pir_mode,
-    vmm_pool_hint_guard,
 )
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.static.amp.decorator import OptimizerWithMixedPrecision
@@ -417,9 +416,7 @@ def amp_initialize(
                 )
             else:
                 layer._to_impl(
-                    dtype=dtype,
-                    include_sublayers=False,
-                    floating_only=True,
+                    dtype=dtype, include_sublayers=False, floating_only=True
                 )
     return models
 
