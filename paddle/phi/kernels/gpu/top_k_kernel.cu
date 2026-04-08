@@ -74,7 +74,7 @@ void TopkKernel(const Context& dev_ctx,
 #ifdef PADDLE_WITH_CUDA
   if (k > 1) {
     TopkKernelCuda<T, Context>(
-        dev_ctx, x, k, axis, largest, sorted, out, indices);
+        dev_ctx, x, k_scalar, axis, largest, sorted, out, indices);
     return;
   }
 #endif
