@@ -1381,15 +1381,15 @@ class TestLayerAndTensorToAPI(unittest.TestCase):
     # ---- blocking / non_blocking conflict ----
 
     def test_blocking_non_blocking_conflict_raises(self):
-        """Setting both blocking and non_blocking raises ValueError."""
+        """Setting both blocking and non_blocking raises TypeError."""
         linear = paddle.nn.Linear(2, 2)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             linear.to(dtype='float64', blocking=True, non_blocking=False)
 
     def test_tensor_blocking_non_blocking_conflict_raises(self):
-        """Tensor: setting both blocking and non_blocking raises ValueError."""
+        """Tensor: setting both blocking and non_blocking raises TypeError."""
         t = paddle.to_tensor([1.0])
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             t.to(dtype='float64', blocking=True, non_blocking=False)
 
     # ---- Error handling ----
@@ -1615,15 +1615,15 @@ class TestLayerAndTensorToAPI(unittest.TestCase):
         self.assertEqual(out.dtype, paddle.float64)
 
     def test_copy_invalid_type_layer(self):
-        """Layer.to(dtype, copy='yes') raises ValueError for non-bool."""
+        """Layer.to(dtype, copy='yes') raises TypeError for non-bool."""
         linear = paddle.nn.Linear(2, 2)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             linear.to('float64', copy='yes')
 
     def test_copy_invalid_type_tensor(self):
-        """Tensor.to(dtype, copy='yes') raises ValueError for non-bool."""
+        """Tensor.to(dtype, copy='yes') raises TypeError for non-bool."""
         t = paddle.to_tensor([1.0, 2.0])
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             t.to('float64', copy='yes')
 
 

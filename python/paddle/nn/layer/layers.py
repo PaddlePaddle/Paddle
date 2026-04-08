@@ -254,26 +254,24 @@ def _parse_to_args(*args, **kwargs):
 
     # Validate and resolve blocking / non_blocking
     if blocking is not None and non_blocking is not None:
-        raise ValueError(
+        raise TypeError(
             "to() received both 'blocking' and 'non_blocking' arguments. "
             "These are mutually exclusive, please use only one of them."
         )
     if non_blocking is not None:
         if not isinstance(non_blocking, bool):
-            raise ValueError("non_blocking value error, must be True or False")
+            raise TypeError("non_blocking value error, must be True or False")
         blocking = not non_blocking
     elif blocking is not None:
         if not isinstance(blocking, bool):
-            raise ValueError(
-                "blocking value error, must be True, False or None"
-            )
+            raise TypeError("blocking value error, must be True, False or None")
     else:
         blocking = True
 
     if copy is None:
         copy = False
     elif not isinstance(copy, bool):
-        raise ValueError("copy value error, must be True or False")
+        raise TypeError("copy value error, must be True or False")
 
     return device, dtype, blocking, copy
 
