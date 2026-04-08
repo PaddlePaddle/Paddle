@@ -256,3 +256,19 @@ TEST(TensorResizeTest, ResizeChain) {
   ASSERT_EQ(t.sizes()[0], 3);
   ASSERT_EQ(t.sizes()[1], 4);
 }
+
+// Test that resizing a slice with shared storage copies data from the start of
+// the storage, not from the slice's offset, to preserve the original slice data
+// and storage semantics
+TEST(TensorResizeTest, ResizeSliceSharedStorageCopiesFromStorageStart) {
+  // ta = [1, 2, 3, 4], tb = [2, 3, 4]
+  // tb shares storage with ta.
+  at::Tensor ta = at::tensor({1, 2, 3, 4}, at::kInt);
+  at::Tensor tb = ta.slice(0, 1, 4);
+
+  tb.resize_(4);
+
+  // After resize, tb[0] and ta[1] must point to the exact same address.
+  ASSERT_EQ(tb.data_ptr<int>(), ta.data_ptr<int>() + 1);
+  // Data should be copied from storage[0], so ta[0] is unchanged.
+}
