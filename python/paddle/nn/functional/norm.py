@@ -479,7 +479,7 @@ def rms_norm(
             If it is a single integer, this module will normalize over the last dimension
             which is expected to be of that specific size.
         weight(Tensor, optional): The weight tensor of rms_norm. Default: None.
-        eps(float|None, optional): The small value added to the variance to prevent division by zero.
+        eps(float, optional): The small value added to the variance to prevent division by zero.
             If None, uses machine epsilon for the compute dtype: ``float64`` inputs use
             ``np.finfo(np.float64).eps`` (double epsilon), all other dtypes use
             ``np.finfo(np.float32).eps`` (float epsilon). Default: None.
