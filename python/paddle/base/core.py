@@ -332,14 +332,6 @@ try:
         _xpu_set_current_stream,
     )
 
-    try:
-        from .libpaddle import (  # noqa: F401
-            _get_vmm_pool_hint,
-            _set_vmm_pool_hint,
-        )
-    except ImportError:
-        pass
-
     # isort: off
 
     # custom device
