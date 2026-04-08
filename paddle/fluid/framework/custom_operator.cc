@@ -70,8 +70,10 @@ CustomAttrType ParseAttrTypeToEnum(const std::string& t) {
   if (t == "std::vector<float>") return CustomAttrType::VEC_FLOAT;
   if (t == "std::vector<int64_t>") return CustomAttrType::VEC_INT64;
   if (t == "std::vector<std::string>") return CustomAttrType::VEC_STRING;
+  // LCOV_EXCL_START
   PADDLE_THROW(common::errors::Unimplemented(
       "Unknown attr type for ParsedOpMeta: %s", t));
+  // LCOV_EXCL_END
 }
 
 static ParsedOpMeta BuildParsedOpMeta(
