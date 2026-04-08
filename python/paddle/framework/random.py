@@ -18,9 +18,6 @@ from typing import TYPE_CHECKING
 
 import paddle
 from paddle.base import core
-
-# Note: paddle.random.get_rng_state is an alias for paddle.get_rng_state
-# however due to circular import issues, implementation has been moved to paddle.random
 from paddle.random import get_rng_state  # noqa: F401
 
 if TYPE_CHECKING:

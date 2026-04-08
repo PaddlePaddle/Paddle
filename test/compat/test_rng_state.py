@@ -72,9 +72,9 @@ class TestRngState(unittest.TestCase):
             paddle.set_rng_state(original_state)
 
     def test_api_compatibility(self):
-        paddleObj = paddle.get_rng_state
-        aliasObj = paddle.random.get_rng_state
-        self.assertTrue(type(paddleObj) == type(aliasObj))
+        paddle_obj = paddle.get_rng_state
+        alias_obj = paddle.random.get_rng_state
+        self.assertTrue(paddle_obj is alias_obj)
 
 
 if __name__ == "__main__":
