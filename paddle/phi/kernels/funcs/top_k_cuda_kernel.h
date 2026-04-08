@@ -1633,14 +1633,19 @@ void sortKeyValueInplace(const Context& dev_ctx,
   //   1. sliceSize <= 32:  Bitonic Sort (unstable, fast, no extra memory)
   //   2. sliceSize <= 128: WarpMergeSort (CUB, one slice per warp)
   //   3. sliceSize <= 4096: BlockRadixSort (CUB, one slice per block)
-  // Use collapseKeyDim-based dim dispatch for bitonic sort and warp merge sort.
-  // For radix sort, the Dim parameter also follows collapseKeyDim.
+  // Dispatch on the actual number of collapsed dims (keyInfo.dims),
+  // NOT on collapseKeyDim (the remapped excluded-dim index).
+  // When the excluded dim is in the middle (e.g. dim=1 of a 3-D tensor),
+  // collapseKeyDim==1 but keyInfo.dims==3; using DIM=1 would make
+  // IndexToOffset ignore the trailing dimensions, producing wrong offsets.
 
 #define TOPK_SORT_DIM_DISPATCH(LAUNCH_FUNC) \
-  if (collapseKeyDim == 1) {                \
+  if (keyInfo.dims == 1) {                  \
     LAUNCH_FUNC(1);                         \
-  } else if (collapseKeyDim == 2) {         \
+  } else if (keyInfo.dims == 2) {           \
     LAUNCH_FUNC(2);                         \
+  } else if (keyInfo.dims == 3) {           \
+    LAUNCH_FUNC(3);                         \
   } else {                                  \
     LAUNCH_FUNC(-1);                        \
   }
