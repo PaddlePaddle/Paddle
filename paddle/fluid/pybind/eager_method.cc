@@ -68,7 +68,12 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/strided_utils.h"
+#include "paddle/utils/md5.h"
 #include "paddle/utils/pybind.h"
+#if defined(PADDLE_WITH_CUDA)
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/utils/md5_gpu.h"
+#endif
 
 COMMON_DECLARE_bool(set_to_1d);
 COMMON_DECLARE_bool(use_stride_kernel);
@@ -3906,6 +3911,55 @@ static PyObject* tensor_method__is_string_tensor_hold_allocation(
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_method__md5sum(TensorObject* self,
+                                       PyObject* args,
+                                       PyObject* kwargs) {
+  EAGER_TRY
+  PADDLE_ENFORCE_EQ(
+      self->tensor.is_dense_tensor() || self->tensor.is_dist_tensor(),
+      true,
+      common::errors::InvalidArgument(
+          "_md5sum only supports DenseTensor or DistTensor"));
+
+  phi::DenseTensor* dense_tensor = nullptr;
+  if (self->tensor.is_dist_tensor()) {
+    dense_tensor =
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get())
+            ->unsafe_mutable_value();
+  } else {
+    dense_tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+  }
+
+  if (!dense_tensor->meta().is_contiguous()) {
+    eager_gil_scoped_release guard;
+    *dense_tensor = paddle::experimental::Trans2Contiguous(*dense_tensor);
+  }
+
+  size_t numel = static_cast<size_t>(dense_tensor->numel());
+  size_t element_size = phi::SizeOf(self->tensor.dtype());
+  size_t byte_size = numel * element_size;
+
+  std::string result;
+  if (self->tensor.is_cpu() || self->tensor.is_gpu_pinned()) {
+    const void* data = dense_tensor->data();
+    result = paddle::md5(data, byte_size);
+#if defined(PADDLE_WITH_CUDA)
+  } else if (self->tensor.is_gpu()) {
+    eager_gil_scoped_release guard;
+    const void* data = dense_tensor->data();
+    auto* dev_ctx = static_cast<phi::GPUContext*>(
+        phi::DeviceContextPool::Instance().Get(self->tensor.place()));
+    result = paddle::md5_gpu(data, byte_size, dev_ctx->stream());
+#endif
+  } else {
+    PADDLE_THROW(common::errors::Unimplemented("_md5sum is not supported on %s",
+                                               self->tensor.place()));
+  }
+
+  return ToPyObject(result);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyMethodDef variable_methods[] = {  // NOLINT
     {"numpy",
      (PyCFunction)(void (*)())tensor_method_numpy,
@@ -4238,6 +4292,10 @@ PyMethodDef variable_methods[] = {  // NOLINT
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
 #endif
+    {"_md5sum",
+     (PyCFunction)(void (*)())tensor_method__md5sum,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
     {nullptr, nullptr, 0, nullptr}};
 
 // variable_methods for core.eager.StringTensor

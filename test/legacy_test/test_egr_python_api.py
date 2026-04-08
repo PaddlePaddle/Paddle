@@ -882,6 +882,8 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         np.testing.assert_array_equal(x.numpy(), y.numpy())
 
     def test_md5sum(self):
+        import hashlib
+
         np_x = np.random.random((3, 8, 8))
         x = paddle.to_tensor(np_x, dtype="float64")
         y = paddle.to_tensor(np_x, dtype="float64")
@@ -889,6 +891,32 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         x = paddle.to_tensor(np_x, dtype="bfloat16")
         y = paddle.to_tensor(np_x, dtype="bfloat16")
         self.assertEqual(x._md5sum(), y._md5sum())
+
+        # Verify C++ result matches Python hashlib reference
+        for dtype in ["float32", "float64", "int32", "int64"]:
+            np_data = np.random.random((4, 16)).astype(dtype)
+            t = paddle.to_tensor(np_data)
+            expected = hashlib.md5(np_data.tobytes()).hexdigest()
+            self.assertEqual(t._md5sum(), expected)
+
+        # Test GPU if available
+        if paddle.is_compiled_with_cuda():
+            for dtype in ["float32", "float64", "int32"]:
+                np_data = np.random.random((4, 16)).astype(dtype)
+                cpu_t = paddle.to_tensor(np_data, place="cpu")
+                gpu_t = paddle.to_tensor(np_data, place="gpu")
+                # GPU and CPU must produce the same digest
+                self.assertEqual(cpu_t._md5sum(), gpu_t._md5sum())
+                # Both must match Python hashlib reference
+                expected = hashlib.md5(np_data.tobytes()).hexdigest()
+                self.assertEqual(gpu_t._md5sum(), expected)
+
+            # Test non-contiguous tensor (transpose)
+            np_data = np.random.random((8, 16)).astype("float32")
+            gpu_t = paddle.to_tensor(np_data, place="gpu")
+            gpu_t_T = gpu_t.T  # non-contiguous
+            cpu_t_T = paddle.to_tensor(np_data.T.copy(), place="cpu")
+            self.assertEqual(gpu_t_T._md5sum(), cpu_t_T._md5sum())
 
 
 class EagerParamBaseUsageTestCase(unittest.TestCase):

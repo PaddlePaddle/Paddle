@@ -43,11 +43,13 @@ set(PYBIND_DEPS
     auto_parallel
     executor_cache)
 
+list(APPEND PYBIND_DEPS md5)
+
 if(WIN32)
   list(APPEND PYBIND_DEPS dynload_common)
 endif()
 if(WITH_GPU)
-  list(APPEND PYBIND_DEPS gpu_event_timer)
+  list(APPEND PYBIND_DEPS gpu_event_timer md5_gpu)
   if(WIN32)
     list(APPEND PYBIND_DEPS dynload_cuda cuda_graph_lib)
     if(TENSORRT_FOUND)
