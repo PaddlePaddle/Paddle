@@ -64,7 +64,11 @@ inline XPUFCCalcType FCCalcType() {
       {"XPU_PADDLE_FC_INT32_WITH_LL", XPUFCCalcType::FC_INT32_WITH_LL},
   };
 #ifdef PADDLE_WITH_XPU_XRE5
-  auto default_calc_type = XPUFCCalcType::FC_TF32;
+  // Use FC_FLOAT (full IEEE float32 accumulation) as default to match GPU
+  // precision. FC_TF32 (10-bit mantissa) causes max_abs_diff ~0.013-0.023 for
+  // large matrices (K>=4096), exceeding the atol=0.01 threshold vs GPU.
+  // Users who prefer TF32 throughput can opt in with XPU_PADDLE_FC_TF32=1.
+  auto default_calc_type = XPUFCCalcType::FC_FLOAT;
 #else
   auto default_calc_type = XPUFCCalcType::FC_INT16;
 #endif
