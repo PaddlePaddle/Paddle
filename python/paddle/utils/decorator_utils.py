@@ -1190,3 +1190,41 @@ def batch_sampler_decorator() -> Callable[
         return wrapper
 
     return decorator
+
+
+def fill_diagonal_inplace_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    """
+    Usage Example:
+    PyTorch: torch.Tensor.fill_diagonal_(fill_value, wrap=False)
+    Paddle: paddle.Tensor.fill_diagonal_(value, offset, wrap)
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            if "fill_value" in kwargs:
+                if "value" not in kwargs:
+                    kwargs["value"] = kwargs.pop("fill_value")
+                else:
+                    raise ValueError(
+                        "Cannot specify both 'value' and its alias 'fill_value'."
+                    )
+
+            # args[0] is x (tensor)
+            # args[1] is fill_value
+            # args[2] is wrap, use torch signature
+            if len(args) >= 3 and isinstance(args[2], bool):
+                kwargs["wrap"] = args[2]
+                if len(args) > 3:
+                    raise TypeError(
+                        "fill_diagonal_() received too many arguments"
+                    )
+                args = (args[0], args[1])
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
