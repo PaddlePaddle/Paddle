@@ -124,6 +124,13 @@ void RandpermKernel(const Context& dev_ctx,
       out_data[z] = static_cast<T>(i);
     }
   }
+
+  // Advance the generator state so that successive randperm calls within the
+  // same run produce different results (mirrors torch's stateful generator
+  // behaviour: torch's CPUGeneratorImpl advances its internal MT19937 engine
+  // on every random()/random64() call, so consecutive ops see different
+  // states).
+  dev_ctx.GetGenerator()->SetCurrentSeed(engine());
 }
 
 }  // namespace phi
