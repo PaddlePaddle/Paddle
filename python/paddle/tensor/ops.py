@@ -28,6 +28,7 @@ from paddle._C_ops import (  # noqa: F401
     erf,
     erf_,
     exp,
+    exp_,
     expm1,
     floor,
     reciprocal,
@@ -49,7 +50,6 @@ from .layer_function_generator import (
 )
 
 __inplace_unary_func__ = [
-    'exp_',
     'sqrt_',
     'rsqrt_',
     'ceil_',

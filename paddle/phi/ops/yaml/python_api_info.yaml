@@ -296,6 +296,11 @@
   args_alias :
     use_default_mapping : True
 
+- op : exp_
+  name : [paddle.exp_, paddle.Tensor.exp_]
+  args_alias :
+    use_default_mapping : True
+
 - op : expm1
   name : [paddle.expm1, paddle.Tensor.expm1]
   args_alias :
