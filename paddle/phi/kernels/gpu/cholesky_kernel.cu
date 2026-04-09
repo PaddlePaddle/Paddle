@@ -23,6 +23,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/phi/backends/dynload/cusolver.h"
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -252,6 +253,14 @@ void CholeskyKernel(const Context& dev_ctx,
   }
 #endif
   // check the info
+  PADDLE_ENFORCE_EQ(
+      phi::backends::gpu::IsCUDAGraphCapturing(),
+      false,
+      common::errors::InvalidArgument(
+          "CholeskyKernel does not support CUDA Graph capture: async D2H copy "
+          "to local vector 'error_info' will bake the destination address into "
+          "the graph; on replay the vector is re-created at a different "
+          "address, causing a dangling-pointer write."));
   std::vector<int> error_info;
   error_info.resize(batch_count);
   memory_utils::Copy(CPUPlace(),
