@@ -18,6 +18,7 @@ from . import (  # noqa: F401
     decorator_utils,
     dlpack,
     download,
+    gpu_utils,
     image_util,
     layers_utils,
     unique_name,
