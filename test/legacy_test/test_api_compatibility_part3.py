@@ -2113,5 +2113,208 @@ class TestConv2dTransposeAPI(unittest.TestCase):
                 np.testing.assert_allclose(fetches[0], fetches[i], rtol=1e-5)
 
 
+_GENERIC_INPLACE_UNARY_INPUT = [-0.7, -0.2, 0.3, 0.9]
+_POSITIVE_INPLACE_UNARY_INPUT = [0.25, 1.5, 2.25, 4.0]
+_NONZERO_INPLACE_UNARY_INPUT = [-2.0, -0.5, 0.25, 4.0]
+_UNIT_INTERVAL_INPLACE_UNARY_INPUT = [-0.9, -0.25, 0.25, 0.9]
+_ACOSH_INPLACE_UNARY_INPUT = [1.0, 1.5, 2.0, 3.5]
+
+
+class _UnaryInplaceCompatibilityTestBase(unittest.TestCase):
+    api_name = None
+    input_data = None
+    dtype = 'float32'
+    rtol = 1e-6
+    atol = 1e-6
+
+    def setUp(self):
+        self.np_x = np.array(self.input_data, dtype=self.dtype)
+
+    def ref_fn(self, x):
+        raise NotImplementedError
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        try:
+            api = getattr(paddle, self.api_name)
+
+            # 1. Paddle Positional arguments
+            out1 = api(paddle.to_tensor(self.np_x.copy()))
+            # 2. Paddle keyword arguments
+            out2 = api(x=paddle.to_tensor(self.np_x.copy()))
+            # 3. PyTorch keyword arguments (alias)
+            out3 = api(input=paddle.to_tensor(self.np_x.copy()))
+            # 4. Tensor method - args
+            out4 = getattr(paddle.to_tensor(self.np_x.copy()), self.api_name)()
+
+            expected = self.ref_fn(self.np_x.copy()).astype(self.np_x.dtype)
+            for out in [out1, out2, out3, out4]:
+                np.testing.assert_allclose(
+                    out.numpy(), expected, rtol=self.rtol, atol=self.atol
+                )
+        finally:
+            paddle.enable_static()
+
+
+class TestExpInplaceAPI(_UnaryInplaceCompatibilityTestBase):
+    api_name = 'exp_'
+    input_data = _GENERIC_INPLACE_UNARY_INPUT
+
+    def ref_fn(self, x):
+        return np.exp(x)
+
+
+class TestSqrtInplaceAPI(_UnaryInplaceCompatibilityTestBase):
+    api_name = 'sqrt_'
+    input_data = _POSITIVE_INPLACE_UNARY_INPUT
+
+    def ref_fn(self, x):
+        return np.sqrt(x)
+
+
+class TestRsqrtInplaceAPI(_UnaryInplaceCompatibilityTestBase):
+    api_name = 'rsqrt_'
+    input_data = _POSITIVE_INPLACE_UNARY_INPUT
+
+    def ref_fn(self, x):
+        return 1.0 / np.sqrt(x)
+
+
+class TestCeilInplaceAPI(_UnaryInplaceCompatibilityTestBase):
+    api_name = 'ceil_'
+    input_data = _GENERIC_INPLACE_UNARY_INPUT
+
+    def ref_fn(self, x):
+        return np.ceil(x)
+
+
+class TestFloorInplaceAPI(_UnaryInplaceCompatibilityTestBase):
+    api_name = 'floor_'
+    input_data = _GENERIC_INPLACE_UNARY_INPUT
+
+    def ref_fn(self, x):
+        return np.floor(x)
+
+
+class TestReciprocalInplaceAPI(_UnaryInplaceCompatibilityTestBase):
+    api_name = 'reciprocal_'
+    input_data = _NONZERO_INPLACE_UNARY_INPUT
+
+    def ref_fn(self, x):
+        return np.reciprocal(x)
+
+
+class TestSigmoidInplaceAPI(_UnaryInplaceCompatibilityTestBase):
+    api_name = 'sigmoid_'
+    input_data = _GENERIC_INPLACE_UNARY_INPUT
+
+    def ref_fn(self, x):
+        return 1.0 / (1.0 + np.exp(-x))
+
+
+class TestSinInplaceAPI(_UnaryInplaceCompatibilityTestBase):
+    api_name = 'sin_'
+    input_data = _GENERIC_INPLACE_UNARY_INPUT
+
+    def ref_fn(self, x):
+        return np.sin(x)
+
+
+class TestSinhInplaceAPI(_UnaryInplaceCompatibilityTestBase):
+    api_name = 'sinh_'
+    input_data = _GENERIC_INPLACE_UNARY_INPUT
+
+    def ref_fn(self, x):
+        return np.sinh(x)
+
+
+class TestAsinInplaceAPI(_UnaryInplaceCompatibilityTestBase):
+    api_name = 'asin_'
+    input_data = _UNIT_INTERVAL_INPLACE_UNARY_INPUT
+
+    def ref_fn(self, x):
+        return np.arcsin(x)
+
+
+class TestAsinhInplaceAPI(_UnaryInplaceCompatibilityTestBase):
+    api_name = 'asinh_'
+    input_data = _GENERIC_INPLACE_UNARY_INPUT
+
+    def ref_fn(self, x):
+        return np.arcsinh(x)
+
+
+class TestCosInplaceAPI(_UnaryInplaceCompatibilityTestBase):
+    api_name = 'cos_'
+    input_data = _GENERIC_INPLACE_UNARY_INPUT
+
+    def ref_fn(self, x):
+        return np.cos(x)
+
+
+class TestCoshInplaceAPI(_UnaryInplaceCompatibilityTestBase):
+    api_name = 'cosh_'
+    input_data = _GENERIC_INPLACE_UNARY_INPUT
+
+    def ref_fn(self, x):
+        return np.cosh(x)
+
+
+class TestAcosInplaceAPI(_UnaryInplaceCompatibilityTestBase):
+    api_name = 'acos_'
+    input_data = _UNIT_INTERVAL_INPLACE_UNARY_INPUT
+
+    def ref_fn(self, x):
+        return np.arccos(x)
+
+
+class TestAcoshInplaceAPI(_UnaryInplaceCompatibilityTestBase):
+    api_name = 'acosh_'
+    input_data = _ACOSH_INPLACE_UNARY_INPUT
+
+    def ref_fn(self, x):
+        return np.arccosh(x)
+
+
+class TestTanInplaceAPI(_UnaryInplaceCompatibilityTestBase):
+    api_name = 'tan_'
+    input_data = _GENERIC_INPLACE_UNARY_INPUT
+
+    def ref_fn(self, x):
+        return np.tan(x)
+
+
+class TestAtanInplaceAPI(_UnaryInplaceCompatibilityTestBase):
+    api_name = 'atan_'
+    input_data = _GENERIC_INPLACE_UNARY_INPUT
+
+    def ref_fn(self, x):
+        return np.arctan(x)
+
+
+class TestAtanhInplaceAPI(_UnaryInplaceCompatibilityTestBase):
+    api_name = 'atanh_'
+    input_data = _UNIT_INTERVAL_INPLACE_UNARY_INPUT
+
+    def ref_fn(self, x):
+        return np.arctanh(x)
+
+
+class TestExpm1InplaceAPI(_UnaryInplaceCompatibilityTestBase):
+    api_name = 'expm1_'
+    input_data = _GENERIC_INPLACE_UNARY_INPUT
+
+    def ref_fn(self, x):
+        return np.expm1(x)
+
+
+class TestSquareInplaceAPI(_UnaryInplaceCompatibilityTestBase):
+    api_name = 'square_'
+    input_data = _GENERIC_INPLACE_UNARY_INPUT
+
+    def ref_fn(self, x):
+        return np.square(x)
+
+
 if __name__ == "__main__":
     unittest.main()
