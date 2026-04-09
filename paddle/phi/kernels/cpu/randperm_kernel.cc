@@ -18,7 +18,10 @@
 #include <cstdint>
 #include <limits>
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
+
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 
 namespace phi {
 
@@ -101,36 +104,48 @@ void RandpermKernel(const Context& dev_ctx,
                     DenseTensor* out) {
   T* out_data = dev_ctx.template Alloc<T>(out);
 
-  // MT19937 engine with that seed so the random sequence is identical.
-  uint64_t seed = dev_ctx.GetGenerator()->GetCurrentSeed();
-  TorchMT19937Engine engine(seed);
+  if (FLAGS_use_accuracy_compatible_kernel) {
+    // MT19937 engine with that seed so the random sequence is identical.
+    uint64_t seed = dev_ctx.GetGenerator()->GetCurrentSeed();
+    TorchMT19937Engine engine(seed);
 
-  if (n < static_cast<int>(std::numeric_limits<uint32_t>::max() / 20)) {
-    // For small n: classic Fisher-Yates shuffle using 32-bit random values
+    if (n < static_cast<int>(std::numeric_limits<uint32_t>::max() / 20)) {
+      // For small n: classic Fisher-Yates shuffle using 32-bit random values
+      for (int i = 0; i < n; ++i) {
+        out_data[i] = static_cast<T>(i);
+      }
+      for (int i = 0; i < n - 1; i++) {
+        int64_t z = engine() % (n - i);
+        T save = out_data[i];
+        out_data[i] = out_data[z + i];
+        out_data[z + i] = save;
+      }
+    } else {
+      // For large n: inside-out Fisher-Yates using 64-bit random values
+      for (int i = 0; i < n; i++) {
+        int64_t z = static_cast<int64_t>(engine.random64() % (i + 1));
+        out_data[i] = out_data[z];
+        out_data[z] = static_cast<T>(i);
+      }
+    }
+
+    // Advance the generator state so that successive randperm calls within the
+    // same run produce different results
+    dev_ctx.GetGenerator()->SetCurrentSeed(engine());
+  } else {
+    int seed = 0;
+    std::shared_ptr<std::mt19937_64> engine;
+    if (seed) {
+      engine = std::make_shared<std::mt19937_64>();
+      engine->seed(seed);
+    } else {
+      engine = dev_ctx.GetGenerator()->GetCPUEngine();
+    }
     for (int i = 0; i < n; ++i) {
       out_data[i] = static_cast<T>(i);
     }
-    for (int i = 0; i < n - 1; i++) {
-      int64_t z = engine() % (n - i);
-      T save = out_data[i];
-      out_data[i] = out_data[z + i];
-      out_data[z + i] = save;
-    }
-  } else {
-    // For large n: inside-out Fisher-Yates using 64-bit random values
-    for (int i = 0; i < n; i++) {
-      int64_t z = static_cast<int64_t>(engine.random64() % (i + 1));
-      out_data[i] = out_data[z];
-      out_data[z] = static_cast<T>(i);
-    }
+    std::shuffle(out_data, out_data + n, *engine);
   }
-
-  // Advance the generator state so that successive randperm calls within the
-  // same run produce different results (mirrors torch's stateful generator
-  // behaviour: torch's CPUGeneratorImpl advances its internal MT19937 engine
-  // on every random()/random64() call, so consecutive ops see different
-  // states).
-  dev_ctx.GetGenerator()->SetCurrentSeed(engine());
 }
 
 }  // namespace phi
