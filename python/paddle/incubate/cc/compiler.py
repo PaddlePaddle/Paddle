@@ -79,7 +79,7 @@ def _compile(
     os.makedirs(ap_workspace_dir, exist_ok=True)
     build_strategy = paddle.static.BuildStrategy()
     assert compile_engine in ('CINN', 'PCC')
-    with _ap_envs(ap_path, ap_workspace_dir):
+    with _ap_envs(ap_path, ap_workspace_dir, backend_device):
         static_fn = paddle.jit.to_static(
             func,
             input_spec=input_specs,
@@ -138,14 +138,17 @@ class InputSpecMakeCtx:
 
 
 @contextmanager
-def _ap_envs(ap_path, ap_workspace_dir):
+def _ap_envs(ap_path, ap_workspace_dir, backend_device):
     ap_sys_path = f"{os.path.dirname(paddle.__file__)}/apy/sys"
     matmul_path = f"{os.path.dirname(paddle.__file__)}/apy/matmul_pass"
+    if backend_device == 'cuda':
+        device_path = f"{os.path.dirname(paddle.__file__)}/apy/device/cuda"
+    else:
+        device_path = ""
     old_ap_path = os.environ.get('AP_PATH')
     old_ap_workspace_dir = os.environ.get('AP_WORKSPACE_DIR')
-    os.environ['AP_PATH'] = (
-        f"{ap_sys_path}:{ap_path}:{matmul_path}:{old_ap_path if old_ap_path is not None else ''}"
-    )
+    new_ap_path = f"{ap_sys_path}:{ap_path}:{device_path}:{matmul_path}:{old_ap_path if old_ap_path is not None else ''}"
+    os.environ['AP_PATH'] = new_ap_path
     os.environ['AP_WORKSPACE_DIR'] = ap_workspace_dir
     old_flags = paddle.get_flags(['FLAGS_enable_ap'])
     flags = dict(old_flags)

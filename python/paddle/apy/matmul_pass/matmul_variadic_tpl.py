@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import ap
+import compile_command_util
 import kernel_arg_translator_util
 import low_level_ir_code_gen_ctx_util
 
@@ -59,46 +60,6 @@ class MatmulVariadicTemplate:
         registry.get_or_create_kernel_arg_id_manul_var_name(
             kernel_arg_id=pair[0], cpp_var_name=pair[1]
         )
-
-    def make_gpu_compile_cmd(self, dir_name, source_dir):
-        cutlass_dir = f"{dir_name}/matmul/cutlass-3.7.0"
-        compile_cmd = "nvcc -std=c++20 -O3 -Xcompiler=-fPIC -arch=sm_80 --expt-relaxed-constexpr"
-        compile_cmd = compile_cmd + " -I " + cutlass_dir + "/include"
-        compile_cmd = compile_cmd + " -I " + cutlass_dir + "/tools/util/include"
-        compile_cmd = compile_cmd + " -I " + source_dir
-        compile_cmd = (
-            compile_cmd
-            + " -DCUTLASS_ENABLE_TENSOR_CORE_MMA=1 -DCUTLASS_DEBUG_TRACE_LEVEL=0"
-        )
-        compile_cmd = (
-            compile_cmd + " -DAP_ENABLE_AUTOTUNE=0 -DAP_ENABLE_DEBUG=0"
-        )
-        compile_cmd = (
-            compile_cmd
-            + f" --shared {self.library_name}.cu -o lib{self.library_name}.so"
-        )
-        return compile_cmd
-
-    # cpu -> custom device
-    def make_cpu_compile_cmd(self, dir_name, source_dir):
-        # TODO(Xreki): remove this hardcode and allow user definition for custom device
-        cutlass_dir = f"{dir_name}/matmul/cutlass"
-        compile_cmd = "clang++ -x ivcore -L/usr/local/corex/lib -lcudart --cuda-path=/usr/local/corex -std=c++17 -O3 -fPIC --cuda-gpu-arch=ivcore11 -Xclang=-fcuda-allow-variadic-functions"
-        compile_cmd = compile_cmd + " -I " + cutlass_dir + "/include"
-        compile_cmd = compile_cmd + " -I " + cutlass_dir + "/tools/util/include"
-        compile_cmd = compile_cmd + " -I " + source_dir
-        compile_cmd = (
-            compile_cmd
-            + " -DCUTLASS_ENABLE_TENSOR_CORE_MMA=1 -DCUTLASS_DEBUG_TRACE_LEVEL=0 -DCUTLASS_ILUVATAR"
-        )
-        compile_cmd = (
-            compile_cmd + " -DAP_ENABLE_AUTOTUNE=0 -DAP_ENABLE_DEBUG=0"
-        )
-        compile_cmd = (
-            compile_cmd
-            + f" --shared {self.library_name}.cu -o lib{self.library_name}.so"
-        )
-        return compile_cmd
 
     def compile(
         self,
@@ -363,20 +324,14 @@ void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
             .replace("${n_value}", f"{input1_shape_kargs[-1].value}")
         )
 
-        device_type = get_hardware_device()  # noqa: F821
-
         dir_name = ap.dirname(__file__)
-        source_dir = f"{dir_name}/matmul"
-
-        compile_cmds = ap.OrderedDict(
-            [
-                ["cpu", self.make_cpu_compile_cmd(dir_name, source_dir)],
-                ["gpu", self.make_gpu_compile_cmd(dir_name, source_dir)],
-            ]
+        compile_command_generator = (
+            compile_command_util.CompileCommandGenerator()
         )
-        compile_cmd = compile_cmds[device_type]
-
-        file_ext = "cu" if device_type == "gpu" else "cc"
+        compile_cmd = compile_command_generator(
+            "matmul", dir_name, self.library_name
+        )
+        file_ext = compile_command_generator.file_ext
 
         return CodeModule(  # noqa: F821
             FuncDeclare(  # noqa: F821
