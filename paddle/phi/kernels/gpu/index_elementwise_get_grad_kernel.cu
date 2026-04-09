@@ -419,14 +419,14 @@ void IndexElementwiseGetGradKernel(const Context& dev_ctx,
   if (out_grad.numel() == 0) return;
 
   const auto& index_type = index[0]->dtype();
-  PADDLE_ENFORCE_EQ(index_type == phi::DataType::INT64,
+  PADDLE_ENFORCE_EQ(index_type == DataType::INT64,
                     true,
                     common::errors::InvalidArgument(
                         "Index holds the wrong type, it holds [%s], but "
                         "desires to be [%s].",
                         index_type,
-                        phi::DataType::INT32,
-                        phi::DataType::INT64));
+                        DataType::INT32,
+                        DataType::INT64));
 
   if (accumulate && index.size() == 1 && !is_combined) {
 #ifdef PADDLE_WITH_CUDA

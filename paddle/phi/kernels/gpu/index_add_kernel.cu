@@ -127,7 +127,7 @@ void IndexAddKernel(const Context& dev_ctx,
     dim3 grid_dim = dim3((num_columns + block_dim - 1) / block_dim);
     phi::backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
 
-    if (index_type == phi::DataType::INT64) {
+    if (index_type == DataType::INT64) {
       const int64_t* index_data = index.data<int64_t>();
       index_add_deterministic_cuda_kernel<T, int64_t>
           <<<grid_dim, block_dim, 0, stream>>>(in_data,
@@ -155,7 +155,7 @@ void IndexAddKernel(const Context& dev_ctx,
     dim3 grid_dim = dim3((numel + block_dim - 1) / block_dim);
     phi::backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
 
-    if (index_type == phi::DataType::INT64) {
+    if (index_type == DataType::INT64) {
       const int64_t* index_data = index.data<int64_t>();
       index_add_cuda_kernel<T, int64_t>
           <<<grid_dim, block_dim, 0, stream>>>(in_data,
