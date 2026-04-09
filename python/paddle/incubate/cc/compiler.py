@@ -73,8 +73,6 @@ def _compile(
     compile_engine='PCC',
 ):
     assert ap_path is not None
-    ap_root_path = f"{os.path.dirname(paddle.__file__)}/apy"
-    apy_to_axpr_json.PyToAxpr(ap_root_path)(ap_root_path)
     assert not train, "only support inference now"
     os.makedirs(ap_workspace_dir, exist_ok=True)
     build_strategy = paddle.static.BuildStrategy()
@@ -148,6 +146,7 @@ def _ap_envs(ap_path, ap_workspace_dir, backend_device):
     old_ap_path = os.environ.get('AP_PATH')
     old_ap_workspace_dir = os.environ.get('AP_WORKSPACE_DIR')
     new_ap_path = f"{ap_sys_path}:{ap_path}:{device_path}:{matmul_path}:{old_ap_path if old_ap_path is not None else ''}"
+    _convert_apy_to_axpr(new_ap_path)
     os.environ['AP_PATH'] = new_ap_path
     os.environ['AP_WORKSPACE_DIR'] = ap_workspace_dir
     old_flags = paddle.get_flags(['FLAGS_enable_ap'])
@@ -164,6 +163,12 @@ def _ap_envs(ap_path, ap_workspace_dir, backend_device):
     else:
         del os.environ['AP_WORKSPACE_DIR']
     paddle.set_flags(old_flags)
+
+
+def _convert_apy_to_axpr(ap_path):
+    for path in ap_path.split(":"):
+        if path:
+            apy_to_axpr_json.PyToAxpr(path)(path)
 
 
 def _get_input_annotations(func):
