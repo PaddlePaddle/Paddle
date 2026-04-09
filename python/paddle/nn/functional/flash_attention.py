@@ -32,6 +32,7 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
     from paddle import Tensor
+    from paddle.distributed.communication.group import Group
 
 
 @signature_safe_contextmanager
@@ -1311,8 +1312,8 @@ def flashmask_attention(
     name: str | None = None,
     softmax_scale: float | None = None,
     block_mask: Tensor | None = None,
-    group=None,
-):
+    group: Group | None = None,
+) -> Tensor | list[Tensor]:
     r"""
     FlashMask: Official Implementation
 
@@ -2188,7 +2189,7 @@ def flashmask_attention(
         return outputs
 
 
-def flashmask_get_unique_id():
+def flashmask_get_unique_id() -> Tensor:
     """FlashMask distributed overlap: get the unique ID to initialize NVSHMEM.
 
         Normally, this function only needs to be called once. After initializing NVSHMEM,
