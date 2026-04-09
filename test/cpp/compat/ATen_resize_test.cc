@@ -14,6 +14,7 @@
 
 #include <ATen/Functions.h>
 #include <ATen/core/TensorBody.h>
+#include <ATen/ops/as_strided.h>
 #include <ATen/ops/resize.h>
 #include <ATen/ops/tensor.h>
 #include <c10/core/ScalarType.h>
@@ -257,14 +258,15 @@ TEST(TensorResizeTest, ResizeChain) {
   ASSERT_EQ(t.sizes()[1], 4);
 }
 
-// Test that resizing a slice with shared storage copies data from the start of
-// the storage, not from the slice's offset, to preserve the original slice data
-// and storage semantics
+// Test that resizing a view with shared storage copies data from the start of
+// the storage, not from the view's offset, to preserve the original data and
+// storage semantics.
 TEST(TensorResizeTest, ResizeSliceSharedStorageCopiesFromStorageStart) {
   // ta = [1, 2, 3, 4], tb = [2, 3, 4]
-  // tb shares storage with ta.
+  // Build tb through as_strided so it is a view with a non-zero storage
+  // offset even when backend slice kernels materialize copies.
   at::Tensor ta = at::tensor({1, 2, 3, 4}, at::kInt);
-  at::Tensor tb = ta.slice(0, 1, 4);
+  at::Tensor tb = ta.as_strided({3}, {1}, 1);
 
   tb.resize_(4);
 
