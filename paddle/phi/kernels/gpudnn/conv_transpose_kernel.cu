@@ -117,10 +117,10 @@ void ConvTransposeCudnnKernelImplV7(const DenseTensor* transformed_x,
 #endif
 
   // ------------------- cudnn conv transpose forward ---------------------
-  int x_offset = transformed_x->numel() / transformed_x->dims()[0] / groups;
-  int out_offset =
+  int64_t x_offset = transformed_x->numel() / transformed_x->dims()[0] / groups;
+  int64_t out_offset =
       transformed_out->numel() / transformed_out->dims()[0] / groups;
-  int filter_offset = filter->numel() / groups;
+  int64_t filter_offset = filter->numel() / groups;
   ScalingParamType<T> alpha = 1.0f;
   ScalingParamType<T> beta = 0.0f;
   auto workspace_handle = dev_ctx.cudnn_workspace_handle();

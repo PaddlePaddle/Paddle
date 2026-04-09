@@ -495,7 +495,7 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
                                              cub_sort_keys_out_ptr,
                                              cub_sort_values_ptr,
                                              cub_sort_keys_ptr,
-                                             batch_size,
+                                             static_cast<int>(batch_size),
                                              0,
                                              sizeof(T) * 8,
                                              dev_ctx.stream())));

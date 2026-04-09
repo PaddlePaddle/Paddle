@@ -234,12 +234,12 @@ struct AttentionBackwardKernel {
     int32_t num_heads;
     bool causal;
 
-    int32_t q_strideM;
-    int32_t k_strideM;
-    int32_t v_strideM;
-    int32_t bias_strideM = 0;
-    int32_t gO_strideM;
-    int32_t gB_strideM;
+    int64_t q_strideM;
+    int64_t k_strideM;
+    int64_t v_strideM;
+    int64_t bias_strideM = 0;
+    int64_t gO_strideM;
+    int64_t gB_strideM;
     int8_t gQKV_strideM_multiplier;  // 3 for packed, 1 otherwise
 
     // dropout
@@ -250,17 +250,17 @@ struct AttentionBackwardKernel {
     unsigned long long dropout_batch_head_rng_offset;  // NOLINT
     float dropout_prob;
 
-    CUTLASS_HOST_DEVICE int32_t o_strideM() const {
-      return head_dim_value * num_heads;
+    CUTLASS_HOST_DEVICE int64_t o_strideM() const {
+      return (int64_t)head_dim_value * num_heads;
     }
-    CUTLASS_HOST_DEVICE int32_t gQ_strideM() const {
-      return gQKV_strideM_multiplier * num_heads * head_dim;
+    CUTLASS_HOST_DEVICE int64_t gQ_strideM() const {
+      return (int64_t)gQKV_strideM_multiplier * num_heads * head_dim;
     }
-    CUTLASS_HOST_DEVICE int32_t gK_strideM() const {
-      return gQKV_strideM_multiplier * num_heads * head_dim;
+    CUTLASS_HOST_DEVICE int64_t gK_strideM() const {
+      return (int64_t)gQKV_strideM_multiplier * num_heads * head_dim;
     }
-    CUTLASS_HOST_DEVICE int32_t gV_strideM() const {
-      return gQKV_strideM_multiplier * num_heads * head_dim_value;
+    CUTLASS_HOST_DEVICE int64_t gV_strideM() const {
+      return (int64_t)gQKV_strideM_multiplier * num_heads * head_dim_value;
     }
 
     // Everything below is only used in `advance_to_block`
@@ -1532,7 +1532,8 @@ struct AttentionBackwardKernel {
           num_keys_in_block, p.head_dim_value - col, num_queries_in_block);
       auto createEpilogueIter = [&]() {
         return typename MatmulGradV::OutputTileIterator(
-            typename MatmulGradV::OutputTileIterator::Params{p.gV_strideM()},
+            typename MatmulGradV::OutputTileIterator::Params{
+                int32_t(p.gV_strideM())},
             p.grad_value_ptr + key_start * p.gV_strideM() + col,
             {num_keys_in_block, p.head_dim_value - col},
             thread_id);
@@ -1706,7 +1707,7 @@ struct AttentionBackwardKernel {
           typename MatmulDOIVJ::BiasGradEpilogue::OutputTileIterator
               output_iter(
                   typename MatmulDOIVJ::BiasGradEpilogue::OutputTileIterator::
-                      Params{p.gB_strideM},
+                      Params{int32_t(p.gB_strideM)},
                   // grad_bias_ptr is offset to point at beginning of
                   // matrix of shape (queries, keys) for a given
                   // (batch_id, head_id) the pointer arithmetic here produces
@@ -1815,7 +1816,8 @@ struct AttentionBackwardKernel {
         gmem_tile.store(accum, thread_id);
       } else {
         typename MatmulGradQ::OutputTileIterator output_it(
-            typename MatmulGradQ::OutputTileIterator::Params{p.gQ_strideM()},
+            typename MatmulGradQ::OutputTileIterator::Params{
+                int32_t(p.gQ_strideM())},
             p.grad_query_ptr + query_start * p.gQ_strideM() + col,
             {problem_size.m(), problem_size.n()},
             thread_id);
@@ -1843,7 +1845,8 @@ struct AttentionBackwardKernel {
           num_queries_in_block);
       auto createEpilogueIter = [&]() {
         return typename MatmulGradK::OutputTileIterator(
-            typename MatmulGradK::OutputTileIterator::Params{p.gK_strideM()},
+            typename MatmulGradK::OutputTileIterator::Params{
+                int32_t(p.gK_strideM())},
             p.grad_key_ptr + key_start * p.gK_strideM() + col,
             {num_keys_in_block,
              false ? MatmulGradK::ThreadblockShape::kN : p.head_dim - col},
@@ -1995,7 +1998,8 @@ struct AttentionBackwardKernel {
                          : std::min((int32_t)MatmulQK::Mma::Shape::kM,
                                     p.num_keys - key_start);
     typename MatmulGradV::OutputTileIterator outputV_it(
-        typename MatmulGradV::OutputTileIterator::Params{p.gV_strideM()},
+        typename MatmulGradV::OutputTileIterator::Params{
+            int32_t(p.gV_strideM())},
         p.grad_value_ptr + key_start * p.gV_strideM(),
         {num_keys_in_block, p.head_dim_value},
         get_thread_id());
@@ -2005,7 +2009,8 @@ struct AttentionBackwardKernel {
                                   true);
 
     typename MatmulGradK::OutputTileIterator outputK_it(
-        typename MatmulGradK::OutputTileIterator::Params{p.gK_strideM()},
+        typename MatmulGradK::OutputTileIterator::Params{
+            int32_t(p.gK_strideM())},
         p.grad_key_ptr + key_start * p.gK_strideM(),
         {num_keys_in_block,
          false ? MatmulGradK::ThreadblockShape::kN : p.head_dim},

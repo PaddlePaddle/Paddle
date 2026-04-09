@@ -184,7 +184,7 @@ __global__ void col2im(int64_t n,
   const int d_filter_width = dilation_w * (filter_width - 1) + 1;
 
   // NOTE(zrr1999): input_channels must be less than the range of int32
-  int input_channels = n / im_height / im_width;
+  int64_t input_channels = n / im_height / im_width;
 
   if (index < n) {
     T val = static_cast<T>(0);
@@ -195,8 +195,8 @@ __global__ void col2im(int64_t n,
                      ? (index / im_width) % im_height + padding_height
                      : (index / input_channels / im_width) % im_height +
                            padding_height);
-    int c = (data_layout != DataLayout::NHWC ? index / im_width / im_height
-                                             : index % input_channels);
+    int64_t c = (data_layout != DataLayout::NHWC ? index / im_width / im_height
+                                                 : index % input_channels);
 
     // compute the start and end of the output
     int64_t w_col_start =

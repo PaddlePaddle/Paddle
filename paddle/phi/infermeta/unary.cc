@@ -576,6 +576,18 @@ void ClassCenterSampleInferMeta(const MetaTensor& label,
       errors::InvalidArgument("Rank of Input(Label) should be equal to 1, "
                               "but the value given is %d.",
                               label.dims().size()));
+  auto label_numel = common::product(label.dims());
+  if (label_numel > 0) {
+    PADDLE_ENFORCE_LE(
+        label_numel,
+        static_cast<int64_t>(std::numeric_limits<int>::max()),
+        common::errors::InvalidArgument(
+            "The numel of Input(Label) must not exceed INT32_MAX (%d), "
+            "but received %ld. class_center_sample does not support "
+            "large tensor.",
+            std::numeric_limits<int>::max(),
+            label_numel));
+  }
   PADDLE_ENFORCE_NOT_NULL(remapped_label,
                           common::errors::InvalidArgument(
                               "output of remapped label should not be null."));

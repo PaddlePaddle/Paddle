@@ -288,10 +288,10 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& dev_ctx,
 
   // ------------------- cudnn conv backward data ---------------------
   // FIxME(typhoonzero): template type T may not be the same as cudnn call.
-  int x_offset = x.numel() / x.dims()[0] / groups;
-  int dout_offset =
+  int64_t x_offset = x.numel() / x.dims()[0] / groups;
+  int64_t dout_offset =
       transformed_dout.numel() / transformed_dout.dims()[0] / groups;
-  int filter_offset = filter.numel() / groups;
+  int64_t filter_offset = filter.numel() / groups;
   ScalingParamType<T> alpha = 1.0f;
   ScalingParamType<T> beta = 0.0f;
   auto workspace_handle = dev_ctx.cudnn_workspace_handle();
@@ -898,11 +898,11 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
   GetNCDHW(
       transformed_dout.dims(), DataLayout::NCHW, &o_n, &o_c, &o_d, &o_h, &o_w);
 
-  int group_offset_in =
+  int64_t group_offset_in =
       transformed_x.numel() / transformed_x.dims()[0] / groups;
-  int group_offset_out =
+  int64_t group_offset_out =
       transformed_dout.numel() / transformed_dout.dims()[0] / groups;
-  int group_offset_filter = filter.numel() / groups;
+  int64_t group_offset_filter = filter.numel() / groups;
 
   ScalingParamType<T> alpha = 1.0f;
   ScalingParamType<T> beta = 0.0f;

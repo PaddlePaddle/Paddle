@@ -919,6 +919,28 @@ void ConvTransposeInferMeta(const MetaTensor& x,
     output_shape.push_back(filter_dims[1] * groups);
   }
 
+  // Check for large tensor sizes that may cause issues in cuDNN or other
+  // backends cuDNN has a limitation that tensor numel must be <= INT_MAX
+  // (2,147,483,647) This is enforced by CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED
+  // macro Both forward output and backward gradient tensors must satisfy this
+  // constraint
+  constexpr int64_t kMaxTensorNumel = 2147483647LL;  // INT_MAX
+  int64_t output_numel = 1;
+  for (const auto& dim : output_shape) {
+    output_numel *= dim;
+  }
+
+  if (output_numel > kMaxTensorNumel) {
+    PADDLE_THROW(errors::ResourceExhausted(
+        "The output tensor size of conv_transpose is too large. "
+        "Total elements (%lld) exceeds the maximum supported size (%lld). "
+        "Output shape: [%s]. Consider reducing the batch size or output "
+        "channels.",
+        output_numel,
+        kMaxTensorNumel,
+        make_ddim(output_shape).to_str()));
+  }
+
   out->set_dims(make_ddim(output_shape));
   out->set_dtype(x.dtype());
 }
