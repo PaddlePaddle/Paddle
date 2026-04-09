@@ -47,15 +47,15 @@ void ScatterKernel(const Context &dev_ctx,
   // Apply ScatterUpdate: Out[index] = Updates[:]
   const auto &index_type = index.dtype();
   bool index_type_match =
-      index_type == phi::DataType::INT32 || index_type == phi::DataType::INT64;
+      index_type == DataType::INT32 || index_type == DataType::INT64;
   PADDLE_ENFORCE_EQ(index_type_match,
                     true,
                     common::errors::InvalidArgument(
                         "Index holds the wrong type, it holds [%s],"
                         "but desires to be [%s] or [%s].",
                         index_type,
-                        phi::DataType::INT32,
-                        phi::DataType::INT64));
+                        DataType::INT32,
+                        DataType::INT64));
 
   // check index of shape 1-D
   PADDLE_ENFORCE_EQ(
@@ -94,7 +94,7 @@ void ScatterKernel(const Context &dev_ctx,
   Copy(dev_ctx, index, CPUPlace(), true, &indices_cpu);
 
   int r = 0;
-  if (index_type == phi::DataType::INT32) {
+  if (index_type == DataType::INT32) {
     auto index_data = const_cast<int *>(index.data<int>());
     xpu::VectorParam<int> indices{
         indices_cpu.data<int>(), index_size, index_data};

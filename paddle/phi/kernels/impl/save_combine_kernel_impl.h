@@ -72,7 +72,7 @@ void SerializeCombineTensor(const Context& dev_ctx,
     // Serialize tensors one by one
     // Check types to see if a fp16 transformation is required
     auto in_dtype = tensor.dtype();
-    auto out_dtype = save_as_fp16 ? phi::DataType::FLOAT16 : in_dtype;
+    auto out_dtype = save_as_fp16 ? DataType::FLOAT16 : in_dtype;
     if (in_dtype != out_dtype) {
       auto place = dev_ctx.GetPlace();
       auto in_kernel_type =

@@ -1910,8 +1910,8 @@ MatmulJudgeDtypeKernel(const Context& dev_ctx,
 #if defined(PADDLE_WITH_CUDA)
   if constexpr (std::is_same<Context, phi::GPUContext>::value &&
                 std::is_same<T, int8_t>::value) {
-    if (x.dtype() == phi::DataType::INT8 && x_dims[0] <= 4 &&
-        y_dims.size() == 2 && y_dims[0] % 16 == 0 && y_dims[1] % 16 == 0 &&
+    if (x.dtype() == DataType::INT8 && x_dims[0] <= 4 && y_dims.size() == 2 &&
+        y_dims[0] % 16 == 0 && y_dims[1] % 16 == 0 &&
         FLAGS_cuda_core_int8_gemm && dev_ctx.GetComputeCapability() >= 70 &&
         transpose_y) {
       phi::CudaGemm<T, Context>(dev_ctx, x, y, out);
@@ -1924,8 +1924,8 @@ MatmulJudgeDtypeKernel(const Context& dev_ctx,
   if (try_matmul_int8) {
     return;
   }
-  auto x_tmp = Cast<T, Context>(dev_ctx, x, phi::DataType::FLOAT32);
-  auto y_tmp = Cast<T, Context>(dev_ctx, y, phi::DataType::FLOAT32);
+  auto x_tmp = Cast<T, Context>(dev_ctx, x, DataType::FLOAT32);
+  auto y_tmp = Cast<T, Context>(dev_ctx, y, DataType::FLOAT32);
   DenseTensor out_tmp;
   MatMulFunction<Context, float>(dev_ctx,
                                  x_tmp,
@@ -1935,8 +1935,8 @@ MatmulJudgeDtypeKernel(const Context& dev_ctx,
                                  &out_tmp,
                                  transpose_x,
                                  transpose_y);
-  if (x.dtype() == phi::DataType::INT8) {
-    CastKernel<float>(dev_ctx, out_tmp, phi::DataType::INT32, out);
+  if (x.dtype() == DataType::INT8) {
+    CastKernel<float>(dev_ctx, out_tmp, DataType::INT32, out);
     return;
   }
   CastKernel<float>(dev_ctx, out_tmp, x.dtype(), out);
