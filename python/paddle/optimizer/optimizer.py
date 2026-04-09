@@ -1694,7 +1694,7 @@ class Optimizer:
                 paddle.static.default_startup_program(),
             ):
                 auto_dp = paddle.distributed.auto_parallel.auto_dp_utils.in_auto_dp_mode()
-                from paddle.distributed.fsdp.fully_shard_fusion import (
+                from paddle.distributed.fsdp._fsdp_context import (
                     get_fsdp_context,
                 )
 
@@ -1722,8 +1722,8 @@ class Optimizer:
                     )
 
                 if isinstance(params_grads, list):
-                    # if self._grad_clip is not None:
-                    #     params_grads = self._grad_clip(params_grads)
+                    if self._grad_clip is not None:
+                        params_grads = self._grad_clip(params_grads)
                     params_grads = self.append_regularization_ops(
                         params_grads, self.regularization
                     )

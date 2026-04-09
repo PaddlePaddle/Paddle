@@ -26,18 +26,9 @@ from paddle.distributed.fleet.utils.tensor_fusion_helper import (
     alignment,
     get_current_device_type,
 )
-
-# Global registry for fsdp_context
-_g_fsdp_context = None
-
-
-def register_fsdp_context(context):
-    global _g_fsdp_context
-    _g_fsdp_context = context
-
-
-def get_fsdp_context():
-    return _g_fsdp_context
+from paddle.distributed.fsdp._fsdp_context import (
+    register_fsdp_context,
+)
 
 
 class BufferState(Enum):

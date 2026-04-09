@@ -138,7 +138,12 @@ class HybridParallelClipGrad:
                 and getattr(p, 'is_firstly_shared', True)
             )
 
-            if not_shared_enable:
+            from paddle.distributed.fsdp._fsdp_context import (
+                get_fsdp_context,
+            )
+
+            fsdp_context = get_fsdp_context()
+            if not_shared_enable and fsdp_context is None:
                 if p.is_distributed:
                     if g.dtype == paddle.float16:
                         sum_square_dist_fp16.append(sum_square)
@@ -280,7 +285,12 @@ class HybridParallelOptimizer:
     def __init__(self, optimizer, hcg, strategy):
         # Note: Only sharding stage 1 is considered in HybridParallelOptimizer.
         # The sharding stage2 and stage3 optimizers are invoked in other api.
-        if hcg.get_sharding_parallel_world_size() > 1 and False:
+        from paddle.distributed.fsdp._fsdp_context import (
+            get_fsdp_context,
+        )
+
+        fsdp_context = get_fsdp_context()
+        if hcg.get_sharding_parallel_world_size() > 1 and fsdp_context is None:
             split_param = strategy.hybrid_configs[
                 'sharding_configs'
             ].split_param

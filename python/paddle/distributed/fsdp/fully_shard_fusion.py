@@ -19,7 +19,6 @@ from enum import Enum
 import numpy as np
 
 import paddle
-import paddle.distributed as dist
 from paddle.autograd import PyLayer
 from paddle.distributed import fleet
 from paddle.distributed.fleet.utils.tensor_fusion_helper import (
@@ -27,18 +26,9 @@ from paddle.distributed.fleet.utils.tensor_fusion_helper import (
     alignment,
     get_current_device_type,
 )
-
-# Global registry for fsdp_context
-_g_fsdp_context = None
-
-
-def register_fsdp_context(context):
-    global _g_fsdp_context
-    _g_fsdp_context = context
-
-
-def get_fsdp_context():
-    return _g_fsdp_context
+from paddle.distributed.fsdp._fsdp_context import (
+    register_fsdp_context,
+)
 
 
 class BufferState(Enum):
@@ -78,14 +68,14 @@ class TensorFusionBuffer:
         self,
         unique_key,
         params,
-        fsdp_degree,
+        fsdp_group,
         dtype,
         is_params=False,
         main_grad_dtype=None,
     ):
         # Calculate total buffer size needed (with padding)
         self.unique_key = unique_key
-        self.fsdp_degree = fsdp_degree
+        self.fsdp_degree = fsdp_group.nranks
         self.dtype = dtype
         self.main_grad_dtype = (
             main_grad_dtype if main_grad_dtype is not None else dtype
@@ -115,15 +105,6 @@ class TensorFusionBuffer:
                 stop_gradient = param.stop_gradient
                 _shape = param.shape
                 param.stop_gradient = True
-
-                # Debug: check if param has data before flatten
-                param_has_data = (
-                    param._is_initialized()
-                    if hasattr(param, '_is_initialized')
-                    else True
-                )
-                mem_before = paddle.device.cuda.memory_allocated() / 1024**3
-
                 param.flatten_()
                 paddle.assign(
                     param,
@@ -132,17 +113,14 @@ class TensorFusionBuffer:
                         offset + param._numel(),
                     ),
                 )
-
                 param._clear_data()
-
                 param.stop_gradient = stop_gradient
                 param.get_tensor()._set_dims(_shape)
             paddle.device.cuda.empty_cache()
 
-            curr_rank = paddle.distributed.get_rank()
-            world_size = paddle.distributed.get_world_size()
+            curr_rank = paddle.distributed.get_rank(fsdp_group)
             total_nums = self.data_buffer.shape[0]
-            piece_len = (total_nums + world_size - 1) // world_size
+            piece_len = (total_nums + self.fsdp_degree - 1) // self.fsdp_degree
             start = curr_rank * piece_len
             end = min(start + piece_len, total_nums)
             self.data_buffer = paddle.slice(
@@ -204,19 +182,12 @@ class TensorFusionBuffer:
 
 
 class FSDPBufferManager:
-    def __init__(self, model, mesh, fsdp_unit_layers=None):
+    def __init__(self, model, fsdp_unit_layers=None, moe_layers_name=None):
         self.model = model
-        # self._fsdp_group = mesh.get_group("dp")
         self.hcg = fleet.get_hybrid_communicate_group()
         self.dp_group = self.hcg.get_data_parallel_group()
         self._fsdp_group = self.hcg.get_sharding_parallel_group()
         self.main_grad_dtype = paddle.float32
-
-        # Get EP group if "ep" dimension exists in mesh
-        # if "ep" in mesh.dim_names:
-        #     self._ep_fsdp_group = mesh.get_group("ep")
-        # else:
-        self._ep_fsdp_group = self._fsdp_group
 
         paddle.device.cuda.empty_cache()
         topk = None
@@ -232,7 +203,10 @@ class FSDPBufferManager:
             'Qwen3VLTextDecoderLayer',
             'Qwen3MoeDecoderLayer',
         ]
-        self.moe_layers_name = ['Qwen3MoeMLP', 'StandardMLPExpert']
+        self.moe_layers_name = moe_layers_name or [
+            'Qwen3MoeMLP',
+            'StandardMLPExpert',
+        ]
 
         # Get tie_param_name if using tie_weights
         self.tie_param_name = None
@@ -249,12 +223,11 @@ class FSDPBufferManager:
         for gid, params in grouped_params.items():
             is_expert = group_is_expert.get(gid, False)
             # Use EP group for expert params, DP group for regular params
-            fsdp_group = self._ep_fsdp_group if is_expert else self._fsdp_group
 
             params_buffer = TensorFusionBuffer(
                 gid,
                 params,
-                fsdp_group.nranks,
+                self._fsdp_group,
                 params[0].dtype,
                 is_params=True,
             )
@@ -263,7 +236,7 @@ class FSDPBufferManager:
                 grads_buffer = TensorFusionBuffer(
                     gid,
                     params,
-                    fsdp_group.nranks,
+                    self._fsdp_group,
                     params[0].dtype,
                     main_grad_dtype=self.main_grad_dtype,
                 )
@@ -282,7 +255,7 @@ class FSDPBufferManager:
                     dtype=params[0].dtype,
                     trainable=params[0].trainable,
                     is_expert_param=is_expert,
-                    fsdp_group=fsdp_group,
+                    fsdp_group=self._fsdp_group,
                     params_buffer=params_buffer,
                     grads_buffer=grads_buffer,
                     params_use_sum=_params_use_sum,
@@ -609,7 +582,7 @@ class FusionForwardHook(PyLayer):
         ctx.layer = layer
         ctx.comm_manager = comm_manager
         ctx.recursive = recursive
-        return inputs
+        return inputs if len(inputs) > 1 else inputs[0]
 
     @staticmethod
     def backward(ctx, *args):
@@ -621,39 +594,14 @@ class FusionForwardHook(PyLayer):
 
 
 class FullyShardFusion:
-    def __init__(
-        self, model, mesh=None, fsdp_unit_layers=None, moe_layers_name=None
-    ):
+    def __init__(self, model, fsdp_unit_layers=None, moe_layers_name=None):
         self.model = model
-        self.mesh = None
         self.buffer_manager = FSDPBufferManager(
-            self.model, self.mesh, fsdp_unit_layers
+            self.model, fsdp_unit_layers, moe_layers_name
         )
         self.comm_manager = FSDPCommManager(self.buffer_manager)
         self.register_tensor_fusion_hooks(self.model)
         register_fsdp_context(self)
-
-    def _check_mesh(self, mesh, pp_idx=0):
-        if "pp" in mesh.dim_names:
-            mesh = mesh.get_mesh_with_dim("pp", pp_idx)
-        return mesh
-
-    def _shard_all_params(self):
-        def shard_layer_param(layer):
-            for param_name in list(layer._parameters.keys()):
-                param = getattr(layer, param_name)
-                if param is not None:
-                    param_placements = [
-                        dist.Replicate() for _ in range(len(self.mesh.shape))
-                    ]
-                    if not param.is_dist():
-                        param = dist.shard_tensor(
-                            param, self.mesh, param_placements
-                        )
-                        setattr(layer, param_name, param)
-
-        for name, layer in self.model.named_sublayers(include_self=True):
-            shard_layer_param(layer)
 
     def comm_sync_and_reset_status(self):
         self.comm_manager.finish_grads_sync()
