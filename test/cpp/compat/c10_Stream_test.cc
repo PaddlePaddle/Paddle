@@ -20,7 +20,69 @@
 #include <c10/cuda/CUDAStream.h>
 #endif
 
+#include <atomic>
+#include <chrono>
+#include <thread>
+
 #include "gtest/gtest.h"
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+namespace {
+
+using StreamCallbackGate = std::atomic<bool>;
+
+#ifdef PADDLE_WITH_HIP
+void BlockingStreamCallback(hipStream_t /*stream*/,
+                            hipError_t /*status*/,
+                            void* user_data) {
+  auto* gate = static_cast<StreamCallbackGate*>(user_data);
+  while (!gate->load(std::memory_order_acquire)) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
+}
+
+void EnqueueBlockingCallback(const c10::cuda::CUDAStream& stream,
+                             StreamCallbackGate* gate) {
+  C10_CUDA_CHECK(hipStreamAddCallback(
+      stream.raw_stream(), BlockingStreamCallback, gate, 0));
+}
+
+void CreateRawStream(hipStream_t* stream) {
+  C10_CUDA_CHECK(hipStreamCreate(stream));
+}
+
+void DestroyRawStream(hipStream_t stream) {
+  C10_CUDA_CHECK(hipStreamDestroy(stream));
+}
+
+void ClearLastStreamError() { (void)hipGetLastError(); }
+#else
+void CUDART_CB BlockingStreamCallback(void* user_data) {
+  auto* gate = static_cast<StreamCallbackGate*>(user_data);
+  while (!gate->load(std::memory_order_acquire)) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
+}
+
+void EnqueueBlockingCallback(const c10::cuda::CUDAStream& stream,
+                             StreamCallbackGate* gate) {
+  C10_CUDA_CHECK(
+      cudaLaunchHostFunc(stream.raw_stream(), BlockingStreamCallback, gate));
+}
+
+void CreateRawStream(cudaStream_t* stream) {
+  C10_CUDA_CHECK(cudaStreamCreate(stream));
+}
+
+void DestroyRawStream(cudaStream_t stream) {
+  C10_CUDA_CHECK(cudaStreamDestroy(stream));
+}
+
+void ClearLastStreamError() { (void)cudaGetLastError(); }
+#endif
+
+}  // namespace
+#endif
 
 // Test device_count() works in both CPU and CUDA builds
 TEST(StreamTest, DeviceCount) {
@@ -88,6 +150,41 @@ TEST(StreamTest, QueryCudaStreamReady) {
   // synchronize first to ensure no pending work, then query should be true.
   EXPECT_NO_THROW(s.synchronize());
   EXPECT_TRUE(s.query());
+}
+
+TEST(StreamTest, QueryCudaStreamNotReadyReturnsFalse) {
+  if (!at::cuda::is_available()) {
+    return;
+  }
+  auto cuda_stream = c10::cuda::getStreamFromPool(/*isHighPriority=*/false);
+  StreamCallbackGate release_callback{false};
+  ASSERT_NO_THROW(EnqueueBlockingCallback(cuda_stream, &release_callback));
+
+  c10::Stream s = cuda_stream.unwrap();
+  EXPECT_FALSE(s.query());
+
+  release_callback.store(true, std::memory_order_release);
+  EXPECT_NO_THROW(s.synchronize());
+}
+
+TEST(StreamTest, QueryCudaStreamInvalidHandleThrows) {
+  if (!at::cuda::is_available()) {
+    return;
+  }
+
+  auto device_index = c10::cuda::getCurrentCUDAStream().device_index();
+#ifdef PADDLE_WITH_HIP
+  hipStream_t raw_stream = nullptr;
+#else
+  cudaStream_t raw_stream = nullptr;
+#endif
+  ASSERT_NO_THROW(CreateRawStream(&raw_stream));
+
+  auto cuda_stream = c10::cuda::getStreamFromExternal(raw_stream, device_index);
+  ASSERT_NO_THROW(DestroyRawStream(raw_stream));
+
+  EXPECT_THROW(cuda_stream.query(), std::exception);
+  ClearLastStreamError();
 }
 #endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
 
