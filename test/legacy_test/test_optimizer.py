@@ -186,15 +186,26 @@ class TestOptimizerAPI(unittest.TestCase):
         paddle.disable_static()
         x = paddle.arange(26, dtype="float32").reshape([2, 13])
         linear = paddle.nn.Linear(13, 5)
-        adam = paddle.optimizer.Adam(
-            learning_rate=0.01,
-            parameters=linear.parameters(),
-        )
-        adam.zero_grad()
-        output = linear(x)
-        loss = paddle.mean(output)
-        loss.backward()
-        adam.step()
+        optimizers = [
+            paddle.optimizer.Adam(
+                learning_rate=0.01,
+                parameters=linear.parameters(),
+            ),
+            paddle.optimizer.AdamW(
+                learning_rate=0.01,
+                parameters=linear.parameters(),
+            ),
+            paddle.optimizer.ASGD(
+                learning_rate=0.01,
+                parameters=linear.parameters(),
+            ),
+        ]
+        for optimizer in optimizers:
+            optimizer.zero_grad()
+            output = linear(x)
+            loss = paddle.mean(output)
+            loss.backward()
+            optimizer.step()
 
     def test_step_with_closure(self):
         paddle.seed(100)
@@ -202,19 +213,30 @@ class TestOptimizerAPI(unittest.TestCase):
         paddle.disable_static()
         x = paddle.arange(26, dtype="float32").reshape([2, 13])
         linear = paddle.nn.Linear(13, 5)
-        adam = paddle.optimizer.Adam(
-            learning_rate=0.01,
-            parameters=linear.parameters(),
-        )
+        optimizers = [
+            paddle.optimizer.Adam(
+                learning_rate=0.01,
+                parameters=linear.parameters(),
+            ),
+            paddle.optimizer.AdamW(
+                learning_rate=0.01,
+                parameters=linear.parameters(),
+            ),
+            paddle.optimizer.ASGD(
+                learning_rate=0.01,
+                parameters=linear.parameters(),
+            ),
+        ]
+        for optimizer in optimizers:
 
-        def closure():
-            adam.zero_grad()
-            output = linear(x)
-            loss = paddle.mean(output)
-            loss.backward()
-            return loss
+            def closure():
+                optimizer.zero_grad()
+                output = linear(x)
+                loss = paddle.mean(output)
+                loss.backward()
+                return loss
 
-        loss = adam.step(closure)
+            loss = optimizer.step(closure)
 
 
 if __name__ == '__main__':
