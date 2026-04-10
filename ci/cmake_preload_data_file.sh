@@ -14,15 +14,47 @@
 
 set -e
 
-echo "=== preload data file from CFS_DIR  ==="
+echo "=== preload data file from CFS_DIR ==="
 
 BASE_SRC=${CFS_DIR}/preload_file
 BASE_DST=/paddle/build/third_party/inference_demo
 
 declare -A FILE_MAP=(
+  ["word2vec.inference.model.tar.gz"]="word2vec"
+  ["image_classification_resnet.inference.model.tgz"]="image_classification_resnet"
+
+  ########################
+  # Quant1
+  ########################
+  ["ResNet50_qat_model.tar.gz"]="quant/ResNet50_quant"
+  ["ResNet101_qat_model.tar.gz"]="quant/ResNet101_quant"
+  ["GoogleNet_qat_model.tar.gz"]="quant/GoogleNet_quant"
+  ["MobileNetV1_qat_model.tar.gz"]="quant/MobileNetV1_quant"
+  ["MobileNetV2_qat_model.tar.gz"]="quant/MobileNetV2_quant"
+  ["VGG16_qat_model.tar.gz"]="quant/VGG16_quant"
+  ["VGG19_qat_model.tar.gz"]="quant/VGG19_quant"
+
+  ########################
+  # Quant2
+  ########################
   ["ResNet50_qat_perf.tar.gz"]="quant/ResNet50_quant2"
+  ["ResNet50_qat_range.tar.gz"]="quant/ResNet50_quant2_range"
+  ["ResNet50_qat_channelwise.tar.gz"]="quant/ResNet50_quant2_channelwise"
+  ["MobileNet_qat_perf.tar.gz"]="quant/MobileNetV1_quant2"
+
+  ########################
+  # NLP
+  ########################
   ["Ernie_dataset.tar.gz"]="Ernie_dataset"
+  ["ernie_qat.tar.gz"]="quant/Ernie_quant2"
+  ["ernie_fp32_model.tar.gz"]="quant/Ernie_float"
+
+  ########################
+  # LSTM
+  ########################
+  ["lstm_quant.tar.gz"]="quant/lstm_quant_test"
   ["quant_lstm_input_data.tar.gz"]="quant/lstm_quant2_int8"
+  ["lstm_fp32_model.tar.gz"]="quant/lstm_quant2_int8"
 )
 
 for file in "${!FILE_MAP[@]}"; do
@@ -38,3 +70,5 @@ for file in "${!FILE_MAP[@]}"; do
         echo "[MISS] ${src} not found"
     fi
 done
+
+echo "=== preload finished ==="
