@@ -349,6 +349,18 @@ class TestWeightOnlyLinear(unittest.TestCase):
             self.skipTest(f"Unsupported arch or CUDA error: {e}")
 
 
+def _is_ampere_or_above():
+    """Check if GPU compute capability >= 8.0 (Ampere+).
+    llm_int8_linear requires Ampere or newer architecture."""
+    if not paddle.is_compiled_with_cuda():
+        return False
+    try:
+        arch = _get_arch_info()
+        return arch >= 80
+    except (ValueError, RuntimeError):
+        return False
+
+
 class TestLlmInt8Linear(unittest.TestCase):
     """Test llm_int8_linear function.
     测试 llm_int8_linear 函数。"""
@@ -357,7 +369,8 @@ class TestLlmInt8Linear(unittest.TestCase):
         paddle.disable_static()
 
     @unittest.skipIf(
-        not paddle.is_compiled_with_cuda(), "CUDA required for llm_int8_linear"
+        not _is_ampere_or_above(),
+        "llm_int8_linear requires Ampere+ (sm_80), skipped on CI V100 (sm_70)",
     )
     def test_llm_int8_linear_basic(self):
         """Test basic llm_int8_linear without bias.
@@ -373,7 +386,8 @@ class TestLlmInt8Linear(unittest.TestCase):
             self.skipTest(f"CUDA error: {e}")
 
     @unittest.skipIf(
-        not paddle.is_compiled_with_cuda(), "CUDA required for llm_int8_linear"
+        not _is_ampere_or_above(),
+        "llm_int8_linear requires Ampere+ (sm_80), skipped on CI V100 (sm_70)",
     )
     def test_llm_int8_linear_with_bias(self):
         """Test llm_int8_linear with bias.
@@ -391,7 +405,8 @@ class TestLlmInt8Linear(unittest.TestCase):
             self.skipTest(f"CUDA error: {e}")
 
     @unittest.skipIf(
-        not paddle.is_compiled_with_cuda(), "CUDA required for llm_int8_linear"
+        not _is_ampere_or_above(),
+        "llm_int8_linear requires Ampere+ (sm_80), skipped on CI V100 (sm_70)",
     )
     def test_llm_int8_linear_different_threshold(self):
         """Test llm_int8_linear with different threshold.
@@ -406,7 +421,8 @@ class TestLlmInt8Linear(unittest.TestCase):
             self.skipTest(f"CUDA error: {e}")
 
     @unittest.skipIf(
-        not paddle.is_compiled_with_cuda(), "CUDA required for llm_int8_linear"
+        not _is_ampere_or_above(),
+        "llm_int8_linear requires Ampere+ (sm_80), skipped on CI V100 (sm_70)",
     )
     def test_llm_int8_linear_high_threshold(self):
         """Test llm_int8_linear with high threshold (fewer outliers).

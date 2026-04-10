@@ -82,7 +82,7 @@ class TestSparseAttentionBasic(unittest.TestCase):
             )
             # Each position attends to 2 positions
             nnz_per_row = 2
-            total_nnz = batch_size * num_heads * seq_len * nnz_per_row
+            nnz_per_head = seq_len * nnz_per_row
             offset = paddle.zeros(
                 [batch_size, num_heads, seq_len + 1], dtype="int32"
             )
@@ -91,7 +91,7 @@ class TestSparseAttentionBasic(unittest.TestCase):
                     for s in range(seq_len):
                         offset[b, h, s + 1] = offset[b, h, s] + nnz_per_row
             columns = paddle.zeros(
-                [batch_size, num_heads, total_nnz], dtype="int32"
+                [batch_size, num_heads, nnz_per_head], dtype="int32"
             )
             # Each position attends to itself and the next position
             for b in range(batch_size):
@@ -263,11 +263,11 @@ class TestSparseAttentionBasic(unittest.TestCase):
             value = paddle.randn([batch, heads, seq, dim], dtype="float32")
             # Dense pattern: each row attends to all 4 positions
             nnz_per_row = 4
+            nnz_per_head = seq * nnz_per_row
             offset = paddle.zeros([batch, heads, seq + 1], dtype="int32")
             for s in range(seq):
                 offset[0, :, s + 1] = offset[0, :, s] + nnz_per_row
-            total_nnz = batch * heads * seq * nnz_per_row
-            columns = paddle.zeros([batch, heads, total_nnz], dtype="int32")
+            columns = paddle.zeros([batch, heads, nnz_per_head], dtype="int32")
             for h in range(heads):
                 for s in range(seq):
                     base = offset[0, h, s].item()
@@ -323,11 +323,11 @@ class TestSparseAttentionBasic(unittest.TestCase):
                 key = paddle.randn([1, 2, 4, head_dim], dtype="float32")
                 value = paddle.randn([1, 2, 4, head_dim], dtype="float32")
                 nnz_per_row = 4
+                nnz_per_head = 4 * nnz_per_row
                 offset = paddle.zeros([1, 2, 5], dtype="int32")
                 for s in range(4):
                     offset[0, :, s + 1] = offset[0, :, s] + nnz_per_row
-                total_nnz = 1 * 2 * 4 * nnz_per_row
-                columns = paddle.zeros([1, 2, total_nnz], dtype="int32")
+                columns = paddle.zeros([1, 2, nnz_per_head], dtype="int32")
                 for h in range(2):
                     for s in range(4):
                         base = offset[0, h, s].item()
