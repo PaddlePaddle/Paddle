@@ -112,9 +112,13 @@ TEST(DeviceCompatTest, DeviceParseAndPlaceBranches) {
   EXPECT_EQ(custom.str(), "privateuseone:5");
 
   c10::Device cuda_no_index(c10::DeviceType::CUDA);
-  EXPECT_EQ(cuda_no_index._PD_GetInner().GetType(), phi::AllocationType::GPU);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (c10::cuda::device_count() >= 2) {
+  auto device_count = c10::cuda::device_count();
+  if (device_count == 0) {
+    GTEST_SKIP() << "requires at least 1 GPU device";
+  }
+  EXPECT_EQ(cuda_no_index._PD_GetInner().GetType(), phi::AllocationType::GPU);
+  if (device_count >= 2) {
     c10::cuda::CUDAGuard guard(1);
     EXPECT_EQ(c10::Device(c10::DeviceType::CUDA)._PD_GetInner().GetDeviceId(),
               1);
@@ -122,6 +126,7 @@ TEST(DeviceCompatTest, DeviceParseAndPlaceBranches) {
     EXPECT_EQ(cuda_no_index._PD_GetInner().GetDeviceId(), 0);
   }
 #else
+  EXPECT_EQ(cuda_no_index._PD_GetInner().GetType(), phi::AllocationType::GPU);
   EXPECT_EQ(cuda_no_index._PD_GetInner().GetDeviceId(), 0);
 #endif
   c10::Device xpu_no_index(c10::DeviceType::XPU);
