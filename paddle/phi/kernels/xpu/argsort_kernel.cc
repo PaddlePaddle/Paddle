@@ -166,11 +166,8 @@ void ArgsortKernel(const Context& dev_ctx,
                         flip_axes);
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "flip output");
 
-    ret = xpu::flip(dev_ctx.x_context(),
-                    tmp_idx,
-                    indices_data,
-                    shape_vec,
-                    flip_axes);
+    ret = xpu::flip(
+        dev_ctx.x_context(), tmp_idx, indices_data, shape_vec, flip_axes);
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "flip indices");
     return;
   }
