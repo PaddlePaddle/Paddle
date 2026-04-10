@@ -35,7 +35,7 @@
     }                                                                         \
   }
 
-#include "cutlass_matmul.cuh"  // NOLINT(build/include_subdir)
-#include "math_function.h"     // NOLINT(build/include_subdir)
-#include "profile.h"           // NOLINT(build/include_subdir)
+#include "cutlass_matmul.cuh"  // NOLINT
+#include "math_function.h"     // NOLINT
+#include "profile.h"           // NOLINT
 #endif

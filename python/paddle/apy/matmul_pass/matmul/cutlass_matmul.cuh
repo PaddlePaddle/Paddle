@@ -33,9 +33,8 @@
 #include "cutlass_patch/epilogue/thread/linear_combination_variadic.h"
 #include "cutlass_patch/gemm/device/gemm_universal_with_variadic.h"
 
-#include "all_tuning_configs.h"  // NOLINT(build/include_subdir)
-#include "default_config_id.h"   // NOLINT(build/include_subdir)
-#include "params.h"              // NOLINT(build/include_subdir)
+#include "default_config_id.h"  // NOLINT
+#include "params.h"             // NOLINT
 
 #define CHECK_CUTLASS(status)                                             \
   {                                                                       \
