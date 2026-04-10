@@ -54,6 +54,8 @@ TEST(ATenEmptyTest, ExplicitArgsCpu) {
 // ======================== pin_memory tests ========================
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include <c10/cuda/CUDAFunctions.h>
+#include <c10/cuda/CUDAGuard.h>
 
 // TensorOptions overload: pin_memory via options
 TEST(ATenEmptyTest, PinMemoryViaTensorOptions) {
@@ -112,6 +114,18 @@ TEST(ATenEmptyTest, PinnedTensorDataPtrNonNull) {
   at::Tensor t = at::empty({32}, opts);
   ASSERT_TRUE(t.is_pinned());
   ASSERT_NE(t.data_ptr(), nullptr);
+}
+
+TEST(ATenEmptyTest, DefaultCudaDeviceUsesCurrentDevice) {
+  if (c10::cuda::device_count() < 2) {
+    GTEST_SKIP() << "requires at least 2 CUDA devices";
+  }
+  c10::cuda::CUDAGuard guard(1);
+  at::Tensor t =
+      at::empty({8}, at::TensorOptions().dtype(at::kFloat).device(at::kCUDA));
+
+  ASSERT_TRUE(t.is_cuda());
+  ASSERT_EQ(t.device().index(), 1);
 }
 
 #endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP

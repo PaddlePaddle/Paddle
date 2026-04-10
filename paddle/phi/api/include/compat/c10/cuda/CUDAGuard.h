@@ -35,7 +35,8 @@ inline Device current_cuda_device() {
 
 inline Device normalize_cuda_device(Device device) {
   TORCH_CHECK(device.is_cuda(), "Expected a CUDA device, but got ", device);
-  return Device(kCUDA, device.has_index() ? device.index() : 0);
+  return device.has_index() ? Device(kCUDA, device.index())
+                            : current_cuda_device();
 }
 
 }  // namespace detail

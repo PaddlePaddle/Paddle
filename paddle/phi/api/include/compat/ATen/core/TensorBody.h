@@ -142,7 +142,7 @@ class Tensor : public TensorBase {
       PaddlePlace place(phi::AllocationType::CPU);
       return tensor_.copy_to(place, true);
     } else if (b == c10::Backend::CUDA) {
-      PaddlePlace place(phi::AllocationType::GPU);
+      auto place = paddle::DefaultGPUPlace();
       return tensor_.copy_to(place, true);
     } else if (b == c10::Backend::XPU) {
       PaddlePlace place(phi::AllocationType::XPU);
@@ -163,7 +163,7 @@ class Tensor : public TensorBase {
 
   Tensor cuda() const {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    PaddlePlace place(phi::AllocationType::GPU);
+    auto place = paddle::DefaultGPUPlace();
     return tensor_.copy_to(place, true);
 #elif defined(PADDLE_WITH_XPU)
     return tensor_.copy_to(paddle::DefaultXPUPlace(), true);
