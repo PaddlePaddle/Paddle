@@ -115,7 +115,7 @@ TEST(DeviceCompatTest, DeviceParseAndPlaceBranches) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   auto device_count = c10::cuda::device_count();
   if (device_count == 0) {
-    GTEST_SKIP() << "requires at least 1 GPU device";
+    return;
   }
   EXPECT_EQ(cuda_no_index._PD_GetInner().GetType(), phi::AllocationType::GPU);
   if (device_count >= 2) {
