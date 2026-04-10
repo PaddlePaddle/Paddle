@@ -166,4 +166,29 @@ TEST(ATenEmptyTest, EmptyCudaHelperExplicitDeviceUsesRequestedIndex) {
   ASSERT_EQ(t.device().index(), 1);
 }
 
+TEST(ATenEmptyTest, EmptyCudaOptionsHelperDefaultDeviceUsesCurrentDevice) {
+  if (c10::cuda::device_count() < 2) {
+    return;
+  }
+  c10::cuda::CUDAGuard guard(1);
+  at::Tensor t = at::detail::empty_cuda(
+      {8}, at::TensorOptions().dtype(at::kFloat).device(at::kCUDA));
+
+  ASSERT_TRUE(t.is_cuda());
+  ASSERT_EQ(t.device().index(), 1);
+}
+
+TEST(ATenEmptyTest, EmptyCudaOptionsHelperExplicitDeviceUsesRequestedIndex) {
+  if (c10::cuda::device_count() < 2) {
+    return;
+  }
+  c10::cuda::CUDAGuard guard(0);
+  at::Tensor t = at::detail::empty_cuda(
+      {8},
+      at::TensorOptions().dtype(at::kFloat).device(at::Device(at::kCUDA, 1)));
+
+  ASSERT_TRUE(t.is_cuda());
+  ASSERT_EQ(t.device().index(), 1);
+}
+
 #endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
