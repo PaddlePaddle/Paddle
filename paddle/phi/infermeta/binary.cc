@@ -924,7 +924,8 @@ void ConvTransposeInferMeta(const MetaTensor& x,
   // (2,147,483,647) This is enforced by CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED
   // macro Both forward output and backward gradient tensors must satisfy this
   // constraint
-  constexpr int64_t kMaxTensorNumel = 2147483647LL;  // INT_MAX
+  const int64_t kMaxTensorNumel =
+      static_cast<int64_t>(std::numeric_limits<int>::max());  // INT_MAX
   int64_t output_numel = 1;
   for (const auto& dim : output_shape) {
     output_numel *= dim;
