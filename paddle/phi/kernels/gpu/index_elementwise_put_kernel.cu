@@ -287,13 +287,13 @@ void IndexElementwisePutWithTensorKernel(
     const int64_t slice_offset,
     DenseTensor* out) {
   const auto& index_type = index[0]->dtype();
-  PADDLE_ENFORCE_EQ(index_type == phi::DataType::INT64,
+  PADDLE_ENFORCE_EQ(index_type == DataType::INT64,
                     true,
                     common::errors::InvalidArgument(
                         "Index holds the wrong type, it holds [%s], but "
                         "desires to be [%s].",
                         index_type,
-                        phi::DataType::INT64));
+                        DataType::INT64));
 
   if (out->numel() == 0) return;
   if (funcs::IsInUint32Range(x.numel() * sizeof(T), out->numel() * sizeof(T))) {

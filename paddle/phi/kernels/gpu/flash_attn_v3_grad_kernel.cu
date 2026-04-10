@@ -97,7 +97,7 @@ void FlashAttnV3GradBaseKernel(
 
   auto q_type = q.dtype();
   PADDLE_ENFORCE_EQ(
-      (q_type == phi::DataType::FLOAT16 || q_type == phi::DataType::BFLOAT16),
+      (q_type == DataType::FLOAT16 || q_type == DataType::BFLOAT16),
       true,
       common::errors::InvalidArgument(
           "FlashAttention-3 bwd only support fp16 and bf16 data type"));
@@ -153,7 +153,7 @@ void FlashAttnV3GradBaseKernel(
     CHECK_DEVICE(cu_seqlens_q);
     CHECK_CONTIGUOUS(cu_seqlens_q);
     PADDLE_ENFORCE_EQ(cu_seqlens_q.dtype(),
-                      phi::DataType::INT32,
+                      DataType::INT32,
                       common::errors::InvalidArgument(
                           "cu_seqlens_q must have dtype paddle.int32"));
     PADDLE_ENFORCE_GT(
@@ -169,7 +169,7 @@ void FlashAttnV3GradBaseKernel(
     CHECK_DEVICE(cu_seqlens_k);
     CHECK_CONTIGUOUS(cu_seqlens_k);
     PADDLE_ENFORCE_EQ(cu_seqlens_k.dtype(),
-                      phi::DataType::INT32,
+                      DataType::INT32,
                       common::errors::InvalidArgument(
                           "cu_seqlens_k must have dtype paddle.int32"));
     PADDLE_ENFORCE_GT(
@@ -303,7 +303,7 @@ void FlashAttnV3GradBaseKernel(
     auto seqused_q = seqused_q_.get();
     PADDLE_ENFORCE_EQ(
         seqused_q.dtype(),
-        phi::DataType::INT32,
+        DataType::INT32,
         common::errors::InvalidArgument("seqused_q must have dtype int32"));
     CHECK_DEVICE(seqused_q);
     CHECK_CONTIGUOUS(seqused_q);
@@ -313,7 +313,7 @@ void FlashAttnV3GradBaseKernel(
     auto seqused_k = seqused_k_.get();
     PADDLE_ENFORCE_EQ(
         seqused_k.dtype(),
-        phi::DataType::INT32,
+        DataType::INT32,
         common::errors::InvalidArgument("seqused_k must have dtype int32"));
     CHECK_DEVICE(seqused_k);
     CHECK_CONTIGUOUS(seqused_k);
@@ -851,7 +851,7 @@ void FlashMaskV2GradBaseKernel(
 
   auto q_type = q.dtype();
   PADDLE_ENFORCE_EQ(
-      (q_type == phi::DataType::FLOAT16 || q_type == phi::DataType::BFLOAT16),
+      (q_type == DataType::FLOAT16 || q_type == DataType::BFLOAT16),
       true,
       common::errors::InvalidArgument(
           "FlashAttention-3 bwd only support fp16 and bf16 data type"));
@@ -907,7 +907,7 @@ void FlashMaskV2GradBaseKernel(
     CHECK_DEVICE(cu_seqlens_q);
     CHECK_CONTIGUOUS(cu_seqlens_q);
     PADDLE_ENFORCE_EQ(cu_seqlens_q.dtype(),
-                      phi::DataType::INT32,
+                      DataType::INT32,
                       common::errors::InvalidArgument(
                           "cu_seqlens_q must have dtype paddle.int32"));
     PADDLE_ENFORCE_GT(
@@ -923,7 +923,7 @@ void FlashMaskV2GradBaseKernel(
     CHECK_DEVICE(cu_seqlens_k);
     CHECK_CONTIGUOUS(cu_seqlens_k);
     PADDLE_ENFORCE_EQ(cu_seqlens_k.dtype(),
-                      phi::DataType::INT32,
+                      DataType::INT32,
                       common::errors::InvalidArgument(
                           "cu_seqlens_k must have dtype paddle.int32"));
     PADDLE_ENFORCE_GT(
@@ -1002,7 +1002,7 @@ void FlashMaskV2GradBaseKernel(
   if (is_flashmask) {
     PADDLE_ENFORCE_EQ(
         startend_row_indices.dtype(),
-        phi::DataType::INT32,
+        DataType::INT32,
         common::errors::InvalidArgument(
             "flashmask_attention startend_row_indices must be INT32 type"));
     PADDLE_ENFORCE_EQ(
@@ -1027,7 +1027,7 @@ void FlashMaskV2GradBaseKernel(
         ((flashmask_maxmin_shape[2] + 31) / 32 + 3) / 4 * 4;
     flashmask_maxmin_shape[3] = 8;
 
-    flashmask_maxmin.set_type(phi::DataType::INT32);
+    flashmask_maxmin.set_type(DataType::INT32);
     flashmask_maxmin.Resize(flashmask_maxmin_shape);
     dev_ctx.template Alloc<int32_t>(&flashmask_maxmin);
 
@@ -1193,7 +1193,7 @@ void FlashMaskV2GradBaseKernel(
     auto seqused_q = seqused_q_.get();
     PADDLE_ENFORCE_EQ(
         seqused_q.dtype(),
-        phi::DataType::INT32,
+        DataType::INT32,
         common::errors::InvalidArgument("seqused_q must have dtype int32"));
     CHECK_DEVICE(seqused_q);
     CHECK_CONTIGUOUS(seqused_q);
@@ -1203,7 +1203,7 @@ void FlashMaskV2GradBaseKernel(
     auto seqused_k = seqused_k_.get();
     PADDLE_ENFORCE_EQ(
         seqused_k.dtype(),
-        phi::DataType::INT32,
+        DataType::INT32,
         common::errors::InvalidArgument("seqused_k must have dtype int32"));
     CHECK_DEVICE(seqused_k);
     CHECK_CONTIGUOUS(seqused_k);

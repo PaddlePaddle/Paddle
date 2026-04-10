@@ -428,6 +428,7 @@ jobs:
           rm -rf * .[^.]*
           set -x
           source ${{ github.workspace }}/../../../proxy
+          python -m pip install --upgrade pip wheel setuptools
           git clone https://github.com/PaddlePaddle/PaddleFleet.git .
           git config --global --add safe.directory /paddle
           git config user.name "PaddleCI"
@@ -450,7 +451,12 @@ jobs:
           export LD_LIBRARY_PATH=/usr/local/cuda-12.9/compat:$LD_LIBRARY_PATH
           export IS_NVIDIA=True
           export PADDLEFLEET_VERSION=0.0.0
-          uv build --wheel -v
+          echo "Downloading Paddle.tar.gz from cfs"
+          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/h-coverage/${PR_ID}/${COMMIT_ID}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --no-check-certificate
+          pip uninstall paddlepaddle-gpu -y
+          pip install paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --force-reinstall --extra-index-url=https://www.paddlepaddle.org.cn/packages/nightly/cu129/
+          pip install paddle-nvidia-nvshmem-cu12 --extra-index-url https://www.paddlepaddle.org.cn/packages/nightly/cu129/
+          uv build --wheel --no-build-isolation -v
           '
 
       - name: upload whl to BOS

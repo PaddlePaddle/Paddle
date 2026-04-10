@@ -42,7 +42,7 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
     return;
   }
   DenseTensor bias_fp32;
-  if (bias.is_initialized() && bias.get().dtype() == phi::DataType::FLOAT16) {
+  if (bias.is_initialized() && bias.get().dtype() == DataType::FLOAT16) {
     bias_fp32.Resize(bias.get().dims());
     dev_ctx.template Alloc<float>(&bias_fp32);
     int r = baidu::xpu::api::cast<XPUType, float>(
@@ -62,7 +62,7 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
   baidu::xpu::xblas::FcFusionTensor<XPUType> tensor_y{
       input_y, nullptr, m, n, n, false};
   DenseTensor weight_scale_fp32;
-  if (weight_scale.dtype() != phi::DataType::FLOAT32 &&
+  if (weight_scale.dtype() != DataType::FLOAT32 &&
       weight_scale.dims().size() != 0) {
     weight_scale_fp32.Resize(weight_scale.dims());
     dev_ctx.template Alloc<float>(&weight_scale_fp32);
@@ -75,7 +75,7 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
   }
   const float* weight_scale_ptr = nullptr;
   if (weight_scale.dims().size() != 0) {
-    if (weight_scale.dtype() == phi::DataType::FLOAT32) {
+    if (weight_scale.dtype() == DataType::FLOAT32) {
       weight_scale_ptr = weight_scale.data<float>();
     } else {
       weight_scale_ptr = weight_scale_fp32.data<float>();
@@ -83,10 +83,10 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
   }
   baidu::xpu::xblas::FcFusionEpilogue<float, float> epilogue{
       api::Activation_t::LINEAR,
-      bias.is_initialized() ? (bias.get().dtype() == phi::DataType::FLOAT16
-                                   ? bias_fp32.data<float>()
-                                   : bias.get().data<float>())
-                            : nullptr,
+      bias.is_initialized()
+          ? (bias.get().dtype() == DataType::FLOAT16 ? bias_fp32.data<float>()
+                                                     : bias.get().data<float>())
+          : nullptr,
       nullptr,
       weight_scale_ptr,
       0,

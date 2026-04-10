@@ -627,7 +627,7 @@ void UniqueRawKernel(const Context& dev_ctx,
                      DenseTensor* indices,
                      DenseTensor* index,
                      DenseTensor* counts) {
-  if (dtype == phi::DataType::INT32) {
+  if (dtype == DataType::INT32) {
     PADDLE_ENFORCE_LE(
         x.numel() + 1,
         INT_MAX,

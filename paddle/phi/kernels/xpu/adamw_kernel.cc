@@ -157,12 +157,12 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
       errors::InvalidArgument("moment1.dtype does not match moment2.dtype"));
 
   bool moment_in_fp16 = false;
-  if (moment1_dtype == phi::DataType::FLOAT16) {
+  if (moment1_dtype == DataType::FLOAT16) {
     moment_in_fp16 = true;
   } else {
     PADDLE_ENFORCE_EQ(
         moment1_dtype,
-        phi::DataType::FLOAT32,
+        DataType::FLOAT32,
         errors::InvalidArgument("moment1.dtype is neither fp32 nor fp16"));
   }
 
@@ -248,7 +248,7 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
   // param_out, const MT* master_param, MT* master_param_out, int64_t n);
   if (beta1_pow.place() == CPUPlace() && beta2_pow.place() == CPUPlace()) {
     // Compute with betapow in REG
-    if (grad_type == phi::DataType::FLOAT32) {
+    if (grad_type == DataType::FLOAT32) {
       int r = xpu::adamw<XPUType, float, MT>(
           dev_ctx.x_context(),
           beta1_,
@@ -309,7 +309,7 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
           beta2_ * beta2_pow.data<MT>()[0];
     }
   } else {
-    if (grad_type == phi::DataType::FLOAT32) {
+    if (grad_type == DataType::FLOAT32) {
       int r = xpu::adamw<XPUType, float, MT>(
           dev_ctx.x_context(),
           beta1_,
@@ -539,12 +539,12 @@ void AdamwDenseKernel(const Context& dev_ctx,
       errors::InvalidArgument("moment1.dtype does not match moment2.dtype"));
 
   bool moment_in_fp16 = false;
-  if (moment1_dtype == phi::DataType::FLOAT16) {
+  if (moment1_dtype == DataType::FLOAT16) {
     moment_in_fp16 = true;
   } else {
     PADDLE_ENFORCE_EQ(
         moment1_dtype,
-        phi::DataType::FLOAT32,
+        DataType::FLOAT32,
         errors::InvalidArgument("moment1.dtype is neither fp32 nor fp16"));
   }
 
@@ -684,7 +684,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
     // convert grad to float if necessary
     float* grad_fp32 = nullptr;
     const auto grad_type = grad.dtype();
-    if (grad_type != phi::DataType::FLOAT32) {
+    if (grad_type != DataType::FLOAT32) {
       grad_fp32 = RAII_GUARD.alloc_l3_or_gm<float>(grad.numel());
       PADDLE_ENFORCE_XDNN_NOT_NULL(grad_fp32);
       // int cast(Context* xpu_ctx, const TX* x, TY* y, int64_t len);
@@ -701,7 +701,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
     // float beta1, float beta2, float epsilon, float coeff, int64_t n);
     r = xpu::adamw<float>(
         dev_ctx.x_context(),
-        (grad_type == phi::DataType::FLOAT32) ? grad.data<float>() : grad_fp32,
+        (grad_type == DataType::FLOAT32) ? grad.data<float>() : grad_fp32,
         moment_in_fp16 ? moment1_input_for_xdnn
                        : moment1.template data<float>(),
         moment_in_fp16 ? moment2_input_for_xdnn

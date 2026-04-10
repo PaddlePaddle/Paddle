@@ -92,7 +92,7 @@ void RandpermKernel(const Context& dev_ctx,
                               std::numeric_limits<int>::min(),
                               std::numeric_limits<int>::max(),
                               IntArray({n}),
-                              phi::DataType::INT32,
+                              DataType::INT32,
                               &key);
   DenseTensor key_out = Empty<int, Context>(dev_ctx, IntArray({n}));
 

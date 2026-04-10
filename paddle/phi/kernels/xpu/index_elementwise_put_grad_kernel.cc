@@ -275,15 +275,14 @@ void IndexElementwisePutGradKernel(
     const int64_t slice_offset,
     DenseTensor* x_grad) {
   const auto& index_type = indices[0]->dtype();
-  PADDLE_ENFORCE_EQ(
-      index_type == phi::DataType::INT64 ||
-          (index_type == phi::DataType::BOOL && indices.size() == 1),
-      true,
-      common::errors::InvalidArgument(
-          "Index holds the wrong type, it holds [%s], but "
-          "desires to be [%s].",
-          index_type,
-          phi::DataType::INT64));
+  PADDLE_ENFORCE_EQ(index_type == DataType::INT64 ||
+                        (index_type == DataType::BOOL && indices.size() == 1),
+                    true,
+                    common::errors::InvalidArgument(
+                        "Index holds the wrong type, it holds [%s], but "
+                        "desires to be [%s].",
+                        index_type,
+                        DataType::INT64));
   std::vector<DenseTensor> tmp_args;
   if (indices.empty()) {
     if (x_grad) {
@@ -318,13 +317,13 @@ void IndexElementwisePutWithTensorGradKernel(
     DenseTensor* x_grad,
     DenseTensor* value_grad) {
   const auto& index_type = indices[0]->dtype();
-  PADDLE_ENFORCE_EQ(index_type == phi::DataType::INT64,
+  PADDLE_ENFORCE_EQ(index_type == DataType::INT64,
                     true,
                     common::errors::InvalidArgument(
                         "Index holds the wrong type, it holds [%s], but "
                         "desires to be [%s].",
                         index_type,
-                        phi::DataType::INT64));
+                        DataType::INT64));
 
   std::vector<DenseTensor> tmp_args;
   if (indices.empty()) {

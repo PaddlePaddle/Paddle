@@ -565,7 +565,7 @@ void LayerNormKernel(const Context& dev_ctx,
 
   auto x_dtype = x.dtype();
   auto y_dtype = y->dtype();
-  phi::DataType scale_bias_dtype;
+  DataType scale_bias_dtype;
   if (valid_scale) {
     scale_bias_dtype = scale->dtype();
     if (valid_bias) {

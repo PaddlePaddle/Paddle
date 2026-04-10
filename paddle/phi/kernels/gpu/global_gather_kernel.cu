@@ -45,11 +45,11 @@ struct GlobalGatherFunctor<GPUContext, T> {
     auto global_count = &global_count_in;
     auto local_count_type = local_count->dtype();
     auto global_count_type = global_count->dtype();
-    if (local_count_type != phi::DataType::INT64) {
+    if (local_count_type != DataType::INT64) {
       PADDLE_THROW(common::errors::InvalidArgument(
           "Please use int64 type in local_count."));
     }
-    if (global_count_type != phi::DataType::INT64) {
+    if (global_count_type != DataType::INT64) {
       PADDLE_THROW(common::errors::InvalidArgument(
           "Please use int64 type in global_count."));
     }
