@@ -209,7 +209,7 @@ struct SlogDeterminantV2Functor {
       VLOG(2) << "det value: " << matrix.determinant();
       VLOG(2) << "matrix val: " << matrix;
       T det_val = matrix.determinant();
-      sign_data[i] = sign(det_val);
+      sign_data[i] = phi::sign(det_val);
       det_val >= 0
           ? logdet_data[i] = std::log(det_val)
           : logdet_data[i] = std::log(std::abs(
@@ -270,7 +270,7 @@ struct SlogDeterminantV2Functor<dtype::complex<T>, Context> {
         logdet_data[i] = -std::numeric_limits<T>::infinity();
       } else {
         sign_data[i] = static_cast<Complex_T>(
-            sign(det_val, static_cast<std::complex<T>>(abs_det_val)));
+            phi::sign(det_val, static_cast<std::complex<T>>(abs_det_val)));
         logdet_data[i] = std::log(abs_det_val);
       }
     }
