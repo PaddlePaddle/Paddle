@@ -17,6 +17,7 @@
 #include <ATen/cuda/CUDAContext.h>
 #include <ATen/cuda/EmptyTensor.h>
 #include <ATen/native/cuda/Resize.h>
+#include <ATen/ops/as_strided.h>
 #include <ATen/ops/tensor.h>
 #include <c10/core/ScalarType.h>
 #include <c10/core/SymInt.h>
@@ -976,6 +977,19 @@ TEST(StorageTest, CopiedTensorWrappersShareStorageImpl) {
   ASSERT_EQ(tensor.storage().get_impl(), alias.storage().get_impl());
   ASSERT_EQ(alias.data_ptr(), new_alloc->ptr())
       << "Copied TensorBase wrappers must observe shared storage mutations";
+}
+
+TEST(StorageTest, AsStridedViewSharesStorageImplWithBaseTensor) {
+  at::Tensor base = at::tensor({1, 2, 3, 4}, at::kInt);
+  at::Tensor view = base.as_strided({3}, {1}, 1);
+
+  ASSERT_EQ(base.storage().get_impl(), view.storage().get_impl());
+
+  view.resize_({4});
+
+  ASSERT_EQ(view.data_ptr<int>(), base.data_ptr<int>() + 1)
+      << "Growing an as_strided view must update the shared compat storage "
+         "visible from the base tensor";
 }
 
 TEST(StorageTest, AliasWrapperDoesNotIncreaseTensorOwnedStorageCount) {
