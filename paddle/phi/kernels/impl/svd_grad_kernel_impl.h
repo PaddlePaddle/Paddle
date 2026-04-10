@@ -189,7 +189,7 @@ struct SvdGradFunctor {
 };
 
 template <typename T, typename Context>
-struct SvdGradFunctor<phi::dtype::complex<T>, Context> {
+struct SvdGradFunctor<dtype::complex<T>, Context> {
   void operator()(const Context& dev_ctx,
                   const DenseTensor& u,
                   const DenseTensor& vh,
@@ -199,7 +199,7 @@ struct SvdGradFunctor<phi::dtype::complex<T>, Context> {
                   const optional<DenseTensor>& s_grad,
                   bool full_matrices,
                   DenseTensor* x_grad) {
-    using C = phi::dtype::complex<T>;
+    using C = dtype::complex<T>;
     const auto& dX = *x_grad;
     int64_t m = dX.dims()[dX.dims().size() - 2];
     int64_t n = dX.dims()[dX.dims().size() - 1];

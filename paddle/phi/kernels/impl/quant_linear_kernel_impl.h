@@ -71,7 +71,7 @@ void QuantLinearKernel(const Context& dev_ctx,
 
   PADDLE_ENFORCE_EQ(
       w.dtype(),
-      phi::DataType::INT8,
+      DataType::INT8,
       common::errors::InvalidArgument(
           "The weight's datatype is expected to be int8 when use quant. But "
           "received weight's datatype is %d",

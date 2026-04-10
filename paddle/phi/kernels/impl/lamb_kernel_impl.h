@@ -68,7 +68,7 @@ void LambKernel(const Context& dev_ctx,
                 DenseTensor* beta1_pow_out,
                 DenseTensor* beta2_pow_out,
                 DenseTensor* master_param_outs) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename dtype::MPTypeTrait<T>::Type;
   if (multi_precision) {
     ComputeImpl<T, MT, Context, true>(dev_ctx,
                                       param,
@@ -237,7 +237,7 @@ void ComputeImpl(const Context& dev_ctx,
   // paddle/phi/kernels/selected_rows/impl/lamb_kernel_impl.h Please modify it
   // together
   DenseTensor p_norm_t;
-  DataType dtype = phi::CppTypeToDataType<MT>::Type();
+  DataType dtype = CppTypeToDataType<MT>::Type();
   FullKernel<MT, Context>(
       dev_ctx, std::vector<int64_t>({1}), 0, dtype, &p_norm_t);
   auto* p_norm_ptr = p_norm_t.data<MT>();

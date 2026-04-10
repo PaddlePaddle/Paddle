@@ -33,10 +33,9 @@ template <typename T>
 class EigenMatrix {};
 
 template <>
-class EigenMatrix<phi::float16> {
+class EigenMatrix<float16> {
  public:
-  using MatrixType =
-      Eigen::Matrix<phi::float16, Eigen::Dynamic, Eigen::Dynamic>;
+  using MatrixType = Eigen::Matrix<float16, Eigen::Dynamic, Eigen::Dynamic>;
 };
 
 template <>
@@ -82,7 +81,7 @@ struct DeterminantFunctor {
     std::vector<T> input_vec;
     std::vector<T> output_vec;
     TensorToVector(input, dev_ctx, &input_vec);
-    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+    using MPType = typename dtype::MPTypeTrait<T>::Type;
     for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
       auto begin_iter = input_vec.begin() + i * rank * rank;
       auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
@@ -102,7 +101,7 @@ struct DeterminantFunctor {
 };
 
 template <typename T, typename Context>
-struct DeterminantFunctor<phi::dtype::complex<T>, Context> {
+struct DeterminantFunctor<dtype::complex<T>, Context> {
   void operator()(const Context& dev_ctx,
                   const DenseTensor& input,
                   int64_t rank,
@@ -110,13 +109,13 @@ struct DeterminantFunctor<phi::dtype::complex<T>, Context> {
                   DenseTensor* output) {
     using MatrixType =
         Eigen::Matrix<std::complex<T>, Eigen::Dynamic, Eigen::Dynamic>;
-    std::vector<phi::dtype::complex<T>> input_vec;
-    std::vector<phi::dtype::complex<T>> output_vec;
+    std::vector<dtype::complex<T>> input_vec;
+    std::vector<dtype::complex<T>> output_vec;
     TensorToVector(input, dev_ctx, &input_vec);
     for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
       auto begin_iter = input_vec.begin() + i * rank * rank;
       auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
-      std::vector<phi::dtype::complex<T>> sub_vec(
+      std::vector<dtype::complex<T>> sub_vec(
           begin_iter,
           end_iter);  // get every square matrix data
       MatrixType matrix(rank, rank);
@@ -126,7 +125,7 @@ struct DeterminantFunctor<phi::dtype::complex<T>, Context> {
         }
       }
       output_vec.push_back(
-          static_cast<phi::dtype::complex<T>>(matrix.determinant()));
+          static_cast<dtype::complex<T>>(matrix.determinant()));
     }
     TensorFromVector(output_vec, dev_ctx, output);
   }

@@ -58,16 +58,16 @@ class ComputeCtcLossFunctor<Context, float> {
                          float* costs,
                          void* workspace,
                          ctcOptions options) {
-    return phi::dynload::compute_ctc_loss(activations,
-                                          gradients,
-                                          flat_labels,
-                                          label_lengths,
-                                          input_lengths,
-                                          static_cast<int>(alphabet_size),
-                                          static_cast<int>(minibatch),
-                                          costs,
-                                          workspace,
-                                          options);
+    return dynload::compute_ctc_loss(activations,
+                                     gradients,
+                                     flat_labels,
+                                     label_lengths,
+                                     input_lengths,
+                                     static_cast<int>(alphabet_size),
+                                     static_cast<int>(minibatch),
+                                     costs,
+                                     workspace,
+                                     options);
   }
 };
 
@@ -84,17 +84,16 @@ class ComputeCtcLossFunctor<Context, double> {
                          double* costs,
                          void* workspace,
                          ctcOptions options) {
-    return phi::dynload::compute_ctc_loss_double(
-        activations,
-        gradients,
-        flat_labels,
-        label_lengths,
-        input_lengths,
-        static_cast<int>(alphabet_size),
-        static_cast<int>(minibatch),
-        costs,
-        workspace,
-        options);
+    return dynload::compute_ctc_loss_double(activations,
+                                            gradients,
+                                            flat_labels,
+                                            label_lengths,
+                                            input_lengths,
+                                            static_cast<int>(alphabet_size),
+                                            static_cast<int>(minibatch),
+                                            costs,
+                                            workspace,
+                                            options);
   }
 };
 
@@ -140,21 +139,20 @@ class WarpCTCFunctor {
     size_t workspace_bytes = 0;
     ctcStatus_t status = CTC_STATUS_UNKNOWN_ERROR;
     if (sizeof(T) == 4) {
-      status =
-          phi::dynload::get_workspace_size(cpu_label_lengths,
+      status = dynload::get_workspace_size(cpu_label_lengths,
                                            cpu_input_lengths,
                                            static_cast<int>(sequence_width),
                                            static_cast<int>(num_sequences),
                                            options_,
                                            &workspace_bytes);
     } else {
-      status = phi::dynload::get_workspace_size_double(
-          cpu_label_lengths,
-          cpu_input_lengths,
-          static_cast<int>(sequence_width),
-          static_cast<int>(num_sequences),
-          options_,
-          &workspace_bytes);
+      status =
+          dynload::get_workspace_size_double(cpu_label_lengths,
+                                             cpu_input_lengths,
+                                             static_cast<int>(sequence_width),
+                                             static_cast<int>(num_sequences),
+                                             options_,
+                                             &workspace_bytes);
     }
     PADDLE_ENFORCE_EQ(
         CTC_STATUS_SUCCESS,
@@ -162,7 +160,7 @@ class WarpCTCFunctor {
         errors::PreconditionNotMet(
             "warp-ctc [version %d] Error in get_workspace_size: %s",
             warpctc_version_,
-            phi::dynload::ctcGetStatusString(status)));
+            dynload::ctcGetStatusString(status)));
     PADDLE_ENFORCE_GT(
         workspace_bytes,
         0UL,
@@ -196,18 +194,17 @@ class WarpCTCFunctor {
         errors::PreconditionNotMet(
             "warp-ctc [version %d] Error in get_workspace_size: %s",
             warpctc_version_,
-            phi::dynload::ctcGetStatusString(status)));
+            dynload::ctcGetStatusString(status)));
   }
 
  protected:
   void init(const Context& dev_ctx, const size_t blank) {
-    warpctc_version_ = phi::dynload::get_warpctc_version();
+    warpctc_version_ = dynload::get_warpctc_version();
 
     if (dev_ctx.GetPlace().GetType() != AllocationType::CPU) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       options_.loc = CTC_GPU;
-      options_.stream =
-          reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
+      options_.stream = reinterpret_cast<const GPUContext&>(dev_ctx).stream();
 #else
       PADDLE_THROW(
           errors::PreconditionNotMet("[warpctc init] GPU is not enabled."));
