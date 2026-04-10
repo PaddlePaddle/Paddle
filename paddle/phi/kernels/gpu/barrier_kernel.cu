@@ -27,8 +27,8 @@ void BarrierKernel(const Context &dev_ctx,
                    DenseTensor *out) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   auto in = &x;
-  auto comm_ctx = static_cast<phi::distributed::NCCLCommContext *>(
-      dev_ctx.GetCommContext());
+  auto comm_ctx =
+      static_cast<distributed::NCCLCommContext *>(dev_ctx.GetCommContext());
   PADDLE_ENFORCE_NE(comm_ctx,
                     nullptr,
                     common::errors::Unavailable(
@@ -37,7 +37,7 @@ void BarrierKernel(const Context &dev_ctx,
   auto stream = comm_ctx->GetStream();
   ncclRedOp_t nccl_red_type = ncclSum;
   comm_ctx->AllReduce(out, *in, nccl_red_type, stream);
-  phi::backends::gpu::GpuStreamSync(stream);
+  backends::gpu::GpuStreamSync(stream);
 #else
   PADDLE_THROW(
       common::errors::Unavailable("PaddlePaddle should compile with NCCL."));

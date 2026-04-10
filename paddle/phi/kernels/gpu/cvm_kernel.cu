@@ -21,8 +21,6 @@
 
 namespace phi {
 
-using phi::PADDLE_CUDA_NUM_THREADS;
-
 template <typename T>
 __global__ void CvmComputeKernel(const bool use_cvm,
                                  const int64_t item_width,

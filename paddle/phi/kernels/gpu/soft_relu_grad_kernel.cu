@@ -22,7 +22,7 @@ namespace phi {
 
 template <typename T>
 struct CudaSoftReluGradFunctor {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
   MPType one = static_cast<MPType>(1.0f);
   float threshold;
 

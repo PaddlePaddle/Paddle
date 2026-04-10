@@ -42,7 +42,7 @@ __global__ void LerpGradKernelImpl(const T* weight,
                                    const int64_t out_size,
                                    const int64_t x_size,
                                    const int64_t y_size) {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
   CUDA_KERNEL_LOOP_TYPE(idx, out_size, int64_t) {
     MPType temp_dx =
         static_cast<MPType>(weight[idx]) * static_cast<MPType>(dout[idx]);
@@ -179,8 +179,7 @@ void SwitchKernel(const Context& dev_ctx,
     const int64_t out_size = out_grad.numel();
     const int64_t weight_size = weight.numel();
 
-    auto gpu_config =
-        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_size);
+    auto gpu_config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_size);
 
     if (weight.dtype() == DataType::FLOAT64) {
       const double* weight_data = weight.data<double>();
@@ -242,14 +241,13 @@ void SwitchKernel(const Context& dev_ctx,
     DenseTensor b_out = EmptyLike<T>(dev_ctx, out_grad);
     std::vector<DenseTensor*> out_tensors = {&b_weight, &b_out};
 
-    phi::BroadcastTensorsKernel<T, Context>(dev_ctx, in_tensors, out_tensors);
+    BroadcastTensorsKernel<T, Context>(dev_ctx, in_tensors, out_tensors);
 
     const T* weight_data = b_weight.data<T>();
     const T* out_grad_data = b_out.data<T>();
     const int64_t out_size = out_grad.numel();
     const int64_t weight_size = weight.numel();
-    auto gpu_config =
-        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_size);
+    auto gpu_config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_size);
     if (FLAGS_use_accuracy_compatible_kernel) {
       LerpGradKernelCompatibleImpl<T><<<gpu_config.GetGridSize(),
                                         gpu_config.GetBlockSize(),
@@ -370,7 +368,7 @@ void LerpGradKernel(const Context& dev_ctx,
                               b_xgrad.dims(),
                               -1);
       if (!reduce_axis_x.empty()) {
-        phi::SumKernel<T, Context>(
+        SumKernel<T, Context>(
             dev_ctx, b_xgrad, reduce_axis_x, b_xgrad.dtype(), false, x_grad);
       } else {
         x_grad->ShareDataWith(b_xgrad);
@@ -383,7 +381,7 @@ void LerpGradKernel(const Context& dev_ctx,
                               b_ygrad.dims(),
                               -1);
       if (!reduce_axis_y.empty()) {
-        phi::SumKernel<T, Context>(
+        SumKernel<T, Context>(
             dev_ctx, b_ygrad, reduce_axis_y, b_ygrad.dtype(), false, y_grad);
       } else {
         y_grad->ShareDataWith(b_ygrad);

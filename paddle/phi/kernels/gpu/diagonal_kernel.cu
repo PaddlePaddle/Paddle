@@ -20,7 +20,6 @@
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/diagonal.h"
 namespace phi {
-using phi::PADDLE_CUDA_NUM_THREADS;
 template <typename T, typename Context>
 void DiagonalKernel(const Context& dev_ctx,
                     const DenseTensor& x,
