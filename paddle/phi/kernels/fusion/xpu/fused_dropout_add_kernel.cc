@@ -53,10 +53,8 @@ void FusedDropoutAddKernel(const Context& dev_ctx,
   // seed_offset stores [seed_data, 0] as int64, matching InferMeta dtype.
   dev_ctx.template Alloc<int64_t>(seed_offset);
 
-  const XPUTypeT* x_data =
-      reinterpret_cast<const XPUTypeT*>(x.data<T>());
-  const XPUTypeT* y_data =
-      reinterpret_cast<const XPUTypeT*>(y.data<T>());
+  const XPUTypeT* x_data = reinterpret_cast<const XPUTypeT*>(x.data<T>());
+  const XPUTypeT* y_data = reinterpret_cast<const XPUTypeT*>(y.data<T>());
   XPUTypeT* out_data = reinterpret_cast<XPUTypeT*>(out->data<T>());
 
   // Determine the actual integer seed, following dropout_kernel.cc logic.
@@ -93,18 +91,12 @@ void FusedDropoutAddKernel(const Context& dev_ctx,
     // Inference mode: out = scale(x) + y  (no dropout)
     float scale = is_upscale_in_train ? 1.0f : (1.0f - dropout_prob);
     if (scale == 1.0f) {
-      int r =
-          xpu::add(dev_ctx.x_context(), x_data, y_data, out_data, numel);
+      int r = xpu::add(dev_ctx.x_context(), x_data, y_data, out_data, numel);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "add");
     } else {
       XPUTypeT* scaled_x = RAII_GUARD.alloc_l3_or_gm<XPUTypeT>(numel);
-      int r = xpu::scale(dev_ctx.x_context(),
-                         x_data,
-                         scaled_x,
-                         numel,
-                         false,
-                         scale,
-                         0.0f);
+      int r = xpu::scale(
+          dev_ctx.x_context(), x_data, scaled_x, numel, false, scale, 0.0f);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
       r = xpu::add(dev_ctx.x_context(), scaled_x, y_data, out_data, numel);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "add");
@@ -125,15 +117,10 @@ void FusedDropoutAddKernel(const Context& dev_ctx,
   XPUTypeT* mask_tmp = RAII_GUARD.alloc_l3_or_gm<XPUTypeT>(numel);
   XPUTypeT* dropout_out = RAII_GUARD.alloc_l3_or_gm<XPUTypeT>(numel);
 
-  phi::Dropout<XPUTypeT>(dev_ctx.x_context(),
-                         x_data,
-                         mask_tmp,
-                         dropout_out,
-                         dropout_param,
-                         numel);
+  phi::Dropout<XPUTypeT>(
+      dev_ctx.x_context(), x_data, mask_tmp, dropout_out, dropout_param, numel);
 
-  int r =
-      xpu::add(dev_ctx.x_context(), dropout_out, y_data, out_data, numel);
+  int r = xpu::add(dev_ctx.x_context(), dropout_out, y_data, out_data, numel);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "add");
 }
 

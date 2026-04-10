@@ -112,20 +112,16 @@ void FusedDropoutAddGradKernel(const Context& dev_ctx,
   r = xpu::constant(dev_ctx.x_context(), ones_buf, numel, XPUTypeT(1));
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
 
-  phi::Dropout<XPUTypeT>(dev_ctx.x_context(),
-                         ones_buf,
-                         mask_buf,
-                         dummy_out,
-                         dropout_param,
-                         numel);
+  phi::Dropout<XPUTypeT>(
+      dev_ctx.x_context(), ones_buf, mask_buf, dummy_out, dropout_param, numel);
 
   // x_grad = dropout_grad(out_grad, mask, p)
   phi::DropoutGrad<XPUTypeT>(dev_ctx.x_context(),
-                              out_grad_data,
-                              mask_buf,
-                              x_grad_data,
-                              dropout_param,
-                              numel);
+                             out_grad_data,
+                             mask_buf,
+                             x_grad_data,
+                             dropout_param,
+                             numel);
 }
 
 }  // namespace fusion

@@ -18,7 +18,6 @@ from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
     from paddle import Tensor
-import paddle
 from paddle import _C_ops
 from paddle.base import core
 from paddle.common_ops_import import default_main_program
