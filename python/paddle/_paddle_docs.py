@@ -4384,8 +4384,10 @@ add_doc_and_signature(
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
-        x (Tensor): Input Tensor of ``bitwise_or``. It is a N-D Tensor of bool, uint8, int8, int16, int32, int64. Alias: ``input``.
-        y (Tensor): Input Tensor of ``bitwise_or``. It is a N-D Tensor of bool, uint8, int8, int16, int32, int64. Alias: ``other``.
+        x (Tensor): Input Tensor of ``bitwise_or``. It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+            Alias: ``input``.
+        y (Tensor): Input Tensor of ``bitwise_or``. It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+            Alias: ``other``.
         name (str|None, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
     Keyword args:
