@@ -638,7 +638,7 @@ if(WITH_SLEEF
 endif()
 if(WITH_NVSHMEM)
   include(external/nvshmem)
-  list(APPEND third_party_deps extern_nvshmem)
+  #list(APPEND third_party_deps extern_nvshmem)
 endif()
 
 add_custom_target(third_party ALL DEPENDS ${third_party_deps})
