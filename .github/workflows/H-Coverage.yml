@@ -42,7 +42,7 @@ jobs:
       can-skip: ${{ steps.skip-skill.outputs.should-skip }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Run skip check
         id: skip-skill
         uses: ./.github/actions/skip-skill
