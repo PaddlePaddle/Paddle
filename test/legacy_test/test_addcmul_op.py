@@ -332,7 +332,9 @@ class TestAddcmulOpError(unittest.TestCase):
         paddle.enable_static()
         with (
             paddle.pir_utils.IrGuard(),
-            paddle.static.program_guard(paddle.static.Program()),
+            paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ),
         ):
             input = paddle.static.data(name='input', shape=[4, 4], dtype="bool")
             x3 = paddle.static.data(name='x3', shape=[4, 4], dtype="bool")
