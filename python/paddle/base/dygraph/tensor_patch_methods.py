@@ -1132,6 +1132,23 @@ def monkey_patch_tensor():
         device_id: DeviceLike = None,
         blocking: bool = True,
     ) -> Tensor:
+        """
+        This API has two signatures:
+
+        1. ``paddle.Tensor.cuda(self, device_id=None, blocking=True)`` (Paddle-style):
+            Returns a copy of the current tensor on the specified device.
+
+        2. ``paddle.Tensor.cuda(self, device=None, non_blocking=False)`` (PyTorch-style):
+            Returns a copy of the current tensor on the specified device.
+
+        Args:
+            device_id (paddle.core.Place|int|str|None, optional): The destination place. Defaults to current expected place.
+                Alias: ``device``.
+            blocking (bool, optional): If ``True`` the copy will be asynchronous.
+
+        Returns:
+            Tensor: The copy of the current tensor on the specified device.
+        """
         device_type = paddle.device.get_all_device_type()
         if len(
             device_type
@@ -1183,7 +1200,7 @@ def monkey_patch_tensor():
         Is ``True`` if the Tensor is stored on the GPU, ``False`` otherwise.
 
         Returns:
-            boolean: ``True`` if the Tensor is stored on the GPU.
+            bool: ``True`` if the Tensor is stored on the GPU.
         """
         return self.place.is_gpu_place()
 
@@ -1193,7 +1210,7 @@ def monkey_patch_tensor():
         Is ``True`` if the Tensor is stored on the CPU, ``False`` otherwise.
 
         Returns:
-            boolean: ``True`` if the Tensor is stored on the CPU.
+            bool: ``True`` if the Tensor is stored on the CPU.
         """
         return self.place.is_cpu_place()
 
