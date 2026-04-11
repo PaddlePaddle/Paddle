@@ -1179,10 +1179,22 @@ def monkey_patch_tensor():
 
     @property
     def is_cuda(self: Tensor) -> bool:
+        """
+        Is ``True`` if the Tensor is stored on the GPU, ``False`` otherwise.
+
+        Returns:
+            boolean: ``True`` if the Tensor is stored on the GPU.
+        """
         return self.place.is_gpu_place()
 
     @property
     def is_cpu(self: Tensor) -> bool:
+        """
+        Is ``True`` if the Tensor is stored on the CPU, ``False`` otherwise.
+
+        Returns:
+            boolean: ``True`` if the Tensor is stored on the CPU.
+        """
         return self.place.is_cpu_place()
 
     @framework.dygraph_only
