@@ -138,20 +138,17 @@ class Tensor : public TensorBase {
   }
 
   Tensor toBackend(c10::Backend b) const {
-    if (b == c10::Backend::CPU) {
-      PaddlePlace place(phi::AllocationType::CPU);
-      return tensor_.copy_to(place, true);
-    } else if (b == c10::Backend::CUDA) {
-      auto place = paddle::DefaultGPUPlace();
-      return tensor_.copy_to(place, true);
-    } else if (b == c10::Backend::XPU) {
-      PaddlePlace place(phi::AllocationType::XPU);
-      return tensor_.copy_to(place, true);
-    } else if (b == c10::Backend::IPU) {
-      PaddlePlace place(phi::AllocationType::IPU);
-      return tensor_.copy_to(place, true);
-    } else {
-      PD_CHECK(false, "Unsupported backend");
+    switch (b) {
+      case c10::Backend::CPU:
+        return tensor_.copy_to(PaddlePlace(phi::AllocationType::CPU), true);
+      case c10::Backend::CUDA:
+        return tensor_.copy_to(paddle::DefaultGPUPlace(), true);
+      case c10::Backend::XPU:
+        return tensor_.copy_to(paddle::DefaultXPUPlace(), true);
+      case c10::Backend::IPU:
+        return tensor_.copy_to(PaddlePlace(phi::IPUPlace()), true);
+      default:
+        PD_CHECK(false, "Unsupported backend");
     }
     return tensor_;
   }
