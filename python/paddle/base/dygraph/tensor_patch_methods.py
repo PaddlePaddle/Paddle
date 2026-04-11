@@ -1144,7 +1144,7 @@ def monkey_patch_tensor():
         Args:
             device_id (paddle.core.Place|int|str|None, optional): The destination place. Defaults to current expected place.
                 Alias: ``device``.
-            blocking (bool, optional): If ``True`` the copy will be asynchronous.
+            blocking (bool, optional): If ``True`` the copy will be asynchronous. Defaults to ``True``.
 
         Returns:
             Tensor: The copy of the current tensor on the specified device.
