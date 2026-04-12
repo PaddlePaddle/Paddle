@@ -2113,207 +2113,732 @@ class TestConv2dTransposeAPI(unittest.TestCase):
                 np.testing.assert_allclose(fetches[0], fetches[i], rtol=1e-5)
 
 
-_GENERIC_INPLACE_UNARY_INPUT = [-0.7, -0.2, 0.3, 0.9]
-_POSITIVE_INPLACE_UNARY_INPUT = [0.25, 1.5, 2.25, 4.0]
-_NONZERO_INPLACE_UNARY_INPUT = [-2.0, -0.5, 0.25, 4.0]
-_UNIT_INTERVAL_INPLACE_UNARY_INPUT = [-0.9, -0.25, 0.25, 0.9]
-_ACOSH_INPLACE_UNARY_INPUT = [1.0, 1.5, 2.0, 3.5]
+def _assert_unary_inplace_result(
+    testcase, x, out, ref_out, rtol=1e-6, atol=1e-6
+):
+    testcase.assertIs(out, x)
+    np.testing.assert_allclose(out.numpy(), ref_out, rtol=rtol, atol=atol)
+    np.testing.assert_allclose(x.numpy(), ref_out, rtol=rtol, atol=atol)
 
 
-class _UnaryInplaceCompatibilityTestBase(unittest.TestCase):
-    api_name = None
-    input_data = None
-    dtype = 'float32'
-    rtol = 1e-6
-    atol = 1e-6
-
+class TestExpInplaceAPI(unittest.TestCase):
     def setUp(self):
-        self.np_x = np.array(self.input_data, dtype=self.dtype)
-
-    def ref_fn(self, x):
-        raise NotImplementedError
+        self.np_x = np.array([-0.7, -0.2, 0.3, 0.9], dtype="float32")
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
-        try:
-            api = getattr(paddle, self.api_name)
+        x = paddle.to_tensor(self.np_x)
 
-            # 1. Paddle Positional arguments
-            out1 = api(paddle.to_tensor(self.np_x.copy()))
-            # 2. Paddle keyword arguments
-            out2 = api(x=paddle.to_tensor(self.np_x.copy()))
-            # 3. PyTorch keyword arguments (alias)
-            out3 = api(input=paddle.to_tensor(self.np_x.copy()))
-            # 4. Tensor method - args
-            out4 = getattr(paddle.to_tensor(self.np_x.copy()), self.api_name)()
+        # 1. Paddle Positional arguments
+        out1 = paddle.exp_(x.clone())
+        # 2. Paddle keyword arguments
+        out2 = paddle.exp_(x=x.clone())
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.exp_(input=x.clone())
+        # 4. Tensor method - args
+        out4 = x.clone().exp_()
 
-            expected = self.ref_fn(self.np_x.copy()).astype(self.np_x.dtype)
-            for out in [out1, out2, out3, out4]:
-                np.testing.assert_allclose(
-                    out.numpy(), expected, rtol=self.rtol, atol=self.atol
-                )
-        finally:
-            paddle.enable_static()
+        # Verify all outputs
+        ref_out = np.exp(self.np_x)
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
 
+        paddle.enable_static()
 
-class TestExpInplaceAPI(_UnaryInplaceCompatibilityTestBase):
-    api_name = 'exp_'
-    input_data = _GENERIC_INPLACE_UNARY_INPUT
+    def test_dygraph_InplaceInput(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = np.exp(self.np_x)
 
-    def ref_fn(self, x):
-        return np.exp(x)
+        out = paddle.exp_(x)
 
+        _assert_unary_inplace_result(self, x, out, ref_out)
 
-class TestSqrtInplaceAPI(_UnaryInplaceCompatibilityTestBase):
-    api_name = 'sqrt_'
-    input_data = _POSITIVE_INPLACE_UNARY_INPUT
-
-    def ref_fn(self, x):
-        return np.sqrt(x)
+        paddle.enable_static()
 
 
-class TestRsqrtInplaceAPI(_UnaryInplaceCompatibilityTestBase):
-    api_name = 'rsqrt_'
-    input_data = _POSITIVE_INPLACE_UNARY_INPUT
+class TestSqrtInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([0.25, 1.5, 2.25, 4.0], dtype="float32")
 
-    def ref_fn(self, x):
-        return 1.0 / np.sqrt(x)
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
 
+        # 1. Paddle Positional arguments
+        out1 = paddle.sqrt_(x.clone())
+        # 2. Paddle keyword arguments
+        out2 = paddle.sqrt_(x=x.clone())
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.sqrt_(input=x.clone())
+        # 4. Tensor method - args
+        out4 = x.clone().sqrt_()
 
-class TestCeilInplaceAPI(_UnaryInplaceCompatibilityTestBase):
-    api_name = 'ceil_'
-    input_data = _GENERIC_INPLACE_UNARY_INPUT
+        # Verify all outputs
+        ref_out = np.sqrt(self.np_x)
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
 
-    def ref_fn(self, x):
-        return np.ceil(x)
+        paddle.enable_static()
 
+    def test_dygraph_InplaceInput(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = np.sqrt(self.np_x)
 
-class TestFloorInplaceAPI(_UnaryInplaceCompatibilityTestBase):
-    api_name = 'floor_'
-    input_data = _GENERIC_INPLACE_UNARY_INPUT
+        out = paddle.sqrt_(x)
 
-    def ref_fn(self, x):
-        return np.floor(x)
+        _assert_unary_inplace_result(self, x, out, ref_out)
 
-
-class TestReciprocalInplaceAPI(_UnaryInplaceCompatibilityTestBase):
-    api_name = 'reciprocal_'
-    input_data = _NONZERO_INPLACE_UNARY_INPUT
-
-    def ref_fn(self, x):
-        return np.reciprocal(x)
-
-
-class TestSigmoidInplaceAPI(_UnaryInplaceCompatibilityTestBase):
-    api_name = 'sigmoid_'
-    input_data = _GENERIC_INPLACE_UNARY_INPUT
-
-    def ref_fn(self, x):
-        return 1.0 / (1.0 + np.exp(-x))
+        paddle.enable_static()
 
 
-class TestSinInplaceAPI(_UnaryInplaceCompatibilityTestBase):
-    api_name = 'sin_'
-    input_data = _GENERIC_INPLACE_UNARY_INPUT
+class TestRsqrtInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([0.25, 1.5, 2.25, 4.0], dtype="float32")
 
-    def ref_fn(self, x):
-        return np.sin(x)
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
 
+        # 1. Paddle Positional arguments
+        out1 = paddle.rsqrt_(x.clone())
+        # 2. Paddle keyword arguments
+        out2 = paddle.rsqrt_(x=x.clone())
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.rsqrt_(input=x.clone())
+        # 4. Tensor method - args
+        out4 = x.clone().rsqrt_()
 
-class TestSinhInplaceAPI(_UnaryInplaceCompatibilityTestBase):
-    api_name = 'sinh_'
-    input_data = _GENERIC_INPLACE_UNARY_INPUT
+        # Verify all outputs
+        ref_out = 1.0 / np.sqrt(self.np_x)
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
 
-    def ref_fn(self, x):
-        return np.sinh(x)
+        paddle.enable_static()
 
+    def test_dygraph_InplaceInput(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = 1.0 / np.sqrt(self.np_x)
 
-class TestAsinInplaceAPI(_UnaryInplaceCompatibilityTestBase):
-    api_name = 'asin_'
-    input_data = _UNIT_INTERVAL_INPLACE_UNARY_INPUT
+        out = paddle.rsqrt_(x)
 
-    def ref_fn(self, x):
-        return np.arcsin(x)
+        _assert_unary_inplace_result(self, x, out, ref_out)
 
-
-class TestAsinhInplaceAPI(_UnaryInplaceCompatibilityTestBase):
-    api_name = 'asinh_'
-    input_data = _GENERIC_INPLACE_UNARY_INPUT
-
-    def ref_fn(self, x):
-        return np.arcsinh(x)
-
-
-class TestCosInplaceAPI(_UnaryInplaceCompatibilityTestBase):
-    api_name = 'cos_'
-    input_data = _GENERIC_INPLACE_UNARY_INPUT
-
-    def ref_fn(self, x):
-        return np.cos(x)
+        paddle.enable_static()
 
 
-class TestCoshInplaceAPI(_UnaryInplaceCompatibilityTestBase):
-    api_name = 'cosh_'
-    input_data = _GENERIC_INPLACE_UNARY_INPUT
+class TestCeilInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([-0.7, -0.2, 0.3, 0.9], dtype="float32")
 
-    def ref_fn(self, x):
-        return np.cosh(x)
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
 
+        # 1. Paddle Positional arguments
+        out1 = paddle.ceil_(x.clone())
+        # 2. Paddle keyword arguments
+        out2 = paddle.ceil_(x=x.clone())
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.ceil_(input=x.clone())
+        # 4. Tensor method - args
+        out4 = x.clone().ceil_()
 
-class TestAcosInplaceAPI(_UnaryInplaceCompatibilityTestBase):
-    api_name = 'acos_'
-    input_data = _UNIT_INTERVAL_INPLACE_UNARY_INPUT
+        # Verify all outputs
+        ref_out = np.ceil(self.np_x)
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
 
-    def ref_fn(self, x):
-        return np.arccos(x)
+        paddle.enable_static()
 
+    def test_dygraph_InplaceInput(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = np.ceil(self.np_x)
 
-class TestAcoshInplaceAPI(_UnaryInplaceCompatibilityTestBase):
-    api_name = 'acosh_'
-    input_data = _ACOSH_INPLACE_UNARY_INPUT
+        out = paddle.ceil_(x)
 
-    def ref_fn(self, x):
-        return np.arccosh(x)
+        _assert_unary_inplace_result(self, x, out, ref_out)
 
-
-class TestTanInplaceAPI(_UnaryInplaceCompatibilityTestBase):
-    api_name = 'tan_'
-    input_data = _GENERIC_INPLACE_UNARY_INPUT
-
-    def ref_fn(self, x):
-        return np.tan(x)
-
-
-class TestAtanInplaceAPI(_UnaryInplaceCompatibilityTestBase):
-    api_name = 'atan_'
-    input_data = _GENERIC_INPLACE_UNARY_INPUT
-
-    def ref_fn(self, x):
-        return np.arctan(x)
+        paddle.enable_static()
 
 
-class TestAtanhInplaceAPI(_UnaryInplaceCompatibilityTestBase):
-    api_name = 'atanh_'
-    input_data = _UNIT_INTERVAL_INPLACE_UNARY_INPUT
+class TestFloorInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([-0.7, -0.2, 0.3, 0.9], dtype="float32")
 
-    def ref_fn(self, x):
-        return np.arctanh(x)
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.floor_(x.clone())
+        # 2. Paddle keyword arguments
+        out2 = paddle.floor_(x=x.clone())
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.floor_(input=x.clone())
+        # 4. Tensor method - args
+        out4 = x.clone().floor_()
+
+        # Verify all outputs
+        ref_out = np.floor(self.np_x)
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_dygraph_InplaceInput(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = np.floor(self.np_x)
+
+        out = paddle.floor_(x)
+
+        _assert_unary_inplace_result(self, x, out, ref_out)
+
+        paddle.enable_static()
 
 
-class TestExpm1InplaceAPI(_UnaryInplaceCompatibilityTestBase):
-    api_name = 'expm1_'
-    input_data = _GENERIC_INPLACE_UNARY_INPUT
+class TestReciprocalInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([-2.0, -0.5, 0.25, 4.0], dtype="float32")
 
-    def ref_fn(self, x):
-        return np.expm1(x)
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.reciprocal_(x.clone())
+        # 2. Paddle keyword arguments
+        out2 = paddle.reciprocal_(x=x.clone())
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.reciprocal_(input=x.clone())
+        # 4. Tensor method - args
+        out4 = x.clone().reciprocal_()
+
+        # Verify all outputs
+        ref_out = np.reciprocal(self.np_x)
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_dygraph_InplaceInput(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = np.reciprocal(self.np_x)
+
+        out = paddle.reciprocal_(x)
+
+        _assert_unary_inplace_result(self, x, out, ref_out)
+
+        paddle.enable_static()
 
 
-class TestSquareInplaceAPI(_UnaryInplaceCompatibilityTestBase):
-    api_name = 'square_'
-    input_data = _GENERIC_INPLACE_UNARY_INPUT
+class TestSigmoidInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([-0.7, -0.2, 0.3, 0.9], dtype="float32")
 
-    def ref_fn(self, x):
-        return np.square(x)
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.sigmoid_(x.clone())
+        # 2. Paddle keyword arguments
+        out2 = paddle.sigmoid_(x=x.clone())
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.sigmoid_(input=x.clone())
+        # 4. Tensor method - args
+        out4 = x.clone().sigmoid_()
+
+        # Verify all outputs
+        ref_out = 1.0 / (1.0 + np.exp(-self.np_x))
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_dygraph_InplaceInput(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = 1.0 / (1.0 + np.exp(-self.np_x))
+
+        out = paddle.sigmoid_(x)
+
+        _assert_unary_inplace_result(self, x, out, ref_out)
+
+        paddle.enable_static()
+
+
+class TestSinInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([-0.7, -0.2, 0.3, 0.9], dtype="float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.sin_(x.clone())
+        # 2. Paddle keyword arguments
+        out2 = paddle.sin_(x=x.clone())
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.sin_(input=x.clone())
+        # 4. Tensor method - args
+        out4 = x.clone().sin_()
+
+        # Verify all outputs
+        ref_out = np.sin(self.np_x)
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_dygraph_InplaceInput(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = np.sin(self.np_x)
+
+        out = paddle.sin_(x)
+
+        _assert_unary_inplace_result(self, x, out, ref_out)
+
+        paddle.enable_static()
+
+
+class TestSinhInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([-0.7, -0.2, 0.3, 0.9], dtype="float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.sinh_(x.clone())
+        # 2. Paddle keyword arguments
+        out2 = paddle.sinh_(x=x.clone())
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.sinh_(input=x.clone())
+        # 4. Tensor method - args
+        out4 = x.clone().sinh_()
+
+        # Verify all outputs
+        ref_out = np.sinh(self.np_x)
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_dygraph_InplaceInput(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = np.sinh(self.np_x)
+
+        out = paddle.sinh_(x)
+
+        _assert_unary_inplace_result(self, x, out, ref_out)
+
+        paddle.enable_static()
+
+
+class TestAsinInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([-0.9, -0.25, 0.25, 0.9], dtype="float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.asin_(x.clone())
+        # 2. Paddle keyword arguments
+        out2 = paddle.asin_(x=x.clone())
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.asin_(input=x.clone())
+        # 4. Tensor method - args
+        out4 = x.clone().asin_()
+
+        # Verify all outputs
+        ref_out = np.arcsin(self.np_x)
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_dygraph_InplaceInput(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = np.arcsin(self.np_x)
+
+        out = paddle.asin_(x)
+
+        _assert_unary_inplace_result(self, x, out, ref_out)
+
+        paddle.enable_static()
+
+
+class TestAsinhInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([-0.7, -0.2, 0.3, 0.9], dtype="float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.asinh_(x.clone())
+        # 2. Paddle keyword arguments
+        out2 = paddle.asinh_(x=x.clone())
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.asinh_(input=x.clone())
+        # 4. Tensor method - args
+        out4 = x.clone().asinh_()
+
+        # Verify all outputs
+        ref_out = np.arcsinh(self.np_x)
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_dygraph_InplaceInput(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = np.arcsinh(self.np_x)
+
+        out = paddle.asinh_(x)
+
+        _assert_unary_inplace_result(self, x, out, ref_out)
+
+        paddle.enable_static()
+
+
+class TestCosInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([-0.7, -0.2, 0.3, 0.9], dtype="float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.cos_(x.clone())
+        # 2. Paddle keyword arguments
+        out2 = paddle.cos_(x=x.clone())
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.cos_(input=x.clone())
+        # 4. Tensor method - args
+        out4 = x.clone().cos_()
+
+        # Verify all outputs
+        ref_out = np.cos(self.np_x)
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_dygraph_InplaceInput(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = np.cos(self.np_x)
+
+        out = paddle.cos_(x)
+
+        _assert_unary_inplace_result(self, x, out, ref_out)
+
+        paddle.enable_static()
+
+
+class TestCoshInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([-0.7, -0.2, 0.3, 0.9], dtype="float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.cosh_(x.clone())
+        # 2. Paddle keyword arguments
+        out2 = paddle.cosh_(x=x.clone())
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.cosh_(input=x.clone())
+        # 4. Tensor method - args
+        out4 = x.clone().cosh_()
+
+        # Verify all outputs
+        ref_out = np.cosh(self.np_x)
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_dygraph_InplaceInput(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = np.cosh(self.np_x)
+
+        out = paddle.cosh_(x)
+
+        _assert_unary_inplace_result(self, x, out, ref_out)
+
+        paddle.enable_static()
+
+
+class TestAcosInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([-0.9, -0.25, 0.25, 0.9], dtype="float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.acos_(x.clone())
+        # 2. Paddle keyword arguments
+        out2 = paddle.acos_(x=x.clone())
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.acos_(input=x.clone())
+        # 4. Tensor method - args
+        out4 = x.clone().acos_()
+
+        # Verify all outputs
+        ref_out = np.arccos(self.np_x)
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_dygraph_InplaceInput(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = np.arccos(self.np_x)
+
+        out = paddle.acos_(x)
+
+        _assert_unary_inplace_result(self, x, out, ref_out)
+
+        paddle.enable_static()
+
+
+class TestAcoshInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([1.0, 1.5, 2.0, 3.5], dtype="float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.acosh_(x.clone())
+        # 2. Paddle keyword arguments
+        out2 = paddle.acosh_(x=x.clone())
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.acosh_(input=x.clone())
+        # 4. Tensor method - args
+        out4 = x.clone().acosh_()
+
+        # Verify all outputs
+        ref_out = np.arccosh(self.np_x)
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_dygraph_InplaceInput(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = np.arccosh(self.np_x)
+
+        out = paddle.acosh_(x)
+
+        _assert_unary_inplace_result(self, x, out, ref_out)
+
+        paddle.enable_static()
+
+
+class TestTanInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([-0.7, -0.2, 0.3, 0.9], dtype="float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.tan_(x.clone())
+        # 2. Paddle keyword arguments
+        out2 = paddle.tan_(x=x.clone())
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.tan_(input=x.clone())
+        # 4. Tensor method - args
+        out4 = x.clone().tan_()
+
+        # Verify all outputs
+        ref_out = np.tan(self.np_x)
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_dygraph_InplaceInput(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = np.tan(self.np_x)
+
+        out = paddle.tan_(x)
+
+        _assert_unary_inplace_result(self, x, out, ref_out)
+
+        paddle.enable_static()
+
+
+class TestAtanInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([-0.7, -0.2, 0.3, 0.9], dtype="float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.atan_(x.clone())
+        # 2. Paddle keyword arguments
+        out2 = paddle.atan_(x=x.clone())
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.atan_(input=x.clone())
+        # 4. Tensor method - args
+        out4 = x.clone().atan_()
+
+        # Verify all outputs
+        ref_out = np.arctan(self.np_x)
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_dygraph_InplaceInput(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = np.arctan(self.np_x)
+
+        out = paddle.atan_(x)
+
+        _assert_unary_inplace_result(self, x, out, ref_out)
+
+        paddle.enable_static()
+
+
+class TestAtanhInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([-0.9, -0.25, 0.25, 0.9], dtype="float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.atanh_(x.clone())
+        # 2. Paddle keyword arguments
+        out2 = paddle.atanh_(x=x.clone())
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.atanh_(input=x.clone())
+        # 4. Tensor method - args
+        out4 = x.clone().atanh_()
+
+        # Verify all outputs
+        ref_out = np.arctanh(self.np_x)
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_dygraph_InplaceInput(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = np.arctanh(self.np_x)
+
+        out = paddle.atanh_(x)
+
+        _assert_unary_inplace_result(self, x, out, ref_out)
+
+        paddle.enable_static()
+
+
+class TestExpm1InplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([-0.7, -0.2, 0.3, 0.9], dtype="float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.expm1_(x.clone())
+        # 2. Paddle keyword arguments
+        out2 = paddle.expm1_(x=x.clone())
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.expm1_(input=x.clone())
+        # 4. Tensor method - args
+        out4 = x.clone().expm1_()
+
+        # Verify all outputs
+        ref_out = np.expm1(self.np_x)
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_dygraph_InplaceInput(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = np.expm1(self.np_x)
+
+        out = paddle.expm1_(x)
+
+        _assert_unary_inplace_result(self, x, out, ref_out)
+
+        paddle.enable_static()
+
+
+class TestSquareInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([-0.7, -0.2, 0.3, 0.9], dtype="float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.square_(x.clone())
+        # 2. Paddle keyword arguments
+        out2 = paddle.square_(x=x.clone())
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.square_(input=x.clone())
+        # 4. Tensor method - args
+        out4 = x.clone().square_()
+
+        # Verify all outputs
+        ref_out = np.square(self.np_x)
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_dygraph_InplaceInput(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = np.square(self.np_x)
+
+        out = paddle.square_(x)
+
+        _assert_unary_inplace_result(self, x, out, ref_out)
+
+        paddle.enable_static()
 
 
 if __name__ == "__main__":
