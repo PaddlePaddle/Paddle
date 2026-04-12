@@ -25,6 +25,8 @@
 #include <thread>
 
 #include "gtest/gtest.h"
+#include "paddle/phi/api/include/context_pool.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 namespace {
@@ -255,30 +257,57 @@ TEST(CUDAStreamTest, GetStreamFromPoolBoolOverloadPreservesHighPriority) {
   EXPECT_NE(high_priority, low_priority);
 }
 
-// After setCurrentCUDAStream redirects the per-thread current stream,
+// After setCurrentCUDAStream redirects the current stream,
 // getDefaultCUDAStream must still return the null stream.
 TEST(CUDAStreamTest, DefaultStreamUnaffectedBySetCurrentCUDAStream) {
   if (!at::cuda::is_available()) {
     return;
   }
-  // Snapshot the per-thread current stream before we touch it so we can
+  // Snapshot the current stream before we touch it so we can
   // restore it afterward and avoid polluting subsequent tests.
   auto original_stream = c10::cuda::getCurrentCUDAStream();
 
   // Obtain a non-default stream from the pool.
   auto pool_stream = c10::cuda::getStreamFromPool(/*isHighPriority=*/false);
 
-  // Redirect the per-thread current stream.
+  // Redirect the current stream.
   c10::cuda::setCurrentCUDAStream(pool_stream);
 
   auto default_stream = c10::cuda::getDefaultCUDAStream();
   auto current_stream = c10::cuda::getCurrentCUDAStream();
+  auto place = phi::GPUPlace(current_stream.device_index());
 
   // Default stream is still null; current stream has changed.
   EXPECT_EQ(default_stream.id(), static_cast<c10::StreamId>(0));
   EXPECT_NE(default_stream, current_stream);
+  EXPECT_EQ(paddle::GetCurrentCUDAStream(place)->raw_stream(),
+            current_stream.stream());
 
-  // Restore the original per-thread current stream.
+  // Restore the original current stream.
   c10::cuda::setCurrentCUDAStream(original_stream);
+  EXPECT_EQ(paddle::GetCurrentCUDAStream(place)->raw_stream(),
+            original_stream.stream());
+}
+
+// getCurrentCUDAStream should mirror Paddle's current GPUContext stream even
+// when the stream changes outside c10::cuda::setCurrentCUDAStream.
+TEST(CUDAStreamTest, CurrentStreamFallsBackToPaddleCurrentStream) {
+  if (!at::cuda::is_available()) {
+    return;
+  }
+
+  auto original_stream = c10::cuda::getCurrentCUDAStream();
+  auto device_index = original_stream.device_index();
+  auto place = phi::GPUPlace(device_index);
+  auto* gpu_context = static_cast<phi::GPUContext*>(
+      paddle::experimental::DeviceContextPool::Instance().GetMutable(place));
+  auto pool_stream = c10::cuda::getStreamFromPool(
+      /*isHighPriority=*/false, device_index);
+
+  gpu_context->SetStream(pool_stream.stream());
+  EXPECT_EQ(c10::cuda::getCurrentCUDAStream(device_index), pool_stream);
+
+  gpu_context->SetStream(original_stream.stream());
+  EXPECT_EQ(c10::cuda::getCurrentCUDAStream(device_index), original_stream);
 }
 #endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
