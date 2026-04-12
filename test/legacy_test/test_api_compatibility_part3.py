@@ -1040,33 +1040,6 @@ class TestFloorDivideInplaceAPI(unittest.TestCase):
             np.testing.assert_array_equal(out.numpy(), ref_out)
 
 
-# Test exp_ inplace compatibility
-class TestExpInplaceAPI(unittest.TestCase):
-    def setUp(self):
-        np.random.seed(2025)
-        self.np_x = np.random.uniform(-1.5, 2.0, [5, 6]).astype("float32")
-
-    def test_dygraph_Compatibility(self):
-        paddle.disable_static()
-        x = paddle.to_tensor(self.np_x)
-
-        # 1. Paddle Positional arguments
-        out1 = paddle.exp_(x.clone())
-        # 2. Paddle keyword arguments
-        out2 = paddle.exp_(x=x.clone())
-        # 3. PyTorch keyword arguments (alias)
-        out3 = paddle.exp_(input=x.clone())
-        # 4. Tensor method - args
-        out4 = x.clone().exp_()
-
-        # Verify all outputs
-        ref_out = np.exp(self.np_x)
-        for out in [out1, out2, out3, out4]:
-            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-5)
-
-        paddle.enable_static()
-
-
 # Test isposinf compatibility
 class TestIsposinfAPICompatibility(unittest.TestCase):
     def setUp(self):

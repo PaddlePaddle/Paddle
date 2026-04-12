@@ -1422,7 +1422,6 @@ __all__ = [
     'cosh',
     'log',
     'log_',
-    'exp_',
     'log2',
     'log2_',
     'log10',
