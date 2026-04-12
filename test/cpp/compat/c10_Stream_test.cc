@@ -1,4 +1,4 @@
-// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <ATen/cuda/CUDAContext.h>
 #include <c10/core/Stream.h>
 #include <c10/cuda/CUDAFunctions.h>
 
@@ -19,7 +20,69 @@
 #include <c10/cuda/CUDAStream.h>
 #endif
 
+#include <atomic>
+#include <chrono>
+#include <thread>
+
 #include "gtest/gtest.h"
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+namespace {
+
+using StreamCallbackGate = std::atomic<bool>;
+
+#ifdef PADDLE_WITH_HIP
+void BlockingStreamCallback(hipStream_t /*stream*/,
+                            hipError_t /*status*/,
+                            void* user_data) {
+  auto* gate = static_cast<StreamCallbackGate*>(user_data);
+  while (!gate->load(std::memory_order_acquire)) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
+}
+
+void EnqueueBlockingCallback(const c10::cuda::CUDAStream& stream,
+                             StreamCallbackGate* gate) {
+  C10_CUDA_CHECK(hipStreamAddCallback(
+      stream.raw_stream(), BlockingStreamCallback, gate, 0));
+}
+
+void CreateRawStream(hipStream_t* stream) {
+  C10_CUDA_CHECK(hipStreamCreate(stream));
+}
+
+void DestroyRawStream(hipStream_t stream) {
+  C10_CUDA_CHECK(hipStreamDestroy(stream));
+}
+
+void ClearLastStreamError() { (void)hipGetLastError(); }
+#else
+void CUDART_CB BlockingStreamCallback(void* user_data) {
+  auto* gate = static_cast<StreamCallbackGate*>(user_data);
+  while (!gate->load(std::memory_order_acquire)) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
+}
+
+void EnqueueBlockingCallback(const c10::cuda::CUDAStream& stream,
+                             StreamCallbackGate* gate) {
+  C10_CUDA_CHECK(
+      cudaLaunchHostFunc(stream.raw_stream(), BlockingStreamCallback, gate));
+}
+
+void CreateRawStream(cudaStream_t* stream) {
+  C10_CUDA_CHECK(cudaStreamCreate(stream));
+}
+
+void DestroyRawStream(cudaStream_t stream) {
+  C10_CUDA_CHECK(cudaStreamDestroy(stream));
+}
+
+void ClearLastStreamError() { (void)cudaGetLastError(); }
+#endif
+
+}  // namespace
+#endif
 
 // Test device_count() works in both CPU and CUDA builds
 TEST(StreamTest, DeviceCount) {
@@ -40,12 +103,18 @@ TEST(StreamTest, DeviceCount) {
 // encoded as void*. For the default (null) stream the id is 0, so the
 // pointer is nullptr; for a real stream it must be non-null.
 TEST(StreamTest, NativeHandleCudaDefaultStream) {
+  if (!at::cuda::is_available()) {
+    return;
+  }
   c10::Stream s = c10::cuda::getDefaultCUDAStream().unwrap();
   // Default stream encodes nullptr (id == 0), so native_handle() == nullptr.
   EXPECT_EQ(s.native_handle(), nullptr);
 }
 
 TEST(StreamTest, NativeHandleCudaCurrentStream) {
+  if (!at::cuda::is_available()) {
+    return;
+  }
   auto cuda_stream = c10::cuda::getCurrentCUDAStream();
   c10::Stream s = cuda_stream.unwrap();
   // getCurrentCUDAStream wraps the real phi stream handle; calling
@@ -73,11 +142,49 @@ TEST(StreamTest, QueryCpuStreamReturnsTrue) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 // A freshly-obtained CUDA stream with no pending work must report ready.
 TEST(StreamTest, QueryCudaStreamReady) {
+  if (!at::cuda::is_available()) {
+    return;
+  }
   auto cuda_stream = c10::cuda::getCurrentCUDAStream();
   c10::Stream s = cuda_stream.unwrap();
   // synchronize first to ensure no pending work, then query should be true.
   EXPECT_NO_THROW(s.synchronize());
   EXPECT_TRUE(s.query());
+}
+
+TEST(StreamTest, QueryCudaStreamNotReadyReturnsFalse) {
+  if (!at::cuda::is_available()) {
+    return;
+  }
+  auto cuda_stream = c10::cuda::getStreamFromPool(/*isHighPriority=*/false);
+  StreamCallbackGate release_callback{false};
+  ASSERT_NO_THROW(EnqueueBlockingCallback(cuda_stream, &release_callback));
+
+  c10::Stream s = cuda_stream.unwrap();
+  EXPECT_FALSE(s.query());
+
+  release_callback.store(true, std::memory_order_release);
+  EXPECT_NO_THROW(s.synchronize());
+}
+
+TEST(StreamTest, QueryCudaStreamInvalidHandleThrows) {
+  if (!at::cuda::is_available()) {
+    return;
+  }
+
+  auto device_index = c10::cuda::getCurrentCUDAStream().device_index();
+#ifdef PADDLE_WITH_HIP
+  hipStream_t raw_stream = nullptr;
+#else
+  cudaStream_t raw_stream = nullptr;
+#endif
+  ASSERT_NO_THROW(CreateRawStream(&raw_stream));
+
+  auto cuda_stream = c10::cuda::getStreamFromExternal(raw_stream, device_index);
+  ASSERT_NO_THROW(DestroyRawStream(raw_stream));
+
+  EXPECT_THROW(cuda_stream.query(), std::exception);
+  ClearLastStreamError();
 }
 #endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
 
@@ -93,6 +200,9 @@ TEST(StreamTest, SynchronizeCpuStream) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 // CUDA stream: synchronize() must complete without error.
 TEST(StreamTest, SynchronizeCudaStream) {
+  if (!at::cuda::is_available()) {
+    return;
+  }
   auto cuda_stream = c10::cuda::getCurrentCUDAStream();
   c10::Stream s = cuda_stream.unwrap();
   EXPECT_NO_THROW(s.synchronize());
@@ -105,6 +215,9 @@ TEST(StreamTest, SynchronizeCudaStream) {
 // getDefaultCUDAStream must always return the null stream (id == 0),
 // which corresponds to cudaStreamDefault on the device.
 TEST(CUDAStreamTest, DefaultStreamIsNullStream) {
+  if (!at::cuda::is_available()) {
+    return;
+  }
   auto default_stream = c10::cuda::getDefaultCUDAStream();
   // id == 0 encodes cudaStreamDefault (the null stream, handle nullptr).
   EXPECT_EQ(default_stream.id(), static_cast<c10::StreamId>(0));
@@ -112,12 +225,18 @@ TEST(CUDAStreamTest, DefaultStreamIsNullStream) {
 
 // getDefaultCUDAStream must be stable: calling it twice returns equal streams.
 TEST(CUDAStreamTest, DefaultStreamIsStable) {
+  if (!at::cuda::is_available()) {
+    return;
+  }
   auto s1 = c10::cuda::getDefaultCUDAStream();
   auto s2 = c10::cuda::getDefaultCUDAStream();
   EXPECT_EQ(s1, s2);
 }
 
 TEST(CUDAStreamTest, GetStreamFromPoolBoolOverloadPreservesHighPriority) {
+  if (!at::cuda::is_available()) {
+    return;
+  }
   auto low_priority_stream =
       c10::cuda::getStreamFromPool(/*isHighPriority=*/false);
   auto high_priority_stream =
@@ -139,6 +258,9 @@ TEST(CUDAStreamTest, GetStreamFromPoolBoolOverloadPreservesHighPriority) {
 // After setCurrentCUDAStream redirects the per-thread current stream,
 // getDefaultCUDAStream must still return the null stream.
 TEST(CUDAStreamTest, DefaultStreamUnaffectedBySetCurrentCUDAStream) {
+  if (!at::cuda::is_available()) {
+    return;
+  }
   // Snapshot the per-thread current stream before we touch it so we can
   // restore it afterward and avoid polluting subsequent tests.
   auto original_stream = c10::cuda::getCurrentCUDAStream();

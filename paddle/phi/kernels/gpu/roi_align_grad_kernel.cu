@@ -207,7 +207,7 @@ void RoiAlignGradKernel(const Context& dev_ctx,
   auto gplace = dev_ctx.GetPlace();
   if (boxes_num) {
     int64_t boxes_batch_size = boxes_num->numel();
-    if (boxes_num->dtype() == phi::DataType::INT64) {
+    if (boxes_num->dtype() == DataType::INT64) {
       std::vector<int64_t> boxes_num_list(boxes_batch_size);
       memory_utils::Copy(cplace,
                          boxes_num_list.data(),
@@ -222,7 +222,7 @@ void RoiAlignGradKernel(const Context& dev_ctx,
         }
         start += boxes_num_list[n];
       }
-    } else if (boxes_num->dtype() == phi::DataType::INT32) {
+    } else if (boxes_num->dtype() == DataType::INT32) {
       std::vector<int> boxes_num_list(boxes_batch_size);
       memory_utils::Copy(cplace,
                          boxes_num_list.data(),

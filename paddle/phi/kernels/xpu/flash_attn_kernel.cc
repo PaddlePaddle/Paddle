@@ -270,9 +270,9 @@ void FlashAttnKernelBase(const Context& dev_ctx,
                               "flash_attn_fwd requires mask's shape "
                               "like [b,l,l] or [b, h, l, l]"));
       }
-      if (!(attn_mask->dtype() == phi::DataType::FLOAT32 ||
-            attn_mask->dtype() == phi::DataType::FLOAT16 ||
-            attn_mask->dtype() == phi::DataType::BFLOAT16)) {
+      if (!(attn_mask->dtype() == DataType::FLOAT32 ||
+            attn_mask->dtype() == DataType::FLOAT16 ||
+            attn_mask->dtype() == DataType::BFLOAT16)) {
         errors::Unimplemented(
             "Unsupported dtype for attention_mask in xpu flash attention, only "
             "float32, float16 and bfloat16 are supported.");
@@ -293,10 +293,10 @@ void FlashAttnKernelBase(const Context& dev_ctx,
 
     const XPUTypeFP16* bias_data = nullptr;
     if (!is_flashmask && attn_mask.get_ptr() != nullptr) {
-      if (attn_mask->dtype() == phi::DataType::FLOAT16) {
+      if (attn_mask->dtype() == DataType::FLOAT16) {
         bias_data = reinterpret_cast<const XPUTypeFP16*>(
             attn_mask->data<phi::float16>());
-      } else {  // phi::DataType::BFLOAT16
+      } else {  // DataType::BFLOAT16
         XPUTypeFP16* bias_tmp =
             RAII_GUARD.alloc_l3_or_gm<XPUTypeFP16>(attn_mask->numel());
         r = xpu::cast<XPUType, XPUTypeFP16>(

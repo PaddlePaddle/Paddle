@@ -22,9 +22,13 @@
 // cublasLT was introduced in CUDA 10.1 but we enable only for 11.1 that also
 // added bf16 support
 
-#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
-    defined(USE_CUDSS)
+#if defined(PADDLE_WITH_HIP)
+#include <hip/hip_runtime.h>
+#elif defined(PADDLE_WITH_CUDA)
+#if defined(USE_CUDSS)
 #include <cudss.h>
+#endif
+#include <driver_types.h>
 #endif
 
 #include <c10/core/Allocator.h>
@@ -118,13 +122,13 @@ void* getCUDABlasLtWorkspace();
 
 CUDAContextSolverHandle getCurrentCUDASolverDnHandle();
 
+#if defined(USE_CUDSS)
+cudssHandle_t getCurrentCudssHandle();
+#endif
+
 // Get the CUDA device allocator for the current device.
 // Returns a pointer to a c10::Allocator that allocates GPU memory.
 c10::Allocator* getCUDADeviceAllocator();
-#endif
-
-#if defined(USE_CUDSS)
-cudssHandle_t getCurrentCudssHandle();
 #endif
 
 }  // namespace at::cuda

@@ -35,8 +35,13 @@ std::once_flag g_init_once;
 c10::DeviceIndex g_num_gpus = -1;
 
 struct DevicePools {
+#ifdef PADDLE_WITH_HIP
+  std::vector<hipStream_t> low_priority;
+  std::vector<hipStream_t> high_priority;
+#else
   std::vector<cudaStream_t> low_priority;
   std::vector<cudaStream_t> high_priority;
+#endif
   std::atomic<uint32_t> lp_counter{0};
   std::atomic<uint32_t> hp_counter{0};
   std::once_flag init_flag;
@@ -44,7 +49,11 @@ struct DevicePools {
 
 std::vector<std::unique_ptr<DevicePools>> g_pools;
 
+#ifdef PADDLE_WITH_HIP
+thread_local std::vector<hipStream_t> tls_current_streams;
+#else
 thread_local std::vector<cudaStream_t> tls_current_streams;
+#endif
 thread_local bool tls_streams_initialized = false;
 
 void initGlobalState() {
@@ -61,17 +70,28 @@ void initGlobalState() {
 void initDevicePools(c10::DeviceIndex device_index) {
   phi::backends::gpu::GPUDeviceGuard guard(device_index);
   int lo_pri = 0, hi_pri = 0;
+#ifdef PADDLE_WITH_HIP
+  C10_CUDA_CHECK(hipDeviceGetStreamPriorityRange(&lo_pri, &hi_pri));
+#else
   C10_CUDA_CHECK(cudaDeviceGetStreamPriorityRange(&lo_pri, &hi_pri));
+#endif
 
   auto& pool = *g_pools[device_index];
   pool.low_priority.resize(kStreamsPerPool);
   pool.high_priority.resize(kStreamsPerPool);
 
   for (int i = 0; i < kStreamsPerPool; ++i) {
+#ifdef PADDLE_WITH_HIP
+    C10_CUDA_CHECK(hipStreamCreateWithPriority(
+        &pool.low_priority[i], hipStreamNonBlocking, lo_pri));
+    C10_CUDA_CHECK(hipStreamCreateWithPriority(
+        &pool.high_priority[i], hipStreamNonBlocking, hi_pri));
+#else
     C10_CUDA_CHECK(cudaStreamCreateWithPriority(
         &pool.low_priority[i], cudaStreamNonBlocking, lo_pri));
     C10_CUDA_CHECK(cudaStreamCreateWithPriority(
         &pool.high_priority[i], cudaStreamNonBlocking, hi_pri));
+#endif
   }
 }
 
@@ -111,8 +131,13 @@ CUDAStream getStreamFromPool(const int priority,
   const uint32_t idx = (priority < 0 ? g_pools[device_index]->hp_counter++
                                      : g_pools[device_index]->lp_counter++) %
                        kStreamsPerPool;
+#ifdef PADDLE_WITH_HIP
+  hipStream_t raw = (priority < 0 ? g_pools[device_index]->high_priority[idx]
+                                  : g_pools[device_index]->low_priority[idx]);
+#else
   cudaStream_t raw = (priority < 0 ? g_pools[device_index]->high_priority[idx]
                                    : g_pools[device_index]->low_priority[idx]);
+#endif
 
   return make_cuda_stream(raw, device_index);
 #else
@@ -126,6 +151,16 @@ CUDAStream getStreamFromPool(const bool isHighPriority,
   return getStreamFromPool(isHighPriority ? -1 : 0, device_index);
 }
 
+#ifdef PADDLE_WITH_HIP
+CUDAStream getStreamFromExternal(hipStream_t ext_stream,
+                                 c10::DeviceIndex device_index) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  initGlobalState();
+  check_gpu(device_index);
+#endif
+  return make_cuda_stream(ext_stream, device_index);
+}
+#else
 CUDAStream getStreamFromExternal(cudaStream_t ext_stream,
                                  c10::DeviceIndex device_index) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -134,6 +169,7 @@ CUDAStream getStreamFromExternal(cudaStream_t ext_stream,
 #endif
   return make_cuda_stream(ext_stream, device_index);
 }
+#endif
 
 CUDAStream getDefaultCUDAStream(c10::DeviceIndex device_index) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -157,7 +193,11 @@ CUDAStream getCurrentCUDAStream(c10::DeviceIndex device_index) {
   }
   check_gpu(device_index);
   initTLSCurrentStreams();
+#ifdef PADDLE_WITH_HIP
+  hipStream_t raw = tls_current_streams[device_index];
+#else
   cudaStream_t raw = tls_current_streams[device_index];
+#endif
   if (raw == nullptr) {
     return getDefaultCUDAStream(device_index);
   }

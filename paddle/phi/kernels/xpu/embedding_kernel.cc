@@ -52,7 +52,7 @@ void EmbeddingKernel(const Context &dev_ctx,
 
   int r;
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-  if (ids_t->dtype() == phi::DataType::INT64) {
+  if (ids_t->dtype() == DataType::INT64) {
 #ifndef PADDLE_WITH_XPU_PLUGIN
     r = xpu::paddle_embedding<XPUType, int64_t>(
         dev_ctx.x_context(),

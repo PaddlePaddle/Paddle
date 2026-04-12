@@ -24,6 +24,7 @@
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/memory/malloc.h"
 
 namespace at {
 
@@ -49,11 +50,24 @@ inline int64_t ResizeCheckedNumel(at::IntArrayRef size) {
   return numel;
 }
 
+inline size_t ResizeCheckedStorageBytes(int64_t numel,
+                                        size_t itemsize,
+                                        size_t storage_offset_bytes) {
+  const auto numel_size = static_cast<size_t>(numel);
+  TORCH_CHECK(
+      itemsize == 0 || numel_size <= (std::numeric_limits<size_t>::max() -
+                                      storage_offset_bytes) /
+                                         itemsize,
+      "resize_ size is too large in bytes");
+  return storage_offset_bytes + numel_size * itemsize;
+}
+
 }  // namespace detail
 
 // resize_ - operate on the underlying DenseTensor directly so we preserve
-// storage semantics across shrink/grow round-trips and only reallocate when
-// the requested shape exceeds the current storage capacity.
+// storage semantics across shrink/grow round-trips. When growth exceeds the
+// current capacity, expand the shared storage itself so aliasing views keep
+// their storage offset and existing storage contents stay intact.
 inline const at::Tensor& Tensor::resize_(
     at::IntArrayRef size,
     ::std::optional<at::MemoryFormat> memory_format) const {
@@ -72,35 +86,33 @@ inline const at::Tensor& Tensor::resize_(
               "resize_ is not allowed on an undefined tensor");
 
   const size_t itemsize = phi::SizeOf(dense_tensor->dtype());
-  const size_t old_numel = static_cast<size_t>(tensor_.numel());
-  const size_t new_numel_size = static_cast<size_t>(new_numel);
-  const size_t required_bytes = new_numel_size * itemsize;
-  const size_t available_bytes =
-      dense_tensor->Holder() == nullptr
-          ? 0
-          : dense_tensor->Holder()->size() - dense_tensor->meta().offset;
+  const size_t new_storage_bytes = detail::ResizeCheckedStorageBytes(
+      new_numel, itemsize, dense_tensor->meta().offset);
+  const size_t current_storage_bytes =
+      dense_tensor->Holder() == nullptr ? 0 : dense_tensor->Holder()->size();
 
-  if (required_bytes <= available_bytes || new_numel == 0) {
+  if (new_storage_bytes <= current_storage_bytes || new_numel == 0) {
     dense_tensor->Resize(dims);
     return *this;
   }
 
+  // Sync through the compat Storage path first so the DenseTensor holder is a
+  // live StorageHolderView backed by shared StorageImpl.
+  auto storage = this->storage();
   const auto old_holder = dense_tensor->Holder();
   TORCH_CHECK(old_holder != nullptr,
               "resize_ cannot grow a tensor without allocated storage");
-  const size_t old_offset = dense_tensor->meta().offset;
-  const size_t copy_bytes = std::min(old_numel, new_numel_size) * itemsize;
   const phi::Place place = old_holder->place();
-  const void* old_data =
-      old_holder == nullptr
-          ? nullptr
-          : reinterpret_cast<const uint8_t*>(old_holder->ptr()) + old_offset;
-
-  dense_tensor->ResizeAndAllocate(phi::make_ddim(dims));
-  void* new_data = dense_tensor->data();
-  if (copy_bytes > 0 && old_data != nullptr && old_data != new_data) {
-    phi::memory_utils::Copy(place, new_data, place, old_data, copy_bytes);
+  auto new_holder = paddle::memory::AllocShared(place, new_storage_bytes);
+  TORCH_CHECK(new_holder != nullptr, "resize_ failed to allocate storage");
+  const size_t copy_bytes = std::min(old_holder->size(), new_storage_bytes);
+  if (copy_bytes > 0 && old_holder->ptr() != nullptr &&
+      old_holder->ptr() != new_holder->ptr()) {
+    phi::memory_utils::Copy(
+        place, new_holder->ptr(), place, old_holder->ptr(), copy_bytes);
   }
+  storage.set_data_ptr_noswap(std::move(new_holder));
+  dense_tensor->Resize(phi::make_ddim(dims));
   return *this;
 }
 

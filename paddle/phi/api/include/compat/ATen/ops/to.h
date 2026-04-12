@@ -42,7 +42,8 @@ inline at::Tensor Tensor::to(
         place = phi::CPUPlace();
         break;
       case c10::DeviceType::CUDA:
-        place = phi::GPUPlace(dev.has_index() ? dev.index() : 0);
+        place = dev.has_index() ? phi::GPUPlace(dev.index())
+                                : paddle::DefaultGPUPlace();
         break;
       default:
         PD_THROW("Unsupported device type: ", dev.type());

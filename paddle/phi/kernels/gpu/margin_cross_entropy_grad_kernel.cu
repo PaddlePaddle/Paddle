@@ -93,7 +93,7 @@ void MarginCrossEntropyGradKernel(const Context& dev_ctx,
                                D,
                                &class_interval);
 
-  if (label_type == phi::DataType::INT32) {
+  if (label_type == DataType::INT32) {
     typedef int32_t LabelT;
     CalculateGrad<T, LabelT>
         <<<blocks, threads, 0, dev_ctx.stream()>>>(logits_grad->data<T>(),
@@ -107,7 +107,7 @@ void MarginCrossEntropyGradKernel(const Context& dev_ctx,
                                                    N,
                                                    D,
                                                    class_interval.data<int>());
-  } else if (label_type == phi::DataType::INT64) {
+  } else if (label_type == DataType::INT64) {
     typedef int64_t LabelT;
     CalculateGrad<T, LabelT>
         <<<blocks, threads, 0, dev_ctx.stream()>>>(logits_grad->data<T>(),

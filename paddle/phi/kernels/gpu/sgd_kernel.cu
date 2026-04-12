@@ -84,7 +84,7 @@ void SGDDenseKernel(const Context& dev_ctx,
       multi_precision ? master_param->data<MT>() : nullptr;
   MT* master_out_data =
       multi_precision ? dev_ctx.template Alloc<MT>(master_param_out) : nullptr;
-  const bool use_float32_grad = grad.dtype() == phi::DataType::FLOAT32;
+  const bool use_float32_grad = grad.dtype() == DataType::FLOAT32;
 
   int block = 512;
   int64_t grid_max = dev_ctx.GetCUDAMaxGridDimSize()[0];

@@ -576,7 +576,7 @@ void SendUERecvGradKernel(const Context& dev_ctx,
     return;
   }
 
-  if (index_type == phi::DataType::INT32) {
+  if (index_type == DataType::INT32) {
     GraphSendUERecvGradOpCUDAKernelLaunchHelper<Context, T, int32_t>(
         dev_ctx,
         out_grad,
@@ -590,7 +590,7 @@ void SendUERecvGradKernel(const Context& dev_ctx,
         y_grad,
         dst_count.get_ptr(),
         out.get_ptr());
-  } else if (index_type == phi::DataType::INT64) {
+  } else if (index_type == DataType::INT64) {
     GraphSendUERecvGradOpCUDAKernelLaunchHelper<Context, T, int64_t>(
         dev_ctx,
         out_grad,
