@@ -523,7 +523,7 @@ DenseTensor Transpose2DTo6D(const Context& dev_ctx, const DenseTensor& x) {
     axis[i] = i;
   }
   std::swap(axis[rank - 1], axis[rank - 2]);
-  ret.Resize(make_ddim(x_vec));
+  ret.Resize(x_vec);
   dev_ctx.template Alloc<T>(&ret);
   switch (rank) {
     case 2: {

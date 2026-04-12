@@ -303,7 +303,7 @@ void MergedMomentumInnerCompute(
             static_cast<const Context &>(dev_ctx), params[idx]->numel());
         const auto grad_type = grads[idx]->dtype();
 #define PADDLE_LAUNCH_DENSE_MTMOMENTUM_KERNEL(__nesterov, __reg_type)   \
-  if (grad_type == phi::DataType::FLOAT32) {                            \
+  if (grad_type == DataType::FLOAT32) {                                 \
     DenseMomentumFunctor<T, float, MT, __reg_type, __nesterov> functor( \
         params[idx]->data<T>(),                                         \
         grads[idx]->data<float>(),                                      \

@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/amp_kernel.h"
 
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -174,10 +175,13 @@ class LazyZeros<GPUContext, T> {
     for (int i = 0; i < xs_size; i++) {
       h_starts[i + 1] = h_starts[i] + outs[i]->numel();
     }
+    auto* stable_h_starts =
+        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(h_starts,
+                                                               xs_size + 1);
     memory_utils::Copy(dev_ctx.GetPlace(),
                        d_starts,
                        cpu_place,
-                       h_starts,
+                       stable_h_starts,
                        (xs_size + 1) * sizeof(int64_t),
                        dev_ctx.stream());
 
@@ -195,10 +199,13 @@ class LazyZeros<GPUContext, T> {
     for (size_t i = 0; i < xs_size; ++i) {
       h_out_addrs[i] = dev_ctx.Alloc<T>(outs[i]);
     }
+    auto* stable_h_out_addrs =
+        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(h_out_addrs,
+                                                               xs_size);
     memory_utils::Copy(dev_ctx.GetPlace(),
                        d_out_addrs,
                        cpu_place,
-                       h_out_addrs,
+                       stable_h_out_addrs,
                        xs_size * sizeof(T*),
                        dev_ctx.stream());
 
@@ -304,10 +311,13 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
     h_starts[i] = h_starts[i - 1] + xs[i - 1]->numel();
   }
   int64_t total_num = h_starts[xs_size];
+  auto* stable_h_starts =
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(h_starts,
+                                                             xs_size + 1);
   memory_utils::Copy(dev_ctx.GetPlace(),
                      d_starts,
                      cpu_place,
-                     h_starts,
+                     stable_h_starts,
                      (xs_size + 1) * sizeof(int64_t),
                      dev_ctx.stream());
 
@@ -327,10 +337,12 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
     h_xs[i] = xs[i]->data<T>();
     h_outs[i] = dev_ctx.template Alloc<T>(outs[i]);
   }
+  auto* stable_h_xs =
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(h_xs, 2 * xs_size);
   memory_utils::Copy(dev_ctx.GetPlace(),
                      d_xs,
                      cpu_place,
-                     h_xs,
+                     stable_h_xs,
                      2 * xs_size * sizeof(T*),
                      dev_ctx.stream());
 

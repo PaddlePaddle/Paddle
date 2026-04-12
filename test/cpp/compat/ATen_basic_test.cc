@@ -14,6 +14,7 @@
 
 #include <ATen/Functions.h>
 #include <ATen/core/TensorBody.h>
+#include <ATen/cuda/CUDAContext.h>
 #include <ATen/cuda/EmptyTensor.h>
 #include <ATen/native/cuda/Resize.h>
 #include <ATen/ops/tensor.h>
@@ -27,8 +28,11 @@
 #endif
 #include "ATen/ATen.h"
 #include "gtest/gtest.h"
+#include "paddle/common/macros.h"
 #include "paddle/phi/common/float16.h"
 #include "torch/all.h"
+
+COMMON_DECLARE_bool(use_stride_kernel);
 
 TEST(TensorBaseTest, DataPtrAPIs) {
   // Test data_ptr() and const_data_ptr() APIs
@@ -77,6 +81,9 @@ TEST(TensorBaseTest, TypeDeviceAPIs) {
 }
 
 TEST(TensorBaseTest, ModifyOperationAPIs) {
+  if (!FLAGS_use_stride_kernel) {
+    return;
+  }
   // Test modify operation related APIs
   at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
 
@@ -149,6 +156,9 @@ TEST(compat_basic_test, BasicCase) {
     ASSERT_EQ(result_ptr[i], 12);
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (!at::cuda::is_available()) {
+    return;
+  }
 
   {
     // for test empty_cuda:
@@ -231,7 +241,7 @@ TEST(compat_basic_test, BasicCase) {
 TEST(TestDevice, DeviceAPIsOnCUDA) {
   // Test device related APIs on CUDA if available
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (torch::cuda::is_available()) {
+  if (at::cuda::is_available()) {
     at::TensorBase cuda_tensor = at::ones(
         {2, 3}, c10::TensorOptions().dtype(at::kFloat).device(at::kCUDA));
 
@@ -356,6 +366,9 @@ TEST(TensorBaseTest, ResetAPI) {
 }
 
 TEST(TensorBaseTest, IsNonOverlappingAndDenseAPI) {
+  if (!FLAGS_use_stride_kernel) {
+    return;
+  }
   // Test is_non_overlapping_and_dense() API
 
   // Case 1: Contiguous tensor - should be non-overlapping and dense
@@ -403,6 +416,9 @@ TEST(TensorBaseTest, IsNonOverlappingAndDenseAPI) {
 }
 
 TEST(TensorBaseTest, UndefinedAndNonDenseBranchCoverage) {
+  if (!FLAGS_use_stride_kernel) {
+    return;
+  }
   at::TensorBase undefined;
   ASSERT_EQ(undefined.toString(), std::string("UndefinedType"));
   ASSERT_EQ(undefined.data_ptr(), nullptr);

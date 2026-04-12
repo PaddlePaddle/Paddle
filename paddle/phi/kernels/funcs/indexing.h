@@ -194,7 +194,7 @@ inline static void ReshapeIndexer(DenseTensor* index,
   shape.insert(shape.end(), dims_before, 1);
   shape.insert(shape.end(), orig_shape.begin(), orig_shape.end());
   shape.insert(shape.end(), dims_after, 1);
-  index->Resize(make_ddim(shape));
+  index->Resize(shape);
 }
 
 template <typename T, typename Context>

@@ -217,7 +217,7 @@ void BaddbmmKernel(const Context& dev_ctx,
   }
 
   // Handle out_dtype conversion if specified
-  if (out_dtype != phi::DataType::UNDEFINED && out_dtype != out->dtype()) {
+  if (out_dtype != DataType::UNDEFINED && out_dtype != out->dtype()) {
     CastKernel<T>(dev_ctx, *out, out_dtype, out);
   }
 }

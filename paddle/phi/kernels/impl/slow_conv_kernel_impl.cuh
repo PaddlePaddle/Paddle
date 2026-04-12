@@ -233,7 +233,7 @@ DenseTensor Select(const DenseTensor& src, int64_t index) {
   for (int i = 1; i < dims.size(); ++i) {
     new_dims.push_back(dims[i]);
   }
-  out.Resize(common::make_ddim(new_dims));
+  out.Resize(new_dims);
   int64_t stride_0 = src.numel() / dims[0];
   size_t offset_bytes = index * stride_0 * sizeof(T);
   out.set_offset(src.offset() + offset_bytes);
@@ -447,7 +447,7 @@ void SlowConvBackwardNoGroup(const Context& dev_ctx,
       std::vector<int64_t> new_shape = {1};
       for (int i = 0; i < src.dims().size(); ++i)
         new_shape.push_back(src.dims()[i]);
-      dst.Resize(common::make_ddim(new_shape));
+      dst.Resize(new_shape);
     } else {
       dst.ShareDataWith(src);
     }
@@ -472,7 +472,7 @@ void SlowConvBackwardNoGroup(const Context& dev_ctx,
       std::vector<int64_t> new_shape = {1};
       for (int i = 0; i < grad_input->dims().size(); ++i)
         new_shape.push_back(grad_input->dims()[i]);
-      grad_input_view.Resize(common::make_ddim(new_shape));
+      grad_input_view.Resize(new_shape);
       grad_input_ptr = &grad_input_view;
     } else {
       grad_input_ptr = grad_input;
@@ -526,7 +526,7 @@ void SlowConvNoGroup(const Context& dev_ctx,
     input_.ShareDataWith(input);
     std::vector<int64_t> new_shape = {1};
     for (int i = 0; i < rank; ++i) new_shape.push_back(input.dims()[i]);
-    input_.Resize(common::make_ddim(new_shape));
+    input_.Resize(new_shape);
   } else {
     input_.ShareDataWith(input);
   }
@@ -544,7 +544,7 @@ void SlowConvNoGroup(const Context& dev_ctx,
     for (int i = 0; i < output->dims().size(); ++i) {
       out_shape.push_back(output->dims()[i]);
     }
-    output_.Resize(common::make_ddim(out_shape));
+    output_.Resize(out_shape);
   } else {
     output_.ShareDataWith(*output);
   }

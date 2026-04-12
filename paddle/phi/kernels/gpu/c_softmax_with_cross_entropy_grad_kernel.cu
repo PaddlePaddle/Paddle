@@ -140,7 +140,7 @@ void CSoftmaxWithCrossEntropyGradKernel(const Context& dev_ctx,
   const int64_t start_index = rank * D;
   const int64_t end_index = start_index + D;
 
-  if (label_type == phi::DataType::INT32) {
+  if (label_type == DataType::INT32) {
     if (C > 1) {
       DenseTensor is_ignore;
       is_ignore.Resize({N, 1});
@@ -178,7 +178,7 @@ void CSoftmaxWithCrossEntropyGradKernel(const Context& dev_ctx,
                                                      D,
                                                      ignore_index);
     }
-  } else if (label_type == phi::DataType::INT64) {
+  } else if (label_type == DataType::INT64) {
     if (C > 1) {
       DenseTensor is_ignore;
       is_ignore.Resize({N, 1});

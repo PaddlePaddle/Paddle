@@ -18,8 +18,9 @@
 
 #pragma once
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <ATen/cuda/CUDAContextLight.h>
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <ATen/cuda/Exceptions.h>
 #include <c10/cuda/CUDAStream.h>
 #endif

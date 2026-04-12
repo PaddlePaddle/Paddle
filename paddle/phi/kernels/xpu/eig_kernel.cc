@@ -52,7 +52,7 @@ void EigKernel(const Context& dev_ctx,
 
     std::vector<int64_t> real_w_dim = vectorize<int64_t>(out_w->dims());
     real_w_dim.back() *= 2;
-    real_w_cpu.Resize(make_ddim(real_w_dim));
+    real_w_cpu.Resize(real_w_dim);
     (*cpu_ctx).template Alloc<phi::dtype::Real<T>>(&real_w_cpu);
     real_v_cpu.Resize(x.dims());
     (*cpu_ctx).template Alloc<phi::dtype::Real<T>>(&real_v_cpu);

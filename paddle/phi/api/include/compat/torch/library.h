@@ -27,10 +27,14 @@
 #include <optional>
 #include <sstream>
 #include <string>
+#include <tuple>
 #include <type_traits>
 #include <unordered_map>
+#include <utility>
 #include <vector>
+#include "ATen/core/function_schema.h"
 #include "paddle/common/macros.h"  // For macro PADDLE_API
+#include "torch/csrc/jit/function_schema_parser.h"
 
 namespace torch {
 class Library;
@@ -43,6 +47,27 @@ struct arg {
 
   arg& operator=(const IValue& rhs) {
     value_ = rhs;
+    return *this;
+  }
+
+  arg& operator=(IValue&& rhs) {
+    value_ = std::move(rhs);
+    return *this;
+  }
+
+  template <
+      typename T,
+      typename = std::enable_if_t<!std::is_same_v<std::decay_t<T>, IValue> &&
+                                  !std::is_same_v<std::decay_t<T>, arg>>>
+  arg& operator=(T&& rhs) {
+    if constexpr (std::is_same_v<std::decay_t<T>, const char*> ||
+                  (std::is_array_v<std::decay_t<T>> &&
+                   std::is_same_v<std::remove_extent_t<std::decay_t<T>>,
+                                  char>)) {
+      value_ = torch::IValue(std::string(rhs));
+    } else {
+      value_ = torch::IValue(std::forward<T>(rhs));
+    }
     return *this;
   }
 
@@ -82,22 +107,36 @@ class FunctionArgs {
     return args;
   }
 
+  void add_arg(torch::arg keyword) {
+    if (!keyword.value_.has_value()) {
+      throw std::runtime_error("Keyword argument `" + keyword.name_ +
+                               "` must be assigned a value");
+    }
+    auto [it, inserted] =
+        named_args_.emplace(keyword.name_, std::move(*keyword.value_));
+    if (!inserted) {
+      throw std::runtime_error("Duplicate keyword argument `" + keyword.name_ +
+                               "`");
+    }
+  }
+
   template <typename T>
   void add_arg(T&& arg) {
-    if constexpr (std::is_same_v<std::decay_t<T>, const char*> ||
-                  (std::is_array_v<std::decay_t<T>> &&
-                   std::is_same_v<std::remove_extent_t<std::decay_t<T>>,
-                                  char>)) {
+    using Decayed = std::decay_t<T>;
+
+    if constexpr (std::is_same_v<Decayed, const char*> ||
+                  (std::is_array_v<Decayed> &&
+                   std::is_same_v<std::remove_extent_t<Decayed>, char>)) {
       args_.emplace_back(torch::IValue(std::string(arg)));
-    } else if constexpr (std::is_arithmetic_v<std::decay_t<T>>) {
-      args_.emplace_back(torch::IValue(std::forward<T>(arg)));
-    } else if constexpr (std::is_same_v<std::decay_t<T>, std::string>) {
-      args_.emplace_back(torch::IValue(std::forward<T>(arg)));
-    } else if constexpr (std::is_same_v<std::decay_t<T>, torch::IValue>) {
-      args_.emplace_back(std::forward<T>(arg));
-    } else {
-      args_.emplace_back(torch::IValue(std::forward<T>(arg)));
+      return;
     }
+
+    if constexpr (std::is_same_v<Decayed, torch::IValue>) {
+      args_.emplace_back(std::forward<T>(arg));
+      return;
+    }
+
+    args_.emplace_back(torch::IValue(std::forward<T>(arg)));
   }
 
   template <typename T>
@@ -154,6 +193,10 @@ class FunctionArgs {
 
   size_t size() const { return args_.size(); }
 
+  size_t named_size() const { return named_args_.size(); }
+
+  bool has_named_args() const { return !named_args_.empty(); }
+
   bool empty() const { return args_.empty(); }
 
   const IValue& operator[](size_t index) const { return args_[index]; }
@@ -169,12 +212,31 @@ class FunctionArgs {
   auto begin() const { return args_.begin(); }
   auto end() const { return args_.end(); }
 
+  const std::unordered_map<std::string, torch::IValue>& named_args() const {
+    return named_args_;
+  }
+
   std::string to_string() const {
     std::ostringstream oss;
     oss << "FunctionArgs[";
     for (size_t i = 0; i < args_.size(); ++i) {
       if (i > 0) oss << ", ";
       oss << args_[i];
+    }
+    if (!named_args_.empty()) {
+      if (!args_.empty()) {
+        oss << ", ";
+      }
+      oss << "kwargs={";
+      bool first = true;
+      for (const auto& [name, value] : named_args_) {
+        if (!first) {
+          oss << ", ";
+        }
+        oss << name << ": " << value;
+        first = false;
+      }
+      oss << "}";
     }
     oss << "]";
     return oss.str();
@@ -186,6 +248,7 @@ class FunctionArgs {
     return std::make_tuple(get<Types>(I)...);
   }
   std::vector<torch::IValue> args_;
+  std::unordered_map<std::string, torch::IValue> named_args_;
 };
 
 class FunctionResult {
@@ -444,11 +507,13 @@ class CppFunction {
           }
         }) {}
 
-  CppFunction(CppFunction&& other) noexcept : func_(std::move(other.func_)) {}
+  CppFunction(CppFunction&& other) noexcept
+      : func_(std::move(other.func_)), schema_(std::move(other.schema_)) {}
 
   CppFunction& operator=(CppFunction&& other) noexcept {
     if (this != &other) {
       func_ = std::move(other.func_);
+      schema_ = std::move(other.schema_);
     }
     return *this;
   }
@@ -475,13 +540,96 @@ class CppFunction {
     if (!func_) {
       throw std::runtime_error("CppFunction is not initialized");
     }
-    return func_(args);
+    return func_(normalize_args_by_schema(args));
   }
 
   bool valid() const { return func_ != nullptr; }
 
+  void bind_schema(const c10::FunctionSchema& schema) { schema_ = schema; }
+
  private:
+  FunctionArgs normalize_args_by_schema(const FunctionArgs& args) const {
+    if (!schema_.has_value()) {
+      return args;
+    }
+
+    const auto& schema = *schema_;
+    const auto& schema_args = schema.arguments();
+    const size_t schema_arity = schema_args.size();
+    const size_t positional_count = args.size();
+
+    if (!schema.is_vararg() && positional_count > schema_arity) {
+      throw std::runtime_error(
+          "Too many positional arguments: expected at most " +
+          std::to_string(schema_arity) + ", got " +
+          std::to_string(positional_count));
+    }
+
+    std::unordered_map<std::string, size_t> arg_name_to_index;
+    arg_name_to_index.reserve(schema_arity);
+    for (size_t i = 0; i < schema_arity; ++i) {
+      arg_name_to_index.emplace(schema_args[i].name(), i);
+    }
+
+    std::vector<torch::IValue> resolved_prefix(schema_arity);
+    std::vector<bool> assigned(schema_arity, false);
+
+    const size_t positional_prefix_count =
+        positional_count < schema_arity ? positional_count : schema_arity;
+    for (size_t i = 0; i < positional_prefix_count; ++i) {
+      if (schema_args[i].kwarg_only()) {
+        throw std::runtime_error("Argument `" + schema_args[i].name() +
+                                 "` is keyword-only");
+      }
+      resolved_prefix[i] = args.get_value(i);
+      assigned[i] = true;
+    }
+
+    for (const auto& [name, value] : args.named_args()) {
+      const auto it = arg_name_to_index.find(name);
+      if (it == arg_name_to_index.end()) {
+        throw std::runtime_error("Unknown keyword argument `" + name + "`");
+      }
+
+      const size_t idx = it->second;
+      if (assigned[idx]) {
+        throw std::runtime_error("Argument `" + name + "` is already provided");
+      }
+      resolved_prefix[idx] = value;
+      assigned[idx] = true;
+    }
+
+    for (size_t i = 0; i < schema_arity; ++i) {
+      if (assigned[i]) {
+        continue;
+      }
+      if (schema_args[i].default_value().has_value()) {
+        resolved_prefix[i] = *schema_args[i].default_value();
+        assigned[i] = true;
+        continue;
+      }
+      throw std::runtime_error("Missing required argument `" +
+                               schema_args[i].name() + "`");
+    }
+
+    std::vector<torch::IValue> normalized;
+    normalized.reserve(schema_arity +
+                       (schema.is_vararg() && positional_count > schema_arity
+                            ? (positional_count - schema_arity)
+                            : 0));
+    for (auto& value : resolved_prefix) {
+      normalized.emplace_back(std::move(value));
+    }
+    if (schema.is_vararg() && positional_count > schema_arity) {
+      for (size_t i = schema_arity; i < positional_count; ++i) {
+        normalized.emplace_back(args.get_value(i));
+      }
+    }
+    return FunctionArgs::from_vector(normalized);
+  }
+
   CallableFunction func_;
+  std::optional<c10::FunctionSchema> schema_;
 };
 
 struct ClassRegistration {
@@ -662,12 +810,14 @@ class class_ {
 // Operator Registration
 struct OperatorRegistration {
   std::string qualified_name;  // namespace::op_name
-  std::string schema;
+  std::optional<std::variant<std::string, c10::FunctionSchema>> schemaOrName_;
   std::unordered_map<c10::DispatchKey, CppFunction> implementations;
 
   OperatorRegistration(const std::string& name,
                        const std::string& schema_str = "")
-      : qualified_name(name), schema(schema_str) {}
+      : qualified_name(name) {
+    schemaOrName_ = torch::jit::parseSchemaOrName(schema_str);
+  }
 };
 
 class PADDLE_API OperatorRegistry {
@@ -743,6 +893,10 @@ class Library {
   // Define an operator implementation
   template <typename Func>
   Library& def(const std::string& name_or_schema, Func&& f) & {
+    if (kind_ == IMPL) {
+      return *this;
+    }
+
     auto op_name = extract_op_name(name_or_schema);
     auto qualified_name = ns_ + "::" + op_name;
 

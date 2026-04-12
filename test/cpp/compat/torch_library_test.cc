@@ -18,6 +18,7 @@
 #include <sstream>
 
 #include "gtest/gtest.h"
+#include "test/cpp/utils/exception_test_utils.h"
 
 at::Tensor mymuladd_cpu(at::Tensor a, const at::Tensor& b, double c) {
   TORCH_CHECK(a.sizes() == b.sizes());
@@ -92,6 +93,32 @@ class TestClass : public torch::CustomClassHolder {
     return a + b;
   }
 };
+
+torch::CppFunction MakeKwonlySchemaMethodForTestClass() {
+  torch::CppFunction method(
+      [](const torch::FunctionArgs& args) -> torch::IValue {
+        if (args.has_named_args()) {
+          throw std::runtime_error(
+              "Schema-normalized class method should not receive named args");
+        }
+        if (args.size() != 3) {
+          throw std::runtime_error("Expected 3 normalized arguments");
+        }
+
+        auto instance = args.get<torch::intrusive_ptr<TestClass>>(0);
+        const auto idx_repr = args.get_value(1).is_none()
+                                  ? std::string("none")
+                                  : std::to_string(args.get<int64_t>(1));
+        return torch::IValue(instance->name + "|" + idx_repr + "|" +
+                             args.get<std::string>(2));
+      });
+  // The self type is irrelevant here; this test only exercises kwarg
+  // forwarding and schema normalization on the instance-method overload.
+  method.bind_schema(torch::jit::parseSchema(
+      "kwonly_forwarding(Tensor self, *, int? idx=None, str mode=\"nearest\") "
+      "-> str"));
+  return method;
+}
 
 TORCH_LIBRARY(example_library, m) {
   // Note that "float" in the schema corresponds to the C++ double type
@@ -234,6 +261,660 @@ TEST(test_torch_library, TestFragmentOperators) {
   ASSERT_TRUE(string_result.get_value().is_string());
   std::string concatenated_string = string_result.get_value().to_string();
   ASSERT_EQ(concatenated_string, "Hello, World!");
+}
+
+int schema_only_add(int a, int b) { return a + b; }
+
+int schema_and_impl_add(int a, int b) { return a + b; }
+
+int name_only_add(int a, int b) { return a + b; }
+
+int overload_name_add(int a, int b) { return a + b; }
+
+int dispatch_probe_cpu(int x) { return x + 1; }
+
+int dispatch_probe_cuda(int x) { return x + 2; }
+
+int impl_block_schema_and_fn(int x) { return x * 2; }
+
+TORCH_LIBRARY(example_library_with_mdef_cases, m) {
+  m.def("schema_only_add(int a, int b) -> int");
+  m.def("schema_and_impl_add(int a, int b) -> int", &schema_and_impl_add);
+  m.def("name_only_add", &name_only_add);
+  m.def("schema_only_no_impl(int x) -> int");
+  m.def("overload.name(int a, int b) -> int", &overload_name_add);
+  m.def("dispatch_probe(int x) -> int");
+}
+
+TORCH_LIBRARY_IMPL(example_library_with_mdef_cases, CPU, m) {
+  m.impl("schema_only_add", &schema_only_add);
+  m.impl("dispatch_probe", &dispatch_probe_cpu);
+}
+
+TORCH_LIBRARY_IMPL(example_library_with_mdef_cases, CUDA, m) {
+  m.impl("dispatch_probe", &dispatch_probe_cuda);
+}
+
+TORCH_LIBRARY_IMPL(example_library_mdef_impl_block, CPU, m) {
+  // def() in IMPL block is explicitly ignored.
+  m.def("impl_block_schema_only(int x) -> int");
+  m.def("impl_block_schema_and_fn(int x) -> int", &impl_block_schema_and_fn);
+}
+
+at::Tensor add_scalar_to_float_tensor(const at::Tensor& input, double value) {
+  at::Tensor in_contig = input.contiguous();
+  at::Tensor output = at::empty(in_contig.sizes(), in_contig.options());
+  const float* in_ptr = in_contig.data_ptr<float>();
+  float* out_ptr = output.data_ptr<float>();
+  for (int64_t idx = 0; idx < output.numel(); ++idx) {
+    out_ptr[idx] = in_ptr[idx] + static_cast<float>(value);
+  }
+  return output;
+}
+
+at::Tensor mdef_schema_matrix_basic_types(const at::Tensor& x,
+                                          int i,
+                                          double f,
+                                          bool b,
+                                          const std::string& s,
+                                          const std::string& d,
+                                          double n,
+                                          std::optional<int64_t> z) {
+  const double bias = static_cast<double>(i) + f + (b ? 1.0 : 0.0) +
+                      static_cast<double>(s.size()) +
+                      static_cast<double>(d.size()) + n +
+                      static_cast<double>(z.value_or(0));
+  return add_scalar_to_float_tensor(x, bias);
+}
+
+double mdef_schema_matrix_number_aliases(double a, double b) { return a + b; }
+
+std::tuple<at::Tensor, int64_t> mdef_schema_matrix_optional_types(
+    std::optional<int64_t> i,
+    std::optional<double> f,
+    std::optional<bool> b,
+    std::optional<std::string> s,
+    std::optional<at::Tensor> t) {
+  const int64_t score = i.value_or(0) + static_cast<int64_t>(f.value_or(0.0)) +
+                        (b.value_or(false) ? 1 : 0) +
+                        static_cast<int64_t>(s ? s->size() : 0);
+  at::Tensor base = t.has_value() ? *t : at::zeros({1}, at::kFloat);
+  return {add_scalar_to_float_tensor(base, static_cast<double>(score)), score};
+}
+
+std::tuple<at::Tensor, at::Tensor> mdef_schema_matrix_tuple_optional(
+    std::optional<std::tuple<at::Tensor, int64_t, double, bool, std::string>>
+        payload) {
+  if (!payload.has_value()) {
+    return {at::zeros({1}, at::kFloat), at::ones({1}, at::kFloat)};
+  }
+  const auto& [x, i, f, b, s] = *payload;
+  const double rhs = static_cast<double>(i) + f + (b ? 1.0 : 0.0) + s.size();
+  return {x, add_scalar_to_float_tensor(x, rhs)};
+}
+
+std::string mdef_schema_matrix_defaults_mix(int i,
+                                            double f,
+                                            bool b,
+                                            const std::string& quoted,
+                                            const std::string& ident) {
+  return std::to_string(i) + "|" +
+         std::to_string(static_cast<int64_t>(f * 10.0)) + "|" +
+         (b ? "1" : "0") + "|" + quoted + "|" + ident;
+}
+
+void mdef_schema_matrix_alias_and_kwonly(const at::Tensor& x,
+                                         std::optional<int64_t> idx,
+                                         const std::string& mode) {
+  if (idx.has_value()) {
+    (void)x[idx.value()];
+  }
+  (void)mode;
+}
+
+TORCH_LIBRARY(example_library_mdef_schema_matrix, m) {
+  m.def(
+      "basic_types(Tensor x, int i, float f, bool b, str s, Device d, Scalar "
+      "n, NoneType z=None) -> Tensor",
+      &mdef_schema_matrix_basic_types);
+  m.def("number_aliases(Scalar a, number b) -> Scalar",
+        &mdef_schema_matrix_number_aliases);
+  m.def(
+      "optional_types(int? i=None, float? f=None, bool? b=None, str? s=None, "
+      "Tensor? t=None) -> (Tensor, int)",
+      &mdef_schema_matrix_optional_types);
+  m.def(
+      "tuple_optional((Tensor, int, float, bool, str)? payload=None) -> "
+      "(Tensor, Tensor)",
+      &mdef_schema_matrix_tuple_optional);
+  m.def(
+      "defaults_mix(int i=3, float f=-2.5, bool b=true, str quoted=\"abc\", "
+      "str ident=cpu) -> str",
+      &mdef_schema_matrix_defaults_mix);
+  m.def(
+      "alias_and_kwonly(Tensor(a!) x, *, int? idx=None, str mode=\"nearest\") "
+      "-> ()",
+      &mdef_schema_matrix_alias_and_kwonly);
+  m.def("variadic_signature(Tensor x, ...) -> ...",
+        [](const torch::FunctionArgs& args) -> torch::IValue {
+          int64_t sum = 0;
+          for (size_t i = 1; i < args.size(); ++i) {
+            sum += args.get<int64_t>(i);
+          }
+          return torch::IValue(sum);
+        });
+}
+
+TEST(test_torch_library, TestMDefRegistrationPathsCallResult) {
+  struct CallCase {
+    const char* qualified_name;
+    std::vector<torch::IValue> args;
+    int64_t expected;
+  };
+
+  const std::vector<CallCase> cases = {
+      {"example_library_with_mdef_cases::schema_only_add",
+       {torch::IValue(11), torch::IValue(31)},
+       42},
+      {"example_library_with_mdef_cases::schema_and_impl_add",
+       {torch::IValue(19), torch::IValue(23)},
+       42},
+      {"example_library_with_mdef_cases::name_only_add",
+       {torch::IValue(20), torch::IValue(22)},
+       42},
+      // Dotted overload-style names should preserve suffix before '('.
+      {"example_library_with_mdef_cases::overload.name",
+       {torch::IValue(40), torch::IValue(2)},
+       42},
+  };
+
+  for (const auto& test_case : cases) {
+    SCOPED_TRACE(test_case.qualified_name);
+
+    auto* op = torch::OperatorRegistry::instance().find_operator(
+        test_case.qualified_name);
+    ASSERT_NE(op, nullptr);
+
+    auto impl_it = op->implementations.find(torch::DispatchKey::CPU);
+    ASSERT_NE(impl_it, op->implementations.end());
+
+    torch::FunctionArgs function_args;
+    for (const auto& arg : test_case.args) {
+      function_args.add_arg(arg);
+    }
+
+    auto result = impl_it->second.call_with_args(function_args);
+    ASSERT_TRUE(result.get_value().is_int());
+    EXPECT_EQ(result.get_value().to_int(), test_case.expected);
+  }
+}
+
+TEST(test_torch_library, TestMDefSchemaOnlyWithoutImplHasNoImplementation) {
+  auto qualified_name = "example_library_with_mdef_cases::schema_only_no_impl";
+  auto* op = torch::OperatorRegistry::instance().find_operator(qualified_name);
+  ASSERT_NE(op, nullptr);
+  EXPECT_TRUE(op->implementations.empty());
+}
+
+TEST(test_torch_library, TestMDefRegistersMultipleDispatchImplementations) {
+  auto qualified_name = "example_library_with_mdef_cases::dispatch_probe";
+  auto* op = torch::OperatorRegistry::instance().find_operator(qualified_name);
+  ASSERT_NE(op, nullptr);
+
+  auto cpu_it = op->implementations.find(torch::DispatchKey::CPU);
+  auto cuda_it = op->implementations.find(torch::DispatchKey::CUDA);
+  ASSERT_NE(cpu_it, op->implementations.end());
+  ASSERT_NE(cuda_it, op->implementations.end());
+
+  torch::FunctionArgs function_args;
+  function_args.add_arg(torch::IValue(41));
+  auto cpu_result = cpu_it->second.call_with_args(function_args);
+  auto cuda_result = cuda_it->second.call_with_args(function_args);
+  ASSERT_TRUE(cpu_result.get_value().is_int());
+  ASSERT_TRUE(cuda_result.get_value().is_int());
+  EXPECT_EQ(cpu_result.get_value().to_int(), 42);
+  EXPECT_EQ(cuda_result.get_value().to_int(), 43);
+}
+
+TEST(test_torch_library, TestMDefInImplBlockIsNoop) {
+  {
+    auto qualified_name =
+        "example_library_mdef_impl_block::impl_block_schema_only";
+    auto* op =
+        torch::OperatorRegistry::instance().find_operator(qualified_name);
+    EXPECT_EQ(op, nullptr);
+  }
+
+  {
+    auto qualified_name =
+        "example_library_mdef_impl_block::impl_block_schema_and_fn";
+    auto* op =
+        torch::OperatorRegistry::instance().find_operator(qualified_name);
+    EXPECT_EQ(op, nullptr);
+  }
+}
+
+TEST(test_torch_library, TestMDefSchemaMatrixBasicTypesCallResult) {
+  auto qualified_name = "example_library_mdef_schema_matrix::basic_types";
+  auto* op = torch::OperatorRegistry::instance().find_operator(qualified_name);
+  ASSERT_NE(op, nullptr);
+  auto impl_it = op->implementations.find(torch::DispatchKey::CPU);
+  ASSERT_NE(impl_it, op->implementations.end());
+
+  torch::FunctionArgs function_args;
+  function_args.add_arg(torch::IValue(at::ones({2, 2}, at::kFloat)));
+  function_args.add_arg(torch::IValue(1));
+  function_args.add_arg(torch::IValue(2.5));
+  function_args.add_arg(torch::IValue(true));
+  function_args.add_arg(torch::IValue(std::string("ab")));
+  function_args.add_arg(torch::IValue(std::string("cpu")));
+  function_args.add_arg(torch::IValue(3.5));
+  function_args.add_arg(torch::IValue(int64_t(4)));
+  auto result = impl_it->second.call_with_args(function_args);
+  ASSERT_TRUE(result.get_value().is_tensor());
+  auto out = result.get_value().to_tensor();
+  EXPECT_EQ(out.sizes(), at::IntArrayRef({2, 2}));
+  EXPECT_FLOAT_EQ(out[0][0].item<float>(), 18.0f);
+}
+
+TEST(test_torch_library, TestMDefSchemaMatrixNumberAliasesCallResult) {
+  auto qualified_name = "example_library_mdef_schema_matrix::number_aliases";
+  auto* op = torch::OperatorRegistry::instance().find_operator(qualified_name);
+  ASSERT_NE(op, nullptr);
+  auto impl_it = op->implementations.find(torch::DispatchKey::CPU);
+  ASSERT_NE(impl_it, op->implementations.end());
+
+  torch::FunctionArgs function_args;
+  function_args.add_arg(torch::IValue(19.5));
+  function_args.add_arg(torch::IValue(22.5));
+  auto result = impl_it->second.call_with_args(function_args);
+  ASSERT_TRUE(result.get_value().is_double());
+  EXPECT_DOUBLE_EQ(result.get_value().to_double(), 42.0);
+}
+
+TEST(test_torch_library, TestMDefSchemaMatrixOptionalAndTupleCallResult) {
+  {
+    auto qualified_name = "example_library_mdef_schema_matrix::optional_types";
+    auto* op =
+        torch::OperatorRegistry::instance().find_operator(qualified_name);
+    ASSERT_NE(op, nullptr);
+    auto impl_it = op->implementations.find(torch::DispatchKey::CPU);
+    ASSERT_NE(impl_it, op->implementations.end());
+
+    torch::FunctionArgs args_with_values;
+    args_with_values.add_arg(torch::IValue(int64_t(5)));
+    args_with_values.add_arg(torch::IValue(2.0));
+    args_with_values.add_arg(torch::IValue(true));
+    args_with_values.add_arg(torch::IValue(std::string("abc")));
+    args_with_values.add_arg(torch::IValue(at::ones({1}, at::kFloat)));
+    auto result = impl_it->second.call_with_args(args_with_values);
+    ASSERT_TRUE(result.get_value().is_tuple());
+    const auto tuple_val = result.get_value().to_tuple();
+    ASSERT_EQ(tuple_val.size(), 2UL);
+    EXPECT_FLOAT_EQ(tuple_val[0].to_tensor()[0].item<float>(), 12.0f);
+    EXPECT_EQ(tuple_val[1].to_int(), 11);
+  }
+
+  {
+    auto qualified_name = "example_library_mdef_schema_matrix::tuple_optional";
+    auto* op =
+        torch::OperatorRegistry::instance().find_operator(qualified_name);
+    ASSERT_NE(op, nullptr);
+    auto impl_it = op->implementations.find(torch::DispatchKey::CPU);
+    ASSERT_NE(impl_it, op->implementations.end());
+
+    torch::FunctionArgs args_with_payload;
+    args_with_payload.add_arg(torch::IValue(std::make_tuple(
+        at::ones({1}, at::kFloat), int64_t(2), 3.0, true, std::string("ab"))));
+    auto result = impl_it->second.call_with_args(args_with_payload);
+    ASSERT_TRUE(result.get_value().is_tuple());
+    const auto tuple_val = result.get_value().to_tuple();
+    ASSERT_EQ(tuple_val.size(), 2UL);
+    EXPECT_FLOAT_EQ(tuple_val[0].to_tensor()[0].item<float>(), 1.0f);
+    EXPECT_FLOAT_EQ(tuple_val[1].to_tensor()[0].item<float>(), 9.0f);
+  }
+}
+
+TEST(test_torch_library,
+     TestMDefSchemaMatrixDefaultsAliasAndVariadicCallResult) {
+  {
+    auto qualified_name = "example_library_mdef_schema_matrix::defaults_mix";
+    auto* op =
+        torch::OperatorRegistry::instance().find_operator(qualified_name);
+    ASSERT_NE(op, nullptr);
+    auto impl_it = op->implementations.find(torch::DispatchKey::CPU);
+    ASSERT_NE(impl_it, op->implementations.end());
+
+    torch::FunctionArgs function_args;
+    function_args.add_arg(torch::IValue(3));
+    function_args.add_arg(torch::IValue(-2.5));
+    function_args.add_arg(torch::IValue(true));
+    function_args.add_arg(torch::IValue(std::string("abc")));
+    function_args.add_arg(torch::IValue(std::string("cpu")));
+    auto result = impl_it->second.call_with_args(function_args);
+    ASSERT_TRUE(result.get_value().is_string());
+    EXPECT_EQ(result.get_value().to_string(), "3|-25|1|abc|cpu");
+  }
+
+  {
+    auto qualified_name =
+        "example_library_mdef_schema_matrix::variadic_signature";
+    auto* op =
+        torch::OperatorRegistry::instance().find_operator(qualified_name);
+    ASSERT_NE(op, nullptr);
+    auto impl_it = op->implementations.find(torch::DispatchKey::CPU);
+    ASSERT_NE(impl_it, op->implementations.end());
+
+    torch::FunctionArgs function_args;
+    function_args.add_arg(torch::IValue(at::zeros({1}, at::kFloat)));
+    function_args.add_arg(torch::IValue(10));
+    function_args.add_arg(torch::IValue(20));
+    function_args.add_arg(torch::IValue(12));
+    auto result = impl_it->second.call_with_args(function_args);
+    ASSERT_TRUE(result.get_value().is_int());
+    EXPECT_EQ(result.get_value().to_int(), 42);
+  }
+}
+
+TEST(test_torch_library, TestMDefKeywordOnlyCallBehavior) {
+  auto qualified_name = "example_library_mdef_schema_matrix::alias_and_kwonly";
+  auto* op = torch::OperatorRegistry::instance().find_operator(qualified_name);
+  ASSERT_NE(op, nullptr);
+  auto impl_it = op->implementations.find(torch::DispatchKey::CPU);
+  ASSERT_NE(impl_it, op->implementations.end());
+
+  {
+    torch::FunctionArgs args_with_optional_none;
+    args_with_optional_none.add_arg(torch::IValue(at::ones({4}, at::kFloat)));
+    args_with_optional_none.add_arg(torch::arg("idx") = torch::IValue());
+    args_with_optional_none.add_arg(torch::arg("mode") = "nearest");
+    auto result = impl_it->second.call_with_args(args_with_optional_none);
+    EXPECT_TRUE(result.get_value().is_none());
+  }
+
+  {
+    torch::FunctionArgs args_with_defaults;
+    args_with_defaults.add_arg(torch::IValue(at::ones({4}, at::kFloat)));
+    auto result = impl_it->second.call_with_args(args_with_defaults);
+    EXPECT_TRUE(result.get_value().is_none());
+  }
+
+  {
+    torch::FunctionArgs positional_kwonly_args;
+    positional_kwonly_args.add_arg(torch::IValue(at::ones({4}, at::kFloat)));
+    positional_kwonly_args.add_arg(torch::IValue(int64_t(2)));
+    EXPECT_ANY_THROW(
+        (void)impl_it->second.call_with_args(positional_kwonly_args));
+  }
+}
+
+TEST(test_torch_library, TestFunctionArgsRejectsDuplicateKeywordArgument) {
+  torch::FunctionArgs function_args;
+  function_args.add_arg(torch::arg("idx") = int64_t(1));
+  test::utils::ExpectThrowContains<std::runtime_error>(
+      [&]() { function_args.add_arg(torch::arg("idx") = int64_t(2)); },
+      "Duplicate keyword argument `idx`");
+}
+
+TEST(test_torch_library, TestFunctionArgsAdditionalBranches) {
+  torch::FunctionArgs args;
+  EXPECT_THROW(args.add_arg(torch::arg("missing")), std::runtime_error);
+
+  args.add_arg("cpu");
+  args.add_arg(torch::IValue(int64_t(7)));
+  args.add_arg(int64_t(3));
+  args.add_arg(torch::arg("mode") = "nearest");
+  args.add_arg(torch::arg("idx") = int64_t(2));
+
+  ASSERT_EQ(args.size(), 3UL);
+  ASSERT_EQ(args.named_size(), 2UL);
+  EXPECT_TRUE(args.has_named_args());
+  EXPECT_FALSE(args.empty());
+  EXPECT_EQ(args.get<std::string>(0), "cpu");
+
+  const int64_t& ref_value = args.get<const int64_t&>(1);
+  const int64_t const_value = args.get<const int64_t>(2);
+  EXPECT_EQ(ref_value, 7);
+  EXPECT_EQ(const_value, 3);
+
+  const auto args_text = args.to_string();
+  EXPECT_NE(args_text.find("kwargs={"), std::string::npos);
+  EXPECT_NE(args_text.find("mode"), std::string::npos);
+  EXPECT_NE(args_text.find("idx"), std::string::npos);
+
+  auto from_vector = torch::FunctionArgs::from_vector(
+      std::vector<torch::IValue>{torch::IValue(int64_t(11))});
+  EXPECT_EQ(from_vector.get<int64_t>(0), 11);
+}
+
+TEST(test_torch_library, TestFunctionArgsErrorBranches) {
+  torch::FunctionArgs args;
+  args.add_arg(torch::IValue(int64_t(1)));
+
+  EXPECT_THROW((void)args.get<std::string>(0), std::runtime_error);
+  EXPECT_THROW((void)args.get_value(1), std::out_of_range);
+  test::utils::ExpectThrowContains<std::runtime_error>(
+      [&]() { (void)args.to_tuple<int64_t, int64_t>(); },
+      "Argument count mismatch");
+}
+
+TEST(test_torch_library, TestFunctionResultErrorBranches) {
+  torch::FunctionResult empty_result;
+  EXPECT_FALSE(empty_result.has_value());
+  EXPECT_THROW((void)empty_result.get<int64_t>(), std::runtime_error);
+
+  torch::FunctionResult string_result(torch::IValue(std::string("abc")));
+  EXPECT_THROW((void)string_result.get<int64_t>(), std::runtime_error);
+}
+
+TEST(test_torch_library, TestCppFunctionWrapperAndUninitializedErrors) {
+  torch::CppFunction uninitialized;
+  EXPECT_FALSE(uninitialized.valid());
+  EXPECT_THROW((void)uninitialized.call(), std::runtime_error);
+  EXPECT_THROW((void)uninitialized.call(1), std::runtime_error);
+  EXPECT_THROW((void)uninitialized.call_with_args(torch::FunctionArgs()),
+               std::runtime_error);
+
+  std::function<torch::IValue(const torch::FunctionArgs&)> ctor_thrower =
+      [](const torch::FunctionArgs& args) -> torch::IValue {
+    (void)args;
+    throw std::runtime_error("boom_ctor");
+  };
+  torch::CppFunction ctor_wrapped(ctor_thrower);
+  test::utils::ExpectThrowContains<std::runtime_error>(
+      [&]() { (void)ctor_wrapped.call_with_args(torch::FunctionArgs()); },
+      "Constructor failed: boom_ctor");
+
+  auto throw_in_free_function = +[](int x) -> int {
+    (void)x;
+    throw std::runtime_error("boom_fn");
+  };
+  torch::CppFunction free_fn_wrapped(throw_in_free_function);
+  torch::FunctionArgs single_arg;
+  single_arg.add_arg(torch::IValue(int64_t(1)));
+  test::utils::ExpectThrowContains<std::runtime_error>(
+      [&]() { (void)free_fn_wrapped.call_with_args(single_arg); },
+      "Function call failed: boom_fn");
+
+  auto throwing_callable =
+      [](const torch::FunctionArgs& args) -> torch::IValue {
+    (void)args;
+    throw std::runtime_error("boom_lambda");
+  };
+  torch::CppFunction lambda_wrapped(throwing_callable);
+  test::utils::ExpectThrowContains<std::runtime_error>(
+      [&]() { (void)lambda_wrapped.call_with_args(torch::FunctionArgs()); },
+      "Lambda execution failed: boom_lambda");
+}
+
+TEST(test_torch_library, TestCppFunctionSchemaNormalizationErrorBranches) {
+  {
+    torch::CppFunction fn([](const torch::FunctionArgs& args) -> torch::IValue {
+      return torch::IValue(args.get<int64_t>(0) + args.get<int64_t>(1));
+    });
+    fn.bind_schema(torch::jit::parseSchema("normalize(int a, int b=1) -> int"));
+
+    torch::FunctionArgs too_many_positional;
+    too_many_positional.add_arg(torch::IValue(int64_t(1)));
+    too_many_positional.add_arg(torch::IValue(int64_t(2)));
+    too_many_positional.add_arg(torch::IValue(int64_t(3)));
+    test::utils::ExpectThrowContains<std::runtime_error>(
+        [&]() { (void)fn.call_with_args(too_many_positional); },
+        "Too many positional arguments");
+  }
+
+  {
+    torch::CppFunction fn([](const torch::FunctionArgs& args) -> torch::IValue {
+      return torch::IValue(args.get<int64_t>(0) + args.get<int64_t>(1));
+    });
+    fn.bind_schema(
+        torch::jit::parseSchema("normalize_kw(int a, *, int b=1) -> int"));
+
+    torch::FunctionArgs positional_kwonly;
+    positional_kwonly.add_arg(torch::IValue(int64_t(1)));
+    positional_kwonly.add_arg(torch::IValue(int64_t(2)));
+    test::utils::ExpectThrowContains<std::runtime_error>(
+        [&]() { (void)fn.call_with_args(positional_kwonly); }, "keyword-only");
+
+    torch::FunctionArgs unknown_kw;
+    unknown_kw.add_arg(torch::IValue(int64_t(1)));
+    unknown_kw.add_arg(torch::arg("unknown") = int64_t(2));
+    test::utils::ExpectThrowContains<std::runtime_error>(
+        [&]() { (void)fn.call_with_args(unknown_kw); },
+        "Unknown keyword argument `unknown`");
+  }
+
+  {
+    torch::CppFunction fn([](const torch::FunctionArgs& args) -> torch::IValue {
+      return torch::IValue(args.get<int64_t>(0) + args.get<int64_t>(1));
+    });
+    fn.bind_schema(
+        torch::jit::parseSchema("normalize_dup(int a, int b) -> int"));
+
+    torch::FunctionArgs duplicated;
+    duplicated.add_arg(torch::IValue(int64_t(1)));
+    duplicated.add_arg(torch::IValue(int64_t(2)));
+    duplicated.add_arg(torch::arg("b") = int64_t(3));
+    test::utils::ExpectThrowContains<std::runtime_error>(
+        [&]() { (void)fn.call_with_args(duplicated); }, "already provided");
+  }
+
+  {
+    torch::CppFunction fn([](const torch::FunctionArgs& args) -> torch::IValue {
+      return torch::IValue(args.get<int64_t>(0) + args.get<int64_t>(1));
+    });
+    fn.bind_schema(
+        torch::jit::parseSchema("normalize_missing(int a, int b) -> int"));
+
+    torch::FunctionArgs missing_required;
+    missing_required.add_arg(torch::IValue(int64_t(1)));
+    test::utils::ExpectThrowContains<std::runtime_error>(
+        [&]() { (void)fn.call_with_args(missing_required); },
+        "Missing required argument `b`");
+  }
+}
+
+TEST(test_torch_library, TestCppFunctionSchemaNormalizationVarargPassthrough) {
+  torch::CppFunction fn([](const torch::FunctionArgs& args) -> torch::IValue {
+    int64_t sum = 0;
+    for (size_t i = 0; i < args.size(); ++i) {
+      sum += args.get<int64_t>(i);
+    }
+    return torch::IValue(sum);
+  });
+  fn.bind_schema(
+      torch::jit::parseSchema("normalize_vararg(int a, ...) -> int"));
+
+  torch::FunctionArgs inputs;
+  inputs.add_arg(torch::IValue(int64_t(1)));
+  inputs.add_arg(torch::IValue(int64_t(2)));
+  inputs.add_arg(torch::IValue(int64_t(3)));
+  auto result = fn.call_with_args(inputs);
+  ASSERT_TRUE(result.get_value().is_int());
+  EXPECT_EQ(result.get_value().to_int(), 6);
+}
+
+TEST(test_torch_library, TestCppFunctionArityMismatchFromFunctionTraits) {
+  torch::CppFunction add_two_ints(&schema_only_add);
+  torch::FunctionArgs missing_one;
+  missing_one.add_arg(torch::IValue(int64_t(1)));
+  test::utils::ExpectThrowContains<std::runtime_error>(
+      [&]() { (void)add_two_ints.call_with_args(missing_one); },
+      "Function expects 2 arguments, got 1");
+}
+
+TEST(test_torch_library, TestClassMethodArityMismatchFromFunctionTraits) {
+  auto qualified_name = "example_library::TestClass";
+  const auto& class_registry = torch::ClassRegistry::instance();
+
+  torch::FunctionArgs constructor_args;
+  constructor_args.add_arg(torch::IValue(10));
+  constructor_args.add_arg(torch::IValue("example"));
+  auto instance = class_registry.call_constructor_with_args(qualified_name,
+                                                            constructor_args);
+
+  test::utils::ExpectThrowContains<std::runtime_error>(
+      [&]() {
+        (void)class_registry.call_method_with_args(qualified_name,
+                                                   "setValue",
+                                                   instance.get_value(),
+                                                   torch::FunctionArgs());
+      },
+      "Method expects 1 arguments");
+}
+
+TEST(test_torch_library,
+     TestClassMethodKwonlyArgsForwardedThroughInstanceOverload) {
+  auto qualified_name = "example_library::TestClass";
+  auto method_name = "kwonlyForwarding";
+  auto& class_registry = torch::ClassRegistry::instance();
+
+  class_registry.register_method(
+      qualified_name, method_name, MakeKwonlySchemaMethodForTestClass());
+
+  torch::FunctionArgs constructor_args;
+  constructor_args.add_arg(torch::IValue(10));
+  constructor_args.add_arg(torch::IValue("example"));
+  auto instance = class_registry.call_constructor_with_args(qualified_name,
+                                                            constructor_args);
+
+  {
+    torch::FunctionArgs kwonly_args;
+    kwonly_args.add_arg(torch::arg("idx") = int64_t(7));
+    kwonly_args.add_arg(torch::arg("mode") = "linear");
+
+    auto result = class_registry.call_method_with_args(
+        qualified_name, method_name, instance.get_value(), kwonly_args);
+    ASSERT_TRUE(result.get_value().is_string());
+    EXPECT_EQ(result.get_value().to_string(), "example|7|linear");
+  }
+
+  {
+    torch::FunctionArgs positional_kwonly_args;
+    positional_kwonly_args.add_arg(torch::IValue(int64_t(7)));
+
+    test::utils::ExpectThrowContains<std::runtime_error>(
+        [&]() {
+          (void)class_registry.call_method_with_args(qualified_name,
+                                                     method_name,
+                                                     instance.get_value(),
+                                                     positional_kwonly_args);
+        },
+        "keyword-only");
+  }
+}
+
+TEST(test_torch_library, TestMDefSchemaDefaultsAppliedByCallWithArgs) {
+  auto qualified_name = "example_library_mdef_schema_matrix::defaults_mix";
+  auto* op = torch::OperatorRegistry::instance().find_operator(qualified_name);
+  ASSERT_NE(op, nullptr);
+  auto impl_it = op->implementations.find(torch::DispatchKey::CPU);
+  ASSERT_NE(impl_it, op->implementations.end());
+
+  torch::FunctionArgs args_without_values;
+  auto result = impl_it->second.call_with_args(args_without_values);
+  ASSERT_TRUE(result.get_value().is_string());
+  EXPECT_EQ(result.get_value().to_string(), "3|-25|1|abc|cpu");
 }
 
 at::Tensor cast_with_scalar_type(at::Tensor input, c10::ScalarType dtype) {
@@ -627,13 +1308,6 @@ TEST(test_torch_library, TestConstRefParameterFix) {
   ASSERT_TRUE(result.get_value().is_none());  // void function returns None
 }
 
-TEST(test_torch_library, TestClassRegistryHasClass) {
-  auto qualified_name = "example_library::TestClass";
-  const auto& class_registry = torch::ClassRegistry::instance();
-  bool has_class = class_registry.has_class(qualified_name);
-  ASSERT_TRUE(has_class);
-}
-
 TEST(test_torch_library, TestClassRegistryHasNonExistentClass) {
   auto qualified_name = "example_library::NonExistentClass";
   const auto& class_registry = torch::ClassRegistry::instance();
@@ -646,13 +1320,6 @@ TEST(test_torch_library, TestClassRegistryPrintAllClasses) {
   class_registry.print_all_classes();
 }
 
-TEST(test_torch_library, TestOperatorRegistryHasOperator) {
-  auto qualified_name = "example_library::mymuladd";
-  const auto& operator_registry = torch::OperatorRegistry::instance();
-  bool has_operator = operator_registry.has_operator(qualified_name);
-  ASSERT_TRUE(has_operator);
-}
-
 TEST(test_torch_library, TestOperatorRegistryHasNonExistentOperator) {
   auto qualified_name = "example_library::non_existent_op";
   const auto& operator_registry = torch::OperatorRegistry::instance();
@@ -663,6 +1330,35 @@ TEST(test_torch_library, TestOperatorRegistryHasNonExistentOperator) {
 TEST(test_torch_library, TestOperatorRegistryPrintAllOperators) {
   const auto& operator_registry = torch::OperatorRegistry::instance();
   operator_registry.print_all_operators();
+}
+
+TEST(test_torch_library, TestOperatorRegistryLateSchemaBindsExistingImpl) {
+  auto& operator_registry = torch::OperatorRegistry::instance();
+  const std::string qualified_name =
+      "example_library_registry_branch::late_schema_bind";
+
+  operator_registry.register_implementation(
+      qualified_name,
+      torch::DispatchKey::CPU,
+      torch::CppFunction([](const torch::FunctionArgs& args) -> torch::IValue {
+        return torch::IValue(args.get<int64_t>(0) + args.get<int64_t>(1));
+      }));
+
+  auto* op = operator_registry.find_operator(qualified_name);
+  ASSERT_NE(op, nullptr);
+  auto impl_it = op->implementations.find(torch::DispatchKey::CPU);
+  ASSERT_NE(impl_it, op->implementations.end());
+
+  torch::FunctionArgs one_arg;
+  one_arg.add_arg(torch::IValue(int64_t(5)));
+  EXPECT_ANY_THROW((void)impl_it->second.call_with_args(one_arg));
+
+  operator_registry.register_schema(qualified_name,
+                                    "late_schema_bind(int x, int y=3) -> int");
+
+  auto bound_result = impl_it->second.call_with_args(one_arg);
+  ASSERT_TRUE(bound_result.get_value().is_int());
+  EXPECT_EQ(bound_result.get_value().to_int(), 8);
 }
 
 TEST(test_torch_library, TestLibraryPrintInfo) {

@@ -18,6 +18,9 @@
 
 #include "paddle/common/ddim.h"
 #include "paddle/phi/backends/dynload/cusparse.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
+#endif
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -590,6 +593,17 @@ void SparseBlas<GPUContext>::SPGEMM(bool transa,
 
     GetCsrBatchNnz<T><<<1, batch_size, 0, dev_ctx_.stream()>>>(
         a_crows_data, a_rows, static_cast<int32_t*>(tmp_buffer_ptr));
+#ifdef PADDLE_WITH_CUDA
+    PADDLE_ENFORCE_EQ(
+        phi::backends::gpu::IsCUDAGraphCapturing(),
+        false,
+        common::errors::InvalidArgument(
+            "SparseBlas CsrMM does not support CUDA Graph capture: async D2H "
+            "copy to local vectors 'a_batch_nnz_vec' / 'b_batch_nnz_vec' will "
+            "bake the destination addresses into the graph; on replay the "
+            "vectors are re-created at different addresses, causing "
+            "dangling-pointer writes."));
+#endif
     phi::backends::gpu::GpuMemcpyAsync(a_batch_nnz_vec.data(),
                                        tmp_buffer_ptr,
                                        batch_size * sizeof(int32_t),

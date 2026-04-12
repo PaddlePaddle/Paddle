@@ -71,7 +71,7 @@ def seed(seed: int) -> paddle.base.core.Generator:
 
 def get_rng_state(
     device: str | None = None,
-) -> list[paddle.base.core.GeneratorState]:
+) -> list[core.GeneratorState]:
     """
     Get all random states of random generators of specified device.
 

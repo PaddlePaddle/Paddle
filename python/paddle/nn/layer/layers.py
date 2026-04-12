@@ -258,28 +258,26 @@ def _parse_to_args(*args, **kwargs):
             device = tensor_arg.place
             dtype = tensor_arg.dtype
 
-    # Validate blocking / non_blocking types
-    if blocking is not None:
-        assert isinstance(blocking, bool), (
-            "blocking value error, must be the True, False or None"
-        )
-    if non_blocking is not None:
-        assert isinstance(non_blocking, bool), (
-            "non_blocking value error, must be the True or False"
-        )
-
-    # blocking and non_blocking cannot both be explicitly set
+    # Validate and resolve blocking / non_blocking
     if blocking is not None and non_blocking is not None:
         raise TypeError(
             "to() received both 'blocking' and 'non_blocking' arguments. "
             "These are mutually exclusive, please use only one of them."
         )
-
-    # Resolve blocking
     if non_blocking is not None:
+        if not isinstance(non_blocking, bool):
+            raise TypeError("non_blocking value error, must be True or False")
         blocking = not non_blocking
-    elif blocking is None:
+    elif blocking is not None:
+        if not isinstance(blocking, bool):
+            raise TypeError("blocking value error, must be True, False or None")
+    else:
         blocking = True
+
+    if copy is None:
+        copy = False
+    elif not isinstance(copy, bool):
+        raise TypeError("copy value error, must be True or False")
 
     return device, dtype, blocking, copy
 
@@ -3005,9 +3003,6 @@ class Layer:
                 If ``False`` and the source is in pinned memory, the copy will be
                 asynchronous with respect to the host. Otherwise, the argument
                 has no effect. Default: ``True``.
-            tensor (Tensor, optional):
-                Tensor whose dtype and device are the desired dtype and device
-                for all parameters and buffers in this layer.
 
         Keyword args:
             non_blocking (bool, optional):

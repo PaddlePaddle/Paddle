@@ -179,7 +179,7 @@ void MatrixSolveFunctor<Context, T>::operator()(const Context& dev_ctx,
   // 2. Transpose B and save it in out, because cuBlas assumes column-major
   // while Paddle uses row-majar.
   const auto& new_b_dims = getNewDimsVec(b_dims);
-  out->Resize(make_ddim(new_b_dims));
+  out->Resize(new_b_dims);
   dev_ctx.template Alloc<T>(out);
   funcs::TransposeNormal<Context, T> trans;
   std::vector<int> new_axis = getNewAxis(b_rank);

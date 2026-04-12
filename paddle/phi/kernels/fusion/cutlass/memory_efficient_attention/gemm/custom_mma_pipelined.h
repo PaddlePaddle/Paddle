@@ -83,14 +83,14 @@ template <
     //  MaskedTileIterator)
     typename IteratorA_,
     /// Iterates over tiles of A operand in shared memory
-    /// (concept: WriteableTileIterator | RandomAccessTileIterator)
+    /// (concept: WritableTileIterator | RandomAccessTileIterator)
     typename SmemIteratorA_,
     /// Iterates over tiles of B operand in global memory
     //  (concept: ReadableTileIterator | ForwardTileIterator |
     //  MaskedTileIterator)
     typename IteratorB_,
     /// Iterates over tiles of B operand in shared memory
-    /// (concept: WriteableTileIterator | RandomAccessTileIterator)
+    /// (concept: WritableTileIterator | RandomAccessTileIterator)
     typename SmemIteratorB_,
     /// Data type of accumulator matrix
     typename ElementC_,
