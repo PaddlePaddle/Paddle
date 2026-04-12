@@ -317,8 +317,6 @@ struct CUBlas<double> {
 
 template <>
 struct CUBlas<phi::float16> {
-  using float16 = phi::float16;
-
   static void GEMM(cublasHandle_t handle,
                    cublasOperation_t transa,
                    cublasOperation_t transb,
