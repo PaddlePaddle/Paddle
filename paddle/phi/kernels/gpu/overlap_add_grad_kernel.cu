@@ -77,7 +77,7 @@ void OverlapAddGradKernel(const Context& dev_ctx,
       for (int i = 0; i < x_grad->dims().size(); ++i) {
         x_grad_dims_vec[i] = x_grad->dims()[perm_x_grad[i]];
       }
-      trans_x_grad.Resize(make_ddim(x_grad_dims_vec));
+      trans_x_grad.Resize(x_grad_dims_vec);
       dev_ctx.template Alloc<T>(&trans_x_grad);
       funcs::TransCompute<Context, T>(
           perm_x_grad.size(), dev_ctx, *x_grad, &trans_x_grad, perm_x_grad);
@@ -87,7 +87,7 @@ void OverlapAddGradKernel(const Context& dev_ctx,
       for (int i = 0; i < out_grad_.dims().size(); ++i) {
         out_grad_dims_vec[i] = out_grad_.dims()[perm_d_out[i]];
       }
-      trans_out_grad.Resize(make_ddim(out_grad_dims_vec));
+      trans_out_grad.Resize(out_grad_dims_vec);
       dev_ctx.template Alloc<T>(&trans_out_grad);
       funcs::TransCompute<Context, T>(
           perm_d_out.size(), dev_ctx, out_grad_, &trans_out_grad, perm_d_out);
@@ -97,7 +97,7 @@ void OverlapAddGradKernel(const Context& dev_ctx,
       for (int i = 0; i < x_grad->dims().size(); ++i) {
         x_grad_dims_vec[i] = x_grad->dims()[perm_x_grad[i]];
       }
-      trans_x_grad.Resize(make_ddim(x_grad_dims_vec));
+      trans_x_grad.Resize(x_grad_dims_vec);
       dev_ctx.template Alloc<T>(&trans_x_grad);
       funcs::TransCompute<Context, T>(
           perm_x_grad.size(), dev_ctx, *x_grad, &trans_x_grad, perm_x_grad);
@@ -146,7 +146,7 @@ void OverlapAddGradKernel(const Context& dev_ctx,
       restored_x_grad_shape.push_back(n_frames);
     }
 
-    x_grad->Resize(make_ddim(restored_x_grad_shape));
+    x_grad->Resize(restored_x_grad_shape);
   }
 }
 

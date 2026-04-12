@@ -77,13 +77,13 @@ void TileKernel(const Context& dev_ctx,
   vec_x_dims.insert(vec_x_dims.begin(), 1, 1);
   for (size_t i = 0; i < repeat_times_data.size(); ++i) {
     out_dims[i] *= repeat_times_data[i];
-    new_x.Resize(make_ddim(vec_x_dims));
+    new_x.Resize(vec_x_dims);
     std::vector<const DenseTensor*> ins = {&new_x};
     vec_x_dims[i] *= repeat_times_data[i];
     if (i != repeat_times_data.size() - 1) {
       if (repeat_times_data[i] != 1) {
         DenseTensor tmp_out;
-        tmp_out.Resize(make_ddim(vec_x_dims));
+        tmp_out.Resize(vec_x_dims);
         dev_ctx.template Alloc<T>(&tmp_out);
         std::vector<DenseTensor*> outs = {&tmp_out};
         funcs::BroadcastKernel<T>(
@@ -94,7 +94,7 @@ void TileKernel(const Context& dev_ctx,
       vec_x_dims[i] *= vec_x_dims[i + 1];
       vec_x_dims[i + 1] = 1;
     } else {
-      out->Resize(make_ddim(vec_x_dims));
+      out->Resize(vec_x_dims);
       dev_ctx.template Alloc<T>(out);
       std::vector<DenseTensor*> outs = {out};
       funcs::BroadcastKernel<T>(

@@ -111,15 +111,15 @@ void DeQuantizeLinearKernel(const Context& dev_ctx,
                         "in_scale can't be nullptr in DeQuantizeLinearKernel"));
   auto scale = in_scale.get();
   switch (scale.dtype()) {
-    case phi::DataType::FLOAT64:
+    case DataType::FLOAT64:
       DeQuantizeLinearImpl<T, Context, double>(
           dev_ctx, x, scale, quant_axis, qmax, only_observer, out);
       break;
-    case phi::DataType::FLOAT32:
+    case DataType::FLOAT32:
       DeQuantizeLinearImpl<T, Context, float>(
           dev_ctx, x, scale, quant_axis, qmax, only_observer, out);
       break;
-    case phi::DataType::FLOAT16:
+    case DataType::FLOAT16:
       DeQuantizeLinearImpl<T, Context, float16>(
           dev_ctx, x, scale, quant_axis, qmax, only_observer, out);
       break;

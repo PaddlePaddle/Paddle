@@ -662,6 +662,72 @@ class TestNegAPI(unittest.TestCase):
                 np.testing.assert_allclose(out, expected, rtol=1e-5)
 
 
+# Test randint compatibility
+class TestRandintAPI(unittest.TestCase):
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        # basic shape
+        x = paddle.randint(high=10, shape=[2, 3])
+        self.assertEqual(x.shape, [2, 3])
+        self.assertTrue(x.stop_gradient)
+        # 'size' is an alias for 'shape'
+        x = paddle.randint(high=10, size=[3, 4])
+        self.assertEqual(x.shape, [3, 4])
+        # requires_grad
+        x = paddle.randint(high=10, shape=[2, 3], requires_grad=True)
+        self.assertFalse(x.stop_gradient)
+        x = paddle.randint(high=10, shape=[2, 3], requires_grad=False)
+        self.assertTrue(x.stop_gradient)
+        # value range
+        x = paddle.randint(low=5, high=10, shape=[100])
+        arr = x.numpy()
+        self.assertTrue(np.all(arr >= 5) and np.all(arr < 10))
+        # torch.randint(high, size) style: second positional arg as shape
+        x = paddle.randint(10, [3, 4])
+        self.assertEqual(x.shape, [3, 4])
+        self.assertTrue(np.all(x.numpy() >= 0) and np.all(x.numpy() < 10))
+        # dtype string
+        x = paddle.randint(high=10, shape=[3], dtype='int32')
+        self.assertEqual(x.dtype, paddle.int32)
+        # out param
+        out = paddle.zeros([2, 3], dtype='int64')
+        result = paddle.randint(high=10, shape=[2, 3], out=out)
+        self.assertEqual(out.shape, [2, 3])
+        np.testing.assert_array_equal(result.numpy(), out.numpy())
+        # out with requires_grad
+        out = paddle.zeros([2, 3], dtype='int64')
+        result = paddle.randint(
+            high=10, shape=[2, 3], out=out, requires_grad=True
+        )
+        self.assertFalse(result.stop_gradient)
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        # basic shape and stop_gradient
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.randint(high=10, shape=[2, 3])
+            self.assertEqual(x.shape, [2, 3])
+            self.assertTrue(x.stop_gradient)
+            # requires_grad
+            x_grad = paddle.randint(high=10, shape=[2, 3], requires_grad=True)
+            self.assertFalse(x_grad.stop_gradient)
+            x_no_grad = paddle.randint(
+                high=10, shape=[2, 3], requires_grad=False
+            )
+            self.assertTrue(x_no_grad.stop_gradient)
+            # size alias
+            x_size = paddle.randint(high=10, size=[2, 3])
+            self.assertEqual(x_size.shape, [2, 3])
+            # dtype string
+            x_dtype = paddle.randint(high=10, shape=[3], dtype='int32')
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            exe.run(startup)
+            result = exe.run(main, fetch_list=[x_dtype])
+            self.assertEqual(result[0].dtype, np.int32)
+
+
 # Test remainder_ inplace compatibility
 class TestRemainderInplaceAPI(unittest.TestCase):
     def setUp(self):
@@ -1585,6 +1651,477 @@ class TestIsRealAPICompatibility(unittest.TestCase):
             np.testing.assert_array_equal(ref_out, out)
 
 
+class TestLayerAndTensorToAPI(unittest.TestCase):
+    """Test paddle.nn.Layer.to and paddle.Tensor.to alignment with PyTorch."""
+
+    def setUp(self):
+        paddle.disable_static()
+
+    def tearDown(self):
+        paddle.enable_static()
+
+    def _make_model(self):
+        """Create a model with float params and an int buffer."""
+
+        class Model(paddle.nn.Layer):
+            def __init__(self):
+                super().__init__()
+                self.linear = paddle.nn.Linear(3, 2)
+                self.register_buffer(
+                    'int_buf', paddle.to_tensor([1, 2, 3], dtype='int32')
+                )
+
+            def forward(self, x):
+                return self.linear(x)
+
+        return Model()
+
+    # ---- Layer.to: Positional dtype ----
+
+    def test_layer_positional_paddle_dtype(self):
+        """Layer.to(paddle.float64)"""
+        linear = paddle.nn.Linear(2, 2)
+        ret = linear.to(paddle.float64)
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+        self.assertEqual(linear.bias.dtype, paddle.float64)
+        self.assertIs(ret, linear)
+
+    def test_layer_positional_dtype_string(self):
+        """Layer.to('float64')"""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to('float64')
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    def test_layer_positional_dtype_float16(self):
+        """Layer.to(paddle.float16)"""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to(paddle.float16)
+        self.assertEqual(linear.weight.dtype, paddle.float16)
+
+    # ---- Layer.to: Positional tensor ----
+
+    def test_layer_positional_tensor(self):
+        """Layer.to(tensor) -- match tensor's dtype and device"""
+        linear = paddle.nn.Linear(2, 2)
+        ref = paddle.to_tensor([1.0], dtype='float64')
+        linear.to(ref)
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    # ---- Layer.to: Positional device ----
+
+    def test_layer_positional_device_string(self):
+        """Layer.to('cpu')"""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to('cpu')
+        self.assertTrue(linear.weight.place.is_cpu_place())
+
+    def test_layer_positional_device_and_dtype(self):
+        """Layer.to('cpu', 'float64')"""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to('cpu', 'float64')
+        self.assertTrue(linear.weight.place.is_cpu_place())
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    # ---- Layer.to: Keyword args ----
+
+    def test_layer_keyword_device(self):
+        """Layer.to(device='cpu')"""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to(device='cpu')
+        self.assertTrue(linear.weight.place.is_cpu_place())
+
+    def test_layer_keyword_dtype(self):
+        """Layer.to(dtype='float64')"""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to(dtype='float64')
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    def test_layer_keyword_device_and_dtype(self):
+        """Layer.to(device='cpu', dtype='float64')"""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to(device='cpu', dtype='float64')
+        self.assertTrue(linear.weight.place.is_cpu_place())
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    def test_layer_keyword_non_blocking(self):
+        """Layer.to(dtype='float64', non_blocking=False)"""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to(dtype='float64', non_blocking=False)
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    def test_layer_keyword_blocking(self):
+        """Layer.to(device='cpu', blocking=True)"""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to(device='cpu', blocking=True)
+        self.assertTrue(linear.weight.place.is_cpu_place())
+
+    # ---- Layer.to: No args ----
+
+    def test_layer_no_args(self):
+        """Layer.to() -- returns self unchanged"""
+        linear = paddle.nn.Linear(2, 2)
+        original_dtype = linear.weight.dtype
+        ret = linear.to()
+        self.assertIs(ret, linear)
+        self.assertEqual(linear.weight.dtype, original_dtype)
+
+    # ---- Layer.to: all-dtype casting ----
+
+    def test_layer_cast_all_with_positional_dtype(self):
+        """Layer.to(dtype) casts ALL params and buffers, including int buf."""
+        model = self._make_model()
+        self.assertEqual(model.int_buf.dtype, paddle.int32)
+        model.to(paddle.float64)
+        self.assertEqual(model.linear.weight.dtype, paddle.float64)
+        self.assertEqual(model.int_buf.dtype, paddle.float64)
+
+    def test_layer_cast_all_with_keyword_dtype(self):
+        """Layer.to(dtype='float64') casts ALL params and buffers."""
+        model = self._make_model()
+        model.to(dtype='float64')
+        self.assertEqual(model.linear.weight.dtype, paddle.float64)
+        self.assertEqual(model.int_buf.dtype, paddle.float64)
+
+    def test_layer_cast_all_with_tensor(self):
+        """Layer.to(tensor) casts ALL params and buffers."""
+        model = self._make_model()
+        ref = paddle.to_tensor([1.0], dtype='float64')
+        model.to(ref)
+        self.assertEqual(model.linear.weight.dtype, paddle.float64)
+        self.assertEqual(model.int_buf.dtype, paddle.float64)
+
+    # ---- Layer.to: sublayers and chaining ----
+
+    def test_layer_sublayers_cast(self):
+        """Layer.to() should recurse into sublayers."""
+        model = paddle.nn.Sequential(
+            paddle.nn.Linear(3, 4), paddle.nn.Linear(4, 2)
+        )
+        model.to(paddle.float64)
+        for sub in model.sublayers():
+            if hasattr(sub, 'weight'):
+                self.assertEqual(sub.weight.dtype, paddle.float64)
+
+    def test_layer_returns_self(self):
+        """Layer.to() should return self for chaining."""
+        linear = paddle.nn.Linear(2, 2)
+        self.assertIs(linear.to(paddle.float64), linear)
+
+    def test_layer_sequential_to_calls(self):
+        """Multiple Layer.to() calls should work correctly."""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to(paddle.float64)
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+        linear.to('float32')
+        self.assertEqual(linear.weight.dtype, paddle.float32)
+
+    # ---- Tensor.to ----
+
+    def test_tensor_positional_dtype(self):
+        """Tensor.to(paddle.float64)"""
+        t = paddle.to_tensor([1.0, 2.0])
+        out = t.to(paddle.float64)
+        self.assertEqual(out.dtype, paddle.float64)
+
+    def test_tensor_positional_dtype_string(self):
+        """Tensor.to('float64')"""
+        t = paddle.to_tensor([1.0, 2.0])
+        out = t.to('float64')
+        self.assertEqual(out.dtype, paddle.float64)
+
+    def test_tensor_positional_device(self):
+        """Tensor.to('cpu')"""
+        t = paddle.to_tensor([1.0, 2.0])
+        out = t.to('cpu')
+        self.assertTrue(out.place.is_cpu_place())
+
+    def test_tensor_positional_device_and_dtype(self):
+        """Tensor.to('cpu', 'float64')"""
+        t = paddle.to_tensor([1.0, 2.0])
+        out = t.to('cpu', 'float64')
+        self.assertTrue(out.place.is_cpu_place())
+        self.assertEqual(out.dtype, paddle.float64)
+
+    def test_tensor_positional_other(self):
+        """Tensor.to(other_tensor)"""
+        t = paddle.to_tensor([1.0, 2.0])
+        ref = paddle.to_tensor([1], dtype='int32')
+        out = t.to(ref)
+        self.assertEqual(out.dtype, paddle.int32)
+
+    def test_tensor_keyword_dtype(self):
+        """Tensor.to(dtype='float64')"""
+        t = paddle.to_tensor([1.0, 2.0])
+        out = t.to(dtype='float64')
+        self.assertEqual(out.dtype, paddle.float64)
+
+    def test_tensor_keyword_device(self):
+        """Tensor.to(device='cpu')"""
+        t = paddle.to_tensor([1.0, 2.0])
+        out = t.to(device='cpu')
+        self.assertTrue(out.place.is_cpu_place())
+
+    def test_tensor_keyword_non_blocking(self):
+        """Tensor.to(dtype='float64', non_blocking=False)"""
+        t = paddle.to_tensor([1.0, 2.0])
+        out = t.to(dtype='float64', non_blocking=False)
+        self.assertEqual(out.dtype, paddle.float64)
+
+    def test_tensor_no_args(self):
+        """Tensor.to() -- returns self"""
+        t = paddle.to_tensor([1.0, 2.0])
+        out = t.to()
+        self.assertEqual(out.dtype, t.dtype)
+
+    # ---- blocking / non_blocking conflict ----
+
+    def test_blocking_non_blocking_conflict_raises(self):
+        """Setting both blocking and non_blocking raises TypeError."""
+        linear = paddle.nn.Linear(2, 2)
+        with self.assertRaises(TypeError):
+            linear.to(dtype='float64', blocking=True, non_blocking=False)
+
+    def test_tensor_blocking_non_blocking_conflict_raises(self):
+        """Tensor: setting both blocking and non_blocking raises TypeError."""
+        t = paddle.to_tensor([1.0])
+        with self.assertRaises(TypeError):
+            t.to(dtype='float64', blocking=True, non_blocking=False)
+
+    # ---- Error handling ----
+
+    def test_too_many_args(self):
+        """to() with too many arguments raises TypeError."""
+        linear = paddle.nn.Linear(2, 2)
+        with self.assertRaises(TypeError):
+            linear.to('cpu', 'float64', True, False, 'extra')
+
+    def test_unexpected_keyword(self):
+        """to() with unexpected keyword raises TypeError."""
+        linear = paddle.nn.Linear(2, 2)
+        with self.assertRaises(TypeError):
+            linear.to(foo='bar')
+
+    def test_invalid_first_arg(self):
+        """to() with invalid first arg raises ValueError."""
+        linear = paddle.nn.Linear(2, 2)
+        with self.assertRaises(ValueError):
+            linear.to(123)
+
+    # ---- PyTorch keyword alias: other / tensor ----
+
+    def test_layer_keyword_other_alias(self):
+        """Layer.to(other=tensor) -- PyTorch alias for tensor overload."""
+        linear = paddle.nn.Linear(2, 2)
+        ref = paddle.to_tensor([1.0], dtype='float64')
+        linear.to(other=ref)
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    def test_layer_keyword_tensor_alias(self):
+        """Layer.to(tensor=tensor) -- PyTorch alias for tensor overload."""
+        linear = paddle.nn.Linear(2, 2)
+        ref = paddle.to_tensor([1.0], dtype='float64')
+        linear.to(tensor=ref)
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    def test_tensor_keyword_other_alias(self):
+        """Tensor.to(other=tensor) -- PyTorch alias for tensor overload."""
+        t = paddle.to_tensor([1.0, 2.0])
+        ref = paddle.to_tensor([1], dtype='int32')
+        out = t.to(other=ref)
+        self.assertEqual(out.dtype, paddle.int32)
+
+    def test_tensor_keyword_tensor_alias(self):
+        """Tensor.to(tensor=tensor) -- PyTorch alias for tensor overload."""
+        t = paddle.to_tensor([1.0, 2.0])
+        ref = paddle.to_tensor([1], dtype='int32')
+        out = t.to(tensor=ref)
+        self.assertEqual(out.dtype, paddle.int32)
+
+    # ---- copy parameter: Layer.to (tensor overload) ----
+
+    def test_layer_tensor_overload_copy_positional(self):
+        """Layer.to(tensor, blocking, copy) -- copy as 3rd positional."""
+        linear = paddle.nn.Linear(2, 2)
+        ref = paddle.to_tensor([1.0], dtype='float64')
+        linear.to(ref, True, True)
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    def test_layer_tensor_overload_copy_keyword(self):
+        """Layer.to(tensor, copy=True) -- copy as keyword."""
+        linear = paddle.nn.Linear(2, 2)
+        ref = paddle.to_tensor([1.0], dtype='float64')
+        linear.to(ref, copy=True)
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    def test_layer_tensor_overload_copy_mixed(self):
+        """Layer.to(tensor, blocking=True, copy=True) -- mixed."""
+        linear = paddle.nn.Linear(2, 2)
+        ref = paddle.to_tensor([1.0], dtype='float64')
+        linear.to(ref, blocking=True, copy=True)
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    def test_layer_tensor_overload_copy_false_keyword(self):
+        """Layer.to(tensor, copy=False) -- explicit copy=False."""
+        linear = paddle.nn.Linear(2, 2)
+        ref = paddle.to_tensor([1.0], dtype='float64')
+        linear.to(ref, copy=False)
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    # ---- copy parameter: Layer.to (dtype overload) ----
+
+    def test_layer_dtype_overload_copy_positional(self):
+        """Layer.to(dtype, blocking, copy) -- copy as 3rd positional."""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to('float64', True, True)
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    def test_layer_dtype_overload_copy_keyword(self):
+        """Layer.to(dtype, copy=True) -- copy as keyword."""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to('float64', copy=True)
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    def test_layer_dtype_overload_copy_mixed(self):
+        """Layer.to(dtype, blocking=True, copy=True) -- mixed."""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to(paddle.float64, blocking=True, copy=True)
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    # ---- copy parameter: Layer.to (device overload) ----
+
+    def test_layer_device_overload_copy_positional(self):
+        """Layer.to(device, dtype, blocking, copy) -- copy as 4th positional."""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to('cpu', 'float64', True, True)
+        self.assertTrue(linear.weight.place.is_cpu_place())
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    def test_layer_device_overload_copy_keyword(self):
+        """Layer.to(device, copy=True) -- copy as keyword only."""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to('cpu', copy=True)
+        self.assertTrue(linear.weight.place.is_cpu_place())
+
+    def test_layer_device_overload_all_kwargs(self):
+        """Layer.to(device=, dtype=, blocking=, copy=) -- all keywords."""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to(device='cpu', dtype='float64', blocking=True, copy=True)
+        self.assertTrue(linear.weight.place.is_cpu_place())
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    def test_layer_device_overload_mixed_copy_keyword(self):
+        """Layer.to(device, dtype, copy=True) -- 2 positional + copy kwarg."""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to('cpu', 'float64', copy=True)
+        self.assertTrue(linear.weight.place.is_cpu_place())
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    # ---- copy parameter: Tensor.to (tensor overload) ----
+
+    def test_tensor_tensor_overload_copy_positional(self):
+        """Tensor.to(other, blocking, copy) -- copy as 3rd positional."""
+        t = paddle.to_tensor([1.0, 2.0])
+        ref = paddle.to_tensor([1], dtype='int32')
+        out = t.to(ref, True, True)
+        self.assertEqual(out.dtype, paddle.int32)
+
+    def test_tensor_tensor_overload_copy_keyword(self):
+        """Tensor.to(other, copy=True) -- copy as keyword."""
+        t = paddle.to_tensor([1.0, 2.0])
+        ref = paddle.to_tensor([1], dtype='int32')
+        out = t.to(ref, copy=True)
+        self.assertEqual(out.dtype, paddle.int32)
+
+    def test_tensor_tensor_overload_copy_mixed(self):
+        """Tensor.to(other, blocking=True, copy=True) -- mixed."""
+        t = paddle.to_tensor([1.0, 2.0])
+        ref = paddle.to_tensor([1], dtype='int32')
+        out = t.to(ref, blocking=True, copy=True)
+        self.assertEqual(out.dtype, paddle.int32)
+
+    def test_tensor_tensor_overload_full_kwargs(self):
+        """Tensor.to(other=, blocking=, copy=) -- all keywords."""
+        t = paddle.to_tensor([1.0, 2.0])
+        ref = paddle.to_tensor([1], dtype='int32')
+        out = t.to(other=ref, blocking=True, copy=True)
+        self.assertEqual(out.dtype, paddle.int32)
+
+    # ---- copy parameter: Tensor.to (dtype overload) ----
+
+    def test_tensor_dtype_overload_copy_positional(self):
+        """Tensor.to(dtype, blocking, copy) -- copy as 3rd positional."""
+        t = paddle.to_tensor([1.0, 2.0])
+        out = t.to('float64', True, True)
+        self.assertEqual(out.dtype, paddle.float64)
+
+    def test_tensor_dtype_overload_copy_keyword(self):
+        """Tensor.to(dtype, copy=True) -- copy as keyword."""
+        t = paddle.to_tensor([1.0, 2.0])
+        out = t.to('float64', copy=True)
+        self.assertEqual(out.dtype, paddle.float64)
+
+    def test_tensor_dtype_overload_copy_mixed(self):
+        """Tensor.to(dtype, blocking=True, copy=True) -- mixed."""
+        t = paddle.to_tensor([1.0, 2.0])
+        out = t.to(paddle.float64, blocking=True, copy=True)
+        self.assertEqual(out.dtype, paddle.float64)
+
+    # ---- copy parameter: Tensor.to (device overload) ----
+
+    def test_tensor_device_overload_copy_positional(self):
+        """Tensor.to(device, dtype, blocking, copy) -- copy as 4th positional."""
+        t = paddle.to_tensor([1.0, 2.0])
+        out = t.to('cpu', 'float64', True, True)
+        self.assertTrue(out.place.is_cpu_place())
+        self.assertEqual(out.dtype, paddle.float64)
+
+    def test_tensor_device_overload_copy_keyword(self):
+        """Tensor.to(device, copy=True) -- copy as keyword only."""
+        t = paddle.to_tensor([1.0, 2.0])
+        out = t.to('cpu', copy=True)
+        self.assertTrue(out.place.is_cpu_place())
+
+    def test_tensor_device_overload_all_kwargs(self):
+        """Tensor.to(device=, dtype=, blocking=, copy=) -- all keywords."""
+        t = paddle.to_tensor([1.0, 2.0])
+        out = t.to(device='cpu', dtype='float64', blocking=True, copy=True)
+        self.assertTrue(out.place.is_cpu_place())
+        self.assertEqual(out.dtype, paddle.float64)
+
+    def test_tensor_device_overload_mixed_copy_keyword(self):
+        """Tensor.to(device, dtype, copy=True) -- 2 positional + copy kwarg."""
+        t = paddle.to_tensor([1.0, 2.0])
+        out = t.to('cpu', 'float64', copy=True)
+        self.assertTrue(out.place.is_cpu_place())
+        self.assertEqual(out.dtype, paddle.float64)
+
+    # ---- copy parameter defaults and validation ----
+
+    def test_copy_default_is_false_layer(self):
+        """Layer.to without copy should default copy=False (no error)."""
+        linear = paddle.nn.Linear(2, 2)
+        linear.to('float64')
+        self.assertEqual(linear.weight.dtype, paddle.float64)
+
+    def test_copy_default_is_false_tensor(self):
+        """Tensor.to without copy should default copy=False (no error)."""
+        t = paddle.to_tensor([1.0, 2.0])
+        out = t.to('float64')
+        self.assertEqual(out.dtype, paddle.float64)
+
+    def test_copy_invalid_type_layer(self):
+        """Layer.to(dtype, copy='yes') raises TypeError for non-bool."""
+        linear = paddle.nn.Linear(2, 2)
+        with self.assertRaises(TypeError):
+            linear.to('float64', copy='yes')
+
+    def test_copy_invalid_type_tensor(self):
+        """Tensor.to(dtype, copy='yes') raises TypeError for non-bool."""
+        t = paddle.to_tensor([1.0, 2.0])
+        with self.assertRaises(TypeError):
+            t.to('float64', copy='yes')
+
+
 # Test select_scatter compatibility
 class TestSelectScatterAPICompatibility(unittest.TestCase):
     def setUp(self):
@@ -1668,6 +2205,138 @@ class TestSelectScatterAPICompatibility(unittest.TestCase):
 
         # Verify all outputs
         ref_out = self.get_ref_out()
+        for out in fetches:
+            np.testing.assert_allclose(out, ref_out, rtol=1e-5)
+
+
+# Test tile compatibility
+class TestTileAPICompatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_x = np.random.rand(2, 3).astype("float32")
+        self.repeat_times = [2, 3]
+        self.shape = self.np_x.shape
+        self.dtype = str(self.np_x.dtype)
+        self.np_x_3d = np.random.rand(1, 2, 2).astype("float64")
+        self.repeat_times_3d = [2, 1, 3]
+        self.shape_3d = self.np_x_3d.shape
+        self.dtype_3d = str(self.np_x_3d.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.tile(x, self.repeat_times)
+        # 2. Paddle keyword arguments
+        out2 = paddle.tile(x=x, repeat_times=self.repeat_times)
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.tile(input=x, dims=self.repeat_times)
+        # 4. Mixed arguments
+        out4 = paddle.tile(x, dims=self.repeat_times)
+        # 5. Tensor method - args
+        out5 = x.tile(2, 3)
+        # 6. Tensor method - kwargs (PyTorch alias)
+        out6 = x.tile(dims=self.repeat_times)
+
+        # Verify all outputs
+        ref_out = np.tile(self.np_x, self.repeat_times)
+        for out in [out1, out2, out3, out4, out5, out6]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-5)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+
+            # 1. Paddle Positional arguments
+            out1 = paddle.tile(x, self.repeat_times)
+            # 2. Paddle keyword arguments
+            out2 = paddle.tile(x=x, repeat_times=self.repeat_times)
+            # 3. PyTorch keyword arguments (alias)
+            out3 = paddle.tile(input=x, dims=self.repeat_times)
+            # 4. Tensor method - args
+            out4 = x.tile(2, 3)
+            # 5. Tensor method - kwargs (PyTorch alias)
+            out5 = x.tile(dims=self.repeat_times)
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2, out3, out4, out5],
+            )
+
+        # Verify all outputs
+        ref_out = np.tile(self.np_x, self.repeat_times)
+        for out in fetches:
+            np.testing.assert_allclose(out, ref_out, rtol=1e-5)
+
+    def test_dygraph_HighDimCompatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x_3d)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.tile(x, self.repeat_times_3d)
+        # 2. Paddle keyword arguments
+        out2 = paddle.tile(x=x, repeat_times=self.repeat_times_3d)
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.tile(input=x, dims=self.repeat_times_3d)
+        # 4. Mixed arguments
+        out4 = paddle.tile(x, dims=self.repeat_times_3d)
+        # 5. Tensor method - args
+        out5 = x.tile(2, 1, 3)
+        # 6. Tensor method - kwargs (PyTorch alias)
+        out6 = x.tile(dims=self.repeat_times_3d)
+
+        dims = self.repeat_times_3d
+        # 7. Tensor method - args with variable expansion
+        out7 = x.tile(*dims)
+
+        # Verify all outputs
+        ref_out = np.tile(self.np_x_3d, self.repeat_times_3d)
+        for out in [out1, out2, out3, out4, out5, out6, out7]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-5)
+
+        paddle.enable_static()
+
+    def test_static_HighDimCompatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x", shape=self.shape_3d, dtype=self.dtype_3d
+            )
+
+            # 1. Paddle Positional arguments
+            out1 = paddle.tile(x, self.repeat_times_3d)
+            # 2. Paddle keyword arguments
+            out2 = paddle.tile(x=x, repeat_times=self.repeat_times_3d)
+            # 3. PyTorch keyword arguments (alias)
+            out3 = paddle.tile(input=x, dims=self.repeat_times_3d)
+            # 4. Tensor method - args
+            out4 = x.tile(2, 1, 3)
+            # 5. Tensor method - kwargs (PyTorch alias)
+            out5 = x.tile(dims=self.repeat_times_3d)
+
+            dims = self.repeat_times_3d
+            # 6. Tensor method - args with variable expansion
+            out6 = x.tile(*dims)
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x_3d},
+                fetch_list=[out1, out2, out3, out4, out5, out6],
+            )
+
+        # Verify all outputs
+        ref_out = np.tile(self.np_x_3d, self.repeat_times_3d)
         for out in fetches:
             np.testing.assert_allclose(out, ref_out, rtol=1e-5)
 

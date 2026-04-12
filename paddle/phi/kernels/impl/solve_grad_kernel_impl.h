@@ -117,17 +117,17 @@ void SolveGradKernel(const Context& dev_ctx,
       get_broadcast_dims(tmp_x, tmp_y);
   // tmp_dx
   DenseTensor tmp_dx;
-  tmp_dx.Resize(make_ddim(x_broadcast_dims));
+  tmp_dx.Resize(x_broadcast_dims);
   dev_ctx.template Alloc<T>(&tmp_dx);
 
   // tmp_dy
   DenseTensor tmp_dy;
-  tmp_dy.Resize(make_ddim(y_broadcast_dims));
+  tmp_dy.Resize(y_broadcast_dims);
   dev_ctx.template Alloc<T>(&tmp_dy);
 
   DenseTensor tmp_input(x.dtype());
   const auto& new_dims_vec = funcs::getNewDimsVec(x.dims());
-  tmp_input.Resize(make_ddim(new_dims_vec));
+  tmp_input.Resize(new_dims_vec);
   dev_ctx.template Alloc<T>(&tmp_input);
 
   funcs::TransposeNormal<Context, T> trans;

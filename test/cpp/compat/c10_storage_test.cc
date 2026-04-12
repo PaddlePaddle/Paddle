@@ -14,8 +14,10 @@
 
 #include <ATen/Functions.h>
 #include <ATen/core/TensorBody.h>
+#include <ATen/cuda/CUDAContext.h>
 #include <ATen/cuda/EmptyTensor.h>
 #include <ATen/native/cuda/Resize.h>
+#include <ATen/ops/as_strided.h>
 #include <ATen/ops/tensor.h>
 #include <c10/core/ScalarType.h>
 #include <c10/core/SymInt.h>
@@ -24,13 +26,6 @@
 #include <c10/cuda/CUDAFunctions.h>
 #include <c10/cuda/CUDAGuard.h>
 #include "paddle/phi/backends/gpu/gpu_info.h"
-
-// Forward-declare getCUDADeviceAllocator to avoid include-order conflicts
-// between ATen/cuda/CUDAContextLight.h (defines at::cuda::is_available inline)
-// and torch/cuda.h (adds `using torch::cuda::is_available` to at::cuda).
-namespace at::cuda {
-c10::Allocator* getCUDADeviceAllocator();
-}  // namespace at::cuda
 #endif
 #include "ATen/ATen.h"
 #include "gtest/gtest.h"
@@ -731,9 +726,13 @@ TEST(StorageTest, DataPtrHelpersAndAllocatorSimpleDataPtrChecks) {
   dp.unsafe_set_device(c10::Device(c10::DeviceType::CPU));
   ASSERT_EQ(dp.device().type(), c10::DeviceType::CPU);
 
-  // is_simple_data_ptr: context==nullptr branch.
+  // PyTorch only treats context==data as a simple DataPtr.
   RawCompatibleAllocator compatible_alloc;
-  ASSERT_TRUE(compatible_alloc.is_simple_data_ptr(dp));
+  ASSERT_FALSE(compatible_alloc.is_simple_data_ptr(dp));
+
+  // is_simple_data_ptr: context==data branch.
+  c10::DataPtr simple = compatible_alloc.allocate(4);
+  ASSERT_TRUE(compatible_alloc.is_simple_data_ptr(simple));
 
   // is_simple_data_ptr: context!=data branch.
   c10::DataPtr non_simple = RawIncompatibleAllocator().allocate(4);
@@ -978,6 +977,19 @@ TEST(StorageTest, CopiedTensorWrappersShareStorageImpl) {
   ASSERT_EQ(tensor.storage().get_impl(), alias.storage().get_impl());
   ASSERT_EQ(alias.data_ptr(), new_alloc->ptr())
       << "Copied TensorBase wrappers must observe shared storage mutations";
+}
+
+TEST(StorageTest, AsStridedViewSharesStorageImplWithBaseTensor) {
+  at::Tensor base = at::tensor({1, 2, 3, 4}, at::kInt);
+  at::Tensor view = base.as_strided({3}, {1}, 1);
+
+  ASSERT_EQ(base.storage().get_impl(), view.storage().get_impl());
+
+  view.resize_({4});
+
+  ASSERT_EQ(view.data_ptr<int>(), base.data_ptr<int>() + 1)
+      << "Growing an as_strided view must update the shared compat storage "
+         "visible from the base tensor";
 }
 
 TEST(StorageTest, AliasWrapperDoesNotIncreaseTensorOwnedStorageCount) {

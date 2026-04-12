@@ -90,8 +90,8 @@ CI_OLD_SCRIPTS_COVERAGE=$(git diff --name-only upstream/$BRANCH | grep -E "tools
 CI_OLD_SCRIPTS_TOOLS=$(git diff --name-only upstream/$BRANCH | grep -E "tools" | grep "check_")
 
 if [ -n "$CI_OLD_SCRIPTS_PADDLE_BUILD" ] || [ -n "$CI_OLD_SCRIPTS_COVERAGE" ] || [ -n "$CI_OLD_SCRIPTS_TOOLS" ]; then
-    echo_line="You must have one RD (swgu98, ooooo-create) approval for the old CI scripts.\n"
-    check_approval 1 swgu98 ooooo-create
+    echo_line="You must have one RD (swgu98 or risemeup1) approval for the old CI scripts.\n"
+    check_approval 1 swgu98 risemeup1
 fi
 
 HAS_MODIFIED_LINUX_NPU_YML=$(git diff --name-only upstream/$BRANCH | grep ".github/workflows/_Linux-NPU.yml" || true)
@@ -289,6 +289,12 @@ if [ "${HAS_MODIFIED_PADDLE_DISTRIBUTED}" != "" ] && [ "${PR_ID}" != "" ]; then
     check_approval 1 From00 ForFishes gongweibao sneaxiy
 fi
 
+HAS_MODIFIED_AGENTS_SKILLS=`git diff --name-only upstream/$BRANCH | grep "^\\.agents/skills/" || true`
+if [ "${HAS_MODIFIED_AGENTS_SKILLS}" != "" ] && [ "${PR_ID}" != "" ]; then
+    echo_line="You must have one RD (zrr1999, SigureMo, ShigureNyako) approval for file changes in .agents/skills.\n"
+    check_approval 1 zrr1999 SigureMo ShigureNyako
+fi
+
 ALL_PADDLE_ENFORCE=`git diff -U0 upstream/$BRANCH -- . ':!.agents/skills/' |grep "^+" |grep -zoE "PADDLE_ENFORCE\(.[^,\);]+.[^;]*\);\s" || true`
 if [ "${ALL_PADDLE_ENFORCE}" != "" ] && [ "${PR_ID}" != "" ]; then
     echo_line="PADDLE_ENFORCE is not recommended. Please use PADDLE_ENFORCE_EQ/NE/GT/GE/LT/LE or PADDLE_ENFORCE_NOT_NULL or PADDLE_ENFORCE_GPU_SUCCESS instead, see [ https://github.com/PaddlePaddle/Paddle/wiki/PADDLE_ENFORCE-Rewriting-Specification ] for details.\nYou must have one RD (luotao1 (Recommend) or zhangbo9674) approval for the usage (either add or delete) of PADDLE_ENFORCE.\n${ALL_PADDLE_ENFORCE}\n"
@@ -345,8 +351,8 @@ if [ "${HAS_MODIFIED_PY_OR_CPP_FILES}" != "" ] && [ "${PR_ID}" != "" ]; then
         echo_line=${echo_line}${error_lines}"\n"
         echo_line=${echo_line}"You can run following command to fix the errors:\n"
         echo_line=${echo_line}"    python tools/check_code_block_format.py "$(echo ${HAS_MODIFIED_PY_OR_CPP_FILES} | tr "\n" " ")"\n"
-        echo_line=${echo_line}"If you believe this is a false positive, please request one of the RD (sunzhongkai588, SigureMo, ooooo-create) approval for the changes.\n"
-        check_approval 1 sunzhongkai588 SigureMo ooooo-create
+        echo_line=${echo_line}"If you believe this is a false positive, please request one of the RD (sunzhongkai588, SigureMo) approval for the changes.\n"
+        check_approval 1 sunzhongkai588 SigureMo
     fi
 fi
 

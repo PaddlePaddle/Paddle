@@ -89,7 +89,7 @@ void LstsqKernel(const Context& dev_ctx,
   tau_dims_vec[tau_dims_vec.size() - 1] = min_mn;
 
   DenseTensor tau;
-  tau.Resize(make_ddim(tau_dims_vec));
+  tau.Resize(tau_dims_vec);
   auto tau_data = dev_ctx.template Alloc<T>(&tau);
 
   if (m >= n) {

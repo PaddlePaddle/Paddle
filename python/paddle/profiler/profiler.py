@@ -442,7 +442,7 @@ class Profiler:
                 ...
                 ...     def __getitem__(self, idx):
                 ...         image = paddle.rand(shape=[100], dtype='float32')
-                ...         label = paddle.randint(0, 10, shape=[1], dtype='int64')
+                ...         label = paddle.randint(0, 10, size=[1], dtype='int64')
                 ...         return image, label
                 ...
                 ...     def __len__(self):

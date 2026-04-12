@@ -56,7 +56,8 @@ inline void Tensor::record_stream(at::cuda::CUDAStream s) const {
 
 // TODO(youge325): Remove after DeepEP paddle branch is updated to use
 // at::Stream
-inline void Tensor::record_stream(cudaStream_t s) const {
+#ifdef PADDLE_WITH_HIP
+inline void Tensor::record_stream(hipStream_t s) const {
   auto dense_tensor =
       std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl());
   PD_CHECK(dense_tensor != nullptr,
@@ -66,5 +67,18 @@ inline void Tensor::record_stream(cudaStream_t s) const {
            "record_stream is not supported for CPU tensors.");
   paddle::memory::RecordStream(dense_tensor->Holder(), s);
 }
+#else
+inline void Tensor::record_stream(cudaStream_t s) const {
+  auto dense_tensor =
+      std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl());
+  PD_CHECK(dense_tensor != nullptr,
+           "record_stream only supports DenseTensor, but got a non-dense "
+           "tensor implementation.");
+  PD_CHECK(dense_tensor->place().GetType() != phi::AllocationType::CPU,
+           "record_stream is not supported for CPU tensors.");
+  paddle::memory::RecordStream(dense_tensor->Holder(),
+                               reinterpret_cast<gpuStream_t>(s));
+}
+#endif
 #endif
 }  // namespace at

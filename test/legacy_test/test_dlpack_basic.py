@@ -258,6 +258,7 @@ class TestDLPack(unittest.TestCase):
             for place in places:
                 for _ in range(4):
                     x = paddle.zeros([0, 10]).to(device=place)
+                    self.assertEqual(x.strides, [10, 1])
                     dlpack_v1 = paddle.utils.dlpack.to_dlpack(x)
                     dlpack_v2 = x.__dlpack__()
                     y1 = paddle.utils.dlpack.from_dlpack(dlpack_v1)
@@ -266,6 +267,8 @@ class TestDLPack(unittest.TestCase):
                     self.assertEqual(x.data_ptr(), y2.data_ptr())
                     self.assertEqual(str(x.place), str(y1.place))
                     self.assertEqual(str(x.place), str(y2.place))
+                    self.assertEqual(y1.strides, [10, 1])
+                    self.assertEqual(y2.strides, [10, 1])
                     self.assertEqual(y1.shape, [0, 10])
                     self.assertEqual(y2.shape, [0, 10])
                     self.assertEqual(y1.numel().item(), 0)

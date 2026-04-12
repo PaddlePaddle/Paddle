@@ -299,6 +299,7 @@ if(WITH_ROCM)
   list(
     REMOVE_ITEM
     kernel_cu
+    "legacy/gpu/tensor_debug.cu"
     "gpudnn/mha_cudnn_frontend.cu"
     "fusion/gpu/fused_attention_kernel.cu"
     "fusion/gpu/fused_attention_grad_kernel.cu"

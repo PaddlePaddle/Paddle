@@ -154,7 +154,7 @@ void RmsNormQuantKernel(const Context& dev_ctx,
         reinterpret_cast<const XPUType*>(norm_weight_data),
         reinterpret_cast<const XPUType*>(norm_bias_data),
         inv_var_data,
-        false);
+        true);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "rms_layer_norm");
   } else {
     int r = xpu::rms_layer_norm<XPUType>(
@@ -167,7 +167,7 @@ void RmsNormQuantKernel(const Context& dev_ctx,
         reinterpret_cast<const XPUType*>(norm_weight_data),
         reinterpret_cast<const XPUType*>(norm_bias_data),
         inv_var_data,
-        false);
+        true);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "rms_layer_norm");
   }
 }

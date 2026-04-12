@@ -36,6 +36,10 @@
 #endif
 #endif
 
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
+#endif
+
 namespace phi {
 
 namespace funcs {
@@ -58,7 +62,7 @@ DenseTensor GetReshapeAndExpandTensor(const Context& dev_ctx,
   }
 
   DenseTensor mid_tensor(tensor.dtype());
-  mid_tensor.Resize(make_ddim(mid_dims));
+  mid_tensor.Resize(mid_dims);
   ReshapeKernel<Context>(dev_ctx, tensor, IntArray(mid_dims), &mid_tensor);
 
   DenseTensor res_tensor(tensor.dtype());
@@ -198,11 +202,19 @@ T** GetDevicePointerArray(const Context& dev_ctx,
       dev_ctx.GetPlace(),
       h_indices_v.size() * sizeof(T*),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+  size_t nbytes_idx = h_indices_v.size() * sizeof(T*);
+#ifdef PADDLE_WITH_CUDA
+  const void* stable_idx =
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          reinterpret_cast<uint8_t*>(h_indices_v.data()), nbytes_idx);
+#else
+  const void* stable_idx = reinterpret_cast<const void*>(h_indices_v.data());
+#endif
   phi::memory_utils::Copy(dev_ctx.GetPlace(),
                           d_indices_data->ptr(),
                           CPUPlace(),
-                          reinterpret_cast<void*>(h_indices_v.data()),
-                          h_indices_v.size() * sizeof(T*),
+                          stable_idx,
+                          nbytes_idx,
                           dev_ctx.stream());
   return reinterpret_cast<T**>(d_indices_data->ptr());
 }

@@ -86,7 +86,7 @@ void FixLossAccordingToIgnoreIndex(const XPUContext& dev_ctx,
   DenseTensor ignore_label_as_tensor;
 
   const auto& label_type = labels->dtype();
-  if (label_type == phi::DataType::INT32) {
+  if (label_type == DataType::INT32) {
     ignore_label_as_tensor.Resize({N, 1});
     dev_ctx.template Alloc<int>(&ignore_label_as_tensor);
     ret = xpu::constant<int>(dev_ctx.x_context(),
@@ -103,7 +103,7 @@ void FixLossAccordingToIgnoreIndex(const XPUContext& dev_ctx,
                           bool_tensor_for_mask_label.data<bool>(),
                           N);
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "equal");
-  } else if (label_type == phi::DataType::INT64) {
+  } else if (label_type == DataType::INT64) {
     ignore_label_as_tensor.Resize({N, 1});
     dev_ctx.template Alloc<int64_t>(&ignore_label_as_tensor);
     ret = xpu::constant<int64_t>(dev_ctx.x_context(),
@@ -234,7 +234,7 @@ struct CSoftmaxWithCrossEntropyFunctor<XPUContext, T> {
     const int64_t start_index = rank * D;
     const int64_t end_index = start_index + D;
     const auto& label_type = labels->dtype();
-    if (label_type == phi::DataType::INT32) {
+    if (label_type == DataType::INT32) {
       ret = xpu::mask_label_by_index<XPUType, int32_t>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(softmax_2d.data<T>()),
@@ -246,7 +246,7 @@ struct CSoftmaxWithCrossEntropyFunctor<XPUContext, T> {
           D,
           nranks,
           ignore_index);
-    } else if (label_type == phi::DataType::INT64) {
+    } else if (label_type == DataType::INT64) {
       ret = xpu::mask_label_by_index<XPUType, int64_t>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(softmax_2d.data<T>()),

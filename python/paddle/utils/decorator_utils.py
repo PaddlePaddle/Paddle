@@ -680,6 +680,46 @@ def expand_decorator() -> Callable[
     return decorator
 
 
+def tile_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    """
+    Usage Example:
+    paddle.tile(x=tensor_x, repeat_times=[2, 3], name=None)
+    paddle.tile(input=tensor_x, dims=[2, 3])
+    tensor_x.tile([2, 3]) -> paddle.tile(tensor_x, [2, 3])
+    tensor_x.tile(2, 3) -> paddle.tile(tensor_x, 2, 3)
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            if "input" in kwargs:
+                if "x" in kwargs:
+                    raise ValueError(
+                        "Cannot specify both 'x' and its alias 'input'"
+                    )
+                kwargs["x"] = kwargs.pop("input")
+
+            if "dims" in kwargs:
+                if "repeat_times" in kwargs:
+                    raise ValueError(
+                        "Cannot specify both 'repeat_times' and its alias 'dims'"
+                    )
+                kwargs["repeat_times"] = kwargs.pop("dims")
+
+            if len(args) >= 2 and isinstance(args[1], int):
+                kwargs["x"] = args[0]
+                kwargs["repeat_times"] = list(args[1:])
+                args = ()
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
 def index_select_decorator() -> Callable[
     [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
 ]:
@@ -1184,6 +1224,44 @@ def batch_sampler_decorator() -> Callable[
                         "BatchSampler() received too many arguments"
                     )
                 args = (args[0],)
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
+def fill_diagonal_inplace_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    """
+    Usage Example:
+    PyTorch: torch.Tensor.fill_diagonal_(fill_value, wrap=False)
+    Paddle: paddle.Tensor.fill_diagonal_(value, offset, wrap)
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            if "fill_value" in kwargs:
+                if "value" not in kwargs:
+                    kwargs["value"] = kwargs.pop("fill_value")
+                else:
+                    raise ValueError(
+                        "Cannot specify both 'value' and its alias 'fill_value'."
+                    )
+
+            # args[0] is x (tensor)
+            # args[1] is fill_value
+            # args[2] is wrap, use torch signature
+            if len(args) >= 3 and isinstance(args[2], bool):
+                kwargs["wrap"] = args[2]
+                if len(args) > 3:
+                    raise TypeError(
+                        "fill_diagonal_() received too many arguments"
+                    )
+                args = (args[0], args[1])
             return func(*args, **kwargs)
 
         wrapper.__signature__ = inspect.signature(func)

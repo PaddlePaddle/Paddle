@@ -55,7 +55,7 @@ void XPUDealWithIndices(const Context& dev_ctx,
   std::vector<int64_t> stacked_dim_vec(bd_dim.size() + 1);
   std::copy(bd_dim_vec.begin(), bd_dim_vec.end(), stacked_dim_vec.begin());
   stacked_dim_vec.back() = int_indices_v.size();
-  out->Resize(make_ddim(stacked_dim_vec));
+  out->Resize(stacked_dim_vec);
 
   std::vector<const DenseTensor*> tmp_indices_ptr(tmp_indices_v.size(),
                                                   nullptr);

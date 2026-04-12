@@ -56,7 +56,7 @@ void LoadParamsFromBuffer(const Context& dev_ctx,
     // Get data from fin to tensor
     phi::DeserializeFromStream(*buffer, tensor, dev_ctx);
     auto in_dtype = tensor->dtype();
-    auto out_dtype = load_as_fp16 ? phi::DataType::FLOAT16 : in_dtype;
+    auto out_dtype = load_as_fp16 ? DataType::FLOAT16 : in_dtype;
     if (in_dtype != out_dtype) {
       // convert to float16 tensor
       auto in_kernel_type =
@@ -174,7 +174,7 @@ void LoadParamsFromBuffer(const Context& dev_ctx,
       DeserializeFromStream(*buffer, tensor, dev_ctx);
 
       auto in_dtype = tensor->dtype();
-      auto out_dtype = load_as_fp16 ? phi::DataType::FLOAT16 : in_dtype;
+      auto out_dtype = load_as_fp16 ? DataType::FLOAT16 : in_dtype;
 
       if (in_dtype != out_dtype) {
         // convert to float16 tensor
