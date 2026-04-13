@@ -20,7 +20,7 @@
 
 #include <c10/macros/Macros.h>
 #include <c10/util/ArrayRef.h>
-#include <c10/util/Exception.h>
+#include <torch/headeronly/util/Exception.h>
 
 #include <algorithm>
 #include <cstddef>
