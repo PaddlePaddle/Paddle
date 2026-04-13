@@ -21,6 +21,18 @@
 #if defined(__CUDACC__)
 #define PADDLE_CUDA_BF16
 #include <cuda_bf16.h>
+#elif defined(__HIPCC__)
+// Provide a CUDA-BF16 compatible surface for HIP compilation units.
+// Many GPU kernels use __nv_bfloat16* and conversion intrinsics guarded by
+// PADDLE_CUDA_BF16. ROCm/HIP provides equivalent types in hip_bfloat16.h.
+#define PADDLE_CUDA_BF16
+#include <hip/hip_bfloat16.h>
+#ifndef __nv_bfloat16
+#define __nv_bfloat16 __hip_bfloat16
+#endif
+#ifndef __nv_bfloat162
+#define __nv_bfloat162 __hip_bfloat162
+#endif
 #endif
 
 #ifndef PADDLE_WITH_HIP

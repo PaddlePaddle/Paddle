@@ -17,6 +17,7 @@ limitations under the License. */
 #include <algorithm>
 
 #include "paddle/common/hostdevice.h"
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 #if defined(__xpu__)
@@ -29,6 +30,16 @@ template <typename T>
 struct NeedVectorized {
   static constexpr bool value = sizeof(T) <= sizeof(float);
 };
+
+#ifdef PADDLE_WITH_HIP
+// NOTE: ROCm/HIP has had stability issues with the vectorized
+// load/store path for bfloat16 in some toolchain/device combos.
+// Fall back to the scalar path to prioritize correctness.
+template <>
+struct NeedVectorized<phi::dtype::bfloat16> {
+  static constexpr bool value = false;
+};
+#endif
 
 template <int N>
 struct MaxWithOne {
