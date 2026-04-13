@@ -386,7 +386,7 @@ jobs:
     timeout-minutes: 60
     env:
       TASK: fleet-ci-paddle-build-whl-${{ github.event.pull_request.number }}
-      docker_image: "ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddle:cuda129-coverage-test"
+      docker_image: "ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddle:ubuntu24-cuda129-dev"
     steps:
       - name: Check docker image and run container
         env:
@@ -501,7 +501,7 @@ jobs:
       - name: Check docker image and run container
         env:
           GPU_DEVICES: ${{ env.GPU_DEVICES }}
-          docker_image: "ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddle:cuda129-coverage-test"
+          docker_image: "ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddle:ubuntu24-cuda129-dev"
         run: |
           container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
@@ -603,7 +603,7 @@ jobs:
     env:
       PIP_CACHE_DIR: /root/.cache/pip
       TASK: paddle-fleet-CI-${{ github.event.pull_request.number }}-multi-card_test
-      docker_image: "ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddle:cuda129-coverage-test"
+      docker_image: "ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddle:ubuntu24-cuda129-dev"
     steps:
       - name: Check docker image and run container
         run: |
