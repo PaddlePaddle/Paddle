@@ -143,6 +143,7 @@ python ${PADDLE_ROOT}/ci/coverage_diff.py coverage-diff.info git-diff.out > cove
 mv -f coverage-diff.tmp coverage-diff.info
 
 cp coverage-diff.info coverage_files
+cp coverage-full.info coverage_files/
 
 # python coverage
 
@@ -190,3 +191,4 @@ python ${PADDLE_ROOT}/ci/coverage_diff.py python-coverage-diff.info python-git-d
 mv -f python-coverage-diff.tmp python-coverage-diff.info
 
 cp python-coverage-diff.info coverage_files
+cp python-coverage-full.info coverage_files/
