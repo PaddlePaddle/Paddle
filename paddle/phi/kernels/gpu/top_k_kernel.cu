@@ -418,8 +418,12 @@ void TopkKernelCuda(const Context& dev_ctx,
 
   // Handle empty input
   if (x.numel() == 0) {
-    phi::Full<T, Context>(dev_ctx, out->dims(), NAN, out);
-    phi::Full<int64_t, Context>(dev_ctx, indices->dims(), 0, indices);
+    phi::Full<T, Context>(
+        dev_ctx, phi::vectorize(out->dims()), static_cast<T>(NAN), out);
+    phi::Full<int64_t, Context>(dev_ctx,
+                                phi::vectorize(indices->dims()),
+                                static_cast<int64_t>(0),
+                                indices);
     return;
   }
 
