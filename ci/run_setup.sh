@@ -300,7 +300,8 @@ EOF
               ${PYTHON_EXECUTABLE} setup.py $1 --plat-name=macosx_10_9_x86_64;build_error=$?
 	    fi
         else
-            ${PYTHON_EXECUTABLE} setup.py $1;build_error=$?
+            ${PYTHON_EXECUTABLE} setup.py $1 2>&1 | grep -v -E "^\[[0-9]+/[0-9]+\]"
+            build_error=${PIPESTATUS[0]}
         fi
     else
         if [ "$SYSTEM" == "Darwin" ]; then
@@ -310,7 +311,8 @@ EOF
               python3 setup.py $1 --plat-name=macosx_10_9_x86_64;build_error=$?
 	    fi
         else
-            python setup.py $1;build_error=$?
+            python setup.py $1 2>&1 | grep -v -E "^\[[0-9]+/[0-9]+\]"
+            build_error=${PIPESTATUS[0]}
         fi
     fi
 
