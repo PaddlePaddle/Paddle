@@ -95,7 +95,8 @@ inline paddle::Tensor _PD_CopyTensorToPinnedPlace(
     auto src_dense = std::dynamic_pointer_cast<phi::DenseTensor>(src.impl());
     if (src_dense && src_dense->meta().is_contiguous() &&
         src_dense->meta().offset == 0) {
-      auto bytes = src_dense->memory_size();
+      auto bytes = static_cast<size_t>(src_dense->numel()) *
+                   phi::SizeOf(src_dense->dtype());
       auto holder = _PD_CreateMappedPinnedAllocation(bytes, pinned_place);
       if (bytes > 0) {
         std::memcpy(holder->ptr(), src_dense->data(), bytes);
