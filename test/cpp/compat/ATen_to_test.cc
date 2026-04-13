@@ -228,4 +228,19 @@ TEST(TensorToTest, ToDevice_GPUToCPU) {
   ASSERT_EQ(result.device().type(), c10::DeviceType::CPU);
   ASSERT_NEAR(result.item<float>(), 7.0f, 1e-5f);
 }
+
+TEST(TensorToTest, ToDeviceWithoutIndexUsesCurrentCudaDevice) {
+  if (c10::cuda::device_count() < 2) {
+    return;
+  }
+  c10::cuda::CUDAGuard guard(1);
+  at::Tensor t = at::tensor({5.0f}, at::kFloat);
+  at::Tensor result = t.to(c10::Device(c10::kCUDA),
+                           at::kFloat,
+                           /*non_blocking=*/false,
+                           /*copy=*/false);
+
+  ASSERT_EQ(result.device().type(), c10::DeviceType::CUDA);
+  ASSERT_EQ(result.device().index(), 1);
+}
 #endif
