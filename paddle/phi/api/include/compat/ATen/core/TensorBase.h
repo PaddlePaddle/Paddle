@@ -25,6 +25,7 @@
 #include <c10/core/SymIntArrayRef.h>
 #include <c10/core/TensorOptions.h>
 #include <utils/int_array_ref_conversion.h>
+#include <utils/mapped_pinned_tensor.h>
 #include <utils/scalar_type_conversion.h>
 #include <algorithm>
 #include <iostream>
@@ -112,14 +113,10 @@ class PADDLE_API TensorBase {
     return backend_str + scalar_type_str + "Type";
   }
 
-  // Returns the tensor's current data pointer. Storage mutations flow through
-  // the compat holder view, so tensor.data_ptr() stays aligned with storage()
-  // while preserving tensor-specific offsets for views.
+  // Returns the pointer kernels should use. For CUDA-pinned tensors this is
+  // the mapped device-visible alias rather than the raw host address.
   void* data_ptr() const {
-    if (!tensor_.defined()) {
-      return nullptr;
-    }
-    return const_cast<void*>(tensor_.data());
+    return compat::_PD_GetKernelVisibleDataPtr(tensor_);
   }
   template <typename T>
   T* data_ptr() const {

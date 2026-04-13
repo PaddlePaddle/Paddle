@@ -23,6 +23,7 @@
 #include <c10/core/Stream.h>
 #include <c10/core/SymIntArrayRef.h>
 #include <c10/util/OptionalArrayRef.h>
+#include <utils/mapped_pinned_tensor.h>
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/int_array.h"
@@ -126,10 +127,12 @@ class Tensor : public TensorBase {
     return *this;
   }
 
-  void* data_ptr() const { return const_cast<void*>(tensor_.data()); }
+  void* data_ptr() const {
+    return compat::_PD_GetKernelVisibleDataPtr(tensor_);
+  }
   template <typename T>
   T* data_ptr() const {
-    return const_cast<T*>(tensor_.data<T>());
+    return static_cast<T*>(data_ptr());
   }
 
   template <typename T>
@@ -176,9 +179,7 @@ class Tensor : public TensorBase {
 #endif
   }
 
-  const void* const_data_ptr() const {
-    return const_cast<void*>(tensor_.data());
-  }
+  const void* const_data_ptr() const { return data_ptr(); }
 
   template <typename T, std::enable_if_t<!std::is_const_v<T>, int> = 0>
   const T* const_data_ptr() const {
@@ -190,7 +191,7 @@ class Tensor : public TensorBase {
     return TensorBase::const_data_ptr<T>();
   }
 
-  void* mutable_data_ptr() const { return const_cast<void*>(tensor_.data()); }
+  void* mutable_data_ptr() const { return data_ptr(); }
 
   template <typename T>
   T* mutable_data_ptr() const {
@@ -489,7 +490,7 @@ class Tensor : public TensorBase {
 #endif
     }
 
-    return tensor_.copy_to(pinned_place, true);
+    return compat::_PD_CopyTensorToPinnedPlace(tensor_, pinned_place);
   }
 
   at::Tensor narrow_copy(int64_t dim, int64_t start, int64_t length) const;

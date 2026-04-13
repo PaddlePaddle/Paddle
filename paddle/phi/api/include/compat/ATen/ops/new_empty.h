@@ -16,6 +16,7 @@
 
 #include <ATen/core/Tensor.h>
 #include <c10/core/TensorOptions.h>
+#include <utils/mapped_pinned_tensor.h>
 #include <utils/pinned_place.h>
 #include <optional>
 #include <string_view>
@@ -43,9 +44,8 @@ inline Tensor Tensor::new_empty(at::IntArrayRef size,
           "pin_memory=true requires device to be CPU, but got non-CPU device");
     }
     phi::Place pinned_place = compat::_PD_GetCreatePinnedPlace(pd_place);
-    auto dense_cpu = paddle::experimental::empty(
-        size._PD_ToPaddleIntArray(), pd_dtype, phi::CPUPlace());
-    result = dense_cpu.copy_to(pinned_place, /*blocking=*/true);
+    result = compat::_PD_EmptyPinnedTensor(
+        size._PD_ToPaddleIntArray(), pd_dtype, pinned_place);
   } else {
     result = paddle::experimental::empty(
         size._PD_ToPaddleIntArray(), pd_dtype, pd_place);

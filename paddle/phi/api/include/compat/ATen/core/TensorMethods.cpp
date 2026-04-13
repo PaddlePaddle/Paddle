@@ -36,24 +36,24 @@ void check_type(const TensorBase& tensor,
   template <>                                                       \
   PADDLE_API const T* TensorBase::const_data_ptr() const {          \
     check_type(*this, ScalarType::name, #name);                     \
-    return const_cast<T*>(tensor_.data<T>());                       \
+    return static_cast<const T*>(data_ptr());                       \
   }                                                                 \
                                                                     \
   template <>                                                       \
   PADDLE_API const T* TensorBase::const_data_ptr<const T>() const { \
     check_type(*this, ScalarType::name, #name);                     \
-    return const_cast<T*>(tensor_.data<std::remove_const_t<T>>());  \
+    return static_cast<const std::remove_const_t<T>*>(data_ptr());  \
   }                                                                 \
                                                                     \
   template <>                                                       \
   PADDLE_API T* TensorBase::mutable_data_ptr() const {              \
     check_type(*this, ScalarType::name, #name);                     \
-    return const_cast<PaddleTensor&>(tensor_).data<T>();            \
+    return static_cast<T*>(data_ptr());                             \
   }                                                                 \
                                                                     \
   template <>                                                       \
   PADDLE_API T* TensorBase::data_ptr() const {                      \
-    return const_cast<T*>(tensor_.data<T>());                       \
+    return static_cast<T*>(data_ptr());                             \
   }
 
 AT_FORALL_SCALAR_TYPES_WITH_COMPLEX(DEFINE_CAST)  // missing half and float16
