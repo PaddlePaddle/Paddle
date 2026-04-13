@@ -58,6 +58,7 @@ from paddle.distributed.fleet.utils.tensor_fusion_helper import (
 g_shard_bypass_dygraph_optimizer = int(
     os.environ.get("FLAGS_shard_bypass_dygraph_optimizer", 0)
 )
+g_shard_fused_gradient = int(os.environ.get("FLAGS_shard_fused_gradient", 0))
 
 
 def _is_trainable(param):
@@ -231,6 +232,12 @@ class MuonShardingOptimizer:
                     for p in params:
                         self._param2rank_2d_by_color[color_key][p.name] = rank
 
+        # add sort 2d params
+        for color_key, params_2d in self._params_2d_by_color.items():
+            params_2d.sort(
+                key=lambda p: self._param2rank_2d_by_color[color_key][p.name]
+            )
+
         # ---- Backward compatibility: expose legacy attributes ----
         # These are kept for any external code that might reference them
         self._params_2d = self._params_2d_by_color.get(None, [])
@@ -243,6 +250,13 @@ class MuonShardingOptimizer:
         self._param2rank_2d_moe = self._param2rank_2d_by_color.get(
             'moe_expert', {}
         )
+
+        self._use_fuse_gradients = g_shard_fused_gradient
+        # ---- Build comm buffers for 2D params (V1-style) ----
+        if self._use_fuse_gradients:
+            if not hasattr(self, 'comm_buffer_2d'):
+                self.comm_buffer_2d = self._build_2d_comm_buffers()
+                self.comm_buffer_2d.sort(key=lambda x: x._dst)
 
         # ---- Step 3: Build comm buffers for 1D params (V2-style) ----
         self._slice_params = {}
@@ -423,6 +437,50 @@ class MuonShardingOptimizer:
 
         return mapping
 
+    def _build_2d_comm_buffers(self):
+        """Build communication buffers for 2D (Tensor-wise) parameters using all-reduce."""
+        group_size = (
+            self.comm_buffer_size_MB * 1024 * 1024
+            if self.comm_buffer_size_MB > 0
+            else 256 * 1024 * 1024
+        )
+        comm_buffers = []
+
+        for color_key, params_2d in self._params_2d_by_color.items():
+            group_info = self._color_to_group_info.get(color_key, {})
+            comm_group = group_info.get('group', None)
+
+            fused_parameter_group = defaultdict(list)
+
+            for p in params_2d:
+                dst_rank = self._param2rank_2d_by_color[color_key][p.name]
+                fused_parameter_group[dst_rank].append(p)
+
+            absolute_dst_ranks = {
+                rank: comm_group.ranks[rank] for rank in fused_parameter_group
+            }
+
+            for dst, params in fused_parameter_group.items():
+                var_groups = assign_group_by_size(params, group_size)
+                abs_dst = absolute_dst_ranks[dst]
+
+                buffer = [
+                    FusedCommBuffer(
+                        group_idx,
+                        parameters,
+                        comm_group,
+                        self.accumulate_steps,
+                        act=HOOK_ACTION.REDUCE,
+                        dst=abs_dst,
+                        release_grads=False,
+                        use_reduce_avg=True,
+                    )
+                    for group_idx, parameters in var_groups.items()
+                ]
+                comm_buffers.extend(buffer)
+
+        return comm_buffers
+
     # ------------------------------------------------------------------
     # 1D slice creation (V2-style)
     # ------------------------------------------------------------------
@@ -583,21 +641,26 @@ class MuonShardingOptimizer:
             paddle.device.synchronize()
 
         with framework.no_grad():
-            # --- Non-MoE 2D params: reduce to owner rank via sharding_group ---
-            sharding_group = hcg.get_sharding_parallel_group()
-            self._reduce_2d_grads(
-                self._params_2d, self._param2rank_2d, sharding_group
-            )
+            # --- 2D params: reduce via comm buffers | per tensors ---
+            if self._use_fuse_gradients:
+                for comm_buffer in self.comm_buffer_2d:
+                    comm_buffer._comm_grads()
+            else:
+                # --- Non-MoE 2D params: reduce to owner rank via sharding_group ---
+                sharding_group = hcg.get_sharding_parallel_group()
+                self._reduce_2d_grads(
+                    self._params_2d, self._param2rank_2d, sharding_group
+                )
 
-            # --- MoE expert 2D params: reduce to owner rank via moe_sharding_group ---
-            if self._params_2d_moe and self._moe_sharding_group is not None:
-                if self._moe_sharding_world_size > 1:
-                    self._reduce_2d_grads(
-                        self._params_2d_moe,
-                        self._param2rank_2d_moe,
-                        self._moe_sharding_group,
-                    )
-                # When moe_sharding_degree=1, no reduce needed (single rank group)
+                # --- MoE expert 2D params: reduce to owner rank via moe_sharding_group ---
+                if self._params_2d_moe and self._moe_sharding_group is not None:
+                    if self._moe_sharding_world_size > 1:
+                        self._reduce_2d_grads(
+                            self._params_2d_moe,
+                            self._param2rank_2d_moe,
+                            self._moe_sharding_group,
+                        )
+                    # When moe_sharding_degree=1, no reduce needed (single rank group)
 
             # --- 1D params: reduce-scatter via comm buffers ---
             for comm_buffer in self._comm_buffer_list:
@@ -608,6 +671,12 @@ class MuonShardingOptimizer:
 
                 if not self.comm_overlap:
                     comm_buffer._comm_grads()
+
+            # wait for all comm_buffer tasks to finish
+            if self._use_fuse_gradients:
+                for comm_buffer in self.comm_buffer_2d:
+                    comm_buffer.scale_grads()
+            for comm_buffer in self._comm_buffer_list:
                 comm_buffer.scale_grads()
 
     def filter_parameters(self, parameter_list, hcg):
@@ -721,6 +790,11 @@ class MuonShardingOptimizer:
             for comm_buffer in self._comm_buffer_list:
                 if comm_buffer.need_reduce_scale_sync():
                     comm_buffer._clear_grad_storage()
+
+            if self._use_fuse_gradients:
+                for comm_buffer in self.comm_buffer_2d:
+                    if comm_buffer.need_reduce_scale_sync():
+                        comm_buffer._clear_grad_storage()
 
     # ------------------------------------------------------------------
     # Optimizer step
