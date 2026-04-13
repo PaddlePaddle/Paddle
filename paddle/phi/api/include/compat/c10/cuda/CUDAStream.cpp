@@ -50,8 +50,6 @@ struct DevicePools {
 };
 
 std::vector<std::unique_ptr<DevicePools>> g_pools;
-thread_local std::vector<std::unique_ptr<phi::CUDAStream>> tls_current_streams;
-thread_local bool tls_streams_initialized = false;
 
 void initGlobalState() {
   std::call_once(g_init_once, []() {
@@ -99,13 +97,6 @@ inline void check_gpu(c10::DeviceIndex device_index) {
               " is out of index range [0, ",
               static_cast<int>(g_num_gpus),
               ")");
-}
-
-inline void initTLSCurrentStreams() {
-  if (!tls_streams_initialized) {
-    tls_current_streams.resize(g_num_gpus);
-    tls_streams_initialized = true;
-  }
 }
 
 inline phi::GPUContext* getMutableGPUContext(c10::DeviceIndex device_index) {
@@ -209,7 +200,6 @@ CUDAStream getCurrentCUDAStream(c10::DeviceIndex device_index) {
         static_cast<c10::DeviceIndex>(phi::backends::gpu::GetCurrentDeviceId());
   }
   check_gpu(device_index);
-  initTLSCurrentStreams();
   auto raw = getPaddleCurrentStream(device_index);
   if (raw == nullptr) {
     return getDefaultCUDAStream(device_index);
@@ -225,16 +215,7 @@ void setCurrentCUDAStream(CUDAStream stream) {
   initGlobalState();
   c10::DeviceIndex idx = stream.unwrap().device_index();
   check_gpu(idx);
-  initTLSCurrentStreams();
-  auto& current_stream = tls_current_streams[idx];
-  if (!current_stream) {
-    current_stream =
-        std::make_unique<phi::CUDAStream>(phi::GPUPlace(idx), stream.stream());
-  } else {
-    current_stream->set_raw_stream(stream.stream());
-  }
-  getMutableGPUContext(idx)->SetCUDAStream(current_stream.get(),
-                                           /*clear=*/false);
+  getMutableGPUContext(idx)->SetStream(stream.stream());
 #else
   (void)stream;
 #endif
