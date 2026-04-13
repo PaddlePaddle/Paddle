@@ -239,7 +239,7 @@ void MinMaxWithIndexOpCUDAKernel(const Context& dev_ctx,
       common::errors::InvalidArgument(
           "(min/max)_with_index input numel must > 0, bug got %d", x.numel()));
   phi::VisitDataTypeTiny(
-      phi::DataType::INT64,
+      DataType::INT64,
       VisitDataCudaMinMaxWithIndexFunctor<Context, T, Reducer>(
           dev_ctx, x, axis.to<int64_t>(), keepdims, flatten, val_out, ind_out));
 }

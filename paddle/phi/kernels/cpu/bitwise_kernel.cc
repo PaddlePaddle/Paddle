@@ -86,7 +86,7 @@ void BitwiseNotKernel(const Context& dev_ctx,
   T* out_data = dev_ctx.template Alloc<T>(out);
   size_t numel = x.numel();
   funcs::BitwiseNotFunctor<T> func;
-  phi::Transform<Context> trans;
+  Transform<Context> trans;
   trans(dev_ctx, x_data, x_data + numel, out_data, func);
 }
 

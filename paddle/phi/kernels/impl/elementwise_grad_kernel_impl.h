@@ -48,7 +48,7 @@ void MixedPrecisionAddGradImpl(const Context& dev_ctx,
   } else if (x_grad == nullptr && y_grad != nullptr &&
              y_grad->dims() == out_grad.dims()) {
     VLOG(4) << "Mixed precision: only y_grad needed, no reduce";
-    phi::CastKernel<T>(dev_ctx, out_grad, y.dtype(), y_grad);
+    CastKernel<T>(dev_ctx, out_grad, y.dtype(), y_grad);
   } else {
     grad_func(dev_ctx, x, y, *out, out_grad, x_grad, y_grad, axis);
   }
@@ -107,7 +107,7 @@ void AddDoubleGradImpl(const Context& dev_ctx,
         std::vector<DenseTensor*> outs = {ddout};
         ExpandKernel<T, Context>(dev_ctx,
                                  *ddy_tensor,
-                                 IntArray{phi::vectorize<int64_t>(out_shape)},
+                                 IntArray{vectorize<int64_t>(out_shape)},
                                  ddout);
       } else {
         VLOG(4) << "Special case when ddx is not needed and ddy doesn't need "
@@ -122,7 +122,7 @@ void AddDoubleGradImpl(const Context& dev_ctx,
         std::vector<DenseTensor*> outs = {ddout};
         ExpandKernel<T, Context>(dev_ctx,
                                  *ddx_tensor,
-                                 IntArray{phi::vectorize<int64_t>(out_shape)},
+                                 IntArray{vectorize<int64_t>(out_shape)},
                                  ddout);
       } else {
         VLOG(4) << "Special case when ddx is not needed and ddy doesn't need "

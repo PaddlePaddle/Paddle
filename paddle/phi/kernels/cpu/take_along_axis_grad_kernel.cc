@@ -43,7 +43,7 @@ void TakeAlongAxisGradKernel(const Context& dev_ctx,
   functor(dev_ctx, x_grad, static_cast<T>(0));
 
   const auto& index_type = index.dtype();
-  if (index_type == phi::DataType::INT32) {
+  if (index_type == DataType::INT32) {
     funcs::cpu_scatter_add_kernel<T, int32_t>(
         *x_grad,
         axis,
@@ -51,7 +51,7 @@ void TakeAlongAxisGradKernel(const Context& dev_ctx,
         out_grad,
         true,
         dev_ctx);  // the gradient of gather is scatter
-  } else if (index_type == phi::DataType::INT64) {
+  } else if (index_type == DataType::INT64) {
     funcs::cpu_scatter_add_kernel<T, int64_t>(
         *x_grad, axis, index, out_grad, true, dev_ctx);
   }

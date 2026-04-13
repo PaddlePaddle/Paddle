@@ -41,16 +41,16 @@ void ScatterKernel(const Context &dev_ctx,
   // use template class to support int32_t and int64_t
   auto index_type = index.dtype();
   bool index_type_match =
-      index_type == phi::DataType::INT32 || index_type == phi::DataType::INT64;
+      index_type == DataType::INT32 || index_type == DataType::INT64;
   PADDLE_ENFORCE_EQ(index_type_match,
                     true,
                     common::errors::InvalidArgument(
                         "scatter_op Index holds the wrong type, it holds [%s],"
                         "but desires to be [%s] or [%s].",
                         index_type,
-                        phi::DataType::INT32,
-                        phi::DataType::INT64));
-  if (index_type == phi::DataType::INT32) {
+                        DataType::INT32,
+                        DataType::INT64));
+  if (index_type == DataType::INT32) {
     funcs::GPUScatterAssign<T, int32_t>(
         dev_ctx, updates, index, out, overwrite);
   } else {

@@ -97,47 +97,43 @@ fused_attentionGradNodeCompat::operator()(
                       egr::Controller::Instance().GenerateUniqueName())}});
   }
 
+  // NOTE: These intermediate grad outputs are always needed by the
+  // fused_attention_grad kernel for internal computation, regardless of whether
+  // downstream consumers exist. Remove IsStopGradient() checks to avoid
+  // nullptr dereference when called via paddle.grad().
   auto QKVOut = egr::EagerUtils::RecoverTensorWrapper(&this->QKVOut_);
-  if (QKVOut.defined() && (!out_metas[15].empty()) &&
-      (!out_metas[15][0].IsStopGradient()))
+  if (QKVOut.defined())
     outs0["QKVOut@GRAD"] = {std::make_shared<egr::EagerVariable>(
         egr::Controller::Instance().GenerateUniqueName())};
   auto QKTVOut = egr::EagerUtils::RecoverTensorWrapper(&this->QKTVOut_);
-  if (QKTVOut.defined() && (!out_metas[16].empty()) &&
-      (!out_metas[16][0].IsStopGradient()))
+  if (QKTVOut.defined())
     outs0["QKTVOut@GRAD"] = {std::make_shared<egr::EagerVariable>(
         egr::Controller::Instance().GenerateUniqueName())};
   auto TransposeOut2 =
       egr::EagerUtils::RecoverTensorWrapper(&this->TransposeOut2_);
-  if (TransposeOut2.defined() && (!out_metas[17].empty()) &&
-      (!out_metas[17][0].IsStopGradient()))
+  if (TransposeOut2.defined())
     outs0["TransposeOut2@GRAD"] = {std::make_shared<egr::EagerVariable>(
         egr::Controller::Instance().GenerateUniqueName())};
   auto QKOut = egr::EagerUtils::RecoverTensorWrapper(&this->QKOut_);
-  if (QKOut.defined() && (!out_metas[18].empty()) &&
-      (!out_metas[18][0].IsStopGradient()))
+  if (QKOut.defined())
     outs0["QKOut@GRAD"] = {std::make_shared<egr::EagerVariable>(
         egr::Controller::Instance().GenerateUniqueName())};
   auto SoftmaxOut = egr::EagerUtils::RecoverTensorWrapper(&this->SoftmaxOut_);
-  if (SoftmaxOut.defined() && (!out_metas[19].empty()) &&
-      (!out_metas[19][0].IsStopGradient()))
+  if (SoftmaxOut.defined())
     outs0["SoftmaxOut@GRAD"] = {std::make_shared<egr::EagerVariable>(
         egr::Controller::Instance().GenerateUniqueName())};
   auto AttnDropoutOut =
       egr::EagerUtils::RecoverTensorWrapper(&this->AttnDropoutOut_);
-  if (AttnDropoutOut.defined() && (!out_metas[20].empty()) &&
-      (!out_metas[20][0].IsStopGradient()))
+  if (AttnDropoutOut.defined())
     outs0["AttnDropoutOut@GRAD"] = {std::make_shared<egr::EagerVariable>(
         egr::Controller::Instance().GenerateUniqueName())};
   auto FMHAOut = egr::EagerUtils::RecoverTensorWrapper(&this->FMHAOut_);
-  if (FMHAOut.defined() && (!out_metas[21].empty()) &&
-      (!out_metas[21][0].IsStopGradient()))
+  if (FMHAOut.defined())
     outs0["FMHAOut@GRAD"] = {std::make_shared<egr::EagerVariable>(
         egr::Controller::Instance().GenerateUniqueName())};
   auto OutLinearOut =
       egr::EagerUtils::RecoverTensorWrapper(&this->OutLinearOut_);
-  if (OutLinearOut.defined() && (!out_metas[22].empty()) &&
-      (!out_metas[22][0].IsStopGradient()))
+  if (OutLinearOut.defined())
     outs0["OutLinearOut@GRAD"] = {std::make_shared<egr::EagerVariable>(
         egr::Controller::Instance().GenerateUniqueName())};
 
@@ -150,8 +146,7 @@ fused_attentionGradNodeCompat::operator()(
         (!out_metas[4][0].IsStopGradient()))
       outs0["QKVBias@GRAD"] = {std::make_shared<egr::EagerVariable>(
           egr::Controller::Instance().GenerateUniqueName())};
-    if (QKVBiasOut.defined() && (!out_metas[11].empty()) &&
-        (!out_metas[11][0].IsStopGradient()))
+    if (QKVBiasOut.defined())
       outs0["QKVBiasOut@GRAD"] = {std::make_shared<egr::EagerVariable>(
           egr::Controller::Instance().GenerateUniqueName())};
   }
@@ -161,8 +156,7 @@ fused_attentionGradNodeCompat::operator()(
     ins0["SrcMask"] = egr::EagerUtils::TrySyncToVars(SrcMask);
     auto SrcMaskOut = egr::EagerUtils::RecoverTensorWrapper(&this->SrcMaskOut_);
     ins0["SrcMaskOut"] = egr::EagerUtils::TrySyncToVars(SrcMaskOut);
-    if (SrcMaskOut.defined() && (!out_metas[12].empty()) &&
-        (!out_metas[12][0].IsStopGradient()))
+    if (SrcMaskOut.defined())
       outs0["SrcMaskOut@GRAD"] = {std::make_shared<egr::EagerVariable>(
           egr::Controller::Instance().GenerateUniqueName())};
   }
@@ -199,8 +193,7 @@ fused_attentionGradNodeCompat::operator()(
     auto LnOut = egr::EagerUtils::RecoverTensorWrapper(&this->LnOut_);
     if (LnOut.defined()) {
       ins0["LnOut"] = egr::EagerUtils::TrySyncToVars(LnOut);
-      if (LnOut.defined() && (!out_metas[13].empty()) &&
-          (!out_metas[13][0].IsStopGradient()))
+      if (LnOut.defined())
         outs0["LnOut@GRAD"] = {std::make_shared<egr::EagerVariable>(
             egr::Controller::Instance().GenerateUniqueName())};
     }
@@ -241,8 +234,7 @@ fused_attentionGradNodeCompat::operator()(
         egr::EagerUtils::TrySyncToVars(BiasDropoutResidualOut);
     ins0["Ln2Mean"] = egr::EagerUtils::TrySyncToVars(Ln2Mean);
     ins0["Ln2Variance"] = egr::EagerUtils::TrySyncToVars(Ln2Variance);
-    if (BiasDropoutResidualOut.defined() && (!out_metas[14].empty()) &&
-        (!out_metas[14][0].IsStopGradient()))
+    if (BiasDropoutResidualOut.defined())
       outs0["BiasDropoutResidualOut@GRAD"] = {
           std::make_shared<egr::EagerVariable>(
               egr::Controller::Instance().GenerateUniqueName())};

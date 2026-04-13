@@ -7,7 +7,12 @@ gather_srcs(
   intrinsic.cc
   cinn_runtime.cc
   intrinsic_types.cc
-  backend_api.cc)
+  backend_api.cc
+  custom_device/custom_device_backend_api.cc
+  custom_device/custom_device_util.cc
+  custom_device/custom_device_intrinsics.cc
+  custom_device/custom_device_intrinsics_reduce.cc
+  custom_device/custom_device_intrinsics_float16.cc)
 
 cinn_cc_library(
   cinn_runtime SRCS cinn_runtime.cc buffer.cc #cinn_x86_device_impl.cc
@@ -25,4 +30,8 @@ endif()
 
 if(WITH_SYCL)
   add_subdirectory(sycl)
+endif()
+
+if(WITH_CUSTOM_DEVICE)
+  add_subdirectory(custom_device)
 endif()

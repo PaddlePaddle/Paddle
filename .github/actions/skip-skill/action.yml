@@ -1,0 +1,47 @@
+name: 'PR Skip Check'
+description: 'Check if PR should skip CI based on file paths'
+author: 'Paddle CI Team'
+
+inputs:
+  ignore-paths:
+    description: 'Comma-separated paths to ignore (e.g., "skill/**,docs/**,**.md")'
+    required: true
+    default: '.agents/skills/**'
+  base-ref:
+    description: 'Base branch (defaults to PR target branch)'
+    required: false
+    default: ${{ github.event.pull_request.base.ref }}
+
+outputs:
+  should-skip:
+    description: 'Whether CI should be skipped (true/false)'
+    value: ${{ steps.check.outputs.should-skip }}
+  is-pr:
+    description: 'Whether it is a PR event'
+    value: ${{ steps.check.outputs.is-pr }}
+  changed-files:
+    description: 'List of all changed files (newline separated)'
+    value: ${{ steps.check.outputs.changed-files }}
+  non-ignored-files:
+    description: 'List of files not in ignored paths'
+    value: ${{ steps.check.outputs.non-ignored-files }}
+  total-count:
+    description: 'Total number of changed files'
+    value: ${{ steps.check.outputs.total-count }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+
+    - name: Run PR skip check script
+      id: check
+      shell: bash
+      run: bash ${{ github.action_path }}/check_skip.sh
+      env:
+        IGNORE_PATHS: ${{ inputs.ignore-paths }}
+        BASE_REF: ${{ inputs.base-ref }}
+        GITHUB_EVENT_NAME: ${{ github.event_name }}

@@ -201,7 +201,7 @@ PADDLE_API void AdamDenseKernel(const Context& dev_ctx,
         errors::InvalidArgument("Input(SkipUpdate) size must be 1, but get %d",
                                 skip_update->numel()));
     std::vector<bool> skip_update_vec;
-    phi::TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
+    TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
     skip_update_ = skip_update_vec[0];
   }
   // skip_update=true, just copy input to output, and TensorCopy will call
@@ -262,7 +262,7 @@ PADDLE_API void AdamDenseKernel(const Context& dev_ctx,
 
   if (beta1_pow.place() == CPUPlace() && beta2_pow.place() == CPUPlace()) {
     // Compute with betapow in REG
-    if (grad_type == phi::DataType::FLOAT32) {
+    if (grad_type == DataType::FLOAT32) {
       AdamKernelREG<T, float, MT><<<blocks, threads, 0, dev_ctx.stream()>>>(
           beta1_,
           beta2_,
@@ -313,7 +313,7 @@ PADDLE_API void AdamDenseKernel(const Context& dev_ctx,
           beta2_ * beta2_pow.data<MT>()[0];
     }
   } else {
-    if (grad_type == phi::DataType::FLOAT32) {
+    if (grad_type == DataType::FLOAT32) {
       AdamKernelMEM<T, float, MT><<<blocks, threads, 0, dev_ctx.stream()>>>(
           beta1_,
           beta2_,
@@ -424,7 +424,7 @@ void MergedAdamKernel(
     if (beta1_pow[idx]->place() == CPUPlace() &&
         beta2_pow[idx]->place() == CPUPlace()) {
       // Compute with betapow in REG
-      if (grad_type == phi::DataType::FLOAT32) {
+      if (grad_type == DataType::FLOAT32) {
         AdamKernelREG<T, float, MT><<<blocks, threads, 0, dev_ctx.stream()>>>(
             beta1_,
             beta2_,
@@ -475,7 +475,7 @@ void MergedAdamKernel(
             beta2_ * beta2_pow[idx]->data<MT>()[0];
       }
     } else {
-      if (grad_type == phi::DataType::FLOAT32) {
+      if (grad_type == DataType::FLOAT32) {
         AdamKernelMEM<T, float, MT><<<blocks, threads, 0, dev_ctx.stream()>>>(
             beta1_,
             beta2_,

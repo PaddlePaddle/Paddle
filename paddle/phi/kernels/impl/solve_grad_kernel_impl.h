@@ -117,17 +117,17 @@ void SolveGradKernel(const Context& dev_ctx,
       get_broadcast_dims(tmp_x, tmp_y);
   // tmp_dx
   DenseTensor tmp_dx;
-  tmp_dx.Resize(make_ddim(x_broadcast_dims));
+  tmp_dx.Resize(x_broadcast_dims);
   dev_ctx.template Alloc<T>(&tmp_dx);
 
   // tmp_dy
   DenseTensor tmp_dy;
-  tmp_dy.Resize(make_ddim(y_broadcast_dims));
+  tmp_dy.Resize(y_broadcast_dims);
   dev_ctx.template Alloc<T>(&tmp_dy);
 
   DenseTensor tmp_input(x.dtype());
   const auto& new_dims_vec = funcs::getNewDimsVec(x.dims());
-  tmp_input.Resize(make_ddim(new_dims_vec));
+  tmp_input.Resize(new_dims_vec);
   dev_ctx.template Alloc<T>(&tmp_input);
 
   funcs::TransposeNormal<Context, T> trans;
@@ -187,9 +187,9 @@ void SolveGradKernel(const Context& dev_ctx,
     Copy(dev_ctx, tmp_dy, dev_ctx.GetPlace(), false, &dy_help);
 
     // get dims
-    std::vector<std::int64_t> x_dims = common::vectorize(x.dims());
-    std::vector<std::int64_t> y_dims = common::vectorize(y.dims());
-    std::vector<std::int64_t> dout_dims = common::vectorize(dout.dims());
+    std::vector<std::int64_t> x_dims = vectorize(x.dims());
+    std::vector<std::int64_t> y_dims = vectorize(y.dims());
+    std::vector<std::int64_t> dout_dims = vectorize(dout.dims());
 
     if (is_vector_rhs(x, y)) {
       dout_dims.push_back(1);
@@ -198,8 +198,7 @@ void SolveGradKernel(const Context& dev_ctx,
     int y_ndim = y_dims.size();
     int ndim = dout_dims.size();
 
-    const std::vector<std::int64_t> dy_help_dims =
-        common::vectorize(dy_help.dims());
+    const std::vector<std::int64_t> dy_help_dims = vectorize(dy_help.dims());
     std::vector<std::int64_t> dy_broadcast_dims(ndim);
 
     std::fill(
@@ -238,14 +237,13 @@ void SolveGradKernel(const Context& dev_ctx,
     dev_ctx.Alloc(&dx_help, tmp_dx.dtype());
     Copy(dev_ctx, tmp_dx, dev_ctx.GetPlace(), false, &dx_help);
     // get dims
-    std::vector<std::int64_t> x_dims = common::vectorize(x.dims());
-    std::vector<std::int64_t> y_dims = common::vectorize(y.dims());
+    std::vector<std::int64_t> x_dims = vectorize(x.dims());
+    std::vector<std::int64_t> y_dims = vectorize(y.dims());
 
     int x_ndim = x_dims.size();
     int ndim = x_broadcast_dims.size();
 
-    const std::vector<std::int64_t> dx_help_dims =
-        common::vectorize(dx_help.dims());
+    const std::vector<std::int64_t> dx_help_dims = vectorize(dx_help.dims());
     std::vector<std::int64_t> dx_broadcast_dims(ndim);
     std::fill(
         dx_broadcast_dims.data(), dx_broadcast_dims.data() + ndim - x_ndim, 1);

@@ -20,7 +20,7 @@
 #ifdef PADDLE_WITH_XPU_KP
 
 #define KPStream XPUStream
-#define KPDevice phi::XPUContext
+#define KPDevice XPUContext
 #define _ptr_ _global_ptr_
 #define __forceinline__ __inline__
 #define __restrict__

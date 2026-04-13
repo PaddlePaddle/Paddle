@@ -51,7 +51,7 @@ struct SlogDeterminantFunctor {
     std::vector<T> sign_vec;
     std::vector<T> log_vec;
     std::vector<T> output_vec;
-    phi::TensorToVector(input, dev_ctx, &input_vec);
+    TensorToVector(input, dev_ctx, &input_vec);
     for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
       auto begin_iter = input_vec.begin() + i * rank * rank;
       auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
@@ -75,7 +75,7 @@ struct SlogDeterminantFunctor {
     // merge sign_vec and log_vec as final output_vec
     output_vec.insert(output_vec.end(), sign_vec.begin(), sign_vec.end());
     output_vec.insert(output_vec.end(), log_vec.begin(), log_vec.end());
-    phi::TensorFromVector(output_vec, dev_ctx, output);
+    TensorFromVector(output_vec, dev_ctx, output);
   }
 };
 
@@ -92,7 +92,7 @@ struct SlogDeterminantFunctor<phi::dtype::complex<T>, Context> {
     std::vector<phi::dtype::complex<T>> sign_vec;
     std::vector<phi::dtype::complex<T>> log_vec;
     std::vector<phi::dtype::complex<T>> output_vec;
-    phi::TensorToVector(input, dev_ctx, &input_vec);
+    TensorToVector(input, dev_ctx, &input_vec);
     for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
       auto begin_iter = input_vec.begin() + i * rank * rank;
       auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
@@ -117,7 +117,7 @@ struct SlogDeterminantFunctor<phi::dtype::complex<T>, Context> {
     // merge sign_vec and log_vec as final output_vec
     output_vec.insert(output_vec.end(), sign_vec.begin(), sign_vec.end());
     output_vec.insert(output_vec.end(), log_vec.begin(), log_vec.end());
-    phi::TensorFromVector(output_vec, dev_ctx, output);
+    TensorFromVector(output_vec, dev_ctx, output);
   }
 };
 
@@ -125,7 +125,7 @@ template <typename T, typename Context>
 void SlogDeterminantKernel(const Context& dev_ctx,
                            const DenseTensor& x,
                            DenseTensor* out) {
-  auto input_dim = common::vectorize(x.dims());
+  auto input_dim = vectorize(x.dims());
   auto input_dim_size = input_dim.size();
 
   // shape [*, M, M], check whether it contains 0 in '*'.
@@ -141,7 +141,7 @@ void SlogDeterminantKernel(const Context& dev_ctx,
     if (size_0) {
       tmp_dim_vec.insert(tmp_dim_vec.begin(),
                          2);  // make the output dims as same as numpy
-      out->Resize(make_ddim(tmp_dim_vec));
+      out->Resize(tmp_dim_vec);
       dev_ctx.template Alloc<T>(out);
       return;
     }
@@ -197,7 +197,7 @@ struct SlogDeterminantV2Functor {
     std::vector<T> input_vec;
     T* sign_data = dev_ctx.template Alloc<T>(sign);
     T* logdet_data = dev_ctx.template Alloc<T>(logdet);
-    phi::TensorToVector(input, dev_ctx, &input_vec);
+    TensorToVector(input, dev_ctx, &input_vec);
     for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
       auto begin_iter = input_vec.begin() + i * rank * rank;
       auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
@@ -254,7 +254,7 @@ struct SlogDeterminantV2Functor<phi::dtype::complex<T>, Context> {
     std::vector<Complex_T> input_vec;
     Complex_T* sign_data = dev_ctx.template Alloc<Complex_T>(sign);
     T* logdet_data = dev_ctx.template Alloc<T>(logdet);
-    phi::TensorToVector(input, dev_ctx, &input_vec);
+    TensorToVector(input, dev_ctx, &input_vec);
     for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
       auto begin_iter = input_vec.begin() + i * rank * rank;
       auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
@@ -290,7 +290,7 @@ void SlogDeterminantV2Kernel(const Context& dev_ctx,
                              const DenseTensor& x,
                              DenseTensor* sign,
                              DenseTensor* logdet) {
-  auto input_dim = common::vectorize(x.dims());
+  auto input_dim = vectorize(x.dims());
   auto input_dim_size = input_dim.size();
 
   auto batch_count = detail::GetBatchCount(x.dims());

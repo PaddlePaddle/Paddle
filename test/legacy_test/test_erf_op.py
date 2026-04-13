@@ -53,7 +53,7 @@ class TestErfOp(OpTest):
         self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+        self.check_grad(['X'], 'Out', check_pir=True)
 
     def test_check_grad_prim_pir(self):
         # Todo(CZ): float64 loss greater than 1e-8
@@ -123,7 +123,6 @@ class TestErfFP16OP(OpTest):
         self.check_grad(
             ['X'],
             'Out',
-            check_prim=True,
             check_pir=True,
             check_prim_pir=True,
         )
@@ -159,7 +158,6 @@ class TestErfBF16OP(OpTest):
             place,
             ['X'],
             'Out',
-            check_prim=True,
             check_pir=True,
             check_prim_pir=True,
         )

@@ -1078,12 +1078,15 @@ def quantile(
     )
 
 
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def nanquantile(
     x: Tensor,
     q: float | Sequence[float] | Tensor,
     axis: list[int] | int | None = None,
     keepdim: bool = False,
     interpolation: _Interpolation = "linear",
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Compute the quantile of the input as if NaN values in input did not exist.
@@ -1091,6 +1094,7 @@ def nanquantile(
 
     Args:
         x (Tensor): The input Tensor, it's data type can be float32, float64, int32, int64.
+            Alias: ``input``.
         q (int|float|list|Tensor): The q for calculate quantile, which should be in range [0, 1]. If q is a list or
             a 1-D Tensor, each element of q will be calculated and the first dimension of output is same to the number of ``q`` .
             If q is a 0-D Tensor, it will be treated as an integer or float.
@@ -1099,6 +1103,7 @@ def nanquantile(
             If ``axis`` is less than 0, it works the same way as :math:`axis + D`.
             If ``axis`` is a list, quantile is calculated over all elements of given axes.
             If ``axis`` is None, quantile is calculated over all elements of ``x``. Default is None.
+            Alias: ``dim``.
         keepdim (bool, optional): Whether to reserve the reduced dimension(s)
             in the output Tensor. If ``keepdim`` is True, the dimensions of
             the output Tensor is the same as ``x`` except in the reduced
@@ -1107,8 +1112,9 @@ def nanquantile(
         interpolation (str, optional): The interpolation method to use
             when the desired quantile falls between two data points. Must be one of linear, higher,
             lower, midpoint and nearest. Default is linear.
-        name (str|None, optional): Name for the operation (optional, default is None).
-            For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword Args:
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         Tensor, results of quantile along ``axis`` of ``x``.
@@ -1164,4 +1170,5 @@ def nanquantile(
         keepdim=keepdim,
         interpolation=interpolation,
         ignore_nan=True,
+        out=out,
     )

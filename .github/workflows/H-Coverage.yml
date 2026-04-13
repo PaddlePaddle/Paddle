@@ -30,17 +30,44 @@ defaults:
     shell: bash
 
 jobs:
+  check-skill:
+    name: Check file paths
+    if: ${{ github.repository_owner == 'PaddlePaddle' }}
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      can-skip: ${{ steps.skip-skill.outputs.should-skip }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Run skip check
+        id: skip-skill
+        uses: ./.github/actions/skip-skill
+        with:
+          ignore-paths: '.agents/skills/**'
+      - name: Print outputs
+        if: always()
+        run: |
+          echo "=== check-skill outputs ==="
+          echo "steps.skip-skill.outputs.should-skip: '${{ steps.skip-skill.outputs.should-skip }}'"
+          echo "============================"
+
   clone:
     name: Coverage clone
+    needs: [check-skill]
     uses: ./.github/workflows/_Clone-linux.yml
     with:
       workflow-name: "coverage"
       clone_dir: h-ci
+      skill-can-skip: ${{ needs.check-skill.outputs.can-skip }}
 
   check-bypass:
     name: Check bypass
     needs: [clone]
-    if: needs.clone.outputs.can-skip != 'true'
+    if: ${{ needs.clone.outputs.can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
       workflow-name: h-ci
@@ -50,13 +77,12 @@ jobs:
   build:
     name: Coverage build
     needs: [clone, check-bypass]
-    if: needs.clone.outputs.can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true'
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' && needs.clone.outputs.can-skip != 'true' }}
     runs-on:
       group: GZ_BD-CPU
     timeout-minutes: 120
     outputs:
-      can-skip: ${{ needs.check-bypass.outputs.can-skip }}
-
+      can-skip: ${{ needs.check-bypass.outputs.can-skip == 'true' || needs.clone.outputs.can-skip == 'true' || 'false' }}
     steps:
       - name: Check docker image and run container
         env:
@@ -163,6 +189,7 @@ jobs:
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda-12.9/compat
           source ${{ github.workspace }}/../../../proxy
           bash ${ci_scripts}/cmake-predownload.sh
+          bash ${ci_scripts}/cmake_preload_data_file.sh
           pip install -r python/requirements.txt
           mkdir -p build && cd build
           ccache -z
@@ -225,8 +252,8 @@ jobs:
 
   test:
     name: Coverage test
-    needs: [build]
-    if: needs.build.outputs.can-skip != 'true'
+    needs: [build, check-bypass, check-skill]
+    if: ${{ needs.build.outputs.can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true' && needs.check-skill.outputs.can-skip != 'true' }}
     runs-on:
       group: H-Coverage
     timeout-minutes: 120
@@ -353,8 +380,8 @@ jobs:
 
   fleet-build:
     name: Build Fleet whl
-    needs: [build]
-    if: needs.build.outputs.can-skip != 'true'
+    needs: [build, check-bypass, check-skill]
+    if: ${{ needs.build.outputs.can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true' && needs.check-skill.outputs.can-skip != 'true' }}
     runs-on:
       group: GZ_BD-CPU
     timeout-minutes: 60
@@ -402,6 +429,7 @@ jobs:
           rm -rf * .[^.]*
           set -x
           source ${{ github.workspace }}/../../../proxy
+          python -m pip install --upgrade pip wheel setuptools
           git clone https://github.com/PaddlePaddle/PaddleFleet.git .
           git config --global --add safe.directory /paddle
           git config user.name "PaddleCI"
@@ -424,7 +452,12 @@ jobs:
           export LD_LIBRARY_PATH=/usr/local/cuda-12.9/compat:$LD_LIBRARY_PATH
           export IS_NVIDIA=True
           export PADDLEFLEET_VERSION=0.0.0
-          uv build --wheel -v
+          echo "Downloading Paddle.tar.gz from cfs"
+          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/h-coverage/${PR_ID}/${COMMIT_ID}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --no-check-certificate
+          pip uninstall paddlepaddle-gpu -y
+          pip install paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --force-reinstall --extra-index-url=https://www.paddlepaddle.org.cn/packages/nightly/cu129/
+          pip install paddle-nvidia-nvshmem-cu12 --extra-index-url https://www.paddlepaddle.org.cn/packages/nightly/cu129/
+          uv build --wheel --no-build-isolation -v
           '
 
       - name: upload whl to BOS
@@ -563,8 +596,8 @@ jobs:
 
   fleet-multi-card_test:
     name: Fleet Unit test (multi-card)
-    needs: [build, fleet-build]
-    if: needs.build.outputs.can-skip != 'true'
+    needs: [build, fleet-build, check-bypass, check-skill]
+    if: ${{ needs.build.outputs.can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true' && needs.check-skill.outputs.can-skip != 'true' }}
     runs-on:
       group: Fleet-H-multi-card
     timeout-minutes: 60

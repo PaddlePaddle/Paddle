@@ -34,9 +34,8 @@ def init_metric(
     ignore_rank=False,
     bucket_size=1000000,
 ):
-    yaml_fobj = open(metric_yaml_path)
-
-    content = yaml.load(yaml_fobj, Loader=yaml.FullLoader)
+    with open(metric_yaml_path, 'r', encoding='utf-8') as yaml_fobj:
+        content = yaml.safe_load(yaml_fobj)
 
     print("yaml metric config: \n")
     print(content)

@@ -638,6 +638,15 @@ def monkey_patch_value():
         """
         return paddle.numel(self)
 
+    def nelement(self):
+        """
+        Returns the number of elements for current Tensor, which is a int64 Tensor with shape [] . Alias for attribute `size`.
+
+        Returns:
+            Tensor, the number of elements for current Tensor
+        """
+        return paddle.numel(self)
+
     @property
     def _T_(self):
         """
@@ -1382,7 +1391,7 @@ def monkey_patch_value():
         return res
 
     @fake_interface_only
-    def numpy(self):
+    def numpy(self, *, force=True):
         """
         **Notes**:
             **This API is ONLY available in Dygraph mode**
@@ -1535,6 +1544,7 @@ def monkey_patch_value():
         ('uint8', byte),
         ('type_as', type_as),
         ('size', _size_),
+        ('nelement', nelement),
         ('T', _T_),
         ('mT', _mT_),
         ('new_full', _new_full_),

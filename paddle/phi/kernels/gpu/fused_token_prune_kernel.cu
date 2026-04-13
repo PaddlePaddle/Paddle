@@ -144,7 +144,7 @@ void FusedTokenPruneOpCUDAKernel(const Context& dev_ctx,
 
   // 2. Reduce sum
   const std::vector<int64_t> reduce_dims{1, 2};
-  phi::Reduce<T, kps::SumOps>(
+  Reduce<T, kps::SumOps>(
       dev_ctx, attn_tmp, false, reduce_dims, attn_accu.dtype(), &attn_accu);
 
   // 3. Prepare token indices

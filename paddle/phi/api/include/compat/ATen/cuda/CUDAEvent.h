@@ -1,0 +1,204 @@
+// Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// The file has been adapted from pytorch project
+// Licensed under BSD-style license -
+// https://github.com/pytorch/pytorch/blob/main/LICENSE
+
+#pragma once
+
+#if defined(PADDLE_WITH_HIP)
+#include <hip/hip_runtime.h>
+#elif defined(PADDLE_WITH_CUDA)
+#include <cuda_runtime_api.h>
+#endif
+
+#include <c10/core/Device.h>
+#include <c10/cuda/CUDAException.h>
+#include <c10/cuda/CUDAGuard.h>
+#include <c10/cuda/CUDAStream.h>
+#include <c10/util/Exception.h>
+#include <memory>
+#include <optional>
+
+namespace at::cuda {
+
+/**
+ * CUDAEvent is a movable, non-copyable wrapper around CUDA events.
+ * Provides compatibility with PyTorch's CUDAEvent API.
+ */
+struct CUDAEvent {
+  CUDAEvent() noexcept = default;
+
+  explicit CUDAEvent(unsigned int flags) noexcept : flags_(flags) {}
+
+  ~CUDAEvent() {
+    if (is_created_) {
+#ifdef PADDLE_WITH_HIP
+      hipEventDestroy(event_);
+#else
+      cudaEventDestroy(event_);
+#endif
+    }
+  }
+
+  CUDAEvent(const CUDAEvent&) = delete;
+  CUDAEvent& operator=(const CUDAEvent&) = delete;
+
+  CUDAEvent(CUDAEvent&& other) noexcept { moveHelper(std::move(other)); }
+  CUDAEvent& operator=(CUDAEvent&& other) noexcept {
+    if (this != &other) {
+      moveHelper(std::move(other));
+    }
+    return *this;
+  }
+
+#ifdef PADDLE_WITH_HIP
+  operator hipEvent_t() const { return event(); }
+
+  hipEvent_t event() const { return event_; }
+#else
+  operator cudaEvent_t() const { return event(); }
+
+  cudaEvent_t event() const { return event_; }
+#endif
+
+  bool isCreated() const { return is_created_; }
+
+  c10::DeviceIndex device_index() const { return device_index_; }
+
+  bool query() const {
+    if (!is_created_) return true;
+#ifdef PADDLE_WITH_HIP
+    hipError_t err = hipEventQuery(event_);
+    if (err == hipSuccess) return true;
+    if (err != hipErrorNotReady) C10_CUDA_CHECK(err);
+#else
+    cudaError_t err = cudaEventQuery(event_);
+    if (err == cudaSuccess) return true;
+    if (err != cudaErrorNotReady) C10_CUDA_CHECK(err);
+#endif
+    return false;
+  }
+
+  void record() { record(getCurrentCUDAStream()); }
+
+  void record(const CUDAStream& stream) {
+    if (!is_created_) {
+      createEvent(stream.unwrap().device_index());
+    }
+    TORCH_CHECK(device_index_ == stream.unwrap().device_index(),
+                "Event device ",
+                device_index_,
+                " does not match recording stream's device ",
+                stream.unwrap().device_index(),
+                ".");
+    c10::cuda::CUDAGuard guard(device_index_);
+#ifdef PADDLE_WITH_HIP
+    C10_CUDA_CHECK(hipEventRecord(event_, stream.stream()));
+#else
+    C10_CUDA_CHECK(cudaEventRecord(event_, stream.stream()));
+#endif
+  }
+
+  void recordOnce(const CUDAStream& stream) {
+    if (!was_recorded_) {
+      record(stream);
+      was_recorded_ = true;
+    }
+  }
+
+  void block(const CUDAStream& stream) {
+    if (is_created_) {
+      c10::cuda::CUDAGuard guard(stream.unwrap().device_index());
+#ifdef PADDLE_WITH_HIP
+      C10_CUDA_CHECK(hipStreamWaitEvent(stream.stream(), event_, 0));
+#else
+      C10_CUDA_CHECK(cudaStreamWaitEvent(stream.stream(), event_, 0));
+#endif
+    }
+  }
+
+  void synchronize() const {
+    if (is_created_) {
+#ifdef PADDLE_WITH_HIP
+      C10_CUDA_CHECK(hipEventSynchronize(event_));
+#else
+      C10_CUDA_CHECK(cudaEventSynchronize(event_));
+#endif
+    }
+  }
+
+  float elapsed_time(const CUDAEvent& other) const {
+    TORCH_CHECK(
+        is_created_ && other.isCreated(),
+        "Both events must be recorded before calculating elapsed time.");
+    TORCH_CHECK(
+        query() && other.query(),
+        "Both events must be completed before calculating elapsed time.");
+    float time_ms = 0;
+    c10::cuda::CUDAGuard guard(device_index_);
+#ifdef PADDLE_WITH_HIP
+    C10_CUDA_CHECK(hipEventElapsedTime(&time_ms, event_, other.event_));
+#else
+    C10_CUDA_CHECK(cudaEventElapsedTime(&time_ms, event_, other.event_));
+#endif
+    return time_ms;
+  }
+
+ private:
+#ifdef PADDLE_WITH_HIP
+  unsigned int flags_ = hipEventDisableTiming;
+#else
+  unsigned int flags_ = cudaEventDisableTiming;
+#endif
+  bool is_created_ = false;
+  bool was_recorded_ = false;
+  c10::DeviceIndex device_index_ = -1;
+#ifdef PADDLE_WITH_HIP
+  hipEvent_t event_{};
+#else
+  cudaEvent_t event_{};
+#endif
+
+  void createEvent(c10::DeviceIndex device_index) {
+    device_index_ = device_index;
+    c10::cuda::CUDAGuard guard(device_index_);
+#ifdef PADDLE_WITH_HIP
+    C10_CUDA_CHECK(hipEventCreateWithFlags(&event_, flags_));
+#else
+    C10_CUDA_CHECK(cudaEventCreateWithFlags(&event_, flags_));
+#endif
+    is_created_ = true;
+  }
+
+  void moveHelper(CUDAEvent&& other) {
+    flags_ = other.flags_;
+    is_created_ = std::exchange(other.is_created_, false);
+    was_recorded_ = other.was_recorded_;
+    device_index_ = other.device_index_;
+#ifdef PADDLE_WITH_HIP
+    event_ = std::exchange(other.event_, hipEvent_t{});
+#else
+    event_ = std::exchange(other.event_, cudaEvent_t{});
+#endif
+  }
+};
+
+}  // namespace at::cuda
+
+namespace torch {
+using at::cuda::CUDAEvent;
+using at::cuda::CUDAStream;
+}  // namespace torch

@@ -248,11 +248,11 @@ void ComputeImpl(const Context& dev_ctx,
   auto* trust_ratio_div_norm_ptr = trust_ratio_div_norm_t.data<MT>();
 
   // DenseTensor p_norm_t;
-  // p_norm_t.Resize(make_ddim({1}));
+  // p_norm_t.Resize({1});
   // auto* p_norm_ptr = dev_ctx.template Alloc<MT>(&p_norm_t);
 
   // DenseTensor trust_ratio_div_norm_t;
-  // trust_ratio_div_norm_t.Resize(make_ddim({1}));
+  // trust_ratio_div_norm_t.Resize({1});
   // auto* trust_ratio_div_norm_ptr =
   //     dev_ctx.template Alloc<MT>(&trust_ratio_div_norm_t);
 
@@ -274,7 +274,7 @@ void ComputeImpl(const Context& dev_ctx,
     const auto& name = "Param";
     auto pn = funcs::ToVector(p_norm_ptr, 1, dev_ctx.GetPlace());
     auto tn = funcs::ToVector(trust_ratio_div_norm_ptr, 1, dev_ctx.GetPlace());
-    auto dtype = DataTypeToString(phi::CppTypeToDataType<T>::Type());
+    auto dtype = DataTypeToString(CppTypeToDataType<T>::Type());
     VLOG(1) << "Param " << dtype << " " << name << " pn = " << pn[0]
             << " , tn = " << tn[0];
   }

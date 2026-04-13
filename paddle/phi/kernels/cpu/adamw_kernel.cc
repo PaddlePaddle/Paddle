@@ -65,7 +65,7 @@ PADDLE_API void AdamwDenseKernel(const Context& dev_ctx,
         errors::InvalidArgument("Input(SkipUpdate) size must be 1, but get %d",
                                 skip_update->numel()));
     std::vector<bool> skip_update_vec;
-    phi::TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
+    TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
     skip_update_ = skip_update_vec[0];
   }
   VLOG(3) << "Skip update" << skip_update_;
@@ -142,7 +142,7 @@ PADDLE_API void AdamwDenseKernel(const Context& dev_ctx,
       learning_rate.data<T>()[0] * (sqrt(1 - beta2_p) / (1 - beta1_p));
   T eps = epsilon_ * sqrt(1 - beta2_p);
 
-  phi::jit::adamw_attr_t attr(beta1_, beta2_, coeff_, amsgrad);
+  jit::adamw_attr_t attr(beta1_, beta2_, coeff_, amsgrad);
   int64_t numel = param.numel();
 
   const T* param_ptr = param.data<T>();
@@ -151,9 +151,7 @@ PADDLE_API void AdamwDenseKernel(const Context& dev_ctx,
   const T* mom2_max_ptr = amsgrad ? moment2_max.get().data<T>() : nullptr;
   const T* grad_ptr = grad.data<T>();
 
-  auto adamw =
-      phi::jit::KernelFuncs<phi::jit::AdamWTuple<T>, CPUPlace>::Cache().At(
-          attr);
+  auto adamw = jit::KernelFuncs<jit::AdamWTuple<T>, CPUPlace>::Cache().At(attr);
 
   static constexpr int64_t chunk_size = 512;
 

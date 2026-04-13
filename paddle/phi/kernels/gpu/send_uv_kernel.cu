@@ -90,7 +90,7 @@ void GraphSendUVOpCUDAKernelLaunchHelper(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
   T* out_data = out->data<T>();
 
-  const auto& bcast_info = phi::CalcBCastInfo(x.dims(), y.dims());
+  const auto& bcast_info = CalcBCastInfo(x.dims(), y.dims());
   const T* x_data = x.data<T>();
   const T* y_data = y.data<T>();
   const IndexT* s_index = src_index.data<IndexT>();
@@ -161,10 +161,10 @@ void SendUVKernel(const Context& dev_ctx,
     return;
   }
 
-  if (index_type == phi::DataType::INT32) {
+  if (index_type == DataType::INT32) {
     GraphSendUVOpCUDAKernelLaunchHelper<Context, T, int32_t>(
         dev_ctx, x, y, src_index, dst_index, message_op, out);
-  } else if (index_type == phi::DataType::INT64) {
+  } else if (index_type == DataType::INT64) {
     GraphSendUVOpCUDAKernelLaunchHelper<Context, T, int64_t>(
         dev_ctx, x, y, src_index, dst_index, message_op, out);
   }

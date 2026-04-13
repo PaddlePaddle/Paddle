@@ -117,7 +117,7 @@ void ConvGradKernel(const Context& dev_ctx,
                 funcs::ToOneDNNDataType(filter.dtype());
             // for 3d conv with groups (six dimensional data reorder to
             // goidhw) for 2d conv with groups (five dimensional data reorder
-            // to goihw) auto weights_tz = common::vectorize(filter->dims());
+            // to goihw) auto weights_tz = vectorize(filter->dims());
 
             auto weights_tz = diff_weights_memory_p->get_desc().get_dims();
             dnnl::memory::format_tag out_format =
@@ -143,10 +143,10 @@ void ConvGradKernel(const Context& dev_ctx,
             dnnl::memory::format_tag target_format =
                 weights_tz.size() == 6 ? dnnl::memory::format_tag::oidhw
                                        : dnnl::memory::format_tag::oihw;
-            filter_grad->set_mem_desc(dnnl::memory::desc(
-                common::vectorize<int64_t>(filter_grad->dims()),
-                in_type,
-                target_format));
+            filter_grad->set_mem_desc(
+                dnnl::memory::desc(vectorize<int64_t>(filter_grad->dims()),
+                                   in_type,
+                                   target_format));
           } else {
             filter_grad->set_mem_desc(diff_weights_memory_p->get_desc());
           }

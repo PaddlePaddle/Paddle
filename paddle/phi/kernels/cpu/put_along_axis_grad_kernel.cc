@@ -35,6 +35,15 @@ void PutAlongAxisGradKernel(const Context& dev_ctx,
                             bool include_self,
                             DenseTensor* x_grad,
                             DenseTensor* value_grad) {
+  if (x.numel() == 0) {
+    if (x_grad) {
+      dev_ctx.template Alloc<T>(x_grad);
+    }
+    if (value_grad) {
+      dev_ctx.template Alloc<T>(value_grad);
+    }
+    return;
+  }
   const auto& index_type = index.dtype();
   if (x_grad) {
     Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);

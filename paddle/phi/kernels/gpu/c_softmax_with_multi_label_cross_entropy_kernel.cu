@@ -227,7 +227,7 @@ struct CSoftmaxWithMultiLabelCrossEntropyFunctor<GPUContext, T> {
     int threads = kNumCUDAThreads;
     const auto& label_type = labels->dtype();
 
-    if (label_type == phi::DataType::INT32) {
+    if (label_type == DataType::INT32) {
       SoftMaskLabelByIndex<T, int32_t>
           <<<blocks, threads, 0, dev_ctx.stream()>>>(
               predicted_logits.data<T>(),
@@ -240,7 +240,7 @@ struct CSoftmaxWithMultiLabelCrossEntropyFunctor<GPUContext, T> {
               D,
               C,
               nranks);
-    } else if (label_type == phi::DataType::INT64) {
+    } else if (label_type == DataType::INT64) {
       SoftMaskLabelByIndex<T, int64_t>
           <<<blocks, threads, 0, dev_ctx.stream()>>>(
               predicted_logits.data<T>(),
@@ -271,7 +271,7 @@ struct CSoftmaxWithMultiLabelCrossEntropyFunctor<GPUContext, T> {
 
     comm_ctx->AllReduce(&sum_exp_logits, sum_exp_logits, ncclSum, stream);
 
-    if (label_type == phi::DataType::INT32) {
+    if (label_type == DataType::INT32) {
       CalculateSoftLoss<T, int32_t>
           <<<blocks, threads, 0, dev_ctx.stream()>>>(loss_2d.data<T>(),
                                                      predicted_logits.data<T>(),

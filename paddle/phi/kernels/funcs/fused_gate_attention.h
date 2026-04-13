@@ -24,7 +24,7 @@
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
-#include "paddle/phi/kernels/funcs/transpose_function.cu.h"
+#include "paddle/phi/kernels/funcs/transpose_function.cuh"
 #include "paddle/phi/kernels/fusion/gpu/attn_gemm.h"
 #include "paddle/phi/kernels/gpudnn/softmax_gpudnn.h"
 
@@ -995,12 +995,12 @@ class FlashAttnWithGating {
     const T* v_ptr = k_ptr + q_size;
 
     DenseTensor qkv_transpose_out_grad;
-    qkv_transpose_out_grad.Resize(make_ddim({3,
-                                             config->batch_size,
-                                             config->seq_len_m,
-                                             config->seq_len_r,
-                                             config->num_heads,
-                                             config->head_dim}));
+    qkv_transpose_out_grad.Resize({3,
+                                   config->batch_size,
+                                   config->seq_len_m,
+                                   config->seq_len_r,
+                                   config->num_heads,
+                                   config->head_dim});
     AllocWithDebugInfo<T>(
         dev_ctx_, "qkv_transpose_out_grad", &qkv_transpose_out_grad);
 

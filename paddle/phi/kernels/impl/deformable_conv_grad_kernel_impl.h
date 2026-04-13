@@ -188,9 +188,9 @@ void DeformableConvGradKernel(const Context& dev_ctx,
   const int batch_size = static_cast<int>(x.dims()[0]);
 
   DDim input_shape = slice_ddim(x.dims(), 1, x.dims().size());
-  std::vector<int64_t> input_shape_vec = common::vectorize(input_shape);
-  std::vector<int64_t> filter_shape_vec(common::vectorize(filter.dims()));
-  std::vector<int64_t> output_shape_vec(common::vectorize(out_grad.dims()));
+  std::vector<int64_t> input_shape_vec = vectorize(input_shape);
+  std::vector<int64_t> filter_shape_vec(vectorize(filter.dims()));
+  std::vector<int64_t> output_shape_vec(vectorize(out_grad.dims()));
 
   std::vector<int64_t> col_buffer_shape_vec(filter_shape_vec.size());
   col_buffer_shape_vec[0] = x.dims()[1] * filter.dims()[2] * filter.dims()[3];
@@ -275,7 +275,7 @@ void DeformableConvGradKernel(const Context& dev_ctx,
                   &col_buffer_3d_slice,
                   T(0.0));
     }
-    col_buffer.Resize(make_ddim(col_buffer_shape_vec));
+    col_buffer.Resize(col_buffer_shape_vec);
 
     T* col_buffer_ptr = col_buffer.data<T>();
     const T* input_ptr = x.data<T>();

@@ -145,7 +145,7 @@ void LookupTableSparseGradCUDAKernel(
 
   auto stream = dev_ctx.stream();
   // copy GPU memory to CPU pinned memory
-  phi::Vector<int64_t> new_rows;
+  Vector<int64_t> new_rows;
   new_rows.resize(ids_num);
   auto gpu_place = dev_ctx.GetPlace();
 

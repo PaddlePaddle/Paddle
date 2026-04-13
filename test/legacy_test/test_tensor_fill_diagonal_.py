@@ -308,8 +308,22 @@ class TestFillDiagonalAlias(unittest.TestCase):
         """
         x = paddle.zeros([3, 3], dtype='float32')
         # Expect TypeError or ValueError when both arguments are provided
-        with self.assertRaises((ValueError, TypeError)):
+        with self.assertRaises(ValueError):
             x.fill_diagonal_(value=1.0, fill_value=2.0)
+
+    def test_positional_args(self):
+        x = paddle.zeros([4, 4], dtype='float32')
+        x.fill_diagonal_(5.0, False)
+        x_np = x.numpy()
+        for i in range(4):
+            self.assertEqual(x_np[i, i], 5.0)
+        np.fill_diagonal(x_np, 0)
+        self.assertTrue(np.all(x_np == 0))
+
+    def test_too_many_positional_args(self):
+        x = paddle.zeros([3, 3], dtype='float32')
+        with self.assertRaises(TypeError):
+            x.fill_diagonal_(1.0, False, 0)
 
 
 if __name__ == '__main__':

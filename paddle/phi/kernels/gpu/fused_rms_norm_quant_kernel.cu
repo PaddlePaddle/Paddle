@@ -1109,8 +1109,8 @@ void RmsNormQuantKernel(const Context& dev_ctx,
     }
     return;
   }
-  if (out->dtype() == phi::DataType::INT8 ||
-      out->dtype() == phi::DataType::FLOAT8_E4M3FN) {
+  if (out->dtype() == DataType::INT8 ||
+      out->dtype() == DataType::FLOAT8_E4M3FN) {
     PADDLE_ENFORCE_EQ(quant_scale != 0.0f,
                       true,
                       common::errors::InvalidArgument(
@@ -1165,7 +1165,7 @@ void RmsNormQuantKernel(const Context& dev_ctx,
     const T* bias_data = bias ? bias.get().data<T>() : nullptr;
     ResidualAddBiasLoad<T, ComputeType> load(
         x_data, residual_data, bias_data, residual_out_data, cols);
-    if (out->dtype() == phi::DataType::INT8) {
+    if (out->dtype() == DataType::INT8) {
       // Quantize and output int8.
       int8_t* out_data = dev_ctx.template Alloc<int8_t>(out);
       AffineQuantStore<int8_t, ComputeType, T, true, true> store(
@@ -1179,7 +1179,7 @@ void RmsNormQuantKernel(const Context& dev_ctx,
           quant_min_bound);
       DispatchRmsNorm<decltype(load), decltype(store), ComputeType>(
           dev_ctx.stream(), load, store, rows, cols, epsilon, inv_var_data);
-    } else if (out->dtype() == phi::DataType::FLOAT8_E4M3FN) {
+    } else if (out->dtype() == DataType::FLOAT8_E4M3FN) {
       // Quantize and output float8_e4m3fn.
       phi::float8_e4m3fn* out_data =
           dev_ctx.template Alloc<phi::float8_e4m3fn>(out);
@@ -1204,7 +1204,7 @@ void RmsNormQuantKernel(const Context& dev_ctx,
     }
   } else {
     DirectLoad<T, ComputeType> load(x_data, cols);
-    if (out->dtype() == phi::DataType::INT8) {
+    if (out->dtype() == DataType::INT8) {
       // Quantize and output int8.
       int8_t* out_data = dev_ctx.template Alloc<int8_t>(out);
       AffineQuantStore<int8_t, ComputeType, T, true, true> store(
@@ -1218,7 +1218,7 @@ void RmsNormQuantKernel(const Context& dev_ctx,
           quant_min_bound);
       DispatchRmsNorm<decltype(load), decltype(store), ComputeType>(
           dev_ctx.stream(), load, store, rows, cols, epsilon, inv_var_data);
-    } else if (out->dtype() == phi::DataType::FLOAT8_E4M3FN) {
+    } else if (out->dtype() == DataType::FLOAT8_E4M3FN) {
       // Quantize and output float8_e4m3fn.
       phi::float8_e4m3fn* out_data =
           dev_ctx.template Alloc<phi::float8_e4m3fn>(out);

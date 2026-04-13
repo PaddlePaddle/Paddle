@@ -71,7 +71,7 @@ void IRElementwiseSchedule(ir::IRSchedule &ir_sch,  // NOLINT
                            const cinn::common::Target &target) {
   VLOG(3) << "Before IRElementwiseSchedule, new ir is : "
           << ir_sch.GetModule().GetExprs().at(0);
-  auto schedule_nv_hygon = [&] {
+  auto schedule_nv_hygon_custom = [&] {
     auto blocks = ir_sch.GetAllBlocks();
     std::vector<ir::Expr> loops = ir_sch.GetLoops(blocks[0]);
     ir::Expr loop = ir_sch.Fuse(loops);
@@ -87,14 +87,15 @@ void IRElementwiseSchedule(ir::IRSchedule &ir_sch,  // NOLINT
     }
   };
   target.arch.Match(
-      [&](common::NVGPUArch) { schedule_nv_hygon(); },
+      [&](common::NVGPUArch) { schedule_nv_hygon_custom(); },
+      [&](common::CustomDeviceArch) { schedule_nv_hygon_custom(); },
       [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
         // IRScheduleInjectiveCPU(ir_sch, output_shape, target, false);
         auto blocks = ir_sch.GetAllBlocks();
         ir_sch.FlattenLoops(ir_sch.GetLoops(blocks[0]), true);
       },
       [&](std::variant<common::HygonDCUArchHIP, common::HygonDCUArchSYCL>) {
-        schedule_nv_hygon();
+        schedule_nv_hygon_custom();
       });
   VLOG(3) << "After IRElementwiseSchedule, new ir is : "
           << ir_sch.GetModule().GetExprs().at(0);
@@ -105,7 +106,7 @@ void IRInjectiveSchedule(ir::IRSchedule &ir_sch,  // NOLINT
                          const cinn::common::Target &target) {
   VLOG(3) << "Before IRInjectiveSchedule, new ir is : "
           << ir_sch.GetModule().GetExprs().at(0);
-  auto schedule_nv_hygon = [&] {
+  auto schedule_nv_hygon_custom = [&] {
     auto blocks = ir_sch.GetAllBlocks();
     std::vector<ir::Expr> loops = ir_sch.GetLoops(blocks[0]);
     ir::Expr loop = ir_sch.Fuse(loops);
@@ -121,7 +122,8 @@ void IRInjectiveSchedule(ir::IRSchedule &ir_sch,  // NOLINT
     }
   };
   target.arch.Match(
-      [&](common::NVGPUArch) { schedule_nv_hygon(); },
+      [&](common::NVGPUArch) { schedule_nv_hygon_custom(); },
+      [&](common::CustomDeviceArch) { schedule_nv_hygon_custom(); },
       [&](std::variant<common::UnknownArch,
                        common::X86Arch,
                        common::ARMArch>) {  // IRScheduleInjectiveCPU(ir_sch,
@@ -130,7 +132,7 @@ void IRInjectiveSchedule(ir::IRSchedule &ir_sch,  // NOLINT
         ir_sch.FlattenLoops(ir_sch.GetLoops(blocks[0]), false);
       },
       [&](std::variant<common::HygonDCUArchHIP, common::HygonDCUArchSYCL>) {
-        schedule_nv_hygon();
+        schedule_nv_hygon_custom();
       });
 
   VLOG(3) << "After IRInjectiveSchedule, new ir is : "
@@ -209,6 +211,7 @@ std::vector<cinn::common::CINNValue> IRGpuScheduleMatMul(
     const cinn::common::Target &target) {
   target.arch.Match(
       [&](common::NVGPUArch) {},
+      [&](common::CustomDeviceArch) {},
       [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
         CINN_NOT_IMPLEMENTED;
       },
@@ -335,7 +338,7 @@ void IRCudaSplitSchedule(ir::IRSchedule &ir_sch,  // NOLINT
     block_names.push_back(get_block_name(block));
   }
 
-  auto SplitScheduleGpuDcu = [&] {
+  auto SplitScheduleGpuDcuCustom = [&] {
     // if output with same shape.
     if (with_same_shape) {
       auto tsize = std::accumulate(output_shapes[0].begin(),
@@ -387,7 +390,8 @@ void IRCudaSplitSchedule(ir::IRSchedule &ir_sch,  // NOLINT
   };
 
   target.arch.Match(
-      [&](common::NVGPUArch) { SplitScheduleGpuDcu(); },
+      [&](common::NVGPUArch) { SplitScheduleGpuDcuCustom(); },
+      [&](common::CustomDeviceArch) { SplitScheduleGpuDcuCustom(); },
       [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
         {
           for (auto &block_name : block_names) {
@@ -396,7 +400,7 @@ void IRCudaSplitSchedule(ir::IRSchedule &ir_sch,  // NOLINT
         }
       },
       [&](std::variant<common::HygonDCUArchHIP, common::HygonDCUArchSYCL>) {
-        SplitScheduleGpuDcu();
+        SplitScheduleGpuDcuCustom();
       });
   VLOG(3) << "In IRCudaSplitSchedule, After schedule expr is : "
           << ir_sch.GetModule().GetExprs().at(0);

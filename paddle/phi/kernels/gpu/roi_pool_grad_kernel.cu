@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/roi_pool_grad_kernel.h"
 
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
@@ -137,10 +138,13 @@ void RoiPoolGradKernel(const Context& dev_ctx,
         bytes,
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
     int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
+    const int* stable_box_batch_id =
+        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+            box_batch_id_data, static_cast<size_t>(bytes / sizeof(int)));
     memory_utils::Copy(gplace,
                        roi_id_data,
                        CPUPlace(),
-                       box_batch_id_data,
+                       stable_box_batch_id,
                        bytes,
                        dev_ctx.stream());
 

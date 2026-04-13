@@ -22,7 +22,7 @@
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
-#include "paddle/phi/kernels/funcs/transpose_function.cu.h"
+#include "paddle/phi/kernels/funcs/transpose_function.cuh"
 #include "paddle/phi/kernels/gpu/reduce.h"
 #include "paddle/phi/kernels/reduce_max_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
@@ -149,7 +149,7 @@ void LogsumexpKernel(const Context& dev_ctx,
         (axis_vec.size() == 1 && axis_vec[0] == xdim.size())) {
       transpose_x = x;
     } else {
-      transpose_x.Resize(make_ddim(transpose_shape));
+      transpose_x.Resize(transpose_shape);
       dev_ctx.template Alloc<T>(&transpose_x);
       funcs::TransposeGPUKernelDriver<T>(dev_ctx, x, perm, &transpose_x);
     }

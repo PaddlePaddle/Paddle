@@ -183,13 +183,13 @@ void LinearV2Kernel(const Context& dev_ctx,
 
     DenseTensor input_processed = input;
     DenseTensor weight_processed = weight;
-    input_processed.Resize(common::make_ddim({M, K}));
+    input_processed.Resize({M, K});
     if (transpose_weight) {
-      weight_processed.Resize(common::make_ddim({N, K}));
+      weight_processed.Resize({N, K});
     } else {
-      weight_processed.Resize(common::make_ddim({K, N}));
+      weight_processed.Resize({K, N});
     }
-    out->Resize(common::make_ddim({M, N}));
+    out->Resize({M, N});
 
     if (N > 1 && K > 1) {
       DenseTensor bias_processed;
@@ -210,10 +210,10 @@ void LinearV2Kernel(const Context& dev_ctx,
     } else {
       // When N=1 or K=1, {N,K} and {K,N} have identical memory layout,
       // so just reshape to {K,N} which is what AddmmKernel expects.
-      weight_processed.Resize(common::make_ddim({K, N}));
+      weight_processed.Resize({K, N});
       DenseTensor bias_processed = bias;
       if (bias.numel() != (M * N)) {
-        bias_processed.Resize(make_ddim({1, bias.numel()}));
+        bias_processed.Resize({1, bias.numel()});
         phi::TileKernel<T, Context>(
             dev_ctx, bias_processed, {M, 1}, &bias_processed);
       }
@@ -229,9 +229,8 @@ void LinearV2Kernel(const Context& dev_ctx,
   } else  // NOLINT
 #endif
   {  // NOLINT
-    std::vector<std::int64_t> input_dims_vec = common::vectorize(input.dims());
-    std::vector<std::int64_t> weight_dims_vec =
-        common::vectorize(weight.dims());
+    std::vector<std::int64_t> input_dims_vec = vectorize(input.dims());
+    std::vector<std::int64_t> weight_dims_vec = vectorize(weight.dims());
 
     MatMulFunction<Context, T>(dev_ctx,
                                input,

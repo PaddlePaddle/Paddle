@@ -291,6 +291,137 @@ class TestLogSoftmaxOp_ZeroSize(OpTest):
         self.check_grad(['X'], ['Out'], check_pir=True)
 
 
+class TestLogSoftmaxParamAlias(unittest.TestCase):
+    """Test parameter aliases: input=x, dim=axis."""
+
+    def setUp(self):
+        paddle.disable_static()
+        self.x_np = np.random.uniform(0.1, 1.0, [3, 4]).astype('float32')
+        self.x3d_np = np.random.uniform(0.1, 1.0, [2, 3, 4]).astype('float32')
+
+    def tearDown(self):
+        paddle.enable_static()
+
+    def _ref(self, x_np, axis):
+        return np.apply_along_axis(ref_log_softmax, axis, x_np)
+
+    # --- `input` alias for `x` ---
+
+    def test_input_alias_keyword(self):
+        x = paddle.to_tensor(self.x_np)
+        expected = F.log_softmax(x, axis=-1).numpy()
+        result = F.log_softmax(input=x, axis=-1).numpy()
+        np.testing.assert_allclose(result, expected, rtol=1e-6)
+
+    def test_input_alias_with_axis(self):
+        x = paddle.to_tensor(self.x_np)
+        expected = F.log_softmax(x, axis=0).numpy()
+        result = F.log_softmax(input=x, axis=0).numpy()
+        np.testing.assert_allclose(result, expected, rtol=1e-6)
+
+    # --- `dim` alias for `axis` ---
+
+    def test_dim_alias_keyword(self):
+        x = paddle.to_tensor(self.x_np)
+        expected = F.log_softmax(x, axis=1).numpy()
+        result = F.log_softmax(x, dim=1).numpy()
+        np.testing.assert_allclose(result, expected, rtol=1e-6)
+
+    def test_dim_alias_negative(self):
+        x = paddle.to_tensor(self.x3d_np)
+        expected = F.log_softmax(x, axis=-2).numpy()
+        result = F.log_softmax(x, dim=-2).numpy()
+        np.testing.assert_allclose(result, expected, rtol=1e-6)
+
+    # --- Both aliases together ---
+
+    def test_both_aliases(self):
+        x = paddle.to_tensor(self.x_np)
+        expected = F.log_softmax(x, axis=1).numpy()
+        result = F.log_softmax(input=x, dim=1).numpy()
+        np.testing.assert_allclose(result, expected, rtol=1e-6)
+
+    def test_both_aliases_with_dtype(self):
+        x = paddle.to_tensor(self.x_np)
+        expected = F.log_softmax(x, axis=0, dtype='float64').numpy()
+        result = F.log_softmax(input=x, dim=0, dtype='float64').numpy()
+        np.testing.assert_allclose(result, expected, rtol=1e-10)
+        self.assertEqual(result.dtype, np.float64)
+
+    # --- 3D inputs ---
+
+    def test_3d_input_alias_dim0(self):
+        x = paddle.to_tensor(self.x3d_np)
+        expected = F.log_softmax(x, axis=0).numpy()
+        result = F.log_softmax(input=x, dim=0).numpy()
+        np.testing.assert_allclose(result, expected, rtol=1e-6)
+
+    def test_3d_input_alias_dim1(self):
+        x = paddle.to_tensor(self.x3d_np)
+        expected = F.log_softmax(x, axis=1).numpy()
+        result = F.log_softmax(input=x, dim=1).numpy()
+        np.testing.assert_allclose(result, expected, rtol=1e-6)
+
+    def test_3d_input_alias_dim_neg1(self):
+        x = paddle.to_tensor(self.x3d_np)
+        expected = F.log_softmax(x, axis=-1).numpy()
+        result = F.log_softmax(input=x, dim=-1).numpy()
+        np.testing.assert_allclose(result, expected, rtol=1e-6)
+
+    # --- float64 input ---
+
+    def test_float64_input_alias(self):
+        x_np = self.x_np.astype('float64')
+        x = paddle.to_tensor(x_np)
+        expected = F.log_softmax(x, axis=1).numpy()
+        result = F.log_softmax(input=x, dim=1).numpy()
+        np.testing.assert_allclose(result, expected, rtol=1e-10)
+
+    # --- Conflict error ---
+
+    def test_conflict_x_and_input_raises(self):
+        x = paddle.to_tensor(self.x_np)
+        with self.assertRaises(ValueError):
+            F.log_softmax(x=x, input=x)
+
+    def test_conflict_axis_and_dim_raises(self):
+        x = paddle.to_tensor(self.x_np)
+        with self.assertRaises(ValueError):
+            F.log_softmax(x, axis=0, dim=1)
+
+
+class TestLogSoftmaxOutParam(unittest.TestCase):
+    """Test out parameter for F.log_softmax."""
+
+    def setUp(self):
+        paddle.disable_static()
+        self.x_np = np.random.uniform(0.1, 1.0, [3, 4]).astype('float32')
+
+    def tearDown(self):
+        paddle.enable_static()
+
+    def test_out_param(self):
+        x = paddle.to_tensor(self.x_np)
+        expected = F.log_softmax(x, axis=-1)
+        out = paddle.empty_like(x)
+        result = F.log_softmax(x, axis=-1, out=out)
+        np.testing.assert_allclose(out.numpy(), expected.numpy(), rtol=1e-6)
+        np.testing.assert_allclose(result.numpy(), expected.numpy(), rtol=1e-6)
+
+    def test_out_param_with_dim_alias(self):
+        x = paddle.to_tensor(self.x_np)
+        expected = F.log_softmax(x, axis=0)
+        out = paddle.empty_like(x)
+        F.log_softmax(x, dim=0, out=out)
+        np.testing.assert_allclose(out.numpy(), expected.numpy(), rtol=1e-6)
+
+    def test_out_param_with_dtype(self):
+        x = paddle.to_tensor(self.x_np)
+        out = paddle.empty([3, 4], dtype='float64')
+        F.log_softmax(x, axis=-1, dtype='float64', out=out)
+        self.assertEqual(out.dtype, paddle.float64)
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

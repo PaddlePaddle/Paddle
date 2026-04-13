@@ -1940,7 +1940,7 @@ class Variable(metaclass=VariableMetaClass):
         return output
 
     @fake_interface_only
-    def numpy(self):
+    def numpy(self, *, force=True):
         """
         **Notes**:
             **This API is ONLY available in Dygraph mode**

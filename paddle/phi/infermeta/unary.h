@@ -341,6 +341,9 @@ PADDLE_API void FFTR2CInferMeta(const MetaTensor& x,
                                 MetaTensor* out,
                                 MetaConfig = MetaConfig());
 
+PADDLE_API void FlashMaskGetUniqueIdInferMeta(const MetaTensor& x,
+                                              MetaTensor* out);
+
 PADDLE_API void FlattenInferMeta(const MetaTensor& x,
                                  int start_axis,
                                  int stop_axis,
@@ -592,7 +595,7 @@ PADDLE_API void PixelUnshuffleInferMeta(const MetaTensor& x,
                                         MetaTensor* out);
 
 PADDLE_API void PNormInferMeta(const MetaTensor& x,
-                               float porder,
+                               double porder,
                                int axis,
                                float epsilon,
                                bool keepdim,

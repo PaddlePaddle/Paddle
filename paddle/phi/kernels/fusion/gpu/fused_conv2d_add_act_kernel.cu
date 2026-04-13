@@ -401,8 +401,8 @@ void FusedConv2dAddActKernel(const Context& dev_ctx,
       paddings_t,
       dilations_t,
       padding_algorithm,
-      common::vectorize<int>(input.dims()),
-      common::vectorize<int>(filter.dims()),
+      vectorize<int>(input.dims()),
+      vectorize<int>(filter.dims()),
       strides,
       compute_format);
 
@@ -536,10 +536,10 @@ void FusedConv2dAddActKernel(const Context& dev_ctx,
   };
 
   auto cudnn_cache_info = CudnnConvDescManager::Instance()->GetCudnnCacheInfo(
-      common::vectorize<int>(transformed_input.dims()),
-      common::vectorize<int>(filter.dims()),
+      vectorize<int>(transformed_input.dims()),
+      vectorize<int>(filter.dims()),
       b_dims,
-      common::vectorize<int>(output->dims()),
+      vectorize<int>(output->dims()),
       conv_attr_cache->paddings,
       strides,
       conv_attr_cache->dilations,

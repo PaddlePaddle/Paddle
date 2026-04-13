@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
@@ -582,8 +583,11 @@ void dispatch_preprocess(const Context &dev_ctx,
   padding_tokens_tensor.Resize({static_cast<int64_t>(padding_rows.size())});
   dev_ctx.template Alloc<int>(&padding_tokens_tensor);
 
+  auto *stable_padding_rows =
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          const_cast<int *>(padding_rows.data()), padding_rows.size());
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(padding_tokens_tensor.data<int>(),
-                                             padding_rows.data(),
+                                             stable_padding_rows,
                                              sizeof(int) * padding_rows.size(),
                                              cudaMemcpyHostToDevice,
                                              dev_ctx.stream()));
@@ -627,18 +631,6 @@ void dispatch_preprocess_w_override(const Context &dev_ctx,
                                     DenseTensor *expert_offset_end,
                                     DenseTensor *expert_indices) {
   constexpr int BLOCK_SIZE = 1024;
-
-  // Pre-fill expert_indices with -1 via hardware DMA engine (cudaMemsetAsync).
-  // 0xFF byte-pattern on int32 = 0xFFFFFFFF = -1 in two's complement.
-  // This offloads the bulk -1 fill (~10K-500K int32s) from SM compute to the
-  // DMA copy engine, running in parallel with subsequent kernel execution.
-  if (return_expert_indices) {
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(
-        expert_indices->data<int32_t>(),
-        0xFF,
-        static_cast<size_t>(override_buffer_size) * sizeof(int32_t),
-        dev_ctx.stream()));
-  }
 
   dispatch::Bools(
       [&](auto fill_expert_indices_tag) {
@@ -731,6 +723,20 @@ void MoePermuteKernel(const Context &dev_ctx,
     XScale_unzipped_ptr =
         reinterpret_cast<void *>(XScale_unzipped->data<float>());
   }
+  // Pre-fill expert_indices with -1 via hardware DMA engine (cudaMemsetAsync).
+  // (Even if input is 0-size)
+  // 0xFF byte-pattern on int32 = 0xFFFFFFFF = -1 in two's complement.
+  // This offloads the bulk -1 fill (~10K-500K int32s) from SM compute to the
+  // DMA copy engine, running in parallel with subsequent kernel execution.
+  if (is_buffer_overridden && return_expert_indices) {
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(
+        expert_indices->data<int32_t>(),
+        0xFF,
+        static_cast<size_t>(override_buffer_size) * sizeof(int32_t),
+        dev_ctx.stream()));
+  }
+
+  // Handle empty input: initialize all outputs properly
   if (X.numel() == 0) return;
 
   // Preprocess
@@ -793,14 +799,20 @@ void MoePermuteKernel(const Context &dev_ctx,
         expert_offset[i] = 0;
       }
     }
+    auto *stable_expert_offset =
+        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(expert_offset,
+                                                               kMaxNumExperts);
     PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(expert_offset_tensor.data<int>(),
-                                               expert_offset,
+                                               stable_expert_offset,
                                                sizeof(int) * kMaxNumExperts,
                                                cudaMemcpyHostToDevice,
                                                dev_ctx.stream()));
+    auto *stable_expert_offset_end =
+        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+            expert_offset_end, kMaxNumExperts);
     PADDLE_ENFORCE_GPU_SUCCESS(
         cudaMemcpyAsync(expert_offset_end_tensor.data<int>(),
-                        expert_offset_end,
+                        stable_expert_offset_end,
                         sizeof(int) * kMaxNumExperts,
                         cudaMemcpyHostToDevice,
                         dev_ctx.stream()));

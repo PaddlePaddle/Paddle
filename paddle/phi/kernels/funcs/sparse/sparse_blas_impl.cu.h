@@ -18,6 +18,9 @@
 
 #include "paddle/common/ddim.h"
 #include "paddle/phi/backends/dynload/cusparse.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
+#endif
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -76,7 +79,7 @@ template <typename T, typename IntT>
 inline void CreateCsrDescriptor(const SparseCsrTensor& x,
                                 const GPUContext& dev_ctx,
                                 cusparseSpMatDescr_t* descriptor) {
-  std::vector<int64_t> xdim_vec = common::vectorize(x.dims());
+  std::vector<int64_t> xdim_vec = vectorize(x.dims());
   auto x_ndims = xdim_vec.size();
   PADDLE_ENFORCE_GE(
       x_ndims,
@@ -131,7 +134,7 @@ template <typename T, typename IntT>
 inline void CreateCooDescriptor(const SparseCooTensor& x,
                                 const GPUContext& dev_ctx,
                                 cusparseSpMatDescr_t* descriptor) {
-  std::vector<int64_t> xdim_vec = common::vectorize(x.dims());
+  std::vector<int64_t> xdim_vec = vectorize(x.dims());
   auto x_ndims = xdim_vec.size();
   PADDLE_ENFORCE_GE(
       x_ndims,
@@ -226,7 +229,7 @@ class CuSparseDnMatDescriptor {
   explicit CuSparseDnMatDescriptor(const DenseTensor& x,
                                    const GPUContext& dev_ctx)
       : dev_ctx_(dev_ctx) {
-    std::vector<int64_t> xdim_vec = common::vectorize(x.dims());
+    std::vector<int64_t> xdim_vec = vectorize(x.dims());
     auto x_ndims = xdim_vec.size();
     PADDLE_ENFORCE_GE(
         x_ndims,
@@ -290,7 +293,7 @@ class CuSparseDnVecDescriptor {
   explicit CuSparseDnVecDescriptor(const DenseTensor& x,
                                    const GPUContext& dev_ctx)
       : dev_ctx_(dev_ctx) {
-    std::vector<int64_t> xdim_vec = common::vectorize(x.dims());
+    std::vector<int64_t> xdim_vec = vectorize(x.dims());
     auto x_ndims = xdim_vec.size();
     PADDLE_ENFORCE_GE(x_ndims,
                       1,
@@ -510,7 +513,7 @@ void SparseBlas<GPUContext>::SPGEMM(bool transa,
   out_crows_meta.set_dims(mat_a.crows().dims());
   dev_ctx_.template Alloc<int32_t>(mat_out_crows);
 
-  std::vector<int64_t> a_dim_vec = common::vectorize(mat_a.dims());
+  std::vector<int64_t> a_dim_vec = vectorize(mat_a.dims());
   auto a_ndims = a_dim_vec.size();
   const int64_t a_rows = a_dim_vec[a_ndims - 2];
   const int64_t a_cols = a_dim_vec[a_ndims - 1];
@@ -519,7 +522,7 @@ void SparseBlas<GPUContext>::SPGEMM(bool transa,
     a_batch_size *= a_dim_vec[i];
   }
 
-  std::vector<int64_t> b_dim_vec = common::vectorize(mat_b.dims());
+  std::vector<int64_t> b_dim_vec = vectorize(mat_b.dims());
   auto b_ndims = b_dim_vec.size();
   const int64_t b_rows = b_dim_vec[b_ndims - 2];
   const int64_t b_cols = b_dim_vec[b_ndims - 1];
@@ -541,9 +544,9 @@ void SparseBlas<GPUContext>::SPGEMM(bool transa,
     phi::MetaTensor cols_meta(a_cols_int.get());
     cols_meta.set_dims(mat_a.cols().dims());
 
-    phi::CastKernel<int64_t>(
+    CastKernel<int64_t>(
         dev_ctx_, mat_a.crows(), phi::DataType::INT32, a_crows_int.get());
-    phi::CastKernel<int64_t>(
+    CastKernel<int64_t>(
         dev_ctx_, mat_a.cols(), phi::DataType::INT32, a_cols_int.get());
 
     a_crows_data = a_crows_int->data<int32_t>();
@@ -561,9 +564,9 @@ void SparseBlas<GPUContext>::SPGEMM(bool transa,
     phi::MetaTensor cols_meta(b_cols_int.get());
     cols_meta.set_dims(mat_b.cols().dims());
 
-    phi::CastKernel<int64_t>(
+    CastKernel<int64_t>(
         dev_ctx_, mat_b.crows(), phi::DataType::INT32, b_crows_int.get());
-    phi::CastKernel<int64_t>(
+    CastKernel<int64_t>(
         dev_ctx_, mat_b.cols(), phi::DataType::INT32, b_cols_int.get());
 
     b_crows_data = b_crows_int->data<int32_t>();
@@ -590,6 +593,17 @@ void SparseBlas<GPUContext>::SPGEMM(bool transa,
 
     GetCsrBatchNnz<T><<<1, batch_size, 0, dev_ctx_.stream()>>>(
         a_crows_data, a_rows, static_cast<int32_t*>(tmp_buffer_ptr));
+#ifdef PADDLE_WITH_CUDA
+    PADDLE_ENFORCE_EQ(
+        phi::backends::gpu::IsCUDAGraphCapturing(),
+        false,
+        common::errors::InvalidArgument(
+            "SparseBlas CsrMM does not support CUDA Graph capture: async D2H "
+            "copy to local vectors 'a_batch_nnz_vec' / 'b_batch_nnz_vec' will "
+            "bake the destination addresses into the graph; on replay the "
+            "vectors are re-created at different addresses, causing "
+            "dangling-pointer writes."));
+#endif
     phi::backends::gpu::GpuMemcpyAsync(a_batch_nnz_vec.data(),
                                        tmp_buffer_ptr,
                                        batch_size * sizeof(int32_t),
@@ -815,9 +829,9 @@ void SparseBlas<GPUContext>::SPGEMM(bool transa,
 
   if (mat_a.crows().dtype() == phi::DataType::INT64 ||
       mat_b.crows().dtype() == phi::DataType::INT64) {
-    phi::CastKernel<int32_t>(
+    CastKernel<int32_t>(
         dev_ctx_, *mat_out_crows, phi::DataType::INT64, mat_out_crows);
-    phi::CastKernel<int32_t>(
+    CastKernel<int32_t>(
         dev_ctx_, *mat_out_cols, phi::DataType::INT64, mat_out_cols);
   }
 }

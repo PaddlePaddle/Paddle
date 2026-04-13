@@ -79,7 +79,7 @@ void CEmbeddingGradKernel(const Context& dev_ctx,
 
   const auto& index_type = ids.dtype();
   if (FLAGS_embedding_deterministic == 1) {
-    if (index_type == phi::DataType::INT32) {
+    if (index_type == DataType::INT32) {
       funcs::LaunchEmbeddingGradDeterministicKernel<T, int32_t>(
           dev_ctx,
           ids.data<int32_t>(),
@@ -90,7 +90,7 @@ void CEmbeddingGradKernel(const Context& dev_ctx,
           K,
           start_index);
       return;
-    } else if (index_type == phi::DataType::INT64) {
+    } else if (index_type == DataType::INT64) {
       funcs::LaunchEmbeddingGradDeterministicKernel<T, int64_t>(
           dev_ctx,
           ids.data<int64_t>(),
@@ -108,7 +108,7 @@ void CEmbeddingGradKernel(const Context& dev_ctx,
       blocks = 1;
     }
     const int64_t end_idx = start_index + N;
-    if (index_type == phi::DataType::INT32) {
+    if (index_type == DataType::INT32) {
       CEmbeddingGrad<T, int32_t>
           <<<blocks, threads, 0, dev_ctx.stream()>>>(d_table,
                                                      d_output,
@@ -120,7 +120,7 @@ void CEmbeddingGradKernel(const Context& dev_ctx,
                                                      end_idx,
                                                      limit);
       return;
-    } else if (index_type == phi::DataType::INT64) {
+    } else if (index_type == DataType::INT64) {
       CEmbeddingGrad<T, int64_t>
           <<<blocks, threads, 0, dev_ctx.stream()>>>(d_table,
                                                      d_output,
