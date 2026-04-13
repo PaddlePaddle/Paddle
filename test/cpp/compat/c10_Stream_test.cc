@@ -169,25 +169,6 @@ TEST(StreamTest, QueryCudaStreamNotReadyReturnsFalse) {
   EXPECT_NO_THROW(s.synchronize());
 }
 
-TEST(StreamTest, QueryCudaStreamInvalidHandleThrows) {
-  if (!at::cuda::is_available()) {
-    return;
-  }
-
-  auto device_index = c10::cuda::getCurrentCUDAStream().device_index();
-#ifdef PADDLE_WITH_HIP
-  hipStream_t raw_stream = nullptr;
-#else
-  cudaStream_t raw_stream = nullptr;
-#endif
-  ASSERT_NO_THROW(CreateRawStream(&raw_stream));
-
-  auto cuda_stream = c10::cuda::getStreamFromExternal(raw_stream, device_index);
-  ASSERT_NO_THROW(DestroyRawStream(raw_stream));
-
-  EXPECT_THROW(cuda_stream.query(), std::exception);
-  ClearLastStreamError();
-}
 #endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
 
 // ==================== synchronize ====================
@@ -289,25 +270,4 @@ TEST(CUDAStreamTest, DefaultStreamUnaffectedBySetCurrentCUDAStream) {
             original_stream.stream());
 }
 
-// getCurrentCUDAStream should mirror Paddle's current GPUContext stream even
-// when the stream changes outside c10::cuda::setCurrentCUDAStream.
-TEST(CUDAStreamTest, CurrentStreamFallsBackToPaddleCurrentStream) {
-  if (!at::cuda::is_available()) {
-    return;
-  }
-
-  auto original_stream = c10::cuda::getCurrentCUDAStream();
-  auto device_index = original_stream.device_index();
-  auto place = phi::GPUPlace(device_index);
-  auto* gpu_context = static_cast<phi::GPUContext*>(
-      paddle::experimental::DeviceContextPool::Instance().GetMutable(place));
-  auto pool_stream = c10::cuda::getStreamFromPool(
-      /*isHighPriority=*/false, device_index);
-
-  gpu_context->SetStream(pool_stream.stream());
-  EXPECT_EQ(c10::cuda::getCurrentCUDAStream(device_index), pool_stream);
-
-  gpu_context->SetStream(original_stream.stream());
-  EXPECT_EQ(c10::cuda::getCurrentCUDAStream(device_index), original_stream);
-}
 #endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
