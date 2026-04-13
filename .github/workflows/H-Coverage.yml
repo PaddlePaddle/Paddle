@@ -535,9 +535,8 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -ce '
           rm -rf * .[^.]*
-          set -x
-          nvidia-smi
           source /root/proxy
+          export LD_LIBRARY_PATH=/usr/local/cuda-12.9/targets/x86_64-linux/lib:/usr/local/cuda/lib64
           pip install uv coverage==7.6.1 bce-python-sdk==0.8.74 wrapt
           wget -q --tries=5 --no-proxy --no-check-certificate https://paddle-github-action.cdn.bcebos.com/PR/paddlefleet/${PR_ID}/${COMMIT_ID}/paddldfleet.tar.gz
           tar -xf paddldfleet.tar.gz --strip-components=1
@@ -552,6 +551,7 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           set -e
+          export LD_LIBRARY_PATH=/usr/local/cuda-12.9/targets/x86_64-linux/lib:/usr/local/cuda/lib64
           mkdir -p /PaddlePaddle
           cd /PaddlePaddle
           echo "Downloading Paddle.tar.gz from cfs"
@@ -567,6 +567,7 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -xce '
           pwd
+          export LD_LIBRARY_PATH=/usr/local/cuda-12.9/targets/x86_64-linux/lib:/usr/local/cuda/lib64
           if [ "${BRANCH}" != "develop" ]; then
             git checkout $fleet_branch
             echo "Checked out fleet branch: $fleet_branch"
@@ -644,6 +645,7 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -ce '
           rm -rf * .[^.]*
           source /root/proxy
+          export LD_LIBRARY_PATH=/usr/local/cuda-12.9/targets/x86_64-linux/lib:/usr/local/cuda/lib64
           pip install uv coverage==7.6.1 bce-python-sdk==0.8.74 wrapt
           wget -q --tries=5 --no-proxy --no-check-certificate https://paddle-github-action.cdn.bcebos.com/PR/paddlefleet/${PR_ID}/${COMMIT_ID}/paddldfleet.tar.gz
           tar -xf paddldfleet.tar.gz --strip-components=1
@@ -658,6 +660,7 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           set -e
+          export LD_LIBRARY_PATH=/usr/local/cuda-12.9/targets/x86_64-linux/lib:/usr/local/cuda/lib64
           mkdir -p /PaddlePaddle
           cd /PaddlePaddle
           echo "Downloading Paddle.tar.gz from cfs"
@@ -673,6 +676,7 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -ce '
           export PYTHONPATH=$(pwd)
+          export LD_LIBRARY_PATH=/usr/local/cuda-12.9/targets/x86_64-linux/lib:/usr/local/cuda/lib64
           if [ "${BRANCH}" != "develop" ]; then
             git checkout $fleet_branch
             echo "Checked out fleet branch: $fleet_branch"
