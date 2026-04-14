@@ -85,8 +85,8 @@ void Atan2Kernel(const Context& dev_ctx,
     const auto* y_data = y.data<T>();
 
     auto* out_data = out->data<typename Atan2Out<T>::type>();
-    phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
-    phi::Atan2Functor<T> functor(x_data, y_data, out_data, numel);
+    funcs::ForRange<Context> for_range(dev_ctx, numel);
+    Atan2Functor<T> functor(x_data, y_data, out_data, numel);
     for_range(functor);
   } else {
     DenseTensor b_x, b_y;
@@ -95,14 +95,14 @@ void Atan2Kernel(const Context& dev_ctx,
     b_y.Resize(out->dims());
     std::vector<const DenseTensor*> inputs = {&x, &y};
     std::vector<DenseTensor*> outputs = {&b_x, &b_y};
-    phi::BroadcastTensorsKernel<T, Context>(dev_ctx, inputs, outputs);
+    BroadcastTensorsKernel<T, Context>(dev_ctx, inputs, outputs);
 
     const auto numel = out->numel();
     const auto* x_data = b_x.data<T>();
     const auto* y_data = b_y.data<T>();
     auto* out_data = out->data<typename Atan2Out<T>::type>();
-    phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
-    phi::Atan2Functor<T> functor(x_data, y_data, out_data, numel);
+    funcs::ForRange<Context> for_range(dev_ctx, numel);
+    Atan2Functor<T> functor(x_data, y_data, out_data, numel);
     for_range(functor);
   }
 }

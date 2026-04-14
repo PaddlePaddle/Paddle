@@ -235,7 +235,7 @@ void RmspropSparseKernel(const Context &dev_ctx,
                          DenseTensor *mean_square_out,
                          DenseTensor *mean_grad_out,
                          DenseTensor *master_param_outs) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename dtype::MPTypeTrait<T>::Type;
   auto epsilon = static_cast<MT>(epsilon_t);
   auto rho = static_cast<MT>(decay_t);
   auto momentum = static_cast<MT>(momentum_t);
@@ -267,7 +267,7 @@ void RmspropSparseKernel(const Context &dev_ctx,
 
   funcs::ForRange<Context> for_range(dev_ctx, limit);
   auto &grad_merge_rows = merged_grad->rows();
-  phi::MixVector<int64_t> mixv_grad_merge_rows(&grad_merge_rows);
+  MixVector<int64_t> mixv_grad_merge_rows(&grad_merge_rows);
   const int64_t *rows = mixv_grad_merge_rows.Data(dev_ctx.GetPlace());
 
   auto &merged_tensor = merged_grad->value();

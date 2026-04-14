@@ -129,8 +129,8 @@ void QrGradKernel(const Context& dev_ctx,
     M = Add<T, Context>(
         dev_ctx, M_tril_0, TransposeLast2Dim<T, Context>(dev_ctx, M_tril_1));
 #else
-    if (std::is_same<T, phi::complex64>::value ||
-        std::is_same<T, phi::complex128>::value) {
+    if (std::is_same<T, complex64>::value ||
+        std::is_same<T, complex128>::value) {
       DenseTensor M_tril_tmp = TrilTriu<T, Context>(dev_ctx, M_tmp1, -1, true);
       DenseTensor M_tril =
           Add<T, Context>(dev_ctx,
@@ -142,14 +142,13 @@ void QrGradKernel(const Context& dev_ctx,
       DenseTensor M_diag_tmp =
           Diagonal<T, Context>(dev_ctx, M_tmp1, 0, rank - 2, rank - 1);
       DenseTensor M_diag_real = Real<T, Context>(dev_ctx, M_diag_tmp);
-      DenseTensor M_diag_imag = Fill<phi::dtype::Real<T>, Context>(
+      DenseTensor M_diag_imag = Fill<dtype::Real<T>, Context>(
           dev_ctx, vectorize<int>(M_diag_real.dims()), 0);
 
       DenseTensor M_diag;
       M_diag.Resize(M_diag_real.dims());
       dev_ctx.template Alloc<T>(&M_diag);
-      phi::ComplexKernel<phi::dtype::Real<T>>(
-          dev_ctx, M_diag_real, M_diag_imag, &M_diag);
+      ComplexKernel<dtype::Real<T>>(dev_ctx, M_diag_real, M_diag_imag, &M_diag);
 
       M = FillDiagonalTensor<T, Context>(
           dev_ctx, M_tril, M_diag, 0, rank - 2, rank - 1);
@@ -191,7 +190,7 @@ void QrGradKernel(const Context& dev_ctx,
   } else {
     // If m < n for input matrices A, we partition A = [X|Y] and R = [U|V]
     // Calculate dX and dY individually and concatenate them to get dA
-    dev_ctx.template Alloc<phi::dtype::Real<T>>(&dA);
+    dev_ctx.template Alloc<dtype::Real<T>>(&dA);
 
     auto Y = Slice<T, Context>(dev_ctx, A, {A.dims().size() - 1}, {m}, {n});
     auto U = Slice<T, Context>(dev_ctx, R, {R.dims().size() - 1}, {0}, {m});
