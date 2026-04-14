@@ -14,6 +14,8 @@
 
 #pragma once
 #include <cstdint>
+#include <map>
+#include <string>
 #include <vector>
 #include "paddle/phi/core/enforce.h"
 #ifdef PADDLE_WITH_CUDA
@@ -30,9 +32,11 @@ class StatAllocator;
 class StreamSafeCUDAAllocator;
 class VirtualMemoryAutoGrowthBestFitAllocator;
 class VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator;
+class AutoGrowthBestFitAllocator;
 }  // namespace allocation
 
 using allocation::Allocator;
+using allocation::AutoGrowthBestFitAllocator;
 using allocation::RetryAllocator;
 using allocation::StatAllocator;
 using allocation::StreamSafeCUDAAllocator;
@@ -54,6 +58,7 @@ class AllocatorVisitorReqImpl {
   virtual void Visit(RetryAllocator* allocator) = 0;
   virtual void Visit(StatAllocator* allocator) = 0;
   virtual void Visit(Allocator* allocator) {}
+  virtual void Visit(AutoGrowthBestFitAllocator*) {}
 #ifdef PADDLE_WITH_CUDA
   virtual void Visit(StreamSafeCUDAAllocator* allocator) = 0;
   virtual void Visit(VirtualMemoryAutoGrowthBestFitAllocator* allocator) = 0;
@@ -77,6 +82,7 @@ class AllocatorVisitor : public AllocatorVisitorReqImpl {
   virtual void Visit(RetryAllocator* allocator);
   virtual void Visit(StatAllocator* allocator);
   virtual void Visit(Allocator* allocator) {}
+  virtual void Visit(AutoGrowthBestFitAllocator*);
 #ifdef PADDLE_WITH_CUDA
   virtual void Visit(StreamSafeCUDAAllocator* allocator);
   virtual void Visit(VirtualMemoryAutoGrowthBestFitAllocator* allocator);
@@ -285,6 +291,7 @@ class VMMAllBlocksInfoVisitor : public AllocatorComputeStreamVisitor {
    * information is to be extracted.
    */
   void Visit(VirtualMemoryAutoGrowthBestFitAllocator* allocator) override;
+  void Visit(AutoGrowthBestFitAllocator* allocator) override;
 
  private:
   /**
@@ -297,6 +304,21 @@ class VMMAllBlocksInfoVisitor : public AllocatorComputeStreamVisitor {
    */
   std::vector<std::vector<std::tuple<size_t, uintptr_t, bool>>>
       all_blocks_info_;
+};
+
+/**
+ * @brief Visitor to collect allocator statistics (counters) from
+ * AutoGrowthBestFitAllocator.
+ */
+class AllocatorStatsVisitor : public AllocatorComputeStreamVisitor {
+  using AllocatorComputeStreamVisitor::Visit;
+
+ public:
+  void Visit(AutoGrowthBestFitAllocator* allocator) override;
+  std::map<std::string, size_t> GetStats() const { return stats_; }
+
+ private:
+  std::map<std::string, size_t> stats_;
 };
 
 class VMMAllocateRecordEventsVisitor : public AllocatorComputeStreamVisitor {

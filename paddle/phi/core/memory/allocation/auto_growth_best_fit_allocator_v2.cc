@@ -61,6 +61,7 @@ phi::Allocation *AutoGrowthBestFitAllocatorV2::AllocateImpl(
     if (iter != free_blocks_.end() && iter->second->size_ >= unaligned_size &&
         iter->second->size_ <= size) {
       block_it = iter->second;
+      ++cache_hit_count_;
       free_blocks_.erase(iter);
       block_it->is_free_ = false;
       VLOG(10) << "Allocate " << size << " bytes from chunk size "
@@ -83,6 +84,7 @@ phi::Allocation *AutoGrowthBestFitAllocatorV2::AllocateImpl(
         FreeIdleChunks();
       }
 
+      ++cache_miss_count_;
       chunks_.emplace_back(static_unique_ptr_cast<Allocation>(
           underlying_allocator_->Allocate(size)));
 
@@ -104,6 +106,7 @@ phi::Allocation *AutoGrowthBestFitAllocatorV2::AllocateImpl(
 
     if (iter != free_blocks_.end()) {
       block_it = iter->second;
+      ++cache_hit_count_;
       free_blocks_.erase(iter);
       auto *chunk = block_it->chunk_;
       size_t remaining_size = block_it->size_ - size;
@@ -112,6 +115,7 @@ phi::Allocation *AutoGrowthBestFitAllocatorV2::AllocateImpl(
       if (remaining_size == 0) {
         block_it->is_free_ = false;
       } else {
+        ++split_count_;
         auto remaining_free_block = chunk->blocks_.insert(
             block_it, Block(block_it->ptr_, remaining_size, true, true, chunk));
         free_blocks_.emplace(std::make_pair(remaining_size, block_it->ptr_),
@@ -122,6 +126,7 @@ phi::Allocation *AutoGrowthBestFitAllocatorV2::AllocateImpl(
         block_it->is_free_ = false;
       }
     } else {
+      ++cache_miss_count_;
       if (FLAGS_free_when_no_cache_hit) {
         FreeIdleChunks();
       }
@@ -155,6 +160,7 @@ phi::Allocation *AutoGrowthBestFitAllocatorV2::AllocateImpl(
               << remaining_size;
     }
   }
+  total_requested_size_ += unaligned_size;
   ++total_alloc_times_;
   total_alloc_size_ += size;
   VLOG(10) << "Alloc " << block_it->size_ << " bytes, ptr = " << block_it->ptr_;

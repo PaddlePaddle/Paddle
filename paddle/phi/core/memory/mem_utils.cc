@@ -138,6 +138,19 @@ std::vector<size_t> GetCompactSize(const GPUPlace& place) {
   return allocate_compact_visitor.GetCompactSize();
 }
 
+std::vector<std::vector<std::tuple<size_t, uintptr_t, bool>>> AllBlockInfo(
+    const GPUPlace& place) {
+  VMMAllBlocksInfoVisitor visitor;
+  allocation::AllocatorFacade::Instance().Accept(place, &visitor);
+  return visitor.GetAllBlocksInfo();
+}
+
+std::map<std::string, size_t> GetAllocatorStats(const GPUPlace& place) {
+  AllocatorStatsVisitor visitor;
+  allocation::AllocatorFacade::Instance().Accept(place, &visitor);
+  return visitor.GetStats();
+}
+
 #endif
 
 }  // namespace memory

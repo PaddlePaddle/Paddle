@@ -14,6 +14,7 @@
 
 #include "paddle/phi/core/memory/mem_visitor.h"
 #include "paddle/phi/core/memory/allocation/allocator.h"
+#include "paddle/phi/core/memory/allocation/auto_growth_best_fit_allocator.h"
 #include "paddle/phi/core/memory/allocation/retry_allocator.h"
 #include "paddle/phi/core/memory/allocation/spin_lock.h"
 #include "paddle/phi/core/memory/allocation/stat_allocator.h"
@@ -37,6 +38,9 @@ void AllocatorVisitor::Visit(RetryAllocator* allocator) {
 void AllocatorVisitor::Visit(StatAllocator* allocator) {
   allocator->GetUnderLyingAllocator()->Accept(this);
 }
+
+// AutoGrowthBestFitAllocator is a leaf allocator — no underlying to recurse.
+void AllocatorVisitor::Visit(AutoGrowthBestFitAllocator*) {}
 
 #ifdef PADDLE_WITH_CUDA
 void AllocatorVisitor::Visit(StreamSafeCUDAAllocator* allocator) {
@@ -114,6 +118,27 @@ void VMMAllBlocksInfoVisitor::Visit(
   if (!info.empty()) {
     all_blocks_info_.push_back(info);
   }
+}
+
+void VMMAllBlocksInfoVisitor::Visit(AutoGrowthBestFitAllocator* allocator) {
+  auto blocks = allocator->GetAllBlockInfo();
+  if (!blocks.empty()) {
+    all_blocks_info_.push_back(blocks);
+  }
+}
+
+void AllocatorStatsVisitor::Visit(AutoGrowthBestFitAllocator* allocator) {
+  auto s = allocator->GetStats();
+  stats_["total_alloc_times"] = s.total_alloc_times;
+  stats_["total_alloc_size"] = s.total_alloc_size;
+  stats_["total_free_times"] = s.total_free_times;
+  stats_["total_free_size"] = s.total_free_size;
+  stats_["cache_hit_count"] = s.cache_hit_count;
+  stats_["cache_miss_count"] = s.cache_miss_count;
+  stats_["split_count"] = s.split_count;
+  stats_["merge_count"] = s.merge_count;
+  stats_["total_requested_size"] = s.total_requested_size;
+  stats_["chunk_count"] = s.chunk_count;
 }
 
 void VMMAllocateRecordEventsVisitor::Visit(

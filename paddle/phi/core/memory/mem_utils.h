@@ -17,6 +17,7 @@
 #include <list>
 #include <map>
 #include <set>
+#include <string>
 #include <vector>
 
 #include "paddle/phi/core/memory/allocation/allocator.h"
@@ -113,6 +114,14 @@ GetAllocateEvent(const GPUPlace& place);
 
 // Get compact count and size when start FLAGS_enable_compact_mem.
 PADDLE_API extern std::vector<size_t> GetCompactSize(const GPUPlace& place);
+
+// Get all block info from both VMM and non-VMM allocators.
+PADDLE_API extern std::vector<std::vector<std::tuple<size_t, uintptr_t, bool>>>
+AllBlockInfo(const GPUPlace& place);
+
+// Get allocator stats (counters) from non-VMM AutoGrowthBestFitAllocator.
+PADDLE_API extern std::map<std::string, size_t> GetAllocatorStats(
+    const GPUPlace& place);
 #endif
 
 }  // namespace memory
