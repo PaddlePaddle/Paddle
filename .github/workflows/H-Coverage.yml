@@ -537,7 +537,7 @@ jobs:
           rm -rf * .[^.]*
           source /root/proxy
           export LD_LIBRARY_PATH=/usr/local/cuda-12.9/targets/x86_64-linux/lib:/usr/local/cuda/lib64
-          pip install uv coverage==7.6.1 bce-python-sdk==0.8.74 wrapt pytest
+          pip install uv coverage==7.6.1 bce-python-sdk==0.8.74 wrapt pytest matplotlib parameterized
           wget -q --tries=5 --no-proxy --no-check-certificate https://paddle-github-action.cdn.bcebos.com/PR/paddlefleet/${PR_ID}/${COMMIT_ID}/paddldfleet.tar.gz
           tar -xf paddldfleet.tar.gz --strip-components=1
           git config --global --add safe.directory /paddle
@@ -579,7 +579,7 @@ jobs:
           export UV_NO_SYNC=1 # This environment variable prevents uv sync from being executed when running un run.
           export UV_HTTP_TIMEOUT=300
           python -c "import paddle; print(paddle.version.commit)"
-          timeout 15m bash ci/single_card_test.sh
+          timeout 40m bash ci/single_card_test.sh
           single_card_exit_code=$?
           if [[ "$single_card_exit_code" != "0" ]]; then
             echo -e "::error:: \033[31mSingle card test failed.\033[0m"
@@ -646,7 +646,7 @@ jobs:
           rm -rf * .[^.]*
           source /root/proxy
           export LD_LIBRARY_PATH=/usr/local/cuda-12.9/targets/x86_64-linux/lib:/usr/local/cuda/lib64
-          pip install uv coverage==7.6.1 bce-python-sdk==0.8.74 wrapt pytest
+          pip install uv coverage==7.6.1 bce-python-sdk==0.8.74 wrapt pytest matplotlib parameterized
           wget -q --tries=5 --no-proxy --no-check-certificate https://paddle-github-action.cdn.bcebos.com/PR/paddlefleet/${PR_ID}/${COMMIT_ID}/paddldfleet.tar.gz
           tar -xf paddldfleet.tar.gz --strip-components=1
           git config --global --add safe.directory /paddle
