@@ -51,7 +51,7 @@ ENV PATH=/home/cmake-3.31.0-linux-x86_64/bin:$PATH
 
 
 ARG TMP_DIR=patchelf_tmp
-RUN rm -rf "$TMP_DIR" && git clone -b 0.15.0 https://github.com/NixOS/patchelf "$TMP_DIR" && \
+RUN rm -rf "$TMP_DIR" && git clone --depth 1 --branch 0.15.0 https://github.com/NixOS/patchelf "$TMP_DIR" && \
     cd "$TMP_DIR" && ./bootstrap.sh && \
     ./configure && make && make install && \
     cd .. && rm -rf "$TMP_DIR"
