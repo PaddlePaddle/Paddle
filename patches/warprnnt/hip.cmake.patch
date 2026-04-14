@@ -1,6 +1,6 @@
 --- a/cmake/hip.cmake
 +++ b/cmake/hip.cmake
-@@ -11,9 +11,25 @@ else()
+@@ -11,8 +11,25 @@ else()
      set(HIP_PATH ${ROCM_PATH}/hip CACHE PATH "Path to which HIP has been installed")
      set(HIP_CLANG_PATH ${ROCM_PATH}/llvm/bin CACHE PATH "Path to which clang has been installed")
  endif()
