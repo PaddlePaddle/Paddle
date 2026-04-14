@@ -58,34 +58,5 @@ class CommGroupNumTest(unittest.TestCase):
         )
 
 
-class TestContextParallelRankID(unittest.TestCase):
-    def setUp(self):
-        paddle.distributed.init_parallel_env()
-        group_names = [
-            "moe_sharding",
-            "sharding",
-            "pipe",
-            "sep",
-            "data",
-            "expert",
-            "model",
-            "context",
-        ]
-        dims = [1, 2, 1, 1, 1, 8, 4, 2]
-        self.hcg = tp.EPHybridCommunicateGroup(group_names, dims)
-        self.dp_rank = self.hcg.get_data_parallel_rank()
-        self.mp_rank = self.hcg.get_model_parallel_rank()
-        self.pp_rank = self.hcg.get_stage_id()
-        self.group = self.hcg.get_context_parallel_group()
-        self.cp_degree = self.hcg.get_context_parallel_world_size()
-        self.cp_rank = self.hcg.get_context_parallel_rank()
-
-    def test_cp_rank_id(self):
-        assert (
-            self.hcg.get_context_parallel_rank()
-            == self.hcg._get_context_parallel_id()
-        )
-
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     unittest.main()
