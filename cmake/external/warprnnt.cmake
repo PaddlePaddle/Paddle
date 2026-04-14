@@ -36,8 +36,10 @@ if(WIN32)
         "<SOURCE_DIR>/")
   endif()
 else()
+  # Use -p1: patch is generated as a/CMakeLists.txt vs b/CMakeLists.txt (git
+  # diff style). Plain -Nd without strip does not match those paths.
   set(WARPCTC_PATCH_CUDA_COMMAND
-      git checkout -- . && git checkout ${WARPRNNT_TAG} && patch -Nd
+      git checkout -- . && git checkout ${WARPRNNT_TAG} && patch -N -p1 -d
       ${SOURCE_DIR} <
       ${PADDLE_SOURCE_DIR}/patches/warprnnt/CMakeLists.txt.cuda.patch)
 endif()
