@@ -14,6 +14,7 @@
 
 #include <ATen/Functions.h>
 #include <ATen/core/TensorBody.h>
+#include <ATen/cuda/CUDAContext.h>
 #include <ATen/cuda/EmptyTensor.h>
 #include <ATen/native/cuda/Resize.h>
 #include <ATen/ops/tensor.h>
@@ -198,7 +199,7 @@ TEST(TensorAccessorTest, PackedAccessorWithIntType) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(TensorAccessorTest, PackedAccessorCUDA) {
-  if (torch::cuda::is_available()) {
+  if (at::cuda::is_available()) {
     // Create CUDA tensor
     at::Tensor tensor =
         at::arange(12, at::TensorOptions().dtype(at::kFloat).device(at::kCUDA))

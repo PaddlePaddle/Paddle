@@ -14,6 +14,7 @@
 
 #include <ATen/Functions.h>
 #include <ATen/core/TensorBody.h>
+#include <ATen/cuda/CUDAContext.h>
 #include <ATen/cuda/EmptyTensor.h>
 #include <ATen/native/cuda/Resize.h>
 #include <ATen/ops/tensor.h>
@@ -155,6 +156,9 @@ TEST(compat_basic_test, BasicCase) {
     ASSERT_EQ(result_ptr[i], 12);
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (!at::cuda::is_available()) {
+    return;
+  }
 
   {
     // for test empty_cuda:
@@ -237,7 +241,7 @@ TEST(compat_basic_test, BasicCase) {
 TEST(TestDevice, DeviceAPIsOnCUDA) {
   // Test device related APIs on CUDA if available
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (torch::cuda::is_available()) {
+  if (at::cuda::is_available()) {
     at::TensorBase cuda_tensor = at::ones(
         {2, 3}, c10::TensorOptions().dtype(at::kFloat).device(at::kCUDA));
 

@@ -1,3 +1,4 @@
+line_ending: lf
 formatter:
   indent: 2
   type: basic

@@ -175,7 +175,7 @@ void LUGradKernel(const Context& dev_ctx,
     Tensor_Conj<Context, T>(dev_ctx, phi, &phi_mH);
     phi_mH = Transpose2DTo6D<Context, T>(dev_ctx, phi_mH);
 
-    phi::TriangularSolveKernel<T, Context>(
+    TriangularSolveKernel<T, Context>(
         dev_ctx, U_narrow, phi_mH, true, false, false, &psi_principal);
 
     Tensor_Conj<Context, T>(dev_ctx, psi_principal, &psi_principal);
@@ -197,7 +197,7 @@ void LUGradKernel(const Context& dev_ctx,
                                          valuedims,
                                          xrank);
 
-    phi::TriangularSolveKernel<T, Context>(
+    TriangularSolveKernel<T, Context>(
         dev_ctx, L_narrow_mH, psi, true, false, true, &psi_tmp);
 
     auto mat_dim_p = funcs::CreateMatrixDescriptor(Pmat.dims(), 0, false);
@@ -264,7 +264,7 @@ void LUGradKernel(const Context& dev_ctx,
                                          xrank);
     DenseTensor psi_principal, phi_mH, psi_tmp, U_narrow_mH;
 
-    phi::TriangularSolveKernel<T, Context>(
+    TriangularSolveKernel<T, Context>(
         dev_ctx, L_narrow_mH, phi, true, false, true, &psi_principal);
 
     slice_starts[0] = 0;
@@ -298,7 +298,7 @@ void LUGradKernel(const Context& dev_ctx,
     psi_tmp = Transpose2DTo6D<Context, T>(dev_ctx, psi_tmp);
 
     Tensor_Conj<Context, T>(dev_ctx, U_narrow, &U_narrow_mH);
-    phi::TriangularSolveKernel<T, Context>(
+    TriangularSolveKernel<T, Context>(
         dev_ctx, U_narrow_mH, psi_tmp, true, false, false, &psi);
     *x_grad = Transpose2DTo6D<Context, T>(dev_ctx, psi);
   }
