@@ -1,13 +1,13 @@
 --- a/cmake/hip.cmake
 +++ b/cmake/hip.cmake
-@@ -19,6 +19,7 @@ set(CMAKE_MODULE_PATH "${HIP_PATH}/cmake" ${CMAKE_MODULE_PATH})
+@@ -19,5 +19,6 @@ set(CMAKE_MODULE_PATH "${HIP_PATH}/cmake" ${CMAKE_MODULE_PATH})
  
  find_package(HIP REQUIRED)
 +include(UseHIP)
  include_directories(${ROCM_PATH}/include)
  message(STATUS "HIP version: ${HIP_VERSION}")
  message(STATUS "HIP_CLANG_PATH: ${HIP_CLANG_PATH}")
-@@ -63,8 +64,8 @@ set(HIP_CLANG_FLAGS ${HIP_CXX_FLAGS})
+@@ -63,5 +64,5 @@ set(HIP_CLANG_FLAGS ${HIP_CXX_FLAGS})
  # host linker to link.
  list(APPEND HIP_HCC_FLAGS -fno-gpu-rdc)
  list(APPEND HIP_HCC_FLAGS --amdgpu-target=gfx906)
