@@ -143,6 +143,8 @@ jobs:
           echo "Pull upstream develop or target branch"
           git pull upstream $BRANCH --no-edit
           git submodule update
+          echo "[CI] step finished"
+          sleep 1
           '
 
       - name: Run build
@@ -158,6 +160,8 @@ jobs:
           rm -rf `find . -name "*.a"`
           rm -rf `find . -name "*.o"`
           exit $EXCODE
+          echo "[CI] step finished"
+          sleep 1
           '
 
       - name: Upload build.tar.gz and paddle_whl to bos
@@ -182,6 +186,8 @@ jobs:
           echo "Uploading paddle_whl"
           cp /paddle/dist/${{ env.paddle_whl }} .
           python ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/PR/dcu/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
+          echo "[CI] step finished"
+          sleep 1
           '
 
       - name: Terminate and delete the container
@@ -283,6 +289,8 @@ jobs:
           wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/dcu/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
           tar --use-compress-program="pzstd" -xf build.tar.gz --strip-components=1
           rm build.tar.gz
+          echo "[CI] step finished"
+          sleep 1
           '
 
       - name: Run test
@@ -296,6 +304,8 @@ jobs:
           tar -zxf hyhal-Z100.tar.gz -C /opt
           source /opt/dtk-24.04.1/env.sh
           bash -x ${ci_scripts}/dcu_test.sh
+          echo "[CI] step finished"
+          sleep 1
           '
 
       - name: Terminate and delete the container
