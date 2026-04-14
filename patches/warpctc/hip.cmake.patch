@@ -1,7 +1,7 @@
 --- a/cmake/hip.cmake
 +++ b/cmake/hip.cmake
 @@ -19,5 +19,6 @@ set(CMAKE_MODULE_PATH "${HIP_PATH}/cmake" ${CMAKE_MODULE_PATH})
- 
+  
  find_package(HIP REQUIRED)
 +include(UseHIP)
  include_directories(${ROCM_PATH}/include)
