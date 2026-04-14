@@ -139,10 +139,23 @@ if(WITH_ROCM)
         "Please set ROCM_PATH correctly (current: '${ROCM_PATH}').")
   endif()
 
+  # ROCm 6+ often installs FindHIP.cmake under lib/cmake/hip; older layouts use
+  # hip/cmake. ExternalProject CMAKE_ARGS cannot pass a ';'-separated module
+  # path list reliably, so pick the first directory that actually contains
+  # FindHIP.cmake (match the main Paddle configure when users pass
+  # -DCMAKE_MODULE_PATH=/opt/rocm/lib/cmake/hip).
+  set(WARPCTC_ROCM_HIP_CMAKE_MODULE_DIR "${ROCM_PATH}/hip/cmake")
+  if(EXISTS "${ROCM_PATH}/lib/cmake/hip/FindHIP.cmake")
+    set(WARPCTC_ROCM_HIP_CMAKE_MODULE_DIR "${ROCM_PATH}/lib/cmake/hip")
+  elseif(EXISTS "${ROCM_PATH}/hip/cmake/FindHIP.cmake")
+    set(WARPCTC_ROCM_HIP_CMAKE_MODULE_DIR "${ROCM_PATH}/hip/cmake")
+  endif()
+
   set(WARPCTC_ROCM_EXTRA_CMAKE_ARGS
       "-DROCM_PATH=${ROCM_PATH}"
       "-DHIP_ROOT_DIR=${ROCM_PATH}"
       "-DCMAKE_PREFIX_PATH=${WARPCTC_ROCM_CMAKE_PREFIX_PATH}"
+      "-DCMAKE_MODULE_PATH=${WARPCTC_ROCM_HIP_CMAKE_MODULE_DIR}"
       "-DROCM_HIPRTC_LIB=${WARPCTC_ROCM_HIPRTC_LIB}")
 endif()
 

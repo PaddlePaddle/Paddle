@@ -44,7 +44,8 @@ endif()
 if(WITH_ROCM)
   set(WARPRNNT_PATCH_ROCM_COMMAND
       patch -p1 <
-      ${PADDLE_SOURCE_DIR}/patches/warprnnt/CMakeLists.txt.rocm.patch)
+      ${PADDLE_SOURCE_DIR}/patches/warprnnt/CMakeLists.txt.rocm.patch && patch
+      -p1 < ${PADDLE_SOURCE_DIR}/patches/warprnnt/hip.cmake.patch)
 endif()
 if(NOT WIN32 AND WITH_GPU)
   if(${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0 AND ${CMAKE_CXX_COMPILER_VERSION}
@@ -142,10 +143,18 @@ if(WITH_ROCM)
         "Please set ROCM_PATH correctly (current: '${ROCM_PATH}').")
   endif()
 
+  set(WARPRNNT_ROCM_HIP_CMAKE_MODULE_DIR "${ROCM_PATH}/hip/cmake")
+  if(EXISTS "${ROCM_PATH}/lib/cmake/hip/FindHIP.cmake")
+    set(WARPRNNT_ROCM_HIP_CMAKE_MODULE_DIR "${ROCM_PATH}/lib/cmake/hip")
+  elseif(EXISTS "${ROCM_PATH}/hip/cmake/FindHIP.cmake")
+    set(WARPRNNT_ROCM_HIP_CMAKE_MODULE_DIR "${ROCM_PATH}/hip/cmake")
+  endif()
+
   set(WARPRNNT_ROCM_EXTRA_CMAKE_ARGS
       "-DROCM_PATH=${ROCM_PATH}"
       "-DHIP_ROOT_DIR=${ROCM_PATH}"
       "-DCMAKE_PREFIX_PATH=${WARPRNNT_ROCM_CMAKE_PREFIX_PATH}"
+      "-DCMAKE_MODULE_PATH=${WARPRNNT_ROCM_HIP_CMAKE_MODULE_DIR}"
       "-DROCM_HIPRTC_LIB=${WARPRNNT_ROCM_HIPRTC_LIB}")
 endif()
 
