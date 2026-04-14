@@ -126,45 +126,45 @@ void hvol2col(const Context& dev_ctx,
               const std::vector<int64_t>& dilation_size,
               T* data_col) {
   if (dim == 3) {
-    phi::funcs::vol2col_slow<T, Context>(dev_ctx,
-                                         data_hvol,
-                                         channels,
-                                         input_size[0],
-                                         input_size[1],
-                                         input_size[2],
-                                         output_size[0],
-                                         output_size[1],
-                                         output_size[2],
-                                         kernel_size[0],
-                                         kernel_size[1],
-                                         kernel_size[2],
-                                         pad_size[0],
-                                         pad_size[1],
-                                         pad_size[2],
-                                         stride_size[0],
-                                         stride_size[1],
-                                         stride_size[2],
-                                         dilation_size[0],
-                                         dilation_size[1],
-                                         dilation_size[2],
-                                         data_col);
+    funcs::vol2col_slow<T, Context>(dev_ctx,
+                                    data_hvol,
+                                    channels,
+                                    input_size[0],
+                                    input_size[1],
+                                    input_size[2],
+                                    output_size[0],
+                                    output_size[1],
+                                    output_size[2],
+                                    kernel_size[0],
+                                    kernel_size[1],
+                                    kernel_size[2],
+                                    pad_size[0],
+                                    pad_size[1],
+                                    pad_size[2],
+                                    stride_size[0],
+                                    stride_size[1],
+                                    stride_size[2],
+                                    dilation_size[0],
+                                    dilation_size[1],
+                                    dilation_size[2],
+                                    data_col);
   } else if (dim == 2) {
-    phi::funcs::im2col_slow<T, Context>(dev_ctx,
-                                        data_hvol,
-                                        channels,
-                                        input_size[0],
-                                        input_size[1],
-                                        output_size[0],
-                                        output_size[1],
-                                        kernel_size[0],
-                                        kernel_size[1],
-                                        pad_size[0],
-                                        pad_size[1],
-                                        stride_size[0],
-                                        stride_size[1],
-                                        dilation_size[0],
-                                        dilation_size[1],
-                                        data_col);
+    funcs::im2col_slow<T, Context>(dev_ctx,
+                                   data_hvol,
+                                   channels,
+                                   input_size[0],
+                                   input_size[1],
+                                   output_size[0],
+                                   output_size[1],
+                                   kernel_size[0],
+                                   kernel_size[1],
+                                   pad_size[0],
+                                   pad_size[1],
+                                   stride_size[0],
+                                   stride_size[1],
+                                   dilation_size[0],
+                                   dilation_size[1],
+                                   data_col);
   }
 }
 
@@ -180,46 +180,46 @@ void col2hvol(const Context& dev_ctx,
               const std::vector<int64_t>& dilation_size,
               T* data_hvol) {
   if (dim == 3) {
-    phi::funcs::col2vol_slow<T, T, Context>(dev_ctx,
-                                            data_col,
-                                            channels,
-                                            input_size[0],
-                                            input_size[1],
-                                            input_size[2],
-                                            output_size[0],
-                                            output_size[1],
-                                            output_size[2],
-                                            kernel_size[0],
-                                            kernel_size[1],
-                                            kernel_size[2],
-                                            pad_size[0],
-                                            pad_size[1],
-                                            pad_size[2],
-                                            stride_size[0],
-                                            stride_size[1],
-                                            stride_size[2],
-                                            dilation_size[0],
-                                            dilation_size[1],
-                                            dilation_size[2],
-                                            data_hvol);
+    funcs::col2vol_slow<T, T, Context>(dev_ctx,
+                                       data_col,
+                                       channels,
+                                       input_size[0],
+                                       input_size[1],
+                                       input_size[2],
+                                       output_size[0],
+                                       output_size[1],
+                                       output_size[2],
+                                       kernel_size[0],
+                                       kernel_size[1],
+                                       kernel_size[2],
+                                       pad_size[0],
+                                       pad_size[1],
+                                       pad_size[2],
+                                       stride_size[0],
+                                       stride_size[1],
+                                       stride_size[2],
+                                       dilation_size[0],
+                                       dilation_size[1],
+                                       dilation_size[2],
+                                       data_hvol);
   }
   if (dim == 2) {
-    phi::funcs::col2im_slow<T, T, Context>(dev_ctx,
-                                           data_col,
-                                           channels,
-                                           input_size[0],
-                                           input_size[1],
-                                           output_size[0],
-                                           output_size[1],
-                                           kernel_size[0],
-                                           kernel_size[1],
-                                           pad_size[0],
-                                           pad_size[1],
-                                           stride_size[0],
-                                           stride_size[1],
-                                           dilation_size[0],
-                                           dilation_size[1],
-                                           data_hvol);
+    funcs::col2im_slow<T, T, Context>(dev_ctx,
+                                      data_col,
+                                      channels,
+                                      input_size[0],
+                                      input_size[1],
+                                      output_size[0],
+                                      output_size[1],
+                                      kernel_size[0],
+                                      kernel_size[1],
+                                      pad_size[0],
+                                      pad_size[1],
+                                      stride_size[0],
+                                      stride_size[1],
+                                      dilation_size[0],
+                                      dilation_size[1],
+                                      data_hvol);
   }
 }
 
@@ -280,7 +280,7 @@ void SlowConvDilatedAllCUDAImpl(const Context& dev_ctx,
   }
 
   // Initialize
-  phi::funcs::SetConstant<Context, T> set_zero;
+  funcs::SetConstant<Context, T> set_zero;
   if (grad_weight) set_zero(dev_ctx, grad_weight, static_cast<T>(0));
   if (grad_bias) set_zero(dev_ctx, grad_bias, static_cast<T>(0));
   if (output && !bias) set_zero(dev_ctx, output, static_cast<T>(0));
@@ -289,7 +289,7 @@ void SlowConvDilatedAllCUDAImpl(const Context& dev_ctx,
   DenseTensor bias_cpu;
   const T* bias_cpu_data = nullptr;
   if (output && bias) {
-    phi::Copy(dev_ctx, *bias, phi::CPUPlace(), true, &bias_cpu);
+    Copy(dev_ctx, *bias, CPUPlace(), true, &bias_cpu);
     bias_cpu_data = bias_cpu.data<T>();
   }
 
@@ -315,8 +315,8 @@ void SlowConvDilatedAllCUDAImpl(const Context& dev_ctx,
         for (int n = 0; n < output_channels; ++n) {
           DenseTensor out_slice = Select<T>(output_n, n);
 
-          phi::FillKernel<T, Context>(
-              dev_ctx, out_slice, phi::Scalar(bias_cpu_data[n]), &out_slice);
+          FillKernel<T, Context>(
+              dev_ctx, out_slice, Scalar(bias_cpu_data[n]), &out_slice);
         }
       }
 
@@ -414,13 +414,12 @@ void SlowConvDilatedAllCUDAImpl(const Context& dev_ctx,
 
     // Backward Grad Bias
     if (grad_bias) {
-      DenseTensor sum_result =
-          phi::Sum<T, Context>(dev_ctx,
-                               grad_output_n,
-                               phi::IntArray(sum_axes),
-                               CppTypeToDataType<T>::Type(),
-                               false);
-      phi::Add<T, Context>(dev_ctx, *grad_bias, sum_result, grad_bias);
+      DenseTensor sum_result = Sum<T, Context>(dev_ctx,
+                                               grad_output_n,
+                                               IntArray(sum_axes),
+                                               CppTypeToDataType<T>::Type(),
+                                               false);
+      Add<T, Context>(dev_ctx, *grad_bias, sum_result, grad_bias);
     }
   }
 }
@@ -662,38 +661,38 @@ void SlowConvForward(const Context& dev_ctx,
     for (int g = 0; g < groups; ++g) {
       // Slice Input (Channel)
       DenseTensor input_g;
-      phi::SliceKernel<T, Context>(dev_ctx,
-                                   input_contiguous,
-                                   {channel_dim},
-                                   {g * in_g_sz},
-                                   {(g + 1) * in_g_sz},
-                                   {1},
-                                   {},
-                                   &input_g);
+      SliceKernel<T, Context>(dev_ctx,
+                              input_contiguous,
+                              {channel_dim},
+                              {g * in_g_sz},
+                              {(g + 1) * in_g_sz},
+                              {1},
+                              {},
+                              &input_g);
 
       // Slice Weight (OutChannel dim 0)
       DenseTensor weight_g;
-      phi::SliceKernel<T, Context>(dev_ctx,
-                                   weight_contiguous,
-                                   {0},
-                                   {g * out_g_sz},
-                                   {(g + 1) * out_g_sz},
-                                   {1},
-                                   {},
-                                   &weight_g);
+      SliceKernel<T, Context>(dev_ctx,
+                              weight_contiguous,
+                              {0},
+                              {g * out_g_sz},
+                              {(g + 1) * out_g_sz},
+                              {1},
+                              {},
+                              &weight_g);
 
       // Slice Bias (OutChannel dim 0)
       DenseTensor bias_g;
       const DenseTensor* bias_g_ptr = nullptr;
       if (bias_ptr) {
-        phi::SliceKernel<T, Context>(dev_ctx,
-                                     *bias_ptr,
-                                     {0},
-                                     {g * out_g_sz},
-                                     {(g + 1) * out_g_sz},
-                                     {1},
-                                     {},
-                                     &bias_g);
+        SliceKernel<T, Context>(dev_ctx,
+                                *bias_ptr,
+                                {0},
+                                {g * out_g_sz},
+                                {(g + 1) * out_g_sz},
+                                {1},
+                                {},
+                                &bias_g);
         bias_g_ptr = &bias_g;
       }
 
@@ -720,7 +719,7 @@ void SlowConvForward(const Context& dev_ctx,
     std::vector<const DenseTensor*> outputs_ptr;
     for (auto& t : outputs) outputs_ptr.push_back(&t);
 
-    phi::ConcatKernel<T, Context>(
+    ConcatKernel<T, Context>(
         dev_ctx, outputs_ptr, channel_dim, &transformed_output);
   }
 
@@ -855,36 +854,36 @@ void SlowConvBackward(const Context& dev_ctx,
     for (int g = 0; g < groups; ++g) {
       // Slice GradOutput (Channel)
       DenseTensor grad_output_g;
-      phi::SliceKernel<T, Context>(dev_ctx,
-                                   grad_output_cont,
-                                   {channel_dim},
-                                   {g * out_g_sz},
-                                   {(g + 1) * out_g_sz},
-                                   {1},
-                                   {},
-                                   &grad_output_g);
+      SliceKernel<T, Context>(dev_ctx,
+                              grad_output_cont,
+                              {channel_dim},
+                              {g * out_g_sz},
+                              {(g + 1) * out_g_sz},
+                              {1},
+                              {},
+                              &grad_output_g);
 
       // Slice Input (Channel)
       DenseTensor input_g;
-      phi::SliceKernel<T, Context>(dev_ctx,
-                                   input_cont,
-                                   {channel_dim},
-                                   {g * in_g_sz},
-                                   {(g + 1) * in_g_sz},
-                                   {1},
-                                   {},
-                                   &input_g);
+      SliceKernel<T, Context>(dev_ctx,
+                              input_cont,
+                              {channel_dim},
+                              {g * in_g_sz},
+                              {(g + 1) * in_g_sz},
+                              {1},
+                              {},
+                              &input_g);
 
       // Slice Weight (Output Channel / dim 0)
       DenseTensor weight_g;
-      phi::SliceKernel<T, Context>(dev_ctx,
-                                   weight_cont,
-                                   {0},
-                                   {g * out_g_sz},
-                                   {(g + 1) * out_g_sz},
-                                   {1},
-                                   {},
-                                   &weight_g);
+      SliceKernel<T, Context>(dev_ctx,
+                              weight_cont,
+                              {0},
+                              {g * out_g_sz},
+                              {(g + 1) * out_g_sz},
+                              {1},
+                              {},
+                              &weight_g);
 
       DenseTensor grad_input_g_tensor;
       DenseTensor grad_weight_g_tensor;
@@ -928,22 +927,21 @@ void SlowConvBackward(const Context& dev_ctx,
     if (t_input_grad_ptr) {
       std::vector<const DenseTensor*> ptrs;
       for (auto& t : grad_inputs_g) ptrs.push_back(&t);
-      phi::ConcatKernel<T, Context>(
-          dev_ctx, ptrs, channel_dim, t_input_grad_ptr);
+      ConcatKernel<T, Context>(dev_ctx, ptrs, channel_dim, t_input_grad_ptr);
     }
 
     // Concat Weight Grad
     if (t_filter_grad_ptr) {
       std::vector<const DenseTensor*> ptrs;
       for (auto& t : grad_weights_g) ptrs.push_back(&t);
-      phi::ConcatKernel<T, Context>(dev_ctx, ptrs, 0, t_filter_grad_ptr);
+      ConcatKernel<T, Context>(dev_ctx, ptrs, 0, t_filter_grad_ptr);
     }
 
     // Concat Bias Grad
     if (t_bias_grad_ptr) {
       std::vector<const DenseTensor*> ptrs;
       for (auto& t : grad_biases_g) ptrs.push_back(&t);
-      phi::ConcatKernel<T, Context>(dev_ctx, ptrs, 0, t_bias_grad_ptr);
+      ConcatKernel<T, Context>(dev_ctx, ptrs, 0, t_bias_grad_ptr);
     }
   }
 

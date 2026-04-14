@@ -235,12 +235,10 @@ struct KronGradOpFunctor {
 #if defined(__NVCC__) || defined(__HIPCC__)
     auto stream = dev_ctx.stream();  // it is a cuda device_context
     if (dx) {
-      phi::SumKernel<T, Context>(
-          dev_ctx, dout_x, {1}, dout_x.dtype(), false, dx);
+      SumKernel<T, Context>(dev_ctx, dout_x, {1}, dout_x.dtype(), false, dx);
     }
     if (dy) {
-      phi::SumKernel<T, Context>(
-          dev_ctx, dout_y, {1}, dout_y.dtype(), false, dy);
+      SumKernel<T, Context>(dev_ctx, dout_y, {1}, dout_y.dtype(), false, dy);
     }
 #else
     auto *place = dev_ctx.eigen_device();
@@ -248,8 +246,7 @@ struct KronGradOpFunctor {
     if (dx) {
       auto eigen_dout_x = EigenMatrix<T>::Reshape(dout_x, 1);
       auto eigen_vec_dx = EigenVector<T>::Flatten(*dx);
-      if constexpr (std::is_same_v<T, phi::float16> ||
-                    std::is_same_v<T, phi::bfloat16>) {
+      if constexpr (std::is_same_v<T, float16> || std::is_same_v<T, bfloat16>) {
         eigen_vec_dx.device(*place) = eigen_dout_x.template cast<float>()
                                           .sum(reduce_dim)
                                           .template cast<T>();
@@ -260,8 +257,7 @@ struct KronGradOpFunctor {
     if (dy) {
       auto eigen_dout_y = EigenMatrix<T>::Reshape(dout_y, 1);
       auto eigen_vec_dy = EigenVector<T>::Flatten(*dy);
-      if constexpr (std::is_same_v<T, phi::float16> ||
-                    std::is_same_v<T, phi::bfloat16>) {
+      if constexpr (std::is_same_v<T, float16> || std::is_same_v<T, bfloat16>) {
         eigen_vec_dy.device(*place) = eigen_dout_y.template cast<float>()
                                           .sum(reduce_dim)
                                           .template cast<T>();
