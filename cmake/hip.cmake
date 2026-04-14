@@ -35,6 +35,11 @@ endif()
 set(CMAKE_PREFIX_PATH "${ROCM_PATH}" ${CMAKE_PREFIX_PATH})
 
 find_package(HIP REQUIRED)
+# ROCm Thrust headers may include <cuda/__cccl_config>. Prefer vendored CCCL
+# libcudacxx headers when available.
+if(EXISTS "${PADDLE_SOURCE_DIR}/third_party/cccl/libcudacxx/include/cuda/__cccl_config")
+  include_directories(BEFORE "${PADDLE_SOURCE_DIR}/third_party/cccl/libcudacxx/include")
+endif()
 include_directories(${ROCM_PATH}/include)
 message(STATUS "HIP version: ${HIP_VERSION}")
 message(STATUS "HIP_CLANG_PATH: ${HIP_CLANG_PATH}")
