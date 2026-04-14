@@ -1058,26 +1058,40 @@ class DygraphShardingOptimizerV2:
             if len(buffers) == 0:
                 continue
 
-            # Collect grad storages and their sizes
-            grad_storages = []
-            buffer_sizes = []
-            for buf in buffers:
-                grad_storages.append(buf.grad_storage)
-                buffer_sizes.append(buf.grad_storage._numel())
-
             nranks = comm_group.nranks
             rank = comm_group.rank
 
-            # Concat all grad storages into one tensor
-            if len(grad_storages) == 1:
-                fused_grad = grad_storages[0]
-            else:
-                fused_grad = paddle.concat(grad_storages, axis=0)
+            # Single buffer case: no fusion needed
+            if len(buffers) == 1:
+                buf = buffers[0]
+                buf._comm_grads()
+                buf.scale_grads()
+                continue
 
-            total_size = fused_grad._numel()
-            shard_size = total_size // nranks
-            begin = shard_size * rank
-            end = begin + shard_size
+            # Compute shard sizes for each buffer
+            shard_sizes = []
+            for buf in buffers:
+                buf_size = buf.grad_storage._numel()
+                shard_sizes.append(buf_size // nranks)
+
+            # Interleaved concat: [buf0_shard0, buf1_shard0, buf0_shard1, buf1_shard1, ...]
+            # This ensures that after reduce_scatter, each rank gets the correct shards
+            interleaved_slices = []
+            for r in range(nranks):
+                for i, buf in enumerate(buffers):
+                    shard_size = shard_sizes[i]
+                    begin = r * shard_size
+                    end = begin + shard_size
+                    interleaved_slices.append(
+                        buf.grad_storage._slice(begin, end)
+                    )
+
+            fused_grad = paddle.concat(interleaved_slices, axis=0)
+
+            # Each rank's output size = sum of all buffers' shard sizes
+            total_shard_size = sum(shard_sizes)
+            begin = total_shard_size * rank
+            end = begin + total_shard_size
 
             # Determine reduce op
             reduce_op = (
@@ -1113,19 +1127,17 @@ class DygraphShardingOptimizerV2:
                 reduce_scattered.scale_(scale_factor)
 
             # Copy results back to each buffer's grad_storage slice
-            if len(grad_storages) > 1:
-                offset = 0
-                for i, buf in enumerate(buffers):
-                    buf_shard_size = buffer_sizes[i] // nranks
-                    src_slice = reduce_scattered._slice(
-                        offset, offset + buf_shard_size
-                    )
-                    # Get the destination slice in the original buffer
-                    buf_begin = buf_shard_size * rank
-                    buf_end = buf_begin + buf_shard_size
-                    dst_slice = buf.grad_storage._slice(buf_begin, buf_end)
-                    dst_slice.copy_(src_slice, False)
-                    offset += buf_shard_size
+            # reduce_scattered = [buf0_shard_rank, buf1_shard_rank, ...]
+            offset = 0
+            for i, buf in enumerate(buffers):
+                shard_size = shard_sizes[i]
+                src_slice = reduce_scattered._slice(offset, offset + shard_size)
+                # Destination: the rank's shard in original buffer
+                buf_begin = shard_size * rank
+                buf_end = buf_begin + shard_size
+                dst_slice = buf.grad_storage._slice(buf_begin, buf_end)
+                dst_slice.copy_(src_slice, False)
+                offset += shard_size
 
             # Reset all buffers
             for buf in buffers:
@@ -1286,47 +1298,66 @@ class DygraphShardingOptimizerV2:
             nranks = comm_group.nranks
             rank = comm_group.rank
 
-            # Collect param storages and their sizes
-            param_storages = []
-            buffer_sizes = []
+            # Single buffer case: no fusion needed
+            if len(buffers) == 1:
+                buf = buffers[0]
+                shard_size = buf.param_storage._numel() // nranks
+                begin = shard_size * rank
+                end = begin + shard_size
+                slice_buffer = buf.param_storage._slice(begin, end)
+                comm_group.process_group.all_gather(
+                    slice_buffer, buf.param_storage
+                ).wait()
+                continue
+
+            # Compute shard sizes for each buffer
+            shard_sizes = []
             for buf in buffers:
-                param_storages.append(buf.param_storage)
-                buffer_sizes.append(buf.param_storage._numel())
+                buf_size = buf.param_storage._numel()
+                shard_sizes.append(buf_size // nranks)
 
-            # Concat all param storages into one tensor
-            if len(param_storages) == 1:
-                fused_param = param_storages[0]
-                # Single buffer, just do normal all_gather
-                shard_size = fused_param._numel() // nranks
-                begin = shard_size * rank
-                end = begin + shard_size
-                slice_buffer = fused_param._slice(begin, end)
-                comm_group.process_group.all_gather(
-                    slice_buffer, fused_param
-                ).wait()
-            else:
-                fused_param = paddle.concat(param_storages, axis=0)
-
-                total_size = fused_param._numel()
-                shard_size = total_size // nranks
-                begin = shard_size * rank
-                end = begin + shard_size
-
-                # Prepare slice buffer (input to all_gather)
-                slice_buffer = fused_param._slice(begin, end)
-
-                # One all_gather for all buffers
-                comm_group.process_group.all_gather(
-                    slice_buffer, fused_param
-                ).wait()
-
-                # Copy results back to each buffer's param_storage
-                offset = 0
+            # Interleaved concat: [buf0_shard0, buf1_shard0, buf0_shard1, buf1_shard1, ...]
+            interleaved_slices = []
+            for r in range(nranks):
                 for i, buf in enumerate(buffers):
-                    buf_size = buffer_sizes[i]
-                    src_slice = fused_param._slice(offset, offset + buf_size)
-                    buf.param_storage.copy_(src_slice, False)
-                    offset += buf_size
+                    shard_size = shard_sizes[i]
+                    begin = r * shard_size
+                    end = begin + shard_size
+                    interleaved_slices.append(
+                        buf.param_storage._slice(begin, end)
+                    )
+
+            fused_param = paddle.concat(interleaved_slices, axis=0)
+
+            # Each rank's input size = sum of all buffers' shard sizes
+            total_shard_size = sum(shard_sizes)
+            begin = total_shard_size * rank
+            end = begin + total_shard_size
+
+            # Input slice for this rank
+            slice_buffer = fused_param._slice(begin, end)
+
+            # One all_gather for all buffers
+            comm_group.process_group.all_gather(
+                slice_buffer, fused_param
+            ).wait()
+
+            # Copy results back to each buffer's param_storage
+            # fused_param is now: [buf0_shard0, buf1_shard0, buf0_shard1, buf1_shard1, ...]
+            # Need to de-interleave back to each buffer
+            for i, buf in enumerate(buffers):
+                shard_size = shard_sizes[i]
+                for r in range(nranks):
+                    # Source: position in interleaved fused_param
+                    src_offset = r * total_shard_size + sum(shard_sizes[:i])
+                    src_slice = fused_param._slice(
+                        src_offset, src_offset + shard_size
+                    )
+                    # Destination: position in original buffer
+                    dst_begin = r * shard_size
+                    dst_end = dst_begin + shard_size
+                    dst_slice = buf.param_storage._slice(dst_begin, dst_end)
+                    dst_slice.copy_(src_slice, False)
 
     def _update_trainable(self):
         """
@@ -1434,6 +1465,9 @@ class DygraphShardingOptimizerV2:
 
             if self._enable_timer:
                 self.timers("apply-optimize").start()
+            print(
+                "+++++++++++++++++++ optimizer-step apply-optimize start +++++++++++++++++++"
+            )
 
             self._apply_optimize(
                 loss=None,
@@ -1442,10 +1476,19 @@ class DygraphShardingOptimizerV2:
             )
             if self._enable_timer:
                 self.timers("apply-optimize").stop()
+            print(
+                "+++++++++++++++++++ optimizer-step apply-optimize end +++++++++++++++++++"
+            )
 
         # sync parameters across sharding ranks
         if not self._all_gather_overlap_forward:
+            print(
+                "+++++++++++++++++++ optimizer-step all-gather start +++++++++++++++++++"
+            )
             self._sharding_sync_parameters()
+            print(
+                "+++++++++++++++++++ optimizer-step all-gather end +++++++++++++++++++"
+            )
         else:
             # Reset the status of the bucket. The parameter is SHARDED.
             for comm_buffer in self._comm_buffer_list:
