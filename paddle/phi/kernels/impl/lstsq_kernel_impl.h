@@ -85,15 +85,15 @@ inline void GetResidualsTensor(const Context& dev_ctx,
     }
     if (compute_residuals) {
       DenseTensor matmul_tensor =
-          phi::Matmul<T>(dev_ctx, x, *solution, false, false);
-      DenseTensor sub_tensor = phi::Subtract<T>(dev_ctx, matmul_tensor, y);
+          Matmul<T>(dev_ctx, x, *solution, false, false);
+      DenseTensor sub_tensor = Subtract<T>(dev_ctx, matmul_tensor, y);
       DenseTensor pow_tensor;
       pow_tensor.Resize(sub_tensor.dims());
       dev_ctx.template Alloc<T>(&pow_tensor);
-      phi::PowKernel<T>(dev_ctx, sub_tensor, Scalar(2), &pow_tensor);
+      PowKernel<T>(dev_ctx, sub_tensor, Scalar(2), &pow_tensor);
 
-      auto sum_tensor = phi::Sum<T>(
-          dev_ctx, pow_tensor, phi::IntArray({-2}), pow_tensor.dtype(), false);
+      auto sum_tensor = Sum<T>(
+          dev_ctx, pow_tensor, IntArray({-2}), pow_tensor.dtype(), false);
       Copy<Context>(dev_ctx, sum_tensor, dev_ctx.GetPlace(), true, residuals);
       return;
     }
@@ -147,17 +147,17 @@ inline void BatchedOrmqr(const Context& dev_ctx,
       T* tau_working_ptr = &tau[i * tau_stride];                          \
       T* other_working_ptr = &other[i * other_stride];                    \
       PADDLE_ENFORCE_GPU_SUCCESS(                                         \
-          phi::dynload::rocsolver_##C##ormqr(handle,                      \
-                                             side,                        \
-                                             trans,                       \
-                                             m,                           \
-                                             n,                           \
-                                             k,                           \
-                                             a_working_ptr,               \
-                                             lda,                         \
-                                             tau_working_ptr,             \
-                                             other_working_ptr,           \
-                                             ldc));                       \
+          dynload::rocsolver_##C##ormqr(handle,                           \
+                                        side,                             \
+                                        trans,                            \
+                                        m,                                \
+                                        n,                                \
+                                        k,                                \
+                                        a_working_ptr,                    \
+                                        lda,                              \
+                                        tau_working_ptr,                  \
+                                        other_working_ptr,                \
+                                        ldc));                            \
     }                                                                     \
   }
 FUNC_WITH_TYPES(ORMQR_BATCH_INSTANCE);
@@ -199,7 +199,7 @@ inline void BatchedOrmqr<GPUContext, float>(const GPUContext& dev_ctx,
   int ldc = std::max<int>(1, m);
 
   auto handle = dev_ctx.cusolver_dn_handle();
-  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnSormqr_bufferSize(
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnSormqr_bufferSize(
       handle, side, trans, m, n, k, a, lda, tau, other, ldc, &lwork));
   DenseTensor info;
   info.Resize({1});
@@ -216,20 +216,20 @@ inline void BatchedOrmqr<GPUContext, float>(const GPUContext& dev_ctx,
     float* workspace_ptr = dev_ctx.template Alloc<float>(&workspace);
 
     // compute ormgr
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnSormqr(handle,
-                                                              side,
-                                                              trans,
-                                                              m,
-                                                              n,
-                                                              k,
-                                                              a_working_ptr,
-                                                              lda,
-                                                              tau_working_ptr,
-                                                              other_working_ptr,
-                                                              ldc,
-                                                              workspace_ptr,
-                                                              lwork,
-                                                              info_d));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnSormqr(handle,
+                                                         side,
+                                                         trans,
+                                                         m,
+                                                         n,
+                                                         k,
+                                                         a_working_ptr,
+                                                         lda,
+                                                         tau_working_ptr,
+                                                         other_working_ptr,
+                                                         ldc,
+                                                         workspace_ptr,
+                                                         lwork,
+                                                         info_d));
 
     // check the error info
     int info_h;
@@ -268,7 +268,7 @@ inline void BatchedOrmqr<GPUContext, double>(const GPUContext& dev_ctx,
   int ldc = std::max<int>(1, m);
 
   auto handle = dev_ctx.cusolver_dn_handle();
-  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnDormqr_bufferSize(
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnDormqr_bufferSize(
       handle, side, trans, m, n, k, a, lda, tau, other, ldc, &lwork));
   DenseTensor info;
   info.Resize({1});
@@ -285,20 +285,20 @@ inline void BatchedOrmqr<GPUContext, double>(const GPUContext& dev_ctx,
     double* workspace_ptr = dev_ctx.template Alloc<double>(&workspace);
 
     // compute ormgr
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnDormqr(handle,
-                                                              side,
-                                                              trans,
-                                                              m,
-                                                              n,
-                                                              k,
-                                                              a_working_ptr,
-                                                              lda,
-                                                              tau_working_ptr,
-                                                              other_working_ptr,
-                                                              ldc,
-                                                              workspace_ptr,
-                                                              lwork,
-                                                              info_d));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnDormqr(handle,
+                                                         side,
+                                                         trans,
+                                                         m,
+                                                         n,
+                                                         k,
+                                                         a_working_ptr,
+                                                         lda,
+                                                         tau_working_ptr,
+                                                         other_working_ptr,
+                                                         ldc,
+                                                         workspace_ptr,
+                                                         lwork,
+                                                         info_d));
 
     // check the error info
     int info_h;

@@ -61,7 +61,7 @@ void StftGradKernel(const Context& dev_ctx,
                     bool normalized,
                     bool onesided,
                     DenseTensor* x_grad) {
-  using C = phi::dtype::complex<T>;
+  using C = dtype::complex<T>;
 
   const auto* dy = &out_grad;
   auto* dx = x_grad;
@@ -111,7 +111,7 @@ void StftGradKernel(const Context& dev_ctx,
     fft_c2c_func(
         dev_ctx, full_dy, &complex_d_frames_w, axes, normalization, false);
   }
-  phi::RealKernel<C>(dev_ctx, complex_d_frames_w, &d_frames_w);
+  RealKernel<C>(dev_ctx, complex_d_frames_w, &d_frames_w);
 
   // d_frames_w -> d_frames
   DenseTensor d_frames;

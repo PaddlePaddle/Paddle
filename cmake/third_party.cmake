@@ -575,6 +575,25 @@ if(WITH_CUSPARSELT)
   list(APPEND third_party_deps extern_cusparselt)
 endif()
 
+string(FIND "${CUDA_ARCH_BIN}" "90" ARCH_BIN_CONTAINS_90)
+if(NOT WITH_GPU
+   OR NOT WITH_DISTRIBUTE
+   OR (ARCH_BIN_CONTAINS_90 EQUAL -1))
+  set(WITH_NVSHMEM OFF)
+endif()
+if(WITH_SLEEF
+   AND NOT WITH_ROCM
+   AND NOT WIN32)
+  include(cmake/sleef.cmake)
+  if(TARGET extern_sleef)
+    list(APPEND third_party_deps extern_sleef)
+  endif()
+endif()
+if(WITH_NVSHMEM)
+  include(external/nvshmem)
+  list(APPEND third_party_deps extern_nvshmem)
+endif()
+
 if(WITH_ROCM)
   include(external/flashattn)
   list(APPEND third_party_deps extern_flashattn)
@@ -620,25 +639,6 @@ endif()
 if(WITH_OPENVINO)
   include(external/openvino)
   list(APPEND third_party_deps extern_openvino)
-endif()
-
-string(FIND "${CUDA_ARCH_BIN}" "90" ARCH_BIN_CONTAINS_90)
-if(NOT WITH_GPU
-   OR NOT WITH_DISTRIBUTE
-   OR (ARCH_BIN_CONTAINS_90 EQUAL -1))
-  set(WITH_NVSHMEM OFF)
-endif()
-if(WITH_SLEEF
-   AND NOT WITH_ROCM
-   AND NOT WIN32)
-  include(cmake/sleef.cmake)
-  if(TARGET extern_sleef)
-    list(APPEND third_party_deps extern_sleef)
-  endif()
-endif()
-if(WITH_NVSHMEM)
-  include(external/nvshmem)
-  list(APPEND third_party_deps extern_nvshmem)
 endif()
 
 add_custom_target(third_party ALL DEPENDS ${third_party_deps})

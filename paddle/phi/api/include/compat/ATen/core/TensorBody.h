@@ -30,7 +30,9 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/memory/malloc.h"
 
-#ifdef PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
+#elif defined(PADDLE_WITH_CUDA)
 #include <cuda_runtime_api.h>
 #endif
 
@@ -140,7 +142,7 @@ class Tensor : public TensorBase {
       PaddlePlace place(phi::AllocationType::CPU);
       return tensor_.copy_to(place, true);
     } else if (b == c10::Backend::CUDA) {
-      PaddlePlace place(phi::AllocationType::GPU);
+      auto place = paddle::DefaultGPUPlace();
       return tensor_.copy_to(place, true);
     } else if (b == c10::Backend::XPU) {
       PaddlePlace place(phi::AllocationType::XPU);
@@ -161,7 +163,7 @@ class Tensor : public TensorBase {
 
   Tensor cuda() const {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    PaddlePlace place(phi::AllocationType::GPU);
+    auto place = paddle::DefaultGPUPlace();
     return tensor_.copy_to(place, true);
 #elif defined(PADDLE_WITH_XPU)
     return tensor_.copy_to(paddle::DefaultXPUPlace(), true);
@@ -724,9 +726,13 @@ class Tensor : public TensorBase {
   void record_stream(at::Stream s) const;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   void record_stream(at::cuda::CUDAStream s) const;
-  // TODO(youge325): Remove after DeepEP paddle branch is updated to use
-  // at::Stream
+// TODO(youge325): Remove after DeepEP paddle branch is updated to use
+// at::Stream
+#ifdef PADDLE_WITH_HIP
+  void record_stream(hipStream_t s) const;
+#else
   void record_stream(cudaStream_t s) const;
+#endif
 #endif
 
   Tensor var(int dim) const { return var(at::IntArrayRef{dim}, true, false); }

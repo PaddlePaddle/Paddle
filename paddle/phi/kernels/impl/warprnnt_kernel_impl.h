@@ -55,16 +55,16 @@ class ComputeRnntLossFunctor<Context, float> {
                           float* costs,
                           void* workspace,
                           rnntOptions options) {
-    return phi::dynload::compute_rnnt_loss(activations,
-                                           gradients,
-                                           label,
-                                           label_lengths,
-                                           input_lengths,
-                                           static_cast<int>(alphabet_size),
-                                           static_cast<int>(minibatch),
-                                           costs,
-                                           workspace,
-                                           options);
+    return dynload::compute_rnnt_loss(activations,
+                                      gradients,
+                                      label,
+                                      label_lengths,
+                                      input_lengths,
+                                      static_cast<int>(alphabet_size),
+                                      static_cast<int>(minibatch),
+                                      costs,
+                                      workspace,
+                                      options);
   }
 };
 
@@ -81,16 +81,16 @@ class ComputeRnntLossFunctor<Context, double> {
                           double* costs,
                           void* workspace,
                           rnntOptions options) {
-    return phi::dynload::compute_rnnt_loss_fp64(activations,
-                                                gradients,
-                                                label,
-                                                label_lengths,
-                                                input_lengths,
-                                                static_cast<int>(alphabet_size),
-                                                static_cast<int>(minibatch),
-                                                costs,
-                                                workspace,
-                                                options);
+    return dynload::compute_rnnt_loss_fp64(activations,
+                                           gradients,
+                                           label,
+                                           label_lengths,
+                                           input_lengths,
+                                           static_cast<int>(alphabet_size),
+                                           static_cast<int>(minibatch),
+                                           costs,
+                                           workspace,
+                                           options);
   }
 };
 
@@ -148,7 +148,7 @@ class WarpRNNTFunctor {
     }
 
     size_t workspace_bytes = 0;
-    status = phi::dynload::get_rnnt_workspace_size(
+    status = dynload::get_rnnt_workspace_size(
         maxT, maxU, B, gpu, &workspace_bytes, sizeof(T));
 
     PADDLE_ENFORCE_EQ(
@@ -157,7 +157,7 @@ class WarpRNNTFunctor {
         errors::PreconditionNotMet(
             "warp-rnnt [version %d] Error in get_rnnt_workspace_size: %s",
             warprnnt_version_,
-            phi::dynload::rnntGetStatusString(status)));
+            dynload::rnntGetStatusString(status)));
     PADDLE_ENFORCE_GT(
         workspace_bytes,
         0UL,
@@ -167,7 +167,7 @@ class WarpRNNTFunctor {
                                 workspace_bytes));
 
     size_t workspace_elements = workspace_bytes / sizeof(T) + 1UL;
-    DenseTensor workspace = phi::Full<T, Context>(
+    DenseTensor workspace = Full<T, Context>(
         dev_ctx, {static_cast<int64_t>(workspace_elements)}, static_cast<T>(0));
     T* workspace_data = workspace.data<T>();
 
@@ -189,7 +189,7 @@ class WarpRNNTFunctor {
         errors::PreconditionNotMet(
             "warp-rnnt [version %d] Error in get_workspace_size: %s",
             warprnnt_version_,
-            phi::dynload::rnntGetStatusString(status)));
+            dynload::rnntGetStatusString(status)));
   }
 
  protected:
@@ -199,7 +199,7 @@ class WarpRNNTFunctor {
             const size_t blank,
             const float fastemit_lambda,
             const int num_threads) {
-    warprnnt_version_ = phi::dynload::get_warprnnt_version();
+    warprnnt_version_ = dynload::get_warprnnt_version();
 
     options_.maxT = maxT;
     options_.maxU = maxU;
@@ -210,8 +210,7 @@ class WarpRNNTFunctor {
     if (dev_ctx.GetPlace().GetType() == AllocationType::GPU) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       options_.loc = RNNT_GPU;
-      options_.stream =
-          reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
+      options_.stream = reinterpret_cast<const GPUContext&>(dev_ctx).stream();
 #else
       PADDLE_THROW(
           errors::PreconditionNotMet("[warprnnt init] GPU is not enabled."));

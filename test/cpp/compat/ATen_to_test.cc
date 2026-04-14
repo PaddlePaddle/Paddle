@@ -14,6 +14,7 @@
 
 #include <ATen/Functions.h>
 #include <ATen/core/TensorBody.h>
+#include <ATen/cuda/CUDAContext.h>
 #include <ATen/cuda/EmptyTensor.h>
 #include <ATen/native/cuda/Resize.h>
 #include <ATen/ops/tensor.h>
@@ -190,6 +191,9 @@ TEST(TensorToTest, ToOtherTensor_MatchesDevice) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(TensorToTest, ToDtype_GPU_FloatToDouble) {
+  if (!at::cuda::is_available()) {
+    return;
+  }
   at::Tensor t = at::tensor(
       {1.0f, 2.0f},
       at::TensorOptions().dtype(at::kFloat).device(c10::Device(c10::kCUDA, 0)));
@@ -200,6 +204,9 @@ TEST(TensorToTest, ToDtype_GPU_FloatToDouble) {
 }
 
 TEST(TensorToTest, ToDevice_CPUToGPU) {
+  if (!at::cuda::is_available()) {
+    return;
+  }
   at::Tensor t = at::tensor({5.0f}, at::kFloat);
   at::Tensor result = t.to(c10::Device(c10::kCUDA, 0),
                            at::kFloat,
@@ -210,6 +217,9 @@ TEST(TensorToTest, ToDevice_CPUToGPU) {
 }
 
 TEST(TensorToTest, ToDevice_GPUToCPU) {
+  if (!at::cuda::is_available()) {
+    return;
+  }
   at::Tensor t = at::tensor(
       {7.0f},
       at::TensorOptions().dtype(at::kFloat).device(c10::Device(c10::kCUDA, 0)));
@@ -217,5 +227,20 @@ TEST(TensorToTest, ToDevice_GPUToCPU) {
 
   ASSERT_EQ(result.device().type(), c10::DeviceType::CPU);
   ASSERT_NEAR(result.item<float>(), 7.0f, 1e-5f);
+}
+
+TEST(TensorToTest, ToDeviceWithoutIndexUsesCurrentCudaDevice) {
+  if (c10::cuda::device_count() < 2) {
+    return;
+  }
+  c10::cuda::CUDAGuard guard(1);
+  at::Tensor t = at::tensor({5.0f}, at::kFloat);
+  at::Tensor result = t.to(c10::Device(c10::kCUDA),
+                           at::kFloat,
+                           /*non_blocking=*/false,
+                           /*copy=*/false);
+
+  ASSERT_EQ(result.device().type(), c10::DeviceType::CUDA);
+  ASSERT_EQ(result.device().index(), 1);
 }
 #endif

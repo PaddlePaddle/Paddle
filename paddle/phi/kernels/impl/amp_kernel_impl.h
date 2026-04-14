@@ -115,7 +115,7 @@ void UpdateLossScalingKernel(const Context& dev_ctx,
                              DenseTensor* loss_scaling,
                              DenseTensor* out_good_steps,
                              DenseTensor* out_bad_steps) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename dtype::MPTypeTrait<T>::Type;
 
   PADDLE_ENFORCE_EQ(found_infinite.numel(),
                     1,

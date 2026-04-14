@@ -150,7 +150,7 @@ void BaddbmmKernel(const Context& dev_ctx,
   funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, 3>::Eval(
       place, eigen_out, eigen_input, bcast_dims);
 
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
 
   // special case for MPType
   if constexpr (std::is_same_v<MPType, float>) {
