@@ -113,6 +113,42 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL "4.0.0")
   )
   set(WARPRNNT_POLICY_ARGS "-DCMAKE_POLICY_VERSION_MINIMUM=3.5")
 endif()
+
+set(WARPRNNT_ROCM_EXTRA_CMAKE_ARGS "")
+if(WITH_ROCM)
+  if(NOT ROCM_PATH AND DEFINED ENV{ROCM_PATH} AND NOT "$ENV{ROCM_PATH}" STREQUAL "")
+    set(ROCM_PATH "$ENV{ROCM_PATH}")
+  endif()
+  if(NOT ROCM_PATH)
+    set(ROCM_PATH "/opt/rocm")
+  endif()
+
+  # ExternalProject_Add's CMAKE_ARGS is a CMake list split on ';'. A value like
+  # -DCMAKE_PREFIX_PATH=a;b is therefore broken into multiple arguments for the
+  # child cmake. Only pass a single prefix here (ROCm root is sufficient).
+  set(WARPRNNT_ROCM_CMAKE_PREFIX_PATH "${ROCM_PATH}")
+
+  find_library(
+    WARPRNNT_ROCM_HIPRTC_LIB amdhip64
+    HINTS "${ROCM_PATH}/lib" "${ROCM_PATH}/lib64"
+    NO_DEFAULT_PATH)
+  if(NOT WARPRNNT_ROCM_HIPRTC_LIB)
+    find_library(WARPRNNT_ROCM_HIPRTC_LIB amdhip64)
+  endif()
+  if(NOT WARPRNNT_ROCM_HIPRTC_LIB)
+    message(
+      FATAL_ERROR
+        "warprnnt(ROCm): failed to locate libamdhip64.so (amdhip64). "
+        "Please set ROCM_PATH correctly (current: '${ROCM_PATH}').")
+  endif()
+
+  set(WARPRNNT_ROCM_EXTRA_CMAKE_ARGS
+      "-DROCM_PATH=${ROCM_PATH}"
+      "-DHIP_ROOT_DIR=${ROCM_PATH}"
+      "-DCMAKE_PREFIX_PATH=${WARPRNNT_ROCM_CMAKE_PREFIX_PATH}"
+      "-DROCM_HIPRTC_LIB=${WARPRNNT_ROCM_HIPRTC_LIB}")
+endif()
+
 ExternalProject_Add(
   extern_warprnnt
   ${EXTERNAL_PROJECT_LOG_ARGS}
@@ -140,6 +176,7 @@ ExternalProject_Add(
              -DBUILD_TESTS=OFF
              -DCMAKE_POSITION_INDEPENDENT_CODE=ON
              -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
+             ${WARPRNNT_ROCM_EXTRA_CMAKE_ARGS}
              ${EXTERNAL_OPTIONAL_ARGS}
              ${WARPRNNT_POLICY_ARGS}
              ${WARPCTC_CCBIN_OPTION}
