@@ -1,9 +1,22 @@
 --- a/cmake/hip.cmake
 +++ b/cmake/hip.cmake
-@@ -19,5 +19,6 @@ set(CMAKE_MODULE_PATH "${HIP_PATH}/cmake" ${CMAKE_MODULE_PATH})
+@@ -17,7 +17,19 @@ else()
+ endif()
+ set(CMAKE_MODULE_PATH "${HIP_PATH}/cmake" ${CMAKE_MODULE_PATH})
  
++# ROCm HIP CMake modules can live in different places across versions/images.
++# Add both unified and legacy module dirs so include(UseHIP) can be resolved.
++if(IS_DIRECTORY "${ROCM_PATH}/lib/cmake/hip")
++  set(CMAKE_MODULE_PATH "${ROCM_PATH}/lib/cmake/hip" ${CMAKE_MODULE_PATH})
++endif()
++if(IS_DIRECTORY "${ROCM_PATH}/hip/cmake")
++  set(CMAKE_MODULE_PATH "${ROCM_PATH}/hip/cmake" ${CMAKE_MODULE_PATH})
++endif()
++
  find_package(HIP REQUIRED)
-+include(UseHIP)
++if(EXISTS "${ROCM_PATH}/hip/cmake/UseHIP.cmake" OR EXISTS "${ROCM_PATH}/lib/cmake/hip/UseHIP.cmake")
++  include(UseHIP)
++endif()
  include_directories(${ROCM_PATH}/include)
  message(STATUS "HIP version: ${HIP_VERSION}")
  message(STATUS "HIP_CLANG_PATH: ${HIP_CLANG_PATH}")
