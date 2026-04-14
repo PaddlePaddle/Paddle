@@ -1,10 +1,29 @@
 --- a/cmake/hip.cmake
 +++ b/cmake/hip.cmake
-@@ -18,7 +18,8 @@ endif()
- set(CMAKE_MODULE_PATH "${HIP_PATH}/cmake" ${CMAKE_MODULE_PATH})
+@@ -10,11 +10,21 @@
+     set(ROCM_PATH $ENV{ROCM_PATH} CACHE PATH "Path to which ROCm has been installed")
+     set(HIP_PATH ${ROCM_PATH}/hip CACHE PATH "Path to which HIP has been installed")
+     set(HIP_CLANG_PATH ${ROCM_PATH}/llvm/bin CACHE PATH "Path to which clang has been installed")
+ endif()
+-set(CMAKE_MODULE_PATH "${HIP_PATH}/cmake" ${CMAKE_MODULE_PATH})
++if(IS_DIRECTORY "${ROCM_PATH}/lib/cmake/hip")
++  set(CMAKE_MODULE_PATH "${ROCM_PATH}/lib/cmake/hip" ${CMAKE_MODULE_PATH})
++elseif(IS_DIRECTORY "${ROCM_PATH}/hip/cmake")
++  set(CMAKE_MODULE_PATH "${ROCM_PATH}/hip/cmake" ${CMAKE_MODULE_PATH})
++else()
++  set(CMAKE_MODULE_PATH "${HIP_PATH}/cmake" ${CMAKE_MODULE_PATH})
++endif()
  
  find_package(HIP REQUIRED)
 +include(UseHIP)
  include_directories(${ROCM_PATH}/include)
  message(STATUS "HIP version: ${HIP_VERSION}")
  message(STATUS "HIP_CLANG_PATH: ${HIP_CLANG_PATH}")
+ MESSAGE(STATUS "HIP_ROOT_DIR: ${HIP_ROOT_DIR}")
+@@ -76,5 +86,5 @@
+ message(STATUS "HIP library name: ${hip_library_name}")
+ 
+ # set HIP link libs
+-find_library(ROCM_HIPRTC_LIB ${hip_library_name} HINTS ${HIP_PATH}/lib)
++find_library(ROCM_HIPRTC_LIB ${hip_library_name} HINTS ${ROCM_PATH}/lib ${ROCM_PATH}/lib64 ${HIP_PATH}/lib)
+ message(STATUS "ROCM_HIPRTC_LIB: ${ROCM_HIPRTC_LIB}")
