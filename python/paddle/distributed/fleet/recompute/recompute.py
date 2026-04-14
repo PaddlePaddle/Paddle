@@ -537,7 +537,8 @@ class RecomputeFunction(PyLayer):
                         dtype=ctx.amp_dtype,
                     ),
                 ):
-                    _restore_freed_closure_tensors(ctx)
+                    if ctx.closure_cells:
+                        _restore_freed_closure_tensors(ctx)
                     detached_inputs = detach_variable(tuple(inputs))
                     outputs = ctx.run_function(*detached_inputs, **ctx.kwargs)
             else:
@@ -548,7 +549,8 @@ class RecomputeFunction(PyLayer):
                     level=ctx.amp_level,
                     dtype=ctx.amp_dtype,
                 ):
-                    _restore_freed_closure_tensors(ctx)
+                    if ctx.closure_cells:
+                        _restore_freed_closure_tensors(ctx)
                     detached_inputs = detach_variable(tuple(inputs))
                     outputs = ctx.run_function(*detached_inputs, **ctx.kwargs)
 
