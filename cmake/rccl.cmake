@@ -12,36 +12,90 @@ if(WITH_RCCL)
       ${ROCM_PATH}/rccl
       CACHE PATH "RCCL ROOT")
 
-  # find_package(rccl) in hip.cmake may cache RCCL_INCLUDE_DIR to a versioned
-  # path (e.g. /opt/rocm-7.0.0/include) that does not exist in minimal images.
-  # Resolve by probing real paths under ROCM_PATH first.
   set(_PADDLE_RCCL_INCLUDE_DIR "")
-  foreach(_rccl_inc IN ITEMS "${ROCM_PATH}/include"
-      "${ROCM_PATH}/rccl/include" "${RCCL_ROOT}/include" "${RCCL_ROOT}"
-      "$ENV{RCCL_ROOT}/include" "$ENV{RCCL_ROOT}")
-    if(_rccl_inc AND EXISTS "${_rccl_inc}/rccl.h")
-      set(_PADDLE_RCCL_INCLUDE_DIR "${_rccl_inc}")
+
+  # Include dirs from find_package(rccl) in hip.cmake (imported target).
+  foreach(_rccl_tgt IN ITEMS rccl::rccl rccl)
+    if(_PADDLE_RCCL_INCLUDE_DIR)
       break()
     endif()
+    if(TARGET "${_rccl_tgt}")
+      get_target_property(_rccl_iface_includes "${_rccl_tgt}"
+                          INTERFACE_INCLUDE_DIRECTORIES)
+      if(_rccl_iface_includes AND NOT _rccl_iface_includes STREQUAL
+                                        "NOTFOUND")
+        foreach(_one IN LISTS _rccl_iface_includes)
+          string(FIND "${_one}" "$<" _paddle_rccl_genex)
+          if(NOT _paddle_rccl_genex EQUAL -1)
+            continue()
+          endif()
+          if(EXISTS "${_one}/rccl.h")
+            set(_PADDLE_RCCL_INCLUDE_DIR "${_one}")
+            break()
+          endif()
+        endforeach()
+      endif()
+    endif()
   endforeach()
+
+  get_filename_component(_paddle_rocm_real "${ROCM_PATH}" REAL_PATH)
+  get_filename_component(_paddle_rocm_parent "${ROCM_PATH}" DIRECTORY)
+
+  # Probe unified / alternate layouts (symlinked ROCm root, versioned dirs).
+  if(NOT _PADDLE_RCCL_INCLUDE_DIR)
+    foreach(
+      _rccl_inc IN ITEMS
+      "${ROCM_PATH}/include"
+      "${_paddle_rocm_real}/include"
+      "${ROCM_PATH}/rccl/include"
+      "${_paddle_rocm_real}/rccl/include"
+      "${RCCL_ROOT}/include"
+      "${RCCL_ROOT}"
+      "$ENV{RCCL_ROOT}/include"
+      "$ENV{RCCL_ROOT}")
+      if(_rccl_inc AND EXISTS "${_rccl_inc}/rccl.h")
+        set(_PADDLE_RCCL_INCLUDE_DIR "${_rccl_inc}")
+        break()
+      endif()
+    endforeach()
+  endif()
+
+  # e.g. /opt/rocm -> /opt/rocm-7.x; headers may only live under rocm-*.
+  if(NOT _PADDLE_RCCL_INCLUDE_DIR AND _paddle_rocm_parent)
+    file(GLOB _paddle_rccl_glob
+         "${_paddle_rocm_parent}/rocm-*/include/rccl.h")
+    foreach(_rccl_h IN LISTS _paddle_rccl_glob)
+      get_filename_component(_rccl_inc "${_rccl_h}" DIRECTORY)
+      if(EXISTS "${_rccl_inc}/rccl.h")
+        set(_PADDLE_RCCL_INCLUDE_DIR "${_rccl_inc}")
+        break()
+      endif()
+    endforeach()
+  endif()
 
   if(NOT _PADDLE_RCCL_INCLUDE_DIR)
     unset(RCCL_INCLUDE_DIR CACHE)
     find_path(
       RCCL_INCLUDE_DIR rccl.h
-      PATHS ${ROCM_PATH}/include ${ROCM_PATH}/rccl/include ${ROCM_PATH}
+      PATHS ${ROCM_PATH}/include ${_paddle_rocm_real}/include
+            ${ROCM_PATH}/rccl/include ${ROCM_PATH}
             ${RCCL_ROOT} ${RCCL_ROOT}/include ${RCCL_ROOT}/local/include
             $ENV{RCCL_ROOT} $ENV{RCCL_ROOT}/include $ENV{RCCL_ROOT}/local/include
       NO_DEFAULT_PATH)
     set(_PADDLE_RCCL_INCLUDE_DIR "${RCCL_INCLUDE_DIR}")
+    if(_PADDLE_RCCL_INCLUDE_DIR MATCHES "-NOTFOUND$")
+      set(_PADDLE_RCCL_INCLUDE_DIR "")
+    endif()
   endif()
 
   if(NOT _PADDLE_RCCL_INCLUDE_DIR OR NOT EXISTS
       "${_PADDLE_RCCL_INCLUDE_DIR}/rccl.h")
     message(
       FATAL_ERROR
-        "rccl.h not found. Set ROCM_PATH (current: '${ROCM_PATH}') or install rccl dev. "
-        "Tried ${ROCM_PATH}/include and related paths.")
+        "rccl.h not found. Set ROCM_PATH (current: '${ROCM_PATH}') or install "
+        "rccl development headers (e.g. rccl-dev). "
+        "Checked REAL_PATH '${_paddle_rocm_real}', target rccl includes, and "
+        "pattern ${_paddle_rocm_parent}/rocm-*/include/rccl.h.")
   endif()
 
   set(RCCL_INCLUDE_DIR
