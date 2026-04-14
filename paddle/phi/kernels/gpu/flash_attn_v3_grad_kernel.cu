@@ -830,6 +830,8 @@ void FlashMaskV2GradBaseKernel(
     float const softcap,
     bool const deterministic,
     int const sm_margin,
+    int const rank,
+    int const nranks,
     DenseTensor *dq,
     DenseTensor *dk,
     DenseTensor *dv,
@@ -1164,7 +1166,40 @@ void FlashMaskV2GradBaseKernel(
                  : (arch == 86 || arch == 89 ? kBlockN_sm86 : kBlockN_sm80);
   auto round_multiple = [](int x, int m) { return (x + m - 1) / m * m; };
   int const seqlen_q_rounded = round_multiple(seqlen_q, kBlockM);
-  int const seqlen_k_rounded = round_multiple(seqlen_k, kBlockN);
+
+  // if KV head >= 4, we will consider using RS overlap
+  PADDLE_ENFORCE_LE(
+      nranks,
+      64,
+      common::errors::InvalidArgument(
+          "nranks for FlashMask overlap should <= 64, got: %d", nranks));
+  PADDLE_ENFORCE_EQ(
+      (nranks == 1) || (seqlen_k >= 4096 && seqlen_k <= 131072 &&
+                        (seqlen_k & (seqlen_k - 1)) == 0),
+      true,
+      common::errors::InvalidArgument(
+          "If nranks > 1 (using overlap), currently only [4, 8, 16, 32, 64, "
+          "128]K seqlen_k is supported, got nranks = %d, seqlen_k = %d",
+          nranks,
+          seqlen_k));
+  const int chunks_per_seg = dynload::flashmaskv2_get_num_chunks_per_stage(
+      seqlen_k, nranks, num_heads_k);
+  PADDLE_ENFORCE_GT(
+      chunks_per_seg,
+      0,
+      common::errors::InvalidArgument(
+          "chunks_per_seg should be at least 1, but got: %d. Check whether "
+          "WITH_NVSHMEM is on for this Paddle compile.",
+          chunks_per_seg));
+  bool const use_rs_overlap = nranks > 1;
+  VLOG(6) << "FlashMask RS overlap: use rs: " << use_rs_overlap
+          << ", num chunk: " << chunks_per_seg;
+  int const dkv_accum_s_scaler =
+      use_rs_overlap ? chunks_per_seg : nranks;  // * cp_size
+  int const dkv_s_scaler =
+      use_rs_overlap ? 1 : nranks;  // dk, dv remains local seqlen
+  int const seqlen_k_rounded_cp =
+      round_multiple(dkv_accum_s_scaler * seqlen_k, kBlockN);
   int const total_q_padded_rounded =
       round_multiple(total_q + batch_size * kBlockM, kBlockM);
   int const total_k_padded_rounded =
@@ -1229,44 +1264,59 @@ void FlashMaskV2GradBaseKernel(
   } else {
     *dq = EmptyLike<T, Context>(dev_ctx, q);
   }
-  if (dk_.is_initialized()) {
-    *dk = dk_.get();
+
+  PADDLE_ENFORCE_GT(nranks,
+                    0,
+                    common::errors::InvalidArgument(
+                        "nranks should be at least 1, but got: %d", nranks));
+
+  if (nranks > 1) {
     PADDLE_ENFORCE_EQ(
-        dk->dtype(),
-        q_type,
-        common::errors::InvalidArgument("dk must have the same dtype as q"));
-    CHECK_DEVICE((*dk));
-    PADDLE_ENFORCE_EQ(dk->strides()[dk->strides().size() - 1],
-                      1,
+        is_varlen_k,
+        false,
+        common::errors::InvalidArgument(
+            "when nranks > 1, FlashMask does not support varlen k."));
+    PADDLE_ENFORCE_LT(rank,
+                      nranks,
                       common::errors::InvalidArgument(
-                          "dk must have contiguous last dimension"));
-    if (!is_varlen_k) {
-      CHECK_SHAPE((*dk), batch_size, seqlen_k, num_heads_k, head_size);
-    } else {
-      CHECK_SHAPE((*dk), total_k, num_heads_k, head_size);
-    }
-  } else {
-    *dk = EmptyLike<T, Context>(dev_ctx, k);
+                          "FlashMask distributed overlap requires "
+                          "rank < nranks, but got rank = %d >= nranks %d.",
+                          rank,
+                          nranks));
   }
-  if (dv_.is_initialized()) {
-    *dv = dv_.get();
-    PADDLE_ENFORCE_EQ(
-        dv->dtype(),
-        q_type,
-        common::errors::InvalidArgument("dv must have the same dtype as q"));
-    CHECK_DEVICE((*dv));
-    PADDLE_ENFORCE_EQ(dv->strides()[dv->strides().size() - 1],
-                      1,
-                      common::errors::InvalidArgument(
-                          "dv must have contiguous last dimension"));
-    if (!is_varlen_k) {
-      CHECK_SHAPE((*dv), batch_size, seqlen_k, num_heads_k, head_size);
+
+  auto GradTensorCheckSetter = [&](const DenseTensor &t,
+                                   const paddle::optional<DenseTensor> &dt_,
+                                   DenseTensor *dt,
+                                   const char *name) {
+    if (dt_.is_initialized()) {
+      *dt = dt_.get();
+      PADDLE_ENFORCE_EQ(dt->dtype(),
+                        q_type,
+                        common::errors::InvalidArgument(
+                            "%s must have the same dtype as q", name));
+      CHECK_DEVICE((*dt));
+      PADDLE_ENFORCE_EQ(dt->strides()[dt->strides().size() - 1],
+                        1,
+                        common::errors::InvalidArgument(
+                            "%s must have contiguous last dimension", name));
+      if (!is_varlen_k) {
+        CHECK_SHAPE(
+            (*dt), batch_size, seqlen_k * dkv_s_scaler, num_heads_k, head_size);
+      } else {
+        CHECK_SHAPE((*dt), total_k, num_heads_k, head_size);
+      }
     } else {
-      CHECK_SHAPE((*dv), total_k, num_heads_k, head_size);
+      // nranks > 1: using distributed overlap will actually compute with
+      // complete size. If nrank == 1, dkv_s_scaler will be 1
+      *dt = phi::Empty<T, Context>(
+          dev_ctx,
+          {batch_size, seqlen_k * dkv_s_scaler, num_heads_k, head_size});
     }
-  } else {
-    *dv = EmptyLike<T, Context>(dev_ctx, v);
-  }
+  };
+
+  GradTensorCheckSetter(k, dk_, dk, "dk");
+  GradTensorCheckSetter(v, dv_, dv, "dv");
 
   // Otherwise the kernel will be launched from cuda:0 device
   // Cast to char to avoid compiler warning about narrowing
@@ -1309,13 +1359,16 @@ void FlashMaskV2GradBaseKernel(
   }
   if (num_heads_k != num_heads) {  // MQA / GQA
     if (!is_varlen) {
+      // dk and dv accum should directly account for CP overlap
       if (dk_accum) {
-        dk_accum->Resize(make_ddim(
-            {batch_size, num_heads_k, seqlen_k_rounded * head_size_rounded}));
+        dk_accum->Resize(make_ddim({batch_size,
+                                    num_heads_k,
+                                    seqlen_k_rounded_cp * head_size_rounded}));
       }
       if (dv_accum) {
-        dv_accum->Resize(make_ddim(
-            {batch_size, num_heads_k, seqlen_k_rounded * head_size_rounded}));
+        dv_accum->Resize(make_ddim({batch_size,
+                                    num_heads_k,
+                                    seqlen_k_rounded_cp * head_size_rounded}));
       }
     } else {
       if (dk_accum) {
@@ -1351,7 +1404,8 @@ void FlashMaskV2GradBaseKernel(
       seqlen_q,
       seqlen_k,
       seqlen_q_rounded,
-      seqlen_k_rounded,
+      seqlen_k_rounded_cp,  // length of grad accum will be scaled for CP
+                            // overlap
       num_heads,
       num_heads_k,
       head_size,
@@ -1405,10 +1459,17 @@ void FlashMaskV2GradBaseKernel(
       dev_ctx, {(seqlen_q + kBlockM - 1) / kBlockM, batch_size, num_heads});
   dynload::flashmaskv2_bwd_params_set_dq_semaphore(params_handle,
                                                    dq_semaphore.data<int>());
-  DenseTensor dk_semaphore = Empty<int32_t>(
-      dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
-  DenseTensor dv_semaphore = Empty<int32_t>(
-      dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
+  // dk_semaphore should have the same seqlen with dk_accum
+  DenseTensor dk_semaphore =
+      Empty<int32_t>(dev_ctx,
+                     {(seqlen_k * dkv_accum_s_scaler + kBlockN - 1) / kBlockN,
+                      batch_size,
+                      num_heads_k});
+  DenseTensor dv_semaphore =
+      Empty<int32_t>(dev_ctx,
+                     {(seqlen_k * dkv_accum_s_scaler + kBlockN - 1) / kBlockN,
+                      batch_size,
+                      num_heads_k});
   if (num_heads_k != num_heads &&
       dynload::flashmaskv2_bwd_params_get_deterministic(params_handle)) {
     // xiangrui: we need to zero them out
@@ -1458,6 +1519,12 @@ void FlashMaskV2GradBaseKernel(
         params_handle, startend_row_indices.dims()[1]);
     dynload::flashmaskv2_bwd_params_set_h_h_flashmask_ratio(
         params_handle, num_heads / startend_row_indices.dims()[1]);
+
+#ifdef PADDLE_WITH_NVSHMEM
+    // only when NVSHMEM is compiled in paddle, can we use the following
+    dynload::flashmaskv2_bwd_params_set_rank(params_handle, rank);
+    dynload::flashmaskv2_bwd_params_set_nranks(params_handle, nranks);
+#endif  // PADDLE_WITH_NVSHMEM
   } else {
     dynload::flashmaskv2_bwd_params_set_lt_start_ptr(params_handle, nullptr);
     dynload::flashmaskv2_bwd_params_set_lt_end_ptr(params_handle, nullptr);
@@ -1527,6 +1594,8 @@ void FlashMaskV2GradKernel(
     const DenseTensor &out_grad,
     float const softmax_scale,
     bool is_causal,
+    int rank,
+    int nranks,
     DenseTensor *dq,
     DenseTensor *dk,
     DenseTensor *dv) {
@@ -1571,6 +1640,8 @@ void FlashMaskV2GradKernel(
       0,                          // softcap,
       FLAGS_cudnn_deterministic,  // deterministic,
       0,                          // sm_margin,
+      rank,
+      nranks,
       dq,
       dk,
       dv,

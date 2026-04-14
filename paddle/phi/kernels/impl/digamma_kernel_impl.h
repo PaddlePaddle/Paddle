@@ -28,7 +28,7 @@ struct DigammaFunctor {
       : input_(input), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+    using MPType = typename dtype::MPTypeTrait<T>::Type;
     const MPType mp_input = static_cast<MPType>(input_[idx]);
     MPType eigen_out = Eigen::numext::digamma(mp_input);
     constexpr MPType mp_inf = std::numeric_limits<MPType>::infinity();

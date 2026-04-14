@@ -1599,6 +1599,10 @@ void FFTR2CInferMeta(const MetaTensor& x,
   }
 }
 
+void FlashMaskGetUniqueIdInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->share_meta(x);
+}
+
 void FlattenWithXShapeInferMeta(const MetaTensor& x,
                                 int start_axis,
                                 int stop_axis,

@@ -26,7 +26,7 @@
 namespace phi {
 
 template <typename T>
-using MultiPrecisionType = typename phi::dtype::MPTypeTrait<T>::Type;
+using MultiPrecisionType = typename dtype::MPTypeTrait<T>::Type;
 
 template <typename T>
 struct CPUDenseUpdater {
@@ -572,7 +572,7 @@ void MomentumSparseImpl(const Context& dev_ctx,
   merge_func(dev_ctx, grad, merged_grad);
 
   auto* grad_merge_rows = merged_grad->mutable_rows();
-  phi::MixVector<int64_t> mixv_grad_merge_rows(grad_merge_rows);
+  MixVector<int64_t> mixv_grad_merge_rows(grad_merge_rows);
   const int64_t* rows = mixv_grad_merge_rows.Data(dev_ctx.GetPlace());
   int64_t row_numel = merged_grad->value().numel() / merged_grad->rows().size();
   funcs::ForRange<Context> for_range(dev_ctx, param.numel());
@@ -632,7 +632,7 @@ void MomentumDenseKernel(const Context& dev_ctx,
                          DenseTensor* param_out,
                          DenseTensor* velocity_out,
                          DenseTensor* master_param_out) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename dtype::MPTypeTrait<T>::Type;
   if (multi_precision) {
     MomentumDenseImpl<T, MT>(dev_ctx,
                              param,
@@ -684,7 +684,7 @@ void MomentumSparseKernel(const Context& dev_ctx,
                           DenseTensor* param_out,
                           DenseTensor* velocity_out,
                           DenseTensor* master_param_out) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename dtype::MPTypeTrait<T>::Type;
   if (multi_precision) {
     MomentumSparseImpl<T, MT>(dev_ctx,
                               param,

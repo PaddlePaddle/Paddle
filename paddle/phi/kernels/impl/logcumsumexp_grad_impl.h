@@ -62,7 +62,7 @@ void LogcumsumexpGradKernel(const Context& dev_ctx,
   auto eigen_d_out = EigenVector<T>::Flatten(d_out);
   auto& place = *dev_ctx.eigen_device();
 
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename dtype::MPTypeTrait<T>::Type;
   DenseTensor output_pos;
   output_pos.Resize(d_out.dims());
   dev_ctx.template Alloc<MT>(&output_pos);
