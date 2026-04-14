@@ -24,9 +24,7 @@
  include_directories(${ROCM_PATH}/include)
  message(STATUS "HIP version: ${HIP_VERSION}")
  message(STATUS "HIP_CLANG_PATH: ${HIP_CLANG_PATH}")
-@@ -76,5 +88,5 @@ endif()
- message(STATUS "HIP library name: ${hip_library_name}")
- 
+@@ -74,3 +86,3 @@
  # set HIP link libs
 -find_library(ROCM_HIPRTC_LIB ${hip_library_name} HINTS ${HIP_PATH}/lib)
 +find_library(ROCM_HIPRTC_LIB ${hip_library_name} HINTS ${ROCM_PATH}/lib ${ROCM_PATH}/lib64 ${HIP_PATH}/lib)
