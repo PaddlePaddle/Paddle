@@ -1219,6 +1219,9 @@ void FlashMaskV2BaseKernel(
     const optional<DenseTensor> &scheduler_metadata_,    // (b + 1)
     const optional<DenseTensor> &startend_row_indices_,  // （b,h,s_1,[1,2,4])
     const optional<DenseTensor> &block_mask_,  // （(b,h,s// 128,s // 128)
+    const optional<DenseTensor>
+        &unique_id_,  //  used in distributed overlap NVSHMEM init with
+                      //  unique_id (128B u8 CPU tensor)
     const int
         max_seqlen_q_,  // if max_seqlen_q_ is set to 0, it indicates that it is
                         // uninitialized and should not be referenced
@@ -1240,6 +1243,8 @@ void FlashMaskV2BaseKernel(
                     // set to True; otherwise, the internal heuristic
                     // get_pack_gqa() from fa3 will decide whether to pack gqa
     const int sm_margin,
+    const int rank,
+    const int nranks,
     DenseTensor *out,
     DenseTensor *softmax_lse,
     DenseTensor *out_accum,
@@ -2189,6 +2194,30 @@ void FlashMaskV2BaseKernel(
         params_handle, startend_row_indices.dims()[1]);
     dynload::flashmaskv2_fwd_params_set_h_h_flashmask_ratio(
         params_handle, num_heads / startend_row_indices.dims()[1]);
+
+    // distributed settings
+#ifdef PADDLE_WITH_NVSHMEM
+    PADDLE_ENFORCE_LE(
+        nranks,
+        64,
+        common::errors::InvalidArgument(
+            "nranks for FlashMask overlap should <= 64, got: %d", nranks));
+    dynload::flashmaskv2_fwd_params_set_rank(params_handle, rank);
+    dynload::flashmaskv2_fwd_params_set_nranks(params_handle, nranks);
+    if (unique_id_.is_initialized()) {
+      dynload::flashmaskv2_fwd_params_set_unique_id_ptr(
+          params_handle, unique_id_.get().data<uint8_t>());
+      VLOG(6) << "FlashMask overlap debug: unique_id_ptr set.";
+    } else {
+      dynload::flashmaskv2_fwd_params_set_unique_id_ptr(params_handle, nullptr);
+    }
+
+    VLOG(6) << "FlashMask overlap debug (rank and nranks): " << rank << ", "
+            << nranks;
+#else
+    VLOG(6) << "FlashMask overlap is not being used since PADDLE_WITH_NVSHMEM "
+               "is not defined.";
+#endif  // PADDLE_WITH_NVSHMEM
   } else {
     dynload::flashmaskv2_fwd_params_set_lt_start_ptr(params_handle, nullptr);
     dynload::flashmaskv2_fwd_params_set_lt_end_ptr(params_handle, nullptr);
@@ -2267,8 +2296,11 @@ void FlashMaskV2Kernel(const Context &dev_ctx,
                        const DenseTensor &v,
                        const DenseTensor &startend_row_indices,
                        const optional<DenseTensor> &block_mask,
+                       const optional<DenseTensor> &unique_id,
                        const float softmax_scale,
                        bool is_causal,
+                       const int rank,
+                       const int nranks,
                        DenseTensor *out,
                        DenseTensor *softmax_lse) {
 #ifdef PADDLE_WITH_FLASHATTN_V3
@@ -2313,6 +2345,7 @@ void FlashMaskV2Kernel(const Context &dev_ctx,
                                     paddle::none,  // scheduler_metadata_
                                     startend_row_indices,
                                     block_mask,
+                                    unique_id,
                                     0,  // max_seqlen_q_
                                     0,  // max_seqlen_k_
                                     softmax_scale,
@@ -2325,6 +2358,8 @@ void FlashMaskV2Kernel(const Context &dev_ctx,
                                     false,     // manual_set_pack_gqa
                                     false,     // pack_gqa_
                                     0,         // sm_margin
+                                    rank,      // dist CP settings
+                                    nranks,    // dist CP settings
                                     out,
                                     softmax_lse,
                                     &out_accum,
@@ -2335,7 +2370,34 @@ void FlashMaskV2Kernel(const Context &dev_ctx,
 #endif
 }
 
+template <typename T, typename Context>
+void FlashMaskV2GetUniqueIdInplace(const Context &dev_ctx,
+                                   const DenseTensor &x,
+                                   DenseTensor *out) {
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_FLASHATTN_V3)
+  bool valid_unique_id =
+      dynload::flashmaskv2_get_nvshmem_unique_id(out->data<uint8_t>());
+  if (!valid_unique_id) {
+    // If FlashMask is not compiled with `WITH_DISTRIBUTED_OVERLAP` then this is
+    // a zero tensor
+    funcs::SetConstant<Context, uint8_t> set_zero;
+    set_zero(dev_ctx, out, uint8_t{0});
+  }
+#else
+  funcs::SetConstant<Context, uint8_t> set_zero;
+  set_zero(dev_ctx, out, uint8_t{0});
+#endif
+}
+
 }  // namespace phi
+
+PD_REGISTER_KERNEL(flashmask_get_unique_id,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::FlashMaskV2GetUniqueIdInplace,
+                   uint8_t) {
+  kernel->InputAt(0).SetBackend(phi::Backend::CPU);
+}
 
 PD_REGISTER_KERNEL(flash_attn_v3,
                    GPU,
@@ -2358,4 +2420,5 @@ PD_REGISTER_KERNEL(flashmask_attention_v2,
                    phi::float16,
                    phi::bfloat16) {
   kernel->InputAt(4).SetBackend(phi::Backend::ALL_BACKEND);  // block_mask
+  kernel->InputAt(5).SetBackend(phi::Backend::CPU);  // nvshmem unique_id
 }

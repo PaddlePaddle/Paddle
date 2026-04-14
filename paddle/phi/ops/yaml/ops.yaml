@@ -2184,9 +2184,9 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : flashmask_attention_v2
-  args : (Tensor q, Tensor k, Tensor v, Tensor startend_row_indices, Tensor block_mask, float softmax_scale, bool is_causal)
+  args : (Tensor q, Tensor k, Tensor v, Tensor startend_row_indices, Tensor block_mask, Tensor unique_id, float softmax_scale, bool is_causal, int rank = 0, int nranks = 1)
   output : Tensor(out), Tensor(softmax_lse)
-  optional : block_mask
+  optional : block_mask, unique_id
   infer_meta :
     func : FlashMaskV2InferMeta
     param : [q, k, v]
@@ -2194,6 +2194,19 @@
     func : flashmask_attention_v2
     data_type : q
   backward : flashmask_attention_v2_grad
+
+- op : flashmask_get_unique_id
+  args: (Tensor x)
+  output: Tensor(out)
+  infer_meta:
+    func: FlashMaskGetUniqueIdInferMeta
+    param: [x]
+  kernel:
+    func: flashmask_get_unique_id
+    data_type: x
+    backend : x
+  inplace: (x -> out)
+  interfaces : paddle::dialect::ForwardOnlyTrait
 
 - op : flatten
   args : (Tensor x, int start_axis = 1, int stop_axis = 1)

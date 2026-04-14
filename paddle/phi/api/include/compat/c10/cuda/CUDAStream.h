@@ -55,7 +55,11 @@ class CUDAStream {
 
   StreamId id() const { return stream_.id(); }
 
+#ifdef PADDLE_WITH_HIP
+  operator hipStream_t() const { return stream(); }
+#else
   operator cudaStream_t() const { return stream(); }
+#endif
 
   operator Stream() const { return unwrap(); }
 
@@ -67,16 +71,26 @@ class CUDAStream {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     phi::backends::gpu::GPUDeviceGuard guard(device_index());
     int priority = 0;
+#ifdef PADDLE_WITH_HIP
+    C10_CUDA_CHECK(hipStreamGetPriority(stream(), &priority));
+#else
     C10_CUDA_CHECK(cudaStreamGetPriority(stream(), &priority));
+#endif
     return priority;
 #else
     return 0;
 #endif
   }
 
+#ifdef PADDLE_WITH_HIP
+  hipStream_t stream() const {
+    return reinterpret_cast<hipStream_t>(stream_.id());
+  }
+#else
   cudaStream_t stream() const {
     return reinterpret_cast<cudaStream_t>(stream_.id());
   }
+#endif
 
   Stream unwrap() const { return stream_; }
 
@@ -86,7 +100,11 @@ class CUDAStream {
 
   Device device() const { return Device(DeviceType::CUDA, device_index()); }
 
+#ifdef PADDLE_WITH_HIP
+  hipStream_t raw_stream() const { return stream(); }
+#else
   cudaStream_t raw_stream() const { return stream(); }
+#endif
 
   struct c10::StreamData3 pack3() const {
     return stream_.pack3();
@@ -102,8 +120,13 @@ class CUDAStream {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     int least_priority = 0;
     int greatest_priority = 0;
+#ifdef PADDLE_WITH_HIP
+    C10_CUDA_CHECK(
+        hipDeviceGetStreamPriorityRange(&least_priority, &greatest_priority));
+#else
     C10_CUDA_CHECK(
         cudaDeviceGetStreamPriorityRange(&least_priority, &greatest_priority));
+#endif
     greatest_priority =
         std::max(-max_compile_time_stream_priorities + 1, greatest_priority);
     return std::make_tuple(least_priority, greatest_priority);
@@ -116,6 +139,17 @@ class CUDAStream {
   Stream stream_;
 };
 
+#ifdef PADDLE_WITH_HIP
+inline CUDAStream make_cuda_stream(hipStream_t raw,
+                                   c10::DeviceIndex device_index) {
+  c10::StreamId sid =
+      static_cast<c10::StreamId>(reinterpret_cast<intptr_t>(raw));
+  return CUDAStream(
+      c10::Stream(c10::Stream::UNSAFE,
+                  c10::Device(c10::DeviceType::CUDA, device_index),
+                  sid));
+}
+#else
 inline CUDAStream make_cuda_stream(cudaStream_t raw,
                                    c10::DeviceIndex device_index) {
   c10::StreamId sid =
@@ -125,6 +159,7 @@ inline CUDAStream make_cuda_stream(cudaStream_t raw,
                   c10::Device(c10::DeviceType::CUDA, device_index),
                   sid));
 }
+#endif
 
 /**
  * Get the current CUDA stream for the passed CUDA device, or for the
@@ -147,8 +182,13 @@ CUDAStream getStreamFromPool(const int priority = 0,
 CUDAStream getStreamFromPool(const bool isHighPriority,
                              c10::DeviceIndex device_index = -1);
 
+#ifdef PADDLE_WITH_HIP
+CUDAStream getStreamFromExternal(hipStream_t ext_stream,
+                                 c10::DeviceIndex device_index);
+#else
 CUDAStream getStreamFromExternal(cudaStream_t ext_stream,
                                  c10::DeviceIndex device_index);
+#endif
 
 /**
  * Set the current CUDA stream for the device of the given stream in the

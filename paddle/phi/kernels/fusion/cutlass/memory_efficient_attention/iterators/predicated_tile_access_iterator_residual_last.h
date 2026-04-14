@@ -440,7 +440,7 @@ class PredicatedTileAccessIteratorResidualLast<Shape_,
 ///
 /// Satisfies: ForwardTileIteratorConcept |
 ///            ReadableContiguousTileIteratorConcept |
-///            WriteableContiguousTileIteratorConcept |
+///            WritableContiguousTileIteratorConcept |
 ///            MaskedTileIteratorConcept
 ///
 template <typename Shape_,
@@ -643,7 +643,7 @@ class PredicatedTileAccessIteratorResidualLast<Shape_,
 ///
 /// Satisfies: ForwardTileIteratorConcept |
 ///            ReadableContiguousTileIteratorConcept |
-///            WriteableContiguousTileIteratorConcept |
+///            WritableContiguousTileIteratorConcept |
 ///            MaskedTileIteratorConcept
 ///
 template <typename Shape_,
@@ -844,7 +844,7 @@ class PredicatedTileAccessIteratorResidualLast<Shape_,
 ///
 /// Satisfies: ForwardTileIteratorConcept |
 ///            ReadableContiguousTileIteratorConcept |
-///            WriteableContiguousTileIteratorConcept |
+///            WritableContiguousTileIteratorConcept |
 ///            MaskedTileIteratorConcept
 ///
 template <typename Shape_,
@@ -1164,7 +1164,7 @@ class PredicatedTileAccessIteratorResidualLast<Shape_,
 ///
 /// Satisfies: ForwardTileIteratorConcept |
 ///            ReadableContiguousTileIteratorConcept |
-///            WriteableContiguousTileIteratorConcept |
+///            WritableContiguousTileIteratorConcept |
 ///            MaskedTileIteratorConcept
 ///
 template <typename Shape_,
@@ -1362,7 +1362,7 @@ class PredicatedTileAccessIteratorResidualLast<Shape_,
 ///
 /// Satisfies: ForwardTileIteratorConcept |
 ///            ReadableContiguousTileIteratorConcept |
-///            WriteableContiguousTileIteratorConcept |
+///            WritableContiguousTileIteratorConcept |
 ///            MaskedTileIteratorConcept
 ///
 template <typename Shape_,
@@ -1560,7 +1560,7 @@ class PredicatedTileAccessIteratorResidualLast<Shape_,
 ///
 /// Satisfies: ForwardTileIteratorConcept |
 ///            ReadableContiguousTileIteratorConcept |
-///            WriteableContiguousTileIteratorConcept |
+///            WritableContiguousTileIteratorConcept |
 ///            MaskedTileIteratorConcept
 ///
 
@@ -1766,7 +1766,7 @@ class PredicatedTileAccessIteratorResidualLast<
 ///
 /// Satisfies: ForwardTileIteratorConcept |
 ///            ReadableContiguousTileIteratorConcept |
-///            WriteableContiguousTileIteratorConcept |
+///            WritableContiguousTileIteratorConcept |
 ///            MaskedTileIteratorConcept
 ///
 template <typename Shape_,
