@@ -30,17 +30,44 @@ defaults:
     shell: bash
 
 jobs:
+  check-skill:
+    name: Check file paths
+    if: ${{ github.repository_owner == 'PaddlePaddle' }}
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      can-skip: ${{ steps.skip-skill.outputs.should-skip }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Run skip check
+        id: skip-skill
+        uses: ./.github/actions/skip-skill
+        with:
+          ignore-paths: '.agents/skills/**'
+      - name: Print outputs
+        if: always()
+        run: |
+          echo "=== check-skill outputs ==="
+          echo "steps.skip-skill.outputs.should-skip: '${{ steps.skip-skill.outputs.should-skip }}'"
+          echo "============================"
+
   clone:
     name: Coverage clone
+    needs: [check-skill]
     uses: ./.github/workflows/_Clone-linux.yml
     with:
       workflow-name: "coverage"
       clone_dir: h-ci
+      skill-can-skip: ${{ needs.check-skill.outputs.can-skip }}
 
   check-bypass:
     name: Check bypass
     needs: [clone]
-    if: needs.clone.outputs.can-skip != 'true'
+    if: ${{ needs.clone.outputs.can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
       workflow-name: h-ci
@@ -50,13 +77,12 @@ jobs:
   build:
     name: Coverage build
     needs: [clone, check-bypass]
-    if: needs.clone.outputs.can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true'
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' && needs.clone.outputs.can-skip != 'true' }}
     runs-on:
       group: GZ_BD-CPU
     timeout-minutes: 120
     outputs:
-      can-skip: ${{ needs.check-bypass.outputs.can-skip }}
-
+      can-skip: ${{ needs.check-bypass.outputs.can-skip == 'true' || needs.clone.outputs.can-skip == 'true' || 'false' }}
     steps:
       - name: Check docker image and run container
         env:
@@ -163,6 +189,7 @@ jobs:
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda-12.9/compat
           source ${{ github.workspace }}/../../../proxy
           bash ${ci_scripts}/cmake-predownload.sh
+          bash ${ci_scripts}/cmake_preload_data_file.sh
           pip install -r python/requirements.txt
           mkdir -p build && cd build
           ccache -z
@@ -225,8 +252,8 @@ jobs:
 
   test:
     name: Coverage test
-    needs: [build]
-    if: needs.build.outputs.can-skip != 'true'
+    needs: [build, check-bypass, check-skill]
+    if: ${{ needs.build.outputs.can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true' && needs.check-skill.outputs.can-skip != 'true' }}
     runs-on:
       group: H-Coverage
     timeout-minutes: 120
@@ -353,14 +380,14 @@ jobs:
 
   fleet-build:
     name: Build Fleet whl
-    needs: [build]
-    if: needs.build.outputs.can-skip != 'true'
+    needs: [build, check-bypass, check-skill]
+    if: ${{ needs.build.outputs.can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true' && needs.check-skill.outputs.can-skip != 'true' }}
     runs-on:
       group: GZ_BD-CPU
     timeout-minutes: 60
     env:
       TASK: fleet-ci-paddle-build-whl-${{ github.event.pull_request.number }}
-      docker_image: "ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddle:cuda129-coverage-test"
+      docker_image: "ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddle:ubuntu24-cuda129-dev"
     steps:
       - name: Check docker image and run container
         env:
@@ -402,6 +429,7 @@ jobs:
           rm -rf * .[^.]*
           set -x
           source ${{ github.workspace }}/../../../proxy
+          python -m pip install --upgrade pip wheel setuptools
           git clone https://github.com/PaddlePaddle/PaddleFleet.git .
           git config --global --add safe.directory /paddle
           git config user.name "PaddleCI"
@@ -424,7 +452,12 @@ jobs:
           export LD_LIBRARY_PATH=/usr/local/cuda-12.9/compat:$LD_LIBRARY_PATH
           export IS_NVIDIA=True
           export PADDLEFLEET_VERSION=0.0.0
-          uv build --wheel -v
+          echo "Downloading Paddle.tar.gz from cfs"
+          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/h-coverage/${PR_ID}/${COMMIT_ID}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --no-check-certificate
+          pip uninstall paddlepaddle-gpu -y
+          pip install paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --force-reinstall --extra-index-url=https://www.paddlepaddle.org.cn/packages/nightly/cu129/
+          pip install paddle-nvidia-nvshmem-cu12 --extra-index-url https://www.paddlepaddle.org.cn/packages/nightly/cu129/
+          uv build --wheel --no-build-isolation -v
           '
 
       - name: upload whl to BOS
@@ -469,7 +502,7 @@ jobs:
       - name: Check docker image and run container
         env:
           GPU_DEVICES: ${{ env.GPU_DEVICES }}
-          docker_image: "ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddle:cuda129-coverage-test"
+          docker_image: "ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddle:ubuntu24-cuda129-dev"
         run: |
           container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
@@ -504,13 +537,14 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -ce '
           rm -rf * .[^.]*
           source /root/proxy
-          pip install uv coverage==7.6.1 bce-python-sdk==0.8.74 wrapt
+          export LD_LIBRARY_PATH=/usr/local/cuda-12.9/targets/x86_64-linux/lib:/usr/local/cuda/lib64
+          pip install uv coverage==7.6.1 bce-python-sdk==0.8.74 wrapt pytest matplotlib parameterized
           wget -q --tries=5 --no-proxy --no-check-certificate https://paddle-github-action.cdn.bcebos.com/PR/paddlefleet/${PR_ID}/${COMMIT_ID}/paddldfleet.tar.gz
           tar -xf paddldfleet.tar.gz --strip-components=1
           git config --global --add safe.directory /paddle
           pip install dist/paddlefleet-0.0.0-cp310-cp310-linux_x86_64.whl --extra-index-url=https://www.paddlepaddle.org.cn/packages/stable/cu129/ --extra-index-url=https://www.paddlepaddle.org.cn/packages/nightly/cu129/
-          echo "paddlefleet commit:"
-          python -c "import paddlefleet; print(paddlefleet.version.commit)"
+          wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq
+          chmod +x /usr/local/bin/yq
           '
 
       - name: Download paddle.tar.gz and install paddle whl
@@ -518,6 +552,7 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           set -e
+          export LD_LIBRARY_PATH=/usr/local/cuda-12.9/targets/x86_64-linux/lib:/usr/local/cuda/lib64
           mkdir -p /PaddlePaddle
           cd /PaddlePaddle
           echo "Downloading Paddle.tar.gz from cfs"
@@ -527,12 +562,15 @@ jobs:
           export UV_HTTP_TIMEOUT=300
           pip uninstall paddlepaddle-gpu -y
           pip install paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --force-reinstall --extra-index-url=https://www.paddlepaddle.org.cn/packages/nightly/cu129/
+          echo "paddlefleet commit:"
+          python -c "import paddlefleet; print(paddlefleet.version.commit)"
           '
 
       - name: Single card test
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -xce '
           pwd
+          export LD_LIBRARY_PATH=/usr/local/cuda-12.9/targets/x86_64-linux/lib:/usr/local/cuda/lib64
           if [ "${BRANCH}" != "develop" ]; then
             git checkout $fleet_branch
             echo "Checked out fleet branch: $fleet_branch"
@@ -544,7 +582,7 @@ jobs:
           export UV_NO_SYNC=1 # This environment variable prevents uv sync from being executed when running un run.
           export UV_HTTP_TIMEOUT=300
           python -c "import paddle; print(paddle.version.commit)"
-          timeout 15m bash ci/single_card_test.sh
+          timeout 40m bash ci/single_card_test.sh
           single_card_exit_code=$?
           if [[ "$single_card_exit_code" != "0" ]]; then
             echo -e "::error:: \033[31mSingle card test failed.\033[0m"
@@ -563,15 +601,15 @@ jobs:
 
   fleet-multi-card_test:
     name: Fleet Unit test (multi-card)
-    needs: [build, fleet-build]
-    if: needs.build.outputs.can-skip != 'true'
+    needs: [build, fleet-build, check-bypass, check-skill]
+    if: ${{ needs.build.outputs.can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true' && needs.check-skill.outputs.can-skip != 'true' }}
     runs-on:
       group: Fleet-H-multi-card
     timeout-minutes: 60
     env:
       PIP_CACHE_DIR: /root/.cache/pip
       TASK: paddle-fleet-CI-${{ github.event.pull_request.number }}-multi-card_test
-      docker_image: "ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddle:cuda129-coverage-test"
+      docker_image: "ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddle:ubuntu24-cuda129-dev"
     steps:
       - name: Check docker image and run container
         run: |
@@ -610,13 +648,14 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -ce '
           rm -rf * .[^.]*
           source /root/proxy
-          pip install uv coverage==7.6.1 bce-python-sdk==0.8.74 wrapt
+          export LD_LIBRARY_PATH=/usr/local/cuda-12.9/targets/x86_64-linux/lib:/usr/local/cuda/lib64
+          pip install uv coverage==7.6.1 bce-python-sdk==0.8.74 wrapt pytest matplotlib parameterized
           wget -q --tries=5 --no-proxy --no-check-certificate https://paddle-github-action.cdn.bcebos.com/PR/paddlefleet/${PR_ID}/${COMMIT_ID}/paddldfleet.tar.gz
           tar -xf paddldfleet.tar.gz --strip-components=1
           git config --global --add safe.directory /paddle
           pip install dist/paddlefleet-0.0.0-cp310-cp310-linux_x86_64.whl --extra-index-url=https://www.paddlepaddle.org.cn/packages/stable/cu129/ --extra-index-url=https://www.paddlepaddle.org.cn/packages/nightly/cu129/
-          echo "paddlefleet commit:"
-          python -c "import paddlefleet; print(paddlefleet.version.commit)"
+          wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq
+          chmod +x /usr/local/bin/yq
           '
 
       - name: Download paddle.tar.gz and install paddle whl
@@ -624,6 +663,7 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           set -e
+          export LD_LIBRARY_PATH=/usr/local/cuda-12.9/targets/x86_64-linux/lib:/usr/local/cuda/lib64
           mkdir -p /PaddlePaddle
           cd /PaddlePaddle
           echo "Downloading Paddle.tar.gz from cfs"
@@ -633,12 +673,15 @@ jobs:
           export UV_HTTP_TIMEOUT=300
           pip uninstall paddlepaddle-gpu -y
           pip install paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --force-reinstall --extra-index-url=https://www.paddlepaddle.org.cn/packages/nightly/cu129/
+          echo "paddlefleet commit:"
+          python -c "import paddlefleet; print(paddlefleet.version.commit)"
           '
 
       - name: Multi-card test
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -ce '
           export PYTHONPATH=$(pwd)
+          export LD_LIBRARY_PATH=/usr/local/cuda-12.9/targets/x86_64-linux/lib:/usr/local/cuda/lib64
           if [ "${BRANCH}" != "develop" ]; then
             git checkout $fleet_branch
             echo "Checked out fleet branch: $fleet_branch"

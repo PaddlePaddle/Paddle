@@ -49,7 +49,7 @@ def output_hist(out, lam, a, b):
 class TestPoissonOp1(OpTest):
     def setUp(self):
         self.op_type = "poisson"
-        self.python_api = paddle.tensor.poisson
+        self.python_api = paddle.poisson
         self.init_dtype()
         self.config()
 
@@ -93,6 +93,15 @@ class TestPoissonOp2(TestPoissonOp1):
 
 
 class TestPoissonAPI(unittest.TestCase):
+    def test_alias(self):
+        with paddle.base.dygraph.base.guard():
+            x_np = np.random.random((3, 3)).astype("float32")
+            x = paddle.to_tensor(x_np)
+            out_ref = paddle.poisson(x)
+            out_alias = paddle.poisson(input=x)
+            assert out_ref.shape == out_alias.shape
+            assert out_ref.dtype == out_alias.dtype
+
     def test_static(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -393,7 +402,7 @@ class TestPoissonFP16OP(TestPoissonOp1):
 class TestPoissonBF16Op(OpTest):
     def setUp(self):
         self.op_type = "poisson"
-        self.python_api = paddle.tensor.poisson
+        self.python_api = paddle.poisson
         self.__class__.op_type = self.op_type
         self.config()
         x = np.full([2048, 1024], self.lam, dtype="float32")

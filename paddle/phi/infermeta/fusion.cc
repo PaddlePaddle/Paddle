@@ -121,7 +121,7 @@ void GroupNormalizeSiluXPUInferMeta(const MetaTensor& x,
                                     const MetaTensor& scale,
                                     const MetaTensor& bias,
                                     int groups,
-                                    float epsilon,
+                                    double epsilon,
                                     MetaTensor* out) {
   auto x_dims = x.dims();
   auto out_dims = x_dims;

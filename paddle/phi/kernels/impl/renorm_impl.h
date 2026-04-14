@@ -28,7 +28,7 @@ namespace phi {
 namespace funcs {
 
 template <typename T>
-void RenormFunc(const phi::CPUContext& dev_ctx UNUSED,
+void RenormFunc(const CPUContext& dev_ctx UNUSED,
                 const T* x_data,
                 T* out_data,
                 float p,
@@ -79,7 +79,7 @@ void RenormFunc(const phi::CPUContext& dev_ctx UNUSED,
 }
 
 template <typename T>
-void RenormGradFunc(const phi::CPUContext& dev_ctx UNUSED,
+void RenormGradFunc(const CPUContext& dev_ctx UNUSED,
                     const T* x_data,
                     const T* dout_data,
                     T* dx_data,
@@ -271,7 +271,7 @@ __global__ void RenormGradKernelFunc2(const T* x_data,
 }
 
 template <typename T>
-void RenormFunc(const phi::GPUContext& dev_ctx,
+void RenormFunc(const GPUContext& dev_ctx,
                 const T* x_data,
                 T* out_data,
                 float p,
@@ -285,8 +285,8 @@ void RenormFunc(const phi::GPUContext& dev_ctx,
   int64_t dim_divisor = 1, pre_mul = 1;
   for (int i = dim + 1; i < dim_size; i++) dim_divisor *= input_dims[i];
   for (int i = 0; i < dim; i++) pre_mul *= input_dims[i];
-  pow_value.Resize(make_ddim({pre_mul, dimension_each, dim_divisor}));
-  dim_value.Resize(make_ddim({dimension_each}));
+  pow_value.Resize({pre_mul, dimension_each, dim_divisor});
+  dim_value.Resize({dimension_each});
   T* pow_value_data = dev_ctx.template Alloc<T>(&pow_value);
   T* dim_value_data = dev_ctx.template Alloc<T>(&dim_value);
   auto stream = dev_ctx.stream();
@@ -299,7 +299,7 @@ void RenormFunc(const phi::GPUContext& dev_ctx,
   int64_t grid2 =
       std::min((dimension_each + block2 - 1) / block2, max_grid_dimx);
   std::vector<int> reduce_axis = {0, 2};
-  phi::SumKernel<T>(
+  SumKernel<T>(
       dev_ctx, pow_value, reduce_axis, pow_value.dtype(), false, &dim_value);
 
   RenormKernelFunc3<T><<<grid2, block2, 0, stream>>>(
@@ -309,7 +309,7 @@ void RenormFunc(const phi::GPUContext& dev_ctx,
 }
 
 template <typename T>
-void RenormGradFunc(const phi::GPUContext& dev_ctx,
+void RenormGradFunc(const GPUContext& dev_ctx,
                     const T* x_data,
                     const T* dout_data,
                     T* dx_data,
@@ -324,11 +324,11 @@ void RenormGradFunc(const phi::GPUContext& dev_ctx,
   for (int i = dim + 1; i < dim_size; i++) dim_divisor *= input_dims[i];
   for (int i = 0; i < dim; i++) pre_mul *= input_dims[i];
   DenseTensor pow_value, mul_value, dim_value, dim_power_sum, weight_derivative;
-  pow_value.Resize(make_ddim({pre_mul, dimension_each, dim_divisor}));
-  mul_value.Resize(make_ddim({pre_mul, dimension_each, dim_divisor}));
-  dim_value.Resize(make_ddim({dimension_each}));
-  dim_power_sum.Resize(make_ddim({dimension_each}));
-  weight_derivative.Resize(make_ddim({dimension_each}));
+  pow_value.Resize({pre_mul, dimension_each, dim_divisor});
+  mul_value.Resize({pre_mul, dimension_each, dim_divisor});
+  dim_value.Resize({dimension_each});
+  dim_power_sum.Resize({dimension_each});
+  weight_derivative.Resize({dimension_each});
   T* pow_value_data = dev_ctx.template Alloc<T>(&pow_value);
   T* mul_value_data = dev_ctx.template Alloc<T>(&mul_value);
   T* dim_value_data = dev_ctx.template Alloc<T>(&dim_value);
@@ -349,14 +349,14 @@ void RenormGradFunc(const phi::GPUContext& dev_ctx,
                                                        dim_divisor);
   std::vector<int> reduce_axis = {0, 2};
 
-  phi::SumKernel<T>(
+  SumKernel<T>(
       dev_ctx, pow_value, reduce_axis, pow_value.dtype(), false, &dim_value);
-  phi::SumKernel<T>(dev_ctx,
-                    mul_value,
-                    reduce_axis,
-                    mul_value.dtype(),
-                    false,
-                    &weight_derivative);
+  SumKernel<T>(dev_ctx,
+               mul_value,
+               reduce_axis,
+               mul_value.dtype(),
+               false,
+               &weight_derivative);
 
   RenormGradKernelFunc2<T><<<grid, block, 0, stream>>>(x_data,
                                                        dout_data,

@@ -261,7 +261,7 @@ __global__ void VectorizedGeneratorMask(const size_t n,
 
 template <typename T>
 void DropoutFwGPUKernelDriver(
-    const phi::GPUContext& dev_ctx,
+    const GPUContext& dev_ctx,
     bool is_test,
     float dropout_prob,
     bool upscale_in_train,
@@ -348,7 +348,7 @@ void DropoutFwGPUKernelDriver(
     } else {
       bool copy_in_kernel = GetSeedDataAndIncrement(
           dev_ctx, seed, is_fix_seed, seed_val, offset, &seed_data, &increment);
-      const phi::GPUContext* dev_ctx_p = &dev_ctx;
+      const GPUContext* dev_ctx_p = &dev_ctx;
       auto gen_cuda = dev_ctx.GetGenerator();
       auto state_index = gen_cuda->GetStateIndex();
 
@@ -415,7 +415,7 @@ void DropoutFwGPUKernelDriver(
       using MT = typename phi::dtype::MPTypeTrait<T>::Type;
       MT factor = static_cast<MT>(1.0f - dropout_prob);
       // y = factor * x
-      phi::ScaleKernel<T, phi::GPUContext>(dev_ctx, x, factor, 0.0f, false, y);
+      phi::ScaleKernel<T, GPUContext>(dev_ctx, x, factor, 0.0f, false, y);
     }
   }
 }
@@ -437,7 +437,7 @@ struct CudaDropoutGradFunctor {
 };
 
 template <typename T>
-void DropoutGradGPUKernelDriver(const phi::GPUContext& dev_ctx,
+void DropoutGradGPUKernelDriver(const GPUContext& dev_ctx,
                                 bool is_test,
                                 float dropout_prob,
                                 bool upscale_in_train,
@@ -451,7 +451,7 @@ void DropoutGradGPUKernelDriver(const phi::GPUContext& dev_ctx,
   if (is_test) {
     MT factor = static_cast<MT>(upscale_in_train ? 1.0f : 1.0f - dropout_prob);
     // y = factor * x
-    phi::ScaleKernel<T, phi::GPUContext>(
+    phi::ScaleKernel<T, GPUContext>(
         dev_ctx, grad_y, factor, 0.0f, false, grad_x);
   } else {
     if (upscale_in_train && dropout_prob == 1.0f) {

@@ -34,7 +34,7 @@ template <typename T>
 struct LogsumexpFunctor {
   template <typename Context, typename X, typename Y, typename Dim>
   void operator()(const Context& place, X* x, Y* y, const Dim& dim) {
-    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    using MT = typename dtype::MPTypeTrait<T>::Type;
     auto x_dim = x->dimensions();
     auto t_dim = x_dim;
     for (int i = 0; i < static_cast<int>(dim.size()); i++) {
@@ -90,7 +90,7 @@ void LogsumexpKernel(const Context& dev_ctx,
   if (reduce_all) {
     // Flatten and reduce 1-D tensor
     auto input = EigenVector<T>::Flatten(x);
-    auto output = phi::EigenScalar<T>::From(*out);
+    auto output = EigenScalar<T>::From(*out);
     auto& place = *dev_ctx.eigen_device();
     auto reduce_dim = Eigen::array<int, 1>({{0}});
     LogsumexpFunctor<T>()(place, &input, &output, reduce_dim);

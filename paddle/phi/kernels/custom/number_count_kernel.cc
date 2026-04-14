@@ -38,7 +38,7 @@ void NumberCountKernel(const Context& dev_ctx,
       count[idx] += 1;
     }
   }
-  phi::TensorFromVector<T>(count, dev_ctx, number_count);
+  TensorFromVector<T>(count, dev_ctx, number_count);
   number_count->Resize({upper_range});
 }
 }  // namespace phi

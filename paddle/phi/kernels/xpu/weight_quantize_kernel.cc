@@ -33,7 +33,7 @@ void WeightQuantizeKernel(const Context& dev_ctx,
                           DenseTensor* scale) {
 #if defined(PADDLE_WITH_XPU_XFT)
   using XPUType = typename XPUTypeTrait<T>::Type;
-  auto xpu_ctx = static_cast<const phi::XPUContext*>(&dev_ctx);
+  auto xpu_ctx = static_cast<const XPUContext*>(&dev_ctx);
   int k = x.dims()[0];
   int n = x.dims()[1];
   scale->Resize({static_cast<int64_t>(n)});

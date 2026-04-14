@@ -15,6 +15,7 @@
 #pragma once
 
 #include <c10/core/ScalarType.h>
+#include <c10/util/typeid.h>
 
 namespace c10 {
 static auto default_dtype = ScalarType::Float;
@@ -22,11 +23,13 @@ static auto default_complex_dtype = ScalarType::ComplexFloat;
 
 void inline set_default_dtype(ScalarType dtype) { default_dtype = dtype; }
 
-const ScalarType inline get_default_dtype() { return default_dtype; }
-
 ScalarType inline get_default_dtype_as_scalartype() { return default_dtype; }
 
-const ScalarType inline get_default_complex_dtype() {
-  return default_complex_dtype;
+ScalarType inline get_default_complex_dtype() { return default_complex_dtype; }
+
+/// Returns default dtype as caffe2::TypeMeta (the canonical form, mirrors
+/// PyTorch).
+inline caffe2::TypeMeta get_default_dtype() {
+  return caffe2::TypeMeta::fromScalarType(default_dtype);
 }
 }  // namespace c10

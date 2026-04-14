@@ -93,15 +93,15 @@ void SetTensorValueKernel(const Context& dev_ctx,
   DenseTensor expand_tensor;
   if (value.numel() == 1) {
     expand_tensor = value;
-    expand_tensor.Resize(phi::make_ddim({1}));
+    expand_tensor.Resize({1});
   } else if (product(value.dims()) == product(phi::make_ddim(new_out_shape))) {
     expand_tensor = value;
     if (value.dims() != phi::make_ddim(new_out_shape)) {
-      expand_tensor.Resize(phi::make_ddim(new_out_shape));
+      expand_tensor.Resize(new_out_shape);
     }
 
   } else {
-    auto value_dims = phi::vectorize<int64_t>(value.dims());
+    auto value_dims = vectorize<int64_t>(value.dims());
     DenseTensor value_tensor = Empty<T>(dev_ctx, IntArray{value_dims});
     value_tensor = value;
     auto it = value_dims.begin();
@@ -176,8 +176,8 @@ void SetValueKernel(const Context& dev_ctx,
   }
 
   DenseTensor value_tensor = Empty<T>(dev_ctx, shape);
-  phi::TensorFromVector(assign_values, dev_ctx, &value_tensor);
-  value_tensor.Resize(make_ddim(shape));
+  TensorFromVector(assign_values, dev_ctx, &value_tensor);
+  value_tensor.Resize(shape);
   SetTensorValueKernel<T, Context>(dev_ctx,
                                    in,
                                    value_tensor,

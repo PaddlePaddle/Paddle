@@ -128,6 +128,47 @@
     x : [input]
     y : [mat2]
 
+- op : cross
+  name : [paddle.cross, paddle.Tensor.cross]
+  args_alias :
+    use_default_mapping : True
+
+- op : dist
+  name : [paddle.dist, paddle.Tensor.dist]
+  args_alias :
+    use_default_mapping : True
+
+- op : flip
+  name : [paddle.flip, paddle.Tensor.flip, paddle.reverse, paddle.Tensor.reverse]
+  args_alias :
+    x : [input]
+    axis : [dims]
+
+- op : floor_divide_
+  name : [paddle.floor_divide_, paddle.Tensor.floor_divide_]
+  args_alias :
+    use_default_mapping : True
+  pre_process :
+    func : InplaceShapePreProcess(x, y)
+
+- op : renorm
+  name : [paddle.renorm, paddle.Tensor.renorm]
+  args_alias :
+    x : [input]
+    axis : [dim]
+    max_norm : [maxnorm]
+  pre_process :
+    func : NegativeAxisPreProcess(x, axis)
+
+- op : renorm_
+  name : [paddle.renorm_, paddle.Tensor.renorm_]
+  args_alias :
+    x : [input]
+    axis : [dim]
+    max_norm : [maxnorm]
+  pre_process :
+    func : NegativeAxisPreProcess(x, axis)
+
 - op : bincount
   name : [paddle.bincount, paddle.Tensor.bincount]
   args_alias :
@@ -240,6 +281,16 @@
     x : [input]
     y : [tensor]
 
+- op : erf
+  name : [paddle.erf, paddle.Tensor.erf]
+  args_alias :
+    use_default_mapping : True
+
+- op : erf_
+  name : [paddle.erf_, paddle.Tensor.erf_]
+  args_alias :
+    use_default_mapping : True
+
 - op : exp
   name : [paddle.exp, paddle.Tensor.exp]
   args_alias :
@@ -280,7 +331,7 @@
     func : GeluMapper
 
 - op : greater_than
-  name : [paddle.greater_than, paddle.Tensor.greater_than]
+  name : [paddle.greater_than, paddle.Tensor.greater_than, paddle.gt, paddle.Tensor.gt, paddle.greater, paddle.Tensor.greater]
   args_alias :
     use_default_mapping : True
 
@@ -356,6 +407,21 @@
   args_alias:
     use_default_mapping : True
 
+- op : lgamma
+  name : [paddle.lgamma, paddle.Tensor.lgamma]
+  args_alias:
+    use_default_mapping : True
+
+- op : kthvalue
+  name : [paddle.kthvalue, paddle.Tensor.kthvalue]
+  args_mapper :
+    func : KthvalueMapper
+
+- op : kron
+  name : [paddle.kron, paddle.Tensor.kron]
+  args_alias :
+    use_default_mapping : True
+
 - op : log
   name : [paddle.log, paddle.Tensor.log]
   args_alias :
@@ -403,6 +469,11 @@
   args_alias :
     use_default_mapping : True
 
+- op : mv
+  name : [paddle.mv, paddle.Tensor.mv]
+  args_alias :
+    use_default_mapping : True
+
 - op : matmul
   name : [paddle.matmul, paddle.Tensor.matmul]
   args_alias :
@@ -423,15 +494,45 @@
   args_alias :
     use_default_mapping : True
 
+- op : poisson
+  name : [paddle.poisson]
+  args_alias :
+    use_default_mapping : True
+
+- op : pow_
+  name : [paddle.pow_, paddle.Tensor.pow_]
+  args_alias :
+    x : [input]
+    y : [exponent]
+
 - op : nextafter
   name : [paddle.nextafter, paddle.Tensor.nextafter]
   args_alias :
     use_default_mapping : True
 
+- op : real
+  name : [paddle.real, paddle.Tensor.real]
+  args_alias :
+    use_default_mapping : True
+
+- op : pixel_shuffle
+  name : [paddle.nn.functional.pixel_shuffle]
+  args_alias :
+    use_default_mapping : True
+  pre_process :
+    func : PixelShufflePreProcess(data_format)
+
 - op : reciprocal
   name : [paddle.reciprocal, paddle.Tensor.reciprocal]
   args_alias :
     use_default_mapping : True
+
+- op : remainder_
+  name : [paddle.remainder_, paddle.Tensor.remainder_, paddle.mod_, paddle.Tensor.mod_, paddle.floor_mod_, paddle.Tensor.floor_mod_]
+  args_alias :
+    use_default_mapping : True
+  pre_process :
+    func : InplaceShapePreProcess(x, y)
 
 - op : roll
   name : [paddle.roll, paddle.Tensor.roll]
@@ -443,6 +544,11 @@
 
 - op : round
   name : [paddle.round, paddle.Tensor.round]
+  args_alias :
+    use_default_mapping : True
+
+- op : round_
+  name : [paddle.round_, paddle.Tensor.round_]
   args_alias :
     use_default_mapping : True
 

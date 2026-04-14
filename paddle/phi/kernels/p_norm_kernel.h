@@ -21,7 +21,7 @@ namespace phi {
 template <typename T, typename Context>
 void PNormKernel(const Context& dev_ctx,
                  const DenseTensor& x,
-                 float porder,
+                 double porder,
                  int axis,
                  float epsilon,
                  bool keepdim,

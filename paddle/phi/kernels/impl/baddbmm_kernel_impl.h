@@ -27,15 +27,12 @@ limitations under the License. */
 
 namespace phi {
 
-template <typename T,
-          size_t D,
-          int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using PhiEigenTensor = EigenTensor<T, D, MajorType, IndexType>;
+template <typename T, size_t D, int MajorType = Eigen::RowMajor>
+using PhiEigenTensor = EigenTensor<T, D, MajorType>;
 
-using Array1 = Eigen::DSizes<Eigen::DenseIndex, 1>;
-using Array2 = Eigen::DSizes<Eigen::DenseIndex, 2>;
-using Array3 = Eigen::DSizes<Eigen::DenseIndex, 3>;
+using Array1 = Eigen::DSizes<int64_t, 1>;
+using Array2 = Eigen::DSizes<int64_t, 2>;
+using Array3 = Eigen::DSizes<int64_t, 3>;
 
 template <typename T, typename Context>
 void BaddbmmKernel(const Context& dev_ctx,
@@ -153,7 +150,7 @@ void BaddbmmKernel(const Context& dev_ctx,
   funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, 3>::Eval(
       place, eigen_out, eigen_input, bcast_dims);
 
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
 
   // special case for MPType
   if constexpr (std::is_same_v<MPType, float>) {
@@ -220,8 +217,8 @@ void BaddbmmKernel(const Context& dev_ctx,
   }
 
   // Handle out_dtype conversion if specified
-  if (out_dtype != phi::DataType::UNDEFINED && out_dtype != out->dtype()) {
-    phi::CastKernel<T>(dev_ctx, *out, out_dtype, out);
+  if (out_dtype != DataType::UNDEFINED && out_dtype != out->dtype()) {
+    CastKernel<T>(dev_ctx, *out, out_dtype, out);
   }
 }
 

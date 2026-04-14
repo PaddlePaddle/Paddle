@@ -32,7 +32,7 @@ struct BCopyOrScaleFunctor {
       : scale_(scale), x_(x), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+    using MPType = typename dtype::MPTypeTrait<T>::Type;
     const MPType mp_scale = static_cast<MPType>(scale_);
     const MPType mp_x = static_cast<MPType>(x_[idx]);
     output_[idx] = static_cast<T>(mp_scale * mp_x);
@@ -45,15 +45,12 @@ struct BCopyOrScaleFunctor {
   int64_t numel_;
 };
 
-template <typename T,
-          size_t D,
-          int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using PhiEigenTensor = EigenTensor<T, D, MajorType, IndexType>;
+template <typename T, size_t D, int MajorType = Eigen::RowMajor>
+using PhiEigenTensor = EigenTensor<T, D, MajorType>;
 
-using Array1 = Eigen::DSizes<Eigen::DenseIndex, 1>;
-using Array2 = Eigen::DSizes<Eigen::DenseIndex, 2>;
-using Array3 = Eigen::DSizes<Eigen::DenseIndex, 3>;
+using Array1 = Eigen::DSizes<int64_t, 1>;
+using Array2 = Eigen::DSizes<int64_t, 2>;
+using Array3 = Eigen::DSizes<int64_t, 3>;
 
 template <typename T, typename Context>
 void BaddbmmGradKernel(const Context& dev_ctx,
@@ -66,10 +63,9 @@ void BaddbmmGradKernel(const Context& dev_ctx,
                        DenseTensor* input_grad,
                        DenseTensor* x_grad,
                        DenseTensor* y_grad) {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
   bool is_float16_or_bfloat16 = false;
-  if (std::is_same<T, phi::float16>::value ||
-      std::is_same<T, phi::bfloat16>::value) {
+  if (std::is_same<T, float16>::value || std::is_same<T, bfloat16>::value) {
     is_float16_or_bfloat16 = true;
   }
 

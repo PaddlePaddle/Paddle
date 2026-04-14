@@ -156,20 +156,27 @@ class TestRandomCrop_same(TestTransformUnitTestBase):
         self.api = transforms.RandomCrop(self.crop_size)
 
 
+class FixedAngleRandomRotation(transforms.RandomRotation):
+    # Keep the rotation path under test, but bypass separate dy/static RNGs.
+    def __init__(self, angle, **kwargs):
+        self.angle = float(np.float32(angle))
+        super().__init__((self.angle, self.angle), **kwargs)
+
+    def _get_param(self, degrees):
+        del degrees
+        if paddle.in_dynamic_mode():
+            return self.angle
+        return paddle.full([1], self.angle, dtype='float32')
+
+
 class TestRandomRotation(TestTransformUnitTestBase):
     def set_trans_api(self):
-        degree = np.random.uniform(-180, 180)
-        eps = 10e-5
-        degree_tuple = (degree - eps, degree + eps)
-        self.api = transforms.RandomRotation(degree_tuple)
+        self.api = FixedAngleRandomRotation(33.0)
 
 
 class TestRandomRotation_expand_True(TestTransformUnitTestBase):
     def set_trans_api(self):
-        degree = np.random.uniform(-180, 180)
-        eps = 10e-5
-        degree_tuple = (degree - eps, degree + eps)
-        self.api = transforms.RandomRotation(degree_tuple, expand=True, fill=3)
+        self.api = FixedAngleRandomRotation(33.0, expand=True, fill=3)
 
 
 class TestRandomErasing(TestTransformUnitTestBase):

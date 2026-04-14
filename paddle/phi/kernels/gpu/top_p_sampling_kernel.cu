@@ -1106,20 +1106,20 @@ void TopPSamplingKernel(const Context& dev_ctx,
   }
 
   DenseTensor ps_now;
-  ps_now.Resize(phi::make_ddim({bs, 1}));
+  ps_now.Resize({bs, 1});
   dev_ctx.template Alloc<T>(&ps_now);
   Copy(dev_ctx, ps, dev_ctx.GetPlace(), false, &ps_now);
 
   DenseTensor inds_input;
-  inds_input.Resize(phi::make_ddim({bs, vocab_size}));
+  inds_input.Resize({bs, vocab_size});
   dev_ctx.template Alloc<int64_t>(&inds_input);
 
   DenseTensor sorted_out;
-  sorted_out.Resize(phi::make_ddim({bs, vocab_size}));
+  sorted_out.Resize({bs, vocab_size});
   dev_ctx.template Alloc<T>(&sorted_out);
 
   DenseTensor sorted_id;
-  sorted_id.Resize(phi::make_ddim({bs, vocab_size}));
+  sorted_id.Resize({bs, vocab_size});
   dev_ctx.template Alloc<int64_t>(&sorted_id);
 
   int BlockSize = GetBlockSize(vocab_size);
@@ -1163,10 +1163,10 @@ void TopPSamplingKernel(const Context& dev_ctx,
   }
 
   DenseTensor count_iter;
-  count_iter.Resize(phi::make_ddim({bs + 1}));
+  count_iter.Resize({bs + 1});
   dev_ctx.template Alloc<int>(&count_iter);
   DenseTensor count_iter_begin;
-  count_iter_begin.Resize(phi::make_ddim({bs}));
+  count_iter_begin.Resize({bs});
   dev_ctx.template Alloc<int>(&count_iter_begin);
   SetCountIter<<<1, 256, 0, cu_stream>>>(count_iter.data<int>(), bs + 1);
 
@@ -1221,7 +1221,7 @@ void TopPSamplingKernel(const Context& dev_ctx,
   temp_storage_bytes = div_up(temp_storage_bytes, 256) * 256;
   int64_t temp_size = temp_storage_bytes;
   DenseTensor temp_storage;
-  temp_storage.Resize(phi::make_ddim({temp_size}));
+  temp_storage.Resize({temp_size});
   dev_ctx.template Alloc<uint8_t>(&temp_storage);
 
   cub::DeviceSegmentedRadixSort::SortPairsDescending(

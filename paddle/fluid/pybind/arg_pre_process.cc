@@ -554,6 +554,64 @@ void BaddbmmPreProcess(pir::Value* input, pir::Value* x, pir::Value* y) {
   }
 }
 
+void PixelShufflePreProcess(std::string* data_format) {
+  if (*data_format != "NCHW" && *data_format != "NHWC") {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Attr(data_format) should be 'NCHW' or 'NHWC'."
+        "But receive Attr(data_format): %s",
+        *data_format));
+  }
+}
+
+// Renorm preprocessing: handle negative axis
+void NegativeAxisPreProcess(Tensor* x, int* axis) {
+  int rank = x->dims().size();
+
+  // Check upper bound first
+  PADDLE_ENFORCE_LT(
+      *axis,
+      rank,
+      common::errors::InvalidArgument(
+          "the axis:%d should be less than the shape's size %d", *axis, rank));
+
+  // If axis is negative, check lower bound then convert
+  if (*axis < 0) {
+    PADDLE_ENFORCE_GE(
+        *axis,
+        -rank,
+        common::errors::InvalidArgument(
+            "the axis:%d should not be less than -1 * length of input_shape:%d",
+            *axis,
+            -rank));
+    *axis = *axis + rank;
+  }
+}
+
+void NegativeAxisPreProcess(Value* x, int* axis) {
+  // Handle negative axis for static graph
+  auto x_shape = pir::GetShapeFromValue(*x);
+  int64_t rank = x_shape.size();
+
+  // Check upper bound first
+  PADDLE_ENFORCE_LT(
+      *axis,
+      static_cast<int>(rank),
+      common::errors::InvalidArgument(
+          "the axis:%d should be less than the shape's size %ld", *axis, rank));
+
+  // If axis is negative, check lower bound then convert
+  if (*axis < 0) {
+    PADDLE_ENFORCE_GE(
+        *axis,
+        -static_cast<int>(rank),
+        common::errors::InvalidArgument("the axis:%d should not be less than "
+                                        "-1 * length of input_shape:%ld",
+                                        *axis,
+                                        -static_cast<int>(rank)));
+    *axis = *axis + rank;
+  }
+}
+
 // Inplace API broadcast validation for dygraph
 void InplaceShapePreProcess(Tensor* x, Tensor* y) {
   auto x_shape = x->dims();
@@ -564,11 +622,11 @@ void InplaceShapePreProcess(Tensor* x, Tensor* y) {
   PADDLE_ENFORCE_EQ(
       out_shape,
       x_shape,
-      phi::errors::InvalidArgument(
-          "The shape of broadcast output %s is different from that of inplace "
-          "tensor %s in the Inplace operation.",
-          out_shape,
-          x_shape));
+      phi::errors::InvalidArgument("The shape of broadcast output %s is "
+                                   "different from that of inplace "
+                                   "tensor %s in the Inplace operation.",
+                                   out_shape,
+                                   x_shape));
 }
 
 // Inplace API broadcast validation for static graph
@@ -582,13 +640,12 @@ void InplaceShapePreProcess(pir::Value* x, pir::Value* y) {
   PADDLE_ENFORCE_EQ(
       out_shape,
       common::make_ddim(x_shape),
-      phi::errors::InvalidArgument(
-          "The shape of broadcast output %s is different from that of inplace "
-          "tensor %s in the Inplace operation.",
-          out_shape,
-          common::make_ddim(x_shape)));
+      phi::errors::InvalidArgument("The shape of broadcast output %s is "
+                                   "different from that of inplace "
+                                   "tensor %s in the Inplace operation.",
+                                   out_shape,
+                                   common::make_ddim(x_shape)));
 }
 
 }  // namespace pybind
-
 }  // namespace paddle

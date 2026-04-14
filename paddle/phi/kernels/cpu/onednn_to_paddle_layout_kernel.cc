@@ -57,7 +57,7 @@ void OneDNN2PaddleLayout(const Context& dev_ctx,
   DataLayout tmp_layout = static_cast<DataLayout>(dst_layout);
 
   if (tmp_layout == DataLayout::ANY) {
-    tmp_layout = phi::OneDNNContext::tls().get_cur_paddle_data_layout();
+    tmp_layout = OneDNNContext::tls().get_cur_paddle_data_layout();
   }
 
   VLOG(4) << "src_layout: " << src_layout << ", tmp_layout: " << tmp_layout;

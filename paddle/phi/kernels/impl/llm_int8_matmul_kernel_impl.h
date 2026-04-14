@@ -226,8 +226,8 @@ __global__ void ReduceAbsMaxKernel(const T* x,
                                    float* row_ranges,
                                    int32_t* outlier_idx) {
 #if defined(PADDLE_WITH_CUDA)
-  using InVec = phi::AlignedVector<T, VecSize>;
-  using ComputeVec = phi::AlignedVector<ComputeType, VecSize>;
+  using InVec = AlignedVector<T, VecSize>;
+  using ComputeVec = AlignedVector<ComputeType, VecSize>;
 
   InVec in_vec;
   ComputeVec abs_max_vec;
@@ -241,7 +241,7 @@ __global__ void ReduceAbsMaxKernel(const T* x,
     for (int col_idx = threadIdx.x * VecSize; col_idx < cols;
          col_idx += blockDim.x * VecSize) {
       int32_t linear_index = row_idx * cols + col_idx;
-      phi::Load<T, VecSize>(x + linear_index, &in_vec);
+      Load<T, VecSize>(x + linear_index, &in_vec);
 #pragma unroll
       for (int i = 0; i < VecSize; ++i) {
         in_vec[i] = AbsFunc<T>()(in_vec[i]);
@@ -274,8 +274,8 @@ __global__ void QuantActKernel(const T* x,
                                const float* row_ranges,
                                const int32_t* outlier_idx,
                                int8_t* quant_x) {
-  using InVec = phi::AlignedVector<T, VecSize>;
-  using OutVec = phi::AlignedVector<int8_t, VecSize>;
+  using InVec = AlignedVector<T, VecSize>;
+  using OutVec = AlignedVector<int8_t, VecSize>;
 
   InVec in_vec;
   OutVec out_vec;
@@ -289,7 +289,7 @@ __global__ void QuantActKernel(const T* x,
     int row_idx = linear_index / cols;
     int col_idx =
         linear_index - row_idx * cols;  // equal to linear_index % cols
-    phi::Load<T, VecSize>(x + linear_index, &in_vec);
+    Load<T, VecSize>(x + linear_index, &in_vec);
     int32_t local_outlier_idx = outlier_idx[col_idx / 32];
     float scale = 1.0f / row_ranges[row_idx];
 #pragma unroll
@@ -301,7 +301,7 @@ __global__ void QuantActKernel(const T* x,
         out_vec[i] = QuantFunc<T>()(in_vec[i], scale);
       }
     }
-    phi::Store(out_vec, quant_x + linear_index);
+    Store(out_vec, quant_x + linear_index);
   }
 }
 
@@ -394,7 +394,7 @@ __global__ void DequantActivationMergeKernel(const T* x,
                                              const T* x_fp,
                                              T* y,
                                              const int32_t elem_cnt) {
-  using FpVec = phi::AlignedVector<T, VecSize>;
+  using FpVec = AlignedVector<T, VecSize>;
 
   FpVec x_fp_vec;
   FpVec out_vec;
@@ -406,14 +406,14 @@ __global__ void DequantActivationMergeKernel(const T* x,
                             VecSize;
        linear_idx < elem_cnt;
        linear_idx += gridDim.x * blockDim.x * VecSize) {
-    phi::Load(x_fp + linear_idx, &x_fp_vec);
-    phi::Load(x + linear_idx, &x_vec);
+    Load(x_fp + linear_idx, &x_fp_vec);
+    Load(x + linear_idx, &x_vec);
 
 #pragma unroll
     for (int i = 0; i < VecSize; ++i) {
       out_vec[i] = x_fp_vec[i] + (x_vec[i] / static_cast<T>(127.0f));
     }
-    phi::Store(out_vec, y + linear_idx);
+    Store(out_vec, y + linear_idx);
   }
 }
 
@@ -429,8 +429,8 @@ __global__ void DequantMergeKernel(const int32_t* x,
                                    int m,
                                    int n) {
 #if defined(PADDLE_WITH_CUDA)
-  using FpVec = phi::AlignedVector<T, VecSize>;
-  using IntVec = phi::AlignedVector<int32_t, VecSize>;
+  using FpVec = AlignedVector<T, VecSize>;
+  using IntVec = AlignedVector<int32_t, VecSize>;
 
   FpVec x_fp_vec;
   FpVec out_vec;
@@ -440,15 +440,15 @@ __global__ void DequantMergeKernel(const int32_t* x,
     for (int col_idx = threadIdx.x * VecSize; col_idx < n;
          col_idx += blockDim.x * VecSize) {
       int linear_idx = row_idx * n + col_idx;
-      phi::Load(x_fp + linear_idx, &x_fp_vec);
-      phi::Load(x + linear_idx, &x_vec);
+      Load(x_fp + linear_idx, &x_fp_vec);
+      Load(x + linear_idx, &x_vec);
 #pragma unroll
       for (int i = 0; i < VecSize; ++i) {
         T dequant_x_fp = DequantFunc<T>()(
             x_vec[i], input_range[row_idx], weight_scale[col_idx + i]);
         out_vec[i] = x_fp_vec[i] + dequant_x_fp;
       }
-      phi::Store(out_vec, y + linear_idx);
+      Store(out_vec, y + linear_idx);
     }
   }
 #endif
@@ -566,7 +566,7 @@ void LaunchDequantMergeKernel(const int32_t* x,
 }
 
 template <typename T>
-void LLMGemm(const phi::GPUContext& dev_ctx,
+void LLMGemm(const GPUContext& dev_ctx,
              const DenseTensor* weight,
              const DenseTensor* input,
              const DenseTensor* weight_scale,
@@ -652,7 +652,7 @@ void LLMGemm(const phi::GPUContext& dev_ctx,
     T beta = static_cast<T>(0.0);
 
     // (m, n, k) = bsz_seq, output_size, input_size, (input, weight, out)
-    auto blas = funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
+    auto blas = funcs::GetBlas<GPUContext, T>(dev_ctx);
     blas.GEMM(transA,
               transB,
               m,

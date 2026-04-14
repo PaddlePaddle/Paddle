@@ -42,17 +42,15 @@ __global__ void fill_array_kernel(T *output,
 }
 
 template <typename RepeatsT>
-void RepeatsTensor2IndexTensorFunctor<phi::GPUContext, RepeatsT>::operator()(
-    const phi::GPUContext &dev_ctx,
-    const DenseTensor &repeats,
-    DenseTensor *index) {
+void RepeatsTensor2IndexTensorFunctor<GPUContext, RepeatsT>::operator()(
+    const GPUContext &dev_ctx, const DenseTensor &repeats, DenseTensor *index) {
 #if defined(__NVCC__)
   const RepeatsT *repeats_ptr = repeats.data<RepeatsT>();
   int64_t num_reps = repeats.dims()[0];
 
   // compute prefix sum of repeats to get start index of each repeat
   DenseTensor prefix;
-  prefix.Resize(make_ddim({num_reps}));
+  prefix.Resize({num_reps});
   dev_ctx.template Alloc<RepeatsT>(&prefix);
   auto *prefix_ptr = prefix.data<RepeatsT>();
 
@@ -121,14 +119,14 @@ void RepeatsTensor2IndexTensorFunctor<phi::GPUContext, RepeatsT>::operator()(
     std::fill_n(index_vec.begin() + offset, repeats_data[i], i);
     offset += repeats_data[i];
   }
-  index->Resize(make_ddim({index_size}));
+  index->Resize({index_size});
 
-  phi::TensorFromVector<RepeatsT>(index_vec, dev_ctx, index);
+  TensorFromVector<RepeatsT>(index_vec, dev_ctx, index);
 #endif
 }
 
-template class RepeatsTensor2IndexTensorFunctor<phi::GPUContext, int>;
-template class RepeatsTensor2IndexTensorFunctor<phi::GPUContext, int64_t>;
+template class RepeatsTensor2IndexTensorFunctor<GPUContext, int>;
+template class RepeatsTensor2IndexTensorFunctor<GPUContext, int64_t>;
 
 }  // namespace funcs
 }  // namespace phi

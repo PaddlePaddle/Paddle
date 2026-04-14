@@ -20,87 +20,85 @@
 
 namespace phi {
 
-using Tensor = DenseTensor;
-
 template <typename DeviceContext, typename T>
 inline void ResizeToChannelFirst(const DeviceContext& dev_ctx,
-                                 const Tensor* input,
-                                 Tensor* transformed_input) {
+                                 const DenseTensor* input,
+                                 DenseTensor* transformed_input) {
   int dim = input->dims().size() - 2;
   if (dim == 3) {
     // input
     transformed_input->Resize(input->dims());
 
-    auto in_dims_vec = common::vectorize(input->dims());
+    auto in_dims_vec = vectorize(input->dims());
     in_dims_vec[1] = input->dims()[4];
     in_dims_vec[2] = input->dims()[1];
     in_dims_vec[3] = input->dims()[2];
     in_dims_vec[4] = input->dims()[3];
-    transformed_input->Resize(make_ddim(in_dims_vec));
+    transformed_input->Resize(in_dims_vec);
     dev_ctx.template Alloc<T>(transformed_input);
   } else if (dim == 2) {
     // input
     transformed_input->Resize(input->dims());
 
-    auto in_dims_vec = common::vectorize(input->dims());
+    auto in_dims_vec = vectorize(input->dims());
     in_dims_vec[1] = input->dims()[3];
     in_dims_vec[2] = input->dims()[1];
     in_dims_vec[3] = input->dims()[2];
-    transformed_input->Resize(make_ddim(in_dims_vec));
+    transformed_input->Resize(in_dims_vec);
     dev_ctx.template Alloc<T>(transformed_input);
   } else if (dim == 1) {
     transformed_input->Resize(input->dims());
 
-    auto in_dims_vec = common::vectorize(input->dims());
+    auto in_dims_vec = vectorize(input->dims());
     in_dims_vec[1] = input->dims()[2];
     in_dims_vec[2] = input->dims()[1];
-    transformed_input->Resize(make_ddim(in_dims_vec));
+    transformed_input->Resize(in_dims_vec);
     dev_ctx.template Alloc<T>(transformed_input);
   }
 }
 
 template <typename DeviceContext, typename T>
 inline void ResizeToChannelLast(const DeviceContext& dev_ctx,
-                                const Tensor* input,
-                                Tensor* transformed_input) {
+                                const DenseTensor* input,
+                                DenseTensor* transformed_input) {
   int dim = input->dims().size() - 2;
   if (dim == 3) {
     // input
     transformed_input->Resize(input->dims());
 
-    auto in_dims_vec = common::vectorize(input->dims());
+    auto in_dims_vec = vectorize(input->dims());
     in_dims_vec[1] = input->dims()[2];
     in_dims_vec[2] = input->dims()[3];
     in_dims_vec[3] = input->dims()[4];
     in_dims_vec[4] = input->dims()[1];
-    transformed_input->Resize(make_ddim(in_dims_vec));
+    transformed_input->Resize(in_dims_vec);
     dev_ctx.template Alloc<T>(transformed_input);
 
   } else if (dim == 2) {
     // input
     transformed_input->Resize(input->dims());
 
-    auto in_dims_vec = common::vectorize(input->dims());
+    auto in_dims_vec = vectorize(input->dims());
     in_dims_vec[1] = input->dims()[2];
     in_dims_vec[2] = input->dims()[3];
     in_dims_vec[3] = input->dims()[1];
-    transformed_input->Resize(make_ddim(in_dims_vec));
+    transformed_input->Resize(in_dims_vec);
     dev_ctx.template Alloc<T>(transformed_input);
   } else if (dim == 1) {
     transformed_input->Resize(input->dims());
 
-    auto in_dims_vec = common::vectorize(input->dims());
+    auto in_dims_vec = vectorize(input->dims());
     in_dims_vec[1] = input->dims()[2];
     in_dims_vec[2] = input->dims()[1];
-    transformed_input->Resize(make_ddim(in_dims_vec));
+    transformed_input->Resize(in_dims_vec);
     dev_ctx.template Alloc<T>(transformed_input);
   }
 }
 
 template <typename DeviceContext, typename T>
 inline void TransToChannelFirst(const DeviceContext& dev_ctx,
-                                const Tensor* input,
-                                Tensor* transformed_input) {
+                                const DenseTensor* input,
+                                DenseTensor* transformed_input) {
   VLOG(5) << "Why am I called?";
   int dim = input->dims().size() - 2;
   if (dim == 3) {
@@ -121,8 +119,8 @@ inline void TransToChannelFirst(const DeviceContext& dev_ctx,
 
 template <typename DeviceContext, typename T>
 inline void TransToChannelLast(const DeviceContext& dev_ctx,
-                               const Tensor* input,
-                               Tensor* transformed_input) {
+                               const DenseTensor* input,
+                               DenseTensor* transformed_input) {
   int dim = input->dims().size() - 2;
   if (dim == 3) {
     std::vector<int> axis{0, 2, 3, 4, 1};

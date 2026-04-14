@@ -40,49 +40,49 @@ struct MemoryInterface {
   /**
    * @brief Allocate a unique allocation.
    *
-   * @param[phi::Place] place     The target place that will be allocated
+   * @param[Place] place     The target place that will be allocated
    * @param[size_t]     size      memory size
    */
-  Allocator::AllocationPtr (*alloc)(const phi::Place& place, size_t size);
+  Allocator::AllocationPtr (*alloc)(const Place& place, size_t size);
 
   /**
    * @brief Allocate a unique allocation.
    *
-   * @param[phi::Place] place     The target gpu place that will be allocated
+   * @param[Place] place     The target gpu place that will be allocated
    * @param[size_t]     size      memory size
-   * @param[phi::Stream]stream    the stream that is used for allocator
+   * @param[Stream]stream    the stream that is used for allocator
    */
-  Allocator::AllocationPtr (*alloc_with_stream)(const phi::Place& place,
+  Allocator::AllocationPtr (*alloc_with_stream)(const Place& place,
                                                 size_t size,
-                                                const phi::Stream& stream);
+                                                const Stream& stream);
 
   /**
    * @brief Allocate a shared allocation.
    *
-   * @param[phi::Place] place     The target place that will be allocated
+   * @param[Place] place     The target place that will be allocated
    * @param[size_t]     size      memory size
    */
-  std::shared_ptr<Allocation> (*alloc_shared)(const phi::Place& place,
-                                              size_t size);
+  std::shared_ptr<Allocation> (*alloc_shared)(const Place& place, size_t size);
 
   /**
    * @brief Allocate a shared allocation.
    *
-   * @param[phi::Place] place     The target place that will be allocated
+   * @param[Place] place     The target place that will be allocated
    * @param[size_t]     size      memory size
-   * @param[phi::Stream]stream    the stream that is used for allocator
+   * @param[Stream]stream    the stream that is used for allocator
    */
-  std::shared_ptr<Allocation> (*alloc_shared_with_stream)(
-      const phi::Place& place, size_t size, const phi::Stream& stream);
+  std::shared_ptr<Allocation> (*alloc_shared_with_stream)(const Place& place,
+                                                          size_t size,
+                                                          const Stream& stream);
 
   /**
    * @brief whether the allocation is in the stream
    *
    * @param[Allocation] allocation  the allocation to check
-   * @param[phi::Stream]stream      the device's stream
+   * @param[Stream]stream      the device's stream
    */
   bool (*in_same_stream)(const std::shared_ptr<Allocation>& allocation,
-                         const phi::Stream& stream);
+                         const Stream& stream);
 
   /**
    * @brief free allocation
@@ -156,26 +156,26 @@ struct MemoryInterface {
   void (*emplace_device_contexts)(
       std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
           place_to_device_context,
-      const std::vector<phi::Place>& places,
+      const std::vector<Place>& places,
       bool disable_setting_default_stream_for_allocator,
       int stream_priority,
       bool set_to_default_stream);
 
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
     (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
-  phi::Allocator* (*get_allocator)(int device_id, phi::gpuStream_t stream);
-  phi::Allocator* (*get_host_allocator)();
-  phi::Allocator* (*get_zero_allocator)(int device_id);
-  phi::Allocator* (*get_host_zero_allocator)();
-  phi::Allocator* (*get_pinned_allocator)();
-  std::shared_ptr<std::remove_pointer<phi::gpuEvent_t>::type> (
-      *get_new_cuda_event)(int device_id);
+  Allocator* (*get_allocator)(int device_id, gpuStream_t stream);
+  Allocator* (*get_host_allocator)();
+  Allocator* (*get_zero_allocator)(int device_id);
+  Allocator* (*get_host_zero_allocator)();
+  Allocator* (*get_pinned_allocator)();
+  std::shared_ptr<std::remove_pointer<gpuEvent_t>::type> (*get_new_cuda_event)(
+      int device_id);
 #elif (defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL))
-  phi::Allocator* (*get_allocator)(int device_id, XPUStream stream);
-  phi::Allocator* (*get_host_allocator)();
-  phi::Allocator* (*get_zero_allocator)(int device_id);
-  phi::Allocator* (*get_host_zero_allocator)();
-  phi::Allocator* (*get_pinned_allocator)();
+  Allocator* (*get_allocator)(int device_id, XPUStream stream);
+  Allocator* (*get_host_allocator)();
+  Allocator* (*get_zero_allocator)(int device_id);
+  Allocator* (*get_host_zero_allocator)();
+  Allocator* (*get_pinned_allocator)();
   std::shared_ptr<std::remove_pointer<XPUEvent>::type> (*get_new_xpu_event)(
       int device_id);
 #endif
@@ -189,9 +189,9 @@ class MemoryUtils {
     memory_method_ = std::move(memory_method);
   }
 
-  Allocator::AllocationPtr Alloc(const phi::Place& place,
+  Allocator::AllocationPtr Alloc(const Place& place,
                                  size_t size,
-                                 const phi::Stream& stream) {
+                                 const Stream& stream) {
     CheckMemoryMethod();
     PADDLE_ENFORCE_NE(memory_method_->alloc_with_stream,
                       nullptr,
@@ -201,7 +201,7 @@ class MemoryUtils {
     return memory_method_->alloc_with_stream(place, size, stream);
   }
 
-  Allocator::AllocationPtr Alloc(const phi::Place& place, size_t size) {
+  Allocator::AllocationPtr Alloc(const Place& place, size_t size) {
     CheckMemoryMethod();
     PADDLE_ENFORCE_NE(memory_method_->alloc,
                       nullptr,
@@ -211,9 +211,9 @@ class MemoryUtils {
     return memory_method_->alloc(place, size);
   }
 
-  std::shared_ptr<Allocation> AllocShared(const phi::Place& place,
+  std::shared_ptr<Allocation> AllocShared(const Place& place,
                                           size_t size,
-                                          const phi::Stream& stream) {
+                                          const Stream& stream) {
     CheckMemoryMethod();
     PADDLE_ENFORCE_NE(memory_method_->alloc_shared_with_stream,
                       nullptr,
@@ -223,8 +223,7 @@ class MemoryUtils {
     return memory_method_->alloc_shared_with_stream(place, size, stream);
   }
 
-  std::shared_ptr<Allocation> AllocShared(const phi::Place& place,
-                                          size_t size) {
+  std::shared_ptr<Allocation> AllocShared(const Place& place, size_t size) {
     CheckMemoryMethod();
     PADDLE_ENFORCE_NE(memory_method_->alloc_shared,
                       nullptr,
@@ -235,7 +234,7 @@ class MemoryUtils {
   }
 
   bool InSameStream(const std::shared_ptr<Allocation>& allocation,
-                    const phi::Stream& stream) {
+                    const Stream& stream) {
     CheckMemoryMethod();
     PADDLE_ENFORCE_NE(memory_method_->in_same_stream,
                       nullptr,
@@ -322,7 +321,7 @@ class MemoryUtils {
   void EmplaceDeviceContexts(
       std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
           place_to_device_context,
-      const std::vector<phi::Place>& places,
+      const std::vector<Place>& places,
       bool disable_setting_default_stream_for_allocator,
       int stream_priority,
       bool set_to_default_stream) {
@@ -353,44 +352,44 @@ class MemoryUtils {
 
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
     (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
-  const phi::Allocator* GetAllocator(int device_id, phi::gpuStream_t stream) {
+  const Allocator* GetAllocator(int device_id, gpuStream_t stream) {
     return memory_method_->get_allocator(device_id, stream);
   }
 
-  const phi::Allocator* GetHostAllocator() {
+  const Allocator* GetHostAllocator() {
     return memory_method_->get_host_allocator();
   }
 
-  const phi::Allocator* GetZeroAllocator(int device_id) {
+  const Allocator* GetZeroAllocator(int device_id) {
     return memory_method_->get_zero_allocator(device_id);
   }
 
-  const phi::Allocator* GetHostZeroAllocator() {
+  const Allocator* GetHostZeroAllocator() {
     return memory_method_->get_host_zero_allocator();
   }
 
-  const phi::Allocator* GetPinnedAllocator() {
+  const Allocator* GetPinnedAllocator() {
     return memory_method_->get_pinned_allocator();
   }
 
-  std::shared_ptr<std::remove_pointer<phi::gpuEvent_t>::type> GetCudaEvent(
+  std::shared_ptr<std::remove_pointer<gpuEvent_t>::type> GetCudaEvent(
       int device_id) {
     return memory_method_->get_new_cuda_event(device_id);
   }
 #elif (defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL))
-  const phi::Allocator* GetAllocator(int device_id, XPUStream stream) {
+  const Allocator* GetAllocator(int device_id, XPUStream stream) {
     return memory_method_->get_allocator(device_id, stream);
   }
 
-  const phi::Allocator* GetHostAllocator() {
+  const Allocator* GetHostAllocator() {
     return memory_method_->get_host_allocator();
   }
 
-  const phi::Allocator* GetZeroAllocator(int device_id) {
+  const Allocator* GetZeroAllocator(int device_id) {
     return memory_method_->get_zero_allocator(device_id);
   }
 
-  const phi::Allocator* GetHostZeroAllocator() {
+  const Allocator* GetHostZeroAllocator() {
     return memory_method_->get_host_zero_allocator();
   }
 
@@ -418,21 +417,21 @@ class MemoryUtils {
 
 namespace memory_utils {
 
-PADDLE_API Allocator::AllocationPtr Alloc(const phi::Place& place,
+PADDLE_API Allocator::AllocationPtr Alloc(const Place& place,
                                           size_t size,
-                                          const phi::Stream& stream);
+                                          const Stream& stream);
 
-PADDLE_API Allocator::AllocationPtr Alloc(const phi::Place& place, size_t size);
+PADDLE_API Allocator::AllocationPtr Alloc(const Place& place, size_t size);
 
-std::shared_ptr<Allocation> AllocShared(const phi::Place& place,
+std::shared_ptr<Allocation> AllocShared(const Place& place,
                                         size_t size,
-                                        const phi::Stream& stream);
+                                        const Stream& stream);
 
-PADDLE_API std::shared_ptr<Allocation> AllocShared(const phi::Place& place,
+PADDLE_API std::shared_ptr<Allocation> AllocShared(const Place& place,
                                                    size_t size);
 
 bool InSameStream(const std::shared_ptr<Allocation>& allocation,
-                  const phi::Stream& stream);
+                  const Stream& stream);
 
 void AllocationDeleter(Allocation* allocation);
 
@@ -459,14 +458,14 @@ PADDLE_API void InitDevices();
 void EmplaceDeviceContexts(
     std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
         place_to_device_context,
-    const std::vector<phi::Place>& places,
+    const std::vector<Place>& places,
     bool disable_setting_default_stream_for_allocator,
     int stream_priority,
     bool set_to_default_stream = false);
 
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
     (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
-const Allocator* GetAllocator(int device_id, phi::gpuStream_t stream);
+const Allocator* GetAllocator(int device_id, gpuStream_t stream);
 
 const Allocator* GetHostAllocator();
 
@@ -476,7 +475,7 @@ const Allocator* GetHostZeroAllocator();
 
 const Allocator* GetPinnedAllocator();
 
-std::shared_ptr<std::remove_pointer<phi::gpuEvent_t>::type> GetCudaEvent(
+std::shared_ptr<std::remove_pointer<gpuEvent_t>::type> GetCudaEvent(
     int device_id);
 #elif (defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL))
 const Allocator* GetAllocator(int device_id, XPUStream stream);
@@ -492,7 +491,7 @@ std::shared_ptr<std::remove_pointer<XPUEvent>::type> GetXpuEvent(int device_id);
 
 class Buffer {
  public:
-  explicit Buffer(const phi::Place& place) : place_(place) {}
+  explicit Buffer(const Place& place) : place_(place) {}
 
   template <typename T>
   T* Alloc(size_t size) {
@@ -520,26 +519,24 @@ class Buffer {
 
   size_t Size() const { return allocation_ ? allocation_->size() : 0; }
 
-  phi::Place GetPlace() const { return place_; }
+  Place GetPlace() const { return place_; }
 
  private:
   Allocator::AllocationPtr allocation_;
-  phi::Place place_;
+  Place place_;
 };
 
 template <typename StreamType>
 struct ThrustAllocator {
   typedef char value_type;
-  ThrustAllocator(phi::Place place, StreamType stream) {
+  ThrustAllocator(Place place, StreamType stream) {
     place_ = place;
     stream_ = stream;
   }
   ~ThrustAllocator() {}
   char* allocate(std::ptrdiff_t num_bytes) {
-    auto storage =
-        AllocShared(place_,
-                    num_bytes,
-                    phi::Stream(reinterpret_cast<phi::StreamId>(stream_)));
+    auto storage = AllocShared(
+        place_, num_bytes, Stream(reinterpret_cast<StreamId>(stream_)));
     char* ptr = reinterpret_cast<char*>(storage->ptr());
     busy_allocation_.emplace(std::make_pair(ptr, storage));
     return ptr;
@@ -554,7 +551,7 @@ struct ThrustAllocator {
   typedef std::unordered_map<char*, std::shared_ptr<Allocation>>
       allocation_map_type;
   allocation_map_type busy_allocation_;
-  phi::Place place_;
+  Place place_;
   StreamType stream_;
 };
 

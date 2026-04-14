@@ -17,6 +17,7 @@ from __future__ import annotations
 import builtins
 import math
 import numbers
+import os
 import re
 import warnings
 from typing import TYPE_CHECKING, overload
@@ -846,6 +847,25 @@ def _to_tensor_non_static(
             data = data.astype(convert_dtype(dtype))
 
     if isinstance(data, np.ndarray):
+        if core.is_compiled_with_custom_device(
+            "iluvatar_gpu"
+        ) and os.environ.get('FLAG_FORCE_FLOAT32', '').lower() in [
+            '1',
+            'true',
+            'on',
+        ]:
+            import logging
+
+            if data.dtype == np.float64:
+                logging.warning(
+                    "Input data type is float64 which is not supported on iluvatar gpu, we will forcibly set tensor dtype to float32!"
+                )
+                data = data.astype(np.float32)
+            elif data.dtype == np.complex128:
+                logging.warning(
+                    "Input data type is complex128 which is not supported on iluvatar gpu, we will forcibly set tensor dtype to complex64!"
+                )
+                data = data.astype(np.complex64)
         if (
             data.dtype
             in [
@@ -2704,8 +2724,8 @@ def meshgrid(*args, **kwargs):
 
             >>> import paddle
 
-            >>> x = paddle.randint(low=0, high=100, shape=[100])
-            >>> y = paddle.randint(low=0, high=100, shape=[200])
+            >>> x = paddle.randint(low=0, high=100, size=[100])
+            >>> y = paddle.randint(low=0, high=100, size=[200])
 
             >>> grid_x, grid_y = paddle.meshgrid(x, y)
 
@@ -2946,6 +2966,7 @@ def diag_embed(
     return out
 
 
+@param_one_alias(['x', 'input'])
 def diagflat(
     x: paddle.Tensor, offset: int = 0, name: str | None = None
 ) -> paddle.Tensor:
@@ -2965,6 +2986,7 @@ def diagflat(
 
     Args:
         x (Tensor): The input tensor. It can be any shape. Its data type should be float16, float32, float64, int32, int64.
+            Alias: ``input``.
         offset (int, optional): The diagonal offset. A positive value represents superdiagonal, 0 represents the main diagonal, and a negative value represents subdiagonal. Default: 0 (main diagonal).
         name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
@@ -3666,6 +3688,7 @@ def assign(x: TensorLike, output: paddle.Tensor | None = None) -> paddle.Tensor:
     return output
 
 
+@param_one_alias(['x', 'input'])
 def clone(x: paddle.Tensor, name: str | None = None) -> paddle.Tensor:
     """
     Returns a copy of input Tensor. It will always have a Tensor copy.
@@ -3674,6 +3697,7 @@ def clone(x: paddle.Tensor, name: str | None = None) -> paddle.Tensor:
 
     Parameters:
         x (Tensor): The input Tensor.
+            Alias: ``input``.
         name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -4107,6 +4131,7 @@ def cauchy_(
 
 
 @dygraph_only
+@param_one_alias(['probs', 'p'])
 def geometric_(
     x: paddle.Tensor,
     probs: float | paddle.Tensor,
@@ -4118,6 +4143,7 @@ def geometric_(
         x (Tensor): the tensor will be filled, The data type is float32 or float64.
         probs (float|Tensor): Probability parameter.
             The value of probs must be positive. When the parameter is a tensor, probs is probability of success for each trial.
+            Alias: ``p``.
         name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -4230,7 +4256,7 @@ def set_(
         if source is None:
             source = paddle.empty([0], dtype=x.dtype)
             shape = [0]
-            stride = [0]
+            stride = source.strides
         else:
             if not isinstance(source, (Variable, core.eager.Tensor)):
                 raise ValueError(

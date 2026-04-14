@@ -39,7 +39,7 @@ void PNormGradKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& out,
                      const DenseTensor& out_grad,
-                     float porder,
+                     double porder,
                      int axis,
                      float epsilon,
                      bool keepdim,
@@ -138,8 +138,10 @@ void PNormGradKernel(const Context& dev_ctx,
     DDim pdim = make_ddim({1});
     porder_tensor.Resize(pdim);
     dev_ctx.template Alloc<float>(&porder_tensor);
-    r = xpu::constant(
-        dev_ctx.x_context(), porder_tensor.data<float>(), 1, porder - 1.0f);
+    r = xpu::constant(dev_ctx.x_context(),
+                      porder_tensor.data<float>(),
+                      1,
+                      static_cast<float>(porder - 1.0));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
     std::vector<int64_t> p_dim(1, 1);
 

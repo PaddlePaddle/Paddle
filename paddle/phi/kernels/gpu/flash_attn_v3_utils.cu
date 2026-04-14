@@ -17,11 +17,11 @@ namespace phi {
 #ifdef PADDLE_WITH_FLASHATTN_V3
 
 void destroy_flash_fwd_params_handle(Flash_fwd_params *params_handle) {
-  phi::dynload::fa3_destroy_fwd_params_handle(params_handle);
+  dynload::fa3_destroy_fwd_params_handle(params_handle);
 }
 
 void destroy_flash_bwd_params_handle(Flash_bwd_params *params_handle) {
-  phi::dynload::fa3_destroy_bwd_params_handle(params_handle);
+  dynload::fa3_destroy_bwd_params_handle(params_handle);
 }
 
 // umiswing: no singleton, the details of Flash_fwd_params and Flash_bwd_params
@@ -30,7 +30,7 @@ void destroy_flash_bwd_params_handle(Flash_bwd_params *params_handle) {
 Flash_fwd_params *get_flash_fwd_params_handle() {
   static std::unique_ptr<Flash_fwd_params,
                          decltype(&destroy_flash_fwd_params_handle)>
-      params_handle(phi::dynload::fa3_create_fwd_params_handle(),
+      params_handle(dynload::fa3_create_fwd_params_handle(),
                     &destroy_flash_fwd_params_handle);
 
   return params_handle.get();
@@ -39,18 +39,18 @@ Flash_fwd_params *get_flash_fwd_params_handle() {
 Flash_bwd_params *get_flash_bwd_params_handle() {
   static std::unique_ptr<Flash_bwd_params,
                          decltype(&destroy_flash_bwd_params_handle)>
-      params_handle(phi::dynload::fa3_create_bwd_params_handle(),
+      params_handle(dynload::fa3_create_bwd_params_handle(),
                     &destroy_flash_bwd_params_handle);
 
   return params_handle.get();
 }
 
 void destroy_flashmask_fwd_params_handle(Flash_fwd_params *params_handle) {
-  phi::dynload::flashmaskv2_destroy_fwd_params_handle(params_handle);
+  dynload::flashmaskv2_destroy_fwd_params_handle(params_handle);
 }
 
 void destroy_flashmask_bwd_params_handle(Flash_bwd_params *params_handle) {
-  phi::dynload::flashmaskv2_destroy_bwd_params_handle(params_handle);
+  dynload::flashmaskv2_destroy_bwd_params_handle(params_handle);
 }
 
 // umiswing: no singleton, the details of Flash_fwd_params and Flash_bwd_params
@@ -59,7 +59,7 @@ void destroy_flashmask_bwd_params_handle(Flash_bwd_params *params_handle) {
 FlashMask_fwd_params *get_flashmask_fwd_params_handle() {
   static std::unique_ptr<Flash_fwd_params,
                          decltype(&destroy_flashmask_fwd_params_handle)>
-      params_handle(phi::dynload::flashmaskv2_create_fwd_params_handle(),
+      params_handle(dynload::flashmaskv2_create_fwd_params_handle(),
                     &destroy_flashmask_fwd_params_handle);
 
   return params_handle.get();
@@ -68,7 +68,7 @@ FlashMask_fwd_params *get_flashmask_fwd_params_handle() {
 FlashMask_bwd_params *get_flashmask_bwd_params_handle() {
   static std::unique_ptr<Flash_bwd_params,
                          decltype(&destroy_flashmask_bwd_params_handle)>
-      params_handle(phi::dynload::flashmaskv2_create_bwd_params_handle(),
+      params_handle(dynload::flashmaskv2_create_bwd_params_handle(),
                     &destroy_flashmask_bwd_params_handle);
 
   return params_handle.get();
@@ -103,9 +103,9 @@ void set_params_fprop(Flash_fwd_params *params_handle,
                       const float softcap,
                       const int sm_margin) {
   dynload::fa3_fwd_params_set_is_bf16(params_handle,
-                                      q.dtype() == phi::DataType::BFLOAT16);
-  dynload::fa3_fwd_params_set_is_e4m3(
-      params_handle, q.dtype() == phi::DataType::FLOAT8_E4M3FN);
+                                      q.dtype() == DataType::BFLOAT16);
+  dynload::fa3_fwd_params_set_is_e4m3(params_handle,
+                                      q.dtype() == DataType::FLOAT8_E4M3FN);
 
   // Set the pointers and strides.
   dynload::fa3_fwd_params_set_q_ptr(params_handle,
@@ -371,10 +371,10 @@ void set_flashmaskv2_params_fprop(Flash_fwd_params *params_handle,
                                   const gpuDeviceProp &dprops,
                                   const float softcap,
                                   const int sm_margin) {
-  dynload::flashmaskv2_fwd_params_set_is_bf16(
-      params_handle, q.dtype() == phi::DataType::BFLOAT16);
+  dynload::flashmaskv2_fwd_params_set_is_bf16(params_handle,
+                                              q.dtype() == DataType::BFLOAT16);
   dynload::flashmaskv2_fwd_params_set_is_e4m3(
-      params_handle, q.dtype() == phi::DataType::FLOAT8_E4M3FN);
+      params_handle, q.dtype() == DataType::FLOAT8_E4M3FN);
 
   // Set the pointers and strides.
   dynload::flashmaskv2_fwd_params_set_q_ptr(params_handle,

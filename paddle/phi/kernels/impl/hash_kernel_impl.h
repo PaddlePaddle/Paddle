@@ -38,7 +38,7 @@ void HashKernel(const Context& dev_ctx,
 
   std::vector<int64_t> out_dims;
   funcs::HashOutputSize(in_dims, out_dims, num_hash);
-  out_t->Resize(make_ddim(out_dims));
+  out_t->Resize(out_dims);
   auto* output = dev_ctx.template Alloc<T>(out_t);
 
   auto seq_length = in_dims[0];

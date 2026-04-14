@@ -55,7 +55,7 @@ void LodResetKernel(const Context& dev_ctx,
     } else {
       auto* lod = lod_t->data<int>();
       DenseTensor lod_cpu;
-      if (lod_t->place().GetType() == phi::AllocationType::GPU) {
+      if (lod_t->place().GetType() == AllocationType::GPU) {
         Copy(dev_ctx, *lod_t, CPUPlace(), true, &lod_cpu);
         lod = lod_cpu.data<int>();
       }
@@ -105,7 +105,7 @@ void LodResetKernel(const Context& dev_ctx,
     auto* out_lod = out->mutable_lod();
     out_lod->push_back(ulevel0);
   } else {
-    phi::LegacyLoD target_lod;
+    LegacyLoD target_lod;
     target_lod.push_back(ulevel0);
     out->set_lod(target_lod);
   }

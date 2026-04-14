@@ -25,7 +25,7 @@ from paddle.device import (
     Stream,
     StreamContext,
     _device_to_paddle as _device_to_paddle,
-    amp,  # noqa: F401
+    amp,
     current_device,
     device,
     ipc_collect,
@@ -889,4 +889,5 @@ __all__ = [
     "Event",
     "ipc_collect",
     "StreamContext",
+    "amp",
 ]

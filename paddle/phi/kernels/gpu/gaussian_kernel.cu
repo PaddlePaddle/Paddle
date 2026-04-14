@@ -96,7 +96,7 @@ void GaussianRandom(const Context& dev_ctx,
                     int seed,
                     DataType dtype,
                     DenseTensor* out) {
-  out->Resize(make_ddim(shape.GetData()));
+  out->Resize(shape.GetData());
   dev_ctx.template Alloc<T>(out);
   if (seed == 0) {
     // use global Generator seed
@@ -126,15 +126,15 @@ void GaussianRandom(const Context& dev_ctx,
                     int seed,
                     DataType dtype,
                     DenseTensor* out) {
-  out->Resize(make_ddim(shape.GetData()));
+  out->Resize(shape.GetData());
   dev_ctx.template Alloc<T>(out);
   float std_of_real_or_imag = std::sqrt(std::pow(std, 2) / 2);
   if (seed == 0) {
     // use global Generator seed
     DenseTensor out_real;
     DenseTensor out_imag;
-    out_real.Resize(make_ddim(shape.GetData()));
-    out_imag.Resize(make_ddim(shape.GetData()));
+    out_real.Resize(shape.GetData());
+    out_imag.Resize(shape.GetData());
     dev_ctx.template Alloc<T>(&out_real);
     dev_ctx.template Alloc<T>(&out_imag);
     funcs::normal_distribution<phi::dtype::Real<T>> dist;

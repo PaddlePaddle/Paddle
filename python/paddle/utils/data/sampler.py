@@ -13,6 +13,8 @@
 # limitations under the License.
 
 from paddle.io import (
+    BatchSampler as BatchSampler,
+    RandomSampler as RandomSampler,
     Sampler as Sampler,
     SequenceSampler as SequentialSampler,  # noqa: F401
 )

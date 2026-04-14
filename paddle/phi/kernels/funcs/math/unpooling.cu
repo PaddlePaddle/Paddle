@@ -114,9 +114,9 @@ __global__ void KernelUnpool3dMaxGrad(const int64_t nthreads,
  */
 
 template <typename T>
-class Unpool2dMaxFunctor<phi::GPUContext, T> {
+class Unpool2dMaxFunctor<GPUContext, T> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const GPUContext& context,
                   const DenseTensor& input,
                   const DenseTensor& indices,
                   DenseTensor* output) {
@@ -166,9 +166,9 @@ class Unpool2dMaxFunctor<phi::GPUContext, T> {
  * All tensors are in NCHW format.
  */
 template <typename T>
-class Unpool2dMaxGradFunctor<phi::GPUContext, T> {
+class Unpool2dMaxGradFunctor<GPUContext, T> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const GPUContext& context,
                   const DenseTensor& input,
                   const DenseTensor& indices,
                   const DenseTensor& output,
@@ -222,9 +222,9 @@ class Unpool2dMaxGradFunctor<phi::GPUContext, T> {
 };
 
 template <typename T>
-class Unpool3dMaxFunctor<phi::GPUContext, T> {
+class Unpool3dMaxFunctor<GPUContext, T> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const GPUContext& context,
                   const DenseTensor& input,
                   const DenseTensor& indices,
                   DenseTensor* output) {
@@ -284,9 +284,9 @@ class Unpool3dMaxFunctor<phi::GPUContext, T> {
  * All tensors are in NCDHW format.
  */
 template <typename T>
-class Unpool3dMaxGradFunctor<phi::GPUContext, T> {
+class Unpool3dMaxGradFunctor<GPUContext, T> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const GPUContext& context,
                   const DenseTensor& input,
                   const DenseTensor& indices,
                   const DenseTensor& output,
@@ -349,13 +349,13 @@ class Unpool3dMaxGradFunctor<phi::GPUContext, T> {
   }
 };
 
-template class Unpool2dMaxGradFunctor<phi::GPUContext, float>;
-template class Unpool2dMaxGradFunctor<phi::GPUContext, double>;
-template class Unpool2dMaxFunctor<phi::GPUContext, float>;
-template class Unpool2dMaxFunctor<phi::GPUContext, double>;
-template class Unpool3dMaxGradFunctor<phi::GPUContext, float>;
-template class Unpool3dMaxGradFunctor<phi::GPUContext, double>;
-template class Unpool3dMaxFunctor<phi::GPUContext, float>;
-template class Unpool3dMaxFunctor<phi::GPUContext, double>;
+template class Unpool2dMaxGradFunctor<GPUContext, float>;
+template class Unpool2dMaxGradFunctor<GPUContext, double>;
+template class Unpool2dMaxFunctor<GPUContext, float>;
+template class Unpool2dMaxFunctor<GPUContext, double>;
+template class Unpool3dMaxGradFunctor<GPUContext, float>;
+template class Unpool3dMaxGradFunctor<GPUContext, double>;
+template class Unpool3dMaxFunctor<GPUContext, float>;
+template class Unpool3dMaxFunctor<GPUContext, double>;
 }  // namespace math
 }  // namespace phi

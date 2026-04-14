@@ -784,8 +784,7 @@ struct ReduceExecutor {
   DEVICE MPType InVectorizedThreadReduceImpl(const ScalarT* data) const {
     IndexType end = config.num_inputs;
     MPType value = ident;
-    constexpr int align_bytes =
-        alignof(phi::AlignedVector<ScalarT, kInputVecSize>);
+    constexpr int align_bytes = alignof(AlignedVector<ScalarT, kInputVecSize>);
 
     constexpr int align_elements = align_bytes / sizeof(ScalarT);
     int shift = ((uint64_t)data) % align_bytes / sizeof(ScalarT);
@@ -813,7 +812,7 @@ struct ReduceExecutor {
       value_list[i] = ident;
     }
 
-    using load_t = phi::AlignedVector<ScalarT, kInputVecSize>;
+    using load_t = AlignedVector<ScalarT, kInputVecSize>;
 
     while (idx * kInputVecSize + kInputVecSize - 1 < end) {
       const auto values_vec = LoadVector<ScalarT, kInputVecSize>(data, idx);
@@ -852,7 +851,7 @@ struct ReduceExecutor {
     const IndexType stride = config.step_input;
 
     using MPTypeVec = std::array<MPType, kOutputVecSize>;
-    using load_t = phi::AlignedVector<ScalarT, kOutputVecSize>;
+    using load_t = AlignedVector<ScalarT, kOutputVecSize>;
 
     std::array<MPTypeVec, kVecSize> value_list;
 
@@ -1366,7 +1365,7 @@ void ReduceGpuKernel(const KPDevice& dev_ctx,
   auto mask = MakeDimMask(positive_reduce_dims, ndim);
   auto viewed_result = ReviewReduceResult(x, *(y), ndim, mask);
 
-  auto x_dim = common::vectorize<int64_t>(x.dims());
+  auto x_dim = vectorize<int64_t>(x.dims());
 
   DenseTensorIteratorConfig dense_iter_config;
   dense_iter_config.is_reduction(true);

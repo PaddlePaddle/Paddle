@@ -13,8 +13,9 @@
 # limitations under the License.
 from __future__ import annotations
 
-from ._comparison import assert_close
+from ._comparison import _assert, assert_close
 
 __all__ = [
+    '_assert',
     'assert_close',
 ]

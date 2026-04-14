@@ -106,6 +106,10 @@ class Unpool2dMaxGradFunctor {
     const T* output_data = output.data<T>();
     const T* output_grad_data = output_grad.data<T>();
     T* input_grad_data = dev_ctx.template Alloc<T>(input_grad);
+    // Early return for zero-size input to avoid invalid CUDA kernel launch
+    if (input.numel() == 0) {
+      return;
+    }
     int threads = 1024;
     int64_t grid_max = dev_ctx.GetCUDAMaxGridDimSize()[0];
     int grid = std::min((input.numel() + threads - 1) / threads, grid_max);
@@ -170,6 +174,10 @@ class Unpool3dMaxGradFunctor {
     const T* output_data = output.data<T>();
     const T* output_grad_data = output_grad.data<T>();
     T* input_grad_data = dev_ctx.template Alloc<T>(input_grad);
+    // Early return for zero-size input to avoid invalid CUDA kernel launch
+    if (input.numel() == 0) {
+      return;
+    }
     int threads = 1024;
     int64_t grid_max = dev_ctx.GetCUDAMaxGridDimSize()[0];
     int grid = std::min((input.numel() + threads - 1) / threads, grid_max);
@@ -210,7 +218,7 @@ void UnpoolGradKernel(const Context& dev_ctx,
   funcs::SetConstant<Context, T> zero;
   zero(dev_ctx, x_grad, static_cast<T>(0));
   const auto& indices_type = indices.dtype();
-  if (indices_type == phi::DataType::INT32) {
+  if (indices_type == DataType::INT32) {
     Unpool2dMaxGradFunctor<T, int, Context> unpool2d_max_backward;
     unpool2d_max_backward(dev_ctx, x, indices, out, out_grad, x_grad);
   } else {
@@ -239,7 +247,7 @@ void Unpool3dGradKernel(const Context& dev_ctx,
   funcs::SetConstant<Context, T> zero;
   zero(dev_ctx, x_grad, static_cast<T>(0));
   const auto& indices_type = indices.dtype();
-  if (indices_type == phi::DataType::INT32) {
+  if (indices_type == DataType::INT32) {
     Unpool3dMaxGradFunctor<T, int, Context> unpool3d_max_backward;
     unpool3d_max_backward(dev_ctx, x, indices, out, out_grad, x_grad);
   } else {

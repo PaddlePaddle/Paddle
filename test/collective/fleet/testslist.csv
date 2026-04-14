@@ -72,3 +72,7 @@ test_dualpipe.py,,GPU,500,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;htt
 test_zero_bubble_utils,LINUX;APPLE,,500,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_shutdown_process_group,,GPU,,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=,
 test_pp_send_recv_dict.py,,GPU,500,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
+test_pp_layers,,GPU,500,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
+test_pp_with_shared_weight,,GPU,500,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
+test_layer_spec,,,,,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
+test_schedule_node,,,,,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,

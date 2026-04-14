@@ -247,6 +247,11 @@ uint64_t Generator::GetCurrentSeed() {
   return state().seed;
 }
 
+uint64_t Generator::GetCurrentOffset() {
+  std::lock_guard<std::mutex> lock(mu_);
+  return state().offset;
+}
+
 uint64_t Generator::Seed() {
   std::lock_guard<std::mutex> lock(mu_);
   uint64_t seed = GetRandomSeed();

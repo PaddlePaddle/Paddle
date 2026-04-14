@@ -26,7 +26,7 @@ void CastKernel(const Context& dev_ctx,
                 DataType out_dtype,
                 DenseTensor* out) {
   if (x.dtype() == out_dtype) {
-    if (x.dims() == phi::make_ddim({-1})) {
+    if (x.dims() == make_ddim({-1})) {
       *out = x;
       return;
     }
@@ -59,8 +59,8 @@ INSTANTIATE_CAST_KERNEL(uint32_t, CPUContext)
 INSTANTIATE_CAST_KERNEL(uint64_t, CPUContext)
 INSTANTIATE_CAST_KERNEL(bool, CPUContext)
 INSTANTIATE_CAST_KERNEL(int16_t, CPUContext)
-INSTANTIATE_CAST_KERNEL(phi::float16, CPUContext)
-INSTANTIATE_CAST_KERNEL(phi::bfloat16, CPUContext)
+INSTANTIATE_CAST_KERNEL(float16, CPUContext)
+INSTANTIATE_CAST_KERNEL(bfloat16, CPUContext)
 #endif
 }  // namespace phi
 

@@ -246,6 +246,28 @@ class TestPixelUnshuffleAPI(unittest.TestCase):
             np.testing.assert_allclose(res_1, self.out_1_np, rtol=1e-05, atol=1)
             np.testing.assert_allclose(res_2, self.out_2_np, rtol=1e-05, atol=1)
 
+    def test_static_param_alias(self):
+        '''test_static_param_alias'''
+
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
+            x_1 = paddle.static.data(
+                name="x", shape=[2, 1, 12, 12], dtype="float64"
+            )
+            out_1 = F.pixel_unshuffle(x=x_1, downscale_factor=3)
+            out_1_alias = F.pixel_unshuffle(input=x_1, downscale_factor=3)
+
+        exe = paddle.static.Executor()
+        res_1, res_1_alias = exe.run(
+            main,
+            feed={"x": self.x_1_np},
+            fetch_list=[out_1, out_1_alias],
+        )
+
+        np.testing.assert_allclose(res_1, res_1_alias)
+
     # same test between layer and functional in this op.
     def test_static_graph_layer(self):
         '''test_static_graph_layer'''
@@ -334,6 +356,17 @@ class TestPixelUnshuffleAPI(unittest.TestCase):
         '''test_dygraph2'''
 
         self.run_dygraph(3, "NHWC")
+
+    def test_dygraph_param_alias(self):
+        '''test_dygraph_param_alias'''
+
+        paddle.disable_static()
+
+        x = paddle.to_tensor(self.x_1_np)
+        out_1 = F.pixel_unshuffle(x=x, downscale_factor=3)
+        out_1_alias = F.pixel_unshuffle(input=x, downscale_factor=3)
+
+        np.testing.assert_allclose(out_1.numpy(), out_1_alias.numpy())
 
 
 class TestPixelUnshuffleError(unittest.TestCase):
