@@ -1763,6 +1763,25 @@ class TestEagerTensor(unittest.TestCase):
         self.assertFalse(a == object())
         self.assertTrue(a != object())
 
+    def test_tensor_type(self):
+        var = paddle.tensor([1, 2, 3], dtype="int64")
+        # type property
+        self.assertEqual(var.type, core.VarDesc.VarType.DENSE_TENSOR)
+        # type method with no args
+        self.assertEqual(var.type(), core.VarDesc.VarType.DENSE_TENSOR)
+        # type method with arg
+        self.assertEqual(var.type("int32").dtype, core.DataType.INT32)
+        self.assertEqual(
+            var.type(core.VarDesc.VarType.FP16).dtype, core.DataType.FLOAT16
+        )
+        self.assertEqual(
+            var.type(core.DataType.FLOAT32).dtype, core.DataType.FLOAT32
+        )
+        self.assertEqual(var.type(np.float64).dtype, core.DataType.FLOAT64)
+        # too many args error
+        with self.assertRaises(ValueError):
+            var.type("int32", "float32")
+
 
 class TestEagerTensorSetitem(unittest.TestCase):
     def func_setUp(self):

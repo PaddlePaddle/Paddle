@@ -1440,6 +1440,115 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
   return 1;
 }
 
+// The callable wrapper returned by x.type
+struct TensorTypeCallable {
+  PyObject_HEAD PyObject* vartype;
+  PyObject* tensor;
+};
+
+static PyObject* TensorTypeCallable_call(TensorTypeCallable* self,
+                                         PyObject* args,
+                                         PyObject* kwargs) {
+  return PyObject_Call(
+      PyObject_GetAttrString(self->tensor, "_type"), args, kwargs);
+}
+
+static void TensorTypeCallable_dealloc(TensorTypeCallable* self) {
+  Py_XDECREF(self->vartype);
+  Py_XDECREF(self->tensor);
+  Py_TYPE(self)->tp_free(reinterpret_cast<PyObject*>(self));
+}
+
+static PyObject* TensorTypeCallable_richcompare(TensorTypeCallable* self,
+                                                PyObject* other,
+                                                int op) {
+  return PyObject_RichCompare(self->vartype, other, op);
+}
+
+static PyObject* TensorTypeCallable_repr(TensorTypeCallable* self) {
+  return PyObject_Repr(self->vartype);
+}
+
+static PyObject* TensorTypeCallable_str(TensorTypeCallable* self) {
+  return PyObject_Str(self->vartype);
+}
+
+static Py_hash_t TensorTypeCallable_hash(TensorTypeCallable* self) {
+  return PyObject_Hash(self->vartype);
+}
+
+static PyObject* TensorTypeCallable_int(TensorTypeCallable* self) {
+  return PyNumber_Long(self->vartype);
+}
+
+static PyNumberMethods TensorTypeCallable_as_number = {
+    nullptr,                            // nb_add
+    nullptr,                            // nb_subtract
+    nullptr,                            // nb_multiply
+    nullptr,                            // nb_remainder
+    nullptr,                            // nb_divmod
+    nullptr,                            // nb_power
+    nullptr,                            // nb_negative
+    nullptr,                            // nb_positive
+    nullptr,                            // nb_absolute
+    nullptr,                            // nb_bool
+    nullptr,                            // nb_invert
+    nullptr,                            // nb_lshift
+    nullptr,                            // nb_rshift
+    nullptr,                            // nb_and
+    nullptr,                            // nb_xor
+    nullptr,                            // nb_or
+    (unaryfunc)TensorTypeCallable_int,  // nb_int
+};
+
+static PyTypeObject TensorTypeCallableType = {
+    PyVarObject_HEAD_INIT(nullptr, 0) "TensorTypeCallable",  // tp_name
+    sizeof(TensorTypeCallable),                              // tp_basicsize
+    0,                                                       // tp_itemsize
+    (destructor)TensorTypeCallable_dealloc,                  // tp_dealloc
+    0,                                            // tp_vectorcall_offset
+    nullptr,                                      // tp_getattr
+    nullptr,                                      // tp_setattr
+    nullptr,                                      // tp_as_async
+    (reprfunc)TensorTypeCallable_repr,            // tp_repr
+    &TensorTypeCallable_as_number,                // tp_as_number
+    nullptr,                                      // tp_as_sequence
+    nullptr,                                      // tp_as_mapping
+    (hashfunc)TensorTypeCallable_hash,            // tp_hash
+    (ternaryfunc)TensorTypeCallable_call,         // tp_call
+    (reprfunc)TensorTypeCallable_str,             // tp_str
+    nullptr,                                      // tp_getattro
+    nullptr,                                      // tp_setattro
+    nullptr,                                      // tp_as_buffer
+    Py_TPFLAGS_DEFAULT,                           // tp_flags
+    "Callable tensor type descriptor",            // tp_doc
+    nullptr,                                      // tp_traverse
+    nullptr,                                      // tp_clear
+    (richcmpfunc)TensorTypeCallable_richcompare,  // tp_richcompare
+};
+
+// Custom tp_getattro: intercept "type" to return TensorTypeCallable
+static PyObject* TensorGetAttro(PyObject* self, PyObject* name) {
+  const char* name_str = PyUnicode_AsUTF8(name);
+  if (name_str && strcmp(name_str, "type") == 0) {
+    extern PyObject* tensor_properties_get_type(TensorObject*, void*);
+    PyObject* vartype = tensor_properties_get_type(
+        reinterpret_cast<TensorObject*>(self), nullptr);
+    if (!vartype) return nullptr;
+
+    auto* obj = PyObject_New(TensorTypeCallable, &TensorTypeCallableType);
+    if (!obj) {
+      Py_DECREF(vartype);
+      return nullptr;
+    }
+    obj->vartype = vartype;
+    obj->tensor = self;
+    Py_INCREF(self);
+    return reinterpret_cast<PyObject*>(obj);
+  }
+  return PyObject_GenericGetAttr(self, name);
+}
+
 void AddPyMethodDefs(std::vector<PyMethodDef>* vector, PyMethodDef* methods) {
   if (!vector->empty()) {
     // remove nullptr terminator
@@ -1502,8 +1611,16 @@ void BindEager(pybind11::module* module) {
   type->tp_flags |=
       Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HEAPTYPE;  // NOLINT
   type->tp_dictoffset = offsetof(TensorObject, dict);
+  type->tp_getattro = TensorGetAttro;
   type->tp_as_async = &heap_type->as_async;
   p_tensor_type = type;
+
+  if (PyType_Ready(&TensorTypeCallableType) < 0) {
+    PADDLE_THROW(common::errors::Fatal(
+        "Init Paddle error in BindEager(TensorTypeCallableType "
+        "PyType_Ready)."));
+    return;
+  }
 
   if (PyType_Ready(type) < 0) {
     PADDLE_THROW(

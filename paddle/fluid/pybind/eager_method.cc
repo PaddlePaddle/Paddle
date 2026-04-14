@@ -84,6 +84,8 @@ extern void InitTensorWithNumpyValue(TensorObject* self,
                                      bool zero_copy);
 
 extern PyTypeObject* p_tensor_type;
+extern PyTypeObject* g_vartype_pytype;
+extern PyTypeObject* g_data_type_pytype;
 
 Py_ssize_t GetSliceIndexFromPyObject(PyObject* obj) {
   if (PyObject_TypeCheck(obj, p_tensor_type)) {
@@ -3906,11 +3908,49 @@ static PyObject* tensor_method__is_string_tensor_hold_allocation(
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_method_type(TensorObject* self,
+                                    PyObject* args,
+                                    PyObject* kwargs) {
+  EAGER_TRY
+  VLOG(4) << "Running in tensor_method_type.";
+  int nargs = args ? static_cast<int>(PyTuple_Size(args)) : 0;
+  int nkwargs = kwargs ? static_cast<int>(PyDict_Size(kwargs)) : 0;
+  if (nargs + nkwargs > 1) {
+    PADDLE_THROW(
+        common::errors::InvalidArgument("type() has too many arguments"));
+  }
+  if (nargs + nkwargs == 0) {
+    // no args, return tensor's type attribute
+    extern PyObject* tensor_properties_get_type(TensorObject*, void*);
+    return tensor_properties_get_type(self, nullptr);
+  } else {
+    // one arg which is the target dtype
+    PyObject* dtype_obj;
+    if (nargs == 1) {
+      dtype_obj = PyTuple_GetItem(args, 0);
+    } else {
+      dtype_obj = PyDict_GetItemString(kwargs, "dtype");
+    }
+    // check dtype
+    paddle::DataType datatype = CastPyArg2DataType(dtype_obj, "type", 0);
+    if (datatype == self->tensor.dtype()) {
+      return ToPyObject(self->tensor);
+    } else {
+      return ToPyObject(cast_ad_func(self->tensor, datatype));
+    }
+  }
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyMethodDef variable_methods[] = {  // NOLINT
     {"numpy",
      (PyCFunction)(void (*)())tensor_method_numpy,
      METH_VARARGS | METH_KEYWORDS,
      tensor_method_numpy__doc__},
+    {"_type",
+     (PyCFunction)(void (*)())tensor_method_type,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
     {"_is_initialized",
      (PyCFunction)(void (*)())tensor_method__is_initialized,
      METH_VARARGS | METH_KEYWORDS,
