@@ -53,6 +53,9 @@ g_sharding_v2_check_zero_padding = int(
 g_shard_bypass_dygraph_optimizer = int(
     os.environ.get("FLAGS_shard_bypass_dygraph_optimizer", 0)
 )
+g_fuse_comm_buffer_by_group = int(
+    os.environ.get("XPU_PADDLE_FUSE_COMM_BUFFER_BY_GROUP", 0)
+)
 
 
 def _is_trainable(param):
@@ -1026,14 +1029,107 @@ class DygraphShardingOptimizerV2:
 
             if self._enable_timer:
                 self.timers("reduce-gradients").start()
-            for comm_buffer in self._comm_buffer_list:
-                if not self.comm_overlap:
-                    comm_buffer._comm_grads()
 
-                comm_buffer.scale_grads()
+            if not self.comm_overlap and g_fuse_comm_buffer_by_group:
+                # Fused reduce_scatter: concat buffers by comm_group
+                self._fused_reduce_scatter_grads()
+            else:
+                for comm_buffer in self._comm_buffer_list:
+                    if not self.comm_overlap:
+                        comm_buffer._comm_grads()
+                    comm_buffer.scale_grads()
 
             if self._enable_timer:
                 self.timers("reduce-gradients").stop()
+
+    def _fused_reduce_scatter_grads(self):
+        """Fuse multiple comm buffers' reduce_scatter into one call per (comm_group, dtype)."""
+        # Group buffers by (comm_group, dtype)
+        group_to_buffers = defaultdict(list)
+        for comm_buffer in self._comm_buffer_list:
+            if comm_buffer.need_reduce_scale_sync():
+                key = (comm_buffer._comm_group, comm_buffer.grad_storage.dtype)
+                group_to_buffers[key].append(comm_buffer)
+            else:
+                # No communication needed, just reset
+                comm_buffer._reset_params_checked_in()
+
+        for (comm_group, dtype), buffers in group_to_buffers.items():
+            if len(buffers) == 0:
+                continue
+
+            # Collect grad storages and their sizes
+            grad_storages = []
+            buffer_sizes = []
+            for buf in buffers:
+                grad_storages.append(buf.grad_storage)
+                buffer_sizes.append(buf.grad_storage._numel())
+
+            nranks = comm_group.nranks
+            rank = comm_group.rank
+
+            # Concat all grad storages into one tensor
+            if len(grad_storages) == 1:
+                fused_grad = grad_storages[0]
+            else:
+                fused_grad = paddle.concat(grad_storages, axis=0)
+
+            total_size = fused_grad._numel()
+            shard_size = total_size // nranks
+            begin = shard_size * rank
+            end = begin + shard_size
+
+            # Determine reduce op
+            reduce_op = (
+                paddle.distributed.ReduceOp.AVG
+                if buffers[0]._use_reduce_avg
+                else paddle.distributed.ReduceOp.SUM
+            )
+            if paddle.distributed.in_auto_parallel_align_mode():
+                reduce_op = paddle.distributed.ReduceOp.SUM
+
+            # Scale before comm if needed
+            if (
+                not buffers[0]._scale_after_comm
+                and not buffers[0]._use_reduce_avg
+            ):
+                scale_factor = 1.0 / nranks
+                fused_grad.scale_(scale_factor)
+
+            # One reduce_scatter for all buffers
+            reduce_scattered = fused_grad._slice(begin, end)
+            task = paddle.distributed.reduce_scatter(
+                reduce_scattered,
+                fused_grad,
+                op=reduce_op,
+                group=comm_group,
+                sync_op=False,
+            )
+            task.wait()
+
+            # Scale after comm if needed
+            if buffers[0]._scale_after_comm and not buffers[0]._use_reduce_avg:
+                scale_factor = 1.0 / nranks
+                reduce_scattered.scale_(scale_factor)
+
+            # Copy results back to each buffer's grad_storage slice
+            if len(grad_storages) > 1:
+                offset = 0
+                for i, buf in enumerate(buffers):
+                    buf_shard_size = buffer_sizes[i] // nranks
+                    src_slice = reduce_scattered._slice(
+                        offset, offset + buf_shard_size
+                    )
+                    # Get the destination slice in the original buffer
+                    buf_begin = buf_shard_size * rank
+                    buf_end = buf_begin + buf_shard_size
+                    dst_slice = buf.grad_storage._slice(buf_begin, buf_end)
+                    dst_slice.copy_(src_slice, False)
+                    offset += buf_shard_size
+
+            # Reset all buffers
+            for buf in buffers:
+                buf._reset_params_checked_in()
 
     def _check_padding_zero(self):
         if self._enable_timer:
@@ -1162,12 +1258,75 @@ class DygraphShardingOptimizerV2:
                                 self._forward_pre_hook_function(tasks)
                             )
                         )
+            elif g_fuse_comm_buffer_by_group:
+                # Fused all_gather: concat buffers by comm_group
+                self._fused_all_gather_params()
             else:
                 for comm_buffer in self._comm_buffer_list:
                     comm_buffer.sync_params()
 
         if self._enable_timer:
             self.timers("sync-parameters").stop()
+
+    def _fused_all_gather_params(self):
+        """Fuse multiple comm buffers' all_gather into one call per (comm_group, dtype)."""
+        # Group buffers by (comm_group, dtype)
+        group_to_buffers = defaultdict(list)
+        for comm_buffer in self._comm_buffer_list:
+            if comm_buffer.need_reduce_scale_sync():
+                key = (comm_buffer._comm_group, comm_buffer.param_storage.dtype)
+                group_to_buffers[key].append(comm_buffer)
+
+        for (comm_group, dtype), buffers in group_to_buffers.items():
+            if len(buffers) == 0:
+                continue
+            if comm_group.nranks == 1:
+                continue
+
+            nranks = comm_group.nranks
+            rank = comm_group.rank
+
+            # Collect param storages and their sizes
+            param_storages = []
+            buffer_sizes = []
+            for buf in buffers:
+                param_storages.append(buf.param_storage)
+                buffer_sizes.append(buf.param_storage._numel())
+
+            # Concat all param storages into one tensor
+            if len(param_storages) == 1:
+                fused_param = param_storages[0]
+                # Single buffer, just do normal all_gather
+                shard_size = fused_param._numel() // nranks
+                begin = shard_size * rank
+                end = begin + shard_size
+                slice_buffer = fused_param._slice(begin, end)
+                comm_group.process_group.all_gather(
+                    slice_buffer, fused_param
+                ).wait()
+            else:
+                fused_param = paddle.concat(param_storages, axis=0)
+
+                total_size = fused_param._numel()
+                shard_size = total_size // nranks
+                begin = shard_size * rank
+                end = begin + shard_size
+
+                # Prepare slice buffer (input to all_gather)
+                slice_buffer = fused_param._slice(begin, end)
+
+                # One all_gather for all buffers
+                comm_group.process_group.all_gather(
+                    slice_buffer, fused_param
+                ).wait()
+
+                # Copy results back to each buffer's param_storage
+                offset = 0
+                for i, buf in enumerate(buffers):
+                    buf_size = buffer_sizes[i]
+                    src_slice = fused_param._slice(offset, offset + buf_size)
+                    buf.param_storage.copy_(src_slice, False)
+                    offset += buf_size
 
     def _update_trainable(self):
         """
