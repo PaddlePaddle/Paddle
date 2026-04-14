@@ -19,6 +19,7 @@
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/hooks.h"
+#include "paddle/fluid/eager/tensor_wrapper.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/tensor_meta.h"
@@ -63,7 +64,7 @@ class GradNodePyLayer : public GradNodeBase {
              bool create_graph = false,
              bool is_new_grad = false) override;
 
-  void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
+  void ClearTensorWrappers() override;
 
   std::string name() override { return name_; }
 
