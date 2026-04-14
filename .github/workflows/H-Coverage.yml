@@ -542,8 +542,6 @@ jobs:
           tar -xf paddldfleet.tar.gz --strip-components=1
           git config --global --add safe.directory /paddle
           pip install dist/paddlefleet-0.0.0-cp310-cp310-linux_x86_64.whl --extra-index-url=https://www.paddlepaddle.org.cn/packages/stable/cu129/ --extra-index-url=https://www.paddlepaddle.org.cn/packages/nightly/cu129/
-          echo "paddlefleet commit:"
-          python -c "import paddlefleet; print(paddlefleet.version.commit)"
           '
 
       - name: Download paddle.tar.gz and install paddle whl
@@ -561,6 +559,8 @@ jobs:
           export UV_HTTP_TIMEOUT=300
           pip uninstall paddlepaddle-gpu -y
           pip install paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --force-reinstall --extra-index-url=https://www.paddlepaddle.org.cn/packages/nightly/cu129/
+          echo "paddlefleet commit:"
+          python -c "import paddlefleet; print(paddlefleet.version.commit)"
           '
 
       - name: Single card test
@@ -651,8 +651,6 @@ jobs:
           tar -xf paddldfleet.tar.gz --strip-components=1
           git config --global --add safe.directory /paddle
           pip install dist/paddlefleet-0.0.0-cp310-cp310-linux_x86_64.whl --extra-index-url=https://www.paddlepaddle.org.cn/packages/stable/cu129/ --extra-index-url=https://www.paddlepaddle.org.cn/packages/nightly/cu129/
-          echo "paddlefleet commit:"
-          python -c "import paddlefleet; print(paddlefleet.version.commit)"
           '
 
       - name: Download paddle.tar.gz and install paddle whl
@@ -670,6 +668,8 @@ jobs:
           export UV_HTTP_TIMEOUT=300
           pip uninstall paddlepaddle-gpu -y
           pip install paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --force-reinstall --extra-index-url=https://www.paddlepaddle.org.cn/packages/nightly/cu129/
+          echo "paddlefleet commit:"
+          python -c "import paddlefleet; print(paddlefleet.version.commit)"
           '
 
       - name: Multi-card test
