@@ -93,15 +93,6 @@ AutoGrowthBestFitAllocator::AutoGrowthBestFitAllocator(
       chunk_size_(std::max(AlignedSize(chunk_size, alignment), alignment)),
       allow_free_idle_chunk_(allow_free_idle_chunk),
       extra_padding_size_(extra_padding_size) {
-  total_alloc_times_ = 0;
-  total_alloc_size_ = 0;
-  total_free_times_ = 0;
-  total_free_size_ = 0;
-  cache_hit_count_ = 0;
-  cache_miss_count_ = 0;
-  split_count_ = 0;
-  merge_count_ = 0;
-  total_requested_size_ = 0;
   VLOG(7) << "chunk_size_:" << chunk_size_;
 }
 

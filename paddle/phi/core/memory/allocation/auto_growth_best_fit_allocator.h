@@ -45,12 +45,12 @@ class PADDLE_API AutoGrowthBestFitAllocator : public Allocator {
   void Accept(AllocatorVisitor *visitor) override;
 
   struct AllocatorStats {
-    size_t total_alloc_times, total_alloc_size;
-    size_t total_free_times, total_free_size;
-    size_t cache_hit_count, cache_miss_count;
-    size_t split_count, merge_count;
-    size_t total_requested_size;
-    size_t chunk_count;
+    size_t total_alloc_times{0}, total_alloc_size{0};
+    size_t total_free_times{0}, total_free_size{0};
+    size_t cache_hit_count{0}, cache_miss_count{0};
+    size_t split_count{0}, merge_count{0};
+    size_t total_requested_size{0};
+    size_t chunk_count{0};
   };
   AllocatorStats GetStats() const;
   std::vector<std::tuple<size_t, uintptr_t, bool>> GetAllBlockInfo() const;
@@ -133,10 +133,10 @@ class PADDLE_API AutoGrowthBestFitAllocator : public Allocator {
   int extra_padding_size_;
 
   // stat info
-  size_t total_alloc_times_;
-  size_t total_alloc_size_;
-  size_t total_free_times_;
-  size_t total_free_size_;
+  size_t total_alloc_times_{0};
+  size_t total_alloc_size_{0};
+  size_t total_free_times_{0};
+  size_t total_free_size_{0};
 
   // fragmentation counters
   size_t cache_hit_count_{0};
