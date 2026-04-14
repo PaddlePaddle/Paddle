@@ -6,8 +6,10 @@ set(CCCL_PATH
 set(CCCL_PREFIX_DIR ${CCCL_PATH})
 set(CCCL_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/cccl)
 
-# The latest commit has bugs in windows, so we set a fix commit.
-set(CCCL_TAG 1f6e4bcae0fbf1bbed87f88544d8d2161c490fc1)
+# Pin a stable commit: new enough for `libcudacxx/include/cuda/__cccl_config`
+# (required by ROCm 7+ Thrust headers), but still compatible with
+# `patches/cccl/util_device.cuh.patch`.
+set(CCCL_TAG e6375bc8b48cb7f688ec3a15675911ef70b3faa3)
 execute_process(COMMAND git --git-dir=${CCCL_SOURCE_DIR}/.git
                         --work-tree=${CCCL_SOURCE_DIR} checkout ${CCCL_TAG})
 
