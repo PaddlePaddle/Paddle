@@ -14,10 +14,14 @@
 
 #pragma once
 
+#include <ATen/TensorIndexing.h>
 #include <ATen/core/TensorBase.h>
-#include <ATen/indexing.h>
 #include <c10/core/Backend.h>
+#include <c10/core/List.h>
 #include <c10/core/Scalar.h>
+#include <c10/core/ScalarType.h>
+#include <c10/core/Stream.h>
+#include <c10/core/SymIntArrayRef.h>
 #include <c10/util/OptionalArrayRef.h>
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/tensor.h"
@@ -26,14 +30,42 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/memory/malloc.h"
 
-#ifdef PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
+#elif defined(PADDLE_WITH_CUDA)
 #include <cuda_runtime_api.h>
 #endif
 
-#include <c10/core/Device.h>
+// Forward declaration to allow record_stream(at::cuda::CUDAStream) overload
+// without pulling in the full CUDAStream header here.
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+namespace c10::cuda {
+class CUDAStream;
+}  // namespace c10::cuda
+namespace at::cuda {
+using c10::cuda::CUDAStream;
+}  // namespace at::cuda
+#endif
+
+#include <limits>
+#include <optional>
 #include <utility>
 #include <vector>
+#include "paddle/common/ddim.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/enforce.h"
+
+namespace at {
+class Tensor;
+
+// Type aliases for ATen compatibility
+using Scalar = c10::Scalar;
+using TensorOptions = c10::TensorOptions;
+using MemoryFormat = c10::MemoryFormat;
+using IntArrayRef = c10::IntArrayRef;
+using OptionalIntArrayRef = c10::OptionalIntArrayRef;
+using ScalarType = c10::ScalarType;
+}  // namespace at
 
 namespace at {  // NOLINT(build/namespaces)
 using PaddleTensor = paddle::Tensor;
@@ -41,6 +73,8 @@ using PaddlePlace = phi::Place;
 
 // Stub for DimnameList (not supported in Paddle)
 using DimnameList = c10::ArrayRef<std::string>;
+
+using Stream = c10::Stream;
 
 class Tensor : public TensorBase {
  public:
@@ -108,7 +142,7 @@ class Tensor : public TensorBase {
       PaddlePlace place(phi::AllocationType::CPU);
       return tensor_.copy_to(place, true);
     } else if (b == c10::Backend::CUDA) {
-      PaddlePlace place(phi::AllocationType::GPU);
+      auto place = paddle::DefaultGPUPlace();
       return tensor_.copy_to(place, true);
     } else if (b == c10::Backend::XPU) {
       PaddlePlace place(phi::AllocationType::XPU);
@@ -129,7 +163,7 @@ class Tensor : public TensorBase {
 
   Tensor cuda() const {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    PaddlePlace place(phi::AllocationType::GPU);
+    auto place = paddle::DefaultGPUPlace();
     return tensor_.copy_to(place, true);
 #elif defined(PADDLE_WITH_XPU)
     return tensor_.copy_to(paddle::DefaultXPUPlace(), true);
@@ -147,15 +181,21 @@ class Tensor : public TensorBase {
   }
 
   template <typename T, std::enable_if_t<!std::is_const_v<T>, int> = 0>
-  const T* const_data_ptr() const;
+  const T* const_data_ptr() const {
+    return TensorBase::const_data_ptr<T>();
+  }
 
   template <typename T, std::enable_if_t<std::is_const_v<T>, int> = 0>
-  const std::remove_const_t<T>* const_data_ptr() const;
+  const std::remove_const_t<T>* const_data_ptr() const {
+    return TensorBase::const_data_ptr<T>();
+  }
 
   void* mutable_data_ptr() const { return const_cast<void*>(tensor_.data()); }
 
   template <typename T>
-  T* mutable_data_ptr() const;
+  T* mutable_data_ptr() const {
+    return TensorBase::mutable_data_ptr<T>();
+  }
 
   using TensorBase::stride;
 
@@ -209,6 +249,119 @@ class Tensor : public TensorBase {
 
   bool equal(const at::Tensor& other) const;
 
+  // Clamp functions
+  at::Tensor clamp(
+      const ::std::optional<at::Scalar>& min,
+      const ::std::optional<at::Scalar>& max = ::std::nullopt) const;
+
+  at::Tensor clamp(const ::std::optional<at::Tensor>& min = {},
+                   const ::std::optional<at::Tensor>& max = {}) const;
+
+  at::Tensor& clamp_(
+      const ::std::optional<at::Scalar>& min,
+      const ::std::optional<at::Scalar>& max = ::std::nullopt) const;
+
+  at::Tensor& clamp_(const ::std::optional<at::Tensor>& min = {},
+                     const ::std::optional<at::Tensor>& max = {}) const;
+
+  at::Tensor clamp_max(const at::Scalar& max) const;
+  at::Tensor clamp_max(const at::Tensor& max) const;
+  at::Tensor& clamp_max_(const at::Scalar& max) const;
+  at::Tensor& clamp_max_(const at::Tensor& max) const;
+
+  at::Tensor clamp_min(const at::Scalar& min) const;
+  at::Tensor clamp_min(const at::Tensor& min) const;
+  at::Tensor& clamp_min_(const at::Scalar& min) const;
+  at::Tensor& clamp_min_(const at::Tensor& min) const;
+
+  // as_strided: Create a tensor view with custom size, stride, and
+  // storage_offset
+  at::Tensor as_strided(
+      at::IntArrayRef size,
+      at::IntArrayRef stride,
+      ::std::optional<int64_t> storage_offset = ::std::nullopt) const;
+
+  // as_strided_: Inplace version
+  const at::Tensor& as_strided_(
+      at::IntArrayRef size,
+      at::IntArrayRef stride,
+      ::std::optional<int64_t> storage_offset = ::std::nullopt) const;
+
+  // as_strided_scatter: Scatter src into a strided view
+  at::Tensor as_strided_scatter(
+      const at::Tensor& src,
+      at::IntArrayRef size,
+      at::IntArrayRef stride,
+      ::std::optional<int64_t> storage_offset = ::std::nullopt) const;
+
+  // Standard deviation functions
+  Tensor std(int dim) const;
+  Tensor std(bool unbiased = true) const;
+  Tensor std(at::OptionalIntArrayRef dim,
+             bool unbiased = true,
+             bool keepdim = false) const;
+  Tensor std(at::OptionalIntArrayRef dim,
+             const ::std::optional<at::Scalar>& correction,
+             bool keepdim = false) const;
+
+  Tensor tensor_data() const {
+    PaddleTensor result;
+    if (tensor_.initialized()) {
+      auto src_impl = tensor_.impl();
+      auto* src_tensor =
+          std::dynamic_pointer_cast<phi::DenseTensor>(src_impl).get();
+      if (src_tensor && src_tensor->meta().is_contiguous()) {
+        result.set_impl(std::make_shared<phi::DenseTensor>());
+        auto* dst_tensor =
+            std::dynamic_pointer_cast<phi::DenseTensor>(result.impl()).get();
+        dst_tensor->ShareDataWith(*src_tensor);
+      } else {
+        result = paddle::experimental::assign(tensor_);
+      }
+    }
+    // For uninitialized tensor, return an uninitialized tensor (no assign
+    // needed)
+    return Tensor(result);
+  }
+
+  Tensor variable_data() const {
+    PaddleTensor result;
+    if (tensor_.initialized()) {
+      auto src_impl = tensor_.impl();
+      auto* src_tensor =
+          std::dynamic_pointer_cast<phi::DenseTensor>(src_impl).get();
+      if (src_tensor && src_tensor->meta().is_contiguous()) {
+        result.set_impl(std::make_shared<phi::DenseTensor>());
+        auto* dst_tensor =
+            std::dynamic_pointer_cast<phi::DenseTensor>(result.impl()).get();
+        dst_tensor->ShareDataWith(*src_tensor);
+      } else {
+        result = paddle::experimental::assign(tensor_);
+      }
+    }
+    // For uninitialized tensor, return an uninitialized tensor (no assign
+    // needed)
+    return Tensor(result);
+  }
+
+  // index: Get values at specified tensor indices
+  at::Tensor index(const c10::List<::std::optional<at::Tensor>>& indices) const;
+
+  // index_put_: Set values at specified indices in-place
+  at::Tensor& index_put_(const c10::List<::std::optional<at::Tensor>>& indices,
+                         const at::Tensor& values,
+                         bool accumulate = false) const;
+
+  // index_put_: Set scalar value at specified indices in-place
+  at::Tensor& index_put_(const c10::List<::std::optional<at::Tensor>>& indices,
+                         const at::Scalar& v,
+                         bool accumulate = false) const;
+
+  // index_put: Non-inplace version of index_put_
+  at::Tensor index_put(const c10::List<::std::optional<at::Tensor>>& indices,
+                       const at::Tensor& values,
+                       bool accumulate = false) const;
+
   Tensor toType(ScalarType t) const {
     return Tensor(paddle::experimental::cast(
         tensor_, compat::_PD_AtenScalarTypeToPhiDataType(t)));
@@ -216,8 +369,9 @@ class Tensor : public TensorBase {
 
   int64_t numel() const { return tensor_.numel(); }
 
-  c10::ScalarType dtype() const {  // Should we use `TypeMeta` here?
-    return compat::_PD_PhiDataTypeToAtenScalarType(tensor_.dtype());
+  caffe2::TypeMeta dtype() const {
+    return caffe2::TypeMeta::fromScalarType(
+        compat::_PD_PhiDataTypeToAtenScalarType(tensor_.dtype()));
   }
 
   c10::Device device() const { return c10::Device(tensor_.place()); }
@@ -266,29 +420,75 @@ class Tensor : public TensorBase {
   bool is_cuda() const { return phi::is_gpu_place(tensor_.place()); }
 
   bool is_pinned(::std::optional<c10::Device> device = ::std::nullopt) const {
-    return phi::is_cuda_pinned_place(tensor_.place()) ||
-           phi::is_xpu_pinned_place(tensor_.place());
+    if (device.has_value()) {
+      phi::enforce::ThrowWarnInternal(
+          "The argument 'device' of Tensor.is_pinned() is deprecated. "
+          "Please do not pass this argument.");
+    }
+
+    const PaddlePlace place = tensor_.place();
+    const bool is_gpu_pinned = phi::is_cuda_pinned_place(place);
+    const bool is_xpu_pinned = phi::is_xpu_pinned_place(place);
+
+    // Keep parity with PyTorch behavior: only host tensors are pinnable.
+    if (!(phi::is_cpu_place(place) || is_gpu_pinned || is_xpu_pinned)) {
+      return false;
+    }
+
+    if (!device.has_value()) {
+      return is_gpu_pinned || is_xpu_pinned;
+    }
+
+    const auto device_type = device.value().type();
+    if (device_type == c10::DeviceType::CUDA) {
+      return is_gpu_pinned;
+    }
+    if (device_type == c10::DeviceType::XPU) {
+      return is_xpu_pinned;
+    }
+    // CPU and non-accelerator devices are not valid pinned backends.
+    return false;
   }
 
   Tensor pin_memory(
       ::std::optional<c10::Device> device = ::std::nullopt) const {
+    if (device.has_value()) {
+      phi::enforce::ThrowWarnInternal(
+          "The argument 'device' of Tensor.pin_memory() is deprecated. "
+          "Please do not pass this argument.");
+    }
+
     if (is_pinned(device)) {
       return *this;
     }
 
-    PaddlePlace current_place = tensor_.place();
-    PaddlePlace pinned_place;
-    if (phi::is_cpu_place(current_place)) {
-      // CPU place cannot be directly converted to pinned place
-      PD_THROW(
-          "pin_memory: Pinning memory is not supported for CPUPlace. "
-          "Please use CUDAPlace or XPUPlace tensor, or specify "
-          "CUDAPinnedPlace/XPUPinnedPlace as device.");
-    } else {
-      // For GPU/XPU tensors, use GetPinnedPlace to get the appropriate pinned
-      // place
-      pinned_place = phi::GetPinnedPlace(current_place);
+    const PaddlePlace current_place = tensor_.place();
+    if (!phi::is_cpu_place(current_place)) {
+      PD_THROW("cannot pin '" + this->toString() +
+               "', only dense CPU tensors can be pinned");
     }
+
+    PaddlePlace pinned_place;
+
+    if (device.has_value()) {
+      const auto device_type = device.value().type();
+      if (device_type == c10::DeviceType::CUDA) {
+        pinned_place = phi::Place(phi::GPUPinnedPlace());
+      } else if (device_type == c10::DeviceType::XPU) {
+        pinned_place = phi::Place(phi::XPUPinnedPlace());
+      } else {
+        PD_THROW("pin_memory device type must be an accelerator (GPU/XPU)");
+      }
+    } else {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      pinned_place = phi::Place(phi::GPUPinnedPlace());
+#elif defined(PADDLE_WITH_XPU)
+      pinned_place = phi::Place(phi::XPUPinnedPlace());
+#else
+      PD_THROW("pin_memory is not supported: no GPU/XPU backend enabled");
+#endif
+    }
+
     return tensor_.copy_to(pinned_place, true);
   }
 
@@ -420,9 +620,11 @@ class Tensor : public TensorBase {
                    ::std::optional<int64_t> end = ::std::nullopt,
                    int64_t step = 1);
 
-  // TODO(wangyanpeng04): modify the api to
-  // Tensor index(ArrayRef<at::indexing::TensorIndex> indices) const;
-  at::Tensor index(const std::vector<at::indexing::Slice>& indices) const;
+  at::Tensor index(ArrayRef<at::indexing::TensorIndex> indices) const;
+  inline at::Tensor index(
+      std::initializer_list<at::indexing::TensorIndex> indices) const {
+    return index(ArrayRef<at::indexing::TensorIndex>(indices));
+  }
 
   at::Tensor& floor_divide_(const at::Scalar& other) const {
     paddle::experimental::floor_divide_(
@@ -458,6 +660,17 @@ class Tensor : public TensorBase {
     return Tensor(cloned_tensor);
   }
 
+  // all: Check if all elements are true (non-zero)
+  at::Tensor all() const;
+  at::Tensor all(int64_t dim, bool keepdim = false) const;
+  at::Tensor all(at::OptionalIntArrayRef dim, bool keepdim = false) const;
+
+  // allclose: Check if two tensors are close to each other
+  bool allclose(const at::Tensor& other,
+                double rtol = 1e-05,
+                double atol = 1e-08,
+                bool equal_nan = false) const;
+
   at::Tensor abs() const;
 
   at::Tensor& abs_() const;
@@ -467,20 +680,59 @@ class Tensor : public TensorBase {
   at::Tensor& absolute_() const { return abs_(); }
 
   Tensor operator[](int64_t index) const {
-    return paddle::experimental::slice(tensor_,
-                                       /*axes=*/{0},
-                                       /*starts=*/{index},
-                                       /*ends=*/{index + 1},
-                                       /*infer_flags=*/{1},
-                                       /*decrease_axis=*/{0});
+    // Use as_strided to create a view (shares storage with original tensor)
+    // This allows fill_ to modify the original tensor
+    int64_t numel = tensor_.numel();
+    if (numel == 0) {
+      PD_THROW("operator[]: cannot index empty tensor");
+    }
+
+    // Handle negative index
+    if (index < 0) {
+      index += tensor_.dims()[0];
+    }
+
+    // Check bounds
+    if (index < 0 || index >= tensor_.dims()[0]) {
+      PD_THROW("operator[]: index ",
+               index,
+               " out of range for tensor of size ",
+               tensor_.dims(),
+               " at dimension 0");
+    }
+
+    // For 1D tensor: create a scalar view (0-dim tensor) with proper offset
+    // For multi-D tensor: create a view of the row at index
+    std::vector<int64_t> new_sizes;
+    std::vector<int64_t> new_strides;
+
+    auto dims = tensor_.dims();
+    auto stride = tensor_.strides();
+
+    // Skip the first dimension (dim 0)
+    for (int i = 1; i < dims.size(); ++i) {
+      new_sizes.push_back(dims[i]);
+      new_strides.push_back(stride[i]);
+    }
+
+    // Calculate storage offset
+    int64_t storage_offset = index * stride[0];
+
+    return as_strided(c10::IntArrayRef(new_sizes),
+                      c10::IntArrayRef(new_strides),
+                      storage_offset);
   }
 
-#if defined(PADDLE_WITH_CUDA)
-  void record_stream(const cudaStream_t& stream) const {
-    paddle::memory::RecordStream(
-        std::dynamic_pointer_cast<phi::DenseTensor>(tensor_.impl())->Holder(),
-        reinterpret_cast<gpuStream_t>(stream));
-  }
+  void record_stream(at::Stream s) const;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  void record_stream(at::cuda::CUDAStream s) const;
+// TODO(youge325): Remove after DeepEP paddle branch is updated to use
+// at::Stream
+#ifdef PADDLE_WITH_HIP
+  void record_stream(hipStream_t s) const;
+#else
+  void record_stream(cudaStream_t s) const;
+#endif
 #endif
 
   Tensor var(int dim) const { return var(at::IntArrayRef{dim}, true, false); }
@@ -678,6 +930,3 @@ class Tensor : public TensorBase {
   PaddleTensor& _PD_GetInner() { return tensor_; }
 };  // NOLINT(readability/braces)
 }  // namespace at
-namespace torch {
-using at::Tensor;
-}  // namespace torch

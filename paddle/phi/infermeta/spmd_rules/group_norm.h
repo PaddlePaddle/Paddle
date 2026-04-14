@@ -25,7 +25,7 @@ SpmdInfo GroupNormInferSpmdBase(const DistMetaTensor& x,
 SpmdInfo GroupNormInferSpmd(const DistMetaTensor& x,
                             const DistMetaTensor& scale,
                             const DistMetaTensor& bias,
-                            float epsilon = 1e-5,
+                            double epsilon = 1e-5,
                             int groups = -1,
                             const std::string& data_format = "NCHW");
 SpmdInfo GroupNormGradInferSpmdBase(const DistMetaTensor& x,
@@ -42,7 +42,7 @@ SpmdInfo GroupNormGradInferSpmd(const DistMetaTensor& x,
                                 const DistMetaTensor& mean,
                                 const DistMetaTensor& variance,
                                 const DistMetaTensor y_grad,
-                                float epsilon = 1e-5,
+                                double epsilon = 1e-5,
                                 int groups = -1,
                                 const std::string& data_format = "NCHW");
 }  // namespace distributed

@@ -66,7 +66,7 @@ void SGDDenseKernel(const Context& dev_ctx,
 
   const T* param_data = param.data<T>();
   const XPUType* grad_ptr = nullptr;
-  if (grad.dtype() == phi::DataType::FLOAT32 && grad.dtype() != param.dtype()) {
+  if (grad.dtype() == DataType::FLOAT32 && grad.dtype() != param.dtype()) {
     XPUType* grad_tmp = RAII_GUARD.alloc_l3_or_gm<XPUType>(sz);
     int r = xpu::cast<float, XPUType>(
         dev_ctx.x_context(), grad.data<float>(), grad_tmp, sz);

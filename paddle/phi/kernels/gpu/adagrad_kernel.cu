@@ -70,28 +70,27 @@ struct DenseAdagradFunctor<GPUContext, T> {
                   DenseTensor* param_out_tensor,
                   DenseTensor* moment_out_tensor,
                   DenseTensor* master_param_outs) {
-    using MPDType = typename phi::dtype::template MPTypeTrait<T>::Type;
+    using MT = typename phi::dtype::template MPTypeTrait<T>::Type;
     T* param_out_data = dev_ctx.template Alloc<T>(param_out_tensor);
-    MPDType* moment_out_data =
-        dev_ctx.template Alloc<MPDType>(moment_out_tensor);
-    const MPDType* master_in_data =
-        multi_precision ? master_param->data<MPDType>() : nullptr;
-    MPDType* master_out_data =
-        multi_precision ? dev_ctx.template Alloc<MPDType>(master_param_outs)
-                        : nullptr;
+    MT* moment_out_data = dev_ctx.template Alloc<MT>(moment_out_tensor);
+    const MT* master_in_data =
+        multi_precision ? master_param->data<MT>() : nullptr;
+    MT* master_out_data = multi_precision
+                              ? dev_ctx.template Alloc<MT>(master_param_outs)
+                              : nullptr;
 
-    MPDType epsilon = static_cast<MPDType>(epsilon_t);
+    MT epsilon = static_cast<MT>(epsilon_t);
 
     int64_t numel = param_t.numel();
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, 1);
     int grid = config.block_per_grid.x;
     int block = config.thread_per_block.x;
     auto stream = dev_ctx.stream();
-    AdagradGPUKernel<T, MPDType>
+    AdagradGPUKernel<T, MT>
         <<<block, grid, 0, stream>>>(param_t.data<T>(),
                                      grad_t.data<T>(),
-                                     moment_t.data<MPDType>(),
-                                     learning_rate.data<MPDType>(),
+                                     moment_t.data<MT>(),
+                                     learning_rate.data<MT>(),
                                      master_in_data,
                                      epsilon,
                                      param_out_data,
@@ -166,7 +165,7 @@ struct SparseAdagradFunctor<GPUContext, T> {
     funcs::scatter::MergeAdd<GPUContext, T> merge_func;
     auto grad_merge = merge_func(dev_ctx, grad);
     auto* grad_merge_data = grad_merge.mutable_value()->template data<T>();
-    phi::Vector<int64_t> merge_rows(grad_merge.rows());
+    Vector<int64_t> merge_rows(grad_merge.rows());
     // 2. m += g_m * g_m
     auto grad_square = SquareSelectedRows<GPUContext, T>(dev_ctx, grad_merge);
 

@@ -17,7 +17,7 @@ namespace phi {
 static DDim ValidateShape(const std::vector<int64_t>& shape,
                           const DDim& in_dims) {
   const int64_t in_size = product(in_dims);
-  auto in_dims_vec = common::vectorize(in_dims);
+  auto in_dims_vec = vectorize(in_dims);
   bool all_positive = std::all_of(in_dims_vec.cbegin(),
                                   in_dims_vec.cend(),
                                   [](int64_t i) { return i > 0; });
@@ -144,8 +144,8 @@ void ExecuteReshape(const Context& dev_ctx,
   astream.wait();
 
   out->Resize(out_dims);
-  const auto reshape_dims = out_dims.size() != 0 ? common::vectorize(out_dims)
-                                                 : std::vector<int64_t>{1};
+  const auto reshape_dims =
+      out_dims.size() != 0 ? vectorize(out_dims) : std::vector<int64_t>{1};
   out->set_mem_desc(reorder_dst_memory_p->get_desc().reshape(reshape_dims));
 }
 

@@ -86,12 +86,16 @@ class FcElementwiseLayerNormFusePattern : public paddle::drr::DrrPatternBase {
         res.Op(paddle::dialect::CastOp::name(), {{"dtype", cast_op_dtype}});
     res.Tensor("casted_scale") = cast_op_2(res.Tensor("scale"));
 
+    const auto &fused_epsilon = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> float {
+          return static_cast<float>(match_ctx.Attr<double>("epsilon"));
+        });
     const auto &fused_fc_elementwise_op =
         res.Op(paddle::dialect::FusedFcElementwiseLayernormOp::name(),
                {{
                    {"x_num_col_dims", pat.Attr("in_num_col_dims")},
                    {"activation_type", pat.Attr("activation_type")},
-                   {"epsilon", pat.Attr("epsilon")},
+                   {"epsilon", fused_epsilon},
                    {"begin_norm_axis", pat.Attr("begin_norm_axis")},
                }});
     fused_fc_elementwise_op({&res.Tensor("x"),

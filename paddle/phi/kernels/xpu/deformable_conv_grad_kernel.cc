@@ -85,7 +85,7 @@ void DeformableConvGradKernel(const Context& dev_ctx,
                         "in deformable_conv_grad op."));
 
   const int64_t batch_size = x.dims()[0];
-  std::vector<int64_t> output_shape_vec(common::vectorize(out_grad.dims()));
+  std::vector<int64_t> output_shape_vec(vectorize(out_grad.dims()));
   const T* output_grad_ptr = out_grad.data<T>();
   const T* input_ptr = x.data<T>();
   const T* filter_ptr = filter.data<T>();

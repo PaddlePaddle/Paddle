@@ -29,7 +29,7 @@ __global__ void combine_no_weight_bwd_kernel(const T* combine_weights,
                                              const int64_t seqlen,
                                              const int64_t hidden_size,
                                              const float epsilon) {
-  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
   LoadT grad_y_vec;
   int i = blockIdx.x;   // Batch index (sequence length)
   int ki = blockIdx.y;  // Sequence index
@@ -43,8 +43,8 @@ __global__ void combine_no_weight_bwd_kernel(const T* combine_weights,
     // Loop over h dimension in strides of block
     for (int h_i = threadIdx.x * VecSize; h_i < hidden_size;
          h_i += blockDim.x * VecSize) {
-      phi::Load<T, VecSize>(&(grad_y[i * hidden_size + h_i]), &grad_y_vec);
-      phi::Store<T, VecSize>(grad_y_vec, &grad_x[idx * hidden_size + h_i]);
+      Load<T, VecSize>(&(grad_y[i * hidden_size + h_i]), &grad_y_vec);
+      Store<T, VecSize>(grad_y_vec, &grad_x[idx * hidden_size + h_i]);
     }
   }
 }

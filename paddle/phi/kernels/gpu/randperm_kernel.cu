@@ -92,7 +92,7 @@ void RandpermKernel(const Context& dev_ctx,
                               std::numeric_limits<int>::min(),
                               std::numeric_limits<int>::max(),
                               IntArray({n}),
-                              phi::DataType::INT32,
+                              DataType::INT32,
                               &key);
   DenseTensor key_out = Empty<int, Context>(dev_ctx, IntArray({n}));
 
@@ -103,7 +103,7 @@ void RandpermKernel(const Context& dev_ctx,
     range_data[idx] = static_cast<T>(idx);
   });
 
-  out->Resize(make_ddim({n}));
+  out->Resize({n});
   T* out_data = dev_ctx.template Alloc<T>(out);
 
   // Refer to [Algorithm of randperm] https://osf.io/af2hy/ to

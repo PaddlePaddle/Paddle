@@ -244,8 +244,8 @@ void CalcInputGrad(const Context& dev_ctx,
       trans_a_processed = is_fold_init_dims_a ? trans_a : !trans_a;
       trans_b_processed = is_fold_init_dims_b ? trans_b : !trans_b;
     }  // if need_combine and in new gemm dispatch logic.
-    std::vector<std::int64_t> a_dims = common::vectorize(a_processed.dims());
-    std::vector<std::int64_t> b_dims = common::vectorize(b_processed.dims());
+    std::vector<std::int64_t> a_dims = vectorize(a_processed.dims());
+    std::vector<std::int64_t> b_dims = vectorize(b_processed.dims());
     MatMulFunction<Context, T>(dev_ctx,
                                a_processed,
                                b_processed,
@@ -298,9 +298,9 @@ void MatmulGradKernel(const Context& dev_ctx,
     transpose_y = false;
   }
   // get dims
-  std::vector<std::int64_t> x_dims = common::vectorize(x.dims());
-  std::vector<std::int64_t> y_dims = common::vectorize(y.dims());
-  std::vector<std::int64_t> dout_dims = common::vectorize(out_grad.dims());
+  std::vector<std::int64_t> x_dims = vectorize(x.dims());
+  std::vector<std::int64_t> y_dims = vectorize(y.dims());
+  std::vector<std::int64_t> dout_dims = vectorize(out_grad.dims());
 
   int x_ndim = x_dims.size();
   int y_ndim = y_dims.size();
@@ -670,15 +670,15 @@ void MatmulGradKernel(const Context& dev_ctx,
                 TransposeLast2Dim<T>(dev_ctx, y_conj);
             int64_t BN = 1;
             std::vector<std::int64_t> y_processed_dims =
-                common::vectorize(y_conj_processed.dims());
+                vectorize(y_conj_processed.dims());
             for (int i = 0; i < ndim - 1; i++) {
               BN *= y_processed_dims[i];
             }
             std::vector<std::int64_t> out_grad_2d_dim{BN, dout_dims[ndim - 2]};
             std::vector<std::int64_t> y_conj_2d_dim{BN, y_dims[y_ndim - 2]};
 
-            out_grad_processed.Resize(make_ddim(out_grad_2d_dim));
-            y_conj_processed.Resize(make_ddim(y_conj_2d_dim));
+            out_grad_processed.Resize(out_grad_2d_dim);
+            y_conj_processed.Resize(y_conj_2d_dim);
             // 2D x 2D -> 2D
             MatMulFunction<Context, T>(dev_ctx,
                                        out_grad_processed,
@@ -696,7 +696,7 @@ void MatmulGradKernel(const Context& dev_ctx,
             }
             x_grad_dim[ndim - 2] = dx_help.dims()[0];
             x_grad_dim[ndim - 1] = dx_help.dims()[1];
-            dx_help.Resize(make_ddim(x_grad_dim));
+            dx_help.Resize(x_grad_dim);
 
           } else  // NOLINT
 #endif
@@ -727,8 +727,8 @@ void MatmulGradKernel(const Context& dev_ctx,
 
             DenseTensor out_grad_processed = out_grad;
             DenseTensor x_conj_processed = x_conj;
-            out_grad_processed.Resize(make_ddim(out_grad_2d_dim));
-            x_conj_processed.Resize(make_ddim(x_conj_2d_dim));
+            out_grad_processed.Resize(out_grad_2d_dim);
+            x_conj_processed.Resize(x_conj_2d_dim);
 
             MatMulFunction<Context, T>(dev_ctx,
                                        x_conj_processed,
@@ -745,7 +745,7 @@ void MatmulGradKernel(const Context& dev_ctx,
             }
             y_grad_dim[ndim - 2] = dy_help.dims()[0];
             y_grad_dim[ndim - 1] = dy_help.dims()[1];
-            dy_help.Resize(make_ddim(y_grad_dim));
+            dy_help.Resize(y_grad_dim);
 
           } else  // NOLINT
 #endif
@@ -764,10 +764,8 @@ void MatmulGradKernel(const Context& dev_ctx,
     }
 
     // get help dims
-    const std::vector<std::int64_t> dx_help_dims =
-        common::vectorize(dx_help.dims());
-    const std::vector<std::int64_t> dy_help_dims =
-        common::vectorize(dy_help.dims());
+    const std::vector<std::int64_t> dx_help_dims = vectorize(dx_help.dims());
+    const std::vector<std::int64_t> dy_help_dims = vectorize(dy_help.dims());
 
     std::vector<std::int64_t> dx_broadcast_dims(ndim);
     std::vector<std::int64_t> dy_broadcast_dims(ndim);
@@ -845,9 +843,9 @@ void MatmulDoubleGradKernel(const Context& dev_ctx,
                             DenseTensor* dy,
                             DenseTensor* ddout) {
   // Get dims from the input x, y, output_grad
-  std::vector<std::int64_t> x_dims = common::vectorize(x.dims());
-  std::vector<std::int64_t> y_dims = common::vectorize(y.dims());
-  std::vector<std::int64_t> dout_dims = common::vectorize(dout.dims());
+  std::vector<std::int64_t> x_dims = vectorize(x.dims());
+  std::vector<std::int64_t> y_dims = vectorize(y.dims());
+  std::vector<std::int64_t> dout_dims = vectorize(dout.dims());
 
   int x_ndim = x_dims.size();
   int y_ndim = y_dims.size();
@@ -1151,10 +1149,8 @@ void MatmulDoubleGradKernel(const Context& dev_ctx,
     }
 
     // get help dims
-    const std::vector<std::int64_t> dx_help_dims =
-        common::vectorize(dx_help.dims());
-    const std::vector<std::int64_t> dy_help_dims =
-        common::vectorize(dy_help.dims());
+    const std::vector<std::int64_t> dx_help_dims = vectorize(dx_help.dims());
+    const std::vector<std::int64_t> dy_help_dims = vectorize(dy_help.dims());
 
     std::vector<std::int64_t> dx_broadcast_dims(ndim);
     std::vector<std::int64_t> dy_broadcast_dims(ndim);
@@ -1250,9 +1246,9 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
                             DenseTensor* out_d_ddx,
                             DenseTensor* out_d_ddy) {
   // Get dims from the input x, y, output_grad
-  std::vector<std::int64_t> x_dims = common::vectorize(x.dims());
-  std::vector<std::int64_t> y_dims = common::vectorize(y.dims());
-  std::vector<std::int64_t> dout_dims = common::vectorize(dout.dims());
+  std::vector<std::int64_t> x_dims = vectorize(x.dims());
+  std::vector<std::int64_t> y_dims = vectorize(y.dims());
+  std::vector<std::int64_t> dout_dims = vectorize(dout.dims());
 
   int x_ndim = x_dims.size();
   int y_ndim = y_dims.size();
@@ -1901,9 +1897,9 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
 
     // get help dims
     const std::vector<std::int64_t> dx_help_dims =
-        common::vectorize(out_dx_help.dims());
+        vectorize(out_dx_help.dims());
     const std::vector<std::int64_t> dy_help_dims =
-        common::vectorize(out_dx_help.dims());
+        vectorize(out_dx_help.dims());
 
     std::vector<std::int64_t> dx_broadcast_dims(ndim);
     std::vector<std::int64_t> dy_broadcast_dims(ndim);

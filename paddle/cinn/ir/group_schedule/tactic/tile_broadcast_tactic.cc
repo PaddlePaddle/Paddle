@@ -104,6 +104,9 @@ class TileBroadcastTactic final : public ScheduleTactic {
                                              const int block_size,
                                              const int vetorize_factor);
 
+  // Calculate number of warps for NHWC layout
+  int CalcNumWarps(int64_t num_warps) const;
+
  private:
   ScheduleContext* context_;
 
@@ -285,9 +288,14 @@ std::vector<int> GetCommonBroadcastAxis(ir::IRSchedule* sch) {
   return common_broadcast_axis;
 }
 
-static int CalcNumWarps(int64_t num_warps) {
+int TileBroadcastTactic::CalcNumWarps(int64_t num_warps) const {
   // NHWC layout: calculate number of warps per block
+#ifdef CINN_WITH_CUSTOM_DEVICE
+  const int MAX_WARP_BLOCK = context_->target.max_num_threads() /
+                             context_->config.tile_config.warp_size;
+#else
   constexpr int MAX_WARP_BLOCK = 32;
+#endif
   // the largest preserved size is 1024, for size bigger than 1024
   // TODO(heqianyue): the code should be revised to be a DP version
   if (num_warps > 1024) {
@@ -353,7 +361,11 @@ void TileBroadcastTactic::Init(ScheduleContext* context, ir::IRSchedule* sch) {
     // performance degradation.
     // TODO(liangshuhao): we may allow aligning to 16 if further optimizations
     //    can compensate for the cost of non-coalesced access.
+#ifdef CINN_WITH_CUSTOM_DEVICE
+    if (low_broadcast_size_ % context_->config.tile_config.warp_size != 0) {
+#else
     if (low_broadcast_size_ % 32 != 0) {
+#endif
       return;
     }
     applied_layout_ = BroadcastLayout::NCHWLayout;
@@ -367,10 +379,19 @@ void TileBroadcastTactic::Init(ScheduleContext* context, ir::IRSchedule* sch) {
     }
     InitBroadcastSizeInfo();
     // 4. compatible channel size is the multiple of 32
+#ifdef CINN_WITH_CUSTOM_DEVICE
+    if (preserved_size_ % context_->config.tile_config.warp_size != 0) {
+#else
     if (preserved_size_ % 32 != 0) {
+#endif
       return;
     }
+#ifdef CINN_WITH_CUSTOM_DEVICE
+    int num_warps =
+        CalcNumWarps(preserved_size_ / context_->config.tile_config.warp_size);
+#else
     int num_warps = CalcNumWarps(preserved_size_ >> 5);
+#endif
     // 5. check whether NHWC layout can be successfully applied
     if (num_warps < 0) {
       return;
@@ -469,10 +490,18 @@ std::vector<std::string> TileBroadcastTactic::TileNCHW(
   //        [B, P, B>2048]
   //     => [blockX', blockY, (blockX, loop, threadX)].
   VLOG(4) << "TileBroadcastTactic using original NCHW layout\n";
+#ifdef CINN_WITH_CUSTOM_DEVICE
+  if (low_broadcast_size_ <= (context_->config.tile_config.warp_size * 8)) {
+#else
   if (low_broadcast_size_ <= 256) {
+#endif
     sch->Split(block_id, 0, {-1, 4});
     return {"blockIdx.y", "", "blockIdx.x", "threadIdx.x"};
+#ifdef CINN_WITH_CUSTOM_DEVICE
+  } else if (low_broadcast_size_ <= (context_->target.max_num_threads() * 2)) {
+#else
   } else if (low_broadcast_size_ <= 2048) {
+#endif
     sch->Split(block_id, 2, {-1, block_size});
     return {"blockIdx.y", "blockIdx.x", "", "threadIdx.x"};
   } else {
@@ -489,7 +518,11 @@ std::vector<std::string> TileBroadcastTactic::TileNHWC(
   // threadIdx.x)
   VLOG(4) << "TileBroadcastTactic using NHWC layout, block size: " << block_size
           << "\n";
+#ifdef CINN_WITH_CUSTOM_DEVICE
+  if (broadcast_size_ <= (context_->config.tile_config.warp_size * 2)) {
+#else
   if (broadcast_size_ <= 64) {
+#endif
     /**
      * if the broadcast size is smaller than 64
      * this means we need more blocks to increase the occupancy
@@ -520,7 +553,8 @@ std::vector<std::string> TileBroadcastTactic::TileNHWC(
        */
       sch->Split(block_id, 1, {-1, block_size});
       sch->Fuse(block_id, {0, 1});
-      sch->Split(block_id, 0, {-1, 4, preserved_size_ / block_size});
+      sch->Split(
+          block_id, 0, {-1, 4, static_cast<int>(preserved_size_ / block_size)});
       return {"blockIdx.x", "", "blockIdx.y", "threadIdx.x"};
     }
   }
@@ -551,7 +585,11 @@ std::vector<std::string> TileBroadcastTactic::TileVectorizeNCHW(
   if (low_broadcast_size_ <= block_element_nums) {
     sch->Split(block_id, 2, {-1, vectorize_factor});
     return {"blockIdx.y", "blockIdx.x", "threadIdx.x", ""};
+#ifdef CINN_WITH_CUSTOM_DEVICE
+  } else if (low_broadcast_size_ <= (context_->target.max_num_threads() * 2)) {
+#else
   } else if (low_broadcast_size_ <= 2048) {
+#endif
     sch->Split(block_id, 2, {-1, block_size, vectorize_factor});
     sch->Fuse(block_id, {1, 2});
     return {"blockIdx.y", "blockIdx.x", "threadIdx.x", ""};
@@ -566,7 +604,11 @@ std::vector<std::string> TileBroadcastTactic::TileVectorizeNCHW(
 void TileBroadcastTactic::Apply(ir::IRSchedule* sch,
                                 const std::string& block_id) {
   if (applied_layout_ == BroadcastLayout::Invalid) return;
+#ifdef CINN_WITH_CUSTOM_DEVICE
+  int block_size = context_->config.tile_config.warp_size * 8;
+#else
   int block_size = 256;
+#endif
 
   if (CanEnableVectorize(block_size)) {
     ApplyVectorize(sch, block_id, block_size);
@@ -575,12 +617,24 @@ void TileBroadcastTactic::Apply(ir::IRSchedule* sch,
   // check the number of warps here, if not a applicable
   // preserved_size, func will return later
   if (applied_layout_ == BroadcastLayout::NHWCLayout) {
-    block_size = CalcNumWarps(preserved_size_ >> 5);
-    if (block_size == -1) {
+#ifdef CINN_WITH_CUSTOM_DEVICE
+    int num_warps =
+        CalcNumWarps(preserved_size_ / context_->config.tile_config.warp_size);
+#else
+    int num_warps = CalcNumWarps(preserved_size_ >> 5);
+#endif
+    if (num_warps == -1) {
       applied_layout_ = BroadcastLayout::Invalid;
       return;
     }
-    block_size = std::clamp(block_size << 5, 128, 1024);
+#ifdef CINN_WITH_CUSTOM_DEVICE
+    block_size =
+        std::clamp(num_warps * context_->config.tile_config.warp_size,
+                   context_->config.tile_config.warp_size * 4,
+                   static_cast<int64_t>(context_->target.max_num_threads()));
+#else
+    block_size = std::clamp(num_warps << 5, 128, 1024);
+#endif
   }
 
   // Cluster and fuse axis of the same type to get exactly 3 loops.

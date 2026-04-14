@@ -23,6 +23,10 @@
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
 #include "paddle/phi/kernels/funcs/fast_ln_v2.h"
 #endif
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/phi/kernels/gpu/rms_norm_cuda_kernel.h"
+#endif
+
 namespace phi {
 enum class LayerNormGadKernelVariant { FAST_LN_V2, GENERIC };
 static inline LayerNormGadKernelVariant LayerNormGradKernelDispatch(
@@ -35,6 +39,9 @@ static inline LayerNormGadKernelVariant LayerNormGradKernelDispatch(
     const DenseTensor* scale,
     const DenseTensor* bias) {
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
+  if (FLAGS_use_accuracy_compatible_kernel) {
+    return LayerNormGadKernelVariant::GENERIC;
+  }
   if (scale != nullptr && bias != nullptr &&
       input_type != paddle::DataType::FLOAT32 && hidden_size != 4096 &&
       hidden_size > 1024 && hidden_size <= 10240 &&
@@ -59,7 +66,7 @@ void LayerNormGradKernel(const Context& dev_ctx,
                          const DenseTensor& mean,
                          const DenseTensor& variance,
                          const DenseTensor& out_grad,
-                         float epsilon,
+                         double epsilon,
                          int begin_norm_axis,
                          DenseTensor* x_grad,
                          DenseTensor* scale_grad,
@@ -69,14 +76,14 @@ void LayerNormGradKernel(const Context& dev_ctx,
     if (scale_grad) {
       Full<T, Context>(dev_ctx, scale_grad->dims(), 0, scale_grad);
       if (scale_opt.get_ptr() && x.dtype() != scale_opt.get().dtype()) {
-        phi::CastKernel<T, Context>(
+        CastKernel<T, Context>(
             dev_ctx, *scale_grad, scale_opt.get().dtype(), scale_grad);
       }
     }
     if (bias_grad) {
       Full<T, Context>(dev_ctx, bias_grad->dims(), 0, bias_grad);
       if (bias_opt.get_ptr() && x.dtype() != bias_opt.get().dtype()) {
-        phi::CastKernel<T, Context>(
+        CastKernel<T, Context>(
             dev_ctx, *bias_grad, bias_opt.get().dtype(), bias_grad);
       }
     }
@@ -107,7 +114,7 @@ void LayerNormGradKernel(const Context& dev_ctx,
 
   auto x_dtype = x.dtype();
 
-  phi::DataType scale_bias_dtype;
+  DataType scale_bias_dtype;
   if (scale != nullptr) {
     scale_bias_dtype = scale->dtype();
   } else {
@@ -202,11 +209,39 @@ void LayerNormGradKernel(const Context& dev_ctx,
 #endif
     case LayerNormGadKernelVariant::GENERIC:
     default:
-      if (scale_bias_dtype == x_dtype) {
-        PADDLE_LAUNCH_LAYERNORM_BWD(T, true);
+#ifdef PADDLE_WITH_CUDA
+      if ((FLAGS_use_accuracy_compatible_kernel ||
+           (!isPowerOfTwo(feature_size) && feature_size > 1024)) &&
+          scale_bias_dtype == x_dtype) {
+        auto* scale_data = (scale == nullptr ? nullptr : scale->data<T>());
+        auto* d_scale_data =
+            (d_scale == nullptr ? nullptr : dev_ctx.template Alloc<T>(d_scale));
+        auto* d_bias_data =
+            (d_bias == nullptr ? nullptr : dev_ctx.template Alloc<T>(d_bias));
+        auto* d_x_data =
+            (d_x == nullptr ? nullptr : dev_ctx.template Alloc<T>(d_x));
+        LayerNormBwdCompatKernel<T, Context>(dev_ctx,
+                                             d_y_data,
+                                             x_data,
+                                             scale_data,
+                                             mean_data,
+                                             var_data,
+                                             d_x_data,
+                                             d_scale_data,
+                                             d_bias_data,
+                                             epsilon,
+                                             batch_size,
+                                             feature_size);
       } else {
-        PADDLE_LAUNCH_LAYERNORM_BWD(U, false);
+#endif
+        if (scale_bias_dtype == x_dtype) {
+          PADDLE_LAUNCH_LAYERNORM_BWD(T, true);
+        } else {
+          PADDLE_LAUNCH_LAYERNORM_BWD(U, false);
+        }
+#ifdef PADDLE_WITH_CUDA
       }
+#endif
   }
 
 #undef PADDLE_LAUNCH_LAYERNORM_BWD

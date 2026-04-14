@@ -57,7 +57,7 @@ __global__ void EmbeddingGrad(T* table,
     const T* out = output + idy * D;
     T* tab = table + id * D;
 #ifdef PADDLE_WITH_CUDA
-    phi::VectorizedAtomicAddPerBlock(D, idx, blockDim.x, out, tab);
+    VectorizedAtomicAddPerBlock(D, idx, blockDim.x, out, tab);
 #else
     for (int64_t i = idx; i < D; i += blockDim.x) {
       CudaAtomicAdd(&tab[i], out[i]);
@@ -143,11 +143,11 @@ void EmbeddingGradKernel(const Context& dev_ctx,
   EmbeddingGradCUDAFunctor<T, Context> functor(
       dev_ctx, input, weight, out_grad, padding_idx, weight_grad);
 
-  if (input.dtype() == phi::DataType::INT32) {
+  if (input.dtype() == DataType::INT32) {
     functor.template apply<int>();
-  } else if (input.dtype() == phi::DataType::INT64) {
+  } else if (input.dtype() == DataType::INT64) {
     functor.template apply<int64_t>();
-  } else if (input.dtype() == phi::DataType::INT16) {
+  } else if (input.dtype() == DataType::INT16) {
     functor.template apply<int16_t>();
   } else {
     PADDLE_THROW(common::errors::Unimplemented(
@@ -183,7 +183,7 @@ struct EmbeddingSparseGradCUDAFunctor {
     dim3 threads(128, 8);
     dim3 grids(8, 1);
     auto stream = dev_ctx_.stream();
-    phi::Vector<int64_t> new_rows;
+    Vector<int64_t> new_rows;
     new_rows.resize(ids_num);
     auto gpu_place = dev_ctx_.GetPlace();
 
@@ -248,11 +248,11 @@ void EmbeddingSparseGradKernel(const Context& dev_ctx,
   EmbeddingSparseGradCUDAFunctor<T, Context> functor(
       dev_ctx, input, weight, out_grad, padding_idx, weight_grad);
 
-  if (input.dtype() == phi::DataType::INT32) {
+  if (input.dtype() == DataType::INT32) {
     functor.template apply<int>();
-  } else if (input.dtype() == phi::DataType::INT64) {
+  } else if (input.dtype() == DataType::INT64) {
     functor.template apply<int64_t>();
-  } else if (input.dtype() == phi::DataType::INT16) {
+  } else if (input.dtype() == DataType::INT16) {
     functor.template apply<int16_t>();
     PADDLE_THROW(common::errors::Unimplemented(
         "embedding input only support int16, int32 and int64"));

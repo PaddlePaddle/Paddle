@@ -41,7 +41,7 @@ DenseTensor Tensor2Contiguous(const Context &dev_ctx,
   MetaTensor meta_out(&dense_out);
   UnchangedInferMeta(meta_input, &meta_out);
   PD_VISIT_ALL_TYPES(tensor.dtype(), "Tensor2Contiguous", ([&] {
-                       phi::ContiguousKernel<data_t, Context>(
+                       ContiguousKernel<data_t, Context>(
                            dev_ctx, tensor, &dense_out);
                      }));
   return dense_out;
@@ -80,7 +80,12 @@ inline bool is_only_transposed_tensor(const DDim &shape,
     if (max_idx == -1) {
       return false;
     }
-    if (i != 0 && (*src_stride)[i - 1] == max_num) {
+    // For contiguous tensors, size-1 dimensions can legally share the same
+    // stride with their neighbor. Do not reject these cases, otherwise a pure
+    // transpose view like [1, 1, S, D] -> [1, 1, D, S] is misclassified as a
+    // generic strided tensor and falls back to a different matmul path.
+    if (i != 0 && (*src_stride)[i - 1] == max_num && (*src_shape)[i - 1] != 1 &&
+        shape[max_idx] != 1) {
       return false;
     }
     visited_idx.insert(max_idx);
@@ -159,7 +164,7 @@ void MatmulStrideKernel(const Context &dev_ctx,
                                                              &x_stride,
                                                              &x_axis)) {
     auto x_trans_dims = x_axis.size();
-    if (x_axis.size() > 2 && x_axis[x_trans_dims - 1] == x_trans_dims - 2 &&
+    if (x_axis.size() >= 2 && x_axis[x_trans_dims - 1] == x_trans_dims - 2 &&
         x_axis[x_trans_dims - 2] == x_trans_dims - 1) {
       transpose_x = !transpose_x;
       x_meta.dims = x_shape;

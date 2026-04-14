@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <codecvt>
 #include <cstdlib>
+#include <locale>
 #include <string>
 #include <vector>
 #include "paddle/phi/backends/dynload/cupti_lib_path.h"
@@ -234,6 +235,15 @@ void SetPaddleLibPath(const std::string& py_site_pkg_path) {
   VLOG(6) << "Set paddle lib path : " << py_site_pkg_path;
 }
 
+#if defined(_WIN32) || defined(_WIN64)
+static inline void* LoadLibraryHandleFromUtf8Path(const std::string& dso_path) {
+  std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+  std::wstring dso_path_w = converter.from_bytes(dso_path);
+  HMODULE handle = LoadLibraryW(dso_path_w.c_str());
+  return reinterpret_cast<void*>(handle);
+}
+#endif
+
 static inline void* GetDsoHandleFromSpecificPath(const std::string& spec_path,
                                                  const std::string& dso_name,
                                                  int dynload_flags) {
@@ -244,8 +254,7 @@ static inline void* GetDsoHandleFromSpecificPath(const std::string& spec_path,
             << " from specific path: " << spec_path;
     std::string dso_path = join(spec_path, dso_name);
 #if defined(_WIN32) || defined(_WIN64)
-    HMODULE handle = LoadLibraryA(dso_path.c_str());
-    dso_handle = reinterpret_cast<void*>(handle);
+    dso_handle = LoadLibraryHandleFromUtf8Path(dso_path);
 #else
     dso_handle = dlopen(dso_path.c_str(), dynload_flags);
 #endif
@@ -284,8 +293,7 @@ static inline std::string FindLibAbsolutePath(const std::string& directory,
 static inline void* GetDsoHandleFromDefaultPath(const std::string& dso_path,
                                                 int dynload_flags) {
 #if defined(_WIN32) || defined(_WIN64)
-  HMODULE hModule = LoadLibraryA(dso_path.c_str());
-  return reinterpret_cast<void*>(hModule);
+  return LoadLibraryHandleFromUtf8Path(dso_path);
 #else
   // default search from LD_LIBRARY_PATH/DYLD_LIBRARY_PATH
   // and /usr/local/lib path

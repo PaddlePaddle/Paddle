@@ -450,8 +450,8 @@ void RunKernel(const phi::OneDNNContext& dev_ctx,
                         : x_dims;
 
   // Get tensor dimensions
-  const auto x_mat_dims_vec = common::vectorize(x_mat_dims);
-  const auto weight_h_dims = common::vectorize(weight_h.dims());
+  const auto x_mat_dims_vec = vectorize(x_mat_dims);
+  const auto weight_h_dims = vectorize(weight_h.dims());
   const auto& input_lod = x.lod()[0];
 
   // Calculate RNN dimensions

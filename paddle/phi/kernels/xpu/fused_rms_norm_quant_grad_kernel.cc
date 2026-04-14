@@ -35,7 +35,9 @@ void RmsNormQuantGradKernel(const Context& dev_ctx,
                             DenseTensor* norm_weight_grad,
                             DenseTensor* norm_bias_grad) {
   if (x.numel() == 0) {
-    dev_ctx.template Alloc<T>(x_grad);
+    if (x_grad) {
+      dev_ctx.template Alloc<T>(x_grad);
+    }
     if (norm_weight_grad) {
       Full<T, Context>(dev_ctx, norm_weight_grad->dims(), 0, norm_weight_grad);
     }
@@ -61,8 +63,18 @@ void RmsNormQuantGradKernel(const Context& dev_ctx,
   const float* inv_var_data = inv_var.data<float>();
   const T* out_grad_data = out_grad.data<T>();
 
-  dev_ctx.template Alloc<T>(x_grad);
-  T* x_grad_data = x_grad->data<T>();
+  // Handle x_grad=nullptr case (when x.stop_gradient=True)
+  DenseTensor actual_x_grad;
+  T* x_grad_data = nullptr;
+  if (x_grad) {
+    dev_ctx.template Alloc<T>(x_grad);
+    x_grad_data = x_grad->data<T>();
+  } else {
+    // Create temporary tensor for x_grad since XPU API requires it
+    actual_x_grad.Resize(x.dims());
+    dev_ctx.template Alloc<T>(&actual_x_grad);
+    x_grad_data = actual_x_grad.data<T>();
+  }
 
   T* norm_weight_grad_data = nullptr;
   if (norm_weight_grad) {
@@ -76,8 +88,8 @@ void RmsNormQuantGradKernel(const Context& dev_ctx,
     norm_bias_grad_data = norm_bias_grad->data<T>();
   }
 
-  int32_t rows = 1;
-  int32_t cols = 1;
+  int64_t rows = 1;
+  int64_t cols = 1;
   for (int i = 0; i < begin_norm_axis; i++) {
     rows *= x.dims()[i];
   }
@@ -131,7 +143,7 @@ void RmsNormQuantGradKernel(const Context& dev_ctx,
       inv_var_data,
       reinterpret_cast<XPUType*>(norm_weight_grad_data),
       reinterpret_cast<XPUType*>(norm_bias_grad_data),
-      false);
+      true);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "rms_layer_norm_grad");
 }
 }  // namespace phi

@@ -58,6 +58,11 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/pybind/cuda_streams_py.h"
 #endif
 
+#if defined(PADDLE_WITH_CUDA)
+#include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
+#include "paddle/phi/kernels/legacy/gpu/tensor_debug.h"
+#endif
+
 #include "paddle/common/flags.h"
 #include "paddle/fluid/eager/custom_operator/custom_operator_utils.h"
 #include "paddle/phi/api/include/operants_manager.h"
@@ -1055,6 +1060,52 @@ static PyObject* eager_api_reset_saved_tensors_hooks(PyObject* self,
 }
 
 #if defined(PADDLE_WITH_CUDA)
+static PyObject* eager_api_print_tensor_in_gpu(PyObject* self,
+                                               PyObject* args,
+                                               PyObject* kwargs) {
+  EAGER_TRY
+  VLOG(4) << "Running in eager_api_print_tensor_in_gpu.";
+  auto tensor = CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
+  PADDLE_ENFORCE_EQ(tensor.is_dense_tensor(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "_print_tensor_in_gpu only supports DenseTensor."));
+  const auto& dense =
+      *static_cast<const phi::DenseTensor*>(tensor.impl().get());
+  PADDLE_ENFORCE_EQ(dense.place().GetType() == phi::AllocationType::GPU,
+                    true,
+                    common::errors::InvalidArgument(
+                        "_print_tensor_in_gpu only supports GPU tensors. "
+                        "Please call tensor.cuda() first."));
+  // ----------------------------------------------------------------
+  // Stream selection: must use the CUDA Graph capturing stream when
+  // capture is in progress.  Using get_current_stream() (which may
+  // return the legacy stream 0) during capture would cause
+  // cudaErrorStreamCaptureImplicit (error 906) because CUDA forbids
+  // any operation on the legacy stream while another stream is being
+  // captured.
+  //
+  // When NOT capturing, get_current_stream gives the correct stream
+  // for ordering the debug kernel after preceding ops.
+  // ----------------------------------------------------------------
+  cudaStream_t stream = nullptr;
+  if (phi::backends::gpu::CUDAGraph::IsCapturing()) {
+    // During graph capture the DeviceContext stream IS the capturing
+    // stream (set in cuda_graph_with_memory_pool.cc:BeginCapture).
+    auto* dev_ctx = static_cast<phi::GPUContext*>(
+        phi::DeviceContextPool::Instance().Get(dense.place()));
+    stream = dev_ctx->stream();
+  } else {
+    const auto device_id = dense.place().GetDeviceId();
+    stream = paddle::platform::get_current_stream(device_id)->raw_stream();
+  }
+  phi::DebugPrintGPUTensor(dense, stream);
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+#endif
+
+#if defined(PADDLE_WITH_CUDA)
 static PyObject* eager_api_async_read(PyObject* self,
                                       PyObject* args,
                                       PyObject* kwargs) {
@@ -1686,6 +1737,10 @@ PyMethodDef variable_functions[] = {  // NOLINT
      nullptr},
     {"to_uva_tensor",
      (PyCFunction)(void (*)())eager_api_to_uva_tensor,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+    {"_print_tensor_in_gpu",
+     (PyCFunction)(void (*)())eager_api_print_tensor_in_gpu,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
 #endif

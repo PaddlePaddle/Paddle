@@ -1063,6 +1063,7 @@ def conv2d(
     )
 
 
+@param_one_alias(["x", "input"])
 def conv1d_transpose(
     x: Tensor,
     weight: Tensor,
@@ -1331,6 +1332,7 @@ def conv1d_transpose(
     return out
 
 
+@param_one_alias(["x", "input"])
 def conv2d_transpose(
     x: Tensor,
     weight: Tensor,
@@ -1834,6 +1836,7 @@ def conv3d(
     )
 
 
+@param_one_alias(["x", "input"])
 def conv3d_transpose(
     x: Tensor,
     weight: Tensor,

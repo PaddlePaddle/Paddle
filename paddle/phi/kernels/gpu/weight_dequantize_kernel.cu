@@ -452,7 +452,7 @@ void WeightDequantizeKernel(const Context& dev_ctx,
   auto out_dims = out->dims();
   dev_ctx.template Alloc<T>(out);
   WeightDequantize<T, Context>(dev_ctx, x, scale, algo, true, group_size, out);
-  out->Resize({{out_dims[1], out_dims[0]}});
+  out->Resize({out_dims[1], out_dims[0]});
   auto out_tmp = Transpose<T, Context>(dev_ctx, *out, {1, 0});
   out->ShareDataWith(out_tmp);
 #elif defined(PADDLE_WITH_HIP)
@@ -468,7 +468,7 @@ void WeightDequantizeKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
   WeightDequantize<T, Context>(
       dev_ctx, x, group_size > 0 ? scale_trans : scale, algo, group_size, out);
-  out->Resize({{out_dims[1], out_dims[0]}});
+  out->Resize({out_dims[1], out_dims[0]});
   auto out_tmp = Transpose<T, Context>(dev_ctx, *out, {1, 0});
   out->ShareDataWith(out_tmp);
 #else

@@ -73,8 +73,8 @@ struct DWConvParams {
       return false;
     }
     // Only support FP16.
-    if (input.type() != phi::DataType::FLOAT16 &&
-        filter.type() != phi::DataType::FLOAT16) {
+    if (input.type() != DataType::FLOAT16 &&
+        filter.type() != DataType::FLOAT16) {
       return false;
     }
     // Only support depthwise 2D.

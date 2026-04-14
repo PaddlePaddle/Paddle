@@ -32,11 +32,11 @@ def use_torch_inside_inner_function():
 
 
 class TestTorchProxy(unittest.TestCase):
-    def test_enable_torch_proxy(self):
+    def test_enable_compat(self):
         with self.assertRaises(ModuleNotFoundError):
             import torch
 
-        paddle.compat.enable_torch_proxy()
+        paddle.enable_compat()
         import torch
 
         self.assertIs(torch.sin, paddle.sin)
@@ -115,9 +115,7 @@ class TestTorchProxyLocalEnabledModule(unittest.TestCase):
         with self.assertRaises(ModuleNotFoundError):
             import torch_proxy_local_enabled_module
 
-        paddle.compat.enable_torch_proxy(
-            scope="torch_proxy_local_enabled_module"
-        )
+        paddle.enable_compat(scope="torch_proxy_local_enabled_module")
         with self.assertRaises(ModuleNotFoundError):
             import torch  # noqa: F401
 

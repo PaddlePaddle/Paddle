@@ -33,7 +33,7 @@ void LayerNormKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const optional<DenseTensor>& scale_opt,
                      const optional<DenseTensor>& bias_opt,
-                     float epsilon,
+                     double epsilon,
                      int begin_norm_axis,
                      DenseTensor* y,
                      DenseTensor* mean,
@@ -69,7 +69,7 @@ void LayerNormKernel(const Context& dev_ctx,
 #if defined(PADDLE_WITH_CUDA) || defined(_WIN32) || defined(__APPLE__) || \
     defined(__OSX__)
 
-  funcs::RowwiseMean2D<phi::CPUContext, T> row_mean(left, right, dev_ctx);
+  funcs::RowwiseMean2D<CPUContext, T> row_mean(left, right, dev_ctx);
 
   // get mean
   row_mean(dev_ctx, x_tmp, &mean_tmp);
@@ -133,8 +133,7 @@ void LayerNormKernel(const Context& dev_ctx,
   }
 
   auto ker =
-      phi::jit::KernelFuncs<phi::jit::LayerNormTuple<T>, CPUPlace>::Cache().At(
-          right);
+      jit::KernelFuncs<jit::LayerNormTuple<T>, CPUPlace>::Cache().At(right);
   ker(x_tmp.data<T>(),
       out.data<T>(),
       mean_tmp.data<T>(),
@@ -142,7 +141,7 @@ void LayerNormKernel(const Context& dev_ctx,
       scale ? scale->data<T>() : nullptr,
       bias ? bias->data<T>() : nullptr,
       static_cast<int>(left),
-      static_cast<float>(epsilon),
+      static_cast<double>(epsilon),
       right);
 #endif
 }

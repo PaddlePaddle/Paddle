@@ -227,7 +227,7 @@ void ArgMinMaxOpCUDAKernel(const Context& dev_ctx,
           "argmin/argmax input numel must > 0, bug got %d", x.numel()));
   if (dtype == DataType::UNDEFINED) {
     phi::VisitDataTypeTiny(
-        phi::DataType::INT64,
+        DataType::INT64,
         VisitDataCudaArgMinMaxFunctor<Context, T, Reducer>(
             dev_ctx, x, axis.to<int64_t>(), keepdims, flatten, out));
     return;

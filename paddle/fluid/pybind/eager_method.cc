@@ -155,6 +155,13 @@ static PyObject* tensor_method_numpy(TensorObject* self,
                                      PyObject* args,
                                      PyObject* kwargs) {
   EAGER_TRY
+  if (kwargs) {
+    PyObject* arg = PyDict_GetItemString(kwargs, "force");
+    if (arg && arg == Py_False) {
+      LOG(WARNING) << "Warning: Currently paddle.Tensor.numpy() only supports "
+                      "force conversion i.e. t.detach().cpu().numpy().";
+    }
+  }
   auto& api = pybind11::detail::npy_api::get();
   if (!self->tensor.impl()) {
     Py_intptr_t py_dims[phi::DDim::kMaxRank];     // NOLINT
@@ -987,6 +994,34 @@ static PyObject* tensor_retain_grads(TensorObject* self,
 
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
+
+PyDoc_STRVAR(tensor_method_retain_grad__doc__, R"DOC(retain_grad($self, /)
+--
+
+Enables this Tensor to have their grad populated during backward(). It is a no-op for leaf tensors.
+
+This method is an alias for :code:`retain_grads()`.
+
+Returns:
+    None.
+
+Examples:
+
+    .. code-block:: pycon
+
+        >>> import paddle
+
+        >>> x = paddle.to_tensor([1.0, 2.0, 3.0])
+        >>> x.stop_gradient = False
+        >>> y = x + x
+        >>> y.retain_grad()
+        >>> loss = y.sum()
+        >>> loss.backward()
+
+        >>> print(y.grad)
+        Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=False,
+        [1., 1., 1.])
+)DOC");
 
 PyDoc_STRVAR(tensor_clear_gradient__doc__,  // NOLINT
              R"DOC(clear_gradient($self, set_to_zero=True, /)
@@ -3908,6 +3943,10 @@ PyMethodDef variable_methods[] = {  // NOLINT
      (PyCFunction)(void (*)())tensor_retain_grads,
      METH_VARARGS | METH_KEYWORDS,
      tensor_method_retain_grads__doc__},
+    {"retain_grad",
+     (PyCFunction)(void (*)())tensor_retain_grads,
+     METH_VARARGS | METH_KEYWORDS,
+     tensor_method_retain_grad__doc__},
     {"clear_gradient",
      (PyCFunction)(void (*)())tensor_clear_gradient,
      METH_VARARGS | METH_KEYWORDS,

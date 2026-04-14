@@ -59,12 +59,12 @@ void MeshgridBackward(const Context& dev_ctx,
       }
     }
 
-    Eigen::DSizes<Eigen::DenseIndex, Rank> reduce_dims;
+    Eigen::DSizes<int64_t, Rank> reduce_dims;
     for (int k = 0; k < n; k++) {
       reduce_dims[k] = reduce_dims_vec[k];
     }
 
-    Eigen::DSizes<Eigen::DenseIndex, Rank * 2> reshape_dims;
+    Eigen::DSizes<int64_t, Rank * 2> reshape_dims;
     for (int k = 0; k < n * 2; k++) {
       reshape_dims[k] = reshape_dims_vec[k];
     }
