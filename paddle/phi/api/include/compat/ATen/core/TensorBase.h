@@ -25,7 +25,7 @@
 #include <c10/core/SymIntArrayRef.h>
 #include <c10/core/TensorOptions.h>
 #include <utils/int_array_ref_conversion.h>
-#include <utils/mapped_pinned_tensor.h>
+#include <utils/pinned_tensor_ops.h>
 #include <utils/scalar_type_conversion.h>
 #include <algorithm>
 #include <iostream>
@@ -113,10 +113,11 @@ class PADDLE_API TensorBase {
     return backend_str + scalar_type_str + "Type";
   }
 
-  // Returns the pointer kernels should use. For CUDA-pinned tensors this is
-  // the mapped device-visible alias rather than the raw host address.
   void* data_ptr() const {
-    return compat::_PD_GetKernelVisibleDataPtr(tensor_);
+    if (!tensor_.defined()) {
+      return nullptr;
+    }
+    return const_cast<void*>(tensor_.data());
   }
   template <typename T>
   T* data_ptr() const {
@@ -267,12 +268,12 @@ class PADDLE_API TensorBase {
   }
 
   const TensorBase& fill_(const at::Scalar& scalar) const {
-    paddle::experimental::fill_(const_cast<PaddleTensor&>(tensor_), scalar);
+    compat::_PD_FillTensorInplace(&const_cast<PaddleTensor&>(tensor_), scalar);
     return *this;
   }
 
   const TensorBase& zero_() const {
-    paddle::experimental::fill_(const_cast<PaddleTensor&>(tensor_), 0.0);
+    compat::_PD_FillTensorInplace(&const_cast<PaddleTensor&>(tensor_), 0.0);
     return *this;
   }
 

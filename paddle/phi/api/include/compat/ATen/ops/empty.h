@@ -17,7 +17,6 @@
 #include <ATen/core/Tensor.h>
 #include <c10/core/TensorOptions.h>
 #include <utils/dense_sparse_conversion.h>
-#include <utils/mapped_pinned_tensor.h>
 #include <utils/pinned_place.h>
 #include <optional>
 #include <string_view>
@@ -42,10 +41,11 @@ inline at::Tensor empty(
     }
     phi::Place pinned_place =
         compat::_PD_GetCreatePinnedPlace(options._PD_GetPlace());
-    auto dense = compat::_PD_EmptyPinnedTensor(
+    auto dense = paddle::experimental::empty(
         size._PD_ToPaddleIntArray(),
         compat::_PD_AtenScalarTypeToPhiDataType(options.dtype()),
-        pinned_place);
+        phi::CPUPlace());
+    dense = dense.copy_to(pinned_place, /*blocking=*/true);
     return compat::_PD_ConvertToSparseIfNeeded(dense, options.layout());
   }
   auto dense = paddle::experimental::empty(

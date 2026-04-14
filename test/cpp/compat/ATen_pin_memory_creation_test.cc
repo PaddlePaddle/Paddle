@@ -184,6 +184,23 @@ TEST(ATenPinMemoryCreationTest, EmptyLikePinMemoryWithCUDADeviceErrors) {
                std::exception);
 }
 
+TEST(ATenPinMemoryCreationTest, FillAndZeroPreservePinnedPlace) {
+  auto tensor =
+      at::empty({2}, at::TensorOptions().dtype(at::kInt).pinned_memory(true));
+
+  AssertPinned(tensor);
+
+  tensor.fill_(123);
+  AssertPinned(tensor);
+  EXPECT_EQ(tensor._PD_GetInner().data<int>()[0], 123);
+  EXPECT_EQ(tensor._PD_GetInner().data<int>()[1], 123);
+
+  tensor.zero_();
+  AssertPinned(tensor);
+  EXPECT_EQ(tensor._PD_GetInner().data<int>()[0], 0);
+  EXPECT_EQ(tensor._PD_GetInner().data<int>()[1], 0);
+}
+
 TEST(ATenPinMemoryCreationTest, ZerosLikePinMemory) {
   auto base = at::ones({2, 4}, at::kFloat);
 

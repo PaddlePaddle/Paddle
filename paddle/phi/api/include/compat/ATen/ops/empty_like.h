@@ -17,7 +17,6 @@
 #include <ATen/core/Tensor.h>
 #include <c10/core/TensorOptions.h>
 #include <utils/dense_sparse_conversion.h>
-#include <utils/mapped_pinned_tensor.h>
 #include <utils/pinned_place.h>
 
 #include <optional>
@@ -50,7 +49,7 @@ inline at::Tensor empty_like(
         phi::CPUPlace());
     phi::Place base_place = options._PD_GetPlace();
     phi::Place pinned_place = compat::_PD_GetCreatePinnedPlace(base_place);
-    dense = compat::_PD_CopyTensorToPinnedPlace(dense_cpu, pinned_place);
+    dense = dense_cpu.copy_to(pinned_place, /*blocking=*/true);
   } else {
     auto place = options.device_opt().value_or(self.device());
     dense = paddle::experimental::empty_like(

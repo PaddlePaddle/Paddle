@@ -18,6 +18,7 @@ import numpy as np
 from op_test import get_device, get_places
 
 import paddle
+from paddle.base import core
 
 
 class TensorFill_Test(unittest.TestCase):
@@ -73,6 +74,41 @@ class TensorFill_Test(unittest.TestCase):
             x.fill_([1])
 
         self.assertRaises(TypeError, test_list)
+
+    def test_tensor_fill_pinned_memory(self):
+        if not (
+            core.is_compiled_with_cuda()
+            or (
+                hasattr(core, 'is_compiled_with_xpu')
+                and core.is_compiled_with_xpu()
+            )
+        ):
+            self.skipTest("Pinned memory requires CUDA or XPU backend")
+
+        paddle.set_device('cpu')
+        tensor = paddle.zeros([2], dtype='int32').pin_memory()
+        self.assertTrue(
+            tensor.place.is_cuda_pinned_place()
+            or tensor.place.is_xpu_pinned_place()
+        )
+
+        tensor.fill_(123)
+        self.assertTrue(
+            tensor.place.is_cuda_pinned_place()
+            or tensor.place.is_xpu_pinned_place()
+        )
+        np.testing.assert_array_equal(
+            tensor.cpu().numpy(), np.array([123, 123], dtype='int32')
+        )
+
+        tensor.zero_()
+        self.assertTrue(
+            tensor.place.is_cuda_pinned_place()
+            or tensor.place.is_xpu_pinned_place()
+        )
+        np.testing.assert_array_equal(
+            tensor.cpu().numpy(), np.array([0, 0], dtype='int32')
+        )
 
 
 if __name__ == '__main__':

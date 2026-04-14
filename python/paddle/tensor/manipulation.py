@@ -1135,6 +1135,26 @@ def crop(
 
 
 @dygraph_only
+def _is_host_pinned_tensor(x: Tensor) -> bool:
+    place = x.place
+    return (
+        hasattr(place, "is_cuda_pinned_place") and place.is_cuda_pinned_place()
+    ) or (hasattr(place, "is_xpu_pinned_place") and place.is_xpu_pinned_place())
+
+
+@dygraph_only
+def _fill_host_pinned_tensor_inplace(x: Tensor, value: float) -> Tensor:
+    cpu_src = paddle.full(
+        shape=x.shape,
+        fill_value=value,
+        dtype=x.dtype,
+        device=paddle.CPUPlace(),
+    )
+    x.copy_(cpu_src, True)
+    return x
+
+
+@dygraph_only
 def fill_(x: Tensor, value: float) -> Tensor:
     """
     **Notes**:
@@ -1165,6 +1185,8 @@ def fill_(x: Tensor, value: float) -> Tensor:
         raise TypeError(
             f"The type of 'value'  must be int or float, but received {type(value)}."
         )
+    if _is_host_pinned_tensor(x):
+        return _fill_host_pinned_tensor_inplace(x, value)
     return _C_ops.fill_(x, value)
 
 
@@ -1194,6 +1216,8 @@ def zero_(x: Tensor) -> Tensor:
             [0, 0, 0, 0, 0]
 
     """
+    if _is_host_pinned_tensor(x):
+        return _fill_host_pinned_tensor_inplace(x, 0.0)
     return _C_ops.fill_(x, 0.0)
 
 

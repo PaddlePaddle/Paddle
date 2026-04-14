@@ -23,7 +23,7 @@
 #include <c10/core/Stream.h>
 #include <c10/core/SymIntArrayRef.h>
 #include <c10/util/OptionalArrayRef.h>
-#include <utils/mapped_pinned_tensor.h>
+#include <utils/pinned_tensor_ops.h>
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/int_array.h"
@@ -128,7 +128,10 @@ class Tensor : public TensorBase {
   }
 
   void* data_ptr() const {
-    return compat::_PD_GetKernelVisibleDataPtr(tensor_);
+    if (!tensor_.defined()) {
+      return nullptr;
+    }
+    return const_cast<void*>(tensor_.data());
   }
   template <typename T>
   T* data_ptr() const {
@@ -408,12 +411,12 @@ class Tensor : public TensorBase {
   at::Tensor unflatten_symint(int64_t dim, c10::SymIntArrayRef sizes) const;
 
   Tensor& fill_(const at::Scalar& value) const {
-    paddle::experimental::fill_(const_cast<PaddleTensor&>(tensor_), value);
+    compat::_PD_FillTensorInplace(&const_cast<PaddleTensor&>(tensor_), value);
     return const_cast<at::Tensor&>(*this);
   }
 
   Tensor& zero_() const {
-    paddle::experimental::fill_(const_cast<PaddleTensor&>(tensor_), 0.0);
+    compat::_PD_FillTensorInplace(&const_cast<PaddleTensor&>(tensor_), 0.0);
     return const_cast<at::Tensor&>(*this);
   }
 
@@ -490,7 +493,7 @@ class Tensor : public TensorBase {
 #endif
     }
 
-    return compat::_PD_CopyTensorToPinnedPlace(tensor_, pinned_place);
+    return tensor_.copy_to(pinned_place, /*blocking=*/true);
   }
 
   at::Tensor narrow_copy(int64_t dim, int64_t start, int64_t length) const;
