@@ -1,6 +1,6 @@
 --- a/cmake/hip.cmake
 +++ b/cmake/hip.cmake
-@@ -11,9 +11,16 @@ else()
+@@ -11,9 +11,25 @@ else()
      set(HIP_PATH ${ROCM_PATH}/hip CACHE PATH "Path to which HIP has been installed")
      set(HIP_CLANG_PATH ${ROCM_PATH}/llvm/bin CACHE PATH "Path to which clang has been installed")
  endif()
@@ -17,7 +17,7 @@
 +if(IS_DIRECTORY "${HIP_PATH}/cmake")
 +  set(CMAKE_MODULE_PATH "${HIP_PATH}/cmake" ${CMAKE_MODULE_PATH})
 +endif()
- 
++
  find_package(HIP REQUIRED)
 +# HIP_ADD_LIBRARY / hip_add_library macros are provided by UseHIP in some ROCm
 +# layouts. Guard it to avoid hard failure if the module is not shipped.
@@ -27,11 +27,10 @@
  include_directories(${ROCM_PATH}/include)
  message(STATUS "HIP version: ${HIP_VERSION}")
  message(STATUS "HIP_CLANG_PATH: ${HIP_CLANG_PATH}")
-@@ -76,5 +83,5 @@ endif()
+@@ -76,5 +90,5 @@ endif()
  message(STATUS "HIP library name: ${hip_library_name}")
  
  # set HIP link libs
 -find_library(ROCM_HIPRTC_LIB ${hip_library_name} HINTS ${HIP_PATH}/lib)
 +find_library(ROCM_HIPRTC_LIB ${hip_library_name} HINTS ${ROCM_PATH}/lib ${ROCM_PATH}/lib64 ${HIP_PATH}/lib)
  message(STATUS "ROCM_HIPRTC_LIB: ${ROCM_HIPRTC_LIB}")
-\ No newline at end of file
