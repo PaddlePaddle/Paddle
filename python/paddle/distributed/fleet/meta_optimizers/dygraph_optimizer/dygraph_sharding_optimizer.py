@@ -1465,9 +1465,6 @@ class DygraphShardingOptimizerV2:
 
             if self._enable_timer:
                 self.timers("apply-optimize").start()
-            print(
-                "+++++++++++++++++++ optimizer-step apply-optimize start +++++++++++++++++++"
-            )
 
             self._apply_optimize(
                 loss=None,
@@ -1476,19 +1473,10 @@ class DygraphShardingOptimizerV2:
             )
             if self._enable_timer:
                 self.timers("apply-optimize").stop()
-            print(
-                "+++++++++++++++++++ optimizer-step apply-optimize end +++++++++++++++++++"
-            )
 
         # sync parameters across sharding ranks
         if not self._all_gather_overlap_forward:
-            print(
-                "+++++++++++++++++++ optimizer-step all-gather start +++++++++++++++++++"
-            )
             self._sharding_sync_parameters()
-            print(
-                "+++++++++++++++++++ optimizer-step all-gather end +++++++++++++++++++"
-            )
         else:
             # Reset the status of the bucket. The parameter is SHARDED.
             for comm_buffer in self._comm_buffer_list:
