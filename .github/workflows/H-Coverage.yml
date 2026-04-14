@@ -537,7 +537,7 @@ jobs:
           rm -rf * .[^.]*
           source /root/proxy
           export LD_LIBRARY_PATH=/usr/local/cuda-12.9/targets/x86_64-linux/lib:/usr/local/cuda/lib64
-          pip install uv coverage==7.6.1 bce-python-sdk==0.8.74 wrapt
+          pip install uv coverage==7.6.1 bce-python-sdk==0.8.74 wrapt pytest
           wget -q --tries=5 --no-proxy --no-check-certificate https://paddle-github-action.cdn.bcebos.com/PR/paddlefleet/${PR_ID}/${COMMIT_ID}/paddldfleet.tar.gz
           tar -xf paddldfleet.tar.gz --strip-components=1
           git config --global --add safe.directory /paddle
@@ -646,7 +646,7 @@ jobs:
           rm -rf * .[^.]*
           source /root/proxy
           export LD_LIBRARY_PATH=/usr/local/cuda-12.9/targets/x86_64-linux/lib:/usr/local/cuda/lib64
-          pip install uv coverage==7.6.1 bce-python-sdk==0.8.74 wrapt
+          pip install uv coverage==7.6.1 bce-python-sdk==0.8.74 wrapt pytest
           wget -q --tries=5 --no-proxy --no-check-certificate https://paddle-github-action.cdn.bcebos.com/PR/paddlefleet/${PR_ID}/${COMMIT_ID}/paddldfleet.tar.gz
           tar -xf paddldfleet.tar.gz --strip-components=1
           git config --global --add safe.directory /paddle
