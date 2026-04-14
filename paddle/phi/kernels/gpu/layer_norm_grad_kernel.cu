@@ -114,7 +114,7 @@ void LayerNormGradKernel(const Context& dev_ctx,
 
   auto x_dtype = x.dtype();
 
-  phi::DataType scale_bias_dtype;
+  DataType scale_bias_dtype;
   if (scale != nullptr) {
     scale_bias_dtype = scale->dtype();
   } else {

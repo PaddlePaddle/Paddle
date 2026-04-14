@@ -21,6 +21,7 @@
 #include <c10/core/DeviceType.h>
 #include <c10/core/ScalarType.h>
 #include <c10/cuda/CUDAFunctions.h>
+#include <c10/cuda/CUDAGuard.h>
 
 #include "ATen/ATen.h"
 #include "gtest/gtest.h"
@@ -89,6 +90,18 @@ TEST(TensorCudaTest, DeviceIsCuda) {
   at::Tensor cuda_t = cpu_t.cuda();
 
   ASSERT_EQ(cuda_t.device().type(), c10::DeviceType::CUDA);
+}
+
+TEST(TensorCudaTest, DefaultCudaUsesCurrentDevice) {
+  if (c10::cuda::device_count() < 2) {
+    return;
+  }
+  c10::cuda::CUDAGuard guard(1);
+  at::Tensor cpu_t = at::tensor({1.0f}, at::kFloat);
+  at::Tensor cuda_t = cpu_t.cuda();
+
+  ASSERT_EQ(cuda_t.device().type(), c10::DeviceType::CUDA);
+  ASSERT_EQ(cuda_t.device().index(), 1);
 }
 
 // is_cuda() / is_cpu() are mutually exclusive.

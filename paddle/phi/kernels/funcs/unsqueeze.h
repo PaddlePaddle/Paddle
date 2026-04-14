@@ -164,7 +164,7 @@ inline const DenseTensor Unsqueeze(const DenseTensor& x, int axis = 0) {
     auto index = (out_shape.end() + axis + 1);
     out_shape.insert(index, 1);
   }
-  out.Resize(make_ddim(out_shape));
+  out.Resize(out_shape);
   return out;
 }
 

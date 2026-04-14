@@ -157,8 +157,8 @@ void AddNKernel(const Context &dev_ctx,
   // 1. all inputs are DensorTensor and number >= 2
   // 2. the first tensor is fp32 type and the others are fp16/bf16 type
   if (in_num >= 2 && DenseTensor::classof(x[0]) &&
-      x[0]->dtype() == phi::DataType::FLOAT32 &&
-      x[1]->dtype() != phi::DataType::FLOAT32) {
+      x[0]->dtype() == DataType::FLOAT32 &&
+      x[1]->dtype() != DataType::FLOAT32) {
     auto in_other_dtype = x[1]->dtype();
     int64_t numel = static_cast<const DenseTensor *>(x[0])->numel();
     bool all_dense_tensor = true;
@@ -184,8 +184,8 @@ void AddNKernel(const Context &dev_ctx,
       }
     }
 
-    if (all_dense_tensor && (in_other_dtype == phi::DataType::BFLOAT16 ||
-                             in_other_dtype == phi::DataType::FLOAT16)) {
+    if (all_dense_tensor && (in_other_dtype == DataType::BFLOAT16 ||
+                             in_other_dtype == DataType::FLOAT16)) {
       auto tmp_in_array = phi::memory_utils::Alloc(
           dev_ctx.GetPlace(), in_data.size() * sizeof(void *));
       size_t nbytes_in = in_data.size() * sizeof(void *);
@@ -203,7 +203,7 @@ void AddNKernel(const Context &dev_ctx,
       void **in_array_data = reinterpret_cast<void **>(tmp_in_array->ptr());
       ComputeKernelParameter(numel);
       VLOG(4) << "Call SumArrayMixedTypeCUDAKernel";
-      if (in_other_dtype == phi::DataType::FLOAT16) {
+      if (in_other_dtype == DataType::FLOAT16) {
         SumArrayMixedTypeCUDAKernel<T, phi::float16>
             <<<grids, blocks, 0, stream>>>(in_0,
                                            in_array_data,
@@ -211,7 +211,7 @@ void AddNKernel(const Context &dev_ctx,
                                            numel,
                                            in_data.size(),
                                            in_place);
-      } else if (in_other_dtype == phi::DataType::BFLOAT16) {
+      } else if (in_other_dtype == DataType::BFLOAT16) {
         SumArrayMixedTypeCUDAKernel<T, phi::bfloat16>
             <<<grids, blocks, 0, stream>>>(in_0,
                                            in_array_data,

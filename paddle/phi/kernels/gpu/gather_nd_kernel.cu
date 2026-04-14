@@ -46,18 +46,18 @@ void GatherNdKernel(const Context &dev_ctx,
   if (index.dims()[0] == 0 && index.numel() == 0) return;
   const auto &index_type = index.dtype();
   bool index_type_match =
-      index_type == phi::DataType::INT32 || index_type == phi::DataType::INT64;
+      index_type == DataType::INT32 || index_type == DataType::INT64;
   PADDLE_ENFORCE_EQ(index_type_match,
                     true,
                     common::errors::InvalidArgument(
                         "Index holds the wrong type, it holds [%s], but "
                         "desires to be [%s] or [%s].",
                         index_type,
-                        phi::DataType::INT32,
-                        phi::DataType::INT64));
-  if (index_type == phi::DataType::INT32) {
+                        DataType::INT32,
+                        DataType::INT64));
+  if (index_type == DataType::INT32) {
     funcs::GPUGatherNd<T, int>(dev_ctx, x, index, out);
-  } else if (index_type == phi::DataType::INT64) {
+  } else if (index_type == DataType::INT64) {
     funcs::GPUGatherNd<T, int64_t>(dev_ctx, x, index, out);
   }
 }
