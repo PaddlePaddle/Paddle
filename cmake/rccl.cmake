@@ -13,9 +13,20 @@ if(WITH_RCCL)
       CACHE PATH "RCCL ROOT")
   find_path(
     RCCL_INCLUDE_DIR rccl.h
-    PATHS ${RCCL_ROOT} ${RCCL_ROOT}/include ${RCCL_ROOT}/local/include
+    PATHS ${ROCM_PATH}/include
+          ${RCCL_ROOT} ${RCCL_ROOT}/include ${RCCL_ROOT}/local/include
           $ENV{RCCL_ROOT} $ENV{RCCL_ROOT}/include $ENV{RCCL_ROOT}/local/include
     NO_DEFAULT_PATH)
+
+  if(NOT RCCL_INCLUDE_DIR)
+    find_path(RCCL_INCLUDE_DIR rccl.h PATHS ${ROCM_PATH})
+  endif()
+  if(NOT RCCL_INCLUDE_DIR)
+    message(
+      FATAL_ERROR
+        "rccl.h not found. Set ROCM_PATH (current: '${ROCM_PATH}') or RCCL_ROOT."
+    )
+  endif()
 
   file(READ ${RCCL_INCLUDE_DIR}/rccl.h RCCL_VERSION_FILE_CONTENTS)
 
