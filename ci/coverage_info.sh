@@ -32,7 +32,6 @@ echo "::endgroup::"
 
 cd ${PADDLE_ROOT}/build
 
-python ${PADDLE_ROOT}/ci/coverage_gcda_clean.py ${PR_ID} || exit 101
 echo "::group::Run lcov"
 lcov --ignore-errors gcov --capture -d ./ -o coverage.info --rc lcov_branch_coverage=0
 echo "::endgroup::"
