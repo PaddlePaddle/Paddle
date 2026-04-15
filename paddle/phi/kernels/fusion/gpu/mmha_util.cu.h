@@ -69,7 +69,7 @@
 #include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP) && !defined(PADDLE_CUDA_BF16)
 /// integral_constant
 template <typename _Tp, _Tp __v>
 struct kernel_dtype_integral_constant {

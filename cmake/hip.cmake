@@ -33,6 +33,10 @@ if(EXISTS
   include_directories(BEFORE
                       "${PADDLE_SOURCE_DIR}/third_party/cccl/libcudacxx/include")
 endif()
+if(EXISTS "${PADDLE_SOURCE_DIR}/patches/thrust/thrust/shuffle.h")
+  # Ensure our patched Thrust headers can override ROCm's Thrust when present.
+  include_directories(BEFORE "${PADDLE_SOURCE_DIR}/patches/thrust")
+endif()
 include_directories(${ROCM_PATH}/include)
 message(STATUS "HIP version: ${HIP_VERSION}")
 message(STATUS "HIP_CLANG_PATH: ${HIP_CLANG_PATH}")
@@ -112,6 +116,9 @@ set(THRUST_DEVICE_SYSTEM THRUST_DEVICE_SYSTEM_HIP)
 list(APPEND HIP_CXX_FLAGS -fPIC)
 list(APPEND HIP_CXX_FLAGS -D__HIP_PLATFORM_HCC__=1)
 list(APPEND HIP_CXX_FLAGS -D__HIP_PLATFORM_AMD__=1)
+# Some ROCm headers (e.g., Thrust/NV_IF_TARGET) key off __HIPCC__ even when
+# we compile HIP sources via clang++ -x hip instead of the hipcc wrapper.
+list(APPEND HIP_CXX_FLAGS -D__HIPCC__=1)
 # Note(qili93): HIP has compile conflicts of float16.h as platform::float16 overload std::is_floating_point and std::is_integer
 list(APPEND HIP_CXX_FLAGS -D__HIP_NO_HALF_CONVERSIONS__=1)
 list(APPEND HIP_CXX_FLAGS -DROCM_NO_WRAPPER_HEADER_WARNING)
