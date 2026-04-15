@@ -4042,6 +4042,8 @@ struct AbsFunc {
     // `abs(__half)` is not always available, but `__habs` is.
     if constexpr (std::is_same<T, half>::value || std::is_same<T, __half>::value) {
       return __habs(x);
+    } else {
+      return abs(x);
     }
 #endif
     return abs(x);
