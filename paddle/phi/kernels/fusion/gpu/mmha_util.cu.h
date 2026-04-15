@@ -56,11 +56,22 @@
 
 #ifdef PADDLE_WITH_HIP
 #include <float.h>
-#include <hip/hip_bf16.h>
 #include <hip/hip_fp16.h>
 #include <hip/hip_runtime.h>
-#define __nv_bfloat16 __hip_bfloat16
-#define __nv_bfloat162 __hip_bfloat162
+#include <type_traits>
+// ROCm/HIP bf16 header/layout differs by version. Prefer hip_bfloat16.h.
+#if __has_include(<hip/hip_bfloat16.h>)
+#include <hip/hip_bfloat16.h>
+#elif __has_include(<hip/hip_bf16.h>)
+#include <hip/hip_bf16.h>
+#endif
+// Provide a CUDA-bf16 compatible surface for HIP compilation units.
+#ifndef __nv_bfloat16
+#define __nv_bfloat16 hip_bfloat16
+#endif
+#ifndef __nv_bfloat162
+#define __nv_bfloat162 hip_bfloat162
+#endif
 #else
 #include <cuda_fp16.h>
 #include <float.h>
@@ -3949,11 +3960,9 @@ constexpr float QUANT_MIN_BOUND = -127.0;
 
 #ifdef PADDLE_WITH_HIP
 template <typename T>
-struct IsHipHalfType : public std::false_type {};
-template <>
-struct IsHipHalfType<half> : public std::true_type {};
-template <>
-struct IsHipHalfType<__half> : public std::true_type {};
+struct IsHipHalfType
+    : public std::bool_constant<std::is_same<T, half>::value ||
+                                std::is_same<T, __half>::value> {};
 
 template <typename T>
 __host__ __device__ __forceinline__ float ToFloat(T x) {
@@ -4008,10 +4017,14 @@ struct MaxFunc<half> {
 };
 
 #ifdef PADDLE_WITH_HIP
+// On some ROCm toolchains, `half` and `__half` are the same type.
+// Avoid duplicate explicit specializations in that case.
+#if !std::is_same<half, __half>::value
 template <>
 struct MaxFunc<__half> {
   __device__ __half operator()(__half a, __half b) { return __hmax(a, b); }
 };
+#endif
 #endif
 
 #if (defined(PADDLE_WITH_HIP) && HIP_VERSION >= 60100000)
@@ -4053,10 +4066,14 @@ struct AbsFunc<half> {
 };
 
 #ifdef PADDLE_WITH_HIP
+// On some ROCm toolchains, `half` and `__half` are the same type.
+// Avoid duplicate explicit specializations in that case.
+#if !std::is_same<half, __half>::value
 template <>
 struct AbsFunc<__half> {
   __device__ __half operator()(__half x) { return __habs(x); }
 };
+#endif
 #endif
 
 #if CUDA_VERSION >= 11000 && defined(ENABLE_BF16)
@@ -4100,7 +4117,9 @@ __inline__ __device__ T WarpReduceAbsMax(T val, unsigned lane_mask) {
 #pragma unroll
   for (int mask = HALF_WARP_TMP; mask > 0; mask >>= 1) {
 #ifdef PADDLE_WITH_HIP
-    if constexpr (kernel_dtype_is_same<T, __hip_bfloat16>::value ||
+    // Avoid depending on kernel_dtype_is_same (it is only defined when
+    // PADDLE_CUDA_BF16 is not set). Use std::is_same instead.
+    if constexpr (std::is_same<T, __nv_bfloat16>::value ||
                   IsHipHalfType<T>::value) {
       val = MaxFunc<T>()(
           val,
