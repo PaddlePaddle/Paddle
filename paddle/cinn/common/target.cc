@@ -566,5 +566,30 @@ bool Target::get_supports_cooperative_launch() const {
   return GetSupportsCooperativeLaunch(arch);
 }
 
+void Target::PrintHardwareParams() const {
+  static bool printed = false;
+  if (printed) return;
+  printed = true;
+
+  int max_threads_per_block = max_num_threads();
+  int sm_count = get_multi_processor_count();
+  int max_threads_per_sm = get_max_threads_per_sm();
+  int max_blocks_per_sm = get_max_blocks_per_sm();
+  bool cooperative = get_supports_cooperative_launch();
+  int total_threads = GetMaxThreads();
+  int total_blocks = GetMaxBlocks();
+
+  LOG(INFO) << "===== CINN Target Hardware Parameters =====";
+  LOG(INFO) << "  Arch              : " << arch_str();
+  LOG(INFO) << "  MaxThreadsPerBlock: " << max_threads_per_block;
+  LOG(INFO) << "  SM Count          : " << sm_count;
+  LOG(INFO) << "  MaxThreadsPerSM   : " << max_threads_per_sm;
+  LOG(INFO) << "  MaxBlocksPerSM    : " << max_blocks_per_sm;
+  LOG(INFO) << "  CooperativeLaunch : " << (cooperative ? "true" : "false");
+  LOG(INFO) << "  GetMaxThreads()   : " << total_threads;
+  LOG(INFO) << "  GetMaxBlocks()    : " << total_blocks;
+  LOG(INFO) << "===========================================";
+}
+
 }  // namespace common
 }  // namespace cinn

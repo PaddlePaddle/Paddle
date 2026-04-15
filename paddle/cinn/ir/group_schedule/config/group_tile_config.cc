@@ -1300,6 +1300,11 @@ CombineBaseInfoAndConfig(
 std::unordered_map<BucketInfo, ScheduleConfig, BucketInfoHash>
 BuildScheduleConfig(const std::shared_ptr<FusionGroupInfo>& group_info,
                     const common::Target& target) {
+  LOG_FIRST_N(INFO, 1) << "[CINN] Hardware params for tile config:";
+  LOG_FIRST_N(INFO, 1) << "  WarpSize          : " << GetWarpSize(target);
+  LOG_FIRST_N(INFO, 1) << "  RegistersPerSM    : "
+                       << GetMaxRegistersPerSM(target);
+  target.PrintHardwareParams();
   std::shared_ptr<ScheduleConfig::BaseInfo> base_info =
       InitBasicInfo(group_info);
   if (!base_info->has_dynamic_reduce && !base_info->has_dynamic_spatial) {
