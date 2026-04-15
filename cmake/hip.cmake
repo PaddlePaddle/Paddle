@@ -24,9 +24,24 @@ else()
       CACHE PATH "Path to which clang has been installed")
 endif()
 set(CMAKE_MODULE_PATH "${HIP_PATH}/cmake" ${CMAKE_MODULE_PATH})
+# ROCm 7 uses a unified CMake module layout under ${ROCM_PATH}/lib/cmake/hip.
+if(EXISTS "${ROCM_PATH}/lib/cmake/hip")
+  list(PREPEND CMAKE_MODULE_PATH "${ROCM_PATH}/lib/cmake/hip")
+endif()
+if(EXISTS "${ROCM_PATH}/hip/cmake")
+  list(PREPEND CMAKE_MODULE_PATH "${ROCM_PATH}/hip/cmake")
+endif()
 set(CMAKE_PREFIX_PATH "${ROCM_PATH}" ${CMAKE_PREFIX_PATH})
 
 find_package(HIP REQUIRED)
+# hip_add_library/hip_add_executable are defined in UseHIP.cmake.
+if(EXISTS "${ROCM_PATH}/lib/cmake/hip/UseHIP.cmake")
+  include(UseHIP)
+elseif(EXISTS "${ROCM_PATH}/hip/cmake/UseHIP.cmake")
+  include(UseHIP)
+elseif(EXISTS "${HIP_PATH}/cmake/UseHIP.cmake")
+  include(UseHIP)
+endif()
 # ROCm Thrust may include <cuda/__cccl_config>; prefer vendored libcudacxx first.
 if(EXISTS
    "${PADDLE_SOURCE_DIR}/third_party/cccl/libcudacxx/include/cuda/__cccl_config")
@@ -75,7 +90,22 @@ macro(find_hip_version hip_header_file)
     )
   endif()
 endmacro()
-find_hip_version(${HIP_PATH}/include/hip/hip_version.h)
+set(HIP_VERSION_HEADER "")
+if(EXISTS "${ROCM_PATH}/include/hip/hip_version.h")
+  set(HIP_VERSION_HEADER "${ROCM_PATH}/include/hip/hip_version.h")
+elseif(EXISTS "${ROCM_PATH}/hip/include/hip/hip_version.h")
+  set(HIP_VERSION_HEADER "${ROCM_PATH}/hip/include/hip/hip_version.h")
+elseif(EXISTS "${HIP_PATH}/include/hip/hip_version.h")
+  set(HIP_VERSION_HEADER "${HIP_PATH}/include/hip/hip_version.h")
+endif()
+if(HIP_VERSION_HEADER)
+  find_hip_version(${HIP_VERSION_HEADER})
+else()
+  message(
+    WARNING
+      "Cannot find hip_version.h under ${ROCM_PATH}/include/hip, ${ROCM_PATH}/hip/include/hip, or ${HIP_PATH}/include/hip"
+  )
+endif()
 
 macro(find_package_and_include PACKAGE_NAME)
   find_package("${PACKAGE_NAME}" REQUIRED)
