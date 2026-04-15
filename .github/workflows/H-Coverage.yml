@@ -448,7 +448,7 @@ jobs:
   fleet_single_card_test:
     name: Fleet Unit test (single card)
     runs-on:
-      group: Fleet-H-single-card
+      group: fleet-single-test
     env:
       PIP_CACHE_DIR: /root/.cache/pip
       CACHE_DIR: /root/.cache
@@ -562,7 +562,7 @@ jobs:
   fleet-multi-card_test:
     name: Fleet Unit test (multi-card)
     runs-on:
-      group: Fleet-H-multi-card
+      group: fleet-multi-test
     env:
       PIP_CACHE_DIR: /root/.cache/pip
       TASK: paddle-fleet-CI-${{ github.event.pull_request.number }}-multi-card_test
