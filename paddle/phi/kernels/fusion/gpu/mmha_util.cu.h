@@ -67,10 +67,10 @@
 #endif
 // Provide a CUDA-bf16 compatible surface for HIP compilation units.
 #ifndef __nv_bfloat16
-#define __nv_bfloat16 hip_bfloat16
+#define __nv_bfloat16 __hip_bfloat16
 #endif
 #ifndef __nv_bfloat162
-#define __nv_bfloat162 hip_bfloat162
+#define __nv_bfloat162 __hip_bfloat162
 #endif
 #else
 #include <cuda_fp16.h>
