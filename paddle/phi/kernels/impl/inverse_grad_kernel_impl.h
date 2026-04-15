@@ -45,7 +45,7 @@ void InverseGradKernel(const Context& dev_ctx,
       out_conj.Resize(out.dims());
       dev_ctx.template Alloc<T>(&out_conj);
 
-      phi::ConjKernel<T, Context>(dev_ctx, out, &out_conj);
+      ConjKernel<T, Context>(dev_ctx, out, &out_conj);
 
       auto mat_dim_a0 =
           funcs::CreateMatrixDescriptor(out_grad.dims(), 0, false);

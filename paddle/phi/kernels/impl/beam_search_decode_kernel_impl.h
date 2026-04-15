@@ -40,7 +40,7 @@ struct BeamSearchDecodeFunctor {
           step_ids_origin_[0].place().GetType() == AllocationType::CUSTOM) {
         tensor_on_gpu_ = true;
       }
-      phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+      DeviceContextPool& pool = DeviceContextPool::Instance();
       auto* dev_ctx = pool.Get(step_ids_origin_[0].place());
       // Copy all tensors in the input tensor array
       for (auto& step_id : step_ids_origin_) {
@@ -63,7 +63,7 @@ struct BeamSearchDecodeFunctor {
           step_scores_origin_[0].place().GetType() == AllocationType::CUSTOM) {
         tensor_on_gpu_ = true;
       }
-      phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+      DeviceContextPool& pool = DeviceContextPool::Instance();
       auto* dev_ctx = pool.Get(step_scores_origin_[0].place());
       // Copy all tensors in the input tensor array
       for (auto& step_score : step_scores_origin_) {

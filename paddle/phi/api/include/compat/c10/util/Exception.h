@@ -25,6 +25,7 @@
 #include <iostream>
 #include <memory>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <tuple>
 #include <variant>
@@ -62,7 +63,61 @@ namespace c10 {
 #define TORCH_CHECK_LT(val1, val2) TORCH_CHECK_OP(val1, val2, <)
 #define TORCH_CHECK_GE(val1, val2) TORCH_CHECK_OP(val1, val2, >=)
 #define TORCH_CHECK_GT(val1, val2) TORCH_CHECK_OP(val1, val2, >)
+
+#ifndef C10_UNLIKELY_OR_CONST
+#if defined(__CUDACC__)
+#define C10_UNLIKELY_OR_CONST(e) e
+#elif defined(__GNUC__) || defined(__clang__)
+#define C10_UNLIKELY_OR_CONST(e) (__builtin_expect(static_cast<bool>(e), 0))
+#else
+#define C10_UNLIKELY_OR_CONST(e) e
+#endif
+#endif
+
+namespace detail {
+
+template <typename... Args>
+inline std::string stdTorchCheckMsgImpl(const char* /*msg*/,
+                                        const Args&... args) {
+  std::ostringstream oss;
+  ((oss << args), ...);
+  return oss.str();
+}
+
+inline const char* stdTorchCheckMsgImpl(const char* msg) { return msg; }
+
+inline const char* stdTorchCheckMsgImpl(const char* /*msg*/, const char* args) {
+  return args;
+}
+
+}  // namespace detail
 }  // namespace c10
+
+#ifdef STRIP_ERROR_MESSAGES
+#define STD_TORCH_CHECK_MSG(cond, type, ...) \
+  (#cond #type " CHECK FAILED at " C10_STRINGIZE(__FILE__))
+#else
+#define STD_TORCH_CHECK_MSG(cond, type, ...)               \
+  (::c10::detail::stdTorchCheckMsgImpl(                    \
+      "Expected " #cond                                    \
+      " to be true, but got false.  "                      \
+      "(Could this error message be improved?  If so, "    \
+      "please report an enhancement request to PyTorch.)", \
+      ##__VA_ARGS__))
+#endif
+
+#define STD_TORCH_CHECK(cond, ...)                                \
+  if (C10_UNLIKELY_OR_CONST(!(cond))) {                           \
+    throw std::runtime_error(STD_TORCH_CHECK_MSG(cond,            \
+                                                 "",              \
+                                                 __func__,        \
+                                                 ", ",            \
+                                                 __FILE__,        \
+                                                 ":",             \
+                                                 __LINE__,        \
+                                                 ", ",            \
+                                                 ##__VA_ARGS__)); \
+  }
 
 enum class C10ErrorType {
   NotImplementedError,
