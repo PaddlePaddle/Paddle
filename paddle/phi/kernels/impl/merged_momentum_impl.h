@@ -27,7 +27,7 @@
 namespace phi {
 
 template <typename T>
-using MultiPrecisionType = typename phi::dtype::MPTypeTrait<T>::Type;
+using MultiPrecisionType = typename dtype::MPTypeTrait<T>::Type;
 
 template <typename MT, uint32_t kParamNum, bool kHasMasterParams>
 struct MergedMomentumMasterParams {
@@ -268,11 +268,11 @@ void MergedMomentumInnerCompute(
 #undef PADDLE_LAUNCH_MERGED_MOMENTUM_KERNEL
   } else {
     for (size_t idx = 0; idx < n; idx++) {
-      phi::RegularizationType regularization_flag =
+      RegularizationType regularization_flag =
           regularization_methods.size() > 0 &&
                   regularization_methods[idx] == "l2_decay"
-              ? phi::RegularizationType::kL2DECAY
-              : phi::RegularizationType::kNONE;
+              ? RegularizationType::kL2DECAY
+              : RegularizationType::kNONE;
 
       MT regularization_coeff = static_cast<MT>(0.0);
       if (regularization_coeffs.size() != 0) {
@@ -285,7 +285,7 @@ void MergedMomentumInnerCompute(
       MT *master_out_data =
           multi_precision ? master_params_out[idx]->data<MT>() : nullptr;
       if (dev_ctx.GetPlace().GetType() == AllocationType::CPU) {
-        phi::CPUDenseMomentumFunctor<MT> functor;
+        CPUDenseMomentumFunctor<MT> functor;
         functor(params[idx],
                 grads[idx],
                 velocities[idx],
@@ -336,25 +336,25 @@ void MergedMomentumInnerCompute(
   }
 
         if (use_nesterov) {
-          if (regularization_flag == phi::RegularizationType::kL2DECAY) {
-            PADDLE_LAUNCH_DENSE_MTMOMENTUM_KERNEL(
-                phi::UseNesterov, phi::RegularizationType::kL2DECAY);
+          if (regularization_flag == RegularizationType::kL2DECAY) {
+            PADDLE_LAUNCH_DENSE_MTMOMENTUM_KERNEL(UseNesterov,
+                                                  RegularizationType::kL2DECAY);
             VLOG(10)
                 << "Launch MergedMomentum gpu kernel use_nesterov kL2DECAY.";
           } else {
-            PADDLE_LAUNCH_DENSE_MTMOMENTUM_KERNEL(
-                phi::UseNesterov, phi::RegularizationType::kNONE);
+            PADDLE_LAUNCH_DENSE_MTMOMENTUM_KERNEL(UseNesterov,
+                                                  RegularizationType::kNONE);
             VLOG(10) << "Launch MergedMomentum gpu kernel use_nesterov kNONE.";
           }
         } else {
-          if (regularization_flag == phi::RegularizationType::kL2DECAY) {
-            PADDLE_LAUNCH_DENSE_MTMOMENTUM_KERNEL(
-                phi::NoNesterov, phi::RegularizationType::kL2DECAY);
+          if (regularization_flag == RegularizationType::kL2DECAY) {
+            PADDLE_LAUNCH_DENSE_MTMOMENTUM_KERNEL(NoNesterov,
+                                                  RegularizationType::kL2DECAY);
             VLOG(10)
                 << "Launch MergedMomentum gpu kernel no_nesterov kL2DECAY.";
           } else {
-            PADDLE_LAUNCH_DENSE_MTMOMENTUM_KERNEL(
-                phi::NoNesterov, phi::RegularizationType::kNONE);
+            PADDLE_LAUNCH_DENSE_MTMOMENTUM_KERNEL(NoNesterov,
+                                                  RegularizationType::kNONE);
             VLOG(10) << "Launch MergedMomentum gpu kernel no_nesterov kNONE.";
           }
         }
@@ -382,7 +382,7 @@ void MergedMomentumKernel(
     std::vector<DenseTensor *> param_out,
     std::vector<DenseTensor *> velocity_out,
     std::vector<DenseTensor *> master_param_out) {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
   if (multi_precision) {
     MergedMomentumInnerCompute<MPType, Context, MPType, T>(
         dev_ctx,

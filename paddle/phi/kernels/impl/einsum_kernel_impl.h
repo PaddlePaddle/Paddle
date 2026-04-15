@@ -463,8 +463,7 @@ DenseTensor PerformDiagonalAndReduction(
   VLOG(5) << "call PerformDiagonalAndReduction: with axis: "
           << paddle::string::join_strings(indices, ",");
   if (indices.empty()) return res;
-  return Sum<T, Context>(
-      dev_ctx, res, phi::IntArray(indices), res.dtype(), true);
+  return Sum<T, Context>(dev_ctx, res, IntArray(indices), res.dtype(), true);
 }
 
 inline bool is_no_need_transpose(const std::vector<int>& axis) {
@@ -732,8 +731,7 @@ void EinsumKernel(const Context& dev_ctx,
       dev_ctx.template Alloc<T>(out);
       if (out->numel() > 0) {
         std::vector<int64_t> vec_dims = vectorize(out->dims());
-        phi::Full<T, Context>(
-            dev_ctx, phi::IntArray(vec_dims), static_cast<T>(0), out);
+        Full<T, Context>(dev_ctx, IntArray(vec_dims), static_cast<T>(0), out);
       }
       return;
     }
