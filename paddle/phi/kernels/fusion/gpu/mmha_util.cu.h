@@ -4002,30 +4002,15 @@ struct QuantFunc {
 
 template <typename T>
 struct MaxFunc {
-  __device__ T operator()(T a, T b) { return max(a, b); }
-};
-
-template <>
-struct MaxFunc<half> {
-  __device__ half operator()(half a, half b) {
-#if __CUDA_ARCH__ >= 800 || defined(PADDLE_WITH_HIP)
-    return __hmax(a, b);
-#else
-    return max(static_cast<float>(a), static_cast<float>(b));
+  __device__ T operator()(T a, T b) {
+#ifdef PADDLE_WITH_HIP
+    if constexpr (IsHipHalfType<T>::value) {
+      return __hmax(a, b);
+    }
 #endif
+    return max(a, b);
   }
 };
-
-#ifdef PADDLE_WITH_HIP
-// On some ROCm toolchains, `half` and `__half` are the same type.
-// Avoid duplicate explicit specializations in that case.
-#if !std::is_same<half, __half>::value
-template <>
-struct MaxFunc<__half> {
-  __device__ __half operator()(__half a, __half b) { return __hmax(a, b); }
-};
-#endif
-#endif
 
 #if (defined(PADDLE_WITH_HIP) && HIP_VERSION >= 60100000)
 template <>
@@ -4051,30 +4036,15 @@ struct MaxFunc<__nv_bfloat16> {
 
 template <typename T>
 struct AbsFunc {
-  __device__ T operator()(T x) { return abs(x); }
-};
-
-template <>
-struct AbsFunc<half> {
-  __device__ half operator()(half x) {
-#if __CUDA_ARCH__ >= 800 || defined(PADDLE_WITH_HIP)
-    return __habs(x);
-#else
-    return abs(static_cast<float>(x));
+  __device__ T operator()(T x) {
+#ifdef PADDLE_WITH_HIP
+    if constexpr (IsHipHalfType<T>::value) {
+      return __habs(x);
+    }
 #endif
+    return abs(x);
   }
 };
-
-#ifdef PADDLE_WITH_HIP
-// On some ROCm toolchains, `half` and `__half` are the same type.
-// Avoid duplicate explicit specializations in that case.
-#if !std::is_same<half, __half>::value
-template <>
-struct AbsFunc<__half> {
-  __device__ __half operator()(__half x) { return __habs(x); }
-};
-#endif
-#endif
 
 #if CUDA_VERSION >= 11000 && defined(ENABLE_BF16)
 template <>
