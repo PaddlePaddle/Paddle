@@ -21,10 +21,9 @@ Tests:
   - gpu_frag_profiler.py: snapshot() / report() / _fill_block_metrics()
 
 Run:
-  python review/test_frag_stats.py
+  python test/legacy_test/test_frag_stats.py
 """
 
-import sys
 import unittest
 
 import paddle
@@ -294,7 +293,14 @@ class TestAllocatorStatsNonVMM(unittest.TestCase):
 
     def test_merge_count_on_adjacent_free(self):
         """Freeing adjacent blocks should trigger merge."""
-        # Alloc two blocks that will be adjacent inside the same chunk
+        # Alloc a big block, free it, then alloc two smaller blocks from it
+        # (this guarantees they are adjacent inside the same chunk).
+        big = paddle.randn([20 * MB // 4], dtype="float32")  # 20MB
+        paddle.device.synchronize()
+        del big
+        paddle.device.synchronize()
+
+        # Two small allocs will split the freed 20MB block -> adjacent
         a = paddle.randn([5 * MB // 4], dtype="float32")
         b = paddle.randn([5 * MB // 4], dtype="float32")
         paddle.device.synchronize()
@@ -368,10 +374,9 @@ class TestAllocatorStatsNonVMM(unittest.TestCase):
 # ===========================================================================
 # Test 3: gpu_frag_profiler.py functions
 # ===========================================================================
-# Add review/ to path so we can import gpu_frag_profiler
-sys.path.insert(0, sys.path[0] if sys.path[0] else ".")
+# Import gpu_frag_profiler from paddle.device.cuda
 try:
-    import gpu_frag_profiler as fp
+    from paddle.device.cuda import gpu_frag_profiler as fp
 except ImportError:
     fp = None
 

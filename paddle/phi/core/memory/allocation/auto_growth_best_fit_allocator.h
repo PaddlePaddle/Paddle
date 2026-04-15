@@ -54,7 +54,10 @@ class PADDLE_API AutoGrowthBestFitAllocator : public Allocator {
   };
   AllocatorStats GetStats() const;
   std::vector<std::tuple<size_t, uintptr_t, bool>> GetAllBlockInfo() const;
-  size_t GetChunkCount() const { return chunks_.size(); }
+  size_t GetChunkCount() const {
+    std::lock_guard<SpinLock> guard(spinlock_);
+    return chunks_.size();
+  }
 
   void DumpInfo() const;
 

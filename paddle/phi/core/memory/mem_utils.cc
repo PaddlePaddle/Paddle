@@ -137,7 +137,9 @@ std::vector<size_t> GetCompactSize(const GPUPlace& place) {
                                                  &allocate_compact_visitor);
   return allocate_compact_visitor.GetCompactSize();
 }
+#endif  // PADDLE_WITH_CUDA
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 std::vector<std::vector<std::tuple<size_t, uintptr_t, bool>>> AllBlockInfo(
     const GPUPlace& place) {
   VMMAllBlocksInfoVisitor visitor;
@@ -150,8 +152,7 @@ std::map<std::string, size_t> GetAllocatorStats(const GPUPlace& place) {
   allocation::AllocatorFacade::Instance().Accept(place, &visitor);
   return visitor.GetStats();
 }
-
-#endif
+#endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
 
 }  // namespace memory
 }  // namespace paddle
