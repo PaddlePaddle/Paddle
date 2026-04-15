@@ -23,22 +23,15 @@ else()
       ${ROCM_PATH}/llvm/bin
       CACHE PATH "Path to which clang has been installed")
 endif()
-
-# ROCm 5+ often puts HIP CMake modules under lib/cmake/hip; older layouts use hip/cmake.
-if(IS_DIRECTORY "${ROCM_PATH}/hip/cmake")
-  set(CMAKE_MODULE_PATH "${ROCM_PATH}/hip/cmake" ${CMAKE_MODULE_PATH})
-elseif(IS_DIRECTORY "${ROCM_PATH}/lib/cmake/hip")
-  set(CMAKE_MODULE_PATH "${ROCM_PATH}/lib/cmake/hip" ${CMAKE_MODULE_PATH})
-else()
-  set(CMAKE_MODULE_PATH "${HIP_PATH}/cmake" ${CMAKE_MODULE_PATH})
-endif()
+set(CMAKE_MODULE_PATH "${HIP_PATH}/cmake" ${CMAKE_MODULE_PATH})
 set(CMAKE_PREFIX_PATH "${ROCM_PATH}" ${CMAKE_PREFIX_PATH})
 
 find_package(HIP REQUIRED)
-# ROCm Thrust headers may include <cuda/__cccl_config>. Prefer vendored CCCL
-# libcudacxx headers when available.
-if(EXISTS "${PADDLE_SOURCE_DIR}/third_party/cccl/libcudacxx/include/cuda/__cccl_config")
-  include_directories(BEFORE "${PADDLE_SOURCE_DIR}/third_party/cccl/libcudacxx/include")
+# ROCm Thrust may include <cuda/__cccl_config>; prefer vendored libcudacxx first.
+if(EXISTS
+   "${PADDLE_SOURCE_DIR}/third_party/cccl/libcudacxx/include/cuda/__cccl_config")
+  include_directories(BEFORE
+                      "${PADDLE_SOURCE_DIR}/third_party/cccl/libcudacxx/include")
 endif()
 include_directories(${ROCM_PATH}/include)
 message(STATUS "HIP version: ${HIP_VERSION}")
@@ -78,23 +71,7 @@ macro(find_hip_version hip_header_file)
     )
   endif()
 endmacro()
-
-# HIP headers: classic ${ROCM_PATH}/hip/include/hip/... or unified ${ROCM_PATH}/include/hip/...
-if(EXISTS "${ROCM_PATH}/hip/include/hip/hip_version.h")
-  set(_PADDLE_HIP_VERSION_HEADER "${ROCM_PATH}/hip/include/hip/hip_version.h")
-elseif(EXISTS "${ROCM_PATH}/include/hip/hip_version.h")
-  set(_PADDLE_HIP_VERSION_HEADER "${ROCM_PATH}/include/hip/hip_version.h")
-else()
-  set(_PADDLE_HIP_VERSION_HEADER "${HIP_PATH}/include/hip/hip_version.h")
-endif()
-if(NOT EXISTS "${_PADDLE_HIP_VERSION_HEADER}")
-  message(
-    FATAL_ERROR
-      "hip_version.h not found under ROCM_PATH='${ROCM_PATH}' (tried hip/include and include/hip). "
-      "Install ROCm dev packages or set ROCM_PATH to the ROCm root."
-  )
-endif()
-find_hip_version(${_PADDLE_HIP_VERSION_HEADER})
+find_hip_version(${HIP_PATH}/include/hip/hip_version.h)
 
 macro(find_package_and_include PACKAGE_NAME)
   find_package("${PACKAGE_NAME}" REQUIRED)
@@ -200,7 +177,8 @@ endif()
 message(STATUS "HIP library name: ${hip_library_name}")
 
 # set HIP link libs
-find_library(ROCM_HIPRTC_LIB ${hip_library_name} HINTS ${HIP_PATH}/lib)
+find_library(ROCM_HIPRTC_LIB ${hip_library_name} HINTS ${ROCM_PATH}/lib
+             ${ROCM_PATH}/lib64 ${HIP_PATH}/lib)
 message(STATUS "ROCM_HIPRTC_LIB: ${ROCM_HIPRTC_LIB}")
 
 include(thrust)

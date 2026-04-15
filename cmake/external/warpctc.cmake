@@ -43,17 +43,38 @@ if(NOT WIN32 AND WITH_GPU)
     file(TO_NATIVE_PATH
          ${PADDLE_SOURCE_DIR}/patches/warpctc/CMakeLists.txt.patch native_src)
     set(WARPCTC_PATCH_COMMAND git checkout -- . && git checkout ${WARPCTC_TAG}
-                              && patch -Nd ${SOURCE_DIR} < ${native_src} &&)
+                              && patch -Nd ${SOURCE_DIR} < ${native_src})
     set(WARPCTC_CCBIN_OPTION -DCCBIN_COMPILER=${CCBIN_COMPILER})
   endif()
 endif()
 
+set(WARPCTC_PATCH_ROCM_EXTRA "")
 if(WITH_ROCM)
-  set(WARPCTC_PATCH_ROCM_COMMAND
-      patch -p1 <
-      ${PADDLE_SOURCE_DIR}/patches/warpctc/CMakeLists.txt.rocm.patch && patch
-      -p1 < ${PADDLE_SOURCE_DIR}/patches/warpctc/devicetypes.cuh.patch && patch
-      -p1 < ${PADDLE_SOURCE_DIR}/patches/warpctc/hip.cmake.patch)
+  set(WARPCTC_PATCH_ROCM_EXTRA
+      COMMAND
+      patch
+      -N
+      -p1
+      -d
+      "${SOURCE_DIR}"
+      -i
+      "${PADDLE_SOURCE_DIR}/patches/warpctc/CMakeLists.txt.rocm.patch"
+      COMMAND
+      patch
+      -N
+      -p1
+      -d
+      "${SOURCE_DIR}"
+      -i
+      "${PADDLE_SOURCE_DIR}/patches/warpctc/devicetypes.cuh.patch"
+      COMMAND
+      patch
+      -N
+      -p1
+      -d
+      "${SOURCE_DIR}"
+      -i
+      "${PADDLE_SOURCE_DIR}/patches/warpctc/hip.cmake.patch")
 endif()
 
 set(WARPCTC_INCLUDE_DIR
@@ -168,7 +189,7 @@ ExternalProject_Add(
   PATCH_COMMAND
   COMMAND ${WARPCTC_PATCH_COMMAND}
   COMMAND ${WARPCTC_PATCH_CUDA_COMMAND}
-  COMMAND ${WARPCTC_PATCH_ROCM_COMMAND}
+  ${WARPCTC_PATCH_ROCM_EXTRA}
   #BUILD_ALWAYS    1
   CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
              -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
