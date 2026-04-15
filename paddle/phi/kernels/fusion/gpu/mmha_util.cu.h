@@ -4038,7 +4038,9 @@ template <typename T>
 struct AbsFunc {
   __device__ T operator()(T x) {
 #ifdef PADDLE_WITH_HIP
-    if constexpr (IsHipHalfType<T>::value) {
+    // Be robust even if type traits diverge across toolchains:
+    // `abs(__half)` is not always available, but `__habs` is.
+    if constexpr (std::is_same<T, half>::value || std::is_same<T, __half>::value) {
       return __habs(x);
     }
 #endif
