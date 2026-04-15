@@ -3,8 +3,15 @@ if(NOT WITH_GPU AND NOT WITH_ROCM)
 endif()
 
 if(WITH_ROCM)
+  if(EXISTS "${ROCM_PATH}/cuda/extras/CUPTI")
+    set(ROCM_CUDA_DIR "${ROCM_PATH}/cuda")
+  elseif(EXISTS "${ROCM_PATH}/cuda/cuda/extras/CUPTI")
+    set(ROCM_CUDA_DIR "${ROCM_PATH}/cuda/cuda")
+  else()
+    message(FATAL_ERROR "CUPTI not found under ${ROCM_PATH}/cuda/extras/CUPTI or ${ROCM_PATH}/cuda/cuda/extras/CUPTI")
+  endif()
   set(CUPTI_ROOT
-      "${ROCM_PATH}/cuda/extras/CUPTI"
+      "${ROCM_CUDA_DIR}/extras/CUPTI"
       CACHE PATH "CUPTI ROOT")
 else()
   set(CUPTI_ROOT
@@ -53,7 +60,7 @@ get_filename_component(CUPTI_LIBRARY_PATH ${CUPTI_LIBRARY} DIRECTORY)
 if(CUPTI_INCLUDE_DIR AND CUPTI_LIBRARY)
   set(CUPTI_FOUND ON)
   if(WITH_ROCM)
-    include_directories(${ROCM_PATH}/cuda/include)
+    include_directories(${ROCM_CUDA_DIR}/include)
     add_definitions(-D__CUDA_HIP_PLATFORM_AMD__)
   endif()
 else()
