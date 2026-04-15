@@ -18,7 +18,11 @@
 #include <curand_kernel.h>
 #endif
 #ifdef __HIPCC__
+#if __has_include(<hiprand/hiprand_kernel.h>)
+#include <hiprand/hiprand_kernel.h>
+#else
 #include <hiprand_kernel.h>
+#endif
 #endif
 
 #include <algorithm>

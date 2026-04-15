@@ -17,7 +17,11 @@
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_fp16.h>
 #include <hip/hip_runtime.h>
+#if __has_include(<hiprand/hiprand_kernel.h>)
+#include <hiprand/hiprand_kernel.h>
+#else
 #include <hiprand_kernel.h>
+#endif
 #else
 #include <cuda_fp16.h>
 #include <curand_kernel.h>

@@ -15,7 +15,11 @@
 #pragma once
 
 #include <hip/hip_runtime.h>
+#if __has_include(<rocsparse/rocsparse.h>)
+#include <rocsparse/rocsparse.h>
+#else
 #include <rocsparse.h>
+#endif
 
 #include <mutex>  // NOLINT
 #include <type_traits>

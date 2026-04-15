@@ -23,8 +23,16 @@ limitations under the License. */
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_fp16.h>
 #include <hip/hip_runtime.h>
+#if __has_include(<hiprand/hiprand.h>)
+#include <hiprand/hiprand.h>
+#else
 #include <hiprand.h>
+#endif
+#if __has_include(<hiprand/hiprand_kernel.h>)
+#include <hiprand/hiprand_kernel.h>
+#else
 #include <hiprand_kernel.h>
+#endif
 #endif
 
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"

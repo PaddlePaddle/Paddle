@@ -28,10 +28,10 @@
 #define PADDLE_CUDA_BF16
 #include <hip/hip_bfloat16.h>
 #ifndef __nv_bfloat16
-#define __nv_bfloat16 __hip_bfloat16
+#define __nv_bfloat16 hip_bfloat16
 #endif
 #ifndef __nv_bfloat162
-#define __nv_bfloat162 __hip_bfloat162
+#define __nv_bfloat162 hip_bfloat162
 #endif
 #endif
 
