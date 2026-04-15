@@ -3952,34 +3952,25 @@ template <typename T>
 struct IsHipHalfType : public false_type {};
 template <>
 struct IsHipHalfType<half> : public true_type {};
-// ROCm headers may use __half directly (not always aliased to half).
 template <>
 struct IsHipHalfType<__half> : public true_type {};
 
 template <typename T>
 __host__ __device__ __forceinline__ float ToFloat(T x) {
-  return static_cast<float>(x);
-}
-template <>
-__host__ __device__ __forceinline__ float ToFloat<half>(half x) {
-  return __half2float(x);
-}
-template <>
-__host__ __device__ __forceinline__ float ToFloat<__half>(__half x) {
-  return __half2float(x);
+  if constexpr (IsHipHalfType<T>::value) {
+    return __half2float(x);
+  } else {
+    return static_cast<float>(x);
+  }
 }
 
 template <typename T>
 __host__ __device__ __forceinline__ T FromFloat(float x) {
-  return static_cast<T>(x);
-}
-template <>
-__host__ __device__ __forceinline__ half FromFloat<half>(float x) {
-  return __float2half(x);
-}
-template <>
-__host__ __device__ __forceinline__ __half FromFloat<__half>(float x) {
-  return __float2half(x);
+  if constexpr (IsHipHalfType<T>::value) {
+    return __float2half(x);
+  } else {
+    return static_cast<T>(x);
+  }
 }
 #endif
 

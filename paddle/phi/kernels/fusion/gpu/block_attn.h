@@ -2356,11 +2356,7 @@ __global__ void quant_write_cache_int8_kernel(
 #pragma unroll
   for (int i = 0; i < VecSize; ++i) {
 #ifdef PADDLE_WITH_HIP
-    if constexpr (kernel_dtype_is_same<T, half>::value) {
-      abs_max_vec[i] = __float2half(0.0f);
-    } else {
-      abs_max_vec[i] = static_cast<T>(0.0f);
-    }
+    abs_max_vec[i] = FromFloat<T>(0.0f);
 #else
     abs_max_vec[i] = 0.0f;
 #endif
@@ -2402,11 +2398,7 @@ __global__ void quant_write_cache_int8_kernel(
   __shared__ float quant_scale;
   if (threadIdx.x == 0) {
 #ifdef PADDLE_WITH_HIP
-    if constexpr (kernel_dtype_is_same<T, half>::value) {
-      quant_scale = 127.0f / __half2float(abs_max_val);
-    } else {
-      quant_scale = 127.0f / static_cast<float>(abs_max_val);
-    }
+    quant_scale = 127.0f / ToFloat<T>(abs_max_val);
 #else
     quant_scale = 127.0f / static_cast<float>(abs_max_val);
 #endif
