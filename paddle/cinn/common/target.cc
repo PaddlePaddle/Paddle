@@ -550,7 +550,7 @@ bool GetSupportsCooperativeLaunchImpl(NVGPUArch) {
   return supportsCoopLaunch != 0;
 }
 
-bool GetSupportsCooperativeLaunchImpl(CustomDeviceArch) { return false; }
+bool GetSupportsCooperativeLaunchImpl(CustomDeviceArch) { return true; }
 
 bool GetSupportsCooperativeLaunchImpl(HygonDCUArchHIP) { return false; }
 

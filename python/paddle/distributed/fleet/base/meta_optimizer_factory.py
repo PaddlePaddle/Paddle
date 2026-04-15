@@ -25,6 +25,7 @@ meta_optimizer_names = list(
 meta_optimizer_names.remove("HybridParallelOptimizer")
 meta_optimizer_names.remove("HeterParallelOptimizer")
 meta_optimizer_names.remove("DGCMomentumOptimizer")
+meta_optimizer_names.remove("MuonShardingOptimizer")
 
 
 class MetaOptimizerFactory:
