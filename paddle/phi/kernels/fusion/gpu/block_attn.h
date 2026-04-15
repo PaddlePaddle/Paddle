@@ -1920,14 +1920,8 @@ __global__ void cache_int8_kernel(
 
     const uint32_t cache_idx = hi;
 #ifdef PADDLE_WITH_HIP
-    T scale;
-    if constexpr (kernel_dtype_is_same<T, half>::value) {
-      scale = qkv_id == 0 ? __float2half(cache_k_scales[cache_idx])
-                          : __float2half(cache_v_scales[cache_idx]);
-    } else {
-      scale = qkv_id == 0 ? static_cast<T>(cache_k_scales[cache_idx])
-                          : static_cast<T>(cache_v_scales[cache_idx]);
-    }
+    const T scale = qkv_id == 0 ? FromFloat<T>(cache_k_scales[cache_idx])
+                                : FromFloat<T>(cache_v_scales[cache_idx]);
 #else
     const T scale =
         qkv_id == 0 ? cache_k_scales[cache_idx] : cache_v_scales[cache_idx];
@@ -1935,12 +1929,7 @@ __global__ void cache_int8_kernel(
 #pragma unroll
     for (uint32_t i = 0; i < VecSize; i++) {
 #ifdef PADDLE_WITH_HIP
-      float quant_value;
-      if constexpr (kernel_dtype_is_same<T, half>::value) {
-        quant_value = __half2float(scale * src_vec[i]);
-      } else {
-        quant_value = static_cast<float>(scale * src_vec[i]);
-      }
+      float quant_value = ToFloat<T>(scale * src_vec[i]);
 #else
       float quant_value = static_cast<float>(scale * src_vec[i]);
 #endif
@@ -2091,12 +2080,7 @@ __global__ void write_pre_cache_int8_to_cache(
 #pragma unroll
     for (int i = 0; i < VecSize; i++) {
 #ifdef PADDLE_WITH_HIP
-      float quant_value;
-      if constexpr (kernel_dtype_is_same<T, half>::value) {
-        quant_value = scale * __half2float(src_vec[i]);
-      } else {
-        quant_value = scale * static_cast<float>(src_vec[i]);
-      }
+      float quant_value = scale * ToFloat<T>(src_vec[i]);
 #else
       float quant_value = scale * static_cast<float>(src_vec[i]);
 #endif

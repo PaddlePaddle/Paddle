@@ -3949,11 +3949,11 @@ constexpr float QUANT_MIN_BOUND = -127.0;
 
 #ifdef PADDLE_WITH_HIP
 template <typename T>
-struct IsHipHalfType : public false_type {};
+struct IsHipHalfType : public std::false_type {};
 template <>
-struct IsHipHalfType<half> : public true_type {};
+struct IsHipHalfType<half> : public std::true_type {};
 template <>
-struct IsHipHalfType<__half> : public true_type {};
+struct IsHipHalfType<__half> : public std::true_type {};
 
 template <typename T>
 __host__ __device__ __forceinline__ float ToFloat(T x) {
