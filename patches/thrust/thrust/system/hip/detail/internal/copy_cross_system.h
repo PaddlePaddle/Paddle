@@ -16,6 +16,15 @@
 #  undef NV_IF_TARGET
 #endif
 
+#ifdef NV_IS_HOST
+#  undef NV_IS_HOST
+#endif
+#ifdef NV_IS_DEVICE
+#  undef NV_IS_DEVICE
+#endif
+#define NV_IS_HOST PADDLE_NV_IS_HOST
+#define NV_IS_DEVICE PADDLE_NV_IS_DEVICE
+
 #define PADDLE_THRUST_REMOVE_PARENS_IMPL(...) __VA_ARGS__
 #define PADDLE_THRUST_REMOVE_PARENS(X) PADDLE_THRUST_REMOVE_PARENS_IMPL X
 
@@ -24,13 +33,13 @@
   PADDLE_THRUST_GET_4TH_ARG(__VA_ARGS__, PADDLE_THRUST_NV_IF_TARGET_3, PADDLE_THRUST_NV_IF_TARGET_2)
 
 #if defined(__HIP_DEVICE_COMPILE__)
-#  define PADDLE_THRUST_NV_IF_TARGET_2_NV_IS_HOST(code) /* stripped in device compile */
-#  define PADDLE_THRUST_NV_IF_TARGET_2_NV_IS_DEVICE(code) PADDLE_THRUST_REMOVE_PARENS(code)
+#  define PADDLE_THRUST_NV_IF_TARGET_2_PADDLE_NV_IS_HOST(code) /* stripped in device compile */
+#  define PADDLE_THRUST_NV_IF_TARGET_2_PADDLE_NV_IS_DEVICE(code) PADDLE_THRUST_REMOVE_PARENS(code)
 #  define PADDLE_THRUST_NV_IF_TARGET_2(cond, code) PADDLE_THRUST_NV_IF_TARGET_2_##cond(code)
 #  define PADDLE_THRUST_NV_IF_TARGET_3(cond, host_code, device_code) PADDLE_THRUST_REMOVE_PARENS(device_code)
 #else
-#  define PADDLE_THRUST_NV_IF_TARGET_2_NV_IS_HOST(code) PADDLE_THRUST_REMOVE_PARENS(code)
-#  define PADDLE_THRUST_NV_IF_TARGET_2_NV_IS_DEVICE(code) /* stripped in host compile */
+#  define PADDLE_THRUST_NV_IF_TARGET_2_PADDLE_NV_IS_HOST(code) PADDLE_THRUST_REMOVE_PARENS(code)
+#  define PADDLE_THRUST_NV_IF_TARGET_2_PADDLE_NV_IS_DEVICE(code) /* stripped in host compile */
 #  define PADDLE_THRUST_NV_IF_TARGET_2(cond, code) PADDLE_THRUST_NV_IF_TARGET_2_##cond(code)
 #  define PADDLE_THRUST_NV_IF_TARGET_3(cond, host_code, device_code) PADDLE_THRUST_REMOVE_PARENS(host_code)
 #endif
