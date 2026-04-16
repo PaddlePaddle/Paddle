@@ -65,6 +65,10 @@ if(EXISTS "${PADDLE_SOURCE_DIR}/patches/thrust/thrust/shuffle.h")
   # Ensure our patched Thrust headers can override ROCm's Thrust when present.
   include_directories(BEFORE "${PADDLE_SOURCE_DIR}/patches/thrust")
 endif()
+if(EXISTS "${PADDLE_SOURCE_DIR}/patches/hip/fix_nv_if_target.h")
+  # Allow patched Thrust shims to `#include "hip/fix_nv_if_target.h"`.
+  include_directories(BEFORE "${PADDLE_SOURCE_DIR}/patches")
+endif()
 # Shadow select HIP headers so AMD platform macros are set before ROCm's
 # `#error` paths. ROCm 7 HIPCC rules may not apply `HIP_CXX_FLAGS` / `-include`.
 if(EXISTS "${PADDLE_SOURCE_DIR}/patches/rocm_shim/hip/hip_runtime.h")

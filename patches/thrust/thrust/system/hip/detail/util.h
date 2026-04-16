@@ -3,7 +3,7 @@
 // Shadow wrapper around rocThrust's `thrust/system/hip/detail/util.h`.
 // See `patches/hip/fix_nv_if_target.h` for the HIP-friendly `NV_IF_TARGET` override.
 
-#include "../../../../../../hip/fix_nv_if_target.h"
+#include "hip/fix_nv_if_target.h"
 
 #include <thrust/detail/config.h>
 
