@@ -1,0 +1,22 @@
+#pragma once
+
+// HIP-clang compiles many translation units with `-x hip` but without defining
+// the CUDA preprocessor tokens that CCCL's `nv/target` + `nv/detail/__target_macros`
+// use to select the real NVCC/clang-cuda implementation.
+//
+// When those tokens are missing, CCCL falls back to a "host-only NVCC" stub which
+// breaks `NV_DISPATCH_TARGET(...)` / `NV_IF_TARGET(...)` expansions and produces
+// parse errors inside headers like `libcudacxx/include/cuda/std/.../__cuda/chrono.h`.
+//
+// Fix: advertise a CUDA-like compilation mode *just enough* for CCCL's target
+// machinery to pick the NVCC/clang-cuda branch. This is intentionally narrow:
+// only enabled for HIP translation units (`__HIP__`).
+
+#if defined(__HIP__)
+#  ifndef __NVCC__
+#    define __NVCC__ 1
+#  endif
+#  ifndef __CUDACC__
+#    define __CUDACC__ 1
+#  endif
+#endif

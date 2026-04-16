@@ -157,6 +157,14 @@ list(APPEND HIP_CXX_FLAGS -D__HIP_PLATFORM_AMD__=1)
 # Some ROCm headers (e.g., Thrust/NV_IF_TARGET) key off __HIPCC__ even when
 # we compile HIP sources via clang++ -x hip instead of the hipcc wrapper.
 list(APPEND HIP_CXX_FLAGS -D__HIPCC__=1)
+
+# HIP-clang + ROCm Thrust/CCCL: install a safer `NV_IF_TARGET` implementation
+# before any headers are parsed in HIP translation units.
+if(EXISTS "${PADDLE_SOURCE_DIR}/patches/hip/fix_nv_if_target.h")
+  list(APPEND HIP_CXX_FLAGS
+              "-include${PADDLE_SOURCE_DIR}/patches/hip/fix_nv_if_target.h")
+endif()
+
 # Note(qili93): HIP has compile conflicts of float16.h as platform::float16 overload std::is_floating_point and std::is_integer
 list(APPEND HIP_CXX_FLAGS -D__HIP_NO_HALF_CONVERSIONS__=1)
 list(APPEND HIP_CXX_FLAGS -DROCM_NO_WRAPPER_HEADER_WARNING)
