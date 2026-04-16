@@ -22,6 +22,7 @@ from .asgd import ASGD
 from .lamb import Lamb
 from .lbfgs import LBFGS
 from .momentum import Momentum
+from .muon import Muon
 from .nadam import NAdam
 from .optimizer import Optimizer
 from .radam import RAdam
@@ -45,4 +46,5 @@ __all__ = [
     'NAdam',
     'Lamb',
     'LBFGS',
+    'Muon',
 ]
