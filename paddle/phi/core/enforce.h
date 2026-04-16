@@ -24,11 +24,10 @@ limitations under the License. */
 #endif  // PADDLE_WITH_CUDA
 
 #ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime_api.h>
 #include <hiprand/hiprand.h>
 #include <miopen/miopen.h>
 #include <rocblas/rocblas.h>
-#include <thrust/system/hip/error.h>
-#include <thrust/system_error.h>  // NOLINT
 #endif
 
 #include <fstream>
