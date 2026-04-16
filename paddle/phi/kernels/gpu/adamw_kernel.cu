@@ -14,9 +14,9 @@
 
 #include "paddle/phi/kernels/adamw_kernel.h"
 
+#include <math.h>  // for sqrt in CPU and CUDA
 #include <cmath>
 #include <cstdlib>
-#include <math.h>  // for sqrt in CPU and CUDA
 
 #include <string>
 #include <vector>
@@ -181,11 +181,34 @@ PADDLE_API void AdamwDenseKernel(const Context& dev_ctx,
 
   if (FLAGS_use_accuracy_compatible_kernel) {
     return AdamwDenseKernelCompatible<T, Context>(
-        dev_ctx, param, grad, learning_rate, moment1, moment2, moment2_max,
-        beta1_pow, beta2_pow, master_param, skip_update, beta1, beta2, epsilon,
-        lr_ratio, coeff, with_decay, lazy_mode, min_row_size_to_use_multithread,
-        multi_precision, use_global_beta_pow, amsgrad, param_out, moment1_out,
-        moment2_out, moment2_max_out, beta1_pow_out, beta2_pow_out,
+        dev_ctx,
+        param,
+        grad,
+        learning_rate,
+        moment1,
+        moment2,
+        moment2_max,
+        beta1_pow,
+        beta2_pow,
+        master_param,
+        skip_update,
+        beta1,
+        beta2,
+        epsilon,
+        lr_ratio,
+        coeff,
+        with_decay,
+        lazy_mode,
+        min_row_size_to_use_multithread,
+        multi_precision,
+        use_global_beta_pow,
+        amsgrad,
+        param_out,
+        moment1_out,
+        moment2_out,
+        moment2_max_out,
+        beta1_pow_out,
+        beta2_pow_out,
         master_param_outs);
   }
 
@@ -412,25 +435,31 @@ PADDLE_API void AdamwDenseKernel(const Context& dev_ctx,
 //   - opmath_t = float (for float/fp16/bf16 inputs)
 //   - lr, beta1, beta2, weight_decay, eps are double
 //   - bias_correction1, bias_correction2_sqrt are passed as opmath_t (float)
-//     (even though computed in double on host, truncated when passed to adam_math)
+//     (even though computed in double on host, truncated when passed to
+//     adam_math)
 //   - When double op float, float promotes to double, result is double, then
 //     assigned back to opmath_t truncates to float.
 // =============================================================================
-// Device-side pow_ matching torch's at::native::pow_ from Pow.cuh (non-MSVC path):
+// Device-side pow_ matching torch's at::native::pow_ from Pow.cuh (non-MSVC
+// path):
 //   template <typename Base_type, typename Exp_type>
-//   static inline __host__ __device__ Base_type pow_(Base_type base, Exp_type exp) {
+//   static inline __host__ __device__ Base_type pow_(Base_type base, Exp_type
+//   exp) {
 //     return ::pow(base, exp);
 //   }
 // When called as pow_(double, float), C++ promotes float to double,
-// so this becomes ::pow(double, double) returning double — exactly matching CUDA device pow.
+// so this becomes ::pow(double, double) returning double — exactly matching
+// CUDA device pow.
 template <typename Base_type, typename Exp_type>
-static __device__ __forceinline__ Base_type torch_pow_(Base_type base, Exp_type exp) {
+static __device__ __forceinline__ Base_type torch_pow_(Base_type base,
+                                                       Exp_type exp) {
   return ::pow(base, exp);
 }
 
 template <typename T,   // Parameter type (may be fp16/bf16)
           typename TG,  // Gradient type
-          typename MT>  // Master precision type (= opmath_t, float for float/fp16/bf16)
+          typename MT>  // Master precision type (= opmath_t, float for
+                        // float/fp16/bf16)
 __global__ void AdamWTorchStyleKernel(
     const double beta1,
     const double beta2,
@@ -448,16 +477,20 @@ __global__ void AdamWTorchStyleKernel(
     MT* __restrict__ moment2_out,
     const MT* __restrict__ moment2_max,
     MT* __restrict__ moment2_max_out,
-    // step_count passed as float, matching torch's state_steps (float tensor)
-    // bias_correction computed ON DEVICE, exactly as torch's FusedAdamMathFunctor does
+    // step_count passed as float, matching torch's
+    // state_steps (float tensor) bias_correction
+    // computed ON DEVICE, exactly as torch's
+    // FusedAdamMathFunctor does
     const float step_count,
     int64_t ndim,
     bool amsgrad) {
-  // These are then passed to adam_math as const opmath_t& (float), truncating at call boundary.
+  // These are then passed to adam_math as const opmath_t& (float), truncating
+  // at call boundary.
   const double bc1_dbl = 1.0 - torch_pow_(beta1, step_count);
   const double bc2_dbl = 1.0 - torch_pow_(beta2, step_count);
   const double bc2_sqrt_dbl = ::sqrt(bc2_dbl);
-  // Truncate to opmath_t (float) at the "adam_math call boundary", matching torch exactly
+  // Truncate to opmath_t (float) at the "adam_math call boundary", matching
+  // torch exactly
   const MT bias_correction1 = static_cast<MT>(bc1_dbl);
   const MT bias_correction2_sqrt = static_cast<MT>(bc2_sqrt_dbl);
 
@@ -465,7 +498,8 @@ __global__ void AdamWTorchStyleKernel(
       static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
       static_cast<int64_t>(threadIdx.x);
 
-  for (; id < ndim; id += static_cast<int64_t>(gridDim.x) * static_cast<int64_t>(blockDim.x)) {
+  for (; id < ndim; id += static_cast<int64_t>(gridDim.x) *
+                          static_cast<int64_t>(blockDim.x)) {
     MT p = master_param ? master_param[id] : static_cast<MT>(param[id]);
     MT g = static_cast<MT>(grad[id]);
     MT exp_avg = moment1[id];
@@ -478,22 +512,31 @@ __global__ void AdamWTorchStyleKernel(
     }
 
     // exp_avg = beta1 * exp_avg + (1 - beta1) * grad
-    exp_avg = static_cast<MT>(beta1 * static_cast<double>(exp_avg) + (1.0 - beta1) * static_cast<double>(g));
+    exp_avg = static_cast<MT>(beta1 * static_cast<double>(exp_avg) +
+                              (1.0 - beta1) * static_cast<double>(g));
 
     // exp_avg_sq = beta2 * exp_avg_sq + (1 - beta2) * grad * grad
-    exp_avg_sq = static_cast<MT>(beta2 * static_cast<double>(exp_avg_sq) + (1.0 - beta2) * static_cast<double>(g) * static_cast<double>(g));
+    exp_avg_sq = static_cast<MT>(beta2 * static_cast<double>(exp_avg_sq) +
+                                 (1.0 - beta2) * static_cast<double>(g) *
+                                     static_cast<double>(g));
 
     // step_size = lr / bias_correction1
-    const MT step_size = static_cast<MT>(lr_double / static_cast<double>(bias_correction1));
+    const MT step_size =
+        static_cast<MT>(lr_double / static_cast<double>(bias_correction1));
 
     MT denom;
     if (amsgrad) {
       MT max_exp_avg_sq_val = moment2_max[id];
-      max_exp_avg_sq_val = max_exp_avg_sq_val > exp_avg_sq ? max_exp_avg_sq_val : exp_avg_sq;
+      max_exp_avg_sq_val =
+          max_exp_avg_sq_val > exp_avg_sq ? max_exp_avg_sq_val : exp_avg_sq;
       moment2_max_out[id] = max_exp_avg_sq_val;
-      denom = static_cast<MT>(static_cast<double>(sqrt(max_exp_avg_sq_val) / bias_correction2_sqrt) + epsilon);
+      denom = static_cast<MT>(static_cast<double>(sqrt(max_exp_avg_sq_val) /
+                                                  bias_correction2_sqrt) +
+                              epsilon);
     } else {
-      denom = static_cast<MT>(static_cast<double>(sqrt(exp_avg_sq) / bias_correction2_sqrt) + epsilon);
+      denom = static_cast<MT>(
+          static_cast<double>(sqrt(exp_avg_sq) / bias_correction2_sqrt) +
+          epsilon);
     }
 
     // param -= step_size * exp_avg / denom
@@ -510,35 +553,36 @@ __global__ void AdamWTorchStyleKernel(
 }
 
 template <typename T, typename Context>
-PADDLE_API void AdamwDenseKernelCompatible(const Context& dev_ctx,
-                                 const DenseTensor& param,
-                                 const DenseTensor& grad,
-                                 const DenseTensor& learning_rate,
-                                 const DenseTensor& moment1,
-                                 const DenseTensor& moment2,
-                                 const optional<DenseTensor>& moment2_max,
-                                 const DenseTensor& beta1_pow,
-                                 const DenseTensor& beta2_pow,
-                                 const optional<DenseTensor>& master_param,
-                                 const optional<DenseTensor>& skip_update,
-                                 const Scalar& beta1,
-                                 const Scalar& beta2,
-                                 const Scalar& epsilon,
-                                 double lr_ratio,
-                                 double coeff,
-                                 bool with_decay,
-                                 bool lazy_mode,
-                                 int64_t min_row_size_to_use_multithread,
-                                 bool multi_precision,
-                                 bool use_global_beta_pow,
-                                 bool amsgrad,
-                                 DenseTensor* param_out,
-                                 DenseTensor* moment1_out,
-                                 DenseTensor* moment2_out,
-                                 DenseTensor* moment2_max_out,
-                                 DenseTensor* beta1_pow_out,
-                                 DenseTensor* beta2_pow_out,
-                                 DenseTensor* master_param_outs) {
+PADDLE_API void AdamwDenseKernelCompatible(
+    const Context& dev_ctx,
+    const DenseTensor& param,
+    const DenseTensor& grad,
+    const DenseTensor& learning_rate,
+    const DenseTensor& moment1,
+    const DenseTensor& moment2,
+    const optional<DenseTensor>& moment2_max,
+    const DenseTensor& beta1_pow,
+    const DenseTensor& beta2_pow,
+    const optional<DenseTensor>& master_param,
+    const optional<DenseTensor>& skip_update,
+    const Scalar& beta1,
+    const Scalar& beta2,
+    const Scalar& epsilon,
+    double lr_ratio,
+    double coeff,
+    bool with_decay,
+    bool lazy_mode,
+    int64_t min_row_size_to_use_multithread,
+    bool multi_precision,
+    bool use_global_beta_pow,
+    bool amsgrad,
+    DenseTensor* param_out,
+    DenseTensor* moment1_out,
+    DenseTensor* moment2_out,
+    DenseTensor* moment2_max_out,
+    DenseTensor* beta1_pow_out,
+    DenseTensor* beta2_pow_out,
+    DenseTensor* master_param_outs) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   bool skip_update_ = false;
@@ -592,10 +636,11 @@ PADDLE_API void AdamwDenseKernelCompatible(const Context& dev_ctx,
                               "value is:%d.",
                               beta2_pow_out->numel()));
 
-  // Compute step_count from beta_pow values, matching torch's state_steps (float tensor).
-  // Torch's FusedAdamMathFunctor computes bias_correction ON DEVICE using CUDA pow.
-  // We recover step from beta1_pow = beta1^step, then pass step_count (float) to the kernel,
-  // which computes bias_correction on device to match torch bit-for-bit.
+  // Compute step_count from beta_pow values, matching torch's state_steps
+  // (float tensor). Torch's FusedAdamMathFunctor computes bias_correction ON
+  // DEVICE using CUDA pow. We recover step from beta1_pow = beta1^step, then
+  // pass step_count (float) to the kernel, which computes bias_correction on
+  // device to match torch bit-for-bit.
   double beta1_pow_val;
   const bool beta_pow_on_cpu =
       beta1_pow.place() == CPUPlace() && beta2_pow.place() == CPUPlace();
@@ -614,7 +659,8 @@ PADDLE_API void AdamwDenseKernelCompatible(const Context& dev_ctx,
   }
 
   // Recover step count: step = round(log(beta_pow) / log(beta))
-  double step_from_beta1 = std::round(std::log(beta1_pow_val) / std::log(beta1_));
+  double step_from_beta1 =
+      std::round(std::log(beta1_pow_val) / std::log(beta1_));
   // Torch stores step as float in state_steps tensor
   float step_count = static_cast<float>(step_from_beta1);
 
@@ -666,27 +712,26 @@ PADDLE_API void AdamwDenseKernelCompatible(const Context& dev_ctx,
             param.numel(),
             amsgrad);
   } else {
-    AdamWTorchStyleKernel<T, T, MT>
-        <<<blocks, threads, 0, dev_ctx.stream()>>>(
-            beta1_,
-            beta2_,
-            epsilon_,
-            weight_decay,
-            lr_double,
-            grad.data<T>(),
-            param.data<T>(),
-            dev_ctx.template Alloc<T>(param_out),
-            master_in_data,
-            master_out_data,
-            moment1.data<MT>(),
-            dev_ctx.template Alloc<MT>(moment1_out),
-            moment2.data<MT>(),
-            dev_ctx.template Alloc<MT>(moment2_out),
-            amsgrad ? moment2_max->data<MT>() : nullptr,
-            amsgrad ? dev_ctx.template Alloc<MT>(moment2_max_out) : nullptr,
-            step_count,
-            param.numel(),
-            amsgrad);
+    AdamWTorchStyleKernel<T, T, MT><<<blocks, threads, 0, dev_ctx.stream()>>>(
+        beta1_,
+        beta2_,
+        epsilon_,
+        weight_decay,
+        lr_double,
+        grad.data<T>(),
+        param.data<T>(),
+        dev_ctx.template Alloc<T>(param_out),
+        master_in_data,
+        master_out_data,
+        moment1.data<MT>(),
+        dev_ctx.template Alloc<MT>(moment1_out),
+        moment2.data<MT>(),
+        dev_ctx.template Alloc<MT>(moment2_out),
+        amsgrad ? moment2_max->data<MT>() : nullptr,
+        amsgrad ? dev_ctx.template Alloc<MT>(moment2_max_out) : nullptr,
+        step_count,
+        param.numel(),
+        amsgrad);
   }
 
   // Update beta_pow (same as original)
