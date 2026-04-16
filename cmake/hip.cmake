@@ -47,11 +47,10 @@ endif()
 # vendored libcudacxx is visible *before* `${ROCM_PATH}/include/thrust`.
 set(PADDLE_ROCM_LIBCUDACXX_INCLUDE_DIR
     "${PADDLE_SOURCE_DIR}/third_party/cccl/libcudacxx/include")
-# `third_party/cccl` is a submodule: ship HIP tweaks for CCCL `nv/target` here.
-if(EXISTS "${PADDLE_SOURCE_DIR}/patches/cccl/libcudacxx/include/nv/target")
-  include_directories(BEFORE
-                      "${PADDLE_SOURCE_DIR}/patches/cccl/libcudacxx/include")
-endif()
+# Vendored libcudacxx first, then overlay patches (HIP `NV_IF_TARGET` fixes live in
+# `patches/cccl/...`). CMake prepends each `BEFORE` at the front, so add the
+# submodule path first, then the overlay — otherwise `third_party/cccl` wins
+# and the overlay never takes effect (see compile_commands `-I` order).
 if(EXISTS "${PADDLE_ROCM_LIBCUDACXX_INCLUDE_DIR}/cuda/__cccl_config")
   include_directories(BEFORE "${PADDLE_ROCM_LIBCUDACXX_INCLUDE_DIR}")
 else()
@@ -60,6 +59,10 @@ else()
       "Missing ${PADDLE_ROCM_LIBCUDACXX_INCLUDE_DIR}/cuda/__cccl_config. "
       "ROCm Thrust may fail to compile; initialize `third_party/cccl` (see cmake/external/cccl.cmake)."
   )
+endif()
+if(EXISTS "${PADDLE_SOURCE_DIR}/patches/cccl/libcudacxx/include/nv/target")
+  include_directories(BEFORE
+                      "${PADDLE_SOURCE_DIR}/patches/cccl/libcudacxx/include")
 endif()
 if(EXISTS "${PADDLE_SOURCE_DIR}/patches/thrust/thrust/shuffle.h")
   # Ensure our patched Thrust headers can override ROCm's Thrust when present.
