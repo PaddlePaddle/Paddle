@@ -28,7 +28,14 @@
 
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_complex.h>
+// NOTE:
+// Do not include Thrust complex headers in plain host C++ translation units
+// when building with ROCm. ROCm's Thrust pulls rocprim headers which are not
+// reliably compilable with the host toolchain (e.g. `paddle/pir`).
+// Thrust is only needed for HIP device compilation units (`__HIPCC__`).
+#if defined(__HIPCC__)
 #include <thrust/complex.h>  // NOLINT
+#endif
 #endif
 
 #ifndef PADDLE_WITH_HIP
@@ -68,11 +75,13 @@ struct PADDLE_ALIGN(sizeof(T) * 2) complex {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
+#if defined(PADDLE_WITH_CUDA) || defined(__HIPCC__)
   template <typename T1>
   HOSTDEVICE inline explicit complex(const thrust::complex<T1>& c) {
     real = c.real();
     imag = c.imag();
   }
+#endif
 
 #if defined(PADDLE_WITH_CCCL)
   template <typename T1>
@@ -82,10 +91,12 @@ struct PADDLE_ALIGN(sizeof(T) * 2) complex {
   }
 #endif
 
+#if defined(PADDLE_WITH_CUDA) || defined(__HIPCC__)
   template <typename T1>
   HOSTDEVICE inline explicit operator thrust::complex<T1>() const {
     return thrust::complex<T1>(real, imag);
   }
+#endif
 
 #ifdef PADDLE_WITH_HIP
   HOSTDEVICE inline explicit operator hipFloatComplex() const {
