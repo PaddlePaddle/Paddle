@@ -20,8 +20,8 @@
 namespace phi {
 template <typename T>
 HOSTDEVICE T digamma_positive_domain(T x) {
-  static T c = T{8.5};
-  static T euler_mascheroni = T{0.57721566490153286060};
+  static const T c = T{8.5};
+  static const T euler_mascheroni = T{0.57721566490153286060};
   T r;
   T value;
   T x2;
@@ -54,7 +54,7 @@ HOSTDEVICE T digamma_positive_domain(T x) {
 
 template <typename T>
 HOSTDEVICE T digamma(T x) {
-  static T pi = T{3.14159265358979323846};
+  static const T pi = T{3.14159265358979323846};
 
   if (x == T{0.0}) {
     T inf = std::numeric_limits<T>::infinity();
