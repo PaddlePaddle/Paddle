@@ -14,8 +14,14 @@
 
 #include "paddle/phi/kernels/pool_kernel.h"
 
+#include <algorithm>
+#include <cmath>
+#include <limits>
+#include <vector>
+
 #include "paddle/common/macros.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
@@ -390,6 +396,82 @@ void MaxPool2dWithIndexKernel(const Context& dev_ctx,
                                paddings,
                                true);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "max_pool2d_with_index");
+
+  // Post-processing: correct XPU indices from last-occurrence to
+  // first-occurrence to match GPU behavior.
+  //
+  // xpu::max_pool2d returns the LAST-occurring flat index when multiple
+  // values in a pooling window are equal (hardware tie-breaking behavior).
+  // The GPU kernel uses strict `>` comparison (first occurrence wins).
+  // We recompute the correct first-occurrence index on CPU after copying
+  // the input and output tensors from device.
+  const int64_t out_h =
+      (in_h + 2 * paddings[0] - kernel_size[0]) / strides[0] + 1;
+  const int64_t out_w =
+      (in_w + 2 * paddings[1] - kernel_size[1]) / strides[1] + 1;
+  const int64_t x_numel = x.numel();
+  const int64_t out_numel = static_cast<int64_t>(n) * c * out_h * out_w;
+
+  // Copy x (input) from XPU device to CPU.
+  std::vector<T> x_cpu(x_numel);
+  xpu_wait(dev_ctx.x_context()->xpu_stream);
+  memory_utils::Copy(CPUPlace(),
+                     x_cpu.data(),
+                     dev_ctx.GetPlace(),
+                     x.data<T>(),
+                     x_numel * sizeof(T));
+
+  // Copy out (pooled values) from XPU device to CPU.
+  std::vector<T> out_cpu(out_numel);
+  memory_utils::Copy(CPUPlace(),
+                     out_cpu.data(),
+                     dev_ctx.GetPlace(),
+                     out->data<T>(),
+                     out_numel * sizeof(T));
+
+  // Recompute first-occurrence flat indices on CPU.
+  std::vector<int> index_cpu(out_numel);
+  for (int64_t nn = 0; nn < n; ++nn) {
+    for (int64_t cc = 0; cc < c; ++cc) {
+      const int64_t input_channel_offset =
+          (nn * c + cc) * in_h * in_w;  // base index for this (n, c) slice
+      for (int64_t oh = 0; oh < out_h; ++oh) {
+        for (int64_t ow = 0; ow < out_w; ++ow) {
+          const int64_t out_pos = ((nn * c + cc) * out_h + oh) * out_w + ow;
+          const T pool_max = out_cpu[out_pos];
+
+          const int64_t hstart =
+              std::max(oh * strides[0] - paddings[0], static_cast<int64_t>(0));
+          const int64_t hend = std::min(hstart + kernel_size[0], in_h);
+          const int64_t wstart =
+              std::max(ow * strides[1] - paddings[1], static_cast<int64_t>(0));
+          const int64_t wend = std::min(wstart + kernel_size[1], in_w);
+
+          // Scan the window in row-major order; first occurrence wins.
+          int64_t first_idx = hstart * in_w + wstart;
+          bool found = false;
+          for (int64_t ih = hstart; ih < hend; ++ih) {
+            for (int64_t iw = wstart; iw < wend; ++iw) {
+              const int64_t flat_idx = ih * in_w + iw;
+              if (!found &&
+                  x_cpu[input_channel_offset + flat_idx] == pool_max) {
+                first_idx = flat_idx;
+                found = true;
+              }
+            }
+          }
+          index_cpu[out_pos] = static_cast<int>(first_idx);
+        }
+      }
+    }
+  }
+
+  // Copy corrected indices back to XPU device.
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     index_data,
+                     CPUPlace(),
+                     index_cpu.data(),
+                     out_numel * sizeof(int));
 }
 }  // namespace phi
 
