@@ -275,6 +275,11 @@
     axis1 : [dim1]
     axis2 : [dim2]
 
+- op : digamma
+  name : [paddle.digamma, paddle.Tensor.digamma]
+  args_alias :
+    use_default_mapping : True
+    
 - op : dot
   name : [paddle.dot, paddle.Tensor.dot]
   args_alias :

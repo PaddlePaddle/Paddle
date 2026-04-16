@@ -891,6 +891,45 @@ def log2(
 )
 
 add_doc_and_signature(
+    "digamma",
+    r"""
+    Calculates the digamma of the given input tensor, element-wise.
+
+    .. math::
+
+        Out = \Psi(x) = \frac{ \Gamma^{'}(x)}{ \Gamma(x) }
+
+    Args:
+        x (Tensor): Input Tensor. Must be one of the following types: bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64. Alias: ``input``.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output Tensor. If set, result will be stored in this Tensor. Default: None.
+
+    Keyword args:
+        out (Tensor, optional): The output tensor.
+
+    Returns:
+        Tensor, the digamma of the input Tensor, the shape and data type is the same with input (integer types are autocasted into float32).
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> data = paddle.to_tensor([[1, 1.5], [0, -2.2]], dtype='float32')
+            >>> res = paddle.digamma(data)
+            >>> print(res)
+    """,
+    """
+def digamma(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
     "log10",
     r"""
     Calculates the log to the base 10 of the given input tensor, element-wise.

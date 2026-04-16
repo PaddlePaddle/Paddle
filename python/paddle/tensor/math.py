@@ -40,6 +40,7 @@ from paddle._C_ops import (  # noqa: F401
     bitwise_right_shift,
     bitwise_right_shift_,
     conj,
+    digamma,
     floor_divide_,
     fmax,
     fmin,
@@ -3967,57 +3968,7 @@ def gammaln_(x: Tensor, name: str | None = None) -> Tensor:
         return _C_ops.gammaln_(x)
 
 
-def digamma(x: Tensor, name: str | None = None) -> Tensor:
-    r"""
-    Calculates the digamma of the given input tensor, element-wise.
 
-    .. math::
-        Out = \Psi(x) = \frac{ \Gamma^{'}(x) }{ \Gamma(x) }
-
-    Args:
-        x (Tensor): Input Tensor. Must be one of the following types: bfloat16, float16, float32,
-            float64, uint8, int8, int16, int32, int64.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    Returns:
-        Tensor, the digamma of the input Tensor, the shape and data type is the same with input
-            (integer types are autocasted into float32).
-
-    Examples:
-        .. code-block:: pycon
-
-            >>> import paddle
-
-            >>> data = paddle.to_tensor([[1, 1.5], [0, -2.2]], dtype='float32')
-            >>> res = paddle.digamma(data)
-            >>> res
-            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[-0.57721591,  0.03648996],
-             [-inf.      ,  5.32286835]])
-    """
-
-    if in_dynamic_or_pir_mode():
-        return _C_ops.digamma(x)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'float32',
-                'float64',
-                'uint16',
-                'uint8',
-                'int8',
-                'int16',
-                'int32',
-                'int64',
-            ],
-            'digamma',
-        )
-        helper = LayerHelper('digamma', **locals())
-        out = helper.create_variable_for_type_inference(x.dtype)
-        helper.append_op(type='digamma', inputs={'X': x}, outputs={'Out': out})
-        return out
 
 
 @inplace_apis_in_dygraph_only
