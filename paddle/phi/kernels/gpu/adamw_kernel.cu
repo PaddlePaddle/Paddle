@@ -180,7 +180,7 @@ PADDLE_API void AdamwDenseKernel(const Context& dev_ctx,
   MT lr_ratio_ = static_cast<MT>(lr_ratio);
 
   if (FLAGS_use_accuracy_compatible_kernel) {
-    return AdamwDenseKernelTorch<T, Context>(
+    return AdamwDenseKernelCompatible<T, Context>(
         dev_ctx, param, grad, learning_rate, moment1, moment2, moment2_max,
         beta1_pow, beta2_pow, master_param, skip_update, beta1, beta2, epsilon,
         lr_ratio, coeff, with_decay, lazy_mode, min_row_size_to_use_multithread,
@@ -510,7 +510,7 @@ __global__ void AdamWTorchStyleKernel(
 }
 
 template <typename T, typename Context>
-PADDLE_API void AdamwDenseKernelTorch(const Context& dev_ctx,
+PADDLE_API void AdamwDenseKernelCompatible(const Context& dev_ctx,
                                  const DenseTensor& param,
                                  const DenseTensor& grad,
                                  const DenseTensor& learning_rate,

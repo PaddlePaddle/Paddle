@@ -51,7 +51,7 @@ PADDLE_API void AdamwDenseKernel(const Context& dev_ctx,
                                  DenseTensor* master_param_outs);
 
 template <typename T, typename Context>
-PADDLE_API void AdamwDenseKernelTorch(const Context& dev_ctx,
+PADDLE_API void AdamwDenseKernelCompatible(const Context& dev_ctx,
                                  const DenseTensor& param,
                                  const DenseTensor& grad,
                                  const DenseTensor& learning_rate,
