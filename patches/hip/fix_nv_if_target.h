@@ -11,12 +11,14 @@
 // Fix: advertise a CUDA-like compilation mode *just enough* for CCCL's target
 // machinery to pick the NVCC/clang-cuda branch. This is intentionally narrow:
 // only enabled for HIP translation units (`__HIP__`).
+//
+// Do **not** define `__CUDACC__` here: HIP-clang may already define it in some
+// passes, and pretending to be "CUDA compiling" breaks unrelated headers that
+// key off `__CUDACC__` before `__HIPCC__` (e.g. Paddle's bf16 shim includes
+// `<cuda_bf16.h>`). CCCL's `nv/target` only needs `__NVCC__` for the NVCC path.
 
 #if defined(__HIP__)
 #  ifndef __NVCC__
 #    define __NVCC__ 1
-#  endif
-#  ifndef __CUDACC__
-#    define __CUDACC__ 1
 #  endif
 #endif
