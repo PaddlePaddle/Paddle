@@ -14,10 +14,9 @@
 
 #pragma once
 
-#if defined(__NVCC__) && !defined(__HIPCC__)
+#if defined(PADDLE_WITH_CUDA) && defined(__NVCC__)
 #include "cub/cub.cuh"
-#endif
-#ifdef __HIPCC__
+#elif defined(PADDLE_WITH_HIP) || defined(__HIPCC__) || defined(__HIP__)
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
 #endif
