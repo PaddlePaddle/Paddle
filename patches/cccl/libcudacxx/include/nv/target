@@ -204,4 +204,30 @@ namespace nv {
 
 #include "detail/__target_macros"
 
+#if defined(__HIPCC__)
+// HIP-clang compiles the same TU in a host pass and a device pass.
+// CCCL's NV_IF_TARGET machinery is NVIDIA-architecture centric; on HIP it can
+// incorrectly treat device compilation as host-only, which breaks when host-only
+// APIs (hipGetLastError / exceptions) appear in __host__ __device__ code.
+//
+// For Paddle ROCm builds, we only need correct host-vs-device selection.
+// Normalize NV_IF_TARGET / NV_IF_ELSE_TARGET using __HIP_DEVICE_COMPILE__.
+#  undef NV_IF_TARGET
+#  undef NV_IF_ELSE_TARGET
+#  define _PADDLE_NV_GET_3RD(_1, _2, _3, ...) _3
+#  define _PADDLE_NV_IF_TARGET_CHOOSER(...) \
+    _PADDLE_NV_GET_3RD(__VA_ARGS__, _PADDLE_NV_IF_TARGET2, _PADDLE_NV_IF_TARGET1)
+#  if defined(__HIP_DEVICE_COMPILE__)
+#    define _PADDLE_NV_IF_TARGET1(cond, t)          /* device */ _NV_TARGET_EMPTY_PARAM
+#    define _PADDLE_NV_IF_TARGET2(cond, t, f)       /* device */ f
+#    define NV_IF_ELSE_TARGET(cond, t, f)           /* device */ f
+#  else
+#    define _PADDLE_NV_IF_TARGET1(cond, t)          /* host */   t
+#    define _PADDLE_NV_IF_TARGET2(cond, t, f)       /* host */   t
+#    define NV_IF_ELSE_TARGET(cond, t, f)           /* host */   t
+#  endif
+#  define NV_IF_TARGET(cond, ...) \
+    _NV_BLOCK_EXPAND(_PADDLE_NV_IF_TARGET_CHOOSER(__VA_ARGS__)(cond, __VA_ARGS__))
+#endif // __HIPCC__
+
 #endif // __NV_TARGET_H
