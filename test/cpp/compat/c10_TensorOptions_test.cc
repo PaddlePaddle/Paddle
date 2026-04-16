@@ -154,6 +154,32 @@ TEST(TensorOptionsTest, DtypeDefaultTracksGlobalDefaultDtype) {
             c10::kDouble);
 }
 
+TEST(TensorOptionsTest, DefaultComplexDtypeTracksGlobalDefaultDtype) {
+  {
+    DefaultDtypeGuard guard(c10::kHalf);
+
+    ASSERT_EQ(c10::get_default_dtype_as_scalartype(), c10::kHalf);
+    ASSERT_EQ(c10::get_default_complex_dtype().toScalarType(),
+              c10::ScalarType::ComplexHalf);
+  }
+
+  {
+    DefaultDtypeGuard guard(c10::kDouble);
+
+    ASSERT_EQ(c10::get_default_dtype_as_scalartype(), c10::kDouble);
+    ASSERT_EQ(c10::get_default_complex_dtype().toScalarType(),
+              c10::ScalarType::ComplexDouble);
+  }
+
+  {
+    DefaultDtypeGuard guard(c10::kFloat);
+
+    ASSERT_EQ(c10::get_default_dtype_as_scalartype(), c10::kFloat);
+    ASSERT_EQ(c10::get_default_complex_dtype().toScalarType(),
+              c10::ScalarType::ComplexFloat);
+  }
+}
+
 // ---- device ----
 
 TEST(TensorOptionsTest, SetDevice_CPU) {
