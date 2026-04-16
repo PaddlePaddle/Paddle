@@ -14,6 +14,7 @@
 
 #include <ATen/Functions.h>
 #include <ATen/core/TensorBody.h>
+#include <ATen/cuda/CUDAContext.h>
 #include <ATen/cuda/EmptyTensor.h>
 #include <ATen/native/cuda/Resize.h>
 #include <ATen/ops/tensor.h>
@@ -59,6 +60,9 @@ TEST(TensorBaseTest, ToStringAPI) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // Test CUDA tensor if available
+  if (!at::cuda::is_available()) {
+    return;
+  }
   at::TensorBase cuda_float_tensor = at::ones(
       {2, 3},
       at::TensorOptions().dtype(at::kFloat).device(at::Device(at::kCUDA, 0)));

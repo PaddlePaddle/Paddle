@@ -73,15 +73,15 @@ void IndexAddGradKernel(const Context& dev_ctx,
   const auto& index_type = index.dtype();
 
   bool index_type_match =
-      index_type == phi::DataType::INT64 || index_type == phi::DataType::INT32;
+      index_type == DataType::INT64 || index_type == DataType::INT32;
   PADDLE_ENFORCE_EQ(index_type_match,
                     true,
                     common::errors::InvalidArgument(
                         "Input(Index) holds the wrong type, it holds %s, but "
                         "desires to be %s or %s",
                         index_type,
-                        phi::DataType::INT32,
-                        phi::DataType::INT64));
+                        DataType::INT32,
+                        DataType::INT64));
 
   int64_t numel = add_value.numel();
   if (numel == 0) {
@@ -102,7 +102,7 @@ void IndexAddGradKernel(const Context& dev_ctx,
     dim3 grid_dim = dim3((numel + block_dim - 1) / block_dim);
     phi::backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
 
-    if (index_type == phi::DataType::INT64) {
+    if (index_type == DataType::INT64) {
       const int64_t* index_data = index.data<int64_t>();
       index_select_cuda_kernel<T, int64_t>
           <<<grid_dim, block_dim, 0, stream>>>(output_grad_data,

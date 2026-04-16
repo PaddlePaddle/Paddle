@@ -62,7 +62,7 @@ DenseTensor GetReshapeAndExpandTensor(const Context& dev_ctx,
   }
 
   DenseTensor mid_tensor(tensor.dtype());
-  mid_tensor.Resize(make_ddim(mid_dims));
+  mid_tensor.Resize(mid_dims);
   ReshapeKernel<Context>(dev_ctx, tensor, IntArray(mid_dims), &mid_tensor);
 
   DenseTensor res_tensor(tensor.dtype());

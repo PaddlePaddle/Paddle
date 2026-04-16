@@ -346,7 +346,7 @@ class CrossEntropyLoss(Layer):
             >>> C = 200
             >>> reduction = 'mean'
             >>> input = paddle.rand([N, C], dtype='float64')
-            >>> label = paddle.randint(0, C, shape=[N], dtype='int64')
+            >>> label = paddle.randint(0, C, size=[N], dtype='int64')
             >>> weight = paddle.rand([C], dtype='float64')
 
             >>> cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
@@ -399,7 +399,7 @@ class CrossEntropyLoss(Layer):
             >>> reduction = 'mean'
             >>> weight: Optional[paddle.Tensor] = None
             >>> logits = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
-            >>> integer_labels = paddle.randint(low=0, high=C, shape=[N], dtype='int64')
+            >>> integer_labels = paddle.randint(low=0, high=C, size=[N], dtype='int64')
             >>> one_hot_labels = paddle.nn.functional.one_hot(integer_labels, C).astype('float32')
 
             >>> cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
@@ -2407,7 +2407,7 @@ class SoftMarginLoss(Layer):
             0.64022040)
 
             >>> input_np = paddle.uniform(shape=(5, 5), min=0.1, max=0.8, dtype="float64")
-            >>> label_np = paddle.randint(high=2, shape=(5, 5), dtype="int64")
+            >>> label_np = paddle.randint(high=2, size=(5, 5), dtype="int64")
             >>> label_np[label_np == 0] = -1
             >>> input = paddle.to_tensor(input_np)
             >>> label = paddle.to_tensor(label_np)

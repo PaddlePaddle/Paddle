@@ -234,7 +234,7 @@ void Tensor_Add(const Context& dev_ctx,
   out->Resize(src1.dims());
   dev_ctx.template Alloc<T>(out);
 
-  phi::AddKernel<T, Context>(dev_ctx, src1, src2, out);
+  AddKernel<T, Context>(dev_ctx, src1, src2, out);
 }
 
 template <typename Context, typename T>
@@ -245,7 +245,7 @@ void Tensor_Sub(const Context& dev_ctx,
   out->Resize(src1.dims());
   dev_ctx.template Alloc<T>(out);
 
-  phi::SubtractKernel<T, Context>(dev_ctx, src1, src2, out);
+  SubtractKernel<T, Context>(dev_ctx, src1, src2, out);
 }
 
 template <typename Context, typename T, size_t D>
@@ -427,7 +427,7 @@ void LU_Unpack(const Context& dev_ctx,
 
   arange<Context>(dev_ctx, &rowtensor, dim, batchsize, H);
   auto idtptr = rowtensor.data<int32_t>();
-  if (phi::AllocationType::GPU == dev_ctx.GetPlace().GetType()) {
+  if (AllocationType::GPU == dev_ctx.GetPlace().GetType()) {
     Copy(dev_ctx, rowtensor, dev_ctx.GetPlace(), false, &rt_dev);
     idtptr = rt_dev.data<int32_t>();
   }

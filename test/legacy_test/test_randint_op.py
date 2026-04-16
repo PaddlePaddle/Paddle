@@ -294,6 +294,30 @@ class TestRandintAliasAndOut(unittest.TestCase):
             self.assertEqual(result.shape, (3, 4))
 
 
+class TestRandintHighAsList(unittest.TestCase):
+    """Test randint when high is a list/tuple (positional args compatibility).
+
+    When called as paddle.randint(10, [3, 4]), the second positional arg
+    binds to `high` as a list. The code detects this and treats it as
+    shape=high, high=low, low=0.
+    """
+
+    def test_high_is_list(self):
+        paddle.disable_static()
+        # paddle.randint(10, [3, 4]) means low=0, high=10, shape=[3, 4]
+        x = paddle.randint(10, [3, 4])
+        self.assertEqual(x.shape, [3, 4])
+        self.assertTrue(np.all(x.numpy() >= 0) and np.all(x.numpy() < 10))
+        paddle.enable_static()
+
+    def test_high_is_tuple(self):
+        paddle.disable_static()
+        x = paddle.randint(5, (2, 3))
+        self.assertEqual(x.shape, [2, 3])
+        self.assertTrue(np.all(x.numpy() >= 0) and np.all(x.numpy() < 5))
+        paddle.enable_static()
+
+
 class TestRandintOldStaticMode(unittest.TestCase):
     """Test randint in old static graph mode (non-PIR mode).
 
@@ -358,6 +382,52 @@ class TestRandintOldStaticMode(unittest.TestCase):
 
             self.assertEqual(outs[0].shape, (4, 5))
             self.assertTrue(np.all(outs[0] >= 0) and np.all(outs[0] < 5))
+
+
+class TestRandintDeviceRequiresGradPinMemory(unittest.TestCase):
+    def test_device_cpu(self):
+        paddle.disable_static()
+        x = paddle.randint(high=10, shape=[3, 4], device='cpu')
+        self.assertEqual(x.shape, [3, 4])
+        self.assertTrue(x.place.is_cpu_place())
+        paddle.enable_static()
+
+    def test_requires_grad(self):
+        paddle.disable_static()
+        x = paddle.randint(high=10, shape=[2, 3], requires_grad=True)
+        self.assertEqual(x.shape, [2, 3])
+        self.assertFalse(x.stop_gradient)
+        paddle.enable_static()
+
+    def test_requires_grad_false(self):
+        paddle.disable_static()
+        x = paddle.randint(high=10, shape=[2, 3], requires_grad=False)
+        self.assertTrue(x.stop_gradient)
+        paddle.enable_static()
+
+    def test_device_and_requires_grad(self):
+        paddle.disable_static()
+        x = paddle.randint(
+            high=10, shape=[2, 3], device='cpu', requires_grad=True
+        )
+        self.assertEqual(x.shape, [2, 3])
+        self.assertTrue(x.place.is_cpu_place())
+        self.assertFalse(x.stop_gradient)
+        paddle.enable_static()
+
+    def test_pin_memory_unsupported_device_raises(self):
+        paddle.disable_static()
+        with self.assertRaises(RuntimeError):
+            paddle.randint(high=10, shape=[2, 3], device='cpu', pin_memory=True)
+        paddle.enable_static()
+
+    def test_pin_memory_cuda(self):
+        if not paddle.device.is_compiled_with_cuda():
+            return
+        paddle.disable_static()
+        x = paddle.randint(high=10, shape=[2, 3], device='gpu', pin_memory=True)
+        self.assertTrue("pinned" in str(x.place))
+        paddle.enable_static()
 
 
 if __name__ == "__main__":

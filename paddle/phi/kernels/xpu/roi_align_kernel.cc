@@ -64,7 +64,7 @@ void RoiAlignKernel(const Context& dev_ctx,
             rois_batch_size,
             batch_size));
 
-    if (boxes_num->dtype() == phi::DataType::INT64) {
+    if (boxes_num->dtype() == DataType::INT64) {
       std::vector<int64_t> rois_num_list(rois_batch_size);
       memory_utils::Copy(cplace,
                          rois_num_list.data(),
@@ -76,7 +76,7 @@ void RoiAlignKernel(const Context& dev_ctx,
       for (int64_t i = 0; i < rois_batch_size; i++) {
         cpu_lod[i + 1] = cpu_lod[i] + rois_num_list[i];
       }
-    } else if (boxes_num->dtype() == phi::DataType::INT32) {
+    } else if (boxes_num->dtype() == DataType::INT32) {
       std::vector<int> rois_num_list(rois_batch_size);
       memory_utils::Copy(cplace,
                          rois_num_list.data(),

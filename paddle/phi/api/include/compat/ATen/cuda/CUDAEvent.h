@@ -18,7 +18,11 @@
 
 #pragma once
 
+#if defined(PADDLE_WITH_HIP)
+#include <hip/hip_runtime.h>
+#elif defined(PADDLE_WITH_CUDA)
 #include <cuda_runtime_api.h>
+#endif
 
 #include <c10/core/Device.h>
 #include <c10/cuda/CUDAException.h>
@@ -41,7 +45,11 @@ struct CUDAEvent {
 
   ~CUDAEvent() {
     if (is_created_) {
+#ifdef PADDLE_WITH_HIP
+      hipEventDestroy(event_);
+#else
       cudaEventDestroy(event_);
+#endif
     }
   }
 
@@ -56,9 +64,15 @@ struct CUDAEvent {
     return *this;
   }
 
+#ifdef PADDLE_WITH_HIP
+  operator hipEvent_t() const { return event(); }
+
+  hipEvent_t event() const { return event_; }
+#else
   operator cudaEvent_t() const { return event(); }
 
   cudaEvent_t event() const { return event_; }
+#endif
 
   bool isCreated() const { return is_created_; }
 
@@ -66,9 +80,15 @@ struct CUDAEvent {
 
   bool query() const {
     if (!is_created_) return true;
+#ifdef PADDLE_WITH_HIP
+    hipError_t err = hipEventQuery(event_);
+    if (err == hipSuccess) return true;
+    if (err != hipErrorNotReady) C10_CUDA_CHECK(err);
+#else
     cudaError_t err = cudaEventQuery(event_);
     if (err == cudaSuccess) return true;
     if (err != cudaErrorNotReady) C10_CUDA_CHECK(err);
+#endif
     return false;
   }
 
@@ -85,7 +105,11 @@ struct CUDAEvent {
                 stream.unwrap().device_index(),
                 ".");
     c10::cuda::CUDAGuard guard(device_index_);
+#ifdef PADDLE_WITH_HIP
+    C10_CUDA_CHECK(hipEventRecord(event_, stream.stream()));
+#else
     C10_CUDA_CHECK(cudaEventRecord(event_, stream.stream()));
+#endif
   }
 
   void recordOnce(const CUDAStream& stream) {
@@ -98,13 +122,21 @@ struct CUDAEvent {
   void block(const CUDAStream& stream) {
     if (is_created_) {
       c10::cuda::CUDAGuard guard(stream.unwrap().device_index());
+#ifdef PADDLE_WITH_HIP
+      C10_CUDA_CHECK(hipStreamWaitEvent(stream.stream(), event_, 0));
+#else
       C10_CUDA_CHECK(cudaStreamWaitEvent(stream.stream(), event_, 0));
+#endif
     }
   }
 
   void synchronize() const {
     if (is_created_) {
+#ifdef PADDLE_WITH_HIP
+      C10_CUDA_CHECK(hipEventSynchronize(event_));
+#else
       C10_CUDA_CHECK(cudaEventSynchronize(event_));
+#endif
     }
   }
 
@@ -117,21 +149,37 @@ struct CUDAEvent {
         "Both events must be completed before calculating elapsed time.");
     float time_ms = 0;
     c10::cuda::CUDAGuard guard(device_index_);
+#ifdef PADDLE_WITH_HIP
+    C10_CUDA_CHECK(hipEventElapsedTime(&time_ms, event_, other.event_));
+#else
     C10_CUDA_CHECK(cudaEventElapsedTime(&time_ms, event_, other.event_));
+#endif
     return time_ms;
   }
 
  private:
+#ifdef PADDLE_WITH_HIP
+  unsigned int flags_ = hipEventDisableTiming;
+#else
   unsigned int flags_ = cudaEventDisableTiming;
+#endif
   bool is_created_ = false;
   bool was_recorded_ = false;
   c10::DeviceIndex device_index_ = -1;
+#ifdef PADDLE_WITH_HIP
+  hipEvent_t event_{};
+#else
   cudaEvent_t event_{};
+#endif
 
   void createEvent(c10::DeviceIndex device_index) {
     device_index_ = device_index;
     c10::cuda::CUDAGuard guard(device_index_);
+#ifdef PADDLE_WITH_HIP
+    C10_CUDA_CHECK(hipEventCreateWithFlags(&event_, flags_));
+#else
     C10_CUDA_CHECK(cudaEventCreateWithFlags(&event_, flags_));
+#endif
     is_created_ = true;
   }
 
@@ -140,7 +188,11 @@ struct CUDAEvent {
     is_created_ = std::exchange(other.is_created_, false);
     was_recorded_ = other.was_recorded_;
     device_index_ = other.device_index_;
+#ifdef PADDLE_WITH_HIP
+    event_ = std::exchange(other.event_, hipEvent_t{});
+#else
     event_ = std::exchange(other.event_, cudaEvent_t{});
+#endif
   }
 };
 

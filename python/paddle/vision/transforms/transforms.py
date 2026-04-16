@@ -1353,7 +1353,7 @@ class RandomCrop(BaseTransform[_InputT, _RetT]):
             >>> from paddle.vision.transforms import RandomCrop
             >>> transform = RandomCrop(224)
 
-            >>> fake_img = paddle.randint(0, 255, shape=(3, 324, 300), dtype='int32')
+            >>> fake_img = paddle.randint(0, 255, size=(3, 324, 300), dtype='int32')
             >>> print(fake_img.shape)
             paddle.Size([3, 324, 300])
 

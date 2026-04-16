@@ -82,7 +82,7 @@ void IndexPutKernel(const Context& dev_ctx,
   DenseTensor value_bd(value.dtype());
 
   if (value_shape != value_shape_bd) {
-    value_bd.Resize(make_ddim(value_shape_bd));
+    value_bd.Resize(value_shape_bd);
     ExpandKernel<T, Context>(
         dev_ctx, value, IntArray(value_shape_bd), &value_bd);
     value_data = value_bd.data<T>();

@@ -29,14 +29,18 @@ at::Tensor empty_cuda(IntArrayRef size,
   return paddle::experimental::empty(
       size._PD_ToPaddleIntArray(),
       compat::_PD_AtenScalarTypeToPhiDataType(dtype),
-      phi::GPUPlace());
+      device_opt && device_opt->has_index() ? phi::GPUPlace(device_opt->index())
+                                            : paddle::DefaultGPUPlace());
 }
 
 at::Tensor empty_cuda(IntArrayRef size, const TensorOptions &options) {
+  auto place = options.has_device() && options.device().has_index()
+                   ? phi::GPUPlace(options.device().index())
+                   : paddle::DefaultGPUPlace();
   return paddle::experimental::empty(
       size._PD_ToPaddleIntArray(),
       compat::_PD_AtenScalarTypeToPhiDataType(options.dtype_opt().value()),
-      phi::GPUPlace());
+      place);
 }
 
 }  // namespace at::detail

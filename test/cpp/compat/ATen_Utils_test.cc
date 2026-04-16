@@ -15,6 +15,7 @@
 #include <ATen/Functions.h>
 #include <ATen/Utils.h>
 #include <ATen/core/TensorBody.h>
+#include <ATen/cuda/CUDAContext.h>
 #include <ATen/cuda/EmptyTensor.h>
 #include <ATen/native/cuda/Resize.h>
 #include <ATen/ops/tensor.h>
@@ -152,6 +153,9 @@ TEST(ATenUtilsTest, TensorBackend_CPUDevice_MatchesTensorCPU) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(ATenUtilsTest, TensorBackend_GPUDevice) {
+  if (!at::cuda::is_available()) {
+    return;
+  }
   std::vector<float> data = {7.0f, 8.0f};
   at::TensorOptions opts =
       at::TensorOptions().dtype(at::kFloat).device(c10::Device(c10::kCUDA, 0));
@@ -162,6 +166,9 @@ TEST(ATenUtilsTest, TensorBackend_GPUDevice) {
 }
 
 TEST(ATenUtilsTest, TensorComplexBackend_GPUDevice) {
+  if (!at::cuda::is_available()) {
+    return;
+  }
   std::vector<c10::complex<float>> data = {{1.0f, 0.0f}};
   at::TensorOptions opts = at::TensorOptions()
                                .dtype(at::kComplexFloat)

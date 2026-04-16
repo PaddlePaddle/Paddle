@@ -131,11 +131,11 @@ struct Device final {
       case DeviceType::CPU:
         return phi::CPUPlace();
       case DeviceType::CUDA:
-        return phi::GPUPlace(has_index() ? index_ : 0);
+        return has_index() ? phi::GPUPlace(index_) : paddle::DefaultGPUPlace();
       case DeviceType::XPU:
-        return phi::XPUPlace(has_index() ? index_ : 0);
+        return has_index() ? phi::XPUPlace(index_) : paddle::DefaultXPUPlace();
       case DeviceType::IPU:
-        return phi::IPUPlace(has_index() ? index_ : 0);
+        return has_index() ? phi::IPUPlace(index_) : phi::IPUPlace();
       case DeviceType::CUSTOM:
         return phi::CustomPlace(
             custom_device_type_.empty() ? "custom" : custom_device_type_,

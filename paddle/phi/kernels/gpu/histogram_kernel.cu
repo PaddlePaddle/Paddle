@@ -247,7 +247,7 @@ void HistogramKernel(const Context& dev_ctx,
             out_data);
     if (density) {
       DenseTensor sum = phi::Sum<float, Context>(
-          dev_ctx, *output, phi::IntArray({0}), phi::DataType::FLOAT32, false);
+          dev_ctx, *output, phi::IntArray({0}), DataType::FLOAT32, false);
       float sum_cpu;
       phi::memory_utils::Copy(CPUPlace(),
                               &sum_cpu,

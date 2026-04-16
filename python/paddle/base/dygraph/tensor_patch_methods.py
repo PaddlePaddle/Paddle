@@ -721,7 +721,7 @@ def monkey_patch_tensor():
     @overload
     def to(
         self: Tensor,
-        device: PlaceLike,
+        device: PlaceLike | None = ...,
         dtype: DTypeLike | None = ...,
         blocking: bool = ...,
         copy: bool = ...,
@@ -782,8 +782,6 @@ def monkey_patch_tensor():
             copy (bool, optional):
                 If ``True``, a new Tensor is created even when the Tensor
                 already matches the desired conversion. Default: ``False``.
-            other (Tensor, optional):
-                Tensor whose dtype and device are the desired dtype and device.
 
         Keyword args:
             non_blocking (bool, optional):

@@ -789,7 +789,7 @@ class Optimizer:
                 >>> ## example1: LRScheduler is not used, return the same value is all the same
                 >>> adam = paddle.optimizer.Adam(0.01, parameters=emb.parameters())
                 >>> for batch in range(10):
-                ...     input = paddle.randint(low=0, high=5, shape=[5])
+                ...     input = paddle.randint(low=0, high=5, size=[5])
                 ...     out = emb(input)
                 ...     out.backward()
                 ...     print("Learning rate of step{}: {}".format(batch, adam.get_lr()))  # 0.01
@@ -809,7 +809,7 @@ class Optimizer:
                 >>> scheduler = paddle.optimizer.lr.StepDecay(learning_rate=0.5, step_size=2, gamma=0.1)
                 >>> adam = paddle.optimizer.Adam(scheduler, parameters=emb.parameters())
                 >>> for batch in range(10):
-                ...     input = paddle.randint(low=0, high=5, shape=[5])
+                ...     input = paddle.randint(low=0, high=5, size=[5])
                 ...     out = emb(input)
                 ...     out.backward()
                 ...     print("Learning rate of step{}: {}".format(batch, adam.get_lr()))  # 0.5->0.05...
