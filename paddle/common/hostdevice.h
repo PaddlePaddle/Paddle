@@ -15,6 +15,7 @@
 #pragma once
 
 #ifdef __HIPCC__
+#include "paddle/common/hip_platform_macros.h"
 #include <hip/hip_runtime.h>
 #endif
 
