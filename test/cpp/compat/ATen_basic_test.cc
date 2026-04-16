@@ -26,6 +26,9 @@
 #include <c10/cuda/CUDAFunctions.h>
 #include <c10/cuda/CUDAGuard.h>
 #endif
+#ifdef PADDLE_WITH_XPU
+#include "paddle/phi/core/platform/device/xpu/xpu_info.h"
+#endif
 #include "ATen/ATen.h"
 #include "gtest/gtest.h"
 #include "paddle/common/macros.h"
@@ -433,6 +436,61 @@ TEST(TensorBodyTest, ToBackendUnsupportedBranch) {
   at::Tensor t = at::ones({1}, at::kFloat);
   ASSERT_THROW(t.toBackend(static_cast<c10::Backend>(-1)), ::std::exception);
 }
+
+TEST(TensorBodyTest, ToBackendCpuBranchCoverage) {
+  at::Tensor t = at::ones({1}, at::kFloat);
+  at::Tensor cpu_t = t.toBackend(c10::Backend::CPU);
+
+  ASSERT_EQ(cpu_t.device().type(), c10::DeviceType::CPU);
+  ASSERT_TRUE(cpu_t.equal(t));
+}
+
+TEST(TensorBodyTest, ToBackendCudaBranchCoverage) {
+  at::Tensor t = at::ones({1}, at::kFloat);
+
+  try {
+    at::Tensor cuda_t = t.toBackend(c10::Backend::CUDA);
+    ASSERT_EQ(cuda_t.device().type(), c10::DeviceType::CUDA);
+  } catch (const std::exception&) {
+    SUCCEED();
+  }
+}
+
+TEST(TensorBodyTest, ToBackendXpuBranchCoverage) {
+  at::Tensor t = at::ones({1}, at::kFloat);
+
+  try {
+    at::Tensor xpu_t = t.toBackend(c10::Backend::XPU);
+    ASSERT_EQ(xpu_t.device().type(), c10::DeviceType::XPU);
+  } catch (const std::exception&) {
+    SUCCEED();
+  }
+}
+
+TEST(TensorBodyTest, ToBackendIpuBranchCoverage) {
+  at::Tensor t = at::ones({1}, at::kFloat);
+
+  try {
+    at::Tensor ipu_t = t.toBackend(c10::Backend::IPU);
+    ASSERT_EQ(ipu_t.device().type(), c10::DeviceType::IPU);
+  } catch (const std::exception&) {
+    SUCCEED();
+  }
+}
+
+#ifdef PADDLE_WITH_XPU
+TEST(TensorBodyTest, ToBackendXpuUsesCurrentDevice) {
+  if (paddle::platform::GetXPUDeviceCount() < 2) {
+    return;
+  }
+  paddle::platform::XPUDeviceGuard guard(1);
+  at::Tensor t = at::ones({1}, at::kFloat);
+  at::Tensor xpu_t = t.toBackend(c10::Backend::XPU);
+
+  ASSERT_EQ(xpu_t.device().type(), c10::DeviceType::XPU);
+  ASSERT_EQ(xpu_t.device().index(), 1);
+}
+#endif
 
 TEST(TensorBodyTest, MetaUnsupportedBranch) {
   at::Tensor t = at::ones({1}, at::kFloat);

@@ -191,10 +191,10 @@ CUDAStream getStreamFromExternal(cudaStream_t ext_stream,
 #endif
 
 /**
- * Set the current CUDA stream for the device of the given stream in the
- * calling thread.
+ * Set the current CUDA stream for the device of the given stream.
  *
- * Implements per-thread, per-device current stream semantics.
+ * Keeps the compat c10 stream state aligned with Paddle's GPUContext so
+ * Paddle stream guards and c10 callers observe the same current stream.
  */
 void setCurrentCUDAStream(CUDAStream stream);
 
