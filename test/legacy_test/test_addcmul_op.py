@@ -386,7 +386,8 @@ class TestAddcmulAPI(unittest.TestCase):
         paddle.enable_static()
         with paddle.pir_utils.IrGuard():
             main = paddle.static.Program()
-            with paddle.static.program_guard(main):
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
                 x = paddle.static.data(
                     name="x", shape=self.shape, dtype=self.dtype
                 )
