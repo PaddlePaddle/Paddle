@@ -170,7 +170,7 @@ void GPUIndexElementwiseGetGrad(const GPUContext& dev_ctx,
 #ifdef PADDLE_WITH_CUDA
 #define WARP_SIZE 32
 
-template <typename scalar_t, int SZ>
+template <typename scalar_t, int SZ, bool accumulate>
 __global__ void IndexingBackwardKernel(const int64_t* sorted_indices,
                                        const int64_t* indices,
                                        const scalar_t* grad_output,
@@ -178,9 +178,10 @@ __global__ void IndexingBackwardKernel(const int64_t* sorted_indices,
                                        int64_t numel,
                                        int64_t stride,
                                        int64_t stride_before,
-                                       int64_t outer_dim,
-                                       bool accumulate) {
+                                       int64_t outer_dim) {
   using opmath_t = typename phi::dtype::MPTypeTrait<scalar_t>::Type;
+
+  const int64_t stride_step = static_cast<int64_t>(gridDim.y) * blockDim.x * SZ;
 
   for (int64_t z = blockIdx.z; z < outer_dim; z += gridDim.z) {
     for (int64_t idx =
@@ -189,61 +190,76 @@ __global__ void IndexingBackwardKernel(const int64_t* sorted_indices,
          idx += static_cast<int64_t>(gridDim.x) * blockDim.y) {
       if (idx < numel &&
           (idx == 0 || sorted_indices[idx] != sorted_indices[idx - 1])) {
-        int64_t curr_idx = idx;
-        do {
+        const int64_t weight_row =
+            sorted_indices[idx] * stride + z * stride_before;
+
+        if (accumulate) {
+          // Accumulate all gradients for this duplicate group in registers,
+          // then write back to global memory once. This avoids the serial
+          // dependency chain of repeated read-modify-write on the same
+          // global memory address (each ~400-800 cycles of latency).
           int64_t start_feature =
               threadIdx.x + static_cast<int64_t>(blockIdx.y) * blockDim.x * SZ;
-          if (!accumulate && (curr_idx < numel - 1) &&
-              sorted_indices[curr_idx] == sorted_indices[curr_idx + 1]) {
-            curr_idx++;
-            continue;
+          while (start_feature < stride) {
+            opmath_t acc[SZ];
+#pragma unroll
+            for (int ii = 0; ii < SZ; ii++) {
+              acc[ii] = static_cast<opmath_t>(0);
+            }
+
+            int64_t curr_idx = idx;
+            do {
+              const int64_t grad_row =
+                  indices[curr_idx] * stride + z * numel * stride;
+#pragma unroll
+              for (int ii = 0; ii < SZ; ii++) {
+                int64_t feature_dim = start_feature + ii * WARP_SIZE;
+                if (feature_dim < stride) {
+                  acc[ii] += static_cast<opmath_t>(
+                      grad_output[grad_row + feature_dim]);
+                }
+              }
+              curr_idx++;
+            } while (curr_idx < numel &&
+                     sorted_indices[curr_idx] == sorted_indices[curr_idx - 1]);
+
+#pragma unroll
+            for (int ii = 0; ii < SZ; ii++) {
+              int64_t feature_dim = start_feature + ii * WARP_SIZE;
+              if (feature_dim < stride) {
+                grad_weight[weight_row + feature_dim] = static_cast<scalar_t>(
+                    static_cast<opmath_t>(
+                        grad_weight[weight_row + feature_dim]) +
+                    acc[ii]);
+              }
+            }
+            start_feature += stride_step;
           }
-
-          const int64_t weight_row =
-              sorted_indices[curr_idx] * stride + z * stride_before;
+        } else {
+          // Non-accumulate: only keep the last duplicate's value.
+          // Find the last index in this duplicate group.
+          int64_t last_idx = idx;
+          while (last_idx + 1 < numel &&
+                 sorted_indices[last_idx + 1] == sorted_indices[idx]) {
+            last_idx++;
+          }
           const int64_t grad_row =
-              indices[curr_idx] * stride + z * numel * stride;
-          const opmath_t scale = static_cast<opmath_t>(1.0);
+              indices[last_idx] * stride + z * numel * stride;
 
-          opmath_t gradient[SZ];
-          opmath_t weight[SZ];
-
+          int64_t start_feature =
+              threadIdx.x + static_cast<int64_t>(blockIdx.y) * blockDim.x * SZ;
           while (start_feature < stride) {
 #pragma unroll
             for (int ii = 0; ii < SZ; ii++) {
               int64_t feature_dim = start_feature + ii * WARP_SIZE;
               if (feature_dim < stride) {
-                gradient[ii] =
-                    static_cast<opmath_t>(grad_output[grad_row + feature_dim]);
-                if (accumulate) {
-                  weight[ii] = static_cast<opmath_t>(
-                      grad_weight[weight_row + feature_dim]);
-                }
+                grad_weight[weight_row + feature_dim] = static_cast<scalar_t>(
+                    static_cast<opmath_t>(grad_output[grad_row + feature_dim]));
               }
             }
-
-#pragma unroll
-            for (int ii = 0; ii < SZ; ii++) {
-              if (accumulate) {
-                weight[ii] += gradient[ii] * scale;
-              } else {
-                weight[ii] = gradient[ii] * scale;
-              }
-            }
-
-#pragma unroll
-            for (int ii = 0; ii < SZ; ii++) {
-              int64_t feature_dim = start_feature + ii * WARP_SIZE;
-              if (feature_dim < stride) {
-                grad_weight[weight_row + feature_dim] =
-                    static_cast<scalar_t>(weight[ii]);
-              }
-            }
-            start_feature += static_cast<int64_t>(gridDim.y) * blockDim.x * SZ;
+            start_feature += stride_step;
           }
-          curr_idx++;
-        } while (curr_idx < numel &&
-                 sorted_indices[curr_idx] == sorted_indices[curr_idx - 1]);
+        }
       }
     }
   }
@@ -363,7 +379,7 @@ void IndexPutWithSortKernel(const GPUContext& dev_ctx,
                  static_cast<int64_t>(max_grid_size[2])));
     dim3 block(WARP_SIZE, INDICES_PER_BLOCK);
 
-    IndexingBackwardKernel<T, UNROLL>
+    IndexingBackwardKernel<T, UNROLL, true>
         <<<grid, block, 0, stream>>>(sorted_indices.data<IndexT>(),
                                      orig_indices.data<IndexT>(),
                                      expandedValue.data<T>(),
@@ -371,8 +387,7 @@ void IndexPutWithSortKernel(const GPUContext& dev_ctx,
                                      num_indices,
                                      sliceSize,
                                      strideBefore,
-                                     nElemBefore,
-                                     true);
+                                     nElemBefore);
 
     if (permuted) {
       DenseTensor transposed_src;
