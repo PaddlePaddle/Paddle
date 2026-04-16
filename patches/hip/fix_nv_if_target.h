@@ -15,10 +15,8 @@
 // Do **not** define `__CUDACC__` here: HIP-clang may already define it in some
 // passes, and pretending to be "CUDA compiling" breaks unrelated headers that
 // key off `__CUDACC__` before `__HIPCC__` (e.g. Paddle's bf16 shim includes
-// `<cuda_bf16.h>`). CCCL's `nv/target` only needs `__NVCC__` for the NVCC path.
-
-#if defined(__HIP__) || defined(__HIPCC__)
-#  ifndef __NVCC__
-#    define __NVCC__ 1
-#  endif
-#endif
+// `<cuda_bf16.h>`).
+//
+// Do **not** define fake `__NVCC__` on HIP either: it makes Paddle headers
+// (e.g. `cub.h`) pull CUDA-only includes. CCCL `nv/target` is patched to treat
+// `__HIPCC__` as the NVCC dispatch path (see `third_party/cccl/.../nv/target`).

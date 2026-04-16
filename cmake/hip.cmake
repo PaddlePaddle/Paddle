@@ -47,6 +47,11 @@ endif()
 # vendored libcudacxx is visible *before* `${ROCM_PATH}/include/thrust`.
 set(PADDLE_ROCM_LIBCUDACXX_INCLUDE_DIR
     "${PADDLE_SOURCE_DIR}/third_party/cccl/libcudacxx/include")
+# `third_party/cccl` is a submodule: ship HIP tweaks for CCCL `nv/target` here.
+if(EXISTS "${PADDLE_SOURCE_DIR}/patches/cccl/libcudacxx/include/nv/target")
+  include_directories(BEFORE
+                      "${PADDLE_SOURCE_DIR}/patches/cccl/libcudacxx/include")
+endif()
 if(EXISTS "${PADDLE_ROCM_LIBCUDACXX_INCLUDE_DIR}/cuda/__cccl_config")
   include_directories(BEFORE "${PADDLE_ROCM_LIBCUDACXX_INCLUDE_DIR}")
 else()
@@ -59,6 +64,11 @@ endif()
 if(EXISTS "${PADDLE_SOURCE_DIR}/patches/thrust/thrust/shuffle.h")
   # Ensure our patched Thrust headers can override ROCm's Thrust when present.
   include_directories(BEFORE "${PADDLE_SOURCE_DIR}/patches/thrust")
+endif()
+# Shadow select HIP headers so AMD platform macros are set before ROCm's
+# `#error` paths. ROCm 7 HIPCC rules may not apply `HIP_CXX_FLAGS` / `-include`.
+if(EXISTS "${PADDLE_SOURCE_DIR}/patches/rocm_shim/hip/hip_runtime.h")
+  include_directories(BEFORE "${PADDLE_SOURCE_DIR}/patches/rocm_shim")
 endif()
 include_directories(${ROCM_PATH}/include)
 message(STATUS "HIP version: ${HIP_VERSION}")
@@ -164,13 +174,6 @@ if(EXISTS "${PADDLE_SOURCE_DIR}/patches/hip/hip_amd_platform_prefix.h")
   list(APPEND HIP_CXX_FLAGS
               "-include${PADDLE_SOURCE_DIR}/patches/hip/hip_amd_platform_prefix.h")
 endif()
-# HIP-clang + ROCm Thrust/CCCL: install a safer `NV_IF_TARGET` implementation
-# before any headers are parsed in HIP translation units.
-if(EXISTS "${PADDLE_SOURCE_DIR}/patches/hip/fix_nv_if_target.h")
-  list(APPEND HIP_CXX_FLAGS
-              "-include${PADDLE_SOURCE_DIR}/patches/hip/fix_nv_if_target.h")
-endif()
-
 # Note(qili93): HIP has compile conflicts of float16.h as platform::float16 overload std::is_floating_point and std::is_integer
 list(APPEND HIP_CXX_FLAGS -D__HIP_NO_HALF_CONVERSIONS__=1)
 list(APPEND HIP_CXX_FLAGS -DROCM_NO_WRAPPER_HEADER_WARNING)
