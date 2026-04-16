@@ -67,6 +67,18 @@ class CustomRuntimeStrategy {
                             int block_z,
                             int shared_mem,
                             void* stream) = 0;
+  virtual void LaunchCooperativeKernel(void* func_ptr,
+                                       const std::string& func_name,
+                                       void** args,
+                                       int num_args,
+                                       int grid_x,
+                                       int grid_y,
+                                       int grid_z,
+                                       int block_x,
+                                       int block_y,
+                                       int block_z,
+                                       int shared_mem,
+                                       void* stream) = 0;
 };
 
 // Compilation Optimization Interface: Responsible for vendor-specific

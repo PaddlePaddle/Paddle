@@ -41,6 +41,9 @@
 namespace cinn {
 namespace backends {
 
+// Forward declaration — defined in codegen_device_util.cc
+bool RequiresCooperativeLaunch(const ir::LoweredFunc& func);
+
 #define KERNEL_ARGS "kernel_args"
 #define KERNEL_ARGS_NUM "kernel_args_num"
 #define KERNEL_STREAM "kernel_stream"
@@ -177,8 +180,12 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
                          common::X86Arch,
                          common::ARMArch>) { CINN_NOT_IMPLEMENTED; },
         [&](common::CustomDeviceArch) {
-          call_kernel = runtime::intrinsic::call_custom_device_kernel;
+          call_kernel =
+              RequiresCooperativeLaunch(ir::LoweredFunc(func))
+                  ? runtime::intrinsic::call_custom_device_cooperative_kernel
+                  : runtime::intrinsic::call_custom_device_kernel;
         },
+        // TODO(cinn): NVGPUArch should also check RequiresCooperativeLaunch
         [&](common::NVGPUArch) {
           call_kernel = runtime::intrinsic::call_cuda_kernel;
         },

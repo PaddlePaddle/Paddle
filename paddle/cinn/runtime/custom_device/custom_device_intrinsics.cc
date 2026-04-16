@@ -51,6 +51,24 @@ void ForceRegisterCinnCustomDeviceHostAPI() {
       .template AddInputType<void *>()
       .End();
 
+  using cinn::runtime::custom_device::
+      cinn_call_custom_device_cooperative_kernel;
+  REGISTER_EXTERN_FUNC_HELPER(cinn_call_custom_device_cooperative_kernel,
+                              cinn::common::DefaultHostTarget())
+      .template SetRetType<void>()
+      .template AddInputType<void *>()
+      .template AddInputType<void *>()
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType(cinn::common::type_of<int>())
+      .template AddInputType<void *>()
+      .End();
+
   using cinn::runtime::custom_device::infer_shape_set_value;
   REGISTER_EXTERN_FUNC_HELPER(infer_shape_set_value,
                               cinn::common::DefaultHostTarget())

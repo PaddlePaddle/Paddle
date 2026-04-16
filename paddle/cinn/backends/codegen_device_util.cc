@@ -290,7 +290,10 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
         call_kernel = runtime::intrinsic::call_sycl_kernel;
       },
       [&](common::CustomDeviceArch) {
-        call_kernel = runtime::intrinsic::call_custom_device_kernel;
+        call_kernel =
+            RequiresCooperativeLaunch(func)
+                ? runtime::intrinsic::call_custom_device_cooperative_kernel
+                : runtime::intrinsic::call_custom_device_kernel;
       });
   // TODO(Dmovic): use new ir when backend update done.
   // Author(liujinnan): Copy args instead of use func args directly in host
