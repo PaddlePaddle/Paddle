@@ -42,11 +42,19 @@ elseif(EXISTS "${ROCM_PATH}/hip/cmake/UseHIP.cmake")
 elseif(EXISTS "${HIP_PATH}/cmake/UseHIP.cmake")
   include(UseHIP)
 endif()
-# ROCm Thrust may include <cuda/__cccl_config>; prefer vendored libcudacxx first.
-if(EXISTS
-   "${PADDLE_SOURCE_DIR}/third_party/cccl/libcudacxx/include/cuda/__cccl_config")
-  include_directories(BEFORE
-                      "${PADDLE_SOURCE_DIR}/third_party/cccl/libcudacxx/include")
+# ROCm Thrust may include <cuda/__cccl_config>. Some targets (e.g. pure C++
+# `paddle/pir`) compile without HIP-specific include order, so we must ensure
+# vendored libcudacxx is visible *before* `${ROCM_PATH}/include/thrust`.
+set(PADDLE_ROCM_LIBCUDACXX_INCLUDE_DIR
+    "${PADDLE_SOURCE_DIR}/third_party/cccl/libcudacxx/include")
+if(EXISTS "${PADDLE_ROCM_LIBCUDACXX_INCLUDE_DIR}/cuda/__cccl_config")
+  include_directories(BEFORE "${PADDLE_ROCM_LIBCUDACXX_INCLUDE_DIR}")
+else()
+  message(
+    WARNING
+      "Missing ${PADDLE_ROCM_LIBCUDACXX_INCLUDE_DIR}/cuda/__cccl_config. "
+      "ROCm Thrust may fail to compile; initialize `third_party/cccl` (see cmake/external/cccl.cmake)."
+  )
 endif()
 if(EXISTS "${PADDLE_SOURCE_DIR}/patches/thrust/thrust/shuffle.h")
   # Ensure our patched Thrust headers can override ROCm's Thrust when present.
