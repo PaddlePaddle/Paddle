@@ -17,7 +17,7 @@
 // key off `__CUDACC__` before `__HIPCC__` (e.g. Paddle's bf16 shim includes
 // `<cuda_bf16.h>`). CCCL's `nv/target` only needs `__NVCC__` for the NVCC path.
 
-#if defined(__HIP__)
+#if defined(__HIP__) || defined(__HIPCC__)
 #  ifndef __NVCC__
 #    define __NVCC__ 1
 #  endif

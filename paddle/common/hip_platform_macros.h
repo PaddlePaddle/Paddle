@@ -14,15 +14,15 @@
 
 #pragma once
 
-// ROCm HIP public headers require exactly one of __HIP_PLATFORM_AMD__ or
-// __HIP_PLATFORM_NVIDIA__. hipcc normally injects these, but some CMake /
-// HIP-clang paths compile `.cu` without those -D flags, which breaks at
-// `#include <hip/hip_runtime.h>` and other hip headers.
+// ROCm HIP public headers require exactly **one** of __HIP_PLATFORM_AMD__ or
+// __HIP_PLATFORM_NVIDIA__. Some toolchains/flags leave both undefined, define
+// one to 0, or (buggy) define both — all trip `#include <hip/hip_runtime.h>`.
+// Paddle ROCm builds target AMD only: normalize to AMD + legacy HCC flags.
 #if defined(__HIPCC__) || defined(__HIP__)
-#  if !defined(__HIP_PLATFORM_AMD__) && !defined(__HIP_PLATFORM_NVIDIA__)
-#    define __HIP_PLATFORM_AMD__ 1
-#  endif
-#  if !defined(__HIP_PLATFORM_HCC__) && !defined(__HIP_PLATFORM_NVCC__)
-#    define __HIP_PLATFORM_HCC__ 1
-#  endif
+#  undef __HIP_PLATFORM_AMD__
+#  undef __HIP_PLATFORM_NVIDIA__
+#  define __HIP_PLATFORM_AMD__ 1
+#  undef __HIP_PLATFORM_HCC__
+#  undef __HIP_PLATFORM_NVCC__
+#  define __HIP_PLATFORM_HCC__ 1
 #endif

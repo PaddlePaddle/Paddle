@@ -158,6 +158,12 @@ list(APPEND HIP_CXX_FLAGS -D__HIP_PLATFORM_AMD__=1)
 # we compile HIP sources via clang++ -x hip instead of the hipcc wrapper.
 list(APPEND HIP_CXX_FLAGS -D__HIPCC__=1)
 
+# HIP public headers need a valid __HIP_PLATFORM_* before any `#include <hip/...>`.
+# Some HIP-Clang invocations omit hipcc's default -D flags; force AMD ROCm first.
+if(EXISTS "${PADDLE_SOURCE_DIR}/patches/hip/hip_amd_platform_prefix.h")
+  list(APPEND HIP_CXX_FLAGS
+              "-include${PADDLE_SOURCE_DIR}/patches/hip/hip_amd_platform_prefix.h")
+endif()
 # HIP-clang + ROCm Thrust/CCCL: install a safer `NV_IF_TARGET` implementation
 # before any headers are parsed in HIP translation units.
 if(EXISTS "${PADDLE_SOURCE_DIR}/patches/hip/fix_nv_if_target.h")
