@@ -661,12 +661,6 @@ class NoPipelineParallel(MetaParallelBase):
                     assert isinstance(loss_tensor, paddle.Tensor), (
                         "Currently, loss_fn should obtain Paddle.Tensor dtype"
                     )
-                    with paddle.amp.auto_cast(enable=False):
-                        if (
-                            self.accumulate_steps > 1
-                            and not self._delay_scale_loss
-                        ):
-                            loss_tensor = loss_tensor / self.accumulate_steps
                     if self.total_loss is None:
                         self.total_loss = []
                     # when self.total_loss length is less than idx, append a new tensor
@@ -691,17 +685,14 @@ class NoPipelineParallel(MetaParallelBase):
             return_micro_batch_loss = False
             for idx in range(len(self._layers._loss_fn)):
                 self.total_loss[idx] = paddle.to_tensor(self.total_loss[idx])
-                if not return_micro_batch_loss:
-                    # TODO(shenliang03): it will use mean/sum to calculate loss
-                    tmp = paddle.zeros_like(self.total_loss[idx][0])
-                    for loss in self.total_loss[idx]:
-                        tmp += loss.detach()
-                    if not self._delay_scale_loss:
-                        losses.append(tmp)
-                    else:
-                        losses.append(tmp / self.accumulate_steps)
-                else:
-                    losses.append(self.total_loss[idx].detach())
+                # if not return_micro_batch_loss:
+                # TODO(shenliang03): it will use mean/sum to calculate loss
+                tmp = paddle.zeros_like(self.total_loss[idx][0])
+                for loss in self.total_loss[idx]:
+                    tmp += loss.detach()
+                losses.append(tmp / self.accumulate_steps)
+                # else:
+                #     losses.append(self.total_loss[idx].detach())
             res = losses[0] if len(losses) == 1 else losses
         else:
             res = output_list
