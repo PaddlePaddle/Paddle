@@ -524,5 +524,98 @@ class TestAllBlockInfoVMM(unittest.TestCase):
         del t
 
 
+# ===========================================================================
+# Test 5: _fmt() utility (pure Python, no GPU needed)
+# ===========================================================================
+class TestFmt(unittest.TestCase):
+    """Unit tests for the _fmt() formatting helper."""
+
+    def test_none_returns_dash(self):
+        self.assertEqual(fp._fmt(None), "—")
+
+    def test_dash_string_returns_dash(self):
+        self.assertEqual(fp._fmt("—"), "—")
+
+    def test_float_default_percent(self):
+        self.assertEqual(fp._fmt(0.5), "50.0%")
+
+    def test_float_custom_fmt(self):
+        self.assertEqual(fp._fmt(123.4, ".0f"), "123")
+
+    def test_int_returns_str(self):
+        self.assertEqual(fp._fmt(42), "42")
+
+
+# ===========================================================================
+# Test 6: snapshot() boundary arithmetic (mock GPU calls, test Python logic)
+# ===========================================================================
+@_skip_no_gpu
+@unittest.skipIf(fp is None, "gpu_frag_profiler.py not importable")
+class TestSnapshotBoundaries(unittest.TestCase):
+    """Verify snapshot() guard expressions when reserved or driver_used are 0."""
+
+    def _make_snapshot_with(
+        self, allocated, reserved, max_allocated, free_gpu, total_gpu
+    ):
+        """Run snapshot() with mocked GPU memory API values."""
+        from unittest.mock import patch
+
+        with (
+            patch(
+                'paddle.device.cuda.memory_allocated', return_value=allocated
+            ),
+            patch('paddle.device.cuda.memory_reserved', return_value=reserved),
+            patch(
+                'paddle.device.cuda.max_memory_allocated',
+                return_value=max_allocated,
+            ),
+            patch.object(
+                fp.core, 'gpu_memory_available', return_value=free_gpu
+            ),
+            patch.object(fp.core, 'get_device_properties') as mock_prop,
+            patch.object(fp.core, 'all_block_info', side_effect=Exception()),
+            patch.object(
+                fp.core, 'vmm_all_block_info', side_effect=Exception()
+            ),
+            patch.object(fp.core, 'allocator_stats', side_effect=Exception()),
+        ):
+            mock_prop.return_value.total_memory = total_gpu
+            return fp.snapshot("boundary")
+
+    def test_reserved_zero_pool_util_is_one(self):
+        """reserved=0 → pool_util defaults to 1.0 (no division by zero)."""
+        snap = self._make_snapshot_with(
+            allocated=0,
+            reserved=0,
+            max_allocated=0,
+            free_gpu=8 * fp.GB,
+            total_gpu=8 * fp.GB,
+        )
+        self.assertAlmostEqual(snap["pool_util"], 1.0)
+
+    def test_reserved_zero_peak_waste_is_zero(self):
+        """reserved=0 → peak_waste defaults to 0.0."""
+        snap = self._make_snapshot_with(
+            allocated=0,
+            reserved=0,
+            max_allocated=0,
+            free_gpu=8 * fp.GB,
+            total_gpu=8 * fp.GB,
+        )
+        self.assertAlmostEqual(snap["peak_waste"], 0.0)
+
+    def test_driver_used_zero_hidden_ratio_is_zero(self):
+        """driver_used=0 → hidden_ratio defaults to 0 (no division by zero)."""
+        total = 8 * fp.GB
+        snap = self._make_snapshot_with(
+            allocated=0,
+            reserved=0,
+            max_allocated=0,
+            free_gpu=total,
+            total_gpu=total,  # driver_used = total - free = 0
+        )
+        self.assertAlmostEqual(snap["hidden_ratio"], 0)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
