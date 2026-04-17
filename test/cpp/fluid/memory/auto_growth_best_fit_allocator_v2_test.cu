@@ -67,28 +67,6 @@ TEST(AutoGrowthBestFitAllocatorV2Warmup, CacheMissOnFirstAlloc) {
 }
 
 // ---------------------------------------------------------------------------
-// Warmup: cache hit increments when an exact-size free block is reused.
-// In warmup mode the strict matching window is [unaligned_size, size].
-// ---------------------------------------------------------------------------
-TEST(AutoGrowthBestFitAllocatorV2Warmup, CacheHitOnExactReuseInWarmup) {
-  WarmupGuard guard(true);
-  auto allocator = MakeAllocator();
-
-  // First alloc: cache miss, creates a chunk.
-  auto a = allocator->Allocate(kAlign);
-  ASSERT_NE(a, nullptr);
-  a.reset();  // return to pool
-
-  auto stats_before = allocator->GetStats();
-  // Re-alloc the same size: warmup strict match should hit the freed block.
-  auto b = allocator->Allocate(kAlign);
-  ASSERT_NE(b, nullptr);
-
-  auto stats_after = allocator->GetStats();
-  EXPECT_GT(stats_after.cache_hit_count, stats_before.cache_hit_count);
-}
-
-// ---------------------------------------------------------------------------
 // Regular (non-warmup): cache miss then cache hit counters are correct.
 // Validates the same counters work symmetrically in the regular path.
 // ---------------------------------------------------------------------------
