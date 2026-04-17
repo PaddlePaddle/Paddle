@@ -151,3 +151,78 @@ TEST(ScalarTypeTest, RestoredCompatScalarTypesKeepSourceLevelSemantics) {
   EXPECT_TRUE(c10::isFloat8Type(c10::ScalarType::Float8_e8m0fnu));
   EXPECT_TRUE(c10::isReducedFloatingType(c10::ScalarType::Float4_e2m1fn_x2));
 }
+
+TEST(ScalarTypeTest, HelperPredicatesAndConversionsMatchPyTorchBehavior) {
+  EXPECT_TRUE(c10::isQIntType(c10::ScalarType::QInt8));
+  EXPECT_TRUE(c10::isQIntType(c10::ScalarType::QUInt8));
+  EXPECT_TRUE(c10::isQIntType(c10::ScalarType::QInt32));
+  EXPECT_TRUE(c10::isQIntType(c10::ScalarType::QUInt4x2));
+  EXPECT_TRUE(c10::isQIntType(c10::ScalarType::QUInt2x4));
+  EXPECT_FALSE(c10::isQIntType(c10::ScalarType::Float));
+
+  EXPECT_TRUE(c10::isBitsType(c10::ScalarType::Bits1x8));
+  EXPECT_TRUE(c10::isBitsType(c10::ScalarType::Bits2x4));
+  EXPECT_TRUE(c10::isBitsType(c10::ScalarType::Bits4x2));
+  EXPECT_TRUE(c10::isBitsType(c10::ScalarType::Bits8));
+  EXPECT_TRUE(c10::isBitsType(c10::ScalarType::Bits16));
+  EXPECT_FALSE(c10::isBitsType(c10::ScalarType::Int));
+
+  EXPECT_TRUE(c10::isBarebonesUnsignedType(c10::ScalarType::UInt1));
+  EXPECT_TRUE(c10::isBarebonesUnsignedType(c10::ScalarType::UInt7));
+  EXPECT_TRUE(c10::isBarebonesUnsignedType(c10::ScalarType::UInt16));
+  EXPECT_TRUE(c10::isBarebonesUnsignedType(c10::ScalarType::UInt64));
+  EXPECT_FALSE(c10::isBarebonesUnsignedType(c10::ScalarType::Byte));
+  EXPECT_FALSE(c10::isBarebonesUnsignedType(c10::ScalarType::Int));
+
+  EXPECT_EQ(c10::toQIntType(c10::ScalarType::Byte), c10::ScalarType::QUInt8);
+  EXPECT_EQ(c10::toQIntType(c10::ScalarType::Char), c10::ScalarType::QInt8);
+  EXPECT_EQ(c10::toQIntType(c10::ScalarType::Int), c10::ScalarType::QInt32);
+  EXPECT_EQ(c10::toQIntType(c10::ScalarType::Float), c10::ScalarType::Float);
+
+  EXPECT_EQ(c10::toUnderlying(c10::ScalarType::QUInt8), c10::ScalarType::Byte);
+  EXPECT_EQ(c10::toUnderlying(c10::ScalarType::QUInt4x2),
+            c10::ScalarType::Byte);
+  EXPECT_EQ(c10::toUnderlying(c10::ScalarType::QUInt2x4),
+            c10::ScalarType::Byte);
+  EXPECT_EQ(c10::toUnderlying(c10::ScalarType::QInt8), c10::ScalarType::Char);
+  EXPECT_EQ(c10::toUnderlying(c10::ScalarType::QInt32), c10::ScalarType::Int);
+  EXPECT_EQ(c10::toUnderlying(c10::ScalarType::Float), c10::ScalarType::Float);
+
+  EXPECT_TRUE(
+      c10::isUnderlying(c10::ScalarType::Byte, c10::ScalarType::QUInt8));
+  EXPECT_TRUE(c10::isUnderlying(c10::ScalarType::Char, c10::ScalarType::QInt8));
+  EXPECT_TRUE(c10::isUnderlying(c10::ScalarType::Int, c10::ScalarType::QInt32));
+  EXPECT_FALSE(
+      c10::isUnderlying(c10::ScalarType::Byte, c10::ScalarType::QInt8));
+
+  EXPECT_EQ(c10::toRealValueType(c10::ScalarType::ComplexHalf),
+            c10::ScalarType::Half);
+  EXPECT_EQ(c10::toRealValueType(c10::ScalarType::ComplexFloat),
+            c10::ScalarType::Float);
+  EXPECT_EQ(c10::toRealValueType(c10::ScalarType::ComplexDouble),
+            c10::ScalarType::Double);
+  EXPECT_EQ(c10::toRealValueType(c10::ScalarType::Int), c10::ScalarType::Int);
+
+  EXPECT_EQ(c10::toComplexType(c10::ScalarType::Half),
+            c10::ScalarType::ComplexHalf);
+  EXPECT_EQ(c10::toComplexType(c10::ScalarType::Float),
+            c10::ScalarType::ComplexFloat);
+  EXPECT_EQ(c10::toComplexType(c10::ScalarType::Double),
+            c10::ScalarType::ComplexDouble);
+  EXPECT_EQ(c10::toComplexType(c10::ScalarType::BFloat16),
+            c10::ScalarType::ComplexFloat);
+  EXPECT_EQ(c10::toComplexType(c10::ScalarType::ComplexFloat),
+            c10::ScalarType::ComplexFloat);
+
+  EXPECT_TRUE(c10::canCast(c10::ScalarType::Int, c10::ScalarType::Long));
+  EXPECT_TRUE(c10::canCast(c10::ScalarType::Float, c10::ScalarType::Double));
+  EXPECT_TRUE(c10::canCast(c10::ScalarType::ComplexFloat,
+                           c10::ScalarType::ComplexDouble));
+  EXPECT_TRUE(c10::canCast(c10::ScalarType::Bool, c10::ScalarType::Int));
+
+  EXPECT_FALSE(
+      c10::canCast(c10::ScalarType::ComplexFloat, c10::ScalarType::Float));
+  EXPECT_FALSE(c10::canCast(c10::ScalarType::Float, c10::ScalarType::Int));
+  EXPECT_FALSE(c10::canCast(c10::ScalarType::Double, c10::ScalarType::Long));
+  EXPECT_FALSE(c10::canCast(c10::ScalarType::Int, c10::ScalarType::Bool));
+}
