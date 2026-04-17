@@ -43,6 +43,14 @@ def _get_dev():
     return core.get_cuda_current_device_id()
 
 
+class _NonVMMTestBase(unittest.TestCase):
+    """Common setUp for non-VMM allocator tests."""
+
+    def setUp(self):
+        paddle.set_flags({"FLAGS_use_virtual_memory_auto_growth": False})
+        paddle.device.cuda.empty_cache()
+
+
 # ---------------------------------------------------------------------------
 # Helper: allocate tensors in a pattern that creates fragmentation
 # ---------------------------------------------------------------------------
@@ -59,13 +67,9 @@ def _create_fragmented_state():
         numel = mb * MB // 4  # float32 = 4 bytes
         tensors[name] = paddle.empty([numel], dtype="float32")
 
-    paddle.device.synchronize()
-
     # Free B and D to create holes
     del tensors["B"]
     del tensors["D"]
-    paddle.device.synchronize()
-
     return tensors
 
 
@@ -73,17 +77,12 @@ def _create_fragmented_state():
 # Test 1: core.all_block_info (non-VMM)
 # ===========================================================================
 @_skip_no_gpu
-class TestAllBlockInfoNonVMM(unittest.TestCase):
+class TestAllBlockInfoNonVMM(_NonVMMTestBase):
     """Test all_block_info() on the default (non-VMM) allocator."""
-
-    def setUp(self):
-        paddle.set_flags({"FLAGS_use_virtual_memory_auto_growth": False})
-        paddle.device.cuda.empty_cache()
 
     def test_returns_non_empty_after_alloc(self):
         """After allocation, all_block_info should return at least one allocator with blocks."""
         t = paddle.randn([1024], dtype="float32")
-        paddle.device.synchronize()
 
         blocks = core.all_block_info(_get_dev())
         self.assertIsInstance(blocks, list)
@@ -105,9 +104,7 @@ class TestAllBlockInfoNonVMM(unittest.TestCase):
     def test_free_blocks_appear_after_dealloc(self):
         """After freeing a tensor, at least one block should be marked is_free=True."""
         t = paddle.randn([MB], dtype="float32")  # ~4MB
-        paddle.device.synchronize()
         del t
-        paddle.device.synchronize()
 
         blocks = core.all_block_info(_get_dev())
         all_blocks = [b for allocator in blocks for b in allocator]
@@ -137,7 +134,6 @@ class TestAllBlockInfoNonVMM(unittest.TestCase):
     def test_block_sizes_sum_to_reserved(self):
         """Total size of all blocks should approximately equal reserved memory."""
         t = paddle.randn([5 * MB // 4], dtype="float32")  # ~5MB
-        paddle.device.synchronize()
 
         blocks = core.all_block_info(_get_dev())
         total_block_size = sum(b[0] for allocator in blocks for b in allocator)
@@ -158,17 +154,12 @@ class TestAllBlockInfoNonVMM(unittest.TestCase):
 # Test 2: core.allocator_stats (non-VMM)
 # ===========================================================================
 @_skip_no_gpu
-class TestAllocatorStatsNonVMM(unittest.TestCase):
+class TestAllocatorStatsNonVMM(_NonVMMTestBase):
     """Test allocator_stats() runtime counters on the default (non-VMM) allocator."""
-
-    def setUp(self):
-        paddle.set_flags({"FLAGS_use_virtual_memory_auto_growth": False})
-        paddle.device.cuda.empty_cache()
 
     def test_stats_returns_expected_keys(self):
         """allocator_stats should return a dict with all 10 expected keys."""
         t = paddle.randn([1024], dtype="float32")
-        paddle.device.synchronize()
 
         stats = core.allocator_stats(_get_dev())
         expected_keys = {
@@ -193,7 +184,6 @@ class TestAllocatorStatsNonVMM(unittest.TestCase):
         """total_alloc_times should increase after allocations."""
         stats_before = core.allocator_stats(_get_dev())
         t = paddle.randn([MB], dtype="float32")
-        paddle.device.synchronize()
 
         stats_after = core.allocator_stats(_get_dev())
         self.assertGreater(
@@ -207,11 +197,9 @@ class TestAllocatorStatsNonVMM(unittest.TestCase):
     def test_free_count_increases(self):
         """total_free_times should increase after freeing."""
         t = paddle.randn([MB], dtype="float32")
-        paddle.device.synchronize()
 
         stats_before = core.allocator_stats(_get_dev())
         del t
-        paddle.device.synchronize()
 
         stats_after = core.allocator_stats(_get_dev())
         self.assertGreater(
@@ -229,7 +217,6 @@ class TestAllocatorStatsNonVMM(unittest.TestCase):
         t = paddle.randn(
             [50 * MB // 4], dtype="float32"
         )  # 50MB, likely new chunk
-        paddle.device.synchronize()
 
         stats_after = core.allocator_stats(_get_dev())
         # Either cache_miss increases (new chunk) or cache_hit increases (reuse)
@@ -250,13 +237,10 @@ class TestAllocatorStatsNonVMM(unittest.TestCase):
     def test_cache_hit_on_realloc(self):
         """Freeing then re-allocating the same size should get a cache hit."""
         t = paddle.randn([MB], dtype="float32")
-        paddle.device.synchronize()
         del t
-        paddle.device.synchronize()
 
         stats_before = core.allocator_stats(_get_dev())
         t2 = paddle.randn([MB], dtype="float32")  # should reuse freed block
-        paddle.device.synchronize()
 
         stats_after = core.allocator_stats(_get_dev())
         hit_delta = (
@@ -272,14 +256,11 @@ class TestAllocatorStatsNonVMM(unittest.TestCase):
         """Allocating large then freeing, then allocating small should trigger a split."""
         # Alloc a large block, free it, then alloc a smaller one from the same chunk
         big = paddle.randn([20 * MB // 4], dtype="float32")
-        paddle.device.synchronize()
         del big
-        paddle.device.synchronize()
 
         stats_before = core.allocator_stats(_get_dev())
         # This smaller alloc should reuse the freed block and split it
         small = paddle.randn([1 * MB // 4], dtype="float32")
-        paddle.device.synchronize()
 
         stats_after = core.allocator_stats(_get_dev())
         split_delta = stats_after["split_count"] - stats_before["split_count"]
@@ -296,19 +277,15 @@ class TestAllocatorStatsNonVMM(unittest.TestCase):
         # Alloc a big block, free it, then alloc two smaller blocks from it
         # (this guarantees they are adjacent inside the same chunk).
         big = paddle.randn([20 * MB // 4], dtype="float32")  # 20MB
-        paddle.device.synchronize()
         del big
-        paddle.device.synchronize()
 
         # Two small allocs will split the freed 20MB block -> adjacent
         a = paddle.randn([5 * MB // 4], dtype="float32")
         b = paddle.randn([5 * MB // 4], dtype="float32")
-        paddle.device.synchronize()
 
         stats_before = core.allocator_stats(_get_dev())
         del a
         del b
-        paddle.device.synchronize()
 
         stats_after = core.allocator_stats(_get_dev())
         merge_delta = stats_after["merge_count"] - stats_before["merge_count"]
@@ -321,7 +298,6 @@ class TestAllocatorStatsNonVMM(unittest.TestCase):
         t = paddle.randn(
             [1000], dtype="float32"
         )  # 4000 bytes, likely not aligned
-        paddle.device.synchronize()
 
         stats = core.allocator_stats(_get_dev())
         self.assertGreater(stats["total_alloc_size"], 0)
@@ -338,7 +314,6 @@ class TestAllocatorStatsNonVMM(unittest.TestCase):
         """Allocating a large tensor should increase chunk_count."""
         stats_before = core.allocator_stats(_get_dev())
         t = paddle.randn([100 * MB // 4], dtype="float32")  # 100MB
-        paddle.device.synchronize()
 
         stats_after = core.allocator_stats(_get_dev())
         self.assertGreaterEqual(
@@ -355,10 +330,8 @@ class TestAllocatorStatsNonVMM(unittest.TestCase):
         # Do a known sequence
         t1 = paddle.randn([MB], dtype="float32")
         t2 = paddle.randn([MB], dtype="float32")
-        paddle.device.synchronize()
         del t1
         del t2
-        paddle.device.synchronize()
 
         stats = core.allocator_stats(_get_dev())
         hit_miss = stats["cache_hit_count"] + stats["cache_miss_count"]
@@ -383,17 +356,12 @@ except ImportError:
 
 @_skip_no_gpu
 @unittest.skipIf(fp is None, "gpu_frag_profiler.py not importable")
-class TestGpuFragProfiler(unittest.TestCase):
+class TestGpuFragProfiler(_NonVMMTestBase):
     """Test the profiler script functions."""
-
-    def setUp(self):
-        paddle.set_flags({"FLAGS_use_virtual_memory_auto_growth": False})
-        paddle.device.cuda.empty_cache()
 
     def test_snapshot_returns_base_metrics(self):
         """snapshot() should always return the base metrics."""
         t = paddle.randn([MB], dtype="float32")
-        paddle.device.synchronize()
 
         snap = fp.snapshot("test")
         self.assertEqual(snap["tag"], "test")
@@ -407,32 +375,24 @@ class TestGpuFragProfiler(unittest.TestCase):
 
         del t
 
-    def test_snapshot_has_block_metrics(self):
-        """snapshot() should include block-level metrics after patch."""
+    def test_snapshot_has_all_metrics(self):
+        """snapshot() should include block-level and runtime metrics."""
         t = paddle.randn([MB], dtype="float32")
-        paddle.device.synchronize()
         del t
-        paddle.device.synchronize()
 
-        snap = fp.snapshot("after_free")
-        # Block metrics should be populated
-        self.assertIn("free_block_count", snap)
-        self.assertIn("external_frag", snap)
-        self.assertIn("max_free_block_mb", snap)
-
-    def test_snapshot_has_runtime_counters(self):
-        """snapshot() should include runtime counters after patch."""
-        t = paddle.randn([MB], dtype="float32")
-        paddle.device.synchronize()
-
-        snap = fp.snapshot("counters")
-        self.assertIn("cache_hit_rate", snap)
-        self.assertIn("split_rate", snap)
-        self.assertIn("merge_rate", snap)
-        self.assertIn("internal_frag", snap)
-        self.assertIn("chunk_count", snap)
-
-        del t
+        snap = fp.snapshot("metrics")
+        expected_keys = [
+            "free_block_count",
+            "external_frag",
+            "max_free_block_mb",
+            "cache_hit_rate",
+            "split_rate",
+            "merge_rate",
+            "internal_frag",
+            "chunk_count",
+        ]
+        for key in expected_keys:
+            self.assertIn(key, snap, f"Missing key: {key}")
 
     def test_fill_block_metrics_computation(self):
         """_fill_block_metrics should compute correct external frag."""
@@ -513,7 +473,6 @@ class TestAllBlockInfoVMM(unittest.TestCase):
     def test_vmm_mode_returns_blocks(self):
         """all_block_info should work in VMM mode too."""
         t = paddle.randn([1024], dtype="float32")
-        paddle.device.synchronize()
 
         blocks = core.all_block_info(_get_dev())
         self.assertIsInstance(blocks, list)
@@ -530,20 +489,17 @@ class TestAllBlockInfoVMM(unittest.TestCase):
 class TestFmt(unittest.TestCase):
     """Unit tests for the _fmt() formatting helper."""
 
-    def test_none_returns_dash(self):
-        self.assertEqual(fp._fmt(None), "—")
-
-    def test_dash_string_returns_dash(self):
-        self.assertEqual(fp._fmt("—"), "—")
-
-    def test_float_default_percent(self):
-        self.assertEqual(fp._fmt(0.5), "50.0%")
-
-    def test_float_custom_fmt(self):
-        self.assertEqual(fp._fmt(123.4, ".0f"), "123")
-
-    def test_int_returns_str(self):
-        self.assertEqual(fp._fmt(42), "42")
+    def test_fmt_cases(self):
+        cases = [
+            (None, {}, "—"),
+            ("—", {}, "—"),
+            (0.5, {}, "50.0%"),
+            (123.4, {"fmt": ".0f"}, "123"),
+            (42, {}, "42"),
+        ]
+        for val, kwargs, expected in cases:
+            with self.subTest(val=val):
+                self.assertEqual(fp._fmt(val, **kwargs), expected)
 
 
 # ===========================================================================
@@ -582,38 +538,11 @@ class TestSnapshotBoundaries(unittest.TestCase):
             mock_prop.return_value.total_memory = total_gpu
             return fp.snapshot("boundary")
 
-    def test_reserved_zero_pool_util_is_one(self):
-        """reserved=0 → pool_util defaults to 1.0 (no division by zero)."""
-        snap = self._make_snapshot_with(
-            allocated=0,
-            reserved=0,
-            max_allocated=0,
-            free_gpu=8 * fp.GB,
-            total_gpu=8 * fp.GB,
-        )
+    def test_all_zeros_boundary(self):
+        """reserved=0, driver_used=0 → no division by zero."""
+        snap = self._make_snapshot_with(0, 0, 0, 8 * fp.GB, 8 * fp.GB)
         self.assertAlmostEqual(snap["pool_util"], 1.0)
-
-    def test_reserved_zero_peak_waste_is_zero(self):
-        """reserved=0 → peak_waste defaults to 0.0."""
-        snap = self._make_snapshot_with(
-            allocated=0,
-            reserved=0,
-            max_allocated=0,
-            free_gpu=8 * fp.GB,
-            total_gpu=8 * fp.GB,
-        )
         self.assertAlmostEqual(snap["peak_waste"], 0.0)
-
-    def test_driver_used_zero_hidden_ratio_is_zero(self):
-        """driver_used=0 → hidden_ratio defaults to 0 (no division by zero)."""
-        total = 8 * fp.GB
-        snap = self._make_snapshot_with(
-            allocated=0,
-            reserved=0,
-            max_allocated=0,
-            free_gpu=total,
-            total_gpu=total,  # driver_used = total - free = 0
-        )
         self.assertAlmostEqual(snap["hidden_ratio"], 0)
 
 
