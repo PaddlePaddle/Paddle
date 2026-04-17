@@ -20,6 +20,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/range_function.h"
 
 namespace phi {
@@ -37,14 +38,48 @@ void ArangeTensorKernel(const Context& dev_ctx,
                         const DenseTensor& end,
                         const DenseTensor& step,
                         DenseTensor* out) {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  MPType start_value =
-      static_cast<MPType>(GetValue<T, Context>(dev_ctx, start));
-  MPType end_value = static_cast<MPType>(GetValue<T, Context>(dev_ctx, end));
-  MPType step_value = static_cast<MPType>(GetValue<T, Context>(dev_ctx, step));
-
+  bool any_float = phi::IsFloatingType(start.dtype()) ||
+                   phi::IsFloatingType(end.dtype()) || 
+                   phi::IsFloatingType(step.dtype());
   int64_t size = 0;
-  funcs::GetSize(start_value, end_value, step_value, &size);
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType start_value, step_value;
+  if(any_float) {
+    double sv, ev, stv;
+    PD_VISIT_ALL_TYPES(
+        start.dtype(), "GetStart", ([&] {
+          sv = static_cast<double>(GetValue<data_t, Context>(dev_ctx, start));
+        }));
+    PD_VISIT_ALL_TYPES(
+        end.dtype(), "GetEnd", ([&] {
+          ev = static_cast<double>(GetValue<data_t, Context>(dev_ctx, end));
+        }));
+    PD_VISIT_ALL_TYPES(
+        step.dtype(), "GetStep", ([&] {
+          stv = static_cast<double>(GetValue<data_t, Context>(dev_ctx, step));
+        }));
+    funcs::GetSize(sv, ev, stv, &size);
+    start_value = static_cast<MPType>(sv);
+    step_value = static_cast<MPType>(stv);
+  } else {
+    int64_t sv, ev, stv;
+    PD_VISIT_ALL_TYPES(
+        start.dtype(), "GetStart", ([&] {
+          sv = static_cast<int64_t>(GetValue<data_t, Context>(dev_ctx, start));
+        }));
+    PD_VISIT_ALL_TYPES(
+        end.dtype(), "GetEnd", ([&] {
+          ev = static_cast<int64_t>(GetValue<data_t, Context>(dev_ctx, end));
+        }));
+    PD_VISIT_ALL_TYPES(
+        step.dtype(), "GetStep", ([&] {
+          stv = static_cast<int64_t>(GetValue<data_t, Context>(dev_ctx, step));
+        }));
+    funcs::GetSize(sv, ev, stv, &size);
+    start_value = static_cast<MPType>(sv);
+    step_value = static_cast<MPType>(stv);
+  }
+
   out->Resize({size});
   T* out_data = dev_ctx.template Alloc<T>(out);
 
@@ -89,11 +124,54 @@ void ArangeKernel(const Context& dev_ctx,
                   const Scalar& end,
                   const Scalar& step,
                   DenseTensor* out) {
-  T start_value = start.to<T>();
-  T end_value = end.to<T>();
-  T step_value = step.to<T>();
-  ArangeNullaryKernel<T, Context>(
-      dev_ctx, start_value, end_value, step_value, out);
+  std::cout << "Call ArangeKernel in arange" << std::endl;
+  // Use double to compute size for floating-point types, int64_t for integer types
+  // This avoids precision loss for low-precision types like bfloat16/float16
+  // (e.g. bfloat16(826) truncates to 824)
+  
+  bool is_floating = phi::IsFloatingType(start.dtype()) ||
+                     phi::IsFloatingType(end.dtype()) ||
+                     phi::IsFloatingType(step.dtype());
+  
+  if (is_floating) {
+    // Use double for floating-point types
+    double start_value = start.to<double>();
+    double end_value = end.to<double>();
+    double step_value = step.to<double>();
+
+    int64_t size = 0;
+    funcs::GetSize(start_value, end_value, step_value, &size);
+    out->Resize({size});
+    T* out_data = dev_ctx.template Alloc<T>(out);
+
+    auto stream = dev_ctx.stream();
+    int64_t block = std::min(size, static_cast<int64_t>(256));
+    if (block == 0) {
+      return;
+    }
+    int64_t grid = (size + block - 1) / block;
+    Range<double, T><<<grid, block, 0, stream>>>(
+        start_value, step_value, size, out_data);
+  } else {
+    // Use int64_t for integer types
+    int64_t start_value = start.to<int64_t>();
+    int64_t end_value = end.to<int64_t>();
+    int64_t step_value = step.to<int64_t>();
+
+    int64_t size = 0;
+    funcs::GetSize(start_value, end_value, step_value, &size);
+    out->Resize({size});
+    T* out_data = dev_ctx.template Alloc<T>(out);
+
+    auto stream = dev_ctx.stream();
+    int64_t block = std::min(size, static_cast<int64_t>(256));
+    if (block == 0) {
+      return;
+    }
+    int64_t grid = (size + block - 1) / block;
+    Range<int64_t, T><<<grid, block, 0, stream>>>(
+        start_value, step_value, size, out_data);
+  }
 }
 
 template decltype(ArangeNullaryKernel<int64_t, GPUContext>) ArangeNullaryKernel;
