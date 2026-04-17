@@ -1048,6 +1048,9 @@ class DygraphShardingOptimizerV2:
         group_to_buffers = defaultdict(list)
         for comm_buffer in self._comm_buffer_list:
             if comm_buffer.need_reduce_scale_sync():
+                assert not comm_buffer._free_grads_in_comm, (
+                    "fused reduce_scatter does not support _free_grads_in_comm yet"
+                )
                 key = (comm_buffer._comm_group, comm_buffer.grad_storage.dtype)
                 group_to_buffers[key].append(comm_buffer)
             else:
@@ -1059,7 +1062,7 @@ class DygraphShardingOptimizerV2:
                 continue
 
             nranks = comm_group.nranks
-            rank = comm_group.rank
+            rank = max(comm_group.rank, 0)
 
             # Single buffer case: no fusion needed
             if len(buffers) == 1:
@@ -1073,6 +1076,23 @@ class DygraphShardingOptimizerV2:
             for buf in buffers:
                 buf_size = buf.grad_storage._numel()
                 shard_sizes.append(buf_size // nranks)
+
+            # Determine reduce op
+            reduce_op = (
+                paddle.distributed.ReduceOp.AVG
+                if buffers[0]._use_reduce_avg
+                else paddle.distributed.ReduceOp.SUM
+            )
+            if paddle.distributed.in_auto_parallel_align_mode():
+                reduce_op = paddle.distributed.ReduceOp.SUM
+
+            # Scale grad_storage in-place before comm (matches original _comm_grads L787-789)
+            # This is critical: param.grad/main_grad are views of grad_storage,
+            # so in-place scale here modifies them too, keeping behavior identical.
+            for buf in buffers:
+                if not buf._scale_after_comm and not buf._use_reduce_avg:
+                    scale_factor = 1.0 / nranks
+                    buf.grad_storage.scale_(scale_factor)
 
             # Interleaved concat: [buf0_shard0, buf1_shard0, buf0_shard1, buf1_shard1, ...]
             # This ensures that after reduce_scatter, each rank gets the correct shards
@@ -1093,23 +1113,6 @@ class DygraphShardingOptimizerV2:
             begin = total_shard_size * rank
             end = begin + total_shard_size
 
-            # Determine reduce op
-            reduce_op = (
-                paddle.distributed.ReduceOp.AVG
-                if buffers[0]._use_reduce_avg
-                else paddle.distributed.ReduceOp.SUM
-            )
-            if paddle.distributed.in_auto_parallel_align_mode():
-                reduce_op = paddle.distributed.ReduceOp.SUM
-
-            # Scale before comm if needed
-            if (
-                not buffers[0]._scale_after_comm
-                and not buffers[0]._use_reduce_avg
-            ):
-                scale_factor = 1.0 / nranks
-                fused_grad.scale_(scale_factor)
-
             # One reduce_scatter for all buffers
             reduce_scattered = fused_grad._slice(begin, end)
             task = paddle.distributed.reduce_scatter(
@@ -1120,11 +1123,6 @@ class DygraphShardingOptimizerV2:
                 sync_op=False,
             )
             task.wait()
-
-            # Scale after comm if needed
-            if buffers[0]._scale_after_comm and not buffers[0]._use_reduce_avg:
-                scale_factor = 1.0 / nranks
-                reduce_scattered.scale_(scale_factor)
 
             # Copy results back to each buffer's grad_storage slice
             # reduce_scattered = [buf0_shard_rank, buf1_shard_rank, ...]
@@ -1138,9 +1136,21 @@ class DygraphShardingOptimizerV2:
                 dst_slice = buf.grad_storage._slice(buf_begin, buf_end)
                 dst_slice.copy_(src_slice, False)
                 offset += shard_size
+                buf._task = task
 
             # Reset all buffers
             for buf in buffers:
+                if buf.need_reduce_scale_sync():
+                    if buf._comm_group.nranks == 1 and buf._task is None:
+                        buf._reset_params_checked_in()
+                        continue
+                    assert buf._task is not None, "Task is not initialized."
+
+                    # scale will be skipped when use reduce_avg comm operation
+                    if buf._scale_after_comm and not buf._use_reduce_avg:
+                        scale_factor = 1.0 / buf._comm_group.nranks
+                        buf.grad_storage.scale_(scale_factor)
+
                 buf._reset_params_checked_in()
 
     def _check_padding_zero(self):
@@ -1296,23 +1306,18 @@ class DygraphShardingOptimizerV2:
                 continue
 
             nranks = comm_group.nranks
-            rank = comm_group.rank
+            rank = max(comm_group.rank, 0)
 
             # Single buffer case: no fusion needed
             if len(buffers) == 1:
                 buf = buffers[0]
-                shard_size = buf.param_storage._numel() // nranks
-                begin = shard_size * rank
-                end = begin + shard_size
-                slice_buffer = buf.param_storage._slice(begin, end)
-                comm_group.process_group.all_gather(
-                    slice_buffer, buf.param_storage
-                ).wait()
+                buf.sync_params()
                 continue
 
             # Compute shard sizes for each buffer
             shard_sizes = []
             for buf in buffers:
+                assert buf._act == HOOK_ACTION.REDUCE_SCATTER
                 buf_size = buf.param_storage._numel()
                 shard_sizes.append(buf_size // nranks)
 
