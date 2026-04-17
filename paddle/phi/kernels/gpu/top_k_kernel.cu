@@ -23,6 +23,9 @@
 #include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/top_k_function_cuda.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/phi/kernels/funcs/top_k_cuda_kernel.h"
+#endif
 namespace phi {
 
 #define FIXED_BLOCK_DIM_BASE(dim, ...) \
@@ -365,8 +368,259 @@ void TopkV1Kernel(const Context& dev_ctx,
                   DenseTensor* indices) {
   TopkKernel<T, Context>(dev_ctx, x, k_scalar, -1, true, true, out, indices);
 }
+
+#ifdef PADDLE_WITH_CUDA
+template <typename T, typename Context>
+void TopkKernelCuda(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const Scalar& k_scalar,
+                    int axis,
+                    bool largest,
+                    bool sorted,
+                    DenseTensor* out,
+                    DenseTensor* indices) {
+  const auto& in_dims = x.dims();
+
+  // Handle empty output (e.g. when k comes from tensor, dims may contain -1)
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    dev_ctx.template Alloc<int64_t>(indices);
+    return;
+  }
+
+  // 0d input tensor
+  if (in_dims.size() == 0) {
+    Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    dev_ctx.template Alloc<int64_t>(indices);
+    funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
+    return;
+  }
+
+  if (axis < 0) axis += in_dims.size();
+  int k = k_scalar.to<int>();
+
+  // For k=1, call TopkKernel
+  if (k == 1) {
+    TopkKernel<T, Context>(
+        dev_ctx, x, k_scalar, axis, largest, sorted, out, indices);
+  }
+
+  // Handle k from tensor: output dims may contain -1, resize before Alloc
+  if (k_scalar.FromTensor()) {
+    DDim out_dims = out->dims();
+    out_dims[axis] = k;
+    out->Resize(out_dims);
+    indices->Resize(out_dims);
+  }
+
+  // Handle empty input
+  if (x.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::vectorize(out->dims()), static_cast<T>(NAN), out);
+    phi::Full<int64_t, Context>(dev_ctx,
+                                phi::vectorize(indices->dims()),
+                                static_cast<int64_t>(0),
+                                indices);
+    return;
+  }
+
+  // Now safe to allocate output memory
+  T* output_data = dev_ctx.template Alloc<T>(out);
+  int64_t* indices_data = dev_ctx.template Alloc<int64_t>(indices);
+
+  phi::DenseTensor input_contiguous;
+
+  if (x.meta().is_contiguous()) {
+    input_contiguous = x;
+  } else {
+    input_contiguous.Resize(x.dims());
+    dev_ctx.template Alloc<T>(&input_contiguous);
+    phi::Copy<Context>(
+        dev_ctx, x, dev_ctx.GetPlace(), false, &input_contiguous);
+  }
+
+  int64_t sliceSize = in_dims.size() == 0 ? 1 : in_dims[axis];
+  int dim = axis;
+
+  auto stream = dev_ctx.stream();
+  int device_id = dev_ctx.GetPlace().GetDeviceId();
+  auto place = dev_ctx.GetPlace();
+
+  // Macro: inner kernel launch helpers (same as before)
+#define TOPK_RUN_K(INDEX_T, DIM, LAUNCH_FUNCTION_NAME)               \
+  LAUNCH_FUNCTION_NAME<T, INDEX_T, DIM>(                             \
+      inputInfo,                                                     \
+      static_cast<INDEX_T>(sliceSize),                               \
+      static_cast<INDEX_T>(k),                                       \
+      largest,                                                       \
+      static_cast<INDEX_T>(numInputSlices),                          \
+      static_cast<INDEX_T>(inputInfo.strides[collapseInputDim]),     \
+      topKInfo,                                                      \
+      static_cast<INDEX_T>(topKInfo.strides[collapseTopKDim]),       \
+      indicesInfo,                                                   \
+      static_cast<INDEX_T>(indicesInfo.strides[collapseIndicesDim]), \
+      stream)
+
+#define TOPK_RUN_K_MB(INDEX_T, DIM)                                  \
+  topk_impl::mbtopk::launch<T, INDEX_T, DIM>(                        \
+      inputInfo,                                                     \
+      static_cast<INDEX_T>(sliceSize),                               \
+      static_cast<INDEX_T>(k),                                       \
+      largest,                                                       \
+      static_cast<uint32_t>(numInputSlices),                         \
+      static_cast<INDEX_T>(inputInfo.strides[collapseInputDim]),     \
+      topKInfo,                                                      \
+      static_cast<INDEX_T>(topKInfo.strides[collapseTopKDim]),       \
+      indicesInfo,                                                   \
+      static_cast<INDEX_T>(indicesInfo.strides[collapseIndicesDim]), \
+      stream,                                                        \
+      device_id,                                                     \
+      place)
+
+#define TOPK_RUN_MB(INDEX_T, DIM)                                    \
+  if (topk_impl::should_use_multiblock(numInputSlices, sliceSize)) { \
+    TOPK_RUN_K_MB(INDEX_T, DIM);                                     \
+  } else {                                                           \
+    TOPK_RUN_K(INDEX_T, DIM, topk_impl::sbtopk::launch);             \
+  }
+
+#define TOPK_RUN_DIM(INDEX_T) \
+  if (allDims == 1) {         \
+    TOPK_RUN_MB(INDEX_T, 1);  \
+  } else if (allDims == 2) {  \
+    TOPK_RUN_MB(INDEX_T, 2);  \
+  } else if (allDims == 3) {  \
+    TOPK_RUN_MB(INDEX_T, 3);  \
+  } else {                    \
+    TOPK_RUN_MB(INDEX_T, -1); \
+  }
+
+  // RUN_T: Build TensorInfo, collapse dims, and launch — all parameterized
+  // by INDEX_T.
+#define TOPK_RUN_T(INDEX_T)                                                  \
+  do {                                                                       \
+    auto inputInfo =                                                         \
+        topk_impl::getTensorInfo<const T, INDEX_T>(input_contiguous);        \
+    auto topKInfo = topk_impl::getTensorInfo<T, INDEX_T>(*out);              \
+    auto indicesInfo = topk_impl::getTensorInfo<int64_t, INDEX_T>(*indices); \
+                                                                             \
+    /* Handle 0-d tensor: expand to 1-d */                                   \
+    if (!in_dims.size()) {                                                   \
+      inputInfo.dims = 1;                                                    \
+      inputInfo.sizes[0] = 1;                                                \
+      inputInfo.strides[0] = 1;                                              \
+      topKInfo.dims = 1;                                                     \
+      topKInfo.sizes[0] = 1;                                                 \
+      topKInfo.strides[0] = 1;                                               \
+      indicesInfo.dims = 1;                                                  \
+      indicesInfo.sizes[0] = 1;                                              \
+      indicesInfo.strides[0] = 1;                                            \
+    }                                                                        \
+                                                                             \
+    /* Set sizes[dim] = 1 to calculate slice offsets */                      \
+    inputInfo.sizes[dim] = 1;                                                \
+    topKInfo.sizes[dim] = 1;                                                 \
+    indicesInfo.sizes[dim] = 1;                                              \
+                                                                             \
+    /* Stash stride of dim because it can be accidentally collapsed */       \
+    auto strideTopK = topKInfo.strides[dim];                                 \
+    auto strideIndices = indicesInfo.strides[dim];                           \
+                                                                             \
+    /* Collapse dims */                                                      \
+    int collapseInputDim = inputInfo.collapseDims(dim);                      \
+    int collapseTopKDim = topKInfo.collapseDims(dim);                        \
+    int collapseIndicesDim = indicesInfo.collapseDims(dim);                  \
+                                                                             \
+    /* Restore stride in case it was collapsed */                            \
+    topKInfo.strides[collapseTopKDim] = strideTopK;                          \
+    indicesInfo.strides[collapseIndicesDim] = strideIndices;                 \
+                                                                             \
+    int64_t numInputSlices = 1;                                              \
+    for (int i = 0; i < inputInfo.dims; ++i) {                               \
+      numInputSlices *= inputInfo.sizes[i];                                  \
+    }                                                                        \
+                                                                             \
+    int allDims = inputInfo.dims;                                            \
+    if (topKInfo.dims != allDims || indicesInfo.dims != allDims) {           \
+      allDims = -1;                                                          \
+    }                                                                        \
+                                                                             \
+    TOPK_RUN_DIM(INDEX_T);                                                   \
+  } while (0)
+
+  // Dispatch: use 32-bit indexing when all tensors qualify, else 64-bit
+  if (input_contiguous.numel() > 0) {
+    if (topk_impl::canUse32BitIndexMath(input_contiguous) &&
+        topk_impl::canUse32BitIndexMath(*out) &&
+        topk_impl::canUse32BitIndexMath(*indices)) {
+      TOPK_RUN_T(uint32_t);
+    } else {
+      TOPK_RUN_T(uint64_t);
+    }
+  }
+
+#undef TOPK_RUN_K
+#undef TOPK_RUN_K_MB
+#undef TOPK_RUN_MB
+#undef TOPK_RUN_DIM
+#undef TOPK_RUN_T
+
+  // Sort the results if needed
+  if (sorted && k > 1 && out->numel() > 0) {
+    // Three-tier sort dispatch:
+    //   k <= 32:   Bitonic Sort
+    //   k <= 128:  WarpMergeSort (CUB)
+    //   k <= 4096: BlockRadixSort (CUB)
+    //   k > 4096:  Fall back to ArgsortKernel + TakeAlongAxisKernel
+    if (k <= 4096) {
+      topk_impl::sortKeyValueInplace<T, Context>(
+          dev_ctx, out, indices, axis, largest);
+    } else {
+      phi::DenseTensor sorted_indices;
+      phi::DenseTensor sorted_values;
+      sorted_indices.Resize(indices->dims());
+      sorted_values.Resize(out->dims());
+      dev_ctx.template Alloc<int64_t>(&sorted_indices);
+      dev_ctx.template Alloc<T>(&sorted_values);
+
+      phi::ArgsortKernel<T, Context>(dev_ctx,
+                                     *out,
+                                     axis,
+                                     largest,
+                                     /*stable=*/true,
+                                     &sorted_values,
+                                     &sorted_indices);
+
+      phi::DenseTensor new_indices;
+      new_indices.Resize(indices->dims());
+      dev_ctx.template Alloc<int64_t>(&new_indices);
+      phi::TakeAlongAxisKernel<int64_t, Context>(
+          dev_ctx, *indices, sorted_indices, axis, &new_indices);
+
+      phi::Copy<Context>(
+          dev_ctx, sorted_values, dev_ctx.GetPlace(), false, out);
+      phi::Copy<Context>(
+          dev_ctx, new_indices, dev_ctx.GetPlace(), false, indices);
+    }
+  }
+}
+#endif
 }  // namespace phi
 
+#ifdef PADDLE_WITH_CUDA
+PD_REGISTER_KERNEL(topk,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::TopkKernelCuda,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::float16,
+                   phi::bfloat16) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
+}
+#else
 PD_REGISTER_KERNEL(topk,
                    GPU,
                    ALL_LAYOUT,
@@ -379,6 +633,7 @@ PD_REGISTER_KERNEL(topk,
                    phi::bfloat16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
 }
+#endif
 
 PD_REGISTER_KERNEL(topk_v1,
                    GPU,

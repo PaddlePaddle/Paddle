@@ -566,7 +566,7 @@ void LaunchDequantMergeKernel(const int32_t* x,
 }
 
 template <typename T>
-void LLMGemm(const phi::GPUContext& dev_ctx,
+void LLMGemm(const GPUContext& dev_ctx,
              const DenseTensor* weight,
              const DenseTensor* input,
              const DenseTensor* weight_scale,
@@ -652,7 +652,7 @@ void LLMGemm(const phi::GPUContext& dev_ctx,
     T beta = static_cast<T>(0.0);
 
     // (m, n, k) = bsz_seq, output_size, input_size, (input, weight, out)
-    auto blas = funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
+    auto blas = funcs::GetBlas<GPUContext, T>(dev_ctx);
     blas.GEMM(transA,
               transB,
               m,

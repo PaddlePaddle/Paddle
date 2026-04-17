@@ -161,7 +161,7 @@ void MatMulFunctionImplWithBlas(
       return;
     } else {
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
-      if (std::is_same<Context, phi::GPUContext>::value) {
+      if (std::is_same<Context, GPUContext>::value) {
         blas.CUDOT(M, X.data<T>(), 1, Y.data<T>(), 1, Out->data<T>());
       } else  // NOLINT
 #endif
@@ -979,8 +979,8 @@ struct MatMulDispatcher {
 
 #ifdef PADDLE_WITH_CUDA
 template <typename T>
-struct MatMulDispatcher<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext& dev_ctx,
+struct MatMulDispatcher<GPUContext, T> {
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& x,
                   const DenseTensor& y,
                   const std::vector<std::int64_t>& x_dims,
@@ -990,9 +990,9 @@ struct MatMulDispatcher<phi::GPUContext, T> {
                   bool trans_y,
                   bool flag = false) {
 #if CUDA_VERSION >= 11060
-    auto* tuner = phi::autotune::MakeMatmulTuner<T>(
-        MatMulFunctionImplWithBlas<phi::GPUContext, T>);
-    tuner->AddCallBack(MatMulFunctionImplWithCublasLt<phi::GPUContext, T>);
+    auto* tuner =
+        autotune::MakeMatmulTuner<T>(MatMulFunctionImplWithBlas<GPUContext, T>);
+    tuner->AddCallBack(MatMulFunctionImplWithCublasLt<GPUContext, T>);
     funcs::MatmulPlanner matmul_planner(x_dims,
                                         y_dims,
                                         trans_x,
@@ -1016,7 +1016,7 @@ struct MatMulDispatcher<phi::GPUContext, T> {
                flag,
                &matmul_planner);
 #else
-    MatMulFunctionImplWithBlas<phi::GPUContext, T>(
+    MatMulFunctionImplWithBlas<GPUContext, T>(
         dev_ctx, x, y, x_dims, y_dims, out, trans_x, trans_y, flag);
 #endif
   }
@@ -1052,7 +1052,7 @@ bool MatMulInt8Function(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_CUDA
 template <>
-bool inline MatMulInt8Function(const phi::GPUContext& dev_ctx,
+bool inline MatMulInt8Function(const GPUContext& dev_ctx,
                                const DenseTensor& x,
                                const DenseTensor& y,
                                const std::vector<std::int64_t>& x_dims,
@@ -1074,7 +1074,7 @@ bool inline MatMulInt8Function(const phi::GPUContext& dev_ctx,
                                       y_dims,
                                       trans_x,
                                       trans_y,
-                                      phi::CppTypeToDataType<int8_t>::Type(),
+                                      CppTypeToDataType<int8_t>::Type(),
                                       funcs::MatmulFusedType::kMatmul,
                                       /* bias_data */ nullptr,
                                       /* reserve_data */ nullptr,
@@ -1495,7 +1495,7 @@ bool inline MatMulInt8Function(const phi::GPUContext& dev_ctx,
 
 #ifdef PADDLE_WITH_HIP
 template <>
-bool inline MatMulInt8Function(const phi::GPUContext& dev_ctx,
+bool inline MatMulInt8Function(const GPUContext& dev_ctx,
                                const DenseTensor& x,
                                const DenseTensor& y,
                                const std::vector<std::int64_t>& x_dims,
@@ -1908,13 +1908,13 @@ MatmulJudgeDtypeKernel(const Context& dev_ctx,
                        bool transpose_x,
                        bool transpose_y) {
 #if defined(PADDLE_WITH_CUDA)
-  if constexpr (std::is_same<Context, phi::GPUContext>::value &&
+  if constexpr (std::is_same<Context, GPUContext>::value &&
                 std::is_same<T, int8_t>::value) {
     if (x.dtype() == DataType::INT8 && x_dims[0] <= 4 && y_dims.size() == 2 &&
         y_dims[0] % 16 == 0 && y_dims[1] % 16 == 0 &&
         FLAGS_cuda_core_int8_gemm && dev_ctx.GetComputeCapability() >= 70 &&
         transpose_y) {
-      phi::CudaGemm<T, Context>(dev_ctx, x, y, out);
+      CudaGemm<T, Context>(dev_ctx, x, y, out);
       return;
     }
   }
@@ -1945,7 +1945,7 @@ MatmulJudgeDtypeKernel(const Context& dev_ctx,
 #if defined(PADDLE_WITH_CUDA)
 #if CUDA_VERSION >= 12010
 template <typename Context>
-typename std::enable_if<std::is_same<Context, phi::GPUContext>::value>::type
+typename std::enable_if<std::is_same<Context, GPUContext>::value>::type
 DispatchMatmulFP8Kernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const DenseTensor& y,
@@ -1994,9 +1994,9 @@ DispatchMatmulFP8Kernel(const Context& dev_ctx,
   DenseTensor workspace;
   workspace.Resize({30 * 1024 * 1024});
   dev_ctx.template Alloc<int8_t>(&workspace);
-  dev_ctx.template Alloc<phi::float16>(out);
+  dev_ctx.template Alloc<float16>(out);
 
-  CublasLtMatmulFP8<phi::float16>(dev_ctx, x, y, &workspace, out);
+  CublasLtMatmulFP8<float16>(dev_ctx, x, y, &workspace, out);
 }
 
 template <typename Context>
@@ -2011,7 +2011,7 @@ DispatchMatmulFP8Kernel(const Context& dev_ctx,
                         bool transpose_y) {}
 
 template <typename Context, typename T>
-typename std::enable_if<std::is_same<T, phi::float8_e4m3fn>::value>::type
+typename std::enable_if<std::is_same<T, float8_e4m3fn>::value>::type
 DispatchMatmulKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& y,
@@ -2027,7 +2027,7 @@ DispatchMatmulKernel(const Context& dev_ctx,
 #endif
 
 template <typename Context, typename T>
-typename std::enable_if<!std::is_same<T, phi::float8_e4m3fn>::value>::type
+typename std::enable_if<!std::is_same<T, float8_e4m3fn>::value>::type
 DispatchMatmulKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& y,
@@ -2124,7 +2124,7 @@ void MatmulWithFlattenKernelInt8Impl(const Context& dev_ctx,
           "The type of input(x) used in int8 mul must be (%s) "
           "does not match the "
           "type of data (%s) currently contained in the container.",
-          phi::CppTypeToDataType<int8_t>::Type(),
+          CppTypeToDataType<int8_t>::Type(),
           x.dtype()));
   PADDLE_ENFORCE_EQ(
       y.dtype(),
@@ -2133,7 +2133,7 @@ void MatmulWithFlattenKernelInt8Impl(const Context& dev_ctx,
           "The type of input(y) used in int8 mul must be (%s) "
           "does not match the "
           "type of data (%s) currently contained in the container.",
-          phi::CppTypeToDataType<int8_t>::Type(),
+          CppTypeToDataType<int8_t>::Type(),
           y.dtype()));
 
   const DenseTensor x_matrix =
@@ -2184,7 +2184,7 @@ void MatmulWithFlattenKernelInt8Impl(const Context& dev_ctx,
                                       y_dims,
                                       false,
                                       false,
-                                      phi::CppTypeToDataType<int8_t>::Type(),
+                                      CppTypeToDataType<int8_t>::Type(),
                                       funcs::MatmulFusedType::kMatmul,
                                       /* bias_data */ nullptr,
                                       /* reserve_data */ nullptr,
@@ -2211,9 +2211,8 @@ void MatmulWithFlattenKernelInt8Impl(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_CUDA
 template <typename Context>
-typename std::enable_if<std::is_same<Context, phi::GPUContext>::value,
-                        void>::type
-DispatchMatmulWithFlattenInt8Kernel(const phi::GPUContext& dev_ctx,
+typename std::enable_if<std::is_same<Context, GPUContext>::value, void>::type
+DispatchMatmulWithFlattenInt8Kernel(const GPUContext& dev_ctx,
                                     const DenseTensor& x,
                                     const DenseTensor& y,
                                     int x_num_col_dims,

@@ -44,7 +44,7 @@ static void LerpFunction(const Context& dev_ctx,
   auto eigen_w = EigenTensor<T, D>::From(weight, w_dims);
   auto eigen_out = EigenTensor<T, D>::From(*out);
 
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
   auto& place = *dev_ctx.eigen_device();
   eigen_out.device(place) =
       (eigen_x.broadcast(x_bcast_dims).template cast<MPType>() +
@@ -68,7 +68,7 @@ static void LerpFunctionZero(const Context& dev_ctx,
   auto eigen_w = EigenTensor<T, 1>::From(weight, dim);
   auto eigen_out = EigenTensor<T, 1>::From(*out, dim);
 
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
   auto& place = *dev_ctx.eigen_device();
   eigen_out.device(place) =
       (eigen_x.template cast<MPType>() +
