@@ -496,7 +496,7 @@ jobs:
     steps:
       - name: Determine the runner
         run: |
-          gpu_id=$(( $(echo $PWD | awk -F'/' '{print $3}' | awk -F'-' '{print $2}') + 3 ))
+          gpu_id=$(( $(echo $PWD | awk -F'/' '{print $3}' | awk -F'-' '{print $2}') - 1 ))
           echo GPU_DEVICES="$gpu_id" >> $GITHUB_ENV
 
       - name: Check docker image and run container
