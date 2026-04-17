@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <c10/cuda/CUDAFunctions.h>
+#include <c10/cuda/CUDAGuard.h>
 #include <c10/util/Exception.h>
 #include <torch/cuda.h>
 
@@ -38,14 +40,14 @@ void synchronize(int64_t device_index) {
   TORCH_CHECK(device_index < 0 || device_index < num_gpus,
               "Device index out of range: ",
               device_index);
-// TODO(yongqiang) need using DeviceGuard
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  paddle::platform::SetDeviceId(device_index);
-#ifdef PADDLE_WITH_HIP
-  PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
-#else
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
-#endif
+  // Match PyTorch semantics:
+  // 1. `device_index == -1` means "current CUDA device".
+  // 2. Explicit device synchronization must not leak a changed current device
+  //    to the caller after returning.
+  const c10::cuda::CUDAGuard device_guard(c10::Device(
+      c10::DeviceType::CUDA, static_cast<c10::DeviceIndex>(device_index)));
+  c10::cuda::device_synchronize();
 #else
   PADDLE_THROW(common::errors::Unavailable(
       "Paddle is not compiled with CUDA. Cannot visit device synchronize."));

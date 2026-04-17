@@ -15,10 +15,12 @@
 #include <ATen/cuda/CUDAContext.h>
 #include <c10/core/Allocator.h>
 #include <c10/cuda/CUDAFunctions.h>
+#include <torch/cuda.h>
 
 #include "gtest/gtest.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include <c10/cuda/CUDAGuard.h>
 #include <c10/cuda/CUDAStream.h>
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #endif
@@ -77,6 +79,23 @@ TEST(CUDAFunctionsTest, AtNamespaceAliases) {
   ASSERT_NO_THROW(at::cuda::device_synchronize());
   auto stream = c10::cuda::getCurrentCUDAStream();
   ASSERT_NO_THROW(at::cuda::stream_synchronize(stream));
+}
+
+TEST(CUDAFunctionsTest, TorchSynchronizePreservesCurrentDevice) {
+  if (!torch::cuda::is_available()) {
+    return;
+  }
+  if (torch::cuda::device_count() < 2) {
+    return;
+  }
+
+  constexpr c10::DeviceIndex current_device = 0;
+  constexpr c10::DeviceIndex other_device = 1;
+  c10::cuda::CUDAGuard guard(current_device);
+  ASSERT_EQ(phi::backends::gpu::GetCurrentDeviceId(), current_device);
+
+  ASSERT_NO_THROW(torch::cuda::synchronize(other_device));
+  EXPECT_EQ(phi::backends::gpu::GetCurrentDeviceId(), current_device);
 }
 #endif
 
