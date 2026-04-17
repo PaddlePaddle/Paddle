@@ -429,6 +429,10 @@ def _get_cuda_arch_flags(cflags: list[str] | None = None) -> list[str]:
     For an added "+PTX", an additional
     ``-gencode=arch=compute_xx,code=compute_xx`` is added.
     """
+    # ROCm uses get_rocm_arch_flags instead, not CUDA arch flags
+    if core.is_compiled_with_rocm():
+        return []
+
     # If cflags is given, there may already be user-provided arch flags in it
     if cflags is not None:
         for flag in cflags:

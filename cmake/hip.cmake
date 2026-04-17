@@ -6,24 +6,37 @@ if(NOT DEFINED ENV{ROCM_PATH})
   set(ROCM_PATH
       "/opt/rocm"
       CACHE PATH "Path to which ROCm has been installed")
-  set(HIP_PATH
-      ${ROCM_PATH}/hip
-      CACHE PATH "Path to which HIP has been installed")
-  set(HIP_CLANG_PATH
-      ${ROCM_PATH}/llvm/bin
-      CACHE PATH "Path to which clang has been installed")
 else()
   set(ROCM_PATH
       $ENV{ROCM_PATH}
       CACHE PATH "Path to which ROCm has been installed")
+endif()
+
+# ROCm 7.0+: HIP is now directly under ROCM_PATH, not in a separate hip subdirectory
+# Check if we're using newer ROCm layout (7.0+) or older layout
+if(EXISTS "${ROCM_PATH}/lib/cmake/hip/FindHIP.cmake")
+  # ROCm 7.0+ layout
+  set(HIP_PATH
+      ${ROCM_PATH}
+      CACHE PATH "Path to which HIP has been installed")
+  set(CMAKE_MODULE_PATH "${ROCM_PATH}/lib/cmake/hip" ${CMAKE_MODULE_PATH})
+elseif(EXISTS "${ROCM_PATH}/hip/cmake")
+  # Legacy ROCm layout (< 7.0)
   set(HIP_PATH
       ${ROCM_PATH}/hip
       CACHE PATH "Path to which HIP has been installed")
-  set(HIP_CLANG_PATH
-      ${ROCM_PATH}/llvm/bin
-      CACHE PATH "Path to which clang has been installed")
+  set(CMAKE_MODULE_PATH "${HIP_PATH}/cmake" ${CMAKE_MODULE_PATH})
+else()
+  # Fallback: assume ROCm 7.0+ layout
+  set(HIP_PATH
+      ${ROCM_PATH}
+      CACHE PATH "Path to which HIP has been installed")
+  set(CMAKE_MODULE_PATH "${ROCM_PATH}/lib/cmake/hip" ${CMAKE_MODULE_PATH})
 endif()
-set(CMAKE_MODULE_PATH "${HIP_PATH}/cmake" ${CMAKE_MODULE_PATH})
+
+set(HIP_CLANG_PATH
+    ${ROCM_PATH}/llvm/bin
+    CACHE PATH "Path to which clang has been installed")
 set(CMAKE_PREFIX_PATH "${ROCM_PATH}" ${CMAKE_PREFIX_PATH})
 
 find_package(HIP REQUIRED)
@@ -65,11 +78,23 @@ macro(find_hip_version hip_header_file)
     )
   endif()
 endmacro()
-find_hip_version(${HIP_PATH}/include/hip/hip_version.h)
+# ROCm 7.0+: hip_version.h is directly under ROCM_PATH/include
+if(EXISTS "${ROCM_PATH}/include/hip/hip_version.h")
+  find_hip_version(${ROCM_PATH}/include/hip/hip_version.h)
+elseif(EXISTS "${HIP_PATH}/include/hip/hip_version.h")
+  find_hip_version(${HIP_PATH}/include/hip/hip_version.h)
+else()
+  message(WARNING "Cannot find hip_version.h")
+endif()
 
 macro(find_package_and_include PACKAGE_NAME)
   find_package("${PACKAGE_NAME}" REQUIRED)
-  include_directories("${ROCM_PATH}/${PACKAGE_NAME}/include")
+  # ROCm 7.0+ uses /opt/rocm/include/<package>/ instead of /opt/rocm/<package>/include/
+  if(EXISTS "${ROCM_PATH}/include/${PACKAGE_NAME}")
+    include_directories("${ROCM_PATH}/include/${PACKAGE_NAME}")
+  elseif(EXISTS "${ROCM_PATH}/${PACKAGE_NAME}/include")
+    include_directories("${ROCM_PATH}/${PACKAGE_NAME}/include")
+  endif()
   message(STATUS "${PACKAGE_NAME} version: ${${PACKAGE_NAME}_VERSION}")
 endmacro()
 
@@ -93,10 +118,10 @@ endif()
 
 # set CXX flags for HIP
 set(CMAKE_C_FLAGS
-    "${CMAKE_C_FLAGS} -D__HIP_PLATFORM_HCC__ -D__HIP_PLATFORM_AMD__ -DROCM_NO_WRAPPER_HEADER_WARNING"
+    "${CMAKE_C_FLAGS} -D__HIP_PLATFORM_HCC__ -D__HIP_PLATFORM_AMD__ -D__HIP__=1 -DROCM_NO_WRAPPER_HEADER_WARNING"
 )
 set(CMAKE_CXX_FLAGS
-    "${CMAKE_CXX_FLAGS} -D__HIP_PLATFORM_HCC__ -D__HIP_PLATFORM_AMD__ -DROCM_NO_WRAPPER_HEADER_WARNING"
+    "${CMAKE_CXX_FLAGS} -D__HIP_PLATFORM_HCC__ -D__HIP_PLATFORM_AMD__ -D__HIP__=1 -DROCM_NO_WRAPPER_HEADER_WARNING"
 )
 set(CMAKE_CXX_FLAGS
     "${CMAKE_CXX_FLAGS} -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_HIP")
@@ -106,6 +131,7 @@ set(THRUST_DEVICE_SYSTEM THRUST_DEVICE_SYSTEM_HIP)
 list(APPEND HIP_CXX_FLAGS -fPIC)
 list(APPEND HIP_CXX_FLAGS -D__HIP_PLATFORM_HCC__=1)
 list(APPEND HIP_CXX_FLAGS -D__HIP_PLATFORM_AMD__=1)
+list(APPEND HIP_CXX_FLAGS -D__HIP__=1)
 # Note(qili93): HIP has compile conflicts of float16.h as platform::float16 overload std::is_floating_point and std::is_integer
 list(APPEND HIP_CXX_FLAGS -D__HIP_NO_HALF_CONVERSIONS__=1)
 list(APPEND HIP_CXX_FLAGS -DROCM_NO_WRAPPER_HEADER_WARNING)
@@ -159,15 +185,11 @@ set(HIP_CLANG_FLAGS ${HIP_CXX_FLAGS})
 # Ask hcc to generate device code during compilation so we can use
 # host linker to link.
 list(APPEND HIP_HCC_FLAGS -fno-gpu-rdc)
-list(APPEND HIP_HCC_FLAGS --offload-arch=gfx906) # Z100 (ZIFANG)
-list(APPEND HIP_HCC_FLAGS --offload-arch=gfx926) # K100 (KONGING)
-list(APPEND HIP_HCC_FLAGS --offload-arch=gfx928) # K100_AI (KONGING_AI)
-list(APPEND HIP_HCC_FLAGS --offload-arch=gfx936) # BW1000 (BOWEN)
+list(APPEND HIP_HCC_FLAGS --offload-arch=gfx942) # MI300
+list(APPEND HIP_HCC_FLAGS --offload-arch=gfx950) # MI350X
 list(APPEND HIP_CLANG_FLAGS -fno-gpu-rdc)
-list(APPEND HIP_CLANG_FLAGS --offload-arch=gfx906) # Z100 (ZIFANG)
-list(APPEND HIP_CLANG_FLAGS --offload-arch=gfx926) # K100 (KONGING)
-list(APPEND HIP_CLANG_FLAGS --offload-arch=gfx928) # K100_AI (KONGING_AI)
-list(APPEND HIP_CLANG_FLAGS --offload-arch=gfx936) # BW1000 (BOWEN)
+list(APPEND HIP_CLANG_FLAGS --offload-arch=gfx942) # MI300
+list(APPEND HIP_CLANG_FLAGS --offload-arch=gfx950) # MI350X
 
 if(HIP_COMPILER STREQUAL clang)
   set(hip_library_name amdhip64)

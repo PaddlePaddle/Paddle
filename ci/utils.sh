@@ -693,7 +693,12 @@ function card_test() {
     if [ "${WITH_XPU}" == "ON" ];then
         CUDA_DEVICE_COUNT=1
     elif [ "${WITH_ROCM}" == "ON" ];then
-        CUDA_DEVICE_COUNT=$(rocm-smi -i | grep DCU | wc -l)
+        # Support both DCU (Hygon) and AMD ROCm GPUs
+        # Each GPU appears multiple times in -i output, count unique GPU IDs
+        CUDA_DEVICE_COUNT=$(rocm-smi -i 2>/dev/null | grep "^GPU\[" | cut -d']' -f1 | sort -u | wc -l || echo 0)
+        if [ "${CUDA_DEVICE_COUNT}" -eq 0 ]; then
+            CUDA_DEVICE_COUNT=1
+        fi
     elif [ "${WITH_IPU}" == "ON" ];then
         CUDA_DEVICE_COUNT=1
     else
@@ -821,6 +826,27 @@ set +x
         cp -r ${PADDLE_ROOT}/build/CTestCostData.txt ${PADDLE_ROOT}/build/Testing/Temporary/
 
         get_quickly_disable_ut||disable_ut_quickly='disable_ut'    # indicate whether the case was in quickly disable list
+
+        # ROCm: Disable tests not supported on ROCm platform
+        if [ "$WITH_ROCM" == "ON" ]; then
+            # OneDNN/MKL-DNN/cuDNN: Intel/NVIDIA specific
+            rocm_skip_tests="onednn|mkldnn|cudnn"
+            # BF16 kernels not registered for ROCm: argsort, mode, randperm
+            rocm_skip_tests="${rocm_skip_tests}|test_argsort_op|test_mode_op|test_randperm_op"
+            # FlashAttention not available (libflashattn.so missing)
+            rocm_skip_tests="${rocm_skip_tests}|test_scaled_dot_product_attention|test_compat_nn_multihead_attention"
+            # Graphviz dependency (dot command)
+            rocm_skip_tests="${rocm_skip_tests}|test_capture_backward_subgraph|test_capture_fwd_graph"
+            # c_embedding: distributed operator not registered
+            rocm_skip_tests="${rocm_skip_tests}|test_c_embedding_op"
+            if [ -n "$disable_ut_quickly" ] && [ "$disable_ut_quickly" != "disable_ut" ]; then
+                disable_ut_quickly="${disable_ut_quickly}|${rocm_skip_tests}"
+            else
+                disable_ut_quickly="${rocm_skip_tests}"
+            fi
+            echo "ROCm: Skipping OneDNN/MKL-DNN/cuDNN and ROCm-incompatible tests"
+        fi
+
         test_cases=$(ctest -N -V) # get all test cases
 
         if [ ${WITH_CINN:-OFF} == "ON" ]; then
