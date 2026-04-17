@@ -353,6 +353,7 @@ add_doc_and_signature(
     Examples:
         .. code-block:: pycon
 
+            >>> # doctest: +SKIP("This API is newly added, doctest to be enabled later")
             >>> import paddle
 
             >>> x = paddle.to_tensor([[0.1, 0.9, 0.9, 0.9],

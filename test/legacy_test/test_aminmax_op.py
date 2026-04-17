@@ -328,7 +328,7 @@ class TestAminmaxAPI_Compatibility(unittest.TestCase):
             min6, max6 = x.aminmax(dim=1, keepdim=True)
             # Test default value
             min8, max8 = x.aminmax()
-            exe = base.Executor(paddle.CPUPlace())
+            exe = base.Executor()
             fetches = exe.run(
                 main,
                 feed={"x": self.np_input},
@@ -423,7 +423,7 @@ class TestAminmaxInferSymbolicShapePass(unittest.TestCase):
                 paddle.base.libpaddle.pir.infer_symbolic_shape_pass(pm, main)
                 pm.run(main)
 
-                exe = paddle.static.Executor(paddle.CPUPlace())
+                exe = paddle.static.Executor()
                 fetches = exe.run(
                     main,
                     feed={'x': self.x_np},
