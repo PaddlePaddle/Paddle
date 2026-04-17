@@ -26,7 +26,7 @@ if BRANCH.startswith("develop"):
     REPO_TEMPLATE = {
         "Paddle": r'''### PR Category(.*[^\s].*)### PR Types(.*[^\s].*)### Description(.*[^\s].*)### 是否引起精度变化(.*[^\s].*)'''
     }
-elif BRANCH.startswith("fleety_"):
+elif BRANCH.startswith("release"):
     REPO_TEMPLATE = {
         "Paddle": r'''### PR Category(.*[^\s].*)### PR Types(.*[^\s].*)### Description(.*?devPR:https://github\.com/PaddlePaddle/Paddle/pull/.*?)(?:\n###|\Z)'''
     }
@@ -277,8 +277,8 @@ def checkPRTemplate(repo, body, CHECK_TEMPLATE):
     elif result is None:
         res = False
         message = parameter_accuracy(body)
-        if BRANCH.startswith("fleety_") and len(message) == 0:
-            message = 'The PR link does not exist. To merge into the fleety branch, you need to merge into the develop branch first and then cherry-pick it to the fleety branch. Please merge into develop first and fill in the PR link in the Description. Use this format: devPR:https://github.com/PaddlePaddle/Paddle/pull/xxxx'
+        if BRANCH.startswith("release") and len(message) == 0:
+            message = 'The PR link does not exist. To merge into the release branch, you need to merge into the develop branch first and then cherry-pick it to the release branch. Please merge into develop first and fill in the PR link in the Description. Use this format: devPR:https://github.com/PaddlePaddle/Paddle/pull/xxxx'
     return res, message
 
 
