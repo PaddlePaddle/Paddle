@@ -86,7 +86,40 @@ void PNormGradKernel(const Context& dev_ctx,
   } else if (porder == INFINITY || porder == -INFINITY) {
     dx.device(*place) = (xr.abs() == norm.broadcast(bcast)).template cast<T>() *
                         xr.sign() * norm_dy.broadcast(bcast);
+  } else if (porder == 1.0f) {
+    // p=1: PyTorch computes self.sgn() * grad
+    dx.device(*place) = xr.sign() * norm_dy.broadcast(bcast);
+  } else if (porder == 2.0f) {
+    // p=2: Match PyTorch's grad * (x / norm).masked_fill_(norm == 0, 0)
+    auto norm_broadcast = norm.broadcast(bcast);
+    auto norm_is_zero =
+        norm_broadcast == norm_broadcast.constant(static_cast<T>(0));
+    auto x_div_norm = xr / norm_broadcast;
+    dx.device(*place) =
+        norm_dy.broadcast(bcast) *
+        norm_is_zero.select(x_div_norm.constant(static_cast<T>(0)), x_div_norm);
+  } else if (porder >= 2.0f) {
+    // p > 2: Match PyTorch's (x * |x|^(p-2)) * (grad / norm^(p-1))
+    auto norm_broadcast = norm.broadcast(bcast);
+    auto norm_is_zero =
+        norm_broadcast == norm_broadcast.constant(static_cast<T>(0));
+    auto self_scaled = xr * (xr.abs()).pow(porder - 2.0f);
+    auto scale_v = norm_dy.broadcast(bcast) / norm_broadcast.pow(porder - 1.0f);
+    dx.device(*place) =
+        self_scaled *
+        norm_is_zero.select(scale_v.constant(static_cast<T>(0)), scale_v);
+  } else if (porder > 1.0f) {
+    // 1 < p < 2: Match PyTorch's (sign(x) * |x|^(p-1)) * (grad / norm^(p-1))
+    auto norm_broadcast = norm.broadcast(bcast);
+    auto norm_is_zero =
+        norm_broadcast == norm_broadcast.constant(static_cast<T>(0));
+    auto self_scaled = xr.sign() * (xr.abs()).pow(porder - 1.0f);
+    auto scale_v = norm_dy.broadcast(bcast) / norm_broadcast.pow(porder - 1.0f);
+    dx.device(*place) =
+        self_scaled *
+        norm_is_zero.select(scale_v.constant(static_cast<T>(0)), scale_v);
   } else {
+    // p < 1: sign(x) * |x|^(p-1) * grad * norm^(1-p), masking where x == 0
     dx.device(*place) =
         (xr.abs()).pow(porder - 1.0) /
         ((norm.broadcast(bcast)).pow(porder - 1.0) + xr.constant(eps));
