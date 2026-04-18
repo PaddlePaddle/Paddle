@@ -17,6 +17,7 @@ concurrency:
 jobs:
   cherry-pick:
     if: >
+      github.repository_owner == 'PaddlePaddle' &&
       github.event.pull_request.merged == true &&
       (
         github.event.action == 'labeled' ||
