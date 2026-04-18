@@ -583,9 +583,8 @@ void dispatch_preprocess(const Context &dev_ctx,
   padding_tokens_tensor.Resize({static_cast<int64_t>(padding_rows.size())});
   dev_ctx.template Alloc<int>(&padding_tokens_tensor);
 
-  auto *stable_padding_rows =
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
-          const_cast<int *>(padding_rows.data()), padding_rows.size());
+  auto *stable_padding_rows = backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      const_cast<int *>(padding_rows.data()), padding_rows.size());
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(padding_tokens_tensor.data<int>(),
                                              stable_padding_rows,
                                              sizeof(int) * padding_rows.size(),
@@ -800,16 +799,16 @@ void MoePermuteKernel(const Context &dev_ctx,
       }
     }
     auto *stable_expert_offset =
-        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(expert_offset,
-                                                               kMaxNumExperts);
+        backends::gpu::RestoreHostMemIfCapturingCUDAGraph(expert_offset,
+                                                          kMaxNumExperts);
     PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(expert_offset_tensor.data<int>(),
                                                stable_expert_offset,
                                                sizeof(int) * kMaxNumExperts,
                                                cudaMemcpyHostToDevice,
                                                dev_ctx.stream()));
     auto *stable_expert_offset_end =
-        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
-            expert_offset_end, kMaxNumExperts);
+        backends::gpu::RestoreHostMemIfCapturingCUDAGraph(expert_offset_end,
+                                                          kMaxNumExperts);
     PADDLE_ENFORCE_GPU_SUCCESS(
         cudaMemcpyAsync(expert_offset_end_tensor.data<int>(),
                         stable_expert_offset_end,

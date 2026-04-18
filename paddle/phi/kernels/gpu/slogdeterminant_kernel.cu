@@ -149,7 +149,7 @@ struct SlogDeterminantFunctor<dtype::complex<T>, Context> {
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
     size_t nbytes_ptrs_c1 = cpu_ptrs.size() * sizeof(phi::dtype::complex<T>*);
     const void* stable_ptrs_c1 =
-        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+        backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
             reinterpret_cast<uint8_t*>(
                 const_cast<phi::dtype::complex<T>**>(cpu_ptrs.data())),
             nbytes_ptrs_c1);
@@ -339,7 +339,7 @@ struct SlogDeterminantV2Functor {
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
     size_t nbytes_ptrs_v2 = cpu_ptrs.size() * sizeof(T*);
     const void* stable_ptrs_v2 =
-        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+        backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
             reinterpret_cast<uint8_t*>(const_cast<T**>(cpu_ptrs.data())),
             nbytes_ptrs_v2);
     memory_utils::Copy(dev_ctx.GetPlace(),
@@ -492,7 +492,7 @@ struct SlogDeterminantV2Functor<dtype::complex<T>, Context> {
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
     size_t nbytes_ptrs_v2c = cpu_ptrs.size() * sizeof(phi::dtype::complex<T>*);
     const void* stable_ptrs_v2c =
-        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+        backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
             reinterpret_cast<uint8_t*>(
                 const_cast<phi::dtype::complex<T>**>(cpu_ptrs.data())),
             nbytes_ptrs_v2c);

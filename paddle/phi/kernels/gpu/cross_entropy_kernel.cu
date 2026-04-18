@@ -313,7 +313,7 @@ template <typename T>
 __device__ __forceinline__ T WarpReduceSumDown(T val) {
 #pragma unroll
   for (int offset = warpSize / 2; offset > 0; offset >>= 1) {
-    val += phi::backends::gpu::CudaShuffleDownSync(0xFFFFFFFF, val, offset);
+    val += backends::gpu::CudaShuffleDownSync(0xFFFFFFFF, val, offset);
   }
   return val;
 }
@@ -322,7 +322,7 @@ template <typename T>
 __device__ __forceinline__ T WarpReduceMaxDown(T val) {
 #pragma unroll
   for (int offset = warpSize / 2; offset > 0; offset >>= 1) {
-    T other = phi::backends::gpu::CudaShuffleDownSync(0xFFFFFFFF, val, offset);
+    T other = backends::gpu::CudaShuffleDownSync(0xFFFFFFFF, val, offset);
     val = max(val, other);
   }
   return val;
@@ -1035,10 +1035,10 @@ static void SoftmaxWithCrossEntropySoftLabel(const GPUContext& dev_ctx,
                                    : MIOPEN_SOFTMAX_MODE_CHANNEL;
       PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSoftmaxForward_V2(
           handle,
-          phi::backends::gpu::CudnnDataType<T>::kOne(),
+          backends::gpu::CudnnDataType<T>::kOne(),
           descp,
           logits_data,
-          phi::backends::gpu::CudnnDataType<T>::kZero(),
+          backends::gpu::CudnnDataType<T>::kZero(),
           descp,
           softmax_data,
           MIOPEN_SOFTMAX_LOG,
@@ -1781,10 +1781,10 @@ static void SoftmaxWithCrossEntropyHardLabel(const GPUContext& dev_ctx,
                                    : MIOPEN_SOFTMAX_MODE_CHANNEL;
       PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSoftmaxForward_V2(
           handle,
-          phi::backends::gpu::CudnnDataType<T>::kOne(),
+          backends::gpu::CudnnDataType<T>::kOne(),
           descp,
           logits_data,
-          phi::backends::gpu::CudnnDataType<T>::kZero(),
+          backends::gpu::CudnnDataType<T>::kZero(),
           descp,
           softmax_data,
           MIOPEN_SOFTMAX_LOG,

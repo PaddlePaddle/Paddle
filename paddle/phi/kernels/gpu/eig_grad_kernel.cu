@@ -213,7 +213,7 @@ void SolveLinearSystemGPU<dtype::complex<float>>(
 
   std::vector<int> h_info(batch_count, 0);
   PADDLE_ENFORCE_EQ(
-      phi::backends::gpu::IsCUDAGraphCapturing(),
+      backends::gpu::IsCUDAGraphCapturing(),
       false,
       common::errors::InvalidArgument(
           "EigGradKernel does not support CUDA Graph capture: async D2H copy "
@@ -402,7 +402,7 @@ void SolveLinearSystemGPU<dtype::complex<double>>(
 
   std::vector<int> h_info(batch_count, 0);
   PADDLE_ENFORCE_EQ(
-      phi::backends::gpu::IsCUDAGraphCapturing(),
+      backends::gpu::IsCUDAGraphCapturing(),
       false,
       common::errors::InvalidArgument(
           "EigGradKernel does not support CUDA Graph capture: async D2H copy "

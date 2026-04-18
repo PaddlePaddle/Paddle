@@ -228,7 +228,7 @@ void DistributeFpnProposalsKernel(
   size_t start = 0;
 
   PADDLE_ENFORCE_EQ(
-      phi::backends::gpu::IsCUDAGraphCapturing(),
+      backends::gpu::IsCUDAGraphCapturing(),
       false,
       common::errors::InvalidArgument(
           "DistributeFpnProposals does not support CUDA Graph capture: async "
