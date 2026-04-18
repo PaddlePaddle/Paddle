@@ -37,7 +37,9 @@ RUN apt-get update --allow-unauthenticated && \
       libibverbs-dev \
       python${PYTHON_VERSION} \
       python${PYTHON_VERSION}-dev \
-      python3-pip && \
+      python3-pip \
+      libnccl2=2.29.7-1+cuda13.2 \
+      libnccl-dev=2.29.7-1+cuda13.2 && \
     ln -sf /usr/bin/python3 /usr/bin/python && \
     rm -rf /var/lib/apt/lists/*
 
