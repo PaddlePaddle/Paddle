@@ -11,8 +11,11 @@ paddle_normalize_target_arch(PADDLE_TARGET_ARCH)
 # CPPFLAGS="-fPIC -DPIC" ./configure --with-gmp-prefix=<gmp-install-path> --with-clang-prefix=<llvm-install-path> --enable-shared=no --enable-static=yes
 
 if(PADDLE_TARGET_ARCH STREQUAL "aarch64")
-  set(ISL_FILE "isl-0.26-aarch64.tar.gz" CACHE STRING "" FORCE)
-  set(ISL_DOWNLOAD_URL "https://paddle-inference-dist.cdn.bcebos.com/CINN/${ISL_FILE}"
+  set(ISL_FILE
+      "isl-0.26-aarch64.tar.gz"
+      CACHE STRING "" FORCE)
+  set(ISL_DOWNLOAD_URL
+      "https://paddle-inference-dist.cdn.bcebos.com/CINN/${ISL_FILE}"
       CACHE STRING "ARM ISL package URL")
   set(ISL_URL_MD5
       "092950d5944cbe8163413c740f0c611e"

@@ -112,39 +112,27 @@ if(WITH_GPU)
     CUDASTUB libcuda.so
     HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64/stubs/
           ${CUDA_TOOLKIT_ROOT_DIR}/targets/${CUDA_TARGET_DIR}/lib/stubs
-    REQUIRED)
+          REQUIRED)
   find_library(
     CUBLAS libcublas.so
     HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64
-          ${CUDA_TOOLKIT_ROOT_DIR}/targets/${CUDA_TARGET_DIR}/lib
-          /usr/lib
-          /usr/lib64
-          ${SYSTEM_LIBRARY_ARCH_DIR}
-    REQUIRED)
+          ${CUDA_TOOLKIT_ROOT_DIR}/targets/${CUDA_TARGET_DIR}/lib /usr/lib
+          /usr/lib64 ${SYSTEM_LIBRARY_ARCH_DIR} REQUIRED)
   find_library(
     CUDNN libcudnn.so
     HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64
-          ${CUDA_TOOLKIT_ROOT_DIR}/targets/${CUDA_TARGET_DIR}/lib
-          /usr/lib
-          /usr/lib64
-          ${SYSTEM_LIBRARY_ARCH_DIR}
-    REQUIRED)
+          ${CUDA_TOOLKIT_ROOT_DIR}/targets/${CUDA_TARGET_DIR}/lib /usr/lib
+          /usr/lib64 ${SYSTEM_LIBRARY_ARCH_DIR} REQUIRED)
   find_library(
     CURAND libcurand.so
     HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64
-          ${CUDA_TOOLKIT_ROOT_DIR}/targets/${CUDA_TARGET_DIR}/lib
-          /usr/lib
-          /usr/lib64
-          ${SYSTEM_LIBRARY_ARCH_DIR}
-    REQUIRED)
+          ${CUDA_TOOLKIT_ROOT_DIR}/targets/${CUDA_TARGET_DIR}/lib /usr/lib
+          /usr/lib64 ${SYSTEM_LIBRARY_ARCH_DIR} REQUIRED)
   find_library(
     CUSOLVER libcusolver.so
     HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64
-          ${CUDA_TOOLKIT_ROOT_DIR}/targets/${CUDA_TARGET_DIR}/lib
-          /usr/lib
-          /usr/lib64
-          ${SYSTEM_LIBRARY_ARCH_DIR}
-    REQUIRED)
+          ${CUDA_TOOLKIT_ROOT_DIR}/targets/${CUDA_TARGET_DIR}/lib /usr/lib
+          /usr/lib64 ${SYSTEM_LIBRARY_ARCH_DIR} REQUIRED)
 endif()
 
 if(WITH_SYCL)

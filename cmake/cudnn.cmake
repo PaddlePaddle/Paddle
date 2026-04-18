@@ -17,9 +17,12 @@ paddle_detect_cuda_target_dir(CUDA_TARGET_DIR)
 
 find_path(
   CUDNN_INCLUDE_DIR cudnn.h
-  PATHS ${CUDNN_ROOT} ${CUDNN_ROOT}/include
-        ${CUDNN_ROOT}/include/${TARGET_ARCH}-linux-gnu $ENV{CUDNN_ROOT}
-        $ENV{CUDNN_ROOT}/include ${CUDA_TOOLKIT_INCLUDE}
+  PATHS ${CUDNN_ROOT}
+        ${CUDNN_ROOT}/include
+        ${CUDNN_ROOT}/include/${TARGET_ARCH}-linux-gnu
+        $ENV{CUDNN_ROOT}
+        $ENV{CUDNN_ROOT}/include
+        ${CUDA_TOOLKIT_INCLUDE}
         ${CUDA_TOOLKIT_ROOT_DIR}/targets/${CUDA_TARGET_DIR}/include
   NO_DEFAULT_PATH)
 

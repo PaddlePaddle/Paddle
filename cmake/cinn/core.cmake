@@ -7,7 +7,8 @@ if(CINN_HOST_ARCH STREQUAL "x86_64")
 endif()
 
 set(CMAKE_CXX_FLAGS
-    "${CMAKE_CXX_FLAGS} -fPIC${CINN_X86_CXX_FLAGS} -Wno-write-strings -Wno-psabi")
+    "${CMAKE_CXX_FLAGS} -fPIC${CINN_X86_CXX_FLAGS} -Wno-write-strings -Wno-psabi"
+)
 
 set(PADDLE_RESOURCE_URL
     "http://paddle-inference-dist.bj.bcebos.com"

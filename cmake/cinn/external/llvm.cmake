@@ -14,10 +14,9 @@ paddle_get_llvm_native_target(PADDLE_LLVM_NATIVE_TARGET)
 paddle_normalize_target_arch(PADDLE_TARGET_ARCH)
 
 if(PADDLE_TARGET_ARCH STREQUAL "aarch64")
-  set(
-    LLVM_AARCH64_DOWNLOAD_URL
-    "https://paddle-inference-dist.bj.bcebos.com/CINN/llvm11-aarch64-glibc2.38.tar.gz"
-    CACHE STRING "ARM LLVM11 package URL")
+  set(LLVM_AARCH64_DOWNLOAD_URL
+      "https://paddle-inference-dist.bj.bcebos.com/CINN/llvm11-aarch64-glibc2.38.tar.gz"
+      CACHE STRING "ARM LLVM11 package URL")
   set(LLVM_MD5
       "3f16f25dca42c9e7e9677059f79225b5"
       CACHE STRING "ARM LLVM11 package MD5")

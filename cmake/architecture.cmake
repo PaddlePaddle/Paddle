@@ -26,23 +26,31 @@ function(paddle_normalize_target_arch out_var)
     set(_arch "${_processor}")
   endif()
 
-  set(${out_var} "${_arch}" PARENT_SCOPE)
+  set(${out_var}
+      "${_arch}"
+      PARENT_SCOPE)
 endfunction()
 
 function(paddle_get_system_library_arch_dir out_var)
   paddle_normalize_target_arch(_arch)
   set(_dir "/usr/lib/${_arch}-linux-gnu")
   if(EXISTS "${_dir}")
-    set(${out_var} "${_dir}" PARENT_SCOPE)
+    set(${out_var}
+        "${_dir}"
+        PARENT_SCOPE)
   else()
-    set(${out_var} "" PARENT_SCOPE)
+    set(${out_var}
+        ""
+        PARENT_SCOPE)
   endif()
 endfunction()
 
 function(paddle_detect_cuda_target_dir out_var)
   set(_cuda_target_dir "")
   if(NOT CUDA_TOOLKIT_ROOT_DIR)
-    set(${out_var} "${_cuda_target_dir}" PARENT_SCOPE)
+    set(${out_var}
+        "${_cuda_target_dir}"
+        PARENT_SCOPE)
     return()
   endif()
 
@@ -65,7 +73,10 @@ function(paddle_detect_cuda_target_dir out_var)
   endforeach()
 
   if(_cuda_target_dir STREQUAL "" AND EXISTS "${_targets_root}")
-    file(GLOB _detected_targets LIST_DIRECTORIES true "${_targets_root}/*")
+    file(
+      GLOB _detected_targets
+      LIST_DIRECTORIES true
+      "${_targets_root}/*")
     list(LENGTH _detected_targets _detected_target_count)
     if(_detected_target_count EQUAL 1)
       list(GET _detected_targets 0 _detected_target)
@@ -73,7 +84,9 @@ function(paddle_detect_cuda_target_dir out_var)
     endif()
   endif()
 
-  set(${out_var} "${_cuda_target_dir}" PARENT_SCOPE)
+  set(${out_var}
+      "${_cuda_target_dir}"
+      PARENT_SCOPE)
 endfunction()
 
 function(paddle_get_llvm_native_target out_var)
@@ -85,5 +98,7 @@ function(paddle_get_llvm_native_target out_var)
   else()
     string(TOUPPER "${_arch}" _llvm_target)
   endif()
-  set(${out_var} "${_llvm_target}" PARENT_SCOPE)
+  set(${out_var}
+      "${_llvm_target}"
+      PARENT_SCOPE)
 endfunction()

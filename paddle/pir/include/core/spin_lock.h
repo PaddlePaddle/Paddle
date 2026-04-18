@@ -16,7 +16,8 @@
 
 #include <atomic>
 #if (defined(_M_X64) || defined(__x86_64__) || defined(_M_IX86) || \
-     defined(__i386__)) && !(defined(__aarch64__) || defined(__arm64__))
+     defined(__i386__)) &&                                         \
+    !(defined(__aarch64__) || defined(__arm64__))
 #define __PADDLE_x86__
 #include <immintrin.h>
 #endif

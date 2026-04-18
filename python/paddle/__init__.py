@@ -72,11 +72,13 @@ def _preload_nvidia_lib(lib_glob, sub_dirs=None):
 if __is_metainfo_generated:
     import platform
 
-    if platform.system() == 'Linux' and platform.machine() == 'x86_64':
+    if platform.system() == 'Linux':
         try:
-            from .version import with_pip_cuda_libraries
+            from .version import cuda as cuda_version, with_pip_cuda_libraries
 
-            if with_pip_cuda_libraries == 'ON':
+            if with_pip_cuda_libraries == 'ON' and (
+                platform.machine() == 'x86_64' or float(cuda_version()) >= 13.0
+            ):
                 _preload_nvidia_lib('libcublasLt.so.*[0-9]', ['cublas'])
                 _preload_nvidia_lib('libcublas.so.*[0-9]', ['cublas'])
         except Exception:
@@ -849,7 +851,10 @@ if __is_metainfo_generated and is_compiled_with_cuda():
 
     if (
         platform.system() == 'Linux'
-        and platform.machine() == 'x86_64'
+        and (
+            platform.machine() == 'x86_64'
+            or float(paddle.version.cuda()) >= 13.0
+        )
         and paddle.version.with_pip_cuda_libraries == 'ON'
     ):
         package_dir = os.path.dirname(os.path.abspath(__file__))

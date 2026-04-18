@@ -31,11 +31,9 @@ get_filename_component(__libpath_hist ${CUDA_CUDART_LIBRARY} PATH)
 
 paddle_normalize_target_arch(TARGET_ARCH)
 if(NOT CUDA_TARGET_DIR STREQUAL "")
-  list(
-    APPEND
-    CUPTI_CHECK_LIBRARY_DIRS
-    ${CUDA_TOOLKIT_ROOT_DIR}/targets/${CUDA_TARGET_DIR}/lib64
-    ${CUDA_TOOLKIT_ROOT_DIR}/targets/${CUDA_TARGET_DIR}/lib)
+  list(APPEND CUPTI_CHECK_LIBRARY_DIRS
+       ${CUDA_TOOLKIT_ROOT_DIR}/targets/${CUDA_TARGET_DIR}/lib64
+       ${CUDA_TOOLKIT_ROOT_DIR}/targets/${CUDA_TARGET_DIR}/lib)
 endif()
 
 list(
