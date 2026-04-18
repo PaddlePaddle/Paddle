@@ -365,7 +365,10 @@ class Optimizer:
             return
 
         # TODO(@gexiao): support other optimizer if needed
-        if self.__class__.__name__ != "AdamW":
+        if (
+            self.__class__.__name__ != "AdamW"
+            and self.__class__.__name__ != "Muon"
+        ):
             return
 
         # add buffer check
