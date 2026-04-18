@@ -18,20 +18,13 @@ from legacy_test.test_parallel_dygraph_dataparallel import (
     TestMultipleAccelerators,
 )
 
-import paddle
-
 
 class TestMuonParallel(TestMultipleAccelerators):
-    @unittest.skipIf(
-        not paddle.is_compiled_with_cuda()
-        or paddle.device.cuda.get_device_capability()[0] < 8,
-        "BF16 matmul requires GPU compute capability >= 80 (Ampere+)",
-    )
     def test_muon_sharding_optimizer(self):
-        """MuonSharding test: iterate all QKV/FFN/ns_coeff_type combinations.
+        """MuonSharding test: iterate ns_coeff_type combinations.
 
         Test logic is in hybrid_parallel_sharding_muon_model.py,
-        iterating 24 combinations (3 qkv_modes * 2 ffn_splits * 4 ns_coeff_types).
+        iterating 4 ns_coeff_types. fp32 matmul is auto-selected on V100.
         """
         self.run_mnist_2accelerators('hybrid_parallel_sharding_muon_model.py')
 
