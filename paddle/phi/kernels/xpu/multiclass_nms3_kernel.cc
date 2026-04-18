@@ -62,7 +62,7 @@ void MultiClassNMSKernel(const Context& dev_ctx,
     if (has_rois_num) {
       DenseTensor rois_num_host;
       rois_num_host.Resize(rois_num.get_ptr()->dims());
-      if (rois_num.get_ptr()->dtype() == phi::DataType::INT64) {
+      if (rois_num.get_ptr()->dtype() == DataType::INT64) {
         dev_ctx.template HostAlloc<int64_t>(&rois_num_host);
         Copy(dev_ctx,
              *rois_num.get_ptr(),
@@ -74,7 +74,7 @@ void MultiClassNMSKernel(const Context& dev_ctx,
           rois_num_vec.push_back(rois_num_host.data<int64_t>()[i]);
           boxes_count += rois_num_host.data<int64_t>()[i];
         }
-      } else if (rois_num.get_ptr()->dtype() == phi::DataType::INT32) {
+      } else if (rois_num.get_ptr()->dtype() == DataType::INT32) {
         dev_ctx.template HostAlloc<int>(&rois_num_host);
         Copy(dev_ctx,
              *rois_num.get_ptr(),

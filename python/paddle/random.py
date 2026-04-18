@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 from paddle.base import core
+from paddle.device.cpu import get_rng_state  # noqa: F401
 
 __all__ = ["initial_seed"]
 

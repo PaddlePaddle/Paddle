@@ -72,7 +72,7 @@ using EnableIfNonInteger =
                                    const Scalar& dim,                        \
                                    bool keepdim,                             \
                                    DenseTensor* x_grad) {                    \
-    std::string dtype_name = phi::DataTypeToString(values.dtype());          \
+    std::string dtype_name = DataTypeToString(values.dtype());               \
     PADDLE_ENFORCE_EQ(                                                       \
         0,                                                                   \
         1,                                                                   \

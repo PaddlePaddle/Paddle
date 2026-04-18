@@ -103,16 +103,16 @@ void EmbeddingGradAddToAddToKernel(const Context& dev_ctx,
                                    const DenseTensor& out_grad,
                                    DenseTensor* main_grad_out) {
   PADDLE_ENFORCE_EQ(out_grad.dtype(),
-                    phi::DataType::BFLOAT16,
+                    DataType::BFLOAT16,
                     "out_grad dtype must be bfloat16 in embedding_grad_add_to");
   EmbeddingGradAddToCUDAFunctor<T, Context> functor(
       dev_ctx, token_indices, main_grad_, out_grad, main_grad_out);
 
-  if (token_indices.dtype() == phi::DataType::INT32) {
+  if (token_indices.dtype() == DataType::INT32) {
     functor.template apply<int>();
-  } else if (token_indices.dtype() == phi::DataType::INT64) {
+  } else if (token_indices.dtype() == DataType::INT64) {
     functor.template apply<int64_t>();
-  } else if (token_indices.dtype() == phi::DataType::INT16) {
+  } else if (token_indices.dtype() == DataType::INT16) {
     functor.template apply<int16_t>();
   } else {
     PADDLE_THROW(common::errors::Unimplemented(

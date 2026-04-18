@@ -93,6 +93,7 @@ from .flash_attention import (
     flash_attn_qkvpacked,
     flash_attn_varlen_qkvpacked,
     flashmask_attention,
+    flashmask_get_unique_id,
     sdp_kernel,  # noqa: F401
 )
 from .input import (
@@ -314,6 +315,7 @@ __all__ = [
     'gaussian_nll_loss',
     'scaled_dot_product_attention',
     'flashmask_attention',
+    'flashmask_get_unique_id',
     'flash_attn_qkvpacked',
     "flash_attention_v3_varlen",
     'flash_attn_varlen_qkvpacked',

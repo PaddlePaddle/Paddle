@@ -30,6 +30,7 @@ from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
     VariableArgsDecorator,
     expand_decorator,
+    fill_diagonal_inplace_decorator,
     index_add_decorator,
     index_fill_decorator,
     param_one_alias,
@@ -1196,8 +1197,26 @@ def zero_(x: Tensor) -> Tensor:
     return _C_ops.fill_(x, 0.0)
 
 
+@overload
+def fill_diagonal_(
+    x: Tensor,
+    value: float,
+    offset: int = 0,
+    wrap: bool = False,
+    name: str | None = None,
+) -> Tensor: ...
+
+
+@overload
+def fill_diagonal_(
+    x: Tensor,
+    fill_value: float,
+    wrap: bool = False,
+) -> Tensor: ...
+
+
 @dygraph_only
-@param_one_alias(["value", "fill_value"])
+@fill_diagonal_inplace_decorator()
 def fill_diagonal_(
     x: Tensor,
     value: float,
@@ -1232,7 +1251,7 @@ def fill_diagonal_(
             [[1.0, 2.0, 2.0], [2.0, 1.0, 2.0], [2.0, 2.0, 1.0], [2.0, 2.0, 2.0]]
 
             >>> # Use 'fill_value' alias (PyTorch compatible)
-            >>> x.fill_diagonal_(fill_value=0.0)  # type: ignore
+            >>> x.fill_diagonal_(fill_value=0.0)
             >>> print(x.tolist())
             [[0.0, 2.0, 2.0], [2.0, 0.0, 2.0], [2.0, 2.0, 0.0], [2.0, 2.0, 2.0]]
     """
@@ -8223,16 +8242,19 @@ for name, func in __METHODS.items():
 
 
 def _index_fill_impl(
-    x: Tensor, index: Tensor, axis: int, value: Tensor, inplace: bool
+    x: Tensor,
+    index: Tensor,
+    axis: int,
+    value: bool | complex | Tensor,
+    inplace: bool,
 ) -> Tensor:
     if not isinstance(index, (Variable, paddle.pir.Value)):
         raise ValueError("index must be Tensor")
 
-    if not isinstance(value, Variable):
-        value = paddle.to_tensor(value, dtype=x.dtype)
-    else:
-        if len(value.shape) > 0:
+    if isinstance(value, (Variable, paddle.pir.Value)):
+        if value.numel() != 1:
             raise ValueError("value must be scalar or 0-D tensor")
+        value = value.item()
 
     x_dim = len(x.shape)
     if not (isinstance(axis, int)) or (axis > x_dim - 1) or axis < -x_dim:
@@ -8255,28 +8277,6 @@ def _index_fill_impl(
     ):
         if 0 in index.shape:
             return x if inplace else x.clone()
-
-        if isinstance(value, (Variable, paddle.pir.Value)):
-            if value.numel() != 1:
-                raise ValueError("value must be scalar or 0-D tensor")
-            value = value.item()
-        if x.dtype in [
-            paddle.int8,
-            paddle.int16,
-            paddle.int32,
-            paddle.int64,
-            paddle.uint8,
-        ]:
-            value = int(value)
-        elif x.dtype == paddle.bool:
-            value = bool(value)
-        elif x.dtype in [
-            paddle.complex64,
-            paddle.complex128,
-        ]:
-            value = complex(value)
-        else:
-            value = float(value)
 
         if inplace:
             return _C_ops.index_fill_(x, index, axis, value)

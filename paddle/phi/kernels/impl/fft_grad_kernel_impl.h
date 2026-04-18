@@ -90,7 +90,7 @@ void FFTC2RGradKernel(const Context& dev_ctx,
                       bool forward,
                       int64_t last_dim_size UNUSED,
                       DenseTensor* x_grad) {
-  using C = phi::dtype::complex<T>;
+  using C = dtype::complex<T>;
   dev_ctx.template Alloc<C>(x_grad);
   if (x_grad && x_grad->numel() == 0) {
     return;

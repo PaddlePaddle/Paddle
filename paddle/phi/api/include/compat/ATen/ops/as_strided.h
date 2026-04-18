@@ -29,6 +29,9 @@ inline at::Tensor Tensor::as_strided(
     at::IntArrayRef size,
     at::IntArrayRef stride,
     ::std::optional<int64_t> storage_offset) const {
+  // Materialize the compat StorageHolderView before creating the view so
+  // aliasing tensors share one StorageImpl and observe later resize_ growth.
+  (void)this->storage();
   auto src_impl = tensor_.impl();
   auto* src_tensor =
       std::dynamic_pointer_cast<phi::DenseTensor>(src_impl).get();
@@ -67,6 +70,9 @@ inline const at::Tensor& Tensor::as_strided_(
     at::IntArrayRef size,
     at::IntArrayRef stride,
     ::std::optional<int64_t> storage_offset) const {
+  // Keep inplace metadata-only view rewrites attached to the same compat
+  // storage as the original tensor.
+  (void)this->storage();
   auto src_impl = tensor_.impl();
   auto* src_tensor =
       std::dynamic_pointer_cast<phi::DenseTensor>(src_impl).get();

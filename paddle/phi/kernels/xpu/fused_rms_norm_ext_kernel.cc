@@ -45,11 +45,11 @@ void RMSLnFwd(const Context &dev_ctx,
   int64_t rows, cols;
   GetRowsCols(vectorize(x.dims()), &rows, &cols);
 
-  if (scale.dtype() == phi::DataType::BFLOAT16) {
+  if (scale.dtype() == DataType::BFLOAT16) {
     dev_ctx.template Alloc<phi::bfloat16>(y);
-  } else if (scale.dtype() == phi::DataType::FLOAT16) {
+  } else if (scale.dtype() == DataType::FLOAT16) {
     dev_ctx.template Alloc<phi::float16>(y);
-  } else if (scale.dtype() == phi::DataType::FLOAT32) {
+  } else if (scale.dtype() == DataType::FLOAT32) {
     dev_ctx.template Alloc<float>(y);
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
@@ -101,21 +101,20 @@ void RMSLnFwd(const Context &dev_ctx,
       /*is_rstd=*/true);                                             \
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "rms_layer_norm");
   // scale.dtype() same as y->dtype()
-  if (x.dtype() == phi::DataType::FLOAT32 &&
-      scale.dtype() == phi::DataType::FLOAT32) {
+  if (x.dtype() == DataType::FLOAT32 && scale.dtype() == DataType::FLOAT32) {
     DISPATCH_FWD_CASE(float);
-  } else if (x.dtype() == phi::DataType::FLOAT16 &&
-             scale.dtype() == phi::DataType::FLOAT16) {
+  } else if (x.dtype() == DataType::FLOAT16 &&
+             scale.dtype() == DataType::FLOAT16) {
     DISPATCH_FWD_CASE(phi::float16);
-  } else if (x.dtype() == phi::DataType::BFLOAT16 &&
-             scale.dtype() == phi::DataType::BFLOAT16) {
+  } else if (x.dtype() == DataType::BFLOAT16 &&
+             scale.dtype() == DataType::BFLOAT16) {
     DISPATCH_FWD_CASE(phi::bfloat16);
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "Unsupported dtype combination: x [%s], scale [%s]. "
         "Expected both to be float32, float16, or bfloat16.",
-        phi::DataTypeToString(x.dtype()),
-        phi::DataTypeToString(scale.dtype())));
+        DataTypeToString(x.dtype()),
+        DataTypeToString(scale.dtype())));
   }
 #undef DISPATCH_FWD_CASE
 }
@@ -134,11 +133,11 @@ void RMSLnBwd(const Context &dev_ctx,
   dev_ctx.template Alloc<T>(x_grad);
   DenseTensor actual_scale_grad;
   if (scale_grad) {
-    if (scale.dtype() == phi::DataType::BFLOAT16) {
+    if (scale.dtype() == DataType::BFLOAT16) {
       dev_ctx.template Alloc<phi::bfloat16>(scale_grad);
-    } else if (scale.dtype() == phi::DataType::FLOAT16) {
+    } else if (scale.dtype() == DataType::FLOAT16) {
       dev_ctx.template Alloc<phi::float16>(scale_grad);
-    } else if (scale.dtype() == phi::DataType::FLOAT32) {
+    } else if (scale.dtype() == DataType::FLOAT32) {
       dev_ctx.template Alloc<float>(scale_grad);
     } else {
       PADDLE_THROW(
@@ -149,11 +148,11 @@ void RMSLnBwd(const Context &dev_ctx,
     actual_scale_grad = *scale_grad;
   } else {
     // lora specific, scale_grad is nullptr
-    if (scale.dtype() == phi::DataType::BFLOAT16) {
+    if (scale.dtype() == DataType::BFLOAT16) {
       actual_scale_grad = EmptyLike<phi::bfloat16, Context>(dev_ctx, scale);
-    } else if (scale.dtype() == phi::DataType::FLOAT16) {
+    } else if (scale.dtype() == DataType::FLOAT16) {
       actual_scale_grad = EmptyLike<phi::float16, Context>(dev_ctx, scale);
-    } else if (scale.dtype() == phi::DataType::FLOAT32) {
+    } else if (scale.dtype() == DataType::FLOAT32) {
       actual_scale_grad = EmptyLike<float, Context>(dev_ctx, scale);
     } else {
       PADDLE_THROW(
@@ -180,21 +179,20 @@ void RMSLnBwd(const Context &dev_ctx,
       /*is_rstd=*/true);                                                   \
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "rms_layer_norm_grad");
   // scale.dtype() same as y->dtype()
-  if (x.dtype() == phi::DataType::FLOAT32 &&
-      scale.dtype() == phi::DataType::FLOAT32) {
+  if (x.dtype() == DataType::FLOAT32 && scale.dtype() == DataType::FLOAT32) {
     DISPATCH_BWD_CASE(float);
-  } else if (x.dtype() == phi::DataType::FLOAT16 &&
-             scale.dtype() == phi::DataType::FLOAT16) {
+  } else if (x.dtype() == DataType::FLOAT16 &&
+             scale.dtype() == DataType::FLOAT16) {
     DISPATCH_BWD_CASE(phi::float16);
-  } else if (x.dtype() == phi::DataType::BFLOAT16 &&
-             scale.dtype() == phi::DataType::BFLOAT16) {
+  } else if (x.dtype() == DataType::BFLOAT16 &&
+             scale.dtype() == DataType::BFLOAT16) {
     DISPATCH_BWD_CASE(phi::bfloat16);
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "Unsupported dtype combination: x [%s], scale [%s]. "
         "Expected both to be float32, float16, or bfloat16.",
-        phi::DataTypeToString(x.dtype()),
-        phi::DataTypeToString(scale.dtype())));
+        DataTypeToString(x.dtype()),
+        DataTypeToString(scale.dtype())));
   }
 #undef DISPATCH_BWD_CASE
 }

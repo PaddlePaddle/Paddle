@@ -116,20 +116,20 @@ inline auto Bools(F&& f, bool first, Rest... rest) {
 
 // Token type dispatch: dtype -> (TokenT, has_scale)
 template <typename F>
-inline void TokenType(phi::DataType dtype, F&& f) {
-  if (dtype == phi::DataType::BFLOAT16) {
+inline void TokenType(DataType dtype, F&& f) {
+  if (dtype == DataType::BFLOAT16) {
     f(TypeTag<phi::bfloat16>{}, std::false_type{});
-  } else if (dtype == phi::DataType::FLOAT8_E4M3FN) {
+  } else if (dtype == DataType::FLOAT8_E4M3FN) {
     f(TypeTag<phi::float8_e4m3fn>{}, std::true_type{});
   }
 }
 
 // Probability type dispatch
 template <typename F>
-inline void ProbType(phi::DataType dtype, F&& f) {
-  if (dtype == phi::DataType::BFLOAT16) {
+inline void ProbType(DataType dtype, F&& f) {
+  if (dtype == DataType::BFLOAT16) {
     f(TypeTag<phi::bfloat16>{});
-  } else if (dtype == phi::DataType::FLOAT32) {
+  } else if (dtype == DataType::FLOAT32) {
     f(TypeTag<float>{});
   }
 }

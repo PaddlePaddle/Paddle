@@ -26,7 +26,7 @@ jobs:
       can-skip: ${{ steps.skip-skill.outputs.should-skip }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Run skip check
         id: skip-skill
         uses: ./.github/actions/skip-skill
@@ -108,18 +108,18 @@ jobs:
       docker_distribute_image: ${{ needs.build-docker.outputs.docker_distribute_image }}
       clone-can-skip: ${{ needs.clone.outputs.can-skip }}
 
-  # distribute-test:
-  #   name: Distribute-stable-test
-  #   uses: ./.github/workflows/_Distribute-stable-Test.yml
-  #   needs: [clone, build-docker, distribute]
-  #   with:
-  #     docker_distribute_image: ${{ needs.build-docker.outputs.docker_distribute_image }}
-  #     clone-can-skip: ${{ needs.clone.outputs.can-skip }}
+# distribute-test:
+#   name: Distribute-stable-test
+#   uses: ./.github/workflows/_Distribute-stable-Test.yml
+#   needs: [clone, build-docker, distribute]
+#   with:
+#     docker_distribute_image: ${{ needs.build-docker.outputs.docker_distribute_image }}
+#     clone-can-skip: ${{ needs.clone.outputs.can-skip }}
 
-  # distribute-formers:
-  #   name: Distribute-stable-formers
-  #   uses: ./.github/workflows/_Distribute-stable-Formers.yml
-  #   needs: [clone, build-docker, distribute]
-  #   with:
-  #     docker_distribute_image: ${{ needs.build-docker.outputs.docker_distribute_image }}
-  #     clone-can-skip: ${{ needs.clone.outputs.can-skip }}
+# distribute-formers:
+#   name: Distribute-stable-formers
+#   uses: ./.github/workflows/_Distribute-stable-Formers.yml
+#   needs: [clone, build-docker, distribute]
+#   with:
+#     docker_distribute_image: ${{ needs.build-docker.outputs.docker_distribute_image }}
+#     clone-can-skip: ${{ needs.clone.outputs.can-skip }}

@@ -35,7 +35,7 @@ void CEmbeddingKernel(const Context& dev_ctx,
   const int64_t width = w.dims()[1];
 
   const auto& index_type = ids.dtype();
-  if (index_type == phi::DataType::INT32) {
+  if (index_type == DataType::INT32) {
     int r = xpu::paddle_embedding(dev_ctx.x_context(),
                                   reinterpret_cast<const XPUType*>(table_data),
                                   ids.data<int32_t>(),
@@ -46,7 +46,7 @@ void CEmbeddingKernel(const Context& dev_ctx,
                                   -1,
                                   static_cast<int32_t>(start_index));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "paddle_embedding");
-  } else if (index_type == phi::DataType::INT64) {
+  } else if (index_type == DataType::INT64) {
     int r = xpu::paddle_embedding(dev_ctx.x_context(),
                                   reinterpret_cast<const XPUType*>(table_data),
                                   ids.data<int64_t>(),

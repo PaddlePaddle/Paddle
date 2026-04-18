@@ -14,6 +14,7 @@
 
 #include <ATen/Functions.h>
 #include <ATen/core/TensorBody.h>
+#include <ATen/cuda/CUDAContext.h>
 #include <ATen/ops/equal.h>
 #include <ATen/ops/tensor.h>
 #include <c10/core/Device.h>
@@ -40,6 +41,9 @@ TEST(TensorEqualTest, DtypeMismatchCastsOtherTensor) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(TensorEqualTest, DeviceMismatchThrows) {
+  if (!at::cuda::is_available()) {
+    return;
+  }
   at::Tensor cpu = at::ones({2, 2}, at::kFloat);
   at::Tensor gpu =
       at::ones({2, 2}, at::TensorOptions().dtype(at::kFloat).device(at::kCUDA));

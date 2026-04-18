@@ -160,8 +160,7 @@ void IndexPutKernel(const Context& dev_ctx,
                                      bd_dim,
                                      &res_dim_v);
   if (value.numel() != 1) {
-    tmp_value_v.emplace_back(
-        DenseTensor(value.dtype()).Resize(make_ddim(res_dim_v)));
+    tmp_value_v.emplace_back(DenseTensor(value.dtype()).Resize(res_dim_v));
     ExpandKernel<T, Context>(
         dev_ctx, value, IntArray(res_dim_v), &tmp_value_v[0]);
     ptr_value = &tmp_value_v[0];

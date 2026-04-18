@@ -271,7 +271,7 @@ __global__ void RenormGradKernelFunc2(const T* x_data,
 }
 
 template <typename T>
-void RenormFunc(const phi::GPUContext& dev_ctx,
+void RenormFunc(const GPUContext& dev_ctx,
                 const T* x_data,
                 T* out_data,
                 float p,
@@ -299,7 +299,7 @@ void RenormFunc(const phi::GPUContext& dev_ctx,
   int64_t grid2 =
       std::min((dimension_each + block2 - 1) / block2, max_grid_dimx);
   std::vector<int> reduce_axis = {0, 2};
-  phi::SumKernel<T>(
+  SumKernel<T>(
       dev_ctx, pow_value, reduce_axis, pow_value.dtype(), false, &dim_value);
 
   RenormKernelFunc3<T><<<grid2, block2, 0, stream>>>(
@@ -309,7 +309,7 @@ void RenormFunc(const phi::GPUContext& dev_ctx,
 }
 
 template <typename T>
-void RenormGradFunc(const phi::GPUContext& dev_ctx,
+void RenormGradFunc(const GPUContext& dev_ctx,
                     const T* x_data,
                     const T* dout_data,
                     T* dx_data,
@@ -349,14 +349,14 @@ void RenormGradFunc(const phi::GPUContext& dev_ctx,
                                                        dim_divisor);
   std::vector<int> reduce_axis = {0, 2};
 
-  phi::SumKernel<T>(
+  SumKernel<T>(
       dev_ctx, pow_value, reduce_axis, pow_value.dtype(), false, &dim_value);
-  phi::SumKernel<T>(dev_ctx,
-                    mul_value,
-                    reduce_axis,
-                    mul_value.dtype(),
-                    false,
-                    &weight_derivative);
+  SumKernel<T>(dev_ctx,
+               mul_value,
+               reduce_axis,
+               mul_value.dtype(),
+               false,
+               &weight_derivative);
 
   RenormGradKernelFunc2<T><<<grid, block, 0, stream>>>(x_data,
                                                        dout_data,

@@ -92,7 +92,7 @@ void LaunchIndexFillGradCudaKernel(const Context& dev_ctx,
   DenseTensor index_int64;
   const DenseTensor* ptr_index = nullptr;
 
-  if (index.dtype() == phi::DataType::INT32) {
+  if (index.dtype() == DataType::INT32) {
     index_int64.Resize(index.dims());
     dev_ctx.template Alloc<int64_t>(&index_int64);
 
@@ -107,12 +107,12 @@ void LaunchIndexFillGradCudaKernel(const Context& dev_ctx,
         index.data<int32_t>(), index_int64.data<int64_t>(), index_numel);
 
     ptr_index = &index_int64;
-  } else if (index.dtype() == phi::DataType::INT64) {
+  } else if (index.dtype() == DataType::INT64) {
     ptr_index = &index;
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "The dtype of index must be int32 or int64, but received %s.",
-        phi::DataTypeToString(index.dtype())));
+        DataTypeToString(index.dtype())));
   }
 
   const int64_t* index_data = ptr_index->data<int64_t>();
