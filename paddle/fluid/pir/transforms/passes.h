@@ -34,8 +34,10 @@ USE_PIR_PASS(matmul_add_act_fuse_pass);
 USE_PIR_PASS(silu_fuse_pass);
 USE_PIR_PASS(fc_elementwise_layernorm_fuse_pass);
 USE_PIR_PASS(conv2d_bn_fuse_pass);
+#ifdef PADDLE_WITH_CUDA
 USE_PIR_PASS(conv2d_add_fuse_pass);
 USE_PIR_PASS(conv2d_add_act_fuse_pass);
+#endif
 USE_PIR_PASS(embedding_eltwise_layernorm_fuse_pass);
 USE_PIR_PASS(add_norm_fuse_pass);
 USE_PIR_PASS(group_norm_silu_fuse_pass);
