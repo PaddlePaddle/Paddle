@@ -39,6 +39,20 @@ inline Device normalize_cuda_device(Device device) {
                             : current_cuda_device();
 }
 
+inline void restore_cuda_device(const Device& original_device,
+                                const Device& current_device) {
+  if (original_device.index() != current_device.index()) {
+    phi::backends::gpu::SetDeviceId(static_cast<int>(original_device.index()));
+  }
+}
+
+inline void restore_cuda_device(const std::optional<Device>& original_device,
+                                const std::optional<Device>& current_device) {
+  if (original_device.has_value() && current_device.has_value()) {
+    restore_cuda_device(*original_device, *current_device);
+  }
+}
+
 }  // namespace detail
 
 struct CUDAGuard {
@@ -47,14 +61,14 @@ struct CUDAGuard {
   explicit CUDAGuard(DeviceIndex device_index)
       : original_device_(detail::current_cuda_device()),
         current_device_(original_device_),
-        guard_() {
+        guard_(std::in_place) {
     set_index(device_index);
   }
 
   explicit CUDAGuard(Device device)
       : original_device_(detail::current_cuda_device()),
         current_device_(original_device_),
-        guard_() {
+        guard_(std::in_place) {
     set_device(device);
   }
 
@@ -63,18 +77,21 @@ struct CUDAGuard {
 
   CUDAGuard(CUDAGuard&& other) = delete;
   CUDAGuard& operator=(CUDAGuard&& other) = delete;
-  ~CUDAGuard() = default;
+  ~CUDAGuard() {
+    guard_.reset();
+    detail::restore_cuda_device(original_device_, current_device_);
+  }
 
   void set_device(Device device) {
     current_device_ = detail::normalize_cuda_device(device);
-    guard_.SetDevice(current_device_._PD_GetInner());
+    guard_->SetDevice(current_device_._PD_GetInner());
   }
 
   void reset_device(Device device) { set_device(device); }
 
   void set_index(DeviceIndex device_index) {
     current_device_ = Device(kCUDA, device_index);
-    guard_.SetDeviceIndex(device_index);
+    guard_->SetDeviceIndex(device_index);
   }
 
   Device original_device() const { return original_device_; }
@@ -84,7 +101,7 @@ struct CUDAGuard {
  private:
   Device original_device_;
   Device current_device_;
-  paddle::platform::CUDADeviceGuard guard_;
+  std::optional<paddle::platform::CUDADeviceGuard> guard_;
 };
 
 struct OptionalCUDAGuard {
@@ -107,7 +124,7 @@ struct OptionalCUDAGuard {
 
   OptionalCUDAGuard(OptionalCUDAGuard&& other) = delete;
   OptionalCUDAGuard& operator=(OptionalCUDAGuard&& other) = delete;
-  ~OptionalCUDAGuard() = default;
+  ~OptionalCUDAGuard() { reset(); }
 
   void set_device(Device device) {
     const Device normalized = detail::normalize_cuda_device(device);
@@ -130,6 +147,7 @@ struct OptionalCUDAGuard {
 
   void reset() {
     guard_.reset();
+    detail::restore_cuda_device(original_device_, current_device_);
     original_device_.reset();
     current_device_.reset();
   }

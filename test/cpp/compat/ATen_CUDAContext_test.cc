@@ -89,13 +89,39 @@ TEST(CUDAFunctionsTest, TorchSynchronizePreservesCurrentDevice) {
     return;
   }
 
-  constexpr c10::DeviceIndex current_device = 0;
-  constexpr c10::DeviceIndex other_device = 1;
-  c10::cuda::CUDAGuard guard(current_device);
+  constexpr int current_device = 0;
+  constexpr int other_device = 1;
+  c10::cuda::CUDAGuard guard(static_cast<c10::DeviceIndex>(current_device));
   ASSERT_EQ(phi::backends::gpu::GetCurrentDeviceId(), current_device);
 
   ASSERT_NO_THROW(torch::cuda::synchronize(other_device));
   EXPECT_EQ(phi::backends::gpu::GetCurrentDeviceId(), current_device);
+}
+
+TEST(CUDAFunctionsTest, CUDAGuardRestoresOriginalDeviceAfterMultipleSwitches) {
+  if (!torch::cuda::is_available()) {
+    return;
+  }
+  if (torch::cuda::device_count() < 2) {
+    return;
+  }
+
+  constexpr int original_device = 0;
+  constexpr int intermediate_device = 1;
+  phi::backends::gpu::SetDeviceId(original_device);
+  ASSERT_EQ(phi::backends::gpu::GetCurrentDeviceId(), original_device);
+
+  {
+    c10::cuda::CUDAGuard guard(
+        static_cast<c10::DeviceIndex>(intermediate_device));
+    ASSERT_EQ(phi::backends::gpu::GetCurrentDeviceId(), intermediate_device);
+    guard.set_index(static_cast<c10::DeviceIndex>(original_device));
+    ASSERT_EQ(phi::backends::gpu::GetCurrentDeviceId(), original_device);
+    guard.set_index(static_cast<c10::DeviceIndex>(intermediate_device));
+    ASSERT_EQ(phi::backends::gpu::GetCurrentDeviceId(), intermediate_device);
+  }
+
+  EXPECT_EQ(phi::backends::gpu::GetCurrentDeviceId(), original_device);
 }
 #endif
 
