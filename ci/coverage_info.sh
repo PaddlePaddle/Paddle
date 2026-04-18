@@ -32,6 +32,7 @@ echo "::endgroup::"
 
 cd ${PADDLE_ROOT}/build
 
+# NOTE(ooooo): Known risk: gcda pre-cleaning may delete valid gcda in some cases.
 python ${PADDLE_ROOT}/ci/coverage_gcda_clean.py ${PR_ID} || exit 101
 echo "::group::Run lcov"
 lcov --ignore-errors gcov --capture -d ./ -o coverage.info --rc lcov_branch_coverage=0
