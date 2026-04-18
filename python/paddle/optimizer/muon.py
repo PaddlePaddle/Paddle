@@ -16,6 +16,10 @@ from __future__ import annotations
 import logging
 import os
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 import paddle
 from paddle.base import framework
@@ -41,34 +45,6 @@ __all__ = []
 
 
 @dataclass
-class QKVInfo:
-    """Metadata for QKV weight matrices (GQA).
-
-    Attributes:
-        head_num: Number of attention heads (Q heads).
-        kv_head_num: Number of key-value heads (for GQA).
-        num_key_value_groups: Number of Q heads per KV head.
-    """
-
-    head_num: int
-    kv_head_num: int
-    num_key_value_groups: int
-
-
-@dataclass
-class MLAInfo:
-    """Metadata for MLA weight matrices needed for head-split.
-
-    Attributes:
-        param_name: Name of the parameter (q_b_proj, kv_b_proj, o_proj).
-        head_num: Number of attention heads.
-    """
-
-    param_name: str
-    head_num: int
-
-
-@dataclass
 class MuonParamInfo:
     """Muon update metadata for a single parameter.
 
@@ -77,29 +53,13 @@ class MuonParamInfo:
 
     Attributes:
         use_muon: If True, use Muon (orthogonal) updates; otherwise AdamW.
-        qkv_info: Required for QKV weight matrices.
-        intermediate_size: Required for FFN gate_up weights when muon_ffn_split is True.
+        split_concat_func: Optional callable that implements the slice strategy.
+            Signature: split_concat_func(matrix, ortho_fn, **kwargs) -> sliced_matrix
+            If None, whole-matrix orthogonalisation is used.
     """
 
     use_muon: bool = True
-    qkv_info: QKVInfo | None = None
-    mla_info: MLAInfo | None = None
-    intermediate_size: int | None = None
-
-    @property
-    def is_qkv(self) -> bool:
-        """True if this is a QKV weight matrix."""
-        return self.qkv_info is not None
-
-    @property
-    def is_mla(self) -> bool:
-        """True if this is an MLA weight matrix."""
-        return self.mla_info is not None
-
-    @property
-    def is_ffn_gate_up(self) -> bool:
-        """True if this is an FFN gate_up weight matrix."""
-        return self.intermediate_size is not None
+    split_concat_func: Callable | None = None
 
 
 # Type alias for the parameter info mapping
@@ -213,21 +173,22 @@ class Muon(Optimizer):
             any of these substrings will use AdamW instead of Muon.
             Example: ``['embed', 'bias', 'lm_head', 'mlp.gate']``.
             Default: ``None``.
-        muon_qkv_update_mode (str): Strategy for QKV fused weight matrices.
-            ``"split_head"`` orthogonalises each Q/K/V head independently;
-            ``"split_qkv"`` treats Q, K, V as three separate matrices;
-            ``"fused_qkv"`` treats the entire QKV matrix as one.
-            Default: ``"split_head"``.
-        muon_ffn_split (bool): If True, split FFN gate_up fused weights into
-            gate and up projections and orthogonalise them independently.
-            Default: ``False``.
         muon_extra_scale_factor (float): Extra multiplicative scale applied
             after the dimension-dependent scaling in ``_scaling_fn``.
             Default: ``0.2``.
         muon_param_info_map (MuonParamInfoMap | None): Per-parameter metadata
             dict mapping param name to :class:`MuonParamInfo` (use_muon,
-            qkv_info, intermediate_size). Built by Trainer and passed in.
+            split_concat_func). Built by Trainer and passed in.
             Default: ``None``.
+        muon_slice_config (dict | None): Declarative slice configuration mapping
+            param name to (slice_fn, slice_kwargs) tuple. Built by model's
+            _build_muon_slice_config method and passed in. This allows slice
+            strategies to be defined in the model configuration rather than
+            hard-coded in the optimizer. Default: ``None``.
+        ns_matmul_dtype (paddle.dtype | None): Dtype for Newton-Schulz matmul
+            iterations. ``None`` = auto-detect: bfloat16 on Ampere+ (capability
+            >= 8.0), float32 on V100 and older. Pass ``paddle.float32``
+            explicitly to force float32. Default: ``None``.
         multi_precision (bool): Maintain FP32 master weights when training in
             BF16/FP16. Default: ``False``.
         name (str | None): Optional name for the optimizer instance.
@@ -254,10 +215,9 @@ class Muon(Optimizer):
         apply_decay_param_fun=None,
         muon_version=1,
         muon_exclude_patterns=None,
-        muon_qkv_update_mode="split_head",
-        muon_ffn_split=False,
         muon_extra_scale_factor=0.2,
         muon_param_info_map: MuonParamInfoMap | None = None,
+        ns_matmul_dtype=None,
         multi_precision=False,
         name=None,
         **kwargs,
@@ -305,11 +265,22 @@ class Muon(Optimizer):
         self._apply_decay_param_fun = apply_decay_param_fun
         self._muon_split_logged = False
         self._muon_exclude_patterns = muon_exclude_patterns
-        self._muon_qkv_update_mode = muon_qkv_update_mode
-        self._muon_ffn_split = muon_ffn_split
         self._muon_extra_scale_factor = muon_extra_scale_factor
         self._ns_coeff_type = ns_coeff_type
         self._muon_param_info_map = muon_param_info_map or {}
+        # Dtype for Newton-Schulz matmul.
+        # None = auto: bfloat16 on Ampere+ (capability >= 8.0), float32 on older.
+        if ns_matmul_dtype is None:
+            cap = (
+                paddle.device.cuda.get_device_capability()
+                if paddle.is_compiled_with_cuda()
+                else (0, 0)
+            )
+            self._ns_matmul_dtype = (
+                paddle.bfloat16 if cap[0] >= 8 else paddle.float32
+            )
+        else:
+            self._ns_matmul_dtype = ns_matmul_dtype
         self._default_dict.update(defaults)
 
     # ------------------------------------------------------------------
@@ -383,7 +354,11 @@ class Muon(Optimizer):
 
     @staticmethod
     def _zeropower_via_newtonschulz5(
-        X, steps=5, eps=1e-9, ns_coeff_type="simple"
+        X,
+        steps=5,
+        eps=1e-9,
+        ns_coeff_type="simple",
+        ns_matmul_dtype=paddle.bfloat16,
     ):
         """Approximate the matrix sign function via Newton-Schulz iteration.
 
@@ -393,6 +368,8 @@ class Muon(Optimizer):
             eps: Small constant for numerical stability.
             ns_coeff_type: Type of coefficient set to use.
                 Options: "simple", "quintic", "polar_express", "aol".
+            ns_matmul_dtype: Dtype for matmul iterations. Defaults to
+                bfloat16. Pass paddle.float32 for V100 compatibility.
         """
         # Get coefficient set
         coeff_sets = _NS_COEFFICIENT_SETS.get(
@@ -410,7 +387,7 @@ class Muon(Optimizer):
         X_flat = paddle.nn.functional.normalize(
             X_flat, p=2, axis=-1, epsilon=eps
         )
-        X = X_flat.reshape(orig_shape).astype(paddle.bfloat16)
+        X = X_flat.reshape(orig_shape).astype(ns_matmul_dtype)
 
         # Iterate with cycling coefficients
         for i in range(steps):
@@ -432,157 +409,6 @@ class Muon(Optimizer):
         else:  # version == 3 (default)
             scale = max(dout, din) ** 0.5
         return orthogonal_update * scale * extra_scale_factor
-
-    @staticmethod
-    def _ortho_qkv_per_head(
-        matrix_2d_global,
-        kv_head_num,
-        num_key_value_groups,
-        ortho_fn,
-    ):
-        """Orthogonalise each Q/K/V head independently (interleaved layout).
-
-        Args:
-            matrix_2d_global: QKV weight matrix [hidden, (num_key_value_groups + 2)*kv_head_num*head_dim].
-            kv_head_num: Number of K/V heads.
-            num_key_value_groups: Number of Q heads per KV head.
-            ortho_fn: Callable (2d_matrix) -> 2d_matrix applying NS + scaling.
-
-        Returns:
-            orthogonal_update: Same shape as input, each head orthogonalised.
-        """
-        # Interleaved layout: [Q_kv0, K0, V0, Q_kv1, K1, V1, ...]
-        head_dim = matrix_2d_global.shape[1] // (
-            num_key_value_groups * kv_head_num + 2 * kv_head_num
-        )
-        groups = paddle.split(matrix_2d_global, kv_head_num, axis=1)
-
-        processed_groups = []
-        for group in groups:
-            q_part, k_head, v_head = paddle.split(
-                group,
-                [num_key_value_groups * head_dim, head_dim, head_dim],
-                axis=1,
-            )
-            q_heads = paddle.split(q_part, num_key_value_groups, axis=1)
-            q_ortho = paddle.concat([ortho_fn(h) for h in q_heads], axis=1)
-            processed_groups.append(
-                paddle.concat(
-                    [q_ortho, ortho_fn(k_head), ortho_fn(v_head)], axis=1
-                )
-            )
-
-        return paddle.concat(processed_groups, axis=1)
-
-    @staticmethod
-    def _ortho_qkv_sep(
-        matrix_2d,
-        kv_head_num,
-        num_key_value_groups,
-        ortho_fn,
-    ):
-        """Orthogonalise Q, K, V as three separate whole matrices (interleaved layout).
-
-        Gathers all Q heads into one block, all K heads into one block, all V heads
-        into one block (across kv_groups), orthogonalises each block as a whole with
-        one NS call, then scatters back to interleaved order.
-
-        Args:
-            matrix_2d: QKV weight matrix [hidden, (num_key_value_groups + 2)*kv_head_num*head_dim].
-            kv_head_num: Number of K/V heads.
-            num_key_value_groups: Number of Q heads per KV head.
-            ortho_fn: Callable (2d_matrix) -> 2d_matrix applying NS + scaling.
-
-        Returns:
-            orthogonal_update: Same shape as input, Q/K/V each orthogonalised as whole.
-        """
-        # Interleaved layout: [Q_kv0, K0, V0, Q_kv1, K1, V1, ...]
-        head_dim = matrix_2d.shape[1] // (
-            num_key_value_groups * kv_head_num + 2 * kv_head_num
-        )
-        q_group_size = num_key_value_groups * head_dim
-
-        # Step 1: gather Q / K / V parts from each kv_group
-        groups = paddle.split(matrix_2d, kv_head_num, axis=1)
-        q_parts, k_parts, v_parts = [], [], []
-        for group in groups:
-            q_p, k_p, v_p = paddle.split(
-                group, [q_group_size, head_dim, head_dim], axis=1
-            )
-            q_parts.append(q_p)
-            k_parts.append(k_p)
-            v_parts.append(v_p)
-
-        # Step 2: orthogonalise each projection as one whole matrix
-        q_ortho = ortho_fn(paddle.concat(q_parts, axis=1))
-        k_ortho = ortho_fn(paddle.concat(k_parts, axis=1))
-        v_ortho = ortho_fn(paddle.concat(v_parts, axis=1))
-
-        # Step 3: split back and restore interleaved layout
-        q_groups = paddle.split(q_ortho, kv_head_num, axis=1)
-        k_groups = paddle.split(k_ortho, kv_head_num, axis=1)
-        v_groups = paddle.split(v_ortho, kv_head_num, axis=1)
-
-        return paddle.concat(
-            [
-                paddle.concat([q_groups[i], k_groups[i], v_groups[i]], axis=1)
-                for i in range(kv_head_num)
-            ],
-            axis=1,
-        )
-
-    @staticmethod
-    def _ortho_ffn_gate_up(matrix, intermediate_size, ortho_fn):
-        """Orthogonalise gate and up projections independently for FFN.
-
-        Args:
-            matrix: FFN weight tensor.
-                - 2D: [hidden, 2*intermediate_size] for standard FFN
-                - 3D: [num_experts, hidden, 2*intermediate_size] for MoE FFN
-            intermediate_size: Size of each of gate/up projections.
-            ortho_fn: Callable (2d_matrix) -> 2d_matrix applying NS + scaling.
-
-        Returns:
-            orthogonal_update: Tensor with gate and up orthogonalised separately.
-        """
-        if matrix.ndim == 2:
-            gate, up = paddle.split(
-                matrix, [intermediate_size, intermediate_size], axis=1
-            )
-            return paddle.concat([ortho_fn(gate), ortho_fn(up)], axis=1)
-
-        elif matrix.ndim == 3:
-            # MoE FFN: [n_experts, hidden, 2*intermediate_size]
-            expert_updates = []
-            for ei in range(matrix.shape[0]):
-                gate, up = paddle.split(
-                    matrix[ei], [intermediate_size, intermediate_size], axis=1
-                )
-                expert_updates.append(
-                    paddle.concat([ortho_fn(gate), ortho_fn(up)], axis=1)
-                )
-            return paddle.stack(expert_updates, axis=0)
-
-        else:
-            raise ValueError(
-                f"FFN gate_up split expects 2D or 3D tensor, got shape {matrix.shape}"
-            )
-
-    @staticmethod
-    def _ortho_mla_per_head(
-        matrix_2d_global,
-        head_num,
-        ortho_fn,
-        axis,
-    ):
-        """Orthogonalise each MLA head independently."""
-        groups = paddle.split(matrix_2d_global, head_num, axis=axis)
-
-        processed_groups = []
-        for group in groups:
-            processed_groups.append(ortho_fn(group))
-
-        return paddle.concat(processed_groups, axis=axis)
 
     # ------------------------------------------------------------------
     # Per-parameter update rules
@@ -658,9 +484,6 @@ class Muon(Optimizer):
         """
         param_shape = getattr(param, "original_shape", param.shape)
         param_info = self._muon_param_info_map.get(param.name)
-        is_qkv = param_info is not None and param_info.is_qkv
-        is_mla: bool = param_info is not None and param_info.is_mla
-        is_ffn_gate_up = param_info is not None and param_info.is_ffn_gate_up
 
         with paddle.no_grad():
             grad_f32 = (
@@ -692,6 +515,7 @@ class Muon(Optimizer):
                     steps=ns_steps,
                     eps=epsilon,
                     ns_coeff_type=self._ns_coeff_type,
+                    ns_matmul_dtype=self._ns_matmul_dtype,
                 )
                 scaled = Muon._scaling_fn(
                     ns_out, version, self._muon_extra_scale_factor
@@ -699,96 +523,26 @@ class Muon(Optimizer):
                 return scaled
 
             # Step 3: Newton-Schulz orthogonalisation
-            if is_ffn_gate_up and self._muon_ffn_split:
-                # FFN gate_up split: orthogonalise gate and up projections independently.
-                intermediate_size = param_info.intermediate_size
-                if MUON_DEBUG:
-                    _global_rank = paddle.distributed.get_rank()
-                    if _global_rank == 0:
-                        _logger.info(
-                            f"[Muon] FFN split: param={param.name}, "
-                            f"shape={matrix_2d_global.shape}, "
-                            f"intermediate_size={intermediate_size}"
-                        )
-
-                orthogonal_update = Muon._ortho_ffn_gate_up(
-                    matrix_2d_global, intermediate_size, ortho_fn
-                )
-            elif matrix_2d_global.ndim == 3:
-                # 3D fused MoE expert tensor [n_experts, H, I].
-                # Apply Newton-Schulz independently to each expert's 2D slice.
-                n_experts = matrix_2d_global.shape[0]
-                orthogonal_update = paddle.stack(
-                    [ortho_fn(matrix_2d_global[ei]) for ei in range(n_experts)],
-                    axis=0,
-                )
-            elif is_qkv and self._muon_qkv_update_mode in (
-                "split_head",
-                "split_qkv",
+            # Use split_concat_func from param_info if provided, otherwise default to whole matrix
+            if (
+                param_info is not None
+                and param_info.split_concat_func is not None
             ):
-                # Read QKV head info from param_info
-                qkv_info = param_info.qkv_info
-                kv_head_num = qkv_info.kv_head_num
-                num_key_value_groups = qkv_info.num_key_value_groups
-
-                if self._muon_qkv_update_mode == "split_head":
-                    # split_head update: each Q/K/V head orthogonalised independently.
-                    if MUON_DEBUG:
-                        _global_rank = paddle.distributed.get_rank()
-                        if _global_rank == 0:
-                            _logger.info(
-                                f"[Muon] QKV split_head: param={param.name}, "
-                                f"shape={matrix_2d_global.shape}, "
-                                f"heads={qkv_info.head_num}/{kv_head_num}, "
-                                f"num_key_value_groups={num_key_value_groups}"
-                            )
-                    orthogonal_update = Muon._ortho_qkv_per_head(
-                        matrix_2d_global,
-                        kv_head_num,
-                        num_key_value_groups,
-                        ortho_fn,
-                    )
-                else:
-                    # split_qkv: Q, K, V each as a whole matrix, one NS call each.
-                    if MUON_DEBUG:
-                        _global_rank = paddle.distributed.get_rank()
-                        if _global_rank == 0:
-                            _logger.info(
-                                f"[Muon] QKV split_qkv: param={param.name}, "
-                                f"shape={matrix_2d_global.shape}, "
-                                f"head_num={qkv_info.head_num}, kv_head_num={kv_head_num}, "
-                                f"num_key_value_groups={num_key_value_groups}"
-                            )
-                    orthogonal_update = Muon._ortho_qkv_sep(
-                        matrix_2d_global,
-                        kv_head_num,
-                        num_key_value_groups,
-                        ortho_fn,
-                    )
-            elif is_mla and self._muon_qkv_update_mode == "split_head":
-                # MLA split_head update: each head of [q_b_proj, kv_b_proj, o_proj] orthogonalised independently.
-                mla_info = param_info.mla_info
-                param_name: str = mla_info.param_name
-                head_num = mla_info.head_num
+                # Use slice function defined in model configuration
+                orthogonal_update = param_info.split_concat_func(
+                    matrix_2d_global, ortho_fn
+                )
                 if MUON_DEBUG:
                     _global_rank = paddle.distributed.get_rank()
                     if _global_rank == 0:
+                        _sf = param_info.split_concat_func
                         _logger.info(
-                            f"[Muon] MLA split_head: param={param.name}, param_name={param_name}, "
-                            f"shape={matrix_2d_global.shape}, "
-                            f"head_num={head_num}"
+                            f"[Muon] Using split_concat_func: param={param.name}, "
+                            f"split_concat_func={_sf.func.__name__}, "
+                            f"args={_sf.args}, kwargs={_sf.keywords}"
                         )
-                assert param_name in ("q_b_proj", "kv_b_proj", "o_proj"), (
-                    f"Unsupported MLA param name: {param_name}"
-                )
-                orthogonal_update = Muon._ortho_mla_per_head(
-                    matrix_2d_global,
-                    head_num,
-                    ortho_fn,
-                    0 if param_name == "o_proj" else 1,
-                )
             else:
-                # Standard 2D update: entire matrix as one Newton-Schulz call.
+                # Default: whole matrix orthogonalisation
                 orthogonal_update = ortho_fn(matrix_2d_global)
 
             # Step 4: Apply update with optional weight decay
@@ -816,6 +570,9 @@ class Muon(Optimizer):
 
         if self._grad_clip is not None:
             params_grads = self._grad_clip(params_grads)
+
+        # apply for zcc
+        self._maybe_refuse()
 
         group = self._default_dict
         lr = self._learning_rate
