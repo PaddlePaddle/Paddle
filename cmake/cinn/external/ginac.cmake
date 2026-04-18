@@ -4,7 +4,8 @@ include(${PROJECT_SOURCE_DIR}/cmake/architecture.cmake)
 paddle_normalize_target_arch(PADDLE_TARGET_ARCH)
 
 # gmp-6.2.1 https://gmplib.org/download/gmp/gmp-6.2.1.tar.xz
-# cln-1.3.6 https://www.ginac.de/CLN/cln-1.3.6.tar.bz2
+# cln-1.3.6 https://www.ginac.de/CLN/cln-1.3.6.tar.bz2 (default/non-aarch64)
+# cln-1.3.7 https://www.ginac.de/CLN/cln-1.3.7.tar.bz2 (aarch64)
 # ginac-1.8.1 https://www.ginac.de/ginac-1.8.1.tar.bz2
 #  all build with CFLAGS="-fPIC -DPIC" CXXFLAGS="-fPIC -DPIC" --enable-static=yes
 
