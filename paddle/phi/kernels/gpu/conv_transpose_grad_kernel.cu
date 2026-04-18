@@ -111,7 +111,7 @@ void DepthwiseConv2dTransposeGradKernel(const Context& dev_ctx,
       &paddings_, &dilations_, padding_algorithm, in_data_dims, strides, ksize);
 
   if (dx) {
-    phi::math::DepthwiseConvFunctor<Context, T> depthwiseConv;
+    math::DepthwiseConvFunctor<Context, T> depthwiseConv;
     depthwiseConv(dev_ctx,
                   dout,
                   filter_,
@@ -128,8 +128,7 @@ void DepthwiseConv2dTransposeGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(dfilter);
     set_zero(dev_ctx, dfilter, static_cast<T>(0));
 
-    phi::math::DepthwiseConvFilterGradFunctor<Context, T>
-        depthwiseConvFilterGrad;
+    math::DepthwiseConvFilterGradFunctor<Context, T> depthwiseConvFilterGrad;
     depthwiseConvFilterGrad(
         dev_ctx,
         dout,

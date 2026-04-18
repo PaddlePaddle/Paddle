@@ -46,7 +46,7 @@ void UniqueConsecutiveKernel(const Context& dev_ctx,
 
   // if 'axis' is not required, flatten the Tensor.
   if (axis.empty()) {
-    phi::VisitDataTypeTiny(
+    VisitDataTypeTiny(
         dtype,
         UniqueConsecutiveFlattenedCUDAFunctor<Context, T>(
             dev_ctx, x, out, return_inverse, return_counts, index, counts));
@@ -54,7 +54,7 @@ void UniqueConsecutiveKernel(const Context& dev_ctx,
     // 'axis' is required.
     int valid_axis = axis[0];
     if (valid_axis < 0) valid_axis += x.dims().size();
-    phi::VisitDataTypeTiny(
+    VisitDataTypeTiny(
         dtype,
         UniqueConsecutiveDimsCUDAFunctor<Context, T>(dev_ctx,
                                                      x,

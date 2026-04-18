@@ -55,13 +55,13 @@ void SolveLinearSystemGPU(const GPUContext& dev_ctx,
 
 #ifdef PADDLE_WITH_CUDA
 template <>
-void SolveLinearSystemGPU<phi::dtype::complex<float>>(
+void SolveLinearSystemGPU<dtype::complex<float>>(
     const GPUContext& dev_ctx,
-    const phi::dtype::complex<float>*
+    const dtype::complex<float>*
         matrix_data,  // device ptr, row-major, size batch*order*order
-    const phi::dtype::complex<float>*
+    const dtype::complex<float>*
         rhs_data,  // device ptr, row-major, size batch*order*rhs_cols
-    phi::dtype::complex<float>*
+    dtype::complex<float>*
         out_data,  // device ptr, row-major, size batch*order*rhs_cols
     int order,
     int rhs_cols,
@@ -69,7 +69,7 @@ void SolveLinearSystemGPU<phi::dtype::complex<float>>(
   // handles
   cublasHandle_t cublas_handle = dev_ctx.cublas_handle();
   cusolverDnHandle_t cusolver_handle = dev_ctx.cusolver_dn_handle();
-  auto stream = phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream()));
+  auto stream = Stream(reinterpret_cast<StreamId>(dev_ctx.stream()));
 
   // cuComplex constants
   const cuComplex kAlpha = make_cuFloatComplex(1.0f, 0.0f);
@@ -88,22 +88,22 @@ void SolveLinearSystemGPU<phi::dtype::complex<float>>(
   cuComplex* X_row_all = reinterpret_cast<cuComplex*>(out_data);
 
   auto dA_col_alloc =
-      phi::memory_utils::Alloc(dev_ctx.GetPlace(), A_batch_bytes, stream);
+      memory_utils::Alloc(dev_ctx.GetPlace(), A_batch_bytes, stream);
   auto dB_col_alloc =
-      phi::memory_utils::Alloc(dev_ctx.GetPlace(), B_batch_bytes, stream);
+      memory_utils::Alloc(dev_ctx.GetPlace(), B_batch_bytes, stream);
   cuComplex* dA_col = reinterpret_cast<cuComplex*>(dA_col_alloc->ptr());
   cuComplex* dB_col = reinterpret_cast<cuComplex*>(dB_col_alloc->ptr());
 
-  auto d_pivots_alloc = phi::memory_utils::Alloc(
+  auto d_pivots_alloc = memory_utils::Alloc(
       dev_ctx.GetPlace(),
       static_cast<size_t>(batch_count) * order * sizeof(int),
       stream);
   int* d_pivots = reinterpret_cast<int*>(d_pivots_alloc->ptr());
 
   auto d_info_alloc =
-      phi::memory_utils::Alloc(dev_ctx.GetPlace(),
-                               static_cast<size_t>(batch_count) * sizeof(int),
-                               stream);
+      memory_utils::Alloc(dev_ctx.GetPlace(),
+                          static_cast<size_t>(batch_count) * sizeof(int),
+                          stream);
   int* d_info = reinterpret_cast<int*>(d_info_alloc->ptr());
 
   //    A_row layout: row-major (order x order), B_row layout: row-major (order
@@ -157,7 +157,7 @@ void SolveLinearSystemGPU<phi::dtype::complex<float>>(
 
   size_t work_bytes = static_cast<size_t>(lwork) * sizeof(cuComplex);
   auto d_work_alloc =
-      phi::memory_utils::Alloc(dev_ctx.GetPlace(), work_bytes, stream);
+      memory_utils::Alloc(dev_ctx.GetPlace(), work_bytes, stream);
   cuComplex* d_work = reinterpret_cast<cuComplex*>(d_work_alloc->ptr());
 
   for (int i = 0; i < batch_count; ++i) {
@@ -238,13 +238,13 @@ void SolveLinearSystemGPU<phi::dtype::complex<float>>(
 }
 
 template <>
-void SolveLinearSystemGPU<phi::dtype::complex<double>>(
+void SolveLinearSystemGPU<dtype::complex<double>>(
     const GPUContext& dev_ctx,
-    const phi::dtype::complex<double>*
+    const dtype::complex<double>*
         matrix_data,  // device ptr, row-major, size batch*order*order
-    const phi::dtype::complex<double>*
+    const dtype::complex<double>*
         rhs_data,  // device ptr, row-major, size batch*order*rhs_cols
-    phi::dtype::complex<double>*
+    dtype::complex<double>*
         out_data,  // device ptr, row-major, size batch*order*rhs_cols
     int order,
     int rhs_cols,
@@ -252,7 +252,7 @@ void SolveLinearSystemGPU<phi::dtype::complex<double>>(
   // handles
   cublasHandle_t cublas_handle = dev_ctx.cublas_handle();
   cusolverDnHandle_t cusolver_handle = dev_ctx.cusolver_dn_handle();
-  auto stream = phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream()));
+  auto stream = Stream(reinterpret_cast<StreamId>(dev_ctx.stream()));
 
   // cuDoubleComplex constants
   const cuDoubleComplex kAlpha = make_cuDoubleComplex(1.0f, 0.0f);
@@ -273,24 +273,24 @@ void SolveLinearSystemGPU<phi::dtype::complex<double>>(
   cuDoubleComplex* X_row_all = reinterpret_cast<cuDoubleComplex*>(out_data);
 
   auto dA_col_alloc =
-      phi::memory_utils::Alloc(dev_ctx.GetPlace(), A_batch_bytes, stream);
+      memory_utils::Alloc(dev_ctx.GetPlace(), A_batch_bytes, stream);
   auto dB_col_alloc =
-      phi::memory_utils::Alloc(dev_ctx.GetPlace(), B_batch_bytes, stream);
+      memory_utils::Alloc(dev_ctx.GetPlace(), B_batch_bytes, stream);
   cuDoubleComplex* dA_col =
       reinterpret_cast<cuDoubleComplex*>(dA_col_alloc->ptr());
   cuDoubleComplex* dB_col =
       reinterpret_cast<cuDoubleComplex*>(dB_col_alloc->ptr());
 
-  auto d_pivots_alloc = phi::memory_utils::Alloc(
+  auto d_pivots_alloc = memory_utils::Alloc(
       dev_ctx.GetPlace(),
       static_cast<size_t>(batch_count) * order * sizeof(int),
       stream);
   int* d_pivots = reinterpret_cast<int*>(d_pivots_alloc->ptr());
 
   auto d_info_alloc =
-      phi::memory_utils::Alloc(dev_ctx.GetPlace(),
-                               static_cast<size_t>(batch_count) * sizeof(int),
-                               stream);
+      memory_utils::Alloc(dev_ctx.GetPlace(),
+                          static_cast<size_t>(batch_count) * sizeof(int),
+                          stream);
   int* d_info = reinterpret_cast<int*>(d_info_alloc->ptr());
 
   //    A_row layout: row-major (order x order), B_row layout: row-major (order
@@ -345,7 +345,7 @@ void SolveLinearSystemGPU<phi::dtype::complex<double>>(
 
   size_t work_bytes = static_cast<size_t>(lwork) * sizeof(cuDoubleComplex);
   auto d_work_alloc =
-      phi::memory_utils::Alloc(dev_ctx.GetPlace(), work_bytes, stream);
+      memory_utils::Alloc(dev_ctx.GetPlace(), work_bytes, stream);
   cuDoubleComplex* d_work =
       reinterpret_cast<cuDoubleComplex*>(d_work_alloc->ptr());
 
@@ -429,20 +429,20 @@ void SolveLinearSystemGPU<phi::dtype::complex<double>>(
 
 #ifdef PADDLE_WITH_HIP
 template <>
-void SolveLinearSystemGPU<phi::dtype::complex<float>>(
+void SolveLinearSystemGPU<dtype::complex<float>>(
     const GPUContext& dev_ctx,
-    const phi::dtype::complex<float>*
+    const dtype::complex<float>*
         matrix_data,  // device ptr, row-major, size batch*order*order
-    const phi::dtype::complex<float>*
+    const dtype::complex<float>*
         rhs_data,  // device ptr, row-major, size batch*order*rhs_cols
-    phi::dtype::complex<float>*
+    dtype::complex<float>*
         out_data,  // device ptr, row-major, size batch*order*rhs_cols
     int order,
     int rhs_cols,
     int batch_count) {
   // handles
   rocblas_handle rocblas_handle = dev_ctx.cusolver_dn_handle();
-  auto stream = phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream()));
+  auto stream = Stream(reinterpret_cast<StreamId>(dev_ctx.stream()));
 
   // rocblas_float_complex constants
   const rocblas_float_complex kAlpha = rocblas_float_complex{1.0f, 0.0f};
@@ -464,21 +464,21 @@ void SolveLinearSystemGPU<phi::dtype::complex<float>>(
       reinterpret_cast<rocblas_float_complex*>(out_data);
 
   auto dA_col_alloc =
-      phi::memory_utils::Alloc(dev_ctx.GetPlace(), A_batch_bytes, stream);
+      memory_utils::Alloc(dev_ctx.GetPlace(), A_batch_bytes, stream);
   auto dB_col_alloc =
-      phi::memory_utils::Alloc(dev_ctx.GetPlace(), B_batch_bytes, stream);
+      memory_utils::Alloc(dev_ctx.GetPlace(), B_batch_bytes, stream);
   rocblas_float_complex* dA_col =
       reinterpret_cast<rocblas_float_complex*>(dA_col_alloc->ptr());
   rocblas_float_complex* dB_col =
       reinterpret_cast<rocblas_float_complex*>(dB_col_alloc->ptr());
 
-  auto d_pivots_alloc = phi::memory_utils::Alloc(
+  auto d_pivots_alloc = memory_utils::Alloc(
       dev_ctx.GetPlace(),
       static_cast<size_t>(batch_count) * order * sizeof(rocblas_int),
       stream);
   rocblas_int* d_pivots = reinterpret_cast<rocblas_int*>(d_pivots_alloc->ptr());
 
-  auto d_info_alloc = phi::memory_utils::Alloc(
+  auto d_info_alloc = memory_utils::Alloc(
       dev_ctx.GetPlace(),
       static_cast<size_t>(batch_count) * sizeof(rocblas_int),
       stream);
@@ -587,13 +587,12 @@ void SolveLinearSystemGPU<phi::dtype::complex<float>>(
   auto* cpu_ctx = static_cast<CPUContext*>(pool.Get(cpu_place));
 
   std::vector<rocblas_int> h_info(batch_count, 0);
-  phi::memory_utils::Copy(
-      CPUPlace(),
-      h_info.data(),
-      dev_ctx.GetPlace(),
-      d_info,
-      static_cast<size_t>(batch_count) * sizeof(rocblas_int),
-      reinterpret_cast<void*>(dev_ctx.stream()));
+  memory_utils::Copy(CPUPlace(),
+                     h_info.data(),
+                     dev_ctx.GetPlace(),
+                     d_info,
+                     static_cast<size_t>(batch_count) * sizeof(rocblas_int),
+                     reinterpret_cast<void*>(dev_ctx.stream()));
   dev_ctx.Wait();
 
   for (int i = 0; i < batch_count; ++i) {
@@ -607,20 +606,20 @@ void SolveLinearSystemGPU<phi::dtype::complex<float>>(
 }
 
 template <>
-void SolveLinearSystemGPU<phi::dtype::complex<double>>(
+void SolveLinearSystemGPU<dtype::complex<double>>(
     const GPUContext& dev_ctx,
-    const phi::dtype::complex<double>*
+    const dtype::complex<double>*
         matrix_data,  // device ptr, row-major, size batch*order*order
-    const phi::dtype::complex<double>*
+    const dtype::complex<double>*
         rhs_data,  // device ptr, row-major, size batch*order*rhs_cols
-    phi::dtype::complex<double>*
+    dtype::complex<double>*
         out_data,  // device ptr, row-major, size batch*order*rhs_cols
     int order,
     int rhs_cols,
     int batch_count) {
   // handles
   rocblas_handle rocblas_handle = dev_ctx.cusolver_dn_handle();
-  auto stream = phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream()));
+  auto stream = Stream(reinterpret_cast<StreamId>(dev_ctx.stream()));
 
   // rocblas_double_complex constants
   const rocblas_double_complex kAlpha = rocblas_double_complex{1.0, 0.0};
@@ -642,21 +641,21 @@ void SolveLinearSystemGPU<phi::dtype::complex<double>>(
       reinterpret_cast<rocblas_double_complex*>(out_data);
 
   auto dA_col_alloc =
-      phi::memory_utils::Alloc(dev_ctx.GetPlace(), A_batch_bytes, stream);
+      memory_utils::Alloc(dev_ctx.GetPlace(), A_batch_bytes, stream);
   auto dB_col_alloc =
-      phi::memory_utils::Alloc(dev_ctx.GetPlace(), B_batch_bytes, stream);
+      memory_utils::Alloc(dev_ctx.GetPlace(), B_batch_bytes, stream);
   rocblas_double_complex* dA_col =
       reinterpret_cast<rocblas_double_complex*>(dA_col_alloc->ptr());
   rocblas_double_complex* dB_col =
       reinterpret_cast<rocblas_double_complex*>(dB_col_alloc->ptr());
 
-  auto d_pivots_alloc = phi::memory_utils::Alloc(
+  auto d_pivots_alloc = memory_utils::Alloc(
       dev_ctx.GetPlace(),
       static_cast<size_t>(batch_count) * order * sizeof(rocblas_int),
       stream);
   rocblas_int* d_pivots = reinterpret_cast<rocblas_int*>(d_pivots_alloc->ptr());
 
-  auto d_info_alloc = phi::memory_utils::Alloc(
+  auto d_info_alloc = memory_utils::Alloc(
       dev_ctx.GetPlace(),
       static_cast<size_t>(batch_count) * sizeof(rocblas_int),
       stream);
@@ -763,13 +762,12 @@ void SolveLinearSystemGPU<phi::dtype::complex<double>>(
   auto* cpu_ctx = static_cast<CPUContext*>(pool.Get(cpu_place));
 
   std::vector<rocblas_int> h_info(batch_count, 0);
-  phi::memory_utils::Copy(
-      CPUPlace(),
-      h_info.data(),
-      dev_ctx.GetPlace(),
-      d_info,
-      static_cast<size_t>(batch_count) * sizeof(rocblas_int),
-      reinterpret_cast<void*>(dev_ctx.stream()));
+  memory_utils::Copy(CPUPlace(),
+                     h_info.data(),
+                     dev_ctx.GetPlace(),
+                     d_info,
+                     static_cast<size_t>(batch_count) * sizeof(rocblas_int),
+                     reinterpret_cast<void*>(dev_ctx.stream()));
   dev_ctx.Wait();
 
   for (int i = 0; i < batch_count; ++i) {
@@ -806,13 +804,12 @@ void ComputeBackwardForComplexInputGPU(const DenseTensor& L,
     gV_safe = Fill<T, Context>(dev_ctx, vectorize<int64_t>(V.dims()), T(0));
   }
   DenseTensor trans_v = TransposeLast2Dim<T>(dev_ctx, V);
-  DenseTensor Vh = phi::Conj<T>(dev_ctx, trans_v);
-  DenseTensor Lconj = phi::Conj<T>(dev_ctx, L);
-  DenseTensor Econj = phi::Subtract<T>(dev_ctx,
-                                       phi::funcs::Unsqueeze(Lconj, -2),
-                                       phi::funcs::Unsqueeze(Lconj, -1));
-  DenseTensor VhgV = phi::Matmul<T>(dev_ctx, Vh, gV_safe);
-  DenseTensor diag_real = phi::Real<T>(dev_ctx, VhgV);
+  DenseTensor Vh = Conj<T>(dev_ctx, trans_v);
+  DenseTensor Lconj = Conj<T>(dev_ctx, L);
+  DenseTensor Econj = Subtract<T>(
+      dev_ctx, funcs::Unsqueeze(Lconj, -2), funcs::Unsqueeze(Lconj, -1));
+  DenseTensor VhgV = Matmul<T>(dev_ctx, Vh, gV_safe);
+  DenseTensor diag_real = Real<T>(dev_ctx, VhgV);
 
   auto cpu_place = CPUPlace();
   DeviceContextPool& pool = DeviceContextPool::Instance();
@@ -823,13 +820,13 @@ void ComputeBackwardForComplexInputGPU(const DenseTensor& L,
   Copy(dev_ctx, diag_real, cpu_place, false, &diag_real_cpu);
 
   DenseTensor diag_res_cpu =
-      phi::funcs::BatchDiag<T>((*cpu_ctx), diag_real_cpu, batch_count);
+      funcs::BatchDiag<T>((*cpu_ctx), diag_real_cpu, batch_count);
 
   DenseTensor diag_res;
   dev_ctx.template Alloc<T>(&diag_res);
   Copy(dev_ctx, diag_res_cpu, GPUPlace(), false, &diag_res);
 
-  DenseTensor diag_unsqueezed = phi::funcs::Unsqueeze(diag_res, -2);
+  DenseTensor diag_unsqueezed = funcs::Unsqueeze(diag_res, -2);
 
   auto numel = diag_unsqueezed.numel();
   DenseTensor diag_unsqueezed_complex;
@@ -838,21 +835,20 @@ void ComputeBackwardForComplexInputGPU(const DenseTensor& L,
   auto* data_diag_un_com = dev_ctx.template Alloc<T>(
       &diag_unsqueezed_complex, static_cast<size_t>(numel * sizeof(T)));
 
-  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
-  phi::funcs::RealToComplexFunctor<T> functor(
-      data_diag_un, data_diag_un_com, numel);
+  funcs::ForRange<Context> for_range(dev_ctx, numel);
+  funcs::RealToComplexFunctor<T> functor(data_diag_un, data_diag_un_com, numel);
   for_range(functor);
   // real tensor multiply complex tensor in broadcast manner
-  DenseTensor res1 = phi::Multiply<T>(dev_ctx, V, diag_unsqueezed_complex);
-  DenseTensor res2 = phi::Matmul<T>(dev_ctx, Vh, res1);
-  DenseTensor result = phi::Subtract<T>(dev_ctx, VhgV, res2);
+  DenseTensor res1 = Multiply<T>(dev_ctx, V, diag_unsqueezed_complex);
+  DenseTensor res2 = Matmul<T>(dev_ctx, Vh, res1);
+  DenseTensor result = Subtract<T>(dev_ctx, VhgV, res2);
 
   result.Resize(V.dims());
   dev_ctx.template Alloc<T>(&result);
-  result = phi::Divide<T>(dev_ctx, result, Econj);
-  result = phi::funcs::DiagFill<T, T>(
-      dev_ctx, order, order, order, 0, gL_safe, result);
-  DenseTensor rhs = phi::Matmul<T>(dev_ctx, result, Vh);
+  result = Divide<T>(dev_ctx, result, Econj);
+  result =
+      funcs::DiagFill<T, T>(dev_ctx, order, order, order, 0, gL_safe, result);
+  DenseTensor rhs = Matmul<T>(dev_ctx, result, Vh);
 
   // solve linear system
   // solve(Vh, rhs, out, m, k)
@@ -877,7 +873,7 @@ void EigGradKernel(const Context& dev_ctx,
                    const optional<DenseTensor>& dout_w,
                    const optional<DenseTensor>& dout_v,
                    DenseTensor* dx) {
-  auto* dx_data = dev_ctx.template Alloc<phi::dtype::Complex<T>>(dx);
+  auto* dx_data = dev_ctx.template Alloc<dtype::Complex<T>>(dx);
   if (dx->numel() == 0) {
     return;
   }
@@ -885,7 +881,7 @@ void EigGradKernel(const Context& dev_ctx,
   int batch_count = BatchCount(out_v);
   const int64_t order = out_v.dims(-1);
 
-  ComputeBackwardForComplexInputGPU<phi::dtype::Complex<T>, Context>(
+  ComputeBackwardForComplexInputGPU<dtype::Complex<T>, Context>(
       out_w, out_v, dout_w, dout_v, dx_data, batch_count, order, dev_ctx);
 }
 #endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP

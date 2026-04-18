@@ -99,7 +99,7 @@ void RpropKernel(const Context& dev_ctx,
                  DenseTensor* prev_out,
                  DenseTensor* learning_rate_out,
                  DenseTensor* master_param_out) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename dtype::MPTypeTrait<T>::Type;
   const MT* master_in_data =
       multi_precision ? master_param->data<MT>() : nullptr;
   MT* master_out_data =

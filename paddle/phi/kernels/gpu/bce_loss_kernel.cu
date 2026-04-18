@@ -28,7 +28,7 @@ namespace phi {
 
 template <typename T>
 struct BCELossFunctor {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename dtype::MPTypeTrait<T>::Type;
   MT zero = static_cast<MT>(0);
   MT one = static_cast<MT>(1.0f);
   MT neg_100 = static_cast<MT>(-100.);
@@ -42,8 +42,8 @@ struct BCELossFunctor {
         "Input is expected to be within the interval [0, 1], but received %f.",
         x_mt);
 
-    MT term1 = max(phi::kps::details::Log(x_mt), neg_100);
-    MT term2 = max(phi::kps::details::Log(one - x_mt), neg_100);
+    MT term1 = max(kps::details::Log(x_mt), neg_100);
+    MT term2 = max(kps::details::Log(one - x_mt), neg_100);
     return static_cast<T>((label_mt - one) * term2 - label_mt * term1);
   }
 };

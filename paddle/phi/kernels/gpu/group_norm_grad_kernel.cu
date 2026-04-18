@@ -160,7 +160,7 @@ template <typename AccT>
 __device__ __forceinline__ AccT GradWarpReduceSum(AccT val) {
 #pragma unroll
   for (int offset = warpSize / 2; offset > 0; offset >>= 1) {
-    val += phi::backends::gpu::CudaShuffleDownSync(0xffffffff, val, offset);
+    val += backends::gpu::CudaShuffleDownSync(0xffffffff, val, offset);
   }
   return val;
 }
@@ -752,7 +752,7 @@ void GroupNormGradKernel(const Context& dev_ctx,
     }
     return;
   }
-  using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using AccT = typename dtype::MPTypeTrait<T>::Type;
   const DataLayout data_layout = StringToDataLayout(data_layout_str);
   const auto scale_ptr = scale.get_ptr();
   const auto bias_ptr = bias.get_ptr();

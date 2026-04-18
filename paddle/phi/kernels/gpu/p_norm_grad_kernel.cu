@@ -342,7 +342,7 @@ inline void GetPreAxisPost(const DDim& xdim,
 
 template <typename T>
 struct PNormGradFunctor {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename dtype::MPTypeTrait<T>::Type;
   HOSTDEVICE explicit inline PNormGradFunctor(float porder, float eps) {
     this->porder = static_cast<MT>(porder - 1.0f);
     this->eps = static_cast<MT>(eps);
@@ -416,19 +416,19 @@ void PNormGradKernel(const Context& dev_ctx,
     DenseTensor x_abs;
     x_abs.Resize(in_x->dims());
     dev_ctx.template Alloc<T>(&x_abs);
-    phi::AbsKernel<T, Context>(dev_ctx, *in_x, &x_abs);
+    AbsKernel<T, Context>(dev_ctx, *in_x, &x_abs);
 
     DenseTensor amax_grad_out;
     amax_grad_out.Resize(in_x->dims());
     dev_ctx.template Alloc<T>(&amax_grad_out);
-    phi::ReduceAMaxGradKernel<T, Context>(dev_ctx,
-                                          x_abs,
-                                          *in_norm,
-                                          *in_norm_dy,
-                                          dims_for_amax,
-                                          keepdim,
-                                          reduce_all,
-                                          &amax_grad_out);
+    ReduceAMaxGradKernel<T, Context>(dev_ctx,
+                                     x_abs,
+                                     *in_norm,
+                                     *in_norm_dy,
+                                     dims_for_amax,
+                                     keepdim,
+                                     reduce_all,
+                                     &amax_grad_out);
     DenseTensor x_sign;
     x_sign.Resize(in_x->dims());
     dev_ctx.template Alloc<T>(&x_sign);

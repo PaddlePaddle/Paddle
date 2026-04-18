@@ -28,11 +28,9 @@ namespace phi {
 static std::once_flag init_multi_gpu_op_var_map_flag;
 
 // lazy init
-static std::vector<
-    std::unordered_map<std::string, phi::Allocator::AllocationPtr>>&
+static std::vector<std::unordered_map<std::string, Allocator::AllocationPtr>>&
 multi_op_var2gpu_str() {
-  static std::vector<
-      std::unordered_map<std::string, phi::Allocator::AllocationPtr>>
+  static std::vector<std::unordered_map<std::string, Allocator::AllocationPtr>>
       _multi_op_var2gpu_str;
   return _multi_op_var2gpu_str;
 }
@@ -43,14 +41,14 @@ static std::vector<std::mutex>& multi_op_var2gpu_str_mutex() {
 }
 
 static void InitMultiGPUOpVarMap() {
-  int dev_count = phi::backends::gpu::GetGPUDeviceCount();
+  int dev_count = backends::gpu::GetGPUDeviceCount();
   PADDLE_ENFORCE_GT(dev_count,
                     0,
                     common::errors::NotFound(
                         "cuda device must > 0, now dev_count=%d", dev_count));
 
   // https://stackoverflow.com/questions/16465633/how-can-i-use-something-like-stdvectorstdmutex
-  std::vector<std::unordered_map<std::string, phi::Allocator::AllocationPtr>>
+  std::vector<std::unordered_map<std::string, Allocator::AllocationPtr>>
       tmp_multi(dev_count);
   std::vector<std::mutex> tmp_multi_mutex(dev_count);
 
@@ -111,8 +109,8 @@ __device__ void BlockReduceNumNanInfAndWrite(const int64_t num_nan,
 }
 
 template <typename T,
-          std::enable_if_t<std::is_same<T, phi::complex64>::value ||
-                               std::is_same<T, phi::complex128>::value,
+          std::enable_if_t<std::is_same<T, complex64>::value ||
+                               std::is_same<T, complex128>::value,
                            bool> = true>
 __device__ void BlockReduceMaxMinAndWrite(const T max_value,
                                           const T min_value,
@@ -125,8 +123,8 @@ __device__ void BlockReduceMaxMinAndWrite(const T max_value,
 }
 
 template <typename T,
-          std::enable_if_t<!std::is_same<T, phi::complex64>::value &&
-                               !std::is_same<T, phi::complex128>::value,
+          std::enable_if_t<!std::is_same<T, complex64>::value &&
+                               !std::is_same<T, complex128>::value,
                            bool> = true>
 __device__ void BlockReduceMaxMinAndWrite(const T max_value,
                                           const T min_value,
@@ -272,7 +270,7 @@ __global__ void FindGlobalMaxMinAndPrint(const int64_t* block_num_nan_ptr,
 template <typename T>
 inline std::string GetHintString(const std::string& op_type,
                                  const std::string& var_name,
-                                 const phi::Place& place,
+                                 const Place& place,
                                  int dev_id = -1) {
   std::string op_var =
       funcs::GetCpuHintString<T>(op_type, var_name, place, dev_id);
@@ -301,10 +299,10 @@ static char* GetGpuHintStringPtr(const GPUContext& dev_ctx,
 
     std::lock_guard<std::mutex> guard(op_var2gpu_str_mutex);
     if (op_var2gpu_str.find(op_var) == op_var2gpu_str.end()) {  // insert
-      auto gpu_str_tensor = phi::memory_utils::Alloc(
+      auto gpu_str_tensor = memory_utils::Alloc(
           dev_ctx.GetPlace(),
           op_var.length() + 1,
-          phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+          Stream(reinterpret_cast<StreamId>(dev_ctx.stream())));
       gpu_str_ptr = reinterpret_cast<char*>(gpu_str_tensor->ptr());
 
       op_var2gpu_str.emplace(op_var, std::move(gpu_str_tensor));
@@ -353,14 +351,14 @@ static void PrintStack(const GPUContext& dev_ctx,
                        const std::string& op_type,
                        const std::string& var_name,
                        int dev_id) {
-  auto cpu_stats = phi::memory_utils::Alloc(CPUPlace(), sizeof(int64_t) * 3);
+  auto cpu_stats = memory_utils::Alloc(CPUPlace(), sizeof(int64_t) * 3);
   int64_t* cpu_stats_ptr = reinterpret_cast<int64_t*>(cpu_stats->ptr());
-  phi::memory_utils::Copy(CPUPlace(),
-                          cpu_stats_ptr,
-                          stats.place(),
-                          stats.data(),
-                          3 * sizeof(int64_t),
-                          dev_ctx.stream());
+  memory_utils::Copy(CPUPlace(),
+                     cpu_stats_ptr,
+                     stats.place(),
+                     stats.data(),
+                     3 * sizeof(int64_t),
+                     dev_ctx.stream());
   dev_ctx.Wait();
   if (cpu_stats_ptr[0] > 0 || cpu_stats_ptr[1] > 0) {
     const std::string debug_info =
@@ -437,7 +435,7 @@ void CheckNumericsKernel(const Context& dev_ctx,
       std::min(static_cast<size_t>(128),
                static_cast<size_t>((tensor.numel() + threads - 1) / threads));
 
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename dtype::MPTypeTrait<T>::Type;
 
   int64_t numel_max_min = blocks;
 
@@ -505,12 +503,12 @@ void CheckNumericsKernel(const Context& dev_ctx,
 #ifdef _WIN32
 INSTANTIATE_CHECKNUMBERICS_KERNEL(float, GPUContext)
 INSTANTIATE_CHECKNUMBERICS_KERNEL(double, GPUContext)
-INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::float16, GPUContext)
-INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::bfloat16, GPUContext)
-INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::complex64, GPUContext)
-INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::complex128, GPUContext)
-INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::float8_e4m3fn, GPUContext)
-INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::float8_e5m2, GPUContext)
+INSTANTIATE_CHECKNUMBERICS_KERNEL(float16, GPUContext)
+INSTANTIATE_CHECKNUMBERICS_KERNEL(bfloat16, GPUContext)
+INSTANTIATE_CHECKNUMBERICS_KERNEL(complex64, GPUContext)
+INSTANTIATE_CHECKNUMBERICS_KERNEL(complex128, GPUContext)
+INSTANTIATE_CHECKNUMBERICS_KERNEL(float8_e4m3fn, GPUContext)
+INSTANTIATE_CHECKNUMBERICS_KERNEL(float8_e5m2, GPUContext)
 #endif
 }  // namespace phi
 

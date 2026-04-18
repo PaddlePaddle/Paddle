@@ -25,7 +25,7 @@ namespace phi {
 template <class T>
 __global__ void SumArrayCUDAKernel(
     T **in, T *out, int64_t N, size_t in_size, bool read_dst) {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
   CUDA_KERNEL_LOOP_TYPE(idx, N, int64_t) {
     MPType total(read_dst ? static_cast<MPType>(out[idx])
                           : static_cast<MPType>(0));
@@ -46,7 +46,7 @@ __global__ void SumArrayMixedTypeCUDAKernel(const T *in_0,
                                             int64_t N,
                                             size_t in_others_size,
                                             bool read_dst) {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
   CUDA_KERNEL_LOOP_TYPE(idx, N, int64_t) {
     MPType total(read_dst ? static_cast<MPType>(out[idx])
                           : static_cast<MPType>(0));
@@ -128,7 +128,7 @@ void AddNKernel(const Context &dev_ctx,
     int64_t length_0 = in_0.numel();
     int64_t length_1 = in_1.numel();
     if (length_0 && length_1 && in_0.IsInitialized() && in_1.IsInitialized()) {
-      using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+      using MPType = typename dtype::MPTypeTrait<T>::Type;
       auto result = EigenVector<T>::Flatten(*out);
       auto &place = *dev_ctx.eigen_device();
       auto in_0_e = EigenVector<T>::Flatten(in_0).template cast<MPType>();
@@ -281,7 +281,7 @@ void AddNKernel(const Context &dev_ctx,
       }
     }
     if (!sr_in_out_data.empty()) {
-      auto tmp_sr_in_out_array = phi::memory_utils::Alloc(
+      auto tmp_sr_in_out_array = memory_utils::Alloc(
           dev_ctx.GetPlace(), sr_in_out_data.size() * sizeof(T *));
 
       size_t nbytes_sr = sr_in_out_data.size() * sizeof(T *);
@@ -306,8 +306,8 @@ void AddNKernel(const Context &dev_ctx,
   }
   // if indata not null, merge into one kernel call.
   if (!in_data.empty()) {
-    auto tmp_in_array = phi::memory_utils::Alloc(dev_ctx.GetPlace(),
-                                                 in_data.size() * sizeof(T *));
+    auto tmp_in_array =
+        memory_utils::Alloc(dev_ctx.GetPlace(), in_data.size() * sizeof(T *));
 
     size_t nbytes_in2 = in_data.size() * sizeof(T *);
     const void *stable_in2 =

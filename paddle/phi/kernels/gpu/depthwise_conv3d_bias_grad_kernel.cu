@@ -353,7 +353,7 @@ void LaunchDepthwiseConv3dBackwardCompatible(const Context& dev_ctx,
   }
 
   auto stream = dev_ctx.stream();
-  using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using AccT = typename dtype::MPTypeTrait<T>::Type;
 
   const T* input_ptr = input_ncdhw.data<T>();
   const T* grad_output_ptr = out_grad_ncdhw.data<T>();
@@ -600,12 +600,12 @@ void LaunchDepthwiseConv3dBackwardCompatible(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(bias_grad);
     // Reduce N(0), D(2), H(3), W(4) -> C(1) for NCDHW
     std::vector<int64_t> reduce_dims = {0, 2, 3, 4};
-    phi::SumKernel<T, Context>(dev_ctx,
-                               out_grad_ncdhw,
-                               phi::IntArray(reduce_dims),
-                               CppTypeToDataType<T>::Type(),
-                               false,
-                               bias_grad);
+    SumKernel<T, Context>(dev_ctx,
+                          out_grad_ncdhw,
+                          IntArray(reduce_dims),
+                          CppTypeToDataType<T>::Type(),
+                          false,
+                          bias_grad);
   }
 
   if (input_grad && channel_last) {

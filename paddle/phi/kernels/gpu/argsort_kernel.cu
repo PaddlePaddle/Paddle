@@ -375,7 +375,7 @@ void ArgsortKernel(const Context& dev_ctx,
         PerSort<T, int64_t>(
             dev_ctx, out_data, ids_data, start, end, stable, descending);
         if (start != 0) {
-          auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, end);
+          auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, end);
           merge_kernel<<<config.block_per_grid.x,
                          config.thread_per_block.x,
                          0,

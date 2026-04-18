@@ -29,7 +29,7 @@ struct SigmoidFwdFunctor {
   HOSTDEVICE inline SigmoidFwdFunctor(const T ignore_index)
       : ignore_index_(ignore_index) {}
 
-  HOSTDEVICE inline phi::Array<T, 2> operator()(const T x, const T label) {
+  HOSTDEVICE inline Array<T, 2> operator()(const T x, const T label) {
     T counts;
     T out_data;
 
@@ -46,7 +46,7 @@ struct SigmoidFwdFunctor {
       out_data = term1 - term2 + term3;
       counts = 1;
     }
-    phi::Array<T, 2> outs;
+    Array<T, 2> outs;
 
     outs[0] = out_data;
     outs[1] = counts;
@@ -62,9 +62,9 @@ struct SigmoidFwdPosWeightFunctor {
   HOSTDEVICE inline SigmoidFwdPosWeightFunctor(const T ignore_index)
       : ignore_index_(ignore_index) {}
 
-  HOSTDEVICE inline phi::Array<T, 2> operator()(const T x,
-                                                const T label,
-                                                T pos_weight) {
+  HOSTDEVICE inline Array<T, 2> operator()(const T x,
+                                           const T label,
+                                           T pos_weight) {
     T counts;
     T out_data;
 
@@ -81,7 +81,7 @@ struct SigmoidFwdPosWeightFunctor {
 
       counts = 1;
     }
-    phi::Array<T, 2> outs;
+    Array<T, 2> outs;
 
     outs[0] = out_data;
     outs[1] = counts;
@@ -155,7 +155,7 @@ void SigmoidCrossEntropyWithLogitsKernel(
     auto eps = static_cast<T>(1e-5);
     *norm_cpu_ptr = *norm_cpu_ptr > eps ? *norm_cpu_ptr : eps;
 
-    phi::ScaleKernel<T>(dev_ctx, *out, 1.0 / (*norm_cpu_ptr), 0.0f, false, out);
+    ScaleKernel<T>(dev_ctx, *out, 1.0 / (*norm_cpu_ptr), 0.0f, false, out);
   }
 }
 

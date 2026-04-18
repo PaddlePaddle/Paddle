@@ -27,8 +27,6 @@
 
 namespace phi {
 
-using phi::PADDLE_CUDA_NUM_THREADS;
-
 template <typename T>
 __global__ void FillFirstRow(T* dist, const int N) {
   int64_t idx =

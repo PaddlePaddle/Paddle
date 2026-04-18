@@ -159,10 +159,10 @@ struct CSoftmaxWithMultiLabelCrossEntropyFunctor<GPUContext, T> {
     const DenseTensor* smooth_weight = &smooth_weight_in;
 
     gpuStream_t stream = nullptr;
-    phi::distributed::NCCLCommContext* comm_ctx = nullptr;
+    distributed::NCCLCommContext* comm_ctx = nullptr;
 
-    comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
-        dev_ctx.GetCommContext());
+    comm_ctx =
+        static_cast<distributed::NCCLCommContext*>(dev_ctx.GetCommContext());
     PADDLE_ENFORCE_NE(comm_ctx,
                       nullptr,
                       common::errors::Unavailable(
@@ -266,7 +266,7 @@ struct CSoftmaxWithMultiLabelCrossEntropyFunctor<GPUContext, T> {
     sum_exp_logits.Resize({N, 1});
     dev_ctx.template Alloc<T>(&sum_exp_logits);
 
-    phi::SumKernel<T, GPUContext>(
+    SumKernel<T, GPUContext>(
         dev_ctx, softmax_2d, {-1}, softmax_2d.dtype(), true, &sum_exp_logits);
 
     comm_ctx->AllReduce(&sum_exp_logits, sum_exp_logits, ncclSum, stream);
