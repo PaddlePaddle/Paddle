@@ -1975,6 +1975,9 @@ def flashmask_attention(
     if group is not None:
         rank = group.rank
         nranks = group.nranks
+        assert nranks >= 1 and nranks < 64, (
+            f"Attention overlap group should be in range [0, 63], got: {nranks}"
+        )
     else:
         rank = 0
         nranks = 1
