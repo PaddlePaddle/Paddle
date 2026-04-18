@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+include_guard()
+
 function(paddle_normalize_target_arch out_var)
   string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" _processor)
   if(_processor STREQUAL "")
