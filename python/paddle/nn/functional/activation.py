@@ -29,8 +29,7 @@ from ...base.data_feeder import check_dtype, check_variable_and_dtype
 from ...base.framework import convert_np_dtype_to_dtype_
 from ...base.layer_helper import LayerHelper
 from ...tensor.manipulation import chunk
-from ...tensor.math import tanh, tanh_  # noqa: F401
-from ...tensor.ops import sigmoid
+from ...tensor.math import sigmoid, tanh, tanh_  # noqa: F401
 
 if TYPE_CHECKING:
     from paddle import Tensor
