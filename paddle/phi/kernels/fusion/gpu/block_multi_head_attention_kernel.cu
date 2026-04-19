@@ -23,9 +23,8 @@
 #include "paddle/utils/none.h"
 
 inline int getSMVersion() {
-  const int device = phi::backends::gpu::GetCurrentDeviceId();
-  const phi::gpuDeviceProp prop =
-      phi::backends::gpu::GetDeviceProperties(device);
+  const int device = backends::gpu::GetCurrentDeviceId();
+  const phi::gpuDeviceProp prop = backends::gpu::GetDeviceProperties(device);
   return prop.major * 10 + prop.minor;
 }
 

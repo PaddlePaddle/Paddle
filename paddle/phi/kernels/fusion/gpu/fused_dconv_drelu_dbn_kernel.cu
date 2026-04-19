@@ -34,7 +34,7 @@ namespace fusion {
 using helper = phi::CudnnFrontendConvHelper;
 
 template <typename T>
-using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
+using CudnnDataType = backends::gpu::CudnnDataType<T>;
 
 namespace {
 cudnn_frontend::Operation MakeDreluOp(cudnnDataType_t dtype,
@@ -131,17 +131,16 @@ void _DgradDreluBnBwdWeightImpl(const Context& dev_ctx,
   TransToChannelLast<Context, T>(dev_ctx, weight, &w_tensor_transformed);
   // build tensor descriptors
   cudnnTensorFormat_t layout_format = CUDNN_TENSOR_NHWC;
-  auto tensor_format =
-      phi::backends::gpu::ToCudnnDataType(grad_output->dtype());
+  auto tensor_format = backends::gpu::ToCudnnDataType(grad_output->dtype());
   auto tensor_format_math = CUDNN_DATA_FLOAT;
   auto compute_dtype = CUDNN_DATA_FLOAT;
   // get dims in CUDNN manner: [N, C, H, W]
-  auto dim_x = phi::backends::gpu::TransformDimOrder(
-      vectorize<int64_t>(bn1_input->dims()));
-  auto dim_filt = phi::backends::gpu::TransformDimOrder(
+  auto dim_x =
+      backends::gpu::TransformDimOrder(vectorize<int64_t>(bn1_input->dims()));
+  auto dim_filt = backends::gpu::TransformDimOrder(
       vectorize<int64_t>(w_tensor_transformed.dims()));
-  auto dim_y = phi::backends::gpu::TransformDimOrder(
-      vectorize<int64_t>(grad_output->dims()));
+  auto dim_y =
+      backends::gpu::TransformDimOrder(vectorize<int64_t>(grad_output->dims()));
   std::vector<int64_t> dim_scale(dim_x.size(), 1);
   dim_scale[1] = dim_x[1];  //  [1, C, 1, 1]
 
@@ -542,12 +541,12 @@ void _DbnApplyImpl(const Context& dev_ctx,
   auto handle = dev_ctx.cudnn_handle();
   auto workspace_handle = dev_ctx.cudnn_workspace_handle();
   cudnnTensorFormat_t layout_format = CUDNN_TENSOR_NHWC;
-  auto tensor_format = phi::backends::gpu::ToCudnnDataType(dY_tensor->dtype());
+  auto tensor_format = backends::gpu::ToCudnnDataType(dY_tensor->dtype());
   auto tensor_format_math = CUDNN_DATA_FLOAT;
   auto compute_dtype = CUDNN_DATA_FLOAT;
   // build tensor descriptors
-  auto dim_x = phi::backends::gpu::TransformDimOrder(
-      vectorize<int64_t>(X_tensor->dims()));
+  auto dim_x =
+      backends::gpu::TransformDimOrder(vectorize<int64_t>(X_tensor->dims()));
   std::vector<int64_t> dim_a(dim_x.size(), 1);
   dim_a[1] = dim_x[1];  //  [1, C, 1, 1]
 
@@ -746,16 +745,16 @@ void _BnActWgradImpl(const Context& dev_ctx,
   ResizeToChannelLast<Context, T>(dev_ctx, dw_tensor, &dw_tensor_transformed);
   // create tensor descriptors
   cudnnTensorFormat_t layout_format = CUDNN_TENSOR_NHWC;
-  auto tensor_format = phi::backends::gpu::ToCudnnDataType(conv_input->dtype());
+  auto tensor_format = backends::gpu::ToCudnnDataType(conv_input->dtype());
   auto tensor_format_math = CUDNN_DATA_FLOAT;
   auto compute_dtype = CUDNN_DATA_FLOAT;
   // create tensor descriptors
-  auto dim_x = phi::backends::gpu::TransformDimOrder(
-      vectorize<int64_t>(conv_input->dims()));
-  auto dim_filt = phi::backends::gpu::TransformDimOrder(
+  auto dim_x =
+      backends::gpu::TransformDimOrder(vectorize<int64_t>(conv_input->dims()));
+  auto dim_filt = backends::gpu::TransformDimOrder(
       vectorize<int64_t>(dw_tensor_transformed.dims()));
-  auto dim_y = phi::backends::gpu::TransformDimOrder(
-      vectorize<int64_t>(grad_output->dims()));
+  auto dim_y =
+      backends::gpu::TransformDimOrder(vectorize<int64_t>(grad_output->dims()));
   std::vector<int64_t> dim_scale(dim_x.size(), 1);
   dim_scale[1] = dim_x[1];  //  [1, C, 1, 1]
 
@@ -995,7 +994,7 @@ void FusedDconvDreluDbnKernel(const Context& dev_ctx,
                         "This op only supports Ampere and later devices, "
                         "but got compute capability: %d.",
                         dev_ctx.GetComputeCapability()));
-  auto cudnn_version = phi::backends::gpu::DnnVersion();
+  auto cudnn_version = backends::gpu::DnnVersion();
   PADDLE_ENFORCE_GE(cudnn_version,
                     8900,
                     common::errors::PreconditionNotMet(
