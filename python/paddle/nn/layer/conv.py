@@ -512,22 +512,20 @@ class Conv1DTranspose(_ConvNd):
         else, the :math:`L_{out}` of the output size must between :math:`L^\prime_{out}`
             and :math:`L^\prime_{out} + stride`.
 
-    .. note::
-        Two calling conventions are accepted:
+    This API has two signatures:
 
-        - Paddle: ``Conv1DTranspose(in_channels, out_channels, kernel_size, stride=1,
-          padding=0, output_padding=0, groups=1, dilation=1, weight_attr=None,
-          bias_attr=None, data_format='NCL', *, bias=True, padding_mode='zeros',
-          device=None, dtype=None)``.
-        - PyTorch-compatible: ``Conv1DTranspose(in_channels, out_channels, kernel_size,
-          stride=1, padding=0, output_padding=0, groups=1, bias=True, dilation=1,
-          padding_mode='zeros', device=None, dtype=None)``, matching
-          ``torch.nn.ConvTranspose1d``.
+    1. ``Conv1DTranspose(in_channels, out_channels, kernel_size, stride=1, padding=0,
+       output_padding=0, groups=1, dilation=1, weight_attr=None, bias_attr=None,
+       data_format='NCL', *, bias=True, padding_mode='zeros', device=None, dtype=None)``
+       (Paddle-style):
+       Construct a 1-D transposed convolution layer parameterized by ``weight_attr``
+       and ``bias_attr``.
 
-        When the 8th positional argument is a ``bool``, it is interpreted as the
-        PyTorch ``bias`` parameter and the trailing positional arguments are remapped
-        to ``bias``, ``dilation``, ``padding_mode``, ``device``, ``dtype`` keyword
-        arguments accordingly.
+    2. ``Conv1DTranspose(in_channels, out_channels, kernel_size, stride=1, padding=0,
+       output_padding=0, groups=1, bias=True, dilation=1, padding_mode='zeros',
+       device=None, dtype=None)`` (PyTorch-style):
+       Construct a 1-D transposed convolution layer with the same argument order as
+       ``torch.nn.ConvTranspose1d``.
 
     Args:
         in_channels(int): The number of channels in the input image.
@@ -565,15 +563,18 @@ class Conv1DTranspose(_ConvNd):
             If it is set to None or one attribute of ParamAttr, conv1d_transpose
             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
             is not set, the bias is initialized zero. Default: None.
-        bias(bool, optional): Keyword-only. Whether to add a learnable bias. When
-            ``False``, ``bias_attr`` is forced to ``False``. Mirrors PyTorch's
-            ``bias`` argument. Default: True.
-        padding_mode(str, optional): Keyword-only. ``'zeros'``, ``'reflect'``,
-            ``'replicate'`` or ``'circular'``. Default: ``'zeros'``.
+        data_format(str, optional): Data format that specifies the layout of input.
+            It can be "NCL" or "NLC". Default: "NCL".
+
+    Keyword args:
+        bias(bool, optional): Whether to add a learnable bias. When ``False``,
+            ``bias_attr`` is forced to ``False``. Default: True.
+        padding_mode(str, optional): ``'zeros'``, ``'reflect'``, ``'replicate'`` or
+            ``'circular'``. Default: ``'zeros'``.
         device(str|paddle.CPUPlace()|paddle.CUDAPlace()|paddle.CUDAPinnedPlace()|None, optional):
-            Keyword-only. The device on which to create the layer's parameters. Default: None.
-        dtype(str|paddle.dtype|None, optional): Keyword-only. The data type of the
-            layer's parameters. Default: None.
+            The device on which to create the layer's parameters. Default: None.
+        dtype(str|paddle.dtype|None, optional): The data type of the layer's
+            parameters. Default: None.
 
     Attribute:
         **weight** (Parameter): the learnable weights of filters of this layer.
@@ -948,17 +949,20 @@ class Conv2DTranspose(_ConvNd):
     Note:
         If output_size is None, :math:`H_{out}` = :math:`H^\prime_{out}` , :math:`W_{out}` = :math:`W^\prime_{out}`. Otherwise, the specified output_size_height (the height of the output feature layer) :math:`H_{out}` should be between :math:`H^\prime_{out}` and :math:`H^\prime_{out} + strides[0]` (excluding :math:`H^\prime_{out} + strides[0]` ).
 
-    .. note::
-        Two calling conventions are accepted:
+    This API has two signatures:
 
-        - Paddle: ``Conv2DTranspose(in_channels, out_channels, kernel_size, stride=1,
-          padding=0, output_padding=0, groups=1, dilation=1, weight_attr=None,
-          bias_attr=None, data_format='NCHW', *, bias=True, padding_mode='zeros',
-          device=None, dtype=None)``.
-        - PyTorch-compatible: ``Conv2DTranspose(in_channels, out_channels, kernel_size,
-          stride=1, padding=0, output_padding=0, groups=1, bias=True, dilation=1,
-          padding_mode='zeros', device=None, dtype=None)``, matching
-          ``torch.nn.ConvTranspose2d``.
+    1. ``Conv2DTranspose(in_channels, out_channels, kernel_size, stride=1, padding=0,
+       output_padding=0, groups=1, dilation=1, weight_attr=None, bias_attr=None,
+       data_format='NCHW', *, bias=True, padding_mode='zeros', device=None, dtype=None)``
+       (Paddle-style):
+       Construct a 2-D transposed convolution layer parameterized by ``weight_attr``
+       and ``bias_attr``.
+
+    2. ``Conv2DTranspose(in_channels, out_channels, kernel_size, stride=1, padding=0,
+       output_padding=0, groups=1, bias=True, dilation=1, padding_mode='zeros',
+       device=None, dtype=None)`` (PyTorch-style):
+       Construct a 2-D transposed convolution layer with the same argument order as
+       ``torch.nn.ConvTranspose2d``.
 
     Parameters:
         in_channels(int): The number of channels in the input image.
@@ -998,15 +1002,16 @@ class Conv2DTranspose(_ConvNd):
             is not set, the bias is initialized zero. Default: None.
         data_format(str, optional): Data format that specifies the layout of input.
             It can be "NCHW" or "NHWC". Default: "NCHW".
-        bias(bool, optional): Keyword-only. Whether to add a learnable bias. When
-            ``False``, ``bias_attr`` is forced to ``False``. Mirrors PyTorch's
-            ``bias`` argument. Default: True.
-        padding_mode(str, optional): Keyword-only. ``'zeros'``, ``'reflect'``,
-            ``'replicate'`` or ``'circular'``. Default: ``'zeros'``.
+
+    Keyword args:
+        bias(bool, optional): Whether to add a learnable bias. When ``False``,
+            ``bias_attr`` is forced to ``False``. Default: True.
+        padding_mode(str, optional): ``'zeros'``, ``'reflect'``, ``'replicate'`` or
+            ``'circular'``. Default: ``'zeros'``.
         device(str|paddle.CPUPlace()|paddle.CUDAPlace()|paddle.CUDAPinnedPlace()|None, optional):
-            Keyword-only. The device on which to create the layer's parameters. Default: None.
-        dtype(str|paddle.dtype|None, optional): Keyword-only. The data type of the
-            layer's parameters. Default: None.
+            The device on which to create the layer's parameters. Default: None.
+        dtype(str|paddle.dtype|None, optional): The data type of the layer's
+            parameters. Default: None.
 
     Attribute:
 
@@ -1369,22 +1374,20 @@ class Conv3DTranspose(_ConvNd):
         :math:`W_{out}` of the output size must between :math:`W^\prime_{out}` and
         :math:`W^\prime_{out} + strides[2]`, conv3d_transpose can compute the kernel size automatically.
 
-    .. note::
-        Two calling conventions are accepted:
+    This API has two signatures:
 
-        - Paddle: ``Conv3DTranspose(in_channels, out_channels, kernel_size, stride=1,
-          padding=0, output_padding=0, groups=1, dilation=1, weight_attr=None,
-          bias_attr=None, data_format='NCDHW', *, bias=True, padding_mode='zeros',
-          device=None, dtype=None)``.
-        - PyTorch-compatible: ``Conv3DTranspose(in_channels, out_channels, kernel_size,
-          stride=1, padding=0, output_padding=0, groups=1, bias=True, dilation=1,
-          padding_mode='zeros', device=None, dtype=None)``, matching
-          ``torch.nn.ConvTranspose3d``.
+    1. ``Conv3DTranspose(in_channels, out_channels, kernel_size, stride=1, padding=0,
+       output_padding=0, groups=1, dilation=1, weight_attr=None, bias_attr=None,
+       data_format='NCDHW', *, bias=True, padding_mode='zeros', device=None, dtype=None)``
+       (Paddle-style):
+       Construct a 3-D transposed convolution layer parameterized by ``weight_attr``
+       and ``bias_attr``.
 
-        When the 8th positional argument is a ``bool``, it is interpreted as the
-        PyTorch ``bias`` parameter and the trailing positional arguments are remapped
-        to ``bias``, ``dilation``, ``padding_mode``, ``device``, ``dtype`` keyword
-        arguments accordingly.
+    2. ``Conv3DTranspose(in_channels, out_channels, kernel_size, stride=1, padding=0,
+       output_padding=0, groups=1, bias=True, dilation=1, padding_mode='zeros',
+       device=None, dtype=None)`` (PyTorch-style):
+       Construct a 3-D transposed convolution layer with the same argument order as
+       ``torch.nn.ConvTranspose3d``.
 
     Parameters:
         in_channels(int): The number of channels in the input image.
@@ -1425,15 +1428,16 @@ class Conv3DTranspose(_ConvNd):
             is not set, the bias is initialized zero. Default: None.
         data_format(str, optional): Data format that specifies the layout of input.
             It can be "NCDHW" or "NDHWC". Default: "NCDHW".
-        bias(bool, optional): Keyword-only. Whether to add a learnable bias. When
-            ``False``, ``bias_attr`` is forced to ``False``. Mirrors PyTorch's
-            ``bias`` argument. Default: True.
-        padding_mode(str, optional): Keyword-only. ``'zeros'``, ``'reflect'``,
-            ``'replicate'`` or ``'circular'``. Default: ``'zeros'``.
+
+    Keyword args:
+        bias(bool, optional): Whether to add a learnable bias. When ``False``,
+            ``bias_attr`` is forced to ``False``. Default: True.
+        padding_mode(str, optional): ``'zeros'``, ``'reflect'``, ``'replicate'`` or
+            ``'circular'``. Default: ``'zeros'``.
         device(str|paddle.CPUPlace()|paddle.CUDAPlace()|paddle.CUDAPinnedPlace()|None, optional):
-            Keyword-only. The device on which to create the layer's parameters. Default: None.
-        dtype(str|paddle.dtype|None, optional): Keyword-only. The data type of the
-            layer's parameters. Default: None.
+            The device on which to create the layer's parameters. Default: None.
+        dtype(str|paddle.dtype|None, optional): The data type of the layer's
+            parameters. Default: None.
 
     Attribute:
 
