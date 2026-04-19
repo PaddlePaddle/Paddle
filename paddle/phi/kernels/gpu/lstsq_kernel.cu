@@ -66,10 +66,10 @@ void LstsqKernel(const Context& dev_ctx,
   int max_mn = std::max(m, n);
   int k = min_mn;
 
-  int x_stride = phi::GetMatrixStride(x_dims);
-  int y_stride = phi::GetMatrixStride(y_dims);
+  int x_stride = GetMatrixStride(x_dims);
+  int y_stride = GetMatrixStride(y_dims);
   int tau_stride = min_mn;
-  int batch_count = phi::GetBatchCount(x_dims);
+  int batch_count = GetBatchCount(x_dims);
 
   T rcond = rcond_scalar.to<T>();
 
@@ -123,14 +123,14 @@ void LstsqKernel(const Context& dev_ctx,
     DenseTensor res_r;
     res_r.Resize({batch_count, min_mn, min_mn});
     dev_ctx.template Alloc<T>(&res_r);
-    phi::TrilTriuKernel<T>(dev_ctx, slice_r, 0, false, &res_r);
+    TrilTriuKernel<T>(dev_ctx, slice_r, 0, false, &res_r);
 
     DenseTensor trans_y = TransposeLast2Dim<T>(dev_ctx, tmp_y);
     DenseTensor slice_y =
         funcs::Slice<T>(dev_ctx, trans_y, {-2}, {0}, {min_mn});
 
     // Step 3, solve R X = Y
-    phi::TriangularSolveKernel<T, Context>(
+    TriangularSolveKernel<T, Context>(
         dev_ctx, res_r, slice_y, true, false, false, solution);
 
   } else {
@@ -148,9 +148,9 @@ void LstsqKernel(const Context& dev_ctx,
     DenseTensor res_r;
     res_r.Resize({batch_count, min_mn, min_mn});
     dev_ctx.template Alloc<T>(&res_r);
-    phi::TrilTriuKernel<T>(dev_ctx, slice_r, 0, false, &res_r);
+    TrilTriuKernel<T>(dev_ctx, slice_r, 0, false, &res_r);
 
-    phi::TriangularSolveKernel<T, Context>(
+    TriangularSolveKernel<T, Context>(
         dev_ctx, res_r, new_y, true, true, false, solution);
 
     // Step 3, X <- Q Z
@@ -168,7 +168,7 @@ void LstsqKernel(const Context& dev_ctx,
     DenseTensor trans_q = TransposeLast2Dim<T>(dev_ctx, new_x);
     DenseTensor slice_q = funcs::Slice<T>(dev_ctx, trans_q, {-1}, {0}, {m});
     DenseTensor solu_tensor =
-        phi::Matmul<T>(dev_ctx, slice_q, *solution, false, false);
+        Matmul<T>(dev_ctx, slice_q, *solution, false, false);
     Copy<Context>(dev_ctx, solu_tensor, dev_ctx.GetPlace(), true, solution);
   }
   if (batch_count == 1) solution->Resize({n, nrhs});

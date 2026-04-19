@@ -188,7 +188,7 @@ void LayerNormGradKernel(const Context& dev_ctx,
                                                  epsilon);                  \
   } while (0)
 
-  auto compute_dtype = phi::CppTypeToDataType<U>::Type();
+  auto compute_dtype = CppTypeToDataType<U>::Type();
   auto kernel_variant = LayerNormGradKernelDispatch(scale_bias_dtype,
                                                     x_dtype,
                                                     x_dtype,

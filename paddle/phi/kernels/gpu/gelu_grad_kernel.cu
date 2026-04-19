@@ -28,7 +28,7 @@ namespace phi {
 
 template <typename T>
 struct GeluWithApproximateGradFunctor {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
   inline HOSTDEVICE T operator()(T arg_x, T arg_dout) {
     MPType x = static_cast<MPType>(arg_x);
     MPType dout = static_cast<MPType>(arg_dout);
@@ -54,7 +54,7 @@ struct GeluWithApproximateGradFunctor {
 
 template <typename T>
 struct GeluWithoutApproximateGradFunctor {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
   inline HOSTDEVICE T operator()(T arg_x, T arg_dout) {
     MPType x = static_cast<MPType>(arg_x);
     MPType dout = static_cast<MPType>(arg_dout);

@@ -196,10 +196,10 @@ void RoiPoolKernel(const Context& dev_ctx,
   }
 
   int bytes = box_batch_id_list.numel() * sizeof(int);
-  auto box_ptr = phi::memory_utils::Alloc(
-      dev_ctx.GetPlace(),
-      bytes,
-      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+  auto box_ptr =
+      memory_utils::Alloc(dev_ctx.GetPlace(),
+                          bytes,
+                          Stream(reinterpret_cast<StreamId>(dev_ctx.stream())));
   int* box_id_data = reinterpret_cast<int*>(box_ptr->ptr());
   const int* stable_box_batch_id =
       phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(

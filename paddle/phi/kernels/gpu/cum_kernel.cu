@@ -203,7 +203,7 @@ __global__ void BlockScanKernel(T* d_out,
                                 int64_t scan_size,
                                 bool exclusive,
                                 Op op) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename dtype::MPTypeTrait<T>::Type;
   using CallbackOp = BlockPrefixCallbackOp<MT, Op>;
 
   // Specialize BlockLoad, BlockStore, and BlockRadixSort collective types
@@ -263,13 +263,13 @@ void ThrustCumsumKernel(const Context& dev_ctx,
                         int64_t size,
                         bool reverse,
                         bool exclusive) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename dtype::MPTypeTrait<T>::Type;
 
 #ifdef __HIPCC__
   const auto& policy = thrust::hip::par.on(dev_ctx.stream());
 #else
-  phi::memory_utils::ThrustAllocator<cudaStream_t> allocator(dev_ctx.GetPlace(),
-                                                             dev_ctx.stream());
+  memory_utils::ThrustAllocator<cudaStream_t> allocator(dev_ctx.GetPlace(),
+                                                        dev_ctx.stream());
   const auto& policy = thrust::cuda::par(allocator).on(dev_ctx.stream());
 #endif
 
@@ -459,11 +459,10 @@ void CumsumKernel(const Context& dev_ctx,
                   bool exclusive,
                   bool reverse,
                   DenseTensor* out) {
-  using Op =
-      typename std::conditional<std::is_same<T, phi::complex64>::value ||
-                                    std::is_same<T, phi::complex128>::value,
-                                ComplexSum,
-                                cub::Sum>::type;
+  using Op = typename std::conditional<std::is_same<T, complex64>::value ||
+                                           std::is_same<T, complex128>::value,
+                                       ComplexSum,
+                                       cub::Sum>::type;
   if (FLAGS_use_accuracy_compatible_kernel && !exclusive) {
     if (out && out->numel() == 0) {
       dev_ctx.template Alloc<T>(out);

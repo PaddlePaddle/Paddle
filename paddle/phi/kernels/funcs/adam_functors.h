@@ -27,7 +27,6 @@
 
 namespace phi {
 namespace funcs {
-using float16 = dtype::float16;
 
 #ifdef PADDLE_WITH_XPU
 

@@ -31,8 +31,6 @@
 namespace phi {
 namespace fusion {
 
-using float16 = phi::float16;
-
 template <typename T>
 static __device__ __forceinline__ T Relu(T x) {
   return static_cast<T>(fmaxf(0.f, x));

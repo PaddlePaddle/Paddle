@@ -35,12 +35,12 @@ struct ComputeType {
 };
 
 template <>
-struct ComputeType<phi::float16> {
+struct ComputeType<float16> {
   using type = float;
 };
 
 template <>
-struct ComputeType<phi::bfloat16> {
+struct ComputeType<bfloat16> {
   using type = float;
 };
 
@@ -65,7 +65,7 @@ void LogsumexpFallbackKernel(const Context& dev_ctx,
   max_x.Resize(outdim);
   dev_ctx.template Alloc<T>(&max_x);
 
-  phi::MaxKernel<T, Context>(dev_ctx, *in_x, axis_vec, false, &max_x);
+  MaxKernel<T, Context>(dev_ctx, *in_x, axis_vec, false, &max_x);
 
   max_x.Resize(keep_outdim);
   DenseTensor temp_x = Subtract<T, Context>(dev_ctx, *in_x, max_x);
@@ -75,10 +75,10 @@ void LogsumexpFallbackKernel(const Context& dev_ctx,
   DenseTensor log_out;
   log_out.Resize(outdim);
   dev_ctx.template Alloc<T>(&log_out);
-  phi::LogKernel<T, Context>(dev_ctx, *out_y, &log_out);
+  LogKernel<T, Context>(dev_ctx, *out_y, &log_out);
   log_out.Resize(outdim);
   out->Resize(outdim);
-  phi::AddKernel<T, Context>(dev_ctx, log_out, max_x, out);
+  AddKernel<T, Context>(dev_ctx, log_out, max_x, out);
 }
 
 template <typename T, typename Context>

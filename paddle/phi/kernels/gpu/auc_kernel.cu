@@ -18,8 +18,6 @@
 
 namespace phi {
 
-using phi::PADDLE_CUDA_NUM_THREADS;
-
 __global__ void ClearObsoleteDataKernel(int64_t *pos,
                                         int64_t *neg,
                                         const int bucket_length,

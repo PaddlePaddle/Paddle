@@ -262,10 +262,10 @@ void RoiAlignKernel(const Context& dev_ctx,
     }
   }
   int64_t bytes = roi_batch_id_list.numel() * sizeof(int);
-  auto roi_ptr = phi::memory_utils::Alloc(
-      dev_ctx.GetPlace(),
-      bytes,
-      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+  auto roi_ptr =
+      memory_utils::Alloc(dev_ctx.GetPlace(),
+                          bytes,
+                          Stream(reinterpret_cast<StreamId>(dev_ctx.stream())));
   int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
   const int* stable_roi_batch_id =
       phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(

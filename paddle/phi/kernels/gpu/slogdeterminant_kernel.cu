@@ -110,32 +110,31 @@ __global__ void GetSlogDetFromLUComplex(const T* lu_data,
 }
 
 template <typename T, typename Context>
-struct SlogDeterminantFunctor<phi::dtype::complex<T>, Context> {
+struct SlogDeterminantFunctor<dtype::complex<T>, Context> {
   void operator()(const Context& dev_ctx,
                   const DenseTensor& input,
                   int64_t rank,
                   int64_t batch_count,
                   DenseTensor* output) {
 #ifndef PADDLE_WITH_HIP
-    phi::Allocator::AllocationPtr tmp_gpu_mat_data;
-    const phi::dtype::complex<T>* gpu_mat =
-        input.data<phi::dtype::complex<T>>();
+    Allocator::AllocationPtr tmp_gpu_mat_data;
+    const dtype::complex<T>* gpu_mat = input.data<dtype::complex<T>>();
     // Copy all elements of input matrix A to a temporary memory space to
     // avoid being overridden by getrf.
-    tmp_gpu_mat_data = phi::memory_utils::Alloc(
+    tmp_gpu_mat_data = memory_utils::Alloc(
         dev_ctx.GetPlace(),
-        input.numel() * sizeof(phi::dtype::complex<T>),
-        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+        input.numel() * sizeof(dtype::complex<T>),
+        Stream(reinterpret_cast<StreamId>(dev_ctx.stream())));
     memory_utils::Copy(dev_ctx.GetPlace(),
                        tmp_gpu_mat_data->ptr(),
                        dev_ctx.GetPlace(),
                        input.data(),
-                       input.numel() * sizeof(phi::dtype::complex<T>),
+                       input.numel() * sizeof(dtype::complex<T>),
                        dev_ctx.stream());
-    gpu_mat = reinterpret_cast<const phi::dtype::complex<T>*>(
-        tmp_gpu_mat_data->ptr());
+    gpu_mat =
+        reinterpret_cast<const dtype::complex<T>*>(tmp_gpu_mat_data->ptr());
 
-    std::vector<const phi::dtype::complex<T>*> cpu_ptrs(batch_count);
+    std::vector<const dtype::complex<T>*> cpu_ptrs(batch_count);
     for (int64_t i = 0; i < batch_count; ++i) {
       cpu_ptrs[i] = gpu_mat + i * rank * rank;
     }
@@ -143,8 +142,8 @@ struct SlogDeterminantFunctor<phi::dtype::complex<T>, Context> {
     // num_ints is for pivot (rank * batch_count) and info (batch_count)
     int64_t num_ints = batch_count * (rank + 1);
     size_t total_bytes =
-        batch_count * sizeof(phi::dtype::complex<T>*) + num_ints * sizeof(int);
-    phi::Allocator::AllocationPtr tmp_gpu_ptrs_data = phi::memory_utils::Alloc(
+        batch_count * sizeof(dtype::complex<T>*) + num_ints * sizeof(int);
+    Allocator::AllocationPtr tmp_gpu_ptrs_data = memory_utils::Alloc(
         dev_ctx.GetPlace(),
         total_bytes,
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
@@ -161,35 +160,35 @@ struct SlogDeterminantFunctor<phi::dtype::complex<T>, Context> {
                        nbytes_ptrs_c1,
                        dev_ctx.stream());
 
-    phi::dtype::complex<T>** gpu_mat_ptr =
-        reinterpret_cast<phi::dtype::complex<T>**>(tmp_gpu_ptrs_data->ptr());
+    dtype::complex<T>** gpu_mat_ptr =
+        reinterpret_cast<dtype::complex<T>**>(tmp_gpu_ptrs_data->ptr());
     int* gpu_info_ptr = reinterpret_cast<int*>(gpu_mat_ptr + cpu_ptrs.size());
     int* pivot_data = gpu_info_ptr + batch_count;
 
-    auto blas = funcs::GetBlas<Context, phi::dtype::complex<T>>(dev_ctx);
+    auto blas = funcs::GetBlas<Context, dtype::complex<T>>(dev_ctx);
     // This function performs the LU factorization of each matrix A by the
     // equation P * A = L * U. L and U are written back to original matrix A,
     // and diagonal elements of L are discarded.
     blas.BatchedGETRF(rank, gpu_mat_ptr, pivot_data, gpu_info_ptr, batch_count);
-    phi::dtype::complex<T>* out_data =
-        dev_ctx.template Alloc<phi::dtype::complex<T>>(output);
+    dtype::complex<T>* out_data =
+        dev_ctx.template Alloc<dtype::complex<T>>(output);
     int block_size = std::min(256, dev_ctx.GetMaxThreadsPerBlock());
     dim3 dim_block(block_size);
     dim3 num_blocks((batch_count + block_size - 1) / block_size);
-    GetSlogDetFromLUComplex<phi::dtype::complex<T>><<<num_blocks, dim_block>>>(
+    GetSlogDetFromLUComplex<dtype::complex<T>><<<num_blocks, dim_block>>>(
         gpu_mat, pivot_data, rank, batch_count, out_data);
 #else
     using MatrixType =
         Eigen::Matrix<std::complex<T>, Eigen::Dynamic, Eigen::Dynamic>;
-    std::vector<phi::dtype::complex<T>> input_vec;
-    std::vector<phi::dtype::complex<T>> sign_vec;
-    std::vector<phi::dtype::complex<T>> log_vec;
-    std::vector<phi::dtype::complex<T>> output_vec;
+    std::vector<dtype::complex<T>> input_vec;
+    std::vector<dtype::complex<T>> sign_vec;
+    std::vector<dtype::complex<T>> log_vec;
+    std::vector<dtype::complex<T>> output_vec;
     TensorToVector(input, dev_ctx, &input_vec);
     for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
       auto begin_iter = input_vec.begin() + i * rank * rank;
       auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
-      std::vector<phi::dtype::complex<T>> sub_vec(
+      std::vector<dtype::complex<T>> sub_vec(
           begin_iter,
           end_iter);  // get every square matrix data
       MatrixType matrix(rank, rank);
@@ -202,10 +201,9 @@ struct SlogDeterminantFunctor<phi::dtype::complex<T>, Context> {
       VLOG(2) << "matrix val: " << matrix;
       std::complex<T> det_val = matrix.determinant();
       T abs_det_val = std::abs(det_val);
-      sign_vec.push_back(static_cast<phi::dtype::complex<T>>(
+      sign_vec.push_back(static_cast<dtype::complex<T>>(
           sign(det_val, static_cast<std::complex<T>>(abs_det_val))));
-      log_vec.push_back(
-          static_cast<phi::dtype::complex<T>>(std::log(abs_det_val)));
+      log_vec.push_back(static_cast<dtype::complex<T>>(std::log(abs_det_val)));
     }
     // merge sign_vec and log_vec as final output_vec
     output_vec.insert(output_vec.end(), sign_vec.begin(), sign_vec.end());
@@ -307,20 +305,18 @@ struct SlogDeterminantV2Functor {
       }
       dev_ctx.template Alloc<T>(logdet);
       if (logdet->numel() > 0) {
-        Full<T, Context>(dev_ctx,
-                         logdet->dims(),
-                         static_cast<phi::dtype::complex<T>>(0),
-                         logdet);
+        Full<T, Context>(
+            dev_ctx, logdet->dims(), static_cast<dtype::complex<T>>(0), logdet);
       }
       return;
     }
 #ifndef PADDLE_WITH_HIP
-    phi::Allocator::AllocationPtr tmp_gpu_mat_data;
+    Allocator::AllocationPtr tmp_gpu_mat_data;
     const T* gpu_mat = input.data<T>();
-    tmp_gpu_mat_data = phi::memory_utils::Alloc(
+    tmp_gpu_mat_data = memory_utils::Alloc(
         dev_ctx.GetPlace(),
         input.numel() * sizeof(T),
-        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+        Stream(reinterpret_cast<StreamId>(dev_ctx.stream())));
     memory_utils::Copy(dev_ctx.GetPlace(),
                        tmp_gpu_mat_data->ptr(),
                        dev_ctx.GetPlace(),
@@ -337,7 +333,7 @@ struct SlogDeterminantV2Functor {
     // num_ints is for pivot (rank * batch_count) and info (batch_count)
     int num_ints = batch_count * (rank + 1);
     size_t total_bytes = batch_count * sizeof(T*) + num_ints * sizeof(int);
-    phi::Allocator::AllocationPtr tmp_gpu_ptrs_data = phi::memory_utils::Alloc(
+    Allocator::AllocationPtr tmp_gpu_ptrs_data = memory_utils::Alloc(
         dev_ctx.GetPlace(),
         total_bytes,
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
@@ -443,7 +439,7 @@ __global__ void GetSlogDetV2FromLUComplex(const Complex_T* lu_data,
 }
 
 template <typename T, typename Context>
-struct SlogDeterminantV2Functor<phi::dtype::complex<T>, Context> {
+struct SlogDeterminantV2Functor<dtype::complex<T>, Context> {
   void operator()(const Context& dev_ctx,
                   const DenseTensor& input,
                   int64_t rank,
@@ -451,43 +447,37 @@ struct SlogDeterminantV2Functor<phi::dtype::complex<T>, Context> {
                   DenseTensor* sign,
                   DenseTensor* logdet) {
     if (input.numel() == 0) {
-      dev_ctx.template Alloc<phi::dtype::complex<T>>(sign);
+      dev_ctx.template Alloc<dtype::complex<T>>(sign);
       if (sign->numel() > 0) {
-        Full<phi::dtype::complex<T>, Context>(
-            dev_ctx,
-            sign->dims(),
-            static_cast<phi::dtype::complex<T>>(1),
-            sign);
+        Full<dtype::complex<T>, Context>(
+            dev_ctx, sign->dims(), static_cast<dtype::complex<T>>(1), sign);
       }
       dev_ctx.template Alloc<T>(logdet);
       if (logdet->numel() > 0) {
-        Full<T, Context>(dev_ctx,
-                         logdet->dims(),
-                         static_cast<phi::dtype::complex<T>>(0),
-                         logdet);
+        Full<T, Context>(
+            dev_ctx, logdet->dims(), static_cast<dtype::complex<T>>(0), logdet);
       }
       return;
     }
 #ifndef PADDLE_WITH_HIP
-    phi::Allocator::AllocationPtr tmp_gpu_mat_data;
-    const phi::dtype::complex<T>* gpu_mat =
-        input.data<phi::dtype::complex<T>>();
+    Allocator::AllocationPtr tmp_gpu_mat_data;
+    const dtype::complex<T>* gpu_mat = input.data<dtype::complex<T>>();
     // Copy all elements of input matrix A to a temporary memory space to
     // avoid being overridden by getrf.
-    tmp_gpu_mat_data = phi::memory_utils::Alloc(
+    tmp_gpu_mat_data = memory_utils::Alloc(
         dev_ctx.GetPlace(),
-        input.numel() * sizeof(phi::dtype::complex<T>),
-        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+        input.numel() * sizeof(dtype::complex<T>),
+        Stream(reinterpret_cast<StreamId>(dev_ctx.stream())));
     memory_utils::Copy(dev_ctx.GetPlace(),
                        tmp_gpu_mat_data->ptr(),
                        dev_ctx.GetPlace(),
                        input.data(),
-                       input.numel() * sizeof(phi::dtype::complex<T>),
+                       input.numel() * sizeof(dtype::complex<T>),
                        dev_ctx.stream());
-    gpu_mat = reinterpret_cast<const phi::dtype::complex<T>*>(
-        tmp_gpu_mat_data->ptr());
+    gpu_mat =
+        reinterpret_cast<const dtype::complex<T>*>(tmp_gpu_mat_data->ptr());
 
-    std::vector<const phi::dtype::complex<T>*> cpu_ptrs(batch_count);
+    std::vector<const dtype::complex<T>*> cpu_ptrs(batch_count);
     for (int64_t i = 0; i < batch_count; ++i) {
       cpu_ptrs[i] = gpu_mat + i * rank * rank;
     }
@@ -495,8 +485,8 @@ struct SlogDeterminantV2Functor<phi::dtype::complex<T>, Context> {
     // num_ints is for pivot (rank * batch_count) and info (batch_count)
     int64_t num_ints = batch_count * (rank + 1);
     size_t total_bytes =
-        batch_count * sizeof(phi::dtype::complex<T>*) + num_ints * sizeof(int);
-    phi::Allocator::AllocationPtr tmp_gpu_ptrs_data = phi::memory_utils::Alloc(
+        batch_count * sizeof(dtype::complex<T>*) + num_ints * sizeof(int);
+    Allocator::AllocationPtr tmp_gpu_ptrs_data = memory_utils::Alloc(
         dev_ctx.GetPlace(),
         total_bytes,
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
@@ -513,37 +503,36 @@ struct SlogDeterminantV2Functor<phi::dtype::complex<T>, Context> {
                        nbytes_ptrs_v2c,
                        dev_ctx.stream());
 
-    phi::dtype::complex<T>** gpu_mat_ptr =
-        reinterpret_cast<phi::dtype::complex<T>**>(tmp_gpu_ptrs_data->ptr());
+    dtype::complex<T>** gpu_mat_ptr =
+        reinterpret_cast<dtype::complex<T>**>(tmp_gpu_ptrs_data->ptr());
     int* gpu_info_ptr = reinterpret_cast<int*>(gpu_mat_ptr + cpu_ptrs.size());
     int* pivot_data = gpu_info_ptr + batch_count;
 
-    auto blas = funcs::GetBlas<Context, phi::dtype::complex<T>>(dev_ctx);
+    auto blas = funcs::GetBlas<Context, dtype::complex<T>>(dev_ctx);
     // This function performs the LU factorization of each matrix A by the
     // equation P * A = L * U. L and U are written back to original matrix A,
     // and diagonal elements of L are discarded.
     blas.BatchedGETRF(rank, gpu_mat_ptr, pivot_data, gpu_info_ptr, batch_count);
-    phi::dtype::complex<T>* sign_data =
-        dev_ctx.template Alloc<phi::dtype::complex<T>>(sign);
+    dtype::complex<T>* sign_data =
+        dev_ctx.template Alloc<dtype::complex<T>>(sign);
     T* logdet_data = dev_ctx.template Alloc<T>(logdet);
     int block_size = std::min(256, dev_ctx.GetMaxThreadsPerBlock());
     dim3 dim_block(block_size);
     dim3 num_blocks((batch_count + block_size - 1) / block_size);
-    GetSlogDetV2FromLUComplex<phi::dtype::complex<T>, T>
-        <<<num_blocks, dim_block>>>(
-            gpu_mat, pivot_data, rank, batch_count, sign_data, logdet_data);
+    GetSlogDetV2FromLUComplex<dtype::complex<T>, T><<<num_blocks, dim_block>>>(
+        gpu_mat, pivot_data, rank, batch_count, sign_data, logdet_data);
 #else
     using MatrixType =
         Eigen::Matrix<std::complex<T>, Eigen::Dynamic, Eigen::Dynamic>;
-    std::vector<phi::dtype::complex<T>> input_vec;
-    std::vector<phi::dtype::complex<T>> sign_vec;
-    std::vector<phi::dtype::complex<T>> log_vec;
+    std::vector<dtype::complex<T>> input_vec;
+    std::vector<dtype::complex<T>> sign_vec;
+    std::vector<dtype::complex<T>> log_vec;
     DDim out_dims = sign->dims();
     TensorToVector(input, dev_ctx, &input_vec);
     for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
       auto begin_iter = input_vec.begin() + i * rank * rank;
       auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
-      std::vector<phi::dtype::complex<T>> sub_vec(
+      std::vector<dtype::complex<T>> sub_vec(
           begin_iter,
           end_iter);  // get every square matrix data
       MatrixType matrix(rank, rank);
@@ -556,7 +545,7 @@ struct SlogDeterminantV2Functor<phi::dtype::complex<T>, Context> {
       VLOG(2) << "matrix val: " << matrix;
       std::complex<T> det_val = matrix.determinant();
       T abs_det_val = std::abs(det_val);
-      sign_vec.push_back(static_cast<phi::dtype::complex<T>>(
+      sign_vec.push_back(static_cast<dtype::complex<T>>(
           phi::sign(det_val, static_cast<std::complex<T>>(abs_det_val))));
       log_vec.push_back(std::log(abs_det_val));
     }

@@ -46,28 +46,27 @@ void VarGradKernel(const Context& dev_ctx,
   int rank = x.dims().size();
   if (rank == 0 || axis.size() == 0) {
     const auto dof = static_cast<double>(x.numel()) - correction;
-    DenseTensor x_mean = phi::Mean<T, Context>(dev_ctx, x, {}, true);
+    DenseTensor x_mean = Mean<T, Context>(dev_ctx, x, {}, true);
     if (dof <= 0) {
       // grad * at::where(x ==
       // x.mean(),std::numeric_limits<double>::quiet_NaN(),std::numeric_limits<double>::infinity());
       DenseTensor cond;
       cond.Resize(x.dims());
-      phi::EqualKernel<T, Context>(dev_ctx, x, x_mean, &cond);
-      DenseTensor nan_tensor = phi::FullLike<T, Context>(
+      EqualKernel<T, Context>(dev_ctx, x, x_mean, &cond);
+      DenseTensor nan_tensor = FullLike<T, Context>(
           dev_ctx, x, static_cast<T>(std::numeric_limits<double>::quiet_NaN()));
-      DenseTensor inf_tensor = phi::FullLike<T, Context>(
+      DenseTensor inf_tensor = FullLike<T, Context>(
           dev_ctx, x, static_cast<T>(std::numeric_limits<double>::infinity()));
       dev_ctx.template Alloc<T>(x_grad);
-      phi::WhereKernel<T, Context>(
-          dev_ctx, cond, nan_tensor, inf_tensor, x_grad);
+      WhereKernel<T, Context>(dev_ctx, cond, nan_tensor, inf_tensor, x_grad);
     } else {
       // (2.0 / dof) * grad * (x - x.mean());
-      DenseTensor diff = phi::Subtract<T, Context>(dev_ctx, x, x_mean);
+      DenseTensor diff = Subtract<T, Context>(dev_ctx, x, x_mean);
       DenseTensor scale =
-          phi::FullLike<T, Context>(dev_ctx, x, static_cast<T>(2.0 / dof));
-      DenseTensor tmp = phi::Multiply<T, Context>(dev_ctx, scale, out_grad);
+          FullLike<T, Context>(dev_ctx, x, static_cast<T>(2.0 / dof));
+      DenseTensor tmp = Multiply<T, Context>(dev_ctx, scale, out_grad);
       dev_ctx.template Alloc<T>(x_grad);
-      phi::MultiplyKernel<T, Context>(dev_ctx, tmp, diff, x_grad);
+      MultiplyKernel<T, Context>(dev_ctx, tmp, diff, x_grad);
     }
     return;
   }
@@ -142,12 +141,12 @@ void StdGradKernel(const Context& dev_ctx,
   }
   // grad_var = (grad / (out * 2)).masked_fill_(out == 0, 0);
   DenseTensor two_tensor =
-      phi::FullLike<T, Context>(dev_ctx, out, static_cast<T>(2.0));
+      FullLike<T, Context>(dev_ctx, out, static_cast<T>(2.0));
   DenseTensor denom = Multiply<T, Context>(dev_ctx, out, two_tensor);
   DenseTensor div = Divide<T, Context>(dev_ctx, out_grad, denom);
 
   DenseTensor zero_tensor =
-      phi::FullLike<T, Context>(dev_ctx, out, static_cast<T>(0.0));
+      FullLike<T, Context>(dev_ctx, out, static_cast<T>(0.0));
   DenseTensor cond_zero;
   cond_zero.Resize(out.dims());
   EqualKernel<T, Context>(dev_ctx, out, zero_tensor, &cond_zero);

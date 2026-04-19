@@ -82,10 +82,10 @@ struct MatrixBandPartFunctor {
     int workspace_size = 0;                                              \
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDn##C##potrf_bufferSize( \
         handle, uplo, n, A, lda, &workspace_size));                      \
-    auto workspace = phi::memory_utils::Alloc(                           \
+    auto workspace = memory_utils::Alloc(                                \
         dev_ctx.GetPlace(),                                              \
         workspace_size * sizeof(T),                                      \
-        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream()))); \
+        Stream(reinterpret_cast<StreamId>(dev_ctx.stream())));           \
     T* workspace_ptr = reinterpret_cast<T*>(workspace->ptr());           \
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDn##C##potrf(            \
         handle, uplo, n, A, lda, workspace_ptr, workspace_size, info));  \
@@ -119,12 +119,12 @@ FUNC_WITH_TYPES(POTRF_INSTANCE);
                                              data_type,                   \
                                              &workspace_device_size,      \
                                              &workspace_host_size));      \
-    auto workspace_device = phi::memory_utils::Alloc(                     \
+    auto workspace_device = memory_utils::Alloc(                          \
         dev_ctx.GetPlace(),                                               \
         workspace_device_size,                                            \
-        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));  \
+        Stream(reinterpret_cast<StreamId>(dev_ctx.stream())));            \
     auto workspace_host =                                                 \
-        phi::memory_utils::Alloc(CPUPlace(), workspace_host_size);        \
+        memory_utils::Alloc(CPUPlace(), workspace_host_size);             \
     PADDLE_ENFORCE_GPU_SUCCESS(                                           \
         dynload::cusolverDnXpotrf(handle,                                 \
                                   params,                                 \
@@ -209,10 +209,10 @@ void CholeskyKernel(const Context& dev_ctx,
     for_range(matrix_band_part_functor);
   }
 
-  auto info = phi::memory_utils::Alloc(
-      dev_ctx.GetPlace(),
-      sizeof(int) * batch_count,
-      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+  auto info =
+      memory_utils::Alloc(dev_ctx.GetPlace(),
+                          sizeof(int) * batch_count,
+                          Stream(reinterpret_cast<StreamId>(dev_ctx.stream())));
   auto* info_ptr = reinterpret_cast<int*>(info->ptr());
 
 #if CUDA_VERSION >= 9020 && !defined(_WIN32)

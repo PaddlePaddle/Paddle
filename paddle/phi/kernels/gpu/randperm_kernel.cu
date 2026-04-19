@@ -125,10 +125,10 @@ void RandpermKernel(const Context& dev_ctx,
                                           end_bit < 32 ? end_bit : 32,
                                           dev_ctx.stream());
 
-  auto d_temp_storage = phi::memory_utils::Alloc(
-      dev_ctx.GetPlace(),
-      temp_storage_bytes,
-      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+  auto d_temp_storage =
+      memory_utils::Alloc(dev_ctx.GetPlace(),
+                          temp_storage_bytes,
+                          Stream(reinterpret_cast<StreamId>(dev_ctx.stream())));
   cub::DeviceRadixSort::SortPairs<int, T>(d_temp_storage->ptr(),
                                           temp_storage_bytes,
                                           key.data<int>(),
@@ -143,7 +143,7 @@ void RandpermKernel(const Context& dev_ctx,
   auto gen_cuda = dev_ctx.GetGenerator();
   auto seed_offset = gen_cuda->IncrementOffset(n);
 
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n);
+  auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n);
   SwapRepeatKernel<<<config.block_per_grid.x,
                      config.thread_per_block.x,
                      0,

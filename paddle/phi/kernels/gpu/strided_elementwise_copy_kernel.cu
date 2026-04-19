@@ -43,12 +43,12 @@ void StridedElementwiseCopyKernel(const Context& dev_ctx,
 #ifdef PADDLE_WITH_HIP
     hipMemcpy(output_data,
               input_data,
-              phi::SizeOf(input.dtype()),
+              SizeOf(input.dtype()),
               hipMemcpyDeviceToDevice);
 #else
     cudaMemcpy(output_data,
                input_data,
-               phi::SizeOf(input.dtype()),
+               SizeOf(input.dtype()),
                cudaMemcpyDeviceToDevice);
 #endif
 
@@ -69,10 +69,10 @@ void StridedElementwiseCopyKernel(const Context& dev_ctx,
 
   funcs::CopyStride<2>(out_dims,
                        out_strides,
-                       phi::SizeOf(out->dtype()),
+                       SizeOf(out->dtype()),
                        vectorize<int64_t>(input.dims()),
                        vectorize<int64_t>(input.strides()),
-                       phi::SizeOf(input.dtype()),
+                       SizeOf(input.dtype()),
                        &desired_shape,
                        &strides_array,
                        &numel,

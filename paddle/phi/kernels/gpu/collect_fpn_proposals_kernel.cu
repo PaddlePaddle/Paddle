@@ -111,18 +111,18 @@ void GPUCollectFpnProposalsOpKernel(
       }
     }
 
-    phi::memory_utils::Copy(place,
-                            concat_rois_data + roi_offset,
-                            place,
-                            roi_in->data<T>(),
-                            roi_in->numel() * sizeof(T),
-                            dev_ctx.stream());
-    phi::memory_utils::Copy(place,
-                            concat_scores_data + score_offset,
-                            place,
-                            score_in->data<T>(),
-                            score_in->numel() * sizeof(T),
-                            dev_ctx.stream());
+    memory_utils::Copy(place,
+                       concat_rois_data + roi_offset,
+                       place,
+                       roi_in->data<T>(),
+                       roi_in->numel() * sizeof(T),
+                       dev_ctx.stream());
+    memory_utils::Copy(place,
+                       concat_scores_data + score_offset,
+                       place,
+                       score_in->data<T>(),
+                       score_in->numel() * sizeof(T),
+                       dev_ctx.stream());
     roi_offset += roi_in->numel();
     score_offset += score_in->numel();
   }
@@ -161,7 +161,7 @@ void GPUCollectFpnProposalsOpKernel(
                                                     sizeof(T) * 8,
                                                     dev_ctx.stream());
   // Allocate temporary storage
-  auto d_temp_storage = phi::memory_utils::Alloc(place, temp_storage_bytes);
+  auto d_temp_storage = memory_utils::Alloc(place, temp_storage_bytes);
 
   // Run sorting operation
   // sort score to get corresponding index
@@ -208,7 +208,7 @@ void GPUCollectFpnProposalsOpKernel(
                                             sizeof(int) * 8,
                                             dev_ctx.stream());
   // Allocate temporary storage
-  d_temp_storage = phi::memory_utils::Alloc(place, temp_storage_bytes);
+  d_temp_storage = memory_utils::Alloc(place, temp_storage_bytes);
 
   // Run sorting operation
   // sort batch_id to get corresponding index
@@ -246,12 +246,12 @@ void GPUCollectFpnProposalsOpKernel(
           "address into the graph; on replay the vector is re-created at a "
           "different address, causing a dangling-pointer write."));
   std::vector<int> length_lod_cpu(lod_size);
-  phi::memory_utils::Copy(CPUPlace(),
-                          length_lod_cpu.data(),
-                          place,
-                          length_lod_data,
-                          sizeof(int) * lod_size,
-                          dev_ctx.stream());
+  memory_utils::Copy(CPUPlace(),
+                     length_lod_cpu.data(),
+                     place,
+                     length_lod_data,
+                     sizeof(int) * lod_size,
+                     dev_ctx.stream());
   dev_ctx.Wait();
 
   std::vector<size_t> offset(1, 0);
@@ -263,12 +263,12 @@ void GPUCollectFpnProposalsOpKernel(
     auto* rois_num = rois_num_out;
     rois_num->Resize({lod_size});
     int* rois_num_data = dev_ctx.template Alloc<int>(rois_num);
-    phi::memory_utils::Copy(place,
-                            rois_num_data,
-                            place,
-                            length_lod_data,
-                            lod_size * sizeof(int),
-                            dev_ctx.stream());
+    memory_utils::Copy(place,
+                       rois_num_data,
+                       place,
+                       length_lod_data,
+                       lod_size * sizeof(int),
+                       dev_ctx.stream());
   }
 
   LegacyLoD lod;
