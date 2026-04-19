@@ -43,8 +43,8 @@ void AddKernel(const Context& dev_ctx,
       return;
     }
     auto dev_version =
-        phi::backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId());
-    if (dev_version >= phi::backends::xpu::XPUVersion::XPU3 &&
+        backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId());
+    if (dev_version >= backends::xpu::XPUVersion::XPU3 &&
         x.dims() == y.dims()) {
       dev_ctx.template Alloc<float>(out);
 

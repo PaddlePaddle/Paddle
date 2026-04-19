@@ -125,8 +125,8 @@ void Pad2dXPUKernel(const Context& dev_ctx,
 
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto dev_version =
-      phi::backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId());
-  if (dev_version == phi::backends::xpu::XPUVersion::XPU1) {
+      backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId());
+  if (dev_version == backends::xpu::XPUVersion::XPU1) {
     if (mode_xpu == "constant" || mode_xpu == "edge" || mode_xpu == "reflect") {
       int r = xpu::pad2d<T>(dev_ctx.x_context(),
                             in_data,
@@ -145,8 +145,8 @@ void Pad2dXPUKernel(const Context& dev_ctx,
           "XPU is not support other padding mode in pad2d, mode_xpu is %s",
           mode_xpu));
     }
-  } else if (dev_version == phi::backends::xpu::XPUVersion::XPU2 ||
-             dev_version == phi::backends::xpu::XPUVersion::XPU3) {
+  } else if (dev_version == backends::xpu::XPUVersion::XPU2 ||
+             dev_version == backends::xpu::XPUVersion::XPU3) {
     if (mode_xpu == "reflect") {
       int r = xpu::reflection_pad2d<T>(dev_ctx.x_context(),
                                        in_data,

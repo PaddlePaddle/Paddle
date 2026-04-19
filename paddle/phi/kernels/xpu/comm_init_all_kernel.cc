@@ -31,7 +31,7 @@ void CommInitAllKernel(const Context& dev_ctx,
   std::vector<int> devices = devices_input;
 
   if (devices.empty()) {
-    int count = phi::backends::xpu::GetXPUDeviceCount();
+    int count = backends::xpu::GetXPUDeviceCount();
     for (int i = 0; i < count; ++i) {
       devices.push_back(i);
     }
