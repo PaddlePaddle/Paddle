@@ -96,8 +96,13 @@ void ArangeKernel(const Context& dev_ctx,
       dev_ctx, start_value, end_value, step_value, out);
 }
 
-template decltype(ArangeNullaryKernel<int64_t, GPUContext>) ArangeNullaryKernel;
-template decltype(ArangeNullaryKernel<int, GPUContext>) ArangeNullaryKernel;
+template void ArangeNullaryKernel<int64_t, GPUContext>(const GPUContext&,
+                                                       const int64_t,
+                                                       const int64_t,
+                                                       const int64_t,
+                                                       DenseTensor*);
+template void ArangeNullaryKernel<int, GPUContext>(
+    const GPUContext&, const int, const int, const int, DenseTensor*);
 }  // namespace phi
 
 PD_REGISTER_KERNEL(arange_tensor,

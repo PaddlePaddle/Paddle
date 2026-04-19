@@ -129,8 +129,13 @@ void RangeKernel(const Context& dev_ctx,
       dev_ctx, start_value, end_value, step_value, out);
 }
 
-template decltype(RangeNullaryKernel<int64_t, GPUContext>) RangeNullaryKernel;
-template decltype(RangeNullaryKernel<int, GPUContext>) RangeNullaryKernel;
+template void RangeNullaryKernel<int64_t, GPUContext>(const GPUContext&,
+                                                      const int64_t,
+                                                      const int64_t,
+                                                      const int64_t,
+                                                      DenseTensor*);
+template void RangeNullaryKernel<int, GPUContext>(
+    const GPUContext&, const int, const int, const int, DenseTensor*);
 }  // namespace phi
 
 PD_REGISTER_KERNEL(range_tensor,

@@ -604,7 +604,12 @@ if(WITH_GPU
    AND NOT WITH_ARM
    AND NOT WIN32
    AND NOT APPLE)
-  if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 12.3)
+  if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 13.0)
+    message(
+      STATUS
+        "flash-attn is disabled for default CUDA 13.x builds because the bundled third_party/flashattn source build is not yet stable with this toolchain."
+    )
+  elseif(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 12.3)
     foreach(arch ${NVCC_ARCH_BIN})
       if(${arch} GREATER_EQUAL 90)
         set(WITH_FLASHATTN_V3 ON)

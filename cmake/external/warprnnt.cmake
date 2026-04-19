@@ -104,6 +104,20 @@ else()
   set(WARPRNNT_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})
 endif()
 
+set(WARPRNNT_NVCC_FLAGS_EXTRA ${NVCC_FLAGS_EXTRA})
+if(CMAKE_CUDA_COMPILER_VERSION VERSION_GREATER_EQUAL 13.0)
+  string(
+    REGEX
+    REPLACE "(^| )-gencode arch=compute_(50|52|53|60|61|62|70|72),code=sm_\\2"
+            "" WARPRNNT_NVCC_FLAGS_EXTRA "${WARPRNNT_NVCC_FLAGS_EXTRA}")
+  string(
+    REGEX
+    REPLACE
+      "(^| )-gencode arch=compute_(50|52|53|60|61|62|70|72),code=compute_\\2"
+      "" WARPRNNT_NVCC_FLAGS_EXTRA "${WARPRNNT_NVCC_FLAGS_EXTRA}")
+  string(STRIP "${WARPRNNT_NVCC_FLAGS_EXTRA}" WARPRNNT_NVCC_FLAGS_EXTRA)
+endif()
+
 # For CMake >= 4.0.0, force policy compatibility for third-party warprnnt's CMake.
 set(WARPRNNT_POLICY_ARGS "")
 if(CMAKE_VERSION VERSION_GREATER_EQUAL "4.0.0")
@@ -135,7 +149,7 @@ ExternalProject_Add(
              -DWITH_GPU=${WITH_GPU}
              -DWITH_ROCM=${WITH_ROCM}
              -DWITH_OMP=${USE_OMP}
-             -DNVCC_FLAGS_EXTRA=${NVCC_FLAGS_EXTRA}
+             -DNVCC_FLAGS_EXTRA=${WARPRNNT_NVCC_FLAGS_EXTRA}
              -DBUILD_SHARED=ON
              -DBUILD_TESTS=OFF
              -DCMAKE_POSITION_INDEPENDENT_CODE=ON
