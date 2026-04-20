@@ -42,5 +42,3 @@ sorted = __builtin__.sorted
 
 dirname = __builtin__.dirname
 basename = __builtin__.basename
-
-get_hardware_device = __builtin__.get_hardware_device

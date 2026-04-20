@@ -35,11 +35,26 @@
     }                                                                         \
   }
 
-#include "cutlass_matmul.cuh"  // NOLINT
-#include "math_function.h"     // NOLINT
-#include "profile.h"           // NOLINT
+#include "cutlass_patch/cutlass_matmul.cuh"  // NOLINT
+#include "math_function.h"                   // NOLINT
+#include "profile.h"                         // NOLINT
 #endif
 
 #ifdef __HIPCC__
-#include "ck_patch/ck_matmul.h"
+
+#define CHECK_HIP(func)                                                       \
+  {                                                                           \
+    hipError_t err = func;                                                    \
+    if (err != hipSuccess) {                                                  \
+      std::cerr << "[" << __FILE__ << ":" << __LINE__ << ", " << __FUNCTION__ \
+                << "] "                                                       \
+                << "HIP error(" << err << "), " << hipGetErrorString(err)     \
+                << " when call " << #func << std::endl;                       \
+      exit(EXIT_FAILURE);                                                     \
+    }                                                                         \
+  }
+
+#include "ck_patch/ck_matmul.h"  // NOLINT
+#include "math_function.h"       // NOLINT
+#include "profile.h"             // NOLINT
 #endif

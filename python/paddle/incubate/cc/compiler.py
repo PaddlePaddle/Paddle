@@ -74,7 +74,7 @@ def _compile(
 ):
     assert ap_path is not None
     assert not train, "only support inference now"
-    assert backend_device in ["cuda", "custom_device"]
+    assert backend_device in ["cuda", "dcu", "custom_device"]
     os.makedirs(ap_workspace_dir, exist_ok=True)
     build_strategy = paddle.static.BuildStrategy()
     assert compile_engine in ('CINN', 'PCC')
@@ -140,8 +140,10 @@ class InputSpecMakeCtx:
 def _ap_envs(ap_path, ap_workspace_dir, backend_device):
     ap_sys_path = f"{os.path.dirname(paddle.__file__)}/apy/sys"
     matmul_path = f"{os.path.dirname(paddle.__file__)}/apy/matmul_pass"
-    if backend_device == 'cuda':
-        device_path = f"{os.path.dirname(paddle.__file__)}/apy/device/cuda"
+    if backend_device in ["cuda", "dcu"]:
+        device_path = (
+            f"{os.path.dirname(paddle.__file__)}/apy/device/{backend_device}"
+        )
     else:
         device_path = ""
     old_ap_path = os.environ.get('AP_PATH')
@@ -152,7 +154,7 @@ def _ap_envs(ap_path, ap_workspace_dir, backend_device):
     os.environ['AP_WORKSPACE_DIR'] = ap_workspace_dir
     old_flags = paddle.get_flags(['FLAGS_enable_ap'])
     flags = dict(old_flags)
-    # flags['FLAGS_enable_ap'] = True
+    flags['FLAGS_enable_ap'] = True
     paddle.set_flags(flags)
     yield
     if old_ap_path is not None:

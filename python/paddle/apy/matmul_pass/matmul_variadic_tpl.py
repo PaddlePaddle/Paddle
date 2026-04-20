@@ -61,39 +61,6 @@ class MatmulVariadicTemplate:
             kernel_arg_id=pair[0], cpp_var_name=pair[1]
         )
 
-    def make_gpu_compile_cmd(self, dir_name, source_dir):
-        cutlass_dir = f"{dir_name}/matmul/cutlass-3.7.0"
-        compile_cmd = "nvcc -std=c++20 -O3 -Xcompiler=-fPIC -arch=sm_80 --expt-relaxed-constexpr"
-        compile_cmd = compile_cmd + " -I " + cutlass_dir + "/include"
-        compile_cmd = compile_cmd + " -I " + cutlass_dir + "/tools/util/include"
-        compile_cmd = compile_cmd + " -I " + source_dir
-        compile_cmd = (
-            compile_cmd
-            + " -DCUTLASS_ENABLE_TENSOR_CORE_MMA=1 -DCUTLASS_DEBUG_TRACE_LEVEL=0"
-        )
-        compile_cmd = (
-            compile_cmd + " -DAP_ENABLE_AUTOTUNE=0 -DAP_ENABLE_DEBUG=0"
-        )
-        compile_cmd = (
-            compile_cmd
-            + f" --shared {self.library_name}.cu -o lib{self.library_name}.so"
-        )
-        return compile_cmd
-
-    def make_dcu_compile_cmd(self, dir_name, source_dir):
-        ck_dir = f"{dir_name}/matmul/composable_kernel"
-        compile_cmd = "hipcc -std=c++20 -O3 -fPIC --offload-arch=gfx906"
-        compile_cmd = compile_cmd + " -I " + ck_dir + "/include"
-        compile_cmd = compile_cmd + " -I " + source_dir
-        compile_cmd = (
-            compile_cmd + " -DAP_ENABLE_AUTOTUNE=0 -DAP_ENABLE_DEBUG=0"
-        )
-        compile_cmd = (
-            compile_cmd
-            + f" --shared {self.library_name}.cpp -o lib{self.library_name}.so"
-        )
-        return compile_cmd
-
     def compile(
         self,
         input0_karg,
