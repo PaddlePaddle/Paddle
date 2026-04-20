@@ -48,7 +48,7 @@ void NllLossRawKernel(const Context& dev_ctx,
   auto batch_size = x_dims[0];
   auto n_classes = x_dims[1];
   int size_average = static_cast<int>(reduction == "mean");
-  using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using AccT = typename dtype::MPTypeTrait<T>::Type;
   if (x_dims.size() == 2) {
     int64_t blocks = NumBlocks(batch_size);
     int threads = kNumCUDAThreads;

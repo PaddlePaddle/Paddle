@@ -59,7 +59,7 @@ void TakeAlongAxisGradKernel(const Context& dev_ctx,
     PADDLE_THROW(common::errors::InvalidArgument(
         "The data type of input index is expected "
         "to be int32 or int64, but received %s.",
-        phi::DataTypeToString(index_type)));
+        DataTypeToString(index_type)));
   }
 }
 

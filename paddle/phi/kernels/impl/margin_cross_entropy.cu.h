@@ -49,7 +49,7 @@ static inline int NumBlocks(const int64_t N) {
 
 template <typename T, typename Context>
 void GetClassInterval(const gpuStream_t& stream,
-                      const phi::Place& place,
+                      const Place& place,
                       const Context& dev_ctx,
                       const int rid,
                       const int rank,
@@ -82,9 +82,8 @@ void GetClassInterval(const gpuStream_t& stream,
     auto task = pg->AllReduce(in_tensor, out_tensor, opts);
     task->Wait();
   } else {
-    phi::distributed::NCCLCommContext* comm_ctx =
-        static_cast<phi::distributed::NCCLCommContext*>(
-            dev_ctx.GetCommContext());
+    distributed::NCCLCommContext* comm_ctx =
+        static_cast<distributed::NCCLCommContext*>(dev_ctx.GetCommContext());
     PADDLE_ENFORCE_NE(comm_ctx,
                       nullptr,
                       common::errors::Unavailable(
@@ -93,7 +92,7 @@ void GetClassInterval(const gpuStream_t& stream,
 
     // use global calculate stream
     const auto calcu_stream =
-        static_cast<GPUContext*>(phi::DeviceContextPool::Instance().Get(place))
+        static_cast<GPUContext*>(DeviceContextPool::Instance().Get(place))
             ->stream();
     comm_ctx->AllReduce(
         &num_classes_per_device, num_classes_per_device, ncclSum, calcu_stream);
@@ -104,8 +103,7 @@ void GetClassInterval(const gpuStream_t& stream,
   size_t cub_temp_storage_bytes = 0;
   cub::DeviceScan::InclusiveSum<int*, int*>(
       nullptr, cub_temp_storage_bytes, nullptr, nullptr, nranks + 1, stream);
-  auto cub_temp_storage =
-      phi::memory_utils::Alloc(place, cub_temp_storage_bytes);
+  auto cub_temp_storage = memory_utils::Alloc(place, cub_temp_storage_bytes);
   cub::DeviceScan::InclusiveSum<int*, int*>(cub_temp_storage->ptr(),
                                             cub_temp_storage_bytes,
                                             num_classes_per_device_ptr,

@@ -86,7 +86,7 @@ void DistGradKernel(const Context& dev_ctx,
     // the dims of output internally, so we Resize x/y_grad twice.
     auto res_x = GetReduceDims(x_grad_tmp.dims(), x.dims());
     if (!std::get<0>(res_x).empty()) {
-      x_grad->Resize(make_ddim(std::get<1>(res_x)));
+      x_grad->Resize(std::get<1>(res_x));
       SumKernel<T, Context>(
           dev_ctx, x_grad_tmp, std::get<0>(res_x), x.dtype(), false, x_grad);
       x_grad->Resize(x.dims());
@@ -99,7 +99,7 @@ void DistGradKernel(const Context& dev_ctx,
     ScaleKernel<T, Context>(dev_ctx, x_grad_tmp, -1.0, 0.0, false, &y_grad_tmp);
     auto res_y = GetReduceDims(y_grad_tmp.dims(), y.dims());
     if (!std::get<0>(res_y).empty()) {
-      y_grad->Resize(make_ddim(std::get<1>(res_y)));
+      y_grad->Resize(std::get<1>(res_y));
       SumKernel<T, Context>(
           dev_ctx, y_grad_tmp, std::get<0>(res_y), y.dtype(), false, y_grad);
       y_grad->Resize(y.dims());

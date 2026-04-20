@@ -23,8 +23,6 @@
 
 namespace phi {
 
-using phi::PADDLE_CUDA_NUM_THREADS;
-
 template <typename T, typename Context>
 void IndexSelectKernel(const Context& dev_ctx,
                        const DenseTensor& x,
@@ -46,15 +44,15 @@ void IndexSelectKernel(const Context& dev_ctx,
   const auto& index_type = index.dtype();
 
   bool index_type_match =
-      index_type == phi::DataType::INT64 || index_type == phi::DataType::INT32;
+      index_type == DataType::INT64 || index_type == DataType::INT32;
   PADDLE_ENFORCE_EQ(index_type_match,
                     true,
                     common::errors::InvalidArgument(
                         "Input(Index) holds the wrong type, it holds %s, but "
                         "desires to be %s or %s",
                         index_type,
-                        phi::DataType::INT32,
-                        phi::DataType::INT64));
+                        DataType::INT32,
+                        DataType::INT64));
 
   auto* in_data = x.data<T>();
   T* out_data = dev_ctx.template Alloc<T>(output);
@@ -64,9 +62,9 @@ void IndexSelectKernel(const Context& dev_ctx,
 
   unsigned int block_dim = PADDLE_CUDA_NUM_THREADS;
   dim3 grid_dim = dim3((numel + block_dim - 1) / block_dim);
-  phi::backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
+  backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
 
-  if (index_type == phi::DataType::INT64) {
+  if (index_type == DataType::INT64) {
     const int64_t* index_data = index.data<int64_t>();
     index_select_cuda_kernel<T, int64_t><<<grid_dim, block_dim, 0, stream>>>(
         in_data, out_data, index_data, numel, stride, size, delta, dim_size);

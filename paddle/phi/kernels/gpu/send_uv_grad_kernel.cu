@@ -110,12 +110,11 @@ void CalculateGrad(const Context& dev_ctx,
                                                          x_grad_v2_data);
 
       // Run reduce sum
-      DenseTensor x_grad_out =
-          phi::Sum<T, Context>(dev_ctx,
-                               x_grad_v2,
-                               phi::IntArray(reduce_idx),
-                               CppTypeToDataType<T>::Type(),
-                               true);
+      DenseTensor x_grad_out = Sum<T, Context>(dev_ctx,
+                                               x_grad_v2,
+                                               IntArray(reduce_idx),
+                                               CppTypeToDataType<T>::Type(),
+                                               true);
 #ifdef PADDLE_WITH_HIP
       hipMemcpy(x_grad,
                 x_grad_out.data<T>(),
@@ -193,12 +192,11 @@ void CalculateGrad(const Context& dev_ctx,
               mul_functor,
               sum_functor);
       // Run reduce_sum
-      DenseTensor x_grad_out =
-          phi::Sum<T, Context>(dev_ctx,
-                               x_grad_v2,
-                               phi::IntArray(reduce_idx),
-                               CppTypeToDataType<T>::Type(),
-                               true);
+      DenseTensor x_grad_out = Sum<T, Context>(dev_ctx,
+                                               x_grad_v2,
+                                               IntArray(reduce_idx),
+                                               CppTypeToDataType<T>::Type(),
+                                               true);
 #ifdef PADDLE_WITH_HIP
       hipMemcpy(x_grad,
                 x_grad_out.data<T>(),
@@ -310,7 +308,7 @@ void SendUVGradKernel(const Context& dev_ctx,
     return;
   }
 
-  if (index_type == phi::DataType::INT32) {
+  if (index_type == DataType::INT32) {
     GraphSendUVGradOpCUDAKernelLaunchHelper<Context, T, int32_t>(dev_ctx,
                                                                  x,
                                                                  y,
@@ -320,7 +318,7 @@ void SendUVGradKernel(const Context& dev_ctx,
                                                                  message_op,
                                                                  x_grad,
                                                                  y_grad);
-  } else if (index_type == phi::DataType::INT64) {
+  } else if (index_type == DataType::INT64) {
     GraphSendUVGradOpCUDAKernelLaunchHelper<Context, T, int64_t>(dev_ctx,
                                                                  x,
                                                                  y,

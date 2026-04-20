@@ -38,7 +38,7 @@ void FullKernel(const Context& dev_ctx,
                 const Scalar& val,
                 DataType dtype UNUSED,
                 DenseTensor* out) {
-  out->Resize(make_ddim(shape.GetData()));
+  out->Resize(shape.GetData());
   if (out->numel() == 0) {
     dev_ctx.template Alloc<T>(out);
     return;

@@ -51,36 +51,36 @@ namespace {  // NOLINT
     } while (0);                                               \
     break
 
-#define DISPATCH_SCALE_TYPE(INPUT_TYPE, SCALE_DTYPE, NAME, ...)               \
-  do {                                                                        \
-    auto input_dtype = phi::CppTypeToDataType<INPUT_TYPE>::Type();            \
-    bool is_scale_same_dtype_with_x = input_dtype == SCALE_DTYPE;             \
-    using U = typename phi::backends::gpu::CudnnDataType<                     \
-        INPUT_TYPE>::BatchNormParamType;                                      \
-    if (!is_scale_same_dtype_with_x) {                                        \
-      PADDLE_ENFORCE_EQ(                                                      \
-          SCALE_DTYPE,                                                        \
-          phi::CppTypeToDataType<U>::Type(),                                  \
-          common::errors::InvalidArgument("Unsupported data type of Scale")); \
-    }                                                                         \
-    switch (SCALE_DTYPE) {                                                    \
-      case paddle::DataType::FLOAT32: {                                       \
-        using SCALE_TYPE = float;                                             \
-        __VA_ARGS__;                                                          \
-        break;                                                                \
-      }                                                                       \
-      case paddle::DataType::FLOAT16: {                                       \
-        using SCALE_TYPE = phi::float16;                                      \
-        __VA_ARGS__;                                                          \
-        break;                                                                \
-      }                                                                       \
-      case paddle::DataType::BFLOAT16: {                                      \
-        using SCALE_TYPE = phi::bfloat16;                                     \
-        __VA_ARGS__;                                                          \
-        break;                                                                \
-      }                                                                       \
-        DEFAULT_THROW(NAME, SCALE_DTYPE);                                     \
-    }                                                                         \
+#define DISPATCH_SCALE_TYPE(INPUT_TYPE, SCALE_DTYPE, NAME, ...)                \
+  do {                                                                         \
+    auto input_dtype = CppTypeToDataType<INPUT_TYPE>::Type();                  \
+    bool is_scale_same_dtype_with_x = input_dtype == SCALE_DTYPE;              \
+    using U =                                                                  \
+        typename backends::gpu::CudnnDataType<INPUT_TYPE>::BatchNormParamType; \
+    if (!is_scale_same_dtype_with_x) {                                         \
+      PADDLE_ENFORCE_EQ(                                                       \
+          SCALE_DTYPE,                                                         \
+          CppTypeToDataType<U>::Type(),                                        \
+          common::errors::InvalidArgument("Unsupported data type of Scale"));  \
+    }                                                                          \
+    switch (SCALE_DTYPE) {                                                     \
+      case paddle::DataType::FLOAT32: {                                        \
+        using SCALE_TYPE = float;                                              \
+        __VA_ARGS__;                                                           \
+        break;                                                                 \
+      }                                                                        \
+      case paddle::DataType::FLOAT16: {                                        \
+        using SCALE_TYPE = float16;                                            \
+        __VA_ARGS__;                                                           \
+        break;                                                                 \
+      }                                                                        \
+      case paddle::DataType::BFLOAT16: {                                       \
+        using SCALE_TYPE = bfloat16;                                           \
+        __VA_ARGS__;                                                           \
+        break;                                                                 \
+      }                                                                        \
+        DEFAULT_THROW(NAME, SCALE_DTYPE);                                      \
+    }                                                                          \
   } while (0)
 
 #ifdef PADDLE_WITH_HIP
@@ -270,7 +270,7 @@ __device__ void cuWelfordMuSigma2(const T* __restrict__ vals,
 }
 
 template <>
-__device__ void cuWelfordMuSigma2(const phi::float16* __restrict__ vals,
+__device__ void cuWelfordMuSigma2(const float16* __restrict__ vals,
                                   const int n1,
                                   const int n2,
                                   const int i1,

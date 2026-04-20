@@ -24,11 +24,11 @@ using moe::kMaxNumExperts;
 
 template <bool MP, bool WEIGHTED_TOKEN, int NUM_EXPERTS>
 __global__ __launch_bounds__(256) void tokens_zip_kernel(
-    const phi::bfloat16 *__restrict__ unzipped_tokens_in,
+    const bfloat16 *__restrict__ unzipped_tokens_in,
     const int *__restrict__ zipped_expertwise_rowmap,
     const int *__restrict__ expert_routemap_topk,
     const float *__restrict__ unzipped_token_probs,
-    phi::bfloat16 *__restrict__ zipped_tokens_out,
+    bfloat16 *__restrict__ zipped_tokens_out,
     float *__restrict__ zipped_probs_topk,
     const int total_zipped_tokens_num,
     const int token_length,
@@ -205,11 +205,11 @@ void dispatch_tokens_zip(const Context &dev_ctx,
 
           tokens_zip_kernel<MP_CONST, WEIGHTED_CONST, NE>
               <<<grid, block, 0, dev_ctx.stream()>>>(
-                  unzipped_tokens.data<phi::bfloat16>(),
+                  unzipped_tokens.data<bfloat16>(),
                   zipped_expertwise_rowmap.data<int>(),
                   expert_routemap_topk.data<int>(),
                   unzipped_token_probs.data<float>(),
-                  zipped_tokens->data<phi::bfloat16>(),
+                  zipped_tokens->data<bfloat16>(),
                   zipped_probs_topk->data<float>(),
                   total_zipped_tokens_num,
                   token_length,

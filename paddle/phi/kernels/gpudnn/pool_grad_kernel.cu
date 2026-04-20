@@ -137,7 +137,7 @@ void PoolGradRawGPUDNNKernel(const Context& dev_ctx,
     in_dims_vec[2] = input->dims()[1];
     in_dims_vec[3] = input->dims()[2];
     in_dims_vec[4] = input->dims()[3];
-    transformed_input.Resize(make_ddim(in_dims_vec));
+    transformed_input.Resize(in_dims_vec);
     dev_ctx.Alloc(&transformed_input, input->type());
 
     funcs::Transpose<Context, T, 5> trans5;
@@ -150,7 +150,7 @@ void PoolGradRawGPUDNNKernel(const Context& dev_ctx,
     out_dims_vec[2] = output->dims()[1];
     out_dims_vec[3] = output->dims()[2];
     out_dims_vec[4] = output->dims()[3];
-    transformed_output.Resize(make_ddim(out_dims_vec));
+    transformed_output.Resize(out_dims_vec);
 
     dev_ctx.Alloc(&transformed_output, output->type());
 
@@ -158,14 +158,14 @@ void PoolGradRawGPUDNNKernel(const Context& dev_ctx,
     trans5_v2(dev_ctx, *output, &transformed_output, axis);
 
     // output grad
-    transformed_output_grad.Resize(make_ddim(out_dims_vec));
+    transformed_output_grad.Resize(out_dims_vec);
     dev_ctx.Alloc(&transformed_output_grad, output_grad->type());
 
     funcs::Transpose<Context, T, 5> trans5_v3;
     trans5_v3(dev_ctx, *output_grad, &transformed_output_grad, axis);
 
     // input grad
-    transformed_input_grad.Resize(make_ddim(in_dims_vec));
+    transformed_input_grad.Resize(in_dims_vec);
 
 #ifdef PADDLE_WITH_HIP
     // MIOPEN not support NHWC data layout
@@ -180,7 +180,7 @@ void PoolGradRawGPUDNNKernel(const Context& dev_ctx,
     in_dims_vec[1] = input->dims()[3];
     in_dims_vec[2] = input->dims()[1];
     in_dims_vec[3] = input->dims()[2];
-    transformed_input.Resize(make_ddim(in_dims_vec));
+    transformed_input.Resize(in_dims_vec);
     dev_ctx.Alloc(&transformed_input, input->type());
 
     funcs::Transpose<Context, T, 4> trans4;
@@ -192,21 +192,21 @@ void PoolGradRawGPUDNNKernel(const Context& dev_ctx,
     out_dims_vec[1] = output->dims()[3];
     out_dims_vec[2] = output->dims()[1];
     out_dims_vec[3] = output->dims()[2];
-    transformed_output.Resize(make_ddim(out_dims_vec));
+    transformed_output.Resize(out_dims_vec);
     dev_ctx.Alloc(&transformed_output, output->type());
 
     funcs::Transpose<Context, T, 4> trans4_v2;
     trans4_v2(dev_ctx, *output, &transformed_output, axis);
 
     // output grad
-    transformed_output_grad.Resize(make_ddim(out_dims_vec));
+    transformed_output_grad.Resize(out_dims_vec);
     dev_ctx.Alloc(&transformed_output_grad, output_grad->type());
 
     funcs::Transpose<Context, T, 4> trans4_v3;
     trans4_v3(dev_ctx, *output_grad, &transformed_output_grad, axis);
 
     // input grad
-    transformed_input_grad.Resize(make_ddim(in_dims_vec));
+    transformed_input_grad.Resize(in_dims_vec);
 #endif
   } else {
     layout = GetLayoutFromStr(data_format);

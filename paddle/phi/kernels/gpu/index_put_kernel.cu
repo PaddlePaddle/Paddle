@@ -90,11 +90,11 @@ void LaunchIndexPutCudaKernel(const Context& dev_ctx,
 
   int64_t is_single_val_tensor = (value.numel() == 1) ? 0 : INT64_MAX;
   const int64_t numel = indices[0]->numel();
-  phi::Allocator::AllocationPtr holder;
+  Allocator::AllocationPtr holder;
   auto pd_indices =
       funcs::GetDevicePointerArray<int64_t, Context>(dev_ctx, indices, &holder);
 
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
+  auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
   IndexPutCudaKernel<T>
       <<<config.block_per_grid, config.thread_per_block, 0, dev_ctx.stream()>>>(
           x_data,
@@ -150,7 +150,7 @@ void IndexPutKernel(const Context& dev_ctx,
 
   for (int i = int_indices_v.size(); i < x.dims().size(); ++i) {
     range_tensor_v.emplace_back(funcs::GetRangeCudaTensor<int64_t, Context>(
-        dev_ctx, x.dims()[i], phi::DataType::INT64));
+        dev_ctx, x.dims()[i], DataType::INT64));
   }
 
   funcs::DealWithIndices<T, Context>(dev_ctx,
@@ -163,8 +163,7 @@ void IndexPutKernel(const Context& dev_ctx,
                                      &res_dim_v);
 
   if (value.numel() != 1) {
-    tmp_value_v.emplace_back(
-        DenseTensor(value.dtype()).Resize(make_ddim(res_dim_v)));
+    tmp_value_v.emplace_back(DenseTensor(value.dtype()).Resize(res_dim_v));
     ExpandKernel<T, Context>(
         dev_ctx, value, IntArray(res_dim_v), &tmp_value_v[0]);
     ptr_value = &tmp_value_v[0];

@@ -73,8 +73,8 @@ struct DWConvParams {
       return false;
     }
     // Only support FP16.
-    if (input.type() != phi::DataType::FLOAT16 &&
-        filter.type() != phi::DataType::FLOAT16) {
+    if (input.type() != DataType::FLOAT16 &&
+        filter.type() != DataType::FLOAT16) {
       return false;
     }
     // Only support depthwise 2D.
@@ -177,7 +177,7 @@ class DepthwiseConvFilterGradFunctor {
 template <typename T>
 __forceinline__ __device__ T WarpReduceSum(T val, unsigned lane_mask) {
   for (int mask = HALF_WARP; mask > 0; mask >>= 1)
-    val += phi::backends::gpu::CudaShuffleDownSync(lane_mask, val, mask);
+    val += backends::gpu::CudaShuffleDownSync(lane_mask, val, mask);
   return val;
 }
 

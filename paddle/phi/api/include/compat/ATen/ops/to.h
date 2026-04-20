@@ -39,10 +39,11 @@ inline at::Tensor Tensor::to(
     phi::Place place;
     switch (dev.type()) {
       case c10::DeviceType::CPU:
-        place = phi::CPUPlace();
-        break;
       case c10::DeviceType::CUDA:
-        place = phi::GPUPlace(dev.has_index() ? dev.index() : 0);
+      case c10::DeviceType::XPU:
+      case c10::DeviceType::IPU:
+      case c10::DeviceType::CUSTOM:
+        place = dev._PD_GetInner();
         break;
       default:
         PD_THROW("Unsupported device type: ", dev.type());

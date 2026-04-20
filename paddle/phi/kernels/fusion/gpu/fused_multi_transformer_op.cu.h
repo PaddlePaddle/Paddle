@@ -37,8 +37,6 @@ namespace fusion {
 
 namespace {  // NOLINT
 
-using float16 = phi::float16;
-
 #define MMHA_USE_FP32_ACUM_FOR_LOGITS
 #define MMHA_USE_FP32_ACUM_FOR_OUT
 #define MMHA_USE_FP32_ACUM_FOR_FMA
@@ -2095,10 +2093,10 @@ inline cudaError_t GetNumBlocks(int64_t n, int *num_blocks) {
   constexpr int kBlockSize = 128;
   constexpr int kNumWaves = 16;
 
-  const int device_id = phi::backends::gpu::GetCurrentDeviceId();
-  const int sm_count = phi::backends::gpu::GetGPUMultiProcessors(device_id);
+  const int device_id = backends::gpu::GetCurrentDeviceId();
+  const int sm_count = backends::gpu::GetGPUMultiProcessors(device_id);
   const int max_thread_per_multiprocessor =
-      phi::backends::gpu::GetGPUMaxThreadsPerMultiProcessor(device_id);
+      backends::gpu::GetGPUMaxThreadsPerMultiProcessor(device_id);
 
   *num_blocks =
       std::max<int>(1,

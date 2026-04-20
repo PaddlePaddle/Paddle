@@ -99,7 +99,7 @@ void LaunchIndexFillCudaKernelImpl(const Context& dev_ctx,
                                    T fill_value,
                                    T* out_data) {
   IndexT numel = outer_size * index_size * inner_size;
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
+  auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
   IndexFillCudaKernel<T, IndexT, IndT>
       <<<config.block_per_grid, config.thread_per_block, 0, dev_ctx.stream()>>>(
           x_data,
@@ -241,16 +241,16 @@ void IndexFillKernel(const Context& dev_ctx,
   }
 
   // Dispatch directly on index dtype — no cast kernel needed.
-  if (index.dtype() == phi::DataType::INT32) {
+  if (index.dtype() == DataType::INT32) {
     LaunchIndexFillCudaKernel<T, Context, int32_t>(
         dev_ctx, x, real_dim, index, value, out);
-  } else if (index.dtype() == phi::DataType::INT64) {
+  } else if (index.dtype() == DataType::INT64) {
     LaunchIndexFillCudaKernel<T, Context, int64_t>(
         dev_ctx, x, real_dim, index, value, out);
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "The dtype of index must be int32 or int64, but received %s.",
-        phi::DataTypeToString(index.dtype())));
+        DataTypeToString(index.dtype())));
   }
 }
 }  // namespace phi

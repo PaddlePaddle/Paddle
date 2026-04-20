@@ -31,8 +31,6 @@
 namespace phi {
 namespace fusion {
 
-using float16 = phi::float16;
-
 template <typename T>
 static __device__ __forceinline__ T Relu(T x) {
   return static_cast<T>(fmaxf(0.f, x));
@@ -314,7 +312,7 @@ void AddReluAddLayerNorm(const Context& dev_ctx,
                          int N,
                          float epsilon) {
   if (with_relu) {
-    switch (phi::backends::gpu::RoundToPowerOfTwo(N)) {
+    switch (backends::gpu::RoundToPowerOfTwo(N)) {
       CUDA_LAUNCH_KERNEL_HELPER(
           InplaceAddReluAddLayerNormKernel<T, true, kPowerOfTwoDim>
           <<<std::max(max_threads / kPowerOfTwoDim, 1),
@@ -324,7 +322,7 @@ void AddReluAddLayerNorm(const Context& dev_ctx,
               y, bias_0, bias_1, scale, out, mean, variance, M, N, epsilon));
     }
   } else {
-    switch (phi::backends::gpu::RoundToPowerOfTwo(N)) {
+    switch (backends::gpu::RoundToPowerOfTwo(N)) {
       CUDA_LAUNCH_KERNEL_HELPER(
           InplaceAddReluAddLayerNormKernel<T, false, kPowerOfTwoDim>
           <<<std::max(max_threads / kPowerOfTwoDim, 1),
@@ -351,7 +349,7 @@ void AddReluAddLayerNorm(const Context& dev_ctx,
                          int N,
                          float epsilon) {
   if (with_relu) {
-    switch (phi::backends::gpu::RoundToPowerOfTwo(N)) {
+    switch (backends::gpu::RoundToPowerOfTwo(N)) {
       CUDA_LAUNCH_KERNEL_HELPER(
           InplaceAddReluAddLayerNormKernel<true, kPowerOfTwoDim>
           <<<std::max(max_threads / kPowerOfTwoDim, 1),
@@ -361,7 +359,7 @@ void AddReluAddLayerNorm(const Context& dev_ctx,
               y, bias_0, bias_1, scale, out, mean, variance, M, N, epsilon));
     }
   } else {
-    switch (phi::backends::gpu::RoundToPowerOfTwo(N)) {
+    switch (backends::gpu::RoundToPowerOfTwo(N)) {
       CUDA_LAUNCH_KERNEL_HELPER(
           InplaceAddReluAddLayerNormKernel<false, kPowerOfTwoDim>
           <<<std::max(max_threads / kPowerOfTwoDim, 1),

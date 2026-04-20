@@ -178,9 +178,9 @@ void DeformableConvKernel(const Context& dev_ctx,
                        output_shape_vec[2] * output_shape_vec[3]})),
         axis);
 
-    out->ShareDataWith(real_output_buffer).Resize(make_ddim(output_shape_vec));
+    out->ShareDataWith(real_output_buffer).Resize(output_shape_vec);
   } else {
-    out->ShareDataWith(output_buffer).Resize(make_ddim(output_shape_vec));
+    out->ShareDataWith(output_buffer).Resize(output_shape_vec);
   }
 }
 

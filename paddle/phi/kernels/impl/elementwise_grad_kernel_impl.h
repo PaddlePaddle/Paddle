@@ -189,13 +189,12 @@ struct DivGradDX {
 };
 
 template <typename T>
-struct DivGradDX<phi::dtype::complex<T>> {
-  HOSTDEVICE phi::dtype::complex<T> operator()(
-      phi::dtype::complex<T> x UNUSED,
-      phi::dtype::complex<T> y,
-      phi::dtype::complex<T> out UNUSED,
-      phi::dtype::complex<T> dout) const {
-    phi::dtype::complex<T> y_conj(y.real, -y.imag);
+struct DivGradDX<dtype::complex<T>> {
+  HOSTDEVICE dtype::complex<T> operator()(dtype::complex<T> x UNUSED,
+                                          dtype::complex<T> y,
+                                          dtype::complex<T> out UNUSED,
+                                          dtype::complex<T> dout) const {
+    dtype::complex<T> y_conj(y.real, -y.imag);
     return dout / y_conj;
   }
 };
@@ -208,13 +207,12 @@ struct DivGradDY {
 };
 
 template <typename T>
-struct DivGradDY<phi::dtype::complex<T>> {
-  HOSTDEVICE phi::dtype::complex<T> operator()(
-      phi::dtype::complex<T> x UNUSED,
-      phi::dtype::complex<T> y,
-      phi::dtype::complex<T> out,
-      phi::dtype::complex<T> dout) const {
-    phi::dtype::complex<T> out_div_y_conj((out / y).real, -(out / y).imag);
+struct DivGradDY<dtype::complex<T>> {
+  HOSTDEVICE dtype::complex<T> operator()(dtype::complex<T> x UNUSED,
+                                          dtype::complex<T> y,
+                                          dtype::complex<T> out,
+                                          dtype::complex<T> dout) const {
+    dtype::complex<T> out_div_y_conj((out / y).real, -(out / y).imag);
     return -dout * out_div_y_conj;
   }
 };
@@ -430,7 +428,7 @@ void ComputeDDoutWithoutBroadcast(const GPUContext& dev_ctx UNUSED,
   auto* ddout_data = ddout->data<T>();
   int block = 512;
   int64_t grid = (out_numel + block - 1) / block;
-  auto stream = reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
+  auto stream = reinterpret_cast<const GPUContext&>(dev_ctx).stream();
   ComputeDDoutWithoutBroadcastGPUKernel<T, DDout_OP, T>
       <<<grid, block, 0, stream>>>(
           ddx_data, ddy_data, y_data, out_data, ddout_data, out_numel, dout_op);
@@ -498,7 +496,7 @@ void ComputeDDoutWithBroadcast(const GPUContext& dev_ctx UNUSED,
 
   int block = 512;
   int64_t grid = (out_numel + block - 1) / block;
-  auto stream = reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
+  auto stream = reinterpret_cast<const GPUContext&>(dev_ctx).stream();
   ComputeDDoutWithBroadcastGPUKernel<T, DDout_OP, T>
       <<<grid, block, 0, stream>>>(ddx_data,
                                    ddy_data,
@@ -900,13 +898,12 @@ struct MulGradDX<bool> {
 };
 
 template <typename T>
-struct MulGradDX<phi::dtype::complex<T>> {
-  HOSTDEVICE phi::dtype::complex<T> operator()(
-      phi::dtype::complex<T> x UNUSED,
-      phi::dtype::complex<T> y,
-      phi::dtype::complex<T> out UNUSED,
-      phi::dtype::complex<T> dout) const {
-    phi::dtype::complex<T> y_conj(y.real, -y.imag);
+struct MulGradDX<dtype::complex<T>> {
+  HOSTDEVICE dtype::complex<T> operator()(dtype::complex<T> x UNUSED,
+                                          dtype::complex<T> y,
+                                          dtype::complex<T> out UNUSED,
+                                          dtype::complex<T> dout) const {
+    dtype::complex<T> y_conj(y.real, -y.imag);
     return dout * y_conj;
   }
 };
@@ -936,13 +933,12 @@ struct MulGradDY<bool> {
 };
 
 template <typename T>
-struct MulGradDY<phi::dtype::complex<T>> {
-  HOSTDEVICE phi::dtype::complex<T> operator()(
-      phi::dtype::complex<T> x,
-      phi::dtype::complex<T> y UNUSED,
-      phi::dtype::complex<T> out UNUSED,
-      phi::dtype::complex<T> dout) const {
-    phi::dtype::complex<T> x_conj(x.real, -x.imag);
+struct MulGradDY<dtype::complex<T>> {
+  HOSTDEVICE dtype::complex<T> operator()(dtype::complex<T> x,
+                                          dtype::complex<T> y UNUSED,
+                                          dtype::complex<T> out UNUSED,
+                                          dtype::complex<T> dout) const {
+    dtype::complex<T> x_conj(x.real, -x.imag);
     return dout * x_conj;
   }
 };
@@ -1478,7 +1474,7 @@ HOSTDEVICE T compute_pow_grad_dy(T x, T y, T out UNUSED, T dout) {
 
 template <typename T>
 struct PowGradDX {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
     return compute_pow_grad_dx<T, MPType>(x, y, out, dout);
   }
@@ -1486,42 +1482,40 @@ struct PowGradDX {
 
 template <typename T, typename Enable = void>
 struct PowGradDY {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
     return compute_pow_grad_dy<T, MPType>(x, y, out, dout);
   }
 };
 
 template <typename T>
-struct PowGradDX<phi::dtype::complex<T>> {
-  HOSTDEVICE phi::dtype::complex<T> operator()(
-      phi::dtype::complex<T> x,
-      phi::dtype::complex<T> y,
-      phi::dtype::complex<T> out,
-      phi::dtype::complex<T> dout) const {
+struct PowGradDX<dtype::complex<T>> {
+  HOSTDEVICE dtype::complex<T> operator()(dtype::complex<T> x,
+                                          dtype::complex<T> y,
+                                          dtype::complex<T> out,
+                                          dtype::complex<T> dout) const {
 #if defined(__CUDA_ARCH__) || defined(__HIPCC__)
-    return conj(dout * y * pow(x, y - phi::dtype::complex<T>(1, 0)));
+    return conj(dout * y * pow(x, y - dtype::complex<T>(1, 0)));
 #else
     return conj(
         dout * y *
-        static_cast<phi::dtype::complex<T>>(std::pow(
+        static_cast<dtype::complex<T>>(std::pow(
             static_cast<std::complex<T>>(x),
-            static_cast<std::complex<T>>(y - phi::dtype::complex<T>(1, 0)))));
+            static_cast<std::complex<T>>(y - dtype::complex<T>(1, 0)))));
 #endif
   }
 };
 
 template <typename T>
-struct PowGradDY<phi::dtype::complex<T>> {
-  HOSTDEVICE phi::dtype::complex<T> operator()(
-      phi::dtype::complex<T> x,
-      phi::dtype::complex<T> y,
-      phi::dtype::complex<T> out,
-      phi::dtype::complex<T> dout) const {
+struct PowGradDY<dtype::complex<T>> {
+  HOSTDEVICE dtype::complex<T> operator()(dtype::complex<T> x,
+                                          dtype::complex<T> y,
+                                          dtype::complex<T> out,
+                                          dtype::complex<T> dout) const {
 #if defined(__CUDA_ARCH__) || defined(__HIPCC__)
     return conj(dout * log(x) * pow(x, y));
 #else
-    return conj(dout * static_cast<phi::dtype::complex<T>>(
+    return conj(dout * static_cast<dtype::complex<T>>(
                            std::log(static_cast<std::complex<T>>(x)) *
                            std::pow(static_cast<std::complex<T>>(x),
                                     static_cast<std::complex<T>>(y))));
@@ -1569,7 +1563,7 @@ struct RemainderGradDx {
 template <typename T, typename Enable = void>
 struct RemainderGradDy {
   HOSTDEVICE T operator()(T x, T y, T out UNUSED, T dout) const {
-    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+    using MPType = typename dtype::MPTypeTrait<T>::Type;
     auto x_ = static_cast<MPType>(x);
     auto y_ = static_cast<MPType>(y);
     auto dout_ = static_cast<MPType>(dout);
@@ -1582,7 +1576,7 @@ struct RemainderGradDy<
     T,
     typename std::enable_if<std::is_floating_point<T>::value>::type> {
   HOSTDEVICE T operator()(T x, T y, T out UNUSED, T dout) const {
-    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+    using MPType = typename dtype::MPTypeTrait<T>::Type;
     auto x_ = static_cast<MPType>(x);
     auto y_ = static_cast<MPType>(y);
     auto dout_ = static_cast<MPType>(dout);
@@ -1595,7 +1589,7 @@ struct RemainderGradDy<
     typename std::enable_if<std::is_integral<T>::value>::type> {
   HOSTDEVICE T operator()(T x, T y, T out UNUSED, T dout) const {
     // dy = -dout * (x / y)
-    if (phi::is_negative(x) != phi::is_negative(y)) {
+    if (is_negative(x) != is_negative(y)) {
       // Subtracts one from the results of truncation division if the
       // divisor and dividend have different sign(bit)s and the remainder of
       // the division is nonzero

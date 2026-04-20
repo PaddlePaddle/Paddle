@@ -34,7 +34,7 @@ static DenseTensor Fill(const Context& dev_ctx,
                         std::vector<int64_t> shape,
                         T fill_value) {
   DenseTensor ret;
-  ret.Resize(make_ddim(shape));
+  ret.Resize(shape);
   dev_ctx.template Alloc<T>(&ret);
   funcs::SetConstant<Context, T>()(dev_ctx, &ret, fill_value);
   return ret;
@@ -66,7 +66,7 @@ static DenseTensor Unsqueeze(const DenseTensor& x, int axis = 0) {
     auto index = (out_shape.end() + axis + 1);
     out_shape.insert(index, 1);
   }
-  out.Resize(make_ddim(out_shape));
+  out.Resize(out_shape);
   return out;
 }
 
@@ -189,7 +189,7 @@ struct SvdGradFunctor {
 };
 
 template <typename T, typename Context>
-struct SvdGradFunctor<phi::dtype::complex<T>, Context> {
+struct SvdGradFunctor<dtype::complex<T>, Context> {
   void operator()(const Context& dev_ctx,
                   const DenseTensor& u,
                   const DenseTensor& vh,
@@ -199,7 +199,7 @@ struct SvdGradFunctor<phi::dtype::complex<T>, Context> {
                   const optional<DenseTensor>& s_grad,
                   bool full_matrices,
                   DenseTensor* x_grad) {
-    using C = phi::dtype::complex<T>;
+    using C = dtype::complex<T>;
     const auto& dX = *x_grad;
     int64_t m = dX.dims()[dX.dims().size() - 2];
     int64_t n = dX.dims()[dX.dims().size() - 1];
