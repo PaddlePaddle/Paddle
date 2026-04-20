@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <ATen/cuda/CUDAContext.h>
 #include <ATen/ops/from_blob.h>
 #include <c10/core/ScalarType.h>
 #include <c10/core/TensorOptions.h>
@@ -123,6 +124,9 @@ TEST(ATenFromBlobTest, DeleterWithStrides) {
 
 // No device specified: GPU pointer → tensor must be on CUDA automatically.
 TEST(ATenFromBlobTest, GpuPtrDefaultsToCuda) {
+  if (!at::cuda::is_available()) {
+    return;
+  }
   float* d_data = nullptr;
 #if defined(PADDLE_WITH_CUDA)
   cudaMalloc(&d_data, 4 * sizeof(float));
@@ -147,6 +151,9 @@ TEST(ATenFromBlobTest, GpuPtrDefaultsToCuda) {
 
 // Explicit CUDA device option + GPU pointer → still CUDA.
 TEST(ATenFromBlobTest, GpuPtrWithCudaOptions) {
+  if (!at::cuda::is_available()) {
+    return;
+  }
   float* d_data = nullptr;
 #if defined(PADDLE_WITH_CUDA)
   cudaMalloc(&d_data, 4 * sizeof(float));
@@ -167,6 +174,9 @@ TEST(ATenFromBlobTest, GpuPtrWithCudaOptions) {
 
 // target_device overrides auto-detection.
 TEST(ATenFromBlobTest, TargetDeviceOverride) {
+  if (!at::cuda::is_available()) {
+    return;
+  }
   float* d_data = nullptr;
 #if defined(PADDLE_WITH_CUDA)
   cudaMalloc(&d_data, 4 * sizeof(float));

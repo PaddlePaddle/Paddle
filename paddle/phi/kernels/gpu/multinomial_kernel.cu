@@ -137,7 +137,7 @@ void MultinomialKernel(const Context& dev_ctx,
                        const Scalar& num_samples,
                        bool replacement,
                        DenseTensor* out) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename dtype::MPTypeTrait<T>::Type;
 
   auto int_num_samples = num_samples.to<int>();
   auto* in_data = x.data<T>();
@@ -236,7 +236,7 @@ void MultinomialKernel(const Context& dev_ctx,
   // Sample the multinomial distributions.
   dim3 block(128);
   int64_t device_id = dev_ctx.GetPlace().GetDeviceId();
-  const auto& prop = phi::backends::gpu::GetDeviceProperties(device_id);
+  const auto& prop = backends::gpu::GetDeviceProperties(device_id);
   int grid_y = std::min<int64_t>(num_distributions, prop.maxGridSize[1]);
   dim3 grid((int_num_samples - 1) / block.x + 1, grid_y);
 

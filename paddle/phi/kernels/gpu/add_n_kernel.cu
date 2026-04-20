@@ -25,7 +25,7 @@ namespace phi {
 template <class T>
 __global__ void SumArrayCUDAKernel(
     T **in, T *out, int64_t N, size_t in_size, bool read_dst) {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
   CUDA_KERNEL_LOOP_TYPE(idx, N, int64_t) {
     MPType total(read_dst ? static_cast<MPType>(out[idx])
                           : static_cast<MPType>(0));
@@ -46,7 +46,7 @@ __global__ void SumArrayMixedTypeCUDAKernel(const T *in_0,
                                             int64_t N,
                                             size_t in_others_size,
                                             bool read_dst) {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
   CUDA_KERNEL_LOOP_TYPE(idx, N, int64_t) {
     MPType total(read_dst ? static_cast<MPType>(out[idx])
                           : static_cast<MPType>(0));
@@ -128,7 +128,7 @@ void AddNKernel(const Context &dev_ctx,
     int64_t length_0 = in_0.numel();
     int64_t length_1 = in_1.numel();
     if (length_0 && length_1 && in_0.IsInitialized() && in_1.IsInitialized()) {
-      using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+      using MPType = typename dtype::MPTypeTrait<T>::Type;
       auto result = EigenVector<T>::Flatten(*out);
       auto &place = *dev_ctx.eigen_device();
       auto in_0_e = EigenVector<T>::Flatten(in_0).template cast<MPType>();
@@ -157,8 +157,8 @@ void AddNKernel(const Context &dev_ctx,
   // 1. all inputs are DensorTensor and number >= 2
   // 2. the first tensor is fp32 type and the others are fp16/bf16 type
   if (in_num >= 2 && DenseTensor::classof(x[0]) &&
-      x[0]->dtype() == phi::DataType::FLOAT32 &&
-      x[1]->dtype() != phi::DataType::FLOAT32) {
+      x[0]->dtype() == DataType::FLOAT32 &&
+      x[1]->dtype() != DataType::FLOAT32) {
     auto in_other_dtype = x[1]->dtype();
     int64_t numel = static_cast<const DenseTensor *>(x[0])->numel();
     bool all_dense_tensor = true;
@@ -184,15 +184,14 @@ void AddNKernel(const Context &dev_ctx,
       }
     }
 
-    if (all_dense_tensor && (in_other_dtype == phi::DataType::BFLOAT16 ||
-                             in_other_dtype == phi::DataType::FLOAT16)) {
+    if (all_dense_tensor && (in_other_dtype == DataType::BFLOAT16 ||
+                             in_other_dtype == DataType::FLOAT16)) {
       auto tmp_in_array = phi::memory_utils::Alloc(
           dev_ctx.GetPlace(), in_data.size() * sizeof(void *));
       size_t nbytes_in = in_data.size() * sizeof(void *);
-      const void *stable_in =
-          phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
-              reinterpret_cast<uint8_t *>(const_cast<void **>(in_data.data())),
-              nbytes_in);
+      const void *stable_in = backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          reinterpret_cast<uint8_t *>(const_cast<void **>(in_data.data())),
+          nbytes_in);
       memory_utils::Copy(dev_ctx.GetPlace(),
                          tmp_in_array->ptr(),
                          CPUPlace(),
@@ -203,7 +202,7 @@ void AddNKernel(const Context &dev_ctx,
       void **in_array_data = reinterpret_cast<void **>(tmp_in_array->ptr());
       ComputeKernelParameter(numel);
       VLOG(4) << "Call SumArrayMixedTypeCUDAKernel";
-      if (in_other_dtype == phi::DataType::FLOAT16) {
+      if (in_other_dtype == DataType::FLOAT16) {
         SumArrayMixedTypeCUDAKernel<T, phi::float16>
             <<<grids, blocks, 0, stream>>>(in_0,
                                            in_array_data,
@@ -211,7 +210,7 @@ void AddNKernel(const Context &dev_ctx,
                                            numel,
                                            in_data.size(),
                                            in_place);
-      } else if (in_other_dtype == phi::DataType::BFLOAT16) {
+      } else if (in_other_dtype == DataType::BFLOAT16) {
         SumArrayMixedTypeCUDAKernel<T, phi::bfloat16>
             <<<grids, blocks, 0, stream>>>(in_0,
                                            in_array_data,
@@ -281,13 +280,12 @@ void AddNKernel(const Context &dev_ctx,
       }
     }
     if (!sr_in_out_data.empty()) {
-      auto tmp_sr_in_out_array = phi::memory_utils::Alloc(
+      auto tmp_sr_in_out_array = memory_utils::Alloc(
           dev_ctx.GetPlace(), sr_in_out_data.size() * sizeof(T *));
 
       size_t nbytes_sr = sr_in_out_data.size() * sizeof(T *);
-      const void *stable_sr =
-          phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
-              reinterpret_cast<uint8_t *>(sr_in_out_data.data()), nbytes_sr);
+      const void *stable_sr = backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          reinterpret_cast<uint8_t *>(sr_in_out_data.data()), nbytes_sr);
       memory_utils::Copy(dev_ctx.GetPlace(),
                          tmp_sr_in_out_array->ptr(),
                          CPUPlace(),
@@ -306,14 +304,13 @@ void AddNKernel(const Context &dev_ctx,
   }
   // if indata not null, merge into one kernel call.
   if (!in_data.empty()) {
-    auto tmp_in_array = phi::memory_utils::Alloc(dev_ctx.GetPlace(),
-                                                 in_data.size() * sizeof(T *));
+    auto tmp_in_array =
+        memory_utils::Alloc(dev_ctx.GetPlace(), in_data.size() * sizeof(T *));
 
     size_t nbytes_in2 = in_data.size() * sizeof(T *);
-    const void *stable_in2 =
-        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
-            reinterpret_cast<uint8_t *>(const_cast<T **>(in_data.data())),
-            nbytes_in2);
+    const void *stable_in2 = backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+        reinterpret_cast<uint8_t *>(const_cast<T **>(in_data.data())),
+        nbytes_in2);
     memory_utils::Copy(dev_ctx.GetPlace(),
                        tmp_in_array->ptr(),
                        CPUPlace(),

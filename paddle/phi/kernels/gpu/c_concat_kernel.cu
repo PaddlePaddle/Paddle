@@ -69,13 +69,13 @@ void CConcatKernel(const Context& dev_ctx,
   gpuStream_t stream = nullptr;
 
 #if defined(PADDLE_WITH_FLAGCX) && defined(PADDLE_KERNEL_WITH_FLAGCX)
-  phi::distributed::FlagcxCommContext* comm_ctx = nullptr;
-  comm_ctx = static_cast<phi::distributed::FlagcxCommContext*>(
-      dev_ctx.GetCommContext());
-#else
-  phi::distributed::NCCLCommContext* comm_ctx = nullptr;
+  distributed::FlagcxCommContext* comm_ctx = nullptr;
   comm_ctx =
-      static_cast<phi::distributed::NCCLCommContext*>(dev_ctx.GetCommContext());
+      static_cast<distributed::FlagcxCommContext*>(dev_ctx.GetCommContext());
+#else
+  distributed::NCCLCommContext* comm_ctx = nullptr;
+  comm_ctx =
+      static_cast<distributed::NCCLCommContext*>(dev_ctx.GetCommContext());
 #endif
   PADDLE_ENFORCE_NE(comm_ctx,
                     nullptr,

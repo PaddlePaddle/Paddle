@@ -53,12 +53,12 @@ void ReduceCudaAMaxAMinGrad(const Context& dev_ctx,
   // make new tensor reduce_out
   DenseTensor new_y(out_y->type());
   new_y.ShareDataWith(*out_y);
-  new_y.Resize(make_ddim(update_dims));
+  new_y.Resize(update_dims);
 
   // make new tensor d_out
   DenseTensor new_dout(d_out->type());
   new_dout.ShareDataWith(*d_out);
-  new_dout.Resize(make_ddim(update_dims));
+  new_dout.Resize(update_dims);
   dev_ctx.Alloc(d_x, d_out->dtype());
 
   DenseTensor new_in_tensor(*in_x);
@@ -71,7 +71,7 @@ void ReduceCudaAMaxAMinGrad(const Context& dev_ctx,
 
   // make new tensor equal_count
   DenseTensor equal_count;
-  equal_count.Resize(make_ddim(update_dims));
+  equal_count.Resize(update_dims);
   dev_ctx.template Alloc<T>(&equal_count);
 
   // compute
@@ -85,16 +85,16 @@ void ReduceCudaAMaxAMinGrad(const Context& dev_ctx,
     funcs::BroadcastKernel<T>(
         dev_ctx, equal_inputs, &equal_outputs, funcs::EqualFunctor<T>(), 0);
   // 2. equal_count = reduceSum(equal_out)
-  phi::SumKernel<T, Context>(dev_ctx,
-                             equal_out,
-                             reduce_dims,
-                             equal_out.dtype(),
-                             keep_dim,
-                             &equal_count);
+  SumKernel<T, Context>(dev_ctx,
+                        equal_out,
+                        reduce_dims,
+                        equal_out.dtype(),
+                        keep_dim,
+                        &equal_count);
   // 3. dx = dout * 1
-  phi::MultiplyKernel<T, Context>(dev_ctx, new_dout, equal_out, &equal_out);
+  MultiplyKernel<T, Context>(dev_ctx, new_dout, equal_out, &equal_out);
 
   // 4. dx = Div(dx, equal_out)
-  phi::DivideKernel<T, Context>(dev_ctx, equal_out, equal_count, &new_dx);
+  DivideKernel<T, Context>(dev_ctx, equal_out, equal_count, &new_dx);
 }
 }  // namespace phi

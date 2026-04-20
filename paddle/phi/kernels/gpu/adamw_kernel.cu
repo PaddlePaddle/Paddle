@@ -168,7 +168,7 @@ PADDLE_API void AdamwDenseKernel(const Context& dev_ctx,
                                  DenseTensor* beta1_pow_out,
                                  DenseTensor* beta2_pow_out,
                                  DenseTensor* master_param_outs) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename dtype::MPTypeTrait<T>::Type;
   MT coeff_ = static_cast<MT>(coeff);
   MT lr_ratio_ = static_cast<MT>(lr_ratio);
 
@@ -250,11 +250,10 @@ PADDLE_API void AdamwDenseKernel(const Context& dev_ctx,
       beta1_pow.place() == CPUPlace() && beta2_pow.place() == CPUPlace();
 
   // Determine gradient type
-  const bool use_bfloat32_grad = grad.dtype() == phi::DataType::FLOAT32;
+  const bool use_bfloat32_grad = grad.dtype() == DataType::FLOAT32;
   // Determine moment type
-  const bool use_bfloat16_moments =
-      moment1.dtype() == phi::DataType::BFLOAT16 &&
-      moment2.dtype() == phi::DataType::BFLOAT16;
+  const bool use_bfloat16_moments = moment1.dtype() == DataType::BFLOAT16 &&
+                                    moment2.dtype() == DataType::BFLOAT16;
 
 #define LAUNCH_ADAMW_KERNEL(MOMENT_T)                                     \
   if (beta_pow_on_cpu) {                                                  \

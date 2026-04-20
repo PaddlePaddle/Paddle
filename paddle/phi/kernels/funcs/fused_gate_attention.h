@@ -995,12 +995,12 @@ class FlashAttnWithGating {
     const T* v_ptr = k_ptr + q_size;
 
     DenseTensor qkv_transpose_out_grad;
-    qkv_transpose_out_grad.Resize(make_ddim({3,
-                                             config->batch_size,
-                                             config->seq_len_m,
-                                             config->seq_len_r,
-                                             config->num_heads,
-                                             config->head_dim}));
+    qkv_transpose_out_grad.Resize({3,
+                                   config->batch_size,
+                                   config->seq_len_m,
+                                   config->seq_len_r,
+                                   config->num_heads,
+                                   config->head_dim});
     AllocWithDebugInfo<T>(
         dev_ctx_, "qkv_transpose_out_grad", &qkv_transpose_out_grad);
 

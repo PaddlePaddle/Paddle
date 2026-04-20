@@ -69,7 +69,7 @@ void FrameGradKernel(const Context& dev_ctx,
       for (int i = 0; i < dout_tmp.dims().size(); ++i) {
         dout_dims_vec[i] = dout_tmp.dims()[perm_dout[i]];
       }
-      trans_dout.Resize(make_ddim(dout_dims_vec));
+      trans_dout.Resize(dout_dims_vec);
       dev_ctx.template Alloc<T>(&trans_dout);
       funcs::TransCompute<Context, T>(
           perm_dout.size(), dev_ctx, dout_tmp, &trans_dout, perm_dout);
@@ -79,7 +79,7 @@ void FrameGradKernel(const Context& dev_ctx,
       for (int i = 0; i < dx->dims().size(); ++i) {
         dx_dims_vec[i] = dx->dims()[perm_dx[i]];
       }
-      trans_dx.Resize(make_ddim(dx_dims_vec));
+      trans_dx.Resize(dx_dims_vec);
       dev_ctx.template Alloc<T>(&trans_dx);
       funcs::TransCompute<Context, T>(
           perm_dx.size(), dev_ctx, *dx, &trans_dx, perm_dx);
@@ -89,7 +89,7 @@ void FrameGradKernel(const Context& dev_ctx,
       for (int i = 0; i < dout_tmp.dims().size(); ++i) {
         dout_dims_vec[i] = dout_tmp.dims()[perm_dout[i]];
       }
-      trans_dout.Resize(make_ddim(dout_dims_vec));
+      trans_dout.Resize(dout_dims_vec);
       dev_ctx.template Alloc<T>(&trans_dout);
       funcs::TransCompute<Context, T>(
           perm_dout.size(), dev_ctx, dout_tmp, &trans_dout, perm_dout);
@@ -130,7 +130,7 @@ void FrameGradKernel(const Context& dev_ctx,
       restored_dx_shape.push_back(seq_length);
     }
 
-    dx->Resize(make_ddim(restored_dx_shape));
+    dx->Resize(restored_dx_shape);
   }
 }
 }  // namespace phi

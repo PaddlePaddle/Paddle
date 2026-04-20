@@ -101,7 +101,7 @@ DenseTensor Slice(const Context& dev_ctx,
     offset[new_axes[i]] = starts[i];
     extends[new_axes[i]] = ends[i] - starts[i];
   }
-  ret.Resize(make_ddim(out_shape));
+  ret.Resize(out_shape);
   dev_ctx.template Alloc<T>(&ret);
   switch (rank) {
     SLICE_RANK_CASE(1);

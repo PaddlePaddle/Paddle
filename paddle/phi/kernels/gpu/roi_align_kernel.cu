@@ -196,7 +196,7 @@ void RoiAlignKernel(const Context& dev_ctx,
             boxes_batch_size,
             batch_size));
 
-    if (boxes_num->dtype() == phi::DataType::INT64) {
+    if (boxes_num->dtype() == DataType::INT64) {
       std::vector<int64_t> boxes_num_list(boxes_batch_size);
       memory_utils::Copy(cplace,
                          boxes_num_list.data(),
@@ -211,7 +211,7 @@ void RoiAlignKernel(const Context& dev_ctx,
         }
         start += boxes_num_list[n];
       }
-    } else if (boxes_num->dtype() == phi::DataType::INT32) {
+    } else if (boxes_num->dtype() == DataType::INT32) {
       std::vector<int> boxes_num_list(boxes_batch_size);
       memory_utils::Copy(cplace,
                          boxes_num_list.data(),
@@ -262,13 +262,13 @@ void RoiAlignKernel(const Context& dev_ctx,
     }
   }
   int64_t bytes = roi_batch_id_list.numel() * sizeof(int);
-  auto roi_ptr = phi::memory_utils::Alloc(
-      dev_ctx.GetPlace(),
-      bytes,
-      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+  auto roi_ptr =
+      memory_utils::Alloc(dev_ctx.GetPlace(),
+                          bytes,
+                          Stream(reinterpret_cast<StreamId>(dev_ctx.stream())));
   int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
   const int* stable_roi_batch_id =
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
           roi_batch_id_data, static_cast<size_t>(bytes / sizeof(int)));
   memory_utils::Copy(gplace,
                      roi_id_data,

@@ -97,15 +97,15 @@ void SetValueGradKernel(const Context& dev_ctx,
     std::vector<int> axes_int32(axes.begin(), axes.end());
     std::vector<int> decrease_axes_int32(decrease_axes.begin(),
                                          decrease_axes.end());
-    phi::StridedSliceRawInferMeta(meta_in,
-                                  axes_int32,
-                                  starts,
-                                  ends,
-                                  steps,
-                                  infer_flags,
-                                  decrease_axes_int32,
-                                  &meta_out,
-                                  MetaConfig(true, false));
+    StridedSliceRawInferMeta(meta_in,
+                             axes_int32,
+                             starts,
+                             ends,
+                             steps,
+                             infer_flags,
+                             decrease_axes_int32,
+                             &meta_out,
+                             MetaConfig(true, false));
     if (value_grad_orig.dims() != value_grad->dims()) {
       StridedSliceRawKernel<T, Context>(dev_ctx,
                                         out_grad,

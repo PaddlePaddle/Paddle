@@ -89,7 +89,7 @@ def dice_loss(
             >>> import paddle.nn.functional as F
 
             >>> x = paddle.randn((3,224,224,2))
-            >>> label = paddle.randint(high=2, shape=(3,224,224,1))
+            >>> label = paddle.randint(high=2, size=(3,224,224,1))
             >>> predictions = F.softmax(x)
             >>> loss = F.dice_loss(input=predictions, label=label)
     """
@@ -268,7 +268,7 @@ def base_softmax_with_cross_entropy(
             >>> paddle.seed(2023)
 
             >>> logits = paddle.to_tensor([0.4, 0.6, 0.9])
-            >>> label = paddle.randint(high=2, shape=[1], dtype="int64")
+            >>> label = paddle.randint(high=2, size=[1], dtype="int64")
 
             >>> out = paddle.nn.functional.softmax_with_cross_entropy(logits=logits, label=label)
             >>> print(out)
@@ -2360,7 +2360,7 @@ def margin_cross_entropy(
             >>> feature_length = 4
             >>> num_classes = 4
 
-            >>> label = paddle.randint(low=0, high=num_classes, shape=[batch_size], dtype='int64')
+            >>> label = paddle.randint(low=0, high=num_classes, size=[batch_size], dtype='int64')
 
             >>> X = paddle.randn(
             ...     shape=[batch_size, feature_length],
@@ -2424,7 +2424,7 @@ def margin_cross_entropy(
             >>> num_class_per_card = [4, 8]
             >>> num_classes = paddle.sum(paddle.to_tensor(num_class_per_card))
 
-            >>> label = paddle.randint(low=0, high=num_classes.item(), shape=[batch_size], dtype='int64')  # type: ignore[arg-type]
+            >>> label = paddle.randint(low=0, high=int(num_classes.item()), size=[batch_size], dtype='int64')  # type: ignore[call-overload, arg-type]
             >>> label_list: List[paddle.Tensor] = []
             >>> dist.all_gather(label_list, label)
             >>> label = paddle.concat(label_list, axis=0)
@@ -2972,7 +2972,7 @@ def cross_entropy(
             >>> C = 200
             >>> reduction = 'mean'
             >>> input = paddle.rand([N, C], dtype='float64')
-            >>> label = paddle.randint(0, C, shape=[N], dtype='int64')
+            >>> label = paddle.randint(0, C, size=[N], dtype='int64')
             >>> weight = paddle.rand([C], dtype='float64')
 
             >>> cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
@@ -3027,7 +3027,7 @@ def cross_entropy(
             >>> reduction = 'mean'
             >>> weight: Optional[paddle.Tensor] = None
             >>> logits = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
-            >>> integer_labels = paddle.randint(low=0, high=C, shape=[N], dtype='int64')
+            >>> integer_labels = paddle.randint(low=0, high=C, size=[N], dtype='int64')
             >>> one_hot_labels = paddle.nn.functional.one_hot(integer_labels, C).astype('float32')
 
             >>> # integer labels
@@ -4542,7 +4542,7 @@ def soft_margin_loss(
                    0.64022040)
 
             >>> input = paddle.uniform(shape=(5, 5), dtype="float32", min=0.1, max=0.8)
-            >>> label = paddle.randint(0, 2, shape=(5, 5), dtype="int64")
+            >>> label = paddle.randint(0, 2, size=(5, 5), dtype="int64")
             >>> label[label == 0] = -1
 
             >>> output = paddle.nn.functional.soft_margin_loss(input, label, reduction='none')

@@ -21,7 +21,7 @@
 namespace phi {
 template <typename T>
 struct LabelSmoothGradFunctor {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
   MPType epsilon;
 
   __forceinline__ LabelSmoothGradFunctor(float epsilon_data) {

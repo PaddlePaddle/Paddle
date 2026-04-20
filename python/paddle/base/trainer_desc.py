@@ -13,9 +13,6 @@
 # limitations under the License.
 """Definition of trainers."""
 
-import os
-import sys
-
 __all__ = []
 
 
@@ -31,15 +28,7 @@ class TrainerDesc:
         with open(proto_file, 'r') as f:
             text_format.Parse(f.read(), self.proto_desc)
         '''
-        # Workaround for relative import in protobuf under python3
-        # TODO: should be fixed
-        cur_path = os.path.dirname(__file__)
-        if cur_path not in sys.path:
-            sys.path.append(cur_path)
-        if cur_path + "/proto" not in sys.path:
-            sys.path.append(cur_path + "/proto")
-
-        from proto import trainer_desc_pb2
+        from .proto import trainer_desc_pb2
 
         self.proto_desc = trainer_desc_pb2.TrainerDesc()
         import multiprocessing as mp

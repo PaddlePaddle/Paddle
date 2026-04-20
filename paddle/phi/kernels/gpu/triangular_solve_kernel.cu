@@ -52,7 +52,7 @@ void TriangularSolveKernel(const Context& dev_ctx,
   const T* x_bst_data = x_bst.data<T>();
   ExpandKernel<T, Context>(dev_ctx, x, x_bst_dims, &x_bst);
 
-  out->Resize(make_ddim(y_bst_dims_vec));
+  out->Resize(y_bst_dims_vec);
   T* out_data = dev_ctx.template Alloc<T>(out);
   IntArray y_bst_dims(y_bst_dims_vec);
   ExpandKernel<T, Context>(dev_ctx, y, y_bst_dims, out);
@@ -108,13 +108,13 @@ void TriangularSolveKernel(const Context& dev_ctx,
       for (int64_t i = 0; i < batch_size; ++i) {
         cpu_a_ptrs[i] = x_bst_data + i * M * M;
       }
-      phi::Allocator::AllocationPtr gpu_a_ptrs_data = phi::memory_utils::Alloc(
+      Allocator::AllocationPtr gpu_a_ptrs_data = memory_utils::Alloc(
           dev_ctx.GetPlace(),
           cpu_a_ptrs.size() * sizeof(T*),
           phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
       size_t nbytes_a_ptrs = cpu_a_ptrs.size() * sizeof(T*);
       const void* stable_a_ptrs =
-          phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
               reinterpret_cast<uint8_t*>(const_cast<T**>(cpu_a_ptrs.data())),
               nbytes_a_ptrs);
       memory_utils::Copy(dev_ctx.GetPlace(),
@@ -126,10 +126,10 @@ void TriangularSolveKernel(const Context& dev_ctx,
       const T** gpu_a_ptrs =
           reinterpret_cast<const T**>(gpu_a_ptrs_data->ptr());
 
-      phi::Allocator::AllocationPtr gpu_b_ptrs_data = phi::memory_utils::Alloc(
+      Allocator::AllocationPtr gpu_b_ptrs_data = memory_utils::Alloc(
           dev_ctx.GetPlace(),
           batch_size * sizeof(T*),
-          phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+          Stream(reinterpret_cast<StreamId>(dev_ctx.stream())));
       T** gpu_b_ptrs = reinterpret_cast<T**>(gpu_b_ptrs_data->ptr());
 
       for (int64_t i = 0; i < n_chunks; ++i) {
@@ -143,7 +143,7 @@ void TriangularSolveKernel(const Context& dev_ctx,
         }
         size_t nbytes_b_ptrs = cpu_b_ptrs_for_chunk.size() * sizeof(T*);
         const void* stable_b_ptrs =
-            phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+            backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
                 reinterpret_cast<uint8_t*>(cpu_b_ptrs_for_chunk.data()),
                 nbytes_b_ptrs);
         memory_utils::Copy(dev_ctx.GetPlace(),
@@ -173,15 +173,14 @@ void TriangularSolveKernel(const Context& dev_ctx,
         cpu_ptrs[i + batch_size] = out_data + i * M * N;
       }
 
-      phi::Allocator::AllocationPtr tmp_gpu_ptrs_data =
-          phi::memory_utils::Alloc(
-              dev_ctx.GetPlace(),
-              cpu_ptrs.size() * sizeof(T*),
-              phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+      Allocator::AllocationPtr tmp_gpu_ptrs_data = memory_utils::Alloc(
+          dev_ctx.GetPlace(),
+          cpu_ptrs.size() * sizeof(T*),
+          Stream(reinterpret_cast<StreamId>(dev_ctx.stream())));
 
       size_t nbytes_ptrs = cpu_ptrs.size() * sizeof(T*);
       const void* stable_ptrs =
-          phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
               reinterpret_cast<uint8_t*>(const_cast<T**>(cpu_ptrs.data())),
               nbytes_ptrs);
       memory_utils::Copy(dev_ctx.GetPlace(),

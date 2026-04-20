@@ -633,33 +633,63 @@ class AdamW(Optimizer):
 
     @imperative_base.no_grad
     @framework.non_static_only
-    def step(self) -> None:
+    def step(
+        self, closure: Callable[[], Tensor] | None = None
+    ) -> Tensor | None:
         """
         Execute the optimizer and update parameters once.
 
+        Args:
+            closure (Callable|None, optional): A closure that reevaluates the model
+                and returns the loss. It should be a callable that takes no arguments
+                and returns a Tensor. This is useful for optimizers that need to
+                evaluate the loss multiple times (e.g., line search). Default is None.
+
         Returns:
-            None
+            Tensor|None: If closure is provided, returns the loss value computed by
+                the closure. Otherwise returns None.
 
         Examples:
             .. code-block:: pycon
 
                 >>> import paddle
 
-                >>> a = paddle.rand([2, 13], dtype="float32")
+                >>> x = paddle.rand([2, 13], dtype="float32")
                 >>> linear = paddle.nn.Linear(13, 5)
                 >>> # This can be any optimizer supported by dygraph.
                 >>> opt = paddle.optimizer.AdamW(
                 ...     learning_rate=0.01,
                 ...     parameters=linear.parameters(),
                 ... )
-                >>> out = linear(a)
+                >>> out = linear(x)
                 >>> out.backward()
                 >>> opt.step()
                 >>> opt.clear_grad()
+
+                >>> # usage 1: not use closure
+                >>> opt.zero_grad()
+                >>> output = linear(x)
+                >>> loss = paddle.mean(output)
+                >>> loss.backward()
+                >>> opt.step()
+
+                >>> # usage 2: use closure
+                >>> def closure():
+                ...     opt.zero_grad()
+                ...     output = linear(x)
+                ...     loss = paddle.mean(output)
+                ...     loss.backward()
+                ...     return loss
+                >>> step_loss = opt.step(closure)
         """
+        loss = None
+        if closure is not None:
+            with imperative_base.enable_grad():
+                loss = closure()
+
         if paddle.base.dygraph.base.in_to_static_mode():
             self._declarative_step()
-            return
+            return loss
 
         if not isinstance(self._parameter_list[0], dict):
             params_grads = []
@@ -725,6 +755,7 @@ class AdamW(Optimizer):
                 self._apply_optimize(
                     loss=None, startup_program=None, params_grads=params_grads
                 )
+        return loss
 
     def _update_param_group(self, parameters):
         self._beta1 = parameters.get('beta1', self._default_dict['beta1'])
