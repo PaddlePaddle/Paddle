@@ -55,45 +55,45 @@ void StridedCopyKernel(const Context& dev_ctx,
 
     auto src_cpu_place = input.place();
     auto dst_gpu_place = out->place();
-    auto& pool = phi::DeviceContextPool::Instance();
-    auto* gpu_dev_ctx = static_cast<phi::GPUContext*>(pool.Get(out->place()));
+    auto& pool = DeviceContextPool::Instance();
+    auto* gpu_dev_ctx = static_cast<GPUContext*>(pool.Get(out->place()));
     auto stream = gpu_dev_ctx->stream();
 
     if (input.meta().is_contiguous()) {
       auto src_cpu_place = input.place();
       auto dst_gpu_place = out->place();
-      auto size = phi::SizeOf(input.dtype()) * input.numel();
+      auto size = SizeOf(input.dtype()) * input.numel();
       void* dst_ptr = gpu_dev_ctx->Alloc(
           &dst_gpu,
           dst_gpu.dtype(),
           0,
           dst_gpu_place.GetType() == AllocationType::GPUPINNED);
 
-      phi::memory_utils::Copy(
+      memory_utils::Copy(
           dst_gpu_place, dst_ptr, src_cpu_place, input.data<T>(), size, stream);
 
     } else {
       DenseTensor cpu_out;
-      phi::ContiguousKernel<T, Context>(dev_ctx, input, &cpu_out);
+      ContiguousKernel<T, Context>(dev_ctx, input, &cpu_out);
       auto* src_ptr = cpu_out.data<T>();
-      auto size = phi::SizeOf(input.dtype()) * cpu_out.numel();
+      auto size = SizeOf(input.dtype()) * cpu_out.numel();
       void* dst_ptr = gpu_dev_ctx->Alloc(
           &dst_gpu,
           dst_gpu.dtype(),
           0,
           dst_gpu_place.GetType() == AllocationType::GPUPINNED);
 
-      phi::memory_utils::Copy(
+      memory_utils::Copy(
           dst_gpu_place, dst_ptr, src_cpu_place, src_ptr, size, stream);
     }
     if (out != &dst_gpu) {
       PD_VISIT_ALL_TYPES(
           out->dtype(), "StridedCopyKernel", ([&] {
-            phi::StridedCopyKernel<data_t, phi::GPUContext>(
-                reinterpret_cast<const phi::GPUContext&>(*gpu_dev_ctx),
+            StridedCopyKernel<data_t, GPUContext>(
+                reinterpret_cast<const GPUContext&>(*gpu_dev_ctx),
                 dst_gpu,
-                common::vectorize<int64_t>(out->dims()),
-                common::vectorize<int64_t>(out->strides()),
+                vectorize<int64_t>(out->dims()),
+                vectorize<int64_t>(out->strides()),
                 out->offset(),
                 out);
           }));
@@ -105,8 +105,8 @@ void StridedCopyKernel(const Context& dev_ctx,
 #endif
 
   DenseTensorMeta meta = input.meta();
-  meta.strides = common::make_ddim(out_stride);
-  meta.dims = common::make_ddim(dims);
+  meta.strides = make_ddim(out_stride);
+  meta.dims = make_ddim(dims);
   meta.offset = offset;
   out->set_meta(meta);
 

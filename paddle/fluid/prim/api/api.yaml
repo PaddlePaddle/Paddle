@@ -15,6 +15,7 @@
 - exp
 - scale
 - matmul
+- linear_v2
 - expand
 - sum
 - abs

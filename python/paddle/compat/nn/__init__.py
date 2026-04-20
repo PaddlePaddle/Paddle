@@ -512,7 +512,7 @@ class Linear(nn.Layer):
         - output: Multi-dimensional tensor with shape :math:`[*, out\_features]` . The data type is the same as the input .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(100)
@@ -699,16 +699,25 @@ class Softmax(nn.Layer):
         - output: Tensor with the same shape as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([[[2.0, 3.0, 4.0, 5.0],
-            ...                        [3.0, 4.0, 5.0, 6.0],
-            ...                        [7.0, 8.0, 8.0, 9.0]],
-            ...                       [[1.0, 2.0, 3.0, 4.0],
-            ...                        [5.0, 6.0, 7.0, 8.0],
-            ...                        [6.0, 7.0, 8.0, 9.0]]], dtype='float32')
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [
+            ...             [2.0, 3.0, 4.0, 5.0],
+            ...             [3.0, 4.0, 5.0, 6.0],
+            ...             [7.0, 8.0, 8.0, 9.0],
+            ...         ],
+            ...         [
+            ...             [1.0, 2.0, 3.0, 4.0],
+            ...             [5.0, 6.0, 7.0, 8.0],
+            ...             [6.0, 7.0, 8.0, 9.0],
+            ...         ],
+            ...     ],
+            ...     dtype='float32',
+            ... )
             >>> m = paddle.compat.nn.Softmax()
             >>> out = m(x)
             >>> print(out)

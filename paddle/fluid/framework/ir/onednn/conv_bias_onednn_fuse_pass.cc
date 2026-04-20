@@ -289,8 +289,8 @@ Conv3DBiasFusePass::Conv3DBiasFusePass() {
 }
 
 template <typename BinaryOperation>
-DenseTensor tensor_apply_eltwise(const phi::DenseTensor& vec_a,
-                                 const phi::DenseTensor& vec_b,
+DenseTensor tensor_apply_eltwise(const DenseTensor& vec_a,
+                                 const DenseTensor& vec_b,
                                  BinaryOperation f) {
   PADDLE_ENFORCE_EQ(vec_a.dims(),
                     vec_b.dims(),

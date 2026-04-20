@@ -159,7 +159,7 @@ class Tracer {
 
   PADDLE_API std::string GetAmpDtype() const;
 
-  PADDLE_API phi::DataType GetAmpPhiDtype() const;
+  PADDLE_API DataType GetAmpPhiDtype() const;
 
   TEST_API void DisableLayoutAutoTune();
 

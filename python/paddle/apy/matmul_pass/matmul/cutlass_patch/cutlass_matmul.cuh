@@ -28,21 +28,59 @@
 #include "cutlass/gemm/device/gemm_universal.h"
 #include "cutlass/gemm/device/gemm_universal_with_broadcast.h"
 
+#include "cutlass_patch/batched_matrix_coord.h"
 #include "cutlass_patch/epilogue/thread/linear_combination_unary.h"
 #include "cutlass_patch/epilogue/thread/linear_combination_variadic.h"
 #include "cutlass_patch/gemm/device/gemm_universal_with_variadic.h"
 #include "cutlass_patch/math_function.h"
-#include "cutlass_patch/batched_matrix_coord.h"
-#include "cutlass_patch/all_tuning_configs.h"
-#include "cutlass_patch/check.h"
-#include "params.h"
+
+#include "default_config_id.h"  // NOLINT
+#include "params.h"             // NOLINT
+
+#define CHECK_CUTLASS(status)                                             \
+  {                                                                       \
+    cutlass::Status error = status;                                       \
+    if (error != cutlass::Status::kSuccess) {                             \
+      std::cerr << "Got cutlass error: " << cutlassGetStatusString(error) \
+                << " at: " << __LINE__ << std::endl;                      \
+      exit(EXIT_FAILURE);                                                 \
+    }                                                                     \
+  }
 
 namespace ap {
-using MatrixCoord = cutlass::BatchedMatrixCoord;
 using bfloat16 = nv_bfloat16;
-}
 
-namespace ap {
+template <typename T, int N>
+using Array = cutlass::Array<T, N>;
+
+using MatrixCoord = cutlass::BatchedMatrixCoord;
+
+// Convert CUDA data type to cutlass data type
+template <typename T>
+struct CutlassDataType {
+  using Type = T;
+};
+
+template <>
+struct CutlassDataType<half> {
+  using Type = cutlass::half_t;
+};
+
+template <>
+struct CutlassDataType<__nv_bfloat16> {
+  using Type = cutlass::bfloat16_t;
+};
+
+// Convert to cutlass layout
+template <bool Transposed>
+struct MatrixLayout {
+  using Type = cutlass::layout::RowMajor;
+};
+
+template <>
+struct MatrixLayout<true> {
+  using Type = cutlass::layout::ColumnMajor;
+};
 
 // Operation performed by GEMM
 template <typename ElementT>
@@ -129,7 +167,6 @@ struct CutlassDataType<__nv_bfloat16> {
   using Type = cutlass::bfloat16_t;
 };
 
-
 // Convert to cutlass layout
 template <bool Transposed>
 struct MatrixLayout {
@@ -141,7 +178,6 @@ struct MatrixLayout<true> {
   using Type = cutlass::layout::ColumnMajor;
 };
 
-
 template <typename T, int N>
 using Array = cutlass::Array<T, N>;
 
@@ -149,7 +185,6 @@ using MatrixCoord = cutlass::BatchedMatrixCoord;
 using ap_bfloat16 = nv_bfloat16;
 using ap_half = half;
 // using apStream_t = cudaStream_t;
-
 
 template <typename ElementT,
           typename ElementComputeT,
@@ -255,7 +290,8 @@ void MatmulAddVariadic(
 
   GemmFunc device_gemm;
 
-  cudaStream_t* stream_ptr = reinterpret_cast<cudaStream_t*>(params.stream_ptr);
+  cudaStream_t *stream_ptr =
+      reinterpret_cast<cudaStream_t *>(params.stream_ptr);
 
   CHECK_CUTLASS(device_gemm.can_implement(arguments));
   CHECK_CUTLASS(device_gemm.initialize(arguments, workspace, *stream_ptr));

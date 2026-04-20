@@ -82,8 +82,8 @@ class FCOneDNNHandler
         dev_ctx_(dev_ctx) {
     this->memory_key_ = dev_ctx.GetInputsName("W")[0];
 
-    auto x_vec_dims = common::vectorize(x->dims());
-    auto weights_vec_dims = common::vectorize(weights->dims());
+    auto x_vec_dims = vectorize(x->dims());
+    auto weights_vec_dims = vectorize(weights->dims());
 
     int MB = 1;
     for (int i = 0; i < in_num_col_dims; ++i) {
@@ -380,7 +380,7 @@ void RecomputeOutputDims(const int in_num_col_dims,
                       output_dims,
                       in_num_col_dims,
                       padding_weights);
-  out->Resize(common::make_ddim(output_dims));
+  out->Resize(output_dims);
   out->set_lod(x->lod());
 }
 
@@ -407,7 +407,7 @@ template <typename T, typename T_out, typename T_w>
 void RunKernel(const phi::OneDNNContext& dev_ctx,
                const DenseTensor& input,
                const DenseTensor& w,
-               const paddle::optional<DenseTensor>& bias,
+               const optional<DenseTensor>& bias,
                const int in_num_col_dims,
                const std::string& activation_type,
                const bool use_onednn,
@@ -434,8 +434,8 @@ void RunKernel(const phi::OneDNNContext& dev_ctx,
       funcs::CreateKey(dev_ctx,
                        dev_ctx.GetInputsName("Input")[0],
                        dev_ctx.GetInputsName("W")[0],
-                       common::vectorize(input.dims()),
-                       common::vectorize(w.dims())));
+                       vectorize(input.dims()),
+                       vectorize(w.dims())));
 
   auto inner_product_cache =
       std::static_pointer_cast<InnerProductCache>(dev_ctx.GetBlob(cache_key));
@@ -544,8 +544,7 @@ void RunKernel(const phi::OneDNNContext& dev_ctx,
     dev_ctx.SetBlob(cache_key, ip_cache);
   }
 
-  const auto out_md =
-      dst_memory_p->get_desc().reshape(common::vectorize(out->dims()));
+  const auto out_md = dst_memory_p->get_desc().reshape(vectorize(out->dims()));
 
   std::vector<int> reshape2_shape = {};
   if (dev_ctx.HasDnnAttr("fused_reshape2_shape")) {
@@ -563,7 +562,7 @@ template <typename T, typename Context>
 void FCKernel(const Context& dev_ctx,
               const DenseTensor& input,
               const DenseTensor& w,
-              const paddle::optional<DenseTensor>& bias,
+              const optional<DenseTensor>& bias,
               const int in_num_col_dims,
               const std::string& activation_type,
               const bool padding_weights,

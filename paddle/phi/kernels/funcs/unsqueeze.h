@@ -100,7 +100,7 @@ inline DDim GetOutputSqueezeShape(const std::vector<int> squeeze_dims,
       output_shape.push_back(in_dims[i]);
     }
   }
-  return common::make_ddim(output_shape);
+  return make_ddim(output_shape);
 }
 
 inline DDim GetUnsqueezeShape(const std::vector<int64_t> unsqz_dims,
@@ -150,13 +150,13 @@ inline DDim GetUnsqueezeShape(const std::vector<int64_t> unsqz_dims,
     }
   }
 #undef UNSQUEEZE_MAX_RANK_SUPPORTED
-  return common::make_ddim(output_shape);
+  return make_ddim(output_shape);
 }
 
 inline const DenseTensor Unsqueeze(const DenseTensor& x, int axis = 0) {
   // don't copy data, only change the dims
   DenseTensor out(x);
-  std::vector<int64_t> out_shape = common::vectorize<int64_t>(x.dims());
+  std::vector<int64_t> out_shape = vectorize<int64_t>(x.dims());
   if (axis >= 0) {
     auto index = (out_shape.begin() + axis);
     out_shape.insert(index, 1);
@@ -164,7 +164,7 @@ inline const DenseTensor Unsqueeze(const DenseTensor& x, int axis = 0) {
     auto index = (out_shape.end() + axis + 1);
     out_shape.insert(index, 1);
   }
-  out.Resize(common::make_ddim(out_shape));
+  out.Resize(out_shape);
   return out;
 }
 

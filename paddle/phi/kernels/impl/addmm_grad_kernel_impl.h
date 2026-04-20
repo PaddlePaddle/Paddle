@@ -34,7 +34,7 @@ struct CopyOrScaleFunctor {
       : scale_(scale), x_(x), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+    using MPType = typename dtype::MPTypeTrait<T>::Type;
     const MPType mp_scale = static_cast<MPType>(scale_);
     const MPType mp_x = static_cast<MPType>(x_[idx]);
     output_[idx] = static_cast<T>(mp_scale * mp_x);
@@ -47,14 +47,8 @@ struct CopyOrScaleFunctor {
   int64_t numel_;
 };
 
-template <typename T,
-          size_t D,
-          int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using PhiEigenTensor = EigenTensor<T, D, MajorType, IndexType>;
-
-using Array1 = Eigen::DSizes<Eigen::DenseIndex, 1>;
-using Array2 = Eigen::DSizes<Eigen::DenseIndex, 2>;
+using Array1 = Eigen::DSizes<int64_t, 1>;
+using Array2 = Eigen::DSizes<int64_t, 2>;
 
 template <typename T, typename Context>
 void AddmmGradKernel(const Context& dev_ctx,
@@ -69,23 +63,17 @@ void AddmmGradKernel(const Context& dev_ctx,
                      DenseTensor* y_grad) {
   if (out_grad.numel() == 0) {
     if (input_grad) {
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(input_grad->dims())),
-          0,
-          input_grad);
+      Full<T, Context>(dev_ctx, input_grad->dims(), 0, input_grad);
     }
     if (x_grad) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+      Full<T, Context>(dev_ctx, x_grad->dims(), 0, x_grad);
     }
     if (y_grad) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(y_grad->dims())), 0, y_grad);
+      Full<T, Context>(dev_ctx, y_grad->dims(), 0, y_grad);
     }
     return;
   }
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
   bool is_float16_or_bfloat16 = false;
   bool is_big_tensor = false;
   if (input.numel() * input.dims()[1] > std::numeric_limits<int>::max() ||
@@ -93,8 +81,7 @@ void AddmmGradKernel(const Context& dev_ctx,
       y.numel() * y.dims()[1] > std::numeric_limits<int>::max()) {
     is_big_tensor = true;
   }
-  if (std::is_same<T, phi::float16>::value ||
-      std::is_same<T, phi::bfloat16>::value) {
+  if (std::is_same<T, float16>::value || std::is_same<T, bfloat16>::value) {
     is_float16_or_bfloat16 = true;
   }
 
@@ -123,8 +110,8 @@ void AddmmGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(input_grad);
     total_elems = in_dims[0] * in_dims[1];
     auto& place = *dev_ctx.eigen_device();
-    auto eigen_dout = PhiEigenTensor<T, 2>::From(out_grad);
-    auto eigen_dinput = PhiEigenTensor<T, 2>::From(*input_grad);
+    auto eigen_dout = EigenTensor<T, 2>::From(out_grad);
+    auto eigen_dinput = EigenTensor<T, 2>::From(*input_grad);
 
     bool row_compress = in_dims[0] != out_grad.dims()[0];
     bool col_compress = in_dims[1] != out_grad.dims()[1];
@@ -193,14 +180,12 @@ void AddmmGradKernel(const Context& dev_ctx,
   }
   if (x_grad && x_grad->numel() == 0) {
     dev_ctx.template Alloc<T>(x_grad);
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(y_grad->dims())), 0, y_grad);
+    Full<T, Context>(dev_ctx, y_grad->dims(), 0, y_grad);
     return;
   }
   if (y_grad && y_grad->numel() == 0) {
     dev_ctx.template Alloc<T>(y_grad);
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    Full<T, Context>(dev_ctx, x_grad->dims(), 0, x_grad);
     return;
   }
   if (x_grad) {

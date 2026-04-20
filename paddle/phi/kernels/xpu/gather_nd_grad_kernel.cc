@@ -28,7 +28,9 @@ void GatherNdGradKernel(const Context &dev_ctx,
                         DenseTensor *x_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(x_grad);
-
+  if (x_grad->numel() == 0) {
+    return;
+  }
   int r = 0;
   XPUType *dx_data = reinterpret_cast<XPUType *>(x_grad->data<T>());
   r = xpu::constant<XPUType>(
@@ -49,7 +51,7 @@ void GatherNdGradKernel(const Context &dev_ctx,
         0,
         common::errors::InvalidArgument("end_size[%d] should be 0", end_size));
     // remain dim
-    auto remain_ddim = common::slice_ddim(index_dims, 0, index_dims_size - 1);
+    auto remain_ddim = slice_ddim(index_dims, 0, index_dims_size - 1);
     int64_t remain_numel = common::product(remain_ddim);
 
     int64_t x_numel = x.numel();
@@ -77,18 +79,18 @@ void GatherNdGradKernel(const Context &dev_ctx,
 
   auto index_type = index.dtype();
   bool index_type_match =
-      index_type == phi::DataType::INT32 || index_type == phi::DataType::INT64;
+      index_type == DataType::INT32 || index_type == DataType::INT64;
   PADDLE_ENFORCE_EQ(index_type_match,
                     true,
                     common::errors::InvalidArgument(
                         "Index holds the wrong type, it holds [%s],"
                         "but desires to be [%s] or [%s]",
                         index_type,
-                        phi::DataType::INT32,
-                        phi::DataType::INT64));
+                        DataType::INT32,
+                        DataType::INT64));
 
-  auto x_shape = common::vectorize<int64_t>(x_grad->dims());
-  auto index_shape = common::vectorize<int64_t>(index.dims());
+  auto x_shape = vectorize<int64_t>(x_grad->dims());
+  auto index_shape = vectorize<int64_t>(index.dims());
   if (index_shape.size() == 1) {
     index_shape.insert(index_shape.begin(), 1);
   }
@@ -96,7 +98,7 @@ void GatherNdGradKernel(const Context &dev_ctx,
       x_shape.data(), static_cast<int64_t>(x_shape.size()), nullptr};
 
   int64_t index_size = index.numel();
-  if (index_type == phi::DataType::INT32) {
+  if (index_type == DataType::INT32) {
     auto index_data = const_cast<int *>(index.data<int>());
     xpu::VectorParam<int> index_vec{nullptr, index_size, index_data};
     r = xpu::scatter_nd<XPUType, int>(

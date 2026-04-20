@@ -924,7 +924,8 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
       delete_assert_op_pm.Run(pir_program_.get());
     }
 
-    if (config_.use_gpu() && config_.cinn_enabled()) {
+    if ((config_.use_gpu() || config_.use_custom_device()) &&
+        config_.cinn_enabled()) {
       if (!config_.custom_pass_only_) {
         ::pir::PassManager fused_op_pm(::pir::IrContext::Instance(),
                                        config_.pm_opt_level_);
@@ -1184,8 +1185,7 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
   basic_pass_pm.Run(pir_program_.get());
   //----------------------------------------------------------------------------------------------//
 
-  pir_program_ =
-      paddle::dialect::PdOpLowerToKernelPass(pir_program_.get(), place_);
+  pir_program_ = pir::PdOpLowerToKernelPass(pir_program_.get(), place_);
 
   ::pir::PassManager lowered_pm(::pir::IrContext::Instance(), 3);
   auto remove_shadow_feed_pass = ::pir::CreateRemoveShadowFeedPass();

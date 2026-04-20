@@ -29,8 +29,7 @@ void IndexSelectGradKernel(const Context& dev_ctx,
                            DenseTensor* x_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   if (out_grad.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(x.dims())), 0, x_grad);
+    Full<T, Context>(dev_ctx, x.dims(), 0, x_grad);
     return;
   }
   if (dim < 0) {
@@ -38,26 +37,26 @@ void IndexSelectGradKernel(const Context& dev_ctx,
   }
   const auto& index_type = index.dtype();
   bool index_type_match =
-      index_type == phi::DataType::INT32 || index_type == phi::DataType::INT64;
+      index_type == DataType::INT32 || index_type == DataType::INT64;
   PADDLE_ENFORCE_EQ(index_type_match,
                     true,
                     common::errors::InvalidArgument(
                         "Input(Index) holds the wrong type, it holds %s, but "
                         "desires to be %s or %s",
                         index_type,
-                        phi::DataType::INT32,
-                        phi::DataType::INT64));
+                        DataType::INT32,
+                        DataType::INT64));
 
   XPUType* x_grad_data =
       reinterpret_cast<XPUType*>((dev_ctx.template Alloc<T>(x_grad)));
   const XPUType* out_grad_data =
       reinterpret_cast<const XPUType*>(out_grad.data<T>());
 
-  auto out_grad_shape = common::vectorize<int64_t>(out_grad.dims());
-  auto x_grad_shape = common::vectorize<int64_t>(x_grad->dims());
+  auto out_grad_shape = vectorize<int64_t>(out_grad.dims());
+  auto x_grad_shape = vectorize<int64_t>(x_grad->dims());
 
   int r = 0;
-  if (index_type == phi::DataType::INT32) {
+  if (index_type == DataType::INT32) {
     const int* index_data = index.data<int>();
     r = xpu::index_select_grad<XPUType, int>(dev_ctx.x_context(),
                                              nullptr,
@@ -67,7 +66,7 @@ void IndexSelectGradKernel(const Context& dev_ctx,
                                              x_grad_data,
                                              out_grad_shape,
                                              x_grad_shape);
-  } else if (index_type == phi::DataType::INT64) {
+  } else if (index_type == DataType::INT64) {
     const int64_t* index_data = index.data<int64_t>();
     r = xpu::index_select_grad<XPUType, int64_t>(dev_ctx.x_context(),
                                                  nullptr,

@@ -33,7 +33,7 @@ float GetAbsMax(const Context& dev_ctx,
                 const float* input,
                 float* buffer_xpu,
                 int64_t numel) {
-  int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
+  int max_ptr_size = backends::xpu::get_xpu_max_ptr_size(-1);
   std::vector<float> buffer_cpu(max_ptr_size);
   // int findmax(Context* xpu_ctx, const T* x, float* maxptr, int64_t len);
   int r = xpu::findmax<float>(dev_ctx.x_context(), input, buffer_xpu, numel);
@@ -55,8 +55,8 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
                          const DenseTensor& moment2,
                          const DenseTensor& beta1_pow,
                          const DenseTensor& beta2_pow,
-                         const paddle::optional<DenseTensor>& master_param,
-                         const paddle::optional<DenseTensor>& skip_update,
+                         const optional<DenseTensor>& master_param,
+                         const optional<DenseTensor>& skip_update,
                          const Scalar& beta1,
                          const Scalar& beta2,
                          const Scalar& epsilon,
@@ -75,15 +75,15 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
                          DenseTensor* master_param_outs) {
   // TODO(houj04):
   // 当KL3稳定以后，并且不需要支持KL1和KL2的时候，拿这里的AdamwDenseKernelKL3替换掉AdamwDenseKernel
-  using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   const auto grad_type = grad.dtype();
 
   VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
 
-  MPDType coeff_ = static_cast<MPDType>(coeff);
-  MPDType lr_ratio_ = static_cast<MPDType>(lr_ratio);
+  MT coeff_ = static_cast<MT>(coeff);
+  MT lr_ratio_ = static_cast<MT>(lr_ratio);
 
   bool skip_update_ = false;
   if (skip_update.is_initialized()) {
@@ -93,7 +93,7 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
         errors::InvalidArgument("Input(SkipUpdate) size must be 1, but get %d",
                                 skip_update->numel()));
     std::vector<bool> skip_update_vec;
-    phi::TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
+    TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
     skip_update_ = skip_update_vec[0];
   }
 
@@ -112,12 +112,12 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
 
   // if with_decay = false, coeff = 0
   if (!with_decay) {
-    coeff_ = static_cast<MPDType>(0.0);
+    coeff_ = static_cast<MT>(0.0);
   }
 
-  MPDType beta1_ = beta1.to<MPDType>();
-  MPDType beta2_ = beta2.to<MPDType>();
-  MPDType epsilon_ = epsilon.to<MPDType>();
+  MT beta1_ = beta1.to<MT>();
+  MT beta2_ = beta2.to<MT>();
+  MT epsilon_ = epsilon.to<MT>();
   VLOG(3) << "beta1_pow.numel() : " << beta1_pow.numel()
           << "beta2_pow.numel() : " << beta2_pow.numel();
   VLOG(3) << "param.numel(): " << param.numel();
@@ -135,11 +135,10 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
                               "value is:%d.",
                               beta2_pow_out->numel()));
 
-  const MPDType* master_in_data =
-      multi_precision ? master_param->data<MPDType>() : nullptr;
-  MPDType* master_out_data =
-      multi_precision ? dev_ctx.template Alloc<MPDType>(master_param_outs)
-                      : nullptr;
+  const MT* master_in_data =
+      multi_precision ? master_param->data<MT>() : nullptr;
+  MT* master_out_data =
+      multi_precision ? dev_ctx.template Alloc<MT>(master_param_outs) : nullptr;
 
   // check moment_dtype
   auto moment1_dtype = moment1.dtype();
@@ -158,12 +157,12 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
       errors::InvalidArgument("moment1.dtype does not match moment2.dtype"));
 
   bool moment_in_fp16 = false;
-  if (moment1_dtype == phi::DataType::FLOAT16) {
+  if (moment1_dtype == DataType::FLOAT16) {
     moment_in_fp16 = true;
   } else {
     PADDLE_ENFORCE_EQ(
         moment1_dtype,
-        phi::DataType::FLOAT32,
+        DataType::FLOAT32,
         errors::InvalidArgument("moment1.dtype is neither fp32 nor fp16"));
   }
 
@@ -249,27 +248,25 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
   // param_out, const MT* master_param, MT* master_param_out, int64_t n);
   if (beta1_pow.place() == CPUPlace() && beta2_pow.place() == CPUPlace()) {
     // Compute with betapow in REG
-    if (grad_type == phi::DataType::FLOAT32) {
-      int r = xpu::adamw<XPUType, float, MPDType>(
+    if (grad_type == DataType::FLOAT32) {
+      int r = xpu::adamw<XPUType, float, MT>(
           dev_ctx.x_context(),
           beta1_,
           beta2_,
           epsilon_,
           coeff_,
           lr_ratio_,
-          nullptr,                     // beta1_pow
-          *beta1_pow.data<MPDType>(),  // beta1_pow_scalar
-          nullptr,                     // beta2_pow
-          *beta2_pow.data<MPDType>(),  // beta2_pow_scalar
-          moment_in_fp16 ? moment1_input_for_xdnn
-                         : moment1.template data<MPDType>(),
+          nullptr,                // beta1_pow
+          *beta1_pow.data<MT>(),  // beta1_pow_scalar
+          nullptr,                // beta2_pow
+          *beta2_pow.data<MT>(),  // beta2_pow_scalar
+          moment_in_fp16 ? moment1_input_for_xdnn : moment1.template data<MT>(),
           moment_in_fp16 ? moment1_output_for_xdnn
-                         : dev_ctx.template Alloc<MPDType>(moment1_out),
-          moment_in_fp16 ? moment2_input_for_xdnn
-                         : moment2.template data<MPDType>(),
+                         : dev_ctx.template Alloc<MT>(moment1_out),
+          moment_in_fp16 ? moment2_input_for_xdnn : moment2.template data<MT>(),
           moment_in_fp16 ? moment2_output_for_xdnn
-                         : dev_ctx.template Alloc<MPDType>(moment2_out),
-          learning_rate.data<MPDType>(),
+                         : dev_ctx.template Alloc<MT>(moment2_out),
+          learning_rate.data<MT>(),
           grad.data<float>(),
           reinterpret_cast<const XPUType*>(param.data<T>()),
           reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(param_out)),
@@ -278,26 +275,24 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
           param.numel());
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "adamw");
     } else {
-      int r = xpu::adamw<XPUType, XPUType, MPDType>(
+      int r = xpu::adamw<XPUType, XPUType, MT>(
           dev_ctx.x_context(),
           beta1_,
           beta2_,
           epsilon_,
           coeff_,
           lr_ratio_,
-          nullptr,                     // beta1_pow
-          *beta1_pow.data<MPDType>(),  // beta1_pow_scalar
-          nullptr,                     // beta2_pow
-          *beta2_pow.data<MPDType>(),  // beta2_pow_scalar
-          moment_in_fp16 ? moment1_input_for_xdnn
-                         : moment1.template data<MPDType>(),
+          nullptr,                // beta1_pow
+          *beta1_pow.data<MT>(),  // beta1_pow_scalar
+          nullptr,                // beta2_pow
+          *beta2_pow.data<MT>(),  // beta2_pow_scalar
+          moment_in_fp16 ? moment1_input_for_xdnn : moment1.template data<MT>(),
           moment_in_fp16 ? moment1_output_for_xdnn
-                         : dev_ctx.template Alloc<MPDType>(moment1_out),
-          moment_in_fp16 ? moment2_input_for_xdnn
-                         : moment2.template data<MPDType>(),
+                         : dev_ctx.template Alloc<MT>(moment1_out),
+          moment_in_fp16 ? moment2_input_for_xdnn : moment2.template data<MT>(),
           moment_in_fp16 ? moment2_output_for_xdnn
-                         : dev_ctx.template Alloc<MPDType>(moment2_out),
-          learning_rate.data<MPDType>(),
+                         : dev_ctx.template Alloc<MT>(moment2_out),
+          learning_rate.data<MT>(),
           reinterpret_cast<const XPUType*>(grad.data<T>()),
           reinterpret_cast<const XPUType*>(param.data<T>()),
           reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(param_out)),
@@ -308,33 +303,31 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
     }
     if (!use_global_beta_pow) {
       // Cpu update
-      dev_ctx.template HostAlloc<MPDType>(beta1_pow_out)[0] =
-          beta1_ * beta1_pow.data<MPDType>()[0];
-      dev_ctx.template HostAlloc<MPDType>(beta2_pow_out)[0] =
-          beta2_ * beta2_pow.data<MPDType>()[0];
+      dev_ctx.template HostAlloc<MT>(beta1_pow_out)[0] =
+          beta1_ * beta1_pow.data<MT>()[0];
+      dev_ctx.template HostAlloc<MT>(beta2_pow_out)[0] =
+          beta2_ * beta2_pow.data<MT>()[0];
     }
   } else {
-    if (grad_type == phi::DataType::FLOAT32) {
-      int r = xpu::adamw<XPUType, float, MPDType>(
+    if (grad_type == DataType::FLOAT32) {
+      int r = xpu::adamw<XPUType, float, MT>(
           dev_ctx.x_context(),
           beta1_,
           beta2_,
           epsilon_,
           coeff_,
           lr_ratio_,
-          beta1_pow.data<MPDType>(),  // beta1_pow
-          0.0f,                       // beta1_pow_scalar
-          beta2_pow.data<MPDType>(),  // beta2_pow
-          0.0f,                       // beta2_pow_scalar
-          moment_in_fp16 ? moment1_input_for_xdnn
-                         : moment1.template data<MPDType>(),
+          beta1_pow.data<MT>(),  // beta1_pow
+          0.0f,                  // beta1_pow_scalar
+          beta2_pow.data<MT>(),  // beta2_pow
+          0.0f,                  // beta2_pow_scalar
+          moment_in_fp16 ? moment1_input_for_xdnn : moment1.template data<MT>(),
           moment_in_fp16 ? moment1_output_for_xdnn
-                         : dev_ctx.template Alloc<MPDType>(moment1_out),
-          moment_in_fp16 ? moment2_input_for_xdnn
-                         : moment2.template data<MPDType>(),
+                         : dev_ctx.template Alloc<MT>(moment1_out),
+          moment_in_fp16 ? moment2_input_for_xdnn : moment2.template data<MT>(),
           moment_in_fp16 ? moment2_output_for_xdnn
-                         : dev_ctx.template Alloc<MPDType>(moment2_out),
-          learning_rate.data<MPDType>(),
+                         : dev_ctx.template Alloc<MT>(moment2_out),
+          learning_rate.data<MT>(),
           grad.data<float>(),
           reinterpret_cast<const XPUType*>(param.data<T>()),
           reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(param_out)),
@@ -343,26 +336,24 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
           param.numel());
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "adamw");
     } else {
-      int r = xpu::adamw<XPUType, XPUType, MPDType>(
+      int r = xpu::adamw<XPUType, XPUType, MT>(
           dev_ctx.x_context(),
           beta1_,
           beta2_,
           epsilon_,
           coeff_,
           lr_ratio_,
-          beta1_pow.data<MPDType>(),  // beta1_pow
-          0.0f,                       // beta1_pow_scalar
-          beta2_pow.data<MPDType>(),  // beta2_pow
-          0.0f,                       // beta2_pow_scalar
-          moment_in_fp16 ? moment1_input_for_xdnn
-                         : moment1.template data<MPDType>(),
+          beta1_pow.data<MT>(),  // beta1_pow
+          0.0f,                  // beta1_pow_scalar
+          beta2_pow.data<MT>(),  // beta2_pow
+          0.0f,                  // beta2_pow_scalar
+          moment_in_fp16 ? moment1_input_for_xdnn : moment1.template data<MT>(),
           moment_in_fp16 ? moment1_output_for_xdnn
-                         : dev_ctx.template Alloc<MPDType>(moment1_out),
-          moment_in_fp16 ? moment2_input_for_xdnn
-                         : moment2.template data<MPDType>(),
+                         : dev_ctx.template Alloc<MT>(moment1_out),
+          moment_in_fp16 ? moment2_input_for_xdnn : moment2.template data<MT>(),
           moment_in_fp16 ? moment2_output_for_xdnn
-                         : dev_ctx.template Alloc<MPDType>(moment2_out),
-          learning_rate.data<MPDType>(),
+                         : dev_ctx.template Alloc<MT>(moment2_out),
+          learning_rate.data<MT>(),
           reinterpret_cast<const XPUType*>(grad.data<T>()),
           reinterpret_cast<const XPUType*>(param.data<T>()),
           reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(param_out)),
@@ -374,16 +365,16 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
     if (!use_global_beta_pow) {
       // Update with xpu
       int r = xpu::scale(dev_ctx.x_context(),
-                         beta1_pow.data<MPDType>(),
-                         dev_ctx.template Alloc<MPDType>(beta1_pow_out),
+                         beta1_pow.data<MT>(),
+                         dev_ctx.template Alloc<MT>(beta1_pow_out),
                          beta1_pow.numel(),
                          false,
                          beta1_,
                          0.0f);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
       r = xpu::scale(dev_ctx.x_context(),
-                     beta2_pow.data<MPDType>(),
-                     dev_ctx.template Alloc<MPDType>(beta2_pow_out),
+                     beta2_pow.data<MT>(),
+                     dev_ctx.template Alloc<MT>(beta2_pow_out),
                      beta2_pow.numel(),
                      false,
                      beta2_,
@@ -397,7 +388,7 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
     using XPUType16 = typename XPUTypeTrait<phi::float16>::Type;
 
     // findmax and calculate scale_value for moment1 and moment2
-    int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
+    int max_ptr_size = backends::xpu::get_xpu_max_ptr_size(-1);
     float* buffer_for_findmax = RAII_GUARD.alloc_l3_or_gm<float>(max_ptr_size);
 
     // for moment1
@@ -465,44 +456,43 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void AdamwDenseKernel(
-    const Context& dev_ctx,
-    const DenseTensor& param,
-    const DenseTensor& grad,
-    const DenseTensor& learning_rate,
-    const DenseTensor& moment1,
-    const DenseTensor& moment2,
-    const paddle::optional<DenseTensor>& moment2_max,  // UNUSED
-    const DenseTensor& beta1_pow,
-    const DenseTensor& beta2_pow,
-    const paddle::optional<DenseTensor>& master_param,
-    const paddle::optional<DenseTensor>& skip_update,
-    const Scalar& beta1,
-    const Scalar& beta2,
-    const Scalar& epsilon,
-    float lr_ratio,
-    float coeff,
-    bool with_decay,
-    bool lazy_mode,
-    int64_t min_row_size_to_use_multithread,
-    bool multi_precision,
-    bool use_global_beta_pow,
-    bool amsgrad,  // UNUSED
-    DenseTensor* param_out,
-    DenseTensor* moment1_out,
-    DenseTensor* moment2_out,
-    DenseTensor* moment2_max_out,  // UNUSED
-    DenseTensor* beta1_pow_out,
-    DenseTensor* beta2_pow_out,
-    DenseTensor* master_param_outs) {
+void AdamwDenseKernel(const Context& dev_ctx,
+                      const DenseTensor& param,
+                      const DenseTensor& grad,
+                      const DenseTensor& learning_rate,
+                      const DenseTensor& moment1,
+                      const DenseTensor& moment2,
+                      const optional<DenseTensor>& moment2_max,  // UNUSED
+                      const DenseTensor& beta1_pow,
+                      const DenseTensor& beta2_pow,
+                      const optional<DenseTensor>& master_param,
+                      const optional<DenseTensor>& skip_update,
+                      const Scalar& beta1,
+                      const Scalar& beta2,
+                      const Scalar& epsilon,
+                      float lr_ratio,
+                      float coeff,
+                      bool with_decay,
+                      bool lazy_mode,
+                      int64_t min_row_size_to_use_multithread,
+                      bool multi_precision,
+                      bool use_global_beta_pow,
+                      bool amsgrad,  // UNUSED
+                      DenseTensor* param_out,
+                      DenseTensor* moment1_out,
+                      DenseTensor* moment2_out,
+                      DenseTensor* moment2_max_out,  // UNUSED
+                      DenseTensor* beta1_pow_out,
+                      DenseTensor* beta2_pow_out,
+                      DenseTensor* master_param_outs) {
   PADDLE_ENFORCE_NE(
       amsgrad,
       true,
       common::errors::Unimplemented("Operation amsgrad is not supported yet."));
 
   auto dev_version =
-      phi::backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId());
-  if (dev_version == phi::backends::xpu::XPUVersion::XPU3) {
+      backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId());
+  if (dev_version == backends::xpu::XPUVersion::XPU3) {
     AdamwDenseKernelKL3<T, Context>(dev_ctx,
                                     param,
                                     grad,
@@ -549,12 +539,12 @@ void AdamwDenseKernel(
       errors::InvalidArgument("moment1.dtype does not match moment2.dtype"));
 
   bool moment_in_fp16 = false;
-  if (moment1_dtype == phi::DataType::FLOAT16) {
+  if (moment1_dtype == DataType::FLOAT16) {
     moment_in_fp16 = true;
   } else {
     PADDLE_ENFORCE_EQ(
         moment1_dtype,
-        phi::DataType::FLOAT32,
+        DataType::FLOAT32,
         errors::InvalidArgument("moment1.dtype is neither fp32 nor fp16"));
   }
 
@@ -641,7 +631,7 @@ void AdamwDenseKernel(
         errors::InvalidArgument("Input(SkipUpdate) size must be 1, but get %d",
                                 skip_update->numel()));
     std::vector<bool> skip_update_vec;
-    phi::TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
+    TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
     skip_update_ = skip_update_vec[0];
   }
   if (skip_update_) {
@@ -694,7 +684,7 @@ void AdamwDenseKernel(
     // convert grad to float if necessary
     float* grad_fp32 = nullptr;
     const auto grad_type = grad.dtype();
-    if (grad_type != phi::DataType::FLOAT32) {
+    if (grad_type != DataType::FLOAT32) {
       grad_fp32 = RAII_GUARD.alloc_l3_or_gm<float>(grad.numel());
       PADDLE_ENFORCE_XDNN_NOT_NULL(grad_fp32);
       // int cast(Context* xpu_ctx, const TX* x, TY* y, int64_t len);
@@ -711,7 +701,7 @@ void AdamwDenseKernel(
     // float beta1, float beta2, float epsilon, float coeff, int64_t n);
     r = xpu::adamw<float>(
         dev_ctx.x_context(),
-        (grad_type == phi::DataType::FLOAT32) ? grad.data<float>() : grad_fp32,
+        (grad_type == DataType::FLOAT32) ? grad.data<float>() : grad_fp32,
         moment_in_fp16 ? moment1_input_for_xdnn
                        : moment1.template data<float>(),
         moment_in_fp16 ? moment2_input_for_xdnn
@@ -772,7 +762,7 @@ void AdamwDenseKernel(
     using XPUType16 = typename XPUTypeTrait<phi::float16>::Type;
 
     // findmax and calculate scale_value for moment1 and moment2
-    int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
+    int max_ptr_size = backends::xpu::get_xpu_max_ptr_size(-1);
     float* buffer_for_findmax = RAII_GUARD.alloc_l3_or_gm<float>(max_ptr_size);
 
     // for moment1

@@ -57,7 +57,7 @@ void DeQuantizeLinearImpl(const Context& dev_ctx,
                           DenseTensor* out) {
   auto* in = &x;
 
-  auto in_tmp = phi::Cast<T>(dev_ctx, *in, phi::CppTypeToDataType<D>::Type());
+  auto in_tmp = Cast<T>(dev_ctx, *in, CppTypeToDataType<D>::Type());
 
   dev_ctx.template Alloc<D>(out, out->numel() * sizeof(D));
 
@@ -87,15 +87,13 @@ void DeQuantizeLinearImpl(const Context& dev_ctx,
   }
 }
 
-// Note: We should re-design this kernel's args when we abandon fluid op
-// definition
 template <typename T, typename Context>
 void DeQuantizeLinearKernel(const Context& dev_ctx,
                             const DenseTensor& x,
-                            const paddle::optional<DenseTensor>& in_scale,
+                            const optional<DenseTensor>& in_scale,
                             const DenseTensor& zero_point,
-                            const paddle::optional<DenseTensor>& in_accum,
-                            const paddle::optional<DenseTensor>& in_state,
+                            const optional<DenseTensor>& in_accum,
+                            const optional<DenseTensor>& in_state,
                             int quant_axis,
                             int bit_length,
                             int qmin,
@@ -113,15 +111,15 @@ void DeQuantizeLinearKernel(const Context& dev_ctx,
                         "in_scale can't be nullptr in DeQuantizeLinearKernel"));
   auto scale = in_scale.get();
   switch (scale.dtype()) {
-    case phi::DataType::FLOAT64:
+    case DataType::FLOAT64:
       DeQuantizeLinearImpl<T, Context, double>(
           dev_ctx, x, scale, quant_axis, qmax, only_observer, out);
       break;
-    case phi::DataType::FLOAT32:
+    case DataType::FLOAT32:
       DeQuantizeLinearImpl<T, Context, float>(
           dev_ctx, x, scale, quant_axis, qmax, only_observer, out);
       break;
-    case phi::DataType::FLOAT16:
+    case DataType::FLOAT16:
       DeQuantizeLinearImpl<T, Context, float16>(
           dev_ctx, x, scale, quant_axis, qmax, only_observer, out);
       break;
@@ -137,10 +135,10 @@ void DeQuantizeLinearKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void QuantizeLinearTrainKernel(const Context& dev_ctx,
                                const DenseTensor& x,
-                               const paddle::optional<DenseTensor>& scale,
+                               const optional<DenseTensor>& scale,
                                const DenseTensor& zero_point,
-                               const paddle::optional<DenseTensor>& in_accum,
-                               const paddle::optional<DenseTensor>& in_state,
+                               const optional<DenseTensor>& in_accum,
+                               const optional<DenseTensor>& in_state,
                                int quant_axis,
                                int bit_length,
                                int qmin,
@@ -201,7 +199,7 @@ void QuantizeLinearTrainKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void QuantizeLinearInferKernel(const Context& dev_ctx,
                                const DenseTensor& x,
-                               const paddle::optional<DenseTensor>& scale,
+                               const optional<DenseTensor>& scale,
                                const DenseTensor& zero_point,
                                int quant_axis,
                                int bit_length,
@@ -235,15 +233,13 @@ void QuantizeLinearInferKernel(const Context& dev_ctx,
   }
 }
 
-// Note: We should re-design this kernel's args when we abandon fluid op
-// definition
 template <typename T, typename Context>
 void QuantizeLinearKernel(const Context& dev_ctx,
                           const DenseTensor& x,
-                          const paddle::optional<DenseTensor>& scale,
+                          const optional<DenseTensor>& scale,
                           const DenseTensor& zero_point,
-                          const paddle::optional<DenseTensor>& in_accum,
-                          const paddle::optional<DenseTensor>& in_state,
+                          const optional<DenseTensor>& in_accum,
+                          const optional<DenseTensor>& in_state,
                           int quant_axis,
                           int bit_length,
                           int qmin,
@@ -288,25 +284,23 @@ void QuantizeLinearKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void QuantizeLinearDeprecatedTrainKernel(
-    const Context& dev_ctx,
-    const DenseTensor& x,
-    const DenseTensor& in_scale,
-    const DenseTensor& zero_point,
-    const paddle::optional<DenseTensor>& in_accum,
-    const paddle::optional<DenseTensor>& in_state,
-    int quant_axis,
-    int bit_length,
-    int qmin,
-    int qmax,
-    int round_type,
-    bool only_observer,
-    DenseTensor* out,
-    DenseTensor* out_state,
-    DenseTensor* out_accum,
-    DenseTensor* out_scale) {
-  paddle::optional<DenseTensor> scale =
-      paddle::make_optional<DenseTensor>(in_scale);
+void QuantizeLinearDeprecatedTrainKernel(const Context& dev_ctx,
+                                         const DenseTensor& x,
+                                         const DenseTensor& in_scale,
+                                         const DenseTensor& zero_point,
+                                         const optional<DenseTensor>& in_accum,
+                                         const optional<DenseTensor>& in_state,
+                                         int quant_axis,
+                                         int bit_length,
+                                         int qmin,
+                                         int qmax,
+                                         int round_type,
+                                         bool only_observer,
+                                         DenseTensor* out,
+                                         DenseTensor* out_state,
+                                         DenseTensor* out_accum,
+                                         DenseTensor* out_scale) {
+  optional<DenseTensor> scale = paddle::make_optional<DenseTensor>(in_scale);
   QuantizeLinearTrainKernel<T, Context>(dev_ctx,
                                         x,
                                         scale,
@@ -337,8 +331,7 @@ void QuantizeLinearDeprecatedInferKernel(const Context& dev_ctx,
                                          int round_type,
                                          bool only_observer,
                                          DenseTensor* out) {
-  paddle::optional<DenseTensor> scale =
-      paddle::make_optional<DenseTensor>(in_scale);
+  optional<DenseTensor> scale = paddle::make_optional<DenseTensor>(in_scale);
   QuantizeLinearInferKernel<T, Context>(dev_ctx,
                                         x,
                                         scale,
@@ -364,8 +357,7 @@ void DeQuantizeLinearDeprecatedKernel(const Context& dev_ctx,
                                       int round_type,
                                       bool only_observer,
                                       DenseTensor* out) {
-  paddle::optional<DenseTensor> scale =
-      paddle::make_optional<DenseTensor>(in_scale);
+  optional<DenseTensor> scale = paddle::make_optional<DenseTensor>(in_scale);
   DeQuantizeLinearKernel<T, Context>(dev_ctx,
                                      x,
                                      scale,

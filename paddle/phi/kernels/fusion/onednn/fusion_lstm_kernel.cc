@@ -331,8 +331,8 @@ void RunKernel(const Context& dev_ctx,
                const DenseTensor& weight_x_in,
                const DenseTensor& weight_h_in,
                const DenseTensor& bias_in,
-               const paddle::optional<DenseTensor>& h0_in,
-               const paddle::optional<DenseTensor>& c0_in,
+               const optional<DenseTensor>& h0_in,
+               const optional<DenseTensor>& c0_in,
                bool use_peepholes,
                bool is_reverse,
                bool use_seq,
@@ -368,8 +368,8 @@ void RunKernel(const Context& dev_ctx,
                         : x_dims;
 
   // Get tensor dimensions
-  const auto x_mat_dims_vec = common::vectorize(x_mat_dims);
-  const auto weight_h_dims = common::vectorize(weight_h->dims());
+  const auto x_mat_dims_vec = vectorize(x_mat_dims);
+  const auto weight_h_dims = vectorize(weight_h->dims());
   const auto& input_lod = input->lod()[0];
 
   // Calculate RNN dimensions
@@ -479,8 +479,8 @@ void FusionLSTMMKLDNNKernel(const Context& dev_ctx,
                             const DenseTensor& weight_x,
                             const DenseTensor& weight_h,
                             const DenseTensor& bias,
-                            const paddle::optional<DenseTensor>& h0,
-                            const paddle::optional<DenseTensor>& c0,
+                            const optional<DenseTensor>& h0,
+                            const optional<DenseTensor>& c0,
                             bool use_peepholes,
                             bool is_reverse,
                             bool use_seq,

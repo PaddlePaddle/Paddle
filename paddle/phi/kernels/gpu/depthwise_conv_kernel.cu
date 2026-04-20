@@ -32,7 +32,7 @@ void DepthwiseConvKernel(const Context& dev_ctx,
                          const std::vector<int>& dilations_t,
                          const std::string& data_format,
                          DenseTensor* out) {
-  if (input.numel() == 0) {
+  if (input.numel() == 0 || filter.numel() == 0) {
     Full<T, Context>(dev_ctx, out->dims(), 0, out);
     return;
   }
@@ -80,16 +80,16 @@ void DepthwiseConvKernel(const Context& dev_ctx,
     !defined(PADDLE_WITH_HIP)
   DWConvParams params(has_fuse_relu, data_format, strides, dilations);
   if (params.UseCudnnDepthwise<Context>(dev_ctx, input, filter)) {
-    phi::DepthwiseConvCudnnKernel<T>(dev_ctx,
-                                     input,
-                                     filter,
-                                     strides_t,
-                                     paddings_t,
-                                     padding_algorithm,
-                                     groups,
-                                     dilations_t,
-                                     data_format,
-                                     out);
+    DepthwiseConvCudnnKernel<T>(dev_ctx,
+                                input,
+                                filter,
+                                strides_t,
+                                paddings_t,
+                                padding_algorithm,
+                                groups,
+                                dilations_t,
+                                data_format,
+                                out);
     return;
   }
 #endif
@@ -99,7 +99,7 @@ void DepthwiseConvKernel(const Context& dev_ctx,
   auto filter_dims = filter.dims();
 
   DDim in_data_dims;
-  const DataLayout data_layout = common::StringToDataLayout(data_format);
+  const DataLayout data_layout = StringToDataLayout(data_format);
   if (data_layout != DataLayout::NHWC) {
     in_data_dims = slice_ddim(in_dims, 2, in_dims.size());
   } else {
@@ -107,7 +107,7 @@ void DepthwiseConvKernel(const Context& dev_ctx,
   }
 
   DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
@@ -119,7 +119,7 @@ void DepthwiseConvKernel(const Context& dev_ctx,
   }
 
   if (fuse_relu) {
-    phi::math::DepthwiseConvFunctor<Context, T, true> depthwiseConv;
+    math::DepthwiseConvFunctor<Context, T, true> depthwiseConv;
     depthwiseConv(dev_ctx,
                   input,
                   filter,
@@ -129,7 +129,7 @@ void DepthwiseConvKernel(const Context& dev_ctx,
                   output,
                   data_layout);
   } else {
-    phi::math::DepthwiseConvFunctor<Context, T, false> depthwiseConv;
+    math::DepthwiseConvFunctor<Context, T, false> depthwiseConv;
     depthwiseConv(dev_ctx,
                   input,
                   filter,

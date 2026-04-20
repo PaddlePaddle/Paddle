@@ -12,18 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <initializer_list>
-#include <iostream>
-#include <memory>
-
-#include "dnnl.hpp"  // NOLINT
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/core/mixed_vector.h"
 
 namespace phi {
 
-using common::vectorize;
 using funcs::OneDNNGetDataType;
 using funcs::OneDNNMemDesc;
 using Direction = dnnl::rnn_direction;
@@ -681,7 +674,7 @@ class MultiGRUHandler {
   const std::vector<const DenseTensor*> biases_;
   DenseTensor* hidden_;
   std::vector<dnnl::primitive_attr> attrs_;
-  const phi::Vector<size_t>& x_lod_;
+  const std::vector<size_t>& x_lod_;
 };
 
 template <typename T, typename Context, typename Tout = T>
@@ -737,8 +730,8 @@ void MultiGRUONEDNNKernel(
     const DenseTensor& x,
     const std::vector<const DenseTensor*>& weight_x,
     const std::vector<const DenseTensor*>& weight_h,
-    const paddle::optional<std::vector<const DenseTensor*>>& bias,
-    const paddle::optional<std::vector<const DenseTensor*>>& scale_weights,
+    const optional<std::vector<const DenseTensor*>>& bias,
+    const optional<std::vector<const DenseTensor*>>& scale_weights,
     const std::string& activation,
     const std::string& gate_activation,
     int layers,

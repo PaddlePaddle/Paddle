@@ -19,47 +19,46 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ResNetUnitGradXPUKernel(
-    const Context &dev_ctx,
-    const DenseTensor &x_in,
-    const DenseTensor &filter_x_in,
-    const DenseTensor &conv_x_in,
-    const DenseTensor &scale_x_in,
-    const DenseTensor &bias_x_in,
-    const DenseTensor &saved_mean_x_in,
-    const DenseTensor &saved_invstd_x_in,
-    const paddle::optional<DenseTensor> &z_in,
-    const paddle::optional<DenseTensor> &filter_z_in,
-    const paddle::optional<DenseTensor> &conv_z_in,
-    const paddle::optional<DenseTensor> &scale_z_in,
-    const paddle::optional<DenseTensor> &bias_z_in,
-    const paddle::optional<DenseTensor> &saved_mean_z_in,
-    const paddle::optional<DenseTensor> &saved_invstd_z_in,
-    const DenseTensor &out,
-    const DenseTensor &bit_mask,
-    const DenseTensor &out_grad,
-    int stride,
-    int stride_z,
-    int padding,
-    int dilation,
-    int group,
-    float momentum_in,
-    float epsilon,
-    const std::string &data_format,
-    bool fuse_add,
-    bool has_shortcut,
-    bool use_global_stats,
-    bool is_test,
-    bool use_addto,
-    const std::string &act_type,
-    DenseTensor *x_grad,
-    DenseTensor *filter_x_grad,
-    DenseTensor *scale_x_grad,
-    DenseTensor *bias_x_grad,
-    DenseTensor *z_grad,
-    DenseTensor *filter_z_grad,
-    DenseTensor *scale_z_grad,
-    DenseTensor *bias_z_grad) {
+void ResNetUnitGradXPUKernel(const Context &dev_ctx,
+                             const DenseTensor &x_in,
+                             const DenseTensor &filter_x_in,
+                             const DenseTensor &conv_x_in,
+                             const DenseTensor &scale_x_in,
+                             const DenseTensor &bias_x_in,
+                             const DenseTensor &saved_mean_x_in,
+                             const DenseTensor &saved_invstd_x_in,
+                             const optional<DenseTensor> &z_in,
+                             const optional<DenseTensor> &filter_z_in,
+                             const optional<DenseTensor> &conv_z_in,
+                             const optional<DenseTensor> &scale_z_in,
+                             const optional<DenseTensor> &bias_z_in,
+                             const optional<DenseTensor> &saved_mean_z_in,
+                             const optional<DenseTensor> &saved_invstd_z_in,
+                             const DenseTensor &out,
+                             const DenseTensor &bit_mask,
+                             const DenseTensor &out_grad,
+                             int stride,
+                             int stride_z,
+                             int padding,
+                             int dilation,
+                             int group,
+                             float momentum_in,
+                             float epsilon,
+                             const std::string &data_format,
+                             bool fuse_add,
+                             bool has_shortcut,
+                             bool use_global_stats,
+                             bool is_test,
+                             bool use_addto,
+                             const std::string &act_type,
+                             DenseTensor *x_grad,
+                             DenseTensor *filter_x_grad,
+                             DenseTensor *scale_x_grad,
+                             DenseTensor *bias_x_grad,
+                             DenseTensor *z_grad,
+                             DenseTensor *filter_z_grad,
+                             DenseTensor *scale_z_grad,
+                             DenseTensor *bias_z_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   bool is_nchw = (data_format == "NCHW");
@@ -86,9 +85,9 @@ void ResNetUnitGradXPUKernel(
       reinterpret_cast<XPUType *>(dev_ctx.template Alloc<T>(filter_x_grad))};
 
   std::vector<std::vector<int64_t>> x_shape_list = {
-      common::vectorize<int64_t>(x->dims())};
+      vectorize<int64_t>(x->dims())};
 
-  auto filter_x_shape = common::vectorize<int64_t>(filter_x->dims());
+  auto filter_x_shape = vectorize<int64_t>(filter_x->dims());
   std::vector<int64_t> x_ksize = {filter_x_shape[2], filter_x_shape[3]};
   if (!is_nchw) {
     x_ksize[0] = filter_x_shape[1];
@@ -136,9 +135,9 @@ void ResNetUnitGradXPUKernel(
         reinterpret_cast<XPUType *>(dev_ctx.template Alloc<T>(z_grad)));
     dw_list.push_back(
         reinterpret_cast<XPUType *>(dev_ctx.template Alloc<T>(filter_z_grad)));
-    x_shape_list.push_back(common::vectorize<int64_t>(z->dims()));
+    x_shape_list.push_back(vectorize<int64_t>(z->dims()));
 
-    auto filter_z_shape = common::vectorize<int64_t>(filter_z->dims());
+    auto filter_z_shape = vectorize<int64_t>(filter_z->dims());
     std::vector<int64_t> ksize_z = {filter_z_shape[2], filter_z_shape[3]};
     if (!is_nchw) {
       ksize_z[0] = filter_z_shape[1];

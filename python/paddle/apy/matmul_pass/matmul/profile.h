@@ -16,7 +16,6 @@
 
 #include <functional>
 #include <utility>
-#include "matmul.h"  // NOLINT
 
 #ifdef __NVCC__
 #include <cuda_profiler_api.h>
@@ -36,7 +35,6 @@
 #define CHECK_GPU CHECK_CUDA
 #endif
 
-
 #ifdef __HIPCC__
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
@@ -55,7 +53,6 @@
 #define GPUStreamSynchronize(s) hipStreamSynchronize(s)
 #define CHECK_GPU CHECK_HIP
 #endif
-
 
 namespace ap {
 
@@ -100,7 +97,7 @@ class GpuTimer {
 
 template <typename FuncType, typename... Args>
 int ProfileBestConfig(const std::vector<FuncType> &funcs,
-                      void* stream_ptr,
+                      void *stream_ptr,
                       Args &&...args) {
   std::cout
       << "=================================================================="
@@ -113,7 +110,7 @@ int ProfileBestConfig(const std::vector<FuncType> &funcs,
   float min_time_ms = 100000.f;
   int min_time_idx = -1;
 
-  GPUStream_t stream = *reinterpret_cast<GPUStream_t*>(stream_ptr);
+  GPUStream_t stream = *reinterpret_cast<GPUStream_t *>(stream_ptr);
 
   for (int idx = 0; idx < funcs.size(); ++idx) {
     auto func = funcs[idx];
@@ -149,21 +146,20 @@ int ProfileBestConfig(const std::vector<FuncType> &funcs,
 
 }  // namespace ap
 
-
-
-#define AP_AUTOTUNE(func, stream_ptr, count, ...)                               \
-{                                                                               \
-    using FuncType = decltype(func<0>);                                         \
-    static int selected_config_id = -1;                                         \
-    static std::vector<std::function<FuncType>> matmul_functions =              \
-        []<std::size_t... Is>(std::index_sequence<Is...>) {                     \
-            return std::vector<std::function<FuncType>>{func<Is>...};           \
-        }(std::make_index_sequence<count>());                                   \
-                                                                                \
-    if (selected_config_id == -1) {                                             \
-        selected_config_id =                                                    \
-            ap::ProfileBestConfig(matmul_functions, stream_ptr, ##__VA_ARGS__); \
-    }                                                                           \
-                                                                                \
-    matmul_functions[selected_config_id](__VA_ARGS__);                          \
-}
+#define AP_AUTOTUNE(func, stream_ptr, count, ...)                             \
+  {                                                                           \
+    using FuncType = decltype(func<0>);                                       \
+    static int selected_config_id = -1;                                       \
+    static std::vector<std::function<FuncType>> matmul_functions =            \
+        []<std::size_t... Is>(std::index_sequence<Is...>) {                   \
+      return std::vector<std::function<FuncType>>{func<Is>...};               \
+    }                                                                         \
+    (std::make_index_sequence<count>());                                      \
+                                                                              \
+    if (selected_config_id == -1) {                                           \
+      selected_config_id =                                                    \
+          ap::ProfileBestConfig(matmul_functions, stream_ptr, ##__VA_ARGS__); \
+    }                                                                         \
+                                                                              \
+    matmul_functions[selected_config_id](__VA_ARGS__);                        \
+  }

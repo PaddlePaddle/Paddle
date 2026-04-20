@@ -29,7 +29,7 @@ template <typename T, typename Context>
 void WeightOnlyLinearGradKernel(const Context& dev_ctx,
                                 const DenseTensor& x,
                                 const DenseTensor& weight,
-                                const paddle::optional<DenseTensor>& bias,
+                                const optional<DenseTensor>& bias,
                                 const DenseTensor& weight_scale,
                                 const DenseTensor& out_grad,
                                 const std::string& weight_dtype,
@@ -54,12 +54,12 @@ void WeightOnlyLinearGradKernel(const Context& dev_ctx,
   int64_t k = weight.dims()[1];
 
   dev_ctx.template Alloc<T>(x_grad);
-  if (x_grad->numel() == 0 || out_grad.numel() == 0) {
+  if (x_grad->numel() == 0 || out_grad.numel() == 0 || weight.numel() == 0) {
     Full<T, Context>(dev_ctx, x_grad->dims(), 0, x_grad);
     return;
   }
   DenseTensor weight_dequantized;
-  weight_dequantized.Resize({{n, k}});
+  weight_dequantized.Resize({n, k});
   dev_ctx.template Alloc<T>(&weight_dequantized);
   std::string algo =
       weight_dtype == "int8" ? "weight_only_int8" : "weight_only_int4";

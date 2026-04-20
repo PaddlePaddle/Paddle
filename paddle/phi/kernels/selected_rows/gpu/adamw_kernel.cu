@@ -118,42 +118,41 @@ __global__ void SparseAdamWCUDAKernelREG(MT beta1,
 }
 
 template <typename T, typename Context>
-void AdamwDenseParamSparseGradKernel(
-    const Context& dev_ctx,
-    const DenseTensor& param,
-    const SelectedRows& grad,
-    const DenseTensor& learning_rate,
-    const DenseTensor& moment1,
-    const DenseTensor& moment2,
-    const paddle::optional<DenseTensor>& moment2_max,
-    const DenseTensor& beta1_pow,
-    const DenseTensor& beta2_pow,
-    const paddle::optional<DenseTensor>& master_param,
-    const paddle::optional<DenseTensor>& skip_update,
-    const Scalar& beta1,
-    const Scalar& beta2,
-    const Scalar& epsilon,
-    float lr_ratio,
-    float coeff,
-    bool with_decay,
-    bool lazy_mode,
-    int64_t min_row_size_to_use_multithread,
-    bool multi_precision,
-    bool use_global_beta_pow,
-    bool amsgrad,
-    DenseTensor* param_out,
-    DenseTensor* moment1_out,
-    DenseTensor* moment2_out,
-    DenseTensor* moment2_max_out,
-    DenseTensor* beta1_pow_out,
-    DenseTensor* beta2_pow_out,
-    DenseTensor* master_param_outs) {
-  using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
+void AdamwDenseParamSparseGradKernel(const Context& dev_ctx,
+                                     const DenseTensor& param,
+                                     const SelectedRows& grad,
+                                     const DenseTensor& learning_rate,
+                                     const DenseTensor& moment1,
+                                     const DenseTensor& moment2,
+                                     const optional<DenseTensor>& moment2_max,
+                                     const DenseTensor& beta1_pow,
+                                     const DenseTensor& beta2_pow,
+                                     const optional<DenseTensor>& master_param,
+                                     const optional<DenseTensor>& skip_update,
+                                     const Scalar& beta1,
+                                     const Scalar& beta2,
+                                     const Scalar& epsilon,
+                                     float lr_ratio,
+                                     float coeff,
+                                     bool with_decay,
+                                     bool lazy_mode,
+                                     int64_t min_row_size_to_use_multithread,
+                                     bool multi_precision,
+                                     bool use_global_beta_pow,
+                                     bool amsgrad,
+                                     DenseTensor* param_out,
+                                     DenseTensor* moment1_out,
+                                     DenseTensor* moment2_out,
+                                     DenseTensor* moment2_max_out,
+                                     DenseTensor* beta1_pow_out,
+                                     DenseTensor* beta2_pow_out,
+                                     DenseTensor* master_param_outs) {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
 
-  MPDType coeff_ = static_cast<MPDType>(coeff);
-  MPDType lr_ratio_ = static_cast<MPDType>(lr_ratio);
+  MT coeff_ = static_cast<MT>(coeff);
+  MT lr_ratio_ = static_cast<MT>(lr_ratio);
 
   bool skip_update_ = false;
   if (skip_update.is_initialized()) {
@@ -163,7 +162,7 @@ void AdamwDenseParamSparseGradKernel(
         errors::InvalidArgument("Input(SkipUpdate) size must be 1, but get %d",
                                 skip_update->numel()));
     std::vector<bool> skip_update_vec;
-    phi::TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
+    TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
     skip_update_ = skip_update_vec[0];
   }
 
@@ -190,12 +189,12 @@ void AdamwDenseParamSparseGradKernel(
 
   // if with_decay = false, coeff = 0
   if (!with_decay) {
-    coeff_ = static_cast<MPDType>(0.0);
+    coeff_ = static_cast<MT>(0.0);
   }
 
-  MPDType beta1_ = beta1.to<MPDType>();
-  MPDType beta2_ = beta2.to<MPDType>();
-  MPDType epsilon_ = epsilon.to<MPDType>();
+  MT beta1_ = beta1.to<MT>();
+  MT beta2_ = beta2.to<MT>();
+  MT epsilon_ = epsilon.to<MT>();
   VLOG(3) << "beta1_pow.numel() : " << beta1_pow.numel()
           << "beta2_pow.numel() : " << beta2_pow.numel();
   VLOG(3) << "param.numel(): " << param.numel();
@@ -213,16 +212,15 @@ void AdamwDenseParamSparseGradKernel(
                               "value is:%d.",
                               beta2_pow_out->numel()));
 
-  const MPDType* master_in_data =
-      multi_precision ? master_param->data<MPDType>() : nullptr;
-  MPDType* master_out_data =
-      multi_precision ? dev_ctx.template Alloc<MPDType>(master_param_outs)
-                      : nullptr;
+  const MT* master_in_data =
+      multi_precision ? master_param->data<MT>() : nullptr;
+  MT* master_out_data =
+      multi_precision ? dev_ctx.template Alloc<MT>(master_param_outs) : nullptr;
 
-  const MPDType* moment2_max_in_data =
-      amsgrad ? moment2_max.get().data<MPDType>() : nullptr;
-  MPDType* moment2_max_out_data =
-      amsgrad ? dev_ctx.template Alloc<MPDType>(moment2_max_out) : nullptr;
+  const MT* moment2_max_in_data =
+      amsgrad ? moment2_max.get().data<MT>() : nullptr;
+  MT* moment2_max_out_data =
+      amsgrad ? dev_ctx.template Alloc<MT>(moment2_max_out) : nullptr;
 
   if (grad.rows().size() == 0) {
     VLOG(3) << "grad row size is 0!!";
@@ -264,22 +262,22 @@ void AdamwDenseParamSparseGradKernel(
 
     // NOTE(large-tensor): Kernel launch requires int type for grid dimension
     PADDLE_ENFORCE_LE_INT_MAX(blocks, "blocks");
-    SparseAdamWCUDAKernelREG<T, MPDType>
+    SparseAdamWCUDAKernelREG<T, MT>
         <<<static_cast<int>(blocks), threads, 0, dev_ctx.stream()>>>(
             beta1_,
             beta2_,
             epsilon_,
             coeff_,
             lr_ratio_,
-            *beta1_pow.data<MPDType>(),
-            *beta2_pow.data<MPDType>(),
-            moment1.data<MPDType>(),
-            dev_ctx.template Alloc<MPDType>(moment1_out),
-            moment2.data<MPDType>(),
-            dev_ctx.template Alloc<MPDType>(moment2_out),
+            *beta1_pow.data<MT>(),
+            *beta2_pow.data<MT>(),
+            moment1.data<MT>(),
+            dev_ctx.template Alloc<MT>(moment1_out),
+            moment2.data<MT>(),
+            dev_ctx.template Alloc<MT>(moment2_out),
             moment2_max_in_data,
             moment2_max_out_data,
-            learning_rate.data<MPDType>(),
+            learning_rate.data<MT>(),
             grad_data,
             param.data<T>(),
             dev_ctx.template Alloc<T>(param_out),
@@ -293,27 +291,27 @@ void AdamwDenseParamSparseGradKernel(
             amsgrad);
     if (!use_global_beta_pow) {
       // Update with cpu
-      dev_ctx.template HostAlloc<MPDType>(beta1_pow_out)[0] =
-          beta1_ * beta1_pow.data<MPDType>()[0];
-      dev_ctx.template HostAlloc<MPDType>(beta2_pow_out)[0] =
-          beta2_ * beta2_pow.data<MPDType>()[0];
+      dev_ctx.template HostAlloc<MT>(beta1_pow_out)[0] =
+          beta1_ * beta1_pow.data<MT>()[0];
+      dev_ctx.template HostAlloc<MT>(beta2_pow_out)[0] =
+          beta2_ * beta2_pow.data<MT>()[0];
     }
   } else {
-    funcs::SparseAdamWFunctor<T, funcs::GPUAdamW, MPDType> functor(
+    funcs::SparseAdamWFunctor<T, funcs::GPUAdamW, MT> functor(
         beta1_,
         beta2_,
         epsilon_,
         coeff_,
         lr_ratio_,
-        beta1_pow.data<MPDType>(),
-        beta2_pow.data<MPDType>(),
-        moment1.data<MPDType>(),
-        dev_ctx.template Alloc<MPDType>(moment1_out),
-        moment2.data<MPDType>(),
-        dev_ctx.template Alloc<MPDType>(moment2_out),
+        beta1_pow.data<MT>(),
+        beta2_pow.data<MT>(),
+        moment1.data<MT>(),
+        dev_ctx.template Alloc<MT>(moment1_out),
+        moment2.data<MT>(),
+        dev_ctx.template Alloc<MT>(moment2_out),
         moment2_max_in_data,
         moment2_max_out_data,
-        learning_rate.data<MPDType>(),
+        learning_rate.data<MT>(),
         grad_data,
         param.data<T>(),
         dev_ctx.template Alloc<T>(param_out),
@@ -330,13 +328,13 @@ void AdamwDenseParamSparseGradKernel(
     for_range(functor);
     if (!use_global_beta_pow) {
       // update beta1 and beta2
-      UpdateAdamWBetaPow<MPDType><<<1, 32, 0, dev_ctx.stream()>>>(
+      UpdateAdamWBetaPow<MT><<<1, 32, 0, dev_ctx.stream()>>>(
           beta1_,
           beta2_,
-          beta1_pow.data<MPDType>(),
-          beta2_pow.data<MPDType>(),
-          dev_ctx.template Alloc<MPDType>(beta1_pow_out),
-          dev_ctx.template Alloc<MPDType>(beta2_pow_out));
+          beta1_pow.data<MT>(),
+          beta2_pow.data<MT>(),
+          dev_ctx.template Alloc<MT>(beta1_pow_out),
+          dev_ctx.template Alloc<MT>(beta2_pow_out));
     }
   }
 }

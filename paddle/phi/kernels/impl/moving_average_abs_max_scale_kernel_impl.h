@@ -22,17 +22,16 @@
 namespace phi {
 
 template <typename T, typename Context>
-void MovingAverageAbsMaxScaleKernel(
-    const Context &dev_ctx,
-    const DenseTensor &x,
-    const paddle::optional<DenseTensor> &in_accum_in,
-    const paddle::optional<DenseTensor> &in_state_in,
-    float moving_rate,
-    bool is_test,
-    DenseTensor *out,
-    DenseTensor *out_scale,
-    DenseTensor *out_state,
-    DenseTensor *out_accum) {
+void MovingAverageAbsMaxScaleKernel(const Context &dev_ctx,
+                                    const DenseTensor &x,
+                                    const optional<DenseTensor> &in_accum_in,
+                                    const optional<DenseTensor> &in_state_in,
+                                    float moving_rate,
+                                    bool is_test,
+                                    DenseTensor *out,
+                                    DenseTensor *out_scale,
+                                    DenseTensor *out_state,
+                                    DenseTensor *out_accum) {
   auto *in = &x;
 
   if (out != nullptr) {

@@ -46,7 +46,7 @@ MPI_Op ToMPIType(ReduceOp reduction);
 
 bool CheckMpiCudaAware();
 
-void CheckValidInputs(const std::vector<phi::DenseTensor>& tensors);
+void CheckValidInputs(const std::vector<DenseTensor>& tensors);
 
 }  // namespace mpi
 }  // namespace distributed

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/api/ext/native_meta_tensor.h"
+#include "paddle/fluid/pybind/data_type_caster.h"
 #include "paddle/fluid/pybind/native_meta_tensor.h"
 #include "paddle/utils/pybind.h"
 #include "pybind11/functional.h"
@@ -26,9 +27,9 @@ void BindNativeMetaTensor(py::module* m) {
       .def(py::init<>())
       .def(py::init<const phi::NativeMetaTensor&>())
       .def(py::init([](const py::object& dtype, const py::object& shape) {
-             phi::DataType dt = phi::DataType::FLOAT32;
+             DataType dt = DataType::FLOAT32;
              if (!dtype.is_none()) {
-               dt = dtype.cast<phi::DataType>();
+               dt = dtype.cast<DataType>();
              }
              std::vector<int64_t> dims;
              if (py::isinstance<py::list>(shape) ||
@@ -65,13 +66,13 @@ void BindNativeMetaTensor(py::module* m) {
           "Set tensor data type from string")
       .def(
           "set_dtype",
-          [](phi::NativeMetaTensor& self, const phi::DataType& dtype) {
+          [](phi::NativeMetaTensor& self, const DataType& dtype) {
             self.set_dtype(dtype);
           },
           "Set tensor data type from DataType object")
       .def_property_readonly(
           "dtype",
-          [](const phi::NativeMetaTensor& self) -> phi::DataType {
+          [](const phi::NativeMetaTensor& self) -> DataType {
             return self.dtype();
           },
           "Get tensor data type")

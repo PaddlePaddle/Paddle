@@ -40,8 +40,7 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
 
     // When soft_label is True, the axis column is 1.
     if (soft_label) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(loss->dims())), 0, loss);
+      Full<T, Context>(dev_ctx, loss->dims(), 0, loss);
     }
     return;
   }
@@ -114,9 +113,9 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
   } else {
     // 2. soft_cross_entropy only
     const int* labels_data = nullptr;
-    if (labels.dtype() == phi::DataType::INT32) {
+    if (labels.dtype() == DataType::INT32) {
       labels_data = labels.data<int>();
-    } else if (labels.dtype() == phi::DataType::INT64) {
+    } else if (labels.dtype() == DataType::INT64) {
       int* labels_tmp = RAII_GUARD.alloc_l3_or_gm<int>(labels.numel());
       r = xpu::cast<int64_t, int>(dev_ctx.x_context(),
                                   labels.data<int64_t>(),

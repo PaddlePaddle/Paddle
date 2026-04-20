@@ -23,7 +23,7 @@ namespace paddle::framework::ir {
 namespace {
 
 template <typename T_out>
-void QuantizeParams(phi::DenseTensor* param_tensor,
+void QuantizeParams(DenseTensor* param_tensor,
                     const std::vector<float>& scales) {
   std::vector<T_out> tmp_data;
   tmp_data.reserve(param_tensor->numel());

@@ -136,8 +136,8 @@ struct GumbleNoiseGenerator<GPUContext, T> {
                         const float temperature) {
     DenseTensor random_tensor;
     int64_t size = size_to_axis * size_from_axis;
-    random_tensor.Resize(common::make_ddim({size}));
-    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+    random_tensor.Resize({size});
+    using MPType = typename dtype::MPTypeTrait<T>::Type;
     MPType* random_data = dev_ctx.template Alloc<MPType>(&random_tensor);
 
     // generate gumbel noise

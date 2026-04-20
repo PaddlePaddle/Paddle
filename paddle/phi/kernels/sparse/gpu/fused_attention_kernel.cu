@@ -89,16 +89,15 @@ __global__ void AttnSoftmaxGpuKernel(const int64_t* x_crows,
 }
 
 template <typename T, typename Context>
-void FusedAttentionCsrKernel(
-    const Context& dev_ctx,
-    const DenseTensor& query,
-    const DenseTensor& key,
-    const DenseTensor& value,
-    const SparseCsrTensor& sparse_mask,
-    const paddle::optional<DenseTensor>& key_padding_mask,
-    const paddle::optional<DenseTensor>& attn_mask,
-    DenseTensor* out,
-    SparseCsrTensor* softmax) {
+void FusedAttentionCsrKernel(const Context& dev_ctx,
+                             const DenseTensor& query,
+                             const DenseTensor& key,
+                             const DenseTensor& value,
+                             const SparseCsrTensor& sparse_mask,
+                             const optional<DenseTensor>& key_padding_mask,
+                             const optional<DenseTensor>& attn_mask,
+                             DenseTensor* out,
+                             SparseCsrTensor* softmax) {
 #if CUDA_VERSION >= 11080
   /* Check Shape */
   auto q_dim = query.dims();
@@ -214,8 +213,7 @@ void FusedAttentionCsrKernel(
       q_dim[1],
       batch_nnz);
 
-  softmax->set_dims(
-      common::make_ddim({q_dim[0], q_dim[1], q_dim[2], q_dim[2]}));
+  softmax->set_dims(make_ddim({q_dim[0], q_dim[1], q_dim[2], q_dim[2]}));
   MatmulCsrDenseKernel<T, Context>(dev_ctx, *softmax, value, out);
 #else
   PADDLE_THROW(common::errors::Unimplemented(

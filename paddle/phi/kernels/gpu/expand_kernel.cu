@@ -33,7 +33,7 @@ void ExpandKernel(const Context& dev_ctx,
     *out = x;
     return;
   }
-  auto vec_in_dims = common::vectorize<int64_t>(in_dims);
+  auto vec_in_dims = vectorize<int64_t>(in_dims);
   auto diff = expand_shape.size() - vec_in_dims.size();
   PADDLE_ENFORCE_GE(
       diff,
@@ -85,7 +85,7 @@ void ExpandKernel(const Context& dev_ctx,
     }
   }
 
-  out->Resize(common::make_ddim(out_shape));
+  out->Resize(out_shape);
   dev_ctx.template Alloc<T>(out);
   if (has_zero_dim) {
     return;

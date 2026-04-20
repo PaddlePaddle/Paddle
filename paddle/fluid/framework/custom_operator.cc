@@ -1282,7 +1282,7 @@ RegisterOperatorWithMetaInfoMap(const paddle::OpMetaInfoMap& op_meta_info_map,
   VLOG(3) << "Custom Operator: size of op meta info map - "
           << meta_info_map.size();
   // pair: {op_type, OpMetaInfo}
-  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  pir::IrContext* ctx = pir::IrContext::Instance();
   auto* custom_dialect =
       ctx->GetOrRegisterDialect<paddle::dialect::CustomOpDialect>();
   std::unordered_map<std::string, std::vector<OpMetaInfo>> diff_map;

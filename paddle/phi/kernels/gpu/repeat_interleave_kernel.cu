@@ -28,7 +28,6 @@
 
 namespace phi {
 
-using phi::PADDLE_CUDA_NUM_THREADS;
 template <typename T, typename IndexT>
 __global__ void index_select_cuda_kernel(const T* input,
                                          T* output,
@@ -77,7 +76,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
                         x.dims()[dim]));
   const auto& index_type = repeats_tensor.dtype();
   bool index_type_match =
-      index_type == phi::DataType::INT32 || index_type == phi::DataType::INT64;
+      index_type == DataType::INT32 || index_type == DataType::INT64;
   PADDLE_ENFORCE_EQ(
       index_type_match,
       true,
@@ -85,20 +84,20 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
           "Input(RepeatsTensor) holds the wrong type, it holds %s, but "
           "desires to be %s or %s",
           DataTypeToString(index_type),
-          DataTypeToString(phi::DataType::INT32),
-          DataTypeToString(phi::DataType::INT64)));
+          DataTypeToString(DataType::INT32),
+          DataTypeToString(DataType::INT64)));
 
   if (x.numel() == 0) {
     // infer out shape
-    if (index_type == phi::DataType::INT32) {
+    if (index_type == DataType::INT32) {
       funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
           dev_ctx, repeats_tensor, &index);
 
-    } else if (index_type == phi::DataType::INT64) {
+    } else if (index_type == DataType::INT64) {
       funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
           dev_ctx, repeats_tensor, &index);
     }
-    auto output_dim = common::vectorize(x.dims());
+    auto output_dim = vectorize(x.dims());
     if (output_size > 0) {
       PADDLE_ENFORCE_EQ(
           output_size,
@@ -113,7 +112,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
     } else {
       output_dim[dim] = index.dims()[0];
     }
-    out->Resize(common::make_ddim(output_dim));
+    out->Resize(output_dim);
     dev_ctx.template Alloc<T>(out);
     return;
   }
@@ -122,12 +121,12 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
   int64_t stride = stride_dim[dim];
   auto stream = dev_ctx.stream();
   auto* in_data = x.data<T>();
-  if (index_type == phi::DataType::INT64) {
+  if (index_type == DataType::INT64) {
     funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
         dev_ctx, repeats_tensor, &index);
 
     const int64_t* index_data = index.data<int64_t>();
-    auto output_dim = common::vectorize(x.dims());
+    auto output_dim = vectorize(x.dims());
     if (output_size > 0) {
       // Validate output_size for tensor repeats on GPU
       PADDLE_ENFORCE_EQ(
@@ -143,7 +142,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
     } else {
       output_dim[dim] = index.dims()[0];
     }
-    out->Resize(common::make_ddim(output_dim));
+    out->Resize(output_dim);
     T* out_data = dev_ctx.template Alloc<T>(out);
     int64_t numel = out->numel();
     int64_t size = output_dim[dim];
@@ -159,7 +158,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
         dev_ctx, repeats_tensor, &index);
 
     const int* index_data = index.data<int>();
-    auto output_dim = common::vectorize(x.dims());
+    auto output_dim = vectorize(x.dims());
     if (output_size > 0) {
       // Validate output_size for tensor repeats on GPU
       PADDLE_ENFORCE_EQ(
@@ -175,7 +174,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
     } else {
       output_dim[dim] = index.dims()[0];
     }
-    out->Resize(common::make_ddim(output_dim));
+    out->Resize(output_dim);
     T* out_data = dev_ctx.template Alloc<T>(out);
     int64_t numel = out->numel();
     int64_t size = output_dim[dim];
@@ -257,14 +256,14 @@ void RepeatInterleaveKernel(const Context& dev_ctx,
       outer_size * repeat_size * repeats * inner_size;
 
   int vec_size = 8;
-  vec_size = std::min(phi::GetVectorizedSize(x.data<T>()), vec_size);
-  vec_size = std::min(phi::GetVectorizedSize(out->data<T>()), vec_size);
+  vec_size = std::min(GetVectorizedSize(x.data<T>()), vec_size);
+  vec_size = std::min(GetVectorizedSize(out->data<T>()), vec_size);
   while (vec_size > 1 && inner_size % vec_size != 0) {
     vec_size /= 2;
   }
 
   constexpr int loop_count = 1;
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+  auto config = backends::gpu::GetGpuLaunchConfig1D(
       dev_ctx, total_elements, vec_size * loop_count);
 
   switch (vec_size) {
@@ -302,6 +301,7 @@ PD_REGISTER_KERNEL(repeat_interleave,
                    double,
                    int,
                    int64_t,
+                   phi::float16,
                    phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(repeat_interleave_with_tensor_index,
@@ -312,4 +312,5 @@ PD_REGISTER_KERNEL(repeat_interleave_with_tensor_index,
                    double,
                    int,
                    int64_t,
+                   phi::float16,
                    phi::bfloat16) {}

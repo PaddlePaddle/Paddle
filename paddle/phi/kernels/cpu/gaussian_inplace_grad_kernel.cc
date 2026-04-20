@@ -22,8 +22,8 @@ namespace phi {
 // If T is not complex
 template <typename T,
           typename Context,
-          std::enable_if_t<!std::is_same<T, phi::complex64>::value &&
-                               !std::is_same<T, phi::complex128>::value,
+          std::enable_if_t<!std::is_same<T, complex64>::value &&
+                               !std::is_same<T, complex128>::value,
                            bool> = true>
 void GaussianInplaceGrad(const Context& dev_ctx, DenseTensor* x_grad) {
   if (x_grad) {
@@ -35,14 +35,14 @@ void GaussianInplaceGrad(const Context& dev_ctx, DenseTensor* x_grad) {
 // If T is complex
 template <typename T,
           typename Context,
-          std::enable_if_t<std::is_same<T, phi::complex64>::value ||
-                               std::is_same<T, phi::complex128>::value,
+          std::enable_if_t<std::is_same<T, complex64>::value ||
+                               std::is_same<T, complex128>::value,
                            bool> = true>
 void GaussianInplaceGrad(const Context& dev_ctx, DenseTensor* x_grad) {
   if (x_grad) {
     auto* data = dev_ctx.template Alloc<T>(x_grad);
-    T value = T(static_cast<phi::dtype::Real<T>>(0.0f),
-                static_cast<phi::dtype::Real<T>>(0.0f));
+    T value =
+        T(static_cast<dtype::Real<T>>(0.0f), static_cast<dtype::Real<T>>(0.0f));
     std::fill(data, data + x_grad->numel(), value);
   }
 }

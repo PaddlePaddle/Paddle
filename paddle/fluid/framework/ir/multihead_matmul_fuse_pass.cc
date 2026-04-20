@@ -635,12 +635,12 @@ namespace paddle::framework::ir {
 
 namespace {
 template <typename T>
-inline void QKVWeightsProcess(phi::DenseTensor* wq_tensor,
-                              phi::DenseTensor* wk_tensor,
-                              phi::DenseTensor* wv_tensor,
-                              phi::DenseTensor* bq_tensor,
-                              phi::DenseTensor* bk_tensor,
-                              phi::DenseTensor* bv_tensor) {
+inline void QKVWeightsProcess(DenseTensor* wq_tensor,
+                              DenseTensor* wk_tensor,
+                              DenseTensor* wv_tensor,
+                              DenseTensor* bq_tensor,
+                              DenseTensor* bk_tensor,
+                              DenseTensor* bv_tensor) {
   auto* wq_data = wq_tensor->mutable_data<T>(CPUPlace());
   auto* wk_data = wk_tensor->mutable_data<T>(CPUPlace());
   auto* wv_data = wv_tensor->mutable_data<T>(CPUPlace());

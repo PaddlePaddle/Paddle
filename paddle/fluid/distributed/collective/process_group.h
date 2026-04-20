@@ -57,7 +57,7 @@ static void CheckTensorContiguous(const phi::DenseTensor& tensor) {
   }
 }
 
-static void CheckTensorContiguous(const std::vector<phi::DenseTensor>& inputs) {
+static void CheckTensorContiguous(const std::vector<DenseTensor>& inputs) {
   for (const auto& tensor : inputs) {
     if (!tensor.meta().is_contiguous()) {
       PADDLE_THROW(
@@ -66,7 +66,7 @@ static void CheckTensorContiguous(const std::vector<phi::DenseTensor>& inputs) {
   }
 }
 
-static void CheckTensorSamePlace(const std::vector<phi::DenseTensor>& tensors) {
+static void CheckTensorSamePlace(const std::vector<DenseTensor>& tensors) {
   for (const auto& tensor : tensors) {
     if (tensor.place() != tensors[0].place()) {
       PADDLE_THROW(
@@ -77,7 +77,7 @@ static void CheckTensorSamePlace(const std::vector<phi::DenseTensor>& tensors) {
 }
 
 static std::vector<int64_t> GetAllToAllSplitSizes(
-    const std::vector<phi::DenseTensor>& tensors) {
+    const std::vector<DenseTensor>& tensors) {
   std::vector<int64_t> split_sizes(tensors.size());
   std::transform(tensors.begin(),
                  tensors.end(),
@@ -87,7 +87,7 @@ static std::vector<int64_t> GetAllToAllSplitSizes(
 }
 
 static std::vector<const void*> GetTensorPtrs(
-    const std::vector<phi::DenseTensor>& tensors) {
+    const std::vector<DenseTensor>& tensors) {
   std::vector<const void*> tensor_ptrs(tensors.size());
   std::transform(tensors.begin(),
                  tensors.end(),
@@ -96,7 +96,7 @@ static std::vector<const void*> GetTensorPtrs(
   return tensor_ptrs;
 }
 
-static int64_t GetTensorNumel(const std::vector<phi::DenseTensor>& tensors) {
+static int64_t GetTensorNumel(const std::vector<DenseTensor>& tensors) {
   return std::accumulate(tensors.begin(),
                          tensors.end(),
                          int64_t(0),

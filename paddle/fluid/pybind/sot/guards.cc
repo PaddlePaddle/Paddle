@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/pybind/sot/guards.h"
 #include <optional>
+#include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/phi/api/include/tensor.h"
 
 #if SOT_IS_SUPPORTED
@@ -483,6 +484,11 @@ bool LegacyGuardNode::check(std::array<PyObject*, 1> values) {
   PyObject* value = values[0];
   HANDLE_NULL_VALUE(value);
   return guard->check(value);
+}
+
+bool IsGradEnabledGuardNode::check(std::array<PyObject*, 0> values) {
+  bool current_is_grad_enabled = egr::Controller::Instance().HasGrad();
+  return current_is_grad_enabled == is_grad_enabled_;
 }
 
 std::optional<int> ExprGuardNode::lookup(FrameProxy* frame) {

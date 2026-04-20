@@ -13,9 +13,6 @@
 # limitations under the License.
 """Definition of trainers."""
 
-import os
-import sys
-
 __all__ = []
 
 
@@ -31,15 +28,7 @@ class TrainerDesc:
         with open(proto_file, 'r') as f:
             text_format.Parse(f.read(), self.proto_desc)
         '''
-        # Workaround for relative import in protobuf under python3
-        # TODO: should be fixed
-        cur_path = os.path.dirname(__file__)
-        if cur_path not in sys.path:
-            sys.path.append(cur_path)
-        if cur_path + "/proto" not in sys.path:
-            sys.path.append(cur_path + "/proto")
-
-        from proto import trainer_desc_pb2
+        from .proto import trainer_desc_pb2
 
         self.proto_desc = trainer_desc_pb2.TrainerDesc()
         import multiprocessing as mp
@@ -50,43 +39,6 @@ class TrainerDesc:
         self._device_worker = None
         self._program = None
         self._infer = False
-
-    def _set_heter_info(self, ret):
-        # ret = = fu.split_program_by_device(program)
-        # start_list, end_list, send_list, recv_list, program_list = fu.split_program_by_device(program)
-        # if len(start_list) != 3:
-        #    print("start_list len=", len(start_list), " will not set heter info")
-        #    return
-        # for i in start_list[0]:
-        #    self.proto_desc.op_run_start_idx.append(i)
-        # for i in end_list[0]:
-        #    self.proto_desc.op_run_end_idx.append(i)
-        # for i in send_list[0]:
-        #    self.proto_desc.op_run_send_list.append(i)
-        # for i in recv_list[0]:
-        #    self.proto_desc.op_run_recv_list.append(i)
-        if ret is None:
-            return
-        # for i in ret[0]: # start_list[1]:
-        #    self.proto_desc.xpu_start_idx.append(i)
-        self.proto_desc.xpu_start_idx = ret[0]
-
-        # for i in ret[1]:  #end_list[1]:
-        #    self.proto_desc.o_end_idx.append(i)
-        self.proto_desc.xpu_end_idx = ret[1]
-        for i in ret[2]:  # send_list[1]:
-            self.proto_desc.xpu_send_list.append(i)
-        for i in ret[3]:  # recv_list[1]:
-            self.proto_desc.xpu_recv_list.append(i)
-
-        # for i in start_list[2]:
-        #    self.proto_desc.op_run_end_start_idx.append(i)
-        # for i in end_list[2]:
-        #    self.proto_desc.op_run_end_idx.append(i)
-        # for i in send_list[2]:
-        #    self.proto_desc.op_run_end_send_list.append(i)
-        # for i in recv_list[2]:
-        #    self.proto_desc.op_run_end_recv_list.append(i)
 
     def _set_fetch_var_and_info(self, fetch_vars, fetch_info, print_period):
         # convert fetch_info to list
@@ -332,126 +284,6 @@ class MultiTrainer(TrainerDesc):
     def _gen_trainer_desc(self):
         super()._gen_trainer_desc()
         self.proto_desc.class_name = "MultiTrainer"
-        self._device_worker._set_infer(self._infer)
-        self._device_worker._set_program(self._program)
-        self._device_worker._gen_worker_desc(self.proto_desc)
-
-
-class DistMultiTrainer(TrainerDesc):
-    """
-    Implement of DistMultiTrainer.
-    It's for Distributed training.
-    """
-
-    def __init__(self):
-        super().__init__()
-        pass
-
-    def _set_program(self, program):
-        super()._set_program(program)
-        self._program = program
-
-    def _gen_trainer_desc(self):
-        super()._gen_trainer_desc()
-        self.proto_desc.class_name = "DistMultiTrainer"
-        if self._program is None:
-            raise RuntimeError("None Program")
-        self._device_worker._set_infer(self._infer)
-        self._device_worker._set_program(self._program)
-        self._device_worker._gen_worker_desc(self.proto_desc)
-
-
-class HeterXpuTrainer(TrainerDesc):
-    """
-    Implement of HeterXpuTrainer.
-    It's for Distributed training.
-    """
-
-    def __init__(self):
-        super().__init__()
-        pass
-
-    def _set_program(self, program):
-        super()._set_program(program)
-        self._program = program
-
-    def _gen_trainer_desc(self):
-        super()._gen_trainer_desc()
-        self.proto_desc.class_name = "HeterXpuTrainer"
-        if self._program is None:
-            raise RuntimeError("None Program")
-        self._device_worker._set_infer(self._infer)
-        self._device_worker._set_program(self._program)
-        self._device_worker._gen_worker_desc(self.proto_desc)
-
-
-class PSGPUTrainer(TrainerDesc):
-    """
-    Implement of PSGPUTrainer.
-    It's for Distributed training.
-    """
-
-    def __init__(self):
-        super().__init__()
-        pass
-
-    def _set_program(self, program):
-        super()._set_program(program)
-        self._program = program
-
-    def _gen_trainer_desc(self):
-        super()._gen_trainer_desc()
-        self.proto_desc.class_name = "PSGPUTrainer"
-        if self._program is None:
-            raise RuntimeError("None Program")
-        self._device_worker._set_infer(self._infer)
-        self._device_worker._set_program(self._program)
-        self._device_worker._gen_worker_desc(self.proto_desc)
-
-
-class HeterPipelineTrainer(TrainerDesc):
-    """
-    Implement of HeterPipelineTrainer.
-    It's for HeterPS Pipeline training.
-    """
-
-    def __init__(self):
-        super().__init__()
-        pass
-
-    def _set_program(self, program):
-        super()._set_program(program)
-        self._program = program
-
-    def _gen_trainer_desc(self):
-        super()._gen_trainer_desc()
-        self.proto_desc.class_name = "HeterPipelineTrainer"
-        if self._program is None:
-            raise RuntimeError("None Program")
-        self._device_worker._set_infer(self._infer)
-        self._device_worker._set_program(self._program)
-        self._device_worker._gen_worker_desc(self.proto_desc)
-
-
-class PipelineTrainer(TrainerDesc):
-    """
-    Implement of PipelineTrainer.
-    It's for Pipeline.
-    """
-
-    def __init__(self):
-        super().__init__()
-        pass
-
-    def _set_program(self, program):
-        super()._set_program(program)
-        self._program = program
-
-    def _gen_trainer_desc(self):
-        super()._gen_trainer_desc()
-        self.proto_desc.class_name = "PipelineTrainer"
-        if self._program is None:
-            raise RuntimeError("None Program")
         self._device_worker._set_infer(self._infer)
         self._device_worker._set_program(self._program)
         self._device_worker._gen_worker_desc(self.proto_desc)

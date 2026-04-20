@@ -19,10 +19,10 @@ namespace funcs {
 template <typename T, int Rank>
 struct EigenReverse<Eigen::GpuDevice, T, Rank> {
   using Array = Eigen::DSizes<bool, Rank>;
-  using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, Rank, Eigen::RowMajor, Eigen::DenseIndex>>;
-  using OutType = Eigen::TensorMap<
-      Eigen::Tensor<T, Rank, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using InType =
+      Eigen::TensorMap<Eigen::Tensor<const T, Rank, Eigen::RowMajor, int64_t>>;
+  using OutType =
+      Eigen::TensorMap<Eigen::Tensor<T, Rank, Eigen::RowMajor, int64_t>>;
   static void Eval(const Eigen::GpuDevice& dev,
                    OutType out,
                    const InType& in,

@@ -6,10 +6,14 @@ on:
       docker_cpu_image:
         type: string
         required: true
+      clone-can-skip:
+        type: string
+        required: false
+        default: "false"
     outputs:
       can-skip:
         description: "Whether to skip the job"
-        value: ${{ jobs.build-and-test.outputs.can-skip }}
+        value: ${{ jobs.check-bypass.outputs.can-skip }}
 
 env:
   PR_ID: ${{ github.event.pull_request.number }}
@@ -27,12 +31,24 @@ defaults:
     shell: bash
 
 jobs:
+  check-bypass:
+    name: Check bypass
+    if: ${{ github.repository_owner == 'PaddlePaddle' }}
+    uses: ./.github/workflows/check-bypass.yml
+    with:
+      workflow-name: cpu
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
   build-and-test:
     name: Build and test
     outputs:
-      can-skip: ${{ steps.check-bypass.outputs.can-skip }}
+      can-skip: ${{ needs.check-bypass.outputs.can-skip || inputs.clone-can-skip || 'false' }}
+    needs: [check-bypass]
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' && inputs.clone-can-skip != 'true' }}
     runs-on:
       group: GZ_BD-CPU
+    timeout-minutes: 120
 
     steps:
       - name: Check docker image  and run container
@@ -58,6 +74,7 @@ jobs:
           CACHE_DIR: "/root/.cache/cpu"
           CCACHE_DIR: "/home/data/shared/.ccache/l1" # L1 cache on machine shared dir
           CCACHE_SECONDARY_STORAGE: "file:///home/data/cfs/.ccache/l2" # L2 cache on cfs
+          WITH_OPENVINO: "ON"
         run: |
           container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
@@ -99,11 +116,13 @@ jobs:
             -e CCACHE_SECONDARY_STORAGE \
             -e CI_name \
             -e no_proxy \
+            -e WITH_OPENVINO \
             -w /paddle --network host ${docker_image}
 
       - name: Download paddle.tar.gz and merge target branch
         env:
           work_dir: ${{ github.workspace }}
+        timeout-minutes: 30
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf  * .[^.]*
@@ -129,15 +148,7 @@ jobs:
           git submodule update
           '
 
-      - name: Check bypass
-        id: check-bypass
-        uses: ./.github/actions/check-bypass
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          workflow-name: cpu
-
       - name: Build
-        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
@@ -148,7 +159,6 @@ jobs:
           '
 
       - name: Test
-        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
@@ -159,7 +169,6 @@ jobs:
           '
 
       - name: Upload paddle_whl
-        if: steps.check-bypass.outputs.can-skip != 'true'
         env:
           home_path: ${{ github.workspace }}/..
           bos_file: ${{ github.workspace }}/../bos/BosClient.py

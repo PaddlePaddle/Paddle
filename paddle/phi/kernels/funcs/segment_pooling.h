@@ -42,7 +42,7 @@ class SegmentPoolGradFunctor {
                   const DenseTensor& out_grad,
                   const DenseTensor& segments,
                   DenseTensor* in_grad,
-                  const paddle::optional<DenseTensor>& summed_ids,
+                  const optional<DenseTensor>& summed_ids,
                   const std::string pooltype = "SUM");
 };
 

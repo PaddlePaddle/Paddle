@@ -22,10 +22,10 @@ namespace fusion {
 template <typename T, typename Context>
 void Conv2dTransposeXPUKernel(const Context& dev_ctx,
                               const DenseTensor& x,
-                              const paddle::optional<DenseTensor>& x_max,
+                              const optional<DenseTensor>& x_max,
                               const DenseTensor& filter,
                               const DenseTensor& filter_max,
-                              const paddle::optional<DenseTensor>& bias,
+                              const optional<DenseTensor>& bias,
                               const std::vector<int>& strides_,
                               const std::vector<int>& paddings_,
                               const std::vector<int>& output_padding,
@@ -48,7 +48,7 @@ void Conv2dTransposeXPUKernel(const Context& dev_ctx,
 
   DDim in_data_dims = slice_ddim(x.dims(), 2, x.dims().size());  // hw
   DDim filter_data_dims = slice_ddim(filter.dims(), 2, filter.dims().size());
-  std::vector<int64_t> ksize = common::vectorize<int64_t>(filter_data_dims);
+  std::vector<int64_t> ksize = vectorize<int64_t>(filter_data_dims);
   std::vector<int64_t> strides(strides_.begin(), strides_.end());
   std::vector<int64_t> paddings(paddings_.begin(), paddings_.end());
   std::vector<int64_t> dilations(dilations_.begin(), dilations_.end());

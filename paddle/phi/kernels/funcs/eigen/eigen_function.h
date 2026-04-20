@@ -20,23 +20,22 @@ limitations under the License. */
 #endif
 
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
-#include "unsupported/Eigen/CXX11/Tensor"
 
 namespace phi {
 namespace funcs {
 
 template <typename EigenDevice, typename T, int Rank>
 struct EigenBroadcast {
-  using Array = Eigen::DSizes<Eigen::DenseIndex, Rank>;
-  using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, Rank, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using Array = Eigen::DSizes<int64_t, Rank>;
+  using InType =
+      Eigen::TensorMap<Eigen::Tensor<const T, Rank, Eigen::RowMajor, int64_t>>;
   using InType32BitIndex =
-      Eigen::TensorMap<Eigen::Tensor<const T, Rank, Eigen::RowMajor, int>,
+      Eigen::TensorMap<Eigen::Tensor<const T, Rank, Eigen::RowMajor, int64_t>,
                        Eigen::Aligned>;
-  using OutType = Eigen::TensorMap<
-      Eigen::Tensor<T, Rank, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using OutType =
+      Eigen::TensorMap<Eigen::Tensor<T, Rank, Eigen::RowMajor, int64_t>>;
   using OutType32BitIndex =
-      Eigen::TensorMap<Eigen::Tensor<T, Rank, Eigen::RowMajor, int>,
+      Eigen::TensorMap<Eigen::Tensor<T, Rank, Eigen::RowMajor, int64_t>,
                        Eigen::Aligned>;
   static void Eval(const EigenDevice& dev,
                    OutType out,
@@ -50,12 +49,12 @@ struct EigenBroadcast {
 
 template <typename EigenDevice, typename T, int Rank>
 struct EigenBroadcastGrad {
-  using Array = Eigen::DSizes<Eigen::DenseIndex, Rank>;
-  using Array2 = Eigen::DSizes<Eigen::DenseIndex, Rank * 2>;
-  using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using Array = Eigen::DSizes<int64_t, Rank>;
+  using Array2 = Eigen::DSizes<int64_t, Rank * 2>;
+  using InType =
+      Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor, int64_t>>;
   using OutType =
-      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, int64_t>>;
   static void Eval(const EigenDevice& dev,
                    OutType out,
                    InType in,
@@ -65,27 +64,27 @@ struct EigenBroadcastGrad {
 
 template <typename EigenDevice, typename T, int Rank>
 struct EigenConstant {
-  using Type = Eigen::TensorMap<
-      Eigen::Tensor<T, Rank, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using Type =
+      Eigen::TensorMap<Eigen::Tensor<T, Rank, Eigen::RowMajor, int64_t>>;
   static void Eval(const EigenDevice& dev, Type out, const T value);
 };
 
 template <typename EigenDevice, typename T>
 struct EigenSign {
-  using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using InType =
+      Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor, int64_t>>;
   using OutType =
-      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, int64_t>>;
   static void Eval(const EigenDevice& dev, OutType out, const InType& in);
 };
 
 template <typename EigenDevice, typename T, int Rank>
 struct EigenReverse {
   using Array = Eigen::DSizes<bool, Rank>;
-  using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, Rank, Eigen::RowMajor, Eigen::DenseIndex>>;
-  using OutType = Eigen::TensorMap<
-      Eigen::Tensor<T, Rank, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using InType =
+      Eigen::TensorMap<Eigen::Tensor<const T, Rank, Eigen::RowMajor, int64_t>>;
+  using OutType =
+      Eigen::TensorMap<Eigen::Tensor<T, Rank, Eigen::RowMajor, int64_t>>;
   static void Eval(const EigenDevice& dev,
                    OutType out,
                    const InType& in,
@@ -94,14 +93,11 @@ struct EigenReverse {
 
 template <typename EigenDevice, typename T>
 struct EigenAdd {
-  using InType = Eigen::TensorMap<Eigen::TensorFixedSize<const T,
-                                                         Eigen::Sizes<>,
-                                                         Eigen::RowMajor,
-                                                         Eigen::DenseIndex>>;
-  using OutType = Eigen::TensorMap<Eigen::TensorFixedSize<T,
-                                                          Eigen::Sizes<>,
-                                                          Eigen::RowMajor,
-                                                          Eigen::DenseIndex>>;
+  using InType = Eigen::TensorMap<
+      Eigen::
+          TensorFixedSize<const T, Eigen::Sizes<>, Eigen::RowMajor, int64_t>>;
+  using OutType = Eigen::TensorMap<
+      Eigen::TensorFixedSize<T, Eigen::Sizes<>, Eigen::RowMajor, int64_t>>;
   static void Eval(const EigenDevice& dev,
                    OutType out,
                    const InType& in,
@@ -110,10 +106,10 @@ struct EigenAdd {
 
 template <typename EigenDevice, typename T>
 struct EigenSub {
-  using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using InType =
+      Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor, int64_t>>;
   using OutType =
-      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, int64_t>>;
   static void Eval(const EigenDevice& dev,
                    OutType out,
                    const InType& left,
@@ -122,10 +118,10 @@ struct EigenSub {
 
 template <typename EigenDevice, typename T>
 struct EigenDiv {
-  using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using InType =
+      Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor, int64_t>>;
   using OutType =
-      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, int64_t>>;
   static void Eval(const EigenDevice& dev,
                    OutType out,
                    const InType& in,
@@ -134,17 +130,17 @@ struct EigenDiv {
 
 template <typename EigenDevice, typename T, int Rank>
 struct EigenSlice {
-  using Array = Eigen::DSizes<Eigen::DenseIndex, Rank>;
-  using Array32Bit = Eigen::DSizes<int, Rank>;
-  using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, Rank, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using Array = Eigen::DSizes<int64_t, Rank>;
+  using Array32Bit = Eigen::DSizes<int64_t, Rank>;
+  using InType =
+      Eigen::TensorMap<Eigen::Tensor<const T, Rank, Eigen::RowMajor, int64_t>>;
   using InType32BitIndex =
-      Eigen::TensorMap<Eigen::Tensor<const T, Rank, Eigen::RowMajor, int>,
+      Eigen::TensorMap<Eigen::Tensor<const T, Rank, Eigen::RowMajor, int64_t>,
                        Eigen::Aligned>;
-  using OutType = Eigen::TensorMap<
-      Eigen::Tensor<T, Rank, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using OutType =
+      Eigen::TensorMap<Eigen::Tensor<T, Rank, Eigen::RowMajor, int64_t>>;
   using OutType32BitIndex =
-      Eigen::TensorMap<Eigen::Tensor<T, Rank, Eigen::RowMajor, int>,
+      Eigen::TensorMap<Eigen::Tensor<T, Rank, Eigen::RowMajor, int64_t>,
                        Eigen::Aligned>;
   static void Eval(const EigenDevice& dev,
                    OutType out,
@@ -162,15 +158,15 @@ template <typename EigenDevice, typename T, int Rank>
 struct EigenPad {
   using Array = std::array<std::pair<int64_t, int64_t>, Rank>;
   using Array32Bit = std::array<std::pair<int, int>, Rank>;
-  using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, Rank, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using InType =
+      Eigen::TensorMap<Eigen::Tensor<const T, Rank, Eigen::RowMajor, int64_t>>;
   using InType32BitIndex =
-      Eigen::TensorMap<Eigen::Tensor<const T, Rank, Eigen::RowMajor, int>,
+      Eigen::TensorMap<Eigen::Tensor<const T, Rank, Eigen::RowMajor, int64_t>,
                        Eigen::Aligned>;
-  using OutType = Eigen::TensorMap<
-      Eigen::Tensor<T, Rank, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using OutType =
+      Eigen::TensorMap<Eigen::Tensor<T, Rank, Eigen::RowMajor, int64_t>>;
   using OutType32BitIndex =
-      Eigen::TensorMap<Eigen::Tensor<T, Rank, Eigen::RowMajor, int>,
+      Eigen::TensorMap<Eigen::Tensor<T, Rank, Eigen::RowMajor, int64_t>,
                        Eigen::Aligned>;
   static void Eval(const EigenDevice& dev,
                    OutType out,
@@ -186,10 +182,10 @@ struct EigenPad {
 
 template <typename EigenDevice, typename T>
 struct EigenScale {
-  using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using InType =
+      Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor, int64_t>>;
   using OutType =
-      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, int64_t>>;
   static void Eval(const EigenDevice& dev,
                    OutType out,
                    const InType& in,
@@ -200,19 +196,19 @@ struct EigenScale {
 
 template <typename EigenDevice, typename T>
 struct EigenErf {
-  using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using InType =
+      Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor, int64_t>>;
   using OutType =
-      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, int64_t>>;
   static void Eval(const EigenDevice& dev, OutType out, const InType& in);
 };
 
 template <typename EigenDevice, typename T>
 struct EigenErfGrad {
-  using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using InType =
+      Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor, int64_t>>;
   using OutType =
-      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, int64_t>>;
   static void Eval(const EigenDevice& dev,
                    OutType din,
                    const InType& in,
@@ -221,10 +217,10 @@ struct EigenErfGrad {
 
 template <typename EigenDevice, typename T>
 struct EigenRankLoss {
-  using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using InType =
+      Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor, int64_t>>;
   using OutType =
-      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, int64_t>>;
   static void Eval(const EigenDevice& dev,
                    OutType out,
                    const InType& label,
@@ -234,10 +230,10 @@ struct EigenRankLoss {
 
 template <typename EigenDevice, typename T>
 struct EigenRankLossGrad {
-  using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using InType =
+      Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor, int64_t>>;
   using OutType =
-      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, int64_t>>;
   static void EvalLeft(const EigenDevice& dev,
                        OutType dleft,
                        const InType& dout,
@@ -254,10 +250,10 @@ struct EigenRankLossGrad {
 
 template <typename EigenDevice, typename T>
 struct EigenLogLoss {
-  using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using InType =
+      Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor, int64_t>>;
   using OutType =
-      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, int64_t>>;
   static void Eval(const EigenDevice& dev,
                    OutType out,
                    const InType& pred,
@@ -267,10 +263,10 @@ struct EigenLogLoss {
 
 template <typename EigenDevice, typename T>
 struct EigenLogLossGrad {
-  using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using InType =
+      Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor, int64_t>>;
   using OutType =
-      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, int64_t>>;
   static void Eval(const EigenDevice& dev,
                    OutType dpred,
                    const InType& dloss,
@@ -281,10 +277,10 @@ struct EigenLogLossGrad {
 
 template <typename EigenDevice, typename T>
 struct EigenHingeLoss {
-  using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using InType =
+      Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor, int64_t>>;
   using OutType =
-      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, int64_t>>;
   static void Eval(const EigenDevice& dev,
                    OutType loss,
                    const InType& pred,
@@ -293,10 +289,10 @@ struct EigenHingeLoss {
 
 template <typename EigenDevice, typename T>
 struct EigenHingeLossGrad {
-  using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using InType =
+      Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor, int64_t>>;
   using OutType =
-      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, int64_t>>;
   static void Eval(const EigenDevice& dev,
                    OutType dpred,
                    const InType& dloss,
@@ -306,22 +302,20 @@ struct EigenHingeLossGrad {
 
 template <typename EigenDevice, typename T>
 struct EigenL1Norm {
-  using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
-  using OutType = Eigen::TensorMap<Eigen::TensorFixedSize<T,
-                                                          Eigen::Sizes<>,
-                                                          Eigen::RowMajor,
-                                                          Eigen::DenseIndex>>;
+  using InType =
+      Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor, int64_t>>;
+  using OutType = Eigen::TensorMap<
+      Eigen::TensorFixedSize<T, Eigen::Sizes<>, Eigen::RowMajor, int64_t>>;
   static void Eval(const EigenDevice& dev, OutType out, const InType& in);
 };
 
 template <typename EigenDevice, typename T>
 struct EigenL1NormGrad {
-  using Array = Eigen::DSizes<Eigen::DenseIndex, 1>;
-  using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using Array = Eigen::DSizes<int64_t, 1>;
+  using InType =
+      Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor, int64_t>>;
   using OutType =
-      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, int64_t>>;
   static void Eval(const EigenDevice& dev,
                    OutType din,
                    const InType& dout,

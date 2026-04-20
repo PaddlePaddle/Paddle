@@ -34,7 +34,7 @@ void MergedMomentumKernel(
     const std::vector<const DenseTensor*>& grad,
     const std::vector<const DenseTensor*>& velocity,
     const std::vector<const DenseTensor*>& learning_rate,
-    const paddle::optional<std::vector<const DenseTensor*>>& master_param,
+    const optional<std::vector<const DenseTensor*>>& master_param,
     float mu_in,
     bool use_nesterov,
     const std::vector<std::string>& regularization_method,

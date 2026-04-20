@@ -28,8 +28,6 @@ COMMON_DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
 
-using phi::PADDLE_CUDA_NUM_THREADS;
-
 template <typename T, typename IndexT>
 __global__ void index_select_grad_cuda_kernel(const T* output_grad,
                                               T* input_grad,
@@ -48,7 +46,7 @@ __global__ void index_select_grad_cuda_kernel(const T* output_grad,
     }
     int64_t input_idx =
         idx + (delta * pre_idx + src_dim_idx - dim_idx) * stride;
-    phi::CudaAtomicAdd(&input_grad[input_idx], output_grad[idx]);
+    CudaAtomicAdd(&input_grad[input_idx], output_grad[idx]);
   }
 }
 
@@ -104,15 +102,15 @@ void IndexSelectGradKernel(const Context& dev_ctx,
   const auto& index_type = index.dtype();
 
   bool index_type_match =
-      index_type == phi::DataType::INT64 || index_type == phi::DataType::INT32;
+      index_type == DataType::INT64 || index_type == DataType::INT32;
   PADDLE_ENFORCE_EQ(index_type_match,
                     true,
                     common::errors::InvalidArgument(
                         "Input(Index) holds the wrong type, it holds %s, but "
                         "desires to be %s or %s",
                         index_type,
-                        phi::DataType::INT32,
-                        phi::DataType::INT64));
+                        DataType::INT32,
+                        DataType::INT64));
 
   int64_t numel = x_grad->numel();
   if (numel == 0) {
@@ -122,7 +120,7 @@ void IndexSelectGradKernel(const Context& dev_ctx,
 
   auto stream = dev_ctx.stream();
 
-  funcs::SetConstant<phi::GPUContext, T> index_select_grad_init;
+  funcs::SetConstant<GPUContext, T> index_select_grad_init;
   index_select_grad_init(dev_ctx, x_grad, static_cast<T>(0));
 
   if (FLAGS_cudnn_deterministic) {
@@ -131,9 +129,9 @@ void IndexSelectGradKernel(const Context& dev_ctx,
 
     unsigned int block_dim = PADDLE_CUDA_NUM_THREADS;
     dim3 grid_dim = dim3((num_columns + block_dim - 1) / block_dim);
-    phi::backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
+    backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
 
-    if (index_type == phi::DataType::INT64) {
+    if (index_type == DataType::INT64) {
       const int64_t* index_data = index.data<int64_t>();
       index_select_grad_deterministic_cuda_kernel<T, int64_t>
           <<<grid_dim, block_dim, 0, stream>>>(output_grad_data,
@@ -158,9 +156,9 @@ void IndexSelectGradKernel(const Context& dev_ctx,
   } else {
     unsigned int block_dim = PADDLE_CUDA_NUM_THREADS;
     dim3 grid_dim = dim3((out_nums + block_dim - 1) / block_dim);
-    phi::backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
+    backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
 
-    if (index_type == phi::DataType::INT64) {
+    if (index_type == DataType::INT64) {
       const int64_t* index_data = index.data<int64_t>();
       index_select_grad_cuda_kernel<T, int64_t>
           <<<grid_dim, block_dim, 0, stream>>>(output_grad_data,

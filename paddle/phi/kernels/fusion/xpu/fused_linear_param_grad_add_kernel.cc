@@ -33,7 +33,7 @@ template <typename T, typename MT, typename Context>
 void FusedLinearParamGradAddImpl(const Context &dev_ctx,
                                  const DenseTensor &x,
                                  const DenseTensor &dout,
-                                 const paddle::optional<DenseTensor> &dbias,
+                                 const optional<DenseTensor> &dbias,
                                  int64_t M,
                                  int64_t K,
                                  int64_t N,
@@ -93,7 +93,7 @@ void FusedLinearParamGradAddImpl(const Context &dev_ctx,
       phi::SumKernel<T, Context>(dev_ctx,
                                  dout_copy,
                                  {0},
-                                 phi::CppTypeToDataType<T>::Type(),
+                                 CppTypeToDataType<T>::Type(),
                                  false,
                                  dbias_tmp);
     }
@@ -133,8 +133,7 @@ static void PrintMeta(const DenseTensor *t, const char *name) {
 }
 
 template <int LogLevel = 10>
-static void PrintMeta(const paddle::optional<DenseTensor> &t,
-                      const char *name) {
+static void PrintMeta(const optional<DenseTensor> &t, const char *name) {
   const auto *t_ptr = t ? &(t.get()) : nullptr;
   PrintMeta<LogLevel>(t_ptr, name);
 }
@@ -143,8 +142,8 @@ template <typename T, typename Context>
 void FusedLinearParamGradAdd(const Context &dev_ctx,
                              const DenseTensor &x,
                              const DenseTensor &dout,
-                             const paddle::optional<DenseTensor> &dweight,
-                             const paddle::optional<DenseTensor> &dbias,
+                             const optional<DenseTensor> &dweight,
+                             const optional<DenseTensor> &dbias,
                              bool multi_precision,
                              bool has_bias,
                              DenseTensor *dweight_out,
@@ -181,7 +180,7 @@ void FusedLinearParamGradAdd(const Context &dev_ctx,
       } else {
         PADDLE_ENFORCE_EQ(
             dweight_out->dtype(),
-            phi::CppTypeToDataType<T>::Type(),
+            CppTypeToDataType<T>::Type(),
             common::errors::InvalidArgument("Invalid data type error."));
       }
     } else {
@@ -204,7 +203,7 @@ void FusedLinearParamGradAdd(const Context &dev_ctx,
       } else {
         PADDLE_ENFORCE_EQ(
             dbias_out->dtype(),
-            phi::CppTypeToDataType<T>::Type(),
+            CppTypeToDataType<T>::Type(),
             common::errors::InvalidArgument("Invalid data type error."));
       }
     } else {

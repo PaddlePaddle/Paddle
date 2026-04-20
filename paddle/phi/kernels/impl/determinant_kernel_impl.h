@@ -33,10 +33,9 @@ template <typename T>
 class EigenMatrix {};
 
 template <>
-class EigenMatrix<phi::float16> {
+class EigenMatrix<float16> {
  public:
-  using MatrixType =
-      Eigen::Matrix<phi::float16, Eigen::Dynamic, Eigen::Dynamic>;
+  using MatrixType = Eigen::Matrix<float16, Eigen::Dynamic, Eigen::Dynamic>;
 };
 
 template <>
@@ -81,8 +80,8 @@ struct DeterminantFunctor {
                   DenseTensor* output) {
     std::vector<T> input_vec;
     std::vector<T> output_vec;
-    phi::TensorToVector(input, dev_ctx, &input_vec);
-    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+    TensorToVector(input, dev_ctx, &input_vec);
+    using MPType = typename dtype::MPTypeTrait<T>::Type;
     for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
       auto begin_iter = input_vec.begin() + i * rank * rank;
       auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
@@ -97,12 +96,12 @@ struct DeterminantFunctor {
       output_vec.push_back(
           static_cast<T>(matrix.template cast<MPType>().determinant()));
     }
-    phi::TensorFromVector(output_vec, dev_ctx, output);
+    TensorFromVector(output_vec, dev_ctx, output);
   }
 };
 
 template <typename T, typename Context>
-struct DeterminantFunctor<phi::dtype::complex<T>, Context> {
+struct DeterminantFunctor<dtype::complex<T>, Context> {
   void operator()(const Context& dev_ctx,
                   const DenseTensor& input,
                   int64_t rank,
@@ -110,13 +109,13 @@ struct DeterminantFunctor<phi::dtype::complex<T>, Context> {
                   DenseTensor* output) {
     using MatrixType =
         Eigen::Matrix<std::complex<T>, Eigen::Dynamic, Eigen::Dynamic>;
-    std::vector<phi::dtype::complex<T>> input_vec;
-    std::vector<phi::dtype::complex<T>> output_vec;
-    phi::TensorToVector(input, dev_ctx, &input_vec);
+    std::vector<dtype::complex<T>> input_vec;
+    std::vector<dtype::complex<T>> output_vec;
+    TensorToVector(input, dev_ctx, &input_vec);
     for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
       auto begin_iter = input_vec.begin() + i * rank * rank;
       auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
-      std::vector<phi::dtype::complex<T>> sub_vec(
+      std::vector<dtype::complex<T>> sub_vec(
           begin_iter,
           end_iter);  // get every square matrix data
       MatrixType matrix(rank, rank);
@@ -126,9 +125,9 @@ struct DeterminantFunctor<phi::dtype::complex<T>, Context> {
         }
       }
       output_vec.push_back(
-          static_cast<phi::dtype::complex<T>>(matrix.determinant()));
+          static_cast<dtype::complex<T>>(matrix.determinant()));
     }
-    phi::TensorFromVector(output_vec, dev_ctx, output);
+    TensorFromVector(output_vec, dev_ctx, output);
   }
 };
 
@@ -140,7 +139,7 @@ void DeterminantKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(out);
     return;
   }
-  auto input_dim = common::vectorize(x.dims());
+  auto input_dim = vectorize(x.dims());
   auto input_dim_size = input_dim.size();
 
   auto batch_count = detail::GetBatchCount(x.dims());
@@ -156,12 +155,12 @@ void DeterminantKernel(const Context& dev_ctx,
                         "the input matrix should be square matrix."));
   auto rank = input_dim[input_dim_size - 1];  // square matrix length
   DeterminantFunctor<T, Context>()(dev_ctx, x, rank, batch_count, out);
-  auto output_dims = common::slice_ddim(x.dims(), 0, input_dim_size - 2);
+  auto output_dims = slice_ddim(x.dims(), 0, input_dim_size - 2);
   if (input_dim_size > 2) {
     out->Resize(output_dims);
   } else {
     // when input is a two-dimension matrix, The det value is a number.
-    out->Resize(common::make_ddim({}));
+    out->Resize({});
   }
   VLOG(10) << "output dim:" << out->dims();
 }

@@ -34,7 +34,7 @@ static DDim GetDimsDebug(const Scope& scope,
   }
 
   if (var->IsType<DenseTensor>()) {
-    const phi::DenseTensor& tensor = var->Get<DenseTensor>();
+    const DenseTensor& tensor = var->Get<DenseTensor>();
     return tensor.dims();
   } else if (var->IsType<phi::SelectedRows>()) {
     if (get_actual_dim) {
@@ -62,7 +62,7 @@ static std::string GetDtype(const Scope& scope, const std::string& name) {
   }
 
   if (var->IsType<DenseTensor>()) {
-    const phi::DenseTensor& tensor = var->Get<DenseTensor>();
+    const DenseTensor& tensor = var->Get<DenseTensor>();
     if (UNLIKELY(!tensor.has_allocation())) {
       return "";
     }
@@ -86,14 +86,14 @@ static std::string GetPlace(const Scope& scope, const std::string& name) {
   if (var == nullptr) {
     return "";
   }
-  auto to_string = [](const phi::Place& p) {
+  auto to_string = [](const Place& p) {
     std::stringstream sstream;
     sstream << p;
     return sstream.str();
   };
 
   if (var->IsType<DenseTensor>()) {
-    const phi::DenseTensor& tensor = var->Get<DenseTensor>();
+    const DenseTensor& tensor = var->Get<DenseTensor>();
     if (UNLIKELY(!tensor.has_allocation())) {
       return "";
     }
@@ -136,7 +136,7 @@ static LegacyLoD GetLoDDebug(const Scope& scope, const std::string& name) {
   }
 
   if (var->IsType<DenseTensor>()) {
-    const phi::DenseTensor& tensor = var->Get<DenseTensor>();
+    const DenseTensor& tensor = var->Get<DenseTensor>();
     return tensor.lod();
   } else {
     return default_lod;
@@ -181,7 +181,7 @@ static double GetDenseTensorEleSum(const Scope& scope,
   return std::numeric_limits<double>::quiet_NaN();
 }
 
-InstructionBase::InstructionBase(size_t id, const phi::Place& place)
+InstructionBase::InstructionBase(size_t id, const Place& place)
     : next_instrs_in_different_thread_(),
       next_instrs_in_same_thread_(),
       events_to_wait_info_(),
@@ -290,7 +290,7 @@ void InstructionBase::SetOutputs(
 }
 
 void InstructionBase::InitInputsOutputsIds(
-    ::pir::Operation* op, const ValueExecutionInfo& value_exec_info) {
+    pir::Operation* op, const ValueExecutionInfo& value_exec_info) {
   auto op_attributes = op->attributes();
   std::string op_name;
   if (op_attributes.count("op_name")) {
@@ -350,7 +350,7 @@ std::string InstructionBase::DebugStringEx(
   std::stringstream ss;
   ss << "Op(" << Name() << "), inputs:{";
 
-  const std::unordered_set<::pir::Value> no_need_buffer_vars = NoNeedBuffer();
+  const std::unordered_set<pir::Value> no_need_buffer_vars = NoNeedBuffer();
 
   for (auto it = Inputs().begin(); it != Inputs().end();) {
     auto& input = *it;

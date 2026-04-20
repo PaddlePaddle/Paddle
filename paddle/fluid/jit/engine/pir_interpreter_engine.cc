@@ -35,7 +35,7 @@ PirInterpreterEngine::PirInterpreterEngine(
                     common::errors::PreconditionNotMet(
                         "There is no operator in ProgramDesc."));
   utils::ShareParamsIntoScope(info_->ParamNames(), params_dict_, &scope_);
-  prog_ = paddle::dialect::PdOpLowerToKernelPass(prog_.get(), place_);
+  prog_ = pir::PdOpLowerToKernelPass(prog_.get(), place_);
   CreateInterpreterCore();
 }
 
@@ -65,7 +65,7 @@ std::vector<DenseTensor> PirInterpreterEngine::operator()(
 
   // the latter can be moved to python side.
   auto &feed_names = info_->InputArgNames();
-  paddle::framework::FetchList outs = inner_interpreter_->Run(feed_names);
+  phi::FetchList outs = inner_interpreter_->Run(feed_names);
 
   std::vector<DenseTensor> outputs;
   utils::FetchOuts(info_->OutputArgNames(), scope_, &outputs);

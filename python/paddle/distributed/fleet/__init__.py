@@ -27,7 +27,6 @@ from .data_generator.data_generator import (
     MultiSlotStringDataGenerator,
 )
 from .dataset import (  # noqa: F401
-    BoxPSDataset,
     DatasetBase,
     FileInstantDataset,
     InMemoryDataset,

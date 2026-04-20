@@ -24,7 +24,6 @@
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
-using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <int BlockSize, typename T>
 __global__ void AccuracyCudaKernel(const int64_t N,
@@ -34,7 +33,7 @@ __global__ void AccuracyCudaKernel(const int64_t N,
                                    int* correct_data,
                                    T* accuracy,
                                    int* total_data) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename dtype::MPTypeTrait<T>::Type;
   int count = 0;
   __shared__ int total[BlockSize];
 
@@ -98,7 +97,7 @@ void AccuracyKernel(const Context& dev_ctx,
   int64_t num_samples = inference.dims()[0];
   size_t infer_width = inference.dims()[1];
   auto stream = dev_ctx.stream();
-  phi::backends::gpu::GpuMemsetAsync(accuracy_data, 0, sizeof(T), stream);
+  backends::gpu::GpuMemsetAsync(accuracy_data, 0, sizeof(T), stream);
 
   PADDLE_ENFORCE_GT(label.dims().size(),
                     0,

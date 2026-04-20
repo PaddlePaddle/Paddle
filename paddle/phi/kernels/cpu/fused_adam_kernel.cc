@@ -23,9 +23,9 @@
 
 namespace phi {
 
-static paddle::optional<DenseTensor> TensorPtrToOptionalTensor(
-    const paddle::optional<std::vector<const DenseTensor*>>& t, size_t idx) {
-  return t ? paddle::optional<DenseTensor>(*(t.get()[idx])) : paddle::none;
+static optional<DenseTensor> TensorPtrToOptionalTensor(
+    const optional<std::vector<const DenseTensor*>>& t, size_t idx) {
+  return t ? optional<DenseTensor>(*(t.get()[idx])) : paddle::none;
 }
 
 template <typename T, typename Context>
@@ -36,11 +36,11 @@ PADDLE_API void FusedAdamKernel(
     const DenseTensor& learning_rate,
     const std::vector<const DenseTensor*>& moments1,
     const std::vector<const DenseTensor*>& moments2,
-    const paddle::optional<std::vector<const DenseTensor*>>& moments2_max,
+    const optional<std::vector<const DenseTensor*>>& moments2_max,
     const std::vector<const DenseTensor*>& beta1_pows,
     const std::vector<const DenseTensor*>& beta2_pows,
-    const paddle::optional<std::vector<const DenseTensor*>>& master_params,
-    const paddle::optional<DenseTensor>& skip_update,
+    const optional<std::vector<const DenseTensor*>>& master_params,
+    const optional<DenseTensor>& skip_update,
     const Scalar& beta1,
     const Scalar& beta2,
     const Scalar& epsilon,

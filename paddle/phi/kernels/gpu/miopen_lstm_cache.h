@@ -49,13 +49,13 @@ class ScopedRNNBase {
 
   template <typename T>
   void Create(const miopenHandle_t& handle,
-              const phi::Place& place,
+              const Place& place,
               const std::vector<int>& sequence_length,
               size_t* workspace_size,
               size_t* reserve_size,
               DenseTensor* dropout_state) {
     int numDirections = is_bidirec_ ? 2 : 1;
-    miopenDataType_t miopen_type = phi::backends::gpu::CudnnDataType<T>::type;
+    miopenDataType_t miopen_type = backends::gpu::CudnnDataType<T>::type;
 
     // ------------------- miopen x, y descriptors ---------------------
     std::vector<int> dims_x = {batch_size_, input_size_, 1};
@@ -80,9 +80,9 @@ class ScopedRNNBase {
     size_t state_size;
     if (!initialized_) {
       PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::miopenDropoutGetStatesSize(handle, &state_size));
-      phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-      auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(pool.Get(place));
+          dynload::miopenDropoutGetStatesSize(handle, &state_size));
+      DeviceContextPool& pool = DeviceContextPool::Instance();
+      auto* dev_ctx = reinterpret_cast<GPUContext*>(pool.Get(place));
       dropout_state->Resize({static_cast<int64_t>(state_size)});
       dev_ctx->template Alloc<uint8_t>(dropout_state);
     }
@@ -95,7 +95,7 @@ class ScopedRNNBase {
                              state_size);
 
     // ------------------- miopen rnn descriptors ---------------------
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSetRNNDescriptor_V2(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetRNNDescriptor_V2(
         rnn_desc_.desc(),
         hidden_size_,
         num_layers_,
@@ -109,7 +109,7 @@ class ScopedRNNBase {
 
     // ------------------- miopen weights_size ---------------------
     size_t weights_size_;
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenGetRNNParamsSize(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenGetRNNParamsSize(
         handle, rnn_desc_.desc(), x_descs_[0], &weights_size_, miopen_type));
     PADDLE_ENFORCE_EQ(
         weights_size_,
@@ -123,12 +123,12 @@ class ScopedRNNBase {
     weight_desc_.descriptor<T>(layout, dim_w);
     // ------------------- miopen workspace, reserve size ---------------------
     PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::miopenGetRNNWorkspaceSize(handle,
-                                                rnn_desc_.desc(),
-                                                seq_length_,
-                                                x_descs_.data(),
-                                                workspace_size));
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenGetRNNTrainingReserveSize(
+        dynload::miopenGetRNNWorkspaceSize(handle,
+                                           rnn_desc_.desc(),
+                                           seq_length_,
+                                           x_descs_.data(),
+                                           workspace_size));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenGetRNNTrainingReserveSize(
         handle, rnn_desc_.desc(), seq_length_, x_descs_.data(), reserve_size));
   }
   miopenTensorDescriptor_t* x_descs() { return x_descs_.data(); }
@@ -155,15 +155,15 @@ class ScopedRNNBase {
   std::vector<miopenTensorDescriptor_t> x_descs_;
   std::vector<miopenTensorDescriptor_t> y_descs_;
 
-  phi::backends::gpu::ScopedTensorDescriptor x_desc_;
-  phi::backends::gpu::ScopedTensorDescriptor y_desc_;
-  phi::backends::gpu::ScopedTensorDescriptor init_h_desc_;
-  phi::backends::gpu::ScopedTensorDescriptor init_c_desc_;
-  phi::backends::gpu::ScopedTensorDescriptor last_h_desc_;
-  phi::backends::gpu::ScopedTensorDescriptor last_c_desc_;
-  phi::backends::gpu::ScopedDropoutDescriptor dropout_desc_;
-  phi::backends::gpu::ScopedFilterDescriptor weight_desc_;
-  phi::backends::gpu::ScopedRNNDescriptor rnn_desc_;
+  backends::gpu::ScopedTensorDescriptor x_desc_;
+  backends::gpu::ScopedTensorDescriptor y_desc_;
+  backends::gpu::ScopedTensorDescriptor init_h_desc_;
+  backends::gpu::ScopedTensorDescriptor init_c_desc_;
+  backends::gpu::ScopedTensorDescriptor last_h_desc_;
+  backends::gpu::ScopedTensorDescriptor last_c_desc_;
+  backends::gpu::ScopedDropoutDescriptor dropout_desc_;
+  backends::gpu::ScopedFilterDescriptor weight_desc_;
+  backends::gpu::ScopedRNNDescriptor rnn_desc_;
 };
 
 }  // namespace phi

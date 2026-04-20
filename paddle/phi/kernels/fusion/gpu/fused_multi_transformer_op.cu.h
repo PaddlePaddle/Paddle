@@ -37,8 +37,6 @@ namespace fusion {
 
 namespace {  // NOLINT
 
-using float16 = phi::float16;
-
 #define MMHA_USE_FP32_ACUM_FOR_LOGITS
 #define MMHA_USE_FP32_ACUM_FOR_OUT
 #define MMHA_USE_FP32_ACUM_FOR_FMA
@@ -1802,7 +1800,7 @@ __global__ void gqa_write_cache_k_kernel(T *cache_k,
                                          const int seq_len,
                                          const int dim_head,
                                          const int64_t num_elems) {
-  phi::AlignedVector<T, X_ELEMS> in_vec;
+  AlignedVector<T, X_ELEMS> in_vec;
 
   for (int64_t linear_idx = (static_cast<int64_t>(blockIdx.x) *
                                  static_cast<int64_t>(blockDim.x) +
@@ -1827,8 +1825,8 @@ __global__ void gqa_write_cache_k_kernel(T *cache_k,
                         head_vec_id * max_seq_len * X_ELEMS +
                         local_token_id * X_ELEMS;
 
-    phi::Load(&k[linear_idx], &in_vec);
-    phi::Store(in_vec, &cache_k[tgt_idx]);
+    Load(&k[linear_idx], &in_vec);
+    Store(in_vec, &cache_k[tgt_idx]);
   }
 }
 
@@ -1842,7 +1840,7 @@ __global__ void gqa_write_cache_v_kernel(T *cache_v,
                                          const int seq_len,
                                          const int dim_head,
                                          const int64_t num_elems) {
-  phi::AlignedVector<T, X_ELEMS> in_vec;
+  AlignedVector<T, X_ELEMS> in_vec;
 
   for (int64_t linear_idx = (static_cast<int64_t>(blockIdx.x) *
                                  static_cast<int64_t>(blockDim.x) +
@@ -1865,8 +1863,8 @@ __global__ void gqa_write_cache_v_kernel(T *cache_v,
                         head_idx * max_seq_len * dim_head +
                         local_token_id * dim_head + head_offset;
 
-    phi::Load(&v[linear_idx], &in_vec);
-    phi::Store(in_vec, &cache_v[tgt_idx]);
+    Load(&v[linear_idx], &in_vec);
+    Store(in_vec, &cache_v[tgt_idx]);
   }
 }
 
@@ -1954,7 +1952,7 @@ __global__ void fusedQKV_transpose_split_kernel(T *q_buf,
   int64_t global_thread_idx =
       static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
       static_cast<int64_t>(threadIdx.x);
-  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
   LoadT src_vec;
 
   for (int32_t linear_index = global_thread_idx * VecSize,
@@ -2044,7 +2042,7 @@ __global__ void add_fusedQKV_bias_transpose_split_kernel(
   int64_t global_thread_idx =
       static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
       static_cast<int64_t>(threadIdx.x);
-  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
   LoadT src_vec;
   LoadT bias_vec;
 
@@ -2179,7 +2177,7 @@ __global__ void gqa_fusedQKV_transpose_split_kernel(T *q_buf,
   int64_t global_thread_idx =
       static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
       static_cast<int64_t>(threadIdx.x);
-  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
   LoadT src_vec;
 
   const int fused_hidden_size = (head_num + 2 * gqa_group_size) * size_per_head;
@@ -2580,7 +2578,7 @@ __global__ void ActFFNGlu(const T *bias,
                           const int elem_num,
                           LoadFunc load_func,
                           StoreFunc store_func) {
-  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
   LoadT src_vec1;
   LoadT src_vec2;
   LoadT bias_vec1;
@@ -2666,7 +2664,7 @@ __global__ void BiasAct(const T *bias,
                         const int elem_num,
                         LoadFunc load_func,
                         StoreFunc store_func) {
-  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
   LoadT src_vec;
   LoadT bias_vec;
 
@@ -2759,7 +2757,7 @@ __global__ void fused_transpose_split_kernel(
   int64_t global_thread_idx =
       static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
       static_cast<int64_t>(threadIdx.x);
-  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
   LoadT src_vec;
   LoadT bias_vec;
 
@@ -2899,9 +2897,9 @@ __global__ void VariableLengthRotaryKernel(
     const int num_head,
     const int seq_len,
     const int last_dim) {
-  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
   constexpr int HalfVecSize = VecSize / 2;
-  using LoadEmbT = phi::AlignedVector<float, VecSize>;
+  using LoadEmbT = AlignedVector<float, VecSize>;
   LoadT src_vec;
   LoadT bias_vec;
   LoadEmbT cos_emb_vec;
@@ -3016,9 +3014,9 @@ __global__ void GQAVariableLengthRotaryKernel(
     const int seq_len,
     const int last_dim,
     const int gqa_group_size) {
-  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
   constexpr int HalfVecSize = VecSize / 2;
-  using LoadEmbT = phi::AlignedVector<float, VecSize>;
+  using LoadEmbT = AlignedVector<float, VecSize>;
   LoadT src_vec;
   LoadT bias_vec;
   LoadEmbT cos_emb_vec;

@@ -425,10 +425,10 @@ class GRUOneDNNHandler : public funcs::OneDNNHandlerT<T, dnnl::gru_forward> {
 template <typename T, typename Tout = T>
 void RunKernel(const phi::OneDNNContext& dev_ctx,
                const DenseTensor& x,
-               const paddle::optional<DenseTensor>& h0,
+               const optional<DenseTensor>& h0,
                const DenseTensor& weight_x,
                const DenseTensor& weight_h,
-               const paddle::optional<DenseTensor>& bias,
+               const optional<DenseTensor>& bias,
                const std::string& activation,
                const std::string& gate_activation,
                const bool is_reverse,
@@ -450,8 +450,8 @@ void RunKernel(const phi::OneDNNContext& dev_ctx,
                         : x_dims;
 
   // Get tensor dimensions
-  const auto x_mat_dims_vec = common::vectorize(x_mat_dims);
-  const auto weight_h_dims = common::vectorize(weight_h.dims());
+  const auto x_mat_dims_vec = vectorize(x_mat_dims);
+  const auto weight_h_dims = vectorize(weight_h.dims());
   const auto& input_lod = x.lod()[0];
 
   // Calculate RNN dimensions
@@ -548,10 +548,10 @@ void RunKernel(const phi::OneDNNContext& dev_ctx,
 template <typename T, typename Context>
 void FusionGRUKernel(const Context& dev_ctx,
                      const DenseTensor& x,
-                     const paddle::optional<DenseTensor>& h0,
+                     const optional<DenseTensor>& h0,
                      const DenseTensor& weight_x,
                      const DenseTensor& weight_h,
-                     const paddle::optional<DenseTensor>& bias,
+                     const optional<DenseTensor>& bias,
                      const std::string& activation,
                      const std::string& gate_activation,
                      const bool is_reverse,

@@ -19,32 +19,39 @@ namespace phi {
 namespace fusion {
 
 template <typename T, typename Context>
-void MultiHeadAttentionVariableForwardKernel(
-    const Context& dev_ctx,
-    const DenseTensor& query,
-    const DenseTensor& key,
-    const DenseTensor& value,
-    const DenseTensor& seq_lens,
-    const DenseTensor& kv_seq_lens,
-    const paddle::optional<DenseTensor>& mask,
-    const float scale,
-    const bool causal,
-    const int pre_cache_length,
-    DenseTensor* output) {
+void MultiHeadAttentionVariableForwardKernel(const Context& dev_ctx,
+                                             const DenseTensor& query,
+                                             const DenseTensor& key,
+                                             const DenseTensor& value,
+                                             const DenseTensor& seq_lens,
+                                             const DenseTensor& kv_seq_lens,
+                                             const optional<DenseTensor>& mask,
+                                             const float scale,
+                                             const bool causal,
+                                             const int pre_cache_length,
+                                             DenseTensor* output) {
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
 
   using XPUType = typename XPUTypeTrait<T>::Type;
+  dev_ctx.template Alloc<T>(output);
+  if (output->numel() == 0) {
+    return;
+  }
 
   int64_t num_batches = query.dims()[0];
   int64_t num_heads = query.dims()[1];
   int64_t kv_num_heads = key.dims()[1];
   int64_t query_seq_len = query.dims()[2];
   int64_t head_size = query.dims()[3];
+  if (num_batches == 0 || query_seq_len == 0 || num_heads == 0 ||
+      head_size == 0) {
+    return;
+  }
   std::vector<int64_t> mask_shape = {};
   if (mask) {
     // [B, 1, S, D]
     auto mask_tensor = mask.get();
-    mask_shape = common::vectorize(mask_tensor.dims());
+    mask_shape = vectorize(mask_tensor.dims());
   }
 
   xpu::QKVAttnParam qkv_attn_param(
@@ -66,10 +73,35 @@ void MultiHeadAttentionVariableForwardKernel(
   );
   qkv_attn_param.key_value_head_num = kv_num_heads;
 
-  const XPUType* mask_ptr =
-      mask ? reinterpret_cast<const XPUType*>(mask.get().data<T>()) : nullptr;
-  auto* out_data =
-      reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(output));
+  const XPUType* mask_ptr = nullptr;
+  if (mask && mask.get().numel() > 0) {
+    auto mask_tensor = mask.get();
+    auto mask_dims = mask_tensor.dims();
+    if (mask_dims.size() == 4) {
+      // The batch dimension must be consistent. Other dimensions may be larger
+      // and will be cropped to query_seq_len according to GPU logic.
+      PADDLE_ENFORCE_EQ(
+          mask_dims[0],
+          num_batches,
+          common::errors::InvalidArgument(
+              "The 1st dim of mask should be equal to batch size. "
+              "But got mask_dims[0]=%ld, batch=%ld.",
+              mask_dims[0],
+              num_batches));
+      if (mask_dims[2] >= query_seq_len && mask_dims[3] >= query_seq_len) {
+        mask_shape[2] = query_seq_len;
+        mask_shape[3] = query_seq_len;
+      } else {
+        PADDLE_THROW(common::errors::InvalidArgument(
+            "mask dims[2]/[3] must be >= query_seq_len when provided. "
+            "But got mask_dims = %s, query_seq_len = %ld.",
+            mask_dims,
+            query_seq_len));
+      }
+    }
+    mask_ptr = reinterpret_cast<const XPUType*>(mask_tensor.data<T>());
+  }
+  auto* out_data = reinterpret_cast<XPUType*>(output->data<T>());
   XPUType* qk_buf = RAII_GUARD.alloc_l3_or_gm<XPUType>(
       num_batches * num_heads * query_seq_len * query_seq_len);
   float* maxptr_buf = RAII_GUARD.alloc_l3_or_gm<float>(32);

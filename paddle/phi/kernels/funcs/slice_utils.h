@@ -389,7 +389,7 @@ inline DDim GetDecreasedDims(const DDim slice_dims,
         new_shape.push_back(decreased_dims[i]);
       }
     }
-    decreased_dims = common::make_ddim(new_shape);
+    decreased_dims = make_ddim(new_shape);
   }
   return decreased_dims;
 }

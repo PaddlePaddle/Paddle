@@ -24,14 +24,14 @@
 namespace phi {
 
 #ifndef _WIN32
-bool should_use_term(phi::math::bloomfilter* _filter,
-                     phi::math::bloomfilter* _black_filter,
+bool should_use_term(math::bloomfilter* _filter,
+                     math::bloomfilter* _black_filter,
                      const float* word_repr,
                      int len) {
-  return (!_filter || 1 == phi::math::bloomfilter_get(
+  return (!_filter || 1 == math::bloomfilter_get(
                                _filter, word_repr, len * sizeof(float))) &&
          (!_black_filter ||
-          0 == phi::math::bloomfilter_get(
+          0 == math::bloomfilter_get(
                    _black_filter, word_repr, len * sizeof(float)));
 }
 
@@ -99,7 +99,7 @@ void CPUPyramidHashOPKernel(const Context& dev_ctx,
   const auto& offset = bottom->lod()[0];
   const auto* bottom_data_ori = bottom->data<int32_t>();
   auto* buff = x_temp_out;
-  buff->Resize(common::make_ddim({bottom->dims()[0], bottom->dims()[1]}));
+  buff->Resize({bottom->dims()[0], bottom->dims()[1]});
   float* bottom_data = dev_ctx.template Alloc<float>(buff);
   for (int i = 0; i < bottom->dims()[0]; i++) {
     bottom_data[i] = bottom_data_ori[i];  // NOLINT
@@ -111,13 +111,13 @@ void CPUPyramidHashOPKernel(const Context& dev_ctx,
   top_offset.resize(offset.size());
   top_offset[0] = 0;
 
-  phi::math::bloomfilter* _filter = nullptr;
-  phi::math::bloomfilter* _black_filter = nullptr;
+  math::bloomfilter* _filter = nullptr;
+  math::bloomfilter* _black_filter = nullptr;
   if (use_filter) {
     if (white_list_len != 0) {
-      _filter = (phi::math::bloomfilter*)_blobs_1->data<float>();
+      _filter = (math::bloomfilter*)_blobs_1->data<float>();
       PADDLE_ENFORCE_EQ(
-          phi::math::bloomfilter_check(_filter),
+          math::bloomfilter_check(_filter),
           1,
           common::errors::PreconditionNotMet(
               "The white filter is not loaded successfully, please make sure "
@@ -125,9 +125,9 @@ void CPUPyramidHashOPKernel(const Context& dev_ctx,
               white_list_len));
     }
     if (black_list_len != 0) {
-      _black_filter = (phi::math::bloomfilter*)_blobs_2->data<float>();
+      _black_filter = (math::bloomfilter*)_blobs_2->data<float>();
       PADDLE_ENFORCE_EQ(
-          phi::math::bloomfilter_check(_black_filter),
+          math::bloomfilter_check(_black_filter),
           1,
           common::errors::PreconditionNotMet(
               "The black filter is not loaded successfully, please make sure "
@@ -136,8 +136,8 @@ void CPUPyramidHashOPKernel(const Context& dev_ctx,
     }
   }
 
-  drop_pos->Resize(common::make_ddim(
-      {bottom->dims()[0] * bottom->dims()[1] * _pyramid_layer, 1}));
+  drop_pos->Resize(
+      make_ddim({bottom->dims()[0] * bottom->dims()[1] * _pyramid_layer, 1}));
   std::vector<size_t> drop_pos_offset;
   drop_pos_offset.resize(offset.size());
   drop_pos_offset[0] = 0;
@@ -179,13 +179,13 @@ void CPUPyramidHashOPKernel(const Context& dev_ctx,
 
   int top_l = static_cast<int>(top_offset[top_offset.size() - 1]);
 
-  phi::LegacyLoD top_lod;
+  LegacyLoD top_lod;
   top_lod.push_back(top_offset);
   top->set_lod(top_lod);
-  top->Resize(common::make_ddim({top_l, _num_emb}));
+  top->Resize({top_l, _num_emb});
   auto* top_data = dev_ctx.template Alloc<T>(top);
 
-  phi::LegacyLoD drop_pos_lod;
+  LegacyLoD drop_pos_lod;
   drop_pos_lod.push_back(drop_pos_offset);
   drop_pos->set_lod(drop_pos_lod);
 
@@ -228,8 +228,8 @@ void CPUPyramidHashOPKernel(const Context& dev_ctx,
   if (iter != iter_end) {
     exit(1);
   }
-  auto weight_type = phi::TransToProtoVarType(_blobs_0->dtype());
-  if (_is_training == 0 && weight_type != phi::ProtoDataType::INT8) {
+  auto weight_type = TransToProtoVarType(_blobs_0->dtype());
+  if (_is_training == 0 && weight_type != ProtoDataType::INT8) {
     funcs::axpy_noadd(
         top_data, top_data, top->dims()[0] * top->dims()[1], _drop_out_percent);
   }

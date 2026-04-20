@@ -136,7 +136,7 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
     std::unordered_set<const Node*> nodes2rm = {};
 
     // Get input scale from tensor
-    const phi::DenseTensor& input_scale_tensor =
+    const DenseTensor& input_scale_tensor =
         scope->GetVar(quantize_linear_op_scale->Name())->Get<DenseTensor>();
     PADDLE_ENFORCE_EQ(phi::is_cpu_place(input_scale_tensor.place()),
                       true,

@@ -112,8 +112,8 @@ class ProcessGroupBKCL : public ProcessGroupWithStream {
       bool use_calc_stream) override;
 
   std::shared_ptr<ProcessGroup::Task> AllToAll(
-      std::vector<phi::DenseTensor>* out_tensors,
-      const std::vector<phi::DenseTensor>& in_tensors,
+      std::vector<DenseTensor>* out_tensors,
+      const std::vector<DenseTensor>& in_tensors,
       bool sync_op,
       bool use_calc_stream) override;
 
@@ -183,7 +183,7 @@ class ProcessGroupBKCL : public ProcessGroupWithStream {
 
   std::shared_ptr<ProcessGroup::Task> Collective(
       std::function<void(phi::distributed::BKCLCommContext*, XPUStream)> fn,
-      const std::vector<phi::DenseTensor>& tensors,
+      const std::vector<DenseTensor>& tensors,
       CommType comm_type,
       bool sync_op,
       bool use_calc_stream);

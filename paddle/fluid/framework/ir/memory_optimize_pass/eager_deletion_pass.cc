@@ -50,7 +50,7 @@ static bool IsDenseTensor(VarDesc *var) {
   return var->Proto()->type().type() == proto::VarType::DENSE_TENSOR;
 }
 
-// Get memory size of phi::DenseTensor
+// Get memory size of DenseTensor
 static int64_t GetMemorySize(
     const std::unordered_map<std::string, std::vector<details::VarHandle *>>
         &vars,
@@ -62,7 +62,7 @@ static int64_t GetMemorySize(
   PADDLE_ENFORCE_EQ(IsDenseTensor(var_desc),
                     true,
                     common::errors::InvalidArgument(
-                        "Var(%s) must be phi::DenseTensor.", var_name));
+                        "Var(%s) must be DenseTensor.", var_name));
   auto dims = var_desc->GetShape();
   return static_cast<int64_t>(
       SizeOfType(var_desc->GetDataType()) *
@@ -126,7 +126,7 @@ static OpToVarNameSetMap ShrinkGCVars(const OpToVarNameSetMap &m,
   if (fraction_of_memory_size <= 0.0) return {};
 
   /**
-   * Step 1: Split all variables into DenseTensor and Non-phi::DenseTensor.
+   * Step 1: Split all variables into DenseTensor and Non-DenseTensor.
    * We can only calculate memory size of DenseTensors
    */
   OpToVarNameSetMap lod_tensors, other_vars;

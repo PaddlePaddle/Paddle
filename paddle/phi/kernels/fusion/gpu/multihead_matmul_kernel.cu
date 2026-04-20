@@ -273,7 +273,7 @@ void MultiheadMatmulKernel(const Context &dev_ctx,
                            const DenseTensor &input,
                            const DenseTensor &w,
                            const DenseTensor &bias,
-                           const paddle::optional<DenseTensor> &bias_qk,
+                           const optional<DenseTensor> &bias_qk,
                            const bool transpose_q,
                            const bool transpose_k,
                            const bool transpose_v,
@@ -341,13 +341,12 @@ void MultiheadMatmulKernel(const Context &dev_ctx,
 
   // (B*S, hidden)
   const DenseTensor input_matrix =
-      phi::ReshapeToMatrix(input, 2 /*x_num_col_dims */);
+      ReshapeToMatrix(input, 2 /*x_num_col_dims */);
   // (hidden, 3 * all_head_size)
-  const DenseTensor w_matrix = phi::ReshapeToMatrix(w, 1 /*y_num_col_dims*/);
+  const DenseTensor w_matrix = ReshapeToMatrix(w, 1 /*y_num_col_dims*/);
 
   DenseTensor temp_out_tensor;
-  auto temp_out_dims =
-      common::make_ddim({batch, seq_len, 3, head_number, head_size});
+  auto temp_out_dims = make_ddim({batch, seq_len, 3, head_number, head_size});
   temp_out_tensor.Resize(
       {batch * seq_len, common::product(temp_out_dims) / (batch * seq_len)});
   auto *temp_out_data = dev_ctx.template Alloc<T>(

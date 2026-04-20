@@ -23,9 +23,9 @@
 
 namespace phi {
 
-template <typename T, typename MT>
+template <typename T, typename MT, typename GradT>
 __global__ void SGDKernelMT(const T* param,
-                            const T* grad,
+                            const GradT* grad,
                             const T* learning_rate,
                             const int64_t num,
                             T* param_out,
@@ -56,7 +56,7 @@ __global__ void SparseSGDFunctorKernel(const T* selected_rows,
     for (int64_t index = threadIdx.x; index < row_numel; index += blockDim.x) {
       // Since index in rows of SelectedRows can be duplicate, we have to use
       // Atomic Operation to avoid concurrent write error.
-      phi::CudaAtomicAdd(
+      CudaAtomicAdd(
           tensor_out_ptr + index,
           -static_cast<T>(1.0) * learning_rate[0] * selected_rows_ptr[index]);
     }
@@ -68,11 +68,11 @@ void SGDDenseKernel(const Context& dev_ctx,
                     const DenseTensor& param,
                     const DenseTensor& learning_rate,
                     const DenseTensor& grad,
-                    const paddle::optional<DenseTensor>& master_param,
+                    const optional<DenseTensor>& master_param,
                     bool multi_precision,
                     DenseTensor* param_out,
                     DenseTensor* master_param_out) {
-  using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename dtype::MPTypeTrait<T>::Type;
   // do check here
   // if (multi_precision) {
   //   bool has_master =
@@ -80,37 +80,46 @@ void SGDDenseKernel(const Context& dev_ctx,
   //       dev_ctx.HasOutput("MasterParamOut");
 
   // }
-  const MPDType* master_in_data =
-      multi_precision ? master_param->data<MPDType>() : nullptr;
-  MPDType* master_out_data =
-      multi_precision ? dev_ctx.template Alloc<MPDType>(master_param_out)
-                      : nullptr;
+  const MT* master_in_data =
+      multi_precision ? master_param->data<MT>() : nullptr;
+  MT* master_out_data =
+      multi_precision ? dev_ctx.template Alloc<MT>(master_param_out) : nullptr;
+  const bool use_float32_grad = grad.dtype() == DataType::FLOAT32;
 
   int block = 512;
   int64_t grid_max = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int grid = std::min((param.numel() + block - 1) / block, grid_max);
-
-  SGDKernelMT<T, MPDType><<<grid, block, 0, dev_ctx.stream()>>>(
-      param.data<T>(),
-      grad.data<T>(),
-      learning_rate.data<T>(),
-      param.numel(),
-      dev_ctx.template Alloc<T>(param_out),
-      master_in_data,
-      master_out_data);
+  if (use_float32_grad) {
+    SGDKernelMT<T, MT, float><<<grid, block, 0, dev_ctx.stream()>>>(
+        param.data<T>(),
+        grad.data<float>(),
+        learning_rate.data<T>(),
+        param.numel(),
+        dev_ctx.template Alloc<T>(param_out),
+        master_in_data,
+        master_out_data);
+  } else {
+    SGDKernelMT<T, MT, T><<<grid, block, 0, dev_ctx.stream()>>>(
+        param.data<T>(),
+        grad.data<T>(),
+        learning_rate.data<T>(),
+        param.numel(),
+        dev_ctx.template Alloc<T>(param_out),
+        master_in_data,
+        master_out_data);
+  }
 }
 
 template <typename T, typename Context>
-void SGDDenseParamSparseGradKernel(
-    const Context& dev_ctx,
-    const DenseTensor& param,
-    const DenseTensor& learning_rate,
-    const SelectedRows& grad,
-    const paddle::optional<DenseTensor>& master_param,
-    bool multi_precision,
-    DenseTensor* param_out,
-    DenseTensor* master_param_out) {
-  using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
+void SGDDenseParamSparseGradKernel(const Context& dev_ctx,
+                                   const DenseTensor& param,
+                                   const DenseTensor& learning_rate,
+                                   const SelectedRows& grad,
+                                   const optional<DenseTensor>& master_param,
+                                   bool multi_precision,
+                                   DenseTensor* param_out,
+                                   DenseTensor* master_param_out) {
+  using MT = typename dtype::MPTypeTrait<T>::Type;
   // do some check here
   // if (multi_precision) {
   //   bool has_master =
@@ -118,11 +127,10 @@ void SGDDenseParamSparseGradKernel(
   //       dev_ctx.HasOutput("MasterParamOut");
 
   // }
-  const MPDType* master_in_data =
-      multi_precision ? master_param->data<MPDType>() : nullptr;
-  MPDType* master_out_data =
-      multi_precision ? dev_ctx.template Alloc<MPDType>(master_param_out)
-                      : nullptr;
+  const MT* master_in_data =
+      multi_precision ? master_param->data<MT>() : nullptr;
+  MT* master_out_data =
+      multi_precision ? dev_ctx.template Alloc<MT>(master_param_out) : nullptr;
 
   PADDLE_ENFORCE_EQ(
       param.IsSharedBufferWith(*param_out),
@@ -159,7 +167,7 @@ void SGDDenseParamSparseGradKernel(
   int thread_x = kThreadsPerBlock;
   int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
   int max_blocks = std::max(max_threads / kThreadsPerBlock, 1);
-  phi::MixVector<int64_t> mixv_in_rows(&in_rows);
+  MixVector<int64_t> mixv_in_rows(&in_rows);
   SparseSGDFunctorKernel<<<max_blocks, thread_x, 0, dev_ctx.stream()>>>(
       in_data,
       mixv_in_rows.CUDAData(dev_ctx.GetPlace()),
@@ -170,15 +178,14 @@ void SGDDenseParamSparseGradKernel(
 }
 
 template <typename T, typename Context>
-void SGDSparseParamSparseGradKernel(
-    const Context& dev_ctx,
-    const SelectedRows& param,
-    const DenseTensor& learning_rate,
-    const SelectedRows& grad,
-    const paddle::optional<SelectedRows>& master_param,
-    bool multi_precision,
-    SelectedRows* param_out,
-    SelectedRows* master_param_out) {
+void SGDSparseParamSparseGradKernel(const Context& dev_ctx,
+                                    const SelectedRows& param,
+                                    const DenseTensor& learning_rate,
+                                    const SelectedRows& grad,
+                                    const optional<SelectedRows>& master_param,
+                                    bool multi_precision,
+                                    SelectedRows* param_out,
+                                    SelectedRows* master_param_out) {
   PADDLE_THROW("not impl");
 }
 

@@ -27,7 +27,7 @@ template <typename T, typename Context>
 void FCKernel(const Context& dev_ctx,
               const DenseTensor& input,
               const DenseTensor& w,
-              const paddle::optional<DenseTensor>& bias,
+              const optional<DenseTensor>& bias,
               const int in_num_col_dims,
               const std::string& activation_type,
               const bool padding_weights,
@@ -39,7 +39,7 @@ void FCKernel(const Context& dev_ctx,
   std::vector<int64_t> output_dims;
   funcs::FCOutputSize(
       input.dims(), w_dims, output_dims, in_num_col_dims, padding_weights);
-  out->Resize(common::make_ddim(output_dims));
+  out->Resize(output_dims);
   out->set_lod(input.lod());
 
   auto out_dims = out->dims();

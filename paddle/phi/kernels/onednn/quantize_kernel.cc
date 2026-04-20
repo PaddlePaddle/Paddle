@@ -44,7 +44,7 @@ void QuantOpKernel(const Context& dev_ctx,
                      "255 and greater or equal to 0, but got %f",
                      quantization_shift));
 
-  auto x_tz = common::vectorize<int64_t>(input.dims());
+  auto x_tz = vectorize<int64_t>(input.dims());
   dnnl::primitive_attr attrs;
   static constexpr int32_t mask = 0;
 
@@ -80,7 +80,7 @@ void QuantOpKernel(const Context& dev_ctx,
   auto reorder_p = reorder_handler.AcquireReorder(
       reorder_dst_memory_p, reorder_src_memory_p, attrs);
 
-  auto& astream = phi::OneDNNContext::tls().get_stream();
+  auto& astream = OneDNNContext::tls().get_stream();
 
   auto scales_md = dnnl::memory::desc(
       {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);

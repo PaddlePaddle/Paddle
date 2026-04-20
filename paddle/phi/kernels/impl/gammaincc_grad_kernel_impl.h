@@ -26,7 +26,7 @@ struct IgammaGradFunctor {
       : dout_(dout), x_(x), a_(a), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    using MT = typename dtype::MPTypeTrait<T>::Type;
     const MT mp_dout = static_cast<MT>(dout_[idx]);
     const MT mp_x = static_cast<MT>(x_[idx]);
     const MT mp_a = static_cast<MT>(a_[idx]);

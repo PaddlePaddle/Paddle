@@ -17,6 +17,7 @@ concurrency:
 jobs:
   cherry-pick:
     if: >
+      github.repository_owner == 'PaddlePaddle' &&
       github.event.pull_request.merged == true &&
       (
         github.event.action == 'labeled' ||
@@ -38,9 +39,8 @@ jobs:
           PR_BODY: ${{ github.event.pull_request.body }}
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
           MERGE_COMMIT_SHA: ${{ github.event.pull_request.merge_commit_sha }}
-          BOT_USERNAME: ShigureNyako
-          BOT_EMAIL: shigure_nyako@outlook.com
-          REPO_NAME: ShigureNyako/Paddle
+          BOT_USERNAME: risemeup1111
+          REPO_NAME: risemeup1111/Paddle
         run: |
           # Function to post comment
           post_comment() {
@@ -145,9 +145,11 @@ jobs:
 
               NEW_BODY="$PR_BODY
 
-          Cherry-pick of #$PR_NUMBER to \`$TARGET_BRANCH\`.
+          ---
 
-          <!-- devPR:https://github.com/PaddlePaddle/Paddle/pull/$PR_NUMBER -->"
+          Cherry-pick of #$PR_NUMBER (authored by @${PR_AUTHOR}) to \`$TARGET_BRANCH\`.
+
+          devPR:https://github.com/PaddlePaddle/Paddle/pull/$PR_NUMBER <!-- For pass CI -->"
 
               # Prepare head ref for PR creation (owner:branch)
               HEAD_REF="${BOT_USERNAME}:${NEW_BRANCH}"
@@ -184,5 +186,22 @@ jobs:
               # Cleanup for next loop
               git checkout "$ORIGINAL_HEAD_SHA"
               git branch -D "$NEW_BRANCH"
+            fi
+          done <<< "$LABELS"
+
+      - name: Remove Cherry Pick Labels
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO_NAME: ${{ github.repository }}
+        run: |
+          LABELS=$(gh pr view "$PR_NUMBER" --repo "$REPO_NAME" --json labels --jq '.labels[].name')
+          if [ -z "$LABELS" ]; then
+            exit 0
+          fi
+          while read -r label; do
+            if [[ "$label" == cherry-pick:* ]]; then
+              echo "Removing label: $label"
+              gh pr edit "$PR_NUMBER" --repo "$REPO_NAME" --remove-label "$label"
             fi
           done <<< "$LABELS"

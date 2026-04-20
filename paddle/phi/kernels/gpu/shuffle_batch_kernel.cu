@@ -53,7 +53,7 @@ void ShuffleBatchKernel(const Context& dev_ctx,
   for (int i = 0; i < x.dims().size() - 1; i++) {
     elem_size *= x.dims()[i];
   }
-  shuffleidx->Resize(common::make_ddim({elem_size}));
+  shuffleidx->Resize({elem_size});
 
   int64_t seed_int = 0;
   if (seed.initialized()) {
@@ -78,8 +78,8 @@ void ShuffleBatchKernel(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_CUDA
   // CacheAllocator allocator(dev_ctx.GetPlace());
-  phi::memory_utils::ThrustAllocator<cudaStream_t> allocator(dev_ctx.GetPlace(),
-                                                             dev_ctx.stream());
+  memory_utils::ThrustAllocator<cudaStream_t> allocator(dev_ctx.GetPlace(),
+                                                        dev_ctx.stream());
   const auto& exec_policy = thrust::cuda::par(allocator).on(dev_ctx.stream());
 #else
   const auto& exec_policy = thrust::hip::par.on(dev_ctx.stream());
@@ -101,9 +101,9 @@ void ShuffleBatchKernel(const Context& dev_ctx,
   auto* out_data = dev_ctx.template Alloc<T>(out);
   ReorderFunctor<T, true> functor(
       x_data, shuffleidx_data, out_data, x_embed_size);
-  funcs::ForRange<phi::GPUContext> for_range(dev_ctx, elem_size * x_embed_size);
+  funcs::ForRange<GPUContext> for_range(dev_ctx, elem_size * x_embed_size);
   for_range(functor);
-  seed_out->Resize(common::make_ddim({1}));
+  seed_out->Resize({1});
   auto* seed_out_data = dev_ctx.template HostAlloc<int64_t>(seed_out);
   *seed_out_data = engine();
 #endif

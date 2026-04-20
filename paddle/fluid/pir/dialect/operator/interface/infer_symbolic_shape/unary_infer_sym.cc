@@ -21,8 +21,8 @@ std::vector<symbol::DimExpr> GetRealPadding(
     const std::vector<int> &origin_paddings,
     const bool global_pooling,
     const bool adaptive,
-    const std::string padding_algorithm,
-    const std::vector<symbol::DimExpr> data_dims,
+    const std::string &padding_algorithm,
+    const std::vector<symbol::DimExpr> &data_dims,
     const std::vector<int> &strides,
     const std::vector<symbol::DimExpr> &kernel_size) {
   const auto &GetInitPadding = [&]() -> std::vector<symbol::DimExpr> {
@@ -51,7 +51,7 @@ std::vector<symbol::DimExpr> GetRealPadding(
 
   std::vector<symbol::DimExpr> real_padding = GetInitPadding();
 
-  const auto &UpdataPadding = [&]() {
+  const auto &UpdatePadding = [&]() {
     symbol::DimExpr one_dimexpr{1};
     symbol::DimExpr zero_dimexpr{0};
     // when padding_algorithm is "VALID" or "SAME"
@@ -81,7 +81,7 @@ std::vector<symbol::DimExpr> GetRealPadding(
     }
   };
 
-  UpdataPadding();
+  UpdatePadding();
   return real_padding;
 }
 
@@ -2450,6 +2450,22 @@ bool NanmedianOpInferSymbolicShape(
   return true;
 }
 
+bool NansumOpInferSymbolicShape(pir::Operation *op,
+                                pir::InferSymbolicShapeContext *infer_context) {
+  bool keepdim = GetBoolAttr(op, "keepdim");
+
+  std::vector<int64_t> axis;
+  const auto attributes = op->attributes();
+  if (attributes.find("axis") != attributes.end()) {
+    axis = op->attribute<paddle::dialect::IntArrayAttribute>("axis")
+               .data()
+               .GetData();
+  }
+  bool reduce_all = axis.size() == 0;
+
+  return details::ReduceInferDim(op, infer_context, axis, keepdim, reduce_all);
+}
+
 bool NormOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
   auto x_shape_or_data =
@@ -2797,7 +2813,7 @@ bool PNormOpInferSymbolicShape(pir::Operation *op,
     }
   } else {
     if (keepdim) {
-      for (unsigned int i = 0; i < x_rank; ++i) {
+      for (int i = 0; i < x_rank; ++i) {
         if (i == axis) {
           out_shape.emplace_back(symbol::DimExpr(1));
         } else {
@@ -2805,7 +2821,7 @@ bool PNormOpInferSymbolicShape(pir::Operation *op,
         }
       }
     } else {
-      for (unsigned int i = 0; i < x_rank; ++i) {
+      for (int i = 0; i < x_rank; ++i) {
         if (i != axis) {
           out_shape.emplace_back(x_shape[i]);
         }
@@ -3293,6 +3309,11 @@ bool RreluOpInferSymbolicShape(pir::Operation *op,
   }
 
   return true;
+}
+
+bool Rrelu_OpInferSymbolicShape(pir::Operation *op,
+                                pir::InferSymbolicShapeContext *infer_context) {
+  return RreluOpInferSymbolicShape(op, infer_context);
 }
 
 bool SequencePoolOpInferSymbolicShape(
@@ -4791,6 +4812,26 @@ bool WeightQuantizeOpInferSymbolicShape(
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(scale_shape)});
   return true;
+}
+
+bool VarOpInferSymbolicShape(pir::Operation *op,
+                             pir::InferSymbolicShapeContext *infer_context) {
+  const auto &axis = details::GetVectorAttr(op, "axis");
+  return details::ReduceInferDim(op,
+                                 infer_context,
+                                 axis,
+                                 GetBoolAttr(op, "keepdim"), /*keepdim*/
+                                 axis.size() == 0 /*reduce_all*/);
+}
+
+bool StdOpInferSymbolicShape(pir::Operation *op,
+                             pir::InferSymbolicShapeContext *infer_context) {
+  const auto &axis = details::GetVectorAttr(op, "axis");
+  return details::ReduceInferDim(op,
+                                 infer_context,
+                                 axis,
+                                 GetBoolAttr(op, "keepdim"), /*keepdim*/
+                                 axis.size() == 0 /*reduce_all*/);
 }
 
 }  // namespace paddle::dialect

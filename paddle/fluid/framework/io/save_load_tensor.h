@@ -17,11 +17,11 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-void SaveTensor(const phi::DenseTensor& x,
+void SaveTensor(const DenseTensor& x,
                 const std::string& file_path,
                 bool overwrite);
 
-void LoadTensor(const std::string& file_path, phi::DenseTensor* out);
+void LoadTensor(const std::string& file_path, DenseTensor* out);
 
 }  // namespace framework
 }  // namespace paddle

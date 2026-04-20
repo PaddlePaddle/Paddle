@@ -998,9 +998,9 @@ template <typename T, typename Context>
 static void Interpolate1DCUDAFwd(
     const Context& dev_ctx,
     const DenseTensor& input,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const std::string& data_layout_str,
     int out_w,
     const std::vector<double>& scale,
@@ -1010,7 +1010,7 @@ static void Interpolate1DCUDAFwd(
     DenseTensor* output) {
   auto* input_data = input.data<T>();
 
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
   int64_t n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -1074,7 +1074,7 @@ static void Interpolate1DCUDAFwd(
 
   using MT = std::conditional_t<std::is_integral<T>::value,
                                 float,
-                                typename phi::dtype::MPTypeTrait<T>::Type>;
+                                typename dtype::MPTypeTrait<T>::Type>;
   MT ratio_w =
       funcs::AreaPixelComputeScale<MT>(in_w, out_w, align_corners, scale_w);
 
@@ -1108,9 +1108,9 @@ template <typename T, typename Context>
 static void Interpolate2DCUDAFwd(
     const Context& dev_ctx,
     const DenseTensor& input,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const std::string& data_layout_str,
     int out_h,
     int out_w,
@@ -1121,7 +1121,7 @@ static void Interpolate2DCUDAFwd(
     DenseTensor* output) {
   auto* input_data = input.data<T>();
 
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
   int64_t n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -1219,7 +1219,7 @@ static void Interpolate2DCUDAFwd(
 
   using MT = std::conditional_t<std::is_integral<T>::value,
                                 float,
-                                typename phi::dtype::MPTypeTrait<T>::Type>;
+                                typename dtype::MPTypeTrait<T>::Type>;
   MT ratio_h =
       funcs::AreaPixelComputeScale<MT>(in_h, out_h, align_corners, scale_h);
   MT ratio_w =
@@ -1350,9 +1350,9 @@ template <typename T, typename Context>
 static void InterpolateAA2DCUDAFwd(
     const Context& dev_ctx,
     const DenseTensor& input,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const std::string& data_layout_str,
     int out_h,
     int out_w,
@@ -1367,7 +1367,7 @@ static void InterpolateAA2DCUDAFwd(
   }
   auto* input_data = input.data<T>();
 
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
   int64_t n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -1463,7 +1463,7 @@ static void InterpolateAA2DCUDAFwd(
     return;
   }
 
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename dtype::MPTypeTrait<T>::Type;
   MT ratio_h =
       funcs::AreaPixelComputeScale<MT>(in_h, out_h, align_corners, scale_h);
   MT ratio_w =
@@ -1483,7 +1483,7 @@ static void InterpolateAA2DCUDAFwd(
   auto launch_aa_kernel = [&](auto filter) {
     int64_t nc = static_cast<int64_t>(n) * c;
     int device_id = dev_ctx.GetPlace().GetDeviceId();
-    auto& gpu_props = phi::backends::gpu::GetDeviceProperties(device_id);
+    auto& gpu_props = backends::gpu::GetDeviceProperties(device_id);
 
     // Use AAInterpLaunchConfig to compute block/grid dimensions with dynamic
     // adjustment for shared memory limits
@@ -1587,9 +1587,9 @@ template <typename T, typename Context>
 static void Interpolate3DCUDAFwd(
     const Context& dev_ctx,
     const DenseTensor& input,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const std::string& data_layout_str,
     int out_d,
     int out_h,
@@ -1601,7 +1601,7 @@ static void Interpolate3DCUDAFwd(
     DenseTensor* output) {
   auto* input_data = input.data<T>();
 
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
   int64_t n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -1724,7 +1724,7 @@ static void Interpolate3DCUDAFwd(
 
   using MT = std::conditional_t<std::is_integral<T>::value,
                                 float,
-                                typename phi::dtype::MPTypeTrait<T>::Type>;
+                                typename dtype::MPTypeTrait<T>::Type>;
   MT ratio_d =
       funcs::AreaPixelComputeScale<MT>(in_d, out_d, align_corners, scale_d);
   MT ratio_h =
@@ -1794,9 +1794,9 @@ template <typename T, typename Context>
 void InterpolateKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const std::string& data_layout,
     int out_d,
     int out_h,
@@ -1860,9 +1860,9 @@ template <typename T, typename Context>
 void BilinearInterpKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const std::string& data_layout,
     int out_d,
     int out_h,
@@ -1892,9 +1892,9 @@ template <typename T, typename Context>
 void LegacyBilinearInterpKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const std::string& data_layout,
     int out_d,
     int out_h,
@@ -1931,9 +1931,9 @@ template <typename T, typename Context>
 void NearestInterpKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const std::string& data_layout,
     int out_d,
     int out_h,
@@ -1963,9 +1963,9 @@ template <typename T, typename Context>
 void LegacyNearestInterpKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const std::string& data_layout,
     int out_d,
     int out_h,
@@ -2002,9 +2002,9 @@ template <typename T, typename Context>
 void TrilinearInterpKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const std::string& data_layout,
     int out_d,
     int out_h,
@@ -2034,9 +2034,9 @@ template <typename T, typename Context>
 void LinearInterpKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const std::string& data_layout,
     int out_d,
     int out_h,
@@ -2066,9 +2066,9 @@ template <typename T, typename Context>
 void BicubicInterpKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const std::string& data_layout,
     int out_d,
     int out_h,
@@ -2098,9 +2098,9 @@ template <typename T, typename Context>
 void InterpAntialiasKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const std::string& data_layout,
     int out_d,
     int out_h,

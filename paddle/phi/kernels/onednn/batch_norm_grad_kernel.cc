@@ -21,13 +21,13 @@
   template void phi::BatchNormGradFunctor<dtype, ::phi::backend##Context>( \
       const ::phi::backend##Context& dev_ctx,                              \
       const DenseTensor& x,                                                \
-      const paddle::optional<DenseTensor>& scale,                          \
-      const paddle::optional<DenseTensor>& bias,                           \
-      const paddle::optional<DenseTensor>& mean,                           \
-      const paddle::optional<DenseTensor>& variance,                       \
+      const optional<DenseTensor>& scale,                                  \
+      const optional<DenseTensor>& bias,                                   \
+      const optional<DenseTensor>& mean,                                   \
+      const optional<DenseTensor>& variance,                               \
       const DenseTensor& saved_mean,                                       \
       const DenseTensor& saved_variance,                                   \
-      const paddle::optional<DenseTensor>& reserve_space,                  \
+      const optional<DenseTensor>& reserve_space,                          \
       const DenseTensor& y_grad,                                           \
       float momentum,                                                      \
       float epsilon,                                                       \
@@ -45,13 +45,13 @@ namespace phi {
 template <typename T, typename Context>
 void BatchNormGradFunctor(const Context& dev_ctx,
                           const DenseTensor& x,
-                          const paddle::optional<DenseTensor>& scale,
-                          const paddle::optional<DenseTensor>& bias,
-                          const paddle::optional<DenseTensor>& mean,
-                          const paddle::optional<DenseTensor>& variance,
+                          const optional<DenseTensor>& scale,
+                          const optional<DenseTensor>& bias,
+                          const optional<DenseTensor>& mean,
+                          const optional<DenseTensor>& variance,
                           const DenseTensor& saved_mean,
                           const DenseTensor& saved_variance,
-                          const paddle::optional<DenseTensor>& reserve_space,
+                          const optional<DenseTensor>& reserve_space,
                           const DenseTensor& y_grad,
                           float momentum,
                           float epsilon,
@@ -71,7 +71,7 @@ void BatchNormGradFunctor(const Context& dev_ctx,
   std::vector<int64_t> scale_tz;
   std::vector<int64_t> bias_tz;
   if (use_scale) {
-    scale_tz = common::vectorize<int64_t>(Scale->dims());
+    scale_tz = vectorize<int64_t>(Scale->dims());
     PADDLE_ENFORCE_EQ(
         scale_tz.size(),
         1,
@@ -80,7 +80,7 @@ void BatchNormGradFunctor(const Context& dev_ctx,
             scale_tz.size()));
   }
   if (use_bias) {
-    bias_tz = common::vectorize<int64_t>(Bias->dims());
+    bias_tz = vectorize<int64_t>(Bias->dims());
     PADDLE_ENFORCE_EQ(
         bias_tz.size(),
         1,
@@ -136,13 +136,13 @@ void BatchNormGradFunctor(const Context& dev_ctx,
 template <typename T, typename Context>
 void BatchNormGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
-                         const paddle::optional<DenseTensor>& scale,
-                         const paddle::optional<DenseTensor>& bias,
-                         const paddle::optional<DenseTensor>& mean,
-                         const paddle::optional<DenseTensor>& variance,
+                         const optional<DenseTensor>& scale,
+                         const optional<DenseTensor>& bias,
+                         const optional<DenseTensor>& mean,
+                         const optional<DenseTensor>& variance,
                          const DenseTensor& saved_mean,
                          const DenseTensor& saved_variance,
-                         const paddle::optional<DenseTensor>& reserve_space,
+                         const optional<DenseTensor>& reserve_space,
                          const DenseTensor& y_grad,
                          float momentum,
                          float epsilon,

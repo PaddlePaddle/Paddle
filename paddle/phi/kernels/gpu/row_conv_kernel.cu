@@ -119,7 +119,7 @@ void RowConvKernel(const Context &dev_ctx,
     batch_size = X->lod()[0].size() - 1;
   }
   int input_dim = 0;
-  phi::Vector<size_t> batch_indices(batch_size + 1);
+  Vector<size_t> batch_indices(batch_size + 1);
   int64_t timesteps = X->dims()[1];
 
   if (is_tensor) {
@@ -138,7 +138,7 @@ void RowConvKernel(const Context &dev_ctx,
   PADDLE_ENFORCE_LE_INT_MAX(future_context, "future_context");
   int future_context_int = static_cast<int>(future_context);
 
-  phi::MixVector<size_t> mix_vector(&batch_indices);
+  MixVector<size_t> mix_vector(&batch_indices);
   size_t *idx = mix_vector.CUDAMutableData(dev_ctx.GetPlace());
   auto stream = dev_ctx.stream();
 

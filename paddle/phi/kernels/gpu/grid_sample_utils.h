@@ -55,21 +55,21 @@ inline bool cudnnIsAvailable() {
     // Get current device ID for this device type
     int device_id = DeviceManager::GetDevice(device_type);
     // Create place for the current device
-    phi::Place place(phi::CustomPlace(device_type, device_id));
+    Place place(CustomPlace(device_type, device_id));
     // Check if this device has DNN support
     return DeviceManager::IsDnnAvailable(place);
   }
   return false;
 #elif defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // cuDNN/MIOpen version > 0 means DNN lib loaded; require v7+ for sampler
-  return phi::backends::gpu::DnnVersion() >= 7000;
+  return backends::gpu::DnnVersion() >= 7000;
 #else
   return false;
 #endif
 }
 
 inline bool isGpuTensor(const DenseTensor& x) {
-  return phi::is_gpu_place(x.place());
+  return is_gpu_place(x.place());
 }
 
 inline bool canUse32bitIndexMath(const DenseTensor& x) {

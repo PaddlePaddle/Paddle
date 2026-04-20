@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include <vector>
 #include <iostream>
+#include <vector>
 
 #define ASSERT_CHECK(__cond)                                            \
   do {                                                                  \
@@ -27,7 +27,6 @@
       throw std::runtime_error(__err_msg);                              \
     }                                                                   \
   } while (0)
-
 
 namespace ap {
 
@@ -45,7 +44,7 @@ struct Alignment<float, Dim> {
 };
 
 struct GemmEpilogueParams {
-	int batch_count;
+  int batch_count;
   int m;
   int n;
   int k;
@@ -72,7 +71,7 @@ struct GemmEpilogueParams {
   const void *bias;
   void *output;
 
-  void* stream_ptr;
+  void *stream_ptr;
 
   std::vector<int64_t> input0_shape;
   std::vector<int64_t> input1_shape;
@@ -82,7 +81,7 @@ struct GemmEpilogueParams {
   std::vector<std::vector<int64_t>> epilogue_out_shapes;
 
   GemmEpilogueParams() {}
-  GemmEpilogueParams(void* stream_ptr,
+  GemmEpilogueParams(void *stream_ptr,
                      const void *input,
                      const void *weight,
                      const void *bias,
@@ -175,37 +174,4 @@ struct GemmEpilogueParams {
   }
 };
 
-struct GemmBroadcastEpilogueParams : GemmEpilogueParams {
-  bool need_broadcast;
-  void *broadcast;
-  void *broadcast_out;
-
-  GemmBroadcastEpilogueParams(void* stream_ptr,
-                              const void *input,
-                              const void *weight,
-                              const void *bias,
-                              void *broadcast,
-                              void *broadcast_out,
-                              void *output,
-                              const std::vector<int64_t> &input_shape,
-                              const std::vector<int64_t> &weight_shape,
-                              const std::vector<int64_t> &bias_shape,
-                              bool need_broadcast,
-                              bool transpose_a = false,
-                              bool transpose_b = false)
-      : GemmEpilogueParams(stream_ptr,
-                           input,
-                           weight,
-                           bias,
-                           output,
-                           input_shape,
-                           weight_shape,
-                           bias_shape,
-                           transpose_a,
-                           transpose_b),
-        need_broadcast(need_broadcast),
-        broadcast(broadcast),
-        broadcast_out(broadcast_out) {}
-};
-
-} // namespace ap
+}  // namespace ap

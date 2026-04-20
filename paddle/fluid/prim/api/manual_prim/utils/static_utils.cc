@@ -24,11 +24,10 @@
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/utils/data_type.h"
 namespace paddle::prim {
-using Tensor = paddle::Tensor;
 template <>
 TEST_API Tensor empty<DescTensor>(const paddle::experimental::IntArray& shape,
-                                  phi::DataType dtype,
-                                  const paddle::Place& place) {
+                                  DataType dtype,
+                                  const Place& place) {
   framework::VarDesc* new_var =
       StaticCompositeContext::Instance().GetBlock()->Var(
           StaticCompositeContext::Instance().GenerateUniqueName());
@@ -40,25 +39,25 @@ TEST_API Tensor empty<DescTensor>(const paddle::experimental::IntArray& shape,
 
 template <>
 Tensor empty_like<DescTensor>(const Tensor& x,
-                              phi::DataType dtype,
-                              const paddle::Place& place) {
+                              DataType dtype,
+                              const Place& place) {
   return empty<prim::DescTensor>(
-      paddle::experimental::IntArray(x.shape()), x.dtype(), paddle::Place());
+      paddle::experimental::IntArray(x.shape()), x.dtype(), Place());
 }
 
 template <>
-void set_output<DescTensor>(const paddle::Tensor& x_tmp, paddle::Tensor* x) {
+void set_output<DescTensor>(const Tensor& x_tmp, Tensor* x) {
   x->set_impl(x_tmp.impl());
 }
 
 template <>
-void by_pass<DescTensor>(const paddle::Tensor& x, paddle::Tensor* real_out) {
+void by_pass<DescTensor>(const Tensor& x, Tensor* real_out) {
   framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
   framework::OpDesc* op = block->AppendOp();
   op->SetType("assign");
   op->SetInput("X",
                {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
-  auto out = empty<DescTensor>({}, x.dtype(), paddle::Place());
+  auto out = empty<DescTensor>({}, x.dtype(), Place());
   op->SetOutput(
       "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
   op->CheckAttrs();

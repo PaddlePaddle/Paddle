@@ -29,13 +29,13 @@ namespace phi {
 template <typename T, typename Context>
 void InstanceNormKernel(const Context &dev_ctx,
                         const DenseTensor &x,
-                        const paddle::optional<DenseTensor> &scale,
-                        const paddle::optional<DenseTensor> &bias,
+                        const optional<DenseTensor> &scale,
+                        const optional<DenseTensor> &bias,
                         float epsilon_f,
                         DenseTensor *y,
                         DenseTensor *saved_mean,
                         DenseTensor *saved_variance) {
-  using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using AccT = typename dtype::MPTypeTrait<T>::Type;
   double epsilon = static_cast<double>(epsilon_f);
   auto &x_dims = x.dims();
   PADDLE_ENFORCE_GE(x_dims.size(),
@@ -80,17 +80,16 @@ void InstanceNormKernel(const Context &dev_ctx,
   miopenTensorDescriptor_t in_param_desc_;
 
   PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::miopenCreateTensorDescriptor(&data_desc_));
+      dynload::miopenCreateTensorDescriptor(&data_desc_));
   PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::miopenCreateTensorDescriptor(&in_param_desc_));
+      dynload::miopenCreateTensorDescriptor(&in_param_desc_));
 #else
   cudnnTensorDescriptor_t data_desc_;
   cudnnTensorDescriptor_t in_param_desc_;
 
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnCreateTensorDescriptor(&data_desc_));
   PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::cudnnCreateTensorDescriptor(&data_desc_));
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::cudnnCreateTensorDescriptor(&in_param_desc_));
+      dynload::cudnnCreateTensorDescriptor(&in_param_desc_));
 #endif
   if (epsilon <= CUDNN_BN_MIN_EPSILON - FLT_EPSILON) {
     LOG(ERROR) << "Provided epsilon is smaller than "
@@ -106,22 +105,22 @@ void InstanceNormKernel(const Context &dev_ctx,
   strides = {NxC * H * W * D, H * W * D, W * D, D, 1};
 
 #ifdef PADDLE_WITH_HIP
-  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSetTensorDescriptor(
-      data_desc_,
-      CudnnDataType<T>::type,
-      x_dims.size() > 3 ? x_dims.size() : 4,
-      const_cast<int *>(dims.data()),
-      const_cast<int *>(strides.data())));
-  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenDeriveBNTensorDescriptor(
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      dynload::miopenSetTensorDescriptor(data_desc_,
+                                         CudnnDataType<T>::type,
+                                         x_dims.size() > 3 ? x_dims.size() : 4,
+                                         const_cast<int *>(dims.data()),
+                                         const_cast<int *>(strides.data())));
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenDeriveBNTensorDescriptor(
       in_param_desc_, data_desc_, miopenBNSpatial));
 #else
-  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetTensorNdDescriptor(
-      data_desc_,
-      CudnnDataType<T>::type,
-      x_dims.size() > 3 ? x_dims.size() : 4,
-      dims.data(),
-      strides.data()));
-  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnDeriveBNTensorDescriptor(
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      dynload::cudnnSetTensorNdDescriptor(data_desc_,
+                                          CudnnDataType<T>::type,
+                                          x_dims.size() > 3 ? x_dims.size() : 4,
+                                          dims.data(),
+                                          strides.data()));
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnDeriveBNTensorDescriptor(
       in_param_desc_, data_desc_, CUDNN_BATCHNORM_SPATIAL));
 #endif
 
@@ -166,14 +165,14 @@ void InstanceNormKernel(const Context &dev_ctx,
     dev_ctx.template Alloc<BatchNormParamType<T>>(saved_mean);
     functor(dev_ctx, saved_mean, static_cast<BatchNormParamType<T>>(0));
   } else {
-    saved_mean_tmp = phi::Full<BatchNormParamType<T>>(
+    saved_mean_tmp = Full<BatchNormParamType<T>>(
         dev_ctx, {NxC}, static_cast<BatchNormParamType<T>>(0));
   }
   if (saved_variance) {
     dev_ctx.template Alloc<BatchNormParamType<T>>(saved_variance);
     functor(dev_ctx, saved_variance, static_cast<BatchNormParamType<T>>(0));
   } else {
-    saved_variance_tmp = phi::Full<BatchNormParamType<T>>(
+    saved_variance_tmp = Full<BatchNormParamType<T>>(
         dev_ctx, {NxC}, static_cast<BatchNormParamType<T>>(0));
   }
   auto *saved_mean_data = saved_mean
@@ -184,59 +183,54 @@ void InstanceNormKernel(const Context &dev_ctx,
                      : saved_variance_tmp.data<BatchNormParamType<T>>();
 
 #ifdef PADDLE_WITH_HIP
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::miopenBatchNormalizationForwardTraining(
-          handle,
-          miopenBNSpatial,
-          const_cast<void *>(
-              static_cast<const void *>(CudnnDataType<T>::kOne())),
-          const_cast<void *>(
-              static_cast<const void *>(CudnnDataType<T>::kZero())),
-          data_desc_,
-          static_cast<const void *>(x_tmp.template data<T>()),
-          data_desc_,
-          static_cast<void *>(y->template data<T>()),
-          in_param_desc_,
-          const_cast<void *>(static_cast<const void *>(
-              scale_tmp.template data<BatchNormParamType<T>>())),
-          const_cast<void *>(static_cast<const void *>(
-              bias_tmp.template data<BatchNormParamType<T>>())),
-          0,
-          nullptr,
-          nullptr,
-          epsilon,
-          static_cast<void *>(saved_mean_data),
-          static_cast<void *>(saved_variance_data)));
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenBatchNormalizationForwardTraining(
+      handle,
+      miopenBNSpatial,
+      const_cast<void *>(static_cast<const void *>(CudnnDataType<T>::kOne())),
+      const_cast<void *>(static_cast<const void *>(CudnnDataType<T>::kZero())),
+      data_desc_,
+      static_cast<const void *>(x_tmp.template data<T>()),
+      data_desc_,
+      static_cast<void *>(y->template data<T>()),
+      in_param_desc_,
+      const_cast<void *>(static_cast<const void *>(
+          scale_tmp.template data<BatchNormParamType<T>>())),
+      const_cast<void *>(static_cast<const void *>(
+          bias_tmp.template data<BatchNormParamType<T>>())),
+      0,
+      nullptr,
+      nullptr,
+      epsilon,
+      static_cast<void *>(saved_mean_data),
+      static_cast<void *>(saved_variance_data)));
 
   PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::miopenDestroyTensorDescriptor(data_desc_));
+      dynload::miopenDestroyTensorDescriptor(data_desc_));
   PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::miopenDestroyTensorDescriptor(in_param_desc_));
+      dynload::miopenDestroyTensorDescriptor(in_param_desc_));
 #else
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::cudnnBatchNormalizationForwardTraining(
-          handle,
-          CUDNN_BATCHNORM_SPATIAL,
-          CudnnDataType<T>::kOne(),
-          CudnnDataType<T>::kZero(),
-          data_desc_,
-          x_tmp.template data<T>(),
-          data_desc_,
-          y->template data<T>(),
-          in_param_desc_,
-          scale_tmp.template data<BatchNormParamType<T>>(),
-          bias_tmp.template data<BatchNormParamType<T>>(),
-          0,
-          nullptr,
-          nullptr,
-          epsilon,
-          saved_mean_data,
-          saved_variance_data));
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnBatchNormalizationForwardTraining(
+      handle,
+      CUDNN_BATCHNORM_SPATIAL,
+      CudnnDataType<T>::kOne(),
+      CudnnDataType<T>::kZero(),
+      data_desc_,
+      x_tmp.template data<T>(),
+      data_desc_,
+      y->template data<T>(),
+      in_param_desc_,
+      scale_tmp.template data<BatchNormParamType<T>>(),
+      bias_tmp.template data<BatchNormParamType<T>>(),
+      0,
+      nullptr,
+      nullptr,
+      epsilon,
+      saved_mean_data,
+      saved_variance_data));
 
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnDestroyTensorDescriptor(data_desc_));
   PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::cudnnDestroyTensorDescriptor(data_desc_));
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::cudnnDestroyTensorDescriptor(in_param_desc_));
+      dynload::cudnnDestroyTensorDescriptor(in_param_desc_));
 #endif
 }
 

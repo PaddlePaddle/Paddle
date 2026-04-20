@@ -13,6 +13,7 @@
 // limitations under the License.
 #pragma once
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/common/macros.h"
 #include "paddle/phi/core/distributed/comm_context.h"
 
@@ -96,3 +97,4 @@ class XCCLCommContext final : public CommContext {
 
 }  // namespace distributed
 }  // namespace phi
+#endif

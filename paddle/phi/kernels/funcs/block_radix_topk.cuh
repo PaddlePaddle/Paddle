@@ -57,9 +57,9 @@ class BlockRadixTopKGlobalMemory {
 
  public:
   struct TempStorage : cub::Uninitialized<_TempStorage> {};
-  __device__ __forceinline__
-  BlockRadixTopKGlobalMemory(TempStorage &temp_storage)
-      : temp_storage_{temp_storage.Alias()}, tid_(threadIdx.x){};
+  __device__ __forceinline__ explicit BlockRadixTopKGlobalMemory(
+      TempStorage &temp_storage)  // NOLINT
+      : temp_storage_{temp_storage.Alias()}, tid_(threadIdx.x) {}
   __device__ __forceinline__ void radixTopKGetThreshold(
       const KeyT *data, int k, int size, KeyT &topK, bool &topk_is_unique) {
     assert(k < size && k > 0);
@@ -119,9 +119,10 @@ class BlockRadixTopKGlobalMemory {
         .Store(temp_storage_.shared_bins, items, RADIX_SIZE);
     cub::CTA_SYNC();
   }
-  __device__ __forceinline__ void UpdateTopK(int digit_pos,
-                                             int &target_k,
-                                             UnsignedBits &target_pattern) {
+  __device__ __forceinline__ void UpdateTopK(
+      int digit_pos,
+      int &target_k,                   // NOLINT
+      UnsignedBits &target_pattern) {  // NOLINT
     for (int idx = tid_; (idx < RADIX_SIZE); idx += BLOCK_SIZE) {
       int prev_count = (idx == 0) ? 0 : temp_storage_.shared_bins[idx - 1];
       int cur_count = temp_storage_.shared_bins[idx];
@@ -198,8 +199,9 @@ class BlockRadixTopKRegister {
 
  public:
   struct TempStorage : cub::Uninitialized<_TempStorage> {};
-  __device__ __forceinline__ BlockRadixTopKRegister(TempStorage &temp_storage)
-      : temp_storage_{temp_storage.Alias()}, tid_(threadIdx.x){};
+  __device__ __forceinline__ explicit BlockRadixTopKRegister(
+      TempStorage &temp_storage)  // NOLINT
+      : temp_storage_{temp_storage.Alias()}, tid_(threadIdx.x) {}
   __device__ __forceinline__ void radixTopKToStriped(
       KeyT (&keys)[ITEMS_PER_THREAD], const int k, const int valid_count) {
     TopKGenRank(keys, k, valid_count);
@@ -281,7 +283,7 @@ class BlockRadixTopKRegister {
       temp_storage_.shared_bins[id] = 0;
     }
     cub::CTA_SYNC();
-//#define USE_MATCH
+// #define USE_MATCH
 #ifdef USE_MATCH
     int lane_mask = cub::LaneMaskLt();
 #pragma unroll
@@ -291,7 +293,7 @@ class BlockRadixTopKRegister {
       if (is_search) {
         UnsignedBits digit_in_radix =
             cub::BFE<UnsignedBits>(unsigned_keys[KEY], digit_pos, RADIX_BITS);
-        bucket_idx = (int)digit_in_radix;
+        bucket_idx = static_cast<int>(digit_in_radix);
       }
       int warp_match_mask = __match_any_sync(0xffffffff, bucket_idx);
       int same_count = __popc(warp_match_mask);
@@ -316,7 +318,7 @@ class BlockRadixTopKRegister {
       if (is_search) {
         UnsignedBits digit_in_radix =
             cub::BFE<UnsignedBits>(unsigned_keys[KEY], digit_pos, RADIX_BITS);
-        bucket_idx = (int)digit_in_radix;
+        bucket_idx = static_cast<int>(digit_in_radix);
         ranks_[KEY] =
             atomicAdd(&temp_storage_.shared_bins[bucket_idx], 1) + prefix_k;
       }
@@ -338,8 +340,8 @@ class BlockRadixTopKRegister {
   __device__ __forceinline__ void UpdateTopK(
       UnsignedBits (&unsigned_keys)[ITEMS_PER_THREAD],
       int digit_pos,
-      int &target_k,
-      int &prefix_k,
+      int &target_k,  // NOLINT
+      int &prefix_k,  // NOLINT
       bool mark_equal) {
     for (int idx = tid_; (idx < RADIX_SIZE); idx += BLOCK_SIZE) {
       int prev_count = (idx == 0) ? 0 : temp_storage_.shared_bins[idx - 1];

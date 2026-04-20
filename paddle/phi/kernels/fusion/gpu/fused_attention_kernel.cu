@@ -27,7 +27,7 @@
 #include "paddle/phi/kernels/funcs/functors.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
-#include "paddle/phi/kernels/funcs/transpose_function.cu.h"
+#include "paddle/phi/kernels/funcs/transpose_function.cuh"
 #include "paddle/phi/kernels/fusion/gpu/attention_layer.norm.h"
 #include "paddle/phi/kernels/fusion/gpu/attn_gemm.h"
 #include "paddle/phi/kernels/fusion/gpu/fmha_ref.h"
@@ -40,16 +40,16 @@ namespace fusion {
 template <typename T, typename Context>
 void FusedAttentionKernel(const Context &dev_ctx,
                           const DenseTensor &x,
-                          const paddle::optional<DenseTensor> &ln_scale,
-                          const paddle::optional<DenseTensor> &ln_bias,
+                          const optional<DenseTensor> &ln_scale,
+                          const optional<DenseTensor> &ln_bias,
                           const DenseTensor &qkv_weight,
-                          const paddle::optional<DenseTensor> &qkv_bias,
-                          const paddle::optional<DenseTensor> &cache_kv,
-                          const paddle::optional<DenseTensor> &src_mask,
+                          const optional<DenseTensor> &qkv_bias,
+                          const optional<DenseTensor> &cache_kv,
+                          const optional<DenseTensor> &src_mask,
                           const DenseTensor &out_linear_weight,
-                          const paddle::optional<DenseTensor> &out_linear_bias,
-                          const paddle::optional<DenseTensor> &ln_scale_2,
-                          const paddle::optional<DenseTensor> &ln_bias_2,
+                          const optional<DenseTensor> &out_linear_bias,
+                          const optional<DenseTensor> &ln_scale_2,
+                          const optional<DenseTensor> &ln_bias_2,
                           int num_heads,
                           bool transpose_qkv_wb,
                           bool pre_layer_norm,

@@ -19,22 +19,22 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void Assign(const phi::DenseTensor& in, phi::DenseTensor* out);
+void Assign(const DenseTensor& in, DenseTensor* out);
 
-void Transpose2D(phi::DenseTensor* in, phi::DenseTensor* out = nullptr);
+void Transpose2D(DenseTensor* in, DenseTensor* out = nullptr);
 
-void CastTo(phi::DenseTensor* in, phi::DenseTensor* out, DataType dtype);
+void CastTo(DenseTensor* in, DenseTensor* out, DataType dtype);
 
-void CastToFp32(phi::DenseTensor* in, phi::DenseTensor* out = nullptr);
+void CastToFp32(DenseTensor* in, DenseTensor* out = nullptr);
 
-void CastToFp16(phi::DenseTensor* in, phi::DenseTensor* out = nullptr);
+void CastToFp16(DenseTensor* in, DenseTensor* out = nullptr);
 
-void CastToInt32(phi::DenseTensor* in, phi::DenseTensor* out = nullptr);
+void CastToInt32(DenseTensor* in, DenseTensor* out = nullptr);
 
 template <typename T>
-void ConvertWithoutQuant(phi::DenseTensor* weight,
-                         phi::DenseTensor* weight_max,
-                         phi::DenseTensor* scale_max,
+void ConvertWithoutQuant(DenseTensor* weight,
+                         DenseTensor* weight_max,
+                         DenseTensor* scale_max,
                          bool transpose,
                          const std::vector<float>& weight_scales);
 
@@ -42,9 +42,9 @@ template <typename Tcpu,
           typename Txpu,
           typename std::enable_if<std::is_same<Tcpu, float>::value, Tcpu>::type*
               ptr = nullptr>
-void ConvertWithQuant(phi::DenseTensor* weight,
-                      phi::DenseTensor* weight_max,
-                      phi::DenseTensor* scale_max,
+void ConvertWithQuant(DenseTensor* weight,
+                      DenseTensor* weight_max,
+                      DenseTensor* scale_max,
                       bool transpose,
                       bool per_channel_quant = false);
 
@@ -52,9 +52,9 @@ template <typename Tcpu,
           typename Txpu,
           typename std::enable_if<!std::is_same<Tcpu, float>::value,
                                   Tcpu>::type* ptr = nullptr>
-void ConvertWithQuant(phi::DenseTensor* weight,
-                      phi::DenseTensor* weight_max,
-                      phi::DenseTensor* scale_max,
+void ConvertWithQuant(DenseTensor* weight,
+                      DenseTensor* weight_max,
+                      DenseTensor* scale_max,
                       bool transpose,
                       const std::vector<float>& weight_scales,
                       bool per_channel_quant = false);

@@ -14,11 +14,32 @@
 
 #pragma once
 
+#include <iostream>
+#include <map>
+#include <vector>
+
+#ifdef __NVCC__
+#include <cuda.h>
+#include <cuda_bf16.h>
+#include <cuda_fp16.h>
+
+#define CHECK_CUDA(func)                                                      \
+  {                                                                           \
+    cudaError_t err = func;                                                   \
+    if (err != cudaSuccess) {                                                 \
+      std::cerr << "[" << __FILE__ << ":" << __LINE__ << ", " << __FUNCTION__ \
+                << "] "                                                       \
+                << "CUDA error(" << err << "), " << cudaGetErrorString(err)   \
+                << " when call " << #func << std::endl;                       \
+      exit(EXIT_FAILURE);                                                     \
+    }                                                                         \
+  }
+
+#include "cutlass_matmul.cuh"  // NOLINT
+#include "math_function.h"     // NOLINT
+#include "profile.h"           // NOLINT
+#endif
+
 #ifdef __HIPCC__
 #include "ck_patch/ck_matmul.h"
 #endif
-
-#ifdef __NVCC__
-#include "cutlass_patch/cutlass_matmul.cuh"
-#endif
-

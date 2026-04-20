@@ -44,7 +44,7 @@ void DeQuantKernel(const Context& dev_ctx,
 
   const bool with_shift = q_shift != 0;
 
-  auto x_tz = common::vectorize<int64_t>(x.dims());
+  auto x_tz = vectorize<int64_t>(x.dims());
   auto x_type = funcs::ToOneDNNDataType(x.dtype());
   auto out_type = funcs::ToOneDNNDataType(out->dtype());
 
@@ -68,7 +68,7 @@ void DeQuantKernel(const Context& dev_ctx,
   auto reorder_p = reorder_handler.AcquireReorder(
       reorder_dst_memory_p, reorder_src_memory_p, attrs);
 
-  auto& astream = phi::OneDNNContext::tls().get_stream();
+  auto& astream = OneDNNContext::tls().get_stream();
 
   auto scales_md = dnnl::memory::desc(
       {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);

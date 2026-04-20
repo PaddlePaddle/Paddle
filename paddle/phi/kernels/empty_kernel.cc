@@ -23,7 +23,7 @@ void EmptyKernel(const Context& dev_ctx,
                  const IntArray& shape,
                  DataType dtype UNUSED,
                  DenseTensor* out) {
-  out->Resize(common::make_ddim(shape.GetData()));
+  out->Resize(shape.GetData());
   dev_ctx.template Alloc<T>(out);
 }
 

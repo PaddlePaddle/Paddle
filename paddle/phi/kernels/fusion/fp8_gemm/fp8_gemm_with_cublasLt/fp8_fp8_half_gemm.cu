@@ -30,7 +30,7 @@ void fp8_fp8_half_gemm(
     const Context& dev_ctx,
     const DenseTensor& x,
     const DenseTensor& y,
-    const paddle::optional<DenseTensor>& bias,
+    const optional<DenseTensor>& bias,
     const bool trans_x,
     const bool trans_y,
     const float scale,  // only support per-tensor quantization

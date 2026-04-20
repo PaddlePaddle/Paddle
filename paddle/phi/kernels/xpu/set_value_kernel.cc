@@ -121,7 +121,7 @@ void SetValueImpl(const Context& dev_ctx,
       none_axes_cur++;
     }
 
-    slice_dims_for_assign = common::make_ddim(slice_dims_with_none);
+    slice_dims_for_assign = make_ddim(slice_dims_with_none);
   }
 
   // Here copy data from input to avoid data loss at PE and Graph level.
@@ -231,8 +231,8 @@ void SetValueImpl(const Context& dev_ctx,
     }
   }
 
-  auto out_shape = common::vectorize<int64_t>(out->dims());
-  auto slice_shape = common::vectorize<int64_t>(slice_dims);
+  auto out_shape = vectorize<int64_t>(out->dims());
+  auto slice_shape = vectorize<int64_t>(slice_dims);
 
   if (need_flip) {
     r = xpu::flip(dev_ctx.x_context(),
@@ -415,7 +415,7 @@ void SetValueKernel(const Context& dev_ctx,
                      CPUPlace(),
                      value_data_uint8_cpu,
                      values_length);
-  auto value_dims = common::make_ddim(shape);
+  auto value_dims = make_ddim(shape);
 
   SetValueKernelImpl<T, Context>(dev_ctx,
                                  x,

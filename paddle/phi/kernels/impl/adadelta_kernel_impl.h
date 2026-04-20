@@ -27,7 +27,7 @@ void AdadeltaKernel(const Context& dev_ctx,
                     const DenseTensor& avg_squared_grad,
                     const DenseTensor& avg_squared_update,
                     const DenseTensor& learning_rate,
-                    const paddle::optional<DenseTensor>& master_param,
+                    const optional<DenseTensor>& master_param,
                     float rho,
                     float epsilon,
                     bool multi_precision,
@@ -35,44 +35,42 @@ void AdadeltaKernel(const Context& dev_ctx,
                     DenseTensor* avg_squared_grad_out,
                     DenseTensor* avg_squared_update_out,
                     DenseTensor* master_param_outs) {
-  using MPDType = typename phi::dtype::template MPTypeTrait<T>::Type;
+  using MT = typename dtype::template MPTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(param_out);
-  dev_ctx.template Alloc<MPDType>(avg_squared_grad_out);
-  dev_ctx.template Alloc<MPDType>(avg_squared_update_out);
+  dev_ctx.template Alloc<MT>(avg_squared_grad_out);
+  dev_ctx.template Alloc<MT>(avg_squared_update_out);
 
-  MPDType rho_ = static_cast<MPDType>(rho);
-  MPDType epsilon_ = static_cast<MPDType>(epsilon);
+  MT rho_ = static_cast<MT>(rho);
+  MT epsilon_ = static_cast<MT>(epsilon);
 
   auto eigen_param = EigenVector<T>::Flatten(param);
   auto eigen_grad = EigenVector<T>::Flatten(grad);
   // Squared gradient accumulator
-  auto eigen_avg_squared_grad = EigenVector<MPDType>::Flatten(avg_squared_grad);
+  auto eigen_avg_squared_grad = EigenVector<MT>::Flatten(avg_squared_grad);
   // Squared updates accumulator
-  auto eigen_avg_squared_update =
-      EigenVector<MPDType>::Flatten(avg_squared_update);
+  auto eigen_avg_squared_update = EigenVector<MT>::Flatten(avg_squared_update);
   auto eigen_param_out = EigenVector<T>::Flatten(*param_out);
   auto eigen_avg_squared_grad_out =
-      EigenVector<MPDType>::Flatten(*avg_squared_grad_out);
+      EigenVector<MT>::Flatten(*avg_squared_grad_out);
   auto eigen_avg_squared_update_out =
-      EigenVector<MPDType>::Flatten(*avg_squared_update_out);
+      EigenVector<MT>::Flatten(*avg_squared_update_out);
   auto& place = *dev_ctx.eigen_device();
-  auto eigen_grad_cast = eigen_grad.template cast<MPDType>();
+  auto eigen_grad_cast = eigen_grad.template cast<MT>();
   eigen_avg_squared_grad_out.device(place) =
       rho_ * eigen_avg_squared_grad + (1 - rho_) * eigen_grad_cast.square();
   auto update =
       -(((eigen_avg_squared_update + epsilon_).sqrt()) /
         ((eigen_avg_squared_grad_out + epsilon_).sqrt()) * eigen_grad_cast);
   Eigen::DSizes<int, 1> m_dsize(avg_squared_update_out->numel());
-  auto lr = EigenVector<MPDType>::Flatten(learning_rate);
+  auto lr = EigenVector<MT>::Flatten(learning_rate);
   if (multi_precision) {
-    auto eigen_master_param_out =
-        EigenVector<MPDType>::Flatten(*master_param_outs);
-    auto eigen_master_param = EigenVector<MPDType>::Flatten(*master_param);
+    auto eigen_master_param_out = EigenVector<MT>::Flatten(*master_param_outs);
+    auto eigen_master_param = EigenVector<MT>::Flatten(*master_param);
 
     eigen_master_param_out.device(place) =
         eigen_master_param + lr.broadcast(m_dsize) * update;
     eigen_param_out.device(place) =
-        (eigen_param.template cast<MPDType>() + lr.broadcast(m_dsize) * update)
+        (eigen_param.template cast<MT>() + lr.broadcast(m_dsize) * update)
             .template cast<T>();
   } else {
     eigen_param_out.device(place) =

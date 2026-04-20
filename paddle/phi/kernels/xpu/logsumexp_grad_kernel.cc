@@ -40,7 +40,7 @@ void LogsumexpGradKernel(const Context& dev_ctx,
   auto dy_data = reinterpret_cast<const XPUType*>(dy.data<T>());
   auto dx_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(dx));
 
-  std::vector<int64_t> xdims = common::vectorize<int64_t>(x.dims());
+  std::vector<int64_t> xdims = vectorize<int64_t>(x.dims());
   std::vector<int64_t> ydims = xdims;
 
   if (reduce_all) {

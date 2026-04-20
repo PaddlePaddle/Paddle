@@ -50,12 +50,12 @@ void IndexAddKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto input_dim = x.dims();
   int dim = axis >= 0 ? axis : axis + input_dim.size();
-  auto input_vector = common::vectorize<int64_t>(input_dim);
+  auto input_vector = vectorize<int64_t>(input_dim);
   int64_t numel = add_value.numel();
   if (numel == 0) return;
   dev_ctx.template Alloc<T>(out);
   int r = 0;
-  if (index_type == phi::DataType::INT64) {
+  if (index_type == DataType::INT64) {
     r = xpu::index_add<XPUType, int64_t>(
         dev_ctx.x_context(),
         reinterpret_cast<const XPUType*>(x.data<T>()),
@@ -67,7 +67,7 @@ void IndexAddKernel(const Context& dev_ctx,
         dim,
         (XPUType)(1.0f));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "index_add");
-  } else if (index_type == phi::DataType::INT32) {
+  } else if (index_type == DataType::INT32) {
     r = xpu::index_add<XPUType, int>(
         dev_ctx.x_context(),
         reinterpret_cast<const XPUType*>(x.data<T>()),

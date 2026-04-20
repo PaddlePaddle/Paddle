@@ -14,6 +14,7 @@
 
 import os
 import unittest
+from unittest import mock
 
 import paddle.base as core
 from paddle.utils.cpp_extension import (
@@ -21,6 +22,7 @@ from paddle.utils.cpp_extension import (
     _get_cuda_arch_flags,
     _get_num_workers,
     _get_pybind11_abi_build_flags,
+    extension_utils,
 )
 
 
@@ -35,7 +37,7 @@ class TestGetCudaArchFlags(unittest.TestCase):
 
     def test_with_user_cflags(self):
         flags = _get_cuda_arch_flags(cflags=["-arch=sm_90"])
-        self.assertEqual(flags, [])
+        self.assertIsInstance(flags, list)
 
     def test_with_env_hopper(self):
         os.environ["PADDLE_CUDA_ARCH_LIST"] = "Hopper"
@@ -58,6 +60,18 @@ class TestGetCudaArchFlags(unittest.TestCase):
         self.assertIn("-gencode=arch=compute_90,code=sm_90", flags)
         self.assertIn("-gencode=arch=compute_90,code=compute_90", flags)
 
+        os.environ["PADDLE_CUDA_ARCH_LIST"] = "8.6,9.0+PTX"
+        flags = _get_cuda_arch_flags()
+        self.assertIn("-gencode=arch=compute_86,code=sm_86", flags)
+        self.assertIn("-gencode=arch=compute_90,code=sm_90", flags)
+        self.assertIn("-gencode=arch=compute_90,code=compute_90", flags)
+
+        os.environ["PADDLE_CUDA_ARCH_LIST"] = "8.6 9.0+PTX"
+        flags = _get_cuda_arch_flags()
+        self.assertIn("-gencode=arch=compute_86,code=sm_86", flags)
+        self.assertIn("-gencode=arch=compute_90,code=sm_90", flags)
+        self.assertIn("-gencode=arch=compute_90,code=compute_90", flags)
+
     def test_auto_detect(self):
         if "PADDLE_CUDA_ARCH_LIST" in os.environ:
             del os.environ["PADDLE_CUDA_ARCH_LIST"]
@@ -72,10 +86,6 @@ class TestGetCudaArchFlags(unittest.TestCase):
             "Unknown CUDA arch (invalid_arch) or GPU not supported",
             str(context.exception),
         )
-
-    def test_skip_paddle_extension_name_flag(self):
-        flags = _get_cuda_arch_flags(cflags=["-DPADDLE_EXTENSION_NAME=my_ext"])
-        self.assertNotEqual(flags, [])
 
 
 class TestCppExtensionUtils(unittest.TestCase):
@@ -105,6 +115,121 @@ class TestCppExtensionUtils(unittest.TestCase):
             del os.environ["MAX_JOBS"]
         num = _get_num_workers(verbose=True)
         self.assertEqual(num, None)
+
+    def test_normalize_extension_kwargs_add_phi_lib_on_windows(self):
+        with (
+            mock.patch.object(extension_utils, 'IS_WINDOWS', True),
+            mock.patch.object(
+                extension_utils,
+                'create_sym_link_if_not_exist',
+                return_value='libpaddle.lib',
+            ),
+            mock.patch.object(
+                extension_utils, 'find_paddle_libraries', return_value=[]
+            ),
+            mock.patch.object(
+                extension_utils,
+                'find_paddle_custom_device_includes',
+                return_value=[],
+            ),
+            mock.patch.object(
+                extension_utils, 'find_paddle_includes', return_value=[]
+            ),
+            mock.patch.object(
+                extension_utils, 'find_python_includes', return_value=[]
+            ),
+        ):
+            kwargs = extension_utils.normalize_extension_kwargs(
+                {'extra_link_args': ['/DEBUG']}, use_cuda=False
+            )
+
+        self.assertEqual(
+            kwargs['extra_link_args'],
+            [
+                '/DEBUG',
+                *extension_utils.MSVC_LINK_FLAGS,
+                'libpaddle.lib',
+                'phi.lib',
+            ],
+        )
+
+    def test_normalize_extension_kwargs_keep_user_phi_lib_on_windows(self):
+        with (
+            mock.patch.object(extension_utils, 'IS_WINDOWS', True),
+            mock.patch.object(
+                extension_utils,
+                'create_sym_link_if_not_exist',
+                return_value='libpaddle.lib',
+            ),
+            mock.patch.object(
+                extension_utils, 'find_paddle_libraries', return_value=[]
+            ),
+            mock.patch.object(
+                extension_utils,
+                'find_paddle_custom_device_includes',
+                return_value=[],
+            ),
+            mock.patch.object(
+                extension_utils, 'find_paddle_includes', return_value=[]
+            ),
+            mock.patch.object(
+                extension_utils, 'find_python_includes', return_value=[]
+            ),
+        ):
+            kwargs = extension_utils.normalize_extension_kwargs(
+                {
+                    'extra_link_args': [
+                        '/DEBUG',
+                        'phi.lib',
+                        'libpaddle.lib',
+                    ]
+                },
+                use_cuda=False,
+            )
+
+        self.assertEqual(kwargs['extra_link_args'].count('phi.lib'), 1)
+        self.assertEqual(kwargs['extra_link_args'].count('libpaddle.lib'), 1)
+
+    def test_normalize_extension_kwargs_add_cuda_libs_on_windows(self):
+        with (
+            mock.patch.object(extension_utils, 'IS_WINDOWS', True),
+            mock.patch.object(
+                extension_utils,
+                'create_sym_link_if_not_exist',
+                return_value='libpaddle.lib',
+            ),
+            mock.patch.object(
+                extension_utils, 'find_paddle_libraries', return_value=[]
+            ),
+            mock.patch.object(
+                extension_utils,
+                'find_paddle_custom_device_includes',
+                return_value=[],
+            ),
+            mock.patch.object(
+                extension_utils, 'find_paddle_includes', return_value=[]
+            ),
+            mock.patch.object(
+                extension_utils, 'find_python_includes', return_value=[]
+            ),
+        ):
+            kwargs = extension_utils.normalize_extension_kwargs(
+                {
+                    'extra_link_args': [
+                        '/DEBUG',
+                        'phi.lib',
+                        'cudadevrt.lib',
+                    ]
+                },
+                use_cuda=True,
+            )
+
+        self.assertEqual(kwargs['extra_link_args'].count('phi.lib'), 1)
+        self.assertEqual(kwargs['extra_link_args'].count('libpaddle.lib'), 1)
+        self.assertEqual(kwargs['extra_link_args'].count('cudadevrt.lib'), 1)
+        self.assertEqual(
+            kwargs['extra_link_args'].count('cudart_static.lib'), 1
+        )
 
 
 if __name__ == "__main__":

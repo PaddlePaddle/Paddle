@@ -44,7 +44,7 @@ if(WITH_GPU)
     test_leaky_relu_grad_grad_functor
     SRCS test_leaky_relu_grad_grad_functor.cc
          test_leaky_relu_grad_grad_functor.cu
-    DEPS tensor device_context eigen3)
+    DEPS tensor phi eigen3)
 elseif(WITH_ROCM)
   hip_test(
     dropout_op_test
@@ -54,7 +54,7 @@ elseif(WITH_ROCM)
     test_leaky_relu_grad_grad_functor
     SRCS test_leaky_relu_grad_grad_functor.cc
          test_leaky_relu_grad_grad_functor.cu
-    DEPS tensor device_context eigen3)
+    DEPS tensor phi eigen3)
 else()
   paddle_test(test_leaky_relu_grad_grad_functor SRCS
               test_leaky_relu_grad_grad_functor.cc)

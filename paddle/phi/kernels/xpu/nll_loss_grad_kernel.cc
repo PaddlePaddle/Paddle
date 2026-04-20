@@ -22,7 +22,7 @@ template <typename T, typename Context>
 void NllLossGradKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& label,
-                       const paddle::optional<DenseTensor>& weight,
+                       const optional<DenseTensor>& weight,
                        const DenseTensor& total_weight,
                        const DenseTensor& d_out,
                        int64_t ignore_index,
@@ -31,21 +31,21 @@ void NllLossGradKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   const auto& label_type = label.dtype();
   bool label_type_match =
-      label_type == phi::DataType::INT32 || label_type == phi::DataType::INT64;
+      label_type == DataType::INT32 || label_type == DataType::INT64;
   PADDLE_ENFORCE_EQ(label_type_match,
                     true,
                     common::errors::InvalidArgument(
                         "Input(Label) holds the wrong type, it holds %s, but "
                         "desires to be %s or %s",
                         label_type,
-                        phi::DataType::INT32,
-                        phi::DataType::INT64));
+                        DataType::INT32,
+                        DataType::INT64));
 
   auto d_out_data = d_out.data<XPUType>();
   auto d_x_data = dev_ctx.template Alloc<XPUType>(d_x);
 
   auto d_x_dims = d_x->dims();
-  std::vector<int64_t> d_x_shape = common::vectorize<int64_t>(d_x_dims);
+  std::vector<int64_t> d_x_shape = vectorize<int64_t>(d_x_dims);
 
   auto weight_data =
       weight.get_ptr() ? weight.get_ptr()->data<float>() : nullptr;
@@ -62,7 +62,7 @@ void NllLossGradKernel(const Context& dev_ctx,
   auto total_weight_data = total_weight.data<XPUType>();
 
   int r;
-  if (label_type == phi::DataType::INT32) {
+  if (label_type == DataType::INT32) {
     const int* label_data = label.data<int>();
     r = xpu::nll_loss_grad(dev_ctx.x_context(),
                            d_out_data,
@@ -73,7 +73,7 @@ void NllLossGradKernel(const Context& dev_ctx,
                            reduction_id,
                            ignore_index,
                            total_weight_data);
-  } else if (label_type == phi::DataType::INT64) {
+  } else if (label_type == DataType::INT64) {
     const int64_t* label_data = label.data<int64_t>();
     r = xpu::nll_loss_grad(dev_ctx.x_context(),
                            d_out_data,

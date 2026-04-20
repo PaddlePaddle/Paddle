@@ -27,7 +27,7 @@ template <typename T, typename Context>
 void MultiClassNMSKernel(const Context& dev_ctx,
                          const DenseTensor& bboxes,
                          const DenseTensor& scores,
-                         const paddle::optional<DenseTensor>& rois_num,
+                         const optional<DenseTensor>& rois_num,
                          float score_threshold,
                          int nums_top_k,
                          int keep_top_k,
@@ -48,7 +48,7 @@ void MultiClassNMSKernel(const Context& dev_ctx,
   bool return_index = index != nullptr;
   bool has_rois_num = rois_num.get_ptr() != nullptr;
   bool return_rois_num = nms_rois_num != nullptr;
-  auto score_dims = common::vectorize<int64_t>(scores.dims());
+  auto score_dims = vectorize<int64_t>(scores.dims());
   auto score_size = score_dims.size();
   bool is_lod = score_size == 2 ? true : false;
 
@@ -62,7 +62,7 @@ void MultiClassNMSKernel(const Context& dev_ctx,
     if (has_rois_num) {
       DenseTensor rois_num_host;
       rois_num_host.Resize(rois_num.get_ptr()->dims());
-      if (rois_num.get_ptr()->dtype() == phi::DataType::INT64) {
+      if (rois_num.get_ptr()->dtype() == DataType::INT64) {
         dev_ctx.template HostAlloc<int64_t>(&rois_num_host);
         Copy(dev_ctx,
              *rois_num.get_ptr(),
@@ -74,7 +74,7 @@ void MultiClassNMSKernel(const Context& dev_ctx,
           rois_num_vec.push_back(rois_num_host.data<int64_t>()[i]);
           boxes_count += rois_num_host.data<int64_t>()[i];
         }
-      } else if (rois_num.get_ptr()->dtype() == phi::DataType::INT32) {
+      } else if (rois_num.get_ptr()->dtype() == DataType::INT32) {
         dev_ctx.template HostAlloc<int>(&rois_num_host);
         Copy(dev_ctx,
              *rois_num.get_ptr(),

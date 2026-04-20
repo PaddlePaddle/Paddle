@@ -57,15 +57,15 @@ __global__ void IndexEleGetGradAccKernel(
         offset += index * strides[i];
       }
 
-      phi::CudaAtomicAdd(reinterpret_cast<T*>(out_data + offset),
-                         *reinterpret_cast<const T*>(in_data));
+      CudaAtomicAdd(reinterpret_cast<T*>(out_data + offset),
+                    *reinterpret_cast<const T*>(in_data));
       idx += nt;
     }
   }
 }
 
 template <typename T, typename OffsetT = uint32_t>
-void GPUIndexElementwiseGetGrad(const phi::GPUContext& dev_ctx,
+void GPUIndexElementwiseGetGrad(const GPUContext& dev_ctx,
                                 const DenseTensor& input,
                                 const DenseTensor& value,
                                 const std::vector<const DenseTensor*>& index,
@@ -97,13 +97,13 @@ void GPUIndexElementwiseGetGrad(const phi::GPUContext& dev_ctx,
 
   funcs::IndexPutStride<3>(input_dims,
                            input_strides,
-                           phi::SizeOf(input.dtype()),
-                           common::vectorize<int64_t>(value.dims()),
-                           common::vectorize<int64_t>(value.strides()),
-                           phi::SizeOf(value.dtype()),
+                           SizeOf(input.dtype()),
+                           vectorize<int64_t>(value.dims()),
+                           vectorize<int64_t>(value.strides()),
+                           SizeOf(value.dtype()),
                            shape_tmp,
                            stride_tmp,
-                           phi::SizeOf(index[0]->dtype()),
+                           SizeOf(index[0]->dtype()),
                            &desired_shape,
                            &strides_array,
                            &numel,
@@ -111,8 +111,8 @@ void GPUIndexElementwiseGetGrad(const phi::GPUContext& dev_ctx,
   auto offset_calc = funcs::make_offset_calculator_put<3, false, OffsetT>(
       desired_shape, strides_array);
 
-  auto max_grid_size = phi::backends::gpu::GetGpuMaxGridDimSize(
-      dev_ctx.GetPlace().GetDeviceId());
+  auto max_grid_size =
+      backends::gpu::GetGpuMaxGridDimSize(dev_ctx.GetPlace().GetDeviceId());
 
   const int64_t N = numel;
   constexpr int nt = 128;
@@ -180,7 +180,7 @@ __global__ void IndexingBackwardKernel(const int64_t* sorted_indices,
                                        int64_t stride_before,
                                        int64_t outer_dim,
                                        bool accumulate) {
-  using opmath_t = typename phi::dtype::MPTypeTrait<scalar_t>::Type;
+  using opmath_t = typename dtype::MPTypeTrait<scalar_t>::Type;
 
   for (int64_t z = blockIdx.z; z < outer_dim; z += gridDim.z) {
     for (int64_t idx =
@@ -250,7 +250,7 @@ __global__ void IndexingBackwardKernel(const int64_t* sorted_indices,
 }
 
 template <typename T, typename IndexT>
-void IndexPutWithSortKernel(const phi::GPUContext& dev_ctx,
+void IndexPutWithSortKernel(const GPUContext& dev_ctx,
                             const DenseTensor& input,
                             const DenseTensor& value,
                             const std::vector<const DenseTensor*>& indices,
@@ -272,9 +272,8 @@ void IndexPutWithSortKernel(const phi::GPUContext& dev_ctx,
 
   const bool unsafe = true;
   const bool self_contiguous = self.meta().is_contiguous();
-  auto self_ = self_contiguous
-                   ? self
-                   : phi::Contiguous<T, phi::GPUContext>(dev_ctx, self);
+  auto self_ =
+      self_contiguous ? self : Contiguous<T, GPUContext>(dev_ctx, self);
   DenseTensor linearIndex, src, expandedValue = value;
   int64_t nElemBefore, strideBefore, sliceSize;
   std::vector<int64_t> inversePerm;
@@ -285,9 +284,9 @@ void IndexPutWithSortKernel(const phi::GPUContext& dev_ctx,
   int64_t num_indices = linearIndex.numel();
 
   if (expandedValue.numel() < num_indices * nElemBefore * sliceSize) {
-    auto expanded_size = common::vectorize<int64_t>(expandedValue.dims());
-    auto size1 = common::vectorize<int64_t>(expandedValue.dims());
-    auto size2 = common::vectorize<int64_t>(linearIndex.dims());
+    auto expanded_size = vectorize<int64_t>(expandedValue.dims());
+    auto size1 = vectorize<int64_t>(expandedValue.dims());
+    auto size2 = vectorize<int64_t>(linearIndex.dims());
     if (funcs::are_expandable(size1, size2)) {
       expanded_size = funcs::infer_size_dimvector(size1, size2);
     }
@@ -299,20 +298,18 @@ void IndexPutWithSortKernel(const phi::GPUContext& dev_ctx,
     }
 
     DenseTensor expanded_tensor;
-    phi::ExpandKernel<T, phi::GPUContext>(
-        dev_ctx, expandedValue, phi::IntArray(expanded_size), &expanded_tensor);
+    ExpandKernel<T, GPUContext>(
+        dev_ctx, expandedValue, IntArray(expanded_size), &expanded_tensor);
     expandedValue = expanded_tensor;
   }
   if (!expandedValue.meta().is_contiguous()) {
-    expandedValue = phi::Contiguous<T, phi::GPUContext>(dev_ctx, expandedValue);
+    expandedValue = Contiguous<T, GPUContext>(dev_ctx, expandedValue);
   }
 
   if (num_indices > 0 && sliceSize > 0) {
     const bool permuted = !src.meta().is_contiguous();
-    DenseTensor src_ =
-        permuted ? phi::Contiguous<T, phi::GPUContext>(dev_ctx, src) : src;
-    linearIndex =
-        phi::Reshape<IndexT, phi::GPUContext>(dev_ctx, linearIndex, {-1});
+    DenseTensor src_ = permuted ? Contiguous<T, GPUContext>(dev_ctx, src) : src;
+    linearIndex = Reshape<IndexT, GPUContext>(dev_ctx, linearIndex, {-1});
 
     DenseTensor sorted_indices;
     sorted_indices.Resize(linearIndex.dims());
@@ -323,21 +320,17 @@ void IndexPutWithSortKernel(const phi::GPUContext& dev_ctx,
 
     auto stream = dev_ctx.stream();
 
-    auto shape = phi::IntArray(common::vectorize<int64_t>(linearIndex.dims()));
-    auto divisor =
-        Full<IndexT, phi::GPUContext>(dev_ctx, shape, phi::Scalar(sliceSize));
+    auto shape = IntArray(vectorize<int64_t>(linearIndex.dims()));
+    auto divisor = Full<IndexT, GPUContext>(dev_ctx, shape, Scalar(sliceSize));
 
-    DenseTensor linearIndex_d = phi::FloorDivide<IndexT, phi::GPUContext>(
-        dev_ctx, linearIndex, divisor);
+    DenseTensor linearIndex_d =
+        FloorDivide<IndexT, GPUContext>(dev_ctx, linearIndex, divisor);
 
     DenseTensor range;
     range.Resize({num_indices});
     dev_ctx.Alloc<IndexT>(&range);
-    phi::ArangeKernel<IndexT>(dev_ctx,
-                              phi::Scalar(0),
-                              phi::Scalar(num_indices),
-                              phi::Scalar(1),
-                              &range);
+    ArangeKernel<IndexT>(
+        dev_ctx, Scalar(0), Scalar(num_indices), Scalar(1), &range);
     int64_t nbits = funcs::GetNumBits(funcs::LargestIndex(self_) / sliceSize);
 
     funcs::RadixSortPairs<IndexT, IndexT>(dev_ctx,
@@ -352,8 +345,8 @@ void IndexPutWithSortKernel(const phi::GPUContext& dev_ctx,
 
     const int UNROLL = 4;
     const int INDICES_PER_BLOCK = 4;
-    auto max_grid_size = phi::backends::gpu::GetGpuMaxGridDimSize(
-        dev_ctx.GetPlace().GetDeviceId());
+    auto max_grid_size =
+        backends::gpu::GetGpuMaxGridDimSize(dev_ctx.GetPlace().GetDeviceId());
 
     dim3 grid(
         std::min(static_cast<int64_t>(max_grid_size[0]),
@@ -384,8 +377,7 @@ void IndexPutWithSortKernel(const phi::GPUContext& dev_ctx,
                      inversePerm_int.begin(),
                      [](int64_t x) { return static_cast<int>(x); });
 
-      phi::Transpose<T, phi::GPUContext>(
-          dev_ctx, src_, inversePerm_int, &transposed_src);
+      Transpose<T, GPUContext>(dev_ctx, src_, inversePerm_int, &transposed_src);
       Copy(dev_ctx, transposed_src, dev_ctx.GetPlace(), false, output);
     } else if (!self_contiguous) {
       Copy(dev_ctx, self_, dev_ctx.GetPlace(), false, output);
@@ -407,19 +399,29 @@ void IndexElementwiseGetGradKernel(const Context& dev_ctx,
                                    const bool accumulate,
                                    const bool is_combined,
                                    DenseTensor* x_grad) {
-  dev_ctx.template Alloc<T>(x_grad);
+  // CudaAtomicAdd for sub-4-byte types (bool, int8_t, uint8_t, int16_t) uses
+  // atomicCAS on uint32_t, which reads 4 bytes at a 4-byte-aligned address.
+  // If the total allocation size is not a multiple of 4, the last few elements
+  // may cause out-of-bounds reads. Pad the allocation to prevent this.
+  if (sizeof(T) < 4 && accumulate) {
+    size_t alloc_bytes = static_cast<size_t>(x_grad->numel()) * sizeof(T);
+    size_t padded_bytes = (alloc_bytes + 3) & ~static_cast<size_t>(3);
+    dev_ctx.template Alloc<T>(x_grad, padded_bytes);
+  } else {
+    dev_ctx.template Alloc<T>(x_grad);
+  }
   funcs::set_constant(dev_ctx, x_grad, static_cast<float>(0));
   if (out_grad.numel() == 0) return;
 
   const auto& index_type = index[0]->dtype();
-  PADDLE_ENFORCE_EQ(index_type == phi::DataType::INT64,
+  PADDLE_ENFORCE_EQ(index_type == DataType::INT64,
                     true,
                     common::errors::InvalidArgument(
                         "Index holds the wrong type, it holds [%s], but "
                         "desires to be [%s].",
                         index_type,
-                        phi::DataType::INT32,
-                        phi::DataType::INT64));
+                        DataType::INT32,
+                        DataType::INT64));
 
   if (accumulate && index.size() == 1 && !is_combined) {
 #ifdef PADDLE_WITH_CUDA

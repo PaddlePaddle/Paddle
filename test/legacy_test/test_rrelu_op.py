@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import unittest
 
 import numpy as np
@@ -508,6 +509,106 @@ class RReluTest_ZeroSize(RReluTest):
             "upper": self.upper,
             "is_test": self.is_test,
         }
+
+
+class TestRRELUOpClass_Inplace(unittest.TestCase):
+    def test_case(self):
+        x_np = np.random.uniform(-1.0, 1.0, [1, 2, 3, 4]).astype('float32')
+        lower_0 = 0.05
+        upper_0 = 0.25
+        y_ref = ref_rrelu(x_np, lower_0, upper_0)
+        place = get_device_place()
+        with dygraph.guard(place) as g:
+            x_var1 = paddle.to_tensor(x_np)
+            x_var2 = paddle.to_tensor(x_np)
+
+            y_var1 = F.rrelu(
+                x_var1, lower_0, upper_0, training=False, inplace=True
+            )
+            y_test1 = y_var1.numpy()
+
+            func = paddle.nn.RReLU(lower_0, upper_0, True)
+            func.training = False
+            y_var2 = func(x_var2)
+            y_test2 = y_var2.numpy()
+
+        np.testing.assert_allclose(y_ref, y_test1, rtol=1e-05, atol=1e-08)
+        np.testing.assert_allclose(y_ref, y_test2, rtol=1e-05, atol=1e-08)
+
+        np.testing.assert_allclose(
+            y_ref, x_var1.numpy(), rtol=1e-05, atol=1e-08
+        )
+        np.testing.assert_allclose(
+            y_ref, x_var2.numpy(), rtol=1e-05, atol=1e-08
+        )
+
+
+class TestRRELUAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(0)
+        self.shape = [1, 2, 3, 4]
+        self.x_np = np.random.uniform(-1.0, 1.0, self.shape).astype('float32')
+        self.lower_1 = 0.1
+        self.upper_1 = 0.33
+        self.place = [get_device_place()]
+        self.x_feed = copy.deepcopy(self.x_np)
+
+    def test_api_static(self):
+        paddle.enable_static()
+
+        def run(place, inplace):
+            with paddle.static.program_guard(paddle.static.Program()):
+                x = paddle.static.data('X', self.shape)
+                out = F.rrelu(
+                    x,
+                    self.lower_1,
+                    self.upper_1,
+                    training=False,
+                    inplace=inplace,
+                )
+                exe = paddle.static.Executor(place)
+                res = exe.run(
+                    feed={
+                        'X': self.x_feed,
+                    },
+                    fetch_list=[out],
+                )
+            target = copy.deepcopy(self.x_np)
+            out_ref = ref_rrelu(target, self.lower_1, self.upper_1)
+
+            for out in res:
+                np.testing.assert_allclose(out, out_ref, rtol=0.001)
+
+        for place in self.place:
+            run(place, True)
+            run(place, False)
+
+    def test_api_dygraph(self):
+        def run(place, inplace):
+            paddle.disable_static(place)
+            x_tensor = paddle.to_tensor(self.x_np)
+            out = F.rrelu(
+                x_tensor,
+                self.lower_1,
+                self.upper_1,
+                training=False,
+                inplace=inplace,
+            )
+
+            target = copy.deepcopy(self.x_np)
+            out_ref = ref_rrelu(
+                target,
+                self.lower_1,
+                self.upper_1,
+            )
+
+            np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
+
+            paddle.enable_static()
+
+        for place in self.place:
+            run(place, True)
+            run(place, False)
 
 
 if __name__ == "__main__":

@@ -29,8 +29,8 @@ class Scope;
 class CinnJitInstruction : public InstructionBase {
  public:
   CinnJitInstruction(size_t id,
-                     const phi::Place& place,
-                     ::pir::Operation* op,
+                     const Place& place,
+                     pir::Operation* op,
                      const ValueExecutionInfo* value_exec_info);
 
   // TODO(Aurelius84): Only implement core interface and need implement GC and
@@ -39,14 +39,14 @@ class CinnJitInstruction : public InstructionBase {
 
   const std::string& Name() const override;
 
-  ::pir::Operation* Operation() const override { return op_; }
+  pir::Operation* Operation() const override { return op_; }
 
  private:
   class FnPtrImpl;
 
   std::shared_ptr<FnPtrImpl> fn_ptr_impl_{nullptr};
 
-  phi::Place place_;
+  Place place_;
 
   phi::DeviceContext* dev_ctx_;
 
@@ -62,7 +62,7 @@ class CinnJitInstruction : public InstructionBase {
   // are managed by CinnJitInstruction, and not exposed to phi executor.
   std::vector<phi::DenseTensor> temp_space_tensors_;
 
-  ::pir::Operation* op_{nullptr};  // not owned
+  pir::Operation* op_{nullptr};  // not owned
 };
 
 }  // namespace framework

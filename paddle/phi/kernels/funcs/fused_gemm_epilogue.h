@@ -393,7 +393,7 @@ static GPU(blasLtEpilogue_t)
 }
 
 template <typename T>
-void ComputeFusedGemmEpilogueForward(const phi::GPUContext& dev_ctx,
+void ComputeFusedGemmEpilogueForward(const GPUContext& dev_ctx,
                                      const DenseTensor* x,
                                      const DenseTensor* y,
                                      const DenseTensor* bias,
@@ -464,7 +464,7 @@ void ComputeFusedGemmEpilogueForward(const phi::GPUContext& dev_ctx,
     // Note (Ming Huang): The initialization of ReserveSpace is happened in the
     // dev_ctx.Alloc. Therefore, we set real date type up here.
     if (activation == "relu") {
-      phi::DataType rs_type = phi::DataType::BOOL;
+      DataType rs_type = DataType::BOOL;
       size_t reserve_space_size =
           common::product(reserve_space->dims()) * SizeOf(rs_type);
       dev_ctx.Alloc(reserve_space, rs_type, reserve_space_size);
@@ -586,7 +586,7 @@ struct BwdFusedEpilogueSetter {
   }
 
   template <typename DYT, bool TransY>
-  static funcs::MatmulFusedType SetForDy(const phi::GPUContext& dev_ctx,
+  static funcs::MatmulFusedType SetForDy(const GPUContext& dev_ctx,
                                          DenseTensor* dbias) {
     if (dbias != nullptr) {
       dev_ctx.Alloc<DYT>(dbias, dbias->numel() * sizeof(DYT));
@@ -598,7 +598,7 @@ struct BwdFusedEpilogueSetter {
 };
 
 template <typename T, typename DXT, typename DYT, bool TransX, bool TransY>
-void ComputeFusedGemmEpilogueBackwardImpl(const phi::GPUContext& dev_ctx,
+void ComputeFusedGemmEpilogueBackwardImpl(const GPUContext& dev_ctx,
                                           const DenseTensor* dout,
                                           const DenseTensor* x,
                                           const DenseTensor* y,
@@ -695,7 +695,7 @@ static GPU(blasLtEpilogue_t)
 }
 
 template <typename T, typename DXT, typename DYT, bool TransX, bool TransY>
-void ComputeFusedGemmEpilogueBackwardImplDev(const phi::GPUContext& dev_ctx,
+void ComputeFusedGemmEpilogueBackwardImplDev(const GPUContext& dev_ctx,
                                              const DenseTensor* dout,
                                              const DenseTensor* x,
                                              const DenseTensor* y,
@@ -1021,7 +1021,7 @@ void ComputeFusedGemmEpilogueBackwardImplDev(const phi::GPUContext& dev_ctx,
 }
 
 template <typename T, typename DXT = T, typename DYT = T>
-void ComputeFusedGemmEpilogueBackward(const phi::GPUContext& dev_ctx,
+void ComputeFusedGemmEpilogueBackward(const GPUContext& dev_ctx,
                                       const DenseTensor* dout,
                                       const DenseTensor* x,
                                       const DenseTensor* y,

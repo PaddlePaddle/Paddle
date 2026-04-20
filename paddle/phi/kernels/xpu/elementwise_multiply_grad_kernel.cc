@@ -44,15 +44,14 @@ void MultiplyGradKernel(const Context& dev_ctx,
       if (dx->numel() == 0) {
         dev_ctx.template Alloc<T>(dx);
       } else {
-        phi::Full<T, Context>(dev_ctx, dx->dims(), 0, dx);
+        Full<T, Context>(dev_ctx, dx->dims(), 0, dx);
       }
     }
     if (dy) {
       if (dy->numel() == 0) {
         dev_ctx.template Alloc<T>(dy);
       } else {
-        phi::Full<T, Context>(
-            dev_ctx, phi::IntArray(common::vectorize(dy->dims())), 0, dy);
+        Full<T, Context>(dev_ctx, dy->dims(), 0, dy);
       }
     }
     return;
@@ -89,16 +88,14 @@ void MultiplyGradKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
       if (dx->numel() == 0) {
         dev_ctx.template Alloc<T>(dx);
       } else {
-        phi::Full<T, XPUContext>(
-            dev_ctx, phi::IntArray(common::vectorize(dx->dims())), T(0), dx);
+        Full<T, XPUContext>(dev_ctx, dx->dims(), T(0), dx);
       }
     }
     if (dy) {
       if (dy->numel() == 0) {
         dev_ctx.template Alloc<T>(dy);
       } else {
-        phi::Full<T, XPUContext>(
-            dev_ctx, phi::IntArray(common::vectorize(dy->dims())), T(0), dy);
+        Full<T, XPUContext>(dev_ctx, dy->dims(), T(0), dy);
       }
     }
     return;
@@ -128,18 +125,16 @@ void MultiplyGradKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
       DenseTensor dx_real_expanded, dx_imag_expanded;
       dx_real_expanded.Resize(dx->dims());
       dx_imag_expanded.Resize(dx->dims());
-      ExpandGradKernel<float, XPUContext>(
-          dev_ctx,
-          x,
-          dx_real,
-          phi::IntArray(phi::vectorize(x.dims())),
-          &dx_real_expanded);
-      ExpandGradKernel<float, XPUContext>(
-          dev_ctx,
-          x,
-          dx_imag,
-          phi::IntArray(phi::vectorize(x.dims())),
-          &dx_imag_expanded);
+      ExpandGradKernel<float, XPUContext>(dev_ctx,
+                                          x,
+                                          dx_real,
+                                          phi::IntArray(vectorize(x.dims())),
+                                          &dx_real_expanded);
+      ExpandGradKernel<float, XPUContext>(dev_ctx,
+                                          x,
+                                          dx_imag,
+                                          phi::IntArray(vectorize(x.dims())),
+                                          &dx_imag_expanded);
       phi::ComplexKernel<float>(
           dev_ctx, dx_real_expanded, dx_imag_expanded, dx);
     }
@@ -162,18 +157,16 @@ void MultiplyGradKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
       DenseTensor dy_real_expanded, dy_imag_expanded;
       dy_real_expanded.Resize(dy->dims());
       dy_imag_expanded.Resize(dy->dims());
-      ExpandGradKernel<float, XPUContext>(
-          dev_ctx,
-          y,
-          dy_real,
-          phi::IntArray(phi::vectorize(y.dims())),
-          &dy_real_expanded);
-      ExpandGradKernel<float, XPUContext>(
-          dev_ctx,
-          y,
-          dy_imag,
-          phi::IntArray(phi::vectorize(y.dims())),
-          &dy_imag_expanded);
+      ExpandGradKernel<float, XPUContext>(dev_ctx,
+                                          y,
+                                          dy_real,
+                                          phi::IntArray(vectorize(y.dims())),
+                                          &dy_real_expanded);
+      ExpandGradKernel<float, XPUContext>(dev_ctx,
+                                          y,
+                                          dy_imag,
+                                          phi::IntArray(vectorize(y.dims())),
+                                          &dy_imag_expanded);
       phi::ComplexKernel<float>(
           dev_ctx, dy_real_expanded, dy_imag_expanded, dy);
     }

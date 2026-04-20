@@ -76,7 +76,7 @@ def graph_khop_sampler(
     This API is mainly used in Graph Learning domain, and the main purpose is to
     provide high performance graph khop sampling method with subgraph reindex step.
     For example, we get the CSC(Compressed Sparse Column) format of the input graph
-    edges as `row` and `colptr`, so as to covert graph data into a suitable format
+    edges as `row` and `colptr`, so as to convert graph data into a suitable format
     for sampling. And the `input_nodes` means the nodes we need to sample neighbors,
     and `sample_sizes` means the number of neighbors and number of layers we want
     to sample.

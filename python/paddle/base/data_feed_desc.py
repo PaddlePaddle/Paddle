@@ -31,7 +31,7 @@ class DataFeedDesc:
     A typical message might look like:
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle.base as base
             >>> with open("data.proto", "w") as f:
@@ -61,13 +61,13 @@ class DataFeedDesc:
         DataFeedDesc can also be changed during runtime. Once you got familiar with
         what each field mean, you can modify it to better suit your need. E.g.:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle.base as base
             >>> data_feed = base.DataFeedDesc('data.proto')
             >>> data_feed.set_batch_size(128)
             >>> data_feed.set_dense_slots(['words'])  # The slot named 'words' will be dense
-            >>> data_feed.set_use_slots(['words'])    # The slot named 'words' will be used
+            >>> data_feed.set_use_slots(['words'])  # The slot named 'words' will be used
 
             >>> # Finally, the content can be dumped out for debugging purpose:
 
@@ -94,7 +94,7 @@ class DataFeedDesc:
         Set :attr:`batch_size` in ``paddle.base.DataFeedDesc`` . :attr:`batch_size` can be changed during training.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> with open("data.proto", "w") as f:
@@ -134,7 +134,7 @@ class DataFeedDesc:
         sparse slot will be fed into a DenseTensor.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> with open("data.proto", "w") as f:
@@ -180,7 +180,7 @@ class DataFeedDesc:
         ones will be used for a specific model.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> with open("data.proto", "w") as f:
@@ -223,7 +223,7 @@ class DataFeedDesc:
         Returns a protobuf message for this DataFeedDesc
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> with open("data.proto", "w") as f:

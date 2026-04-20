@@ -18,11 +18,15 @@ from typing import TYPE_CHECKING
 
 import paddle
 from paddle import _C_ops, in_dynamic_mode
-from paddle._C_ops import grid_sample  # noqa: F401
+from paddle._C_ops import (
+    grid_sample,  # noqa: F401
+    pixel_shuffle,  # noqa: F401
+)
 from paddle.base.framework import (
     in_dynamic_or_pir_mode,
     in_pir_mode,
 )
+from paddle.utils.decorator_utils import param_one_alias
 
 from ...base.data_feeder import check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
@@ -62,17 +66,24 @@ def affine_grid(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
             >>> # theta.shape = [1, 2, 3]
-            >>> theta = paddle.to_tensor([[[-0.7, -0.4, 0.3],
-            ...                            [ 0.6,  0.5, 1.5]]], dtype="float32")
+            >>> theta = paddle.to_tensor(
+            ...     [
+            ...         [
+            ...             [-0.7, -0.4, 0.3],
+            ...             [0.6, 0.5, 1.5],
+            ...         ]
+            ...     ],
+            ...     dtype="float32",
+            ... )
             >>> y_t = F.affine_grid(
             ...     theta,
             ...     [1, 2, 3, 3],
-            ...     align_corners=False
+            ...     align_corners=False,
             ... )
             >>> print(y_t)
             Tensor(shape=[1, 3, 3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -145,65 +156,7 @@ def affine_grid(
         return out
 
 
-def pixel_shuffle(
-    x: Tensor,
-    upscale_factor: int,
-    data_format: DataLayout2D = 'NCHW',
-    name: str | None = None,
-) -> Tensor:
-    """
-    This API implements pixel shuffle operation.
-    See more details in :ref:`PixelShuffle <api_paddle_nn_PixelShuffle>` .
-
-
-    Parameters:
-        x(Tensor): 4-D tensor, the data type should be float32 or float64.
-        upscale_factor(int): factor to increase spatial resolution.
-        data_format (str, optional): The data format of the input and output data. An optional string from: ``"NCHW"``, ``"NHWC"``. When it is ``"NCHW"``, the data is stored in the order of: [batch_size, input_channels, input_height, input_width]. Default: ``"NCHW"``.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Out(tensor): Reshaped tensor according to the new dimension.
-
-    Examples:
-        .. code-block:: pycon
-
-            >>> import paddle
-            >>> import paddle.nn.functional as F
-
-            >>> x = paddle.randn(shape=[2, 9, 4, 4])
-            >>> out_var = F.pixel_shuffle(x, 3)
-            >>> print(out_var.shape)
-            paddle.Size([2, 1, 12, 12])
-    """
-    if not isinstance(upscale_factor, int):
-        raise TypeError("upscale factor must be int type")
-
-    if data_format not in ["NCHW", "NHWC"]:
-        raise ValueError(
-            "Attr(data_format) should be 'NCHW' or 'NHWC'."
-            f"But receive Attr(data_format): {data_format} "
-        )
-    if in_dynamic_or_pir_mode():
-        return _C_ops.pixel_shuffle(x, upscale_factor, data_format)
-    else:
-        helper = LayerHelper("pixel_shuffle", **locals())
-        check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'pixel_shuffle'
-        )
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(
-            type="pixel_shuffle",
-            inputs={"X": x},
-            outputs={"Out": out},
-            attrs={
-                "upscale_factor": upscale_factor,
-                "data_format": data_format,
-            },
-        )
-        return out
-
-
+@param_one_alias(["x", "input"])
 def pixel_unshuffle(
     x: Tensor,
     downscale_factor: int,
@@ -216,6 +169,7 @@ def pixel_unshuffle(
 
     Parameters:
         x (Tensor): 4-D tensor, the data type should be float32 or float64.
+            Alias: ``input``.
         downscale_factor (int): Factor to decrease spatial resolution.
         data_format (str, optional): The data format of the input and output data. An optional string of ``'NCHW'`` or ``'NHWC'``. When it is ``'NCHW'``, the data is stored in the order of [batch_size, input_channels, input_height, input_width]. Default: ``'NCHW'``.
         name (str|None, optional): Name for the operation (optional, default is None). Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
@@ -290,7 +244,7 @@ def channel_shuffle(
         Out (Tensor): Rearranged tensor keeping the original tensor shape.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F

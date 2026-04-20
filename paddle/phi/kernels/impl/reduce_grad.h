@@ -28,7 +28,7 @@ template <typename Context,
 void ComputeFromInput(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& out_grad UNUSED,
-                      const paddle::optional<DenseTensor>& out,
+                      const optional<DenseTensor>& out,
                       const DenseTensor& input2,
                       const std::vector<int64_t>& dims,
                       bool keep_dim UNUSED,
@@ -86,7 +86,7 @@ template <typename Context,
           bool kNoNeedBufferY = false>
 void ReduceGradKernel(const Context& dev_ctx,
                       const DenseTensor& x,
-                      const paddle::optional<DenseTensor>& out,
+                      const optional<DenseTensor>& out,
                       const DenseTensor& out_grad,
                       const std::vector<int64_t>& dims,
                       bool keep_dim,
@@ -109,7 +109,7 @@ void ReduceGradKernel(const Context& dev_ctx,
         reduce_all,
         &x_grad_tmp);
 
-    phi::CastKernel<T>(dev_ctx, x_grad_tmp, x.dtype(), x_grad);
+    CastKernel<T>(dev_ctx, x_grad_tmp, x.dtype(), x_grad);
   } else {
     ComputeFromInput<Context, T, Functor, kNoNeedBufferX, kNoNeedBufferY>(
         dev_ctx,

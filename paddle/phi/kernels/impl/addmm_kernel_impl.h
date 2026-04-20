@@ -25,14 +25,8 @@ limitations under the License. */
 
 namespace phi {
 
-template <typename T,
-          size_t D,
-          int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using PhiEigenTensor = EigenTensor<T, D, MajorType, IndexType>;
-
-using Array1 = Eigen::DSizes<Eigen::DenseIndex, 1>;
-using Array2 = Eigen::DSizes<Eigen::DenseIndex, 2>;
+using Array1 = Eigen::DSizes<int64_t, 1>;
+using Array2 = Eigen::DSizes<int64_t, 2>;
 
 template <typename T, typename Context>
 void AddmmKernel(const Context& dev_ctx,
@@ -108,8 +102,8 @@ void AddmmKernel(const Context& dev_ctx,
   VLOG(3) << "bcast_dims=[" << bcast_dims[0] << "," << bcast_dims[1] << "]";
   // broadcast using eigen
   const DenseTensor& const_ref_input = input_2d;
-  auto eigen_input = PhiEigenTensor<T, 2>::From(const_ref_input);
-  auto eigen_out = PhiEigenTensor<T, 2>::From(*out);
+  auto eigen_input = EigenTensor<T, 2>::From(const_ref_input);
+  auto eigen_out = EigenTensor<T, 2>::From(*out);
   auto& place = *dev_ctx.eigen_device();
   funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, 2>::Eval(
       place, eigen_out, eigen_input, bcast_dims);

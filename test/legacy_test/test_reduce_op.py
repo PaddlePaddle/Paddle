@@ -2770,6 +2770,58 @@ class TestAnyCompatibility(unittest.TestCase):
                         )
 
 
+# Dimension exceeds int32 range.
+class TestSumOpIndexInt32OverflowCase0(unittest.TestCase):
+    def setUp(self):
+        self.shape = [2147483678]
+        self.axis = 0
+        self.input_dtype = 'float32'
+        self.test_dtypes = [np.float32]
+
+    def test_dygraph(self):
+        with dygraph_guard():
+            x_paddle = paddle.ones(shape=self.shape, dtype=self.input_dtype)
+            for dtype_input in self.test_dtypes:
+                numpy_result = np.sum(
+                    x_paddle.numpy(),
+                    axis=self.axis,
+                    dtype=np.dtype(dtype_input),
+                    keepdims=False,
+                )
+
+                # paddle test case
+                paddle_result0 = paddle.sum(x_paddle, self.axis, dtype_input)
+                np.testing.assert_allclose(
+                    paddle_result0, numpy_result, rtol=1e-05
+                )
+
+
+# Index exceeds int32 range.
+class TestSumOpIndexInt32OverflowCase1(unittest.TestCase):
+    def setUp(self):
+        self.shape = [1073741830]
+        self.axis = 0
+        self.input_dtype = 'float32'
+        self.test_dtypes = [np.float32]
+
+    def test_dygraph(self):
+        with dygraph_guard():
+            x_paddle = paddle.ones(shape=self.shape, dtype=self.input_dtype)
+            for dtype_input in self.test_dtypes:
+                numpy_result = np.sum(
+                    x_paddle.numpy(),
+                    axis=self.axis,
+                    dtype=np.dtype(dtype_input),
+                    keepdims=False,
+                )
+
+                # paddle test case
+                paddle_result0 = paddle.sum(x_paddle, self.axis, dtype_input)
+                np.testing.assert_allclose(
+                    paddle_result0, numpy_result, rtol=1e-05
+                )
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

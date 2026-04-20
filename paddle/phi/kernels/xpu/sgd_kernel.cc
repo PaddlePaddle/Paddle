@@ -24,7 +24,7 @@ void SGDDenseKernel(const Context& dev_ctx,
                     const DenseTensor& param,
                     const DenseTensor& learning_rate,
                     const DenseTensor& grad,
-                    const paddle::optional<DenseTensor>& master_param,
+                    const optional<DenseTensor>& master_param,
                     bool multi_precision,
                     DenseTensor* param_out,
                     DenseTensor* master_param_out) {
@@ -65,13 +65,22 @@ void SGDDenseKernel(const Context& dev_ctx,
   }
 
   const T* param_data = param.data<T>();
-  const T* grad_data = grad.data<T>();
+  const XPUType* grad_ptr = nullptr;
+  if (grad.dtype() == DataType::FLOAT32 && grad.dtype() != param.dtype()) {
+    XPUType* grad_tmp = RAII_GUARD.alloc_l3_or_gm<XPUType>(sz);
+    int r = xpu::cast<float, XPUType>(
+        dev_ctx.x_context(), grad.data<float>(), grad_tmp, sz);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast_grad_fp32_to_xputype");
+    grad_ptr = grad_tmp;
+  } else {
+    grad_ptr = reinterpret_cast<const XPUType*>(grad.data<T>());
+  }
 
   dev_ctx.template Alloc<T>(param_out);
   T* out_data = param_out->data<T>();
 
   int r = xpu::sgd(dev_ctx.x_context(),
-                   reinterpret_cast<const XPUType*>(grad_data),
+                   grad_ptr,
                    reinterpret_cast<const XPUType*>(param_data),
                    lr,
                    reinterpret_cast<XPUType*>(out_data),
@@ -80,15 +89,14 @@ void SGDDenseKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void SGDDenseParamSparseGradKernel(
-    const Context& dev_ctx,
-    const DenseTensor& param,
-    const DenseTensor& learning_rate,
-    const SelectedRows& grad,
-    const paddle::optional<DenseTensor>& master_param,
-    bool multi_precision,
-    DenseTensor* param_out,
-    DenseTensor* master_param_out) {
+void SGDDenseParamSparseGradKernel(const Context& dev_ctx,
+                                   const DenseTensor& param,
+                                   const DenseTensor& learning_rate,
+                                   const SelectedRows& grad,
+                                   const optional<DenseTensor>& master_param,
+                                   bool multi_precision,
+                                   DenseTensor* param_out,
+                                   DenseTensor* master_param_out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(param_out);
 

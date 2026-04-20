@@ -349,20 +349,36 @@ class Conv1D(_ConvNd):
         - output: 3-D tensor with same shape as input x.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.nn import Conv1D
 
-            >>> x = paddle.to_tensor([[[4, 8, 1, 9],
-            ... [7, 2, 0, 9],
-            ... [6, 9, 2, 6]]], dtype="float32")
-            >>> w = paddle.to_tensor([[[9, 3, 4],
-            ... [0, 0, 7],
-            ... [2, 5, 6]],
-            ... [[0, 3, 4],
-            ... [2, 9, 7],
-            ... [5, 6, 8]]], dtype="float32")
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [
+            ...             [4, 8, 1, 9],
+            ...             [7, 2, 0, 9],
+            ...             [6, 9, 2, 6],
+            ...         ]
+            ...     ],
+            ...     dtype="float32",
+            ... )
+            >>> w = paddle.to_tensor(
+            ...     [
+            ...         [
+            ...             [9, 3, 4],
+            ...             [0, 0, 7],
+            ...             [2, 5, 6],
+            ...         ],
+            ...         [
+            ...             [0, 3, 4],
+            ...             [2, 9, 7],
+            ...             [5, 6, 8],
+            ...         ],
+            ...     ],
+            ...     dtype="float32",
+            ... )
 
             >>> conv = Conv1D(3, 2, 3)
             >>> conv.weight.set_value(w)
@@ -992,13 +1008,13 @@ class Conv2DTranspose(_ConvNd):
 
 class Conv3D(_ConvNd):
     r"""
-    **Convlution3d Layer**
+    **Convolution3d Layer**
     The convolution3d layer calculates the output based on the input, filter
     and strides, paddings, dilations, groups parameters. Input(Input) and
     Output(Output) are multidimensional tensors with a shape of
     :math:`[N, C, D, H, W]` . Where N is batch size, C is the number of
     channels, D is the depth of the feature, H is the height of the feature,
-    and W is the width of the feature. Convlution3D is similar with Convlution2D
+    and W is the width of the feature. Convolution3D is similar with Convolution2D
     but adds one dimension(depth). If bias attribution and activation type are
     provided, bias is added to the output of the convolution, and the
     corresponding activation function is applied to the final result.
@@ -1168,7 +1184,7 @@ class Conv3D(_ConvNd):
 
 class Conv3DTranspose(_ConvNd):
     r"""
-    **Convlution3D transpose layer**
+    **Convolution3D transpose layer**
     The convolution3D transpose layer calculates the output based on the input,
     filter, and dilations, strides, paddings. Input(Input) and output(Output)
     are in NCDHW format. Where N is batch size, C is the number of channels,

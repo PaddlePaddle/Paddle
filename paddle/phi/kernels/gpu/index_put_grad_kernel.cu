@@ -96,7 +96,7 @@ void LaunchIndexPutGradCudaKernel(
     const bool accumulate,
     DenseTensor* value_grad,
     DenseTensor* x_grad) {
-  phi::Allocator::AllocationPtr indices_holder_1, indices_holder_2;
+  Allocator::AllocationPtr indices_holder_1, indices_holder_2;
   if (x_grad) {
     Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     if (!accumulate) {
@@ -115,7 +115,7 @@ void LaunchIndexPutGradCudaKernel(
       const int64_t numel = indices[0]->numel();
       auto pd_indices = funcs::GetDevicePointerArray<int64_t, Context>(
           dev_ctx, indices, &indices_holder_1);
-      auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
+      auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
       SetZeroCudaKernel<T><<<config.block_per_grid,
                              config.thread_per_block,
                              0,
@@ -137,7 +137,7 @@ void LaunchIndexPutGradCudaKernel(
   const int64_t numel = indices[0]->numel();
   auto pd_indices = funcs::GetDevicePointerArray<int64_t, Context>(
       dev_ctx, indices, &indices_holder_2);
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
+  auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
 
   if (value_grad) {
     if (value_grad->numel() == 1) {
@@ -199,9 +199,8 @@ void LaunchIndexPutGradCudaKernel(
                                                       numel,
                                                       tmp_value_grad_data);
 
-      std::vector<int64_t> after_dims =
-          common::vectorize(tmp_value_grad.dims());
-      std::vector<int64_t> before_dims = common::vectorize(value_grad->dims());
+      std::vector<int64_t> after_dims = vectorize(tmp_value_grad.dims());
+      std::vector<int64_t> before_dims = vectorize(value_grad->dims());
       std::vector<int64_t> compress_dims;
       std::vector<int64_t> dims_without_1;
 
@@ -209,7 +208,7 @@ void LaunchIndexPutGradCudaKernel(
           &after_dims, &before_dims, &compress_dims, &dims_without_1);
 
       auto pre_dims = value_grad->dims();
-      value_grad->Resize(common::make_ddim(dims_without_1));
+      value_grad->Resize(dims_without_1);
       IntArray v_axis(compress_dims);
       SumKernel<T, Context>(dev_ctx,
                             tmp_value_grad,
@@ -255,7 +254,7 @@ void IndexPutGradKernel(const Context& dev_ctx,
     }
     if (value_grad) {
       FullKernel<T, Context>(dev_ctx,
-                             common::vectorize(value_grad->dims()),
+                             vectorize(value_grad->dims()),
                              0.0f,
                              value_grad->dtype(),
                              value_grad);
@@ -265,14 +264,14 @@ void IndexPutGradKernel(const Context& dev_ctx,
 
   auto bd_dim = funcs::BroadCastTensorsDims(int_indices_v);
 
-  std::vector<int64_t> res_dim_v(common::vectorize(bd_dim));
+  std::vector<int64_t> res_dim_v(vectorize(bd_dim));
   std::vector<const DenseTensor*> res_indices_v(x.dims().size(), nullptr);
   std::vector<DenseTensor> tmp_res_indices_v;
   std::vector<DenseTensor> range_tensor_v;
 
   for (int i = int_indices_v.size(); i < x.dims().size(); ++i) {
     range_tensor_v.emplace_back(funcs::GetRangeCudaTensor<int64_t, Context>(
-        dev_ctx, x.dims()[i], phi::DataType::INT64));
+        dev_ctx, x.dims()[i], DataType::INT64));
   }
 
   funcs::DealWithIndices<T, Context>(dev_ctx,

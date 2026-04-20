@@ -98,6 +98,10 @@ if(WITH_GPU)
       vmm_allocator_tail_test
       SRCS vmm_allocator_tail_test.cc
       DEPS phi common)
+    nv_test(
+      cuda_virtual_mem_allocator_v2_test
+      SRCS cuda_virtual_mem_allocator_v2_test.cu
+      DEPS phi common)
   endif()
 endif()
 
@@ -110,7 +114,7 @@ if(WITH_GPU)
   nv_test(
     malloc_test
     SRCS malloc_test.cu
-    DEPS device_context)
+    DEPS phi)
   nv_test(
     stream_safe_cuda_alloc_test
     SRCS stream_safe_cuda_alloc_test.cu
@@ -140,7 +144,7 @@ if(WITH_ROCM)
   hip_test(
     malloc_test
     SRCS malloc_test.cu
-    DEPS device_context)
+    DEPS phi)
   hip_test(
     cuda_managed_memory_test
     SRCS cuda_managed_memory_test.cu
@@ -203,6 +207,10 @@ if(WITH_GPU)
     nv_test(
       vmm_auto_growth_best_fit_allocator_test
       SRCS vmm_auto_growth_best_fit_allocator_test.cu
+      DEPS phi common)
+    nv_test(
+      vmm_auto_growth_best_fit_allocator_v2_test
+      SRCS vmm_auto_growth_best_fit_allocator_v2_test.cu
       DEPS phi common)
     if(WITH_TESTING AND TEST vmm_auto_growth_best_fit_allocator_test)
       set_tests_properties(

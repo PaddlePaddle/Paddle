@@ -33,7 +33,7 @@ void FusedConv2dAddActKernel(const Context& dev_ctx,
                              const DenseTensor& x,
                              const DenseTensor& filter,
                              const DenseTensor& bias,
-                             const paddle::optional<DenseTensor>& residual,
+                             const optional<DenseTensor>& residual,
                              const std::vector<int>& strides,
                              const std::vector<int>& paddings,
                              const std::string& padding_algorithm,
@@ -197,7 +197,7 @@ void FusedConv2dAddActKernel(const Context& dev_ctx,
       nullptr,
   };
 
-  void* dlhandler = phi::dynload::GetCutlassConv2dHandle();
+  void* dlhandler = dynload::GetCutlassConv2dHandle();
   func conv_func = NULL;
   PADDLE_ENFORCE_NOT_NULL(
       dlhandler,

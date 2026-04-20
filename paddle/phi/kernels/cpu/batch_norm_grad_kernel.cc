@@ -39,13 +39,13 @@ using ConstEigenVectorArrayMap =
 template <typename T, typename Context>
 void BatchNormGradFunctor(const Context& dev_ctx,
                           const DenseTensor& x,
-                          const paddle::optional<DenseTensor>& scale,
-                          const paddle::optional<DenseTensor>& bias,
-                          const paddle::optional<DenseTensor>& mean,
-                          const paddle::optional<DenseTensor>& variance,
+                          const optional<DenseTensor>& scale,
+                          const optional<DenseTensor>& bias,
+                          const optional<DenseTensor>& mean,
+                          const optional<DenseTensor>& variance,
                           const DenseTensor& saved_mean,
                           const DenseTensor& saved_variance,
-                          const paddle::optional<DenseTensor>& reserve_space,
+                          const optional<DenseTensor>& reserve_space,
                           const DenseTensor& y_grad,
                           float momentum,
                           float epsilon,
@@ -59,7 +59,7 @@ void BatchNormGradFunctor(const Context& dev_ctx,
                           DenseTensor* bias_grad) {
   const auto* d_y = &y_grad;
 
-  DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  DataLayout data_layout = StringToDataLayout(data_layout_str);
 
   auto* d_x = x_grad;
   auto* d_scale = scale_grad;
@@ -310,13 +310,13 @@ void BatchNormGradFunctor(const Context& dev_ctx,
 template <typename T, typename Context>
 void BatchNormGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
-                         const paddle::optional<DenseTensor>& scale,
-                         const paddle::optional<DenseTensor>& bias,
-                         const paddle::optional<DenseTensor>& mean,
-                         const paddle::optional<DenseTensor>& variance,
+                         const optional<DenseTensor>& scale,
+                         const optional<DenseTensor>& bias,
+                         const optional<DenseTensor>& mean,
+                         const optional<DenseTensor>& variance,
                          const DenseTensor& saved_mean,
                          const DenseTensor& saved_variance,
-                         const paddle::optional<DenseTensor>& reserve_space,
+                         const optional<DenseTensor>& reserve_space,
                          const DenseTensor& y_grad,
                          float momentum,
                          float epsilon,
@@ -357,27 +357,26 @@ void BatchNormGradKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void BatchNormDoubleGradKernel(
-    const Context& dev_ctx,
-    const DenseTensor& x,
-    const paddle::optional<DenseTensor>& scale,
-    const paddle::optional<DenseTensor>& mean,
-    const paddle::optional<DenseTensor>& variance,
-    const DenseTensor& saved_mean,
-    const DenseTensor& saved_variance,
-    const DenseTensor& y_grad,
-    const paddle::optional<DenseTensor>& x_grad_grad,
-    const paddle::optional<DenseTensor>& scale_grad_grad,
-    const paddle::optional<DenseTensor>& bias_grad_grad,
-    float momentum,
-    float epsilon,
-    const std::string& data_layout_str,
-    bool is_test,
-    bool use_global_stats,
-    bool trainable_statistics,
-    DenseTensor* x_grad,
-    DenseTensor* scale_grad,
-    DenseTensor* y_grad_grad) {
+void BatchNormDoubleGradKernel(const Context& dev_ctx,
+                               const DenseTensor& x,
+                               const optional<DenseTensor>& scale,
+                               const optional<DenseTensor>& mean,
+                               const optional<DenseTensor>& variance,
+                               const DenseTensor& saved_mean,
+                               const DenseTensor& saved_variance,
+                               const DenseTensor& y_grad,
+                               const optional<DenseTensor>& x_grad_grad,
+                               const optional<DenseTensor>& scale_grad_grad,
+                               const optional<DenseTensor>& bias_grad_grad,
+                               float momentum,
+                               float epsilon,
+                               const std::string& data_layout_str,
+                               bool is_test,
+                               bool use_global_stats,
+                               bool trainable_statistics,
+                               DenseTensor* x_grad,
+                               DenseTensor* scale_grad,
+                               DenseTensor* y_grad_grad) {
   const auto* X = &x;
   const auto* Scale = scale.get_ptr();
   const auto* dY = &y_grad;
@@ -391,7 +390,7 @@ void BatchNormDoubleGradKernel(
                         "you want to use global status in pre_train model, "
                         "please set `use_global_stats = True`"));
 
-  const auto data_layout = common::StringToDataLayout(data_layout_str);
+  const auto data_layout = StringToDataLayout(data_layout_str);
 
   const auto* ddX = x_grad_grad.get_ptr();
   const auto* ddScale = scale_grad_grad.get_ptr();
@@ -436,14 +435,14 @@ void BatchNormDoubleGradKernel(
   DenseTensor transformed_ddy(ddY->type());
   if (data_layout == DataLayout::NCHW && x_dims.size() > 2) {
     VLOG(3) << "Transform batchnorm output from NCHW to NHWC";
-    // Input Tensor
+    // Input DenseTensor
     ResizeToChannelLast<Context, T>(dev_ctx, X, &transformed_x);
     TransToChannelLast<Context, T>(dev_ctx, X, &transformed_x);
     ResizeToChannelLast<Context, T>(dev_ctx, dY, &transformed_dy);
     TransToChannelLast<Context, T>(dev_ctx, dY, &transformed_dy);
     ResizeToChannelLast<Context, T>(dev_ctx, ddX, &transformed_ddx);
     TransToChannelLast<Context, T>(dev_ctx, ddX, &transformed_ddx);
-    // Output Tensor
+    // Output DenseTensor
     ResizeToChannelLast<Context, T>(dev_ctx, dX, &transformed_dx);
     ResizeToChannelLast<Context, T>(dev_ctx, ddY, &transformed_ddy);
   } else {
@@ -459,7 +458,7 @@ void BatchNormDoubleGradKernel(
   ConstEigenVectorArrayMap<T> mean_arr(mean_data, C);
   ConstEigenVectorArrayMap<T> inv_var_arr(inv_var_data, C);
 
-  Tensor mean_tile;
+  DenseTensor mean_tile;
   mean_tile.Resize({C, sample_size});
   EigenArrayMap<T> mean_tile_data(
       dev_ctx.template Alloc<T>(&mean_tile), C, sample_size);
@@ -481,7 +480,7 @@ void BatchNormDoubleGradKernel(
   ConstEigenVectorArrayMap<T> scale_arr(
       Scale ? Scale->data<T>() : Scale_data.data<T>(), C);
 
-  Tensor scale_tile;
+  DenseTensor scale_tile;
   scale_tile.Resize({C, sample_size});
   EigenArrayMap<T> scale_tile_data(
       dev_ctx.template Alloc<T>(&scale_tile), C, sample_size);
@@ -506,7 +505,7 @@ void BatchNormDoubleGradKernel(
       // math: dx = (ddscale * dy) * inv_var
       if (ddScale) {
         ConstEigenVectorArrayMap<T> ddscale_arr(ddScale->data<T>(), C);
-        Tensor ddscale_tile;
+        DenseTensor ddscale_tile;
         ddscale_tile.Resize({C, sample_size});
         EigenArrayMap<T> ddscale_tile_data(
             dev_ctx.template Alloc<T>(&ddscale_tile), C, sample_size);
@@ -558,7 +557,7 @@ void BatchNormDoubleGradKernel(
       }
       if (ddScale) {
         ConstEigenVectorArrayMap<T> ddscale_arr(ddScale->data<T>(), C);
-        Tensor ddscale_tile;
+        DenseTensor ddscale_tile;
         ddscale_tile.Resize({C, sample_size});
         EigenArrayMap<T> ddscale_tile_data(
             dev_ctx.template Alloc<T>(&ddscale_tile), C, sample_size);
@@ -595,7 +594,7 @@ void BatchNormDoubleGradKernel(
       //            inv_var.pow(2) * np.mean(dy * (x-mean), axis=(n,h,w)))) *
       //            ddx
       if (ddX) {
-        Tensor first_grad;
+        DenseTensor first_grad;
         first_grad.Resize({C, sample_size});
         EigenArrayMap<T> first_grad_arr(
             dev_ctx.template Alloc<T>(&first_grad), C, sample_size);
@@ -646,7 +645,7 @@ void BatchNormDoubleGradKernel(
     }
     if (ddScale) {
       ConstEigenVectorArrayMap<T> ddscale_arr(ddScale->data<T>(), C);
-      Tensor ddscale_tile;
+      DenseTensor ddscale_tile;
       ddscale_tile.Resize({C, sample_size});
       EigenArrayMap<T> ddscale_tile_data(
           dev_ctx.template Alloc<T>(&ddscale_tile), C, sample_size);
@@ -657,7 +656,7 @@ void BatchNormDoubleGradKernel(
 
     if (ddBias) {
       ConstEigenVectorArrayMap<T> ddbias_arr(ddBias->data<T>(), C);
-      Tensor ddbias_tile;
+      DenseTensor ddbias_tile;
       ddbias_tile.Resize({C, sample_size});
       EigenArrayMap<T> ddbias_tile_data(
           dev_ctx.template Alloc<T>(&ddbias_tile), C, sample_size);

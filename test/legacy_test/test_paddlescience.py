@@ -37,7 +37,7 @@ model2 = nn.Sequential(
 
 class TestPaddleSciencemodel(unittest.TestCase):
     def test_concat(self):
-        @jit.to_static
+        @jit.to_static(full_graph=True)
         def concat(x, y):
             """abc"""
             z = paddle.concat([x, y], 0)
@@ -54,7 +54,7 @@ class TestPaddleSciencemodel(unittest.TestCase):
 
 class TestEularBeam(unittest.TestCase):
     def test_eular_beam(self):
-        @jit.to_static
+        @jit.to_static(full_graph=True)
         def eular_beam(x):
             """abc"""
             z_ = model(x)

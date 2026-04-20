@@ -48,6 +48,8 @@ class AttnLayerNorm {
                       const float quant_max_bound = 127.0,
                       const float quant_min_bound = -127.0) {
     auto stream = dev_ctx_.stream();
+    // TODO(large-tensor): generic kernel launch uses int32 grid dim
+    PADDLE_ENFORCE_LE_INT_MAX(batch_size_, "batch_size");
 
     switch (funcs::GetDesiredBlockDim(feature_size_)) {
       FIXED_BLOCK_DIM_CASE(

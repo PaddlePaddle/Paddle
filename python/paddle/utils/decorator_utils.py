@@ -17,14 +17,12 @@ from __future__ import annotations
 import functools
 import inspect
 import warnings
-from typing import TYPE_CHECKING, Any, Callable, TypeVar, cast
+from collections.abc import Iterable
+from typing import Any, Callable, TypeVar, cast
 
-from typing_extensions import ParamSpec
+from typing_extensions import ParamSpec, get_overloads
 
 import paddle
-
-if TYPE_CHECKING:
-    from collections.abc import Iterable
 
 _InputT = ParamSpec("_InputT")
 _RetT = TypeVar("_RetT")
@@ -170,22 +168,6 @@ class SetDefaultParaAliasDecorator(DecoratorBase):
         return args, kwargs
 
 
-def softmax_param_alias(
-    func: Callable[_InputT, _RetT],
-) -> Callable[_InputT, _RetT]:
-    @functools.wraps(func)
-    def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
-        # Process parameters to handle alias mapping
-        if "input" in kwargs:
-            kwargs["x"] = kwargs.pop("input")
-        if "dim" in kwargs:
-            kwargs["axis"] = kwargs.pop("dim")
-        return func(*args, **kwargs)
-
-    wrapper.__signature__ = inspect.signature(func)
-    return cast("Callable[_InputT, _RetT]", wrapper)
-
-
 def param_one_alias(
     alias_list,
 ) -> Callable[[Callable[_InputT, _RetT]], Callable[_InputT, _RetT]]:
@@ -194,8 +176,13 @@ def param_one_alias(
         def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
             if not kwargs:
                 return func(*args, **kwargs)
-            if (alias_list[0] not in kwargs) and (alias_list[1] in kwargs):
-                kwargs[alias_list[0]] = kwargs.pop(alias_list[1])
+            if alias_list[1] in kwargs:
+                if alias_list[0] not in kwargs:
+                    kwargs[alias_list[0]] = kwargs.pop(alias_list[1])
+                else:
+                    raise ValueError(
+                        f"Cannot specify both '{alias_list[0]}' and its alias '{alias_list[1]}'"
+                    )
             return func(*args, **kwargs)
 
         wrapper.__signature__ = inspect.signature(func)
@@ -212,10 +199,20 @@ def param_two_alias(
         def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
             if not kwargs:
                 return func(*args, **kwargs)
-            if (alias_list1[0] not in kwargs) and (alias_list1[1] in kwargs):
-                kwargs[alias_list1[0]] = kwargs.pop(alias_list1[1])
-            if (alias_list2[0] not in kwargs) and (alias_list2[1] in kwargs):
-                kwargs[alias_list2[0]] = kwargs.pop(alias_list2[1])
+            if alias_list1[1] in kwargs:
+                if alias_list1[0] not in kwargs:
+                    kwargs[alias_list1[0]] = kwargs.pop(alias_list1[1])
+                else:
+                    raise ValueError(
+                        f"Cannot specify both '{alias_list1[0]}' and its alias '{alias_list1[1]}'"
+                    )
+            if alias_list2[1] in kwargs:
+                if alias_list2[0] not in kwargs:
+                    kwargs[alias_list2[0]] = kwargs.pop(alias_list2[1])
+                else:
+                    raise ValueError(
+                        f"Cannot specify both '{alias_list2[0]}' and its alias '{alias_list2[1]}'"
+                    )
             return func(*args, **kwargs)
 
         wrapper.__signature__ = inspect.signature(func)
@@ -231,7 +228,7 @@ def lp_pool_layer_decorator(
     def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
         if len(args) == 5 and isinstance(args[4], bool):
             warnings.warn(
-                "The 4th positional argument in '__init__' method is a boolean value, which is being interpreted as 'ceil_mode'.",
+                "The 5th positional argument in '__init__' method is a boolean value, which is being interpreted as 'ceil_mode'.",
                 category=Warning,
                 stacklevel=2,
             )
@@ -258,43 +255,6 @@ def lp_pool_function_decorator(
             )
             kwargs["ceil_mode"] = args[4]
             args = args[:4]
-        return func(*args, **kwargs)
-
-    wrapper.__signature__ = inspect.signature(func)
-    return wrapper
-
-
-def tensor_split_decorator(
-    func: Callable[_InputT, _RetT],
-) -> Callable[_InputT, _RetT]:
-    @functools.wraps(func)
-    def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
-        if not kwargs:
-            return func(*args, **kwargs)
-        contains_num_or_indices = "num_or_indices" in kwargs
-        # Process parameters to handle alias mapping
-        if "input" in kwargs and "x" not in kwargs:
-            kwargs["x"] = kwargs.pop("input")
-        if "dim" in kwargs and "axis" not in kwargs:
-            kwargs["axis"] = kwargs.pop("dim")
-        if (
-            "indices_or_sections" in kwargs
-            and not contains_num_or_indices
-            and "num_or_indices" not in kwargs
-        ):
-            kwargs["num_or_indices"] = kwargs.pop("indices_or_sections")
-        if (
-            "indices" in kwargs
-            and not contains_num_or_indices
-            and "num_or_indices" not in kwargs
-        ):
-            kwargs["num_or_indices"] = kwargs.pop("indices")
-        if (
-            "sections" in kwargs
-            and not contains_num_or_indices
-            and "num_or_indices" not in kwargs
-        ):
-            kwargs["num_or_indices"] = kwargs.pop("sections")
         return func(*args, **kwargs)
 
     wrapper.__signature__ = inspect.signature(func)
@@ -680,17 +640,53 @@ def expand_decorator() -> Callable[
     return decorator
 
 
+def tile_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    """
+    Usage Example:
+    paddle.tile(x=tensor_x, repeat_times=[2, 3], name=None)
+    paddle.tile(input=tensor_x, dims=[2, 3])
+    tensor_x.tile([2, 3]) -> paddle.tile(tensor_x, [2, 3])
+    tensor_x.tile(2, 3) -> paddle.tile(tensor_x, 2, 3)
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            if "input" in kwargs:
+                if "x" in kwargs:
+                    raise ValueError(
+                        "Cannot specify both 'x' and its alias 'input'"
+                    )
+                kwargs["x"] = kwargs.pop("input")
+
+            if "dims" in kwargs:
+                if "repeat_times" in kwargs:
+                    raise ValueError(
+                        "Cannot specify both 'repeat_times' and its alias 'dims'"
+                    )
+                kwargs["repeat_times"] = kwargs.pop("dims")
+
+            if len(args) >= 2 and isinstance(args[1], int):
+                kwargs["x"] = args[0]
+                kwargs["repeat_times"] = list(args[1:])
+                args = ()
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
 def index_select_decorator() -> Callable[
     [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
 ]:
     """
     Usage Example:
-    PyTorch: index_select(input, dim, index)
-        torch.index_select(input=input_tensor, dim=1, index=indices)
-        torch.index_select(input_tensor, 1, indices)
-    Paddle: index_select(x, index, axis=0)
-        paddle.index_select(x=input_tensor, index=indices, axis=1)
-        paddle.index_select(input_tensor, indices, axis=1)
+    PyTorch: torch.index_select(input, dim, index)
+    Paddle: paddle.index_select(x, index, axis)
     """
 
     def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
@@ -716,61 +712,6 @@ def index_select_decorator() -> Callable[
                     args = args[3:]
                 else:
                     args = args[2:]
-            return func(*args, **kwargs)
-
-        wrapper.__signature__ = inspect.signature(func)
-        return wrapper
-
-    return decorator
-
-
-def sum_decorator() -> Callable[
-    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
-]:
-    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
-        @functools.wraps(func)
-        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
-            if ("input" in kwargs) and ("x" not in kwargs):
-                kwargs["x"] = kwargs.pop("input")
-            if ("dim" in kwargs) and ("axis" not in kwargs):
-                kwargs["axis"] = kwargs.pop("dim")
-            if len(args) == 3:
-                kwargs["x"] = args[0]
-                kwargs["axis"] = args[1]
-                if isinstance(args[2], bool):
-                    kwargs["keepdim"] = args[2]
-                else:
-                    kwargs["dtype"] = args[2]
-                args = ()
-            elif len(args) == 4:
-                kwargs["x"] = args[0]
-                kwargs["axis"] = args[1]
-                if isinstance(args[2], bool):
-                    kwargs["keepdim"] = args[2]
-                    kwargs["dtype"] = args[3]
-                else:
-                    kwargs["dtype"] = args[2]
-                    kwargs["keepdim"] = args[3]
-                args = ()
-
-            return func(*args, **kwargs)
-
-        wrapper.__signature__ = inspect.signature(func)
-        return wrapper
-
-    return decorator
-
-
-def floor_divide_decorator():
-    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
-        @functools.wraps(func)
-        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
-            if not kwargs:
-                return func(*args, **kwargs)
-            if "input" in kwargs and "x" not in kwargs:
-                kwargs["x"] = kwargs.pop("input")
-            if "other" in kwargs and "y" not in kwargs:
-                kwargs["y"] = kwargs.pop("other")
             return func(*args, **kwargs)
 
         wrapper.__signature__ = inspect.signature(func)
@@ -937,6 +878,350 @@ def index_add_decorator() -> Callable[
                     kwargs["value"] = args[3]
                 args = ()
 
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
+def maxpool_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs) -> _RetT:
+            if "input" in kwargs:
+                kwargs["x"] = kwargs.pop("input")
+            if "return_indices" in kwargs:
+                kwargs["return_mask"] = kwargs.pop("return_indices")
+
+            if len(args) >= 5 and not isinstance(args[4], bool):
+                kwargs["x"] = args[0]
+                kwargs["kernel_size"] = args[1]
+                kwargs["stride"] = args[2]
+                kwargs["padding"] = args[3]
+                kwargs["dilation"] = args[4]
+                # The order of `ceil_mode` and `return_indices` is different from nn.MaxPool in PyTorch
+                if len(args) > 5:
+                    kwargs["ceil_mode"] = args[5]
+                if len(args) > 6:
+                    kwargs["return_mask"] = args[6]
+                args = ()
+
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
+def maxpool_layer_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs) -> _RetT:
+            if "return_indices" in kwargs:
+                kwargs["return_mask"] = kwargs.pop("return_indices")
+
+            if len(args) >= 5 and not isinstance(args[4], bool):
+                kwargs["kernel_size"] = args[1]
+                kwargs["stride"] = args[2]
+                kwargs["padding"] = args[3]
+                kwargs["dilation"] = args[4]
+                # The order of `ceil_mode` and `return_indices` is different from F.max_pool in PyTorch
+                if len(args) > 5:
+                    kwargs["return_mask"] = args[5]
+                if len(args) > 6:
+                    kwargs["ceil_mode"] = args[6]
+                args = (args[0],)
+
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
+def use_first_signature(
+    func: Callable[_InputT, _RetT],
+) -> Callable[_InputT, _RetT]:
+    overloads = get_overloads(func)
+    if not overloads:
+        return func
+    first_overload = overloads[0]
+    sig = inspect.signature(first_overload)
+    func.__signature__ = sig
+    return func
+
+
+def variadic_tensor_decorator(
+    param_name: str,
+) -> Callable[[Callable[_InputT, _RetT]], Callable[_InputT, _RetT]]:
+    """
+    Decorator to handle variadic tensor arguments.
+
+    Usage Example:
+    PyTorch: torch.block_diag(x, y, z)
+    Paddle: paddle.block_diag([x, y, z])
+
+    Args:
+        param_name: The parameter name to use for the list (e.g., 'inputs', 'input', 'x')
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            # PyTorch usage: variadic tensor arguments
+            if len(args) >= 1 and isinstance(
+                args[0], (paddle.Tensor, paddle.pir.Value)
+            ):
+                kwargs[param_name] = list(args)
+                args = ()
+            # Paddle usage: list/tuple argument
+            elif len(args) >= 1 and isinstance(args[0], (list, tuple)):
+                kwargs[param_name] = args[0]
+                args = ()
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
+def grad_scaler_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    """Decorator for GradScaler.__init__ to support three calling conventions:
+
+    GradScaler(enable, init_loss_scaling, incr_ratio, decr_ratio, incr_every_n_steps, decr_every_n_nan_or_inf, use_dynamic_loss_scaling)
+    GradScaler(device, init_scale, growth_factor, backoff_factor, growth_interval, enabled)
+    GradScaler(init_scale, growth_factor, backoff_factor, growth_interval, enabled)
+    """
+
+    _ALIAS_MAP = {
+        'enabled': 'enable',
+        'init_scale': 'init_loss_scaling',
+        'growth_factor': 'incr_ratio',
+        'backoff_factor': 'decr_ratio',
+        'growth_interval': 'incr_every_n_steps',
+    }
+    # PyTorch positional order (device already stripped): init_scale, growth_factor, backoff_factor, growth_interval, enabled
+    _TORCH_POS_NAMES = [
+        'init_loss_scaling',
+        'incr_ratio',
+        'decr_ratio',
+        'incr_every_n_steps',
+        'enable',
+    ]
+
+    def _remap_kwargs(kwargs: dict[str, Any]) -> None:
+        for torch_key, paddle_key in _ALIAS_MAP.items():
+            if torch_key in kwargs:
+                if paddle_key not in kwargs:
+                    kwargs[paddle_key] = kwargs.pop(torch_key)
+                else:
+                    raise ValueError(
+                        f"Cannot specify both '{paddle_key}' and its alias '{torch_key}'"
+                    )
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> _RetT:
+            # args[0] is always `self` for a bound __init__ call
+            real_args = args[1:]
+
+            # Drop PyTorch-only 'device' kwarg (no Paddle equivalent)
+            kwargs.pop('device', None)
+
+            # Remap PyTorch keyword aliases to Paddle names unconditionally
+            _remap_kwargs(kwargs)
+
+            if real_args and isinstance(real_args[0], str):
+                # PyTorch with device prefix: GradScaler('cuda', init_scale=1024, ...)
+                # Strip device; remaining positional follow torch order
+                torch_pos = real_args[1:]
+                args = args[:1]  # keep only self
+                for i, val in enumerate(torch_pos):
+                    if i < len(_TORCH_POS_NAMES):
+                        name = _TORCH_POS_NAMES[i]
+                        if name not in kwargs:
+                            kwargs[name] = val
+            elif real_args and not isinstance(real_args[0], bool):
+                # PyTorch positional without device: GradScaler(1024, 2.0, 0.5, ...)
+                # int/float but not bool: first arg is init_scale (PyTorch), not enable (Paddle)
+                args = args[:1]  # keep only self
+                for i, val in enumerate(real_args):
+                    if i < len(_TORCH_POS_NAMES):
+                        name = _TORCH_POS_NAMES[i]
+                        if name not in kwargs:
+                            kwargs[name] = val
+            # else: Paddle call — pass through unchanged
+
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
+def index_fill_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    """
+    Decorator for index_fill API to handle parameter name and order differences.
+
+    Usage Example:
+    PyTorch: torch.index_fill(input, dim, index, value)
+    Paddle: paddle.index_fill(x, index, axis, value)
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            # Handle keyword argument aliases
+            if "input" in kwargs and "x" not in kwargs:
+                kwargs["x"] = kwargs.pop("input")
+            if "dim" in kwargs and "axis" not in kwargs:
+                kwargs["axis"] = kwargs.pop("dim")
+
+            # Handle PyTorch positional argument order: (input, dim, index, value)
+            # Paddle order: (x, index, axis, value)
+            if len(args) >= 2 and isinstance(args[1], int):
+                # PyTorch order detected
+                kwargs["x"] = args[0]
+                kwargs["axis"] = args[1]
+                if len(args) > 2:
+                    kwargs["index"] = args[2]
+                if len(args) > 3:
+                    kwargs["value"] = args[3]
+                args = args[4:] if len(args) > 4 else ()
+
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
+def tensor_cuda_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    """
+    Usage Example:
+    PyTorch: Tensor.cuda(device: DeviceLike, non_blocking: bool = False)
+    Paddle: Tensor.cuda(device_id: DeviceLike, blocking: bool = True)
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            if "device" in kwargs:
+                if "device_id" not in kwargs:
+                    kwargs["device_id"] = kwargs.pop("device")
+                else:
+                    raise ValueError(
+                        "Cannot specify both 'device' and its alias 'device_id'."
+                    )
+
+            if "non_blocking" in kwargs:
+                if "blocking" not in kwargs:
+                    kwargs["blocking"] = not (kwargs.pop("non_blocking"))
+                else:
+                    raise ValueError(
+                        "Cannot specify both 'blocking' and 'non_blocking'."
+                    )
+
+            if len(args) >= 3 and isinstance(args[1], str):
+                # using pytorch signature
+                # args[0] is self
+                if "device_id" not in kwargs:
+                    kwargs["device_id"] = args[1]
+                if "blocking" not in kwargs:
+                    kwargs["blocking"] = not args[2]
+                if len(args) > 3:
+                    raise ValueError("cuda() received too many arguments")
+                args = args[:1]
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
+def batch_sampler_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    """
+    Usage Example:
+    PyTorch: torch.utils.data.BatchSampler(sampler, batch_size, drop_last)
+    Paddle: paddle.utils.data.BatchSampler(dataset, sampler, shuffle, batch_size, drop_last)
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            # args[0] is self
+            # args[1] is Sampler / Iterable, use torch signature
+            if len(args) >= 2 and isinstance(
+                args[1], (paddle.io.Sampler, Iterable)
+            ):
+                kwargs["sampler"] = args[1]
+                if len(args) >= 3:
+                    kwargs["batch_size"] = args[2]
+                if len(args) == 4:
+                    kwargs["drop_last"] = args[3]
+                if len(args) > 4:
+                    raise TypeError(
+                        "BatchSampler() received too many arguments"
+                    )
+                args = (args[0],)
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
+def fill_diagonal_inplace_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    """
+    Usage Example:
+    PyTorch: torch.Tensor.fill_diagonal_(fill_value, wrap=False)
+    Paddle: paddle.Tensor.fill_diagonal_(value, offset, wrap)
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            if "fill_value" in kwargs:
+                if "value" not in kwargs:
+                    kwargs["value"] = kwargs.pop("fill_value")
+                else:
+                    raise ValueError(
+                        "Cannot specify both 'value' and its alias 'fill_value'."
+                    )
+
+            # args[0] is x (tensor)
+            # args[1] is fill_value
+            # args[2] is wrap, use torch signature
+            if len(args) >= 3 and isinstance(args[2], bool):
+                kwargs["wrap"] = args[2]
+                if len(args) > 3:
+                    raise TypeError(
+                        "fill_diagonal_() received too many arguments"
+                    )
+                args = (args[0], args[1])
             return func(*args, **kwargs)
 
         wrapper.__signature__ = inspect.signature(func)

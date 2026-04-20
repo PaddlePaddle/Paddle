@@ -53,14 +53,17 @@ inline std::vector<int> TransformDimOrder(const std::vector<int>& dims) {
   return transformed_dims;
 }
 
-inline miopenDataType_t ToCudnnDataType(const phi::DataType& t) {
+inline miopenDataType_t ToCudnnDataType(const DataType& t) {
   miopenDataType_t type = miopenFloat;
   switch (t) {
-    case phi::DataType::FLOAT16:
+    case DataType::FLOAT16:
       type = miopenHalf;
       break;
-    case phi::DataType::FLOAT32:
+    case DataType::FLOAT32:
       type = miopenFloat;
+      break;
+    case DataType::BFLOAT16:
+      type = miopenBFloat16;
       break;
     default:
       break;
@@ -120,7 +123,7 @@ class TensorDescriptor {
   T* desc() { return desc_.get(); }
   T* desc() const { return desc_.get(); }
 
-  void set(const phi::DenseTensor& tensor, const int groups = 1) {
+  void set(const DenseTensor& tensor, const int groups = 1) {
     auto dims = common::vectorize<int>(tensor.dims());
     std::vector<int> strides(dims.size());
     strides[dims.size() - 1] = 1;
@@ -139,7 +142,7 @@ class TensorDescriptor {
         const_cast<int*>(strides.data())));
   }
 
-  void set(const phi::DenseTensor& tensor, const miopenTensorFormat_t format) {
+  void set(const DenseTensor& tensor, const miopenTensorFormat_t format) {
     const int groups = 1;
     PADDLE_ENFORCE_EQ(format,
                       MIOPEN_TENSOR_NCHW,
@@ -188,7 +191,7 @@ class FilterDescriptor {
   T* desc() { return desc_.get(); }
   T* desc() const { return desc_.get(); }
 
-  void set(const phi::DenseTensor& tensor,
+  void set(const DenseTensor& tensor,
            const miopenTensorFormat_t format,
            const int groups = 1) {
     PADDLE_ENFORCE_EQ(format,

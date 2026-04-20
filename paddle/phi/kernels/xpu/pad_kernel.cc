@@ -30,15 +30,12 @@ void PadKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
   if (x.numel() == 0) {
     if (out) {
-      phi::Full<T, Context>(dev_ctx,
-                            phi::IntArray(common::vectorize(out->dims())),
-                            pad_value,
-                            out);
+      Full<T, Context>(dev_ctx, out->dims(), pad_value, out);
       return;
     }
   }
   std::vector<int64_t> pad_left, pad_right;
-  std::vector<int64_t> xshape = common::vectorize<int64_t>(x.dims());
+  std::vector<int64_t> xshape = vectorize<int64_t>(x.dims());
 
   for (size_t i = 0; i < paddings.size() / 2; ++i) {
     pad_left.push_back(paddings[i * 2]);
@@ -65,8 +62,12 @@ void PadKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
                                            DenseTensor* out) {
   using T = phi::complex64;
   dev_ctx.template Alloc<T>(out);
+  if (x.numel() == 0) {
+    Full<T, XPUContext>(dev_ctx, out->dims(), pad_value, out);
+    return;
+  }
   std::vector<int64_t> pad_left, pad_right;
-  std::vector<int64_t> xshape = common::vectorize<int64_t>(x.dims());
+  std::vector<int64_t> xshape = vectorize<int64_t>(x.dims());
 
   for (size_t i = 0; i < paddings.size() / 2; ++i) {
     pad_left.push_back(paddings[i * 2]);

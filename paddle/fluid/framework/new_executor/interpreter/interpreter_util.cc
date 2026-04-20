@@ -141,7 +141,7 @@ bool IsCommunicationOp(const Instruction& instr) {
   return instr.OpBaseValid() && IsCommunicationOp(instr.OpBase());
 }
 
-bool IsCommunicationOp(const ::pir::Operation* op) {
+bool IsCommunicationOp(const pir::Operation* op) {
   return op->attributes().count("ring_id") != 0;
 }
 
@@ -1010,7 +1010,7 @@ void BuildOpFuncList(const phi::Place& place,
       for (auto& vname : op->InputVars()) {
         auto* var = local_scope->FindVar(vname);
         if (var == nullptr) continue;
-        const phi::DenseTensor* tensor{nullptr};
+        const DenseTensor* tensor{nullptr};
         if (var->IsType<DenseTensor>()) {
           tensor = &var->Get<DenseTensor>();
         } else {
@@ -1026,7 +1026,7 @@ void BuildOpFuncList(const phi::Place& place,
       for (auto& vname : op->OutputVars(true)) {
         auto* var = local_scope->FindVar(vname);
         if (var == nullptr) continue;
-        const phi::DenseTensor* tensor{nullptr};
+        const DenseTensor* tensor{nullptr};
         if (var->IsType<DenseTensor>()) {
           tensor = &var->Get<DenseTensor>();
         } else {
@@ -1410,7 +1410,7 @@ void PrintValuesAndVariables(
     ret_variable_str += "(";
     if (!op.operands().empty()) {
       for (size_t i = 0; i < op.num_operands(); ++i) {
-        ::pir::Value in_value = op.operand(i).source();
+        pir::Value in_value = op.operand(i).source();
         if (value_2_var_name.count(in_value)) {
           // get Variable by Value
           auto& var_name = value_2_var_name.at(in_value);
@@ -1499,13 +1499,13 @@ bool IsNoNeedBuffer(pir::Operation* op, pir::Value value) {
 }
 
 std::unordered_map<std::string, std::set<std::string>> GetNoNeedBufferValues(
-    const std::unordered_map<std::string, std::shared_ptr<::pir::Program>>&
+    const std::unordered_map<std::string, std::shared_ptr<pir::Program>>&
         type_to_ir_program) {
   std::unordered_map<std::string, std::set<std::string>> shadow_output_values;
   std::set<std::string> no_need_buffer_vars;
 
   for (auto& pair : type_to_ir_program) {
-    std::shared_ptr<::pir::Program> program = pair.second;
+    std::shared_ptr<pir::Program> program = pair.second;
     // Iterate over the block_args and data_op output, and if all ops in all
     // programs using this value are of the no_need_buffer type, then insert
     // this value into the no_need_buffer set.

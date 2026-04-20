@@ -59,8 +59,8 @@ void Measurer::Compile() {
   ::pir::IrMapping ir_mapping;
   std::shared_ptr<::pir::Program> program_cloned = program_->Clone(ir_mapping);
   cinn::dialect::ir::ApplyCinnPass(program_cloned.get(), CreatePassManager);
-  kernel_program_ = std::move(
-      paddle::dialect::PdOpLowerToKernelPass(program_cloned.get(), place_));
+  kernel_program_ =
+      std::move(pir::PdOpLowerToKernelPass(program_cloned.get(), place_));
   executor_.reset(new paddle::framework::InterpreterCore(
       place_, {"out@fetch"}, kernel_program_->block(), exe_scope_.get()));
   common::PerformanceStatisticsEnd(compile_label_);

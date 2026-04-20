@@ -102,8 +102,8 @@ struct BinaryNotEqual {
 
 // The core logic of computing Unique for a flattened DenseTensor
 template <typename Context, typename InT, typename IndexT>
-static typename std::enable_if<!std::is_same<InT, phi::float16>::value &&
-                               !std::is_same<InT, phi::bfloat16>::value>::type
+static typename std::enable_if<!std::is_same<InT, float16>::value &&
+                               !std::is_same<InT, bfloat16>::value>::type
 UniqueFlattenedCUDATensor(const Context& dev_ctx,
                           const DenseTensor& in,
                           DenseTensor* out,
@@ -125,12 +125,12 @@ UniqueFlattenedCUDATensor(const Context& dev_ctx,
     indices = &tmp;
   }
 
-  indices->Resize(common::make_ddim({num_input}));
+  indices->Resize({num_input});
   auto* indices_data = dev_ctx.template Alloc<IndexT>(indices);
 
 #ifdef PADDLE_WITH_CUDA
-  phi::memory_utils::ThrustAllocator<cudaStream_t> allocator(dev_ctx.GetPlace(),
-                                                             dev_ctx.stream());
+  memory_utils::ThrustAllocator<cudaStream_t> allocator(dev_ctx.GetPlace(),
+                                                        dev_ctx.stream());
   const auto& exec_policy = thrust::cuda::par(allocator).on(dev_ctx.stream());
 #else
   const auto& exec_policy = thrust::hip::par.on(dev_ctx.stream());
@@ -142,7 +142,7 @@ UniqueFlattenedCUDATensor(const Context& dev_ctx,
 
   // 1. Calculate op result: 'out'
   DenseTensor range;
-  range.Resize(common::make_ddim({num_input + 1}));
+  range.Resize({num_input + 1});
   auto* range_data_ptr = dev_ctx.template Alloc<IndexT>(&range);
   thrust::sequence(exec_policy, range_data_ptr, range_data_ptr + num_input + 1);
   Copy(dev_ctx, in_hat, dev_ctx.GetPlace(), false, out);
@@ -153,14 +153,14 @@ UniqueFlattenedCUDATensor(const Context& dev_ctx,
           exec_policy, out_data, out_data + num_input, range_data_ptr, equal)
           .first -
       out_data;
-  out->Resize(common::make_ddim({num_out}));
+  out->Resize({num_out});
 
   // 3. Calculate inverse index: 'inverse'
   if (return_inverse) {
-    index->Resize(common::make_ddim({num_input}));
+    index->Resize({num_input});
     auto* inverse_data = dev_ctx.template Alloc<IndexT>(index);
     DenseTensor inv_loc;
-    inv_loc.Resize(common::make_ddim({num_input}));
+    inv_loc.Resize({num_input});
     auto inv_loc_data_ptr = dev_ctx.template Alloc<IndexT>(&inv_loc);
     thrust::adjacent_difference(exec_policy,
                                 in_data_hat,
@@ -183,7 +183,7 @@ UniqueFlattenedCUDATensor(const Context& dev_ctx,
                                   num_input,
                                   dev_ctx.stream());
     auto d_temp_storage =
-        phi::memory_utils::Alloc(dev_ctx.GetPlace(), temp_storage_bytes);
+        memory_utils::Alloc(dev_ctx.GetPlace(), temp_storage_bytes);
     cub::DeviceScan::InclusiveSum(d_temp_storage->ptr(),
                                   temp_storage_bytes,
                                   inv_loc_data_ptr,
@@ -206,7 +206,7 @@ UniqueFlattenedCUDATensor(const Context& dev_ctx,
   // 2. Calculate sorted index: 'indices'
   if (return_index) {
     DenseTensor tmp_indices;
-    tmp_indices.Resize(common::make_ddim({num_input}));
+    tmp_indices.Resize({num_input});
     auto* tmp_indices_data_ptr = dev_ctx.template Alloc<IndexT>(&tmp_indices);
     thrust::copy(exec_policy,
                  in_data_hat,
@@ -217,12 +217,12 @@ UniqueFlattenedCUDATensor(const Context& dev_ctx,
                           tmp_indices_data_ptr + num_input,
                           indices_data,
                           equal);
-    indices->Resize(common::make_ddim({num_out}));
+    indices->Resize({num_out});
   }
 
   // 4. Calculate 'counts'
   if (return_counts) {
-    counts->Resize(common::make_ddim({num_out}));
+    counts->Resize({num_out});
     auto count_data = dev_ctx.template Alloc<IndexT>(counts);
     // init 'count_data' as 0
     thrust::fill(exec_policy, count_data, count_data + num_out, 0);
@@ -237,8 +237,8 @@ UniqueFlattenedCUDATensor(const Context& dev_ctx,
 
 // The core logic of computing Unique for a flattened DenseTensor
 template <typename Context, typename InT, typename IndexT>
-static typename std::enable_if<std::is_same<InT, phi::float16>::value ||
-                               std::is_same<InT, phi::bfloat16>::value>::type
+static typename std::enable_if<std::is_same<InT, float16>::value ||
+                               std::is_same<InT, bfloat16>::value>::type
 UniqueFlattenedCUDATensor(const Context& dev_ctx,
                           const DenseTensor& in,
                           DenseTensor* out,
@@ -252,7 +252,7 @@ UniqueFlattenedCUDATensor(const Context& dev_ctx,
   // 1. Sort indices
   DenseTensor in_resize;
   in_resize.ShareDataWith(in);
-  in_resize.Resize(common::make_ddim({num_input}));
+  in_resize.Resize({num_input});
   const InT* in_data = in_resize.data<InT>();
   auto equal = BinaryEqual<InT>(1, in_data);
   auto not_equal = BinaryNotEqual<InT>(1, in_data);
@@ -262,12 +262,12 @@ UniqueFlattenedCUDATensor(const Context& dev_ctx,
     indices = &tmp;
   }
 
-  indices->Resize(common::make_ddim({num_input}));
+  indices->Resize({num_input});
   auto* indices_data = dev_ctx.template Alloc<IndexT>(indices);
 
 #ifdef PADDLE_WITH_CUDA
-  phi::memory_utils::ThrustAllocator<cudaStream_t> allocator(dev_ctx.GetPlace(),
-                                                             dev_ctx.stream());
+  memory_utils::ThrustAllocator<cudaStream_t> allocator(dev_ctx.GetPlace(),
+                                                        dev_ctx.stream());
   const auto& exec_policy = thrust::cuda::par(allocator).on(dev_ctx.stream());
 #else
   const auto& exec_policy = thrust::hip::par.on(dev_ctx.stream());
@@ -280,10 +280,10 @@ UniqueFlattenedCUDATensor(const Context& dev_ctx,
 
   // 2. Calculate inverse indices: 'index'
   if (return_inverse) {
-    index->Resize(common::make_ddim({num_input}));
+    index->Resize({num_input});
     auto* inverse_data = dev_ctx.template Alloc<IndexT>(index);
     DenseTensor inv_loc;
-    inv_loc.Resize(common::make_ddim({num_input}));
+    inv_loc.Resize({num_input});
     auto inv_loc_data_ptr = dev_ctx.template Alloc<IndexT>(&inv_loc);
     thrust::adjacent_difference(exec_policy,
                                 indices_data,
@@ -305,7 +305,7 @@ UniqueFlattenedCUDATensor(const Context& dev_ctx,
 
   // 3. Calculate op result and sorted index: 'out' & 'indices'
   DenseTensor range;
-  range.Resize(common::make_ddim({num_input + 1}));
+  range.Resize({num_input + 1});
   auto* range_data_ptr = dev_ctx.template Alloc<IndexT>(&range);
   thrust::sequence(exec_policy, range_data_ptr, range_data_ptr + num_input + 1);
   int num_out;
@@ -316,14 +316,14 @@ UniqueFlattenedCUDATensor(const Context& dev_ctx,
                                   equal)
                 .first -
             indices_data;
-  indices->Resize(common::make_ddim({num_out}));
-  out->Resize(common::make_ddim({num_out}));
+  indices->Resize({num_out});
+  out->Resize({num_out});
   dev_ctx.template Alloc<InT>(out);
-  phi::IndexSelectKernel<InT, Context>(dev_ctx, in_resize, *indices, 0, out);
+  IndexSelectKernel<InT, Context>(dev_ctx, in_resize, *indices, 0, out);
 
   // 4. Calculate 'counts'
   if (return_counts) {
-    counts->Resize(common::make_ddim({num_out}));
+    counts->Resize({num_out});
     auto count_data = dev_ctx.template Alloc<IndexT>(counts);
     // init 'count_data' as 0
     thrust::fill(exec_policy, count_data, count_data + num_out, 0);
@@ -356,17 +356,17 @@ static void ComputeUniqueDims(const Context& dev_ctx,
                               not_equal_T not_equal,
                               int64_t row) {
 #ifdef PADDLE_WITH_CUDA
-  phi::memory_utils::ThrustAllocator<cudaStream_t> allocator(dev_ctx.GetPlace(),
-                                                             dev_ctx.stream());
+  memory_utils::ThrustAllocator<cudaStream_t> allocator(dev_ctx.GetPlace(),
+                                                        dev_ctx.stream());
   const auto& exec_policy = thrust::cuda::par(allocator).on(dev_ctx.stream());
 #else
   const auto& exec_policy = thrust::hip::par.on(dev_ctx.stream());
 #endif
   // 1. inverse indices: 'inverse'
-  inverse->Resize(common::make_ddim({row}));
+  inverse->Resize({row});
   auto* inverse_data = dev_ctx.template Alloc<IndexT>(inverse);
   DenseTensor inv_loc;
-  inv_loc.Resize(common::make_ddim({row}));
+  inv_loc.Resize({row});
   auto inv_loc_data_ptr = dev_ctx.template Alloc<IndexT>(&inv_loc);
   thrust::adjacent_difference(exec_policy,
                               sorted_indices_data,
@@ -385,7 +385,7 @@ static void ComputeUniqueDims(const Context& dev_ctx,
 
   // 2. sorted indices
   DenseTensor range;
-  range.Resize(common::make_ddim({row + 1}));
+  range.Resize({row + 1});
   auto range_data_ptr = dev_ctx.template Alloc<IndexT>(&range);
   thrust::sequence(exec_policy, range_data_ptr, range_data_ptr + row + 1);
   int num_out;
@@ -398,11 +398,11 @@ static void ComputeUniqueDims(const Context& dev_ctx,
             sorted_indices_data;
   thrust::device_ptr<IndexT> range_data_ptr_dev(range_data_ptr);
   range_data_ptr_dev[num_out] = row;
-  sorted_indices->Resize(common::make_ddim({num_out}));
+  sorted_indices->Resize({num_out});
 
   // 3. counts: 'counts'
   if (return_counts) {
-    counts->Resize(common::make_ddim({num_out}));
+    counts->Resize({num_out});
     auto* count_data = dev_ctx.template Alloc<IndexT>(counts);
     thrust::fill(exec_policy, count_data, count_data + num_out, 0);
     thrust::adjacent_difference(exec_policy,
@@ -427,8 +427,8 @@ static void UniqueDimsCUDATensor(const Context& dev_ctx,
   // 1. Transpose & reshape
   // Transpose tensor: eg. axis=1, [dim0, dim1, dim2] -> [dim1, dim0, dim2]
   DenseTensor in_trans;
-  std::vector<int64_t> in_trans_dims_vec(common::vectorize(in.dims()));
-  auto in_trans_dims = common::make_ddim(in_trans_dims_vec);
+  std::vector<int64_t> in_trans_dims_vec(vectorize(in.dims()));
+  auto in_trans_dims = make_ddim(in_trans_dims_vec);
   std::vector<int> permute(in.dims().size());
   bool is_transpose = axis != 0;
   if (is_transpose) {
@@ -437,7 +437,7 @@ static void UniqueDimsCUDATensor(const Context& dev_ctx,
     permute[0] = axis;
     in_trans_dims_vec[axis] = in.dims()[0];
     in_trans_dims_vec[0] = in.dims()[axis];
-    in_trans_dims = common::make_ddim(in_trans_dims_vec);
+    in_trans_dims = make_ddim(in_trans_dims_vec);
     in_trans.Resize(in_trans_dims);
     dev_ctx.template Alloc<InT>(&in_trans);
     funcs::TransCompute<Context, InT>(in.dims().size(),  // num of dims
@@ -462,14 +462,14 @@ static void UniqueDimsCUDATensor(const Context& dev_ctx,
     indices = &tmp;
   }
 
-  indices->Resize(common::make_ddim({row}));
+  indices->Resize({row});
   auto* sorted_indices_data = dev_ctx.template Alloc<IndexT>(indices);
 
   // 2. Calculate 'indices', 'inverse', 'counts'
   // Init index and sort
 #ifdef PADDLE_WITH_CUDA
-  phi::memory_utils::ThrustAllocator<cudaStream_t> allocator(dev_ctx.GetPlace(),
-                                                             dev_ctx.stream());
+  memory_utils::ThrustAllocator<cudaStream_t> allocator(dev_ctx.GetPlace(),
+                                                        dev_ctx.stream());
   const auto& exec_policy = thrust::cuda::par(allocator).on(dev_ctx.stream());
 #else
   const auto& exec_policy = thrust::hip::par.on(dev_ctx.stream());
@@ -498,22 +498,21 @@ static void UniqueDimsCUDATensor(const Context& dev_ctx,
   out_trans_dims_vec[0] = indices->numel();
   if (is_transpose) {
     DenseTensor out_trans;
-    out_trans.Resize(common::make_ddim(out_trans_dims_vec));
+    out_trans.Resize(out_trans_dims_vec);
     dev_ctx.template Alloc<InT>(&out_trans);
 
-    phi::IndexSelectKernel<InT, Context>(
-        dev_ctx, in_trans, *indices, 0, &out_trans);
+    IndexSelectKernel<InT, Context>(dev_ctx, in_trans, *indices, 0, &out_trans);
 
     std::swap(out_trans_dims_vec[0], out_trans_dims_vec[axis]);
-    out->Resize(common::make_ddim(out_trans_dims_vec));
+    out->Resize(out_trans_dims_vec);
     dev_ctx.template Alloc<InT>(out);
     funcs::TransCompute<Context, InT>(
         out_trans.dims().size(), dev_ctx, out_trans, out, permute);
   } else {
-    out->Resize(common::make_ddim(out_trans_dims_vec));
+    out->Resize(out_trans_dims_vec);
     dev_ctx.template Alloc<InT>(out);
 
-    phi::IndexSelectKernel<InT, Context>(dev_ctx, in_trans, *indices, 0, out);
+    IndexSelectKernel<InT, Context>(dev_ctx, in_trans, *indices, 0, out);
   }
 }
 
@@ -627,7 +626,7 @@ void UniqueRawKernel(const Context& dev_ctx,
                      DenseTensor* indices,
                      DenseTensor* index,
                      DenseTensor* counts) {
-  if (dtype == phi::DataType::INT32) {
+  if (dtype == DataType::INT32) {
     PADDLE_ENFORCE_LE(
         x.numel() + 1,
         INT_MAX,
@@ -639,32 +638,31 @@ void UniqueRawKernel(const Context& dev_ctx,
   }
   // if 'axis' is not required, flatten the DenseTensor.
   if (axis.empty()) {
-    phi::VisitDataTypeTiny(
-        dtype,
-        UniqueFlattenedCUDAFunctor<Context, T>(dev_ctx,
-                                               x,
-                                               out,
-                                               indices,
-                                               index,
-                                               counts,
-                                               return_index,
-                                               return_inverse,
-                                               return_counts));
-  } else {
-    // 'axis' is required.
-    int axis_value = axis[0];
-    axis_value = (axis_value == -1) ? (x.dims().size() - 1) : axis_value;
-    phi::VisitDataTypeTiny(dtype,
-                           UniqueDimsCUDAFunctor<Context, T>(dev_ctx,
+    VisitDataTypeTiny(dtype,
+                      UniqueFlattenedCUDAFunctor<Context, T>(dev_ctx,
                                                              x,
                                                              out,
                                                              indices,
                                                              index,
                                                              counts,
-                                                             axis_value,
                                                              return_index,
                                                              return_inverse,
                                                              return_counts));
+  } else {
+    // 'axis' is required.
+    int axis_value = axis[0];
+    axis_value = (axis_value == -1) ? (x.dims().size() - 1) : axis_value;
+    VisitDataTypeTiny(dtype,
+                      UniqueDimsCUDAFunctor<Context, T>(dev_ctx,
+                                                        x,
+                                                        out,
+                                                        indices,
+                                                        index,
+                                                        counts,
+                                                        axis_value,
+                                                        return_index,
+                                                        return_inverse,
+                                                        return_counts));
   }
 }
 

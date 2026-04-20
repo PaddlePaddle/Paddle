@@ -72,9 +72,9 @@ T GetValueOfExpectedType(const Context& dev_ctx, const DenseTensor& x) {
     case DataType::INT64:
       return static_cast<T>(GetValue<int64_t, Context>(dev_ctx, x));
     case DataType::FLOAT16:
-      return static_cast<T>(GetValue<phi::float16, Context>(dev_ctx, x));
+      return static_cast<T>(GetValue<float16, Context>(dev_ctx, x));
     case DataType::BFLOAT16:
-      return static_cast<T>(GetValue<phi::bfloat16, Context>(dev_ctx, x));
+      return static_cast<T>(GetValue<bfloat16, Context>(dev_ctx, x));
     case DataType::BOOL:
       return static_cast<T>(GetValue<bool, Context>(dev_ctx, x));
     case DataType::INT16:
@@ -114,7 +114,7 @@ void LinspaceKernel(const Context& dev_ctx,
                         "than or equal to 0, but received num is %d",
                         num));
 
-  out->Resize(common::make_ddim({num}));
+  out->Resize({num});
   T* out_data = dev_ctx.template Alloc<T>(out);
   if (num == 0) {
     return;

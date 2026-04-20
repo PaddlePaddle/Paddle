@@ -29,14 +29,14 @@ template <typename T_X,
           typename Context>
 void Conv2dXPUKernelImpl(const Context& dev_ctx,
                          const DenseTensor& x,
-                         const paddle::optional<DenseTensor>& x_max,
+                         const optional<DenseTensor>& x_max,
                          const DenseTensor& filter,
                          const DenseTensor& filter_max,
-                         const paddle::optional<DenseTensor>& bias,
-                         const paddle::optional<DenseTensor>& branch,
-                         const paddle::optional<DenseTensor>& branch_max,
-                         const paddle::optional<DenseTensor>& scale_max,
-                         const paddle::optional<DenseTensor>& out_max_in,
+                         const optional<DenseTensor>& bias,
+                         const optional<DenseTensor>& branch,
+                         const optional<DenseTensor>& branch_max,
+                         const optional<DenseTensor>& scale_max,
+                         const optional<DenseTensor>& out_max_in,
                          const std::vector<int>& paddings_,
                          const std::vector<int>& dilations_,
                          const std::vector<int>& strides_,
@@ -55,10 +55,9 @@ void Conv2dXPUKernelImpl(const Context& dev_ctx,
   std::vector<int64_t> paddings(paddings_.begin(), paddings_.end());
   std::vector<int64_t> dilations(dilations_.begin(), dilations_.end());
   std::vector<int64_t> strides(strides_.begin(), strides_.end());
-  DDim in_data_dims = common::slice_ddim(input_dims, 2, input_dims.size());
-  DDim filter_data_dims =
-      common::slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int64_t> ksize = common::vectorize<int64_t>(filter_data_dims);
+  DDim in_data_dims = slice_ddim(input_dims, 2, input_dims.size());
+  DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
+  std::vector<int64_t> ksize = vectorize<int64_t>(filter_data_dims);
   phi::UpdatePaddingAndDilation(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
@@ -170,14 +169,14 @@ void Conv2dXPUKernelImpl(const Context& dev_ctx,
 template <typename T, typename Context>
 void Conv2dXPUKernel(const Context& dev_ctx,
                      const DenseTensor& x,
-                     const paddle::optional<DenseTensor>& x_max,
+                     const optional<DenseTensor>& x_max,
                      const DenseTensor& filter,
                      const DenseTensor& filter_max,
-                     const paddle::optional<DenseTensor>& bias,
-                     const paddle::optional<DenseTensor>& branch,
-                     const paddle::optional<DenseTensor>& branch_max,
-                     const paddle::optional<DenseTensor>& scale_max,
-                     const paddle::optional<DenseTensor>& out_max_in,
+                     const optional<DenseTensor>& bias,
+                     const optional<DenseTensor>& branch,
+                     const optional<DenseTensor>& branch_max,
+                     const optional<DenseTensor>& scale_max,
+                     const optional<DenseTensor>& out_max_in,
                      const std::vector<int>& paddings,
                      const std::vector<int>& dilations,
                      const std::vector<int>& strides,

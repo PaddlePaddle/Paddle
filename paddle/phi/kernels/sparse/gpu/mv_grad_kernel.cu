@@ -86,7 +86,7 @@ void MvCooGradKernel(const Context &dev_ctx,
 
   // dvec{Dense} = x'{SparseCoo} * dout{Dense}
   if (dvec) {
-#if CUDA_VERSION >= 11000
+#if defined(PADDLE_WITH_CUDA)
     // InferMeta of DenseTensor 'dvec'
     dvec->Resize(vec.dims());
     dev_ctx.template Alloc<T>(dvec);
@@ -130,7 +130,7 @@ void MvCsrGradKernel(const Context &dev_ctx,
 
   // dvec{Dense} = x'{SparseCsr} * dout{Dense}
   if (dvec) {
-#if CUDA_VERSION >= 11000
+#if defined(PADDLE_WITH_CUDA)
     // InferMeta of DenseTensor 'dvec'
     dvec->Resize(vec.dims());
     dev_ctx.template Alloc<T>(dvec);

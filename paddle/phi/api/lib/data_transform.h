@@ -181,8 +181,9 @@ inline bool NeedTransformPlace(const phi::Place& src_place,
               phi::TransToPhiBackend(src_place) !=
                   (target != Backend::GPUDNN ? target : Backend::GPU));
 #elif defined(PADDLE_WITH_XPU)
-  bool ret = target != Backend::ALL_BACKEND &&
-             phi::TransToPhiBackend(src_place) != target;
+  bool ret = src_place.GetType() == AllocationType::XPUPINNED ||
+             (target != Backend::ALL_BACKEND &&
+              phi::TransToPhiBackend(src_place) != target);
 #elif defined(PADDLE_WITH_IPU)
   bool ret = target != Backend::ALL_BACKEND &&
              phi::TransToPhiBackend(src_place) != target;
@@ -191,7 +192,10 @@ inline bool NeedTransformPlace(const phi::Place& src_place,
   if (target == Backend::CUSTOM) {
     ret = ret && !is_custom_place(src_place);
   } else {
-    ret = ret && phi::TransToPhiBackend(src_place) != target;
+    ret =
+        ret && phi::TransToPhiBackend(src_place) !=
+                   (target != Backend::GPUDNN ? target
+                                              : Backend::DEFAULT_CUSTOM_DEVICE);
   }
 #else
   bool ret = false;

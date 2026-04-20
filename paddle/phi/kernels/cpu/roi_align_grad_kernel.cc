@@ -74,7 +74,7 @@ template <typename T, typename Context>
 void RoiAlignGradKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const DenseTensor& boxes,
-                        const paddle::optional<DenseTensor>& boxes_num,
+                        const optional<DenseTensor>& boxes_num,
                         const DenseTensor& out_grad,
                         int pooled_height,
                         int pooled_width,
@@ -82,7 +82,7 @@ void RoiAlignGradKernel(const Context& dev_ctx,
                         int sampling_ratio,
                         bool aligned,
                         DenseTensor* dx) {
-  const auto& in_dims = common::vectorize<int>(x.dims());
+  const auto& in_dims = vectorize<int>(x.dims());
   int channels = in_dims[1];
   int height = in_dims[2];
   int width = in_dims[3];
@@ -101,7 +101,7 @@ void RoiAlignGradKernel(const Context& dev_ctx,
   int boxes_batch_size = 0;
   if (boxes_num) {
     boxes_batch_size = static_cast<int>(boxes_num->numel());
-    if (boxes_num->dtype() == phi::DataType::INT64) {
+    if (boxes_num->dtype() == DataType::INT64) {
       auto* boxes_num_data = boxes_num->data<int64_t>();
       int64_t start = 0;
       for (int64_t n = 0; n < boxes_batch_size; ++n) {
@@ -110,7 +110,7 @@ void RoiAlignGradKernel(const Context& dev_ctx,
         }
         start += boxes_num_data[n];
       }
-    } else if (boxes_num->dtype() == phi::DataType::INT32) {
+    } else if (boxes_num->dtype() == DataType::INT32) {
       auto* boxes_num_data = boxes_num->data<int>();
       int start = 0;
       for (int n = 0; n < boxes_batch_size; ++n) {

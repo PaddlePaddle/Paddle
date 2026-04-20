@@ -27,30 +27,51 @@ void sgd_dense_param_dense_grad_impl(const DenseTensor& param,
                                      const DenseTensor& grad,
                                      DenseTensor* param_out) {
   const auto sz = param_out->numel();
-  phi::jit::sgd_attr_t attr(1, sz, 1, sz, 1);
+  jit::sgd_attr_t attr(1, sz, 1, sz, 1);
   const T* lr = learning_rate.data<T>();
   const T* param_data = param.data<T>();
   const T* grad_data = grad.data<T>();
   int64_t rows_idx = 0;
   T* out_data = param_out->data<T>();
 
-  auto sgd =
-      phi::jit::KernelFuncs<phi::jit::SgdTuple<T>, CPUPlace>::Cache().At(attr);
+  auto sgd = jit::KernelFuncs<jit::SgdTuple<T>, CPUPlace>::Cache().At(attr);
   sgd(lr, param_data, grad_data, &rows_idx, out_data, &attr);
 }
 
 template <>
-void sgd_dense_param_dense_grad_impl<phi::bfloat16>(
-    const DenseTensor& param,
-    const DenseTensor& learning_rate,
-    const DenseTensor& grad,
-    DenseTensor* param_out) {
-  auto p = EigenVector<phi::bfloat16>::Flatten(param);
-  auto g = EigenVector<phi::bfloat16>::Flatten(grad);
-  auto o = EigenVector<phi::bfloat16>::Flatten(*param_out);
-  const auto* lr = learning_rate.data<phi::bfloat16>();
+void sgd_dense_param_dense_grad_impl<bfloat16>(const DenseTensor& param,
+                                               const DenseTensor& learning_rate,
+                                               const DenseTensor& grad,
+                                               DenseTensor* param_out) {
+  auto p = EigenVector<bfloat16>::Flatten(param);
+  auto g = EigenVector<bfloat16>::Flatten(grad);
+  auto o = EigenVector<bfloat16>::Flatten(*param_out);
+  const auto* lr = learning_rate.data<bfloat16>();
 
   o = p - lr[0] * g;
+}
+
+template <typename T>
+void sgd_dense_param_dense_grad_mixed_impl(const DenseTensor& param,
+                                           const DenseTensor& learning_rate,
+                                           const DenseTensor& grad,
+                                           DenseTensor* param_out) {
+  const T* param_data = param.data<T>();
+  const float* grad_data = grad.data<float>();
+  const T* lr_ptr = learning_rate.data<T>();
+
+  float lr = static_cast<float>(lr_ptr[0]);
+  T* out_data = param_out->data<T>();
+  int64_t numel = param.numel();
+
+  for (int64_t i = 0; i < numel; ++i) {
+    float p = static_cast<float>(param_data[i]);
+    float g = grad_data[i];
+
+    p = p - lr * g;
+
+    out_data[i] = static_cast<T>(p);
+  }
 }
 
 template <typename T>
@@ -66,7 +87,7 @@ void sgd_dense_param_sparse_grad_impl(const DenseTensor& param,
   const int64_t* rows_data = grad_rows.data();
   T* out_data = param_out->data<T>();
 
-  phi::jit::sgd_attr_t attr;
+  jit::sgd_attr_t attr;
   attr.param_height = param_out->dims()[0];
   attr.param_width = param_out->numel() / attr.param_height;
   attr.grad_height =
@@ -74,13 +95,12 @@ void sgd_dense_param_sparse_grad_impl(const DenseTensor& param,
   attr.grad_width = grad_value.numel() / attr.grad_height;
   attr.selected_rows_size = static_cast<int>(grad_rows.size());
 
-  auto sgd =
-      phi::jit::KernelFuncs<phi::jit::SgdTuple<T>, CPUPlace>::Cache().At(attr);
+  auto sgd = jit::KernelFuncs<jit::SgdTuple<T>, CPUPlace>::Cache().At(attr);
   sgd(lr, param_data, grad_data, rows_data, out_data, &attr);
 }
 
 template <>
-void sgd_dense_param_sparse_grad_impl<phi::bfloat16>(
+void sgd_dense_param_sparse_grad_impl<bfloat16>(
     const DenseTensor& param,
     const DenseTensor& learning_rate,
     const SelectedRows& grad,
@@ -91,9 +111,9 @@ void sgd_dense_param_sparse_grad_impl<phi::bfloat16>(
   const int64_t grad_val_height = static_cast<int64_t>(grad_rows.size());
   const auto grad_width = grad_value.numel() / grad_val_height;
 
-  const auto* grad_data = grad_value.data<phi::bfloat16>();
-  auto* out_data = param_out->data<phi::bfloat16>();
-  const auto* lr = learning_rate.data<phi::bfloat16>();
+  const auto* grad_data = grad_value.data<bfloat16>();
+  auto* out_data = param_out->data<bfloat16>();
+  const auto* lr = learning_rate.data<bfloat16>();
 
   for (size_t i = 0; i < grad_rows.size(); ++i) {
     PADDLE_ENFORCE_LT(
@@ -116,38 +136,43 @@ void SGDDenseKernel(const Context& dev_ctx,
                     const DenseTensor& param,
                     const DenseTensor& learning_rate,
                     const DenseTensor& grad,
-                    const paddle::optional<DenseTensor>& master_param UNUSED,
+                    const optional<DenseTensor>& master_param UNUSED,
                     bool multi_precision UNUSED,
                     DenseTensor* param_out,
                     DenseTensor* master_param_out UNUSED) {
   dev_ctx.template Alloc<T>(param_out);
-  sgd_dense_param_dense_grad_impl<T>(param, learning_rate, grad, param_out);
+  if (grad.dtype() == DataType::FLOAT32 && param.dtype() != DataType::FLOAT32) {
+    sgd_dense_param_dense_grad_mixed_impl<T>(
+        param, learning_rate, grad, param_out);
+  } else {
+    sgd_dense_param_dense_grad_impl<T>(param, learning_rate, grad, param_out);
+  }
 }
 
 template <typename T, typename Context>
-void SGDDenseParamSparseGradKernel(
-    const Context& dev_ctx,
-    const DenseTensor& param,
-    const DenseTensor& learning_rate,
-    const SelectedRows& grad,
-    const paddle::optional<DenseTensor>& master_param UNUSED,
-    bool multi_precision UNUSED,
-    DenseTensor* param_out,
-    DenseTensor* master_param_out UNUSED) {
+void SGDDenseParamSparseGradKernel(const Context& dev_ctx,
+                                   const DenseTensor& param,
+                                   const DenseTensor& learning_rate,
+                                   const SelectedRows& grad,
+                                   const optional<DenseTensor>& master_param
+                                       UNUSED,
+                                   bool multi_precision UNUSED,
+                                   DenseTensor* param_out,
+                                   DenseTensor* master_param_out UNUSED) {
   dev_ctx.template Alloc<T>(param_out);
   sgd_dense_param_sparse_grad_impl<T>(param, learning_rate, grad, param_out);
 }
 
 template <typename T, typename Context>
-void SGDSparseParamSparseGradKernel(
-    const Context& dev_ctx UNUSED,
-    const SelectedRows& param,
-    const DenseTensor& learning_rate,
-    const SelectedRows& grad,
-    const paddle::optional<SelectedRows>& master_param UNUSED,
-    bool multi_precision UNUSED,
-    SelectedRows* param_out,
-    SelectedRows* master_param_out UNUSED) {
+void SGDSparseParamSparseGradKernel(const Context& dev_ctx UNUSED,
+                                    const SelectedRows& param,
+                                    const DenseTensor& learning_rate,
+                                    const SelectedRows& grad,
+                                    const optional<SelectedRows>& master_param
+                                        UNUSED,
+                                    bool multi_precision UNUSED,
+                                    SelectedRows* param_out,
+                                    SelectedRows* master_param_out UNUSED) {
   // for distributed training, a sparse var may be empty,
   // just skip updating.
   if (grad.rows().empty()) {

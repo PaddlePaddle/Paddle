@@ -32,8 +32,7 @@ void LogsumexpKernel(const Context& dev_ctx,
                      bool reduce_all,
                      DenseTensor* out) {
   if (x.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), -INFINITY, out);
+    Full<T, Context>(dev_ctx, out->dims(), -INFINITY, out);
     return;
   }
   auto xdim = x.dims();
@@ -44,7 +43,7 @@ void LogsumexpKernel(const Context& dev_ctx,
                           "The dims of Input(X) should be greater than 0."));
 
   reduce_all = recompute_reduce_all(x, axis, reduce_all);
-  std::vector<int64_t> outdim_vec, keeped_outdim_vec;
+  std::vector<int64_t> outdim_vec, keep_outdim_vec;
   std::vector<int> axis_vec;
   int64_t compute_size = 1, other_size = 1;
   for (auto i : axis) {
@@ -67,21 +66,21 @@ void LogsumexpKernel(const Context& dev_ctx,
     }
     if (flag) {
       compute_size *= xdim[i];
-      keeped_outdim_vec.push_back(1);
+      keep_outdim_vec.push_back(1);
       if (keepdim) outdim_vec.push_back(1);
     } else {
       other_size *= xdim[i];
       outdim_vec.push_back(xdim[i]);
-      keeped_outdim_vec.push_back(xdim[i]);
+      keep_outdim_vec.push_back(xdim[i]);
     }
   }
-  auto outdim = common::make_ddim(outdim_vec);
-  auto keeped_outdim = common::make_ddim(keeped_outdim_vec);
+  auto outdim = make_ddim(outdim_vec);
+  auto keep_outdim = make_ddim(keep_outdim_vec);
 
   // The XPU logsumexp api does not use xmax to normalize its input, so we
   // fallback to the non fusion impl currently.
   DenseTensor max_x;
-  max_x.Resize(keeped_outdim);
+  max_x.Resize(keep_outdim);
   MaxKernel<T, Context>(dev_ctx, x, axis_vec, true, &max_x);
 
   DenseTensor temp_x = Subtract<T, Context>(dev_ctx, x, max_x);

@@ -235,5 +235,200 @@ class TestRandintAPI_ZeroDim(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestRandintAliasAndOut(unittest.TestCase):
+    def test_alias_and_out(self):
+        paddle.disable_static()
+
+        # Test size alias (param_one_alias decorator: shape -> size)
+        result_1 = paddle.randint(5, size=[3, 4])
+        result_2 = paddle.randint(5, size=paddle.to_tensor([3, 4]))
+        self.assertEqual(result_1.shape, [3, 4])
+        self.assertEqual(result_2.shape, [3, 4])
+
+        # Test out parameter with int32 dtype
+        result_3 = paddle.randint(high=5, shape=[3, 4], dtype='int32')
+        out = paddle.zeros([3, 4], dtype='int32')
+        result_4 = paddle.randint(high=5, shape=[3, 4], dtype='int32', out=out)
+        self.assertTrue(paddle.equal_all(result_4, out))
+        self.assertEqual(result_4.dtype, paddle.int32)
+
+        # Test out parameter with int64 dtype
+        out_int64 = paddle.zeros([2, 5], dtype='int64')
+        result_5 = paddle.randint(
+            high=10, shape=[2, 5], dtype='int64', out=out_int64
+        )
+        self.assertTrue(paddle.equal_all(result_5, out_int64))
+        self.assertEqual(result_5.dtype, paddle.int64)
+
+        # Test WITHOUT out parameter (out=None, triggers 'if out is None' branch)
+        result_6 = paddle.randint(high=5, shape=[3, 4], dtype='int32')
+        self.assertEqual(result_6.shape, [3, 4])
+        self.assertEqual(result_6.dtype, paddle.int32)
+
+        result_7 = paddle.randint(high=5, shape=[2, 3], dtype='int64')
+        self.assertEqual(result_7.shape, [2, 3])
+        self.assertEqual(result_7.dtype, paddle.int64)
+
+        paddle.enable_static()
+
+    def test_out_static_mode(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            # In static mode (PIR), out parameter is not supported (as shown by warning)
+            # Test creates new tensor (out=None), triggering 'if out is None' branch
+            result1 = paddle.randint(high=5, shape=[3, 4], dtype='int32')
+            self.assertEqual(result1.shape, (3, 4))
+
+            result2 = paddle.randint(high=10, shape=[2, 5], dtype='int64')
+            self.assertEqual(result2.shape, (2, 5))
+
+    def test_size_alias_static_mode(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            # Test size parameter as an alias for shape in static mode
+            result = paddle.randint(high=5, size=[3, 4], dtype='int32')
+            self.assertEqual(result.shape, (3, 4))
+
+
+class TestRandintHighAsList(unittest.TestCase):
+    """Test randint when high is a list/tuple (positional args compatibility).
+
+    When called as paddle.randint(10, [3, 4]), the second positional arg
+    binds to `high` as a list. The code detects this and treats it as
+    shape=high, high=low, low=0.
+    """
+
+    def test_high_is_list(self):
+        paddle.disable_static()
+        # paddle.randint(10, [3, 4]) means low=0, high=10, shape=[3, 4]
+        x = paddle.randint(10, [3, 4])
+        self.assertEqual(x.shape, [3, 4])
+        self.assertTrue(np.all(x.numpy() >= 0) and np.all(x.numpy() < 10))
+        paddle.enable_static()
+
+    def test_high_is_tuple(self):
+        paddle.disable_static()
+        x = paddle.randint(5, (2, 3))
+        self.assertEqual(x.shape, [2, 3])
+        self.assertTrue(np.all(x.numpy() >= 0) and np.all(x.numpy() < 5))
+        paddle.enable_static()
+
+
+class TestRandintOldStaticMode(unittest.TestCase):
+    """Test randint in old static graph mode (non-PIR mode).
+
+    This test specifically covers the else branch in randint:
+        if out is None:
+            out = helper.create_variable_for_type_inference(dtype=dtype)
+
+    This branch is only executed when:
+    1. Not in dynamic mode (in_dynamic_mode() returns False)
+    2. Not in PIR mode (in_pir_mode() returns False)
+    """
+
+    def test_out_none_old_static_mode(self):
+        """Test that 'if out is None' branch is covered in old static mode."""
+        from paddle.pir_utils import OldIrGuard
+
+        with OldIrGuard():
+            main_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+
+            with paddle.static.program_guard(main_program, startup_program):
+                # This should go through the else branch (old static mode)
+                # and trigger 'if out is None: out = helper.create_variable_for_type_inference(dtype=dtype)'
+                result1 = paddle.randint(high=5, shape=[3, 4], dtype='int32')
+                result2 = paddle.randint(high=10, shape=[2, 5], dtype='int64')
+
+                # Verify shapes are correct
+                self.assertEqual(result1.shape, (3, 4))
+                self.assertEqual(result2.shape, (2, 5))
+
+            # Execute the program to verify it works
+            place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            exe.run(startup_program)
+            outs = exe.run(main_program, fetch_list=[result1, result2])
+
+            # Verify the outputs
+            self.assertEqual(outs[0].shape, (3, 4))
+            self.assertEqual(outs[1].shape, (2, 5))
+            # Verify values are in expected range
+            self.assertTrue(np.all(outs[0] >= 0) and np.all(outs[0] < 5))
+            self.assertTrue(np.all(outs[1] >= 0) and np.all(outs[1] < 10))
+
+    def test_size_alias_old_static_mode(self):
+        """Test size alias in old static mode."""
+        from paddle.pir_utils import OldIrGuard
+
+        with OldIrGuard():
+            main_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+
+            with paddle.static.program_guard(main_program, startup_program):
+                # Test using 'size' parameter alias
+                result = paddle.randint(high=5, size=[4, 5], dtype='int32')
+                self.assertEqual(result.shape, (4, 5))
+
+            # Execute the program
+            place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            exe.run(startup_program)
+            outs = exe.run(main_program, fetch_list=[result])
+
+            self.assertEqual(outs[0].shape, (4, 5))
+            self.assertTrue(np.all(outs[0] >= 0) and np.all(outs[0] < 5))
+
+
+class TestRandintDeviceRequiresGradPinMemory(unittest.TestCase):
+    def test_device_cpu(self):
+        paddle.disable_static()
+        x = paddle.randint(high=10, shape=[3, 4], device='cpu')
+        self.assertEqual(x.shape, [3, 4])
+        self.assertTrue(x.place.is_cpu_place())
+        paddle.enable_static()
+
+    def test_requires_grad(self):
+        paddle.disable_static()
+        x = paddle.randint(high=10, shape=[2, 3], requires_grad=True)
+        self.assertEqual(x.shape, [2, 3])
+        self.assertFalse(x.stop_gradient)
+        paddle.enable_static()
+
+    def test_requires_grad_false(self):
+        paddle.disable_static()
+        x = paddle.randint(high=10, shape=[2, 3], requires_grad=False)
+        self.assertTrue(x.stop_gradient)
+        paddle.enable_static()
+
+    def test_device_and_requires_grad(self):
+        paddle.disable_static()
+        x = paddle.randint(
+            high=10, shape=[2, 3], device='cpu', requires_grad=True
+        )
+        self.assertEqual(x.shape, [2, 3])
+        self.assertTrue(x.place.is_cpu_place())
+        self.assertFalse(x.stop_gradient)
+        paddle.enable_static()
+
+    def test_pin_memory_unsupported_device_raises(self):
+        paddle.disable_static()
+        with self.assertRaises(RuntimeError):
+            paddle.randint(high=10, shape=[2, 3], device='cpu', pin_memory=True)
+        paddle.enable_static()
+
+    def test_pin_memory_cuda(self):
+        if not paddle.device.is_compiled_with_cuda():
+            return
+        paddle.disable_static()
+        x = paddle.randint(high=10, shape=[2, 3], device='gpu', pin_memory=True)
+        self.assertTrue("pinned" in str(x.place))
+        paddle.enable_static()
+
+
 if __name__ == "__main__":
     unittest.main()

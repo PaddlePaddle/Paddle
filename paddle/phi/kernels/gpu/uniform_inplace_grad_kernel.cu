@@ -30,9 +30,8 @@ void UniformInplaceGradKernel(const Context& dev_ctx,
                               int diag_step,
                               float diag_val,
                               DenseTensor* x_grad) {
-  auto dims = common::vectorize(x_grad->dims());
   float value = static_cast<float>(0.0f);
-  phi::FullKernel<T>(dev_ctx, dims, value, phi::DataType::UNDEFINED, x_grad);
+  Full<T>(dev_ctx, x_grad->dims(), value, x_grad);
 }
 
 }  // namespace phi

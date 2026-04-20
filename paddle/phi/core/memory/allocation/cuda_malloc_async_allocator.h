@@ -45,7 +45,7 @@ class CUDAMallocAsyncAllocation : public Allocation {
  public:
   CUDAMallocAsyncAllocation(void* ptr,
                             size_t size,
-                            phi::Place place,
+                            Place place,
                             gpuStream_t malloc_stream,
                             gpuStream_t free_stream)
       : Allocation(ptr, size, place),
@@ -74,7 +74,7 @@ class CUDAMallocAsyncAllocator : public Allocator {
  public:
   explicit CUDAMallocAsyncAllocator(
       std::shared_ptr<Allocator> underlying_allocator,
-      const phi::GPUPlace& place,
+      const GPUPlace& place,
       gpuStream_t default_stream);
 
   bool IsAllocThreadSafe() const override { return true; }
@@ -85,7 +85,7 @@ class CUDAMallocAsyncAllocator : public Allocator {
  protected:
   void FreeImpl(phi::Allocation* allocation) override;
   phi::Allocation* AllocateImpl(size_t size) override;
-  uint64_t ReleaseImpl(const phi::Place& place) override;
+  uint64_t ReleaseImpl(const Place& place) override;
 
  private:
   void LazyInitializeCudaFreeStream();
@@ -93,7 +93,7 @@ class CUDAMallocAsyncAllocator : public Allocator {
   void FreeAllocation(CUDAMallocAsyncAllocation* allocation);
 
   std::shared_ptr<Allocator> underlying_allocator_;
-  phi::GPUPlace place_;  // Specifies the CUDA device context.
+  GPUPlace place_;  // Specifies the CUDA device context.
 
   cudaMemPool_t mempool_;
   gpuStream_t default_stream_;  // Default stream for memory operations.

@@ -28,11 +28,11 @@ void ExpandAsBackward(const Context& dev_ctx,
   size_t reduce_size = reduce_dims_vec.size();
   dev_ctx.template Alloc<T>(in_grad);
   auto x_grad = EigenVector<T>::Flatten(*in_grad);
-  Eigen::DSizes<Eigen::DenseIndex, Dims * 2> reshape_dims;
+  Eigen::DSizes<int64_t, Dims * 2> reshape_dims;
   for (size_t i = 0; i < reshape_size; ++i) {
     reshape_dims[i] = reshape_dims_vec[i];
   }
-  Eigen::DSizes<Eigen::DenseIndex, Dims> reduce_dims;
+  Eigen::DSizes<int64_t, Dims> reduce_dims;
   for (size_t i = 0; i < reduce_size; ++i) {
     reduce_dims[i] = reduce_dims_vec[i];
   }
@@ -49,21 +49,19 @@ void ExpandAsGradKernel(const Context& dev_ctx,
                         const std::vector<int64_t>& target_shape,
                         DenseTensor* in_grad) {
   if (out_grad.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(in_grad->dims())), 0, in_grad);
+    Full<T, Context>(dev_ctx, in_grad->dims(), 0, in_grad);
     return;
   }
   auto x_dims = x.dims();
   auto out_grad_dims = out_grad.dims();
-  std::vector<int64_t> real_target_shape =
-      phi::vectorize<int64_t>(out_grad_dims);
+  std::vector<int64_t> real_target_shape = vectorize<int64_t>(out_grad_dims);
 
   if (in_grad->dims() == out_grad_dims) {
     Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, in_grad);
     return;
   }
 
-  auto vec_in_dims = common::vectorize<int64_t>(x_dims);
+  auto vec_in_dims = vectorize<int64_t>(x_dims);
   auto diff = real_target_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
   std::vector<int64_t> repeat_times(vec_in_dims.size());

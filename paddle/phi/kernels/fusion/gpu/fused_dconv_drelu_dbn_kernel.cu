@@ -137,11 +137,11 @@ void _DgradDreluBnBwdWeightImpl(const Context& dev_ctx,
   auto compute_dtype = CUDNN_DATA_FLOAT;
   // get dims in CUDNN manner: [N, C, H, W]
   auto dim_x = phi::backends::gpu::TransformDimOrder(
-      phi::vectorize<int64_t>(bn1_input->dims()));
+      vectorize<int64_t>(bn1_input->dims()));
   auto dim_filt = phi::backends::gpu::TransformDimOrder(
-      phi::vectorize<int64_t>(w_tensor_transformed.dims()));
+      vectorize<int64_t>(w_tensor_transformed.dims()));
   auto dim_y = phi::backends::gpu::TransformDimOrder(
-      phi::vectorize<int64_t>(grad_output->dims()));
+      vectorize<int64_t>(grad_output->dims()));
   std::vector<int64_t> dim_scale(dim_x.size(), 1);
   dim_scale[1] = dim_x[1];  //  [1, C, 1, 1]
 
@@ -547,7 +547,7 @@ void _DbnApplyImpl(const Context& dev_ctx,
   auto compute_dtype = CUDNN_DATA_FLOAT;
   // build tensor descriptors
   auto dim_x = phi::backends::gpu::TransformDimOrder(
-      phi::vectorize<int64_t>(X_tensor->dims()));
+      vectorize<int64_t>(X_tensor->dims()));
   std::vector<int64_t> dim_a(dim_x.size(), 1);
   dim_a[1] = dim_x[1];  //  [1, C, 1, 1]
 
@@ -751,11 +751,11 @@ void _BnActWgradImpl(const Context& dev_ctx,
   auto compute_dtype = CUDNN_DATA_FLOAT;
   // create tensor descriptors
   auto dim_x = phi::backends::gpu::TransformDimOrder(
-      phi::vectorize<int64_t>(conv_input->dims()));
+      vectorize<int64_t>(conv_input->dims()));
   auto dim_filt = phi::backends::gpu::TransformDimOrder(
-      phi::vectorize<int64_t>(dw_tensor_transformed.dims()));
+      vectorize<int64_t>(dw_tensor_transformed.dims()));
   auto dim_y = phi::backends::gpu::TransformDimOrder(
-      phi::vectorize<int64_t>(grad_output->dims()));
+      vectorize<int64_t>(grad_output->dims()));
   std::vector<int64_t> dim_scale(dim_x.size(), 1);
   dim_scale[1] = dim_x[1];  //  [1, C, 1, 1]
 
@@ -954,42 +954,41 @@ Requirements:
 Conv and dtype FP16.
 */
 template <typename T, typename Context>
-void FusedDconvDreluDbnKernel(
-    const Context& dev_ctx,
-    const DenseTensor& grad_output,
-    const DenseTensor& weight,
-    const paddle::optional<DenseTensor>& grad_output_add,
-    const paddle::optional<DenseTensor>& residual_input,
-    const paddle::optional<DenseTensor>& bn1_eqscale,
-    const paddle::optional<DenseTensor>& bn1_eqbias,
-    const paddle::optional<DenseTensor>& conv_input,
-    const DenseTensor& bn1_mean,
-    const DenseTensor& bn1_inv_std,
-    const DenseTensor& bn1_gamma,
-    const DenseTensor& bn1_beta,
-    const DenseTensor& bn1_input,
-    const paddle::optional<DenseTensor>& bn2_mean,
-    const paddle::optional<DenseTensor>& bn2_inv_std,
-    const paddle::optional<DenseTensor>& bn2_gamma,
-    const paddle::optional<DenseTensor>& bn2_beta,
-    const paddle::optional<DenseTensor>& bn2_input,
-    const std::vector<int>& paddings,
-    const std::vector<int>& dilations,
-    const std::vector<int>& strides,
-    const std::string& padding_algorithm,
-    int groups,
-    const std::string& data_format,
-    bool fuse_shortcut,
-    bool fuse_dual,
-    bool fuse_add,
-    bool exhaustive_search,
-    DenseTensor* grad_weight,
-    DenseTensor* grad_bn1_input,
-    DenseTensor* grad_bn1_gamma,
-    DenseTensor* grad_bn1_beta,
-    DenseTensor* grad_bn2_input,
-    DenseTensor* grad_bn2_gamma,
-    DenseTensor* grad_bn2_beta) {
+void FusedDconvDreluDbnKernel(const Context& dev_ctx,
+                              const DenseTensor& grad_output,
+                              const DenseTensor& weight,
+                              const optional<DenseTensor>& grad_output_add,
+                              const optional<DenseTensor>& residual_input,
+                              const optional<DenseTensor>& bn1_eqscale,
+                              const optional<DenseTensor>& bn1_eqbias,
+                              const optional<DenseTensor>& conv_input,
+                              const DenseTensor& bn1_mean,
+                              const DenseTensor& bn1_inv_std,
+                              const DenseTensor& bn1_gamma,
+                              const DenseTensor& bn1_beta,
+                              const DenseTensor& bn1_input,
+                              const optional<DenseTensor>& bn2_mean,
+                              const optional<DenseTensor>& bn2_inv_std,
+                              const optional<DenseTensor>& bn2_gamma,
+                              const optional<DenseTensor>& bn2_beta,
+                              const optional<DenseTensor>& bn2_input,
+                              const std::vector<int>& paddings,
+                              const std::vector<int>& dilations,
+                              const std::vector<int>& strides,
+                              const std::string& padding_algorithm,
+                              int groups,
+                              const std::string& data_format,
+                              bool fuse_shortcut,
+                              bool fuse_dual,
+                              bool fuse_add,
+                              bool exhaustive_search,
+                              DenseTensor* grad_weight,
+                              DenseTensor* grad_bn1_input,
+                              DenseTensor* grad_bn1_gamma,
+                              DenseTensor* grad_bn1_beta,
+                              DenseTensor* grad_bn2_input,
+                              DenseTensor* grad_bn2_gamma,
+                              DenseTensor* grad_bn2_beta) {
   PADDLE_ENFORCE_GE(dev_ctx.GetComputeCapability(),
                     80,
                     common::errors::PreconditionNotMet(
@@ -1020,7 +1019,7 @@ void FusedDconvDreluDbnKernel(
   DDim in_data_dims = slice_ddim(in_dims, 1, in_dims.size() - 1);
   DDim filter_data_dims = slice_ddim(
       filter_dims, 2, filter_dims.size());  // weight is in NCHW format
-  std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
   phi::UpdatePaddingAndDilation(&paddings_vec,
                                 &dilations_vec,
                                 padding_algorithm,

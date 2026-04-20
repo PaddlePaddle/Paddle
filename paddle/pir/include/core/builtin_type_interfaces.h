@@ -69,7 +69,7 @@ class IR_API ShapedTypeInterface
   ///
   /// \brief Get the shape of this type.
   ///
-  pir::DDim GetShape() const;
+  DDim GetShape() const;
 
   ///
   /// \brief Check whether this type is ranked, currently return true.

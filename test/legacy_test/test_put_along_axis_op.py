@@ -1586,6 +1586,235 @@ class TestPutAlongAxisDynamicShape_ZeroSize(TestPutAlongAxisDynamicShape):
         self.arr = np.random.random([0, 10, 10, 10]).astype(self.dtype)
 
 
+class TestPutAlongAxisZeroSizeIndex(unittest.TestCase):
+    """
+    When indices has a 0-size dimension (numel == 0), put_along_axis should
+    return a copy of arr unchanged regardless of the shape of values.
+
+    Before the fix, the Python wrapper tried to broadcast_to(values, [2, 0])
+    which failed because a non-1/non-0 input dimension cannot be expanded to 0
+    (that is a valid constraint in expand). The fix adds an early return when
+    indices.numel() == 0, matching PyTorch scatter_ behaviour.
+    """
+
+    def setUp(self):
+        paddle.disable_static()
+
+    def _check(self, arr_shape, index_shape, val_shape, axis):
+        arr = paddle.rand(arr_shape, dtype='float32')
+        idx = paddle.zeros(index_shape, dtype='int64')
+        val = paddle.rand(val_shape, dtype='float32')
+        out = paddle.put_along_axis(arr, idx, val, axis=axis)
+        # Output shape must equal arr shape; values must be unchanged.
+        np.testing.assert_equal(list(out.shape), arr_shape)
+        np.testing.assert_allclose(
+            out.numpy(), arr.numpy(), rtol=1e-6, atol=1e-6
+        )
+
+    def test_index_zero_dim_values_non_zero(self):
+        """Original bug: arr[2,60] idx[2,0] val[2,4] axis=1."""
+        self._check([2, 60], [2, 0], [2, 4], axis=1)
+
+    def test_index_zero_first_dim(self):
+        self._check([60, 2], [0, 2], [4, 2], axis=0)
+
+    def test_index_zero_mid_dim(self):
+        self._check([3, 5, 7], [3, 0, 7], [3, 4, 7], axis=1)
+
+    def test_all_zero_size(self):
+        self._check([2, 60], [2, 0], [2, 0], axis=1)
+
+    def test_inplace_zero_index(self):
+        """Inplace variant should also return arr unchanged."""
+        arr = paddle.rand([2, 60], dtype='float32')
+        arr_copy = arr.clone()
+        idx = paddle.zeros([2, 0], dtype='int64')
+        val = paddle.rand([2, 4], dtype='float32')
+        arr.put_along_axis_(idx, val, axis=1)
+        np.testing.assert_allclose(
+            arr.numpy(), arr_copy.numpy(), rtol=1e-6, atol=1e-6
+        )
+
+    def test_reduce_mul_zero_index(self):
+        arr = paddle.ones([2, 60], dtype='float32')
+        idx = paddle.zeros([2, 0], dtype='int64')
+        val = paddle.rand([2, 4], dtype='float32') + 2.0
+        out = paddle.put_along_axis(arr, idx, val, axis=1, reduce='mul')
+        np.testing.assert_equal(list(out.shape), [2, 60])
+        np.testing.assert_allclose(
+            out.numpy(), arr.numpy(), rtol=1e-6, atol=1e-6
+        )
+
+
+class TestPutAlongAxisMulIntegerDivByZero(unittest.TestCase):
+    """
+    Bug A: reduce='mul' backward with integer dtypes crashes (SIGFPE) when
+    x or value contains zero, because the grad formula divides by x or value
+    without a zero guard.
+
+    Fixed in gather_scatter_functor.cc/.cu by returning grad=0 when divisor is 0.
+
+    For integer dtypes (uint8/int32/int64), Paddle does not support autograd
+    (no sum_grad kernel registered for these types), so we verify only that the
+    forward pass does not crash.  The div-by-zero guard in the grad kernel is
+    exercised via the float32 backward test below.
+    """
+
+    def setUp(self):
+        paddle.disable_static()
+
+    def _run_forward_only(self, dtype):
+        """Verify forward does not SIGFPE for integer dtypes with zeros."""
+        x = paddle.to_tensor(np.array([[[1, 0, 3], [0, 5, 6]]]), dtype=dtype)
+        index = paddle.to_tensor(
+            np.array([[[0, 1, 0], [1, 0, 1]]]), dtype='int64'
+        )
+        value = paddle.to_tensor(
+            np.array([[[2, 0, 4], [0, 3, 5]]]), dtype=dtype
+        )
+        out = paddle.put_along_axis(
+            x, index, value, axis=2, reduce='mul', include_self=True
+        )
+        self.assertEqual(list(out.shape), [1, 2, 3])
+
+    def test_uint8_cpu(self):
+        self._run_forward_only('uint8')
+
+    def test_int32_cpu(self):
+        self._run_forward_only('int32')
+
+    def test_int64_cpu(self):
+        self._run_forward_only('int64')
+
+
+class TestPutAlongAxisZeroSizeInputGrad(unittest.TestCase):
+    """
+    Bug B: when input has a 0-size dimension but index is non-empty,
+    CPU backward crashes due to out-of-bounds memory access because
+    the CPU grad kernel lacked a numel==0 early-return guard.
+
+    Fixed in put_along_axis_grad_kernel.cc by adding the same guard
+    that the GPU grad kernel already had.
+    """
+
+    def setUp(self):
+        paddle.disable_static()
+
+    def _run_zero_size_input(self, x_shape, idx_shape, val_shape, axis, reduce):
+        cpu = paddle.CPUPlace()
+        x = paddle.to_tensor(
+            np.random.rand(*x_shape).astype('float32'), place=cpu
+        )
+        x.stop_gradient = False
+        index = paddle.to_tensor(np.zeros(idx_shape, dtype='int64'), place=cpu)
+        value = paddle.to_tensor(
+            np.random.rand(*val_shape).astype('float32'), place=cpu
+        )
+        value.stop_gradient = False
+        out = paddle.put_along_axis(
+            x, index, value, axis=axis, reduce=reduce, include_self=True
+        )
+        self.assertEqual(list(out.shape), x_shape)
+        loss = out.sum()
+        loss.backward()
+
+    def test_input_first_dim_zero_assign(self):
+        self._run_zero_size_input(
+            [0, 60], [0, 4], [0, 4], axis=1, reduce='assign'
+        )
+
+    def test_input_first_dim_zero_add(self):
+        self._run_zero_size_input([0, 60], [0, 4], [0, 4], axis=1, reduce='add')
+
+    def test_input_first_dim_zero_mul(self):
+        self._run_zero_size_input([0, 60], [0, 4], [0, 4], axis=1, reduce='mul')
+
+    def test_input_mid_dim_zero(self):
+        self._run_zero_size_input(
+            [4, 0, 4], [1, 0, 1], [1, 0, 1], axis=0, reduce='assign'
+        )
+
+    def test_input_last_dim_zero(self):
+        self._run_zero_size_input(
+            [4, 4, 0], [1, 1, 0], [1, 1, 0], axis=0, reduce='assign'
+        )
+
+    def test_mid_dim_zero_nonempty_index(self):
+        """x.numel()==0 but indices.numel()!=0, so C++ grad kernel is called."""
+        self._run_zero_size_input(
+            [2, 0, 3], [2, 1, 3], [2, 1, 3], axis=1, reduce='assign'
+        )
+
+
+class TestPutAlongAxisMulFloat32DivByZeroGrad(unittest.TestCase):
+    """
+    Bug A (float32 backward path): verify that the div-by-zero guard in
+    gather_scatter_functor.cc is exercised when x or value contains 0.
+
+    - cpu_scatter_mul_min_max_input_grad_kernel: x==0 → grad=0 (line 524)
+      and x!=0 → normal division (line 520-522).
+    - cpu_scatter_mul_min_max_value_grad_kernel: value==0 → grad=0 (line 698)
+      and value!=0 → normal division (line 694-696).
+
+    Both tests must not crash and must return finite gradients.
+    """
+
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_x_grad_with_zero_in_x(self):
+        """x contains 0: covers x==0 branch (grad=0) and x!=0 branch."""
+        cpu = paddle.CPUPlace()
+        x = paddle.to_tensor(
+            [[[1.0, 0.0, 3.0], [0.0, 5.0, 6.0]]],
+            dtype='float32',
+            place=cpu,
+        )
+        x.stop_gradient = False
+        index = paddle.to_tensor(
+            [[[0, 1, 0], [1, 0, 1]]], dtype='int64', place=cpu
+        )
+        value = paddle.to_tensor(
+            [[[2.0, 1.0, 4.0], [1.0, 3.0, 5.0]]],
+            dtype='float32',
+            place=cpu,
+        )
+        value.stop_gradient = True
+        out = paddle.put_along_axis(
+            x, index, value, axis=2, reduce='mul', include_self=True
+        )
+        loss = out.sum()
+        loss.backward()
+        self.assertIsNotNone(x.grad)
+        self.assertTrue(paddle.isfinite(x.grad).all())
+
+    def test_value_grad_with_zero_in_value(self):
+        """value contains 0: covers value==0 branch (grad=0) and value!=0 branch."""
+        cpu = paddle.CPUPlace()
+        x = paddle.to_tensor(
+            [[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]],
+            dtype='float32',
+            place=cpu,
+        )
+        x.stop_gradient = True
+        index = paddle.to_tensor(
+            [[[0, 1, 0], [1, 0, 1]]], dtype='int64', place=cpu
+        )
+        value = paddle.to_tensor(
+            [[[2.0, 0.0, 4.0], [0.0, 3.0, 5.0]]],
+            dtype='float32',
+            place=cpu,
+        )
+        value.stop_gradient = False
+        out = paddle.put_along_axis(
+            x, index, value, axis=2, reduce='mul', include_self=True
+        )
+        loss = out.sum()
+        loss.backward()
+        self.assertIsNotNone(value.grad)
+        self.assertTrue(paddle.isfinite(value.grad).all())
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

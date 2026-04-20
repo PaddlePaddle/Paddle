@@ -23,31 +23,25 @@ namespace phi {
 namespace fusion {
 
 template <typename T, typename Context>
-void FusedGemmEpilogueGradKernel(
-    const Context& dev_ctx,
-    const DenseTensor& x,
-    const DenseTensor& y,
-    const paddle::optional<DenseTensor>& reserve_space,
-    const DenseTensor& out_grad,
-    const bool trans_x,
-    const bool trans_y,
-    const std::string& activation_grad,
-    DenseTensor* x_grad,
-    DenseTensor* y_grad,
-    DenseTensor* bias_grad) {
+void FusedGemmEpilogueGradKernel(const Context& dev_ctx,
+                                 const DenseTensor& x,
+                                 const DenseTensor& y,
+                                 const optional<DenseTensor>& reserve_space,
+                                 const DenseTensor& out_grad,
+                                 const bool trans_x,
+                                 const bool trans_y,
+                                 const std::string& activation_grad,
+                                 DenseTensor* x_grad,
+                                 DenseTensor* y_grad,
+                                 DenseTensor* bias_grad) {
   if (x.numel() == 0) {
     dev_ctx.template Alloc<T>(x_grad);
     dev_ctx.template Alloc<T>(y_grad);
-    phi::FullKernel<T>(
-        dev_ctx, common::vectorize(y.dims()), 0.0, y.dtype(), y_grad);
+    Full<T>(dev_ctx, y.dims(), 0.0, y_grad);
 
     if (bias_grad) {
       dev_ctx.template Alloc<T>(bias_grad);
-      phi::FullKernel<T>(dev_ctx,
-                         common::vectorize(bias_grad->dims()),
-                         0.0,
-                         bias_grad->dtype(),
-                         bias_grad);
+      Full<T>(dev_ctx, bias_grad->dims(), 0.0, bias_grad);
     }
     return;
   }

@@ -35,17 +35,16 @@ void AddKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const DenseTensor& y,
                DenseTensor* out) {
-  if (x.dtype() == phi::DataType::FLOAT32 &&
-      (y.dtype() == phi::DataType::BFLOAT16 ||
-       y.dtype() == phi::DataType::FLOAT16)) {
+  if (x.dtype() == DataType::FLOAT32 &&
+      (y.dtype() == DataType::BFLOAT16 || y.dtype() == DataType::FLOAT16)) {
     // special case for "float32 + bfloat16", or "float32 + float16"
     if (out->numel() == 0) {
       dev_ctx.template Alloc<float>(out);
       return;
     }
     auto dev_version =
-        phi::backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId());
-    if (dev_version >= phi::backends::xpu::XPUVersion::XPU3 &&
+        backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId());
+    if (dev_version >= backends::xpu::XPUVersion::XPU3 &&
         x.dims() == y.dims()) {
       dev_ctx.template Alloc<float>(out);
 
@@ -53,14 +52,14 @@ void AddKernel(const Context& dev_ctx,
       float* z_data = out->data<float>();
 
       int ret = 0;
-      if (y.dtype() == phi::DataType::BFLOAT16) {
-        using YType = DataTypeToCppType<phi::DataType::BFLOAT16>::type;
+      if (y.dtype() == DataType::BFLOAT16) {
+        using YType = DataTypeToCppType<DataType::BFLOAT16>::type;
         using XPUYType = typename XPUTypeTrait<YType>::Type;
         auto y_data = reinterpret_cast<const XPUYType*>(y.data<YType>());
         ret = xpu::add_mul_type<float, XPUYType, float>(
             dev_ctx.x_context(), x_data, y_data, z_data, x.numel());
       } else {
-        using YType = DataTypeToCppType<phi::DataType::FLOAT16>::type;
+        using YType = DataTypeToCppType<DataType::FLOAT16>::type;
         using XPUYType = typename XPUTypeTrait<YType>::Type;
         auto y_data = reinterpret_cast<const XPUYType*>(y.data<YType>());
         ret = xpu::add_mul_type<float, XPUYType, float>(
@@ -68,7 +67,7 @@ void AddKernel(const Context& dev_ctx,
       }
       PADDLE_ENFORCE_XDNN_SUCCESS(ret, "add_mul_type");
     } else {
-      using Type = DataTypeToCppType<phi::DataType::FLOAT32>::type;
+      using Type = DataTypeToCppType<DataType::FLOAT32>::type;
       using XPUType = typename XPUTypeTrait<Type>::Type;
       auto f = [](xpu::Context* xpu_ctx,
                   const XPUType* x,
@@ -78,7 +77,7 @@ void AddKernel(const Context& dev_ctx,
                   const std::vector<int64_t>& yshape) {
         return xpu::broadcast_add<XPUType>(xpu_ctx, x, y, z, xshape, yshape);
       };
-      auto casted_y = phi::Cast<T>(dev_ctx, y, phi::DataType::FLOAT32);
+      auto casted_y = Cast<T>(dev_ctx, y, DataType::FLOAT32);
       XPUElementwise<Type, XPUType>(dev_ctx, x, casted_y, -1, out, f);
     }
   } else {
@@ -109,8 +108,8 @@ void GradAddXPUKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   dev_ctx.template Alloc<T>(out);
-  auto x_shape = common::vectorize<int64_t>(x.dims());
-  auto y_shape = common::vectorize<int64_t>(y.dims());
+  auto x_shape = vectorize<int64_t>(x.dims());
+  auto y_shape = vectorize<int64_t>(y.dims());
   int r = xpu::broadcast_add(dev_ctx.x_context(),
                              reinterpret_cast<const XPUType*>(x.data<T>()),
                              reinterpret_cast<const XPUType*>(y.data<T>()),

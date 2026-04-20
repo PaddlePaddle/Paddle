@@ -35,7 +35,7 @@ void GridSampleKernel(const Context& dev_ctx,
   // attrs
   // paddle.nn.functional.grid_sample(x, grid, mode='bilinear',
   // padding_mode='zeros', align_corners=True, name=None)
-  const std::string data_format = common::DataLayoutToString(x.layout());
+  const std::string data_format = DataLayoutToString(x.layout());
 
   // attr to real param
   bool is_nearest_bool;
@@ -89,7 +89,7 @@ void GridSampleKernel(const Context& dev_ctx,
           data_format));
     }
 
-    out->Resize(common::make_ddim({n, c, out_h, out_w}));
+    out->Resize({n, c, out_h, out_w});
     T* output_data = dev_ctx.template Alloc<T>(out);
 
     int r = xpu::grid_sample(dev_ctx.x_context(),
@@ -115,7 +115,7 @@ void GridSampleKernel(const Context& dev_ctx,
     int64_t out_h = grid.dims()[2];
     int64_t out_w = grid.dims()[3];
 
-    out->Resize(common::make_ddim({n, c, out_d, out_h, out_w}));
+    out->Resize({n, c, out_d, out_h, out_w});
     T* output_data = dev_ctx.template Alloc<T>(out);
 
     int r = xpu::grid_sample3d(dev_ctx.x_context(),

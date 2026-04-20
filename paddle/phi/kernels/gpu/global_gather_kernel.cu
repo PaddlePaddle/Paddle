@@ -32,8 +32,8 @@ struct GlobalGatherFunctor {
                   DenseTensor *out);
 };
 template <typename T>
-struct GlobalGatherFunctor<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext &dev_ctx,
+struct GlobalGatherFunctor<GPUContext, T> {
+  void operator()(const GPUContext &dev_ctx,
                   const DenseTensor &x_in,
                   const DenseTensor &local_count_in,
                   const DenseTensor &global_count_in,
@@ -45,11 +45,11 @@ struct GlobalGatherFunctor<phi::GPUContext, T> {
     auto global_count = &global_count_in;
     auto local_count_type = local_count->dtype();
     auto global_count_type = global_count->dtype();
-    if (local_count_type != phi::DataType::INT64) {
+    if (local_count_type != DataType::INT64) {
       PADDLE_THROW(common::errors::InvalidArgument(
           "Please use int64 type in local_count."));
     }
-    if (global_count_type != phi::DataType::INT64) {
+    if (global_count_type != DataType::INT64) {
       PADDLE_THROW(common::errors::InvalidArgument(
           "Please use int64 type in global_count."));
     }
@@ -76,15 +76,15 @@ struct GlobalGatherFunctor<phi::GPUContext, T> {
       cpu_global_count_data = cpu_global_count.data<int64_t>();
     }
 
-    ncclDataType_t dtype = phi::ToNCCLDataType(x->dtype());
+    ncclDataType_t dtype = ToNCCLDataType(x->dtype());
     gpuStream_t stream = nullptr;
     stream = dev_ctx.stream();
 
-    phi::distributed::NCCLCommContext *comm_ctx = nullptr;
+    distributed::NCCLCommContext *comm_ctx = nullptr;
     int nranks = 0;
 
-    comm_ctx = static_cast<phi::distributed::NCCLCommContext *>(
-        dev_ctx.GetCommContext());
+    comm_ctx =
+        static_cast<distributed::NCCLCommContext *>(dev_ctx.GetCommContext());
     PADDLE_ENFORCE_NE(comm_ctx,
                       nullptr,
                       common::errors::Unavailable(
@@ -99,7 +99,7 @@ struct GlobalGatherFunctor<phi::GPUContext, T> {
     for (auto i = 0; i < local_count_len; ++i) {
       fwd_count += cpu_local_count_data[i];
     }
-    DDim out_dims = common::make_ddim({fwd_count, in_feat});
+    DDim out_dims = make_ddim({fwd_count, in_feat});
     int64_t *expert_ptr = new int64_t[n_expert * nranks];
     expert_ptr[0] = 0;
     auto tot_experts = n_expert * nranks;
@@ -149,7 +149,7 @@ void GlobalGatherKernel(const Context &dev_ctx,
                         const DenseTensor &local_count,
                         const DenseTensor &global_count,
                         DenseTensor *out) {
-  GlobalGatherFunctor<phi::GPUContext, T> functor_;
+  GlobalGatherFunctor<GPUContext, T> functor_;
   functor_(dev_ctx, x, local_count, global_count, out);
 }
 

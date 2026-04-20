@@ -98,6 +98,82 @@ __global__ void GPUNLLLossForward1D_with_reduce(T* out_data,
   }
 }
 
+// Compute thread count: clamp(round_pow2(N/16), 32, 1024).
+inline int nll_loss_threads(int64_t batch_size) {
+  int x = static_cast<int>((batch_size + 15) / 16);
+  // Round to nearest power of 2
+  x = std::max(x, 1);
+  int log2_val = 0;
+  int tmp = x;
+  while (tmp > 1) {
+    tmp >>= 1;
+    log2_val++;
+  }
+  // Round: check if x is closer to (1 << log2_val) or (1 << (log2_val + 1))
+  int lower = 1 << log2_val;
+  int upper = 1 << (log2_val + 1);
+  int rounded = (x - lower <= upper - x) ? lower : upper;
+  // Clamp to [32, 1024]
+  return std::min(std::max(rounded, 32), 1024);
+}
+
+// Accuracy-compatible NLL loss with tree reduction in shared memory.
+template <typename T, typename AccT>
+__global__ void GPUNLLLossForward1D_with_reduce_compatible(
+    T* out_data,
+    T* total_weight_data,
+    const T* x_data,
+    const int64_t* label_data,
+    const T* weight_data,
+    const int64_t batch_size,
+    const int64_t n_classes,
+    const int64_t size_average,
+    const int64_t ignore_index) {
+  // Dynamic shared memory: first nthreads AccT for loss, next nthreads AccT
+  // for weight
+  extern __shared__ char smem[];
+  AccT* sh_loss = reinterpret_cast<AccT*>(smem);
+  AccT* sh_weight = sh_loss + blockDim.x;
+
+  // Thread-strided sequential accumulation
+  AccT thread_loss = AccT(0);
+  AccT thread_weight = AccT(0);
+  for (int64_t i = threadIdx.x; i < batch_size; i += blockDim.x) {
+    const int64_t cur_label = label_data[i];
+    if (cur_label != ignore_index) {
+      PADDLE_ENFORCE(cur_label >= 0 && cur_label < n_classes,
+                     "label should not be out of bounds.");
+      const AccT cur_weight =
+          weight_data ? static_cast<AccT>(weight_data[cur_label]) : AccT(1);
+      thread_loss -=
+          static_cast<AccT>(x_data[i * n_classes + cur_label]) * cur_weight;
+      thread_weight += cur_weight;
+    }
+  }
+
+  sh_loss[threadIdx.x] = thread_loss;
+  sh_weight[threadIdx.x] = thread_weight;
+  __syncthreads();
+
+  // Power-of-2 tree reduction
+  for (unsigned int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
+    if (threadIdx.x < stride) {
+      sh_loss[threadIdx.x] += sh_loss[threadIdx.x + stride];
+      sh_weight[threadIdx.x] += sh_weight[threadIdx.x + stride];
+    }
+    __syncthreads();
+  }
+
+  if (threadIdx.x == 0) {
+    if (size_average && sh_weight[0] != AccT(0)) {
+      *out_data = static_cast<T>(sh_loss[0] / sh_weight[0]);
+    } else {
+      *out_data = static_cast<T>(sh_loss[0]);
+    }
+    *total_weight_data = static_cast<T>(sh_weight[0]);
+  }
+}
+
 // Reduce N values concurrently, i.e. suppose N = 2, and there are 4 threads:
 // (1, 2), (3, 4), (5, 6), (7, 8), then the return in threadVals for thread 0
 // is (1 + 3 + 5 + 7, 2 + 4 + 6 + 8) = (16, 20)
@@ -271,8 +347,8 @@ __global__ void GPUNLLLossForward2D_with_reduce(T* out_data,
       partial_sums, blockDim.x, acc_weight, thrust::plus<AccT>(), (AccT)0);
 
   if (threadIdx.x == 0) {
-    phi::CudaAtomicAdd(total_weight_data, acc_weight);
-    phi::CudaAtomicAdd(out_data, input_sum);
+    CudaAtomicAdd(total_weight_data, acc_weight);
+    CudaAtomicAdd(out_data, input_sum);
   }
 }
 

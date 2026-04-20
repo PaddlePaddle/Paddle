@@ -479,22 +479,22 @@ template class Pool2dGradFunctor<CPUContext, MaxPoolGrad<double>, double>;
 template class Pool2dGradFunctor<CPUContext, AvgPoolGrad<double>, double>;
 template class Pool2dGradFunctor<CPUContext, LPPoolGrad<double>, double>;
 
-template class Pool2dFunctor<phi::CPUContext,
+template class Pool2dFunctor<CPUContext,
                              MaxPool<dtype::float16>,
                              dtype::float16>;
-template class Pool2dFunctor<phi::CPUContext,
+template class Pool2dFunctor<CPUContext,
                              AvgPool<dtype::float16>,
                              dtype::float16>;
-template class Pool2dFunctor<phi::CPUContext,
+template class Pool2dFunctor<CPUContext,
                              LPPool<dtype::float16>,
                              dtype::float16>;
-template class Pool2dGradFunctor<phi::CPUContext,
+template class Pool2dGradFunctor<CPUContext,
                                  MaxPoolGrad<dtype::float16>,
                                  dtype::float16>;
-template class Pool2dGradFunctor<phi::CPUContext,
+template class Pool2dGradFunctor<CPUContext,
                                  AvgPoolGrad<dtype::float16>,
                                  dtype::float16>;
-template class Pool2dGradFunctor<phi::CPUContext,
+template class Pool2dGradFunctor<CPUContext,
                                  LPPoolGrad<dtype::float16>,
                                  dtype::float16>;
 /*
@@ -1088,19 +1088,19 @@ template class Pool3dFunctor<CPUContext, AvgPool<double>, double>;
 template class Pool3dGradFunctor<CPUContext, MaxPoolGrad<double>, double>;
 template class Pool3dGradFunctor<CPUContext, AvgPoolGrad<double>, double>;
 
-template class Pool3dFunctor<phi::CPUContext,
+template class Pool3dFunctor<CPUContext,
                              MaxPool<dtype::float16>,
                              dtype::float16>;
-template class Pool3dFunctor<phi::CPUContext,
+template class Pool3dFunctor<CPUContext,
                              AvgPool<dtype::float16>,
                              dtype::float16>;
-template class Pool3dFunctor<phi::CPUContext,
+template class Pool3dFunctor<CPUContext,
                              LPPool<dtype::float16>,
                              dtype::float16>;
-template class Pool3dGradFunctor<phi::CPUContext,
+template class Pool3dGradFunctor<CPUContext,
                                  MaxPoolGrad<dtype::float16>,
                                  dtype::float16>;
-template class Pool3dGradFunctor<phi::CPUContext,
+template class Pool3dGradFunctor<CPUContext,
                                  AvgPoolGrad<dtype::float16>,
                                  dtype::float16>;
 /*
@@ -1116,6 +1116,7 @@ class MaxPool2dWithIndexFunctor<CPUContext, T1, T2> {
                   const std::vector<int64_t>& ksize,
                   const std::vector<int64_t>& strides,
                   const std::vector<int64_t>& paddings,
+                  const std::vector<int64_t>& dilations,
                   bool adaptive,
                   DenseTensor* output,
                   DenseTensor* mask) {
@@ -1131,12 +1132,25 @@ class MaxPool2dWithIndexFunctor<CPUContext, T1, T2> {
     const int64_t stride_width = strides[1];
     const int64_t padding_height = paddings[0];
     const int64_t padding_width = paddings[1];
+    const int64_t dilation_height = dilations[0];
+    const int64_t dilation_width = dilations[1];
     const int64_t input_stride = input_height * input_width;
     const int64_t output_stride = output_height * output_width;
 
     const T1* input_data = input.data<T1>();
     T1* output_data = context.template Alloc<T1>(output);
     T2* mask_data = context.template Alloc<T2>(mask);
+
+    PADDLE_ENFORCE_GE(
+        dilation_height,
+        1,
+        phi::errors::InvalidArgument(
+            "dilation_height must be >= 1, but got [%d]", dilation_height));
+    PADDLE_ENFORCE_GE(
+        dilation_width,
+        1,
+        phi::errors::InvalidArgument(
+            "dilation_width must be >= 1, but got [%d]", dilation_width));
 
     int64_t hstart = 0, hend = 0;
     int64_t wstart = 0, wend = 0;
@@ -1146,6 +1160,11 @@ class MaxPool2dWithIndexFunctor<CPUContext, T1, T2> {
           if (adaptive) {
             hstart = AdaptStartIndex(ph, input_height, output_height);
             hend = AdaptEndIndex(ph, input_height, output_height);
+          } else if (dilation_height != 1) {
+            hstart = ph * stride_height - padding_height;
+            hend = std::min(hstart + dilation_height * (ksize_height - 1) + 1,
+                            input_height);
+            while (hstart < 0) hstart += dilation_height;
           } else {
             hstart = ph * stride_height - padding_height;
             hend = std::min(hstart + ksize_height, input_height);
@@ -1155,6 +1174,11 @@ class MaxPool2dWithIndexFunctor<CPUContext, T1, T2> {
             if (adaptive) {
               wstart = AdaptStartIndex(pw, input_width, output_width);
               wend = AdaptEndIndex(pw, input_width, output_width);
+            } else if (dilation_width != 1) {
+              wstart = pw * stride_width - padding_width;
+              wend = std::min(wstart + dilation_width * (ksize_width - 1) + 1,
+                              input_width);
+              while (wstart < 0) wstart += dilation_width;
             } else {
               wstart = pw * stride_width - padding_width;
               wend = std::min(wstart + ksize_width, input_width);
@@ -1163,8 +1187,8 @@ class MaxPool2dWithIndexFunctor<CPUContext, T1, T2> {
 
             T1 ele = static_cast<T1>(-FLT_MAX);
             int64_t index = -1;
-            for (int64_t h = hstart; h < hend; ++h) {
-              for (int64_t w = wstart; w < wend; ++w) {
+            for (int64_t h = hstart; h < hend; h += dilation_height) {
+              for (int64_t w = wstart; w < wend; w += dilation_width) {
                 if (ele < input_data[h * input_width + w]) {
                   ele = input_data[h * input_width + w];
                   index = h * input_width + w;
@@ -1198,6 +1222,7 @@ class MaxPool2dWithIndexGradFunctor<CPUContext, T1, T2> {
                   const std::vector<int64_t>& ksize UNUSED,
                   const std::vector<int64_t>& strides UNUSED,
                   const std::vector<int64_t>& paddings UNUSED,
+                  const std::vector<int64_t>& dilations UNUSED,
                   bool adaptive UNUSED,
                   DenseTensor* input_grad) {
     const int64_t batch_size = input_grad->dims()[0];
@@ -1250,6 +1275,7 @@ class MaxPool3dWithIndexFunctor<CPUContext, T1, T2> {
                   const std::vector<int64_t>& ksize,
                   const std::vector<int64_t>& strides,
                   const std::vector<int64_t>& paddings,
+                  const std::vector<int64_t>& dilations,
                   bool adaptive,
                   DenseTensor* output,
                   DenseTensor* mask) {
@@ -1270,12 +1296,31 @@ class MaxPool3dWithIndexFunctor<CPUContext, T1, T2> {
     const int64_t padding_depth = paddings[0];
     const int64_t padding_height = paddings[1];
     const int64_t padding_width = paddings[2];
+    const int64_t dilation_depth = dilations[0];
+    const int64_t dilation_height = dilations[1];
+    const int64_t dilation_width = dilations[2];
     const int64_t input_stride = input_depth * input_height * input_width;
     const int64_t output_stride = output_depth * output_height * output_width;
 
     const T1* input_data = input.data<T1>();
     T1* output_data = context.template Alloc<T1>(output);
     T2* mask_data = context.template Alloc<T2>(mask);
+
+    PADDLE_ENFORCE_GE(
+        dilation_depth,
+        1,
+        phi::errors::InvalidArgument(
+            "dilation_depth must be >= 1, but got [%d]", dilation_depth));
+    PADDLE_ENFORCE_GE(
+        dilation_height,
+        1,
+        phi::errors::InvalidArgument(
+            "dilation_height must be >= 1, but got [%d]", dilation_height));
+    PADDLE_ENFORCE_GE(
+        dilation_width,
+        1,
+        phi::errors::InvalidArgument(
+            "dilation_width must be >= 1, but got [%d]", dilation_width));
 
     int64_t dstart = 0, dend = 0;
     int64_t hstart = 0, hend = 0;
@@ -1286,6 +1331,11 @@ class MaxPool3dWithIndexFunctor<CPUContext, T1, T2> {
           if (adaptive) {
             dstart = AdaptStartIndex(pd, input_depth, output_depth);
             dend = AdaptEndIndex(pd, input_depth, output_depth);
+          } else if (dilation_depth != 1) {
+            dstart = pd * stride_depth - padding_depth;
+            dend = std::min(dstart + dilation_depth * (ksize_depth - 1) + 1,
+                            input_depth);
+            while (dstart < 0) dstart += dilation_depth;
           } else {
             dstart = pd * stride_depth - padding_depth;
             dend = std::min(dstart + ksize_depth, input_depth);
@@ -1295,6 +1345,11 @@ class MaxPool3dWithIndexFunctor<CPUContext, T1, T2> {
             if (adaptive) {
               hstart = AdaptStartIndex(ph, input_height, output_height);
               hend = AdaptEndIndex(ph, input_height, output_height);
+            } else if (dilation_height != 1) {
+              hstart = ph * stride_height - padding_height;
+              hend = std::min(hstart + dilation_height * (ksize_height - 1) + 1,
+                              input_height);
+              while (hstart < 0) hstart += dilation_height;
             } else {
               hstart = ph * stride_height - padding_height;
               hend = std::min(hstart + ksize_height, input_height);
@@ -1304,6 +1359,11 @@ class MaxPool3dWithIndexFunctor<CPUContext, T1, T2> {
               if (adaptive) {
                 wstart = AdaptStartIndex(pw, input_width, output_width);
                 wend = AdaptEndIndex(pw, input_width, output_width);
+              } else if (dilation_width != 1) {
+                wstart = pw * stride_width - padding_width;
+                wend = std::min(wstart + dilation_width * (ksize_width - 1) + 1,
+                                input_width);
+                while (wstart < 0) wstart += dilation_width;
               } else {
                 wstart = pw * stride_width - padding_width;
                 wend = std::min(wstart + ksize_width, input_width);
@@ -1314,9 +1374,10 @@ class MaxPool3dWithIndexFunctor<CPUContext, T1, T2> {
                   (pd * output_height + ph) * output_width + pw;
               T1 ele = static_cast<T1>(-FLT_MAX);
               int64_t index = -1;
-              for (int64_t d = dstart; d < dend; ++d) {
-                for (int64_t h = hstart; h < hend; ++h) {
-                  for (int64_t w = wstart; w < wend; ++w) {
+
+              for (int64_t d = dstart; d < dend; d += dilation_depth) {
+                for (int64_t h = hstart; h < hend; h += dilation_height) {
+                  for (int64_t w = wstart; w < wend; w += dilation_width) {
                     int64_t input_idx =
                         (d * input_height + h) * input_width + w;
                     if (ele < input_data[input_idx]) {
@@ -1354,6 +1415,7 @@ class MaxPool3dWithIndexGradFunctor<CPUContext, T1, T2> {
                   const std::vector<int64_t>& ksize UNUSED,
                   const std::vector<int64_t>& strides UNUSED,
                   const std::vector<int64_t>& paddings UNUSED,
+                  const std::vector<int64_t>& dilations UNUSED,
                   bool adaptive UNUSED,
                   DenseTensor* input_grad) {
     const int64_t batch_size = input_grad->dims()[0];

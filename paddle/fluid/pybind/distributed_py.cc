@@ -62,8 +62,6 @@ limitations under the License. */
 
 namespace paddle::pybind {
 
-using Tensor = paddle::Tensor;
-
 std::shared_ptr<distributed::EagerReducer> CreateEagerReducer(
     py::handle py_tensors,
     const std::vector<std::vector<size_t>> &group_indices,
@@ -150,8 +148,7 @@ void BindDistributed(py::module *m) {
                py::call_guard<py::gil_scoped_release>())
 #ifdef PADDLE_WITH_NCCL
           .def("erase_stream",
-               [](distributed::ProcessGroup &self,
-                  const paddle::Tensor &tensor) {
+               [](distributed::ProcessGroup &self, const Tensor &tensor) {
                  auto *pg_with_stream =
                      dynamic_cast<distributed::ProcessGroupWithStream *>(&self);
                  auto *dense_tensor =

@@ -40,7 +40,7 @@ class InterpreterCore {
   TEST_API InterpreterCore(
       const phi::Place& place,
       const std::vector<std::string>& fetch_var_names,
-      const ::pir::Block* ir_prog,
+      const pir::Block* ir_prog,
       Scope* scope,
       const ExecutionConfig& execution_config = ExecutionConfig());
   TEST_API ~InterpreterCore();

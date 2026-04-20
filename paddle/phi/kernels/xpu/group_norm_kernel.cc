@@ -29,9 +29,9 @@ namespace phi {
 template <typename T, typename Context>
 void GroupNormKernel(const Context& dev_ctx,
                      const DenseTensor& x,
-                     const paddle::optional<DenseTensor>& scale,
-                     const paddle::optional<DenseTensor>& bias,
-                     float epsilon,
+                     const optional<DenseTensor>& scale,
+                     const optional<DenseTensor>& bias,
+                     double epsilon,
                      int groups,
                      const std::string& data_layout_str,
                      DenseTensor* y,
@@ -40,22 +40,20 @@ void GroupNormKernel(const Context& dev_ctx,
   if (y && y->numel() == 0) {
     dev_ctx.template Alloc<T>(y);
     if (mean) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(mean->dims())), 0, mean);
+      Full<T, Context>(dev_ctx, mean->dims(), 0, mean);
     }
     if (var) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(var->dims())), 0, var);
+      Full<T, Context>(dev_ctx, var->dims(), 0, var);
     }
     return;
   }
   using XPUType = typename XPUTypeTrait<T>::Type;
 
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
   const auto scale_ptr = scale.get_ptr();
   const auto bias_ptr = bias.get_ptr();
 
-  const auto x_dims = common::vectorize<int64_t>(x.dims());
+  const auto x_dims = vectorize<int64_t>(x.dims());
   const int64_t N = x_dims[0];
   const bool channel_first =
       data_layout == DataLayout::NCHW || data_layout == DataLayout::NCDHW;

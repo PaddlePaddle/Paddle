@@ -61,8 +61,7 @@ void CollectFpnProposalsOpKernel(
     const Context& dev_ctx,
     const std::vector<const DenseTensor*>& multi_level_rois,
     const std::vector<const DenseTensor*>& multi_level_scores,
-    const paddle::optional<std::vector<const DenseTensor*>>&
-        multi_level_rois_num,
+    const optional<std::vector<const DenseTensor*>>& multi_level_rois_num,
     int post_nms_topn,
     DenseTensor* fpn_rois_out,
     DenseTensor* rois_num_out) {
@@ -192,7 +191,7 @@ void CollectFpnProposalsOpKernel(
     }
   }
   lod0.emplace_back(post_nms_topn);
-  phi::LegacyLoD lod;
+  LegacyLoD lod;
   lod.emplace_back(lod0);
   fpn_rois->set_lod(lod);
 }

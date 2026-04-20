@@ -32,28 +32,11 @@ void LaunchEigenPadding(
     const DDim& out_dims,
     const std::array<std::pair<int64_t, int64_t>, D>& paddings) {
   auto& place = *dev_ctx.eigen_device();
-  auto d_in_t = EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-      *d_input, in_dims);
-  auto d_out_t = EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-      *d_out, out_dims);
+  auto d_in_t = EigenTensor<T, D, Eigen::RowMajor>::From(*d_input, in_dims);
+  auto d_out_t = EigenTensor<T, D, Eigen::RowMajor>::From(*d_out, out_dims);
 
-  if (d_input->numel() <= Eigen::NumTraits<int>::highest()) {
-    // similar to tf.pad:
-    // if element number less than INT_MAX, change the type of index to int
-    std::array<std::pair<int, int>, D> paddings_32bit;
-    for (size_t i = 0; i < D; i++) {
-      paddings_32bit[i] = std::make_pair(paddings[i].first, paddings[i].second);
-    }
-    funcs::EigenPad<std::decay_t<decltype(place)>, T, D>::Eval32(
-        place,
-        To32BitIndex(d_in_t),
-        To32BitIndex(d_out_t),
-        paddings_32bit,
-        static_cast<T>(0));
-  } else {
-    funcs::EigenPad<std::decay_t<decltype(place)>, T, D>::Eval(
-        place, d_in_t, d_out_t, paddings, static_cast<T>(0));
-  }
+  funcs::EigenPad<std::decay_t<decltype(place)>, T, D>::Eval(
+      place, d_in_t, d_out_t, paddings, static_cast<T>(0));
 }
 
 template <typename T, typename Context, size_t D>
@@ -109,8 +92,8 @@ void EigenPaddingCompute(
         out_tore_shape[1] = out_dims[pad_dim];
 
         // convert array from std::vector to DDim
-        DDim reshaped_in_dims = common::make_ddim(in_tore_shape);
-        DDim reshaped_out_dims = common::make_ddim(out_tore_shape);
+        DDim reshaped_in_dims = make_ddim(in_tore_shape);
+        DDim reshaped_out_dims = make_ddim(out_tore_shape);
 
         // after reshape: the first dimension do not need padding,
         // set padding[0] zero
@@ -142,8 +125,8 @@ void EigenPaddingCompute(
         }
 
         // convert array from std::vector to DDim
-        DDim reshaped_in_dims = common::make_ddim(in_tore_shape);
-        DDim reshaped_out_dims = common::make_ddim(out_tore_shape);
+        DDim reshaped_in_dims = make_ddim(in_tore_shape);
+        DDim reshaped_out_dims = make_ddim(out_tore_shape);
 
         // after reshape:
         // the first dimension is the previous padding dimension
@@ -180,8 +163,8 @@ void EigenPaddingCompute(
         }
 
         // convert array from std::vector to DDim
-        DDim reshaped_in_dims = common::make_ddim(in_tore_shape);
-        DDim reshaped_out_dims = common::make_ddim(out_tore_shape);
+        DDim reshaped_in_dims = make_ddim(in_tore_shape);
+        DDim reshaped_out_dims = make_ddim(out_tore_shape);
 
         // after reshape:
         // the first dimension do not need padding, set padding[0] zero
@@ -228,7 +211,7 @@ void SliceGradCompute(const Context& dev_ctx,
     if (decrease_size == static_cast<size_t>(in_dims.size())) {
       // all dims decrease
       std::vector<int> origin_out_shape(decrease_size, 1);
-      out_dims = common::make_ddim(std::vector<int>(decrease_size, 1));
+      out_dims = make_ddim(std::vector<int>(decrease_size, 1));
     } else {
       std::vector<int> origin_out_shape(out_dims.size() + decrease_size, -1);
       for (size_t i = 0; i < decrease_size; ++i) {
@@ -243,7 +226,7 @@ void SliceGradCompute(const Context& dev_ctx,
         }
       }
 
-      out_dims = common::make_ddim(origin_out_shape);
+      out_dims = make_ddim(origin_out_shape);
     }
   }
 

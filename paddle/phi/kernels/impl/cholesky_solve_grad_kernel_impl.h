@@ -43,15 +43,13 @@ void CholeskySolveGradKernel(const Context& dev_ctx,
     if (dx) {
       dev_ctx.template Alloc<T>(dx);
       if (dx->numel() != 0) {
-        phi::Full<T, Context>(
-            dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+        Full<T, Context>(dev_ctx, dx->dims(), 0, dx);
       }
     }
     if (dy) {
       dev_ctx.template Alloc<T>(dy);
       if (dy->numel() != 0) {
-        phi::Full<T, Context>(
-            dev_ctx, phi::IntArray(common::vectorize(dy->dims())), 0, dy);
+        Full<T, Context>(dev_ctx, dy->dims(), 0, dy);
       }
     }
     return;
@@ -101,7 +99,7 @@ void CholeskySolveGradKernel(const Context& dev_ctx,
   DenseTensor commonterm_conj = Conj<T, Context>(dev_ctx, commonterm);
   commonterm_conj = TransposeLast2Dim<T>(dev_ctx, commonterm_conj);
 
-  phi::AddKernel<T>(dev_ctx, commonterm, commonterm_conj, &commonterm);
+  AddKernel<T>(dev_ctx, commonterm, commonterm_conj, &commonterm);
 
   DenseTensor dy_bst = Empty<T, Context>(dev_ctx, y_bst_dims);
   if (upper) {

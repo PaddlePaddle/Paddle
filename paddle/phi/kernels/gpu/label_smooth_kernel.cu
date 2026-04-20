@@ -24,7 +24,7 @@ namespace phi {
 
 template <typename T>
 struct LabelSmoothFunctor {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
   MPType epsilon;
   MPType label_dim;
 
@@ -48,7 +48,7 @@ __global__ void LabelSmoothRunDistKernel(const int64_t N,
                                          const T* src,
                                          const T* dist_data,
                                          T* dst) {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
   CUDA_KERNEL_LOOP_TYPE(idx, N, int64_t) {
     int64_t dist_idx = idx % dist_numel;
     dst[idx] =
@@ -62,7 +62,7 @@ __global__ void LabelSmoothRunDistKernel(const int64_t N,
 template <typename T, typename Context>
 void LabelSmoothKernel(const Context& dev_ctx,
                        const DenseTensor& label,
-                       const paddle::optional<DenseTensor>& prior_dist,
+                       const optional<DenseTensor>& prior_dist,
                        float epsilon,
                        DenseTensor* out) {
   auto label_dim = label.dims()[label.dims().size() - 1];

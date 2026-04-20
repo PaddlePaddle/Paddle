@@ -60,35 +60,55 @@ from paddle.incubate.distributed.fleet import recompute_hybrid
 from ..pp_utils.forward_backward_overlap_utils import (
     ScheduleChunk,
 )
+from .spec_utils import LayerSpec, build_spec_layer
 
 __all__ = []
 
 
 class LayerDesc:
-    def __init__(self, layer_func, *inputs, **kwargs):
-        self.layer_func = layer_func
-        self.inputs = inputs
+    def __init__(self, layer_func_or_spec, *inputs, **kwargs):
         self.kwargs = kwargs
+        self.using_layer_spec = False
 
-        if not issubclass(layer_func, nn.Layer):
-            raise TypeError(
-                "The input(layer_func) should be a derived class of Layer."
-            )
+        if isinstance(layer_func_or_spec, LayerSpec):
+            self.using_layer_spec = True
+            self.layer_spec = layer_func_or_spec
+        else:
+            self.inputs = inputs
+            self.layer_func = layer_func_or_spec
+            if not issubclass(layer_func_or_spec, nn.Layer):
+                raise TypeError(
+                    "The input(layer_func) should be a derived class of Layer."
+                )
 
     def build_layer(self, **extra_kwargs):
-        return self.layer_func(*self.inputs, **{**self.kwargs, **extra_kwargs})
+        if self.using_layer_spec:
+            all_extra_kwargs = {
+                **self.layer_spec.extra_kwargs,
+                **self.kwargs,
+                **extra_kwargs,
+            }
+            self.layer_spec.extra_kwargs = all_extra_kwargs
+            return build_spec_layer(self.layer_spec)
+        else:
+            return self.layer_func(
+                *self.inputs, **{**self.kwargs, **extra_kwargs}
+            )
 
     def __repr__(self):
-        return layer_to_str(
-            self.layer_func.__name__, *self.inputs, **self.kwargs
-        )
+        if self.using_layer_spec:
+            return layer_to_str(repr(self.layer_spec), **self.kwargs)
+        else:
+            return layer_to_str(
+                self.layer_func.__name__, *self.inputs, **self.kwargs
+            )
 
 
 class SharedLayerDesc(LayerDesc):
     def __init__(
         self,
         key,
-        layer_func,
+        layer_func,  # May be layer_func or layer_spec
         forward_func=None,
         shared_weight_attr='weight',
         *inputs,
@@ -106,6 +126,7 @@ class SharedLayerDesc(LayerDesc):
         self.shared_weight_attr = shared_weight_attr
 
 
+# TODO: PaddleFleet LayerSpec Support dualpipev
 class LocalSharedLayerDesc(LayerDesc):
     """
     Used for dualpipev, some layers can be shared locally
@@ -221,7 +242,13 @@ class SegmentLayers:
             if isinstance(layer, nn.Layer):
                 name = layer.__class__.__name__
             elif isinstance(layer, LayerDesc):
-                name = layer.layer_func.__name__
+                if layer.using_layer_spec:
+                    if not isinstance(layer.layer_spec.layer, tuple):
+                        name = layer.layer_spec.layer.__name__
+                    else:
+                        continue
+                else:
+                    name = layer.layer_func.__name__
             else:
                 try:
                     name = layer.__name__
@@ -310,7 +337,7 @@ class PipelineLayer(nn.Layer):
         num_virtual_pipeline_stages(int, optional): the num of virtual pipeline stages for interleave pp.
         use_cudagraph(bool, optional): enable CUDAGraphedLayer in pp layers.
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> import paddle.nn as nn
@@ -338,6 +365,7 @@ class PipelineLayer(nn.Layer):
             ...     def __init__(self, shape):
             ...         super().__init__()
             ...         self.shape = shape
+            ...
             ...     def forward(self, x):
             ...         return x.reshape(shape=self.shape)
 
@@ -345,33 +373,23 @@ class PipelineLayer(nn.Layer):
             ...     def __init__(self, num_classes=10, **kwargs):
             ...         self.num_classes = num_classes
             ...         decs = [
-            ...             LayerDesc(
-            ...                 nn.Conv2D, 1, 64, kernel_size=11, stride=4, padding=5),
+            ...             LayerDesc(nn.Conv2D, 1, 64, kernel_size=11, stride=4, padding=5),
             ...             LayerDesc(nn.ReLU),
-            ...             LayerDesc(
-            ...                 nn.MaxPool2D, kernel_size=2, stride=2),
-            ...             LayerDesc(
-            ...                 nn.Conv2D, 64, 192, kernel_size=5, padding=2),
+            ...             LayerDesc(nn.MaxPool2D, kernel_size=2, stride=2),
+            ...             LayerDesc(nn.Conv2D, 64, 192, kernel_size=5, padding=2),
             ...             F.relu,
-            ...             LayerDesc(
-            ...                 nn.MaxPool2D, kernel_size=2, stride=2),
-            ...             LayerDesc(
-            ...                 nn.Conv2D, 192, 384, kernel_size=3, padding=1),
+            ...             LayerDesc(nn.MaxPool2D, kernel_size=2, stride=2),
+            ...             LayerDesc(nn.Conv2D, 192, 384, kernel_size=3, padding=1),
             ...             F.relu,
-            ...             LayerDesc(
-            ...                 nn.Conv2D, 384, 256, kernel_size=3, padding=1),
+            ...             LayerDesc(nn.Conv2D, 384, 256, kernel_size=3, padding=1),
             ...             F.relu,
-            ...             LayerDesc(
-            ...                 nn.Conv2D, 256, 256, kernel_size=3, padding=1),
+            ...             LayerDesc(nn.Conv2D, 256, 256, kernel_size=3, padding=1),
             ...             F.relu,
-            ...             LayerDesc(
-            ...                 nn.MaxPool2D, kernel_size=2, stride=2),
-            ...             LayerDesc(
-            ...                 ReshapeHelp, shape=[-1, 256]),
+            ...             LayerDesc(nn.MaxPool2D, kernel_size=2, stride=2),
+            ...             LayerDesc(ReshapeHelp, shape=[-1, 256]),
             ...             LayerDesc(nn.Linear, 256, self.num_classes),  # classifier
             ...         ]
-            ...         super().__init__(
-            ...             layers=decs, loss_fn=nn.CrossEntropyLoss(), **kwargs)
+            ...         super().__init__(layers=decs, loss_fn=nn.CrossEntropyLoss(), **kwargs)
 
             >>> model = AlexNetPipeDesc(num_stages=pipeline_parallel_size, topology=hcg._topo)
 
@@ -728,10 +746,9 @@ class PipelineLayer(nn.Layer):
                         group=comm['group'],
                     )
 
-            for param in comm['layer'].parameters():
-                if param.name in comm[
-                    'weight_attr'
-                ] and self.global_rank != min(comm['ranks']):
+            if self.global_rank != min(comm['ranks']):
+                for weight_attr in comm['weight_attr']:
+                    param = getattr(comm['layer'], weight_attr)
                     param.is_firstly_shared = False
 
     def allreduce_shared_weight_gradients(self):
@@ -768,7 +785,7 @@ class PipelineLayer(nn.Layer):
                         grad_var = param.grad
                     with paddle.framework.no_grad():
                         paddle.distributed.all_reduce(
-                            grad_var,
+                            grad_var.contiguous(),
                             group=comm['group'],
                         )
                 else:
@@ -995,11 +1012,11 @@ class PipelineLayer(nn.Layer):
                 flush_into_run_function()
                 if layer.layer_name not in self.shared_layers:
                     self.shared_layers[layer.layer_name] = layer.build_layer()
-                    for param in self.shared_layers[
-                        layer.layer_name
-                    ].parameters():
-                        if param.name in layer.shared_weight_attr:
-                            param.is_firstly_shared = True
+                    for weight_attr in layer.shared_weight_attr:
+                        param = getattr(
+                            self.shared_layers[layer.layer_name], weight_attr
+                        )
+                        param.is_firstly_shared = True
 
                 if layer.forward_func is None:
                     run_function.append(self.shared_layers[layer.layer_name])
@@ -1128,9 +1145,26 @@ class PipelineLayer(nn.Layer):
             self.run_function = model_chunk.get_run_function()
 
     def get_schedule_chunk(self, chunk_id):
+        """
+        Get the schedule chunk for the specified chunk_id and build schedule nodes.
+
+        This method is used in pipeline parallel to retrieve the model chunk
+        (run_function) corresponding to the chunk_id and build schedule nodes for that chunk.
+
+        Args:
+            chunk_id (int): The ID of the virtual pipeline chunk to retrieve
+
+        Returns:
+            list: The built schedule nodes list
+
+        Raises:
+            AssertionError: If recompute_interval is not 0, as overlap schedule mode requires recompute_interval to be 0
+        """
         self.update_run_function(chunk_id)
 
-        assert self._recompute_interval == 0
+        assert self._recompute_interval == 0, (
+            "overlap_schedule_mode requires recompute_interval==0."
+        )
         return self.build_schedule_nodes(0, len(self.run_function))
 
     def forward(self, input, chunk_id=None):

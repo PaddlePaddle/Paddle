@@ -546,7 +546,7 @@ void ConvCudnnGradKernel(const Context& dev_ctx,
     in_data_dims = slice_ddim(in_dims, 1, in_dims.size() - 1);
     filter_data_dims = slice_ddim(filter_dims, 1, filter_dims.size() - 1);
   }
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
@@ -554,8 +554,8 @@ void ConvCudnnGradKernel(const Context& dev_ctx,
   // So we create a new padded input tensor.
   int data_dim = strides.size();  // 2d or 3d
   bool is_sys_pad = funcs::IsSymmetricPadding(paddings, data_dim);
-  Tensor transformed_input(input.type());
-  Tensor transformed_input_grad(input.type());
+  DenseTensor transformed_input(input.type());
+  DenseTensor transformed_input_grad(input.type());
   std::vector<int> padding_common(data_dim, 0);
   std::vector<int> input_pad(transformed_input_channel.dims().size() * 2, 0);
 
@@ -589,7 +589,7 @@ void ConvCudnnGradKernel(const Context& dev_ctx,
         input_pad[2 * i + 2 + 1] = paddings[2 * i + 1] - padding_common[i];
       }
     }
-    DDim new_input_shape(common::make_ddim(new_input_shape_vec));
+    DDim new_input_shape(make_ddim(new_input_shape_vec));
     transformed_input.Resize(new_input_shape);
     dev_ctx.template Alloc<T>(&transformed_input);
 
@@ -770,22 +770,21 @@ void Conv3DCudnnGradKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void ConvCudnnGradGradKernel(
-    const Context& dev_ctx,
-    const DenseTensor& input,
-    const DenseTensor& filter,
-    const DenseTensor& out_grad,
-    const paddle::optional<DenseTensor>& input_grad_grad,
-    const paddle::optional<DenseTensor>& filter_grad_grad,
-    const std::vector<int>& strides,
-    const std::vector<int>& paddings_t,
-    const std::string& padding_algorithm,
-    const std::vector<int>& dilations_t,
-    int groups,
-    const std::string& data_format,
-    DenseTensor* input_grad,
-    DenseTensor* filter_grad,
-    DenseTensor* out_grad_grad) {
+void ConvCudnnGradGradKernel(const Context& dev_ctx,
+                             const DenseTensor& input,
+                             const DenseTensor& filter,
+                             const DenseTensor& out_grad,
+                             const optional<DenseTensor>& input_grad_grad,
+                             const optional<DenseTensor>& filter_grad_grad,
+                             const std::vector<int>& strides,
+                             const std::vector<int>& paddings_t,
+                             const std::string& padding_algorithm,
+                             const std::vector<int>& dilations_t,
+                             int groups,
+                             const std::string& data_format,
+                             DenseTensor* input_grad,
+                             DenseTensor* filter_grad,
+                             DenseTensor* out_grad_grad) {
   auto X = &input;
   auto W = &filter;
   auto dO = &out_grad;
@@ -885,7 +884,7 @@ void ConvCudnnGradGradKernel(
   auto filter_dims = W->dims();
   DDim in_data_dims = slice_ddim(in_dims, 2, in_dims.size());
   DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
@@ -914,7 +913,7 @@ void ConvCudnnGradGradKernel(
       input_pad[2 * i + 4] = paddings[2 * i] - padding_common[i];
       input_pad[2 * i + 4 + 1] = paddings[2 * i + 1] - padding_common[i];
     }
-    DDim new_input_shape(common::make_ddim(new_input_shape_vec));
+    DDim new_input_shape(make_ddim(new_input_shape_vec));
     transformed_X.Resize(new_input_shape);
     transformed_ddX.Resize(new_input_shape);
     transformed_dX.Resize(new_input_shape);
@@ -1375,8 +1374,8 @@ void DepthwiseConvDoubleGradGPUDNNKernel(
     const DenseTensor& input,
     const DenseTensor& filter,
     const DenseTensor& out_grad,
-    const paddle::optional<DenseTensor>& input_grad_grad,
-    const paddle::optional<DenseTensor>& filter_grad_grad,
+    const optional<DenseTensor>& input_grad_grad,
+    const optional<DenseTensor>& filter_grad_grad,
     const std::vector<int>& strides,
     const std::vector<int>& paddings_t,
     const std::string& padding_algorithm,
@@ -1404,22 +1403,21 @@ void DepthwiseConvDoubleGradGPUDNNKernel(
 }
 
 template <typename T, typename Context>
-void Conv3DCudnnDoubleGradKernel(
-    const Context& dev_ctx,
-    const DenseTensor& input,
-    const DenseTensor& filter,
-    const DenseTensor& out_grad,
-    const paddle::optional<DenseTensor>& input_grad_grad,
-    const paddle::optional<DenseTensor>& filter_grad_grad,
-    const std::vector<int>& strides,
-    const std::vector<int>& paddings_t,
-    const std::string& padding_algorithm,
-    int groups,
-    const std::vector<int>& dilations_t,
-    const std::string& data_format,
-    DenseTensor* input_grad,
-    DenseTensor* filter_grad,
-    DenseTensor* out_grad_grad) {
+void Conv3DCudnnDoubleGradKernel(const Context& dev_ctx,
+                                 const DenseTensor& input,
+                                 const DenseTensor& filter,
+                                 const DenseTensor& out_grad,
+                                 const optional<DenseTensor>& input_grad_grad,
+                                 const optional<DenseTensor>& filter_grad_grad,
+                                 const std::vector<int>& strides,
+                                 const std::vector<int>& paddings_t,
+                                 const std::string& padding_algorithm,
+                                 int groups,
+                                 const std::vector<int>& dilations_t,
+                                 const std::string& data_format,
+                                 DenseTensor* input_grad,
+                                 DenseTensor* filter_grad,
+                                 DenseTensor* out_grad_grad) {
   ConvCudnnGradGradKernel<T>(dev_ctx,
                              input,
                              filter,
@@ -1445,34 +1443,39 @@ PD_REGISTER_KERNEL(conv2d_grad,
                    ALL_LAYOUT,
                    phi::ConvCudnnGradKernel,
                    float,
-                   phi::float16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(conv3d_grad,
                    GPUDNN,
                    ALL_LAYOUT,
                    phi::Conv3DCudnnGradKernel,
                    float,
-                   phi::float16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 PD_REGISTER_KERNEL(conv2d_double_grad,
                    GPUDNN,
                    ALL_LAYOUT,
                    phi::ConvCudnnGradGradKernel,
                    float,
-                   phi::float16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(conv3d_double_grad,
                    GPUDNN,
                    ALL_LAYOUT,
                    phi::Conv3DCudnnDoubleGradKernel,
                    float,
-                   phi::float16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(depthwise_conv2d_double_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::DepthwiseConvDoubleGradGPUDNNKernel,
                    float,
-                   phi::float16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 #else
 #if CUDNN_VERSION_MIN(8, 1, 0)
 PD_REGISTER_KERNEL(conv2d_grad,

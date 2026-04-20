@@ -66,7 +66,7 @@ class PADDLE_API NaiveExecutor {
 
   void PrepareInterpreterCore(
       Scope* scope,
-      const ::pir::Program& pir_program,
+      const pir::Program& pir_program,
       const framework::interpreter::ExecutionConfig& execution_config =
           framework::interpreter::ExecutionConfig{});
 

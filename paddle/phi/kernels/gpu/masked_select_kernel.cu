@@ -61,19 +61,18 @@ void MaskedSelectKernel(const Context& dev_ctx,
   }
 
   auto expanded_size = funcs::MatrixGetBroadcastBatchPortion(
-      common::vectorize(x.dims()), common::vectorize(mask.dims()));
+      vectorize(x.dims()), vectorize(mask.dims()));
 
-  DDim expand_dims = common::make_ddim(expanded_size);
+  DDim expand_dims = make_ddim(expanded_size);
   if (mask.dims() != expand_dims) {
-    phi::ExpandKernel<bool, Context>(
+    ExpandKernel<bool, Context>(
         dev_ctx, mask, IntArray(expanded_size), &mask_expand);
   } else {
     mask_expand = mask;
   }
 
   if (x.dims() != expand_dims) {
-    phi::ExpandKernel<T, Context>(
-        dev_ctx, x, IntArray(expanded_size), &x_expand);
+    ExpandKernel<T, Context>(dev_ctx, x, IntArray(expanded_size), &x_expand);
   } else {
     x_expand = x;
   }

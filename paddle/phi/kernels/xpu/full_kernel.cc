@@ -32,7 +32,7 @@ void FullKernel(const Context& dev_ctx,
                 DataType dtype,
                 DenseTensor* out) {
   using XPUInTDType = typename XPUTypeTrait<T>::Type;
-  out->Resize(common::make_ddim(shape.GetData()));
+  out->Resize(shape.GetData());
   dev_ctx.template Alloc<T>(out);
   if (out->numel() > 0) {
     auto out_data = reinterpret_cast<XPUInTDType*>(out->data<T>());
@@ -52,7 +52,7 @@ void FullKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
                                             DataType dtype,
                                             DenseTensor* out) {
   using T = phi::complex64;
-  out->Resize(common::make_ddim(shape.GetData()));
+  out->Resize(shape.GetData());
   dev_ctx.template Alloc<T>(out);
 
   T complex_val = val.to<T>();
@@ -88,44 +88,54 @@ void FullLikeKernel(const Context& dev_ctx,
                     DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
   if (out->numel() > 0) {
-    auto value = val.to<double>();
-    using XPUInTDType = typename XPUTypeTrait<T>::Type;
-    using CommonType = typename std::common_type<
-        float,
-        typename std::conditional<std::is_same<T, phi::float16>::value,
-                                  float,
-                                  T>::type>::type;
+    if (!std::is_same<T, int64_t>::value) {
+      auto value = val.to<double>();
+      using XPUInTDType = typename XPUTypeTrait<T>::Type;
+      using CommonType = typename std::common_type<
+          float,
+          typename std::conditional<std::is_same<T, phi::float16>::value,
+                                    float,
+                                    T>::type>::type;
 
-    auto common_type_value = static_cast<CommonType>(value);
-    bool is_out_range = true;
-    if (std::isinf(value) || std::isnan(value)) {
-      is_out_range = false;
+      auto common_type_value = static_cast<CommonType>(value);
+      bool is_out_range = true;
+      if (std::isinf(value) || std::isnan(value)) {
+        is_out_range = false;
+      }
+      if ((common_type_value >=
+           static_cast<CommonType>(std::numeric_limits<T>::lowest())) &&
+          (common_type_value <=
+           static_cast<CommonType>(std::numeric_limits<T>::max()))) {
+        is_out_range = false;
+      }
+
+      PADDLE_ENFORCE_EQ(
+          is_out_range,
+          false,
+          common::errors::InvalidArgument(
+              "The filled value is out of range for target type, "
+              "current kernel type is %s, the range should between %f "
+              "and %f, but now value is %f.",
+              typeid(T).name(),
+              static_cast<CommonType>(std::numeric_limits<T>::lowest()),
+              static_cast<CommonType>(std::numeric_limits<T>::max()),
+              static_cast<float>(value)));
+
+      auto out_data = reinterpret_cast<XPUInTDType*>(out->data<T>());
+      int r = xpu::constant(dev_ctx.x_context(),
+                            out_data,
+                            out->numel(),
+                            static_cast<XPUInTDType>(value));
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
+    } else {
+      using XPUInTDType = typename XPUTypeTrait<T>::Type;
+      auto out_data = reinterpret_cast<XPUInTDType*>(out->data<T>());
+      int r = xpu::constant(dev_ctx.x_context(),
+                            out_data,
+                            out->numel(),
+                            static_cast<XPUInTDType>(val.to<T>()));
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
     }
-    if ((common_type_value >=
-         static_cast<CommonType>(std::numeric_limits<T>::lowest())) &&
-        (common_type_value <=
-         static_cast<CommonType>(std::numeric_limits<T>::max()))) {
-      is_out_range = false;
-    }
-
-    PADDLE_ENFORCE_EQ(
-        is_out_range,
-        false,
-        common::errors::InvalidArgument(
-            "The filled value is out of range for target type, "
-            "current kernel type is %s, the range should between %f "
-            "and %f, but now value is %f.",
-            typeid(T).name(),
-            static_cast<CommonType>(std::numeric_limits<T>::lowest()),
-            static_cast<CommonType>(std::numeric_limits<T>::max()),
-            static_cast<float>(value)));
-
-    auto out_data = reinterpret_cast<XPUInTDType*>(out->data<T>());
-    int r = xpu::constant(dev_ctx.x_context(),
-                          out_data,
-                          out->numel(),
-                          static_cast<XPUInTDType>(value));
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
   }
 }
 
@@ -142,7 +152,7 @@ void FullBatchSizeLikeKernel(const Context& dev_ctx,
     // set the correct batch size for the DenseTensor.
     auto odims = out->dims();
     odims[out_batch_size_dim] = x.lod().back().size() - 1;
-    FullKernel<T, Context>(dev_ctx, common::vectorize(odims), val, dtype, out);
+    FullKernel<T, Context>(dev_ctx, vectorize(odims), val, dtype, out);
   }
   FullLikeKernel<T, Context>(dev_ctx, x, val, dtype, out);
 }

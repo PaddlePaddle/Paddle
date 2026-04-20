@@ -14,6 +14,7 @@
 
 from .clip_grad_norm_ import clip_grad_norm_
 from .clip_grad_value_ import clip_grad_value_
+from .rnn import pad_sequence, unpad_sequence
 from .spectral_norm_hook import spectral_norm
 from .transform_parameters import (
     _stride_column,  # noqa: F401
@@ -30,4 +31,6 @@ __all__ = [
     'vector_to_parameters',
     'clip_grad_norm_',
     'clip_grad_value_',
+    'pad_sequence',
+    'unpad_sequence',
 ]

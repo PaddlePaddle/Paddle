@@ -6,6 +6,8 @@ extend-exclude = [
     "build",
     # Skip `creater` check in these files
     "paddle/fluid/inference/tensorrt/convert/CMakeLists.txt",
+    # Skip `exlucsive` check in these files for OldIR compatibility
+    "paddle/phi/ops/yaml/op_version.yaml",
 ]
 
 [default]
@@ -25,6 +27,7 @@ arange = "arange"
 astroid = 'astroid'
 cacl = 'cacl'
 CANN = 'CANN'
+certifi = "certifi"
 Clas = 'Clas'
 clen = 'clen'
 Copyer = 'Copyer'
@@ -44,7 +47,10 @@ setp = 'setp'
 splited = 'splited'
 splitted = 'splitted'
 statis = 'statis'
-UNEXPECT = 'UNEXPECT'
 tood = 'tood'
+UNEXPECT = 'UNEXPECT'
 unpacket = "unpacket"
 vaccum = 'vaccum'
+
+[default.extend-identifiers]
+NPY_ARRAY_WRITEABLE_ = "NPY_ARRAY_WRITEABLE_"

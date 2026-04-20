@@ -72,7 +72,7 @@ void DepthwiseConv2dTransposeGradKernel(const Context& dev_ctx,
                                         const std::string& data_format,
                                         DenseTensor* dx,
                                         DenseTensor* dfilter) {
-  const DataLayout data_layout = common::StringToDataLayout(data_format);
+  const DataLayout data_layout = StringToDataLayout(data_format);
   DenseTensor filter_ = filter;
 
   if (!dx && !dfilter) {
@@ -106,12 +106,12 @@ void DepthwiseConv2dTransposeGradKernel(const Context& dev_ctx,
     in_data_dims = slice_ddim(x_dims, 1, x_dims.size() - 1);
   }
   DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
       &paddings_, &dilations_, padding_algorithm, in_data_dims, strides, ksize);
 
   if (dx) {
-    phi::math::DepthwiseConvFunctor<Context, T> depthwiseConv;
+    math::DepthwiseConvFunctor<Context, T> depthwiseConv;
     depthwiseConv(dev_ctx,
                   dout,
                   filter_,
@@ -128,8 +128,7 @@ void DepthwiseConv2dTransposeGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(dfilter);
     set_zero(dev_ctx, dfilter, static_cast<T>(0));
 
-    phi::math::DepthwiseConvFilterGradFunctor<Context, T>
-        depthwiseConvFilterGrad;
+    math::DepthwiseConvFilterGradFunctor<Context, T> depthwiseConvFilterGrad;
     depthwiseConvFilterGrad(
         dev_ctx,
         dout,

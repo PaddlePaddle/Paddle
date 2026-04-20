@@ -22,6 +22,7 @@
 - fused_bn_add_activation_grad
 - fused_softmax_mask_grad
 - fused_softmax_mask_upper_triangle_grad
+- group_norm_grad
 - hsigmoid_loss_grad
 - softplus_grad
 - softplus_double_grad
@@ -41,6 +42,7 @@
 - pool2d_grad
 - pool3d_grad
 - prod_grad
+- p_norm_grad
 - repeat_interleave_grad
 - repeat_interleave_with_tensor_index_grad
 - reshape_grad
@@ -72,3 +74,4 @@
 - linear_interp_grad
 - bilinear_interp_grad
 - trilinear_interp_grad
+- layer_norm_grad

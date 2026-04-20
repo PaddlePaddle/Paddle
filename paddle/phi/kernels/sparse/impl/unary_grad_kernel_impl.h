@@ -124,10 +124,10 @@ void CastCooGradKernel(const Context& dev_ctx,
               false,
               dx->mutable_non_zero_elements());
   } else {
-    phi::CastKernel<T, Context>(dev_ctx,
-                                dout.non_zero_elements(),
-                                x.non_zero_elements().dtype(),
-                                dx->mutable_non_zero_elements());
+    CastKernel<T, Context>(dev_ctx,
+                           dout.non_zero_elements(),
+                           x.non_zero_elements().dtype(),
+                           dx->mutable_non_zero_elements());
   }
 }
 
@@ -145,10 +145,10 @@ void CastCsrGradKernel(const Context& dev_ctx,
               false,
               dx->mutable_non_zero_elements());
   } else {
-    phi::CastKernel<T, Context>(dev_ctx,
-                                dout.non_zero_elements(),
-                                x.non_zero_elements().dtype(),
-                                dx->mutable_non_zero_elements());
+    CastKernel<T, Context>(dev_ctx,
+                           dout.non_zero_elements(),
+                           x.non_zero_elements().dtype(),
+                           dx->mutable_non_zero_elements());
   }
 }
 

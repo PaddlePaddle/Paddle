@@ -116,7 +116,7 @@ bool PToRReshardFunctionCrossMesh::IsSuitable(
   return true;
 }
 
-void PToRReshardFunctionCrossMesh::Eval(phi::DeviceContext* dev_ctx,
+void PToRReshardFunctionCrossMesh::Eval(DeviceContext* dev_ctx,
                                         const DistTensor& in,
                                         const TensorDistAttr& out_dist_attr,
                                         DistTensor* out) {

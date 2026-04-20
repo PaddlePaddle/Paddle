@@ -24,8 +24,8 @@ template <typename T, typename Context>
 void WarpctcKernel(const Context& dev_ctx,
                    const DenseTensor& logits,
                    const DenseTensor& label,
-                   const paddle::optional<DenseTensor>& logits_length,
-                   const paddle::optional<DenseTensor>& labels_length,
+                   const optional<DenseTensor>& logits_length,
+                   const optional<DenseTensor>& labels_length,
                    int blank,
                    bool norm_by_times,
                    DenseTensor* loss,
@@ -111,7 +111,7 @@ void WarpctcKernel(const Context& dev_ctx,
                         DataTypeToString(labels_length_dtype)));
 
   warpctcgrad->Resize(
-      common::make_ddim({max_sequence_length, num_sequences, sequence_width}));
+      make_ddim({max_sequence_length, num_sequences, sequence_width}));
   dev_ctx.template Alloc<T>(warpctcgrad);
   T* warpctcgrad_data = warpctcgrad->data<T>();
 
@@ -137,7 +137,7 @@ void WarpctcKernel(const Context& dev_ctx,
           256 * 1024,
           sm_workspace + lm_workspace));
 
-  loss->Resize(common::make_ddim({num_sequences, 1}));
+  loss->Resize({num_sequences, 1});
   dev_ctx.template Alloc<T>(loss);
   T* loss_data = loss->data<T>();
 

@@ -44,7 +44,7 @@ inline OneDNNMemoryFormat ToOneDNNFormat(const DataLayout& layout) {
     default:
       PADDLE_THROW(
           errors::InvalidArgument("Fail to convert layout %s to oneDNN format.",
-                                  ::common::DataLayoutToString(layout)));
+                                  DataLayoutToString(layout)));
   }
 }
 

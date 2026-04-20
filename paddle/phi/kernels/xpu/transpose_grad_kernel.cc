@@ -49,8 +49,7 @@ void TransposeGradKernel(const Context& dev_ctx,
     reversed_axis[formatted_axis[i]] = i;
   }
 
-  std::vector<int64_t> out_grad_dim_vec =
-      common::vectorize<int64_t>(out_grad.dims());
+  std::vector<int64_t> out_grad_dim_vec = vectorize<int64_t>(out_grad.dims());
   int r = xpu::transpose<XPUType>(
       dev_ctx.x_context(),
       reinterpret_cast<const XPUType*>(out_grad.data<T>()),
@@ -101,8 +100,7 @@ void TransposeGradKernel<phi::complex64, XPUContext>(
   dev_ctx.template Alloc<float>(&imag_out);
   const DenseTensor real = Real<T, XPUContext>(dev_ctx, out_grad);
   const DenseTensor imag = Imag<T, XPUContext>(dev_ctx, out_grad);
-  std::vector<int64_t> out_grad_dim_vec =
-      common::vectorize<int64_t>(out_grad.dims());
+  std::vector<int64_t> out_grad_dim_vec = vectorize<int64_t>(out_grad.dims());
   int r = xpu::transpose<float>(dev_ctx.x_context(),
                                 real.data<float>(),
                                 real_out.data<float>(),

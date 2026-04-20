@@ -36,18 +36,18 @@ void IndexSelectKernel(const Context& dev_ctx,
   const auto& index_type = index.dtype();
 
   bool index_type_match =
-      index_type == phi::DataType::INT32 || index_type == phi::DataType::INT64;
+      index_type == DataType::INT32 || index_type == DataType::INT64;
   PADDLE_ENFORCE_EQ(index_type_match,
                     true,
                     common::errors::InvalidArgument(
                         "Input(Index) holds the wrong type, it holds %s, but "
                         "desires to be %s or %s",
                         index_type,
-                        phi::DataType::INT32,
-                        phi::DataType::INT64));
+                        DataType::INT32,
+                        DataType::INT64));
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto* in_data = x.data<T>();
-  std::vector<int64_t> in_shape = common::vectorize<int64_t>(input_dim);
+  std::vector<int64_t> in_shape = vectorize<int64_t>(input_dim);
   int64_t index_len = output->dims()[dim];
   dev_ctx.template Alloc<T>(output);
   int r = 0;
@@ -58,9 +58,9 @@ void IndexSelectKernel(const Context& dev_ctx,
     index_ptr = RAII_GUARD.alloc_l3_or_gm<int8_t>(byte_times * index.numel());
     PADDLE_ENFORCE_XDNN_NOT_NULL(index_ptr);
     const void* cpu_idx_data = nullptr;
-    if (index_type == phi::DataType::INT64) {
+    if (index_type == DataType::INT64) {
       cpu_idx_data = reinterpret_cast<const void*>(index.data<int64_t>());
-    } else if (index_type == phi::DataType::INT32) {
+    } else if (index_type == DataType::INT32) {
       cpu_idx_data = reinterpret_cast<const void*>(index.data<int>());
     }
     memory_utils::Copy(dev_ctx.GetPlace(),
@@ -69,7 +69,7 @@ void IndexSelectKernel(const Context& dev_ctx,
                        cpu_idx_data,
                        byte_times * index.numel());
   }
-  if (index_type == phi::DataType::INT64) {
+  if (index_type == DataType::INT64) {
     const int64_t* index_data =
         index_ptr ? reinterpret_cast<const int64_t*>(index_ptr)
                   : index.template data<int64_t>();

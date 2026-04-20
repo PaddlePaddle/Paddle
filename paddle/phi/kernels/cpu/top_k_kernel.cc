@@ -184,7 +184,7 @@ void TopkKernel(const Context& dev_ctx,
   const auto& out_dims = out->dims();
   if (axis + 1 == in_dims.size()) {
     const int64_t& input_height =
-        common::product(common::slice_ddim(in_dims, 0, in_dims.size() - 1));
+        common::product(slice_ddim(in_dims, 0, in_dims.size() - 1));
     const int64_t& input_width = in_dims[in_dims.size() - 1];
     FullTopK<T, int64_t>(input_height,
                          input_width,
@@ -223,11 +223,11 @@ void TopkKernel(const Context& dev_ctx,
     int ndims = static_cast<int>(trans.size());
 
     // transpose the input value
-    funcs::TransCompute<phi::CPUContext, T>(
+    funcs::TransCompute<CPUContext, T>(
         ndims, dev_ctx, *input, &trans_inp, trans);
 
-    const int64_t input_height = common::product(
-        common::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
+    const int64_t input_height =
+        common::product(slice_ddim(trans_dims, 0, trans_dims.size() - 1));
     const int64_t input_width = trans_dims[trans_dims.size() - 1];
 
     // Allocate the temp tensor to the save the topk indices, values
@@ -249,10 +249,9 @@ void TopkKernel(const Context& dev_ctx,
                          largest,
                          sorted);
     // transpose back
-    funcs::TransCompute<phi::CPUContext, int64_t>(
+    funcs::TransCompute<CPUContext, int64_t>(
         ndims, dev_ctx, tmp_indices, indices, trans);
-    funcs::TransCompute<phi::CPUContext, T>(
-        ndims, dev_ctx, tmp_out, out, trans);
+    funcs::TransCompute<CPUContext, T>(ndims, dev_ctx, tmp_out, out, trans);
   }
 }
 

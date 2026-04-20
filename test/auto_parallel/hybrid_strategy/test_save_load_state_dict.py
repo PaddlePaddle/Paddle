@@ -132,6 +132,20 @@ class TestSaveLoadStateDict(test_base.CommunicationTestDistBase):
         )
         ckpt_path.cleanup()
 
+    def test_save_safetensors_load_fc_with_index(self):
+        """Test saving safetensors files and loading with flex checkpoint when model.safetensors.index.json exists."""
+        ckpt_path = tempfile.TemporaryDirectory()
+        super().setUp(num_of_devices=2, timeout=120, nnode=1)
+        self.run_test_case(
+            "save_safetensors_load_fc.py",
+            user_defined_envs={
+                "device_num": "2",
+                "ckpt_path": ckpt_path.name,
+                "test_func": "test_save_safetensors_load_fc_with_index",
+            },
+        )
+        ckpt_path.cleanup()
+
     def test_save_load_state_dict_with_aoa_config_reverse(self):
         """Test saving state dict and loading with flex checkpoint."""
         ckpt_path = tempfile.TemporaryDirectory()
@@ -144,6 +158,25 @@ class TestSaveLoadStateDict(test_base.CommunicationTestDistBase):
             },
         )
         ckpt_path.cleanup()
+
+    def test_save_load_with_error_message(self):
+        """Test logger missing key and unexpected keys."""
+        ckpt_path = tempfile.TemporaryDirectory()
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, {"device_num": ["1", "2"]}
+        )
+        for envs in envs_list:
+            envs["ckpt_path"] = ckpt_path.name
+            super().setUp(
+                num_of_devices=int(envs["device_num"]),
+                timeout=60,
+                nnode=1,
+            )
+            self.run_test_case(
+                "test_save_load_with_error_message.py",
+                user_defined_envs=envs,
+            )
+            ckpt_path.cleanup()
 
 
 if __name__ == '__main__':

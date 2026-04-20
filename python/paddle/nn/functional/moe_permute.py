@@ -33,6 +33,8 @@ def moe_permute(
     padding_alignment: int,
     do_gather: bool = True,
     using_ue8m0_scale: bool = False,
+    return_expert_indices: bool = False,
+    override_buffer_size: int = -1,
     name: str | None = None,
 ) -> tuple[Tensor, Tensor, Tensor, Tensor]:
     r"""
@@ -72,6 +74,8 @@ def moe_permute(
             Must be a power of 2. Typical values are 16, 32 or 64 for optimal memory access.
         do_gather(bool): Decide whether do actual tokens gather operation or not, default is True.
         using_ue8m0_scale (bool): Whether to use the ue8m0 scaling for float8 inputs. Default is False.
+        return_expert_indices(bool): Whether to return an 1D tensor of expert indices for each token, with -1 representing padding. Default is False.
+        override_buffer_size(bool): Whether to override the buffer size using the given CPU integer, default is -1.
         name (str|None, optional): Name prefix for the operation (optional).
             Default: None
 
@@ -91,7 +95,7 @@ def moe_permute(
                 Data type: float32 or int32. It is same as scale.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> # doctest: +SKIP('This is only support in cuda 12.0+')
@@ -99,14 +103,22 @@ def moe_permute(
             >>> import numpy as np
             >>> import paddle.nn.functional as F
             >>> hidden_states = paddle.randn([3, 128], dtype='bfloat16')
-            >>> expert_routemap_topk = paddle.to_tensor([[-1, 0, -1, -1, 2, -1, -1, -1],
-            ...                                          [1, -1, -1, -1, -1, -1, -1, -1],
-            ...                                          [-1, -1, -1, -1, -1, -1, 1, -1]],
-            ...                                           dtype='int32')
-            >>> expert_prob_topk= paddle.to_tensor([[0.0, 0.6, 0.0, 0.0, 0.4, 0.0, 0.0, 0.0],
-            ...                                     [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            ...                                     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0]],
-            ...                                          dtype='float32')
+            >>> expert_routemap_topk = paddle.to_tensor(
+            ...     [
+            ...         [-1, 0, -1, -1, 2, -1, -1, -1],
+            ...         [1, -1, -1, -1, -1, -1, -1, -1],
+            ...         [-1, -1, -1, -1, -1, -1, 1, -1],
+            ...     ],
+            ...     dtype='int32',
+            ... )
+            >>> expert_prob_topk = paddle.to_tensor(
+            ...     [
+            ...         [0.0, 0.6, 0.0, 0.0, 0.4, 0.0, 0.0, 0.0],
+            ...         [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            ...         [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
+            ...     ],
+            ...     dtype='float32',
+            ... )
             >>> num_experts = 3
             >>> tokens_per_expert = [1, 2, 1]
             >>> padding_alignment = 2
@@ -120,8 +132,12 @@ def moe_permute(
             ...     padding_alignment,
             ... )
             >>> # weighted by probs.
-            >>> hidden_states_unzipped = (hidden_states_unzipped.astype("float32") * token_prob_unzipped.astype("float32").unsqueeze(-1)).astype("bfloat16")
-            >>> zipped_tokens, zipped_probs = F.moe_unpermute(hidden_states_unzipped, zipped_expertwise_rowmap, expert_routemap_topk, token_prob_unzipped,3,3)
+            >>> hidden_states_unzipped = (
+            ...     hidden_states_unzipped.astype("float32") * token_prob_unzipped.astype("float32").unsqueeze(-1)
+            ... ).astype("bfloat16")
+            >>> zipped_tokens, zipped_probs = F.moe_unpermute(
+            ...     hidden_states_unzipped, zipped_expertwise_rowmap, expert_routemap_topk, token_prob_unzipped, 3, 3
+            ... )
             >>> np.testing.assert_allclose(zipped_tokens.numpy(), hidden_states.numpy(), rtol=1e-05, atol=1e-06)
     """
     if in_dynamic_or_pir_mode():
@@ -130,6 +146,7 @@ def moe_permute(
             zipped_expertwise_rowmap,
             token_prob_unzipped,
             scale_unzipped,
+            expert_indices,
         ) = _C_ops.moe_permute(
             hidden_states,
             scale,
@@ -140,10 +157,21 @@ def moe_permute(
             padding_alignment,
             do_gather,
             using_ue8m0_scale,
+            return_expert_indices,
+            override_buffer_size,
         )
-        return (
-            hidden_states_unzipped,
-            zipped_expertwise_rowmap,
-            token_prob_unzipped,
-            scale_unzipped,
-        )
+        if return_expert_indices:
+            return (
+                hidden_states_unzipped,
+                zipped_expertwise_rowmap,
+                token_prob_unzipped,
+                scale_unzipped,
+                expert_indices,
+            )
+        else:
+            return (
+                hidden_states_unzipped,
+                zipped_expertwise_rowmap,
+                token_prob_unzipped,
+                scale_unzipped,
+            )

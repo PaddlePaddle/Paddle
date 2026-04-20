@@ -30,9 +30,9 @@ void HSigmoidLossKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const DenseTensor& label,
                         const DenseTensor& w,
-                        const paddle::optional<DenseTensor>& bias,
-                        const paddle::optional<DenseTensor>& path,
-                        const paddle::optional<DenseTensor>& code,
+                        const optional<DenseTensor>& bias,
+                        const optional<DenseTensor>& path,
+                        const optional<DenseTensor>& code,
                         int num_classes,
                         bool is_sparse,
                         DenseTensor* out,
@@ -51,7 +51,7 @@ void HSigmoidLossKernel(const Context& dev_ctx,
           : static_cast<int64_t>(funcs::FindLastSet(num_classes_st - 1));
   int64_t batch_size = x.dims()[0];
   DenseTensor sum;
-  pre_out->Resize(common::make_ddim({batch_size, code_length}));
+  pre_out->Resize({batch_size, code_length});
   dev_ctx.template Alloc<T>(pre_out);
   auto* pre_out_data = pre_out->data<T>();
   auto pre_out_mat = EigenMatrix<T>::From(*pre_out);
@@ -72,7 +72,7 @@ void HSigmoidLossKernel(const Context& dev_ctx,
   }
 
   std::vector<int64_t> sum_dims({batch_size, 1UL});
-  sum.Resize(common::make_ddim(sum_dims));
+  sum.Resize(sum_dims);
   dev_ctx.template Alloc<T>(&sum);
   auto sum_mat = EigenMatrix<T>::From(sum);
   dev_ctx.template Alloc<T>(out);
@@ -82,7 +82,7 @@ void HSigmoidLossKernel(const Context& dev_ctx,
   }
   bit_code->Mul(pre_out, w, x);
   // clip to [-40, 40]
-  phi::Transform<Context> trans;
+  Transform<Context> trans;
   trans(dev_ctx,
         pre_out_data,
         pre_out_data + pre_out->numel(),

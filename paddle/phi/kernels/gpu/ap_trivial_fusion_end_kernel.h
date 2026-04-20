@@ -22,7 +22,7 @@ namespace phi {
 template <typename T, typename Context>
 void ApTrivialFusionEndKernel(
     const Context& dev_ctx,
-    const paddle::optional<std::vector<const DenseTensor*>>& xs,
+    const optional<std::vector<const DenseTensor*>>& xs,
     DenseTensor* out);
 
 }  // namespace phi

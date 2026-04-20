@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/amp_kernel.h"
 
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -146,9 +147,9 @@ __global__ void FusedFillIf(T** outs,
 }
 
 template <typename T>
-class LazyZeros<phi::GPUContext, T> {
+class LazyZeros<GPUContext, T> {
  public:
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const bool* found_inf_data,
                   const std::vector<const DenseTensor*>& xs,
                   const std::vector<DenseTensor*>& outs) {
@@ -158,13 +159,13 @@ class LazyZeros<phi::GPUContext, T> {
     const auto& cpu_place = CPUPlace();
     // alloc each tensor's start index and copy to device
     auto h_in_starts_mem =
-        phi::memory_utils::Alloc(cpu_place, (xs_size + 1) * sizeof(int64_t));
+        memory_utils::Alloc(cpu_place, (xs_size + 1) * sizeof(int64_t));
     int64_t* h_starts = reinterpret_cast<int64_t*>(h_in_starts_mem->ptr());
 
-    auto d_in_starts_mem = phi::memory_utils::Alloc(
+    auto d_in_starts_mem = memory_utils::Alloc(
         dev_ctx.GetPlace(),
         (xs_size + 1) * sizeof(int64_t),
-        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+        Stream(reinterpret_cast<StreamId>(dev_ctx.stream())));
     int64_t* d_starts = reinterpret_cast<int64_t*>(d_in_starts_mem->ptr());
 
     // the start index value of each tensor is
@@ -174,31 +175,36 @@ class LazyZeros<phi::GPUContext, T> {
     for (int i = 0; i < xs_size; i++) {
       h_starts[i + 1] = h_starts[i] + outs[i]->numel();
     }
+    auto* stable_h_starts =
+        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(h_starts,
+                                                               xs_size + 1);
     memory_utils::Copy(dev_ctx.GetPlace(),
                        d_starts,
                        cpu_place,
-                       h_starts,
+                       stable_h_starts,
                        (xs_size + 1) * sizeof(int64_t),
                        dev_ctx.stream());
 
     // copy each tensor of "outs" data address array to device
-    auto h_out_addrs_mem =
-        phi::memory_utils::Alloc(cpu_place, xs_size * sizeof(T*));
+    auto h_out_addrs_mem = memory_utils::Alloc(cpu_place, xs_size * sizeof(T*));
     T** h_out_addrs = reinterpret_cast<T**>(h_out_addrs_mem->ptr());
 
-    auto d_out_addrs_mem = phi::memory_utils::Alloc(
+    auto d_out_addrs_mem = memory_utils::Alloc(
         dev_ctx.GetPlace(),
         xs_size * sizeof(T*),
-        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+        Stream(reinterpret_cast<StreamId>(dev_ctx.stream())));
     T** d_out_addrs = reinterpret_cast<T**>(d_out_addrs_mem->ptr());
 
     for (size_t i = 0; i < xs_size; ++i) {
       h_out_addrs[i] = dev_ctx.Alloc<T>(outs[i]);
     }
+    auto* stable_h_out_addrs =
+        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(h_out_addrs,
+                                                               xs_size);
     memory_utils::Copy(dev_ctx.GetPlace(),
                        d_out_addrs,
                        cpu_place,
-                       h_out_addrs,
+                       stable_h_out_addrs,
                        xs_size * sizeof(T*),
                        dev_ctx.stream());
 
@@ -218,9 +224,9 @@ class LazyZeros<phi::GPUContext, T> {
 };
 
 template <typename T, bool IsFoundInfOnCPU>
-class UpdateLossScalingFunctor<phi::GPUContext, T, IsFoundInfOnCPU> {
+class UpdateLossScalingFunctor<GPUContext, T, IsFoundInfOnCPU> {
  public:
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const bool* found_inf_data,
                   const T* pre_loss_scaling_data,
                   const int* good_in_data,
@@ -270,15 +276,15 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
                                  const DenseTensor& scale,
                                  std::vector<DenseTensor*> outs,
                                  DenseTensor* found_infinite) {
-  using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename dtype::MPTypeTrait<T>::Type;
 
-  const MPDType* scale_data = scale.data<MPDType>();
+  const MT* scale_data = scale.data<MT>();
   bool* found_inf_data = dev_ctx.template Alloc<bool>(found_infinite);
 
-  DenseTensor inverse_scale = Empty<MPDType>(dev_ctx, {1});
-  MPDType* inverse_scale_v = inverse_scale.template data<MPDType>();
+  DenseTensor inverse_scale = Empty<MT>(dev_ctx, {1});
+  MT* inverse_scale_v = inverse_scale.template data<MT>();
 
-  InverseAndMemset<MPDType><<<1, 1, 0, dev_ctx.stream()>>>(
+  InverseAndMemset<MT><<<1, 1, 0, dev_ctx.stream()>>>(
       scale_data, inverse_scale_v, found_inf_data);
 
   size_t xs_size = xs.size();
@@ -287,13 +293,13 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
   const auto& cpu_place = CPUPlace();
   // calculate each tensor's start index and copy to device
   auto h_starts_tensor =
-      phi::memory_utils::Alloc(cpu_place, (xs_size + 1) * sizeof(int64_t));
+      memory_utils::Alloc(cpu_place, (xs_size + 1) * sizeof(int64_t));
   int64_t* h_starts = reinterpret_cast<int64_t*>(h_starts_tensor->ptr());
 
-  auto d_starts_tensor = phi::memory_utils::Alloc(
-      dev_ctx.GetPlace(),
-      (xs_size + 1) * sizeof(int64_t),
-      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+  auto d_starts_tensor =
+      memory_utils::Alloc(dev_ctx.GetPlace(),
+                          (xs_size + 1) * sizeof(int64_t),
+                          Stream(reinterpret_cast<StreamId>(dev_ctx.stream())));
   int64_t* d_starts = reinterpret_cast<int64_t*>(d_starts_tensor->ptr());
 
   // the start index value of each tensor is
@@ -304,22 +310,25 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
     h_starts[i] = h_starts[i - 1] + xs[i - 1]->numel();
   }
   int64_t total_num = h_starts[xs_size];
+  auto* stable_h_starts =
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(h_starts,
+                                                             xs_size + 1);
   memory_utils::Copy(dev_ctx.GetPlace(),
                      d_starts,
                      cpu_place,
-                     h_starts,
+                     stable_h_starts,
                      (xs_size + 1) * sizeof(int64_t),
                      dev_ctx.stream());
 
   // copy each tensor's data address to device
-  auto h_mem = phi::memory_utils::Alloc(cpu_place, 2 * xs_size * sizeof(T*));
+  auto h_mem = memory_utils::Alloc(cpu_place, 2 * xs_size * sizeof(T*));
   const T** h_xs = reinterpret_cast<const T**>(h_mem->ptr());
   T** h_outs = reinterpret_cast<T**>(h_mem->ptr()) + xs_size;
 
-  auto d_mem = phi::memory_utils::Alloc(
-      dev_ctx.GetPlace(),
-      2 * xs_size * sizeof(T*),
-      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+  auto d_mem =
+      memory_utils::Alloc(dev_ctx.GetPlace(),
+                          2 * xs_size * sizeof(T*),
+                          Stream(reinterpret_cast<StreamId>(dev_ctx.stream())));
   const T** d_xs = reinterpret_cast<const T**>(d_mem->ptr());
   T** d_outs = reinterpret_cast<T**>(d_mem->ptr()) + xs_size;
 
@@ -327,10 +336,12 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
     h_xs[i] = xs[i]->data<T>();
     h_outs[i] = dev_ctx.template Alloc<T>(outs[i]);
   }
+  auto* stable_h_xs =
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(h_xs, 2 * xs_size);
   memory_utils::Copy(dev_ctx.GetPlace(),
                      d_xs,
                      cpu_place,
-                     h_xs,
+                     stable_h_xs,
                      2 * xs_size * sizeof(T*),
                      dev_ctx.stream());
 
@@ -340,10 +351,10 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
       threads_per_block * 20;  // each thread deal with 20 number
   int blocks_per_grid =
       (total_num + elements_per_block - 1) / elements_per_block;
-  CheckFiniteAndUnscale<T, MPDType><<<blocks_per_grid,
-                                      threads_per_block,
-                                      (xs_size + 1) * sizeof(int64_t),
-                                      dev_ctx.stream()>>>(
+  CheckFiniteAndUnscale<T, MT><<<blocks_per_grid,
+                                 threads_per_block,
+                                 (xs_size + 1) * sizeof(int64_t),
+                                 dev_ctx.stream()>>>(
       d_xs, inverse_scale_v, xs_size, d_starts, found_inf_data, d_outs);
 }
 

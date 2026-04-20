@@ -19,6 +19,15 @@ import paddle
 from paddle.framework import core
 
 
+def contiguous_strides(shape):
+    strides = [0] * len(shape)
+    running = 1
+    for i in range(len(shape) - 1, -1, -1):
+        strides[i] = running
+        running *= shape[i]
+    return strides
+
+
 class TestZeroSizeParameter(unittest.TestCase):
     def setUp(self):
         self.places = [
@@ -76,7 +85,7 @@ class TestZeroSizeParameter(unittest.TestCase):
                     )
                     self.assertEqual(
                         model.w.strides,
-                        zero_size_shape,
+                        contiguous_strides(zero_size_shape),
                         msg=f"Check failed at: {parameter_dtype}, {zero_size_shape}",
                     )
                     self.assertEqual(
@@ -144,7 +153,7 @@ class TestZeroSizeForward(unittest.TestCase):
                     )
                     self.assertEqual(
                         y.strides,
-                        zero_size_shape,
+                        contiguous_strides(zero_size_shape),
                         msg=f"Check failed at: {dtype}, {zero_size_shape}",
                     )
                     self.assertEqual(
@@ -197,7 +206,7 @@ class TestZeroSizeForward(unittest.TestCase):
                     )
                     self.assertEqual(
                         y.strides,
-                        zero_size_shape,
+                        contiguous_strides(zero_size_shape),
                         msg=f"Check failed at: {dtype}, {zero_size_shape}",
                     )
                     self.assertEqual(
@@ -271,7 +280,7 @@ class TestZeroSizeBackward(unittest.TestCase):
                     )
                     self.assertEqual(
                         x_grad.strides,
-                        zero_size_shape,
+                        contiguous_strides(zero_size_shape),
                         msg=f"Check failed at: {dtype}, {zero_size_shape}",
                     )
                     self.assertEqual(
@@ -322,7 +331,7 @@ class TestZeroSizeBackward(unittest.TestCase):
                     )
                     self.assertEqual(
                         x_grad.strides,
-                        zero_size_shape,
+                        contiguous_strides(zero_size_shape),
                         msg=f"Check failed at: {dtype}, {zero_size_shape}",
                     )
                     self.assertEqual(
@@ -400,7 +409,7 @@ class TestZeroSizeBackwardWithGradientAccumulation(unittest.TestCase):
                     )
                     self.assertEqual(
                         x_grad.strides,
-                        zero_size_shape,
+                        contiguous_strides(zero_size_shape),
                         msg=f"Check failed at: {dtype}, {zero_size_shape}",
                     )
                     self.assertEqual(
@@ -453,7 +462,7 @@ class TestZeroSizeBackwardWithGradientAccumulation(unittest.TestCase):
                     )
                     self.assertEqual(
                         x_grad.strides,
-                        zero_size_shape,
+                        contiguous_strides(zero_size_shape),
                         msg=f"Check failed at: {dtype}, {zero_size_shape}",
                     )
                     self.assertEqual(

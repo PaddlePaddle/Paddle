@@ -429,13 +429,6 @@ def _get_cuda_arch_flags(cflags: list[str] | None = None) -> list[str]:
     For an added "+PTX", an additional
     ``-gencode=arch=compute_xx,code=compute_xx`` is added.
     """
-    # If cflags is given, there may already be user-provided arch flags in it
-    if cflags is not None:
-        for flag in cflags:
-            if any(x in flag for x in ['PADDLE_EXTENSION_NAME']):
-                continue
-            if 'arch' in flag:
-                return []
 
     named_arches = collections.OrderedDict(
         [
@@ -469,6 +462,7 @@ def _get_cuda_arch_flags(cflags: list[str] | None = None) -> list[str]:
         '10.0a',
         '10.1',
         '10.1a',
+        '10.3',
         '12.0',
         '12.0a',
     ]
@@ -499,7 +493,7 @@ def _get_cuda_arch_flags(cflags: list[str] | None = None) -> list[str]:
         elif dev_types and core.is_compiled_with_custom_device(dev_types[0]):
             for dev_id in range(paddle.device.device_count()):
                 capability = paddle.device.get_device_capability(
-                    dev_types[0], dev_id
+                    f"{dev_types[0]}:{dev_id}"
                 )
                 arch = f"{capability[0]}.{capability[1]}"
                 if arch not in arch_list:
@@ -512,7 +506,7 @@ def _get_cuda_arch_flags(cflags: list[str] | None = None) -> list[str]:
                 "Paddle is not compiled with CUDA or Custom Device, cannot determine CUDA arch."
             )
     else:
-        _arch_list = _arch_list.replace(' ', ';')
+        _arch_list = _arch_list.replace(' ', ';').replace(',', ';')
         for named_arch, archival in named_arches.items():
             _arch_list = _arch_list.replace(named_arch, archival)
         arch_list = _arch_list.split(';')
@@ -664,9 +658,12 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
         extra_link_args = kwargs.get('extra_link_args', [])
         extra_link_args.extend(MSVC_LINK_FLAGS)
         lib_core_name = create_sym_link_if_not_exist()
-        extra_link_args.append(f'{lib_core_name}')
+        required_link_args = [f'{lib_core_name}', 'phi.lib']
         if use_cuda:
-            extra_link_args.extend(['cudadevrt.lib', 'cudart_static.lib'])
+            required_link_args.extend(['cudadevrt.lib', 'cudart_static.lib'])
+        for link_arg in required_link_args:
+            if link_arg not in extra_link_args:
+                extra_link_args.append(link_arg)
         kwargs['extra_link_args'] = extra_link_args
 
     else:
@@ -1091,7 +1088,7 @@ def get_build_directory(verbose: bool = False) -> str:
 
     Examples:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> from paddle.utils.cpp_extension import get_build_directory
 

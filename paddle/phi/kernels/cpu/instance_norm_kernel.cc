@@ -32,8 +32,8 @@ namespace phi {
 template <typename T, typename Context>
 void InstanceNormKernel(const Context& dev_ctx,
                         const DenseTensor& x,
-                        const paddle::optional<DenseTensor>& scale,
-                        const paddle::optional<DenseTensor>& bias,
+                        const optional<DenseTensor>& scale,
+                        const optional<DenseTensor>& bias,
                         float epsilon_f,
                         DenseTensor* y,
                         DenseTensor* saved_mean,
@@ -84,13 +84,13 @@ void InstanceNormKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(saved_mean);
     set_constant(dev_ctx, saved_mean, static_cast<T>(0));
   } else {
-    saved_mean_tmp = phi::Full<T>(dev_ctx, {NxC}, 0);
+    saved_mean_tmp = Full<T>(dev_ctx, {NxC}, 0);
   }
   if (saved_variance) {
     dev_ctx.template Alloc<T>(saved_variance);
     set_constant(dev_ctx, saved_variance, static_cast<T>(0));
   } else {
-    saved_variance_tmp = phi::Full<T>(dev_ctx, {NxC}, 0);
+    saved_variance_tmp = Full<T>(dev_ctx, {NxC}, 0);
   }
 
   auto saved_mean_a =

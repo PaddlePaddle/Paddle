@@ -21,9 +21,9 @@ namespace fusion {
 template <typename T, typename Context>
 void AddActXPUKernel(const Context& dev_ctx,
                      const DenseTensor& x,
-                     const paddle::optional<DenseTensor>& x_max,
+                     const optional<DenseTensor>& x_max,
                      const DenseTensor& y,
-                     const paddle::optional<DenseTensor>& y_max,
+                     const optional<DenseTensor>& y_max,
                      int act_type,
                      DenseTensor* out,
                      DenseTensor* out_max) {
@@ -37,8 +37,8 @@ void AddActXPUKernel(const Context& dev_ctx,
       y_max.get_ptr() == nullptr ? nullptr : y_max.get_ptr()->data<float>();
   auto* out_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out));
 
-  std::vector<int64_t> x_shape = common::vectorize(x.dims());
-  std::vector<int64_t> y_shape = common::vectorize(y.dims());
+  std::vector<int64_t> x_shape = vectorize(x.dims());
+  std::vector<int64_t> y_shape = vectorize(y.dims());
   xpu::Activation_t act(static_cast<xpu::Activation_t::act_enum>(act_type));
   int r =
       xpu::add_activation_fusion<XPUType, XPUType, XPUType>(  // TX/TY/TZ/TID

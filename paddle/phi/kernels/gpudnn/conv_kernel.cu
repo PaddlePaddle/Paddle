@@ -280,7 +280,8 @@ void ConvCudnnKernelImplV8(const DenseTensor* input_tensor,
                                           output_data,
                                           filter_data,
                                           handle,
-                                          &workspace_handle);
+                                          &workspace_handle,
+                                          input_tensor->dtype());
 
   helper::ExecutePlansAndCache(handle,
                                &workspace_handle,
@@ -399,7 +400,7 @@ void ConvCudnnKernel(const Context& dev_ctx,
     filter_data_dims = slice_ddim(filter_dims, 1, filter_dims.size() - 1);
   }
 
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
@@ -439,7 +440,7 @@ void ConvCudnnKernel(const Context& dev_ctx,
         input_pad[2 * i + 2 + 1] = paddings[2 * i + 1] - padding_common[i];
       }
     }
-    DDim new_input_shape(common::make_ddim(new_input_shape_vec));
+    DDim new_input_shape(make_ddim(new_input_shape_vec));
     transformed_input.Resize(new_input_shape);
     dev_ctx.template Alloc<T>(&transformed_input);
 
@@ -560,18 +561,29 @@ void Conv3DCudnnKernel(const Context& dev_ctx,
 }  // namespace phi
 
 #ifdef PADDLE_WITH_HIP
-PD_REGISTER_KERNEL(
-    conv2d, GPUDNN, ALL_LAYOUT, phi::ConvCudnnKernel, float, phi::float16) {}
+PD_REGISTER_KERNEL(conv2d,
+                   GPUDNN,
+                   ALL_LAYOUT,
+                   phi::ConvCudnnKernel,
+                   float,
+                   phi::float16,
+                   phi::bfloat16) {}
 
-PD_REGISTER_KERNEL(
-    conv3d, GPUDNN, ALL_LAYOUT, phi::Conv3DCudnnKernel, float, phi::float16) {}
+PD_REGISTER_KERNEL(conv3d,
+                   GPUDNN,
+                   ALL_LAYOUT,
+                   phi::Conv3DCudnnKernel,
+                   float,
+                   phi::float16,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(depthwise_conv2d,
                    GPUDNN,
                    ALL_LAYOUT,
                    phi::DepthwiseConvCudnnKernel,
                    float,
-                   phi::float16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
 #else
 #if CUDNN_VERSION_MIN(8, 1, 0)
@@ -622,5 +634,3 @@ PD_REGISTER_KERNEL(conv3d,
 #endif
 
 #endif
-
-// todo register bfloat16

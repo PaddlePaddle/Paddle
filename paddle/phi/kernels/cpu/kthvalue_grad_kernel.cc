@@ -76,12 +76,12 @@ void KthvalueGradKernel(const Context& dev_ctx,
     for (int i = axis + 1; i < in_dims.size(); i++) {
       tmp_out_shape.emplace_back(out_dims[i - 1]);
     }
-    out_dims = common::make_ddim(tmp_out_shape);
+    out_dims = make_ddim(tmp_out_shape);
   }
 
   if (axis == in_dims.size() - 1) {
     const int64_t input_height =
-        common::product(common::slice_ddim(in_dims, 0, in_dims.size() - 1));
+        common::product(slice_ddim(in_dims, 0, in_dims.size() - 1));
     const int64_t input_width = in_dims[in_dims.size() - 1];
     memset(x_grad_data, 0, d_x->numel() * sizeof(T));
     if (keepdim) {
@@ -131,9 +131,9 @@ void KthvalueGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<int64_t>(&trans_ind);
     int ndims = static_cast<int>(trans.size());
     if (keepdim) {
-      funcs::TransCompute<phi::CPUContext, T>(
+      funcs::TransCompute<CPUContext, T>(
           ndims, dev_ctx, d_out, &trans_dO, trans);
-      funcs::TransCompute<phi::CPUContext, int64_t>(
+      funcs::TransCompute<CPUContext, int64_t>(
           ndims, dev_ctx, indices, &trans_ind, trans);
     } else {
       DenseTensor out_grad_tmp, indices_tmp;
@@ -145,13 +145,13 @@ void KthvalueGradKernel(const Context& dev_ctx,
       Copy(dev_ctx, indices, dev_ctx.GetPlace(), false, &indices_tmp);
       out_grad_tmp.Resize(out_dims);
       indices_tmp.Resize(out_dims);
-      funcs::TransCompute<phi::CPUContext, T>(
+      funcs::TransCompute<CPUContext, T>(
           ndims, dev_ctx, out_grad_tmp, &trans_dO, trans);
-      funcs::TransCompute<phi::CPUContext, int64_t>(
+      funcs::TransCompute<CPUContext, int64_t>(
           ndims, dev_ctx, indices_tmp, &trans_ind, trans);
     }
-    const int64_t input_height = common::product(
-        common::slice_ddim(trans_in_dims, 0, trans_in_dims.size() - 1));
+    const int64_t input_height =
+        common::product(slice_ddim(trans_in_dims, 0, trans_in_dims.size() - 1));
     const int64_t input_width = trans_in_dims[trans_in_dims.size() - 1];
     DenseTensor tmp_out;
     tmp_out.Resize(trans_in_dims);
@@ -163,8 +163,7 @@ void KthvalueGradKernel(const Context& dev_ctx,
                                &trans_dO,
                                &trans_ind,
                                t_out);
-    funcs::TransCompute<phi::CPUContext, T>(
-        ndims, dev_ctx, tmp_out, d_x, trans);
+    funcs::TransCompute<CPUContext, T>(ndims, dev_ctx, tmp_out, d_x, trans);
   }
 }
 }  // namespace phi

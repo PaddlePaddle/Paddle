@@ -23,7 +23,7 @@ template <typename Context>
 void EmptyKernel(const Context& dev_ctx,
                  const IntArray& shape,
                  StringTensor* out) {
-  out->Resize(common::make_ddim(shape.GetData()));
+  out->Resize(shape.GetData());
   dev_ctx.template Alloc<dtype::pstring>(out);
 }
 
@@ -33,8 +33,6 @@ void EmptyLikeKernel(const Context& dev_ctx, StringTensor* out) {
 }
 
 }  // namespace phi::strings
-
-using pstring = ::phi::dtype::pstring;
 
 PD_REGISTER_KERNEL_FOR_ALL_DTYPE(strings_empty,
                                  CPU,

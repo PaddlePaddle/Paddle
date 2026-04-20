@@ -50,7 +50,7 @@ __global__ void LookupTableGrad(T *table,
     const T *out = output + idy * D;
     T *tab = table + id * D;
     for (int i = idx; i < D; i += BlockDimX) {
-      phi::CudaAtomicAdd(&tab[i], out[i]);
+      CudaAtomicAdd(&tab[i], out[i]);
     }
     idy += BlockDimY * GridDimX;
   }
@@ -141,7 +141,7 @@ void LookupTableSparseGradCUDAKernel(
 
   auto stream = dev_ctx.stream();
   // copy GPU memory to CPU pinned memory
-  phi::Vector<int64_t> new_rows;
+  Vector<int64_t> new_rows;
   new_rows.resize(ids_num);
   auto gpu_place = dev_ctx.GetPlace();
 

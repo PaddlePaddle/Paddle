@@ -33,15 +33,14 @@ void SwiGLUGradKernelImpl(const Context &dev_ctx,
 template <typename T, typename Context>
 void SwiGLUGradKernel(const Context &dev_ctx,
                       const DenseTensor &x,
-                      const paddle::optional<DenseTensor> &y,
+                      const optional<DenseTensor> &y,
                       const DenseTensor &dz,
                       DenseTensor *dx,
                       DenseTensor *dy) {
   if (dx && dx->numel() == 0) {
     dev_ctx.template Alloc<T>(dx);
     if (dy) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(dy->dims())), 0, dy);
+      Full<T, Context>(dev_ctx, dy->dims(), 0, dy);
     }
     return;
   }
@@ -49,8 +48,7 @@ void SwiGLUGradKernel(const Context &dev_ctx,
   if (dy && dy->numel() == 0) {
     dev_ctx.template Alloc<T>(dy);
     if (dx) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+      Full<T, Context>(dev_ctx, dx->dims(), 0, dx);
     }
     return;
   }

@@ -142,7 +142,7 @@ template <typename T, typename Context>
 void FusedDropoutAddKernel(const Context& dev_ctx,
                            const DenseTensor& x,
                            const DenseTensor& y,
-                           const paddle::optional<DenseTensor>& seed_tensor,
+                           const optional<DenseTensor>& seed_tensor,
                            const Scalar& p,
                            bool is_test,
                            const std::string& mode,

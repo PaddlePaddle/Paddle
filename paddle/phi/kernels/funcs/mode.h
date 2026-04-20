@@ -145,14 +145,14 @@ static void ModeAssign(const Type& input_height,
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 template <typename T>
-static void GetModebySort(const phi::GPUContext& dev_ctx,
+static void GetModebySort(const GPUContext& dev_ctx,
                           const DenseTensor* input_tensor,
                           const int64_t num_cols,
                           const int64_t num_rows,
                           T* out_tensor,
                           int64_t* indices_tensor) {
   DenseTensor input_tmp;
-  input_tmp.Resize(common::make_ddim({num_rows, num_cols}));
+  input_tmp.Resize({num_rows, num_cols});
   T* input_tmp_data = dev_ctx.Alloc<T>(&input_tmp);
   phi::Copy(dev_ctx, *input_tensor, dev_ctx.GetPlace(), false, &input_tmp);
 

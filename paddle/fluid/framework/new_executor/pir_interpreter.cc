@@ -104,7 +104,7 @@ namespace paddle::framework {
 void RecordLowPrecisionOp(const InstructionBase* instr_node) {
   if (FLAGS_low_precision_op_list) {
     std::string op_name = instr_node->Name();
-    ::pir::Operation* op = instr_node->Operation();
+    pir::Operation* op = instr_node->Operation();
     if (op->HasAttribute("kernel_key")) {
       phi::KernelKey kernel_key =
           op->attribute("kernel_key")
@@ -132,7 +132,7 @@ const int64_t PirInterpreter::cuda_graph_capture_pool_id_ =
 
 PirInterpreter::PirInterpreter(const phi::Place& place,
                                const std::vector<std::string>& fetch_var_names,
-                               const ::pir::Block* ir_block,
+                               const pir::Block* ir_block,
                                framework::Scope* scope,
                                const ExecutionConfig& execution_config)
     : is_build_(false),
@@ -223,7 +223,7 @@ PirInterpreter::PirInterpreter(const phi::Place& place,
 PirInterpreter::PirInterpreter(
     const phi::Place& place,
     const std::vector<std::string>& fetch_var_names,
-    const ::pir::Block* ir_block,
+    const pir::Block* ir_block,
     framework::Scope* scope,
     std::shared_ptr<ValueExecutionInfo> value_exe_info,
     const ExecutionConfig& execution_config)
@@ -522,7 +522,7 @@ Scope* PirInterpreter::InnerScope() const {
   return local_scope_ != nullptr ? local_scope_ : scope_;
 }
 
-std::string PirInterpreter::GetNameByValue(::pir::Value value) const {
+std::string PirInterpreter::GetNameByValue(pir::Value value) const {
   return value_exe_info_->GetVarName(value);
 }
 
@@ -922,7 +922,7 @@ void PirInterpreter::BuildInstruction() {
     } else if (op.dialect()->name() == "pd_kernel") {
       auto op_name = op.attributes()
                          .at("op_name")
-                         .dyn_cast<::pir::StrAttribute>()
+                         .dyn_cast<pir::StrAttribute>()
                          .AsString();
       if (interpreter::GetSpecialOpNames().count(op_name)) {
         VLOG(6) << "skip process " << op_name;
@@ -939,7 +939,7 @@ void PirInterpreter::BuildInstruction() {
     } else if (op.dialect()->name() == "onednn_kernel") {
       auto op_name = op.attributes()
                          .at("op_name")
-                         .dyn_cast<::pir::StrAttribute>()
+                         .dyn_cast<pir::StrAttribute>()
                          .AsString();
       VLOG(6) << "process " << op_name;
 
@@ -1194,11 +1194,10 @@ void PirInterpreter::RecordStreamForGC(InstructionBase* instr) {
 // To support all the operators for communicating in the future.
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   if (instr->Name() == "pd_op.send_v2") {
-    ::pir::Operation* op = instr->Operation();
+    pir::Operation* op = instr->Operation();
     if (op->HasAttribute("use_calc_stream") &&
-        op->attribute<::pir::BoolAttribute>("use_calc_stream").data() ==
-            false) {
-      int ring_id = op->attribute<::pir::Int32Attribute>("ring_id").data();
+        op->attribute<pir::BoolAttribute>("use_calc_stream").data() == false) {
+      int ring_id = op->attribute<pir::Int32Attribute>("ring_id").data();
       const auto& comm_context_manager =
           phi::distributed::CommContextManager::GetInstance();
       stream = static_cast<phi::distributed::NCCLCommContext*>(
@@ -1359,11 +1358,11 @@ void PirInterpreter::CalculateLastLiveOps() {
     InstructionBase* instr = vec_instruction_base_[op_idx].get();
     std::set<size_t> gc_check_vars;
 
-    const std::unordered_map<::pir::Value, std::vector<int>>& ins =
+    const std::unordered_map<pir::Value, std::vector<int>>& ins =
         instr->Inputs();
-    const std::unordered_map<::pir::Value, std::vector<int>>& outs =
+    const std::unordered_map<pir::Value, std::vector<int>>& outs =
         instr->Outputs();
-    std::unordered_multimap<::pir::Value, std::vector<int>> ins_and_outs{
+    std::unordered_multimap<pir::Value, std::vector<int>> ins_and_outs{
         ins.begin(), ins.end()};
 
     if (instr->Name() != "pd_op.fetch") {
@@ -1723,7 +1722,7 @@ void PirInterpreter::TraceRunInstructionList(
       auto instr_id = trace_execute_order_[i];
       auto* instr_node = vec_instruction_base_.at(instr_id).get();
       std::string op_name = instr_node->Name();
-      ::pir::Operation* op = instr_node->Operation();
+      pir::Operation* op = instr_node->Operation();
       if (op_name != "pd_op.feed" && !op->HasAttribute("ring_id")) {
         VLOG(3) << "Last calculated op type: " << op_name;
         last_calculate_instr_id_ = instr_node->Id();
@@ -1780,7 +1779,7 @@ void PirInterpreter::MultiThreadRunInstructionList(
     for (int i = vec_instr.size() - 1; i >= 0; --i) {
       auto* instr_node = vec_instr.at(i).get();
       std::string op_name = instr_node->Name();
-      ::pir::Operation* op = instr_node->Operation();
+      pir::Operation* op = instr_node->Operation();
       if (op_name != "pd_op.feed" && !op->HasAttribute("ring_id")) {
         VLOG(3) << "Last calculated op type: " << op_name;
         last_calculate_instr_id_ = vec_instr.at(i)->Id();
@@ -1932,7 +1931,7 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (enable_job_schedule_profiler_) {
       std::string op_name = instr_node->Name();
-      ::pir::Operation* op = instr_node->Operation();
+      pir::Operation* op = instr_node->Operation();
       if (!calculate_stream_timer_->IsStarted() && op_name != "pd_op.feed" &&
           !op->HasAttribute("ring_id") && op_name != "pd_op.shadow_feed" &&
           op_name != "pd_op.full" && op_name != "pd_op.full_int_array") {
@@ -2093,7 +2092,7 @@ void PirInterpreter::PreAnalysis() {
   use_trace_run_ = UseTraceRun(execution_config_, onednn_op_num_, sync_op_num_);
 }
 
-::pir::Value PirInterpreter::GetValueByName(const std::string& var_name) {
+pir::Value PirInterpreter::GetValueByName(const std::string& var_name) {
   for (auto kv : value_exe_info_->GetValue2VarName()) {
     if (kv.second == var_name) {
       return kv.first;
@@ -2105,9 +2104,9 @@ void PirInterpreter::PreAnalysis() {
 void PirInterpreter::SolvePersistableVarNames() {
   VLOG(6) << "SolvePersistableVarNames";
   for (auto kv : value_exe_info_->GetValue2VarName()) {
-    ::pir::Value value = kv.first;
+    pir::Value value = kv.first;
     const std::string& var_name = kv.second;
-    auto bool_attr = value.attribute<::pir::BoolAttribute>(kAttrIsPersistable);
+    auto bool_attr = value.attribute<pir::BoolAttribute>(kAttrIsPersistable);
     if (bool_attr && bool_attr.data()) {
       parameter_var_names_.insert(var_name);
     }

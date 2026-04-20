@@ -24,8 +24,8 @@ namespace paddle::framework {
 
 SelectOutputInstruction::SelectOutputInstruction(
     size_t id,
-    const phi::Place &place,
-    ::pir::Operation *op,
+    const Place &place,
+    pir::Operation *op,
     ValueExecutionInfo *value_exe_info)
     : InstructionBase(id, place),
       op_(op),

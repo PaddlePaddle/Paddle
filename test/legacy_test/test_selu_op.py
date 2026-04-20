@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import unittest
 
 import numpy as np
@@ -25,7 +26,7 @@ from op_test import (
 import paddle
 import paddle.nn.functional as F
 from paddle import base
-from paddle.base import core
+from paddle.base import core, dygraph
 
 
 def ref_selu(
@@ -192,6 +193,123 @@ class TestSeluAPI(unittest.TestCase):
                     name='x_fp16', shape=[12, 10], dtype='float16'
                 )
                 F.selu(x_fp16)
+
+
+class TestSELUOpClass_Inplace(unittest.TestCase):
+    def _test_case1_cpu(self):
+        x_np = np.random.normal(size=[3, 5, 5, 10]).astype(np.float32)
+        alpha = 2.0
+        scale = 1.5
+        y_ref = ref_selu(x_np, alpha, scale)
+
+        place = base.CPUPlace()
+        with dygraph.guard(place) as g:
+            x_var1 = paddle.to_tensor(x_np)
+            x_var2 = paddle.to_tensor(x_np)
+
+            y_var1 = F.selu(x_var1, alpha, scale, True)
+            y_test1 = y_var1.numpy()
+
+            func = paddle.nn.SELU(alpha, scale, True)
+            y_var2 = func(x_var2)
+            y_test2 = y_var2.numpy()
+
+        np.testing.assert_allclose(y_ref, y_test1, rtol=1e-05, atol=1e-08)
+        np.testing.assert_allclose(y_ref, y_test2, rtol=1e-05, atol=1e-08)
+
+        np.testing.assert_allclose(
+            y_ref, x_var1.numpy(), rtol=1e-05, atol=1e-08
+        )
+        np.testing.assert_allclose(
+            y_ref, x_var2.numpy(), rtol=1e-05, atol=1e-08
+        )
+
+    def _test_case1_gpu(self):
+        x = np.random.normal(size=[3, 5, 5, 10]).astype(np.float32)
+        x[np.abs(x) < 0.005] = 0.02
+        alpha = 1.6732632423543772848170429916717
+        scale = 1.0507009873554804934193349852946
+        y_ref = ref_selu(x, alpha, scale)
+
+        place = get_device_place()
+        with dygraph.guard(place) as g:
+            x_var1 = paddle.to_tensor(x)
+            x_var2 = paddle.to_tensor(x)
+
+            y_var1 = F.selu(x_var1, alpha, scale, True)
+            y_test1 = y_var1.numpy()
+
+            func = paddle.nn.SELU(alpha, scale, True)
+            y_var2 = func(x_var2)
+            y_test2 = y_var2.numpy()
+
+        np.testing.assert_allclose(y_ref, y_test1, rtol=1e-05, atol=1e-08)
+        np.testing.assert_allclose(y_ref, y_test2, rtol=1e-05, atol=1e-08)
+
+        np.testing.assert_allclose(
+            y_ref, x_var1.numpy(), rtol=1e-05, atol=1e-08
+        )
+        np.testing.assert_allclose(
+            y_ref, x_var2.numpy(), rtol=1e-05, atol=1e-08
+        )
+
+    def test_cases(self):
+        self._test_case1_cpu()
+        if base.is_compiled_with_cuda() or is_custom_device():
+            self._test_case1_gpu()
+
+
+class TestSELUAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(0)
+        self.shape = [3, 5, 5, 10]
+        self.x_np = np.random.normal(size=self.shape).astype(np.float32)
+        self.x_np[np.abs(self.x_np) < 0.005] = 0.02
+        self.alpha = 1.6732632423543772848170429916717
+        self.scale = 1.0507009873554804934193349852946
+        self.place = [get_device_place()]
+        self.x_feed = copy.deepcopy(self.x_np)
+
+    def test_api_static(self):
+        paddle.enable_static()
+
+        def run(place, inplace):
+            with paddle.static.program_guard(paddle.static.Program()):
+                x = paddle.static.data('X', self.shape)
+                out = F.selu(x, self.alpha, self.scale, inplace)
+                exe = paddle.static.Executor(place)
+                res = exe.run(
+                    feed={
+                        'X': self.x_feed,
+                    },
+                    fetch_list=[out],
+                )
+            target = copy.deepcopy(self.x_np)
+            out_ref = ref_selu(target, self.alpha, self.scale)
+
+            for out in res:
+                np.testing.assert_allclose(out, out_ref, rtol=0.001)
+
+        for place in self.place:
+            run(place, True)
+            run(place, False)
+
+    def test_api_dygraph(self):
+        def run(place, inplace):
+            paddle.disable_static(place)
+            x_tensor = paddle.to_tensor(self.x_np)
+            out = F.selu(x_tensor, self.alpha, self.scale, inplace)
+
+            target = copy.deepcopy(self.x_np)
+            out_ref = ref_selu(target, self.alpha, self.scale)
+
+            np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
+
+            paddle.enable_static()
+
+        for place in self.place:
+            run(place, True)
+            run(place, False)
 
 
 if __name__ == "__main__":

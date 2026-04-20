@@ -38,7 +38,7 @@ namespace paddle::framework {
 
 template <typename TENSOR>
 void TensorCopyImpl(const TENSOR& src,
-                    const phi::Place& dst_place,
+                    const Place& dst_place,
                     const phi::DeviceContext& ctx,
                     TENSOR* dst) {
   if (&src == dst) {
@@ -266,9 +266,7 @@ void TensorCopyImpl(const TENSOR& src,
 }
 
 template <typename TENSOR>
-void TensorCopyImpl(const TENSOR& src,
-                    const phi::Place& dst_place,
-                    TENSOR* dst) {
+void TensorCopyImpl(const TENSOR& src, const Place& dst_place, TENSOR* dst) {
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   const phi::DeviceContext* dev_ctx = nullptr;
   if (phi::is_gpu_place(dst_place) || phi::is_custom_place(dst_place)) {
@@ -279,23 +277,23 @@ void TensorCopyImpl(const TENSOR& src,
   TensorCopyImpl(src, dst_place, *dev_ctx, dst);
 }
 
-void TensorCopy(const phi::DenseTensor& src,
-                const phi::Place& dst_place,
-                phi::DenseTensor* dst) {
+void TensorCopy(const DenseTensor& src,
+                const Place& dst_place,
+                DenseTensor* dst) {
   TensorCopyImpl<DenseTensor>(src, dst_place, dst);
   dst->set_strides(src.strides());
 }
-void TensorCopy(const phi::DenseTensor& src,
-                const phi::Place& dst_place,
+void TensorCopy(const DenseTensor& src,
+                const Place& dst_place,
                 const phi::DeviceContext& ctx,
-                phi::DenseTensor* dst) {
+                DenseTensor* dst) {
   TensorCopyImpl<DenseTensor>(src, dst_place, ctx, dst);
   dst->set_strides(src.strides());
 }
 
-void TensorCopySync(const phi::DenseTensor& src,
-                    const phi::Place& dst_place,
-                    phi::DenseTensor* dst) {
+void TensorCopySync(const DenseTensor& src,
+                    const Place& dst_place,
+                    DenseTensor* dst) {
   if (&src == dst) {
     auto src_copy = src;
     TensorCopySync(src_copy, dst_place, dst);
@@ -447,15 +445,15 @@ void TensorCopySync(const phi::DenseTensor& src,
 }
 
 void TensorToStream(std::ostream& os,
-                    const phi::DenseTensor& tensor,
+                    const DenseTensor& tensor,
                     const phi::DeviceContext& dev_ctx) {
-  const auto ensure_contiguous = [](const phi::DenseTensor& tensor) {
+  const auto ensure_contiguous = [](const DenseTensor& tensor) {
     if (tensor.meta().is_contiguous()) {
       return tensor;
     }
     return paddle::experimental::Trans2Contiguous(tensor);
   };
-  const phi::DenseTensor& contiguous_tensor = ensure_contiguous(tensor);
+  const DenseTensor& contiguous_tensor = ensure_contiguous(tensor);
   {  // the 1st field, uint32_t version
     constexpr uint32_t version = 0;
     os.write(reinterpret_cast<const char*>(&version), sizeof(version));
@@ -565,9 +563,7 @@ void TensorToStream(std::ostream& os,
 }
 
 struct DeserializedDataFunctor {
-  DeserializedDataFunctor(void** buf,
-                          phi::DenseTensor* tensor,
-                          const phi::Place& place)
+  DeserializedDataFunctor(void** buf, DenseTensor* tensor, const Place& place)
       : buf_(buf), tensor_(tensor), place_(place) {}
 
   template <typename T>
@@ -576,12 +572,12 @@ struct DeserializedDataFunctor {
   }
 
   void** buf_;
-  phi::DenseTensor* tensor_;
-  phi::Place place_;
+  DenseTensor* tensor_;
+  Place place_;
 };
 
 void TensorFromStream(std::istream& is,
-                      phi::DenseTensor* tensor,
+                      DenseTensor* tensor,
                       const phi::DeviceContext& dev_ctx,
                       const size_t& seek,
                       const std::vector<int64_t>& shape) {
@@ -650,7 +646,7 @@ void TensorFromStream(std::istream& is,
 }
 
 void TensorFromStream(std::istream& is,
-                      phi::DenseTensor* tensor,
+                      DenseTensor* tensor,
                       const phi::DeviceContext& dev_ctx) {
   uint32_t version = 0;
   is.read(reinterpret_cast<char*>(&version), sizeof(version));
@@ -761,13 +757,13 @@ DenseTensor TensorFromDLPack(DLManagedTensorVersioned* src) {
 }
 
 template <typename T>
-std::string format_tensor(const phi::DenseTensor& tensor) {
+std::string format_tensor(const DenseTensor& tensor) {
   // TODO(zhiqiu): use the print option to format tensor.
   return "NOT IMPLEMENTED";
 }
 
 template <typename T>
-std::ostream& print_tensor(std::ostream& os, const phi::DenseTensor& tensor) {
+std::ostream& print_tensor(std::ostream& os, const DenseTensor& tensor) {
   auto inspect = tensor.data<T>();
   auto element_num = tensor.numel();
 
@@ -795,7 +791,7 @@ std::ostream& print_tensor(std::ostream& os, const phi::DenseTensor& tensor) {
 
 template <>
 std::ostream& print_tensor<phi::dtype::complex<float>>(
-    std::ostream& os, const phi::DenseTensor& tensor) {
+    std::ostream& os, const DenseTensor& tensor) {
   auto inspect = tensor.data<phi::dtype::complex<float>>();
   auto element_num = tensor.numel();
 
@@ -813,7 +809,7 @@ std::ostream& print_tensor<phi::dtype::complex<float>>(
 
 template <>
 std::ostream& print_tensor<phi::dtype::complex<double>>(
-    std::ostream& os, const phi::DenseTensor& tensor) {
+    std::ostream& os, const DenseTensor& tensor) {
   auto inspect = tensor.data<phi::dtype::complex<double>>();
   auto element_num = tensor.numel();
 
@@ -846,7 +842,7 @@ std::ostream& operator<<(std::ostream& os, const LegacyLoD& lod) {
   return os;
 }
 
-TEST_API std::ostream& operator<<(std::ostream& os, const phi::DenseTensor& t) {
+TEST_API std::ostream& operator<<(std::ostream& os, const DenseTensor& t) {
   if (!t.valid()) {
     os << "invalid\n";
     return os;

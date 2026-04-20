@@ -11,6 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include <algorithm>
 #include <csignal>
 #include <fstream>
 #include <string>
@@ -109,6 +110,21 @@ bool InitGflags(std::vector<std::string> args) {
     VLOG(8) << "After Parse: argc is " << argc;
   });
   return succeeded;
+}
+
+void InitGflagsFromEnv() {
+  std::vector<std::string> env_flags;
+  const auto &flag_map = phi::GetExportedFlagInfoMap();
+  env_flags.reserve(flag_map.size());
+  for (const auto &pair : flag_map) {
+    env_flags.push_back(pair.second.name);
+  }
+#ifdef __APPLE__
+  env_flags.erase(
+      std::remove(env_flags.begin(), env_flags.end(), "use_pinned_memory"),
+      env_flags.end());
+#endif
+  paddle::flags::SetFlagsFromEnv(env_flags, false);
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_XPU)

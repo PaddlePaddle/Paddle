@@ -43,39 +43,35 @@ void FlashAttnV3BaseKernel(
     const DenseTensor &q,
     const DenseTensor &k,
     const DenseTensor &v,
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor>
         &k_new_,  // (b, s_k_new, h_k, d) or (total_k_new, h_k, d) if there is
                   // cu_seqlens_k_new
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor>
         &v_new_,  // (b, s_k_new, h_k, dv) or (total_k_new, h_k, dv) if there is
                   // cu_seqlens_k_new
-    const paddle::optional<DenseTensor>
-        &q_v_,  // (b, s_q, h, dv) or (total_q_new, h, dv) if there is
-                // cu_seqlens_q
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor> &q_v_,  // (b, s_q, h, dv) or (total_q_new, h,
+                                        // dv) if there is cu_seqlens_q
+    const optional<DenseTensor>
         &out_,  // (b, s_q, h, dv) or (total_q, h, dv) if there is cu_seqlens_q
-    const paddle::optional<DenseTensor> &cu_seqlens_q_,      // b+1
-    const paddle::optional<DenseTensor> &cu_seqlens_k_,      // b+1
-    const paddle::optional<DenseTensor> &cu_seqlens_k_new_,  // b+1
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor> &cu_seqlens_q_,      // b+1
+    const optional<DenseTensor> &cu_seqlens_k_,      // b+1
+    const optional<DenseTensor> &cu_seqlens_k_new_,  // b+1
+    const optional<DenseTensor>
         &seqused_q_,  // b. If given, only this many elements of each batch
                       // element's queries and outputs are used.
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor>
         &seqused_k_,  // b. If given, only this many elements of each batch
                       // element's keys are used.
-    const paddle::optional<DenseTensor>
-        &page_table_,  // (b_k, max_num_pages_per_seq)
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor> &page_table_,  // (b_k, max_num_pages_per_seq)
+    const optional<DenseTensor>
         &kv_batch_idx_,  // b. indices to index into the KV cache
-    const paddle::optional<DenseTensor> &leftpad_k_,  // b
-    const paddle::optional<DenseTensor>
-        &rotary_cos_,  // seqlen_ro x (rotary_dim / 2)
-    const paddle::optional<DenseTensor>
-        &rotary_sin_,  // seqlen_ro x (rotary_dim / 2)
-    const paddle::optional<DenseTensor> &q_descale_,  // (b, h_k), not (b, h)
-    const paddle::optional<DenseTensor> &k_descale_,  // (b, h_k)
-    const paddle::optional<DenseTensor> &v_descale_,  // (b, h_k)
-    const paddle::optional<DenseTensor> &scheduler_metadata_,  // (b + 1)
+    const optional<DenseTensor> &leftpad_k_,   // b
+    const optional<DenseTensor> &rotary_cos_,  // seqlen_ro x (rotary_dim / 2)
+    const optional<DenseTensor> &rotary_sin_,  // seqlen_ro x (rotary_dim / 2)
+    const optional<DenseTensor> &q_descale_,   // (b, h_k), not (b, h)
+    const optional<DenseTensor> &k_descale_,   // (b, h_k)
+    const optional<DenseTensor> &v_descale_,   // (b, h_k)
+    const optional<DenseTensor> &scheduler_metadata_,  // (b + 1)
     const int
         max_seqlen_q_,  // if max_seqlen_q_ is set to 0, it indicates that it is
                         // uninitialized and should not be referenced
@@ -113,8 +109,8 @@ void FlashAttnV3BaseKernel(
 
   auto q_type = q.dtype();
   PADDLE_ENFORCE_EQ(
-      (q_type == phi::DataType::FLOAT16 || q_type == phi::DataType::BFLOAT16 ||
-       q_type == phi::DataType::FLOAT8_E4M3FN),
+      (q_type == DataType::FLOAT16 || q_type == DataType::BFLOAT16 ||
+       q_type == DataType::FLOAT8_E4M3FN),
       true,
       common::errors::InvalidArgument(
           "FlashAttention-3 only supports fp16, bf16, and fp8_e4m3 data type"));
@@ -147,13 +143,13 @@ void FlashAttnV3BaseKernel(
 
   DenseTensor page_table;
   // const bool paged_KV = page_table_.has_value();
-  // umiswing: this is stupid but idk how to use paddle::optional
+  // umiswing: this is stupid but idk how to use optional
   const bool paged_KV = page_table_.is_initialized();
   if (paged_KV) {
     page_table = page_table_.get();
     CHECK_DEVICE(page_table);
     PADDLE_ENFORCE_EQ(page_table.dtype(),
-                      phi::DataType::INT32,
+                      DataType::INT32,
                       common::errors::InvalidArgument(
                           "page_table must have dtype paddle.int32"));
     PADDLE_ENFORCE_EQ(page_table.strides()[page_table.strides().size() - 1],
@@ -167,14 +163,14 @@ void FlashAttnV3BaseKernel(
   DenseTensor cu_seqlens_q;
   // bool const is_varlen_q = cu_seqlens_q_.has_value();
   // TODO(umiswing): this is stupid, must fix it (after understand
-  // paddle::optional)
+  // optional)
   const bool is_varlen_q = cu_seqlens_q_.is_initialized();
   if (is_varlen_q) {
     cu_seqlens_q = cu_seqlens_q_.get();
     CHECK_DEVICE(cu_seqlens_q);
     CHECK_CONTIGUOUS(cu_seqlens_q);
     PADDLE_ENFORCE_EQ(cu_seqlens_q.dtype(),
-                      phi::DataType::INT32,
+                      DataType::INT32,
                       common::errors::InvalidArgument(
                           "cu_seqlens_q must have dtype paddle.int32"));
     PADDLE_ENFORCE_NE(
@@ -191,7 +187,7 @@ void FlashAttnV3BaseKernel(
     CHECK_DEVICE(cu_seqlens_k);
     CHECK_CONTIGUOUS(cu_seqlens_k);
     PADDLE_ENFORCE_EQ(cu_seqlens_k.dtype(),
-                      phi::DataType::INT32,
+                      DataType::INT32,
                       common::errors::InvalidArgument(
                           "cu_seqlens_k must have dtype paddle.int32"));
     PADDLE_ENFORCE_NE(
@@ -263,11 +259,11 @@ void FlashAttnV3BaseKernel(
                       common::errors::InvalidArgument(
                           "Only Hopper supports different V headdim"));
     if (head_size_v > 256) {
-      PADDLE_ENFORCE_EQ((q_type == phi::DataType::FLOAT16 ||
-                         q_type == phi::DataType::BFLOAT16),
-                        true,
-                        common::errors::InvalidArgument(
-                            "HeaddimV > 256 requires fp16 and bf16 data type"));
+      PADDLE_ENFORCE_EQ(
+          (q_type == DataType::FLOAT16 || q_type == DataType::BFLOAT16),
+          true,
+          common::errors::InvalidArgument(
+              "HeaddimV > 256 requires fp16 and bf16 data type"));
     }
   }
 
@@ -321,7 +317,7 @@ void FlashAttnV3BaseKernel(
     auto seqused_q = seqused_q_.get();
     PADDLE_ENFORCE_EQ(
         seqused_q.dtype(),
-        phi::DataType::INT32,
+        DataType::INT32,
         common::errors::InvalidArgument("seqused_q must have dtype int32"));
     CHECK_DEVICE(seqused_q);
     CHECK_CONTIGUOUS(seqused_q);
@@ -331,7 +327,7 @@ void FlashAttnV3BaseKernel(
     auto seqused_k = seqused_k_.get();
     PADDLE_ENFORCE_EQ(
         seqused_k.dtype(),
-        phi::DataType::INT32,
+        DataType::INT32,
         common::errors::InvalidArgument("seqused_k must have dtype int32"));
     CHECK_DEVICE(seqused_k);
     CHECK_CONTIGUOUS(seqused_k);
@@ -342,7 +338,7 @@ void FlashAttnV3BaseKernel(
     auto leftpad_k = leftpad_k_.get();
     PADDLE_ENFORCE_EQ(
         leftpad_k.dtype(),
-        phi::DataType::INT32,
+        DataType::INT32,
         common::errors::InvalidArgument("leftpad_k must have dtype int32"));
     CHECK_DEVICE(leftpad_k);
     CHECK_CONTIGUOUS(leftpad_k);
@@ -360,7 +356,7 @@ void FlashAttnV3BaseKernel(
                         "This flash attention build does not support varlen."));
 #endif
 
-  int const alignment = q_type == phi::DataType::FLOAT8_E4M3FN ? 16 : 8;
+  int const alignment = q_type == DataType::FLOAT8_E4M3FN ? 16 : 8;
   PADDLE_ENFORCE_EQ(head_size % alignment,
                     0,
                     common::errors::InvalidArgument(
@@ -371,7 +367,7 @@ void FlashAttnV3BaseKernel(
                         "head_size_v should be a multiple of %d", alignment));
 
   auto out_type =
-      q_type == phi::DataType::FLOAT8_E4M3FN ? phi::DataType::BFLOAT16 : q_type;
+      q_type == DataType::FLOAT8_E4M3FN ? DataType::BFLOAT16 : q_type;
   if (out_.is_initialized()) {
     *out = out_.get();
     PADDLE_ENFORCE_EQ(
@@ -392,12 +388,11 @@ void FlashAttnV3BaseKernel(
     }
   } else {
     if (!is_varlen_q) {
-      out->Resize(
-          common::make_ddim({batch_size, seqlen_q, num_heads, head_size_v}));
+      out->Resize({batch_size, seqlen_q, num_heads, head_size_v});
     } else {
-      out->Resize(common::make_ddim({total_q, num_heads, head_size_v}));
+      out->Resize({total_q, num_heads, head_size_v});
     }
-    if (q_type == phi::DataType::FLOAT8_E4M3FN) {
+    if (q_type == DataType::FLOAT8_E4M3FN) {
       dev_ctx.template Alloc<phi::bfloat16>(out);
     } else {
       // umiswing: assuming T is Input Type
@@ -412,9 +407,9 @@ void FlashAttnV3BaseKernel(
   int const seqlen_k_rounded = round_multiple(seqlen_k, 128);
 
   if (!is_varlen_q) {
-    softmax_lse->Resize(common::make_ddim({batch_size, num_heads, seqlen_q}));
+    softmax_lse->Resize({batch_size, num_heads, seqlen_q});
   } else {
-    softmax_lse->Resize(common::make_ddim({num_heads, total_q}));
+    softmax_lse->Resize({num_heads, total_q});
   }
   dev_ctx.template Alloc<float>(softmax_lse);
 
@@ -449,26 +444,25 @@ void FlashAttnV3BaseKernel(
       dprops,
       softcap,
       sm_margin);
-  phi::dynload::fa3_fwd_params_set_total_q(params_handle, total_q);
-  phi::dynload::fa3_fwd_params_set_total_k(params_handle, total_k);
-  phi::dynload::fa3_fwd_params_set_b_k(params_handle, batch_size_k);
-  phi::dynload::fa3_fwd_params_set_dv(params_handle, head_size_v);
-  phi::dynload::fa3_fwd_params_set_dv_rounded(params_handle,
-                                              head_size_v_rounded);
+  dynload::fa3_fwd_params_set_total_q(params_handle, total_q);
+  dynload::fa3_fwd_params_set_total_k(params_handle, total_k);
+  dynload::fa3_fwd_params_set_b_k(params_handle, batch_size_k);
+  dynload::fa3_fwd_params_set_dv(params_handle, head_size_v);
+  dynload::fa3_fwd_params_set_dv_rounded(params_handle, head_size_v_rounded);
 
   if (leftpad_k_
           .is_initialized()) {  // This needs to be set before get_pagedkv_tma
-    phi::dynload::fa3_fwd_params_set_leftpad_k(params_handle,
-                                               leftpad_k_.get().data<int>());
+    dynload::fa3_fwd_params_set_leftpad_k(params_handle,
+                                          leftpad_k_.get().data<int>());
   }
   if (paged_KV) {
-    phi::dynload::fa3_fwd_params_set_page_table(params_handle,
-                                                page_table.data<int>());
-    phi::dynload::fa3_fwd_params_set_page_table_batch_stride(
+    dynload::fa3_fwd_params_set_page_table(params_handle,
+                                           page_table.data<int>());
+    dynload::fa3_fwd_params_set_page_table_batch_stride(
         params_handle, page_table.strides()[0]);
   }
-  phi::dynload::fa3_fwd_params_set_page_size(params_handle, page_size);
-  phi::dynload::fa3_fwd_params_set_num_pages(params_handle, num_pages);
+  dynload::fa3_fwd_params_set_page_size(params_handle, page_size);
+  dynload::fa3_fwd_params_set_num_pages(params_handle, num_pages);
 
   if (k_new_.is_initialized()) {  // This needs to be set before get_pagedkv_tma
     DenseTensor k_new, v_new;
@@ -495,7 +489,7 @@ void FlashAttnV3BaseKernel(
       CHECK_DEVICE(cu_seqlens_k_new);
       CHECK_CONTIGUOUS(cu_seqlens_k_new);
       PADDLE_ENFORCE_EQ(cu_seqlens_k_new.dtype(),
-                        phi::DataType::INT32,
+                        DataType::INT32,
                         common::errors::InvalidArgument(
                             "cu_seqlens_k_new must have dtype paddle.int32"));
     }
@@ -533,67 +527,67 @@ void FlashAttnV3BaseKernel(
       CHECK_SHAPE(cu_seqlens_k_new, batch_size + 1);
     }
     // umiswing: dump this to shared library
-    phi::dynload::fa3_fwd_params_set_seqlen_knew(params_handle, seqlen_k_new);
-    phi::dynload::fa3_fwd_params_set_total_knew(params_handle, total_k_new);
-    phi::dynload::fa3_fwd_params_set_knew_ptr(params_handle,
-                                              const_cast<void *>(k_new.data()));
-    phi::dynload::fa3_fwd_params_set_vnew_ptr(params_handle,
-                                              const_cast<void *>(v_new.data()));
+    dynload::fa3_fwd_params_set_seqlen_knew(params_handle, seqlen_k_new);
+    dynload::fa3_fwd_params_set_total_knew(params_handle, total_k_new);
+    dynload::fa3_fwd_params_set_knew_ptr(params_handle,
+                                         const_cast<void *>(k_new.data()));
+    dynload::fa3_fwd_params_set_vnew_ptr(params_handle,
+                                         const_cast<void *>(v_new.data()));
     // All stride are in elements, not bytes.
-    phi::dynload::fa3_fwd_params_set_knew_row_stride(
+    dynload::fa3_fwd_params_set_knew_row_stride(
         params_handle, k_new.strides()[k_new.strides().size() - 3]);
-    phi::dynload::fa3_fwd_params_set_vnew_row_stride(
+    dynload::fa3_fwd_params_set_vnew_row_stride(
         params_handle, v_new.strides()[v_new.strides().size() - 3]);
-    phi::dynload::fa3_fwd_params_set_knew_head_stride(
+    dynload::fa3_fwd_params_set_knew_head_stride(
         params_handle, k_new.strides()[k_new.strides().size() - 2]);
-    phi::dynload::fa3_fwd_params_set_vnew_head_stride(
+    dynload::fa3_fwd_params_set_vnew_head_stride(
         params_handle, v_new.strides()[v_new.strides().size() - 2]);
     if (!is_varlen_k_new) {
-      phi::dynload::fa3_fwd_params_set_knew_batch_stride(params_handle,
-                                                         k_new.strides()[0]);
-      phi::dynload::fa3_fwd_params_set_vnew_batch_stride(params_handle,
-                                                         v_new.strides()[0]);
+      dynload::fa3_fwd_params_set_knew_batch_stride(params_handle,
+                                                    k_new.strides()[0]);
+      dynload::fa3_fwd_params_set_vnew_batch_stride(params_handle,
+                                                    v_new.strides()[0]);
     }
     if (is_varlen_k_new) {
-      phi::dynload::fa3_fwd_params_set_cu_seqlens_knew(
-          params_handle, cu_seqlens_k_new.data<int>());
+      dynload::fa3_fwd_params_set_cu_seqlens_knew(params_handle,
+                                                  cu_seqlens_k_new.data<int>());
     }
   }
 
   // 992 = 32 * 31 is the max supported batch in prepare_varlen_num_blocks
   // kernel
   bool const use_dynamic_split =
-      is_varlen && phi::dynload::fa3_fwd_params_get_b(params_handle) <= 992;
+      is_varlen && dynload::fa3_fwd_params_get_b(params_handle) <= 992;
   // Temporarily set num_splits_dynamic_ptr to 1 since get_num_splits checks it
-  phi::dynload::fa3_fwd_params_set_num_splits_dynamic_ptr(
+  dynload::fa3_fwd_params_set_num_splits_dynamic_ptr(
       params_handle, !use_dynamic_split ? nullptr : reinterpret_cast<int *>(1));
 
-  phi::dynload::fa3_fwd_params_set_pagedkv_tma(
-      params_handle, phi::dynload::fa3_get_pagedkv_tma(params_handle));
+  dynload::fa3_fwd_params_set_pagedkv_tma(
+      params_handle, dynload::fa3_get_pagedkv_tma(params_handle));
   if (num_splits <= 0) {
-    num_splits = phi::dynload::fa3_get_num_splits(params_handle);
+    num_splits = dynload::fa3_get_num_splits(params_handle);
   }
-  phi::dynload::fa3_fwd_params_set_num_splits(params_handle, num_splits);
+  dynload::fa3_fwd_params_set_num_splits(params_handle, num_splits);
 
   // Always enable PackGQA for Split, and get_pack_gqa requires
   // params.num_splits to decide
   const bool pack_gqa = manual_set_pack_gqa
                             ? pack_gqa_
-                            : phi::dynload::fa3_get_pack_gqa(params_handle);
-  phi::dynload::fa3_fwd_params_set_pack_gqa(params_handle, pack_gqa);
+                            : dynload::fa3_get_pack_gqa(params_handle);
+  dynload::fa3_fwd_params_set_pack_gqa(params_handle, pack_gqa);
 
   // This needs to be set after get_num_splits
   DenseTensor tile_count_semaphore;  // Contains the semaphore and optionally
                                      // num_splits_dynamic
   // We don't use the persistent scheduler if Split and not Varlen
   const bool params_is_causal =
-      phi::dynload::fa3_fwd_params_get_is_causal(params_handle);
+      dynload::fa3_fwd_params_get_is_causal(params_handle);
   const bool params_is_local =
-      phi::dynload::fa3_fwd_params_get_is_local(params_handle);
+      dynload::fa3_fwd_params_get_is_local(params_handle);
   const int params_num_splits =
-      phi::dynload::fa3_fwd_params_get_num_splits(params_handle);
-  const int params_b = phi::dynload::fa3_fwd_params_get_b(params_handle);
-  const int params_arch = phi::dynload::fa3_fwd_params_get_arch(params_handle);
+      dynload::fa3_fwd_params_get_num_splits(params_handle);
+  const int params_b = dynload::fa3_fwd_params_get_b(params_handle);
+  const int params_arch = dynload::fa3_fwd_params_get_arch(params_handle);
   bool const scheduler_needs_semaphore =
       params_arch >= 90 ? (((params_is_causal || params_is_local) &&
                             (params_num_splits == 1)) ||
@@ -603,7 +597,7 @@ void FlashAttnV3BaseKernel(
   if (scheduler_needs_semaphore || use_dynamic_split) {
     int metadata_size = static_cast<int>(scheduler_needs_semaphore) +
                         static_cast<int>(use_dynamic_split) * params_b;
-    phi::dynload::fa3_fwd_params_set_skip_scheduler_metadata_computation(
+    dynload::fa3_fwd_params_set_skip_scheduler_metadata_computation(
         params_handle, scheduler_metadata_.is_initialized());
     if (scheduler_metadata_.is_initialized()) {
       DenseTensor scheduler_metadata = scheduler_metadata_.get();
@@ -611,7 +605,7 @@ void FlashAttnV3BaseKernel(
       CHECK_SHAPE(scheduler_metadata, metadata_size);
       CHECK_CONTIGUOUS(scheduler_metadata);
       PADDLE_ENFORCE_EQ(scheduler_metadata.dtype(),
-                        phi::DataType::INT32,
+                        DataType::INT32,
                         common::errors::InvalidArgument(
                             "scheduler_metadata must have dtype int32"));
       tile_count_semaphore = scheduler_metadata;
@@ -624,12 +618,12 @@ void FlashAttnV3BaseKernel(
                &tile_count_semaphore,
                int32_t{0});  // If varlen we'll manually do the zero-ing
     }
-    phi::dynload::fa3_fwd_params_set_tile_count_semaphore(
+    dynload::fa3_fwd_params_set_tile_count_semaphore(
         params_handle,
         scheduler_needs_semaphore
             ? const_cast<int *>(tile_count_semaphore.data<int>())
             : nullptr);
-    phi::dynload::fa3_fwd_params_set_num_splits_dynamic_ptr(
+    dynload::fa3_fwd_params_set_num_splits_dynamic_ptr(
         params_handle,
         use_dynamic_split
             ? const_cast<int *>(tile_count_semaphore.data<int>()) + 1
@@ -642,7 +636,7 @@ void FlashAttnV3BaseKernel(
                       common::errors::InvalidArgument(
                           "q_v is only supported for head_size <= 64"));
     PADDLE_ENFORCE_EQ(
-        (q_type == phi::DataType::FLOAT16 || q_type == phi::DataType::FLOAT16),
+        (q_type == DataType::FLOAT16 || q_type == DataType::FLOAT16),
         true,
         common::errors::InvalidArgument(
             "q_v is only supported for fp16 and bf16 data type"));
@@ -665,16 +659,16 @@ void FlashAttnV3BaseKernel(
     } else {
       CHECK_SHAPE(q_v, total_q, num_heads, head_size_v);
     }
-    phi::dynload::fa3_fwd_params_set_qv_ptr(params_handle,
-                                            const_cast<void *>(q_v.data()));
+    dynload::fa3_fwd_params_set_qv_ptr(params_handle,
+                                       const_cast<void *>(q_v.data()));
     // All stride are in elements, not bytes.
-    phi::dynload::fa3_fwd_params_set_qv_row_stride(
+    dynload::fa3_fwd_params_set_qv_row_stride(
         params_handle, q_v.strides()[q_v.strides().size() - 3]);
-    phi::dynload::fa3_fwd_params_set_qv_head_stride(
+    dynload::fa3_fwd_params_set_qv_head_stride(
         params_handle, q_v.strides()[q_v.strides().size() - 2]);
     if (!is_varlen_q) {
-      phi::dynload::fa3_fwd_params_set_qv_batch_stride(params_handle,
-                                                       q_v.strides()[0]);
+      dynload::fa3_fwd_params_set_qv_batch_stride(params_handle,
+                                                  q_v.strides()[0]);
     }
   }
 
@@ -689,8 +683,7 @@ void FlashAttnV3BaseKernel(
     CHECK_DEVICE(rotary_cos);
     CHECK_CONTIGUOUS(rotary_cos);
     int params_rotary_dim = rotary_cos.dims()[1] * 2;
-    phi::dynload::fa3_fwd_params_set_rotary_dim(params_handle,
-                                                params_rotary_dim);
+    dynload::fa3_fwd_params_set_rotary_dim(params_handle, params_rotary_dim);
     PADDLE_ENFORCE_LE(
         params_rotary_dim,
         head_size,
@@ -731,14 +724,14 @@ void FlashAttnV3BaseKernel(
                       common::errors::InvalidArgument(
                           "rotary_cos must have the same dtype as query"));
 
-    phi::dynload::fa3_fwd_params_set_rotary_cos_ptr(
+    dynload::fa3_fwd_params_set_rotary_cos_ptr(
         params_handle, const_cast<void *>(rotary_cos.data()));
-    phi::dynload::fa3_fwd_params_set_rotary_sin_ptr(
+    dynload::fa3_fwd_params_set_rotary_sin_ptr(
         params_handle, const_cast<void *>(rotary_sin.data()));
     dynload::fa3_fwd_params_set_is_rotary_interleaved(params_handle,
                                                       is_rotary_interleaved);
   } else {
-    phi::dynload::fa3_fwd_params_set_rotary_dim(params_handle, 0);
+    dynload::fa3_fwd_params_set_rotary_dim(params_handle, 0);
   }
 
   if (kv_batch_idx_.is_initialized()) {
@@ -747,143 +740,143 @@ void FlashAttnV3BaseKernel(
     CHECK_CONTIGUOUS(kv_batch_idx);
     PADDLE_ENFORCE_EQ(
         kv_batch_idx.dtype(),
-        phi::DataType::INT32,
+        DataType::INT32,
         common::errors::InvalidArgument("kv_batch_idx must have dtype int32"));
-    phi::dynload::fa3_fwd_params_set_kv_batch_idx(
+    dynload::fa3_fwd_params_set_kv_batch_idx(
         params_handle, reinterpret_cast<int *>(kv_batch_idx.data()));
   }
 
-  if (phi::dynload::fa3_fwd_params_get_num_splits(params_handle) > 1) {
+  if (dynload::fa3_fwd_params_get_num_splits(params_handle) > 1) {
     PADDLE_ENFORCE_LE(
-        phi::dynload::fa3_fwd_params_get_num_splits(params_handle),
+        dynload::fa3_fwd_params_get_num_splits(params_handle),
         256,
         common::errors::InvalidArgument("num_splits > 256 not supported"));
     if (!is_varlen_q) {
-      out_accum->Resize(common::make_ddim(
-          {phi::dynload::fa3_fwd_params_get_num_splits(params_handle),
-           batch_size,
-           num_heads,
-           seqlen_q,
-           head_size_v}));
-      softmax_lse_accum->Resize(common::make_ddim(
-          {phi::dynload::fa3_fwd_params_get_num_splits(params_handle),
-           batch_size,
-           num_heads,
-           seqlen_q}));
+      out_accum->Resize(
+          make_ddim({dynload::fa3_fwd_params_get_num_splits(params_handle),
+                     batch_size,
+                     num_heads,
+                     seqlen_q,
+                     head_size_v}));
+      softmax_lse_accum->Resize(
+          make_ddim({dynload::fa3_fwd_params_get_num_splits(params_handle),
+                     batch_size,
+                     num_heads,
+                     seqlen_q}));
       dev_ctx.template Alloc<float>(out_accum);
       dev_ctx.template Alloc<float>(softmax_lse_accum);
-      phi::dynload::fa3_fwd_params_set_oaccum_batch_stride(
-          params_handle, out_accum->strides()[1]);
-      phi::dynload::fa3_fwd_params_set_lseaccum_batch_stride(
+      dynload::fa3_fwd_params_set_oaccum_batch_stride(params_handle,
+                                                      out_accum->strides()[1]);
+      dynload::fa3_fwd_params_set_lseaccum_batch_stride(
           params_handle, softmax_lse_accum->strides()[1]);
     } else {
-      out_accum->Resize(common::make_ddim(
-          {phi::dynload::fa3_fwd_params_get_num_splits(params_handle),
-           num_heads,
-           total_q,
-           head_size_v}));
-      softmax_lse_accum->Resize(common::make_ddim(
-          {phi::dynload::fa3_fwd_params_get_num_splits(params_handle),
-           num_heads,
-           total_q}));
+      out_accum->Resize(
+          make_ddim({dynload::fa3_fwd_params_get_num_splits(params_handle),
+                     num_heads,
+                     total_q,
+                     head_size_v}));
+      softmax_lse_accum->Resize(
+          make_ddim({dynload::fa3_fwd_params_get_num_splits(params_handle),
+                     num_heads,
+                     total_q}));
       dev_ctx.template Alloc<float>(out_accum);
       dev_ctx.template Alloc<float>(softmax_lse_accum);
     }
-    phi::dynload::fa3_fwd_params_set_is_fp32(params_handle, false);
-    phi::dynload::fa3_fwd_params_set_oaccum_ptr(
+    dynload::fa3_fwd_params_set_is_fp32(params_handle, false);
+    dynload::fa3_fwd_params_set_oaccum_ptr(
         params_handle, const_cast<void *>(out_accum->data()));
-    phi::dynload::fa3_fwd_params_set_softmax_lseaccum_ptr(
+    dynload::fa3_fwd_params_set_softmax_lseaccum_ptr(
         params_handle, const_cast<void *>(softmax_lse_accum->data()));
-    phi::dynload::fa3_fwd_params_set_oaccum_split_stride(
-        params_handle, out_accum->strides()[0]);
-    phi::dynload::fa3_fwd_params_set_oaccum_row_stride(
+    dynload::fa3_fwd_params_set_oaccum_split_stride(params_handle,
+                                                    out_accum->strides()[0]);
+    dynload::fa3_fwd_params_set_oaccum_row_stride(
         params_handle, out_accum->strides()[out_accum->strides().size() - 2]);
-    phi::dynload::fa3_fwd_params_set_oaccum_head_stride(
+    dynload::fa3_fwd_params_set_oaccum_head_stride(
         params_handle, out_accum->strides()[out_accum->strides().size() - 3]);
-    phi::dynload::fa3_fwd_params_set_lseaccum_split_stride(
+    dynload::fa3_fwd_params_set_lseaccum_split_stride(
         params_handle, softmax_lse_accum->strides()[0]);
-    phi::dynload::fa3_fwd_params_set_lseaccum_head_stride(
+    dynload::fa3_fwd_params_set_lseaccum_head_stride(
         params_handle,
         softmax_lse_accum->strides()[softmax_lse_accum->strides().size() - 2]);
   }
 
-  if (q_type == phi::DataType::FLOAT8_E4M3FN) {
+  if (q_type == DataType::FLOAT8_E4M3FN) {
     if (q_descale_.is_initialized()) {
       DenseTensor q_descale = q_descale_.get();
       CHECK_DEVICE(q_descale);
       CHECK_SHAPE(q_descale, batch_size, num_heads_k);
-      phi::dynload::fa3_fwd_params_set_q_descale_ptr(
+      dynload::fa3_fwd_params_set_q_descale_ptr(
           params_handle, const_cast<float *>(q_descale.data<float>()));
-      phi::dynload::fa3_fwd_params_set_q_descale_batch_stride(
+      dynload::fa3_fwd_params_set_q_descale_batch_stride(
           params_handle, q_descale.strides()[0]);
-      phi::dynload::fa3_fwd_params_set_q_descale_head_stride(
-          params_handle, q_descale.strides()[1]);
+      dynload::fa3_fwd_params_set_q_descale_head_stride(params_handle,
+                                                        q_descale.strides()[1]);
     } else {
-      phi::dynload::fa3_fwd_params_set_q_descale_ptr(params_handle, nullptr);
+      dynload::fa3_fwd_params_set_q_descale_ptr(params_handle, nullptr);
     }
     if (k_descale_.is_initialized()) {
       DenseTensor k_descale = k_descale_.get();
       CHECK_DEVICE(k_descale);
       CHECK_SHAPE(k_descale, batch_size, num_heads_k);
-      phi::dynload::fa3_fwd_params_set_k_descale_ptr(
+      dynload::fa3_fwd_params_set_k_descale_ptr(
           params_handle, const_cast<float *>(k_descale.data<float>()));
-      phi::dynload::fa3_fwd_params_set_k_descale_batch_stride(
+      dynload::fa3_fwd_params_set_k_descale_batch_stride(
           params_handle, k_descale.strides()[0]);
-      phi::dynload::fa3_fwd_params_set_k_descale_head_stride(
-          params_handle, k_descale.strides()[1]);
+      dynload::fa3_fwd_params_set_k_descale_head_stride(params_handle,
+                                                        k_descale.strides()[1]);
     } else {
-      phi::dynload::fa3_fwd_params_set_k_descale_ptr(params_handle, nullptr);
+      dynload::fa3_fwd_params_set_k_descale_ptr(params_handle, nullptr);
     }
     if (v_descale_.is_initialized()) {
       DenseTensor v_descale = v_descale_.get();
       CHECK_DEVICE(v_descale);
       CHECK_SHAPE(v_descale, batch_size, num_heads_k);
-      phi::dynload::fa3_fwd_params_set_v_descale_ptr(
+      dynload::fa3_fwd_params_set_v_descale_ptr(
           params_handle, const_cast<float *>(v_descale.data<float>()));
-      phi::dynload::fa3_fwd_params_set_v_descale_batch_stride(
+      dynload::fa3_fwd_params_set_v_descale_batch_stride(
           params_handle, v_descale.strides()[0]);
-      phi::dynload::fa3_fwd_params_set_v_descale_head_stride(
-          params_handle, v_descale.strides()[1]);
+      dynload::fa3_fwd_params_set_v_descale_head_stride(params_handle,
+                                                        v_descale.strides()[1]);
     } else {
-      phi::dynload::fa3_fwd_params_set_v_descale_ptr(params_handle, nullptr);
+      dynload::fa3_fwd_params_set_v_descale_ptr(params_handle, nullptr);
     }
   }
 
 #ifdef FLASHATTENTION_DISABLE_LOCAL
   PADDLE_ENFORCE_EQ(
-      !phi::dynload::fa3_fwd_params_get_is_local(params_handle),
+      !dynload::fa3_fwd_params_get_is_local(params_handle),
       true,
       common::errors::InvalidArgument(
           "This flash attention build does not support local attention."));
 #endif
 #ifdef FLASHATTENTION_DISABLE_SOFTCAP
   PADDLE_ENFORCE_EQ(
-      phi::dynload::fa3_fwd_params_get_softcap(params_handle),
+      dynload::fa3_fwd_params_get_softcap(params_handle),
       0.0,
       common::errors::InvalidArgument(
           "This flash attention build does not support tanh softcapping."));
 #endif
 #ifdef FLASHATTENTION_DISABLE_SPLIT
-  PADDLE_ENFORCE_EQ(phi::dynload::fa3_fwd_params_get_num_splits(params_handle),
+  PADDLE_ENFORCE_EQ(dynload::fa3_fwd_params_get_num_splits(params_handle),
                     1,
                     common::errors::InvalidArgument(
                         "This flash attention build does not support splits."));
 #endif
 #ifdef FLASHATTENTION_DISABLE_PACKGQA
   PADDLE_ENFORCE_EQ(
-      (!phi::dynload::fa3_fwd_params_get_pack_gqa(params_handle) ||
-       phi::dynload::fa3_fwd_params_get_arch(params_handle) < 90 ||
-       (phi::dynload::fa3_fwd_params_get_page_table(params_handle) &&
-        !phi::dynload::fa3_fwd_params_get_pagedkv_tma(params_handle)) ||
-       phi::dynload::fa3_fwd_params_get_num_splits(params_handle) > 1),
+      (!dynload::fa3_fwd_params_get_pack_gqa(params_handle) ||
+       dynload::fa3_fwd_params_get_arch(params_handle) < 90 ||
+       (dynload::fa3_fwd_params_get_page_table(params_handle) &&
+        !dynload::fa3_fwd_params_get_pagedkv_tma(params_handle)) ||
+       dynload::fa3_fwd_params_get_num_splits(params_handle) > 1),
       true,
       common::errors::InvalidArgument(
           "This flash attention build does not support pack_gqa."));
 #endif
 #ifdef FLASHATTENTION_DISABLE_PAGEDKV
   PADDLE_ENFORCE_EQ(
-      (!(phi::dynload::fa3_fwd_params_get_page_table(params_handle) &&
-         !phi::dynload::fa3_fwd_params_get_pagedkv_tma(params_handle))),
+      (!(dynload::fa3_fwd_params_get_page_table(params_handle) &&
+         !dynload::fa3_fwd_params_get_pagedkv_tma(params_handle))),
       true,
       common::errors::InvalidArgument(
           "This flash attention build does not support paged KV."));
@@ -901,7 +894,7 @@ void FlashAttnV3BaseKernel(
       num_heads_k > 0) {
     dynload::fa3_run_mha_fwd(params_handle, dev_ctx.stream());
     if (dynload::fa3_fwd_params_get_num_splits(params_handle) > 1) {
-      if (out_type == phi::DataType::BFLOAT16) {
+      if (out_type == DataType::BFLOAT16) {
         // Since we want output in BF16. Otherwise fwd_combine will output to
         // FP16
         dynload::fa3_fwd_params_set_is_bf16(params_handle, true);
@@ -921,25 +914,25 @@ void FlashAttnV3BaseKernel(
     }
   } else if (total_q > 0 && num_heads_k > 0) {
     PADDLE_ENFORCE_EQ(
-        (out->dtype() == phi::DataType::BFLOAT16 ||
-         out->dtype() == phi::DataType::FLOAT16 ||
-         out->dtype() == phi::DataType::FLOAT8_E4M3FN),
+        (out->dtype() == DataType::BFLOAT16 ||
+         out->dtype() == DataType::FLOAT16 ||
+         out->dtype() == DataType::FLOAT8_E4M3FN),
         true,
         common::errors::InvalidArgument("flash attention 3 supports bfloat16, "
                                         "float16 and float8_e4m3fn only."));
     // If seqlen_k == 0, then we have an empty tensor. We need to set the output
     // to 0.
-    if (out->dtype() == phi::DataType::BFLOAT16) {
+    if (out->dtype() == DataType::BFLOAT16) {
       funcs::SetConstant<Context, phi::bfloat16> set_zero;
       set_zero(dev_ctx,
                out,
                phi::bfloat16{0});  // If varlen we'll manually do the zero-ing
-    } else if (out->dtype() == phi::DataType::FLOAT16) {
+    } else if (out->dtype() == DataType::FLOAT16) {
       funcs::SetConstant<Context, phi::float16> set_zero;
       set_zero(dev_ctx,
                out,
                phi::float16{0});  // If varlen we'll manually do the zero-ing
-    } else if (out->dtype() == phi::DataType::FLOAT8_E4M3FN) {
+    } else if (out->dtype() == DataType::FLOAT8_E4M3FN) {
       funcs::SetConstant<Context, phi::float8_e4m3fn> set_zero;
       set_zero(
           dev_ctx,
@@ -960,10 +953,10 @@ void FlashAttnV3Kernel(const Context &dev_ctx,
                        const DenseTensor &q,
                        const DenseTensor &k,
                        const DenseTensor &v,
-                       const paddle::optional<DenseTensor> &q_v_,
-                       const paddle::optional<DenseTensor> &q_descale_,
-                       const paddle::optional<DenseTensor> &k_descale_,
-                       const paddle::optional<DenseTensor> &v_descale_,
+                       const optional<DenseTensor> &q_v_,
+                       const optional<DenseTensor> &q_descale_,
+                       const optional<DenseTensor> &k_descale_,
+                       const optional<DenseTensor> &v_descale_,
                        const float softmax_scale,
                        bool is_causal,
                        int window_size_left,
@@ -1079,12 +1072,12 @@ void FlashAttnV3VarlenKernel(const Context &dev_ctx,
                              const DenseTensor &v,
                              const DenseTensor &cu_seqlens_q,
                              const DenseTensor &cu_seqlens_k,
-                             const paddle::optional<DenseTensor> &seqused_q,
-                             const paddle::optional<DenseTensor> &seqused_k,
-                             const paddle::optional<DenseTensor> &qv,
-                             const paddle::optional<DenseTensor> &q_descale,
-                             const paddle::optional<DenseTensor> &k_descale,
-                             const paddle::optional<DenseTensor> &v_descale,
+                             const optional<DenseTensor> &seqused_q,
+                             const optional<DenseTensor> &seqused_k,
+                             const optional<DenseTensor> &qv,
+                             const optional<DenseTensor> &q_descale,
+                             const optional<DenseTensor> &k_descale,
+                             const optional<DenseTensor> &v_descale,
                              const Scalar &max_seqlen_q,
                              const Scalar &max_seqlen_k,
                              const float softmax_scale,
@@ -1115,16 +1108,6 @@ void FlashAttnV3VarlenKernel(const Context &dev_ctx,
       v_descale.is_initialized(),
       false,
       common::errors::InvalidArgument("v_descale is not supported"));
-  PADDLE_ENFORCE_EQ(
-      window_size_left,
-      -1,
-      common::errors::InvalidArgument("window_size is not supported, please "
-                                      "set window_size_left/right to -1"));
-  PADDLE_ENFORCE_EQ(
-      window_size_right,
-      -1,
-      common::errors::InvalidArgument("window_size is not supported, please "
-                                      "set window_size_left/right to -1"));
   PADDLE_ENFORCE_EQ(softcap,
                     0,
                     common::errors::InvalidArgument(
@@ -1205,43 +1188,40 @@ void FlashMaskV2BaseKernel(
     const DenseTensor &q,
     const DenseTensor &k,
     const DenseTensor &v,
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor>
         &k_new_,  // (b, s_k_new, h_k, d) or (total_k_new, h_k, d) if there is
                   // cu_seqlens_k_new
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor>
         &v_new_,  // (b, s_k_new, h_k, dv) or (total_k_new, h_k, dv) if there is
                   // cu_seqlens_k_new
-    const paddle::optional<DenseTensor>
-        &q_v_,  // (b, s_q, h, dv) or (total_q_new, h, dv) if there is
-                // cu_seqlens_q
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor> &q_v_,  // (b, s_q, h, dv) or (total_q_new, h,
+                                        // dv) if there is cu_seqlens_q
+    const optional<DenseTensor>
         &out_,  // (b, s_q, h, dv) or (total_q, h, dv) if there is cu_seqlens_q
-    const paddle::optional<DenseTensor> &cu_seqlens_q_,      // b+1
-    const paddle::optional<DenseTensor> &cu_seqlens_k_,      // b+1
-    const paddle::optional<DenseTensor> &cu_seqlens_k_new_,  // b+1
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor> &cu_seqlens_q_,      // b+1
+    const optional<DenseTensor> &cu_seqlens_k_,      // b+1
+    const optional<DenseTensor> &cu_seqlens_k_new_,  // b+1
+    const optional<DenseTensor>
         &seqused_q_,  // b. If given, only this many elements of each batch
                       // element's queries and outputs are used.
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor>
         &seqused_k_,  // b. If given, only this many elements of each batch
                       // element's keys are used.
-    const paddle::optional<DenseTensor>
-        &page_table_,  // (b_k, max_num_pages_per_seq)
-    const paddle::optional<DenseTensor>
+    const optional<DenseTensor> &page_table_,  // (b_k, max_num_pages_per_seq)
+    const optional<DenseTensor>
         &kv_batch_idx_,  // b. indices to index into the KV cache
-    const paddle::optional<DenseTensor> &leftpad_k_,  // b
-    const paddle::optional<DenseTensor>
-        &rotary_cos_,  // seqlen_ro x (rotary_dim / 2)
-    const paddle::optional<DenseTensor>
-        &rotary_sin_,  // seqlen_ro x (rotary_dim / 2)
-    const paddle::optional<DenseTensor> &q_descale_,  // (b, h_k), not (b, h)
-    const paddle::optional<DenseTensor> &k_descale_,  // (b, h_k)
-    const paddle::optional<DenseTensor> &v_descale_,  // (b, h_k)
-    const paddle::optional<DenseTensor> &scheduler_metadata_,  // (b + 1)
-    const paddle::optional<DenseTensor>
-        &startend_row_indices_,  // （b,h,s_1,[1,2,4])
-    const paddle::optional<DenseTensor>
-        &block_mask_,  // （(b,h,s// 128,s // 128)
+    const optional<DenseTensor> &leftpad_k_,   // b
+    const optional<DenseTensor> &rotary_cos_,  // seqlen_ro x (rotary_dim / 2)
+    const optional<DenseTensor> &rotary_sin_,  // seqlen_ro x (rotary_dim / 2)
+    const optional<DenseTensor> &q_descale_,   // (b, h_k), not (b, h)
+    const optional<DenseTensor> &k_descale_,   // (b, h_k)
+    const optional<DenseTensor> &v_descale_,   // (b, h_k)
+    const optional<DenseTensor> &scheduler_metadata_,    // (b + 1)
+    const optional<DenseTensor> &startend_row_indices_,  // （b,h,s_1,[1,2,4])
+    const optional<DenseTensor> &block_mask_,  // （(b,h,s// 128,s // 128)
+    const optional<DenseTensor>
+        &unique_id_,  //  used in distributed overlap NVSHMEM init with
+                      //  unique_id (128B u8 CPU tensor)
     const int
         max_seqlen_q_,  // if max_seqlen_q_ is set to 0, it indicates that it is
                         // uninitialized and should not be referenced
@@ -1263,6 +1243,8 @@ void FlashMaskV2BaseKernel(
                     // set to True; otherwise, the internal heuristic
                     // get_pack_gqa() from fa3 will decide whether to pack gqa
     const int sm_margin,
+    const int rank,
+    const int nranks,
     DenseTensor *out,
     DenseTensor *softmax_lse,
     DenseTensor *out_accum,
@@ -1279,8 +1261,8 @@ void FlashMaskV2BaseKernel(
 
   auto q_type = q.dtype();
   PADDLE_ENFORCE_EQ(
-      (q_type == phi::DataType::FLOAT16 || q_type == phi::DataType::BFLOAT16 ||
-       q_type == phi::DataType::FLOAT8_E4M3FN),
+      (q_type == DataType::FLOAT16 || q_type == DataType::BFLOAT16 ||
+       q_type == DataType::FLOAT8_E4M3FN),
       true,
       common::errors::InvalidArgument(
           "FlashAttention-3 only supports fp16, bf16, and fp8_e4m3 data type"));
@@ -1313,13 +1295,13 @@ void FlashMaskV2BaseKernel(
 
   DenseTensor page_table;
   // const bool paged_KV = page_table_.has_value();
-  // umiswing: this is stupid but idk how to use paddle::optional
+  // umiswing: this is stupid but idk how to use optional
   const bool paged_KV = page_table_.is_initialized();
   if (paged_KV) {
     page_table = page_table_.get();
     CHECK_DEVICE(page_table);
     PADDLE_ENFORCE_EQ(page_table.dtype(),
-                      phi::DataType::INT32,
+                      DataType::INT32,
                       common::errors::InvalidArgument(
                           "page_table must have dtype paddle.int32"));
     PADDLE_ENFORCE_EQ(page_table.strides()[page_table.strides().size() - 1],
@@ -1333,14 +1315,14 @@ void FlashMaskV2BaseKernel(
   DenseTensor cu_seqlens_q;
   // bool const is_varlen_q = cu_seqlens_q_.has_value();
   // TODO(umiswing): this is stupid, must fix it (after understand
-  // paddle::optional)
+  // optional)
   const bool is_varlen_q = cu_seqlens_q_.is_initialized();
   if (is_varlen_q) {
     cu_seqlens_q = cu_seqlens_q_.get();
     CHECK_DEVICE(cu_seqlens_q);
     CHECK_CONTIGUOUS(cu_seqlens_q);
     PADDLE_ENFORCE_EQ(cu_seqlens_q.dtype(),
-                      phi::DataType::INT32,
+                      DataType::INT32,
                       common::errors::InvalidArgument(
                           "cu_seqlens_q must have dtype paddle.int32"));
     PADDLE_ENFORCE_NE(
@@ -1357,7 +1339,7 @@ void FlashMaskV2BaseKernel(
     CHECK_DEVICE(cu_seqlens_k);
     CHECK_CONTIGUOUS(cu_seqlens_k);
     PADDLE_ENFORCE_EQ(cu_seqlens_k.dtype(),
-                      phi::DataType::INT32,
+                      DataType::INT32,
                       common::errors::InvalidArgument(
                           "cu_seqlens_k must have dtype paddle.int32"));
     PADDLE_ENFORCE_NE(
@@ -1429,11 +1411,11 @@ void FlashMaskV2BaseKernel(
                       common::errors::InvalidArgument(
                           "Only Hopper supports different V headdim"));
     if (head_size_v > 256) {
-      PADDLE_ENFORCE_EQ((q_type == phi::DataType::FLOAT16 ||
-                         q_type == phi::DataType::BFLOAT16),
-                        true,
-                        common::errors::InvalidArgument(
-                            "HeaddimV > 256 requires fp16 and bf16 data type"));
+      PADDLE_ENFORCE_EQ(
+          (q_type == DataType::FLOAT16 || q_type == DataType::BFLOAT16),
+          true,
+          common::errors::InvalidArgument(
+              "HeaddimV > 256 requires fp16 and bf16 data type"));
     }
   }
 
@@ -1490,7 +1472,7 @@ void FlashMaskV2BaseKernel(
     auto seqused_q = seqused_q_.get();
     PADDLE_ENFORCE_EQ(
         seqused_q.dtype(),
-        phi::DataType::INT32,
+        DataType::INT32,
         common::errors::InvalidArgument("seqused_q must have dtype int32"));
     CHECK_DEVICE(seqused_q);
     CHECK_CONTIGUOUS(seqused_q);
@@ -1500,7 +1482,7 @@ void FlashMaskV2BaseKernel(
     auto seqused_k = seqused_k_.get();
     PADDLE_ENFORCE_EQ(
         seqused_k.dtype(),
-        phi::DataType::INT32,
+        DataType::INT32,
         common::errors::InvalidArgument("seqused_k must have dtype int32"));
     CHECK_DEVICE(seqused_k);
     CHECK_CONTIGUOUS(seqused_k);
@@ -1511,7 +1493,7 @@ void FlashMaskV2BaseKernel(
     auto leftpad_k = leftpad_k_.get();
     PADDLE_ENFORCE_EQ(
         leftpad_k.dtype(),
-        phi::DataType::INT32,
+        DataType::INT32,
         common::errors::InvalidArgument("leftpad_k must have dtype int32"));
     CHECK_DEVICE(leftpad_k);
     CHECK_CONTIGUOUS(leftpad_k);
@@ -1529,7 +1511,7 @@ void FlashMaskV2BaseKernel(
                         "This flash attention build does not support varlen."));
 #endif
 
-  int const alignment = q_type == phi::DataType::FLOAT8_E4M3FN ? 16 : 8;
+  int const alignment = q_type == DataType::FLOAT8_E4M3FN ? 16 : 8;
   PADDLE_ENFORCE_EQ(head_size % alignment,
                     0,
                     common::errors::InvalidArgument(
@@ -1540,7 +1522,7 @@ void FlashMaskV2BaseKernel(
                         "head_size_v should be a multiple of %d", alignment));
 
   auto out_type =
-      q_type == phi::DataType::FLOAT8_E4M3FN ? phi::DataType::BFLOAT16 : q_type;
+      q_type == DataType::FLOAT8_E4M3FN ? DataType::BFLOAT16 : q_type;
   if (out_.is_initialized()) {
     *out = out_.get();
     PADDLE_ENFORCE_EQ(
@@ -1561,12 +1543,11 @@ void FlashMaskV2BaseKernel(
     }
   } else {
     if (!is_varlen_q) {
-      out->Resize(
-          common::make_ddim({batch_size, seqlen_q, num_heads, head_size_v}));
+      out->Resize({batch_size, seqlen_q, num_heads, head_size_v});
     } else {
-      out->Resize(common::make_ddim({total_q, num_heads, head_size_v}));
+      out->Resize({total_q, num_heads, head_size_v});
     }
-    if (q_type == phi::DataType::FLOAT8_E4M3FN) {
+    if (q_type == DataType::FLOAT8_E4M3FN) {
       dev_ctx.template Alloc<phi::bfloat16>(out);
     } else {
       // umiswing: assuming T is Input Type
@@ -1581,9 +1562,9 @@ void FlashMaskV2BaseKernel(
   int const seqlen_k_rounded = round_multiple(seqlen_k, 128);
 
   if (!is_varlen_q) {
-    softmax_lse->Resize(common::make_ddim({batch_size, num_heads, seqlen_q}));
+    softmax_lse->Resize({batch_size, num_heads, seqlen_q});
   } else {
-    softmax_lse->Resize(common::make_ddim({num_heads, total_q}));
+    softmax_lse->Resize({num_heads, total_q});
   }
   dev_ctx.template Alloc<float>(softmax_lse);
 
@@ -1618,26 +1599,26 @@ void FlashMaskV2BaseKernel(
       dprops,
       softcap,
       sm_margin);
-  phi::dynload::flashmaskv2_fwd_params_set_total_q(params_handle, total_q);
-  phi::dynload::flashmaskv2_fwd_params_set_total_k(params_handle, total_k);
-  phi::dynload::flashmaskv2_fwd_params_set_b_k(params_handle, batch_size_k);
-  phi::dynload::flashmaskv2_fwd_params_set_dv(params_handle, head_size_v);
-  phi::dynload::flashmaskv2_fwd_params_set_dv_rounded(params_handle,
-                                                      head_size_v_rounded);
+  dynload::flashmaskv2_fwd_params_set_total_q(params_handle, total_q);
+  dynload::flashmaskv2_fwd_params_set_total_k(params_handle, total_k);
+  dynload::flashmaskv2_fwd_params_set_b_k(params_handle, batch_size_k);
+  dynload::flashmaskv2_fwd_params_set_dv(params_handle, head_size_v);
+  dynload::flashmaskv2_fwd_params_set_dv_rounded(params_handle,
+                                                 head_size_v_rounded);
 
   if (leftpad_k_
           .is_initialized()) {  // This needs to be set before get_pagedkv_tma
-    phi::dynload::flashmaskv2_fwd_params_set_leftpad_k(
-        params_handle, leftpad_k_.get().data<int>());
+    dynload::flashmaskv2_fwd_params_set_leftpad_k(params_handle,
+                                                  leftpad_k_.get().data<int>());
   }
   if (paged_KV) {
-    phi::dynload::flashmaskv2_fwd_params_set_page_table(params_handle,
-                                                        page_table.data<int>());
-    phi::dynload::flashmaskv2_fwd_params_set_page_table_batch_stride(
+    dynload::flashmaskv2_fwd_params_set_page_table(params_handle,
+                                                   page_table.data<int>());
+    dynload::flashmaskv2_fwd_params_set_page_table_batch_stride(
         params_handle, page_table.strides()[0]);
   }
-  phi::dynload::flashmaskv2_fwd_params_set_page_size(params_handle, page_size);
-  phi::dynload::flashmaskv2_fwd_params_set_num_pages(params_handle, num_pages);
+  dynload::flashmaskv2_fwd_params_set_page_size(params_handle, page_size);
+  dynload::flashmaskv2_fwd_params_set_num_pages(params_handle, num_pages);
 
   if (k_new_.is_initialized()) {  // This needs to be set before get_pagedkv_tma
     DenseTensor k_new, v_new;
@@ -1664,7 +1645,7 @@ void FlashMaskV2BaseKernel(
       CHECK_DEVICE(cu_seqlens_k_new);
       CHECK_CONTIGUOUS(cu_seqlens_k_new);
       PADDLE_ENFORCE_EQ(cu_seqlens_k_new.dtype(),
-                        phi::DataType::INT32,
+                        DataType::INT32,
                         common::errors::InvalidArgument(
                             "cu_seqlens_k_new must have dtype paddle.int32"));
     }
@@ -1702,31 +1683,28 @@ void FlashMaskV2BaseKernel(
       CHECK_SHAPE(cu_seqlens_k_new, batch_size + 1);
     }
     // umiswing: dump this to shared library
-    phi::dynload::flashmaskv2_fwd_params_set_seqlen_knew(params_handle,
-                                                         seqlen_k_new);
-    phi::dynload::flashmaskv2_fwd_params_set_total_knew(params_handle,
-                                                        total_k_new);
-    phi::dynload::flashmaskv2_fwd_params_set_knew_ptr(params_handle,
-                                                      (k_new.data()));
-    phi::dynload::flashmaskv2_fwd_params_set_vnew_ptr(params_handle,
-                                                      (v_new.data()));
+    dynload::flashmaskv2_fwd_params_set_seqlen_knew(params_handle,
+                                                    seqlen_k_new);
+    dynload::flashmaskv2_fwd_params_set_total_knew(params_handle, total_k_new);
+    dynload::flashmaskv2_fwd_params_set_knew_ptr(params_handle, (k_new.data()));
+    dynload::flashmaskv2_fwd_params_set_vnew_ptr(params_handle, (v_new.data()));
     // All stride are in elements, not bytes.
-    phi::dynload::flashmaskv2_fwd_params_set_knew_row_stride(
+    dynload::flashmaskv2_fwd_params_set_knew_row_stride(
         params_handle, k_new.strides()[k_new.strides().size() - 3]);
-    phi::dynload::flashmaskv2_fwd_params_set_vnew_row_stride(
+    dynload::flashmaskv2_fwd_params_set_vnew_row_stride(
         params_handle, v_new.strides()[v_new.strides().size() - 3]);
-    phi::dynload::flashmaskv2_fwd_params_set_knew_head_stride(
+    dynload::flashmaskv2_fwd_params_set_knew_head_stride(
         params_handle, k_new.strides()[k_new.strides().size() - 2]);
-    phi::dynload::flashmaskv2_fwd_params_set_vnew_head_stride(
+    dynload::flashmaskv2_fwd_params_set_vnew_head_stride(
         params_handle, v_new.strides()[v_new.strides().size() - 2]);
     if (!is_varlen_k_new) {
-      phi::dynload::flashmaskv2_fwd_params_set_knew_batch_stride(
-          params_handle, k_new.strides()[0]);
-      phi::dynload::flashmaskv2_fwd_params_set_vnew_batch_stride(
-          params_handle, v_new.strides()[0]);
+      dynload::flashmaskv2_fwd_params_set_knew_batch_stride(params_handle,
+                                                            k_new.strides()[0]);
+      dynload::flashmaskv2_fwd_params_set_vnew_batch_stride(params_handle,
+                                                            v_new.strides()[0]);
     }
     if (is_varlen_k_new) {
-      phi::dynload::flashmaskv2_fwd_params_set_cu_seqlens_knew(
+      dynload::flashmaskv2_fwd_params_set_cu_seqlens_knew(
           params_handle, cu_seqlens_k_new.data<int>());
     }
   }
@@ -1734,42 +1712,38 @@ void FlashMaskV2BaseKernel(
   // 992 = 32 * 31 is the max supported batch in prepare_varlen_num_blocks
   // kernel
   bool const use_dynamic_split =
-      is_varlen &&
-      phi::dynload::flashmaskv2_fwd_params_get_b(params_handle) <= 992;
+      is_varlen && dynload::flashmaskv2_fwd_params_get_b(params_handle) <= 992;
   // Temporarily set num_splits_dynamic_ptr to 1 since get_num_splits checks it
-  phi::dynload::flashmaskv2_fwd_params_set_num_splits_dynamic_ptr(
+  dynload::flashmaskv2_fwd_params_set_num_splits_dynamic_ptr(
       params_handle, !use_dynamic_split ? nullptr : reinterpret_cast<int *>(1));
 
-  phi::dynload::flashmaskv2_fwd_params_set_pagedkv_tma(
-      params_handle, phi::dynload::flashmaskv2_get_pagedkv_tma(params_handle));
+  dynload::flashmaskv2_fwd_params_set_pagedkv_tma(
+      params_handle, dynload::flashmaskv2_get_pagedkv_tma(params_handle));
   if (num_splits <= 0) {
-    num_splits = phi::dynload::flashmaskv2_get_num_splits(params_handle);
+    num_splits = dynload::flashmaskv2_get_num_splits(params_handle);
   }
-  phi::dynload::flashmaskv2_fwd_params_set_num_splits(params_handle,
-                                                      num_splits);
+  dynload::flashmaskv2_fwd_params_set_num_splits(params_handle, num_splits);
 
   // Always enable PackGQA for Split, and get_pack_gqa requires
   // params.num_splits to decide
-  const bool pack_gqa =
-      manual_set_pack_gqa
-          ? pack_gqa_
-          : phi::dynload::flashmaskv2_get_pack_gqa(params_handle);
-  phi::dynload::flashmaskv2_fwd_params_set_pack_gqa(params_handle, pack_gqa);
+  const bool pack_gqa = manual_set_pack_gqa
+                            ? pack_gqa_
+                            : dynload::flashmaskv2_get_pack_gqa(params_handle);
+  dynload::flashmaskv2_fwd_params_set_pack_gqa(params_handle, pack_gqa);
 
   // This needs to be set after get_num_splits
   DenseTensor tile_count_semaphore;  // Contains the semaphore and optionally
                                      // num_splits_dynamic
   // We don't use the persistent scheduler if Split and not Varlen
   const bool params_is_causal =
-      phi::dynload::flashmaskv2_fwd_params_get_is_causal(params_handle);
+      dynload::flashmaskv2_fwd_params_get_is_causal(params_handle);
   const bool params_is_local =
-      phi::dynload::flashmaskv2_fwd_params_get_is_local(params_handle);
+      dynload::flashmaskv2_fwd_params_get_is_local(params_handle);
   const int params_num_splits =
-      phi::dynload::flashmaskv2_fwd_params_get_num_splits(params_handle);
-  const int params_b =
-      phi::dynload::flashmaskv2_fwd_params_get_b(params_handle);
+      dynload::flashmaskv2_fwd_params_get_num_splits(params_handle);
+  const int params_b = dynload::flashmaskv2_fwd_params_get_b(params_handle);
   const int params_arch =
-      phi::dynload::flashmaskv2_fwd_params_get_arch(params_handle);
+      dynload::flashmaskv2_fwd_params_get_arch(params_handle);
   bool const scheduler_needs_semaphore =
       params_arch >= 90 ? true
                         : ((params_is_causal && !is_varlen) ||
@@ -1777,16 +1751,15 @@ void FlashMaskV2BaseKernel(
   if (scheduler_needs_semaphore || use_dynamic_split) {
     int metadata_size = static_cast<int>(scheduler_needs_semaphore) +
                         static_cast<int>(use_dynamic_split) * params_b;
-    phi::dynload::
-        flashmaskv2_fwd_params_set_skip_scheduler_metadata_computation(
-            params_handle, scheduler_metadata_.is_initialized());
+    dynload::flashmaskv2_fwd_params_set_skip_scheduler_metadata_computation(
+        params_handle, scheduler_metadata_.is_initialized());
     if (scheduler_metadata_.is_initialized()) {
       DenseTensor scheduler_metadata = scheduler_metadata_.get();
       CHECK_DEVICE(scheduler_metadata);
       CHECK_SHAPE(scheduler_metadata, metadata_size);
       CHECK_CONTIGUOUS(scheduler_metadata);
       PADDLE_ENFORCE_EQ(scheduler_metadata.dtype(),
-                        phi::DataType::INT32,
+                        DataType::INT32,
                         common::errors::InvalidArgument(
                             "scheduler_metadata must have dtype int32"));
       tile_count_semaphore = scheduler_metadata;
@@ -1799,11 +1772,11 @@ void FlashMaskV2BaseKernel(
                &tile_count_semaphore,
                int32_t{0});  // If varlen we'll manually do the zero-ing
     }
-    phi::dynload::flashmaskv2_fwd_params_set_tile_count_semaphore(
+    dynload::flashmaskv2_fwd_params_set_tile_count_semaphore(
         params_handle,
         scheduler_needs_semaphore ? (tile_count_semaphore.data<int>())
                                   : nullptr);
-    phi::dynload::flashmaskv2_fwd_params_set_num_splits_dynamic_ptr(
+    dynload::flashmaskv2_fwd_params_set_num_splits_dynamic_ptr(
         params_handle,
         use_dynamic_split ? (tile_count_semaphore.data<int>()) + 1 : nullptr);
   }
@@ -1814,7 +1787,7 @@ void FlashMaskV2BaseKernel(
                       common::errors::InvalidArgument(
                           "q_v is only supported for head_size <= 64"));
     PADDLE_ENFORCE_EQ(
-        (q_type == phi::DataType::FLOAT16 || q_type == phi::DataType::FLOAT16),
+        (q_type == DataType::FLOAT16 || q_type == DataType::FLOAT16),
         true,
         common::errors::InvalidArgument(
             "q_v is only supported for fp16 and bf16 data type"));
@@ -1837,16 +1810,15 @@ void FlashMaskV2BaseKernel(
     } else {
       CHECK_SHAPE(q_v, total_q, num_heads, head_size_v);
     }
-    phi::dynload::flashmaskv2_fwd_params_set_qv_ptr(params_handle,
-                                                    (q_v.data()));
+    dynload::flashmaskv2_fwd_params_set_qv_ptr(params_handle, (q_v.data()));
     // All stride are in elements, not bytes.
-    phi::dynload::flashmaskv2_fwd_params_set_qv_row_stride(
+    dynload::flashmaskv2_fwd_params_set_qv_row_stride(
         params_handle, q_v.strides()[q_v.strides().size() - 3]);
-    phi::dynload::flashmaskv2_fwd_params_set_qv_head_stride(
+    dynload::flashmaskv2_fwd_params_set_qv_head_stride(
         params_handle, q_v.strides()[q_v.strides().size() - 2]);
     if (!is_varlen_q) {
-      phi::dynload::flashmaskv2_fwd_params_set_qv_batch_stride(
-          params_handle, q_v.strides()[0]);
+      dynload::flashmaskv2_fwd_params_set_qv_batch_stride(params_handle,
+                                                          q_v.strides()[0]);
     }
   }
 
@@ -1861,8 +1833,8 @@ void FlashMaskV2BaseKernel(
     CHECK_DEVICE(rotary_cos);
     CHECK_CONTIGUOUS(rotary_cos);
     int params_rotary_dim = rotary_cos.dims()[1] * 2;
-    phi::dynload::flashmaskv2_fwd_params_set_rotary_dim(params_handle,
-                                                        params_rotary_dim);
+    dynload::flashmaskv2_fwd_params_set_rotary_dim(params_handle,
+                                                   params_rotary_dim);
     PADDLE_ENFORCE_LE(
         params_rotary_dim,
         head_size,
@@ -1903,14 +1875,14 @@ void FlashMaskV2BaseKernel(
                       common::errors::InvalidArgument(
                           "rotary_cos must have the same dtype as query"));
 
-    phi::dynload::flashmaskv2_fwd_params_set_rotary_cos_ptr(
-        params_handle, (rotary_cos.data()));
-    phi::dynload::flashmaskv2_fwd_params_set_rotary_sin_ptr(
-        params_handle, (rotary_sin.data()));
+    dynload::flashmaskv2_fwd_params_set_rotary_cos_ptr(params_handle,
+                                                       (rotary_cos.data()));
+    dynload::flashmaskv2_fwd_params_set_rotary_sin_ptr(params_handle,
+                                                       (rotary_sin.data()));
     dynload::flashmaskv2_fwd_params_set_is_rotary_interleaved(
         params_handle, is_rotary_interleaved);
   } else {
-    phi::dynload::flashmaskv2_fwd_params_set_rotary_dim(params_handle, 0);
+    dynload::flashmaskv2_fwd_params_set_rotary_dim(params_handle, 0);
   }
 
   if (kv_batch_idx_.is_initialized()) {
@@ -1919,147 +1891,144 @@ void FlashMaskV2BaseKernel(
     CHECK_CONTIGUOUS(kv_batch_idx);
     PADDLE_ENFORCE_EQ(
         kv_batch_idx.dtype(),
-        phi::DataType::INT32,
+        DataType::INT32,
         common::errors::InvalidArgument("kv_batch_idx must have dtype int32"));
-    phi::dynload::flashmaskv2_fwd_params_set_kv_batch_idx(
+    dynload::flashmaskv2_fwd_params_set_kv_batch_idx(
         params_handle, reinterpret_cast<int *>(kv_batch_idx.data()));
   }
 
-  if (phi::dynload::flashmaskv2_fwd_params_get_num_splits(params_handle) > 1) {
+  if (dynload::flashmaskv2_fwd_params_get_num_splits(params_handle) > 1) {
     PADDLE_ENFORCE_LE(
-        phi::dynload::flashmaskv2_fwd_params_get_num_splits(params_handle),
+        dynload::flashmaskv2_fwd_params_get_num_splits(params_handle),
         256,
         common::errors::InvalidArgument("num_splits > 256 not supported"));
     if (!is_varlen_q) {
-      out_accum->Resize(common::make_ddim(
-          {phi::dynload::flashmaskv2_fwd_params_get_num_splits(params_handle),
+      out_accum->Resize(make_ddim(
+          {dynload::flashmaskv2_fwd_params_get_num_splits(params_handle),
            batch_size,
            num_heads,
            seqlen_q,
            head_size_v}));
-      softmax_lse_accum->Resize(common::make_ddim(
-          {phi::dynload::flashmaskv2_fwd_params_get_num_splits(params_handle),
+      softmax_lse_accum->Resize(make_ddim(
+          {dynload::flashmaskv2_fwd_params_get_num_splits(params_handle),
            batch_size,
            num_heads,
            seqlen_q}));
       dev_ctx.template Alloc<float>(out_accum);
       dev_ctx.template Alloc<float>(softmax_lse_accum);
-      phi::dynload::flashmaskv2_fwd_params_set_oaccum_batch_stride(
+      dynload::flashmaskv2_fwd_params_set_oaccum_batch_stride(
           params_handle, out_accum->strides()[1]);
-      phi::dynload::flashmaskv2_fwd_params_set_lseaccum_batch_stride(
+      dynload::flashmaskv2_fwd_params_set_lseaccum_batch_stride(
           params_handle, softmax_lse_accum->strides()[1]);
     } else {
-      out_accum->Resize(common::make_ddim(
-          {phi::dynload::flashmaskv2_fwd_params_get_num_splits(params_handle),
+      out_accum->Resize(make_ddim(
+          {dynload::flashmaskv2_fwd_params_get_num_splits(params_handle),
            num_heads,
            total_q,
            head_size_v}));
-      softmax_lse_accum->Resize(common::make_ddim(
-          {phi::dynload::flashmaskv2_fwd_params_get_num_splits(params_handle),
+      softmax_lse_accum->Resize(make_ddim(
+          {dynload::flashmaskv2_fwd_params_get_num_splits(params_handle),
            num_heads,
            total_q}));
       dev_ctx.template Alloc<float>(out_accum);
       dev_ctx.template Alloc<float>(softmax_lse_accum);
     }
-    phi::dynload::flashmaskv2_fwd_params_set_is_fp32(params_handle, false);
-    phi::dynload::flashmaskv2_fwd_params_set_oaccum_ptr(params_handle,
-                                                        (out_accum->data()));
-    phi::dynload::flashmaskv2_fwd_params_set_softmax_lseaccum_ptr(
+    dynload::flashmaskv2_fwd_params_set_is_fp32(params_handle, false);
+    dynload::flashmaskv2_fwd_params_set_oaccum_ptr(params_handle,
+                                                   (out_accum->data()));
+    dynload::flashmaskv2_fwd_params_set_softmax_lseaccum_ptr(
         params_handle, (softmax_lse_accum->data()));
-    phi::dynload::flashmaskv2_fwd_params_set_oaccum_split_stride(
+    dynload::flashmaskv2_fwd_params_set_oaccum_split_stride(
         params_handle, out_accum->strides()[0]);
-    phi::dynload::flashmaskv2_fwd_params_set_oaccum_row_stride(
+    dynload::flashmaskv2_fwd_params_set_oaccum_row_stride(
         params_handle, out_accum->strides()[out_accum->strides().size() - 2]);
-    phi::dynload::flashmaskv2_fwd_params_set_oaccum_head_stride(
+    dynload::flashmaskv2_fwd_params_set_oaccum_head_stride(
         params_handle, out_accum->strides()[out_accum->strides().size() - 3]);
-    phi::dynload::flashmaskv2_fwd_params_set_lseaccum_split_stride(
+    dynload::flashmaskv2_fwd_params_set_lseaccum_split_stride(
         params_handle, softmax_lse_accum->strides()[0]);
-    phi::dynload::flashmaskv2_fwd_params_set_lseaccum_head_stride(
+    dynload::flashmaskv2_fwd_params_set_lseaccum_head_stride(
         params_handle,
         softmax_lse_accum->strides()[softmax_lse_accum->strides().size() - 2]);
   }
 
-  if (q_type == phi::DataType::FLOAT8_E4M3FN) {
+  if (q_type == DataType::FLOAT8_E4M3FN) {
     if (q_descale_.is_initialized()) {
       DenseTensor q_descale = q_descale_.get();
       CHECK_DEVICE(q_descale);
       CHECK_SHAPE(q_descale, batch_size, num_heads_k);
-      phi::dynload::flashmaskv2_fwd_params_set_q_descale_ptr(
+      dynload::flashmaskv2_fwd_params_set_q_descale_ptr(
           params_handle, (q_descale.data<float>()));
-      phi::dynload::flashmaskv2_fwd_params_set_q_descale_batch_stride(
+      dynload::flashmaskv2_fwd_params_set_q_descale_batch_stride(
           params_handle, q_descale.strides()[0]);
-      phi::dynload::flashmaskv2_fwd_params_set_q_descale_head_stride(
+      dynload::flashmaskv2_fwd_params_set_q_descale_head_stride(
           params_handle, q_descale.strides()[1]);
     } else {
-      phi::dynload::flashmaskv2_fwd_params_set_q_descale_ptr(params_handle,
-                                                             nullptr);
+      dynload::flashmaskv2_fwd_params_set_q_descale_ptr(params_handle, nullptr);
     }
     if (k_descale_.is_initialized()) {
       DenseTensor k_descale = k_descale_.get();
       CHECK_DEVICE(k_descale);
       CHECK_SHAPE(k_descale, batch_size, num_heads_k);
-      phi::dynload::flashmaskv2_fwd_params_set_k_descale_ptr(
+      dynload::flashmaskv2_fwd_params_set_k_descale_ptr(
           params_handle, (k_descale.data<float>()));
-      phi::dynload::flashmaskv2_fwd_params_set_k_descale_batch_stride(
+      dynload::flashmaskv2_fwd_params_set_k_descale_batch_stride(
           params_handle, k_descale.strides()[0]);
-      phi::dynload::flashmaskv2_fwd_params_set_k_descale_head_stride(
+      dynload::flashmaskv2_fwd_params_set_k_descale_head_stride(
           params_handle, k_descale.strides()[1]);
     } else {
-      phi::dynload::flashmaskv2_fwd_params_set_k_descale_ptr(params_handle,
-                                                             nullptr);
+      dynload::flashmaskv2_fwd_params_set_k_descale_ptr(params_handle, nullptr);
     }
     if (v_descale_.is_initialized()) {
       DenseTensor v_descale = v_descale_.get();
       CHECK_DEVICE(v_descale);
       CHECK_SHAPE(v_descale, batch_size, num_heads_k);
-      phi::dynload::flashmaskv2_fwd_params_set_v_descale_ptr(
+      dynload::flashmaskv2_fwd_params_set_v_descale_ptr(
           params_handle, (v_descale.data<float>()));
-      phi::dynload::flashmaskv2_fwd_params_set_v_descale_batch_stride(
+      dynload::flashmaskv2_fwd_params_set_v_descale_batch_stride(
           params_handle, v_descale.strides()[0]);
-      phi::dynload::flashmaskv2_fwd_params_set_v_descale_head_stride(
+      dynload::flashmaskv2_fwd_params_set_v_descale_head_stride(
           params_handle, v_descale.strides()[1]);
     } else {
-      phi::dynload::flashmaskv2_fwd_params_set_v_descale_ptr(params_handle,
-                                                             nullptr);
+      dynload::flashmaskv2_fwd_params_set_v_descale_ptr(params_handle, nullptr);
     }
   }
 
 #ifdef FLASHATTENTION_DISABLE_LOCAL
   PADDLE_ENFORCE_EQ(
-      !phi::dynload::flashmaskv2_fwd_params_get_is_local(params_handle),
+      !dynload::flashmaskv2_fwd_params_get_is_local(params_handle),
       true,
       common::errors::InvalidArgument(
           "This flash attention build does not support local attention."));
 #endif
 #ifdef FLASHATTENTION_DISABLE_SOFTCAP
   PADDLE_ENFORCE_EQ(
-      phi::dynload::flashmaskv2_fwd_params_get_softcap(params_handle),
+      dynload::flashmaskv2_fwd_params_get_softcap(params_handle),
       0.0,
       common::errors::InvalidArgument(
           "This flash attention build does not support tanh softcapping."));
 #endif
 #ifdef FLASHATTENTION_DISABLE_SPLIT
   PADDLE_ENFORCE_EQ(
-      phi::dynload::flashmaskv2_fwd_params_get_num_splits(params_handle),
+      dynload::flashmaskv2_fwd_params_get_num_splits(params_handle),
       1,
       common::errors::InvalidArgument(
           "This flash attention build does not support splits."));
 #endif
 #ifdef FLASHATTENTION_DISABLE_PACKGQA
   PADDLE_ENFORCE_EQ(
-      (!phi::dynload::flashmaskv2_fwd_params_get_pack_gqa(params_handle) ||
-       phi::dynload::flashmaskv2_fwd_params_get_arch(params_handle) < 90 ||
-       (phi::dynload::flashmaskv2_fwd_params_get_page_table(params_handle) &&
-        !phi::dynload::flashmaskv2_fwd_params_get_pagedkv_tma(params_handle)) ||
-       phi::dynload::flashmaskv2_fwd_params_get_num_splits(params_handle) > 1),
+      (!dynload::flashmaskv2_fwd_params_get_pack_gqa(params_handle) ||
+       dynload::flashmaskv2_fwd_params_get_arch(params_handle) < 90 ||
+       (dynload::flashmaskv2_fwd_params_get_page_table(params_handle) &&
+        !dynload::flashmaskv2_fwd_params_get_pagedkv_tma(params_handle)) ||
+       dynload::flashmaskv2_fwd_params_get_num_splits(params_handle) > 1),
       true,
       common::errors::InvalidArgument(
           "This flash attention build does not support pack_gqa."));
 #endif
 #ifdef FLASHATTENTION_DISABLE_PAGEDKV
   PADDLE_ENFORCE_EQ(
-      (!(phi::dynload::flashmaskv2_fwd_params_get_page_table(params_handle) &&
-         !phi::dynload::flashmaskv2_fwd_params_get_pagedkv_tma(params_handle))),
+      (!(dynload::flashmaskv2_fwd_params_get_page_table(params_handle) &&
+         !dynload::flashmaskv2_fwd_params_get_pagedkv_tma(params_handle))),
       true,
       common::errors::InvalidArgument(
           "This flash attention build does not support paged KV."));
@@ -2126,7 +2095,7 @@ void FlashMaskV2BaseKernel(
     }
     flashmask_maxmin_shape[3] = 8;
 
-    flashmask_maxmin.set_type(phi::DataType::INT32);
+    flashmask_maxmin.set_type(DataType::INT32);
     flashmask_maxmin.Resize(flashmask_maxmin_shape);
     dev_ctx.template Alloc<int32_t>(&flashmask_maxmin);
 
@@ -2225,6 +2194,30 @@ void FlashMaskV2BaseKernel(
         params_handle, startend_row_indices.dims()[1]);
     dynload::flashmaskv2_fwd_params_set_h_h_flashmask_ratio(
         params_handle, num_heads / startend_row_indices.dims()[1]);
+
+    // distributed settings
+#ifdef PADDLE_WITH_NVSHMEM
+    PADDLE_ENFORCE_LE(
+        nranks,
+        64,
+        common::errors::InvalidArgument(
+            "nranks for FlashMask overlap should <= 64, got: %d", nranks));
+    dynload::flashmaskv2_fwd_params_set_rank(params_handle, rank);
+    dynload::flashmaskv2_fwd_params_set_nranks(params_handle, nranks);
+    if (unique_id_.is_initialized()) {
+      dynload::flashmaskv2_fwd_params_set_unique_id_ptr(
+          params_handle, unique_id_.get().data<uint8_t>());
+      VLOG(6) << "FlashMask overlap debug: unique_id_ptr set.";
+    } else {
+      dynload::flashmaskv2_fwd_params_set_unique_id_ptr(params_handle, nullptr);
+    }
+
+    VLOG(6) << "FlashMask overlap debug (rank and nranks): " << rank << ", "
+            << nranks;
+#else
+    VLOG(6) << "FlashMask overlap is not being used since PADDLE_WITH_NVSHMEM "
+               "is not defined.";
+#endif  // PADDLE_WITH_NVSHMEM
   } else {
     dynload::flashmaskv2_fwd_params_set_lt_start_ptr(params_handle, nullptr);
     dynload::flashmaskv2_fwd_params_set_lt_end_ptr(params_handle, nullptr);
@@ -2242,7 +2235,7 @@ void FlashMaskV2BaseKernel(
       num_heads_k > 0) {
     dynload::flashmaskv2_run_mha_fwd(params_handle, dev_ctx.stream());
     if (dynload::flashmaskv2_fwd_params_get_num_splits(params_handle) > 1) {
-      if (out_type == phi::DataType::BFLOAT16) {
+      if (out_type == DataType::BFLOAT16) {
         // Since we want output in BF16. Otherwise fwd_combine will output to
         // FP16
         dynload::flashmaskv2_fwd_params_set_is_bf16(params_handle, true);
@@ -2262,25 +2255,25 @@ void FlashMaskV2BaseKernel(
     }
   } else if (total_q > 0 && num_heads_k > 0) {
     PADDLE_ENFORCE_EQ(
-        (out->dtype() == phi::DataType::BFLOAT16 ||
-         out->dtype() == phi::DataType::FLOAT16 ||
-         out->dtype() == phi::DataType::FLOAT8_E4M3FN),
+        (out->dtype() == DataType::BFLOAT16 ||
+         out->dtype() == DataType::FLOAT16 ||
+         out->dtype() == DataType::FLOAT8_E4M3FN),
         true,
         common::errors::InvalidArgument("flash attention 3 supports bfloat16, "
                                         "float16 and float8_e4m3fn only."));
     // If seqlen_k == 0, then we have an empty tensor. We need to set the output
     // to 0.
-    if (out->dtype() == phi::DataType::BFLOAT16) {
+    if (out->dtype() == DataType::BFLOAT16) {
       funcs::SetConstant<Context, phi::bfloat16> set_zero;
       set_zero(dev_ctx,
                out,
                phi::bfloat16{0});  // If varlen we'll manually do the zero-ing
-    } else if (out->dtype() == phi::DataType::FLOAT16) {
+    } else if (out->dtype() == DataType::FLOAT16) {
       funcs::SetConstant<Context, phi::float16> set_zero;
       set_zero(dev_ctx,
                out,
                phi::float16{0});  // If varlen we'll manually do the zero-ing
-    } else if (out->dtype() == phi::DataType::FLOAT8_E4M3FN) {
+    } else if (out->dtype() == DataType::FLOAT8_E4M3FN) {
       funcs::SetConstant<Context, phi::float8_e4m3fn> set_zero;
       set_zero(
           dev_ctx,
@@ -2302,12 +2295,30 @@ void FlashMaskV2Kernel(const Context &dev_ctx,
                        const DenseTensor &k,
                        const DenseTensor &v,
                        const DenseTensor &startend_row_indices,
-                       const paddle::optional<DenseTensor> &block_mask,
+                       const optional<DenseTensor> &block_mask,
+                       const optional<DenseTensor> &unique_id,
                        const float softmax_scale,
                        bool is_causal,
+                       const int rank,
+                       const int nranks,
                        DenseTensor *out,
                        DenseTensor *softmax_lse) {
 #ifdef PADDLE_WITH_FLASHATTN_V3
+  // Handle 0-size tensors: return zeros without calling CUDA kernel
+  // to avoid invalid memory access
+  if (q.numel() == 0 || k.numel() == 0 || v.numel() == 0) {
+    if (out) {
+      funcs::SetConstant<Context, T> set_zero;
+      set_zero(dev_ctx, out, T{0});
+    }
+    if (softmax_lse) {
+      funcs::SetConstant<Context, float> set_infinity;
+      set_infinity(
+          dev_ctx, softmax_lse, std::numeric_limits<float>::infinity());
+    }
+    return;
+  }
+
   DenseTensor out_accum;
   DenseTensor softmax_lse_accum;
   FlashMaskV2BaseKernel<T, Context>(dev_ctx,
@@ -2334,6 +2345,7 @@ void FlashMaskV2Kernel(const Context &dev_ctx,
                                     paddle::none,  // scheduler_metadata_
                                     startend_row_indices,
                                     block_mask,
+                                    unique_id,
                                     0,  // max_seqlen_q_
                                     0,  // max_seqlen_k_
                                     softmax_scale,
@@ -2346,6 +2358,8 @@ void FlashMaskV2Kernel(const Context &dev_ctx,
                                     false,     // manual_set_pack_gqa
                                     false,     // pack_gqa_
                                     0,         // sm_margin
+                                    rank,      // dist CP settings
+                                    nranks,    // dist CP settings
                                     out,
                                     softmax_lse,
                                     &out_accum,
@@ -2356,7 +2370,34 @@ void FlashMaskV2Kernel(const Context &dev_ctx,
 #endif
 }
 
+template <typename T, typename Context>
+void FlashMaskV2GetUniqueIdInplace(const Context &dev_ctx,
+                                   const DenseTensor &x,
+                                   DenseTensor *out) {
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_FLASHATTN_V3)
+  bool valid_unique_id =
+      dynload::flashmaskv2_get_nvshmem_unique_id(out->data<uint8_t>());
+  if (!valid_unique_id) {
+    // If FlashMask is not compiled with `WITH_DISTRIBUTED_OVERLAP` then this is
+    // a zero tensor
+    funcs::SetConstant<Context, uint8_t> set_zero;
+    set_zero(dev_ctx, out, uint8_t{0});
+  }
+#else
+  funcs::SetConstant<Context, uint8_t> set_zero;
+  set_zero(dev_ctx, out, uint8_t{0});
+#endif
+}
+
 }  // namespace phi
+
+PD_REGISTER_KERNEL(flashmask_get_unique_id,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::FlashMaskV2GetUniqueIdInplace,
+                   uint8_t) {
+  kernel->InputAt(0).SetBackend(phi::Backend::CPU);
+}
 
 PD_REGISTER_KERNEL(flash_attn_v3,
                    GPU,
@@ -2379,4 +2420,5 @@ PD_REGISTER_KERNEL(flashmask_attention_v2,
                    phi::float16,
                    phi::bfloat16) {
   kernel->InputAt(4).SetBackend(phi::Backend::ALL_BACKEND);  // block_mask
+  kernel->InputAt(5).SetBackend(phi::Backend::CPU);  // nvshmem unique_id
 }

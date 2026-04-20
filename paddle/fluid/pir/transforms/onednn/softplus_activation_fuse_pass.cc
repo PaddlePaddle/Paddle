@@ -61,7 +61,9 @@ std::unordered_map<std::string, std::string> activation_type = {
     {paddle::dialect::SwishOp::name(), "swish"},
     {paddle::dialect::TanhOp::name(), "tanh"},
     {paddle::dialect::Tanh_Op::name(), "tanh"}};
+}  // namespace
 
+namespace pir {
 class SoftplusActivationFusePattern : public paddle::drr::DrrPatternBase {
  private:
   std::string softplus_name_;
@@ -273,13 +275,13 @@ class SoftplusClipFusePattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-class SoftplusActivationFusePass : public pir::PatternRewritePass {
+class SoftplusActivationFusePass : public PatternRewritePass {
  public:
   SoftplusActivationFusePass()
-      : pir::PatternRewritePass("softplus_activation_fuse_pass", 2) {}
+      : PatternRewritePass("softplus_activation_fuse_pass", 2) {}
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
-    pir::RewritePatternSet ps(context);
+  RewritePatternSet InitializePatterns(IrContext *context) override {
+    RewritePatternSet ps(context);
     int benefit_idx = 1;
     // There is no pattern for "fused_softplus + activation" since currently no
     // pass will output fused_softplus. We will add fused patterns when such
@@ -314,14 +316,11 @@ class SoftplusActivationFusePass : public pir::PatternRewritePass {
   }
 };
 
-}  // namespace
-
-namespace pir {
-
 std::unique_ptr<Pass> CreateSoftplusActivationFusePass() {
   // pd_op.softplus + pd_op.relu(act) -> onednn_op.softplus
   return std::make_unique<SoftplusActivationFusePass>();
 }
 }  // namespace pir
 
-REGISTER_IR_PASS(softplus_activation_fuse_pass, SoftplusActivationFusePass);
+REGISTER_IR_PASS(softplus_activation_fuse_pass,
+                 pir::SoftplusActivationFusePass);

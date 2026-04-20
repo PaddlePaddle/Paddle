@@ -27,7 +27,7 @@ void PadGradKernel(const Context& dev_ctx,
                    DenseTensor* d_x) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   std::vector<int64_t> pad_left, pad_right;
-  std::vector<int64_t> out_shape = common::vectorize<int64_t>(d_out.dims());
+  std::vector<int64_t> out_shape = vectorize<int64_t>(d_out.dims());
   dev_ctx.template Alloc<T>(d_x);
   if (d_x && d_x->numel() == 0) return;
 
@@ -56,7 +56,7 @@ void PadGradKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
                                                DenseTensor* d_x) {
   using T = phi::complex64;
   std::vector<int64_t> pad_left, pad_right;
-  std::vector<int64_t> out_shape = common::vectorize<int64_t>(d_out.dims());
+  std::vector<int64_t> out_shape = vectorize<int64_t>(d_out.dims());
   dev_ctx.template Alloc<T>(d_x);
   if (d_x && d_x->numel() == 0) return;
 

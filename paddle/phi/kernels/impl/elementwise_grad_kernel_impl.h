@@ -48,7 +48,7 @@ void MixedPrecisionAddGradImpl(const Context& dev_ctx,
   } else if (x_grad == nullptr && y_grad != nullptr &&
              y_grad->dims() == out_grad.dims()) {
     VLOG(4) << "Mixed precision: only y_grad needed, no reduce";
-    phi::CastKernel<T>(dev_ctx, out_grad, y.dtype(), y_grad);
+    CastKernel<T>(dev_ctx, out_grad, y.dtype(), y_grad);
   } else {
     grad_func(dev_ctx, x, y, *out, out_grad, x_grad, y_grad, axis);
   }
@@ -85,8 +85,8 @@ void AddGradImpl(const Context& dev_ctx,
 template <typename T, typename Context>
 void AddDoubleGradImpl(const Context& dev_ctx,
                        const DenseTensor& y,
-                       const paddle::optional<DenseTensor>& ddx,
-                       const paddle::optional<DenseTensor>& ddy,
+                       const optional<DenseTensor>& ddx,
+                       const optional<DenseTensor>& ddy,
                        const DenseTensor& dout,
                        int axis,
                        DenseTensor* ddout) {
@@ -107,7 +107,7 @@ void AddDoubleGradImpl(const Context& dev_ctx,
         std::vector<DenseTensor*> outs = {ddout};
         ExpandKernel<T, Context>(dev_ctx,
                                  *ddy_tensor,
-                                 IntArray{phi::vectorize<int64_t>(out_shape)},
+                                 IntArray{vectorize<int64_t>(out_shape)},
                                  ddout);
       } else {
         VLOG(4) << "Special case when ddx is not needed and ddy doesn't need "
@@ -122,7 +122,7 @@ void AddDoubleGradImpl(const Context& dev_ctx,
         std::vector<DenseTensor*> outs = {ddout};
         ExpandKernel<T, Context>(dev_ctx,
                                  *ddx_tensor,
-                                 IntArray{phi::vectorize<int64_t>(out_shape)},
+                                 IntArray{vectorize<int64_t>(out_shape)},
                                  ddout);
       } else {
         VLOG(4) << "Special case when ddx is not needed and ddy doesn't need "
@@ -156,8 +156,8 @@ void AddDoubleGradImpl(const Context& dev_ctx,
 template <typename T, typename Context>
 void SubtractDoubleGradImpl(const Context& dev_ctx,
                             const DenseTensor& y,
-                            const paddle::optional<DenseTensor>& ddx,
-                            const paddle::optional<DenseTensor>& ddy,
+                            const optional<DenseTensor>& ddx,
+                            const optional<DenseTensor>& ddy,
                             const DenseTensor& dout,
                             int axis,
                             DenseTensor* ddout) {
@@ -189,13 +189,12 @@ struct DivGradDX {
 };
 
 template <typename T>
-struct DivGradDX<phi::dtype::complex<T>> {
-  HOSTDEVICE phi::dtype::complex<T> operator()(
-      phi::dtype::complex<T> x UNUSED,
-      phi::dtype::complex<T> y,
-      phi::dtype::complex<T> out UNUSED,
-      phi::dtype::complex<T> dout) const {
-    phi::dtype::complex<T> y_conj(y.real, -y.imag);
+struct DivGradDX<dtype::complex<T>> {
+  HOSTDEVICE dtype::complex<T> operator()(dtype::complex<T> x UNUSED,
+                                          dtype::complex<T> y,
+                                          dtype::complex<T> out UNUSED,
+                                          dtype::complex<T> dout) const {
+    dtype::complex<T> y_conj(y.real, -y.imag);
     return dout / y_conj;
   }
 };
@@ -208,13 +207,12 @@ struct DivGradDY {
 };
 
 template <typename T>
-struct DivGradDY<phi::dtype::complex<T>> {
-  HOSTDEVICE phi::dtype::complex<T> operator()(
-      phi::dtype::complex<T> x UNUSED,
-      phi::dtype::complex<T> y,
-      phi::dtype::complex<T> out,
-      phi::dtype::complex<T> dout) const {
-    phi::dtype::complex<T> out_div_y_conj((out / y).real, -(out / y).imag);
+struct DivGradDY<dtype::complex<T>> {
+  HOSTDEVICE dtype::complex<T> operator()(dtype::complex<T> x UNUSED,
+                                          dtype::complex<T> y,
+                                          dtype::complex<T> out,
+                                          dtype::complex<T> dout) const {
+    dtype::complex<T> out_div_y_conj((out / y).real, -(out / y).imag);
     return -dout * out_div_y_conj;
   }
 };
@@ -430,7 +428,7 @@ void ComputeDDoutWithoutBroadcast(const GPUContext& dev_ctx UNUSED,
   auto* ddout_data = ddout->data<T>();
   int block = 512;
   int64_t grid = (out_numel + block - 1) / block;
-  auto stream = reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
+  auto stream = reinterpret_cast<const GPUContext&>(dev_ctx).stream();
   ComputeDDoutWithoutBroadcastGPUKernel<T, DDout_OP, T>
       <<<grid, block, 0, stream>>>(
           ddx_data, ddy_data, y_data, out_data, ddout_data, out_numel, dout_op);
@@ -498,7 +496,7 @@ void ComputeDDoutWithBroadcast(const GPUContext& dev_ctx UNUSED,
 
   int block = 512;
   int64_t grid = (out_numel + block - 1) / block;
-  auto stream = reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
+  auto stream = reinterpret_cast<const GPUContext&>(dev_ctx).stream();
   ComputeDDoutWithBroadcastGPUKernel<T, DDout_OP, T>
       <<<grid, block, 0, stream>>>(ddx_data,
                                    ddy_data,
@@ -561,9 +559,9 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
                             const DenseTensor& y,
                             const DenseTensor& out,
                             const DenseTensor& grad_out,
-                            const paddle::optional<DenseTensor>& dx,
-                            const paddle::optional<DenseTensor>& ddx,
-                            const paddle::optional<DenseTensor>& ddy,
+                            const optional<DenseTensor>& dx,
+                            const optional<DenseTensor>& ddx,
+                            const optional<DenseTensor>& ddy,
                             int axis,
                             DenseTensor* dy,
                             DenseTensor* dout,
@@ -771,19 +769,13 @@ void ElementwiseFMaxGradKernel(const Context& dev_ctx,
     if (x_grad) {
       dev_ctx.template Alloc<T>(x_grad);
       if (x_grad->numel() != 0) {
-        phi::Full<T, Context>(dev_ctx,
-                              phi::IntArray(common::vectorize(x_grad->dims())),
-                              0,
-                              x_grad);
+        Full<T, Context>(dev_ctx, x_grad->dims(), 0, x_grad);
       }
     }
     if (y_grad) {
       dev_ctx.template Alloc<T>(y_grad);
       if (y_grad->numel() != 0) {
-        phi::Full<T, Context>(dev_ctx,
-                              phi::IntArray(common::vectorize(y_grad->dims())),
-                              0,
-                              y_grad);
+        Full<T, Context>(dev_ctx, y_grad->dims(), 0, y_grad);
       }
     }
     return;
@@ -837,19 +829,13 @@ void ElementwiseFMinGradKernel(const Context& dev_ctx,
     if (x_grad) {
       dev_ctx.template Alloc<T>(x_grad);
       if (x_grad->numel() != 0) {
-        phi::Full<T, Context>(dev_ctx,
-                              phi::IntArray(common::vectorize(x_grad->dims())),
-                              0,
-                              x_grad);
+        Full<T, Context>(dev_ctx, x_grad->dims(), 0, x_grad);
       }
     }
     if (y_grad) {
       dev_ctx.template Alloc<T>(y_grad);
       if (y_grad->numel() != 0) {
-        phi::Full<T, Context>(dev_ctx,
-                              phi::IntArray(common::vectorize(y_grad->dims())),
-                              0,
-                              y_grad);
+        Full<T, Context>(dev_ctx, y_grad->dims(), 0, y_grad);
       }
     }
     return;
@@ -912,13 +898,12 @@ struct MulGradDX<bool> {
 };
 
 template <typename T>
-struct MulGradDX<phi::dtype::complex<T>> {
-  HOSTDEVICE phi::dtype::complex<T> operator()(
-      phi::dtype::complex<T> x UNUSED,
-      phi::dtype::complex<T> y,
-      phi::dtype::complex<T> out UNUSED,
-      phi::dtype::complex<T> dout) const {
-    phi::dtype::complex<T> y_conj(y.real, -y.imag);
+struct MulGradDX<dtype::complex<T>> {
+  HOSTDEVICE dtype::complex<T> operator()(dtype::complex<T> x UNUSED,
+                                          dtype::complex<T> y,
+                                          dtype::complex<T> out UNUSED,
+                                          dtype::complex<T> dout) const {
+    dtype::complex<T> y_conj(y.real, -y.imag);
     return dout * y_conj;
   }
 };
@@ -948,13 +933,12 @@ struct MulGradDY<bool> {
 };
 
 template <typename T>
-struct MulGradDY<phi::dtype::complex<T>> {
-  HOSTDEVICE phi::dtype::complex<T> operator()(
-      phi::dtype::complex<T> x,
-      phi::dtype::complex<T> y UNUSED,
-      phi::dtype::complex<T> out UNUSED,
-      phi::dtype::complex<T> dout) const {
-    phi::dtype::complex<T> x_conj(x.real, -x.imag);
+struct MulGradDY<dtype::complex<T>> {
+  HOSTDEVICE dtype::complex<T> operator()(dtype::complex<T> x,
+                                          dtype::complex<T> y UNUSED,
+                                          dtype::complex<T> out UNUSED,
+                                          dtype::complex<T> dout) const {
+    dtype::complex<T> x_conj(x.real, -x.imag);
     return dout * x_conj;
   }
 };
@@ -964,8 +948,8 @@ void MultiplyDoubleGradKernel(const Context& dev_ctx,
                               const DenseTensor& x,
                               const DenseTensor& y,
                               const DenseTensor& dout,
-                              const paddle::optional<DenseTensor>& ddx,
-                              const paddle::optional<DenseTensor>& ddy,
+                              const optional<DenseTensor>& ddx,
+                              const optional<DenseTensor>& ddy,
                               int axis,
                               DenseTensor* dx,
                               DenseTensor* dy,
@@ -1155,11 +1139,11 @@ void MultiplyTripleGradKernel(const Context& dev_ctx,
                               const DenseTensor& x,
                               const DenseTensor& y,
                               const DenseTensor& dout,
-                              const paddle::optional<DenseTensor>& ddx,
-                              const paddle::optional<DenseTensor>& ddy,
-                              const paddle::optional<DenseTensor>& d_dx,
-                              const paddle::optional<DenseTensor>& d_dy,
-                              const paddle::optional<DenseTensor>& d_ddout,
+                              const optional<DenseTensor>& ddx,
+                              const optional<DenseTensor>& ddy,
+                              const optional<DenseTensor>& d_dx,
+                              const optional<DenseTensor>& d_dy,
+                              const optional<DenseTensor>& d_ddout,
                               int axis,
                               DenseTensor* d_x,
                               DenseTensor* d_y,
@@ -1490,7 +1474,7 @@ HOSTDEVICE T compute_pow_grad_dy(T x, T y, T out UNUSED, T dout) {
 
 template <typename T>
 struct PowGradDX {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
     return compute_pow_grad_dx<T, MPType>(x, y, out, dout);
   }
@@ -1498,42 +1482,40 @@ struct PowGradDX {
 
 template <typename T, typename Enable = void>
 struct PowGradDY {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
     return compute_pow_grad_dy<T, MPType>(x, y, out, dout);
   }
 };
 
 template <typename T>
-struct PowGradDX<phi::dtype::complex<T>> {
-  HOSTDEVICE phi::dtype::complex<T> operator()(
-      phi::dtype::complex<T> x,
-      phi::dtype::complex<T> y,
-      phi::dtype::complex<T> out,
-      phi::dtype::complex<T> dout) const {
+struct PowGradDX<dtype::complex<T>> {
+  HOSTDEVICE dtype::complex<T> operator()(dtype::complex<T> x,
+                                          dtype::complex<T> y,
+                                          dtype::complex<T> out,
+                                          dtype::complex<T> dout) const {
 #if defined(__CUDA_ARCH__) || defined(__HIPCC__)
-    return conj(dout * y * pow(x, y - phi::dtype::complex<T>(1, 0)));
+    return conj(dout * y * pow(x, y - dtype::complex<T>(1, 0)));
 #else
     return conj(
         dout * y *
-        static_cast<phi::dtype::complex<T>>(std::pow(
+        static_cast<dtype::complex<T>>(std::pow(
             static_cast<std::complex<T>>(x),
-            static_cast<std::complex<T>>(y - phi::dtype::complex<T>(1, 0)))));
+            static_cast<std::complex<T>>(y - dtype::complex<T>(1, 0)))));
 #endif
   }
 };
 
 template <typename T>
-struct PowGradDY<phi::dtype::complex<T>> {
-  HOSTDEVICE phi::dtype::complex<T> operator()(
-      phi::dtype::complex<T> x,
-      phi::dtype::complex<T> y,
-      phi::dtype::complex<T> out,
-      phi::dtype::complex<T> dout) const {
+struct PowGradDY<dtype::complex<T>> {
+  HOSTDEVICE dtype::complex<T> operator()(dtype::complex<T> x,
+                                          dtype::complex<T> y,
+                                          dtype::complex<T> out,
+                                          dtype::complex<T> dout) const {
 #if defined(__CUDA_ARCH__) || defined(__HIPCC__)
     return conj(dout * log(x) * pow(x, y));
 #else
-    return conj(dout * static_cast<phi::dtype::complex<T>>(
+    return conj(dout * static_cast<dtype::complex<T>>(
                            std::log(static_cast<std::complex<T>>(x)) *
                            std::pow(static_cast<std::complex<T>>(x),
                                     static_cast<std::complex<T>>(y))));
@@ -1550,16 +1532,10 @@ void ElementwisePowGradKernel(const Context& dev_ctx,
                               DenseTensor* dy) {
   if (dout.numel() == 0) {
     if (dx) {
-      phi::Full<T, Context>(dev_ctx,
-                            phi::IntArray(common::vectorize(x.dims())),
-                            static_cast<T>(0),
-                            dx);
+      Full<T, Context>(dev_ctx, x.dims(), static_cast<T>(0), dx);
     }
     if (dy) {
-      phi::Full<T, Context>(dev_ctx,
-                            phi::IntArray(common::vectorize(y.dims())),
-                            static_cast<T>(0),
-                            dy);
+      Full<T, Context>(dev_ctx, y.dims(), static_cast<T>(0), dy);
     }
     return;
   }
@@ -1587,7 +1563,7 @@ struct RemainderGradDx {
 template <typename T, typename Enable = void>
 struct RemainderGradDy {
   HOSTDEVICE T operator()(T x, T y, T out UNUSED, T dout) const {
-    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+    using MPType = typename dtype::MPTypeTrait<T>::Type;
     auto x_ = static_cast<MPType>(x);
     auto y_ = static_cast<MPType>(y);
     auto dout_ = static_cast<MPType>(dout);
@@ -1600,7 +1576,7 @@ struct RemainderGradDy<
     T,
     typename std::enable_if<std::is_floating_point<T>::value>::type> {
   HOSTDEVICE T operator()(T x, T y, T out UNUSED, T dout) const {
-    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+    using MPType = typename dtype::MPTypeTrait<T>::Type;
     auto x_ = static_cast<MPType>(x);
     auto y_ = static_cast<MPType>(y);
     auto dout_ = static_cast<MPType>(dout);
@@ -1613,7 +1589,7 @@ struct RemainderGradDy<
     typename std::enable_if<std::is_integral<T>::value>::type> {
   HOSTDEVICE T operator()(T x, T y, T out UNUSED, T dout) const {
     // dy = -dout * (x / y)
-    if (phi::is_negative(x) != phi::is_negative(y)) {
+    if (is_negative(x) != is_negative(y)) {
       // Subtracts one from the results of truncation division if the
       // divisor and dividend have different sign(bit)s and the remainder of
       // the division is nonzero

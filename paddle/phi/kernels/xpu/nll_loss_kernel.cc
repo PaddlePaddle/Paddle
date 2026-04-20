@@ -22,7 +22,7 @@ template <typename T, typename Context>
 void NllLossRawKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& label,
-                      const paddle::optional<DenseTensor>& weight,
+                      const optional<DenseTensor>& weight,
                       int64_t ignore_index,
                       const std::string& reduction,
                       DenseTensor* out,
@@ -30,15 +30,15 @@ void NllLossRawKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   const auto& label_type = label.dtype();
   bool label_type_match =
-      label_type == phi::DataType::INT32 || label_type == phi::DataType::INT64;
+      label_type == DataType::INT32 || label_type == DataType::INT64;
   PADDLE_ENFORCE_EQ(label_type_match,
                     true,
                     common::errors::InvalidArgument(
                         "Input(Label) holds the wrong type, it holds %s, but "
                         "desires to be %s or %s",
                         label_type,
-                        phi::DataType::INT32,
-                        phi::DataType::INT64));
+                        DataType::INT32,
+                        DataType::INT64));
 
   auto x_data = x.data<XPUType>();
   auto out_data = dev_ctx.template Alloc<XPUType>(out);
@@ -49,7 +49,7 @@ void NllLossRawKernel(const Context& dev_ctx,
   auto total_weight_data = dev_ctx.template Alloc<XPUType>(total_weight);
 
   auto x_dims = x.dims();
-  std::vector<int64_t> x_shape = common::vectorize<int64_t>(x_dims);
+  std::vector<int64_t> x_shape = vectorize<int64_t>(x_dims);
 
   int64_t reduction_id = 0;
   if (reduction == "none") {
@@ -61,7 +61,7 @@ void NllLossRawKernel(const Context& dev_ctx,
   }
 
   int r;
-  if (label_type == phi::DataType::INT32) {
+  if (label_type == DataType::INT32) {
     const int* label_data = label.data<int>();
     r = xpu::nll_loss(dev_ctx.x_context(),
                       x_data,
@@ -72,7 +72,7 @@ void NllLossRawKernel(const Context& dev_ctx,
                       weight_data,
                       reduction_id,
                       ignore_index);
-  } else if (label_type == phi::DataType::INT64) {
+  } else if (label_type == DataType::INT64) {
     const int64_t* label_data = label.data<int64_t>();
     r = xpu::nll_loss(dev_ctx.x_context(),
                       x_data,

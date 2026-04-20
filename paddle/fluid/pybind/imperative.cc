@@ -330,7 +330,7 @@ Py_ssize_t GetSliceIndexFromPyObject(PyObject *obj) {
             .Get<DenseTensor>());
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "We should only get paddle::Tensor or VarBase in this "
+        "We should only get Tensor or VarBase in this "
         "method, when you reach this means we got another type index."));
   }
 }
@@ -1036,7 +1036,7 @@ void BindImperative(py::module *m_ptr) {
                                  shape with the input numpy array.
 
   Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import numpy as np
@@ -1170,7 +1170,7 @@ void BindImperative(py::module *m_ptr) {
                     should be one-dimensional.
 
   Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> import paddle
@@ -1402,7 +1402,7 @@ void BindImperative(py::module *m_ptr) {
                     should be one-dimensional.
 
   Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> import paddle

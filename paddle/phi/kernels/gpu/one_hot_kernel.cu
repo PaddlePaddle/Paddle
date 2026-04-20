@@ -21,8 +21,6 @@
 
 namespace phi {
 
-using phi::PADDLE_CUDA_NUM_THREADS;
-
 template <typename InT, typename OutT>
 __global__ void FillOutputKernel(const InT* p_in_data,
                                  OutT* p_out_data,
@@ -55,11 +53,12 @@ void OneHotKernel(const Context& dev_ctx,
   auto* p_in_data = x.data<T>();
   auto numel = x.numel();
   auto* p_out_data = dev_ctx.template Alloc<float>(out);
-  auto stream = dev_ctx.stream();
-  funcs::set_constant(dev_ctx, out, static_cast<float>(0.0));
   if (numel == 0) return;
 
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
+  auto stream = dev_ctx.stream();
+  funcs::set_constant(dev_ctx, out, static_cast<float>(0.0));
+
+  auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
 
   FillOutputKernel<<<config.block_per_grid,
                      config.thread_per_block,

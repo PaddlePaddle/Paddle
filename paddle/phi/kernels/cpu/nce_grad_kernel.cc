@@ -16,32 +16,28 @@
 
 #include <iterator>
 #include <random>
-#include <set>
-#include <string>
-#include <vector>
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math/sampler.h"
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
-#include "unsupported/Eigen/CXX11/Tensor"
 
 namespace phi {
 
-using Sampler = phi::math::Sampler;
+using Sampler = math::Sampler;
 
 template <typename T, typename Context>
 void NCEGradKernel(const Context &dev_ctx,
                    const DenseTensor &input_in,
                    const DenseTensor &label_in,
-                   const paddle::optional<DenseTensor> &bias_in,
+                   const optional<DenseTensor> &bias_in,
                    const DenseTensor &weight_in,
                    const DenseTensor &sample_logits_in,
                    const DenseTensor &sample_labels_in,
-                   const paddle::optional<DenseTensor> &sample_weight_in,
-                   const paddle::optional<DenseTensor> &custom_dist_probs,
-                   const paddle::optional<DenseTensor> &custom_dist_alias,
-                   const paddle::optional<DenseTensor> &custom_dist_alias_probs,
+                   const optional<DenseTensor> &sample_weight_in,
+                   const optional<DenseTensor> &custom_dist_probs,
+                   const optional<DenseTensor> &custom_dist_alias,
+                   const optional<DenseTensor> &custom_dist_alias_probs,
                    const DenseTensor &cost_grad,
                    int num_total_classes,
                    const std::vector<int> &custom_neg_classes,
@@ -75,11 +71,11 @@ void NCEGradKernel(const Context &dev_ctx,
   Sampler *sampler;
   switch (sampler_type) {
     case 0: {
-      sampler = new phi::math::UniformSampler(num_total_classes - 1, seed);
+      sampler = new math::UniformSampler(num_total_classes - 1, seed);
       break;
     }
     case 1: {
-      sampler = new phi::math::LogUniformSampler(num_total_classes - 1, seed);
+      sampler = new math::LogUniformSampler(num_total_classes - 1, seed);
       break;
     }
     case 2: {
@@ -122,11 +118,11 @@ void NCEGradKernel(const Context &dev_ctx,
       const float *probs_data = dist_probs->data<float>();
       const int *alias_data = dist_alias->data<int>();
       const float *alias_probs_data = dist_alias_probs->data<float>();
-      sampler = new phi::math::CustomSampler(num_total_classes - 1,
-                                             probs_data,
-                                             alias_data,
-                                             alias_probs_data,
-                                             seed);
+      sampler = new math::CustomSampler(num_total_classes - 1,
+                                        probs_data,
+                                        alias_data,
+                                        alias_probs_data,
+                                        seed);
       break;
     }
     default: {

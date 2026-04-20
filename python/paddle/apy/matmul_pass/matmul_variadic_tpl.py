@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import ap
+import compile_command_util
 import kernel_arg_translator_util
 import low_level_ir_code_gen_ctx_util
 
@@ -59,7 +60,7 @@ class MatmulVariadicTemplate:
         registry.get_or_create_kernel_arg_id_manul_var_name(
             kernel_arg_id=pair[0], cpp_var_name=pair[1]
         )
-    
+
     def make_gpu_compile_cmd(self, dir_name, source_dir):
         cutlass_dir = f"{dir_name}/matmul/cutlass-3.7.0"
         compile_cmd = "nvcc -std=c++20 -O3 -Xcompiler=-fPIC -arch=sm_80 --expt-relaxed-constexpr"
@@ -92,7 +93,7 @@ class MatmulVariadicTemplate:
             + f" --shared {self.library_name}.cpp -o lib{self.library_name}.so"
         )
         return compile_cmd
-    
+
     def compile(
         self,
         input0_karg,
@@ -114,7 +115,6 @@ class MatmulVariadicTemplate:
                 range(len(input1_shape_kargs)),
             ),
         ]
-        print(f"-- kargs_name_pair_list: {kargs_name_pair_list}")
 
         ap.map(self._register_name, kargs_name_pair_list)
         mut_lir_code_gen_ctx = (
@@ -122,16 +122,14 @@ class MatmulVariadicTemplate:
                 compute_dtype=ap.DataType.float
             )
         )
-
         self.program_translator.translate(
             mut_kernel_arg_id_registry=self.mut_kernel_arg_id_registry,
             mut_lir_code_gen_ctx=mut_lir_code_gen_ctx,
         )
-
         trivial_code_str = mut_lir_code_gen_ctx.get_stmts_joined_str(
             indent="    "
         )
-        print("-- matmul_binary_epilogue_code:\n", trivial_code_str)
+
         project_module = self.make_project(
             trivial_code_str,
             input0_karg,
@@ -359,18 +357,14 @@ void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
             .replace("${n_value}", f"{input1_shape_kargs[-1].value}")
         )
 
-        device_type = get_hardware_device()
-
         dir_name = ap.dirname(__file__)
-        source_dir = f"{dir_name}/matmul"
-
-        compile_cmd = (
-            self.make_dcu_compile_cmd(dir_name, source_dir)
-            if device_type == "dcu"
-            else self.make_gpu_compile_cmd(dir_name, source_dir)
+        compile_command_generator = (
+            compile_command_util.CompileCommandGenerator()
         )
-
-        file_ext = "cpp" if device_type == "dcu" else "cu"
+        compile_cmd = compile_command_generator(
+            "matmul", dir_name, self.library_name
+        )
+        file_ext = compile_command_generator.file_ext
 
         return CodeModule(  # noqa: F821
             FuncDeclare(  # noqa: F821

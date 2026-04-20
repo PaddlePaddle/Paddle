@@ -37,7 +37,7 @@ void RangeTensorKernel(const Context& dev_ctx,
                        const DenseTensor& end,
                        const DenseTensor& step,
                        DenseTensor* out) {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
   MPType start_value =
       static_cast<MPType>(GetValue<T, Context>(dev_ctx, start));
   MPType end_value = static_cast<MPType>(GetValue<T, Context>(dev_ctx, end));
@@ -47,7 +47,7 @@ void RangeTensorKernel(const Context& dev_ctx,
   }
   int64_t size =
       static_cast<int64_t>(((end_value - start_value) / step_value) + 1);
-  out->Resize(common::make_ddim({size}));
+  out->Resize({size});
   T* out_data = dev_ctx.template Alloc<T>(out);
 
   auto stream = dev_ctx.stream();
@@ -66,7 +66,7 @@ void RangeNullaryKernel(const Context& dev_ctx,
                         const T end_value,
                         const T step_value,
                         DenseTensor* out) {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
   MPType start_value_mpt = static_cast<MPType>(start_value);
   MPType end_value_mpt = static_cast<MPType>(end_value);
   MPType step_value_mpt = static_cast<MPType>(step_value);
@@ -86,7 +86,7 @@ void RangeNullaryKernel(const Context& dev_ctx,
   }
   int64_t size = static_cast<int64_t>(
       ((end_value_mpt - start_value_mpt) / step_value_mpt) + 1);
-  out->Resize(common::make_ddim({size}));
+  out->Resize({size});
   T* out_data = dev_ctx.template Alloc<T>(out);
   if (size == 0) {
     return;
@@ -129,9 +129,8 @@ void RangeKernel(const Context& dev_ctx,
       dev_ctx, start_value, end_value, step_value, out);
 }
 
-template decltype(RangeNullaryKernel<int64_t, phi::GPUContext>)
-    RangeNullaryKernel;
-template decltype(RangeNullaryKernel<int, phi::GPUContext>) RangeNullaryKernel;
+template decltype(RangeNullaryKernel<int64_t, GPUContext>) RangeNullaryKernel;
+template decltype(RangeNullaryKernel<int, GPUContext>) RangeNullaryKernel;
 }  // namespace phi
 
 PD_REGISTER_KERNEL(range_tensor,

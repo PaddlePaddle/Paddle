@@ -36,9 +36,9 @@ void MatmulKernelImpl(const Context& dev_ctx,
                       const TensorType& x,
                       const DenseTensor& y,
                       DenseTensor* out) {
-#if CUDA_VERSION >= 11000 || HIP_VERSION >= 402
-  std::vector<int64_t> xdim_vec = common::vectorize(x.dims());
-  std::vector<int64_t> ydim_vec = common::vectorize(y.dims());
+#if defined(PADDLE_WITH_CUDA) || HIP_VERSION >= 402
+  std::vector<int64_t> xdim_vec = vectorize(x.dims());
+  std::vector<int64_t> ydim_vec = vectorize(y.dims());
   auto x_ndims = xdim_vec.size();
   auto y_ndims = ydim_vec.size();
   PADDLE_ENFORCE_EQ(x_ndims,
@@ -75,8 +75,10 @@ void MatmulKernelImpl(const Context& dev_ctx,
   out_dim_vec[y_ndims - 2] = xdim_vec[x_ndims - 2];
   out_dim_vec[y_ndims - 1] = ydim_vec[y_ndims - 1];
   MetaTensor meta_out(out);
-  meta_out.set_dims(common::make_ddim(out_dim_vec));
+  meta_out.set_dims(make_ddim(out_dim_vec));
   meta_out.set_dtype(y.dtype());
+  // Ensure the output DenseTensor has a proper dense layout, not sparse layout
+  meta_out.set_layout(DataLayout::NCHW);
 
   dev_ctx.template Alloc<T>(out);
 
@@ -112,9 +114,9 @@ void MatmulCsrCsrKernel(const Context& dev_ctx,
                         const SparseCsrTensor& x,
                         const SparseCsrTensor& y,
                         SparseCsrTensor* out) {
-#if CUDA_VERSION >= 11000
-  std::vector<int64_t> xdim_vec = phi::vectorize(x.dims());
-  std::vector<int64_t> ydim_vec = phi::vectorize(y.dims());
+#if defined(PADDLE_WITH_CUDA)
+  std::vector<int64_t> xdim_vec = vectorize(x.dims());
+  std::vector<int64_t> ydim_vec = vectorize(y.dims());
   auto x_ndims = xdim_vec.size();
   auto y_ndims = ydim_vec.size();
   PADDLE_ENFORCE_EQ(x_ndims,
@@ -149,13 +151,6 @@ void MatmulCsrCsrKernel(const Context& dev_ctx,
   auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
   sparse_blas.SPGEMM(
       false, false, static_cast<T>(1), x, y, static_cast<T>(0), out);
-
-#else
-#ifdef PADDLE_WITH_CUDA
-  PADDLE_THROW(common::errors::Unimplemented(
-      "forward of 'sparse.matmul' use cusparseSpGEMM, "
-      "which is supported from CUDA 11.0"));
-#endif
 #endif
 }
 
@@ -179,10 +174,10 @@ void MaskedMatmulCsrKernel(const Context& dev_ctx,
                            const DenseTensor& y,
                            const SparseCsrTensor& mask,
                            SparseCsrTensor* out) {
-#if CUDA_VERSION >= 11030
-  std::vector<int64_t> xdim_vec = common::vectorize(x.dims());
-  std::vector<int64_t> ydim_vec = common::vectorize(y.dims());
-  std::vector<int64_t> maskdim_vec = common::vectorize(mask.dims());
+#if defined(PADDLE_WITH_CUDA)
+  std::vector<int64_t> xdim_vec = vectorize(x.dims());
+  std::vector<int64_t> ydim_vec = vectorize(y.dims());
+  std::vector<int64_t> maskdim_vec = vectorize(mask.dims());
 
   auto x_ndims = xdim_vec.size();
   auto y_ndims = ydim_vec.size();
@@ -249,10 +244,6 @@ void MaskedMatmulCsrKernel(const Context& dev_ctx,
   auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
   sparse_blas.SDDMM(
       false, false, static_cast<T>(1), x, y, static_cast<T>(0), out);
-#else
-  PADDLE_THROW(common::errors::Unimplemented(
-      "forward of 'sparse.masked_matmul' use cusparseSDDMM, which is supported "
-      "from CUDA 11.3"));
 #endif
 }
 

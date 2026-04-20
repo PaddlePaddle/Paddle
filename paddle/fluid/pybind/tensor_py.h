@@ -672,13 +672,13 @@ void SetUVATensorFromPyArray(
 }
 
 template <typename T>
-void SetUVATensorFromPyArray(const std::shared_ptr<paddle::Tensor> &self,
+void SetUVATensorFromPyArray(const std::shared_ptr<Tensor> &self,
                              const py::array_t<T> &array,
                              int device_id) {
 #if defined(PADDLE_WITH_CUDA)
   VLOG(4) << "Running in SetUVATensorFromPyArray for Phi::Tensor.";
   phi::DenseTensorMeta meta =
-      phi::DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim({1, 1}));
+      phi::DenseTensorMeta(DataType::FLOAT32, common::make_ddim({1, 1}));
   std::shared_ptr<DenseTensor> tmp_t = std::make_shared<DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(CPUPlace())
           .get(),
@@ -700,8 +700,8 @@ void _sliceCompute(const DenseTensor *in,
   auto out_dims = common::vectorize<int>(out->dims());
   auto in_dims = in->dims();
 
-  auto offsets = Eigen::DSizes<Eigen::DenseIndex, D>();
-  auto extents = Eigen::DSizes<Eigen::DenseIndex, D>();
+  auto offsets = Eigen::DSizes<int64_t, D>();
+  auto extents = Eigen::DSizes<int64_t, D>();
   for (size_t i = 0; i < D; ++i) {
     offsets[i] = 0;
     extents[i] = out_dims[i];
@@ -715,12 +715,8 @@ void _sliceCompute(const DenseTensor *in,
     start = std::max(start, 0);
     offsets[axes[i]] = start;
   }
-  auto in_t =
-      framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-          *in);
-  auto out_t =
-      framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-          *out);
+  auto in_t = framework::EigenTensor<T, D, Eigen::RowMajor>::From(*in);
+  auto out_t = framework::EigenTensor<T, D, Eigen::RowMajor>::From(*out);
   phi::funcs::EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
       eigen_place, out_t, in_t, offsets, extents);
 }
@@ -1104,9 +1100,9 @@ inline py::array TensorToPyArray(const DenseTensor &tensor,
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     // TODO(qili93): temporary for ascend npu performance to be removed along
     // with npu_identity op
-    paddle::Tensor tensor_out(std::make_shared<DenseTensor>());
+    Tensor tensor_out(std::make_shared<DenseTensor>());
     if (tensor.storage_properties_initialized()) {
-      paddle::Tensor tensor_in(std::make_shared<DenseTensor>(tensor));
+      Tensor tensor_in(std::make_shared<DenseTensor>(tensor));
       tensor_out = npu_identity_ad_func(tensor_in, -1);
       auto dense_tensor =
           std::dynamic_pointer_cast<DenseTensor>(tensor_out.impl());

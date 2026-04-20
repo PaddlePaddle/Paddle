@@ -27,7 +27,7 @@ static DenseTensor Fill(const Context& dev_ctx,
                         std::vector<int> shape,
                         T fill_value) {
   DenseTensor ret;
-  ret.Resize(common::make_ddim(shape));
+  ret.Resize(shape);
   dev_ctx.template Alloc<T>(&ret);
   funcs::SetConstant<Context, T>()(dev_ctx, &ret, fill_value);
   return ret;
@@ -144,7 +144,7 @@ void CastKernel(const Context& dev_ctx,
       CastXPUKernelImpl<T, float, Context>(dev_ctx, x, &real);
       dev_ctx.template Alloc<T>(out);
       DenseTensor imag = Fill<float, Context>(
-          dev_ctx, common::vectorize<int>(x.dims()), static_cast<float>(0.0));
+          dev_ctx, vectorize<int>(x.dims()), static_cast<float>(0.0));
       phi::ComplexKernel<float>(dev_ctx, real, imag, out);
       break;
     }

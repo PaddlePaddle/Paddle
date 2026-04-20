@@ -402,6 +402,11 @@ def assign_sharded_weight(src, dst):
     starts, ends = [], []
     dst_starts, dst_ends = [], []
 
+    dest_tensor = dst.local_tensor
+    if not dest_tensor._is_initialized():
+        buffer = paddle.zeros_like(dest_tensor)
+        buffer._share_buffer_to(dest_tensor)
+
     for i in range(ndim):
         src_begin = src.global_offset[i]
         src_end = src_begin + src.local_shape[i]
@@ -904,6 +909,7 @@ class ThreeDCommGroupStateResharder:
             if not self.using_2d_comm_group:
                 if read_item.src_rank == self.cur_rank:
                     buffer = tensor_list[cnt]
+                    cnt += 1
                 else:
                     buffer = paddle.empty(
                         read_item.slice_shape, dtype=read_item.dtype
@@ -914,8 +920,8 @@ class ThreeDCommGroupStateResharder:
                 )
             else:
                 buffer = tensor_list[cnt]
+                cnt += 1
 
-            cnt += 1
             received_sharded_weight = ShardedWeight(
                 key=read_item.tensor_name,
                 local_tensor=buffer,
@@ -928,10 +934,12 @@ class ThreeDCommGroupStateResharder:
                 read_item.tensor_name
             ]:
                 if not target_sharded_weight.local_tensor._is_initialized():
-                    buffer = paddle.zeros_like(
+                    buffer_t = paddle.zeros_like(
                         target_sharded_weight.local_tensor
                     )
-                    buffer._share_buffer_to(target_sharded_weight.local_tensor)
+                    buffer_t._share_buffer_to(
+                        target_sharded_weight.local_tensor
+                    )
 
                 src_tensor = received_sharded_weight.local_tensor
                 tgt_place = target_sharded_weight.local_tensor.place
@@ -960,7 +968,7 @@ class ThreeDCommGroupStateResharder:
                     f"Broadcasting item {idx}/{total_items}: {read_item.tensor_name}"
                 )
             if self.cur_rank == read_item.src_rank:
-                buffer = self.source_state_dict[read_item.tensor_name][
+                buffer = self.source_state_dict[read_item.file_name][
                     read_item.tensor_name
                 ]
                 if not isinstance(buffer.place, paddle.CUDAPlace):
@@ -984,6 +992,14 @@ class ThreeDCommGroupStateResharder:
             for target_sharded_weight in self.grouped_target_state_dict[
                 read_item.tensor_name
             ]:
+                if not target_sharded_weight.local_tensor._is_initialized():
+                    buffer_t = paddle.zeros_like(
+                        target_sharded_weight.local_tensor
+                    )
+                    buffer_t._share_buffer_to(
+                        target_sharded_weight.local_tensor
+                    )
+
                 assign_sharded_weight(
                     src=received_sharded_weight,
                     dst=target_sharded_weight,

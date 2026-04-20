@@ -32,7 +32,7 @@ void XPUDealWithIndices(const Context& dev_ctx,
     DenseTensor casted_index;
     if (int_indices_v[i]->dtype() == DataType::INT32) {
       casted_index =
-          phi::Cast<int, Context>(dev_ctx, *int_indices_v[i], DataType::INT64);
+          Cast<int, Context>(dev_ctx, *int_indices_v[i], DataType::INT64);
     } else {
       casted_index = *int_indices_v[i];
     }
@@ -42,21 +42,20 @@ void XPUDealWithIndices(const Context& dev_ctx,
       expanded_index = casted_index;
     } else {
       expanded_index.Resize(bd_dim);
-      ExpandKernel<int64_t, Context>(
-          dev_ctx,
-          casted_index,
-          IntArray(common::vectorize<int64_t>(bd_dim)),
-          &expanded_index);
+      ExpandKernel<int64_t, Context>(dev_ctx,
+                                     casted_index,
+                                     IntArray(vectorize<int64_t>(bd_dim)),
+                                     &expanded_index);
     }
 
     tmp_indices_v.emplace_back(expanded_index);
   }
 
-  auto bd_dim_vec = common::vectorize<int64_t>(bd_dim);
+  auto bd_dim_vec = vectorize<int64_t>(bd_dim);
   std::vector<int64_t> stacked_dim_vec(bd_dim.size() + 1);
   std::copy(bd_dim_vec.begin(), bd_dim_vec.end(), stacked_dim_vec.begin());
   stacked_dim_vec.back() = int_indices_v.size();
-  out->Resize(common::make_ddim(stacked_dim_vec));
+  out->Resize(stacked_dim_vec);
 
   std::vector<const DenseTensor*> tmp_indices_ptr(tmp_indices_v.size(),
                                                   nullptr);

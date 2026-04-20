@@ -63,7 +63,7 @@ class InterpreterCoreInfo {
   struct CacheValue {
     std::shared_ptr<InterpreterCore> core_{nullptr};
     std::set<std::string> skip_eager_delete_vars_;
-    std::unique_ptr<::pir::Program> ir_prog_{nullptr};
+    std::unique_ptr<pir::Program> ir_prog_{nullptr};
   };
 
   bool IsAvailable(bool is_grad) const {
@@ -186,24 +186,24 @@ std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
     const InterpreterCoreInfoCacheKey& key);
 
 std::shared_ptr<InterpreterCore> CreatePirInterpreterCoreInfoToCache(
-    std::unique_ptr<::pir::Program> ir_prog,
+    std::unique_ptr<pir::Program> ir_prog,
     const phi::Place& place,
     framework::Scope* scope,
     const InterpreterCoreInfoCacheKey& key,
     bool used_for_sot);
 
-std::unique_ptr<::pir::Program> ApplyIrPass(
-    ::pir::Program* program,
+std::unique_ptr<pir::Program> ApplyIrPass(
+    pir::Program* program,
     phi::Place place,
     const std::set<std::string>& no_need_buffer_names);
 
-std::unique_ptr<::pir::Program> ApplyRemoveShadowFeedPass(
-    const std::unique_ptr<::pir::Program> program,
+std::unique_ptr<pir::Program> ApplyRemoveShadowFeedPass(
+    const std::unique_ptr<pir::Program> program,
     const pir::Block* block,
     const phi::Place& place,
     const paddle::framework::Scope* scope);
 
-std::unique_ptr<::pir::Program> ConstructForwardIrProgram(
+std::unique_ptr<pir::Program> ConstructForwardIrProgram(
     const paddle::framework::BlockDesc* forward_global_block,
     const paddle::framework::BlockDesc* backward_global_block,
     const std::vector<std::string>& output_names,
@@ -212,7 +212,7 @@ std::unique_ptr<::pir::Program> ConstructForwardIrProgram(
     const std::vector<paddle::Tensor>& params,
     const phi::Place& place);
 
-std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
+std::unique_ptr<pir::Program> ConstructBackwardIrProgram(
     const paddle::framework::BlockDesc* backward_global_block,
     const std::vector<paddle::Tensor>& out_grad,
     const std::vector<paddle::Tensor*>& x_grad,

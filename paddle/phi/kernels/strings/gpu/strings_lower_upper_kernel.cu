@@ -17,7 +17,6 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/strings/unicode.h"
 
-using pstring = ::phi::dtype::pstring;
 namespace phi {
 namespace strings {
 

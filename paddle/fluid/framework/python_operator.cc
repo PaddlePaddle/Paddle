@@ -53,7 +53,7 @@ void RegisterPythonOperator(
   auto& inplace_map = OpMetaInfoHelper::GetInplaceMap(op_meta_info);
   const auto suffix = inplace_map.empty() ? "" : "_";
 
-  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  pir::IrContext* ctx = pir::IrContext::Instance();
   auto* python_operator_dialect =
       ctx->GetOrRegisterDialect<paddle::dialect::PythonOperatorDialect>();
 

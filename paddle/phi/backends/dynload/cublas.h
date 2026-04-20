@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include <cublasXt.h>
 #include <cublas_v2.h>
 #include <cuda.h>
 #if CUDA_VERSION >= 12030 && defined(__linux__)
@@ -128,6 +127,21 @@ extern void *cublas_dso_handle;
   __macro(cublasGemmStridedBatchedEx);
 
 CUBLAS_BLAS_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
+
+// NVIDIA's cublas_v2.h defines: #define cublasSetWorkspace
+// cublasSetWorkspace_v2 The actual exported symbol in NVIDIA's libcublas.so is
+// cublasSetWorkspace_v2, so dlsym must look up "cublasSetWorkspace_v2" (the _v2
+// name). Non-NVIDIA toolchains (e.g. Iluvatar/COREX) do NOT define this macro
+// and export only "cublasSetWorkspace" in their shared library. We use #ifdef
+// to detect which symbol name dlsym should look up.
+#if !defined(_WIN32)
+#ifdef cublasSetWorkspace  // NVIDIA: macro maps to cublasSetWorkspace_v2
+#define CUBLAS_WORKSPACE_ROUTINE(__macro) __macro(cublasSetWorkspace_v2);
+#else  // Iluvatar/COREX: only cublasSetWorkspace exists
+#define CUBLAS_WORKSPACE_ROUTINE(__macro) __macro(cublasSetWorkspace);
+#endif
+CUBLAS_WORKSPACE_ROUTINE(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
+#endif
 
 #if CUDA_VERSION >= 12030 && defined(__linux__)
 #define CUBLAS_BLAS_ROUTINE_EACH_R5(__macro) \

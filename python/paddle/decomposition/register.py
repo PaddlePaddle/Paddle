@@ -49,7 +49,7 @@ def register_decomp(op_type):
         wrapper: Inner wrapper function
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> from paddle.decomposition import register
             >>> @register.register_decomp('softmax')

@@ -57,6 +57,7 @@ from .utils import (
     is_sharded_state_dict,
     merge_state_dict_metadata,
     minimal_nd_slice,
+    need_transpose,
     ravel_index,
 )
 
@@ -68,17 +69,24 @@ PATH_TO_CHECKPOINT_FILES: dict[str, tuple[list, list]] = {}
 
 # When using the communication mode described below, newly created tensors will not be allocated GPU memory.
 # The allocation of GPU memory for these tensors will occur only when meaningful values are written to them.
-_UNINIT_TENSOR_MODES = ["send_recv", "grouped_send_recv", "parallel_broadcast"]
+_UNINIT_TENSOR_MODES = ["send_recv", "grouped_send_recv"]
 
 _metadata_manager = MetadataManager()
 
 
 def get_checkpoint_files(
-    path, use_cache=True, unique_id=None, process_group=None, safetensors=False
+    path,
+    use_cache=True,
+    unique_id=None,
+    process_group=None,
+    safetensors=False,
+    use_dist=None,
 ):
     # if unique_id is None, all file ends with .metadata and .distcp is returned
     if unique_id is None:
         unique_id = ''
+    if use_dist is None:
+        use_dist = paddle.distributed.get_world_size() > 1
     global PATH_TO_CHECKPOINT_FILES
     if use_cache and path in PATH_TO_CHECKPOINT_FILES:
         return PATH_TO_CHECKPOINT_FILES[path]
@@ -93,30 +101,113 @@ def get_checkpoint_files(
         file for file in accessible_files if file.endswith(".safetensors")
     ]
 
-    if safetensors and len(metadata_files) == 0:
-        logger.info(
-            f"Found HuggingFace-format checkpoint with files: {', '.join(safetensors_files)}"
-        )
-        metadata_files = [
-            file
-            for file in accessible_files
-            if file.endswith(".auto_generated.metadata")
-        ]
+    if safetensors:
+        index_file_name = "model.safetensors.index.json"
+        if index_file_name in accessible_files:
+            index_file_path = os.path.join(path, index_file_name)
+            with open(index_file_path, "r") as f:
+                index_data = json.load(f)
+            if "weight_map" in index_data:
+                mapping_key_to_safetensors_file = index_data["weight_map"]
+                # All files referenced in the index
+                expected_files_in_index = set(
+                    mapping_key_to_safetensors_file.values()
+                )
+
+                # Gather safetensors files visible on each rank, then take union
+                global_safetensors_files_list = []
+                if use_dist:
+                    paddle.distributed.all_gather_object(
+                        global_safetensors_files_list,
+                        safetensors_files,
+                        process_group,
+                    )
+                    global_safetensors_files = {
+                        file
+                        for files in global_safetensors_files_list
+                        for file in files
+                    }
+                else:
+                    global_safetensors_files = set(safetensors_files)
+
+                # Check that every file referenced in the index is visible on at least one rank
+                missing_files = (
+                    expected_files_in_index - global_safetensors_files
+                )
+                assert len(missing_files) == 0, (
+                    f"The following safetensors files are referenced in '{index_file_name}' "
+                    f"but not found on any rank: {sorted(missing_files)}"
+                )
+
+                # Check local files: every key in a locally accessible file must be
+                # consistent with the index mapping (only open files this rank can see).
+                # Meanwhile, collect actual keys present locally for the reverse check below.
+                from safetensors.numpy import safe_open
+
+                local_actual_keys = set()
+                for file in safetensors_files:
+                    if file.endswith(".safetensors"):
+                        file_path = os.path.join(path, file)
+                        with safe_open(file_path, framework="np") as f:
+                            for key in f.keys():
+                                assert key in mapping_key_to_safetensors_file, (
+                                    f"Key '{key}' is not found in the weight_map of index file"
+                                )
+                                expected_file = mapping_key_to_safetensors_file[
+                                    key
+                                ]
+                                assert expected_file == file, (
+                                    f"Key '{key}' is mapped to file '{expected_file}' in index, but found in file '{file}'"
+                                )
+                                local_actual_keys.add(key)
+
+                # Reverse check: every key declared in index must actually exist in
+                # some safetensors file across the cluster.
+                expected_keys_in_index = set(
+                    mapping_key_to_safetensors_file.keys()
+                )
+                global_actual_keys_list = []
+                if use_dist:
+                    paddle.distributed.all_gather_object(
+                        global_actual_keys_list,
+                        local_actual_keys,
+                        process_group,
+                    )
+                    global_actual_keys = set().union(*global_actual_keys_list)
+                else:
+                    global_actual_keys = local_actual_keys
+                missing_keys_in_files = (
+                    expected_keys_in_index - global_actual_keys
+                )
+                assert len(missing_keys_in_files) == 0, (
+                    f"The following keys are declared in '{index_file_name}' weight_map "
+                    f"but not found in any safetensors file: {sorted(missing_keys_in_files)}"
+                )
+
         if len(metadata_files) == 0:
             logger.info(
-                f"No metadata file found in the checkpoint directory: {path}. Creating one now."
+                f"Found HuggingFace-format checkpoint with files: {', '.join(safetensors_files)}"
             )
-            create_hf_ckpt_metadata(path, process_group=process_group)
-            accessible_files = os.listdir(path)
             metadata_files = [
                 file
                 for file in accessible_files
                 if file.endswith(".auto_generated.metadata")
             ]
-            logger.info(
-                f"Created metadata file: {metadata_files[0]} successfully."
-            )
-        return (metadata_files, safetensors_files)
+            if len(metadata_files) == 0:
+                logger.info(
+                    f"No metadata file found in the checkpoint directory: {path}. Creating one now."
+                )
+                create_hf_ckpt_metadata(path, process_group=process_group)
+                accessible_files = os.listdir(path)
+                metadata_files = [
+                    file
+                    for file in accessible_files
+                    if file.endswith(".auto_generated.metadata")
+                ]
+                logger.info(
+                    f"Created metadata file: {metadata_files[0]} successfully."
+                )
+            return (metadata_files, safetensors_files)
 
     assert len(metadata_files) > 0, (
         f"No metadata file ends with '{unique_id}.metadata' found in the checkpoint directory: {path}."
@@ -517,6 +608,7 @@ def _handle_aoa(
             unique_id=unique_id,
             process_group=process_group,
             safetensors=safetensors,
+            use_dist=use_dist,
         )
         assert len(metadata_files) == 1, "Only support one metadata file now."
         metadata = paddle.load(os.path.join(path, metadata_files[0]))
@@ -540,7 +632,9 @@ def _handle_aoa(
         ]
         for param_name, local_tensor_metas in state_dict_metadata.items()
     }
-
+    logger_missing_key_and_unexpected_keys_before_aoa(
+        metadata, load_dict, process_group, safetensors, use_dist
+    )
     aoa_engine = AOAEngine(
         source_state_shard_info=source_state_shard_info,
         destination_state_shard_info=destination_state_shard_info,
@@ -564,7 +658,9 @@ def _handle_aoa(
                 src_desc_to_postprocess_list[src_desc] = (
                     mapping.postprocess_list
                 )
-            if len(shard_mappings) == 1 and mapping.postprocess_list is None:
+            if len(shard_mappings) == 1 and not need_transpose(
+                mapping.postprocess_list
+            ):
                 if src_desc.global_shape != dst_desc.global_shape:
                     logger.warning(
                         f"Shape mismatch for parameter '{param_name}': "
@@ -709,7 +805,7 @@ def load_state_dict(
         worker_groups (list[paddle.distributed.collective.Group]): Communication groups used for tensor communications; if multiple are provided, an appropriate group is chosen; if None, the process_group group is used.
         comm_method (str): Communication method for resharding. Choices are "send_recv", "broadcast", "multi_group_broadcast", and "grouped_send_recv". Default is "broadcast".
     Example:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('run in distributed mode.')
             >>> import paddle
@@ -773,6 +869,8 @@ def load_state_dict(
                 use_dist=use_dist,
             )
             logger.info("Checkpoint successfully loaded locally!")
+            _metadata_manager.clear()
+            gc.collect()
             return
 
     if not is_sharded_state_dict(state_dict, use_dist, process_group):
@@ -788,6 +886,8 @@ def load_state_dict(
             worker_groups=worker_groups,
             comm_method=comm_method,
         )
+        _metadata_manager.clear()
+        gc.collect()
         return
 
     if not use_dist:
@@ -1119,6 +1219,7 @@ def load_state_dict_impl(
             unique_id=unique_id,
             process_group=process_group,
             safetensors=safetensors,
+            use_dist=use_dist,
         )
 
         if _metadata_manager.is_metadata_list_empty():
@@ -1341,7 +1442,7 @@ def load_merged_state_dict(
         dict: Merged state_dict.
 
     Example:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('run in distributed mode.')
             >>> import paddle
@@ -1351,7 +1452,7 @@ def load_merged_state_dict(
             >>> mesh = dist.ProcessMesh([0, 1])
             >>> sharded_w1 = dist.shard_tensor(w1, mesh, [dist.Shard(0)])
             >>> state_dict = {"w1": sharded_w1}
-            >>> dist.save_state_dict(state_dict, ckpt_path) # save sharded checkpoint
+            >>> dist.save_state_dict(state_dict, ckpt_path)  # save sharded checkpoint
 
             >>> # doctest: +SKIP('run in single-card mode.')
             >>> import paddle
@@ -1494,7 +1595,7 @@ def merge_sharded_state_dict(
         None.
 
     Example:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('run in distributed mode.')
             >>> import paddle
@@ -1504,14 +1605,16 @@ def merge_sharded_state_dict(
             >>> mesh = dist.ProcessMesh([0, 1])
             >>> sharded_w1 = dist.shard_tensor(w1, mesh, [dist.Shard(0)])
             >>> state_dict = {"w1": sharded_w1}
-            >>> dist.save_state_dict(state_dict, ckpt_path) # save sharded checkpoint
+            >>> dist.save_state_dict(state_dict, ckpt_path)  # save sharded checkpoint
 
             >>> # doctest: +SKIP('run in single-card mode.')
             >>> import paddle
             >>> import paddle.distributed as dist
             >>> ckpt_path = "./checkpoint"
             >>> save_path = "./merged_checkpoint"
-            >>> dist.flex_checkpoint.dcp.load_state_dict.merge_sharded_state_dict(ckpt_path, save_path)  # load unsharded and save to safetensors
+            >>> dist.flex_checkpoint.dcp.load_state_dict.merge_sharded_state_dict(
+            ...     ckpt_path, save_path
+            ... )  # load unsharded and save to safetensors
             >>> # doctest: -SKIP
     """
     if unique_id is None:
@@ -1666,6 +1769,57 @@ def merge_sharded_state_dict(
     SaveSafetensor.save_single_safetenors(
         local_state_dict_to_save, paddle.distributed.get_rank()
     )
+
+
+def logger_missing_key_and_unexpected_keys_before_aoa(
+    metadata: Metadata,
+    state_dict: dict[str, Tensor] | dict[str, ShardedWeight],
+    process_group: Group | None = None,
+    safetensors: bool = False,
+    use_dist: bool = False,
+):
+    first_key = next(iter(state_dict), None)
+    if isinstance(first_key, tuple):
+        flat_state_dict = state_dict
+    else:
+        flat_state_dict, mapping = flatten_state_dict(state_dict)
+
+    global_src_key_list = []
+    dst_key_list = [
+        key if isinstance(key, str) else key[0]
+        for key in flat_state_dict.keys()
+    ]
+    global_dst_key_list = []
+    if use_dist:
+        paddle.distributed.all_gather_object(
+            global_dst_key_list, dst_key_list, process_group
+        )
+        flatten_global_dst_key_list = [
+            item for sublist in global_dst_key_list for item in sublist
+        ]
+    else:
+        global_dst_key_list.extend(dst_key_list)
+        flatten_global_dst_key_list = global_dst_key_list
+
+    for local_tensor_index, file_name in metadata.storage_metadata.items():
+        if (
+            local_tensor_index.replica_id is not None
+            and local_tensor_index.replica_id != 0
+        ):
+            continue
+        global_src_key_list.append(local_tensor_index.tensor_key)
+    missing_keys = set(flatten_global_dst_key_list) - set(global_src_key_list)
+    unexpected_keys = set(global_src_key_list) - set(
+        flatten_global_dst_key_list
+    )
+    if len(missing_keys) > 0:
+        logger.warning(
+            f"Missing keys:{missing_keys}, check whether the checkpoint is complete and note whether the aoa_statements is complete."
+        )
+    if len(unexpected_keys) > 0:
+        logger.warning(
+            f"Unexpected keys:{unexpected_keys}, check whether the model is complete and note whether the aoa_statements is complete."
+        )
 
 
 class SavePartialSafetensors:

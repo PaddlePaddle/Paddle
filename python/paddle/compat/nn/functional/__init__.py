@@ -22,7 +22,7 @@ from paddle.base.framework import Variable
 from paddle.framework import (
     in_dynamic_mode,
 )
-from paddle.tensor import softmax
+from paddle.tensor import log_softmax, softmax
 from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
 from .sdpa import scaled_dot_product_attention
@@ -41,7 +41,14 @@ if TYPE_CHECKING:
     ]
 
 
-__all__ = ['pad', 'softmax', 'linear', 'scaled_dot_product_attention', 'unfold']
+__all__ = [
+    'pad',
+    'softmax',
+    'log_softmax',
+    'linear',
+    'scaled_dot_product_attention',
+    'unfold',
+]
 
 
 def _check_valid_pad_len(pad_len, x_dim, is_constant):
@@ -91,7 +98,7 @@ def pad(
         Tensor, a Tensor padded according to pad and mode and data type is same as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -237,7 +244,7 @@ def linear(input: Tensor, weight: Tensor, bias: Tensor | None = None) -> Tensor:
         data type is the same with input :math:`x` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -264,11 +271,23 @@ def linear(input: Tensor, weight: Tensor, bias: Tensor | None = None) -> Tensor:
                     [3.50000000, 3.50000000, 3.50000000, 3.50000000],
                     [5.50000000, 5.50000000, 5.50000000, 5.50000000]])
     """
-    # transpose y is True, since _C_ops.linear(input, weight.T, bias) can introduce more overhead. With CINN, matmul and add can be fused.
-    out = _C_ops.matmul(input, weight, False, True)
-    if bias is not None:
-        out = _C_ops.add(out, bias)
-    return out
+    if (
+        paddle.get_flags("FLAGS_use_legacy_linear")["FLAGS_use_legacy_linear"]
+        or not paddle.is_compiled_with_cuda()
+        or not paddle.framework.in_dynamic_or_pir_mode()
+    ):
+        # Fallback to old logic when in non-cuda or legacy mode.
+        out = _C_ops.matmul(input, weight, False, True)
+        if bias is not None:
+            out = _C_ops.add(out, bias)
+        return out
+    else:
+        # transpose y is True, since _C_ops.linear(input, weight.T, bias) can introduce more overhead. With CINN, matmul and add can be fused.
+        # Note(Pan Zhaowu): In accuracy compatible kernel mode, we use linear_v2 op that receives transposed weight, aligning with torch. Note that this will incurs a real transpose op, which might cause performance degradation.
+        if bias is not None:
+            return _C_ops.linear_v2(input, weight.contiguous(), bias, True)
+        else:
+            return _C_ops.matmul(input, weight.contiguous(), False, True)
 
 
 @ForbidKeywordsDecorator(
@@ -340,12 +359,12 @@ def unfold(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.compat.nn.functional as F
 
-            >>> x = paddle.randn((100,3,224,224))
+            >>> x = paddle.randn((100, 3, 224, 224))
             >>> y = F.unfold(x, [3, 3], 1, 1, 1)
     """
 

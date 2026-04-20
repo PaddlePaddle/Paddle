@@ -262,7 +262,7 @@ void CooToDenseCPUKernel(const CPUContext& dev_ctx,
   const auto& dense_dims = x.dims();
   const auto& indices = x.indices();
   const auto& values = x.values();
-  const auto indices_dims = common::vectorize<int>(indices.dims());
+  const auto indices_dims = vectorize<int>(indices.dims());
   int64_t sparse_dim = indices_dims[0];
   if (indices_dims.size() == 1) {
     sparse_dim = 1;
@@ -309,6 +309,15 @@ void CooToDenseKernel(const Context& dev_ctx,
       x.indices().dtype(), "CooToDenseCPUKernel", ([&] {
         CooToDenseCPUKernel<T, data_t>(dev_ctx, x, out);
       }));
+
+  // Set proper dense layout after conversion from sparse
+  // SparseCooTensor uses SPARSE_COO layout, but DenseTensor should use
+  // a standard dense layout (NCHW, NHWC, etc.)
+  if (out->meta().layout == DataLayout::SPARSE_COO ||
+      out->meta().layout == DataLayout::SPARSE_CSR) {
+    // Default to NCHW for dense tensors
+    out->set_meta(DenseTensorMeta(out->dtype(), out->dims(), DataLayout::NCHW));
+  }
 }
 
 }  // namespace phi::sparse

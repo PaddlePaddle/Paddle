@@ -118,12 +118,17 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
     const bool softLabel,
     const int ignore_index,
     const int axis_dim) {
+  int64_t batch_size = prob->dims()[0];
+  int64_t class_num = prob->dims()[1];
+
+  // Handle zero-size tensor: early return to avoid invalid CUDA kernel launch
+  if (batch_size == 0 || class_num == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
+
   T* loss_data = dev_ctx.template Alloc<T>(out);
   const T* prob_data = prob->data<T>();
-
-  int64_t batch_size = prob->dims()[0];
-
-  int64_t class_num = prob->dims()[1];
   // TODO(large-tensor): CUDA grid dims not support int64
   PADDLE_ENFORCE_LE_INT_MAX(batch_size, "batch_size");
   PADDLE_ENFORCE_LE_INT_MAX(class_num, "class_num");
@@ -161,11 +166,11 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
   }
 }
 
-template class CrossEntropyFunctor<phi::GPUContext, float>;
-template class CrossEntropyFunctor<phi::GPUContext, double>;
-template class CrossEntropyFunctor<phi::GPUContext, phi::float16>;
+template class CrossEntropyFunctor<GPUContext, float>;
+template class CrossEntropyFunctor<GPUContext, double>;
+template class CrossEntropyFunctor<GPUContext, phi::float16>;
 #if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION_MIN(8, 1, 0)
-template class CrossEntropyFunctor<phi::GPUContext, phi::bfloat16>;
+template class CrossEntropyFunctor<GPUContext, phi::bfloat16>;
 #endif
 
 }  // namespace funcs

@@ -30,8 +30,8 @@ void SinePosXPUKernel(const Context& dev_ctx,
   auto* out_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out));
   // fix precision of fp16 model
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-  std::vector<int64_t> x_shape = phi::vectorize(x.dims());
-  std::vector<int64_t> y_shape = phi::vectorize(y.dims());
+  std::vector<int64_t> x_shape = vectorize(x.dims());
+  std::vector<int64_t> y_shape = vectorize(y.dims());
   // yolo_box_coord only support fp32&&fp16 precision
   int r = xpu::sine_pos_fusion<XPUType>(
       /* baidu::xpu::api::Context* ctx */ dev_ctx.x_context(),

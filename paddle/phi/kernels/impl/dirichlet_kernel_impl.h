@@ -32,25 +32,13 @@
 
 // ROCM hcc doesn't work well with using std:: in kernel functions
 #if defined(PADDLE_WITH_CUDA)
-#define COMPAT_EXP exp
-#define COMPAT_CEIL ceil
-#define COMPAT_FLOOR floor
 #define COMPAT_LOG log
 #define COMPAT_POW pow
 #define COMPAT_SQRT sqrt
-#define COMPAT_TAN tan
-#define COMPAT_ABS abs
-#define COMPAT_LOG1P log1p
 #else
-#define COMPAT_EXP std::exp
-#define COMPAT_CEIL std::ceil
-#define COMPAT_FLOOR std::floor
 #define COMPAT_LOG std::log
 #define COMPAT_POW std::pow
 #define COMPAT_SQRT std::sqrt
-#define COMPAT_TAN std::tan
-#define COMPAT_ABS std::abs
-#define COMPAT_LOG1P std::log1p
 #endif
 
 #ifdef PADDLE_WITH_CUDA
@@ -131,8 +119,8 @@ HOSTDEVICE ScalarT
 sample_gamma(ScalarT alpha,
              BaseSampler<AccscalarT, UniformSamplerT> standard_uniform,
              BaseSampler<AccscalarT, NormalSamplerT> standard_normal) {
-  using MPTypeScalar = typename phi::dtype::MPTypeTrait<ScalarT>::Type;
-  using MPTypeAccscalar = typename phi::dtype::MPTypeTrait<AccscalarT>::Type;
+  using MPTypeScalar = typename dtype::MPTypeTrait<ScalarT>::Type;
+  using MPTypeAccscalar = typename dtype::MPTypeTrait<AccscalarT>::Type;
 
   MPTypeAccscalar mp_scale = static_cast<MPTypeAccscalar>(1.0f);
   MPTypeScalar mp_alpha = static_cast<MPTypeScalar>(alpha);
@@ -314,14 +302,14 @@ struct DirichletSampler<GPUContext, T> {
     gamma_sum.Resize(new_shape);
     dev_ctx.template Alloc<T>(&gamma_sum);
 
-    phi::SumRawKernel<T, GPUContext>(dev_ctx,
-                                     gamma_samples,
-                                     {new_shape.size() - 1},
-                                     true,
-                                     false,
-                                     gamma_sum.dtype(),
-                                     &gamma_sum);
-    phi::DivideKernel<T, GPUContext>(dev_ctx, gamma_samples, gamma_sum, out);
+    SumRawKernel<T, GPUContext>(dev_ctx,
+                                gamma_samples,
+                                {new_shape.size() - 1},
+                                true,
+                                false,
+                                gamma_sum.dtype(),
+                                &gamma_sum);
+    DivideKernel<T, GPUContext>(dev_ctx, gamma_samples, gamma_sum, out);
   }
 };
 #endif

@@ -34,7 +34,7 @@ inline int Im2SeqOutputSize(
 template <typename T, typename Context>
 void Im2SequenceKernel(const Context& dev_ctx,
                        const DenseTensor& x_in,
-                       const paddle::optional<DenseTensor>& y,
+                       const optional<DenseTensor>& y,
                        const std::vector<int>& kernels,
                        const std::vector<int>& strides,
                        const std::vector<int>& paddings,
@@ -100,7 +100,7 @@ void Im2SequenceKernel(const Context& dev_ctx,
       funcs::Im2ColFunctor<funcs::ColFormat::OCF, Context, T> f;
       f(dev_ctx, src, dilations, strides, paddings, &dst);
     }
-    phi::LegacyLoD lod(1);
+    LegacyLoD lod(1);
     lod[0].reserve(batch_size + 1);
     int offset = 0;
     lod[0].push_back(offset);
@@ -131,7 +131,7 @@ void Im2SequenceKernel(const Context& dev_ctx,
       f(dev_ctx, src, dilations, strides, paddings, &dst);
     }
     out->Resize(out_dims);
-    phi::LegacyLoD lod(1);
+    LegacyLoD lod(1);
     lod[0].reserve(batch_size + 1);
     int offset = 0;
     lod[0].push_back(offset);
@@ -146,7 +146,7 @@ void Im2SequenceKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void Im2SequenceGradKernel(const Context& dev_ctx,
                            const DenseTensor& x_in,
-                           const paddle::optional<DenseTensor>& y,
+                           const optional<DenseTensor>& y,
                            const DenseTensor& out_grad,
                            const std::vector<int>& kernels,
                            const std::vector<int>& strides,

@@ -81,7 +81,7 @@ __host__ __device__ T Chbevl(T x, const T array[], size_t len) {
 template <typename T>
 struct CudaI0Functor {
   __device__ __forceinline__ T operator()(const T _x) const {
-    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    using MT = typename dtype::MPTypeTrait<T>::Type;
     const MT mp_x = static_cast<MT>(_x);
     MT x = std::abs(mp_x);
     if (x <= MT{8.0}) {
@@ -104,7 +104,7 @@ struct CudaI0Functor {
 template <typename T>
 struct CudaI0eFunctor {
   __device__ __forceinline__ T operator()(const T _x) const {
-    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    using MT = typename dtype::MPTypeTrait<T>::Type;
     const MT mp_x = static_cast<MT>(_x);
     MT x = std::abs(mp_x);
     if (x <= MT{8.0}) {
@@ -231,7 +231,7 @@ ChebyshevCoefficientsI1e_B() {
 template <typename T>
 struct CudaI1Functor {
   __device__ __forceinline__ T operator()(const T _x) const {
-    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    using MT = typename dtype::MPTypeTrait<T>::Type;
     const MT mp_x = static_cast<MT>(_x);
     MT x = std::abs(mp_x);
     if (x <= MT{8.0}) {
@@ -254,7 +254,7 @@ struct CudaI1Functor {
 template <typename T>
 struct CudaI1eFunctor {
   __device__ __forceinline__ T operator()(const T _x) const {
-    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    using MT = typename dtype::MPTypeTrait<T>::Type;
     const MT mp_x = static_cast<MT>(_x);
     MT x = std::abs(mp_x);
     if (x <= MT{8.0}) {

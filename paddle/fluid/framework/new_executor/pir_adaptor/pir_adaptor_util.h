@@ -60,7 +60,7 @@ class ValueExecutionInfo {
 
   Scope* GetScope() const { return scope_; }
 
-  void Add(::pir::Value value, const std::string& var_name);
+  void Add(pir::Value value, const std::string& var_name);
 
   void Rename(const std::string& new_name, const std::string& orig_name);
 
@@ -70,13 +70,13 @@ class ValueExecutionInfo {
 
   Variable* GetVarByValue(pir::Value value) const;
 
-  ::pir::Value GetValueByVar(const Variable* var) const;
+  pir::Value GetValueByVar(const Variable* var) const;
 
-  const std::unordered_map<::pir::Value, std::string>& GetValue2VarName() const;
+  const std::unordered_map<pir::Value, std::string>& GetValue2VarName() const;
 
-  void AddValue2VarName(::pir::Value value, const std::string& var_name);
+  void AddValue2VarName(pir::Value value, const std::string& var_name);
 
-  void UpdateValue2VarName(::pir::Value value, const std::string& var_name);
+  void UpdateValue2VarName(pir::Value value, const std::string& var_name);
 
   const std::unordered_map<const paddle::framework::Variable*, std::string>&
   GetVar2VarName() const;
@@ -91,13 +91,13 @@ class ValueExecutionInfo {
 
   bool HasVar(const std::string& var_name) const;
 
-  bool HasValue(::pir::Value value) const;
+  bool HasValue(pir::Value value) const;
 
-  std::string GetVarName(::pir::Value value) const;
+  std::string GetVarName(pir::Value value) const;
 
   std::string GetVarName(const Variable* var) const;
 
-  int GetVarId(::pir::Value value) const;
+  int GetVarId(pir::Value value) const;
 
   int GetVarId(const Variable* var) const;
 
@@ -108,7 +108,7 @@ class ValueExecutionInfo {
 
   Scope* scope_{nullptr};  // not owned
 
-  std::unordered_map<::pir::Value, std::string> value_2_var_name_;
+  std::unordered_map<pir::Value, std::string> value_2_var_name_;
 
   std::unordered_map<const Variable*, std::string> var_2_var_name_;
 

@@ -25,16 +25,16 @@ template <typename T, typename Context>
 void EditDistanceKernel(const Context& dev_ctx,
                         const DenseTensor& hyps,
                         const DenseTensor& refs,
-                        const paddle::optional<DenseTensor>& hypslength,
-                        const paddle::optional<DenseTensor>& refslength,
+                        const optional<DenseTensor>& hypslength,
+                        const optional<DenseTensor>& refslength,
                         bool normalized,
                         DenseTensor* sequencenum,
                         DenseTensor* out) {
   int64_t* seq_num_data = dev_ctx.template Alloc<int64_t>(sequencenum);
   auto batch_size = hyps.dims()[0];
 
-  phi::Vector<size_t> hyp_lod(batch_size + 1);
-  phi::Vector<size_t> ref_lod(batch_size + 1);
+  Vector<size_t> hyp_lod(batch_size + 1);
+  Vector<size_t> ref_lod(batch_size + 1);
 
   bool use_length = hypslength.get_ptr() != nullptr;
 

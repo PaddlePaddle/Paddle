@@ -180,6 +180,64 @@ class TestOptimizerAPI(unittest.TestCase):
         adam.step()
         adam.zero_grad(False)
 
+    def test_step_without_closure(self):
+        paddle.seed(100)
+        numpy.random.seed(100)
+        paddle.disable_static()
+        x = paddle.arange(26, dtype="float32").reshape([2, 13])
+        linear = paddle.nn.Linear(13, 5)
+        optimizers = [
+            paddle.optimizer.Adam(
+                learning_rate=0.01,
+                parameters=linear.parameters(),
+            ),
+            paddle.optimizer.AdamW(
+                learning_rate=0.01,
+                parameters=linear.parameters(),
+            ),
+            paddle.optimizer.ASGD(
+                learning_rate=0.01,
+                parameters=linear.parameters(),
+            ),
+        ]
+        for optimizer in optimizers:
+            optimizer.zero_grad()
+            output = linear(x)
+            loss = paddle.mean(output)
+            loss.backward()
+            optimizer.step()
+
+    def test_step_with_closure(self):
+        paddle.seed(100)
+        numpy.random.seed(100)
+        paddle.disable_static()
+        x = paddle.arange(26, dtype="float32").reshape([2, 13])
+        linear = paddle.nn.Linear(13, 5)
+        optimizers = [
+            paddle.optimizer.Adam(
+                learning_rate=0.01,
+                parameters=linear.parameters(),
+            ),
+            paddle.optimizer.AdamW(
+                learning_rate=0.01,
+                parameters=linear.parameters(),
+            ),
+            paddle.optimizer.ASGD(
+                learning_rate=0.01,
+                parameters=linear.parameters(),
+            ),
+        ]
+        for optimizer in optimizers:
+
+            def closure():
+                optimizer.zero_grad()
+                output = linear(x)
+                loss = paddle.mean(output)
+                loss.backward()
+                return loss
+
+            loss = optimizer.step(closure)
+
 
 if __name__ == '__main__':
     paddle.enable_static()

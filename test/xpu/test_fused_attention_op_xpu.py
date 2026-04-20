@@ -329,6 +329,68 @@ class XPUTestFusedAttentionOp(XPUOpTestWrapper):
             self.pre_layer_norm = True
             self.has_attn_mask = False
 
+    class TestFusedAttentionOpXpuEmptyBatch(unittest.TestCase):
+        def test_fused_multi_head_attention_empty_batch(self):
+            paddle.disable_static()
+            paddle.seed(123)
+            np.random.seed(123)
+
+            x = paddle.to_tensor(
+                np.random.rand(0, 2, 4).astype('float32'), stop_gradient=False
+            )
+            qkv_weight = paddle.to_tensor(
+                np.random.rand(3, 2, 2, 4).astype('float32'),
+                stop_gradient=False,
+            )
+            linear_weight = paddle.to_tensor(
+                np.random.rand(4, 4).astype('float32'), stop_gradient=False
+            )
+            ln_scale = paddle.to_tensor(
+                np.random.rand(4).astype('float32'), stop_gradient=False
+            )
+            attn_mask = paddle.to_tensor(
+                np.random.rand(1, 2, 2, 2).astype('float32')
+            )
+
+            out = incubate_f.fused_multi_head_attention(
+                x=x,
+                qkv_weight=qkv_weight,
+                linear_weight=linear_weight,
+                pre_layer_norm=False,
+                pre_ln_scale=None,
+                pre_ln_bias=None,
+                ln_scale=ln_scale,
+                ln_bias=None,
+                pre_ln_epsilon=1e-05,
+                qkv_bias=None,
+                linear_bias=None,
+                cache_kv=None,
+                attn_mask=attn_mask,
+                dropout_rate=0.0,
+                attn_dropout_rate=0.0,
+                ln_epsilon=1e-05,
+                training=True,
+                ring_id=-1,
+                num_heads=2,
+                transpose_qkv_wb=False,
+                name=None,
+            )
+
+            loss = out.sum()
+            loss.backward()
+
+            self.assertIsNotNone(x.grad)
+            self.assertEqual(list(x.grad.shape), [0, 2, 4])
+
+            self.assertIsNotNone(qkv_weight.grad)
+            self.assertEqual(list(qkv_weight.grad.shape), [3, 2, 2, 4])
+
+            self.assertIsNotNone(linear_weight.grad)
+            self.assertEqual(list(linear_weight.grad.shape), [4, 4])
+
+            self.assertIsNotNone(ln_scale.grad)
+            self.assertEqual(list(ln_scale.grad.shape), [4])
+
 
 support_types = get_xpu_op_support_types('fused_attention')
 for stype in support_types:

@@ -31,24 +31,23 @@
 
 COMMON_DECLARE_string(cuda_graph_blacklist);
 
-namespace {
-using GroupOpsVec = std::vector<pir::Operation*>;
+namespace pir {
+using GroupOpsVec = std::vector<Operation*>;
 
-class CudaGraphExtractPass : public pir::Pass {
+class CudaGraphExtractPass : public Pass {
  public:
-  CudaGraphExtractPass()
-      : pir::Pass("cuda_graph_extract_pass", /*opt_level=*/1) {}
+  CudaGraphExtractPass() : Pass("cuda_graph_extract_pass", /*opt_level=*/1) {}
 
-  void Run(pir::Operation* op) override {
+  void Run(Operation* op) override {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    auto module_op = op->dyn_cast<pir::ModuleOp>();
+    auto module_op = op->dyn_cast<ModuleOp>();
     PADDLE_ENFORCE_NOT_NULL(
         module_op,
         common::errors::InvalidArgument(
             "sub_graph_extract_pass should run on module op."));
     auto& block = module_op.block();
 
-    auto IsSupportCudaGraph = [](const pir::Operation& op) {
+    auto IsSupportCudaGraph = [](const Operation& op) {
       static const std::unordered_set<std::string> UNSUPPORTED_OPS = {
           "pd_op.data", "builtin.shadow_output"};
       static const std::unordered_set<std::string> CUDA_GRAPH_BLACKLIST = [] {
@@ -65,7 +64,7 @@ class CudaGraphExtractPass : public pir::Pass {
     };
 
     std::vector<GroupOpsVec> groups =
-        ::pir::DetectSubGraphs(&block, IsSupportCudaGraph);
+        DetectSubGraphs(&block, IsSupportCudaGraph);
 
     for (auto& group_ops : groups) {
       VLOG(4) << "current cuda_group count : " << group_ops.size();
@@ -74,15 +73,15 @@ class CudaGraphExtractPass : public pir::Pass {
 #endif
   }
 
-  bool CanApplyOn(pir::Operation* op) const override {
-    return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+  bool CanApplyOn(Operation* op) const override {
+    return op->isa<ModuleOp>() && op->num_regions() > 0;
   }
 
  private:
-  void ReplaceWithCudaGraphOp(pir::Block* block, const GroupOpsVec& group_ops) {
-    ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-    ::pir::Builder builder = ::pir::Builder(ctx, block);
-    const std::vector<pir::Value> outputs = AnalysisOutputs(group_ops, false);
+  void ReplaceWithCudaGraphOp(Block* block, const GroupOpsVec& group_ops) {
+    IrContext* ctx = IrContext::Instance();
+    Builder builder = Builder(ctx, block);
+    const std::vector<Value> outputs = AnalysisOutputs(group_ops, false);
 
     // step 1: Analysis and insert group op before insert_point.
     auto* insert_point = FindInsertPoint(group_ops, outputs);
@@ -92,7 +91,7 @@ class CudaGraphExtractPass : public pir::Pass {
 
     // step 2: Replace the old op with CudaGraphOp.
     auto cuda_graph_op = [&]() -> paddle::dialect::CudaGraphOp {
-      std::vector<pir::Type> output_types;
+      std::vector<Type> output_types;
       for (auto& value : outputs) output_types.emplace_back(value.type());
 
       auto group_op = builder.Build<paddle::dialect::CudaGraphOp>(output_types);
@@ -103,24 +102,20 @@ class CudaGraphExtractPass : public pir::Pass {
     }();
 
     // step 3: Replace outputs of inner ops
-    const std::vector<pir::Value> group_outs = cuda_graph_op->results();
-    std::unordered_set<pir::Operation*> inner_ops(group_ops.begin(),
-                                                  group_ops.end());
+    const std::vector<Value> group_outs = cuda_graph_op->results();
+    std::unordered_set<Operation*> inner_ops(group_ops.begin(),
+                                             group_ops.end());
     for (size_t i = 0; i < outputs.size(); ++i) {
-      outputs[i].ReplaceUsesWithIf(group_outs[i],
-                                   [&inner_ops](pir::OpOperand op) {
-                                     return !inner_ops.count(op.owner());
-                                   });
+      outputs[i].ReplaceUsesWithIf(group_outs[i], [&inner_ops](OpOperand op) {
+        return !inner_ops.count(op.owner());
+      });
     }
 
     // step 4: Insert YieldOp for outputs
     builder.SetInsertionPointToBlockEnd(cuda_graph_op.block());
-    builder.Build<::pir::YieldOp>(outputs);
+    builder.Build<YieldOp>(outputs);
   }
 };
-}  // namespace
-
-namespace pir {
 
 std::unique_ptr<Pass> CreateCudaGraphExtractPass() {
   return std::make_unique<CudaGraphExtractPass>();
@@ -128,4 +123,4 @@ std::unique_ptr<Pass> CreateCudaGraphExtractPass() {
 
 }  // namespace pir
 
-REGISTER_IR_PASS(cuda_graph_extract_pass, CudaGraphExtractPass);
+REGISTER_IR_PASS(cuda_graph_extract_pass, pir::CudaGraphExtractPass);

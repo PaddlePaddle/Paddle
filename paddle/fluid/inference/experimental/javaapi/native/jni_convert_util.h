@@ -125,4 +125,4 @@ inline std::vector<int64_t> jlongarray_to_int64_vector(JNIEnv *env,
   env->ReleaseLongArrayElements(dims, dim_nums, 0);
   return dim_vec;
 }
-#endif  // PADDLE_FLUID_INFERENCE_JAVAAPI_NATIVE_JNI_CONVERT_UTIL_H_
+#endif  // PADDLE_FLUID_INFERENCE_JAVAAPI_NATIVE_JNI_CONVERT_UTIL_H_ // NOLINT

@@ -32,42 +32,35 @@
 
 #include "paddle/fluid/pir/transforms/sub_graph_detector.h"
 
-namespace {
-using GroupOpsVec = std::vector<pir::Operation*>;
+namespace pir {
+using GroupOpsVec = std::vector<Operation*>;
 
-bool IsMatmulOp(const pir::Operation& op) {
-  return op.name() == "pd_op.matmul";
-}
+bool IsMatmulOp(const Operation& op) { return op.name() == "pd_op.matmul"; }
 
-class SubGraphExtractPass : public pir::Pass {
+class SubGraphExtractPass : public Pass {
  public:
-  SubGraphExtractPass()
-      : pir::Pass("sub_graph_extract_pass", /*opt_level=*/1) {}
+  SubGraphExtractPass() : Pass("sub_graph_extract_pass", /*opt_level=*/1) {}
 
-  void Run(pir::Operation* op) override {
-    auto module_op = op->dyn_cast<pir::ModuleOp>();
+  void Run(Operation* op) override {
+    auto module_op = op->dyn_cast<ModuleOp>();
     PADDLE_ENFORCE_NOT_NULL(
         module_op,
         common::errors::InvalidArgument(
             "sub_graph_extract_pass should run on module op."));
     auto& block = module_op.block();
 
-    std::vector<GroupOpsVec> groups =
-        ::pir::DetectSubGraphs(&block, IsMatmulOp);
+    std::vector<GroupOpsVec> groups = DetectSubGraphs(&block, IsMatmulOp);
     AddStatistics(groups.size());
     for (auto& group_ops : groups) {
       VLOG(4) << "current group_ops.size(): " << group_ops.size();
-      ::pir::ReplaceWithGroupOp(&block, group_ops);
+      ReplaceWithGroupOp(&block, group_ops);
     }
   }
 
-  bool CanApplyOn(pir::Operation* op) const override {
-    return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+  bool CanApplyOn(Operation* op) const override {
+    return op->isa<ModuleOp>() && op->num_regions() > 0;
   }
 };
-}  // namespace
-
-namespace pir {
 
 std::unique_ptr<Pass> CreateSubGraphExtractPass() {
   return std::make_unique<SubGraphExtractPass>();
@@ -75,4 +68,4 @@ std::unique_ptr<Pass> CreateSubGraphExtractPass() {
 
 }  // namespace pir
 
-REGISTER_IR_PASS(sub_graph_extract_pass, SubGraphExtractPass);
+REGISTER_IR_PASS(sub_graph_extract_pass, pir::SubGraphExtractPass);

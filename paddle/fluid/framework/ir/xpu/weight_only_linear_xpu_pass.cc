@@ -115,7 +115,7 @@ void PermuteINT8WeightOnlyPass::ApplyPermuteINT8WeightOnly(
       auto scale_names = weight_only_linear->Op()->Input(scale_name);
       int id = 0;
       for (auto name : input_names) {
-        phi::DenseTensor* scale_tensor =
+        DenseTensor* scale_tensor =
             scope->Var(scale_names[id])->GetMutable<DenseTensor>();
         PADDLE_ENFORCE_NOT_NULL(
             scale_tensor,
@@ -127,7 +127,7 @@ void PermuteINT8WeightOnlyPass::ApplyPermuteINT8WeightOnly(
         std::string dst_name = pre_name + "_#" + std::to_string(dst_hash);
         auto* dst_node = FindNodeWithName(graph, dst_name);
         if (dst_node == nullptr) {
-          phi::DenseTensor* curr_tensor =
+          DenseTensor* curr_tensor =
               scope->Var(name)->GetMutable<DenseTensor>();
           PADDLE_ENFORCE_NOT_NULL(
               curr_tensor,

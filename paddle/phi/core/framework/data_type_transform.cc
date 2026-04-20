@@ -54,8 +54,8 @@ struct CastDataTypeFunctor {
 #if defined(PADDLE_WITH_XPU)
 
 template <typename InType, typename OutType>
-static void XPUCastData(const phi::DenseTensor& in,
-                        phi::DenseTensor* out,
+static void XPUCastData(const DenseTensor& in,
+                        DenseTensor* out,
                         const phi::XPUContext* dev_ctx) {
   using XPUInTDType = typename XPUTypeTrait<InType>::Type;
   using XPUOutTDType = typename XPUTypeTrait<OutType>::Type;
@@ -70,8 +70,8 @@ static void XPUCastData(const phi::DenseTensor& in,
 
 template <typename InType>
 static void XPUTransDataType(
-    const phi::DenseTensor& in,
-    phi::DenseTensor* out,
+    const DenseTensor& in,
+    DenseTensor* out,
     const paddle::framework::proto::VarType::Type& dst_type,
     const phi::DeviceContext* ctx) {
   auto* context = static_cast<const phi::XPUContext*>(ctx);
@@ -99,12 +99,12 @@ static void XPUTransDataType(
 
 template <typename InType>
 struct CastDataType {
-  CastDataType(const phi::DenseTensor& in,
-               phi::DenseTensor* out,
+  CastDataType(const DenseTensor& in,
+               DenseTensor* out,
                const phi::DeviceContext* ctx)
       : in_(in), out_(out), ctx_(ctx) {}
-  const phi::DenseTensor in_;
-  phi::DenseTensor* out_;
+  const DenseTensor in_;
+  DenseTensor* out_;
   const phi::DeviceContext* ctx_;
 
   template <typename OutType>
@@ -151,8 +151,8 @@ struct CastDataType {
 
 void TransDataType(const phi::KernelKey& kernel_type_for_var,
                    const phi::KernelKey& expected_kernel_type,
-                   const phi::DenseTensor& in,
-                   phi::DenseTensor* out) {
+                   const DenseTensor& in,
+                   DenseTensor* out) {
   PADDLE_ENFORCE_EQ(in.dtype(),
                     kernel_type_for_var.dtype(),
                     common::errors::InvalidArgument(
@@ -165,9 +165,9 @@ void TransDataType(const phi::KernelKey& kernel_type_for_var,
   TransDataType(in, dst_type, out);
 }
 
-void TransDataType(const phi::DenseTensor& in,
+void TransDataType(const DenseTensor& in,
                    const paddle::framework::proto::VarType::Type& type,
-                   phi::DenseTensor* out) {
+                   DenseTensor* out) {
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
 
   out->Resize(in.dims());

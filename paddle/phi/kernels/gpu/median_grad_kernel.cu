@@ -26,7 +26,6 @@
 
 namespace phi {
 
-using phi::PADDLE_CUDA_NUM_THREADS;
 inline int GET_BLOCKS(const int N) {
   return (N + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS;
 }

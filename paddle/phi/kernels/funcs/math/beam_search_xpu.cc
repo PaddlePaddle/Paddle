@@ -46,9 +46,9 @@ void CopyDataByCondition(const T *x, T **y, int len, const Place &place) {
 }
 
 template <typename T>
-class BeamSearchFunctor<phi::XPUContext, T> {
+class BeamSearchFunctor<XPUContext, T> {
  public:
-  void operator()(const phi::XPUContext &dev_ctx,
+  void operator()(const XPUContext &dev_ctx,
                   const DenseTensor *pre_ids,
                   const DenseTensor *pre_scores,
                   const DenseTensor *ids,
@@ -60,7 +60,7 @@ class BeamSearchFunctor<phi::XPUContext, T> {
                   size_t beam_size,
                   int end_id,
                   bool is_accumulated) {
-    auto abs_lod = phi::ToAbsOffset(scores->lod());
+    auto abs_lod = ToAbsOffset(scores->lod());
     auto &high_level = abs_lod[level];
 
     auto items = SelectTopBeamSizeItems(pre_ids,
@@ -92,8 +92,8 @@ class BeamSearchFunctor<phi::XPUContext, T> {
         0,
         [](size_t a, std::vector<Item> &b) { return a + b.size(); });
     // the output tensor shape should be [num_instances, 1]
-    auto dims = common::make_ddim(
-        std::vector<int64_t>({static_cast<int>(num_instances), 1}));
+    auto dims =
+        make_ddim(std::vector<int64_t>({static_cast<int>(num_instances), 1}));
     selected_ids->Resize(dims);
     auto *selected_ids_data = dev_ctx.template HostAlloc<int64_t>(selected_ids);
     selected_scores->Resize(dims);
@@ -122,7 +122,7 @@ class BeamSearchFunctor<phi::XPUContext, T> {
     low_level.push_back(low_offset);
 
     // fill lod
-    phi::LegacyLoD lod(2);
+    LegacyLoD lod(2);
     lod[0].assign(high_level.begin(), high_level.end());
     lod[1].assign(low_level.begin(), low_level.end());
     if (!CheckLegacyLoD(lod)) {
@@ -180,7 +180,7 @@ class BeamSearchFunctor<phi::XPUContext, T> {
    * since the end tokens must be written out.
    */
   void PruneEndBeams(const DenseTensor *pre_ids,
-                     const phi::LegacyLoD &abs_lod,
+                     const LegacyLoD &abs_lod,
                      std::vector<std::vector<Item>> *items,
                      size_t lod_level,
                      int end_id,
@@ -275,7 +275,7 @@ class BeamSearchFunctor<phi::XPUContext, T> {
     std::vector<std::vector<Item>> result;
 
     // find the current candidates
-    auto abs_lod = phi::ToAbsOffset(scores->lod());
+    auto abs_lod = ToAbsOffset(scores->lod());
 
     auto *pre_ids_data_xpu = pre_ids->data<int64_t>();
     int64_t *pre_ids_data = nullptr;
@@ -355,10 +355,10 @@ class BeamSearchFunctor<phi::XPUContext, T> {
   }
 };
 
-template class BeamSearchFunctor<phi::XPUContext, int>;
-template class BeamSearchFunctor<phi::XPUContext, int64_t>;
-template class BeamSearchFunctor<phi::XPUContext, float>;
-template class BeamSearchFunctor<phi::XPUContext, double>;
+template class BeamSearchFunctor<XPUContext, int>;
+template class BeamSearchFunctor<XPUContext, int64_t>;
+template class BeamSearchFunctor<XPUContext, float>;
+template class BeamSearchFunctor<XPUContext, double>;
 
 }  // namespace math
 }  // namespace phi

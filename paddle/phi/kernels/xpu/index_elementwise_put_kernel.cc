@@ -60,8 +60,8 @@ void XPUIndexElementwisePutWithTensorKernel(
   funcs::IndexPutStride<3>(input_dims,
                            input_strides,
                            phi::SizeOf(input.dtype()),
-                           common::vectorize<int64_t>(value.dims()),
-                           common::vectorize<int64_t>(value.strides()),
+                           vectorize<int64_t>(value.dims()),
+                           vectorize<int64_t>(value.strides()),
                            phi::SizeOf(value.dtype()),
                            shape_tmp,
                            stride_tmp,
@@ -241,13 +241,13 @@ void IndexElementwisePutWithTensorKernel(
     const int64_t slice_offset,
     DenseTensor* out) {
   const auto& index_type = index[0]->dtype();
-  PADDLE_ENFORCE_EQ(index_type == phi::DataType::INT64,
+  PADDLE_ENFORCE_EQ(index_type == DataType::INT64,
                     true,
                     common::errors::InvalidArgument(
                         "Index holds the wrong type, it holds [%s], but "
                         "desires to be [%s].",
                         index_type,
-                        phi::DataType::INT64));
+                        DataType::INT64));
   if (out && out->numel() == 0) {
     dev_ctx.template Alloc<T>(out);
     return;
@@ -283,15 +283,14 @@ void IndexElementwisePutKernel(const Context& dev_ctx,
                                const int64_t slice_offset,
                                DenseTensor* out) {
   const auto& index_type = index[0]->dtype();
-  PADDLE_ENFORCE_EQ(
-      index_type == phi::DataType::INT64 ||
-          (index_type == phi::DataType::BOOL && index.size() == 1),
-      true,
-      common::errors::InvalidArgument(
-          "Index holds the wrong type, it holds [%s], but "
-          "desires to be [%s].",
-          index_type,
-          phi::DataType::INT64));
+  PADDLE_ENFORCE_EQ(index_type == DataType::INT64 ||
+                        (index_type == DataType::BOOL && index.size() == 1),
+                    true,
+                    common::errors::InvalidArgument(
+                        "Index holds the wrong type, it holds [%s], but "
+                        "desires to be [%s].",
+                        index_type,
+                        DataType::INT64));
   if (out && out->numel() == 0) {
     dev_ctx.template Alloc<T>(out);
     return;

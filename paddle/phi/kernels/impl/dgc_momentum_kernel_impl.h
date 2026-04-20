@@ -72,42 +72,42 @@ void DGCMomentumKernel(const Context& dev_ctx,
   if (static_cast<int>(*current_step) < static_cast<int>(rampup_begin_step)) {
     VLOG(10) << " so use momentum optimizer";
 
-    paddle::optional<DenseTensor> master_param_opt(paddle::none);
+    optional<DenseTensor> master_param_opt(paddle::none);
 
-    phi::MomentumDenseKernel<T>(dev_ctx,
-                                param,
-                                grad,
-                                velocity,
-                                learning_rate,
-                                master_param_opt,
-                                mu,
-                                use_nesterov,
-                                regularization_method,
-                                regularization_coeff,
-                                multi_precision,
-                                rescale_grad,
-                                param_out,
-                                velocity_out,
-                                master_param_out);
+    MomentumDenseKernel<T>(dev_ctx,
+                           param,
+                           grad,
+                           velocity,
+                           learning_rate,
+                           master_param_opt,
+                           mu,
+                           use_nesterov,
+                           regularization_method,
+                           regularization_coeff,
+                           multi_precision,
+                           rescale_grad,
+                           param_out,
+                           velocity_out,
+                           master_param_out);
 
     return;
   }
 
   VLOG(10) << " so use sgd optimizer";
 
-  paddle::optional<DenseTensor> master_param_opt(paddle::none);
+  optional<DenseTensor> master_param_opt(paddle::none);
   if (multi_precision) {
     master_param_opt = master_param;
   }
 
-  phi::SGDDenseKernel<T>(dev_ctx,
-                         param,
-                         learning_rate,
-                         grad,
-                         master_param_opt,
-                         multi_precision,
-                         param_out,
-                         master_param_out);
+  SGDDenseKernel<T>(dev_ctx,
+                    param,
+                    learning_rate,
+                    grad,
+                    master_param_opt,
+                    multi_precision,
+                    param_out,
+                    master_param_out);
 }
 
 }  // namespace phi
