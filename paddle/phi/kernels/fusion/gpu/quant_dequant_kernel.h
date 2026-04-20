@@ -24,7 +24,7 @@
 namespace phi {
 namespace fusion {
 
-using phi::backends::gpu::GpuLaunchConfig;
+using backends::gpu::GpuLaunchConfig;
 
 constexpr int DequantKernelVecSize = 4;
 

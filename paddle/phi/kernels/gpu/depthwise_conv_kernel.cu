@@ -80,16 +80,16 @@ void DepthwiseConvKernel(const Context& dev_ctx,
     !defined(PADDLE_WITH_HIP)
   DWConvParams params(has_fuse_relu, data_format, strides, dilations);
   if (params.UseCudnnDepthwise<Context>(dev_ctx, input, filter)) {
-    phi::DepthwiseConvCudnnKernel<T>(dev_ctx,
-                                     input,
-                                     filter,
-                                     strides_t,
-                                     paddings_t,
-                                     padding_algorithm,
-                                     groups,
-                                     dilations_t,
-                                     data_format,
-                                     out);
+    DepthwiseConvCudnnKernel<T>(dev_ctx,
+                                input,
+                                filter,
+                                strides_t,
+                                paddings_t,
+                                padding_algorithm,
+                                groups,
+                                dilations_t,
+                                data_format,
+                                out);
     return;
   }
 #endif
@@ -119,7 +119,7 @@ void DepthwiseConvKernel(const Context& dev_ctx,
   }
 
   if (fuse_relu) {
-    phi::math::DepthwiseConvFunctor<Context, T, true> depthwiseConv;
+    math::DepthwiseConvFunctor<Context, T, true> depthwiseConv;
     depthwiseConv(dev_ctx,
                   input,
                   filter,
@@ -129,7 +129,7 @@ void DepthwiseConvKernel(const Context& dev_ctx,
                   output,
                   data_layout);
   } else {
-    phi::math::DepthwiseConvFunctor<Context, T, false> depthwiseConv;
+    math::DepthwiseConvFunctor<Context, T, false> depthwiseConv;
     depthwiseConv(dev_ctx,
                   input,
                   filter,

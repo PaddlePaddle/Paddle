@@ -28,10 +28,10 @@ void AngleKernel(const Context& dev_ctx,
   auto* x_data = x.data<T>();
   out->Resize(x.dims());
   if (out->numel() == 0) {
-    dev_ctx.template Alloc<phi::dtype::Real<T>>(out);
+    dev_ctx.template Alloc<dtype::Real<T>>(out);
     return;
   }
-  auto* out_data = dev_ctx.template Alloc<phi::dtype::Real<T>>(out);
+  auto* out_data = dev_ctx.template Alloc<dtype::Real<T>>(out);
 
   funcs::ForRange<Context> for_range(dev_ctx, numel);
   funcs::AngleFunctor<T> functor(x_data, out_data, numel);

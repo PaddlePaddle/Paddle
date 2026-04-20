@@ -5,6 +5,8 @@ if((NOT WITH_GPU)
   return()
 endif()
 
+include(${PROJECT_SOURCE_DIR}/cmake/architecture.cmake)
+
 set(NVTX_ROOT
     "/usr"
     CACHE PATH "NVTX ROOT")
@@ -16,10 +18,8 @@ find_path(
 
 get_filename_component(__libpath_hint ${CUDA_CUDART_LIBRARY} PATH)
 
-set(TARGET_ARCH "x86_64")
-if(NOT ${CMAKE_SYSTEM_PROCESSOR})
-  set(TARGET_ARCH ${CMAKE_SYSTEM_PROCESSOR})
-endif()
+paddle_normalize_target_arch(TARGET_ARCH)
+paddle_detect_cuda_target_dir(CUDA_TARGET_DIR)
 
 list(
   APPEND
@@ -32,7 +32,9 @@ list(
   $ENV{NVTX_ROOT}/lib64
   $ENV{NVTX_ROOT}/lib
   ${CUDA_TOOLKIT_ROOT_DIR}
-  ${CUDA_TOOLKIT_ROOT_DIR}/targets/${TARGET_ARCH}-linux/lib)
+  ${CUDA_TOOLKIT_ROOT_DIR}/targets/${TARGET_ARCH}-linux/lib
+  ${CUDA_TOOLKIT_ROOT_DIR}/targets/${CUDA_TARGET_DIR}/lib64
+  ${CUDA_TOOLKIT_ROOT_DIR}/targets/${CUDA_TARGET_DIR}/lib)
 
 find_library(
   CUDA_NVTX_LIB

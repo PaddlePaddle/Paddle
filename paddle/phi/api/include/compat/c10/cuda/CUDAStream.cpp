@@ -19,6 +19,8 @@
 #include <mutex>
 #include <vector>
 
+#include "paddle/phi/api/include/context_pool.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #endif
@@ -48,13 +50,6 @@ struct DevicePools {
 };
 
 std::vector<std::unique_ptr<DevicePools>> g_pools;
-
-#ifdef PADDLE_WITH_HIP
-thread_local std::vector<hipStream_t> tls_current_streams;
-#else
-thread_local std::vector<cudaStream_t> tls_current_streams;
-#endif
-thread_local bool tls_streams_initialized = false;
 
 void initGlobalState() {
   std::call_once(g_init_once, []() {
@@ -104,12 +99,25 @@ inline void check_gpu(c10::DeviceIndex device_index) {
               ")");
 }
 
-inline void initTLSCurrentStreams() {
-  if (!tls_streams_initialized) {
-    tls_current_streams.resize(g_num_gpus, nullptr);
-    tls_streams_initialized = true;
-  }
+inline phi::GPUContext* getMutableGPUContext(c10::DeviceIndex device_index) {
+  return static_cast<phi::GPUContext*>(
+      paddle::experimental::DeviceContextPool::Instance().GetMutable(
+          phi::GPUPlace(device_index)));
 }
+
+#ifdef PADDLE_WITH_HIP
+inline hipStream_t getPaddleCurrentStream(c10::DeviceIndex device_index) {
+  auto* current_stream =
+      paddle::GetCurrentCUDAStream(phi::GPUPlace(device_index));
+  return current_stream == nullptr ? nullptr : current_stream->raw_stream();
+}
+#else
+inline cudaStream_t getPaddleCurrentStream(c10::DeviceIndex device_index) {
+  auto* current_stream =
+      paddle::GetCurrentCUDAStream(phi::GPUPlace(device_index));
+  return current_stream == nullptr ? nullptr : current_stream->raw_stream();
+}
+#endif
 
 #endif  // defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
@@ -192,12 +200,7 @@ CUDAStream getCurrentCUDAStream(c10::DeviceIndex device_index) {
         static_cast<c10::DeviceIndex>(phi::backends::gpu::GetCurrentDeviceId());
   }
   check_gpu(device_index);
-  initTLSCurrentStreams();
-#ifdef PADDLE_WITH_HIP
-  hipStream_t raw = tls_current_streams[device_index];
-#else
-  cudaStream_t raw = tls_current_streams[device_index];
-#endif
+  auto raw = getPaddleCurrentStream(device_index);
   if (raw == nullptr) {
     return getDefaultCUDAStream(device_index);
   }
@@ -212,8 +215,7 @@ void setCurrentCUDAStream(CUDAStream stream) {
   initGlobalState();
   c10::DeviceIndex idx = stream.unwrap().device_index();
   check_gpu(idx);
-  initTLSCurrentStreams();
-  tls_current_streams[idx] = stream.stream();
+  getMutableGPUContext(idx)->SetStream(stream.stream());
 #else
   (void)stream;
 #endif

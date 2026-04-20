@@ -76,7 +76,7 @@ void SyncBatchNormKernel(const Context& dev_ctx,
   const int block = 512;
   int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
 
-  phi::Allocator::AllocationPtr alloc_ptr{nullptr};
+  Allocator::AllocationPtr alloc_ptr{nullptr};
 
   if (test_mode) {
     mean_data = mean.template data<BatchNormParamType<T>>();

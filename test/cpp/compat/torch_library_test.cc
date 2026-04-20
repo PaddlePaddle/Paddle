@@ -971,12 +971,10 @@ TEST(test_torch_library, TestLibraryPrintInfoWithDispatchKey) {
                          __FILE__,
                          __LINE__);
 
-  std::ostringstream captured_output;
-  auto* original_buffer = std::cout.rdbuf(captured_output.rdbuf());
+  testing::internal::CaptureStdout();
   library.print_info();
-  std::cout.rdbuf(original_buffer);
+  auto output = testing::internal::GetCapturedStdout();
 
-  auto output = captured_output.str();
   ASSERT_NE(output.find("Library Info: IMPL"), std::string::npos);
   ASSERT_NE(output.find("namespace=runtime_library_info"), std::string::npos);
   ASSERT_NE(output.find("dispatch_key="), std::string::npos);

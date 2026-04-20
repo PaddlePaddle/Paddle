@@ -612,7 +612,9 @@ class NoPipelineParallel(MetaParallelBase):
 
         return train_loss
 
-    def eval_batch(self, data, compute_loss=False, loss_fn_idx=0):
+    def eval_batch(
+        self, data, compute_loss=False, loss_fn_idx=0, return_host_tensor=False
+    ):
         # check loss_fn_idx is valid and loss_fn exists
         assert (
             loss_fn_idx in range(len(self._layers._loss_fn))
@@ -637,6 +639,7 @@ class NoPipelineParallel(MetaParallelBase):
             )
 
         loss_list = []
+        output_list = []
         for _ in range(self.accumulate_steps):
             # data prepare
             data_iter = next(micro_dataset)
@@ -648,43 +651,71 @@ class NoPipelineParallel(MetaParallelBase):
             # forward
             output_tensor = self._layers.forward(input_tensor)
 
-            # loss is loss_fn[loss_fn_idx]'s result
-            loss = None
-            # cal loss
-            for idx, loss_fn in enumerate(self._layers._loss_fn):
-                loss_tensor = loss_fn(output_tensor, label)
-                assert isinstance(loss_tensor, paddle.Tensor), (
-                    "Currently, loss_fn should obtain Paddle.Tensor dtype"
+            if compute_loss:
+                # loss is loss_fn[loss_fn_idx]'s result
+                loss = None
+
+                # cal loss
+                for idx, loss_fn in enumerate(self._layers._loss_fn):
+                    loss_tensor = loss_fn(output_tensor, label)
+                    assert isinstance(loss_tensor, paddle.Tensor), (
+                        "Currently, loss_fn should obtain Paddle.Tensor dtype"
+                    )
+                    if self.total_loss is None:
+                        self.total_loss = []
+                    # when self.total_loss length is less than idx, append a new tensor
+                    if len(self.total_loss) <= idx:
+                        self.total_loss.append([])
+
+                    self.total_loss[idx].append(loss_tensor.detach())
+
+                    if idx == self.loss_fn_idx:
+                        loss = loss_tensor
+
+                assert self.total_loss is not None, (
+                    "train_batch() in last stage should obtain valid loss"
                 )
+            else:
+                if return_host_tensor:
+                    self._offload_tensors(output_tensor)
+                output_list.append(output_tensor)
 
-                if self.total_loss is None:
-                    self.total_loss = []
-                # when self.total_loss length is less than idx, append a new tensor
-                if len(self.total_loss) <= idx:
-                    self.total_loss.append([])
-
-                self.total_loss[idx].append(loss_tensor.detach())
-
-                if idx == self.loss_fn_idx:
-                    loss = loss_tensor
-
-            assert self.total_loss is not None, (
-                "train_batch() in last stage should obtain valid loss"
-            )
-
-        losses = []
-        return_micro_batch_loss = False
-        for idx in range(len(self._layers._loss_fn)):
-            self.total_loss[idx] = paddle.to_tensor(self.total_loss[idx])
-            if not return_micro_batch_loss:
+        if compute_loss:
+            losses = []
+            return_micro_batch_loss = False
+            for idx in range(len(self._layers._loss_fn)):
+                self.total_loss[idx] = paddle.to_tensor(self.total_loss[idx])
+                # if not return_micro_batch_loss:
                 # TODO(shenliang03): it will use mean/sum to calculate loss
                 tmp = paddle.zeros_like(self.total_loss[idx][0])
                 for loss in self.total_loss[idx]:
                     tmp += loss.detach()
                 losses.append(tmp / self.accumulate_steps)
-            else:
-                losses.append(self.total_loss[idx].detach())
-        return losses[0] if len(losses) == 1 else losses
+                # else:
+                #     losses.append(self.total_loss[idx].detach())
+            res = losses[0] if len(losses) == 1 else losses
+        else:
+            res = output_list
+        return res
+
+    def _offload_tensors(self, output_tensor):
+        if isinstance(output_tensor, (tuple, list)):
+            for t in output_tensor:
+                if not isinstance(t, paddle.Tensor):
+                    continue
+                host_tensor = (
+                    t.pin_memory() if hasattr(t, "pin_memory") else t.cpu()
+                )
+                host_tensor._share_buffer_to(t)
+        else:
+            if not isinstance(output_tensor, paddle.Tensor):
+                return
+            host_tensor = (
+                output_tensor.pin_memory()
+                if hasattr(output_tensor, "pin_memory")
+                else output_tensor.cpu()
+            )
+            host_tensor._share_buffer_to(output_tensor)
 
 
 class PipelineParallel(MetaParallelBase):

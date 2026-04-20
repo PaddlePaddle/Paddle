@@ -18,7 +18,7 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-using XPUDeviceGuard = phi::backends::xpu::XPUDeviceGuard;
+using XPUDeviceGuard = backends::xpu::XPUDeviceGuard;
 
 /*
  * All tensors' dimension should be the same and the values of

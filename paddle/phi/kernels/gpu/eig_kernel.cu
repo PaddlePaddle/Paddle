@@ -25,8 +25,8 @@ void EigKernel(const Context& dev_ctx,
                const DenseTensor& x,
                DenseTensor* out_w,
                DenseTensor* out_v) {
-  dev_ctx.template Alloc<phi::dtype::Complex<T>>(out_w);
-  dev_ctx.template Alloc<phi::dtype::Complex<T>>(out_v);
+  dev_ctx.template Alloc<dtype::Complex<T>>(out_w);
+  dev_ctx.template Alloc<dtype::Complex<T>>(out_v);
 
   if (x.numel() == 0) {
     return;
@@ -39,9 +39,9 @@ void EigKernel(const Context& dev_ctx,
   // prepare cpu Tensor here, since magma requires output on cpu
   DenseTensor out_w_cpu, out_v_cpu;
   out_w_cpu.Resize(out_w->dims());
-  (*cpu_ctx).template Alloc<phi::dtype::Complex<T>>(&out_w_cpu);
+  (*cpu_ctx).template Alloc<dtype::Complex<T>>(&out_w_cpu);
   out_v_cpu.Resize(x.dims());
-  (*cpu_ctx).template Alloc<phi::dtype::Complex<T>>(&out_v_cpu);
+  (*cpu_ctx).template Alloc<dtype::Complex<T>>(&out_v_cpu);
 
   if (!IsComplexType(x.dtype())) {
     // output still be complex though input is real
@@ -55,55 +55,53 @@ void EigKernel(const Context& dev_ctx,
     real_w_cpu.Resize(real_w_dim);
     (*cpu_ctx).template Alloc<phi::dtype::Real<T>>(&real_w_cpu);
     real_v_cpu.Resize(x.dims());
-    (*cpu_ctx).template Alloc<phi::dtype::Real<T>>(&real_v_cpu);
+    (*cpu_ctx).template Alloc<dtype::Real<T>>(&real_v_cpu);
 
-    phi::ApplyEigKernelMagma<phi::dtype::Real<T>, Context>(
+    ApplyEigKernelMagma<dtype::Real<T>, Context>(
         dev_ctx, x, &real_w_cpu, &real_v_cpu);
 
     // 1. extract real part & imag part from real_w_cpu
-    DenseTensor real_part_cpu = phi::funcs::Slice<phi::dtype::Real<T>>(
+    DenseTensor real_part_cpu = funcs::Slice<dtype::Real<T>>(
         (*cpu_ctx), real_w_cpu, {-1}, {0}, {order});
-    DenseTensor imag_part_cpu = phi::funcs::Slice<phi::dtype::Real<T>>(
+    DenseTensor imag_part_cpu = funcs::Slice<dtype::Real<T>>(
         (*cpu_ctx), real_w_cpu, {-1}, {order}, {order * 2});
 
     // 2. construct complex values
-    auto* real_part_data = real_part_cpu.data<phi::dtype::Real<T>>();
-    auto* imag_part_data = imag_part_cpu.data<phi::dtype::Real<T>>();
+    auto* real_part_data = real_part_cpu.data<dtype::Real<T>>();
+    auto* imag_part_data = imag_part_cpu.data<dtype::Real<T>>();
     int64_t out_w_numel = static_cast<int64_t>(out_w->numel());
 
-    phi::funcs::ForRange<CPUContext> for_range((*cpu_ctx), out_w_numel);
-    phi::funcs::RealImagToComplexFunctor<phi::dtype::Complex<T>> functor(
+    funcs::ForRange<CPUContext> for_range((*cpu_ctx), out_w_numel);
+    funcs::RealImagToComplexFunctor<dtype::Complex<T>> functor(
         real_part_data,
         imag_part_data,
-        out_w_cpu.data<phi::dtype::Complex<T>>(),
+        out_w_cpu.data<dtype::Complex<T>>(),
         out_w_numel);
     for_range(functor);
 
     // 3. construct complex vectors
     DenseTensor real_v_trans_cpu =
-        TransposeLast2Dim<phi::dtype::Real<T>, CPUContext>((*cpu_ctx),
-                                                           real_v_cpu);
+        TransposeLast2Dim<dtype::Real<T>, CPUContext>((*cpu_ctx), real_v_cpu);
     DenseTensor out_v_trans_cpu;
     out_v_trans_cpu.Resize(x.dims());
-    (*cpu_ctx).template Alloc<phi::dtype::Complex<T>>(&out_v_trans_cpu);
+    (*cpu_ctx).template Alloc<dtype::Complex<T>>(&out_v_trans_cpu);
 
-    phi::ConstructComplexVectors<phi::dtype::Real<T>,
-                                 phi::dtype::Complex<T>,
-                                 CPUContext>(&out_v_trans_cpu,
-                                             out_w_cpu,
-                                             real_v_trans_cpu,
-                                             (*cpu_ctx),
-                                             batch_count,
-                                             order);
+    ConstructComplexVectors<dtype::Real<T>, dtype::Complex<T>, CPUContext>(
+        &out_v_trans_cpu,
+        out_w_cpu,
+        real_v_trans_cpu,
+        (*cpu_ctx),
+        batch_count,
+        order);
 
-    TransposeTwoAxis<phi::dtype::Complex<T>, CPUContext>(out_v_trans_cpu,
-                                                         &out_v_cpu,
-                                                         x.dims().size() - 1,
-                                                         x.dims().size() - 2,
-                                                         (*cpu_ctx));
+    TransposeTwoAxis<dtype::Complex<T>, CPUContext>(out_v_trans_cpu,
+                                                    &out_v_cpu,
+                                                    x.dims().size() - 1,
+                                                    x.dims().size() - 2,
+                                                    (*cpu_ctx));
 
   } else {
-    phi::ApplyEigKernelMagma<T, Context>(dev_ctx, x, &out_w_cpu, &out_v_cpu);
+    ApplyEigKernelMagma<T, Context>(dev_ctx, x, &out_w_cpu, &out_v_cpu);
   }
 
   // copy result from cpu to gpu tensor

@@ -429,13 +429,6 @@ def _get_cuda_arch_flags(cflags: list[str] | None = None) -> list[str]:
     For an added "+PTX", an additional
     ``-gencode=arch=compute_xx,code=compute_xx`` is added.
     """
-    # If cflags is given, there may already be user-provided arch flags in it
-    if cflags is not None:
-        for flag in cflags:
-            if any(x in flag for x in ['PADDLE_EXTENSION_NAME']):
-                continue
-            if 'arch' in flag:
-                return []
 
     named_arches = collections.OrderedDict(
         [

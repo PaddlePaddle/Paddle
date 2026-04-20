@@ -257,8 +257,7 @@ void SumCooGPU1Kernel(const Context& dev_ctx,
   auto* out_indices_data = out_indices.data<IntT>();
   auto* out_values_data = out_values.data<T>();
 
-  auto config =
-      phi::backends::gpu::GetGpuLaunchConfig2D(dev_ctx, x.nnz(), x.nnz());
+  auto config = backends::gpu::GetGpuLaunchConfig2D(dev_ctx, x.nnz(), x.nnz());
   SumCooCudaKernel<T, IntT><<<config.block_per_grid.x,
                               config.thread_per_block.x,
                               0,
@@ -324,7 +323,7 @@ void SumCsr0Kernel(const Context& dev_ctx,
   auto* out_crows_data = out_crows.data<int64_t>();
   auto* out_cols_data = out_cols.data<int64_t>();
 
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, 2, 1);
+  auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, 2, 1);
   SumAllCsrCudaKernel<<<config.block_per_grid.x,
                         config.thread_per_block.x,
                         0,
@@ -359,8 +358,7 @@ void SumCsr1Kernel(const Context& dev_ctx,
     auto* out_cols_data = out_cols.data<int64_t>();
     auto* out_values_data = out_values.data<T>();
     out_dims = make_ddim({x_dim0, 1});
-    auto config =
-        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x_dim0 + 1, 1);
+    auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x_dim0 + 1, 1);
     SumCsr2DCudaKernel<T><<<config.block_per_grid.x,
                             config.thread_per_block.x,
                             0,
@@ -397,7 +395,7 @@ void SumCsr1Kernel(const Context& dev_ctx,
         dev_ctx, x_crows_last, Scalar(0), false, false, false, &batch_nnz);
     auto* batch_nnz_data = batch_nnz.data<int64_t>();
 
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+    auto config = backends::gpu::GetGpuLaunchConfig1D(
         dev_ctx, x.dims()[0] * (x.dims()[1] + 1), 1);
     SumCsr3DCudaKernel<T><<<config.block_per_grid.x,
                             config.thread_per_block.x,

@@ -80,7 +80,7 @@ struct SlogDeterminantFunctor {
 };
 
 template <typename T, typename Context>
-struct SlogDeterminantFunctor<phi::dtype::complex<T>, Context> {
+struct SlogDeterminantFunctor<dtype::complex<T>, Context> {
   void operator()(const Context& dev_ctx,
                   const DenseTensor& input,
                   int64_t rank,
@@ -88,15 +88,15 @@ struct SlogDeterminantFunctor<phi::dtype::complex<T>, Context> {
                   DenseTensor* output) {
     using MatrixType =
         Eigen::Matrix<std::complex<T>, Eigen::Dynamic, Eigen::Dynamic>;
-    std::vector<phi::dtype::complex<T>> input_vec;
-    std::vector<phi::dtype::complex<T>> sign_vec;
-    std::vector<phi::dtype::complex<T>> log_vec;
-    std::vector<phi::dtype::complex<T>> output_vec;
+    std::vector<dtype::complex<T>> input_vec;
+    std::vector<dtype::complex<T>> sign_vec;
+    std::vector<dtype::complex<T>> log_vec;
+    std::vector<dtype::complex<T>> output_vec;
     TensorToVector(input, dev_ctx, &input_vec);
     for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
       auto begin_iter = input_vec.begin() + i * rank * rank;
       auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
-      std::vector<phi::dtype::complex<T>> sub_vec(
+      std::vector<dtype::complex<T>> sub_vec(
           begin_iter,
           end_iter);  // get every square matrix data
       MatrixType matrix(rank, rank);
@@ -109,10 +109,9 @@ struct SlogDeterminantFunctor<phi::dtype::complex<T>, Context> {
       VLOG(2) << "matrix val: " << matrix;
       std::complex<T> det_val = matrix.determinant();
       T abs_det_val = std::abs(det_val);
-      sign_vec.push_back(static_cast<phi::dtype::complex<T>>(
+      sign_vec.push_back(static_cast<dtype::complex<T>>(
           sign(det_val, static_cast<std::complex<T>>(abs_det_val))));
-      log_vec.push_back(
-          static_cast<phi::dtype::complex<T>>(std::log(abs_det_val)));
+      log_vec.push_back(static_cast<dtype::complex<T>>(std::log(abs_det_val)));
     }
     // merge sign_vec and log_vec as final output_vec
     output_vec.insert(output_vec.end(), sign_vec.begin(), sign_vec.end());
@@ -187,10 +186,8 @@ struct SlogDeterminantV2Functor {
       }
       dev_ctx.template Alloc<T>(logdet);
       if (logdet->numel() > 0) {
-        Full<T, Context>(dev_ctx,
-                         logdet->dims(),
-                         static_cast<phi::dtype::complex<T>>(0),
-                         logdet);
+        Full<T, Context>(
+            dev_ctx, logdet->dims(), static_cast<dtype::complex<T>>(0), logdet);
       }
       return;
     }
@@ -222,7 +219,7 @@ struct SlogDeterminantV2Functor {
 };
 
 template <typename T, typename Context>
-struct SlogDeterminantV2Functor<phi::dtype::complex<T>, Context> {
+struct SlogDeterminantV2Functor<dtype::complex<T>, Context> {
   void operator()(const Context& dev_ctx,
                   const DenseTensor& input,
                   int64_t rank,
@@ -230,27 +227,22 @@ struct SlogDeterminantV2Functor<phi::dtype::complex<T>, Context> {
                   DenseTensor* sign,
                   DenseTensor* logdet) {
     if (input.numel() == 0) {
-      dev_ctx.template Alloc<phi::dtype::complex<T>>(sign);
-      dev_ctx.template Alloc<phi::dtype::complex<T>>(sign);
+      dev_ctx.template Alloc<dtype::complex<T>>(sign);
+      dev_ctx.template Alloc<dtype::complex<T>>(sign);
       if (sign->numel() > 0) {
-        Full<phi::dtype::complex<T>, Context>(
-            dev_ctx,
-            sign->dims(),
-            static_cast<phi::dtype::complex<T>>(1),
-            sign);
+        Full<dtype::complex<T>, Context>(
+            dev_ctx, sign->dims(), static_cast<dtype::complex<T>>(1), sign);
       }
       dev_ctx.template Alloc<T>(logdet);
       if (logdet->numel() > 0) {
-        Full<T, Context>(dev_ctx,
-                         logdet->dims(),
-                         static_cast<phi::dtype::complex<T>>(0),
-                         logdet);
+        Full<T, Context>(
+            dev_ctx, logdet->dims(), static_cast<dtype::complex<T>>(0), logdet);
       }
       return;
     }
     using MatrixType =
         Eigen::Matrix<std::complex<T>, Eigen::Dynamic, Eigen::Dynamic>;
-    using Complex_T = typename phi::dtype::complex<T>;
+    using Complex_T = typename dtype::complex<T>;
     std::vector<Complex_T> input_vec;
     Complex_T* sign_data = dev_ctx.template Alloc<Complex_T>(sign);
     T* logdet_data = dev_ctx.template Alloc<T>(logdet);
@@ -258,7 +250,7 @@ struct SlogDeterminantV2Functor<phi::dtype::complex<T>, Context> {
     for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
       auto begin_iter = input_vec.begin() + i * rank * rank;
       auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
-      std::vector<phi::dtype::complex<T>> sub_vec(
+      std::vector<dtype::complex<T>> sub_vec(
           begin_iter,
           end_iter);  // get every square matrix data
       MatrixType matrix(rank, rank);

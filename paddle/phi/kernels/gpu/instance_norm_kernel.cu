@@ -35,7 +35,7 @@ void InstanceNormKernel(const Context &dev_ctx,
                         DenseTensor *y,
                         DenseTensor *saved_mean,
                         DenseTensor *saved_variance) {
-  using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using AccT = typename dtype::MPTypeTrait<T>::Type;
   double epsilon = static_cast<double>(epsilon_f);
   auto &x_dims = x.dims();
   PADDLE_ENFORCE_GE(x_dims.size(),
@@ -165,14 +165,14 @@ void InstanceNormKernel(const Context &dev_ctx,
     dev_ctx.template Alloc<BatchNormParamType<T>>(saved_mean);
     functor(dev_ctx, saved_mean, static_cast<BatchNormParamType<T>>(0));
   } else {
-    saved_mean_tmp = phi::Full<BatchNormParamType<T>>(
+    saved_mean_tmp = Full<BatchNormParamType<T>>(
         dev_ctx, {NxC}, static_cast<BatchNormParamType<T>>(0));
   }
   if (saved_variance) {
     dev_ctx.template Alloc<BatchNormParamType<T>>(saved_variance);
     functor(dev_ctx, saved_variance, static_cast<BatchNormParamType<T>>(0));
   } else {
-    saved_variance_tmp = phi::Full<BatchNormParamType<T>>(
+    saved_variance_tmp = Full<BatchNormParamType<T>>(
         dev_ctx, {NxC}, static_cast<BatchNormParamType<T>>(0));
   }
   auto *saved_mean_data = saved_mean

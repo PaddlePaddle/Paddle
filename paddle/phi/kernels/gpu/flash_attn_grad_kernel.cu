@@ -386,13 +386,13 @@ void FlashAttnUnpaddedGradBaseKernel(const Context& dev_ctx,
   if (!is_mha) {
     if (dk) {
       if (dk->meta().is_contiguous())
-        phi::SumKernel<T, Context>(dev_ctx, dk_tmp, {2}, dk->type(), false, dk);
+        SumKernel<T, Context>(dev_ctx, dk_tmp, {2}, dk->type(), false, dk);
       else
         kvReduceForGQA<T, Context>(dev_ctx, dk_tmp, dk);
     }
     if (dv) {
       if (dv->meta().is_contiguous())
-        phi::SumKernel<T, Context>(dev_ctx, dv_tmp, {2}, dv->type(), false, dv);
+        SumKernel<T, Context>(dev_ctx, dv_tmp, {2}, dv->type(), false, dv);
       else
         kvReduceForGQA<T, Context>(dev_ctx, dv_tmp, dv);
     }
@@ -693,27 +693,27 @@ void FlashAttnGradBaseKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(&flashmask_maxmin);
 
     downstart_row_indices =
-        phi::Slice<int32_t>(dev_ctx, startend_row_indices.get(), {3}, {0}, {1});
+        Slice<int32_t>(dev_ctx, startend_row_indices.get(), {3}, {0}, {1});
     downstart_row_indices_data = downstart_row_indices.data();
     if (startend_row_indices->dims()[3] == 2) {
       if (!causal) {
-        upend_row_indices = phi::Slice<int32_t>(
-            dev_ctx, startend_row_indices.get(), {3}, {1}, {2});
+        upend_row_indices =
+            Slice<int32_t>(dev_ctx, startend_row_indices.get(), {3}, {1}, {2});
         upend_row_indices_data = upend_row_indices.data();
       } else {
-        downend_row_indices = phi::Slice<int32_t>(
-            dev_ctx, startend_row_indices.get(), {3}, {1}, {2});
+        downend_row_indices =
+            Slice<int32_t>(dev_ctx, startend_row_indices.get(), {3}, {1}, {2});
         downend_row_indices_data = downend_row_indices.data();
       }
     } else if (startend_row_indices->dims()[3] == 4) {
-      upend_row_indices = phi::Slice<int32_t>(
-          dev_ctx, startend_row_indices.get(), {3}, {3}, {4});
+      upend_row_indices =
+          Slice<int32_t>(dev_ctx, startend_row_indices.get(), {3}, {3}, {4});
       upend_row_indices_data = upend_row_indices.data();
-      downend_row_indices = phi::Slice<int32_t>(
-          dev_ctx, startend_row_indices.get(), {3}, {1}, {2});
+      downend_row_indices =
+          Slice<int32_t>(dev_ctx, startend_row_indices.get(), {3}, {1}, {2});
       downend_row_indices_data = downend_row_indices.data();
-      upstart_row_indices = phi::Slice<int32_t>(
-          dev_ctx, startend_row_indices.get(), {3}, {2}, {3});
+      upstart_row_indices =
+          Slice<int32_t>(dev_ctx, startend_row_indices.get(), {3}, {2}, {3});
       upstart_row_indices_data = upstart_row_indices.data();
     }
   }
@@ -888,16 +888,14 @@ void FlashAttnGradBaseKernel(const Context& dev_ctx,
     if (!is_mha) {
       if (dk) {
         if (dk->meta().is_contiguous())
-          phi::SumKernel<T, Context>(
-              dev_ctx, dk_tmp, {3}, dk->type(), false, dk);
+          SumKernel<T, Context>(dev_ctx, dk_tmp, {3}, dk->type(), false, dk);
         else
           kvReduceBatchedForGQA<T, Context>(dev_ctx, dk_tmp, dk);
       }
 
       if (dv) {
         if (dv->meta().is_contiguous())
-          phi::SumKernel<T, Context>(
-              dev_ctx, dv_tmp, {3}, dv->type(), false, dv);
+          SumKernel<T, Context>(dev_ctx, dv_tmp, {3}, dv->type(), false, dv);
         else
           kvReduceBatchedForGQA<T, Context>(dev_ctx, dv_tmp, dv);
       }

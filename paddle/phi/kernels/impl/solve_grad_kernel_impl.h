@@ -65,7 +65,7 @@ struct ReduceSumForSolveGrad<GPUContext, T> {
                   DenseTensor* output,
                   const std::vector<int>& reduce_dims,
                   bool keep_dims) {
-    phi::SumKernel<T, GPUContext>(
+    SumKernel<T, GPUContext>(
         dev_ctx, input, reduce_dims, output->dtype(), keep_dims, output);
   }
 };
@@ -100,7 +100,7 @@ void SolveGradKernel(const Context& dev_ctx,
   DenseTensor tmp_y;
   if (is_vector) {
     dev_ctx.Alloc(&tmp_y, y.dtype());
-    phi::Unsqueeze<T, Context>(dev_ctx, y, {-1}, &tmp_y, nullptr);
+    Unsqueeze<T, Context>(dev_ctx, y, {-1}, &tmp_y, nullptr);
   } else {
     tmp_y.Resize(y.dims());
     dev_ctx.Alloc(&tmp_y, y.dtype());
@@ -153,20 +153,20 @@ void SolveGradKernel(const Context& dev_ctx,
       DenseTensor tmp_dy_;
       dev_ctx.Alloc(&tmp_dy_, y.dtype());
 
-      phi::Unsqueeze<T, Context>(dev_ctx,
-                                 tmp_dy,
-                                 paddle::experimental::IntArray({-1}),
-                                 &tmp_dy_,
-                                 nullptr);
+      Unsqueeze<T, Context>(dev_ctx,
+                            tmp_dy,
+                            paddle::experimental::IntArray({-1}),
+                            &tmp_dy_,
+                            nullptr);
 
       DenseTensor tmp_out_;
       dev_ctx.Alloc(&tmp_out_, out.dtype());
 
-      phi::Unsqueeze<T, Context>(dev_ctx,
-                                 out,
-                                 paddle::experimental::IntArray({-1}),
-                                 &tmp_out_,
-                                 nullptr);
+      Unsqueeze<T, Context>(dev_ctx,
+                            out,
+                            paddle::experimental::IntArray({-1}),
+                            &tmp_out_,
+                            nullptr);
 
       auto mat_dim_a1 = funcs::CreateMatrixDescriptor(tmp_dy_.dims(), 0, false);
       auto mat_dim_b1 = funcs::CreateMatrixDescriptor(tmp_out_.dims(), 0, true);

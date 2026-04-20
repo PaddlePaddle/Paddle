@@ -97,13 +97,13 @@ void GPUIndexElementwiseGetGrad(const GPUContext& dev_ctx,
 
   funcs::IndexPutStride<3>(input_dims,
                            input_strides,
-                           phi::SizeOf(input.dtype()),
+                           SizeOf(input.dtype()),
                            vectorize<int64_t>(value.dims()),
                            vectorize<int64_t>(value.strides()),
-                           phi::SizeOf(value.dtype()),
+                           SizeOf(value.dtype()),
                            shape_tmp,
                            stride_tmp,
-                           phi::SizeOf(index[0]->dtype()),
+                           SizeOf(index[0]->dtype()),
                            &desired_shape,
                            &strides_array,
                            &numel,
@@ -111,8 +111,8 @@ void GPUIndexElementwiseGetGrad(const GPUContext& dev_ctx,
   auto offset_calc = funcs::make_offset_calculator_put<3, false, OffsetT>(
       desired_shape, strides_array);
 
-  auto max_grid_size = phi::backends::gpu::GetGpuMaxGridDimSize(
-      dev_ctx.GetPlace().GetDeviceId());
+  auto max_grid_size =
+      backends::gpu::GetGpuMaxGridDimSize(dev_ctx.GetPlace().GetDeviceId());
 
   const int64_t N = numel;
   constexpr int nt = 128;
@@ -180,7 +180,7 @@ __global__ void IndexingBackwardKernel(const int64_t* sorted_indices,
                                        int64_t stride_before,
                                        int64_t outer_dim,
                                        bool accumulate) {
-  using opmath_t = typename phi::dtype::MPTypeTrait<scalar_t>::Type;
+  using opmath_t = typename dtype::MPTypeTrait<scalar_t>::Type;
 
   for (int64_t z = blockIdx.z; z < outer_dim; z += gridDim.z) {
     for (int64_t idx =
@@ -273,7 +273,7 @@ void IndexPutWithSortKernel(const GPUContext& dev_ctx,
   const bool unsafe = true;
   const bool self_contiguous = self.meta().is_contiguous();
   auto self_ =
-      self_contiguous ? self : phi::Contiguous<T, GPUContext>(dev_ctx, self);
+      self_contiguous ? self : Contiguous<T, GPUContext>(dev_ctx, self);
   DenseTensor linearIndex, src, expandedValue = value;
   int64_t nElemBefore, strideBefore, sliceSize;
   std::vector<int64_t> inversePerm;
@@ -298,19 +298,18 @@ void IndexPutWithSortKernel(const GPUContext& dev_ctx,
     }
 
     DenseTensor expanded_tensor;
-    phi::ExpandKernel<T, GPUContext>(
-        dev_ctx, expandedValue, phi::IntArray(expanded_size), &expanded_tensor);
+    ExpandKernel<T, GPUContext>(
+        dev_ctx, expandedValue, IntArray(expanded_size), &expanded_tensor);
     expandedValue = expanded_tensor;
   }
   if (!expandedValue.meta().is_contiguous()) {
-    expandedValue = phi::Contiguous<T, GPUContext>(dev_ctx, expandedValue);
+    expandedValue = Contiguous<T, GPUContext>(dev_ctx, expandedValue);
   }
 
   if (num_indices > 0 && sliceSize > 0) {
     const bool permuted = !src.meta().is_contiguous();
-    DenseTensor src_ =
-        permuted ? phi::Contiguous<T, GPUContext>(dev_ctx, src) : src;
-    linearIndex = phi::Reshape<IndexT, GPUContext>(dev_ctx, linearIndex, {-1});
+    DenseTensor src_ = permuted ? Contiguous<T, GPUContext>(dev_ctx, src) : src;
+    linearIndex = Reshape<IndexT, GPUContext>(dev_ctx, linearIndex, {-1});
 
     DenseTensor sorted_indices;
     sorted_indices.Resize(linearIndex.dims());
@@ -321,21 +320,17 @@ void IndexPutWithSortKernel(const GPUContext& dev_ctx,
 
     auto stream = dev_ctx.stream();
 
-    auto shape = phi::IntArray(vectorize<int64_t>(linearIndex.dims()));
-    auto divisor =
-        Full<IndexT, GPUContext>(dev_ctx, shape, phi::Scalar(sliceSize));
+    auto shape = IntArray(vectorize<int64_t>(linearIndex.dims()));
+    auto divisor = Full<IndexT, GPUContext>(dev_ctx, shape, Scalar(sliceSize));
 
     DenseTensor linearIndex_d =
-        phi::FloorDivide<IndexT, GPUContext>(dev_ctx, linearIndex, divisor);
+        FloorDivide<IndexT, GPUContext>(dev_ctx, linearIndex, divisor);
 
     DenseTensor range;
     range.Resize({num_indices});
     dev_ctx.Alloc<IndexT>(&range);
-    phi::ArangeKernel<IndexT>(dev_ctx,
-                              phi::Scalar(0),
-                              phi::Scalar(num_indices),
-                              phi::Scalar(1),
-                              &range);
+    ArangeKernel<IndexT>(
+        dev_ctx, Scalar(0), Scalar(num_indices), Scalar(1), &range);
     int64_t nbits = funcs::GetNumBits(funcs::LargestIndex(self_) / sliceSize);
 
     funcs::RadixSortPairs<IndexT, IndexT>(dev_ctx,
@@ -350,8 +345,8 @@ void IndexPutWithSortKernel(const GPUContext& dev_ctx,
 
     const int UNROLL = 4;
     const int INDICES_PER_BLOCK = 4;
-    auto max_grid_size = phi::backends::gpu::GetGpuMaxGridDimSize(
-        dev_ctx.GetPlace().GetDeviceId());
+    auto max_grid_size =
+        backends::gpu::GetGpuMaxGridDimSize(dev_ctx.GetPlace().GetDeviceId());
 
     dim3 grid(
         std::min(static_cast<int64_t>(max_grid_size[0]),

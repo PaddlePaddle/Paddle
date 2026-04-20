@@ -127,7 +127,7 @@ void NAdamKernel(const Context& dev_ctx,
                  DenseTensor* moment1_out,
                  DenseTensor* moment2_out,
                  DenseTensor* master_param_out) {
-  using MT = typename phi::dtype::template MPTypeTrait<T>::Type;
+  using MT = typename dtype::template MPTypeTrait<T>::Type;
   T* param_out_data = dev_ctx.template Alloc<T>(param_out);
 
   MT* momentum_decay_pow_out_data =

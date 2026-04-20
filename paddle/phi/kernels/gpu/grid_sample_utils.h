@@ -62,14 +62,14 @@ inline bool cudnnIsAvailable() {
   return false;
 #elif defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // cuDNN/MIOpen version > 0 means DNN lib loaded; require v7+ for sampler
-  return phi::backends::gpu::DnnVersion() >= 7000;
+  return backends::gpu::DnnVersion() >= 7000;
 #else
   return false;
 #endif
 }
 
 inline bool isGpuTensor(const DenseTensor& x) {
-  return phi::is_gpu_place(x.place());
+  return is_gpu_place(x.place());
 }
 
 inline bool canUse32bitIndexMath(const DenseTensor& x) {

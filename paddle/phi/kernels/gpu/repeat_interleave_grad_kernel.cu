@@ -27,7 +27,6 @@
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 namespace phi {
-using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T, typename IndexT>
 __global__ void index_select_grad_cuda_kernel(const T* output_grad,
@@ -143,9 +142,8 @@ void RepeatInterleaveWithTensorIndexGradKernel(
   auto* in_grad_data = x_grad->data<T>();
   auto stream = dev_ctx.stream();
   int vec_size = 8;
-  vec_size = std::min(phi::GetVectorizedSize(in_grad_data), vec_size);
-  auto config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, vec_size);
+  vec_size = std::min(GetVectorizedSize(in_grad_data), vec_size);
+  auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, vec_size);
 
   switch (vec_size) {
 #define CASE_VEC_SIZE(__Sz)                                              \
@@ -230,7 +228,7 @@ void RepeatInterleaveGradKernel(const Context& dev_ctx,
 
   SumKernel<T, Context>(dev_ctx,
                         out_grad_copy,
-                        phi::IntArray({dim + 1}),
+                        IntArray({dim + 1}),
                         x_grad->dtype(),
                         false,
                         x_grad);

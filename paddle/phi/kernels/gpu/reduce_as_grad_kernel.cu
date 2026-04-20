@@ -44,13 +44,13 @@ void ReduceAsGradKernel(const Context& dev_ctx,
   new_out_grad.ShareDataWith(out_grad);
   new_out_grad.Resize(update_dims);
 
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  phi::ReduceGrad<phi::kps::IdentityFunctor<T, MPType>>(
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
+  ReduceGrad<kps::IdentityFunctor<T, MPType>>(
       dev_ctx,
       &new_out_grad,
       x_grad,
       out_grad.dtype(),
-      phi::kps::IdentityFunctor<T, MPType>());
+      kps::IdentityFunctor<T, MPType>());
 }
 
 }  // namespace phi

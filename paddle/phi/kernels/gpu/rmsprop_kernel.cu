@@ -47,7 +47,7 @@ struct RmsFunctor<T, GPUContext> {
     size_t limit = static_cast<size_t>(ms_tensor.numel());
     DenseRmspropGradFunctor<T> grad_func(grad_tensor.data<T>());
     funcs::ForRange<GPUContext> for_range(dev_ctx, limit);
-    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    using MT = typename dtype::MPTypeTrait<T>::Type;
     MT *master_out_data = multi_precision
                               ? dev_ctx.template Alloc<MT>(master_param_outs)
                               : nullptr;
@@ -95,7 +95,7 @@ struct RmsFunctor<T, GPUContext> {
 };
 template struct RmsFunctor<GPUContext, float>;
 template struct RmsFunctor<GPUContext, double>;
-template struct RmsFunctor<GPUContext, phi::float16>;
+template struct RmsFunctor<GPUContext, float16>;
 }  // namespace phi
 
 PD_REGISTER_KERNEL(rmsprop,
