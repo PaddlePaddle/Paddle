@@ -167,7 +167,7 @@ def check_precision_change_approval(body, pr_number, pr_user):
     REQUIRED_APPROVERS = [
         'From00',
         'lugimzzz',
-        'Jiang-Jia-Jun',
+        'yuanlehome',
         'wanghuancoder',
     ]
     REQUIRED_APPROVERS_LOWER = [user.lower() for user in REQUIRED_APPROVERS]
