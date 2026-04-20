@@ -1115,13 +1115,15 @@ def monkey_patch_tensor():
 
     @overload
     def cuda(
-        self: Tensor, device_id: DeviceLike = None, blocking: bool = True
+        self: Tensor,
+        device_id: Place | int | None = None,
+        blocking: bool = True,
     ) -> Tensor: ...
 
     @overload
     def cuda(
         self: Tensor,
-        device: DeviceLike = None,
+        device: str,
         non_blocking: bool = False,
     ) -> Tensor: ...
 
@@ -1138,7 +1140,7 @@ def monkey_patch_tensor():
         1. ``paddle.Tensor.cuda(self, device_id=None, blocking=True)`` (Paddle-style):
             Returns a copy of the current tensor on the specified device.
 
-        2. ``paddle.Tensor.cuda(self, device=None, non_blocking=False)`` (PyTorch-style):
+        2. ``paddle.Tensor.cuda(self, device, *, non_blocking=False)`` (PyTorch-style):
             Returns a copy of the current tensor on the specified device.
 
         Args:
