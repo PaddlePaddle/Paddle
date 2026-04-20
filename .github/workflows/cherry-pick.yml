@@ -40,7 +40,6 @@ jobs:
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
           MERGE_COMMIT_SHA: ${{ github.event.pull_request.merge_commit_sha }}
           BOT_USERNAME: risemeup1111
-          BOT_EMAIL: 13125134909@163.com
           REPO_NAME: risemeup1111/Paddle
         run: |
           # Function to post comment
