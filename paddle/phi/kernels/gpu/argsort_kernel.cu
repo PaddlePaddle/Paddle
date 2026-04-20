@@ -21,8 +21,8 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
-#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -284,15 +284,13 @@ void PerSort(const GPUContext& dev_ctx,
              bool stable,
              bool descending) {
 #ifdef PADDLE_WITH_CUDA
-  phi::memory_utils::ThrustAllocator<cudaStream_t> allocator(
-      dev_ctx.GetPlace(), dev_ctx.stream());
-  const auto& exec_policy =
-      thrust::cuda::par(allocator).on(dev_ctx.stream());
+  phi::memory_utils::ThrustAllocator<cudaStream_t> allocator(dev_ctx.GetPlace(),
+                                                             dev_ctx.stream());
+  const auto& exec_policy = thrust::cuda::par(allocator).on(dev_ctx.stream());
 #else
-  phi::memory_utils::ThrustAllocator<hipStream_t> allocator(
-      dev_ctx.GetPlace(), dev_ctx.stream());
-  const auto& exec_policy =
-      thrust::hip::par(allocator).on(dev_ctx.stream());
+  phi::memory_utils::ThrustAllocator<hipStream_t> allocator(dev_ctx.GetPlace(),
+                                                            dev_ctx.stream());
+  const auto& exec_policy = thrust::hip::par(allocator).on(dev_ctx.stream());
 #endif
   if (stable) {
     if (descending) {
@@ -358,13 +356,11 @@ void ArgsortKernel(const Context& dev_ctx,
 #ifdef PADDLE_WITH_CUDA
     phi::memory_utils::ThrustAllocator<cudaStream_t> allocator(
         dev_ctx.GetPlace(), dev_ctx.stream());
-    const auto& exec_policy =
-        thrust::cuda::par(allocator).on(dev_ctx.stream());
+    const auto& exec_policy = thrust::cuda::par(allocator).on(dev_ctx.stream());
 #else
     phi::memory_utils::ThrustAllocator<hipStream_t> allocator(
         dev_ctx.GetPlace(), dev_ctx.stream());
-    const auto& exec_policy =
-        thrust::hip::par(allocator).on(dev_ctx.stream());
+    const auto& exec_policy = thrust::hip::par(allocator).on(dev_ctx.stream());
 #endif
     auto cu_stream = dev_ctx.stream();
     thrust::sequence(exec_policy, ids_data, ids_data + size);
