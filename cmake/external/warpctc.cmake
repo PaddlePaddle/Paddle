@@ -101,20 +101,6 @@ else()
   set(WARPCTC_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})
 endif()
 
-set(WARPCTC_NVCC_FLAGS_EXTRA ${NVCC_FLAGS_EXTRA})
-if(CMAKE_CUDA_COMPILER_VERSION VERSION_GREATER_EQUAL 13.0)
-  string(
-    REGEX
-    REPLACE "(^| )-gencode arch=compute_(50|52|53|60|61|62|70|72),code=sm_\\2"
-            "" WARPCTC_NVCC_FLAGS_EXTRA "${WARPCTC_NVCC_FLAGS_EXTRA}")
-  string(
-    REGEX
-    REPLACE
-      "(^| )-gencode arch=compute_(50|52|53|60|61|62|70|72),code=compute_\\2"
-      "" WARPCTC_NVCC_FLAGS_EXTRA "${WARPCTC_NVCC_FLAGS_EXTRA}")
-  string(STRIP "${WARPCTC_NVCC_FLAGS_EXTRA}" WARPCTC_NVCC_FLAGS_EXTRA)
-endif()
-
 # For CMake >= 4.0.0, force policy compatibility for third-party warpctc's CMake.
 set(WARPCTC_POLICY_ARGS "")
 if(CMAKE_VERSION VERSION_GREATER_EQUAL "4.0.0")
@@ -148,7 +134,7 @@ ExternalProject_Add(
              -DWITH_GPU=${WITH_GPU}
              -DWITH_ROCM=${WITH_ROCM}
              -DWITH_OMP=${USE_OMP}
-             -DNVCC_FLAGS_EXTRA=${WARPCTC_NVCC_FLAGS_EXTRA}
+             -DNVCC_FLAGS_EXTRA=${NVCC_FLAGS_EXTRA}
              -DWITH_TORCH=OFF
              -DCMAKE_DISABLE_FIND_PACKAGE_Torch=ON
              -DBUILD_SHARED=ON
