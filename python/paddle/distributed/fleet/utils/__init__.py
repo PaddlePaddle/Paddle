@@ -13,6 +13,8 @@
 # limitations under the License.
 from __future__ import annotations
 
+import functools
+import threading
 from typing import TYPE_CHECKING, Any, Callable
 
 from paddle.distributed import fleet
@@ -30,9 +32,63 @@ from .ps_util import DistributedInfer
 if TYPE_CHECKING:
     from paddle.nn import Layer
 
-__all__ = ["LocalFS", "recompute", "DistributedInfer", "HDFSClient"]
+__all__ = [
+    "LocalFS",
+    "RecomputeContext",
+    "recompute",
+    "is_in_recompute",
+    "DistributedInfer",
+    "HDFSClient",
+]
 
 
+class RecomputeContext:
+    """Thread-local recompute state tracker.
+
+    Supports both decorator and context-manager usage:
+
+        # As decorator
+        @_recompute_context
+        def fn(): ...
+
+        # As context manager
+        with _recompute_context:
+            ...
+    """
+
+    def __init__(self):
+        self._local = threading.local()
+
+    @property
+    def active(self) -> bool:
+        return getattr(self._local, 'active', False)
+
+    def __enter__(self):
+        self._local.active = True
+        return self
+
+    def __exit__(self, *_exc):
+        self._local.active = False
+        return False
+
+    def __call__(self, fn):
+        @functools.wraps(fn)
+        def wrapper(*args, **kwargs):
+            with self:
+                return fn(*args, **kwargs)
+
+        return wrapper
+
+
+_recompute_context = RecomputeContext()
+
+
+def is_in_recompute() -> bool:
+    """Return True if the current thread is inside a recompute context."""
+    return _recompute_context.active
+
+
+@_recompute_context
 def recompute(
     function: Layer | Callable[..., Any], *args: Any, **kwargs: Any
 ) -> Any:
