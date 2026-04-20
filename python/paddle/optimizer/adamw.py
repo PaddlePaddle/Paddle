@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import os
 import warnings
 from collections import defaultdict
 from collections.abc import Callable
@@ -519,6 +520,17 @@ class AdamW(Optimizer):
                 if self._lr_ratio is None
                 else self._lr_ratio(param_and_grad[0])
             )
+
+            # When using torch-compatible kernel, recover full double-precision
+            # learning rate. Paddle stores lr as float32 tensor, losing ~7 digits
+            # of precision. PyTorch passes lr as double. The kernel computes
+            # lr_double = float32(lr_tensor) * lr_ratio, so we adjust lr_ratio
+            # to compensate: lr_ratio *= (double_lr / float32_lr).
+            if os.environ.get("PADDLE_ADAMW_TORCH_COMPAT") == "1":
+                current_lr = float(self.get_lr())
+                lr_f32 = float(lr.item())
+                if lr_f32 != 0.0:
+                    lr_ratio_ = lr_ratio_ * (current_lr / lr_f32)
 
             _beta1 = (
                 self._beta1

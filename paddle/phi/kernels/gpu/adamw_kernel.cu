@@ -460,30 +460,29 @@ template <typename T,   // Parameter type (may be fp16/bf16)
           typename TG,  // Gradient type
           typename MT>  // Master precision type (= opmath_t, float for
                         // float/fp16/bf16)
-__global__ void AdamWTorchStyleKernel(
-    const double beta1,
-    const double beta2,
-    const double epsilon,
-    const double weight_decay,
-    const double lr_double,
-    const TG* __restrict__ grad,
-    const T* __restrict__ param,
-    T* __restrict__ param_out,
-    const MT* __restrict__ master_param,
-    MT* __restrict__ master_param_out,
-    const MT* __restrict__ moment1,
-    MT* __restrict__ moment1_out,
-    const MT* __restrict__ moment2,
-    MT* __restrict__ moment2_out,
-    const MT* __restrict__ moment2_max,
-    MT* __restrict__ moment2_max_out,
-    // step_count passed as float, matching torch's
-    // state_steps (float tensor) bias_correction
-    // computed ON DEVICE, exactly as torch's
-    // FusedAdamMathFunctor does
-    const float step_count,
-    int64_t ndim,
-    bool amsgrad) {
+__global__ void AdamWStyleKernel(const double beta1,
+                                 const double beta2,
+                                 const double epsilon,
+                                 const double weight_decay,
+                                 const double lr_double,
+                                 const TG* __restrict__ grad,
+                                 const T* __restrict__ param,
+                                 T* __restrict__ param_out,
+                                 const MT* __restrict__ master_param,
+                                 MT* __restrict__ master_param_out,
+                                 const MT* __restrict__ moment1,
+                                 MT* __restrict__ moment1_out,
+                                 const MT* __restrict__ moment2,
+                                 MT* __restrict__ moment2_out,
+                                 const MT* __restrict__ moment2_max,
+                                 MT* __restrict__ moment2_max_out,
+                                 // step_count passed as float, matching torch's
+                                 // state_steps (float tensor) bias_correction
+                                 // computed ON DEVICE, exactly as torch's
+                                 // FusedAdamMathFunctor does
+                                 const float step_count,
+                                 int64_t ndim,
+                                 bool amsgrad) {
   // These are then passed to adam_math as const opmath_t& (float), truncating
   // at call boundary.
   const double bc1_dbl = 1.0 - torch_pow_(beta1, step_count);
@@ -507,22 +506,35 @@ __global__ void AdamWTorchStyleKernel(
 
     // Weight decay: param -= lr * weight_decay * param
     if (weight_decay != 0) {
-      double p_d = static_cast<double>(p);
-      p = static_cast<MT>(p_d - lr_double * weight_decay * p_d);
+      p -= lr_double * weight_decay * p;
     }
 
     // exp_avg = beta1 * exp_avg + (1 - beta1) * grad
-    exp_avg = static_cast<MT>(beta1 * static_cast<double>(exp_avg) +
-                              (1.0 - beta1) * static_cast<double>(g));
+    // Match torch's FMA behavior: NVCC fuses a*b + c*d into fma(a, b, c*d).
+    // We explicitly use __fma_rn to match: first compute (1-beta1)*g (rounded),
+    // then fma(beta1, exp_avg_double, rounded_result).
+    {
+      double g_d = static_cast<double>(g);
+      double exp_avg_d = static_cast<double>(exp_avg);
+      double one_minus_beta1_times_g = __dmul_rn(1.0 - beta1, g_d);
+      exp_avg =
+          static_cast<MT>(__fma_rn(beta1, exp_avg_d, one_minus_beta1_times_g));
+    }
 
     // exp_avg_sq = beta2 * exp_avg_sq + (1 - beta2) * grad * grad
-    exp_avg_sq = static_cast<MT>(beta2 * static_cast<double>(exp_avg_sq) +
-                                 (1.0 - beta2) * static_cast<double>(g) *
-                                     static_cast<double>(g));
+    // Match torch: ((1-beta2)*g)*g is computed left-to-right, then fma'd.
+    {
+      double g_d = static_cast<double>(g);
+      double exp_avg_sq_d = static_cast<double>(exp_avg_sq);
+      double one_minus_beta2_times_g = __dmul_rn(1.0 - beta2, g_d);
+      double grad_sq_term = __dmul_rn(one_minus_beta2_times_g, g_d);
+      exp_avg_sq = static_cast<MT>(__fma_rn(beta2, exp_avg_sq_d, grad_sq_term));
+    }
 
     // step_size = lr / bias_correction1
-    const MT step_size =
-        static_cast<MT>(lr_double / static_cast<double>(bias_correction1));
+    // Match torch: lr_double (double) / bias_correction1 (float) →
+    // promotes to double, truncated to float on assignment.
+    const MT step_size = lr_double / bias_correction1;
 
     MT denom;
     if (amsgrad) {
@@ -530,13 +542,11 @@ __global__ void AdamWTorchStyleKernel(
       max_exp_avg_sq_val =
           max_exp_avg_sq_val > exp_avg_sq ? max_exp_avg_sq_val : exp_avg_sq;
       moment2_max_out[id] = max_exp_avg_sq_val;
-      denom = static_cast<MT>(static_cast<double>(sqrt(max_exp_avg_sq_val) /
-                                                  bias_correction2_sqrt) +
-                              epsilon);
+      // Match torch: sqrt(float)/float → float, + double(eps) → double,
+      // truncated to float.
+      denom = (sqrt(max_exp_avg_sq_val) / bias_correction2_sqrt) + epsilon;
     } else {
-      denom = static_cast<MT>(
-          static_cast<double>(sqrt(exp_avg_sq) / bias_correction2_sqrt) +
-          epsilon);
+      denom = (sqrt(exp_avg_sq) / bias_correction2_sqrt) + epsilon;
     }
 
     // param -= step_size * exp_avg / denom
@@ -664,7 +674,10 @@ PADDLE_API void AdamwDenseKernelCompatible(
   // Torch stores step as float in state_steps tensor
   float step_count = static_cast<float>(step_from_beta1);
 
-  // Get learning rate (scalar on device)
+  // Get learning rate as double.
+  // The Python optimizer adjusts lr_ratio to compensate for float32 precision
+  // loss when PADDLE_ADAMW_TORCH_COMPAT is enabled, so that
+  // float32(lr) * lr_ratio recovers the full double-precision learning rate.
   MT lr_on_host;
   phi::memory_utils::Copy(CPUPlace(),
                           &lr_on_host,
@@ -674,7 +687,6 @@ PADDLE_API void AdamwDenseKernelCompatible(
                           dev_ctx.stream());
   dev_ctx.Wait();
   const double lr_double = static_cast<double>(lr_on_host) * lr_ratio;
-  // const double lr_double = lr_ratio;
 
   const MT* master_in_data =
       multi_precision ? master_param->data<MT>() : nullptr;
@@ -690,29 +702,28 @@ PADDLE_API void AdamwDenseKernelCompatible(
   const bool use_bfloat32_grad = grad.dtype() == DataType::FLOAT32;
 
   if (use_bfloat32_grad) {
-    AdamWTorchStyleKernel<T, float, MT>
-        <<<blocks, threads, 0, dev_ctx.stream()>>>(
-            beta1_,
-            beta2_,
-            epsilon_,
-            weight_decay,
-            lr_double,
-            grad.data<float>(),
-            param.data<T>(),
-            dev_ctx.template Alloc<T>(param_out),
-            master_in_data,
-            master_out_data,
-            moment1.data<MT>(),
-            dev_ctx.template Alloc<MT>(moment1_out),
-            moment2.data<MT>(),
-            dev_ctx.template Alloc<MT>(moment2_out),
-            amsgrad ? moment2_max->data<MT>() : nullptr,
-            amsgrad ? dev_ctx.template Alloc<MT>(moment2_max_out) : nullptr,
-            step_count,
-            param.numel(),
-            amsgrad);
+    AdamWStyleKernel<T, float, MT><<<blocks, threads, 0, dev_ctx.stream()>>>(
+        beta1_,
+        beta2_,
+        epsilon_,
+        weight_decay,
+        lr_double,
+        grad.data<float>(),
+        param.data<T>(),
+        dev_ctx.template Alloc<T>(param_out),
+        master_in_data,
+        master_out_data,
+        moment1.data<MT>(),
+        dev_ctx.template Alloc<MT>(moment1_out),
+        moment2.data<MT>(),
+        dev_ctx.template Alloc<MT>(moment2_out),
+        amsgrad ? moment2_max->data<MT>() : nullptr,
+        amsgrad ? dev_ctx.template Alloc<MT>(moment2_max_out) : nullptr,
+        step_count,
+        param.numel(),
+        amsgrad);
   } else {
-    AdamWTorchStyleKernel<T, T, MT><<<blocks, threads, 0, dev_ctx.stream()>>>(
+    AdamWStyleKernel<T, T, MT><<<blocks, threads, 0, dev_ctx.stream()>>>(
         beta1_,
         beta2_,
         epsilon_,
