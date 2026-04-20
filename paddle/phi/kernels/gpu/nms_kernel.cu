@@ -83,7 +83,7 @@ void NMSKernel(const Context& dev_ctx,
   NMS<T><<<grid, block, 0, dev_ctx.stream()>>>(
       boxes.data<T>(), threshold, num_boxes, mask_dev);
   PADDLE_ENFORCE_EQ(
-      phi::backends::gpu::IsCUDAGraphCapturing(),
+      backends::gpu::IsCUDAGraphCapturing(),
       false,
       common::errors::InvalidArgument(
           "NMSKernel does not support CUDA Graph capture: async D2H copy to "
@@ -115,8 +115,8 @@ void NMSKernel(const Context& dev_ctx,
   output->Resize({last_box_num});
   auto* output_data = dev_ctx.template Alloc<int64_t>(output);
   const int64_t* stable_output =
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(output_host,
-                                                             last_box_num);
+      backends::gpu::RestoreHostMemIfCapturingCUDAGraph(output_host,
+                                                        last_box_num);
   memory_utils::Copy(dev_ctx.GetPlace(),
                      output_data,
                      CPUPlace(),

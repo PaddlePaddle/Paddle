@@ -24,7 +24,7 @@ template <typename T>
 struct InstanceAttrs
     : public memory::CirclableRef<InstanceAttrs<T>, AttrMapImpl<T>> {
   using Base = memory::CirclableRef<InstanceAttrs<T>, AttrMapImpl<T>>;
-  using Base::CirclableRef;
+  using Base::Base;
 };
 
 }  // namespace ap::axpr

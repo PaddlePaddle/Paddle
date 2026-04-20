@@ -175,9 +175,8 @@ class LazyZeros<GPUContext, T> {
     for (int i = 0; i < xs_size; i++) {
       h_starts[i + 1] = h_starts[i] + outs[i]->numel();
     }
-    auto* stable_h_starts =
-        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(h_starts,
-                                                               xs_size + 1);
+    auto* stable_h_starts = backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+        h_starts, xs_size + 1);
     memory_utils::Copy(dev_ctx.GetPlace(),
                        d_starts,
                        cpu_place,
@@ -199,8 +198,7 @@ class LazyZeros<GPUContext, T> {
       h_out_addrs[i] = dev_ctx.Alloc<T>(outs[i]);
     }
     auto* stable_h_out_addrs =
-        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(h_out_addrs,
-                                                               xs_size);
+        backends::gpu::RestoreHostMemIfCapturingCUDAGraph(h_out_addrs, xs_size);
     memory_utils::Copy(dev_ctx.GetPlace(),
                        d_out_addrs,
                        cpu_place,
@@ -311,8 +309,7 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
   }
   int64_t total_num = h_starts[xs_size];
   auto* stable_h_starts =
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(h_starts,
-                                                             xs_size + 1);
+      backends::gpu::RestoreHostMemIfCapturingCUDAGraph(h_starts, xs_size + 1);
   memory_utils::Copy(dev_ctx.GetPlace(),
                      d_starts,
                      cpu_place,
@@ -337,7 +334,7 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
     h_outs[i] = dev_ctx.template Alloc<T>(outs[i]);
   }
   auto* stable_h_xs =
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(h_xs, 2 * xs_size);
+      backends::gpu::RestoreHostMemIfCapturingCUDAGraph(h_xs, 2 * xs_size);
   memory_utils::Copy(dev_ctx.GetPlace(),
                      d_xs,
                      cpu_place,

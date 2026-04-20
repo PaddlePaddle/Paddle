@@ -140,7 +140,7 @@ void SigmoidCrossEntropyWithLogitsGradKernel(
         dev_ctx, counts_tensor, &norm_tensor, NonzeroFunctor<T>(), reduce_dim);
     T *norm = dev_ctx.template Alloc<T>(&norm_tensor);
     PADDLE_ENFORCE_EQ(
-        phi::backends::gpu::IsCUDAGraphCapturing(),
+        backends::gpu::IsCUDAGraphCapturing(),
         false,
         common::errors::InvalidArgument(
             "SigmoidCrossEntropyWithLogitsGrad does not support CUDA Graph "

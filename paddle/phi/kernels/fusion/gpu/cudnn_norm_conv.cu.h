@@ -23,7 +23,7 @@ namespace dynload = phi::dynload;
 
 template <typename T>
 using ScalingParamType =
-    typename phi::backends::gpu::CudnnDataType<T>::ScalingParamType;
+    typename backends::gpu::CudnnDataType<T>::ScalingParamType;
 
 #if CUDNN_VERSION >= 8000
 
@@ -32,9 +32,9 @@ static size_t RoundUp(int64_t a, int64_t b) { return (a + b - 1) / b * b; }
 template <typename T>
 struct NormConvolutionArgs {
   NormConvolutionArgs() {
-    dtype = phi::backends::gpu::CudnnDataType<T>::type;
+    dtype = backends::gpu::CudnnDataType<T>::type;
     format = CUDNN_TENSOR_NHWC;
-    compute_type = phi::backends::gpu::CudnnDataType<float>::type;
+    compute_type = backends::gpu::CudnnDataType<float>::type;
   }
 
   void Set(const GPUContext &dev_ctx,
@@ -163,11 +163,11 @@ struct NormConvolutionArgs {
   std::vector<int> paddings;
   std::vector<int> dilations;
 
-  phi::backends::gpu::TensorDescriptor in_desc;
-  phi::backends::gpu::FilterDescriptor filter_desc;
-  phi::backends::gpu::TensorDescriptor out_desc;
-  phi::backends::gpu::TensorDescriptor out_stats_desc;
-  phi::backends::gpu::ConvolutionDescriptor conv_desc;
+  backends::gpu::TensorDescriptor in_desc;
+  backends::gpu::FilterDescriptor filter_desc;
+  backends::gpu::TensorDescriptor out_desc;
+  backends::gpu::TensorDescriptor out_stats_desc;
+  backends::gpu::ConvolutionDescriptor conv_desc;
 
   bool is_support;
 };

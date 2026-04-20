@@ -132,9 +132,9 @@ void FusedSeqpoolCVMGrad(const GPUContext &dev_ctx,
       dev_ctx.GetPlace(), total_ptr_len * sizeof(void *));
 #ifdef PADDLE_WITH_HIP
   T **gpu_out_grads_values = reinterpret_cast<T **>(temp_ptr->ptr());
-  phi::backends::gpu::GpuMemcpyAsync(
+  backends::gpu::GpuMemcpyAsync(
       gpu_out_grads_values,
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
           const_cast<T **>(out_grads_data.data()), out_grads_data.size()),
       out_grads_data.size() * sizeof(T *),
       hipMemcpyHostToDevice,
@@ -142,9 +142,9 @@ void FusedSeqpoolCVMGrad(const GPUContext &dev_ctx,
 
   T **gpu_in_grads_values =
       reinterpret_cast<T **>(&gpu_out_grads_values[out_grads_data.size()]);
-  phi::backends::gpu::GpuMemcpyAsync(
+  backends::gpu::GpuMemcpyAsync(
       gpu_in_grads_values,
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
           const_cast<T **>(in_grads_data.data()), in_grads_data.size()),
       in_grads_data.size() * sizeof(T *),
       hipMemcpyHostToDevice,
@@ -152,9 +152,9 @@ void FusedSeqpoolCVMGrad(const GPUContext &dev_ctx,
 
   T **gpu_cvm_values =
       reinterpret_cast<T **>(&gpu_in_grads_values[in_grads_data.size()]);
-  phi::backends::gpu::GpuMemcpyAsync(
+  backends::gpu::GpuMemcpyAsync(
       gpu_cvm_values,
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
           const_cast<T **>(cvm_data.data()), cvm_data.size()),
       cvm_data.size() * sizeof(T *),
       hipMemcpyHostToDevice,
@@ -162,18 +162,18 @@ void FusedSeqpoolCVMGrad(const GPUContext &dev_ctx,
 
   size_t **lods_values =
       reinterpret_cast<size_t **>(&gpu_cvm_values[cvm_data.size()]);
-  phi::backends::gpu::GpuMemcpyAsync(
+  backends::gpu::GpuMemcpyAsync(
       lods_values,
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
           const_cast<size_t **>(lods.data()), lods.size()),
       lods.size() * sizeof(size_t *),
       hipMemcpyHostToDevice,
       stream);
 #else
   T **gpu_out_grads_values = reinterpret_cast<T **>(temp_ptr->ptr());
-  phi::backends::gpu::GpuMemcpyAsync(
+  backends::gpu::GpuMemcpyAsync(
       gpu_out_grads_values,
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
           const_cast<T **>(out_grads_data.data()), out_grads_data.size()),
       out_grads_data.size() * sizeof(T *),
       cudaMemcpyHostToDevice,
@@ -181,9 +181,9 @@ void FusedSeqpoolCVMGrad(const GPUContext &dev_ctx,
 
   T **gpu_in_grads_values =
       reinterpret_cast<T **>(&gpu_out_grads_values[out_grads_data.size()]);
-  phi::backends::gpu::GpuMemcpyAsync(
+  backends::gpu::GpuMemcpyAsync(
       gpu_in_grads_values,
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
           const_cast<T **>(in_grads_data.data()), in_grads_data.size()),
       in_grads_data.size() * sizeof(T *),
       cudaMemcpyHostToDevice,
@@ -191,9 +191,9 @@ void FusedSeqpoolCVMGrad(const GPUContext &dev_ctx,
 
   T **gpu_cvm_values =
       reinterpret_cast<T **>(&gpu_in_grads_values[in_grads_data.size()]);
-  phi::backends::gpu::GpuMemcpyAsync(
+  backends::gpu::GpuMemcpyAsync(
       gpu_cvm_values,
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
           const_cast<T **>(cvm_data.data()), cvm_data.size()),
       cvm_data.size() * sizeof(T *),
       cudaMemcpyHostToDevice,
@@ -201,9 +201,9 @@ void FusedSeqpoolCVMGrad(const GPUContext &dev_ctx,
 
   size_t **lods_values =
       reinterpret_cast<size_t **>(&gpu_cvm_values[cvm_data.size()]);
-  phi::backends::gpu::GpuMemcpyAsync(
+  backends::gpu::GpuMemcpyAsync(
       lods_values,
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
           const_cast<size_t **>(lods.data()), lods.size()),
       lods.size() * sizeof(size_t *),
       cudaMemcpyHostToDevice,
@@ -211,7 +211,7 @@ void FusedSeqpoolCVMGrad(const GPUContext &dev_ctx,
 #endif
 
   size_t N = static_cast<size_t>(batch_size * slot_num * embedding_size);
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, N);
+  auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, N);
   if (use_cvm) {
     // join grad
     FusedSeqpoolCVMGradKernelWithCVM<<<config.block_per_grid.x,
