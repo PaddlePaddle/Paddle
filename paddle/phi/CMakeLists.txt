@@ -233,7 +233,10 @@ else()
   endif()
 endif()
 
-set(NVTX3_PATH "${CUDA_INCLUDE_DIRS}/../targets/x86_64-linux/include/nvtx3/")
+include(${PROJECT_SOURCE_DIR}/cmake/architecture.cmake)
+paddle_detect_cuda_target_dir(CUDA_TARGET_DIR)
+set(NVTX3_PATH
+    "${CUDA_TOOLKIT_ROOT_DIR}/targets/${CUDA_TARGET_DIR}/include/nvtx3")
 get_filename_component(NVTX3_PATH "${NVTX3_PATH}" ABSOLUTE)
 
 if(EXISTS "${NVTX3_PATH}")

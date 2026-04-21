@@ -1204,21 +1204,21 @@ def get_paddle_extra_install_requirements():
                     "cuda-python==12.9.4; platform_system == 'Linux' and platform_machine == 'x86_64'"
                 ),
                 "13.0": (
-                    "nvidia-cuda-nvrtc==13.0.88; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                    "nvidia-cuda-runtime==13.0.88; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                    "nvidia-cuda-cupti==13.0.85; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                    "nvidia-cudnn-cu13==9.13.0.50; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                    "nvidia-cublas==13.0.2.14; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                    "nvidia-cufft==12.0.0.61; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                    "nvidia-curand==10.4.0.35; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                    "nvidia-cusolver==12.0.4.66; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                    "nvidia-cusparse==12.6.3.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                    "nvidia-cusparselt-cu13==0.8.1; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                    "nvidia-nccl-cu13==2.28.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                    "nvidia-nvtx==13.0.85; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                    "nvidia-nvjitlink==13.0.88; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                    "nvidia-cufile==1.15.1.6; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                    "cuda-python==13.0.3; platform_system == 'Linux' and platform_machine == 'x86_64'"
+                    "nvidia-cuda-nvrtc==13.0.88; platform_system == 'Linux' | "
+                    "nvidia-cuda-runtime==13.0.88; platform_system == 'Linux' | "
+                    "nvidia-cuda-cupti==13.0.85; platform_system == 'Linux' | "
+                    "nvidia-cudnn-cu13==9.15.1.9; platform_system == 'Linux' | "
+                    "nvidia-cublas==13.1.0.3; platform_system == 'Linux' | "
+                    "nvidia-cufft==12.0.0.61; platform_system == 'Linux' | "
+                    "nvidia-curand==10.4.0.35; platform_system == 'Linux' | "
+                    "nvidia-cusolver==12.0.4.66; platform_system == 'Linux' | "
+                    "nvidia-cusparse==12.6.3.3; platform_system == 'Linux' | "
+                    "nvidia-cusparselt-cu13==0.8.1; platform_system == 'Linux' | "
+                    "nvidia-nccl-cu13==2.28.3; platform_system == 'Linux' | "
+                    "nvidia-nvtx==13.0.85; platform_system == 'Linux' | "
+                    "nvidia-nvjitlink==13.0.88; platform_system == 'Linux' | "
+                    "nvidia-cufile==1.15.1.6; platform_system == 'Linux' | "
+                    "cuda-python==13.0.3; platform_system == 'Linux'"
                 ),
             }
             if env_dict.get("WITH_CINN") == "ON":
@@ -1238,7 +1238,7 @@ def get_paddle_extra_install_requirements():
                     " | nvidia-cuda-cccl-cu12==12.9.27;platform_system == 'Linux' and platform_machine == 'x86_64' "
                 )
                 PADDLE_CUDA_INSTALL_REQUIREMENTS["13.0"] += (
-                    " | nvidia-cuda-cccl==13.0.85;platform_system == 'Linux' and platform_machine == 'x86_64' "
+                    " | nvidia-cuda-cccl==13.0.85;platform_system == 'Linux' "
                 )
 
         elif platform.system() == 'Windows':
@@ -1290,8 +1290,8 @@ def get_paddle_extra_install_requirements():
                 ),
                 "13.0": (
                     "nvidia-cuda-runtime==13.0.88 | "
-                    "nvidia-cudnn-cu13==9.13.0.50 | "
-                    "nvidia-cublas==13.0.2.14 | "
+                    "nvidia-cudnn-cu13==9.15.1.9 | "
+                    "nvidia-cublas==13.1.0.3 | "
                     "nvidia-cufft==12.0.0.61 | "
                     "nvidia-curand==10.4.0.35 | "
                     "nvidia-cusolver==12.0.4.66 | "
@@ -2506,13 +2506,17 @@ def get_headers():
 def get_setup_parameters():
     # get setup_requires
     setup_requires = get_setup_requires()
-    if (
-        env_dict.get("WITH_GPU") == 'ON'
-        and platform.system() in ('Linux', 'Windows')
-        and platform.machine()
-        in (
-            'x86_64',
-            'AMD64',
+    if env_dict.get("WITH_GPU") == 'ON' and (
+        (
+            platform.system() == 'Linux'
+            and (
+                platform.machine() == 'x86_64'
+                or float(env_dict.get("CUDA_VERSION")) >= 13.0
+            )
+        )
+        or (
+            platform.system() == 'Windows'
+            and platform.machine() in ('x86_64', 'AMD64')
         )
     ):
         paddle_cuda_requires, paddle_tensorrt_requires = (
