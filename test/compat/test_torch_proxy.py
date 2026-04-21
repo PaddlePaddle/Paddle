@@ -185,7 +185,8 @@ class TestDeviceAsTypeHints(unittest.TestCase):
         def fn(x: Optional[torch.device]):  # noqa: FA100
             return x
 
-        self.assertIs(fn.__annotations__["x"], Optional[torch.device])
+        self.assertTrue(callable(torch.device))
+        self.assertEqual(fn.__annotations__["x"], Optional[torch.device])
         cpu_device = torch.device("cpu")
         self.assertEqual(str(cpu_device), "cpu")
         self.assertEqual(

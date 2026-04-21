@@ -104,8 +104,10 @@ class ProxyModule(types.ModuleType):
 
 class CallableProxyModule(ProxyModule):
     """
-    A ProxyModule that is also callable. This is used to proxy modules that are callable,
-    such as torch.device, which can be called like a function but also has attributes.
+    Preserve callability for modules whose type defines ``__call__``.
+
+    ``callable(obj)`` does not consult ``obj.__getattr__("__call__")``. It checks the
+    type-level call slot instead, so callable modules need a dedicated proxy subtype.
     """
 
     def __call__(self, *args, **kwargs):
@@ -117,6 +119,7 @@ def _create_proxy_module(
     proxy_name: str,
     overrides: dict[str, OverriddenAttribute],
 ) -> ProxyModule:
+    """Wrap callable modules with a callable proxy and plain modules with ProxyModule."""
     if callable(original_module):
         return CallableProxyModule(original_module, proxy_name, overrides)
     return ProxyModule(original_module, proxy_name, overrides)
