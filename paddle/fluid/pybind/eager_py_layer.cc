@@ -263,8 +263,9 @@ PyObject* pylayer_method_apply(PyObject* cls,
   const phi::distributed::ProcessMesh* mesh = nullptr;
   for (size_t i = 0; i < inputs_size; i++) {
     PyObject* obj = nullptr;
-    if (i >= args_size) {
-      obj = PyList_GetItem(kwargs_value_list, i - args_size);  // NOLINT
+    if (i >= static_cast<int64_t>(args_size)) {
+      obj = PyList_GetItem(kwargs_value_list,
+                           i - static_cast<int64_t>(args_size));  // NOLINT
     } else {
       obj = PyTuple_GET_ITEM(args, i);
     }
@@ -693,29 +694,48 @@ PyObject* pylayer_method_apply(PyObject* cls,
 // DenseTensors found (Tensor / Tuple / List, recursively).  Used by
 // tensor_properties_set_container to hold strong references so that
 // _clear_dataptr() cannot free the underlying allocation before backward.
-static void CollectDenseTensors(
-    PyObject* obj, std::vector<std::shared_ptr<phi::DenseTensor>>* holder) {
+// DFS-walks obj (tuple/list tree) and calls fn(tensor) for every Tensor leaf.
+// Both CollectDenseTensors and RestoreDenseTensors are built on top of this.
+template <typename Fn>
+static void WalkDenseTensors(PyObject* obj, Fn&& fn) {
   if (!obj || obj == Py_None) return;
   if (PyCheckTensor(obj)) {
-    const auto& tensor = reinterpret_cast<TensorObject*>(obj)->tensor;
-    if (tensor.impl() && tensor.is_dense_tensor()) {
-      holder->push_back(
-          std::static_pointer_cast<phi::DenseTensor>(tensor.impl()));
-    }
+    fn(reinterpret_cast<TensorObject*>(obj)->tensor);
     return;
   }
   if (PyTuple_Check(obj)) {
     Py_ssize_t n = PyTuple_GET_SIZE(obj);
     for (Py_ssize_t i = 0; i < n; ++i)
-      CollectDenseTensors(PyTuple_GET_ITEM(obj, i), holder);
+      WalkDenseTensors(PyTuple_GET_ITEM(obj, i), fn);
     return;
   }
   if (PyList_Check(obj)) {
     Py_ssize_t n = PyList_GET_SIZE(obj);
     for (Py_ssize_t i = 0; i < n; ++i)
-      CollectDenseTensors(PyList_GET_ITEM(obj, i), holder);
+      WalkDenseTensors(PyList_GET_ITEM(obj, i), fn);
     return;
   }
+}
+
+static void CollectDenseTensors(
+    PyObject* obj, std::vector<std::shared_ptr<phi::TensorBase>>* holder) {
+  WalkDenseTensors(obj, [holder](const paddle::Tensor& tensor) {
+    if (tensor.impl()) holder->push_back(tensor.impl());
+  });
+}
+
+// Re-installs impl() for tensors cleared by _clear_dataptr(), using the
+// shared_ptrs stored in holder (same DFS order as CollectDenseTensors).
+static void RestoreDenseTensors(
+    PyObject* obj,
+    const std::vector<std::shared_ptr<phi::TensorBase>>& holder) {
+  size_t idx = 0;
+  WalkDenseTensors(obj, [&holder, &idx](paddle::Tensor& tensor) {
+    if (idx < holder.size()) {
+      if (!tensor.impl()) tensor.set_impl(holder[idx]);
+      ++idx;
+    }
+  });
 }
 
 PyObject* call_unpack_hook(PyLayerObject* self) {
@@ -768,45 +788,13 @@ PyObject* tensor_properties_get_container(PyLayerObject* self, void* closure) {
   if (self->container_be_packed) {
     return call_unpack_hook(self);
   }
-
-  // If tensor_hold_helper is non-empty, some tensors may have been cleared by
-  // _clear_dataptr().  Iterate the top-level container tuple and restore any
-  // null impl from the corresponding entry in tensor_hold_helper.
-  // tensor_hold_helper is ordered by the DenseTensors found during deep
-  // traversal in set_container; for the common case (flat tuple of tensors)
-  // the k-th tensor in the tuple maps to tensor_hold_helper[k].
+  // Re-attach any DenseTensor impls that were freed by _clear_dataptr().
+  // tensor_hold_helper keeps the underlying allocations alive; walk the
+  // container in the same DFS order as CollectDenseTensors and reinstall
+  // impls for tensors whose impl() is currently null.
   if (!self->tensor_hold_helper.empty()) {
-    Py_ssize_t size = PyTuple_Size(self->container);
-    PyObject* recovered_container = PyTuple_New(size);
-    Py_ssize_t holder_idx = 0;
-    for (Py_ssize_t i = 0; i < size; ++i) {
-      PyObject* item = PyTuple_GetItem(self->container, i);
-      if (item && PyCheckTensor(item)) {
-        TensorObject* tensor_obj = reinterpret_cast<TensorObject*>(item);
-        if (!tensor_obj->tensor.impl() &&
-            holder_idx <
-                static_cast<Py_ssize_t>(self->tensor_hold_helper.size()) &&
-            self->tensor_hold_helper[holder_idx]) {
-          // Tensor was cleared by _clear_dataptr; restore impl from holder.
-          paddle::Tensor recovered;
-          recovered.set_impl(self->tensor_hold_helper[holder_idx]);
-          PyTuple_SET_ITEM(
-              recovered_container, i, paddle::pybind::ToPyObject(recovered));
-          ++holder_idx;
-          continue;
-        }
-        ++holder_idx;
-        Py_INCREF(item);
-        PyTuple_SET_ITEM(recovered_container, i, item);
-      } else {
-        Py_INCREF(item);
-        PyTuple_SET_ITEM(recovered_container, i, item);
-      }
-    }
-    return recovered_container;
+    RestoreDenseTensors(self->container, self->tensor_hold_helper);
   }
-
-  // Fallback: return original container as-is.
   Py_INCREF(self->container);
   return self->container;
   EAGER_CATCH_AND_THROW_RETURN_NULL

@@ -40,7 +40,7 @@ typedef struct {
   // preventing _clear_dataptr() from freeing the underlying memory before
   // backward runs.  Lifecycle: born with container (set_container), dies with
   // the PyLayerObject (PyLayerDealloc).
-  std::vector<std::shared_ptr<phi::DenseTensor>> tensor_hold_helper;
+  std::vector<std::shared_ptr<phi::TensorBase>> tensor_hold_helper;
 #ifdef PADDLE_WITH_CUDA
   std::vector<egr::ReloadFunctor> reload_functors;
 #endif
