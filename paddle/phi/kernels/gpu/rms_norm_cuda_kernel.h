@@ -1232,7 +1232,7 @@ void RMSNormFwdKernel(const Context& dev_ctx,
                       double epsilon,
                       DenseTensor* y,
                       DenseTensor* invvar) {
-  using T_ACC = typename phi::dtype::MPTypeTrait<T>::Type;
+  using T_ACC = typename dtype::MPTypeTrait<T>::Type;
 
   if (x.numel() == 0) {
     dev_ctx.template Alloc<T>(y);
@@ -1265,8 +1265,8 @@ void RMSNormFwdKernel(const Context& dev_ctx,
     bool can_vec_X2 = can_vectorize(x_data, alignment2);
     bool can_vec_Y2 = can_vectorize(y_data, alignment2);
     bool can_vec_scale2 = can_vectorize(scale_data, alignment2);
-    bool is_supported_type2 = (std::is_same<T, phi::dtype::float16>::value ||
-                               std::is_same<T, phi::dtype::bfloat16>::value);
+    bool is_supported_type2 = (std::is_same<T, dtype::float16>::value ||
+                               std::is_same<T, dtype::bfloat16>::value);
     if (is_supported_type2 &&
         cols <=
             static_cast<int64_t>(1ULL << std::numeric_limits<float>::digits) &&
@@ -1292,8 +1292,8 @@ void RMSNormFwdKernel(const Context& dev_ctx,
   bool can_vec_Y = can_vectorize(y_data, alignment);
   bool can_vec_scale = can_vectorize(scale_data, alignment);
   bool is_supported_type = (std::is_same<T, float>::value ||
-                            std::is_same<T, phi::dtype::float16>::value ||
-                            std::is_same<T, phi::dtype::bfloat16>::value);
+                            std::is_same<T, dtype::float16>::value ||
+                            std::is_same<T, dtype::bfloat16>::value);
 
   if (is_supported_type &&
       cols <=
@@ -1329,7 +1329,7 @@ void RMSNormBwdKernel(const Context& dev_ctx,
                       double epsilon,
                       DenseTensor* dX,
                       DenseTensor* dscale) {
-  using T_ACC = typename phi::dtype::MPTypeTrait<T>::Type;
+  using T_ACC = typename dtype::MPTypeTrait<T>::Type;
 
   if (X.numel() == 0) {
     if (dX) {
@@ -1374,16 +1374,16 @@ void RMSNormBwdKernel(const Context& dev_ctx,
                            can_vectorize(scale_data, alignment) &&
                            can_vectorize(dX_data, alignment);
     bool is_supported_type = (std::is_same<T, float>::value ||
-                              std::is_same<T, phi::dtype::float16>::value ||
-                              std::is_same<T, phi::dtype::bfloat16>::value);
+                              std::is_same<T, dtype::float16>::value ||
+                              std::is_same<T, dtype::bfloat16>::value);
 
     const unsigned int alignment2 = sizeof(T) * 8;
     bool bAlignedBuffers2 = can_vectorize(dY_data, alignment2) &&
                             can_vectorize(X_data, alignment2) &&
                             can_vectorize(scale_data, alignment2) &&
                             can_vectorize(dX_data, alignment2);
-    bool is_supported_type2 = (std::is_same<T, phi::dtype::float16>::value ||
-                               std::is_same<T, phi::dtype::bfloat16>::value);
+    bool is_supported_type2 = (std::is_same<T, dtype::float16>::value ||
+                               std::is_same<T, dtype::bfloat16>::value);
 
     dim3 blocks(M);
     constexpr int num_threads = 128;
@@ -1449,7 +1449,7 @@ void RMSNormBwdKernel(const Context& dev_ctx,
       }
 
       // Sum reduction along blocks.y dimension to get final dscale
-      phi::SumKernel<T, Context>(
+      SumKernel<T, Context>(
           dev_ctx, dscale_blocks, {0}, dscale->dtype(), false, dscale);
 
     } else {

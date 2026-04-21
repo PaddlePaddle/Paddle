@@ -102,7 +102,7 @@ __global__ void ScaleGradKernel(const int* count_data,
                                 int64_t num_weights,
                                 int64_t num_weight_dim,
                                 T* table) {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
   const int idx = threadIdx.x + blockIdx.x * blockDim.x;
   if (idx < num_weights) {
     MPType freq = static_cast<MPType>(count_data[idx]);

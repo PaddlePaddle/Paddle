@@ -247,14 +247,14 @@ void RoiAlignGradKernel(const Context& dev_ctx,
       }
     }
   }
-  auto roi_ptr = phi::memory_utils::Alloc(
-      dev_ctx.GetPlace(),
-      box_batch_id_list.numel() * sizeof(int),
-      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+  auto roi_ptr =
+      memory_utils::Alloc(dev_ctx.GetPlace(),
+                          box_batch_id_list.numel() * sizeof(int),
+                          Stream(reinterpret_cast<StreamId>(dev_ctx.stream())));
   int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
   int64_t bytes = box_batch_id_list.numel() * sizeof(int);
   const int* stable_box_batch_size =
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
           box_batch_size, static_cast<size_t>(bytes / sizeof(int)));
   memory_utils::Copy(gplace,
                      roi_id_data,

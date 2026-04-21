@@ -321,7 +321,7 @@ struct ApRewriter {
                             pir::Operation* op,
                             pir::PatternRewriter* rewriter) const {
     ADT_CHECK(ctx_.drr_ctx->pass_name.has_value());
-    VLOG(0) << "drr: " << ctx_.drr_ctx->pass_name.value() << " matched.";
+    VLOG(1) << "drr: " << ctx_.drr_ctx->pass_name.value() << " matched.";
     return RewriteByResultPattern(match_ctx, op, rewriter);
   }
 
@@ -2710,7 +2710,7 @@ class NativeOpAnchorApGenericDrrPattern : public pir::RewritePattern {
     }
     const auto& ret = this->TryMatchAndRewrite(op, &rewriter);
     if (ret.HasError()) {
-      VLOG(0) << "drr: " << ctx_.drr_ctx->pass_name.value() << " mismatched.";
+      VLOG(2) << "drr: " << ctx_.drr_ctx->pass_name.value() << " mismatched.";
       VLOG(6) << "\nTraceback (most recent call last):\n"
               << ret.GetError().CallStackToString() << "\n"
               << ret.GetError().class_name() << ": " << ret.GetError().msg()
@@ -2729,10 +2729,10 @@ class NativeOpAnchorApGenericDrrPattern : public pir::RewritePattern {
     ADT_LET_CONST_REF(opt_match_ctx, GetMatchCtx(op));
     ADT_CHECK(ctx_.drr_ctx->pass_name.has_value());
     if (!opt_match_ctx.has_value()) {
-      VLOG(0) << "drr: " << ctx_.drr_ctx->pass_name.value() << " mismatched.";
+      VLOG(2) << "drr: " << ctx_.drr_ctx->pass_name.value() << " mismatched.";
       return false;
     }
-    VLOG(0) << "drr: " << ctx_.drr_ctx->pass_name.value() << " matched.";
+    VLOG(1) << "drr: " << ctx_.drr_ctx->pass_name.value() << " matched.";
     ADT_LET_CONST_REF(
         success, ap_rewriter_.Rewrite(opt_match_ctx.value(), op, rewriter));
     if (success) {
@@ -2846,7 +2846,7 @@ class DefaultAnchorApGenericDrrPattern : public pir::RewritePattern {
     }
     const auto& ret = this->TryMatchAndRewrite(op, &rewriter);
     if (ret.HasError()) {
-      VLOG(0) << "drr: " << ctx_.drr_ctx->pass_name.value() << " mismatched.";
+      VLOG(2) << "drr: " << ctx_.drr_ctx->pass_name.value() << " mismatched.";
       VLOG(6) << "\nTraceback (most recent call last):\n"
               << ret.GetError().CallStackToString() << "\n"
               << ret.GetError().class_name() << ": " << ret.GetError().msg()
@@ -2867,7 +2867,7 @@ class DefaultAnchorApGenericDrrPattern : public pir::RewritePattern {
       return false;
     }
     ADT_CHECK(ctx_.drr_ctx->pass_name.has_value());
-    VLOG(0) << "drr: " << ctx_.drr_ctx->pass_name.value() << " matched.";
+    VLOG(1) << "drr: " << ctx_.drr_ctx->pass_name.value() << " matched.";
     ADT_LET_CONST_REF(
         success, ap_rewriter_.Rewrite(opt_match_ctx.value(), op, rewriter));
     if (success) {

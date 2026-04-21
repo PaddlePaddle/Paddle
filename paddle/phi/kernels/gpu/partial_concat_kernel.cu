@@ -109,10 +109,8 @@ void PartialConcatOpCUDAKernel(const Context &dev_ctx,
       in_data.size() * sizeof(T *),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   size_t nbytes_in = in_data.size() * sizeof(T *);
-  const void *stable_in =
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
-          reinterpret_cast<uint8_t *>(const_cast<T **>(in_data.data())),
-          nbytes_in);
+  const void *stable_in = backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      reinterpret_cast<uint8_t *>(const_cast<T **>(in_data.data())), nbytes_in);
   phi::memory_utils::Copy(dev_ctx.GetPlace(),
                           tmp_in_array->ptr(),
                           CPUPlace(),

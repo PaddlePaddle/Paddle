@@ -54,27 +54,21 @@ __device__ __forceinline__ T WARP_SHFL_DOWN(T value,
 }
 
 template <>
-__device__ __forceinline__ phi::dtype::float16
-WARP_SHFL_DOWN<phi::dtype::float16>(phi::dtype::float16 value,
-                                    unsigned int delta,
-                                    int width,
-                                    unsigned int mask) {
+__device__ __forceinline__ dtype::float16 WARP_SHFL_DOWN<dtype::float16>(
+    dtype::float16 value, unsigned int delta, int width, unsigned int mask) {
   uint16_t val_as_ushort = *reinterpret_cast<uint16_t*>(&value);
   uint16_t shuffled =
       WARP_SHFL_DOWN<uint16_t>(val_as_ushort, delta, width, mask);
-  return *reinterpret_cast<phi::dtype::float16*>(&shuffled);
+  return *reinterpret_cast<dtype::float16*>(&shuffled);
 }
 
 template <>
-__device__ __forceinline__ phi::dtype::bfloat16
-WARP_SHFL_DOWN<phi::dtype::bfloat16>(phi::dtype::bfloat16 value,
-                                     unsigned int delta,
-                                     int width,
-                                     unsigned int mask) {
+__device__ __forceinline__ dtype::bfloat16 WARP_SHFL_DOWN<dtype::bfloat16>(
+    dtype::bfloat16 value, unsigned int delta, int width, unsigned int mask) {
   uint16_t val_as_ushort = *reinterpret_cast<uint16_t*>(&value);
   uint16_t shuffled =
       WARP_SHFL_DOWN<uint16_t>(val_as_ushort, delta, width, mask);
-  return *reinterpret_cast<phi::dtype::bfloat16*>(&shuffled);
+  return *reinterpret_cast<dtype::bfloat16*>(&shuffled);
 }
 
 template <typename T>
@@ -124,7 +118,7 @@ __global__ void DWConv2dBwdInputKernel(const T* __restrict__ grad_output,
                                        const int padHeight,
                                        const int dilationWidth,
                                        const int dilationHeight) {
-  using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using AccT = typename dtype::MPTypeTrait<T>::Type;
   const int KW_LIMIT = (kSize != 0) ? kSize : kernelWidth;
   const int KH_LIMIT = (kSize != 0) ? kSize : kernelHeight;
   const int strideW = (stride != 0) ? stride : strideWidth;
@@ -194,7 +188,7 @@ __global__ void DWConv2dBwdWeightKernel(const T* __restrict__ grad_output,
                                         const int padHeight,
                                         const int dilationWidth,
                                         const int dilationHeight) {
-  using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using AccT = typename dtype::MPTypeTrait<T>::Type;
   const int channelStride = kernelWidth * kernelHeight;
 
   int bidx = blockIdx.x;
@@ -316,7 +310,7 @@ void LaunchDepthwiseConv2dBackwardCompatible(const Context& dev_ctx,
 
   // Launch Filter Gradient Kernel (grad_weight)
   if (filter_grad_nchw_ptr) {
-    phi::funcs::SetConstant<Context, T> set_zero;
+    funcs::SetConstant<Context, T> set_zero;
     set_zero(dev_ctx, filter_grad_nchw_ptr, static_cast<T>(0));
 
     int blocks = outputChannels * kH * kW;
@@ -324,7 +318,7 @@ void LaunchDepthwiseConv2dBackwardCompatible(const Context& dev_ctx,
     dim3 block(GetGradParamsNumThreads(batchSize));
 
     size_t smem = (block.x / CUDA_WARP_SIZE) *
-                  sizeof(typename phi::dtype::MPTypeTrait<T>::Type);
+                  sizeof(typename dtype::MPTypeTrait<T>::Type);
 
     DWConv2dBwdWeightKernel<T, int>
         <<<grid, block, smem, stream>>>(out_grad_nchw.data<T>(),
@@ -420,12 +414,12 @@ void LaunchDepthwiseConv2dBackwardCompatible(const Context& dev_ctx,
     // Reduce over N(0), H(2), W(3) to get [C]
     std::vector<int64_t> reduce_dims = {0, 2, 3};
 
-    phi::SumKernel<T, Context>(dev_ctx,
-                               out_grad_nchw,
-                               phi::IntArray(reduce_dims),
-                               CppTypeToDataType<T>::Type(),
-                               false,
-                               bias_grad);
+    SumKernel<T, Context>(dev_ctx,
+                          out_grad_nchw,
+                          IntArray(reduce_dims),
+                          CppTypeToDataType<T>::Type(),
+                          false,
+                          bias_grad);
   }
 
   if (input_grad && channel_last) {

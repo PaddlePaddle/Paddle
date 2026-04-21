@@ -101,7 +101,7 @@ void SliceCooGradCompute(const Context& dev_ctx,
   x_grad->SetMember(dx_indices, dx_values, x.dims(), x.coalesced());
 
   auto config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_grad_nnz + 1, 1);
+      backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_grad_nnz + 1, 1);
   GetCooInputGradCudaKernel<T><<<config.block_per_grid.x,
                                  config.thread_per_block.x,
                                  0,
@@ -198,7 +198,7 @@ void SliceCsrGrad2D(const Context& dev_ctx,
 
   // set cols and values
   auto config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_grad_nnz + 1, 1);
+      backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_grad_nnz + 1, 1);
   GetCsrInputColsValuesCudaKernel<T><<<config.block_per_grid.x,
                                        config.thread_per_block.x,
                                        0,
@@ -208,7 +208,7 @@ void SliceCsrGrad2D(const Context& dev_ctx,
                                                            starts[1],
                                                            dx_cols_data,
                                                            dx_values_data);
-  config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n_rows + 1, 1);
+  config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n_rows + 1, 1);
   GetCsrInputCrowsCudaKernel<<<config.block_per_grid.x,
                                config.thread_per_block.x,
                                0,
@@ -255,7 +255,7 @@ void SliceCsrGrad3D(const Context& dev_ctx,
 
   // set cols and values
   auto config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_grad_nnz + 1, 1);
+      backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_grad_nnz + 1, 1);
   GetCsrInputColsValuesCudaKernel<T><<<config.block_per_grid.x,
                                        config.thread_per_block.x,
                                        0,
@@ -269,7 +269,7 @@ void SliceCsrGrad3D(const Context& dev_ctx,
   int64_t out_grad_n_rows = out_grad.dims()[1];
   for (int64_t i = 0; i < dim0; ++i) {
     if (i < starts[0] || i >= ends[0]) {
-      config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n_rows + 1, 1);
+      config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n_rows + 1, 1);
       GetCsrInputCrowsPart1CudaKernel<<<config.block_per_grid.x,
                                         config.thread_per_block.x,
                                         0,
@@ -278,7 +278,7 @@ void SliceCsrGrad3D(const Context& dev_ctx,
     } else {
       int64_t dx_crows_offset = i * (n_rows + 1);
       int64_t out_grad_crows_offset = (i - starts[0]) * (out_grad_n_rows + 1);
-      config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n_rows + 1, 1);
+      config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n_rows + 1, 1);
       GetCsrInputCrowsCudaKernel<<<config.block_per_grid.x,
                                    config.thread_per_block.x,
                                    0,

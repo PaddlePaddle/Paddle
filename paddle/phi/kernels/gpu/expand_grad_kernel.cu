@@ -44,7 +44,7 @@ void ExpandGradKernel(const Context& dev_ctx,
   } else {
     std::vector<int> reduce_dims =
         funcs::GetReduceDim(x_grad->dims(), out_grad.dims(), -1);
-    phi::SumKernel<T, Context>(
+    SumKernel<T, Context>(
         dev_ctx, out_grad, reduce_dims, out_grad.dtype(), false, x_grad);
   }
 }

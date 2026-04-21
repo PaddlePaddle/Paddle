@@ -19,12 +19,14 @@
 #pragma once
 
 #include <c10/macros/Macros.h>
+#include <torch/headeronly/util/Exception.h>
 
 #include <cstdint>
 #include <exception>
 #include <iostream>
 #include <memory>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <tuple>
 #include <variant>

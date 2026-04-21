@@ -177,7 +177,7 @@ class DepthwiseConvFilterGradFunctor {
 template <typename T>
 __forceinline__ __device__ T WarpReduceSum(T val, unsigned lane_mask) {
   for (int mask = HALF_WARP; mask > 0; mask >>= 1)
-    val += phi::backends::gpu::CudaShuffleDownSync(lane_mask, val, mask);
+    val += backends::gpu::CudaShuffleDownSync(lane_mask, val, mask);
   return val;
 }
 

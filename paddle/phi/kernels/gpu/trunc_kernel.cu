@@ -22,14 +22,12 @@
 
 namespace phi {
 
-using phi::PADDLE_CUDA_NUM_THREADS;
-
 template <typename T>
 class TruncFunctor {
  public:
   __device__ TruncFunctor(const T x) : x_(x) {}
   __device__ T operator()() {
-    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+    using MPType = typename dtype::MPTypeTrait<T>::Type;
     return static_cast<T>(trunc(static_cast<MPType>(x_)));
   }
 
@@ -76,7 +74,7 @@ void TruncKernel(const Context& dev_ctx,
   }
 
   int64_t numel = x.numel();
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
+  auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
 
   Trunc<<<config.block_per_grid, config.thread_per_block>>>(
       x_data, out_data, numel);

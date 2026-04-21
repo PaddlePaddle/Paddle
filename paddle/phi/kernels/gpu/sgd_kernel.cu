@@ -72,7 +72,7 @@ void SGDDenseKernel(const Context& dev_ctx,
                     bool multi_precision,
                     DenseTensor* param_out,
                     DenseTensor* master_param_out) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename dtype::MPTypeTrait<T>::Type;
   // do check here
   // if (multi_precision) {
   //   bool has_master =
@@ -119,7 +119,7 @@ void SGDDenseParamSparseGradKernel(const Context& dev_ctx,
                                    bool multi_precision,
                                    DenseTensor* param_out,
                                    DenseTensor* master_param_out) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename dtype::MPTypeTrait<T>::Type;
   // do some check here
   // if (multi_precision) {
   //   bool has_master =
@@ -167,7 +167,7 @@ void SGDDenseParamSparseGradKernel(const Context& dev_ctx,
   int thread_x = kThreadsPerBlock;
   int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
   int max_blocks = std::max(max_threads / kThreadsPerBlock, 1);
-  phi::MixVector<int64_t> mixv_in_rows(&in_rows);
+  MixVector<int64_t> mixv_in_rows(&in_rows);
   SparseSGDFunctorKernel<<<max_blocks, thread_x, 0, dev_ctx.stream()>>>(
       in_data,
       mixv_in_rows.CUDAData(dev_ctx.GetPlace()),

@@ -27,13 +27,13 @@
 // ---------- Construction ----------------------------------------------------
 
 TEST(GeneratorImplTest, ConstructWithNullptrCreatesDefaultGen) {
-  c10::GeneratorImpl impl(c10::Device(c10::kCPU));
+  c10::GeneratorImpl impl{c10::Device(c10::kCPU)};
   ASSERT_NE(impl.paddle_generator(), nullptr);
 }
 
 TEST(GeneratorImplTest, ConstructWithExistingGen) {
   auto gen = std::make_shared<phi::Generator>(42u);
-  c10::GeneratorImpl impl(c10::Device(c10::kCPU), gen);
+  c10::GeneratorImpl impl{c10::Device(c10::kCPU), gen};
   ASSERT_EQ(impl.paddle_generator(), gen);
   ASSERT_EQ(impl.current_seed(), 42u);
 }
@@ -41,13 +41,13 @@ TEST(GeneratorImplTest, ConstructWithExistingGen) {
 // ---------- Seed / offset API (base-class versions) -------------------------
 
 TEST(GeneratorImplTest, SetAndGetCurrentSeed) {
-  c10::GeneratorImpl impl(c10::Device(c10::kCPU));
+  c10::GeneratorImpl impl{c10::Device(c10::kCPU)};
   impl.set_current_seed(12345);
   ASSERT_EQ(impl.current_seed(), 12345u);
 }
 
 TEST(GeneratorImplTest, SeedGeneratesNewSeed) {
-  c10::GeneratorImpl impl(c10::Device(c10::kCPU));
+  c10::GeneratorImpl impl{c10::Device(c10::kCPU)};
   impl.set_current_seed(1);
   uint64_t new_seed = impl.seed();
   // seed() should return a new random seed (very unlikely to be 1 again).
@@ -56,13 +56,13 @@ TEST(GeneratorImplTest, SeedGeneratesNewSeed) {
 }
 
 TEST(GeneratorImplTest, GetOffsetInitiallyZero) {
-  c10::GeneratorImpl impl(c10::Device(c10::kCPU));
+  c10::GeneratorImpl impl{c10::Device(c10::kCPU)};
   ASSERT_EQ(impl.get_offset(), 0u);
 }
 
 TEST(GeneratorImplTest, SetOffsetForward) {
   auto gen = std::make_shared<phi::Generator>(100u);
-  c10::GeneratorImpl impl(c10::Device(c10::kCUDA, 0), gen);
+  c10::GeneratorImpl impl{c10::Device(c10::kCUDA, 0), gen};
 
   impl.set_offset(10);
   ASSERT_EQ(impl.get_offset(), 10u);
@@ -70,7 +70,7 @@ TEST(GeneratorImplTest, SetOffsetForward) {
 
 TEST(GeneratorImplTest, SetOffsetBackward) {
   auto gen = std::make_shared<phi::Generator>(100u);
-  c10::GeneratorImpl impl(c10::Device(c10::kCUDA, 0), gen);
+  c10::GeneratorImpl impl{c10::Device(c10::kCUDA, 0), gen};
 
   impl.set_offset(20);
   ASSERT_EQ(impl.get_offset(), 20u);
@@ -81,7 +81,7 @@ TEST(GeneratorImplTest, SetOffsetBackward) {
 
 TEST(GeneratorImplTest, SetOffsetSameValue) {
   auto gen = std::make_shared<phi::Generator>(100u);
-  c10::GeneratorImpl impl(c10::Device(c10::kCUDA, 0), gen);
+  c10::GeneratorImpl impl{c10::Device(c10::kCUDA, 0), gen};
 
   impl.set_offset(10);
   impl.set_offset(10);
@@ -91,19 +91,19 @@ TEST(GeneratorImplTest, SetOffsetSameValue) {
 // ---------- Device / DispatchKeySet -----------------------------------------
 
 TEST(GeneratorImplTest, DeviceReturnsCorrectDevice) {
-  c10::Device cpu_dev(c10::kCPU);
-  c10::GeneratorImpl impl(cpu_dev);
+  c10::Device cpu_dev{c10::kCPU};
+  c10::GeneratorImpl impl{cpu_dev};
   ASSERT_EQ(impl.device(), cpu_dev);
 }
 
 TEST(GeneratorImplTest, KeySetCPU) {
-  c10::GeneratorImpl impl(c10::Device(c10::kCPU));
+  c10::GeneratorImpl impl{c10::Device(c10::kCPU)};
   c10::DispatchKeySet ks = impl.key_set();
   ASSERT_TRUE(ks.has(c10::DispatchKey::CPU));
 }
 
 TEST(GeneratorImplTest, KeySetCUDA) {
-  c10::GeneratorImpl impl(c10::Device(c10::kCUDA, 0));
+  c10::GeneratorImpl impl{c10::Device(c10::kCUDA, 0)};
   c10::DispatchKeySet ks = impl.key_set();
   ASSERT_TRUE(ks.has(c10::DispatchKey::CUDA));
 }
@@ -111,7 +111,7 @@ TEST(GeneratorImplTest, KeySetCUDA) {
 TEST(GeneratorImplTest, KeySetOtherDevice) {
   // Use kCUSTOM which is neither CPU nor CUDA to exercise the fallback
   // branch that returns an empty DispatchKeySet.
-  c10::GeneratorImpl impl(c10::Device(c10::kCUSTOM, 0));
+  c10::GeneratorImpl impl{c10::Device(c10::kCUSTOM, 0)};
   c10::DispatchKeySet ks = impl.key_set();
   ASSERT_FALSE(ks.has(c10::DispatchKey::CPU));
   ASSERT_FALSE(ks.has(c10::DispatchKey::CUDA));
@@ -121,7 +121,7 @@ TEST(GeneratorImplTest, KeySetOtherDevice) {
 
 TEST(GeneratorImplTest, ClonePreservesState) {
   auto gen = std::make_shared<phi::Generator>(42u);
-  c10::GeneratorImpl impl(c10::Device(c10::kCPU), gen);
+  c10::GeneratorImpl impl{c10::Device(c10::kCPU), gen};
   impl.set_current_seed(777);
 
   auto cloned = impl.clone();
@@ -137,12 +137,12 @@ TEST(GeneratorImplTest, ClonePreservesState) {
 // ---------- PyObject binding ------------------------------------------------
 
 TEST(GeneratorImplTest, PyObjDefaultNull) {
-  c10::GeneratorImpl impl(c10::Device(c10::kCPU));
+  c10::GeneratorImpl impl{c10::Device(c10::kCPU)};
   ASSERT_EQ(impl.pyobj(), nullptr);
 }
 
 TEST(GeneratorImplTest, SetAndGetPyObj) {
-  c10::GeneratorImpl impl(c10::Device(c10::kCPU));
+  c10::GeneratorImpl impl{c10::Device(c10::kCPU)};
 
   // Use a dummy pointer (we never dereference it).
   int dummy = 0;
@@ -183,7 +183,7 @@ TEST(GeneratorImplTest, MoveIntrusivePtrKeepsRefcount) {
 
 TEST(GeneratorImplTest, PaddleGeneratorAccessor) {
   auto gen = std::make_shared<phi::Generator>(99u);
-  c10::GeneratorImpl impl(c10::Device(c10::kCPU), gen);
+  c10::GeneratorImpl impl{c10::Device(c10::kCPU), gen};
   ASSERT_EQ(impl.paddle_generator(), gen);
   ASSERT_EQ(impl.paddle_generator()->GetCurrentSeed(), 99u);
 }

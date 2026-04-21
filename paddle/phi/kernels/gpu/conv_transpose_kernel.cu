@@ -85,7 +85,7 @@ void DepthwiseConv2dTransposeKernel(const Context& dev_ctx,
   funcs::SetConstant<Context, T> set_zero;
   set_zero(dev_ctx, out, static_cast<T>(0));
 
-  phi::math::DepthwiseConvInputGradFunctor<Context, T> depthwiseConvInputGrad;
+  math::DepthwiseConvInputGradFunctor<Context, T> depthwiseConvInputGrad;
   depthwiseConvInputGrad(
       dev_ctx,
       *out,

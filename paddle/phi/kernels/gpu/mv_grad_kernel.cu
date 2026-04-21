@@ -63,7 +63,7 @@ void MvGradKernel(const Context &dev_ctx,
 
   auto blas = funcs::GetBlas<Context, T>(dev_ctx);
   auto stream = dev_ctx.stream();
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, m * n);
+  auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, m * n);
 
   if (dx) {
     T *dx_data = dev_ctx.template Alloc<T>(dx);

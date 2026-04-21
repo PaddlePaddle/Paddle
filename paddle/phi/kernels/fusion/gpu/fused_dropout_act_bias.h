@@ -459,8 +459,8 @@ void LaunchDropoutActBiasGrad(Functor act_functor,
     }
   } else {
     const uint64_t n = rows * cols;
-    phi::backends::gpu::GpuLaunchConfig config =
-        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n / real_vec_size);
+    backends::gpu::GpuLaunchConfig config =
+        backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n / real_vec_size);
     if (n % VecSize == 0) {
       FusedDropoutActGrad<T, MaskType, VecSize, Functor>
           <<<config.block_per_grid,
