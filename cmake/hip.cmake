@@ -87,6 +87,23 @@ else()
   message(WARNING "Cannot find hip_version.h")
 endif()
 
+if(NOT HIP_VERSION MATCHES "^[0-9]+$")
+  message(
+    FATAL_ERROR
+      "HIP_VERSION is unavailable. Cannot derive PADDLE_ROCM_VERSION for version dispatch."
+  )
+endif()
+set(PADDLE_ROCM_VERSION
+    ${HIP_VERSION}
+    CACHE INTERNAL "ROCm HIP version used for Paddle version dispatch" FORCE)
+add_definitions(-DPADDLE_ROCM_VERSION=${PADDLE_ROCM_VERSION})
+message(STATUS "PADDLE_ROCM_VERSION: ${PADDLE_ROCM_VERSION}")
+
+set(PADDLE_AMDGPU_TARGETS
+    "gfx906;gfx926;gfx928;gfx936;gfx942;gfx950"
+    CACHE STRING "Semicolon-separated AMD GPU architectures for HIP offload")
+message(STATUS "PADDLE_AMDGPU_TARGETS: ${PADDLE_AMDGPU_TARGETS}")
+
 macro(find_package_and_include PACKAGE_NAME)
   find_package("${PACKAGE_NAME}" REQUIRED)
   # ROCm 7.0+ uses /opt/rocm/include/<package>/ instead of /opt/rocm/<package>/include/
@@ -185,11 +202,11 @@ set(HIP_CLANG_FLAGS ${HIP_CXX_FLAGS})
 # Ask hcc to generate device code during compilation so we can use
 # host linker to link.
 list(APPEND HIP_HCC_FLAGS -fno-gpu-rdc)
-list(APPEND HIP_HCC_FLAGS --offload-arch=gfx942) # MI300
-list(APPEND HIP_HCC_FLAGS --offload-arch=gfx950) # MI350X
 list(APPEND HIP_CLANG_FLAGS -fno-gpu-rdc)
-list(APPEND HIP_CLANG_FLAGS --offload-arch=gfx942) # MI300
-list(APPEND HIP_CLANG_FLAGS --offload-arch=gfx950) # MI350X
+foreach(amdgpu_target IN LISTS PADDLE_AMDGPU_TARGETS)
+  list(APPEND HIP_HCC_FLAGS --offload-arch=${amdgpu_target})
+  list(APPEND HIP_CLANG_FLAGS --offload-arch=${amdgpu_target})
+endforeach()
 
 if(HIP_COMPILER STREQUAL clang)
   set(hip_library_name amdhip64)

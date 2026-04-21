@@ -125,10 +125,12 @@ endif()
 
 # Note(ROCm 7.0): Exclude kernels that have compatibility issues with ROCm 7.0
 # These kernels use rocprim/thrust radix_sort with custom float16/bfloat16 types which
-# require complex trait specializations that are incompatible with ROCm 7.0's new trait system.
-# See ROCM70_UNSUPPORTED_OPS.md for details.
+# require complex trait specializations that are incompatible with ROCm 7.0+'s
+# trait system.
 # TODO: Re-enable these kernels once ROCm compatibility is resolved or implement alternative sorting.
-if(WITH_ROCM)
+if(WITH_ROCM
+   AND DEFINED PADDLE_ROCM_VERSION
+   AND PADDLE_ROCM_VERSION GREATER_EQUAL 70000000)
   list(
     REMOVE_ITEM
     kernel_gpu

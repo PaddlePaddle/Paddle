@@ -535,16 +535,36 @@ def _get_cuda_arch_flags(cflags: list[str] | None = None) -> list[str]:
 
 def get_rocm_arch_flags(cflags):
     """
-    For ROCm platform, amdgpu target should be added for HIPCC.
+    For ROCm platform, offload arch flags should be added for HIPCC.
     """
-    cflags = [
-        *cflags,
-        '-fno-gpu-rdc',
-        '-amdgpu-target=gfx906',
-        '-amdgpu-target=gfx926',
-        '-amdgpu-target=gfx928',
-    ]
-    return cflags
+    if cflags is None:
+        cflags = []
+
+    for flag in cflags:
+        if '--offload-arch=' in flag or '-amdgpu-target=' in flag:
+            return []
+
+    rocm_arch_list = os.environ.get("PADDLE_ROCM_ARCH_LIST")
+    if rocm_arch_list:
+        rocm_arch_list = (
+            rocm_arch_list.replace(' ', ';').replace(',', ';').split(';')
+        )
+        rocm_arch_list = [arch for arch in rocm_arch_list if arch]
+    else:
+        rocm_arch_list = [
+            'gfx906',
+            'gfx926',
+            'gfx928',
+            'gfx936',
+            'gfx942',
+            'gfx950',
+        ]
+
+    rocm_flags = ['-fno-gpu-rdc']
+    rocm_flags.extend(
+        [f'--offload-arch={arch}' for arch in sorted(set(rocm_arch_list))]
+    )
+    return rocm_flags
 
 
 def _get_base_path():

@@ -42,10 +42,16 @@ else()
       ${PADDLE_SOURCE_DIR}/patches/warprnnt/CMakeLists.txt.cuda.patch)
 endif()
 if(WITH_ROCM)
-  set(WARPRNNT_PATCH_ROCM_COMMAND
-      patch -p1 <
-      ${PADDLE_SOURCE_DIR}/patches/warprnnt/CMakeLists.txt.rocm.patch && cp
-      ${PADDLE_SOURCE_DIR}/patches/warprnnt/hip.cmake.rocm70 cmake/hip.cmake)
+  if(DEFINED PADDLE_ROCM_VERSION AND PADDLE_ROCM_VERSION GREATER_EQUAL 70000000)
+    set(WARPRNNT_PATCH_ROCM_COMMAND
+        patch -p1 <
+        ${PADDLE_SOURCE_DIR}/patches/warprnnt/CMakeLists.txt.rocm.patch && cp
+        ${PADDLE_SOURCE_DIR}/patches/warprnnt/hip.cmake.rocm70 cmake/hip.cmake)
+  else()
+    set(WARPRNNT_PATCH_ROCM_COMMAND
+        patch -p1 <
+        ${PADDLE_SOURCE_DIR}/patches/warprnnt/CMakeLists.txt.rocm.patch)
+  endif()
 endif()
 if(NOT WIN32 AND WITH_GPU)
   if(${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0 AND ${CMAKE_CXX_COMPILER_VERSION}
@@ -143,7 +149,7 @@ ExternalProject_Add(
              -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
              ${EXTERNAL_OPTIONAL_ARGS}
              ${WARPRNNT_POLICY_ARGS}
-             ${WARPCTC_CCBIN_OPTION}
+             ${WARPRNNT_CCBIN_OPTION}
   CMAKE_CACHE_ARGS
     -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
     -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
