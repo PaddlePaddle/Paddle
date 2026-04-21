@@ -17,11 +17,11 @@ from __future__ import annotations
 import contextlib
 import copy
 import ctypes
+import functools
 import inspect
 import random
-import weakref
-import functools
 import threading
+import weakref
 from typing import TYPE_CHECKING, Any, TypedDict
 
 import numpy as np
@@ -53,6 +53,7 @@ if TYPE_CHECKING:
 
 __all__ = []
 _SIGNATURE_CACHE = weakref.WeakKeyDictionary()
+
 
 class RecomputeContext:
     """A thread-safe context manager and decorator for tracking whether the current
@@ -118,40 +119,43 @@ class RecomputeContext:
 
         return wrapper
 
+
 _recompute_context = wrap_decorator(RecomputeContext())
+
 
 def is_in_recompute() -> bool:
     """Check whether the current thread is executing inside a recompute context.
 
-    This function inspects the global ``_recompute_context`` to determine if the
-    current thread is within an active recompute phase. It is typically used inside
-    forward computations to detect whether the execution is a normal forward pass
-    or a recompute (re-forward) pass triggered during backpropagation, so that
-    certain operations (e.g., logging, random state management) can be skipped or
-    adjusted accordingly.
-`
-    Parameters:
-        None.
+        This function inspects the global ``_recompute_context`` to determine if the
+        current thread is within an active recompute phase. It is typically used inside
+        forward computations to detect whether the execution is a normal forward pass
+        or a recompute (re-forward) pass triggered during backpropagation, so that
+        certain operations (e.g., logging, random state management) can be skipped or
+        adjusted accordingly.
+    `
+        Parameters:
+            None.
 
-    Returns:
-        bool: ``True`` if the current thread is inside a recompute context,
-            ``False`` otherwise.
+        Returns:
+            bool: ``True`` if the current thread is inside a recompute context,
+                ``False`` otherwise.
 
-    Examples:
-        .. code-block:: python
+        Examples:
+            .. code-block:: python
 
-            >>> from paddle.distributed.fleet.utils import is_in_recompute
-            >>> # Outside any recompute context
-            >>> print(is_in_recompute())
-            False
+                >>> from paddle.distributed.fleet.utils import is_in_recompute
+                >>> # Outside any recompute context
+                >>> print(is_in_recompute())
+                False
 
-            >>> from paddle.distributed.fleet.utils.__init__ import RecomputeContext
-            >>> ctx = RecomputeContext()
-            >>> with ctx:
-            ...     print(is_in_recompute())
-            True
+                >>> from paddle.distributed.fleet.utils.__init__ import RecomputeContext
+                >>> ctx = RecomputeContext()
+                >>> with ctx:
+                ...     print(is_in_recompute())
+                True
     """
     return _recompute_context.active
+
 
 def _varbase_help(param):
     state = copy.deepcopy(param.__dict__)
@@ -744,6 +748,7 @@ def _recompute_without_reentrant(
         outputs = function(*args, **kwargs)
 
     return outputs
+
 
 @_recompute_context
 def recompute(function, *args, **kwargs):
