@@ -157,8 +157,8 @@ PADDLE_API void AdamwDenseKernel_old(const Context& dev_ctx,
                                      const Scalar& beta1,
                                      const Scalar& beta2,
                                      const Scalar& epsilon,
-                                     double lr_ratio,
-                                     double coeff,
+                                     float lr_ratio,
+                                     float coeff,
                                      bool with_decay,
                                      bool lazy_mode,
                                      int64_t min_row_size_to_use_multithread,
@@ -214,9 +214,9 @@ PADDLE_API void AdamwDenseKernel_old(const Context& dev_ctx,
     coeff_ = static_cast<MT>(0.0);
   }
 
-  double beta1_ = beta1.to<double>();
-  double beta2_ = beta2.to<double>();
-  double epsilon_ = epsilon.to<double>();
+  MT beta1_ = beta1.to<MT>();
+  MT beta2_ = beta2.to<MT>();
+  MT epsilon_ = epsilon.to<MT>();
   VLOG(3) << "beta1_pow.numel() : " << beta1_pow.numel()
           << "beta2_pow.numel() : " << beta2_pow.numel();
   VLOG(3) << "param.numel(): " << param.numel();
