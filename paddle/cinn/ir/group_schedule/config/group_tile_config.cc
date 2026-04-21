@@ -61,6 +61,25 @@ int GetWarpSize(const common::Target& target) {
       target.arch.variant());  // Use arch.variant() to access the variant type
 }
 
+// Compute the optimal warp count per block for best SM occupancy.
+// Unlike max_warp_cnt (which reflects the hardware upper limit),
+// this returns a strategy-level value that targets high occupancy.
+// For MetaX (104 SM): 2048/(8*64) = 4 warps → 256 threads/block
+// For Iluvatar (16 SM): 8192/(2*64) = 64 warps → 4096 threads/block
+int GetOptimalWarpCount(const common::Target& target) {
+  int warp_size = GetWarpSize(target);
+  int max_threads_per_sm = target.get_max_threads_per_sm();
+  int max_blocks_per_sm = target.get_max_blocks_per_sm();
+  int sm_count = target.get_multi_processor_count();
+
+  // Many-SM: many lightweight blocks; Few-SM: fewer heavy blocks
+  int target_blocks = (sm_count >= 64) ? std::min(8, max_blocks_per_sm)
+                                       : std::min(2, max_blocks_per_sm);
+  int optimal_threads = max_threads_per_sm / target_blocks;
+  int optimal_warps = optimal_threads / warp_size;
+  return std::max(optimal_warps, 1);
+}
+
 // Get the maximum number of registers per SM
 int GetMaxRegistersPerSM(const common::Target& target) {
   return std::visit(
@@ -695,7 +714,11 @@ TileConfigMap BuildVectorizeConfig(
       vectorize_factor = factor;
       const int elements_in_warp = warp_size * vectorize_factor;
       warp_nums = CeilDiv(reduce_numel, elements_in_warp);
+#ifdef CINN_WITH_CUSTOM_DEVICE
+      warp_nums = Trim(warp_nums, 1, GetOptimalWarpCount(target));
+#else
       warp_nums = Trim(warp_nums, 1, max_warp_cnt);
+#endif
       rd_thread_num = warp_nums * warp_size;
       if (ReduceRegionCanVectorize(
               base_info, sm_config, warp_nums, vectorize_factor, warp_size)) {
@@ -932,8 +955,9 @@ TileConfigMap BuildPureStaticShapeConfig(
   int64_t sp_upper_bound = base_info->spatial_numel > 1 ? kMaxNumel : 1;
   int64_t rd_upper_bound = base_info->reduce_numel > 1 ? kMaxNumel : 1;
 #ifdef CINN_WITH_CUSTOM_DEVICE
-  int64_t warp_num =
-      Trim(sp_thread_num * rd_thread_num / warp_size, 1, max_warp_cnt);
+  int64_t warp_num = Trim(sp_thread_num * rd_thread_num / warp_size,
+                          1,
+                          GetOptimalWarpCount(target));
 #else
   int64_t warp_num = Trim(sp_thread_num * rd_thread_num / 32, 1, 32);
 #endif
@@ -985,7 +1009,11 @@ TileConfigMap BuildStaticSpatialConfig(
     collector({1, kMaxNumel, 1, 2048},
               {8, warp_size, 256, 1, 1, 1, -1, BlockReduceMethod()});
 #endif
+#ifdef CINN_WITH_CUSTOM_DEVICE
+    int max_warp_num = GetOptimalWarpCount(target);
+#else
     int max_warp_num = max_warp_cnt;
+#endif
     if (rd_block_num > 1 && base_info->can_apply_grid_reduce) {
 #ifdef CINN_WITH_CUSTOM_DEVICE
       int64_t rd_threshold = rd_block_num * min_loops * max_threads;
@@ -1037,7 +1065,8 @@ TileConfigMap BuildStaticSpatialConfig(
     int64_t sp_block_num =
         std::max(CeilDiv(spatial_numel, warp_size), int64_t(1));
     int64_t rd_block_num = FloorPow2(sm_count / sp_block_num);
-    int spatial_warp_num = std::min(16, max_warp_cnt);
+    int spatial_warp_num =
+        std::min(GetOptimalWarpCount(target) * 2, max_warp_cnt);
 
     if (rd_block_num > 1 && base_info->can_apply_grid_reduce) {
       int64_t rd_threshold =
@@ -1139,7 +1168,7 @@ TileConfigMap BuildStaticReduceConfig(
            -1,
            BlockReduceMethod()});
     } else {
-      int max_warp_num = max_warp_cnt;
+      int max_warp_num = GetOptimalWarpCount(target);
       collector({1, kMaxNumel, medium_bucket_threshold + 1, kMaxNumel},
                 {max_warp_num,
                  warp_size,
@@ -1180,7 +1209,7 @@ TileConfigMap BuildStaticReduceConfig(
     if (base_info->reduce_numel == 1) {
       collector({1, max_threads - 1, 1, 1},
                 {-1, warp_size, 1, 1, 1, 1, -1, NoneReduceMethod()});
-      int max_warp_num = max_warp_cnt;
+      int max_warp_num = GetOptimalWarpCount(target);
       collector({max_threads, kMaxNumel, 1, 1},
                 {max_warp_num, warp_size, 1, 1, 4, 1, -1, NoneReduceMethod()});
     } else if (base_info->reduce_numel <= 16) {
@@ -1188,10 +1217,11 @@ TileConfigMap BuildStaticReduceConfig(
           {1, kMaxNumel, 1, 1},
           {small_warp_num, warp_size, 1, 1, 1, 1, -1, NoneReduceMethod()});
     } else {
+      int optimal_warp = GetOptimalWarpCount(target);
       collector({1, kMaxNumel, 1, 1},
-                {medium_warp_num,
+                {optimal_warp,
                  warp_size,
-                 medium_warp_num,
+                 optimal_warp,
                  1,
                  1,
                  1,
@@ -1248,7 +1278,7 @@ TileConfigMap BuildDynamicShapeConfig(
          1,
          8,
          BlockReduceMethod()});
-    int max_warp_num = max_warp_cnt;
+    int max_warp_num = GetOptimalWarpCount(target);
     collector({1, kMaxNumel, medium_bucket_threshold + 1, kMaxNumel},
               {max_warp_num,
                warp_size,
@@ -1268,15 +1298,18 @@ TileConfigMap BuildDynamicShapeConfig(
 #endif
   } else {  // last_dim == "S"
 #ifdef CINN_WITH_CUSTOM_DEVICE
-    collector({1, kMaxNumel, 1, kMaxNumel},
-              {medium_warp_num,
-               warp_size,
-               medium_warp_num,
-               1,
-               1,
-               1,
-               -1,
-               DiscreteReduceMethod()});
+    {
+      int optimal_warp = GetOptimalWarpCount(target);
+      collector({1, kMaxNumel, 1, kMaxNumel},
+                {optimal_warp,
+                 warp_size,
+                 optimal_warp,
+                 1,
+                 1,
+                 1,
+                 -1,
+                 DiscreteReduceMethod()});
+    }
 #else
     collector({1, kMaxNumel, 1, kMaxNumel},
               {16, warp_size, 16, 1, 1, 1, -1, DiscreteReduceMethod()});
