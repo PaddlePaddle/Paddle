@@ -420,10 +420,12 @@ static __device__ __forceinline__ Base_type torch_pow_(Base_type base,
   return ::pow(base, exp);
 }
 
-template <typename T,   // Parameter type (may be fp16/bf16)
-          typename TG,  // Gradient type
-          typename MT>  // Master precision type (= opmath_t, float for
-                        // float/fp16/bf16)
+template <typename T,        // Parameter type (may be fp16/bf16)
+          typename TG,       // Gradient type
+          typename MT,       // Master precision type (= opmath_t, float for
+                             // float/fp16/bf16)
+          typename TM = MT>  // Moment estimation type (default = MT, can be
+                             // bfloat16)
 __global__ void AdamWStyleKernel(const double beta1,
                                  const double beta2,
                                  const double epsilon,
@@ -434,12 +436,12 @@ __global__ void AdamWStyleKernel(const double beta1,
                                  T* __restrict__ param_out,
                                  const MT* __restrict__ master_param,
                                  MT* __restrict__ master_param_out,
-                                 const MT* __restrict__ moment1,
-                                 MT* __restrict__ moment1_out,
-                                 const MT* __restrict__ moment2,
-                                 MT* __restrict__ moment2_out,
-                                 const MT* __restrict__ moment2_max,
-                                 MT* __restrict__ moment2_max_out,
+                                 const TM* __restrict__ moment1,
+                                 TM* __restrict__ moment1_out,
+                                 const TM* __restrict__ moment2,
+                                 TM* __restrict__ moment2_out,
+                                 const TM* __restrict__ moment2_max,
+                                 TM* __restrict__ moment2_max_out,
                                  // step_count passed as float, matching torch's
                                  // state_steps (float tensor) bias_correction
                                  // computed ON DEVICE, exactly as torch's
@@ -465,8 +467,8 @@ __global__ void AdamWStyleKernel(const double beta1,
                           static_cast<int64_t>(blockDim.x)) {
     MT p = master_param ? master_param[id] : static_cast<MT>(param[id]);
     MT g = static_cast<MT>(grad[id]);
-    MT exp_avg = moment1[id];
-    MT exp_avg_sq = moment2[id];
+    MT exp_avg = static_cast<MT>(moment1[id]);
+    MT exp_avg_sq = static_cast<MT>(moment2[id]);
 
     // Weight decay: param -= lr * weight_decay * param
     if (weight_decay != 0) {
@@ -502,10 +504,10 @@ __global__ void AdamWStyleKernel(const double beta1,
 
     MT denom;
     if (amsgrad) {
-      MT max_exp_avg_sq_val = moment2_max[id];
+      MT max_exp_avg_sq_val = static_cast<MT>(moment2_max[id]);
       max_exp_avg_sq_val =
           max_exp_avg_sq_val > exp_avg_sq ? max_exp_avg_sq_val : exp_avg_sq;
-      moment2_max_out[id] = max_exp_avg_sq_val;
+      moment2_max_out[id] = static_cast<TM>(max_exp_avg_sq_val);
       // Match torch: sqrt(float)/float → float, + double(eps) → double,
       // truncated to float.
       denom = (sqrt(max_exp_avg_sq_val) / bias_correction2_sqrt) + epsilon;
@@ -517,8 +519,8 @@ __global__ void AdamWStyleKernel(const double beta1,
     p -= step_size * exp_avg / denom;
 
     // Store results
-    moment1_out[id] = exp_avg;
-    moment2_out[id] = exp_avg_sq;
+    moment1_out[id] = static_cast<TM>(exp_avg);
+    moment2_out[id] = static_cast<TM>(exp_avg_sq);
     param_out[id] = static_cast<T>(p);
     if (master_param_out) {
       master_param_out[id] = p;
@@ -663,50 +665,66 @@ PADDLE_API void AdamwDenseKernel(const Context& dev_ctx,
 
   // Determine gradient type
   const bool use_bfloat32_grad = grad.dtype() == DataType::FLOAT32;
+  // Determine moment type
+  const bool use_bfloat16_moments = moment1.dtype() == DataType::BFLOAT16 &&
+                                    moment2.dtype() == DataType::BFLOAT16;
 
-  if (use_bfloat32_grad) {
-    AdamWStyleKernel<T, float, MT><<<blocks, threads, 0, dev_ctx.stream()>>>(
-        beta1_,
-        beta2_,
-        epsilon_,
-        weight_decay,
-        lr_double,
-        grad.data<float>(),
-        param.data<T>(),
-        dev_ctx.template Alloc<T>(param_out),
-        master_in_data,
-        master_out_data,
-        moment1.data<MT>(),
-        dev_ctx.template Alloc<MT>(moment1_out),
-        moment2.data<MT>(),
-        dev_ctx.template Alloc<MT>(moment2_out),
-        amsgrad ? moment2_max->data<MT>() : nullptr,
-        amsgrad ? dev_ctx.template Alloc<MT>(moment2_max_out) : nullptr,
-        step_count,
-        param.numel(),
-        amsgrad);
-  } else {
-    AdamWStyleKernel<T, T, MT><<<blocks, threads, 0, dev_ctx.stream()>>>(
-        beta1_,
-        beta2_,
-        epsilon_,
-        weight_decay,
-        lr_double,
-        grad.data<T>(),
-        param.data<T>(),
-        dev_ctx.template Alloc<T>(param_out),
-        master_in_data,
-        master_out_data,
-        moment1.data<MT>(),
-        dev_ctx.template Alloc<MT>(moment1_out),
-        moment2.data<MT>(),
-        dev_ctx.template Alloc<MT>(moment2_out),
-        amsgrad ? moment2_max->data<MT>() : nullptr,
-        amsgrad ? dev_ctx.template Alloc<MT>(moment2_max_out) : nullptr,
-        step_count,
-        param.numel(),
-        amsgrad);
+#define LAUNCH_ADAMW_STYLE_KERNEL(MOMENT_T)                             \
+  if (use_bfloat32_grad) {                                              \
+    AdamWStyleKernel<T, float, MT, MOMENT_T>                            \
+        <<<blocks, threads, 0, dev_ctx.stream()>>>(                     \
+            beta1_,                                                     \
+            beta2_,                                                     \
+            epsilon_,                                                   \
+            weight_decay,                                               \
+            lr_double,                                                  \
+            grad.data<float>(),                                         \
+            param.data<T>(),                                            \
+            dev_ctx.template Alloc<T>(param_out),                       \
+            master_in_data,                                             \
+            master_out_data,                                            \
+            moment1.data<MOMENT_T>(),                                   \
+            dev_ctx.template Alloc<MOMENT_T>(moment1_out),              \
+            moment2.data<MOMENT_T>(),                                   \
+            dev_ctx.template Alloc<MOMENT_T>(moment2_out),              \
+            amsgrad ? moment2_max->data<MOMENT_T>() : nullptr,          \
+            amsgrad ? dev_ctx.template Alloc<MOMENT_T>(moment2_max_out) \
+                    : nullptr,                                          \
+            step_count,                                                 \
+            param.numel(),                                              \
+            amsgrad);                                                   \
+  } else {                                                              \
+    AdamWStyleKernel<T, T, MT, MOMENT_T>                                \
+        <<<blocks, threads, 0, dev_ctx.stream()>>>(                     \
+            beta1_,                                                     \
+            beta2_,                                                     \
+            epsilon_,                                                   \
+            weight_decay,                                               \
+            lr_double,                                                  \
+            grad.data<T>(),                                             \
+            param.data<T>(),                                            \
+            dev_ctx.template Alloc<T>(param_out),                       \
+            master_in_data,                                             \
+            master_out_data,                                            \
+            moment1.data<MOMENT_T>(),                                   \
+            dev_ctx.template Alloc<MOMENT_T>(moment1_out),              \
+            moment2.data<MOMENT_T>(),                                   \
+            dev_ctx.template Alloc<MOMENT_T>(moment2_out),              \
+            amsgrad ? moment2_max->data<MOMENT_T>() : nullptr,          \
+            amsgrad ? dev_ctx.template Alloc<MOMENT_T>(moment2_max_out) \
+                    : nullptr,                                          \
+            step_count,                                                 \
+            param.numel(),                                              \
+            amsgrad);                                                   \
   }
+
+  // Select template instantiation based on moment type
+  if (use_bfloat16_moments) {
+    LAUNCH_ADAMW_STYLE_KERNEL(bfloat16)
+  } else {
+    LAUNCH_ADAMW_STYLE_KERNEL(MT)
+  }
+#undef LAUNCH_ADAMW_STYLE_KERNEL
 
   // Update beta_pow (same as original)
   if (!use_global_beta_pow) {
