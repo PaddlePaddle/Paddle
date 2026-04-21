@@ -175,5 +175,18 @@ class TestFakeInterface(unittest.TestCase):
         self.assertTrue(hasattr(fake_gen, "manual_seed"))
 
 
+class TestDeviceAsTypeHints(unittest.TestCase):
+    @paddle.compat.use_torch_proxy_guard()
+    def test_device_as_type_hints(self):
+        from typing import Optional
+
+        import torch
+
+        def fn(x: Optional[torch.device]):  # noqa: FA100
+            return x
+
+        self.assertIs(fn.__annotations__["x"], Optional[torch.device])
+
+
 if __name__ == "__main__":
     unittest.main()
