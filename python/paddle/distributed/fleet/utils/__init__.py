@@ -16,7 +16,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Callable
 
 from paddle.distributed import fleet
-from paddle.distributed.fleet.recompute import is_in_recompute
 
 from . import (  # noqa: F401
     hybrid_parallel_util,
@@ -34,7 +33,6 @@ if TYPE_CHECKING:
 __all__ = [
     "LocalFS",
     "recompute",
-    "is_in_recompute",
     "DistributedInfer",
     "HDFSClient",
 ]
