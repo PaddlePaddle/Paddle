@@ -30,12 +30,7 @@ from .ps_util import DistributedInfer
 if TYPE_CHECKING:
     from paddle.nn import Layer
 
-__all__ = [
-    "LocalFS",
-    "recompute",
-    "DistributedInfer",
-    "HDFSClient",
-]
+__all__ = ["LocalFS", "recompute", "DistributedInfer", "HDFSClient"]
 
 
 def recompute(

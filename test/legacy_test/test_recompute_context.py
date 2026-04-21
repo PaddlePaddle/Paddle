@@ -19,11 +19,9 @@ import numpy as np
 
 import paddle
 from paddle import nn
+from paddle.distributed.fleet.recompute import is_in_recompute
 from paddle.distributed.fleet.recompute.recompute import _recompute_context
-from paddle.distributed.fleet.utils import (
-    is_in_recompute,
-    recompute,
-)
+from paddle.distributed.fleet.utils import recompute
 
 
 class TestRecomputeContext(unittest.TestCase):
