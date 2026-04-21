@@ -56,7 +56,8 @@ _SIGNATURE_CACHE = weakref.WeakKeyDictionary()
 
 
 class RecomputeContext:
-    """A thread-safe context manager and decorator for tracking whether the current
+    """
+    A thread-safe context manager and decorator for tracking whether the current
     execution is inside a recompute phase.
 
     RecomputeContext uses a thread-local flag to mark when code is running within a
@@ -124,35 +125,36 @@ _recompute_context = wrap_decorator(RecomputeContext())
 
 
 def is_in_recompute() -> bool:
-    """Check whether the current thread is executing inside a recompute context.
+    """
+    Check whether the current thread is executing inside a recompute context.
 
-        This function inspects the global ``_recompute_context`` to determine if the
-        current thread is within an active recompute phase. It is typically used inside
-        forward computations to detect whether the execution is a normal forward pass
-        or a recompute (re-forward) pass triggered during backpropagation, so that
-        certain operations (e.g., logging, random state management) can be skipped or
-        adjusted accordingly.
-    `
-        Parameters:
-            None.
+    This function inspects the global ``_recompute_context`` to determine if the
+    current thread is within an active recompute phase. It is typically used inside
+    forward computations to detect whether the execution is a normal forward pass
+    or a recompute (re-forward) pass triggered during backpropagation, so that
+    certain operations (e.g., logging, random state management) can be skipped or
+    adjusted accordingly.
 
-        Returns:
-            bool: ``True`` if the current thread is inside a recompute context,
-                ``False`` otherwise.
+    Parameters:
+        None.
 
-        Examples:
-            .. code-block:: python
+    Returns:
+        bool: ``True`` if the current thread is inside a recompute context,
+            ``False`` otherwise.
 
-                >>> from paddle.distributed.fleet.utils import is_in_recompute
-                >>> # Outside any recompute context
-                >>> print(is_in_recompute())
-                False
+    Examples:
+        .. code-block:: python
 
-                >>> from paddle.distributed.fleet.utils.__init__ import RecomputeContext
-                >>> ctx = RecomputeContext()
-                >>> with ctx:
-                ...     print(is_in_recompute())
-                True
+            >>> from paddle.distributed.fleet.utils import is_in_recompute
+            >>> # Outside any recompute context
+            >>> print(is_in_recompute())
+            False
+
+            >>> from paddle.distributed.fleet.utils.__init__ import RecomputeContext
+            >>> ctx = RecomputeContext()
+            >>> with ctx:
+            ...     print(is_in_recompute())
+            True
     """
     return _recompute_context.active
 
