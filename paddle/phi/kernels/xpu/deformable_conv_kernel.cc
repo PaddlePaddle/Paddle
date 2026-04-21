@@ -39,8 +39,8 @@ void DeformableConvKernel(const Context& dev_ctx,
   }
   dev_ctx.template Alloc<T>(out);
 
-  if (phi::backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId()) ==
-      phi::backends::xpu::XPUVersion::XPU1) {
+  if (backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId()) ==
+      backends::xpu::XPUVersion::XPU1) {
     PADDLE_ENFORCE_EQ(
         deformable_groups == 1,
         true,

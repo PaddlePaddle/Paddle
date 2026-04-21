@@ -95,7 +95,8 @@ class PyToAxpr:
                 self.__call__(file)
         else:
             print(f"apy_to_axpr_json {file_path}")
-            tree = ast.parse(open(file_path).read())
+            with open(file_path) as f:
+                tree = ast.parse(f.read())
             parser = PyToAnfParser()
             parser(tree).ConvertToAnfExpr().DumpToFileAsJson(
                 f"{file_path}.json"

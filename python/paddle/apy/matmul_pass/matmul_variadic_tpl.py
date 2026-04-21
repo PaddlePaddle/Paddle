@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import ap
+import compile_command_util
 import kernel_arg_translator_util
 import low_level_ir_code_gen_ctx_util
 
@@ -40,13 +41,13 @@ class MatmulVariadicTemplate:
             [
                 [ap.PointerType.const_float_ptr, "const float*"],
                 [ap.PointerType.const_float16_ptr, "const half*"],
-                [ap.PointerType.const_bfloat16_ptr, "const nv_bfloat16*"],
+                [ap.PointerType.const_bfloat16_ptr, "const bfloat16*"],
                 [ap.PointerType.float_ptr, "float*"],
                 [ap.PointerType.float16_ptr, "half*"],
-                [ap.PointerType.bfloat16_ptr, "nv_bfloat16*"],
+                [ap.PointerType.bfloat16_ptr, "bfloat16*"],
                 [ap.DataType.float, "float"],
                 [ap.DataType.float16, "half"],
-                [ap.DataType.bfloat16, "nv_bfloat16"],
+                [ap.DataType.bfloat16, "bfloat16"],
                 [ap.DataType.int64_t, "int64_t"],
             ]
         )
@@ -81,7 +82,6 @@ class MatmulVariadicTemplate:
                 range(len(input1_shape_kargs)),
             ),
         ]
-        print(f"-- kargs_name_pair_list: {kargs_name_pair_list}")
 
         ap.map(self._register_name, kargs_name_pair_list)
         mut_lir_code_gen_ctx = (
@@ -89,16 +89,14 @@ class MatmulVariadicTemplate:
                 compute_dtype=ap.DataType.float
             )
         )
-
         self.program_translator.translate(
             mut_kernel_arg_id_registry=self.mut_kernel_arg_id_registry,
             mut_lir_code_gen_ctx=mut_lir_code_gen_ctx,
         )
-
         trivial_code_str = mut_lir_code_gen_ctx.get_stmts_joined_str(
             indent="    "
         )
-        print("-- matmul_binary_epilogue_code:\n", trivial_code_str)
+
         project_module = self.make_project(
             trivial_code_str,
             input0_karg,
@@ -223,14 +221,8 @@ class MatmulVariadicTemplate:
     ):
         code_template = """
 // auto generated codes
-#include <cuda.h>
-#include <cuda_fp16.h>
-#include <cuda_bf16.h>
+#include "matmul.h"
 #include <vector>
-
-#include "cutlass_matmul.cuh"
-#include "math_function.h"
-#include "profile.h"
 
 namespace ap {
 
@@ -261,7 +253,7 @@ static void RunMatmulWithVariadicKernel(const GemmEpilogueParams &params, ${AP_K
   constexpr int AlignA = Alignment<ElementT, ${k_value}>::kValue;
   constexpr int AlignB = Alignment<ElementT, ${n_value}>::kValue;
 
-  CutlassMatmulAddVariadic<ElementT, ElementComputeT, VariadicEpilogueFunctor,
+  MatmulAddVariadic<ElementT, ElementComputeT, VariadicEpilogueFunctor,
                            AlignA, AlignB, TuningConfigId>(params, epilogue_args);
 }
 
@@ -276,12 +268,11 @@ void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
   std::vector<int64_t> ${input1}_shape;
   ${AP_PARAMS_INPUT1_SHAPE_INIT}
 
-  cudaStream_t* cuda_stream_ptr = reinterpret_cast<cudaStream_t*>(stream_ptr);
   ap::GemmEpilogueParams params(
-      *cuda_stream_ptr, ${input0}, ${input1}, nullptr, ${output}, ${input0}_shape, ${input1}_shape, std::vector<int64_t>{});
+      stream_ptr, ${input0}, ${input1}, nullptr, ${output}, ${input0}_shape, ${input1}_shape, std::vector<int64_t>{});
 
 #if AP_ENABLE_AUTOTUNE
-  AP_AUTOTUNE_${output_dtype}(ap::RunMatmulWithVariadicKernel, *cuda_stream_ptr, params, ${AP_KERNEL_ARGS_CALL});
+  AP_AUTOTUNE_${output_dtype}(ap::RunMatmulWithVariadicKernel, stream_ptr, params, ${AP_KERNEL_ARGS_CALL});
 #else
   ap::RunMatmulWithVariadicKernel<ap::DefaultConfig::kConfigId>(params, ${AP_KERNEL_ARGS_CALL});
 #endif
@@ -334,23 +325,13 @@ void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
         )
 
         dir_name = ap.dirname(__file__)
-        source_dir = f"{dir_name}/matmul"
-        cutlass_dir = f"{dir_name}/matmul/cutlass-3.7.0"
-        compile_cmd = "nvcc -std=c++17 -O3 -Xcompiler=-fPIC -arch=sm_80 --expt-relaxed-constexpr"
-        compile_cmd = compile_cmd + " -I " + cutlass_dir + "/include"
-        compile_cmd = compile_cmd + " -I " + cutlass_dir + "/tools/util/include"
-        compile_cmd = compile_cmd + " -I " + source_dir
-        compile_cmd = (
-            compile_cmd
-            + " -DCUTLASS_ENABLE_TENSOR_CORE_MMA=1 -DCUTLASS_DEBUG_TRACE_LEVEL=0"
+        compile_command_generator = (
+            compile_command_util.CompileCommandGenerator()
         )
-        compile_cmd = (
-            compile_cmd + " -DAP_ENABLE_AUTOTUNE=0 -DAP_ENABLE_DEBUG=0"
+        compile_cmd = compile_command_generator(
+            "matmul", dir_name, self.library_name
         )
-        compile_cmd = (
-            compile_cmd
-            + f" --shared {self.library_name}.cu -o lib{self.library_name}.so"
-        )
+        file_ext = compile_command_generator.file_ext
 
         return CodeModule(  # noqa: F821
             FuncDeclare(  # noqa: F821
@@ -361,7 +342,7 @@ void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
             Project(  # noqa: F821
                 nested_files=Project.Directory(  # noqa: F821
                     [
-                        f"{self.library_name}.cu",
+                        f"{self.library_name}.{file_ext}",
                         Project.FileContent(code),  # noqa: F821
                     ],
                     ["make.sh", Project.FileContent(compile_cmd)],  # noqa: F821

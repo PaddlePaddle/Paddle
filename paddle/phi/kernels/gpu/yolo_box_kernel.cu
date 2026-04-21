@@ -142,9 +142,8 @@ void YoloBoxKernel(const Context& dev_ctx,
   int* anchors_data = dev_ctx.template Alloc<int>(&tmp_anchors);
   const auto gplace = dev_ctx.GetPlace();
   const auto cplace = CPUPlace();
-  const int* stable_anchors =
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
-          const_cast<int*>(anchors.data()), anchors.size());
+  const int* stable_anchors = backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      const_cast<int*>(anchors.data()), anchors.size());
   memory_utils::Copy(
       gplace, anchors_data, cplace, stable_anchors, bytes, dev_ctx.stream());
 

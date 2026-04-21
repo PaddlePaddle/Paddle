@@ -13,6 +13,11 @@
   args_alias :
     use_default_mapping : True
 
+- op : acos_
+  name : [paddle.acos_, paddle.Tensor.acos_]
+  args_alias :
+    use_default_mapping : True
+
 - op : angle
   name : [paddle.angle,paddle.Tensor.angle]
   args_alias :
@@ -20,6 +25,11 @@
 
 - op : acosh
   name : [paddle.acosh, paddle.Tensor.acosh]
+  args_alias :
+    use_default_mapping : True
+
+- op : acosh_
+  name : [paddle.acosh_, paddle.Tensor.acosh_]
   args_alias :
     use_default_mapping : True
 
@@ -70,8 +80,18 @@
   args_alias :
     use_default_mapping : True
 
+- op : asin_
+  name : [paddle.asin_, paddle.Tensor.asin_]
+  args_alias :
+    use_default_mapping : True
+
 - op : asinh
   name : [paddle.asinh, paddle.Tensor.asinh]
+  args_alias :
+    use_default_mapping : True
+
+- op : asinh_
+  name : [paddle.asinh_, paddle.Tensor.asinh_]
   args_alias :
     use_default_mapping : True
 
@@ -85,8 +105,18 @@
   args_alias :
     use_default_mapping : True
 
+- op : atan_
+  name : [paddle.atan_, paddle.Tensor.atan_]
+  args_alias :
+    use_default_mapping : True
+
 - op : atanh
   name : [paddle.atanh, paddle.Tensor.atanh]
+  args_alias :
+    use_default_mapping : True
+
+- op : atanh_
+  name : [paddle.atanh_, paddle.Tensor.atanh_]
   args_alias :
     use_default_mapping : True
 
@@ -247,6 +277,11 @@
   args_alias :
     use_default_mapping : True
 
+- op : ceil_
+  name : [paddle.ceil_, paddle.Tensor.ceil_]
+  args_alias :
+    use_default_mapping : True
+
 - op : conj
   name: [paddle.conj, paddle.Tensor.conj]
   args_alias :
@@ -257,8 +292,18 @@
   args_alias :
     use_default_mapping : True
 
+- op : cos_
+  name : [paddle.cos_, paddle.Tensor.cos_]
+  args_alias :
+    use_default_mapping : True
+
 - op : cosh
   name : [paddle.cosh, paddle.Tensor.cosh]
+  args_alias :
+    use_default_mapping : True
+
+- op : cosh_
+  name : [paddle.cosh_, paddle.Tensor.cosh_]
   args_alias :
     use_default_mapping : True
 
@@ -296,8 +341,18 @@
   args_alias :
     use_default_mapping : True
 
+- op : exp_
+  name : [paddle.exp_, paddle.Tensor.exp_]
+  args_alias :
+    use_default_mapping : True
+
 - op : expm1
   name : [paddle.expm1, paddle.Tensor.expm1]
+  args_alias :
+    use_default_mapping : True
+
+- op : expm1_
+  name : [paddle.expm1_, paddle.Tensor.expm1_]
   args_alias :
     use_default_mapping : True
 
@@ -310,6 +365,11 @@
 
 - op : floor
   name : [paddle.floor, paddle.Tensor.floor]
+  args_alias :
+    use_default_mapping : True
+
+- op : floor_
+  name : [paddle.floor_, paddle.Tensor.floor_]
   args_alias :
     use_default_mapping : True
 
@@ -527,6 +587,11 @@
   args_alias :
     use_default_mapping : True
 
+- op : reciprocal_
+  name : [paddle.reciprocal_, paddle.Tensor.reciprocal_]
+  args_alias :
+    use_default_mapping : True
+
 - op : remainder_
   name : [paddle.remainder_, paddle.Tensor.remainder_, paddle.mod_, paddle.Tensor.mod_, paddle.floor_mod_, paddle.Tensor.floor_mod_]
   args_alias :
@@ -557,8 +622,18 @@
   args_alias :
     use_default_mapping : True
 
+- op : rsqrt_
+  name : [paddle.rsqrt_, paddle.Tensor.rsqrt_]
+  args_alias :
+    use_default_mapping : True
+
 - op : sigmoid
   name : [paddle.sigmoid, paddle.Tensor.sigmoid, paddle.nn.functional.sigmoid]
+  args_alias :
+    use_default_mapping : True
+
+- op : sigmoid_
+  name : [paddle.sigmoid_, paddle.Tensor.sigmoid_]
   args_alias :
     use_default_mapping : True
 
@@ -572,8 +647,18 @@
   args_alias :
     use_default_mapping : True
 
+- op : sin_
+  name : [paddle.sin_, paddle.Tensor.sin_]
+  args_alias :
+    use_default_mapping : True
+
 - op : sinh
   name : [paddle.sinh, paddle.Tensor.sinh]
+  args_alias :
+    use_default_mapping : True
+
+- op : sinh_
+  name : [paddle.sinh_, paddle.Tensor.sinh_]
   args_alias :
     use_default_mapping : True
 
@@ -587,8 +672,18 @@
   args_alias :
     use_default_mapping : True
 
+- op : sqrt_
+  name : [paddle.sqrt_, paddle.Tensor.sqrt_]
+  args_alias :
+    use_default_mapping : True
+
 - op : square
   name : [paddle.square, paddle.Tensor.square]
+  args_alias :
+    use_default_mapping : True
+
+- op : square_
+  name : [paddle.square_, paddle.Tensor.square_]
   args_alias :
     use_default_mapping : True
 
@@ -603,6 +698,11 @@
 
 - op : tan
   name : [paddle.tan, paddle.Tensor.tan]
+  args_alias :
+    use_default_mapping : True
+
+- op : tan_
+  name : [paddle.tan_, paddle.Tensor.tan_]
   args_alias :
     use_default_mapping : True
 

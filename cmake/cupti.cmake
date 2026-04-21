@@ -2,6 +2,8 @@ if(NOT WITH_GPU AND NOT WITH_ROCM)
   return()
 endif()
 
+include(${PROJECT_SOURCE_DIR}/cmake/architecture.cmake)
+
 if(WITH_ROCM)
   set(CUPTI_ROOT
       "${ROCM_PATH}/cuda/extras/CUPTI"
@@ -11,6 +13,8 @@ else()
       "/usr"
       CACHE PATH "CUPTI ROOT")
 endif()
+paddle_detect_cuda_target_dir(CUDA_TARGET_DIR)
+
 find_path(
   CUPTI_INCLUDE_DIR cupti.h
   PATHS ${CUPTI_ROOT}
@@ -20,13 +24,16 @@ find_path(
         ${CUDA_TOOLKIT_ROOT_DIR}/extras/CUPTI/include
         ${CUDA_TOOLKIT_ROOT_DIR}/targets/x86_64-linux/include
         ${CUDA_TOOLKIT_ROOT_DIR}/targets/aarch64-linux/include
+        ${CUDA_TOOLKIT_ROOT_DIR}/targets/${CUDA_TARGET_DIR}/include
   NO_DEFAULT_PATH)
 
 get_filename_component(__libpath_hist ${CUDA_CUDART_LIBRARY} PATH)
 
-set(TARGET_ARCH "x86_64")
-if(NOT ${CMAKE_SYSTEM_PROCESSOR})
-  set(TARGET_ARCH ${CMAKE_SYSTEM_PROCESSOR})
+paddle_normalize_target_arch(TARGET_ARCH)
+if(NOT CUDA_TARGET_DIR STREQUAL "")
+  list(APPEND CUPTI_CHECK_LIBRARY_DIRS
+       ${CUDA_TOOLKIT_ROOT_DIR}/targets/${CUDA_TARGET_DIR}/lib64
+       ${CUDA_TOOLKIT_ROOT_DIR}/targets/${CUDA_TARGET_DIR}/lib)
 endif()
 
 list(
@@ -40,7 +47,6 @@ list(
   $ENV{CUPTI_ROOT}/lib64
   $ENV{CUPTI_ROOT}/lib
   /usr/lib
-  ${CUDA_TOOLKIT_ROOT_DIR}/targets/x86_64-linux/lib64
   ${CUDA_TOOLKIT_ROOT_DIR}/extras/CUPTI/lib64)
 find_library(
   CUPTI_LIBRARY

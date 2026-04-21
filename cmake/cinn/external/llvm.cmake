@@ -1,31 +1,39 @@
 include(FetchContent)
-
-# set(LLVM_DOWNLOAD_URL https://paddle-inference-dist.bj.bcebos.com/CINN/llvm11.tar.gz)
-# set(LLVM_MD5 39d32b6be466781dddf5869318dcba53)
-
-set(LLVM_DOWNLOAD_URL
-    https://paddle-inference-dist.bj.bcebos.com/CINN/llvm11-glibc2.17.tar.gz)
-set(LLVM_MD5 33c7d3cc6d370585381e8d90bd7c2198)
+include(${PROJECT_SOURCE_DIR}/cmake/architecture.cmake)
 
 set(FETCHCONTENT_BASE_DIR ${THIRD_PARTY_PATH}/llvm)
 set(FETCHCONTENT_QUIET OFF)
-FetchContent_Declare(
-  external_llvm
-  URL ${LLVM_DOWNLOAD_URL}
-  URL_MD5 ${LLVM_MD5}
-  PREFIX ${THIRD_PARTY_PATH}/llvm SOURCE_DIR ${THIRD_PARTY_PATH}/install/llvm)
+paddle_get_llvm_native_target(PADDLE_LLVM_NATIVE_TARGET)
+paddle_normalize_target_arch(PADDLE_TARGET_ARCH)
+
+if(PADDLE_TARGET_ARCH STREQUAL "aarch64")
+  set(LLVM_DOWNLOAD_URL
+      "https://paddle-inference-dist.cdn.bcebos.com/CINN/llvm11-aarch64-glibc2.17.tar.gz"
+  )
+  set(LLVM_MD5
+      "71c49723bc3e30626da1bd1b866934ce"
+      CACHE STRING "ARM LLVM11 package MD5")
+else()
+  set(LLVM_DOWNLOAD_URL
+      https://paddle-inference-dist.bj.bcebos.com/CINN/llvm11-glibc2.17.tar.gz)
+  set(LLVM_MD5 33c7d3cc6d370585381e8d90bd7c2198)
+endif()
+
 if(NOT LLVM_PATH)
+  FetchContent_Declare(
+    external_llvm
+    URL ${LLVM_DOWNLOAD_URL}
+    URL_MD5 ${LLVM_MD5}
+    PREFIX ${THIRD_PARTY_PATH}/llvm SOURCE_DIR ${THIRD_PARTY_PATH}/install/llvm)
   FetchContent_GetProperties(external_llvm)
   if(NOT external_llvm_POPULATED)
     FetchContent_Populate(external_llvm)
   endif()
   set(LLVM_PATH ${THIRD_PARTY_PATH}/install/llvm)
-  set(LLVM_DIR ${THIRD_PARTY_PATH}/install/llvm/lib/cmake/llvm)
-  set(MLIR_DIR ${THIRD_PARTY_PATH}/install/llvm/lib/cmake/mlir)
-else()
-  set(LLVM_DIR ${LLVM_PATH}/lib/cmake/llvm)
-  set(MLIR_DIR ${LLVM_PATH}/lib/cmake/mlir)
 endif()
+
+set(LLVM_DIR ${LLVM_PATH}/lib/cmake/llvm)
+set(MLIR_DIR ${LLVM_PATH}/lib/cmake/mlir)
 
 if(${CMAKE_CXX_COMPILER} STREQUAL "clang++")
   set(CMAKE_EXE_LINKER_FLAGS
@@ -37,6 +45,9 @@ message(STATUS "set MLIR_DIR: ${MLIR_DIR}")
 find_package(LLVM REQUIRED CONFIG HINTS ${LLVM_DIR})
 find_package(MLIR REQUIRED CONFIG HINTS ${MLIR_DIR})
 find_package(ZLIB REQUIRED)
+
+set(LLVM_CLANG_EXECUTABLE ${LLVM_PATH}/bin/clang++)
+set(LLVM_CONFIG_EXECUTABLE ${LLVM_PATH}/bin/llvm-config)
 
 list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
 include(AddLLVM)
@@ -78,7 +89,7 @@ llvm_map_components_to_libnames(
   Support
   Core
   irreader
-  X86
+  ${PADDLE_LLVM_NATIVE_TARGET}
   executionengine
   orcjit
   mcjit
