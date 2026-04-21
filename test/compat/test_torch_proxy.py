@@ -186,6 +186,12 @@ class TestDeviceAsTypeHints(unittest.TestCase):
             return x
 
         self.assertIs(fn.__annotations__["x"], Optional[torch.device])
+        cpu_device = torch.device("cpu")
+        self.assertEqual(str(cpu_device), "cpu")
+        self.assertEqual(
+            torch.device.is_compiled_with_xpu(),
+            paddle.device.is_compiled_with_xpu(),
+        )
 
 
 if __name__ == "__main__":
