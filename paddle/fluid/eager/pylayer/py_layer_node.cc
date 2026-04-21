@@ -267,10 +267,4 @@ GradNodePyLayer::operator()(
 
   return grad_out;
 }
-
-void GradNodePyLayer::ClearTensorWrappers() {
-  VLOG(6) << "Clearing PyLayer tensor wrappers";
-  SetIsTensorWrappersCleared(true);
-}
-
 }  // namespace egr
