@@ -53,11 +53,11 @@ def _preload_nvidia_lib(lib_glob, sub_dirs=None):
     import glob
     import os
 
-    from .version import cuda as cuda_version
+    from .version import cuda_version as _cuda_version
 
     pkg_dir = os.path.dirname(os.path.abspath(__file__))
     nvidia_dir = os.path.join(pkg_dir, '..', 'nvidia')
-    cuda_major = cuda_version().split('.')[0]
+    cuda_major = _cuda_version.split('.')[0]
 
     paths = glob.glob(
         os.path.join(nvidia_dir, f'cu{cuda_major}', 'lib', lib_glob)
@@ -70,13 +70,23 @@ def _preload_nvidia_lib(lib_glob, sub_dirs=None):
 
 
 if __is_metainfo_generated:
+    import builtins
     import platform
 
-    if platform.system() == 'Linux' and platform.machine() == 'x86_64':
+    if platform.system() == 'Linux':
         try:
-            from .version import with_pip_cuda_libraries
+            from .version import (
+                cuda_version as _cuda_version,
+                with_pip_cuda_libraries,
+            )
 
-            if with_pip_cuda_libraries == 'ON':
+            if with_pip_cuda_libraries == 'ON' and (
+                platform.machine() in ('x86_64', 'AMD64')
+                or (
+                    platform.machine() == 'aarch64'
+                    and builtins.float(_cuda_version) >= 13.0
+                )
+            ):
                 _preload_nvidia_lib('libcublasLt.so.*[0-9]', ['cublas'])
                 _preload_nvidia_lib('libcublas.so.*[0-9]', ['cublas'])
         except Exception:
@@ -844,13 +854,22 @@ if is_compiled_with_cinn():
     os.environ['CINN_CONFIG_PATH'] = str(data_file_path)
 
 if __is_metainfo_generated and is_compiled_with_cuda():
+    import builtins
     import os
     import platform
 
+    from .version import cuda_version as _cuda_version, with_pip_cuda_libraries
+
     if (
         platform.system() == 'Linux'
-        and platform.machine() == 'x86_64'
-        and paddle.version.with_pip_cuda_libraries == 'ON'
+        and (
+            platform.machine() in ('x86_64', 'AMD64')
+            or (
+                platform.machine() == 'aarch64'
+                and builtins.float(_cuda_version) >= 13.0
+            )
+        )
+        and with_pip_cuda_libraries == 'ON'
     ):
         package_dir = os.path.dirname(os.path.abspath(__file__))
         nvidia_package_path = package_dir + "/.." + "/nvidia"

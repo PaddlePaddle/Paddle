@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <vector>
 
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/memory_utils.h"
@@ -25,8 +26,6 @@
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
-
-using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T>
 __global__ void FillFirstRow(T* dist, const int N) {
@@ -143,10 +142,12 @@ void EditDistanceKernel(const Context& dev_ctx,
       if (normalized) {
         distance = distance / n;
       }
+      const T* stable_dist =
+          backends::gpu::RestoreHostMemIfCapturingCUDAGraph(&distance, 1);
       memory_utils::Copy(dev_ctx.GetPlace(),
                          out_data + num,
                          CPUPlace(),
-                         &distance,
+                         stable_dist,
                          sizeof(T),
                          stream);
     } else {

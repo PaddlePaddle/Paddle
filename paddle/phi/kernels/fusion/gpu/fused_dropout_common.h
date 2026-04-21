@@ -51,7 +51,7 @@ namespace fusion {
  * 1D blocks: blockDim.x = cols
  * 2D grids: gridDim.y = rows
  */
-inline phi::backends::gpu::GpuLaunchConfig Get1DBlocksAnd2DGrids(
+inline backends::gpu::GpuLaunchConfig Get1DBlocksAnd2DGrids(
     const GPUContext &dev_ctx,
     const uint64_t rows,
     const uint64_t cols,
@@ -79,7 +79,7 @@ inline phi::backends::gpu::GpuLaunchConfig Get1DBlocksAnd2DGrids(
     blocks_y = (blocks_y + blocks_z - 1) / blocks_z;
     blocks_y = blocks_y >= 65536 ? 65535 : blocks_y;
   }
-  phi::backends::gpu::GpuLaunchConfig config;
+  backends::gpu::GpuLaunchConfig config;
   config.block_per_grid.x = static_cast<uint32_t>(blocks_x);
   config.block_per_grid.y = static_cast<uint32_t>(blocks_y);
   config.block_per_grid.z = static_cast<uint32_t>(blocks_z);

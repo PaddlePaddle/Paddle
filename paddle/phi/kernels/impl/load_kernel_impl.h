@@ -48,13 +48,13 @@ void LoadKernel(const Context& dev_ctx,
                       0,
                       errors::InvalidArgument(
                           "seek with tensor must great than or equal to 0"));
-    phi::DeserializeFromStream(fin, out, dev_ctx, seek, shape);
+    DeserializeFromStream(fin, out, dev_ctx, seek, shape);
   } else {
-    phi::DeserializeFromStream(fin, out, dev_ctx);
+    DeserializeFromStream(fin, out, dev_ctx);
   }
 
   auto in_dtype = out->dtype();
-  auto out_dtype = load_as_fp16 ? phi::DataType::FLOAT16 : in_dtype;
+  auto out_dtype = load_as_fp16 ? DataType::FLOAT16 : in_dtype;
   if (in_dtype != out_dtype) {
     CastKernel<T>(dev_ctx, *out, out_dtype, out);
   }

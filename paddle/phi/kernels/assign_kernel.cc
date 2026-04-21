@@ -106,7 +106,7 @@ void AssignValueKernel(const Context& dev_ctx,
                         dtype,
                         template_dtype));
   CopyVectorToTensor<T>(dev_ctx, values, out);
-  out->Resize(make_ddim(shape));
+  out->Resize(shape);
 }
 
 #ifdef _WIN32

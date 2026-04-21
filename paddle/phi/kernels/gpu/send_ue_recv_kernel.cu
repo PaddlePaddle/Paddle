@@ -55,7 +55,7 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& dev_ctx,
   } else {
     dims_[0] = out_size;
   }
-  out->Resize(make_ddim(dims_));
+  out->Resize(dims_);
   for (size_t i = 0; i < dims_.size(); i++) {
     memset_size *= dims_[i];
   }
@@ -309,13 +309,13 @@ void SendUERecvKernel(const Context& dev_ctx,
           out_size_data[0] <= 0 ? x.dims()[0] : out_size_data[0];
       dst_count->Resize({input_size});
     }
-    out->Resize(make_ddim(dims_));
+    out->Resize(dims_);
     Full<T, Context>(dev_ctx, out->dims(), 0, out);
     Full<int, Context>(dev_ctx, dst_count->dims(), 0, dst_count);
     return;
   }
 
-  if (index_type == phi::DataType::INT32) {
+  if (index_type == DataType::INT32) {
     GraphSendUERecvOpCUDAKernelLaunchHelper<Context, T, int32_t>(
         dev_ctx,
         x,
@@ -327,7 +327,7 @@ void SendUERecvKernel(const Context& dev_ctx,
         out_size_data[0],
         out,
         dst_count);
-  } else if (index_type == phi::DataType::INT64) {
+  } else if (index_type == DataType::INT64) {
     GraphSendUERecvOpCUDAKernelLaunchHelper<Context, T, int64_t>(
         dev_ctx,
         x,

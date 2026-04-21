@@ -47,7 +47,7 @@ void ScaleKernel(const Context& dev_ctx,
                  const Scalar& bias,
                  bool bias_after_scale,
                  DenseTensor* out) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename dtype::MPTypeTrait<T>::Type;
   std::vector<const DenseTensor*> inputs;
   std::vector<DenseTensor*> outputs;
   inputs.emplace_back(&x);
@@ -68,7 +68,7 @@ void DivScaleKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const Scalar& scale,
                     DenseTensor* out) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename dtype::MPTypeTrait<T>::Type;
   std::vector<const DenseTensor*> inputs;
   std::vector<DenseTensor*> outputs;
   inputs.emplace_back(&x);
@@ -90,7 +90,7 @@ INSTANCE_SCALAR_KERNEL(int, GPUContext)
 INSTANCE_SCALAR_KERNEL(int64_t, GPUContext)
 INSTANCE_SCALAR_KERNEL(float, GPUContext)
 INSTANCE_SCALAR_KERNEL(double, GPUContext)
-INSTANCE_SCALAR_KERNEL(phi::float16, GPUContext)
+INSTANCE_SCALAR_KERNEL(float16, GPUContext)
 INSTANCE_SCALAR_KERNEL(int16_t, GPUContext)
 INSTANCE_SCALAR_KERNEL(uint8_t, GPUContext)
 INSTANCE_SCALAR_KERNEL(int8_t, GPUContext)

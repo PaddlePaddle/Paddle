@@ -20,6 +20,9 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
+#endif
+#if defined(__NVCC__) || defined(__HIPCC__)
 #include "thrust/device_vector.h"
 #endif
 
@@ -172,28 +175,40 @@ void FFTFillConj(const DeviceContext& dev_ctx,
   bool* p_is_fft_axis = dev_ctx.template Alloc<bool>(&is_fft_axis_g);
   auto cplace = CPUPlace();
   const auto gplace = dev_ctx.GetPlace();
+  const int64_t* stable_src_strides =
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          src_strides_v.data(), src_strides_v.size());
   memory_utils::Copy(gplace,
                      src_strides,
                      cplace,
-                     src_strides_v.data(),
+                     stable_src_strides,
                      sizeof(int64_t) * src_strides_v.size(),
                      dev_ctx.stream());
+  const int64_t* stable_dst_strides =
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          dst_strides_v.data(), dst_strides_v.size());
   memory_utils::Copy(gplace,
                      dst_strides,
                      cplace,
-                     dst_strides_v.data(),
+                     stable_dst_strides,
                      sizeof(int64_t) * dst_strides_v.size(),
                      dev_ctx.stream());
+  const int64_t* stable_dst_shape =
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          dst_shape_v.data(), dst_shape_v.size());
   memory_utils::Copy(gplace,
                      dst_shape,
                      cplace,
-                     dst_shape_v.data(),
+                     stable_dst_shape,
                      sizeof(int64_t) * dst_shape_v.size(),
                      dev_ctx.stream());
+  const bool* stable_is_fft_axis =
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          _is_fft_axis.get(), static_cast<size_t>(rank));
   memory_utils::Copy(gplace,
                      p_is_fft_axis,
                      cplace,
-                     _is_fft_axis.get(),
+                     stable_is_fft_axis,
                      sizeof(bool) * rank,
                      dev_ctx.stream());
 #else

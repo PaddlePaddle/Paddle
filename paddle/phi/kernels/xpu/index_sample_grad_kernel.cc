@@ -29,15 +29,15 @@ void IndexSampleGradKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   const auto& index_type = index.dtype();
   bool index_type_match =
-      index_type == phi::DataType::INT32 || index_type == phi::DataType::INT64;
+      index_type == DataType::INT32 || index_type == DataType::INT64;
   PADDLE_ENFORCE_EQ(index_type_match,
                     true,
                     common::errors::InvalidArgument(
                         "Input(Index) holds the wrong type, it holds %s, but "
                         "desires to be %s or %s",
                         index_type,
-                        phi::DataType::INT32,
-                        phi::DataType::INT64));
+                        DataType::INT32,
+                        DataType::INT64));
 
   XPUType* in_grad_data = dev_ctx.template Alloc<XPUType>(in_grad);
   const XPUType* out_grad_data = out_grad.data<XPUType>();
@@ -50,7 +50,7 @@ void IndexSampleGradKernel(const Context& dev_ctx,
                         in_grad->numel(),
                         static_cast<XPUType>(0));
 
-  if (index_type == phi::DataType::INT32) {
+  if (index_type == DataType::INT32) {
     const int* index_data = index.data<int>();
     r = xpu::scatter_element(dev_ctx.x_context(),
                              in_grad_data,
@@ -62,7 +62,7 @@ void IndexSampleGradKernel(const Context& dev_ctx,
                              index_shape,
                              1,
                              1);
-  } else if (index_type == phi::DataType::INT64) {
+  } else if (index_type == DataType::INT64) {
     const int64_t* index_data = index.data<int64_t>();
     r = xpu::scatter_element(dev_ctx.x_context(),
                              in_grad_data,

@@ -516,9 +516,14 @@ void cpu_scatter_mul_min_max_input_grad_kernel(DenseTensor self UNUSED,
     cm.CalculateOffset(index);
     int64_t replace_index_grad = cm.offset1;
     if (is_mul && num_elements[replace_index_grad] == 0) {
-      grad_data[replace_index_grad] = static_cast<tensor_t>(
-          grad_data[replace_index_grad] * out_data[replace_index_grad] /
-          x_data[replace_index_grad]);
+      if (x_data[replace_index_grad] != static_cast<tensor_t>(0)) {
+        tensor_t val = grad_data[replace_index_grad];
+        val *= out_data[replace_index_grad];
+        val /= x_data[replace_index_grad];
+        grad_data[replace_index_grad] = static_cast<tensor_t>(val);
+      } else {
+        grad_data[replace_index_grad] = static_cast<tensor_t>(0);
+      }
       num_elements[replace_index_grad] += 1;
     } else if (!is_mul) {
       if (out_data[replace_index_grad] != x_data[replace_index_grad]) {
@@ -686,9 +691,13 @@ void cpu_scatter_mul_min_max_value_grad_kernel(DenseTensor self,
           out_data[replace_index_self] == value_data[replace_index_grad]) {
         num_elements[replace_index_self] += 1;
       } else if (!is_min_max) {
-        grad_data[replace_index_grad] =
-            self_data[replace_index_self] *
-            (out_data[replace_index_self] / value_data[replace_index_grad]);
+        if (value_data[replace_index_grad] != static_cast<tensor_t>(0)) {
+          grad_data[replace_index_grad] =
+              self_data[replace_index_self] *
+              (out_data[replace_index_self] / value_data[replace_index_grad]);
+        } else {
+          grad_data[replace_index_grad] = static_cast<tensor_t>(0);
+        }
       }
     }
   }

@@ -38,8 +38,12 @@ PADDLE_API phi::Place GetPlaceFromPtr(void* data) {
 #ifdef PADDLE_WITH_CUDA
   cudaPointerAttributes attr = {};
   cudaError_t status = cudaPointerGetAttributes(&attr, data);
-  if (status == cudaSuccess && attr.type == cudaMemoryTypeDevice) {
-    return phi::GPUPlace(attr.device);
+  if (status == cudaSuccess) {
+    if (attr.type == cudaMemoryTypeDevice) {
+      return phi::GPUPlace(attr.device);
+    } else if (attr.type == cudaMemoryTypeHost) {
+      return phi::GPUPinnedPlace();
+    }
   }
 #else
   hipPointerAttribute_t attr = {};

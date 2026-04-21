@@ -106,7 +106,7 @@ void TruncatedGaussianRandomKernel(const Context& dev_ctx,
                                    DenseTensor* out) {
   T* data = dev_ctx.template Alloc<T>(out);
 
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
 
   thrust::counting_iterator<int64_t> index_sequence_begin(0);
   int64_t size = out->numel();

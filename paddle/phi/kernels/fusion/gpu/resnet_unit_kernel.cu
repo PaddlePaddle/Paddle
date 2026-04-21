@@ -63,7 +63,7 @@ void ResNetUnitKernel(const Context &dev_ctx,
                       DenseTensor *saved_invstd_z,
                       DenseTensor *running_mean_z,
                       DenseTensor *running_var_z) {
-  PADDLE_ENFORCE_EQ(phi::backends::gpu::CudnnDataType<T>::type,
+  PADDLE_ENFORCE_EQ(backends::gpu::CudnnDataType<T>::type,
                     CUDNN_DATA_HALF,
                     common::errors::Unavailable(
                         "ResNetUnitOp only supports float16 for now."));

@@ -145,7 +145,7 @@ __global__ void BinomialSampling(const T* n,
                                  const int N,
                                  unsigned int seed,
                                  unsigned int offset) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename dtype::MPTypeTrait<T>::Type;
   CUDA_KERNEL_LOOP_TYPE(idx, N, int64_t) {
     MT nt = static_cast<MT>(n[idx]);
     MT pt = static_cast<MT>(p[idx]);
@@ -189,7 +189,7 @@ void BinomialKernel(const Context& dev_ctx,
   int block_size = std::min(kMaxBlockDim, dev_ctx.GetMaxThreadsPerBlock());
   dim3 dim_block(block_size);
   dim3 dim_grid((size + block_size - 1) / block_size);
-  phi::backends::gpu::LimitGridDim(dev_ctx, &dim_grid);
+  backends::gpu::LimitGridDim(dev_ctx, &dim_grid);
 
   auto gen_cuda = dev_ctx.GetGenerator();
   auto seed_offset = gen_cuda->IncrementOffset(20);

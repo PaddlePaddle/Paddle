@@ -90,7 +90,7 @@ struct AccuracyCheckFunctor<CPUContext, T> {
 };
 
 template <typename T>
-struct AccuracyCheckFunctor<CPUContext, phi::dtype::complex<T>> {
+struct AccuracyCheckFunctor<CPUContext, dtype::complex<T>> {
   void operator()(const CPUContext& dev_ctx,
                   const DenseTensor& in,
                   const DenseTensor& other,
@@ -99,8 +99,8 @@ struct AccuracyCheckFunctor<CPUContext, phi::dtype::complex<T>> {
                   const double atol,
                   bool equal_nan,
                   DenseTensor* output) {
-    auto* in_a = in.data<phi::dtype::complex<T>>();
-    auto* in_b = other.data<phi::dtype::complex<T>>();
+    auto* in_a = in.data<dtype::complex<T>>();
+    auto* in_b = other.data<dtype::complex<T>>();
     auto* out_data = dev_ctx.template Alloc<bool>(output);
     auto num = in.numel();
     // *out_data = true;
@@ -110,7 +110,7 @@ struct AccuracyCheckFunctor<CPUContext, phi::dtype::complex<T>> {
     bool val = false;
     int res_index = -1;
     for (int i = 0; i < num; i++) {
-      const phi::dtype::complex<T> a = in_a[i], b = in_b[i];
+      const dtype::complex<T> a = in_a[i], b = in_b[i];
       if (std::isnan(a) || std::isnan(b)) {
         val = equal_nan && std::isnan(a) == std::isnan(b);
       } else {
@@ -146,7 +146,7 @@ __global__ void AccuracyCheckCUDAKernel(const T* in_data,
                                         bool* out_data) {
   int64_t idx = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   bool val;
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
   for (int64_t i = idx; i < num; i += blockDim.x * gridDim.x) {
     const double a = static_cast<MPType>(in_data[i]);
     const double b = static_cast<MPType>(other_data[i]);
@@ -166,19 +166,18 @@ __global__ void AccuracyCheckCUDAKernel(const T* in_data,
   }
 }
 template <>
-__global__ void AccuracyCheckCUDAKernel<phi::complex64>(
-    const phi::complex64* in_data,
-    const phi::complex64* other_data,
-    const double rtol,
-    const double atol,
-    bool equal_nan,
-    int64_t num,
-    bool* out_data) {
+__global__ void AccuracyCheckCUDAKernel<complex64>(const complex64* in_data,
+                                                   const complex64* other_data,
+                                                   const double rtol,
+                                                   const double atol,
+                                                   bool equal_nan,
+                                                   int64_t num,
+                                                   bool* out_data) {
   int64_t idx = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   bool val;
   for (int64_t i = idx; i < num; i += blockDim.x * gridDim.x) {
-    const phi::complex64 a = in_data[i];
-    const phi::complex64 b = other_data[i];
+    const complex64 a = in_data[i];
+    const complex64 b = other_data[i];
     if (isnan(a) || isnan(b)) {
       val = equal_nan && isnan(a) == isnan(b);
     } else {
@@ -196,9 +195,9 @@ __global__ void AccuracyCheckCUDAKernel<phi::complex64>(
 }
 
 template <>
-__global__ void AccuracyCheckCUDAKernel<phi::complex128>(
-    const phi::complex128* in_data,
-    const phi::complex128* other_data,
+__global__ void AccuracyCheckCUDAKernel<complex128>(
+    const complex128* in_data,
+    const complex128* other_data,
     const double rtol,
     const double atol,
     bool equal_nan,
@@ -207,8 +206,8 @@ __global__ void AccuracyCheckCUDAKernel<phi::complex128>(
   int64_t idx = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   bool val;
   for (int64_t i = idx; i < num; i += blockDim.x * gridDim.x) {
-    const phi::complex128 a = in_data[i];
-    const phi::complex128 b = other_data[i];
+    const complex128 a = in_data[i];
+    const complex128 b = other_data[i];
     if (isnan(a) || isnan(b)) {
       val = equal_nan && isnan(a) == isnan(b);
     } else {
@@ -226,8 +225,8 @@ __global__ void AccuracyCheckCUDAKernel<phi::complex128>(
 }
 
 template <typename T>
-struct AccuracyCheckFunctor<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext& dev_ctx,
+struct AccuracyCheckFunctor<GPUContext, T> {
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& in,
                   const DenseTensor& other,
                   const std::string& fn_name,

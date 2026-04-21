@@ -22,8 +22,6 @@
 #include "paddle/phi/kernels/full_kernel.h"
 namespace phi {
 
-using phi::PADDLE_CUDA_NUM_THREADS;
-
 template <typename T, typename IndexType>
 __global__ void Pad3DConstNCDHW(const IndexType nthreads,
                                 const T* in_data,

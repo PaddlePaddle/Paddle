@@ -46,7 +46,7 @@ void MvKernelImpl(const Context& dev_ctx,
                         "suitable for mv operation, "
                         "x_dim[-1] must be equal to vec_dim[-1]."));
   std::vector<int64_t> out_dim = {x_dim[x_ndims - 2]};
-  out->Resize(make_ddim(out_dim));
+  out->Resize(out_dim);
   dev_ctx.template Alloc<T>(out);
   auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
   sparse_blas.SPMV(false, static_cast<T>(1), x, vec, static_cast<T>(0), out);

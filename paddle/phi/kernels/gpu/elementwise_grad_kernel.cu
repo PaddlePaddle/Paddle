@@ -67,7 +67,7 @@ void SubtractDoubleGradKernel(const Context& dev_ctx,
                               const optional<DenseTensor>& ddy,
                               int axis,
                               DenseTensor* ddout) {
-  phi::SubtractDoubleGradImpl<T>(dev_ctx, y, ddx, ddy, dout, axis, ddout);
+  SubtractDoubleGradImpl<T>(dev_ctx, y, ddx, ddy, dout, axis, ddout);
 }
 
 template <typename T, typename Context>
@@ -128,35 +128,31 @@ void MixedPrecisionAddGradFunc(const GPUContext& dev_ctx,
       (dx && dy && dx->dims() == dy->dims() && dx->dims() == dout.dims());
   if (no_broadcast) {
     // Dispatch to non-broadcast (elementwise) kernels
-    if (x_dtype == phi::DataType::FLOAT32 &&
-        y_dtype == phi::DataType::FLOAT16) {
+    if (x_dtype == DataType::FLOAT32 && y_dtype == DataType::FLOAT16) {
       ElementwiseMixedPrecisionAddGrad<phi::float16>(dev_ctx, dout, dx, dy);
-    } else if (x_dtype == phi::DataType::FLOAT32 &&
-               y_dtype == phi::DataType::BFLOAT16) {
+    } else if (x_dtype == DataType::FLOAT32 && y_dtype == DataType::BFLOAT16) {
       ElementwiseMixedPrecisionAddGrad<phi::bfloat16>(dev_ctx, dout, dx, dy);
     } else {
       PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported mixed precision combination for AddGrad non-broadcast "
           "path: x_dtype=%s, y_dtype=%s",
-          phi::DataTypeToString(x_dtype),
-          phi::DataTypeToString(y_dtype)));
+          DataTypeToString(x_dtype),
+          DataTypeToString(y_dtype)));
     }
   } else {
     // Dispatch to broadcast-aware kernels
-    if (x_dtype == phi::DataType::FLOAT32 &&
-        y_dtype == phi::DataType::FLOAT16) {
+    if (x_dtype == DataType::FLOAT32 && y_dtype == DataType::FLOAT16) {
       DefaultMixedPrecisionAddGrad<phi::float16>(
           dev_ctx, x, y, dout, dx, dy, axis);
-    } else if (x_dtype == phi::DataType::FLOAT32 &&
-               y_dtype == phi::DataType::BFLOAT16) {
+    } else if (x_dtype == DataType::FLOAT32 && y_dtype == DataType::BFLOAT16) {
       DefaultMixedPrecisionAddGrad<phi::bfloat16>(
           dev_ctx, x, y, dout, dx, dy, axis);
     } else {
       PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported mixed precision combination for AddGrad broadcast path: "
           "x_dtype=%s, y_dtype=%s",
-          phi::DataTypeToString(x_dtype),
-          phi::DataTypeToString(y_dtype)));
+          DataTypeToString(x_dtype),
+          DataTypeToString(y_dtype)));
     }
   }
 }
@@ -188,12 +184,12 @@ void AddGradKernel(const Context& dev_ctx,
 #ifdef PADDLE_WITH_CUDA
   if (x.dtype() == DataType::FLOAT32 &&
       (y.dtype() == DataType::FLOAT16 || y.dtype() == DataType::BFLOAT16)) {
-    phi::MixedPrecisionAddGradImpl<float>(
+    MixedPrecisionAddGradImpl<float>(
         dev_ctx, x, y, dout, axis, dx, dy, MixedPrecisionAddGradFunc<float>);
     return;
   }
 #endif
-  phi::AddGradImpl<T>(dev_ctx, x, y, dout, axis, dx, dy, AddGradFunc<T>);
+  AddGradImpl<T>(dev_ctx, x, y, dout, axis, dx, dy, AddGradFunc<T>);
 }
 
 template <typename T, typename Context>
@@ -204,7 +200,7 @@ void AddDoubleGradKernel(const Context& dev_ctx,
                          const optional<DenseTensor>& ddy,
                          int axis,
                          DenseTensor* ddout) {
-  phi::AddDoubleGradImpl<T>(dev_ctx, y, ddx, ddy, dout, axis, ddout);
+  AddDoubleGradImpl<T>(dev_ctx, y, ddx, ddy, dout, axis, ddout);
 }
 
 template <typename T, typename Context>
@@ -215,7 +211,7 @@ void AddTripleGradKernel(const Context& dev_ctx,
                          int axis,
                          DenseTensor* d_ddx,
                          DenseTensor* d_ddy) {
-  phi::AddGradImpl<T>(
+  AddGradImpl<T>(
       dev_ctx, ddx, ddy, d_ddout, axis, d_ddx, d_ddy, AddGradFunc<T>);
 }
 

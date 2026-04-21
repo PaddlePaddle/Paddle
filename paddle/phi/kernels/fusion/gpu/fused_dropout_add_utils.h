@@ -28,7 +28,7 @@ static inline std::vector<size_t> GetRandomCudaProp(int64_t numel,
   size_t grid_size = gpu_config.GetGridSize();
   size_t block_size = gpu_config.GetBlockSize();
   int64_t device_id = dev_ctx.GetPlace().GetDeviceId();
-  const auto& prop = phi::backends::gpu::GetDeviceProperties(device_id);
+  const auto& prop = backends::gpu::GetDeviceProperties(device_id);
   size_t max_grid_size =
       prop.maxThreadsPerMultiProcessor * prop.multiProcessorCount / block_size;
   grid_size = std::min(grid_size, max_grid_size);

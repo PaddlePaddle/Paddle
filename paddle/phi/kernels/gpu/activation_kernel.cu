@@ -283,8 +283,7 @@ void PowKernel(const Context& dev_ctx,
   }
   if (factor.to<double>() == 0) {
     std::vector<int64_t> vec_dims = vectorize(out->dims());
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(vec_dims), static_cast<T>(1), out);
+    Full<T, Context>(dev_ctx, IntArray(vec_dims), static_cast<T>(1), out);
     return;
   }
   if (factor.to<double>() == 1) {

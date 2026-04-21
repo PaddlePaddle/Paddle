@@ -942,8 +942,8 @@ def randn(
     *,
     out: paddle.Tensor | None = None,
     device: PlaceLike | None = None,
-    requires_grad: bool = False,
     pin_memory: bool = False,
+    requires_grad: bool = False,
 ) -> Tensor: ...
 
 
@@ -953,8 +953,8 @@ def randn(
     out: paddle.Tensor | None = None,
     dtype: DTypeLike | None = None,
     device: PlaceLike | None = None,
-    requires_grad: bool = False,
     pin_memory: bool = False,
+    requires_grad: bool = False,
 ) -> Tensor: ...
 
 
@@ -966,8 +966,8 @@ def randn(
     *,
     out: paddle.Tensor | None = None,
     device: PlaceLike | None = None,
-    requires_grad: bool = False,
     pin_memory: bool = False,
+    requires_grad: bool = False,
 ) -> Tensor:
     """
     Returns a Tensor filled with random values sampled from a standard
@@ -988,8 +988,8 @@ def randn(
             For more information, please refer to :ref:`api_guide_Name`.
         out(Tensor, optional): The output tensor.
         device(PlaceLike|None, optional): The desired device of returned tensor.
-        requires_grad(bool, optional):  If autograd should record operations on the returned tensor. Default: False.
         pin_memory(bool, optional): If set, return tensor would be allocated in the pinned memory. Works only for CPU tensors. Default: False
+        requires_grad(bool, optional):  If autograd should record operations on the returned tensor. Default: False.
 
     Returns:
         Tensor, A Tensor filled with random values sampled from a standard
@@ -1729,6 +1729,35 @@ def uniform_(
     return _C_ops.uniform_inplace_(x, min, max, seed, 0, 0, 1.0)
 
 
+@overload
+def randint(
+    low: int = 0,
+    high: int | None = None,
+    size: ShapeLike = [1],
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+    device: PlaceLike | None = None,
+    pin_memory: bool = False,
+    requires_grad: bool = False,
+) -> Tensor: ...
+
+
+@overload
+def randint(
+    high: int,
+    size: ShapeLike,
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+    device: PlaceLike | None = None,
+    pin_memory: bool = False,
+    requires_grad: bool = False,
+) -> Tensor: ...
+
+
 @param_one_alias(["shape", "size"])
 def randint(
     low: int = 0,
@@ -1738,6 +1767,9 @@ def randint(
     name: str | None = None,
     *,
     out: Tensor | None = None,
+    device: PlaceLike | None = None,
+    pin_memory: bool = False,
+    requires_grad: bool = False,
 ) -> Tensor:
     """
     Returns a Tensor filled with random integers from a discrete uniform
@@ -1761,7 +1793,12 @@ def randint(
         name (str|None, optional): The default value is None.  Normally there is no
             need for user to set this property.  For more information, please
             refer to :ref:`api_guide_Name`.
-        out (Tensor|None, optional): Optional output tensor. If provided, the result will be stored in this tensor.
+
+    Keyword Arguments:
+        out (Tensor, optional): Optional output tensor. If provided, the result will be stored in this tensor. Default: None.
+        device (PlaceLike|None, optional): The desired device of returned tensor. Default: None.
+        pin_memory (bool, optional): If set, return tensor would be allocated in the pinned memory. Works only for CPU tensors. Default: False.
+        requires_grad (bool, optional): If autograd should record operations on the returned tensor. Default: False.
 
     Returns:
         Tensor, A Tensor filled with random integers from a discrete uniform
@@ -1773,8 +1810,8 @@ def randint(
             >>> import paddle
 
             >>> # example 1:
-            >>> # attr shape is a list which doesn't contain Tensor.
-            >>> out1 = paddle.randint(low=-5, high=5, shape=[2, 3])
+            >>> # attr size is a list which doesn't contain Tensor.
+            >>> out1 = paddle.randint(low=-5, high=5, size=[2, 3])
             >>> print(out1)
             >>> # doctest: +SKIP("Random output")
             Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
@@ -1783,10 +1820,10 @@ def randint(
             >>> # doctest: -SKIP
 
             >>> # example 2:
-            >>> # attr shape is a list which contains Tensor.
+            >>> # attr size is a list which contains Tensor.
             >>> dim1 = paddle.to_tensor(2, 'int64')
             >>> dim2 = paddle.to_tensor(3, 'int32')
-            >>> out2 = paddle.randint(low=-5, high=5, shape=[dim1, dim2])
+            >>> out2 = paddle.randint(low=-5, high=5, size=[dim1, dim2])
             >>> print(out2)
             >>> # doctest: +SKIP("Random output")
             Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
@@ -1795,9 +1832,9 @@ def randint(
             >>> # doctest: -SKIP
 
             >>> # example 3:
-            >>> # attr shape is a Tensor
+            >>> # attr size is a Tensor
             >>> shape_tensor = paddle.to_tensor([2, 3])
-            >>> out3 = paddle.randint(low=-5, high=5, shape=shape_tensor)
+            >>> out3 = paddle.randint(low=-5, high=5, size=shape_tensor)
             >>> print(out3)
             >>> # doctest: +SKIP("Random output")
             Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
@@ -1807,7 +1844,7 @@ def randint(
 
             >>> # example 4:
             >>> # data type is int32
-            >>> out4 = paddle.randint(low=-5, high=5, shape=[3], dtype='int32')
+            >>> out4 = paddle.randint(low=-5, high=5, size=[3], dtype='int32')
             >>> print(out4)
             >>> # doctest: +SKIP("Random output")
             Tensor(shape=[3], dtype=int32, place=Place(cpu), stop_gradient=True,
@@ -1824,8 +1861,24 @@ def randint(
             [7])
             >>> # doctest: -SKIP
 
+            >>> # example 6:
+            >>> # Use 'size' as an alias for 'shape'
+            >>> out6 = paddle.randint(high=10, size=[2, 3])
+            >>> print(out6.shape)
+            paddle.Size([2, 3])
+
+            >>> # example 7:
+            >>> # Use requires_grad=True so that stop_gradient=False
+            >>> out7 = paddle.randint(high=10, size=[2, 3], requires_grad=True)
+            >>> print(out7.stop_gradient)
+            False
+
     """
-    if high is None:
+    if isinstance(high, (list, tuple)):
+        shape = high
+        high = low
+        low = 0
+    elif high is None:
         if low <= 0:
             raise ValueError(
                 f"If high is None, low must be greater than 0, but received low = {low}."
@@ -1839,19 +1892,44 @@ def randint(
     elif not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
+    place = (
+        _get_paddle_place(device)
+        if device is not None
+        else _current_expected_place()
+    )
+    if (
+        pin_memory
+        and in_dynamic_mode()
+        and not isinstance(place, (core.CUDAPinnedPlace, core.XPUPinnedPlace))
+    ):
+        if isinstance(place, core.CUDAPlace) or (
+            isinstance(place, core.Place) and place.is_gpu_place()
+        ):
+            place = core.CUDAPinnedPlace()
+        elif isinstance(place, core.XPUPlace) or (
+            isinstance(place, core.Place) and place.is_xpu_place()
+        ):
+            place = core.XPUPinnedPlace()
+        else:
+            raise RuntimeError(f"Pinning memory is not supported for {place}")
+
     if in_dynamic_mode():
         shape = paddle.utils.convert_shape_to_list(shape)
-        return _C_ops.randint(
-            low, high, shape, dtype, _current_expected_place(), out=out
-        )
+        tensor = _C_ops.randint(low, high, shape, dtype, place, out=out)
+        if pin_memory:
+            tensor = tensor.pin_memory()
+        if requires_grad is True:
+            tensor.stop_gradient = False
+        return tensor
     elif in_pir_mode():
         check_shape(shape, 'randint')
         check_dtype(dtype, 'dtype', ['int32', 'int64'], 'randint')
         if paddle.utils._contain_var(shape):
             shape = paddle.utils.get_int_tensor_list(shape)
-        return _C_ops.randint(
-            low, high, shape, dtype, _current_expected_place(), out=out
-        )
+        tensor = _C_ops.randint(low, high, shape, dtype, place, out=out)
+        if requires_grad is True:
+            tensor.stop_gradient = False
+        return tensor
     else:
         check_shape(shape, 'randint')
         check_dtype(dtype, 'dtype', ['int32', 'int64'], 'randint')
@@ -2163,8 +2241,8 @@ def randperm(
     *,
     out: paddle.Tensor | None = None,
     device: PlaceLike | None = None,
-    requires_grad: bool = False,
     pin_memory: bool = False,
+    requires_grad: bool = False,
 ) -> Tensor:
     """
     Returns a 1-D Tensor filled with random permutation values from 0
@@ -2180,8 +2258,8 @@ def randperm(
             refer to :ref:`api_guide_Name`.
         out(Tensor, optional): The output tensor.
         device(PlaceLike|None, optional): The desired device of returned tensor.
-        requires_grad(bool, optional):  If autograd should record operations on the returned tensor. Default: False.
         pin_memory(bool, optional): If set, return tensor would be allocated in the pinned memory. Works only for CPU tensors. Default: False
+        requires_grad(bool, optional):  If autograd should record operations on the returned tensor. Default: False.
 
     Returns:
         Tensor, A 1-D Tensor filled with random permutation values from 0
@@ -2266,8 +2344,8 @@ def rand(
     *,
     out: paddle.Tensor | None = None,
     device: PlaceLike | None = None,
-    requires_grad: bool = False,
     pin_memory: bool = False,
+    requires_grad: bool = False,
 ) -> Tensor: ...
 
 
@@ -2277,8 +2355,8 @@ def rand(
     out: paddle.Tensor | None = None,
     dtype: DTypeLike | None = None,
     device: PlaceLike | None = None,
-    requires_grad: bool = False,
     pin_memory: bool = False,
+    requires_grad: bool = False,
 ) -> Tensor: ...
 
 
@@ -2290,8 +2368,8 @@ def rand(
     *,
     out: paddle.Tensor | None = None,
     device: PlaceLike | None = None,
-    requires_grad: bool = False,
     pin_memory: bool = False,
+    requires_grad: bool = False,
 ) -> Tensor:
     """
     Returns a Tensor filled with random values sampled from a uniform
@@ -2312,8 +2390,8 @@ def rand(
             refer to :ref:`api_guide_Name`.
         out(Tensor, optional): The output tensor.
         device(PlaceLike|None, optional): The desired device of returned tensor.
-        requires_grad(bool, optional):  If autograd should record operations on the returned tensor. Default: False.
         pin_memory(bool, optional): If set, return tensor would be allocated in the pinned memory. Works only for CPU tensors. Default: False
+        requires_grad(bool, optional):  If autograd should record operations on the returned tensor. Default: False.
 
     Returns:
         Tensor, A Tensor filled with random values sampled from a uniform

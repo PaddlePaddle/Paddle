@@ -67,12 +67,12 @@ void ReduceSumGradKernel(const Context& dev_ctx,
   // make new tensor
   DenseTensor new_out_grad(out_grad.dtype());
   new_out_grad.ShareDataWith(out_grad);
-  new_out_grad.Resize(make_ddim(update_dims));
+  new_out_grad.Resize(update_dims);
 
   // call ReduceGrad
   dev_ctx.Alloc(x_grad, x.dtype());
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  phi::ReduceGrad<kps::IdentityFunctor<T, MPType>>(
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
+  ReduceGrad<kps::IdentityFunctor<T, MPType>>(
       dev_ctx,
       &new_out_grad,
       x_grad,
@@ -109,14 +109,14 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
   // make new tensor
   DenseTensor new_out_grad(out_grad.dtype());
   new_out_grad.ShareDataWith(out_grad);
-  new_out_grad.Resize(make_ddim(update_dims));
+  new_out_grad.Resize(update_dims);
 
   // call BroadcastKernel
   dev_ctx.Alloc(x_grad, x.dtype());
   std::vector<const DenseTensor*> inputs = {&new_out_grad};
   std::vector<DenseTensor*> outputs = {x_grad};
 
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
   funcs::BroadcastKernel<T>(dev_ctx,
                             inputs,
                             &outputs,
@@ -272,11 +272,11 @@ void NansumGradKernel(const Context& dev_ctx,
 
   DenseTensor new_out_grad(out_grad.dtype());
   new_out_grad.ShareDataWith(out_grad);
-  new_out_grad.Resize(make_ddim(update_dims));
+  new_out_grad.Resize(update_dims);
 
   dev_ctx.Alloc(x_grad, x.dtype());
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  phi::ReduceGrad<kps::IdentityFunctor<T, MPType>>(
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
+  ReduceGrad<kps::IdentityFunctor<T, MPType>>(
       dev_ctx,
       &new_out_grad,
       x_grad,
@@ -287,7 +287,7 @@ void NansumGradKernel(const Context& dev_ctx,
   const T* x_data = x.data<T>();
   T* x_grad_data = x_grad->data<T>();
   int64_t numel = x.numel();
-  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
+  funcs::ForRange<Context> for_range(dev_ctx, numel);
   for_range(NanMaskFunctor<T>(x_data, x_grad_data));
 }
 

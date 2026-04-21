@@ -202,6 +202,17 @@ class PyLayerContext:
         """
         return self.container
 
+    @property
+    def saved_tensors(self):
+        """
+        Get the tensors stored by ``save_for_backward``. This attribute is an alias for the method ``saved_tensor()``.
+
+        Returns:
+            list of Tensors or None: If context contains tensors stored by `save_for_backward`,
+            then return these tensors, otherwise return None.
+        """
+        return self.saved_tensor()
+
     def mark_not_inplace(self, *args: Tensor) -> None:
         """
         Marks inputs as not inplace.

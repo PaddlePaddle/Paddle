@@ -193,7 +193,7 @@ class CudnnFrontendConvHelper {
       std::vector<int64_t>* uids,
       cudnnHandle_t handle,
       phi::DnnWorkspaceHandle* workspace_handle,
-      phi::DataType data_type) {
+      DataType data_type) {
     auto filter_fn = [=](cudnnBackendDescriptor_t c) {
       if (deterministic) {
         if (cudnn_frontend::hasNumericalNote<
@@ -206,7 +206,7 @@ class CudnnFrontendConvHelper {
               CUDNN_NUMERICAL_NOTE_DOWN_CONVERT_INPUTS>(c)) {
         return true;
       }
-      if (data_type == phi::DataType::FLOAT32) {
+      if (data_type == DataType::FLOAT32) {
         if (!FLAGS_cudnn_allow_tf32 &&
             cudnn_frontend::hasNumericalNote<CUDNN_NUMERICAL_NOTE_TENSOR_CORE>(
                 c)) {
@@ -297,7 +297,7 @@ class CudnnFrontendConvHelper {
                               uids,
                               handle,
                               workspace_handle,
-                              phi::DataType::UNDEFINED);
+                              DataType::UNDEFINED);
   }
 
   static cudnn_frontend::executionPlans_t FindExecutionPlans(
@@ -319,7 +319,7 @@ class CudnnFrontendConvHelper {
                               &uids,
                               handle,
                               workspace_handle,
-                              phi::DataType::UNDEFINED);
+                              DataType::UNDEFINED);
   }
 
   static cudnn_frontend::executionPlans_t FindExecutionPlans(
@@ -331,7 +331,7 @@ class CudnnFrontendConvHelper {
       void* w_data,
       cudnnHandle_t handle,
       phi::DnnWorkspaceHandle* workspace_handle,
-      phi::DataType data_type) {
+      DataType data_type) {
     std::vector<void*> data_ptrs({x_data, y_data, w_data});
     std::vector<int64_t> uids({'x', 'y', 'w'});
     return FindExecutionPlans(op_graph_pointer,

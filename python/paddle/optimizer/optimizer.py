@@ -365,7 +365,10 @@ class Optimizer:
             return
 
         # TODO(@gexiao): support other optimizer if needed
-        if self.__class__.__name__ != "AdamW":
+        if (
+            self.__class__.__name__ != "AdamW"
+            and self.__class__.__name__ != "Muon"
+        ):
             return
 
         # add buffer check
@@ -789,7 +792,7 @@ class Optimizer:
                 >>> ## example1: LRScheduler is not used, return the same value is all the same
                 >>> adam = paddle.optimizer.Adam(0.01, parameters=emb.parameters())
                 >>> for batch in range(10):
-                ...     input = paddle.randint(low=0, high=5, shape=[5])
+                ...     input = paddle.randint(low=0, high=5, size=[5])
                 ...     out = emb(input)
                 ...     out.backward()
                 ...     print("Learning rate of step{}: {}".format(batch, adam.get_lr()))  # 0.01
@@ -809,7 +812,7 @@ class Optimizer:
                 >>> scheduler = paddle.optimizer.lr.StepDecay(learning_rate=0.5, step_size=2, gamma=0.1)
                 >>> adam = paddle.optimizer.Adam(scheduler, parameters=emb.parameters())
                 >>> for batch in range(10):
-                ...     input = paddle.randint(low=0, high=5, shape=[5])
+                ...     input = paddle.randint(low=0, high=5, size=[5])
                 ...     out = emb(input)
                 ...     out.backward()
                 ...     print("Learning rate of step{}: {}".format(batch, adam.get_lr()))  # 0.5->0.05...
@@ -2037,33 +2040,63 @@ class Optimizer:
 
     @imperative_base.no_grad()
     @framework.non_static_only
-    def step(self) -> None:
+    def step(
+        self, closure: Callable[[], Tensor] | None = None
+    ) -> Tensor | None:
         """
         Execute the optimizer and update parameters once.
 
+        Args:
+            closure (Callable|None, optional): A closure that reevaluates the model
+                and returns the loss. It should be a callable that takes no arguments
+                and returns a Tensor. This is useful for optimizers that need to
+                evaluate the loss multiple times (e.g., line search). Default is None.
+
         Returns:
-            None
+            Tensor|None: If closure is provided, returns the loss value computed by
+                the closure. Otherwise returns None.
 
         Examples:
             .. code-block:: pycon
 
                 >>> import paddle
 
-                >>> a = paddle.arange(26, dtype="float32").reshape([2, 13])
+                >>> x = paddle.arange(26, dtype="float32").reshape([2, 13])
                 >>> linear = paddle.nn.Linear(13, 5)
                 >>> # This can be any optimizer supported by dygraph.
                 >>> adam = paddle.optimizer.Adam(
                 ...     learning_rate=0.01,
                 ...     parameters=linear.parameters(),
                 ... )
-                >>> out = linear(a)
+                >>> out = linear(x)
                 >>> out.backward()
                 >>> adam.step()
                 >>> adam.clear_grad()
+
+                >>> # usage 1: not use closure
+                >>> adam.zero_grad()
+                >>> output = linear(x)
+                >>> loss = paddle.mean(output)
+                >>> loss.backward()
+                >>> adam.step()
+
+                >>> # usage 2: use closure
+                >>> def closure():
+                ...     adam.zero_grad()
+                ...     output = linear(x)
+                ...     loss = paddle.mean(output)
+                ...     loss.backward()
+                ...     return loss
+                >>> step_loss = adam.step(closure)
         """
+        loss = None
+        if closure is not None:
+            with imperative_base.enable_grad():
+                loss = closure()
+
         if paddle.base.dygraph.base.in_to_static_mode():
             self._declarative_step()
-            return
+            return loss
 
         if not isinstance(self._param_groups[0], dict):
             params_grads = []
@@ -2111,6 +2144,7 @@ class Optimizer:
                     params_grads=params_grads,
                     param_group_idx=idx,
                 )
+        return loss
 
     def _add_param_group(self, param_group):
         """

@@ -10,6 +10,10 @@ on:
         type: string
         required: false
         default: "false"
+      build-can-skip:
+        type: string
+        required: false
+        default: 'false'
 
 env:
   PR_ID: ${{ github.event.pull_request.number }}
@@ -29,6 +33,7 @@ defaults:
 jobs:
   check-bypass:
     name: Check bypass
+    if: ${{ github.repository_owner == 'PaddlePaddle' && inputs.build-can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
       workflow-name: "Doc-Preview"

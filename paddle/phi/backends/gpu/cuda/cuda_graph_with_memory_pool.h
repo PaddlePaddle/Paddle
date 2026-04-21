@@ -64,6 +64,13 @@ inline T *RestoreHostMemIfCapturingCUDAGraph(T *host_mem, size_t size) {
     defined(PADDLE_WITH_CUSTOM_DEVICE)
   if (UNLIKELY(IsCUDAGraphCapturing())) {
     size_t nbytes = size * sizeof(T);
+    // NOTE: Use new[]/delete[] (plain heap) instead of cudaMallocHost /
+    // hipMallocHost here. cudaMallocHost and hipMallocHost are prohibited
+    // operations during CUDA/HIP Graph stream capture on CUDA 12.x / HIP,
+    // returning cudaErrorStreamCaptureUnsupported (error 900). Plain heap
+    // memory is safe to allocate at any time, and the captured
+    // cudaMemcpyAsync node records the host pointer address; the buffer
+    // lifetime is guaranteed by the post-reset callback below.
     void *new_host_mem = new uint8_t[nbytes];
     std::memcpy(new_host_mem, host_mem, nbytes);
     AddPostResetCallbackIfCapturingCUDAGraph(

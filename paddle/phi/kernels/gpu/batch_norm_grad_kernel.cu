@@ -42,7 +42,7 @@ COMMON_DECLARE_bool(batch_norm_use_miopen);
 namespace phi {
 
 template <typename T>
-using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
+using CudnnDataType = backends::gpu::CudnnDataType<T>;
 template <typename T>
 using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
@@ -611,7 +611,7 @@ void BatchNormGradFunctor(const Context &dev_ctx,
           C,
           new_scale.dims()[0]));
 
-  auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
+  auto dtype = backends::gpu::CudnnDataType<T>::type;
 #ifdef PADDLE_WITH_HIP
   auto compute_format =
       data_layout == DataLayout::NHWC

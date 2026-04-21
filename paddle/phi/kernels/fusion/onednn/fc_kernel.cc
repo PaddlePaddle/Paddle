@@ -380,7 +380,7 @@ void RecomputeOutputDims(const int in_num_col_dims,
                       output_dims,
                       in_num_col_dims,
                       padding_weights);
-  out->Resize(make_ddim(output_dims));
+  out->Resize(output_dims);
   out->set_lod(x->lod());
 }
 

@@ -102,7 +102,7 @@ __global__ void ScaleGradKernel(const int* count_data,
                                 int64_t num_weights,
                                 int64_t num_weight_dim,
                                 T* table) {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
   const int idx = threadIdx.x + blockIdx.x * blockDim.x;
   if (idx < num_weights) {
     MPType freq = static_cast<MPType>(count_data[idx]);
@@ -211,11 +211,11 @@ void EmbeddingWithScaledGradientGradKernel(const Context& dev_ctx,
                                            DenseTensor* weight_grad) {
   EmbeddingWithScaledGradientGradCUDAFunctor<T, Context> functor(
       dev_ctx, input, weight, out_grad, padding_idx, weight_grad);
-  if (input.dtype() == phi::DataType::INT32) {
+  if (input.dtype() == DataType::INT32) {
     functor.template apply<int>();
-  } else if (input.dtype() == phi::DataType::INT64) {
+  } else if (input.dtype() == DataType::INT64) {
     functor.template apply<int64_t>();
-  } else if (input.dtype() == phi::DataType::INT16) {
+  } else if (input.dtype() == DataType::INT16) {
     functor.template apply<int16_t>();
   } else {
     PADDLE_THROW(common::errors::Unimplemented(
