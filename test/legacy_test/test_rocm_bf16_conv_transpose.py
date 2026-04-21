@@ -30,11 +30,16 @@ class TestRocmBf16ConvTranspose(unittest.TestCase):
         trans_grad = kernels.get("conv2d_transpose_grad", [])
 
         def has_gpu_bf16(items):
-            return any("bfloat16" in x and "place[Place(gpu" in x for x in items)
+            return any(
+                "bfloat16" in x and "place[Place(gpu" in x for x in items
+            )
 
-        self.assertTrue(has_gpu_bf16(trans), msg=f"conv2d_transpose kernels: {trans}")
         self.assertTrue(
-            has_gpu_bf16(trans_grad), msg=f"conv2d_transpose_grad kernels: {trans_grad}"
+            has_gpu_bf16(trans), msg=f"conv2d_transpose kernels: {trans}"
+        )
+        self.assertTrue(
+            has_gpu_bf16(trans_grad),
+            msg=f"conv2d_transpose_grad kernels: {trans_grad}",
         )
 
     def test_conv2d_transpose_bf16_smoke(self):
