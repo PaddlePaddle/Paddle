@@ -30,7 +30,7 @@ import paddle
 from paddle import framework
 from paddle.autograd import PyLayer
 from paddle.base.framework import EagerParamBase
-from paddle.base.wrapped_decorator import wrap_decorator
+from paddle.base.wrapped_decorator import copy_signature
 from paddle.distributed.fleet.meta_parallel.parallel_layers.random import (
     get_rng_state_tracker,
 )
@@ -118,10 +118,12 @@ class RecomputeContext:
             with self:
                 return fn(*args, **kwargs)
 
+        copy_signature(fn, wrapper)
+
         return wrapper
 
 
-_recompute_context = wrap_decorator(RecomputeContext())
+_recompute_context = RecomputeContext()
 
 
 def is_in_recompute() -> bool:
