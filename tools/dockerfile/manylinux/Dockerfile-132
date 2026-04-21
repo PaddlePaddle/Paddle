@@ -68,6 +68,7 @@ RUN wget -q https://paddle-ci.gz.bcebos.com/ccache-4.8.2.tar.gz && \
 
 COPY paddle/scripts/compile_requirements.txt /root
 COPY python/requirements.txt /root
-RUN pip install --break-system-packages -r /root/requirements.txt && \
+RUN pip config set global.break-system-packages true && \
+    pip install --break-system-packages -r /root/requirements.txt && \
     pip install --break-system-packages -r /root/compile_requirements.txt && \
     rm -rf /root/compile_requirements.txt /root/requirements.txt
