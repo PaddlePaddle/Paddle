@@ -19,8 +19,11 @@ import paddle.nn.functional as F
 from paddle.base import core
 
 
-@unittest.skipIf(not paddle.is_compiled_with_rocm(), "ROCm only")
 class TestRocmBf16ConvTranspose(unittest.TestCase):
+    def setUp(self):
+        if not paddle.is_compiled_with_rocm():
+            self.skipTest("ROCm only")
+
     def test_registry_has_gpu_bf16(self):
         kernels = core._get_all_register_op_kernels("phi")
         trans = kernels.get("conv2d_transpose", [])
