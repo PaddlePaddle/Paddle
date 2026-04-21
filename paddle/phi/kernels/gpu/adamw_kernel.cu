@@ -23,7 +23,6 @@
 
 #include "glog/logging.h"
 
-#include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/memory_utils.h"
@@ -32,8 +31,6 @@
 #include "paddle/phi/kernels/funcs/adam_functors.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
-
-COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 
 namespace phi {
 
@@ -179,38 +176,38 @@ PADDLE_API void AdamwDenseKernel(const Context& dev_ctx,
   MT coeff_ = static_cast<MT>(coeff);
   MT lr_ratio_ = static_cast<MT>(lr_ratio);
 
-  if (FLAGS_use_accuracy_compatible_kernel) {
-    return AdamwDenseKernelCompatible<T, Context>(
-        dev_ctx,
-        param,
-        grad,
-        learning_rate,
-        moment1,
-        moment2,
-        moment2_max,
-        beta1_pow,
-        beta2_pow,
-        master_param,
-        skip_update,
-        beta1,
-        beta2,
-        epsilon,
-        lr_ratio,
-        coeff,
-        with_decay,
-        lazy_mode,
-        min_row_size_to_use_multithread,
-        multi_precision,
-        use_global_beta_pow,
-        amsgrad,
-        param_out,
-        moment1_out,
-        moment2_out,
-        moment2_max_out,
-        beta1_pow_out,
-        beta2_pow_out,
-        master_param_outs);
-  }
+  // if (FLAGS_use_accuracy_compatible_kernel) {
+  //   return AdamwDenseKernelCompatible<T, Context>(
+  //       dev_ctx,
+  //       param,
+  //       grad,
+  //       learning_rate,
+  //       moment1,
+  //       moment2,
+  //       moment2_max,
+  //       beta1_pow,
+  //       beta2_pow,
+  //       master_param,
+  //       skip_update,
+  //       beta1,
+  //       beta2,
+  //       epsilon,
+  //       lr_ratio,
+  //       coeff,
+  //       with_decay,
+  //       lazy_mode,
+  //       min_row_size_to_use_multithread,
+  //       multi_precision,
+  //       use_global_beta_pow,
+  //       amsgrad,
+  //       param_out,
+  //       moment1_out,
+  //       moment2_out,
+  //       moment2_max_out,
+  //       beta1_pow_out,
+  //       beta2_pow_out,
+  //       master_param_outs);
+  // }
 
   bool skip_update_ = false;
   if (skip_update.is_initialized()) {
@@ -769,7 +766,7 @@ PADDLE_API void AdamwDenseKernelCompatible(
 PD_REGISTER_KERNEL(adamw,
                    GPU,
                    ALL_LAYOUT,
-                   phi::AdamwDenseKernel,
+                   phi::AdamwDenseKernelCompatible,
                    float,
                    double,
                    phi::float16,
