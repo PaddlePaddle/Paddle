@@ -42,7 +42,7 @@ void PRecvKernel(const Context& dev_ctx,
       GetCommContext<Context, distributed::NCCLCommContext>(dev_ctx, peer);
   gpuStream_t stream = dev_ctx.stream();
 
-  // auto data_type = phi::TransToPhiDataType(dtype);
+  // auto data_type = TransToPhiDataType(dtype);
   if (dynamic_shape) {
     DDim new_dim =
         recv_shape_info<Context, distributed::NCCLCommContext, gpuStream_t>(

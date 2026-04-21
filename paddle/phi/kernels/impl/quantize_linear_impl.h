@@ -57,7 +57,7 @@ void DeQuantizeLinearImpl(const Context& dev_ctx,
                           DenseTensor* out) {
   auto* in = &x;
 
-  auto in_tmp = Cast<T>(dev_ctx, *in, phi::CppTypeToDataType<D>::Type());
+  auto in_tmp = Cast<T>(dev_ctx, *in, CppTypeToDataType<D>::Type());
 
   dev_ctx.template Alloc<D>(out, out->numel() * sizeof(D));
 

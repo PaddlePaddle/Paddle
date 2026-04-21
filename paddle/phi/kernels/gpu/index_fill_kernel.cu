@@ -99,7 +99,7 @@ void LaunchIndexFillCudaKernelImpl(const Context& dev_ctx,
                                    T fill_value,
                                    T* out_data) {
   IndexT numel = outer_size * index_size * inner_size;
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
+  auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
   IndexFillCudaKernel<T, IndexT, IndT>
       <<<config.block_per_grid, config.thread_per_block, 0, dev_ctx.stream()>>>(
           x_data,

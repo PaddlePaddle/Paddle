@@ -37,7 +37,7 @@ void RangeTensorKernel(const Context& dev_ctx,
                        const DenseTensor& end,
                        const DenseTensor& step,
                        DenseTensor* out) {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
   MPType start_value =
       static_cast<MPType>(GetValue<T, Context>(dev_ctx, start));
   MPType end_value = static_cast<MPType>(GetValue<T, Context>(dev_ctx, end));
@@ -66,7 +66,7 @@ void RangeNullaryKernel(const Context& dev_ctx,
                         const T end_value,
                         const T step_value,
                         DenseTensor* out) {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
   MPType start_value_mpt = static_cast<MPType>(start_value);
   MPType end_value_mpt = static_cast<MPType>(end_value);
   MPType step_value_mpt = static_cast<MPType>(step_value);

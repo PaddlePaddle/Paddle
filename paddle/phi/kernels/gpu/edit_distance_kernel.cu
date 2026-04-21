@@ -27,8 +27,6 @@
 
 namespace phi {
 
-using phi::PADDLE_CUDA_NUM_THREADS;
-
 template <typename T>
 __global__ void FillFirstRow(T* dist, const int N) {
   int64_t idx =
@@ -145,7 +143,7 @@ void EditDistanceKernel(const Context& dev_ctx,
         distance = distance / n;
       }
       const T* stable_dist =
-          phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(&distance, 1);
+          backends::gpu::RestoreHostMemIfCapturingCUDAGraph(&distance, 1);
       memory_utils::Copy(dev_ctx.GetPlace(),
                          out_data + num,
                          CPUPlace(),

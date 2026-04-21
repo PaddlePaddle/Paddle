@@ -90,11 +90,11 @@ void LaunchIndexPutCudaKernel(const Context& dev_ctx,
 
   int64_t is_single_val_tensor = (value.numel() == 1) ? 0 : INT64_MAX;
   const int64_t numel = indices[0]->numel();
-  phi::Allocator::AllocationPtr holder;
+  Allocator::AllocationPtr holder;
   auto pd_indices =
       funcs::GetDevicePointerArray<int64_t, Context>(dev_ctx, indices, &holder);
 
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
+  auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
   IndexPutCudaKernel<T>
       <<<config.block_per_grid, config.thread_per_block, 0, dev_ctx.stream()>>>(
           x_data,

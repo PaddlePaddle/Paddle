@@ -1034,22 +1034,22 @@ void FlashMaskV2GradBaseKernel(
     dev_ctx.template Alloc<int32_t>(&flashmask_maxmin);
 
     lt_start_row_indices =
-        phi::Slice<int32_t>(dev_ctx, startend_row_indices, {3}, {0}, {1});
+        Slice<int32_t>(dev_ctx, startend_row_indices, {3}, {0}, {1});
     if (startend_row_indices.dims()[3] == 2) {
       if (!is_causal) {
         ut_end_row_indices =
-            phi::Slice<int32_t>(dev_ctx, startend_row_indices, {3}, {1}, {2});
+            Slice<int32_t>(dev_ctx, startend_row_indices, {3}, {1}, {2});
       } else {
         lt_end_row_indices =
-            phi::Slice<int32_t>(dev_ctx, startend_row_indices, {3}, {1}, {2});
+            Slice<int32_t>(dev_ctx, startend_row_indices, {3}, {1}, {2});
       }
     } else if (startend_row_indices.dims()[3] == 4) {
       ut_end_row_indices =
-          phi::Slice<int32_t>(dev_ctx, startend_row_indices, {3}, {3}, {4});
+          Slice<int32_t>(dev_ctx, startend_row_indices, {3}, {3}, {4});
       lt_end_row_indices =
-          phi::Slice<int32_t>(dev_ctx, startend_row_indices, {3}, {1}, {2});
+          Slice<int32_t>(dev_ctx, startend_row_indices, {3}, {1}, {2});
       ut_start_row_indices =
-          phi::Slice<int32_t>(dev_ctx, startend_row_indices, {3}, {2}, {3});
+          Slice<int32_t>(dev_ctx, startend_row_indices, {3}, {2}, {3});
     }
   }
 
@@ -1447,7 +1447,7 @@ void FlashMaskV2GradBaseKernel(
                    // different from hdim_qk for now
   DenseTensor tile_count_semaphore;
   if (arch >= 90) {
-    tile_count_semaphore = phi::Full<int32_t, Context>(dev_ctx, {1}, 0);
+    tile_count_semaphore = Full<int32_t, Context>(dev_ctx, {1}, 0);
     dynload::flashmaskv2_bwd_params_set_tile_count_semaphore(
         params_handle, tile_count_semaphore.data<int>());
   } else {

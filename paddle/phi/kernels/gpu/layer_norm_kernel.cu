@@ -397,7 +397,7 @@ void LaunchLayerNormKernel(const Context& dev_ctx,
         addr = valid_bias ? (addr | reinterpret_cast<uint64_t>(void_bias_data))
                           : addr;
         data_vec_size =
-            std::min(4, phi::GetVectorizedSize<T>(reinterpret_cast<T*>(addr)));
+            std::min(4, GetVectorizedSize<T>(reinterpret_cast<T*>(addr)));
       } else {
         uint64_t bias_addr = reinterpret_cast<uint64_t>(void_bias_data);
         uint64_t attr_addr = valid_scale
@@ -406,9 +406,9 @@ void LaunchLayerNormKernel(const Context& dev_ctx,
         attr_addr = valid_bias
                         ? (valid_scale ? (attr_addr | bias_addr) : attr_addr)
                         : attr_addr;
-        data_vec_size = std::min(
-            phi::GetVectorizedSize<T>(reinterpret_cast<T*>(addr)),
-            phi::GetVectorizedSize<U>(reinterpret_cast<U*>(attr_addr)));
+        data_vec_size =
+            std::min(GetVectorizedSize<T>(reinterpret_cast<T*>(addr)),
+                     GetVectorizedSize<U>(reinterpret_cast<U*>(attr_addr)));
         data_vec_size = std::min(4, data_vec_size);
       }
     }
@@ -582,7 +582,7 @@ void LayerNormKernel(const Context& dev_ctx,
   bool is_scale_bias_same_dtype_with_x = x_dtype == scale_bias_dtype;
   if (!is_scale_bias_same_dtype_with_x) {
     PADDLE_ENFORCE_EQ(scale_bias_dtype,
-                      phi::CppTypeToDataType<U>::Type(),
+                      CppTypeToDataType<U>::Type(),
                       common::errors::InvalidArgument(
                           "Unsupported data type of Scale and Bias"));
   }
@@ -655,7 +655,7 @@ void LayerNormKernel(const Context& dev_ctx,
   PADDLE_LAUNCH_FAST_LAYERNORM_V1_FWD_BASE(ScaleT, 1792); \
   PADDLE_LAUNCH_FAST_LAYERNORM_V1_FWD_BASE(ScaleT, 2048); \
   PADDLE_LAUNCH_FAST_LAYERNORM_V1_FWD_BASE(ScaleT, 4096)
-  auto compute_dtype = phi::CppTypeToDataType<U>::Type();
+  auto compute_dtype = CppTypeToDataType<U>::Type();
   auto kernel_variant = LayerNormKernelDispatch(scale_bias_dtype,
                                                 x_dtype,
                                                 y_dtype,
@@ -761,7 +761,7 @@ template PADDLE_API void LayerNormKernel<float, GPUContext>(
     DenseTensor* y,
     DenseTensor* mean,
     DenseTensor* var);
-template PADDLE_API void LayerNormKernel<phi::dtype::float16, GPUContext>(
+template PADDLE_API void LayerNormKernel<dtype::float16, GPUContext>(
     const GPUContext& dev_ctx,
     const DenseTensor& x,
     const optional<DenseTensor>& scale_opt,

@@ -47,12 +47,12 @@ class CudnnConvDescManager {
   }
 
   struct CudnnCacheInfo {
-    phi::backends::gpu::TensorDescriptor* x_desc{nullptr};
-    phi::backends::gpu::FilterDescriptor* w_desc{nullptr};
-    phi::backends::gpu::TensorDescriptor* b_desc{nullptr};
-    phi::backends::gpu::TensorDescriptor* o_desc{nullptr};
-    phi::backends::gpu::ConvolutionDescriptor* conv_desc{nullptr};
-    phi::backends::gpu::ActivationDescriptor* act_desc{nullptr};
+    backends::gpu::TensorDescriptor* x_desc{nullptr};
+    backends::gpu::FilterDescriptor* w_desc{nullptr};
+    backends::gpu::TensorDescriptor* b_desc{nullptr};
+    backends::gpu::TensorDescriptor* o_desc{nullptr};
+    backends::gpu::ConvolutionDescriptor* conv_desc{nullptr};
+    backends::gpu::ActivationDescriptor* act_desc{nullptr};
     size_t workspace_size;
     cudnnConvolutionFwdAlgo_t algo;
 
@@ -283,42 +283,42 @@ class CudnnConvDescManager {
   }
 
  private:
-  phi::backends::gpu::TensorDescriptor* GetTensorDescInfo(
+  backends::gpu::TensorDescriptor* GetTensorDescInfo(
       const std::vector<int>& input_dims,
       phi::DataType input_dtype,
       cudnnTensorFormat_t input_format) {
-    auto* desc = new phi::backends::gpu::TensorDescriptor();
+    auto* desc = new backends::gpu::TensorDescriptor();
     desc->set(
         input_dims, input_format, backends::gpu::ToCudnnDataType(input_dtype));
     return desc;
   }
 
-  phi::backends::gpu::FilterDescriptor* GetFilterDescInfo(
+  backends::gpu::FilterDescriptor* GetFilterDescInfo(
       const std::vector<int>& input_dims,
       phi::DataType input_dtype,
       cudnnTensorFormat_t input_format) {
-    auto* desc = new phi::backends::gpu::FilterDescriptor();
+    auto* desc = new backends::gpu::FilterDescriptor();
     desc->set(
         input_dims, input_format, backends::gpu::ToCudnnDataType(input_dtype));
     return desc;
   }
 
-  phi::backends::gpu::ConvolutionDescriptor* GetConvDescInfo(
+  backends::gpu::ConvolutionDescriptor* GetConvDescInfo(
       const std::vector<int>& paddings,
       const std::vector<int>& strides,
       const std::vector<int>& dilations,
       int groups,
       cudnnDataType_t dtype) {
-    auto* desc = new phi::backends::gpu::ConvolutionDescriptor();
+    auto* desc = new backends::gpu::ConvolutionDescriptor();
     desc->set(
         dtype, paddings, strides, dilations, phi::AllowTF32Cudnn(), groups);
     return desc;
   }
 
-  phi::backends::gpu::ActivationDescriptor* GetActivationDescInfo(
+  backends::gpu::ActivationDescriptor* GetActivationDescInfo(
       const std::string& act,
       double value_max = std::numeric_limits<double>::max()) {
-    auto* desc = new phi::backends::gpu::ActivationDescriptor();
+    auto* desc = new backends::gpu::ActivationDescriptor();
     cudnnActivationMode_t mode;
     double relu_ceiling = 0.0;
     if (act == "identity") {
@@ -545,7 +545,7 @@ void FusedConv2dAddActKernel(const Context& dev_ctx,
       conv_attr_cache->dilations,
       transformed_input.dtype(),
       groups,
-      phi::backends::gpu::CudnnDataType<T>::type,
+      backends::gpu::CudnnDataType<T>::type,
       compute_format,
       search_func,
       activation);

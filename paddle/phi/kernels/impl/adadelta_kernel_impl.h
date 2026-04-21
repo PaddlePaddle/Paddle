@@ -35,7 +35,7 @@ void AdadeltaKernel(const Context& dev_ctx,
                     DenseTensor* avg_squared_grad_out,
                     DenseTensor* avg_squared_update_out,
                     DenseTensor* master_param_outs) {
-  using MT = typename phi::dtype::template MPTypeTrait<T>::Type;
+  using MT = typename dtype::template MPTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(param_out);
   dev_ctx.template Alloc<MT>(avg_squared_grad_out);
   dev_ctx.template Alloc<MT>(avg_squared_update_out);

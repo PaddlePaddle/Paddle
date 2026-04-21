@@ -83,16 +83,15 @@ void IndexSampleKernel(const Context& dev_ctx,
   if (batch_size == 0 || input_length == 0 || index_length == 0) {
     return;
   }
-  auto block_width = phi::backends::gpu::RoundToPowerOfTwo(index_length);
+  auto block_width = backends::gpu::RoundToPowerOfTwo(index_length);
   block_width = MIN(block_width, PREDEFINED_BLOCK_SIZE_X);
   int block_height =
-      phi::backends::gpu::RoundToPowerOfTwo(index_length * batch_size) /
-      block_width;
+      backends::gpu::RoundToPowerOfTwo(index_length * batch_size) / block_width;
   block_height = MIN(block_height, PREDEFINED_BLOCK_SIZE / block_width);
   dim3 block_dim(block_width, block_height);
   dim3 grid_dim((index_length + block_dim.x - 1) / block_dim.x,
                 (batch_size + block_dim.y - 1) / block_dim.y);
-  phi::backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
+  backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
   // choose the element index type ; uint32 or int64 based on the tensor size
   bool use_uint32 = true;
   if (x.numel() > UINT32_MAX || out->numel() > UINT32_MAX) {

@@ -76,7 +76,7 @@ void FFTR2CKernel(const Context& dev_ctx,
                   bool forward,
                   bool onesided,
                   DenseTensor* out) {
-  using C = phi::dtype::complex<T>;
+  using C = dtype::complex<T>;
   dev_ctx.template Alloc<C>(out);
   if (x.numel() == 0) {
     Full<C, Context>(dev_ctx, out->dims(), 0, out);

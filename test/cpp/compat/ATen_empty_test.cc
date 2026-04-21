@@ -19,6 +19,13 @@
 #include <ATen/ops/empty.h>
 #include <c10/core/ScalarType.h>
 #include <c10/core/TensorOptions.h>
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include <c10/cuda/CUDAFunctions.h>
+#include <c10/cuda/CUDAGuard.h>
+#endif
+#ifdef PADDLE_WITH_XPU
+#include "paddle/phi/core/platform/device/xpu/xpu_info.h"
+#endif
 
 #include "ATen/ATen.h"
 #include "gtest/gtest.h"
@@ -55,8 +62,6 @@ TEST(ATenEmptyTest, ExplicitArgsCpu) {
 // ======================== pin_memory tests ========================
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include <c10/cuda/CUDAFunctions.h>
-#include <c10/cuda/CUDAGuard.h>
 
 // TensorOptions overload: pin_memory via options
 TEST(ATenEmptyTest, PinMemoryViaTensorOptions) {
@@ -154,3 +159,17 @@ TEST(ATenEmptyTest, EmptyCudaOptionsHelperDefaultDeviceUsesCurrentDevice) {
 }
 
 #endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
+
+#ifdef PADDLE_WITH_XPU
+TEST(ATenEmptyTest, DefaultXpuDeviceUsesCurrentDevice) {
+  if (paddle::platform::GetXPUDeviceCount() < 2) {
+    return;
+  }
+  paddle::platform::XPUDeviceGuard guard(1);
+  at::Tensor t =
+      at::empty({8}, at::TensorOptions().dtype(at::kFloat).device(at::kXPU));
+
+  ASSERT_EQ(t.device().type(), c10::DeviceType::XPU);
+  ASSERT_EQ(t.device().index(), 1);
+}
+#endif

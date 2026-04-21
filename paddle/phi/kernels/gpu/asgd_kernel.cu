@@ -69,7 +69,7 @@ void ASGDKernel(const Context& dev_ctx,
                 DenseTensor* d_out,
                 DenseTensor* y_out,
                 DenseTensor* master_param_out) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename dtype::MPTypeTrait<T>::Type;
   const MT* master_in_data =
       multi_precision ? master_param->data<MT>() : nullptr;
   MT* master_out_data =

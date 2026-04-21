@@ -27,7 +27,7 @@ __global__ void CalculateGrad(T* logits_grad,
                               const int64_t N,
                               const int64_t D,
                               const int* class_interval_ptr) {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
   int start_index = class_interval_ptr[rank];
   CUDA_KERNEL_LOOP(i, N * D) {
     auto row = i / D;

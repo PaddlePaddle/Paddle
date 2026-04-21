@@ -42,7 +42,7 @@ COMMON_DECLARE_bool(batch_norm_use_miopen);
 namespace phi {
 
 template <typename T>
-using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
+using CudnnDataType = backends::gpu::CudnnDataType<T>;
 template <typename T>
 using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
@@ -588,7 +588,7 @@ void BatchNormKernel(const Context &dev_ctx,
   int N, C, H, W, D;
   funcs::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
-  auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
+  auto dtype = backends::gpu::CudnnDataType<T>::type;
 
   auto *Scale = scale.get_ptr();
   auto *Bias = bias.get_ptr();
@@ -599,13 +599,13 @@ void BatchNormKernel(const Context &dev_ctx,
   if (Scale) {
     new_scale = scale.get();
   } else {
-    new_scale = phi::Full<T, Context>(dev_ctx, {C}, static_cast<T>(1));
+    new_scale = Full<T, Context>(dev_ctx, {C}, static_cast<T>(1));
   }
 
   if (Bias) {
     new_bias = bias.get();
   } else {
-    new_bias = phi::Full<T, Context>(dev_ctx, {C}, static_cast<T>(0));
+    new_bias = Full<T, Context>(dev_ctx, {C}, static_cast<T>(0));
   }
 
 #ifdef PADDLE_WITH_HIP

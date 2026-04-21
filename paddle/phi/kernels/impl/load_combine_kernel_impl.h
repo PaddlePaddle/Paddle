@@ -33,7 +33,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void LoadParamsFromBuffer(const Context& dev_ctx,
-                          const phi::Place& place,
+                          const Place& place,
                           std::istream* buffer,
                           bool load_as_fp16,
                           const std::vector<DenseTensor*>& out) {
@@ -54,15 +54,14 @@ void LoadParamsFromBuffer(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(out_vars[i]);
     DenseTensor* tensor = out_vars[i];
     // Get data from fin to tensor
-    phi::DeserializeFromStream(*buffer, tensor, dev_ctx);
+    DeserializeFromStream(*buffer, tensor, dev_ctx);
     auto in_dtype = tensor->dtype();
     auto out_dtype = load_as_fp16 ? DataType::FLOAT16 : in_dtype;
     if (in_dtype != out_dtype) {
       // convert to float16 tensor
-      auto in_kernel_type =
-          phi::KernelKey(place, DataLayout::ALL_LAYOUT, in_dtype);
+      auto in_kernel_type = KernelKey(place, DataLayout::ALL_LAYOUT, in_dtype);
       auto out_kernel_type =
-          phi::KernelKey(place, DataLayout::ALL_LAYOUT, out_dtype);
+          KernelKey(place, DataLayout::ALL_LAYOUT, out_dtype);
       DenseTensor fp16_tensor;
       // copy LoD info to the new tensor
       fp16_tensor.set_lod(tensor->lod());
@@ -83,10 +82,10 @@ void LoadParamsFromBuffer(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void LoadParamsFromBuffer(const Context& dev_ctx,
-                          const phi::Place& place,
+                          const Place& place,
                           std::istream* buffer,
                           bool load_as_fp16,
-                          const std::vector<phi::Vocab*>& out) {
+                          const std::vector<Vocab*>& out) {
   auto out_vars = out;
   for (size_t i = 0; i < out_vars.size(); i++) {
     PADDLE_ENFORCE_NOT_NULL(
@@ -130,10 +129,10 @@ void LoadParamsFromBuffer(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void LoadParamsFromBuffer(const Context& dev_ctx,
-                          const phi::Place& place,
+                          const Place& place,
                           std::istream* buffer,
                           bool load_as_fp16,
-                          const std::vector<phi::ExtendedTensor*>& out) {
+                          const std::vector<ExtendedTensor*>& out) {
   auto out_vars = out;
   for (size_t i = 0; i < out_vars.size(); i++) {
     PADDLE_ENFORCE_NOT_NULL(
@@ -179,9 +178,9 @@ void LoadParamsFromBuffer(const Context& dev_ctx,
       if (in_dtype != out_dtype) {
         // convert to float16 tensor
         auto in_kernel_type =
-            phi::KernelKey(place, DataLayout::ALL_LAYOUT, in_dtype);
+            KernelKey(place, DataLayout::ALL_LAYOUT, in_dtype);
         auto out_kernel_type =
-            phi::KernelKey(place, DataLayout::ALL_LAYOUT, out_dtype);
+            KernelKey(place, DataLayout::ALL_LAYOUT, out_dtype);
         DenseTensor fp16_tensor;
         // copy LoD info to the new tensor
         fp16_tensor.set_lod(tensor->lod());
@@ -241,7 +240,7 @@ void LoadCombineVocabKernel(const Context& dev_ctx,
                             const std::string& file_path,
                             bool load_as_fp16,
                             bool model_from_memory,
-                            std::vector<phi::Vocab*> out) {
+                            std::vector<Vocab*> out) {
   auto place = dev_ctx.GetPlace();
   auto filename = file_path;
   auto out_var_names = out;
@@ -280,7 +279,7 @@ void LoadCombineExtendedKernel(const Context& dev_ctx,
                                const std::string& file_path,
                                bool load_as_fp16,
                                bool model_from_memory,
-                               std::vector<phi::ExtendedTensor*> out) {
+                               std::vector<ExtendedTensor*> out) {
   auto place = dev_ctx.GetPlace();
   auto filename = file_path;
   auto out_var_names = out;

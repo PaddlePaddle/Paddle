@@ -21,8 +21,6 @@
 
 namespace phi {
 
-using phi::PADDLE_CUDA_NUM_THREADS;
-
 template <typename T, typename IndexType>
 __global__ void Pad3DGradConstNCDHW(const IndexType in_size,
                                     T* d_in_data,

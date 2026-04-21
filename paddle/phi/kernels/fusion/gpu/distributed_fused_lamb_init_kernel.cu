@@ -494,7 +494,7 @@ void DistributedFusedLambInitOpKernel(
   VLOG(10) << "rank = " << rank << ", nranks = " << nranks
            << " , alignment = " << alignment;
   if (alignment <= 0) {
-    alignment = phi::backends::gpu::GpuMinChunkSize();
+    alignment = backends::gpu::GpuMinChunkSize();
   }
   PADDLE_ENFORCE_GE(
       alignment,

@@ -28,7 +28,6 @@
 
 namespace phi {
 
-using phi::PADDLE_CUDA_NUM_THREADS;
 template <typename T, typename IndexT>
 __global__ void index_select_cuda_kernel(const T* input,
                                          T* output,
@@ -257,14 +256,14 @@ void RepeatInterleaveKernel(const Context& dev_ctx,
       outer_size * repeat_size * repeats * inner_size;
 
   int vec_size = 8;
-  vec_size = std::min(phi::GetVectorizedSize(x.data<T>()), vec_size);
-  vec_size = std::min(phi::GetVectorizedSize(out->data<T>()), vec_size);
+  vec_size = std::min(GetVectorizedSize(x.data<T>()), vec_size);
+  vec_size = std::min(GetVectorizedSize(out->data<T>()), vec_size);
   while (vec_size > 1 && inner_size % vec_size != 0) {
     vec_size /= 2;
   }
 
   constexpr int loop_count = 1;
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+  auto config = backends::gpu::GetGpuLaunchConfig1D(
       dev_ctx, total_elements, vec_size * loop_count);
 
   switch (vec_size) {

@@ -14,7 +14,7 @@
 
 # repo: PaddleDetection
 # model: configs^rotate^ppyoloe_r^ppyoloe_r_crn_s_3x_dota_single_dy2st_train
-# api:paddle.nn.functional.conv._conv_nd||api:paddle.tensor.ops.sigmoid||method:flatten||method:transpose||method:flatten||method:transpose||method:flatten||method:transpose
+# api:paddle.nn.functional.conv._conv_nd||api:paddle.sigmoid||method:flatten||method:transpose||method:flatten||method:transpose||method:flatten||method:transpose
 from base import *  # noqa: F403
 
 from paddle.static import InputSpec
@@ -52,7 +52,7 @@ class LayerCase(paddle.nn.Layer):
             op_type='conv2d',
             use_cudnn=True,
         )
-        var_4 = paddle.tensor.ops.sigmoid(var_1)
+        var_4 = paddle.sigmoid(var_1)
         var_5 = var_4.flatten(2)
         var_6 = var_5.transpose([0, 2, 1])
         var_7 = var_2.flatten(2)

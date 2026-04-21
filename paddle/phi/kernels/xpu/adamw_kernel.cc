@@ -33,7 +33,7 @@ float GetAbsMax(const Context& dev_ctx,
                 const float* input,
                 float* buffer_xpu,
                 int64_t numel) {
-  int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
+  int max_ptr_size = backends::xpu::get_xpu_max_ptr_size(-1);
   std::vector<float> buffer_cpu(max_ptr_size);
   // int findmax(Context* xpu_ctx, const T* x, float* maxptr, int64_t len);
   int r = xpu::findmax<float>(dev_ctx.x_context(), input, buffer_xpu, numel);
@@ -388,7 +388,7 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
     using XPUType16 = typename XPUTypeTrait<phi::float16>::Type;
 
     // findmax and calculate scale_value for moment1 and moment2
-    int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
+    int max_ptr_size = backends::xpu::get_xpu_max_ptr_size(-1);
     float* buffer_for_findmax = RAII_GUARD.alloc_l3_or_gm<float>(max_ptr_size);
 
     // for moment1
@@ -491,8 +491,8 @@ void AdamwDenseKernel(const Context& dev_ctx,
       common::errors::Unimplemented("Operation amsgrad is not supported yet."));
 
   auto dev_version =
-      phi::backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId());
-  if (dev_version == phi::backends::xpu::XPUVersion::XPU3) {
+      backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId());
+  if (dev_version == backends::xpu::XPUVersion::XPU3) {
     AdamwDenseKernelKL3<T, Context>(dev_ctx,
                                     param,
                                     grad,
@@ -762,7 +762,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
     using XPUType16 = typename XPUTypeTrait<phi::float16>::Type;
 
     // findmax and calculate scale_value for moment1 and moment2
-    int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
+    int max_ptr_size = backends::xpu::get_xpu_max_ptr_size(-1);
     float* buffer_for_findmax = RAII_GUARD.alloc_l3_or_gm<float>(max_ptr_size);
 
     // for moment1
