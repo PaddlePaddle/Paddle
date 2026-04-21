@@ -45,19 +45,6 @@ file(
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   "gpu/*.cu" "gpu/*.cu.cc")
 
-if(WITH_GPU AND (CUDA_VERSION VERSION_GREATER_EQUAL 13.0))
-  list(
-    REMOVE_ITEM
-    kernel_cu
-    "fusion/fp8_gemm/fp8_gemm_with_cublasLt/fp8_fp8_half_gemm.cu"
-    "legacy/gpu/fp8_gemm_blockwise_kernel.cu"
-    "legacy/gpu/fp8_quant_blockwise_kernel.cu")
-  message(
-    STATUS
-      "Skipping phi FP8 CUDA kernels for CUDA ${CUDA_VERSION} because nvcc 13.x triggers an internal compiler error while registering float8 kernels."
-  )
-endif()
-
 if(APPLE OR WIN32)
   list(REMOVE_ITEM kernel_cu "fusion/gpu/fusion_group_kernel.cu")
   list(REMOVE_ITEM kernel_cu "sparse/gpu/conv_kernel_igemm.cu")
