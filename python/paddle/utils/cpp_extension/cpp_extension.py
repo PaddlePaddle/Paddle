@@ -856,7 +856,7 @@ class BuildExtension(build_ext):
             )
             _run_ninja_build(
                 build_directory,
-                verbose=bool(self.verbose),
+                verbose=bool(current_extension_builder.verbose),
                 error_prefix='Failed to compile C++ extension with ninja',
             )
             return objects
@@ -1095,7 +1095,7 @@ class BuildExtension(build_ext):
             )
             _run_ninja_build(
                 build_directory,
-                verbose=bool(self.verbose),
+                verbose=bool(current_extension_builder.verbose),
                 error_prefix='Failed to compile C++ extension with ninja',
             )
             return objects
