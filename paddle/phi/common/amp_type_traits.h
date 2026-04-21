@@ -59,4 +59,6 @@ struct MPTypeTrait<phi::dtype::complex<float16>> {
 };
 
 }  // namespace dtype
+
+using MPTypeTrait = dtype::MPTypeTrait;
 }  // namespace phi
