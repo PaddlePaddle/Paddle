@@ -19,8 +19,8 @@ import numpy as np
 
 import paddle
 from paddle import nn
+from paddle.distributed.fleet.recompute.recompute import _recompute_context
 from paddle.distributed.fleet.utils import (
-    _recompute_context,
     is_in_recompute,
     recompute,
 )
@@ -117,7 +117,7 @@ class TestRecomputeContext(unittest.TestCase):
 
     def test_context_manager_sets_active(self):
         """Using RecomputeContext as a with-statement should set is_in_recompute."""
-        from paddle.distributed.fleet.utils import (
+        from paddle.distributed.fleet.recompute.recompute import (
             _recompute_context,
         )
 
@@ -132,7 +132,7 @@ class TestRecomputeContext(unittest.TestCase):
 
     def test_context_manager_resets_on_exception(self):
         """Context manager should reset active even if body raises."""
-        from paddle.distributed.fleet.utils import (
+        from paddle.distributed.fleet.recompute.recompute import (
             _recompute_context,
         )
 
