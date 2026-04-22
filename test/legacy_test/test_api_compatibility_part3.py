@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
@@ -2087,6 +2088,10 @@ class TestConv2dTransposeAPI(unittest.TestCase):
 
 
 # Test conv1d_transpose / conv_transpose1d compatibility
+@unittest.skipIf(
+    sys.platform == 'win32',
+    "Conv transpose compatibility tests not supported on Windows-Inference",
+)
 class TestConv1dTransposeAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -2166,6 +2171,10 @@ class TestConv1dTransposeAPI(unittest.TestCase):
 
 
 # Test conv3d_transpose / conv_transpose3d compatibility
+@unittest.skipIf(
+    sys.platform == 'win32',
+    "Conv transpose compatibility tests not supported on Windows-Inference",
+)
 class TestConv3dTransposeAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
