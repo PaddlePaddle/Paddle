@@ -74,7 +74,7 @@ class RecomputeContext:
             manager or decorator.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> from paddle.distributed.fleet.utils import is_in_recompute
 
@@ -145,7 +145,7 @@ def is_in_recompute() -> bool:
             ``False`` otherwise.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> from paddle.distributed.fleet.utils import is_in_recompute
             >>> # Outside any recompute context
