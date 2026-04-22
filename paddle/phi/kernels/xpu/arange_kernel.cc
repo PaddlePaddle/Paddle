@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/range_function.h"
 
 namespace phi {
@@ -67,7 +68,6 @@ void ArangeTensorKernel(const Context& dev_ctx,
     start_value = static_cast<XPUType>(sv);
     step_value = static_cast<XPUType>(stv);
   }
-  int64_t size = 0;
   if (size == 0) {
     out->Resize({0});
     dev_ctx.template Alloc<T>(out);
