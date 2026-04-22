@@ -73,7 +73,7 @@ void OverlapAddKernel(const Context& dev_ctx,
       for (int i = 0; i < x_.dims().size(); ++i) {
         x_dims_vec[i] = x_.dims()[perm_x[i]];
       }
-      trans_x.Resize(make_ddim(x_dims_vec));
+      trans_x.Resize(x_dims_vec);
       dev_ctx.template Alloc<T>(&trans_x);
       funcs::TransCompute<Context, T>(
           perm_x.size(), dev_ctx, x_, &trans_x, perm_x);
@@ -83,7 +83,7 @@ void OverlapAddKernel(const Context& dev_ctx,
       for (int i = 0; i < out->dims().size(); ++i) {
         out_dims_vec[i] = out->dims()[perm_out[i]];
       }
-      trans_out.Resize(make_ddim(out_dims_vec));
+      trans_out.Resize(out_dims_vec);
       dev_ctx.template Alloc<T>(&trans_out);
       funcs::TransCompute<Context, T>(
           perm_out.size(), dev_ctx, *out, &trans_out, perm_out);
@@ -93,7 +93,7 @@ void OverlapAddKernel(const Context& dev_ctx,
       for (int i = 0; i < x_.dims().size(); ++i) {
         x_dims_vec[i] = x_.dims()[perm_x[i]];
       }
-      trans_x.Resize(make_ddim(x_dims_vec));
+      trans_x.Resize(x_dims_vec);
       dev_ctx.template Alloc<T>(&trans_x);
       funcs::TransCompute<Context, T>(
           perm_x.size(), dev_ctx, x_, &trans_x, perm_x);
@@ -134,7 +134,7 @@ void OverlapAddKernel(const Context& dev_ctx,
       restored_out_shape.push_back(seq_length);
     }
 
-    out->Resize(make_ddim(restored_out_shape));
+    out->Resize(restored_out_shape);
   }
 }
 

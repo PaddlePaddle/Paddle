@@ -108,6 +108,19 @@ StringTensor& StringTensor::Resize(const DDim& dims) {
   meta_.dims = dims;
   return *this;
 }
+
+StringTensor& StringTensor::Resize(const std::initializer_list<int64_t> dims) {
+  return Resize(make_ddim(dims));
+}
+
+StringTensor& StringTensor::Resize(const std::vector<int64_t>& dims) {
+  return Resize(make_ddim(dims));
+}
+
+StringTensor& StringTensor::Resize(const std::vector<int>& dims) {
+  return Resize(make_ddim(dims));
+}
+
 // TODO(zhoushunjie): need to remove it for general space
 void StringTensor::init_holder() {
   void* ptr = holder_->ptr();

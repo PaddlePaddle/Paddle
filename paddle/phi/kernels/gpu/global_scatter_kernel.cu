@@ -46,11 +46,11 @@ struct GlobalScatterFunctor<GPUContext, T> {
 
     auto local_count_type = local_count->dtype();
     auto global_count_type = global_count->dtype();
-    if (local_count_type != phi::DataType::INT64) {
+    if (local_count_type != DataType::INT64) {
       PADDLE_THROW(common::errors::InvalidArgument(
           "Please use int64 type in local_count."));
     }
-    if (global_count_type != phi::DataType::INT64) {
+    if (global_count_type != DataType::INT64) {
       PADDLE_THROW(common::errors::InvalidArgument(
           "Please use int64 type in global_count."));
     }
@@ -75,14 +75,14 @@ struct GlobalScatterFunctor<GPUContext, T> {
       global_count_len = cpu_global_count.numel();
     }
 
-    ncclDataType_t dtype = phi::ToNCCLDataType(x->dtype());
+    ncclDataType_t dtype = ToNCCLDataType(x->dtype());
     gpuStream_t stream = nullptr;
     stream = dev_ctx.stream();
-    phi::distributed::NCCLCommContext* comm_ctx = nullptr;
+    distributed::NCCLCommContext* comm_ctx = nullptr;
     int nranks = 0;
 
-    comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
-        dev_ctx.GetCommContext());
+    comm_ctx =
+        static_cast<distributed::NCCLCommContext*>(dev_ctx.GetCommContext());
     PADDLE_ENFORCE_NE(comm_ctx,
                       nullptr,
                       common::errors::Unavailable(

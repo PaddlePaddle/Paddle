@@ -37,7 +37,7 @@ __global__ void Cross(const T* x,
     int64_t pos1 = offset + 1 * stride;
     int64_t pos2 = offset + 2 * stride;
 
-    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+    using MPType = typename dtype::MPTypeTrait<T>::Type;
 
     MPType x_pos0_mp = static_cast<MPType>(x[pos0]);
     MPType x_pos1_mp = static_cast<MPType>(x[pos1]);

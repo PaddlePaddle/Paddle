@@ -897,8 +897,13 @@ __global__ void ScatterMulInputGradGPUKernel(
     int* __restrict__ aux_buffer) {
   COMPUTE_OFFSET_SINGLE_OUTPUT(replace_index, 1, tid, 2)
   if (tid == aux_buffer[replace_index]) {
-    grad_data[replace_index] = grad_data[replace_index] *
-                               out_data[replace_index] / x_data[replace_index];
+    if (x_data[replace_index] != static_cast<tensor_t>(0)) {
+      grad_data[replace_index] = grad_data[replace_index] *
+                                 out_data[replace_index] /
+                                 x_data[replace_index];
+    } else {
+      grad_data[replace_index] = static_cast<tensor_t>(0);
+    }
   }
 }
 
@@ -1389,9 +1394,13 @@ __global__ void ScatterMulValueGradGPUKernel(
     int64_t numel) {
   COMPUTE_OFFSET_DOUBLE_OUTPUT(
       replace_index_grad, replace_index_self, tid, 1, 2)
-  grad_data[replace_index_grad] =
-      self_data[replace_index_self] *
-      (out_data[replace_index_self] / value_data[replace_index_grad]);
+  if (value_data[replace_index_grad] != static_cast<tensor_t>(0)) {
+    grad_data[replace_index_grad] =
+        self_data[replace_index_self] *
+        (out_data[replace_index_self] / value_data[replace_index_grad]);
+  } else {
+    grad_data[replace_index_grad] = static_cast<tensor_t>(0);
+  }
 }
 
 template <typename tensor_t, typename index_t>

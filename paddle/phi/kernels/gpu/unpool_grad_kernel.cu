@@ -218,7 +218,7 @@ void UnpoolGradKernel(const Context& dev_ctx,
   funcs::SetConstant<Context, T> zero;
   zero(dev_ctx, x_grad, static_cast<T>(0));
   const auto& indices_type = indices.dtype();
-  if (indices_type == phi::DataType::INT32) {
+  if (indices_type == DataType::INT32) {
     Unpool2dMaxGradFunctor<T, int, Context> unpool2d_max_backward;
     unpool2d_max_backward(dev_ctx, x, indices, out, out_grad, x_grad);
   } else {
@@ -247,7 +247,7 @@ void Unpool3dGradKernel(const Context& dev_ctx,
   funcs::SetConstant<Context, T> zero;
   zero(dev_ctx, x_grad, static_cast<T>(0));
   const auto& indices_type = indices.dtype();
-  if (indices_type == phi::DataType::INT32) {
+  if (indices_type == DataType::INT32) {
     Unpool3dMaxGradFunctor<T, int, Context> unpool3d_max_backward;
     unpool3d_max_backward(dev_ctx, x, indices, out, out_grad, x_grad);
   } else {

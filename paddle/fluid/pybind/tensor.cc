@@ -400,7 +400,7 @@ DenseTensor RebuildTensorFromVmmMeta(const py::tuple &meta) {
       GPUPlace(device_id),
       keep);
   DenseTensor tensor;
-  tensor.Resize(phi::make_ddim(dims_vec));
+  tensor.Resize(dims_vec);
   tensor.ResetHolder(std::move(alloc));
   tensor.set_type(static_cast<DataType>(dtype_idx));
   return tensor;

@@ -14,6 +14,7 @@
 
 #include <ATen/Functions.h>
 #include <ATen/core/TensorBody.h>
+#include <ATen/cuda/CUDAContext.h>
 #include <ATen/cuda/EmptyTensor.h>
 #include <ATen/native/cuda/Resize.h>
 #include <ATen/ops/tensor.h>
@@ -25,10 +26,16 @@
 #include <c10/cuda/CUDAFunctions.h>
 #include <c10/cuda/CUDAGuard.h>
 #endif
+#ifdef PADDLE_WITH_XPU
+#include "paddle/phi/core/platform/device/xpu/xpu_info.h"
+#endif
 #include "ATen/ATen.h"
 #include "gtest/gtest.h"
+#include "paddle/common/macros.h"
 #include "paddle/phi/common/float16.h"
 #include "torch/all.h"
+
+COMMON_DECLARE_bool(use_stride_kernel);
 
 TEST(TensorBaseTest, DataPtrAPIs) {
   // Test data_ptr() and const_data_ptr() APIs
@@ -77,6 +84,9 @@ TEST(TensorBaseTest, TypeDeviceAPIs) {
 }
 
 TEST(TensorBaseTest, ModifyOperationAPIs) {
+  if (!FLAGS_use_stride_kernel) {
+    return;
+  }
   // Test modify operation related APIs
   at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
 
@@ -149,6 +159,9 @@ TEST(compat_basic_test, BasicCase) {
     ASSERT_EQ(result_ptr[i], 12);
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (!at::cuda::is_available()) {
+    return;
+  }
 
   {
     // for test empty_cuda:
@@ -231,7 +244,7 @@ TEST(compat_basic_test, BasicCase) {
 TEST(TestDevice, DeviceAPIsOnCUDA) {
   // Test device related APIs on CUDA if available
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (torch::cuda::is_available()) {
+  if (at::cuda::is_available()) {
     at::TensorBase cuda_tensor = at::ones(
         {2, 3}, c10::TensorOptions().dtype(at::kFloat).device(at::kCUDA));
 
@@ -356,6 +369,9 @@ TEST(TensorBaseTest, ResetAPI) {
 }
 
 TEST(TensorBaseTest, IsNonOverlappingAndDenseAPI) {
+  if (!FLAGS_use_stride_kernel) {
+    return;
+  }
   // Test is_non_overlapping_and_dense() API
 
   // Case 1: Contiguous tensor - should be non-overlapping and dense
@@ -403,6 +419,9 @@ TEST(TensorBaseTest, IsNonOverlappingAndDenseAPI) {
 }
 
 TEST(TensorBaseTest, UndefinedAndNonDenseBranchCoverage) {
+  if (!FLAGS_use_stride_kernel) {
+    return;
+  }
   at::TensorBase undefined;
   ASSERT_EQ(undefined.toString(), std::string("UndefinedType"));
   ASSERT_EQ(undefined.data_ptr(), nullptr);
@@ -417,6 +436,61 @@ TEST(TensorBodyTest, ToBackendUnsupportedBranch) {
   at::Tensor t = at::ones({1}, at::kFloat);
   ASSERT_THROW(t.toBackend(static_cast<c10::Backend>(-1)), ::std::exception);
 }
+
+TEST(TensorBodyTest, ToBackendCpuBranchCoverage) {
+  at::Tensor t = at::ones({1}, at::kFloat);
+  at::Tensor cpu_t = t.toBackend(c10::Backend::CPU);
+
+  ASSERT_EQ(cpu_t.device().type(), c10::DeviceType::CPU);
+  ASSERT_TRUE(cpu_t.equal(t));
+}
+
+TEST(TensorBodyTest, ToBackendCudaBranchCoverage) {
+  at::Tensor t = at::ones({1}, at::kFloat);
+
+  try {
+    at::Tensor cuda_t = t.toBackend(c10::Backend::CUDA);
+    ASSERT_EQ(cuda_t.device().type(), c10::DeviceType::CUDA);
+  } catch (const std::exception&) {
+    SUCCEED();
+  }
+}
+
+TEST(TensorBodyTest, ToBackendXpuBranchCoverage) {
+  at::Tensor t = at::ones({1}, at::kFloat);
+
+  try {
+    at::Tensor xpu_t = t.toBackend(c10::Backend::XPU);
+    ASSERT_EQ(xpu_t.device().type(), c10::DeviceType::XPU);
+  } catch (const std::exception&) {
+    SUCCEED();
+  }
+}
+
+TEST(TensorBodyTest, ToBackendIpuBranchCoverage) {
+  at::Tensor t = at::ones({1}, at::kFloat);
+
+  try {
+    at::Tensor ipu_t = t.toBackend(c10::Backend::IPU);
+    ASSERT_EQ(ipu_t.device().type(), c10::DeviceType::IPU);
+  } catch (const std::exception&) {
+    SUCCEED();
+  }
+}
+
+#ifdef PADDLE_WITH_XPU
+TEST(TensorBodyTest, ToBackendXpuUsesCurrentDevice) {
+  if (paddle::platform::GetXPUDeviceCount() < 2) {
+    return;
+  }
+  paddle::platform::XPUDeviceGuard guard(1);
+  at::Tensor t = at::ones({1}, at::kFloat);
+  at::Tensor xpu_t = t.toBackend(c10::Backend::XPU);
+
+  ASSERT_EQ(xpu_t.device().type(), c10::DeviceType::XPU);
+  ASSERT_EQ(xpu_t.device().index(), 1);
+}
+#endif
 
 TEST(TensorBodyTest, MetaUnsupportedBranch) {
   at::Tensor t = at::ones({1}, at::kFloat);

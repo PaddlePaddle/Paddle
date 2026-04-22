@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/sigmoid_cross_entropy_with_logits_kernel.h"
 
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/gpu/sigmoid_cross_entropy_with_logits.h"
 #include "paddle/phi/kernels/scale_kernel.h"
@@ -28,7 +29,7 @@ struct SigmoidFwdFunctor {
   HOSTDEVICE inline SigmoidFwdFunctor(const T ignore_index)
       : ignore_index_(ignore_index) {}
 
-  HOSTDEVICE inline phi::Array<T, 2> operator()(const T x, const T label) {
+  HOSTDEVICE inline Array<T, 2> operator()(const T x, const T label) {
     T counts;
     T out_data;
 
@@ -45,7 +46,7 @@ struct SigmoidFwdFunctor {
       out_data = term1 - term2 + term3;
       counts = 1;
     }
-    phi::Array<T, 2> outs;
+    Array<T, 2> outs;
 
     outs[0] = out_data;
     outs[1] = counts;
@@ -61,9 +62,9 @@ struct SigmoidFwdPosWeightFunctor {
   HOSTDEVICE inline SigmoidFwdPosWeightFunctor(const T ignore_index)
       : ignore_index_(ignore_index) {}
 
-  HOSTDEVICE inline phi::Array<T, 2> operator()(const T x,
-                                                const T label,
-                                                T pos_weight) {
+  HOSTDEVICE inline Array<T, 2> operator()(const T x,
+                                           const T label,
+                                           T pos_weight) {
     T counts;
     T out_data;
 
@@ -80,7 +81,7 @@ struct SigmoidFwdPosWeightFunctor {
 
       counts = 1;
     }
-    phi::Array<T, 2> outs;
+    Array<T, 2> outs;
 
     outs[0] = out_data;
     outs[1] = counts;
@@ -133,6 +134,15 @@ void SigmoidCrossEntropyWithLogitsKernel(
     funcs::ReduceKernel<T, T, kps::AddFunctor, NonzeroFunctor<T>>(
         dev_ctx, counts_tensor, &norm_tensor, NonzeroFunctor<T>(), reduce_dim);
     T *norm = dev_ctx.template Alloc<T>(&norm_tensor);
+    PADDLE_ENFORCE_EQ(
+        backends::gpu::IsCUDAGraphCapturing(),
+        false,
+        common::errors::InvalidArgument(
+            "SigmoidCrossEntropyWithLogits does not support CUDA Graph "
+            "capture: async D2H copy to a locally allocated CPU buffer "
+            "'norm_cpu_mem' will bake the destination address into the graph; "
+            "on replay the allocation is re-created at a different address, "
+            "causing a dangling-pointer write."));
     auto norm_cpu_mem = phi::memory_utils::Alloc(CPUPlace(), sizeof(T));
     T *norm_cpu_ptr = reinterpret_cast<T *>(norm_cpu_mem->ptr());
     memory_utils::Copy(CPUPlace(),
@@ -145,7 +155,7 @@ void SigmoidCrossEntropyWithLogitsKernel(
     auto eps = static_cast<T>(1e-5);
     *norm_cpu_ptr = *norm_cpu_ptr > eps ? *norm_cpu_ptr : eps;
 
-    phi::ScaleKernel<T>(dev_ctx, *out, 1.0 / (*norm_cpu_ptr), 0.0f, false, out);
+    ScaleKernel<T>(dev_ctx, *out, 1.0 / (*norm_cpu_ptr), 0.0f, false, out);
   }
 }
 

@@ -12,31 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// #The file has been adapted from pytorch project
-// #Licensed under   BSD-style license -
+// The file has been adapted from pytorch project
+// Licensed under BSD-style license -
 // https://github.com/pytorch/pytorch/blob/main/LICENSE
 
 #pragma once
 #include <ATen/core/Tensor.h>
 #include <c10/core/ScalarType.h>
 
+#include "paddle/common/macros.h"
+
 namespace at {
 
-#define TENSOR(T, S)                                               \
-  Tensor tensor(ArrayRef<T> values, const TensorOptions& options); \
-  inline Tensor tensor(std::initializer_list<T> values,            \
-                       const TensorOptions& options) {             \
-    return at::tensor(ArrayRef<T>(values), options);               \
-  }                                                                \
-  inline Tensor tensor(T value, const TensorOptions& options) {    \
-    return at::tensor(ArrayRef<T>(value), options);                \
-  }                                                                \
-  inline Tensor tensor(ArrayRef<T> values) {                       \
-    return at::tensor(std::move(values), at::dtype(k##S));         \
-  }                                                                \
-  inline Tensor tensor(std::initializer_list<T> values) {          \
-    return at::tensor(ArrayRef<T>(values));                        \
-  }                                                                \
+#define TENSOR(T, S)                                                          \
+  PADDLE_API Tensor tensor(ArrayRef<T> values, const TensorOptions& options); \
+  inline Tensor tensor(std::initializer_list<T> values,                       \
+                       const TensorOptions& options) {                        \
+    return at::tensor(ArrayRef<T>(values), options);                          \
+  }                                                                           \
+  inline Tensor tensor(T value, const TensorOptions& options) {               \
+    return at::tensor(ArrayRef<T>(value), options);                           \
+  }                                                                           \
+  inline Tensor tensor(ArrayRef<T> values) {                                  \
+    return at::tensor(std::move(values), at::dtype(k##S));                    \
+  }                                                                           \
+  inline Tensor tensor(std::initializer_list<T> values) {                     \
+    return at::tensor(ArrayRef<T>(values));                                   \
+  }                                                                           \
   inline Tensor tensor(T value) { return at::tensor(ArrayRef<T>(value)); }
 AT_FORALL_SCALAR_TYPES_AND3(Bool, Half, BFloat16, TENSOR)
 AT_FORALL_COMPLEX_TYPES(TENSOR)

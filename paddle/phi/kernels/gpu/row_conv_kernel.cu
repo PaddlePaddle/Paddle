@@ -138,7 +138,7 @@ void RowConvKernel(const Context &dev_ctx,
   PADDLE_ENFORCE_LE_INT_MAX(future_context, "future_context");
   int future_context_int = static_cast<int>(future_context);
 
-  phi::MixVector<size_t> mix_vector(&batch_indices);
+  MixVector<size_t> mix_vector(&batch_indices);
   size_t *idx = mix_vector.CUDAMutableData(dev_ctx.GetPlace());
   auto stream = dev_ctx.stream();
 

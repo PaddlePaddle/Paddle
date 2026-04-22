@@ -204,7 +204,7 @@ void UnpoolKernel(const Context& dev_ctx,
   }
 
   const auto& indices_type = indices.dtype();
-  if (indices_type == phi::DataType::INT32) {
+  if (indices_type == DataType::INT32) {
     Unpool2dMaxFunctor<T, int, Context> unpool2d_max_forward;
     unpool2d_max_forward(dev_ctx, x, indices, out);
   } else {
@@ -233,7 +233,7 @@ void Unpool3dKernel(const Context& dev_ctx,
   }
 
   const auto& indices_type = indices.dtype();
-  if (indices_type == phi::DataType::INT32) {
+  if (indices_type == DataType::INT32) {
     Unpool3dMaxFunctor<T, int, Context> unpool3d_max_forward;
     unpool3d_max_forward(dev_ctx, x, indices, out);
   } else {

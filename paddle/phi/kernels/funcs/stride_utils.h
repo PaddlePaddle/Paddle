@@ -42,6 +42,10 @@
 #endif
 #endif
 
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
+#endif
+
 namespace phi {
 
 namespace funcs {
@@ -678,10 +682,13 @@ static inline DenseTensor wrapIndexOnce(const GPUContext& dev_ctx,
   auto* dim_size_data = dim_size_tensor.data<int64_t>();
   auto numel = index.numel();
   std::vector<int64_t> host_data(numel, dim_size);
+  const int64_t* stable_hd =
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(host_data.data(),
+                                                             host_data.size());
   phi::memory_utils::Copy(dev_ctx.GetPlace(),
                           dim_size_data,
                           CPUPlace(),
-                          host_data.data(),
+                          stable_hd,
                           numel * sizeof(int64_t),
                           dev_ctx.stream());
 

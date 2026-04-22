@@ -14,6 +14,7 @@
 
 from .recompute import (  # noqa: F401
     custom_state_manager,
+    is_in_recompute,
     recompute,
     recompute_sequential,
 )

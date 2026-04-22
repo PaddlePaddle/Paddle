@@ -299,6 +299,12 @@ def monkey_patch_math_tensor():
         return TensorSize(var.shape)
 
     def nelement(var: Tensor) -> int:
+        """
+        Returns the number of elements for current Tensor. Alias for attribute ``size``.
+
+        Returns:
+            int: the number of elements for current Tensor
+        """
         return int(np.prod(var.shape))
 
     @property

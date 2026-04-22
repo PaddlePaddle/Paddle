@@ -190,7 +190,7 @@ void LaunchDepthwiseConv3dCompatible(const Context& dev_ctx,
   int grid = std::min((num_outputs - 1) / block + 1, (int64_t)65536);
   auto stream = dev_ctx.stream();
 
-  using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using AccT = typename dtype::MPTypeTrait<T>::Type;
 
   const T* input_ptr = input_ncdhw.data<T>();
   T* output_ptr = out_ncdhw.data<T>();

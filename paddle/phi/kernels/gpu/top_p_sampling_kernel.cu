@@ -240,9 +240,9 @@ template <typename T>
 __forceinline__ __device__ Pair<T> WarpReduce(Pair<T> input) {
 #pragma unroll
   for (int offset = WARP_SIZE / 2; offset > 0; offset >>= 1) {
-    T tmp_val = phi::backends::gpu::CudaShuffleDownSync(
+    T tmp_val = backends::gpu::CudaShuffleDownSync(
         FINAL_MASK, input.v, offset, WARP_SIZE);
-    int tmp_id = phi::backends::gpu::CudaShuffleDownSync(
+    int tmp_id = backends::gpu::CudaShuffleDownSync(
         FINAL_MASK, input.id, offset, WARP_SIZE);
     if (static_cast<float>(input.v) < static_cast<float>(tmp_val)) {
       input.v = tmp_val;

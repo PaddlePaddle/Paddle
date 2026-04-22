@@ -31,18 +31,18 @@ paddle/fluid/prim/api/api.yaml @xiaoguoguo626807 @JiabinYang @zhangbo9674
 paddle/fluid/prim/api/composite_backward/composite_backward_api.h @xiaoguoguo626807 @JiabinYang
 paddle/fluid/prim/api/composite_backward/composite_double_backward_api.h @xiaoguoguo626807 @JiabinYang
 paddle/fluid/prim/api/manual_prim/prim_manual_api.h @xiaoguoguo626807 @JiabinYang
-paddle/phi/api/include/tensor.h @zhangbo9674 @zyfncg @YuanRisheng
-paddle/phi/core/attribute.h @zhangbo9674 @zyfncg @YuanRisheng
-paddle/phi/core/dense_tensor.h @zhangbo9674 @zyfncg @YuanRisheng
-paddle/phi/core/device_context.h @zhangbo9674 @zyfncg @YuanRisheng
-paddle/phi/core/infermeta_utils.h @zhangbo9674 @zyfncg @YuanRisheng
-paddle/phi/core/kernel_context.h @zhangbo9674 @zyfncg @YuanRisheng
-paddle/phi/core/kernel_factory.h @zhangbo9674 @zyfncg @YuanRisheng
-paddle/phi/core/kernel_registry.h @zhangbo9674 @zyfncg @YuanRisheng
-paddle/phi/core/kernel_utils.h @zhangbo9674 @zyfncg @YuanRisheng
-paddle/phi/core/meta_tensor.h @zhangbo9674 @zyfncg @YuanRisheng
-paddle/phi/core/tensor_base.h @zhangbo9674 @zyfncg @YuanRisheng
-paddle/phi/core/tensor_meta.h @zhangbo9674 @zyfncg @YuanRisheng
+paddle/phi/api/include/tensor.h @zhangbo9674
+paddle/phi/core/attribute.h @zhangbo9674
+paddle/phi/core/dense_tensor.h @zhangbo9674
+paddle/phi/core/device_context.h @zhangbo9674
+paddle/phi/core/infermeta_utils.h @zhangbo9674
+paddle/phi/core/kernel_context.h @zhangbo9674
+paddle/phi/core/kernel_factory.h @zhangbo9674
+paddle/phi/core/kernel_registry.h @zhangbo9674
+paddle/phi/core/kernel_utils.h @zhangbo9674
+paddle/phi/core/meta_tensor.h @zhangbo9674
+paddle/phi/core/tensor_base.h @zhangbo9674
+paddle/phi/core/tensor_meta.h @zhangbo9674
 paddle/phi/infermeta/spmd_rules @LiYuRio @ForFishes @From00
 paddle/scripts/paddle_build.bat @zhwesky2010 @wanghuancoder
 paddle/scripts/paddle_build.sh @risemeup1 @zhangbo9674 @XieYunshen

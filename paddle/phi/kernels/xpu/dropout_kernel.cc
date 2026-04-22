@@ -67,7 +67,7 @@ void DropoutRawKernel(const Context& dev_ctx,
     auto* mask_data = mask->data<uint8_t>();
     xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
     auto dev_version =
-        phi::backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId());
+        backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId());
     // Special case when dropout_prob is 1.0
     if (dropout_prob == 1.0f) {
       int r = xpu::constant(dev_ctx.x_context(),
@@ -80,7 +80,7 @@ void DropoutRawKernel(const Context& dev_ctx,
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
       return;
     }
-    if (dev_version == phi::backends::xpu::XPUVersion::XPU3) {
+    if (dev_version == backends::xpu::XPUVersion::XPU3) {
       // int dropout_v3(Context* xpu_ctx, const T* input, T* res, uint8_t* mask,
       // unsigned int seed, int64_t n, bool is_upscale, float dropout_prob);
       int r = xpu::dropout_v3(dev_ctx.x_context(),

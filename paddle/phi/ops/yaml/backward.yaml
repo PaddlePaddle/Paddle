@@ -1265,8 +1265,8 @@
     data_type: q
 
 - backward_op : flashmask_attention_v2_grad
-  forward : flashmask_attention_v2 (Tensor q, Tensor k, Tensor v, Tensor startend_row_indices,Tensor block_mask, float softmax_scale, bool is_causal) -> Tensor(out), Tensor(softmax_lse)
-  args : (Tensor q, Tensor k, Tensor v, Tensor out, Tensor softmax_lse, Tensor startend_row_indices, Tensor block_mask, Tensor out_grad, float softmax_scale, bool is_causal)
+  forward : flashmask_attention_v2 (Tensor q, Tensor k, Tensor v, Tensor startend_row_indices, Tensor block_mask, Tensor unique_id, float softmax_scale, bool is_causal, int rank = 0, int nranks = 1) -> Tensor(out), Tensor(softmax_lse)
+  args : (Tensor q, Tensor k, Tensor v, Tensor out, Tensor softmax_lse, Tensor startend_row_indices, Tensor block_mask, Tensor out_grad, float softmax_scale, bool is_causal, int rank = 0, int nranks = 1)
   optional : block_mask
   output : Tensor(q_grad), Tensor(k_grad), Tensor(v_grad)
   infer_meta :
@@ -4353,8 +4353,8 @@
     data_type: w
 
 - backward_op: rms_norm_grad
-  forward: rms_norm (Tensor x, Tensor scale, int64_t[] normalized_shape={}, double epsilon = 1e-5) -> Tensor(y), Tensor(invvar)
-  args: (Tensor x, Tensor scale, Tensor invvar, Tensor y_grad, int64_t[] normalized_shape={}, double epsilon = 1e-5)
+  forward: rms_norm (Tensor x, Tensor scale, int64_t[] normalized_shape={}, double epsilon = 1.19209289550781250e-7) -> Tensor(y), Tensor(invvar)
+  args: (Tensor x, Tensor scale, Tensor invvar, Tensor y_grad, int64_t[] normalized_shape={}, double epsilon = 1.19209289550781250e-7)
   output: Tensor(x_grad), Tensor(scale_grad)
   infer_meta:
     func: RMSNormGradInferMeta

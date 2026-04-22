@@ -446,32 +446,32 @@ void FlashAttnBaseKernel(const Context& dev_ctx,
                           "mask_bounds must in [1,2,4]"));
     auto flashmask_maxmin_shape = params.startend_row_indices->dims();
     flashmask_maxmin_shape[2] = (flashmask_maxmin_shape[2] + 31) / 32 * 8;
-    flashmask_maxmin.set_type(phi::DataType::INT32);
+    flashmask_maxmin.set_type(DataType::INT32);
     flashmask_maxmin.Resize(flashmask_maxmin_shape);
     dev_ctx.template Alloc<T>(&flashmask_maxmin);
 
     downstart_row_indices =
-        phi::Slice<int32_t>(dev_ctx, startend_row_indices.get(), {3}, {0}, {1});
+        Slice<int32_t>(dev_ctx, startend_row_indices.get(), {3}, {0}, {1});
     downstart_row_indices_data = downstart_row_indices.data();
     if (startend_row_indices->dims()[3] == 2) {
       if (!causal) {
-        upend_row_indices = phi::Slice<int32_t>(
-            dev_ctx, startend_row_indices.get(), {3}, {1}, {2});
+        upend_row_indices =
+            Slice<int32_t>(dev_ctx, startend_row_indices.get(), {3}, {1}, {2});
         upend_row_indices_data = upend_row_indices.data();
       } else {
-        downend_row_indices = phi::Slice<int32_t>(
-            dev_ctx, startend_row_indices.get(), {3}, {1}, {2});
+        downend_row_indices =
+            Slice<int32_t>(dev_ctx, startend_row_indices.get(), {3}, {1}, {2});
         downend_row_indices_data = downend_row_indices.data();
       }
     } else if (startend_row_indices->dims()[3] == 4) {
-      upend_row_indices = phi::Slice<int32_t>(
-          dev_ctx, startend_row_indices.get(), {3}, {3}, {4});
+      upend_row_indices =
+          Slice<int32_t>(dev_ctx, startend_row_indices.get(), {3}, {3}, {4});
       upend_row_indices_data = upend_row_indices.data();
-      downend_row_indices = phi::Slice<int32_t>(
-          dev_ctx, startend_row_indices.get(), {3}, {1}, {2});
+      downend_row_indices =
+          Slice<int32_t>(dev_ctx, startend_row_indices.get(), {3}, {1}, {2});
       downend_row_indices_data = downend_row_indices.data();
-      upstart_row_indices = phi::Slice<int32_t>(
-          dev_ctx, startend_row_indices.get(), {3}, {2}, {3});
+      upstart_row_indices =
+          Slice<int32_t>(dev_ctx, startend_row_indices.get(), {3}, {2}, {3});
       upstart_row_indices_data = upstart_row_indices.data();
     }
   }

@@ -14,3 +14,4 @@
 
 python -m pytest test_flashmask_ci.py -v
 python -m pytest test_fwd_md5sum.py -v
+python -m pytest test_flashmask_group.py -v

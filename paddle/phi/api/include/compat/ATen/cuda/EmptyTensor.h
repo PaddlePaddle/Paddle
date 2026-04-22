@@ -15,14 +15,18 @@
 #pragma once
 #include <ATen/core/TensorBody.h>
 
+#include "paddle/common/macros.h"
+
 namespace at::detail {
 
 using at::Tensor;
-at::Tensor empty_cuda(IntArrayRef size,
-                      ScalarType dtype,
-                      std::optional<Device> device_opt,
-                      std::optional<c10::MemoryFormat> memory_format_opt);
+PADDLE_API at::Tensor empty_cuda(
+    IntArrayRef size,
+    ScalarType dtype,
+    std::optional<Device> device_opt,
+    std::optional<c10::MemoryFormat> memory_format_opt);
 
-at::Tensor empty_cuda(IntArrayRef size, const TensorOptions &options);
+PADDLE_API at::Tensor empty_cuda(IntArrayRef size,
+                                 const TensorOptions &options);
 
 }  // namespace at::detail

@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/get_current_context.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
@@ -1802,22 +1803,33 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
   int64_t *out_dims_array_gpu =
       reinterpret_cast<int64_t *>(y_strides_array_gpu + max_dim);
 
+  const int64_t *stable_x_strides =
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          reinterpret_cast<int64_t *>(x_strides_array.data()),
+          x_strides_array.size());
   memory_utils::Copy(gplace,
                      x_strides_array_gpu,
                      cplace,
-                     x_strides_array.data(),
+                     stable_x_strides,
                      bytes,
                      dev_ctx.stream());
+  const int64_t *stable_y_strides =
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          reinterpret_cast<int64_t *>(y_strides_array.data()),
+          y_strides_array.size());
   memory_utils::Copy(gplace,
                      y_strides_array_gpu,
                      cplace,
-                     y_strides_array.data(),
+                     stable_y_strides,
                      bytes,
                      dev_ctx.stream());
+  const int64_t *stable_out_dims =
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          out_dims_array, bytes / sizeof(int64_t));
   memory_utils::Copy(gplace,
                      out_dims_array_gpu,
                      cplace,
-                     out_dims_array,
+                     stable_out_dims,
                      bytes,
                      dev_ctx.stream());
 
@@ -1840,16 +1852,24 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
     int64_t *x_dims_order_gpu =
         reinterpret_cast<int64_t *>(x_strides_order_gpu + max_dim);
 
+    const int64_t *stable_x_strides_order =
+        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+            reinterpret_cast<int64_t *>(x_strides_order.data()),
+            x_strides_order.size());
     memory_utils::Copy(gplace,
                        x_strides_order_gpu,
                        cplace,
-                       x_strides_order.data(),
+                       stable_x_strides_order,
                        bytes,
                        dev_ctx.stream());
+    const int64_t *stable_x_dims_order =
+        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+            reinterpret_cast<int64_t *>(x_dims_order.data()),
+            x_dims_order.size());
     memory_utils::Copy(gplace,
                        x_dims_order_gpu,
                        cplace,
-                       x_dims_order.data(),
+                       stable_x_dims_order,
                        bytes,
                        dev_ctx.stream());
     if (out_size > std::numeric_limits<int32_t>::max()) {
@@ -1898,16 +1918,24 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
     int64_t *y_dims_order_gpu =
         reinterpret_cast<int64_t *>(y_strides_order_gpu + max_dim);
 
+    const int64_t *stable_y_strides_order =
+        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+            reinterpret_cast<int64_t *>(y_strides_order.data()),
+            y_strides_order.size());
     memory_utils::Copy(gplace,
                        y_strides_order_gpu,
                        cplace,
-                       y_strides_order.data(),
+                       stable_y_strides_order,
                        bytes,
                        dev_ctx.stream());
+    const int64_t *stable_y_dims_order =
+        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+            reinterpret_cast<int64_t *>(y_dims_order.data()),
+            y_dims_order.size());
     memory_utils::Copy(gplace,
                        y_dims_order_gpu,
                        cplace,
-                       y_dims_order.data(),
+                       stable_y_dims_order,
                        bytes,
                        dev_ctx.stream());
     if (out_size > std::numeric_limits<int32_t>::max()) {

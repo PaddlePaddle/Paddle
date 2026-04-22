@@ -42,7 +42,7 @@ struct GraphSendRecvMaxCUDAFunctor {
                                 T* output,
                                 const IndexT& in_i,
                                 const IndexT& out_i) {
-    phi::CudaAtomicMax(output + out_i, *(params + in_i));
+    CudaAtomicMax(output + out_i, *(params + in_i));
   }
 };
 
@@ -52,7 +52,7 @@ struct GraphSendRecvMinCUDAFunctor {
                                 T* output,
                                 const IndexT& in_i,
                                 const IndexT& out_i) {
-    phi::CudaAtomicMin(output + out_i, *(params + in_i));
+    CudaAtomicMin(output + out_i, *(params + in_i));
   }
 };
 
