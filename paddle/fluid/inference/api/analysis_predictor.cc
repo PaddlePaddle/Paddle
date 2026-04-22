@@ -470,7 +470,7 @@ bool AnalysisPredictor::Init(
     std::string model_dir = config_.model_dir();
     load_pir_model_ = false;
     std::string model_json_path = model_dir + "/__model__.json";
-    if (FileExists(model_json_path)) {
+    if (paddle::inference::IsFileExists(model_json_path)) {
       load_pir_model_ = true;
       config_.SetProgFile(model_json_path);
     }
@@ -491,7 +491,8 @@ bool AnalysisPredictor::Init(
     }
     std::string optimized_params =
         optimized_model_path + "/" + "_optimized.pdiparams";
-    if (FileExists(optimized_model) && FileExists(optimized_params)) {
+    if (paddle::inference::IsFileExists(optimized_model) &&
+        paddle::inference::IsFileExists(optimized_params)) {
       config_.SetModel(optimized_model, optimized_params);
       if (config_.new_ir_enabled()) {
         load_pir_model_ = true;
@@ -1375,7 +1376,7 @@ bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
       }
 
     } else {
-      if (FileExists(config_.params_file())) {
+      if (paddle::inference::IsFileExists(config_.params_file())) {
         pir::LoadCombineFunction(config_.params_file(),
                                  filter_param_names,
                                  &tensor_out,
