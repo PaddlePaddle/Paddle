@@ -838,6 +838,7 @@ void FlashAttnV3VarlenInferMeta(const MetaTensor& q,
 void ArangeTensorInferMeta(const MetaTensor& start,
                            const MetaTensor& end,
                            const MetaTensor& step,
+                           DataType dtype,
                            MetaTensor* out) {
   PADDLE_ENFORCE_EQ(common::product(start.dims()),
                     1,
@@ -858,12 +859,13 @@ void ArangeTensorInferMeta(const MetaTensor& start,
                         common::product(step.dims())));
 
   out->set_dims({-1});
-  out->set_dtype(start.dtype());
+  out->set_dtype(dtype);
 }
 
 void RangeTensorInferMeta(const MetaTensor& start,
                           const MetaTensor& end,
                           const MetaTensor& step,
+                          DataType dtype,
                           MetaTensor* out) {
   PADDLE_ENFORCE_EQ(common::product(start.dims()),
                     1,
@@ -884,7 +886,7 @@ void RangeTensorInferMeta(const MetaTensor& start,
                         common::product(step.dims())));
 
   out->set_dims({-1});
-  out->set_dtype(start.dtype());
+  out->set_dtype(dtype);
 }
 
 void CollectFpnProposalsInferMeta(
