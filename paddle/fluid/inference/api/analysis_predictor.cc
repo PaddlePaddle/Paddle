@@ -18,7 +18,6 @@
 
 #include <algorithm>
 #include <cstdlib>
-#include <filesystem>
 #include <fstream>
 #include <memory>
 #include <set>
@@ -470,13 +469,10 @@ bool AnalysisPredictor::Init(
   } else if (!config_.model_dir().empty()) {
     std::string model_dir = config_.model_dir();
     load_pir_model_ = false;
-    for (const auto &entry : std::filesystem::directory_iterator(model_dir)) {
-      if (entry.is_regular_file() &&
-          entry.path().filename() == "__model__.json") {
-        load_pir_model_ = true;
-        config_.SetProgFile(config_.model_dir() + "/__model__.json");
-        break;
-      }
+    std::string model_json_path = model_dir + "/__model__.json";
+    if (FileExists(model_json_path)) {
+      load_pir_model_ = true;
+      config_.SetProgFile(model_json_path);
     }
   }
   if (load_pir_model_) {
@@ -1379,7 +1375,7 @@ bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
       }
 
     } else {
-      if (std::filesystem::exists(config_.params_file())) {
+      if (FileExists(config_.params_file())) {
         pir::LoadCombineFunction(config_.params_file(),
                                  filter_param_names,
                                  &tensor_out,

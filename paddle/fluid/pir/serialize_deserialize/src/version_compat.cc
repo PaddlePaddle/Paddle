@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <string>
 #include "paddle/fluid/pir/serialize_deserialize/include/version_compat.h"
-#include <filesystem>
+
 #include "paddle/fluid/pir/serialize_deserialize/include/patch_util.h"
 namespace pir {
 
@@ -25,11 +26,13 @@ void PatchBuilder::BuildPatch(uint64_t pir_version,
     std::string file_path = "";
     std::string file_name = std::to_string(v % max_version);
     if (!path.empty()) {
-      std::filesystem::path p(path.c_str());
-      std::filesystem::path patch_path = p / file_name;
-      patch_path += ".yaml";
+      std::string patch_path = path;
+      if (patch_path.back() != '/' && patch_path.back() != '\\') {
+        patch_path += "/";
+      }
+      patch_path += file_name + ".yaml";
       VLOG(8) << "Patch file: " << patch_path;
-      file_path = patch_path.string();
+      file_path = patch_path;
     }
     patch_json = YamlParser(file_name, file_path);
     VLOG(8) << "Build version " << v << " patch: " << patch_json;
