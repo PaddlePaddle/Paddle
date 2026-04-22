@@ -45,9 +45,6 @@ struct BCopyOrScaleFunctor {
   int64_t numel_;
 };
 
-template <typename T, size_t D, int MajorType = Eigen::RowMajor>
-using PhiEigenTensor = EigenTensor<T, D, MajorType>;
-
 using Array1 = Eigen::DSizes<int64_t, 1>;
 using Array2 = Eigen::DSizes<int64_t, 2>;
 using Array3 = Eigen::DSizes<int64_t, 3>;
@@ -94,8 +91,8 @@ void BaddbmmGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(input_grad);
     total_elems = in_dims[0] * in_dims[1] * in_dims[2];
     auto& place = *dev_ctx.eigen_device();
-    auto eigen_dout = PhiEigenTensor<T, 3>::From(out_grad);
-    auto eigen_dinput = PhiEigenTensor<T, 3>::From(*input_grad);
+    auto eigen_dout = EigenTensor<T, 3>::From(out_grad);
+    auto eigen_dinput = EigenTensor<T, 3>::From(*input_grad);
 
     bool batch_compress = in_dims[0] != out_grad.dims()[0];
     bool row_compress = in_dims[1] != out_grad.dims()[1];

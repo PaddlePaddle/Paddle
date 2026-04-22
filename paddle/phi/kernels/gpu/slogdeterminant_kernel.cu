@@ -34,13 +34,13 @@ namespace phi {
 
 // T is not complex
 template <typename T>
-T sign(T val) {
+T _sign(T val) {
   return static_cast<T>(T(0) < val) - (val < T(0));
 }
 
 // T is complex
 template <typename T>
-T sign(T det, T modulus) {
+T _sign(T det, T modulus) {
   return det / modulus;
 }
 
@@ -70,7 +70,7 @@ struct SlogDeterminantFunctor {
       VLOG(2) << "det value: " << matrix.determinant();
       VLOG(2) << "matrix val: " << matrix;
       auto det_val = matrix.determinant();
-      sign_vec.push_back(sign(det_val));
+      sign_vec.push_back(_sign(det_val));
       det_val >= 0
           ? log_vec.push_back(std::log(det_val))
           : log_vec.push_back(std::log(std::abs(
@@ -149,7 +149,7 @@ struct SlogDeterminantFunctor<dtype::complex<T>, Context> {
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
     size_t nbytes_ptrs_c1 = cpu_ptrs.size() * sizeof(phi::dtype::complex<T>*);
     const void* stable_ptrs_c1 =
-        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+        backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
             reinterpret_cast<uint8_t*>(
                 const_cast<phi::dtype::complex<T>**>(cpu_ptrs.data())),
             nbytes_ptrs_c1);
@@ -202,7 +202,7 @@ struct SlogDeterminantFunctor<dtype::complex<T>, Context> {
       std::complex<T> det_val = matrix.determinant();
       T abs_det_val = std::abs(det_val);
       sign_vec.push_back(static_cast<dtype::complex<T>>(
-          sign(det_val, static_cast<std::complex<T>>(abs_det_val))));
+          _sign(det_val, static_cast<std::complex<T>>(abs_det_val))));
       log_vec.push_back(static_cast<dtype::complex<T>>(std::log(abs_det_val)));
     }
     // merge sign_vec and log_vec as final output_vec
@@ -339,7 +339,7 @@ struct SlogDeterminantV2Functor {
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
     size_t nbytes_ptrs_v2 = cpu_ptrs.size() * sizeof(T*);
     const void* stable_ptrs_v2 =
-        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+        backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
             reinterpret_cast<uint8_t*>(const_cast<T**>(cpu_ptrs.data())),
             nbytes_ptrs_v2);
     memory_utils::Copy(dev_ctx.GetPlace(),
@@ -385,7 +385,7 @@ struct SlogDeterminantV2Functor {
       VLOG(2) << "det value: " << matrix.determinant();
       VLOG(2) << "matrix val: " << matrix;
       auto det_val = matrix.determinant();
-      sign_vec.push_back(phi::sign(det_val));
+      sign_vec.push_back(_sign(det_val));
       det_val >= 0
           ? log_vec.push_back(std::log(det_val))
           : log_vec.push_back(std::log(std::abs(
@@ -492,7 +492,7 @@ struct SlogDeterminantV2Functor<dtype::complex<T>, Context> {
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
     size_t nbytes_ptrs_v2c = cpu_ptrs.size() * sizeof(phi::dtype::complex<T>*);
     const void* stable_ptrs_v2c =
-        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+        backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
             reinterpret_cast<uint8_t*>(
                 const_cast<phi::dtype::complex<T>**>(cpu_ptrs.data())),
             nbytes_ptrs_v2c);
@@ -546,7 +546,7 @@ struct SlogDeterminantV2Functor<dtype::complex<T>, Context> {
       std::complex<T> det_val = matrix.determinant();
       T abs_det_val = std::abs(det_val);
       sign_vec.push_back(static_cast<dtype::complex<T>>(
-          phi::sign(det_val, static_cast<std::complex<T>>(abs_det_val))));
+          _sign(det_val, static_cast<std::complex<T>>(abs_det_val))));
       log_vec.push_back(std::log(abs_det_val));
     }
     TensorFromVector(sign_vec, dev_ctx, sign);

@@ -254,7 +254,7 @@ void CholeskyKernel(const Context& dev_ctx,
 #endif
   // check the info
   PADDLE_ENFORCE_EQ(
-      phi::backends::gpu::IsCUDAGraphCapturing(),
+      backends::gpu::IsCUDAGraphCapturing(),
       false,
       common::errors::InvalidArgument(
           "CholeskyKernel does not support CUDA Graph capture: async D2H copy "

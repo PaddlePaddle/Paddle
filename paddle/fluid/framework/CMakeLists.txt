@@ -334,7 +334,7 @@ cc_library(
 
 if(WITH_PYTHON)
   py_proto_compile(framework_py_proto SRCS framework.proto data_feed.proto)
-  py_proto_compile(trainer_py_proto SRCS trainer_desc.proto data_feed.proto)
+  py_proto_compile(trainer_py_proto SRCS trainer_desc.proto)
   py_proto_compile(distributed_strategy_py_proto SRCS
                    distributed_strategy.proto)
   py_proto_compile(pass_desc_py_proto SRCS pass_desc.proto)

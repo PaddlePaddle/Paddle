@@ -268,7 +268,7 @@ void RoiAlignKernel(const Context& dev_ctx,
                           Stream(reinterpret_cast<StreamId>(dev_ctx.stream())));
   int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
   const int* stable_roi_batch_id =
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
           roi_batch_id_data, static_cast<size_t>(bytes / sizeof(int)));
   memory_utils::Copy(gplace,
                      roi_id_data,
