@@ -86,7 +86,7 @@ if TYPE_CHECKING:
 # The solution is: 1.User add function PyInit_[name] 2. set not to export
 # refer to https://stackoverflow.com/questions/34689210/error-exporting-symbol-when-building-python-c-extension-in-windows
 if IS_WINDOWS:
-    from setuptools import distutils  # type: ignore[attr-defined]
+    from setuptools import distutils
     from setuptools._distutils._msvccompiler import _get_vc_env
     from distutils.command.build_ext import build_ext as _du_build_ext
     from unittest.mock import Mock
