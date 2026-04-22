@@ -49,37 +49,4 @@ PADDLE_API void AdamwDenseKernel(const Context& dev_ctx,
                                  DenseTensor* beta1_pow_out,
                                  DenseTensor* beta2_pow_out,
                                  DenseTensor* master_param_outs);
-
-template <typename T, typename Context>
-PADDLE_API void AdamwDenseKernelCompatible(
-    const Context& dev_ctx,
-    const DenseTensor& param,
-    const DenseTensor& grad,
-    const DenseTensor& learning_rate,
-    const DenseTensor& moment1,
-    const DenseTensor& moment2,
-    const optional<DenseTensor>& moment2_max,
-    const DenseTensor& beta1_pow,
-    const DenseTensor& beta2_pow,
-    const optional<DenseTensor>& master_param,
-    const optional<DenseTensor>& skip_update,
-    const Scalar& beta1,
-    const Scalar& beta2,
-    const Scalar& epsilon,
-    double lr_ratio,
-    double coeff,
-    bool with_decay,
-    bool lazy_mode,
-    int64_t min_row_size_to_use_multithread,
-    bool multi_precision,
-    bool use_global_beta_pow,
-    bool amsgrad,
-    DenseTensor* param_out,
-    DenseTensor* moment1_out,
-    DenseTensor* moment2_out,
-    DenseTensor* moment2_max_out,
-    DenseTensor* beta1_pow_out,
-    DenseTensor* beta2_pow_out,
-    DenseTensor* master_param_outs);
-
 }  // namespace phi
