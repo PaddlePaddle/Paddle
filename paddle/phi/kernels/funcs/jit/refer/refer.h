@@ -305,7 +305,7 @@ void LayerNorm(T* x,
                const T* scale,
                const T* bias,
                int height,
-               const double epsilon,
+               const float epsilon,
                int right) {
   // get mean
   for (int i = 0; i < height; i++) {

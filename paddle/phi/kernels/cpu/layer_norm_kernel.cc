@@ -31,9 +31,9 @@ namespace phi {
 template <typename T, typename Context>
 void LayerNormKernel(const Context& dev_ctx,
                      const DenseTensor& x,
-                     const optional<DenseTensor>& scale_opt,
-                     const optional<DenseTensor>& bias_opt,
-                     double epsilon,
+                     const paddle::optional<DenseTensor>& scale_opt,
+                     const paddle::optional<DenseTensor>& bias_opt,
+                     float epsilon,
                      int begin_norm_axis,
                      DenseTensor* y,
                      DenseTensor* mean,
@@ -141,7 +141,7 @@ void LayerNormKernel(const Context& dev_ctx,
       scale ? scale->data<T>() : nullptr,
       bias ? bias->data<T>() : nullptr,
       static_cast<int>(left),
-      static_cast<double>(epsilon),
+      static_cast<float>(epsilon),
       right);
 #endif
 }

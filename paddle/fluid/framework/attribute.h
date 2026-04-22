@@ -167,9 +167,6 @@ struct ExtractAttribute<float> {
     } else if (attr.type() == typeid(int64_t)) {  // NOLINT
       int64_t val = PADDLE_GET_CONST(int64_t, attr);
       attr = static_cast<float>(val);
-    } else if (attr.type() == typeid(double)) {  // NOLINT
-      double val = PADDLE_GET_CONST(double, attr);
-      attr = static_cast<float>(val);
     }
     float* attr_value = nullptr;
     try {

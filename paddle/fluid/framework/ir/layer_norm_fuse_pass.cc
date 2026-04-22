@@ -123,8 +123,8 @@ LayerNormFusePass::LayerNormFusePass() {
       .IsOptional()
       .End()
       .AddAttr("epsilon")
-      .IsNumGE(0.0)
-      .IsNumLE(0.001)
+      .IsNumGE(0.0f)
+      .IsNumLE(0.001f)
       .End()
       .AddAttr("begin_norm_axis")
       .IsNumGT(0)
@@ -378,8 +378,7 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
     setIntermediateOut(&ln_op_desc, "Mean", scope_name_);
     setIntermediateOut(&ln_op_desc, "Variance", scope_name_);
     ln_op_desc.SetAttr("begin_norm_axis", begin_norm_axis);
-    ln_op_desc.SetAttr("epsilon",
-                       static_cast<double>(*(eps_tensor->data<float>())));
+    ln_op_desc.SetAttr("epsilon", *(eps_tensor->data<float>()));
     ln_op_desc.SetAttr("is_test", true);
 
     if (!IsCompat(ln_op_desc)) {
