@@ -2189,26 +2189,15 @@ void LayerNormBwdCompatKernel(
             dgamma_data,
             dbeta_data,
             stream);
-      } else if (M < 256) {
+      } else {
+        // Use block_dim_y=16 (512 threads/block) instead of 32 (1024) to
+        // avoid "too many resources requested for launch" on architectures
+        // with higher per-thread register usage (e.g. Blackwell / SM 100).
         ConfigureAndLaunchGammaBetaBackwardKernel<T,
                                                   T_ACC,
                                                   block_dim_x,
                                                   16,
                                                   128>(dY_data,
-                                                       X_data,
-                                                       mean_data,
-                                                       rstd_data,
-                                                       M,
-                                                       N,
-                                                       dgamma_data,
-                                                       dbeta_data,
-                                                       stream);
-      } else {
-        ConfigureAndLaunchGammaBetaBackwardKernel<T,
-                                                  T_ACC,
-                                                  block_dim_x,
-                                                  32,
-                                                  256>(dY_data,
                                                        X_data,
                                                        mean_data,
                                                        rstd_data,
