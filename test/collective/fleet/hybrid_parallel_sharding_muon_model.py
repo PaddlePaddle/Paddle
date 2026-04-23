@@ -36,6 +36,13 @@ from paddle.optimizer.muon import (
 # Enable MUON_DEBUG to cover the debug logging branch (muon.py L532-539)
 os.environ["MUON_DEBUG"] = "1"
 
+# Test-controlled flags (set via need_envs from test_parallel_dygraph_muon.py)
+g_enable_fuse_optimizer_states = int(
+    os.environ.get("ENABLE_FUSE_OPTIMIZER_STATES", "0")
+)
+g_release_gradients = int(os.environ.get("RELEASE_GRADIENTS", "0"))
+g_multi_precision = int(os.environ.get("MULTI_PRECISION", "0"))
+
 # Parameter combinations
 NS_COEFF_TYPES = ["simple", "quintic", "polar_express", "aol"]
 
@@ -212,6 +219,16 @@ class TestDistShardingMuonTraining(unittest.TestCase):
         }
         self.strategy.use_muon_sharding = True
 
+        # Configure sharding_configs from env vars
+        if g_enable_fuse_optimizer_states:
+            self.strategy.hybrid_configs[
+                "sharding_configs"
+            ].enable_fuse_optimizer_states = True
+        if g_release_gradients:
+            self.strategy.hybrid_configs[
+                "sharding_configs"
+            ].release_gradients = True
+
         fleet.init(is_collective=True, strategy=self.strategy)
         self.data = [
             np.random.randint(0, vocab_size, (batch_size, seq_length))
@@ -350,6 +367,9 @@ class TestDistShardingMuonTraining(unittest.TestCase):
             apply_decay_param_fun: Optional callable(param_name) -> bool
                 (covers muon.py L443-446, L568-572).
         """
+        # Allow env var to force multi_precision on
+        if g_multi_precision:
+            multi_precision = True
         weights = self._init_weights()
 
         # --- Distributed model (model_a) ---
