@@ -702,6 +702,12 @@ def convert_enumerate(*args):
 
 def convert_range(*args):
     has_variable = any(isinstance(x, (Variable, Value)) for x in args)
+    # NOTE(SigureMo): Add an `assign` op after a Tensor argument to avoid confusing it with the scalar case in `arange`;
+    # otherwise, the full op result would be passed to the `ArangeOp` creation stage.
+    args = [
+        paddle.assign(arg) if isinstance(arg, (Variable, Value)) else arg
+        for arg in args
+    ]
     if has_variable:
         if len(args) == 1:
             return paddle.arange(0, args[0], 1, "int64")
