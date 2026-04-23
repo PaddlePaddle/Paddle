@@ -123,6 +123,60 @@ TEST(CUDAFunctionsTest, CUDAGuardRestoresOriginalDeviceAfterMultipleSwitches) {
 
   EXPECT_EQ(phi::backends::gpu::GetCurrentDeviceId(), original_device);
 }
+
+TEST(CUDAFunctionsTest,
+     CUDAGuardRestoresOriginalDeviceAfterReturnToOriginalThenExit) {
+  if (!torch::cuda::is_available()) {
+    return;
+  }
+  if (torch::cuda::device_count() < 2) {
+    return;
+  }
+
+  constexpr int original_device = 0;
+  constexpr int intermediate_device = 1;
+  phi::backends::gpu::SetDeviceId(original_device);
+  ASSERT_EQ(phi::backends::gpu::GetCurrentDeviceId(), original_device);
+
+  {
+    c10::cuda::CUDAGuard guard(
+        static_cast<c10::DeviceIndex>(intermediate_device));
+    ASSERT_EQ(phi::backends::gpu::GetCurrentDeviceId(), intermediate_device);
+
+    guard.set_index(static_cast<c10::DeviceIndex>(original_device));
+    ASSERT_EQ(phi::backends::gpu::GetCurrentDeviceId(), original_device);
+  }
+
+  EXPECT_EQ(phi::backends::gpu::GetCurrentDeviceId(), original_device);
+}
+
+TEST(CUDAFunctionsTest,
+     OptionalCUDAGuardResetRestoresOriginalDeviceAfterReturnToOriginal) {
+  if (!torch::cuda::is_available()) {
+    return;
+  }
+  if (torch::cuda::device_count() < 2) {
+    return;
+  }
+
+  constexpr int original_device = 0;
+  constexpr int intermediate_device = 1;
+  phi::backends::gpu::SetDeviceId(original_device);
+  ASSERT_EQ(phi::backends::gpu::GetCurrentDeviceId(), original_device);
+
+  c10::cuda::OptionalCUDAGuard guard;
+  guard.set_index(static_cast<c10::DeviceIndex>(intermediate_device));
+  ASSERT_EQ(phi::backends::gpu::GetCurrentDeviceId(), intermediate_device);
+
+  guard.set_index(static_cast<c10::DeviceIndex>(original_device));
+  ASSERT_EQ(phi::backends::gpu::GetCurrentDeviceId(), original_device);
+
+  guard.reset();
+
+  EXPECT_EQ(phi::backends::gpu::GetCurrentDeviceId(), original_device);
+  EXPECT_FALSE(guard.original_device().has_value());
+  EXPECT_FALSE(guard.current_device().has_value());
+}
 #endif
 
 // ---------------------------------------------------------------------------
