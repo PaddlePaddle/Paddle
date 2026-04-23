@@ -1,3 +1,5 @@
+include(${PROJECT_SOURCE_DIR}/cmake/architecture.cmake)
+
 if(${CMAKE_CXX_COMPILER} STREQUAL "clang++")
   set(CMAKE_EXE_LINKER_FLAGS
       "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++ -lc++abi")
@@ -8,6 +10,8 @@ message(STATUS "set MLIR_DIR: ${MLIR_DIR}")
 find_package(LLVM REQUIRED CONFIG HINTS ${LLVM_DIR})
 find_package(MLIR REQUIRED CONFIG HINTS ${MLIR_DIR})
 find_package(ZLIB REQUIRED)
+
+paddle_get_llvm_native_target(PADDLE_LLVM_NATIVE_TARGET)
 
 list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
 include(AddLLVM)
@@ -44,7 +48,7 @@ llvm_map_components_to_libnames(
   Support
   Core
   irreader
-  X86
+  ${PADDLE_LLVM_NATIVE_TARGET}
   executionengine
   orcjit
   mcjit

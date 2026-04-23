@@ -440,7 +440,7 @@ void PNormGradKernel(const Context& dev_ctx,
     GetPreAxisPost(xdim, axis, reduce_all, &pre, &axis_size, &post);
 
     int64_t total = in_x->numel();
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total);
+    auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total);
 
     PNormGradP1Kernel<T><<<config.block_per_grid,
                            config.thread_per_block,
@@ -459,7 +459,7 @@ void PNormGradKernel(const Context& dev_ctx,
     GetPreAxisPost(xdim, axis, reduce_all, &pre, &axis_size, &post);
 
     int64_t total = in_x->numel();
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total);
+    auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total);
 
     PNormGradP2Kernel<T><<<config.block_per_grid,
                            config.thread_per_block,
@@ -480,7 +480,7 @@ void PNormGradKernel(const Context& dev_ctx,
     GetPreAxisPost(xdim, axis, reduce_all, &pre, &axis_size, &post);
 
     int64_t total = in_x->numel();
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total);
+    auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total);
 
     PNormGradPLessThan1Kernel<T><<<config.block_per_grid,
                                    config.thread_per_block,
@@ -502,7 +502,7 @@ void PNormGradKernel(const Context& dev_ctx,
     GetPreAxisPost(xdim, axis, reduce_all, &pre, &axis_size, &post);
 
     int64_t total = in_x->numel();
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total);
+    auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total);
 
     PNormGradPBetween1And2Kernel<T><<<config.block_per_grid,
                                       config.thread_per_block,
@@ -524,7 +524,7 @@ void PNormGradKernel(const Context& dev_ctx,
     GetPreAxisPost(xdim, axis, reduce_all, &pre, &axis_size, &post);
 
     int64_t total = in_x->numel();
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total);
+    auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total);
 
     PNormGradPGreaterThan2Kernel<T><<<config.block_per_grid,
                                       config.thread_per_block,

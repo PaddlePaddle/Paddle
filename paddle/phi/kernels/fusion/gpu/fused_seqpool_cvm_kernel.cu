@@ -122,27 +122,27 @@ void FusedSeqpoolCVM(
 
 #ifdef PADDLE_WITH_HIP
   T **gpu_input_values = reinterpret_cast<T **>(temp_ptr->ptr());
-  phi::backends::gpu::GpuMemcpyAsync(
+  backends::gpu::GpuMemcpyAsync(
       gpu_input_values,
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
           const_cast<T **>(input_data.data()), input_data.size()),
       input_data.size() * sizeof(T *),
       hipMemcpyHostToDevice,
       stream);
   T **gpu_output_values =
       reinterpret_cast<T **>(&gpu_input_values[input_data.size()]);
-  phi::backends::gpu::GpuMemcpyAsync(
+  backends::gpu::GpuMemcpyAsync(
       gpu_output_values,
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
           const_cast<T **>(output_data.data()), output_data.size()),
       output_data.size() * sizeof(T *),
       hipMemcpyHostToDevice,
       stream);
   T **gpu_seqpool_output_values =
       reinterpret_cast<T **>(&gpu_output_values[output_data.size()]);
-  phi::backends::gpu::GpuMemcpyAsync(
+  backends::gpu::GpuMemcpyAsync(
       gpu_seqpool_output_values,
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
           const_cast<T **>(seqpool_output_data.data()),
           seqpool_output_data.size()),
       seqpool_output_data.size() * sizeof(T *),
@@ -150,36 +150,36 @@ void FusedSeqpoolCVM(
       stream);
   size_t **lods_values = reinterpret_cast<size_t **>(
       &gpu_seqpool_output_values[seqpool_output_data.size()]);
-  phi::backends::gpu::GpuMemcpyAsync(
+  backends::gpu::GpuMemcpyAsync(
       lods_values,
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
           const_cast<size_t **>(lods.data()), lods.size()),
       lods.size() * sizeof(size_t *),
       hipMemcpyHostToDevice,
       stream);
 #else
   T **gpu_input_values = reinterpret_cast<T **>(temp_ptr->ptr());
-  phi::backends::gpu::GpuMemcpyAsync(
+  backends::gpu::GpuMemcpyAsync(
       gpu_input_values,
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
           const_cast<T **>(input_data.data()), input_data.size()),
       input_data.size() * sizeof(T *),
       cudaMemcpyHostToDevice,
       stream);
   T **gpu_output_values =
       reinterpret_cast<T **>(&gpu_input_values[input_data.size()]);
-  phi::backends::gpu::GpuMemcpyAsync(
+  backends::gpu::GpuMemcpyAsync(
       gpu_output_values,
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
           const_cast<T **>(output_data.data()), output_data.size()),
       output_data.size() * sizeof(T *),
       cudaMemcpyHostToDevice,
       stream);
   T **gpu_seqpool_output_values =
       reinterpret_cast<T **>(&gpu_output_values[output_data.size()]);
-  phi::backends::gpu::GpuMemcpyAsync(
+  backends::gpu::GpuMemcpyAsync(
       gpu_seqpool_output_values,
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
           const_cast<T **>(seqpool_output_data.data()),
           seqpool_output_data.size()),
       seqpool_output_data.size() * sizeof(T *),
@@ -187,9 +187,9 @@ void FusedSeqpoolCVM(
       stream);
   size_t **lods_values = reinterpret_cast<size_t **>(
       &gpu_seqpool_output_values[seqpool_output_data.size()]);
-  phi::backends::gpu::GpuMemcpyAsync(
+  backends::gpu::GpuMemcpyAsync(
       lods_values,
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
           const_cast<size_t **>(lods.data()), lods.size()),
       lods.size() * sizeof(size_t *),
       cudaMemcpyHostToDevice,
@@ -197,8 +197,8 @@ void FusedSeqpoolCVM(
 #endif
 
   size_t N = static_cast<size_t>(batch_size * slot_num * embedding_size);
-  phi::backends::gpu::GpuLaunchConfig config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, N);
+  backends::gpu::GpuLaunchConfig config =
+      backends::gpu::GetGpuLaunchConfig1D(dev_ctx, N);
   // first sum pool
   FusedSeqpoolKernelNormal<<<config.block_per_grid.x,
                              config.thread_per_block.x,
@@ -225,8 +225,8 @@ void FusedSeqpoolCVM(
     // not need show click input
     N = static_cast<size_t>(batch_size * slot_num *
                             (embedding_size - cvm_offset));
-    phi::backends::gpu::GpuLaunchConfig config =
-        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, N);
+    backends::gpu::GpuLaunchConfig config =
+        backends::gpu::GetGpuLaunchConfig1D(dev_ctx, N);
     FusedCVMKernelNoCVM<<<config.block_per_grid.x,
                           config.thread_per_block.x,
                           0,

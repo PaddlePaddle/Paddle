@@ -40,12 +40,13 @@ static inline std::vector<size_t> GetRandomCudaProp(int64_t numel,
     grid_size = gpu_config.GetGridSize();
     block_size = gpu_config.GetBlockSize();
     int64_t device_id = dev_ctx.GetPlace().GetDeviceId();
-    const auto& prop = phi::backends::gpu::GetDeviceProperties(device_id);
+    const auto& prop = backends::gpu::GetDeviceProperties(device_id);
     size_t max_grid_size = prop.maxThreadsPerMultiProcessor *
                            prop.multiProcessorCount / block_size;
     grid_size = std::min(grid_size, max_grid_size);
     offset = ((numel - 1) / (grid_size * block_size * kVecSize) + 1) * kVecSize;
   }
+
   size_t main_offset =
       numel / (block_size * kVecSize) * (block_size * kVecSize);
   return {grid_size, block_size, offset, main_offset};

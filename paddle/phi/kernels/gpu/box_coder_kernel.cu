@@ -217,7 +217,7 @@ void BoxCoderKernel(const Context &dev_ctx,
   auto cplace = CPUPlace();
   const auto gplace = dev_ctx.GetPlace();
   const float *stable_variance =
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
           const_cast<float *>(variance.data()), variance.size());
   memory_utils::Copy(
       gplace, dev_var_data, cplace, stable_variance, bytes, dev_ctx.stream());

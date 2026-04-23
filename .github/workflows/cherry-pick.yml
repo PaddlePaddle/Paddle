@@ -39,9 +39,8 @@ jobs:
           PR_BODY: ${{ github.event.pull_request.body }}
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
           MERGE_COMMIT_SHA: ${{ github.event.pull_request.merge_commit_sha }}
-          BOT_USERNAME: ShigureNyako
-          BOT_EMAIL: shigure_nyako@outlook.com
-          REPO_NAME: ShigureNyako/Paddle
+          BOT_USERNAME: risemeup1111
+          REPO_NAME: risemeup1111/Paddle
         run: |
           # Function to post comment
           post_comment() {

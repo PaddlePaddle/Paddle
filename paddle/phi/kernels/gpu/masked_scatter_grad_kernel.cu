@@ -109,7 +109,7 @@ void MaskedScatterGradKernel(const Context& dev_ctx,
   // Compute x_grad
   if (x_grad) {
     auto x_grad_dims = x_grad->dims();
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total);
+    auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total);
 
     if (x_grad_dims == out_grad_dims) {
       // No broadcast happened, compute directly into x_grad.
@@ -180,7 +180,7 @@ void MaskedScatterGradKernel(const Context& dev_ctx,
       }
     }
 
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total);
+    auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total);
     MaskedScatterGradValueKernel<T>
         <<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
             out_grad.data<T>(),

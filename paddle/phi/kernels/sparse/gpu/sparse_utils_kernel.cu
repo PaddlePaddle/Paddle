@@ -54,11 +54,11 @@ limitations under the License. */
         break;                                                              \
     }                                                                       \
   } else {                                                                  \
-    phi::backends::gpu::GpuMemcpyAsync(tensor.data<T>(),                    \
-                                       vector.data(),                       \
-                                       vector.size() * sizeof(T),           \
-                                       gpuMemcpyHostToDevice,               \
-                                       dev_ctx.stream());                   \
+    backends::gpu::GpuMemcpyAsync(tensor.data<T>(),                         \
+                                  vector.data(),                            \
+                                  vector.size() * sizeof(T),                \
+                                  gpuMemcpyHostToDevice,                    \
+                                  dev_ctx.stream());                        \
   }
 
 namespace phi {
@@ -220,9 +220,8 @@ void DenseToCooKernel(const Context& dev_ctx,
 
   // 1. get numbers of non zero elements, and get the index of non zero elements
   int* nums_ptr = nums.data<int>();
-  phi::backends::gpu::GpuMemsetAsync(
-      nums_ptr, 0, sizeof(int), dev_ctx.stream());
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rows, 1);
+  backends::gpu::GpuMemsetAsync(nums_ptr, 0, sizeof(int), dev_ctx.stream());
+  auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rows, 1);
 
   DenseTensor temp_indices = Empty<int32_t>(dev_ctx, {rows});
   int* temp_indices_ptr = temp_indices.data<int>();
@@ -244,16 +243,16 @@ void DenseToCooKernel(const Context& dev_ctx,
 
   // 2. copy non_zero_num to host, copy x_dims to device
   int non_zero_num = 0;
-  phi::backends::gpu::GpuMemcpyAsync(&non_zero_num,
-                                     nums_ptr,
-                                     sizeof(int),
-                                     gpuMemcpyDeviceToHost,
-                                     dev_ctx.stream());
-  phi::backends::gpu::GpuMemcpyAsync(d_x_dims.data<int64_t>(),
-                                     x_dims.Get(),
-                                     x_dims.size() * sizeof(x_dims[0]),
-                                     gpuMemcpyHostToDevice,
-                                     dev_ctx.stream());
+  backends::gpu::GpuMemcpyAsync(&non_zero_num,
+                                nums_ptr,
+                                sizeof(int),
+                                gpuMemcpyDeviceToHost,
+                                dev_ctx.stream());
+  backends::gpu::GpuMemcpyAsync(d_x_dims.data<int64_t>(),
+                                x_dims.Get(),
+                                x_dims.size() * sizeof(x_dims[0]),
+                                gpuMemcpyHostToDevice,
+                                dev_ctx.stream());
 
   dev_ctx.Wait();  // wait the copy
 
@@ -268,7 +267,7 @@ void DenseToCooKernel(const Context& dev_ctx,
 
   // 3. calc indices by indices and get values by indices
   if (non_zero_num > 0) {
-    config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
+    config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
     GetNonZeroElementsAndIndices<<<config.block_per_grid.x,
                                    config.thread_per_block.x,
                                    0,
@@ -382,7 +381,7 @@ void CsrToCooGPUKernel(const GPUContext& dev_ctx,
         "'rocsparse_csr2coo' only supports batches "
         "with a value of 1 currently."));
 #else
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, batches, 1);
+    auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, batches, 1);
     GetBatchSizes<IntT><<<config.block_per_grid.x, config.thread_per_block.x>>>(
         csr_crows_data, rows, batches, offsets_ptr);
 
@@ -403,26 +402,26 @@ void CsrToCooGPUKernel(const GPUContext& dev_ctx,
                                     rocsparse_index_base_zero);
   });
 #else
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rows, 1);
+  auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rows, 1);
   config.block_per_grid.y = batches;
   ConvertCsrCrowsToCooRows<IntT>
       <<<config.block_per_grid, config.thread_per_block.x>>>(
           csr_crows_data, offsets_ptr, coo_rows_data, batch_ptr, rows);
 #endif
-  phi::backends::gpu::GpuMemcpyAsync(coo_cols_data,
-                                     csr_cols_data,
+  backends::gpu::GpuMemcpyAsync(coo_cols_data,
+                                csr_cols_data,
 #ifdef PADDLE_WITH_HIP
-                                     sizeof(int) * non_zero_num,
+                                sizeof(int) * non_zero_num,
 #else
-                                     sizeof(IntT) * non_zero_num,
+                                sizeof(IntT) * non_zero_num,
 #endif
-                                     gpuMemcpyDeviceToDevice,
-                                     dev_ctx.stream());
-  phi::backends::gpu::GpuMemcpyAsync(coo_values_data,
-                                     csr_values_data,
-                                     sizeof(T) * non_zero_num,
-                                     gpuMemcpyDeviceToDevice,
-                                     dev_ctx.stream());
+                                gpuMemcpyDeviceToDevice,
+                                dev_ctx.stream());
+  backends::gpu::GpuMemcpyAsync(coo_values_data,
+                                csr_values_data,
+                                sizeof(T) * non_zero_num,
+                                gpuMemcpyDeviceToDevice,
+                                dev_ctx.stream());
 
 #ifdef PADDLE_WITH_HIP
   if (std::is_same<IntT, int64_t>::value)
@@ -534,10 +533,9 @@ void CooToCsrGPUKernel(const GPUContext& dev_ctx,
   const IntT* coo_cols_data = coo_rows_data + non_zero_num;
   const T* coo_values_data = coo_values.data<T>();
 
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, batches, 1);
+  auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, batches, 1);
   if (batches > 1) {
-    auto config =
-        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
+    auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
     DenseTensor batches_offset = Empty<int>(dev_ctx, {batches});
     int* batches_offset_ptr = batches_offset.data<int>();
     funcs::SetConstant<GPUContext, int> set_zero;
@@ -563,16 +561,16 @@ void CooToCsrGPUKernel(const GPUContext& dev_ctx,
         nullptr, coo_rows_data, csr_crows_data, rows, non_zero_num);
   }
 
-  phi::backends::gpu::GpuMemcpyAsync(csr_cols_data,
-                                     coo_cols_data,
-                                     sizeof(IntT) * non_zero_num,
-                                     gpuMemcpyDeviceToDevice,
-                                     dev_ctx.stream());
-  phi::backends::gpu::GpuMemcpyAsync(csr_values_data,
-                                     coo_values_data,
-                                     sizeof(T) * non_zero_num,
-                                     gpuMemcpyDeviceToDevice,
-                                     dev_ctx.stream());
+  backends::gpu::GpuMemcpyAsync(csr_cols_data,
+                                coo_cols_data,
+                                sizeof(IntT) * non_zero_num,
+                                gpuMemcpyDeviceToDevice,
+                                dev_ctx.stream());
+  backends::gpu::GpuMemcpyAsync(csr_values_data,
+                                coo_values_data,
+                                sizeof(T) * non_zero_num,
+                                gpuMemcpyDeviceToDevice,
+                                dev_ctx.stream());
   out->SetMember(crows, cols, values, x_dims);
 }
 
@@ -625,7 +623,7 @@ void CooToDenseGPUKernel(const GPUContext& dev_ctx,
   dev_ctx.template Alloc<T>(out);
 
   T* out_data = out->data<T>();
-  phi::backends::gpu::GpuMemsetAsync(
+  backends::gpu::GpuMemsetAsync(
       out_data, 0, sizeof(T) * out->numel(), dev_ctx.stream());
 
   if (x.nnz() <= 0) {
@@ -648,8 +646,7 @@ void CooToDenseGPUKernel(const GPUContext& dev_ctx,
 
   BUILD_CUDA_TENSOR(int64_t, sparse_offsets, d_sparse_offsets);
 
-  auto config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
+  auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
 
   KernelCooToDense<T, IntT>
       <<<config.block_per_grid.x,

@@ -254,7 +254,7 @@ void RoiAlignGradKernel(const Context& dev_ctx,
   int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
   int64_t bytes = box_batch_id_list.numel() * sizeof(int);
   const int* stable_box_batch_size =
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
           box_batch_size, static_cast<size_t>(bytes / sizeof(int)));
   memory_utils::Copy(gplace,
                      roi_id_data,

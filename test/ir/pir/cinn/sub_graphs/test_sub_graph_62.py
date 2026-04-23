@@ -14,7 +14,7 @@
 
 # repo: PaddleDetection
 # model: configs^mot^fairmot^fairmot_dla34_30e_1088x608_airplane_single_dy2st_train
-# method:__neg__||api:paddle.tensor.ops.exp||method:__mul__||method:__neg__||api:paddle.tensor.ops.exp||method:__mul__||method:__add__||method:__add__||method:__add__||method:__mul__
+# method:__neg__||api:paddle.exp||method:__mul__||method:__neg__||api:paddle.exp||method:__mul__||method:__add__||method:__add__||method:__add__||method:__mul__
 from base import *  # noqa: F403
 
 from paddle.static import InputSpec
@@ -38,10 +38,10 @@ class LayerCase(paddle.nn.Layer):
         var_1,  # (shape: [], dtype: paddle.float32, stop_gradient: False)
     ):
         var_2 = -self.parameter_1
-        var_3 = paddle.tensor.ops.exp(var_2)
+        var_3 = paddle.exp(var_2)
         var_4 = var_3 * var_1
         var_5 = -self.parameter_0
-        var_6 = paddle.tensor.ops.exp(var_5)
+        var_6 = paddle.exp(var_5)
         var_7 = var_6 * var_0
         var_8 = var_4 + var_7
         var_9 = self.parameter_1 + self.parameter_0

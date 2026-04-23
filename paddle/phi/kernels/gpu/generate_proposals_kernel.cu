@@ -306,7 +306,7 @@ static void NMS(const GPUContext &dev_ctx,
   memset(&remv[0], 0, sizeof(uint64_t) * col_blocks);
 
   PADDLE_ENFORCE_EQ(
-      phi::backends::gpu::IsCUDAGraphCapturing(),
+      backends::gpu::IsCUDAGraphCapturing(),
       false,
       common::errors::InvalidArgument(
           "GenerateProposals does not support CUDA Graph capture: async D2H "
@@ -338,9 +338,8 @@ static void NMS(const GPUContext &dev_ctx,
   }
   keep_out->Resize({num_to_keep});
   int *keep = dev_ctx.template Alloc<int>(keep_out);
-  const int *stable_keep =
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
-          const_cast<int *>(keep_vec.data()), keep_vec.size());
+  const int *stable_keep = backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      const_cast<int *>(keep_vec.data()), keep_vec.size());
   memory_utils::Copy(place,
                      keep,
                      CPUPlace(),
@@ -582,9 +581,8 @@ void GenerateProposalsKernel(const Context &dev_ctx,
     rpn_rois_num->Resize({num});
     dev_ctx.template Alloc<int>(rpn_rois_num);
     int *num_data = rpn_rois_num->data<int>();
-    const int *stable_num =
-        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
-            const_cast<int *>(tmp_num.data()), num);
+    const int *stable_num = backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+        const_cast<int *>(tmp_num.data()), num);
     memory_utils::Copy(place,
                        num_data,
                        cpu_place,

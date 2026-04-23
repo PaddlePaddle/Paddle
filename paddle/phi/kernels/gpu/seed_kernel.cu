@@ -44,7 +44,7 @@ void GPUSeedKernel(const Context &dev_ctx,
     auto *out_data = dev_ctx.template Alloc<T>(out);
     auto stream = dev_ctx.stream();
     const int *stable_seed =
-        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(&seed, 1);
+        backends::gpu::RestoreHostMemIfCapturingCUDAGraph(&seed, 1);
     phi::memory_utils::Copy(dev_ctx.GetPlace(),
                             out_data,
                             CPUPlace(),
