@@ -21,7 +21,11 @@ import paddle
 from paddle import _C_ops, base, in_dynamic_mode
 from paddle.static.nn.control_flow import Assert
 from paddle.utils import deprecated
-from paddle.utils.decorator_utils import param_one_alias, param_two_alias
+from paddle.utils.decorator_utils import (
+    legacy_reduction_decorator,
+    param_one_alias,
+    param_two_alias,
+)
 
 from ...base.data_feeder import check_type, check_variable_and_dtype
 from ...base.framework import (
@@ -610,7 +614,7 @@ def edit_distance(
     return edit_distance_out, sequence_num
 
 
-@param_one_alias(["label", "target"])
+@legacy_reduction_decorator
 def binary_cross_entropy(
     input: Tensor,
     label: Tensor,
@@ -1475,7 +1479,7 @@ def l1_loss(
             return paddle.abs(paddle.subtract(x=input, y=label, name=name))
 
 
-@param_one_alias(["label", "target"])
+@legacy_reduction_decorator
 def nll_loss(
     input: Tensor,
     label: Tensor,
@@ -1875,7 +1879,7 @@ def kl_div(
         return loss
 
 
-@param_one_alias(["label", "target"])
+@legacy_reduction_decorator
 def mse_loss(
     input: Tensor,
     label: Tensor,
@@ -4239,7 +4243,7 @@ def triplet_margin_loss(
         return loss
 
 
-@param_one_alias(["label", "target"])
+@legacy_reduction_decorator
 def multi_margin_loss(
     input: Tensor,
     label: Tensor,

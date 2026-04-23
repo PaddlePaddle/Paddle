@@ -723,8 +723,11 @@ def index_select_decorator() -> Callable[
 _SA0_RD1 = {'size_average': 0, 'reduce': 1}
 _SA1_RD2 = {'size_average': 1, 'reduce': 2}
 _SA1_RD3 = {'size_average': 1, 'reduce': 3}
+_SA2_RD3 = {'size_average': 2, 'reduce': 3}
 _SA3_RD4 = {'size_average': 3, 'reduce': 4}
+_SA3_RD5 = {'size_average': 3, 'reduce': 5}
 _SA4_RD5 = {'size_average': 4, 'reduce': 5}
+_SA5_RD6 = {'size_average': 5, 'reduce': 6}
 _SA2_RD4 = {'size_average': 2, 'reduce': 4}
 
 LEGACY_POS: dict[str, dict[str, int]] = {
@@ -755,6 +758,17 @@ LEGACY_POS: dict[str, dict[str, int]] = {
     'PoissonNLLLoss': _SA2_RD4,
     'MultiMarginLoss': _SA3_RD4,
     'TripletMarginLoss': _SA4_RD5,
+    'binary_cross_entropy': _SA3_RD4,
+    'mse_loss': _SA2_RD3,
+    'nll_loss': _SA3_RD5,
+    'multi_margin_loss': _SA5_RD6,
+}
+
+LEGACY_ALIAS: dict[str, dict[str, str]] = {
+    'binary_cross_entropy': {'target': 'label'},
+    'mse_loss': {'target': 'label'},
+    'multi_margin_loss': {'target': 'label'},
+    'nll_loss': {'target': 'label'},
 }
 
 
@@ -766,36 +780,86 @@ def compute_legacy_reduction(reduce_val, size_average_val):
     return 'sum' if size_average_val is False else 'mean'
 
 
-def get_legacy_reduce_and_size_average(cls_name, args, kwargs):
+def _is_legacy_reduction_value(value):
+    return value is None or type(value) is bool
+
+
+def _convert_legacy_alias(api_name, kwargs):
+    alias_map = LEGACY_ALIAS.get(api_name)
+    if alias_map is None or not kwargs:
+        return
+
+    for alias, original in alias_map.items():
+        if alias in kwargs:
+            if original in kwargs:
+                raise ValueError(
+                    f"Cannot specify both '{original}' and its alias '{alias}'"
+                )
+            kwargs[original] = kwargs.pop(alias)
+
+
+def _should_skip_positional_reduce(api_name, args):
+    if api_name == 'CrossEntropyLoss':
+        return len(args) > 2 and args[2] in {'mean', 'sum', 'none'}
+    if api_name == 'KLDivLoss':
+        return len(args) > 0 and args[0] in {
+            'mean',
+            'sum',
+            'none',
+            'batchmean',
+        }
+    return False
+
+
+def get_legacy_reduce_and_size_average(
+    api_name, args, kwargs, special=False
+):
     reduce_val = ''
     size_avg_val = ''
-    pos = LEGACY_POS.get(cls_name)
+    pos = LEGACY_POS.get(api_name)
+    if pos is None:
+        return reduce_val, size_avg_val, args
+
+    args = list(args)
+    remove_indices = set()
     idx = pos.get('size_average')
     if 'size_average' in kwargs:
         size_avg_val = kwargs.pop('size_average')
     elif len(args) > idx:
         v = args[idx]
-        if type(v) is bool:
+        if _is_legacy_reduction_value(v):
             size_avg_val = v
+            remove_indices.add(idx)
     idx = pos.get('reduce')
     if 'reduce' in kwargs:
         reduce_val = kwargs.pop('reduce')
-    elif len(args) > idx:
+    elif (
+        len(args) > idx
+        and not (special and _should_skip_positional_reduce(api_name, args))
+    ):
         v = args[idx]
-        if type(v) is bool:
+        if _is_legacy_reduction_value(v):
             reduce_val = v
-    return reduce_val, size_avg_val
+            remove_indices.add(idx)
+    args = tuple(v for i, v in enumerate(args) if i not in remove_indices)
+    return reduce_val, size_avg_val, args
 
 
-def raise_deprecated_error(cls_name, reduce_val, size_avg_val):
+def warn_legacy_reduction(api_name, reduce_val, size_avg_val):
     suggested = compute_legacy_reduction(reduce_val, size_avg_val)
-    reduce_val = None if reduce_val == '' else reduce_val
-    size_avg_val = None if size_avg_val == '' else size_avg_val
-    raise ValueError(
-        f"[Deprecated] '{cls_name}' no longer supports 'reduce' or 'size_average'."
-        f"\nDetected: reduce={reduce_val}, size_average={size_avg_val}"
-        f"\nPlease use: reduction='{suggested}' instead."
+    warnings.warn(
+        "size_average and reduce args will be deprecated, please use "
+        f"reduction='{suggested}' instead.",
+        category=Warning,
+        stacklevel=3,
     )
+    return suggested
+
+
+def _call_with_legacy_reduction(func, sig, args, kwargs, reduction):
+    bound = sig.bind_partial(*args, **kwargs)
+    bound.arguments['reduction'] = reduction
+    return func(*bound.args, **bound.kwargs)
 
 
 def legacy_reduction_decorator(
@@ -804,20 +868,31 @@ def legacy_reduction_decorator(
     """
     Function decorator for __init__: intercept deprecated 'reduce' and 'size_average'.
     """
+    sig = inspect.signature(init_func)
+    param_names = list(sig.parameters)
+    is_method = bool(param_names and param_names[0] == 'self')
 
     @functools.wraps(init_func)
     def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
         # avoid subclass calling parent class init, causing cls_name to be inaccurate
-        cls_name = init_func.__qualname__.split(".")[0]
-        reduce_val, size_avg_val = get_legacy_reduce_and_size_average(
-            cls_name, args[1:], kwargs
+        api_name = init_func.__qualname__.split(".")[0]
+        _convert_legacy_alias(api_name, kwargs)
+        use_args = args[1:] if is_method else args
+        reduce_val, size_avg_val, use_args = get_legacy_reduce_and_size_average(
+            api_name, use_args, kwargs
         )
         if reduce_val != '' or size_avg_val != '':
-            raise_deprecated_error(cls_name, reduce_val, size_avg_val)
+            reduction = warn_legacy_reduction(
+                api_name, reduce_val, size_avg_val
+            )
+            call_args = (args[0], *use_args) if is_method else use_args
+            return _call_with_legacy_reduction(
+                init_func, sig, call_args, kwargs, reduction
+            )
 
         return init_func(*args, **kwargs)
 
-    wrapper.__signature__ = inspect.signature(init_func)
+    wrapper.__signature__ = sig
     return wrapper
 
 
@@ -828,31 +903,25 @@ def legacy_reduction_special_decorator(
     Specialized decorator: add CrossEntropyLoss / KLDivLoss special case judgment
     based on the general legacy_reduction_decorator logic.
     """
+    sig = inspect.signature(init_func)
 
     @functools.wraps(init_func)
     def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
         cls_name = init_func.__qualname__.split(".")[0]
         use_args = args[1:]
-        reduce_val, size_avg_val = get_legacy_reduce_and_size_average(
-            cls_name, use_args, kwargs
+        reduce_val, size_avg_val, use_args = get_legacy_reduce_and_size_average(
+            cls_name, use_args, kwargs, special=True
         )
         if reduce_val != '' or size_avg_val != '':
-            if not (
-                (
-                    cls_name == 'CrossEntropyLoss'
-                    and len(use_args) > 2
-                    and use_args[2] in {'mean', 'sum', 'none'}
-                )
-                or (
-                    cls_name == 'KLDivLoss'
-                    and len(use_args) > 0
-                    and use_args[0] in {'mean', 'sum', 'none', 'batchmean'}
-                )
-            ):
-                raise_deprecated_error(cls_name, reduce_val, size_avg_val)
+            reduction = warn_legacy_reduction(
+                cls_name, reduce_val, size_avg_val
+            )
+            return _call_with_legacy_reduction(
+                init_func, sig, (args[0], *use_args), kwargs, reduction
+            )
         return init_func(*args, **kwargs)
 
-    wrapper.__signature__ = inspect.signature(init_func)
+    wrapper.__signature__ = sig
     return wrapper
 
 

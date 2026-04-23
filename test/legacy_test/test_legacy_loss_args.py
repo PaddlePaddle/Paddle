@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+import warnings
 
 import paddle
 from paddle.nn import (
@@ -37,11 +38,23 @@ from paddle.nn import (
 
 
 class TestLegacyLossArgs(unittest.TestCase):
-    def assertSuggests(self, loss_ctor, expected_reduction, **legacy_kwargs):
-        with self.assertRaises(ValueError) as cm:
-            loss_ctor(**legacy_kwargs)
-        msg = str(cm.exception)
-        self.assertIn(f"reduction='{expected_reduction}'", msg)
+    def getReduction(self, loss):
+        if hasattr(loss, 'reduction'):
+            return loss.reduction
+        return loss._reduction
+
+    def assertLegacyReduction(
+        self, loss_ctor, expected_reduction, *args, **legacy_kwargs
+    ):
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            loss = loss_ctor(*args, **legacy_kwargs)
+        actual_reduction = self.getReduction(loss)
+        self.assertEqual(actual_reduction, expected_reduction)
+        self.assertTrue(caught)
+        self.assertIn(
+            f"reduction='{expected_reduction}'", str(caught[-1].message)
+        )
 
     def test_no_legacy_all_constructible(self):
         # Ensure all 17 losses still construct with reduction only
@@ -94,58 +107,72 @@ class TestLegacyLossArgs(unittest.TestCase):
     # Cover legacy combos across the family (not each loss needs all combos)
 
     def test_cross_entropy_reduce_false(self):
-        self.assertSuggests(CrossEntropyLoss, 'none', reduce=False)
+        self.assertLegacyReduction(CrossEntropyLoss, 'none', reduce=False)
 
     def test_mse_reduce_true_size_average_false(self):
-        self.assertSuggests(MSELoss, 'sum', reduce=True, size_average=False)
+        self.assertLegacyReduction(
+            MSELoss, 'sum', reduce=True, size_average=False
+        )
 
     def test_bcewithlogits_reduce_true_size_average_true(self):
-        self.assertSuggests(
+        self.assertLegacyReduction(
             BCEWithLogitsLoss, 'mean', reduce=True, size_average=True
         )
 
     def test_l1_size_average_false_only(self):
-        self.assertSuggests(L1Loss, 'sum', size_average=False)
+        self.assertLegacyReduction(L1Loss, 'sum', size_average=False)
 
     def test_kldiv_reduce_true_size_average_none(self):
-        self.assertSuggests(KLDivLoss, 'mean', reduce=True, size_average=None)
+        self.assertLegacyReduction(
+            KLDivLoss, 'mean', reduce=True, size_average=None
+        )
 
     def test_multimargin_reduce_false(self):
-        self.assertSuggests(MultiMarginLoss, 'none', reduce=False)
+        self.assertLegacyReduction(MultiMarginLoss, 'none', reduce=False)
 
     def test_multilabel_margin_size_average_false(self):
-        self.assertSuggests(MultiLabelMarginLoss, 'sum', size_average=False)
+        self.assertLegacyReduction(
+            MultiLabelMarginLoss, 'sum', size_average=False
+        )
 
     def test_cosine_embedding_reduce_true_size_average_true(self):
-        self.assertSuggests(
+        self.assertLegacyReduction(
             CosineEmbeddingLoss, 'mean', reduce=True, size_average=True
         )
 
     def test_margin_ranking_reduce_true_size_average_false(self):
-        self.assertSuggests(
+        self.assertLegacyReduction(
             MarginRankingLoss, 'sum', reduce=True, size_average=False
         )
 
     def test_soft_margin_reduce_false(self):
-        self.assertSuggests(SoftMarginLoss, 'none', reduce=False)
+        self.assertLegacyReduction(SoftMarginLoss, 'none', reduce=False)
 
     def test_smooth_l1_size_average_false(self):
-        self.assertSuggests(SmoothL1Loss, 'sum', size_average=False)
+        self.assertLegacyReduction(SmoothL1Loss, 'sum', size_average=False)
 
     def test_bce_reduce_true_size_average_true(self):
-        self.assertSuggests(BCELoss, 'mean', reduce=True, size_average=True)
+        self.assertLegacyReduction(
+            BCELoss, 'mean', reduce=True, size_average=True
+        )
 
     def test_nll_reduce_true_size_average_none(self):
-        self.assertSuggests(NLLLoss, 'mean', reduce=True, size_average=None)
+        self.assertLegacyReduction(
+            NLLLoss, 'mean', reduce=True, size_average=None
+        )
 
     def test_poisson_nll_reduce_false(self):
-        self.assertSuggests(PoissonNLLLoss, 'none', reduce=False)
+        self.assertLegacyReduction(
+            PoissonNLLLoss, 'none', reduce=False
+        )
 
     def test_multilabel_soft_margin_size_average_false(self):
-        self.assertSuggests(MultiLabelSoftMarginLoss, 'sum', size_average=False)
+        self.assertLegacyReduction(
+            MultiLabelSoftMarginLoss, 'sum', size_average=False
+        )
 
     def test_triplet_margin_reduce_true_size_average_false(self):
-        self.assertSuggests(
+        self.assertLegacyReduction(
             TripletMarginLoss, 'sum', reduce=True, size_average=False
         )
 
@@ -156,10 +183,13 @@ class TestLegacyLossArgs(unittest.TestCase):
 
     def test_ce_positional_legacy_reduce_trigger(self):
         # CrossEntropyLoss(weight=None, size_average=True, ignore_index, reduce=True)
-        with self.assertRaises(ValueError) as cm:
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
             w = paddle.ones([3], dtype='float32')
-            CrossEntropyLoss(w, True, -100, True)
-        self.assertIn("reduction='mean'", str(cm.exception))
+            loss = CrossEntropyLoss(w, True, -100, True)
+        self.assertEqual(loss.reduction, 'mean')
+        self.assertTrue(caught)
+        self.assertIn("reduction='mean'", str(caught[-1].message))
 
     def test_kldiv_positional_log_target_guard(self):
         # KLDivLoss(reduction='mean', log_target=True)
@@ -167,9 +197,13 @@ class TestLegacyLossArgs(unittest.TestCase):
 
     def test_kldiv_positional_legacy_reduce_trigger(self):
         # KLDivLoss(log_target=True)(Not provide reduction string, treat as legacy reduce)
-        with self.assertRaises(ValueError) as cm:
-            KLDivLoss(True)
-        self.assertIn("reduction='mean'", str(cm.exception))
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            loss = KLDivLoss(True)
+        actual_reduction = self.getReduction(loss)
+        self.assertEqual(actual_reduction, 'mean')
+        self.assertTrue(caught)
+        self.assertIn("reduction='mean'", str(caught[-1].message))
 
     def test_poisson_positional_eps_float_guard(self):
         # PoissonNLLLoss(log_input, full, eps)
@@ -177,9 +211,13 @@ class TestLegacyLossArgs(unittest.TestCase):
 
     def test_poisson_positional_legacy_reduce_trigger(self):
         # PoissonNLLLoss(log_input, full, size_average=True, epsilon, reduce=True)
-        with self.assertRaises(ValueError) as cm:
-            PoissonNLLLoss(True, False, True, 1e-8, True)
-        self.assertIn("reduction='mean'", str(cm.exception))
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            loss = PoissonNLLLoss(True, False, True, 1e-8, True)
+        actual_reduction = self.getReduction(loss)
+        self.assertEqual(actual_reduction, 'mean')
+        self.assertTrue(caught)
+        self.assertIn("reduction='mean'", str(caught[-1].message))
 
 
 if __name__ == '__main__':

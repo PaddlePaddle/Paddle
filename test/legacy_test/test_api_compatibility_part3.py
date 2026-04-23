@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+import warnings
 
 import numpy as np
 
@@ -2812,6 +2813,437 @@ class TestSquareInplaceAPI(unittest.TestCase):
         _assert_unary_inplace_result(self, x, out, ref_out)
 
         paddle.enable_static()
+
+
+class _LossLegacyReductionTestBase(unittest.TestCase):
+    def assertLegacyWarning(self, func, expected_reduction):
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            out = func()
+        self.assertTrue(caught)
+        self.assertIn(
+            f"reduction='{expected_reduction}'", str(caught[-1].message)
+        )
+        return out
+
+
+class TestBinaryCrossEntropyAPICompatibility(_LossLegacyReductionTestBase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.array(
+            [[0.2, 0.7, 0.8], [0.6, 0.4, 0.3]], dtype="float32"
+        )
+        self.np_label = np.array(
+            [[0.0, 1.0, 1.0], [1.0, 0.0, 0.0]], dtype="float32"
+        )
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_input)
+        label = paddle.to_tensor(self.np_label)
+
+        ref_mean = paddle.nn.functional.binary_cross_entropy(
+            x, label, reduction='mean'
+        )
+        ref_sum = paddle.nn.functional.binary_cross_entropy(
+            x, label, reduction='sum'
+        )
+        out1 = paddle.nn.functional.binary_cross_entropy(x, label)
+        out2 = paddle.nn.functional.binary_cross_entropy(
+            input=x, label=label
+        )
+        out3 = paddle.nn.functional.binary_cross_entropy(
+            input=x, target=label
+        )
+        out4 = paddle.nn.functional.binary_cross_entropy(x, target=label)
+        out5 = self.assertLegacyWarning(
+            lambda: paddle.nn.functional.binary_cross_entropy(
+                input=x, target=label, size_average=False, reduce=True
+            ),
+            'sum',
+        )
+        out6 = self.assertLegacyWarning(
+            lambda: paddle.nn.functional.binary_cross_entropy(
+                x, label, None, False, True
+            ),
+            'sum',
+        )
+
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(
+                out.numpy(), ref_mean.numpy(), rtol=1e-6
+            )
+        for out in [out5, out6]:
+            np.testing.assert_allclose(out.numpy(), ref_sum.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x",
+                shape=self.np_input.shape,
+                dtype=str(self.np_input.dtype),
+            )
+            label = paddle.static.data(
+                name="label",
+                shape=self.np_label.shape,
+                dtype=str(self.np_label.dtype),
+            )
+            ref_mean = paddle.nn.functional.binary_cross_entropy(
+                x, label, reduction='mean'
+            )
+            ref_sum = paddle.nn.functional.binary_cross_entropy(
+                x, label, reduction='sum'
+            )
+            out1 = paddle.nn.functional.binary_cross_entropy(x, label)
+            out2 = paddle.nn.functional.binary_cross_entropy(
+                input=x, label=label
+            )
+            out3 = paddle.nn.functional.binary_cross_entropy(
+                input=x, target=label
+            )
+            out4 = paddle.nn.functional.binary_cross_entropy(x, target=label)
+            out5 = self.assertLegacyWarning(
+                lambda: paddle.nn.functional.binary_cross_entropy(
+                    input=x, target=label, size_average=False, reduce=True
+                ),
+                'sum',
+            )
+            out6 = self.assertLegacyWarning(
+                lambda: paddle.nn.functional.binary_cross_entropy(
+                    x, label, None, False, True
+                ),
+                'sum',
+            )
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_input, "label": self.np_label},
+                fetch_list=[ref_mean, ref_sum, out1, out2, out3, out4, out5, out6],
+            )
+
+        ref_mean_np, ref_sum_np = fetches[:2]
+        for out in fetches[2:6]:
+            np.testing.assert_allclose(out, ref_mean_np, rtol=1e-6)
+        for out in fetches[6:]:
+            np.testing.assert_allclose(out, ref_sum_np, rtol=1e-6)
+
+
+class TestMseLossAPICompatibility(_LossLegacyReductionTestBase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.random.rand(2, 3).astype("float32")
+        self.np_label = np.random.rand(2, 3).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_input)
+        label = paddle.to_tensor(self.np_label)
+
+        ref_mean = paddle.nn.functional.mse_loss(x, label, reduction='mean')
+        ref_sum = paddle.nn.functional.mse_loss(x, label, reduction='sum')
+        out1 = paddle.nn.functional.mse_loss(x, label)
+        out2 = paddle.nn.functional.mse_loss(input=x, label=label)
+        out3 = paddle.nn.functional.mse_loss(input=x, target=label)
+        out4 = paddle.nn.functional.mse_loss(x, target=label)
+        out5 = self.assertLegacyWarning(
+            lambda: paddle.nn.functional.mse_loss(
+                input=x, target=label, size_average=False, reduce=True
+            ),
+            'sum',
+        )
+        out6 = self.assertLegacyWarning(
+            lambda: paddle.nn.functional.mse_loss(x, label, False, True),
+            'sum',
+        )
+
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(
+                out.numpy(), ref_mean.numpy(), rtol=1e-6
+            )
+        for out in [out5, out6]:
+            np.testing.assert_allclose(out.numpy(), ref_sum.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x",
+                shape=self.np_input.shape,
+                dtype=str(self.np_input.dtype),
+            )
+            label = paddle.static.data(
+                name="label",
+                shape=self.np_label.shape,
+                dtype=str(self.np_label.dtype),
+            )
+            ref_mean = paddle.nn.functional.mse_loss(x, label, reduction='mean')
+            ref_sum = paddle.nn.functional.mse_loss(x, label, reduction='sum')
+            out1 = paddle.nn.functional.mse_loss(x, label)
+            out2 = paddle.nn.functional.mse_loss(input=x, label=label)
+            out3 = paddle.nn.functional.mse_loss(input=x, target=label)
+            out4 = paddle.nn.functional.mse_loss(x, target=label)
+            out5 = self.assertLegacyWarning(
+                lambda: paddle.nn.functional.mse_loss(
+                    input=x, target=label, size_average=False, reduce=True
+                ),
+                'sum',
+            )
+            out6 = self.assertLegacyWarning(
+                lambda: paddle.nn.functional.mse_loss(x, label, False, True),
+                'sum',
+            )
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_input, "label": self.np_label},
+                fetch_list=[ref_mean, ref_sum, out1, out2, out3, out4, out5, out6],
+            )
+
+        ref_mean_np, ref_sum_np = fetches[:2]
+        for out in fetches[2:6]:
+            np.testing.assert_allclose(out, ref_mean_np, rtol=1e-6)
+        for out in fetches[6:]:
+            np.testing.assert_allclose(out, ref_sum_np, rtol=1e-6)
+
+
+class TestNllLossAPICompatibility(_LossLegacyReductionTestBase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_logits = np.array(
+            [[1.0, 3.0, 2.0], [2.0, 1.5, 0.5]], dtype="float32"
+        )
+        self.np_label = np.array([1, 0], dtype="int64")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        logits = paddle.to_tensor(self.np_logits)
+        label = paddle.to_tensor(self.np_label)
+        log_probs = paddle.nn.functional.log_softmax(logits, axis=1)
+
+        ref_mean = paddle.nn.functional.nll_loss(
+            log_probs, label, reduction='mean'
+        )
+        ref_sum = paddle.nn.functional.nll_loss(
+            log_probs, label, reduction='sum'
+        )
+        out1 = paddle.nn.functional.nll_loss(log_probs, label)
+        out2 = paddle.nn.functional.nll_loss(
+            input=log_probs, label=label, ignore_index=-100
+        )
+        out3 = paddle.nn.functional.nll_loss(
+            input=log_probs, target=label, ignore_index=-100
+        )
+        out4 = paddle.nn.functional.nll_loss(
+            log_probs, target=label, ignore_index=-100
+        )
+        out5 = self.assertLegacyWarning(
+            lambda: paddle.nn.functional.nll_loss(
+                input=log_probs,
+                target=label,
+                ignore_index=-100,
+                size_average=False,
+                reduce=True,
+            ),
+            'sum',
+        )
+        out6 = self.assertLegacyWarning(
+            lambda: paddle.nn.functional.nll_loss(
+                log_probs, label, None, False, -100, True
+            ),
+            'sum',
+        )
+
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(
+                out.numpy(), ref_mean.numpy(), rtol=1e-6
+            )
+        for out in [out5, out6]:
+            np.testing.assert_allclose(out.numpy(), ref_sum.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            logits = paddle.static.data(
+                name="logits",
+                shape=self.np_logits.shape,
+                dtype=str(self.np_logits.dtype),
+            )
+            label = paddle.static.data(
+                name="label",
+                shape=self.np_label.shape,
+                dtype=str(self.np_label.dtype),
+            )
+            log_probs = paddle.nn.functional.log_softmax(logits, axis=1)
+            ref_mean = paddle.nn.functional.nll_loss(
+                log_probs, label, reduction='mean'
+            )
+            ref_sum = paddle.nn.functional.nll_loss(
+                log_probs, label, reduction='sum'
+            )
+            out1 = paddle.nn.functional.nll_loss(log_probs, label)
+            out2 = paddle.nn.functional.nll_loss(
+                input=log_probs, label=label, ignore_index=-100
+            )
+            out3 = paddle.nn.functional.nll_loss(
+                input=log_probs, target=label, ignore_index=-100
+            )
+            out4 = paddle.nn.functional.nll_loss(
+                log_probs, target=label, ignore_index=-100
+            )
+            out5 = self.assertLegacyWarning(
+                lambda: paddle.nn.functional.nll_loss(
+                    input=log_probs,
+                    target=label,
+                    ignore_index=-100,
+                    size_average=False,
+                    reduce=True,
+                ),
+                'sum',
+            )
+            out6 = self.assertLegacyWarning(
+                lambda: paddle.nn.functional.nll_loss(
+                    log_probs, label, None, False, -100, True
+                ),
+                'sum',
+            )
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"logits": self.np_logits, "label": self.np_label},
+                fetch_list=[ref_mean, ref_sum, out1, out2, out3, out4, out5, out6],
+            )
+
+        ref_mean_np, ref_sum_np = fetches[:2]
+        for out in fetches[2:6]:
+            np.testing.assert_allclose(out, ref_mean_np, rtol=1e-6)
+        for out in fetches[6:]:
+            np.testing.assert_allclose(out, ref_sum_np, rtol=1e-6)
+
+
+class TestMultiMarginLossAPICompatibility(_LossLegacyReductionTestBase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.array(
+            [[1.0, 5.0, 3.0], [0.0, 3.0, 2.0], [1.0, 4.0, 1.0]],
+            dtype="float32",
+        )
+        self.np_label = np.array([1, 2, 1], dtype="int64")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_input)
+        label = paddle.to_tensor(self.np_label)
+
+        ref_mean = paddle.nn.functional.multi_margin_loss(
+            x, label, reduction='mean'
+        )
+        ref_sum = paddle.nn.functional.multi_margin_loss(
+            x, label, reduction='sum'
+        )
+        out1 = paddle.nn.functional.multi_margin_loss(x, label)
+        out2 = paddle.nn.functional.multi_margin_loss(input=x, label=label)
+        out3 = paddle.nn.functional.multi_margin_loss(input=x, target=label)
+        out4 = paddle.nn.functional.multi_margin_loss(x, target=label)
+        out5 = self.assertLegacyWarning(
+            lambda: paddle.nn.functional.multi_margin_loss(
+                input=x,
+                target=label,
+                p=1,
+                margin=1.0,
+                weight=None,
+                size_average=False,
+                reduce=True,
+            ),
+            'sum',
+        )
+        out6 = self.assertLegacyWarning(
+            lambda: paddle.nn.functional.multi_margin_loss(
+                x, label, 1, 1.0, None, False, True
+            ),
+            'sum',
+        )
+
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(
+                out.numpy(), ref_mean.numpy(), rtol=1e-6
+            )
+        for out in [out5, out6]:
+            np.testing.assert_allclose(out.numpy(), ref_sum.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x",
+                shape=self.np_input.shape,
+                dtype=str(self.np_input.dtype),
+            )
+            label = paddle.static.data(
+                name="label",
+                shape=self.np_label.shape,
+                dtype=str(self.np_label.dtype),
+            )
+            ref_mean = paddle.nn.functional.multi_margin_loss(
+                x, label, reduction='mean'
+            )
+            ref_sum = paddle.nn.functional.multi_margin_loss(
+                x, label, reduction='sum'
+            )
+            out1 = paddle.nn.functional.multi_margin_loss(x, label)
+            out2 = paddle.nn.functional.multi_margin_loss(input=x, label=label)
+            out3 = paddle.nn.functional.multi_margin_loss(input=x, target=label)
+            out4 = paddle.nn.functional.multi_margin_loss(x, target=label)
+            out5 = self.assertLegacyWarning(
+                lambda: paddle.nn.functional.multi_margin_loss(
+                    input=x,
+                    target=label,
+                    p=1,
+                    margin=1.0,
+                    weight=None,
+                    size_average=False,
+                    reduce=True,
+                ),
+                'sum',
+            )
+            out6 = self.assertLegacyWarning(
+                lambda: paddle.nn.functional.multi_margin_loss(
+                    x, label, 1, 1.0, None, False, True
+                ),
+                'sum',
+            )
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_input, "label": self.np_label},
+                fetch_list=[ref_mean, ref_sum, out1, out2, out3, out4, out5, out6],
+            )
+
+        ref_mean_np, ref_sum_np = fetches[:2]
+        for out in fetches[2:6]:
+            np.testing.assert_allclose(out, ref_mean_np, rtol=1e-6)
+        for out in fetches[6:]:
+            np.testing.assert_allclose(out, ref_sum_np, rtol=1e-6)
 
 
 if __name__ == "__main__":
