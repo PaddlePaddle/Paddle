@@ -718,9 +718,13 @@ def convert_range(*args):
     # the scalar case also be convert as a `Full` OP output.
     # So we add an `Assign` OP after the Tensor input to **mark** it as a variable, which can avoid confusing
     # it with the scalar case.
+    is_full_op_output = lambda x: (
+        isinstance(x, (Variable, Value))
+        and x.get_defining_op()
+        and x.get_defining_op().name() == "pd_op.full"
+    )
     args = [
-        paddle.assign(arg) if isinstance(arg, (Variable, Value)) else arg
-        for arg in args
+        paddle.assign(arg) if is_full_op_output(arg) else arg for arg in args
     ]
     if has_variable:
         if len(args) == 1:
