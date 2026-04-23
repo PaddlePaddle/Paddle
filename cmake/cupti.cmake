@@ -8,7 +8,10 @@ if(WITH_ROCM)
   elseif(EXISTS "${ROCM_PATH}/cuda/cuda/extras/CUPTI")
     set(ROCM_CUDA_DIR "${ROCM_PATH}/cuda/cuda")
   else()
-    message(FATAL_ERROR "CUPTI not found under ${ROCM_PATH}/cuda/extras/CUPTI or ${ROCM_PATH}/cuda/cuda/extras/CUPTI")
+    message(
+      FATAL_ERROR
+        "CUPTI not found under ${ROCM_PATH}/cuda/extras/CUPTI or ${ROCM_PATH}/cuda/cuda/extras/CUPTI"
+    )
   endif()
   set(CUPTI_ROOT
       "${ROCM_CUDA_DIR}/extras/CUPTI"
