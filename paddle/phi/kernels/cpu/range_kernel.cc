@@ -50,31 +50,15 @@ void RangeTensorKernel(const Context& dev_ctx,
                    phi::IsFloatingType(end.dtype()) ||
                    phi::IsFloatingType(step.dtype());
   int64_t size = 0;
-  T start_value, step_value;
   Scalar start_scalar(start);
   Scalar end_scalar(end);
   Scalar step_scalar(step);
-  if (any_float) {
-    // double sv = start.data<double>()[0];
-    // double ev = end.data<double>()[0];
-    // double stv = step.data<double>()[0];
-    double sv = start_scalar.to<double>();
-    double ev = end_scalar.to<double>();
-    double stv = step_scalar.to<double>();
-    funcs::GetSizeForRange(sv, ev, stv, &size);
-    start_value = static_cast<T>(sv);
-    step_value = static_cast<T>(stv);
-  } else {
-    // int64_t sv = start.data<int64_t>()[0];
-    // int64_t ev = end.data<int64_t>()[0];
-    // int64_t stv = step.data<int64_t>()[0];
-    int64_t sv = start_scalar.to<int64_t>();
-    int64_t ev = end_scalar.to<int64_t>();
-    int64_t stv = step_scalar.to<int64_t>();
-    funcs::GetSizeForRange(sv, ev, stv, &size);
-    start_value = static_cast<T>(sv);
-    step_value = static_cast<T>(stv);
-  }
+  T start_value = start_scalar.to<T>();
+  T end_value = end_scalar.to<T>();
+  T step_value = step_scalar.to<T>();
+
+  funcs::GetSizeForRange(start_value, end_value, step_value, &size);
+
   out->Resize({size});
   T* out_data = dev_ctx.template Alloc<T>(out);
   if (size == 0) {
@@ -94,25 +78,10 @@ void RangeKernel(const Context& dev_ctx,
                  const Scalar& step,
                  DenseTensor* out) {
   int64_t size = 0;
-  T start_value, step_value;
-  bool any_float = phi::IsFloatingType(start.dtype()) ||
-                   phi::IsFloatingType(end.dtype()) ||
-                   phi::IsFloatingType(step.dtype());
-  if (any_float) {
-    double sv = start.to<double>();
-    double ev = end.to<double>();
-    double stv = step.to<double>();
-    funcs::GetSizeForRange(sv, ev, stv, &size);
-    start_value = static_cast<T>(sv);
-    step_value = static_cast<T>(stv);
-  } else {
-    int64_t sv = start.to<int64_t>();
-    int64_t ev = end.to<int64_t>();
-    int64_t stv = step.to<int64_t>();
-    funcs::GetSizeForRange(sv, ev, stv, &size);
-    start_value = static_cast<T>(sv);
-    step_value = static_cast<T>(stv);
-  }
+  T start_value = start.to<T>();
+  T end_value = end.to<T>();
+  T step_value = step.to<T>();
+  funcs::GetSizeForRange(start_value, end_value, step_value, &size);
   out->Resize({size});
   T* out_data = dev_ctx.template Alloc<T>(out);
   if (size == 0) {

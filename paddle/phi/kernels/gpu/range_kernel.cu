@@ -41,47 +41,23 @@ void RangeTensorKernel(const Context& dev_ctx,
                        const DenseTensor& end,
                        const DenseTensor& step,
                        DenseTensor* out) {
-  bool any_float = phi::IsFloatingType(start.dtype()) ||
-                   phi::IsFloatingType(end.dtype()) ||
-                   phi::IsFloatingType(step.dtype());
   int64_t size = 0;
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  MPType start_value, step_value;
-  if (any_float) {
-    double sv, ev, stv;
-    PD_VISIT_ALL_TYPES(
-        start.dtype(), "GetStart", ([&] {
-          sv = static_cast<double>(GetValue<data_t, Context>(dev_ctx, start));
-        }));
-    PD_VISIT_ALL_TYPES(
-        end.dtype(), "GetEnd", ([&] {
-          ev = static_cast<double>(GetValue<data_t, Context>(dev_ctx, end));
-        }));
-    PD_VISIT_ALL_TYPES(
-        step.dtype(), "GetStep", ([&] {
-          stv = static_cast<double>(GetValue<data_t, Context>(dev_ctx, step));
-        }));
-    funcs::GetSizeForRange<double>(sv, ev, stv, &size);
-    start_value = static_cast<MPType>(sv);
-    step_value = static_cast<MPType>(stv);
-  } else {
-    int64_t sv, ev, stv;
-    PD_VISIT_ALL_TYPES(
-        start.dtype(), "GetStart", ([&] {
-          sv = static_cast<int64_t>(GetValue<data_t, Context>(dev_ctx, start));
-        }));
-    PD_VISIT_ALL_TYPES(
-        end.dtype(), "GetEnd", ([&] {
-          ev = static_cast<int64_t>(GetValue<data_t, Context>(dev_ctx, end));
-        }));
-    PD_VISIT_ALL_TYPES(
-        step.dtype(), "GetStep", ([&] {
-          stv = static_cast<int64_t>(GetValue<data_t, Context>(dev_ctx, step));
-        }));
-    funcs::GetSizeForRange<int64_t>(sv, ev, stv, &size);
-    start_value = static_cast<MPType>(sv);
-    step_value = static_cast<MPType>(stv);
-  }
+  MPType start_value, end_value, step_value;
+
+  PD_VISIT_ALL_TYPES(start.dtype(), "GetStart", ([&] {
+                       start_value = static_cast<float>(
+                           GetValue<data_t, Context>(dev_ctx, start));
+                     }));
+  PD_VISIT_ALL_TYPES(
+      end.dtype(), "GetEnd", ([&] {
+        end_value = static_cast<float>(GetValue<data_t, Context>(dev_ctx, end));
+      }));
+  PD_VISIT_ALL_TYPES(step.dtype(), "GetStep", ([&] {
+                       step_value = static_cast<MPType>(
+                           GetValue<data_t, Context>(dev_ctx, step));
+                     }));
+  funcs::GetSizeForRange(start_value, end_value, step_value, &size);
 
   out->Resize({size});
   T* out_data = dev_ctx.template Alloc<T>(out);
@@ -144,26 +120,12 @@ void RangeKernel(const Context& dev_ctx,
                  const Scalar& end,
                  const Scalar& step,
                  DenseTensor* out) {
-  bool any_float = phi::IsFloatingType(start.dtype()) ||
-                   phi::IsFloatingType(end.dtype()) ||
-                   phi::IsFloatingType(step.dtype());
   int64_t size = 0;
-  if (any_float) {
-    double sv, ev, stv;
-    sv = start.to<double>();
-    ev = end.to<double>();
-    stv = step.to<double>();
-    funcs::GetSizeForRange<double>(sv, ev, stv, &size);
-  } else {
-    int64_t sv, ev, stv;
-    sv = start.to<int64_t>();
-    ev = end.to<int64_t>();
-    stv = step.to<int64_t>();
-    funcs::GetSizeForRange<int64_t>(sv, ev, stv, &size);
-  }
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   MPType start_value = start.to<MPType>();
+  MPType end_value = end.to<MPType>();
   MPType step_value = step.to<MPType>();
+  funcs::GetSizeForRange<MPType>(start_value, end_value, step_value, &size);
   out->Resize({size});
   T* out_data = dev_ctx.template Alloc<T>(out);
   if (size == 0) {

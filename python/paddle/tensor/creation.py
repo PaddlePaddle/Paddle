@@ -2458,7 +2458,6 @@ def arange(
             type='range',
             inputs={'Start': start, 'End': end, 'Step': step},
             outputs={'Out': out},
-            attrs={'dtype': dtype},
         )
         out.stop_gradient = True
         if out_shape is not None:
