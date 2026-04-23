@@ -624,13 +624,16 @@ class MuonShardingOptimizer:
 
         with framework.no_grad():
             # --- 2D params: reduce to owner rank via each color's group ---
-            for comm_buffer in self.comm_buffer_2d:
-                if self.sd_release_grads and comm_buffer.grad_storage is None:
-                    if comm_buffer.need_reduce_scale_sync():
-                        for param in comm_buffer.params:
-                            comm_buffer._copy_grad_to_buffer(param)
-
             if self._use_fuse_gradients:
+                for comm_buffer in self.comm_buffer_2d:
+                    if (
+                        self.sd_release_grads
+                        and comm_buffer.grad_storage is None
+                    ):
+                        if comm_buffer.need_reduce_scale_sync():
+                            for param in comm_buffer.params:
+                                comm_buffer._copy_grad_to_buffer(param)
+
                 for comm_buffer in self.comm_buffer_2d:
                     comm_buffer._comm_grads()
             else:
