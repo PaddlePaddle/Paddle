@@ -342,7 +342,7 @@ inline void GetPreAxisPost(const DDim& xdim,
 
 template <typename T>
 struct PNormGradFunctor {
-  using MT = typenameMPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   HOSTDEVICE explicit inline PNormGradFunctor(float porder, float eps) {
     this->porder = static_cast<MT>(porder - 1.0f);
     this->eps = static_cast<MT>(eps);

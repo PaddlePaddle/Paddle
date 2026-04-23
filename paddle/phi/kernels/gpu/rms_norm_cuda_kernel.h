@@ -1231,7 +1231,7 @@ void RMSNormFwdKernel(const Context& dev_ctx,
                       double epsilon,
                       DenseTensor* y,
                       DenseTensor* invvar) {
-  using T_ACC = typenameMPTypeTrait<T>::Type;
+  using T_ACC = typename MPTypeTrait<T>::Type;
 
   if (x.numel() == 0) {
     dev_ctx.template Alloc<T>(y);
@@ -1328,7 +1328,7 @@ void RMSNormBwdKernel(const Context& dev_ctx,
                       double epsilon,
                       DenseTensor* dX,
                       DenseTensor* dscale) {
-  using T_ACC = typenameMPTypeTrait<T>::Type;
+  using T_ACC = typename MPTypeTrait<T>::Type;
 
   if (X.numel() == 0) {
     if (dX) {
