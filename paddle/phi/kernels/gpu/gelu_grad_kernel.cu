@@ -58,9 +58,9 @@ struct GeluWithoutApproximateGradFunctor {
   inline HOSTDEVICE T operator()(T arg_x, T arg_dout) {
     MT x = static_cast<MT>(arg_x);
     MT dout = static_cast<MT>(arg_dout);
-    constexpr MT kBeta = M_2_SQRTPI * M_SQRT1_2 * MPType(0.5);
+    constexpr MT kBeta = M_2_SQRTPI * M_SQRT1_2 * MT(0.5);
     constexpr MT kAlpha = M_SQRT1_2;
-    const MT cdf = MPType(0.5) * (MPType(1) + std::erf(x * kAlpha));
+    const MT cdf = MT(0.5) * (MT(1) + std::erf(x * kAlpha));
     const MT pdf = exp(static_cast<MT>(-0.5) * x * x) * kBeta;
     return static_cast<T>(dout * (cdf + x * pdf));
   }

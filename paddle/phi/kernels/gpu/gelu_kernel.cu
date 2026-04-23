@@ -38,7 +38,7 @@ struct GeluWithApproximateFunctor {
     MT x = static_cast<MT>(arg_x);
     MT one = static_cast<MT>(1);
     MT half = static_cast<MT>(0.5);
-    MT kAlpha = M_SQRT2 * M_2_SQRTPI * MPType(0.5);
+    MT kAlpha = M_SQRT2 * M_2_SQRTPI * MT(0.5);
     auto tanh_out =
         tanh(kAlpha * (x + static_cast<MT>(GELU_CONSTANT) * (x * x * x)));
     MT out = half * x * (one + tanh_out);
@@ -54,7 +54,7 @@ struct GeluWithoutApproximateFunctor {
     MT x = static_cast<MT>(arg_x);
     // return static_cast<T>(x * normcdf(x));
     constexpr MT kAlpha = M_SQRT1_2;
-    return static_cast<T>(x * MPType(0.5) * (MPType(1) + std::erf(x * kAlpha)));
+    return static_cast<T>(x * MT(0.5) * (MT(1) + std::erf(x * kAlpha)));
   }
 };
 
