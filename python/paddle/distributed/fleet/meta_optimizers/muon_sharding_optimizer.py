@@ -252,6 +252,10 @@ class MuonShardingOptimizer:
             'moe_expert', {}
         )
 
+        self.sd_release_grads = (
+            strategy.hybrid_configs['pp_configs'].release_gradients
+            or sharding_configs.release_gradients
+        )
         self._use_fuse_gradients = g_shard_fused_gradient
         # ---- Build comm buffers for 2D params (V1-style) ----
         if self._use_fuse_gradients:
@@ -267,10 +271,6 @@ class MuonShardingOptimizer:
         ]
 
         self.param2bucket = {}
-        self.sd_release_grads = (
-            strategy.hybrid_configs['pp_configs'].release_gradients
-            or sharding_configs.release_gradients
-        )
 
         self._build_1d_comm_buffers()
 
@@ -454,7 +454,7 @@ class MuonShardingOptimizer:
                         self.accumulate_steps,
                         act=HOOK_ACTION.REDUCE,
                         dst=abs_dst,
-                        release_grads=False,
+                        release_grads=self.sd_release_grads,
                         use_reduce_avg=True,
                     )
                     for group_idx, parameters in var_groups.items()
@@ -623,7 +623,17 @@ class MuonShardingOptimizer:
             paddle.device.synchronize()
 
         with framework.no_grad():
+            # --- 2D params: reduce to owner rank via each color's group ---
             if self._use_fuse_gradients:
+                for comm_buffer in self.comm_buffer_2d:
+                    if (
+                        self.sd_release_grads
+                        and comm_buffer.grad_storage is None
+                    ):
+                        if comm_buffer.need_reduce_scale_sync():
+                            for param in comm_buffer.params:
+                                comm_buffer._copy_grad_to_buffer(param)
+
                 for comm_buffer in self.comm_buffer_2d:
                     comm_buffer._comm_grads()
             else:
