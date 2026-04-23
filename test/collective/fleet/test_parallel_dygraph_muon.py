@@ -39,6 +39,41 @@ class TestMuonParallel(TestMultipleAccelerators):
             need_envs={"FLAGS_shard_fused_gradient": "1"},
         )
 
+    def test_muon_sharding_fuse_optimizer_states(self):
+        """MuonSharding test with enable_fuse_optimizer_states=True.
+
+        Covers muon_sharding_optimizer.py L125 (use_fusion_storage).
+        """
+        self.run_mnist_2accelerators(
+            'hybrid_parallel_sharding_muon_model.py',
+            need_envs={"ENABLE_FUSE_OPTIMIZER_STATES": "1"},
+        )
+
+    def test_muon_sharding_release_grads_fused(self):
+        """MuonSharding test with fused gradient + release_gradients.
+
+        Covers muon_sharding_optimizer.py L633-635 (sd_release_grads path
+        in fused gradient reduce: copy_grad_to_buffer when grad_storage is None).
+        """
+        self.run_mnist_2accelerators(
+            'hybrid_parallel_sharding_muon_model.py',
+            need_envs={
+                "FLAGS_shard_fused_gradient": "1",
+                "RELEASE_GRADIENTS": "1",
+            },
+        )
+
+    def test_muon_sharding_multi_precision(self):
+        """MuonSharding test with multi_precision=True.
+
+        Covers muon.py L575 (master_weight.scale_ with weight_decay),
+        L582-583 (master_weight.subtract_ + assign back to param).
+        """
+        self.run_mnist_2accelerators(
+            'hybrid_parallel_sharding_muon_model.py',
+            need_envs={"MULTI_PRECISION": "1"},
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
