@@ -28,6 +28,17 @@ class TestMuonParallel(TestMultipleAccelerators):
         """
         self.run_mnist_2accelerators('hybrid_parallel_sharding_muon_model.py')
 
+    def test_muon_sharding_fused_gradient(self):
+        """MuonSharding test with FLAGS_shard_fused_gradient=1.
+
+        Covers muon_sharding_optimizer.py L627-635 (comm_buffer_2d reduce)
+        and L665-667 (comm_buffer_2d scale_grads).
+        """
+        self.run_mnist_2accelerators(
+            'hybrid_parallel_sharding_muon_model.py',
+            need_envs={"FLAGS_shard_fused_gradient": "1"},
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
