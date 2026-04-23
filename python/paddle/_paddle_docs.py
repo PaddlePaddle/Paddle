@@ -362,40 +362,11 @@ add_doc_and_signature(
     Examples:
         .. code-block:: pycon
 
-            >>> # doctest: +SKIP("This API is newly added, doctest to be enabled later")
             >>> import paddle
-
-            >>> # doctest: +SKIP("This API is newly added, doctest to be enabled later")
             >>> x = paddle.to_tensor([[0.1, 0.9, 0.9, 0.9],
             ...                       [0.9, 0.9, 0.6, 0.7]],
             ...                       dtype='float64', stop_gradient=False)
-            >>> min_val, max_val = paddle.aminmax(x)
-            >>> min_val
-            Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=False,
-            0.10000000)
-            >>> max_val
-            Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=False,
-            0.90000000)
-
-            >>> # doctest: +SKIP("This API is newly added, doctest to be enabled later")
-            >>> min_val, max_val = paddle.aminmax(x, axis=0)
-            >>> min_val
-            Tensor(shape=[4], dtype=float64, place=Place(cpu), stop_gradient=False,
-            [0.10000000, 0.90000000, 0.60000000, 0.70000000])
-            >>> max_val
-            Tensor(shape=[4], dtype=float64, place=Place(cpu), stop_gradient=False,
-            [0.90000000, 0.90000000, 0.90000000, 0.90000000])
-
-            >>> # doctest: +SKIP("This API is newly added, doctest to be enabled later")
-            >>> min_val, max_val = paddle.aminmax(x, axis=1, keepdim=True)
-            >>> min_val
-            Tensor(shape=[2, 1], dtype=float64, place=Place(cpu), stop_gradient=False,
-            [[0.10000000],
-             [0.60000000]])
-            >>> max_val
-            Tensor(shape=[2, 1], dtype=float64, place=Place(cpu), stop_gradient=False,
-            [[0.90000000],
-             [0.90000000]])
+            >>> # min_val, max_val = paddle.aminmax(x)  # doctest to be enabled after API is merged
 """,
     """
 def aminmax(
