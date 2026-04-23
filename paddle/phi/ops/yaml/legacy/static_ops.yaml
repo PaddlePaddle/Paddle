@@ -463,6 +463,20 @@
   backward : kthvalue_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
+- op : layer_norm
+  args : (Tensor x, Tensor scale, Tensor bias, float epsilon = 1e-5, int begin_norm_axis = 1)
+  output : Tensor(out), Tensor(mean), Tensor(variance)
+  infer_meta :
+    func : LayerNormInferMeta
+    spmd_rule : LayerNormInferSpmd
+  kernel :
+    func : layer_norm
+    data_type : x
+  backward : layer_norm_grad
+  intermediate : mean, variance
+  optional : scale, bias
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
+
 - op : leaky_relu
   args : (Tensor x, float negative_slope = 0.02)
   output : Tensor(out)
