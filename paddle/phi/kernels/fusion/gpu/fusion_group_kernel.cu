@@ -23,10 +23,10 @@
 namespace phi {
 namespace fusion {
 
-template <typename DeviceContext>
+template <typename Context>
 static void MutableMultiTypeData(std::vector<DenseTensor*>* var,
                                  const std::vector<int>& data_type,
-                                 const DeviceContext& dev_ctx) {
+                                 const Context& dev_ctx) {
   for (size_t i = 0; i < var->size(); i++) {
     if (data_type[i] == phi::TransToProtoVarType(phi::DataType::FLOAT32)) {
       dev_ctx.template Alloc<float>((*var)[i],
