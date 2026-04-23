@@ -811,9 +811,7 @@ def _should_skip_positional_reduce(api_name, args):
     return False
 
 
-def get_legacy_reduce_and_size_average(
-    api_name, args, kwargs, special=False
-):
+def get_legacy_reduce_and_size_average(api_name, args, kwargs, special=False):
     reduce_val = ''
     size_avg_val = ''
     pos = LEGACY_POS.get(api_name)
@@ -833,9 +831,8 @@ def get_legacy_reduce_and_size_average(
     idx = pos.get('reduce')
     if 'reduce' in kwargs:
         reduce_val = kwargs.pop('reduce')
-    elif (
-        len(args) > idx
-        and not (special and _should_skip_positional_reduce(api_name, args))
+    elif len(args) > idx and not (
+        special and _should_skip_positional_reduce(api_name, args)
     ):
         v = args[idx]
         if _is_legacy_reduction_value(v):

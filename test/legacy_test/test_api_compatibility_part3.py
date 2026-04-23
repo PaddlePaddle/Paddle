@@ -2849,12 +2849,8 @@ class TestBinaryCrossEntropyAPICompatibility(_LossLegacyReductionTestBase):
             x, label, reduction='sum'
         )
         out1 = paddle.nn.functional.binary_cross_entropy(x, label)
-        out2 = paddle.nn.functional.binary_cross_entropy(
-            input=x, label=label
-        )
-        out3 = paddle.nn.functional.binary_cross_entropy(
-            input=x, target=label
-        )
+        out2 = paddle.nn.functional.binary_cross_entropy(input=x, label=label)
+        out3 = paddle.nn.functional.binary_cross_entropy(input=x, target=label)
         out4 = paddle.nn.functional.binary_cross_entropy(x, target=label)
         out5 = self.assertLegacyWarning(
             lambda: paddle.nn.functional.binary_cross_entropy(
@@ -2870,9 +2866,7 @@ class TestBinaryCrossEntropyAPICompatibility(_LossLegacyReductionTestBase):
         )
 
         for out in [out1, out2, out3, out4]:
-            np.testing.assert_allclose(
-                out.numpy(), ref_mean.numpy(), rtol=1e-6
-            )
+            np.testing.assert_allclose(out.numpy(), ref_mean.numpy(), rtol=1e-6)
         for out in [out5, out6]:
             np.testing.assert_allclose(out.numpy(), ref_sum.numpy(), rtol=1e-6)
 
@@ -2924,7 +2918,16 @@ class TestBinaryCrossEntropyAPICompatibility(_LossLegacyReductionTestBase):
             fetches = exe.run(
                 main,
                 feed={"x": self.np_input, "label": self.np_label},
-                fetch_list=[ref_mean, ref_sum, out1, out2, out3, out4, out5, out6],
+                fetch_list=[
+                    ref_mean,
+                    ref_sum,
+                    out1,
+                    out2,
+                    out3,
+                    out4,
+                    out5,
+                    out6,
+                ],
             )
 
         ref_mean_np, ref_sum_np = fetches[:2]
@@ -2963,9 +2966,7 @@ class TestMseLossAPICompatibility(_LossLegacyReductionTestBase):
         )
 
         for out in [out1, out2, out3, out4]:
-            np.testing.assert_allclose(
-                out.numpy(), ref_mean.numpy(), rtol=1e-6
-            )
+            np.testing.assert_allclose(out.numpy(), ref_mean.numpy(), rtol=1e-6)
         for out in [out5, out6]:
             np.testing.assert_allclose(out.numpy(), ref_sum.numpy(), rtol=1e-6)
 
@@ -3007,7 +3008,16 @@ class TestMseLossAPICompatibility(_LossLegacyReductionTestBase):
             fetches = exe.run(
                 main,
                 feed={"x": self.np_input, "label": self.np_label},
-                fetch_list=[ref_mean, ref_sum, out1, out2, out3, out4, out5, out6],
+                fetch_list=[
+                    ref_mean,
+                    ref_sum,
+                    out1,
+                    out2,
+                    out3,
+                    out4,
+                    out5,
+                    out6,
+                ],
             )
 
         ref_mean_np, ref_sum_np = fetches[:2]
@@ -3065,9 +3075,7 @@ class TestNllLossAPICompatibility(_LossLegacyReductionTestBase):
         )
 
         for out in [out1, out2, out3, out4]:
-            np.testing.assert_allclose(
-                out.numpy(), ref_mean.numpy(), rtol=1e-6
-            )
+            np.testing.assert_allclose(out.numpy(), ref_mean.numpy(), rtol=1e-6)
         for out in [out5, out6]:
             np.testing.assert_allclose(out.numpy(), ref_sum.numpy(), rtol=1e-6)
 
@@ -3126,7 +3134,16 @@ class TestNllLossAPICompatibility(_LossLegacyReductionTestBase):
             fetches = exe.run(
                 main,
                 feed={"logits": self.np_logits, "label": self.np_label},
-                fetch_list=[ref_mean, ref_sum, out1, out2, out3, out4, out5, out6],
+                fetch_list=[
+                    ref_mean,
+                    ref_sum,
+                    out1,
+                    out2,
+                    out3,
+                    out4,
+                    out5,
+                    out6,
+                ],
             )
 
         ref_mean_np, ref_sum_np = fetches[:2]
@@ -3180,9 +3197,7 @@ class TestMultiMarginLossAPICompatibility(_LossLegacyReductionTestBase):
         )
 
         for out in [out1, out2, out3, out4]:
-            np.testing.assert_allclose(
-                out.numpy(), ref_mean.numpy(), rtol=1e-6
-            )
+            np.testing.assert_allclose(out.numpy(), ref_mean.numpy(), rtol=1e-6)
         for out in [out5, out6]:
             np.testing.assert_allclose(out.numpy(), ref_sum.numpy(), rtol=1e-6)
 
@@ -3236,7 +3251,16 @@ class TestMultiMarginLossAPICompatibility(_LossLegacyReductionTestBase):
             fetches = exe.run(
                 main,
                 feed={"x": self.np_input, "label": self.np_label},
-                fetch_list=[ref_mean, ref_sum, out1, out2, out3, out4, out5, out6],
+                fetch_list=[
+                    ref_mean,
+                    ref_sum,
+                    out1,
+                    out2,
+                    out3,
+                    out4,
+                    out5,
+                    out6,
+                ],
             )
 
         ref_mean_np, ref_sum_np = fetches[:2]
