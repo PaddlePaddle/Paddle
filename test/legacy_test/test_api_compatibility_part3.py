@@ -2007,6 +2007,10 @@ class TestLogitAPI(unittest.TestCase):
 
 
 # Test conv1d_transpose / conv_transpose1d compatibility
+@unittest.skipIf(
+    sys.platform == 'win32',
+    "Conv transpose compatibility tests not supported on Windows-Inference",
+)
 class TestConv1dTransposeAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -2137,10 +2141,6 @@ class TestConv1dTransposeAPI(unittest.TestCase):
 
 
 # Test conv2d_transpose / conv_transpose2d compatibility
-@unittest.skipIf(
-    sys.platform == 'win32',
-    "Conv transpose compatibility tests not supported on Windows-Inference",
-)
 class TestConv2dTransposeAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
