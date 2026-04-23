@@ -248,7 +248,7 @@ void FusedAttentionKernel(const Context &dev_ctx,
   }
   // (transA, transB, compute_bias) = (false, true, true)
   bool transB = transpose_qkv_wb ? false : true;
-  auto qkv_compute = phi::fusion::AttnMatMul<T>(
+  auto qkv_compute = fusion::AttnMatMul<T>(
       dev_ctx, false, transB, bsz_seq, output_size, input_size, compute_bias);
 
   phi::fusion::AttnDropoutParam attn_dropout_param(is_test,
@@ -268,7 +268,7 @@ void FusedAttentionKernel(const Context &dev_ctx,
   // which is actually the input size. While the input size is hidden size,
   // which is actually the output size. So for out linear, switch the
   // input size and output size.
-  auto out_linear_compute = phi::fusion::AttnMatMul<T>(
+  auto out_linear_compute = fusion::AttnMatMul<T>(
       dev_ctx, false, false, bsz_seq, input_size, output_size, false);
   phi::fusion::FusedDropoutLayerNormHelper<T, uint8_t>
       fused_dropout_layernorm_helper(

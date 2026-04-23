@@ -325,13 +325,13 @@ void FusedAttentionGradKernel(
   bool compute_qkv_bias = qkv_bias_p ? true : false;
   auto layer_norm_compute =
       phi::fusion::AttnLayerNorm<T>(dev_ctx, epsilon, bsz_seq, dim_embed);
-  auto qkv_compute = phi::fusion::AttnMatMul<T>(dev_ctx,
-                                                transA,
-                                                transB,
-                                                bsz_seq,
-                                                output_size,
-                                                input_size,
-                                                compute_qkv_bias);
+  auto qkv_compute = fusion::AttnMatMul<T>(dev_ctx,
+                                           transA,
+                                           transB,
+                                           bsz_seq,
+                                           output_size,
+                                           input_size,
+                                           compute_qkv_bias);
   phi::fusion::AttnDropoutParam attn_dropout_param(is_test,
                                                    attn_dropout_implementation,
                                                    attn_dropout_rate,
@@ -346,7 +346,7 @@ void FusedAttentionGradKernel(
   transB = false;
   bool compute_bias = false;
   // (b*s, num_head * dim_head) * (num_head * dim_head, dim_embed)
-  auto out_linear_compute = phi::fusion::AttnMatMul<T>(
+  auto out_linear_compute = fusion::AttnMatMul<T>(
       dev_ctx, transA, transB, bsz_seq, input_size, output_size, compute_bias);
   phi::fusion::FusedDropoutLayerNormHelper<T, uint8_t>
       fused_dropout_layernorm_helper(

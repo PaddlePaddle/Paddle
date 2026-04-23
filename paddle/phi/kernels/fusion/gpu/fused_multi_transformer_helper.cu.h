@@ -132,13 +132,13 @@ class GEMMHelper {
     using NvType = typename phi::PDDataTypeTraits<T>::DataType;
 
     if (gemm_method_ == "None") {
-      auto ffn_linear_compute = phi::fusion::AttnMatMul<T>(dev_ctx_,
-                                                           false,
-                                                           transpose_weight_,
-                                                           token_num_,
-                                                           dim_ffn_,
-                                                           dim_embed_,
-                                                           compute_bias);
+      auto ffn_linear_compute = fusion::AttnMatMul<T>(dev_ctx_,
+                                                      false,
+                                                      transpose_weight_,
+                                                      token_num_,
+                                                      dim_ffn_,
+                                                      dim_embed_,
+                                                      compute_bias);
       ffn_linear_compute.ComputeForward(weight, input, bias, output, output);
     } else {
       PADDLE_THROW(common::errors::Unimplemented(

@@ -52,7 +52,7 @@ void ComputeMergedQKVMatmulForward(const GPUContext &dev_ctx,
   int n = 3 * config.num_heads * config.head_dim;
   int k = config.q_dim;
   auto qkv_compute =
-      phi::fusion::AttnMatMul<T>(dev_ctx, false, true, m, n, k, false);
+      fusion::AttnMatMul<T>(dev_ctx, false, true, m, n, k, false);
   qkv_compute.ComputeForward(qkv_weight, query, nullptr, qkv_out, nullptr);
 }
 
@@ -80,7 +80,7 @@ void ComputeSeparatedQKVMatmulForward(
   int q_n = config.num_heads * config.head_dim;
   int q_k = config.q_dim;
   auto q_compute =
-      phi::fusion::AttnMatMul<T>(dev_ctx, false, false, q_m, q_n, q_k, false);
+      fusion::AttnMatMul<T>(dev_ctx, false, false, q_m, q_n, q_k, false);
   q_compute.ComputeForward(query_weight, query, nullptr, query_out, nullptr);
 
   // k_out = GEMM(key, key_weight)
@@ -90,8 +90,8 @@ void ComputeSeparatedQKVMatmulForward(
   int kv_m = config.batch_size * config.seq_len_m * config.m_size;
   int kv_n = config.num_heads * config.head_dim;
   int kv_k = config.kv_dim;
-  auto kv_compute = phi::fusion::AttnMatMul<T>(
-      dev_ctx, false, false, kv_m, kv_n, kv_k, false);
+  auto kv_compute =
+      fusion::AttnMatMul<T>(dev_ctx, false, false, kv_m, kv_n, kv_k, false);
   kv_compute.ComputeForward(key_weight, key, nullptr, key_out, nullptr);
 
   // value_out = GEMM(value, value_weight)
@@ -118,7 +118,7 @@ void ComputeGatingLinearForward(const GPUContext &dev_ctx,
   int n = config.num_heads * config.head_dim;
   int k = config.q_dim;
   auto gate_linear =
-      phi::fusion::AttnMatMul<T>(dev_ctx, false, false, m, n, k, true);
+      fusion::AttnMatMul<T>(dev_ctx, false, false, m, n, k, true);
   gate_linear.ComputeForward(gate_weight,
                              query,
                              gate_bias,
@@ -147,8 +147,7 @@ void ComputeOutputLinearForward(const GPUContext &dev_ctx,
   int m = config.batch_size * config.seq_len_m * config.seq_len_r;
   int n = config.q_dim;
   int k = config.num_heads * config.head_dim;
-  auto out_linear =
-      phi::fusion::AttnMatMul<T>(dev_ctx, false, false, m, n, k, true);
+  auto out_linear = fusion::AttnMatMul<T>(dev_ctx, false, false, m, n, k, true);
   out_linear.ComputeForward(out_linear_weight,
                             fmha_or_gate_out,
                             out_linear_bias,
