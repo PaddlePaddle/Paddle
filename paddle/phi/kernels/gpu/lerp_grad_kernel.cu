@@ -42,7 +42,7 @@ __global__ void LerpGradKernelImpl(const T* weight,
                                    const int64_t out_size,
                                    const int64_t x_size,
                                    const int64_t y_size) {
-  using MPType = typename dtype::MPTypeTrait<T>::Type;
+  using MPType = typenameMPTypeTrait<T>::Type;
   CUDA_KERNEL_LOOP_TYPE(idx, out_size, int64_t) {
     MPType temp_dx =
         static_cast<MPType>(weight[idx]) * static_cast<MPType>(dout[idx]);

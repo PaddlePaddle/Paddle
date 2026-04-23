@@ -712,18 +712,17 @@ void launch_vectorized_layer_norm_kernel_driver(int N,
 }
 
 template <typename T, typename Context>
-void LayerNormFwdCompatKernel(
-    const Context& dev_ctx,
-    const T* x_data,
-    const T* gamma_data,
-    const T* beta_data,
-    double epsilon,
-    int64_t rows,
-    int64_t cols,
-    T* y_data,
-    typename phi::dtype::MPTypeTrait<T>::Type* mean_data,
-    typename phi::dtype::MPTypeTrait<T>::Type* var_data) {
-  using T_ACC = typename phi::dtype::MPTypeTrait<T>::Type;
+void LayerNormFwdCompatKernel(const Context& dev_ctx,
+                              const T* x_data,
+                              const T* gamma_data,
+                              const T* beta_data,
+                              double epsilon,
+                              int64_t rows,
+                              int64_t cols,
+                              T* y_data,
+                              typename MPTypeTrait<T>::Type* mean_data,
+                              typename MPTypeTrait<T>::Type* var_data) {
+  using T_ACC = typename MPTypeTrait<T>::Type;
 
   if (rows == 0 || cols == 0) {
     return;
@@ -1232,7 +1231,7 @@ void RMSNormFwdKernel(const Context& dev_ctx,
                       double epsilon,
                       DenseTensor* y,
                       DenseTensor* invvar) {
-  using T_ACC = typename dtype::MPTypeTrait<T>::Type;
+  using T_ACC = typenameMPTypeTrait<T>::Type;
 
   if (x.numel() == 0) {
     dev_ctx.template Alloc<T>(y);
@@ -1329,7 +1328,7 @@ void RMSNormBwdKernel(const Context& dev_ctx,
                       double epsilon,
                       DenseTensor* dX,
                       DenseTensor* dscale) {
-  using T_ACC = typename dtype::MPTypeTrait<T>::Type;
+  using T_ACC = typenameMPTypeTrait<T>::Type;
 
   if (X.numel() == 0) {
     if (dX) {
@@ -1998,20 +1997,19 @@ void ConfigureAndLaunchGammaBetaBackwardKernel(const T* dY_data,
 }
 
 template <typename T, typename Context>
-void LayerNormBwdCompatKernel(
-    const Context& dev_ctx,
-    const T* dY_data,
-    const T* X_data,
-    const T* gamma_data,
-    const typename phi::dtype::MPTypeTrait<T>::Type* mean_data,
-    const typename phi::dtype::MPTypeTrait<T>::Type* var_data,
-    T* dX_data,
-    T* dgamma_data,
-    T* dbeta_data,
-    double epsilon,
-    int64_t rows,
-    int64_t cols) {
-  using T_ACC = typename phi::dtype::MPTypeTrait<T>::Type;
+void LayerNormBwdCompatKernel(const Context& dev_ctx,
+                              const T* dY_data,
+                              const T* X_data,
+                              const T* gamma_data,
+                              const typename MPTypeTrait<T>::Type* mean_data,
+                              const typename MPTypeTrait<T>::Type* var_data,
+                              T* dX_data,
+                              T* dgamma_data,
+                              T* dbeta_data,
+                              double epsilon,
+                              int64_t rows,
+                              int64_t cols) {
+  using T_ACC = typename MPTypeTrait<T>::Type;
   if (rows == 0 || cols == 0) return;
   auto stream = dev_ctx.stream();
   int64_t M = rows;

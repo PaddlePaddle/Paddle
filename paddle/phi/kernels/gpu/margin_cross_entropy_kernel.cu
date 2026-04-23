@@ -124,7 +124,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
                               DenseTensor* softmax,
                               DenseTensor* loss) {
   const auto& place = dev_ctx.GetPlace();  // old code
-  using MPType = typename dtype::MPTypeTrait<T>::Type;
+  using MPType = typenameMPTypeTrait<T>::Type;
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   distributed::NCCLCommContext* comm_ctx = nullptr;

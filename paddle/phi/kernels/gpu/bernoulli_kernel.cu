@@ -53,7 +53,7 @@ __global__ void bernoulli_cuda_kernel(
   for (size_t i = 4 * thread_idx; i < size; i += total_thread * 4) {
     funcs::uniform_distribution<float> dist;
     float4 rand = dist(&state);
-    using MPType = typename dtype::MPTypeTrait<T>::Type;
+    using MPType = typenameMPTypeTrait<T>::Type;
 #pragma unroll
     for (size_t j = 0; j < 4; j++) {
       size_t idx = i + j;

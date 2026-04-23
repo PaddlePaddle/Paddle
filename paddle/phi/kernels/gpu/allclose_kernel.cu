@@ -36,7 +36,7 @@ __global__ void AllcloseCUDAKernel(const T* in_data,
                                    bool* out_data) {
   unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
   bool val;
-  using BaseMPType = typename dtype::MPTypeTrait<T>::Type;
+  using BaseMPType = typenameMPTypeTrait<T>::Type;
 
   using MPType =
       typename std::conditional<std::is_same<T, int32_t>::value ||
