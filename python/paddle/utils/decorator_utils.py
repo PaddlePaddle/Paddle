@@ -780,10 +780,6 @@ def compute_legacy_reduction(reduce_val, size_average_val):
     return 'sum' if size_average_val is False else 'mean'
 
 
-def _is_legacy_reduction_value(value):
-    return value is None or type(value) is bool
-
-
 def _convert_legacy_alias(api_name, kwargs):
     alias_map = LEGACY_ALIAS.get(api_name)
     if alias_map is None or not kwargs:
@@ -818,16 +814,16 @@ def get_legacy_reduce_and_size_average(api_name, args, kwargs, special=False):
     if pos is None:
         return reduce_val, size_avg_val, args
 
-    args = list(args)
-    remove_indices = set()
+    remove_size_average = False
+    remove_reduce = False
     idx = pos.get('size_average')
     if 'size_average' in kwargs:
         size_avg_val = kwargs.pop('size_average')
     elif len(args) > idx:
         v = args[idx]
-        if _is_legacy_reduction_value(v):
+        if type(v) is bool:
             size_avg_val = v
-            remove_indices.add(idx)
+            remove_size_average = True
     idx = pos.get('reduce')
     if 'reduce' in kwargs:
         reduce_val = kwargs.pop('reduce')
@@ -835,10 +831,20 @@ def get_legacy_reduce_and_size_average(api_name, args, kwargs, special=False):
         special and _should_skip_positional_reduce(api_name, args)
     ):
         v = args[idx]
-        if _is_legacy_reduction_value(v):
+        if type(v) is bool:
             reduce_val = v
-            remove_indices.add(idx)
-    args = tuple(v for i, v in enumerate(args) if i not in remove_indices)
+            remove_reduce = True
+    if remove_size_average or remove_reduce:
+        size_average_idx = pos.get('size_average')
+        reduce_idx = pos.get('reduce')
+        args = tuple(
+            v
+            for i, v in enumerate(args)
+            if not (
+                (remove_size_average and i == size_average_idx)
+                or (remove_reduce and i == reduce_idx)
+            )
+        )
     return reduce_val, size_avg_val, args
 
 
@@ -853,43 +859,63 @@ def warn_legacy_reduction(api_name, reduce_val, size_avg_val):
     return suggested
 
 
-def _call_with_legacy_reduction(func, sig, args, kwargs, reduction):
-    bound = sig.bind_partial(*args, **kwargs)
-    bound.arguments['reduction'] = reduction
-    return func(*bound.args, **bound.kwargs)
-
-
 def legacy_reduction_decorator(
     init_func: Callable[_InputT, _RetT],
 ) -> Callable[_InputT, _RetT]:
     """
     Function decorator for __init__: intercept deprecated 'reduce' and 'size_average'.
     """
-    sig = inspect.signature(init_func)
-    param_names = list(sig.parameters)
-    is_method = bool(param_names and param_names[0] == 'self')
+    api_name = init_func.__qualname__.split(".")[0]
+    is_function = api_name in LEGACY_ALIAS
+    pos = LEGACY_POS.get(api_name)
+    size_average_idx = pos.get('size_average') if pos else None
 
-    @functools.wraps(init_func)
-    def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
-        # avoid subclass calling parent class init, causing cls_name to be inaccurate
-        api_name = init_func.__qualname__.split(".")[0]
-        _convert_legacy_alias(api_name, kwargs)
-        use_args = args[1:] if is_method else args
-        reduce_val, size_avg_val, use_args = get_legacy_reduce_and_size_average(
-            api_name, use_args, kwargs
-        )
-        if reduce_val != '' or size_avg_val != '':
-            reduction = warn_legacy_reduction(
-                api_name, reduce_val, size_avg_val
+    if is_function:
+
+        @functools.wraps(init_func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            if (
+                not kwargs
+                and size_average_idx is not None
+                and len(args) <= size_average_idx
+            ):
+                return init_func(*args)
+            if kwargs:
+                _convert_legacy_alias(api_name, kwargs)
+            reduce_val, size_avg_val, use_args = (
+                get_legacy_reduce_and_size_average(api_name, args, kwargs)
             )
-            call_args = (args[0], *use_args) if is_method else use_args
-            return _call_with_legacy_reduction(
-                init_func, sig, call_args, kwargs, reduction
+            if reduce_val != '' or size_avg_val != '':
+                kwargs['reduction'] = warn_legacy_reduction(
+                    api_name, reduce_val, size_avg_val
+                )
+                return init_func(*use_args, **kwargs)
+
+            return init_func(*args, **kwargs)
+
+    else:
+
+        @functools.wraps(init_func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            if (
+                not kwargs
+                and size_average_idx is not None
+                and len(args) - 1 <= size_average_idx
+            ):
+                return init_func(*args)
+            use_args = args[1:]
+            reduce_val, size_avg_val, use_args = (
+                get_legacy_reduce_and_size_average(api_name, use_args, kwargs)
             )
+            if reduce_val != '' or size_avg_val != '':
+                kwargs['reduction'] = warn_legacy_reduction(
+                    api_name, reduce_val, size_avg_val
+                )
+                return init_func(args[0], *use_args, **kwargs)
 
-        return init_func(*args, **kwargs)
+            return init_func(*args, **kwargs)
 
-    wrapper.__signature__ = sig
+    wrapper.__signature__ = inspect.signature(init_func)
     return wrapper
 
 
@@ -900,25 +926,30 @@ def legacy_reduction_special_decorator(
     Specialized decorator: add CrossEntropyLoss / KLDivLoss special case judgment
     based on the general legacy_reduction_decorator logic.
     """
-    sig = inspect.signature(init_func)
+    cls_name = init_func.__qualname__.split(".")[0]
+    pos = LEGACY_POS.get(cls_name)
+    size_average_idx = pos.get('size_average') if pos else None
 
     @functools.wraps(init_func)
     def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
-        cls_name = init_func.__qualname__.split(".")[0]
+        if (
+            not kwargs
+            and size_average_idx is not None
+            and len(args) - 1 <= size_average_idx
+        ):
+            return init_func(*args)
         use_args = args[1:]
         reduce_val, size_avg_val, use_args = get_legacy_reduce_and_size_average(
             cls_name, use_args, kwargs, special=True
         )
         if reduce_val != '' or size_avg_val != '':
-            reduction = warn_legacy_reduction(
+            kwargs['reduction'] = warn_legacy_reduction(
                 cls_name, reduce_val, size_avg_val
             )
-            return _call_with_legacy_reduction(
-                init_func, sig, (args[0], *use_args), kwargs, reduction
-            )
+            return init_func(args[0], *use_args, **kwargs)
         return init_func(*args, **kwargs)
 
-    wrapper.__signature__ = sig
+    wrapper.__signature__ = inspect.signature(init_func)
     return wrapper
 
 
