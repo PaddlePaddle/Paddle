@@ -74,3 +74,4 @@
 - linear_interp_grad
 - bilinear_interp_grad
 - trilinear_interp_grad
+- layer_norm_grad
