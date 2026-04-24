@@ -32,6 +32,14 @@ void TransposeStridedKernel(const Context& dev_ctx,
         "be called, something wrong has happened!"));
   }
   size_t x_rank = x.dims().size();
+  PADDLE_ENFORCE_EQ(
+      axis.size(),
+      x_rank,
+      common::errors::InvalidArgument(
+          "The size of axis should be equal to the input tensor's rank, "
+          "but received axis size is %d and input rank is %d.",
+          axis.size(),
+          x_rank));
   std::vector<int> formatted_axis = axis;
   for (size_t i = 0; i < axis.size(); i++) {
     if (axis[i] < 0) {

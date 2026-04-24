@@ -573,6 +573,24 @@ class TestTransposeOpError(unittest.TestCase):
             self.assertRaises(ValueError, test_each_elem_value_check)
 
 
+class TestTransposeDygraphStridedPermLenError(unittest.TestCase):
+    # Regression test for Issue #78756: when FLAGS_use_stride_kernel is on,
+    # eager paddle.transpose silently accepted perm with length != rank.
+    def test_perm_length_mismatch_raises(self):
+        paddle.disable_static()
+        paddle.set_device("cpu")
+        orig_flag = paddle.get_flags(["FLAGS_use_stride_kernel"])[
+            "FLAGS_use_stride_kernel"
+        ]
+        try:
+            paddle.set_flags({"FLAGS_use_stride_kernel": True})
+            x = paddle.arange(24, dtype="float32").reshape([2, 3, 4])
+            with self.assertRaises(ValueError):
+                paddle.transpose(x, [0, 1])
+        finally:
+            paddle.set_flags({"FLAGS_use_stride_kernel": orig_flag})
+
+
 class TestTransposeApi(unittest.TestCase):
     def test_static_out(self):
         paddle.enable_static()
