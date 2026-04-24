@@ -2414,10 +2414,6 @@ def arange(
 
     if not isinstance(step, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
-            if not np.isfinite(step):
-                raise ValueError(
-                    f"The value of end must be finite, but received: {end}."
-                )
             step_dtype = np.array(step).dtype
             step = fill_constant([1], step_dtype, step, force_cpu=True)
     else:
