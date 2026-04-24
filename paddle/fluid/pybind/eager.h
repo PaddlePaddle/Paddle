@@ -36,6 +36,11 @@ typedef struct {
   std::vector<bool> forward_input_tensor_is_duplicable;
   std::vector<bool> forward_output_tensor_is_duplicable;
   std::weak_ptr<egr::GradNodePyLayer> grad_node;
+  // Holds strong references to DenseTensor impls saved via save_for_backward,
+  // preventing _clear_dataptr() from freeing the underlying memory before
+  // backward runs.  Lifecycle: born with container (set_container), dies with
+  // the PyLayerObject (PyLayerDealloc).
+  std::vector<std::shared_ptr<phi::TensorBase>> tensor_hold_helper;
 #ifdef PADDLE_WITH_CUDA
   std::vector<egr::ReloadFunctor> reload_functors;
 #endif

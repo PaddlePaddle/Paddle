@@ -109,3 +109,4 @@
 - logit
 - pad3d
 - top_p_sampling
+- layer_norm

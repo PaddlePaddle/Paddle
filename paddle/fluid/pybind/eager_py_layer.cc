@@ -89,6 +89,8 @@ PyObject* PyLayerNew(PyTypeObject* type, PyObject* args, PyObject* kwargs) {
     new (&v->grad_node) std::weak_ptr<egr::GradNodePyLayer>();
     new (&v->forward_input_tensor_is_duplicable) std::vector<bool>();
     new (&v->forward_output_tensor_is_duplicable) std::vector<bool>();
+    new (&v->tensor_hold_helper)
+        std::vector<std::shared_ptr<phi::DenseTensor>>();
 #ifdef PADDLE_WITH_CUDA
     new (&v->reload_functors) std::vector<egr::ReloadFunctor>();
 #endif
@@ -110,6 +112,7 @@ static void PyLayerDealloc(PyLayerObject* self) {
   self->unpack_hook = nullptr;
   self->forward_input_tensor_is_duplicable.~vector();
   self->forward_output_tensor_is_duplicable.~vector();
+  self->tensor_hold_helper.~vector();
 #ifdef PADDLE_WITH_CUDA
   self->reload_functors.~vector();
 #endif
@@ -271,8 +274,9 @@ PyObject* pylayer_method_apply(PyObject* cls,
 
   for (int64_t i = inputs_size - 1; i >= 0; --i) {
     PyObject* obj = nullptr;
-    if (i >= args_size) {
-      obj = PyList_GetItem(kwargs_value_list, i - args_size);  // NOLINT
+    if (i >= static_cast<int64_t>(args_size)) {
+      obj = PyList_GetItem(kwargs_value_list,
+                           i - static_cast<int64_t>(args_size));  // NOLINT
     } else {
       obj = PyTuple_GET_ITEM(args, i);
     }
@@ -685,6 +689,54 @@ PyObject* pylayer_method_apply(PyObject* cls,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+// Deep-traverse a PyObject to collect shared_ptr<phi::DenseTensor> for all
+// DenseTensors found (Tensor / Tuple / List, recursively).  Used by
+// tensor_properties_set_container to hold strong references so that
+// _clear_dataptr() cannot free the underlying allocation before backward.
+// DFS-walks obj (tuple/list tree) and calls fn(tensor) for every Tensor leaf.
+// Both CollectDenseTensors and RestoreDenseTensors are built on top of this.
+template <typename Fn>
+static void WalkDenseTensors(PyObject* obj, Fn&& fn) {
+  if (!obj || obj == Py_None) return;
+  if (PyCheckTensor(obj)) {
+    fn(reinterpret_cast<TensorObject*>(obj)->tensor);
+    return;
+  }
+  if (PyTuple_Check(obj)) {
+    Py_ssize_t n = PyTuple_GET_SIZE(obj);
+    for (Py_ssize_t i = 0; i < n; ++i)
+      WalkDenseTensors(PyTuple_GET_ITEM(obj, i), fn);
+    return;
+  }
+  if (PyList_Check(obj)) {
+    Py_ssize_t n = PyList_GET_SIZE(obj);
+    for (Py_ssize_t i = 0; i < n; ++i)
+      WalkDenseTensors(PyList_GET_ITEM(obj, i), fn);
+    return;
+  }
+}
+
+static void CollectDenseTensors(
+    PyObject* obj, std::vector<std::shared_ptr<phi::TensorBase>>* holder) {
+  WalkDenseTensors(obj, [holder](const paddle::Tensor& tensor) {
+    if (tensor.impl()) holder->push_back(tensor.impl());
+  });
+}
+
+// Re-installs impl() for tensors cleared by _clear_dataptr(), using the
+// shared_ptrs stored in holder (same DFS order as CollectDenseTensors).
+static void RestoreDenseTensors(
+    PyObject* obj,
+    const std::vector<std::shared_ptr<phi::TensorBase>>& holder) {
+  size_t idx = 0;
+  WalkDenseTensors(obj, [&holder, &idx](paddle::Tensor& tensor) {
+    if (idx < holder.size()) {
+      if (!tensor.impl()) tensor.set_impl(holder[idx]);
+      ++idx;
+    }
+  });
+}
+
 PyObject* call_unpack_hook(PyLayerObject* self) {
   auto unpack_hook = self->unpack_hook;
   auto packed_value = self->container;
@@ -734,10 +786,16 @@ PyObject* tensor_properties_get_container(PyLayerObject* self, void* closure) {
   }
   if (self->container_be_packed) {
     return call_unpack_hook(self);
-  } else {
-    Py_INCREF(self->container);
-    return self->container;
   }
+  // Re-attach any DenseTensor impls that were freed by _clear_dataptr().
+  // tensor_hold_helper keeps the underlying allocations alive; walk the
+  // container in the same DFS order as CollectDenseTensors and reinstall
+  // impls for tensors whose impl() is currently null.
+  if (!self->tensor_hold_helper.empty()) {
+    RestoreDenseTensors(self->container, self->tensor_hold_helper);
+  }
+  Py_INCREF(self->container);
+  return self->container;
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -836,11 +894,18 @@ int tensor_properties_set_container(PyLayerObject* self,
                                     void* closure) {
   EAGER_TRY
   if (egr::SavedTensorsHooks::GetInstance().IsEnable()) {
+    // Note 1: when hooks are enabled the tensors are packed; do NOT populate
+    // tensor_hold_helper (the hook system manages tensor lifetimes itself).
     call_pack_hook(self, value);
   } else {
     Py_XINCREF(value);
     Py_XDECREF(self->container);
     self->container = value;
+    // Note 2: deep-traverse value (Tensor / Tuple / List / nested) to hold
+    // strong references to every DenseTensor impl, preventing _clear_dataptr()
+    // from freeing the underlying allocation before backward runs.
+    self->tensor_hold_helper.clear();
+    CollectDenseTensors(value, &self->tensor_hold_helper);
   }
   return 0;
   EAGER_CATCH_AND_THROW_RETURN_NEG
@@ -907,15 +972,56 @@ int tensor_properties_set_grad_in_dtype_consistent(PyLayerObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
-PyMethodDef pylayer_methods[] = {{"name",  // NOLINT
-                                  (PyCFunction)(void (*)())pylayer_method_name,
-                                  METH_NOARGS,
-                                  nullptr},
-                                 {"apply",
-                                  (PyCFunction)(void (*)())pylayer_method_apply,
-                                  METH_CLASS | METH_VARARGS | METH_KEYWORDS,
-                                  nullptr},
-                                 {nullptr, nullptr, 0, nullptr}};
+// ctx._pop_saved_impl(tensor)
+// Removes the strong reference held in tensor_hold_helper for the given
+// tensor's underlying DenseTensor, allowing its memory to be freed early
+// (e.g. inside backward when the tensor is no longer needed).
+// The tensor must have a valid impl() — i.e. pass the recovered tensor
+// returned by ctx.saved_tensor(), not the already-cleared one.
+PyObject* pylayer_pop_saved_impl(PyObject* self_, PyObject* args) {
+  EAGER_TRY
+  auto* self = reinterpret_cast<PyLayerObject*>(self_);
+  PyObject* tensor_obj = nullptr;
+  if (!PyArg_ParseTuple(args, "O", &tensor_obj)) {
+    RETURN_PY_NONE;
+  }
+  if (!tensor_obj || !PyCheckTensor(tensor_obj)) {
+    RETURN_PY_NONE;
+  }
+  const auto& tensor = reinterpret_cast<TensorObject*>(tensor_obj)->tensor;
+  if (!tensor.impl() || !tensor.is_dense_tensor()) {
+    RETURN_PY_NONE;
+  }
+  auto* raw = static_cast<phi::DenseTensor*>(tensor.impl().get());
+  for (auto it = self->tensor_hold_helper.begin();
+       it != self->tensor_hold_helper.end();
+       ++it) {
+    if (it->get() == raw) {
+      self->tensor_hold_helper.erase(it);
+      break;
+    }
+  }
+  RETURN_PY_NONE;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+PyMethodDef pylayer_methods[] = {
+    {"name",  // NOLINT
+     (PyCFunction)(void (*)())pylayer_method_name,
+     METH_NOARGS,
+     nullptr},
+    {"apply",
+     (PyCFunction)(void (*)())pylayer_method_apply,
+     METH_CLASS | METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+    {"_pop_saved_impl",
+     (PyCFunction)(void (*)())pylayer_pop_saved_impl,
+     METH_VARARGS,
+     "Release the strong reference held for a "
+     "specific DenseTensor saved via "
+     "save_for_backward, allowing its memory to "
+     "be freed early if no other holder exists."},
+    {nullptr, nullptr, 0, nullptr}};
 
 struct PyGetSetDef pylayer_properties[] {  // NOLINT
   {"container",

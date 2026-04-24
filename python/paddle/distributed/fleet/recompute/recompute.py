@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import contextlib
 import copy
-import ctypes
 import functools
 import inspect
 import random
@@ -227,42 +226,6 @@ def check_recompute_necessary(inputs):
         )
 
 
-def _protect_tensors(seq):
-    """For each element in seq (a list or tuple of forward args), create a new
-    tensor Python object that shares the same underlying buffer via
-    _new_shared_tensor(), so that when pipeline-parallel calls
-    _release_input/_release_output (which clears the data pointer of the
-    original tensor), the copies held by recompute for backward are not
-    invalidated.  Non-tensor elements are kept as-is.
-    Returns a list with the same length as seq.
-    """
-    result = list(seq)
-    for idx, arg in enumerate(result):
-        if isinstance(arg, core.eager.Tensor):
-            # _new_shared_tensor() creates a new Python-level tensor object
-            # that shares the same C++ storage with arg, without cloning data.
-            shared = arg._new_shared_tensor()
-            assert shared is not arg, (
-                "_protect_tensors() must return a new Python object distinct from the original "
-                "tensor, otherwise the protection against pipeline-parallel tensor "
-                "release is ineffective."
-            )
-            result[idx] = shared
-        elif isinstance(arg, tuple):
-            # For tuple args (e.g., pipeline-parallel passes inputs as tuples),
-            # protect each tensor element inside the tuple individually;
-            # non-tensor elements (e.g., int, bool) are passed through unchanged.
-            protected_tuple = []
-            for t in arg:
-                if isinstance(t, core.eager.Tensor):
-                    shared = t._new_shared_tensor()
-                    protected_tuple.append(shared)
-                else:
-                    protected_tuple.append(t)
-            result[idx] = tuple(protected_tuple)
-    return result
-
-
 class CustomStatesManager:
     """CustomStatesManager"""
 
@@ -333,22 +296,6 @@ def switch_rng_state_tracker(
             custom_set_state_func(orig_custom_state)
 
 
-def _restore_freed_closure_tensors(ctx):
-    """..."""
-    _PyCell_Set = ctypes.pythonapi.PyCell_Set
-    _PyCell_Set.argtypes = [ctypes.py_object, ctypes.py_object]
-    _PyCell_Set.restype = ctypes.c_int
-    for cell, protected in zip(ctx.closure_cells, ctx.closure_protected):
-        if cell is None or protected is None:
-            continue
-        try:
-            val = cell.cell_contents
-        except ValueError:
-            continue
-        if isinstance(val, core.eager.Tensor) and not val._is_initialized():
-            _PyCell_Set(cell, protected)
-
-
 class RecomputeFunction(PyLayer):
     @staticmethod
     def forward(
@@ -368,32 +315,6 @@ class RecomputeFunction(PyLayer):
         ctx.preserve_external_rng_state = preserve_external_rng_state
         ctx.offload_indices = offload_indices
         ctx.kwargs = kwargs
-
-        # Protect tensor-type closure variables of run_function against
-        # pipeline-parallel _release_input/_release_output calling _clear_dataptr().
-        # Explicit args are already protected by _protect_tensors(); here we cover
-        # any tensors captured in the function's __closure__ (e.g. grid_thw).
-        ctx.closure_cells = []
-        ctx.closure_protected = []
-        fn = (
-            run_function.forward
-            if isinstance(run_function, paddle.nn.Layer)
-            else run_function
-        )
-        if hasattr(fn, '__closure__') and fn.__closure__:
-            for cell in fn.__closure__:
-                try:
-                    val = cell.cell_contents
-                except ValueError:  # empty cell
-                    ctx.closure_cells.append(None)
-                    ctx.closure_protected.append(None)
-                    continue
-                if isinstance(val, core.eager.Tensor):
-                    ctx.closure_cells.append(cell)
-                    ctx.closure_protected.append(val._new_shared_tensor())
-                else:
-                    ctx.closure_cells.append(None)
-                    ctx.closure_protected.append(None)
 
         # NOTE the number of outputs of backward() should be equal to the number of tensors in forward()'s input
         # the order of tensors in backward()'s output should be the same as tensors in forward()'s input
@@ -537,7 +458,6 @@ class RecomputeFunction(PyLayer):
                         dtype=ctx.amp_dtype,
                     ),
                 ):
-                    _restore_freed_closure_tensors(ctx)
                     detached_inputs = detach_variable(tuple(inputs))
                     outputs = ctx.run_function(*detached_inputs, **ctx.kwargs)
             else:
@@ -548,7 +468,6 @@ class RecomputeFunction(PyLayer):
                     level=ctx.amp_level,
                     dtype=ctx.amp_dtype,
                 ):
-                    _restore_freed_closure_tensors(ctx)
                     detached_inputs = detach_variable(tuple(inputs))
                     outputs = ctx.run_function(*detached_inputs, **ctx.kwargs)
 
@@ -903,8 +822,6 @@ def recompute(function, *args, **kwargs):
     if use_reentrant:
         offload_indices = kwargs.pop('offload_indices', [])
         if not kwargs:  # fast path
-            # Make a shallow copy of each Tensor to prevent the release of some Tensors reserved for backward in some special scenarios (such as scheduling logic of parallel pipelines)
-            protected_args = _protect_tensors(args)
             return RecomputeFunction.apply(
                 function,
                 preserve,
@@ -912,7 +829,7 @@ def recompute(function, *args, **kwargs):
                 offload_indices,
                 custom_get_state_func,
                 custom_set_state_func,
-                *protected_args,
+                *args,
             )
 
         # rearrange `position-args + keyword-args` into `position-args`
@@ -953,8 +870,6 @@ def recompute(function, *args, **kwargs):
                 )
             else:
                 raise ValueError("Unknown parameter kind.")
-        # Make a shallow copy of each Tensor to prevent the release of some Tensors reserved for backward in some special scenarios (such as scheduling logic of parallel pipelines)
-        protected_args = _protect_tensors(input_args)
         return RecomputeFunction.apply(
             function,
             preserve,
@@ -962,7 +877,7 @@ def recompute(function, *args, **kwargs):
             offload_indices,
             custom_get_state_func,
             custom_set_state_func,
-            *protected_args,
+            *input_args,
         )
     else:
         return _recompute_without_reentrant(

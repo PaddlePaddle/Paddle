@@ -2019,8 +2019,8 @@
     func : label_smooth_grad
 
 - backward_op : layer_norm_grad
-  forward : layer_norm (Tensor x, Tensor scale, Tensor bias, float epsilon = 1e-5, int begin_norm_axis = 1) -> Tensor(out), Tensor(mean), Tensor(variance)
-  args : (Tensor x,  Tensor scale, Tensor bias, Tensor mean, Tensor variance, Tensor out_grad, float epsilon = 1e-5, int begin_norm_axis = 1)
+  forward : layer_norm (Tensor x, Tensor scale, Tensor bias, double epsilon = 1e-5, int begin_norm_axis = 1) -> Tensor(out), Tensor(mean), Tensor(variance)
+  args : (Tensor x,  Tensor scale, Tensor bias, Tensor mean, Tensor variance, Tensor out_grad, double epsilon = 1e-5, int begin_norm_axis = 1)
   output : Tensor(x_grad), Tensor(scale_grad), Tensor(bias_grad)
   infer_meta :
     func : LayerNormGradInferMeta
