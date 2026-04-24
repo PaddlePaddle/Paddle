@@ -72,9 +72,9 @@ class LayerNormOneDNNHandler
 template <typename T, typename Context>
 void LayerNormKernel(const Context& dev_ctx,
                      const DenseTensor& x,
-                     const paddle::optional<DenseTensor>& scale_opt,
-                     const paddle::optional<DenseTensor>& bias_opt,
-                     float epsilon,
+                     const optional<DenseTensor>& scale_opt,
+                     const optional<DenseTensor>& bias_opt,
+                     double epsilon,
                      int begin_norm_axis,
                      DenseTensor* y,
                      DenseTensor* mean,
