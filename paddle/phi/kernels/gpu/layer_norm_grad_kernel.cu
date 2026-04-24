@@ -23,10 +23,6 @@
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
 #include "paddle/phi/kernels/funcs/fast_ln_v2.h"
 #endif
-#ifdef PADDLE_WITH_CUDA
-#include "paddle/phi/kernels/gpu/rms_norm_cuda_kernel.h"
-#endif
-
 namespace phi {
 enum class LayerNormGadKernelVariant { FAST_LN_V2, GENERIC };
 static inline LayerNormGadKernelVariant LayerNormGradKernelDispatch(
@@ -39,9 +35,6 @@ static inline LayerNormGadKernelVariant LayerNormGradKernelDispatch(
     const DenseTensor* scale,
     const DenseTensor* bias) {
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
-  if (FLAGS_use_accuracy_compatible_kernel) {
-    return LayerNormGadKernelVariant::GENERIC;
-  }
   if (scale != nullptr && bias != nullptr &&
       input_type != paddle::DataType::FLOAT32 && hidden_size != 4096 &&
       hidden_size > 1024 && hidden_size <= 10240 &&
@@ -66,7 +59,7 @@ void LayerNormGradKernel(const Context& dev_ctx,
                          const DenseTensor& mean,
                          const DenseTensor& variance,
                          const DenseTensor& out_grad,
-                         double epsilon,
+                         float epsilon,
                          int begin_norm_axis,
                          DenseTensor* x_grad,
                          DenseTensor* scale_grad,
@@ -209,39 +202,11 @@ void LayerNormGradKernel(const Context& dev_ctx,
 #endif
     case LayerNormGadKernelVariant::GENERIC:
     default:
-#ifdef PADDLE_WITH_CUDA
-      if ((FLAGS_use_accuracy_compatible_kernel ||
-           (!isPowerOfTwo(feature_size) && feature_size > 1024)) &&
-          scale_bias_dtype == x_dtype) {
-        auto* scale_data = (scale == nullptr ? nullptr : scale->data<T>());
-        auto* d_scale_data =
-            (d_scale == nullptr ? nullptr : dev_ctx.template Alloc<T>(d_scale));
-        auto* d_bias_data =
-            (d_bias == nullptr ? nullptr : dev_ctx.template Alloc<T>(d_bias));
-        auto* d_x_data =
-            (d_x == nullptr ? nullptr : dev_ctx.template Alloc<T>(d_x));
-        LayerNormBwdCompatKernel<T, Context>(dev_ctx,
-                                             d_y_data,
-                                             x_data,
-                                             scale_data,
-                                             mean_data,
-                                             var_data,
-                                             d_x_data,
-                                             d_scale_data,
-                                             d_bias_data,
-                                             epsilon,
-                                             batch_size,
-                                             feature_size);
+      if (scale_bias_dtype == x_dtype) {
+        PADDLE_LAUNCH_LAYERNORM_BWD(T, true);
       } else {
-#endif
-        if (scale_bias_dtype == x_dtype) {
-          PADDLE_LAUNCH_LAYERNORM_BWD(T, true);
-        } else {
-          PADDLE_LAUNCH_LAYERNORM_BWD(U, false);
-        }
-#ifdef PADDLE_WITH_CUDA
+        PADDLE_LAUNCH_LAYERNORM_BWD(U, false);
       }
-#endif
   }
 
 #undef PADDLE_LAUNCH_LAYERNORM_BWD
