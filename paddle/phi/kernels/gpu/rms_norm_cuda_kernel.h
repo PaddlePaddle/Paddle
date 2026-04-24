@@ -1794,15 +1794,15 @@ template <typename T,
           unsigned int rows_per_block_y,
           bool partial_reduction,
           bool aligned_grid>
-__global__ void GammaBetaBackwardCUDAKernelTemplate(
-    int64_t M,
-    int64_t N,
-    const T* __restrict__ dY,
-    const T* __restrict__ X,
-    const T_ACC* __restrict__ mean,
-    const T_ACC* __restrict__ rstd,
-    T* __restrict__ dgamma,
-    T* __restrict__ dbeta) {
+__global__ void __launch_bounds__(block_dim_x* block_dim_y)
+    GammaBetaBackwardCUDAKernelTemplate(int64_t M,
+                                        int64_t N,
+                                        const T* __restrict__ dY,
+                                        const T* __restrict__ X,
+                                        const T_ACC* __restrict__ mean,
+                                        const T_ACC* __restrict__ rstd,
+                                        T* __restrict__ dgamma,
+                                        T* __restrict__ dbeta) {
   constexpr int rows_per_thread_y = rows_per_block_y / block_dim_y;
   static_assert(rows_per_thread_y <= kWarpSize);
 
