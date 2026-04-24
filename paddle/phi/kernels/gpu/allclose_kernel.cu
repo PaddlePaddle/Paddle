@@ -36,7 +36,7 @@ __global__ void AllcloseCUDAKernel(const T* in_data,
                                    bool* out_data) {
   unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
   bool val;
-  using BaseMPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using BaseMPType = typename dtype::MPTypeTrait<T>::Type;
 
   using MPType =
       typename std::conditional<std::is_same<T, int32_t>::value ||
@@ -98,8 +98,7 @@ void AllCloseKernel(const Context& dev_ctx,
 
   int64_t num = x.numel();
   const int vec_size = 4;
-  auto config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, num, vec_size);
+  auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, num, vec_size);
   uint32_t grid = config.block_per_grid.x;
   uint32_t block = config.thread_per_block.x;
 

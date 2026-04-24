@@ -150,13 +150,13 @@ void LookupTableSparseGradCUDAKernel(
   auto gpu_place = dev_ctx.GetPlace();
 
   // TODO(yuyang18): Strange code here.
-  phi::MixVector<int64_t> mixv_new_rows(&new_rows);
-  phi::memory_utils::Copy(gpu_place,
-                          mixv_new_rows.CUDAMutableData(dev_ctx.GetPlace()),
-                          gpu_place,
-                          ids_data,
-                          ids_num * sizeof(int64_t),
-                          stream);
+  MixVector<int64_t> mixv_new_rows(&new_rows);
+  memory_utils::Copy(gpu_place,
+                     mixv_new_rows.CUDAMutableData(dev_ctx.GetPlace()),
+                     gpu_place,
+                     ids_data,
+                     ids_num * sizeof(int64_t),
+                     stream);
   mixv_new_rows.CopyToCPU();
   d_table->set_rows(new_rows);
 
@@ -178,12 +178,12 @@ void LookupTableSparseGradCUDAKernel(
                         "output@Grad's shape = [%s].",
                         d_table_value->dims(),
                         d_output_dims_2d));
-  phi::memory_utils::Copy(gpu_place,
-                          d_table_data,
-                          gpu_place,
-                          d_output_data,
-                          d_output->numel() * sizeof(T),
-                          stream);
+  memory_utils::Copy(gpu_place,
+                     d_table_data,
+                     gpu_place,
+                     d_output_data,
+                     d_output->numel() * sizeof(T),
+                     stream);
 }
 }  // namespace phi
 

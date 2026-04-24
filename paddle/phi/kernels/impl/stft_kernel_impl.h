@@ -35,7 +35,7 @@ void StftKernel(const Context& dev_ctx,
                 bool normalized,
                 bool onesided,
                 DenseTensor* out) {
-  using C = phi::dtype::complex<T>;
+  using C = dtype::complex<T>;
 
   dev_ctx.template Alloc<C>(out);
 

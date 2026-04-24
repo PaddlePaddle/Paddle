@@ -26,7 +26,7 @@ namespace phi {
 template <typename T>
 __global__ void LogspaceKernelInner(
     T start, T stop, double step, T base, int64_t size, T* out) {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
   MPType mt_start = static_cast<MPType>(start);
   MPType mt_stop = static_cast<MPType>(stop);
   MPType mt_base = static_cast<MPType>(base);
@@ -50,7 +50,7 @@ __global__ void LogspaceKernelInner(
 
 template <typename T>
 __global__ void LogspaceSpecialKernel(T start, T base, T* out) {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
   MPType mt_start = static_cast<MPType>(start);
   MPType mt_base = static_cast<MPType>(base);
 
@@ -66,7 +66,7 @@ void LogspaceKernel(const Context& dev_ctx,
                     const DenseTensor& base,
                     DataType dtype,
                     DenseTensor* out) {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
 
   auto start_t = funcs::TransDataType(dev_ctx, start, dtype);
   auto stop_t = funcs::TransDataType(dev_ctx, stop, dtype);

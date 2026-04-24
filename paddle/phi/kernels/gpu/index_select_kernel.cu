@@ -23,8 +23,6 @@
 
 namespace phi {
 
-using phi::PADDLE_CUDA_NUM_THREADS;
-
 template <typename T, typename Context>
 void IndexSelectKernel(const Context& dev_ctx,
                        const DenseTensor& x,
@@ -64,7 +62,7 @@ void IndexSelectKernel(const Context& dev_ctx,
 
   unsigned int block_dim = PADDLE_CUDA_NUM_THREADS;
   dim3 grid_dim = dim3((numel + block_dim - 1) / block_dim);
-  phi::backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
+  backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
 
   if (index_type == DataType::INT64) {
     const int64_t* index_data = index.data<int64_t>();

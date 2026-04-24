@@ -66,7 +66,7 @@ struct UniformKernelImpl<T, Context, true> {
                     const Scalar& max,
                     int seed,
                     DenseTensor* out) {
-    using RealType = phi::dtype::Real<T>;
+    using RealType = dtype::Real<T>;
     RealType min_val = min.to<RealType>();
     RealType max_val = max.to<RealType>();
 
@@ -88,13 +88,13 @@ struct UniformKernelImpl<T, Context, true> {
 };
 
 template <typename Context>
-struct UniformKernelImpl<phi::dtype::complex<float>, Context, true> {
+struct UniformKernelImpl<dtype::complex<float>, Context, true> {
   static void Apply(const Context& dev_ctx,
                     const Scalar& min,
                     const Scalar& max,
                     int seed,
                     DenseTensor* out) {
-    using T = phi::dtype::complex<float>;
+    using T = dtype::complex<float>;
     using RealType = float;
     RealType min_val = min.to<RealType>();
     RealType max_val = max.to<RealType>();
@@ -122,13 +122,13 @@ struct UniformKernelImpl<phi::dtype::complex<float>, Context, true> {
 };
 
 template <typename Context>
-struct UniformKernelImpl<phi::dtype::complex<double>, Context, true> {
+struct UniformKernelImpl<dtype::complex<double>, Context, true> {
   static void Apply(const Context& dev_ctx,
                     const Scalar& min,
                     const Scalar& max,
                     int seed,
                     DenseTensor* out) {
-    using T = phi::dtype::complex<double>;
+    using T = dtype::complex<double>;
     using RealType = double;
     RealType min_val = min.to<RealType>();
     RealType max_val = max.to<RealType>();
@@ -163,7 +163,7 @@ struct UniformKernelImpl<T, Context, false> {
                     int seed,
                     DenseTensor* out) {
     if (seed == 0) {
-      using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+      using MT = typename dtype::MPTypeTrait<T>::Type;
       funcs::uniform_distribution<MT> dist;
       funcs::uniform_real_transform<MT> trans(min.to<float>(), max.to<float>());
       funcs::distribution_and_transform<T>(dev_ctx, out, dist, trans);
@@ -191,9 +191,8 @@ void UniformKernel(const Context& dev_ctx,
   out->Resize(shape.GetData());
   dev_ctx.template Alloc<T>(out);
 
-  constexpr bool is_complex =
-      std::is_same<T, phi::dtype::complex<float>>::value ||
-      std::is_same<T, phi::dtype::complex<double>>::value;
+  constexpr bool is_complex = std::is_same<T, dtype::complex<float>>::value ||
+                              std::is_same<T, dtype::complex<double>>::value;
 
   UniformKernelImpl<T, Context, is_complex>::Apply(
       dev_ctx, min, max, seed, out);

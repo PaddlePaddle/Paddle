@@ -28,8 +28,6 @@ COMMON_DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
 
-using phi::PADDLE_CUDA_NUM_THREADS;
-
 template <typename T, typename IndexT>
 __global__ void index_select_grad_cuda_kernel(const T* output_grad,
                                               T* input_grad,
@@ -131,7 +129,7 @@ void IndexSelectGradKernel(const Context& dev_ctx,
 
     unsigned int block_dim = PADDLE_CUDA_NUM_THREADS;
     dim3 grid_dim = dim3((num_columns + block_dim - 1) / block_dim);
-    phi::backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
+    backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
 
     if (index_type == DataType::INT64) {
       const int64_t* index_data = index.data<int64_t>();
@@ -158,7 +156,7 @@ void IndexSelectGradKernel(const Context& dev_ctx,
   } else {
     unsigned int block_dim = PADDLE_CUDA_NUM_THREADS;
     dim3 grid_dim = dim3((out_nums + block_dim - 1) / block_dim);
-    phi::backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
+    backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
 
     if (index_type == DataType::INT64) {
       const int64_t* index_data = index.data<int64_t>();

@@ -40,7 +40,7 @@ void GatherNdKernel(const Context &dev_ctx,
     for (int i = 0; i < x.dims().size(); ++i) {
       out_dims.emplace_back(1);
     }
-    phi::TileKernel<T, Context>(dev_ctx, x, phi::IntArray(out_dims), out);
+    TileKernel<T, Context>(dev_ctx, x, IntArray(out_dims), out);
     return;
   }
   if (index.dims()[0] == 0 && index.numel() == 0) return;

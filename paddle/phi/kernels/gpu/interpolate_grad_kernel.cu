@@ -233,7 +233,7 @@ __inline__ __device__ T PartialBlockMin(T val,
     }
   } else {
     shared_last_val = std::numeric_limits<T>::max();
-    phi::CudaAtomicMin(&shared_last_val, val);
+    CudaAtomicMin(&shared_last_val, val);
     shared[wid] = shared_last_val;
     shared_last_idx = wid;
   }
@@ -1264,7 +1264,7 @@ static void Interpolate1DCUDABwd(
     return;
   }
 
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename dtype::MPTypeTrait<T>::Type;
   MT ratio_w =
       funcs::AreaPixelComputeScale<MT>(in_w, out_w, align_corners, scale_w);
   int64_t in_cw = c * in_w;
@@ -1397,10 +1397,9 @@ static void Interpolate2DCUDABwd(
     return;
   }
 
-  using MT =
-      typename std::conditional_t<std::is_integral<T>::value,
-                                  float,
-                                  typename phi::dtype::MPTypeTrait<T>::Type>;
+  using MT = typename std::conditional_t<std::is_integral<T>::value,
+                                         float,
+                                         typename dtype::MPTypeTrait<T>::Type>;
   MT ratio_h =
       funcs::AreaPixelComputeScale<MT>(in_h, out_h, align_corners, scale_h);
   MT ratio_w =
@@ -1671,10 +1670,9 @@ static void InterpolateAA2DCUDABwd(
     return;
   }
 
-  using MT =
-      typename std::conditional_t<std::is_integral<T>::value,
-                                  float,
-                                  typename phi::dtype::MPTypeTrait<T>::Type>;
+  using MT = typename std::conditional_t<std::is_integral<T>::value,
+                                         float,
+                                         typename dtype::MPTypeTrait<T>::Type>;
   MT ratio_h =
       funcs::AreaPixelComputeScale<MT>(in_h, out_h, align_corners, scale_h);
   MT ratio_w =
@@ -1685,7 +1683,7 @@ static void InterpolateAA2DCUDABwd(
   // Lambda to launch AA interpolation backward kernel
   auto launch_aa_bw_kernel = [&](auto filter) {
     int device_id = dev_ctx.GetPlace().GetDeviceId();
-    auto& gpu_props = phi::backends::gpu::GetDeviceProperties(device_id);
+    auto& gpu_props = backends::gpu::GetDeviceProperties(device_id);
 
     // Use AAInterpLaunchConfig to compute block/grid dimensions with dynamic
     // adjustment for shared memory limits
@@ -1912,10 +1910,9 @@ static void Interpolate3DCUDABwd(
     return;
   }
 
-  using MT =
-      typename std::conditional_t<std::is_integral<T>::value,
-                                  float,
-                                  typename phi::dtype::MPTypeTrait<T>::Type>;
+  using MT = typename std::conditional_t<std::is_integral<T>::value,
+                                         float,
+                                         typename dtype::MPTypeTrait<T>::Type>;
   MT ratio_d =
       funcs::AreaPixelComputeScale<MT>(in_d, out_d, align_corners, scale_d);
   MT ratio_h =

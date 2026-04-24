@@ -31,7 +31,7 @@ struct I0GradFunctor {
         numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    using MT = typename dtype::MPTypeTrait<T>::Type;
     const MT mp_x = static_cast<MT>(inp_x_[idx]);
     const MT mp_out_grad = static_cast<MT>(inp_out_grad_[idx]);
 

@@ -195,8 +195,8 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
   }
   MT inverse_scale = 1.0 / cpu_scale_data;
   auto version =
-      phi::backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId());
-  if (version == phi::backends::xpu::XPUVersion::XPU3) {
+      backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId());
+  if (version == backends::xpu::XPUVersion::XPU3) {
     int64_t num_grads = xs.size();
     DenseTensor cpu_found_tensor;
     cpu_found_tensor.Resize({num_grads});
@@ -262,7 +262,7 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
       DenseTensor float_x;
       DenseTensor float_out;
       if (std::is_same<T, phi::float16>::value &&
-          (version == phi::backends::xpu::XPUVersion::XPU1)) {
+          (version == backends::xpu::XPUVersion::XPU1)) {
         dev_ctx.template Alloc<MT>(&float_x, x->numel() * sizeof(MT));
         dev_ctx.template Alloc<MT>(&float_out, out->numel() * sizeof(MT));
 

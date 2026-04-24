@@ -187,7 +187,7 @@ struct EmbeddingSparseGradCUDAFunctor {
     new_rows.resize(ids_num);
     auto gpu_place = dev_ctx_.GetPlace();
 
-    phi::MixVector<int64_t> mixv_new_rows(&new_rows);
+    MixVector<int64_t> mixv_new_rows(&new_rows);
     if (!std::is_same<IdT, int64_t>::value) {
       InputTypeConvert<<<grids, threads, 0, stream>>>(
           ids_data, ids_num, mixv_new_rows.MutableData(gpu_place));

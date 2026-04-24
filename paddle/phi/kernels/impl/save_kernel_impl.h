@@ -58,9 +58,9 @@ void SaveKernel(const Context& dev_ctx,
 
   if (in_dtype != out_dtype) {
     auto out = Cast<T>(dev_ctx, x, out_dtype);
-    phi::SerializeToStream(fout, out, dev_ctx);
+    SerializeToStream(fout, out, dev_ctx);
   } else {
-    phi::SerializeToStream(fout, x, dev_ctx);
+    SerializeToStream(fout, x, dev_ctx);
   }
   fout.close();
 }

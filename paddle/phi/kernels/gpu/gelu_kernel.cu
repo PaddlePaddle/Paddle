@@ -32,7 +32,7 @@ namespace phi {
 
 template <typename T>
 struct GeluWithApproximateFunctor {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
   inline HOSTDEVICE T operator()(T arg_x) {
     // this function is tanh approximation of gelu
     MPType x = static_cast<MPType>(arg_x);
@@ -48,7 +48,7 @@ struct GeluWithApproximateFunctor {
 
 template <typename T>
 struct GeluWithoutApproximateFunctor {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
   inline HOSTDEVICE T operator()(T arg_x) {
     // actual gelu with approximation = false
     MPType x = static_cast<MPType>(arg_x);

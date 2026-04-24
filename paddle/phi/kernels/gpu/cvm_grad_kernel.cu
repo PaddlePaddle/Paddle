@@ -22,8 +22,6 @@
 
 namespace phi {
 
-using phi::PADDLE_CUDA_NUM_THREADS;
-
 template <typename T>
 __global__ void CvmGradComputeKernel(const bool use_cvm,
                                      const int64_t item_width,
@@ -105,7 +103,7 @@ void CVMGradCUDAKernel(const Context& dev_ctx,
         lod[lod.size() - 1],
         common::errors::PreconditionNotMet(
             "Output(X@GRAD)'s dim[0] must be equal to last element of lod"));
-    phi::MixVector<size_t> mixv_lod(&lod);
+    MixVector<size_t> mixv_lod(&lod);
     CvmGradComputeKernel<<<(dx_numel + PADDLE_CUDA_NUM_THREADS - 1) /
                                PADDLE_CUDA_NUM_THREADS,
                            PADDLE_CUDA_NUM_THREADS,

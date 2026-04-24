@@ -21,8 +21,6 @@
 
 namespace phi {
 
-using phi::PADDLE_CUDA_NUM_THREADS;
-
 template <typename T, typename Context>
 void DiagonalGradKernel(const Context& dev_ctx,
                         const DenseTensor& x,
@@ -66,7 +64,7 @@ void DiagonalGradKernel(const Context& dev_ctx,
   int blocks = std::min((numel + threads - 1) / threads, blocks_max);
 
   int64_t dout_numel = out_grad.numel();
-  phi::backends::gpu::GpuMemsetAsync(
+  backends::gpu::GpuMemsetAsync(
       dx_data, 0, numel * sizeof(T), dev_ctx.stream());
 
   switch (dx_dim_size) {

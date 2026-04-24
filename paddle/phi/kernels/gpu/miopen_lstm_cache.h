@@ -49,13 +49,13 @@ class ScopedRNNBase {
 
   template <typename T>
   void Create(const miopenHandle_t& handle,
-              const phi::Place& place,
+              const Place& place,
               const std::vector<int>& sequence_length,
               size_t* workspace_size,
               size_t* reserve_size,
               DenseTensor* dropout_state) {
     int numDirections = is_bidirec_ ? 2 : 1;
-    miopenDataType_t miopen_type = phi::backends::gpu::CudnnDataType<T>::type;
+    miopenDataType_t miopen_type = backends::gpu::CudnnDataType<T>::type;
 
     // ------------------- miopen x, y descriptors ---------------------
     std::vector<int> dims_x = {batch_size_, input_size_, 1};
@@ -155,15 +155,15 @@ class ScopedRNNBase {
   std::vector<miopenTensorDescriptor_t> x_descs_;
   std::vector<miopenTensorDescriptor_t> y_descs_;
 
-  phi::backends::gpu::ScopedTensorDescriptor x_desc_;
-  phi::backends::gpu::ScopedTensorDescriptor y_desc_;
-  phi::backends::gpu::ScopedTensorDescriptor init_h_desc_;
-  phi::backends::gpu::ScopedTensorDescriptor init_c_desc_;
-  phi::backends::gpu::ScopedTensorDescriptor last_h_desc_;
-  phi::backends::gpu::ScopedTensorDescriptor last_c_desc_;
-  phi::backends::gpu::ScopedDropoutDescriptor dropout_desc_;
-  phi::backends::gpu::ScopedFilterDescriptor weight_desc_;
-  phi::backends::gpu::ScopedRNNDescriptor rnn_desc_;
+  backends::gpu::ScopedTensorDescriptor x_desc_;
+  backends::gpu::ScopedTensorDescriptor y_desc_;
+  backends::gpu::ScopedTensorDescriptor init_h_desc_;
+  backends::gpu::ScopedTensorDescriptor init_c_desc_;
+  backends::gpu::ScopedTensorDescriptor last_h_desc_;
+  backends::gpu::ScopedTensorDescriptor last_c_desc_;
+  backends::gpu::ScopedDropoutDescriptor dropout_desc_;
+  backends::gpu::ScopedFilterDescriptor weight_desc_;
+  backends::gpu::ScopedRNNDescriptor rnn_desc_;
 };
 
 }  // namespace phi

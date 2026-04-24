@@ -29,7 +29,7 @@ void CommInitAllKernel(const Context& dev_ctx,
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   std::vector<int> devices = devices_input;
   if (devices.empty()) {
-    devices = phi::backends::gpu::GetSelectedDevices();
+    devices = backends::gpu::GetSelectedDevices();
   }
 
   paddle::platform::NCCLCommContext::Instance().CreateAllNCCLComms(devices,

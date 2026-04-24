@@ -99,8 +99,7 @@ void PNormKernel(const Context& dev_ctx,
   if (x.numel() == 0) {
     if (out->numel() > 0) {
       std::vector<int64_t> vec_dims = vectorize(out->dims());
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(vec_dims), static_cast<T>(0), out);
+      Full<T, Context>(dev_ctx, IntArray(vec_dims), static_cast<T>(0), out);
     }
     return;
   }
@@ -135,7 +134,7 @@ void PNormKernel(const Context& dev_ctx,
           dev_ctx, *in_x, out_norm, reduce_axis);
     } else {
       // vanilla norm
-      using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+      using MPType = typename dtype::MPTypeTrait<T>::Type;
       funcs::ReduceGpuKernel<T, T, kps::GenericPNormOps>(
           dev_ctx, *in_x, out_norm, reduce_axis, porder);
     }

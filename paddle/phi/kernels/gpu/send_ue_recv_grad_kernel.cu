@@ -151,12 +151,11 @@ void CalculateXGrad(const Context& dev_ctx,
                                                    bcast_info.out_len,
                                                    functor);
         // Run reduce_sum
-        DenseTensor x_grad_out =
-            phi::Sum<T, Context>(dev_ctx,
-                                 x_grad_v2,
-                                 phi::IntArray(reduce_idx),
-                                 CppTypeToDataType<T>::Type(),
-                                 true);
+        DenseTensor x_grad_out = Sum<T, Context>(dev_ctx,
+                                                 x_grad_v2,
+                                                 IntArray(reduce_idx),
+                                                 CppTypeToDataType<T>::Type(),
+                                                 true);
 #ifdef PADDLE_WITH_HIP
         hipMemcpy(x_grad,
                   x_grad_out.data<T>(),
@@ -228,12 +227,11 @@ void CalculateXGrad(const Context& dev_ctx,
                 bcast_info.use_bcast,
                 mul_functor,
                 sum_functor);
-        DenseTensor x_grad_out =
-            phi::Sum<T, Context>(dev_ctx,
-                                 x_grad_v2,
-                                 phi::IntArray(reduce_idx),
-                                 CppTypeToDataType<T>::Type(),
-                                 true);
+        DenseTensor x_grad_out = Sum<T, Context>(dev_ctx,
+                                                 x_grad_v2,
+                                                 IntArray(reduce_idx),
+                                                 CppTypeToDataType<T>::Type(),
+                                                 true);
 #ifdef PADDLE_WITH_HIP
         hipMemcpy(x_grad,
                   x_grad_out.data<T>(),
@@ -274,12 +272,11 @@ void CalculateXGrad(const Context& dev_ctx,
                                                    bcast_info.out_len,
                                                    s_count);
         // Run reduce_sum
-        DenseTensor x_grad_out =
-            phi::Sum<T, Context>(dev_ctx,
-                                 x_grad_v2,
-                                 phi::IntArray(reduce_idx),
-                                 CppTypeToDataType<T>::Type(),
-                                 true);
+        DenseTensor x_grad_out = Sum<T, Context>(dev_ctx,
+                                                 x_grad_v2,
+                                                 IntArray(reduce_idx),
+                                                 CppTypeToDataType<T>::Type(),
+                                                 true);
 #ifdef PADDLE_WITH_HIP
         hipMemcpy(x_grad,
                   x_grad_out.data<T>(),
@@ -342,12 +339,11 @@ void CalculateXGrad(const Context& dev_ctx,
                 out_len,
                 bcast_info.use_bcast);
         // Run reduce_sum
-        DenseTensor x_grad_out =
-            phi::Sum<T, Context>(dev_ctx,
-                                 x_grad_v2,
-                                 phi::IntArray(reduce_idx),
-                                 CppTypeToDataType<T>::Type(),
-                                 true);
+        DenseTensor x_grad_out = Sum<T, Context>(dev_ctx,
+                                                 x_grad_v2,
+                                                 IntArray(reduce_idx),
+                                                 CppTypeToDataType<T>::Type(),
+                                                 true);
         // TODO(daisiming): Whether use x_grad instead.
 #ifdef PADDLE_WITH_HIP
         hipMemcpy(x_grad,

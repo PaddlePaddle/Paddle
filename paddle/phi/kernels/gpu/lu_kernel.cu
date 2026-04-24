@@ -258,10 +258,10 @@ void lu_decomposed_kernel(const Context& dev_ctx,
   int lwork;
   cusolver_bufferSize(cusolverH, m, n, d_A, lda, &lwork);
 
-  auto work_buff = phi::memory_utils::Alloc(
-      dev_ctx.GetPlace(),
-      lwork * sizeof(T),
-      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+  auto work_buff =
+      memory_utils::Alloc(dev_ctx.GetPlace(),
+                          lwork * sizeof(T),
+                          Stream(reinterpret_cast<StreamId>(dev_ctx.stream())));
   T* d_work = reinterpret_cast<T*>(work_buff->ptr());
 
   /* step 3: LU factorization */

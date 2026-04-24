@@ -187,7 +187,7 @@ PADDLE_API void AdamDenseKernel(const Context& dev_ctx,
                                 DenseTensor* beta1_pow_out,
                                 DenseTensor* beta2_pow_out,
                                 DenseTensor* master_param_outs) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename dtype::MPTypeTrait<T>::Type;
   const auto grad_type = grad.dtype();
 
   VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
@@ -394,7 +394,7 @@ void MergedAdamKernel(
     std::vector<DenseTensor*> beta1_pow_out,
     std::vector<DenseTensor*> beta2_pow_out,
     std::vector<DenseTensor*> master_param_out) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename dtype::MPTypeTrait<T>::Type;
   VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
   MT beta1_ = beta1.to<MT>();
   MT beta2_ = beta2.to<MT>();

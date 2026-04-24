@@ -73,13 +73,12 @@ def _compile(
     compile_engine='PCC',
 ):
     assert ap_path is not None
-    ap_root_path = f"{os.path.dirname(paddle.__file__)}/apy"
-    apy_to_axpr_json.PyToAxpr(ap_root_path)(ap_root_path)
     assert not train, "only support inference now"
+    assert backend_device in ["cuda", "custom_device"]
     os.makedirs(ap_workspace_dir, exist_ok=True)
     build_strategy = paddle.static.BuildStrategy()
     assert compile_engine in ('CINN', 'PCC')
-    with _ap_envs(ap_path, ap_workspace_dir):
+    with _ap_envs(ap_path, ap_workspace_dir, backend_device):
         static_fn = paddle.jit.to_static(
             func,
             input_spec=input_specs,
@@ -138,14 +137,18 @@ class InputSpecMakeCtx:
 
 
 @contextmanager
-def _ap_envs(ap_path, ap_workspace_dir):
+def _ap_envs(ap_path, ap_workspace_dir, backend_device):
     ap_sys_path = f"{os.path.dirname(paddle.__file__)}/apy/sys"
     matmul_path = f"{os.path.dirname(paddle.__file__)}/apy/matmul_pass"
+    if backend_device == 'cuda':
+        device_path = f"{os.path.dirname(paddle.__file__)}/apy/device/cuda"
+    else:
+        device_path = ""
     old_ap_path = os.environ.get('AP_PATH')
     old_ap_workspace_dir = os.environ.get('AP_WORKSPACE_DIR')
-    os.environ['AP_PATH'] = (
-        f"{ap_sys_path}:{ap_path}:{matmul_path}:{old_ap_path if old_ap_path is not None else ''}"
-    )
+    new_ap_path = f"{ap_sys_path}:{ap_path}:{device_path}:{matmul_path}:{old_ap_path if old_ap_path is not None else ''}"
+    _convert_apy_to_axpr(new_ap_path)
+    os.environ['AP_PATH'] = new_ap_path
     os.environ['AP_WORKSPACE_DIR'] = ap_workspace_dir
     old_flags = paddle.get_flags(['FLAGS_enable_ap'])
     flags = dict(old_flags)
@@ -155,12 +158,19 @@ def _ap_envs(ap_path, ap_workspace_dir):
     if old_ap_path is not None:
         os.environ['AP_PATH'] = old_ap_path
     else:
-        del os.environ['AP_PATH']
+        # Always add sys_path to AP_PATH, as it is required at runtime.
+        os.environ['AP_PATH'] = ap_sys_path
     if old_ap_workspace_dir is not None:
         os.environ['AP_WORKSPACE_DIR'] = old_ap_workspace_dir
     else:
         del os.environ['AP_WORKSPACE_DIR']
     paddle.set_flags(old_flags)
+
+
+def _convert_apy_to_axpr(ap_path):
+    all_ap_paths = {p for p in ap_path.split(":") if p and os.path.isdir(p)}
+    for path in all_ap_paths:
+        apy_to_axpr_json.PyToAxpr(path)(path)
 
 
 def _get_input_annotations(func):
