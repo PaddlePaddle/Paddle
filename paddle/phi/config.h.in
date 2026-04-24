@@ -32,5 +32,11 @@
 #define PADDLE_WITH_ARM
 #endif
 
+// WITH_RISCV
+#if @WITH_RISCV@
+#undef PADDLE_WITH_RISCV
+#define PADDLE_WITH_RISCV
+#endif
+
 #undef ON
 #undef OFF

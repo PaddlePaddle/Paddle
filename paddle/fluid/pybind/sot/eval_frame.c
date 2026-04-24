@@ -319,7 +319,7 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
 #if PY_3_13_PLUS
     frame_proxy->locals = f_locals;
 #endif
-    PyObject *arg = frame_proxy;
+    PyObject *arg = (PyObject *)frame_proxy;
 #else
     PyObject *arg = frame;
 #endif

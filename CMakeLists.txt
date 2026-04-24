@@ -30,6 +30,7 @@ set(PADDLE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(PADDLE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
 
 include(system)
+include(architecture)
 
 # Note(zhouwei): Ninja Generator will set CMAKE_BUILD_TYPE to Debug
 if(NOT CMAKE_BUILD_TYPE)
@@ -336,6 +337,7 @@ option(WITH_RCCL "Compile PaddlePaddle with RCCL support" ON)
 option(WITH_XPU_BKCL "Compile PaddlePaddle with BAIDU KUNLUN XPU BKCL" OFF)
 option(WITH_CRYPTO "Compile PaddlePaddle with crypto support" ON)
 option(WITH_ARM "Compile PaddlePaddle with arm support" OFF)
+option(WITH_RISCV "Compile PaddlePaddle with riscv support" OFF)
 option(WITH_SW "Compile PaddlePaddle with sw support" OFF)
 option(WITH_MIPS "Compile PaddlePaddle with mips support" OFF)
 option(WITH_LOONGARCH "Compile PaddlePaddle with loongarch support" OFF)
@@ -423,6 +425,16 @@ if(SANITIZER_TYPE AND NOT "${SANITIZER_TYPE}" MATCHES
                       "^(Address|Leak|Memory|Thread|Undefined)$")
   message("Choose the correct type of sanitizer")
   return()
+endif()
+
+set(PADDLE_TARGET_ARCH "")
+paddle_normalize_target_arch(PADDLE_TARGET_ARCH)
+message(STATUS "Detected Paddle target arch: ${PADDLE_TARGET_ARCH}")
+
+if(PADDLE_TARGET_ARCH STREQUAL "riscv64")
+  set(WITH_RISCV
+      ON
+      CACHE STRING "Set WITH_RISCV=ON when compiling for riscv64." FORCE)
 endif()
 
 if(LINUX

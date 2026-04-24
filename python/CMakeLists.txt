@@ -202,7 +202,8 @@ if(APPLE)
 endif()
 if(LINUX
    AND NOT WITH_SW
-   AND NOT WITH_ARM)
+   AND NOT WITH_ARM
+   AND NOT WITH_RISCV)
   find_program(PATCHELF_EXECUTABLE patchelf)
   if(NOT PATCHELF_EXECUTABLE)
     message(
