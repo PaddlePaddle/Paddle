@@ -28,7 +28,7 @@ using phi::distributed::auto_parallel::str_join;
 SpmdInfo LayerNormInferSpmd(const DistMetaTensor& x,
                             const DistMetaTensor& scale,
                             const DistMetaTensor& bias,
-                            float epsilon,
+                            double epsilon,
                             int begin_norm_axis) {
   // Step0: verify input args based on layer_norm logic
   auto x_shape = common::vectorize(x.dims());
@@ -154,7 +154,7 @@ SpmdInfo LayerNormInferSpmdReverse(const DistMetaTensor& x,
                                    const DistMetaTensor& out,
                                    const DistMetaTensor& mean,
                                    const DistMetaTensor& variance,
-                                   float epsilon,
+                                   double epsilon,
                                    int begin_norm_axis) {
   // Step0: Verify input args based on layer_norm logic
   auto x_shape = common::vectorize(x.dims());
@@ -298,7 +298,7 @@ SpmdInfo LayerNormGradInferSpmd(const DistMetaTensor& x,
                                 const DistMetaTensor& mean,
                                 const DistMetaTensor& variance,
                                 const DistMetaTensor out_grad,
-                                float epsilon,
+                                double epsilon,
                                 int begin_norm_axis) {
   auto get_shape = [](const auto& meta) {
     return common::vectorize<int64_t>(meta.dims());
@@ -451,7 +451,7 @@ SpmdInfo LayerNormGradInferSpmd(const DistMetaTensor& x,
 SpmdInfo FastLnInferSpmd(const DistMetaTensor& x,
                          const DistMetaTensor& scale,
                          const DistMetaTensor& bias,
-                         float epsilon) {
+                         double epsilon) {
   int begin_norm_axis = x.dims().size() - 1;
   VLOG(4) << "FastLnInferSpmd call LayerNormInferSpmd with begin_norm_axis="
           << begin_norm_axis;
@@ -463,7 +463,7 @@ SpmdInfo FastLnGradInferSpmd(const DistMetaTensor& x,
                              const DistMetaTensor& mean,
                              const DistMetaTensor& invvar,
                              const DistMetaTensor& y_grad,
-                             float epsilon) {
+                             double epsilon) {
   int begin_norm_axis = x.dims().size() - 1;
   const DistMetaTensor& bias(scale);  // bias is not used in FastLnGrad
   VLOG(4)

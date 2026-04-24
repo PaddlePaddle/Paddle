@@ -28,7 +28,7 @@ void LayerNorm(float* x,
                const float* scale,
                const float* bias,
                int height,
-               const float epsilon,
+               const double epsilon,
                int right) {
   int block = YMM_FLOAT_BLOCK;
   const int rest = right % block;
