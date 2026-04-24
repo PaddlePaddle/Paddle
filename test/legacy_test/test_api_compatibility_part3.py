@@ -2140,6 +2140,41 @@ class TestConv1dTransposeAPI(unittest.TestCase):
                 np.testing.assert_allclose(fetches[0], fetches[i], rtol=1e-5)
 
 
+# Test Conv1DTranspose layer compatibility
+@unittest.skipIf(
+    sys.platform == 'win32',
+    "Conv transpose compatibility tests not supported on Windows-Inference",
+)
+class TestConv1DTransposeLayerAPI(unittest.TestCase):
+    def test_paddle_style_keyword_only(self):
+        paddle.disable_static()
+        layer = paddle.nn.Conv1DTranspose(2, 2, 3)
+        self.assertIsNotNone(layer.weight)
+        self.assertIsNotNone(layer.bias)
+
+    def test_bias_false_disables_bias_attr(self):
+        paddle.disable_static()
+        layer = paddle.nn.Conv1DTranspose(2, 2, 3, bias=False)
+        self.assertIsNone(layer.bias)
+
+    def test_pytorch_style_positional_bias_only(self):
+        paddle.disable_static()
+        layer = paddle.nn.Conv1DTranspose(2, 2, 3, 1, 0, 0, 1, True)
+        self.assertIsNotNone(layer.bias)
+
+    def test_pytorch_style_full_positional(self):
+        paddle.disable_static()
+        layer = paddle.nn.ConvTranspose1d(
+            2, 2, 3, 1, 0, 0, 1, False, 1, 'zeros', None, None
+        )
+        self.assertIsNone(layer.bias)
+
+    def test_pytorch_style_duplicate_bias_raises(self):
+        paddle.disable_static()
+        with self.assertRaises(TypeError):
+            paddle.nn.Conv1DTranspose(2, 2, 3, 1, 0, 0, 1, True, bias=True)
+
+
 # Test conv2d_transpose / conv_transpose2d compatibility
 @unittest.skipIf(
     sys.platform == 'win32',
@@ -2276,6 +2311,41 @@ class TestConv2dTransposeAPI(unittest.TestCase):
                 np.testing.assert_allclose(fetches[0], fetches[i], rtol=1e-5)
 
 
+# Test Conv2DTranspose layer compatibility
+@unittest.skipIf(
+    sys.platform == 'win32',
+    "Conv transpose compatibility tests not supported on Windows-Inference",
+)
+class TestConv2DTransposeLayerAPI(unittest.TestCase):
+    def test_paddle_style_keyword_only(self):
+        paddle.disable_static()
+        layer = paddle.nn.Conv2DTranspose(2, 2, 3)
+        self.assertIsNotNone(layer.weight)
+        self.assertIsNotNone(layer.bias)
+
+    def test_bias_false_disables_bias_attr(self):
+        paddle.disable_static()
+        layer = paddle.nn.Conv2DTranspose(2, 2, 3, bias=False)
+        self.assertIsNone(layer.bias)
+
+    def test_pytorch_style_positional_bias_only(self):
+        paddle.disable_static()
+        layer = paddle.nn.Conv2DTranspose(2, 2, 3, 1, 0, 0, 1, True)
+        self.assertIsNotNone(layer.bias)
+
+    def test_pytorch_style_full_positional(self):
+        paddle.disable_static()
+        layer = paddle.nn.ConvTranspose2d(
+            2, 2, 3, 1, 0, 0, 1, False, 1, 'zeros', None, None
+        )
+        self.assertIsNone(layer.bias)
+
+    def test_pytorch_style_duplicate_bias_raises(self):
+        paddle.disable_static()
+        with self.assertRaises(TypeError):
+            paddle.nn.Conv2DTranspose(2, 2, 3, 1, 0, 0, 1, True, bias=True)
+
+
 # Test conv3d_transpose / conv_transpose3d compatibility
 @unittest.skipIf(
     sys.platform == 'win32',
@@ -2410,6 +2480,41 @@ class TestConv3dTransposeAPI(unittest.TestCase):
             # Verify all outputs
             for i in range(1, len(fetches)):
                 np.testing.assert_allclose(fetches[0], fetches[i], rtol=1e-5)
+
+
+# Test Conv3DTranspose layer compatibility
+@unittest.skipIf(
+    sys.platform == 'win32',
+    "Conv transpose compatibility tests not supported on Windows-Inference",
+)
+class TestConv3DTransposeLayerAPI(unittest.TestCase):
+    def test_paddle_style_keyword_only(self):
+        paddle.disable_static()
+        layer = paddle.nn.Conv3DTranspose(2, 2, 3)
+        self.assertIsNotNone(layer.weight)
+        self.assertIsNotNone(layer.bias)
+
+    def test_bias_false_disables_bias_attr(self):
+        paddle.disable_static()
+        layer = paddle.nn.Conv3DTranspose(2, 2, 3, bias=False)
+        self.assertIsNone(layer.bias)
+
+    def test_pytorch_style_positional_bias_only(self):
+        paddle.disable_static()
+        layer = paddle.nn.Conv3DTranspose(2, 2, 3, 1, 0, 0, 1, True)
+        self.assertIsNotNone(layer.bias)
+
+    def test_pytorch_style_full_positional(self):
+        paddle.disable_static()
+        layer = paddle.nn.ConvTranspose3d(
+            2, 2, 3, 1, 0, 0, 1, False, 1, 'zeros', None, None
+        )
+        self.assertIsNone(layer.bias)
+
+    def test_pytorch_style_duplicate_bias_raises(self):
+        paddle.disable_static()
+        with self.assertRaises(TypeError):
+            paddle.nn.Conv3DTranspose(2, 2, 3, 1, 0, 0, 1, True, bias=True)
 
 
 def _assert_unary_inplace_result(
