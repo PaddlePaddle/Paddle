@@ -1542,7 +1542,8 @@ static void InterpolateAA2DCUDAFwd(
       int block_y = std::min(256 / block_x, 8);
       int grid_x = (out_w + block_x - 1) / block_x;
       int grid_y = (out_h + block_y - 1) / block_y;
-      int grid_z = std::min(static_cast<int>(nc), gpu_props.maxGridSize[2]);
+      int grid_z = std::min(static_cast<int>(nc),
+                            static_cast<int>(gpu_props.maxGridSize[2]));
       dim3 block_noshmem(block_x, block_y);
       dim3 grid_noshmem(grid_x, grid_y, grid_z);
 

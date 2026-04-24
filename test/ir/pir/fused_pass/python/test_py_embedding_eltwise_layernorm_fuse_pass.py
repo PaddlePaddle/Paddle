@@ -119,14 +119,9 @@ class TestFused2EmbeddingEltwiseLayernormPattern(PassTest):
 
         cast_op_1 = res.Op("pd_op.cast", {"dtype": cast_op_dtype})
         cast_op_2 = res.Op("pd_op.cast", {"dtype": cast_op_dtype})
-
-        def compute_epsilon(match_ctx):
-            return (match_ctx.DoubleAttr("epsilon"), "float")
-
-        fused_epsilon = res.ComputeAttr(compute_epsilon)
         fused_embedding_eltwise_layernorm_op = res.Op(
             "pd_op.fused_embedding_eltwise_layernorm",
-            {"epsilon": fused_epsilon},
+            {"epsilon": pat.Attr("epsilon")},
         )
 
         # op forward

@@ -349,7 +349,6 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
   PD_SPECIALIZE_ComputeCallHelper(const bool&);
   PD_SPECIALIZE_ComputeCallHelper(const int&);
   PD_SPECIALIZE_ComputeCallHelper(const float&);
-  PD_SPECIALIZE_ComputeCallHelper(const double&);
   PD_SPECIALIZE_ComputeCallHelper(const int64_t&);
 
   // NOTE(chenweihang): Used to be compatible with the 2.1 released

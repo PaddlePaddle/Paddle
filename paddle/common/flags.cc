@@ -231,6 +231,36 @@ PHI_DEFINE_EXPORTED_bool(
     "true, the algorithm is deterministic.");
 
 /**
+ * GPU RNG related FLAG
+ * Name: FLAGS_deterministic_rng
+ * Since Version: 3.4
+ * Value Range: bool, default=false
+ * Example: paddle.set_flags({'FLAGS_deterministic_rng': True})
+ * Note: Fix RNG kernel launch config so same seed gives same results
+ *       across GPU types.
+ */
+PHI_DEFINE_EXPORTED_bool(
+    deterministic_rng,
+    false,
+    "Enable cross-device RNG consistency by fixing GPU kernel launch "
+    "configuration. When true, RNG kernels use a fixed grid/block size "
+    "so that the same seed produces identical results across GPU types.");
+
+/**
+ * GPU RNG related FLAG
+ * Name: FLAGS_deterministic_rng_grid
+ * Since Version: 3.4
+ * Value Range: int32, default=1024
+ * Example: paddle.set_flags({'FLAGS_deterministic_rng_grid': 4096})
+ * Note: Grid size cap used when FLAGS_deterministic_rng is enabled.
+ *       Cross-device consistency requires the same value on all devices.
+ */
+PHI_DEFINE_EXPORTED_int32(
+    deterministic_rng_grid,
+    1024,
+    "Grid size cap when FLAGS_deterministic_rng is enabled.");
+
+/**
  * CUDA related FLAG
  * Name: FLAGS_embedding_deterministic
  * Since Version: 2.5
