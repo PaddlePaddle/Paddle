@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/serialize_deserialize/include/version_compat.h"
+
 #include <string>
 
 #include "paddle/fluid/pir/serialize_deserialize/include/patch_util.h"

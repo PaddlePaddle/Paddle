@@ -14,8 +14,6 @@
 
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 
-#include <glog/logging.h>
-
 #include <algorithm>
 #include <cstdlib>
 #include <fstream>
@@ -24,6 +22,8 @@
 #include <string>
 #include <utility>
 #include <vector>
+
+#include <glog/logging.h>
 
 #include "paddle/common/enforce.h"
 #include "paddle/common/errors.h"
@@ -63,6 +63,7 @@
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/memory/memcpy.h"
 #include "paddle/phi/core/platform/cpu_helper.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
@@ -70,8 +71,6 @@
 #include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/core/platform/profiler.h"
 #include "paddle/phi/core/tensor_utils.h"
-
-#include "paddle/phi/core/generator.h"
 #include "paddle/phi/kernels/funcs/data_type_transform.h"
 #include "paddle/utils/string/split.h"
 

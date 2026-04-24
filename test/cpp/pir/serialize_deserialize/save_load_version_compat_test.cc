@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
+
 #include <stdio.h>
 #include <iostream>
 #include <map>
@@ -21,6 +22,7 @@
 #include <vector>
 
 #include "paddle/common/enforce.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
@@ -28,8 +30,6 @@
 #include "paddle/fluid/pir/serialize_deserialize/include/ir_deserialize.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/version_compat.h"
 #include "paddle/phi/common/port.h"
-
-#include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/pir/include/core/block.h"
 #include "paddle/pir/include/core/builder.h"
