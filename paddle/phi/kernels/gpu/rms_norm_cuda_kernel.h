@@ -1794,15 +1794,15 @@ template <typename T,
           unsigned int rows_per_block_y,
           bool partial_reduction,
           bool aligned_grid>
-__global__ void GammaBetaBackwardCUDAKernelTemplate(
-    int64_t M,
-    int64_t N,
-    const T* __restrict__ dY,
-    const T* __restrict__ X,
-    const T_ACC* __restrict__ mean,
-    const T_ACC* __restrict__ rstd,
-    T* __restrict__ dgamma,
-    T* __restrict__ dbeta) {
+__global__ void __launch_bounds__(block_dim_x* block_dim_y)
+    GammaBetaBackwardCUDAKernelTemplate(int64_t M,
+                                        int64_t N,
+                                        const T* __restrict__ dY,
+                                        const T* __restrict__ X,
+                                        const T_ACC* __restrict__ mean,
+                                        const T_ACC* __restrict__ rstd,
+                                        T* __restrict__ dgamma,
+                                        T* __restrict__ dbeta) {
   constexpr int rows_per_thread_y = rows_per_block_y / block_dim_y;
   static_assert(rows_per_thread_y <= kWarpSize);
 
@@ -2189,15 +2189,26 @@ void LayerNormBwdCompatKernel(
             dgamma_data,
             dbeta_data,
             stream);
-      } else {
-        // Use block_dim_y=16 (512 threads/block) instead of 32 (1024) to
-        // avoid "too many resources requested for launch" on architectures
-        // with higher per-thread register usage (e.g. Blackwell / SM 100).
+      } else if (M < 256) {
         ConfigureAndLaunchGammaBetaBackwardKernel<T,
                                                   T_ACC,
                                                   block_dim_x,
                                                   16,
                                                   128>(dY_data,
+                                                       X_data,
+                                                       mean_data,
+                                                       rstd_data,
+                                                       M,
+                                                       N,
+                                                       dgamma_data,
+                                                       dbeta_data,
+                                                       stream);
+      } else {
+        ConfigureAndLaunchGammaBetaBackwardKernel<T,
+                                                  T_ACC,
+                                                  block_dim_x,
+                                                  32,
+                                                  256>(dY_data,
                                                        X_data,
                                                        mean_data,
                                                        rstd_data,
