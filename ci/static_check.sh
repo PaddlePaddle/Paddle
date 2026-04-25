@@ -149,6 +149,21 @@ function exec_samplecode_checking() {
     fi
 }
 
+function exec_abi_compatibility_check() {
+    if [ "$(uname -s)" != "Linux" ]; then
+        echo "Skip ABI compatibility check on non-Linux platform."
+        return
+    fi
+
+    python ${PADDLE_ROOT}/tools/check_abi_compatibility.py \
+        --base-wheel "${PADDLE_ROOT}/build/dev_whl/*.whl" \
+        --pr-wheel "${PADDLE_ROOT}/build/pr_whl/*.whl"
+    abi_check_error=$?
+    if [ "$abi_check_error" != "0" ]; then
+        exit $abi_check_error
+    fi
+}
+
 export PATH=/usr/local/python3.10.0/bin:/usr/local/python3.10.0/include:/usr/local/bin:${PATH}
 echo "export PATH=${PATH}" >> ~/.bashrc
 export LD_LIBRARY_PATH=/usr/local/cuda-11.8/compat:$LD_LIBRARY_PATH
@@ -157,6 +172,8 @@ ln -sf $(which python${PY_VERSION}) /usr/local/bin/python
 ln -sf $(which python${PY_VERSION}) /usr/bin/python
 ln -sf $(which pip${PY_VERSION}) /usr/local/bin/pip
 mkdir -p /home/data/cfs/.ccache/static-check
+
+exec_abi_compatibility_check
 
 pip config set global.cache-dir "/home/data/cfs/.cache/pip"
 pip install --upgrade pip 1>nul
