@@ -535,8 +535,12 @@ class TestRecomputeClosureHold(unittest.TestCase):
         loss.backward()
         run_fn(a_ref, b_ref).backward()
 
-        np.testing.assert_allclose(a.grad.numpy(), a_ref.grad.numpy(), rtol=1e-5)
-        np.testing.assert_allclose(b.grad.numpy(), b_ref.grad.numpy(), rtol=1e-5)
+        np.testing.assert_allclose(
+            a.grad.numpy(), a_ref.grad.numpy(), rtol=1e-5
+        )
+        np.testing.assert_allclose(
+            b.grad.numpy(), b_ref.grad.numpy(), rtol=1e-5
+        )
 
     def test_recompute_closure_tensors(self):
         """Closure captures Tensor / tuple / list / dict: all restored."""
@@ -614,8 +618,12 @@ class TestRecomputeClosureHold(unittest.TestCase):
         ref_fn(inp_ref).backward()
 
         self.assertIsNone(inp.grad)
-        np.testing.assert_allclose(w1.grad.numpy(), w1_ref.grad.numpy(), rtol=1e-5)
-        np.testing.assert_allclose(w2.grad.numpy(), w2_ref.grad.numpy(), rtol=1e-5)
+        np.testing.assert_allclose(
+            w1.grad.numpy(), w1_ref.grad.numpy(), rtol=1e-5
+        )
+        np.testing.assert_allclose(
+            w2.grad.numpy(), w2_ref.grad.numpy(), rtol=1e-5
+        )
 
     def test_recompute_layer_forward_closure(self):
         """paddle.nn.Layer branch of _closure_cell_values."""
@@ -648,7 +656,9 @@ class TestRecomputeClosureHold(unittest.TestCase):
         loss.backward()
         layer_ref(x_ref).backward()
 
-        np.testing.assert_allclose(x.grad.numpy(), x_ref.grad.numpy(), rtol=1e-5)
+        np.testing.assert_allclose(
+            x.grad.numpy(), x_ref.grad.numpy(), rtol=1e-5
+        )
         np.testing.assert_allclose(
             bias.grad.numpy(), bias_ref.grad.numpy(), rtol=1e-5
         )
