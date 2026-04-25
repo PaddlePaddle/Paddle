@@ -381,5 +381,278 @@ class TestCtxDirect(unittest.TestCase):
         ctx._pop_saved_impl(t1)  # already removed — must be a silent no-op
 
 
+class TestCtxHoldRestore(unittest.TestCase):
+    """Direct-ctx tests for _hold_tensors / _restore_held_tensors.
+
+    These cover the C++ WalkDenseTensors recursion (Tensor / tuple / list /
+    dict), the SavedTensorsHooks short-circuit in pylayer_hold_tensors, and
+    the ``impl() != nullptr`` early-return in pylayer_restore_held_tensors.
+    """
+
+    def _make_ctx(self):
+        class _Stub(PyLayer):
+            @staticmethod
+            def forward(ctx, x):
+                return x
+
+            @staticmethod
+            def backward(ctx, dy):
+                return dy
+
+        return _Stub._backward_function()
+
+    def test_hold_restore_basic(self):
+        """hold(tensor) + _clear_dataptr + restore re-installs impl_."""
+        ctx = self._make_ctx()
+        t = paddle.randn([2, 3]).astype('float32')
+        orig = t.numpy().copy()
+
+        ctx._hold_tensors(t)
+        _clear(t)
+        self.assertFalse(t._is_initialized())
+
+        ctx._restore_held_tensors()
+        self.assertTrue(t._is_initialized())
+        np.testing.assert_allclose(t.numpy(), orig, rtol=1e-6)
+
+    def test_hold_nested_containers(self):
+        """tuple / list / dict values are all deep-traversed."""
+        ctx = self._make_ctx()
+        t_tuple = paddle.randn([2]).astype('float32')
+        t_list = paddle.randn([3]).astype('float32')
+        t_dict = paddle.randn([4]).astype('float32')
+        originals = [t.numpy().copy() for t in (t_tuple, t_list, t_dict)]
+
+        # One call with a container mixing all three Python collection types.
+        ctx._hold_tensors(((t_tuple,), [t_list], {'k': t_dict}))
+
+        _clear([t_tuple, t_list, t_dict])
+        ctx._restore_held_tensors()
+
+        for got, orig in zip((t_tuple, t_list, t_dict), originals):
+            self.assertTrue(got._is_initialized())
+            np.testing.assert_allclose(got.numpy(), orig, rtol=1e-6)
+
+    def test_hold_none_is_noop(self):
+        """_hold_tensors(None) collects nothing; restore is a no-op."""
+        ctx = self._make_ctx()
+        ctx._hold_tensors(None)
+        ctx._restore_held_tensors()  # must not crash
+
+    def test_restore_skips_valid_impl(self):
+        """Restore leaves tensors whose impl is still valid untouched."""
+        ctx = self._make_ctx()
+        t_cleared = paddle.randn([2]).astype('float32')
+        t_kept = paddle.randn([3]).astype('float32')
+        orig_cleared = t_cleared.numpy().copy()
+        orig_kept = t_kept.numpy().copy()
+
+        ctx._hold_tensors([t_cleared, t_kept])
+        _clear(t_cleared)  # only one is cleared
+        ctx._restore_held_tensors()
+
+        # cleared tensor resurrected
+        np.testing.assert_allclose(t_cleared.numpy(), orig_cleared, rtol=1e-6)
+        # kept tensor's impl untouched — covers the ``if (!tensor.impl())``
+        # false branch in pylayer_restore_held_tensors.
+        self.assertTrue(t_kept._is_initialized())
+        np.testing.assert_allclose(t_kept.numpy(), orig_kept, rtol=1e-6)
+
+    def test_hold_non_tensor_leaves_ignored(self):
+        """Non-Tensor leaves (int/float/str/None/bytes) are silently skipped."""
+        ctx = self._make_ctx()
+        t1 = paddle.randn([2]).astype('float32')
+        t2 = paddle.randn([3]).astype('float32')
+        orig1 = t1.numpy().copy()
+        orig2 = t2.numpy().copy()
+
+        # Container mixes Tensors with int / float / str / None / bytes /
+        # a dict whose values are non-Tensor; WalkDenseTensors must descend
+        # into the containers, collect t1 / t2, and ignore everything else.
+        mixed = (
+            t1,
+            42,
+            "hello",
+            None,
+            [3.14, t2, b"bytes"],
+            {'tag': 'x', 'n': 7, 'nested': (None, 'str')},
+        )
+        ctx._hold_tensors(mixed)
+
+        _clear([t1, t2])
+        ctx._restore_held_tensors()
+
+        np.testing.assert_allclose(t1.numpy(), orig1, rtol=1e-6)
+        np.testing.assert_allclose(t2.numpy(), orig2, rtol=1e-6)
+
+    def test_hold_skipped_under_saved_tensors_hooks(self):
+        """When saved_tensors_hooks is enabled _hold_tensors collects nothing."""
+        ctx = self._make_ctx()
+        t = paddle.randn([2, 3]).astype('float32')
+
+        with paddle.autograd.saved_tensors_hooks(lambda x: x, lambda x: x):
+            ctx._hold_tensors(t)
+
+        _clear(t)
+        ctx._restore_held_tensors()
+        # holder was not populated, so impl stays empty after _clear_dataptr.
+        self.assertFalse(t._is_initialized())
+
+
+class TestRecomputeClosureHold(unittest.TestCase):
+    """End-to-end recompute coverage of the Python-side closure helper.
+
+    Covers ``_closure_cell_values`` (plain fn / nn.Layer / no-closure) and the
+    ``_has_held_tensors`` True/False branches in RecomputeFunction.
+    """
+
+    def setUp(self):
+        np.random.seed(1234)
+        paddle.seed(1234)
+
+    @staticmethod
+    def _clone_leaf(t):
+        out = paddle.to_tensor(t.numpy(), dtype=t.dtype)
+        out.stop_gradient = False
+        return out
+
+    def test_recompute_no_closure(self):
+        """run_fn has no __closure__: _has_held_tensors=False, restore skipped."""
+        from paddle.distributed.fleet.utils import recompute
+
+        def run_fn(a, b):
+            return (a * b + a).sum()
+
+        a = paddle.randn([4, 4])
+        a.stop_gradient = False
+        b = paddle.randn([4, 4])
+        b.stop_gradient = False
+        a_ref = self._clone_leaf(a)
+        b_ref = self._clone_leaf(b)
+
+        loss = recompute(run_fn, a, b)
+        _clear([a, b])
+        loss.backward()
+        run_fn(a_ref, b_ref).backward()
+
+        np.testing.assert_allclose(a.grad.numpy(), a_ref.grad.numpy(), rtol=1e-5)
+        np.testing.assert_allclose(b.grad.numpy(), b_ref.grad.numpy(), rtol=1e-5)
+
+    def test_recompute_closure_tensors(self):
+        """Closure captures Tensor / tuple / list / dict: all restored."""
+        from paddle.distributed.fleet.utils import recompute
+
+        w_s = paddle.randn([4, 4])
+        w_s.stop_gradient = False
+        w_a = paddle.randn([4, 4])
+        w_a.stop_gradient = False
+        w_b = paddle.randn([4, 4])
+        w_b.stop_gradient = False
+        w_d = paddle.randn([4, 4])
+        w_d.stop_gradient = False
+        refs = [self._clone_leaf(t) for t in (w_s, w_a, w_b, w_d)]
+
+        def make_fn(s, pair, mapping):
+            def fn(x):
+                a, b = pair
+                return (x @ s + a * x + b * x + mapping['k'] * x).sum()
+
+            return fn
+
+        x = paddle.randn([4, 4])
+        x.stop_gradient = False
+        x_ref = self._clone_leaf(x)
+
+        run_fn = make_fn(w_s, (w_a, w_b), {'k': w_d})
+        ref_fn = make_fn(refs[0], (refs[1], refs[2]), {'k': refs[3]})
+
+        loss = recompute(run_fn, x)
+        _clear([x, w_s, w_a, w_b, w_d])
+        loss.backward()
+        ref_fn(x_ref).backward()
+
+        for got, expect in zip((x, w_s, w_a, w_b, w_d), (x_ref, *refs)):
+            self.assertIsNotNone(got.grad)
+            np.testing.assert_allclose(
+                got.grad.numpy(), expect.grad.numpy(), rtol=1e-5
+            )
+
+    def test_recompute_all_grad_from_closure(self):
+        """All grad-required tensors come from closure; input tensor is frozen.
+
+        Real-world pattern: mask / position_ids flow in as (frozen) args while
+        all trainable weights are captured via closure.  Verifies that even
+        when no args contribute to grad, closure tensors are still held and
+        restored correctly.
+        """
+        from paddle.distributed.fleet.utils import recompute
+
+        w1 = paddle.randn([4, 4])
+        w1.stop_gradient = False
+        w2 = paddle.randn([4, 4])
+        w2.stop_gradient = False
+        w1_ref = self._clone_leaf(w1)
+        w2_ref = self._clone_leaf(w2)
+
+        def make_fn(a, b):
+            def fn(inp):
+                return (inp * a * b).sum()
+
+            return fn
+
+        run_fn = make_fn(w1, w2)
+        ref_fn = make_fn(w1_ref, w2_ref)
+
+        # Frozen input: stop_gradient=True; all grad-required tensors are
+        # closure-captured (w1, w2).
+        inp = paddle.ones([4, 4])
+        inp_ref = paddle.ones([4, 4])
+
+        loss = recompute(run_fn, inp)
+        _clear([inp, w1, w2])
+        loss.backward()
+        ref_fn(inp_ref).backward()
+
+        self.assertIsNone(inp.grad)
+        np.testing.assert_allclose(w1.grad.numpy(), w1_ref.grad.numpy(), rtol=1e-5)
+        np.testing.assert_allclose(w2.grad.numpy(), w2_ref.grad.numpy(), rtol=1e-5)
+
+    def test_recompute_layer_forward_closure(self):
+        """paddle.nn.Layer branch of _closure_cell_values."""
+        from paddle.distributed.fleet.utils import recompute
+
+        bias = paddle.randn([4, 4])
+        bias.stop_gradient = False
+        bias_ref = self._clone_leaf(bias)
+
+        class MyLayer(paddle.nn.Layer):
+            def __init__(self, captured):
+                super().__init__()
+
+                def forward(x):
+                    return (x + captured).sum()
+
+                self.forward = forward
+
+            def forward(self, x):  # pragma: no cover
+                raise RuntimeError
+
+        layer = MyLayer(bias)
+        layer_ref = MyLayer(bias_ref)
+        x = paddle.randn([4, 4])
+        x.stop_gradient = False
+        x_ref = self._clone_leaf(x)
+
+        loss = recompute(layer, x)
+        _clear([x, bias])
+        loss.backward()
+        layer_ref(x_ref).backward()
+
+        np.testing.assert_allclose(x.grad.numpy(), x_ref.grad.numpy(), rtol=1e-5)
+        np.testing.assert_allclose(
+            bias.grad.numpy(), bias_ref.grad.numpy(), rtol=1e-5
+        )
+
+
 if __name__ == '__main__':
     unittest.main()

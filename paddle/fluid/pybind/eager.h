@@ -41,6 +41,14 @@ typedef struct {
   // backward runs.  Lifecycle: born with container (set_container), dies with
   // the PyLayerObject (PyLayerDealloc).
   std::vector<std::shared_ptr<phi::TensorBase>> tensor_hold_helper;
+  // Holds strong references to DenseTensor impls captured in Python closures
+  // of the forward function (not recorded via save_for_backward).  The
+  // top-level ``closure_obj`` keeps the owning Python Tensor objects alive
+  // and defines the DFS order used by RestoreDenseTensors.  Populated by
+  // ctx._hold_tensors(obj); applied by ctx._restore_held_tensors() to
+  // re-install impl_ after _clear_dataptr().  Released in PyLayerDealloc.
+  PyObject* closure_obj;
+  std::vector<std::shared_ptr<phi::TensorBase>> closure_tensor_hold_helper;
 #ifdef PADDLE_WITH_CUDA
   std::vector<egr::ReloadFunctor> reload_functors;
 #endif
