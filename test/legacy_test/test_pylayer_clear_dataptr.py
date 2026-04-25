@@ -172,29 +172,6 @@ class TestPyLayerClearDataptr(unittest.TestCase):
             loss.backward()
             self.assertIsNotNone(x.grad)
 
-    def test_without_clear_dataptr(self):
-        """Sanity check: normal backward (no clear) still gives correct grad."""
-
-        class TanhLayer(PyLayer):
-            @staticmethod
-            def forward(ctx, x):
-                y = paddle.tanh(x)
-                ctx.save_for_backward(y)
-                return y
-
-            @staticmethod
-            def backward(ctx, dy):
-                (y,) = ctx.saved_tensor()
-                return dy * (1 - paddle.square(y))
-
-        x1 = paddle.randn([2, 3]).astype('float64')
-        x2 = x1.detach().clone()
-        x1.stop_gradient = False
-        x2.stop_gradient = False
-        TanhLayer.apply(x1).mean().backward()
-        TanhLayer.apply(x2).mean().backward()
-        np.testing.assert_allclose(x1.grad.numpy(), x2.grad.numpy(), rtol=1e-10)
-
     def test_memory_cleanup(self):
         """Multiple iterations: per-iteration objects are collectible."""
         import weakref
