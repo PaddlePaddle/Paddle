@@ -1049,8 +1049,7 @@ PyObject* pylayer_hold_tensors(PyObject* self_, PyObject* args) {
 // Re-install impl() on any Python Tensor previously registered via
 // _hold_tensors whose impl_ has been nulled by _clear_dataptr().  Typically
 // called at the start of backward before recompute re-runs forward.
-PyObject* pylayer_restore_held_tensors(PyObject* self_,
-                                       PyObject* /*unused*/) {
+PyObject* pylayer_restore_held_tensors(PyObject* self_, PyObject* /*unused*/) {
   EAGER_TRY
   auto* self = reinterpret_cast<PyLayerObject*>(self_);
   if (self->closure_obj && !self->closure_tensor_hold_helper.empty()) {
