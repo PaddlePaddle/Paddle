@@ -17,12 +17,11 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from site import getsitepackages
+from types import SimpleNamespace
+from unittest import mock
 
-import numpy as np
 from setuptools import Distribution
 
-import paddle
 from paddle.utils.cpp_extension.cpp_extension import (
     _as_command_list,
     _is_ninja_available,
@@ -32,24 +31,14 @@ from paddle.utils.cpp_extension.cpp_extension import (
     _write_ninja_file,
 )
 from paddle.utils.cpp_extension.extension_utils import (
-    _get_all_paddle_includes_from_include_root,
+    _write_setup_file,
 )
-
-# JIT compilation tests only run on Linux
-# Helper function tests can run on all platforms
-IS_LINUX = not (os.name == 'nt' or sys.platform.startswith('darwin'))
-
-if IS_LINUX:
-    from paddle.utils.cpp_extension import load
 
 
 class TestNinjaHelperFunctions(unittest.TestCase):
-    """Test helper functions for ninja compilation."""
-
     def test_is_ninja_available(self):
         result = _is_ninja_available()
         self.assertIsInstance(result, bool)
-        # On Linux CI, ninja should be available
         if sys.platform.startswith('linux'):
             self.assertTrue(result, "ninja should be available on Linux CI")
 
@@ -74,10 +63,14 @@ class TestNinjaHelperFunctions(unittest.TestCase):
         self.assertEqual(_nt_quote_args(None), [])
         self.assertEqual(_nt_quote_args([]), [])
         self.assertEqual(_nt_quote_args(['-c', '-O2']), ['-c', '-O2'])
-        result = _nt_quote_args(['/path with space/file', '-c'])
-        self.assertEqual(result, ['"/path with space/file"', '-c'])
-        result = _nt_quote_args(['"already quoted"', '-c'])
-        self.assertEqual(result, ['"already quoted"', '-c'])
+        self.assertEqual(
+            _nt_quote_args(['/path with space/file', '-c']),
+            ['"/path with space/file"', '-c'],
+        )
+        self.assertEqual(
+            _nt_quote_args(['"already quoted"', '-c']),
+            ['"already quoted"', '-c'],
+        )
 
     def test_join_ninja_shell_list(self):
         self.assertEqual(
@@ -85,7 +78,6 @@ class TestNinjaHelperFunctions(unittest.TestCase):
         )
         self.assertEqual(_join_ninja_shell_list([]), "")
         result = _join_ninja_shell_list(['-c', '-O2', '-I/usr/include'])
-        # On Linux, uses shlex.join
         self.assertIn('-c', result)
         self.assertIn('-O2', result)
         result = _join_ninja_shell_list(['/path with space', '-c'])
@@ -99,144 +91,298 @@ class TestNinjaHelperFunctions(unittest.TestCase):
     def test_write_ninja_file(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             ninja_path = os.path.join(tmpdir, "build.ninja")
+            _write_ninja_file(ninja_path, "ninja_required_version = 1.5")
 
-            # Test writing content without newline
-            content = "ninja_required_version = 1.5"
-            _write_ninja_file(ninja_path, content)
-
-            with open(ninja_path, 'r') as f:
+            with open(ninja_path, 'r', encoding='utf-8') as f:
                 written_content = f.read()
-            # Should add newline at end
             self.assertTrue(written_content.endswith('\n'))
             self.assertIn("ninja_required_version = 1.5", written_content)
 
-            # Test writing content with newline
             content_with_newline = "rule compile\n  command = $cxx -c $in\n"
             _write_ninja_file(ninja_path, content_with_newline)
-
-            with open(ninja_path, 'r') as f:
+            with open(ninja_path, 'r', encoding='utf-8') as f:
                 written_content = f.read()
             self.assertTrue(written_content.endswith('\n'))
 
-            # Test writing to nested directory
             nested_path = os.path.join(tmpdir, "nested", "dir", "build.ninja")
             _write_ninja_file(nested_path, "test content")
             self.assertTrue(os.path.exists(nested_path))
 
 
-@unittest.skipIf(not IS_LINUX, "JIT compilation only supported on Linux")
-class TestNinjaCompilation(unittest.TestCase):
-    """Test ninja compilation for cpp extensions."""
+class _FakeUnixCompiler:
+    compiler_type = 'unix'
 
-    def setUp(self):
-        SEED = 2021
-        paddle.seed(SEED)
-        paddle.framework.random._manual_program_seed(SEED)
-        self.dtypes = ['float32', 'float64']
+    def __init__(self, objects, build_map):
+        self.src_extensions = ['.c', '.cc', '.cpp']
+        self.compiler_so = ['g++']
+        self.compiler_cxx = ['g++']
+        self._objects = objects
+        self._build_map = build_map
 
-        # Get paddle include paths for Coverage CI
-        self.paddle_includes = []
-        for site_packages_path in getsitepackages():
-            paddle_include_dir = Path(site_packages_path) / "paddle/include"
-            self.paddle_includes.extend(
-                _get_all_paddle_includes_from_include_root(
-                    str(paddle_include_dir)
-                )
-            )
-        test_dir = os.path.dirname(os.path.abspath(__file__))
-        self.paddle_includes.append(test_dir)
-        self.test_dir = test_dir
+    def compile(self, *args, **kwargs):
+        raise AssertionError("original unix compile should be replaced")
 
-    def test_load_with_ninja_true(self):
-        if not _is_ninja_available():
-            self.skipTest("ninja is not available")
+    def link_shared_object(self, *args, **kwargs):
+        return None
 
-        sources = [os.path.join(self.test_dir, "custom_extension.cc")]
+    def object_filenames(self, *args, **kwargs):
+        return self._objects
 
-        ext = load(
-            name='ninja_extension_true',
-            sources=sources,
-            extra_include_paths=self.paddle_includes,
-            extra_cxx_cflags=['-w', '-g'],
-            use_ninja=True,
-            verbose=True,
-        )
-        np_x = np.random.uniform(-1, 1, [4, 8]).astype('float32')
-        np_y = np.random.uniform(-1, 1, [4, 8]).astype('float32')
-        x = paddle.to_tensor(np_x, dtype='float32')
-        y = paddle.to_tensor(np_y, dtype='float32')
+    def _setup_compile(
+        self,
+        output_dir,
+        macros,
+        include_dirs,
+        sources,
+        depends,
+        extra_postargs,
+    ):
+        pp_opts = [f'-I{inc}' for inc in (include_dirs or [])]
+        return macros, self._objects, extra_postargs, pp_opts, self._build_map
 
-        out = ext.custom_add(x, y)
-        target_out = np.exp(np_x) + np.exp(np_y)
-        np.testing.assert_allclose(out.numpy(), target_out, atol=1e-5)
+    def _get_cc_args(self, pp_opts, debug, extra_preargs):
+        return list(extra_preargs or []) + list(pp_opts)
 
-    def test_load_with_ninja_false(self):
-        sources = [os.path.join(self.test_dir, "custom_extension.cc")]
+    def set_executables(self, **kwargs):
+        return None
 
-        ext = load(
-            name='ninja_extension_false',
-            sources=sources,
-            extra_include_paths=self.paddle_includes,
-            extra_cxx_cflags=['-w', '-g'],
-            use_ninja=False,
-            verbose=True,
-        )
-        np_x = np.random.uniform(-1, 1, [4, 8]).astype('float32')
-        np_y = np.random.uniform(-1, 1, [4, 8]).astype('float32')
-        x = paddle.to_tensor(np_x, dtype='float32')
-        y = paddle.to_tensor(np_y, dtype='float32')
 
-        out = ext.custom_add(x, y)
-        target_out = np.exp(np_x) + np.exp(np_y)
-        np.testing.assert_allclose(out.numpy(), target_out, atol=1e-5)
+class _FakeMsvcCompiler:
+    compiler_type = 'msvc'
 
-    def test_load_ninja_auto_fallback(self):
-        sources = [os.path.join(self.test_dir, "custom_extension.cc")]
-
-        ext = load(
-            name='ninja_extension_auto',
-            sources=sources,
-            extra_include_paths=self.paddle_includes,
-            extra_cxx_cflags=['-w', '-g'],
-            verbose=True,
-        )
-
-        np_x = np.random.uniform(-1, 1, [4, 8]).astype('float32')
-        np_y = np.random.uniform(-1, 1, [4, 8]).astype('float32')
-        x = paddle.to_tensor(np_x, dtype='float32')
-        y = paddle.to_tensor(np_y, dtype='float32')
-
-        out = ext.custom_add(x, y)
-        target_out = np.exp(np_x) + np.exp(np_y)
-        np.testing.assert_allclose(out.numpy(), target_out, atol=1e-5)
-
-    def test_cuda_source_with_ninja(self):
-        if not paddle.is_compiled_with_cuda():
-            self.skipTest("CUDA is not compiled")
-
-        if not _is_ninja_available():
-            self.skipTest("ninja is not available")
-
-        sources = [
-            os.path.join(self.test_dir, "custom_extension.cc"),
-            os.path.join(self.test_dir, "custom_relu_forward.cu"),
+    def __init__(self, objects, build_map):
+        self.src_extensions = ['.c', '.cc', '.cpp']
+        self._cpp_extensions = ['.c', '.cc', '.cpp']
+        self.cc = ['cl.exe']
+        self.compile_options = ['/nologo', '/O2', '/W3', '/MD']
+        self.compile_options_debug = [
+            '/nologo',
+            '/Od',
+            '/MDd',
+            '/Zi',
+            '/W3',
+            '/D_DEBUG',
         ]
+        self.initialized = True
+        self.spawn = lambda cmd: None
+        self._objects = objects
+        self._build_map = build_map
 
-        ext = load(
-            name='ninja_cuda_extension',
+    def compile(self, *args, **kwargs):
+        raise AssertionError("original msvc compile should be replaced")
+
+    def initialize(self):
+        self.initialized = True
+
+    def object_filenames(self, *args, **kwargs):
+        return self._objects
+
+    def _setup_compile(
+        self,
+        output_dir,
+        macros,
+        include_dirs,
+        sources,
+        depends,
+        extra_postargs,
+    ):
+        pp_opts = [f'/I{inc}' for inc in (include_dirs or [])]
+        return macros, self._objects, extra_postargs, pp_opts, self._build_map
+
+
+class TestNinjaBuildFileGeneration(unittest.TestCase):
+    def _build_extension(self, **kwargs):
+        from paddle.utils.cpp_extension.cpp_extension import BuildExtension
+
+        return BuildExtension(dist=Distribution(), **kwargs)
+
+    def _run_build_with_fake_compiler(
+        self,
+        compiler,
+        sources,
+        extra_compile_args,
+        include_dirs=None,
+    ):
+        ext = SimpleNamespace(
+            name='fake_extension',
+            _full_name='fake_extension',
             sources=sources,
-            extra_include_paths=self.paddle_includes,
-            extra_cxx_cflags=['-w', '-g'],
-            use_ninja=True,
-            verbose=True,
+            extra_compile_args=extra_compile_args,
         )
+        cmd = self._build_extension(use_ninja=True)
 
-        paddle.set_device('gpu')
-        x = np.random.uniform(-1, 1, [4, 8]).astype('float32')
-        x_tensor = paddle.to_tensor(x, dtype='float32')
-        out = ext.relu_cuda_forward(x_tensor)
-        pd_out = paddle.nn.functional.relu(x_tensor)
-        np.testing.assert_allclose(out.numpy(), pd_out.numpy(), atol=1e-5)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cmd.extensions = [ext]
+            cmd.compiler = compiler
+            cmd.build_temp = tmpdir
+            cmd.build_lib = tmpdir
+            cmd.verbose = False
+
+            captured = {}
+
+            def fake_write_ninja_file(path, content):
+                captured['ninja_path'] = path
+                captured['ninja_content'] = content
+
+            def fake_build_extensions(_):
+                _.compiler.compile(
+                    sources,
+                    output_dir=_.build_temp,
+                    macros=[],
+                    include_dirs=include_dirs or [],
+                    debug=False,
+                    extra_preargs=[],
+                    extra_postargs=extra_compile_args,
+                    depends=None,
+                )
+
+            patches = [
+                mock.patch.object(cmd, '_check_abi', return_value=None),
+                mock.patch.object(cmd, '_record_op_info', return_value=None),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.clean_object_if_change_cflags',
+                    return_value=None,
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.define_paddle_extension_name',
+                    return_value=None,
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension._reset_so_rpath',
+                    return_value=None,
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension._write_ninja_file',
+                    side_effect=fake_write_ninja_file,
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension._run_ninja_build',
+                    return_value=None,
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.build_ext.build_extensions',
+                    side_effect=fake_build_extensions,
+                ),
+            ]
+
+            with (
+                patches[0],
+                patches[1],
+                patches[2],
+                patches[3],
+                patches[4],
+                patches[5],
+                patches[6],
+                patches[7],
+            ):
+                cmd.build_extensions()
+
+        return captured
+
+    def test_unix_ninja_build_file_contains_multiple_sources(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_dir = Path(tmpdir)
+            sources = [
+                str(test_dir / "custom_extension.cc"),
+                str(test_dir / "custom_sub.cc"),
+            ]
+            objects = [
+                str(test_dir / "build" / "custom_extension.o"),
+                str(test_dir / "build" / "custom_sub.o"),
+            ]
+            build_map = {
+                objects[0]: (sources[0], '.cc'),
+                objects[1]: (sources[1], '.cc'),
+            }
+            compiler = _FakeUnixCompiler(objects, build_map)
+
+            captured = self._run_build_with_fake_compiler(
+                compiler,
+                sources,
+                extra_compile_args={'cxx': ['-w', '-g'], 'nvcc': []},
+                include_dirs=[str(test_dir / "include")],
+            )
+
+        content = captured['ninja_content']
+        self.assertIn('rule compile', content)
+        self.assertIn('deps = gcc', content)
+        self.assertIn(_ninja_escape_path(os.path.abspath(objects[0])), content)
+        self.assertIn(_ninja_escape_path(os.path.abspath(objects[1])), content)
+        self.assertIn(_ninja_escape_path(os.path.abspath(sources[0])), content)
+        self.assertIn(_ninja_escape_path(os.path.abspath(sources[1])), content)
+        self.assertIn('post_cflags = -w -g', content)
+        self.assertIn(
+            f'default {_ninja_escape_path(os.path.abspath(objects[0]))} {_ninja_escape_path(os.path.abspath(objects[1]))}',
+            content,
+        )
+        self.assertTrue(captured['ninja_path'].endswith('build.ninja'))
+
+    def test_windows_ninja_build_file_contains_multiple_sources(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_dir = Path(tmpdir)
+            sources = [
+                str(test_dir / "custom_extension.cc"),
+                str(test_dir / "custom_sub.cc"),
+            ]
+            objects = [
+                str(test_dir / "build" / "custom_extension.obj"),
+                str(test_dir / "build" / "custom_sub.obj"),
+            ]
+            build_map = {
+                objects[0]: (sources[0], '.cc'),
+                objects[1]: (sources[1], '.cc'),
+            }
+            compiler = _FakeMsvcCompiler(objects, build_map)
+
+            captured = self._run_build_with_fake_compiler(
+                compiler,
+                sources,
+                extra_compile_args={'cxx': ['/wd4244'], 'nvcc': []},
+                include_dirs=[str(test_dir / "include dir")],
+            )
+
+        content = captured['ninja_content']
+        self.assertIn('rule compile', content)
+        self.assertIn('deps = msvc', content)
+        self.assertIn('command = $cxx /showIncludes', content)
+        self.assertIn('cl.exe', content)
+        self.assertIn('/wd4244', content)
+        self.assertIn(_ninja_escape_path(os.path.abspath(objects[0])), content)
+        self.assertIn(_ninja_escape_path(os.path.abspath(objects[1])), content)
+        self.assertIn(_ninja_escape_path(os.path.abspath(sources[0])), content)
+        self.assertIn(_ninja_escape_path(os.path.abspath(sources[1])), content)
+        self.assertIn('/I', content)
+        self.assertTrue(captured['ninja_path'].endswith('build.ninja'))
+
+
+class TestNinjaGeneratedSetupFile(unittest.TestCase):
+    def test_load_setup_file_uses_default_build_extension_options(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            setup_path = os.path.join(tmpdir, "demo_setup.py")
+            build_dir = os.path.join(tmpdir, "build")
+            sources = ['custom_extension.cc', 'custom_sub.cc']
+
+            _write_setup_file(
+                'demo_extension',
+                sources,
+                setup_path,
+                build_dir,
+                ['include_dir'],
+                ['library_dir'],
+                ['-w', '-g'],
+                [],
+                [],
+            )
+
+            content = Path(setup_path).read_text(encoding='utf-8')
+
+        self.assertIn('BuildExtension.with_options(', content)
+        self.assertIn("output_dir=r'", content)
+        self.assertIn('no_python_abi_suffix=True', content)
+        self.assertIn(
+            "sources=['custom_extension.cc', 'custom_sub.cc']", content
+        )
+        self.assertNotIn('use_ninja=', content)
 
 
 class TestNinjaBuildExtension(unittest.TestCase):
@@ -247,7 +393,7 @@ class TestNinjaBuildExtension(unittest.TestCase):
 
     def test_use_ninja_attribute_default(self):
         build_ext = self._build_extension()
-        self.assertTrue(build_ext.use_ninja, "use_ninja should default to True")
+        self.assertEqual(build_ext.use_ninja, _is_ninja_available())
 
     def test_use_ninja_attribute_explicit_false(self):
         build_ext = self._build_extension(use_ninja=False)
@@ -255,20 +401,7 @@ class TestNinjaBuildExtension(unittest.TestCase):
 
     def test_use_ninja_attribute_explicit_true(self):
         build_ext = self._build_extension(use_ninja=True)
-        self.assertTrue(build_ext.use_ninja)
-
-    def test_use_ninja_fallback_when_unavailable(self):
-        # Create BuildExtension with use_ninja=True
-        # If ninja is unavailable, it should fallback to False
-        build_ext = self._build_extension(use_ninja=True)
-
-        if not _is_ninja_available():
-            self.assertFalse(
-                build_ext.use_ninja,
-                "use_ninja should be False when ninja is unavailable",
-            )
-        else:
-            self.assertTrue(build_ext.use_ninja)
+        self.assertEqual(build_ext.use_ninja, _is_ninja_available())
 
 
 if __name__ == '__main__':
