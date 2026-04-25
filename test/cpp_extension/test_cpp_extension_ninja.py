@@ -20,6 +20,7 @@ from pathlib import Path
 from site import getsitepackages
 
 import numpy as np
+from setuptools import Distribution
 
 import paddle
 from paddle.utils.cpp_extension.cpp_extension import (
@@ -239,30 +240,27 @@ class TestNinjaCompilation(unittest.TestCase):
 
 
 class TestNinjaBuildExtension(unittest.TestCase):
-    def test_use_ninja_attribute_default(self):
+    def _build_extension(self, **kwargs):
         from paddle.utils.cpp_extension.cpp_extension import BuildExtension
 
-        build_ext = BuildExtension()
+        return BuildExtension(dist=Distribution(), **kwargs)
+
+    def test_use_ninja_attribute_default(self):
+        build_ext = self._build_extension()
         self.assertTrue(build_ext.use_ninja, "use_ninja should default to True")
 
     def test_use_ninja_attribute_explicit_false(self):
-        from paddle.utils.cpp_extension.cpp_extension import BuildExtension
-
-        build_ext = BuildExtension(use_ninja=False)
+        build_ext = self._build_extension(use_ninja=False)
         self.assertFalse(build_ext.use_ninja)
 
     def test_use_ninja_attribute_explicit_true(self):
-        from paddle.utils.cpp_extension.cpp_extension import BuildExtension
-
-        build_ext = BuildExtension(use_ninja=True)
+        build_ext = self._build_extension(use_ninja=True)
         self.assertTrue(build_ext.use_ninja)
 
     def test_use_ninja_fallback_when_unavailable(self):
-        from paddle.utils.cpp_extension.cpp_extension import BuildExtension
-
         # Create BuildExtension with use_ninja=True
         # If ninja is unavailable, it should fallback to False
-        build_ext = BuildExtension(use_ninja=True)
+        build_ext = self._build_extension(use_ninja=True)
 
         if not _is_ninja_available():
             self.assertFalse(
