@@ -226,6 +226,27 @@ def check_recompute_necessary(inputs):
         )
 
 
+def _closure_cell_values(run_function):
+    """Return cell contents of ``run_function``'s ``__closure__`` as a tuple.
+
+    Supports plain functions/lambdas and ``paddle.nn.Layer`` (uses ``forward``).
+    Deep Tensor extraction is done by the C++ side of ``_hold_tensors``.
+    """
+    fn = (
+        run_function.forward
+        if isinstance(run_function, paddle.nn.Layer)
+        else run_function
+    )
+    closure = getattr(fn, '__closure__', None) or ()
+    values = []
+    for cell in closure:
+        try:
+            values.append(cell.cell_contents)
+        except ValueError:  # empty cell
+            pass
+    return tuple(values)
+
+
 class CustomStatesManager:
     """CustomStatesManager"""
 
@@ -410,12 +431,25 @@ class RecomputeFunction(PyLayer):
 
         ctx.save_for_backward(*tensor_inputs)
 
+        # Protect tensors captured in run_function's Python __closure__ against
+        # pipeline-parallel _clear_dataptr(); explicit tensor args are already
+        # covered by save_for_backward's tensor_hold_helper.
+        closure_values = _closure_cell_values(run_function)
+        ctx._has_held_tensors = bool(closure_values)
+        if closure_values:
+            ctx._hold_tensors(closure_values)
+
         return outputs
 
     @staticmethod
     def backward(ctx, *args):
         with paddle.base.dygraph.guard():
             # TODO need to check the recompute calling is valid or not
+
+            # Restore closure-captured tensors potentially emptied by
+            # pipeline-parallel _clear_dataptr() before re-running forward.
+            if getattr(ctx, '_has_held_tensors', False):
+                ctx._restore_held_tensors()
 
             # Restore inputs
             inputs = list(ctx.inputs)
