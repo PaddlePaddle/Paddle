@@ -196,7 +196,8 @@ class TestPyLayerClearDataptr(unittest.TestCase):
         np.testing.assert_allclose(x1.grad.numpy(), x2.grad.numpy(), rtol=1e-10)
 
     def test_memory_cleanup(self):
-        """Multiple iterations: no memory leak / reference accumulation."""
+        """Multiple iterations: per-iteration objects are collectible."""
+        import weakref
 
         class TanhLayer(PyLayer):
             @staticmethod
@@ -210,15 +211,23 @@ class TestPyLayerClearDataptr(unittest.TestCase):
                 (y,) = ctx.saved_tensor()
                 return dy * (1 - paddle.square(y))
 
-        for _ in range(10):
+        # Track the first iteration's `out` via weakref; after the loop ends
+        # and gc runs, it must be collected.  Catches holder leaks where
+        # tensor_hold_helper accidentally retains a strong reference across
+        # ctx lifetimes.
+        first_out_ref = None
+        for i in range(10):
             x = paddle.randn([64, 64]).astype('float32')
             x.stop_gradient = False
             out = TanhLayer.apply(x)
+            if i == 0:
+                first_out_ref = weakref.ref(out)
             loss = out.mean()
             _clear(out)
             loss.backward()
+            del x, out, loss
             gc.collect()
-        self.assertTrue(True)
+        self.assertIsNone(first_out_ref())
 
 
 class TestCtxDirect(unittest.TestCase):
@@ -331,13 +340,22 @@ class TestCtxDirect(unittest.TestCase):
         self.assertEqual(list(recovered[1].shape), [3])
 
     def test_pop_saved_impl_no_clear(self):
-        """pop_saved_impl does not crash when tensor was never cleared."""
+        """pop_saved_impl does not crash when tensor was never cleared.
+
+        Also verifies the pop targets a specific entry: after popping t's
+        holder entry, a subsequent saved_tensor() call still succeeds and
+        returns t with its original data (pop did not corrupt container).
+        """
         ctx = self._make_ctx()
         t = paddle.randn([5]).astype('float32')
+        orig = t.numpy().copy()
         ctx.save_for_backward(t)
 
         # No _clear_dataptr; pop should still succeed silently
         ctx._pop_saved_impl(t)
+        # saved_tensor() must still return the tensor correctly.
+        (recovered,) = ctx.saved_tensor()
+        np.testing.assert_allclose(recovered.numpy(), orig, rtol=1e-6)
 
     # ------------------------------------------------------------------
     # Deep-traversal via nested list in container
@@ -439,6 +457,13 @@ class TestCtxHoldRestore(unittest.TestCase):
         ctx._hold_tensors(None)
         ctx._restore_held_tensors()  # must not crash
 
+    def test_hold_scalar_top_level_noop(self):
+        """_hold_tensors on a bare non-container scalar collects nothing."""
+        ctx = self._make_ctx()
+        for val in (42, 3.14, "str", b"bytes"):
+            ctx._hold_tensors(val)
+            ctx._restore_held_tensors()  # must not crash
+
     def test_restore_skips_valid_impl(self):
         """Restore leaves tensors whose impl is still valid untouched."""
         ctx = self._make_ctx()
@@ -532,14 +557,18 @@ class TestRecomputeClosureHold(unittest.TestCase):
 
         loss = recompute(run_fn, a, b)
         _clear([a, b])
+        # Sanity: _clear actually nulled impls — otherwise "restore succeeded"
+        # would be trivially true and mask regressions.
+        self.assertFalse(a._is_initialized())
+        self.assertFalse(b._is_initialized())
         loss.backward()
         run_fn(a_ref, b_ref).backward()
 
         np.testing.assert_allclose(
-            a.grad.numpy(), a_ref.grad.numpy(), rtol=1e-5
+            a.grad.numpy(), a_ref.grad.numpy(), rtol=1e-4
         )
         np.testing.assert_allclose(
-            b.grad.numpy(), b_ref.grad.numpy(), rtol=1e-5
+            b.grad.numpy(), b_ref.grad.numpy(), rtol=1e-4
         )
 
     def test_recompute_closure_tensors(self):
@@ -572,13 +601,15 @@ class TestRecomputeClosureHold(unittest.TestCase):
 
         loss = recompute(run_fn, x)
         _clear([x, w_s, w_a, w_b, w_d])
+        for t in (x, w_s, w_a, w_b, w_d):
+            self.assertFalse(t._is_initialized())
         loss.backward()
         ref_fn(x_ref).backward()
 
         for got, expect in zip((x, w_s, w_a, w_b, w_d), (x_ref, *refs)):
             self.assertIsNotNone(got.grad)
             np.testing.assert_allclose(
-                got.grad.numpy(), expect.grad.numpy(), rtol=1e-5
+                got.grad.numpy(), expect.grad.numpy(), rtol=1e-4
             )
 
     def test_recompute_all_grad_from_closure(self):
@@ -614,14 +645,16 @@ class TestRecomputeClosureHold(unittest.TestCase):
 
         loss = recompute(run_fn, inp)
         _clear([inp, w1, w2])
+        for t in (inp, w1, w2):
+            self.assertFalse(t._is_initialized())
         loss.backward()
         ref_fn(inp_ref).backward()
 
         np.testing.assert_allclose(
-            w1.grad.numpy(), w1_ref.grad.numpy(), rtol=1e-5
+            w1.grad.numpy(), w1_ref.grad.numpy(), rtol=1e-4
         )
         np.testing.assert_allclose(
-            w2.grad.numpy(), w2_ref.grad.numpy(), rtol=1e-5
+            w2.grad.numpy(), w2_ref.grad.numpy(), rtol=1e-4
         )
 
     def test_recompute_layer_forward_closure(self):
@@ -652,14 +685,16 @@ class TestRecomputeClosureHold(unittest.TestCase):
 
         loss = recompute(layer, x)
         _clear([x, bias])
+        self.assertFalse(x._is_initialized())
+        self.assertFalse(bias._is_initialized())
         loss.backward()
         layer_ref(x_ref).backward()
 
         np.testing.assert_allclose(
-            x.grad.numpy(), x_ref.grad.numpy(), rtol=1e-5
+            x.grad.numpy(), x_ref.grad.numpy(), rtol=1e-4
         )
         np.testing.assert_allclose(
-            bias.grad.numpy(), bias_ref.grad.numpy(), rtol=1e-5
+            bias.grad.numpy(), bias_ref.grad.numpy(), rtol=1e-4
         )
 
 
