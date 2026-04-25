@@ -541,6 +541,51 @@ class TestRecomputeClosureHold(unittest.TestCase):
         out.stop_gradient = False
         return out
 
+    def test_closure_cell_values_empty_cell(self):
+        """_closure_cell_values skips empty cells via ValueError branch."""
+        from paddle.distributed.fleet.recompute.recompute import (
+            _closure_cell_values,
+        )
+
+        def outer():
+            x = 1
+
+            def inner(a):
+                return a + x  # noqa: F821 -- x intentionally deleted
+
+            del x
+            return inner
+
+        fn = outer()
+        # Sanity: cell exists but is empty — accessing raises ValueError.
+        self.assertEqual(len(fn.__closure__), 1)
+        with self.assertRaises(ValueError):
+            _ = fn.__closure__[0].cell_contents
+        # The helper must swallow ValueError and return an empty tuple.
+        self.assertEqual(_closure_cell_values(fn), ())
+
+    def test_closure_cell_values_mixed(self):
+        """Empty cell alongside a valid cell: valid value still collected."""
+        from paddle.distributed.fleet.recompute.recompute import (
+            _closure_cell_values,
+        )
+
+        def outer():
+            x = 1
+            y = paddle.randn([2])
+
+            def inner(a):
+                return a + x + y  # noqa: F821
+
+            del x
+            return inner, y
+
+        fn, y = outer()
+        vals = _closure_cell_values(fn)
+        # Empty cell is dropped; exactly one valid value (y) remains.
+        self.assertEqual(len(vals), 1)
+        self.assertIs(vals[0], y)
+
     def test_recompute_no_closure(self):
         """run_fn has no __closure__: _has_held_tensors=False, restore skipped."""
         from paddle.distributed.fleet.utils import recompute
