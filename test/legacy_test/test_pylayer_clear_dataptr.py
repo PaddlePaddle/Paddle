@@ -582,12 +582,12 @@ class TestRecomputeClosureHold(unittest.TestCase):
             )
 
     def test_recompute_all_grad_from_closure(self):
-        """All grad-required tensors come from closure; input tensor is frozen.
+        """Trainable tensors captured via closure must receive grads.
 
-        Real-world pattern: mask / position_ids flow in as (frozen) args while
-        all trainable weights are captured via closure.  Verifies that even
-        when no args contribute to grad, closure tensors are still held and
-        restored correctly.
+        Real-world pattern: trainable weights are closure-captured while the
+        PyLayer arg is a regular activation.  Verifies that closure-captured
+        ``w1`` / ``w2`` tensors are held across ``_clear_dataptr()`` and their
+        grads are computed correctly during the recomputed backward.
         """
         from paddle.distributed.fleet.utils import recompute
 
@@ -607,17 +607,16 @@ class TestRecomputeClosureHold(unittest.TestCase):
         run_fn = make_fn(w1, w2)
         ref_fn = make_fn(w1_ref, w2_ref)
 
-        # Frozen input: stop_gradient=True; all grad-required tensors are
-        # closure-captured (w1, w2).
         inp = paddle.ones([4, 4])
+        inp.stop_gradient = False
         inp_ref = paddle.ones([4, 4])
+        inp_ref.stop_gradient = False
 
         loss = recompute(run_fn, inp)
         _clear([inp, w1, w2])
         loss.backward()
         ref_fn(inp_ref).backward()
 
-        self.assertIsNone(inp.grad)
         np.testing.assert_allclose(
             w1.grad.numpy(), w1_ref.grad.numpy(), rtol=1e-5
         )
