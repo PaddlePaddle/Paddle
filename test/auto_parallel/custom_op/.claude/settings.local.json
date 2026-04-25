@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(ls:*)",
-      "Bash(python:*)",
-      "Bash(dumpbin:*)"
-    ]
-  }
-}
