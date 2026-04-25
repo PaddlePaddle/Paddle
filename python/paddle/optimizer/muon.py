@@ -15,13 +15,18 @@ from __future__ import annotations
 
 import logging
 import os
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from paddle import Tensor
 
 import paddle
+from paddle import _C_ops
 from paddle.base import framework
 from paddle.distributed.flex_checkpoint.dcp.sharded_weight import (
     ShardedStateDict,
@@ -212,7 +217,8 @@ class Muon(Optimizer):
         nesterov=True,
         adam_epsilon=1e-9,
         grad_clip=None,
-        apply_decay_param_fun=None,
+        lr_ratio: Callable[[Tensor], float] | None = None,
+        apply_decay_param_fun: Callable[[str], bool] | None = None,
         muon_version=1,
         muon_exclude_patterns=None,
         muon_extra_scale_factor=0.2,
@@ -262,6 +268,7 @@ class Muon(Optimizer):
 
         self._multi_precision = multi_precision
         self._master_weights = {}
+        self._lr_ratio = lr_ratio
         self._apply_decay_param_fun = apply_decay_param_fun
         self._muon_split_logged = False
         self._muon_exclude_patterns = muon_exclude_patterns
@@ -327,7 +334,7 @@ class Muon(Optimizer):
                     acc_name,
                     param,
                     dtype=paddle.float32,
-                    fill_value=1.0,
+                    fill_value=init_val,
                     shape=[1],
                     type=framework.core.VarDesc.VarType.DENSE_TENSOR,
                 )
@@ -414,8 +421,8 @@ class Muon(Optimizer):
     # Per-parameter update rules
     # ------------------------------------------------------------------
 
-    @staticmethod
     def _adamw_update(
+        self,
         param,
         grad,
         lr,
@@ -429,39 +436,44 @@ class Muon(Optimizer):
         weight_decay,
     ):
         """In-place AdamW update for 1-D sharded parameters."""
-        with paddle.no_grad():
-            beta1_pow.scale_(beta1)
-            beta2_pow.scale_(beta2)
 
-            if weight_decay > 0:
-                param.scale_(1.0 - lr * weight_decay)
+        lr_ratio = 1.0 if self._lr_ratio is None else self._lr_ratio(param)
+        with_decay = True
+        if (
+            self._apply_decay_param_fun is not None
+            and not self._apply_decay_param_fun(param.name)
+        ):
+            with_decay = False
 
-            grad_f32 = (
-                grad.astype(paddle.float32)
-                if grad.dtype != paddle.float32
-                else grad
-            )
-
-            moment1.scale_(beta1).add_(grad_f32, alpha=1.0 - beta1)
-            moment2.scale_(beta2).add_(
-                paddle.square(grad_f32), alpha=1.0 - beta2
-            )
-
-            bias1 = 1.0 - beta1_pow
-            bias2 = 1.0 - beta2_pow
-            update = (
-                (moment1 / bias1)
-                / ((paddle.sqrt(moment2) / paddle.sqrt(bias2)) + epsilon)
-                * lr
-            )
-
-            if update.dtype != param.dtype:
-                update = update.astype(param.dtype)
-
-            if hasattr(param, "subtract_"):
-                param.subtract_(update)
-            else:
-                paddle.assign(param - update, param)
+        find_master = self._multi_precision and self._is_dtype_fp16_or_bf16(
+            param.dtype
+        )
+        master_weight = (
+            self._master_weights[param.name] if find_master else None
+        )
+        _, _, _, _, _, _, _ = _C_ops.adamw_(
+            param,
+            grad,
+            lr,
+            moment1,
+            moment2,
+            None,  # moment2_max
+            beta1_pow,
+            beta2_pow,
+            master_weight,
+            None,  # found_inf
+            beta1,
+            beta2,
+            epsilon,
+            lr_ratio,
+            weight_decay,
+            with_decay,
+            False,  # lazy_mode
+            1000,
+            find_master,
+            False,
+            False,  # amsgrad
+        )
 
     def _muon_update(
         self,
@@ -545,18 +557,32 @@ class Muon(Optimizer):
                 # Default: whole matrix orthogonalisation
                 orthogonal_update = ortho_fn(matrix_2d_global)
 
-            # Step 4: Apply update with optional weight decay
-            if weight_decay > 0:
-                param.scale_(1.0 - lr * weight_decay)
+            find_master = self._multi_precision and self._is_dtype_fp16_or_bf16(
+                param.dtype
+            )
+            master_weight = (
+                self._master_weights[param.name] if find_master else None
+            )
+
+            with_decay = True
+            if (
+                self._apply_decay_param_fun is not None
+                and not self._apply_decay_param_fun(param.name)
+            ):
+                with_decay = False
+            if with_decay and weight_decay > 0:
+                if find_master:
+                    master_weight.scale_(1.0 - lr * weight_decay)
+                else:
+                    param.scale_(1.0 - lr * weight_decay)
 
             final_step = orthogonal_update * lr
-            if final_step.dtype != param.dtype:
-                final_step = final_step.astype(param.dtype)
 
-            if hasattr(param, "subtract_"):
-                param.subtract_(final_step)
+            if find_master:
+                master_weight.subtract_(final_step)
+                paddle.assign(master_weight.astype(param.dtype), param)
             else:
-                paddle.assign(param - final_step, param)
+                param.subtract_(final_step.astype(param.dtype))
 
     # ------------------------------------------------------------------
     # Core optimization step
@@ -599,11 +625,12 @@ class Muon(Optimizer):
                 adamw_params.append((param, grad))
 
         # --- Pass 1: Muon updates (large temporary tensors) ---
+        lr_tensor = paddle.to_tensor(lr, dtype=paddle.float32)
         for param, grad in muon_params:
             self._muon_update(
                 param,
                 grad,
-                lr,
+                lr_tensor,
                 self._get_accumulator(self._moment_acc_str, param),
                 group.get("momentum", 0.95),
                 group.get("ns_steps", 5),
@@ -612,18 +639,13 @@ class Muon(Optimizer):
                 wd,
                 version=group.get("muon_version", 3),
             )
-            if self._multi_precision and param.name in self._master_weights:
-                with paddle.no_grad():
-                    _cast_tmp = paddle.cast(param, paddle.float32)
-                    paddle.assign(_cast_tmp, self._master_weights[param.name])
-                    del _cast_tmp
 
         # --- Pass 2: AdamW updates ---
         for param, grad in adamw_params:
             self._adamw_update(
                 param,
                 grad,
-                lr,
+                lr_tensor,
                 self._get_accumulator(self._moment_acc_str, param),
                 self._get_accumulator(self._moment2_acc_str, param),
                 self._get_accumulator(self._beta1_pow_acc_str, param),
@@ -633,11 +655,6 @@ class Muon(Optimizer):
                 group.get("epsilon", 1e-9),
                 wd,
             )
-            if self._multi_precision and param.name in self._master_weights:
-                with paddle.no_grad():
-                    _cast_tmp = paddle.cast(param, paddle.float32)
-                    paddle.assign(_cast_tmp, self._master_weights[param.name])
-                    del _cast_tmp
 
     @framework.dygraph_only
     def step(self) -> None:
