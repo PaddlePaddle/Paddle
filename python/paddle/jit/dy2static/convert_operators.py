@@ -719,7 +719,7 @@ def convert_range(*args):
     # So we add an `Assign` OP after the Tensor input to **mark** it as a variable, which can avoid confusing
     # it with the scalar case.
     is_full_op_output = lambda x: (
-        isinstance(x, (Variable, Value))
+        isinstance(x, Value)
         and x.get_defining_op()
         and x.get_defining_op().name() == "pd_op.full"
     )
