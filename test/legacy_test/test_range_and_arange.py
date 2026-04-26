@@ -129,6 +129,7 @@ class TestTensorCreation(unittest.TestCase):
         ):
             with dygraph_guard():
                 for start, end, step in [
+                    (0, 0, 1),
                     (0, 5, 1),
                     (2, 7, 2),
                     (5, None, 1),

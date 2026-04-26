@@ -69,8 +69,6 @@ void GetSizeForRange(T start, T end, T step, int64_t* size) {
       step,
       0,
       common::errors::InvalidArgument("The step of range op should not be 0."));
-  PADDLE_THROW(common::errors::Fatal(
-      "[CI_PATH_TEST] GetSizeForRange reached after step check (line 67)"));
 
   if constexpr (std::is_same_v<T, phi::bfloat16> ||
                 std::is_same_v<T, phi::float16>) {
@@ -82,8 +80,6 @@ void GetSizeForRange(T start, T end, T step, int64_t* size) {
             "numbers, but received start=%f, end=%f.",
             static_cast<double>(start),
             static_cast<double>(end)));
-    PADDLE_THROW(common::errors::Fatal(
-        "[CI_PATH_TEST] GetSizeForRange reached bf16/fp16 branch"));
   } else if constexpr (std::is_floating_point_v<T>) {
     PADDLE_ENFORCE_EQ(
         std::isfinite(start) && std::isfinite(end),
@@ -93,13 +89,9 @@ void GetSizeForRange(T start, T end, T step, int64_t* size) {
             "numbers, but received start=%f, end=%f.",
             static_cast<double>(start),
             static_cast<double>(end)));
-    PADDLE_THROW(common::errors::Fatal(
-        "[CI_PATH_TEST] GetSizeForRange reached floating-point branch "));
   }
   // Closed interval [start, end], so we add 1
   *size = static_cast<int64_t>(((end - start) / step) + 1);
-  PADDLE_THROW(common::errors::Fatal(
-      "[CI_PATH_TEST] GetSizeForRange reached final size calc (line 112)"));
 }
 
 }  // namespace funcs
