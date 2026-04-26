@@ -24,10 +24,12 @@ from setuptools import Distribution
 
 from paddle.utils.cpp_extension.cpp_extension import (
     _as_command_list,
+    _get_num_workers,
     _is_ninja_available,
     _join_ninja_shell_list,
     _ninja_escape_path,
     _nt_quote_args,
+    _run_ninja_build,
     _write_ninja_file,
 )
 from paddle.utils.cpp_extension.extension_utils import (
@@ -107,6 +109,53 @@ class TestNinjaHelperFunctions(unittest.TestCase):
             nested_path = os.path.join(tmpdir, "nested", "dir", "build.ninja")
             _write_ninja_file(nested_path, "test content")
             self.assertTrue(os.path.exists(nested_path))
+
+    def test_get_num_workers_with_max_jobs_env(self):
+        with mock.patch.dict(os.environ, {'MAX_JOBS': '4'}, clear=False):
+            result = _get_num_workers(verbose=False)
+            self.assertEqual(result, 4)
+
+    def test_run_ninja_build_windows_vc_env(self):
+        if sys.platform != 'win32':
+            self.skipTest("Windows-only test")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ninja_path = os.path.join(tmpdir, "build.ninja")
+            _write_ninja_file(ninja_path, "rule cc\n  command = echo hello\n")
+
+            vc_env_mock = {'PATH': '/vc/bin', 'INCLUDE': '/vc/include'}
+
+            with (
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.distutils.util.get_platform',
+                    return_value='win-amd64',
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension._get_vc_env',
+                    return_value=vc_env_mock,
+                ),
+                mock.patch('subprocess.run') as mock_run,
+            ):
+                _run_ninja_build(tmpdir, verbose=True, error_prefix="Test")
+                mock_run.assert_called_once()
+
+    def test_run_ninja_build_windows_with_vscmd_env(self):
+        if sys.platform != 'win32':
+            self.skipTest("Windows-only test")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ninja_path = os.path.join(tmpdir, "build.ninja")
+            _write_ninja_file(ninja_path, "rule cc\n  command = echo hello\n")
+
+            with (
+                mock.patch.dict(
+                    os.environ, {'VSCMD_ARG_TGT_ARCH': 'x64'}, clear=False
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.IS_WINDOWS', True
+                ),
+                mock.patch('subprocess.run') as mock_run,
+            ):
+                _run_ninja_build(tmpdir, verbose=True, error_prefix="Test")
+                mock_run.assert_called_once()
 
 
 class _FakeUnixCompiler:
@@ -190,7 +239,7 @@ class _FakeMsvcCompiler:
         return macros, self._objects, extra_postargs, pp_opts, self._build_map
 
 
-class TestNinjaBuildFileGeneration(unittest.TestCase):
+class TestBuildExtension(unittest.TestCase):
     def _build_extension(self, **kwargs):
         from paddle.utils.cpp_extension.cpp_extension import BuildExtension
 
@@ -318,6 +367,8 @@ class TestNinjaBuildFileGeneration(unittest.TestCase):
         self.assertTrue(captured['ninja_path'].endswith('build.ninja'))
 
     def test_windows_ninja_build_file_contains_multiple_sources(self):
+        if sys.platform != 'win32':
+            self.skipTest("Windows-only test")
         with tempfile.TemporaryDirectory() as tmpdir:
             test_dir = Path(tmpdir)
             sources = [
@@ -354,6 +405,138 @@ class TestNinjaBuildFileGeneration(unittest.TestCase):
         self.assertIn('/I', content)
         self.assertTrue(captured['ninja_path'].endswith('build.ninja'))
 
+    def test_use_ninja_attribute_default(self):
+        build_ext = self._build_extension()
+        self.assertEqual(build_ext.use_ninja, _is_ninja_available())
+
+    def test_use_ninja_attribute_explicit_false(self):
+        build_ext = self._build_extension(use_ninja=False)
+        self.assertFalse(build_ext.use_ninja)
+
+    def test_use_ninja_attribute_explicit_true(self):
+        build_ext = self._build_extension(use_ninja=True)
+        self.assertEqual(build_ext.use_ninja, _is_ninja_available())
+
+    def test_unix_compiler_with_use_ninja_false(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_dir = Path(tmpdir)
+            sources = [str(test_dir / "custom_extension.cc")]
+            objects = [str(test_dir / "build" / "custom_extension.o")]
+            build_map = {objects[0]: (sources[0], '.cc')}
+            compiler = _FakeUnixCompiler(objects, build_map)
+
+            ext = SimpleNamespace(
+                name='fake_extension',
+                _full_name='fake_extension',
+                sources=sources,
+                extra_compile_args={'cxx': ['-w'], 'nvcc': []},
+            )
+            cmd = self._build_extension(use_ninja=False)
+
+            cmd.extensions = [ext]
+            cmd.compiler = compiler
+            cmd.build_temp = tmpdir
+            cmd.build_lib = tmpdir
+            cmd.verbose = False
+
+            original_compile = compiler.__class__.compile
+
+            patches = [
+                mock.patch.object(cmd, '_check_abi', return_value=None),
+                mock.patch.object(cmd, '_record_op_info', return_value=None),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.clean_object_if_change_cflags',
+                    return_value=None,
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.define_paddle_extension_name',
+                    return_value=None,
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension._reset_so_rpath',
+                    return_value=None,
+                ),
+            ]
+
+            with (
+                patches[0],
+                patches[1],
+                patches[2],
+                patches[3],
+                patches[4],
+            ):
+
+                def fake_build_extensions(_):
+                    self.assertNotEqual(
+                        compiler.__class__.compile, original_compile
+                    )
+
+                with mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.build_ext.build_extensions',
+                    side_effect=fake_build_extensions,
+                ):
+                    cmd.build_extensions()
+
+    def test_msvc_compiler_with_use_ninja_false(self):
+        if sys.platform != 'win32':
+            self.skipTest("Windows-only test")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_dir = Path(tmpdir)
+            sources = [str(test_dir / "custom_extension.cc")]
+            objects = [str(test_dir / "build" / "custom_extension.obj")]
+            build_map = {objects[0]: (sources[0], '.cc')}
+            compiler = _FakeMsvcCompiler(objects, build_map)
+
+            ext = SimpleNamespace(
+                name='fake_extension',
+                _full_name='fake_extension',
+                sources=sources,
+                extra_compile_args={'cxx': ['/wd4244'], 'nvcc': []},
+            )
+            cmd = self._build_extension(use_ninja=False)
+
+            cmd.extensions = [ext]
+            cmd.compiler = compiler
+            cmd.build_temp = tmpdir
+            cmd.build_lib = tmpdir
+            cmd.verbose = False
+
+            original_compile = compiler.compile
+
+            patches = [
+                mock.patch.object(cmd, '_check_abi', return_value=None),
+                mock.patch.object(cmd, '_record_op_info', return_value=None),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.clean_object_if_change_cflags',
+                    return_value=None,
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.define_paddle_extension_name',
+                    return_value=None,
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension._reset_so_rpath',
+                    return_value=None,
+                ),
+            ]
+
+            with (
+                patches[0],
+                patches[1],
+                patches[2],
+                patches[3],
+                patches[4],
+            ):
+
+                def fake_build_extensions(_):
+                    self.assertNotEqual(_.compiler.compile, original_compile)
+
+                with mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.build_ext.build_extensions',
+                    side_effect=fake_build_extensions,
+                ):
+                    cmd.build_extensions()
+
 
 class TestNinjaGeneratedSetupFile(unittest.TestCase):
     def test_load_setup_file_uses_default_build_extension_options(self):
@@ -383,25 +566,6 @@ class TestNinjaGeneratedSetupFile(unittest.TestCase):
             "sources=['custom_extension.cc', 'custom_sub.cc']", content
         )
         self.assertNotIn('use_ninja=', content)
-
-
-class TestNinjaBuildExtension(unittest.TestCase):
-    def _build_extension(self, **kwargs):
-        from paddle.utils.cpp_extension.cpp_extension import BuildExtension
-
-        return BuildExtension(dist=Distribution(), **kwargs)
-
-    def test_use_ninja_attribute_default(self):
-        build_ext = self._build_extension()
-        self.assertEqual(build_ext.use_ninja, _is_ninja_available())
-
-    def test_use_ninja_attribute_explicit_false(self):
-        build_ext = self._build_extension(use_ninja=False)
-        self.assertFalse(build_ext.use_ninja)
-
-    def test_use_ninja_attribute_explicit_true(self):
-        build_ext = self._build_extension(use_ninja=True)
-        self.assertEqual(build_ext.use_ninja, _is_ninja_available())
 
 
 if __name__ == '__main__':
