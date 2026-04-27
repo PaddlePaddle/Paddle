@@ -46,9 +46,6 @@ void RangeTensorKernel(const Context& dev_ctx,
                        const DenseTensor& end,
                        const DenseTensor& step,
                        DenseTensor* out) {
-  bool any_float = phi::IsFloatingType(start.dtype()) ||
-                   phi::IsFloatingType(end.dtype()) ||
-                   phi::IsFloatingType(step.dtype());
   int64_t size = 0;
   Scalar start_scalar(start);
   Scalar end_scalar(end);

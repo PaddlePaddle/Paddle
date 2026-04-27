@@ -13,7 +13,8 @@
 // limitations under the License.
 
 #pragma once
-#include <iomanip>
+#include <cmath>
+#include <type_traits>
 #include "paddle/phi/core/enforce.h"
 
 namespace phi {

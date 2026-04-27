@@ -46,13 +46,13 @@ void RangeTensorKernel(const Context& dev_ctx,
   MPType start_value, end_value, step_value;
 
   PD_VISIT_ALL_TYPES(start.dtype(), "GetStart", ([&] {
-                       start_value = static_cast<float>(
+                       start_value = static_cast<MPType>(
                            GetValue<data_t, Context>(dev_ctx, start));
                      }));
-  PD_VISIT_ALL_TYPES(
-      end.dtype(), "GetEnd", ([&] {
-        end_value = static_cast<float>(GetValue<data_t, Context>(dev_ctx, end));
-      }));
+  PD_VISIT_ALL_TYPES(end.dtype(), "GetEnd", ([&] {
+                       end_value = static_cast<MPType>(
+                           GetValue<data_t, Context>(dev_ctx, end));
+                     }));
   PD_VISIT_ALL_TYPES(step.dtype(), "GetStep", ([&] {
                        step_value = static_cast<MPType>(
                            GetValue<data_t, Context>(dev_ctx, step));

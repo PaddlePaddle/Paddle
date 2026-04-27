@@ -93,14 +93,14 @@ void ArangeKernel(const Context& dev_ctx,
     double sv = start.to<double>();
     double ev = end.to<double>();
     double stv = step.to<double>();
-    funcs::GetSize<double>(sv, ev, stv, &size);
+    funcs::GetSize(sv, ev, stv, &size);
     start_value = static_cast<T>(sv);
     step_value = static_cast<T>(stv);
   } else {
     int64_t sv = start.to<int64_t>();
     int64_t ev = end.to<int64_t>();
     int64_t stv = step.to<int64_t>();
-    funcs::GetSize<double>(sv, ev, stv, &size);
+    funcs::GetSize(sv, ev, stv, &size);
     start_value = static_cast<T>(sv);
     step_value = static_cast<T>(stv);
   }
