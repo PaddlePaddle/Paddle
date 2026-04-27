@@ -301,19 +301,32 @@ void DropoutFwGPUKernelDriver(
     uint64_t increment;
     // VectorizedRandomGenerator use curand_uniform4, so kVecSize is 4;
     constexpr int kVecSize = funcs::uniform_distribution<float>::kReturnsCount;
-    auto gpu_config =
-        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x_numel, kVecSize);
-    size_t grid_size = gpu_config.GetGridSize();
-    size_t block_size = gpu_config.GetBlockSize();
 
-    int64_t device_id = dev_ctx.GetPlace().GetDeviceId();
-    const auto& prop = phi::backends::gpu::GetDeviceProperties(device_id);
-    size_t max_grid_size = prop.maxThreadsPerMultiProcessor *
-                           prop.multiProcessorCount / block_size;
-    grid_size = std::min(grid_size, max_grid_size);
+    size_t grid_size;
+    size_t block_size;
+    size_t offset;
 
-    auto offset =
-        ((x_numel - 1) / (grid_size * block_size * kVecSize) + 1) * kVecSize;
+    if (funcs::IsDeterministicRNG()) {
+      auto cfg = funcs::GetDeterministicRNGConfig(x_numel, kVecSize);
+      grid_size = cfg.grid_size;
+      block_size = cfg.block_size;
+      offset = cfg.increment;
+    } else {
+      auto gpu_config =
+          phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x_numel, kVecSize);
+      grid_size = gpu_config.GetGridSize();
+      block_size = gpu_config.GetBlockSize();
+
+      int64_t device_id = dev_ctx.GetPlace().GetDeviceId();
+      const auto& prop = phi::backends::gpu::GetDeviceProperties(device_id);
+      size_t max_grid_size = prop.maxThreadsPerMultiProcessor *
+                             prop.multiProcessorCount / block_size;
+      grid_size = std::min(grid_size, max_grid_size);
+
+      offset =
+          ((x_numel - 1) / (grid_size * block_size * kVecSize) + 1) * kVecSize;
+    }
+
     size_t main_offset =
         size / (block_size * kVecSize) * (block_size * kVecSize);
 
