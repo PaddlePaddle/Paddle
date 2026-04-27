@@ -529,6 +529,7 @@ class MuonShardingOptimizer:
         # 1D params
         if color in self._color_to_comm_buffer_list.keys():
             for comm_buffer in self._color_to_comm_buffer_list[color]:
+                has_clear = False
                 for param in comm_buffer.params:
                     grad_view = comm_buffer._sharding_param_grad_view[
                         param.name
@@ -540,14 +541,20 @@ class MuonShardingOptimizer:
                     ):
                         grad_view.fill_slice_param(slice_param)
                         self._create_master_weight(slice_param)
-                    slice_param._clear_dataptr()
-                comm_buffer._clear_param_storage()
+                    if param.name in self._master_weights:
+                        slice_param._clear_dataptr()
+                        has_clear = True
+
+                if has_clear:
+                    comm_buffer._clear_param_storage()
         # 2D params
         if color in self._params_2d_by_color.keys():
             for param in self._params_2d_by_color[color]:
                 if not g_shard_bypass_dygraph_optimizer:
                     self._create_master_weight(param)
-                param._clear_to_zero_allocation()
+
+                if param.name in self._master_weights:
+                    param._clear_to_zero_allocation()
 
     def reset_param_storage(self):
         for color in self.clear_color:
@@ -556,12 +563,14 @@ class MuonShardingOptimizer:
             # 1D params
             if color in self._color_to_comm_buffer_list.keys():
                 for comm_buffer in self._color_to_comm_buffer_list[color]:
-                    comm_buffer._reset_param_storage()
+                    if not comm_buffer.param_storage._is_initialized():
+                        comm_buffer._reset_param_storage()
             # 2D params
             if color in self._params_2d_by_color.keys():
                 for param in self._params_2d_by_color[color]:
-                    new_param = paddle.empty_like(param)
-                    new_param._share_buffer_to(param)
+                    if not param._is_initialized():
+                        new_param = paddle.empty_like(param)
+                        new_param._share_buffer_to(param)
 
     # ------------------------------------------------------------------
     # Gradient communication
