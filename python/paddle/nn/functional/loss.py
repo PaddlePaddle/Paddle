@@ -21,7 +21,11 @@ import paddle
 from paddle import _C_ops, base, in_dynamic_mode
 from paddle.static.nn.control_flow import Assert
 from paddle.utils import deprecated
-from paddle.utils.decorator_utils import param_one_alias, param_two_alias
+from paddle.utils.decorator_utils import (
+    ParamAliasDecorator,
+    param_one_alias,
+    param_two_alias,
+)
 
 from ...base.data_feeder import check_type, check_variable_and_dtype
 from ...base.framework import (
@@ -1138,6 +1142,7 @@ def hsigmoid_loss(
         return out
 
 
+@param_one_alias(["label", "target"])
 def smooth_l1_loss(
     input: Tensor,
     label: Tensor,
@@ -1172,6 +1177,7 @@ def smooth_l1_loss(
             is (N, C, D1, D2,..., Dk), k >= 1.
         label (Tensor): Label tensor, the data type is float32 or float64. The shape of label
             is the same as the shape of input.
+            Alias: ``target``.
         reduction (str, optional): Indicate how to average the loss by batch_size,
             the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
@@ -1248,6 +1254,9 @@ def smooth_l1_loss(
         return paddle.sum(out)
 
 
+@ParamAliasDecorator(
+    {"input": ["input1"], "other": ["input2"], "label": ["target"]}
+)
 def margin_ranking_loss(
     input: Tensor,
     other: Tensor,
@@ -1277,8 +1286,11 @@ def margin_ranking_loss(
 
     Parameters:
         input(Tensor): the first input tensor, it's data type should be float32, float64.
+            Alias: ``input1``.
         other(Tensor): the second input tensor, it's data type should be float32, float64.
+            Alias: ``input2``.
         label(Tensor): the label value corresponding to input, it's data type should be float32, float64.
+            Alias: ``target``.
         margin (float, optional): The margin value to add, default value is 0;
         reduction (str, optional): Indicate the reduction to apply to the loss, the candidates are ``'none'``, ``'mean'``, ``'sum'``.If :attr:`reduction` is ``'none'``, the unreduced loss is returned; If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned. If :attr:`reduction` is ``'sum'``, the reduced sum loss is returned. Default is ``'mean'``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
@@ -1369,6 +1381,7 @@ def margin_ranking_loss(
             return result_out
 
 
+@param_one_alias(["label", "target"])
 def l1_loss(
     input: Tensor,
     label: Tensor,
@@ -1398,6 +1411,7 @@ def l1_loss(
     Parameters:
         input (Tensor): The input tensor. The shapes is [N, `*`], where N is batch size and `*` means any number of additional dimensions. It's data type should be float32, float64, int32, int64.
         label (Tensor): label. The shapes is [N, `*`], same shape as ``input`` . It's data type should be float32, float64, int32, int64.
+            Alias: ``target``.
         reduction (str, optional): Indicate the reduction to apply to the loss,
             the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If `reduction` is ``'none'``, the unreduced loss is returned;
@@ -1729,6 +1743,7 @@ def poisson_nll_loss(
     return loss_out
 
 
+@param_one_alias(["label", "target"])
 def kl_div(
     input: Tensor,
     label: Tensor,
@@ -1765,6 +1780,7 @@ def kl_div(
         input (Tensor): The input tensor. The shapes is [N, *], where N is batch size and `*` means
             any number of additional dimensions. It's data type should be float32, float64.
         label (Tensor): label. The shapes is [N, *], same shape as ``input`` . It's data type should be float32, float64.
+            Alias: ``target``.
         reduction (str, optional): Indicate how to average the loss,
             the candidates are ``'none'`` | ``'batchmean'`` | ``'mean'`` | ``'sum'``.
             If `reduction` is ``'mean'``, the reduced mean loss is returned;
@@ -3615,6 +3631,7 @@ def sigmoid_focal_loss(
         return loss
 
 
+@param_one_alias(["label", "target"])
 def multi_label_soft_margin_loss(
     input: Tensor,
     label: Tensor,
@@ -3638,6 +3655,7 @@ def multi_label_soft_margin_loss(
     Parameters:
         input (Tensor): Input tensor, the data type is float32 or float64. Shape is (N, C), where C is number of classes, and if shape is more than 2D, this is (N, C, D1, D2,..., Dk), k >= 1.
         label (Tensor): Label tensor, the data type is float32 or float64. The shape of label is the same as the shape of input.
+            Alias: ``target``.
         weight (Tensor, optional): a manual rescaling weight given to each class.
                 If given, has to be a Tensor of size C and the data type is float32, float64.
                 Default is ``'None'`` .
@@ -3728,6 +3746,7 @@ def multi_label_soft_margin_loss(
         return paddle.sum(loss)
 
 
+@param_one_alias(["label", "target"])
 def hinge_embedding_loss(
     input: Tensor,
     label: Tensor,
@@ -3763,6 +3782,7 @@ def hinge_embedding_loss(
             the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
         label (Tensor): Label tensor containing 1 or -1, the data type is float32 or float64.
             The shape of label is the same as the shape of input.
+            Alias: ``target``.
         margin (float, optional): Specifies the hyperparameter margin to be used.
             The value determines how large the input need to be to calculate in
             hinge_embedding_loss. When label is -1, Input smaller than margin are minimized with hinge_embedding_loss.
@@ -3837,6 +3857,7 @@ def hinge_embedding_loss(
         return loss
 
 
+@param_one_alias(["label", "target"])
 def cosine_embedding_loss(
     input1: Tensor,
     input2: Tensor,
@@ -3869,6 +3890,7 @@ def cosine_embedding_loss(
                          Available dtypes are float32, float64.
         label (Tensor): tensor with shape: [N] or [1], 'N' means the length of input array. The target labels values should be -1 or 1.
                          Available dtypes are int32, int64, float32, float64.
+                         Alias: ``target``.
         margin (float, optional): Should be a number from :math:`-1` to :math:`1`,
                          :math:`0` to :math:`0.5` is suggested. If :attr:`margin` is missing, the
                          default value is :math:`0`.
@@ -3957,6 +3979,7 @@ def cosine_embedding_loss(
         return paddle.sum(out, name=name)
 
 
+@param_one_alias(["input", "anchor"])
 def triplet_margin_with_distance_loss(
     input: Tensor,
     positive: Tensor,
@@ -3994,6 +4017,7 @@ def triplet_margin_with_distance_loss(
 
         input (Tensor):Input tensor, the data type is float32 or float64.
             the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
+            Alias: ``anchor``.
 
         positive (Tensor):Positive tensor, the data type is float32 or float64.
             The shape of label is the same as the shape of input.
@@ -4111,6 +4135,7 @@ def triplet_margin_with_distance_loss(
         return loss
 
 
+@param_two_alias(["input", "anchor"], ["epsilon", "eps"])
 def triplet_margin_loss(
     input: Tensor,
     positive: Tensor,
@@ -4144,6 +4169,7 @@ def triplet_margin_loss(
     Parameters:
         input (Tensor): Input tensor, the data type is float32 or float64.
             the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
+            Alias: ``anchor``.
 
         positive (Tensor): Positive tensor, the data type is float32 or float64.
             The shape of label is the same as the shape of input.
@@ -4157,6 +4183,7 @@ def triplet_margin_loss(
 
         epsilon (float, optional): Add small value to avoid division by zero,
             default value is 1e-6.
+            Alias: ``eps``.
 
         swap (bool, optional): The distance swap change the negative distance to the distance between
             positive sample and negative sample. For more details, see `Learning shallow convolutional feature descriptors with triplet losses`.
@@ -4371,6 +4398,7 @@ def multi_margin_loss(
         return loss
 
 
+@param_one_alias(["label", "target"])
 def multi_label_margin_loss(
     input: Tensor,
     label: Tensor,
@@ -4395,6 +4423,7 @@ def multi_label_margin_loss(
         label (Tensor): Label tensor, the data type is int32 or int64. Shape is (N, C), same shape as input.
             Label values should be class indices (non-negative values) and -1 values.
             The -1 values are ignored and stop processing for each sample.
+            Alias: ``target``.
         reduction (str, optional): Indicate how to calculate the loss by batch_size,
             the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
@@ -4490,6 +4519,7 @@ def multi_label_margin_loss(
         return losses
 
 
+@param_one_alias(["label", "target"])
 def soft_margin_loss(
     input: Tensor,
     label: Tensor,
@@ -4513,6 +4543,7 @@ def soft_margin_loss(
         label (Tensor): The target labels tensor with the same shape as
             ``input``. The target labels which values should be numbers -1 or 1.
             Available dtype is int32, int64, float32, float64.
+            Alias: ``target``.
 
         reduction (str, optional): Indicate how to average the loss by batch_size,
             the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
@@ -4586,6 +4617,9 @@ def soft_margin_loss(
         return out
 
 
+@ParamAliasDecorator(
+    {"label": ["target"], "variance": ["var"], "epsilon": ["eps"]}
+)
 def gaussian_nll_loss(
     input: Tensor,
     label: Tensor,
@@ -4621,14 +4655,17 @@ def gaussian_nll_loss(
             dimensions. Expectation of the Gaussian distribution, available dtype is float32, float64.
         label (Tensor): target label tensor, :math:`(N, *)` or :math:`(*)`, same shape as the input, or same shape as the input
             but with one dimension equal to 1 (to allow for broadcasting). Sample from the Gaussian distribution, available dtype is float32, float64.
+            Alias: ``target``.
         variance (Tensor): tensor of positive variance(s), :math:`(N, *)` or :math:`(*)`, same shape as the input, or same shape as the input but
             with one dimension equal to 1, or same shape as the input but with one fewer
             dimension (to allow for broadcasting). One for each of the expectations
             in the input (heteroscedastic), or a single one (homoscedastic), available dtype is float32, float64.
+            Alias: ``var``.
         full (bool, optional): include the constant term in the loss
             calculation. Default: ``False``.
         epsilon (float, optional): value used to clamp ``variance`` (see note below), for
             stability. Default: 1e-6.
+            Alias: ``eps``.
         reduction (str, optional): specifies the reduction to apply to the
             output:``'none'`` | ``'mean'`` | ``'sum'``. ``'none'``: no reduction
             will be applied, ``'mean'``: the output is the average of all batch
