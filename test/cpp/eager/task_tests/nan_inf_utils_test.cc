@@ -16,6 +16,8 @@
 
 #include <iostream>
 #include <limits>
+#include <ostream>
+#include <string>
 #include <tuple>
 
 #include "gtest/gtest.h"
@@ -28,8 +30,15 @@
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(strings_empty, CPU, ALL_LAYOUT);
 
+// Forward declare FLAGS_check_nan_inf_blacklist for testing
+// This flag can be set via command line: --check_nan_inf_blacklist="op1,op2"
+namespace paddle_flags {
+extern std::string FLAGS_check_nan_inf_blacklist;
+}
+
 namespace egr {
 
+using paddle_flags::FLAGS_check_nan_inf_blacklist;
 #define CHECK_NAN_INF(tensors)                                               \
   {                                                                          \
     bool caught_exception = false;                                           \
@@ -55,6 +64,63 @@ namespace egr {
     }                                                                        \
     EXPECT_FALSE(caught_exception);                                          \
   }
+
+#define CHECK_APINAME_SKIP(api_name, tensor)            \
+  {                                                     \
+    bool caught_exception = false;                      \
+    try {                                               \
+      CheckTensorHasNanOrInf(api_name, tensor);         \
+    } catch (paddle::platform::EnforceNotMet & error) { \
+      caught_exception = true;                          \
+    }                                                   \
+    EXPECT_FALSE(caught_exception);                     \
+  }
+
+#define CHECK_APINAME_NO_SKIP(api_name, tensor)         \
+  {                                                     \
+    bool caught_exception = false;                      \
+    try {                                               \
+      CheckTensorHasNanOrInf(api_name, tensor);         \
+    } catch (paddle::platform::EnforceNotMet & error) { \
+      caught_exception = true;                          \
+    }                                                   \
+    EXPECT_TRUE(caught_exception);                      \
+  }
+
+TEST(NanInfUtils, BlacklistSkipCheck) {
+  auto nan_tensor = paddle::experimental::full(
+      {3, 4}, std::numeric_limits<double>::quiet_NaN(), phi::DataType::FLOAT64);
+
+  FLAGS_check_nan_inf_blacklist = "";
+  CHECK_APINAME_SKIP("empty", nan_tensor);
+
+  // Test that "empty_like" always skips regardless of blacklist
+  FLAGS_check_nan_inf_blacklist = "";
+  CHECK_APINAME_SKIP("empty_like", nan_tensor);
+
+  // Test with empty blacklist (default behavior)
+  FLAGS_check_nan_inf_blacklist = "";
+  CHECK_APINAME_NO_SKIP("some_op", nan_tensor);
+
+  // Test with single op in blacklist
+  FLAGS_check_nan_inf_blacklist = "single_op";
+  CHECK_APINAME_SKIP("single_op", nan_tensor);
+  CHECK_APINAME_NO_SKIP("other_op", nan_tensor);
+
+  // Even when blacklist is set, these should still skip
+  CHECK_APINAME_SKIP("empty", nan_tensor);
+  CHECK_APINAME_SKIP("empty_like", nan_tensor);
+
+  // blacklist="op1,op2,op3" and op is in blacklist
+  FLAGS_check_nan_inf_blacklist = "op1,op2,op3";
+  CHECK_APINAME_SKIP("op1", nan_tensor);
+  CHECK_APINAME_SKIP("op2", nan_tensor);
+  CHECK_APINAME_SKIP("op3", nan_tensor);
+  // not in blacklist, should perform nan_or_inf check
+  CHECK_APINAME_NO_SKIP("op4", nan_tensor);
+
+  FLAGS_check_nan_inf_blacklist = "";
+}
 
 TEST(NanInfUtils, Functions) {
   // test all methods
