@@ -58,7 +58,8 @@ TEST(TensorChunkTest, ChunkMoreChunksThanSize) {
 
   std::vector<at::Tensor> chunks = t.chunk(5, 0);
 
-  ASSERT_EQ(chunks.size(), 5);
+  // PyTorch returns at most dim_size non-empty chunks when chunks > dim_size
+  ASSERT_EQ(chunks.size(), 2);
 }
 
 TEST(TensorChunkTest, ChunkDefaultDim) {
