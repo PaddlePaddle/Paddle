@@ -54,9 +54,13 @@ class AddLayernormPattern : public paddle::drr::DrrPatternBase {
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
+    const auto &fused_epsilon = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> float {
+          return static_cast<float>(match_ctx.Attr<double>("epsilon"));
+        });
     const auto &add_layernorm_xpu =
         res.Op(paddle::dialect::AddLayernormXpuOp::name(),
-               {{{"epsilon", pat.Attr("epsilon")},
+               {{{"epsilon", fused_epsilon},
                  {"begin_norm_axis", pat.Attr("begin_norm_axis")}}});
     add_layernorm_xpu({&res.Tensor("x"),
                        &res.Tensor("y"),

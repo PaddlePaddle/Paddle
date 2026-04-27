@@ -133,3 +133,8 @@ op_patches:
         object : porder
         type : pir::DoubleAttribute
         data : 2
+  - op_name : pd_op.layer_norm
+    actions:
+      - action : modify_attr
+        object : epsilon
+        type : pir::DoubleAttribute
