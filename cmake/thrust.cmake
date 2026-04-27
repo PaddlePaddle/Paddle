@@ -7,6 +7,14 @@ function(add_thrust_patches_if_necessary)
     return()
   endif()
 
+  # ROCm < 7.0 still needs thrust patches.
+  if(WITH_ROCM)
+    set(thrust_patches "${PADDLE_SOURCE_DIR}/patches/thrust")
+    message(STATUS "ROCm < 7.0 detected, add thrust patches: ${thrust_patches}")
+    include_directories(${thrust_patches})
+    return()
+  endif()
+
   # For CUDA, check if thrust has shuffle support
   if(WITH_GPU)
     set(thrust_detect_file ${PROJECT_BINARY_DIR}/detect_thrust.cu)

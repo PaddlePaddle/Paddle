@@ -123,22 +123,27 @@ if(WITH_GPU
        "gpu/moe_unpermute_kernel.cu")
 endif()
 
-# Note(ROCm 7.0): Exclude kernels that have compatibility issues with ROCm 7.0
-# These kernels use rocprim/thrust radix_sort with custom float16/bfloat16 types which
-# require complex trait specializations that are incompatible with ROCm 7.0+'s
-# trait system.
-# TODO: Re-enable these kernels once ROCm compatibility is resolved or implement alternative sorting.
-if(WITH_ROCM
-   AND DEFINED PADDLE_ROCM_VERSION
-   AND PADDLE_ROCM_VERSION GREATER_EQUAL 70000000)
-  list(
-    REMOVE_ITEM
-    kernel_gpu
-    "gpu/argsort_kernel.cu"
-    "gpu/argsort_grad_kernel.cu"
-    "gpu/mode_kernel.cu"
-    "gpu/mode_grad_kernel.cu"
-    "gpu/randperm_kernel.cu")
+# Note(ROCm 7.0): argsort kernels are re-enabled for ROCm 7.0+ after
+# rocprim trait compatibility fixes. Keep the legacy ROCm exclusion set when
+# the version is older or unavailable.
+if(WITH_ROCM)
+  if(DEFINED PADDLE_ROCM_VERSION AND PADDLE_ROCM_VERSION GREATER_EQUAL 70000000)
+    list(
+      REMOVE_ITEM
+      kernel_gpu
+      "gpu/mode_kernel.cu"
+      "gpu/mode_grad_kernel.cu"
+      "gpu/randperm_kernel.cu")
+  else()
+    list(
+      REMOVE_ITEM
+      kernel_gpu
+      "gpu/argsort_kernel.cu"
+      "gpu/argsort_grad_kernel.cu"
+      "gpu/mode_kernel.cu"
+      "gpu/mode_grad_kernel.cu"
+      "gpu/randperm_kernel.cu")
+  endif()
 endif()
 
 if(NOT WITH_DGC)

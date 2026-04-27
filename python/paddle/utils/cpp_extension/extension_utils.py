@@ -540,9 +540,19 @@ def get_rocm_arch_flags(cflags):
     if cflags is None:
         cflags = []
 
-    for flag in cflags:
-        if '--offload-arch=' in flag or '-amdgpu-target=' in flag:
-            return []
+    has_rocm_arch_flag = any(
+        flag in ('--offload-arch', '-amdgpu-target')
+        or '--offload-arch=' in flag
+        or '-amdgpu-target=' in flag
+        for flag in cflags
+    )
+    has_no_gpu_rdc_flag = any('-fno-gpu-rdc' in flag for flag in cflags)
+
+    rocm_flags = []
+    if not has_no_gpu_rdc_flag:
+        rocm_flags.append('-fno-gpu-rdc')
+    if has_rocm_arch_flag:
+        return rocm_flags
 
     rocm_arch_list = os.environ.get("PADDLE_ROCM_ARCH_LIST")
     if rocm_arch_list:
@@ -562,7 +572,6 @@ def get_rocm_arch_flags(cflags):
             'gfx950',
         ]
 
-    rocm_flags = ['-fno-gpu-rdc']
     rocm_flags.extend(
         [f'--offload-arch={arch}' for arch in sorted(set(rocm_arch_list))]
     )

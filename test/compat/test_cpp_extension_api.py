@@ -99,6 +99,50 @@ class TestGetCudaArchFlags(unittest.TestCase):
             self.assertEqual(_get_cuda_arch_flags(), [])
 
 
+class TestGetRocmArchFlags(unittest.TestCase):
+    def setUp(self):
+        self._old_env = dict(os.environ)
+
+    def tearDown(self):
+        os.environ.clear()
+        os.environ.update(self._old_env)
+
+    def test_default_arch_list(self):
+        if "PADDLE_ROCM_ARCH_LIST" in os.environ:
+            del os.environ["PADDLE_ROCM_ARCH_LIST"]
+        flags = extension_utils.get_rocm_arch_flags([])
+        self.assertIn("-fno-gpu-rdc", flags)
+        self.assertIn("--offload-arch=gfx906", flags)
+        self.assertIn("--offload-arch=gfx950", flags)
+
+    def test_env_arch_list_override(self):
+        os.environ["PADDLE_ROCM_ARCH_LIST"] = "gfx950;gfx942 gfx942,gfx908"
+        flags = extension_utils.get_rocm_arch_flags([])
+        arch_flags = [flag for flag in flags if flag.startswith("--offload-arch=")]
+        self.assertEqual(
+            sorted(arch_flags),
+            [
+                "--offload-arch=gfx908",
+                "--offload-arch=gfx942",
+                "--offload-arch=gfx950",
+            ],
+        )
+
+    def test_user_arch_flags_keep_no_gpu_rdc(self):
+        flags = extension_utils.get_rocm_arch_flags(["--offload-arch=gfx950"])
+        self.assertEqual(flags, ["-fno-gpu-rdc"])
+
+    def test_user_split_arch_flags_keep_no_gpu_rdc(self):
+        flags = extension_utils.get_rocm_arch_flags(["--offload-arch", "gfx950"])
+        self.assertEqual(flags, ["-fno-gpu-rdc"])
+
+    def test_user_arch_flags_without_duplicate_no_gpu_rdc(self):
+        flags = extension_utils.get_rocm_arch_flags(
+            ["-fno-gpu-rdc", "--offload-arch=gfx950"]
+        )
+        self.assertEqual(flags, [])
+
+
 class TestCppExtensionUtils(unittest.TestCase):
     def test_cuda_home(self):
         if core.is_compiled_with_cuda():
