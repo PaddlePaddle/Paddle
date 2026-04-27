@@ -12,26 +12,19 @@ else()
       CACHE PATH "Path to which ROCm has been installed")
 endif()
 
-# ROCm 7.0+: HIP is now directly under ROCM_PATH, not in a separate hip subdirectory
-# Check if we're using newer ROCm layout (7.0+) or older layout
-if(EXISTS "${ROCM_PATH}/lib/cmake/hip/FindHIP.cmake")
-  # ROCm 7.0+ layout
-  set(HIP_PATH
-      ${ROCM_PATH}
-      CACHE PATH "Path to which HIP has been installed")
-  set(CMAKE_MODULE_PATH "${ROCM_PATH}/lib/cmake/hip" ${CMAKE_MODULE_PATH})
-elseif(EXISTS "${ROCM_PATH}/hip/cmake")
+# ROCm 7.0+ uses HIP directly under ROCM_PATH.
+# Default to this layout and only fall back to legacy layout when needed.
+set(HIP_PATH
+    ${ROCM_PATH}
+    CACHE PATH "Path to which HIP has been installed")
+set(CMAKE_MODULE_PATH "${ROCM_PATH}/lib/cmake/hip" ${CMAKE_MODULE_PATH})
+if(NOT EXISTS "${ROCM_PATH}/lib/cmake/hip/FindHIP.cmake"
+   AND EXISTS "${ROCM_PATH}/hip/cmake")
   # Legacy ROCm layout (< 7.0)
   set(HIP_PATH
       ${ROCM_PATH}/hip
       CACHE PATH "Path to which HIP has been installed")
   set(CMAKE_MODULE_PATH "${HIP_PATH}/cmake" ${CMAKE_MODULE_PATH})
-else()
-  # Fallback: assume ROCm 7.0+ layout
-  set(HIP_PATH
-      ${ROCM_PATH}
-      CACHE PATH "Path to which HIP has been installed")
-  set(CMAKE_MODULE_PATH "${ROCM_PATH}/lib/cmake/hip" ${CMAKE_MODULE_PATH})
 endif()
 
 set(HIP_CLANG_PATH
@@ -100,7 +93,7 @@ add_definitions(-DPADDLE_ROCM_VERSION=${PADDLE_ROCM_VERSION})
 message(STATUS "PADDLE_ROCM_VERSION: ${PADDLE_ROCM_VERSION}")
 
 set(PADDLE_AMDGPU_TARGETS
-    "gfx906;gfx926;gfx928;gfx936;gfx942;gfx950"
+    "gfx906;gfx908;gfx90a;gfx926;gfx928;gfx936;gfx942;gfx950"
     CACHE STRING "Semicolon-separated AMD GPU architectures for HIP offload")
 message(STATUS "PADDLE_AMDGPU_TARGETS: ${PADDLE_AMDGPU_TARGETS}")
 
@@ -135,10 +128,10 @@ endif()
 
 # set CXX flags for HIP
 set(CMAKE_C_FLAGS
-    "${CMAKE_C_FLAGS} -D__HIP_PLATFORM_HCC__ -D__HIP_PLATFORM_AMD__ -D__HIP__=1 -DROCM_NO_WRAPPER_HEADER_WARNING"
+    "${CMAKE_C_FLAGS} -D__HIP_PLATFORM_HCC__ -D__HIP_PLATFORM_AMD__ -DROCM_NO_WRAPPER_HEADER_WARNING"
 )
 set(CMAKE_CXX_FLAGS
-    "${CMAKE_CXX_FLAGS} -D__HIP_PLATFORM_HCC__ -D__HIP_PLATFORM_AMD__ -D__HIP__=1 -DROCM_NO_WRAPPER_HEADER_WARNING"
+    "${CMAKE_CXX_FLAGS} -D__HIP_PLATFORM_HCC__ -D__HIP_PLATFORM_AMD__ -DROCM_NO_WRAPPER_HEADER_WARNING"
 )
 set(CMAKE_CXX_FLAGS
     "${CMAKE_CXX_FLAGS} -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_HIP")
@@ -148,7 +141,6 @@ set(THRUST_DEVICE_SYSTEM THRUST_DEVICE_SYSTEM_HIP)
 list(APPEND HIP_CXX_FLAGS -fPIC)
 list(APPEND HIP_CXX_FLAGS -D__HIP_PLATFORM_HCC__=1)
 list(APPEND HIP_CXX_FLAGS -D__HIP_PLATFORM_AMD__=1)
-list(APPEND HIP_CXX_FLAGS -D__HIP__=1)
 # Note(qili93): HIP has compile conflicts of float16.h as platform::float16 overload std::is_floating_point and std::is_integer
 list(APPEND HIP_CXX_FLAGS -D__HIP_NO_HALF_CONVERSIONS__=1)
 list(APPEND HIP_CXX_FLAGS -DROCM_NO_WRAPPER_HEADER_WARNING)

@@ -1,11 +1,10 @@
 function(add_thrust_patches_if_necessary)
-  # ROCm 7.0+ has rocThrust with shuffle support built-in, so no patches needed
-  if(WITH_ROCM)
-    # Check if rocThrust has shuffle.h
-    if(EXISTS "${ROCM_PATH}/include/thrust/shuffle.h")
-      message(STATUS "ROCm thrust has native shuffle support, skipping patches")
-      return()
-    endif()
+  # ROCm 7.0+ has rocThrust shuffle support built-in, so no patches needed.
+  if(WITH_ROCM
+     AND DEFINED PADDLE_ROCM_VERSION
+     AND PADDLE_ROCM_VERSION GREATER_EQUAL 70000000)
+    message(STATUS "ROCm 7.0+ detected, skipping thrust patches")
+    return()
   endif()
 
   # For CUDA, check if thrust has shuffle support

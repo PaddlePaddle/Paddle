@@ -28,9 +28,9 @@
 
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_complex.h>
-// thrust/complex.h requires hipcc compiler
-// (rocThrust 7.0+ pulls in rocprim)
-#if defined(__HIPCC__) || defined(__HIP_DEVICE_COMPILE__)
+// Include thrust complex only in HIP compilation mode.
+// Avoid pulling rocThrust/rocprim headers in non-hipcc host compilation.
+#if defined(__HIPCC__)
 #include <thrust/complex.h>  // NOLINT
 #endif
 #endif

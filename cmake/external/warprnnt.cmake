@@ -46,12 +46,21 @@ if(WITH_ROCM)
     set(WARPRNNT_PATCH_ROCM_COMMAND
         patch -p1 <
         ${PADDLE_SOURCE_DIR}/patches/warprnnt/CMakeLists.txt.rocm.patch && cp
-        ${PADDLE_SOURCE_DIR}/patches/warprnnt/hip.cmake.rocm70 cmake/hip.cmake)
+        ${PADDLE_SOURCE_DIR}/patches/hip.cmake.rocm70 cmake/hip.cmake)
   else()
     set(WARPRNNT_PATCH_ROCM_COMMAND
         patch -p1 <
         ${PADDLE_SOURCE_DIR}/patches/warprnnt/CMakeLists.txt.rocm.patch)
   endif()
+endif()
+
+set(WARPRNNT_ROCM_CMAKE_ARGS "")
+if(WITH_ROCM)
+  set(WARPRNNT_AMDGPU_TARGETS "${PADDLE_AMDGPU_TARGETS}")
+  string(REPLACE ";" "\\;" WARPRNNT_AMDGPU_TARGETS "${WARPRNNT_AMDGPU_TARGETS}")
+  list(APPEND WARPRNNT_ROCM_CMAKE_ARGS -DROCM_PATH=${ROCM_PATH}
+       -DHIP_PATH=${HIP_PATH}
+       -DPADDLE_AMDGPU_TARGETS=${WARPRNNT_AMDGPU_TARGETS})
 endif()
 if(NOT WIN32 AND WITH_GPU)
   if(${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0 AND ${CMAKE_CXX_COMPILER_VERSION}
@@ -141,6 +150,7 @@ ExternalProject_Add(
              -DCMAKE_INSTALL_PREFIX=${WARPRNNT_INSTALL_DIR}
              -DWITH_GPU=${WITH_GPU}
              -DWITH_ROCM=${WITH_ROCM}
+             ${WARPRNNT_ROCM_CMAKE_ARGS}
              -DWITH_OMP=${USE_OMP}
              -DNVCC_FLAGS_EXTRA=${NVCC_FLAGS_EXTRA}
              -DBUILD_SHARED=ON

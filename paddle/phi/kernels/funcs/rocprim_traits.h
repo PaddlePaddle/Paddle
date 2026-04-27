@@ -20,9 +20,10 @@
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 
-// ROCm 7.0+ uses a new traits system based on rocprim::traits::define
+// ROCm 7.0+ uses a new traits system based on rocprim::traits::define.
 // This header provides trait definitions for phi::float16 and phi::bfloat16
-// to enable radix sort and other rocprim algorithms on these types.
+// so HIP kernels using rocprim/hipcub (e.g., top_k and argsort paths) can
+// instantiate radix-sort utilities on these scalar types.
 
 #if defined(ROCPRIM_VERSION) && ROCPRIM_VERSION >= 400000
 // ROCm 7.0+ (rocprim 4.0.0+)

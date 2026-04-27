@@ -553,6 +553,8 @@ def get_rocm_arch_flags(cflags):
     else:
         rocm_arch_list = [
             'gfx906',
+            'gfx908',
+            'gfx90a',
             'gfx926',
             'gfx928',
             'gfx936',
