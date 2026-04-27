@@ -524,10 +524,8 @@ class IValue {
         return std::to_string(std::get<double>(value_));
       case TypeTag::String:
         return "\"" + std::get<std::string>(value_) + "\"";
-      case TypeTag::Tensor: {
-        const auto& tensor = std::get<at::Tensor>(value_);
-        return "Tensor(" + std::to_string(tensor.numel()) + " elements)";
-      }
+      case TypeTag::Tensor:
+        throw std::runtime_error("repr() not defined on: Tensor");
       case TypeTag::GenericList: {
         const auto& list = std::get<GenericList>(value_);
         std::string result = "[";

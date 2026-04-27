@@ -86,15 +86,11 @@ inline Tensor expand(const Tensor& self,
   //   then expand: dim 0: 3 stays 3, dim 1: 1 -> 4 -> result {3, 4}
 
   if (input_rank < target_rank) {
-    // Add trailing 1s to right-align with target shape (PyTorch behavior)
-    // Input {3}, target {3, 4} -> reshape to {3, 1}
-    std::vector<int64_t> reshape_vec(input_rank, 1);
+    // Add leading 1s to right-align with target shape (PyTorch behavior)
+    // Input {1, 2}, target {2, 3, 2} -> reshape to {1, 1, 2}
+    std::vector<int64_t> reshape_vec(target_rank, 1);
     for (size_t i = 0; i < input_rank; ++i) {
-      reshape_vec[i] = input_dims[i];
-    }
-    // Add trailing 1s
-    while (reshape_vec.size() < target_rank) {
-      reshape_vec.push_back(1);
+      reshape_vec[target_rank - input_rank + i] = input_dims[i];
     }
 
     // Check if Paddle's expand can handle this right-aligned shape
@@ -119,12 +115,13 @@ inline Tensor expand(const Tensor& self,
       return Tensor(result);
     }
 
-    // If Paddle's expand can't handle it, use tile + slice as fallback
-    paddle::Tensor reshaped =
-        paddle::experimental::reshape(pd_tensor, phi::IntArray(reshape_vec));
-    return tile_and_slice_to_target(reshaped, reshape_vec, target_size_vec);
+    PD_THROW("expand(): the expanded size of the tensor (",
+             target_size_vec[0],
+             ") must match the existing size (",
+             reshape_vec[0],
+             ") at non-singleton dimension 0.");
   } else if (input_rank == target_rank) {
-    // Same rank - check if we can use expand directly or need tile
+    // Same rank - check if we can use expand directly
     bool can_use_paddle_expand = true;
     for (size_t i = 0; i < target_rank; ++i) {
       auto in_size = input_dims[i];
@@ -141,33 +138,18 @@ inline Tensor expand(const Tensor& self,
       return Tensor(result);
     }
 
-    // Need tile + slice fallback
-    std::vector<int64_t> input_shape(target_rank);
-    for (size_t i = 0; i < target_rank; ++i) {
-      input_shape[i] = input_dims[i];
-    }
-    return tile_and_slice_to_target(pd_tensor, input_shape, target_size_vec);
+    PD_THROW("expand(): the expanded size of the tensor (",
+             target_size_vec[0],
+             ") must match the existing size (",
+             input_dims[0],
+             ") at non-singleton dimension 0.");
   } else {
-    // Input has more dimensions.
-    // Keep the trailing target_rank dimensions and slice leading dimensions to
-    // 1 before reshape, so total element count remains valid.
-    paddle::Tensor squeezed = pd_tensor;
-    size_t leading_dims = input_rank - target_rank;
-    for (size_t i = 0; i < leading_dims; ++i) {
-      squeezed = paddle::experimental::slice(
-          squeezed, {static_cast<int64_t>(i)}, {0}, {1}, {1}, {});
-    }
-
-    std::vector<int64_t> new_shape(target_rank);
-    for (size_t i = 0; i < target_rank; ++i) {
-      new_shape[i] = input_dims[i + (input_rank - target_rank)];
-    }
-
-    // Reshape to target rank, then reuse the same expand implementation.
-    paddle::Tensor reshaped =
-        paddle::experimental::reshape(squeezed, phi::IntArray(new_shape));
-
-    return expand(Tensor(reshaped), size, implicit);
+    PD_THROW("expand(): the number of sizes provided (",
+             target_rank,
+             ") must be greater or equal to the number of dimensions in the "
+             "tensor (",
+             input_rank,
+             ").");
   }
 }
 

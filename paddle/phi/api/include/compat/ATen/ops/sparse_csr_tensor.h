@@ -38,9 +38,7 @@ inline at::Tensor sparse_csr_tensor(const at::Tensor& crow_indices,
 
   if (options.dtype_opt().has_value() &&
       options.dtype_opt().value() != values.scalar_type()) {
-    vals = paddle::experimental::cast(
-        vals,
-        compat::_PD_AtenScalarTypeToPhiDataType(options.dtype_opt().value()));
+    PD_THROW("sparse_csr_tensor: values dtype must match TensorOptions dtype.");
   }
 
   if (options.pinned_memory()) {
