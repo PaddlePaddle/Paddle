@@ -26,7 +26,10 @@ class TestMuonParallel(TestMultipleAccelerators):
         Test logic is in hybrid_parallel_sharding_muon_model.py,
         iterating 4 ns_coeff_types. fp32 matmul is auto-selected on V100.
         """
-        self.run_mnist_2accelerators('hybrid_parallel_sharding_muon_model.py')
+        self.run_mnist_2accelerators(
+            'hybrid_parallel_sharding_muon_model.py',
+            need_envs={"MULTI_PRECISION": "1"},
+        )
 
     def test_muon_sharding_fused_gradient(self):
         """MuonSharding test with FLAGS_shard_fused_gradient=1.
@@ -36,7 +39,10 @@ class TestMuonParallel(TestMultipleAccelerators):
         """
         self.run_mnist_2accelerators(
             'hybrid_parallel_sharding_muon_model.py',
-            need_envs={"FLAGS_shard_fused_gradient": "1"},
+            need_envs={
+                "FLAGS_shard_fused_gradient": "1",
+                "MULTI_PRECISION": "1",
+            },
         )
 
     def test_muon_sharding_fuse_optimizer_states(self):
@@ -46,7 +52,10 @@ class TestMuonParallel(TestMultipleAccelerators):
         """
         self.run_mnist_2accelerators(
             'hybrid_parallel_sharding_muon_model.py',
-            need_envs={"ENABLE_FUSE_OPTIMIZER_STATES": "1"},
+            need_envs={
+                "ENABLE_FUSE_OPTIMIZER_STATES": "1",
+                "MULTI_PRECISION": "1",
+            },
         )
 
     def test_muon_sharding_release_grads_fused(self):
@@ -60,6 +69,7 @@ class TestMuonParallel(TestMultipleAccelerators):
             need_envs={
                 "FLAGS_shard_fused_gradient": "1",
                 "RELEASE_GRADIENTS": "1",
+                "MULTI_PRECISION": "1",
             },
         )
 
