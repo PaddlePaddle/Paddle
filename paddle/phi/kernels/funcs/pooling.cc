@@ -109,7 +109,10 @@ class Pool2dFunctor<CPUContext, PoolProcess, T> {
               if (exclusive || adaptive) {
                 pool_size = (hend - hstart) * (wend - wstart);
               }
-              pool_process.finalize(static_cast<T>(pool_size), &ele);
+              // Precision-aligned: Cast pool_size directly to MT (master type)
+              // to avoid unnecessary intermediate low-precision cast.
+              using MT = typename dtype::MPTypeTrait<T>::Type;
+              pool_process.finalize(static_cast<MT>(pool_size), &ele);
               output_data[ph * output_width + pw] = ele;
             }
           }
@@ -159,7 +162,10 @@ class Pool2dFunctor<CPUContext, PoolProcess, T> {
               if (exclusive || adaptive) {
                 pool_size = (hend - hstart) * (wend - wstart);
               }
-              pool_process.finalize(static_cast<T>(pool_size), &ele);
+              // Precision-aligned: Cast pool_size directly to MT (master type)
+              // to avoid unnecessary intermediate low-precision cast.
+              using MT = typename dtype::MPTypeTrait<T>::Type;
+              pool_process.finalize(static_cast<MT>(pool_size), &ele);
               output_data[ph * output_width * output_channels +
                           pw * output_channels + c] = ele;
             }
@@ -616,7 +622,10 @@ class Pool3dFunctor<CPUContext, PoolProcess, T> {
                   pool_size =
                       (dend - dstart) * (hend - hstart) * (wend - wstart);
                 }
-                pool_process.finalize(static_cast<T>(pool_size), &ele);
+                // Precision-aligned: Cast pool_size directly to MT (master
+                // type) to avoid unnecessary intermediate low-precision cast.
+                using MT = typename dtype::MPTypeTrait<T>::Type;
+                pool_process.finalize(static_cast<MT>(pool_size), &ele);
                 output_data[output_idx] = ele;
               }
             }
@@ -686,7 +695,10 @@ class Pool3dFunctor<CPUContext, PoolProcess, T> {
                   pool_size =
                       (dend - dstart) * (hend - hstart) * (wend - wstart);
                 }
-                pool_process.finalize(static_cast<T>(pool_size), &ele);
+                // Precision-aligned: Cast pool_size directly to MT (master
+                // type) to avoid unnecessary intermediate low-precision cast.
+                using MT = typename dtype::MPTypeTrait<T>::Type;
+                pool_process.finalize(static_cast<MT>(pool_size), &ele);
                 int64_t output_idx =
                     ((pd * output_height + ph) * output_width + pw) *
                         output_channels +
