@@ -330,6 +330,56 @@ def amin(
 )
 
 add_doc_and_signature(
+    "aminmax",
+    r"""
+    Computes both the minimum and maximum of tensor elements over the given axis.
+
+    Note:
+        Like amin and amax, if there are multiple minimum/maximum elements,
+        aminmax evenly distributes gradient between these equal values.
+
+    Args:
+        x (Tensor): A tensor, the data type is float32, float64, int32, int64.
+            Alias: ``input``.
+        axis (int|list|tuple|None, optional): The axis along which the minimum and maximum
+            are computed. If :attr:`None`, compute over all elements of
+            `x` and return Tensors with a single element,
+            otherwise must be in the range :math:`[-x.ndim, x.ndim)`.
+            If :math:`axis[i] < 0`, the axis to reduce is :math:`x.ndim + axis[i]`.
+            Alias: ``dim``.
+        keepdim (bool, optional): Whether to reserve the reduced dimension in the
+            output Tensors. The result tensors will have one fewer dimension
+            than the `x` unless :attr:`keepdim` is true, default
+            value is False.
+
+    Keyword args:
+        out(tuple(Tensor, Tensor), optional): The output tensors.
+
+    Returns:
+        tuple(Tensor, Tensor), the minimum and maximum results on the specified axis
+        of input tensor, the data type is the same as `x`.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+            >>> x = paddle.to_tensor([[0.1, 0.9, 0.9, 0.9],
+            ...                       [0.9, 0.9, 0.6, 0.7]],
+            ...                       dtype='float64', stop_gradient=False)
+            >>> # min_val, max_val = paddle.aminmax(x)  # doctest to be enabled after API is merged
+""",
+    """
+def aminmax(
+    x: Tensor,
+    axis: int | Sequence[int] | None = None,
+    keepdim: bool = False,
+    *,
+    out: tuple[Tensor, Tensor] | None = None,
+) -> tuple[Tensor, Tensor]
+""",
+)
+
+add_doc_and_signature(
     "amax",
     r"""
     Computes the maximum of tensor elements over the given axis.
