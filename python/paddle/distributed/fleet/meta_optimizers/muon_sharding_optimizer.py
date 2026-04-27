@@ -521,6 +521,10 @@ class MuonShardingOptimizer:
         self._comm_buffer_list.sort(key=lambda x: x._dst)
 
     def clear_param_storage(self, color):
+        assert self._multi_precision, (
+            "Muon Sharding Optimizer only support clear param with multi_precision mode"
+        )
+
         self.clear_color.add(color)
         # 1D params
         if color in self._color_to_comm_buffer_list.keys():
