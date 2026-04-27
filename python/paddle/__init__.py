@@ -1143,6 +1143,7 @@ __all__ = [
     'min',
     'narrow',
     'amin',
+    'aminmax',
     'any',
     'slice',
     'slice_scatter',

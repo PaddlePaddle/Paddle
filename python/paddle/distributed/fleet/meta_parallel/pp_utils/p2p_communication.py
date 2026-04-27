@@ -806,7 +806,13 @@ class P2pHelper:
         self._dynamic_cnt = 0
         self._send_recv_meta.init_or_erase_meta()
 
-    def recv_forward(self, pp_first_stage, sync_recv=True, batch_p2p_comm=True):
+    def recv_forward(
+        self,
+        pp_first_stage,
+        sync_recv=True,
+        batch_p2p_comm=True,
+        overlap_p2p_comm=False,
+    ):
         global _timers
         if _timers is not None:
             _timers("recv_forward").start()
@@ -815,7 +821,7 @@ class P2pHelper:
         else:
             self._recv_meta()
 
-            input_tensor, _, _ = _p2p_helper(
+            input_tensor, _, wait_handles = _p2p_helper(
                 tensor_send_next=None,
                 tensor_send_prev=None,
                 recv_prev=True,
@@ -824,12 +830,15 @@ class P2pHelper:
                 send_recv_meta=self._send_recv_meta,
                 batch_p2p_comm=batch_p2p_comm,
                 dynamic_shape=self._dynamic_shape,
+                wait_on_reqs=(not overlap_p2p_comm),
             )
             if self._dynamic_shape:
                 self._dynamic_cnt += 1
 
         if _timers is not None:
             _timers("recv_forward").stop()
+        if overlap_p2p_comm:
+            return input_tensor, wait_handles
         return input_tensor
 
     def recv_backward(
@@ -899,7 +908,11 @@ class P2pHelper:
             _timers("send_forward").stop()
 
     def send_backward(
-        self, input_tensor_grad, pp_first_stage, batch_p2p_comm=True
+        self,
+        input_tensor_grad,
+        pp_first_stage,
+        batch_p2p_comm=True,
+        overlap_p2p_comm=False,
     ):
         global _timers
         if _timers is not None:
@@ -908,7 +921,7 @@ class P2pHelper:
         if not pp_first_stage:
             if self._dynamic_shape:
                 self._send_meta(input_tensor_grad, reverse=True)
-            _p2p_helper(
+            _, _, wait_handles = _p2p_helper(
                 tensor_send_next=None,
                 tensor_send_prev=input_tensor_grad,
                 recv_prev=False,
@@ -916,11 +929,15 @@ class P2pHelper:
                 send_recv_meta=self._send_recv_meta,
                 batch_p2p_comm=batch_p2p_comm,
                 dynamic_shape=self._dynamic_shape,
+                wait_on_reqs=(not overlap_p2p_comm),
             )
             if self._dynamic_shape:
                 self._dynamic_cnt += 1
         if _timers is not None:
             _timers("send_backward").stop()
+
+        if overlap_p2p_comm:
+            return wait_handles
 
     def send_forward_recv_backward(
         self, output_tensor, pp_last_stage, batch_p2p_comm=True

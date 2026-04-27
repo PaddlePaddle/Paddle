@@ -307,6 +307,24 @@ bool AminOpInferSymbolicShape(pir::Operation *op,
                                  axis.size() == 0 /*reduce_all*/);
 }
 
+bool AminmaxOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &axis = details::GetVectorAttr(op, "axis");
+  bool keepdim = GetBoolAttr(op, "keepdim");
+  bool reduce_all = axis.size() == 0;
+
+  // ReduceInferDim only sets result(0). We need the same shape for both
+  // outputs, so call it for result(0) then copy to result(1).
+  bool ret =
+      details::ReduceInferDim(op, infer_context, axis, keepdim, reduce_all);
+  if (ret) {
+    const auto &out_shape =
+        infer_context->GetShapeOrDataForValue(op->result(0));
+    infer_context->SetShapeOrDataForValue(op->result(1), out_shape);
+  }
+  return ret;
+}
+
 bool AnyOpInferSymbolicShape(pir::Operation *op,
                              pir::InferSymbolicShapeContext *infer_context) {
   const auto &axis = details::GetVectorAttr(op, "axis");
