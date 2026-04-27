@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
-from types import SimpleNamespace
+from types import SimpleNamespace, SimpleNamespace as ModuleSimpleNamespace
 from unittest import mock
 
 from setuptools import Distribution
@@ -167,6 +168,8 @@ class _FakeUnixCompiler:
         self.compiler_cxx = ['g++']
         self._objects = objects
         self._build_map = build_map
+        self._compile_calls = []
+        self.verbose = False
 
     def compile(self, *args, **kwargs):
         raise AssertionError("original unix compile should be replaced")
@@ -192,6 +195,24 @@ class _FakeUnixCompiler:
     def _get_cc_args(self, pp_opts, debug, extra_preargs):
         return list(extra_preargs or []) + list(pp_opts)
 
+    def _compile(self, obj, src, ext, cc_args, cflags, pp_opts):
+        self._compile_calls.append(
+            {
+                'obj': obj,
+                'src': src,
+                'ext': ext,
+                'cc_args': list(cc_args),
+                'cflags': list(cflags),
+                'pp_opts': list(pp_opts),
+                'compiler_so': list(self.compiler_so)
+                if isinstance(self.compiler_so, list)
+                else self.compiler_so,
+            }
+        )
+
+    def set_executable(self, key, value):
+        setattr(self, key, value)
+
     def set_executables(self, **kwargs):
         return None
 
@@ -213,12 +234,34 @@ class _FakeMsvcCompiler:
             '/D_DEBUG',
         ]
         self.initialized = True
-        self.spawn = lambda cmd: None
         self._objects = objects
         self._build_map = build_map
+        self._spawned_cmds = []
+        self.verbose = False
+        self.spawn = self._spawn
 
     def compile(self, *args, **kwargs):
-        raise AssertionError("original msvc compile should be replaced")
+        macros, objects, extra_postargs, pp_opts, build = self._setup_compile(
+            kwargs.get('output_dir'),
+            kwargs.get('macros'),
+            kwargs.get('include_dirs'),
+            args[0],
+            kwargs.get('depends'),
+            kwargs.get('extra_postargs'),
+        )
+        del macros, extra_postargs
+        for obj in objects:
+            src, ext = build[obj]
+            cmd = [
+                'cl.exe',
+                '/Tp' + src,
+                '/Fo' + obj,
+                *pp_opts,
+            ]
+            if ext == '.c':
+                cmd[1] = '/Tc' + src
+            self.spawn(cmd)
+        return objects
 
     def initialize(self):
         self.initialized = True
@@ -237,6 +280,9 @@ class _FakeMsvcCompiler:
     ):
         pp_opts = [f'/I{inc}' for inc in (include_dirs or [])]
         return macros, self._objects, extra_postargs, pp_opts, self._build_map
+
+    def _spawn(self, cmd):
+        self._spawned_cmds.append(list(cmd))
 
 
 class TestBuildExtension(unittest.TestCase):
@@ -266,6 +312,9 @@ class TestBuildExtension(unittest.TestCase):
             cmd.build_temp = tmpdir
             cmd.build_lib = tmpdir
             cmd.verbose = False
+            cmd.contain_cuda_file = any(
+                source.endswith('.cu') for source in sources
+            )
 
             captured = {}
 
@@ -327,6 +376,24 @@ class TestBuildExtension(unittest.TestCase):
                 cmd.build_extensions()
 
         return captured
+
+    def _patch_build_extension_common(self, cmd):
+        return [
+            mock.patch.object(cmd, '_check_abi', return_value=None),
+            mock.patch.object(cmd, '_record_op_info', return_value=None),
+            mock.patch(
+                'paddle.utils.cpp_extension.cpp_extension.clean_object_if_change_cflags',
+                return_value=None,
+            ),
+            mock.patch(
+                'paddle.utils.cpp_extension.cpp_extension.define_paddle_extension_name',
+                return_value=None,
+            ),
+            mock.patch(
+                'paddle.utils.cpp_extension.cpp_extension._reset_so_rpath',
+                return_value=None,
+            ),
+        ]
 
     def test_unix_ninja_build_file_contains_multiple_sources(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -405,6 +472,63 @@ class TestBuildExtension(unittest.TestCase):
         self.assertIn('/I', content)
         self.assertTrue(captured['ninja_path'].endswith('build.ninja'))
 
+    def test_unix_ninja_build_file_contains_cuda_sources(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_dir = Path(tmpdir)
+            sources = [
+                str(test_dir / "custom_extension.cc"),
+                str(test_dir / "custom_kernel.cu"),
+            ]
+            objects = [
+                str(test_dir / "build" / "custom_extension.o"),
+                str(test_dir / "build" / "custom_kernel.cu.o"),
+            ]
+            build_map = {
+                objects[0]: (sources[0], '.cc'),
+                objects[1]: (sources[1], '.cu'),
+            }
+            compiler = _FakeUnixCompiler(objects, build_map)
+
+            with (
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.CUDA_HOME',
+                    '/opt/cuda',
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension._get_ccache_home',
+                    return_value='/usr/bin/ccache',
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.prepare_unix_cudaflags',
+                    side_effect=lambda flags: ['--prepared', *flags],
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.core.is_compiled_with_rocm',
+                    return_value=False,
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.core.is_compiled_with_custom_device',
+                    return_value=False,
+                ),
+            ):
+                captured = self._run_build_with_fake_compiler(
+                    compiler,
+                    sources,
+                    extra_compile_args={
+                        'cxx': ['-w'],
+                        'nvcc': ['--gpu-flag'],
+                    },
+                    include_dirs=[str(test_dir / "include")],
+                )
+
+        content = captured['ninja_content']
+        self.assertIn('cxx = /usr/bin/ccache g++', content)
+        self.assertIn('nvcc = /usr/bin/ccache /opt/cuda/bin/nvcc', content)
+        self.assertIn('rule cuda_compile', content)
+        self.assertIn('cuda_post_cflags = --prepared --gpu-flag', content)
+        self.assertIn('post_cflags = -w -D_GLIBCXX_USE_CXX11_ABI=1', content)
+        self.assertIn('-DPADDLE_WITH_CUDA', content)
+
     def test_use_ninja_attribute_default(self):
         build_ext = self._build_extension()
         self.assertEqual(build_ext.use_ninja, _is_ninja_available())
@@ -417,19 +541,42 @@ class TestBuildExtension(unittest.TestCase):
         build_ext = self._build_extension(use_ninja=True)
         self.assertEqual(build_ext.use_ninja, _is_ninja_available())
 
-    def test_unix_compiler_with_use_ninja_false(self):
+    def test_use_ninja_falls_back_when_ninja_missing(self):
+        with (
+            mock.patch(
+                'paddle.utils.cpp_extension.cpp_extension._is_ninja_available',
+                return_value=False,
+            ),
+            mock.patch('builtins.print') as mock_print,
+        ):
+            build_ext = self._build_extension(use_ninja=True)
+        self.assertFalse(build_ext.use_ninja)
+        mock_print.assert_any_call(
+            "Ninja is not available, falling back to the distutils backend."
+        )
+
+    def test_unix_compiler_with_use_ninja_false_executes_compile(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             test_dir = Path(tmpdir)
-            sources = [str(test_dir / "custom_extension.cc")]
-            objects = [str(test_dir / "build" / "custom_extension.o")]
-            build_map = {objects[0]: (sources[0], '.cc')}
+            sources = [
+                str(test_dir / "custom_extension.cc"),
+                str(test_dir / "custom_kernel.cu"),
+            ]
+            objects = [
+                str(test_dir / "build" / "custom_extension.o"),
+                str(test_dir / "build" / "custom_kernel.o"),
+            ]
+            build_map = {
+                objects[0]: (sources[0], '.cc'),
+                objects[1]: (sources[1], '.cu'),
+            }
             compiler = _FakeUnixCompiler(objects, build_map)
 
             ext = SimpleNamespace(
                 name='fake_extension',
                 _full_name='fake_extension',
                 sources=sources,
-                extra_compile_args={'cxx': ['-w'], 'nvcc': []},
+                extra_compile_args={'cxx': ['-w'], 'nvcc': ['--gpu-flag']},
             )
             cmd = self._build_extension(use_ninja=False)
 
@@ -438,25 +585,9 @@ class TestBuildExtension(unittest.TestCase):
             cmd.build_temp = tmpdir
             cmd.build_lib = tmpdir
             cmd.verbose = False
+            cmd.contain_cuda_file = True
 
-            original_compile = compiler.__class__.compile
-
-            patches = [
-                mock.patch.object(cmd, '_check_abi', return_value=None),
-                mock.patch.object(cmd, '_record_op_info', return_value=None),
-                mock.patch(
-                    'paddle.utils.cpp_extension.cpp_extension.clean_object_if_change_cflags',
-                    return_value=None,
-                ),
-                mock.patch(
-                    'paddle.utils.cpp_extension.cpp_extension.define_paddle_extension_name',
-                    return_value=None,
-                ),
-                mock.patch(
-                    'paddle.utils.cpp_extension.cpp_extension._reset_so_rpath',
-                    return_value=None,
-                ),
-            ]
+            patches = self._patch_build_extension_common(cmd)
 
             with (
                 patches[0],
@@ -464,11 +595,138 @@ class TestBuildExtension(unittest.TestCase):
                 patches[2],
                 patches[3],
                 patches[4],
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.CUDA_HOME',
+                    '/opt/cuda',
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.prepare_unix_cudaflags',
+                    side_effect=lambda flags: ['--prepared', *flags],
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension._get_ccache_home',
+                    return_value=None,
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension._get_num_workers',
+                    return_value=4,
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.os.cpu_count',
+                    return_value=8,
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.core.is_compiled_with_rocm',
+                    return_value=False,
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.core.is_compiled_with_custom_device',
+                    return_value=False,
+                ),
+                mock.patch('builtins.print') as mock_print,
             ):
 
                 def fake_build_extensions(_):
-                    self.assertNotEqual(
-                        compiler.__class__.compile, original_compile
+                    compiled = _.compiler.compile(
+                        sources,
+                        output_dir=_.build_temp,
+                        macros=[],
+                        include_dirs=[str(test_dir / "include")],
+                        debug=False,
+                        extra_preargs=[],
+                        extra_postargs=ext.extra_compile_args,
+                        depends=None,
+                    )
+                    self.assertEqual(compiled, objects)
+
+                with mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.build_ext.build_extensions',
+                    side_effect=fake_build_extensions,
+                ):
+                    cmd.build_extensions()
+
+        self.assertEqual(len(compiler._compile_calls), 2)
+        cc_call = next(
+            call
+            for call in compiler._compile_calls
+            if call['src'].endswith('.cc')
+        )
+        cu_call = next(
+            call
+            for call in compiler._compile_calls
+            if call['src'].endswith('.cu')
+        )
+        self.assertIn('-DPADDLE_WITH_CUDA', cc_call['cflags'])
+        self.assertIn('-D_GLIBCXX_USE_CXX11_ABI=1', cc_call['cflags'])
+        self.assertIn('--prepared', cu_call['cflags'])
+        self.assertEqual(cu_call['compiler_so'], '/opt/cuda/bin/nvcc')
+        mock_print.assert_any_call(
+            "Using 2 workers for compilation. HINT: export MAX_JOBS=n to set the number of workers"
+        )
+
+    def test_msvc_compiler_with_use_ninja_false_executes_compile(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_dir = Path(tmpdir)
+            sources = [
+                str(test_dir / "custom_extension.cc"),
+                str(test_dir / "custom_kernel.cu"),
+            ]
+            objects = [
+                str(test_dir / "build" / "custom_extension.obj"),
+                str(test_dir / "build" / "custom_kernel.obj"),
+            ]
+            build_map = {
+                objects[0]: (sources[0], '.cc'),
+                objects[1]: (sources[1], '.cu'),
+            }
+            compiler = _FakeMsvcCompiler(objects, build_map)
+
+            ext = SimpleNamespace(
+                name='fake_extension',
+                _full_name='fake_extension',
+                sources=sources,
+                extra_compile_args={
+                    'cxx': ['/wd4244'],
+                    'nvcc': ['--gpu-flag'],
+                },
+            )
+            cmd = self._build_extension(use_ninja=False)
+
+            cmd.extensions = [ext]
+            cmd.compiler = compiler
+            cmd.build_temp = tmpdir
+            cmd.build_lib = tmpdir
+            cmd.verbose = False
+            cmd.contain_cuda_file = True
+
+            patches = self._patch_build_extension_common(cmd)
+
+            with (
+                patches[0],
+                patches[1],
+                patches[2],
+                patches[3],
+                patches[4],
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.CUDA_HOME',
+                    '/opt/cuda',
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.prepare_win_cudaflags',
+                    side_effect=lambda flags: ['--prepared', *flags],
+                ),
+            ):
+
+                def fake_build_extensions(_):
+                    _.compiler.compile(
+                        sources,
+                        output_dir=_.build_temp,
+                        macros=[],
+                        include_dirs=[str(test_dir / "include dir")],
+                        debug=False,
+                        extra_preargs=[],
+                        extra_postargs=ext.extra_compile_args,
+                        depends=None,
                     )
 
                 with mock.patch(
@@ -477,65 +735,67 @@ class TestBuildExtension(unittest.TestCase):
                 ):
                     cmd.build_extensions()
 
-    def test_msvc_compiler_with_use_ninja_false(self):
-        if sys.platform != 'win32':
-            self.skipTest("Windows-only test")
+        self.assertEqual(len(compiler._spawned_cmds), 2)
+        cc_cmd = next(
+            cmd
+            for cmd in compiler._spawned_cmds
+            if any(arg.endswith('.cc') for arg in cmd)
+        )
+        cu_cmd = next(
+            cmd
+            for cmd in compiler._spawned_cmds
+            if any(arg.endswith('.cu') for arg in cmd)
+        )
+        self.assertIn('-DPADDLE_WITH_CUDA', cc_cmd)
+        self.assertIn('/wd4244', cc_cmd)
+        self.assertEqual(cu_cmd[0], '/opt/cuda/bin/nvcc')
+        self.assertIn('--prepared', cu_cmd)
+        self.assertIn('--use-local-env', cu_cmd)
+
+    def test_windows_ninja_build_file_contains_cuda_sources(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             test_dir = Path(tmpdir)
-            sources = [str(test_dir / "custom_extension.cc")]
-            objects = [str(test_dir / "build" / "custom_extension.obj")]
-            build_map = {objects[0]: (sources[0], '.cc')}
+            sources = [
+                str(test_dir / "custom_extension.cc"),
+                str(test_dir / "custom_kernel.cu"),
+            ]
+            objects = [
+                str(test_dir / "build" / "custom_extension.obj"),
+                str(test_dir / "build" / "custom_kernel.obj"),
+            ]
+            build_map = {
+                objects[0]: (sources[0], '.cc'),
+                objects[1]: (sources[1], '.cu'),
+            }
             compiler = _FakeMsvcCompiler(objects, build_map)
 
-            ext = SimpleNamespace(
-                name='fake_extension',
-                _full_name='fake_extension',
-                sources=sources,
-                extra_compile_args={'cxx': ['/wd4244'], 'nvcc': []},
-            )
-            cmd = self._build_extension(use_ninja=False)
-
-            cmd.extensions = [ext]
-            cmd.compiler = compiler
-            cmd.build_temp = tmpdir
-            cmd.build_lib = tmpdir
-            cmd.verbose = False
-
-            original_compile = compiler.compile
-
-            patches = [
-                mock.patch.object(cmd, '_check_abi', return_value=None),
-                mock.patch.object(cmd, '_record_op_info', return_value=None),
-                mock.patch(
-                    'paddle.utils.cpp_extension.cpp_extension.clean_object_if_change_cflags',
-                    return_value=None,
-                ),
-                mock.patch(
-                    'paddle.utils.cpp_extension.cpp_extension.define_paddle_extension_name',
-                    return_value=None,
-                ),
-                mock.patch(
-                    'paddle.utils.cpp_extension.cpp_extension._reset_so_rpath',
-                    return_value=None,
-                ),
-            ]
-
             with (
-                patches[0],
-                patches[1],
-                patches[2],
-                patches[3],
-                patches[4],
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.CUDA_HOME',
+                    '/opt/cuda',
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.prepare_win_cudaflags',
+                    side_effect=lambda flags: ['--prepared', *flags],
+                ),
             ):
+                captured = self._run_build_with_fake_compiler(
+                    compiler,
+                    sources,
+                    extra_compile_args={
+                        'cxx': ['/wd4244'],
+                        'nvcc': ['--gpu-flag'],
+                    },
+                    include_dirs=[str(test_dir / "include dir")],
+                )
 
-                def fake_build_extensions(_):
-                    self.assertNotEqual(_.compiler.compile, original_compile)
-
-                with mock.patch(
-                    'paddle.utils.cpp_extension.cpp_extension.build_ext.build_extensions',
-                    side_effect=fake_build_extensions,
-                ):
-                    cmd.build_extensions()
+        content = captured['ninja_content']
+        self.assertIn('nvcc = /opt/cuda/bin/nvcc', content)
+        self.assertIn('rule cuda_compile', content)
+        self.assertIn('-Xcompiler /EHsc', content)
+        self.assertIn('--prepared', content)
+        self.assertIn('/DPADDLE_WITH_CUDA', content)
+        self.assertIn('deps = msvc', content)
 
 
 class TestNinjaGeneratedSetupFile(unittest.TestCase):
@@ -566,6 +826,96 @@ class TestNinjaGeneratedSetupFile(unittest.TestCase):
             "sources=['custom_extension.cc', 'custom_sub.cc']", content
         )
         self.assertNotIn('use_ninja=', content)
+
+
+class TestRunNinjaBuild(unittest.TestCase):
+    def test_run_ninja_build_uses_verbose_subprocess_streams(self):
+        with mock.patch(
+            'paddle.utils.cpp_extension.cpp_extension.subprocess.run'
+        ) as mock_run:
+            _run_ninja_build('/tmp/build', verbose=True, error_prefix='Test')
+
+        _, kwargs = mock_run.call_args
+        self.assertEqual(mock_run.call_args.args[0], ['ninja', '-v'])
+        self.assertEqual(kwargs['cwd'], '/tmp/build')
+        self.assertIsNone(kwargs['stdout'])
+        self.assertIsNone(kwargs['stderr'])
+
+    def test_run_ninja_build_uses_num_workers_and_quiet_streams(self):
+        with (
+            mock.patch.dict(os.environ, {'MAX_JOBS': '3'}, clear=False),
+            mock.patch(
+                'paddle.utils.cpp_extension.cpp_extension.subprocess.run'
+            ) as mock_run,
+        ):
+            _run_ninja_build('/tmp/build', verbose=False, error_prefix='Test')
+
+        _, kwargs = mock_run.call_args
+        self.assertEqual(mock_run.call_args.args[0], ['ninja', '-v', '-j', '3'])
+        self.assertEqual(kwargs['stdout'], subprocess.DEVNULL)
+        self.assertEqual(kwargs['stderr'], subprocess.STDOUT)
+
+    def test_run_ninja_build_windows_merges_vc_env(self):
+        vc_env = {'path': 'vc/bin', 'include': 'vc/include'}
+        with (
+            mock.patch(
+                'paddle.utils.cpp_extension.cpp_extension.IS_WINDOWS', True
+            ),
+            mock.patch(
+                'paddle.utils.cpp_extension.cpp_extension.PLAT_TO_VCVARS',
+                {'win-amd64': 'x86_amd64'},
+                create=True,
+            ),
+            mock.patch(
+                'paddle.utils.cpp_extension.cpp_extension.distutils',
+                ModuleSimpleNamespace(
+                    util=ModuleSimpleNamespace(get_platform=lambda: 'win-amd64')
+                ),
+                create=True,
+            ),
+            mock.patch(
+                'paddle.utils.cpp_extension.cpp_extension._get_vc_env',
+                return_value=vc_env,
+                create=True,
+            ),
+            mock.patch.dict(
+                os.environ, {'Path': 'user/bin', 'TMP': 'tmp'}, clear=True
+            ),
+            mock.patch(
+                'paddle.utils.cpp_extension.cpp_extension.subprocess.run'
+            ) as mock_run,
+        ):
+            _run_ninja_build('/tmp/build', verbose=False, error_prefix='Test')
+
+        env = mock_run.call_args.kwargs['env']
+        self.assertEqual(env['PATH'], 'vc/bin')
+        self.assertEqual(env['INCLUDE'], 'vc/include')
+        self.assertEqual(env['TMP'], 'tmp')
+
+    def test_run_ninja_build_raises_runtime_error(self):
+        with (
+            mock.patch(
+                'paddle.utils.cpp_extension.cpp_extension.subprocess.run',
+                side_effect=subprocess.CalledProcessError(1, ['ninja', '-v']),
+            ),
+            self.assertRaisesRegex(RuntimeError, 'Prefix'),
+        ):
+            _run_ninja_build('/tmp/build', verbose=False, error_prefix='Prefix')
+
+    def test_get_num_workers_verbose_without_env(self):
+        with (
+            mock.patch.dict(os.environ, {}, clear=True),
+            mock.patch('sys.stderr') as mock_stderr,
+            mock.patch('builtins.print') as mock_print,
+        ):
+            result = _get_num_workers(verbose=True)
+
+        self.assertIsNone(result)
+        mock_print.assert_called_with(
+            'Allowing ninja to set a default number of workers... '
+            '(overridable by setting the environment variable MAX_JOBS=N)',
+            file=mock_stderr,
+        )
 
 
 if __name__ == '__main__':
