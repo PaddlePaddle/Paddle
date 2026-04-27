@@ -243,9 +243,9 @@ class TestDistShardingMuonTraining(unittest.TestCase):
             output = model(batch)
             loss = output.mean()
         loss.backward()
-        if isinstance(optimizer, MuonShardingOptimizer):
+        inner_opt = getattr(optimizer, '_inner_opt', optimizer)
+        if isinstance(inner_opt, MuonShardingOptimizer):
             optimizer.clear_param_storage('test_color')
-            optimizer.reset_param_storage()
         optimizer.step()
         optimizer.clear_grad()
         return loss
