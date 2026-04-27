@@ -27,6 +27,9 @@ import numpy as np
 
 import paddle
 from paddle.distributed import fleet
+from paddle.distributed.fleet.meta_optimizers.muon_sharding_optimizer import (
+    MuonShardingOptimizer,
+)
 from paddle.distributed.fleet.utils import mix_precision_utils
 from paddle.optimizer.muon import (
     MuonParamInfo,
@@ -240,6 +243,9 @@ class TestDistShardingMuonTraining(unittest.TestCase):
             output = model(batch)
             loss = output.mean()
         loss.backward()
+        if isinstance(optimizer, MuonShardingOptimizer):
+            optimizer.clear_param_storage('test_color')
+            optimizer.reset_param_storage()
         optimizer.step()
         optimizer.clear_grad()
         return loss
