@@ -1030,8 +1030,6 @@ def restore_unflattened_state_dict(
     destination_sharded_state_dict = {}
     name_mapping = {}
 
-    cur_rank = paddle.distributed.get_rank()
-
     for key, local_tensor in reshard_needed_tensors.items():
         tensor_name, file_name = key
         meta = _metadata_manager.local_tensor_metadata[key]
