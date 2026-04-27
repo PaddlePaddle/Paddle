@@ -2110,6 +2110,32 @@ class TestL1LossAPI(unittest.TestCase):
         for out in [out1, out2, out3, out4]:
             np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
 
+        # PyTorch deprecated args translate to reduction
+        ref_sum = np.sum(np.abs(self.np_input - self.np_label))
+        ref_none = np.abs(self.np_input - self.np_label)
+
+        # 5. size_average=False translates to reduction='sum'
+        out5 = paddle.nn.functional.l1_loss(input, label, size_average=False)
+        np.testing.assert_allclose(out5.numpy(), ref_sum, rtol=1e-6)
+        # 6. reduce=False translates to reduction='none'
+        out6 = paddle.nn.functional.l1_loss(input, label, reduce=False)
+        np.testing.assert_allclose(out6.numpy(), ref_none, rtol=1e-6)
+        # 7. reduce=True + size_average=True translates to reduction='mean'
+        out7 = paddle.nn.functional.l1_loss(
+            input, label, reduce=True, size_average=True
+        )
+        np.testing.assert_allclose(out7.numpy(), ref_out, rtol=1e-6)
+        # 8. reduce=True + size_average=False translates to reduction='sum'
+        out8 = paddle.nn.functional.l1_loss(
+            input, label, reduce=True, size_average=False
+        )
+        np.testing.assert_allclose(out8.numpy(), ref_sum, rtol=1e-6)
+        # 9. legacy args combined with target alias
+        out9 = paddle.nn.functional.l1_loss(
+            input=input, target=label, size_average=False
+        )
+        np.testing.assert_allclose(out9.numpy(), ref_sum, rtol=1e-6)
+
         paddle.enable_static()
 
     def test_static_Compatibility(self):
