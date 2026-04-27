@@ -52,15 +52,16 @@ struct ParsedOpMeta {
 };
 
 // Global cache for parsed operator metadata
-extern std::unordered_map<std::string, ParsedOpMeta> g_parsed_op_meta_cache;
+PADDLE_API extern std::unordered_map<std::string, ParsedOpMeta>
+    g_parsed_op_meta_cache;
 
 // Register parsed operator metadata into global cache
-void RegisterParsedOpMetaCache(
+PADDLE_API void RegisterParsedOpMetaCache(
     const std::unordered_map<std::string, std::vector<paddle::OpMetaInfo>>&
         diff_map);
 
 // Parse attribute type string to enum
-CustomAttrType ParseAttrTypeToEnum(const std::string& t);
+PADDLE_API CustomAttrType ParseAttrTypeToEnum(const std::string& t);
 
 class CustomOpMaker : public OpProtoAndCheckerMaker {
  public:
