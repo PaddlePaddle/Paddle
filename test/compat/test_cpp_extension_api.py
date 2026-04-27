@@ -118,7 +118,9 @@ class TestGetRocmArchFlags(unittest.TestCase):
     def test_env_arch_list_override(self):
         os.environ["PADDLE_ROCM_ARCH_LIST"] = "gfx950;gfx942 gfx942,gfx908"
         flags = extension_utils.get_rocm_arch_flags([])
-        arch_flags = [flag for flag in flags if flag.startswith("--offload-arch=")]
+        arch_flags = [
+            flag for flag in flags if flag.startswith("--offload-arch=")
+        ]
         self.assertEqual(
             sorted(arch_flags),
             [
@@ -133,7 +135,9 @@ class TestGetRocmArchFlags(unittest.TestCase):
         self.assertEqual(flags, ["-fno-gpu-rdc"])
 
     def test_user_split_arch_flags_keep_no_gpu_rdc(self):
-        flags = extension_utils.get_rocm_arch_flags(["--offload-arch", "gfx950"])
+        flags = extension_utils.get_rocm_arch_flags(
+            ["--offload-arch", "gfx950"]
+        )
         self.assertEqual(flags, ["-fno-gpu-rdc"])
 
     def test_user_arch_flags_without_duplicate_no_gpu_rdc(self):

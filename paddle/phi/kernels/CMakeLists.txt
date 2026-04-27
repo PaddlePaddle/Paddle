@@ -128,12 +128,8 @@ endif()
 # the version is older or unavailable.
 if(WITH_ROCM)
   if(DEFINED PADDLE_ROCM_VERSION AND PADDLE_ROCM_VERSION GREATER_EQUAL 70000000)
-    list(
-      REMOVE_ITEM
-      kernel_gpu
-      "gpu/mode_kernel.cu"
-      "gpu/mode_grad_kernel.cu"
-      "gpu/randperm_kernel.cu")
+    list(REMOVE_ITEM kernel_gpu "gpu/mode_kernel.cu" "gpu/mode_grad_kernel.cu"
+         "gpu/randperm_kernel.cu")
   else()
     list(
       REMOVE_ITEM

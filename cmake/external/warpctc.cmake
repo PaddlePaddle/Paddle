@@ -59,8 +59,8 @@ if(WITH_ROCM)
     set(WARPCTC_PATCH_ROCM_COMMAND
         patch -p1 <
         ${PADDLE_SOURCE_DIR}/patches/warpctc/CMakeLists.txt.rocm.patch && patch
-        -p1 < ${PADDLE_SOURCE_DIR}/patches/warpctc/devicetypes.cuh.patch && patch
-        -p1 < ${PADDLE_SOURCE_DIR}/patches/warpctc/hip.cmake.patch)
+        -p1 < ${PADDLE_SOURCE_DIR}/patches/warpctc/devicetypes.cuh.patch &&
+        patch -p1 < ${PADDLE_SOURCE_DIR}/patches/warpctc/hip.cmake.patch)
   endif()
 endif()
 
@@ -69,8 +69,7 @@ if(WITH_ROCM)
   set(WARPCTC_AMDGPU_TARGETS "${PADDLE_AMDGPU_TARGETS}")
   string(REPLACE ";" "\\;" WARPCTC_AMDGPU_TARGETS "${WARPCTC_AMDGPU_TARGETS}")
   list(APPEND WARPCTC_ROCM_CMAKE_ARGS -DROCM_PATH=${ROCM_PATH}
-       -DHIP_PATH=${HIP_PATH}
-       -DPADDLE_AMDGPU_TARGETS=${WARPCTC_AMDGPU_TARGETS})
+       -DHIP_PATH=${HIP_PATH} -DPADDLE_AMDGPU_TARGETS=${WARPCTC_AMDGPU_TARGETS})
 endif()
 
 set(WARPCTC_INCLUDE_DIR
