@@ -58,9 +58,7 @@ def dropout_converter(network, paddle_op, inputs):
     return scale_layer.get_output(0)
 
 
-@converter_registry.register(
-    "pd_op.bilinear_interp", trt_version="trt_version_ge=8.0"
-)
+@converter_registry.register("pd_op.bilinear_interp")
 def bilinear_interp_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
     input_shape_tensor = network.add_shape(input_tensor)
@@ -275,9 +273,7 @@ def bilinear_interp_converter(network, paddle_op, inputs):
     return resize_layer.get_output(0)
 
 
-@converter_registry.register(
-    "pd_op.embedding", trt_version="trt_version_ge=8.0"
-)
+@converter_registry.register("pd_op.embedding")
 def embedding_converter(network, paddle_op, inputs):
     x = inputs[0]
     weight = inputs[1]
@@ -286,7 +282,7 @@ def embedding_converter(network, paddle_op, inputs):
     return gather_layer.get_output(0)
 
 
-@converter_registry.register("pd_op.unbind", trt_version="trt_version_ge=8.0")
+@converter_registry.register("pd_op.unbind")
 def unbind_converter(network, paddle_op, inputs):
     x = inputs[0]
     input_shape = x.shape
@@ -361,9 +357,7 @@ def unbind_converter(network, paddle_op, inputs):
     return outputs
 
 
-@converter_registry.register(
-    "pd_op.nearest_interp", trt_version="trt_version_ge=8.0"
-)
+@converter_registry.register("pd_op.nearest_interp")
 def nearest_interp_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
     input_shape_tensor = network.add_shape(input_tensor)
@@ -468,9 +462,7 @@ def nearest_interp_converter(network, paddle_op, inputs):
     return resize_layer.get_output(0)
 
 
-@converter_registry.register(
-    "pd_op.linear_interp", trt_version="trt_version_ge=8.0"
-)
+@converter_registry.register("pd_op.linear_interp")
 def linear_interp_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
     data_layout = paddle_op.attrs().get("data_format")

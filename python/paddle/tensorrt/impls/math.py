@@ -40,15 +40,15 @@ from paddle.tensorrt.converter_utils import (
 from paddle.tensorrt.register import converter_registry
 
 
-@converter_registry.register("pd_op.add", trt_version="trt_version_ge=8.0")
-@converter_registry.register("pd_op.add_", trt_version="trt_version_ge=8.0")
+@converter_registry.register("pd_op.add")
+@converter_registry.register("pd_op.add_")
 def add_converter(network, paddle_op, inputs):
     return add_elementwise_layer(
         network, paddle_op, inputs, trt.ElementWiseOperation.SUM
     )
 
 
-@converter_registry.register("pd_op.scale", trt_version="trt_version_ge=8.0")
+@converter_registry.register("pd_op.scale")
 def scale_converter(network, paddle_op, inputs):
     x = inputs[0]
     bias = paddle_op.attrs().get("bias", 0.0)
@@ -152,7 +152,7 @@ def scale_converter(network, paddle_op, inputs):
     return layer.get_output(0)
 
 
-@converter_registry.register("pd_op.max", trt_version="trt_version_ge=8.0")
+@converter_registry.register("pd_op.max")
 def max_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
     axis = get_input_constant_value(paddle_op, inputs, 1)
@@ -178,21 +178,21 @@ def max_converter(network, paddle_op, inputs):
     return layer.get_output(0)
 
 
-@converter_registry.register("pd_op.divide", trt_version="trt_version_ge=8.0")
+@converter_registry.register("pd_op.divide")
 def divide_converter(network, paddle_op, inputs):
     return add_elementwise_layer(
         network, paddle_op, inputs, trt.ElementWiseOperation.DIV
     )
 
 
-@converter_registry.register("pd_op.subtract", trt_version="trt_version_ge=8.0")
+@converter_registry.register("pd_op.subtract")
 def subtract_converter(network, paddle_op, inputs):
     return add_elementwise_layer(
         network, paddle_op, inputs, trt.ElementWiseOperation.SUB
     )
 
 
-@converter_registry.register("pd_op.multiply", trt_version="trt_version_ge=8.0")
+@converter_registry.register("pd_op.multiply")
 def multiply_converter(network, paddle_op, inputs):
     return add_elementwise_layer(
         network, paddle_op, inputs, trt.ElementWiseOperation.PROD
@@ -257,7 +257,7 @@ def clip_converter(network, paddle_op, inputs):
     return layer.get_output(0)
 
 
-@converter_registry.register("pd_op.pow", trt_version="trt_version_ge=8.0")
+@converter_registry.register("pd_op.pow")
 def pow_converter(network, paddle_op, inputs):
     from paddle.tensorrt.util import support_fp32_mix_precision
 
