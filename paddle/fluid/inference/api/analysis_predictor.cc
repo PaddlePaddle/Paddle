@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 
+#include <glog/logging.h>
+
 #include <algorithm>
 #include <cstdlib>
 #include <fstream>
@@ -22,8 +24,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-
-#include <glog/logging.h>
 
 #include "paddle/common/enforce.h"
 #include "paddle/common/errors.h"
