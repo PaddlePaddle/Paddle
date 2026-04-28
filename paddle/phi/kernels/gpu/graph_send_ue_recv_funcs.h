@@ -109,14 +109,14 @@ struct GraphSendUERecvSumCUDAFunctor {
 template <typename T>
 struct GraphSendUERecvMaxCUDAFunctor {
   DEVICE inline void operator()(T* output, T val) {
-    phi::CudaAtomicMax(output, val);
+    CudaAtomicMax(output, val);
   }
 };
 
 template <typename T>
 struct GraphSendUERecvMinCUDAFunctor {
   DEVICE inline void operator()(T* output, T val) {
-    phi::CudaAtomicMin(output, val);
+    CudaAtomicMin(output, val);
   }
 };
 

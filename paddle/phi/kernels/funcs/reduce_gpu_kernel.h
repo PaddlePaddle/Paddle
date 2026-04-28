@@ -1376,7 +1376,7 @@ void ReduceGpuKernel(const KPDevice& dev_ctx,
   // TODO(baoqiwen): When ReduceOp is WelfordOps, kVecSize is 2.
   constexpr int kVecSize = 4;
   constexpr int kInputVecSize = kVecSize;
-  using MPType = typename phi::dtype::MPTypeTrait<Ty>::Type;
+  using MPType = typename MPTypeTrait<Ty>::Type;
 
   // Initialize reducer.
   ReduceOp reducer = [&iter, &norm_p]() {

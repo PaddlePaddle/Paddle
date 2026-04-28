@@ -63,18 +63,18 @@ void GPUIndexElementwisePutGradKernel(
   if (value_grad) {
     value_dims = vectorize<int64_t>(value_grad->dims());
     value_strides = vectorize<int64_t>(value_grad->strides());
-    value_ele_size = phi::SizeOf(value_grad->dtype());
+    value_ele_size = SizeOf(value_grad->dtype());
   }
 
   funcs::IndexPutStride<3>(input_dims,
                            input_strides,
-                           phi::SizeOf(out_grad.dtype()),
+                           SizeOf(out_grad.dtype()),
                            value_dims,
                            value_strides,
                            value_ele_size,
                            shape_tmp,
                            stride_tmp,
-                           phi::SizeOf(index[0]->dtype()),
+                           SizeOf(index[0]->dtype()),
                            &desired_shape,
                            &strides_array,
                            &numel,

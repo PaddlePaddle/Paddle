@@ -22,13 +22,6 @@
 #include "paddle/phi/kernels/gpu/flash_attn_utils.h"
 #include "paddle/utils/none.h"
 
-inline int getSMVersion() {
-  const int device = phi::backends::gpu::GetCurrentDeviceId();
-  const phi::gpuDeviceProp prop =
-      phi::backends::gpu::GetDeviceProperties(device);
-  return prop.major * 10 + prop.minor;
-}
-
 #if defined(__CUDACC__) && CUDA_VERSION >= 11000
 #define CUDA_BFLOAT16_AVAILABLE
 #include <cuda_bf16.h>
@@ -36,6 +29,12 @@ inline int getSMVersion() {
 
 namespace phi {
 namespace fusion {
+
+inline int getSMVersion() {
+  const int device = backends::gpu::GetCurrentDeviceId();
+  const phi::gpuDeviceProp prop = backends::gpu::GetDeviceProperties(device);
+  return prop.major * 10 + prop.minor;
+}
 
 int GetMaxLen(const GPUContext& dev_ctx,
               const DenseTensor& seq_lens_tensor,

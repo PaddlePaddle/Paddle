@@ -70,8 +70,7 @@ void SetAccumulators<GPUContext>(const GPUContext& dev_ctx,
 
   auto cuda_place = out_old_num_accumulates->place();
   const int64_t* stable_na =
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(&num_accumulates,
-                                                             1);
+      backends::gpu::RestoreHostMemIfCapturingCUDAGraph(&num_accumulates, 1);
   memory_utils::Copy(dev_ctx.GetPlace(),
                      out_num_accumulates_ptr,
                      CPUPlace(),
@@ -79,9 +78,8 @@ void SetAccumulators<GPUContext>(const GPUContext& dev_ctx,
                      sizeof(int64_t),
                      stream);
 
-  const int64_t* stable_ona =
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
-          &old_num_accumulates, 1);
+  const int64_t* stable_ona = backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      &old_num_accumulates, 1);
   memory_utils::Copy(dev_ctx.GetPlace(),
                      out_old_num_accumulates_ptr,
                      CPUPlace(),
@@ -90,7 +88,7 @@ void SetAccumulators<GPUContext>(const GPUContext& dev_ctx,
                      stream);
 
   const int64_t* stable_nu =
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(&num_updates, 1);
+      backends::gpu::RestoreHostMemIfCapturingCUDAGraph(&num_updates, 1);
   memory_utils::Copy(cuda_place,
                      out_num_updates_ptr,
                      CPUPlace(),

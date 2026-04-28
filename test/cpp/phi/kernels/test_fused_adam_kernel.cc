@@ -491,8 +491,11 @@ TEST(fused_adam, test_fp32_cpu) {
 #ifdef PADDLE_WITH_CUDA
 TEST(fused_adam, test_fp32_gpu) {
   auto shapes = GenerateRandomShapes(40, 0, 2 << 18);
-  float atol = 0.0f;
   for (auto use_adamw : {false, true}) {
+    // AdamwDenseKernel now uses torch-compatible math (double-precision
+    // intermediates, FMA intrinsics) while FusedAdamKernel still uses the
+    // original float-precision math, so allow a small tolerance for adamw.
+    float atol = use_adamw ? 1e-5f : 0.0f;
     for (auto amsgrad : {false, true}) {
       TestFusedAdamBase<float, GPUPlace>(shapes, atol, use_adamw, amsgrad);
     }

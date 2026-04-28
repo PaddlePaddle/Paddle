@@ -194,14 +194,13 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                                counter);
   }
   if (subm) {
-    auto config =
-        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
+    auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
     unique_value.ResizeAndAllocate(
         {static_cast<int>(out->nnz() * kernel_size)});
     out_index.ResizeAndAllocate({static_cast<int>(rulebook_len)});
     int* out_index_ptr = out_index.data<int>();
     int* unique_value_ptr = unique_value.data<int>();
-    phi::backends::gpu::GpuMemsetAsync(
+    backends::gpu::GpuMemsetAsync(
         out_index_ptr, 0, sizeof(int) * rulebook_len, dev_ctx.stream());
     GroupIndices<<<config.block_per_grid,
                    config.thread_per_block,

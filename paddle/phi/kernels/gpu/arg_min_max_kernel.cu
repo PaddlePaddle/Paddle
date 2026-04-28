@@ -232,7 +232,7 @@ void ArgMinMaxOpCUDAKernel(const Context& dev_ctx,
             dev_ctx, x, axis.to<int64_t>(), keepdims, flatten, out));
     return;
   }
-  phi::VisitDataTypeTiny(
+  VisitDataTypeTiny(
       dtype,
       VisitDataCudaArgMinMaxFunctor<Context, T, Reducer>(
           dev_ctx, x, axis.to<int64_t>(), keepdims, flatten, out));

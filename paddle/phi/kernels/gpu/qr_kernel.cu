@@ -85,17 +85,17 @@ struct QrFunctor {
     int tau_stride = min_mn;
 
     if (compute_q) {
-      dev_ctx.template Alloc<phi::dtype::Real<T>>(
-          q, batch_size * m * k * sizeof(phi::dtype::Real<T>));
+      dev_ctx.template Alloc<dtype::Real<T>>(
+          q, batch_size * m * k * sizeof(dtype::Real<T>));
     }
-    dev_ctx.template Alloc<phi::dtype::Real<T>>(
-        r, batch_size * k * n * sizeof(phi::dtype::Real<T>));
+    dev_ctx.template Alloc<dtype::Real<T>>(
+        r, batch_size * k * n * sizeof(dtype::Real<T>));
 
     // Note: allocate temporary tensors because of lacking in-place operations.
     // Prepare qr
     DenseTensor qr;
-    dev_ctx.template Alloc<phi::dtype::Real<T>>(
-        &qr, size_t(batch_size * m * n * sizeof(phi::dtype::Real<T>)));
+    dev_ctx.template Alloc<dtype::Real<T>>(
+        &qr, size_t(batch_size * m * n * sizeof(dtype::Real<T>)));
     // BatchedGeqrf performs computation in-place and 'qr' must be a copy of
     // input
     Copy(dev_ctx, x, dev_ctx.GetPlace(), false, &qr);
@@ -109,8 +109,8 @@ struct QrFunctor {
     // Transpose 'qr' to conform the column-major order
     auto tmp_qr = TransposeLast2Dim<T, Context>(dev_ctx, qr);
     Copy(dev_ctx, tmp_qr, qr.place(), false, &qr);
-    auto qr_data = dev_ctx.template Alloc<phi::dtype::Real<T>>(&qr);
-    auto tau_data = dev_ctx.template Alloc<phi::dtype::Real<T>>(&tau);
+    auto qr_data = dev_ctx.template Alloc<dtype::Real<T>>(&qr);
+    auto tau_data = dev_ctx.template Alloc<dtype::Real<T>>(&tau);
 
     BatchedGeqrf<Context, T>(
         dev_ctx, batch_size, m, n, qr_data, m, tau_data, qr_stride, tau_stride);
@@ -152,15 +152,14 @@ struct QrFunctor {
           auto new_qr_dims_vec = vectorize<int64_t>(x_dims);
           new_qr_dims_vec[new_qr_dims_vec.size() - 1] = m;
           DenseTensor new_qr = Fill<T, Context>(dev_ctx, new_qr_dims_vec, T(0));
-          auto new_qr_data =
-              dev_ctx.template Alloc<phi::dtype::Real<T>>(&new_qr);
+          auto new_qr_data = dev_ctx.template Alloc<dtype::Real<T>>(&new_qr);
           auto new_qr_stride = m * m;
           for (int i = 0; i < batch_size; ++i) {
             memory_utils::Copy(dev_ctx.GetPlace(),
                                (new_qr_data + i * new_qr_stride),
                                dev_ctx.GetPlace(),
                                (qr_data + i * qr_stride),
-                               qr_stride * sizeof(phi::dtype::Real<T>),
+                               qr_stride * sizeof(dtype::Real<T>),
                                dev_ctx.stream());
           }
           BatchedOrgqr<Context, T>(dev_ctx,
@@ -197,7 +196,7 @@ struct QrFunctor {
 };
 
 template <typename T, typename Context>
-struct QrFunctor<phi::dtype::complex<T>, Context> {
+struct QrFunctor<dtype::complex<T>, Context> {
   void operator()(const Context& dev_ctx,
                   const DenseTensor& x,
                   bool compute_q,
@@ -214,16 +213,16 @@ struct QrFunctor<phi::dtype::complex<T>, Context> {
     int qr_stride = m * n;
     int tau_stride = min_mn;
     if (compute_q) {
-      dev_ctx.template Alloc<phi::dtype::complex<T>>(
-          q, batch_size * m * k * sizeof(phi::dtype::complex<T>));
+      dev_ctx.template Alloc<dtype::complex<T>>(
+          q, batch_size * m * k * sizeof(dtype::complex<T>));
     }
-    dev_ctx.template Alloc<phi::dtype::complex<T>>(
-        r, batch_size * k * n * sizeof(phi::dtype::complex<T>));
+    dev_ctx.template Alloc<dtype::complex<T>>(
+        r, batch_size * k * n * sizeof(dtype::complex<T>));
     // Note: allocate temporary tensors because of lacking in-place operations.
     // Prepare qr
     DenseTensor qr;
-    dev_ctx.template Alloc<phi::dtype::complex<T>>(
-        &qr, size_t(batch_size * m * n * sizeof(phi::dtype::complex<T>)));
+    dev_ctx.template Alloc<dtype::complex<T>>(
+        &qr, size_t(batch_size * m * n * sizeof(dtype::complex<T>)));
     // BatchedGeqrf performs computation in-place and 'qr' must be a copy of
     // input
     Copy(dev_ctx, x, dev_ctx.GetPlace(), false, &qr);
@@ -232,29 +231,28 @@ struct QrFunctor<phi::dtype::complex<T>, Context> {
     tau_dims_vec.pop_back();
     tau_dims_vec[tau_dims_vec.size() - 1] = min_mn;
     DenseTensor tau =
-        Fill<phi::dtype::complex<T>, Context>(dev_ctx, tau_dims_vec, T(0));
+        Fill<dtype::complex<T>, Context>(dev_ctx, tau_dims_vec, T(0));
     // Transpose 'qr' to conform the column-major order
-    auto tmp_qr =
-        TransposeLast2Dim<phi::dtype::complex<T>, Context>(dev_ctx, qr);
+    auto tmp_qr = TransposeLast2Dim<dtype::complex<T>, Context>(dev_ctx, qr);
     Copy(dev_ctx, tmp_qr, qr.place(), false, &qr);
-    auto qr_data = dev_ctx.template Alloc<phi::dtype::complex<T>>(&qr);
-    auto tau_data = dev_ctx.template Alloc<phi::dtype::complex<T>>(&tau);
-    BatchedGeqrf<Context, phi::dtype::complex<T>>(
+    auto qr_data = dev_ctx.template Alloc<dtype::complex<T>>(&qr);
+    auto tau_data = dev_ctx.template Alloc<dtype::complex<T>>(&tau);
+    BatchedGeqrf<Context, dtype::complex<T>>(
         dev_ctx, batch_size, m, n, qr_data, m, tau_data, qr_stride, tau_stride);
     if (reduced_mode) {
       auto trans_qr =
-          TransposeLast2Dim<phi::dtype::complex<T>, Context>(dev_ctx, qr);
-      auto sliced_qr = Slice<phi::dtype::complex<T>, Context>(
+          TransposeLast2Dim<dtype::complex<T>, Context>(dev_ctx, qr);
+      auto sliced_qr = Slice<dtype::complex<T>, Context>(
           dev_ctx, trans_qr, {trans_qr.dims().size() - 2}, {0}, {min_mn});
-      auto tmp_r = TrilTriu<phi::dtype::complex<T>, Context>(
-          dev_ctx, sliced_qr, 0, false);
+      auto tmp_r =
+          TrilTriu<dtype::complex<T>, Context>(dev_ctx, sliced_qr, 0, false);
       // Transpose 'tmp_r' to restore the original row-major order
       Copy(dev_ctx, tmp_r, r->place(), false, r);
     } else {
       auto trans_qr =
-          TransposeLast2Dim<phi::dtype::complex<T>, Context>(dev_ctx, qr);
-      auto tmp_r = TrilTriu<phi::dtype::complex<T>, Context>(
-          dev_ctx, trans_qr, 0, false);
+          TransposeLast2Dim<dtype::complex<T>, Context>(dev_ctx, qr);
+      auto tmp_r =
+          TrilTriu<dtype::complex<T>, Context>(dev_ctx, trans_qr, 0, false);
       // Transpose 'tmp_r' to restore the original row-major order
       Copy(dev_ctx, tmp_r, r->place(), false, r);
     }
@@ -262,65 +260,64 @@ struct QrFunctor<phi::dtype::complex<T>, Context> {
       // Perform QRGQR for Q using the result from GEQRF
       // Transpose 'q' to restore the original row-major order
       if (reduced_mode) {
-        BatchedOrgqr<Context, phi::dtype::complex<T>>(dev_ctx,
-                                                      batch_size,
-                                                      m,
-                                                      min_mn,
-                                                      min_mn,
-                                                      qr_data,
-                                                      m,
-                                                      tau_data,
-                                                      qr_stride,
-                                                      tau_stride);
+        BatchedOrgqr<Context, dtype::complex<T>>(dev_ctx,
+                                                 batch_size,
+                                                 m,
+                                                 min_mn,
+                                                 min_mn,
+                                                 qr_data,
+                                                 m,
+                                                 tau_data,
+                                                 qr_stride,
+                                                 tau_stride);
         auto trans_q =
-            TransposeLast2Dim<phi::dtype::complex<T>, Context>(dev_ctx, qr);
-        auto sliced_q = Slice<phi::dtype::complex<T>, Context>(
+            TransposeLast2Dim<dtype::complex<T>, Context>(dev_ctx, qr);
+        auto sliced_q = Slice<dtype::complex<T>, Context>(
             dev_ctx, trans_q, {trans_q.dims().size() - 1}, {0}, {min_mn});
         Copy(dev_ctx, sliced_q, q->place(), false, q);
       } else {
         if (m > n) {
           auto new_qr_dims_vec = vectorize<int64_t>(x_dims);
           new_qr_dims_vec[new_qr_dims_vec.size() - 1] = m;
-          DenseTensor new_qr = Fill<phi::dtype::complex<T>, Context>(
-              dev_ctx, new_qr_dims_vec, T(0));
-          auto new_qr_data =
-              dev_ctx.template Alloc<phi::dtype::complex<T>>(&new_qr);
+          DenseTensor new_qr =
+              Fill<dtype::complex<T>, Context>(dev_ctx, new_qr_dims_vec, T(0));
+          auto new_qr_data = dev_ctx.template Alloc<dtype::complex<T>>(&new_qr);
           auto new_qr_stride = m * m;
           for (int i = 0; i < batch_size; ++i) {
             memory_utils::Copy(dev_ctx.GetPlace(),
                                (new_qr_data + i * new_qr_stride),
                                dev_ctx.GetPlace(),
                                (qr_data + i * qr_stride),
-                               qr_stride * sizeof(phi::dtype::complex<T>),
+                               qr_stride * sizeof(dtype::complex<T>),
                                dev_ctx.stream());
           }
-          BatchedOrgqr<Context, phi::dtype::complex<T>>(dev_ctx,
-                                                        batch_size,
-                                                        m,
-                                                        m,
-                                                        min_mn,
-                                                        new_qr_data,
-                                                        m,
-                                                        tau_data,
-                                                        new_qr_stride,
-                                                        tau_stride);
-          auto trans_q = TransposeLast2Dim<phi::dtype::complex<T>, Context>(
-              dev_ctx, new_qr);
+          BatchedOrgqr<Context, dtype::complex<T>>(dev_ctx,
+                                                   batch_size,
+                                                   m,
+                                                   m,
+                                                   min_mn,
+                                                   new_qr_data,
+                                                   m,
+                                                   tau_data,
+                                                   new_qr_stride,
+                                                   tau_stride);
+          auto trans_q =
+              TransposeLast2Dim<dtype::complex<T>, Context>(dev_ctx, new_qr);
           Copy(dev_ctx, trans_q, q->place(), false, q);
         } else {
-          BatchedOrgqr<Context, phi::dtype::complex<T>>(dev_ctx,
-                                                        batch_size,
-                                                        m,
-                                                        m,
-                                                        min_mn,
-                                                        qr_data,
-                                                        m,
-                                                        tau_data,
-                                                        qr_stride,
-                                                        tau_stride);
+          BatchedOrgqr<Context, dtype::complex<T>>(dev_ctx,
+                                                   batch_size,
+                                                   m,
+                                                   m,
+                                                   min_mn,
+                                                   qr_data,
+                                                   m,
+                                                   tau_data,
+                                                   qr_stride,
+                                                   tau_stride);
           auto trans_q =
-              TransposeLast2Dim<phi::dtype::complex<T>, Context>(dev_ctx, qr);
-          auto sliced_q = Slice<phi::dtype::complex<T>, Context>(
+              TransposeLast2Dim<dtype::complex<T>, Context>(dev_ctx, qr);
+          auto sliced_q = Slice<dtype::complex<T>, Context>(
               dev_ctx, trans_q, {trans_q.dims().size() - 1}, {0}, {m});
           Copy(dev_ctx, sliced_q, q->place(), false, q);
         }
@@ -592,15 +589,15 @@ void BatchedGeqrf<GPUContext, double>(const GPUContext& dev_ctx,
 }
 
 template <>
-void BatchedGeqrf<GPUContext, phi::complex64>(const GPUContext& dev_ctx,
-                                              int batch_size,
-                                              int m,
-                                              int n,
-                                              phi::complex64* a,
-                                              int lda,
-                                              phi::complex64* tau,
-                                              int a_stride,
-                                              int tau_stride) {
+void BatchedGeqrf<GPUContext, complex64>(const GPUContext& dev_ctx,
+                                         int batch_size,
+                                         int m,
+                                         int n,
+                                         complex64* a,
+                                         int lda,
+                                         complex64* tau,
+                                         int a_stride,
+                                         int tau_stride) {
   int lwork = 0;
 
   auto handle = dev_ctx.cusolver_dn_handle();
@@ -609,16 +606,15 @@ void BatchedGeqrf<GPUContext, phi::complex64>(const GPUContext& dev_ctx,
 
   DenseTensor workspace = DenseTensor();
   workspace.Resize({lwork});
-  phi::complex64* workspace_ptr =
-      dev_ctx.template Alloc<phi::complex64>(&workspace);
+  complex64* workspace_ptr = dev_ctx.template Alloc<complex64>(&workspace);
 
   DenseTensor info = DenseTensor();
   info.Resize({1});
   int* info_d = dev_ctx.template Alloc<int>(&info);
 
   for (int i = 0; i < batch_size; ++i) {
-    phi::complex64* a_working_ptr = &a[i * a_stride];
-    phi::complex64* tau_working_ptr = &tau[i * tau_stride];
+    complex64* a_working_ptr = &a[i * a_stride];
+    complex64* tau_working_ptr = &tau[i * tau_stride];
     // compute geqrf
     PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::cusolverDnCgeqrf(handle,
@@ -648,15 +644,15 @@ void BatchedGeqrf<GPUContext, phi::complex64>(const GPUContext& dev_ctx,
 }
 
 template <>
-void BatchedGeqrf<GPUContext, phi::complex128>(const GPUContext& dev_ctx,
-                                               int batch_size,
-                                               int m,
-                                               int n,
-                                               phi::complex128* a,
-                                               int lda,
-                                               phi::complex128* tau,
-                                               int a_stride,
-                                               int tau_stride) {
+void BatchedGeqrf<GPUContext, complex128>(const GPUContext& dev_ctx,
+                                          int batch_size,
+                                          int m,
+                                          int n,
+                                          complex128* a,
+                                          int lda,
+                                          complex128* tau,
+                                          int a_stride,
+                                          int tau_stride) {
   int lwork = 0;
 
   auto handle = dev_ctx.cusolver_dn_handle();
@@ -665,16 +661,15 @@ void BatchedGeqrf<GPUContext, phi::complex128>(const GPUContext& dev_ctx,
 
   DenseTensor workspace = DenseTensor();
   workspace.Resize({lwork});
-  phi::complex128* workspace_ptr =
-      dev_ctx.template Alloc<phi::complex128>(&workspace);
+  complex128* workspace_ptr = dev_ctx.template Alloc<complex128>(&workspace);
 
   DenseTensor info = DenseTensor();
   info.Resize({1});
   int* info_d = dev_ctx.template Alloc<int>(&info);
 
   for (int i = 0; i < batch_size; ++i) {
-    phi::complex128* a_working_ptr = &a[i * a_stride];
-    phi::complex128* tau_working_ptr = &tau[i * tau_stride];
+    complex128* a_working_ptr = &a[i * a_stride];
+    complex128* tau_working_ptr = &tau[i * tau_stride];
     // compute geqrf
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnZgeqrf(
         handle,
@@ -816,16 +811,16 @@ void BatchedOrgqr<GPUContext, double>(const GPUContext& dev_ctx,
 }
 
 template <>
-void BatchedOrgqr<GPUContext, phi::complex64>(const GPUContext& dev_ctx,
-                                              int batch_size,
-                                              int m,
-                                              int n,
-                                              int k,
-                                              phi::complex64* a,
-                                              int lda,
-                                              phi::complex64* tau,
-                                              int a_stride,
-                                              int tau_stride) {
+void BatchedOrgqr<GPUContext, complex64>(const GPUContext& dev_ctx,
+                                         int batch_size,
+                                         int m,
+                                         int n,
+                                         int k,
+                                         complex64* a,
+                                         int lda,
+                                         complex64* tau,
+                                         int a_stride,
+                                         int tau_stride) {
   int lwork = 0;
 
   auto handle = dev_ctx.cusolver_dn_handle();
@@ -841,16 +836,15 @@ void BatchedOrgqr<GPUContext, phi::complex64>(const GPUContext& dev_ctx,
 
   DenseTensor workspace = DenseTensor();
   workspace.Resize({lwork});
-  phi::complex64* workspace_ptr =
-      dev_ctx.template Alloc<phi::complex64>(&workspace);
+  complex64* workspace_ptr = dev_ctx.template Alloc<complex64>(&workspace);
 
   DenseTensor info = DenseTensor();
   info.Resize({1});
   int* info_d = dev_ctx.template Alloc<int>(&info);
 
   for (int i = 0; i < batch_size; ++i) {
-    phi::complex64* a_working_ptr = &a[i * a_stride];
-    phi::complex64* tau_working_ptr = &tau[i * tau_stride];
+    complex64* a_working_ptr = &a[i * a_stride];
+    complex64* tau_working_ptr = &tau[i * tau_stride];
     // compute orggr
     PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::cusolverDnCungqr(handle,
@@ -881,16 +875,16 @@ void BatchedOrgqr<GPUContext, phi::complex64>(const GPUContext& dev_ctx,
 }
 
 template <>
-void BatchedOrgqr<GPUContext, phi::complex128>(const GPUContext& dev_ctx,
-                                               int batch_size,
-                                               int m,
-                                               int n,
-                                               int k,
-                                               phi::complex128* a,
-                                               int lda,
-                                               phi::complex128* tau,
-                                               int a_stride,
-                                               int tau_stride) {
+void BatchedOrgqr<GPUContext, complex128>(const GPUContext& dev_ctx,
+                                          int batch_size,
+                                          int m,
+                                          int n,
+                                          int k,
+                                          complex128* a,
+                                          int lda,
+                                          complex128* tau,
+                                          int a_stride,
+                                          int tau_stride) {
   int lwork = 0;
 
   auto handle = dev_ctx.cusolver_dn_handle();
@@ -906,16 +900,15 @@ void BatchedOrgqr<GPUContext, phi::complex128>(const GPUContext& dev_ctx,
 
   DenseTensor workspace = DenseTensor();
   workspace.Resize({lwork});
-  phi::complex128* workspace_ptr =
-      dev_ctx.template Alloc<phi::complex128>(&workspace);
+  complex128* workspace_ptr = dev_ctx.template Alloc<complex128>(&workspace);
 
   DenseTensor info = DenseTensor();
   info.Resize({1});
   int* info_d = dev_ctx.template Alloc<int>(&info);
 
   for (int i = 0; i < batch_size; ++i) {
-    phi::complex128* a_working_ptr = &a[i * a_stride];
-    phi::complex128* tau_working_ptr = &tau[i * tau_stride];
+    complex128* a_working_ptr = &a[i * a_stride];
+    complex128* tau_working_ptr = &tau[i * tau_stride];
     // compute orggr
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnZungqr(
         handle,

@@ -24,13 +24,13 @@ namespace fusion {
 
 template <typename T>
 struct SigmoidMultiplyFunctor {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  MPType one = static_cast<MPType>(1.0f);
+  using MT = typename MPTypeTrait<T>::Type;
+  MT one = static_cast<MT>(1.0f);
 
   // sigmoid(x) = 1 / (1 + exp(-x))
   // out = sigmoid(x) * y
   inline HOSTDEVICE T operator()(T x, T y) const {
-    MPType x_mp = static_cast<MPType>(x);
+    MT x_mp = static_cast<MT>(x);
     T sigmoid_out = static_cast<T>(one / (one + exp(-x_mp)));
     return sigmoid_out * y;
   }

@@ -98,7 +98,7 @@ void DispatchMaskFillKernel(const GPUContext& dev_ctx,
                             const int64_t batch_size,
                             T* output,
                             int vec_size,
-                            const phi::backends::gpu::GpuLaunchConfig& config) {
+                            const backends::gpu::GpuLaunchConfig& config) {
   auto stream = dev_ctx.stream();
   switch (vec_size) {
 #define CASE_VECSIZE(__Vs)                                               \
@@ -128,7 +128,7 @@ void DispatchMaskFillOneValueKernel(
     const int64_t batch_size,
     T* output,
     int vec_size,
-    const phi::backends::gpu::GpuLaunchConfig& config) {
+    const backends::gpu::GpuLaunchConfig& config) {
   auto stream = dev_ctx.stream();
   switch (vec_size) {
 #define CASE_VECSIZE(__Vs)                                               \
@@ -164,14 +164,14 @@ void GPUMaskedFill(const GPUContext& dev_ctx,
   int64_t batch_size = input_len / mask_len;
 
   int vec_size = 8;
-  vec_size = std::min(phi::GetVectorizedSize(input_data), vec_size);
-  vec_size = std::min(phi::GetVectorizedSize(output_data), vec_size);
+  vec_size = std::min(GetVectorizedSize(input_data), vec_size);
+  vec_size = std::min(GetVectorizedSize(output_data), vec_size);
   while (vec_size > 1 && batch_size % vec_size != 0) {
     vec_size /= 2;
   }
 
   auto config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, input_len, vec_size);
+      backends::gpu::GetGpuLaunchConfig1D(dev_ctx, input_len, vec_size);
 
   if (value.numel() == 1) {
     DispatchMaskFillOneValueKernel<T>(dev_ctx,
@@ -227,7 +227,7 @@ void MaskedFillKernel(const Context& dev_ctx,
 
   DenseTensor value_expand = value;
   if (value.numel() != 1 && value.dims() != expanded_dims) {
-    phi::ExpandKernel<T, Context>(
+    ExpandKernel<T, Context>(
         dev_ctx, value, IntArray(expanded_size), &value_expand);
   }
 
@@ -240,15 +240,14 @@ void MaskedFillKernel(const Context& dev_ctx,
   DenseTensor x_expand;
 
   if (mask.dims() != expanded_dims) {
-    phi::ExpandKernel<bool, Context>(
+    ExpandKernel<bool, Context>(
         dev_ctx, mask, IntArray(expanded_size), &mask_expand);
   } else {
     mask_expand = mask;
   }
 
   if (x.dims() != expanded_dims) {
-    phi::ExpandKernel<T, Context>(
-        dev_ctx, x, IntArray(expanded_size), &x_expand);
+    ExpandKernel<T, Context>(dev_ctx, x, IntArray(expanded_size), &x_expand);
   } else {
     x_expand = x;
   }

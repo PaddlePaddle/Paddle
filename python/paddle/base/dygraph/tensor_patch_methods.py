@@ -1113,13 +1113,15 @@ def monkey_patch_tensor():
 
     @overload
     def cuda(
-        self: Tensor, device_id: DeviceLike = None, blocking: bool = True
+        self: Tensor,
+        device_id: Place | int | None = None,
+        blocking: bool = True,
     ) -> Tensor: ...
 
     @overload
     def cuda(
         self: Tensor,
-        device: DeviceLike = None,
+        device: str,
         non_blocking: bool = False,
     ) -> Tensor: ...
 
@@ -1130,6 +1132,23 @@ def monkey_patch_tensor():
         device_id: DeviceLike = None,
         blocking: bool = True,
     ) -> Tensor:
+        """
+        This API has two signatures:
+
+        1. ``paddle.Tensor.cuda(self, device_id=None, blocking=True)`` (Paddle-style):
+            Returns a copy of the current tensor on the specified device.
+
+        2. ``paddle.Tensor.cuda(self, device, *, non_blocking=False)`` (PyTorch-style):
+            Returns a copy of the current tensor on the specified device.
+
+        Args:
+            device_id (paddle.core.Place|int|str|None, optional): The destination place. Defaults to current expected place.
+                Alias: ``device``.
+            blocking (bool, optional): If ``True`` the copy will be asynchronous. Defaults to ``True``.
+
+        Returns:
+            Tensor: The copy of the current tensor on the specified device.
+        """
         device_type = paddle.device.get_all_device_type()
         if len(
             device_type
@@ -1177,10 +1196,22 @@ def monkey_patch_tensor():
 
     @property
     def is_cuda(self: Tensor) -> bool:
+        """
+        Is ``True`` if the Tensor is stored on the GPU, ``False`` otherwise.
+
+        Returns:
+            bool: ``True`` if the Tensor is stored on the GPU.
+        """
         return self.place.is_gpu_place()
 
     @property
     def is_cpu(self: Tensor) -> bool:
+        """
+        Is ``True`` if the Tensor is stored on the CPU, ``False`` otherwise.
+
+        Returns:
+            bool: ``True`` if the Tensor is stored on the CPU.
+        """
         return self.place.is_cpu_place()
 
     @framework.dygraph_only

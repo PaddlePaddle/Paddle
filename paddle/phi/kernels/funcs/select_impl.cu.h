@@ -24,8 +24,6 @@
 #include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
-namespace kps = phi::kps;
-
 namespace phi {
 namespace funcs {
 using Mode = kps::details::ReduceMode;

@@ -48,9 +48,9 @@ void LoadKernel(const Context& dev_ctx,
                       0,
                       errors::InvalidArgument(
                           "seek with tensor must great than or equal to 0"));
-    phi::DeserializeFromStream(fin, out, dev_ctx, seek, shape);
+    DeserializeFromStream(fin, out, dev_ctx, seek, shape);
   } else {
-    phi::DeserializeFromStream(fin, out, dev_ctx);
+    DeserializeFromStream(fin, out, dev_ctx);
   }
 
   auto in_dtype = out->dtype();

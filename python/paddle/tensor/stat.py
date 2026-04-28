@@ -196,15 +196,11 @@ def var(
     """
     Computes the variance of ``x`` along ``axis`` .
 
-    .. note::
-        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``dim`` can be used as an alias for ``axis``.
-        For example, ``var(input=tensor_x, dim=1, ...)`` is equivalent to ``var(x=tensor_x, axis=1, ...)``.
-
     Args:
         x (Tensor): The input Tensor with data type float16, float32, float64.
-            alias: ``input``.
+            Alias: ``input``.
         axis (int|list|tuple|None, optional): The axis along which to perform variance calculations. ``axis`` should be int, list(int) or tuple(int).
-            alias: ``dim``.
+            Alias: ``dim``.
 
             - If ``axis`` is a list/tuple of dimension(s), variance is calculated along all element(s) of ``axis`` . ``axis`` or element(s) of ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` .
             - If ``axis`` or element(s) of ``axis`` is less than 0, it works the same way as :math:`axis + D` .
@@ -333,13 +329,9 @@ def std(*args: Any, **kwargs: Any) -> Tensor:
     """
     Computes the standard-deviation of ``x`` along ``axis`` .
 
-    .. note::
-        Alias Support:
-        1. The parameter name ``input`` can be used as an alias for ``x``.
-        2. The parameter name ``dim`` can be used as an alias for ``axis``.
-
     Args:
         x (Tensor): The input Tensor with data type float16, float32, float64.
+            Alias: ``input``.
         axis (int|list|tuple|None, optional): The axis along which to perform
             standard-deviation calculations. ``axis`` should be int, list(int)
             or tuple(int). If ``axis`` is a list/tuple of dimension(s),
@@ -349,6 +341,7 @@ def std(*args: Any, **kwargs: Any) -> Tensor:
             ``axis`` is less than 0, it works the same way as :math:`axis + D` .
             If ``axis`` is None, standard-deviation is calculated over all
             elements of ``x``. Default is None.
+            Alias: ``dim``.
         unbiased (bool, optional): Whether to use the unbiased estimation. If
             ``unbiased`` is True, the standard-deviation is calculated via the
             unbiased estimator. If ``unbiased`` is True,  the divisor used in
