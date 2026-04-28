@@ -395,6 +395,10 @@ class TestBuildExtension(unittest.TestCase):
             ),
         ]
 
+    @staticmethod
+    def _expected_nvcc_path(cuda_home='/opt/cuda'):
+        return os.path.join(cuda_home, 'bin', 'nvcc')
+
     def test_unix_ninja_build_file_contains_multiple_sources(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             test_dir = Path(tmpdir)
@@ -523,7 +527,10 @@ class TestBuildExtension(unittest.TestCase):
 
         content = captured['ninja_content']
         self.assertIn('cxx = /usr/bin/ccache g++', content)
-        self.assertIn('nvcc = /usr/bin/ccache /opt/cuda/bin/nvcc', content)
+        self.assertIn(
+            f'nvcc = /usr/bin/ccache {self._expected_nvcc_path()}',
+            content,
+        )
         self.assertIn('rule cuda_compile', content)
         self.assertIn('cuda_post_cflags = --prepared --gpu-flag', content)
         self.assertIn('post_cflags = -w -D_GLIBCXX_USE_CXX11_ABI=1', content)
@@ -659,7 +666,7 @@ class TestBuildExtension(unittest.TestCase):
         self.assertIn('-DPADDLE_WITH_CUDA', cc_call['cflags'])
         self.assertIn('-D_GLIBCXX_USE_CXX11_ABI=1', cc_call['cflags'])
         self.assertIn('--prepared', cu_call['cflags'])
-        self.assertEqual(cu_call['compiler_so'], '/opt/cuda/bin/nvcc')
+        self.assertEqual(cu_call['compiler_so'], self._expected_nvcc_path())
         mock_print.assert_any_call(
             "Using 2 workers for compilation. HINT: export MAX_JOBS=n to set the number of workers"
         )
@@ -748,7 +755,7 @@ class TestBuildExtension(unittest.TestCase):
         )
         self.assertIn('-DPADDLE_WITH_CUDA', cc_cmd)
         self.assertIn('/wd4244', cc_cmd)
-        self.assertEqual(cu_cmd[0], '/opt/cuda/bin/nvcc')
+        self.assertEqual(cu_cmd[0], self._expected_nvcc_path())
         self.assertIn('--prepared', cu_cmd)
         self.assertIn('--use-local-env', cu_cmd)
 
@@ -790,7 +797,7 @@ class TestBuildExtension(unittest.TestCase):
                 )
 
         content = captured['ninja_content']
-        self.assertIn('nvcc = /opt/cuda/bin/nvcc', content)
+        self.assertIn(f'nvcc = {self._expected_nvcc_path()}', content)
         self.assertIn('rule cuda_compile', content)
         self.assertIn('-Xcompiler /EHsc', content)
         self.assertIn('--prepared', content)
@@ -830,9 +837,14 @@ class TestNinjaGeneratedSetupFile(unittest.TestCase):
 
 class TestRunNinjaBuild(unittest.TestCase):
     def test_run_ninja_build_uses_verbose_subprocess_streams(self):
-        with mock.patch(
-            'paddle.utils.cpp_extension.cpp_extension.subprocess.run'
-        ) as mock_run:
+        with (
+            mock.patch.dict(
+                os.environ, {'VSCMD_ARG_TGT_ARCH': 'x64'}, clear=False
+            ),
+            mock.patch(
+                'paddle.utils.cpp_extension.cpp_extension.subprocess.run'
+            ) as mock_run,
+        ):
             _run_ninja_build('/tmp/build', verbose=True, error_prefix='Test')
 
         _, kwargs = mock_run.call_args
@@ -843,7 +855,11 @@ class TestRunNinjaBuild(unittest.TestCase):
 
     def test_run_ninja_build_uses_num_workers_and_quiet_streams(self):
         with (
-            mock.patch.dict(os.environ, {'MAX_JOBS': '3'}, clear=False),
+            mock.patch.dict(
+                os.environ,
+                {'MAX_JOBS': '3', 'VSCMD_ARG_TGT_ARCH': 'x64'},
+                clear=False,
+            ),
             mock.patch(
                 'paddle.utils.cpp_extension.cpp_extension.subprocess.run'
             ) as mock_run,
@@ -894,6 +910,9 @@ class TestRunNinjaBuild(unittest.TestCase):
 
     def test_run_ninja_build_raises_runtime_error(self):
         with (
+            mock.patch.dict(
+                os.environ, {'VSCMD_ARG_TGT_ARCH': 'x64'}, clear=False
+            ),
             mock.patch(
                 'paddle.utils.cpp_extension.cpp_extension.subprocess.run',
                 side_effect=subprocess.CalledProcessError(1, ['ninja', '-v']),
