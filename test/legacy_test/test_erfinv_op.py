@@ -166,5 +166,44 @@ class TestErfinvBF16Op(OpTest):
         self.check_grad_with_place(place, ['X'], 'Out', check_pir=True)
 
 
+class TestErfinvOutOfDomainNaN(unittest.TestCase):
+    """|x| > 1 must return NaN to match PyTorch / scipy; +/-1 stays +/-inf.
+
+    Covers issues #78106 / #78107 / #78121.
+    """
+
+    def _run(self, place, dtype):
+        paddle.disable_static(place)
+        x_np = np.asarray(
+            [-1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, np.nan], dtype=dtype
+        )
+        out = paddle.erfinv(paddle.to_tensor(x_np)).numpy()
+
+        # |x| > 1 -> NaN
+        self.assertTrue(np.isnan(out[0]))  # -1.5
+        self.assertTrue(np.isnan(out[6]))  # +1.5
+        # +/-1 -> +/-inf (not NaN)
+        self.assertTrue(np.isneginf(out[1]))
+        self.assertTrue(np.isposinf(out[5]))
+        # In-domain values stay finite
+        for idx in (2, 3, 4):
+            self.assertTrue(np.isfinite(out[idx]))
+        # NaN input propagates as NaN
+        self.assertTrue(np.isnan(out[7]))
+        paddle.enable_static()
+
+    def test_dygraph_cpu(self):
+        for dtype in ('float32', 'float64'):
+            self._run(paddle.CPUPlace(), dtype)
+
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda(),
+        'core is not compiled with CUDA',
+    )
+    def test_dygraph_gpu(self):
+        for dtype in ('float32', 'float64'):
+            self._run(paddle.CUDAPlace(0), dtype)
+
+
 if __name__ == "__main__":
     unittest.main()
