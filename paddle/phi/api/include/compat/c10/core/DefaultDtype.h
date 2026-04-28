@@ -15,16 +15,22 @@
 #pragma once
 
 #include <c10/core/ScalarType.h>
+#include <c10/util/typeid.h>
 
 #include "paddle/common/macros.h"
-
-namespace caffe2 {
-class TypeMeta;
-}  // namespace caffe2
 
 namespace c10 {
 PADDLE_API void set_default_dtype(caffe2::TypeMeta dtype);
 PADDLE_API const caffe2::TypeMeta get_default_dtype();
 PADDLE_API ScalarType get_default_dtype_as_scalartype();
-PADDLE_API const caffe2::TypeMeta get_default_complex_dtype();
+inline const caffe2::TypeMeta get_default_complex_dtype() {
+  switch (get_default_dtype_as_scalartype()) {
+    case ScalarType::Half:
+      return caffe2::TypeMeta::fromScalarType(ScalarType::ComplexHalf);
+    case ScalarType::Double:
+      return caffe2::TypeMeta::fromScalarType(ScalarType::ComplexDouble);
+    default:
+      return caffe2::TypeMeta::fromScalarType(ScalarType::ComplexFloat);
+  }
+}
 }  // namespace c10
