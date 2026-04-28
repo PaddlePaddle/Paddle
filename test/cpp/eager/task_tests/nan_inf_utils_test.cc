@@ -21,6 +21,7 @@
 #include <tuple>
 
 #include "gtest/gtest.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/api/include/api.h"
@@ -30,11 +31,7 @@
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(strings_empty, CPU, ALL_LAYOUT);
 
-// Forward declare FLAGS_check_nan_inf_blacklist for testing
-// This flag can be set via command line: --check_nan_inf_blacklist="op1,op2"
-namespace paddle_flags {
-extern std::string FLAGS_check_nan_inf_blacklist;
-}
+COMMON_DECLARE_string(check_nan_inf_blacklist);
 
 namespace egr {
 
