@@ -423,7 +423,7 @@ class PADDLE_API TensorBase {
 
   static void MaybeResetHolder(phi::DenseTensor* dense,
                                const std::shared_ptr<phi::Allocation>& holder,
-                               int) {
+                               long) {  // NOLINT
     TORCH_CHECK(dense != nullptr, "DenseTensor must not be null");
 
     // External custom-kernel builds do not expose ResetHolder(), but Holder()
