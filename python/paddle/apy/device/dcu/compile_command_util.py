@@ -32,9 +32,9 @@ class CompileCommandGenerator:
         matmul_source_dir = f"{tpl_dirname}/matmul"
 
         compile_cmd = "/opt/dtk-25.04.2/bin/hipcc -std=c++17 -O3 -fPIC --offload-arch=gfx928 -Wno-return-type"
+        compile_cmd = compile_cmd + " -I " + matmul_source_dir
         compile_cmd = compile_cmd + " -I " + hytlass_dir + "/include"
         compile_cmd = compile_cmd + " -I " + hytlass_dir + "/tools/util/include"
-        compile_cmd = compile_cmd + " -I " + matmul_source_dir
         compile_cmd = (
             compile_cmd + " -DAP_ENABLE_AUTOTUNE=0 -DAP_ENABLE_DEBUG=0"
         )
