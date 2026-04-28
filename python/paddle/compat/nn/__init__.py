@@ -565,11 +565,23 @@ class Linear(nn.Layer):
         )
         self.in_features = in_features
         self.out_features = out_features
+        bound = self._reset_bound()
+        weight_initializer = (
+            nn.initializer.Uniform(low=-bound, high=bound)
+            if in_features > 0 and out_features > 0
+            else None
+        )
+        bias_initializer = (
+            nn.initializer.Uniform(low=-bound, high=bound)
+            if in_features > 0 and out_features > 0
+            else None
+        )
         self.weight = self.create_parameter(
             shape=[out_features, in_features],
             attr=None,
             dtype=self._dtype,
             is_bias=False,
+            default_initializer=weight_initializer,
             device=device,
         )
         self.bias = None
@@ -579,6 +591,7 @@ class Linear(nn.Layer):
                 attr=None,
                 dtype=self._dtype,
                 is_bias=True,
+                default_initializer=bias_initializer,
                 device=device,
             )
         # The same parameter initialization as PyTorch
@@ -600,14 +613,17 @@ class Linear(nn.Layer):
         Resets parameters based on their initialization used in ``__init__``.
         """
 
-        nn.init.kaiming_uniform_(self.weight, a=sqrt(5))
-        if self.bias is not None:
-            # nn.init._calculate_fan_in_and_fan_out(self.weight) for 2D array
-            # is equivalent to returning (weight.shape[1], weight.shape[0])
-            # TODO(heqianyue): use _calculate_fan_in_and_fan_out when available
-            fan_in = self.weight.shape[1]
-            bound = 1 / sqrt(fan_in) if fan_in > 0 else 0
+        bound = self._reset_bound()
+        if self._has_data(self.weight):
+            nn.init.uniform_(self.weight, -bound, bound)
+        if self.bias is not None and self._has_data(self.bias):
             nn.init.uniform_(self.bias, -bound, bound)
+
+    def _reset_bound(self) -> float:
+        return 1 / sqrt(self.in_features) if self.in_features > 0 else 0
+
+    def _has_data(self, tensor: Tensor) -> bool:
+        return all(dim > 0 for dim in tensor.shape)
 
 
 class Softmax(nn.Layer):
