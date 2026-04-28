@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import subprocess
 import unittest
 
 import numpy as np
@@ -29,20 +28,6 @@ def GetPirProgram(fused_func, tensor_args):
     dtypes = tuple(tensor.dtype for tensor in tensor_args)
     func = fused_func.func_overload_ctx.dtypes2func.get(dtypes, None)
     return str(func.infer_program.forward_program)
-
-
-def IsCertainDevices():
-    try:
-        sp = subprocess.Popen(
-            ['nvidia-smi', '-q'], stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
-        out_str = sp.communicate()[0].decode('utf-8')
-        if 'A100' in out_str:
-            return True
-        else:
-            return False
-    except Exception as e:
-        return False
 
 
 class TestMatmulEpilogue(unittest.TestCase):
@@ -81,8 +66,11 @@ class TestMatmulEpilogue(unittest.TestCase):
 
     def test_subgraph(self):
         foo = self.getSubGraph()
+        backend_device = 'dcu' if paddle.is_compiled_with_rocm() else 'cuda'
         fused_foo = pcc.compile(
-            foo, ap_path=f"{os.path.dirname(paddle.__file__)}/apy/matmul_pass"
+            foo,
+            ap_path=f"{os.path.dirname(paddle.__file__)}/apy/matmul_pass",
+            backend_device=backend_device,
         )
         generated_pir_program = GetPirProgram(
             fused_foo, [self.x, self.y, self.b]
@@ -90,11 +78,10 @@ class TestMatmulEpilogue(unittest.TestCase):
         self.assertTrue(
             'pd_op.ap_variadic' in generated_pir_program, "fusion failed"
         )
-        if IsCertainDevices():
-            ap_outs = fused_foo(self.x, self.y, self.b)
-            dy_outs = foo(self.x, self.y, self.b)
-            for dy_out, ap_out in zip(dy_outs, ap_outs):
-                np.testing.assert_allclose(dy_out, ap_out, atol=1e-1)
+        ap_outs = fused_foo(self.x, self.y, self.b)
+        dy_outs = foo(self.x, self.y, self.b)
+        for dy_out, ap_out in zip(dy_outs, ap_outs):
+            np.testing.assert_allclose(dy_out, ap_out, atol=1e-1)
 
 
 if __name__ == "__main__":

@@ -28,18 +28,18 @@ class CompileCommandGenerator:
         return self.op_type2generate_func[op_type](tpl_dirname, library_name)
 
     def generate_matmul_compile_command(self, tpl_dirname, library_name):
-        composable_kernel_dir = f"{tpl_dirname}/matmul/composable_kernel"
+        hytlass_dir = f"{tpl_dirname}/matmul/hytlass"
         matmul_source_dir = f"{tpl_dirname}/matmul"
 
-        compile_cmd = "hipcc -std=c++20 -O3 -fPIC --offload-arch=gfx906"
-        compile_cmd = compile_cmd + " -I " + composable_kernel_dir + "/include"
+        compile_cmd = "/opt/dtk-25.04.2/bin/hipcc -std=c++17 -O3 -fPIC --offload-arch=gfx928 -Wno-return-type"
+        compile_cmd = compile_cmd + " -I " + hytlass_dir + "/include"
+        compile_cmd = compile_cmd + " -I " + hytlass_dir + "/tools/util/include"
         compile_cmd = compile_cmd + " -I " + matmul_source_dir
         compile_cmd = (
             compile_cmd + " -DAP_ENABLE_AUTOTUNE=0 -DAP_ENABLE_DEBUG=0"
         )
         compile_cmd = (
             compile_cmd
-            + f" --shared {self.library_name}.{self.file_ext} -o lib{self.library_name}.so"
+            + f" --shared {library_name}.{self.file_ext} -o lib{library_name}.so"
         )
-        return compile_cmd
         return compile_cmd

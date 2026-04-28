@@ -29,7 +29,7 @@
 #include <cmath>
 #include <utility>
 #include <vector>
-#ifdef PADDLE_WITH_MKLML
+#if defined(PADDLE_WITH_MKLML) && !defined(__HIPCC__)
 #include <omp.h>
 #endif
 
@@ -76,7 +76,7 @@ static void GetMode(Type input_height,
                     const DenseTensor* input,
                     T* t_out,
                     Type* t_indices) {
-#ifdef PADDLE_WITH_MKLML
+#if defined(PADDLE_WITH_MKLML) && !defined(__HIPCC__)
 #pragma omp parallel for
 #endif
   for (Type i = 0; i < input_height; ++i) {
@@ -127,7 +127,7 @@ static void ModeAssign(const Type& input_height,
                        const DenseTensor* input,
                        const DenseTensor* indices,
                        T* output_data) {
-#ifdef PADDLE_WITH_MKLML
+#if defined(PADDLE_WITH_MKLML) && !defined(__HIPCC__)
 #pragma omp parallel for
 #endif
   for (Type i = 0; i < input_height; ++i) {

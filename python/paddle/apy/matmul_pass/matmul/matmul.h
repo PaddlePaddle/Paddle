@@ -54,7 +54,6 @@
     }                                                                         \
   }
 
-#include "ck_patch/ck_matmul.h"  // NOLINT
-#include "math_function.h"       // NOLINT
+#include "hytlass_matmul.h"  // NOLINT
 #include "profile.h"             // NOLINT
 #endif

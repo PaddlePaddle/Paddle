@@ -14,7 +14,7 @@
 
 #pragma once
 
-#ifdef PADDLE_WITH_MKLML
+#if defined(PADDLE_WITH_MKLML) && !defined(__HIPCC__)
 #include <omp.h>
 #endif
 
@@ -41,7 +41,7 @@ void SameDimsBinaryOP(const DenseTensor& lhs,
   const T* rhs_ptr = rhs.data<T>();
   OutT* out_ptr = out->data<OutT>();
   Functor functor;
-#ifdef PADDLE_WITH_MKLML
+#if defined(PADDLE_WITH_MKLML) && !defined(__HIPCC__)
 #pragma omp parallel for
 #endif
   for (int64_t i = 0; i < out->numel(); ++i) {
@@ -97,7 +97,7 @@ void SimpleBroadcastBinaryOP(const DenseTensor& lhs,
   }
   Functor functor;
   GetInputIndex<is_multi_threads> get_input_index;
-#ifdef PADDLE_WITH_MKLML
+#if defined(PADDLE_WITH_MKLML) && !defined(__HIPCC__)
 #pragma omp parallel for
 #endif
   for (int64_t i = 0; i < out->numel(); ++i) {

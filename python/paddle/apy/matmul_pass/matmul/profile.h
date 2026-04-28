@@ -38,7 +38,7 @@
 #ifdef __HIPCC__
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
-#include "ck_patch/check.h"
+#include "hytlass_patch/check.h"
 
 #define GPUEvent_t hipEvent_t
 #define GPUStream_t hipStream_t
