@@ -84,7 +84,7 @@ struct DeterminantCudaFunctor {
     std::vector<T> input_vec;
     std::vector<T> output_vec;
     TensorToVector(input, dev_ctx, &input_vec);
-    using MPType = typename dtype::MPTypeTrait<T>::Type;
+    using MT = typename MPTypeTrait<T>::Type;
     for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
       auto begin_iter = input_vec.begin() + i * rank * rank;
       auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
@@ -97,7 +97,7 @@ struct DeterminantCudaFunctor {
         }
       }
       output_vec.push_back(
-          static_cast<T>(matrix.template cast<MPType>().determinant()));
+          static_cast<T>(matrix.template cast<MT>().determinant()));
     }
     TensorFromVector(output_vec, dev_ctx, output);
   }

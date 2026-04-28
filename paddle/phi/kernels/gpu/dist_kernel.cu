@@ -77,7 +77,7 @@ struct PowFunctorHighPrecision {
 template <typename T, typename Functor>
 __global__ void ReduceSumWithSubtract(
     const T* x, const T* y, T* out, int64_t N, Functor func) {
-  using MT = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   MT sum_val(0.0);
   CUDA_KERNEL_LOOP_TYPE(i, N, int64_t) { sum_val += func(x[i], y[i]); }
 
@@ -92,7 +92,7 @@ __global__ void ReduceMaxWithSubtract(const T* x,
                                       const T* y,
                                       T* out,
                                       int64_t N) {
-  using MT = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   MT max_val = std::numeric_limits<MT>::min();
   CUDA_KERNEL_LOOP_TYPE(i, N, int64_t) {
     max_val = max(max_val, abs(static_cast<MT>(x[i]) - static_cast<MT>(y[i])));
@@ -109,7 +109,7 @@ __global__ void ReduceMinWithSubtract(const T* x,
                                       const T* y,
                                       T* out,
                                       int64_t N) {
-  using MT = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   MT min_val = std::numeric_limits<MT>::max();
   CUDA_KERNEL_LOOP_TYPE(i, N, int64_t) {
     min_val = min(min_val, abs(static_cast<MT>(x[i]) - static_cast<MT>(y[i])));
@@ -132,7 +132,7 @@ void DistKernel(const Context& dev_ctx,
     return;
   }
 
-  using MT = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   DenseTensor intermediate;
   const T* x_ptr = x.data<T>();
   const T* y_ptr = y.data<T>();

@@ -24,8 +24,8 @@ namespace fusion {
 
 template <typename T>
 struct SigmoidMultiplyGradFunctor {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  MPType one = static_cast<MPType>(1.0f);
+  using MT = typename MPTypeTrait<T>::Type;
+  MT one = static_cast<MT>(1.0f);
 
   // Gradient of Multiply:
   //  dx = dout * y
@@ -34,7 +34,7 @@ struct SigmoidMultiplyGradFunctor {
   inline HOSTDEVICE phi::Array<T, 2> operator()(const T dout,
                                                 const T x,
                                                 T y) const {
-    MPType x_mp = static_cast<MPType>(x);
+    MT x_mp = static_cast<MT>(x);
     T sigmoid_out = static_cast<T>(one / (one + exp(-x_mp)));
     T d_sigmoid_out = dout * y;
     phi::Array<T, 2> outs;

@@ -25,14 +25,13 @@ namespace phi {
 template <class T>
 __global__ void SumArrayCUDAKernel(
     T **in, T *out, int64_t N, size_t in_size, bool read_dst) {
-  using MPType = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   CUDA_KERNEL_LOOP_TYPE(idx, N, int64_t) {
-    MPType total(read_dst ? static_cast<MPType>(out[idx])
-                          : static_cast<MPType>(0));
+    MT total(read_dst ? static_cast<MT>(out[idx]) : static_cast<MT>(0));
     for (int i = 0; i < in_size; ++i) {
       const T *tmp = in[i];
       if (tmp) {
-        total += static_cast<MPType>(tmp[idx]);
+        total += static_cast<MT>(tmp[idx]);
       }
     }
     out[idx] = static_cast<T>(total);
@@ -46,15 +45,14 @@ __global__ void SumArrayMixedTypeCUDAKernel(const T *in_0,
                                             int64_t N,
                                             size_t in_others_size,
                                             bool read_dst) {
-  using MPType = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   CUDA_KERNEL_LOOP_TYPE(idx, N, int64_t) {
-    MPType total(read_dst ? static_cast<MPType>(out[idx])
-                          : static_cast<MPType>(0));
-    total += static_cast<MPType>(in_0[idx]);
+    MT total(read_dst ? static_cast<MT>(out[idx]) : static_cast<MT>(0));
+    total += static_cast<MT>(in_0[idx]);
     for (int i = 0; i < in_others_size; ++i) {
       const HALF *tmp = static_cast<HALF *>(in_others[i]);
       if (tmp) {
-        total += static_cast<MPType>(tmp[idx]);
+        total += static_cast<MT>(tmp[idx]);
       }
     }
     out[idx] = static_cast<T>(total);
@@ -128,11 +126,11 @@ void AddNKernel(const Context &dev_ctx,
     int64_t length_0 = in_0.numel();
     int64_t length_1 = in_1.numel();
     if (length_0 && length_1 && in_0.IsInitialized() && in_1.IsInitialized()) {
-      using MPType = typename dtype::MPTypeTrait<T>::Type;
+      using MT = typename MPTypeTrait<T>::Type;
       auto result = EigenVector<T>::Flatten(*out);
       auto &place = *dev_ctx.eigen_device();
-      auto in_0_e = EigenVector<T>::Flatten(in_0).template cast<MPType>();
-      auto in_1_e = EigenVector<T>::Flatten(in_1).template cast<MPType>();
+      auto in_0_e = EigenVector<T>::Flatten(in_0).template cast<MT>();
+      auto in_1_e = EigenVector<T>::Flatten(in_1).template cast<MT>();
       result.device(place) = (in_0_e + in_1_e).template cast<T>();
     } else if (length_0 && in_0.IsInitialized()) {
       auto result = EigenVector<T>::Flatten(*out);

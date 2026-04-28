@@ -35,10 +35,8 @@ namespace scatter = funcs::scatter;
 
 template <typename T, bool IsMultiPrecision>
 struct LambMomentREGUpdateFunctor {
-  using MT =
-      typename std::conditional<IsMultiPrecision,
-                                typename phi::dtype::MPTypeTrait<T>::Type,
-                                T>::type;
+  using MT = typename std::
+      conditional<IsMultiPrecision, typename MPTypeTrait<T>::Type, T>::type;
 
   MT weight_decay_;
   MT beta1_;
@@ -113,10 +111,8 @@ struct LambMomentREGUpdateFunctor {
 
 template <typename T, bool IsMultiPrecision>
 struct LambMomentMENUpdateFunctor {
-  using MT =
-      typename std::conditional<IsMultiPrecision,
-                                typename phi::dtype::MPTypeTrait<T>::Type,
-                                T>::type;
+  using MT = typename std::
+      conditional<IsMultiPrecision, typename MPTypeTrait<T>::Type, T>::type;
 
   MT weight_decay_;
   MT beta1_;

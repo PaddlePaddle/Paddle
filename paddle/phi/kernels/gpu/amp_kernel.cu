@@ -274,7 +274,7 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
                                  const DenseTensor& scale,
                                  std::vector<DenseTensor*> outs,
                                  DenseTensor* found_infinite) {
-  using MT = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
 
   const MT* scale_data = scale.data<MT>();
   bool* found_inf_data = dev_ctx.template Alloc<bool>(found_infinite);

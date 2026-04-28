@@ -203,7 +203,7 @@ __global__ void BlockScanKernel(T* d_out,
                                 int64_t scan_size,
                                 bool exclusive,
                                 Op op) {
-  using MT = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   using CallbackOp = BlockPrefixCallbackOp<MT, Op>;
 
   // Specialize BlockLoad, BlockStore, and BlockRadixSort collective types
@@ -263,7 +263,7 @@ void ThrustCumsumKernel(const Context& dev_ctx,
                         int64_t size,
                         bool reverse,
                         bool exclusive) {
-  using MT = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
 
 #ifdef __HIPCC__
   const auto& policy = thrust::hip::par.on(dev_ctx.stream());
