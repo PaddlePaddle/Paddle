@@ -415,10 +415,16 @@ class TestRandintDeviceRequiresGradPinMemory(unittest.TestCase):
         self.assertFalse(x.stop_gradient)
         paddle.enable_static()
 
-    def test_pin_memory_unsupported_device_raises(self):
+    def test_pin_memory_cpu(self):
+        if not (
+            paddle.device.is_compiled_with_cuda()
+            or paddle.device.is_compiled_with_xpu()
+        ):
+            return
         paddle.disable_static()
-        with self.assertRaises(RuntimeError):
-            paddle.randint(high=10, shape=[2, 3], device='cpu', pin_memory=True)
+        x = paddle.randint(high=10, shape=[2, 3], device='cpu', pin_memory=True)
+        self.assertEqual(x.shape, [2, 3])
+        self.assertTrue("pinned" in str(x.place))
         paddle.enable_static()
 
     def test_pin_memory_cuda(self):

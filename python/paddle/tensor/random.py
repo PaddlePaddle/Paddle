@@ -1910,6 +1910,13 @@ def randint(
             isinstance(place, core.Place) and place.is_xpu_place()
         ):
             place = core.XPUPinnedPlace()
+        elif isinstance(place, core.CPUPlace) or (
+            isinstance(place, core.Place) and place.is_cpu_place()
+        ):
+            if paddle.device.is_compiled_with_xpu():
+                place = core.XPUPinnedPlace()
+            else:
+                place = core.CUDAPinnedPlace()
         else:
             raise RuntimeError(f"Pinning memory is not supported for {place}")
 
