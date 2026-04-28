@@ -33,8 +33,7 @@ void FullLikeCooKernel(const Context& dev_ctx,
       dev_ctx, x.indices(), dev_ctx.GetPlace(), false, out->mutable_indices());
 
   DenseTensor* values = out->mutable_values();
-  phi::Full<T, Context>(
-      dev_ctx, common::vectorize(x.values().dims()), val, values);
+  phi::Full<T, Context>(dev_ctx, vectorize(x.values().dims()), val, values);
   out->set_dims(x.dims());
 }
 
@@ -51,8 +50,7 @@ void FullLikeCsrKernel(const Context& dev_ctx,
       dev_ctx, x.cols(), dev_ctx.GetPlace(), false, out->mutable_cols());
 
   DenseTensor* values = out->mutable_values();
-  phi::Full<T, Context>(
-      dev_ctx, common::vectorize(x.values().dims()), val, values);
+  phi::Full<T, Context>(dev_ctx, vectorize(x.values().dims()), val, values);
 
   out->set_dims(x.dims());
 }

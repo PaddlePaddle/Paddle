@@ -119,8 +119,8 @@ HOSTDEVICE ScalarT
 sample_gamma(ScalarT alpha,
              BaseSampler<AccscalarT, UniformSamplerT> standard_uniform,
              BaseSampler<AccscalarT, NormalSamplerT> standard_normal) {
-  using MPTypeScalar = typename phi::dtype::MPTypeTrait<ScalarT>::Type;
-  using MPTypeAccscalar = typename phi::dtype::MPTypeTrait<AccscalarT>::Type;
+  using MPTypeScalar = typename dtype::MPTypeTrait<ScalarT>::Type;
+  using MPTypeAccscalar = typename dtype::MPTypeTrait<AccscalarT>::Type;
 
   MPTypeAccscalar mp_scale = static_cast<MPTypeAccscalar>(1.0f);
   MPTypeScalar mp_alpha = static_cast<MPTypeScalar>(alpha);
@@ -302,14 +302,14 @@ struct DirichletSampler<GPUContext, T> {
     gamma_sum.Resize(new_shape);
     dev_ctx.template Alloc<T>(&gamma_sum);
 
-    phi::SumRawKernel<T, GPUContext>(dev_ctx,
-                                     gamma_samples,
-                                     {new_shape.size() - 1},
-                                     true,
-                                     false,
-                                     gamma_sum.dtype(),
-                                     &gamma_sum);
-    phi::DivideKernel<T, GPUContext>(dev_ctx, gamma_samples, gamma_sum, out);
+    SumRawKernel<T, GPUContext>(dev_ctx,
+                                gamma_samples,
+                                {new_shape.size() - 1},
+                                true,
+                                false,
+                                gamma_sum.dtype(),
+                                &gamma_sum);
+    DivideKernel<T, GPUContext>(dev_ctx, gamma_samples, gamma_sum, out);
   }
 };
 #endif

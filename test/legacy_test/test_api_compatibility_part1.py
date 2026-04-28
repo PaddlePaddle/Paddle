@@ -23,8 +23,8 @@ import paddle.nn.functional as F
 # Edit By AI Agent
 # Test nextafter compatibility
 @unittest.skipIf(
-    paddle.is_compiled_with_custom_device('ixuca'),
-    "skip ixuca which not register nextafter kernel",
+    paddle.is_compiled_with_custom_device('iluvatar_gpu'),
+    "skip iluvatar_gpu which not register nextafter kernel",
 )
 class TestNextafterAPI(unittest.TestCase):
     def setUp(self):
@@ -45,16 +45,16 @@ class TestNextafterAPI(unittest.TestCase):
         out3 = paddle.nextafter(input=x, other=y)
         # 4. Mixed arguments
         out4 = paddle.nextafter(x, y=y)
-        # 5. out parameter test
+        # 5-6. out parameter test
         out5 = paddle.empty_like(x)
-        paddle.nextafter(x, y, out=out5)
-        # 6. Tensor method - args
-        out6 = x.nextafter(y)
-        # 7. Tensor method - kwargs (PyTorch alias)
-        out7 = x.nextafter(other=y)
+        out6 = paddle.nextafter(x, y, out=out5)
+        # 7. Tensor method - args
+        out7 = x.nextafter(y)
+        # 8. Tensor method - kwargs (PyTorch alias)
+        out8 = x.nextafter(other=y)
 
         ref_out = np.nextafter(self.np_x, self.np_y)
-        for out in [out1, out2, out3, out4, out5, out6, out7]:
+        for out in [out1, out2, out3, out4, out5, out6, out7, out8]:
             np.testing.assert_allclose(ref_out, out.numpy())
 
         paddle.enable_static()
@@ -89,6 +89,180 @@ class TestNextafterAPI(unittest.TestCase):
                 np.testing.assert_allclose(out, ref_out)
 
 
+# Test round_ compatibility (inplace API)
+class TestRoundInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([1.5, 2.3, 3.7, -1.2, -2.8]).astype('float32')
+
+    def test_dygraph_InplaceCompatibility(self):
+        """Test round_ inplace API in dynamic mode"""
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Tensor method - Paddle positional args
+        x1 = x.clone()
+        out1 = x1.round_(0)
+        assert out1 is x1
+
+        # 2. Tensor method - Paddle keyword args
+        x2 = x.clone()
+        out2 = x2.round_(decimals=1)
+        assert out2 is x2
+
+        # 3. Paddle function - positional args
+        x3 = x.clone()
+        out3 = paddle.round_(x3, 1)
+        assert out3 is x3
+
+        # 4. Paddle function - keyword args
+        x4 = x.clone()
+        out4 = paddle.round_(x4, decimals=-1)
+        assert out4 is x4
+
+        # Verify all outputs
+        np.testing.assert_allclose(out1.numpy(), np.round(self.np_x), rtol=1e-6)
+        np.testing.assert_allclose(
+            out2.numpy(), np.around(self.np_x, decimals=1), rtol=1e-6
+        )
+        np.testing.assert_allclose(
+            out3.numpy(), np.around(self.np_x, decimals=1), rtol=1e-6
+        )
+        np.testing.assert_allclose(
+            out4.numpy(), np.around(self.np_x, decimals=-1), rtol=1e-6
+        )
+
+        paddle.enable_static()
+
+
+# Test erf compatibility
+class TestErfAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([-0.4, -0.2, 0.0, 0.1, 0.3]).astype('float32')
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle positional arguments
+        out1 = paddle.erf(x)
+        # 2. Paddle keyword arguments
+        out2 = paddle.erf(x=x)
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.erf(input=x)
+        # 4-5. out parameter test
+        out4 = paddle.empty_like(x)
+        out5 = paddle.erf(x, out=out4)
+        # 6. Tensor method - positional args
+        out6 = x.erf()
+
+        # Verify all outputs
+        ref_out = np.array(
+            [-0.42839241, -0.22270259, 0.0, 0.11246292, 0.32862678]
+        ).astype('float32')
+        for out in [out1, out2, out3, out4, out5, out6]:
+            np.testing.assert_allclose(
+                out.numpy(), ref_out, rtol=1e-5, atol=1e-5
+            )
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        """Test erf API in static mode"""
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=[5], dtype='float32')
+
+            # 1. Paddle positional arguments
+            out1 = paddle.erf(x)
+            # 2. Paddle keyword arguments
+            out2 = paddle.erf(x=x)
+            # 3. PyTorch keyword arguments (alias)
+            out3 = paddle.erf(input=x)
+            # 4. Tensor method - positional args
+            out4 = x.erf()
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2, out3, out4],
+            )
+
+            # Verify all outputs match with loop
+            ref_out = np.array(
+                [-0.42839241, -0.22270259, 0.0, 0.11246292, 0.32862678]
+            ).astype('float32')
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out, rtol=1e-5)
+
+
+# Test erf_ inplace compatibility
+class TestErfInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([-0.4, -0.2, 0.0, 0.1, 0.3]).astype('float32')
+
+    def test_dygraph_InplaceCompatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = np.array(
+            [-0.42839241, -0.22270259, 0.0, 0.11246292, 0.32862678]
+        ).astype('float32')
+
+        # 1. Tensor method - positional args
+        x1 = x.clone()
+        out1 = x1.erf_()
+        assert out1 is x1
+
+        # 2. Paddle function - positional args
+        x2 = x.clone()
+        out2 = paddle.erf_(x2)
+        assert out2 is x2
+
+        # Verify all outputs with loop
+        for out in [out1, out2]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-5)
+
+        paddle.enable_static()
+
+
+# Test iinfo compatibility
+class TestIinfoAPI(unittest.TestCase):
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+
+        # 1. Paddle positional arguments
+        out1 = paddle.iinfo(paddle.int32)
+        # 2. Paddle keyword arguments
+        out2 = paddle.iinfo(dtype=paddle.int32)
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.iinfo(type=paddle.int32)
+
+        # Verify all outputs
+        for out in [out1, out2, out3]:
+            assert out.min == -2147483648
+            assert out.max == 2147483647
+            assert out.bits == 32
+            assert str(out.dtype) == 'int32'
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            # iinfo is a compile-time function, same in static mode
+            out1 = paddle.iinfo(paddle.int32)
+            out2 = paddle.iinfo(dtype=paddle.int32)
+            out3 = paddle.iinfo(type=paddle.int32)
+
+            for out in [out1, out2, out3]:
+                assert out.min == -2147483648
+                assert out.max == 2147483647
+
+
 # Test angle compatibility
 class TestAngleAPI(unittest.TestCase):
     def setUp(self):
@@ -107,15 +281,15 @@ class TestAngleAPI(unittest.TestCase):
         out2 = paddle.angle(x=x)
         # 3. PyTorch keyword arguments (alias)
         out3 = paddle.angle(input=x)
-        # 4. out parameter test
+        # 4-5. out parameter test
         out4 = paddle.empty_like(out1)
-        paddle.angle(x, out=out4)
-        # 5. Tensor method
-        out5 = x.angle()
+        out5 = paddle.angle(x, out=out4)
+        # 6. Tensor method
+        out6 = x.angle()
 
         # Verify all outputs
         ref_out = np.angle(self.np_x)
-        for out in [out1, out2, out3, out4, out5]:
+        for out in [out1, out2, out3, out4, out5, out6]:
             np.testing.assert_allclose(
                 ref_out, out.numpy(), rtol=1e-5, atol=1e-5
             )
@@ -164,14 +338,14 @@ class TestAtanAPI(unittest.TestCase):
         out2 = paddle.atan(x=x)
         # 3. PyTorch keyword arguments (alias)
         out3 = paddle.atan(input=x)
-        # 4. out parameter test
+        # 4-5. out parameter test
         out4 = paddle.empty_like(x)
-        paddle.atan(x, out=out4)
-        # 5. Tensor method
-        out5 = x.atan()
+        out5 = paddle.atan(x, out=out4)
+        # 6. Tensor method
+        out6 = x.atan()
 
         ref_out = np.arctan(self.np_x)
-        for out in [out1, out2, out3, out4, out5]:
+        for out in [out1, out2, out3, out4, out5, out6]:
             np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-6)
 
         paddle.enable_static()
@@ -218,17 +392,17 @@ class TestAtan2API(unittest.TestCase):
         out3 = paddle.atan2(input=x, other=y)
         # 4. Mixed arguments
         out4 = paddle.atan2(x, y=y)
-        # 5. out parameter test
+        # 5-6. out parameter test
         out5 = paddle.empty_like(out1)
-        paddle.atan2(x, y, out=out5)
-        # 6. Tensor method - args
-        out6 = x.atan2(y)
-        # 7. Tensor method - kwargs (PyTorch alias)
-        out7 = x.atan2(other=y)
+        out6 = paddle.atan2(x, y, out=out5)
+        # 7. Tensor method - args
+        out7 = x.atan2(y)
+        # 8. Tensor method - kwargs (PyTorch alias)
+        out8 = x.atan2(other=y)
 
         # Verify all outputs
         ref_out = np.arctan2(self.np_x, self.np_y)
-        for out in [out1, out2, out3, out4, out5, out6, out7]:
+        for out in [out1, out2, out3, out4, out5, out6, out7, out8]:
             np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-6)
         paddle.enable_static()
 
@@ -281,16 +455,17 @@ class TestHypotAPI(unittest.TestCase):
         out3 = paddle.hypot(input=x, other=y)
         # 4. Mixed arguments
         out4 = paddle.hypot(x, y=y)
-        # 5. out parameter test
+        # 5-6. out parameter test
         out5 = paddle.empty_like(x)
-        paddle.hypot(x, y, out=out5)
-        # 6. Tensor method - positional args
-        out6 = x.hypot(y)
-        # 7. Tensor method - keyword args (PyTorch alias)
-        out7 = x.hypot(other=y)
+        out6 = paddle.hypot(x, y, out=out5)
+        assert out5 is out6
+        # 7. Tensor method - positional args
+        out7 = x.hypot(y)
+        # 8. Tensor method - keyword args (PyTorch alias)
+        out8 = x.hypot(other=y)
 
         ref_out = np.hypot(self.np_x, self.np_y)
-        for out in [out1, out2, out3, out4, out5, out6, out7]:
+        for out in [out1, out2, out3, out4, out5, out6, out7, out8]:
             np.testing.assert_allclose(ref_out, out.numpy(), atol=1e-6)
         paddle.enable_static()
 
@@ -373,16 +548,16 @@ class TestFmaxAPI(unittest.TestCase):
         out3 = paddle.fmax(input=x, other=y)
         # 4. Mixed arguments
         out4 = paddle.fmax(x, y=y)
-        # 5. out parameter test
+        # 5-6. out parameter test
         out5 = paddle.empty_like(x)
-        paddle.fmax(x, y, out=out5)
-        # 6. Tensor method - positional args
-        out6 = x.fmax(y)
-        # 7. Tensor method - keyword args (PyTorch alias)
-        out7 = x.fmax(other=y)
+        out6 = paddle.fmax(x, y, out=out5)
+        # 7. Tensor method - positional args
+        out7 = x.fmax(y)
+        # 8. Tensor method - keyword args (PyTorch alias)
+        out8 = x.fmax(other=y)
 
         ref_out = np.fmax(self.np_x, self.np_y)
-        for out in [out1, out2, out3, out4, out5, out6, out7]:
+        for out in [out1, out2, out3, out4, out5, out6, out7, out8]:
             np.testing.assert_allclose(ref_out, out.numpy())
 
         paddle.enable_static()
@@ -438,16 +613,16 @@ class TestFminAPI(unittest.TestCase):
         out3 = paddle.fmin(input=x, other=y)
         # 4. Mixed arguments
         out4 = paddle.fmin(x, y=y)
-        # 5. out parameter test
+        # 5-6. out parameter test
         out5 = paddle.empty_like(x)
-        paddle.fmin(x, y, out=out5)
-        # 6. Tensor method - positional args
-        out6 = x.fmin(y)
-        # 7. Tensor method - keyword args (PyTorch alias)
-        out7 = x.fmin(other=y)
+        out6 = paddle.fmin(x, y, out=out5)
+        # 7. Tensor method - positional args
+        out7 = x.fmin(y)
+        # 8. Tensor method - keyword args (PyTorch alias)
+        out8 = x.fmin(other=y)
 
         ref_out = np.fmin(self.np_x, self.np_y)
-        for out in [out1, out2, out3, out4, out5, out6, out7]:
+        for out in [out1, out2, out3, out4, out5, out6, out7, out8]:
             np.testing.assert_allclose(ref_out, out.numpy())
 
         paddle.enable_static()
@@ -561,20 +736,21 @@ class TestDiagAPI(unittest.TestCase):
         out3 = paddle.diag(input=x, diagonal=1)
         # 4. Mixed arguments
         out4 = paddle.diag(x, offset=1)
-        # 5. out parameter test
+        # 5-6. out parameter test
         out5 = paddle.empty_like(v)
-        paddle.diag(v, out=out5)
-        # 6. Tensor method - positional args
-        out6 = x.diag(1)
-        # 7. Tensor method - keyword args (PyTorch alias)
-        out7 = x.diag(diagonal=1)
+        out6 = paddle.diag(v, out=out5)
+        # 7. Tensor method - positional args
+        out7 = x.diag(1)
+        # 8. Tensor method - keyword args (PyTorch alias)
+        out8 = x.diag(diagonal=1)
 
         ref_diag_v = np.diag(self.np_v)
         ref_diag_x_offset = np.diag(self.np_x, 1)
 
-        for out in [out1, out2, out3, out4, out6, out7]:
+        for out in [out1, out2, out3, out4, out7, out8]:
             np.testing.assert_allclose(ref_diag_x_offset, out.numpy())
         np.testing.assert_allclose(ref_diag_v, out5.numpy())
+        np.testing.assert_allclose(ref_diag_v, out6.numpy())
 
         paddle.enable_static()
 
@@ -628,17 +804,17 @@ class TestHeavisideAPI(unittest.TestCase):
         out3 = paddle.heaviside(input=x, values=y)
         # 4. Mixed arguments
         out4 = paddle.heaviside(x, y=y)
-        # 5. out parameter test
+        # 5-6. out parameter test
         out5 = paddle.empty_like(out1)
-        paddle.heaviside(x, y, out=out5)
-        # 6. Tensor method - positional args
-        out6 = x.heaviside(y)
-        # 7. Tensor method - keyword args (PyTorch alias)
-        out7 = x.heaviside(values=y)
+        out6 = paddle.heaviside(x, y, out=out5)
+        # 7. Tensor method - positional args
+        out7 = x.heaviside(y)
+        # 8. Tensor method - keyword args (PyTorch alias)
+        out8 = x.heaviside(values=y)
 
         # Verify all outputs
         ref_out = np.heaviside(self.np_x, self.np_y)
-        for out in [out1, out2, out3, out4, out5, out6, out7]:
+        for out in [out1, out2, out3, out4, out5, out6, out7, out8]:
             np.testing.assert_allclose(ref_out, out.numpy())
         paddle.enable_static()
 
@@ -687,15 +863,15 @@ class TestAsinhAPI(unittest.TestCase):
         out2 = paddle.asinh(x=x)
         # 3. PyTorch keyword arguments (alias)
         out3 = paddle.asinh(input=x)
-        # 4. out parameter test
+        # 4-5. out parameter test
         out4 = paddle.empty_like(out1)
-        paddle.asinh(x, out=out4)
-        # 5. Tensor method
-        out5 = x.asinh()
+        out5 = paddle.asinh(x, out=out4)
+        # 6. Tensor method
+        out6 = x.asinh()
 
         # Verify all outputs
         ref_out = np.arcsinh(self.np_x)
-        for out in [out1, out2, out3, out4, out5]:
+        for out in [out1, out2, out3, out4, out5, out6]:
             np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-6)
         paddle.enable_static()
 
@@ -741,15 +917,15 @@ class TestReciprocalAPI(unittest.TestCase):
         out2 = paddle.reciprocal(x=x)
         # 3. PyTorch keyword arguments (alias)
         out3 = paddle.reciprocal(input=x)
-        # 4. out parameter test
+        # 4-5. out parameter test
         out4 = paddle.empty_like(out1)
-        paddle.reciprocal(x, out=out4)
-        # 5. Tensor method
-        out5 = x.reciprocal()
+        out5 = paddle.reciprocal(x, out=out4)
+        # 6. Tensor method
+        out6 = x.reciprocal()
 
         # Verify all outputs
         ref_out = 1.0 / self.np_x
-        for out in [out1, out2, out3, out4, out5]:
+        for out in [out1, out2, out3, out4, out5, out6]:
             np.testing.assert_allclose(ref_out, out.numpy())
         paddle.enable_static()
 
@@ -795,15 +971,15 @@ class TestSquareAPI(unittest.TestCase):
         out2 = paddle.square(x=x)
         # 3. PyTorch keyword arguments (alias)
         out3 = paddle.square(input=x)
-        # 4. out parameter test
+        # 4-5. out parameter test
         out4 = paddle.empty_like(out1)
-        paddle.square(x, out=out4)
-        # 5. Tensor method
-        out5 = x.square()
+        out5 = paddle.square(x, out=out4)
+        # 6. Tensor method
+        out6 = x.square()
 
         # Verify all outputs
         ref_out = np.square(self.np_x)
-        for out in [out1, out2, out3, out4, out5]:
+        for out in [out1, out2, out3, out4, out5, out6]:
             np.testing.assert_allclose(ref_out, out.numpy())
         paddle.enable_static()
 
@@ -908,15 +1084,15 @@ class TestTanAPI(unittest.TestCase):
         out2 = paddle.tan(x=x)
         # 3. PyTorch keyword arguments (alias)
         out3 = paddle.tan(input=x)
-        # 4. out parameter test
+        # 4-5. out parameter test
         out4 = paddle.empty_like(out1)
-        paddle.tan(x, out=out4)
-        # 5. Tensor method
-        out5 = x.tan()
+        out5 = paddle.tan(x, out=out4)
+        # 6. Tensor method
+        out6 = x.tan()
 
         # Verify all outputs
         ref_out = np.tan(self.np_x)
-        for out in [out1, out2, out3, out4, out5]:
+        for out in [out1, out2, out3, out4, out5, out6]:
             np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-6)
         paddle.enable_static()
 
@@ -967,16 +1143,16 @@ class TestBitwiseAndAPI(unittest.TestCase):
         out3 = paddle.bitwise_and(input=x, other=y)
         # 4. Mixed arguments
         out4 = paddle.bitwise_and(x, y=y)
-        # 5. out parameter test
+        # 5-6. out parameter test
         out5 = paddle.empty_like(x)
-        paddle.bitwise_and(x, y, out=out5)
-        # 6. Tensor method - args
-        out6 = x.bitwise_and(y)
-        # 7. Tensor method - kwargs (PyTorch alias)
-        out7 = x.bitwise_and(other=y)
+        out6 = paddle.bitwise_and(x, y, out=out5)
+        # 7. Tensor method - args
+        out7 = x.bitwise_and(y)
+        # 8. Tensor method - kwargs (PyTorch alias)
+        out8 = x.bitwise_and(other=y)
 
         ref_out = np.bitwise_and(self.np_x, self.np_y)
-        for out in [out1, out2, out3, out4, out5, out6, out7]:
+        for out in [out1, out2, out3, out4, out5, out6, out7, out8]:
             np.testing.assert_array_equal(ref_out, out.numpy())
 
         paddle.enable_static()
@@ -1032,16 +1208,16 @@ class TestBitwiseOrAPI(unittest.TestCase):
         out3 = paddle.bitwise_or(input=x, other=y)
         # 4. Mixed arguments
         out4 = paddle.bitwise_or(x, y=y)
-        # 5. out parameter test
+        # 5-6. out parameter test
         out5 = paddle.empty_like(out1)
-        paddle.bitwise_or(x, y, out=out5)
-        # 6. Tensor method - args
-        out6 = x.bitwise_or(y)
-        # 7. Tensor method - kwargs (PyTorch alias)
-        out7 = x.bitwise_or(other=y)
+        out6 = paddle.bitwise_or(x, y, out=out5)
+        # 7. Tensor method - args
+        out7 = x.bitwise_or(y)
+        # 8. Tensor method - kwargs (PyTorch alias)
+        out8 = x.bitwise_or(other=y)
 
         ref_out = np.bitwise_or(self.np_x, self.np_y)
-        for out in [out1, out2, out3, out4, out5, out6, out7]:
+        for out in [out1, out2, out3, out4, out5, out6, out7, out8]:
             np.testing.assert_array_equal(ref_out, out.numpy())
         paddle.enable_static()
 
@@ -1091,14 +1267,14 @@ class TestBitwiseNotAPI(unittest.TestCase):
         out2 = paddle.bitwise_not(x=x)
         # 3. PyTorch keyword arguments (alias)
         out3 = paddle.bitwise_not(input=x)
-        # 4. out parameter test
+        # 4-5. out parameter test
         out4 = paddle.empty_like(out1)
-        paddle.bitwise_not(x, out=out4)
-        # 5. Tensor method
-        out5 = x.bitwise_not()
+        out5 = paddle.bitwise_not(x, out=out4)
+        # 6. Tensor method
+        out6 = x.bitwise_not()
 
         ref_out = np.bitwise_not(self.np_x)
-        for out in [out1, out2, out3, out4, out5]:
+        for out in [out1, out2, out3, out4, out5, out6]:
             np.testing.assert_array_equal(ref_out, out.numpy())
         paddle.enable_static()
 
@@ -1149,16 +1325,16 @@ class TestBitwiseXorAPI(unittest.TestCase):
         out3 = paddle.bitwise_xor(input=x, other=y)
         # 4. Mixed arguments
         out4 = paddle.bitwise_xor(x, y=y)
-        # 5. out parameter test
+        # 5-6. out parameter test
         out5 = paddle.empty_like(out1)
-        paddle.bitwise_xor(x, y, out=out5)
-        # 6. Tensor method - args
-        out6 = x.bitwise_xor(y)
-        # 7. Tensor method - kwargs (PyTorch alias)
-        out7 = x.bitwise_xor(other=y)
+        out6 = paddle.bitwise_xor(x, y, out=out5)
+        # 7. Tensor method - args
+        out7 = x.bitwise_xor(y)
+        # 8. Tensor method - kwargs (PyTorch alias)
+        out8 = x.bitwise_xor(other=y)
 
         ref_out = np.bitwise_xor(self.np_x, self.np_y)
-        for out in [out1, out2, out3, out4, out5, out6, out7]:
+        for out in [out1, out2, out3, out4, out5, out6, out7, out8]:
             np.testing.assert_array_equal(ref_out, out.numpy())
         paddle.enable_static()
 
@@ -1399,14 +1575,14 @@ class TestAddmmAPI(unittest.TestCase):
         out3 = paddle.addmm(beta=1.0, alpha=1.0, input=input, mat1=x, mat2=y)
         # 4. Mixed arguments
         out4 = paddle.addmm(input, x, y, beta=1.0, alpha=1.0)
-        # 5. out parameter test
+        # 5-6. out parameter test
         out5 = paddle.empty_like(input)
-        paddle.addmm(input, x, y, out=out5)
-        # 6. Tensor method - args
-        out6 = input.addmm(x, y, beta=1.0, alpha=1.0)
-        # 7. Tensor method - kwargs (PyTorch alias)
-        out7 = input.addmm(mat1=x, mat2=y, beta=1.0, alpha=1.0)
-        for out in [out1, out2, out3, out4, out5, out6, out7]:
+        out6 = paddle.addmm(input, x, y, out=out5)
+        # 7. Tensor method - args
+        out7 = input.addmm(x, y, beta=1.0, alpha=1.0)
+        # 8. Tensor method - kwargs (PyTorch alias)
+        out8 = input.addmm(mat1=x, mat2=y, beta=1.0, alpha=1.0)
+        for out in [out1, out2, out3, out4, out5, out6, out7, out8]:
             np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-6)
 
         paddle.enable_static()
@@ -1535,15 +1711,15 @@ class TestBaddbmmAPI(unittest.TestCase):
         )
         # 4. Mixed arguments
         out4 = paddle.baddbmm(input, x, y, beta=1.0, alpha=1.0)
-        # 5. out parameter test
+        # 5-6. out parameter test
         out5 = paddle.empty_like(input)
-        paddle.baddbmm(input, x, y, out=out5)
-        # 6. Tensor method - args
-        out6 = input.baddbmm(x, y, beta=1.0, alpha=1.0)
-        # 7. Tensor method - kwargs (PyTorch alias)
-        out7 = input.baddbmm(batch1=x, batch2=y, beta=1.0, alpha=1.0)
+        out6 = paddle.baddbmm(input, x, y, out=out5)
+        # 7. Tensor method - args
+        out7 = input.baddbmm(x, y, beta=1.0, alpha=1.0)
+        # 8. Tensor method - kwargs (PyTorch alias)
+        out8 = input.baddbmm(batch1=x, batch2=y, beta=1.0, alpha=1.0)
         ref_out = 1.0 * self.np_input + 1.0 * self.np_x @ self.np_y
-        for out in [out1, out2, out3, out4, out5, out6, out7]:
+        for out in [out1, out2, out3, out4, out5, out6, out7, out8]:
             np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-6)
 
         # 2D input (1,1) broadcasts to result shape [3, 2, 3]
@@ -1648,16 +1824,16 @@ class TestBitwiseLeftShiftAPI(unittest.TestCase):
         out3 = paddle.bitwise_left_shift(input=x, other=y)
         # 4. Mixed arguments
         out4 = paddle.bitwise_left_shift(x, y=y)
-        # 5. out parameter test
+        # 5-6. out parameter test
         out5 = paddle.empty([5, 6], dtype='int32')
-        paddle.bitwise_left_shift(x, y, out=out5)
-        # 6. Tensor method - args
-        out6 = x.bitwise_left_shift(y)
-        # 7. Tensor method - kwargs (PyTorch alias)
-        out7 = x.bitwise_left_shift(other=y)
+        out6 = paddle.bitwise_left_shift(x, y, out=out5)
+        # 7. Tensor method - args
+        out7 = x.bitwise_left_shift(y)
+        # 8. Tensor method - kwargs (PyTorch alias)
+        out8 = x.bitwise_left_shift(other=y)
 
         ref_out = np.left_shift(self.np_x, self.np_y)
-        for out in [out1, out2, out3, out4, out5, out6, out7]:
+        for out in [out1, out2, out3, out4, out5, out6, out7, out8]:
             np.testing.assert_array_equal(ref_out, out.numpy())
         paddle.enable_static()
 
@@ -1741,16 +1917,16 @@ class TestBitwiseRightShiftAPI(unittest.TestCase):
         out3 = paddle.bitwise_right_shift(input=x, other=y)
         # 4. Mixed arguments
         out4 = paddle.bitwise_right_shift(x, y=y)
-        # 5. out parameter test
+        # 5-6. out parameter test
         out5 = paddle.empty([5, 6], dtype='int32')
-        paddle.bitwise_right_shift(x, y, out=out5)
-        # 6. Tensor method - args
-        out6 = x.bitwise_right_shift(y)
-        # 7. Tensor method - kwargs (PyTorch alias)
-        out7 = x.bitwise_right_shift(other=y)
+        out6 = paddle.bitwise_right_shift(x, y, out=out5)
+        # 7. Tensor method - args
+        out7 = x.bitwise_right_shift(y)
+        # 8. Tensor method - kwargs (PyTorch alias)
+        out8 = x.bitwise_right_shift(other=y)
 
         ref_out = np.right_shift(self.np_x, self.np_y)
-        for out in [out1, out2, out3, out4, out5, out6, out7]:
+        for out in [out1, out2, out3, out4, out5, out6, out7, out8]:
             np.testing.assert_array_equal(ref_out, out.numpy())
 
         paddle.enable_static()
@@ -1818,9 +1994,6 @@ class TestBitwiseRightShiftInplaceAPI(unittest.TestCase):
 
 # Test cauchy_ inplace compatibility
 class TestCauchyInplaceAPI(unittest.TestCase):
-    def setUp(self):
-        np.random.seed(2025)
-
     def test_dygraph_InplaceCompatibility(self):
         paddle.disable_static()
         # 1. Tensor method - positional args
@@ -1897,15 +2070,15 @@ class TestRealAPI(unittest.TestCase):
         out2 = paddle.real(x=x)
         # 3. PyTorch keyword arguments (alias)
         out3 = paddle.real(input=x)
-        # 4. out parameter test
+        # 4-5. out parameter test
         out4 = paddle.empty([5, 6], dtype='float32')
-        paddle.real(x, out=out4)
-        # 5. Tensor method
-        out5 = x.real()
+        out5 = paddle.real(x, out=out4)
+        # 6. Tensor method
+        out6 = x.real()
 
         # Verify all outputs
         ref_out = np.real(self.np_x)
-        for out in [out1, out2, out3, out4, out5]:
+        for out in [out1, out2, out3, out4, out5, out6]:
             np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-6)
 
         paddle.enable_static()

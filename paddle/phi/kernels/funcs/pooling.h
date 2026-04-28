@@ -50,7 +50,7 @@ class MaxPool {
 
 template <class T>
 class AvgPool {
-  using MT = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   MT intermediate_res;
 
  public:
@@ -70,7 +70,7 @@ class AvgPool {
 
 template <class T>
 class LPPool {
-  using MT = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   MT intermediate_res;
   float norm_type;
 
@@ -513,7 +513,7 @@ inline void UpdatePadding(std::vector<T>* paddings,
                           const std::vector<T>& strides,
                           const std::vector<T>& kernel_size) {
   // set padding size == data_dims.size() * 2
-  auto data_shape = common::vectorize<T>(data_dims);
+  auto data_shape = vectorize<T>(data_dims);
   if (static_cast<int>(paddings->size()) == data_dims.size()) {
     for (int i = 0; i < data_dims.size(); ++i) {
       T copy_pad = *(paddings->begin() + 2 * i);

@@ -434,6 +434,19 @@ std::vector<CondFuncPriorWrapper> OpLowererImpl::PostProcess(
             func_body = ir::ConvertStmtBlockToExprBlock(func_body_block);
 #endif
           },
+          [&](common::CustomDeviceArch) {
+#ifdef CINN_WITH_CUSTOM_DEVICE
+            // optim::EliminateCommonGlobalMemoryRead(&(func_body));
+            ir::stmt::BlockRef func_body_block =
+                ir::ConvertExprBlockToStmtBlock(func_body);
+            VLOG(4) << "Before OptimizeExprGPU in op_lowering_impl: \n"
+                    << func_body_block;
+            optim::OptimizeExprGPU(func_body_block);
+            VLOG(4) << "After OptimizeExprGPU in op_lowering_impl: \n"
+                    << func_body_block;
+            func_body = ir::ConvertStmtBlockToExprBlock(func_body_block);
+#endif
+          },
           [&](std::variant<common::HygonDCUArchHIP, common::HygonDCUArchSYCL>) {
 #if defined(PADDLE_WITH_SYCL) || defined(PADDLE_WITH_HIP)
             // optim::EliminateCommonGlobalMemoryRead(&(func_body));
@@ -626,6 +639,14 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
     // Insert output tensors into function arg
     target_.arch.Match(
         [&](common::NVGPUArch) {
+          if (!expr.as_tensor_ref()->buffer.defined()) {
+            op_func_arg_tensors->push_back(expr.as_tensor_ref());
+            expr.as_tensor_ref()->WithBuffer();
+          } else {
+            op_func_arg_tensors->push_back(expr.as_tensor_ref());
+          }
+        },
+        [&](common::CustomDeviceArch) {
           if (!expr.as_tensor_ref()->buffer.defined()) {
             op_func_arg_tensors->push_back(expr.as_tensor_ref());
             expr.as_tensor_ref()->WithBuffer();

@@ -24,13 +24,13 @@ namespace fusion {
 
 template <typename T>
 struct SigmoidMultiplyFunctor {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  MPType one = static_cast<MPType>(1.0f);
+  using MT = typename MPTypeTrait<T>::Type;
+  MT one = static_cast<MT>(1.0f);
 
   // sigmoid(x) = 1 / (1 + exp(-x))
   // out = sigmoid(x) * y
   inline HOSTDEVICE T operator()(T x, T y) const {
-    MPType x_mp = static_cast<MPType>(x);
+    MT x_mp = static_cast<MT>(x);
     T sigmoid_out = static_cast<T>(one / (one + exp(-x_mp)));
     return sigmoid_out * y;
   }
@@ -227,12 +227,12 @@ void FusedGateAttentionOpKernel(const Context &dev_ctx,
         dev_ctx, config, query, qkv_out, qkv_weight_in.get());
 
     if (config.CanUseFlashAttn()) {
-      qkv_transpose_out->Resize(make_ddim({3,
-                                           config.batch_size,
-                                           config.seq_len_m,
-                                           config.seq_len_r,
-                                           config.num_heads,
-                                           config.head_dim}));
+      qkv_transpose_out->Resize({3,
+                                 config.batch_size,
+                                 config.seq_len_m,
+                                 config.seq_len_r,
+                                 config.num_heads,
+                                 config.head_dim});
     }
     funcs::AllocWithDebugInfo<T>(
         dev_ctx, "qkv_transpose_out", qkv_transpose_out);

@@ -1365,7 +1365,7 @@ void ReduceGpuKernel(const KPDevice& dev_ctx,
   auto mask = MakeDimMask(positive_reduce_dims, ndim);
   auto viewed_result = ReviewReduceResult(x, *(y), ndim, mask);
 
-  auto x_dim = common::vectorize<int64_t>(x.dims());
+  auto x_dim = vectorize<int64_t>(x.dims());
 
   DenseTensorIteratorConfig dense_iter_config;
   dense_iter_config.is_reduction(true);
@@ -1376,7 +1376,7 @@ void ReduceGpuKernel(const KPDevice& dev_ctx,
   // TODO(baoqiwen): When ReduceOp is WelfordOps, kVecSize is 2.
   constexpr int kVecSize = 4;
   constexpr int kInputVecSize = kVecSize;
-  using MPType = typename phi::dtype::MPTypeTrait<Ty>::Type;
+  using MPType = typename MPTypeTrait<Ty>::Type;
 
   // Initialize reducer.
   ReduceOp reducer = [&iter, &norm_p]() {

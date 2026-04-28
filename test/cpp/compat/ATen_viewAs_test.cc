@@ -26,8 +26,11 @@
 #endif
 #include "ATen/ATen.h"
 #include "gtest/gtest.h"
+#include "paddle/common/macros.h"
 #include "paddle/phi/common/float16.h"
 #include "torch/all.h"
+
+COMMON_DECLARE_bool(use_stride_kernel);
 
 // ============================================================
 // Tests for at::Tensor::view_as(const at::Tensor& other)
@@ -44,6 +47,9 @@ TEST(TensorViewAsTest, ViewAsSameShape) {
 }
 
 TEST(TensorViewAsTest, ViewAsDifferentShape_CompatibleNumel) {
+  if (!FLAGS_use_stride_kernel) {
+    return;
+  }
   // view_as with a different but numel-compatible shape
   at::Tensor t = at::arange(12, at::kFloat);
   at::Tensor other = at::zeros({3, 4}, at::kFloat);
@@ -54,6 +60,9 @@ TEST(TensorViewAsTest, ViewAsDifferentShape_CompatibleNumel) {
 }
 
 TEST(TensorViewAsTest, ViewAsPreservesData) {
+  if (!FLAGS_use_stride_kernel) {
+    return;
+  }
   // Elements are accessible with the new shape and preserve original values
   at::Tensor t = at::arange(6, at::kFloat);
   // t = [0, 1, 2, 3, 4, 5]
@@ -68,6 +77,9 @@ TEST(TensorViewAsTest, ViewAsPreservesData) {
 }
 
 TEST(TensorViewAsTest, ViewAs1D_Flattens) {
+  if (!FLAGS_use_stride_kernel) {
+    return;
+  }
   // view_as a 1-D tensor to flatten a higher-rank tensor
   at::Tensor t = at::ones({2, 3, 4}, at::kFloat);
   at::Tensor flat_ref = at::zeros({24}, at::kFloat);

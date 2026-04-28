@@ -26,34 +26,35 @@
 // clang-format on
 
 COMMON_DECLARE_bool(use_fast_math);
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 
 namespace phi {
 
 template <typename T>
 struct GeluWithApproximateFunctor {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   inline HOSTDEVICE T operator()(T arg_x) {
     // this function is tanh approximation of gelu
-    MPType x = static_cast<MPType>(arg_x);
-    MPType one = static_cast<MPType>(1);
-    MPType half = static_cast<MPType>(0.5);
-    MPType kAlpha = M_SQRT2 * M_2_SQRTPI * MPType(0.5);
+    MT x = static_cast<MT>(arg_x);
+    MT one = static_cast<MT>(1);
+    MT half = static_cast<MT>(0.5);
+    MT kAlpha = M_SQRT2 * M_2_SQRTPI * MT(0.5);
     auto tanh_out =
-        tanh(kAlpha * (x + static_cast<MPType>(GELU_CONSTANT) * (x * x * x)));
-    MPType out = half * x * (one + tanh_out);
+        tanh(kAlpha * (x + static_cast<MT>(GELU_CONSTANT) * (x * x * x)));
+    MT out = half * x * (one + tanh_out);
     return static_cast<T>(out);
   }
 };
 
 template <typename T>
 struct GeluWithoutApproximateFunctor {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   inline HOSTDEVICE T operator()(T arg_x) {
     // actual gelu with approximation = false
-    MPType x = static_cast<MPType>(arg_x);
+    MT x = static_cast<MT>(arg_x);
     // return static_cast<T>(x * normcdf(x));
-    constexpr MPType kAlpha = M_SQRT1_2;
-    return static_cast<T>(x * MPType(0.5) * (MPType(1) + std::erf(x * kAlpha)));
+    constexpr MT kAlpha = M_SQRT1_2;
+    return static_cast<T>(x * MT(0.5) * (MT(1) + std::erf(x * kAlpha)));
   }
 };
 
@@ -70,7 +71,8 @@ void GeluKernel(const Context& dev_ctx,
   std::vector<DenseTensor*> outs = {out};
   if (approximate) {
 #if defined(__NVCC__) || defined(__HIPCC__)
-    if (std::is_same<T, dtype::float16>::value) {
+    if (std::is_same<T, dtype::float16>::value &&
+        !FLAGS_use_accuracy_compatible_kernel) {
       size_t n = x.numel();
       const auto* in_ptr = reinterpret_cast<const __half*>(x.data<T>());
       auto* out_ptr = reinterpret_cast<__half*>(out->data<T>());

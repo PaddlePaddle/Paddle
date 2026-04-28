@@ -259,7 +259,7 @@ struct MatmulDescriptor {
               const int64_t stride_y = 0,
               const int64_t stride_out = 0,
               bool grad_for_dx = true) {
-    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    using MT = typename MPTypeTrait<T>::Type;
     cudaDataType_t mat_type = phi::backends::gpu::ToCudaDataType<T>();
     cudaDataType_t out_mat_type = phi::backends::gpu::ToCudaDataType<T>();
     cudaDataType_t scale_type = phi::backends::gpu::ToCudaDataType<MT>();
@@ -407,7 +407,7 @@ struct MatmulGradDescriptor : MatmulDescriptor {
               int64_t stride_y = 0,
               int64_t stride_out = 0,
               bool grad_for_dx = true) {
-    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    using MT = typename MPTypeTrait<T>::Type;
     cudaDataType_t mat_type = phi::backends::gpu::ToCudaDataType<T>();
     cudaDataType_t scale_type = phi::backends::gpu::ToCudaDataType<MT>();
     cublasComputeType_t compute_type = GetCudaComputeType<T>();
@@ -444,7 +444,7 @@ struct MatmulGradDescriptor : MatmulDescriptor {
 template <typename T, typename OutT = T, class MatmulDescT = MatmulDescriptor>
 struct CublasLtBase {
  public:
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   static phi::Allocator::AllocationPtr GetWorkspace(const GPUContext& dev_ctx,
                                                     size_t workspace_size) {
     return phi::memory_utils::Alloc(
@@ -1173,8 +1173,8 @@ struct LinearWithCublasLt : public CublasLtBase<T> {
                   const bool trans_x,
                   const bool trans_y,
                   const MatmulFusedType fused_type) {
-    auto planner = funcs::MatmulPlanner(common::vectorize(x->dims()),
-                                        common::vectorize(y->dims()),
+    auto planner = funcs::MatmulPlanner(vectorize(x->dims()),
+                                        vectorize(y->dims()),
                                         trans_x,
                                         trans_y,
                                         CppTypeToDataType<T>::Type(),
@@ -1211,8 +1211,8 @@ struct LinearGradWithCublasLt : public CublasLtBase<T> {
       const bool use_addto,
       const bool no_exchange,  // exchange x_desc and y_desc for grad.
       bool grad_for_dx = true) {
-    auto planner = funcs::MatmulPlanner(common::vectorize(x->dims()),
-                                        common::vectorize(y->dims()),
+    auto planner = funcs::MatmulPlanner(vectorize(x->dims()),
+                                        vectorize(y->dims()),
                                         trans_x,
                                         trans_y,
                                         CppTypeToDataType<T>::Type(),

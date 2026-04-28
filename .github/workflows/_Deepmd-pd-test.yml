@@ -9,12 +9,17 @@ on:
       can-skip:
         type: string
         required: false
+        default: "false"
       MANUALLY_PR_ID:
         type: string
         required: false
       MANUALLY_COMMIT_ID:
         type: string
         required: false
+      build-can-skip:
+        type: string
+        required: false
+        default: 'false'
 
 env:
   PR_ID: ${{ github.event.pull_request.number || '0' }}
@@ -34,7 +39,7 @@ defaults:
 jobs:
   check-bypass:
     name: Check bypass
-    if: ${{ inputs.can-skip != 'true' }}
+    if: ${{ github.repository_owner == 'PaddlePaddle' && inputs.build-can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
       workflow-name: "deepmd"
@@ -43,8 +48,8 @@ jobs:
 
   deepmd-test:
     name: DeepMD-Kit Integration Test
-    needs: check-bypass
-    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
+    needs: [check-bypass]
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' && inputs.can-skip != 'true' }}
     runs-on:
       group: BD_BJ-V100
     timeout-minutes: 20

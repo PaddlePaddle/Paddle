@@ -64,7 +64,7 @@ struct EmbeddingCPUSparseFunctor {
             common::errors::InvalidArgument(
                 "the input key should be exists. But received %d.", id_index));
 
-        if (input_data_type == phi::DataType::BFLOAT16) {
+        if (input_data_type == DataType::BFLOAT16) {
           memcpy(output + i * row_width,
                  table + id_index * row_width,
                  row_width * sizeof(T));
@@ -94,9 +94,9 @@ void SparseWeightEmbeddingKernel(const Context& dev_ctx,
   EmbeddingCPUSparseFunctor<T, Context> functor(
       dev_ctx, input, weight, padding_idx, out);
 
-  if (input.dtype() == phi::DataType::INT32) {
+  if (input.dtype() == DataType::INT32) {
     functor.template apply<int>();
-  } else if (input.dtype() == phi::DataType::INT64) {
+  } else if (input.dtype() == DataType::INT64) {
     functor.template apply<int64_t>();
   } else {
     PADDLE_THROW(common::errors::Unimplemented(

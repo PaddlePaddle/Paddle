@@ -130,14 +130,9 @@ class DualPipeVParallel(PipelineParallel):
         loss_fn_node = None
         if not self.overlapped_forward_backward:
             loss_tensor = self._layers._loss_fn[0](logits, labels)
-            with paddle.amp.auto_cast(enable=False):
-                if self.accumulate_steps > 1 and not self._delay_scale_loss:
-                    loss_tensor = loss_tensor / self.accumulate_steps
         else:
             loss_fn_node = self._layers._loss_fn[0].build_schedule_node()
             loss_fn_node.labels = labels
-            if self.accumulate_steps > 1 and not self._delay_scale_loss:
-                loss_fn_node.scale_loss_factor = self.accumulate_steps
             loss_tensor = loss_fn_node.forward(logits)
         self._store_forward_loss(phase, loss_tensor, loss_fn_node)
 
@@ -311,8 +306,6 @@ class DualPipeVParallel(PipelineParallel):
                 0
             ].build_schedule_node()
             forward_loss_fn_node.labels = forward_labels
-            if self.accumulate_steps > 1 and not self._delay_scale_loss:
-                forward_loss_fn_node.scale_loss_factor = self.accumulate_steps
         else:
             forward_loss_fn_node = None
 
@@ -681,8 +674,7 @@ class DualPipeVParallel(PipelineParallel):
             )
             for loss in self.loss_tensors:
                 loss_sum_tensor += loss.detach().astype("float32")
-            if self._delay_scale_loss:
-                loss_sum_tensor /= self.accumulate_steps
+            loss_sum_tensor /= self.accumulate_steps
 
         paddle.distributed.all_reduce(
             loss_sum_tensor, group=self.pp_group, sync_op=True

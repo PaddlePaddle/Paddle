@@ -504,9 +504,8 @@ void LaunchResidualDropoutBiasGrad(const T *dout,
                                 dev_ctx.stream());                            \
       } else {                                                                \
         const uint64_t n = rows * cols;                                       \
-        phi::backends::gpu::GpuLaunchConfig config =                          \
-            phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx,                 \
-                                                     n / real_vec_size);      \
+        backends::gpu::GpuLaunchConfig config =                               \
+            backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n / real_vec_size);  \
         if (n % VecSize == 0) {                                               \
           FusedResidualDropoutGrad<T, MaskType, VecSize>                      \
               <<<config.block_per_grid,                                       \

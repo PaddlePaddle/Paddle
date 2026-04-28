@@ -187,7 +187,7 @@ PADDLE_API void AdamDenseKernel(const Context& dev_ctx,
                                 DenseTensor* beta1_pow_out,
                                 DenseTensor* beta2_pow_out,
                                 DenseTensor* master_param_outs) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   const auto grad_type = grad.dtype();
 
   VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
@@ -262,7 +262,7 @@ PADDLE_API void AdamDenseKernel(const Context& dev_ctx,
 
   if (beta1_pow.place() == CPUPlace() && beta2_pow.place() == CPUPlace()) {
     // Compute with betapow in REG
-    if (grad_type == phi::DataType::FLOAT32) {
+    if (grad_type == DataType::FLOAT32) {
       AdamKernelREG<T, float, MT><<<blocks, threads, 0, dev_ctx.stream()>>>(
           beta1_,
           beta2_,
@@ -313,7 +313,7 @@ PADDLE_API void AdamDenseKernel(const Context& dev_ctx,
           beta2_ * beta2_pow.data<MT>()[0];
     }
   } else {
-    if (grad_type == phi::DataType::FLOAT32) {
+    if (grad_type == DataType::FLOAT32) {
       AdamKernelMEM<T, float, MT><<<blocks, threads, 0, dev_ctx.stream()>>>(
           beta1_,
           beta2_,
@@ -394,7 +394,7 @@ void MergedAdamKernel(
     std::vector<DenseTensor*> beta1_pow_out,
     std::vector<DenseTensor*> beta2_pow_out,
     std::vector<DenseTensor*> master_param_out) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
   MT beta1_ = beta1.to<MT>();
   MT beta2_ = beta2.to<MT>();
@@ -424,7 +424,7 @@ void MergedAdamKernel(
     if (beta1_pow[idx]->place() == CPUPlace() &&
         beta2_pow[idx]->place() == CPUPlace()) {
       // Compute with betapow in REG
-      if (grad_type == phi::DataType::FLOAT32) {
+      if (grad_type == DataType::FLOAT32) {
         AdamKernelREG<T, float, MT><<<blocks, threads, 0, dev_ctx.stream()>>>(
             beta1_,
             beta2_,
@@ -475,7 +475,7 @@ void MergedAdamKernel(
             beta2_ * beta2_pow[idx]->data<MT>()[0];
       }
     } else {
-      if (grad_type == phi::DataType::FLOAT32) {
+      if (grad_type == DataType::FLOAT32) {
         AdamKernelMEM<T, float, MT><<<blocks, threads, 0, dev_ctx.stream()>>>(
             beta1_,
             beta2_,

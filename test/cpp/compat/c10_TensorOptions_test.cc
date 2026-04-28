@@ -12,16 +12,38 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <c10/core/DefaultDtype.h>
 #include <c10/core/Device.h>
 #include <c10/core/Layout.h>
 #include <c10/core/MemoryFormat.h>
 #include <c10/core/ScalarType.h>
+#include <c10/core/ScalarTypeToTypeMeta.h>
 #include <c10/core/TensorOptions.h>
+
+#include <optional>
+
 #include "gtest/gtest.h"
 
 // ============================================================
 // Tests for c10::TensorOptions
 // ============================================================
+
+namespace {
+
+class DefaultDtypeGuard {
+ public:
+  explicit DefaultDtypeGuard(c10::ScalarType dtype)
+      : previous_(c10::get_default_dtype()) {
+    c10::set_default_dtype(c10::scalarTypeToTypeMeta(dtype));
+  }
+
+  ~DefaultDtypeGuard() { c10::set_default_dtype(previous_); }
+
+ private:
+  caffe2::TypeMeta previous_;
+};
+
+}  // namespace
 
 // Default-constructed TensorOptions has no device/dtype/layout/grad fields set
 TEST(TensorOptionsTest, DefaultConstructor_NothingSet) {
@@ -79,6 +101,83 @@ TEST(TensorOptionsTest, ImplicitFromScalarType) {
 
   ASSERT_TRUE(opts.has_dtype());
   ASSERT_EQ(opts.dtype(), c10::kHalf);
+}
+
+TEST(TensorOptionsTest, ImplicitFromTypeMeta) {
+  c10::TensorOptions opts(caffe2::TypeMeta::Make<double>());
+
+  ASSERT_TRUE(opts.has_dtype());
+  ASSERT_EQ(opts.dtype(), caffe2::TypeMeta::Make<double>());
+}
+
+TEST(TensorOptionsTest, SetDtype_TypeMetaOptional) {
+  c10::TensorOptions opts = c10::TensorOptions().dtype(
+      std::make_optional(caffe2::TypeMeta::Make<int>()));
+
+  ASSERT_TRUE(opts.has_dtype());
+  ASSERT_EQ(opts.dtype(), caffe2::TypeMeta::Make<int>());
+}
+
+TEST(TensorOptionsTest, SetDtype_TypeMetaTemplateMember) {
+  c10::TensorOptions opts;
+  opts.dtype<int64_t>();
+
+  ASSERT_TRUE(opts.has_dtype());
+  ASSERT_EQ(opts.dtype(), caffe2::TypeMeta::Make<int64_t>());
+}
+
+TEST(TensorOptionsTest, ClearDtypeWithNullopt) {
+  c10::TensorOptions opts = c10::TensorOptions().dtype(
+      std::make_optional(caffe2::TypeMeta::Make<float>()));
+  opts = opts.dtype(std::optional<caffe2::TypeMeta>{});
+
+  ASSERT_FALSE(opts.has_dtype());
+  ASSERT_FALSE(opts.dtype_opt().has_value());
+}
+
+TEST(TensorOptionsTest, DtypeOptReturnsTypeMeta) {
+  c10::TensorOptions opts =
+      c10::TensorOptions().dtype(caffe2::TypeMeta::Make<bool>());
+
+  ASSERT_TRUE(opts.dtype_opt().has_value());
+  ASSERT_EQ(opts.dtype_opt().value(), caffe2::TypeMeta::Make<bool>());
+}
+
+TEST(TensorOptionsTest, DtypeDefaultTracksGlobalDefaultDtype) {
+  DefaultDtypeGuard guard(c10::kDouble);
+  c10::TensorOptions opts;
+
+  ASSERT_EQ(opts.dtype(), caffe2::TypeMeta::Make<double>());
+  ASSERT_EQ(c10::dtype_or_default(std::optional<caffe2::TypeMeta>{}),
+            caffe2::TypeMeta::Make<double>());
+  ASSERT_EQ(c10::dtype_or_default(std::optional<c10::ScalarType>{}),
+            c10::kDouble);
+}
+
+TEST(TensorOptionsTest, DefaultComplexDtypeTracksGlobalDefaultDtype) {
+  {
+    DefaultDtypeGuard guard(c10::kHalf);
+
+    ASSERT_EQ(c10::get_default_dtype_as_scalartype(), c10::kHalf);
+    ASSERT_EQ(c10::get_default_complex_dtype().toScalarType(),
+              c10::ScalarType::ComplexHalf);
+  }
+
+  {
+    DefaultDtypeGuard guard(c10::kDouble);
+
+    ASSERT_EQ(c10::get_default_dtype_as_scalartype(), c10::kDouble);
+    ASSERT_EQ(c10::get_default_complex_dtype().toScalarType(),
+              c10::ScalarType::ComplexDouble);
+  }
+
+  {
+    DefaultDtypeGuard guard(c10::kFloat);
+
+    ASSERT_EQ(c10::get_default_dtype_as_scalartype(), c10::kFloat);
+    ASSERT_EQ(c10::get_default_complex_dtype().toScalarType(),
+              c10::ScalarType::ComplexFloat);
+  }
 }
 
 // ---- device ----
@@ -328,4 +427,19 @@ TEST(TensorOptionsTest, HelperFunction_dtype) {
 
   ASSERT_TRUE(opts.has_dtype());
   ASSERT_EQ(opts.dtype(), c10::kLong);
+}
+
+TEST(TensorOptionsTest, HelperFunction_dtypeTypeMeta) {
+  c10::TensorOptions opts = c10::dtype(caffe2::TypeMeta::Make<int16_t>());
+
+  ASSERT_TRUE(opts.has_dtype());
+  ASSERT_EQ(opts.dtype(), caffe2::TypeMeta::Make<int16_t>());
+}
+
+TEST(TensorOptionsTest, HelperFunction_dtypeTemplate) {
+  c10::TensorOptions opts = c10::dtype<uint8_t>();
+
+  ASSERT_TRUE(opts.has_dtype());
+  ASSERT_EQ(opts.dtype(), caffe2::TypeMeta::Make<uint8_t>());
+  ASSERT_EQ(c10::typeMetaToScalarType(opts.dtype()), c10::kByte);
 }

@@ -30,6 +30,7 @@ limitations under the License. */
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/infermeta/binary.h"
 #include "paddle/phi/infermeta/nullary.h"
+#include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 
@@ -346,8 +347,8 @@ void AdamwInferMeta(const MetaTensor& param,
                     const Scalar& beta1,
                     const Scalar& beta2,
                     const Scalar& epsilon,
-                    float lr_ratio,
-                    float coeff,
+                    double lr_ratio,
+                    double coeff,
                     bool with_decay,
                     bool lazy_mode,
                     int64_t min_row_size_to_use_multithread,
@@ -6465,6 +6466,17 @@ void MultiheadMatmulInferMeta(const MetaTensor& input,
   out->set_dims(input.dims());
   out->set_dtype(input.dtype());
   out->share_lod(input);
+}
+
+void MaskedScatterInferMeta(const MetaTensor& x,
+                            const MetaTensor& mask,
+                            const MetaTensor& value,
+                            MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto mask_dims = mask.dims();
+  auto expanded_dims = funcs::BroadcastTwoDims(x_dims, mask_dims, -1);
+  out->set_dims(expanded_dims);
+  out->set_dtype(x.dtype());
 }
 
 void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,

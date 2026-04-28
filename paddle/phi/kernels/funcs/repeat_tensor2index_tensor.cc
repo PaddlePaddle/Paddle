@@ -49,7 +49,7 @@ void RepeatsTensor2IndexTensorFunctor<Context, RepeatsT>::operator()(
     std::fill_n(index_vec.begin() + offset, repeats_data[i], i);
     offset += repeats_data[i];
   }
-  index->Resize(make_ddim({index_size}));
+  index->Resize({index_size});
 
   TensorFromVector<RepeatsT>(index_vec, dev_ctx, index);
 }
@@ -74,7 +74,7 @@ void RepeatsTensor2IndexTensorFunctor<CPUContext, RepeatsT>::operator()(
     std::fill_n(index_vec.begin() + offset, repeats_data[i], i);
     offset += repeats_data[i];
   }
-  index->Resize(make_ddim({index_size}));
+  index->Resize({index_size});
 
   TensorFromVector<RepeatsT>(index_vec, dev_ctx, index);
 }
@@ -105,7 +105,7 @@ void RepeatsTensor2IndexTensorFunctor<XPUContext, RepeatsT>::operator()(
     std::fill_n(index_vec.begin() + offset, repeats_data[i], i);
     offset += repeats_data[i];
   }
-  index->Resize(make_ddim({index_size}));
+  index->Resize({index_size});
 
   TensorFromVector<RepeatsT>(index_vec, dev_ctx, index);
 }

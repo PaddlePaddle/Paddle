@@ -19,6 +19,9 @@
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_array.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
+#endif
 
 namespace phi {
 
@@ -61,12 +64,25 @@ void send_shape_info(const Context& dev_ctx,
   shape_size_tensor.Resize({1});
   dev_ctx.Alloc(&shape_size_tensor, shape_dtype);
   const auto& cpu_place = CPUPlace();
+#ifdef PADDLE_WITH_CUDA
+  const int* stable_shape_size =
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          const_cast<int*>(cpu_shape_size_tensor.data<int>()),
+          static_cast<size_t>(cpu_shape_size_tensor.numel()));
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     shape_size_tensor.data(),
+                     cpu_place,
+                     stable_shape_size,
+                     cpu_shape_size_tensor.numel() * sizeof(int),
+                     stream);
+#else
   memory_utils::Copy(dev_ctx.GetPlace(),
                      shape_size_tensor.data(),
                      cpu_place,
                      cpu_shape_size_tensor.data(),
                      cpu_shape_size_tensor.numel() * sizeof(int),
                      stream);
+#endif
 
   comm_ctx->Send(shape_size_tensor, shape_size_tensor.numel(), peer, stream);
 
@@ -83,12 +99,25 @@ void send_shape_info(const Context& dev_ctx,
   DenseTensor shape_tensor;
   shape_tensor.Resize({shape_size});
   dev_ctx.Alloc(&shape_tensor, shape_dtype);
+#ifdef PADDLE_WITH_CUDA
+  const int* stable_shape =
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          const_cast<int*>(cpu_shape_tensor.data<int>()),
+          static_cast<size_t>(cpu_shape_tensor.numel()));
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     shape_tensor.data(),
+                     cpu_place,
+                     stable_shape,
+                     cpu_shape_tensor.numel() * sizeof(int),
+                     stream);
+#else
   memory_utils::Copy(dev_ctx.GetPlace(),
                      shape_tensor.data(),
                      cpu_place,
                      cpu_shape_tensor.data(),
                      cpu_shape_tensor.numel() * sizeof(int),
                      stream);
+#endif
   comm_ctx->Send(shape_tensor, shape_tensor.numel(), peer, stream);
   dev_ctx.Wait();
 }
@@ -127,6 +156,17 @@ DDim recv_shape_info(const Context& dev_ctx,
       &shape_size_tensortensor, shape_size_tensortensor.numel(), peer, stream);
 
   // copy the shape size tensor to cpu
+#ifdef PADDLE_WITH_CUDA
+  PADDLE_ENFORCE_EQ(
+      phi::backends::gpu::IsCUDAGraphCapturing(),
+      false,
+      common::errors::InvalidArgument(
+          "RecvShape does not support CUDA Graph capture: async D2H copy to "
+          "a locally allocated CPU DenseTensor 'cpu_shape_size_tensor' will "
+          "bake the destination address into the graph; on replay the tensor "
+          "is re-created at a different address, causing a dangling-pointer "
+          "write."));
+#endif
   DenseTensor cpu_shape_size_tensor(shape_dtype);
   cpu_shape_size_tensor.Resize({1});
   dev_ctx.HostAlloc(&cpu_shape_size_tensor, shape_dtype);

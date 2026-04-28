@@ -50,8 +50,8 @@ void DeformableConvKernel(const Context& dev_ctx,
     im2col_step = temp_step;
   }
 
-  std::vector<int64_t> filter_shape_vec(common::vectorize(filter.dims()));
-  std::vector<int64_t> output_shape_vec(common::vectorize(out->dims()));
+  std::vector<int64_t> filter_shape_vec(vectorize(filter.dims()));
+  std::vector<int64_t> output_shape_vec(vectorize(out->dims()));
 
   // col_shape_vec: {c_i * k_h * k_w, im2col_step, o_h, o_w}
   std::vector<int64_t> col_buffer_shape_vec(filter_shape_vec.size());
@@ -73,17 +73,17 @@ void DeformableConvKernel(const Context& dev_ctx,
   int64_t K = x.dims()[1] * filter_shape_vec[2] * filter_shape_vec[3] / groups;
 
   DenseTensor weight_3d;
-  weight_3d.ShareDataWith(filter).Resize(make_ddim({groups, M, K}));
+  weight_3d.ShareDataWith(filter).Resize({groups, M, K});
 
   DenseTensor col_buffer_3d;
-  col_buffer_3d.ShareDataWith(col_buffer).Resize(make_ddim({groups, K, N}));
+  col_buffer_3d.ShareDataWith(col_buffer).Resize({groups, K, N});
 
   DenseTensor output_4d;
   output_4d.ShareDataWith(output_buffer)
-      .Resize(make_ddim({batch_size / im2col_step, groups, M, N}));
+      .Resize({batch_size / im2col_step, groups, M, N});
 
   DDim input_shape = slice_ddim(x.dims(), 1, x.dims().size());
-  std::vector<int64_t> input_shape_vec = common::vectorize(input_shape);
+  std::vector<int64_t> input_shape_vec = vectorize(input_shape);
 
   int64_t input_dim = x.numel() / x.dims()[0];
   int64_t input_offset_dim = offset.numel() / offset.dims()[0];
@@ -178,9 +178,9 @@ void DeformableConvKernel(const Context& dev_ctx,
                        output_shape_vec[2] * output_shape_vec[3]})),
         axis);
 
-    out->ShareDataWith(real_output_buffer).Resize(make_ddim(output_shape_vec));
+    out->ShareDataWith(real_output_buffer).Resize(output_shape_vec);
   } else {
-    out->ShareDataWith(output_buffer).Resize(make_ddim(output_shape_vec));
+    out->ShareDataWith(output_buffer).Resize(output_shape_vec);
   }
 }
 

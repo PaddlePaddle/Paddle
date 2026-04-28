@@ -102,6 +102,22 @@ static phi::Attribute ConvertPirAttribute2RuntimeAttribute(
       }
     }
     return vec_res;
+  } else if (attr_type_name == "pir::ArrayAttribute<pir::DoubleAttribute>") {
+    auto array_list = attr.dyn_cast<pir::ArrayAttribute>().AsVector();
+    std::vector<double> vec_res;
+    if (array_list.size() > 0) {
+      if (array_list[0].isa<pir::DoubleAttribute>()) {
+        for (size_t i = 0; i < array_list.size(); ++i) {
+          vec_res.push_back(
+              array_list[i].dyn_cast<pir::DoubleAttribute>().data());
+        }
+      } else {
+        PADDLE_THROW(common::errors::Unimplemented(
+            "ConvertPirAttribute2RuntimeAttribute not support [%s] ",
+            attr_type_name));
+      }
+    }
+    return vec_res;
   } else if (attr_type_name == "paddle::dialect::IntArrayAttribute") {
     std::vector<int64_t> int_array =
         attr.dyn_cast<paddle::dialect::IntArrayAttribute>().data().GetData();

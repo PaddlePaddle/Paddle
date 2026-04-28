@@ -79,10 +79,11 @@ inline at::Tensor eye(int64_t n,
                       ::std::optional<at::Device> device,
                       ::std::optional<bool> pin_memory) {
   PD_CHECK(!layout.has_value(), "`layout` is not supported now.");
-  auto options = at::TensorOptions()
-                     .dtype(dtype.value_or(c10::get_default_dtype()))
-                     .device(device.value_or(at::kCPU))
-                     .pinned_memory(pin_memory);
+  auto options =
+      at::TensorOptions()
+          .dtype(dtype.value_or(c10::get_default_dtype_as_scalartype()))
+          .device(device.value_or(at::kCPU))
+          .pinned_memory(pin_memory);
   return eye(n, options);
 }
 
@@ -94,10 +95,11 @@ inline at::Tensor eye(int64_t n,
                       ::std::optional<at::Device> device,
                       ::std::optional<bool> pin_memory) {
   PD_CHECK(!layout.has_value(), "`layout` is not supported now.");
-  auto options = at::TensorOptions()
-                     .dtype(dtype.value_or(c10::get_default_dtype()))
-                     .device(device.value_or(at::kCPU))
-                     .pinned_memory(pin_memory);
+  auto options =
+      at::TensorOptions()
+          .dtype(dtype.value_or(c10::get_default_dtype_as_scalartype()))
+          .device(device.value_or(at::kCPU))
+          .pinned_memory(pin_memory);
   return eye(n, m, options);
 }
 

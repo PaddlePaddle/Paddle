@@ -25,7 +25,24 @@ COMMON_DECLARE_bool(new_executor_use_cuda_graph);
 
 namespace paddle::platform {
 
+// Keep capture-state queries out of headers so Windows callers in different
+// DLLs observe the same CUDAGraph global state.
+bool IsCUDAGraphCapturing() {
+  return phi::backends::gpu::IsCUDAGraphCapturing();
+}
+
+phi::Place CUDAGraphCapturingPlace() {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
+  return phi::backends::gpu::CUDAGraph::CapturingPlace();
+#else
+  PADDLE_THROW(common::errors::Unimplemented(
+      "CUDA Graph is only supported on NVIDIA GPU device."));
+#endif
+}
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
 void InitCUDNNRelatedHandle(phi::GPUContext* dev_ctx) {
   dev_ctx->cudnn_workspace_handle().ResetWorkspace();
 

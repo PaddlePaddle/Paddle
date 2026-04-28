@@ -70,7 +70,7 @@ struct DenseAdagradFunctor<GPUContext, T> {
                   DenseTensor* param_out_tensor,
                   DenseTensor* moment_out_tensor,
                   DenseTensor* master_param_outs) {
-    using MT = typename phi::dtype::template MPTypeTrait<T>::Type;
+    using MT = typename dtype::template MPTypeTrait<T>::Type;
     T* param_out_data = dev_ctx.template Alloc<T>(param_out_tensor);
     MT* moment_out_data = dev_ctx.template Alloc<MT>(moment_out_tensor);
     const MT* master_in_data =
@@ -82,7 +82,7 @@ struct DenseAdagradFunctor<GPUContext, T> {
     MT epsilon = static_cast<MT>(epsilon_t);
 
     int64_t numel = param_t.numel();
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, 1);
+    auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, 1);
     int grid = config.block_per_grid.x;
     int block = config.thread_per_block.x;
     auto stream = dev_ctx.stream();
@@ -180,7 +180,7 @@ struct SparseAdagradFunctor<GPUContext, T> {
     const int block_size = 256;
     dim3 threads(block_size, 1);
     dim3 grid2(1, merge_rows.size());
-    phi::MixVector<int64_t> mixv_merge_rows(&merge_rows);
+    MixVector<int64_t> mixv_merge_rows(&merge_rows);
     SparseAdagradFunctorKernel<T, 256>
         <<<grid2,
            threads,
@@ -201,7 +201,7 @@ template struct SparseAdagradFunctor<GPUContext, float>;
 template struct SparseAdagradFunctor<GPUContext, double>;
 template struct DenseAdagradFunctor<GPUContext, float>;
 template struct DenseAdagradFunctor<GPUContext, double>;
-template struct DenseAdagradFunctor<GPUContext, phi::float16>;
+template struct DenseAdagradFunctor<GPUContext, float16>;
 
 }  // namespace phi
 

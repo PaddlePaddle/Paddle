@@ -234,7 +234,7 @@ void Tensor_Add(const Context& dev_ctx,
   out->Resize(src1.dims());
   dev_ctx.template Alloc<T>(out);
 
-  phi::AddKernel<T, Context>(dev_ctx, src1, src2, out);
+  AddKernel<T, Context>(dev_ctx, src1, src2, out);
 }
 
 template <typename Context, typename T>
@@ -245,7 +245,7 @@ void Tensor_Sub(const Context& dev_ctx,
   out->Resize(src1.dims());
   dev_ctx.template Alloc<T>(out);
 
-  phi::SubtractKernel<T, Context>(dev_ctx, src1, src2, out);
+  SubtractKernel<T, Context>(dev_ctx, src1, src2, out);
 }
 
 template <typename Context, typename T, size_t D>
@@ -369,7 +369,7 @@ void arange(const Context& dev_ctx,
             int w,
             int batchsize = 1,
             int h = 1) {
-  tmp->Resize(make_ddim({batchsize * w}));
+  tmp->Resize({batchsize * w});
   dev_ctx.template HostAlloc<int32_t>(tmp);
   auto tmpdata = tmp->data<int32_t>();
   for (int b = 0; b < batchsize; b++) {
@@ -427,7 +427,7 @@ void LU_Unpack(const Context& dev_ctx,
 
   arange<Context>(dev_ctx, &rowtensor, dim, batchsize, H);
   auto idtptr = rowtensor.data<int32_t>();
-  if (phi::AllocationType::GPU == dev_ctx.GetPlace().GetType()) {
+  if (AllocationType::GPU == dev_ctx.GetPlace().GetType()) {
     Copy(dev_ctx, rowtensor, dev_ctx.GetPlace(), false, &rt_dev);
     idtptr = rt_dev.data<int32_t>();
   }
@@ -458,7 +458,7 @@ void Unpack_Pivot(const Context& dev_ctx,
                   int h,
                   int w UNUSED) {
   auto dims = Pivot.dims();
-  auto Pdimvec = common::vectorize(dims);
+  auto Pdimvec = vectorize(dims);
   auto prank = Pdimvec.size();
   auto Pnum = dims[prank - 1];
   DenseTensor Pivot_cpu;
@@ -506,7 +506,7 @@ DenseTensor Transpose2DTo6D(const Context& dev_ctx, const DenseTensor& x) {
   // transpose the last two dimision
   DenseTensor ret;
   auto x_dim = x.dims();
-  auto x_vec = common::vectorize<int>(x_dim);
+  auto x_vec = vectorize<int>(x_dim);
   int rank = x_vec.size();
 
   for (int i = 0; i < x_dim.size(); i++) {
@@ -523,7 +523,7 @@ DenseTensor Transpose2DTo6D(const Context& dev_ctx, const DenseTensor& x) {
     axis[i] = i;
   }
   std::swap(axis[rank - 1], axis[rank - 2]);
-  ret.Resize(make_ddim(x_vec));
+  ret.Resize(x_vec);
   dev_ctx.template Alloc<T>(&ret);
   switch (rank) {
     case 2: {

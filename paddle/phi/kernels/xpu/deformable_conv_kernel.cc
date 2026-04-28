@@ -39,8 +39,8 @@ void DeformableConvKernel(const Context& dev_ctx,
   }
   dev_ctx.template Alloc<T>(out);
 
-  if (phi::backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId()) ==
-      phi::backends::xpu::XPUVersion::XPU1) {
+  if (backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId()) ==
+      backends::xpu::XPUVersion::XPU1) {
     PADDLE_ENFORCE_EQ(
         deformable_groups == 1,
         true,
@@ -59,7 +59,7 @@ void DeformableConvKernel(const Context& dev_ctx,
                         "in deformable_conv op."));
 
   const int64_t batch_size = x.dims()[0];
-  std::vector<int64_t> output_shape_vec(common::vectorize(out->dims()));
+  std::vector<int64_t> output_shape_vec(vectorize(out->dims()));
 
   const T* input_ptr = x.data<T>();
   const T* filter_ptr = filter.data<T>();

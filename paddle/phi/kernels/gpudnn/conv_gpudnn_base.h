@@ -144,8 +144,8 @@ struct ConvArgsBase {
 
   template <typename T>
   phi::autotune::ConvCacheKey ConvertToConvCacheKey() const {
-    auto x_shape = common::vectorize(x->dims());
-    auto w_shape = common::vectorize(w->dims());
+    auto x_shape = vectorize(x->dims());
+    auto w_shape = vectorize(w->dims());
     VLOG(10) << "[ConvArgs] x_dims=" << x_shape << ", w_dims=" << w_shape
              << ", strides=" << s << ", paddings=" << p << ", dilations=" << d
              << ", data=" << CppTypeToDataType<T>::Type() << ", group=" << group
@@ -183,7 +183,7 @@ static inline void GetNCDHW(const DDim& dims,
   }
 }
 
-template <typename DeviceContext, typename T, size_t D>
+template <typename Context, typename T, size_t D>
 static void RemovePaddingSlice(const GPUContext& dev_ctx,
                                const DenseTensor* input,
                                DenseTensor* out,

@@ -2724,8 +2724,8 @@ def meshgrid(*args, **kwargs):
 
             >>> import paddle
 
-            >>> x = paddle.randint(low=0, high=100, shape=[100])
-            >>> y = paddle.randint(low=0, high=100, shape=[200])
+            >>> x = paddle.randint(low=0, high=100, size=[100])
+            >>> y = paddle.randint(low=0, high=100, size=[200])
 
             >>> grid_x, grid_y = paddle.meshgrid(x, y)
 
@@ -2966,6 +2966,7 @@ def diag_embed(
     return out
 
 
+@param_one_alias(['x', 'input'])
 def diagflat(
     x: paddle.Tensor, offset: int = 0, name: str | None = None
 ) -> paddle.Tensor:
@@ -2985,6 +2986,7 @@ def diagflat(
 
     Args:
         x (Tensor): The input tensor. It can be any shape. Its data type should be float16, float32, float64, int32, int64.
+            Alias: ``input``.
         offset (int, optional): The diagonal offset. A positive value represents superdiagonal, 0 represents the main diagonal, and a negative value represents subdiagonal. Default: 0 (main diagonal).
         name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
@@ -4254,7 +4256,7 @@ def set_(
         if source is None:
             source = paddle.empty([0], dtype=x.dtype)
             shape = [0]
-            stride = [0]
+            stride = source.strides
         else:
             if not isinstance(source, (Variable, core.eager.Tensor)):
                 raise ValueError(

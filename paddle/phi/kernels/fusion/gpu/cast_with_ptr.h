@@ -31,7 +31,7 @@ static void VecCastKernel(const GPUContext &dev_ctx,
                           const InT *x,
                           OutT *y,
                           size_t n) {
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n, VecSize);
+  auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n, VecSize);
   auto block = config.GetGridSize();
   auto thread = config.GetBlockSize();
   auto main_offset = n / (VecSize * thread) * VecSize * thread;

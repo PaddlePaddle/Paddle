@@ -32,16 +32,18 @@ inline at::Tensor Tensor::to(
     ::std::optional<at::MemoryFormat> memory_format) const {
   // Handle device transfer
   PaddleTensor result = tensor_;
+  bool materialized_copy = false;
 
   if (options.has_device()) {
     const c10::Device& dev = options.device();
     phi::Place place;
     switch (dev.type()) {
       case c10::DeviceType::CPU:
-        place = phi::CPUPlace();
-        break;
       case c10::DeviceType::CUDA:
-        place = phi::GPUPlace(dev.has_index() ? dev.index() : 0);
+      case c10::DeviceType::XPU:
+      case c10::DeviceType::IPU:
+      case c10::DeviceType::CUSTOM:
+        place = dev._PD_GetInner();
         break;
       default:
         PD_THROW("Unsupported device type: ", dev.type());
@@ -49,6 +51,7 @@ inline at::Tensor Tensor::to(
     }
     if (place != tensor_.place()) {
       result = result.copy_to(place, /*blocking=*/!non_blocking);
+      materialized_copy = true;
     }
   }
 
@@ -58,7 +61,12 @@ inline at::Tensor Tensor::to(
         compat::_PD_AtenScalarTypeToPhiDataType(options.dtype());
     if (target_dtype != result.dtype()) {
       result = paddle::experimental::cast(result, target_dtype);
+      materialized_copy = true;
     }
+  }
+
+  if (copy && !materialized_copy) {
+    result = paddle::experimental::assign(result);
   }
 
   return at::Tensor(result);

@@ -64,7 +64,7 @@ class RNNDescriptors {
               size_t *reserve_size,
               DenseTensor *dropout_state) {
     int numDirections = is_bidirec_ ? 2 : 1;
-    gpuDnnDataType_t cudnn_type = phi::backends::gpu::CudnnDataType<T>::type;
+    gpuDnnDataType_t cudnn_type = backends::gpu::CudnnDataType<T>::type;
     // ------------------- cudnn x, y descriptors ---------------------
     std::vector<int> dims_x = {batch_size_, input_size_, 1};
     std::vector<int> strides_x = {input_size_, 1, 1};
@@ -319,19 +319,19 @@ class RNNDescriptors {
   std::vector<cudnnTensorDescriptor_t> y_descs_;
 #endif
 
-  phi::backends::gpu::ScopedTensorDescriptor x_desc_;
-  phi::backends::gpu::ScopedTensorDescriptor y_desc_;
+  backends::gpu::ScopedTensorDescriptor x_desc_;
+  backends::gpu::ScopedTensorDescriptor y_desc_;
 #if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION >= 7201
-  phi::backends::gpu::ScopedRNNTensorDescriptor x_seq_desc_;
-  phi::backends::gpu::ScopedRNNTensorDescriptor y_seq_desc_;
+  backends::gpu::ScopedRNNTensorDescriptor x_seq_desc_;
+  backends::gpu::ScopedRNNTensorDescriptor y_seq_desc_;
 #endif
-  phi::backends::gpu::ScopedTensorDescriptor init_h_desc_;
-  phi::backends::gpu::ScopedTensorDescriptor init_c_desc_;
-  phi::backends::gpu::ScopedTensorDescriptor last_h_desc_;
-  phi::backends::gpu::ScopedTensorDescriptor last_c_desc_;
-  phi::backends::gpu::ScopedDropoutDescriptor dropout_desc_;
-  phi::backends::gpu::ScopedFilterDescriptor weight_desc_;
-  phi::backends::gpu::ScopedRNNDescriptor rnn_desc_;
+  backends::gpu::ScopedTensorDescriptor init_h_desc_;
+  backends::gpu::ScopedTensorDescriptor init_c_desc_;
+  backends::gpu::ScopedTensorDescriptor last_h_desc_;
+  backends::gpu::ScopedTensorDescriptor last_c_desc_;
+  backends::gpu::ScopedDropoutDescriptor dropout_desc_;
+  backends::gpu::ScopedFilterDescriptor weight_desc_;
+  backends::gpu::ScopedRNNDescriptor rnn_desc_;
 };
 
 template <typename T, typename Type>

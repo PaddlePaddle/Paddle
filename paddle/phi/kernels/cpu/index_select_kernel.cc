@@ -37,19 +37,19 @@ void IndexSelectKernel(const Context& dev_ctx,
   const auto& index_type = index.dtype();
 
   bool index_type_match =
-      index_type == phi::DataType::INT32 || index_type == phi::DataType::INT64;
+      index_type == DataType::INT32 || index_type == DataType::INT64;
   PADDLE_ENFORCE_EQ(index_type_match,
                     true,
                     common::errors::InvalidArgument(
                         "Input(Index) holds the wrong type, it holds %s, but "
                         "desires to be %s or %s",
                         index_type,
-                        phi::DataType::INT32,
-                        phi::DataType::INT64));
+                        DataType::INT32,
+                        DataType::INT64));
 
-  if (index_type == phi::DataType::INT32) {
+  if (index_type == DataType::INT32) {
     IndexSelectInner<Context, T, int>(dev_ctx, &inputs, index, output, dim);
-  } else if (index_type == phi::DataType::INT64) {
+  } else if (index_type == DataType::INT64) {
     IndexSelectInner<Context, T, int64_t>(dev_ctx, &inputs, index, output, dim);
   }
 }

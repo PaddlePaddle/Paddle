@@ -65,8 +65,8 @@ void DeformableConvGradKernel(const Context& dev_ctx,
     dmask_data = dev_ctx.template Alloc<T>(mask_grad);
   }
 
-  if (phi::backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId()) ==
-      phi::backends::xpu::XPUVersion::XPU1) {
+  if (backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId()) ==
+      backends::xpu::XPUVersion::XPU1) {
     PADDLE_ENFORCE_EQ(
         deformable_groups == 1,
         true,
@@ -85,7 +85,7 @@ void DeformableConvGradKernel(const Context& dev_ctx,
                         "in deformable_conv_grad op."));
 
   const int64_t batch_size = x.dims()[0];
-  std::vector<int64_t> output_shape_vec(common::vectorize(out_grad.dims()));
+  std::vector<int64_t> output_shape_vec(vectorize(out_grad.dims()));
   const T* output_grad_ptr = out_grad.data<T>();
   const T* input_ptr = x.data<T>();
   const T* filter_ptr = filter.data<T>();

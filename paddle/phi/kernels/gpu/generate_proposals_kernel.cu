@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <vector>
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -67,7 +68,7 @@ static void SortDescending(const GPUContext &dev_ctx,
                                                     dev_ctx.stream());
   // Allocate temporary storage
   auto place = dev_ctx.GetPlace();
-  auto d_temp_storage = phi::memory_utils::Alloc(place, temp_storage_bytes);
+  auto d_temp_storage = memory_utils::Alloc(place, temp_storage_bytes);
 
   // Run sorting operation
   cub::DeviceRadixSort::SortPairsDescending<T, int>(d_temp_storage->ptr(),
@@ -292,10 +293,10 @@ static void NMS(const GPUContext &dev_ctx,
 
   const T *boxes = proposals.data<T>();
   auto place = dev_ctx.GetPlace();
-  auto mask_ptr = phi::memory_utils::Alloc(
-      place,
-      boxes_num * col_blocks * sizeof(uint64_t),
-      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+  auto mask_ptr =
+      memory_utils::Alloc(place,
+                          boxes_num * col_blocks * sizeof(uint64_t),
+                          Stream(reinterpret_cast<StreamId>(dev_ctx.stream())));
   uint64_t *mask_dev = reinterpret_cast<uint64_t *>(mask_ptr->ptr());
 
   NMSKernel<<<blocks, threads, 0, dev_ctx.stream()>>>(
@@ -304,6 +305,14 @@ static void NMS(const GPUContext &dev_ctx,
   std::vector<uint64_t> remv(col_blocks);
   memset(&remv[0], 0, sizeof(uint64_t) * col_blocks);
 
+  PADDLE_ENFORCE_EQ(
+      backends::gpu::IsCUDAGraphCapturing(),
+      false,
+      common::errors::InvalidArgument(
+          "GenerateProposals does not support CUDA Graph capture: async D2H "
+          "copy to local vector 'mask_host' will bake the destination address "
+          "into the graph; on replay the vector is re-created at a different "
+          "address, causing a dangling-pointer write."));
   std::vector<uint64_t> mask_host(boxes_num * col_blocks);
   memory_utils::Copy(CPUPlace(),
                      mask_host.data(),
@@ -329,10 +338,12 @@ static void NMS(const GPUContext &dev_ctx,
   }
   keep_out->Resize({num_to_keep});
   int *keep = dev_ctx.template Alloc<int>(keep_out);
+  const int *stable_keep = backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      const_cast<int *>(keep_vec.data()), keep_vec.size());
   memory_utils::Copy(place,
                      keep,
                      CPUPlace(),
-                     keep_vec.data(),
+                     stable_keep,
                      sizeof(int) * num_to_keep,
                      dev_ctx.stream());
   dev_ctx.Wait();
@@ -570,15 +581,17 @@ void GenerateProposalsKernel(const Context &dev_ctx,
     rpn_rois_num->Resize({num});
     dev_ctx.template Alloc<int>(rpn_rois_num);
     int *num_data = rpn_rois_num->data<int>();
+    const int *stable_num = backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+        const_cast<int *>(tmp_num.data()), num);
     memory_utils::Copy(place,
                        num_data,
                        cpu_place,
-                       &tmp_num[0],
+                       stable_num,
                        sizeof(int) * num,
                        dev_ctx.stream());
     rpn_rois_num->Resize({num});
   }
-  phi::LegacyLoD lod;
+  LegacyLoD lod;
   lod.emplace_back(offset);
   rpn_rois->Resize({num_proposals, 4});
   rpn_roi_probs->Resize({num_proposals, 1});

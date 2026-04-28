@@ -2,21 +2,23 @@ name: Check PR Template
 
 on:
   pull_request:
-    branches: [develop]
+    branches: [develop, release/**]
     types: [opened, synchronize, reopened, edited]
 
 jobs:
   check-bypass:
     name: Check bypass
+    if: ${{ github.repository_owner == 'PaddlePaddle' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
       workflow-name: 'template'
     secrets:
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
+
   check:
     name: Check
-    needs: check-bypass
+    needs: [check-bypass]
     if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: Template

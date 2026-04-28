@@ -73,8 +73,8 @@ struct DWConvParams {
       return false;
     }
     // Only support FP16.
-    if (input.type() != phi::DataType::FLOAT16 &&
-        filter.type() != phi::DataType::FLOAT16) {
+    if (input.type() != DataType::FLOAT16 &&
+        filter.type() != DataType::FLOAT16) {
       return false;
     }
     // Only support depthwise 2D.
@@ -123,12 +123,10 @@ namespace phi::math {
  * \brief Compute the depthwise convolution which include
  * forward process and backpropagation process
  */
-template <typename DeviceContext,
-          typename T,
-          bool fuse_relu_before_conv = false>
+template <typename Context, typename T, bool fuse_relu_before_conv = false>
 class DepthwiseConvFunctor {
  public:
-  void operator()(const DeviceContext& dev_ctx,
+  void operator()(const Context& dev_ctx,
                   const DenseTensor& input,
                   const DenseTensor& filter,
                   const std::vector<int>& strides,
@@ -138,12 +136,10 @@ class DepthwiseConvFunctor {
                   const DataLayout data_layout = DataLayout::NCHW);
 };
 
-template <typename DeviceContext,
-          typename T,
-          bool fuse_relu_before_conv = false>
+template <typename Context, typename T, bool fuse_relu_before_conv = false>
 class DepthwiseConvInputGradFunctor {
  public:
-  void operator()(const DeviceContext& dev_ctx,
+  void operator()(const Context& dev_ctx,
                   const DenseTensor& input,
                   const DenseTensor& filter,
                   const DenseTensor& output_grad,
@@ -154,12 +150,10 @@ class DepthwiseConvInputGradFunctor {
                   const DataLayout data_layout = DataLayout::NCHW);
 };
 
-template <typename DeviceContext,
-          typename T,
-          bool fuse_relu_before_conv = false>
+template <typename Context, typename T, bool fuse_relu_before_conv = false>
 class DepthwiseConvFilterGradFunctor {
  public:
-  void operator()(const DeviceContext& dev_ctx,
+  void operator()(const Context& dev_ctx,
                   const DenseTensor& input,
                   const DenseTensor& output_grad,
                   const std::vector<int>& strides,
@@ -177,7 +171,7 @@ class DepthwiseConvFilterGradFunctor {
 template <typename T>
 __forceinline__ __device__ T WarpReduceSum(T val, unsigned lane_mask) {
   for (int mask = HALF_WARP; mask > 0; mask >>= 1)
-    val += phi::backends::gpu::CudaShuffleDownSync(lane_mask, val, mask);
+    val += backends::gpu::CudaShuffleDownSync(lane_mask, val, mask);
   return val;
 }
 

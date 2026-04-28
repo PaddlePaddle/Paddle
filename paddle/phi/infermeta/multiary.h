@@ -121,8 +121,8 @@ PADDLE_API void AdamwInferMeta(const MetaTensor& param,
                                const Scalar& beta1,
                                const Scalar& beta2,
                                const Scalar& epsilon,
-                               float lr_ratio,
-                               float coeff,
+                               double lr_ratio,
+                               double coeff,
                                bool with_decay,
                                bool lazy_mode,
                                int64_t min_row_size_to_use_multithread,
@@ -1313,6 +1313,11 @@ PADDLE_API void MultiheadMatmulInferMeta(const MetaTensor& input,
                                          const float alpha,
                                          const int head_number,
                                          MetaTensor* out);
+
+PADDLE_API void MaskedScatterInferMeta(const MetaTensor& x,
+                                       const MetaTensor& mask,
+                                       const MetaTensor& value,
+                                       MetaTensor* out);
 
 PADDLE_API void MaskedMultiheadAttentionInferMeta(
     const MetaTensor& x,
