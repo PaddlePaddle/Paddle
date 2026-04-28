@@ -533,6 +533,64 @@ def _get_cuda_arch_flags(cflags: list[str] | None = None) -> list[str]:
     return sorted(set(flags))
 
 
+_ROCM_VERSION_70 = 70000000
+_ROCM_LEGACY_AMDGPU_TARGETS = [
+    'gfx906',
+    'gfx926',
+    'gfx928',
+    'gfx936',
+]
+_ROCM_70_AMDGPU_TARGETS = [
+    'gfx906',
+    'gfx908',
+    'gfx90a',
+    'gfx926',
+    'gfx928',
+    'gfx936',
+    'gfx942',
+    'gfx950',
+]
+
+
+def _get_rocm_version_from_header(rocm_home):
+    if not rocm_home:
+        return None
+
+    hip_version_files = [
+        os.path.join(rocm_home, 'include', 'hip', 'hip_version.h'),
+        os.path.join(rocm_home, 'hip', 'include', 'hip', 'hip_version.h'),
+    ]
+    for hip_version_file in hip_version_files:
+        if not os.path.exists(hip_version_file):
+            continue
+        try:
+            with open(hip_version_file, encoding='utf-8') as f:
+                content = f.read()
+        except OSError:
+            continue
+        major = re.search(r'define HIP_VERSION_MAJOR +([0-9]+)', content)
+        minor = re.search(r'define HIP_VERSION_MINOR +([0-9]+)', content)
+        patch = re.search(r'define HIP_VERSION_PATCH +([0-9]+)', content)
+        if major and minor and patch:
+            return (
+                int(major.group(1)) * 10000000
+                + int(minor.group(1)) * 100000
+                + int(patch.group(1))
+            )
+    return None
+
+
+def _get_default_rocm_arch_list():
+    rocm_home = os.environ.get('ROCM_HOME') or os.environ.get('ROCM_PATH')
+    if rocm_home is None:
+        rocm_home = '/opt/rocm'
+
+    rocm_version = _get_rocm_version_from_header(rocm_home)
+    if rocm_version is not None and rocm_version >= _ROCM_VERSION_70:
+        return _ROCM_70_AMDGPU_TARGETS
+    return _ROCM_LEGACY_AMDGPU_TARGETS
+
+
 def get_rocm_arch_flags(cflags):
     """
     For ROCm platform, offload arch flags should be added for HIPCC.
@@ -561,16 +619,7 @@ def get_rocm_arch_flags(cflags):
         )
         rocm_arch_list = [arch for arch in rocm_arch_list if arch]
     else:
-        rocm_arch_list = [
-            'gfx906',
-            'gfx908',
-            'gfx90a',
-            'gfx926',
-            'gfx928',
-            'gfx936',
-            'gfx942',
-            'gfx950',
-        ]
+        rocm_arch_list = _get_default_rocm_arch_list()
 
     rocm_flags.extend(
         [f'--offload-arch={arch}' for arch in sorted(set(rocm_arch_list))]

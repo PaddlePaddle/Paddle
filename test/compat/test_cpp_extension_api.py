@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import tempfile
 import unittest
 from unittest import mock
 
@@ -110,9 +111,34 @@ class TestGetRocmArchFlags(unittest.TestCase):
     def test_default_arch_list(self):
         if "PADDLE_ROCM_ARCH_LIST" in os.environ:
             del os.environ["PADDLE_ROCM_ARCH_LIST"]
+        os.environ["ROCM_PATH"] = "/tmp/paddle-missing-rocm-for-test"
+        os.environ["ROCM_HOME"] = "/tmp/paddle-missing-rocm-for-test"
         flags = extension_utils.get_rocm_arch_flags([])
         self.assertIn("-fno-gpu-rdc", flags)
         self.assertIn("--offload-arch=gfx906", flags)
+        self.assertIn("--offload-arch=gfx936", flags)
+        self.assertNotIn("--offload-arch=gfx950", flags)
+
+    def test_rocm70_default_arch_list(self):
+        if "PADDLE_ROCM_ARCH_LIST" in os.environ:
+            del os.environ["PADDLE_ROCM_ARCH_LIST"]
+        with tempfile.TemporaryDirectory() as rocm_home:
+            hip_include = os.path.join(rocm_home, "include", "hip")
+            os.makedirs(hip_include)
+            with open(
+                os.path.join(hip_include, "hip_version.h"),
+                "w",
+                encoding="utf-8",
+            ) as f:
+                f.write(
+                    "#define HIP_VERSION_MAJOR 7\n"
+                    "#define HIP_VERSION_MINOR 0\n"
+                    "#define HIP_VERSION_PATCH 0\n"
+                )
+            os.environ["ROCM_PATH"] = rocm_home
+            os.environ["ROCM_HOME"] = rocm_home
+            flags = extension_utils.get_rocm_arch_flags([])
+        self.assertIn("--offload-arch=gfx90a", flags)
         self.assertIn("--offload-arch=gfx950", flags)
 
     def test_env_arch_list_override(self):
