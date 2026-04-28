@@ -119,7 +119,7 @@ class PyVariableWrapperHook : public imperative::VariableWrapperHook {
   PyObject *py_func_;
 };
 
-static const phi::Place PyObjectToPlace(const py::object &place_obj) {
+static const Place PyObjectToPlace(const py::object &place_obj) {
   if (py::isinstance<CPUPlace>(place_obj)) {
     return place_obj.cast<CPUPlace>();
   } else if (py::isinstance<GPUPlace>(place_obj)) {
@@ -132,8 +132,8 @@ static const phi::Place PyObjectToPlace(const py::object &place_obj) {
     return place_obj.cast<phi::XPUPinnedPlace>();
   } else if (py::isinstance<phi::IPUPlace>(place_obj)) {
     return place_obj.cast<phi::IPUPlace>();
-  } else if (py::isinstance<phi::Place>(place_obj)) {
-    return place_obj.cast<phi::Place>();
+  } else if (py::isinstance<Place>(place_obj)) {
+    return place_obj.cast<Place>();
   } else if (py::isinstance<phi::CustomPlace>(place_obj)) {
     return place_obj.cast<phi::CustomPlace>();
   } else {
@@ -168,7 +168,7 @@ static void InitVarBaseOnly(imperative::VarBase *self,
 // initialize varbase and its tensor.
 static void InitVarBaseAndTensor(imperative::VarBase *self,
                                  const py::array &array,
-                                 const phi::Place &place,
+                                 const Place &place,
                                  const std::string &name,
                                  bool persistable = false,
                                  bool zero_copy = false,
@@ -729,8 +729,8 @@ void BindImperative(py::module *m_ptr) {
               self.SetExpectedPlace(*p);
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
-            } else if (py::isinstance<phi::Place>(obj)) {
-              auto p = obj.cast<phi::Place *>();
+            } else if (py::isinstance<Place>(obj)) {
+              auto p = obj.cast<Place *>();
               self.SetExpectedPlace(*p);
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
@@ -843,7 +843,7 @@ void BindImperative(py::module *m_ptr) {
             self.nrings_ = nrings;
           });
 
-  m.def("varbase_copy", &VarBaseCopy<phi::Place>);
+  m.def("varbase_copy", &VarBaseCopy<Place>);
   m.def("varbase_copy", &VarBaseCopy<CPUPlace>);
   m.def("varbase_copy", &VarBaseCopy<GPUPlace>);
   m.def("varbase_copy", &VarBaseCopy<phi::XPUPlace>);
@@ -858,7 +858,7 @@ void BindImperative(py::module *m_ptr) {
              &output_targets,
          const std::vector<std::shared_ptr<imperative::VarBase>> &output_grads,
          const std::vector<std::shared_ptr<imperative::VarBase>> &no_grad_vars,
-         const phi::Place &place,
+         const Place &place,
          bool create_graph,
          bool retain_graph,
          bool allow_unused,
