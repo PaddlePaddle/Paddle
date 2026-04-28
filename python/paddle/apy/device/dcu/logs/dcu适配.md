@@ -32,9 +32,9 @@ paddle/apy
     ├── matmul
     │   ├── ck_patch          # CK (Composable Kernel) patch，原方案，不再使用
     │   ├── cutlass_patch     # cutlass patch，CUDA侧使用
-    │   ├── hytlass_patch     # hytlass patch，DCU侧使用
+    │   ├── hytlass_patch     # hytlass patch，DCU侧使用（已随PR提交）
     │   ├── hytlass           # hytlass库（软链接，需手动创建）
-    │   ├── hytlass_matmul.h  # hytlass matmul入口头文件
+    │   ├── hytlass_matmul.h  # hytlass matmul入口头文件（已随PR提交）
     │   ├── matmul.h
     │   ├── params.h
     │   └── profile.h
@@ -45,11 +45,12 @@ paddle/apy
 
 其中`hytlass_patch`与`cutlass_patch`同级，位于Paddle仓库内，已随PR一起提交。`hytlass_patch`不是直接复用`cutlass_patch`，而是在hytlass库fork cutlass时已将patch文件中的命名做了替换（`cutlass/` → `hytlass/`、`namespace cutlass` → `namespace hytlass`、`CUTLASS_HOST_DEVICE` → `HYTLASS_HOST_DEVICE`）。
 
-`hytlass`目录下需要手动创建软链接的关键文件：
+`hytlass_matmul.h`也已随PR提交到Paddle仓库，编译时通过`-I matmul`优先从Paddle仓库本地引用，而非hytlass库。
+
+`hytlass`目录下需要手动创建软链接的关键文件（仅hytlass库核心头文件）：
 ```
 hytlass
 ├── include
-│   ├── hytlass_matmul.h
 │   └── hytlass/              # hytlass库核心头文件
 │       ├── epilogue/
 │       ├── gemm/
