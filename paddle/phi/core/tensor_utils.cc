@@ -123,8 +123,6 @@ void Copy(const Context& dev_ctx,
     memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size, nullptr);
   } else if (src_place.GetType() == AllocationType::GPU &&  // NOLINT
              dst_place.GetType() == AllocationType::CPU) {
-    auto src_gpu_place = src_place;
-    auto dst_cpu_place = dst_place;
     auto ctx_place = dev_ctx.GetPlace();
     PADDLE_ENFORCE_EQ(
         ctx_place.GetType() == AllocationType::GPU,
@@ -132,24 +130,20 @@ void Copy(const Context& dev_ctx,
         errors::PreconditionNotMet(
             "Context place error, excepted GPUPlace, but actually %s.",
             ctx_place));
-    auto ctx_gpu_place = ctx_place;
-    PADDLE_ENFORCE_EQ(src_gpu_place,
-                      ctx_gpu_place,
+    PADDLE_ENFORCE_EQ(src_place,
+                      ctx_place,
                       errors::Unavailable(
                           "Source place and context place do not match, source "
                           "place is %s, context place is %s.",
-                          src_gpu_place,
-                          ctx_gpu_place));
+                          src_place,
+                          ctx_place));
     auto stream =
         blocking ? nullptr
                  : reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
-    memory_utils::Copy(
-        dst_cpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
+    memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
   } else if ((src_place.GetType() == AllocationType::CPU ||
               src_place.GetType() == AllocationType::GPUPINNED) &&  // NOLINT
              dst_place.GetType() == AllocationType::GPU) {
-    auto src_cpu_place = src_place;
-    auto dst_gpu_place = dst_place;
     auto ctx_place = dev_ctx.GetPlace();
     PADDLE_ENFORCE_EQ(
         ctx_place.GetType() == AllocationType::GPU,
@@ -157,14 +151,13 @@ void Copy(const Context& dev_ctx,
         errors::PreconditionNotMet(
             "Context place error, excepted GPUPlace, but actually %s.",
             ctx_place));
-    auto ctx_gpu_place = ctx_place;
     PADDLE_ENFORCE_EQ(
-        dst_gpu_place,
-        ctx_gpu_place,
+        dst_place,
+        ctx_place,
         errors::Unavailable("Destination place and context place do not match, "
                             "destination place is %s, context place is %s.",
-                            dst_gpu_place,
-                            ctx_gpu_place));
+                            dst_place,
+                            ctx_place));
     auto stream =
         blocking ? nullptr
                  : reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
@@ -176,11 +169,9 @@ void Copy(const Context& dev_ctx,
             const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(src_ptr)),
             size);
     memory_utils::Copy(
-        dst_gpu_place, dst_ptr, src_cpu_place, stable_src_ptr, size, stream);
+        dst_place, dst_ptr, src_place, stable_src_ptr, size, stream);
   } else if (src_place.GetType() == AllocationType::GPU &&  // NOLINT
              dst_place.GetType() == AllocationType::GPU) {
-    auto src_gpu_place = src_place;
-    auto dst_gpu_place = dst_place;
     auto ctx_place = dev_ctx.GetPlace();
 
     PADDLE_ENFORCE_EQ(
@@ -193,17 +184,16 @@ void Copy(const Context& dev_ctx,
         blocking ? nullptr
                  : reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
     if (src_place.GetDeviceId() == dst_place.GetDeviceId()) {
-      memory_utils::Copy(
-          dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
+      memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
     } else {
       if (ctx_place.GetDeviceId() == src_place.GetDeviceId()) {
         memory_utils::Copy(
-            dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
+            dst_place, dst_ptr, src_place, src_ptr, size, stream);
         phi::DeviceContextPool::Instance().Get(src.place())->Wait();
       } else if (ctx_place.GetDeviceId() == dst_place.GetDeviceId()) {
         phi::DeviceContextPool::Instance().Get(src.place())->Wait();
         memory_utils::Copy(
-            dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
+            dst_place, dst_ptr, src_place, src_ptr, size, stream);
         phi::DeviceContextPool::Instance().Get(dst_place)->Wait();
       } else {
         PADDLE_THROW(errors::Unavailable(
@@ -212,8 +202,6 @@ void Copy(const Context& dev_ctx,
     }
   } else if (src_place.GetType() == AllocationType::GPU &&  // NOLINT
              dst_place.GetType() == AllocationType::GPUPINNED) {
-    auto src_gpu_place = src_place;
-    auto dst_cuda_pinned_place = dst_place;
     auto ctx_place = dev_ctx.GetPlace();
     PADDLE_ENFORCE_EQ(
         ctx_place.GetType() == AllocationType::GPU,
@@ -221,19 +209,17 @@ void Copy(const Context& dev_ctx,
         errors::PreconditionNotMet(
             "Context place error, excepted GPUPlace, but actually %s.",
             ctx_place));
-    auto ctx_gpu_place = ctx_place;
-    PADDLE_ENFORCE_EQ(src_gpu_place,
-                      ctx_gpu_place,
+    PADDLE_ENFORCE_EQ(src_place,
+                      ctx_place,
                       errors::Unavailable(
                           "Source place and context place do not match, source "
                           "place is %s, context place is %s.",
-                          src_gpu_place,
-                          ctx_gpu_place));
+                          src_place,
+                          ctx_place));
     auto stream =
         blocking ? nullptr
                  : reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
-    memory_utils::Copy(
-        dst_cuda_pinned_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
+    memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
 #endif
 #ifdef PADDLE_WITH_XPU
   } else if ((src_place.GetType() == AllocationType::CPU ||
