@@ -414,23 +414,74 @@ PADDLE_API void AdamwDenseKernel_old(const Context& dev_ctx,
 // When called as pow_(double, float), C++ promotes float to double,
 // so this becomes ::pow(double, double) returning double — exactly matching
 // CUDA device pow.
-template <typename Base_type, typename Exp_type>
-static __device__ __forceinline__ Base_type torch_pow_(Base_type base,
-                                                       Exp_type exp) {
-  return ::pow(base, exp);
-}
+template <bool IsCpu>
+struct AdamWLrAccessor;
 
-template <typename T,        // Parameter type (may be fp16/bf16)
-          typename TG,       // Gradient type
-          typename MT,       // Master precision type (= opmath_t, float for
-                             // float/fp16/bf16)
-          typename TM = MT>  // Moment estimation type (default = MT, can be
-                             // bfloat16)
+// cpu
+template <>
+struct AdamWLrAccessor<true> {
+  const double lr_double;
+
+  explicit AdamWLrAccessor(double lr) : lr_double(lr) {}
+
+  __device__ __forceinline__ double GetLrDouble() const { return lr_double; }
+};
+
+// gpu
+template <>
+struct AdamWLrAccessor<false> {
+  const double* lr;
+  const double lr_ratio;
+
+  AdamWLrAccessor(const double* lr, double lr_ratio)
+      : lr(lr), lr_ratio(lr_ratio) {}
+
+  __device__ __forceinline__ double GetLrDouble() const {
+    return *lr * lr_ratio;
+  }
+};
+
+// cpu
+template <typename MT, bool IsCpu>
+struct AdamWBiasCorrAccessor;
+
+template <typename MT>
+struct AdamWBiasCorrAccessor<MT, true> {
+  const double bc1;  // 1 - beta1_pow
+  const double bc2;  // 1 - beta2_pow
+
+  AdamWBiasCorrAccessor(double bc1, double bc2) : bc1(bc1), bc2(bc2) {}
+
+  __device__ __forceinline__ double GetBc1() const { return bc1; }
+  __device__ __forceinline__ double GetBc2() const { return bc2; }
+};
+
+// gpu
+template <typename MT>
+struct AdamWBiasCorrAccessor<MT, false> {
+  const double* beta1_pow;
+  const double* beta2_pow;
+
+  AdamWBiasCorrAccessor(const double* bp1, const double* bp2)
+      : beta1_pow(bp1), beta2_pow(bp2) {}
+
+  __device__ __forceinline__ double GetBc1() const { return 1.0 - *beta1_pow; }
+  __device__ __forceinline__ double GetBc2() const { return 1.0 - *beta2_pow; }
+};
+
+template <typename T,   // Parameter type (may be fp16/bf16)
+          typename TG,  // Gradient type
+          typename MT,  // Master precision type (= opmath_t, float for
+                        // float/fp16/bf16)
+          typename TM,  // Moment estimation type (can be bfloat16)
+          typename LrAccessor,
+          typename BiasCorrAccessor>
 __global__ void AdamWStyleKernel(const double beta1,
                                  const double beta2,
                                  const double epsilon,
                                  const double weight_decay,
-                                 const double lr_double,
+                                 LrAccessor lr_accessor,
+                                 BiasCorrAccessor bias_corr_accessor,
                                  const TG* __restrict__ grad,
                                  const T* __restrict__ param,
                                  T* __restrict__ param_out,
@@ -442,22 +493,38 @@ __global__ void AdamWStyleKernel(const double beta1,
                                  TM* __restrict__ moment2_out,
                                  const TM* __restrict__ moment2_max,
                                  TM* __restrict__ moment2_max_out,
-                                 // step_count passed as float, matching torch's
-                                 // state_steps (float tensor) bias_correction
-                                 // computed ON DEVICE, exactly as torch's
-                                 // FusedAdamMathFunctor does
-                                 const float step_count,
                                  int64_t ndim,
                                  bool amsgrad) {
-  // These are then passed to adam_math as const opmath_t& (float), truncating
-  // at call boundary.
-  const double bc1_dbl = 1.0 - torch_pow_(beta1, step_count);
-  const double bc2_dbl = 1.0 - torch_pow_(beta2, step_count);
-  const double bc2_sqrt_dbl = ::sqrt(bc2_dbl);
-  // Truncate to opmath_t (float) at the "adam_math call boundary", matching
-  // torch exactly
-  const MT bias_correction1 = static_cast<MT>(bc1_dbl);
-  const MT bias_correction2_sqrt = static_cast<MT>(bc2_sqrt_dbl);
+  __shared__ double one_minus_beta1_shared;
+  __shared__ double one_minus_beta2_shared;
+  __shared__ double lr_weight_decay_shared;
+  __shared__ MT bias_correction2_sqrt_shared;
+  __shared__ MT step_size_shared;
+
+  if (threadIdx.x == 0) {
+    const double lr_double = lr_accessor.GetLrDouble();
+    const double bc1_dbl = bias_corr_accessor.GetBc1();
+    const double bc2_dbl = bias_corr_accessor.GetBc2();
+    const double bc2_sqrt_dbl = ::sqrt(bc2_dbl);
+
+    one_minus_beta1_shared = 1.0 - beta1;
+    one_minus_beta2_shared = 1.0 - beta2;
+    lr_weight_decay_shared = lr_double * weight_decay;
+    // Truncate to opmath_t (float) at the "adam_math call boundary", matching
+    // torch exactly.
+    const MT bias_correction1 = static_cast<MT>(bc1_dbl);
+    bias_correction2_sqrt_shared = static_cast<MT>(bc2_sqrt_dbl);
+    // Match torch: lr_double (double) / bias_correction1 (float) promotes to
+    // double, truncated to float on assignment.
+    step_size_shared = lr_double / bias_correction1;
+  }
+  __syncthreads();
+
+  const double one_minus_beta1 = one_minus_beta1_shared;
+  const double one_minus_beta2 = one_minus_beta2_shared;
+  const double lr_weight_decay = lr_weight_decay_shared;
+  const MT bias_correction2_sqrt = bias_correction2_sqrt_shared;
+  const MT step_size = step_size_shared;
 
   int64_t id =
       static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
@@ -469,10 +536,11 @@ __global__ void AdamWStyleKernel(const double beta1,
     MT g = static_cast<MT>(grad[id]);
     MT exp_avg = static_cast<MT>(moment1[id]);
     MT exp_avg_sq = static_cast<MT>(moment2[id]);
+    const double g_d = static_cast<double>(g);
 
     // Weight decay: param -= lr * weight_decay * param
     if (weight_decay != 0) {
-      p -= lr_double * weight_decay * p;
+      p -= lr_weight_decay * p;
     }
 
     // exp_avg = beta1 * exp_avg + (1 - beta1) * grad
@@ -480,9 +548,8 @@ __global__ void AdamWStyleKernel(const double beta1,
     // We explicitly use __fma_rn to match: first compute (1-beta1)*g (rounded),
     // then fma(beta1, exp_avg_double, rounded_result).
     {
-      double g_d = static_cast<double>(g);
-      double exp_avg_d = static_cast<double>(exp_avg);
-      double one_minus_beta1_times_g = __dmul_rn(1.0 - beta1, g_d);
+      const double exp_avg_d = static_cast<double>(exp_avg);
+      const double one_minus_beta1_times_g = __dmul_rn(one_minus_beta1, g_d);
       exp_avg =
           static_cast<MT>(__fma_rn(beta1, exp_avg_d, one_minus_beta1_times_g));
     }
@@ -490,17 +557,11 @@ __global__ void AdamWStyleKernel(const double beta1,
     // exp_avg_sq = beta2 * exp_avg_sq + (1 - beta2) * grad * grad
     // Match torch: ((1-beta2)*g)*g is computed left-to-right, then fma'd.
     {
-      double g_d = static_cast<double>(g);
-      double exp_avg_sq_d = static_cast<double>(exp_avg_sq);
-      double one_minus_beta2_times_g = __dmul_rn(1.0 - beta2, g_d);
-      double grad_sq_term = __dmul_rn(one_minus_beta2_times_g, g_d);
+      const double exp_avg_sq_d = static_cast<double>(exp_avg_sq);
+      const double one_minus_beta2_times_g = __dmul_rn(one_minus_beta2, g_d);
+      const double grad_sq_term = __dmul_rn(one_minus_beta2_times_g, g_d);
       exp_avg_sq = static_cast<MT>(__fma_rn(beta2, exp_avg_sq_d, grad_sq_term));
     }
-
-    // step_size = lr / bias_correction1
-    // Match torch: lr_double (double) / bias_correction1 (float) →
-    // promotes to double, truncated to float on assignment.
-    const MT step_size = lr_double / bias_correction1;
 
     MT denom;
     if (amsgrad) {
@@ -611,47 +672,16 @@ PADDLE_API void AdamwDenseKernel(const Context& dev_ctx,
                               "value is:%d.",
                               beta2_pow_out->numel()));
 
-  // Compute step_count from beta_pow values, matching torch's state_steps
-  // (float tensor). Torch's FusedAdamMathFunctor computes bias_correction ON
-  // DEVICE using CUDA pow. We recover step from beta1_pow = beta1^step, then
-  // pass step_count (float) to the kernel, which computes bias_correction on
-  // device to match torch bit-for-bit.
-  double beta1_pow_val;
   const bool beta_pow_on_cpu =
       beta1_pow.place() == CPUPlace() && beta2_pow.place() == CPUPlace();
-  if (beta_pow_on_cpu) {
-    beta1_pow_val = static_cast<double>(beta1_pow.data<MT>()[0]);
-  } else {
-    MT beta1_pow_cpu;
-    phi::memory_utils::Copy(CPUPlace(),
-                            &beta1_pow_cpu,
-                            beta1_pow.place(),
-                            beta1_pow.data<MT>(),
-                            sizeof(MT),
-                            dev_ctx.stream());
-    dev_ctx.Wait();
-    beta1_pow_val = static_cast<double>(beta1_pow_cpu);
+
+  // Get learning rate as double. For GPU learning_rate, load it in the CUDA
+  // kernel to avoid a host copy and synchronization.
+  const bool lr_on_cpu = learning_rate.place() == CPUPlace();
+  double lr_double = 0.0;
+  if (lr_on_cpu) {
+    lr_double = learning_rate.data<double>()[0] * lr_ratio;
   }
-
-  // Recover step count: step = round(log(beta_pow) / log(beta))
-  double step_from_beta1 =
-      std::round(std::log(beta1_pow_val) / std::log(beta1_));
-  // Torch stores step as float in state_steps tensor
-  float step_count = static_cast<float>(step_from_beta1);
-
-  // Get learning rate as double.
-  // The Python optimizer adjusts lr_ratio to compensate for float32 precision
-  // loss when PADDLE_ADAMW_TORCH_COMPAT is enabled, so that
-  // float32(lr) * lr_ratio recovers the full double-precision learning rate.
-  MT lr_on_host;
-  phi::memory_utils::Copy(CPUPlace(),
-                          &lr_on_host,
-                          learning_rate.place(),
-                          learning_rate.data<MT>(),
-                          sizeof(MT),
-                          dev_ctx.stream());
-  dev_ctx.Wait();
-  const double lr_double = static_cast<double>(lr_on_host) * lr_ratio;
 
   const MT* master_in_data =
       multi_precision ? master_param->data<MT>() : nullptr;
@@ -671,13 +701,19 @@ PADDLE_API void AdamwDenseKernel(const Context& dev_ctx,
 
 #define LAUNCH_ADAMW_STYLE_KERNEL(MOMENT_T)                             \
   if (use_bfloat32_grad) {                                              \
-    AdamWStyleKernel<T, float, MT, MOMENT_T>                            \
+    AdamWStyleKernel<T,                                                 \
+                     float,                                             \
+                     MT,                                                \
+                     MOMENT_T,                                          \
+                     decltype(lr_accessor),                             \
+                     decltype(bias_corr_accessor)>                      \
         <<<blocks, threads, 0, dev_ctx.stream()>>>(                     \
             beta1_,                                                     \
             beta2_,                                                     \
             epsilon_,                                                   \
             weight_decay,                                               \
-            lr_double,                                                  \
+            lr_accessor,                                                \
+            bias_corr_accessor,                                         \
             grad.data<float>(),                                         \
             param.data<T>(),                                            \
             dev_ctx.template Alloc<T>(param_out),                       \
@@ -690,17 +726,22 @@ PADDLE_API void AdamwDenseKernel(const Context& dev_ctx,
             amsgrad ? moment2_max->data<MOMENT_T>() : nullptr,          \
             amsgrad ? dev_ctx.template Alloc<MOMENT_T>(moment2_max_out) \
                     : nullptr,                                          \
-            step_count,                                                 \
             param.numel(),                                              \
             amsgrad);                                                   \
   } else {                                                              \
-    AdamWStyleKernel<T, T, MT, MOMENT_T>                                \
+    AdamWStyleKernel<T,                                                 \
+                     T,                                                 \
+                     MT,                                                \
+                     MOMENT_T,                                          \
+                     decltype(lr_accessor),                             \
+                     decltype(bias_corr_accessor)>                      \
         <<<blocks, threads, 0, dev_ctx.stream()>>>(                     \
             beta1_,                                                     \
             beta2_,                                                     \
             epsilon_,                                                   \
             weight_decay,                                               \
-            lr_double,                                                  \
+            lr_accessor,                                                \
+            bias_corr_accessor,                                         \
             grad.data<T>(),                                             \
             param.data<T>(),                                            \
             dev_ctx.template Alloc<T>(param_out),                       \
@@ -713,34 +754,64 @@ PADDLE_API void AdamwDenseKernel(const Context& dev_ctx,
             amsgrad ? moment2_max->data<MOMENT_T>() : nullptr,          \
             amsgrad ? dev_ctx.template Alloc<MOMENT_T>(moment2_max_out) \
                     : nullptr,                                          \
-            step_count,                                                 \
             param.numel(),                                              \
             amsgrad);                                                   \
   }
 
+#define DISPATCH_ADAMW_STYLE_KERNEL(MOMENT_T)                        \
+  if (lr_on_cpu) {                                                   \
+    AdamWLrAccessor<true> lr_accessor(lr_double);                    \
+    if (beta_pow_on_cpu) {                                           \
+      const double bc1 = 1.0 - beta1_pow.data<double>()[0];          \
+      const double bc2 = 1.0 - beta2_pow.data<double>()[0];          \
+      AdamWBiasCorrAccessor<MT, true> bias_corr_accessor(bc1, bc2);  \
+      LAUNCH_ADAMW_STYLE_KERNEL(MOMENT_T)                            \
+    } else {                                                         \
+      AdamWBiasCorrAccessor<MT, false> bias_corr_accessor(           \
+          beta1_pow.data<double>(), beta2_pow.data<double>());       \
+      LAUNCH_ADAMW_STYLE_KERNEL(MOMENT_T)                            \
+    }                                                                \
+  } else {                                                           \
+    AdamWLrAccessor<false> lr_accessor(learning_rate.data<double>(), \
+                                       lr_ratio);                    \
+    if (beta_pow_on_cpu) {                                           \
+      const double bc1 = 1.0 - beta1_pow.data<double>()[0];          \
+      const double bc2 = 1.0 - beta2_pow.data<double>()[0];          \
+      AdamWBiasCorrAccessor<MT, true> bias_corr_accessor(bc1, bc2);  \
+      LAUNCH_ADAMW_STYLE_KERNEL(MOMENT_T)                            \
+    } else {                                                         \
+      AdamWBiasCorrAccessor<MT, false> bias_corr_accessor(           \
+          beta1_pow.data<double>(), beta2_pow.data<double>());       \
+      LAUNCH_ADAMW_STYLE_KERNEL(MOMENT_T)                            \
+    }                                                                \
+  }
+
   // Select template instantiation based on moment type
   if (use_bfloat16_moments) {
-    LAUNCH_ADAMW_STYLE_KERNEL(bfloat16)
+    DISPATCH_ADAMW_STYLE_KERNEL(bfloat16)
   } else {
-    LAUNCH_ADAMW_STYLE_KERNEL(MT)
+    DISPATCH_ADAMW_STYLE_KERNEL(MT)
   }
+#undef DISPATCH_ADAMW_STYLE_KERNEL
 #undef LAUNCH_ADAMW_STYLE_KERNEL
 
   // Update beta_pow (same as original)
   if (!use_global_beta_pow) {
     if (beta_pow_on_cpu) {
-      auto* beta1_pow_out_data = dev_ctx.template HostAlloc<MT>(beta1_pow_out);
-      auto* beta2_pow_out_data = dev_ctx.template HostAlloc<MT>(beta2_pow_out);
-      beta1_pow_out_data[0] = beta1_ * beta1_pow.data<MT>()[0];
-      beta2_pow_out_data[0] = beta2_ * beta2_pow.data<MT>()[0];
+      auto* beta1_pow_out_data =
+          dev_ctx.template HostAlloc<double>(beta1_pow_out);
+      auto* beta2_pow_out_data =
+          dev_ctx.template HostAlloc<double>(beta2_pow_out);
+      beta1_pow_out_data[0] = beta1_ * beta1_pow.data<double>()[0];
+      beta2_pow_out_data[0] = beta2_ * beta2_pow.data<double>()[0];
     } else {
-      UpdateBetaPowKernel<MT><<<1, 1, 0, dev_ctx.stream()>>>(
+      UpdateBetaPowKernel<double><<<1, 1, 0, dev_ctx.stream()>>>(
           beta1_,
           beta2_,
-          beta1_pow.data<MT>(),
-          beta2_pow.data<MT>(),
-          dev_ctx.template Alloc<MT>(beta1_pow_out),
-          dev_ctx.template Alloc<MT>(beta2_pow_out));
+          beta1_pow.data<double>(),
+          beta2_pow.data<double>(),
+          dev_ctx.template Alloc<double>(beta1_pow_out),
+          dev_ctx.template Alloc<double>(beta2_pow_out));
     }
   }
 }
@@ -755,9 +826,12 @@ PD_REGISTER_KERNEL(adamw,
                    double,
                    phi::float16,
                    phi::bfloat16) {
-  // Skip beta1_pow, beta2_pow, skip_update data transform
+  kernel->InputAt(2).SetDataType(phi::DataType::FLOAT64);
+  // beta1_pow, beta2_pow: always float64, skip backend and dtype transform
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(6).SetDataType(phi::DataType::FLOAT64);
   kernel->InputAt(7).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(7).SetDataType(phi::DataType::FLOAT64);
   kernel->InputAt(9).SetBackend(phi::Backend::ALL_BACKEND);
 
   if (kernel_key.dtype() == phi::DataType::FLOAT16 ||
@@ -765,10 +839,11 @@ PD_REGISTER_KERNEL(adamw,
     kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
-    kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
-    kernel->OutputAt(5).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(6).SetDataType(phi::DataType::FLOAT32);
   }
+  // beta1_pow_out, beta2_pow_out are always float64 regardless of param dtype
+  kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT64);
   kernel->OutputAt(4).SetBackend(phi::Backend::UNDEFINED);
+  kernel->OutputAt(5).SetDataType(phi::DataType::FLOAT64);
   kernel->OutputAt(5).SetBackend(phi::Backend::UNDEFINED);
 }

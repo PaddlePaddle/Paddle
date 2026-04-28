@@ -420,7 +420,9 @@ class AdamW(Optimizer):
         self._add_accumulator(
             name=self._beta1_pow_acc_str,
             param=p,
-            dtype=acc_dtype,
+            dtype=DataType.FLOAT64
+            if in_pir_mode()
+            else core.VarDesc.VarType.FP64,
             fill_value=(
                 0.9
                 if isinstance(self._beta1, (Variable, Value))
@@ -433,7 +435,9 @@ class AdamW(Optimizer):
         self._add_accumulator(
             name=self._beta2_pow_acc_str,
             param=p,
-            dtype=acc_dtype,
+            dtype=DataType.FLOAT64
+            if in_pir_mode()
+            else core.VarDesc.VarType.FP64,
             fill_value=(
                 0.999
                 if isinstance(self._beta2, (Variable, Value))
@@ -519,17 +523,6 @@ class AdamW(Optimizer):
                 if self._lr_ratio is None
                 else self._lr_ratio(param_and_grad[0])
             )
-
-            # Note: Since the data type of lr is constructed within the optimizer class, modifying it would have a significant impact. Therefore, this method is used to bypass it.
-            # Paddle stores lr as float32 tensor, losing ~7 digits
-            # of precision. PyTorch passes lr as double. The kernel computes
-            # lr_double = float32(lr_tensor) * lr_ratio, so we adjust lr_ratio
-            # to compensate: lr_ratio *= (double_lr / float32_lr).
-            if paddle.in_dynamic_mode():
-                current_lr = float(self.get_lr())
-                lr_f32 = float(lr.item())
-                if lr_f32 != 0.0:
-                    lr_ratio_ = lr_ratio_ * (current_lr / lr_f32)
 
             _beta1 = (
                 self._beta1
