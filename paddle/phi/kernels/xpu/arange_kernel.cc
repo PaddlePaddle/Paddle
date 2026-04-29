@@ -32,38 +32,23 @@ void ArangeTensorKernel(const Context& dev_ctx,
                    phi::IsFloatingType(step.dtype());
   int64_t size = 0;
   using XPUType = typename XPUTypeTrait<T>::Type;
-  XPUType start_value, step_value;
+  Scalar start_scalar(start);
+  Scalar end_scalar(end);
+  Scalar step_scalar(step);
+  XPUType start_value;
+  XPUType step_value;
+
   if (any_float) {
-    double sv, ev, stv;
-    PD_VISIT_ALL_TYPES(
-        start.dtype(), "GetStart", ([&] {
-          sv = static_cast<double>(GetValue<data_t, Context>(dev_ctx, start));
-        }));
-    PD_VISIT_ALL_TYPES(
-        end.dtype(), "GetEnd", ([&] {
-          ev = static_cast<double>(GetValue<data_t, Context>(dev_ctx, end));
-        }));
-    PD_VISIT_ALL_TYPES(
-        step.dtype(), "GetStep", ([&] {
-          stv = static_cast<double>(GetValue<data_t, Context>(dev_ctx, step));
-        }));
+    double sv = start_scalar.to<double>();
+    double ev = end_scalar.to<double>();
+    double stv = step_scalar.to<double>();
     funcs::GetSize<double>(sv, ev, stv, &size);
     start_value = static_cast<XPUType>(sv);
     step_value = static_cast<XPUType>(stv);
   } else {
-    int64_t sv, ev, stv;
-    PD_VISIT_ALL_TYPES(
-        start.dtype(), "GetStart", ([&] {
-          sv = static_cast<int64_t>(GetValue<data_t, Context>(dev_ctx, start));
-        }));
-    PD_VISIT_ALL_TYPES(
-        end.dtype(), "GetEnd", ([&] {
-          ev = static_cast<int64_t>(GetValue<data_t, Context>(dev_ctx, end));
-        }));
-    PD_VISIT_ALL_TYPES(
-        step.dtype(), "GetStep", ([&] {
-          stv = static_cast<int64_t>(GetValue<data_t, Context>(dev_ctx, step));
-        }));
+    int64_t sv = start_scalar.to<int64_t>();
+    int64_t ev = end_scalar.to<int64_t>();
+    int64_t stv = step_scalar.to<int64_t>();
     funcs::GetSize<int64_t>(sv, ev, stv, &size);
     start_value = static_cast<XPUType>(sv);
     step_value = static_cast<XPUType>(stv);

@@ -43,21 +43,14 @@ void RangeTensorKernel(const Context& dev_ctx,
                        DenseTensor* out) {
   int64_t size = 0;
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  MPType start_value, end_value, step_value;
+  Scalar start_scalar(start);
+  Scalar end_scalar(end);
+  Scalar step_scalar(step);
 
-  PD_VISIT_ALL_TYPES(start.dtype(), "GetStart", ([&] {
-                       start_value = static_cast<MPType>(
-                           GetValue<data_t, Context>(dev_ctx, start));
-                     }));
-  PD_VISIT_ALL_TYPES(end.dtype(), "GetEnd", ([&] {
-                       end_value = static_cast<MPType>(
-                           GetValue<data_t, Context>(dev_ctx, end));
-                     }));
-  PD_VISIT_ALL_TYPES(step.dtype(), "GetStep", ([&] {
-                       step_value = static_cast<MPType>(
-                           GetValue<data_t, Context>(dev_ctx, step));
-                     }));
-  funcs::GetSizeForRange(start_value, end_value, step_value, &size);
+  MPType start_value = start_scalar.to<MPType>();
+  MPType end_value = end_scalar.to<MPType>();
+  MPType step_value = step_scalar.to<MPType>();
+  funcs::GetSizeForRange<MPType>(start_value, end_value, step_value, &size);
 
   out->Resize({size});
   T* out_data = dev_ctx.template Alloc<T>(out);
@@ -68,7 +61,7 @@ void RangeTensorKernel(const Context& dev_ctx,
     return;
   }
   int64_t grid = (size + block - 1) / block;
-  Range<MT, T>
+  Range<MPType, T>
       <<<grid, block, 0, stream>>>(start_value, step_value, size, out_data);
 }
 

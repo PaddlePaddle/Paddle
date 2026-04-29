@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/arange_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/range_function.h"
 
@@ -44,7 +45,7 @@ void ArangeTensorKernel(const Context& dev_ctx,
                         const DenseTensor& step,
                         DenseTensor* out) {
   int64_t size = 0;
-  T start_value, step_value;
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
 
   bool any_float = phi::IsFloatingType(start.dtype()) ||
                    phi::IsFloatingType(end.dtype()) ||
@@ -58,22 +59,21 @@ void ArangeTensorKernel(const Context& dev_ctx,
     double sv = start_scalar.to<double>();
     double ev = end_scalar.to<double>();
     double stv = step_scalar.to<double>();
-    funcs::GetSize(sv, ev, stv, &size);
-    start_value = static_cast<T>(sv);
-    step_value = static_cast<T>(stv);
+    funcs::GetSize<double>(sv, ev, stv, &size);
   } else {
     int64_t sv = start_scalar.to<int64_t>();
     int64_t ev = end_scalar.to<int64_t>();
     int64_t stv = step_scalar.to<int64_t>();
-    funcs::GetSize(sv, ev, stv, &size);
-    start_value = static_cast<T>(sv);
-    step_value = static_cast<T>(stv);
+    funcs::GetSize<int64_t>(sv, ev, stv, &size);
   }
+  MPType start_value = start_scalar.to<MPType>();
+  MPType step_value = step_scalar.to<MPType>();
+
   out->Resize({size});
   T* out_data = dev_ctx.template Alloc<T>(out);
-  T value = start_value;
+  MPType value = start_value;
   for (int64_t i = 0; i < size; ++i) {
-    out_data[i] = value;
+    out_data[i] = static_cast<T>(value);
     value += step_value;
   }
 }
@@ -88,27 +88,25 @@ void ArangeKernel(const Context& dev_ctx,
                    phi::IsFloatingType(end.dtype()) ||
                    phi::IsFloatingType(step.dtype());
   int64_t size = 0;
-  T start_value, step_value;
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   if (any_float) {
     double sv = start.to<double>();
     double ev = end.to<double>();
     double stv = step.to<double>();
-    funcs::GetSize(sv, ev, stv, &size);
-    start_value = static_cast<T>(sv);
-    step_value = static_cast<T>(stv);
+    funcs::GetSize<double>(sv, ev, stv, &size);
   } else {
     int64_t sv = start.to<int64_t>();
     int64_t ev = end.to<int64_t>();
     int64_t stv = step.to<int64_t>();
-    funcs::GetSize(sv, ev, stv, &size);
-    start_value = static_cast<T>(sv);
-    step_value = static_cast<T>(stv);
+    funcs::GetSize<int64_t>(sv, ev, stv, &size);
   }
+  MPType start_value = start.to<MPType>();
+  MPType step_value = step.to<MPType>();
   out->Resize({size});
   T* out_data = dev_ctx.template Alloc<T>(out);
-  T value = start_value;
+  MPType value = start_value;
   for (int64_t i = 0; i < size; ++i) {
-    out_data[i] = value;
+    out_data[i] = static_cast<T>(value);
     value += step_value;
   }
 }

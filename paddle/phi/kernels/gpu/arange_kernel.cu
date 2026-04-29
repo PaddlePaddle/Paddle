@@ -43,42 +43,22 @@ void ArangeTensorKernel(const Context& dev_ctx,
                    phi::IsFloatingType(step.dtype());
   int64_t size = 0;
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  MPType start_value, step_value;
+  Scalar start_scalar(start);
+  Scalar end_scalar(end);
+  Scalar step_scalar(step);
   if (any_float) {
-    double sv, ev, stv;
-    PD_VISIT_ALL_TYPES(
-        start.dtype(), "GetStart", ([&] {
-          sv = static_cast<double>(GetValue<data_t, Context>(dev_ctx, start));
-        }));
-    PD_VISIT_ALL_TYPES(
-        end.dtype(), "GetEnd", ([&] {
-          ev = static_cast<double>(GetValue<data_t, Context>(dev_ctx, end));
-        }));
-    PD_VISIT_ALL_TYPES(
-        step.dtype(), "GetStep", ([&] {
-          stv = static_cast<double>(GetValue<data_t, Context>(dev_ctx, step));
-        }));
+    double sv = start_scalar.to<double>();
+    double ev = end_scalar.to<double>();
+    double stv = step_scalar.to<double>();
     funcs::GetSize<double>(sv, ev, stv, &size);
-    start_value = static_cast<MPType>(sv);
-    step_value = static_cast<MPType>(stv);
   } else {
-    int64_t sv, ev, stv;
-    PD_VISIT_ALL_TYPES(
-        start.dtype(), "GetStart", ([&] {
-          sv = static_cast<int64_t>(GetValue<data_t, Context>(dev_ctx, start));
-        }));
-    PD_VISIT_ALL_TYPES(
-        end.dtype(), "GetEnd", ([&] {
-          ev = static_cast<int64_t>(GetValue<data_t, Context>(dev_ctx, end));
-        }));
-    PD_VISIT_ALL_TYPES(
-        step.dtype(), "GetStep", ([&] {
-          stv = static_cast<int64_t>(GetValue<data_t, Context>(dev_ctx, step));
-        }));
+    int64_t sv = start_scalar.to<int64_t>();
+    int64_t ev = end_scalar.to<int64_t>();
+    int64_t stv = step_scalar.to<int64_t>();
     funcs::GetSize<int64_t>(sv, ev, stv, &size);
-    start_value = static_cast<MPType>(sv);
-    step_value = static_cast<MPType>(stv);
   }
+  MPType start_value = start_scalar.to<MPType>();
+  MPType step_value = step_scalar.to<MPType>();
 
   out->Resize({size});
   T* out_data = dev_ctx.template Alloc<T>(out);
@@ -89,7 +69,7 @@ void ArangeTensorKernel(const Context& dev_ctx,
     return;
   }
   int64_t grid = (size + block - 1) / block;
-  Range<MT, T>
+  Range<MPType, T>
       <<<grid, block, 0, stream>>>(start_value, step_value, size, out_data);
 }
 

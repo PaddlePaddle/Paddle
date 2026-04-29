@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/range_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/range_function.h"
 
@@ -47,12 +48,13 @@ void RangeTensorKernel(const Context& dev_ctx,
                        const DenseTensor& step,
                        DenseTensor* out) {
   int64_t size = 0;
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   Scalar start_scalar(start);
   Scalar end_scalar(end);
   Scalar step_scalar(step);
-  T start_value = start_scalar.to<T>();
-  T end_value = end_scalar.to<T>();
-  T step_value = step_scalar.to<T>();
+  MPType start_value = start_scalar.to<MPType>();
+  MPType end_value = end_scalar.to<MPType>();
+  MPType step_value = step_scalar.to<MPType>();
 
   funcs::GetSizeForRange(start_value, end_value, step_value, &size);
 
@@ -61,9 +63,9 @@ void RangeTensorKernel(const Context& dev_ctx,
   if (size == 0) {
     return;
   }
-  T value = start_value;
+  MPType value = start_value;
   for (int64_t i = 0; i < size; ++i) {
-    out_data[i] = value;
+    out_data[i] = static_cast<T>(value);
     value += step_value;
   }
 }
@@ -75,18 +77,19 @@ void RangeKernel(const Context& dev_ctx,
                  const Scalar& step,
                  DenseTensor* out) {
   int64_t size = 0;
-  T start_value = start.to<T>();
-  T end_value = end.to<T>();
-  T step_value = step.to<T>();
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType start_value = start.to<MPType>();
+  MPType end_value = end.to<MPType>();
+  MPType step_value = step.to<MPType>();
   funcs::GetSizeForRange(start_value, end_value, step_value, &size);
   out->Resize({size});
   T* out_data = dev_ctx.template Alloc<T>(out);
   if (size == 0) {
     return;
   }
-  T value = start_value;
+  MPType value = start_value;
   for (int64_t i = 0; i < size; ++i) {
-    out_data[i] = value;
+    out_data[i] = static_cast<T>(value);
     value += step_value;
   }
 }
