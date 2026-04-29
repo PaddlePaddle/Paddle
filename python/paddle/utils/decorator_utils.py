@@ -806,268 +806,138 @@ def compute_legacy_reduction(reduce_val, size_average_val):
     return 'sum' if size_average_val is False else 'mean'
 
 
+# Classes whose positional layout has a reduction string at a known slot,
+# which disambiguates from legacy bool positional args at adjacent indices.
+_LEGACY_AMBIGUOUS_REDUCTION: dict[str, tuple[int, frozenset[str]]] = {
+    'CrossEntropyLoss': (2, frozenset({'mean', 'sum', 'none'})),
+    'KLDivLoss': (0, frozenset({'mean', 'sum', 'none', 'batchmean'})),
+}
+
+
 def get_legacy_reduce_and_size_average(cls_name, args, kwargs):
+    """Pop legacy 'size_average'/'reduce' from kwargs; read (without removing)
+    bool values at positional slots configured in LEGACY_POS. Returns
+    ``(reduce_val, size_avg_val)``; ``''`` indicates "not given".
+    """
     reduce_val = ''
     size_avg_val = ''
-    pos = LEGACY_POS.get(cls_name)
+    pos = LEGACY_POS.get(cls_name) or {}
     idx = pos.get('size_average')
     if 'size_average' in kwargs:
         size_avg_val = kwargs.pop('size_average')
-    elif len(args) > idx:
-        v = args[idx]
-        if type(v) is bool:
-            size_avg_val = v
+    elif idx is not None and len(args) > idx and type(args[idx]) is bool:
+        size_avg_val = args[idx]
     idx = pos.get('reduce')
     if 'reduce' in kwargs:
         reduce_val = kwargs.pop('reduce')
-    elif len(args) > idx:
-        v = args[idx]
-        if type(v) is bool:
-            reduce_val = v
+    elif idx is not None and len(args) > idx and type(args[idx]) is bool:
+        reduce_val = args[idx]
     return reduce_val, size_avg_val
 
 
-_LEGACY_NOT_GIVEN = object()
+def _strip_legacy_positional(cls_name, args):
+    """Remove bool args at legacy positional slots configured in LEGACY_POS."""
+    pos = LEGACY_POS.get(cls_name)
+    if pos is None:
+        return args
+    use_args = list(args)
+    indices = [
+        idx
+        for key in ('size_average', 'reduce')
+        for idx in (pos.get(key),)
+        if idx is not None
+        and len(use_args) > idx
+        and type(use_args[idx]) is bool
+    ]
+    for idx in sorted(indices, reverse=True):
+        del use_args[idx]
+    return tuple(use_args)
 
 
-def _emit_legacy_reduction_warning(
-    cls_name, reduce_val, size_avg_val, suggested
-):
-    reduce_repr = None if reduce_val is _LEGACY_NOT_GIVEN else reduce_val
-    size_avg_repr = None if size_avg_val is _LEGACY_NOT_GIVEN else size_avg_val
+def apply_legacy_reduction(cls_name, reduce_val, size_avg_val, kwargs):
+    """Translate legacy 'reduce'/'size_average' values into ``kwargs['reduction']``
+    and emit a DeprecationWarning. Replaces the previous ``raise_deprecated_error``
+    behavior so deprecated args are translated rather than rejected.
+    """
+    suggested = compute_legacy_reduction(reduce_val, size_avg_val)
+    kwargs['reduction'] = suggested
+    reduce_repr = None if reduce_val == '' else reduce_val
+    size_avg_repr = None if size_avg_val == '' else size_avg_val
     warnings.warn(
         f"'size_average' and 'reduce' args of '{cls_name}' will be deprecated, "
         f"please use reduction='{suggested}' instead. "
-        f"Detected: size_average={size_avg_repr}, reduce={reduce_repr}.",
+        f"Detected: reduce={reduce_repr}, size_average={size_avg_repr}.",
         DeprecationWarning,
         stacklevel=3,
     )
 
 
-def _normalize_legacy(val):
-    """Convert _LEGACY_NOT_GIVEN sentinel back to '' for compute_legacy_reduction."""
-    return '' if val is _LEGACY_NOT_GIVEN else val
-
-
-def raise_deprecated_error(cls_name, reduce_val, size_avg_val):
-    """Kept for backward compatibility; new code uses translation."""
-    suggested = compute_legacy_reduction(
-        _normalize_legacy(reduce_val), _normalize_legacy(size_avg_val)
-    )
-    reduce_val = None if reduce_val in ('', _LEGACY_NOT_GIVEN) else reduce_val
-    size_avg_val = (
-        None if size_avg_val in ('', _LEGACY_NOT_GIVEN) else size_avg_val
-    )
-    raise ValueError(
-        f"[Deprecated] '{cls_name}' no longer supports 'reduce' or 'size_average'."
-        f"\nDetected: reduce={reduce_val}, size_average={size_avg_val}"
-        f"\nPlease use: reduction='{suggested}' instead."
-    )
-
-
-def _consume_legacy_positional_args(cls_name, args, kwargs):
-    """Detect PyTorch positional legacy layout and translate it to Paddle's.
-
-    PyTorch's positional layout has size_average/reduce as bool/None at known
-    indices, with reduction (str) at the next index. Paddle's layout differs
-    (no size_average/reduce). When PyTorch layout is detected, remove the
-    legacy positions and move any explicit positional reduction (str) at
-    max(sa,rd)+1 into kwargs so it isn't lost. Translation downstream may
-    still override it (legacy non-None values take priority per PyTorch).
-    Returns (new_args, size_avg_val, reduce_val) with sentinels for "not given".
-    """
-    pos = LEGACY_POS.get(cls_name)
-    if pos is None or len(args) <= 1:
-        return args, _LEGACY_NOT_GIVEN, _LEGACY_NOT_GIVEN
-
-    use_args = list(args[1:])
-    sa_idx = pos.get('size_average')
-    rd_idx = pos.get('reduce')
-
-    def _is_legacy_val(v):
-        return type(v) is bool or v is None
-
-    sa_at_pos = (
-        sa_idx is not None
-        and sa_idx < len(use_args)
-        and _is_legacy_val(use_args[sa_idx])
-    )
-    rd_at_pos = (
-        rd_idx is not None
-        and rd_idx < len(use_args)
-        and _is_legacy_val(use_args[rd_idx])
-    )
-    if not (sa_at_pos or rd_at_pos):
-        return args, _LEGACY_NOT_GIVEN, _LEGACY_NOT_GIVEN
-
-    size_avg_val = use_args[sa_idx] if sa_at_pos else _LEGACY_NOT_GIVEN
-    reduce_val = use_args[rd_idx] if rd_at_pos else _LEGACY_NOT_GIVEN
-
-    indices_to_remove = []
-    if sa_at_pos:
-        indices_to_remove.append(sa_idx)
-    if rd_at_pos:
-        indices_to_remove.append(rd_idx)
-
-    # Move a positional reduction at PyTorch's reduction slot to kwargs.
-    legacy_max = max(
-        sa_idx if sa_at_pos else -1,
-        rd_idx if rd_at_pos else -1,
-    )
-    reduction_idx = legacy_max + 1
-    if reduction_idx < len(use_args) and isinstance(
-        use_args[reduction_idx], str
-    ):
-        if 'reduction' not in kwargs:
-            kwargs['reduction'] = use_args[reduction_idx]
-        indices_to_remove.append(reduction_idx)
-
-    for idx in sorted(indices_to_remove, reverse=True):
-        del use_args[idx]
-
-    return (args[0], *use_args), size_avg_val, reduce_val
-
-
-def _apply_legacy_translation(cls_name, kwargs, size_avg_val, reduce_val):
-    """If a non-None legacy arg was provided, override kwargs['reduction']
-    with the translated value (matching PyTorch's priority of legacy over
-    reduction when either is non-None) and emit a DeprecationWarning.
-    Explicit None for either arg is treated as "not provided" per PyTorch
-    semantics. Returns True if translation applied.
-    """
-    sa_provided = (
-        size_avg_val is not _LEGACY_NOT_GIVEN and size_avg_val is not None
-    )
-    rd_provided = reduce_val is not _LEGACY_NOT_GIVEN and reduce_val is not None
-    if not sa_provided and not rd_provided:
+def _is_ambiguous_legacy_layout(cls_name, use_args):
+    info = _LEGACY_AMBIGUOUS_REDUCTION.get(cls_name)
+    if info is None:
         return False
-    sa = size_avg_val if sa_provided else _LEGACY_NOT_GIVEN
-    rd = reduce_val if rd_provided else _LEGACY_NOT_GIVEN
-    suggested = compute_legacy_reduction(
-        _normalize_legacy(rd), _normalize_legacy(sa)
-    )
-    kwargs['reduction'] = suggested
-    _emit_legacy_reduction_warning(
-        cls_name, reduce_val, size_avg_val, suggested
-    )
-    return True
+    idx, valid = info
+    return len(use_args) > idx and use_args[idx] in valid
 
 
 def legacy_reduction_decorator(
-    init_func: Callable[_InputT, _RetT],
-) -> Callable[_InputT, _RetT]:
-    """
-    Function decorator for __init__: translate deprecated 'reduce' and
-    'size_average' kwargs (and PyTorch positional layout) into 'reduction',
-    matching PyTorch's behavior. Emits a DeprecationWarning when legacy args
-    are used. Legacy args take priority over an explicit reduction.
+    fn=None, *, is_method=True, ambiguous_check=False
+):
+    """Translate deprecated 'size_average'/'reduce' args into 'reduction'.
+
+    When legacy args are detected (kwargs or positional bools at slots in
+    ``LEGACY_POS``), ``kwargs['reduction']`` is set to the translated value
+    and a ``DeprecationWarning`` is emitted; legacy args take priority over
+    any explicit ``reduction``.
+
+    Use as ``@legacy_reduction_decorator`` for class ``__init__`` (default).
+    Use ``legacy_reduction_special_decorator`` (alias) for
+    CrossEntropyLoss / KLDivLoss positional ambiguity. Use
+    ``legacy_reduction_func_decorator`` (alias) for top-level functional
+    loss APIs.
     """
 
-    @functools.wraps(init_func)
-    def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
-        # avoid subclass calling parent class init, causing cls_name to be inaccurate
-        cls_name = init_func.__qualname__.split(".")[0]
-        size_avg_val = kwargs.pop('size_average', _LEGACY_NOT_GIVEN)
-        reduce_val = kwargs.pop('reduce', _LEGACY_NOT_GIVEN)
+    def decorate(f):
+        @functools.wraps(f)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            if is_method:
+                # avoid subclass calling parent class init, causing cls_name to be inaccurate
+                name = f.__qualname__.split(".")[0]
+                self_args, use_args = args[:1], args[1:]
+            else:
+                name = f.__name__
+                self_args, use_args = (), args
 
-        if (
-            size_avg_val is _LEGACY_NOT_GIVEN
-            and reduce_val is _LEGACY_NOT_GIVEN
-        ):
-            args, size_avg_val, reduce_val = _consume_legacy_positional_args(
-                cls_name, args, kwargs
+            if ambiguous_check and _is_ambiguous_legacy_layout(name, use_args):
+                # Positional layout matches the new (non-legacy) signature;
+                # only kwargs are unambiguously legacy here.
+                rd_val = kwargs.pop('reduce', '')
+                sa_val = kwargs.pop('size_average', '')
+                if rd_val != '' or sa_val != '':
+                    apply_legacy_reduction(name, rd_val, sa_val, kwargs)
+                return f(*self_args, *use_args, **kwargs)
+
+            rd_val, sa_val = get_legacy_reduce_and_size_average(
+                name, use_args, kwargs
             )
+            if rd_val != '' or sa_val != '':
+                use_args = _strip_legacy_positional(name, use_args)
+                apply_legacy_reduction(name, rd_val, sa_val, kwargs)
+            return f(*self_args, *use_args, **kwargs)
 
-        _apply_legacy_translation(cls_name, kwargs, size_avg_val, reduce_val)
-        return init_func(*args, **kwargs)
+        wrapper.__signature__ = inspect.signature(f)
+        return wrapper
 
-    wrapper.__signature__ = inspect.signature(init_func)
-    return wrapper
-
-
-def legacy_reduction_special_decorator(
-    init_func: Callable[_InputT, _RetT],
-) -> Callable[_InputT, _RetT]:
-    """
-    Specialized decorator: add CrossEntropyLoss / KLDivLoss special case
-    judgment based on the general legacy_reduction_decorator logic. The
-    ambiguity is only at positional bools (CrossEntropyLoss.soft_label,
-    KLDivLoss.log_target); kwargs are always safe to translate.
-    """
-
-    @functools.wraps(init_func)
-    def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
-        cls_name = init_func.__qualname__.split(".")[0]
-        size_avg_val = kwargs.pop('size_average', _LEGACY_NOT_GIVEN)
-        reduce_val = kwargs.pop('reduce', _LEGACY_NOT_GIVEN)
-
-        if (
-            size_avg_val is _LEGACY_NOT_GIVEN
-            and reduce_val is _LEGACY_NOT_GIVEN
-        ):
-            use_args = args[1:]
-            ambiguous = (
-                cls_name == 'CrossEntropyLoss'
-                and len(use_args) > 2
-                and use_args[2] in {'mean', 'sum', 'none'}
-            ) or (
-                cls_name == 'KLDivLoss'
-                and len(use_args) > 0
-                and use_args[0] in {'mean', 'sum', 'none', 'batchmean'}
-            )
-            if not ambiguous:
-                args, size_avg_val, reduce_val = (
-                    _consume_legacy_positional_args(cls_name, args, kwargs)
-                )
-
-        _apply_legacy_translation(cls_name, kwargs, size_avg_val, reduce_val)
-        return init_func(*args, **kwargs)
-
-    wrapper.__signature__ = inspect.signature(init_func)
-    return wrapper
+    if fn is None:
+        return decorate
+    return decorate(fn)
 
 
-def legacy_reduction_func_decorator(
-    func: Callable[_InputT, _RetT],
-) -> Callable[_InputT, _RetT]:
-    """
-    Functional version: translate deprecated 'size_average' and 'reduce'
-    kwargs into 'reduction' for top-level functional loss APIs. Legacy args
-    take priority over an explicit reduction (matching PyTorch). Positional
-    legacy layout is not handled here since PyTorch's functional positions
-    differ from Paddle's; PaConvert produces kwargs-style converted code.
-    """
-
-    @functools.wraps(func)
-    def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
-        size_avg_val = kwargs.pop('size_average', _LEGACY_NOT_GIVEN)
-        reduce_val = kwargs.pop('reduce', _LEGACY_NOT_GIVEN)
-
-        sa_provided = (
-            size_avg_val is not _LEGACY_NOT_GIVEN and size_avg_val is not None
-        )
-        rd_provided = (
-            reduce_val is not _LEGACY_NOT_GIVEN and reduce_val is not None
-        )
-        if not sa_provided and not rd_provided:
-            return func(*args, **kwargs)
-
-        sa = size_avg_val if sa_provided else _LEGACY_NOT_GIVEN
-        rd = reduce_val if rd_provided else _LEGACY_NOT_GIVEN
-        suggested = compute_legacy_reduction(
-            _normalize_legacy(rd), _normalize_legacy(sa)
-        )
-        kwargs['reduction'] = suggested
-        warnings.warn(
-            f"'size_average' and 'reduce' args of '{func.__name__}' will be "
-            f"deprecated, please use reduction='{suggested}' instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return func(*args, **kwargs)
-
-    wrapper.__signature__ = inspect.signature(func)
-    return wrapper
+# Aliases — three call-site variants share one implementation.
+legacy_reduction_special_decorator = legacy_reduction_decorator(
+    ambiguous_check=True
+)
+legacy_reduction_func_decorator = legacy_reduction_decorator(is_method=False)
 
 
 def index_add_decorator() -> Callable[
