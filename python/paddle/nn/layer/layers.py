@@ -3060,7 +3060,7 @@ class Layer:
             dtype=dtype,
             blocking=blocking,
             include_sublayers=True,
-            floating_only=False,
+            floating_only=True,
         )
 
     def _apply(
@@ -3214,8 +3214,14 @@ class Layer:
             )
 
         def transform(t, device, dtype, blocking):
-            if floating_only and (not paddle.is_floating_point(t)):
-                return t
+            if floating_only and not (
+                paddle.is_floating_point(t) or paddle.is_complex(t)
+            ):
+                # Match PyTorch nn.Module.to semantics: skip dtype casting for
+                # non-floating/complex tensors, but still apply device change.
+                if device is None:
+                    return t
+                return self._transform(t, device, None, blocking)
             return self._transform(t, device, dtype, blocking)
 
         with warnings.catch_warnings():
