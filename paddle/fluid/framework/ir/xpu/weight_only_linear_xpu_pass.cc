@@ -153,7 +153,7 @@ void PermuteINT8WeightOnlyPass::ApplyPermuteINT8WeightOnly(
           auto* dst_var = scope->FindVar(dst_name);
           if (dst_var == nullptr) {
             DenseTensor tmp_tensor;
-            tmp_tensor.set_type(phi::DataType::INT8);
+            tmp_tensor.set_type(DataType::INT8);
             tmp_tensor.Resize(curr_tensor->dims());
             cpu_ctx->Alloc<int8_t>(&tmp_tensor);
 

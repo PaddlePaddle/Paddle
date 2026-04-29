@@ -104,14 +104,14 @@ void DeleteWeightDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
                           ->GetMutable<DenseTensor>();
                   auto weight_scale_nums = weight_scale_tensor->numel();
 
-                  if (weight_scale_tensor->dtype() == phi::DataType::FLOAT32) {
+                  if (weight_scale_tensor->dtype() == DataType::FLOAT32) {
                     float* weight_scale_data =
                         weight_scale_tensor->data<float>();
                     for (int i = 0; i < weight_scale_nums; i++) {
                       weight_scale.push_back(weight_scale_data[i]);
                     }
                   } else if (weight_scale_tensor->dtype() ==
-                             phi::DataType::FLOAT16) {
+                             DataType::FLOAT16) {
                     phi::float16* weight_scale_data =
                         weight_scale_tensor->data<phi::float16>();
                     for (int i = 0; i < weight_scale_nums; i++) {
