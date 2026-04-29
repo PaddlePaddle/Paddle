@@ -444,7 +444,6 @@ jobs:
             git checkout develop
             echo "Checked out fleet branch: develop"
           fi
-          git pull origin pull/895/head
           mkdir -p /home/.cache/pip
           pip cache dir
           echo "Install uv"
