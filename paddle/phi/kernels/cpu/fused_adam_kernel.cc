@@ -20,6 +20,7 @@
 
 #include "paddle/phi/kernels/adam_kernel.h"
 #include "paddle/phi/kernels/adamw_kernel.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 
 namespace phi {
 
@@ -115,16 +116,26 @@ PADDLE_API void FusedAdamKernel(
     auto moments2_max_tmp = TensorPtrToOptionalTensor(moments2_max, idx);
 
     if (!use_adamw) {
+      // learning_rate and beta_pows arrive as FLOAT64 (SetDataType constraint).
+      // AdamDenseKernel<T> reads them as T, so cast to T first.
+      auto lr_T = Cast<double, Context>(
+          dev_ctx, learning_rate, phi::CppTypeToDataType<T>::Type());
+      auto b1_T = Cast<double, Context>(
+          dev_ctx, *beta1_pows[idx], phi::CppTypeToDataType<T>::Type());
+      auto b2_T = Cast<double, Context>(
+          dev_ctx, *beta2_pows[idx], phi::CppTypeToDataType<T>::Type());
+      DenseTensor b1_out_T, b2_out_T;
+
       AdamDenseKernel<T, Context>(
           dev_ctx,
           *params[idx],
           *grads[idx],
-          learning_rate,
+          lr_T,
           *moments1[idx],
           *moments2[idx],
           moments2_max_tmp,
-          *beta1_pows[idx],
-          *beta2_pows[idx],
+          b1_T,
+          b2_T,
           master_params_tmp,
           skip_update,
           beta1,
@@ -139,9 +150,15 @@ PADDLE_API void FusedAdamKernel(
           moments1_out[idx],
           moments2_out[idx],
           amsgrad ? moments2_max_out[idx] : nullptr,
-          beta1_pows_out[idx],
-          beta2_pows_out[idx],
+          &b1_out_T,
+          &b2_out_T,
           master_params_out.empty() ? nullptr : master_params_out[idx]);
+
+      // Cast T outputs back to FLOAT64 to match the declared output dtype.
+      *beta1_pows_out[idx] =
+          Cast<T, Context>(dev_ctx, b1_out_T, phi::DataType::FLOAT64);
+      *beta2_pows_out[idx] =
+          Cast<T, Context>(dev_ctx, b2_out_T, phi::DataType::FLOAT64);
     } else {
       AdamwDenseKernel<T, Context>(
           dev_ctx,
@@ -181,10 +198,17 @@ PADDLE_API void FusedAdamKernel(
 
 PD_REGISTER_KERNEL(
     fused_adam, CPU, ALL_LAYOUT, phi::FusedAdamKernel, float, double) {
+  kernel->InputAt(2).SetDataType(phi::DataType::FLOAT64);  // learning_rate
+  kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(6).SetDataType(phi::DataType::FLOAT64);  // beta1_pows
+  kernel->InputAt(7).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(7).SetDataType(phi::DataType::FLOAT64);  // beta2_pows
   kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(3).SetDataType(phi::DataType::UNDEFINED);
-  kernel->OutputAt(4).SetDataType(phi::DataType::UNDEFINED);
-  kernel->OutputAt(5).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT64);  // beta1_pows_out
+  kernel->OutputAt(4).SetBackend(phi::Backend::UNDEFINED);
+  kernel->OutputAt(5).SetDataType(phi::DataType::FLOAT64);  // beta2_pows_out
+  kernel->OutputAt(5).SetBackend(phi::Backend::UNDEFINED);
   kernel->OutputAt(6).SetDataType(phi::DataType::UNDEFINED);
 }
