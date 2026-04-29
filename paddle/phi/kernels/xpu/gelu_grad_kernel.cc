@@ -31,14 +31,31 @@ void GeluGradKernel(const Context& dev_ctx,
   if (x_grad && x_grad->numel() == 0) {
     return;
   }
-  int r = xpu::gelu_grad<XPUType>(
-      dev_ctx.x_context(),
-      reinterpret_cast<const XPUType*>(x.data<T>()),
-      reinterpret_cast<const XPUType*>(out_grad.data<T>()),
-      reinterpret_cast<XPUType*>(x_grad->data<T>()),
-      x_grad->numel(),
-      approximate);
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "gelu_grad");
+  // For bfloat16 and float16, use the highprecision variant which performs
+  // intermediate computations in float32 to avoid overflow, matching the GPU
+  // kernel behavior (which uses MPTypeTrait to upcast to float32).
+  // For float32, the standard variant is sufficient.
+  int r = 0;
+  if (std::is_same<T, phi::bfloat16>::value ||
+      std::is_same<T, phi::float16>::value) {
+    r = xpu::gelu_grad_highprecision<XPUType>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(x.data<T>()),
+        reinterpret_cast<const XPUType*>(out_grad.data<T>()),
+        reinterpret_cast<XPUType*>(x_grad->data<T>()),
+        x_grad->numel(),
+        approximate);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "gelu_grad_highprecision");
+  } else {
+    r = xpu::gelu_grad<XPUType>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(x.data<T>()),
+        reinterpret_cast<const XPUType*>(out_grad.data<T>()),
+        reinterpret_cast<XPUType*>(x_grad->data<T>()),
+        x_grad->numel(),
+        approximate);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "gelu_grad");
+  }
 }
 }  // namespace phi
 
