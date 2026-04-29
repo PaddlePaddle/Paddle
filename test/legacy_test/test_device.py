@@ -149,6 +149,39 @@ class TestGetPaddlePlaceAdaptiveGPU(unittest.TestCase):
             msg=f"Expected tensor on GPU 1 but got place: {device_str}",
         )
 
+        paddle.device.set_device('cpu')
+        a = paddle.empty(1, device='gpu')
+        device_str = str(a.device)
+        self.assertIn(
+            'cuda:0',
+            device_str,
+            msg=f"Expected tensor on GPU but got place: {device_str}",
+        )
+
+    def test_empty_device_gpu_follows_set_device_cpu(self):
+        """paddle.empty(device='gpu') should also respect set_device('gpu:1')."""
+        if not core.is_compiled_with_cuda() or core.get_cuda_device_count() < 1:
+            self.skipTest("Requires at least 1 GPU devices")
+        paddle.device.set_device('gpu:0')
+        a = paddle.empty(1, device='gpu')
+        device_str = str(a.device)
+        # restore default
+        paddle.device.set_device('gpu:0')
+        self.assertIn(
+            '0',
+            device_str,
+            msg=f"Expected tensor on GPU 1 but got place: {device_str}",
+        )
+
+        paddle.device.set_device('cpu')
+        a = paddle.empty(1, device='gpu')
+        device_str = str(a.device)
+        self.assertIn(
+            'cuda:0',
+            device_str,
+            msg=f"Expected tensor on GPU but got place: {device_str}",
+        )
+
 
 if __name__ == '__main__':
     unittest.main()
