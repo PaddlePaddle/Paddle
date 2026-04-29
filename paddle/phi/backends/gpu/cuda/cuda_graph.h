@@ -331,7 +331,6 @@ class CUDAGraph {
  private:
   std::vector<cudaGraph_t> graphs_;
   std::vector<cudaGraphExec_t> exec_graphs_;
-  // 每个 segment 对应的 kernel node 缓存信息
   std::vector<std::vector<KernelNodeInfo>> cached_kernel_nodes_;
   gpuStreamCaptureMode capture_mode_;
   cudaStream_t stream_{nullptr};
