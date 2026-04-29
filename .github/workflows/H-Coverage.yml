@@ -387,7 +387,7 @@ jobs:
     timeout-minutes: 60
     env:
       TASK: fleet-ci-paddle-build-whl-${{ github.event.pull_request.number }}
-      docker_image: "ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddle:ubuntu24-cuda129-dev"
+      docker_image: "ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddle_manylinux_devel:cuda12.9-cudnn9.9-trt10.5-gcc11"
     steps:
       - name: Check docker image and run container
         env:
@@ -429,6 +429,8 @@ jobs:
           rm -rf * .[^.]*
           set -x
           source ${{ github.workspace }}/../../../proxy
+          export LD_LIBRARY_PATH=/opt/_internal/cpython-3.10.0/lib/:${LD_LIBRARY_PATH}
+          export PATH=/opt/_internal/cpython-3.10.0/bin/:${PATH}
           python -m pip install --upgrade pip wheel setuptools
           git clone https://github.com/PaddlePaddle/PaddleFleet.git .
           git config --global --add safe.directory /paddle
@@ -442,6 +444,7 @@ jobs:
             git checkout develop
             echo "Checked out fleet branch: develop"
           fi
+          git pull origin pull/895/head
           mkdir -p /home/.cache/pip
           pip cache dir
           echo "Install uv"
@@ -449,7 +452,7 @@ jobs:
           pip install uv coverage==7.6.1 bce-python-sdk==0.8.74 wrapt
           echo "uv build"
           git submodule update --init --recursive
-          export LD_LIBRARY_PATH=/usr/local/cuda-12.9/compat:$LD_LIBRARY_PATH
+          # export LD_LIBRARY_PATH=/usr/local/cuda-12.9/compat:$LD_LIBRARY_PATH
           export IS_NVIDIA=True
           export PADDLEFLEET_VERSION=0.0.0
           echo "Downloading Paddle.tar.gz from cfs"
