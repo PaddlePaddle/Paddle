@@ -552,16 +552,16 @@ struct finfo {
   explicit finfo(const DataType &type) {
     switch (type) {
       case DataType::FLOAT8_E4M3FN:
-        CASE_FINFO_BODY(float8_e4m3fn, phi::dtype::float8_e4m3fn);
+        CASE_FINFO_BODY(float8_e4m3fn, phi::float8_e4m3fn);
         break;
       case DataType::FLOAT8_E5M2:
-        CASE_FINFO_BODY(float8_e5m2, phi::dtype::float8_e5m2);
+        CASE_FINFO_BODY(float8_e5m2, phi::float8_e5m2);
         break;
       case DataType::FLOAT16:
-        CASE_FINFO_BODY(float16, phi::dtype::float16);
+        CASE_FINFO_BODY(float16, phi::float16);
         break;
       case DataType::BFLOAT16:
-        CASE_FINFO_BODY(bfloat16, phi::dtype::bfloat16);
+        CASE_FINFO_BODY(bfloat16, phi::bfloat16);
         break;
       case DataType::FLOAT32:
       case DataType::COMPLEX64:
