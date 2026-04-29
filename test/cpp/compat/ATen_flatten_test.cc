@@ -146,7 +146,7 @@ TEST(TestUnflatten, UnflattenSymInt) {
 
   // Unflatten dimension 1 using symint version
   // Note: Must keep the underlying data alive
-  std::vector<int64_t> sizes_vec = {2, 3};
+  std::vector<c10::SymInt> sizes_vec = {2, 3};
   c10::SymIntArrayRef sizes(sizes_vec);
   at::Tensor unflattened = tensor.unflatten_symint(1, sizes);
   ASSERT_EQ(unflattened.sizes(), c10::IntArrayRef({4, 2, 3, 8}));

@@ -91,6 +91,7 @@ struct TensorIndex final {
 
   TensorIndex(c10::SymInt integer)
       : integer_(std::move(integer)), type_(TensorIndexType::SymInt) {}
+  TensorIndex(int64_t integer) : TensorIndex(c10::SymInt(integer)) {}
   TensorIndex(int integer) : TensorIndex(c10::SymInt(integer)) {}
 
   template <class T, class = std::enable_if_t<std::is_same_v<bool, T>>>
