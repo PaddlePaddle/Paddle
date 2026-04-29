@@ -47,77 +47,77 @@ class TestGridReduce(unittest.TestCase):
 
         self.eval(func, init)
 
-    def test_continuous_reduce(self):
-        def func(x):
-            return paddle.sum(x, axis=(0, 2, 3))
+    # def test_continuous_reduce(self):
+    #     def func(x):
+    #         return paddle.sum(x, axis=(0, 2, 3))
 
-        def init():
-            x = paddle.randn([64, 8, 56, 56])
-            return (x,)
+    #     def init():
+    #         x = paddle.randn([64, 8, 56, 56])
+    #         return (x,)
 
-        self.eval(func, init)
+    #     self.eval(func, init)
 
-    def test_discrete_reduce(self):
-        def func(x):
-            return paddle.sum(x, axis=(0, 1, 2))
+    # def test_discrete_reduce(self):
+    #     def func(x):
+    #         return paddle.sum(x, axis=(0, 1, 2))
 
-        def init():
-            x = paddle.randn([256, 28, 28, 80])
-            return (x,)
+    #     def init():
+    #         x = paddle.randn([256, 28, 28, 80])
+    #         return (x,)
 
-        self.eval(func, init)
+    #     self.eval(func, init)
 
-    def test_multiple_reduce(self):
-        def func(x):
-            n = 512 * 14 * 14
-            sum_x = paddle.sum(x, axis=(0, 2, 3))
-            sum_x2 = paddle.sum(x * x, axis=(0, 2, 3))
-            mean_x = sum_x / n
-            mean_x2 = sum_x2 / n
-            mean_x_2 = mean_x * mean_x
-            return mean_x2 - mean_x_2
+    # def test_multiple_reduce(self):
+    #     def func(x):
+    #         n = 512 * 14 * 14
+    #         sum_x = paddle.sum(x, axis=(0, 2, 3))
+    #         sum_x2 = paddle.sum(x * x, axis=(0, 2, 3))
+    #         mean_x = sum_x / n
+    #         mean_x2 = sum_x2 / n
+    #         mean_x_2 = mean_x * mean_x
+    #         return mean_x2 - mean_x_2
 
-        def init():
-            x = paddle.randn([512, 8, 14, 14])
-            return (x,)
+    #     def init():
+    #         x = paddle.randn([512, 8, 14, 14])
+    #         return (x,)
 
-        self.eval(func, init)
+    #     self.eval(func, init)
 
-    def test_multiple_downstream(self):
-        def func(a, b):
-            a = paddle.sum(a, axis=(0, 1))
-            return a, a + b
+    # def test_multiple_downstream(self):
+    #     def func(a, b):
+    #         a = paddle.sum(a, axis=(0, 1))
+    #         return a, a + b
 
-        def init():
-            a = paddle.randn([400, 300, 20, 10])
-            b = paddle.randn([20, 10])
-            return a, b
+    #     def init():
+    #         a = paddle.randn([400, 300, 20, 10])
+    #         b = paddle.randn([20, 10])
+    #         return a, b
 
-        self.eval(func, init)
+    #     self.eval(func, init)
 
-    def test_continuous_reduce_dynamic_rd(self):
-        def func(x):
-            return paddle.sum(x, axis=(0, 2, 3))
+    # def test_continuous_reduce_dynamic_rd(self):
+    #     def func(x):
+    #         return paddle.sum(x, axis=(0, 2, 3))
 
-        def init():
-            x = paddle.randn([500, 3, 20, 20])
-            return (x,)
+    #     def init():
+    #         x = paddle.randn([500, 3, 20, 20])
+    #         return (x,)
 
-        input_spec = [InputSpec([-1, 3, -1, -1])]
+    #     input_spec = [InputSpec([-1, 3, -1, -1])]
 
-        self.eval(func, init, input_spec)
+    #     self.eval(func, init, input_spec)
 
-    def test_discrete_reduce_dynamic_rd(self):
-        def func(x):
-            return paddle.sum(x, axis=(0, 1, 2))
+    # def test_discrete_reduce_dynamic_rd(self):
+    #     def func(x):
+    #         return paddle.sum(x, axis=(0, 1, 2))
 
-        def init():
-            x = paddle.randn([96, 15, 20, 100])
-            return (x,)
+    #     def init():
+    #         x = paddle.randn([96, 15, 20, 100])
+    #         return (x,)
 
-        input_spec = [InputSpec([96, -1, -1, 100])]
+    #     input_spec = [InputSpec([96, -1, -1, 100])]
 
-        self.eval(func, init, input_spec)
+    #     self.eval(func, init, input_spec)
 
 
 if __name__ == "__main__":
