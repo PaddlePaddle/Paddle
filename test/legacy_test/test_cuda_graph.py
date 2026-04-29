@@ -171,6 +171,82 @@ class TestCUDAGraphInDygraphMode(unittest.TestCase):
         y = paddle.cast(x, dtype='float16')
         graph.capture_end()
 
+    def test_cuda_graph_enable_replace_flag(self):
+        """Test CUDAGraph with enable_replace=True captures and replays correctly,
+        and that replace_input_ptrs with empty lists does not raise."""
+        if not can_use_cuda_graph():
+            return
+
+        shape = [2, 3]
+        x = self.random_tensor(shape)
+
+        g = CUDAGraph(enable_replace=True)
+        g.capture_begin()
+        y = x + 1
+        g.capture_end()
+
+        x_np = x.numpy().copy()
+        g.replay()
+        np.testing.assert_array_almost_equal(y.numpy(), x_np + 1)
+
+        # replace_input_ptrs with empty lists should succeed without error
+        g.replace_input_ptrs([], [])
+
+        g.reset()
+
+    def test_replace_input_ptrs_error_without_flag(self):
+        """Test that replace_input_ptrs raises an error when enable_replace=False."""
+        if not can_use_cuda_graph():
+            return
+
+        shape = [2, 3]
+        x = self.random_tensor(shape)
+
+        g = CUDAGraph()  # enable_replace defaults to False
+        g.capture_begin()
+        y = x + 1
+        g.capture_end()
+
+        with self.assertRaises(Exception) as ctx:
+            g.replace_input_ptrs([], [])
+        self.assertIn("enable_replace", str(ctx.exception))
+
+        g.reset()
+
+    def test_replace_input_ptrs_with_tensor_pointers(self):
+        """Test replace_input_ptrs with actual tensor data pointers.
+
+        This exercises CacheKernelNodeInfos (during capture) and ReplaceInputPtrs
+        (during replace). On CUDA >= 12.4, GetKernelParamInfos provides precise
+        param offsets and the replacement takes effect; on older CUDA the function
+        is a no-op but the code paths are still executed for coverage.
+        """
+        if not can_use_cuda_graph():
+            return
+
+        shape = [4]
+        x = paddle.to_tensor(
+            np.array([1.0, 2.0, 3.0, 4.0], dtype='float32')
+        ).cuda()
+        x_new = paddle.to_tensor(
+            np.array([10.0, 20.0, 30.0, 40.0], dtype='float32')
+        ).cuda()
+
+        g = CUDAGraph(enable_replace=True)
+        g.capture_begin()
+        y = x * 2.0
+        g.capture_end()
+
+        old_ptr = x.data_ptr()
+        new_ptr = x_new.data_ptr()
+
+        # Replace x's pointer with x_new's pointer in the captured graph
+        g.replace_input_ptrs([old_ptr], [new_ptr])
+
+        g.replay()
+
+        g.reset()
+
 
 if __name__ == "__main__":
     unittest.main()
