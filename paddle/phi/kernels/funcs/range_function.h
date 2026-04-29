@@ -61,5 +61,55 @@ void GetSize(T start, T end, T step, int64_t* size) {
               : std::ceil(std::abs((end - start) / step));
 }
 
+template <typename T>
+void GetSizeForRange(T start, T end, T step, int64_t* size) {
+  // For range op: closed interval [start, end]
+  PADDLE_ENFORCE_NE(
+      step,
+      0,
+      common::errors::InvalidArgument("The step of range op should not be 0."));
+
+  if constexpr (std::is_same_v<T, phi::bfloat16> ||
+                std::is_same_v<T, phi::float16>) {
+    PADDLE_ENFORCE_EQ(
+        phi::dtype::isfinite(start) && phi::dtype::isfinite(end) &&
+            phi::dtype::isfinite(step),
+        true,
+        common::errors::InvalidArgument(
+            "The start, end and step of range op should be finite "
+            "numbers, but received start=%f, end=%f, step=%f.",
+            static_cast<double>(start),
+            static_cast<double>(end),
+            static_cast<double>(step)));
+  } else if constexpr (std::is_floating_point_v<T>) {
+    PADDLE_ENFORCE_EQ(
+        std::isfinite(start) && std::isfinite(end) && std::isfinite(step),
+        true,
+        common::errors::InvalidArgument(
+            "The start, end and step of range op should be finite "
+            "numbers, but received start=%f, end=%f, step=%f.",
+            static_cast<double>(start),
+            static_cast<double>(end),
+            static_cast<double>(step)));
+  }
+
+  if (start < end) {
+    if (step < 0) {
+      *size = 0;
+      return;
+    }
+  }
+
+  if (start > end) {
+    if (step > 0) {
+      *size = 0;
+      return;
+    }
+  }
+
+  // Closed interval [start, end], so we add 1
+  *size = static_cast<int64_t>(((end - start) / step) + 1);
+}
+
 }  // namespace funcs
 }  // namespace phi

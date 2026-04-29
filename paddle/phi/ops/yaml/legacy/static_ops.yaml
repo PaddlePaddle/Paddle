@@ -41,10 +41,11 @@
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op : arange
-  args : (Tensor start, Tensor end, Tensor step)
+  args : (Tensor start, Tensor end, Tensor step, DataType dtype)
   output : Tensor(out)
   infer_meta :
     func : ArangeTensorInferMeta
+    param : [start, end, step, dtype]
   kernel :
     func : arange_tensor
   data_transform :
@@ -897,10 +898,11 @@
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op : range_v2
-  args : (Tensor start, Tensor end, Tensor step)
+  args : (Tensor start, Tensor end, Tensor step, DataType dtype)
   output : Tensor(out)
   infer_meta :
     func : RangeTensorInferMeta
+    param : [start, end, step, dtype]
   kernel :
     func : range_tensor
   data_transform :

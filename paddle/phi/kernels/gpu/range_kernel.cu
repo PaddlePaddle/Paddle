@@ -14,12 +14,16 @@
 
 #include "paddle/phi/kernels/range_kernel.h"
 
+#include <type_traits>
+
 #include "paddle/common/errors.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/range_function.h"
 
 namespace phi {
@@ -37,15 +41,48 @@ void RangeTensorKernel(const Context& dev_ctx,
                        const DenseTensor& end,
                        const DenseTensor& step,
                        DenseTensor* out) {
-  using MT = typename MPTypeTrait<T>::Type;
-  MT start_value = static_cast<MT>(GetValue<T, Context>(dev_ctx, start));
-  MT end_value = static_cast<MT>(GetValue<T, Context>(dev_ctx, end));
-  MT step_value = static_cast<MT>(GetValue<T, Context>(dev_ctx, step));
-  if (step_value == static_cast<MT>(0)) {
-    PADDLE_THROW(common::errors::InvalidArgument("step must be nonzero."));
+  bool any_float = phi::IsFloatingType(start.dtype()) ||
+                   phi::IsFloatingType(end.dtype()) ||
+                   phi::IsFloatingType(step.dtype());
+  int64_t size = 0;
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType start_value, step_value;
+  if (any_float) {
+    double sv, ev, stv;
+    PD_VISIT_ALL_TYPES(
+        start.dtype(), "GetStart", ([&] {
+          sv = static_cast<double>(GetValue<data_t, Context>(dev_ctx, start));
+        }));
+    PD_VISIT_ALL_TYPES(
+        end.dtype(), "GetEnd", ([&] {
+          ev = static_cast<double>(GetValue<data_t, Context>(dev_ctx, end));
+        }));
+    PD_VISIT_ALL_TYPES(
+        step.dtype(), "GetStep", ([&] {
+          stv = static_cast<double>(GetValue<data_t, Context>(dev_ctx, step));
+        }));
+    funcs::GetSizeForRange<double>(sv, ev, stv, &size);
+    start_value = static_cast<MPType>(sv);
+    step_value = static_cast<MPType>(stv);
+  } else {
+    int64_t sv, ev, stv;
+    PD_VISIT_ALL_TYPES(
+        start.dtype(), "GetStart", ([&] {
+          sv = static_cast<int64_t>(GetValue<data_t, Context>(dev_ctx, start));
+        }));
+    PD_VISIT_ALL_TYPES(
+        end.dtype(), "GetEnd", ([&] {
+          ev = static_cast<int64_t>(GetValue<data_t, Context>(dev_ctx, end));
+        }));
+    PD_VISIT_ALL_TYPES(
+        step.dtype(), "GetStep", ([&] {
+          stv = static_cast<int64_t>(GetValue<data_t, Context>(dev_ctx, step));
+        }));
+    funcs::GetSizeForRange<int64_t>(sv, ev, stv, &size);
+    start_value = static_cast<MPType>(sv);
+    step_value = static_cast<MPType>(stv);
   }
-  int64_t size =
-      static_cast<int64_t>(((end_value - start_value) / step_value) + 1);
+
   out->Resize({size});
   T* out_data = dev_ctx.template Alloc<T>(out);
 
@@ -107,25 +144,40 @@ void RangeKernel(const Context& dev_ctx,
                  const Scalar& end,
                  const Scalar& step,
                  DenseTensor* out) {
-  T start_value = start.to<T>();
-  T end_value = end.to<T>();
-  T step_value = step.to<T>();
-  if constexpr (std::is_same_v<T, float>) {
-    if (std::isnan(end_value)) {
-      PADDLE_THROW(common::errors::InvalidArgument(
-          "The end value of range cannot be NaN. Please check your input."));
-    }
-  } else if constexpr (std::is_same_v<T, double>) {
-    if (std::isnan(end_value)) {
-      PADDLE_THROW(common::errors::InvalidArgument(
-          "The end value of range cannot be NaN. Please check your input."));
-    }
+  bool any_float = phi::IsFloatingType(start.dtype()) ||
+                   phi::IsFloatingType(end.dtype()) ||
+                   phi::IsFloatingType(step.dtype());
+  int64_t size = 0;
+  if (any_float) {
+    double sv, ev, stv;
+    sv = start.to<double>();
+    ev = end.to<double>();
+    stv = step.to<double>();
+    funcs::GetSizeForRange<double>(sv, ev, stv, &size);
+  } else {
+    int64_t sv, ev, stv;
+    sv = start.to<int64_t>();
+    ev = end.to<int64_t>();
+    stv = step.to<int64_t>();
+    funcs::GetSizeForRange<int64_t>(sv, ev, stv, &size);
   }
-  if (step_value == static_cast<T>(0)) {
-    PADDLE_THROW(common::errors::InvalidArgument("step must be nonzero."));
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType start_value = start.to<MPType>();
+  MPType step_value = step.to<MPType>();
+  out->Resize({size});
+  T* out_data = dev_ctx.template Alloc<T>(out);
+  if (size == 0) {
+    return;
   }
-  RangeNullaryKernel<T, Context>(
-      dev_ctx, start_value, end_value, step_value, out);
+
+  auto stream = dev_ctx.stream();
+  int64_t block = std::min(size, static_cast<int64_t>(256));
+  if (block == 0) {
+    return;
+  }
+  int64_t grid = (size + block - 1) / block;
+  Range<MPType, T>
+      <<<grid, block, 0, stream>>>(start_value, step_value, size, out_data);
 }
 
 template decltype(RangeNullaryKernel<int64_t, GPUContext>) RangeNullaryKernel;

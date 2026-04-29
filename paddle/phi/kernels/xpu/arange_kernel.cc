@@ -26,15 +26,48 @@ void ArangeTensorKernel(const Context& dev_ctx,
                         const DenseTensor& end,
                         const DenseTensor& step,
                         DenseTensor* out) {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  using XPUType = typename XPUTypeTrait<T>::Type;
-  MPType start_value =
-      static_cast<MPType>(GetValue<T, Context>(dev_ctx, start));
-  MPType end_value = static_cast<MPType>(GetValue<T, Context>(dev_ctx, end));
-  MPType step_value = static_cast<MPType>(GetValue<T, Context>(dev_ctx, step));
-
+  bool any_float = phi::IsFloatingType(start.dtype()) ||
+                   phi::IsFloatingType(end.dtype()) ||
+                   phi::IsFloatingType(step.dtype());
   int64_t size = 0;
-  funcs::GetSize(start_value, end_value, step_value, &size);
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  XPUType start_value, step_value;
+  if (any_float) {
+    double sv, ev, stv;
+    PD_VISIT_ALL_TYPES(
+        start.dtype(), "GetStart", ([&] {
+          sv = static_cast<double>(GetValue<data_t, Context>(dev_ctx, start));
+        }));
+    PD_VISIT_ALL_TYPES(
+        end.dtype(), "GetEnd", ([&] {
+          ev = static_cast<double>(GetValue<data_t, Context>(dev_ctx, end));
+        }));
+    PD_VISIT_ALL_TYPES(
+        step.dtype(), "GetStep", ([&] {
+          stv = static_cast<double>(GetValue<data_t, Context>(dev_ctx, step));
+        }));
+    funcs::GetSize<double>(sv, ev, stv, &size);
+    start_value = static_cast<XPUType>(sv);
+    step_value = static_cast<XPUType>(stv);
+  } else {
+    int64_t sv, ev, stv;
+    PD_VISIT_ALL_TYPES(
+        start.dtype(), "GetStart", ([&] {
+          sv = static_cast<int64_t>(GetValue<data_t, Context>(dev_ctx, start));
+        }));
+    PD_VISIT_ALL_TYPES(
+        end.dtype(), "GetEnd", ([&] {
+          ev = static_cast<int64_t>(GetValue<data_t, Context>(dev_ctx, end));
+        }));
+    PD_VISIT_ALL_TYPES(
+        step.dtype(), "GetStep", ([&] {
+          stv = static_cast<int64_t>(GetValue<data_t, Context>(dev_ctx, step));
+        }));
+    funcs::GetSize<int64_t>(sv, ev, stv, &size);
+    start_value = static_cast<XPUType>(sv);
+    step_value = static_cast<XPUType>(stv);
+  }
+  int64_t size = 0;
   if (size == 0) {
     out->Resize({0});
     dev_ctx.template Alloc<T>(out);
@@ -44,11 +77,8 @@ void ArangeTensorKernel(const Context& dev_ctx,
   XPUType* out_data =
       reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out));
 
-  int ret = xpu::range(dev_ctx.x_context(),
-                       out_data,
-                       static_cast<XPUType>(start_value),
-                       static_cast<XPUType>(step_value),
-                       size);
+  int ret =
+      xpu::range(dev_ctx.x_context(), out_data, start_value, step_value, size);
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "range");
 }
 
