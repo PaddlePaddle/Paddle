@@ -24,20 +24,19 @@ namespace phi {
 
 template <typename T>
 struct LabelSmoothFunctor {
-  using MPType = typename dtype::MPTypeTrait<T>::Type;
-  MPType epsilon;
-  MPType label_dim;
+  using MT = typename MPTypeTrait<T>::Type;
+  MT epsilon;
+  MT label_dim;
 
   __forceinline__ LabelSmoothFunctor(float epsilon_data, int label_dim_data) {
-    epsilon = static_cast<MPType>(epsilon_data);
-    label_dim = static_cast<MPType>(label_dim_data);
+    epsilon = static_cast<MT>(epsilon_data);
+    label_dim = static_cast<MT>(label_dim_data);
   }
 
   __device__ __forceinline__ T operator()(const T x) const {
-    return static_cast<T>(
-        static_cast<MPType>(static_cast<MPType>(1) - epsilon) *
-            static_cast<MPType>(x) +
-        static_cast<MPType>(epsilon / label_dim));
+    return static_cast<T>(static_cast<MT>(static_cast<MT>(1) - epsilon) *
+                              static_cast<MT>(x) +
+                          static_cast<MT>(epsilon / label_dim));
   }
 };
 
@@ -48,14 +47,13 @@ __global__ void LabelSmoothRunDistKernel(const int64_t N,
                                          const T* src,
                                          const T* dist_data,
                                          T* dst) {
-  using MPType = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   CUDA_KERNEL_LOOP_TYPE(idx, N, int64_t) {
     int64_t dist_idx = idx % dist_numel;
-    dst[idx] =
-        static_cast<T>((static_cast<MPType>(1) - static_cast<MPType>(epsilon)) *
-                           static_cast<MPType>(src[idx]) +
-                       static_cast<MPType>(epsilon) *
-                           static_cast<MPType>(dist_data[dist_idx]));
+    dst[idx] = static_cast<T>((static_cast<MT>(1) - static_cast<MT>(epsilon)) *
+                                  static_cast<MT>(src[idx]) +
+                              static_cast<MT>(epsilon) *
+                                  static_cast<MT>(dist_data[dist_idx]));
   }
 }
 

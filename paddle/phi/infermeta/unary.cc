@@ -4291,6 +4291,24 @@ void ReduceInferMeta(const MetaTensor& x,
   ReduceInferMetaBase(x, axis, keep_dim, reduce_all, out);
 }
 
+void AMinMaxInferMeta(const MetaTensor& x,
+                      const std::vector<int64_t>& axis,
+                      bool keep_dim,
+                      MetaTensor* min,
+                      MetaTensor* max) {
+  bool reduce_all = false;
+  if (axis.empty()) {
+    reduce_all = true;
+  }
+  DDim out_dim = ReduceInferDim(x, axis, keep_dim, reduce_all);
+  min->set_dims(out_dim);
+  min->set_dtype(x.dtype());
+  min->set_layout(x.layout());
+  max->set_dims(out_dim);
+  max->set_dtype(x.dtype());
+  max->set_layout(x.layout());
+}
+
 DDim ReduceInferDimForIntArrayAxis(const MetaTensor& x,
                                    const IntArray& axis,
                                    bool keep_dim,

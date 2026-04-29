@@ -66,7 +66,7 @@ void CommonGradBroadcastCPU(const DenseTensor &x,
                             const CPUContext &dev_ctx,
                             DX_OP dx_op,
                             DY_OP dy_op) {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
 
   std::vector<int64_t> index_array(max_dim, 0);
   const T *x_data = x.data<T>();
@@ -75,19 +75,19 @@ void CommonGradBroadcastCPU(const DenseTensor &x,
   const Tout *dout_data = dout.data<Tout>();
 
   DenseTensor dx_mp, dy_mp;
-  MPType *dx_mp_data = nullptr;
-  MPType *dy_mp_data = nullptr;
+  MT *dx_mp_data = nullptr;
+  MT *dy_mp_data = nullptr;
   if (dx != nullptr) {
     dx_mp.Resize(dx->dims());
-    dev_ctx.Alloc<MPType>(&dx_mp);
-    dx_mp_data = dx_mp.data<MPType>();
-    memset(dx_mp_data, 0, dx->numel() * sizeof(MPType));
+    dev_ctx.Alloc<MT>(&dx_mp);
+    dx_mp_data = dx_mp.data<MT>();
+    memset(dx_mp_data, 0, dx->numel() * sizeof(MT));
   }
   if (dy != nullptr) {
     dy_mp.Resize(dy->dims());
-    dev_ctx.Alloc<MPType>(&dy_mp);
-    dy_mp_data = dy_mp.data<MPType>();
-    memset(dy_mp_data, 0, dy->numel() * sizeof(MPType));
+    dev_ctx.Alloc<MT>(&dy_mp);
+    dy_mp_data = dy_mp.data<MT>();
+    memset(dy_mp_data, 0, dy->numel() * sizeof(MT));
   }
   const int64_t out_size = std::accumulate(out_dims_array,
                                            out_dims_array + max_dim,
@@ -100,16 +100,16 @@ void CommonGradBroadcastCPU(const DenseTensor &x,
     y_index =
         GetElementwiseIndex<int64_t>(y_dims_array, max_dim, index_array.data());
     if (dx_mp_data != nullptr) {
-      dx_mp_data[x_index] += static_cast<MPType>(dx_op(x_data[x_index],
-                                                       y_data[y_index],
-                                                       out_data[out_index],
-                                                       dout_data[out_index]));
+      dx_mp_data[x_index] += static_cast<MT>(dx_op(x_data[x_index],
+                                                   y_data[y_index],
+                                                   out_data[out_index],
+                                                   dout_data[out_index]));
     }
     if (dy_mp_data != nullptr) {
-      dy_mp_data[y_index] += static_cast<MPType>(dy_op(x_data[x_index],
-                                                       y_data[y_index],
-                                                       out_data[out_index],
-                                                       dout_data[out_index]));
+      dy_mp_data[y_index] += static_cast<MT>(dy_op(x_data[x_index],
+                                                   y_data[y_index],
+                                                   out_data[out_index],
+                                                   dout_data[out_index]));
     }
 
     UpdateElementwiseIndexArray<int64_t>(
@@ -117,12 +117,12 @@ void CommonGradBroadcastCPU(const DenseTensor &x,
   }
   if (dx != nullptr) {
     dev_ctx.Alloc<T>(dx);
-    CastKernel<MPType, CPUContext>(
+    CastKernel<MT, CPUContext>(
         dev_ctx, dx_mp, CppTypeToDataType<T>::Type(), dx);
   }
   if (dy != nullptr) {
     dev_ctx.Alloc<T>(dy);
-    CastKernel<MPType, CPUContext>(
+    CastKernel<MT, CPUContext>(
         dev_ctx, dy_mp, CppTypeToDataType<T>::Type(), dy);
   }
 }
@@ -139,11 +139,11 @@ static void ElemwiseGradBroadcast1CPU(const T *x,
                                       DY_OP dy_op,
                                       T *dx,
                                       T *dy) {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
 
   if (is_xsize_larger) {
     for (size_t j = 0; j < w; ++j) {
-      MPType sum_y = static_cast<MPType>(0);
+      MT sum_y = static_cast<MT>(0);
       for (size_t i = 0; i < h; ++i) {
         size_t x_offset = i * w + j;
         if (dx != nullptr) {
@@ -151,7 +151,7 @@ static void ElemwiseGradBroadcast1CPU(const T *x,
               dx_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
         }
         if (dy != nullptr) {
-          sum_y += static_cast<MPType>(
+          sum_y += static_cast<MT>(
               dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]));
         }
       }
@@ -161,7 +161,7 @@ static void ElemwiseGradBroadcast1CPU(const T *x,
     }
   } else {
     for (size_t j = 0; j < w; ++j) {
-      MPType sum_x = static_cast<MPType>(0);
+      MT sum_x = static_cast<MT>(0);
       for (size_t i = 0; i < h; ++i) {
         size_t y_offset = i * w + j;
         if (dy != nullptr) {
@@ -169,7 +169,7 @@ static void ElemwiseGradBroadcast1CPU(const T *x,
               dy_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
         }
         if (dx != nullptr) {
-          sum_x += static_cast<MPType>(
+          sum_x += static_cast<MT>(
               dx_op(x[j], y[y_offset], out[y_offset], dout[y_offset]));
         }
       }
@@ -193,11 +193,11 @@ static void ElemwiseGradBroadcast2CPU(const T *x,
                                       DY_OP dy_op,
                                       T *dx,
                                       T *dy) {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
 
   if (is_xsize_larger) {
     for (size_t j = 0; j < n; ++j) {
-      MPType sum_y = static_cast<MPType>(0);
+      MT sum_y = static_cast<MT>(0);
       for (size_t i = 0; i < pre; ++i) {
         for (size_t k = 0; k < post; ++k) {
           size_t x_offset = i * n * post + j * post + k;
@@ -206,7 +206,7 @@ static void ElemwiseGradBroadcast2CPU(const T *x,
                 dx_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
           }
           if (dy != nullptr) {
-            sum_y += static_cast<MPType>(
+            sum_y += static_cast<MT>(
                 dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]));
           }
         }
@@ -217,7 +217,7 @@ static void ElemwiseGradBroadcast2CPU(const T *x,
     }
   } else {
     for (size_t j = 0; j < n; ++j) {
-      MPType sum_x = static_cast<MPType>(0);
+      MT sum_x = static_cast<MT>(0);
       for (size_t i = 0; i < pre; ++i) {
         for (size_t k = 0; k < post; ++k) {
           size_t y_offset = i * n * post + j * post + k;
@@ -226,7 +226,7 @@ static void ElemwiseGradBroadcast2CPU(const T *x,
                 dy_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
           }
           if (dx != nullptr) {
-            sum_x += static_cast<MPType>(
+            sum_x += static_cast<MT>(
                 dx_op(x[j], y[y_offset], out[y_offset], dout[y_offset]));
           }
         }

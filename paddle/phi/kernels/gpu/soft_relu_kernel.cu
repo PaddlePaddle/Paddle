@@ -22,8 +22,8 @@ namespace phi {
 
 template <typename T>
 struct CudaSoftReluFunctor {
-  using MPType = typename dtype::MPTypeTrait<T>::Type;
-  MPType one = static_cast<MPType>(1.0f);
+  using MT = typename MPTypeTrait<T>::Type;
+  MT one = static_cast<MT>(1.0f);
   float threshold;
 
   void SetAttrs(float threshold_) { threshold = threshold_; }
@@ -31,10 +31,10 @@ struct CudaSoftReluFunctor {
   // soft_relu(x) = log(1 + exp(max(min(x, threshold), -threshold)))
   // threshold should not be negative
   __device__ __forceinline__ T operator()(const T arg_x) {
-    MPType x = static_cast<MPType>(arg_x);
-    MPType t = static_cast<MPType>(threshold);
-    MPType temp_min = x < t ? x : t;
-    MPType temp_max = temp_min > -t ? temp_min : -t;
+    MT x = static_cast<MT>(arg_x);
+    MT t = static_cast<MT>(threshold);
+    MT temp_min = x < t ? x : t;
+    MT temp_max = temp_min > -t ? temp_min : -t;
     return static_cast<T>(log(one + exp(temp_max)));
   }
 };

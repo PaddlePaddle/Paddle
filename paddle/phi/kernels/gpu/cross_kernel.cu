@@ -37,14 +37,14 @@ __global__ void Cross(const T* x,
     int64_t pos1 = offset + 1 * stride;
     int64_t pos2 = offset + 2 * stride;
 
-    using MPType = typename dtype::MPTypeTrait<T>::Type;
+    using MT = typename MPTypeTrait<T>::Type;
 
-    MPType x_pos0_mp = static_cast<MPType>(x[pos0]);
-    MPType x_pos1_mp = static_cast<MPType>(x[pos1]);
-    MPType x_pos2_mp = static_cast<MPType>(x[pos2]);
-    MPType y_pos0_mp = static_cast<MPType>(y[pos0]);
-    MPType y_pos1_mp = static_cast<MPType>(y[pos1]);
-    MPType y_pos2_mp = static_cast<MPType>(y[pos2]);
+    MT x_pos0_mp = static_cast<MT>(x[pos0]);
+    MT x_pos1_mp = static_cast<MT>(x[pos1]);
+    MT x_pos2_mp = static_cast<MT>(x[pos2]);
+    MT y_pos0_mp = static_cast<MT>(y[pos0]);
+    MT y_pos1_mp = static_cast<MT>(y[pos1]);
+    MT y_pos2_mp = static_cast<MT>(y[pos2]);
 
     out[pos0] = static_cast<T>(x_pos1_mp * y_pos2_mp - x_pos2_mp * y_pos1_mp);
     out[pos1] = static_cast<T>(x_pos2_mp * y_pos0_mp - x_pos0_mp * y_pos2_mp);

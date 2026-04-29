@@ -74,7 +74,7 @@ static void CublasLtMatmulBias(const GPUContext& ctx,
                                int64_t N,
                                int64_t K,
                                bool trans_w) {
-  using MT = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   constexpr auto compute =
       std::is_same<T, double>::value ? CUBLAS_COMPUTE_64F : CUBLAS_COMPUTE_32F;
   const auto dtype = backends::gpu::ToCudaDataType<T>();

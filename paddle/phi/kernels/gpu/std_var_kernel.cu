@@ -174,7 +174,7 @@ void Std_VarKernel(const Context& dev_ctx,
   dense_iter_config.add_const_input(x);
   DenseTensorIterator iter = dense_iter_config.build();
 
-  using AccT = typename dtype::MPTypeTrait<T>::Type;
+  using AccT = typename MPTypeTrait<T>::Type;
   using ops_t = WelfordOps<T, AccT, int32_t, thrust::pair<T, T>>;
   ops_t ops(static_cast<AccT>(correction), take_sqrt);
 

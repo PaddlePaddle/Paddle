@@ -52,7 +52,7 @@ __global__ void DWConv2dFwdKernel(const T* __restrict__ input,
                                   const int padHeight,
                                   const int dilationWidth,
                                   const int dilationHeight) {
-  using AccT = typename dtype::MPTypeTrait<T>::Type;
+  using AccT = typename MPTypeTrait<T>::Type;
   const int KW_LIMIT = (kSize != 0) ? kSize : kernelWidth;
   const int KH_LIMIT = (kSize != 0) ? kSize : kernelHeight;
 
@@ -119,7 +119,7 @@ __global__ void DWConv2dFwdKernelGeneric(const T* __restrict__ input,
                                          const int padHeight,
                                          const int dilationWidth,
                                          const int dilationHeight) {
-  using AccT = typename dtype::MPTypeTrait<T>::Type;
+  using AccT = typename MPTypeTrait<T>::Type;
 
   for (IndexT linearIndex = blockIdx.x * blockDim.x + threadIdx.x;
        linearIndex < totalElements;
