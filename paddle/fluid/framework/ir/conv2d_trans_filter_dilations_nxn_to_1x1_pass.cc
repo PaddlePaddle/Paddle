@@ -139,22 +139,19 @@ void Conv2dTransFilterDilationsNxNTo1x1Pass::conv2d_dilation_trans(
                                       dilations[0],
                                       dilations[1]);
     } else if (weights->dtype() == phi::DataType::FLOAT16) {
-      auto weights_data = weights->data<phi::dtype::float16>();
-      auto* new_weights_data = cpu_ctx->Alloc<phi::dtype::float16>(new_weights);
-      memset(new_weights_data,
-             0,
-             new_weights->numel() * sizeof(phi::dtype::float16));
-      conv2d_dilation_trans_fn<phi::dtype::float16>(
-          weights_data,
-          new_weights_data,
-          static_cast<int>(weights_shape[0]),
-          static_cast<int>(weights_shape[1]),
-          kh,
-          kw,
-          new_kh,
-          new_kw,
-          dilations[0],
-          dilations[1]);
+      auto weights_data = weights->data<phi::float16>();
+      auto* new_weights_data = cpu_ctx->Alloc<phi::float16>(new_weights);
+      memset(new_weights_data, 0, new_weights->numel() * sizeof(phi::float16));
+      conv2d_dilation_trans_fn<phi::float16>(weights_data,
+                                             new_weights_data,
+                                             static_cast<int>(weights_shape[0]),
+                                             static_cast<int>(weights_shape[1]),
+                                             kh,
+                                             kw,
+                                             new_kh,
+                                             new_kw,
+                                             dilations[0],
+                                             dilations[1]);
     } else if (weights->dtype() == phi::DataType::INT8) {
       auto weights_data = weights->data<int8_t>();
       auto* new_weights_data = cpu_ctx->Alloc<int8_t>(new_weights);

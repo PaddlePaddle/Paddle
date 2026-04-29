@@ -122,7 +122,7 @@ void PermuteINT8WeightOnlyPass::ApplyPermuteINT8WeightOnly(
             common::errors::Fatal(
                 "weight_scale tensor node should not be nullptr"));
 
-        size_t dst_hash = HashTensor<phi::dtype::float16>(*scale_tensor);
+        size_t dst_hash = HashTensor<phi::float16>(*scale_tensor);
         std::string pre_name = GetPrefixWithoutHash(name);
         std::string dst_name = pre_name + "_#" + std::to_string(dst_hash);
         auto* dst_node = FindNodeWithName(graph, dst_name);

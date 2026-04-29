@@ -59,7 +59,7 @@ void Transpose2D(DenseTensor* in, DenseTensor* out) {
   std::vector<int> axis{1, 0};
   switch (in->dtype()) {
     case phi::DataType::FLOAT16:
-      phi::TransposeKernel<phi::dtype::float16>(*cpu_ctx, *in, axis, out_ptr);
+      phi::TransposeKernel<phi::float16>(*cpu_ctx, *in, axis, out_ptr);
       break;
     case phi::DataType::FLOAT32:
       phi::TransposeKernel<float>(*cpu_ctx, *in, axis, out_ptr);

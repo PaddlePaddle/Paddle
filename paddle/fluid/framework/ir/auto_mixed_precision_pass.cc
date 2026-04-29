@@ -455,14 +455,13 @@ void AutoMixedPrecisionPass::GetOpPrecision() const {
           if (low_precision_ == phi::DataType::FLOAT16) {
             support_low_precision =
                 support_low_precision &&
-                phi::dtype::isfinite(static_cast<phi::dtype::float16>(scale)) &&
-                phi::dtype::isfinite(static_cast<phi::dtype::float16>(bias));
+                phi::dtype::isfinite(static_cast<phi::float16>(scale)) &&
+                phi::dtype::isfinite(static_cast<phi::float16>(bias));
           } else if (low_precision_ == phi::DataType::BFLOAT16) {
             support_low_precision =
                 support_low_precision &&
-                phi::dtype::isfinite(
-                    static_cast<phi::dtype::bfloat16>(scale)) &&
-                phi::dtype::isfinite(static_cast<phi::dtype::bfloat16>(bias));
+                phi::dtype::isfinite(static_cast<phi::bfloat16>(scale)) &&
+                phi::dtype::isfinite(static_cast<phi::bfloat16>(bias));
           }
         }
 
@@ -948,30 +947,26 @@ void AutoMixedPrecisionPass::ConvertWeightsData() const {
 
       if (low_precision_ == phi::DataType::FLOAT16) {
         auto* low_precision_data =
-            low_precision_tensor.mutable_data<phi::dtype::float16>(CPUPlace{});
+            low_precision_tensor.mutable_data<phi::float16>(CPUPlace{});
         for (int64_t i = 0; i < origin_tensor->numel(); i++) {
           if (origin_tensor->dtype() == phi::DataType::FLOAT64) {
             auto* origin_data = origin_tensor->data<double>();
-            low_precision_data[i] =
-                static_cast<phi::dtype::float16>(origin_data[i]);
+            low_precision_data[i] = static_cast<phi::float16>(origin_data[i]);
           } else if (origin_tensor->dtype() == phi::DataType::FLOAT32) {
             auto* origin_data = origin_tensor->data<float>();
-            low_precision_data[i] =
-                static_cast<phi::dtype::float16>(origin_data[i]);
+            low_precision_data[i] = static_cast<phi::float16>(origin_data[i]);
           }
         }
       } else if (low_precision_ == phi::DataType::BFLOAT16) {
         auto* low_precision_data =
-            low_precision_tensor.mutable_data<phi::dtype::bfloat16>(CPUPlace{});
+            low_precision_tensor.mutable_data<phi::bfloat16>(CPUPlace{});
         for (int64_t i = 0; i < origin_tensor->numel(); i++) {
           if (origin_tensor->dtype() == phi::DataType::FLOAT64) {
             auto* origin_data = origin_tensor->data<double>();
-            low_precision_data[i] =
-                static_cast<phi::dtype::bfloat16>(origin_data[i]);
+            low_precision_data[i] = static_cast<phi::bfloat16>(origin_data[i]);
           } else if (origin_tensor->dtype() == phi::DataType::FLOAT32) {
             auto* origin_data = origin_tensor->data<float>();
-            low_precision_data[i] =
-                static_cast<phi::dtype::bfloat16>(origin_data[i]);
+            low_precision_data[i] = static_cast<phi::bfloat16>(origin_data[i]);
           }
         }
       }
