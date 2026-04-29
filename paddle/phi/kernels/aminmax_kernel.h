@@ -13,28 +13,17 @@
 // limitations under the License.
 
 #pragma once
-#include <c10/util/accumulate.h>
-#include <cstdint>
-#include <optional>
 
-namespace c10 {
+#include "paddle/phi/core/dense_tensor.h"
 
-class SymInt {
- public:
-  SymInt() : data_(0) {}
-  /*implicit*/ SymInt(int64_t d) : data_(d) {}  // NOLINT
-  /*implicit*/ operator int64_t() const { return data_; }
+namespace phi {
 
-  int64_t guard_int(const char* file, int64_t line) const {
-    (void)file;
-    (void)line;
-    return data_;
-  }
+template <typename T, typename Context>
+void AMinMaxKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const std::vector<int64_t>& dims,
+                   bool keep_dim,
+                   DenseTensor* min,
+                   DenseTensor* max);
 
-  std::optional<int64_t> maybe_as_int() const { return data_; }
-
- private:
-  int64_t data_;
-};
-
-}  // namespace c10
+}  // namespace phi

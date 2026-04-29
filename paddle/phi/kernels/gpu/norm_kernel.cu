@@ -39,7 +39,7 @@ __global__ void Normalize(const T* x,
                           const float eps,
                           T* y,
                           T* out_norm) {
-  using MT = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   typedef cub::BlockReduce<MT, BlockDim> BlockReduce;
   __shared__ typename BlockReduce::TempStorage temp_storage;
   int64_t num = pre * post;

@@ -26,10 +26,10 @@ namespace phi {
 template <typename T>
 __global__ void LogspaceKernelInner(
     T start, T stop, double step, T base, int64_t size, T* out) {
-  using MPType = typename dtype::MPTypeTrait<T>::Type;
-  MPType mt_start = static_cast<MPType>(start);
-  MPType mt_stop = static_cast<MPType>(stop);
-  MPType mt_base = static_cast<MPType>(base);
+  using MT = typename MPTypeTrait<T>::Type;
+  MT mt_start = static_cast<MT>(start);
+  MT mt_stop = static_cast<MT>(stop);
+  MT mt_base = static_cast<MT>(base);
 
   int64_t index =
       static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
@@ -50,9 +50,9 @@ __global__ void LogspaceKernelInner(
 
 template <typename T>
 __global__ void LogspaceSpecialKernel(T start, T base, T* out) {
-  using MPType = typename dtype::MPTypeTrait<T>::Type;
-  MPType mt_start = static_cast<MPType>(start);
-  MPType mt_base = static_cast<MPType>(base);
+  using MT = typename MPTypeTrait<T>::Type;
+  MT mt_start = static_cast<MT>(start);
+  MT mt_base = static_cast<MT>(base);
 
   out[0] = static_cast<T>(
       pow(static_cast<double>(mt_base), static_cast<double>(mt_start)));
@@ -66,7 +66,7 @@ void LogspaceKernel(const Context& dev_ctx,
                     const DenseTensor& base,
                     DataType dtype,
                     DenseTensor* out) {
-  using MPType = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
 
   auto start_t = funcs::TransDataType(dev_ctx, start, dtype);
   auto stop_t = funcs::TransDataType(dev_ctx, stop, dtype);
@@ -85,8 +85,8 @@ void LogspaceKernel(const Context& dev_ctx,
   Copy(dev_ctx, base_t, CPUPlace(), false, &n_base);
   T base_data = n_base.data<T>()[0];
 
-  MPType mt_start_data = static_cast<MPType>(start_data);
-  MPType mt_stop_data = static_cast<MPType>(stop_data);
+  MT mt_start_data = static_cast<MT>(start_data);
+  MT mt_stop_data = static_cast<MT>(stop_data);
 
   PADDLE_ENFORCE_GT(
       num,

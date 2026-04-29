@@ -33,7 +33,7 @@ __global__ void AccuracyCudaKernel(const int64_t N,
                                    int* correct_data,
                                    T* accuracy,
                                    int* total_data) {
-  using MT = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   int count = 0;
   __shared__ int total[BlockSize];
 

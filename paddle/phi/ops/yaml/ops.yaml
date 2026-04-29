@@ -258,6 +258,16 @@
   backward : amin_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
+- op : aminmax
+  args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
+  output : Tensor(min), Tensor(max)
+  infer_meta :
+    func : AMinMaxInferMeta
+  kernel :
+    func : aminmax
+  backward : aminmax_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
 - op : angle
   args : (Tensor x)
   output : Tensor

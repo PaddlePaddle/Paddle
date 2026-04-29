@@ -155,7 +155,9 @@ class PADDLE_API TensorBase {
   }
 
   c10::SymIntArrayRef sym_strides() const {
-    return c10::SymIntArrayRef(strides());
+    return c10::SymIntArrayRef(
+        reinterpret_cast<const c10::SymInt*>(strides().data()),
+        strides().size());
   }
 
   int64_t size(int64_t dim) const {
@@ -173,7 +175,10 @@ class PADDLE_API TensorBase {
     return compat::_PD_PhiDDimToIntArrayRef(tensor_.dims());
   }
 
-  c10::SymIntArrayRef sym_sizes() const { return c10::SymIntArrayRef(sizes()); }
+  c10::SymIntArrayRef sym_sizes() const {
+    return c10::SymIntArrayRef(
+        reinterpret_cast<const c10::SymInt*>(sizes().data()), sizes().size());
+  }
 
   int64_t numel() const { return tensor_.numel(); }
 

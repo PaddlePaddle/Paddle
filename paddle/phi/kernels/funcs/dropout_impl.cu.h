@@ -41,7 +41,7 @@ namespace funcs {
 
 template <typename T>
 struct DstFunctor {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
 
   HOSTDEVICE inline DstFunctor(const float retain_prob,
                                const bool is_upscale_in_train,
@@ -91,7 +91,7 @@ struct MaskFunctor {
 
 template <typename T>
 struct DstMaskFunctor {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   HOSTDEVICE inline DstMaskFunctor(const float retain_prob,
                                    const bool is_upscale_in_train)
       : retain_prob_(retain_prob), is_upscale_in_train_(is_upscale_in_train) {
@@ -425,7 +425,7 @@ void DropoutFwGPUKernelDriver(
       // y = x
       phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, y);
     } else {
-      using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+      using MT = typename MPTypeTrait<T>::Type;
       MT factor = static_cast<MT>(1.0f - dropout_prob);
       // y = factor * x
       phi::ScaleKernel<T, GPUContext>(dev_ctx, x, factor, 0.0f, false, y);
@@ -435,7 +435,7 @@ void DropoutFwGPUKernelDriver(
 
 template <typename T>
 struct CudaDropoutGradFunctor {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
 
   explicit CudaDropoutGradFunctor(const MT factor) : factor_(factor) {}
 
@@ -458,7 +458,7 @@ void DropoutGradGPUKernelDriver(const GPUContext& dev_ctx,
                                 const DenseTensor& mask,
                                 DenseTensor* grad_x,
                                 bool is_dropout_nd = false) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
 
   auto stream = dev_ctx.stream();
   if (is_test) {

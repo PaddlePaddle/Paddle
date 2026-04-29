@@ -206,6 +206,14 @@
     amin_grad : GetReduceGradExpectedKernelType
   manual_signature : [amin]
 
+- op : aminmax
+  backward : aminmax_grad
+  inputs :
+    x : X
+  outputs :
+    {min : Min, max : Max}
+  manual_signature : [aminmax]
+
 - op : anchor_generator
   inputs:
     input : Input
