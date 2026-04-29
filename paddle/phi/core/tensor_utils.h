@@ -120,18 +120,18 @@ void Copy(const Context& dev_ctx,
 
 template <typename T>
 void TensorFromVector(const std::vector<T>& src,
-                      const phi::DeviceContext& ctx,
+                      const DeviceContext& ctx,
                       DenseTensor* dst);
 
 template <typename T>
 void TensorFromArray(const T* src,
                      const size_t& array_size,
-                     const phi::DeviceContext& ctx,
+                     const DeviceContext& ctx,
                      DenseTensor* dst);
 
 template <typename T>
 void TensorToVector(const DenseTensor& src,
-                    const phi::DeviceContext& ctx,
+                    const DeviceContext& ctx,
                     std::vector<T>* dst);
 
 TEST_API DenseTensor ReshapeToMatrix(const DenseTensor& src, int num_col_dims);

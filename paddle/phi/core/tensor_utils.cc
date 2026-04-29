@@ -137,9 +137,9 @@ void Copy(const Context& dev_ctx,
                           "place is %s, context place is %s.",
                           src_place,
                           ctx_place));
-    auto stream =
-        blocking ? nullptr
-                 : reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
+    auto stream = blocking
+                      ? nullptr
+                      : reinterpret_cast<const GPUContext&>(dev_ctx).stream();
     memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
   } else if ((src_place.GetType() == AllocationType::CPU ||
               src_place.GetType() == AllocationType::GPUPINNED) &&  // NOLINT
@@ -158,9 +158,9 @@ void Copy(const Context& dev_ctx,
                             "destination place is %s, context place is %s.",
                             dst_place,
                             ctx_place));
-    auto stream =
-        blocking ? nullptr
-                 : reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
+    auto stream = blocking
+                      ? nullptr
+                      : reinterpret_cast<const GPUContext&>(dev_ctx).stream();
     // During CUDA Graph capturing, the host pointer may be freed or modified
     // after the graph is captured but before replay. Restore the host memory
     // into a stable buffer whose lifetime is tied to the graph.
@@ -180,9 +180,9 @@ void Copy(const Context& dev_ctx,
         errors::PreconditionNotMet(
             "Context place error, excepted GPUPlace, but actually %s.",
             ctx_place));
-    auto stream =
-        blocking ? nullptr
-                 : reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
+    auto stream = blocking
+                      ? nullptr
+                      : reinterpret_cast<const GPUContext&>(dev_ctx).stream();
     if (src_place.GetDeviceId() == dst_place.GetDeviceId()) {
       memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
     } else {
@@ -216,9 +216,9 @@ void Copy(const Context& dev_ctx,
                           "place is %s, context place is %s.",
                           src_place,
                           ctx_place));
-    auto stream =
-        blocking ? nullptr
-                 : reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
+    auto stream = blocking
+                      ? nullptr
+                      : reinterpret_cast<const GPUContext&>(dev_ctx).stream();
     memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
 #endif
 #ifdef PADDLE_WITH_XPU
@@ -501,7 +501,7 @@ void TensorFromVector(const std::vector<T>& src,
                        src_place,
                        stable_src_ptr,
                        size,
-                       reinterpret_cast<const phi::GPUContext&>(ctx).stream());
+                       reinterpret_cast<const GPUContext&>(ctx).stream());
   }
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -558,7 +558,7 @@ void TensorFromVector(const std::vector<bool>& src,
                        src_place,
                        stable_src_ptr,
                        size,
-                       reinterpret_cast<const phi::GPUContext&>(ctx).stream());
+                       reinterpret_cast<const GPUContext&>(ctx).stream());
   }
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -652,7 +652,7 @@ void TensorFromArray(const T* src,
                        src_place,
                        stable_src_ptr,
                        size,
-                       reinterpret_cast<const phi::GPUContext&>(ctx).stream());
+                       reinterpret_cast<const GPUContext&>(ctx).stream());
   }
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -749,7 +749,7 @@ void TensorToVector(const DenseTensor& src,
                        src.place(),
                        src_ptr,
                        size,
-                       reinterpret_cast<const phi::GPUContext&>(ctx).stream());
+                       reinterpret_cast<const GPUContext&>(ctx).stream());
   }
 #endif
 #if defined(PADDLE_WITH_XPU)
@@ -791,7 +791,7 @@ void TensorToVector(const DenseTensor& src,
                        src.place(),
                        src_ptr,
                        size,
-                       reinterpret_cast<const phi::GPUContext&>(ctx).stream());
+                       reinterpret_cast<const GPUContext&>(ctx).stream());
   }
 #endif
 #if defined(PADDLE_WITH_XPU)
