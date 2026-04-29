@@ -189,12 +189,12 @@ void Copy(const Context& dev_ctx,
       if (ctx_place.GetDeviceId() == src_place.GetDeviceId()) {
         memory_utils::Copy(
             dst_place, dst_ptr, src_place, src_ptr, size, stream);
-        phi::DeviceContextPool::Instance().Get(src.place())->Wait();
+        DeviceContextPool::Instance().Get(src.place())->Wait();
       } else if (ctx_place.GetDeviceId() == dst_place.GetDeviceId()) {
-        phi::DeviceContextPool::Instance().Get(src.place())->Wait();
+        DeviceContextPool::Instance().Get(src.place())->Wait();
         memory_utils::Copy(
             dst_place, dst_ptr, src_place, src_ptr, size, stream);
-        phi::DeviceContextPool::Instance().Get(dst_place)->Wait();
+        DeviceContextPool::Instance().Get(dst_place)->Wait();
       } else {
         PADDLE_THROW(errors::Unavailable(
             "Context place dose not match the source and destination place."));
@@ -245,32 +245,29 @@ void Copy(const Context& dev_ctx,
               dst_place.GetType() == AllocationType::XPUPINNED) ||
              (src_place.GetType() == AllocationType::XPUPINNED &&
               dst_place.GetType() == AllocationType::XPU)) {
-    auto stream =
-        blocking ? nullptr
-                 : reinterpret_cast<const phi::XPUContext&>(dev_ctx).stream();
+    auto stream = blocking
+                      ? nullptr
+                      : reinterpret_cast<const XPUContext&>(dev_ctx).stream();
     memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   } else if (src_place.GetType() == AllocationType::CUSTOM &&  // NOLINT
              dst_place.GetType() == AllocationType::CPU) {
     auto stream =
-        blocking
-            ? nullptr
-            : reinterpret_cast<const phi::CustomContext&>(dev_ctx).stream();
+        blocking ? nullptr
+                 : reinterpret_cast<const CustomContext&>(dev_ctx).stream();
     memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
   } else if (src_place.GetType() == AllocationType::CPU &&  // NOLINT
              dst_place.GetType() == AllocationType::CUSTOM) {
     auto stream =
-        blocking
-            ? nullptr
-            : reinterpret_cast<const phi::CustomContext&>(dev_ctx).stream();
+        blocking ? nullptr
+                 : reinterpret_cast<const CustomContext&>(dev_ctx).stream();
     memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
   } else if (src_place.GetType() == AllocationType::CUSTOM &&  // NOLINT
              dst_place.GetType() == AllocationType::CUSTOM) {
     auto stream =
-        blocking
-            ? nullptr
-            : reinterpret_cast<const phi::CustomContext&>(dev_ctx).stream();
+        blocking ? nullptr
+                 : reinterpret_cast<const CustomContext&>(dev_ctx).stream();
     memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
 #endif
   } else {
@@ -301,17 +298,17 @@ void Copy(const Context& dev_ctx,
           Place dst_place,
           bool blocking,
           SparseCooTensor* dst) {
-  phi::Copy<Context>(dev_ctx,
-                     src.non_zero_indices(),
-                     dst_place,
-                     blocking,
-                     dst->mutable_non_zero_indices());
+  Copy<Context>(dev_ctx,
+                src.non_zero_indices(),
+                dst_place,
+                blocking,
+                dst->mutable_non_zero_indices());
 
-  phi::Copy<Context>(dev_ctx,
-                     src.non_zero_elements(),
-                     dst_place,
-                     blocking,
-                     dst->mutable_non_zero_elements());
+  Copy<Context>(dev_ctx,
+                src.non_zero_elements(),
+                dst_place,
+                blocking,
+                dst->mutable_non_zero_elements());
   dst->set_meta(src.meta());
   dst->SetCoalesced(src.coalesced());
 }
@@ -322,23 +319,23 @@ void Copy(const Context& dev_ctx,
           Place dst_place,
           bool blocking,
           SparseCsrTensor* dst) {
-  phi::Copy<Context>(dev_ctx,
-                     src.non_zero_crows(),
-                     dst_place,
-                     blocking,
-                     dst->mutable_non_zero_crows());
+  Copy<Context>(dev_ctx,
+                src.non_zero_crows(),
+                dst_place,
+                blocking,
+                dst->mutable_non_zero_crows());
 
-  phi::Copy<Context>(dev_ctx,
-                     src.non_zero_cols(),
-                     dst_place,
-                     blocking,
-                     dst->mutable_non_zero_cols());
+  Copy<Context>(dev_ctx,
+                src.non_zero_cols(),
+                dst_place,
+                blocking,
+                dst->mutable_non_zero_cols());
 
-  phi::Copy<Context>(dev_ctx,
-                     src.non_zero_elements(),
-                     dst_place,
-                     blocking,
-                     dst->mutable_non_zero_elements());
+  Copy<Context>(dev_ctx,
+                src.non_zero_elements(),
+                dst_place,
+                blocking,
+                dst->mutable_non_zero_elements());
   dst->set_dims(src.dims());
 }
 
@@ -480,7 +477,7 @@ template void Copy(const OneDNNContext& dev_ctx,
 
 template <typename T>
 void TensorFromVector(const std::vector<T>& src,
-                      const phi::DeviceContext& ctx,
+                      const DeviceContext& ctx,
                       DenseTensor* dst) {
   auto dst_place = ctx.GetPlace();
   auto src_ptr = static_cast<const void*>(src.data());
@@ -509,13 +506,12 @@ void TensorFromVector(const std::vector<T>& src,
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   else if (dst_place.GetType() == AllocationType::CUSTOM) {  // NOLINT
-    memory_utils::Copy(
-        dst_place,
-        dst_ptr,
-        src_place,
-        src_ptr,
-        size,
-        reinterpret_cast<const phi::CustomContext&>(ctx).stream());
+    memory_utils::Copy(dst_place,
+                       dst_ptr,
+                       src_place,
+                       src_ptr,
+                       size,
+                       reinterpret_cast<const CustomContext&>(ctx).stream());
   }
 #endif
 #ifdef PADDLE_WITH_XPU
@@ -531,7 +527,7 @@ void TensorFromVector(const std::vector<T>& src,
 
 template <>
 void TensorFromVector(const std::vector<bool>& src,
-                      const phi::DeviceContext& ctx,
+                      const DeviceContext& ctx,
                       DenseTensor* dst) {
   // vector<bool> has no data() member, use array instead.
   // See details:
@@ -567,7 +563,7 @@ void TensorFromVector(const std::vector<bool>& src,
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   else if (dst_place.GetType() == AllocationType::CUSTOM) {  // NOLINT
-    auto stream = reinterpret_cast<const phi::CustomContext&>(ctx).stream();
+    auto stream = reinterpret_cast<const CustomContext&>(ctx).stream();
     memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
   }
 #endif
@@ -584,57 +580,55 @@ void TensorFromVector(const std::vector<bool>& src,
 }
 
 template void TensorFromVector<int8_t>(const std::vector<int8_t>& src,
-                                       const phi::DeviceContext& ctx,
+                                       const DeviceContext& ctx,
                                        DenseTensor* dst);
 
 template void TensorFromVector<uint8_t>(const std::vector<uint8_t>& src,
-                                        const phi::DeviceContext& ctx,
+                                        const DeviceContext& ctx,
                                         DenseTensor* dst);
 
 template void TensorFromVector<int16_t>(const std::vector<int16_t>& src,
-                                        const phi::DeviceContext& ctx,
+                                        const DeviceContext& ctx,
                                         DenseTensor* dst);
 
 template void TensorFromVector<int>(const std::vector<int>& src,
-                                    const phi::DeviceContext& ctx,
+                                    const DeviceContext& ctx,
                                     DenseTensor* dst);
 
 template void TensorFromVector<int64_t>(const std::vector<int64_t>& src,
-                                        const phi::DeviceContext& ctx,
+                                        const DeviceContext& ctx,
                                         DenseTensor* dst);
 
 template void TensorFromVector<float>(const std::vector<float>& src,
-                                      const phi::DeviceContext& ctx,
+                                      const DeviceContext& ctx,
                                       DenseTensor* dst);
 
 template void TensorFromVector<double>(const std::vector<double>& src,
-                                       const phi::DeviceContext& ctx,
+                                       const DeviceContext& ctx,
                                        DenseTensor* dst);
 
-template void TensorFromVector<phi::dtype::bfloat16>(
-    const std::vector<phi::dtype::bfloat16>& src,
-    const phi::DeviceContext& ctx,
-    DenseTensor* dst);
+template void TensorFromVector<bfloat16>(const std::vector<bfloat16>& src,
+                                         const DeviceContext& ctx,
+                                         DenseTensor* dst);
 
-template void TensorFromVector<phi::dtype::float16>(
-    const std::vector<phi::dtype::float16>& src,
-    const phi::DeviceContext& ctx,
-    DenseTensor* dst);
+template void TensorFromVector<float16>(const std::vector<float16>& src,
+                                        const DeviceContext& ctx,
+                                        DenseTensor* dst);
 
 template void TensorFromVector<phi::dtype::complex<float>>(
     const std::vector<phi::dtype::complex<float>>& src,
-    const phi::DeviceContext& ctx,
+    const DeviceContext& ctx,
     DenseTensor* dst);
 
 template void TensorFromVector<phi::dtype::complex<double>>(
     const std::vector<phi::dtype::complex<double>>& src,
-    const phi::DeviceContext& ctx,
+    const DeviceContext& ctx,
     DenseTensor* dst);
 
 template <typename T>
 void TensorFromArray(const T* src,
                      const size_t& array_size,
-                     const phi::DeviceContext& ctx,
+                     const DeviceContext& ctx,
                      DenseTensor* dst) {
   auto dst_place = ctx.GetPlace();
   auto src_ptr = static_cast<const void*>(src);
@@ -663,13 +657,12 @@ void TensorFromArray(const T* src,
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   else if (dst_place.GetType() == AllocationType::CUSTOM) {  // NOLINT
-    memory_utils::Copy(
-        dst_place,
-        dst_ptr,
-        src_place,
-        src_ptr,
-        size,
-        reinterpret_cast<const phi::CustomContext&>(ctx).stream());
+    memory_utils::Copy(dst_place,
+                       dst_ptr,
+                       src_place,
+                       src_ptr,
+                       size,
+                       reinterpret_cast<const CustomContext&>(ctx).stream());
   }
 #endif
 #ifdef PADDLE_WITH_XPU
@@ -685,61 +678,59 @@ void TensorFromArray(const T* src,
 
 template void TensorFromArray<bool>(const bool* src,
                                     const size_t& array_size,
-                                    const phi::DeviceContext& ctx,
+                                    const DeviceContext& ctx,
                                     DenseTensor* dst);
 
 template void TensorFromArray<int16_t>(const int16_t* src,
                                        const size_t& array_size,
-                                       const phi::DeviceContext& ctx,
+                                       const DeviceContext& ctx,
                                        DenseTensor* dst);
 
 template void TensorFromArray<int>(const int* src,
                                    const size_t& array_size,
-                                   const phi::DeviceContext& ctx,
+                                   const DeviceContext& ctx,
                                    DenseTensor* dst);
 
 template void TensorFromArray<int64_t>(const int64_t* src,
                                        const size_t& array_size,
-                                       const phi::DeviceContext& ctx,
+                                       const DeviceContext& ctx,
                                        DenseTensor* dst);
 
 template void TensorFromArray<float>(const float* src,
                                      const size_t& array_size,
-                                     const phi::DeviceContext& ctx,
+                                     const DeviceContext& ctx,
                                      DenseTensor* dst);
 
 template void TensorFromArray<double>(const double* src,
                                       const size_t& array_size,
-                                      const phi::DeviceContext& ctx,
+                                      const DeviceContext& ctx,
                                       DenseTensor* dst);
 
-template void TensorFromArray<phi::dtype::bfloat16>(
-    const phi::dtype::bfloat16* src,
-    const size_t& array_size,
-    const phi::DeviceContext& ctx,
-    DenseTensor* dst);
+template void TensorFromArray<bfloat16>(const bfloat16* src,
+                                        const size_t& array_size,
+                                        const DeviceContext& ctx,
+                                        DenseTensor* dst);
 
-template void TensorFromArray<phi::dtype::float16>(
-    const phi::dtype::float16* src,
-    const size_t& array_size,
-    const phi::DeviceContext& ctx,
-    DenseTensor* dst);
+template void TensorFromArray<float16>(const float16* src,
+                                       const size_t& array_size,
+                                       const DeviceContext& ctx,
+                                       DenseTensor* dst);
 
 template void TensorFromArray<phi::dtype::complex<float>>(
     const phi::dtype::complex<float>* src,
     const size_t& array_size,
-    const phi::DeviceContext& ctx,
+    const DeviceContext& ctx,
     DenseTensor* dst);
 
 template void TensorFromArray<phi::dtype::complex<double>>(
     const phi::dtype::complex<double>* src,
     const size_t& array_size,
-    const phi::DeviceContext& ctx,
+    const DeviceContext& ctx,
     DenseTensor* dst);
 
 template <typename T>
 void TensorToVector(const DenseTensor& src,
-                    const phi::DeviceContext& ctx,
+                    const DeviceContext& ctx,
                     std::vector<T>* dst) {
   auto src_ptr = static_cast<const void*>(src.data<T>());
   auto size = src.numel() * sizeof(T);
@@ -779,7 +770,7 @@ void TensorToVector(const DenseTensor& src,
 
 template <>
 void TensorToVector(const DenseTensor& src,
-                    const phi::DeviceContext& ctx,
+                    const DeviceContext& ctx,
                     std::vector<bool>* dst) {
   auto src_ptr = static_cast<const void*>(src.data<bool>());
   auto size = src.numel() * sizeof(bool);
@@ -820,39 +811,39 @@ void TensorToVector(const DenseTensor& src,
 }
 
 template void TensorToVector(const DenseTensor& src,
-                             const phi::DeviceContext& ctx,
+                             const DeviceContext& ctx,
                              std::vector<int16_t>* dst);
 
 template void TensorToVector(const DenseTensor& src,
-                             const phi::DeviceContext& ctx,
+                             const DeviceContext& ctx,
                              std::vector<int>* dst);
 
 template void TensorToVector(const DenseTensor& src,
-                             const phi::DeviceContext& ctx,
+                             const DeviceContext& ctx,
                              std::vector<int64_t>* dst);
 
 template void TensorToVector(const DenseTensor& src,
-                             const phi::DeviceContext& ctx,
+                             const DeviceContext& ctx,
                              std::vector<float>* dst);
 
 template void TensorToVector(const DenseTensor& src,
-                             const phi::DeviceContext& ctx,
+                             const DeviceContext& ctx,
                              std::vector<double>* dst);
 
 template void TensorToVector(const DenseTensor& src,
-                             const phi::DeviceContext& ctx,
-                             std::vector<phi::dtype::bfloat16>* dst);
+                             const DeviceContext& ctx,
+                             std::vector<bfloat16>* dst);
 
 template void TensorToVector(const DenseTensor& src,
-                             const phi::DeviceContext& ctx,
-                             std::vector<phi::dtype::float16>* dst);
+                             const DeviceContext& ctx,
+                             std::vector<float16>* dst);
 
 template void TensorToVector(const DenseTensor& src,
-                             const phi::DeviceContext& ctx,
+                             const DeviceContext& ctx,
                              std::vector<phi::dtype::complex<float>>* dst);
 
 template void TensorToVector(const DenseTensor& src,
-                             const phi::DeviceContext& ctx,
+                             const DeviceContext& ctx,
                              std::vector<phi::dtype::complex<double>>* dst);
 
 template <typename T>
@@ -911,10 +902,9 @@ template void TensorToVector(const DenseTensor& src, std::vector<float>* dst);
 template void TensorToVector(const DenseTensor& src, std::vector<double>* dst);
 
 template void TensorToVector(const DenseTensor& src,
-                             std::vector<phi::dtype::bfloat16>* dst);
+                             std::vector<bfloat16>* dst);
 
-template void TensorToVector(const DenseTensor& src,
-                             std::vector<phi::dtype::float16>* dst);
+template void TensorToVector(const DenseTensor& src, std::vector<float16>* dst);
 
 template void TensorToVector(const DenseTensor& src,
                              std::vector<phi::dtype::complex<float>>* dst);
@@ -947,9 +937,9 @@ T GetValue(const DenseTensor* x) {
   T value = static_cast<T>(0);
   if (x->place().GetType() != AllocationType::CPU) {
     DenseTensor cpu_x{};
-    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-    phi::DeviceContext* dev_ctx = pool.Get(x->place());
-    phi::Copy(*dev_ctx, *x, phi::CPUPlace(), true, &cpu_x);
+    DeviceContextPool& pool = DeviceContextPool::Instance();
+    DeviceContext* dev_ctx = pool.Get(x->place());
+    Copy(*dev_ctx, *x, phi::CPUPlace(), true, &cpu_x);
     value = cpu_x.data<T>()[0];
   } else {
     value = x->data<T>()[0];
@@ -969,9 +959,9 @@ template float GetValue(const DenseTensor* x);
 
 template double GetValue(const DenseTensor* x);
 
-template phi::dtype::bfloat16 GetValue(const DenseTensor* x);
+template bfloat16 GetValue(const DenseTensor* x);
 
-template phi::dtype::float16 GetValue(const DenseTensor* x);
+template float16 GetValue(const DenseTensor* x);
 
 template phi::dtype::complex<float> GetValue(const DenseTensor* x);
 
@@ -983,20 +973,20 @@ std::vector<T> GetVectorFromTensor(const DenseTensor* x) {
   if (phi::TransToProtoVarType(x->dtype()) == ProtoDataType::INT32) {
     auto* data = x->data<int>();
     DenseTensor cpu_attr_tensor;
-    if (x->place().GetType() != phi::AllocationType::CPU) {
-      phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+    if (x->place().GetType() != AllocationType::CPU) {
+      DeviceContextPool& pool = DeviceContextPool::Instance();
       auto dev_ctx = pool.Get(x->place());
-      phi::Copy(*dev_ctx, *x, CPUPlace(), true, &cpu_attr_tensor);
+      Copy(*dev_ctx, *x, CPUPlace(), true, &cpu_attr_tensor);
       data = cpu_attr_tensor.data<int>();
     }
     vec_new_data = std::vector<T>(data, data + x->numel());
   } else if (phi::TransToProtoVarType(x->dtype()) == ProtoDataType::INT64) {
     auto* data = x->data<int64_t>();
     DenseTensor cpu_attr_tensor;
-    if (x->place().GetType() != phi::AllocationType::CPU) {
-      phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+    if (x->place().GetType() != AllocationType::CPU) {
+      DeviceContextPool& pool = DeviceContextPool::Instance();
       auto dev_ctx = pool.Get(x->place());
-      phi::Copy(*dev_ctx, *x, CPUPlace(), true, &cpu_attr_tensor);
+      Copy(*dev_ctx, *x, CPUPlace(), true, &cpu_attr_tensor);
       data = cpu_attr_tensor.data<int64_t>();
     }
     // NOTE: Converting int64 to int32 may cause data overflow.
@@ -1019,10 +1009,10 @@ template <typename T>
 std::vector<T> _GetVectorFromTensor(const DenseTensor* x) {
   auto* data = x->data<T>();
   DenseTensor cpu_attr_tensor;
-  if (x->place().GetType() != phi::AllocationType::CPU) {
-    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+  if (x->place().GetType() != AllocationType::CPU) {
+    DeviceContextPool& pool = DeviceContextPool::Instance();
     auto dev_ctx = pool.Get(x->place());
-    phi::Copy(*dev_ctx, *x, CPUPlace(), true, &cpu_attr_tensor);
+    Copy(*dev_ctx, *x, CPUPlace(), true, &cpu_attr_tensor);
     data = cpu_attr_tensor.data<T>();
   }
   return std::vector<T>(data, data + x->numel());
