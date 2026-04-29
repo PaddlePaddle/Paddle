@@ -2814,5 +2814,122 @@ class TestSquareInplaceAPI(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestModuleAPI(unittest.TestCase):
+    def _assert_torch_module_state(self, module):
+        self.assertIsInstance(module, paddle.nn.Layer)
+        self.assertTrue(module.training)
+        self.assertEqual(module._parameters, {})
+        self.assertEqual(module._buffers, {})
+        self.assertEqual(module._modules, {})
+        self.assertEqual(module._sub_layers, {})
+        self.assertEqual(module._non_persistent_buffers_set, set())
+        self.assertEqual(module._backward_pre_hooks, {})
+        self.assertEqual(module._backward_hooks, {})
+        self.assertIsNone(module._is_full_backward_hook)
+        self.assertIs(module._forward_hooks, module._forward_post_hooks)
+        self.assertIs(
+            module._forward_hooks_with_kwargs,
+            module._forward_post_hooks_with_kwargs_flag,
+        )
+        self.assertIs(
+            module._forward_hooks_always_called,
+            module._forward_post_hooks_always_called,
+        )
+        self.assertIs(
+            module._forward_pre_hooks_with_kwargs,
+            module._forward_pre_hooks_with_kwargs_flag,
+        )
+        self.assertEqual(module._state_dict_hooks, {})
+        self.assertEqual(module._state_dict_pre_hooks, {})
+        self.assertEqual(module._load_state_dict_pre_hooks, {})
+        self.assertEqual(module._load_state_dict_post_hooks, {})
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        try:
+            # 1. Paddle/PyTorch positional arguments
+            module = paddle.compat.nn.Module()
+            self._assert_torch_module_state(module)
+
+            # 2. Paddle/PyTorch keyword arguments
+            with self.assertRaisesRegex(
+                TypeError,
+                "Module.__init__\\(\\) got an unexpected keyword argument 'name_scope'",
+            ):
+                paddle.compat.nn.Module(name_scope="module")
+
+            # 3. Mixed arguments
+            with self.assertRaisesRegex(
+                TypeError,
+                "Module.__init__\\(\\) takes 1 positional argument but 2 were given",
+            ):
+                paddle.compat.nn.Module("module")
+
+            child = paddle.compat.nn.Module()
+            module.add_module("child", child)
+            self.assertIs(module._modules["child"], child)
+            self.assertIs(module._sub_layers["child"], child)
+
+            buffer = paddle.ones([1], dtype="float32")
+            module.register_buffer("buffer", buffer)
+            self.assertIs(module._buffers["buffer"], buffer)
+
+            parameter = module.create_parameter(
+                shape=[1], dtype="float32", is_bias=False
+            )
+            module.register_parameter("weight", parameter)
+            self.assertIs(module._parameters["weight"], parameter)
+
+            hook = module.register_forward_hook(
+                lambda layer, inputs, kwargs, output: output,
+                with_kwargs=True,
+                always_call=True,
+            )
+            self.assertIn(hook._hook_id, module._forward_hooks)
+            self.assertIn(hook._hook_id, module._forward_hooks_with_kwargs)
+            self.assertIn(hook._hook_id, module._forward_hooks_always_called)
+            hook.remove()
+
+            pre_hook = module.register_forward_pre_hook(
+                lambda layer, inputs, kwargs: None,
+                with_kwargs=True,
+            )
+            self.assertIn(pre_hook._hook_id, module._forward_pre_hooks)
+            self.assertIn(
+                pre_hook._hook_id, module._forward_pre_hooks_with_kwargs
+            )
+            pre_hook.remove()
+
+            class ExtraBase:
+                def __init__(self, marker, *, enabled=False):
+                    self.marker = marker
+                    self.enabled = enabled
+                    super().__init__()
+
+            class SuperInitModule(paddle.compat.nn.Module, ExtraBase):
+                call_super_init = True
+
+                def __init__(self, marker, *, enabled=False):
+                    super().__init__(marker, enabled=enabled)
+
+            super_init_module = SuperInitModule("ok", enabled=True)
+            self._assert_torch_module_state(super_init_module)
+            self.assertEqual(super_init_module.marker, "ok")
+            self.assertTrue(super_init_module.enabled)
+        finally:
+            paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        module = paddle.compat.nn.Module()
+        self._assert_torch_module_state(module)
+
+        with self.assertRaisesRegex(
+            TypeError,
+            "Module.__init__\\(\\) got an unexpected keyword argument 'dtype'",
+        ):
+            paddle.compat.nn.Module(dtype="float64")
+
+
 if __name__ == "__main__":
     unittest.main()
