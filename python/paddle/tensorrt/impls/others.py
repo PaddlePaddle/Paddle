@@ -252,7 +252,6 @@ def set_value_converter(network, paddle_op, inputs):
     value_rank = len(updates.shape)
     input_rank = len(x.shape)
 
-    op_name = paddle_op.name()
     assert value_rank == input_rank, (
         "value's rank is not equal to input's rank, "
         'you should modify trt_config(a TensorRTConfig object) and set trt_config.disable_ops = ["{op_name}"] to forbid this op '
@@ -496,8 +495,6 @@ def anchor_generator_converter(network, paddle_op, inputs):
 
     height = input_dims[1]
     width = input_dims[2]
-    box_num = width * height * num_anchors
-    data_type = trt.float32
 
     plugin_fields = [
         trt.PluginField(

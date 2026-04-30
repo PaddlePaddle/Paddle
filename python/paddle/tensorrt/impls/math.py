@@ -162,7 +162,6 @@ def max_converter(network, paddle_op, inputs):
         assert axis != 0, (
             "can't reduce on axis == 0 when network has implicit batch dimension"
         )
-    output_shape = []
     if len(axis) == 0:
         axis = list(range(len(input_shape)))
     for i in range(len(axis)):

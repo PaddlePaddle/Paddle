@@ -291,19 +291,13 @@ def full_with_tensor_converter(network, paddle_op, inputs):
     shape_val = get_input_constant_value(paddle_op, inputs, 1)
     if shape_val is not None:
         shape_tensor = shape_val
-        is_static_shape = True
     else:
         shape_tensor = inputs[1]
-        is_static_shape = False
 
-    shape_nbDims = 0
     tensor_rank = 0
     if isinstance(shape_tensor, trt.ITensor):
-        shape_x = shape_tensor.shape
-        shape_nbDims = len(shape_x)
         shapes_tensor = shape_tensor
     elif isinstance(shape_tensor, (list, tuple)):
-        shape_nbDims = len(shape_tensor)
         shapes_tensor = shape_tensor
     else:
         raise TypeError(f"Unsupported shape_tensor type: {type(shape_tensor)}")

@@ -69,7 +69,7 @@ inline std::vector<int64_t> GetNewDataFromShapeTensor(
     const DenseTensor* new_data_tensor) {
   DenseTensor cpu_starts_tensor;
   auto* dev_ctx = DeviceContextPool::Instance().Get(cpu_starts_tensor.place());
-  if (new_data_tensor->dtype() == phi::DataType::INT64) {
+  if (new_data_tensor->dtype() == DataType::INT64) {
     auto* new_data = new_data_tensor->data<int64_t>();
     if (new_data_tensor->place().GetType() == AllocationType::GPU) {
       phi::Copy(
@@ -79,7 +79,7 @@ inline std::vector<int64_t> GetNewDataFromShapeTensor(
     std::vector<int64_t> vec_new_data(new_data,
                                       new_data + new_data_tensor->numel());
     return vec_new_data;
-  } else if (new_data_tensor->dtype() == phi::DataType::INT32) {
+  } else if (new_data_tensor->dtype() == DataType::INT32) {
     auto* new_data = new_data_tensor->data<int32_t>();
     std::vector<int64_t> vec_new_data;
     if (new_data_tensor->place().GetType() == AllocationType::GPU) {
@@ -115,14 +115,14 @@ inline std::vector<int64_t> GetNewDataFromShapeTensorList(
             "But received tensor's dim=%s.",
             tensor->dims()));
 
-    if (tensor->dtype() == phi::DataType::INT32) {
+    if (tensor->dtype() == DataType::INT32) {
       if (tensor->place().GetType() == AllocationType::GPU) {
         phi::Copy(*dev_ctx, *tensor, CPUPlace(), true, &temp);
         vec_new_shape.push_back(static_cast<int64_t>(*temp.data<int32_t>()));
       } else {
         vec_new_shape.push_back(static_cast<int64_t>(*tensor->data<int32_t>()));
       }
-    } else if (tensor->dtype() == phi::DataType::INT64) {
+    } else if (tensor->dtype() == DataType::INT64) {
       if (tensor->place().GetType() == AllocationType::GPU) {
         DenseTensor temp;
         phi::Copy(*dev_ctx, *tensor, CPUPlace(), true, &temp);
@@ -136,7 +136,7 @@ inline std::vector<int64_t> GetNewDataFromShapeTensorList(
           "But got "
           "unsupported dtype: %s.",
           i,
-          phi::DataTypeToString(tensor->dtype())));
+          DataTypeToString(tensor->dtype())));
     }
   }
 
