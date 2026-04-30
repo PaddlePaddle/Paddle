@@ -202,7 +202,6 @@ def flatten_converter(network, paddle_op, inputs):
 @converter_registry.register("pd_op.concat")
 def concat_converter(network, paddle_op, inputs):
     input_tensors = inputs[0]
-    axis_tensor = inputs[1]
     concat_layer = network.add_concatenation(inputs=input_tensors)
 
     axis = get_input_constant_value(paddle_op, inputs, 1)[0]

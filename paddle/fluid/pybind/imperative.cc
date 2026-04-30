@@ -1001,9 +1001,8 @@ void BindImperative(py::module *m_ptr) {
           SetUVATensorFromPyArray<int8_t>(new_tensor, array, device_id);
         } else if (py::isinstance<py::array_t<int16_t>>(array)) {
           SetUVATensorFromPyArray<int16_t>(new_tensor, array, device_id);
-        } else if (py::isinstance<py::array_t<phi::dtype::float16>>(array)) {
-          SetUVATensorFromPyArray<phi::dtype::float16>(
-              new_tensor, array, device_id);
+        } else if (py::isinstance<py::array_t<phi::float16>>(array)) {
+          SetUVATensorFromPyArray<phi::float16>(new_tensor, array, device_id);
         } else if (py::isinstance<py::array_t<bool>>(array)) {
           SetUVATensorFromPyArray<bool>(new_tensor, array, device_id);
         } else {

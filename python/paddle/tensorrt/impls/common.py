@@ -116,7 +116,6 @@ def bilinear_interp_converter(network, paddle_op, inputs):
         if not pir.is_fake_value(paddle_op.operands()[1].source()):
             size_tensor_operand = paddle_op.operands()[1].source()
             if len(inputs) > 1 and inputs[1] is not None:
-                output_tensor_operand = paddle_op.operands()[1].source()
                 outsize_tensor = inputs[1]
         elif not pir.is_fake_value(paddle_op.operands()[2].source()):
             size_tensor_operand = paddle_op.operands()[2].source()
