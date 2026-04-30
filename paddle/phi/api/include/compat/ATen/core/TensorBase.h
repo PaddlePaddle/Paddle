@@ -434,16 +434,14 @@ class PADDLE_API TensorBase {
     // External custom-kernel builds do not expose ResetHolder(), but Holder()
     // still returns the live holder reference used by DenseTensor.
     if (dense->numel() == 0) {
-      auto meta = dense->meta();
+      auto& meta = const_cast<phi::DenseTensorMeta&>(dense->meta());
       meta.offset = 0;
-      dense->set_meta(meta);
       const_cast<std::shared_ptr<phi::Allocation>&>(dense->Holder()) = holder;
       return;
     }
 
     if (dense->Holder() && dense->meta().is_contiguous()) {
-      TORCH_CHECK(holder != nullptr,
-                  "The size of Holder is not enough to store the Tensor.");
+      TORCH_CHECK(holder != nullptr, "Holder must not be null.");
       const auto required_bytes =
           dense->numel() * static_cast<int64_t>(phi::SizeOf(dense->dtype())) +
           static_cast<int64_t>(dense->meta().offset);
