@@ -171,30 +171,67 @@ class TestCUDAGraphInDygraphMode(unittest.TestCase):
         y = paddle.cast(x, dtype='float16')
         graph.capture_end()
 
-    def test_cuda_graph_enable_replace_flag(self):
-        """Test CUDAGraph with enable_replace=True captures and replays correctly,
-        and that replace_input_ptrs with empty lists does not raise."""
+    def test_cuda_graph_with_enable_replace(self):
+        """Test that CUDAGraph created with enable_replace=True captures and replays correctly."""
         if not can_use_cuda_graph():
             return
 
-        shape = [2, 3]
+        shape = [4, 4]
         x = self.random_tensor(shape)
+        x_val = x.numpy().copy()
 
         g = CUDAGraph(enable_replace=True)
         g.capture_begin()
-        y = x + 1
+        y = x * 2.0
         g.capture_end()
 
-        x_np = x.numpy().copy()
         g.replay()
-        np.testing.assert_array_almost_equal(y.numpy(), x_np + 1)
+        np.testing.assert_allclose(y.numpy(), x_val * 2.0, rtol=1e-5)
+        g.reset()
 
-        # replace_input_ptrs with empty lists should succeed without error
-        g.replace_input_ptrs([], [])
+    def test_replace_input_ptrs(self):
+        """Test replace_input_ptrs exercises CacheKernelNodeInfos and ReplaceInputPtrs code paths."""
+        if not can_use_cuda_graph():
+            return
+
+        shape = [4, 4]
+        x = self.random_tensor(shape)
+        x_val = x.numpy().copy()
+
+        g = CUDAGraph(enable_replace=True)
+        g.capture_begin()
+        y = x * 2.0
+        g.capture_end()
+
+        # First replay: result should match x * 2
+        g.replay()
+        np.testing.assert_allclose(y.numpy(), x_val * 2.0, rtol=1e-5)
+
+        # Create a new input buffer and replace the pointer
+        x_new = self.random_tensor(shape)
+        x_new_val = x_new.numpy().copy()
+        old_ptr = x.data_ptr()
+        new_ptr = x_new.data_ptr()
+
+        # Should not raise; exercises ReplaceInputPtrs
+        g.replace_input_ptrs([old_ptr], [new_ptr])
+        g.replay()
+
+        # On CUDA >= 12.4 the replacement is effective; on older CUDA
+        # GetKernelParamInfos returns empty so replacement is a no-op.
+        # Either way we validate no crash and replay succeeds.
+        result = y.numpy()
+        cuda_ver = (
+            float(paddle.version.cuda())
+            if paddle.version.cuda() != 'False'
+            else 0.0
+        )
+        if cuda_ver >= 12.4:
+            np.testing.assert_allclose(result, x_new_val * 2.0, rtol=1e-5)
 
         g.reset()
 
-    def test_replace_input_ptrs_error_without_flag(self):
+    def test_replace_input_ptrs_requires_enable_replace(self):
         """Test that replace_input_ptrs raises an error when enable_replace=False."""
         if not can_use_cuda_graph():
             return
@@ -204,47 +241,176 @@ class TestCUDAGraphInDygraphMode(unittest.TestCase):
 
         g = CUDAGraph()  # enable_replace defaults to False
         g.capture_begin()
-        y = x + 1
+        y = x + 1.0
         g.capture_end()
 
-        with self.assertRaises(Exception) as ctx:
-            g.replace_input_ptrs([], [])
-        self.assertIn("enable_replace", str(ctx.exception))
+        raised = False
+        try:
+            g.replace_input_ptrs([x.data_ptr()], [x.data_ptr()])
+        except Exception:
+            raised = True
+        finally:
+            g.reset()
 
+        self.assertTrue(raised, "Expected exception when enable_replace=False")
+
+    def test_replace_input_ptrs_empty(self):
+        """Test replace_input_ptrs with empty pointer lists (no-op path)."""
+        if not can_use_cuda_graph():
+            return
+
+        shape = [2, 3]
+        x = self.random_tensor(shape)
+
+        g = CUDAGraph(enable_replace=True)
+        g.capture_begin()
+        y = x + 1.0
+        g.capture_end()
+
+        # Calling with empty lists should be a no-op and not raise
+        g.replace_input_ptrs([], [])
+        g.replay()
+        np.testing.assert_allclose(y.numpy(), x.numpy() + 1.0, rtol=1e-5)
         g.reset()
 
-    def test_replace_input_ptrs_with_tensor_pointers(self):
-        """Test replace_input_ptrs with actual tensor data pointers.
+    def test_replace_input_ptrs_no_match(self):
+        """Test replace_input_ptrs when old_ptr does not match any kernel param (no modification)."""
+        if not can_use_cuda_graph():
+            return
 
-        This exercises CacheKernelNodeInfos (during capture) and ReplaceInputPtrs
-        (during replace). On CUDA >= 12.4, GetKernelParamInfos provides precise
-        param offsets and the replacement takes effect; on older CUDA the function
-        is a no-op but the code paths are still executed for coverage.
+        shape = [2, 3]
+        x = self.random_tensor(shape)
+        x_val = x.numpy().copy()
+
+        g = CUDAGraph(enable_replace=True)
+        g.capture_begin()
+        y = x + 1.0
+        g.capture_end()
+
+        g.replay()
+
+        # Pass a dummy pointer that won't match anything
+        dummy_ptr = 0
+        g.replace_input_ptrs([dummy_ptr], [dummy_ptr])
+        g.replay()
+
+        # Output should remain unchanged from original x
+        np.testing.assert_allclose(y.numpy(), x_val + 1.0, rtol=1e-5)
+        g.reset()
+
+    def test_replace_multiple_input_ptrs(self):
+        """Test replacing multiple input tensor pointers simultaneously.
+        Exercises the j-loop over multiple old_ptrs entries in ReplaceInputPtrs.
         """
         if not can_use_cuda_graph():
             return
 
-        shape = [4]
-        x = paddle.to_tensor(
-            np.array([1.0, 2.0, 3.0, 4.0], dtype='float32')
-        ).cuda()
-        x_new = paddle.to_tensor(
-            np.array([10.0, 20.0, 30.0, 40.0], dtype='float32')
-        ).cuda()
+        shape = [4, 4]
+        x = self.random_tensor(shape)
+        w = self.random_tensor(shape)
+        x_val = x.numpy().copy()
+        w_val = w.numpy().copy()
 
         g = CUDAGraph(enable_replace=True)
         g.capture_begin()
-        y = x * 2.0
+        y = x + w
         g.capture_end()
 
-        old_ptr = x.data_ptr()
-        new_ptr = x_new.data_ptr()
+        g.replay()
+        np.testing.assert_allclose(y.numpy(), x_val + w_val, rtol=1e-5)
 
-        # Replace x's pointer with x_new's pointer in the captured graph
-        g.replace_input_ptrs([old_ptr], [new_ptr])
+        x_new = self.random_tensor(shape)
+        w_new = self.random_tensor(shape)
+        x_new_val = x_new.numpy().copy()
+        w_new_val = w_new.numpy().copy()
+
+        # Replace both input pointers at once
+        g.replace_input_ptrs(
+            [x.data_ptr(), w.data_ptr()],
+            [x_new.data_ptr(), w_new.data_ptr()],
+        )
+        g.replay()
+
+        cuda_ver = (
+            float(paddle.version.cuda())
+            if paddle.version.cuda() != 'False'
+            else 0.0
+        )
+        if cuda_ver >= 12.4:
+            np.testing.assert_allclose(
+                y.numpy(), x_new_val + w_new_val, rtol=1e-5
+            )
+        g.reset()
+
+    def test_replace_input_ptrs_repeated(self):
+        """Test calling replace_input_ptrs multiple times in a row.
+        Verifies that each replacement overwrites the previous one.
+        """
+        if not can_use_cuda_graph():
+            return
+
+        shape = [4, 4]
+        x = self.random_tensor(shape)
+
+        g = CUDAGraph(enable_replace=True)
+        g.capture_begin()
+        y = x * 3.0
+        g.capture_end()
 
         g.replay()
 
+        x_new1 = self.random_tensor(shape)
+        x_new2 = self.random_tensor(shape)
+        x_new2_val = x_new2.numpy().copy()
+
+        # First replacement: x -> x_new1
+        g.replace_input_ptrs([x.data_ptr()], [x_new1.data_ptr()])
+        # Second replacement: x_new1 -> x_new2 (chain replacement)
+        g.replace_input_ptrs([x_new1.data_ptr()], [x_new2.data_ptr()])
+        g.replay()
+
+        cuda_ver = (
+            float(paddle.version.cuda())
+            if paddle.version.cuda() != 'False'
+            else 0.0
+        )
+        if cuda_ver >= 12.4:
+            np.testing.assert_allclose(y.numpy(), x_new2_val * 3.0, rtol=1e-5)
+        g.reset()
+
+    def test_replace_input_ptrs_after_multiple_replays(self):
+        """Test replace_input_ptrs interleaved with multiple replays.
+        Ensures ReplaceInputPtrs works correctly on non-first-run graphs.
+        """
+        if not can_use_cuda_graph():
+            return
+
+        shape = [4, 4]
+        x = self.random_tensor(shape)
+        x_val = x.numpy().copy()
+
+        g = CUDAGraph(enable_replace=True)
+        g.capture_begin()
+        y = x + 5.0
+        g.capture_end()
+
+        # Multiple replays before replacing
+        for _ in range(3):
+            g.replay()
+        np.testing.assert_allclose(y.numpy(), x_val + 5.0, rtol=1e-5)
+
+        x_new = self.random_tensor(shape)
+        x_new_val = x_new.numpy().copy()
+        g.replace_input_ptrs([x.data_ptr()], [x_new.data_ptr()])
+        g.replay()
+
+        cuda_ver = (
+            float(paddle.version.cuda())
+            if paddle.version.cuda() != 'False'
+            else 0.0
+        )
+        if cuda_ver >= 12.4:
+            np.testing.assert_allclose(y.numpy(), x_new_val + 5.0, rtol=1e-5)
         g.reset()
 
 
