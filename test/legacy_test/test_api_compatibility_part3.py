@@ -2848,6 +2848,7 @@ class TestModuleAPI(unittest.TestCase):
         paddle.disable_static()
         try:
             # 1. Paddle/PyTorch positional arguments
+            self.assertIs(paddle.nn.Module, paddle.nn.Layer)
             module = paddle.nn.Module()
             self._assert_torch_module_state(module)
 
@@ -2916,11 +2917,39 @@ class TestModuleAPI(unittest.TestCase):
             self._assert_torch_module_state(super_init_module)
             self.assertEqual(super_init_module.marker, "ok")
             self.assertTrue(super_init_module.enabled)
+
+            class LegacyLayer(paddle.nn.Layer):
+                pass
+
+            legacy_layer = LegacyLayer(
+                name_scope="legacy_layer", dtype="float64"
+            )
+            self.assertTrue(legacy_layer.full_name().startswith("legacy_layer"))
+            self.assertEqual(legacy_layer._dtype, "float64")
+
+            legacy_layer = LegacyLayer("legacy_layer_pos", "float64")
+            self.assertTrue(
+                legacy_layer.full_name().startswith("legacy_layer_pos")
+            )
+            self.assertEqual(legacy_layer._dtype, "float64")
+
+            with self.assertRaisesRegex(
+                TypeError,
+                "LegacyLayer.__init__\\(\\) got multiple values for argument 'name_scope'",
+            ):
+                LegacyLayer("legacy_layer", name_scope="legacy_layer")
+
+            with self.assertRaisesRegex(
+                TypeError,
+                "LegacyLayer.__init__\\(\\) got multiple values for argument 'dtype'",
+            ):
+                LegacyLayer("legacy_layer", "float32", dtype="float64")
         finally:
             paddle.enable_static()
 
     def test_static_Compatibility(self):
         paddle.enable_static()
+        self.assertIs(paddle.nn.Module, paddle.nn.Layer)
         module = paddle.nn.Module()
         self._assert_torch_module_state(module)
 
