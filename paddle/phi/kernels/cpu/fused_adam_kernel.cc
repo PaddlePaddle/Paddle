@@ -125,6 +125,8 @@ PADDLE_API void FusedAdamKernel(
       auto b2_T = Cast<double, Context>(
           dev_ctx, *beta2_pows[idx], phi::CppTypeToDataType<T>::Type());
       DenseTensor b1_out_T, b2_out_T;
+      b1_out_T.Resize({1});
+      b2_out_T.Resize({1});
 
       AdamDenseKernel<T, Context>(
           dev_ctx,

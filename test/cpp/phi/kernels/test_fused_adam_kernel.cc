@@ -522,7 +522,10 @@ TEST(fused_adam, test_fp32_gpu) {
     // AdamwDenseKernel now uses torch-compatible math (double-precision
     // intermediates, FMA intrinsics) while FusedAdamKernel still uses the
     // original float-precision math, so allow a small tolerance for adamw.
-    float atol = use_adamw ? 1e-5f : 0.0f;
+    // For non-adamw, FusedAdamKernel reads learning_rate as double and casts
+    // to float, while AdamDenseKernel baseline uses a float learning_rate
+    // directly, causing up to 1 ulp difference.
+    float atol = use_adamw ? 1e-5f : 1e-6f;
     for (auto amsgrad : {false, true}) {
       TestFusedAdamBase<float, GPUPlace>(shapes, atol, use_adamw, amsgrad);
     }
