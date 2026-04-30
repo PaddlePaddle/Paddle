@@ -76,7 +76,7 @@ inline HOSTDEVICE void Update(const FoundInfFlagT found_inf_data,
 template <typename Context, typename T>
 class LazyZeros {
  public:
-  void operator()(const DeviceContext& dev_ctx UNUSED,
+  void operator()(const Context& dev_ctx UNUSED,
                   const bool* found_inf_data UNUSED,
                   const std::vector<const DenseTensor*>& xs UNUSED,
                   const std::vector<DenseTensor*>& outs UNUSED) const {}
@@ -85,7 +85,7 @@ class LazyZeros {
 template <typename Context, typename T, bool IsFoundInfOnCPU>
 class UpdateLossScalingFunctor {
  public:
-  void operator()(const DeviceContext& dev_ctx,
+  void operator()(const Context& dev_ctx,
                   const bool* found_inf_data,
                   const T* pre_loss_scaling_data,
                   const int* good_in_data,

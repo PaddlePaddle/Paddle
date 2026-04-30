@@ -139,12 +139,10 @@ void ConcatDenseTensorWithType(const DeviceContext &dev_ctx,
       ConcatDenseTensor<DeviceContext, int64_t>()(dev_ctx, t_list, p_out);
       break;
     case DataType::FLOAT16:
-      ConcatDenseTensor<DeviceContext, phi::dtype::float16>()(
-          dev_ctx, t_list, p_out);
+      ConcatDenseTensor<DeviceContext, phi::float16>()(dev_ctx, t_list, p_out);
       break;
     case DataType::BFLOAT16:
-      ConcatDenseTensor<DeviceContext, phi::dtype::bfloat16>()(
-          dev_ctx, t_list, p_out);
+      ConcatDenseTensor<DeviceContext, phi::bfloat16>()(dev_ctx, t_list, p_out);
       break;
     case DataType::FLOAT32:
       ConcatDenseTensor<DeviceContext, float>()(dev_ctx, t_list, p_out);
@@ -166,11 +164,11 @@ void ConcatDenseTensorWithType(const phi::XPUContext &dev_ctx,
                                DataType type) {
   switch (type) {
     case DataType::FLOAT16:
-      ConcatDenseTensor<phi::XPUContext, phi::dtype::float16>()(
+      ConcatDenseTensor<phi::XPUContext, phi::float16>()(
           dev_ctx, t_list, p_out);
       break;
     case DataType::BFLOAT16:
-      ConcatDenseTensor<phi::XPUContext, phi::dtype::bfloat16>()(
+      ConcatDenseTensor<phi::XPUContext, phi::bfloat16>()(
           dev_ctx, t_list, p_out);
       break;
     case DataType::FLOAT32:
@@ -208,11 +206,11 @@ void SplitDenseTensorWithType(const DeviceContext &dev_ctx,
       SplitDenseTensor<DeviceContext, int8_t>()(dev_ctx, t_in, p_list);
       break;
     case DataType::FLOAT8_E4M3FN:
-      SplitDenseTensor<DeviceContext, phi::dtype::float8_e4m3fn>()(
+      SplitDenseTensor<DeviceContext, phi::float8_e4m3fn>()(
           dev_ctx, t_in, p_list);
       break;
     case DataType::FLOAT8_E5M2:
-      SplitDenseTensor<DeviceContext, phi::dtype::float8_e5m2>()(
+      SplitDenseTensor<DeviceContext, phi::float8_e5m2>()(
           dev_ctx, t_in, p_list);
       break;
     case DataType::INT32:
@@ -222,12 +220,10 @@ void SplitDenseTensorWithType(const DeviceContext &dev_ctx,
       SplitDenseTensor<DeviceContext, int64_t>()(dev_ctx, t_in, p_list);
       break;
     case DataType::FLOAT16:
-      SplitDenseTensor<DeviceContext, phi::dtype::float16>()(
-          dev_ctx, t_in, p_list);
+      SplitDenseTensor<DeviceContext, phi::float16>()(dev_ctx, t_in, p_list);
       break;
     case DataType::BFLOAT16:
-      SplitDenseTensor<DeviceContext, phi::dtype::bfloat16>()(
-          dev_ctx, t_in, p_list);
+      SplitDenseTensor<DeviceContext, phi::bfloat16>()(dev_ctx, t_in, p_list);
       break;
     case DataType::FLOAT32:
       SplitDenseTensor<DeviceContext, float>()(dev_ctx, t_in, p_list);
@@ -249,12 +245,10 @@ void SplitDenseTensorWithType(const phi::XPUContext &dev_ctx,
                               DataType type) {
   switch (type) {
     case DataType::FLOAT16:
-      SplitDenseTensor<phi::XPUContext, phi::dtype::float16>()(
-          dev_ctx, t_in, p_list);
+      SplitDenseTensor<phi::XPUContext, phi::float16>()(dev_ctx, t_in, p_list);
       break;
     case DataType::BFLOAT16:
-      SplitDenseTensor<phi::XPUContext, phi::dtype::bfloat16>()(
-          dev_ctx, t_in, p_list);
+      SplitDenseTensor<phi::XPUContext, phi::bfloat16>()(dev_ctx, t_in, p_list);
       break;
     case DataType::FLOAT32:
       SplitDenseTensor<phi::XPUContext, float>()(dev_ctx, t_in, p_list);

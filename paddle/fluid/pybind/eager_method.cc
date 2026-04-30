@@ -80,7 +80,7 @@ namespace paddle::pybind {
 
 extern void InitTensorWithNumpyValue(TensorObject* self,
                                      const pybind11::object& array,
-                                     const phi::Place& place,
+                                     const Place& place,
                                      bool zero_copy);
 
 extern PyTypeObject* p_tensor_type;
@@ -625,8 +625,8 @@ static PyObject* tensor_method__is_dense_tensor_hold_allocation(
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-static void IncreaseTensorReferenceCountUntilCopyComplete(
-    const Tensor& tensor, const phi::Place& place) {
+static void IncreaseTensorReferenceCountUntilCopyComplete(const Tensor& tensor,
+                                                          const Place& place) {
   auto place_ = phi::is_gpu_place(place) ? place : tensor.place();
 
   auto tracer = egr::Controller::Instance().GetCurrentTracer();

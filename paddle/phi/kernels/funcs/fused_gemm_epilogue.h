@@ -405,7 +405,7 @@ void ComputeFusedGemmEpilogueForward(const GPUContext& dev_ctx,
                                      const std::string& activation,
                                      DenseTensor* out,
                                      DenseTensor* reserve_space) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
 
   VLOG(6) << "x.shape={" << x->dims() << "}, y.shape={" << y->dims()
           << "}, out.shape={" << out->dims() << "}, M=" << M << ", N=" << N
@@ -612,7 +612,7 @@ void ComputeFusedGemmEpilogueBackwardImpl(const GPUContext& dev_ctx,
                                           DenseTensor* dbias,
                                           bool use_addto_dx,
                                           bool use_addto_dy) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   constexpr bool kIsValidDataType =
       (std::is_same<DXT, T>::value || std::is_same<DXT, MT>::value) &&
       (std::is_same<DYT, T>::value || std::is_same<DYT, MT>::value);
@@ -709,7 +709,7 @@ void ComputeFusedGemmEpilogueBackwardImplDev(const GPUContext& dev_ctx,
                                              DenseTensor* dbias,
                                              bool use_addto_dx,
                                              bool use_addto_dy) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   constexpr bool kIsValidDataType =
       (std::is_same<DXT, T>::value || std::is_same<DXT, MT>::value) &&
       (std::is_same<DYT, T>::value || std::is_same<DYT, MT>::value);

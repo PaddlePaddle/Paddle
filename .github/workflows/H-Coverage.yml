@@ -429,6 +429,8 @@ jobs:
           rm -rf * .[^.]*
           set -x
           source ${{ github.workspace }}/../../../proxy
+          apt-get update
+          apt-get install -y libnvidia-compute-535
           python -m pip install --upgrade pip wheel setuptools
           git clone https://github.com/PaddlePaddle/PaddleFleet.git .
           git config --global --add safe.directory /paddle

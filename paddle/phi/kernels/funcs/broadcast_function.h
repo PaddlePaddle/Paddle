@@ -20,8 +20,6 @@ limitations under the License. */
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 #include "paddle/phi/kernels/funcs/dims_simplifier.h"
 
-namespace kps = phi::kps;
-
 #endif
 
 namespace phi {
