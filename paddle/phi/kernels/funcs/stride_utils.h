@@ -573,7 +573,7 @@ static inline std::vector<DenseTensor> expandTensors(
       continue;
     }
 
-    if (index->dtype() == phi::DataType::BOOL) {
+    if (index->dtype() == DataType::BOOL) {
       DenseTensor bool_2_idx;
       phi::NonZeroKernel<bool, GPUContext>(dev_ctx, *index, &bool_2_idx);
 
@@ -750,8 +750,8 @@ makeLinearIndex(const GPUContext& dev_ctx,
                 bool check_range) {
   auto indices = expandTensors(dev_ctx, orig);
   for (auto& idx : indices) {
-    if (idx.initialized() && idx.dtype() == phi::DataType::INT32) {
-      idx = Cast<int32_t, GPUContext>(dev_ctx, idx, phi::DataType::INT64);
+    if (idx.initialized() && idx.dtype() == DataType::INT32) {
+      idx = Cast<int32_t, GPUContext>(dev_ctx, idx, DataType::INT64);
     }
   }
   indices = expand_outplace(dev_ctx, std::move(indices));

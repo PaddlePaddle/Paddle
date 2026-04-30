@@ -38,9 +38,9 @@ activation_type_map = {
 }
 
 
-@converter_registry.register("pd_op.relu", trt_version="trt_version_ge=8.0")
-@converter_registry.register("pd_op.tanh", trt_version="trt_version_ge=8.0")
-@converter_registry.register("pd_op.sigmoid", trt_version="trt_version_ge=8.0")
+@converter_registry.register("pd_op.relu")
+@converter_registry.register("pd_op.tanh")
+@converter_registry.register("pd_op.sigmoid")
 def activation_converter(network, paddle_op, inputs):
     layer = network.add_activation(
         inputs[0], activation_type_map[paddle_op.name()]
@@ -49,9 +49,7 @@ def activation_converter(network, paddle_op, inputs):
     return layer.get_output(0)
 
 
-@converter_registry.register(
-    "pd_op.logsigmoid", trt_version="trt_version_ge=8.0"
-)
+@converter_registry.register("pd_op.logsigmoid")
 def logsigmoid_converter(network, paddle_op, inputs):
     sigmoid_layer = network.add_activation(
         inputs[0], trt.ActivationType.SIGMOID
@@ -64,7 +62,7 @@ def logsigmoid_converter(network, paddle_op, inputs):
     return layer.get_output(0)
 
 
-@converter_registry.register("pd_op.relu6", trt_version="trt_version_ge=8.0")
+@converter_registry.register("pd_op.relu6")
 def relu6_converter(network, paddle_op, inputs):
     layer = network.add_activation(inputs[0], trt.ActivationType.CLIP)
     layer.alpha = 0.0
@@ -73,7 +71,7 @@ def relu6_converter(network, paddle_op, inputs):
     return layer.get_output(0)
 
 
-@converter_registry.register("pd_op.softmax", trt_version="trt_version_ge=8.0")
+@converter_registry.register("pd_op.softmax")
 def softmax_converter(network, paddle_op, inputs):
     from paddle.tensorrt.util import support_fp32_mix_precision
 
@@ -126,7 +124,7 @@ def softmax_converter(network, paddle_op, inputs):
     return layer.get_output(0)
 
 
-@converter_registry.register("pd_op.gelu", trt_version="trt_version_ge=8.0")
+@converter_registry.register("pd_op.gelu")
 def gelu_converter(network, paddle_op, inputs):
     input_val = inputs[0]
     approximate = paddle_op.attrs()["approximate"]
@@ -261,9 +259,7 @@ def gelu_converter(network, paddle_op, inputs):
         return y
 
 
-@converter_registry.register(
-    "pd_op.hardsigmoid", trt_version="trt_version_ge=8.0"
-)
+@converter_registry.register("pd_op.hardsigmoid")
 def hardsigmoid_converter(network, paddle_op, inputs):
     x = inputs[0]
     slope = paddle_op.attrs()["slope"]
@@ -277,12 +273,9 @@ def hardsigmoid_converter(network, paddle_op, inputs):
     return hardsigmoid_layer.get_output(0)
 
 
-@converter_registry.register(
-    "pd_op.hardswish", trt_version="trt_version_ge=8.0"
-)
+@converter_registry.register("pd_op.hardswish")
 def hardswish_converter(network, paddle_op, inputs):
     x = inputs[0]
-    threshold = 6.0
     scale = 6.0
     offset = 3.0
     hardsigmoid_layer = network.add_activation(
