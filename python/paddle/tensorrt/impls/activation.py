@@ -276,7 +276,6 @@ def hardsigmoid_converter(network, paddle_op, inputs):
 @converter_registry.register("pd_op.hardswish")
 def hardswish_converter(network, paddle_op, inputs):
     x = inputs[0]
-    threshold = 6.0
     scale = 6.0
     offset = 3.0
     hardsigmoid_layer = network.add_activation(

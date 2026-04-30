@@ -169,9 +169,6 @@ def pool2d_converter(network, paddle_op, inputs):
 
     paddings = [paddings[i] for i in range(len(paddings)) if i % 2 == 0]
 
-    if padding_algorithm == "VALID":
-        read_paddings = [0] * len(real_paddings)
-
     if adaptive and pool_type == "avg":
         output_h, output_w = kernel_size
         if output_h == 1 and output_w == 1:
