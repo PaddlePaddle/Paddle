@@ -71,13 +71,13 @@ void FFN(const GPUContext& dev_ctx,
          const float epsilon2,
          const bool add_residual,
          const int ring_id,
-         const phi::fusion::DropoutParam& dropout_param1,
-         const phi::fusion::DropoutParam& dropout_param2) {
-  phi::fusion::FusedDropoutLayerNormHelper<T, uint8_t> pre_layernorm_helper(
+         const fusion::DropoutParam& dropout_param1,
+         const fusion::DropoutParam& dropout_param2) {
+  fusion::FusedDropoutLayerNormHelper<T, uint8_t> pre_layernorm_helper(
       bsz_seq, d_model, epsilon1);
-  phi::fusion::FusedDropoutHelper<T, uint8_t> fused_act_dropout_helper(
+  fusion::FusedDropoutHelper<T, uint8_t> fused_act_dropout_helper(
       dev_ctx, bsz_seq, dim_feedforward, dropout_param1);
-  phi::fusion::FusedDropoutLayerNormHelper<T, uint8_t>
+  fusion::FusedDropoutLayerNormHelper<T, uint8_t>
       fused_dropout_layernorm_helper(
           dev_ctx, bsz_seq, d_model, dropout_param2, epsilon2);
 
@@ -216,20 +216,20 @@ void FusedFeedForwardKernel(const Context& dev_ctx,
   auto* dropout1_seed_ptr = dropout1_seed.get_ptr();
   auto* dropout2_seed_ptr = dropout2_seed.get_ptr();
 
-  phi::fusion::DropoutParam dropout_param1(dropout1_fix_seed,
-                                           0,
-                                           is_test,
-                                           is_upscale_in_train1,
-                                           dropout1_prob,
-                                           dropout1_seed_ptr,
-                                           dropout1_seed_val);
-  phi::fusion::DropoutParam dropout_param2(dropout2_fix_seed,
-                                           0,
-                                           is_test,
-                                           is_upscale_in_train2,
-                                           dropout2_prob,
-                                           dropout2_seed_ptr,
-                                           dropout2_seed_val);
+  fusion::DropoutParam dropout_param1(dropout1_fix_seed,
+                                      0,
+                                      is_test,
+                                      is_upscale_in_train1,
+                                      dropout1_prob,
+                                      dropout1_seed_ptr,
+                                      dropout1_seed_val);
+  fusion::DropoutParam dropout_param2(dropout2_fix_seed,
+                                      0,
+                                      is_test,
+                                      is_upscale_in_train2,
+                                      dropout2_prob,
+                                      dropout2_seed_ptr,
+                                      dropout2_seed_val);
 
   using U = funcs::LayerNormParamType<T>;
   dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
