@@ -109,10 +109,10 @@ struct OneHotGenerator<GPUContext, T> {
   }
 };
 
-template <typename T, typename MPType>
+template <typename T, typename MT>
 __global__ void AddGumbelNoiseCUDAKernel(const T* input_data,
                                          T* output_data,
-                                         MPType* noise,
+                                         MT* noise,
                                          const float temperature,
                                          int64_t n) {
   int64_t index =
@@ -120,9 +120,9 @@ __global__ void AddGumbelNoiseCUDAKernel(const T* input_data,
       static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   int step = blockDim.x * gridDim.x;
   for (int64_t i = index; i < n; i += step) {
-    MPType gumbel_noise = -log(-log(noise[i]));
+    MT gumbel_noise = -log(-log(noise[i]));
     output_data[i] = static_cast<T>(
-        (gumbel_noise + static_cast<MPType>(input_data[i])) / temperature);
+        (gumbel_noise + static_cast<MT>(input_data[i])) / temperature);
   }
 }
 
@@ -137,8 +137,8 @@ struct GumbleNoiseGenerator<GPUContext, T> {
     DenseTensor random_tensor;
     int64_t size = size_to_axis * size_from_axis;
     random_tensor.Resize({size});
-    using MPType = typename dtype::MPTypeTrait<T>::Type;
-    MPType* random_data = dev_ctx.template Alloc<MPType>(&random_tensor);
+    using MT = typename MPTypeTrait<T>::Type;
+    MT* random_data = dev_ctx.template Alloc<MT>(&random_tensor);
 
     // generate gumbel noise
     int device_id = dev_ctx.GetPlace().GetDeviceId();
@@ -152,8 +152,8 @@ struct GumbleNoiseGenerator<GPUContext, T> {
     thrust::transform(
         index_sequence_begin,
         index_sequence_begin + size,
-        thrust::device_ptr<MPType>(random_data),
-        UniformCUDAGenerator<MPType>(0.00001, 1, seed, size * offset));
+        thrust::device_ptr<MT>(random_data),
+        UniformCUDAGenerator<MT>(0.00001, 1, seed, size * offset));
 
     // add gumbel noise to X
     const int thread_size = 512;

@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/erfinv_kernel.h"
+
+#include <limits>
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
@@ -21,12 +24,22 @@ namespace phi {
 
 template <typename T>
 struct ErfinvFunctor {
-  HOSTDEVICE inline T operator()(const T x) const { return erfinv(x); }
+  HOSTDEVICE inline T operator()(const T x) const {
+    // erfinv is only defined on [-1, 1]; align with PyTorch/scipy by
+    // returning NaN for |x| > 1 (CUDA erfinv returns +/-inf otherwise).
+    if (x > static_cast<T>(1) || x < static_cast<T>(-1)) {
+      return std::numeric_limits<T>::quiet_NaN();
+    }
+    return erfinv(x);
+  }
 };
 template <>
 struct ErfinvFunctor<float16> {
   HOSTDEVICE inline float16 operator()(const float16 x) const {
     auto x_ = static_cast<float>(x);
+    if (x_ > 1.0f || x_ < -1.0f) {
+      return static_cast<float16>(std::numeric_limits<float>::quiet_NaN());
+    }
     return static_cast<float16>(erfinv(x_));
   }
 };
@@ -35,6 +48,9 @@ template <>
 struct ErfinvFunctor<bfloat16> {
   HOSTDEVICE inline bfloat16 operator()(const bfloat16 x) const {
     auto x_ = static_cast<float>(x);
+    if (x_ > 1.0f || x_ < -1.0f) {
+      return static_cast<bfloat16>(std::numeric_limits<float>::quiet_NaN());
+    }
     return static_cast<bfloat16>(erfinv(x_));
   }
 };
