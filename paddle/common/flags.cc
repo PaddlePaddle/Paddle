@@ -104,6 +104,19 @@ PHI_DEFINE_EXPORTED_int32(
 
 /**
  * Operator related FLAG
+ * Name: FLAGS_check_nan_inf_blacklist
+ * Since Version:
+ * Value Range: string, default=""
+ * Example: FLAGS_check_nan_inf_blacklist="op1,op2,op3"
+ * Note: Blacklist of ops to skip when checking NAN/INF
+ */
+PHI_DEFINE_EXPORTED_string(
+    check_nan_inf_blacklist,
+    "",
+    "Blacklist of ops to skip when checking NAN/INF, split by ','");
+
+/**
+ * Operator related FLAG
  * Name: FLAGS_check_nan_inf
  * Since Version: 0.13.0
  * Value Range: bool, default=false

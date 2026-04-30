@@ -547,7 +547,7 @@ int FusedMultiTransformerXPUPass::FusedMultiTransformerXPUQuant(
     int layer_num = fused_mt->Op()->Input("QKVW").size();
     int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
     DenseTensor max_buffer_tensor;
-    max_buffer_tensor.set_type(phi::DataType::FLOAT32);
+    max_buffer_tensor.set_type(DataType::FLOAT32);
     int max_buffer_len = max_ptr_size * layer_num * 2;
     max_buffer_tensor.Resize({max_buffer_len});
     std::vector<float> ones_vec(max_buffer_len, 1.f);

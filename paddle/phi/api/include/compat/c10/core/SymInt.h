@@ -15,8 +15,26 @@
 #pragma once
 #include <c10/util/accumulate.h>
 #include <cstdint>
+#include <optional>
 
 namespace c10 {
-using SymInt = int64_t;
+
+class SymInt {
+ public:
+  SymInt() : data_(0) {}
+  /*implicit*/ SymInt(int64_t d) : data_(d) {}  // NOLINT
+  /*implicit*/ operator int64_t() const { return data_; }
+
+  int64_t guard_int(const char* file, int64_t line) const {
+    (void)file;
+    (void)line;
+    return data_;
+  }
+
+  std::optional<int64_t> maybe_as_int() const { return data_; }
+
+ private:
+  int64_t data_;
+};
 
 }  // namespace c10

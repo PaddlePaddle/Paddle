@@ -75,7 +75,7 @@ void EmptyTensorInitializer(TensorObject* self,
                             const Place& place,
                             bool persistable = false,
                             int stop_gradient = -1,
-                            paddle::DataType dtype = paddle::DataType::FLOAT32,
+                            DataType dtype = DataType::FLOAT32,
                             const std::vector<int>& dims = {0},
                             framework::proto::VarType::Type var_type =
                                 framework::proto::VarType::DENSE_TENSOR,
@@ -774,7 +774,7 @@ Tensor is the basic data structure in PaddlePaddle. There are some ways to creat
  * (should have at least five parameter, five parameters create DenseTensor,
  * seven parameters create DistTensor)
  * def __init__ (
- * ** dtype: paddle::DataType,
+ * ** dtype: DataType,
  * ** dims: vector<int>,
  * ** name: std::string,
  * ** type: paddle::framework::proto::VarType::DENSE_TENSOR,
@@ -991,7 +991,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
                 "forbidden. Please check your code and make sure you new a "
                 "persistable before calling this constructor."));
 
-        paddle::DataType dtype = CastPyArg2DataType(kw_dtype, "TensorInit", 0);
+        DataType dtype = CastPyArg2DataType(kw_dtype, "TensorInit", 0);
         std::vector<int> dims = CastPyArg2VectorOfInt(kw_dims, 0);
 
         std::string act_name = "";
@@ -1098,7 +1098,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
       if (PyObject_TypeCheck(arg0_ptr, g_data_type_pytype) ||
           PyObject_TypeCheck(arg0_ptr, g_vartype_pytype)) {
         VLOG(6) << "Calling case2's initializer.";
-        paddle::DataType dtype = CastPyArg2DataType(arg0_ptr, "TensorInit", 0);
+        DataType dtype = CastPyArg2DataType(arg0_ptr, "TensorInit", 0);
         std::vector<int> dims =
             CastPyArg2VectorOfInt(PyTuple_GET_ITEM(args, 1), 1);
         std::string act_name = "";
@@ -1174,7 +1174,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
       if (PyObject_TypeCheck(arg0_ptr, g_data_type_pytype) ||
           PyObject_TypeCheck(arg0_ptr, g_vartype_pytype)) {
         VLOG(6) << "Calling case2's initializer.";
-        paddle::DataType dtype = CastPyArg2DataType(arg0_ptr, "TensorInit", 0);
+        DataType dtype = CastPyArg2DataType(arg0_ptr, "TensorInit", 0);
         std::vector<int> dims =
             CastPyArg2VectorOfInt(PyTuple_GET_ITEM(args, 1), 1);
         std::string act_name = "";
