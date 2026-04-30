@@ -141,8 +141,8 @@ class TestFusedAdamOp(OpTest):
                 "float32"
             )
             inputs_list[3][i] = np.random.random((102, 105)).astype("float32")
-            inputs_list[4][i] = np.array([beta1_pow]).astype("float32")
-            inputs_list[5][i] = np.array([beta2_pow]).astype("float32")
+            inputs_list[4][i] = np.array([beta1_pow]).astype("float64")
+            inputs_list[5][i] = np.array([beta2_pow]).astype("float64")
 
         self.inputs = {
             'Params': [
@@ -161,7 +161,7 @@ class TestFusedAdamOp(OpTest):
                 ("moments2_max" + str(i), np.zeros_like(inputs_list[0][i]))
                 for i in range(num)
             ],
-            'LearningRate': np.array([learning_rate]).astype("float32"),
+            'LearningRate': np.array([learning_rate]).astype("float64"),
             'Beta1Pows': [
                 ("beta1_pows" + str(i), inputs_list[4][i]) for i in range(num)
             ],
