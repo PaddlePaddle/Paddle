@@ -2848,7 +2848,7 @@ class TestModuleAPI(unittest.TestCase):
         paddle.disable_static()
         try:
             # 1. Paddle/PyTorch positional arguments
-            module = paddle.compat.nn.Module()
+            module = paddle.nn.Module()
             self._assert_torch_module_state(module)
 
             # 2. Paddle/PyTorch keyword arguments
@@ -2856,16 +2856,16 @@ class TestModuleAPI(unittest.TestCase):
                 TypeError,
                 "Module.__init__\\(\\) got an unexpected keyword argument 'name_scope'",
             ):
-                paddle.compat.nn.Module(name_scope="module")
+                paddle.nn.Module(name_scope="module")
 
             # 3. Mixed arguments
             with self.assertRaisesRegex(
                 TypeError,
                 "Module.__init__\\(\\) takes 1 positional argument but 2 were given",
             ):
-                paddle.compat.nn.Module("module")
+                paddle.nn.Module("module")
 
-            child = paddle.compat.nn.Module()
+            child = paddle.nn.Module()
             module.add_module("child", child)
             self.assertIs(module._modules["child"], child)
             self.assertIs(module._sub_layers["child"], child)
@@ -2906,7 +2906,7 @@ class TestModuleAPI(unittest.TestCase):
                     self.enabled = enabled
                     super().__init__()
 
-            class SuperInitModule(paddle.compat.nn.Module, ExtraBase):
+            class SuperInitModule(paddle.nn.Module, ExtraBase):
                 call_super_init = True
 
                 def __init__(self, marker, *, enabled=False):
@@ -2921,14 +2921,14 @@ class TestModuleAPI(unittest.TestCase):
 
     def test_static_Compatibility(self):
         paddle.enable_static()
-        module = paddle.compat.nn.Module()
+        module = paddle.nn.Module()
         self._assert_torch_module_state(module)
 
         with self.assertRaisesRegex(
             TypeError,
             "Module.__init__\\(\\) got an unexpected keyword argument 'dtype'",
         ):
-            paddle.compat.nn.Module(dtype="float64")
+            paddle.nn.Module(dtype="float64")
 
 
 if __name__ == "__main__":

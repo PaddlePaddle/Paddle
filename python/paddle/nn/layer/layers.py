@@ -572,56 +572,104 @@ class Layer:
              [-0.68077987]])
     """
 
+    call_super_init: bool = False
     training: bool
 
-    def __init__(
-        self, name_scope: str | None = None, dtype: DTypeLike = "float32"
-    ) -> None:
-        self.training = True
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        cls_name = (
+            "Module" if type(self).__name__ == "Layer" else type(self).__name__
+        )
+        if self.call_super_init is False and bool(kwargs):
+            raise TypeError(
+                f"{cls_name}.__init__() got an unexpected keyword argument '{next(iter(kwargs))}'"
+            )
+
+        if self.call_super_init is False and bool(args):
+            raise TypeError(
+                f"{cls_name}.__init__() takes 1 positional argument but {len(args) + 1} were given"
+            )
+
+        name_scope = None
+        dtype: DTypeLike = "float32"
+
+        object.__setattr__(self, "training", True)
         if name_scope is None:
             name_scope = _convert_camel_to_snake(self.__class__.__name__)
             name_scope = _scope_dist2single(name_scope)
-        self._full_name = unique_name.generate(name_scope)
-        self._helper = LayerObjectHelper(self._full_name)
-        self._built = False
-        self._dtype = dtype
-        self._init_in_dynamic_mode = in_dygraph_mode()
+        object.__setattr__(self, "_full_name", unique_name.generate(name_scope))
+        object.__setattr__(self, "_helper", LayerObjectHelper(self._full_name))
+        object.__setattr__(self, "_built", False)
+        object.__setattr__(self, "_dtype", dtype)
+        object.__setattr__(self, "_init_in_dynamic_mode", in_dygraph_mode())
 
-        self._parameters = OrderedDict()
+        object.__setattr__(self, "_parameters", OrderedDict())
         # Buffers the variable (not parameter) created in layer
-        self._buffers = OrderedDict()
-        self._non_persistable_buffer_names_set = set()
-        self._sub_layers = OrderedDict()
-        self._loaddict_holder = OrderedDict()
+        object.__setattr__(self, "_buffers", OrderedDict())
+        object.__setattr__(self, "_non_persistable_buffer_names_set", set())
+        object.__setattr__(self, "_sub_layers", OrderedDict())
+        object.__setattr__(self, "_loaddict_holder", OrderedDict())
 
         # Record generated op_descs in this layer
-        self._op_recorder = LayerOpsRecorder(ops=[], hooks=[])
-        self._customized_attrs = {}
+        object.__setattr__(
+            self, "_op_recorder", LayerOpsRecorder(ops=[], hooks=[])
+        )
+        object.__setattr__(self, "_customized_attrs", {})
 
-        self._forward_pre_hooks: typing.OrderedDict[int, _ForwardPreHook] = (
-            OrderedDict()
+        object.__setattr__(
+            self,
+            "_forward_pre_hooks",
+            OrderedDict(),
         )
-        self._forward_post_hooks: typing.OrderedDict[int, _ForwardPostHook] = (
-            OrderedDict()
+        object.__setattr__(
+            self,
+            "_forward_post_hooks",
+            OrderedDict(),
         )
-        self._forward_pre_hooks_with_kwargs_flag: typing.OrderedDict[
-            int, bool
-        ] = OrderedDict()
-        self._forward_post_hooks_with_kwargs_flag: typing.OrderedDict[
-            int, bool
-        ] = OrderedDict()
-        self._forward_post_hooks_always_called: typing.OrderedDict[
-            int, bool
-        ] = OrderedDict()
+        object.__setattr__(
+            self, "_forward_pre_hooks_with_kwargs_flag", OrderedDict()
+        )
+        object.__setattr__(
+            self, "_forward_post_hooks_with_kwargs_flag", OrderedDict()
+        )
+        object.__setattr__(
+            self, "_forward_post_hooks_always_called", OrderedDict()
+        )
+        object.__setattr__(self, "_forward_hooks", self._forward_post_hooks)
+        object.__setattr__(
+            self,
+            "_forward_hooks_with_kwargs",
+            self._forward_post_hooks_with_kwargs_flag,
+        )
+        object.__setattr__(
+            self,
+            "_forward_hooks_always_called",
+            self._forward_post_hooks_always_called,
+        )
+        object.__setattr__(
+            self,
+            "_forward_pre_hooks_with_kwargs",
+            self._forward_pre_hooks_with_kwargs_flag,
+        )
+        object.__setattr__(self, "_backward_pre_hooks", OrderedDict())
+        object.__setattr__(self, "_backward_hooks", OrderedDict())
+        object.__setattr__(self, "_is_full_backward_hook", None)
 
         # only used in AMP Training
-        self._cast_to_low_precision = True
+        object.__setattr__(self, "_cast_to_low_precision", True)
 
-        self._state_dict_hooks: typing.OrderedDict[int, _StateDictHook] = (
-            OrderedDict()
+        object.__setattr__(
+            self,
+            "_state_dict_hooks",
+            OrderedDict(),
         )
+        object.__setattr__(self, "_state_dict_pre_hooks", OrderedDict())
+        object.__setattr__(self, "_load_state_dict_pre_hooks", OrderedDict())
+        object.__setattr__(self, "_load_state_dict_post_hooks", OrderedDict())
         # Records original functions after @to_static to support to rollback
-        self._original_funcs = OrderedDict()
+        object.__setattr__(self, "_original_funcs", OrderedDict())
+
+        if self.call_super_init:
+            super().__init__(*args, **kwargs)
 
     @property
     def _modules(self):

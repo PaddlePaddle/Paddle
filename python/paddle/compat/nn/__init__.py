@@ -17,7 +17,7 @@ from __future__ import annotations
 import collections
 from itertools import repeat
 from math import sqrt
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import paddle
 from paddle import nn
@@ -38,7 +38,6 @@ if TYPE_CHECKING:
 
 
 __all__ = [
-    'Module',
     'Unfold',
     'Linear',
     'Softmax',
@@ -63,87 +62,6 @@ def _ntuple(n, name="parse"):
 
 
 _single = _ntuple(1, "_single")
-
-
-class Module(nn.Layer):
-    r"""
-    PyTorch-compatible base module.
-
-    This class keeps ``paddle.nn.Layer`` behavior for parameters, buffers,
-    sublayers and invocation, while aligning ``torch.nn.Module.__init__``
-    argument handling. By default, extra positional or keyword arguments are
-    rejected. Subclasses may set ``call_super_init = True`` to pass those
-    arguments to the next base class in the method resolution order.
-
-    Examples:
-        .. code-block:: pycon
-
-            >>> import paddle
-
-            >>> class Model(paddle.compat.nn.Module):
-            ...     def __init__(self):
-            ...         super().__init__()
-            ...         self.linear = paddle.compat.nn.Linear(2, 4)
-            ...
-            ...     def forward(self, x):
-            ...         return self.linear(x)
-            >>> model = Model()
-            >>> x = paddle.ones([1, 2])
-            >>> y = model(x)
-            >>> print(list(y.shape))
-            [1, 4]
-    """
-
-    call_super_init: bool = False
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        if self.call_super_init is False and bool(kwargs):
-            raise TypeError(
-                f"{type(self).__name__}.__init__() got an unexpected keyword argument '{next(iter(kwargs))}'"
-            )
-
-        if self.call_super_init is False and bool(args):
-            raise TypeError(
-                f"{type(self).__name__}.__init__() takes 1 positional argument but {len(args) + 1} were given"
-            )
-
-        nn.Layer.__init__(self)
-        self._init_torch_module_state()
-
-        if self.call_super_init:
-            super(nn.Layer, self).__init__(*args, **kwargs)
-
-    def _init_torch_module_state(self) -> None:
-        object.__setattr__(
-            self, "_backward_pre_hooks", collections.OrderedDict()
-        )
-        object.__setattr__(self, "_backward_hooks", collections.OrderedDict())
-        object.__setattr__(self, "_is_full_backward_hook", None)
-        object.__setattr__(self, "_forward_hooks", self._forward_post_hooks)
-        object.__setattr__(
-            self,
-            "_forward_hooks_with_kwargs",
-            self._forward_post_hooks_with_kwargs_flag,
-        )
-        object.__setattr__(
-            self,
-            "_forward_hooks_always_called",
-            self._forward_post_hooks_always_called,
-        )
-        object.__setattr__(
-            self,
-            "_forward_pre_hooks_with_kwargs",
-            self._forward_pre_hooks_with_kwargs_flag,
-        )
-        object.__setattr__(
-            self, "_state_dict_pre_hooks", collections.OrderedDict()
-        )
-        object.__setattr__(
-            self, "_load_state_dict_pre_hooks", collections.OrderedDict()
-        )
-        object.__setattr__(
-            self, "_load_state_dict_post_hooks", collections.OrderedDict()
-        )
 
 
 class AvgPool1D(nn.Layer):
