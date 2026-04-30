@@ -1064,11 +1064,11 @@ void FusedLayerNormKernel(const Context& dev_ctx,
     cols *= x.dims()[i];
   }
 
-  phi::fusion::DropoutParam dropout_param(true, 0, true, true, 0.0, nullptr, 0);
-  phi::fusion::FusedDropoutLayerNormHelper<T, uint8_t>
+  fusion::DropoutParam dropout_param(true, 0, true, true, 0.0, nullptr, 0);
+  fusion::FusedDropoutLayerNormHelper<T, uint8_t>
       residual_bias_add_layernorm_helper(
           dev_ctx, rows, cols, dropout_param, epsilon, residual_alpha);
-  phi::fusion::AttnLayerNorm<T> layernorm_helper(dev_ctx, epsilon, rows, cols);
+  fusion::AttnLayerNorm<T> layernorm_helper(dev_ctx, epsilon, rows, cols);
 
   // Do residual + bias + x
   if (residual && norm_weight_data == nullptr && norm_bias_data == nullptr) {
