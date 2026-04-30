@@ -549,7 +549,11 @@ class MuonShardingOptimizer:
                     comm_buffer._clear_param_storage()
         # 2D params
         if color in self._params_2d_by_color.keys():
-            for param in self._params_2d_by_color[color]:
+            group_info = self._color_to_group_info[color]
+            sharding_rank = group_info["rank"] if group_info["rank"] >= 0 else 0
+            rank2params_2d_by_color = self._rank2params_2d_by_color[color]
+            local_2d = rank2params_2d_by_color[sharding_rank]
+            for param in local_2d:
                 if not g_shard_bypass_dygraph_optimizer:
                     self._create_master_weight(param)
 
@@ -567,7 +571,11 @@ class MuonShardingOptimizer:
                         comm_buffer._reset_param_storage()
             # 2D params
             if color in self._params_2d_by_color.keys():
-                for param in self._params_2d_by_color[color]:
+                group_info = self._color_to_group_info[color]
+                sharding_rank = group_info["rank"] if group_info["rank"] >= 0 else 0
+                rank2params_2d_by_color = self._rank2params_2d_by_color[color]
+                local_2d = rank2params_2d_by_color[sharding_rank]
+                for param in local_2d:
                     if not param._is_initialized():
                         new_param = paddle.empty_like(param)
                         new_param._share_buffer_to(param)
