@@ -79,3 +79,18 @@ TEST(TensorChunkTest, ChunkIntType) {
   ASSERT_EQ(chunks.size(), 3);
   ASSERT_EQ(chunks[0].dtype(), at::kInt);
 }
+
+TEST(TensorChunkTest, ChunkZeroDim) {
+  at::Tensor t = at::zeros({0, 4}, at::kFloat);
+
+  std::vector<at::Tensor> chunks = t.chunk(2, 0);
+
+  ASSERT_EQ(chunks.size(), 0);
+}
+
+TEST(TensorChunkTest, ChunkZeroChunks) {
+  at::Tensor t = at::arange(12, at::kFloat).reshape({3, 4});
+
+  ASSERT_THROW(t.chunk(0, 0), std::exception);
+  ASSERT_THROW(t.chunk(-1, 0), std::exception);
+}

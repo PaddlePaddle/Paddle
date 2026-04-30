@@ -525,7 +525,7 @@ class IValue {
       case TypeTag::String:
         return "\"" + std::get<std::string>(value_) + "\"";
       case TypeTag::Tensor:
-        throw std::runtime_error("repr() not defined on: Tensor");
+        return "Tensor";
       case TypeTag::GenericList: {
         const auto& list = std::get<GenericList>(value_);
         std::string result = "[";

@@ -25,9 +25,17 @@ namespace at {
 inline std::vector<Tensor> chunk(const Tensor& self,
                                  int64_t chunks,
                                  int64_t dim = 0) {
+  if (chunks <= 0) {
+    PD_THROW("chunk expects chunks to be greater than 0, got ", chunks);
+  }
+
   std::vector<Tensor> result;
   paddle::Tensor pd_tensor = self._PD_GetInner();
   int64_t dim_size = pd_tensor.dims().size() > 0 ? pd_tensor.dims()[dim] : 1;
+
+  if (dim_size == 0) {
+    return result;
+  }
 
   // PyTorch returns at most 'dim_size' non-empty chunks when chunks > dim_size
   if (chunks > dim_size) {

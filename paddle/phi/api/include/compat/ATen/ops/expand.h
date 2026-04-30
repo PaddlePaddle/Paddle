@@ -39,42 +39,6 @@ inline Tensor expand(const Tensor& self,
   auto input_dims = pd_tensor.dims();
   auto input_rank = static_cast<size_t>(input_dims.size());
 
-  auto tile_and_slice_to_target =
-      [&](const paddle::Tensor& input,
-          const std::vector<int64_t>& input_shape,
-          const std::vector<int64_t>& target_shape) -> Tensor {
-    size_t rank = target_shape.size();
-    std::vector<int64_t> repeat_times(rank, 1);
-    for (size_t i = 0; i < rank; ++i) {
-      auto in_size = input_shape[i];
-      auto target_size = target_shape[i];
-
-      if (in_size == 0 || target_size == 0) {
-        repeat_times[i] = 0;
-      } else if (target_size <= in_size) {
-        repeat_times[i] = 1;
-      } else {
-        repeat_times[i] = (target_size + in_size - 1) / in_size;
-      }
-    }
-
-    paddle::Tensor tiled =
-        paddle::experimental::tile(input, phi::IntArray(repeat_times));
-
-    std::vector<int64_t> axes(rank);
-    std::vector<int64_t> starts(rank, 0);
-    std::vector<int64_t> ends(rank);
-    std::vector<int64_t> strides(rank, 1);
-    for (size_t i = 0; i < rank; ++i) {
-      axes[i] = static_cast<int64_t>(i);
-      ends[i] = target_shape[i];
-    }
-
-    paddle::Tensor sliced =
-        paddle::experimental::slice(tiled, axes, starts, ends, strides, {});
-    return Tensor(sliced);
-  };
-
   // PyTorch's expand uses right-alignment semantics:
   // - For 1D tensor expand to 2D: {3}.expand({3,4}) treats input as {3,1},
   // expands to {3,4}
@@ -97,11 +61,13 @@ inline Tensor expand(const Tensor& self,
     // Paddle allows: input[i] == 1 (can expand), or input[i] == target[i]
     // (match)
     bool can_use_paddle_expand = true;
+    size_t fail_dim = 0;
     for (size_t i = 0; i < target_rank; ++i) {
       bool dim_can_expand = (reshape_vec[i] == 1);
       bool dim_is_matching = (reshape_vec[i] == target_size_vec[i]);
       if (!dim_can_expand && !dim_is_matching) {
         can_use_paddle_expand = false;
+        fail_dim = i;
         break;
       }
     }
@@ -116,18 +82,22 @@ inline Tensor expand(const Tensor& self,
     }
 
     PD_THROW("expand(): the expanded size of the tensor (",
-             target_size_vec[0],
+             target_size_vec[fail_dim],
              ") must match the existing size (",
-             reshape_vec[0],
-             ") at non-singleton dimension 0.");
+             reshape_vec[fail_dim],
+             ") at non-singleton dimension ",
+             fail_dim,
+             ".");
   } else if (input_rank == target_rank) {
     // Same rank - check if we can use expand directly
     bool can_use_paddle_expand = true;
+    size_t fail_dim = 0;
     for (size_t i = 0; i < target_rank; ++i) {
       auto in_size = input_dims[i];
       auto target_size = target_size_vec[i];
       if (in_size != 1 && in_size != target_size) {
         can_use_paddle_expand = false;
+        fail_dim = i;
         break;
       }
     }
@@ -139,10 +109,12 @@ inline Tensor expand(const Tensor& self,
     }
 
     PD_THROW("expand(): the expanded size of the tensor (",
-             target_size_vec[0],
+             target_size_vec[fail_dim],
              ") must match the existing size (",
-             input_dims[0],
-             ") at non-singleton dimension 0.");
+             input_dims[fail_dim],
+             ") at non-singleton dimension ",
+             fail_dim,
+             ".");
   } else {
     PD_THROW("expand(): the number of sizes provided (",
              target_rank,

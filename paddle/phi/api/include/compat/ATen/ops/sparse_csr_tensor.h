@@ -36,10 +36,9 @@ inline at::Tensor sparse_csr_tensor(const at::Tensor& crow_indices,
   paddle::Tensor cols = col_indices._PD_GetInner();
   paddle::Tensor vals = values._PD_GetInner();
 
-  if (options.dtype_opt().has_value() &&
-      options.dtype_opt().value() != values.scalar_type()) {
-    PD_THROW("sparse_csr_tensor: values dtype must match TensorOptions dtype.");
-  }
+  // PyTorch ignores dtype mismatch between values and TensorOptions in
+  // sparse_csr_tensor; the resulting sparse tensor uses values' original dtype.
+  // Do not cast or throw here.
 
   if (options.pinned_memory()) {
     phi::Place base_place = options._PD_GetPlace();

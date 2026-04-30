@@ -344,7 +344,9 @@ TEST(SparseConstructorTest, SparseCsrTensorWithOptions) {
   ASSERT_EQ(sparse.layout(), c10::kSparseCsr);
 }
 
-TEST(SparseConstructorTest, SparseCsrTensorMismatchedOptionsDtypeThrows) {
+TEST(SparseConstructorTest, SparseCsrTensorMismatchedOptionsDtypeIgnored) {
+  // PyTorch ignores dtype mismatch in sparse_csr_tensor;
+  // the resulting tensor uses values' original dtype.
   at::Tensor crow_indices =
       at::empty({3}, c10::TensorOptions().dtype(at::kLong));
   int64_t* crow_ptr = crow_indices.data_ptr<int64_t>();
@@ -366,9 +368,11 @@ TEST(SparseConstructorTest, SparseCsrTensorMismatchedOptionsDtypeThrows) {
   std::vector<int64_t> size = {2, 2};
   auto options = c10::TensorOptions().dtype(at::kDouble);
 
-  ASSERT_THROW((void)at::sparse_csr_tensor(
-                   crow_indices, col_indices, values, size, options),
-               std::exception);
+  at::Tensor sparse =
+      at::sparse_csr_tensor(crow_indices, col_indices, values, size, options);
+
+  // Result should use values' dtype (float), not options' dtype (double).
+  ASSERT_EQ(sparse.dtype(), at::kFloat);
 }
 
 // ============== Additional sparse_coo_tensor tests ==============
