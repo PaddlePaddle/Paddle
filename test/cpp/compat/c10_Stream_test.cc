@@ -43,12 +43,6 @@ void BlockingStreamCallback(hipStream_t /*stream*/,
   }
 }
 
-void EnqueueBlockingCallback(const c10::cuda::CUDAStream& stream,
-                             StreamCallbackGate* gate) {
-  C10_CUDA_CHECK(hipStreamAddCallback(
-      stream.raw_stream(), BlockingStreamCallback, gate, 0));
-}
-
 void CreateRawStream(hipStream_t* stream) {
   C10_CUDA_CHECK(hipStreamCreate(stream));
 }
