@@ -35,9 +35,7 @@ from paddle.tensorrt.converter_utils import (
 from paddle.tensorrt.register import converter_registry
 
 
-@converter_registry.register(
-    "pd_op.full_int_array", trt_version="trt_version_ge=8.0"
-)
+@converter_registry.register("pd_op.full_int_array")
 def full_int_array_converter(network, paddle_op, inputs):
     value = paddle_op.attrs()["value"]
     if len(value) == 0:
@@ -48,7 +46,7 @@ def full_int_array_converter(network, paddle_op, inputs):
     return full_int_array_layer.get_output(0)
 
 
-@converter_registry.register("pd_op.full", trt_version="trt_version_ge=8.0")
+@converter_registry.register("pd_op.full")
 def full_converter(network, paddle_op, inputs):
     shape = paddle_op.attrs()["shape"]
     value = paddle_op.attrs().get("value", 1.0)
