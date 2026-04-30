@@ -39,9 +39,10 @@ bool is_available() { return cuda::device_count() > 0; }
 void synchronize(int64_t device_index) {
   TORCH_CHECK(is_available(), "No CUDA GPUs are available");
   auto num_gpus = cuda::device_count();
-  TORCH_CHECK(device_index < 0 || device_index < num_gpus,
-              "Device index out of range: ",
-              device_index);
+  TORCH_CHECK(
+      device_index == -1 || (device_index >= 0 && device_index < num_gpus),
+      "Device index out of range: ",
+      device_index);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // Match PyTorch semantics:
   // 1. `device_index == -1` means "current CUDA device".

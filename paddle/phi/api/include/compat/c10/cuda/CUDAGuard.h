@@ -62,10 +62,9 @@ struct CUDAGuard {
   CUDAGuard(CUDAGuard&& other) = delete;
   CUDAGuard& operator=(CUDAGuard&& other) = delete;
   ~CUDAGuard() {
-    if (original_device_.index() != current_device_.index()) {
-      phi::backends::gpu::SetDeviceId(
-          static_cast<int>(original_device_.index()));
-    }
+    // Always restore to original_device_ to handle cases where the device
+    // was changed outside of this guard, matching PyTorch semantics.
+    phi::backends::gpu::SetDeviceId(static_cast<int>(original_device_.index()));
   }
 
   void set_device(Device device) {
@@ -140,8 +139,9 @@ struct OptionalCUDAGuard {
   std::optional<Device> current_device() const { return current_device_; }
 
   void reset() {
-    if (original_device_.has_value() && current_device_.has_value() &&
-        original_device_->index() != current_device_->index()) {
+    if (original_device_.has_value()) {
+      // Always restore to original_device_ to handle external device changes.
+      // This matches PyTorch OptionalDeviceGuard semantics.
       phi::backends::gpu::SetDeviceId(
           static_cast<int>(original_device_->index()));
     }

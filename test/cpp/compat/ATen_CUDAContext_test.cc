@@ -98,6 +98,13 @@ TEST(CUDAFunctionsTest, TorchSynchronizePreservesCurrentDevice) {
   EXPECT_EQ(phi::backends::gpu::GetCurrentDeviceId(), current_device);
 }
 
+TEST(CUDAFunctionsTest, SynchronizeRejectsInvalidNegativeDevice) {
+  if (!torch::cuda::is_available()) {
+    return;
+  }
+  ASSERT_THROW(torch::cuda::synchronize(-2), std::exception);
+}
+
 TEST(CUDAFunctionsTest, CUDAGuardRestoresOriginalDeviceAfterMultipleSwitches) {
   if (!torch::cuda::is_available()) {
     return;
