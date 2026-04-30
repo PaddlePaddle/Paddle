@@ -139,13 +139,13 @@ void FusedAttentionKernel(const Context &dev_ctx,
 
   const bool is_upscale_in_train =
       (dropout_implementation == "upscale_in_train");
-  phi::fusion::DropoutParam dropout_param2(dropout_fix_seed,
-                                           0,
-                                           is_test,
-                                           is_upscale_in_train,
-                                           dropout_rate,
-                                           nullptr,
-                                           dropout_seed);
+  fusion::DropoutParam dropout_param2(dropout_fix_seed,
+                                      0,
+                                      is_test,
+                                      is_upscale_in_train,
+                                      dropout_rate,
+                                      nullptr,
+                                      dropout_seed);
 
   const bool has_dropout = (dropout_param2.dropout_prob != 0.0f);
 
@@ -240,7 +240,7 @@ void FusedAttentionKernel(const Context &dev_ctx,
   int input_size = dim_embed;
 
   auto layer_norm_compute =
-      phi::fusion::AttnLayerNorm<T>(dev_ctx, epsilon, bsz_seq, dim_embed);
+      fusion::AttnLayerNorm<T>(dev_ctx, epsilon, bsz_seq, dim_embed);
 
   bool compute_bias = true;
   if (qkv_bias_p == nullptr) {
@@ -248,17 +248,17 @@ void FusedAttentionKernel(const Context &dev_ctx,
   }
   // (transA, transB, compute_bias) = (false, true, true)
   bool transB = transpose_qkv_wb ? false : true;
-  auto qkv_compute = phi::fusion::AttnMatMul<T>(
+  auto qkv_compute = fusion::AttnMatMul<T>(
       dev_ctx, false, transB, bsz_seq, output_size, input_size, compute_bias);
 
-  phi::fusion::AttnDropoutParam attn_dropout_param(is_test,
-                                                   attn_dropout_implementation,
-                                                   attn_dropout_rate,
-                                                   is_upscale_in_train_1,
-                                                   attn_dropout_fix_seed,
-                                                   attn_dropout_seed,
-                                                   seed_1);
-  auto fmha_ref_compute = phi::fusion::FMHARef<T>(
+  fusion::AttnDropoutParam attn_dropout_param(is_test,
+                                              attn_dropout_implementation,
+                                              attn_dropout_rate,
+                                              is_upscale_in_train_1,
+                                              attn_dropout_fix_seed,
+                                              attn_dropout_seed,
+                                              seed_1);
+  auto fmha_ref_compute = fusion::FMHARef<T>(
       dev_ctx, batch_size, max_seq_len, num_head, dim_head, attn_dropout_param);
 
   output_size = hidden_size;
@@ -268,9 +268,9 @@ void FusedAttentionKernel(const Context &dev_ctx,
   // which is actually the input size. While the input size is hidden size,
   // which is actually the output size. So for out linear, switch the
   // input size and output size.
-  auto out_linear_compute = phi::fusion::AttnMatMul<T>(
+  auto out_linear_compute = fusion::AttnMatMul<T>(
       dev_ctx, false, false, bsz_seq, input_size, output_size, false);
-  phi::fusion::FusedDropoutLayerNormHelper<T, uint8_t>
+  fusion::FusedDropoutLayerNormHelper<T, uint8_t>
       fused_dropout_layernorm_helper(
           dev_ctx, bsz_seq, dim_embed, dropout_param2, ln_epsilon);
 

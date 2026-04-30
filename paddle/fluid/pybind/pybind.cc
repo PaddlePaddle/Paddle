@@ -552,16 +552,16 @@ struct finfo {
   explicit finfo(const DataType &type) {
     switch (type) {
       case DataType::FLOAT8_E4M3FN:
-        CASE_FINFO_BODY(float8_e4m3fn, phi::dtype::float8_e4m3fn);
+        CASE_FINFO_BODY(float8_e4m3fn, phi::float8_e4m3fn);
         break;
       case DataType::FLOAT8_E5M2:
-        CASE_FINFO_BODY(float8_e5m2, phi::dtype::float8_e5m2);
+        CASE_FINFO_BODY(float8_e5m2, phi::float8_e5m2);
         break;
       case DataType::FLOAT16:
-        CASE_FINFO_BODY(float16, phi::dtype::float16);
+        CASE_FINFO_BODY(float16, phi::float16);
         break;
       case DataType::BFLOAT16:
-        CASE_FINFO_BODY(bfloat16, phi::dtype::bfloat16);
+        CASE_FINFO_BODY(bfloat16, phi::bfloat16);
         break;
       case DataType::FLOAT32:
       case DataType::COMPLEX64:
@@ -825,7 +825,7 @@ int DLPackManagedTensorAllocator(::DLTensor *prototype,
                                                   const char *message)) {
   try {
     phi::IntArray shape(prototype->shape, prototype->ndim);
-    phi::Place place(paddle::framework::DLDeviceToPlace(prototype->device));
+    Place place(paddle::framework::DLDeviceToPlace(prototype->device));
     DataType dtype =
         paddle::framework::DLDataTypeToPhiDataType(prototype->dtype);
     Tensor tensor = paddle::empty(shape, dtype, place);
@@ -1869,7 +1869,7 @@ PYBIND11_MODULE(libpaddle, m) {
 
 #endif
 
-  m.def("wait_device", [](const phi::Place &place) {
+  m.def("wait_device", [](const Place &place) {
     phi::DeviceContextPool::Instance().Get(place)->Wait();
   });
   py::class_<MmapStorage, std::shared_ptr<MmapStorage>>(
@@ -1968,7 +1968,7 @@ PYBIND11_MODULE(libpaddle, m) {
       py::arg("count") = -1,
       py::arg("offset") = 0);
 
-  m.def("place_to_dl_device", [](const phi::Place &place) {
+  m.def("place_to_dl_device", [](const Place &place) {
     ::DLDevice dl_device = PlaceToDLDevice(place);
     return py::make_tuple(static_cast<int>(dl_device.device_type),
                           dl_device.device_id);
@@ -2119,7 +2119,7 @@ PYBIND11_MODULE(libpaddle, m) {
                              stridesIntArray,
                              dtype,
                              phi::DataLayout::NCHW,
-                             phi::Place(),
+                             Place(),
                              [obj](void *data) {
                                py::gil_scoped_acquire gil;
                                obj.dec_ref();
@@ -3083,7 +3083,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("_get_eager_deletion_vars", &framework::GetEagerDeletionCleanVars);
 
   py::class_<framework::Executor>(m, "Executor")
-      .def(py::init<const phi::Place &>())
+      .def(py::init<const Place &>())
       .def("close", &Executor::Close)
       .def("get_place", &Executor::GetPlace)
       .def("run_from_dataset",
@@ -3175,7 +3175,7 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   py::class_<framework::StandaloneExecutor>(m, "StandaloneExecutor")
-      .def(py::init<const phi::Place &, const interpreter::Plan &, Scope *>())
+      .def(py::init<const Place &, const interpreter::Plan &, Scope *>())
       .def("run",
            [](StandaloneExecutor &self,
               std::vector<std::string> feed_names,
@@ -3512,7 +3512,7 @@ All parameter, weight, gradient are variables in Paddle.
         });
   m.def("register_offload_callback", [] {
     paddle::memory::allocation::RegisterOOMCallback(
-        [](phi::Place place, size_t size) -> size_t {
+        [](Place place, size_t size) -> size_t {
           return egr::ActivationOffloader::Instance()->Offload(place, size);
         });
   });

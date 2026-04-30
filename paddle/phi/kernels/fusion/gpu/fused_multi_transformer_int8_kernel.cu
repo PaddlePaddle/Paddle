@@ -92,8 +92,8 @@ void FusedMultiTransformerINT8OpKernel(
   auto ln_scales = ln_scale;
   auto ln_biases = ln_bias;
 
-  auto ln_compute = phi::fusion::AttnLayerNorm<T, T, int8_t>(
-      dev_ctx, epsilon, bsz_seq, dim_embed);
+  auto ln_compute =
+      fusion::AttnLayerNorm<T, T, int8_t>(dev_ctx, epsilon, bsz_seq, dim_embed);
   DenseTensor ln_mean, ln_var;
   ln_mean.Resize({bsz_seq});
   auto *ln_mean_data =
@@ -117,7 +117,7 @@ void FusedMultiTransformerINT8OpKernel(
 
   bool compute_bias = qkv_biases.size() > 0 && time_step == nullptr;
   // (transA, transB, compute_bias) = (false, trans_qkvw, false)
-  phi::fusion::AttnMatmulINT8<T> qkv_compute(
+  fusion::AttnMatmulINT8<T> qkv_compute(
       dev_ctx, bsz_seq, output_size, input_size, compute_bias);
   DenseTensor qkv_out;
   qkv_out.Resize({bsz, seq_len, 3, num_head, dim_head});
@@ -125,10 +125,10 @@ void FusedMultiTransformerINT8OpKernel(
       dev_ctx.template Alloc<T>(&qkv_out, qkv_out.numel() * sizeof(T));
 
   // 3. fmha
-  phi::fusion::AttnDropoutParam attn_param(
+  fusion::AttnDropoutParam attn_param(
       true, "upscale_in_train", 0.0, true, true, 0, nullptr);
-  auto fmha_compute = phi::fusion::FMHARef<T>(
-      dev_ctx, bsz, seq_len, num_head, dim_head, attn_param);
+  auto fmha_compute =
+      fusion::FMHARef<T>(dev_ctx, bsz, seq_len, num_head, dim_head, attn_param);
   auto *src_mask = src_mask_in.get_ptr();
   auto cache_kvs = std::vector<const DenseTensor *>();
   if (cache_kv_in) {
@@ -193,16 +193,15 @@ void FusedMultiTransformerINT8OpKernel(
   auto out_linear_biases = out_linear_bias.get();
 
   // (transA, transB, compute_bias) = (false, false, false)
-  phi::fusion::AttnMatmulINT8<T> out_linear_compute(
+  fusion::AttnMatmulINT8<T> out_linear_compute(
       dev_ctx, bsz_seq, dim_embed, hidden_size, false);
 
   // 5. ln(residual + bias)
-  phi::fusion::DropoutParam dropout_param2(
-      true, 0, true, true, 0.0, nullptr, 0);
-  phi::fusion::FusedDropoutLayerNormHelper<T, uint8_t, int32_t, int8_t>
+  fusion::DropoutParam dropout_param2(true, 0, true, true, 0.0, nullptr, 0);
+  fusion::FusedDropoutLayerNormHelper<T, uint8_t, int32_t, int8_t>
       fused_dropout_layernorm_helper(
           dev_ctx, bsz_seq, dim_embed, dropout_param2, epsilon);
-  phi::fusion::FusedDropoutLayerNormHelper<T, uint8_t>
+  fusion::FusedDropoutLayerNormHelper<T, uint8_t>
       fused_dropout_layernorm_helper_for_post_layernorm(
           dev_ctx, bsz_seq, dim_embed, dropout_param2, epsilon);
   auto ffn_ln_scales = ffn_ln_scale;
@@ -225,7 +224,7 @@ void FusedMultiTransformerINT8OpKernel(
   auto ffn1_weight_dim = ffn1_weights[0]->dims();
 
   int dim_ffn = ffn1_weight_dim[0];
-  phi::fusion::AttnMatmulINT8<T> ffn1_linear_compute(
+  fusion::AttnMatmulINT8<T> ffn1_linear_compute(
       dev_ctx, bsz_seq, dim_ffn, dim_embed, false);
   DenseTensor ffn1_out;
   ffn1_out.Resize({bsz_seq, dim_ffn});
@@ -233,11 +232,10 @@ void FusedMultiTransformerINT8OpKernel(
       dev_ctx.template Alloc<T>(&ffn1_out, ffn1_out.numel() * sizeof(T));
 
   // 7. ffn act + bias
-  phi::fusion::DropoutParam ffn1_dropout_param(
-      true, 0, true, true, 0.0, nullptr, 0);
-  phi::fusion::FusedDropoutHelper<T, uint8_t, int32_t, int8_t>
+  fusion::DropoutParam ffn1_dropout_param(true, 0, true, true, 0.0, nullptr, 0);
+  fusion::FusedDropoutHelper<T, uint8_t, int32_t, int8_t>
       fused_act_dropout_helper(dev_ctx, bsz_seq, dim_ffn, ffn1_dropout_param);
-  phi::fusion::FusedDropoutHelper<T, uint8_t>
+  fusion::FusedDropoutHelper<T, uint8_t>
       fused_act_dropout_helper_for_post_layernorm(
           dev_ctx, bsz_seq, dim_ffn, ffn1_dropout_param);
   DenseTensor ffn1_dropout_out, ffn1_dropout_mask;
@@ -251,19 +249,18 @@ void FusedMultiTransformerINT8OpKernel(
   // 8. ffn2 matmul
   auto ffn2_weights = ffn2_weight;
   auto ffn2_biases = ffn2_bias.get();
-  phi::fusion::AttnMatmulINT8<T> ffn2_linear_compute(
+  fusion::AttnMatmulINT8<T> ffn2_linear_compute(
       dev_ctx, bsz_seq, dim_embed, dim_ffn, false);
 
   // 9. ffn2 residual bias
-  phi::fusion::DropoutParam ffn2_dropout_param(
-      true, 0, true, true, 0.0, nullptr, 0);
-  phi::fusion::FusedDropoutLayerNormHelper<T, uint8_t, int32_t, int8_t>
+  fusion::DropoutParam ffn2_dropout_param(true, 0, true, true, 0.0, nullptr, 0);
+  fusion::FusedDropoutLayerNormHelper<T, uint8_t, int32_t, int8_t>
       ffn2_fused_dropout_helper(
           dev_ctx, bsz_seq, dim_embed, ffn2_dropout_param, epsilon);
-  phi::fusion::FusedDropoutLayerNormHelper<T, uint8_t, int32_t, T>
+  fusion::FusedDropoutLayerNormHelper<T, uint8_t, int32_t, T>
       ffn2_fused_dropout_dequant_helper(
           dev_ctx, bsz_seq, dim_embed, ffn2_dropout_param, epsilon);
-  phi::fusion::FusedDropoutLayerNormHelper<T, uint8_t>
+  fusion::FusedDropoutLayerNormHelper<T, uint8_t>
       ffn2_fused_dropout_helper_for_post_layernorm(
           dev_ctx, bsz_seq, dim_embed, ffn2_dropout_param, epsilon);
 

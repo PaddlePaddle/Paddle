@@ -63,7 +63,7 @@ void ComputeMergedQKVMatmulBackward(
   int n = 3 * config.num_heads * config.head_dim;
   int k = config.q_dim;
   auto qkv_compute =
-      phi::fusion::AttnMatMul<T>(dev_ctx, false, true, m, n, k, false);
+      fusion::AttnMatMul<T>(dev_ctx, false, true, m, n, k, false);
   qkv_compute.ComputeBackward(query,
                               qkv_weight,
                               qkv_out_grad,
@@ -98,8 +98,8 @@ void ComputeSeparatedQKVMatmulBackward(
   int kv_m = config.batch_size * config.seq_len_m * config.m_size;
   int kv_n = config.num_heads * config.head_dim;
   int kv_k = config.kv_dim;
-  auto kv_compute = phi::fusion::AttnMatMul<T>(
-      dev_ctx, false, false, kv_m, kv_n, kv_k, false);
+  auto kv_compute =
+      fusion::AttnMatMul<T>(dev_ctx, false, false, kv_m, kv_n, kv_k, false);
   kv_compute.ComputeBackward(
       key, key_weight, key_out_grad, key_grad, key_weight_grad, nullptr, false);
 
@@ -123,7 +123,7 @@ void ComputeSeparatedQKVMatmulBackward(
   int q_n = config.num_heads * config.head_dim;
   int q_k = config.q_dim;
   auto q_compute =
-      phi::fusion::AttnMatMul<T>(dev_ctx, false, false, q_m, q_n, q_k, false);
+      fusion::AttnMatMul<T>(dev_ctx, false, false, q_m, q_n, q_k, false);
   q_compute.ComputeBackward(query,
                             query_weight,
                             query_out_grad,
@@ -159,7 +159,7 @@ void ComputeGatingLinearBackward(
   int n = config.num_heads * config.head_dim;
   int k = config.q_dim;
   auto gate_linear =
-      phi::fusion::AttnMatMul<T>(dev_ctx, false, false, m, n, k, true);
+      fusion::AttnMatMul<T>(dev_ctx, false, false, m, n, k, true);
   gate_linear.ComputeForward(gate_weight,
                              query,
                              gate_bias,
@@ -211,8 +211,7 @@ void ComputeOutputLinearBackward(
   int m = config.batch_size * config.seq_len_m * config.seq_len_r;
   int n = config.q_dim;
   int k = config.num_heads * config.head_dim;
-  auto out_linear =
-      phi::fusion::AttnMatMul<T>(dev_ctx, false, false, m, n, k, true);
+  auto out_linear = fusion::AttnMatMul<T>(dev_ctx, false, false, m, n, k, true);
   out_linear.ComputeBackward(input,
                              out_linear_weight,
                              out_grad,

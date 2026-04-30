@@ -112,8 +112,7 @@ void TransferLayoutPass::ApplyImpl(ir::Graph *graph) const {
   // why?
   // In the case of cudnn nhwc fp32, performance degradation will occur
   bool is_fp16_precision =
-      static_cast<phi::DataType>(Get<int>("model_precision")) ==
-          phi::DataType::FLOAT16 ||
+      static_cast<DataType>(Get<int>("model_precision")) == DataType::FLOAT16 ||
       Get<bool>("enable_gpu_mixed");
 
   bool cutlass_enable = Get<bool>("use_cutlass");
