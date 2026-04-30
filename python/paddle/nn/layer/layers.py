@@ -579,18 +579,23 @@ class Layer:
         cls_name = (
             "Module" if type(self).__name__ == "Layer" else type(self).__name__
         )
-        if self.call_super_init is False and bool(kwargs):
-            raise TypeError(
-                f"{cls_name}.__init__() got an unexpected keyword argument '{next(iter(kwargs))}'"
-            )
-
-        if self.call_super_init is False and bool(args):
-            raise TypeError(
-                f"{cls_name}.__init__() takes 1 positional argument but {len(args) + 1} were given"
-            )
-
         name_scope = None
         dtype: DTypeLike = "float32"
+        if self.call_super_init is False:
+            if type(self) is Layer:
+                if bool(kwargs):
+                    raise TypeError(
+                        f"{cls_name}.__init__() got an unexpected keyword argument '{next(iter(kwargs))}'"
+                    )
+
+                if bool(args):
+                    raise TypeError(
+                        f"{cls_name}.__init__() takes 1 positional argument but {len(args) + 1} were given"
+                    )
+            else:
+                name_scope, dtype = self._parse_legacy_init_args(
+                    args, kwargs, cls_name
+                )
 
         object.__setattr__(self, "training", True)
         if name_scope is None:
@@ -670,6 +675,37 @@ class Layer:
 
         if self.call_super_init:
             super().__init__(*args, **kwargs)
+
+    def _parse_legacy_init_args(
+        self, args: tuple[Any, ...], kwargs: dict[str, Any], cls_name: str
+    ) -> tuple[str | None, DTypeLike]:
+        if len(args) > 2:
+            raise TypeError(
+                f"{cls_name}.__init__() takes from 1 to 3 positional arguments but {len(args) + 1} were given"
+            )
+
+        kwargs = dict(kwargs)
+        unexpected_keywords = set(kwargs) - {"name_scope", "dtype"}
+        if unexpected_keywords:
+            keyword = next(iter(unexpected_keywords))
+            raise TypeError(
+                f"{cls_name}.__init__() got an unexpected keyword argument '{keyword}'"
+            )
+
+        if len(args) >= 1 and "name_scope" in kwargs:
+            raise TypeError(
+                f"{cls_name}.__init__() got multiple values for argument 'name_scope'"
+            )
+        if len(args) >= 2 and "dtype" in kwargs:
+            raise TypeError(
+                f"{cls_name}.__init__() got multiple values for argument 'dtype'"
+            )
+
+        name_scope = (
+            args[0] if len(args) >= 1 else kwargs.pop("name_scope", None)
+        )
+        dtype = args[1] if len(args) >= 2 else kwargs.pop("dtype", "float32")
+        return name_scope, dtype
 
     @property
     def _modules(self):
