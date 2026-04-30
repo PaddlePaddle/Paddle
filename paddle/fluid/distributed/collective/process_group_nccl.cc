@@ -103,8 +103,7 @@ bool ProcessGroupNCCL::NCCLTask::Wait(std::chrono::milliseconds timeout) {
     return true;
   }
 
-  const auto* calc_ctx =
-      platform::DeviceContextPool::Instance().Get(task_place_);
+  const auto* calc_ctx = DeviceContextPool::Instance().Get(task_place_);
   if (comm_event_) {
     comm_event_->Wait(platform::Place2DeviceType(task_place_), calc_ctx);
   }

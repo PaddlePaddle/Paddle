@@ -53,8 +53,7 @@ TEST(TensorRTEngineInstructionTest, test_tensorrt_engine_instruction) {
   paddle::framework::InitDefaultKernelSignatureMap();
   std::unique_ptr<paddle::framework::Scope> scope =
       std::make_unique<paddle::framework::Scope>();
-  auto dev_ctx =
-      paddle::platform::DeviceContextPool::Instance().Get(phi::GPUPlace());
+  auto dev_ctx = phi::DeviceContextPool::Instance().Get(phi::GPUPlace());
   auto weight_tensor = scope->Var("weight")->GetMutable<phi::DenseTensor>();
   weight_tensor->Resize({1});
   dev_ctx->Alloc<float>(weight_tensor);
@@ -234,8 +233,7 @@ TEST(TensorRTEngineInstructionTest, test_tensorrt_engine_instruction_dynamic) {
   paddle::framework::InitDefaultKernelSignatureMap();
   std::unique_ptr<paddle::framework::Scope> scope =
       std::make_unique<paddle::framework::Scope>();
-  auto dev_ctx =
-      paddle::platform::DeviceContextPool::Instance().Get(phi::GPUPlace());
+  auto dev_ctx = phi::DeviceContextPool::Instance().Get(phi::GPUPlace());
   auto y_tensor = scope->Var("y")->GetMutable<phi::DenseTensor>();
   y_tensor->Resize({8, 8, 4});
   dev_ctx->Alloc<float>(y_tensor);
@@ -392,8 +390,7 @@ TEST(PluginTest, test_generic_plugin) {
   auto argsort_out =
       builder.Build<paddle::dialect::ArgsortOp>(reshape_value, -1, true, false)
           .out();
-  auto dev_ctx =
-      paddle::platform::DeviceContextPool::Instance().Get(phi::GPUPlace());
+  auto dev_ctx = phi::DeviceContextPool::Instance().Get(phi::GPUPlace());
   auto y_tensor = scope->Var("y")->GetMutable<phi::DenseTensor>();
   y_tensor->Resize({1, 10});
   dev_ctx->Alloc<float>(y_tensor);

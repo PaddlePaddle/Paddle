@@ -86,8 +86,7 @@ void ProcessGroupFlagcx::FlagcxTask::RemoveHolderStreamInGroup() {
 bool ProcessGroupFlagcx::FlagcxTask::Wait(std::chrono::milliseconds timeout) {
   // Warning here when use calc stream but also invoke waiting explicitly.
 
-  const auto* calc_ctx =
-      platform::DeviceContextPool::Instance().Get(task_place_);
+  const auto* calc_ctx = DeviceContextPool::Instance().Get(task_place_);
 
   comm_event_->Wait(platform::Place2DeviceType(task_place_), calc_ctx);
 

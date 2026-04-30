@@ -65,8 +65,7 @@ void CollectShapeManager::CollectShapeInfo(
               << input.first.impl();
       continue;
     }
-    paddle::platform::DeviceContextPool &pool =
-        paddle::platform::DeviceContextPool::Instance();
+    DeviceContextPool &pool = DeviceContextPool::Instance();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     auto *dev_ctx = pool.Get(phi::GPUPlace());
     auto stream = static_cast<phi::GPUContext *>(dev_ctx)->stream();

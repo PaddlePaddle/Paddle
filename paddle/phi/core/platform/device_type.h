@@ -39,9 +39,8 @@ constexpr DeviceType kCUDA = DeviceType::CUDA;
 constexpr DeviceType kXPU = DeviceType::XPU;
 constexpr DeviceType kIPU = DeviceType::IPU;
 constexpr DeviceType kCUSTOM_DEVICE = DeviceType::CUSTOM_DEVICE;
+}  // namespace platform
 
 using DeviceContext = phi::DeviceContext;
 using DeviceContextPool = phi::DeviceContextPool;
-
-}  // namespace platform
 }  // namespace paddle
