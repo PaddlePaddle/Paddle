@@ -445,9 +445,7 @@ class Muon(Optimizer):
         ):
             with_decay = False
 
-        find_master = self._multi_precision and self._is_dtype_fp16_or_bf16(
-            param.dtype
-        )
+        find_master = param.name in self._master_weights
         master_weight = (
             self._master_weights[param.name] if find_master else None
         )
@@ -557,9 +555,7 @@ class Muon(Optimizer):
                 # Default: whole matrix orthogonalisation
                 orthogonal_update = ortho_fn(matrix_2d_global)
 
-            find_master = self._multi_precision and self._is_dtype_fp16_or_bf16(
-                param.dtype
-            )
+            find_master = param.name in self._master_weights
             master_weight = (
                 self._master_weights[param.name] if find_master else None
             )

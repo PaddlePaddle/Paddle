@@ -79,15 +79,14 @@ __forceinline__ __device__ void FusedResidualDropoutBiasOneThread(
     residual_vec[ii] = static_cast<T>(0);
   }
   // vectorize load data from global
-  phi::Load<InType, VecSize>(&src[row_id * cols + col_id], &src_vec);
-  phi::Load<float, VecSize>(&dequant_out_scale_data[col_id],
-                            &quant_out_scale_vec);
+  Load<InType, VecSize>(&src[row_id * cols + col_id], &src_vec);
+  Load<float, VecSize>(&dequant_out_scale_data[col_id], &quant_out_scale_vec);
   if (residual) {
-    phi::Load<T, VecSize>(&residual[row_id * cols + col_id], &residual_vec);
+    Load<T, VecSize>(&residual[row_id * cols + col_id], &residual_vec);
   }
 
   if (bias) {
-    phi::Load<T, VecSize>(&bias[col_id], &bias_vec);
+    Load<T, VecSize>(&bias[col_id], &bias_vec);
   }
 
   MaskStoreT mask_vec;
@@ -144,14 +143,13 @@ __forceinline__ __device__ void FusedResidualDropoutBiasOneThread(
 
   // store result to global
   if (std::is_same<OutType, int8_t>::value) {
-    phi::Store<OutType, VecSize>(dest_vec_out_type,
-                                 &dst[row_id * cols + col_id]);
+    Store<OutType, VecSize>(dest_vec_out_type, &dst[row_id * cols + col_id]);
   } else {
-    phi::Store<T, VecSize>(dest_vec,
-                           reinterpret_cast<T *>(&dst[row_id * cols + col_id]));
+    Store<T, VecSize>(dest_vec,
+                      reinterpret_cast<T *>(&dst[row_id * cols + col_id]));
   }
   if (!is_test && HasDropout) {
-    phi::Store<MaskType, VecSize>(mask_vec, &mask[row_id * cols + col_id]);
+    Store<MaskType, VecSize>(mask_vec, &mask[row_id * cols + col_id]);
   }
 }
 
@@ -191,9 +189,9 @@ __global__ void FusedResidualDropoutBiasGrad(const T *dout,
       LoadT out_vec;
       MaskLoadT mask_vec;
       StoreT dx_vec;
-      phi::Load<T, VecSize>(&dout[index], &out_vec);
+      Load<T, VecSize>(&dout[index], &out_vec);
       if (HasDropout) {
-        phi::Load<MaskType, VecSize>(&mask[index], &mask_vec);
+        Load<MaskType, VecSize>(&mask[index], &mask_vec);
       }
 
       if (not_need_dx) {
@@ -211,7 +209,7 @@ __global__ void FusedResidualDropoutBiasGrad(const T *dout,
           }
           tmp_sum[i] += out_vec[i];
         }
-        phi::Store<T, VecSize>(dx_vec, &dx[index]);
+        Store<T, VecSize>(dx_vec, &dx[index]);
       }
     }
   }
@@ -238,15 +236,15 @@ __global__ void FusedResidualDropoutGrad(const T *dout,
   for (int i = idx * VecSize; i < size; i += blockDim.x * gridDim.x * VecSize) {
     LoadT dout_vec;
     MaskLoadT mask_vec;
-    phi::Load<T, VecSize>(&dout[i], &dout_vec);
-    phi::Load<MaskType, VecSize>(&mask[i], &mask_vec);
+    Load<T, VecSize>(&dout[i], &dout_vec);
+    Load<MaskType, VecSize>(&mask[i], &mask_vec);
 
     StoreT dx_vec;
 #pragma unroll
     for (int ii = 0; ii < VecSize; ii++) {
       dx_vec[ii] = dout_vec[ii] * static_cast<T>(mask_vec[ii]) * factor;
     }
-    phi::Store<T, VecSize>(dx_vec, &dx[i]);
+    Store<T, VecSize>(dx_vec, &dx[i]);
   }
 }
 

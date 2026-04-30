@@ -18,7 +18,7 @@
 #include <c10/util/ArrayRef.h>
 
 namespace c10 {
-using SymIntArrayRef = IntArrayRef;  // SymIntArrayRef is same as ArrayRef
+using SymIntArrayRef = ArrayRef<SymInt>;
 }  // namespace c10
 
 namespace at {

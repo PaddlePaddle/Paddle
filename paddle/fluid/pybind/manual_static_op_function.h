@@ -1488,7 +1488,7 @@ static PyObject *static_api_tensorrt_engine(PyObject *self,
     }
 
     PyObject *outputs_dtype_obj = PyTuple_GET_ITEM(args, 5);
-    std::vector<paddle::DataType> outputs_dtype;
+    std::vector<DataType> outputs_dtype;
     if (PyList_Check(outputs_dtype_obj)) {
       Py_ssize_t len = PyList_Size(outputs_dtype_obj);
       PyObject *item = nullptr;
