@@ -69,6 +69,12 @@ PADDLE_API void ArgMinMaxInferMeta(const MetaTensor& x,
                                    MetaTensor* out,
                                    MetaConfig config = MetaConfig());
 
+PADDLE_API void AMinMaxInferMeta(const MetaTensor& x,
+                                 const std::vector<int64_t>& axis,
+                                 bool keep_dim,
+                                 MetaTensor* min,
+                                 MetaTensor* max);
+
 PADDLE_API void MinMaxWithIndexInferMeta(const MetaTensor& x,
                                          const Scalar& axis,
                                          bool keepdims,

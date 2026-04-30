@@ -31,7 +31,7 @@ namespace phi {
 
 template <typename T, bool CPUBetaPows /*=true*/>
 struct FusedAdamBetaPowInfo {
-  using MT = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   FusedAdamBetaPowInfo(const MT* beta1pow, const MT* beta2pow) {
     beta1pow_ = *beta1pow;
     beta2pow_ = *beta2pow;
@@ -48,7 +48,7 @@ struct FusedAdamBetaPowInfo {
 
 template <typename T>
 struct FusedAdamBetaPowInfo<T, /*CPUBetaPows=*/false> {
-  using MT = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   FusedAdamBetaPowInfo(const MT* beta1pow, const MT* beta2pow) {
     beta1pow_ = beta1pow;
     beta2pow_ = beta2pow;
@@ -330,7 +330,7 @@ PADDLE_API void FusedAdamKernel(
     std::vector<DenseTensor*> beta1_pows_out,
     std::vector<DenseTensor*> beta2_pows_out,
     std::vector<DenseTensor*> master_params_out) {
-  using MT = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
 
   auto n = params.size();
   auto beta1_pow_first = beta1_pows[0];

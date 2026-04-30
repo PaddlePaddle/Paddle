@@ -208,22 +208,22 @@ struct BwdRegistrar {
 // Helper functions from ln.cu (inline)
 // =========================================================================
 
-inline uint32_t get_type_id(phi::DataType dtype) {
-  if (dtype == phi::DataType::FLOAT16) {
+inline uint32_t get_type_id(DataType dtype) {
+  if (dtype == DataType::FLOAT16) {
     return TypeToIdTrait<fp16>::Value;  // FLOAT16 <--> 0
-  } else if (dtype == phi::DataType::BFLOAT16) {
+  } else if (dtype == DataType::BFLOAT16) {
     return TypeToIdTrait<bf16>::Value;  // BFLOAT16 <--> 1
-  } else if (dtype == phi::DataType::FLOAT32) {
+  } else if (dtype == DataType::FLOAT32) {
     return TypeToIdTrait<float>::Value;  // FLOAT32 <--> 2
   } else {
     return 3;  // Others <--> 3
   }
 }
 
-inline uint64_t get_key(phi::DataType weight_type,
-                        phi::DataType input_type,
-                        phi::DataType output_type,
-                        phi::DataType compute_type,
+inline uint64_t get_key(DataType weight_type,
+                        DataType input_type,
+                        DataType output_type,
+                        DataType compute_type,
                         uint64_t hidden_size) {
   uint64_t type_key =
       get_type_id(weight_type) | (get_type_id(input_type) << 2) |  // NOLINT

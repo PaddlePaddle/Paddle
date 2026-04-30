@@ -53,16 +53,16 @@ __global__ void bernoulli_cuda_kernel(
   for (size_t i = 4 * thread_idx; i < size; i += total_thread * 4) {
     funcs::uniform_distribution<float> dist;
     float4 rand = dist(&state);
-    using MPType = typename dtype::MPTypeTrait<T>::Type;
+    using MT = typename MPTypeTrait<T>::Type;
 #pragma unroll
     for (size_t j = 0; j < 4; j++) {
       size_t idx = i + j;
       if (idx < size) {
-        MPType p = static_cast<MPType>(x_data[idx]);
+        MT p = static_cast<MT>(x_data[idx]);
         PADDLE_ENFORCE(p >= 0 && p <= 1,
                        "The probability should be in [0, 1], but got %f",
                        p);
-        out_data[idx] = static_cast<T>((&rand.x)[j] <= static_cast<MPType>(p));
+        out_data[idx] = static_cast<T>((&rand.x)[j] <= static_cast<MT>(p));
       }
     }
   }

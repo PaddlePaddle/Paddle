@@ -28,24 +28,24 @@ namespace phi {
 
 template <typename T>
 struct GeluWithApproximateGradFunctor {
-  using MPType = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   inline HOSTDEVICE T operator()(T arg_x, T arg_dout) {
-    MPType x = static_cast<MPType>(arg_x);
-    MPType dout = static_cast<MPType>(arg_dout);
-    MPType kBeta = M_SQRT2 * M_2_SQRTPI * static_cast<MPType>(0.5);
-    MPType kKappa = static_cast<MPType>(GELU_CONSTANT);
+    MT x = static_cast<MT>(arg_x);
+    MT dout = static_cast<MT>(arg_dout);
+    MT kBeta = M_SQRT2 * M_2_SQRTPI * static_cast<MT>(0.5);
+    MT kKappa = static_cast<MT>(GELU_CONSTANT);
     auto x_sq = x * x;
     auto x_cube = x_sq * x;
     auto inner = kBeta * (x + kKappa * x_cube);
     auto tanh_inner = tanh(inner);
 
-    auto left = static_cast<MPType>(0.5) * x;
-    auto right = static_cast<MPType>(1) + tanh_inner;
+    auto left = static_cast<MT>(0.5) * x;
+    auto right = static_cast<MT>(1) + tanh_inner;
 
-    auto left_derivative = static_cast<MPType>(0.5) * right;
-    auto tanh_derivative = static_cast<MPType>(1) - tanh_inner * tanh_inner;
-    auto inner_derivative = kBeta * (static_cast<MPType>(1) +
-                                     static_cast<MPType>(3) * kKappa * x_sq);
+    auto left_derivative = static_cast<MT>(0.5) * right;
+    auto tanh_derivative = static_cast<MT>(1) - tanh_inner * tanh_inner;
+    auto inner_derivative =
+        kBeta * (static_cast<MT>(1) + static_cast<MT>(3) * kKappa * x_sq);
     auto right_derivative = left * tanh_derivative * inner_derivative;
 
     return static_cast<T>(dout * (left_derivative + right_derivative));
@@ -54,14 +54,14 @@ struct GeluWithApproximateGradFunctor {
 
 template <typename T>
 struct GeluWithoutApproximateGradFunctor {
-  using MPType = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   inline HOSTDEVICE T operator()(T arg_x, T arg_dout) {
-    MPType x = static_cast<MPType>(arg_x);
-    MPType dout = static_cast<MPType>(arg_dout);
-    constexpr MPType kBeta = M_2_SQRTPI * M_SQRT1_2 * MPType(0.5);
-    constexpr MPType kAlpha = M_SQRT1_2;
-    const MPType cdf = MPType(0.5) * (MPType(1) + std::erf(x * kAlpha));
-    const MPType pdf = exp(static_cast<MPType>(-0.5) * x * x) * kBeta;
+    MT x = static_cast<MT>(arg_x);
+    MT dout = static_cast<MT>(arg_dout);
+    constexpr MT kBeta = M_2_SQRTPI * M_SQRT1_2 * MT(0.5);
+    constexpr MT kAlpha = M_SQRT1_2;
+    const MT cdf = MT(0.5) * (MT(1) + std::erf(x * kAlpha));
+    const MT pdf = exp(static_cast<MT>(-0.5) * x * x) * kBeta;
     return static_cast<T>(dout * (cdf + x * pdf));
   }
 };
