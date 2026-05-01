@@ -22,6 +22,7 @@
 #include "paddle/fluid/platform/tensorrt/trt_plugin.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/pir/include/core/operation.h"
 
