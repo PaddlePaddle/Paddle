@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/range_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/range_function.h"
 
@@ -46,13 +47,27 @@ void RangeTensorKernel(const Context& dev_ctx,
                        const DenseTensor& end,
                        const DenseTensor& step,
                        DenseTensor* out) {
-  T start_value = start.data<T>()[0];
-  T end_value = end.data<T>()[0];
-  T step_value = step.data<T>()[0];
-  if (step_value == static_cast<T>(0)) {
-    PADDLE_THROW(errors::InvalidArgument("step must be nonzero."));
+  int64_t size = 0;
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  Scalar start_scalar(start);
+  Scalar end_scalar(end);
+  Scalar step_scalar(step);
+  MPType start_value = start_scalar.to<MPType>();
+  MPType end_value = end_scalar.to<MPType>();
+  MPType step_value = step_scalar.to<MPType>();
+
+  funcs::GetSizeForRange(start_value, end_value, step_value, &size);
+
+  out->Resize({size});
+  T* out_data = dev_ctx.template Alloc<T>(out);
+  if (size == 0) {
+    return;
   }
-  RangeFunc<T, Context>(dev_ctx, start_value, end_value, step_value, out);
+  MPType value = start_value;
+  for (int64_t i = 0; i < size; ++i) {
+    out_data[i] = static_cast<T>(value);
+    value += step_value;
+  }
 }
 
 template <typename T, typename Context>
@@ -61,16 +76,22 @@ void RangeKernel(const Context& dev_ctx,
                  const Scalar& end,
                  const Scalar& step,
                  DenseTensor* out) {
-  T start_value = start.to<T>();
-  T end_value = end.to<T>();
-  T step_value = step.to<T>();
-  if constexpr (std::is_floating_point_v<T>) {
-    if (std::isnan(end_value)) {
-      PADDLE_THROW(common::errors::InvalidArgument(
-          "The end value of range cannot be NaN. Please check your input."));
-    }
+  int64_t size = 0;
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType start_value = start.to<MPType>();
+  MPType end_value = end.to<MPType>();
+  MPType step_value = step.to<MPType>();
+  funcs::GetSizeForRange(start_value, end_value, step_value, &size);
+  out->Resize({size});
+  T* out_data = dev_ctx.template Alloc<T>(out);
+  if (size == 0) {
+    return;
   }
-  RangeFunc<T, Context>(dev_ctx, start_value, end_value, step_value, out);
+  MPType value = start_value;
+  for (int64_t i = 0; i < size; ++i) {
+    out_data[i] = static_cast<T>(value);
+    value += step_value;
+  }
 }
 
 }  // namespace phi
