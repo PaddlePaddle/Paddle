@@ -61,7 +61,7 @@
 
 ### 为什么这一步在 Paddle 尤其重要
 
-Paddle 的 Python 创建 API 在 `device` / `place` 没有显式传入时，会走当前 expected place。也就是说，`paddle.to_tensor(...)`、`paddle.as_tensor(...)`、某些 helper 内部创建张量时，实际落点可能跟当前 dygraph guard 或全局 expected place 绑定；在 GPU 环境下，这些调用完全可能直接落到 GPU。
+Paddle 的 Python 创建 API 在 `device` / `place` 没有显式传入时，会走当前 expected place。也就是说，`paddle.tensor(...)`、`paddle.to_tensor(...)`、某些 helper 内部创建张量时，实际落点可能跟当前 dygraph guard 或全局 expected place 绑定；在 GPU 环境下，这些调用完全可能直接落到 GPU。
 
 这和很多 PyTorch 生态库的默认假设不同。上游 helper 如果默认"未指定 device 时先创建 CPU tensor"，迁到 Paddle 后，完全相同的调用方式也可能因为 expected place 在 GPU 上而直接得到 `Place(gpu:0)`。
 
