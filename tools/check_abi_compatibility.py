@@ -45,22 +45,27 @@ WHEEL_LIBRARY_PATHS = (
 
 DEFINED_DYNAMIC_SYMBOL_TYPES = {"FUNC", "OBJECT"}
 
-PROTECTED_COMPAT_CXX_PREFIXES = (
+PROTECTED_CXX_PREFIXES = (
+    "phi::",
+    "paddle::",
     "c10::",
     "at::",
     "torch::",
-    "caffe2::",
 )
 
-PROTECTED_COMPAT_MANGLED_CXX_PREFIXES = (
+PROTECTED_C_SYMBOL_PREFIXES = (
+    "PD_",
+    "Paddle",
+    "PyInit_",
+    "paddle_",
+)
+
+PROTECTED_MANGLED_CXX_PREFIXES = (
     "_ZN2at",
-    "_ZNK2at",
     "_ZN3c10",
-    "_ZNK3c10",
+    "_ZN3phi",
     "_ZN5torch",
-    "_ZNK5torch",
-    "_ZN6caffe2",
-    "_ZNK6caffe2",
+    "_ZN6paddle",
 )
 
 
@@ -171,11 +176,13 @@ def attach_demangled_names(
 
 def is_protected_paddle_abi_symbol(symbol: DynamicSymbol) -> bool:
     demangled = symbol.demangled_name
-    if demangled.startswith(PROTECTED_COMPAT_CXX_PREFIXES):
+    if demangled.startswith(PROTECTED_CXX_PREFIXES):
         return True
 
     raw_name = strip_elf_symbol_version(symbol.name)
-    return raw_name.startswith(PROTECTED_COMPAT_MANGLED_CXX_PREFIXES)
+    return raw_name.startswith(
+        PROTECTED_C_SYMBOL_PREFIXES + PROTECTED_MANGLED_CXX_PREFIXES
+    )
 
 
 def protected_symbols_by_name(

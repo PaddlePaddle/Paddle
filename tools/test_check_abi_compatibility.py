@@ -65,7 +65,7 @@ Symbol table '.dynsym' contains 5 entries:
 
 
 class TestProtectedSymbols(unittest.TestCase):
-    def test_detects_protected_compat_cxx_namespaces(self):
+    def test_detects_protected_cxx_namespaces(self):
         self.assertTrue(
             is_protected_paddle_abi_symbol(
                 make_symbol(
@@ -76,7 +76,7 @@ class TestProtectedSymbols(unittest.TestCase):
         )
         self.assertTrue(
             is_protected_paddle_abi_symbol(
-                make_symbol("_ZN2at6Tensor3dimEv", "at::Tensor::dim()")
+                make_symbol("_ZN3phi3barEv", "phi::bar()")
             )
         )
         self.assertTrue(
@@ -84,33 +84,12 @@ class TestProtectedSymbols(unittest.TestCase):
                 make_symbol("_ZN5torch4cuda11synchronizeEv")
             )
         )
-        self.assertTrue(
-            is_protected_paddle_abi_symbol(
-                make_symbol(
-                    "_ZN6caffe28TypeMeta12toScalarTypeEv",
-                    "caffe2::TypeMeta::toScalarType()",
-                )
-            )
-        )
 
-    def test_ignores_non_compat_paddle_entrypoints(self):
-        self.assertFalse(
-            is_protected_paddle_abi_symbol(
-                make_symbol(
-                    "_ZN3phi12is_cpu_placeERKNS_5PlaceE",
-                    "phi::is_cpu_place(phi::Place const&)",
-                )
-            )
-        )
-        self.assertFalse(
-            is_protected_paddle_abi_symbol(
-                make_symbol("_ZN6paddle3fooEv", "paddle::foo()")
-            )
-        )
-        self.assertFalse(
+    def test_detects_relevant_c_and_python_entrypoints(self):
+        self.assertTrue(
             is_protected_paddle_abi_symbol(make_symbol("PyInit_libpaddle"))
         )
-        self.assertFalse(
+        self.assertTrue(
             is_protected_paddle_abi_symbol(make_symbol("PD_ConfigCreate"))
         )
 
@@ -172,20 +151,6 @@ class TestCompareLibrarySymbols(unittest.TestCase):
 
         issues = compare_library_symbols(
             "paddle/base/libpaddle.so", base_symbols, []
-        )
-
-        self.assertEqual(issues, [])
-
-    def test_removed_non_compat_phi_symbol_does_not_fail(self):
-        base_symbols = [
-            make_symbol(
-                "_ZN3phi12is_cpu_placeERKNS_5PlaceE",
-                "phi::is_cpu_place(phi::Place const&)",
-            )
-        ]
-
-        issues = compare_library_symbols(
-            "paddle/libs/libphi_core.so", base_symbols, []
         )
 
         self.assertEqual(issues, [])
