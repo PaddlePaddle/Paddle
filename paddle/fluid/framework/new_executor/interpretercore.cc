@@ -37,7 +37,7 @@ PHI_DEFINE_EXPORTED_bool(new_executor_use_local_scope,
 
 namespace paddle::framework {
 
-InterpreterCore::InterpreterCore(const phi::Place& place,
+InterpreterCore::InterpreterCore(const Place& place,
                                  const BlockDesc& block,
                                  framework::Scope* scope,
                                  const ExecutionConfig& execution_config)
@@ -48,7 +48,7 @@ InterpreterCore::InterpreterCore(const phi::Place& place,
 }
 
 InterpreterCore::InterpreterCore(
-    const phi::Place& place,
+    const Place& place,
     const std::vector<std::string>& fetch_var_names,
     const pir::Block* ir_block,
     framework::Scope* scope,
@@ -127,9 +127,7 @@ const Scope* InterpreterCore::local_scope() const {
   return impl_->local_scope();
 }
 
-const phi::Place& InterpreterCore::GetPlace() const {
-  return impl_->GetPlace();
-}
+const Place& InterpreterCore::GetPlace() const { return impl_->GetPlace(); }
 
 void InterpreterCore::SetInputHooks(const std::vector<HookFunc>& hookfuncs) {
   impl_->SetInputHooks(hookfuncs);
