@@ -31,9 +31,34 @@ inline std::vector<Tensor> chunk(const Tensor& self,
 
   std::vector<Tensor> result;
   paddle::Tensor pd_tensor = self._PD_GetInner();
-  int64_t dim_size = pd_tensor.dims().size() > 0 ? pd_tensor.dims()[dim] : 1;
+
+  int64_t rank = static_cast<int64_t>(pd_tensor.dims().size());
+  if (rank == 0) {
+    PD_THROW("chunk expects at least a 1-dimensional tensor");
+  }
+
+  int64_t original_dim = dim;
+  if (dim < 0) {
+    dim += rank;
+  }
+  if (dim < 0 || dim >= rank) {
+    PD_THROW("Dimension out of range (expected to be in range of [",
+             -rank,
+             ", ",
+             rank - 1,
+             "], but got ",
+             original_dim,
+             ")");
+  }
+
+  int64_t dim_size = pd_tensor.dims()[dim];
 
   if (dim_size == 0) {
+    for (int64_t i = 0; i < chunks; ++i) {
+      auto chunk_tensor =
+          paddle::experimental::slice(pd_tensor, {dim}, {0}, {0}, {1}, {});
+      result.push_back(Tensor(chunk_tensor));
+    }
     return result;
   }
 
