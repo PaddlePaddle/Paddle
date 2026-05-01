@@ -42,7 +42,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 
-namespace deep_ep {
+namespace paddle::deep_ep {
 
 struct Buffer {
   EP_STATIC_ASSERT(NUM_MAX_NVL_PEERS == 8,
@@ -624,4 +624,4 @@ ConvertOptionalPaddleTensorToDetailTensor(
 std::optional<paddle::Tensor> ConvertOptionalDetailTensorToPaddleTensor(
     const std::optional<deep_ep::detail::Tensor>& tensor);
 
-}  // namespace deep_ep
+}  // namespace paddle::deep_ep

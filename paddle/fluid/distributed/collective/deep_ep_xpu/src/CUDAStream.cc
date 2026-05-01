@@ -18,7 +18,7 @@
 #include "paddle/fluid/distributed/collective/process_group_bkcl.h"
 #include "paddle/phi/common/place.h"
 
-namespace deep_ep::detail {
+namespace paddle::deep_ep::detail {
 
 cudaStream_t GetCalcStreamFromGroup(int context_ring_id) {
   int device_id;
@@ -44,4 +44,4 @@ cudaStream_t GetCommStreamFromGroup(int context_ring_id) {
   return reinterpret_cast<cudaStream_t>(comm_ctx->GetStream());
 }
 
-}  // namespace deep_ep::detail
+}  // namespace paddle::deep_ep::detail

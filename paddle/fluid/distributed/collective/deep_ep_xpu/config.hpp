@@ -22,7 +22,7 @@
 // #include "paddle/fluid/distributed/collective/deep_ep_xpu/kernels/api.cuh"
 #include "paddle/fluid/distributed/collective/deep_ep_xpu/kernels/exception.h"
 
-namespace deep_ep {
+namespace paddle::deep_ep {
 
 template <typename dtype_t>
 dtype_t cell_div(dtype_t a, dtype_t b) {
@@ -434,4 +434,4 @@ inline size_t get_low_latency_nvl_size_hint_two_stage(
   return nvl_num_bytes;
 }
 
-}  // namespace deep_ep
+}  // namespace paddle::deep_ep

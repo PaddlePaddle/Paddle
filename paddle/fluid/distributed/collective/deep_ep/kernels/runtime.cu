@@ -39,7 +39,7 @@
 #include "paddle/fluid/distributed/collective/deep_ep/kernels/ibgda_device.cuh"
 #endif
 
-namespace deep_ep {
+namespace paddle::deep_ep {
 
 namespace intranode {
 
@@ -296,4 +296,4 @@ void get_dispatch_layout(const int64_t* topk_idx,
 }
 
 }  // namespace internode
-}  // namespace deep_ep
+}  // namespace paddle::deep_ep

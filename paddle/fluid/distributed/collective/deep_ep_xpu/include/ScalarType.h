@@ -16,7 +16,7 @@
 
 #include "paddle/phi/common/data_type.h"
 
-namespace deep_ep::detail {
+namespace paddle::deep_ep::detail {
 
 using ScalarType = phi::DataType;
 
@@ -28,4 +28,4 @@ constexpr auto kBFloat16 = phi::DataType::BFLOAT16;
 constexpr auto kFloat32 = phi::DataType::FLOAT32;
 constexpr auto kByte = phi::DataType::INT8;
 
-}  // namespace deep_ep::detail
+}  // namespace paddle::deep_ep::detail

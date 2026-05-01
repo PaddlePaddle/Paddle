@@ -32,7 +32,7 @@
 #include "paddle/fluid/distributed/collective/deep_ep/kernels/ibgda_device.cuh"
 #include "paddle/fluid/distributed/collective/deep_ep/kernels/launch.cuh"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
-namespace deep_ep {
+namespace paddle::deep_ep {
 
 namespace internode_ll {
 
@@ -1044,4 +1044,4 @@ void combine(void* combined_x,
 
 }  // namespace internode_ll
 
-}  // namespace deep_ep
+}  // namespace paddle::deep_ep

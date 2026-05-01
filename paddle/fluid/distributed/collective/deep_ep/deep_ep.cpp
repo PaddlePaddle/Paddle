@@ -38,7 +38,7 @@
 
 COMMON_DECLARE_int64(deep_ep_comm_prealloc_in_mb);
 
-namespace deep_ep {
+namespace paddle::deep_ep {
 std::once_flag pre_alloc_once_flag;
 
 namespace detail {
@@ -3614,4 +3614,4 @@ std::optional<paddle::Tensor> ConvertOptionalDetailTensorToPaddleTensor(
   return res;
 }
 
-}  // namespace deep_ep
+}  // namespace paddle::deep_ep

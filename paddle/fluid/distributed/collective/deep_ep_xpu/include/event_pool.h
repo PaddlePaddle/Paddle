@@ -18,7 +18,7 @@
 #include <queue>
 #include "paddle/fluid/distributed/collective/deep_ep_xpu/kernels/exception.h"
 
-namespace deep_ep::detail {
+namespace paddle::deep_ep::detail {
 
 class EventPool {
  public:
@@ -36,4 +36,4 @@ class EventPool {
   std::mutex mtx_;
 };
 
-}  // namespace deep_ep::detail
+}  // namespace paddle::deep_ep::detail

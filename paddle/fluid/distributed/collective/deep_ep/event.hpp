@@ -25,7 +25,7 @@
 #include "paddle/fluid/distributed/collective/deep_ep/include/event.h"
 #include "paddle/fluid/distributed/collective/deep_ep/kernels/exception.cuh"
 
-namespace deep_ep {
+namespace paddle::deep_ep {
 
 struct EventHandle {
   std::shared_ptr<deep_ep::detail::Event> event;
@@ -79,4 +79,4 @@ inline void stream_wait(const cudaStream_t& s, const EventHandle& event) {
   CUDA_CHECK(cudaStreamWaitEvent(s, event.event->cuda_event(), 0));
 }
 
-}  // namespace deep_ep
+}  // namespace paddle::deep_ep

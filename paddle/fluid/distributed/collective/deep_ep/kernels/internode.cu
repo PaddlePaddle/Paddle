@@ -32,7 +32,7 @@
 #include "paddle/fluid/distributed/collective/deep_ep/kernels/launch.cuh"
 #include "paddle/fluid/distributed/collective/deep_ep/kernels/utils.cuh"
 
-namespace deep_ep {
+namespace paddle::deep_ep {
 
 namespace internode {
 
@@ -2583,4 +2583,4 @@ void combine(cudaDataType_t type,
 
 }  // namespace internode
 
-}  // namespace deep_ep
+}  // namespace paddle::deep_ep

@@ -21,7 +21,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/memory/malloc.h"
 
-namespace deep_ep::detail {
+namespace paddle::deep_ep::detail {
 
 struct Tensor {
   paddle::Tensor raw_tensor_;
@@ -75,4 +75,4 @@ struct Tensor {
   int64_t element_size() const { return phi::SizeOf(raw_tensor_.dtype()); }
 };
 
-}  // namespace deep_ep::detail
+}  // namespace paddle::deep_ep::detail

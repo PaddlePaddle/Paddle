@@ -22,7 +22,7 @@
 #include "paddle/fluid/distributed/collective/deep_ep/kernels/configs.cuh"
 #include "paddle/fluid/distributed/collective/deep_ep/kernels/exception.cuh"
 
-namespace deep_ep {
+namespace paddle::deep_ep {
 
 template <typename dtype_t>
 struct Buffer {
@@ -176,4 +176,4 @@ struct SymBuffer {
   }
 };
 
-}  // namespace deep_ep
+}  // namespace paddle::deep_ep

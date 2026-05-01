@@ -19,7 +19,7 @@
 #include "paddle/fluid/distributed/collective/deep_ep/include/ScalarType.h"
 #include "paddle/phi/backends/gpu/cuda/cuda_helper.h"
 
-namespace deep_ep::detail {
+namespace paddle::deep_ep::detail {
 
 template <phi::DataType phi_data_type>
 struct PhiDataTypeImpl {
@@ -71,4 +71,4 @@ inline cudaDataType_t ScalarTypeToCudaDataType(
   return std::visit(Converter, phi_data_type);
 }
 
-}  // namespace deep_ep::detail
+}  // namespace paddle::deep_ep::detail
