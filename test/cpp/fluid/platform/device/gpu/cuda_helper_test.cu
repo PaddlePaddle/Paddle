@@ -23,11 +23,11 @@
 
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
-#include "paddle/phi/common/float16.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_helper.h"
 
+using phi::float16;
 using phi::PADDLE_CUDA_NUM_THREADS;
-using phi::dtype::float16;
 
 template <typename T>
 __global__ void AddKernel(const T* data_a, T* data_b, size_t num) {

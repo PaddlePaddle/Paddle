@@ -108,20 +108,20 @@ TEST(Broadcast, add) {
     auto dim_out = common::make_ddim({1, 2048, 3584});
     TestCase<float>(
         *dev_ctx, dim1, dim2, dim3, dim_out, times, AddTernary_1<float>());
-    TestCase<phi::dtype::float16>(*dev_ctx,
-                                  dim1,
-                                  dim2,
-                                  dim3,
-                                  dim_out,
-                                  times,
-                                  AddTernary_1<phi::dtype::float16>());
-    TestCase<phi::dtype::bfloat16>(*dev_ctx,
-                                   dim1,
-                                   dim2,
-                                   dim3,
-                                   dim_out,
-                                   times,
-                                   AddTernary_1<phi::dtype::bfloat16>());
+    TestCase<phi::float16>(*dev_ctx,
+                           dim1,
+                           dim2,
+                           dim3,
+                           dim_out,
+                           times,
+                           AddTernary_1<phi::float16>());
+    TestCase<phi::bfloat16>(*dev_ctx,
+                            dim1,
+                            dim2,
+                            dim3,
+                            dim_out,
+                            times,
+                            AddTernary_1<phi::bfloat16>());
     TestCase<phi::dtype::complex<float>>(
         *dev_ctx,
         dim1,
@@ -147,20 +147,20 @@ TEST(Broadcast, add) {
     auto dim_out = common::make_ddim({1, 256, 4, 256, 256});
     TestCase<float>(
         *dev_ctx, dim1, dim2, dim3, dim_out, times, AddTernary_2<float>());
-    TestCase<phi::dtype::float16>(*dev_ctx,
-                                  dim1,
-                                  dim2,
-                                  dim3,
-                                  dim_out,
-                                  times,
-                                  AddTernary_2<phi::dtype::float16>());
-    TestCase<phi::dtype::bfloat16>(*dev_ctx,
-                                   dim1,
-                                   dim2,
-                                   dim3,
-                                   dim_out,
-                                   times,
-                                   AddTernary_2<phi::dtype::bfloat16>());
+    TestCase<phi::float16>(*dev_ctx,
+                           dim1,
+                           dim2,
+                           dim3,
+                           dim_out,
+                           times,
+                           AddTernary_2<phi::float16>());
+    TestCase<phi::bfloat16>(*dev_ctx,
+                            dim1,
+                            dim2,
+                            dim3,
+                            dim_out,
+                            times,
+                            AddTernary_2<phi::bfloat16>());
     TestCase<phi::dtype::complex<float>>(
         *dev_ctx,
         dim1,
@@ -186,20 +186,20 @@ TEST(Broadcast, add) {
     auto dim_out = common::make_ddim({1, 256, 256});
     TestCase<float>(
         *dev_ctx, dim1, dim2, dim3, dim_out, times, AddTernary_3<float>());
-    TestCase<phi::dtype::float16>(*dev_ctx,
-                                  dim1,
-                                  dim2,
-                                  dim3,
-                                  dim_out,
-                                  times,
-                                  AddTernary_3<phi::dtype::float16>());
-    TestCase<phi::dtype::bfloat16>(*dev_ctx,
-                                   dim1,
-                                   dim2,
-                                   dim3,
-                                   dim_out,
-                                   times,
-                                   AddTernary_3<phi::dtype::bfloat16>());
+    TestCase<phi::float16>(*dev_ctx,
+                           dim1,
+                           dim2,
+                           dim3,
+                           dim_out,
+                           times,
+                           AddTernary_3<phi::float16>());
+    TestCase<phi::bfloat16>(*dev_ctx,
+                            dim1,
+                            dim2,
+                            dim3,
+                            dim_out,
+                            times,
+                            AddTernary_3<phi::bfloat16>());
     TestCase<phi::dtype::complex<float>>(
         *dev_ctx,
         dim1,

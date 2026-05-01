@@ -106,7 +106,7 @@ void GenerateXPUExample(const std::vector<size_t>& level_0,
     const phi::DenseTensorMeta meta_data_score(phi::DataType::FLOAT64,
                                                tensor_score_cpu.dims());
     tensor_score.set_meta(meta_data_score);
-  } else if (std::is_same<phi::dtype::float16, T>::value) {
+  } else if (std::is_same<phi::float16, T>::value) {
     const phi::DenseTensorMeta meta_data_score(phi::DataType::FLOAT16,
                                                tensor_score_cpu.dims());
     tensor_score.set_meta(meta_data_score);
@@ -212,7 +212,7 @@ TEST(BeamSearchDecodeOpXPU, Backtrace_XPU_Float) {
 }
 
 TEST(BeamSearchDecodeOpXPU, Backtrace_XPU_Float16) {
-  paddle::test::BeamSearchDecodeTestByXPUFrame<phi::dtype::float16>();
+  paddle::test::BeamSearchDecodeTestByXPUFrame<phi::float16>();
 }
 
 TEST(BeamSearchDecodeOpXPU, Backtrace_XPU_Int) {

@@ -91,27 +91,27 @@ TEST(DataTypeTransform, XPUTransform) {
 
   {
     // float16 -> any
-    phi::dtype::float16 cpu_data[6] = {phi::dtype::float16(0),
-                                       phi::dtype::float16(1),
-                                       phi::dtype::float16(2),
-                                       phi::dtype::float16(3),
-                                       phi::dtype::float16(4),
-                                       phi::dtype::float16(5)};
-    TransformTest<phi::dtype::float16, float>(
+    phi::float16 cpu_data[6] = {phi::float16(0),
+                                phi::float16(1),
+                                phi::float16(2),
+                                phi::float16(3),
+                                phi::float16(4),
+                                phi::float16(5)};
+    TransformTest<phi::float16, float>(
         kernel_fp16, kernel_fp32, cpu_place, xpu_place, cpu_data, 6);
-    TransformTest<phi::dtype::float16, double>(
+    TransformTest<phi::float16, double>(
         kernel_fp16, kernel_fp64, cpu_place, xpu_place, cpu_data, 6);
-    TransformTest<phi::dtype::float16, int32_t>(
+    TransformTest<phi::float16, int32_t>(
         kernel_fp16, kernel_int32, cpu_place, xpu_place, cpu_data, 6);
-    TransformTest<phi::dtype::float16, int64_t>(
+    TransformTest<phi::float16, int64_t>(
         kernel_fp16, kernel_int64, cpu_place, xpu_place, cpu_data, 6);
-    TransformTest<phi::dtype::float16, bool>(
+    TransformTest<phi::float16, bool>(
         kernel_fp16, kernel_bool, cpu_place, xpu_place, cpu_data, 6);
   }
   {
     // float -> any
     float cpu_data[6] = {0, 1, 2, 3, 4, 5};
-    TransformTest<float, phi::dtype::float16>(
+    TransformTest<float, phi::float16>(
         kernel_fp32, kernel_fp16, cpu_place, xpu_place, cpu_data, 6);
     TransformTest<float, float>(
         kernel_fp32, kernel_fp32, cpu_place, xpu_place, cpu_data, 6);
@@ -129,7 +129,7 @@ TEST(DataTypeTransform, XPUTransform) {
   {
     // double -> any
     double cpu_data[6] = {0, 1, 2, 3, 4, 5};
-    TransformTest<double, phi::dtype::float16>(
+    TransformTest<double, phi::float16>(
         kernel_fp64, kernel_fp16, cpu_place, xpu_place, cpu_data, 6);
     TransformTest<double, float>(
         kernel_fp64, kernel_fp32, cpu_place, xpu_place, cpu_data, 6);
@@ -147,7 +147,7 @@ TEST(DataTypeTransform, XPUTransform) {
   {
     // int16 -> any
     int16_t cpu_data[6] = {0, 1, 2, 3, 4, 5};
-    TransformTest<int16_t, phi::dtype::float16>(
+    TransformTest<int16_t, phi::float16>(
         kernel_int16, kernel_fp16, cpu_place, xpu_place, cpu_data, 6);
     TransformTest<int16_t, float>(
         kernel_int16, kernel_fp32, cpu_place, xpu_place, cpu_data, 6);
@@ -165,7 +165,7 @@ TEST(DataTypeTransform, XPUTransform) {
   {
     // int32 -> any
     int32_t cpu_data[6] = {0, 1, 2, 3, 4, 5};
-    TransformTest<int32_t, phi::dtype::float16>(
+    TransformTest<int32_t, phi::float16>(
         kernel_int32, kernel_fp16, cpu_place, xpu_place, cpu_data, 6);
     TransformTest<int32_t, float>(
         kernel_int32, kernel_fp32, cpu_place, xpu_place, cpu_data, 6);
@@ -183,7 +183,7 @@ TEST(DataTypeTransform, XPUTransform) {
   {
     // int64 -> any
     int64_t cpu_data[6] = {0, 1, 2, 3, 4, 5};
-    TransformTest<int64_t, phi::dtype::float16>(
+    TransformTest<int64_t, phi::float16>(
         kernel_int64, kernel_fp16, cpu_place, xpu_place, cpu_data, 6);
     TransformTest<int64_t, float>(
         kernel_int64, kernel_fp32, cpu_place, xpu_place, cpu_data, 6);
@@ -201,7 +201,7 @@ TEST(DataTypeTransform, XPUTransform) {
   {
     // bool -> any
     bool cpu_data[6] = {0, 1, 0, 1, 1, 0};
-    TransformTest<bool, phi::dtype::float16>(
+    TransformTest<bool, phi::float16>(
         kernel_bool, kernel_fp16, cpu_place, xpu_place, cpu_data, 6);
     TransformTest<bool, float>(
         kernel_bool, kernel_fp32, cpu_place, xpu_place, cpu_data, 6);

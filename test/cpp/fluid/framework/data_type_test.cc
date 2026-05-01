@@ -22,7 +22,7 @@
 
 TEST(DataType, float16) {
   using phi::CPUPlace;
-  using phi::dtype::float16;
+  using phi::float16;
   namespace f = paddle::framework;
   f::proto::VarType::Type dtype = f::proto::VarType::FP16;
 
@@ -43,8 +43,8 @@ TEST(DataType, float16) {
 }
 
 TEST(DataType, bfloat16) {
+  using phi::bfloat16;
   using phi::CPUPlace;
-  using phi::dtype::bfloat16;
   namespace f = paddle::framework;
   f::proto::VarType::Type dtype = f::proto::VarType::BF16;
 

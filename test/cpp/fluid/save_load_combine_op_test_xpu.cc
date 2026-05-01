@@ -192,21 +192,17 @@ TEST(SaveLoadCombineOp, XPU) {
   r = SaveLoadCombineOpTest<phi::CPUPlace, int, int>(cpu_place);
   EXPECT_EQ(r, 0);
 
-  r = SaveLoadCombineOpTest<phi::XPUPlace,
-                            phi::dtype::float16,
-                            phi::dtype::float16>(xpu_place);
+  r = SaveLoadCombineOpTest<phi::XPUPlace, phi::float16, phi::float16>(
+      xpu_place);
   EXPECT_EQ(r, 0);
-  r = SaveLoadCombineOpTest<phi::CPUPlace,
-                            phi::dtype::float16,
-                            phi::dtype::float16>(cpu_place);
+  r = SaveLoadCombineOpTest<phi::CPUPlace, phi::float16, phi::float16>(
+      cpu_place);
   EXPECT_EQ(r, 0);
 
-  r = SaveLoadCombineOpTest<phi::XPUPlace,
-                            phi::dtype::bfloat16,
-                            phi::dtype::bfloat16>(xpu_place);
+  r = SaveLoadCombineOpTest<phi::XPUPlace, phi::bfloat16, phi::bfloat16>(
+      xpu_place);
   EXPECT_EQ(r, 0);
-  r = SaveLoadCombineOpTest<phi::CPUPlace,
-                            phi::dtype::bfloat16,
-                            phi::dtype::bfloat16>(cpu_place);
+  r = SaveLoadCombineOpTest<phi::CPUPlace, phi::bfloat16, phi::bfloat16>(
+      cpu_place);
   EXPECT_EQ(r, 0);
 }

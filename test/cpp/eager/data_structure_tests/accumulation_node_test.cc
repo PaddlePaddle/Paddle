@@ -278,8 +278,7 @@ TEST(AccumulationNode, Tensor) {
       std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace())
           .get(),
       meta);
-  dt0->mutable_data<phi::dtype::float16>(phi::CPUPlace())[0] =
-      phi::dtype::float16(10.0f);
+  dt0->mutable_data<phi::float16>(phi::CPUPlace())[0] = phi::float16(10.0f);
   paddle::Tensor et0 = paddle::Tensor(dt0);
 
   std::shared_ptr<phi::DenseTensor> dt1 = std::make_shared<phi::DenseTensor>(
@@ -287,8 +286,7 @@ TEST(AccumulationNode, Tensor) {
           .get(),
       meta);
 
-  dt1->mutable_data<phi::dtype::float16>(phi::CPUPlace())[0] =
-      phi::dtype::float16(20.0f);
+  dt1->mutable_data<phi::float16>(phi::CPUPlace())[0] = phi::float16(20.0f);
   paddle::Tensor et1 = paddle::Tensor(dt1);
 
   std::shared_ptr<phi::DenseTensor> input_dt =
@@ -307,8 +305,7 @@ TEST(AccumulationNode, Tensor) {
               phi::CPUPlace())
               .get(),
           meta);
-  grad_dt->mutable_data<phi::dtype::float16>(phi::CPUPlace())[0] =
-      phi::dtype::float16(0.0f);
+  grad_dt->mutable_data<phi::float16>(phi::CPUPlace())[0] = phi::float16(0.0f);
   grad_meta->MutableGrad()->set_impl(grad_dt);
 
   // AccumulationNode
@@ -322,9 +319,9 @@ TEST(AccumulationNode, Tensor) {
   paddle::Tensor ret_et0 = node->operator()(et0_vec)[0][0];
   auto* ret_et0_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(ret_et0.impl())
-          ->data<phi::dtype::float16>();
+          ->data<phi::float16>();
   PADDLE_ENFORCE_EQ(ret_et0_ptr[0],
-                    phi::dtype::float16(10.0f),
+                    phi::float16(10.0f),
                     common::errors::InvalidArgument(
                         "The value of the first element of the dense tensor "
                         "should be 10.0f."));
@@ -334,24 +331,24 @@ TEST(AccumulationNode, Tensor) {
 
   auto* ret_et1_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(ret_et1.impl())
-          ->data<phi::dtype::float16>();
+          ->data<phi::float16>();
   PADDLE_ENFORCE_EQ(ret_et1_ptr[0],
-                    phi::dtype::float16(20.0f),
+                    phi::float16(20.0f),
                     common::errors::InvalidArgument(
                         "The value of the first element of the dense tensor "
                         "should be 20.0f"));
   // Check Retain Grad
   PADDLE_ENFORCE_EQ(std::dynamic_pointer_cast<phi::DenseTensor>(et0.impl())
-                        ->data<phi::dtype::float16>()[0],
-                    phi::dtype::float16(10.0f),
+                        ->data<phi::float16>()[0],
+                    phi::float16(10.0f),
                     common::errors::InvalidArgument(
                         "The value of the first element of the dense tensor "
                         "should be 10.0f"));
   paddle::Tensor* grad = EagerUtils::mutable_grad(input_et);
   auto* grad_ptr = std::dynamic_pointer_cast<phi::DenseTensor>(grad->impl())
-                       ->data<phi::dtype::float16>();
+                       ->data<phi::float16>();
   PADDLE_ENFORCE_EQ(grad_ptr[0],
-                    phi::dtype::float16(30.0f),
+                    phi::float16(30.0f),
                     common::errors::InvalidArgument(
                         "The value of the first element of the dense tensor "
                         "should be 30.0f"));
@@ -359,15 +356,15 @@ TEST(AccumulationNode, Tensor) {
   // Reduce Hook case 1: Call RegisterReduceHook and run operator()
   VLOG(6) << "Test Reduce Hook";
   PADDLE_ENFORCE_EQ(std::dynamic_pointer_cast<phi::DenseTensor>(et0.impl())
-                        ->data<phi::dtype::float16>()[0],
-                    phi::dtype::float16(10.0f),
+                        ->data<phi::float16>()[0],
+                    phi::float16(10.0f),
                     common::errors::InvalidArgument(
                         "The value of the first element of the dense tensor "
                         "should be 10.0f"));
   auto reduce_hook_1 = [&]() -> void {
     auto* input_et_ptr =
         std::dynamic_pointer_cast<phi::DenseTensor>(input_et.impl())
-            ->mutable_data<phi::dtype::float16>(phi::CPUPlace());
+            ->mutable_data<phi::float16>(phi::CPUPlace());
     input_et_ptr[0] = 36.0;
     VLOG(6) << "Running Reduce Hook";
   };
@@ -379,9 +376,9 @@ TEST(AccumulationNode, Tensor) {
 
   // Check operator() result, should be 36.0
   auto* _ret_ptr = std::dynamic_pointer_cast<phi::DenseTensor>(_ret.impl())
-                       ->data<phi::dtype::float16>();
+                       ->data<phi::float16>();
   PADDLE_ENFORCE_EQ(_ret_ptr[0],
-                    phi::dtype::float16(10.0f),
+                    phi::float16(10.0f),
                     common::errors::InvalidArgument(
                         "The value of the first element of the dense tensor "
                         "should be 10.0f"));
@@ -389,18 +386,17 @@ TEST(AccumulationNode, Tensor) {
   // Check Retain Grad, should be 36.0
   auto* _ret_input_et_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(input_et.impl())
-          ->data<phi::dtype::float16>();
+          ->data<phi::float16>();
   PADDLE_ENFORCE_EQ(_ret_input_et_ptr[0],
-                    phi::dtype::float16(36.0f),
+                    phi::float16(36.0f),
                     common::errors::InvalidArgument(
                         "The value of the first element of the dense tensor "
                         "should be 36.0f"));
   // Reduce Hook case 2: Call RegisterReduceHook and ApplyReduceHooks directly
   VLOG(6) << "Test Reduce Hook";
   auto reduce_hook_2 = [&]() -> void {
-    auto* ret_et0_ptr =
-        std::dynamic_pointer_cast<phi::DenseTensor>(et0.impl())
-            ->mutable_data<phi::dtype::float16>(phi::CPUPlace());
+    auto* ret_et0_ptr = std::dynamic_pointer_cast<phi::DenseTensor>(et0.impl())
+                            ->mutable_data<phi::float16>(phi::CPUPlace());
     ret_et0_ptr[0] = 100.0;  // set to 100.0
     VLOG(6) << "Running Reduce Hook";
   };
@@ -409,8 +405,8 @@ TEST(AccumulationNode, Tensor) {
 
   // Check ApplyReduceHooks result
   PADDLE_ENFORCE_EQ(std::dynamic_pointer_cast<phi::DenseTensor>(et0.impl())
-                        ->data<phi::dtype::float16>()[0],
-                    phi::dtype::float16(100.0f),
+                        ->data<phi::float16>()[0],
+                    phi::float16(100.0f),
                     common::errors::InvalidArgument(
                         "The value of the first element of the dense tensor "
                         "should be 100.0f"));

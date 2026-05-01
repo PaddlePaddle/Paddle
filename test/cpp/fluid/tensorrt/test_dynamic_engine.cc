@@ -28,7 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/float16.h"
 
-using float16 = phi::dtype::float16;
+using float16 = phi::float16;
 namespace paddle::inference::tensorrt {
 
 class TensorRTDynamicShapeValueEngineTest : public ::testing::Test {

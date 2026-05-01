@@ -50,10 +50,10 @@ TEST(Scalar, Formatting) {
   s = paddle::experimental::Scalar(std::complex<double>(42.1, 42.1));
   ASSERT_PRED2(StartsWith, s.ToString(), "Scalar(complex128(");
 
-  s = paddle::experimental::Scalar(static_cast<phi::float16>(42.1));
+  s = paddle::experimental::Scalar(static_cast<float16>(42.1));
   ASSERT_PRED2(StartsWith, s.ToString(), "Scalar(float16(");
 
-  s = paddle::experimental::Scalar(static_cast<phi::bfloat16>(42.1));
+  s = paddle::experimental::Scalar(static_cast<bfloat16>(42.1));
   ASSERT_PRED2(StartsWith, s.ToString(), "Scalar(bfloat16(");
 
   s = paddle::experimental::Scalar(static_cast<int8_t>(42.1));
@@ -93,10 +93,8 @@ TEST(Scalar, Equality) {
   auto s_uint32 = paddle::experimental::Scalar(static_cast<uint32_t>(42.1));
   auto s_uint64 = paddle::experimental::Scalar(static_cast<uint64_t>(42.1));
 
-  auto s_float16 =
-      paddle::experimental::Scalar(static_cast<phi::float16>(42.1));
-  auto s_bfloat16 =
-      paddle::experimental::Scalar(static_cast<phi::bfloat16>(42.1));
+  auto s_float16 = paddle::experimental::Scalar(static_cast<float16>(42.1));
+  auto s_bfloat16 = paddle::experimental::Scalar(static_cast<bfloat16>(42.1));
   auto s_float = paddle::experimental::Scalar(static_cast<float>(42.1));
   auto s_double = paddle::experimental::Scalar(static_cast<double>(42.1));
 
@@ -130,7 +128,7 @@ TEST(Scalar, Equality) {
 TEST(Scalar, WrapAsScalars) {
   std::vector<int32_t> v{1, 2, 3};
   auto out = paddle::experimental::WrapAsScalars(v);
-  ASSERT_EQ(out[0].dtype(), phi::DataType::INT32);
+  ASSERT_EQ(out[0].dtype(), DataType::INT32);
   ASSERT_EQ(out[0].to<int32_t>(), 1);
   ASSERT_EQ(out[1].to<int32_t>(), 2);
   ASSERT_EQ(out[2].to<int32_t>(), 3);

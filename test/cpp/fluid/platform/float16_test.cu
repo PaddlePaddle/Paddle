@@ -196,7 +196,7 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-using float16 = phi::dtype::float16;
+using float16 = phi::float16;
 using namespace phi::dtype;  // NOLINT
 
 #if defined(PADDLE_WITH_HIP)
@@ -351,8 +351,7 @@ TEST(float16, dense_tensor_on_gpu) {
 template <typename T>
 struct Functor {
   bool operator()(const T &val) {
-    return std::type_index(typeid(T)) ==
-           std::type_index(typeid(phi::dtype::float16));
+    return std::type_index(typeid(T)) == std::type_index(typeid(phi::float16));
   }
 };
 

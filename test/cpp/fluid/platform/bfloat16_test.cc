@@ -19,7 +19,7 @@ limitations under the License. */
 
 namespace paddle::platform {
 
-using bfloat16 = phi::dtype::bfloat16;
+using bfloat16 = phi::bfloat16;
 using namespace phi::dtype;  // NOLINT
 
 TEST(bfloat16, conversion_cpu) {
