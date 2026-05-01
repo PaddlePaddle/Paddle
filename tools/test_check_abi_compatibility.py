@@ -21,7 +21,10 @@ try:
         DynamicSymbol,
         MissingLibrary,
         RemovedSymbol,
+        check_abi_issues_approval,
+        check_abi_removal_approval,
         compare_library_symbols,
+        find_required_abi_approver,
         is_protected_paddle_abi_symbol,
         parse_readelf_dynamic_symbols,
     )
@@ -30,7 +33,10 @@ except ModuleNotFoundError:
         DynamicSymbol,
         MissingLibrary,
         RemovedSymbol,
+        check_abi_issues_approval,
+        check_abi_removal_approval,
         compare_library_symbols,
+        find_required_abi_approver,
         is_protected_paddle_abi_symbol,
         parse_readelf_dynamic_symbols,
     )
@@ -217,6 +223,87 @@ class TestCompareLibrarySymbols(unittest.TestCase):
         )
 
         self.assertEqual(issues, [])
+
+
+class TestAbiRemovalApproval(unittest.TestCase):
+    def test_no_abi_issues_do_not_require_approval(self):
+        def fetch_reviews(_pr_id, _token, _repository):
+            self.fail("reviews should not be fetched without ABI issues")
+
+        approval = check_abi_issues_approval(
+            [], env={}, fetch_reviews=fetch_reviews
+        )
+
+        self.assertTrue(approval.approved)
+
+    def test_removed_symbol_without_approval_fails(self):
+        issues = [
+            RemovedSymbol(
+                library="paddle/libs/libphi_core.so",
+                name="_ZN3c1017get_default_dtypeEv",
+                demangled_name="c10::get_default_dtype()",
+            )
+        ]
+
+        approval = check_abi_issues_approval(
+            issues,
+            env={"GIT_PR_ID": "78831", "GITHUB_API_TOKEN": "token"},
+            fetch_reviews=lambda _pr_id, _token, _repository: [],
+        )
+
+        self.assertFalse(approval.approved)
+        self.assertIn("no APPROVED review", approval.reason)
+
+    def test_removed_symbol_with_required_approval_passes(self):
+        for reviewer in ("SigureMo", "BingooYang"):
+            with self.subTest(reviewer=reviewer):
+                approval = check_abi_removal_approval(
+                    env={"GIT_PR_ID": "78831", "GITHUB_API_TOKEN": "token"},
+                    fetch_reviews=lambda _pr_id, _token, _repository: [
+                        {"state": "APPROVED", "user": {"login": reviewer}}
+                    ],
+                )
+
+                self.assertTrue(approval.approved)
+                self.assertEqual(approval.reviewer, reviewer)
+
+    def test_other_reviewer_approval_does_not_pass(self):
+        reviews = [
+            {"state": "APPROVED", "user": {"login": "someone-else"}},
+            {"state": "COMMENTED", "user": {"login": "SigureMo"}},
+        ]
+
+        self.assertIsNone(find_required_abi_approver(reviews))
+
+    def test_missing_review_context_fails_closed_when_abi_issue_exists(self):
+        issues = [
+            RemovedSymbol(
+                library="paddle/libs/libphi_core.so",
+                name="_ZN3c1017get_default_dtypeEv",
+                demangled_name="c10::get_default_dtype()",
+            )
+        ]
+
+        approval = check_abi_issues_approval(
+            issues,
+            env={},
+            fetch_reviews=lambda _pr_id, _token, _repository: [],
+        )
+
+        self.assertFalse(approval.approved)
+        self.assertIn("GIT_PR_ID or PR_ID is not set", approval.reason)
+
+    def test_review_fetch_error_fails_closed(self):
+        def fetch_reviews(_pr_id, _token, _repository):
+            raise RuntimeError("GitHub API unavailable")
+
+        approval = check_abi_removal_approval(
+            env={"PR_ID": "78831", "GITHUB_TOKEN": "token"},
+            fetch_reviews=fetch_reviews,
+        )
+
+        self.assertFalse(approval.approved)
+        self.assertIn("GitHub API unavailable", approval.reason)
 
 
 if __name__ == "__main__":

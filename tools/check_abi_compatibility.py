@@ -24,11 +24,14 @@ from __future__ import annotations
 
 import argparse
 import glob
+import json
 import os
 import shutil
 import subprocess
 import sys
 import tempfile
+import urllib.error
+import urllib.request
 import zipfile
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -63,6 +66,10 @@ PROTECTED_COMPAT_MANGLED_CXX_PREFIXES = (
     "_ZNK6caffe2",
 )
 
+REQUIRED_ABI_APPROVERS = ("SigureMo", "BingooYang")
+DEFAULT_GITHUB_REPOSITORY = "PaddlePaddle/Paddle"
+GITHUB_API_URL = "https://api.github.com"
+
 
 @dataclass(frozen=True)
 class DynamicSymbol:
@@ -83,6 +90,13 @@ class RemovedSymbol:
 @dataclass(frozen=True)
 class MissingLibrary:
     library: str
+
+
+@dataclass(frozen=True)
+class ApprovalCheckResult:
+    approved: bool
+    reviewer: str | None = None
+    reason: str | None = None
 
 
 def strip_elf_symbol_version(symbol_name: str) -> str:
@@ -285,11 +299,13 @@ def compare_wheel_abi(
 
 
 def format_issues(
-    issues: Iterable[RemovedSymbol | MissingLibrary], max_report: int
+    issues: Iterable[RemovedSymbol | MissingLibrary],
+    max_report: int,
+    title: str = "ABI compatibility check failed.",
 ) -> str:
     issue_list = list(issues)
     lines = [
-        "ABI compatibility check failed.",
+        title,
         "The PR wheel removed protected dynamic symbols that exist in the base "
         "wheel. Removing these symbols can break downstream wheels or shared "
         "libraries compiled against the base branch.",
@@ -318,6 +334,127 @@ def format_issues(
     omitted_count = len(issue_list) - max_report
     if omitted_count > 0:
         lines.append(f"... omitted {omitted_count} additional removed symbols.")
+    return "\n".join(lines)
+
+
+def find_required_abi_approver(
+    reviews: Iterable[dict],
+    required_approvers: Iterable[str] = REQUIRED_ABI_APPROVERS,
+) -> str | None:
+    required_logins = {login.lower() for login in required_approvers}
+    for review in reviews:
+        if review.get("state") != "APPROVED":
+            continue
+        user = review.get("user")
+        if not isinstance(user, dict):
+            continue
+        login = user.get("login")
+        if isinstance(login, str) and login.lower() in required_logins:
+            return login
+    return None
+
+
+def fetch_pr_reviews(
+    pr_id: str,
+    token: str,
+    repository: str = DEFAULT_GITHUB_REPOSITORY,
+    api_url: str = GITHUB_API_URL,
+) -> list[dict]:
+    reviews: list[dict] = []
+    page = 1
+    while True:
+        url = (
+            f"{api_url}/repos/{repository}/pulls/{pr_id}/reviews"
+            f"?per_page=100&page={page}"
+        )
+        request = urllib.request.Request(
+            url,
+            headers={
+                "Accept": "application/vnd.github+json",
+                "Authorization": f"token {token}",
+                "User-Agent": "Paddle-ABI-Compatibility-Check",
+            },
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=30) as response:
+                page_reviews = json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            raise RuntimeError(
+                f"failed to fetch PR reviews from GitHub: HTTP {exc.code}"
+            ) from exc
+        except (OSError, json.JSONDecodeError) as exc:
+            raise RuntimeError(
+                f"failed to fetch PR reviews from GitHub: {exc}"
+            ) from exc
+
+        if not isinstance(page_reviews, list):
+            raise RuntimeError("GitHub PR reviews response is not a list")
+
+        reviews.extend(page_reviews)
+        if len(page_reviews) < 100:
+            break
+        page += 1
+    return reviews
+
+
+def check_abi_removal_approval(
+    env: dict[str, str] | None = None,
+    fetch_reviews=fetch_pr_reviews,
+) -> ApprovalCheckResult:
+    env = os.environ if env is None else env
+    pr_id = env.get("GIT_PR_ID") or env.get("PR_ID")
+    token = (
+        env.get("GITHUB_API_TOKEN")
+        or env.get("GITHUB_TOKEN")
+        or env.get("GH_TOKEN")
+    )
+    repository = env.get("GITHUB_REPOSITORY", DEFAULT_GITHUB_REPOSITORY)
+
+    if not pr_id:
+        return ApprovalCheckResult(
+            approved=False, reason="GIT_PR_ID or PR_ID is not set"
+        )
+    if not token:
+        return ApprovalCheckResult(
+            approved=False,
+            reason="GITHUB_API_TOKEN, GITHUB_TOKEN, or GH_TOKEN is not set",
+        )
+
+    try:
+        reviews = fetch_reviews(pr_id, token, repository)
+    except RuntimeError as exc:
+        return ApprovalCheckResult(approved=False, reason=str(exc))
+
+    reviewer = find_required_abi_approver(reviews)
+    if reviewer is not None:
+        return ApprovalCheckResult(approved=True, reviewer=reviewer)
+    return ApprovalCheckResult(
+        approved=False,
+        reason=(
+            "no APPROVED review from "
+            + " or ".join(REQUIRED_ABI_APPROVERS)
+            + " was found"
+        ),
+    )
+
+
+def check_abi_issues_approval(
+    issues: Iterable[RemovedSymbol | MissingLibrary],
+    env: dict[str, str] | None = None,
+    fetch_reviews=fetch_pr_reviews,
+) -> ApprovalCheckResult:
+    if not list(issues):
+        return ApprovalCheckResult(approved=True, reason="no ABI issues")
+    return check_abi_removal_approval(env=env, fetch_reviews=fetch_reviews)
+
+
+def format_approval_failure(approval: ApprovalCheckResult) -> str:
+    lines = [
+        "You must have one RD (SigureMo or BingooYang) approval for protected "
+        "ABI symbol removals.",
+    ]
+    if approval.reason:
+        lines.append(f"Approval check failed: {approval.reason}.")
     return "\n".join(lines)
 
 
@@ -356,7 +493,25 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     if issues:
+        approval = check_abi_issues_approval(issues)
+        if approval.approved:
+            reviewer = approval.reviewer or "a required reviewer"
+            print(
+                format_issues(
+                    issues,
+                    args.max_report,
+                    title="ABI compatibility issues found.",
+                ),
+                file=sys.stderr,
+            )
+            print(
+                f"Protected ABI symbol removals were approved by {reviewer}; "
+                "continuing.",
+                file=sys.stderr,
+            )
+            return 0
         print(format_issues(issues, args.max_report), file=sys.stderr)
+        print(format_approval_failure(approval), file=sys.stderr)
         return 1
 
     print("ABI compatibility check passed.")
