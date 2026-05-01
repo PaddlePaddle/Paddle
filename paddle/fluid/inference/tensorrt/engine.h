@@ -132,7 +132,7 @@ class TensorRTEngine {
     int64_t max_workspace_size;
 
     // The precision of engine.
-    phi::DataType precision{phi::DataType::FLOAT32};
+    DataType precision{DataType::FLOAT32};
 
     TRTInt8Calibrator* calibrator{nullptr};
 
@@ -185,7 +185,7 @@ class TensorRTEngine {
 
     void SetDataType(nvinfer1::DataType type) { w_.type = type; }
 
-    void SetDataType(phi::DataType type);
+    void SetDataType(DataType type);
 
     void SetValues(const void* values) { w_.values = values; }
 
@@ -266,7 +266,7 @@ class TensorRTEngine {
   void Deserialize(const std::string& engine_serialized_data);
 
   bool WithFp16() {
-    bool enable_fp16 = (precision() == phi::DataType::FLOAT16);
+    bool enable_fp16 = (precision() == DataType::FLOAT16);
     bool support_fp16 = infer_builder_->platformHasFastFp16();
     // below is consistent with setFlag in engine.cc
     bool fall_back_fp16 = WithInt8() && !use_dla();
@@ -274,7 +274,7 @@ class TensorRTEngine {
   }
 
   bool WithInt8() {
-    bool enable_int8 = (precision() == phi::DataType::INT8);
+    bool enable_int8 = (precision() == DataType::INT8);
     bool support_int8 = infer_builder_->platformHasFastInt8();
     return enable_int8 && support_int8;
   }
@@ -509,7 +509,7 @@ class TensorRTEngine {
   bool disable_trt_plugin_fp16() { return params_.disable_trt_plugin_fp16; }
   bool with_dynamic_shape() { return params_.with_dynamic_shape; }
   int32_t get_max_batch_size() { return params_.max_batch_size; }
-  phi::DataType precision() { return params_.precision; }
+  DataType precision() { return params_.precision; }
 
   nvinfer1::IPluginV2Layer* AddDynamicPlugin(
       nvinfer1::ITensor* const* inputs,

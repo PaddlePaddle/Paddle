@@ -57,7 +57,7 @@ class PrelnResidualBiasOpConverter : public OpConverter {
     int ele_bias_size = has_bias ? common::product(ele_bias_dims) : 0;
     float epsilon = PADDLE_GET_CONST(float, op_desc.GetAttr("ln_epsilon"));
     bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
-    if (engine_->precision() == phi::DataType::INT8) {
+    if (engine_->precision() == DataType::INT8) {
       with_fp16 = true;
     }
 

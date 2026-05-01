@@ -132,20 +132,16 @@ void ElementwiseAddTransposePluginDynamic::configurePlugin(
   const phi::GPUContext &dev_ctx = *device_context;
 
   if (x_type == nvinfer1::DataType::kFLOAT) {
-    x_meta_ =
-        DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim(x_shape));
-    y_meta_ =
-        DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim(y_shape));
+    x_meta_ = DenseTensorMeta(DataType::FLOAT32, common::make_ddim(x_shape));
+    y_meta_ = DenseTensorMeta(DataType::FLOAT32, common::make_ddim(y_shape));
     out_meta_ =
-        DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim(out_shape));
+        DenseTensorMeta(DataType::FLOAT32, common::make_ddim(out_shape));
     dev_ctx.template Alloc<float>(&ele_out_tensor_, x_numel * sizeof(float));
   } else if (x_type == nvinfer1::DataType::kHALF) {
-    x_meta_ =
-        DenseTensorMeta(phi::DataType::FLOAT16, common::make_ddim(x_shape));
-    y_meta_ =
-        DenseTensorMeta(phi::DataType::FLOAT16, common::make_ddim(y_shape));
+    x_meta_ = DenseTensorMeta(DataType::FLOAT16, common::make_ddim(x_shape));
+    y_meta_ = DenseTensorMeta(DataType::FLOAT16, common::make_ddim(y_shape));
     out_meta_ =
-        DenseTensorMeta(phi::DataType::FLOAT16, common::make_ddim(out_shape));
+        DenseTensorMeta(DataType::FLOAT16, common::make_ddim(out_shape));
     dev_ctx.template Alloc<phi::dtype::float16>(
         &ele_out_tensor_, x_numel * sizeof(phi::dtype::float16));
   }

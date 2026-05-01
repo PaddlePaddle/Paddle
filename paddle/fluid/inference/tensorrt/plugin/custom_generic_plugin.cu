@@ -481,23 +481,23 @@ int CustomGenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
   // TODO(inference): custom generic plugin do not support INT8 precision now.
   auto protoType2PhiType =
       [&](GenerateCustomGenericPluginDataType proto_type,
-          nvinfer1::DataType nv_dtype) -> std::pair<phi::DataType, int> {
+          nvinfer1::DataType nv_dtype) -> std::pair<DataType, int> {
     if (proto_type == GenerateCustomGenericPluginDataType::PLUGIN_FP16) {
-      return {phi::DataType::FLOAT16, sizeof(half)};
+      return {DataType::FLOAT16, sizeof(half)};
     } else if (proto_type == GenerateCustomGenericPluginDataType::PLUGIN_FP32) {
       if (isFp16Supported() && nv_dtype == nvinfer1::DataType::kHALF) {
-        return {phi::DataType::FLOAT16, sizeof(half)};
+        return {DataType::FLOAT16, sizeof(half)};
       } else {
-        return {phi::DataType::FLOAT32, sizeof(float)};
+        return {DataType::FLOAT32, sizeof(float)};
       }
     } else if (proto_type ==
                GenerateCustomGenericPluginDataType::PLUGIN_INT64) {
-      return {phi::DataType::INT64, sizeof(int64_t)};
+      return {DataType::INT64, sizeof(int64_t)};
     } else if (proto_type ==
                GenerateCustomGenericPluginDataType::PLUGIN_INT32) {
-      return {phi::DataType::INT32, sizeof(int32_t)};
+      return {DataType::INT32, sizeof(int32_t)};
     } else if (proto_type == GenerateCustomGenericPluginDataType::PLUGIN_BOOL) {
-      return {phi::DataType::BOOL, sizeof(bool)};
+      return {DataType::BOOL, sizeof(bool)};
     } else {
       PADDLE_ENFORCE_EQ(
           false,

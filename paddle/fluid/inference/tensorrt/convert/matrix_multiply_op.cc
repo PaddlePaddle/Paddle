@@ -39,7 +39,7 @@ class MatrixMultiplyOpConverter : public OpConverter {
     auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
     auto* input2 = engine_->GetITensor(op_desc.Input("Y")[0]);
 
-    bool enable_int8 = (engine_->precision() == phi::DataType::INT8);
+    bool enable_int8 = (engine_->precision() == DataType::INT8);
     float x_scale = 0;
     float y_scale = 0;
     float out_scale = 0;

@@ -26,7 +26,6 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
-using DataLayout = phi::DataLayout;
 
 template <typename T>
 static inline T divUp(T m, T n) {

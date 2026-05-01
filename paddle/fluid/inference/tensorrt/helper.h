@@ -202,34 +202,34 @@ inline std::string Vec2Str(const std::vector<T>& vec) {
   return os.str();
 }
 
-static inline nvinfer1::DataType PhiType2NvType(phi::DataType type) {
+static inline nvinfer1::DataType PhiType2NvType(DataType type) {
   nvinfer1::DataType nv_type = nvinfer1::DataType::kFLOAT;
   switch (type) {
-    case phi::DataType::FLOAT32:
+    case DataType::FLOAT32:
       nv_type = nvinfer1::DataType::kFLOAT;
       break;
-    case phi::DataType::FLOAT16:
+    case DataType::FLOAT16:
       nv_type = nvinfer1::DataType::kHALF;
       break;
-    case phi::DataType::INT32:
+    case DataType::INT32:
       nv_type = nvinfer1::DataType::kINT32;
       break;
-    case phi::DataType::INT64:
+    case DataType::INT64:
 #if IS_TRT_VERSION_GE(10000)
       nv_type = nvinfer1::DataType::kINT64;
 #else
       nv_type = nvinfer1::DataType::kINT32;
 #endif
       break;
-    case phi::DataType::INT8:
+    case DataType::INT8:
       nv_type = nvinfer1::DataType::kINT8;
       break;
-    case phi::DataType::BOOL:
+    case DataType::BOOL:
       nv_type = nvinfer1::DataType::kBOOL;
       break;
     default:
-      common::errors::InvalidArgument(
-          "phi::DataType not supported data type %s.", type);
+      common::errors::InvalidArgument("DataType not supported data type %s.",
+                                      type);
       break;
   }
   return nv_type;

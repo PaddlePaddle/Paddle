@@ -507,11 +507,10 @@ int GenericPlugin::initialize() TRT_NOEXCEPT {
   GPUPlace place(platform::GetCurrentDeviceId());
   auto* dev_ctx = static_cast<phi::GPUContext*>(pool.Get(place));
 
-  std::vector<phi::DataType> precision_types{phi::DataType::FLOAT32,
-                                             phi::DataType::FLOAT16};
+  std::vector<DataType> precision_types{DataType::FLOAT32, DataType::FLOAT16};
   for (auto& precision_type : precision_types) {
     phi::KernelKey phi_kernel_key(
-        phi::Backend::GPU, phi::DataLayout::ANY, precision_type);
+        phi::Backend::GPU, DataLayout::ANY, precision_type);
 
     auto nv_dtype = PhiType2NvType(precision_type);
     phi_kernels_[nv_dtype] = std::make_unique<phi::Kernel>(
@@ -599,12 +598,12 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   // TODO(inference): generic plugin do not support INT8 precision now.
   auto nvType2PhiType =
-      [&](nvinfer1::DataType nv_dtype) -> std::pair<phi::DataType, int> {
-    const std::map<nvinfer1::DataType, std::pair<phi::DataType, int>> _map{
-        {nvinfer1::DataType::kFLOAT, {phi::DataType::FLOAT32, sizeof(float)}},
-        {nvinfer1::DataType::kHALF, {phi::DataType::FLOAT16, sizeof(half)}},
-        {nvinfer1::DataType::kINT32, {phi::DataType::INT32, sizeof(int32_t)}},
-        {nvinfer1::DataType::kBOOL, {phi::DataType::BOOL, sizeof(bool)}},
+      [&](nvinfer1::DataType nv_dtype) -> std::pair<DataType, int> {
+    const std::map<nvinfer1::DataType, std::pair<DataType, int>> _map{
+        {nvinfer1::DataType::kFLOAT, {DataType::FLOAT32, sizeof(float)}},
+        {nvinfer1::DataType::kHALF, {DataType::FLOAT16, sizeof(half)}},
+        {nvinfer1::DataType::kINT32, {DataType::INT32, sizeof(int32_t)}},
+        {nvinfer1::DataType::kBOOL, {DataType::BOOL, sizeof(bool)}},
     };
     PADDLE_ENFORCE_EQ(
         _map.count(nv_dtype),
@@ -702,14 +701,14 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
   if (op_desc_.Type() == "argsort") {
     for (int i = 0; i < getNbOutputs(); i++) {
       DenseTensor& output_tensor = (*dense_tensor_outputs_)[i];
-      phi::DataType dtype = output_tensor.dtype();
-      if (dtype == phi::DataType::INT64) {
+      DataType dtype = output_tensor.dtype();
+      if (dtype == DataType::INT64) {
         auto& int32_tensor = output_tensor;
         auto ctx = pool.Get(output_tensor.place());
         int32_tensor = phi::funcs::TransDataType(
             reinterpret_cast<const phi::GPUContext&>(*ctx),
             output_tensor,
-            phi::DataType::INT32);
+            DataType::INT32);
         paddle::memory::Copy(output_tensor.place(),
                              outputs[i],
                              output_tensor.place(),

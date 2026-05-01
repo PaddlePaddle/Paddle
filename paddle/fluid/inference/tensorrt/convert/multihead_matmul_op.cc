@@ -79,7 +79,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
                           !engine_->tensorrt_transformer_maskid().empty();
     if (engine_->with_dynamic_shape()) {
       if (!engine_->tensorrt_transformer_maskid().empty() &&
-          engine_->precision() != phi::DataType::FLOAT32 &&
+          engine_->precision() != DataType::FLOAT32 &&
           platform::GetGPUComputeCapability(platform::GetCurrentDeviceId()) >=
               75) {
         nvinfer1::Weights weight{nvinfer1::DataType::kFLOAT,
@@ -401,7 +401,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
           assert(creator != nullptr);
           int type = static_cast<int>(nvinfer1::DataType::kHALF);
           if (qkv2context_plugin_int8 &&
-              (engine_->precision() == phi::DataType::INT8)) {
+              (engine_->precision() == DataType::INT8)) {
             type = static_cast<int>(nvinfer1::DataType::kINT8);
           }
           bool has_mask = true;
@@ -480,7 +480,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
         };
         transpose_weight(weight_data_tmp.data(), weight_data, m, n);
         if (input_dims.d[1] <= 384 && !bias_qk_attr &&
-            engine_->precision() != phi::DataType::FLOAT32 &&
+            engine_->precision() != DataType::FLOAT32 &&
             platform::GetGPUComputeCapability(platform::GetCurrentDeviceId()) >=
                 75) {
           /*
@@ -937,7 +937,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
           bool with_fp16 =
               engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
 
-          if (engine_->precision() == phi::DataType::INT8) {
+          if (engine_->precision() == DataType::INT8) {
             with_fp16 = true;
           }
           plugin::DynamicPluginTensorRT* plugin =

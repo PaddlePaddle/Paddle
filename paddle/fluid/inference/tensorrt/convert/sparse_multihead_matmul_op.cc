@@ -101,7 +101,7 @@ class SparseMultiheadMatMulOpConverter : public OpConverter {
                           engine_->tensorrt_transformer_maskid() != "";
     if (engine_->with_dynamic_shape()) {
       if (flag_varseqlen) {
-        if (engine_->precision() == phi::DataType::FLOAT32) {
+        if (engine_->precision() == DataType::FLOAT32) {
           PADDLE_THROW(common::errors::Fatal(
               "use use_varseqlen must be int8 or half, not float32."));
         }
@@ -258,7 +258,7 @@ class SparseMultiheadMatMulOpConverter : public OpConverter {
           assert(creator != nullptr);
           int type = static_cast<int>(nvinfer1::DataType::kHALF);
           if (qkv2context_plugin_int8 &&
-              (engine_->precision() == phi::DataType::INT8)) {
+              (engine_->precision() == DataType::INT8)) {
             type = static_cast<int>(nvinfer1::DataType::kINT8);
           }
           bool has_mask = true;
@@ -417,7 +417,7 @@ class SparseMultiheadMatMulOpConverter : public OpConverter {
         plugin_inputs.push_back(fc_layer->getOutput(0));
         plugin_inputs.push_back(input_bias_qk);
 
-        if (engine_->precision() == phi::DataType::INT8) {
+        if (engine_->precision() == DataType::INT8) {
           with_fp16 = true;
         }
         plugin::DynamicPluginTensorRT* plugin =

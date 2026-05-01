@@ -26,7 +26,7 @@ class CrossMultiheadMatMulOpConverter : public OpConverter {
         << "convert a cross_multihead_matmul op to a corresponding tensorrt "
            "network structure";
     bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
-    if (engine_->precision() == phi::DataType::INT8) {
+    if (engine_->precision() == DataType::INT8) {
       with_fp16 = true;
     }
     PADDLE_ENFORCE_EQ(

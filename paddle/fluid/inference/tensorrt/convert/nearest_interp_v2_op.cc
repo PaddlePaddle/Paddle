@@ -62,8 +62,8 @@ class NearestInterpolateV2OpConverter : public OpConverter {
       // axis are different in static/dynamic mode
       bool with_dynamic = true;
 
-      int h_axis = (data_layout == phi::DataLayout::NCHW) + with_dynamic;
-      int w_axis = (data_layout == phi::DataLayout::NCHW) + 1 + with_dynamic;
+      int h_axis = (data_layout == DataLayout::NCHW) + with_dynamic;
+      int w_axis = (data_layout == DataLayout::NCHW) + 1 + with_dynamic;
 
       scale_h =
           static_cast<float>(out_h) / static_cast<float>(in_dim.d[h_axis]);
@@ -91,11 +91,11 @@ class NearestInterpolateV2OpConverter : public OpConverter {
 
     scales.push_back(1.f);
 
-    if (data_layout == phi::DataLayout::NCHW) {
+    if (data_layout == DataLayout::NCHW) {
       scales.push_back(1.f);
       scales.push_back(scale_h);
       scales.push_back(scale_w);
-    } else if (data_layout == phi::DataLayout::NHWC) {
+    } else if (data_layout == DataLayout::NHWC) {
       // NHWC
       scales.push_back(scale_h);
       scales.push_back(scale_w);
@@ -110,10 +110,10 @@ class NearestInterpolateV2OpConverter : public OpConverter {
       auto* input_shape = Shape(input);
       outsize_itensors.push_back(GetEleTensorOfShape(input_shape, 0));
 
-      if (data_layout == phi::DataLayout::NCHW) {
+      if (data_layout == DataLayout::NCHW) {
         outsize_itensors.push_back(GetEleTensorOfShape(input_shape, 1));
         outsize_itensors.push_back(outsize_tensor);
-      } else if (data_layout == phi::DataLayout::NHWC) {
+      } else if (data_layout == DataLayout::NHWC) {
         outsize_itensors.push_back(outsize_tensor);
         outsize_itensors.push_back(GetEleTensorOfShape(input_shape, 3));
       }
