@@ -385,7 +385,7 @@ TEST(CopyTensor, float16_cpu_to_cpu) {
   auto tensor_dst = paddle_infer::InferApiTesterUtils::CreateInferTensorForTest(
       "tensor_dst", PlaceType::kCPU, static_cast<void *>(&scope));
 
-  using phi::dtype::float16;
+  using phi::float16;
   std::vector<float16> data_src(6, float16(1.0));
   tensor_src->Reshape({2, 3});
   tensor_src->CopyFromCpu(data_src.data());
@@ -415,7 +415,7 @@ TEST(CopyTensor, float16_gpu_to_gpu) {
   auto tensor_dst = paddle_infer::InferApiTesterUtils::CreateInferTensorForTest(
       "tensor_dst", PlaceType::kGPU, static_cast<void *>(&scope));
 
-  using phi::dtype::float16;
+  using phi::float16;
   std::vector<float16> data_src(6, float16(1.0));
   tensor_src->Reshape({2, 3});
   tensor_src->CopyFromCpu(data_src.data());
@@ -445,7 +445,7 @@ TEST(CopyTensor, float16_cpu_to_gpu) {
   auto tensor_dst = paddle_infer::InferApiTesterUtils::CreateInferTensorForTest(
       "tensor_dst", PlaceType::kGPU, static_cast<void *>(&scope));
 
-  using phi::dtype::float16;
+  using phi::float16;
   std::vector<float16> data_src(6, float16(1.0));
   tensor_src->Reshape({2, 3});
   tensor_src->CopyFromCpu(data_src.data());
@@ -475,7 +475,7 @@ TEST(CopyTensor, float16_gpu_to_cpu) {
   auto tensor_dst = paddle_infer::InferApiTesterUtils::CreateInferTensorForTest(
       "tensor_dst", PlaceType::kCPU, static_cast<void *>(&scope));
 
-  using phi::dtype::float16;
+  using phi::float16;
   std::vector<float16> data_src(6, float16(1.0));
   tensor_src->Reshape({2, 3});
   tensor_src->CopyFromCpu(data_src.data());

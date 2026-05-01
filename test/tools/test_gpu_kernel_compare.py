@@ -37,7 +37,7 @@ class TestKernelManifestComparer(unittest.TestCase):
             "kernel_a": [  # Existing kernel with additional data type
                 "{data_type[float]; data_layout[Undefined(AnyLayout)]; place[Place(gpu:0)]; library_type[PLAIN]}",
                 "{data_type[double]; data_layout[Undefined(AnyLayout)]; place[Place(gpu:0)]; library_type[PLAIN]}",
-                "{data_type[::phi::dtype::float16]; data_layout[Undefined(AnyLayout)]; place[Place(gpu:0)]; library_type[PLAIN]}",
+                "{data_type[::phi::float16]; data_layout[Undefined(AnyLayout)]; place[Place(gpu:0)]; library_type[PLAIN]}",
             ],
             "kernel_b": [  # Existing kernel now has GPU support
                 "{data_type[double]; data_layout[Undefined(AnyLayout)]; place[Place(cpu)]; library_type[PLAIN]}",
@@ -56,7 +56,7 @@ class TestKernelManifestComparer(unittest.TestCase):
         self.assertEqual(len(summary["kernels_with_new_gpu_support"]), 2)
         self.assertIn("kernel_a", summary["gpu_kernels_with_new_data_types"])
         self.assertIn(
-            "::phi::dtype::float16",
+            "::phi::float16",
             summary["gpu_kernels_with_new_data_types"]["kernel_a"],
         )
         self.assertEqual(

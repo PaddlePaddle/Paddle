@@ -172,8 +172,8 @@ void TestMainImpl(std::string func_name,
                   int n,
                   std::vector<int> input_ids,
                   std::vector<int> output_ids) {
-  bool is_float16 = std::type_index(typeid(T)) ==
-                    std::type_index(typeid(phi::dtype::float16));
+  bool is_float16 =
+      std::type_index(typeid(T)) == std::type_index(typeid(phi::float16));
 
   phi::GPUPlace place = phi::GPUPlace(0);
   phi::GPUDeviceCode device_code(place, func_name, code_str);
@@ -196,12 +196,12 @@ void TestMainImpl(std::string func_name,
           gpu_tensors[id].mutable_data<T>(cpu_tensors[id].dims(), place);
       fusion_group::SetupRandomCPUTensor<float>(&cpu_tensors[id]);
       if (is_float16) {
-        phi::dtype::float16* tmp_cpu_ptr =
-            tmp_cpu_tensors[id].mutable_data<phi::dtype::float16>(
+        phi::float16* tmp_cpu_ptr =
+            tmp_cpu_tensors[id].mutable_data<phi::float16>(
                 cpu_tensors[id].dims(), phi::CPUPlace());
         const float* cpu_ptr = cpu_tensors[id].data<float>();
         for (int64_t i = 0; i < cpu_tensors[id].numel(); ++i) {
-          tmp_cpu_ptr[i] = phi::dtype::float16(cpu_ptr[i]);
+          tmp_cpu_ptr[i] = phi::float16(cpu_ptr[i]);
         }
         paddle::framework::TensorCopySync(
             tmp_cpu_tensors[id], place, &gpu_tensors[id]);
@@ -230,9 +230,9 @@ void TestMainImpl(std::string func_name,
   // Copy the results back to CPU.
   for (auto id : output_ids) {
     if (is_float16) {
-      phi::dtype::float16* tmp_cpu_ptr =
-          tmp_cpu_tensors[id].mutable_data<phi::dtype::float16>(
-              cpu_tensors[id].dims(), phi::CPUPlace());
+      phi::float16* tmp_cpu_ptr =
+          tmp_cpu_tensors[id].mutable_data<phi::float16>(cpu_tensors[id].dims(),
+                                                         phi::CPUPlace());
       paddle::framework::TensorCopySync(
           gpu_tensors[id], phi::CPUPlace(), &tmp_cpu_tensors[id]);
 
@@ -273,7 +273,7 @@ void TestElementwiseMain(
 
   int n = cpu_tensors[0].numel();
   if (dtype == "__half") {
-    TestMainImpl<phi::dtype::float16>(
+    TestMainImpl<phi::float16>(
         func_name, code_str, cpu_tensors, n, input_ids, output_ids);
   } else {
     TestMainImpl<float>(

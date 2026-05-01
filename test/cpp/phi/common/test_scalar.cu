@@ -30,7 +30,7 @@ namespace phi {
 namespace tests {
 
 using DDim = phi::DDim;
-using float16 = phi::dtype::float16;
+using float16 = phi::float16;
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
 

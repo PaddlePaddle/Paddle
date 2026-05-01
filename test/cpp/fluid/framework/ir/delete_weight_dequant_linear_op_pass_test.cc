@@ -107,7 +107,7 @@ TEST(DeleteWeightDequantLinearOpPass, basic_fp16) {
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
 
-  graph->Set("__param_scope__", CreateParamScope<phi::dtype::float16>());
+  graph->Set("__param_scope__", CreateParamScope<phi::float16>());
   auto pass =
       PassRegistry::Instance().Get("delete_weight_dequant_linear_op_pass");
   int num_nodes_before = static_cast<int>(graph->Nodes().size());

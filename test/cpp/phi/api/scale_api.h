@@ -105,7 +105,7 @@ static void ScaleCPU(DataType kernel_dtype,
       break;
     }
     case phi::DataType::BFLOAT16: {
-      phi::ScaleKernel<phi::dtype::bfloat16>(
+      phi::ScaleKernel<phi::bfloat16>(
           dev_ctx, x, scale, bias, bias_after_scale, dense_out);
       break;
     }
@@ -164,7 +164,7 @@ static void ScaleGPU(DataType kernel_dtype,
       break;
     }
     case phi::DataType::FLOAT16: {
-      phi::ScaleKernel<phi::dtype::float16>(
+      phi::ScaleKernel<phi::float16>(
           dev_ctx, x, scale, bias, bias_after_scale, dense_out);
       break;
     }
