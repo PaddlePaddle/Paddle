@@ -1,189 +1,250 @@
 # 运行时调试
 
-本章处理的是这样一类问题：
+本章的前提：仓库已经能 build、能 import，但运行时开始出现报错、结果偏差、`device` / `place` / `stream` 语义不一致，或者只在分布式和高性能路径上出问题。
 
-- 已经能编译
-- 已经能导入
-- 但运行时报错、结果不对、device/stream 语义不对、分布式行为不对，或者性能路径明显偏离原始 PyTorch
-
-这时不要继续盲改代码。目标应当变成：沿着一个最小单测，找到第一次出现差异的是哪一行、哪个调用点、以及它更像是四层机制中的哪一层出了问题。
+这里的任务是把控制路径收缩到一个最小样本，找出**第一次语义偏离**发生在哪一层。
 
 ## 调试目标
 
-你要回答的不是“哪里看起来怪”，而是下面三个更具体的问题：
+一次有效的运行时排查，最后应该回答四个问题：
 
-1. PyTorch 原始路径在哪一行开始产生某个关键状态？
-2. Paddle 迁移路径在哪一行第一次偏离？
-3. 这个偏离更像是：
-   - C++ API 兼容层
-   - 算子注册兼容层
-   - Python 接口兼容层
-   - Python API 代理层
-   - 或者根本不是 compat 问题，而是库自己的逻辑改动带来的回归
+1. PyTorch 原始路径的关键状态是在哪一行建立的。
+2. Paddle 迁移路径第一次偏离是在哪一行出现的。
+3. 偏离发生时，张量的 `shape`、`dtype`、`place`、layout、stream、group 等关键上下文分别是什么。
+4. 这个偏离更可能落在 Python 代理层、Python wrapper、注册调度层、C++ compat 层，还是库自身逻辑改动。
 
-## 推荐工作流
+## 调试入口
 
-### 步骤 1：只选一个最小单测
+### 步骤 1：只保留一个最小样本
 
-优先顺序：
+优先顺序保持简单：
 
 1. 上游已有的最小单测
-2. 当前 fork 中最小且最稳定的单测
+2. 当前 fork 中最稳定的最小单测
 3. 自己抽出来的最小脚本
 
-单测要满足：
+这个样本应满足四个条件：
 
-- 输入小
-- 路径短
-- 容易固定随机种子
-- 不依赖太多外围框架状态
+- 输入小，便于重复运行
+- 路径短，调用链清楚
+- 能固定随机种子
+- 不依赖太多 benchmark、profiler、训练框架状态
 
-不要一开始就跑整个 test suite。你需要的是一个能被反复插桩、快速复现的最小切口。
+### 步骤 2：先把两边的输入对齐
 
-### 步骤 2：先让 PyTorch 与 Paddle 版可比较
+在开始插桩前，先把下面这些量打印出来并固定：
 
-在开始插桩前，先保证以下条件尽可能一致：
+- 随机种子
+- 输入 `shape`
+- 输入 `dtype`
+- 输入 `device` / `place`
+- 环境变量
+- 是否开启额外优化路径
 
-- 相同随机种子
-- 相同输入 shape / dtype / device
-- 相同环境变量
-- 相同测试逻辑
-- 非必要优化先关掉
+如果这一步没有对齐，后面的逐行对照就没有结论价值。
 
-如果连输入都没对齐，后面的逐行对比没有意义。
+## 阶段 1：先看 `place`
 
-### 步骤 3：沿调用链分段插桩
+`place` 是跨生态迁移里最容易被忽略、又最容易把调试结论带偏的一层。很多段错误、非法访问、结果漂移，根因其实是张量根本不在你以为的那块内存上。
 
-推荐把观测点放在下面这些位置：
+### 先确认三种内存语义
 
-| 位置 | 你要看什么 | 对应更可能的问题层 |
+在 Paddle 路径里，至少要区分下面三类位置：
+
+| 观测值 | 含义 | 调试时的理解 |
 |---|---|---|
-| 测试入口 | 输入 shape、dtype、device、seed 是否一致 | 先排除环境差异 |
-| Python wrapper 进入前后 | 参数有没有被改写、重排、转换 | Python 接口兼容层 |
-| `torch.ops` / custom op 调用前后 | 是否真正调到了预期 operator | 算子注册兼容层 |
-| C++ 入口函数 | 看到的 tensor metadata 是否与 PyTorch 一致 | C++ API 兼容层 |
-| kernel 前后 | 算法结果何时开始偏 | 可能是内核或前面几层已经传错 |
-| 返回到 Python 后 | 后处理、layout、cast、split、gather 是否偏 | Python 接口兼容层 |
+| `Place(cpu)` | 普通 host 内存 | 只能按 CPU 张量处理 |
+| `Place(gpu_pinned)` | host pinned memory | 仍是 host 内存，只是便于 DMA / 异步拷贝 |
+| `Place(gpu:x)` | device memory | 才能直接当作 GPU tensor 进入 CUDA 路径 |
 
-### 步骤 4：做一张“逐行对照表”
+`Place(gpu_pinned)` 和 `Place(gpu:x)` 要严格区分。前者的名字里虽然带 `gpu`，语义仍然是 pinned host memory。
 
-不要只靠脑子记。建议在调试记录里维护一张表：
+### 为什么这一步在 Paddle 尤其重要
 
-| 原始 PyTorch 路径 | Paddle 迁移路径 | 观察值 | 结论 |
+Paddle 的 Python 创建 API 在 `device` / `place` 没有显式传入时，会走当前 expected place。也就是说，`paddle.tensor(...)`、`paddle.to_tensor(...)`、某些 helper 内部创建张量时，实际落点可能跟当前 dygraph guard 或全局 expected place 绑定；在 GPU 环境下，这些调用完全可能直接落到 GPU。
+
+这和很多 PyTorch 生态库的默认假设不同。上游 helper 如果默认"未指定 device 时先创建 CPU tensor"，迁到 Paddle 后，完全相同的调用方式也可能因为 expected place 在 GPU 上而直接得到 `Place(gpu:0)`。
+
+因此，运行时对比里必须记录真实 `place`，不能只看调用代码长得像不像。
+
+### expected place 的来源
+
+调试时至少要分清 expected place 的两个来源：
+
+- 当前 dygraph guard 或显式设备上下文
+- Paddle 的全局 expected place
+
+如果当前没有额外 guard，Paddle 会回到全局 expected place。GPU 版本且有可见设备时，这个默认值可以直接是 `CUDAPlace(0)`；设备不可用时才会退回 CPU。
+
+这也是为什么同一段 helper 代码在 PyTorch 和 Paddle 下可能出现不同落点：
+
+| 调用方式 | PyTorch 生态库的常见假设 | Paddle 迁移时需要实际确认的 |
+|---|---|---|
+| 创建张量时省略 `device` | helper 会先得到 CPU tensor | helper 会落到当前 expected place；GPU 环境下可能直接得到 `Place(gpu:0)` |
+| 需要 host staging 时开启 pinned memory | helper 仍把它视作 host tensor | 结果可能是 `Place(gpu_pinned)`，后续 copy / stream / `data_ptr` 逻辑都要按 pinned host 处理 |
+
+因此，建议在 Python wrapper 入口和 custom op 调用前各打一次：
+
+- `paddle.framework._current_expected_place_()`
+- 关键输入张量的 `tensor.place`
+
+这些 underscored API 只适合作为调试观测点，不要把它们沉淀成生态库的长期 runtime workaround。
+
+### pinned memory 也要单独确认
+
+Paddle 的创建与拷贝路径显式支持 `gpu_pinned` / `CUDAPinnedPlace`，而且 `pin_memory=True` 会把结果收敛到 pinned memory 路径。数据管线和 reader 代码里也常见 CPU → CUDAPinned → CUDA 的 staging。
+
+这意味着迁移库里的中间张量可能落在 `Place(gpu_pinned)`。如果上游代码把这类张量当作 device tensor 继续传给 CUDA runtime 或自定义 kernel，就很容易出现段错误、非法地址访问，或者更隐蔽的异步崩溃。
+
+### Python 侧第一轮日志建议
+
+第一轮只打最必要的信息：
+
+```python
+def dump_tensor(tag, tensor):
+   print(
+      tag,
+      {
+         "shape": list(tensor.shape),
+         "dtype": str(tensor.dtype),
+         "place": str(tensor.place),
+         "stop_gradient": tensor.stop_gradient,
+      },
+   )
+
+
+print("expected_place", paddle.framework._current_expected_place_())
+dump_tensor("input", x)
+```
+
+先在 PyTorch 版和 Paddle 版的同一调用点各打一轮，再决定下一跳去 wrapper、注册层还是 C++ 入口。
+
+## 阶段 2：沿调用链逐层收缩
+
+推荐观测点如下：
+
+| 位置 | 第一轮先看什么 | 更可能对应的层 |
+|---|---|---|
+| 测试入口 | seed、shape、dtype、place 是否一致 | 排除环境差异 |
+| Python wrapper 前后 | 参数是否被改写、重排、cast、split | Python 接口兼容层 |
+| `torch.ops` / custom op 调用点 | 调用名、namespace、参数顺序是否一致 | 算子注册兼容层 |
+| C++ 入口 | sizes、dtype、device、layout、pointer 来源 | C++ API 兼容层 |
+| kernel 前后 | 哪一步开始产生结果偏差 | kernel 或上游输入已错 |
+| 返回 Python 后 | post-process、pack/unpack、gather、profiler glue | Python 接口兼容层 |
+
+一次只扩一层。Python wrapper 没对齐前，不要先去 kernel 里铺满日志。
+
+## 阶段 3：`data_ptr` 只能在确认 `place` 之后看
+
+### 为什么 `data_ptr` 是高风险点
+
+Paddle compat 里的 `at::Tensor::data_ptr()` 直接返回底层 `tensor_.data()` 指针。这个指针只表达"当前地址"，不表达这块地址对应的是 CPU、pinned host 还是 CUDA device。
+
+所以只要有下面这类情况，`data_ptr` 就是高风险点：
+
+- Python wrapper 或 helper 先把张量建在 `Place(cpu)`
+- 创建路径带了 `pin_memory=True`
+- 中间 staging 张量落在 `Place(gpu_pinned)`
+- 上游代码默认"这里已经是 CUDA tensor"，直接把 `data_ptr` 交给 CUDA kernel、CUDA runtime、Triton runtime 或自定义 C API
+
+这类问题的表现常常不会先变成稳定的 Python 异常，常见现象包括：
+
+- 段错误
+- `illegal memory access`
+- 某一行之后才报出的异步 CUDA 错误
+- 偶发崩溃或结果随机漂移
+
+### 排查顺序
+
+1. 先在 Python 侧确认输入张量真实 `place`。
+2. 进入 C++ 后先记下 `tensor.device()`、`tensor.is_cuda()`、sizes、dtype。
+3. 确认张量确实在目标设备上之后，再看 `data_ptr()` 和后续 kernel 调用。
+4. 如果实际是 CPU 或 `gpu_pinned`，先回到 wrapper / 创建路径找谁改变了 `place`。
+
+### 对 `gpu_pinned` 的额外判断
+
+如果张量是 `gpu_pinned`，下一步要确认它属于代码设计里的 staging buffer，还是本应继续进入 device memory 的张量却停在了 pinned host 上。
+
+前者通常需要继续沿 copy / stream / async 边界排查；后者通常说明 wrapper、helper、copy 路径或 TensorOptions 语义已经偏了。
+
+## 阶段 4：把"第一次偏离"写成对照表
+
+建议维护一张最小表格，不靠记忆推进：
+
+| PyTorch 路径 | Paddle 路径 | 观察值 | 结论 |
 |---|---|---|---|
-| 测试里的某行调用 | 对应迁移行 | 输入一致 | 继续向下 |
-| wrapper 某行处理 | 对应迁移行 | device 语义开始不同 | 先锁定 Python 接口层 |
-| `torch.ops` 调用 | 对应迁移行 | operator 名称不一致 / 未注册 | 转查注册层 |
+| 测试入口 | 对应测试入口 | 输入一致 | 继续向下 |
+| wrapper 某一行 | 对应迁移行 | `place` 开始不同 | 回查 Python wrapper / 创建路径 |
+| `torch.ops` 调用 | 对应迁移行 | operator 名称或 schema 不一致 | 转查注册层 |
+| C++ 入口 | 对应迁移行 | `device` 一致但 dtype 偏了 | 转查 compat API 或 wrapper |
 
-调试的本质是找“第一次偏离”，不是最后一次爆炸。
+这张表的目的很单纯：固定"第一次偏离"发生的位置，避免被最后一处崩溃带偏。
 
-## 一个可复用的调试范式
-
-假设你已经有一个最小测试 `test_case_xxx`，推荐按下面顺序推进：
-
-1. 在 PyTorch 原始仓库跑一次，记下关键中间值。
-2. 在 Paddle 迁移仓库跑同一个测试，确认最初输入完全一致。
-3. 只在 Python wrapper 上加第一层观测点。
-4. 如果 Python wrapper 一致，再去 operator 调用点加第二层观测点。
-5. 如果 operator 也一致，再去 C++ 入口打印 tensor metadata。
-6. 如果 C++ 入口一致，再看 kernel 前后或者返回 Python 后的后处理。
-
-不要同时在十几个地方加日志。那会让你丢掉“第一次出现差异”的顺序信息。
-
-## 如何判断更像是哪一层出了问题
-
-### 更像 Python API 代理层
-
-常见信号：
-
-- `import torch` 的行为就不对
-- 同一个模块在不同 `scope` 下表现不同
-- 某个被代理模块没有按预期进入 Paddle 命名空间
-
-这时优先看 `paddle.enable_compat(scope={...})`、blocked modules、导入顺序。
-
-反过来说，如果 `import torch`、模块作用域、代理范围都正常，那就不要在这一层打转，继续往 Python wrapper 或注册层收缩。
-
-### 更像 Python 接口兼容层
-
-常见信号：
-
-- wrapper 已经把参数改歪了
-- cast、reshape、split、pack/unpack、metadata 处理逻辑在 Python 侧先偏了
-- 结果进 C++ 前就已经和 PyTorch 不一样
-
-这时优先比对 Python wrapper，而不是怀疑 kernel。
-
-一个常见误区是：结果不对就立刻怀疑底层算子。很多情况下，问题其实是在 wrapper 里某个 cast、split、reshape 或 metadata 处理先偏了。
-
-### 更像算子注册兼容层
-
-常见信号：
-
-- `torch.ops.xxx` 找不到算子
-- 找到了算子，但 dispatch 到了错误实现
-- schema、命名空间、注册顺序与预期不同
-
-这时应沿着注册与 dispatch 路径查，而不是直接改测试。
-
-如果你已经能证明 wrapper 调用名和上游一致，但运行时仍然找不到 operator，那基本上就该优先沿注册层往下查。
-
-### 更像 C++ API 兼容层
-
-常见信号：
-
-- 已经进入同一个 C++ 函数，但看到的 sizes、dtype、device、layout 和 PyTorch 不同
-- 某个 `at::*` / `torch::*` / `c10::*` 操作在语义上不等价
-- data pointer、options、place、stream 语义不一致
-
-这时优先判断是不是 compat 头覆盖不完整，或某个具体 API 需要最小桥接。
-
-## 运行时问题的常见分型
+## 常见问题分型
 
 ### 结果不对，但不崩
 
-优先看：
+先查：
 
 - Python wrapper 有没有先改写输入
-- dtype / layout / device 有没有在中途悄悄变化
+- `dtype` / layout / `place` 有没有中途变化
 - 返回 Python 后有没有额外 post-process
 
-### 找不到算子，或者调到了错误实现
+### `torch.ops` 找不到算子，或者调错实现
 
-优先看：
+先查：
 
 - namespace
 - schema
 - 注册顺序
-- dispatch key 选择
+- dispatch key
 
 ### 只在 GPU、stream、distributed 路径出问题
 
-优先看：
+先查：
 
 - current device / current stream 获取点
 - event / communicator / group 初始化点
-- 是否存在异步错误被后面一行才观察到
+- 是否有异步错误被后面一行才观察到
+- copy 路径里是否经过 CPU 或 `gpu_pinned` staging
 
-### 只在 benchmark / profiler / compile 路径出问题
+### 只在 benchmark、profiler、compile 路径出问题
 
-优先看：
+先查：
 
-- 这些路径是不是依赖了 PyTorch 私有 API
-- 主算子路径是否其实已经正常
-- 问题是不是只在外围测试和 profiling harness
+- 这些路径是否依赖 PyTorch 私有 API
+- 主算子路径是否已经正常
+- 问题是否只存在于外围 harness
+
+## 如何判断更像哪一层
+
+### 更像 Python API 代理层
+
+信号通常是：`import torch` 本身异常、`scope` 表现不稳定、代理模块没有进入目标命名空间。
+
+### 更像 Python 接口兼容层
+
+信号通常是：参数在进入 C++ 之前就已经被改写，或者 `shape`、`dtype`、`place` 在 wrapper 中途就偏了。
+
+### 更像算子注册兼容层
+
+信号通常是：调用名一致，但 operator 找不到、schema 不匹配，或者 dispatch 落到错误实现。
+
+### 更像 C++ API 兼容层
+
+信号通常是：已经进入同一个 C++ 函数，但 sizes、dtype、device、layout、pointer 语义和 PyTorch 不一致。
 
 ## 什么时候该抽成 Paddle issue MRE
 
-出现下面任一情况，就应该开始准备最小复现，而不是继续扩大 patch：
+出现下面任一情况，就应该开始整理最小复现：
 
-- 你已经能证明 PyTorch 与 Paddle 在同一调用点上行为不同
-- 偏差来自 compat 层公共行为，而不是当前库自己的特例
-- workaround 开始在多个文件重复出现
-- 需要依赖 Paddle 内部私有接口才能继续绕过去
+- PyTorch 与 Paddle 在同一调用点上行为已经明确分叉
+- 问题来自 compat 公共行为，不属于当前库自己的特例
+- workaround 开始在多个文件扩散
+- 继续推进已经需要依赖 Paddle 内部私有接口
 
 ## 与 `paddle-debug` skill 的关系
 
-本章只覆盖跨生态迁移场景下的“最小单测逐段对比”。
+本章只覆盖跨生态迁移场景里的最小样本逐层对照。
 
-如果问题已经明显落到 Paddle 核心实现、CUDA sticky error、分布式 runtime、复杂内核崩溃等更底层问题，请继续使用 `paddle-debug` skill 做更系统的调试和报告。
+如果问题已经落到 Paddle 核心实现、复杂 CUDA 崩溃、sticky error、分布式 runtime 深层异常等更底层范围，继续交给 `paddle-debug` skill 做专项调试和报告。
