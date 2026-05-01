@@ -383,16 +383,16 @@ int TransLayerNormPluginDynamic::enqueue(
     // transpose and norm do not change numel
     int trans_result_numel = input_numel;
     int norm_result_numel = input_numel;
-    phi::DenseTensorMeta input_meta(phi::DataType::FLOAT32,
-                                    common::make_ddim(input_shape));
-    phi::DenseTensorMeta bias_meta(phi::DataType::FLOAT32,
-                                   common::make_ddim({feature_size}));
-    phi::DenseTensorMeta scale_meta(phi::DataType::FLOAT32,
-                                    common::make_ddim({feature_size}));
-    phi::DenseTensorMeta trans_result_meta(
-        phi::DataType::FLOAT32, common::make_ddim(trans_result_shape));
-    phi::DenseTensorMeta norm_result_meta(
-        phi::DataType::FLOAT32, common::make_ddim(trans_result_shape));
+    DenseTensorMeta input_meta(phi::DataType::FLOAT32,
+                               common::make_ddim(input_shape));
+    DenseTensorMeta bias_meta(phi::DataType::FLOAT32,
+                              common::make_ddim({feature_size}));
+    DenseTensorMeta scale_meta(phi::DataType::FLOAT32,
+                               common::make_ddim({feature_size}));
+    DenseTensorMeta trans_result_meta(phi::DataType::FLOAT32,
+                                      common::make_ddim(trans_result_shape));
+    DenseTensorMeta norm_result_meta(phi::DataType::FLOAT32,
+                                     common::make_ddim(trans_result_shape));
     std::shared_ptr<phi::Allocation> input_alloc(new phi::Allocation(
         static_cast<void *>(const_cast<float *>(input)),  // NOLINT
         input_numel * sizeof(float),
@@ -412,14 +412,13 @@ int TransLayerNormPluginDynamic::enqueue(
                             norm_result_numel * sizeof(float),
                             place));
 
-    const phi::DenseTensor input_tensor =
-        phi::DenseTensor(input_alloc, input_meta);
-    phi::DenseTensor bias_tensor = phi::DenseTensor(bias_alloc, bias_meta);
-    phi::DenseTensor scale_tensor = phi::DenseTensor(scale_alloc, scale_meta);
-    phi::DenseTensor trans_result_tensor =
-        phi::DenseTensor(trans_result_alloc, trans_result_meta);
-    phi::DenseTensor norm_result_tensor =
-        phi::DenseTensor(norm_result_alloc, norm_result_meta);
+    const DenseTensor input_tensor = DenseTensor(input_alloc, input_meta);
+    DenseTensor bias_tensor = DenseTensor(bias_alloc, bias_meta);
+    DenseTensor scale_tensor = DenseTensor(scale_alloc, scale_meta);
+    DenseTensor trans_result_tensor =
+        DenseTensor(trans_result_alloc, trans_result_meta);
+    DenseTensor norm_result_tensor =
+        DenseTensor(norm_result_alloc, norm_result_meta);
 
     phi::TransposeKernel<float, phi::GPUContext>(dev_ctx,
                                                  input_tensor,
@@ -441,22 +440,21 @@ int TransLayerNormPluginDynamic::enqueue(
     half *dst = static_cast<half *>(outputs[1]);
     if (input_desc[0].format == nvinfer1::PluginFormat::kLINEAR) {
       VLOG(1) << "TRT Plugin format selected. trans_layernorm-->kLINEAR";
-      phi::DenseTensorMeta input_meta(phi::DataType::FLOAT16,
-                                      common::make_ddim(input_shape));
+      DenseTensorMeta input_meta(phi::DataType::FLOAT16,
+                                 common::make_ddim(input_shape));
       std::shared_ptr<phi::Allocation> input_alloc(new phi::Allocation(
           static_cast<void *>(const_cast<half *>(input)),  // NOLINT
           input_numel * sizeof(half),
           place));
-      phi::DenseTensorMeta trans_result_meta(
-          phi::DataType::FLOAT16, common::make_ddim(trans_result_shape));
+      DenseTensorMeta trans_result_meta(phi::DataType::FLOAT16,
+                                        common::make_ddim(trans_result_shape));
       std::shared_ptr<phi::Allocation> trans_result_alloc(
           new phi::Allocation(static_cast<void *>(dst),  // NOLINT
                               trans_result_numel * sizeof(half),
                               place));
-      const phi::DenseTensor input_tensor =
-          phi::DenseTensor(input_alloc, input_meta);
-      phi::DenseTensor trans_result_tensor =
-          phi::DenseTensor(trans_result_alloc, trans_result_meta);
+      const DenseTensor input_tensor = DenseTensor(input_alloc, input_meta);
+      DenseTensor trans_result_tensor =
+          DenseTensor(trans_result_alloc, trans_result_meta);
       phi::TransposeKernel<phi::dtype::float16, phi::GPUContext>(
           dev_ctx,
           input_tensor,

@@ -87,8 +87,8 @@ class LayerNormOpConverter : public OpConverter {
         Scale_v,
         common::errors::InvalidArgument(
             "Input(Scale) of layer_norm should not be null."));
-    auto* Bias_t = Bias_v->GetMutable<phi::DenseTensor>();
-    auto* Scale_t = Scale_v->GetMutable<phi::DenseTensor>();
+    auto* Bias_t = Bias_v->GetMutable<DenseTensor>();
+    auto* Scale_t = Scale_v->GetMutable<DenseTensor>();
     auto bias_weight =
         engine_->GetFp32TrtWeight(op_desc.Input("Bias").front(), *Bias_t);
     auto scale_weight =

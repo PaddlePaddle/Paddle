@@ -56,7 +56,7 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
       // do weight transpose
       auto weight_name = op_desc.Input("W").front();
       auto* weight_v = scope.FindVar(weight_name);
-      auto* weight_t = weight_v->GetMutable<phi::DenseTensor>();
+      auto* weight_t = weight_v->GetMutable<DenseTensor>();
       float* weight_data = nullptr;
       weight_data = const_cast<float*>(static_cast<const float*>(
           engine_->GetFp32TrtWeight(weight_name, *weight_t).get().values));
@@ -292,7 +292,7 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
       auto weight_name = op_desc.Input(qkv_weight_name[i]).front();
       if (weight_is_constant) {
         auto* weight_value = scope.FindVar(weight_name);
-        auto* weight_tensor = weight_value->GetMutable<phi::DenseTensor>();
+        auto* weight_tensor = weight_value->GetMutable<DenseTensor>();
         float* weight_data = const_cast<float*>(static_cast<const float*>(
             engine_->GetFp32TrtWeight(weight_name, *weight_tensor)
                 .get()

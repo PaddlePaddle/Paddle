@@ -53,7 +53,7 @@ class SpecialOpConfig {
 
   virtual void outputsPostProcess(
       phi::DeviceContextPool& pool,  // NOLINT
-      std::vector<phi::DenseTensor>* dense_tensor_outputs,
+      std::vector<DenseTensor>* dense_tensor_outputs,
       void* const* outputs) {}
 
   bool HasFormatCombinationFunc() { return has_format_combination_func_; }
@@ -181,8 +181,8 @@ class GenericPlugin : public paddle::platform::DynamicPluginTensorRT {
   std::unordered_map<nvinfer1::DataType, std::unique_ptr<phi::KernelContext>>
       phi_kernel_contexts_;
 
-  std::vector<phi::DenseTensor>* dense_tensor_inputs_{nullptr};
-  std::vector<phi::DenseTensor>* dense_tensor_outputs_{nullptr};
+  std::vector<DenseTensor>* dense_tensor_inputs_{nullptr};
+  std::vector<DenseTensor>* dense_tensor_outputs_{nullptr};
 };
 
 class PIRGenericPluginCreator : public paddle::platform::TensorRTPluginCreator {

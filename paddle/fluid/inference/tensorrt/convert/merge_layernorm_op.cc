@@ -48,8 +48,8 @@ class MergeLayernormOpConverter : public OpConverter {
         common::errors::InvalidArgument(
             "The begin_norm_axis of LayernormShiftPartition should be %d",
             begin_norm_axis));
-    auto* Bias_t = Bias_v->GetMutable<phi::DenseTensor>();
-    auto* Scale_t = Scale_v->GetMutable<phi::DenseTensor>();
+    auto* Bias_t = Bias_v->GetMutable<DenseTensor>();
+    auto* Scale_t = Scale_v->GetMutable<DenseTensor>();
 
     auto bias_weight =
         engine_->GetFp32TrtWeight(op_desc.Input("Bias").front(), *Bias_t);

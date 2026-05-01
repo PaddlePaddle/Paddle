@@ -43,7 +43,7 @@ class GeluOpConverter : public OpConverter {
       }
       std::string out_name = op_desc.Output("Out").front();
       auto create_weights = [&](float data, std::string type) -> float* {
-        std::unique_ptr<phi::DenseTensor> tmp_tensor(new phi::DenseTensor());
+        std::unique_ptr<DenseTensor> tmp_tensor(new DenseTensor());
         tmp_tensor->Resize({1});
         auto* tmp_data = tmp_tensor->mutable_data<float>(CPUPlace());
         tmp_data[0] = data;
@@ -144,7 +144,7 @@ class GeluOpConverter : public OpConverter {
       }
       std::string out_name = op_desc.Output("Out").front();
       auto create_weights = [&](float data, std::string type) -> float* {
-        std::unique_ptr<phi::DenseTensor> tmp_tensor(new phi::DenseTensor());
+        std::unique_ptr<DenseTensor> tmp_tensor(new DenseTensor());
         tmp_tensor->Resize({1});
         auto* tmp_data = tmp_tensor->mutable_data<float>(CPUPlace());
         tmp_data[0] = data;

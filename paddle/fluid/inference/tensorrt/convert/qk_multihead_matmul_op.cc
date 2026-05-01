@@ -33,7 +33,7 @@ class QkMultiheadMatMulOpConverter : public OpConverter {
     /* ------------------    weight_qk  -------------------------*/
     auto weight_qk_name = op_desc.Input("W_qk").front();
     auto* weight_qk_v = scope.FindVar(weight_qk_name);
-    auto* weight_qk_t = weight_qk_v->GetMutable<phi::DenseTensor>();
+    auto* weight_qk_t = weight_qk_v->GetMutable<DenseTensor>();
     float* weight_qk_data = nullptr;
     weight_qk_data = const_cast<float*>(static_cast<const float*>(
         engine_->GetFp32TrtWeight(weight_qk_name, *weight_qk_t).get().values));
@@ -85,7 +85,7 @@ class QkMultiheadMatMulOpConverter : public OpConverter {
     /* ------------------    bias_qk  -------------------------*/
     auto bias_qk_name = op_desc.Input("B_qk").front();
     auto* bias_qk_v = scope.FindVar(bias_qk_name);
-    auto* bias_qk_t = bias_qk_v->GetMutable<phi::DenseTensor>();
+    auto* bias_qk_t = bias_qk_v->GetMutable<DenseTensor>();
     float* bias_qk_data = nullptr;
     bias_qk_data = const_cast<float*>(static_cast<const float*>(
         engine_->GetFp32TrtWeight(bias_qk_name, *bias_qk_t).get().values));
@@ -163,7 +163,7 @@ class QkMultiheadMatMulOpConverter : public OpConverter {
     /* ------------------    weight_v  -------------------------*/
     auto weight_v_name = op_desc.Input("W_v").front();
     auto* weight_v_v = scope.FindVar(weight_v_name);
-    auto* weight_v_t = weight_v_v->GetMutable<phi::DenseTensor>();
+    auto* weight_v_t = weight_v_v->GetMutable<DenseTensor>();
     float* weight_v_data = nullptr;
     weight_v_data = const_cast<float*>(static_cast<const float*>(
         engine_->GetFp32TrtWeight(weight_v_name, *weight_v_t).get().values));
@@ -200,7 +200,7 @@ class QkMultiheadMatMulOpConverter : public OpConverter {
     /* ------------------    bias_v  -------------------------*/
     auto bias_v_name = op_desc.Input("B_v").front();
     auto* bias_v_v = scope.FindVar(bias_v_name);
-    auto* bias_v_t = bias_v_v->GetMutable<phi::DenseTensor>();
+    auto* bias_v_t = bias_v_v->GetMutable<DenseTensor>();
     float* bias_v_data = nullptr;
     bias_v_data = const_cast<float*>(static_cast<const float*>(
         engine_->GetFp32TrtWeight(bias_v_name, *bias_v_t).get().values));

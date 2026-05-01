@@ -174,10 +174,10 @@ class ArgsortOpConfig : public SpecialOpConfig {
     }
   }
   void outputsPostProcess(phi::DeviceContextPool& pool,  // NOLINT
-                          std::vector<phi::DenseTensor>* dense_tensor_outputs,
+                          std::vector<DenseTensor>* dense_tensor_outputs,
                           void* const* outputs) override {
     for (int i = 0; i < dense_tensor_outputs->size(); i++) {
-      phi::DenseTensor& output_tensor = (*dense_tensor_outputs)[i];
+      DenseTensor& output_tensor = (*dense_tensor_outputs)[i];
       phi::DataType dtype = output_tensor.dtype();
       if (dtype == phi::DataType::INT64) {
         auto& int32_tensor = output_tensor;
@@ -520,9 +520,9 @@ int GenericPlugin::initialize() TRT_NOEXCEPT {
       common::errors::Fatal("%s phi kernel is invalid!.", kernel_func));
 
   if (!dense_tensor_inputs_)
-    dense_tensor_inputs_ = new std::vector<phi::DenseTensor>(getNbInputs());
+    dense_tensor_inputs_ = new std::vector<DenseTensor>(getNbInputs());
   if (!dense_tensor_outputs_)
-    dense_tensor_outputs_ = new std::vector<phi::DenseTensor>(getNbOutputs());
+    dense_tensor_outputs_ = new std::vector<DenseTensor>(getNbOutputs());
   return 0;
 }
 
@@ -621,14 +621,14 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     int input_numel = 1;
     for (int k = 0; k < input_shape.size(); k++) input_numel *= input_shape[k];
     auto data_type_and_size = nvType2PhiType(input_desc[i].type);
-    phi::DenseTensorMeta input_meta(data_type_and_size.first,
-                                    common::make_ddim(input_shape));
+    DenseTensorMeta input_meta(data_type_and_size.first,
+                               common::make_ddim(input_shape));
     std::shared_ptr<phi::Allocation> input_alloc(
         new phi::Allocation((void*)(inputs[i]),  // NOLINT
                             input_numel * data_type_and_size.second,
                             place));
     (*dense_tensor_inputs_)[i] =
-        std::move(phi::DenseTensor(input_alloc, input_meta));
+        std::move(DenseTensor(input_alloc, input_meta));
     if (i < kernel_input_count) {
       phi_kernel_contexts_[data_type]->EmplaceBackInput(
           &((*dense_tensor_inputs_)[i]));
@@ -852,15 +852,15 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
       output_numel *= output_shape[k];
 
     auto data_type_and_size = nvType2PhiType(output_desc[i].type);
-    phi::DenseTensorMeta output_meta(data_type_and_size.first,
-                                     common::make_ddim(output_shape));
+    DenseTensorMeta output_meta(data_type_and_size.first,
+                                common::make_ddim(output_shape));
     std::shared_ptr<phi::Allocation> output_alloc(
         new phi::Allocation(reinterpret_cast<void*>(outputs[i]),
                             output_numel * data_type_and_size.second,
                             place));
 
     (*dense_tensor_outputs_)[i] =
-        std::move(phi::DenseTensor(output_alloc, output_meta));
+        std::move(DenseTensor(output_alloc, output_meta));
 
     phi_kernel_contexts_[data_type]->EmplaceBackOutput(
         &((*dense_tensor_outputs_)[i]));

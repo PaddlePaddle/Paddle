@@ -165,8 +165,8 @@ class GenericPlugin : public DynamicPluginTensorRT {
   std::unordered_map<nvinfer1::DataType, std::unique_ptr<phi::KernelContext>>
       phi_kernel_contexts_;
 
-  std::vector<phi::DenseTensor>* dense_tensor_inputs_{nullptr};
-  std::vector<phi::DenseTensor>* dense_tensor_outputs_{nullptr};
+  std::vector<DenseTensor>* dense_tensor_inputs_{nullptr};
+  std::vector<DenseTensor>* dense_tensor_outputs_{nullptr};
 
  private:
   std::vector<GeneratePluginDataType> inputs_data_type_;

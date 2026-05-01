@@ -535,14 +535,14 @@ int CustomGenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     auto data_type_and_size =
         protoType2PhiType(inputs_data_type_[i], data_type);
 
-    phi::DenseTensorMeta input_meta(data_type_and_size.first,
-                                    phi::make_ddim(input_shape));
+    DenseTensorMeta input_meta(data_type_and_size.first,
+                               phi::make_ddim(input_shape));
     std::shared_ptr<phi::Allocation> input_alloc(
         new phi::Allocation((void*)(inputs[i]),  // NOLINT
                             input_numel * data_type_and_size.second,
                             place));
-    (*tensor_inputs_)[i] = paddle::Tensor(
-        std::make_shared<phi::DenseTensor>(input_alloc, input_meta));
+    (*tensor_inputs_)[i] =
+        paddle::Tensor(std::make_shared<DenseTensor>(input_alloc, input_meta));
     kernel_ctx.EmplaceBackInput(std::move((*tensor_inputs_)[i]));
   }
 
@@ -559,14 +559,14 @@ int CustomGenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
 
     auto data_type_and_size =
         protoType2PhiType(outputs_data_type_[i], data_type);
-    phi::DenseTensorMeta output_meta(data_type_and_size.first,
-                                     phi::make_ddim(output_shape));
+    DenseTensorMeta output_meta(data_type_and_size.first,
+                                phi::make_ddim(output_shape));
     std::shared_ptr<phi::Allocation> output_alloc(
         new phi::Allocation(reinterpret_cast<void*>(outputs[i]),
                             output_numel * data_type_and_size.second,
                             place));
     (*tensor_outputs_)[i] = paddle::Tensor(
-        std::make_shared<phi::DenseTensor>(output_alloc, output_meta));
+        std::make_shared<DenseTensor>(output_alloc, output_meta));
     kernel_ctx.EmplaceBackOutput(std::move((*tensor_outputs_)[i]));
   }
 
@@ -625,7 +625,7 @@ int CustomGenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
   auto* calc_outs = kernel_ctx.AllMutableOutput();
   for (int i = 0; i < getNbOutputs(); i++) {
     auto calc_out =
-        std::dynamic_pointer_cast<phi::DenseTensor>(calc_outs->at(i).impl());
+        std::dynamic_pointer_cast<DenseTensor>(calc_outs->at(i).impl());
     if (reinterpret_cast<void*>(calc_out->data()) !=
         reinterpret_cast<void*>(outputs[i])) {
       LOG_FIRST_N(WARNING, 1)
@@ -644,14 +644,14 @@ int CustomGenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
 
       auto data_type_and_size =
           protoType2PhiType(outputs_data_type_[i], data_type);
-      phi::DenseTensorMeta output_meta(data_type_and_size.first,
-                                       phi::make_ddim(output_shape));
+      DenseTensorMeta output_meta(data_type_and_size.first,
+                                  phi::make_ddim(output_shape));
       std::shared_ptr<phi::Allocation> output_alloc(
           new phi::Allocation(reinterpret_cast<void*>(outputs[i]),
                               output_numel * data_type_and_size.second,
                               place));
-      phi::DenseTensor dense_output =
-          std::move(phi::DenseTensor(output_alloc, output_meta));
+      DenseTensor dense_output =
+          std::move(DenseTensor(output_alloc, output_meta));
       cudaMemcpy(static_cast<void*>(dense_output.data()),
                  static_cast<void*>(calc_out->data()),
                  output_numel * data_type_and_size.second,

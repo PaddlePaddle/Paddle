@@ -45,7 +45,7 @@ float random(float low, float high) {
   return dist(mt);
 }
 
-void RandomizeTensor(phi::DenseTensor* tensor,
+void RandomizeTensor(DenseTensor* tensor,
                      const phi::Place& place,
                      const phi::DeviceContext& ctx) {
   auto dims = tensor->dims();
@@ -57,7 +57,7 @@ void RandomizeTensor(phi::DenseTensor* tensor,
                                        "tensor which dims is not zero."));
 
   CPUPlace cpu_place;
-  phi::DenseTensor temp_tensor;
+  DenseTensor temp_tensor;
   temp_tensor.Resize(dims);
   auto* temp_data = temp_tensor.mutable_data<float>(cpu_place);
 
@@ -130,7 +130,7 @@ class TRTConvertValidation {
     phi::GPUContext ctx(place_);
 
     auto* x = scope_.Var(name);
-    auto* x_tensor = x->GetMutable<phi::DenseTensor>();
+    auto* x_tensor = x->GetMutable<DenseTensor>();
     x_tensor->Resize(common::make_ddim(dim_vec));
     RandomizeTensor(x_tensor, place_, ctx);
   }
@@ -193,7 +193,7 @@ class TRTConvertValidation {
       input_output_names.push_back(output);
       std::vector<float> fluid_out;
       auto* var = scope_.FindVar(output);
-      auto* tensor = var->GetMutable<phi::DenseTensor>();
+      auto* tensor = var->GetMutable<DenseTensor>();
       framework::TensorToVector(*tensor, ctx, &fluid_out);
       fluid_outs.push_back(fluid_out);
     }
@@ -210,7 +210,7 @@ class TRTConvertValidation {
 #endif
     for (const std::string& name : input_output_names) {
       auto* var = scope_.FindVar(name);
-      auto* tensor = var->GetMutable<phi::DenseTensor>();
+      auto* tensor = var->GetMutable<DenseTensor>();
 #if IS_TRT_VERSION_GE(10000)
       const int bind_index = tensor_index[std::string(name.c_str())];
 #else
@@ -230,7 +230,7 @@ class TRTConvertValidation {
       if (neglected_output.count(output)) continue;
       std::vector<float> trt_out;
       auto* var = scope_.FindVar(output);
-      auto* tensor = var->GetMutable<phi::DenseTensor>();
+      auto* tensor = var->GetMutable<DenseTensor>();
       framework::TensorToVector(*tensor, ctx, &trt_out);
 
       size_t fluid_out_size = fluid_outs[index].size();

@@ -144,8 +144,8 @@ int InstanceNormPluginEnqueue(const nvinfer1::PluginTensorDesc *inputDesc,
   int c = input_dims.d[1];
   int h = input_dims.d[2];
   int w = input_dims.d[3];
-  phi::DenseTensor scale_t;
-  phi::DenseTensor bias_t;
+  DenseTensor scale_t;
+  DenseTensor bias_t;
   scale_t.Resize(common::make_ddim({n, c}));
   bias_t.Resize(common::make_ddim({n, c}));
   int device_id;

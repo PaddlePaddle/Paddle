@@ -89,10 +89,10 @@ class ElementwiseAddTransposePluginDynamic : public DynamicPluginTensorRT {
  private:
   int axis_;
   std::vector<int> output_shape_;
-  phi::DenseTensorMeta x_meta_;
-  phi::DenseTensorMeta y_meta_;
-  phi::DenseTensorMeta out_meta_;
-  phi::DenseTensor ele_out_tensor_;
+  DenseTensorMeta x_meta_;
+  DenseTensorMeta y_meta_;
+  DenseTensorMeta out_meta_;
+  DenseTensor ele_out_tensor_;
   int x_numel_ = -1;
   int y_numel_ = -1;
   int out_numel_ = -1;

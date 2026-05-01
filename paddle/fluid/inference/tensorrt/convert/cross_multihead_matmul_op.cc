@@ -42,7 +42,7 @@ class CrossMultiheadMatMulOpConverter : public OpConverter {
 
     auto weight_q_name = op_desc.Input("W_q").front();
     auto* weight_q_v = scope.FindVar(weight_q_name);
-    auto* weight_q_t = weight_q_v->GetMutable<phi::DenseTensor>();
+    auto* weight_q_t = weight_q_v->GetMutable<DenseTensor>();
     float* weight_q_data = nullptr;
     weight_q_data = const_cast<float*>(static_cast<const float*>(
         engine_->GetFp32TrtWeight(weight_q_name, *weight_q_t).get().values));
@@ -140,7 +140,7 @@ class CrossMultiheadMatMulOpConverter : public OpConverter {
 
     auto weight_kv_name = op_desc.Input("W_kv").front();
     auto* weight_kv_v = scope.FindVar(weight_kv_name);
-    auto* weight_kv_t = weight_kv_v->GetMutable<phi::DenseTensor>();
+    auto* weight_kv_t = weight_kv_v->GetMutable<DenseTensor>();
     float* weight_kv_data = nullptr;
     weight_kv_data = const_cast<float*>(static_cast<const float*>(
         engine_->GetFp32TrtWeight(weight_kv_name, *weight_kv_t).get().values));

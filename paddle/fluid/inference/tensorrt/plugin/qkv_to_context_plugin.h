@@ -124,7 +124,7 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
   int head_number_;
   int head_size_;
   float scale_;
-  phi::DenseTensor tensor_;
+  DenseTensor tensor_;
   half* mask_half_;
   float* fake_qk_bias_;
 };

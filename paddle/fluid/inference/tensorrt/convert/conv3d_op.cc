@@ -35,7 +35,7 @@ void ConvertConv3d(TensorRTEngine* engine,
       Y_v,
       common::errors::NotFound("Can not find %s persistable var in scope.",
                                filter_var_name));
-  auto* Y_t = Y_v->GetMutable<phi::DenseTensor>();
+  auto* Y_t = Y_v->GetMutable<DenseTensor>();
   bool enable_int8 = op_desc.HasAttr("enable_int8");
 
   if (enable_int8) {

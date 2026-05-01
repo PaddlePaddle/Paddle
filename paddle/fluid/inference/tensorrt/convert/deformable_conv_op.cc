@@ -36,7 +36,7 @@ class DeformableConvOpConverter : public OpConverter {
     auto* offset_tensor = engine_->GetITensor(offset_name);
     auto* mask_tensor = engine_->GetITensor(mask_name);
     auto* filter_var = scope.FindVar(filter_name);
-    auto* filter_tensor = filter_var->GetMutable<phi::DenseTensor>();
+    auto* filter_tensor = filter_var->GetMutable<DenseTensor>();
 
     // TODO(large-tensor): downstream functors may still use int; guard until
     // upgraded.

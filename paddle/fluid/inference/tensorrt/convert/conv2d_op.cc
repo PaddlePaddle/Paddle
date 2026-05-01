@@ -41,14 +41,14 @@ void ConvertConv2d(TensorRTEngine* engine,
   auto* X = engine->GetITensor(op_desc.Input("Input").front());
   std::string filter_var_name = op_desc.Input("Filter").front();
   auto* Y_v = scope.FindVar(filter_var_name);
-  phi::DenseTensor* Y_t = nullptr;
+  DenseTensor* Y_t = nullptr;
   nvinfer1::ITensor* filter = nullptr;
   int n_output;
   int n_input;
   int filter_h;
   int filter_w;
   if (Y_v) {
-    Y_t = Y_v->GetMutable<phi::DenseTensor>();
+    Y_t = Y_v->GetMutable<DenseTensor>();
     PADDLE_ENFORCE_EQ(
         Y_t->dims().size(),
         4UL,
@@ -128,7 +128,7 @@ void ConvertConv2d(TensorRTEngine* engine,
   bias.SetValues(nullptr);
   if (op_desc.Type() == "fused_conv2d_add_act") {
     auto* bias_tensor = scope.GetVar(op_desc.Input("Bias").front());
-    auto* bias_tensor_data = bias_tensor->GetMutable<phi::DenseTensor>();
+    auto* bias_tensor_data = bias_tensor->GetMutable<DenseTensor>();
     bias =
         engine->GetTrtWeight(op_desc.Input("Bias").front(), *bias_tensor_data);
   }

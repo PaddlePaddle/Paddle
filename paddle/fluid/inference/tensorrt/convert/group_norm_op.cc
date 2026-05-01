@@ -44,7 +44,7 @@ class GroupNormOpConverter : public OpConverter {
     auto GetWeight = [&](const std::string& var_name,
                          phi::DDim* dims) -> TensorRTEngine::Weight {
       auto* temp_var = scope.FindVar(var_name);
-      auto* temp_tensor = temp_var->GetMutable<phi::DenseTensor>();
+      auto* temp_tensor = temp_var->GetMutable<DenseTensor>();
       (*dims) = temp_tensor->dims();
 
       auto weight = engine_->GetTrtWeight(var_name, *temp_tensor);

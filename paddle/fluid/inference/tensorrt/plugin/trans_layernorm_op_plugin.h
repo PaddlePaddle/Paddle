@@ -139,8 +139,8 @@ class TransLayerNormPluginDynamic : public DynamicPluginTensorRT {
  private:
   std::vector<float> bias_;
   std::vector<float> scale_;
-  phi::DenseTensor mean_t;
-  phi::DenseTensor variance_t;
+  DenseTensor mean_t;
+  DenseTensor variance_t;
   int begin_norm_axis_;
   float eps_;
   std::vector<int64_t> mean_shape_;

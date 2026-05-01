@@ -54,16 +54,16 @@ class BatchNormOpConverter : public OpConverter {
             "Variable of Variance of batch_norm TRT converter is not found."));
 
     // get tensor
-    auto* Bias_t = Bias_v->GetMutable<phi::DenseTensor>();
-    auto* Mean_t = Mean_v->GetMutable<phi::DenseTensor>();
-    auto* Scale_t = Scale_v->GetMutable<phi::DenseTensor>();
-    auto* Variance_t = Variance_v->GetMutable<phi::DenseTensor>();
+    auto* Bias_t = Bias_v->GetMutable<DenseTensor>();
+    auto* Mean_t = Mean_v->GetMutable<DenseTensor>();
+    auto* Scale_t = Scale_v->GetMutable<DenseTensor>();
+    auto* Variance_t = Variance_v->GetMutable<DenseTensor>();
 
     // create temp tensor for weights
-    phi::DenseTensor bias_tensor;
-    phi::DenseTensor mean_tensor;
-    phi::DenseTensor scale_tensor;
-    phi::DenseTensor variance_tensor;
+    DenseTensor bias_tensor;
+    DenseTensor mean_tensor;
+    DenseTensor scale_tensor;
+    DenseTensor variance_tensor;
 
     bias_tensor.Resize(Bias_t->dims());
     mean_tensor.Resize(Mean_t->dims());
@@ -83,10 +83,8 @@ class BatchNormOpConverter : public OpConverter {
     auto* scale_data = scale_tensor.mutable_data<float>(CPUPlace());
     auto* variance_data = variance_tensor.mutable_data<float>(CPUPlace());
 
-    std::unique_ptr<phi::DenseTensor> combine_scale_tensor(
-        new phi::DenseTensor());
-    std::unique_ptr<phi::DenseTensor> combine_bias_tensor(
-        new phi::DenseTensor());
+    std::unique_ptr<DenseTensor> combine_scale_tensor(new DenseTensor());
+    std::unique_ptr<DenseTensor> combine_bias_tensor(new DenseTensor());
 
     combine_scale_tensor->Resize(scale_tensor.dims());
     combine_bias_tensor->Resize(bias_tensor.dims());

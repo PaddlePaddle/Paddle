@@ -29,7 +29,7 @@ class PromptTuningEmbEltwiseLayerNormOpConverter : public OpConverter {
     auto GetWeight = [&](const std::string& var_name,
                          phi::DDim* dim) -> TensorRTEngine::Weight {
       auto* temp_var = scope.FindVar(var_name);
-      auto* temp_tensor = temp_var->GetMutable<phi::DenseTensor>();
+      auto* temp_tensor = temp_var->GetMutable<DenseTensor>();
       *dim = temp_tensor->dims();
       auto weight = engine_->GetTrtWeight(var_name, *temp_tensor);
       return weight;

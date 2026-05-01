@@ -32,7 +32,7 @@ class DequantizeLinearOpConverter : public OpConverter {
         scale_var,
         common::errors::NotFound("Can not find %s persistable var in scope.",
                                  op_desc.Input("Scale")[0]));
-    auto* scale_t = scale_var->GetMutable<phi::DenseTensor>();
+    auto* scale_t = scale_var->GetMutable<DenseTensor>();
     int64_t n_scale = scale_t->numel();
     std::vector<float> scale_data(n_scale, 0.0f);
     for (int64_t i = 0; i < n_scale; ++i) {

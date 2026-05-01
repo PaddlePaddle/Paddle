@@ -573,7 +573,7 @@ nvinfer1::ITensor *TensorRTEngine::ConvertWeight2ITensor(
                                "tensor, but there is no "
                                "persistable variable called %s in scope.",
                                name));
-  auto *var_t = var_v->GetMutable<phi::DenseTensor>();
+  auto *var_t = var_v->GetMutable<DenseTensor>();
   auto weight = this->GetTrtWeight(name, *var_t);
 
   // Now we have create weights, then we need create a itensor
@@ -664,7 +664,7 @@ void TensorRTEngine::Deserialize(const std::string &engine_serialized_data) {
 
 // Note: Only for support plugin.
 TensorRTEngine::Weight TensorRTEngine::GetFp16TrtWeight(
-    const std::string &name, const phi::DenseTensor &weight_tensor) {
+    const std::string &name, const DenseTensor &weight_tensor) {
   static int name_suffix_counter = 0;
   std::string name_suffix = std::to_string(name_suffix_counter);
   std::string splitter = "__";
@@ -676,7 +676,7 @@ TensorRTEngine::Weight TensorRTEngine::GetFp16TrtWeight(
                         "The weight named %s is set into the weight map "
                         "twice in TRT OP converter.",
                         name_with_suffix));
-  weight_map[name_with_suffix].reset(new phi::DenseTensor());
+  weight_map[name_with_suffix].reset(new DenseTensor());
   weight_map[name_with_suffix]->Resize(weight_tensor.dims());
 
   TensorRTEngine::Weight weight;
@@ -684,7 +684,7 @@ TensorRTEngine::Weight TensorRTEngine::GetFp16TrtWeight(
 
   // if trt not support dtype, we need to cast to fp16.
   if (weight_tensor.dtype() == phi::DataType::BFLOAT16) {
-    phi::DenseTensor bf16_tensor;
+    DenseTensor bf16_tensor;
     bf16_tensor.clear();
     paddle::framework::TensorCopySync(weight_tensor, CPUPlace(), &bf16_tensor);
     weight_map[name_with_suffix]->set_type(phi::DataType::FLOAT16);
@@ -697,7 +697,7 @@ TensorRTEngine::Weight TensorRTEngine::GetFp16TrtWeight(
     weight.SetDataType(phi::DataType::FLOAT16);
     weight.SetValues(fp16_data);
   } else if (weight_tensor.dtype() == phi::DataType::FLOAT32) {
-    phi::DenseTensor fp32_tensor;
+    DenseTensor fp32_tensor;
     fp32_tensor.clear();
     paddle::framework::TensorCopySync(weight_tensor, CPUPlace(), &fp32_tensor);
     weight_map[name_with_suffix]->set_type(phi::DataType::FLOAT16);
@@ -710,7 +710,7 @@ TensorRTEngine::Weight TensorRTEngine::GetFp16TrtWeight(
     weight.SetDataType(phi::DataType::FLOAT16);
     weight.SetValues(fp16_data);
   } else if (weight_tensor.dtype() == phi::DataType::INT64) {
-    phi::DenseTensor int64_tensor;
+    DenseTensor int64_tensor;
     int64_tensor.clear();
     paddle::framework::TensorCopySync(weight_tensor, CPUPlace(), &int64_tensor);
     weight_map[name_with_suffix]->set_type(phi::DataType::INT32);
@@ -734,7 +734,7 @@ TensorRTEngine::Weight TensorRTEngine::GetFp16TrtWeight(
 
 // Note: Only for support plugin.
 TensorRTEngine::Weight TensorRTEngine::GetFp32TrtWeight(
-    const std::string &name, const phi::DenseTensor &weight_tensor) {
+    const std::string &name, const DenseTensor &weight_tensor) {
   static int name_suffix_counter = 0;
   std::string name_suffix = std::to_string(name_suffix_counter);
   std::string splitter = "__";
@@ -746,7 +746,7 @@ TensorRTEngine::Weight TensorRTEngine::GetFp32TrtWeight(
                         "The weight named %s is set into the weight map "
                         "twice in TRT OP converter.",
                         name_with_suffix));
-  weight_map[name_with_suffix].reset(new phi::DenseTensor());
+  weight_map[name_with_suffix].reset(new DenseTensor());
   weight_map[name_with_suffix]->Resize(weight_tensor.dims());
 
   TensorRTEngine::Weight weight;
@@ -754,7 +754,7 @@ TensorRTEngine::Weight TensorRTEngine::GetFp32TrtWeight(
 
   // if trt not support dtype, we need to cast to fp32.
   if (weight_tensor.dtype() == phi::DataType::BFLOAT16) {
-    phi::DenseTensor bf16_tensor;
+    DenseTensor bf16_tensor;
     bf16_tensor.clear();
     paddle::framework::TensorCopySync(weight_tensor, CPUPlace(), &bf16_tensor);
     weight_map[name_with_suffix]->set_type(phi::DataType::FLOAT32);
@@ -767,7 +767,7 @@ TensorRTEngine::Weight TensorRTEngine::GetFp32TrtWeight(
     weight.SetDataType(phi::DataType::FLOAT32);
     weight.SetValues(fp32_data);
   } else if (weight_tensor.dtype() == phi::DataType::FLOAT16) {
-    phi::DenseTensor fp16_tensor;
+    DenseTensor fp16_tensor;
     fp16_tensor.clear();
     paddle::framework::TensorCopySync(weight_tensor, CPUPlace(), &fp16_tensor);
     weight_map[name_with_suffix]->set_type(phi::DataType::FLOAT32);
@@ -780,7 +780,7 @@ TensorRTEngine::Weight TensorRTEngine::GetFp32TrtWeight(
     weight.SetDataType(phi::DataType::FLOAT32);
     weight.SetValues(fp32_data);
   } else if (weight_tensor.dtype() == phi::DataType::INT64) {
-    phi::DenseTensor int64_tensor;
+    DenseTensor int64_tensor;
     int64_tensor.clear();
     paddle::framework::TensorCopySync(weight_tensor, CPUPlace(), &int64_tensor);
     weight_map[name_with_suffix]->set_type(phi::DataType::INT32);
@@ -803,7 +803,7 @@ TensorRTEngine::Weight TensorRTEngine::GetFp32TrtWeight(
 }
 
 TensorRTEngine::Weight TensorRTEngine::GetTrtWeight(
-    const std::string &name, const phi::DenseTensor &weight_tensor) {
+    const std::string &name, const DenseTensor &weight_tensor) {
   static int name_suffix_counter = 0;
   std::string name_suffix = std::to_string(name_suffix_counter);
   std::string splitter = "__";
@@ -818,7 +818,7 @@ TensorRTEngine::Weight TensorRTEngine::GetTrtWeight(
 
   if (phi::is_gpu_place(weight_tensor.place()) ||
       weight_tensor.dtype() != phi::DataType::FLOAT32) {
-    weight_map[name_with_suffix].reset(new phi::DenseTensor());
+    weight_map[name_with_suffix].reset(new DenseTensor());
     weight_map[name_with_suffix]->Resize(weight_tensor.dims());
   }
 
@@ -827,7 +827,7 @@ TensorRTEngine::Weight TensorRTEngine::GetTrtWeight(
 
   // if trt not support dtype, we need to cast to fp32.
   if (weight_tensor.dtype() == phi::DataType::BFLOAT16) {
-    phi::DenseTensor bf16_tensor;
+    DenseTensor bf16_tensor;
     bf16_tensor.clear();
     paddle::framework::TensorCopySync(weight_tensor, CPUPlace(), &bf16_tensor);
     weight_map[name_with_suffix]->set_type(phi::DataType::FLOAT32);
@@ -840,7 +840,7 @@ TensorRTEngine::Weight TensorRTEngine::GetTrtWeight(
     weight.SetDataType(phi::DataType::FLOAT32);
     weight.SetValues(fp32_data);
   } else if (weight_tensor.dtype() == phi::DataType::INT64) {
-    phi::DenseTensor int64_tensor;
+    DenseTensor int64_tensor;
     int64_tensor.clear();
     paddle::framework::TensorCopySync(weight_tensor, CPUPlace(), &int64_tensor);
     weight_map[name_with_suffix]->set_type(phi::DataType::INT32);

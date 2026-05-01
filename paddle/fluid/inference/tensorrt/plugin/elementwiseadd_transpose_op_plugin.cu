@@ -132,20 +132,20 @@ void ElementwiseAddTransposePluginDynamic::configurePlugin(
   const phi::GPUContext &dev_ctx = *device_context;
 
   if (x_type == nvinfer1::DataType::kFLOAT) {
-    x_meta_ = phi::DenseTensorMeta(phi::DataType::FLOAT32,
-                                   common::make_ddim(x_shape));
-    y_meta_ = phi::DenseTensorMeta(phi::DataType::FLOAT32,
-                                   common::make_ddim(y_shape));
-    out_meta_ = phi::DenseTensorMeta(phi::DataType::FLOAT32,
-                                     common::make_ddim(out_shape));
+    x_meta_ =
+        DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim(x_shape));
+    y_meta_ =
+        DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim(y_shape));
+    out_meta_ =
+        DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim(out_shape));
     dev_ctx.template Alloc<float>(&ele_out_tensor_, x_numel * sizeof(float));
   } else if (x_type == nvinfer1::DataType::kHALF) {
-    x_meta_ = phi::DenseTensorMeta(phi::DataType::FLOAT16,
-                                   common::make_ddim(x_shape));
-    y_meta_ = phi::DenseTensorMeta(phi::DataType::FLOAT16,
-                                   common::make_ddim(y_shape));
-    out_meta_ = phi::DenseTensorMeta(phi::DataType::FLOAT16,
-                                     common::make_ddim(out_shape));
+    x_meta_ =
+        DenseTensorMeta(phi::DataType::FLOAT16, common::make_ddim(x_shape));
+    y_meta_ =
+        DenseTensorMeta(phi::DataType::FLOAT16, common::make_ddim(y_shape));
+    out_meta_ =
+        DenseTensorMeta(phi::DataType::FLOAT16, common::make_ddim(out_shape));
     dev_ctx.template Alloc<phi::dtype::float16>(
         &ele_out_tensor_, x_numel * sizeof(phi::dtype::float16));
   }
@@ -195,9 +195,9 @@ int ElementwiseAddTransposePluginDynamic::enqueue(
         new phi::Allocation(static_cast<void *>(out),  // NOLINT
                             out_numel_ * sizeof(float),
                             place));
-    const phi::DenseTensor x_tensor = phi::DenseTensor(x_alloc, x_meta_);
-    const phi::DenseTensor y_tensor = phi::DenseTensor(y_alloc, y_meta_);
-    phi::DenseTensor out_tensor = phi::DenseTensor(out_alloc, out_meta_);
+    const DenseTensor x_tensor = DenseTensor(x_alloc, x_meta_);
+    const DenseTensor y_tensor = DenseTensor(y_alloc, y_meta_);
+    DenseTensor out_tensor = DenseTensor(out_alloc, out_meta_);
     phi::AddKernel<float, phi::GPUContext>(
         dev_ctx, x_tensor, y_tensor, &ele_out_tensor_);
     phi::TransposeKernel<float, phi::GPUContext>(
@@ -223,9 +223,9 @@ int ElementwiseAddTransposePluginDynamic::enqueue(
           new phi::Allocation(static_cast<void *>(out),  // NOLINT
                               out_numel_ * sizeof(half),
                               place));
-      const phi::DenseTensor x_tensor = phi::DenseTensor(x_alloc, x_meta_);
-      const phi::DenseTensor y_tensor = phi::DenseTensor(y_alloc, y_meta_);
-      phi::DenseTensor out_tensor = phi::DenseTensor(out_alloc, out_meta_);
+      const DenseTensor x_tensor = DenseTensor(x_alloc, x_meta_);
+      const DenseTensor y_tensor = DenseTensor(y_alloc, y_meta_);
+      DenseTensor out_tensor = DenseTensor(out_alloc, out_meta_);
       phi::AddKernel<phi::dtype::float16, phi::GPUContext>(
           dev_ctx, x_tensor, y_tensor, &ele_out_tensor_);
       phi::TransposeKernel<phi::dtype::float16, phi::GPUContext>(
@@ -244,9 +244,9 @@ int ElementwiseAddTransposePluginDynamic::enqueue(
           new phi::Allocation(static_cast<void *>(out),  // NOLINT
                               out_numel_ * sizeof(half),
                               place));
-      const phi::DenseTensor x_tensor = phi::DenseTensor(x_alloc, x_meta_);
-      const phi::DenseTensor y_tensor = phi::DenseTensor(y_alloc, y_meta_);
-      phi::DenseTensor out_tensor = phi::DenseTensor(out_alloc, out_meta_);
+      const DenseTensor x_tensor = DenseTensor(x_alloc, x_meta_);
+      const DenseTensor y_tensor = DenseTensor(y_alloc, y_meta_);
+      DenseTensor out_tensor = DenseTensor(out_alloc, out_meta_);
       phi::AddKernel<phi::dtype::float16, phi::GPUContext>(
           dev_ctx, x_tensor, y_tensor, &out_tensor);
     }

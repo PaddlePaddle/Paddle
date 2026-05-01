@@ -89,7 +89,7 @@ class FillConstantOpConverter : public OpConverter {
       std::vector<int64_t> shape =
           PADDLE_GET_CONST(std::vector<int64_t>, op_desc.GetAttr("shape"));
 
-      std::unique_ptr<phi::DenseTensor> out_tensor(new phi::DenseTensor());
+      std::unique_ptr<DenseTensor> out_tensor(new DenseTensor());
       out_tensor->Resize(common::make_ddim(shape));
       nvinfer1::DataType trt_dtype = nvinfer1::DataType::kFLOAT;
       void* trt_data = nullptr;
