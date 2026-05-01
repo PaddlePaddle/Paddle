@@ -18,12 +18,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-class Variable;
-}  // namespace framework
-}  // namespace paddle
-
-using paddle::framework::Scope;
-using paddle::framework::Variable;
 
 TEST(Scope, VarsShadowing) {
   Scope s;
@@ -77,3 +71,6 @@ TEST(Scope, GetAllNames) {
 
   EXPECT_STREQ("a", str.c_str());
 }
+
+}  // namespace framework
+}  // namespace paddle
