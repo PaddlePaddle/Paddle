@@ -16,30 +16,17 @@
 
 import unittest
 
-try:
-    from check_abi_compatibility import (
-        DynamicSymbol,
-        MissingLibrary,
-        RemovedSymbol,
-        check_abi_issues_approval,
-        check_abi_removal_approval,
-        compare_library_symbols,
-        find_required_abi_approver,
-        is_protected_paddle_abi_symbol,
-        parse_readelf_dynamic_symbols,
-    )
-except ModuleNotFoundError:
-    from tools.check_abi_compatibility import (
-        DynamicSymbol,
-        MissingLibrary,
-        RemovedSymbol,
-        check_abi_issues_approval,
-        check_abi_removal_approval,
-        compare_library_symbols,
-        find_required_abi_approver,
-        is_protected_paddle_abi_symbol,
-        parse_readelf_dynamic_symbols,
-    )
+from check_abi_compatibility import (
+    DynamicSymbol,
+    MissingLibrary,
+    RemovedSymbol,
+    check_abi_issues_approval,
+    check_abi_removal_approval,
+    compare_library_symbols,
+    find_required_abi_approver,
+    is_protected_paddle_abi_symbol,
+    parse_readelf_dynamic_symbols,
+)
 
 
 def make_symbol(name, demangled_name=None, bind="GLOBAL", section="12"):
