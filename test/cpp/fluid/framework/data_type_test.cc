@@ -38,7 +38,7 @@ TEST(DataType, float16) {
   EXPECT_EQ(f::SizeOfType(dtype), 2u);
 
   // test debug info
-  std::string type = "::phi::float16";
+  std::string type = "::phi::dtype::float16";
   EXPECT_STREQ(f::DataTypeToString(dtype).c_str(), type.c_str());
 }
 
@@ -60,6 +60,6 @@ TEST(DataType, bfloat16) {
   EXPECT_EQ(f::SizeOfType(dtype), 2u);
 
   // test debug info
-  std::string type = "::phi::bfloat16";
+  std::string type = "::phi::dtype::bfloat16";
   EXPECT_STREQ(f::DataTypeToString(dtype).c_str(), type.c_str());
 }
