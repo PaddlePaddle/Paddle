@@ -33,7 +33,6 @@
 #include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
-
 namespace layer_norm {
 
 template <typename Params>
