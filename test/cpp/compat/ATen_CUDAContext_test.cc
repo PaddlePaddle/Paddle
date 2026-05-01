@@ -59,6 +59,27 @@ TEST(CUDAFunctionsTest, DeviceSynchronize) {
 #endif
 }
 
+// CPU-only: torch::cuda::synchronize must report "No CUDA GPUs are available"
+// rather than the older "Cannot visit device count" produced by device_count().
+// Matches PyTorch behavior where device_count() returns 0 in CPU-only builds
+// and the synchronize() pre-check is the single source of the GPU-missing
+// error message.
+TEST(CUDAFunctionsTest, SynchronizeReportsNoGpuMessageInCpuOnly) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  // Only relevant in CPU-only builds
+  return;
+#else
+  try {
+    torch::cuda::synchronize();
+    FAIL() << "expected exception";
+  } catch (const std::exception& e) {
+    const std::string msg = e.what();
+    EXPECT_NE(msg.find("No CUDA GPUs are available"), std::string::npos) << msg;
+    EXPECT_EQ(msg.find("Cannot visit device count"), std::string::npos) << msg;
+  }
+#endif
+}
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(CUDAFunctionsTest, StreamSynchronize) {
   if (!at::cuda::is_available()) {
@@ -214,6 +235,33 @@ TEST(CUDAContextLightTest, GetNumGPUs) {
 #else
   // In CPU-only builds, device_count() returns 0
   ASSERT_EQ(n, 0);
+#endif
+}
+
+// CPU-only: device_count() must return 0 instead of throwing, matching the
+// PyTorch contract that device_count() is a non-throwing query.
+TEST(CUDAContextLightTest, DeviceCountReturnsZeroInCpuOnly) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  // Only relevant in CPU-only builds
+  return;
+#else
+  ASSERT_NO_THROW({
+    EXPECT_EQ(c10::cuda::device_count(), 0);
+    EXPECT_EQ(torch::cuda::device_count(), 0);
+  });
+#endif
+}
+
+// CPU-only: is_available() must be false and not throw, matching PyTorch.
+TEST(CUDAContextLightTest, IsAvailableFalseAndNoThrowInCpuOnly) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  // Only relevant in CPU-only builds
+  return;
+#else
+  ASSERT_NO_THROW({
+    EXPECT_FALSE(at::cuda::is_available());
+    EXPECT_FALSE(torch::cuda::is_available());
+  });
 #endif
 }
 
