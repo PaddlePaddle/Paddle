@@ -20,7 +20,7 @@
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/cuda_stream.h"
 
-namespace deep_ep::detail {
+namespace paddle::deep_ep::detail {
 
 using DeviceIndex = int8_t;
 using StreamId = int64_t;
@@ -52,7 +52,7 @@ inline CUDAStream getCurrentCUDAStream(DeviceIndex device_index = -1) {
   }
 
   return CUDAStream(
-      paddle::GetCurrentCUDAStream(phi::GPUPlace(device_index))->raw_stream());
+      paddle::GetCurrentCUDAStream(GPUPlace(device_index))->raw_stream());
   // LOG(FATAL) << "getCurrentCUDAStream is not implemented";
   // return *(CUDAStream*)nullptr;
 }
@@ -60,4 +60,4 @@ inline CUDAStream getCurrentCUDAStream(DeviceIndex device_index = -1) {
 cudaStream_t GetCalcStreamFromGroup(int context_ring_id);
 
 cudaStream_t GetCommStreamFromGroup(int context_ring_id);
-}  // namespace deep_ep::detail
+}  // namespace paddle::deep_ep::detail

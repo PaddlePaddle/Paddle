@@ -31,7 +31,7 @@
 #include "paddle/fluid/distributed/collective/deep_ep/kernels/exception.cuh"
 #include "paddle/fluid/distributed/collective/deep_ep/kernels/utils.cuh"
 
-namespace deep_ep {
+namespace paddle::deep_ep {
 
 EP_STATIC_ASSERT(NVSHMEMI_IBGDA_MIN_QP_DEPTH >= 64, "Invalid QP minimum depth");
 
@@ -565,4 +565,4 @@ __device__ __forceinline__ void nvshmemi_ibgda_amo_nonfetch_add(
   }
 }
 
-}  // namespace deep_ep
+}  // namespace paddle::deep_ep

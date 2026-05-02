@@ -15,7 +15,7 @@
 #include "paddle/fluid/distributed/collective/deep_ep_xpu/include/event_pool.h"
 #include "glog/logging.h"
 
-namespace deep_ep::detail {
+namespace paddle::deep_ep::detail {
 
 EventPool &EventPool::Instance() {
   static EventPool pool;
@@ -86,4 +86,4 @@ cudaEvent_t EventPool::CreateCudaEventFromPool() {
   }
   return CreateNewOrReuseEvent();
 }
-}  // namespace deep_ep::detail
+}  // namespace paddle::deep_ep::detail

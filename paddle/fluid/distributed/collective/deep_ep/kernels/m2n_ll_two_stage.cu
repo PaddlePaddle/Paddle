@@ -24,7 +24,7 @@
 #include "paddle/fluid/distributed/collective/deep_ep/kernels/ibgda_device.cuh"
 #include "paddle/fluid/distributed/collective/deep_ep/kernels/launch.cuh"
 
-namespace deep_ep {
+namespace paddle::deep_ep {
 
 namespace m2n_ll_two_stage {
 
@@ -1564,4 +1564,4 @@ void combine(void* combined_x,
 
 }  // namespace m2n_ll_two_stage
 
-}  // namespace deep_ep
+}  // namespace paddle::deep_ep

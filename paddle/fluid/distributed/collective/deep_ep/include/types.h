@@ -21,9 +21,10 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/memory/malloc.h"
 
-namespace deep_ep::detail {
+namespace paddle::deep_ep {
+namespace detail {
 
-struct Tensor {
+struct dTensor {
   paddle::Tensor raw_tensor_;
 
   explicit Tensor(const paddle::Tensor &t) : raw_tensor_(t) {}
@@ -63,8 +64,7 @@ struct Tensor {
 
   void record_stream(const cudaStream_t &stream) const {
     paddle::memory::RecordStream(
-        std::dynamic_pointer_cast<phi::DenseTensor>(raw_tensor_.impl())
-            ->Holder(),
+        std::dynamic_pointer_cast<DenseTensor>(raw_tensor_.impl())->Holder(),
         stream);
   }
 
@@ -75,4 +75,6 @@ struct Tensor {
   int64_t element_size() const { return phi::SizeOf(raw_tensor_.dtype()); }
 };
 
-}  // namespace deep_ep::detail
+}  // namespace detail
+using dTensor = detail::dTensor;
+}  // namespace paddle::deep_ep

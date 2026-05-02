@@ -41,7 +41,7 @@
       ST_FUNC(__dst + __i, LD_FUNC(__src + __i));                            \
   }
 
-namespace deep_ep {
+namespace paddle::deep_ep {
 
 template <int kBytes>
 struct VecInt {};
@@ -545,4 +545,4 @@ __forceinline__ __device__ void barrier_device(int **task_fifo_ptrs,
 #endif
 }
 
-}  // namespace deep_ep
+}  // namespace paddle::deep_ep

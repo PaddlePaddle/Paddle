@@ -37,7 +37,7 @@
 
 COMMON_DECLARE_int64(deep_ep_comm_prealloc_in_mb);
 
-namespace deep_ep {
+namespace paddle::deep_ep {
 std::once_flag pre_alloc_once_flag;
 
 namespace detail {
@@ -75,7 +75,7 @@ Buffer::Buffer(int rank,
   CUDA_CHECK(cudaGetDevice(&device_id));
   auto map = paddle::distributed::ProcessGroupMapFromGid::getInstance();
   paddle::distributed::ProcessGroup* pg = map->get(context_ring_id);
-  const auto& place = phi::XPUPlace(device_id);
+  const auto& place = XPUPlace(device_id);
   comm_ctx =
       reinterpret_cast<paddle::distributed::ProcessGroupBKCL*>(pg)
           ->GetOrCreateCommContext(place, phi::distributed::CommType::ALLTOALL);
@@ -188,19 +188,18 @@ Buffer::get_dispatch_layout(const deep_ep::detail::Tensor& topk_idx,
        num_topk = static_cast<int>(topk_idx.size(1));
   auto num_tokens_per_rank =
       ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
-          {num_ranks}, phi::DataType::INT32, phi::XPUPlace(device_id)));
+          {num_ranks}, DataType::INT32, XPUPlace(device_id)));
   auto num_tokens_per_rdma_rank = std::optional<deep_ep::detail::Tensor>();
   auto num_tokens_per_expert =
       ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
-          {num_experts}, phi::DataType::INT32, phi::XPUPlace(device_id)));
-  auto is_token_in_rank = ConvertPaddleTensorToDetailTensor(
-      paddle::experimental::empty({num_tokens, num_ranks},
-                                  phi::DataType::BOOL,
-                                  phi::XPUPlace(device_id)));
+          {num_experts}, DataType::INT32, XPUPlace(device_id)));
+  auto is_token_in_rank =
+      ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
+          {num_tokens, num_ranks}, DataType::BOOL, XPUPlace(device_id)));
   if (is_internode_available()) {
     num_tokens_per_rdma_rank =
         ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
-            {num_rdma_ranks}, phi::DataType::INT32, phi::XPUPlace(device_id)));
+            {num_rdma_ranks}, DataType::INT32, XPUPlace(device_id)));
   }
 
   // Wait streams
@@ -260,7 +259,7 @@ Buffer::intranode_dispatch(
     EP_HOST_ASSERT(topk_weights.has_value() &&
                    num_tokens_per_expert.has_value());
     curr_topk_idx = ConvertPaddleTensorToDetailTensor(
-        cast_ad_func(topk_idx->raw_tensor(), phi::DataType::INT32));
+        cast_ad_func(topk_idx->raw_tensor(), DataType::INT32));
     curr_topk_weights = ConvertPaddleTensorToDetailTensor(
         assign_ad_func(topk_weights->raw_tensor()));
     curr_num_experts = static_cast<int>(num_tokens_per_expert->size(0));
@@ -315,20 +314,19 @@ Buffer::intranode_dispatch(
 
   auto d_num_recv_tokens_per_expert_list =
       ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
-          {num_local_experts}, phi::DataType::INT32, x.place()));
+          {num_local_experts}, DataType::INT32, x.place()));
   auto h_num_recv_tokens_per_expert_list =
       std::vector<int>(num_local_experts, 0);
   auto rank_prefix_matrix = curr_topk_idx;
   auto channel_prefix_matrix = curr_topk_weights;
-  auto recv_channel_prefix_matrix =
-      ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
-          {num_ranks, 12}, phi::DataType::INT32, x.place()));
+  auto recv_channel_prefix_matrix = ConvertPaddleTensorToDetailTensor(
+      paddle::experimental::empty({num_ranks, 12}, DataType::INT32, x.place()));
   auto recv_src_idx =
       ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
-          {curr_num_experts}, phi::DataType::INT32, x.place()));
+          {curr_num_experts}, DataType::INT32, x.place()));
   auto send_head =
       ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
-          {num_tokens, num_ranks}, phi::DataType::INT32, x.place()));
+          {num_tokens, num_ranks}, DataType::INT32, x.place()));
 
   int num_recv_tokens =
       ep_runtime
@@ -605,7 +603,7 @@ Buffer::internode_dispatch(
     EP_HOST_ASSERT(topk_weights.has_value() &&
                    num_tokens_per_expert.has_value());
     curr_topk_idx = ConvertPaddleTensorToDetailTensor(
-        cast_ad_func(topk_idx->raw_tensor(), phi::DataType::INT32));
+        cast_ad_func(topk_idx->raw_tensor(), DataType::INT32));
     curr_topk_weights = ConvertPaddleTensorToDetailTensor(
         assign_ad_func(topk_weights->raw_tensor()));
     curr_num_experts = static_cast<int>(num_tokens_per_expert->size(0));
@@ -659,15 +657,15 @@ Buffer::internode_dispatch(
 
   auto d_num_recv_tokens_per_expert_list =
       ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
-          {num_local_experts}, phi::DataType::INT32, x.place()));
+          {num_local_experts}, DataType::INT32, x.place()));
   auto h_num_recv_tokens_per_expert_list =
       std::vector<int>(num_local_experts, 0);
 
   // unsupported yet
   auto rdma_channel_prefix_matrix = ConvertPaddleTensorToDetailTensor(
-      paddle::experimental::empty({10}, phi::DataType::INT32, x.place()));
+      paddle::experimental::empty({10}, DataType::INT32, x.place()));
   auto gbl_channel_prefix_matrix = ConvertPaddleTensorToDetailTensor(
-      paddle::experimental::empty({10}, phi::DataType::INT32, x.place()));
+      paddle::experimental::empty({10}, DataType::INT32, x.place()));
   auto recv_rdma_rank_prefix_sum = curr_topk_weights;
   auto recv_gbl_rank_prefix_sum = curr_topk_idx;
 
@@ -695,19 +693,19 @@ Buffer::internode_dispatch(
 
   std::optional<deep_ep::detail::Tensor> recv_rdma_channel_prefix_matrix =
       ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
-          {1, 1}, phi::DataType::INT32, curr_topk_idx->place()));
+          {1, 1}, DataType::INT32, curr_topk_idx->place()));
   std::optional<deep_ep::detail::Tensor> recv_gbl_channel_prefix_matrix =
       ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
-          {1, 1}, phi::DataType::INT32, curr_topk_idx->place()));
+          {1, 1}, DataType::INT32, curr_topk_idx->place()));
   std::optional<deep_ep::detail::Tensor> recv_src_meta =
       ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
-          {curr_num_experts, 1}, phi::DataType::INT32, curr_topk_idx->place()));
+          {curr_num_experts, 1}, DataType::INT32, curr_topk_idx->place()));
   std::optional<deep_ep::detail::Tensor> send_rdma_head =
       ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
-          {1, 1}, phi::DataType::INT32, curr_topk_idx->place()));
+          {1, 1}, DataType::INT32, curr_topk_idx->place()));
   std::optional<deep_ep::detail::Tensor> send_nvl_head =
       ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
-          {1, 1}, phi::DataType::INT32, curr_topk_idx->place()));
+          {1, 1}, DataType::INT32, curr_topk_idx->place()));
 
   auto recv_x = ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
       {num_recv_tokens, hidden_size}, x.dtype(), x.place()));
@@ -1000,11 +998,11 @@ Buffer::low_latency_dispatch(
   auto packed_recv_src_info =
       ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
           {num_local_experts, num_ranks * num_max_dispatch_tokens_per_rank},
-          phi::DataType::INT32,
+          DataType::INT32,
           x.place()));
   auto packed_recv_layout_range =
       ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
-          {2, num_local_experts, num_ranks}, phi::DataType::INT32, x.place()));
+          {2, num_local_experts, num_ranks}, DataType::INT32, x.place()));
 
   // Allocate column-majored scales
   auto packed_recv_x_scales = std::optional<deep_ep::detail::Tensor>();
@@ -1510,7 +1508,7 @@ Buffer::low_latency_dispatch_api(
     int num_per_channel) {
   const auto& x_ = ConvertPaddleTensorToDetailTensor(x);
   const auto& topk_idx_ = ConvertPaddleTensorToDetailTensor(
-      cast_ad_func(topk_idx, phi::DataType::INT32));
+      cast_ad_func(topk_idx, DataType::INT32));
 
   std::optional<deep_ep::detail::Tensor> expertwise_scale_;
   if (expertwise_scale.has_value()) {
@@ -1570,7 +1568,7 @@ Buffer::low_latency_combine_api(const paddle::Tensor& x,
                                 const std::optional<paddle::Tensor>& out) {
   const auto& x_ = ConvertPaddleTensorToDetailTensor(x);
   const auto& topk_idx_ = ConvertPaddleTensorToDetailTensor(
-      cast_ad_func(topk_idx, phi::DataType::INT32));
+      cast_ad_func(topk_idx, DataType::INT32));
   const auto& topk_weights_ = ConvertPaddleTensorToDetailTensor(topk_weights);
   const auto& src_info_ = ConvertPaddleTensorToDetailTensor(src_info);
   const auto& layout_range_ = ConvertPaddleTensorToDetailTensor(layout_range);
@@ -2099,4 +2097,4 @@ std::optional<paddle::Tensor> ConvertOptionalDetailTensorToPaddleTensor(
   return res;
 }
 
-}  // namespace deep_ep
+}  // namespace paddle::deep_ep

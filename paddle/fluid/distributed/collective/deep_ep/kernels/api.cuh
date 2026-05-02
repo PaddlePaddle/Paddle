@@ -21,7 +21,7 @@
 
 #include <vector>
 
-namespace deep_ep {
+namespace paddle::deep_ep {
 
 // Intranode runtime
 namespace intranode {
@@ -493,4 +493,4 @@ void combine(void* combined_x,
 
 #endif  // PADDLE_WITH_NVSHMEM
 
-}  // namespace deep_ep
+}  // namespace paddle::deep_ep

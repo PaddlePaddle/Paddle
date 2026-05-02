@@ -19,7 +19,7 @@
 #include "paddle/fluid/distributed/collective/deep_ep_xpu/include/event_pool.h"
 #include "paddle/fluid/distributed/collective/deep_ep_xpu/kernels/exception.h"
 
-namespace deep_ep::detail {
+namespace paddle::deep_ep::detail {
 
 class Event {
  public:
@@ -34,4 +34,4 @@ class Event {
   cudaEvent_t cuda_event_;
 };
 
-}  // namespace deep_ep::detail
+}  // namespace paddle::deep_ep::detail

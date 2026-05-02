@@ -16,7 +16,7 @@
 #include "paddle/fluid/distributed/collective/deep_ep_xpu/include/CUDAStream.h"
 #include "paddle/fluid/distributed/collective/deep_ep_xpu/kernels/exception.h"
 
-namespace deep_ep {
+namespace paddle::deep_ep {
 void EventHandle::CalcStreamWait(int context_ring_id) const {
   CUDA_CHECK(cudaStreamWaitEvent(
       detail::GetCalcStreamFromGroup(context_ring_id), event->cuda_event(), 0));
@@ -38,4 +38,4 @@ EventHandle GetEventHandleFromCommStream(int context_ring_id) {
 EventHandle GetEventHandleFromCustomStream(const XPUStream& stream) {
   return EventHandle(stream);
 }
-}  // namespace deep_ep
+}  // namespace paddle::deep_ep

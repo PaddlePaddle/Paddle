@@ -17,14 +17,14 @@
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
 #include "paddle/phi/common/place.h"
 
-namespace deep_ep::detail {
+namespace paddle::deep_ep::detail {
 
 cudaStream_t GetCalcStreamFromGroup(int context_ring_id) {
   int device_id;
   CUDA_CHECK(cudaGetDevice(&device_id));
   auto map = paddle::distributed::ProcessGroupMapFromGid::getInstance();
   paddle::distributed::ProcessGroup* pg = map->get(context_ring_id);
-  const auto& place = phi::GPUPlace(device_id);
+  const auto& place = GPUPlace(device_id);
   const auto& calc_ctx = reinterpret_cast<phi::GPUContext*>(
       reinterpret_cast<paddle::distributed::ProcessGroupNCCL*>(pg)
           ->GetDeviceContext(place, true));
@@ -36,11 +36,11 @@ cudaStream_t GetCommStreamFromGroup(int context_ring_id) {
   CUDA_CHECK(cudaGetDevice(&device_id));
   auto map = paddle::distributed::ProcessGroupMapFromGid::getInstance();
   paddle::distributed::ProcessGroup* pg = map->get(context_ring_id);
-  const auto& place = phi::GPUPlace(device_id);
+  const auto& place = GPUPlace(device_id);
   const auto& comm_ctx =
       reinterpret_cast<paddle::distributed::ProcessGroupNCCL*>(pg)
           ->GetOrCreateCommContext(place, phi::distributed::CommType::ALLTOALL);
   return comm_ctx->GetStream();
 }
 
-}  // namespace deep_ep::detail
+}  // namespace paddle::deep_ep::detail
