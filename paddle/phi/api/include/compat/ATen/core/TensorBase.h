@@ -76,11 +76,9 @@ class PADDLE_API TensorBase {
   }
   size_t use_count() const { return tensor_.impl().use_count(); }
   size_t weak_use_count() const {
-    // TODO(youge325) : In PyTorch, weak pointer is defined and
-    // implemented in c10/util/intrusive_ptr.h, namely c10::intrusive_ptr;
-    // but in Paddle, we use std::shared_ptr, so here we just return 0
-    // temporarily.
-    return 0;
+    // PyTorch exposes an internal self weak-reference on live TensorImpls, so
+    // the observable weak count starts at 1 even without user-created refs.
+    return tensor_.defined() ? 1 : 0;
   }
 
   void print() const {
