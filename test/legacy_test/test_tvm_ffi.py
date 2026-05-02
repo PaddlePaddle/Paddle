@@ -63,19 +63,13 @@ class TestCDLPackExchangeAPI(unittest.TestCase):
         """
 
         mod: Module = tvm_ffi.cpp.load_inline(
-            name='mod',
-            cpp_sources=cpp_source,
-            functions='add_one_cpu',
-            keep_module_alive=False,
+            name='mod', cpp_sources=cpp_source, functions='add_one_cpu'
         )
 
-        def run_check():
-            x = paddle.full((3,), 1.0, dtype='float32').cpu()
-            y = paddle.zeros((3,), dtype='float32').cpu()
-            mod.add_one_cpu(x, y)
-            np.testing.assert_allclose(y.numpy(), [2.0, 2.0, 2.0])
-
-        run_check()
+        x = paddle.full((3,), 1.0, dtype='float32').cpu()
+        y = paddle.zeros((3,), dtype='float32').cpu()
+        mod.add_one_cpu(x, y)
+        np.testing.assert_allclose(y.numpy(), [2.0, 2.0, 2.0])
 
     def test_c_dlpack_exchange_api_gpu(self):
         if not paddle.is_compiled_with_cuda():
@@ -122,16 +116,12 @@ class TestCDLPackExchangeAPI(unittest.TestCase):
             cpp_sources=cpp_sources,
             cuda_sources=cuda_sources,
             functions=['add_one_cuda'],
-            keep_module_alive=False,
         )
 
-        def run_check():
-            x = paddle.full((3,), 1.0, dtype='float32').cuda()
-            y = paddle.zeros((3,), dtype='float32').cuda()
-            mod.add_one_cuda(x, y)
-            np.testing.assert_allclose(y.numpy(), [2.0, 2.0, 2.0])
-
-        run_check()
+        x = paddle.full((3,), 1.0, dtype='float32').cuda()
+        y = paddle.zeros((3,), dtype='float32').cuda()
+        mod.add_one_cuda(x, y)
+        np.testing.assert_allclose(y.numpy(), [2.0, 2.0, 2.0])
 
     def test_c_dlpack_exchange_api_alloc_tensor(self):
         cpp_source = r"""
@@ -213,28 +203,21 @@ class TestDLPackDataType(unittest.TestCase):
             }
         """
         mod: Module = tvm_ffi.cpp.load_inline(
-            name='mod',
-            cpp_sources=cpp_source,
-            functions='check_dtype',
-            keep_module_alive=False,
+            name='mod', cpp_sources=cpp_source, functions='check_dtype'
         )
-
-        def run_check():
-            for dtype in [
-                paddle.bool,
-                paddle.uint8,
-                paddle.int16,
-                paddle.int32,
-                paddle.int64,
-                paddle.float32,
-                paddle.float64,
-                paddle.float16,
-                paddle.bfloat16,
-            ]:
-                x = paddle.zeros((10,), dtype=dtype).cpu()
-                mod.check_dtype(x, dtype)
-
-        run_check()
+        for dtype in [
+            paddle.bool,
+            paddle.uint8,
+            paddle.int16,
+            paddle.int32,
+            paddle.int64,
+            paddle.float32,
+            paddle.float64,
+            paddle.float16,
+            paddle.bfloat16,
+        ]:
+            x = paddle.zeros((10,), dtype=dtype).cpu()
+            mod.check_dtype(x, dtype)
 
 
 class TestDLPackDeviceType(unittest.TestCase):
@@ -280,21 +263,15 @@ class TestDLPackDeviceType(unittest.TestCase):
             }
         """
         mod: Module = tvm_ffi.cpp.load_inline(
-            name='mod',
-            cpp_sources=cpp_source,
-            functions='check_device',
-            keep_module_alive=False,
+            name='mod', cpp_sources=cpp_source, functions='check_device'
         )
 
-        def run_check():
-            x_cpu = paddle.zeros((10,), dtype='float32').cpu()
-            mod.check_device(x_cpu, x_cpu.place)
+        x_cpu = paddle.zeros((10,), dtype='float32').cpu()
+        mod.check_device(x_cpu, x_cpu.place)
 
-            if paddle.is_compiled_with_cuda():
-                x_gpu = paddle.zeros((10,), dtype='float32').cuda()
-                mod.check_device(x_gpu, x_gpu.place)
-
-        run_check()
+        if paddle.is_compiled_with_cuda():
+            x_gpu = paddle.zeros((10,), dtype='float32').cuda()
+            mod.check_device(x_gpu, x_gpu.place)
 
 
 if __name__ == '__main__':
