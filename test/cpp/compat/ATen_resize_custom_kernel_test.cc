@@ -43,16 +43,13 @@ TEST(ATenResizeCustomKernel, ResizeGrowsStorageInFallbackPath) {
 }
 
 // Covers the numel() == 0 branch in MaybeResetHolder fallback.
-// When a non-empty tensor is shrunk to empty, resize_ returns early
-// (new_numel == 0). The next storage() call triggers
-// SyncStorageFromTensor -> MaybeResetHolder with dense->numel() == 0,
-// forcing the offset-reset branch.
+// at::empty({0}) creates a tensor whose initial holder is a plain
+// Allocation (not yet synced to StorageHolderView). During TensorBase
+// construction, SyncStorageFromTensor sees holder != compat_holder and
+// calls MaybeResetHolder with dense->numel() == 0, forcing the
+// offset-reset branch.
 TEST(ATenResizeCustomKernel, EmptyTensorOffsetResetInFallbackPath) {
-  at::Tensor t = at::ones({2}, at::kInt);
-  ASSERT_EQ(t.numel(), 2);
-
-  // Shrink to empty. resize_ returns early when new_numel==0.
-  t.resize_({0});
+  at::Tensor t = at::empty({0}, at::kInt);
   ASSERT_EQ(t.numel(), 0);
 
   // storage() triggers SyncStorageFromTensor -> MaybeResetHolder
