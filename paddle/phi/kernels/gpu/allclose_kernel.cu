@@ -36,24 +36,23 @@ __global__ void AllcloseCUDAKernel(const T* in_data,
                                    bool* out_data) {
   unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
   bool val;
-  using BaseMPType = typename dtype::MPTypeTrait<T>::Type;
+  using BaseMT = typename MPTypeTrait<T>::Type;
 
-  using MPType =
-      typename std::conditional<std::is_same<T, int32_t>::value ||
-                                    std::is_same<T, int64_t>::value ||
-                                    std::is_same<T, bool>::value,
-                                double,
-                                BaseMPType>::type;
+  using MT = typename std::conditional<std::is_same<T, int32_t>::value ||
+                                           std::is_same<T, int64_t>::value ||
+                                           std::is_same<T, bool>::value,
+                                       double,
+                                       BaseMT>::type;
 
   for (IndexType i = idx; i < num; i += blockDim.x * gridDim.x) {
-    const MPType a = static_cast<MPType>(in_data[i]);
-    const MPType b = static_cast<MPType>(other_data[i]);
+    const MT a = static_cast<MT>(in_data[i]);
+    const MT b = static_cast<MT>(other_data[i]);
     if (isnan(a) || isnan(b)) {
       val = equal_nan && isnan(a) == isnan(b);
     } else {
-      MPType left = (a > b ? a - b : b - a);
-      MPType right = atol + (b > 0 ? rtol * b : (-rtol) * b);
-      MPType diff = (left > right ? left - right : right - left);
+      MT left = (a > b ? a - b : b - a);
+      MT right = atol + (b > 0 ? rtol * b : (-rtol) * b);
+      MT diff = (left > right ? left - right : right - left);
       val = a == b || left <= right || diff <= 1e-15;
     }
     if (!val) *out_data = false;

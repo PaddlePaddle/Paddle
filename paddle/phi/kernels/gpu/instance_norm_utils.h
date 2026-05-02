@@ -45,7 +45,7 @@ static __global__ void add_param(const T *input,
                                  T *output,
                                  const int repeat_num,
                                  const int C) {
-  using MPType = typename dtype::MPTypeTrait<T>::Type;
+  using MPType = typename MPTypeTrait<T>::Type;
   typedef cub::BlockReduce<MPType, BlockDim> BlockReduce;
   __shared__ typename BlockReduce::TempStorage ou_storage;
   for (int i = blockIdx.x; i < C; i += gridDim.x) {

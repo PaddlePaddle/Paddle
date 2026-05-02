@@ -1138,7 +1138,7 @@ void RmsNormQuantKernel(const Context& dev_ctx,
                           quant_scale));
   }
 
-  using ComputeType = typename dtype::MPTypeTrait<T>::Type;
+  using ComputeType = typename MPTypeTrait<T>::Type;
 
   const T* x_data = x.data<T>();
   const T* norm_weight_data = norm_weight.data<T>();
@@ -1254,7 +1254,7 @@ void ResidualAddRmsNormWrapper(const Context& dev_ctx,
                                const int cols,
                                T* residual_output,
                                T* output) {
-  using ComputeType = typename dtype::MPTypeTrait<T>::Type;
+  using ComputeType = typename MPTypeTrait<T>::Type;
   ResidualAddBiasLoad<T, ComputeType> load(
       x, residual, bias, residual_output, cols);
   AffineStore<ComputeType, T> store(output, cols, norm_weight, norm_bias);
@@ -1307,7 +1307,7 @@ void RmsNormWrapper(const Context& dev_ctx,
                     const int rows,
                     const int cols,
                     T* output) {
-  using ComputeType = typename dtype::MPTypeTrait<T>::Type;
+  using ComputeType = typename MPTypeTrait<T>::Type;
 
   DirectLoad<T, ComputeType> load(x, cols);
   AffineStore<ComputeType, T> store(output, cols, weight, bias);

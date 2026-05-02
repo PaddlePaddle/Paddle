@@ -142,9 +142,6 @@ def _is_global_group(group):
 def _warn_cur_rank_not_in_group(group):
     global_rank = dist.get_rank()
     if group and not group.is_member():
-        warnings.warn(
-            f"Current global rank {global_rank} is not in group {group.name}"
-        )
         return True
     return False
 

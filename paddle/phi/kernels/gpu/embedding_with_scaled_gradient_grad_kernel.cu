@@ -102,14 +102,13 @@ __global__ void ScaleGradKernel(const int* count_data,
                                 int64_t num_weights,
                                 int64_t num_weight_dim,
                                 T* table) {
-  using MPType = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   const int idx = threadIdx.x + blockIdx.x * blockDim.x;
   if (idx < num_weights) {
-    MPType freq = static_cast<MPType>(count_data[idx]);
-    freq = (freq == static_cast<MPType>(0)) ? 1 : freq;
+    MT freq = static_cast<MT>(count_data[idx]);
+    freq = (freq == static_cast<MT>(0)) ? 1 : freq;
     for (int i = 0; i < num_weight_dim; ++i) {
-      MPType scaled_grad =
-          static_cast<MPType>(table[idx * num_weight_dim + i]) / freq;
+      MT scaled_grad = static_cast<MT>(table[idx * num_weight_dim + i]) / freq;
       table[idx * num_weight_dim + i] = static_cast<T>(scaled_grad);
     }
   }

@@ -429,7 +429,7 @@ std::tuple<phi::DenseTensor, bool> HandleTensorCopy(
   bool force_copy = copy.has_value() && copy.value();
   bool disallow_copy = copy.has_value() && !copy.value();
 
-  phi::Place dst_place = src.place();
+  Place dst_place = src.place();
   if (dl_device.has_value()) {
     ::DLDeviceType dl_type =
         static_cast<::DLDeviceType>(std::get<0>(dl_device.value()));
@@ -448,7 +448,7 @@ std::tuple<phi::DenseTensor, bool> HandleTensorCopy(
   }
 
   if (force_copy || src.place() != dst_place) {
-    phi::Place ctx_place = src.place() != CPUPlace() ? src.place() : dst_place;
+    Place ctx_place = src.place() != CPUPlace() ? src.place() : dst_place;
     DenseTensor dst(std::make_shared<phi::Allocation>(nullptr, 0, dst_place),
                     src.meta());
     const auto *dev_ctx = phi::DeviceContextPool::Instance().Get(ctx_place);
@@ -640,7 +640,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            py::arg("place"),
            py::arg("batch_size") = -1)
       .def("_copy_from",
-           &TensorCopyFrom<phi::Place>,
+           &TensorCopyFrom<Place>,
            py::arg("tensor"),
            py::arg("place"),
            py::arg("batch_size") = -1)
@@ -924,7 +924,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              }
              return dst;
            })
-      .def("_copy", [](const DenseTensor &self, const phi::Place &place) {
+      .def("_copy", [](const DenseTensor &self, const Place &place) {
         // follow fetch_op's implementation
         DenseTensor dst;
         if (self.IsInitialized() && self.numel() > 0) {

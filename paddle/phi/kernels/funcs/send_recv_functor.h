@@ -48,7 +48,7 @@ void send_shape_info(const Context& dev_ctx,
       errors::InvalidArgument("BKCLComm should be provided if use BKCL "
                               "to send the shape info."));
 #endif
-  paddle::DataType shape_dtype = paddle::DataType::INT32;
+  DataType shape_dtype = DataType::INT32;
   auto dims = x.dims();
   int shape_size = dims.size();
 
@@ -146,7 +146,7 @@ DDim recv_shape_info(const Context& dev_ctx,
       errors::InvalidArgument("BKCLComm should be provided if use BKCL "
                               "to send the shape info."));
 #endif
-  paddle::DataType shape_dtype = paddle::DataType::INT32;
+  DataType shape_dtype = DataType::INT32;
 
   // DenseTensor shape_size_tensortensor(shape_dtype);
   DenseTensor shape_size_tensortensor(shape_dtype);
