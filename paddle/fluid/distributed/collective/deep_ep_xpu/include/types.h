@@ -27,11 +27,11 @@ namespace detail {
 struct dTensor {
   paddle::Tensor raw_tensor_;
 
-  explicit Tensor(const paddle::Tensor &t) : raw_tensor_(t) {}
-  Tensor() : raw_tensor_() {}
-  Tensor(const Tensor &) = default;
-  Tensor(Tensor &&) = default;
-  Tensor operator=(const Tensor &x) &noexcept {
+  explicit dTensor(const paddle::Tensor &t) : raw_tensor_(t) {}
+  dTensor() : raw_tensor_() {}
+  dTensor(const dTensor &) = default;
+  dTensor(dTensor &&) = default;
+  dTensor operator=(const dTensor &x) &noexcept {
     raw_tensor_ = x.raw_tensor_;
     return *this;
   }
