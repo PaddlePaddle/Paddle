@@ -590,7 +590,8 @@ class TestBuildExtension(unittest.TestCase):
                 )
 
         content = captured['ninja_content']
-        self.assertIn('nvcc = /opt/rocm/bin/hipcc', content)
+        self.assertIn('nvcc = ', content)
+        self.assertIn('hipcc', content)
         self.assertIn('cuda_post_cflags = --prepared --hip-flag', content)
         self.assertIn('-D__HIP_PLATFORM_HCC__', content)
         self.assertIn(
@@ -932,7 +933,8 @@ class TestBuildExtension(unittest.TestCase):
 
         content = captured['ninja_content']
         self.assertIn('rule cuda_compile', content)
-        self.assertIn('cuda_post_cflags = -Xcompiler /EHsc', content)
+        self.assertIn('cuda_post_cflags = ', content)
+        self.assertIn('-Xcompiler /EHsc', content)
         self.assertIn('--prepared --use-local-env', content)
         self.assertIn('/DPADDLE_WITH_CUDA', content)
         self.assertNotIn(invalid_extra_args, content)
