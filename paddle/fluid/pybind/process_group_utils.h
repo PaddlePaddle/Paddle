@@ -218,7 +218,7 @@ void SplitDenseTensorWithType(const Context &dev_ctx,
       SplitDenseTensor<Context, int64_t>()(dev_ctx, t_in, p_list);
       break;
     case DataType::FLOAT16:
-      SplitDenseTensor<DeviceContext, phi::float16>()(dev_ctx, t_in, p_list);
+      SplitDenseTensor<Context, phi::float16>()(dev_ctx, t_in, p_list);
       break;
     case DataType::BFLOAT16:
       SplitDenseTensor<Context, phi::bfloat16>()(dev_ctx, t_in, p_list);
