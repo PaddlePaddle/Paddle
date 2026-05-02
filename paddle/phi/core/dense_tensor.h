@@ -348,4 +348,4 @@ class PADDLE_API DenseTensor : public TensorBase,
 
 namespace paddle {
 using DenseTensor = phi::DenseTensor;
-}  // namespace paddle
+}
