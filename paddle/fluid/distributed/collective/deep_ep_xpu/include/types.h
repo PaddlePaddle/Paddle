@@ -21,9 +21,10 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/memory/malloc.h"
 
-namespace paddle::deep_ep::detail {
+namespace paddle::deep_ep {
+namespace detail {
 
-struct Tensor {
+struct dTensor {
   paddle::Tensor raw_tensor_;
 
   explicit Tensor(const paddle::Tensor &t) : raw_tensor_(t) {}
@@ -75,5 +76,6 @@ struct Tensor {
 
   int64_t stride(int64_t d) const { return raw_tensor_.strides().at(d); }
 };
-
-}  // namespace paddle::deep_ep::detail
+}  // namespace detail
+using dTensor = detail::dTensor;
+}  // namespace paddle::deep_ep

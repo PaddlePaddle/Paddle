@@ -28,25 +28,25 @@
 namespace paddle::deep_ep {
 
 struct EventHandle {
-  std::shared_ptr<deep_ep::detail::Event> event;
+  std::shared_ptr<detail::Event> event;
 
   EventHandle() {
-    event = std::make_shared<deep_ep::detail::Event>();
+    event = std::make_shared<detail::Event>();
     // LOG(WARNING) << "EventHandle constructor is called without record current
     // stream";
-    event->record(deep_ep::detail::getCurrentCUDAStream().raw_stream());
+    event->record(detail::getCurrentCUDAStream().raw_stream());
   }
 
   void CalcStreamWait(int context_ring_id) const;
   void CommStreamWait(int context_ring_id) const;
 
   explicit EventHandle(const cudaStream_t& stream) {
-    event = std::make_shared<deep_ep::detail::Event>();
+    event = std::make_shared<detail::Event>();
     event->record(stream);
   }
 
   explicit EventHandle(const XPUStream& stream) {
-    event = std::make_shared<deep_ep::detail::Event>();
+    event = std::make_shared<detail::Event>();
     event->record(reinterpret_cast<cudaStream_t>(stream));
   }
 
@@ -54,9 +54,7 @@ struct EventHandle {
 
   void current_stream_wait() const {
     CUDA_CHECK(cudaStreamWaitEvent(
-        deep_ep::detail::getCurrentCUDAStream().raw_stream(),
-        event->cuda_event(),
-        0));
+        detail::getCurrentCUDAStream().raw_stream(), event->cuda_event(), 0));
   }
 };
 
@@ -64,8 +62,8 @@ EventHandle GetEventHandleFromCalcStream(int context_ring_id);
 EventHandle GetEventHandleFromCommStream(int context_ring_id);
 EventHandle GetEventHandleFromCustomStream(const XPUStream& stream);
 
-inline deep_ep::detail::Event create_event(const cudaStream_t& s) {
-  auto event = deep_ep::detail::Event();
+inline detail::Event create_event(const cudaStream_t& s) {
+  auto event = detail::Event();
   event.record(s);
   return event;
 }
