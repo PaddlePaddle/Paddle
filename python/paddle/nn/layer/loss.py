@@ -21,8 +21,8 @@ from paddle import base, in_dynamic_mode
 from paddle.base.framework import in_dynamic_or_pir_mode
 from paddle.utils.decorator_utils import (
     legacy_reduction_decorator,
-    legacy_reduction_special_decorator,
     param_one_alias,
+    smooth_l1_beta_compat,
 )
 
 from .. import functional as F
@@ -431,7 +431,7 @@ class CrossEntropyLoss(Layer):
     label_smoothing: float
     name: str | None
 
-    @legacy_reduction_special_decorator
+    @legacy_reduction_decorator
     def __init__(
         self,
         weight: Tensor | None = None,
@@ -1072,8 +1072,8 @@ class PoissonNLLLoss(Layer):
 
     """
 
-    @param_one_alias(["epsilon", "eps"])
     @legacy_reduction_decorator
+    @param_one_alias(["epsilon", "eps"])
     def __init__(
         self,
         log_input: bool = True,
@@ -1205,7 +1205,7 @@ class KLDivLoss(Layer):
     reduction: _ReduceMode
     log_target: bool
 
-    @legacy_reduction_special_decorator
+    @legacy_reduction_decorator
     def __init__(
         self, reduction: _ReduceMode = 'mean', log_target: bool = False
     ) -> None:
@@ -1578,6 +1578,7 @@ class SmoothL1Loss(Layer):
     name: str | None
 
     @legacy_reduction_decorator
+    @smooth_l1_beta_compat
     def __init__(
         self,
         reduction: _ReduceMode = 'mean',
@@ -2126,8 +2127,8 @@ class TripletMarginLoss(Layer):
     reduction: _ReduceMode
     name: str | None
 
-    @param_one_alias(["epsilon", "eps"])
     @legacy_reduction_decorator
+    @param_one_alias(["epsilon", "eps"])
     def __init__(
         self,
         margin: float = 1.0,

@@ -26,6 +26,7 @@ from paddle.utils.decorator_utils import (
     legacy_reduction_func_decorator,
     param_one_alias,
     param_two_alias,
+    smooth_l1_beta_compat,
 )
 
 from ...base.data_feeder import check_type, check_variable_and_dtype
@@ -1146,6 +1147,7 @@ def hsigmoid_loss(
 
 
 @legacy_reduction_func_decorator
+@smooth_l1_beta_compat
 @param_one_alias(["label", "target"])
 def smooth_l1_loss(
     input: Tensor,

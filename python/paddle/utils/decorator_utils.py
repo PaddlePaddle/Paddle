@@ -760,41 +760,213 @@ def index_select_decorator() -> Callable[
     return decorator
 
 
-_SA0_RD1 = {'size_average': 0, 'reduce': 1}
-_SA1_RD2 = {'size_average': 1, 'reduce': 2}
-_SA1_RD3 = {'size_average': 1, 'reduce': 3}
-_SA3_RD4 = {'size_average': 3, 'reduce': 4}
-_SA4_RD5 = {'size_average': 4, 'reduce': 5}
-_SA2_RD4 = {'size_average': 2, 'reduce': 4}
-
-LEGACY_POS: dict[str, dict[str, int]] = {
-    **dict.fromkeys(
-        (
-            'L1Loss',
-            'MSELoss',
-            'KLDivLoss',
-            'SmoothL1Loss',
-            'SoftMarginLoss',
-            'MultiLabelMarginLoss',
-        ),
-        _SA0_RD1,
-    ),
-    **dict.fromkeys(
-        (
-            'BCELoss',
-            'BCEWithLogitsLoss',
-            'MultiLabelSoftMarginLoss',
-            'HingeEmbeddingLoss',
-            'CosineEmbeddingLoss',
-            'MarginRankingLoss',
-        ),
-        _SA1_RD2,
-    ),
-    'CrossEntropyLoss': _SA1_RD3,
-    'NLLLoss': _SA1_RD3,
-    'PoissonNLLLoss': _SA2_RD4,
-    'MultiMarginLoss': _SA3_RD4,
-    'TripletMarginLoss': _SA4_RD5,
+# PyTorch positional layout for each loss API. Used by
+# ``legacy_reduction_decorator`` to convert positional args into kwargs by
+# their PyTorch name when the call matches PyTorch's signature (detected by a
+# ``bool``/``None`` at the ``size_average`` slot — distinguishes it from a
+# Paddle-internal positional call). Once converted, all alignment work
+# (legacy translation, ``param_one_alias``, ``smooth_l1_beta_compat``, ...)
+# operates on kwargs only.
+PYTORCH_LOSS_LAYOUT: dict[str, list[str]] = {
+    # ----- Layer __init__ (args after self) -----
+    'L1Loss': ['size_average', 'reduce', 'reduction'],
+    'MSELoss': ['size_average', 'reduce', 'reduction'],
+    'KLDivLoss': ['size_average', 'reduce', 'reduction', 'log_target'],
+    'SmoothL1Loss': ['size_average', 'reduce', 'reduction', 'beta'],
+    'SoftMarginLoss': ['size_average', 'reduce', 'reduction'],
+    'MultiLabelMarginLoss': ['size_average', 'reduce', 'reduction'],
+    'BCELoss': ['weight', 'size_average', 'reduce', 'reduction'],
+    'BCEWithLogitsLoss': [
+        'weight',
+        'size_average',
+        'reduce',
+        'reduction',
+        'pos_weight',
+    ],
+    'MultiLabelSoftMarginLoss': [
+        'weight',
+        'size_average',
+        'reduce',
+        'reduction',
+    ],
+    'HingeEmbeddingLoss': ['margin', 'size_average', 'reduce', 'reduction'],
+    'CosineEmbeddingLoss': ['margin', 'size_average', 'reduce', 'reduction'],
+    'MarginRankingLoss': ['margin', 'size_average', 'reduce', 'reduction'],
+    'CrossEntropyLoss': [
+        'weight',
+        'size_average',
+        'ignore_index',
+        'reduce',
+        'reduction',
+        'label_smoothing',
+    ],
+    'NLLLoss': [
+        'weight',
+        'size_average',
+        'ignore_index',
+        'reduce',
+        'reduction',
+    ],
+    'PoissonNLLLoss': [
+        'log_input',
+        'full',
+        'size_average',
+        'eps',
+        'reduce',
+        'reduction',
+    ],
+    'MultiMarginLoss': [
+        'p',
+        'margin',
+        'weight',
+        'size_average',
+        'reduce',
+        'reduction',
+    ],
+    'TripletMarginLoss': [
+        'margin',
+        'p',
+        'eps',
+        'swap',
+        'size_average',
+        'reduce',
+        'reduction',
+    ],
+    # ----- Functional APIs -----
+    'l1_loss': ['input', 'target', 'size_average', 'reduce', 'reduction'],
+    'mse_loss': ['input', 'target', 'size_average', 'reduce', 'reduction'],
+    'kl_div': [
+        'input',
+        'target',
+        'size_average',
+        'reduce',
+        'reduction',
+        'log_target',
+    ],
+    'smooth_l1_loss': [
+        'input',
+        'target',
+        'size_average',
+        'reduce',
+        'reduction',
+        'beta',
+    ],
+    'soft_margin_loss': [
+        'input',
+        'target',
+        'size_average',
+        'reduce',
+        'reduction',
+    ],
+    'multi_label_margin_loss': [
+        'input',
+        'target',
+        'size_average',
+        'reduce',
+        'reduction',
+    ],
+    'binary_cross_entropy': [
+        'input',
+        'target',
+        'weight',
+        'size_average',
+        'reduce',
+        'reduction',
+    ],
+    'binary_cross_entropy_with_logits': [
+        'input',
+        'target',
+        'weight',
+        'size_average',
+        'reduce',
+        'reduction',
+        'pos_weight',
+    ],
+    'multi_label_soft_margin_loss': [
+        'input',
+        'target',
+        'weight',
+        'size_average',
+        'reduce',
+        'reduction',
+    ],
+    'hinge_embedding_loss': [
+        'input',
+        'target',
+        'margin',
+        'size_average',
+        'reduce',
+        'reduction',
+    ],
+    'cosine_embedding_loss': [
+        'input1',
+        'input2',
+        'target',
+        'margin',
+        'size_average',
+        'reduce',
+        'reduction',
+    ],
+    'margin_ranking_loss': [
+        'input1',
+        'input2',
+        'target',
+        'margin',
+        'size_average',
+        'reduce',
+        'reduction',
+    ],
+    'nll_loss': [
+        'input',
+        'target',
+        'weight',
+        'size_average',
+        'ignore_index',
+        'reduce',
+        'reduction',
+    ],
+    'cross_entropy': [
+        'input',
+        'target',
+        'weight',
+        'size_average',
+        'ignore_index',
+        'reduce',
+        'reduction',
+        'label_smoothing',
+    ],
+    'poisson_nll_loss': [
+        'input',
+        'target',
+        'log_input',
+        'full',
+        'size_average',
+        'eps',
+        'reduce',
+        'reduction',
+    ],
+    'multi_margin_loss': [
+        'input',
+        'target',
+        'p',
+        'margin',
+        'weight',
+        'size_average',
+        'reduce',
+        'reduction',
+    ],
+    'triplet_margin_loss': [
+        'anchor',
+        'positive',
+        'negative',
+        'margin',
+        'p',
+        'eps',
+        'swap',
+        'size_average',
+        'reduce',
+        'reduction',
+    ],
 }
 
 
@@ -806,123 +978,64 @@ def compute_legacy_reduction(reduce_val, size_average_val):
     return 'sum' if size_average_val is False else 'mean'
 
 
-# Classes whose positional layout has a reduction string at a known slot,
-# which disambiguates from legacy bool positional args at adjacent indices.
-_LEGACY_AMBIGUOUS_REDUCTION: dict[str, tuple[int, frozenset[str]]] = {
-    'CrossEntropyLoss': (2, frozenset({'mean', 'sum', 'none'})),
-    'KLDivLoss': (0, frozenset({'mean', 'sum', 'none', 'batchmean'})),
-}
+def legacy_reduction_decorator(fn=None, *, is_method=True):
+    """Translate PyTorch-style loss API calls (positional or kwargs, with
+    deprecated ``size_average`` / ``reduce``) into Paddle's signature.
 
+    Step 1: if the user is using PyTorch's positional layout — detected by
+    a ``bool`` / ``None`` at the ``size_average`` slot of
+    ``PYTORCH_LOSS_LAYOUT`` — convert all positional args to kwargs by
+    their PyTorch name. This naturally handles signature differences
+    (extra Paddle params, name renames downstream) and avoids confusion
+    with Paddle-internal positional calls (whose ``size_average`` slot
+    holds a non-bool such as a ``str`` reduction or an ``int``).
 
-def get_legacy_reduce_and_size_average(cls_name, args, kwargs):
-    """Pop legacy 'size_average'/'reduce' from kwargs; read (without removing)
-    bool values at positional slots configured in LEGACY_POS. Returns
-    ``(reduce_val, size_avg_val)``; ``''`` indicates "not given".
-    """
-    reduce_val = ''
-    size_avg_val = ''
-    pos = LEGACY_POS.get(cls_name) or {}
-    idx = pos.get('size_average')
-    if 'size_average' in kwargs:
-        size_avg_val = kwargs.pop('size_average')
-    elif idx is not None and len(args) > idx and type(args[idx]) is bool:
-        size_avg_val = args[idx]
-    idx = pos.get('reduce')
-    if 'reduce' in kwargs:
-        reduce_val = kwargs.pop('reduce')
-    elif idx is not None and len(args) > idx and type(args[idx]) is bool:
-        reduce_val = args[idx]
-    return reduce_val, size_avg_val
-
-
-def _strip_legacy_positional(cls_name, args):
-    """Remove bool args at legacy positional slots configured in LEGACY_POS."""
-    pos = LEGACY_POS.get(cls_name)
-    if pos is None:
-        return args
-    use_args = list(args)
-    indices = [
-        idx
-        for key in ('size_average', 'reduce')
-        for idx in (pos.get(key),)
-        if idx is not None
-        and len(use_args) > idx
-        and type(use_args[idx]) is bool
-    ]
-    for idx in sorted(indices, reverse=True):
-        del use_args[idx]
-    return tuple(use_args)
-
-
-def apply_legacy_reduction(cls_name, reduce_val, size_avg_val, kwargs):
-    """Translate legacy 'reduce'/'size_average' values into ``kwargs['reduction']``
-    and emit a DeprecationWarning. Replaces the previous ``raise_deprecated_error``
-    behavior so deprecated args are translated rather than rejected.
-    """
-    suggested = compute_legacy_reduction(reduce_val, size_avg_val)
-    kwargs['reduction'] = suggested
-    reduce_repr = None if reduce_val == '' else reduce_val
-    size_avg_repr = None if size_avg_val == '' else size_avg_val
-    warnings.warn(
-        f"'size_average' and 'reduce' args of '{cls_name}' will be deprecated, "
-        f"please use reduction='{suggested}' instead. "
-        f"Detected: reduce={reduce_repr}, size_average={size_avg_repr}.",
-        DeprecationWarning,
-        stacklevel=3,
-    )
-
-
-def _is_ambiguous_legacy_layout(cls_name, use_args):
-    info = _LEGACY_AMBIGUOUS_REDUCTION.get(cls_name)
-    if info is None:
-        return False
-    idx, valid = info
-    return len(use_args) > idx and use_args[idx] in valid
-
-
-def legacy_reduction_decorator(
-    fn=None, *, is_method=True, ambiguous_check=False
-):
-    """Translate deprecated 'size_average'/'reduce' args into 'reduction'.
-
-    When legacy args are detected (kwargs or positional bools at slots in
-    ``LEGACY_POS``), ``kwargs['reduction']`` is set to the translated value
-    and a ``DeprecationWarning`` is emitted; legacy args take priority over
-    any explicit ``reduction``.
-
-    Use as ``@legacy_reduction_decorator`` for class ``__init__`` (default).
-    Use ``legacy_reduction_special_decorator`` (alias) for
-    CrossEntropyLoss / KLDivLoss positional ambiguity. Use
-    ``legacy_reduction_func_decorator`` (alias) for top-level functional
-    loss APIs.
+    Step 2: pop ``size_average`` / ``reduce`` from kwargs. PyTorch
+    semantics: ``None`` means "not provided" — only translate when at
+    least one value is non-None. The translated value is set as
+    ``kwargs['reduction']`` (overriding any prior value) and a
+    ``DeprecationWarning`` is emitted.
     """
 
     def decorate(f):
         @functools.wraps(f)
         def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
             if is_method:
-                # avoid subclass calling parent class init, causing cls_name to be inaccurate
+                # avoid subclass calling parent class init, causing
+                # name to be inaccurate
                 name = f.__qualname__.split(".")[0]
-                self_args, use_args = args[:1], args[1:]
+                self_args, use_args = args[:1], list(args[1:])
             else:
                 name = f.__name__
-                self_args, use_args = (), args
+                self_args, use_args = (), list(args)
 
-            if ambiguous_check and _is_ambiguous_legacy_layout(name, use_args):
-                # Positional layout matches the new (non-legacy) signature;
-                # only kwargs are unambiguously legacy here.
-                rd_val = kwargs.pop('reduce', '')
-                sa_val = kwargs.pop('size_average', '')
-                if rd_val != '' or sa_val != '':
-                    apply_legacy_reduction(name, rd_val, sa_val, kwargs)
-                return f(*self_args, *use_args, **kwargs)
+            layout = PYTORCH_LOSS_LAYOUT.get(name)
+            if layout is not None:
+                sa_idx = layout.index('size_average')
+                if len(use_args) > sa_idx and (
+                    type(use_args[sa_idx]) is bool or use_args[sa_idx] is None
+                ):
+                    for i, val in enumerate(use_args):
+                        if i < len(layout):
+                            kwargs.setdefault(layout[i], val)
+                    use_args = []
 
-            rd_val, sa_val = get_legacy_reduce_and_size_average(
-                name, use_args, kwargs
-            )
-            if rd_val != '' or sa_val != '':
-                use_args = _strip_legacy_positional(name, use_args)
-                apply_legacy_reduction(name, rd_val, sa_val, kwargs)
+            sa_val = kwargs.pop('size_average', '')
+            rd_val = kwargs.pop('reduce', '')
+            sa_set = sa_val != '' and sa_val is not None
+            rd_set = rd_val != '' and rd_val is not None
+            if sa_set or rd_set:
+                suggested = compute_legacy_reduction(
+                    rd_val if rd_set else '',
+                    sa_val if sa_set else '',
+                )
+                kwargs['reduction'] = suggested
+                warnings.warn(
+                    f"'size_average' and 'reduce' args of '{name}' will be "
+                    f"deprecated, please use reduction='{suggested}' instead.",
+                    DeprecationWarning,
+                    stacklevel=3,
+                )
             return f(*self_args, *use_args, **kwargs)
 
         wrapper.__signature__ = inspect.signature(f)
@@ -933,11 +1046,35 @@ def legacy_reduction_decorator(
     return decorate(fn)
 
 
-# Aliases — three call-site variants share one implementation.
-legacy_reduction_special_decorator = legacy_reduction_decorator(
-    ambiguous_check=True
-)
+# Functional variant — same logic without skipping ``self``. The "special"
+# case for CrossEntropyLoss / KLDivLoss positional ambiguity is absorbed
+# into the layout-based detection itself: positional args are only converted
+# when the ``size_average`` slot holds ``bool``/``None``, so calls like
+# ``KLDivLoss('mean', True)`` (str at slot 0) and
+# ``CrossEntropyLoss(w, -100, 'mean', True)`` (int at slot 1) naturally
+# fall through unmodified.
 legacy_reduction_func_decorator = legacy_reduction_decorator(is_method=False)
+
+
+def smooth_l1_beta_compat(
+    fn: Callable[_InputT, _RetT],
+) -> Callable[_InputT, _RetT]:
+    """PyTorch's ``smooth_l1_loss`` uses the non-Huber piecewise formula.
+    When the user passes ``beta`` (PyTorch's name for the threshold), rename
+    it to Paddle's ``delta`` AND default ``is_huber`` to False so the
+    computation matches PyTorch. Paddle's own default of ``is_huber=True``
+    is preserved for callers that pass ``delta`` directly.
+    """
+
+    @functools.wraps(fn)
+    def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+        if 'beta' in kwargs:
+            kwargs.setdefault('is_huber', False)
+            kwargs['delta'] = kwargs.pop('beta')
+        return fn(*args, **kwargs)
+
+    wrapper.__signature__ = inspect.signature(fn)
+    return wrapper
 
 
 def index_add_decorator() -> Callable[
