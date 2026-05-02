@@ -593,7 +593,9 @@ class TestBuildExtension(unittest.TestCase):
         self.assertIn('nvcc = /opt/rocm/bin/hipcc', content)
         self.assertIn('cuda_post_cflags = --prepared --hip-flag', content)
         self.assertIn('-D__HIP_PLATFORM_HCC__', content)
-        self.assertIn('-DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_HIP', content)
+        self.assertIn(
+            '-DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_HIP', content
+        )
         self.assertIn('-DPADDLE_WITH_HIP', content)
 
     def test_unix_ninja_reports_missing_corex_compiler(self):
