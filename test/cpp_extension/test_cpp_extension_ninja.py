@@ -45,6 +45,13 @@ class TestNinjaHelperFunctions(unittest.TestCase):
         if sys.platform.startswith('linux'):
             self.assertTrue(result, "ninja should be available on Linux CI")
 
+    def test_is_ninja_available_handles_probe_failure(self):
+        with mock.patch(
+            'paddle.utils.cpp_extension.cpp_extension.subprocess.check_output',
+            side_effect=OSError("ninja missing"),
+        ):
+            self.assertFalse(_is_ninja_available())
+
     def test_ninja_escape_path(self):
         self.assertEqual(_ninja_escape_path("/path/to/file"), "/path/to/file")
         self.assertEqual(
@@ -536,6 +543,88 @@ class TestBuildExtension(unittest.TestCase):
         self.assertIn('post_cflags = -w -D_GLIBCXX_USE_CXX11_ABI=1', content)
         self.assertIn('-DPADDLE_WITH_CUDA', content)
 
+    def test_unix_ninja_uses_hipcc_for_rocm_sources(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_dir = Path(tmpdir)
+            sources = [
+                str(test_dir / "custom_extension.cc"),
+                str(test_dir / "custom_kernel.cu"),
+            ]
+            objects = [
+                str(test_dir / "build" / "custom_extension.o"),
+                str(test_dir / "build" / "custom_kernel.cu.o"),
+            ]
+            build_map = {
+                objects[0]: (sources[0], '.cc'),
+                objects[1]: (sources[1], '.cu'),
+            }
+            compiler = _FakeUnixCompiler(objects, build_map)
+
+            with (
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.ROCM_HOME',
+                    '/opt/rocm',
+                    create=True,
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension._get_ccache_home',
+                    return_value=None,
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.prepare_unix_cudaflags',
+                    side_effect=lambda flags: ['--prepared', *flags],
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.core.is_compiled_with_rocm',
+                    return_value=True,
+                ),
+            ):
+                captured = self._run_build_with_fake_compiler(
+                    compiler,
+                    sources,
+                    extra_compile_args={
+                        'cxx': ['-w'],
+                        'hipcc': ['--hip-flag'],
+                    },
+                    include_dirs=[str(test_dir / "include")],
+                )
+
+        content = captured['ninja_content']
+        self.assertIn('nvcc = /opt/rocm/bin/hipcc', content)
+        self.assertIn('cuda_post_cflags = --prepared --hip-flag', content)
+        self.assertIn('-D__HIP_PLATFORM_HCC__', content)
+        self.assertIn('-DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_HIP', content)
+        self.assertIn('-DPADDLE_WITH_HIP', content)
+
+    def test_unix_ninja_reports_missing_corex_compiler(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_dir = Path(tmpdir)
+            sources = [str(test_dir / "custom_kernel.cu")]
+            objects = [str(test_dir / "build" / "custom_kernel.cu.o")]
+            build_map = {objects[0]: (sources[0], '.cu')}
+            compiler = _FakeUnixCompiler(objects, build_map)
+
+            with (
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.core.is_compiled_with_rocm',
+                    return_value=False,
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.core.is_compiled_with_custom_device',
+                    return_value=True,
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.os.path.isfile',
+                    return_value=False,
+                ),
+                self.assertRaisesRegex(ValueError, 'Corex compiler'),
+            ):
+                self._run_build_with_fake_compiler(
+                    compiler,
+                    sources,
+                    extra_compile_args={'nvcc': ['--gpu-flag']},
+                )
+
     def test_use_ninja_attribute_default(self):
         build_ext = self._build_extension()
         self.assertEqual(build_ext.use_ninja, _is_ninja_available())
@@ -803,6 +892,48 @@ class TestBuildExtension(unittest.TestCase):
         self.assertIn('--prepared', content)
         self.assertIn('/DPADDLE_WITH_CUDA', content)
         self.assertIn('deps = msvc', content)
+
+    def test_windows_ninja_ignores_invalid_extra_compile_args(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_dir = Path(tmpdir)
+            sources = [
+                str(test_dir / "custom_extension.cc"),
+                str(test_dir / "custom_kernel.cu"),
+            ]
+            objects = [
+                str(test_dir / "build" / "custom_extension.obj"),
+                str(test_dir / "build" / "custom_kernel.obj"),
+            ]
+            build_map = {
+                objects[0]: (sources[0], '.cc'),
+                objects[1]: (sources[1], '.cu'),
+            }
+            compiler = _FakeMsvcCompiler(objects, build_map)
+            invalid_extra_args = 'not-a-list'
+
+            with (
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.CUDA_HOME',
+                    '/opt/cuda',
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.prepare_win_cudaflags',
+                    side_effect=lambda flags: ['--prepared', *flags],
+                ),
+            ):
+                captured = self._run_build_with_fake_compiler(
+                    compiler,
+                    sources,
+                    extra_compile_args=invalid_extra_args,
+                    include_dirs=[str(test_dir / "include dir")],
+                )
+
+        content = captured['ninja_content']
+        self.assertIn('rule cuda_compile', content)
+        self.assertIn('cuda_post_cflags = -Xcompiler /EHsc', content)
+        self.assertIn('--prepared --use-local-env', content)
+        self.assertIn('/DPADDLE_WITH_CUDA', content)
+        self.assertNotIn(invalid_extra_args, content)
 
 
 class TestNinjaGeneratedSetupFile(unittest.TestCase):
