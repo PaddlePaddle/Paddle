@@ -3214,11 +3214,7 @@ class Layer:
             )
 
         def transform(t, device, dtype, blocking):
-            if floating_only and not (
-                paddle.is_floating_point(t) or paddle.is_complex(t)
-            ):
-                # Match PyTorch nn.Module.to semantics: skip dtype casting for
-                # non-floating/complex tensors, but still apply device change.
+            if floating_only and paddle.is_integer(t):
                 if device is None:
                     return t
                 return self._transform(t, device, None, blocking)
