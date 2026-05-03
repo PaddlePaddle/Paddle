@@ -63,7 +63,10 @@ class TestCDLPackExchangeAPI(unittest.TestCase):
         """
 
         mod: Module = tvm_ffi.cpp.load_inline(
-            name='mod', cpp_sources=cpp_source, functions='add_one_cpu'
+            name='mod',
+            cpp_sources=cpp_source,
+            functions='add_one_cpu',
+            keep_module_alive=False,
         )
 
         x = paddle.full((3,), 1.0, dtype='float32').cpu()
@@ -203,7 +206,10 @@ class TestDLPackDataType(unittest.TestCase):
             }
         """
         mod: Module = tvm_ffi.cpp.load_inline(
-            name='mod', cpp_sources=cpp_source, functions='check_dtype'
+            name='mod',
+            cpp_sources=cpp_source,
+            functions='check_dtype',
+            keep_module_alive=False,
         )
         for dtype in [
             paddle.bool,
@@ -263,7 +269,10 @@ class TestDLPackDeviceType(unittest.TestCase):
             }
         """
         mod: Module = tvm_ffi.cpp.load_inline(
-            name='mod', cpp_sources=cpp_source, functions='check_device'
+            name='mod',
+            cpp_sources=cpp_source,
+            functions='check_device',
+            keep_module_alive=False,
         )
 
         x_cpu = paddle.zeros((10,), dtype='float32').cpu()
