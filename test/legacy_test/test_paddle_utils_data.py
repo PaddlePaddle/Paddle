@@ -29,8 +29,8 @@ class TestAlias(unittest.TestCase):
         self.directObject = paddle.utils.data.dataset.Dataset
 
     def test_compatibility(self):
-        self.assertTrue(type(self.ioObject) == type(self.utilsObject))
-        self.assertTrue(type(self.ioObject) == type(self.directObject))
+        self.assertTrue(self.ioObject is self.utilsObject)
+        self.assertTrue(self.ioObject is self.directObject)
 
 
 class TestChainDatasetAlias(TestAlias):
@@ -86,7 +86,7 @@ class TestGetWorkerInfoAlias(TestAlias):
 
     def test_compatibility(self):
         super().test_compatibility()
-        self.assertTrue(type(self.ioObject) == type(self.internalUtilsObject))
+        self.assertTrue(self.ioObject is self.internalUtilsObject)
 
 
 class TestRandomSplitAlias(TestAlias):
@@ -107,7 +107,7 @@ class TestDefaultCollateAlias(TestAlias):
 
     def test_compatibility(self):
         super().test_compatibility()
-        self.assertTrue(type(self.ioObject) == type(self.internalUtilsObject))
+        self.assertTrue(self.ioObject is self.internalUtilsObject)
 
 
 class TestBatchSamplerAlias(TestAlias):

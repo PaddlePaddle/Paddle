@@ -730,10 +730,10 @@ std::vector<std::vector<size_t>> CastPyArg2VectorOfVectorOfSize_t(
   return result;
 }
 
-phi::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
-  phi::Place place;
+Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
+  Place place;
   if (PyObject_TypeCheck(obj, g_place_pytype)) {  // NOLINT
-    place = ::pybind11::handle(obj).cast<phi::Place>();
+    place = ::pybind11::handle(obj).cast<Place>();
   } else if (PyObject_TypeCheck(obj, g_cudaplace_pytype)) {
     place = ::pybind11::handle(obj).cast<GPUPlace>();
   } else if (PyObject_TypeCheck(obj, g_cpuplace_pytype)) {
@@ -966,20 +966,20 @@ paddle::framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
   return dtype;
 }
 
-paddle::DataType CastPyArg2DataTypeDirectly(PyObject* obj,
-                                            const std::string& op_type,
-                                            ssize_t arg_pos) {
+DataType CastPyArg2DataTypeDirectly(PyObject* obj,
+                                    const std::string& op_type,
+                                    ssize_t arg_pos) {
   if (obj == Py_None) {
     return DataType::UNDEFINED;
   }
 
-  paddle::DataType dtype;
+  DataType dtype;
   if (PyObject_TypeCheck(obj, g_data_type_pytype)) {
-    dtype = ::pybind11::handle(obj).cast<paddle::DataType>();
+    dtype = ::pybind11::handle(obj).cast<DataType>();
   } else {
     PADDLE_THROW(common::errors::InvalidType(
         "%s: argument (position %d) must be "
-        "one of paddle::DataType, "
+        "one of DataType, "
         "but got %s",
         op_type,
         arg_pos + 1,
@@ -988,10 +988,10 @@ paddle::DataType CastPyArg2DataTypeDirectly(PyObject* obj,
   return dtype;
 }
 
-paddle::DataType CastPyArg2DataTypeDirectly(PyObject* obj,
-                                            const std::string& op_type,
-                                            ssize_t arg_pos,
-                                            paddle::DataType default_value) {
+DataType CastPyArg2DataTypeDirectly(PyObject* obj,
+                                    const std::string& op_type,
+                                    ssize_t arg_pos,
+                                    DataType default_value) {
   if (obj == nullptr) {
     return default_value;
   } else {
@@ -1229,7 +1229,7 @@ PyObject* ToPyObject(const std::vector<std::vector<Tensor>>& value,
   return result;
 }
 
-PyObject* ToPyObject(const phi::Place& value) {
+PyObject* ToPyObject(const Place& value) {
   auto obj = ::pybind11::cast(value);
   obj.inc_ref();
   return obj.ptr();
@@ -2954,24 +2954,24 @@ std::vector<Tensor>& GetTensorListFromArgsWithBuffer(
   return result;
 }
 
-paddle::Place CastPyArg2Place(PyObject* obj,
-                              const std::string& op_type,
-                              ssize_t arg_pos) {
+Place CastPyArg2Place(PyObject* obj,
+                      const std::string& op_type,
+                      ssize_t arg_pos) {
   return CastPyArg2Place(obj, arg_pos);
 }
-paddle::Place CastPyArg2Place(PyObject* obj,
-                              const std::string& op_type,
-                              ssize_t arg_pos,
-                              paddle::Place default_place) {
+Place CastPyArg2Place(PyObject* obj,
+                      const std::string& op_type,
+                      ssize_t arg_pos,
+                      Place default_place) {
   if (obj != nullptr) {
     return CastPyArg2Place(obj, op_type, arg_pos);
   } else {
     return default_place;
   }
 }
-paddle::DataType CastPyArg2DataType(PyObject* obj,
-                                    const std::string& op_type,
-                                    ssize_t arg_pos) {
+DataType CastPyArg2DataType(PyObject* obj,
+                            const std::string& op_type,
+                            ssize_t arg_pos) {
   if (obj == Py_None) {
     return DataType::UNDEFINED;
   }
@@ -2994,10 +2994,10 @@ paddle::DataType CastPyArg2DataType(PyObject* obj,
     return NumpyDtype2TensorDtype(type_num);
   }
 }
-paddle::DataType CastPyArg2DataType(PyObject* obj,
-                                    const std::string& op_type,
-                                    ssize_t arg_pos,
-                                    paddle::DataType default_value) {
+DataType CastPyArg2DataType(PyObject* obj,
+                            const std::string& op_type,
+                            ssize_t arg_pos,
+                            DataType default_value) {
   if (obj != nullptr) {
     return CastPyArg2DataType(obj, op_type, arg_pos);
   } else {

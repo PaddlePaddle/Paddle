@@ -25,7 +25,7 @@ template <typename T, typename Context>
 void MultinomialInputChecker(const Context& dev_ctx,
                              const DenseTensor& x,
                              const Scalar& num_samples) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   auto in_dims = x.dims();
   int64_t dim_size = in_dims.size();
   const int64_t num_categories = in_dims[dim_size - 1];

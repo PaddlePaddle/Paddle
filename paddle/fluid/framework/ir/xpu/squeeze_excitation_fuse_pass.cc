@@ -352,7 +352,7 @@ int SqueezeExcitationFusePass::ApplyImpl(ir::Graph* graph,
 
     DenseTensor new_filter_t;
     new_filter_t.Resize(DDim({mul_1_w_len + mul_2_w_len}));
-    new_filter_t.set_type(phi::DataType::INT16);
+    new_filter_t.set_type(DataType::INT16);
     auto* cpu_ctx = static_cast<phi::CPUContext*>(
         phi::DeviceContextPool::Instance().Get(CPUPlace()));
     auto* new_filter_data = cpu_ctx->Alloc<int16_t>(&new_filter_t);
@@ -402,7 +402,7 @@ int SqueezeExcitationFusePass::ApplyImpl(ir::Graph* graph,
 
     DenseTensor new_filter_max_t;
     new_filter_max_t.Resize(DDim({filter_max_size}));
-    new_filter_max_t.set_type(phi::DataType::FLOAT32);
+    new_filter_max_t.set_type(DataType::FLOAT32);
     auto* new_filter_max_data = cpu_ctx->Alloc<float>(&new_filter_max_t);
 
     memcpy(new_filter_max_data,
@@ -449,7 +449,7 @@ int SqueezeExcitationFusePass::ApplyImpl(ir::Graph* graph,
 
       DenseTensor new_bias_t;
       new_bias_t.Resize(DDim({mul_1_bias_numel + mul_2_bias_numel}));
-      new_bias_t.set_type(phi::DataType::FLOAT32);
+      new_bias_t.set_type(DataType::FLOAT32);
       auto* cpu_ctx = static_cast<phi::CPUContext*>(
           phi::DeviceContextPool::Instance().Get(CPUPlace()));
       auto* new_bias_data = cpu_ctx->Alloc<float>(&new_bias_t);

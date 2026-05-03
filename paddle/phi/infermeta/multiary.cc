@@ -347,8 +347,8 @@ void AdamwInferMeta(const MetaTensor& param,
                     const Scalar& beta1,
                     const Scalar& beta2,
                     const Scalar& epsilon,
-                    float lr_ratio,
-                    float coeff,
+                    double lr_ratio,
+                    double coeff,
                     bool with_decay,
                     bool lazy_mode,
                     int64_t min_row_size_to_use_multithread,
@@ -2849,11 +2849,12 @@ void FusionGroupInferMeta(const std::vector<const MetaTensor*>& ins,
   }
 
   for (size_t j = 0; j < num_outs; ++j) {
-    if (outs_dtype[j] == phi::TransToProtoVarType(DataType::FLOAT16)) {
+    DataType out_dtype = TransToPhiDataType(outs_dtype[j]);
+    if (out_dtype == DataType::FLOAT16) {
       outs[j]->set_dtype(DataType::FLOAT16);
-    } else if (outs_dtype[j] == phi::TransToProtoVarType(DataType::FLOAT32)) {
+    } else if (out_dtype == DataType::FLOAT32) {
       outs[j]->set_dtype(DataType::FLOAT32);
-    } else if (outs_dtype[j] == phi::TransToProtoVarType(DataType::FLOAT64)) {
+    } else if (out_dtype == DataType::FLOAT64) {
       outs[j]->set_dtype(DataType::FLOAT64);
     }
   }

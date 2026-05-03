@@ -1,0 +1,23 @@
+{
+  "skill_name": "paddle-cross-ecosystem-custom-op",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "请把一个使用 torch.utils.cpp_extension 和 TORCH_LIBRARY 的简单 PyTorch 自定义算子仓库迁移到 Paddle，要求只做最小修改，明确哪些文件不动，哪些文件要改，并区分 build script 的全局 paddle.enable_compat 与运行时 scoped paddle.enable_compat。",
+      "expected_output": "输出应按 build / C++ / Python / tests 分层，build 层优先保留 torch.utils.cpp_extension import 并只加 paddle.enable_compat，优先保留注册代码和 kernel 逻辑，只修改测试入口和少量 compat 缺口。",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "请分析 PFCCLab/flashinfer 相对上游 flashinfer-ai/flashinfer 的改动，并总结哪些修改是 build 层、哪些是 Python glue、哪些属于框架兼容 workaround。",
+      "expected_output": "输出应先确认 PFCCLab fork 的实际迁移分支和 upstream 分支，再按层分类改动，指出显式 workaround 和 compat gap 风险，而不是只罗列文件或盲目比较 main...main。",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "某个迁移中的自定义算子在 Paddle 编译时报错：torch::empty 不存在。请按最小修改原则给出局部桥接方案，并说明是否需要为 compat 缺口准备 Paddle issue 最小复现。",
+      "expected_output": "输出应提供单点 C++ bridge 思路，说明为什么不应全量重写 tensor 逻辑，并给出 issue MRE 的边界。",
+      "files": []
+    }
+  ]
+}

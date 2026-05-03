@@ -56,8 +56,8 @@ HOSTDEVICE T igam(const T a, const T x) {
 
 template <typename T>
 HOSTDEVICE T igamc(const T a, const T x) {
-  static T big = 4.503599627370496e15;
-  static T biginv = 2.22044604925031308085e-16;
+  static const T big = 4.503599627370496e15;
+  static const T biginv = 2.22044604925031308085e-16;
 
   if ((x <= T{0}) || (a <= T{0})) return (T{1.0});
 

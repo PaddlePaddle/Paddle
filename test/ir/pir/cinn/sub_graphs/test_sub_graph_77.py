@@ -14,7 +14,7 @@
 
 # repo: PaddleDetection
 # model: configs^mot^jde^jde_darknet53_30e_576x320_single_dy2st_train
-# api:paddle.tensor.creation.to_tensor||method:__neg__||api:paddle.tensor.ops.exp||method:__mul__||method:__add__||method:__mul__||method:__neg__||api:paddle.tensor.ops.exp||method:__mul__||method:__add__||method:__mul__||method:__add__||method:__neg__||api:paddle.tensor.ops.exp||method:__mul__||method:__add__||method:__mul__||method:__add__||method:__neg__||api:paddle.tensor.ops.exp||method:__mul__||method:__add__||method:__mul__||method:__neg__||api:paddle.tensor.ops.exp||method:__mul__||method:__add__||method:__mul__||method:__add__||method:__neg__||api:paddle.tensor.ops.exp||method:__mul__||method:__add__||method:__mul__||method:__add__||method:__neg__||api:paddle.tensor.ops.exp||method:__mul__||method:__add__||method:__mul__||method:__neg__||api:paddle.tensor.ops.exp||method:__mul__||method:__add__||method:__mul__||method:__add__||method:__neg__||api:paddle.tensor.ops.exp||method:__mul__||method:__add__||method:__mul__||method:__add__||method:__radd__||method:__add__||method:__add__||method:__radd__||method:__add__||method:__add__||method:__radd__||method:__add__||method:__add__||method:__radd__||method:__add__||method:__add__
+# api:paddle.tensor.creation.to_tensor||method:__neg__||api:paddle.exp||method:__mul__||method:__add__||method:__mul__||method:__neg__||api:paddle.exp||method:__mul__||method:__add__||method:__mul__||method:__add__||method:__neg__||api:paddle.exp||method:__mul__||method:__add__||method:__mul__||method:__add__||method:__neg__||api:paddle.exp||method:__mul__||method:__add__||method:__mul__||method:__neg__||api:paddle.exp||method:__mul__||method:__add__||method:__mul__||method:__add__||method:__neg__||api:paddle.exp||method:__mul__||method:__add__||method:__mul__||method:__add__||method:__neg__||api:paddle.exp||method:__mul__||method:__add__||method:__mul__||method:__neg__||api:paddle.exp||method:__mul__||method:__add__||method:__mul__||method:__add__||method:__neg__||api:paddle.exp||method:__mul__||method:__add__||method:__mul__||method:__add__||method:__radd__||method:__add__||method:__add__||method:__radd__||method:__add__||method:__add__||method:__radd__||method:__add__||method:__add__||method:__radd__||method:__add__||method:__add__
 from base import *  # noqa: F403
 
 from paddle.static import InputSpec
@@ -74,52 +74,52 @@ class LayerCase(paddle.nn.Layer):
     ):
         var_9 = paddle.tensor.creation.to_tensor(26.0, dtype='float32')
         var_10 = -self.parameter_3
-        var_11 = paddle.tensor.ops.exp(var_10)
+        var_11 = paddle.exp(var_10)
         var_12 = var_11 * var_0
         var_13 = var_12 + self.parameter_3
         var_14 = var_13 * 0.5
         var_15 = -self.parameter_2
-        var_16 = paddle.tensor.ops.exp(var_15)
+        var_16 = paddle.exp(var_15)
         var_17 = var_16 * var_3
         var_18 = var_17 + self.parameter_2
         var_19 = var_18 * 0.5
         var_20 = var_14 + var_19
         var_21 = -self.parameter_4
-        var_22 = paddle.tensor.ops.exp(var_21)
+        var_22 = paddle.exp(var_21)
         var_23 = var_22 * var_6
         var_24 = var_23 + self.parameter_4
         var_25 = var_24 * 0.5
         var_26 = var_20 + var_25
         var_27 = -self.parameter_7
-        var_28 = paddle.tensor.ops.exp(var_27)
+        var_28 = paddle.exp(var_27)
         var_29 = var_28 * var_1
         var_30 = var_29 + self.parameter_7
         var_31 = var_30 * 0.5
         var_32 = -self.parameter_8
-        var_33 = paddle.tensor.ops.exp(var_32)
+        var_33 = paddle.exp(var_32)
         var_34 = var_33 * var_4
         var_35 = var_34 + self.parameter_8
         var_36 = var_35 * 0.5
         var_37 = var_31 + var_36
         var_38 = -self.parameter_5
-        var_39 = paddle.tensor.ops.exp(var_38)
+        var_39 = paddle.exp(var_38)
         var_40 = var_39 * var_7
         var_41 = var_40 + self.parameter_5
         var_42 = var_41 * 0.5
         var_43 = var_37 + var_42
         var_44 = -self.parameter_0
-        var_45 = paddle.tensor.ops.exp(var_44)
+        var_45 = paddle.exp(var_44)
         var_46 = var_45 * var_2
         var_47 = var_46 + self.parameter_0
         var_48 = var_47 * 0.5
         var_49 = -self.parameter_1
-        var_50 = paddle.tensor.ops.exp(var_49)
+        var_50 = paddle.exp(var_49)
         var_51 = var_50 * var_5
         var_52 = var_51 + self.parameter_1
         var_53 = var_52 * 0.5
         var_54 = var_48 + var_53
         var_55 = -self.parameter_6
-        var_56 = paddle.tensor.ops.exp(var_55)
+        var_56 = paddle.exp(var_55)
         var_57 = var_56 * var_8
         var_58 = var_57 + self.parameter_6
         var_59 = var_58 * 0.5

@@ -705,8 +705,9 @@ void LayerNormKernel(const Context& dev_ctx,
     case LayerNormKernelVariant::GENERIC:
     default:
 #ifdef PADDLE_WITH_CUDA
-      if (FLAGS_use_accuracy_compatible_kernel ||
-          (!isPowerOfTwo(feature_size) && feature_size > 1024)) {
+      if ((x_dtype == scale_bias_dtype) &&
+          (FLAGS_use_accuracy_compatible_kernel ||
+           (!isPowerOfTwo(feature_size) && feature_size > 1024))) {
         LayerNormFwdCompatKernel<T, Context>(
             dev_ctx,
             x_data,

@@ -66,7 +66,7 @@ class Tracker:
             f"{self.__class__.__name__} has no guard_tree_expr_node"
         )
 
-    # TODO(xiongkun): trace_value_from_frame is not a good name, it should be more related to guard but not tracable.
+    # TODO(xiongkun): trace_value_from_frame is not a good name, it should be more related to guard but not traceable.
     def trace_value_from_frame(self) -> StringifiedExpression:
         """
         Trace the value of the tracked variables from the frame. It used for generating the guard.

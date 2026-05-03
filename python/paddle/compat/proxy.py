@@ -102,6 +102,29 @@ class ProxyModule(types.ModuleType):
         return getattr(self._original_module, name)
 
 
+class CallableProxyModule(ProxyModule):
+    """
+    Preserve callability for modules whose type defines ``__call__``.
+
+    ``callable(obj)`` does not consult ``obj.__getattr__("__call__")``. It checks the
+    type-level call slot instead, so callable modules need a dedicated proxy subtype.
+    """
+
+    def __call__(self, *args, **kwargs):
+        return self._original_module(*args, **kwargs)
+
+
+def _create_proxy_module(
+    original_module: types.ModuleType,
+    proxy_name: str,
+    overrides: dict[str, OverriddenAttribute],
+) -> ProxyModule:
+    """Wrap callable modules with a callable proxy and plain modules with ProxyModule."""
+    if callable(original_module):
+        return CallableProxyModule(original_module, proxy_name, overrides)
+    return ProxyModule(original_module, proxy_name, overrides)
+
+
 GLOBAL_OVERRIDES: dict[str, OverriddenAttribute] = {
     "torch.relu": LazyImportOverriddenAttribute("paddle.nn.functional.relu"),
 }
@@ -339,7 +362,9 @@ class TorchProxyMetaFinder:
 
             def create_module(self, spec):
                 # Create a new module object that will act as the "torch..." module.
-                mod = ProxyModule(self._source, self._target_name, overrides)
+                mod = _create_proxy_module(
+                    self._source, self._target_name, overrides
+                )
                 # Preserve file/path information for tooling/debugging.
                 mod.__file__ = getattr(self._source, "__file__", None)
                 if is_pkg:
@@ -359,7 +384,7 @@ class TorchProxyMetaFinder:
                     if k in overrides:
                         continue
                     if isinstance(v, types.ModuleType):
-                        v = ProxyModule(
+                        v = _create_proxy_module(
                             v,
                             f"{self._target_name}.{k}",
                             {

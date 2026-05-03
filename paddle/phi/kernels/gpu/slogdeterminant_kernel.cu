@@ -34,13 +34,13 @@ namespace phi {
 
 // T is not complex
 template <typename T>
-T sign(T val) {
+T _sign(T val) {
   return static_cast<T>(T(0) < val) - (val < T(0));
 }
 
 // T is complex
 template <typename T>
-T sign(T det, T modulus) {
+T _sign(T det, T modulus) {
   return det / modulus;
 }
 
@@ -70,7 +70,7 @@ struct SlogDeterminantFunctor {
       VLOG(2) << "det value: " << matrix.determinant();
       VLOG(2) << "matrix val: " << matrix;
       auto det_val = matrix.determinant();
-      sign_vec.push_back(sign(det_val));
+      sign_vec.push_back(_sign(det_val));
       det_val >= 0
           ? log_vec.push_back(std::log(det_val))
           : log_vec.push_back(std::log(std::abs(
@@ -202,7 +202,7 @@ struct SlogDeterminantFunctor<dtype::complex<T>, Context> {
       std::complex<T> det_val = matrix.determinant();
       T abs_det_val = std::abs(det_val);
       sign_vec.push_back(static_cast<dtype::complex<T>>(
-          sign(det_val, static_cast<std::complex<T>>(abs_det_val))));
+          _sign(det_val, static_cast<std::complex<T>>(abs_det_val))));
       log_vec.push_back(static_cast<dtype::complex<T>>(std::log(abs_det_val)));
     }
     // merge sign_vec and log_vec as final output_vec
@@ -385,7 +385,7 @@ struct SlogDeterminantV2Functor {
       VLOG(2) << "det value: " << matrix.determinant();
       VLOG(2) << "matrix val: " << matrix;
       auto det_val = matrix.determinant();
-      sign_vec.push_back(phi::sign(det_val));
+      sign_vec.push_back(_sign(det_val));
       det_val >= 0
           ? log_vec.push_back(std::log(det_val))
           : log_vec.push_back(std::log(std::abs(
@@ -546,7 +546,7 @@ struct SlogDeterminantV2Functor<dtype::complex<T>, Context> {
       std::complex<T> det_val = matrix.determinant();
       T abs_det_val = std::abs(det_val);
       sign_vec.push_back(static_cast<dtype::complex<T>>(
-          phi::sign(det_val, static_cast<std::complex<T>>(abs_det_val))));
+          _sign(det_val, static_cast<std::complex<T>>(abs_det_val))));
       log_vec.push_back(std::log(abs_det_val));
     }
     TensorFromVector(sign_vec, dev_ctx, sign);
