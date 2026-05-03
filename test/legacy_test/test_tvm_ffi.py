@@ -28,6 +28,12 @@ if TYPE_CHECKING:
     from tvm_ffi import Module
 
 
+def _windows_tvm_ffi_extra_cflags():
+    if platform.system() == "Windows":
+        return ["/FIalgorithm"]
+    return None
+
+
 class TestTVMFFIEnvStream(unittest.TestCase):
     def test_tvm_ffi_env_stream_for_gpu_tensor(self):
         if not paddle.is_compiled_with_cuda():
@@ -66,6 +72,7 @@ class TestCDLPackExchangeAPI(unittest.TestCase):
             name='mod',
             cpp_sources=cpp_source,
             functions='add_one_cpu',
+            extra_cflags=_windows_tvm_ffi_extra_cflags(),
             keep_module_alive=False,
         )
 
@@ -147,6 +154,7 @@ class TestCDLPackExchangeAPI(unittest.TestCase):
             name='mod',
             cpp_sources=cpp_source,
             functions=['add_one_cpu'],
+            extra_cflags=_windows_tvm_ffi_extra_cflags(),
         )
 
         def run_check():
@@ -208,6 +216,7 @@ class TestDLPackDataType(unittest.TestCase):
             name='mod',
             cpp_sources=cpp_source,
             functions='check_dtype',
+            extra_cflags=_windows_tvm_ffi_extra_cflags(),
             keep_module_alive=False,
         )
         for dtype in [
@@ -271,6 +280,7 @@ class TestDLPackDeviceType(unittest.TestCase):
             name='mod',
             cpp_sources=cpp_source,
             functions='check_device',
+            extra_cflags=_windows_tvm_ffi_extra_cflags(),
             keep_module_alive=False,
         )
 
