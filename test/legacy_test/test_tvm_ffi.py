@@ -147,7 +147,6 @@ class TestCDLPackExchangeAPI(unittest.TestCase):
             name='mod',
             cpp_sources=cpp_source,
             functions=['add_one_cpu'],
-            keep_module_alive=False,
         )
 
         def run_check():
