@@ -151,7 +151,7 @@ struct MatmulPlanner {
                 const std::vector<int64_t>& y_dims,
                 const bool trans_x,
                 const bool trans_y,
-                phi::DataType dtype,
+                DataType dtype,
                 MatmulFusedType fused_type,
                 const void* bias_data = nullptr,
                 void* reserve_data = nullptr,  // Commonly for ReLu bit-mask.

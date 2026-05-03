@@ -152,7 +152,8 @@ class ArrayRef {
   std::vector<T> vec() const { return std::vector<T>(Data, Data + Length); }
 
   const paddle::experimental::IntArray _PD_ToPaddleIntArray() const {
-    return paddle::experimental::IntArray(Data, Length);
+    return paddle::experimental::IntArray(
+        reinterpret_cast<const int64_t*>(Data), Length);
   }
 };
 

@@ -80,6 +80,33 @@ inline bool isComplexType(ScalarType t) {
           t == ScalarType::ComplexDouble);
 }
 
+inline bool isBitsType(ScalarType t) {
+  return t == ScalarType::Bits1x8 || t == ScalarType::Bits2x4 ||
+         t == ScalarType::Bits4x2 || t == ScalarType::Bits8 ||
+         t == ScalarType::Bits16;
+}
+
+inline bool isBarebonesUnsignedType(ScalarType t) {
+  return t == ScalarType::UInt1 || t == ScalarType::UInt2 ||
+         t == ScalarType::UInt3 || t == ScalarType::UInt4 ||
+         t == ScalarType::UInt5 || t == ScalarType::UInt6 ||
+         t == ScalarType::UInt7 || t == ScalarType::UInt16 ||
+         t == ScalarType::UInt32 || t == ScalarType::UInt64;
+}
+
+inline ScalarType toQIntType(ScalarType t) {
+  switch (t) {
+    case ScalarType::Byte:
+      return ScalarType::QUInt8;
+    case ScalarType::Char:
+      return ScalarType::QInt8;
+    case ScalarType::Int:
+      return ScalarType::QInt32;
+    default:
+      return t;
+  }
+}
+
 inline bool isSignedType(ScalarType t) {
 #define CASE_ISSIGNED(name)     \
   case ScalarType::name:        \
@@ -175,6 +202,57 @@ inline bool isSignedType(ScalarType t) {
   }
 #undef CASE_ISSIGNED
   return false;  // Unreachable, but satisfies compiler
+}
+
+inline bool isUnderlying(ScalarType type, ScalarType qtype) {
+  return type == toUnderlying(qtype);
+}
+
+inline ScalarType toRealValueType(ScalarType t) {
+  switch (t) {
+    case ScalarType::ComplexHalf:
+      return ScalarType::Half;
+    case ScalarType::ComplexFloat:
+      return ScalarType::Float;
+    case ScalarType::ComplexDouble:
+      return ScalarType::Double;
+    default:
+      return t;
+  }
+}
+
+inline ScalarType toComplexType(ScalarType t) {
+  switch (t) {
+    case ScalarType::BFloat16:
+      return ScalarType::ComplexFloat;
+    case ScalarType::Half:
+      return ScalarType::ComplexHalf;
+    case ScalarType::Float:
+      return ScalarType::ComplexFloat;
+    case ScalarType::Double:
+      return ScalarType::ComplexDouble;
+    case ScalarType::ComplexHalf:
+      return ScalarType::ComplexHalf;
+    case ScalarType::ComplexFloat:
+      return ScalarType::ComplexFloat;
+    case ScalarType::ComplexDouble:
+      return ScalarType::ComplexDouble;
+    default:
+      TORCH_CHECK(false, "Unknown Complex ScalarType for ", t);
+  }
+}
+
+inline bool canCast(const ScalarType from, const ScalarType to) {
+  if (isComplexType(from) && !isComplexType(to)) {
+    return false;
+  }
+  if (isFloatingType(from) && isIntegralType(to, false)) {
+    return false;
+  }
+  if (from != ScalarType::Bool && to == ScalarType::Bool) {
+    return false;
+  }
+  return true;
 }
 
 }  // namespace c10
