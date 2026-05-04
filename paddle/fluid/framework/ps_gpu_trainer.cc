@@ -60,10 +60,10 @@ void PSGPUTrainer::Initialize(const TrainerDesc& trainer_desc,
   for (int i = 0; i < place_num; ++i) {
     int num = trainer_desc.worker_places(i);
 #ifdef PADDLE_WITH_CUDA
-    phi::GPUPlace place = phi::GPUPlace(num);
+    GPUPlace place = GPUPlace(num);
 #endif
 #ifdef PADDLE_WITH_XPU_KP
-    phi::XPUPlace place = phi::XPUPlace(num);
+    XPUPlace place = XPUPlace(num);
 #endif
     places_.push_back(place);
     dev_ids.push_back(num);

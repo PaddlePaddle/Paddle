@@ -66,8 +66,8 @@ COMMON_DECLARE_bool(enable_host_event_recorder_hook);
 namespace paddle::framework {
 
 std::vector<std::tuple<Place, LibraryType>> kKernelPriority = {
-    std::make_tuple(phi::GPUPlace(0), LibraryType::kCUDNN),
-    std::make_tuple(phi::GPUPlace(0), LibraryType::kPlain),
+    std::make_tuple(GPUPlace(0), LibraryType::kCUDNN),
+    std::make_tuple(GPUPlace(0), LibraryType::kPlain),
     std::make_tuple(CPUPlace(), LibraryType::kMKLDNN),
     std::make_tuple(CPUPlace(), LibraryType::kPlain),
 };

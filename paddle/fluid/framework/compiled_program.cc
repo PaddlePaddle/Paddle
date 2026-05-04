@@ -434,7 +434,7 @@ void InitP2P(const std::vector<Place> &places) {
     for (int i = 0; i < count; i++) {
       if (!phi::is_gpu_place(places[i])) return;
 
-      phi::GPUPlace device = places[i];
+      GPUPlace device = places[i];
       devices.push_back(device.GetDeviceId());
     }
 

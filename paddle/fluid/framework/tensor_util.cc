@@ -359,8 +359,8 @@ void TensorCopySync(const DenseTensor& src,
       return;
     }
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
-    phi::XPUPlace xpu_dst_place = dst_place;
-    phi::XPUPlace xpu_src_place = src_place;
+    XPUPlace xpu_dst_place = dst_place;
+    XPUPlace xpu_src_place = src_place;
     if (xpu_dst_place.device == xpu_src_place.device) {
       auto xpu_ctx = phi::DeviceContextPool::Instance().Get(xpu_dst_place);
       xpu_ctx->Wait();

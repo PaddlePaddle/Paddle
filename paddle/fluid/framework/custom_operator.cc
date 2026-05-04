@@ -129,7 +129,7 @@ static void RunKernelFunc(
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
         if (custom_in.is_gpu_pinned()) {
           VLOG(3) << "Custom Operator: custom input is gpu pinned tensor";
-          auto gpu_place = phi::GPUPlace(platform::GetCurrentDeviceId());
+          auto gpu_place = GPUPlace(platform::GetCurrentDeviceId());
           auto custom_gpu_in = custom_in.copy_to(gpu_place, true);
           kernel_ctx.EmplaceBackInput(std::move(custom_gpu_in));
         } else {
@@ -944,11 +944,11 @@ static void RegisterOperatorKernel(
       name, op_kernel_func, proto::VarType::RAW, CPUPlace());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   RegisterOperatorKernelWithPlace(
-      name, op_kernel_func, proto::VarType::RAW, phi::GPUPlace());
+      name, op_kernel_func, proto::VarType::RAW, GPUPlace());
 #endif
 #if defined(PADDLE_WITH_XPU)
   RegisterOperatorKernelWithPlace(
-      name, op_kernel_func, proto::VarType::RAW, phi::XPUPlace());
+      name, op_kernel_func, proto::VarType::RAW, XPUPlace());
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();

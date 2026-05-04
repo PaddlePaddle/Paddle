@@ -47,7 +47,7 @@ void CPUGarbageCollector::ClearCallback(const std::function<void()> &callback) {
 }
 
 #ifdef PADDLE_WITH_XPU
-XPUGarbageCollector::XPUGarbageCollector(const phi::XPUPlace &place,
+XPUGarbageCollector::XPUGarbageCollector(const XPUPlace &place,
                                          size_t max_memory_size)
     : GarbageCollector(place, max_memory_size) {}
 void XPUGarbageCollector::ClearCallback(const std::function<void()> &callback) {
@@ -75,7 +75,7 @@ void IPUGarbageCollector::ClearCallback(const std::function<void()> &callback) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 UnsafeFastGPUGarbageCollector::UnsafeFastGPUGarbageCollector(
-    const phi::GPUPlace &place, size_t max_memory_size)
+    const GPUPlace &place, size_t max_memory_size)
     : GarbageCollector(place, max_memory_size) {}
 
 void UnsafeFastGPUGarbageCollector::ClearCallback(
@@ -84,7 +84,7 @@ void UnsafeFastGPUGarbageCollector::ClearCallback(
 }
 
 DefaultStreamGarbageCollector::DefaultStreamGarbageCollector(
-    const phi::GPUPlace &place, size_t max_memory_size)
+    const GPUPlace &place, size_t max_memory_size)
     : GarbageCollector(place, max_memory_size) {}
 
 void DefaultStreamGarbageCollector::Wait() const {
@@ -96,7 +96,7 @@ void DefaultStreamGarbageCollector::ClearCallback(
   static_cast<phi::GPUContext *>(this->dev_ctx_)->AddStreamCallback(callback);
 }
 
-StreamGarbageCollector::StreamGarbageCollector(const phi::GPUPlace &place,
+StreamGarbageCollector::StreamGarbageCollector(const GPUPlace &place,
                                                size_t max_memory_size)
     : GarbageCollector(place, max_memory_size),
       stream_(nullptr),

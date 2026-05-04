@@ -165,9 +165,8 @@ struct DLDeviceVisitor {
         common::errors::Unimplemented("phi::IPUPlace is not supported"));
   }
 
-  inline ::DLDevice operator()(const phi::XPUPlace &place) const {
-    PADDLE_THROW(
-        common::errors::Unimplemented("phi::XPUPlace is not supported"));
+  inline ::DLDevice operator()(const XPUPlace &place) const {
+    PADDLE_THROW(common::errors::Unimplemented("XPUPlace is not supported"));
   }
 
   inline ::DLDevice operator()(const phi::XPUPinnedPlace &place) const {
@@ -187,7 +186,7 @@ struct DLDeviceVisitor {
         common::errors::Unimplemented("phi::CustomPlace is not supported"));
   }
 
-  inline ::DLDevice operator()(const phi::GPUPlace &place) const {
+  inline ::DLDevice operator()(const GPUPlace &place) const {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     ::DLDevice device;
     device.device_type = kDLCUDA;
@@ -195,7 +194,7 @@ struct DLDeviceVisitor {
     return device;
 #else
     PADDLE_THROW(common::errors::Unavailable(
-        "phi::GPUPlace is not supported in CPU only version."));
+        "GPUPlace is not supported in CPU only version."));
 #endif
   }
 
@@ -278,7 +277,7 @@ Place DLDeviceToPlace(const ::DLDevice &dl_device) {
   if (dl_device.device_type == kDLCPU) {
     place = CPUPlace();
   } else if (dl_device.device_type == kDLCUDA) {
-    place = phi::GPUPlace(dl_device.device_id);
+    place = GPUPlace(dl_device.device_id);
   } else if (dl_device.device_type == kDLCUDAHost) {
     place = phi::GPUPinnedPlace();
   } else {
