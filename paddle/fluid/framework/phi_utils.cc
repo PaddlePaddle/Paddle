@@ -62,7 +62,7 @@ OpKernelType TransPhiKernelKeyToOpKernelType(const phi::KernelKey& kernel_key) {
   proto::VarType::Type data_type =
       paddle::framework::TransToProtoVarType(kernel_key.dtype());
   // no need to set current device id here
-  phi::Place place = phi::TransToPhiPlace(kernel_key.backend(), false);
+  Place place = phi::TransToPhiPlace(kernel_key.backend(), false);
   DataLayout data_layout = kernel_key.layout();
   LibraryType library_type = LibraryType::kPlain;
   if (kernel_key.backend() == phi::Backend::ONEDNN) {
@@ -248,8 +248,8 @@ void InitDefaultKernelSignatureMap() {
   });
 }
 
-static void SetAllocationForUninitializedDenseTensor(
-    phi::DenseTensor* dense_tensor, const phi::Place& place) {
+static void SetAllocationForUninitializedDenseTensor(DenseTensor* dense_tensor,
+                                                     const Place& place) {
   int dtype_size = static_cast<int>(dense_tensor->dtype() == DataType::UNDEFINED
                                         ? 0
                                         : phi::SizeOf(dense_tensor->dtype()));

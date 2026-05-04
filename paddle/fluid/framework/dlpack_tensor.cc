@@ -57,9 +57,9 @@ DenseTensor from_blob(void *data,
                       const phi::DDim &shape,
                       const phi::DDim &strides,
                       phi::DataType dtype,
-                      const phi::Place &place,
+                      const Place &place,
                       const Deleter &deleter) {
-  auto meta = phi::DenseTensorMeta(dtype, shape, strides);
+  auto meta = DenseTensorMeta(dtype, shape, strides);
 
   phi::Allocation::DeleterFnPtr f = nullptr;
   if (deleter) {
@@ -86,7 +86,7 @@ DenseTensor from_blob(void *data,
 
   auto alloc =
       std::make_shared<phi::Allocation>(data, size * SizeOf(dtype), f, place);
-  return phi::DenseTensor(alloc, meta);
+  return DenseTensor(alloc, meta);
 }
 
 template <typename T>
@@ -151,7 +151,7 @@ static ::DLDataType GetDLDataTypeFromTypeIndex(phi::DataType type) {
 }
 
 struct DLDeviceVisitor {
-  using argument_type = const phi::Place &;
+  using argument_type = const Place &;
   using result_type = ::DLDevice;
   inline ::DLDevice operator()(const CPUPlace &place) const {
     ::DLDevice device;
@@ -273,8 +273,8 @@ phi::DataType DLDataTypeToPhiDataType(::DLDataType type) {
   return internal::GetDLDataTypeFromTypeIndex(dtype);
 }
 
-phi::Place DLDeviceToPlace(const ::DLDevice &dl_device) {
-  phi::Place place;
+Place DLDeviceToPlace(const ::DLDevice &dl_device) {
+  Place place;
   if (dl_device.device_type == kDLCPU) {
     place = CPUPlace();
   } else if (dl_device.device_type == kDLCUDA) {
@@ -287,7 +287,7 @@ phi::Place DLDeviceToPlace(const ::DLDevice &dl_device) {
   return place;
 }
 
-::DLDevice PlaceToDLDevice(const phi::Place &place) {
+::DLDevice PlaceToDLDevice(const Place &place) {
   return phi::VisitPlace(place, internal::DLDeviceVisitor());
 }
 
@@ -367,7 +367,7 @@ DenseTensor FromDLPackImpl(T *src, Deleter deleter) {
             src->dl_tensor.shape + src->dl_tensor.ndim,
             std::back_inserter(shape_vec));
 
-  phi::Place place = DLDeviceToPlace(src->dl_tensor.device);
+  Place place = DLDeviceToPlace(src->dl_tensor.device);
   phi::DataType dtype = DLDataTypeToPhiDataType(src->dl_tensor.dtype);
 
   if (!src->dl_tensor.strides) {
@@ -375,7 +375,7 @@ DenseTensor FromDLPackImpl(T *src, Deleter deleter) {
         src->dl_tensor.data,
         src,
         common::make_ddim(shape_vec),
-        phi::DenseTensorMeta::calc_strides(common::make_ddim(shape_vec)),
+        DenseTensorMeta::calc_strides(common::make_ddim(shape_vec)),
         dtype,
         place,
         std::move(deleter));
