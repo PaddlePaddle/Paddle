@@ -6875,7 +6875,7 @@ def repeat_interleave(
         For example, ``repeat_interleave(input=tensor_x, dim=1, ...)`` is equivalent to ``repeat_interleave(x=tensor_x, axis=1, ...)``.
 
     Args:
-        x (Tensor): The input Tensor to be operated. The data of ``x`` can be one of float32, float64, int32, int64.
+        x (Tensor): The input Tensor to be operated. The data of ``x`` can be one of float16, float32, float64, bfloat16, int32, int64.
             alias: ``input``.
         repeats (Tensor|int): The number of repetitions for each element. repeats is broadcasted to fit the shape of the given axis.
         axis (int|None, optional): The dimension in which we manipulate. Default: None, the output tensor is flatten.
@@ -6934,7 +6934,7 @@ def repeat_interleave(
     check_variable_and_dtype(
         x,
         'x',
-        ['float32', 'float64', 'int32', 'int64'],
+        ['float16', 'float32', 'float64', 'uint16', 'int32', 'int64'],
         'paddle.tensor.manipulation.repeat_interleave',
     )
 
