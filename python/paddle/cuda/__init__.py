@@ -433,16 +433,27 @@ class CudaError(RuntimeError):
         super().__init__(f"{msg} ({code})")
 
 
+class OutOfMemoryError(RuntimeError):
+    """Exception raised when a CUDA operation fails due to running out of GPU memory."""
+
+    def __init__(self, msg: str) -> None:
+        super().__init__(msg)
+
+
 def check_error(res: int) -> None:
     r"""Check the return code of a CUDA runtime API call.
 
     This function validates whether the given result code from a CUDA
     runtime call indicates success. If the result code is not
     :data:`base.libpaddle._cudart.cudaError.success`, it raises a
-    :class:`CudaError`.
+    :class:`CudaError` or :class:`OutOfMemoryError`.
 
     Args:
         res (int): The CUDA runtime return code.
+
+    Raises:
+        CudaError: If the result code is a CUDA error other than out-of-memory.
+        OutOfMemoryError: If the result code is ``cudaErrorMemoryAllocation`` (2).
 
     Examples:
         .. code-block:: pycon
@@ -454,6 +465,11 @@ def check_error(res: int) -> None:
             >>> # check_error(2) # check for cuda error code 2(out of memory), will raise Error
     """
     if res != base.libpaddle._cudart.cudaError.success:
+        if int(base.libpaddle._cudart.cudaError(res)) == 2:
+            msg = base.libpaddle._cudart.cudaGetErrorString(
+                base.libpaddle._cudart.cudaError(res)
+            )
+            raise OutOfMemoryError(f"{msg} ({res})")
         raise CudaError(res)
 
 
@@ -847,6 +863,8 @@ def get_stream_from_external(
 
 
 __all__ = [
+    "CudaError",
+    "OutOfMemoryError",
     "cudart",
     "check_error",
     "is_available",
