@@ -54,9 +54,9 @@ class PaddleDeleterManager {
 template <typename T>
 DenseTensor from_blob(void *data,
                       T *src,
-                      const phi::DDim &shape,
-                      const phi::DDim &strides,
-                      phi::DataType dtype,
+                      const DDim &shape,
+                      const DDim &strides,
+                      DataType dtype,
                       const Place &place,
                       const Deleter &deleter) {
   auto meta = phi::DenseTensorMeta(dtype, shape, strides);
@@ -139,7 +139,7 @@ static std::unordered_map<int, ::DLDataType> CreateDLDataTypeMap() {
   return result;
 }
 
-static ::DLDataType GetDLDataTypeFromTypeIndex(phi::DataType type) {
+static ::DLDataType GetDLDataTypeFromTypeIndex(DataType type) {
   static auto type_to_dtype_map = CreateDLDataTypeMap();
   static auto type_to_dtype_map_end_it = type_to_dtype_map.end();
   auto it = type_to_dtype_map.find(static_cast<int>(type));
@@ -212,7 +212,7 @@ struct DLDeviceVisitor {
 };
 }  // namespace internal
 
-phi::DataType DLDataTypeToPhiDataType(::DLDataType type) {
+DataType DLDataTypeToPhiDataType(::DLDataType type) {
   // vector types not currently supported
   PADDLE_ENFORCE_LE(
       type.lanes,
@@ -221,43 +221,43 @@ phi::DataType DLDataTypeToPhiDataType(::DLDataType type) {
 
   switch (type.bits) {
     case 8:
-      if (type.code == kDLBool) return phi::DataType::BOOL;
-      if (type.code == kDLInt) return phi::DataType::INT8;
-      if (type.code == kDLUInt) return phi::DataType::UINT8;
-      if (type.code == kDLFloat8_e4m3fn) return phi::DataType::FLOAT8_E4M3FN;
-      if (type.code == kDLFloat8_e5m2) return phi::DataType::FLOAT8_E5M2;
+      if (type.code == kDLBool) return DataType::BOOL;
+      if (type.code == kDLInt) return DataType::INT8;
+      if (type.code == kDLUInt) return DataType::UINT8;
+      if (type.code == kDLFloat8_e4m3fn) return DataType::FLOAT8_E4M3FN;
+      if (type.code == kDLFloat8_e5m2) return DataType::FLOAT8_E5M2;
       PADDLE_THROW(common::errors::Unimplemented(
           "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
           type.code,
           type.bits));
     case 16:
-      if (type.code == kDLInt) return phi::DataType::INT16;
-      if (type.code == kDLUInt) return phi::DataType::UINT16;
-      if (type.code == kDLFloat) return phi::DataType::FLOAT16;
-      if (type.code == kDLBfloat) return phi::DataType::BFLOAT16;
+      if (type.code == kDLInt) return DataType::INT16;
+      if (type.code == kDLUInt) return DataType::UINT16;
+      if (type.code == kDLFloat) return DataType::FLOAT16;
+      if (type.code == kDLBfloat) return DataType::BFLOAT16;
       PADDLE_THROW(common::errors::Unimplemented(
           "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
           type.code,
           type.bits));
     case 32:
-      if (type.code == kDLInt) return phi::DataType::INT32;
-      if (type.code == kDLUInt) return phi::DataType::UINT32;
-      if (type.code == kDLFloat) return phi::DataType::FLOAT32;
+      if (type.code == kDLInt) return DataType::INT32;
+      if (type.code == kDLUInt) return DataType::UINT32;
+      if (type.code == kDLFloat) return DataType::FLOAT32;
       PADDLE_THROW(common::errors::Unimplemented(
           "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
           type.code,
           type.bits));
     case 64:
-      if (type.code == kDLInt) return phi::DataType::INT64;
-      if (type.code == kDLUInt) return phi::DataType::UINT64;
-      if (type.code == kDLFloat) return phi::DataType::FLOAT64;
-      if (type.code == kDLComplex) return phi::DataType::COMPLEX64;
+      if (type.code == kDLInt) return DataType::INT64;
+      if (type.code == kDLUInt) return DataType::UINT64;
+      if (type.code == kDLFloat) return DataType::FLOAT64;
+      if (type.code == kDLComplex) return DataType::COMPLEX64;
       PADDLE_THROW(common::errors::Unimplemented(
           "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
           type.code,
           type.bits));
     case 128:
-      if (type.code == kDLComplex) return phi::DataType::COMPLEX128;
+      if (type.code == kDLComplex) return DataType::COMPLEX128;
       PADDLE_THROW(common::errors::Unimplemented(
           "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
           type.code,
@@ -268,7 +268,7 @@ phi::DataType DLDataTypeToPhiDataType(::DLDataType type) {
   }
 }
 
-::DLDataType PhiDataTypeToDLDataType(phi::DataType dtype) {
+::DLDataType PhiDataTypeToDLDataType(DataType dtype) {
   return internal::GetDLDataTypeFromTypeIndex(dtype);
 }
 
@@ -367,7 +367,7 @@ DenseTensor FromDLPackImpl(T *src, Deleter deleter) {
             std::back_inserter(shape_vec));
 
   Place place = DLDeviceToPlace(src->dl_tensor.device);
-  phi::DataType dtype = DLDataTypeToPhiDataType(src->dl_tensor.dtype);
+  DataType dtype = DLDataTypeToPhiDataType(src->dl_tensor.dtype);
 
   if (!src->dl_tensor.strides) {
     return internal::from_blob(

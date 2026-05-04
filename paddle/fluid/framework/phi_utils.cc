@@ -314,11 +314,11 @@ phi::IntArray MakePhiIntArrayFromVarList(
   vector_data.reserve(variable_list.size());
 
   for (auto* var : variable_list) {
-    phi::DataType data_type;
+    DataType data_type;
     if (var->IsType<DenseTensor>()) {
       const auto& tensor = var->Get<DenseTensor>();
       data_type = tensor.dtype();
-      if (data_type == phi::DataType::INT64) {
+      if (data_type == DataType::INT64) {
         const auto& tensor = var->Get<DenseTensor>();
         if (tensor.IsInitialized() &&
             !phi::is_same_place(tensor.place(), expected_place)) {
@@ -328,7 +328,7 @@ phi::IntArray MakePhiIntArrayFromVarList(
         } else {
           vector_data.push_back(*tensor.data<int64_t>());
         }
-      } else if (data_type == phi::DataType::INT32) {
+      } else if (data_type == DataType::INT32) {
         const auto& tensor = var->Get<DenseTensor>();
         if (tensor.IsInitialized() &&
             !phi::is_same_place(tensor.place(), expected_place)) {

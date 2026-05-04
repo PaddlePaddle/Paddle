@@ -1305,7 +1305,7 @@ struct OperatorWithKernel::CacheImpl {
   std::unique_ptr<RuntimeInferShapeContext> infer_shape_ctx_;
   std::vector<DenseTensor*> tensors_;
   bool not_allow_infer_shape_cache_;
-  std::vector<phi::DDim> last_ddims_;
+  std::vector<DDim> last_ddims_;
 };
 const char  // NOLINT
     OperatorWithKernel::CacheImpl::kNotAllowInferShapeCache[] =
@@ -1434,7 +1434,7 @@ bool OperatorWithKernel::SupportCustomDevice() const {
 #endif
 }
 
-bool OperatorWithKernel::SupportsONEDNN(const phi::DataType data_type) const {
+bool OperatorWithKernel::SupportsONEDNN(const DataType data_type) const {
   auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
       phi::TransToPhiKernelName(type_));
   auto has_phi_kernel =
@@ -1465,7 +1465,7 @@ bool OperatorWithKernel::SupportsONEDNN(const phi::DataType data_type) const {
   }
 }
 
-bool OperatorWithKernel::SupportsCUDNN(const phi::DataType data_type) const {
+bool OperatorWithKernel::SupportsCUDNN(const DataType data_type) const {
   auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
       phi::TransToPhiKernelName(type_));
   auto has_phi_kernel =
@@ -1505,7 +1505,7 @@ bool OperatorWithKernel::SupportsCPUBF16() const {
                   phi_kernels.end(),
                   [](phi::KernelKeyMap::const_reference kern_pair) {
                     return kern_pair.first.backend() == phi::Backend::CPU &&
-                           kern_pair.first.dtype() == phi::DataType::BFLOAT16;
+                           kern_pair.first.dtype() == DataType::BFLOAT16;
                   });
   if (has_phi_kernel) {
     return true;
@@ -1592,7 +1592,7 @@ bool OperatorWithKernel::SupportsKernelType(
 }
 
 bool OperatorWithKernel::CanONEDNNBeUsed(const framework::ExecutionContext& ctx,
-                                         phi::DataType data_type) const {
+                                         DataType data_type) const {
   return ((ctx.HasAttr("use_mkldnn") && ctx.Attr<bool>("use_mkldnn")) ||
           (ctx.HasAttr("use_onednn") && ctx.Attr<bool>("use_onednn"))) &&
          phi::is_cpu_place(ctx.GetPlace()) && this->SupportsONEDNN(data_type);
@@ -1604,7 +1604,7 @@ bool OperatorWithKernel::CanONEDNNBeUsed(const framework::ExecutionContext& ctx,
 }
 
 bool OperatorWithKernel::CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
-                                        phi::DataType data_type) const {
+                                        DataType data_type) const {
   bool use_cudnn = ctx.HasAttr("use_cudnn") && ctx.Attr<bool>("use_cudnn") &&
                    (phi::is_gpu_place(ctx.GetPlace()) ||
                     phi::is_custom_place(ctx.GetPlace()));
@@ -1617,7 +1617,7 @@ bool OperatorWithKernel::CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
   }
 
 #if defined(PADDLE_WITH_CUDA)
-  if (use_cudnn && data_type == phi::DataType::BFLOAT16) {
+  if (use_cudnn && data_type == DataType::BFLOAT16) {
     PADDLE_ENFORCE_GE(
         platform::DnnVersion(),
         8100,
@@ -1855,7 +1855,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                  kernel_type_->data_type_ ==
                      proto::VarType::Type::VarType_Type_BF16 &&
                  !this->SupportsCPUBF16() &&
-                 this->SupportsONEDNN(phi::DataType::BFLOAT16)) {
+                 this->SupportsONEDNN(DataType::BFLOAT16)) {
         kernel_type_->library_type_ = framework::LibraryType::kMKLDNN;
         kernel_type_->data_layout_ = framework::DataLayout::ONEDNN;
       }
@@ -2174,7 +2174,7 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
              expected_kernel_key.data_type_ ==
                  proto::VarType::Type::VarType_Type_BF16 &&
              !this->SupportsCPUBF16() &&
-             this->SupportsONEDNN(phi::DataType::BFLOAT16)) {
+             this->SupportsONEDNN(DataType::BFLOAT16)) {
     expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
     expected_kernel_key.data_layout_ = framework::DataLayout::ONEDNN;
   }

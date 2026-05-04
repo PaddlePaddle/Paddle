@@ -242,7 +242,7 @@ DDim CompatMetaTensor::dims() const {
   }
 }
 
-phi::DataType CompatMetaTensor::dtype() const {
+DataType CompatMetaTensor::dtype() const {
   ValidCheck(*this);
   if (is_runtime_) {
     auto* var = PADDLE_GET_CONST(Variable*, var_);
@@ -255,7 +255,7 @@ phi::DataType CompatMetaTensor::dtype() const {
     } else if (var->IsType<phi::TensorArray>()) {
       // NOTE(chenweihang): do nothing
       // Unsupported get dtype from phi::TensorArray now
-      return phi::DataType::UNDEFINED;
+      return DataType::UNDEFINED;
     } else {
       PADDLE_THROW(common::errors::Unimplemented(
           "Currently, only can get dtype from DenseTensor or SelectedRows."));
@@ -330,7 +330,7 @@ void CompatMetaTensor::set_dims(const DDim& dims) {
   }
 }
 
-void CompatMetaTensor::set_dtype(phi::DataType dtype) {
+void CompatMetaTensor::set_dtype(DataType dtype) {
   ValidCheck(*this);
   if (is_runtime_) {
     auto* var = PADDLE_GET(Variable*, var_);

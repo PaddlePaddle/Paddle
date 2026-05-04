@@ -215,8 +215,8 @@ struct CastDataType {
 #endif
 #if defined(PADDLE_WITH_XPU)
     } else if (phi::is_xpu_place(in_.place())) {
-      if (in_.dtype() == phi::DataType::COMPLEX64 &&
-          out_->dtype() == phi::DataType::FLOAT32) {
+      if (in_.dtype() == DataType::COMPLEX64 &&
+          out_->dtype() == DataType::FLOAT32) {
         auto* context = static_cast<const phi::XPUContext*>(ctx_);
         phi::RealKernel<phi::dtype::complex<float>>(*context, in_, out_);
       } else {
