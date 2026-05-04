@@ -59,7 +59,7 @@ DenseTensor from_blob(void *data,
                       phi::DataType dtype,
                       const Place &place,
                       const Deleter &deleter) {
-  auto meta = DenseTensorMeta(dtype, shape, strides);
+  auto meta = phi::DenseTensorMeta(dtype, shape, strides);
 
   phi::Allocation::DeleterFnPtr f = nullptr;
   if (deleter) {
@@ -375,7 +375,7 @@ DenseTensor FromDLPackImpl(T *src, Deleter deleter) {
         src->dl_tensor.data,
         src,
         common::make_ddim(shape_vec),
-        DenseTensorMeta::calc_strides(common::make_ddim(shape_vec)),
+        phi::DenseTensorMeta::calc_strides(common::make_ddim(shape_vec)),
         dtype,
         place,
         std::move(deleter));
