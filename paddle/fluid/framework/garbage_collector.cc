@@ -128,7 +128,7 @@ void StreamGarbageCollector::ClearCallback(
 }
 
 CUDAPinnedGarbageCollector::CUDAPinnedGarbageCollector(
-    const phi::GPUPinnedPlace &place, size_t max_memory_size)
+    const GPUPinnedPlace &place, size_t max_memory_size)
     : GarbageCollector(place, max_memory_size) {}
 
 void CUDAPinnedGarbageCollector::ClearCallback(

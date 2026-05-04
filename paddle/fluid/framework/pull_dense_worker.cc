@@ -95,7 +95,7 @@ void PullDenseWorker::CreatePinVar() {
       InitializeVariable(ptr, proto::VarType::DENSE_TENSOR);
       DenseTensor* pin_tensor = ptr->GetMutable<DenseTensor>();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      pin_tensor->mutable_data<float>(tensor->dims(), phi::GPUPinnedPlace());
+      pin_tensor->mutable_data<float>(tensor->dims(), GPUPinnedPlace());
 #endif
 #ifdef PADDLE_WITH_XPU
       pin_tensor->mutable_data<float>(tensor->dims(), CPUPlace());
@@ -142,7 +142,7 @@ void PullDenseWorker::Wait(std::vector<::std::future<int32_t>>* status_vec) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
         memory::Copy(places_[i],
                      w,
-                     phi::GPUPinnedPlace(),
+                     GPUPinnedPlace(),
                      pin_w,
                      sizeof(float) * tensor->numel(),
                      copy_streams_[i]);
