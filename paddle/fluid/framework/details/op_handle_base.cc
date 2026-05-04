@@ -210,7 +210,7 @@ void OpHandleBase::AddOutput(VarHandleBase *out) {
   out->AddInput(this, this->Node());
 }
 
-void OpHandleBase::WaitInputVarGenerated(const phi::Place &place) {
+void OpHandleBase::WaitInputVarGenerated(const Place &place) {
   for (auto in_var : inputs_) {
     if (NeedWait(in_var)) {
       // Dummy Variable is used to represent dependencies between operators,
@@ -274,7 +274,7 @@ void OpHandleBase::RunAndRecordEvent(const std::function<void()> &callback) {
 #endif
 }
 
-void OpHandleBase::RunAndRecordEvent(phi::Place p,
+void OpHandleBase::RunAndRecordEvent(Place p,
                                      const std::function<void()> &callback) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (phi::is_cpu_place(p) || events_.empty()) {

@@ -43,7 +43,7 @@ class EagerDeletionOpHandle : public OpHandleBase {
   EagerDeletionOpHandle(ir::Node *node,
                         Scope *scope,
                         size_t scope_idx,
-                        const phi::Place &place,
+                        const Place &place,
                         const std::unordered_set<ir::MemOptVarInfo *> &vars,
                         GarbageCollector *gc);
 
@@ -76,7 +76,7 @@ class EagerDeletionOpHandle : public OpHandleBase {
 
   Scope *scope_;
   size_t scope_idx_;
-  phi::Place place_;
+  Place place_;
   std::vector<ir::MemOptVarInfo *> var_infos_;  // not own
   GarbageCollector *gc_;                        // not own
   std::vector<Variable *> vars_;

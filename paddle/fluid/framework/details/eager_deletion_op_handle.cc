@@ -31,7 +31,7 @@ EagerDeletionOpHandle::EagerDeletionOpHandle(
     ir::Node *node,
     Scope *scope,
     size_t scope_idx,
-    const phi::Place &place,
+    const Place &place,
     const std::unordered_set<ir::MemOptVarInfo *> &vars,
     GarbageCollector *gc)
     : OpHandleBase(node),
@@ -146,9 +146,8 @@ void EagerDeletionOpHandle::RunImpl() {
 
     Variable *var = vars_[i];
 
-    if (var->IsType<phi::DenseTensor>()) {
-      garbages.emplace_back(
-          var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder());
+    if (var->IsType<DenseTensor>()) {
+      garbages.emplace_back(var->GetMutable<DenseTensor>()->MoveMemoryHolder());
     } else if (var->IsType<phi::SelectedRows>()) {
       garbages.emplace_back(var->GetMutable<phi::SelectedRows>()
                                 ->mutable_value()

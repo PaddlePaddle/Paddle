@@ -29,21 +29,21 @@ namespace details {
 void CheckVarHasNanOrInf(const std::string& op_type,
                          const framework::Scope& scope,
                          const std::string& var_name,
-                         const phi::Place& place);
+                         const Place& place);
 
 void CheckVarHasNanOrInf(const std::string& op_type,
                          const std::string& var_name,
                          const framework::Variable* var,
-                         const phi::Place& place);
+                         const Place& place);
 
 void CheckOpHasNanOrInf(const framework::OperatorBase& op,
                         const framework::Scope& scope,
-                        const phi::Place& place);
+                        const Place& place);
 
 template <typename VarType>
 void CheckOpHasNanOrInfInDygraph(const std::string& op_type,
                                  const imperative::NameVarMap<VarType>& op_outs,
-                                 phi::Place place) {
+                                 Place place) {
   for (const auto& pair : op_outs) {
     for (const auto& ivar : pair.second) {
       auto* var = ivar->MutableVar();

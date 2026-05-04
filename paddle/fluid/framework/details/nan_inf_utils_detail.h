@@ -44,8 +44,8 @@ template <typename Context>
 struct TensorCheckerVisitor {
   TensorCheckerVisitor(const std::string& o,
                        const std::string& v,
-                       const phi::DenseTensor& t,
-                       const phi::Place& p)
+                       const DenseTensor& t,
+                       const Place& p)
       : op_type(o), var_name(v), tensor(t), place(p) {}
 
   template <typename T>
@@ -94,8 +94,8 @@ struct TensorCheckerVisitor {
     auto* dev_ctx = reinterpret_cast<const Context*>(
         phi::DeviceContextPool::Instance().Get(tensor.place()));
 
-    phi::DenseTensor stats;
-    phi::DenseTensor values;
+    DenseTensor stats;
+    DenseTensor values;
     auto file_path = GetNanPath();
     phi::CheckNumericsKernel<T, Context>(*dev_ctx,
                                          tensor,
@@ -110,15 +110,15 @@ struct TensorCheckerVisitor {
 
   std::string op_type;
   std::string var_name;
-  const phi::DenseTensor& tensor;
-  const phi::Place& place;
+  const DenseTensor& tensor;
+  const Place& place;
 };
 
 template <typename Context>
 void tensor_check(const std::string& op_type,
                   const std::string& var_name,
-                  const phi::DenseTensor& tensor,
-                  const phi::Place& place) {
+                  const DenseTensor& tensor,
+                  const Place& place) {
   TensorCheckerVisitor<Context> visitor(op_type, var_name, tensor, place);
   framework::VisitDataType(framework::TransToProtoVarType(tensor.dtype()),
                            visitor);

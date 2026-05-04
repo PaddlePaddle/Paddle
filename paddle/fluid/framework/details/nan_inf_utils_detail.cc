@@ -156,15 +156,15 @@ void InitWhiteListFormEnv() {
 void CheckVarHasNanOrInf(const std::string& op_type,
                          const std::string& var_name,
                          const framework::Variable* var,
-                         const phi::Place& place) {
+                         const Place& place) {
   PADDLE_ENFORCE_NOT_NULL(
       var,
       common::errors::NotFound(
           "Cannot find var: `%s` in op `%s`.", var_name, op_type));
 
-  const phi::DenseTensor* tensor{nullptr};
-  if (var->IsType<phi::DenseTensor>()) {
-    tensor = &var->Get<phi::DenseTensor>();
+  const DenseTensor* tensor{nullptr};
+  if (var->IsType<DenseTensor>()) {
+    tensor = &var->Get<DenseTensor>();
   } else if (var->IsType<phi::SelectedRows>()) {
     tensor = &var->Get<phi::SelectedRows>().value();
   } else {
@@ -185,7 +185,7 @@ void CheckVarHasNanOrInf(const std::string& op_type,
     tensor_check<phi::GPUContext>(op_type, var_name, *tensor, place);
 #else
     PADDLE_THROW(common::errors::PreconditionNotMet(
-        "phi::DenseTensor[%s] use gpu place. PaddlePaddle must compile "
+        "DenseTensor[%s] use gpu place. PaddlePaddle must compile "
         "with GPU.",
         var_name));
 #endif
@@ -214,13 +214,12 @@ void CheckVarHasNanOrInf(const std::string& op_type,
     PADDLE_ENFORCE_NE(
         flag,
         true,
-        common::errors::Fatal(
-            "Operator %s output phi::DenseTensor %s contains Inf.",
-            op_type,
-            var_name));
+        common::errors::Fatal("Operator %s output DenseTensor %s contains Inf.",
+                              op_type,
+                              var_name));
 #else
     PADDLE_THROW(common::errors::PreconditionNotMet(
-        "phi::DenseTensor[%s] use xpu place. PaddlePaddle must compile "
+        "DenseTensor[%s] use xpu place. PaddlePaddle must compile "
         "with XPU.",
         var_name));
 #endif
@@ -232,7 +231,7 @@ void CheckVarHasNanOrInf(const std::string& op_type,
 void CheckVarHasNanOrInf(const std::string& op_type,
                          const framework::Scope& scope,
                          const std::string& var_name,
-                         const phi::Place& place) {
+                         const Place& place) {
   auto* var = scope.FindVar(var_name);
   CheckVarHasNanOrInf(op_type, var_name, var, place);
 }
@@ -257,7 +256,7 @@ bool IsSkipOp(const framework::OperatorBase& op) {
 
 void CheckOpHasNanOrInf(const framework::OperatorBase& op,
                         const framework::Scope& exec_scope,
-                        const phi::Place& place) {
+                        const Place& place) {
   std::call_once(white_list_init_flag, InitWhiteListFormEnv);
 
   if (IsSkipOp(op)) return;
