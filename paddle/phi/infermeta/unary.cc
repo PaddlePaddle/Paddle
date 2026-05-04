@@ -6442,6 +6442,7 @@ void UniqueRawInferMeta(const MetaTensor& x,
                         MetaTensor* indices,
                         MetaTensor* index,
                         MetaTensor* counts) {
+  out->set_dtype(x.dtype());
   if (!is_sorted) {
     PADDLE_ENFORCE_EQ(x.dims().size() == 1 || x.dims().size() == 0,
                       true,
@@ -6451,6 +6452,7 @@ void UniqueRawInferMeta(const MetaTensor& x,
                           x.dims().size()));
     out->set_dims(make_ddim({-1}));
     index->set_dims(x.dims());
+    index->set_dtype(dtype);
     return;
   }
 
@@ -6467,6 +6469,7 @@ void UniqueRawInferMeta(const MetaTensor& x,
     out->set_dims(make_ddim({-1}));
     if (return_inverse) {
       index->set_dims(make_ddim({common::product(x.dims())}));
+      index->set_dtype(dtype);
     }
   } else {
     int axis_value = axis[0];
