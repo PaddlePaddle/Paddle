@@ -53,7 +53,7 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
                     true,
                     common::errors::PreconditionNotMet(
                         "The gpu_device_id field should be valid"));
-  phi::Place place = GPUPlace(argument->gpu_device_id());
+  Place place = GPUPlace(argument->gpu_device_id());
   auto *scope = argument->scope_ptr();
   std::vector<std::string> all_vars = scope->LocalVarNames();
 
@@ -79,7 +79,7 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
   phi::DeviceContext *dev_ctx = pool.Get(place);
 
   std::unordered_set<std::string> visited;
-  std::vector<phi::DenseTensor *> dense_tensors;
+  std::vector<DenseTensor *> dense_tensors;
   for (auto *node : paddle::framework::ir::TopologySortOperations(graph)) {
     if (!node->IsOp()) continue;
     if (node->Op()->Type() == "feed" || node->Op()->Type() == "fetch") continue;
@@ -99,8 +99,8 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
       PADDLE_ENFORCE_NOT_NULL(
           var,
           common::errors::PreconditionNotMet("The var should not be nullptr"));
-      if (var->IsType<phi::DenseTensor>()) {
-        dense_tensors.push_back(var->GetMutable<phi::DenseTensor>());
+      if (var->IsType<DenseTensor>()) {
+        dense_tensors.push_back(var->GetMutable<DenseTensor>());
       }
     }
   }
@@ -113,7 +113,7 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
   num_threads = std::min(num_threads, dense_tensors.size() / chunk_size);
   const size_t remains_size = dense_tensors.size() % num_threads;
 
-  auto sync_handler = [&](const std::vector<phi::DenseTensor *> &tensors) {
+  auto sync_handler = [&](const std::vector<DenseTensor *> &tensors) {
 #ifdef PADDLE_WITH_HIP
     hipStream_t stream;
     hipStreamCreateWithFlags(&stream, hipStreamNonBlocking);
@@ -148,17 +148,16 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
   for (size_t i = 0; i < num_threads; ++i) {
     auto start_it = dense_tensors.begin() + i * chunk_size;
     auto end_it = start_it + chunk_size;
-    futures.push_back(
-        std::async(std::launch::async,
-                   sync_handler,
-                   std::vector<phi::DenseTensor *>(start_it, end_it)));
+    futures.push_back(std::async(std::launch::async,
+                                 sync_handler,
+                                 std::vector<DenseTensor *>(start_it, end_it)));
   }
   if (remains_size > 0) {
     futures.push_back(std::async(
         std::launch::async,
         sync_handler,
-        std::vector<phi::DenseTensor *>(
-            dense_tensors.rbegin(), dense_tensors.rbegin() + remains_size)));
+        std::vector<DenseTensor *>(dense_tensors.rbegin(),
+                                   dense_tensors.rbegin() + remains_size)));
   }
   for (auto &future : futures) {
     future.wait();
@@ -195,8 +194,8 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToCustomDevice(
   LOG(INFO) << "Sync params from CPU to " << argument->custom_device_type()
             << ":" << argument->custom_device_id();
 
-  phi::Place place = phi::CustomPlace(argument->custom_device_type(),
-                                      argument->custom_device_id());
+  Place place = phi::CustomPlace(argument->custom_device_type(),
+                                 argument->custom_device_id());
   auto *scope = argument->scope_ptr();
   std::vector<std::string> all_vars = scope->LocalVarNames();
 
@@ -206,8 +205,8 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToCustomDevice(
         var,
         common::errors::PreconditionNotMet("The var should not be nullptr"));
 
-    if (var->IsType<phi::DenseTensor>()) {
-      auto *t = var->GetMutable<phi::DenseTensor>();
+    if (var->IsType<DenseTensor>()) {
+      auto *t = var->GetMutable<DenseTensor>();
       paddle::framework::TensorCopySync(*t, place, t);
     }
   }
@@ -226,7 +225,7 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToXpu(Argument *argument) {
   LOG(INFO) << "Sync params from CPU to XPU: "
             << "xpu_device_id - " << argument->xpu_device_id();
 
-  phi::Place xpu_place = phi::XPUPlace(argument->xpu_device_id());
+  Place xpu_place = XPUPlace(argument->xpu_device_id());
   auto *scope = argument->scope_ptr();
   framework::ir::Graph &main_graph = argument->main_graph();
 
@@ -236,9 +235,9 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToXpu(Argument *argument) {
       if (!node->IsVar() || !node->Var() || !node->Var()->Persistable())
         continue;
       auto *var = scope->FindVar(node->Name());
-      if (!var->IsType<phi::DenseTensor>()) continue;
-      auto *tensor = var->GetMutable<phi::DenseTensor>();
-      if (tensor->place().GetType() == phi::AllocationType::XPU) continue;
+      if (!var->IsType<DenseTensor>()) continue;
+      auto *tensor = var->GetMutable<DenseTensor>();
+      if (tensor->place().GetType() == AllocationType::XPU) continue;
       paddle::framework::TensorCopySync(*tensor, xpu_place, tensor);
     }
   }

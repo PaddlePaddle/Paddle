@@ -41,7 +41,7 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
   // The load program should run on the same device with the inference program,
   // so that the parameters will on the same device, or they will keep copying
   // between difference devices.
-  phi::Place place;
+  Place place;
   place = CPUPlace();
 
   if (argument->model_dir_valid()) {
@@ -106,7 +106,7 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
 }
 
 std::unique_ptr<framework::ProgramDesc> IrGraphBuildPass::LoadModel(
-    const std::string &path, framework::Scope *scope, const phi::Place &place) {
+    const std::string &path, framework::Scope *scope, const Place &place) {
   framework::Executor exe(place);
   return Load(&exe, scope, path);
 }
@@ -115,7 +115,7 @@ std::unique_ptr<framework::ProgramDesc> IrGraphBuildPass::LoadModel(
     const std::string &program_path,
     const std::string &params_path,
     framework::Scope *scope,
-    const phi::Place &place,
+    const Place &place,
     bool model_from_memory,
     bool skip_load_params) {
   framework::Executor exe(place);

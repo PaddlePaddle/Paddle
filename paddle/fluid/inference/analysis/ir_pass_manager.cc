@@ -59,8 +59,7 @@ void IRPassManager::CreatePasses(Argument *argument,
               new std::string(argument->tensorrt_transformer_maskid()));
     pass->Set("disable_logs", new bool(argument->disable_logs()));
     auto trt_precision_mode = argument->tensorrt_precision_mode();
-    bool enable_int8 =
-        trt_precision_mode == static_cast<int>(phi::DataType::INT8);
+    bool enable_int8 = trt_precision_mode == static_cast<int>(DataType::INT8);
     pass->Set("enable_int8", new bool(enable_int8));
     pass->Set("max_input_shape",
               new std::map<std::string, std::vector<int>>(

@@ -46,7 +46,7 @@ namespace {
 void OutputProcess(framework::ir::Graph *graph,
                    const std::unordered_set<framework::ir::Node *> &trt_outputs,
                    phi::Backend backend,
-                   phi::DataType precision,
+                   DataType precision,
                    const std::unordered_set<std::string> &blacklist,
                    const std::unordered_set<std::string> &whitelist) {
   framework::BlockDesc *block_desc{nullptr};
@@ -55,11 +55,11 @@ void OutputProcess(framework::ir::Graph *graph,
       var_to_cast_op_map;
 
   framework::proto::VarType::Type to_type;
-  if (precision == phi::DataType::FLOAT16) {
+  if (precision == DataType::FLOAT16) {
     to_type = framework::proto::VarType::FP16;
-  } else if (precision == phi::DataType::BFLOAT16) {
+  } else if (precision == DataType::BFLOAT16) {
     to_type = framework::proto::VarType::BF16;
-  } else if (precision == phi::DataType::FLOAT32) {
+  } else if (precision == DataType::FLOAT32) {
     return;
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
@@ -135,9 +135,8 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
             << graph->GetBlockId();
   }
 
-  auto model_precision =
-      static_cast<phi::DataType>(Get<int>("model_precision"));
-  if (model_precision == phi::DataType::BFLOAT16) {
+  auto model_precision = static_cast<DataType>(Get<int>("model_precision"));
+  if (model_precision == DataType::BFLOAT16) {
     LOG(WARNING)
         << "Paddle-TRT not support bf16 mixed precision, just fallback.";
     return;
@@ -384,8 +383,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
     }
   }
 
-  auto model_precision =
-      static_cast<phi::DataType>(Get<int>("model_precision"));
+  auto model_precision = static_cast<DataType>(Get<int>("model_precision"));
   auto mixed_black_list =
       Get<std::unordered_set<std::string>>("mixed_black_list");
   auto mixed_white_list =
@@ -471,8 +469,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
       graph_var_map[node->Name()] = node;
     }
   }
-  auto precision_mode =
-      static_cast<phi::DataType>(Get<int>("trt_precision_mode"));
+  auto precision_mode = static_cast<DataType>(Get<int>("trt_precision_mode"));
   auto trt_params_run_fp16 =
       Get<std::vector<std::string>>("trt_parameter_run_fp16");
   auto trt_params_run_int8 =
@@ -484,13 +481,13 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
     if (std::find(trt_params_run_fp16.begin(),
                   trt_params_run_fp16.end(),
                   para) != trt_params_run_fp16.end()) {
-      precision_mode = phi::DataType::FLOAT16;
+      precision_mode = DataType::FLOAT16;
       break;
     }
   }
 
   bool enable_fp16 = false;
-  if (precision_mode == phi::DataType::FLOAT16) enable_fp16 = true;
+  if (precision_mode == DataType::FLOAT16) enable_fp16 = true;
   auto enable_int8 = Get<bool>("enable_int8");
 
   for (const auto &para : parameters) {
@@ -498,7 +495,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
                   trt_params_run_int8.end(),
                   para) != trt_params_run_int8.end()) {
       enable_int8 = true;
-      precision_mode = phi::DataType::INT8;
+      precision_mode = DataType::INT8;
       break;
     }
   }
@@ -507,12 +504,12 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
     if (std::find(trt_params_run_bfp16.begin(),
                   trt_params_run_bfp16.end(),
                   para) != trt_params_run_bfp16.end()) {
-      precision_mode = phi::DataType::BFLOAT16;
+      precision_mode = DataType::BFLOAT16;
       break;
     }
   }
   bool enable_bfp16 = false;
-  if (precision_mode == phi::DataType::BFLOAT16) enable_bfp16 = true;
+  if (precision_mode == DataType::BFLOAT16) enable_bfp16 = true;
 
   auto use_calib_mode = Get<bool>("use_calib_mode");
   auto &subgraph_nodes = *framework::ir::Agent(node).subgraph();

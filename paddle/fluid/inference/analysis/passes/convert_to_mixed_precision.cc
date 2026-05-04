@@ -31,7 +31,7 @@ ConvertToMixedPrecisionPass::ConvertToMixedPrecisionPass(
     const std::string& params_file,
     const std::string& mixed_model_file,
     const std::string& mixed_params_file,
-    phi::DataType mixed_precision,
+    DataType mixed_precision,
     phi::Backend backend,
     bool keep_io_types,
     const std::unordered_set<std::string>& black_list,
@@ -47,8 +47,8 @@ ConvertToMixedPrecisionPass::ConvertToMixedPrecisionPass(
       white_list_(white_list) {
   switch (backend_) {
     case phi::Backend::GPU:
-      PADDLE_ENFORCE(mixed_precision_ == phi::DataType::FLOAT16 ||
-                         mixed_precision_ == phi::DataType::BFLOAT16,
+      PADDLE_ENFORCE(mixed_precision_ == DataType::FLOAT16 ||
+                         mixed_precision_ == DataType::BFLOAT16,
                      common::errors::InvalidArgument(
                          "mixed_precision of %s currently only supported fp16 "
                          "and bf16, not support %s.",
@@ -57,7 +57,7 @@ ConvertToMixedPrecisionPass::ConvertToMixedPrecisionPass(
       break;
     case phi::Backend::XPU:
     case phi::Backend::CUSTOM:
-      PADDLE_ENFORCE(mixed_precision_ == phi::DataType::FLOAT16,
+      PADDLE_ENFORCE(mixed_precision_ == DataType::FLOAT16,
                      common::errors::InvalidArgument(
                          "mixed_precision of %s currently only supported fp16 "
                          "and bf16, not support %s.",
@@ -194,7 +194,7 @@ void ConvertToMixedPrecisionPass::SaveMixedModel() {
 
 bool OpSupportPrecision(const std::string& op_type,
                         phi::Backend backend,
-                        phi::DataType precision,
+                        DataType precision,
                         const std::unordered_set<std::string>& black_list,
                         const std::unordered_set<std::string>& white_list) {
   return framework::ir::OpSupportPrecision(
@@ -225,7 +225,7 @@ void ConvertToMixedPrecision(
     const std::string& params_file,
     const std::string& mixed_model_file,
     const std::string& mixed_params_file,
-    phi::DataType mixed_precision,
+    DataType mixed_precision,
     phi::Backend backend,
     bool keep_io_types,
     const std::unordered_set<std::string>& black_list,

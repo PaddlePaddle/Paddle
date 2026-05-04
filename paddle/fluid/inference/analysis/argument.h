@@ -43,7 +43,7 @@ namespace analysis {
 
 #ifdef PADDLE_WITH_DNNL
 using VarQuantScale =
-    std::unordered_map<std::string, std::pair<bool, phi::DenseTensor>>;
+    std::unordered_map<std::string, std::pair<bool, DenseTensor>>;
 #endif
 
 /*

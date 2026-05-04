@@ -35,7 +35,7 @@ class ConvertToMixedPrecisionPass {
       const std::string& params_file,
       const std::string& mixed_model_file,
       const std::string& mixed_params_file,
-      phi::DataType mixed_precision,
+      DataType mixed_precision,
       phi::Backend backend,
       bool keep_io_types,
       const std::unordered_set<std::string>& black_list,
@@ -52,7 +52,7 @@ class ConvertToMixedPrecisionPass {
   std::string params_file_;
   std::string mixed_model_file_;
   std::string mixed_params_file_;
-  phi::DataType mixed_precision_;
+  DataType mixed_precision_;
   phi::Backend backend_;
   bool keep_io_types_;
   std::unordered_set<std::string> black_list_;
@@ -64,7 +64,7 @@ class ConvertToMixedPrecisionPass {
 
 bool OpSupportPrecision(const std::string& op_type,
                         phi::Backend backend,
-                        phi::DataType precision,
+                        DataType precision,
                         const std::unordered_set<std::string>& black_list,
                         const std::unordered_set<std::string>& white_list);
 
@@ -82,7 +82,7 @@ void ConvertToMixedPrecision(const std::string& model_file,
                              const std::string& params_file,
                              const std::string& mixed_model_file,
                              const std::string& mixed_params_file,
-                             phi::DataType mixed_precision,
+                             DataType mixed_precision,
                              phi::Backend backend,
                              bool keep_io_types,
                              const std::unordered_set<std::string>& black_list,
