@@ -51,21 +51,19 @@ void InterpreterCoreFastGarbageCollector::Add(Variable* var) {
       Add(t.MoveMemoryHolder());
     }
     tensor_arr->clear();
-  } else if (var->IsType<phi::SparseCooTensor>()) {
-    Add(var->GetMutable<phi::SparseCooTensor>()
+  } else if (var->IsType<SparseCooTensor>()) {
+    Add(var->GetMutable<SparseCooTensor>()
             ->mutable_indices()
             ->MoveMemoryHolder());
-    Add(var->GetMutable<phi::SparseCooTensor>()
+    Add(var->GetMutable<SparseCooTensor>()
             ->mutable_values()
             ->MoveMemoryHolder());
-  } else if (var->IsType<phi::SparseCsrTensor>()) {
-    Add(var->GetMutable<phi::SparseCsrTensor>()
-            ->mutable_cols()
-            ->MoveMemoryHolder());
-    Add(var->GetMutable<phi::SparseCsrTensor>()
+  } else if (var->IsType<SparseCsrTensor>()) {
+    Add(var->GetMutable<SparseCsrTensor>()->mutable_cols()->MoveMemoryHolder());
+    Add(var->GetMutable<SparseCsrTensor>()
             ->mutable_crows()
             ->MoveMemoryHolder());
-    Add(var->GetMutable<phi::SparseCsrTensor>()
+    Add(var->GetMutable<SparseCsrTensor>()
             ->mutable_values()
             ->MoveMemoryHolder());
   } else if (var->IsType<std::vector<Scope*>>()) {

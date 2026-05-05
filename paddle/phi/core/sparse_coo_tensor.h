@@ -339,3 +339,7 @@ class PADDLE_API SparseCooTensor
 };
 
 }  // namespace phi
+
+namespace paddle {
+using SparseCooTensor = phi::SparseCooTensor;
+}

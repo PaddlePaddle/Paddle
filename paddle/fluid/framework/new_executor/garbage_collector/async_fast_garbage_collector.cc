@@ -109,21 +109,19 @@ void FreeVariable(Variable* var) {
       Garbage garbage = t.MoveMemoryHolder();
     }
     tensor_arr->clear();
-  } else if (var->IsType<phi::SparseCooTensor>()) {
-    Garbage indices = var->GetMutable<phi::SparseCooTensor>()
+  } else if (var->IsType<SparseCooTensor>()) {
+    Garbage indices = var->GetMutable<SparseCooTensor>()
                           ->mutable_indices()
                           ->MoveMemoryHolder();
-    Garbage values = var->GetMutable<phi::SparseCooTensor>()
+    Garbage values = var->GetMutable<SparseCooTensor>()
                          ->mutable_values()
                          ->MoveMemoryHolder();
-  } else if (var->IsType<phi::SparseCsrTensor>()) {
-    Garbage cols = var->GetMutable<phi::SparseCsrTensor>()
-                       ->mutable_cols()
-                       ->MoveMemoryHolder();
-    Garbage crows = var->GetMutable<phi::SparseCsrTensor>()
-                        ->mutable_crows()
-                        ->MoveMemoryHolder();
-    Garbage values = var->GetMutable<phi::SparseCsrTensor>()
+  } else if (var->IsType<SparseCsrTensor>()) {
+    Garbage cols =
+        var->GetMutable<SparseCsrTensor>()->mutable_cols()->MoveMemoryHolder();
+    Garbage crows =
+        var->GetMutable<SparseCsrTensor>()->mutable_crows()->MoveMemoryHolder();
+    Garbage values = var->GetMutable<SparseCsrTensor>()
                          ->mutable_values()
                          ->MoveMemoryHolder();
   } else if (var->IsType<std::vector<Scope*>>()) {

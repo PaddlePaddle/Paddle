@@ -262,3 +262,7 @@ class PADDLE_API SparseCsrTensor
 };
 
 }  // namespace phi
+
+namespace paddle {
+using SparseCsrTensor = phi::SparseCsrTensor;
+}

@@ -101,29 +101,25 @@ void InterpreterCoreEventGarbageCollector::Add(Variable* var,
             ->MoveMemoryHolder(),
         event,
         ctx);
-  } else if (var->IsType<phi::SparseCooTensor>()) {
-    Add(var->GetMutable<phi::SparseCooTensor>()
+  } else if (var->IsType<SparseCooTensor>()) {
+    Add(var->GetMutable<SparseCooTensor>()
             ->mutable_values()
             ->MoveMemoryHolder(),
         event,
         ctx);
-    Add(var->GetMutable<phi::SparseCooTensor>()
+    Add(var->GetMutable<SparseCooTensor>()
             ->mutable_indices()
             ->MoveMemoryHolder(),
         event,
         ctx);
-  } else if (var->IsType<phi::SparseCsrTensor>()) {
-    Add(var->GetMutable<phi::SparseCsrTensor>()
-            ->mutable_crows()
-            ->MoveMemoryHolder(),
+  } else if (var->IsType<SparseCsrTensor>()) {
+    Add(var->GetMutable<SparseCsrTensor>()->mutable_crows()->MoveMemoryHolder(),
         event,
         ctx);
-    Add(var->GetMutable<phi::SparseCsrTensor>()
-            ->mutable_cols()
-            ->MoveMemoryHolder(),
+    Add(var->GetMutable<SparseCsrTensor>()->mutable_cols()->MoveMemoryHolder(),
         event,
         ctx);
-    Add(var->GetMutable<phi::SparseCsrTensor>()
+    Add(var->GetMutable<SparseCsrTensor>()
             ->mutable_values()
             ->MoveMemoryHolder(),
         event,
