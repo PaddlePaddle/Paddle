@@ -173,3 +173,7 @@ class SelectedRows : public TensorBase,
 };
 
 }  // namespace phi
+
+namespace paddle {
+using SelectedRows = phi::SelectedRows;
+}

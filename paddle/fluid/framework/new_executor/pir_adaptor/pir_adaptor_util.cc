@@ -341,9 +341,9 @@ void DeepCopyVariable(const Variable* src_var,
       }
     }
     framework::TensorCopy(src_tensor, src_tensor.place(), tmp_dst_tensor);
-  } else if (src_var->IsType<phi::SelectedRows>()) {
-    auto& src_slr = src_var->Get<phi::SelectedRows>();
-    auto* tmp_dst_slr = (*dst_var)->GetMutable<phi::SelectedRows>();
+  } else if (src_var->IsType<SelectedRows>()) {
+    auto& src_slr = src_var->Get<SelectedRows>();
+    auto* tmp_dst_slr = (*dst_var)->GetMutable<SelectedRows>();
     tmp_dst_slr->set_rows(src_slr.rows());
     tmp_dst_slr->set_height(src_slr.height());
     auto& src_t = src_slr.value();
@@ -430,7 +430,7 @@ void BuildValue(pir::Value value,
       value.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
     var->GetMutable<DenseTensor>();
   } else if (value.type().isa<paddle::dialect::AllocatedSelectedRowsType>()) {
-    var->GetMutable<phi::SelectedRows>();
+    var->GetMutable<SelectedRows>();
   } else if (value.type()
                  .isa<paddle::dialect::AllocatedSparseCooTensorType>()) {
     var->GetMutable<phi::SparseCooTensor>();

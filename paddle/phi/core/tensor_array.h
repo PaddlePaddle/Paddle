@@ -147,3 +147,7 @@ class TensorArray : public TensorBase,
 };
 
 }  // namespace phi
+
+namespace paddle {
+using TensorArray = phi::TensorArray;
+}

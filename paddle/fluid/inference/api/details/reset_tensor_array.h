@@ -16,10 +16,10 @@
 
 #include <unordered_set>
 #include <vector>
-
 #include "paddle/fluid/framework/dense_tensor_array.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/phi/core/selected_rows.h"
 
 namespace phi {
 class DenseTensor;
@@ -39,11 +39,9 @@ namespace details {
 // training phase.
 struct TensorArrayBatchCleaner {
   TensorArrayBatchCleaner() {
-    constexpr auto kTensorId = framework::VarTypeTrait<phi::DenseTensor>::kId;
-    constexpr auto kDenseTensorId =
-        framework::VarTypeTrait<phi::DenseTensor>::kId;
-    constexpr auto kSelectedRowsId =
-        framework::VarTypeTrait<phi::SelectedRows>::kId;
+    constexpr auto kTensorId = framework::VarTypeTrait<DenseTensor>::kId;
+    constexpr auto kDenseTensorId = framework::VarTypeTrait<DenseTensor>::kId;
+    constexpr auto kSelectedRowsId = framework::VarTypeTrait<SelectedRows>::kId;
     constexpr auto kFetchListId =
         framework::VarTypeTrait<framework::FetchList>::kId;
     valid_types_.insert(kTensorId);
@@ -65,7 +63,7 @@ struct TensorArrayBatchCleaner {
  private:
   bool flag_{true};
   bool no_tensor_flag_{true};
-  std::vector<phi::TensorArray *> arrays_;
+  std::vector<TensorArray *> arrays_;
 
   std::unordered_set<int> valid_types_;
   std::unordered_set<framework::Variable *> no_tensor_vars_;
