@@ -77,8 +77,8 @@ static VarMetaInfo GetVarMetaInfo(const Scope& scope, const std::string& name) {
       dtype = tensor.dtype();
       place = tensor.place();
     }
-  } else if (var->IsType<phi::SelectedRows>()) {
-    auto tensor = var->Get<phi::SelectedRows>().value();
+  } else if (var->IsType<SelectedRows>()) {
+    auto tensor = var->Get<SelectedRows>().value();
     if (!UNLIKELY(!tensor.has_allocation())) {
       dtype = tensor.dtype();
       place = tensor.place();
@@ -276,12 +276,12 @@ phi::TensorBase* GetTensorFormVar(framework::Variable* var) {
   if (var) {
     if (var->template IsType<DenseTensor>()) {
       return var->template GetMutable<DenseTensor>();
-    } else if (var->template IsType<phi::SelectedRows>()) {
-      return var->template GetMutable<phi::SelectedRows>();
+    } else if (var->template IsType<SelectedRows>()) {
+      return var->template GetMutable<SelectedRows>();
     } else if (var->template IsType<phi::SparseCooTensor>()) {
       return var->template GetMutable<phi::SparseCooTensor>();
-    } else if (var->template IsType<phi::TensorArray>()) {
-      return var->template GetMutable<phi::TensorArray>();
+    } else if (var->template IsType<TensorArray>()) {
+      return var->template GetMutable<TensorArray>();
     } else if (var->template IsType<phi::Strings>()) {
       return var->template GetMutable<phi::Strings>();
     } else if (var->template IsType<phi::Vocab>()) {
@@ -379,12 +379,9 @@ void FakeInitializeTensorBase(const phi::DeviceContext& dev_ctx,
   if (DenseTensor::classof(tensor)) {
     FakeInitializeTensor(
         dev_ctx, place, dtype, layout, dynamic_cast<DenseTensor*>(tensor));
-  } else if (phi::SelectedRows::classof(tensor)) {
-    FakeInitializeTensor(dev_ctx,
-                         place,
-                         dtype,
-                         layout,
-                         dynamic_cast<phi::SelectedRows*>(tensor));
+  } else if (SelectedRows::classof(tensor)) {
+    FakeInitializeTensor(
+        dev_ctx, place, dtype, layout, dynamic_cast<SelectedRows*>(tensor));
   } else if (phi::SparseCooTensor::classof(tensor)) {
     FakeInitializeTensor(dev_ctx,
                          place,
@@ -397,9 +394,9 @@ void FakeInitializeTensorBase(const phi::DeviceContext& dev_ctx,
                          dtype,
                          layout,
                          dynamic_cast<phi::SparseCsrTensor*>(tensor));
-  } else if (phi::TensorArray::classof(tensor)) {
+  } else if (TensorArray::classof(tensor)) {
     FakeInitializeTensor(
-        dev_ctx, place, dtype, layout, dynamic_cast<phi::TensorArray*>(tensor));
+        dev_ctx, place, dtype, layout, dynamic_cast<TensorArray*>(tensor));
   } else {
     PADDLE_THROW(common::errors::Unimplemented(
         "Unsupported `%s` type when fake initialize tensor.",
@@ -624,9 +621,9 @@ void RunWhileBlockPreStaticBuild(const framework::Scope& scope,
         auto* t = var->GetMutable<DenseTensor>();
         phi::LegacyLoD empty_lod;
         t->set_lod(empty_lod);
-      } else if (var->IsType<phi::TensorArray>()) {
+      } else if (var->IsType<TensorArray>()) {
         // Clear elements of all tensor arrays.
-        auto* t = var->GetMutable<phi::TensorArray>();
+        auto* t = var->GetMutable<TensorArray>();
         t->clear();
       }
     }

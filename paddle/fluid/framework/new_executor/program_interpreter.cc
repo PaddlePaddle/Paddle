@@ -677,14 +677,14 @@ void ProgramInterpreter::BuildOperatorDependences() {
   }
 }
 
-// At the end of each step, the holder of DenseTensor in phi::TensorArray
-// is null. Clear these Tensors and leave phi::TensorArray empty, otherwise an
+// At the end of each step, the holder of DenseTensor in TensorArray
+// is null. Clear these Tensors and leave TensorArray empty, otherwise an
 // exception will occur in the next step
 void ProgramInterpreter::ClearDenseTensorArrayInLocalScope() {
   auto vars = local_scope_->LocalVars();
   for (auto var : vars) {
-    if (var->IsType<phi::TensorArray>()) {
-      auto* dense_tensor_arr = var->GetMutable<phi::TensorArray>();
+    if (var->IsType<TensorArray>()) {
+      auto* dense_tensor_arr = var->GetMutable<TensorArray>();
       dense_tensor_arr->clear();
     }
   }
@@ -822,9 +822,8 @@ void ProgramInterpreter::Convert(
           HasLocalScope() ? local_scope_ : var_scope_.GetMutableScope();
       paddle::framework::Variable* var = inner_scope->FindVar(
           var_scope_.GetNameById(static_cast<int>(var_id)));
-      if (var->IsType<DenseTensor>() || var->IsType<phi::SelectedRows>() ||
-          var->IsType<phi::TensorArray>() ||
-          var->IsType<phi::SparseCooTensor>() ||
+      if (var->IsType<DenseTensor>() || var->IsType<SelectedRows>() ||
+          var->IsType<TensorArray>() || var->IsType<phi::SparseCooTensor>() ||
           var->IsType<phi::SparseCsrTensor>()) {
         last_live_ops_[var_id].insert(op_idx);
       } else {
@@ -1495,12 +1494,11 @@ void ProgramInterpreter::RecordStreamForGC(const Instruction& instr) {
             operators::reader::
                 OrderedMultiDeviceDenseTensorBlockingQueueHolder>()) {  // NOLINT
       // do nothing
-    } else if (var->IsType<phi::SelectedRows>()) {
-      TensorRecordStream(
-          *(var->GetMutable<phi::SelectedRows>()->mutable_value()),
-          instr.stream_);
-    } else if (var->IsType<phi::TensorArray>()) {
-      auto* tensor_arr = var->GetMutable<phi::TensorArray>();
+    } else if (var->IsType<SelectedRows>()) {
+      TensorRecordStream(*(var->GetMutable<SelectedRows>()->mutable_value()),
+                         instr.stream_);
+    } else if (var->IsType<TensorArray>()) {
+      auto* tensor_arr = var->GetMutable<TensorArray>();
       for (auto& tensor : *tensor_arr) {
         TensorRecordStream(tensor, instr.stream_);
       }

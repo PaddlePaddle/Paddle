@@ -95,10 +95,8 @@ void InterpreterCoreEventGarbageCollector::Add(Variable* var,
               OrderedMultiDeviceDenseTensorBlockingQueueHolder>()) {  // NOLINT
     // TODO(xiongkun03) in old executor, this type of variable is not support
     // eager deletion. so we just leave it here ?
-  } else if (var->IsType<phi::SelectedRows>()) {
-    Add(var->GetMutable<phi::SelectedRows>()
-            ->mutable_value()
-            ->MoveMemoryHolder(),
+  } else if (var->IsType<SelectedRows>()) {
+    Add(var->GetMutable<SelectedRows>()->mutable_value()->MoveMemoryHolder(),
         event,
         ctx);
   } else if (var->IsType<phi::SparseCooTensor>()) {
@@ -128,8 +126,8 @@ void InterpreterCoreEventGarbageCollector::Add(Variable* var,
             ->MoveMemoryHolder(),
         event,
         ctx);
-  } else if (var->IsType<phi::TensorArray>()) {
-    auto* tensor_arr = var->GetMutable<phi::TensorArray>();
+  } else if (var->IsType<TensorArray>()) {
+    auto* tensor_arr = var->GetMutable<TensorArray>();
     for (auto& t : *tensor_arr) {
       Add(t.MoveMemoryHolder(), event, ctx);
     }

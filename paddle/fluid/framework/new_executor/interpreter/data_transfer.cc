@@ -237,10 +237,10 @@ void DataTransferHelper::RunAndConstructOpFuncNode(
 // Var is initialized && var contains tensor && tensor is initialized
 bool IsTensorOfVarInitialized(Variable* var) {
   if (var->IsInitialized()) {
-    if (var->IsType<DenseTensor>() || var->IsType<phi::SelectedRows>()) {
+    if (var->IsType<DenseTensor>() || var->IsType<SelectedRows>()) {
       return GetDenseTensorOrSelectedRowsValueFromVar(*var)->IsInitialized();
-    } else if (var->IsType<phi::TensorArray>()) {
-      return static_cast<const DenseTensor*>(&(var->Get<phi::TensorArray>()[0]))
+    } else if (var->IsType<TensorArray>()) {
+      return static_cast<const DenseTensor*>(&(var->Get<TensorArray>()[0]))
           ->IsInitialized();
     }
   }
@@ -507,14 +507,14 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
           Variable* var = arguments->at(i);
 
           const DenseTensor* tensor_in = nullptr;
-          if (var->IsType<DenseTensor>() || var->IsType<phi::SelectedRows>()) {
+          if (var->IsType<DenseTensor>() || var->IsType<SelectedRows>()) {
             tensor_in = GetDenseTensorOrSelectedRowsValueFromVar(*var);
-          } else if (var->IsType<phi::TensorArray>()) {
-            if (var->Get<phi::TensorArray>().empty()) {
+          } else if (var->IsType<TensorArray>()) {
+            if (var->Get<TensorArray>().empty()) {
               continue;
             }
-            tensor_in = static_cast<const DenseTensor*>(
-                &(var->Get<phi::TensorArray>()[0]));
+            tensor_in =
+                static_cast<const DenseTensor*>(&(var->Get<TensorArray>()[0]));
           } else {
             continue;
           }
@@ -767,10 +767,10 @@ void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
         VLOG(3) << "skip grad_var with nullptr";
         continue;
       }
-      // don't process phi::TensorArray temporarily,
+      // don't process TensorArray temporarily,
       // add support if necessary for complex number calculations in the future
       if (!framework::VarIsTensor(*grad_var)) {
-        VLOG(3) << "skip grad_var with phi::TensorArray type";
+        VLOG(3) << "skip grad_var with TensorArray type";
         continue;
       }
       auto* grad_tensor =
@@ -795,7 +795,7 @@ void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
         continue;
       }
       if (!framework::VarIsTensor(*var)) {
-        VLOG(3) << "skip " << orig_var_name << " with phi::TensorArray.";
+        VLOG(3) << "skip " << orig_var_name << " with TensorArray.";
         continue;
       }
       const auto* tensor =

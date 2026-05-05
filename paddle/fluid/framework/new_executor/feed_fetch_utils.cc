@@ -120,13 +120,13 @@ void FetchTensors(const std::vector<std::string>& job_fetch_names,
         VLOG(6) << "Found " << var_name
                 << " is not initialized and skip TensorCopy.";
       }
-    } else if (var->IsType<phi::TensorArray>()) {
-      auto& src = var->Get<phi::TensorArray>();
+    } else if (var->IsType<TensorArray>()) {
+      auto& src = var->Get<TensorArray>();
       fetch_list->at(micro_batch_id)[col] =
-          phi::TensorArray();  // default DenseTensor, we replace it with
-                               // TensorArray.
+          TensorArray();  // default DenseTensor, we replace it with
+                          // TensorArray.
       auto* dst =
-          &(PADDLE_GET(phi::TensorArray, fetch_list->at(micro_batch_id)[col]));
+          &(PADDLE_GET(TensorArray, fetch_list->at(micro_batch_id)[col]));
       dst->resize(src.size());
       for (size_t i = 0; i < src.size(); ++i) {
         TensorCopy(src[i], CPUPlace(), &dst->at(i));

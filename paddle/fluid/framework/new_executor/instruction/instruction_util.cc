@@ -640,10 +640,10 @@ void ShareVarBuffer(const Variable* src_var, Variable* dst_var) {
     auto* tmp_dst_tensor = dst_var->GetMutable<DenseTensor>();
     tmp_dst_tensor->ShareBufferWith(src_tensor);
     return;
-  } else if (src_var->IsType<phi::SelectedRows>()) {
-    auto* tmp_dst_slr = dst_var->GetMutable<phi::SelectedRows>();
+  } else if (src_var->IsType<SelectedRows>()) {
+    auto* tmp_dst_slr = dst_var->GetMutable<SelectedRows>();
     auto* dst_t = tmp_dst_slr->mutable_value();
-    auto& src_slr = src_var->Get<phi::SelectedRows>();
+    auto& src_slr = src_var->Get<SelectedRows>();
     auto& src_t = src_slr.value();
     dst_t->ShareBufferWith(src_t);
     return;

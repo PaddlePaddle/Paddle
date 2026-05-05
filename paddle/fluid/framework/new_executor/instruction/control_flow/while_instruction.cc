@@ -157,9 +157,9 @@ void WhileInstruction::ShareInputsToOutputs() {
     if (inputs_[i]->IsType<DenseTensor>()) {
       outputs_[i]->GetMutable<DenseTensor>()->ShareDataWith(
           inputs_[i]->Get<DenseTensor>());
-    } else if (inputs_[i]->IsType<phi::TensorArray>()) {
-      const auto& input_array = inputs_[i]->Get<phi::TensorArray>();
-      auto* output_array = outputs_[i]->GetMutable<phi::TensorArray>();
+    } else if (inputs_[i]->IsType<TensorArray>()) {
+      const auto& input_array = inputs_[i]->Get<TensorArray>();
+      auto* output_array = outputs_[i]->GetMutable<TensorArray>();
       *output_array = input_array;
     } else {
       PADDLE_THROW(common::errors::Unimplemented("unsupported type %d",
@@ -177,9 +177,9 @@ void WhileInstruction::ShareOutputsToBlockArgs() {
     if (outputs_[i]->IsType<DenseTensor>()) {
       inner_var->GetMutable<DenseTensor>()->ShareDataWith(
           outputs_[i]->Get<DenseTensor>());
-    } else if (outputs_[i]->IsType<phi::TensorArray>()) {
-      const auto& outer_array = outputs_[i]->Get<phi::TensorArray>();
-      auto* inner_array = inner_var->GetMutable<phi::TensorArray>();
+    } else if (outputs_[i]->IsType<TensorArray>()) {
+      const auto& outer_array = outputs_[i]->Get<TensorArray>();
+      auto* inner_array = inner_var->GetMutable<TensorArray>();
       *inner_array = outer_array;
       VLOG(10) << inner_var
                << " should be created: " << inner_var->IsInitialized();

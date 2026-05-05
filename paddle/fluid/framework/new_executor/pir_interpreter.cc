@@ -490,8 +490,8 @@ void PirInterpreter::CheckCUDAGraphBeforeRun(
 void PirInterpreter::ClearDenseTensorArrayInLocalScope() {
   auto vars = local_scope_->LocalVars();
   for (auto var : vars) {
-    if (var->IsType<phi::TensorArray>()) {
-      auto* dense_tensor_arr = var->GetMutable<phi::TensorArray>();
+    if (var->IsType<TensorArray>()) {
+      auto* dense_tensor_arr = var->GetMutable<TensorArray>();
       dense_tensor_arr->clear();
     }
   }
@@ -1275,11 +1275,10 @@ void PirInterpreter::RecordStreamForGC(InstructionBase* instr) {
             operators::reader::
                 OrderedMultiDeviceDenseTensorBlockingQueueHolder>()) {  // NOLINT
       // do nothing
-    } else if (var->IsType<phi::SelectedRows>()) {
-      TensorRecordStream(
-          *(var->GetMutable<phi::SelectedRows>()->mutable_value()));
-    } else if (var->IsType<phi::TensorArray>()) {
-      auto* tensor_arr = var->GetMutable<phi::TensorArray>();
+    } else if (var->IsType<SelectedRows>()) {
+      TensorRecordStream(*(var->GetMutable<SelectedRows>()->mutable_value()));
+    } else if (var->IsType<TensorArray>()) {
+      auto* tensor_arr = var->GetMutable<TensorArray>();
       for (auto& tensor : *tensor_arr) {
         TensorRecordStream(tensor);
       }
@@ -1394,9 +1393,8 @@ void PirInterpreter::CalculateLastLiveOps() {
               "Var(id=%d,%s) should not be nullptr.",
               static_cast<int>(var_id),
               value_exe_info_->GetNameById(static_cast<int>(var_id))));
-      if (var->IsType<DenseTensor>() || var->IsType<phi::SelectedRows>() ||
-          var->IsType<phi::TensorArray>() ||
-          var->IsType<phi::SparseCooTensor>() ||
+      if (var->IsType<DenseTensor>() || var->IsType<SelectedRows>() ||
+          var->IsType<TensorArray>() || var->IsType<phi::SparseCooTensor>() ||
           var->IsType<phi::SparseCsrTensor>()) {
         last_live_ops_[var_id].insert(op_idx);
       } else {

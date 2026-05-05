@@ -1103,13 +1103,13 @@ void BuildOpFuncList(const phi::Place& place,
         if (var->IsType<DenseTensor>()) {
           garbages->emplace_back(
               var->GetMutable<DenseTensor>()->MoveMemoryHolder());
-        } else if (var->IsType<phi::SelectedRows>()) {
-          garbages->emplace_back(var->GetMutable<phi::SelectedRows>()
+        } else if (var->IsType<SelectedRows>()) {
+          garbages->emplace_back(var->GetMutable<SelectedRows>()
                                      ->mutable_value()
                                      ->MoveMemoryHolder());
-          var->GetMutable<phi::SelectedRows>()->mutable_rows()->clear();
-        } else if (var->IsType<phi::TensorArray>()) {
-          auto* tensor_arr = var->GetMutable<phi::TensorArray>();
+          var->GetMutable<SelectedRows>()->mutable_rows()->clear();
+        } else if (var->IsType<TensorArray>()) {
+          auto* tensor_arr = var->GetMutable<TensorArray>();
           for (auto& t : *tensor_arr) {
             garbages->emplace_back(t.MoveMemoryHolder());
           }
@@ -1150,13 +1150,12 @@ void BuildOpFuncList(const phi::Place& place,
     if (var->IsType<DenseTensor>()) {
       garbages->emplace_back(
           var->GetMutable<DenseTensor>()->MoveMemoryHolder());
-    } else if (var->IsType<phi::SelectedRows>()) {
-      garbages->emplace_back(var->GetMutable<phi::SelectedRows>()
-                                 ->mutable_value()
-                                 ->MoveMemoryHolder());
-      var->GetMutable<phi::SelectedRows>()->mutable_rows()->clear();
-    } else if (var->IsType<phi::TensorArray>()) {
-      auto* tensor_arr = var->GetMutable<phi::TensorArray>();
+    } else if (var->IsType<SelectedRows>()) {
+      garbages->emplace_back(
+          var->GetMutable<SelectedRows>()->mutable_value()->MoveMemoryHolder());
+      var->GetMutable<SelectedRows>()->mutable_rows()->clear();
+    } else if (var->IsType<TensorArray>()) {
+      auto* tensor_arr = var->GetMutable<TensorArray>();
       for (auto& t : *tensor_arr) {
         garbages->emplace_back(t.MoveMemoryHolder());
       }

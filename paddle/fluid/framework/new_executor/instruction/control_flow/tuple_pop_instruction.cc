@@ -90,19 +90,19 @@ void ShareVarData(const Variable* src_var, Variable* dst_var) {
       }
     }
     tmp_dst_tensor->ShareDataWith(src_tensor);
-  } else if (src_var->IsType<phi::SelectedRows>()) {
-    auto* tmp_dst_slr = dst_var->GetMutable<phi::SelectedRows>();
+  } else if (src_var->IsType<SelectedRows>()) {
+    auto* tmp_dst_slr = dst_var->GetMutable<SelectedRows>();
     auto* dst_t = tmp_dst_slr->mutable_value();
-    auto& src_slr = src_var->Get<phi::SelectedRows>();
+    auto& src_slr = src_var->Get<SelectedRows>();
     auto& src_t = src_slr.value();
     if (src_t.numel() == 0) {
       dst_t->set_meta(src_t.meta());
       return;
     }
     dst_t->ShareDataWith(src_t);
-  } else if (src_var->IsType<phi::TensorArray>()) {
-    auto src_tensor_array = src_var->Get<phi::TensorArray>();
-    auto* dst_tensor_array = dst_var->GetMutable<phi::TensorArray>();
+  } else if (src_var->IsType<TensorArray>()) {
+    auto src_tensor_array = src_var->Get<TensorArray>();
+    auto* dst_tensor_array = dst_var->GetMutable<TensorArray>();
     if (src_tensor_array.size() == 0) return;
     dst_tensor_array->resize(src_tensor_array.size());
     for (size_t i = 0; i < src_tensor_array.size(); ++i) {

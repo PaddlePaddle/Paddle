@@ -36,11 +36,11 @@ static DDim GetDimsDebug(const Scope& scope,
   if (var->IsType<DenseTensor>()) {
     const DenseTensor& tensor = var->Get<DenseTensor>();
     return tensor.dims();
-  } else if (var->IsType<phi::SelectedRows>()) {
+  } else if (var->IsType<SelectedRows>()) {
     if (get_actual_dim) {
-      return var->Get<phi::SelectedRows>().value().dims();
+      return var->Get<SelectedRows>().value().dims();
     } else {
-      return var->Get<phi::SelectedRows>().GetCompleteDims();
+      return var->Get<SelectedRows>().GetCompleteDims();
     }
   } else if (var->IsType<Strings>()) {
     return DDim({static_cast<int64_t>(var->Get<Strings>().size())});
@@ -67,8 +67,8 @@ static std::string GetDtype(const Scope& scope, const std::string& name) {
       return "";
     }
     return DataTypeToString(framework::TransToProtoVarType(tensor.dtype()));
-  } else if (var->IsType<phi::SelectedRows>()) {
-    auto tensor = var->Get<phi::SelectedRows>().value();
+  } else if (var->IsType<SelectedRows>()) {
+    auto tensor = var->Get<SelectedRows>().value();
     if (UNLIKELY(!tensor.has_allocation())) {
       return "uninited";
     } else {
@@ -98,8 +98,8 @@ static std::string GetPlace(const Scope& scope, const std::string& name) {
       return "";
     }
     return to_string(tensor.place());
-  } else if (var->IsType<phi::SelectedRows>()) {
-    auto tensor = var->Get<phi::SelectedRows>().value();
+  } else if (var->IsType<SelectedRows>()) {
+    auto tensor = var->Get<SelectedRows>().value();
     if (UNLIKELY(!tensor.has_allocation())) {
       return "uninited";
     } else {
@@ -116,12 +116,12 @@ static int GetRowSize(const Scope& scope, const std::string& name) {
     return -1;
   }
 
-  if (var->IsType<phi::SelectedRows>()) {
-    return static_cast<int>(var->Get<phi::SelectedRows>().rows().size());
+  if (var->IsType<SelectedRows>()) {
+    return static_cast<int>(var->Get<SelectedRows>().rows().size());
   } else if (var->IsType<VariableRefArray>()) {
     return var->Get<VariableRefArray>().size();
-  } else if (var->IsType<phi::TensorArray>()) {
-    return var->Get<phi::TensorArray>().size();
+  } else if (var->IsType<TensorArray>()) {
+    return var->Get<TensorArray>().size();
   }
 
   return -1;

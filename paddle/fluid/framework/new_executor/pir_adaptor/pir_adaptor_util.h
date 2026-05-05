@@ -213,8 +213,8 @@ void BuildPhiContext(pir::Operation* op,
     if (var->IsType<DenseTensor>()) {
       const phi::TensorBase* tensor_in = &(var->Get<DenseTensor>());
       ctx->EmplaceBackInput(InType(tensor_in));
-    } else if (var->IsType<phi::TensorArray>()) {
-      const phi::TensorBase* tensor_in = &(var->Get<phi::TensorArray>());
+    } else if (var->IsType<TensorArray>()) {
+      const phi::TensorBase* tensor_in = &(var->Get<TensorArray>());
       ctx->EmplaceBackInput(InType(tensor_in));
     } else if (var->IsType<VariableRefArray>()) {
       InListType inputs;
@@ -226,9 +226,9 @@ void BuildPhiContext(pir::Operation* op,
         } else if (variable_array[i]->IsType<SelectedRows>()) {
           inputs.emplace_back(InType(const_cast<SelectedRows*>(
               &(variable_array[i]->Get<SelectedRows>()))));
-        } else if (variable_array[i]->IsType<phi::TensorArray>()) {
-          inputs.emplace_back(InType(const_cast<phi::TensorArray*>(
-              &(variable_array[i]->Get<phi::TensorArray>()))));
+        } else if (variable_array[i]->IsType<TensorArray>()) {
+          inputs.emplace_back(InType(const_cast<TensorArray*>(
+              &(variable_array[i]->Get<TensorArray>()))));
         } else {
           PADDLE_THROW(common::errors::Unimplemented(
               "Only support Vector<DenseTensor> and vector<SelectedRows> "
@@ -504,9 +504,9 @@ void BuildPhiContext(pir::Operation* op,
               << value_exec_info.GetVarName(out_ptr);
     } else if (out_ptr.type()
                    .isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
-      ctx->EmplaceBackOutput(OutType(const_cast<phi::TensorArray*>(
+      ctx->EmplaceBackOutput(OutType(const_cast<TensorArray*>(
           &(inner_scope->FindVar(value_exec_info.GetVarName(out_ptr))
-                ->Get<phi::TensorArray>()))));
+                ->Get<TensorArray>()))));
       VLOG(8) << "ctx->EmplaceBackOutput TensorArray: "
               << value_exec_info.GetVarName(out_ptr);
     } else if (out_ptr.type().isa<pir::VectorType>()) {

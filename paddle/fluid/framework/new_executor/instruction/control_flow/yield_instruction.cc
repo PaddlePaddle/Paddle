@@ -131,9 +131,9 @@ void YieldInstruction::Run() {
         output_vars_[i]->GetMutable<DenseTensor>()->ShareDataWith(
             input_vars_[i]->Get<DenseTensor>());
       }
-    } else if (input_vars_[i]->IsType<phi::TensorArray>()) {
-      const auto &inner_array = input_vars_[i]->Get<phi::TensorArray>();
-      auto *output_array = output_vars_[i]->GetMutable<phi::TensorArray>();
+    } else if (input_vars_[i]->IsType<TensorArray>()) {
+      const auto &inner_array = input_vars_[i]->Get<TensorArray>();
+      auto *output_array = output_vars_[i]->GetMutable<TensorArray>();
       *output_array = inner_array;
     } else {
       PADDLE_THROW(common::errors::Unimplemented("unsupported type %d",

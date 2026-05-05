@@ -86,16 +86,16 @@ class AssignFunctor {
     copy_tensor(dense_tensor, &out_tensor);
   }
 
-  void operator()(const phi::TensorArray &array) const {
-    auto &out_array = *out_->GetMutable<phi::TensorArray>();
+  void operator()(const TensorArray &array) const {
+    auto &out_array = *out_->GetMutable<TensorArray>();
     out_array.resize(array.size());
     for (size_t i = 0; i < array.size(); ++i) {
       copy_tensor(array[i], &out_array[i]);
     }
   }
 
-  void operator()(const phi::SelectedRows &rows) const {
-    phi::SelectedRows &out_rows = *out_->GetMutable<phi::SelectedRows>();
+  void operator()(const SelectedRows &rows) const {
+    SelectedRows &out_rows = *out_->GetMutable<SelectedRows>();
     out_rows.set_rows(rows.rows());
     out_rows.set_height(rows.height());
     auto &t = rows.value();

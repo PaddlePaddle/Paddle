@@ -69,8 +69,8 @@ void CheckTensorHasNanOrInf(InstructionBase* instruction,
       }
       if (var->IsType<DenseTensor>()) {
         dense_tensor = var->GetMutable<DenseTensor>();
-      } else if (var->IsType<phi::SelectedRows>()) {
-        dense_tensor = var->GetMutable<phi::SelectedRows>()->mutable_value();
+      } else if (var->IsType<SelectedRows>()) {
+        dense_tensor = var->GetMutable<SelectedRows>()->mutable_value();
       } else {
         VLOG(10) << "Only DenseTensor,SelectedRows,DistTensor need to check, "
                  << tensor_name << " is no need.";
