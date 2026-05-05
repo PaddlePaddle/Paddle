@@ -24,9 +24,21 @@ class TestCollectiveAllgatherObjectAPI(test_base.TestCollectiveAPIRunnerBase):
 
     def get_model(self, main_prog, startup_program, rank, indata=None):
         with base.program_guard(main_prog, startup_program):
-            object_list = []
-            paddle.distributed.all_gather_object(object_list, indata)
-            return object_list
+            # Paddle legacy style: empty list, extended in place.
+            paddle_style = []
+            paddle.distributed.all_gather_object(paddle_style, indata)
+
+            # PyTorch style: pre-allocated list of length world_size, overwritten
+            # in place. Aligning with torch.distributed.all_gather_object.
+            world_size = paddle.distributed.get_world_size()
+            torch_style = [None for _ in range(world_size)]
+            paddle.distributed.all_gather_object(torch_style, indata)
+
+            assert paddle_style == torch_style, (
+                f"all_gather_object initialization styles disagree: "
+                f"empty-list {paddle_style!r} vs pre-allocated {torch_style!r}"
+            )
+            return torch_style
 
 
 if __name__ == "__main__":
