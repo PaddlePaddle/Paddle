@@ -323,7 +323,7 @@ class CompiledProgramPrivate {
   platform::BKCLCommunicator *bkcl_ctxs_{nullptr};
 #endif
   bool own_local_scope_;
-  DeviceType use_device_ = p::kCUDA;
+  DeviceType use_device_ = kCUDA;
   bool use_all_reduce_;
   size_t nranks_;
 
@@ -332,7 +332,7 @@ class CompiledProgramPrivate {
 };
 
 bool CompiledProgramPrivate::IsUseCUDA(DeviceType use_device) {
-  return use_device == p::kCUDA;
+  return use_device == kCUDA;
 }
 
 ir::Graph *CompiledProgramPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
@@ -716,11 +716,11 @@ void CompiledProgram::InitProgramPrivateMemberInfo(
 #endif
 
   std::string device_name;
-  if (member_->use_device_ == p::kCPU) {
+  if (member_->use_device_ == kCPU) {
     device_name = "CPU";
-  } else if (member_->use_device_ == p::kCUDA) {
+  } else if (member_->use_device_ == kCUDA) {
     device_name = "CUDA";
-  } else if (member_->use_device_ == p::kXPU) {
+  } else if (member_->use_device_ == kXPU) {
     device_name = "XPU";
   } else {
     PADDLE_THROW(
@@ -827,7 +827,7 @@ void CompiledProgram::PrepareNCCLCommunicator(Scope *global_scope) {
     PADDLE_THROW(common::errors::PreconditionNotMet("Not compiled with CUDA."));
 #endif
   }
-  if (member_->use_device_ == p::kXPU && member_->nranks_ > 1) {
+  if (member_->use_device_ == kXPU && member_->nranks_ > 1) {
 #if defined(PADDLE_WITH_XPU_BKCL)
     member_->InitOrGetBKCLCommunicator(global_scope, member_->build_strategy_);
 
