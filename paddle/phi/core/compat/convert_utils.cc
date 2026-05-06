@@ -28,7 +28,7 @@ COMMON_DECLARE_bool(pinned_memory_as_cpu_backend);
 
 namespace phi {
 
-Backend TransToPhiBackend(const phi::Place& place) {
+Backend TransToPhiBackend(const Place& place) {
   auto allocation_type = place.GetType();
   switch (allocation_type) {
     case AllocationType::GPU:
@@ -66,7 +66,7 @@ Backend TransToPhiBackend(const phi::Place& place) {
   }
 }
 
-phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id) {
+Place TransToPhiPlace(const Backend& backend, bool set_device_id) {
   // NOTE(zhiqiu): GetCurrentDeviceId not always success, and device id is not
   // always needed.
   // So, add set_device_id parameter here.
@@ -74,7 +74,7 @@ phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id) {
     case Backend::CPU:
       return phi::CPUPlace();
     case Backend::UNDEFINED:
-      return phi::Place();
+      return Place();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     case Backend::GPU:
     case Backend::GPUDNN:

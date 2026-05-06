@@ -26,7 +26,7 @@ namespace paddle {
 namespace platform {
 
 PADDLE_API bool IsCUDAGraphCapturing();
-PADDLE_API phi::Place CUDAGraphCapturingPlace();
+PADDLE_API Place CUDAGraphCapturingPlace();
 
 // NOTE: These APIs are not thread-safe.
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \

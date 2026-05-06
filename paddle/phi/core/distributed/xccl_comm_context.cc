@@ -50,7 +50,7 @@ XCCLCommContext::~XCCLCommContext() {
   g_xccl_comm_contexts.remove(this);
 }
 
-XCCLCommContext::XCCLCommContext(const phi::Place& place,
+XCCLCommContext::XCCLCommContext(const Place& place,
                                  int rank,
                                  int size,
                                  const ccl::CCLRootId& xccl_id)

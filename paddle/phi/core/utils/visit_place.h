@@ -21,7 +21,7 @@ namespace phi {
 
 // need add dependency to phi_place when use phi::VisitPlace
 template <typename Visitor>
-typename Visitor::result_type VisitPlace(const phi::Place& place,
+typename Visitor::result_type VisitPlace(const Place& place,
                                          const Visitor& visitor) {
   switch (place.GetType()) {
     case phi::AllocationType::GPU: {

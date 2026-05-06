@@ -41,7 +41,7 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-DeviceType Place2DeviceType(const phi::Place& place) {
+DeviceType Place2DeviceType(const Place& place) {
   if (phi::is_cpu_place(place)) {
     return platform::DeviceType::CPU;
   } else if (phi::is_gpu_place(place)) {
@@ -62,7 +62,7 @@ DeviceType Place2DeviceType(const phi::Place& place) {
 template <typename DevCtx>
 typename std::enable_if<!std::is_same<DevCtx, phi::GPUContext>::value,
                         DevCtx*>::type
-ConstructDevCtx(const phi::Place& p,
+ConstructDevCtx(const Place& p,
                 /*unused*/ int stream_priority UNUSED = 0) {
   return new DevCtx(p);
 }
@@ -70,12 +70,12 @@ ConstructDevCtx(const phi::Place& p,
 template <typename DevCtx>
 typename std::enable_if<std::is_same<DevCtx, phi::GPUContext>::value,
                         DevCtx*>::type
-ConstructDevCtx(const phi::Place& p, int stream_priority) {
+ConstructDevCtx(const Place& p, int stream_priority) {
   return new DevCtx(p, /*init=*/true, stream_priority);
 }
 #else
 template <typename DevCtx>
-DevCtx* ConstructDevCtx(const phi::Place& p,
+DevCtx* ConstructDevCtx(const Place& p,
                         /*unused*/ int stream_priority) {
   return new DevCtx(p);
 }
@@ -83,7 +83,7 @@ DevCtx* ConstructDevCtx(const phi::Place& p,
 
 template <typename DevCtx>
 inline std::unique_ptr<DeviceContext> CreateDeviceContext(
-    const phi::Place& p,
+    const Place& p,
     bool disable_setting_default_stream_for_allocator,
     int stream_priority,
     bool set_to_default_stream) {
@@ -159,7 +159,7 @@ template <typename DevCtx>
 inline void EmplaceDeviceContext(
     std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
         place_to_device_context,
-    const phi::Place& place,
+    const Place& place,
     bool disable_setting_default_stream_for_allocator,
     int stream_priority,
     bool set_to_default_stream) {

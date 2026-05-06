@@ -31,7 +31,7 @@ bool IsCUDAGraphCapturing() {
   return phi::backends::gpu::IsCUDAGraphCapturing();
 }
 
-phi::Place CUDAGraphCapturingPlace() {
+Place CUDAGraphCapturingPlace() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_CUSTOM_DEVICE)
   return phi::backends::gpu::CUDAGraph::CapturingPlace();

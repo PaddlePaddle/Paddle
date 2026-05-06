@@ -169,7 +169,7 @@ void CustomDeviceEventResourcePool::Release() {
 }
 
 CustomDeviceEventResourcePool& CustomDeviceEventResourcePool::Instance(
-    const phi::Place& place) {
+    const Place& place) {
   auto& pool = GetMap();
   PADDLE_ENFORCE_EQ(
       phi::is_custom_place(place),

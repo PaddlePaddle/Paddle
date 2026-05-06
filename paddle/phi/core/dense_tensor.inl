@@ -29,20 +29,20 @@ explicit DenseTensor(phi::DataType dtype);
 inline bool IsInitialized() const { return holder_ != nullptr; }
 
 template <typename T>
-T* mutable_data(const phi::Place& place, size_t requested_size = 0);
+T* mutable_data(const Place& place, size_t requested_size = 0);
 
 template <typename T>
 T* mutable_data(const DDim& dims,
-                const phi::Place& place,
+                const Place& place,
                 size_t requested_size = 0);
 
-void* mutable_data(const phi::Place& place,
+void* mutable_data(const Place& place,
                    phi::DataType type,
                    size_t requested_size = 0);
 
-void* mutable_data(const phi::Place& place, size_t requested_size = 0);
+void* mutable_data(const Place& place, size_t requested_size = 0);
 
-void* mutable_data(const phi::Place& place,
+void* mutable_data(const Place& place,
                    phi::DataType type,
                    const phi::Stream& stream);
 

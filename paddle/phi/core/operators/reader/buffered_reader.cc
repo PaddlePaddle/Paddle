@@ -42,7 +42,7 @@ BufferedReader::~BufferedReader() {
 
 BufferedReader::BufferedReader(
     const std::shared_ptr<framework::ReaderBase> &reader,
-    const phi::Place &place,
+    const Place &place,
     size_t buffer_size,
     bool pin_memory)
     : framework::DecoratedReader(reader),
