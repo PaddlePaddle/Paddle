@@ -174,7 +174,7 @@ class InstructionBase {
 
   // if scope is not null, also show dimensions of arguments
   virtual std::string DebugStringEx(const paddle::framework::Scope* scope,
-                                    ValueExecutionInfo* value_exe_info) const;
+                                    ValueExecutionInfo* value_exec_info) const;
   bool SkipRecordStreamForGC() const { return skip_record_stream_for_gc_; }
   void SetSkipRecordStreamForGC(bool skip) {
     skip_record_stream_for_gc_ = skip;

@@ -29,7 +29,7 @@ class PyLayerInstruction : public InstructionBase {
   PyLayerInstruction(size_t id,
                      const Place& place,
                      pir::Operation* op,
-                     ValueExecutionInfo* value_exe_info,
+                     ValueExecutionInfo* value_exec_info,
                      interpreter::ExecutionConfig execution_config);
 
   ~PyLayerInstruction();

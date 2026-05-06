@@ -24,11 +24,11 @@ namespace paddle::framework {
 AssertInstruction::AssertInstruction(size_t id,
                                      const Place& place,
                                      pir::Operation* op,
-                                     ValueExecutionInfo* value_exe_info)
+                                     ValueExecutionInfo* value_exec_info)
     : InstructionBase(id, place),
       op_(op),
       type_(OpFuncType::kCpuSync),
-      value_exe_info_(value_exe_info) {
+      value_exec_info_(value_exec_info) {
   PADDLE_ENFORCE(op->isa<paddle::dialect::AssertOp>(),
                  common::errors::PreconditionNotMet(
                      "Assert instruction only support assert op"));
@@ -38,9 +38,9 @@ AssertInstruction::AssertInstruction(size_t id,
 
   std::unordered_map<pir::Value, std::vector<int>> inputs;
   inputs.emplace(assert_op.cond(),
-                 GetValueIds(assert_op.cond(), *value_exe_info_));
+                 GetValueIds(assert_op.cond(), *value_exec_info_));
   inputs.emplace(assert_op.data(),
-                 GetValueIds(assert_op.data(), *value_exe_info_));
+                 GetValueIds(assert_op.data(), *value_exec_info_));
   SetInputs(inputs);
 
   op_ = op;
@@ -48,9 +48,9 @@ AssertInstruction::AssertInstruction(size_t id,
   VLOG(6) << "finish process analyse kernel type";
 
   auto cond_value = assert_op.operand_source(0);
-  cond_var_ = value_exe_info_->GetVarByValue(cond_value);
+  cond_var_ = value_exec_info_->GetVarByValue(cond_value);
   auto data_value = assert_op.operand_source(1);
-  data_var_ = value_exe_info_->GetVarByValue(data_value);
+  data_var_ = value_exec_info_->GetVarByValue(data_value);
   VLOG(6) << "finish process cond_var and data_var";
 }
 
@@ -85,9 +85,9 @@ void AssertInstruction::Run() {
           .defining_op<pir::CombineOp>()
           .inputs();
   for (pir::Value val : inputs_data_val) {
-    const std::string& name = value_exe_info_->GetVarName(val);
+    const std::string& name = value_exec_info_->GetVarName(val);
     const phi::DenseTensor& tensor =
-        value_exe_info_->GetVarByValue(val)->Get<DenseTensor>();
+        value_exec_info_->GetVarByValue(val)->Get<DenseTensor>();
     formatter.Print(tensor, name);
   }
   const std::string& error_msg = [&]() -> std::string {
@@ -102,7 +102,7 @@ void AssertInstruction::Run() {
   PADDLE_THROW(common::errors::InvalidArgument(
       "The condition variable '%s' of AssertOp must be "
       "true, but received false. %s",
-      value_exe_info_->GetVarName(cond_var_),
+      value_exec_info_->GetVarName(cond_var_),
       error_msg));
 
   if (FLAGS_check_cuda_error) [[unlikely]] {

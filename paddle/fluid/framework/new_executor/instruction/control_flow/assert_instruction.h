@@ -27,7 +27,7 @@ class AssertInstruction : public InstructionBase {
   AssertInstruction(size_t id,
                     const Place& place,
                     pir::Operation* op,
-                    ValueExecutionInfo* value_exe_info);
+                    ValueExecutionInfo* value_exec_info);
 
   void Run() override;
 
@@ -42,7 +42,7 @@ class AssertInstruction : public InstructionBase {
 
   std::string name_{"assert_instruction"};
 
-  ValueExecutionInfo* value_exe_info_;  // not owned
+  ValueExecutionInfo* value_exec_info_;  // not owned
 
   Variable* cond_var_;
   Variable* data_var_;

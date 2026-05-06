@@ -26,7 +26,7 @@ SelectInputInstruction::SelectInputInstruction(
     size_t id,
     const Place &place,
     pir::Operation *op,
-    ValueExecutionInfo *value_exe_info)
+    ValueExecutionInfo *value_exec_info)
     : InstructionBase(id, place),
       op_(op),
       type_(OpFuncType::kCpuSync),
@@ -34,20 +34,20 @@ SelectInputInstruction::SelectInputInstruction(
   VLOG(6) << "construct select_input instruction";
 
   std::unordered_map<pir::Value, std::vector<int>> inputs;
-  mask_ = value_exe_info->GetVarByValue(op->operand_source(0));
+  mask_ = value_exec_info->GetVarByValue(op->operand_source(0));
   inputs.emplace(op->operand_source(0),
-                 GetValueIds(op->operand_source(0), *value_exe_info));
+                 GetValueIds(op->operand_source(0), *value_exec_info));
 
   for (size_t i = 1; i < op->num_operands(); ++i) {
-    inputs_.push_back(value_exe_info->GetVarByValue(op->operand_source(i)));
+    inputs_.push_back(value_exec_info->GetVarByValue(op->operand_source(i)));
     inputs.emplace(op->operand_source(i),
-                   GetValueIds(op->operand_source(i), *value_exe_info));
+                   GetValueIds(op->operand_source(i), *value_exec_info));
   }
   SetInputs(inputs);
 
   std::unordered_map<pir::Value, std::vector<int>> outputs;
-  out_ = value_exe_info->GetVarByValue(op->result(0));
-  outputs.emplace(op->result(0), GetValueIds(op->result(0), *value_exe_info));
+  out_ = value_exec_info->GetVarByValue(op->result(0));
+  outputs.emplace(op->result(0), GetValueIds(op->result(0), *value_exec_info));
   SetOutputs(outputs);
 }
 

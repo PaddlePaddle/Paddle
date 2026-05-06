@@ -24,13 +24,13 @@ BuiltinCombineInstruction::BuiltinCombineInstruction(
     size_t id,
     const Place& place,
     pir::Operation* op,
-    ValueExecutionInfo* value_exe_info)
+    ValueExecutionInfo* value_exec_info)
     : InstructionBase(id, place) {
   op_ = op;
 
   SetKernelType(AnalyseOpFuncType(op, place));
 
-  InitInputsOutputsIds(op, *value_exe_info);
+  InitInputsOutputsIds(op, *value_exec_info);
 
   SetArtificial(true);
 }

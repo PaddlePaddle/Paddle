@@ -97,7 +97,7 @@ COMMON_DECLARE_bool(async_fast_eager_deletion_mode);
 
 #define CREATE_INSTR(instr_name)                                   \
   vec_instruction_base_.emplace_back(std::make_unique<instr_name>( \
-      op_idx++, place_, &op, value_exe_info_.get()));
+      op_idx++, place_, &op, value_exec_info_.get()));
 
 namespace paddle::framework {
 
@@ -166,7 +166,7 @@ PirInterpreter::PirInterpreter(const phi::Place& place,
       ir_block_(ir_block),
       sub_blocks_(),
       vec_instruction_base_(),
-      value_exe_info_(nullptr),
+      value_exec_info_(nullptr),
       var_ref_count_(),
       ir_dependency_builder_(),
       ir_stream_analyzer_(place),
@@ -212,12 +212,12 @@ PirInterpreter::PirInterpreter(const phi::Place& place,
     return lhs_scheduling_priority > rhs_scheduling_priority;
   };
 
-  value_exe_info_ = std::make_shared<ValueExecutionInfo>(InnerScope());
+  value_exec_info_ = std::make_shared<ValueExecutionInfo>(InnerScope());
 
   std::stringstream ss;
   ss << this
      << std::chrono::high_resolution_clock::now().time_since_epoch().count();
-  BuildScope(*ir_block_, ss.str(), execution_config_, value_exe_info_.get());
+  BuildScope(*ir_block_, ss.str(), execution_config_, value_exec_info_.get());
 }
 
 PirInterpreter::PirInterpreter(
@@ -225,7 +225,7 @@ PirInterpreter::PirInterpreter(
     const std::vector<std::string>& fetch_var_names,
     const pir::Block* ir_block,
     framework::Scope* scope,
-    std::shared_ptr<ValueExecutionInfo> value_exe_info,
+    std::shared_ptr<ValueExecutionInfo> value_exec_info,
     const ExecutionConfig& execution_config)
     : is_build_(false),
       static_build_(false),
@@ -258,7 +258,7 @@ PirInterpreter::PirInterpreter(
       ir_block_(ir_block),
       sub_blocks_(),
       vec_instruction_base_(),
-      value_exe_info_(value_exe_info),
+      value_exec_info_(value_exec_info),
       var_ref_count_(),
       ir_dependency_builder_(),
       ir_stream_analyzer_(place),
@@ -305,7 +305,7 @@ PirInterpreter::PirInterpreter(
   std::stringstream ss;
   ss << this
      << std::chrono::high_resolution_clock::now().time_since_epoch().count();
-  BuildScope(*ir_block_, ss.str(), execution_config_, value_exe_info_.get());
+  BuildScope(*ir_block_, ss.str(), execution_config_, value_exec_info_.get());
 }
 
 PirInterpreter::~PirInterpreter() {
@@ -361,19 +361,19 @@ const VariableScope* PirInterpreter::GetVariableScope() const {
 void PirInterpreter::reset_scope(Scope* new_scope) {
   var_scope_.SetScope(new_scope);
   scope_ = new_scope;
-  for (size_t i = 0; i < value_exe_info_->GetVarList().size(); i++) {
-    const auto& var_name = value_exe_info_->GetNameById(static_cast<int>(i));
-    value_exe_info_->ResetVarList(static_cast<int>(i),
-                                  new_scope->FindVar(var_name));
+  for (size_t i = 0; i < value_exec_info_->GetVarList().size(); i++) {
+    const auto& var_name = value_exec_info_->GetNameById(static_cast<int>(i));
+    value_exec_info_->ResetVarList(static_cast<int>(i),
+                                   new_scope->FindVar(var_name));
   }
   // The index should be assured valid, cause the InterpreterCore may not be
   // fully built, but was still cached and used. For example, see unit test
   // `test_assert.py`, it may exit before `PirInterpreter::Convert`,
   // but still was cached and used by later tests.
   for (size_t i = 0;
-       i < std::min(refs_.size(), value_exe_info_->GetVarList().size());
+       i < std::min(refs_.size(), value_exec_info_->GetVarList().size());
        i++) {
-    refs_[i]->ResetVariable(value_exe_info_->GetVarList()[i]);
+    refs_[i]->ResetVariable(value_exec_info_->GetVarList()[i]);
   }
 }
 
@@ -523,7 +523,7 @@ Scope* PirInterpreter::InnerScope() const {
 }
 
 std::string PirInterpreter::GetNameByValue(pir::Value value) const {
-  return value_exe_info_->GetVarName(value);
+  return value_exec_info_->GetVarName(value);
 }
 
 void PirInterpreter::UpdateSyncOpNum() {
@@ -782,7 +782,7 @@ void PirInterpreter::BuildInstruction() {
       if (op.isa<pir::CombineOp>()) {
         vec_instruction_base_.emplace_back(
             std::make_unique<BuiltinCombineInstruction>(
-                op_idx++, place_, &op, value_exe_info_.get()));
+                op_idx++, place_, &op, value_exec_info_.get()));
       } else if (interpreter::GetSpecialOpNames().count(op.name())) {
         VLOG(6) << "skip process builtin dialect op: " << op.name();
         continue;
@@ -804,7 +804,7 @@ void PirInterpreter::BuildInstruction() {
             std::make_unique<IfInstruction>(op_idx++,
                                             place_,
                                             &op,
-                                            value_exe_info_.get(),
+                                            value_exec_info_.get(),
                                             execution_config_);
         if_instr_ptr->SetOutputHooks(pir_output_hookfuncs_);
         if_instr_ptr->SetInputHooks(pir_input_hookfuncs_);
@@ -820,7 +820,7 @@ void PirInterpreter::BuildInstruction() {
                  ->FalseBranchInterpreter()});
       } else if (op.isa<paddle::dialect::PyLayerOp>()) {
         vec_instruction_base_.emplace_back(std::make_unique<PyLayerInstruction>(
-            op_idx++, place_, &op, value_exe_info_.get(), execution_config_));
+            op_idx++, place_, &op, value_exec_info_.get(), execution_config_));
         sub_blocks_.insert(
             {&op.dyn_cast<paddle::dialect::PyLayerOp>().forward_block(),
              dynamic_cast<PyLayerInstruction*>(
@@ -831,7 +831,7 @@ void PirInterpreter::BuildInstruction() {
             std::make_unique<WhileInstruction>(op_idx++,
                                                place_,
                                                &op,
-                                               value_exe_info_.get(),
+                                               value_exec_info_.get(),
                                                execution_config_);
 
         while_instr_ptr->SetOutputHooks(pir_output_hookfuncs_);
@@ -839,7 +839,7 @@ void PirInterpreter::BuildInstruction() {
 
         while_instr_ptr->CheckGCEarly([this](InstructionBase* instr) {
           std::unordered_map<pir::Value, std::vector<int>> inputs;
-          GetInputIds(instr->Operation(), *this->value_exe_info_, &inputs);
+          GetInputIds(instr->Operation(), *this->value_exec_info_, &inputs);
           auto HasUserInLoopBody = [instr](pir::Value value) {
             for (auto it = value.use_begin(); it != value.use_end(); ++it) {
               auto user_parent_op = it->owner()->GetParentOp();
@@ -864,7 +864,7 @@ void PirInterpreter::BuildInstruction() {
             if (HasUserInLoopBody(kv.first)) {
               continue;
             }
-            auto var_id = this->value_exe_info_->GetVarId(kv.first);
+            auto var_id = this->value_exec_info_->GetVarId(kv.first);
             bool is_ready = this->refs_[var_id]->DynamicRef() == 1;
             if (is_ready) {
               VLOG(4) << "early gc: " << this->GetNameByValue(kv.first);
@@ -896,7 +896,7 @@ void PirInterpreter::BuildInstruction() {
                                                    &op,
                                                    &cuda_graph_state_,
                                                    cuda_graph_capture_pool_id_,
-                                                   value_exe_info_.get(),
+                                                   value_exec_info_.get(),
                                                    execution_config_);
         cuda_graph_instr_ptr->SetOutputHooks(pir_output_hookfuncs_);
         cuda_graph_instr_ptr->SetInputHooks(pir_input_hookfuncs_);
@@ -958,16 +958,19 @@ void PirInterpreter::BuildInstruction() {
     } else if (op.dialect()->name() == "custom_kernel") {
       vec_instruction_base_.emplace_back(
           std::make_unique<CustomKernelInstruction>(
-              op_idx++, place_, &op, *(value_exe_info_.get())));
+              op_idx++, place_, &op, *(value_exec_info_.get())));
     } else if (op.dialect()->name() == "py_func") {
       vec_instruction_base_.emplace_back(
           std::make_unique<PythonFunctionInstruction>(
-              op_idx++, place_, &op, *(value_exe_info_.get())));
+              op_idx++, place_, &op, *(value_exec_info_.get())));
     } else if (paddle::dialect::IsCustomEngineOp(&op)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       vec_instruction_base_.emplace_back(
-          std::make_unique<CustomEngineInstruction>(
-              op_idx++, place_, &op, value_exe_info_.get(), execution_config_));
+          std::make_unique<CustomEngineInstruction>(op_idx++,
+                                                    place_,
+                                                    &op,
+                                                    value_exec_info_.get(),
+                                                    execution_config_));
 #else
       PADDLE_THROW(common::errors::PreconditionNotMet(
           "Program has CustomEngineOp and must compile Paddle use "
@@ -1019,10 +1022,10 @@ std::string PirInterpreter::DebugInstructions() {
   }
   ss << "---------------------------var_id -> var_name -> "
         "variable*---------------------------\n";
-  for (size_t var_id = 0; var_id < value_exe_info_->GetVarList().size();
+  for (size_t var_id = 0; var_id < value_exec_info_->GetVarList().size();
        var_id++) {
-    auto* var = value_exe_info_->GetVarList()[var_id];
-    auto var_name = value_exe_info_->GetVarName(var);
+    auto* var = value_exec_info_->GetVarList()[var_id];
+    auto var_name = value_exec_info_->GetVarName(var);
     ss << var_id << " -> " << var_name << " -> " << var << "\n";
   }
   return ss.str();
@@ -1050,14 +1053,14 @@ std::string PirInterpreter::DebugValueInfo() {
      << "\n";
 
   interpreter::PrintValuesAndVariables(*ir_block_,
-                                       value_exe_info_->GetValue2VarName(),
-                                       value_exe_info_->GetVar2VarName());
+                                       value_exec_info_->GetValue2VarName(),
+                                       value_exec_info_->GetVar2VarName());
 
-  for (auto kv : value_exe_info_->GetValue2VarName()) {
+  for (auto kv : value_exec_info_->GetValue2VarName()) {
     PADDLE_ENFORCE((bool)kv.first,
                    common::errors::PreconditionNotMet(
                        "var(%s) should not be nullptr", kv.second));
-    PADDLE_ENFORCE(value_exe_info_->HasVar(kv.second),
+    PADDLE_ENFORCE(value_exec_info_->HasVar(kv.second),
                    common::errors::PreconditionNotMet(
                        "var(%s) should exist in var_name_2_id_", kv.second));
     auto* var = InnerScope()->FindVar(kv.second);
@@ -1066,7 +1069,7 @@ std::string PirInterpreter::DebugValueInfo() {
         common::errors::PreconditionNotMet(
             "var(%s) should exist in scope (%p)", kv.second, InnerScope()));
     os << kv.first.impl() << " -> " << kv.second << " -> "
-       << value_exe_info_->GetVarId(kv.first) << " -> " << var << "\n";
+       << value_exec_info_->GetVarId(kv.first) << " -> " << var << "\n";
   }
   return os.str();
 }
@@ -1254,16 +1257,16 @@ void PirInterpreter::RecordStreamForGC(InstructionBase* instr) {
    * supported later.
    */
   for (int var_id : instr->GCCheckVars()) {
-    VLOG(4) << "GC sync " << value_exe_info_->GetNameById(var_id);
+    VLOG(4) << "GC sync " << value_exec_info_->GetNameById(var_id);
 
     // persistable var will be ignore while GC
-    if (parameter_var_names_.count(value_exe_info_->GetNameById(var_id))) {
-      VLOG(4) << value_exe_info_->GetNameById(var_id)
+    if (parameter_var_names_.count(value_exec_info_->GetNameById(var_id))) {
+      VLOG(4) << value_exec_info_->GetNameById(var_id)
               << " is a parameter, skip gc";
       continue;
     }
 
-    paddle::framework::Variable* var = value_exe_info_->GetVarList()[var_id];
+    paddle::framework::Variable* var = value_exec_info_->GetVarList()[var_id];
     if (var == nullptr) {
       continue;
     }
@@ -1319,20 +1322,20 @@ void PirInterpreter::CheckGC(InstructionBase* instr) {
 
   std::vector<Variable*> gc_vars;
   for (auto var_id : instr->GCCheckVars()) {
-    VLOG(4) << "GC:" << value_exe_info_->GetNameById(static_cast<int>(var_id))
+    VLOG(4) << "GC:" << value_exec_info_->GetNameById(static_cast<int>(var_id))
             << ", id:" << var_id << ", ref:" << refs_[var_id]->DynamicRef();
     bool is_ready = refs_[var_id]->CheckAndDecrease();
     // ignore all persistable var while GCphi
     if (parameter_var_names_.count(
-            value_exe_info_->GetNameById(static_cast<int>(var_id)))) {
-      VLOG(4) << value_exe_info_->GetNameById(static_cast<int>(var_id))
+            value_exec_info_->GetNameById(static_cast<int>(var_id)))) {
+      VLOG(4) << value_exec_info_->GetNameById(static_cast<int>(var_id))
               << " is a parameter, skip gc";
       continue;
     }
 
     if (is_ready) {
       VLOG(6) << "Async delete variable with name : "
-              << value_exe_info_->GetNameById(static_cast<int>(var_id));
+              << value_exec_info_->GetNameById(static_cast<int>(var_id));
       if (use_trace_run_ && FLAGS_async_fast_eager_deletion_mode) {
         gc_vars.push_back(refs_[var_id]->Var());
       } else {
@@ -1387,13 +1390,13 @@ void PirInterpreter::CalculateLastLiveOps() {
     for (auto var_id : gc_check_vars) {
       Scope* inner_scope = InnerScope();
       paddle::framework::Variable* var = inner_scope->FindVar(
-          value_exe_info_->GetNameById(static_cast<int>(var_id)));
+          value_exec_info_->GetNameById(static_cast<int>(var_id)));
       PADDLE_ENFORCE_NOT_NULL(
           var,
           common::errors::NotFound(
               "Var(id=%d,%s) should not be nullptr.",
               static_cast<int>(var_id),
-              value_exe_info_->GetNameById(static_cast<int>(var_id))));
+              value_exec_info_->GetNameById(static_cast<int>(var_id))));
       if (var->IsType<DenseTensor>() || var->IsType<phi::SelectedRows>() ||
           var->IsType<phi::TensorArray>() ||
           var->IsType<phi::SparseCooTensor>() ||
@@ -1401,7 +1404,7 @@ void PirInterpreter::CalculateLastLiveOps() {
         last_live_ops_[var_id].insert(op_idx);
       } else {
         VLOG(4) << "not clear "
-                << value_exe_info_->GetNameById(static_cast<int>(var_id))
+                << value_exec_info_->GetNameById(static_cast<int>(var_id))
                 << " after " << instr->Name() << " because its type is "
                 << framework::ToTypeName(var->Type());
       }
@@ -1410,7 +1413,7 @@ void PirInterpreter::CalculateLastLiveOps() {
   }
   // clear the last_live_ops list for all vars in skip_gc_vars
   for (const std::string& skip_gc_var : execution_config_.skip_gc_vars) {
-    int var_id = value_exe_info_->GetIdByName(skip_gc_var);
+    int var_id = value_exec_info_->GetIdByName(skip_gc_var);
     if (var_id != -1) {
       last_live_ops_[var_id].clear();
       VLOG(8) << "Skip gc for var: " << skip_gc_var;
@@ -1425,7 +1428,7 @@ void PirInterpreter::CalculateLastLiveOps() {
   // c = op2(a, b)
   // in this case, a is the input of op1 and op2, we only need to check
   // a after op2, because op2 always uses a after op1.
-  var_ref_count_.resize(value_exe_info_->GetVarList().size());
+  var_ref_count_.resize(value_exec_info_->GetVarList().size());
   VLOG(4) << "last_live_ops_.size() : " << last_live_ops_.size();
   for (auto kv : last_live_ops_) {
     for (auto val : kv.second) {
@@ -1448,7 +1451,7 @@ void PirInterpreter::CalculateLastLiveOps() {
       }
       if (not_before_any) {
         VLOG(6) << "last live op of var " << i << " "
-                << value_exe_info_->GetNameById(static_cast<int>(i)) << " : "
+                << value_exec_info_->GetNameById(static_cast<int>(i)) << " : "
                 << item << " " << vec_instruction_base_[item]->Name();
         minimum_last_live_ops.insert(item);
         vec_instruction_base_[item]->AddGCCheckVar(i);
@@ -1462,9 +1465,9 @@ void PirInterpreter::CalculateLastLiveOps() {
   for (auto& dep : *dependency_count_) {
     deps_.emplace_back(std::make_shared<interpreter::OpDepInfo>(dep));
   }
-  for (size_t i = 0; i < value_exe_info_->GetVarList().size(); ++i) {
+  for (size_t i = 0; i < value_exec_info_->GetVarList().size(); ++i) {
     refs_.emplace_back(std::make_shared<interpreter::VarRefInfo>(
-        var_ref_count_[i], value_exe_info_->GetVarList()[i]));
+        var_ref_count_[i], value_exec_info_->GetVarList()[i]));
   }
   VLOG(4) << "done CalculateLastLiveOps";
 }
@@ -1476,7 +1479,7 @@ void PirInterpreter::ConstructEventForJitInput() {
       if (inst->Name() == "pd_op.memcpy_d2h" && phi::is_gpu_place(place_)) {
         for (auto& item : inst->Inputs()) {
           for (auto var_id : item.second) {
-            auto name = value_exe_info_->GetNameById(var_id);
+            auto name = value_exec_info_->GetNameById(var_id);
             if (JitInputVars().count(name)) {
               auto device_event = std::make_shared<platform::DeviceEvent>(
                   place_, platform::GenerateDeviceEventFlag());
@@ -1952,17 +1955,17 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
                            : "kGpuAsync"))
             << " runs on " << phi::GetCurrentThreadName() << "\n"
             << "Before: " << cur_place << " "
-            << instr_node->DebugStringEx(scope_, value_exe_info_.get());
+            << instr_node->DebugStringEx(scope_, value_exec_info_.get());
 
     if (execution_config_.used_for_inference) {
       for (auto& hook : pir_input_hookfuncs_) {
-        hook(instr_node, value_exe_info_.get(), scope_);
+        hook(instr_node, value_exec_info_.get(), scope_);
       }
     }
 
     if (FLAGS_enable_collect_shape) {
       CollectShapeManager::Instance().CollectShapeInfo(
-          instr_node, value_exe_info_.get(), scope_);
+          instr_node, value_exec_info_.get(), scope_);
     }
 
     if (!instr_node->IsArtificial()) {
@@ -1982,7 +1985,7 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
       }
 
       if (FLAGS_check_nan_inf) {
-        CheckTensorHasNanOrInf(instr_node, scope_, value_exe_info_.get());
+        CheckTensorHasNanOrInf(instr_node, scope_, value_exec_info_.get());
       }
       VLOG(2) << "\ndone: " << __func__ << " OP id:" << instr_node->Id()
               << " name:" << instr_node->Name() << " type:"
@@ -1993,7 +1996,7 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
                              : "kGpuAsync"))
               << " runs on " << phi::GetCurrentThreadName() << "\n"
               << "After: " << cur_place << " "
-              << instr_node->DebugStringEx(scope_, value_exe_info_.get());
+              << instr_node->DebugStringEx(scope_, value_exec_info_.get());
       CheckGC(instr_node);
       VLOG(4) << "done CheckGC";
       memory::LogDeviceMemoryStats(cur_place, instr_node->Name());
@@ -2001,7 +2004,7 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
 
     if (execution_config_.used_for_inference) {
       for (auto& hook : pir_output_hookfuncs_) {
-        hook(instr_node, value_exe_info_.get(), scope_);
+        hook(instr_node, value_exec_info_.get(), scope_);
       }
     }
 
@@ -2093,7 +2096,7 @@ void PirInterpreter::PreAnalysis() {
 }
 
 pir::Value PirInterpreter::GetValueByName(const std::string& var_name) {
-  for (auto kv : value_exe_info_->GetValue2VarName()) {
+  for (auto kv : value_exec_info_->GetValue2VarName()) {
     if (kv.second == var_name) {
       return kv.first;
     }
@@ -2103,7 +2106,7 @@ pir::Value PirInterpreter::GetValueByName(const std::string& var_name) {
 
 void PirInterpreter::SolvePersistableVarNames() {
   VLOG(6) << "SolvePersistableVarNames";
-  for (auto kv : value_exe_info_->GetValue2VarName()) {
+  for (auto kv : value_exec_info_->GetValue2VarName()) {
     pir::Value value = kv.first;
     const std::string& var_name = kv.second;
     auto bool_attr = value.attribute<pir::BoolAttribute>(kAttrIsPersistable);

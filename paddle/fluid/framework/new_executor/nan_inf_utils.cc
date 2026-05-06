@@ -30,7 +30,7 @@ static std::once_flag pir_white_list_init_flag;
 
 void CheckTensorHasNanOrInf(InstructionBase* instruction,
                             const paddle::framework::Scope* scope,
-                            ValueExecutionInfo* value_exe_info) {
+                            ValueExecutionInfo* value_exec_info) {
   std::call_once(pir_white_list_init_flag, details::InitWhiteListFormEnv);
 
   std::string dialect_name = instruction->Operation()
@@ -47,7 +47,7 @@ void CheckTensorHasNanOrInf(InstructionBase* instruction,
   }
 
   for (auto iter : instruction->Outputs()) {
-    auto tensor_name = value_exe_info->GetVarName(iter.first);
+    auto tensor_name = value_exec_info->GetVarName(iter.first);
     bool need_check = true;
     if (details::op_var_nan_inf_white_list().count(api_name) != 0) {
       for (auto& white_vname :

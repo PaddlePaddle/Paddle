@@ -565,7 +565,7 @@ bool GetCondData(const DenseTensor& cond) {
 // type is NOT TensorArray. It has already been processed in the previous
 // step(HandleForInplaceVarOp).
 void HandleForInplaceOp(pir::Operation* op,
-                        const ValueExecutionInfo* value_exe_info,
+                        const ValueExecutionInfo* value_exec_info,
                         InstructionBase* instr) {
   if (op->num_results() < 1) return;
   pir::IrContext* ctx = pir::IrContext::Instance();
@@ -596,8 +596,8 @@ void HandleForInplaceOp(pir::Operation* op,
       const std::string& inplace_name = yaml_parser.InplaceName(value_name);
       pir::Value inplace_value =
           op->operand_source(yaml_parser.InputName2Id().at(inplace_name));
-      std::string input_var_name = value_exe_info->GetVarName(inplace_value);
-      std::string output_var_name = value_exe_info->GetVarName(value);
+      std::string input_var_name = value_exec_info->GetVarName(inplace_value);
+      std::string output_var_name = value_exec_info->GetVarName(value);
       PADDLE_ENFORCE_NE(input_var_name,
                         "",
                         common::errors::InvalidArgument(
@@ -608,15 +608,15 @@ void HandleForInplaceOp(pir::Operation* op,
                             "The output var name of inplace op is empty."));
       VLOG(4) << "inplace: " << value_name << " -> " << inplace_name
               << " (var: " << input_var_name << ")";
-      instr->AddInplace(value_exe_info->GetVarByValue(inplace_value),
-                        value_exe_info->GetVarByValue(value));
+      instr->AddInplace(value_exec_info->GetVarByValue(inplace_value),
+                        value_exec_info->GetVarByValue(value));
     } else if (yaml_parser.HasView(value_name)) {
       const std::string& view_name = yaml_parser.ViewName(value_name);
       pir::Value view_value =
           op->operand_source(yaml_parser.InputName2Id().at(view_name));
       // const std::string& var_name = value_2_var_name->at(view_value);
-      std::string input_var_name = value_exe_info->GetVarName(view_value);
-      std::string output_var_name = value_exe_info->GetVarName(value);
+      std::string input_var_name = value_exec_info->GetVarName(view_value);
+      std::string output_var_name = value_exec_info->GetVarName(value);
 
       PADDLE_ENFORCE_NE(input_var_name,
                         "",
@@ -628,8 +628,8 @@ void HandleForInplaceOp(pir::Operation* op,
                             "The output var name of view op is empty."));
       VLOG(4) << "view: " << value_name << " -> " << view_name
               << " (var: " << input_var_name << ")";
-      instr->AddInplace(value_exe_info->GetVarByValue(view_value),
-                        value_exe_info->GetVarByValue(value));
+      instr->AddInplace(value_exec_info->GetVarByValue(view_value),
+                        value_exec_info->GetVarByValue(value));
     }
   }
 }

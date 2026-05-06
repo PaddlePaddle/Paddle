@@ -31,8 +31,8 @@ namespace framework {
 YieldInstruction::YieldInstruction(size_t id,
                                    const Place &place,
                                    pir::Operation *op,
-                                   ValueExecutionInfo *value_exe_info)
-    : InstructionBase(id, place), op_(op), value_exe_info_(value_exe_info) {
+                                   ValueExecutionInfo *value_exec_info)
+    : InstructionBase(id, place), op_(op), value_exec_info_(value_exec_info) {
   VLOG(6) << "construct yield instruction";
   auto parent_op = op->GetParentOp();
   std::unordered_map<pir::Value, std::vector<int>> inputs;
@@ -43,8 +43,8 @@ YieldInstruction::YieldInstruction(size_t id,
     }
     auto in = op->operand_source(i);
     if (in) {
-      inputs.emplace(in, GetValueIds(in, *value_exe_info_));
-      input_vars_.push_back(value_exe_info_->GetVarByValue(in));
+      inputs.emplace(in, GetValueIds(in, *value_exec_info_));
+      input_vars_.push_back(value_exec_info_->GetVarByValue(in));
     } else {
       // value 为空的时候根据 parent op 输出 value 的 meta 信息填一个全 0
       // tensor。Build instruction 的时候先创建 var
@@ -52,7 +52,7 @@ YieldInstruction::YieldInstruction(size_t id,
         auto out_type = parent_op->result(i).type();
         std::string new_name = "_fake_var_op_" + std::to_string(op->id()) +
                                "_input_" + std::to_string(i) + "_";
-        Variable *fake_var = value_exe_info_->GetScope()->Var(new_name);
+        Variable *fake_var = value_exec_info_->GetScope()->Var(new_name);
         if (out_type.isa<paddle::dialect::AllocatedDenseTensorType>()) {
           fake_var->GetMutable<DenseTensor>();
           input_vars_.push_back(fake_var);
@@ -68,7 +68,7 @@ YieldInstruction::YieldInstruction(size_t id,
   for (size_t i = 0; i < parent_op->num_results(); ++i) {
     if (parent_op->result(i) && parent_op->result(i).type()) {
       output_vars_.push_back(
-          value_exe_info->GetVarByValue(parent_op->result(i)));
+          value_exec_info->GetVarByValue(parent_op->result(i)));
     }
   }
 
@@ -126,7 +126,7 @@ void YieldInstruction::Run() {
           !input_vars_[i]->Get<DenseTensor>().initialized()) {
         // 对应 input 为 NULL VALUE 的情况，fake tensor
         FullFakeTensor<paddle::dialect::AllocatedDenseTensorType, DenseTensor>(
-            value_exe_info_->GetValueByVar(output_vars_[i]), output_vars_[i]);
+            value_exec_info_->GetValueByVar(output_vars_[i]), output_vars_[i]);
       } else {
         output_vars_[i]->GetMutable<DenseTensor>()->ShareDataWith(
             input_vars_[i]->Get<DenseTensor>());

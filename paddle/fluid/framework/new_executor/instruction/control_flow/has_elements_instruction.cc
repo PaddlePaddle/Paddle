@@ -25,32 +25,32 @@ HasElementsInstruction::HasElementsInstruction(
     size_t id,
     const Place& place,
     pir::Operation* op,
-    ValueExecutionInfo* value_exe_info)
-    : InstructionBase(id, place), op_(op), value_exe_info_(value_exe_info) {
+    ValueExecutionInfo* value_exec_info)
+    : InstructionBase(id, place), op_(op), value_exec_info_(value_exec_info) {
   auto has_elements_op = op->dyn_cast<paddle::dialect::HasElementsOp>();
   VLOG(6) << "construct has_elements instruction for: "
           << has_elements_op->name();
 
   std::unordered_map<pir::Value, std::vector<int>> outputs;
   outputs.emplace(has_elements_op.out(),
-                  GetValueIds(has_elements_op.out(), *value_exe_info_));
+                  GetValueIds(has_elements_op.out(), *value_exec_info_));
   SetOutputs(outputs);
 
   std::unordered_map<pir::Value, std::vector<int>> inputs;
   std::vector<int> inputs_id = {
-      value_exe_info_->GetVarId(has_elements_op.input())};
+      value_exec_info_->GetVarId(has_elements_op.input())};
   inputs.emplace(has_elements_op.input(), inputs_id);
   SetInputs(inputs);
 
   type_ = OpFuncType::kCpuSync;
 
-  bool_tensor_ =
-      value_exe_info_->GetVarByValue(op_->result(0))->GetMutable<DenseTensor>();
+  bool_tensor_ = value_exec_info_->GetVarByValue(op_->result(0))
+                     ->GetMutable<DenseTensor>();
   bool_tensor_->Resize({1});
 
   auto stack_value =
       op_->dyn_cast<paddle::dialect::HasElementsOp>().operand_source(0);
-  auto var_array = value_exe_info_->GetVarByValue(stack_value);
+  auto var_array = value_exec_info_->GetVarByValue(stack_value);
   stack_element_var_array_ = var_array->GetMutable<VariableRefArray>();
 }
 

@@ -26,18 +26,18 @@ namespace framework {
 TuplePopInstruction::TuplePopInstruction(size_t id,
                                          const Place& place,
                                          pir::Operation* op,
-                                         ValueExecutionInfo* value_exe_info)
-    : InstructionBase(id, place), op_(op), value_exe_info_(value_exe_info) {
+                                         ValueExecutionInfo* value_exec_info)
+    : InstructionBase(id, place), op_(op), value_exec_info_(value_exec_info) {
   tuple_pop_op_ = op->dyn_cast<pir::TuplePopOp>();
   VLOG(6) << "construct tuple_pop instruction for: " << tuple_pop_op_->name();
   auto outlet_value = tuple_pop_op_.outlet();
-  auto var_array = value_exe_info_->GetVarByValue(outlet_value);
+  auto var_array = value_exec_info_->GetVarByValue(outlet_value);
   stack_element_var_array_ = var_array->GetMutable<VariableRefArray>();
 
   std::unordered_map<pir::Value, std::vector<int>> inputs;
   inputs.emplace(tuple_pop_op_.outlet(),
                  std::initializer_list<int>{
-                     value_exe_info_->GetVarId(tuple_pop_op_.outlet())});
+                     value_exec_info_->GetVarId(tuple_pop_op_.outlet())});
   SetInputs(inputs);
 
   std::unordered_map<pir::Value, std::vector<int>> outputs;
@@ -45,7 +45,7 @@ TuplePopInstruction::TuplePopInstruction(size_t id,
     auto outlet_element_value = tuple_pop_op_.outlet_element(i);
     if (outlet_element_value.type()) {
       outputs.emplace(outlet_element_value,
-                      GetValueIds(outlet_element_value, *value_exe_info_));
+                      GetValueIds(outlet_element_value, *value_exec_info_));
     } else {
       outputs.emplace(outlet_element_value, std::vector<int>{});
     }
@@ -55,7 +55,7 @@ TuplePopInstruction::TuplePopInstruction(size_t id,
   // outlet, so it needs to be marked as output.
   outputs.emplace(tuple_pop_op_.outlet(),
                   std::initializer_list<int>{
-                      value_exe_info_->GetVarId(tuple_pop_op_.outlet())});
+                      value_exec_info_->GetVarId(tuple_pop_op_.outlet())});
   SetOutputs(outputs);
 
   type_ = OpFuncType::kCpuSync;
@@ -145,7 +145,7 @@ void TuplePopInstruction::Run() {
       var_elements.pop();
       VLOG(6) << "pop back var: " << front_var;
       auto outlet_element_value = tuple_pop_op_.outlet_element(i);
-      auto grad_var = value_exe_info_->GetVarByValue(outlet_element_value);
+      auto grad_var = value_exec_info_->GetVarByValue(outlet_element_value);
       if (front_var == nullptr && grad_var == nullptr) {
         continue;
       }

@@ -346,7 +346,7 @@ void InstructionBase::InitInputsOutputsIds(
 
 std::string InstructionBase::DebugStringEx(
     const paddle::framework::Scope* scope,
-    ValueExecutionInfo* value_exe_info) const {
+    ValueExecutionInfo* value_exec_info) const {
   std::stringstream ss;
   ss << "Op(" << Name() << "), inputs:{";
 
@@ -356,7 +356,7 @@ std::string InstructionBase::DebugStringEx(
     auto& input = *it;
     bool is_no_need_buffer_var = (!no_need_buffer_vars.empty() &&
                                   no_need_buffer_vars.count(input.first) > 0);
-    auto var_name = value_exe_info->GetVarName(input.first);
+    auto var_name = value_exec_info->GetVarName(input.first);
     ss << var_name << ":[";
     if (scope) {
       if (!VarInited(*scope, var_name)) {
@@ -387,7 +387,7 @@ std::string InstructionBase::DebugStringEx(
   ss << "}, outputs:{";
   for (auto it = Outputs().begin(); it != Outputs().end();) {
     auto& output = *it;
-    auto var_name = value_exe_info->GetVarName(output.first);
+    auto var_name = value_exec_info->GetVarName(output.first);
     ss << var_name << ":[";
     if (scope) {
       if (!VarInited(*scope, var_name)) {

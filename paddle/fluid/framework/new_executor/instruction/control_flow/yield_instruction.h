@@ -25,7 +25,7 @@ class YieldInstruction : public InstructionBase {
   YieldInstruction(size_t id,
                    const Place& place,
                    pir::Operation* op,
-                   ValueExecutionInfo* value_exe_info);
+                   ValueExecutionInfo* value_exec_info);
 
   void Run() override;
 
@@ -42,7 +42,7 @@ class YieldInstruction : public InstructionBase {
 
   std::vector<Variable*> output_vars_;
 
-  ValueExecutionInfo* value_exe_info_;
+  ValueExecutionInfo* value_exec_info_;
 };
 
 }  // namespace framework

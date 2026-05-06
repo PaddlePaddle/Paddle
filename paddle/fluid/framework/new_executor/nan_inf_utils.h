@@ -23,7 +23,7 @@ namespace framework {
 
 void CheckTensorHasNanOrInf(InstructionBase* instruction,
                             const paddle::framework::Scope* scope,
-                            ValueExecutionInfo* value_exe_info);
+                            ValueExecutionInfo* value_exec_info);
 
 }  // namespace framework
 }  // namespace paddle

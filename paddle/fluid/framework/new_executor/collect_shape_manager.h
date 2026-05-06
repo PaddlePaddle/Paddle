@@ -47,7 +47,7 @@ class CollectShapeManager {
   }
 
   void CollectShapeInfo(framework::InstructionBase* instr,
-                        framework::ValueExecutionInfo* value_exe_info,
+                        framework::ValueExecutionInfo* value_exec_info,
                         framework::Scope* scope);
   void StatisticShapeRangeInfo();
 

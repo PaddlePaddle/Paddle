@@ -49,7 +49,7 @@ class PirInterpreter : public InterpreterBaseImpl {
                  const std::vector<std::string>& fetch_var_names,
                  const pir::Block* ir_block,
                  Scope* scope,
-                 std::shared_ptr<ValueExecutionInfo> value_exe_info,
+                 std::shared_ptr<ValueExecutionInfo> value_exec_info,
                  const ExecutionConfig& execution_config = ExecutionConfig());
 
   ~PirInterpreter();
@@ -272,7 +272,7 @@ class PirInterpreter : public InterpreterBaseImpl {
   std::vector<std::unique_ptr<InstructionBase>> vec_instruction_base_;
 
   // value execution info
-  std::shared_ptr<ValueExecutionInfo> value_exe_info_;
+  std::shared_ptr<ValueExecutionInfo> value_exec_info_;
 
   std::vector<int> var_ref_count_;
 

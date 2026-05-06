@@ -25,7 +25,7 @@ CollectShapeManager &CollectShapeManager::Instance() {
 
 void CollectShapeManager::CollectShapeInfo(
     framework::InstructionBase *instr,
-    framework::ValueExecutionInfo *value_exe_info,
+    framework::ValueExecutionInfo *value_exec_info,
     framework::Scope *scope) {
   std::lock_guard<std::mutex> lock(info_mutex_);
   VLOG(3) << "collect shape in instruction:" << instr->Name();
@@ -44,7 +44,7 @@ void CollectShapeManager::CollectShapeInfo(
               << input.first.impl();
       continue;
     }
-    auto var_name = value_exe_info->GetVarName(input.first);
+    auto var_name = value_exec_info->GetVarName(input.first);
     auto *var = scope->FindVar(var_name);
     if (!var || !var->IsType<DenseTensor>()) {
       VLOG(3) << "input var is null : " << (var == nullptr);

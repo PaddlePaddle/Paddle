@@ -26,7 +26,7 @@ class SelectInputInstruction : public InstructionBase {
   SelectInputInstruction(size_t id,
                          const Place& place,
                          pir::Operation* op,
-                         ValueExecutionInfo* value_exe_info);
+                         ValueExecutionInfo* value_exec_info);
 
   void Run() override;
 

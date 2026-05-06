@@ -39,7 +39,7 @@ class CudaGraphInstruction : public InstructionBase {
                        pir::Operation* op,
                        uint8_t* cuda_graph_state_ref,
                        int64_t cuda_graph_capture_pool_id,
-                       ValueExecutionInfo* value_exe_info,
+                       ValueExecutionInfo* value_exec_info,
                        interpreter::ExecutionConfig execution_config);
 
   ~CudaGraphInstruction();

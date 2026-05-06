@@ -64,7 +64,7 @@ void InsertInplacedExternalInputsToOuts(
 bool GetCondData(const DenseTensor& cond);
 
 void HandleForInplaceOp(pir::Operation* op,
-                        const ValueExecutionInfo* value_exe_info,
+                        const ValueExecutionInfo* value_exec_info,
                         InstructionBase* instr);
 
 void ShareVarBuffer(const Variable* src_var, Variable* dst_var);

@@ -58,12 +58,12 @@ bool ParsePlace(const pir::Type& type, OpFuncType* type_) {
 TuplePushInstruction::TuplePushInstruction(size_t id,
                                            const Place& place,
                                            pir::Operation* op,
-                                           ValueExecutionInfo* value_exe_info)
-    : InstructionBase(id, place), op_(op), value_exe_info_(value_exe_info) {
+                                           ValueExecutionInfo* value_exec_info)
+    : InstructionBase(id, place), op_(op), value_exec_info_(value_exec_info) {
   tuple_push_op_ = op->dyn_cast<pir::TuplePushOp>();
   VLOG(6) << "construct tuple_push instruction for: " << tuple_push_op_->name();
   auto stack_value = tuple_push_op_.container();
-  auto var_array = value_exe_info_->GetVarByValue(stack_value);
+  auto var_array = value_exec_info_->GetVarByValue(stack_value);
   stack_element_var_array_ = var_array->GetMutable<VariableRefArray>();
 
   std::unordered_map<pir::Value, std::vector<int>> inputs;
@@ -71,7 +71,7 @@ TuplePushInstruction::TuplePushInstruction(size_t id,
     auto inlet_element_value = tuple_push_op_.inlet_element(i);
     if (inlet_element_value.type()) {
       inputs.emplace(inlet_element_value,
-                     GetValueIds(inlet_element_value, *value_exe_info_));
+                     GetValueIds(inlet_element_value, *value_exec_info_));
     } else {
       inputs.emplace(inlet_element_value, std::vector<int>{});
     }
@@ -83,7 +83,7 @@ TuplePushInstruction::TuplePushInstruction(size_t id,
   std::unordered_map<pir::Value, std::vector<int>> outputs;
   outputs.emplace(tuple_push_op_.inlet(),
                   std::initializer_list<int>{
-                      value_exe_info_->GetVarId(tuple_push_op_.inlet())});
+                      value_exec_info_->GetVarId(tuple_push_op_.inlet())});
   SetOutputs(outputs);
 
   type_ = OpFuncType::kCpuSync;
@@ -104,13 +104,13 @@ void TuplePushInstruction::Run() {
   if (tuple_push_op_.tuple_size() == 0) {
     stack_element_var_array_->emplace_back(nullptr);
   } else {
-    auto& value_2_var_name = value_exe_info_->GetValue2VarName();
+    auto& value_2_var_name = value_exec_info_->GetValue2VarName();
     // TODO(zhangbo): Performance optimization: static acquisition of TuplePush
     // input variables and name.
     std::map<const Variable*, Variable*> src_to_dst;
     for (size_t i = 0; i < tuple_push_op_.tuple_size(); i++) {
       auto inlet_element_value = tuple_push_op_.inlet_element(i);
-      Variable* var = value_exe_info_->GetVarByValue(inlet_element_value);
+      Variable* var = value_exec_info_->GetVarByValue(inlet_element_value);
       bool is_optional = (inlet_element_value.impl() == nullptr ||
                           !inlet_element_value.type());
       auto num_str = std::to_string(stack_element_var_array_->size());
@@ -125,11 +125,11 @@ void TuplePushInstruction::Run() {
       std::string var_name = value_2_var_name.at(inlet_element_value);
       std::string new_name = var_name + "_copied_" + num_str + "_in_tuple_" +
                              std::to_string(op_->id());
-      auto* copy_var = value_exe_info_->GetScope()->Var(new_name);
+      auto* copy_var = value_exec_info_->GetScope()->Var(new_name);
 
       DeepCopyVariable(var,
                        &copy_var,
-                       value_exe_info_,
+                       value_exec_info_,
                        stack_element_var_array_->size(),
                        is_optional,
                        &src_to_dst);
