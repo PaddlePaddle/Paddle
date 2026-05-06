@@ -123,6 +123,30 @@ class _GroupManager:
     group_map_by_id = {}
 
 
+class _DistGroupNamespace:
+    """Compat namespace mirroring ``torch.distributed.group``.
+
+    Exposes :attr:`WORLD` so user code converted from PyTorch - for example
+    ``paddle.distributed.broadcast(t, group=paddle.distributed.group.WORLD)`` -
+    works without modification. ``WORLD`` resolves to the default global
+    :class:`Group` after :func:`init_parallel_env` /
+    :func:`init_process_group`, and to ``None`` before initialization, which
+    every collective treats as the default group.
+
+    Note:
+        Pre-init this returns ``None``, while ``torch.distributed.group.WORLD``
+        is a sentinel object. Code that passes ``WORLD`` to a collective works
+        identically; code that does ``g is GroupMember.WORLD`` does not.
+    """
+
+    @property
+    def WORLD(self) -> Group | None:
+        return _GroupManager.group_map_by_id.get(_GroupManager.global_group_id)
+
+
+group = _DistGroupNamespace()
+
+
 def _get_global_group():
     if _GroupManager.global_group_id not in _GroupManager.group_map_by_id:
         raise RuntimeError("The global group is not initialized.")

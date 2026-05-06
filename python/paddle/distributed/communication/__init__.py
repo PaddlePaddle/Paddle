@@ -22,6 +22,7 @@ from .group import (  # noqa: F401
     destroy_process_group,
     get_backend,
     get_group,
+    group,
     is_initialized,
     wait,
 )

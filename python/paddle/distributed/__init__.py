@@ -17,7 +17,7 @@ import atexit  # noqa: F401
 from .value_patch import monkey_patch_value_in_dist
 
 monkey_patch_value_in_dist()
-from paddle.base.core import Placement, ReduceType
+from paddle.base.core import Placement, ProcessGroup, ReduceType
 from paddle.distributed.fleet.base.topology import (
     ParallelMode,
     create_nccl_config,
@@ -99,6 +99,7 @@ from .communication import (  # noqa: F401
     gather,
     get_backend,
     get_group,
+    group,
     irecv,
     is_initialized,
     isend,
@@ -136,6 +137,7 @@ from .parallel import (  # noqa: F401
     get_rank,
     get_world_size,
     init_parallel_env,
+    init_process_group,
 )
 from .parallel_with_gloo import (
     gloo_barrier,
@@ -162,6 +164,9 @@ __all__ = [
     "shutdown_process_group",
     "restart_process_group",
     "init_parallel_env",
+    "init_process_group",
+    "group",
+    "ProcessGroup",
     "gloo_init_parallel_env",
     "gloo_barrier",
     "gloo_release",

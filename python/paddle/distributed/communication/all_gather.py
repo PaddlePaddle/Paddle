@@ -97,7 +97,7 @@ def all_gather_object(
 
     - Pre-allocated list of length ``world_size`` (PyTorch style):
       ``object_list = [None for _ in range(dist.get_world_size())]``
-    - Empty list (Paddle legacy style): ``object_list = []`` — the list is extended in
+    - Empty list (Paddle legacy style): ``object_list = []`` - the list is extended in
       place to hold ``world_size`` items.
 
     Args:
