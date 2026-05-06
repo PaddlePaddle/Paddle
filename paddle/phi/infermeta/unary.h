@@ -741,11 +741,10 @@ PADDLE_API void ReverseInferMeta(const MetaTensor& x,
                                  MetaTensor* out,
                                  MetaConfig config = MetaConfig());
 
-PADDLE_API void ReverseArrayInferMeta(
-    const std::vector<const phi::MetaTensor*>& x,
-    const IntArray& axis,
-    std::vector<phi::MetaTensor*> out,
-    MetaConfig config = MetaConfig());
+PADDLE_API void ReverseArrayInferMeta(const std::vector<const MetaTensor*>& x,
+                                      const IntArray& axis,
+                                      std::vector<MetaTensor*> out,
+                                      MetaConfig config = MetaConfig());
 
 PADDLE_API void RollInferMeta(const MetaTensor& x,
                               const IntArray& shifts,

@@ -2039,7 +2039,7 @@ void FractionalMaxPoolInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 
   mask->set_dims(make_ddim(output_shape));
-  mask->set_dtype(phi::CppTypeToDataType<int>::Type());
+  mask->set_dtype(CppTypeToDataType<int>::Type());
 }
 
 void FrameInferMeta(const MetaTensor& x,
@@ -2273,7 +2273,7 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
   PADDLE_ENFORCE_GE(
       output_outer_dim,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The output_outer_dim should be greater than or equal to 0, "
           "but received output_outer_dim is %d.",
           output_outer_dim));
@@ -2281,7 +2281,7 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
   PADDLE_ENFORCE_GE(
       output_inner_dim,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The output_inner_dim should be greater than or equal to 0, "
           "but received output_inner_dim is %d.",
           output_inner_dim));
@@ -2289,7 +2289,7 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
   PADDLE_ENFORCE_GE(
       scale_outer_dim,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The scale_outer_dim should be greater than or equal to 0, "
           "but received scale_outer_dim is %d.",
           scale_outer_dim));
@@ -2297,7 +2297,7 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
   PADDLE_ENFORCE_GE(
       scale_inner_dim,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The scale_inner_dim should be greater than or equal to 0, "
           "but received scale_inner_dim is %d.",
           scale_inner_dim));
@@ -2942,7 +2942,7 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 
   mask->set_dims(make_ddim(output_shape));
-  mask->set_dtype(phi::CppTypeToDataType<int>::Type());
+  mask->set_dtype(CppTypeToDataType<int>::Type());
 }
 
 void MaxPoolV2InferMeta(const MetaTensor& x,
@@ -2976,7 +2976,7 @@ void MaxPoolV2InferMeta(const MetaTensor& x,
                   out,
                   config);
   saved_idx->set_dims(out->dims());
-  saved_idx->set_dtype(phi::CppTypeToDataType<int>::Type());
+  saved_idx->set_dtype(CppTypeToDataType<int>::Type());
 }
 
 void MeanAllInferMeta(const MetaTensor& x, MetaTensor* out) {
@@ -4560,9 +4560,9 @@ void ReverseInferMeta(const MetaTensor& x,
   out->share_meta(x);
 }
 
-void ReverseArrayInferMeta(const std::vector<const phi::MetaTensor*>& x,
+void ReverseArrayInferMeta(const std::vector<const MetaTensor*>& x,
                            const IntArray& axis,
-                           std::vector<phi::MetaTensor*> out,
+                           std::vector<MetaTensor*> out,
                            MetaConfig config) {
   if (!config.is_runtime && axis.FromTensor()) {
     return;
@@ -4572,14 +4572,14 @@ void ReverseArrayInferMeta(const std::vector<const phi::MetaTensor*>& x,
       axis_data.size(),
       1,
       common::errors::InvalidArgument(
-          "The size of axis must be 1 when the Input(X) is phi::TensorArray, "
+          "The size of axis must be 1 when the Input(X) is TensorArray, "
           "but received %d.",
           axis_data.size()));
   PADDLE_ENFORCE_EQ(
       axis_data[0],
       0,
       common::errors::InvalidArgument("The value of axis should be 1 when "
-                                      "the Input(X) is phi::TensorArray, "
+                                      "the Input(X) is TensorArray, "
                                       "but received %d.",
                                       axis_data[0]));
 }
@@ -6335,7 +6335,7 @@ void UniformRandomBatchSizeLikeInferMeta(const MetaTensor& input,
                                          DataType dtype,
                                          MetaTensor* out,
                                          MetaConfig config) {
-  phi::BatchSizeLikeInferMeta(input, shape, input_dim_idx, output_dim_idx, out);
+  BatchSizeLikeInferMeta(input, shape, input_dim_idx, output_dim_idx, out);
   out->set_dtype(dtype);
 }
 

@@ -1258,7 +1258,7 @@ void CoalesceTensorInferMeta(const std::vector<const MetaTensor*>& input,
                              MetaTensor* fused_output,
                              MetaConfig config) {
   if (size_of_dtype == -1) {
-    size_of_dtype = static_cast<int>(phi::SizeOf(dtype));
+    size_of_dtype = static_cast<int>(SizeOf(dtype));
   }
   PADDLE_ENFORCE_EQ(
       input.size(),
@@ -1277,9 +1277,9 @@ void CoalesceTensorInferMeta(const std::vector<const MetaTensor*>& input,
       const auto& dim = item->dims();
       auto size = common::product(dim);
       auto len = use_align
-                     ? phi::Alignment(static_cast<size_t>(size) * size_of_dtype,
-                                      phi::GPUPlace(),
-                                      align_size) /
+                     ? Alignment(static_cast<size_t>(size) * size_of_dtype,
+                                 GPUPlace(),
+                                 align_size) /
                            size_of_dtype
                      : static_cast<size_t>(size);
       numel += len;
@@ -1335,7 +1335,7 @@ void CheckMemoryContinueInferMeta(const std::vector<const MetaTensor*>& input,
   for (auto item : input) {
     const auto& dim = item->dims();
     auto size = common::product(dim);
-    auto len = size * phi::SizeOf(item->dtype());
+    auto len = size * SizeOf(item->dtype());
     numel += static_cast<int64_t>(len);
   }
   output->set_dims(make_ddim({numel}));

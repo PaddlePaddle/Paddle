@@ -736,12 +736,12 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
   DDim in_data_dims = slice_ddim(in_dims, 2, in_dims.size());
   DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
   std::vector<int> ksize = vectorize<int>(filter_data_dims);
-  phi::UpdatePaddingAndDilation(&paddings_vec,
-                                &dilations_vec,
-                                padding_algorithm,
-                                in_data_dims,
-                                strides,
-                                ksize);
+  UpdatePaddingAndDilation(&paddings_vec,
+                           &dilations_vec,
+                           padding_algorithm,
+                           in_data_dims,
+                           strides,
+                           ksize);
 
   std::vector<int64_t> out_shape({in_dims[0], filter_dims[0]});
 
@@ -841,7 +841,7 @@ void FcXPUInferMeta(const MetaTensor& x,
     out_shape[i] = x.dims()[i];
   }
   out_shape[in_num_col_dims] = w.dims()[0];
-  if (act_type == 23 /*phi::backends::xpu::Activation_t::SWISH_GLU*/) {
+  if (act_type == 23 /*backends::xpu::Activation_t::SWISH_GLU*/) {
     out_shape[in_num_col_dims] = out_shape[in_num_col_dims] / 2;
   }
   out->set_dims(DDim(out_shape.data(), static_cast<int>(out_shape.size())));
@@ -3204,12 +3204,12 @@ void FusedScaleBiasReluConvBnInferMeta(const MetaTensor& x,
   DDim in_data_dims = slice_ddim(in_dims, 1, in_dims.size() - 1);
   DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
   std::vector<int> ksize = vectorize<int>(filter_data_dims);
-  phi::UpdatePaddingAndDilation(&paddings_vec,
-                                &dilations_vec,
-                                padding_algorithm,
-                                in_data_dims,
-                                strides,
-                                ksize);
+  UpdatePaddingAndDilation(&paddings_vec,
+                           &dilations_vec,
+                           padding_algorithm,
+                           in_data_dims,
+                           strides,
+                           ksize);
 
   std::vector<int64_t> out_shape({in_dims[0]});
   for (int i = 0; i < static_cast<int>(strides.size()); ++i) {
@@ -4852,7 +4852,7 @@ void CrossAttentionXPUInferMeta(
   qkv->set_layout(input_q.layout());
   // TODO(Terry) optimize the max value num
   // unable to pass few PR-CIs, so just use a constant value
-  // int xpu2_max_value_num = phi::backends::xpu::get_xpu_max_ptr_size(-1);
+  // int xpu2_max_value_num = backends::xpu::get_xpu_max_ptr_size(-1);
   const int xpu2_max_value_num = 6;
   qkv_max->set_dims(make_ddim({xpu2_max_value_num}));
   qkv_max->set_dtype(out_dtype);

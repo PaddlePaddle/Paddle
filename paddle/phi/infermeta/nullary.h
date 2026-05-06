@@ -68,7 +68,7 @@ PADDLE_API void CreateInferMetaBase(const std::vector<int64_t>& shape,
                                     MetaTensor* out);
 
 PADDLE_API void DataInferMeta(const std::string& name,
-                              const phi::IntArray& shape,
+                              const IntArray& shape,
                               DataType data_type,
                               MetaTensor* out);
 

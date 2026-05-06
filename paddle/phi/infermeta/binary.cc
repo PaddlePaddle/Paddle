@@ -300,7 +300,7 @@ void BinomialInferMeta(const MetaTensor& count,
 
   bool check = true;
   if ((!config.is_runtime) &&
-      (phi::product(count_dims) <= 0 || phi::product(prob_dims) <= 0)) {
+      (product(count_dims) <= 0 || product(prob_dims) <= 0)) {
     check = false;
   }
 
@@ -673,7 +673,7 @@ void ConvInferMeta(const MetaTensor& input,
   }
 
   std::vector<int> ksize = vectorize<int>(filter_data_dims);
-  phi::UpdatePaddingAndDilation(
+  UpdatePaddingAndDilation(
       &paddings_, &dilations_, padding_algorithm, in_data_dims, strides, ksize);
 
   std::vector<int64_t> output_shape({in_dims[0]});
@@ -1421,16 +1421,15 @@ void DistInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
-void DistributeLookupTableInferMeta(
-    const std::vector<const phi::MetaTensor*>& ids,
-    const MetaTensor& w,
-    int table_id,
-    bool is_distributed,
-    const std::string& lookup_table_version,
-    int64_t padding_idx,
-    DataType dtype,
-    bool is_test,
-    std::vector<MetaTensor*> outputs) {
+void DistributeLookupTableInferMeta(const std::vector<const MetaTensor*>& ids,
+                                    const MetaTensor& w,
+                                    int table_id,
+                                    bool is_distributed,
+                                    const std::string& lookup_table_version,
+                                    int64_t padding_idx,
+                                    DataType dtype,
+                                    bool is_test,
+                                    std::vector<MetaTensor*> outputs) {
   auto table_dims = w.dims();
 
   PADDLE_ENFORCE_EQ(w.dims().size(),
@@ -1740,11 +1739,10 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
     std::vector<int64_t> out_dims_array(max_dim);
 
 #ifdef PADDLE_WITH_DNNL
-    bool should_rotate =
-        config.is_run_onednn_kernel &&
-        (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
-         DataLayout::NHWC) &&
-        (x_dims.size() >= 3 || y_dims.size() >= 3);
+    bool should_rotate = config.is_run_onednn_kernel &&
+                         (OneDNNContext::tls().get_cur_paddle_data_layout() ==
+                          DataLayout::NHWC) &&
+                         (x_dims.size() >= 3 || y_dims.size() >= 3);
     if (should_rotate) {
       // Pick bigger shape and rotate this one
       bool x_over_y = (common::product(x_dims) > common::product(y_dims));
@@ -2151,7 +2149,7 @@ void GatherInferMeta(const MetaTensor& x,
     // 0D index will decrease the dimension
     if (input_dim.size() == 1) {
       // the index is a 0D tensor and the x is a 1D tensor
-      out->set_dims(DDim(phi::Dim<0>()));
+      out->set_dims(DDim(Dim<0>()));
       out->set_dtype(x.dtype());
       out->share_lod(x);
     } else {
@@ -4325,7 +4323,7 @@ void StftInferMeta(const MetaTensor& x,
   output_shape.push_back(n_frames);
 
   out->set_dims(make_ddim(output_shape));
-  out->set_dtype(phi::dtype::ToComplex(x.dtype()));
+  out->set_dtype(dtype::ToComplex(x.dtype()));
 }
 
 void TakeAlongAxisInferMeta(const MetaTensor& x,
