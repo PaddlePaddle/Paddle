@@ -28,14 +28,14 @@ void sgd_dense_param_dense_grad_impl(const DenseTensor& param,
                                      DenseTensor* param_out) {
   const auto sz = param_out->numel();
   jit::sgd_attr_t attr(1, sz, 1, sz, 1);
-  const T* lr = learning_rate.data<T>();
+  T lr_val = static_cast<T>(learning_rate.data<double>()[0]);
   const T* param_data = param.data<T>();
   const T* grad_data = grad.data<T>();
   int64_t rows_idx = 0;
   T* out_data = param_out->data<T>();
 
   auto sgd = jit::KernelFuncs<jit::SgdTuple<T>, CPUPlace>::Cache().At(attr);
-  sgd(lr, param_data, grad_data, &rows_idx, out_data, &attr);
+  sgd(&lr_val, param_data, grad_data, &rows_idx, out_data, &attr);
 }
 
 template <>
@@ -46,9 +46,9 @@ void sgd_dense_param_dense_grad_impl<bfloat16>(const DenseTensor& param,
   auto p = EigenVector<bfloat16>::Flatten(param);
   auto g = EigenVector<bfloat16>::Flatten(grad);
   auto o = EigenVector<bfloat16>::Flatten(*param_out);
-  const auto* lr = learning_rate.data<bfloat16>();
+  const auto* lr = learning_rate.data<double>();
 
-  o = p - lr[0] * g;
+  o = p - static_cast<bfloat16>(lr[0]) * g;
 }
 
 template <typename T>
@@ -58,7 +58,7 @@ void sgd_dense_param_dense_grad_mixed_impl(const DenseTensor& param,
                                            DenseTensor* param_out) {
   const T* param_data = param.data<T>();
   const float* grad_data = grad.data<float>();
-  const T* lr_ptr = learning_rate.data<T>();
+  const double* lr_ptr = learning_rate.data<double>();
 
   float lr = static_cast<float>(lr_ptr[0]);
   T* out_data = param_out->data<T>();
@@ -83,7 +83,7 @@ void sgd_dense_param_sparse_grad_impl(const DenseTensor& param,
   const auto& grad_rows = grad.rows();
   const T* param_data = param.data<T>();
   const T* grad_data = grad_value.data<T>();
-  const T* lr = learning_rate.data<T>();
+  T lr_val = static_cast<T>(learning_rate.data<double>()[0]);
   const int64_t* rows_data = grad_rows.data();
   T* out_data = param_out->data<T>();
 
@@ -96,7 +96,7 @@ void sgd_dense_param_sparse_grad_impl(const DenseTensor& param,
   attr.selected_rows_size = static_cast<int>(grad_rows.size());
 
   auto sgd = jit::KernelFuncs<jit::SgdTuple<T>, CPUPlace>::Cache().At(attr);
-  sgd(lr, param_data, grad_data, rows_data, out_data, &attr);
+  sgd(&lr_val, param_data, grad_data, rows_data, out_data, &attr);
 }
 
 template <>
@@ -113,7 +113,7 @@ void sgd_dense_param_sparse_grad_impl<bfloat16>(
 
   const auto* grad_data = grad_value.data<bfloat16>();
   auto* out_data = param_out->data<bfloat16>();
-  const auto* lr = learning_rate.data<bfloat16>();
+  const auto* lr = learning_rate.data<double>();
 
   for (size_t i = 0; i < grad_rows.size(); ++i) {
     PADDLE_ENFORCE_LT(
@@ -126,7 +126,8 @@ void sgd_dense_param_sparse_grad_impl<bfloat16>(
             grad_height));
     const int64_t row = grad_rows[i];
     for (int64_t j = 0; j < grad_width; ++j) {
-      out_data[row * grad_width + j] -= lr[0] * grad_data[i * grad_width + j];
+      out_data[row * grad_width + j] -=
+          static_cast<bfloat16>(lr[0]) * grad_data[i * grad_width + j];
     }
   }
 }
@@ -191,7 +192,7 @@ void SGDSparseParamSparseGradKernel(const Context& dev_ctx UNUSED,
           param_row_width,
           grad_row_width));
 
-  const auto* lr = learning_rate.data<T>();
+  const T lr_val = static_cast<T>(learning_rate.data<double>()[0]);
   const auto* grad_data = grad.value().data<T>();
   auto* out_data = param_out->mutable_value()->data<T>();
   for (size_t i = 0; i < grad.rows().size(); i++) {
@@ -204,7 +205,7 @@ void SGDSparseParamSparseGradKernel(const Context& dev_ctx UNUSED,
             id_index));
     for (int64_t j = 0; j < grad_row_width; j++) {
       out_data[id_index * grad_row_width + j] -=
-          lr[0] * grad_data[i * grad_row_width + j];
+          lr_val * grad_data[i * grad_row_width + j];
     }
   }
 }
@@ -212,7 +213,9 @@ void SGDSparseParamSparseGradKernel(const Context& dev_ctx UNUSED,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    sgd, CPU, ALL_LAYOUT, phi::SGDDenseKernel, phi::bfloat16, float, double) {}
+    sgd, CPU, ALL_LAYOUT, phi::SGDDenseKernel, phi::bfloat16, float, double) {
+  kernel->InputAt(1).SetDataType(phi::DataType::FLOAT64);
+}
 
 PD_REGISTER_KERNEL(sgd_dense_param_sparse_grad,
                    CPU,
@@ -220,7 +223,9 @@ PD_REGISTER_KERNEL(sgd_dense_param_sparse_grad,
                    phi::SGDDenseParamSparseGradKernel,
                    phi::bfloat16,
                    float,
-                   double) {}
+                   double) {
+  kernel->InputAt(1).SetDataType(phi::DataType::FLOAT64);
+}
 
 PD_REGISTER_KERNEL(sgd_sparse_param_sparse_grad,
                    CPU,
@@ -228,4 +233,6 @@ PD_REGISTER_KERNEL(sgd_sparse_param_sparse_grad,
                    phi::SGDSparseParamSparseGradKernel,
                    phi::bfloat16,
                    float,
-                   double) {}
+                   double) {
+  kernel->InputAt(1).SetDataType(phi::DataType::FLOAT64);
+}

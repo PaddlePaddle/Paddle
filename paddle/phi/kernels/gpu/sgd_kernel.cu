@@ -26,7 +26,7 @@ namespace phi {
 template <typename T, typename MT, typename GradT>
 __global__ void SGDKernelMT(const T* param,
                             const GradT* grad,
-                            const T* learning_rate,
+                            const double* learning_rate,
                             const int64_t num,
                             T* param_out,
                             const MT* master_param,
@@ -46,7 +46,7 @@ __global__ void SGDKernelMT(const T* param,
 template <typename T>
 __global__ void SparseSGDFunctorKernel(const T* selected_rows,
                                        const int64_t* rows,
-                                       const T* learning_rate,
+                                       const double* learning_rate,
                                        T* tensor_out,
                                        int64_t row_numel,
                                        int64_t limit) {
@@ -56,9 +56,9 @@ __global__ void SparseSGDFunctorKernel(const T* selected_rows,
     for (int64_t index = threadIdx.x; index < row_numel; index += blockDim.x) {
       // Since index in rows of SelectedRows can be duplicate, we have to use
       // Atomic Operation to avoid concurrent write error.
-      CudaAtomicAdd(
-          tensor_out_ptr + index,
-          -static_cast<T>(1.0) * learning_rate[0] * selected_rows_ptr[index]);
+      CudaAtomicAdd(tensor_out_ptr + index,
+                    -static_cast<T>(1.0) * static_cast<T>(learning_rate[0]) *
+                        selected_rows_ptr[index]);
     }
   }
 }
@@ -93,7 +93,7 @@ void SGDDenseKernel(const Context& dev_ctx,
     SGDKernelMT<T, MT, float><<<grid, block, 0, dev_ctx.stream()>>>(
         param.data<T>(),
         grad.data<float>(),
-        learning_rate.data<T>(),
+        learning_rate.data<double>(),
         param.numel(),
         dev_ctx.template Alloc<T>(param_out),
         master_in_data,
@@ -102,7 +102,7 @@ void SGDDenseKernel(const Context& dev_ctx,
     SGDKernelMT<T, MT, T><<<grid, block, 0, dev_ctx.stream()>>>(
         param.data<T>(),
         grad.data<T>(),
-        learning_rate.data<T>(),
+        learning_rate.data<double>(),
         param.numel(),
         dev_ctx.template Alloc<T>(param_out),
         master_in_data,
@@ -168,10 +168,10 @@ void SGDDenseParamSparseGradKernel(const Context& dev_ctx,
   int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
   int max_blocks = std::max(max_threads / kThreadsPerBlock, 1);
   MixVector<int64_t> mixv_in_rows(&in_rows);
-  SparseSGDFunctorKernel<<<max_blocks, thread_x, 0, dev_ctx.stream()>>>(
+  SparseSGDFunctorKernel<T><<<max_blocks, thread_x, 0, dev_ctx.stream()>>>(
       in_data,
       mixv_in_rows.CUDAData(dev_ctx.GetPlace()),
-      learning_rate.data<T>(),
+      learning_rate.data<double>(),
       out_data,
       in_row_numel,
       in_rows.size());
@@ -200,6 +200,7 @@ PD_REGISTER_KERNEL(sgd,
                    phi::bfloat16,
                    float,
                    double) {
+  kernel->InputAt(1).SetDataType(phi::DataType::FLOAT64);
   if (kernel_key.dtype() == phi::DataType::FLOAT16 ||
       kernel_key.dtype() == phi::DataType::BFLOAT16) {
     kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
@@ -210,6 +211,7 @@ PD_REGISTER_KERNEL(sgd,
 #ifdef PADDLE_WITH_HIP
 PD_REGISTER_KERNEL(
     sgd, GPU, ALL_LAYOUT, phi::SGDDenseKernel, phi::float16, float, double) {
+  kernel->InputAt(1).SetDataType(phi::DataType::FLOAT64);
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
     kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
   }
@@ -222,7 +224,9 @@ PD_REGISTER_KERNEL(sgd_dense_param_sparse_grad,
                    phi::SGDDenseParamSparseGradKernel,
                    phi::float16,
                    float,
-                   double) {}
+                   double) {
+  kernel->InputAt(1).SetDataType(phi::DataType::FLOAT64);
+}
 
 PD_REGISTER_KERNEL(sgd_sparse_param_sparse_grad,
                    GPU,
@@ -230,4 +234,6 @@ PD_REGISTER_KERNEL(sgd_sparse_param_sparse_grad,
                    phi::SGDSparseParamSparseGradKernel,
                    phi::float16,
                    float,
-                   double) {}
+                   double) {
+  kernel->InputAt(1).SetDataType(phi::DataType::FLOAT64);
+}

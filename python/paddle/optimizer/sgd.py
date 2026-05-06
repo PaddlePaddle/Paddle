@@ -17,6 +17,7 @@ from __future__ import annotations
 import warnings
 from typing import TYPE_CHECKING
 
+import paddle
 from paddle import _C_ops, pir
 
 from ..base import framework
@@ -111,6 +112,9 @@ class SGD(Optimizer):
         self.type = "sgd"
         self._multi_precision = multi_precision
         self._master_weights = {}
+
+    def get_lr_dtype(self) -> paddle.dtype:
+        return paddle.float64
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, (framework.Block, pir.Block))
