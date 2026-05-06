@@ -109,11 +109,11 @@ Place TransToPhiPlace(const Backend& backend, bool set_device_id) {
           phi::CustomRegisteredDeviceMap::Instance().GetGlobalDeviceType(
               device_type_id_);
       if (!device_type.empty()) {
-        return phi::CustomPlace(
+        return CustomPlace(
             device_type,
             set_device_id ? phi::DeviceManager::GetDevice(device_type) : 0);
       } else if (backend == Backend::CUSTOM) {
-        return phi::CustomPlace();
+        return CustomPlace();
       }
 #endif
       PADDLE_THROW(common::errors::Unimplemented(
@@ -138,7 +138,7 @@ const std::string& TransToFluidOpName(const std::string& phi_kernel_name) {
 }
 
 #ifdef PADDLE_WITH_DNNL
-dnnl::memory::data_type TransToOneDNNDataType(const phi::DataType& dtype) {
+dnnl::memory::data_type TransToOneDNNDataType(const DataType& dtype) {
   switch (dtype) {
     case DataType::FLOAT32:
       return dnnl::memory::data_type::f32;

@@ -220,7 +220,7 @@ void CommContextManager::CreateXCCLCommContext(
   if (CommContextManager::device_id != -1) {
     std::unique_ptr<phi::CustomContext> dev_ctx(
 
-        new phi::CustomContext(phi::CustomPlace(place)));
+        new phi::CustomContext(CustomPlace(place)));
     // dev_ctx->SetAllocator(phi::memory_utils::GetAllocator(
     //     CommContextManager::device_id, dev_ctx->GetStream()));
     // dev_ctx->SetHostAllocator(phi::memory_utils::GetHostAllocator());

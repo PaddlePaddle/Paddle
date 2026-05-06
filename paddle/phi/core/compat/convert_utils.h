@@ -36,7 +36,7 @@ PADDLE_API Place TransToPhiPlace(const Backend& backend,
                                  bool set_device_id = true);
 
 #ifdef PADDLE_WITH_DNNL
-dnnl::memory::data_type TransToOneDNNDataType(const phi::DataType& dtype);
+dnnl::memory::data_type TransToOneDNNDataType(const DataType& dtype);
 #endif
 
 }  // namespace phi

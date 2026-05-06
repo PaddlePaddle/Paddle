@@ -44,7 +44,7 @@ PADDLE_API void BeginCUDAGraphCapture(
 
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
 PADDLE_API void BeginCUDAGraphCapture(
-    phi::CustomPlace place,
+    CustomPlace place,
     phi::graph::streamCaptureMode mode,
     int64_t pool_id = CUDAGraph::kInvalidPoolID);
 #endif

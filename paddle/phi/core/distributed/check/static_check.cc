@@ -35,7 +35,7 @@ void CommStaticCheck::CheckRank(int rank, int world_size) {
 }
 
 void CommStaticCheck::CheckPlace(const DenseTensor& tensor,
-                                 phi::AllocationType place) {
+                                 AllocationType place) {
   PADDLE_ENFORCE_EQ(
       tensor.place().GetType(),
       place,
@@ -44,7 +44,7 @@ void CommStaticCheck::CheckPlace(const DenseTensor& tensor,
 
 void CommStaticCheck::CheckPlace(const DenseTensor& out_tensor,
                                  const DenseTensor& in_tensor,
-                                 phi::AllocationType place) {
+                                 AllocationType place) {
   CheckPlace(out_tensor, place);
   CheckPlace(in_tensor, place);
   PADDLE_ENFORCE_EQ(
@@ -122,7 +122,7 @@ void CommStaticCheck::CheckShape(const DenseTensor& out_tensor,
                                  int world_size,
                                  int out_size_factor,
                                  int in_size_factor,
-                                 phi::AllocationType place) {
+                                 AllocationType place) {
   CheckRank(dst_rank, world_size);
   CheckRank(cur_rank, world_size);
 
@@ -140,7 +140,7 @@ void CommStaticCheck::CheckShape(const DenseTensor& out_tensor,
 void CommStaticCheck::CheckShape(const DenseTensor& tensor,
                                  int rank,
                                  int world_size,
-                                 phi::AllocationType place) {
+                                 AllocationType place) {
   CheckPlace(tensor, place);
   CheckRank(rank, world_size);
 }
@@ -150,7 +150,7 @@ void CommStaticCheck::SameShape(const DenseTensor& out_tensor,
                                 int dst_rank,
                                 int cur_rank,
                                 int world_size,
-                                phi::AllocationType place) {
+                                AllocationType place) {
   CheckShape(out_tensor,
              in_tensor,
              dst_rank,
@@ -166,7 +166,7 @@ void CommStaticCheck::ScatterLikeShape(const DenseTensor& out_tensor,
                                        int dst_rank,
                                        int cur_rank,
                                        int world_size,
-                                       phi::AllocationType place) {
+                                       AllocationType place) {
   CheckShape(out_tensor,
              in_tensor,
              dst_rank,
@@ -182,7 +182,7 @@ void CommStaticCheck::GatherLikeShape(const DenseTensor& out_tensor,
                                       int dst_rank,
                                       int cur_rank,
                                       int world_size,
-                                      phi::AllocationType place) {
+                                      AllocationType place) {
   CheckRank(dst_rank, world_size);
   CheckRank(cur_rank, world_size);
 
