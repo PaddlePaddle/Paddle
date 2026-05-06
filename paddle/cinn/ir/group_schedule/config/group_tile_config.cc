@@ -785,7 +785,8 @@ std::pair<int64_t, int64_t> FindBestReduceBlockThreadNum(
     int64_t rd_thread_num,
     int64_t sp_block_num,
     int sm_count,
-    int max_threads_per_sm) {
+    int max_threads_per_sm,
+    int max_blocks_per_sm) {
   float max_sm_occupacy = 0.0f;
   int64_t best_rd_block_num = 1;
   int64_t best_rd_thread_num = rd_thread_num;
@@ -815,6 +816,8 @@ std::pair<int64_t, int64_t> FindBestReduceBlockThreadNum(
 #ifdef CINN_WITH_CUSTOM_DEVICE
     int64_t avail_blocks_per_sm =
         max_threads_per_sm / (sp_thread_num * new_rd_thread_num);
+    avail_blocks_per_sm =
+        std::min(avail_blocks_per_sm, (int64_t)max_blocks_per_sm);
 #else
     int64_t avail_blocks_per_sm = 1024 / (sp_thread_num * new_rd_thread_num);
 #endif
@@ -826,6 +829,15 @@ std::pair<int64_t, int64_t> FindBestReduceBlockThreadNum(
     // To constrain the cost of grid-level synchronization, rd_block_num should
     // not exceed the SM count.
     rd_block_num = Trim(rd_block_num, 1, sm_count);
+#ifdef CINN_WITH_CUSTOM_DEVICE
+    // On CustomDevice (e.g. MetaX), cooperative launch only guarantees
+    // co-residency when total blocks <= sm_count (1 block per SM).
+    // Exceeding this causes __cinn_grid_sync to deadlock.
+    // So cap rd_block_num so that sp_block_num * rd_block_num <= sm_count.
+    int64_t max_rd_for_coop =
+        std::max(int64_t(1), (int64_t)sm_count / sp_block_num);
+    rd_block_num = Trim(rd_block_num, 1, max_rd_for_coop);
+#endif
 
     // To compensate for the block launching cost, we also require that the
     // reduce inner loops be at least two times of the rd_block_num, and be at
@@ -932,7 +944,8 @@ TileConfigMap BuildPureStaticShapeConfig(
                                      rd_thread_num,
                                      sp_block_num,
                                      sm_count,
-                                     max_threads_per_sm);
+                                     max_threads_per_sm,
+                                     target.get_max_blocks_per_sm());
     rd_block_num = res.first;
     rd_thread_num = res.second;
   }
