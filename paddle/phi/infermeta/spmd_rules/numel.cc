@@ -23,7 +23,7 @@ namespace phi::distributed {
 
 SpmdInfo NumelInferSpmd(const DistMetaTensor& x) {
   std::string alphabet = "abcdefghijklmnopqrstuvwxyz";
-  auto x_shape = common::vectorize(x.dims());
+  auto x_shape = vectorize(x.dims());
   int x_ndim = x_shape.size();
   auto x_dist_attr_src = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
