@@ -51,6 +51,12 @@ struct DevicePools {
 
 std::vector<std::unique_ptr<DevicePools>> g_pools;
 
+#ifdef PADDLE_WITH_HIP
+thread_local std::vector<hipStream_t> g_thread_local_current_streams;
+#else
+thread_local std::vector<cudaStream_t> g_thread_local_current_streams;
+#endif
+
 void initGlobalState() {
   std::call_once(g_init_once, []() {
     g_num_gpus =
@@ -215,11 +221,17 @@ CUDAStream getCurrentCUDAStream(c10::DeviceIndex device_index) {
         static_cast<c10::DeviceIndex>(phi::backends::gpu::GetCurrentDeviceId());
   }
   check_gpu(device_index);
-  auto raw = getPaddleCurrentStream(device_index);
-  if (raw == nullptr) {
-    return getDefaultCUDAStream(device_index);
+  // Thread-local semantics: if this thread has explicitly set a current
+  // stream for this device, return it; otherwise return the default stream.
+  // This matches PyTorch behavior where new threads start with the default
+  // stream, not inheriting the caller's current stream.
+  if (device_index < static_cast<c10::DeviceIndex>(
+                         g_thread_local_current_streams.size()) &&
+      g_thread_local_current_streams[device_index] != nullptr) {
+    return make_cuda_stream(g_thread_local_current_streams[device_index],
+                            device_index);
   }
-  return make_cuda_stream(raw, device_index);
+  return getDefaultCUDAStream(device_index);
 #else
   return getDefaultCUDAStream(device_index);
 #endif
@@ -230,6 +242,15 @@ void setCurrentCUDAStream(CUDAStream stream) {
   initGlobalState();
   c10::DeviceIndex idx = stream.unwrap().device_index();
   check_gpu(idx);
+  // Update thread-local current stream state first (PyTorch semantics)
+  if (idx >=
+      static_cast<c10::DeviceIndex>(g_thread_local_current_streams.size())) {
+    g_thread_local_current_streams.resize(idx + 1, nullptr);
+  }
+  g_thread_local_current_streams[idx] = stream.stream();
+  // Also update Paddle's global device context stream for backward
+  // compatibility, so that Paddle kernel launches (which read from
+  // GPUContext) still use the correct stream.
   getMutableGPUContext(idx)->SetStream(stream.stream());
 #else
   (void)stream;

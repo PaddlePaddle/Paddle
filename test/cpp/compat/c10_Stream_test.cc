@@ -22,6 +22,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <future>
 #include <thread>
 
 #include "gtest/gtest.h"
@@ -233,6 +234,155 @@ TEST(CUDAStreamTest, DefaultStreamUnaffectedBySetCurrentCUDAStream) {
   c10::cuda::setCurrentCUDAStream(original_stream);
   EXPECT_EQ(paddle::GetCurrentCUDAStream(place)->raw_stream(),
             original_stream.stream());
+}
+
+// Verify that getCurrentCUDAStream follows thread-local semantics:
+// when a new thread is spawned, it should see the default stream,
+// not the current stream set by the parent thread.
+TEST(CUDAStreamTest, GetCurrentCUDAStreamIsThreadLocal) {
+  if (!at::cuda::is_available()) {
+    return;
+  }
+
+  // Save the original current stream so we can restore it later.
+  auto original_stream = c10::cuda::getCurrentCUDAStream();
+
+  // Get a non-default stream from the pool.
+  auto pool_stream = c10::cuda::getStreamFromPool(/*isHighPriority=*/false);
+
+  // Set the current stream in the main thread.
+  c10::cuda::setCurrentCUDAStream(pool_stream);
+  EXPECT_EQ(c10::cuda::getCurrentCUDAStream(), pool_stream);
+
+  // In a newly spawned thread, getCurrentCUDAStream must return the
+  // default stream (id == 0), not pool_stream.
+  std::packaged_task<c10::cuda::CUDAStream()> task(
+      []() { return c10::cuda::getCurrentCUDAStream(); });
+  auto future = task.get_future();
+  std::thread worker(std::move(task));
+
+  // Default stream has id == 0 (raw stream handle is nullptr).
+  auto thread_stream = future.get();
+  worker.join();
+  EXPECT_EQ(thread_stream.id(), static_cast<c10::StreamId>(0));
+
+  // Restore the original current stream.
+  c10::cuda::setCurrentCUDAStream(original_stream);
+}
+
+// Reproducer for the deadlock caused by getCurrentCUDAStream returning
+// the parent thread's current stream in a child thread.
+//
+// Scenario:
+// 1. Main thread sets pool_stream as current stream.
+// 2. Main thread blocks pool_stream by making it wait on event_end which
+//    is recorded on enq_stream after a sleeping callback (~200ms).
+// 3. Child thread calls getCurrentCUDAStream() and synchronizes it.
+//    - If bug exists: child gets pool_stream (inherited), sync blocks
+//      ~200ms, future.wait_for(50ms) returns timeout.
+//    - If fixed: child gets default stream, sync completes immediately,
+//      future.wait_for(50ms) returns ready.
+TEST(CUDAStreamTest, CurrentStreamDeadlockReproducer) {
+  if (!at::cuda::is_available()) {
+    return;
+  }
+
+  auto original = c10::cuda::getCurrentCUDAStream();
+  auto pool = c10::cuda::getStreamFromPool(/*isHighPriority=*/false);
+  c10::cuda::setCurrentCUDAStream(pool);
+
+#ifdef PADDLE_WITH_HIP
+  hipStream_t enq_stream = nullptr;
+  hipEvent_t event_start = nullptr;
+  hipEvent_t event_end = nullptr;
+  C10_CUDA_CHECK(hipStreamCreateWithFlags(&enq_stream, hipStreamNonBlocking));
+  C10_CUDA_CHECK(hipEventCreateWithFlags(&event_start, hipEventDisableTiming));
+  C10_CUDA_CHECK(hipEventCreateWithFlags(&event_end, hipEventDisableTiming));
+
+  C10_CUDA_CHECK(hipEventRecord(event_start, pool.stream()));
+  C10_CUDA_CHECK(hipStreamWaitEvent(enq_stream, event_start, 0));
+#else
+  cudaStream_t enq_stream = nullptr;
+  cudaEvent_t event_start = nullptr;
+  cudaEvent_t event_end = nullptr;
+  C10_CUDA_CHECK(cudaStreamCreateWithFlags(&enq_stream, cudaStreamNonBlocking));
+  C10_CUDA_CHECK(
+      cudaEventCreateWithFlags(&event_start, cudaEventDisableTiming));
+  C10_CUDA_CHECK(cudaEventCreateWithFlags(&event_end, cudaEventDisableTiming));
+
+  C10_CUDA_CHECK(cudaEventRecord(event_start, pool.stream()));
+  C10_CUDA_CHECK(cudaStreamWaitEvent(enq_stream, event_start, 0));
+#endif
+
+  // Add a blocking callback on enq_stream (~200ms sleep).
+  std::atomic<bool> callback_done{false};
+#ifdef PADDLE_WITH_HIP
+  C10_CUDA_CHECK(hipStreamAddCallback(
+      enq_stream,
+      [](hipStream_t, hipError_t, void* data) {
+        auto* flag = static_cast<std::atomic<bool>*>(data);
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        flag->store(true, std::memory_order_release);
+      },
+      &callback_done,
+      0));
+  C10_CUDA_CHECK(hipEventRecord(event_end, enq_stream));
+  C10_CUDA_CHECK(hipStreamWaitEvent(pool.stream(), event_end, 0));
+#else
+  C10_CUDA_CHECK(cudaStreamAddCallback(
+      enq_stream,
+      [](cudaStream_t, cudaError_t, void* data) {
+        auto* flag = static_cast<std::atomic<bool>*>(data);
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        flag->store(true, std::memory_order_release);
+      },
+      &callback_done,
+      0));
+  C10_CUDA_CHECK(cudaEventRecord(event_end, enq_stream));
+  C10_CUDA_CHECK(cudaStreamWaitEvent(pool.stream(), event_end, 0));
+#endif
+
+  // Spawn child thread: get current stream and synchronize it.
+  std::packaged_task<void()> task([]() {
+    auto current = c10::cuda::getCurrentCUDAStream();
+#ifdef PADDLE_WITH_HIP
+    (void)hipStreamSynchronize(current.stream());
+#else
+    (void)cudaStreamSynchronize(current.stream());
+#endif
+  });
+  auto future = task.get_future();
+  std::thread worker(std::move(task));
+
+  // If bug exists: child inherits pool_stream and sync blocks ~200ms,
+  // so wait_for(50ms) returns timeout.
+  // If fixed: child gets default stream and sync completes immediately.
+  auto status = future.wait_for(std::chrono::milliseconds(50));
+
+  // Wait for callback to complete so pool_stream unblocks.
+  while (!callback_done.load(std::memory_order_acquire)) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+
+  // Ensure worker completes (pool_stream is now unblocked).
+  future.wait();
+  worker.join();
+
+  EXPECT_EQ(status, std::future_status::ready)
+      << "Deadlock reproducer: child thread inherited parent's current stream "
+         "and was blocked on it";
+
+#ifdef PADDLE_WITH_HIP
+  C10_CUDA_CHECK(hipEventDestroy(event_end));
+  C10_CUDA_CHECK(hipEventDestroy(event_start));
+  C10_CUDA_CHECK(hipStreamDestroy(enq_stream));
+#else
+  C10_CUDA_CHECK(cudaEventDestroy(event_end));
+  C10_CUDA_CHECK(cudaEventDestroy(event_start));
+  C10_CUDA_CHECK(cudaStreamDestroy(enq_stream));
+#endif
+
+  c10::cuda::setCurrentCUDAStream(original);
 }
 
 #endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
