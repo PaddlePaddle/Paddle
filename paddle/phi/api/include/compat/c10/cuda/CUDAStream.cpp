@@ -59,6 +59,7 @@ thread_local std::vector<cudaStream_t> g_thread_local_current_streams;
 #endif
 
 std::vector<std::unique_ptr<phi::CUDAStream>> g_compat_phi_streams;
+std::mutex g_compat_phi_streams_mutex;
 
 void initGlobalState() {
   std::call_once(g_init_once, []() {
@@ -68,6 +69,7 @@ void initGlobalState() {
     for (auto& ptr : g_pools) {
       ptr = std::make_unique<DevicePools>();
     }
+    g_compat_phi_streams.resize(g_num_gpus);
   });
 }
 
@@ -113,20 +115,6 @@ inline phi::GPUContext* getMutableGPUContext(c10::DeviceIndex device_index) {
       paddle::experimental::DeviceContextPool::Instance().GetMutable(
           phi::GPUPlace(device_index)));
 }
-
-#ifdef PADDLE_WITH_HIP
-inline hipStream_t getPaddleCurrentStream(c10::DeviceIndex device_index) {
-  auto* current_stream =
-      paddle::GetCurrentCUDAStream(phi::GPUPlace(device_index));
-  return current_stream == nullptr ? nullptr : current_stream->raw_stream();
-}
-#else
-inline cudaStream_t getPaddleCurrentStream(c10::DeviceIndex device_index) {
-  auto* current_stream =
-      paddle::GetCurrentCUDAStream(phi::GPUPlace(device_index));
-  return current_stream == nullptr ? nullptr : current_stream->raw_stream();
-}
-#endif
 
 #endif  // defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
@@ -257,20 +245,20 @@ void setCurrentCUDAStream(CUDAStream stream) {
   // Use SetCUDAStream instead of SetStream to avoid destroying
   // external stream handles (e.g., pool streams from getStreamFromPool).
   auto* ctx = getMutableGPUContext(idx);
-  if (idx >= static_cast<c10::DeviceIndex>(g_compat_phi_streams.size())) {
-    g_compat_phi_streams.resize(idx + 1);
-  }
-  if (!g_compat_phi_streams[idx]) {
+  {
+    std::lock_guard<std::mutex> lock(g_compat_phi_streams_mutex);
+    if (!g_compat_phi_streams[idx]) {
 #ifdef PADDLE_WITH_HIP
-    g_compat_phi_streams[idx] = std::make_unique<phi::CUDAStream>(
-        phi::GPUPlace(idx), static_cast<hipStream_t>(0));
+      g_compat_phi_streams[idx] = std::make_unique<phi::CUDAStream>(
+          phi::GPUPlace(idx), static_cast<hipStream_t>(0));
 #else
-    g_compat_phi_streams[idx] = std::make_unique<phi::CUDAStream>(
-        phi::GPUPlace(idx), static_cast<cudaStream_t>(0));
+      g_compat_phi_streams[idx] = std::make_unique<phi::CUDAStream>(
+          phi::GPUPlace(idx), static_cast<cudaStream_t>(0));
 #endif
+    }
+    g_compat_phi_streams[idx]->set_raw_stream(stream.stream());
+    ctx->SetCUDAStream(g_compat_phi_streams[idx].get(), true);
   }
-  g_compat_phi_streams[idx]->set_raw_stream(stream.stream());
-  ctx->SetCUDAStream(g_compat_phi_streams[idx].get(), true);
 #else
   (void)stream;
 #endif

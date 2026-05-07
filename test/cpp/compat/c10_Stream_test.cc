@@ -256,14 +256,13 @@ TEST(CUDAStreamTest, GetCurrentCUDAStreamIsThreadLocal) {
 
   // In a newly spawned thread, getCurrentCUDAStream must return the
   // default stream (id == 0), not pool_stream.
-  std::packaged_task<c10::cuda::CUDAStream()> task(
-      []() { return c10::cuda::getCurrentCUDAStream(); });
-  auto future = task.get_future();
-  std::thread worker(std::move(task));
+  c10::cuda::CUDAStream thread_stream = c10::cuda::getDefaultCUDAStream();
+  std::thread t([&thread_stream]() {
+    thread_stream = c10::cuda::getCurrentCUDAStream();
+  });
+  t.join();
 
   // Default stream has id == 0 (raw stream handle is nullptr).
-  auto thread_stream = future.get();
-  worker.join();
   EXPECT_EQ(thread_stream.id(), static_cast<c10::StreamId>(0));
 
   // Restore the original current stream.
@@ -346,9 +345,9 @@ TEST(CUDAStreamTest, CurrentStreamDeadlockReproducer) {
   std::packaged_task<void()> task([]() {
     auto current = c10::cuda::getCurrentCUDAStream();
 #ifdef PADDLE_WITH_HIP
-    (void)hipStreamSynchronize(current.stream());
+    C10_CUDA_CHECK(hipStreamSynchronize(current.stream()));
 #else
-    (void)cudaStreamSynchronize(current.stream());
+    C10_CUDA_CHECK(cudaStreamSynchronize(current.stream()));
 #endif
   });
   auto future = task.get_future();
@@ -359,8 +358,15 @@ TEST(CUDAStreamTest, CurrentStreamDeadlockReproducer) {
   // If fixed: child gets default stream and sync completes immediately.
   auto status = future.wait_for(std::chrono::milliseconds(50));
 
-  // Wait for callback to complete so pool_stream unblocks.
+  // Wait for callback to complete so pool_stream unblocks (with timeout
+  // to prevent the test from hanging indefinitely).
+  auto wait_start = std::chrono::steady_clock::now();
   while (!callback_done.load(std::memory_order_acquire)) {
+    auto elapsed = std::chrono::steady_clock::now() - wait_start;
+    if (elapsed > std::chrono::seconds(5)) {
+      FAIL() << "Callback did not complete within 5s timeout";
+      break;
+    }
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 
