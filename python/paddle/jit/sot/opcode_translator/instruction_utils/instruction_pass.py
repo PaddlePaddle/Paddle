@@ -21,7 +21,11 @@ from typing import TYPE_CHECKING
 from paddle.jit.sot.utils import log, log_do
 
 from ...utils import InnerError
-from .instruction_utils import instrs_info
+from .instruction_utils import (
+    instrs_info,
+    replace_exception_table_entries,
+    replace_jump_target,
+)
 from .opcode_info import TO_FUSED_INSTS
 from .stack_analyse import StackAnalyser
 
@@ -304,12 +308,14 @@ def fuse_double_super_instrs(instrs: list[Instruction], code_options):
     Fuse two consecutive LOAD_FAST or STORE_FAST instructions into one.
     """
     co_varnames = code_options['co_varnames']
+    replacements = {}
 
     def able_to_merge(idx: int):
         return (
             idx > 0
             and (instrs[idx - 1].opname, instrs[idx].opname)
             in TO_FUSED_INSTS.keys()
+            and instrs[idx - 1].exn_tab_entry is instrs[idx].exn_tab_entry
             and not instrs[idx].is_jump_target
             and not instrs[idx - 1].is_jump_target
             and co_varnames.index(instrs[idx - 1].argval) < 16
@@ -322,6 +328,7 @@ def fuse_double_super_instrs(instrs: list[Instruction], code_options):
         prev_instr.opcode = dis.opmap[prev_instr.opname]
         prev_instr.is_generated = True
         prev_instr.argval = (prev_instr.argval, instr.argval)
+        replacements[instr] = [prev_instr]
         instrs.remove(instr)
 
     idx = 0
@@ -332,3 +339,10 @@ def fuse_double_super_instrs(instrs: list[Instruction], code_options):
             continue
 
         idx += 1
+
+    if replacements:
+        jump_replacements = {
+            instr: replacement[0] for instr, replacement in replacements.items()
+        }
+        replace_jump_target(instrs, jump_replacements)
+        replace_exception_table_entries(instrs, replacements)

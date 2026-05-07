@@ -381,7 +381,7 @@ def fallback_if_python_version_unsupported(fn: Callable):
     def inner(*args, **kwargs):
         if not ALREADY_SUPPORTED_EXCEPTION:
             raise FallbackError(
-                "SOT currently only partially supports exception handling (Python 3.10 and below). "
+                "SOT currently supports exception handling on Python 3.14 and below. "
                 "Unsupported exception bytecode will fall back to dynamic graph mode."
             )
         return fn(*args, **kwargs)
@@ -725,6 +725,11 @@ class OpcodeExecutorBase:
                 self.stack.pop()
 
             if exn_tab_entry.lasti:
+                if instr.offset is None:
+                    raise InnerError(
+                        "Exception handler requires a valid instruction offset "
+                        f"for {instr.opname}, but got None."
+                    )
                 self.stack.push(
                     ConstantVariable.wrap_literal(instr.offset, self._graph)
                 )

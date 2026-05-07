@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import dis
 import sys
 import unittest
 
@@ -23,10 +24,142 @@ from paddle.jit.sot import symbolic_translate
 from paddle.jit.sot.opcode_translator.executor.opcode_executor import (
     ALREADY_SUPPORTED_EXCEPTION,
 )
+from paddle.jit.sot.opcode_translator.instruction_utils.instruction_pass import (
+    fuse_double_super_instrs,
+)
+from paddle.jit.sot.opcode_translator.instruction_utils.instruction_utils import (
+    ExceptionTableEntry,
+    Instruction,
+    expand_super_instrs,
+    replace_load_fast_borrow_with_strong_ref,
+)
 from paddle.jit.sot.psdb import check_no_breakgraph
 from paddle.jit.sot.utils import strict_mode_guard
 
 NOT_ALLOW_FALLBACK = ALREADY_SUPPORTED_EXCEPTION
+
+
+class TestInstructionRewriteMetadata(unittest.TestCase):
+    def test_expand_super_instrs_remaps_exception_table(self):
+        fused = Instruction(
+            0,
+            "LOAD_FAST_LOAD_FAST",
+            0x01,
+            ("x", "y"),
+            offset=8,
+            starts_line=123,
+            is_jump_target=True,
+        )
+        fused.jump_to = fused
+        fused.exn_tab_entry = ExceptionTableEntry(
+            start=fused,
+            end=fused,
+            target=fused,
+            depth=0,
+            lasti=True,
+        )
+
+        instrs = expand_super_instrs([fused])
+
+        self.assertEqual([instr.opname for instr in instrs], ["LOAD_FAST"] * 2)
+        self.assertEqual([instr.offset for instr in instrs], [8, 8])
+        self.assertEqual(instrs[0].starts_line, 123)
+        self.assertIsNone(instrs[1].starts_line)
+        self.assertIs(instrs[0].jump_to, instrs[0])
+
+        entry = instrs[0].exn_tab_entry
+        self.assertIs(entry, instrs[1].exn_tab_entry)
+        self.assertIs(entry.start, instrs[0])
+        self.assertIs(entry.end, instrs[1])
+        self.assertIs(entry.target, instrs[0])
+
+    def test_replace_load_fast_borrow_remaps_exception_table(self):
+        borrow = Instruction(
+            0,
+            "LOAD_FAST_BORROW",
+            0,
+            "x",
+            offset=10,
+            starts_line=124,
+            is_jump_target=True,
+        )
+        borrow.jump_to = borrow
+        borrow.exn_tab_entry = ExceptionTableEntry(
+            start=borrow,
+            end=borrow,
+            target=borrow,
+            depth=1,
+            lasti=True,
+        )
+
+        instrs = replace_load_fast_borrow_with_strong_ref([borrow])
+
+        self.assertEqual(len(instrs), 1)
+        instr = instrs[0]
+        self.assertEqual(instr.opname, "LOAD_FAST")
+        self.assertEqual(instr.offset, 10)
+        self.assertEqual(instr.starts_line, 124)
+        self.assertIs(instr.jump_to, instr)
+        self.assertIs(instr.exn_tab_entry.start, instr)
+        self.assertIs(instr.exn_tab_entry.end, instr)
+        self.assertIs(instr.exn_tab_entry.target, instr)
+
+    @unittest.skipIf(
+        "LOAD_FAST_LOAD_FAST" not in dis.opmap,
+        "LOAD_FAST_LOAD_FAST is only available on Python 3.13+.",
+    )
+    def test_fuse_double_super_instrs_remaps_external_target(self):
+        protected = Instruction(0, "NOP", None, None, offset=0)
+        handler_prev = Instruction(0, "LOAD_FAST", 0, "x", offset=2)
+        handler_target = Instruction(0, "LOAD_FAST", 1, "y", offset=4)
+        handler_entry = ExceptionTableEntry(
+            start=handler_prev,
+            end=handler_target,
+            target=handler_prev,
+            depth=1,
+            lasti=True,
+        )
+        handler_prev.exn_tab_entry = handler_entry
+        handler_target.exn_tab_entry = handler_entry
+        protected.exn_tab_entry = ExceptionTableEntry(
+            start=protected,
+            end=protected,
+            target=handler_target,
+            depth=0,
+            lasti=False,
+        )
+
+        instrs = [protected, handler_prev, handler_target]
+        fuse_double_super_instrs(instrs, {"co_varnames": ["x", "y"]})
+
+        self.assertEqual(
+            [instr.opname for instr in instrs], ["NOP", "LOAD_FAST_LOAD_FAST"]
+        )
+        self.assertIs(protected.exn_tab_entry.target, handler_prev)
+        self.assertIs(handler_prev.exn_tab_entry.start, handler_prev)
+        self.assertIs(handler_prev.exn_tab_entry.end, handler_prev)
+
+    @unittest.skipIf(
+        "LOAD_FAST_LOAD_FAST" not in dis.opmap,
+        "LOAD_FAST_LOAD_FAST is only available on Python 3.13+.",
+    )
+    def test_fuse_double_super_instrs_keeps_exception_boundaries(self):
+        protected = Instruction(0, "LOAD_FAST", 0, "x", offset=0)
+        outside = Instruction(0, "LOAD_FAST", 1, "y", offset=2)
+        protected.exn_tab_entry = ExceptionTableEntry(
+            start=protected,
+            end=protected,
+            target=outside,
+            depth=0,
+            lasti=False,
+        )
+
+        instrs = [protected, outside]
+        fuse_double_super_instrs(instrs, {"co_varnames": ["x", "y"]})
+
+        self.assertEqual(
+            [instr.opname for instr in instrs], ["LOAD_FAST", "LOAD_FAST"]
+        )
 
 
 class TestRaiseVarargs(TestCaseBase):

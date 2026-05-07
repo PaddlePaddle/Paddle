@@ -322,18 +322,57 @@ def replace_jump_target(
             instr.jump_to = replacements[instr.jump_to]
 
 
+def replace_exception_table_entries(
+    instrs: list[Instruction],
+    replacements: dict[Instruction, list[Instruction]],
+) -> None:
+    """
+    Remap virtualized exception-table entries after instruction replacement.
+
+    ExceptionTableEntry keeps Instruction references because the table is
+    rebuilt after bytecode rewriting. When one source instruction expands into
+    multiple instructions, exception ranges should start/target at the first
+    replacement instruction and end at the last replacement instruction.
+    """
+
+    def first_replacement(instr: Instruction) -> Instruction:
+        return replacements[instr][0] if instr in replacements else instr
+
+    def last_replacement(instr: Instruction) -> Instruction:
+        return replacements[instr][-1] if instr in replacements else instr
+
+    remapped_entries: dict[int, ExceptionTableEntry] = {}
+    for instr in instrs:
+        entry = instr.exn_tab_entry
+        if entry is None:
+            continue
+
+        entry_id = id(entry)
+        if entry_id not in remapped_entries:
+            remapped_entries[entry_id] = ExceptionTableEntry(
+                start=first_replacement(entry.start),
+                end=last_replacement(entry.end),
+                target=first_replacement(entry.target),
+                depth=entry.depth,
+                lasti=entry.lasti,
+            )
+        instr.exn_tab_entry = remapped_entries[entry_id]
+
+
 def expand_super_instrs(instructions: list[Instruction]) -> list[Instruction]:
     expanded_instrs = []
-    replacements = {}
+    replacements: dict[Instruction, list[Instruction]] = {}
 
     def copy_instruction(
-        instr, opname, argval, arg, is_jump_target, is_generated
+        instr, opname, argval, arg, is_jump_target, is_generated, starts_line
     ):
         return Instruction(
             opcode=dis.opmap[opname],
             opname=opname,
             arg=arg,
             argval=argval,
+            offset=instr.offset,
+            starts_line=starts_line,
             is_jump_target=is_jump_target,
             is_generated=is_generated,
             jump_to=instr.jump_to,
@@ -349,6 +388,7 @@ def expand_super_instrs(instructions: list[Instruction]) -> list[Instruction]:
                 instr.arg >> 4,
                 instr.is_jump_target,
                 True,
+                instr.starts_line,
             )
             instr2 = copy_instruction(
                 instr,
@@ -357,8 +397,9 @@ def expand_super_instrs(instructions: list[Instruction]) -> list[Instruction]:
                 instr.arg & 15,
                 False,
                 False,
+                None,
             )
-            replacements[instr] = instr1
+            replacements[instr] = [instr1, instr2]
             expanded_instrs.append(instr1)
             expanded_instrs.append(instr2)
         # If the LOAD_ATTR opcode will lead to load_method in 3.13+, we manually split it into two instructions,
@@ -376,22 +417,29 @@ def expand_super_instrs(instructions: list[Instruction]) -> list[Instruction]:
                 instr.arg & ~1,
                 instr.is_jump_target,
                 True,
+                instr.starts_line,
             )
             instr2 = Instruction(
                 dis.opmap["PUSH_NULL"],
                 "PUSH_NULL",
                 None,
                 None,
+                offset=instr.offset,
+                starts_line=None,
                 is_generated=True,
                 exn_tab_entry=instr.exn_tab_entry,
             )
-            replacements[instr] = instr1
+            replacements[instr] = [instr1, instr2]
             expanded_instrs.append(instr1)
             expanded_instrs.append(instr2)
         else:
             expanded_instrs.append(instr)
 
-    replace_jump_target(expanded_instrs, replacements)
+    jump_replacements = {
+        instr: replacement[0] for instr, replacement in replacements.items()
+    }
+    replace_jump_target(expanded_instrs, jump_replacements)
+    replace_exception_table_entries(expanded_instrs, replacements)
     return expanded_instrs
 
 
@@ -408,7 +456,7 @@ def replace_load_fast_borrow_with_strong_ref(
     crashes when the variable is accessed later.
     To avoid these issues, we replace LOAD_FAST_BORROW with LOAD_FAST here.
     """
-    replacements = {}
+    replacements: dict[Instruction, list[Instruction]] = {}
     expanded_instrs = []
     for instr in instructions:
         if instr.opname == "LOAD_FAST_BORROW":
@@ -417,17 +465,23 @@ def replace_load_fast_borrow_with_strong_ref(
                 "LOAD_FAST",
                 instr.arg,
                 instr.argval,
+                offset=instr.offset,
+                starts_line=instr.starts_line,
                 is_generated=instr.is_generated,
                 is_jump_target=instr.is_jump_target,
                 jump_to=instr.jump_to,
                 exn_tab_entry=instr.exn_tab_entry,
             )
-            replacements[instr] = instr1
+            replacements[instr] = [instr1]
             expanded_instrs.append(instr1)
         else:
             expanded_instrs.append(instr)
 
-    replace_jump_target(expanded_instrs, replacements)
+    jump_replacements = {
+        instr: replacement[0] for instr, replacement in replacements.items()
+    }
+    replace_jump_target(expanded_instrs, jump_replacements)
+    replace_exception_table_entries(expanded_instrs, replacements)
     return expanded_instrs
 
 
