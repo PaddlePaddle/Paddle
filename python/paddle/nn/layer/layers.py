@@ -572,47 +572,45 @@ class Layer:
              [-0.68077987]])
     """
 
-    call_super_init: bool = False
     training: bool
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         name_scope = None
         dtype: DTypeLike = "float32"
-        if not self.call_super_init:
-            if type(self) is Layer:
-                if kwargs:
+        if type(self) is Layer:
+            if kwargs:
+                raise TypeError(
+                    f"Module.__init__() got an unexpected keyword argument '{next(iter(kwargs))}'"
+                )
+            if args:
+                raise TypeError(
+                    f"Module.__init__() takes 1 positional argument but {len(args) + 1} were given"
+                )
+        else:
+            if len(args) > 2:
+                raise TypeError(
+                    f"{type(self).__name__}.__init__() takes from 1 to 3 positional arguments but {len(args) + 1} were given"
+                )
+            if len(args) >= 1:
+                if "name_scope" in kwargs:
                     raise TypeError(
-                        f"Module.__init__() got an unexpected keyword argument '{next(iter(kwargs))}'"
+                        f"{type(self).__name__}.__init__() got multiple values for argument 'name_scope'"
                     )
-                if args:
-                    raise TypeError(
-                        f"Module.__init__() takes 1 positional argument but {len(args) + 1} were given"
-                    )
+                name_scope = args[0]
             else:
-                if len(args) > 2:
+                name_scope = kwargs.pop("name_scope", None)
+            if len(args) >= 2:
+                if "dtype" in kwargs:
                     raise TypeError(
-                        f"{type(self).__name__}.__init__() takes from 1 to 3 positional arguments but {len(args) + 1} were given"
+                        f"{type(self).__name__}.__init__() got multiple values for argument 'dtype'"
                     )
-                if len(args) >= 1:
-                    if "name_scope" in kwargs:
-                        raise TypeError(
-                            f"{type(self).__name__}.__init__() got multiple values for argument 'name_scope'"
-                        )
-                    name_scope = args[0]
-                else:
-                    name_scope = kwargs.pop("name_scope", None)
-                if len(args) >= 2:
-                    if "dtype" in kwargs:
-                        raise TypeError(
-                            f"{type(self).__name__}.__init__() got multiple values for argument 'dtype'"
-                        )
-                    dtype = args[1]
-                else:
-                    dtype = kwargs.pop("dtype", "float32")
-                if kwargs:
-                    raise TypeError(
-                        f"{type(self).__name__}.__init__() got an unexpected keyword argument '{next(iter(kwargs))}'"
-                    )
+                dtype = args[1]
+            else:
+                dtype = kwargs.pop("dtype", "float32")
+            if kwargs:
+                raise TypeError(
+                    f"{type(self).__name__}.__init__() got an unexpected keyword argument '{next(iter(kwargs))}'"
+                )
 
         self.training = True
         if name_scope is None:
@@ -650,16 +648,6 @@ class Layer:
         self._forward_post_hooks_always_called: typing.OrderedDict[
             int, bool
         ] = OrderedDict()
-        self._forward_hooks = self._forward_post_hooks
-        self._forward_hooks_with_kwargs = (
-            self._forward_post_hooks_with_kwargs_flag
-        )
-        self._forward_hooks_always_called = (
-            self._forward_post_hooks_always_called
-        )
-        self._forward_pre_hooks_with_kwargs = (
-            self._forward_pre_hooks_with_kwargs_flag
-        )
         self._backward_pre_hooks = OrderedDict()
         self._backward_hooks = OrderedDict()
         self._is_full_backward_hook = None
@@ -676,9 +664,6 @@ class Layer:
         # Records original functions after @to_static to support to rollback
         self._original_funcs = OrderedDict()
 
-        if self.call_super_init:
-            super().__init__(*args, **kwargs)
-
     @property
     def _modules(self):
         return self._sub_layers
@@ -689,6 +674,38 @@ class Layer:
             raise TypeError(f"_modules must be dict-like, got {type(value)}")
         self._sub_layers.clear()
         self._sub_layers.update(value)
+
+    @property
+    def _forward_hooks(self):
+        return self._forward_post_hooks
+
+    @_forward_hooks.setter
+    def _forward_hooks(self, value):
+        self._forward_post_hooks = value
+
+    @property
+    def _forward_hooks_with_kwargs(self):
+        return self._forward_post_hooks_with_kwargs_flag
+
+    @_forward_hooks_with_kwargs.setter
+    def _forward_hooks_with_kwargs(self, value):
+        self._forward_post_hooks_with_kwargs_flag = value
+
+    @property
+    def _forward_hooks_always_called(self):
+        return self._forward_post_hooks_always_called
+
+    @_forward_hooks_always_called.setter
+    def _forward_hooks_always_called(self, value):
+        self._forward_post_hooks_always_called = value
+
+    @property
+    def _forward_pre_hooks_with_kwargs(self):
+        return self._forward_pre_hooks_with_kwargs_flag
+
+    @_forward_pre_hooks_with_kwargs.setter
+    def _forward_pre_hooks_with_kwargs(self, value):
+        self._forward_pre_hooks_with_kwargs_flag = value
 
     @property
     def _non_persistent_buffers_set(self):
