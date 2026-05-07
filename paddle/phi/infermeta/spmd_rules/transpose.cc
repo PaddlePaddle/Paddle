@@ -21,8 +21,6 @@ limitations under the License. */
 
 namespace phi::distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 void BuildEinsumNotation(const size_t x_ndim,
                          std::vector<int> perm,
                          std::string* p_x_axes,

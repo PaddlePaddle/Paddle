@@ -23,7 +23,6 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
 namespace phi::distributed {
-using phi::distributed::auto_parallel::str_join;
 // The input tensor shape is “NC", "NCL", "NCHW" or "NCDHW", the shape of scale
 // and bias is [C]
 //  only N,C axis can be sharded.

@@ -23,8 +23,6 @@ limitations under the License. */
 
 namespace phi::distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 ////////////////// Utils Functions //////////////////
 std::string GetInputBroadcastNotation(const std::vector<int64_t>& shape,
                                       const int max_ndim,

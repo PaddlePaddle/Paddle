@@ -23,7 +23,6 @@ limitations under the License. */
 
 namespace phi::distributed {
 
-using phi::distributed::auto_parallel::str_join;
 // Tensor x support  "NCL", "NCHW", "NCDHW", "NLC", "NHWC", "NDHWC".
 // default:"NCHW"
 

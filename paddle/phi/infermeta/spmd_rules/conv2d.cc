@@ -25,8 +25,6 @@ limitations under the License. */
 namespace phi {
 namespace distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 SpmdInfo Conv2dInferSpmdBase(const DistMetaTensor& input,
                              const DistMetaTensor& filter) {
   // Step0: verify input args based on conv2d logic

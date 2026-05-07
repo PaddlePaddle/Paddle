@@ -23,8 +23,6 @@ limitations under the License. */
 
 namespace phi::distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 std::vector<int64_t> BuildOutputAxisToInputAxisMap(
     const std::vector<int64_t>& decrease_axis, int input_ndim) {
   std::vector<int64_t> output_axis_to_input_axis(input_ndim -

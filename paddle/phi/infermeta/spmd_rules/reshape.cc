@@ -25,8 +25,6 @@ limitations under the License. */
 
 namespace phi::distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 // The target shape in reshape may contains a -1 dimension,
 // this function is used to infer what the "-1" dimension is.
 std::vector<int64_t> InferTargetShape(const std::vector<int64_t>& shape,

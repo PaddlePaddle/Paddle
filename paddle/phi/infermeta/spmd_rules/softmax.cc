@@ -25,8 +25,6 @@ limitations under the License. */
 
 namespace phi::distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 SpmdInfo SoftmaxInferSpmd(const DistMetaTensor& x, int axis) {
   // Step0: Verify input args based on softmax logic
   auto x_shape = common::vectorize(x.dims());

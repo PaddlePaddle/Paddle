@@ -21,7 +21,6 @@ limitations under the License. */
 
 namespace phi {
 namespace distributed {
-using phi::distributed::auto_parallel::str_join;
 
 namespace {
 std::vector<int64_t> GetRepeatTimes(const std::vector<int64_t>& repeat_times,

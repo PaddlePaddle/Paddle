@@ -23,8 +23,6 @@ limitations under the License. */
 namespace phi {
 namespace distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 ////////////////// Utils Functions //////////////////
 std::vector<int64_t> GetReplicatedDimsMapping(const int ndim) {
   std::vector<int64_t> dims_mapping(ndim, -1);

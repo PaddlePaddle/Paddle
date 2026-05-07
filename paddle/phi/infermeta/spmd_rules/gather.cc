@@ -24,8 +24,6 @@ limitations under the License. */
 
 namespace phi::distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 SpmdInfo GatherInferSpmdBase(const DistMetaTensor& x,
                              const DistMetaTensor& index,
                              int axis) {

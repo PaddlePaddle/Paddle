@@ -26,8 +26,6 @@ limitations under the License. */
 
 namespace phi::distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 int PreprocessAxis(int axis, int ndim) {
   if (axis < 0) {
     axis += ndim;

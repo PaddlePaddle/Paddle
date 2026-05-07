@@ -36,8 +36,6 @@ const int kNumHeadsDimIndex = 2;
     VLOG(4) << "src_dist_attr: [" << name.to_string() << "]"; \
   } while (0)
 
-using phi::distributed::auto_parallel::str_join;
-
 TensorDistAttr MapDims(
     const TensorDistAttr& src,
     const std::unordered_map<std::string, int64_t>& axes_mapping,

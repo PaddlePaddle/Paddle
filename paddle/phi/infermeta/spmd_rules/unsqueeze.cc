@@ -27,8 +27,6 @@
 
 namespace phi::distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 TensorDistAttr CreateUnsqueezeXshape(const TensorDistAttr& x) {
   TensorDistAttr out(x);
   auto dims_mapping = x.dims_mapping();

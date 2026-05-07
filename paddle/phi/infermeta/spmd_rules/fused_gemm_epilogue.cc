@@ -23,8 +23,6 @@ limitations under the License. */
 
 namespace phi::distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 void FillMatmulPartOperandNotation(const int x_ndim,
                                    const int y_ndim,
                                    std::string* x_axes,

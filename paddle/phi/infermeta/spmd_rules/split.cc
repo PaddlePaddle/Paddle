@@ -23,8 +23,6 @@ limitations under the License. */
 
 namespace phi::distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 SpmdInfo SplitWithNumInferSpmd(const DistMetaTensor& x, int num, int axis) {
   // Step0: Verify input args based on split logic
   auto x_shape = common::vectorize(x.dims());

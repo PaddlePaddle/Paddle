@@ -22,8 +22,6 @@ limitations under the License. */
 
 namespace phi::distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 ////////////////// Utils Functions //////////////////
 std::vector<int64_t> GetDefaultDataParallelDimsMapping(
     const int64_t batch_axis_dim, const int ndim) {

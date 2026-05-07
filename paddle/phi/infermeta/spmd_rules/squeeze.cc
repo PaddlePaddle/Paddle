@@ -27,8 +27,6 @@
 
 namespace phi::distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 void MakeSqueezeDimTransWithoutAxis(
     const std::vector<int64_t>& x_shape,
     std::vector<int64_t>* out_shape,

@@ -26,8 +26,6 @@ limitations under the License. */
 
 namespace phi::distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 SpmdInfo CEmbeddingInferSpmd(const DistMetaTensor& weight,
                              const DistMetaTensor& x,
                              int start_index,

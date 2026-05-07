@@ -24,8 +24,6 @@ limitations under the License. */
 
 namespace phi::distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 SpmdInfo UnbindInferSpmd(const DistMetaTensor& x, int axis) {
   EXTRACT_SHAPE_AND_DIST_ATTR(x);
   if (axis < 0) {

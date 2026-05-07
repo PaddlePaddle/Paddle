@@ -22,8 +22,6 @@ limitations under the License. */
 
 namespace phi::distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 SpmdInfo LinearV2InferSpmdBase(const DistMetaTensor& input,
                                const DistMetaTensor& weight,
                                const DistMetaTensor& bias,

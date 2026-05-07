@@ -24,8 +24,6 @@ limitations under the License. */
 
 namespace phi::distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 SpmdInfo OneHotInferSpmd(const DistMetaTensor& x, int num_classes) {
   // Step0: Verify input args based on split logic
   auto x_shape = common::vectorize(x.dims());
