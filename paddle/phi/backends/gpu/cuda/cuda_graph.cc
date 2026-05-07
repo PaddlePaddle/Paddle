@@ -62,7 +62,7 @@ static std::vector<cudaGraphNode_t> ToposortCUDAGraph(cudaGraph_t graph) {
   }
 
   std::queue<cudaGraphNode_t> q;
-  for (const auto& pair : in_edges) {
+  for (const auto &pair : in_edges) {
     if (pair.second.empty()) {
       q.push(pair.first);
     }
@@ -75,7 +75,7 @@ static std::vector<cudaGraphNode_t> ToposortCUDAGraph(cudaGraph_t graph) {
     nodes.push_back(cur);
 
     for (auto out_node : out_edges.at(cur)) {
-      auto& in_nodes = in_edges.at(out_node);
+      auto &in_nodes = in_edges.at(out_node);
       in_nodes.erase(cur);
       if (in_nodes.empty()) {
         q.push(out_node);
@@ -129,7 +129,7 @@ void CUDAGraph::Replay() {
   size_t n = exec_graphs_.size();
   for (size_t i = 0; i < n; ++i) {
     if (!is_first_run_) {
-      for (auto& hook : cudagraph_pre_replay_callbacks_[i]) {
+      for (auto &hook : cudagraph_pre_replay_callbacks_[i]) {
         hook(exec_graphs_[i]);
       }
     }
@@ -154,7 +154,7 @@ void CUDAGraph::BeginSegmentCapture() {
                           "which is not the one that starts the capturing."));
   }
 
-  for (auto& hook : cudagraph_pre_capture_callbacks_) {
+  for (auto &hook : cudagraph_pre_capture_callbacks_) {
     hook();
   }
 
@@ -211,7 +211,7 @@ void CUDAGraph::EndSegmentCapture() {
       true,
       common::errors::PermissionDenied("No CUDA Graph is capturing."));
 
-  for (const auto& stream : capturing_graph_->streams_to_join_) {
+  for (const auto &stream : capturing_graph_->streams_to_join_) {
     VLOG(10) << "Joining steam when the capture is going to end stream ="
              << stream;
     sync_streams(stream, capturing_graph_->stream_);
@@ -231,7 +231,7 @@ void CUDAGraph::EndSegmentCapture() {
     return;
   }
 
-  for (auto& cudagraph_post_capture_callback :
+  for (auto &cudagraph_post_capture_callback :
        capturing_graph_->cudagraph_post_capture_callbacks_) {
     cudagraph_post_capture_callback();
   }
@@ -282,8 +282,8 @@ bool CUDAGraph::IsValidCapturing() {
   return status == cudaStreamCaptureStatusActive;
 }
 
-static std::string ConcatPath(const std::string& dirname,
-                              const std::string& filename) {
+static std::string ConcatPath(const std::string &dirname,
+                              const std::string &filename) {
 #ifdef _WIN32
   const std::array<char, 3> kFileSep = {"\\"};
 #else
@@ -296,7 +296,7 @@ static std::string ConcatPath(const std::string& dirname,
   }
 }
 
-void CUDAGraph::PrintToDotFiles(const std::string& dirname,
+void CUDAGraph::PrintToDotFiles(const std::string &dirname,
                                 unsigned int flags) {
   ThrowErrorIfNotSupportCUDAGraph();
 #if CUDA_VERSION >= 11030
@@ -316,14 +316,14 @@ void CUDAGraph::PrintToDotFiles(const std::string& dirname,
 }
 
 void CUDAGraph::CacheKernelNodeInfos(size_t segment_idx) {
-  auto& graph = graphs_[segment_idx];
+  auto &graph = graphs_[segment_idx];
   size_t numNodes = 0;
   cudaGraphGetNodes(graph, nullptr, &numNodes);
   std::vector<cudaGraphNode_t> nodes(numNodes);
   cudaGraphGetNodes(graph, nodes.data(), &numNodes);
 
   std::vector<KernelNodeInfo> kernel_nodes;
-  for (auto& node : nodes) {
+  for (auto &node : nodes) {
     cudaGraphNodeType type;
     cudaGraphNodeGetType(node, &type);
     if (type == cudaGraphNodeTypeKernel) {
@@ -345,32 +345,33 @@ void CUDAGraph::CacheKernelNodeInfos(size_t segment_idx) {
   cached_kernel_nodes_.emplace_back(std::move(kernel_nodes));
 }
 
-void CUDAGraph::ReplaceInputPtrs(const std::vector<void*>& old_ptrs,
-                                 const std::vector<void*>& new_ptrs) {
+void CUDAGraph::ReplaceInputPtrs(const std::vector<void *> &old_ptrs,
+                                 const std::vector<void *> &new_ptrs) {
   PADDLE_ENFORCE_EQ(
       enable_replace_,
       true,
       common::errors::PermissionDenied(
           "ReplaceInputPtrs requires enable_replace to be set to true "
           "when creating CUDAGraph."));
+#if CUDA_VERSION >= 12040
   for (size_t i = 0; i < cached_kernel_nodes_.size(); ++i) {
-    for (auto& kernel_info : cached_kernel_nodes_[i]) {
-      auto& params = kernel_info.params;
+    for (auto &kernel_info : cached_kernel_nodes_[i]) {
+      auto &params = kernel_info.params;
       bool modified = false;
 
       for (size_t k = 0; k < kernel_info.param_infos.size(); k++) {
         size_t param_size = kernel_info.param_infos[k].size;
-        char* param_base = reinterpret_cast<char*>(params.kernelParams[k]);
+        char *param_base = reinterpret_cast<char *>(params.kernelParams[k]);
 
-        for (size_t offset = 0; offset + sizeof(void*) <= param_size;
-             offset += sizeof(void*)) {
-          void* actual_val = *(reinterpret_cast<void**>(param_base + offset));
+        for (size_t offset = 0; offset + sizeof(void *) <= param_size;
+             offset += sizeof(void *)) {
+          void *actual_val = *(reinterpret_cast<void **>(param_base + offset));
           for (size_t j = 0; j < old_ptrs.size(); j++) {
             if (old_ptrs[j] == actual_val) {
               VLOG(4) << "cuda func " << params.func << " match old ptr "
                       << actual_val << " at param " << k << " offset " << offset
                       << ", replace with " << new_ptrs[j];
-              *(reinterpret_cast<void**>(param_base + offset)) = new_ptrs[j];
+              *(reinterpret_cast<void **>(param_base + offset)) = new_ptrs[j];
               modified = true;
               break;
             }
@@ -385,6 +386,7 @@ void CUDAGraph::ReplaceInputPtrs(const std::vector<void*>& old_ptrs,
       }
     }
   }
+#endif
 }
 
 std::vector<CUDAGraph::KernelParamInfo> CUDAGraph::GetKernelParamInfos(
