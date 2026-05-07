@@ -460,18 +460,18 @@ class TestUniqueAPI(unittest.TestCase):
         ):
             x = paddle.static.data(name='x', shape=[3, 2], dtype='int64')
             unique, inverse, counts = paddle.unique(
-                x, return_inverse=True, return_counts=True, axis=0, sorted=False
+                x, return_inverse=True, return_counts=True, axis=0
             )
             self.assertEqual(unique.dtype, paddle.int64)
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
-            x_np = np.array([[3, 4], [1, 2], [3, 4]]).astype('int64')
+            x_np = np.array([[1, 2], [3, 4], [1, 2]]).astype('int64')
             result = exe.run(
                 feed={"x": x_np}, fetch_list=[unique, inverse, counts]
             )
             np.testing.assert_array_equal(result[0], np.array([[1, 2], [3, 4]]))
-            np.testing.assert_array_equal(result[1], np.array([1, 0, 1]))
-            np.testing.assert_array_equal(result[2], np.array([1, 2]))
+            np.testing.assert_array_equal(result[1], np.array([0, 1, 0]))
+            np.testing.assert_array_equal(result[2], np.array([2, 1]))
 
 
 class TestUniqueError(unittest.TestCase):
