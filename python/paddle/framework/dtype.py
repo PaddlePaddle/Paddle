@@ -25,22 +25,8 @@ from ..base.core import (
     VarDesc,
     finfo as core_finfo,
     iinfo as core_iinfo,
-    size_of_dtype as _size_of_dtype,
+    size_of_dtype,
 )
-
-
-def _itemsize_property() -> property:
-    """Return a property that mirrors ``torch.dtype.itemsize``.
-
-    Returns the size in bytes of a single scalar value of this dtype, by
-    delegating to ``paddle.base.core.size_of_dtype``. For example,
-    ``paddle.float32.itemsize == 4`` and ``paddle.int64.itemsize == 8``.
-    """
-    return property(
-        lambda self: _size_of_dtype(self),
-        doc="The size in bytes of a single scalar value of this dtype.",
-    )
-
 
 if TYPE_CHECKING:
     from paddle._typing import DTypeLike
@@ -79,8 +65,10 @@ def bind_vartype():
     dtype = VarDesc.VarType
     dtype.__qualname__ = "dtype"
     dtype.__module__ = "paddle"
-    if not isinstance(getattr(dtype, "itemsize", None), property):
-        dtype.itemsize = _itemsize_property()
+    dtype.itemsize = property(
+        lambda self: size_of_dtype(self),
+        doc="The size in bytes of a single scalar value of this dtype.",
+    )
 
     uint8 = VarDesc.VarType.UINT8
     uint16 = VarDesc.VarType.UINT16
@@ -178,8 +166,10 @@ def bind_datatype():
     dtype = DataType
     dtype.__qualname__ = "dtype"
     dtype.__module__ = "paddle"
-    if not isinstance(getattr(dtype, "itemsize", None), property):
-        dtype.itemsize = _itemsize_property()
+    dtype.itemsize = property(
+        lambda self: size_of_dtype(self),
+        doc="The size in bytes of a single scalar value of this dtype.",
+    )
 
     uint8 = DataType.UINT8
     uint16 = DataType.UINT16
