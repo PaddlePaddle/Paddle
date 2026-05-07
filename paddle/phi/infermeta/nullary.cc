@@ -274,7 +274,7 @@ void PartialRecvInferMeta(int peer,
                           out_shape[i]));
   }
   auto out_dims = make_ddim(out_shape);
-  int64_t numel = common::product(out_dims);
+  int64_t numel = product(out_dims);
   PADDLE_ENFORCE_EQ(
       (numel % num),
       0,

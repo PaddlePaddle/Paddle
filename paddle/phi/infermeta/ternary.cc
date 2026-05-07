@@ -536,12 +536,12 @@ void DpsgdInferMeta(const MetaTensor& param,
                     int size,
                     MetaTensor* param_out) {
   auto lr_dims = learning_rate.dims();
-  PADDLE_ENFORCE_EQ(common::product(lr_dims),
+  PADDLE_ENFORCE_EQ(product(lr_dims),
                     1,
                     common::errors::InvalidArgument(
                         "Learning rate should have 1 dimension. But Received "
                         "LearningRate's dims [%s].",
-                        common::product(lr_dims)));
+                        product(lr_dims)));
   auto param_dims = param.dims();
   PADDLE_ENFORCE_EQ(
       param_dims,
@@ -839,23 +839,23 @@ void ArangeTensorInferMeta(const MetaTensor& start,
                            const MetaTensor& end,
                            const MetaTensor& step,
                            MetaTensor* out) {
-  PADDLE_ENFORCE_EQ(common::product(start.dims()),
+  PADDLE_ENFORCE_EQ(product(start.dims()),
                     1,
                     common::errors::InvalidArgument(
                         "The numel of Input(start) should be 1, but got %d",
-                        common::product(start.dims())));
+                        product(start.dims())));
 
-  PADDLE_ENFORCE_EQ(common::product(end.dims()),
+  PADDLE_ENFORCE_EQ(product(end.dims()),
                     1,
                     common::errors::InvalidArgument(
                         "The numel of Input(end) should be 1, but got %d",
-                        common::product(end.dims())));
+                        product(end.dims())));
 
-  PADDLE_ENFORCE_EQ(common::product(step.dims()),
+  PADDLE_ENFORCE_EQ(product(step.dims()),
                     1,
                     common::errors::InvalidArgument(
                         "The numel of Input(step) should be 1, but got %d",
-                        common::product(step.dims())));
+                        product(step.dims())));
 
   out->set_dims({-1});
   out->set_dtype(start.dtype());
@@ -865,23 +865,23 @@ void RangeTensorInferMeta(const MetaTensor& start,
                           const MetaTensor& end,
                           const MetaTensor& step,
                           MetaTensor* out) {
-  PADDLE_ENFORCE_EQ(common::product(start.dims()),
+  PADDLE_ENFORCE_EQ(product(start.dims()),
                     1,
                     common::errors::InvalidArgument(
                         "The numel of Input(start) should be 1, but got %d",
-                        common::product(start.dims())));
+                        product(start.dims())));
 
-  PADDLE_ENFORCE_EQ(common::product(end.dims()),
+  PADDLE_ENFORCE_EQ(product(end.dims()),
                     1,
                     common::errors::InvalidArgument(
                         "The numel of Input(end) should be 1, but got %d",
-                        common::product(end.dims())));
+                        product(end.dims())));
 
-  PADDLE_ENFORCE_EQ(common::product(step.dims()),
+  PADDLE_ENFORCE_EQ(product(step.dims()),
                     1,
                     common::errors::InvalidArgument(
                         "The numel of Input(step) should be 1, but got %d",
-                        common::product(step.dims())));
+                        product(step.dims())));
 
   out->set_dims({-1});
   out->set_dtype(start.dtype());
@@ -1589,25 +1589,25 @@ void LinspaceInferMeta(const MetaTensor& start,
                        DataType dtype,
                        MetaTensor* out) {
   PADDLE_ENFORCE_EQ(
-      common::product(start.dims()),
+      product(start.dims()),
       1,
       common::errors::InvalidArgument("The size of Input(start) should be 1,"
                                       "but got %d.",
-                                      common::product(start.dims())));
+                                      product(start.dims())));
 
   PADDLE_ENFORCE_EQ(
-      common::product(stop.dims()),
+      product(stop.dims()),
       1,
       common::errors::InvalidArgument("The size of Input(stop) should be 1,"
                                       "but got %d.",
-                                      common::product(stop.dims())));
+                                      product(stop.dims())));
 
   PADDLE_ENFORCE_EQ(
-      common::product(number.dims()),
+      product(number.dims()),
       1,
       common::errors::InvalidArgument("The size of Input(number) should be 1,"
                                       "but got %d.",
-                                      common::product(number.dims())));
+                                      product(number.dims())));
 
   out->set_dims(make_ddim({-1}));
   out->set_dtype(dtype);

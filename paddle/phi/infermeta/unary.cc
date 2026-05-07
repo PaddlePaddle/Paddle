@@ -327,7 +327,7 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
     if (dtype == DataType::INT32) {
       int64_t all_element_num = 0;
       if (flatten) {
-        all_element_num = common::product(x_dims);
+        all_element_num = product(x_dims);
       } else {
         all_element_num = x_dims[static_cast<int>(int_axis)];
       }
@@ -634,7 +634,7 @@ void CumInferMeta(const MetaTensor& x,
                   MetaTensor* out) {
   auto x_dims = x.dims();
   if (flatten) {
-    out->set_dims(make_ddim({common::product(x_dims)}));
+    out->set_dims(make_ddim({product(x_dims)}));
     out->set_dtype(x.dtype());
   } else {
     if (x_dims.size() > 0) {
@@ -2393,7 +2393,7 @@ void IncrementInferMeta(const MetaTensor& x, float value, MetaTensor* out) {
 
 static DDim ValidateShape(const std::vector<int64_t> shape,
                           const DDim& in_dims) {
-  const int64_t in_size = common::product(in_dims);
+  const int64_t in_size = product(in_dims);
   auto in_dims_vec = vectorize(in_dims);
   std::vector<int64_t> output_shape(shape.size(), 0);
   int64_t capacity = 1;
@@ -6380,7 +6380,7 @@ void UniqueConsecutiveInferMeta(const MetaTensor& x,
     out->set_dims({-1});
     out->set_dtype(x.dtype());
     if (return_inverse) {
-      index->set_dims({common::product(in_dims)});
+      index->set_dims({product(in_dims)});
     }
   } else {
     int axis_value = axis[0];
@@ -6466,7 +6466,7 @@ void UniqueRawInferMeta(const MetaTensor& x,
   if (axis.empty()) {
     out->set_dims(make_ddim({-1}));
     if (return_inverse) {
-      index->set_dims(make_ddim({common::product(x.dims())}));
+      index->set_dims(make_ddim({product(x.dims())}));
     }
   } else {
     int axis_value = axis[0];

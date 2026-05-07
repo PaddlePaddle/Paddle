@@ -866,7 +866,7 @@ void ConvTransposeInferMeta(const MetaTensor& x,
                 make_ddim(output_size).to_str(),
                 i,
                 infer_shape));
-        if (common::product(x_dims) != 0) {
+        if (product(x_dims) != 0) {
           PADDLE_ENFORCE_LT(
               output_size[i],
               infer_shape + strides[i],
@@ -1745,7 +1745,7 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
                          (x_dims.size() >= 3 || y_dims.size() >= 3);
     if (should_rotate) {
       // Pick bigger shape and rotate this one
-      bool x_over_y = (common::product(x_dims) > common::product(y_dims));
+      bool x_over_y = (product(x_dims) > product(y_dims));
       auto vdims =
           x_over_y ? vectorize<int64_t>(x_dims) : vectorize<int64_t>(y_dims);
       std::rotate(vdims.begin() + 1, vdims.begin() + 2, vdims.end());
@@ -2248,7 +2248,7 @@ void GatherTreeMeta(const MetaTensor& ids,
                     MetaTensor* out) {
   auto ids_dims = ids.dims();
   auto parents_dims = parents.dims();
-  if (common::product(ids_dims) != 0) {
+  if (product(ids_dims) != 0) {
     PADDLE_ENFORCE_EQ(ids_dims == parents_dims,
                       true,
                       common::errors::InvalidArgument(
@@ -2588,7 +2588,7 @@ void IndexAddInferMeta(const MetaTensor& x,
                        int axis,
                        MetaTensor* output) {
   auto input_dim = x.dims();
-  if (common::product(input_dim) == 0) {
+  if (product(input_dim) == 0) {
     output->set_dims(input_dim);
     output->set_dtype(x.dtype());
     output->set_layout(x.layout());
@@ -2624,7 +2624,7 @@ void IndexAddInferMeta(const MetaTensor& x,
                         "the dimension of Input(Index) is [%d].",
                         index_dim,
                         index_dim.size()));
-  if (common::product(add_value_dim) == 0) {
+  if (product(add_value_dim) == 0) {
     output->set_dims(input_dim);
     output->set_dtype(x.dtype());
     output->set_layout(x.layout());
@@ -2808,7 +2808,7 @@ void LogLossInferMeta(const MetaTensor& input,
   auto label_dims = label.dims();
 
   if (config.is_runtime ||
-      (common::product(pred_dims) > 0 && common::product(label_dims) > 0)) {
+      (product(pred_dims) > 0 && product(label_dims) > 0)) {
     PADDLE_ENFORCE_EQ(
         pred_dims,
         label_dims,
@@ -3180,7 +3180,7 @@ void MatmulWithFlattenInferMeta(const MetaTensor& x,
           << " x_num_col_dims=" << x_num_col_dims
           << " y_num_col_dims=" << y_num_col_dims;
 
-  PADDLE_ENFORCE_NE(common::product(y_dims),
+  PADDLE_ENFORCE_NE(product(y_dims),
                     0,
                     common::errors::PreconditionNotMet(
                         "The Input variable Y has not "
@@ -3479,7 +3479,7 @@ void PReluInferMeta(const MetaTensor& x,
                     MetaConfig config) {
   auto x_dim = x.dims();
   if (mode == "all") {
-    PADDLE_ENFORCE_EQ(common::product(alpha.dims()),
+    PADDLE_ENFORCE_EQ(product(alpha.dims()),
                       1,
                       common::errors::InvalidArgument(
                           "For mode 'all', size of weight Alpha must be one. "
@@ -4767,8 +4767,8 @@ void SwiGLUInferMeta(const MetaTensor& x,
                      const MetaTensor& y,
                      MetaTensor* out) {
   if (y) {
-    auto x_numel = common::product(x.dims());
-    auto y_numel = common::product(y.dims());
+    auto x_numel = product(x.dims());
+    auto y_numel = product(y.dims());
     // skip 0-size
     if (x_numel != 0 && y_numel != 0) {
       PADDLE_ENFORCE_EQ(

@@ -61,7 +61,7 @@ void AdadeltaInferMeta(const MetaTensor& param,
                        MetaTensor* master_param_out) {
   auto lr_dims = learning_rate.dims();
   PADDLE_ENFORCE_EQ(
-      common::product(lr_dims),
+      product(lr_dims),
       1,
       common::errors::InvalidArgument("LearningRate should have one element"));
   auto param_dims = param.dims();
@@ -119,7 +119,7 @@ void AdagradInferMeta(const MetaTensor& param,
                       MetaTensor* master_param_out) {
   auto lr_dims = learning_rate.dims();
   PADDLE_ENFORCE_EQ(
-      common::product(lr_dims),
+      product(lr_dims),
       1,
       common::errors::InvalidArgument("LearningRate should have one element"));
   auto param_dims = param.dims();
@@ -178,7 +178,7 @@ void AdamInferMeta(const MetaTensor& param,
                    MetaTensor* master_param_outs) {
   auto lr_dims = learning_rate.dims();
   PADDLE_ENFORCE_EQ(
-      common::product(lr_dims),
+      product(lr_dims),
       1,
       errors::InvalidArgument(
           "The number of LearningRate shall be 1, but received %d. Maybe "
@@ -186,23 +186,23 @@ void AdamInferMeta(const MetaTensor& param,
           "been initialized. You may need to confirm "
           "if you put exe.run(startup_program) "
           "after optimizer.minimize function.",
-          common::product(lr_dims)));
+          product(lr_dims)));
   auto beta1_pow_dims = beta1_pow.dims();
   VLOG(3) << "dims of Beta1Pow : [" << beta1_pow_dims << "]";
-  PADDLE_ENFORCE_GE(common::product(beta1_pow_dims),
+  PADDLE_ENFORCE_GE(product(beta1_pow_dims),
                     1,
                     errors::InvalidArgument(
                         "The size of Beta1 power accumulator should be greater "
                         "than 0, but received %d.",
-                        common::product(beta1_pow_dims)));
+                        product(beta1_pow_dims)));
   auto beta2_pow_dims = beta2_pow.dims();
   VLOG(3) << "dims of Beta2Pow : [" << beta2_pow_dims << "]";
-  PADDLE_ENFORCE_GE(common::product(beta2_pow_dims),
+  PADDLE_ENFORCE_GE(product(beta2_pow_dims),
                     1,
                     errors::InvalidArgument(
                         "The size of Beta2 power accumulator should be greater "
                         "than 0, but received %d.",
-                        common::product(beta2_pow_dims)));
+                        product(beta2_pow_dims)));
 
   auto param_dims = param.dims();
   PADDLE_ENFORCE_EQ(
@@ -417,7 +417,7 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
     }
     is_all_0d_tensor = false;
     // use the first dimension
-    if (common::product(in_dim) == 0) {
+    if (product(in_dim) == 0) {
       in_dim = x_dim;
     } else {
       if (config.is_runtime) {
@@ -681,8 +681,7 @@ void AttentionLstmInferMeta(const MetaTensor& x,
         common::errors::InvalidArgument(
             "Expected input(H0)'s dimension is 2. But received %d.",
             h_dims.size()));
-    if (config.is_runtime ||
-        (common::product(c_dims) > 0 && common::product(h_dims) > 0)) {
+    if (config.is_runtime || (product(c_dims) > 0 && product(h_dims) > 0)) {
       PADDLE_ENFORCE_EQ(h_dims,
                         c_dims,
                         common::errors::InvalidArgument(
@@ -795,14 +794,14 @@ void AucInferMeta(const MetaTensor& input,
           predict_dims));
   auto predict_width = predict_dims[1];
   PADDLE_ENFORCE_NE(
-      common::product(predict_dims),
+      product(predict_dims),
       0,
       common::errors::InvalidArgument(
           "The Input(Predict) has not been initialized properly. The "
           "shape of Input(Predict) = [%s], the shape can not involves 0.",
           predict_dims));
   PADDLE_ENFORCE_NE(
-      common::product(label_dims),
+      product(label_dims),
       0,
       common::errors::InvalidArgument(
           "The Input(Label) has not been initialized properly. The "
@@ -1275,7 +1274,7 @@ void CoalesceTensorInferMeta(const std::vector<const MetaTensor*>& input,
     int64_t numel = 0;
     for (auto item : input) {
       const auto& dim = item->dims();
-      auto size = common::product(dim);
+      auto size = product(dim);
       auto len = use_align
                      ? Alignment(static_cast<size_t>(size) * size_of_dtype,
                                  GPUPlace(),
@@ -1307,7 +1306,7 @@ void CoalesceTensorInferMeta(const std::vector<const MetaTensor*>& input,
 
       for (auto item : input) {
         const auto& dim = item->dims();
-        auto size = common::product(dim);
+        auto size = product(dim);
         auto len = use_align
                        ? alignment(static_cast<size_t>(size) * size_of_dtype,
                                    align_size) /
@@ -1334,7 +1333,7 @@ void CheckMemoryContinueInferMeta(const std::vector<const MetaTensor*>& input,
   int64_t numel = 0;
   for (auto item : input) {
     const auto& dim = item->dims();
-    auto size = common::product(dim);
+    auto size = product(dim);
     auto len = size * SizeOf(item->dtype());
     numel += static_cast<int64_t>(len);
   }
@@ -1755,7 +1754,7 @@ void DecayedAdagradInferMeta(const MetaTensor& param,
                              MetaTensor* param_out,
                              MetaTensor* moment_out) {
   auto lr_dims = learning_rate.dims();
-  PADDLE_ENFORCE_NE(common::product(lr_dims),
+  PADDLE_ENFORCE_NE(product(lr_dims),
                     0,
                     common::errors::InvalidArgument(
                         "Maybe the Input variable LearningRate has not "
@@ -1763,7 +1762,7 @@ void DecayedAdagradInferMeta(const MetaTensor& param,
                         "if you put exe.run(startup_program) "
                         "after optimizer.minimize function."));
   PADDLE_ENFORCE_EQ(
-      common::product(lr_dims),
+      product(lr_dims),
       1,
       common::errors::InvalidArgument("LearningRate should have one element"));
   auto param_dims = param.dims();
@@ -2094,19 +2093,19 @@ void DGCMomentumInferMeta(const MetaTensor& param,
                           MetaTensor* grad_out) {
   auto lr_dims = learning_rate.dims();
 
-  PADDLE_ENFORCE_NE(common::product(lr_dims),
+  PADDLE_ENFORCE_NE(product(lr_dims),
                     0,
                     common::errors::InvalidArgument(
                         "Maybe the Input variable LearningRate has not "
                         "been initialized. You may need to confirm "
                         "if you put exe.run(startup_program) "
                         "after optimizer.minimize function."));
-  PADDLE_ENFORCE_EQ(common::product(lr_dims),
+  PADDLE_ENFORCE_EQ(product(lr_dims),
                     1,
                     common::errors::InvalidArgument(
                         "Learning_rate should be a scalar. But Received "
                         "LearningRate's dim [%s]",
-                        common::product(lr_dims)));
+                        product(lr_dims)));
 
   auto param_dims = param.dims();
   auto grad_dims = grad.dims();
@@ -2399,18 +2398,18 @@ void FtrlInferMeta(const MetaTensor& param,
                         grad.dims()));
 
   auto lr_dim = learning_rate.dims();
-  PADDLE_ENFORCE_NE(common::product(lr_dim),
+  PADDLE_ENFORCE_NE(product(lr_dim),
                     0,
                     common::errors::InvalidArgument(
                         "Maybe the Input variable LearningRate has not "
                         "been initialized. You may need to confirm "
                         "if you put exe.run(startup_program) "
                         "after optimizer.minimize function."));
-  PADDLE_ENFORCE_EQ(common::product(lr_dim),
-                    1,
-                    common::errors::InvalidArgument(
-                        "Learning Rate should be a scalar, but got %d",
-                        common::product(lr_dim)));
+  PADDLE_ENFORCE_EQ(
+      product(lr_dim),
+      1,
+      common::errors::InvalidArgument(
+          "Learning Rate should be a scalar, but got %d", product(lr_dim)));
 
   param_out->set_dims(param_dim);
   param_out->set_dtype(param.dtype());
@@ -3897,7 +3896,7 @@ void LambInferMeta(const MetaTensor& param,
                    MetaTensor* master_param_outs) {
   auto lr_dims = learning_rate.dims();
   PADDLE_ENFORCE_NE(
-      common::product(lr_dims),
+      product(lr_dims),
       0,
       common::errors::InvalidArgument(
           "The number of LearningRate shall not be 0, but received %d. Maybe "
@@ -3905,27 +3904,27 @@ void LambInferMeta(const MetaTensor& param,
           "been initialized. You may need to confirm "
           "if you put exe.run(startup_program) "
           "after optimizer.minimize function.",
-          common::product(lr_dims)));
+          product(lr_dims)));
   PADDLE_ENFORCE_EQ(
-      common::product(lr_dims),
+      product(lr_dims),
       1,
       common::errors::InvalidArgument(
           "Learning rate should have 1 dimension, but received %d.",
-          common::product(lr_dims)));
+          product(lr_dims)));
   auto beta1_pow_dims = beta1_pow.dims();
-  PADDLE_ENFORCE_GE(common::product(beta1_pow_dims),
+  PADDLE_ENFORCE_GE(product(beta1_pow_dims),
                     1,
                     common::errors::InvalidArgument(
                         "The size of Beta1 power accumulator should be "
                         "greater than 0, but received %d.",
-                        common::product(beta1_pow_dims)));
+                        product(beta1_pow_dims)));
   auto beta2_pow_dims = beta2_pow.dims();
-  PADDLE_ENFORCE_GE(common::product(beta2_pow_dims),
+  PADDLE_ENFORCE_GE(product(beta2_pow_dims),
                     1,
                     common::errors::InvalidArgument(
                         "The size of Beta2 power accumulator should be "
                         "greater than 0, but received %d.",
-                        common::product(beta2_pow_dims)));
+                        product(beta2_pow_dims)));
 
   auto param_dims = param.dims();
   PADDLE_ENFORCE_EQ(
@@ -4040,12 +4039,12 @@ void LarsMomentumInferMeta(
           grad_dim.size()));
 
   for (auto& lr_dim : lr_dims) {
-    PADDLE_ENFORCE_EQ(common::product(lr_dim),
+    PADDLE_ENFORCE_EQ(product(lr_dim),
                       1,
                       common::errors::InvalidArgument(
                           "Learning_rate should be a scalar. But Received "
                           "LearningRate's dim [%s]",
-                          common::product(lr_dim)));
+                          product(lr_dim)));
   }
 
   for (size_t i = 0; i < param_dim.size(); ++i) {
@@ -4140,32 +4139,32 @@ void LogspaceInferMeta(const MetaTensor& start,
                        MetaTensor* out) {
   auto s_dims = start.dims();
   PADDLE_ENFORCE_EQ(
-      common::product(s_dims),
+      product(s_dims),
       1,
       common::errors::InvalidArgument("The size of Input(Start) must be 1,"
                                       "but received input size is %s.",
-                                      common::product(s_dims)));
+                                      product(s_dims)));
   auto e_dims = stop.dims();
   PADDLE_ENFORCE_EQ(
-      common::product(e_dims),
+      product(e_dims),
       true,
       common::errors::InvalidArgument("The size of Input(Stop) must be 1,"
                                       "but received input size is %s.",
-                                      common::product(e_dims)));
+                                      product(e_dims)));
   auto num_dims = number.dims();
   PADDLE_ENFORCE_EQ(
-      common::product(num_dims),
+      product(num_dims),
       true,
       common::errors::InvalidArgument("The size of Input(Num) must be 1,"
                                       "but received input size is %s.",
-                                      common::product(num_dims)));
+                                      product(num_dims)));
   auto b_dims = base.dims();
-  PADDLE_ENFORCE_EQ(common::product(b_dims),
+  PADDLE_ENFORCE_EQ(product(b_dims),
                     true,
                     common::errors::InvalidArgument(
                         "The size of Input(Base) must be 1,"
-                        "but received input size is common::product(b_dims).",
-                        common::product(b_dims)));
+                        "but received input size is product(b_dims).",
+                        product(b_dims)));
   out->set_dims(make_ddim({-1}));
   out->set_dtype(dtype);
 }
@@ -4344,18 +4343,18 @@ void MomentumInferMeta(const MetaTensor& param,
 
   auto lr_dims = learning_rate.dims();
   PADDLE_ENFORCE_NE(
-      common::product(lr_dims),
+      product(lr_dims),
       0,
       errors::InvalidArgument("Maybe the Input variable LearningRate has not "
                               "been initialized. You may need to confirm "
                               "if you put exe.run(startup_program) "
                               "after optimizer.minimize function."));
   PADDLE_ENFORCE_EQ(
-      common::product(lr_dims),
+      product(lr_dims),
       1,
       errors::InvalidArgument("Learning_rate should be a scalar. But Received "
                               "LearningRate's dim [%s]",
-                              common::product(lr_dims)));
+                              product(lr_dims)));
 
   auto param_dim = param.dims();
   param_out->set_dims(param_dim);
@@ -4537,12 +4536,12 @@ void NAdamInferMeta(const MetaTensor& param,
                         moment2.dims()));
 
   auto lr_dim = learning_rate.dims();
-  PADDLE_ENFORCE_EQ(common::product(lr_dim),
+  PADDLE_ENFORCE_EQ(product(lr_dim),
                     1,
                     common::errors::InvalidArgument(
                         "Learning Rate of NAdamOp should be a scalar. But "
                         "received LearningRate's dim [%s]",
-                        common::product(lr_dim)));
+                        product(lr_dim)));
 
   if (master_param.initialized()) {
     PADDLE_ENFORCE_EQ(param_dim,
@@ -4969,12 +4968,12 @@ void RAdamInferMeta(const MetaTensor& param,
                         moment2.dims()));
 
   auto lr_dim = learning_rate.dims();
-  PADDLE_ENFORCE_EQ(common::product(lr_dim),
+  PADDLE_ENFORCE_EQ(product(lr_dim),
                     1,
                     common::errors::InvalidArgument(
                         "Learning Rate of RAdamOp should be a scalar. But "
                         "received LearningRate's dim [%s]",
-                        common::product(lr_dim)));
+                        product(lr_dim)));
 
   if (master_param.initialized()) {
     PADDLE_ENFORCE_EQ(param_dim,
@@ -5126,12 +5125,12 @@ void RmspropInferMeta(const MetaTensor& param,
                         mean_square.dims()));
 
   auto lr_dim = learning_rate.dims();
-  PADDLE_ENFORCE_EQ(common::product(lr_dim),
+  PADDLE_ENFORCE_EQ(product(lr_dim),
                     1,
                     common::errors::InvalidArgument(
                         "Learning Rate of RmspropOp should be a scalar. But "
                         "received LearningRate's dim [%s]",
-                        common::product(lr_dim)));
+                        product(lr_dim)));
 
   if (master_param.initialized()) {
     PADDLE_ENFORCE_EQ(param_dim,
@@ -5305,12 +5304,12 @@ void SgdInferMeta(const MetaTensor& param,
                               "Output(ParamOut) of SGDOp should not be null."));
 
   auto lr_dims = learning_rate.dims();
-  PADDLE_ENFORCE_EQ(common::product(lr_dims),
+  PADDLE_ENFORCE_EQ(product(lr_dims),
                     1,
                     common::errors::InvalidArgument(
                         "Learning rate should have 1 element. But received "
                         "LearningRate dims [%s]",
-                        common::product(lr_dims)));
+                        product(lr_dims)));
 
   param_out->set_dims(param.dims());
   param_out->set_dtype(param.dtype());
@@ -5592,7 +5591,7 @@ void SparseMomentumInferMeta(const MetaTensor& param,
                              MetaTensor* param_out,
                              MetaTensor* velocity_out,
                              MetaTensor* master_param_out) {
-  auto lr_dims = common::product(learning_rate.dims());
+  auto lr_dims = product(learning_rate.dims());
   PADDLE_ENFORCE_EQ(lr_dims == 1,
                     true,
                     common::errors::InvalidArgument(
@@ -5734,7 +5733,7 @@ void WarpctcInferMeta(const MetaTensor& logits,
                       MetaTensor* loss,
                       MetaTensor* warpctcgrad) {
   auto logits_dims = logits.dims();
-  if (common::product(logits_dims) == 0) {
+  if (product(logits_dims) == 0) {
     PADDLE_THROW(errors::InvalidArgument("The input size can not be zero."));
   }
   int64_t num_sequences, sequence_width, max_sequence_length;
@@ -5774,7 +5773,7 @@ void WarpctcInferMeta(const MetaTensor& logits,
   } else {
     max_sequence_length = -1;
     num_sequences = -1;
-    sequence_width = common::product(logits_dims) / logits_dims[0];
+    sequence_width = product(logits_dims) / logits_dims[0];
   }
 
   PADDLE_ENFORCE_GE(

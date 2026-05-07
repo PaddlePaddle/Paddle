@@ -1383,7 +1383,7 @@ void FusedBiasDropoutResidualLnInferMeta(
   ln_mean->set_dims({left});
   ln_variance->set_dims({left});
   y->set_dims(x.dims());
-  if (common::product(x_dim) != 0 && common::product(residual.dims()) == 0) {
+  if (product(x_dim) != 0 && product(residual.dims()) == 0) {
     y->set_dims(residual.dims());
   }
 }
@@ -3920,13 +3920,13 @@ void FusionRepeatedFCReluInferMeta(const MetaTensor& x,
                           i,
                           w_dims[i].size()));
     PADDLE_ENFORCE_EQ(
-        common::product(b_dims[i]),
+        product(b_dims[i]),
         w_dims[i][1],
         common::errors::InvalidArgument(
             "The length of Bias must be equal with w_dims[1], but received "
             "product(b_dims[%d]) = %d, w_dims[%d][1] = %d.",
             i,
-            common::product(b_dims[i]),
+            product(b_dims[i]),
             i,
             w_dims[i][1]));
   }
