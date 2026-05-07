@@ -171,7 +171,7 @@ SpmdInfo ReplicatedInferDynamic(
       VLOG(4) << "input " << i << ": dist attr: " << dist_attr_dst.to_string();
       spmd_info.first.emplace_back(dist_attr_dst);
     } else {
-      std::vector<phi::distributed::TensorDistAttr> list_dist_attr;
+      std::vector<TensorDistAttr> list_dist_attr;
       const auto* dist_meta_tensors_ptr =
           PADDLE_GET_CONST(const std::vector<DistMetaTensor>*, inputs[i]);
       const auto& dist_meta_tensors = *dist_meta_tensors_ptr;

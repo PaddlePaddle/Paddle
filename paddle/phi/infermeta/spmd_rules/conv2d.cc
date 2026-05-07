@@ -205,9 +205,9 @@ SpmdInfo Conv2dGradInferSpmdBase(const DistMetaTensor& input,
                                  const DistMetaTensor& filter,
                                  const DistMetaTensor& output_grad) {
   auto check_channel_dist_attr =
-      [&](const phi::distributed::TensorDistAttr& input_dist_attr,
-          const phi::distributed::TensorDistAttr& filter_dist_attr,
-          const phi::distributed::TensorDistAttr& output_grad_dist_attr) {
+      [&](const TensorDistAttr& input_dist_attr,
+          const TensorDistAttr& filter_dist_attr,
+          const TensorDistAttr& output_grad_dist_attr) {
         int channel_dim = 1;  // NCHW support
         if (output_grad_dist_attr.is_partial()) {
           std::set<int64_t> partial_dims = output_grad_dist_attr.partial_dims();

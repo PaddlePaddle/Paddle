@@ -288,9 +288,8 @@ SpmdInfo MatmulInferSpmdReverse(const DistMetaTensor& x,
   return {{x_dist_attr_dst, y_dist_attr_dst}, {out_dist_attr_src}};
 }
 
-static bool DistAttrsAreBasicallyEqual(
-    const phi::distributed::TensorDistAttr& in_dist_attr,
-    const phi::distributed::TensorDistAttr& out_dist_attr) {
+static bool DistAttrsAreBasicallyEqual(const TensorDistAttr& in_dist_attr,
+                                       const TensorDistAttr& out_dist_attr) {
   return (in_dist_attr.process_mesh() == out_dist_attr.process_mesh() &&
           in_dist_attr.multi_dims_mapping() ==
               out_dist_attr.multi_dims_mapping() &&

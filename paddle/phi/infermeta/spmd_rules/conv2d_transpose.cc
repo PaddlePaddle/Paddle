@@ -169,9 +169,9 @@ SpmdInfo Conv2dTransposeGradInferSpmd(const DistMetaTensor& input,
                                       const std::vector<int>& dilations,
                                       const std::string& data_format) {
   auto check_channel_dist_attr =
-      [&](const phi::distributed::TensorDistAttr& input_dist_attr,
-          const phi::distributed::TensorDistAttr& filter_dist_attr,
-          const phi::distributed::TensorDistAttr& output_grad_dist_attr) {
+      [&](const TensorDistAttr& input_dist_attr,
+          const TensorDistAttr& filter_dist_attr,
+          const TensorDistAttr& output_grad_dist_attr) {
         int input_channel_dim = (data_format == "NCHW") ? 1 : 3;
         int filter_channel_dim = 0;
         if (output_grad_dist_attr.is_partial()) {

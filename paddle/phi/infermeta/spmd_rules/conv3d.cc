@@ -155,9 +155,9 @@ SpmdInfo Conv3dGradInferSpmdBase(const DistMetaTensor& input,
                                  const DistMetaTensor& output_grad,
                                  const std::string& data_format) {
   auto check_channel_dist_attr =
-      [&](const phi::distributed::TensorDistAttr& input_dist_attr,
-          const phi::distributed::TensorDistAttr& filter_dist_attr,
-          const phi::distributed::TensorDistAttr& output_grad_dist_attr) {
+      [&](const TensorDistAttr& input_dist_attr,
+          const TensorDistAttr& filter_dist_attr,
+          const TensorDistAttr& output_grad_dist_attr) {
         int input_channel_dim = (data_format == "NCDHW") ? 1 : 4;
         int filter_channel_dim = 1;
         if (output_grad_dist_attr.is_partial()) {

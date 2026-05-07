@@ -107,8 +107,8 @@ bool IsEinsumOuter(const std::vector<std::string>& inputs,
   return true;
 }
 
-void ConstraintOnOuter(const phi::distributed::TensorDistAttr& x_attr,
-                       const phi::distributed::TensorDistAttr& y_attr,
+void ConstraintOnOuter(const TensorDistAttr& x_attr,
+                       const TensorDistAttr& y_attr,
                        int x_ndim,
                        int y_ndim,
                        std::vector<int64_t>* x_dims_mapping,
