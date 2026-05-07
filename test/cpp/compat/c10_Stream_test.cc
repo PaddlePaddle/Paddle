@@ -385,4 +385,65 @@ TEST(CUDAStreamTest, CurrentStreamDeadlockReproducer) {
   c10::cuda::setCurrentCUDAStream(original);
 }
 
+// Verify that for a thread that has never called setCurrentCUDAStream,
+// repeated getCurrentCUDAStream calls always return the same default stream
+// (id == 0), regardless of what other threads do with setCurrentCUDAStream.
+TEST(CUDAStreamTest, GetCurrentCUDAStreamStableInUnsetThread) {
+  if (!at::cuda::is_available()) {
+    return;
+  }
+
+  auto original = c10::cuda::getCurrentCUDAStream();
+  auto pool_a = c10::cuda::getStreamFromPool(/*isHighPriority=*/false);
+  auto pool_b = c10::cuda::getStreamFromPool(/*isHighPriority=*/false);
+
+  // Main thread sets a non-default current stream first.
+  c10::cuda::setCurrentCUDAStream(pool_a);
+
+  // Worker thread: repeatedly read getCurrentCUDAStream.
+  // Worker NEVER calls setCurrentCUDAStream, so its thread-local is unset.
+  std::atomic<bool> stop{false};
+  std::atomic<int> samples_count{0};
+  std::atomic<bool> all_default{true};
+  c10::cuda::CUDAStream first_sample = c10::cuda::getDefaultCUDAStream();
+  std::atomic<bool> any_unequal{false};
+
+  std::thread worker([&]() {
+    while (!stop.load(std::memory_order_acquire)) {
+      auto s = c10::cuda::getCurrentCUDAStream();
+      if (s.id() != static_cast<c10::StreamId>(0)) {
+        all_default.store(false, std::memory_order_release);
+      }
+      if (s != first_sample) {
+        any_unequal.store(true, std::memory_order_release);
+      }
+      samples_count.fetch_add(1, std::memory_order_relaxed);
+      std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    }
+  });
+
+  // Main thread keeps switching the current stream (also mutates GPUContext).
+  for (int i = 0; i < 30; ++i) {
+    c10::cuda::setCurrentCUDAStream((i % 2 == 0) ? pool_a : pool_b);
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+  }
+
+  stop.store(true, std::memory_order_release);
+  worker.join();
+
+  // Worker collected at least a few samples.
+  EXPECT_GT(samples_count.load(std::memory_order_relaxed), 0);
+
+  // Every sample is the default stream (id == 0).
+  EXPECT_TRUE(all_default.load(std::memory_order_acquire))
+      << "Worker thread's getCurrentCUDAStream returned a non-default stream "
+         "even though it never called setCurrentCUDAStream.";
+
+  // Every sample equals the first one (default stream is stable).
+  EXPECT_FALSE(any_unequal.load(std::memory_order_acquire))
+      << "Worker thread saw inconsistent default streams across calls.";
+
+  c10::cuda::setCurrentCUDAStream(original);
+}
+
 #endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP

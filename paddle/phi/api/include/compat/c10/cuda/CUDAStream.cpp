@@ -23,6 +23,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/core/cuda_stream.h"
 #endif
 
 namespace c10::cuda {
@@ -56,6 +57,8 @@ thread_local std::vector<hipStream_t> g_thread_local_current_streams;
 #else
 thread_local std::vector<cudaStream_t> g_thread_local_current_streams;
 #endif
+
+std::vector<std::unique_ptr<phi::CUDAStream>> g_compat_phi_streams;
 
 void initGlobalState() {
   std::call_once(g_init_once, []() {
@@ -251,7 +254,23 @@ void setCurrentCUDAStream(CUDAStream stream) {
   // Also update Paddle's global device context stream for backward
   // compatibility, so that Paddle kernel launches (which read from
   // GPUContext) still use the correct stream.
-  getMutableGPUContext(idx)->SetStream(stream.stream());
+  // Use SetCUDAStream instead of SetStream to avoid destroying
+  // external stream handles (e.g., pool streams from getStreamFromPool).
+  auto* ctx = getMutableGPUContext(idx);
+  if (idx >= static_cast<c10::DeviceIndex>(g_compat_phi_streams.size())) {
+    g_compat_phi_streams.resize(idx + 1);
+  }
+  if (!g_compat_phi_streams[idx]) {
+#ifdef PADDLE_WITH_HIP
+    g_compat_phi_streams[idx] = std::make_unique<phi::CUDAStream>(
+        phi::GPUPlace(idx), static_cast<hipStream_t>(0));
+#else
+    g_compat_phi_streams[idx] = std::make_unique<phi::CUDAStream>(
+        phi::GPUPlace(idx), static_cast<cudaStream_t>(0));
+#endif
+  }
+  g_compat_phi_streams[idx]->set_raw_stream(stream.stream());
+  ctx->SetCUDAStream(g_compat_phi_streams[idx].get(), true);
 #else
   (void)stream;
 #endif
