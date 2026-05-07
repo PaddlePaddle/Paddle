@@ -14,8 +14,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
 namespace phi::distributed {
-SpmdInfo AddNInferSpmd(
-    const std::vector<phi::distributed::DistMetaTensor>& inputs) {
+SpmdInfo AddNInferSpmd(const std::vector<DistMetaTensor>& inputs) {
   auto N = inputs.size();
   PADDLE_ENFORCE_GT(
       N,

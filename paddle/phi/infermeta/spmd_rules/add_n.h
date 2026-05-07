@@ -21,7 +21,6 @@
 
 namespace phi {
 namespace distributed {
-SpmdInfo AddNInferSpmd(
-    const std::vector<phi::distributed::DistMetaTensor>& input);
+SpmdInfo AddNInferSpmd(const std::vector<DistMetaTensor>& input);
 }
 }  // namespace phi
