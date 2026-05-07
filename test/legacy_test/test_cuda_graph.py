@@ -413,6 +413,68 @@ class TestCUDAGraphInDygraphMode(unittest.TestCase):
             np.testing.assert_allclose(y.numpy(), x_new_val + 5.0, rtol=1e-5)
         g.reset()
 
+    def test_replace_input_ptrs_multiple_kernel_nodes(self):
+        if not can_use_cuda_graph():
+            return
+
+        shape = [4, 4]
+        x = self.random_tensor(shape)
+        x_val = x.numpy().copy()
+
+        g = CUDAGraph(enable_replace=True)
+        g.capture_begin()
+        y = x * 2.0
+        z = y + x
+        g.capture_end()
+
+        g.replay()
+        np.testing.assert_allclose(z.numpy(), x_val * 3.0, rtol=1e-5)
+
+        x_new = self.random_tensor(shape)
+        x_new_val = x_new.numpy().copy()
+        g.replace_input_ptrs([x.data_ptr()], [x_new.data_ptr()])
+        g.replay()
+
+        cuda_ver = (
+            float(paddle.version.cuda())
+            if paddle.version.cuda() != 'False'
+            else 0.0
+        )
+        if cuda_ver >= 12.4:
+            np.testing.assert_allclose(y.numpy(), x_new_val * 2.0, rtol=1e-5)
+            np.testing.assert_allclose(z.numpy(), x_new_val * 3.0, rtol=1e-5)
+        g.reset()
+
+    def test_replace_input_ptrs_with_pool_id(self):
+        if not can_use_cuda_graph():
+            return
+
+        shape = [4, 4]
+        x = self.random_tensor(shape)
+        x_val = x.numpy().copy()
+
+        g = CUDAGraph(pool_id=0, enable_replace=True)
+        g.capture_begin()
+        y = x - 1.0
+        g.capture_end()
+
+        g.replay()
+        np.testing.assert_allclose(y.numpy(), x_val - 1.0, rtol=1e-5)
+
+        x_new = self.random_tensor(shape)
+        x_new_val = x_new.numpy().copy()
+        g.replace_input_ptrs([x.data_ptr()], [x_new.data_ptr()])
+        g.replay()
+
+        cuda_ver = (
+            float(paddle.version.cuda())
+            if paddle.version.cuda() != 'False'
+            else 0.0
+        )
+        if cuda_ver >= 12.4:
+            np.testing.assert_allclose(y.numpy(), x_new_val - 1.0, rtol=1e-5)
+        g.reset()
+
 
 if __name__ == "__main__":
     unittest.main()
