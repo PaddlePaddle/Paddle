@@ -252,10 +252,6 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
     eval_frame_callback_set(callback);
     return out;
   }
-  if (PyBytes_GET_SIZE(PyFrame_GET_CODE(frame)->co_exceptiontable)) {
-    eval_frame_callback_set(callback);
-    return eval_frame_default(tstate, frame, throw_flag);
-  }
   // PyFrame_FastToLocalsWithError receives a PyFrameObject, but if we created a
   // PyFrameObject from a PyInterpreterFrame, it will changes the original
   // PyInterpreterFrame and causes a Segmentation Fault when Fallback to run

@@ -39,6 +39,17 @@ class ExceptionStack:
     def clear_current_exception(self):
         self._current_exception = None
 
+    def restore_current_exception(
+        self, val: ExceptionVariable | ConstantVariable
+    ):
+        if isinstance(val, ExceptionVariable):
+            self._current_exception = val
+            return
+        if isinstance(val, ConstantVariable) and val.get_py_value() is None:
+            self.clear_current_exception()
+            return
+        raise InnerError(f"Can not restore exception state from {val}")
+
     def set_current_exception(
         self, val: ExceptionVariable, graph: FunctionGraph
     ):
@@ -53,6 +64,9 @@ class ExceptionStack:
         if self._current_exception is None:
             raise InnerError("Current exception should not be None")
         return self._current_exception
+
+    def has_current_exception(self) -> bool:
+        return self._current_exception is not None
 
     def _set_context_and_break_context_reference_cycle(
         self, val: ExceptionVariable, graph: FunctionGraph

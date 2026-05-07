@@ -16,8 +16,10 @@ from .instruction_pass import apply_instr_pass  # noqa: F401
 from .instruction_utils import (  # noqa: F401
     Instruction,
     Space,
+    assemble_exception_table,
     calc_offset_from_bytecode_offset,
     calc_stack_effect,
+    compute_exception_table,
     convert_instruction,
     gen_instr,
     get_instruction_size,

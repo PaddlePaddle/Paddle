@@ -49,6 +49,7 @@ class Instruction:
     # for analysis EXTENDED_ARG
     first_ex_arg: Instruction | None = None
     ex_arg_for: Instruction | None = None
+    exn_tab_entry: ExceptionTableEntry | None = None
 
     # used in modify_extended_args
     def __hash__(self):
@@ -56,6 +57,213 @@ class Instruction:
 
     def __eq__(self, instr):
         return id(self) == id(instr)
+
+
+@dataclasses.dataclass
+class ExceptionTableEntry:
+    start: Instruction
+    end: Instruction
+    target: Instruction
+    depth: int
+    lasti: bool
+
+
+@dataclasses.dataclass
+class RawExceptionTableEntry:
+    start: int
+    end: int
+    target: int
+    depth: int
+    lasti: bool
+
+
+def decode_exception_table_varint(bytes_iter) -> int:
+    b = next(bytes_iter)
+    val = b & 63
+    while b & 64:
+        val <<= 6
+        b = next(bytes_iter)
+        val |= b & 63
+    return val
+
+
+def encode_exception_table_varint(value: int) -> list[int]:
+    assert value >= 0
+    bytes_ = [value & 63]
+    value >>= 6
+    while value:
+        bytes_.append(value & 63)
+        value >>= 6
+    bytes_.reverse()
+    for idx in range(len(bytes_) - 1):
+        bytes_[idx] |= 64
+    return bytes_
+
+
+def parse_exception_table(exntab: bytes) -> list[RawExceptionTableEntry]:
+    exntab_iter = iter(exntab)
+    entries = []
+    try:
+        while True:
+            start = decode_exception_table_varint(exntab_iter) * 2
+            length = decode_exception_table_varint(exntab_iter) * 2
+            end = start + length - 2
+            target = decode_exception_table_varint(exntab_iter) * 2
+            depth_and_lasti = decode_exception_table_varint(exntab_iter)
+            entries.append(
+                RawExceptionTableEntry(
+                    start=start,
+                    end=end,
+                    target=target,
+                    depth=depth_and_lasti >> 1,
+                    lasti=bool(depth_and_lasti & 1),
+                )
+            )
+    except StopIteration:
+        return entries
+
+
+def check_exception_table(entries: list[RawExceptionTableEntry]) -> None:
+    for entry in entries:
+        assert entry.start <= entry.end
+    for lhs, rhs in zip(entries, entries[1:]):
+        assert lhs.end < rhs.start
+
+
+def assemble_exception_table(entries: list[RawExceptionTableEntry]) -> bytes:
+    encoded = []
+    check_exception_table(entries)
+    for entry in entries:
+        start = encode_exception_table_varint(entry.start // 2)
+        start[0] |= 128
+        encoded.extend(start)
+
+        length = entry.end - entry.start + 2
+        encoded.extend(encode_exception_table_varint(length // 2))
+        encoded.extend(encode_exception_table_varint(entry.target // 2))
+        encoded.extend(
+            encode_exception_table_varint((entry.depth << 1) | entry.lasti)
+        )
+    return bytes(encoded)
+
+
+def get_instruction_front(instr: Instruction) -> Instruction:
+    return instr.first_ex_arg or instr
+
+
+def get_instruction_end_offset(instr: Instruction) -> int:
+    assert instr.offset is not None
+    return instr.offset + get_instruction_size(instr) - 2
+
+
+def compute_exception_table(
+    instructions: list[Instruction],
+) -> list[RawExceptionTableEntry]:
+    if sys.version_info < (3, 11):
+        return []
+
+    instruction_set = set(instructions)
+    entries: list[RawExceptionTableEntry] = []
+    active_entry: ExceptionTableEntry | None = None
+    start_instr: Instruction | None = None
+    end_instr: Instruction | None = None
+
+    def flush_entry():
+        nonlocal active_entry, start_instr, end_instr
+        if active_entry is None or start_instr is None or end_instr is None:
+            return
+        if active_entry.target not in instruction_set:
+            active_entry = None
+            start_instr = None
+            end_instr = None
+            return
+
+        start = get_instruction_front(start_instr).offset
+        end = get_instruction_end_offset(end_instr)
+        target = get_instruction_front(active_entry.target).offset
+        assert start is not None
+        assert target is not None
+        entries.append(
+            RawExceptionTableEntry(
+                start=start,
+                end=end,
+                target=target,
+                depth=active_entry.depth,
+                lasti=active_entry.lasti,
+            )
+        )
+        active_entry = None
+        start_instr = None
+        end_instr = None
+
+    for instr in instructions:
+        entry = instr.exn_tab_entry
+        if entry is None or entry.target not in instruction_set:
+            flush_entry()
+            continue
+        if entry != active_entry:
+            flush_entry()
+            active_entry = entry
+            start_instr = instr
+        end_instr = instr
+
+    flush_entry()
+    check_exception_table(entries)
+    return entries
+
+
+def find_instruction_at_or_before_offset(
+    offset: int,
+    instructions: list[Instruction],
+) -> Instruction:
+    candidates = [
+        instr
+        for instr in instructions
+        if instr.offset is not None and instr.offset <= offset
+    ]
+    if not candidates:
+        raise InnerError(f"Can not find instruction before offset {offset}")
+    return candidates[-1]
+
+
+def virtualize_exception_table(
+    code: types.CodeType,
+    instructions: list[Instruction],
+) -> None:
+    if sys.version_info < (3, 11) or not code.co_exceptiontable:
+        return
+
+    offset_to_instr = {
+        instr.offset: instr
+        for instr in instructions
+        if instr.offset is not None
+    }
+    raw_entries = parse_exception_table(code.co_exceptiontable)
+
+    for raw_entry in raw_entries:
+        if raw_entry.start not in offset_to_instr:
+            raise InnerError(
+                f"Can not find exception table start offset {raw_entry.start}"
+            )
+        if raw_entry.target not in offset_to_instr:
+            raise InnerError(
+                f"Can not find exception table target offset {raw_entry.target}"
+            )
+
+        entry = ExceptionTableEntry(
+            start=offset_to_instr[raw_entry.start],
+            end=find_instruction_at_or_before_offset(
+                raw_entry.end, instructions
+            ),
+            target=offset_to_instr[raw_entry.target],
+            depth=raw_entry.depth,
+            lasti=raw_entry.lasti,
+        )
+
+        for instr in instructions:
+            assert instr.offset is not None
+            if raw_entry.start <= instr.offset <= raw_entry.end:
+                instr.exn_tab_entry = entry
 
 
 def get_instruction_size(instr: Instruction) -> int:
@@ -129,6 +337,7 @@ def expand_super_instrs(instructions: list[Instruction]) -> list[Instruction]:
             is_jump_target=is_jump_target,
             is_generated=is_generated,
             jump_to=instr.jump_to,
+            exn_tab_entry=instr.exn_tab_entry,
         )
 
     for instr in instructions:
@@ -174,6 +383,7 @@ def expand_super_instrs(instructions: list[Instruction]) -> list[Instruction]:
                 None,
                 None,
                 is_generated=True,
+                exn_tab_entry=instr.exn_tab_entry,
             )
             replacements[instr] = instr1
             expanded_instrs.append(instr1)
@@ -210,6 +420,7 @@ def replace_load_fast_borrow_with_strong_ref(
                 is_generated=instr.is_generated,
                 is_jump_target=instr.is_jump_target,
                 jump_to=instr.jump_to,
+                exn_tab_entry=instr.exn_tab_entry,
             )
             replacements[instr] = instr1
             expanded_instrs.append(instr1)
@@ -263,6 +474,7 @@ def get_instructions(code: types.CodeType) -> list[Instruction]:
     #         XX 388    <-  256 + 132
     # filter all EXTENDED_ARG here
     instrs = [x for x in instrs if x.opname != "EXTENDED_ARG"]
+    virtualize_exception_table(code, instrs)
     prepare_passes = [expand_super_instrs]
     if sys.version_info >= (3, 14):
         prepare_passes.append(replace_load_fast_borrow_with_strong_ref)
@@ -450,6 +662,7 @@ def modify_extended_args(instructions: list[Instruction]) -> bool:
             instr.starts_line = None
             ex_arg.is_jump_target = instr.is_jump_target
             instr.is_jump_target = False
+            ex_arg.exn_tab_entry = instr.exn_tab_entry
 
             if instr.ex_arg_for is not None:
                 # instr is also an ex_arg for another instr
@@ -473,6 +686,7 @@ def modify_vars(instructions: list[Instruction], code_options):
     for instrs in instructions:
         if instrs.opname in [
             'LOAD_FAST',
+            'LOAD_FAST_AND_CLEAR',
             'LOAD_FAST_BORROW',
             'LOAD_FAST_CHECK',
             'STORE_FAST',

@@ -40,7 +40,9 @@ from ...utils import (
 )
 from ..instruction_utils import (
     apply_instr_pass,
+    assemble_exception_table,
     calc_stack_effect,
+    compute_exception_table,
     gen_instr,
     get_instruction_size,
     instrs_info,
@@ -155,8 +157,9 @@ def gen_new_opcode(
     code_options["co_nlocals"] = len(code_options["co_varnames"])
     code_options["co_stacksize"] = stacksize(instrs)
     if sys.version_info >= (3, 11):
-        # TODO: generate 3.11 exception table
-        code_options["co_exceptiontable"] = bytes([])
+        code_options["co_exceptiontable"] = assemble_exception_table(
+            compute_exception_table(instrs)
+        )
     for key, val in code_options.items():
         if isinstance(val, list):
             code_options[key] = tuple(val)

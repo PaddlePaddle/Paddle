@@ -143,7 +143,7 @@ COMPARE_OP_NAME_TO_FN = {
 
 # In Python 3.13, the method layout is changed, and a NULL will be pushed after the value.
 CALL_METHOD_LAYOUT_NULL_AFTER_VALUE = sys.version_info >= (3, 13)
-ALREADY_SUPPORTED_EXCEPTION = sys.version_info < (3, 11)
+ALREADY_SUPPORTED_EXCEPTION = sys.version_info < (3, 15)
 
 
 @dataclass
@@ -698,9 +698,9 @@ class OpcodeExecutorBase:
             try:
                 return getattr(self, opname)(instr)  # run single step.
             except SotCapturedException as e:
-                self.handle_exception(e)
+                self.handle_exception(e, instr)
 
-    def handle_exception(self, e: SotCapturedException):
+    def handle_exception(self, e: SotCapturedException, instr: Instruction):
         # TODO(DrRyanHuang): The newly created ExceptionVariable might differ from the previous one
         e_var = VariableFactory.from_value(
             e,
@@ -710,10 +710,28 @@ class OpcodeExecutorBase:
 
         # The exception is not raised by `raise Exception`
         if (
-            self.exception_stack.empty()
+            not self.exception_stack.has_current_exception()
             or self.exception_stack.get_current_exception() != e_var
         ):
             self.exception_stack.set_current_exception(e_var, self._graph)
+
+        if sys.version_info >= (3, 11):
+            exn_tab_entry = instr.exn_tab_entry
+            if exn_tab_entry is None:
+                self.stack.pop_n(len(self.stack))
+                raise e
+
+            while len(self.stack) > exn_tab_entry.depth:
+                self.stack.pop()
+
+            if exn_tab_entry.lasti:
+                self.stack.push(
+                    ConstantVariable.wrap_literal(instr.offset, self._graph)
+                )
+
+            self.stack.push(self.exception_stack.get_current_exception())
+            self.jump_to(exn_tab_entry.target)
+            return
 
         if self.vframe.block_stack:
             # The implementation is referenced from the exception_unwind section
@@ -1031,6 +1049,11 @@ class OpcodeExecutorBase:
     def LOAD_FAST_CHECK(self, instr: Instruction):
         self.LOAD_FAST(instr)
 
+    def LOAD_FAST_AND_CLEAR(self, instr: Instruction):
+        name = self.vframe.code.co_varnames[instr.arg]
+        var = self.vframe.locals.pop(name, NullVariable())
+        self.stack.push(var)
+
     def LOAD_SMALL_INT(self, instr: Instruction):
         int_value = instr.argval
         int_var = ConstantVariable.wrap_literal(int_value, self._graph)
@@ -1164,6 +1187,9 @@ class OpcodeExecutorBase:
         """
         var = self.stack.pop()
         name = self.vframe.code.co_varnames[instr.arg]
+        if isinstance(var, NullVariable):
+            self.vframe.locals.pop(name, None)
+            return
         self.vframe.locals[name] = var
 
     def STORE_GLOBAL(self, instr: Instruction):
@@ -2113,6 +2139,13 @@ class OpcodeExecutorBase:
 
     @fallback_if_python_version_unsupported
     def POP_EXCEPT(self, instr: Instruction):
+        if sys.version_info >= (3, 11):
+            prev_exc = self.stack.pop()
+            if self.exception_stack:
+                self.exception_stack.pop()
+            self.exception_stack.restore_current_exception(prev_exc)
+            return
+
         assert len(self.vframe.block_stack) > 0
 
         if self.vframe.block_stack[-1].inst.opname != ExceptionHandler.opname:
@@ -2196,7 +2229,38 @@ class OpcodeExecutorBase:
             self.jump_to(instr.jump_to)
 
     @fallback_if_python_version_unsupported
+    def CHECK_EXC_MATCH(self, instr: Instruction):
+        assert len(self.stack) >= 2
+        expected_exc_types = self.stack.pop()
+        exc_instance = self.stack.top
+        result = ExceptionVariable.check_if_exception_matches(
+            exc_instance, expected_exc_types
+        )
+        self.stack.push(ConstantVariable.wrap_literal(result, self._graph))
+
+    @fallback_if_python_version_unsupported
+    def PUSH_EXC_INFO(self, instr: Instruction):
+        val = self.stack.pop()
+        if len(self.exception_stack) == 0:
+            prev_exc = ConstantVariable.wrap_literal(None, self._graph)
+        else:
+            prev_exc = self.exception_stack[-1]
+
+        self.stack.push(prev_exc)
+        self.stack.push(val)
+        self.exception_stack.move_current_exception_to_stack()
+
+    @fallback_if_python_version_unsupported
     def RERAISE(self, instr: Instruction):
+        if sys.version_info >= (3, 11):
+            exc_instance = self.stack.pop()
+            if instr.arg:
+                self.stack.pop()
+            else:
+                self.stack.push(exc_instance)
+            self._raise_exception_instance(exc_instance)
+            return
+
         _exc_type = self.stack.pop()
         _exc_instance = self.stack.pop()
         _traceback = self.stack.pop()
@@ -2666,6 +2730,12 @@ class OpcodeExecutor(OpcodeExecutorBase):
             iterator.id,
         ]
         output_var_names = [*list(write_names), iterator.id]
+        stack_args = list(self.stack)
+        stack_null_indices = [
+            idx
+            for idx, stack_arg in enumerate(stack_args)
+            if isinstance(stack_arg, NullVariable)
+        ]
 
         # 2. create inline call loop fn
         def create_inline_call_fn():
@@ -2674,6 +2744,8 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 self.vframe.code,
                 start_idx,
                 end_idx,
+                len(stack_args),
+                tuple(stack_null_indices),
             )
             resume_fn_creator = ResumeFunctionCreator(
                 self._graph.pycode_gen._origin_code,
@@ -2686,7 +2758,11 @@ class OpcodeExecutor(OpcodeExecutorBase):
             pycode_gen = resume_fn_creator.codegen
             origin_instrs = get_instructions(pycode_gen._origin_code)
 
-            resume_fn_creator.set_inputs(input_var_names, stack_size=0)
+            resume_fn_creator.set_inputs(
+                input_var_names,
+                stack_size=len(stack_args),
+                null_indices=stack_null_indices,
+            )
 
             # 2.1. load iter, it is a input of loop fn
             pycode_gen.gen_load_fast(iterator.id)
@@ -2727,6 +2803,8 @@ class OpcodeExecutor(OpcodeExecutorBase):
             if sys.version_info >= (3, 12):
                 for_iter_instr.jump_to = end_for
 
+            for _ in stack_args:
+                pycode_gen.gen_pop_top()
             resume_fn_creator.set_outputs(output_var_names)
             inline_call_fn = resume_fn_creator.generate(cache_key=cache_key)
 
@@ -2749,9 +2827,17 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
         # 4. prepare input datas and call
         input_vars = [
-            self.get_var(name, allow_undefined=True)
-            for name in input_var_names[:-1]
-        ] + [iterator]
+            *[
+                stack_arg
+                for idx, stack_arg in enumerate(stack_args)
+                if idx not in stack_null_indices
+            ],
+            *[
+                self.get_var(name, allow_undefined=True)
+                for name in input_var_names[:-1]
+            ],
+            iterator,
+        ]
 
         ret = fn(*input_vars)
 
