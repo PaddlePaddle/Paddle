@@ -116,7 +116,8 @@ class FusionStorage:
             if k not in self.accumulators_meta:
                 self.accumulators_meta[k] = {}
             for para_name, var_tmp in v.items():
-                assert var_tmp.dtype == self.dtype
+                if var_tmp.dtype != self.dtype:
+                    continue
                 src_len = var_tmp._numel() + get_align(var_tmp)
                 self.accumulators_meta[k][para_name] = {
                     "start": self.offset,

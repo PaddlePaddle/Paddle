@@ -31,6 +31,11 @@ from paddle import base, nn
 from paddle.framework import core
 
 
+def setUpModule():
+    if core.is_compiled_with_xpu():
+        raise unittest.SkipTest("Skip all adamw tests on XPU platform")
+
+
 def adamw_step(inputs, attributes):
     param = inputs['Param']
     grad = inputs['Grad']
