@@ -316,10 +316,27 @@ class TestCompatLinearLayer(unittest.TestCase):
 
         # Check that weights are not all zeros
         self.assertFalse(np.allclose(linear.weight.numpy(), np.zeros((20, 10))))
+        bound = 1 / np.sqrt(10)
+        self.assertLessEqual(
+            float(np.max(np.abs(linear.weight.numpy()))), bound
+        )
+        self.assertLessEqual(float(np.max(np.abs(linear.bias.numpy()))), bound)
 
         # Test without bias
         linear_no_bias = Linear(10, 20, bias=False)
         self.assertIsNone(linear_no_bias.bias)
+
+        # Test zero out_features
+        linear_zero_out = Linear(3, 0)
+        self.assertEqual(linear_zero_out.weight.shape, [0, 3])
+        self.assertEqual(linear_zero_out.bias.shape, [0])
+        linear_zero_out.reset_parameters()
+
+        # Test zero in_features
+        linear_zero_in = Linear(0, 2)
+        self.assertEqual(linear_zero_in.weight.shape, [2, 0])
+        self.assertEqual(linear_zero_in.bias.shape, [2])
+        np.testing.assert_allclose(linear_zero_in.bias.numpy(), np.zeros([2]))
 
     def test_edge_cases(self):
         """Test edge cases"""
