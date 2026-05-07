@@ -55,12 +55,33 @@ __all__ = [
     'median',
     'nanmedian',
     'seed',
+    'inference_mode',
 ]
 
 
 def __getattr__(name):
     if name == "paddle_triton":
         return paddle_triton_fun()
+
+
+def inference_mode(mode=True):
+    """
+    Context-manager/decorator compatible with ``torch.inference_mode`` at the
+    grad-mode level.
+
+    ``mode=True`` delegates to ``paddle.no_grad()``, and ``mode=False``
+    delegates to ``paddle.enable_grad()``. Other truthy/falsy values use
+    ``paddle.set_grad_enabled(not mode)``. This wrapper does not implement
+    PyTorch inference tensor semantics such as version counter disabling, view
+    tracking disabling, or ``torch.is_inference``.
+    """
+    if callable(mode):
+        return inference_mode()(mode)
+    if mode is True:
+        return paddle.no_grad()
+    if mode is False:
+        return paddle.enable_grad()
+    return paddle.set_grad_enabled(not mode)
 
 
 @ForbidKeywordsDecorator(

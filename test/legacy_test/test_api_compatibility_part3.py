@@ -2814,5 +2814,90 @@ class TestSquareInplaceAPI(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestInferenceModeAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([1.0, 2.0, 3.0], dtype="float32")
+        self.shape = self.np_x.shape
+        self.dtype = str(self.np_x.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x, stop_gradient=False)
+
+        # 1. Paddle Positional arguments
+        with paddle.compat.inference_mode():
+            out1 = x * 2
+            self.assertFalse(paddle.is_grad_enabled())
+        # 2. Paddle keyword arguments
+        with paddle.compat.inference_mode(mode=True):
+            out2 = x * 2
+            self.assertFalse(paddle.is_grad_enabled())
+        # 3. PyTorch keyword arguments
+        with paddle.no_grad(), paddle.compat.inference_mode(mode=False):
+            out3 = x * 2
+            self.assertTrue(paddle.is_grad_enabled())
+
+        # 4. Decorator without parentheses
+        @paddle.compat.inference_mode
+        def no_grad_decorated(tensor):
+            out = tensor * 2
+            self.assertFalse(paddle.is_grad_enabled())
+            return out
+
+        out4 = no_grad_decorated(x)
+
+        # 5. Decorator with mode=False
+        @paddle.compat.inference_mode(mode=False)
+        def enable_grad_decorated(tensor):
+            out = tensor * 2
+            self.assertTrue(paddle.is_grad_enabled())
+            return out
+
+        with paddle.no_grad():
+            out5 = enable_grad_decorated(x)
+
+        # Verify all outputs
+        ref_out = self.np_x * 2
+        for out in [out1, out2, out3, out4, out5]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+        for out in [out1, out2, out4]:
+            self.assertTrue(out.stop_gradient)
+        for out in [out3, out5]:
+            self.assertFalse(out.stop_gradient)
+        self.assertTrue(paddle.is_grad_enabled())
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            x.stop_gradient = False
+
+            # 1. Paddle Positional arguments
+            with paddle.compat.inference_mode():
+                out1 = x * 2
+            # 2. Paddle keyword arguments
+            with paddle.compat.inference_mode(mode=True):
+                out2 = x * 2
+            # 3. PyTorch keyword arguments
+            with paddle.no_grad(), paddle.compat.inference_mode(mode=False):
+                out3 = x * 2
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2, out3],
+            )
+
+        # Verify all outputs
+        ref_out = self.np_x * 2
+        for out in fetches:
+            np.testing.assert_allclose(out, ref_out, rtol=1e-6)
+
+
 if __name__ == "__main__":
     unittest.main()
