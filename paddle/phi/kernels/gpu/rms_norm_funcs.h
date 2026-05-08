@@ -64,17 +64,17 @@ namespace {  // NOLINT
           common::errors::InvalidArgument("Unsupported data type of Scale"));  \
     }                                                                          \
     switch (SCALE_DTYPE) {                                                     \
-      case paddle::DataType::FLOAT32: {                                        \
+      case DataType::FLOAT32: {                                                \
         using SCALE_TYPE = float;                                              \
         __VA_ARGS__;                                                           \
         break;                                                                 \
       }                                                                        \
-      case paddle::DataType::FLOAT16: {                                        \
+      case DataType::FLOAT16: {                                                \
         using SCALE_TYPE = float16;                                            \
         __VA_ARGS__;                                                           \
         break;                                                                 \
       }                                                                        \
-      case paddle::DataType::BFLOAT16: {                                       \
+      case DataType::BFLOAT16: {                                               \
         using SCALE_TYPE = bfloat16;                                           \
         __VA_ARGS__;                                                           \
         break;                                                                 \

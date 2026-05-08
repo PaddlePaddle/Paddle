@@ -446,7 +446,7 @@ PD_REGISTER_KERNEL(sum_coo,
                    double,
                    int,
                    int64_t) {
-  kernel->OutputAt(0).SetDataType(paddle::DataType::UNDEFINED);
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
 
 PD_REGISTER_KERNEL(sum_csr,
@@ -457,5 +457,5 @@ PD_REGISTER_KERNEL(sum_csr,
                    double,
                    int,
                    int64_t) {
-  kernel->OutputAt(0).SetDataType(paddle::DataType::UNDEFINED);
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }

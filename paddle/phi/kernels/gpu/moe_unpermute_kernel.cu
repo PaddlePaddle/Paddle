@@ -192,7 +192,7 @@ void dispatch_tokens_zip(const Context &dev_ctx,
   grid.x = total_zipped_tokens_num;
   block.x = 256;
 
-  if (unzipped_token_probs.dtype() != paddle::DataType::FLOAT32) return;
+  if (unzipped_token_probs.dtype() != DataType::FLOAT32) return;
 
   // Unified dispatch: MP x WEIGHTED x NUM_EXPERTS
   dispatch::Bools(

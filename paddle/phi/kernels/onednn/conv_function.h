@@ -55,12 +55,9 @@ static dnnl::memory::data_type GetDstType(bool is_int8,
   [&] {                                                                     \
     const auto& __dtype__ = TYPE;                                           \
     switch (__dtype__) {                                                    \
-      PD_PRIVATE_CASE_TYPE(                                                 \
-          NAME, ::paddle::DataType::FLOAT32, float, __VA_ARGS__)            \
-      PD_PRIVATE_CASE_TYPE(                                                 \
-          NAME, ::paddle::DataType::INT8, int8_t, __VA_ARGS__)              \
-      PD_PRIVATE_CASE_TYPE(                                                 \
-          NAME, ::paddle::DataType::BFLOAT16, ::phi::bfloat16, __VA_ARGS__) \
+      PD_PRIVATE_CASE_TYPE(NAME, DataType::FLOAT32, float, __VA_ARGS__)     \
+      PD_PRIVATE_CASE_TYPE(NAME, DataType::INT8, int8_t, __VA_ARGS__)       \
+      PD_PRIVATE_CASE_TYPE(NAME, DataType::BFLOAT16, bfloat16, __VA_ARGS__) \
       default:                                                              \
         PD_THROW("function " #NAME " is not implemented for data type `",   \
                  __dtype__,                                                 \

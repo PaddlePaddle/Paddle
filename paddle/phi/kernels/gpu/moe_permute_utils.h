@@ -196,26 +196,26 @@ struct CompactSlot {
       : output_row(row), expert_id(eid), prob(p) {}
 };
 
-template <paddle::DataType DType>
+template <DataType DType>
 struct TypeMap;
 template <>
-struct TypeMap<paddle::DataType::BFLOAT16> {
+struct TypeMap<DataType::BFLOAT16> {
   using type = phi::bfloat16;
 };
 template <>
-struct TypeMap<paddle::DataType::FLOAT16> {
+struct TypeMap<DataType::FLOAT16> {
   using type = phi::float16;
 };
 template <>
-struct TypeMap<paddle::DataType::FLOAT32> {
+struct TypeMap<DataType::FLOAT32> {
   using type = float;
 };
 template <>
-struct TypeMap<paddle::DataType::INT32> {
+struct TypeMap<DataType::INT32> {
   using type = int;
 };
 template <>
-struct TypeMap<paddle::DataType::INT64> {
+struct TypeMap<DataType::INT64> {
   using type = int64_t;
 };
 
