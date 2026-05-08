@@ -29,7 +29,7 @@ void AllToAll(const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) {
   MetaTensor out_meta(*out);
   MetaTensor* out_meta_ptr = &out_meta;
 
-  AllToAllInferMeta(phi::MetaTensor(x), out_meta_ptr);
+  AllToAllInferMeta(MetaTensor(x), out_meta_ptr);
   if (x.initialized()) {
     AllToAllKernel<T, Context>(dev_ctx, x, out);
   }
