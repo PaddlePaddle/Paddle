@@ -18,6 +18,10 @@ if(WITH_XPU)
        device/xpu/xpu_profiler.cc)
 endif()
 
+if(WITH_IPU)
+  list(APPEND DEVICE_SRCS device/ipu/ipu_device.cc device/ipu/ipu_info.cc)
+endif()
+
 if(WITH_CUSTOM_DEVICE)
   list(APPEND DEVICE_SRCS device/custom/custom_device_resource_pool.cc)
 endif()
@@ -35,7 +39,13 @@ list(APPEND DEVICE_SRCS cuda_graph_with_memory_pool.cc)
 list(APPEND DEVICE_SRCS device_context.cc gen_comm_id_helper.cc)
 list(APPEND DEVICE_SRCS profiler/utils.cc profiler/cpu_utilization.cc)
 
-list(APPEND DEVICE_SRCS cpu_helper.cc denormal.cc monitor.cc timer.cc
-     device_count.cc)
+list(
+  APPEND
+  DEVICE_SRCS
+  cpu_helper.cc
+  denormal.cc
+  monitor.cc
+  timer.cc
+  device_count.cc)
 
 collect_srcs(core_srcs SRCS ${DEVICE_SRCS})

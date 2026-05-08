@@ -25,7 +25,7 @@ if(WITH_IPU)
 
   set(IPU_BACKEND_SRC "ipu_strategy.cc" "ipu_compiler.cc" "ipu_executor.cc"
                       "ipu_backend.cc" "ipu_utils.cc")
-  set(IPU_INFO_SRC "ipu_info.cc" "ipu_device.cc" "ipu_device_count_registrar.cc")
+  set(IPU_INFO_SRC "ipu_info.cc" "ipu_device.cc")
 
   cc_library(
     popart_canonicalization
@@ -51,5 +51,5 @@ if(WITH_IPU)
   cc_library(
     ipu_info
     SRCS ${IPU_INFO_SRC}
-    DEPS popart-only phi common)
+    DEPS phi common)
 endif()

@@ -12,22 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/platform/device_count.h"
+#include "paddle/phi/core/platform/device/ipu/ipu_info.h"
 
-#include "paddle/fluid/platform/device/ipu/ipu_info.h"
+#ifdef PADDLE_WITH_IPU
+#include "paddle/phi/core/platform/device/ipu/ipu_device.h"
 
-namespace {
+namespace paddle {
+namespace platform {
 
-// Register IPU device count provider at static initialization time.
-// This ensures phi/core can query IPU device count without directly
-// depending on fluid.
-struct IPUDeviceCountRegistrar {
-  IPUDeviceCountRegistrar() {
-    phi::RegisterDeviceCountProvider(
-        "IPU", []() -> int { return paddle::platform::GetIPUDeviceCount(); });
-  }
-};
+std::vector<int> GetSelectedIPUDevices() { return ipu::GetDeviceIds(); }
 
-static IPUDeviceCountRegistrar ipu_device_count_registrar;
+int GetIPUDeviceCount() { return ipu::GetNumDevices(); }
 
-}  // namespace
+}  // namespace platform
+}  // namespace paddle
+#endif
