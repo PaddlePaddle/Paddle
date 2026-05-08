@@ -20,7 +20,7 @@
 namespace paddle {
 namespace platform {
 struct CustomDeviceEventWrapper {
-  explicit CustomDeviceEventWrapper(const phi::Place& place) {
+  explicit CustomDeviceEventWrapper(const Place& place) {
     PADDLE_ENFORCE_EQ(
         phi::is_custom_place(place),
         true,
@@ -42,7 +42,7 @@ struct CustomDeviceEventWrapper {
 };
 
 void DeviceEventCreateCustomDevice(DeviceEvent* event,
-                                   const phi::Place& place,
+                                   const Place& place,
                                    unsigned int) {
   event->InitEvent(std::make_shared<CustomDeviceEventWrapper>(place));
 }

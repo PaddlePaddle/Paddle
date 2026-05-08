@@ -89,7 +89,7 @@ bool RecordStream(std::shared_ptr<Allocation> allocation, XPUStream stream) {
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-uint64_t Release(const phi::CustomPlace& place, phi::stream::stream_t stream) {
+uint64_t Release(const CustomPlace& place, phi::stream::stream_t stream) {
   return allocation::AllocatorFacade::Instance().Release(place, stream);
 }
 

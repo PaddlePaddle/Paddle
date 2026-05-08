@@ -31,7 +31,7 @@ bool IsCUDAGraphCapturing() {
   return phi::backends::gpu::IsCUDAGraphCapturing();
 }
 
-phi::Place CUDAGraphCapturingPlace() {
+Place CUDAGraphCapturingPlace() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_CUSTOM_DEVICE)
   return phi::backends::gpu::CUDAGraph::CapturingPlace();
@@ -217,7 +217,7 @@ void InitCUDNNRelatedHandle(phi::CustomContext* dev_ctx) {
   // dev_ctx->cusolver_dn_handle();
 }
 
-phi::DeviceContext* SelectCUDAGraphDeviceContext(phi::CustomPlace place,
+phi::DeviceContext* SelectCUDAGraphDeviceContext(CustomPlace place,
                                                  int64_t* pool_id) {
   phi::DeviceContext* mutable_dev_ctx;
   auto all_capturing_dev_ctxs =
@@ -257,7 +257,7 @@ phi::DeviceContext* SelectCUDAGraphDeviceContext(phi::CustomPlace place,
   return mutable_dev_ctx;
 }
 
-void BeginCUDAGraphCapture(phi::CustomPlace place,
+void BeginCUDAGraphCapture(CustomPlace place,
                            phi::graph::streamCaptureMode mode,
                            int64_t pool_id) {
   auto* mutable_dev_ctx = SelectCUDAGraphDeviceContext(place, &pool_id);

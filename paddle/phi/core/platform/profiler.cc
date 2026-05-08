@@ -82,7 +82,7 @@ std::map<const char *, std::map<uint64_t, bool>>
     RecordMemEvent::has_initialized;
 
 RecordMemEvent::RecordMemEvent(const void *ptr,
-                               const phi::Place &place,
+                               const Place &place,
                                size_t size,
                                const phi::TracerMemEventType type) {
   if (phi::ProfilerHelper::g_state == ProfilerState::kDisabled &&

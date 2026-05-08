@@ -29,7 +29,7 @@ constexpr int MaxDeviceTypes =
     static_cast<int>(platform::DeviceType::MAX_DEVICE_TYPES);
 
 typedef void (*EventCreateFunction)(DeviceEvent*,
-                                    const phi::Place&,
+                                    const Place&,
                                     unsigned int flag);
 typedef void (*EventRecordFunction)(DeviceEvent*, const DeviceContext*);
 typedef bool (*EventQueryFunction)(const DeviceEvent*);
@@ -55,7 +55,7 @@ enum EventStatus {
 
 class PADDLE_API DeviceEvent {
  public:
-  explicit DeviceEvent(const phi::Place& place, unsigned int flag);
+  explicit DeviceEvent(const Place& place, unsigned int flag);
   ~DeviceEvent() {}
 
   void Record(const DeviceContext* dev_ctx);
@@ -70,7 +70,7 @@ class PADDLE_API DeviceEvent {
 
  private:
   std::shared_ptr<void> event_;
-  phi::Place place_;
+  Place place_;
   int type_id_;
   unsigned int flag_;
   bool recorded_{false};

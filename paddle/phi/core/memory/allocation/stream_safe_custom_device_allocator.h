@@ -58,7 +58,7 @@ class StreamSafeCustomDeviceAllocator
  public:
   StreamSafeCustomDeviceAllocator(
       std::shared_ptr<Allocator> underlying_allocator,
-      phi::CustomPlace place,
+      CustomPlace place,
       phi::stream::stream_t default_stream);
   ~StreamSafeCustomDeviceAllocator();
 
@@ -80,7 +80,7 @@ class StreamSafeCustomDeviceAllocator
   static SpinLock allocator_map_lock_;
 
   std::shared_ptr<Allocator> underlying_allocator_;
-  phi::CustomPlace place_;
+  CustomPlace place_;
   phi::stream::stream_t default_stream_;
   std::list<StreamSafeCustomDeviceAllocation *> unfreed_allocations_;
   SpinLock unfreed_allocation_lock_;
