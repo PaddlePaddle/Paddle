@@ -8459,9 +8459,12 @@ def _to_pinned_place(place):
     - ``XPUPlace`` (or any ``Place`` reporting ``is_xpu_place``):
       ``XPUPinnedPlace``;
     - ``CPUPlace`` (or any ``Place`` reporting ``is_cpu_place``): the XPU
-      pinned allocator when Paddle is compiled with XPU, otherwise the
-      CUDA pinned allocator. This relaxation lets PyTorch-style code such
-      as ``randint(..., device='cpu', pin_memory=True)`` work unchanged.
+      pinned allocator when Paddle is compiled with XPU, the CUDA pinned
+      allocator when Paddle is compiled with CUDA, otherwise this branch
+      raises (no pinned allocator is available on a pure CPU build). This
+      relaxation lets PyTorch-style code such as
+      ``randint(..., device='cpu', pin_memory=True)`` work unchanged on
+      GPU/XPU builds.
 
     Any other place raises :class:`RuntimeError`.
     """
@@ -8480,7 +8483,9 @@ def _to_pinned_place(place):
     ):
         if core.is_compiled_with_xpu():
             return core.XPUPinnedPlace()
-        return core.CUDAPinnedPlace()
+        if core.is_compiled_with_cuda():
+            return core.CUDAPinnedPlace()
+        raise RuntimeError(f"Pinning memory is not supported for {place}")
     raise RuntimeError(f"Pinning memory is not supported for {place}")
 
 
