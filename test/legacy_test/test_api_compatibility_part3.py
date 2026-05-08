@@ -2919,6 +2919,18 @@ class TestModuleAPI(unittest.TestCase):
             "LegacyLayer.__init__\\(\\) got multiple values for argument 'dtype'",
         ):
             LegacyLayer("legacy_layer", "float32", dtype="float64")
+
+        with self.assertRaisesRegex(
+            TypeError,
+            "LegacyLayer.__init__\\(\\) takes from 1 to 3 positional arguments but 4 were given",
+        ):
+            LegacyLayer("legacy_layer", "float64", "extra")
+
+        with self.assertRaisesRegex(
+            TypeError,
+            "LegacyLayer.__init__\\(\\) got an unexpected keyword argument 'bogus'",
+        ):
+            LegacyLayer("legacy_layer", bogus=True)
         paddle.enable_static()
 
     def test_static_Compatibility(self):
