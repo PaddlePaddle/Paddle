@@ -25,23 +25,23 @@ namespace tests {
 
 TEST(DataLayout, OStream) {
   std::ostringstream oss;
-  oss << phi::DataLayout::UNDEFINED;
+  oss << DataLayout::UNDEFINED;
   EXPECT_EQ(oss.str(), "Undefined(AnyLayout)");
   oss.str("");
-  oss << phi::DataLayout::ANY;
+  oss << DataLayout::ANY;
   EXPECT_EQ(oss.str(), "Undefined(AnyLayout)");
   oss.str("");
-  oss << phi::DataLayout::NHWC;
+  oss << DataLayout::NHWC;
   EXPECT_EQ(oss.str(), "NHWC");
   oss.str("");
-  oss << phi::DataLayout::NCHW;
+  oss << DataLayout::NCHW;
   EXPECT_EQ(oss.str(), "NCHW");
   oss.str("");
-  oss << phi::DataLayout::ONEDNN;
+  oss << DataLayout::ONEDNN;
   EXPECT_EQ(oss.str(), "ONEDNN");
   oss.str("");
   try {
-    oss << phi::DataLayout::NUM_DATA_LAYOUTS;
+    oss << DataLayout::NUM_DATA_LAYOUTS;
   } catch (const std::exception& exception) {
     std::string ex_msg = exception.what();
     EXPECT_TRUE(ex_msg.find("Unknown Data Layout type") != std::string::npos);
