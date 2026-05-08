@@ -93,7 +93,7 @@ std::string currentTimestamp() {
 }
 
 std::shared_ptr<XpuAsyncLoad::Task> XpuAsyncLoad::Offload(
-    phi::DenseTensor* dst, const phi::DenseTensor& src) {
+    DenseTensor* dst, const DenseTensor& src) {
   // XPU -> XPUPinned
   const auto& place = src.place();
   VLOG(6) << "src place is: " << phi::AllocationTypeStr(src.place().GetType());
@@ -162,8 +162,8 @@ std::shared_ptr<XpuAsyncLoad::Task> XpuAsyncLoad::Offload(
 }
 
 std::shared_ptr<XpuAsyncLoad::Task> XpuAsyncLoad::OffloadWithOffset(
-    phi::DenseTensor* dst,
-    const phi::DenseTensor& src,
+    DenseTensor* dst,
+    const DenseTensor& src,
     size_t dst_offset,
     size_t src_offset,
     size_t offload_size) {
@@ -253,7 +253,7 @@ std::shared_ptr<XpuAsyncLoad::Task> XpuAsyncLoad::OffloadWithOffset(
 }
 
 std::shared_ptr<XpuAsyncLoad::Task> XpuAsyncLoad::Reload(
-    phi::DenseTensor* dst, const phi::DenseTensor& src) {
+    DenseTensor* dst, const DenseTensor& src) {
   // XPUPinned -> XPU
   const auto& place = src.place();
   VLOG(6) << "src place is: " << phi::AllocationTypeStr(src.place().GetType());

@@ -24,8 +24,6 @@ limitations under the License. */
 
 namespace phi::distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 SpmdInfo GatherInferSpmdBase(const DistMetaTensor& x,
                              const DistMetaTensor& index,
                              int axis) {
@@ -34,7 +32,7 @@ SpmdInfo GatherInferSpmdBase(const DistMetaTensor& x,
   // x_dims_mapping_src with the macro
   EXTRACT_SHAPE_AND_DIST_ATTR(x);
   // index may be 0-d tensor, verify it specifically
-  auto index_shape = common::vectorize(index.dims());
+  auto index_shape = vectorize(index.dims());
   int index_ndim = index_shape.size();
   const TensorDistAttr& index_dist_attr_src = index.dist_attr();
   const std::vector<int64_t>& index_dims_mapping_src =
@@ -179,7 +177,7 @@ SpmdInfo GatherGradInferSpmd(const DistMetaTensor& x,
                              const Scalar& axis) {
   EXTRACT_SHAPE_AND_DIST_ATTR(x);
   EXTRACT_SHAPE_AND_DIST_ATTR(out_grad);
-  auto index_shape = common::vectorize(index.dims());
+  auto index_shape = vectorize(index.dims());
   int index_ndim = index_shape.size();
   const TensorDistAttr& index_dist_attr_src = index.dist_attr();
   const std::vector<int64_t>& index_dims_mapping_src =

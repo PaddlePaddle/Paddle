@@ -30,8 +30,6 @@
 namespace paddle {
 namespace distributed {
 
-using Place = phi::Place;
-
 class AsyncLoad {
  public:
   class Task {
@@ -48,22 +46,21 @@ class AsyncLoad {
     Place task_place_;
   };
 
-  std::shared_ptr<AsyncLoad::Task> Offload(phi::DenseTensor* dst,
-                                           const phi::DenseTensor& src);
+  std::shared_ptr<AsyncLoad::Task> Offload(DenseTensor* dst,
+                                           const DenseTensor& src);
 
-  std::shared_ptr<AsyncLoad::Task> OffloadWithOffset(
-      phi::DenseTensor* dst,
-      const phi::DenseTensor& src,
-      size_t dst_offset,
-      size_t src_offset,
-      size_t offload_size);
+  std::shared_ptr<AsyncLoad::Task> OffloadWithOffset(DenseTensor* dst,
+                                                     const DenseTensor& src,
+                                                     size_t dst_offset,
+                                                     size_t src_offset,
+                                                     size_t offload_size);
 
   void PrepareLoadEnv(const std::string& key, const Place& place);
   void SyncCalcStream(const Place& place,
                       phi::GPUContext* ctx,
                       platform::DeviceEvent& calc_event);  // NOLINT
-  std::shared_ptr<AsyncLoad::Task> Reload(phi::DenseTensor* dst,
-                                          const phi::DenseTensor& src);
+  std::shared_ptr<AsyncLoad::Task> Reload(DenseTensor* dst,
+                                          const DenseTensor& src);
 
  private:
   std::unordered_map<std::string, platform::DeviceEvent>

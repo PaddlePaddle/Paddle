@@ -50,7 +50,7 @@ using phi::distributed::ProcessGroup;
 using phi::distributed::ProcessGroupIdMap;
 using phi::distributed::ProcessGroupMapFromGid;
 
-static void CheckTensorContiguous(const phi::DenseTensor& tensor) {
+static void CheckTensorContiguous(const DenseTensor& tensor) {
   if (!tensor.meta().is_contiguous()) {
     PADDLE_THROW(
         common::errors::InvalidArgument("The tensor must be contiguous"));
@@ -82,7 +82,7 @@ static std::vector<int64_t> GetAllToAllSplitSizes(
   std::transform(tensors.begin(),
                  tensors.end(),
                  split_sizes.begin(),
-                 [](const phi::DenseTensor& tensor) { return tensor.numel(); });
+                 [](const DenseTensor& tensor) { return tensor.numel(); });
   return split_sizes;
 }
 
@@ -92,7 +92,7 @@ static std::vector<const void*> GetTensorPtrs(
   std::transform(tensors.begin(),
                  tensors.end(),
                  tensor_ptrs.begin(),
-                 [](const phi::DenseTensor& tensor) { return tensor.data(); });
+                 [](const DenseTensor& tensor) { return tensor.data(); });
   return tensor_ptrs;
 }
 
@@ -100,7 +100,7 @@ static int64_t GetTensorNumel(const std::vector<DenseTensor>& tensors) {
   return std::accumulate(tensors.begin(),
                          tensors.end(),
                          int64_t(0),
-                         [](int64_t sum, const phi::DenseTensor& tensor) {
+                         [](int64_t sum, const DenseTensor& tensor) {
                            return sum + tensor.numel();
                          });
 }
