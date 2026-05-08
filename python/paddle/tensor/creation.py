@@ -20,7 +20,7 @@ import numbers
 import os
 import re
 import warnings
-from typing import TYPE_CHECKING, overload
+from typing import TYPE_CHECKING, Any, overload
 
 import numpy as np
 
@@ -2314,20 +2314,19 @@ def arange(
         end = start
         start = 0
 
+    is_all_integer = True
     if dtype is None:
+        # Check if start/end/step contain floating point values
         for val in [start, end, step]:
             if isinstance(val, (Variable, paddle.pir.Value)):
                 if not paddle.is_integer(val):
-                    dtype = paddle.get_default_dtype()
+                    is_all_integer = False
                     break
-                else:
-                    dtype = 'int64'
             else:
-                if not isinstance(val, np.integer) and not isinstance(val, int):
-                    dtype = paddle.get_default_dtype()
+                if isinstance(val, (float, np.floating)):
+                    is_all_integer = False
                     break
-                else:
-                    dtype = 'int64'
+        dtype = 'int64' if is_all_integer else paddle.get_default_dtype()
 
     out_shape = None
     is_value_input = (
@@ -2391,13 +2390,13 @@ def arange(
                 raise ValueError(
                     f"The value of start must be finite, but received: {start}."
                 )
-            start = fill_constant([1], dtype, start, force_cpu=True)
-    elif start.dtype != dtype:
+            start_dtype = np.array(start).dtype
+            start = fill_constant([1], start_dtype, start, force_cpu=True)
+    else:
         if in_dynamic_mode() and not paddle.isfinite(start):
             raise ValueError(
                 f"The value of start must be finite, but received: {start}."
             )
-        start = paddle.cast(start, dtype)
 
     if not isinstance(end, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
@@ -2405,19 +2404,23 @@ def arange(
                 raise ValueError(
                     f"The value of end must be finite, but received: {end}."
                 )
-            end = fill_constant([1], dtype, end, force_cpu=True)
-    elif end.dtype != dtype:
+            end_dtype = np.array(end).dtype
+            end = fill_constant([1], end_dtype, end, force_cpu=True)
+    else:
         if in_dynamic_mode() and not paddle.isfinite(end):
             raise ValueError(
                 f"The value of end must be finite, but received: {end}."
             )
-        end = paddle.cast(end, dtype)
 
     if not isinstance(step, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
-            step = fill_constant([1], dtype, step, force_cpu=True)
-    elif step.dtype != dtype:
-        step = paddle.cast(step, dtype)
+            step_dtype = np.array(step).dtype
+            step = fill_constant([1], step_dtype, step, force_cpu=True)
+    else:
+        if in_dynamic_mode() and not paddle.isfinite(step):
+            raise ValueError(
+                f"The value of step must be finite, but received: {step}."
+            )
 
     if in_dynamic_or_pir_mode():
         tensor = _C_ops.arange(
@@ -2579,21 +2582,18 @@ def range(
 
     if not isinstance(start, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
-            start = fill_constant([1], dtype, start, force_cpu=True)
-    elif start.dtype != dtype:
-        start = paddle.cast(start, dtype)
+            start_dtype = np.array(start).dtype
+            start = fill_constant([1], start_dtype, start, force_cpu=True)
 
     if not isinstance(end, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
-            end = fill_constant([1], dtype, end, force_cpu=True)
-    elif end.dtype != dtype:
-        end = paddle.cast(end, dtype)
+            end_dtype = np.array(end).dtype
+            end = fill_constant([1], end_dtype, end, force_cpu=True)
 
     if not isinstance(step, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
-            step = fill_constant([1], dtype, step, force_cpu=True)
-    elif step.dtype != dtype:
-        step = paddle.cast(step, dtype)
+            step_dtype = np.array(step).dtype
+            step = fill_constant([1], step_dtype, step, force_cpu=True)
 
     tensor = _C_ops.range_v2(
         start,

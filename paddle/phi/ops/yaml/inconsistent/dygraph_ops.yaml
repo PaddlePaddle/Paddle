@@ -24,14 +24,12 @@
   output : Tensor(out)
   infer_meta :
     func : ArangeTensorInferMeta
-    param : [start, end, step]
+    param : [start, end, step, dtype]
   kernel :
     func : arange_tensor
     param : [start, end, step]
     data_type : dtype
     backend : place
-  data_transform :
-    support_trans_dtype : start, end, step
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op : assign
@@ -316,14 +314,12 @@
   output : Tensor(out)
   infer_meta :
     func : RangeTensorInferMeta
-    param : [start, end, step]
+    param : [start, end, step, dtype]
   kernel :
     func : range_tensor
     param : [start, end, step]
     data_type : dtype
     backend : place
-  data_transform :
-    support_trans_dtype : start, end, step
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op : remainder

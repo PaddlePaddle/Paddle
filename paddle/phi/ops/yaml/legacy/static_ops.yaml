@@ -44,7 +44,7 @@
   args : (Tensor start, Tensor end, Tensor step)
   output : Tensor(out)
   infer_meta :
-    func : ArangeTensorInferMeta
+    func : ArangeTensorInferMetaLegacy
   kernel :
     func : arange_tensor
   data_transform :
@@ -900,7 +900,7 @@
   args : (Tensor start, Tensor end, Tensor step)
   output : Tensor(out)
   infer_meta :
-    func : RangeTensorInferMeta
+    func : RangeTensorInferMetaLegacy
   kernel :
     func : range_tensor
   data_transform :

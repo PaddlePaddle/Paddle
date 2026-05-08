@@ -66,12 +66,24 @@ PADDLE_API void AffineChannelInferMeta(const MetaTensor& x,
 PADDLE_API void ArangeTensorInferMeta(const MetaTensor& start,
                                       const MetaTensor& end,
                                       const MetaTensor& step,
+                                      DataType dtype,
                                       MetaTensor* out);
 
 PADDLE_API void RangeTensorInferMeta(const MetaTensor& start,
                                      const MetaTensor& end,
                                      const MetaTensor& step,
+                                     DataType dtype,
                                      MetaTensor* out);
+
+PADDLE_API void ArangeTensorInferMetaLegacy(const MetaTensor& start,
+                                            const MetaTensor& end,
+                                            const MetaTensor& step,
+                                            MetaTensor* out);
+
+PADDLE_API void RangeTensorInferMetaLegacy(const MetaTensor& start,
+                                           const MetaTensor& end,
+                                           const MetaTensor& step,
+                                           MetaTensor* out);
 
 PADDLE_API void AssignPosInferMeta(const MetaTensor& x,
                                    const MetaTensor& cum_count,
