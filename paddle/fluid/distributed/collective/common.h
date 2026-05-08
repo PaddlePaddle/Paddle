@@ -19,7 +19,6 @@
 namespace paddle {
 namespace distributed {
 
-using Place = phi::Place;
 // Get the list of devices from list of tensors
 std::vector<Place> GetPlaceList(const std::vector<DenseTensor>& tensors);
 // Get the deviceList String from the list of devices

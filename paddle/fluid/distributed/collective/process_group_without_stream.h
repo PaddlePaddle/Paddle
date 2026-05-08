@@ -28,10 +28,9 @@ class ProcessGroupWithoutStream : public ProcessGroup {
 
   virtual ~ProcessGroupWithoutStream() = default;
 
-  std::shared_ptr<ProcessGroup::Task> AllGather(
-      phi::DenseTensor* out_tensor,
-      const phi::DenseTensor& in_tensor,
-      bool sync_op) override {
+  std::shared_ptr<ProcessGroup::Task> AllGather(DenseTensor* out_tensor,
+                                                const DenseTensor& in_tensor,
+                                                bool sync_op) override {
     return AllGather(out_tensor,
                      in_tensor,
                      /*offset*/ 0,
@@ -39,18 +38,17 @@ class ProcessGroupWithoutStream : public ProcessGroup {
                      sync_op);
   }
 
-  std::shared_ptr<ProcessGroup::Task> AllGather(
-      phi::DenseTensor* out_tensor,
-      const phi::DenseTensor& in_tensor,
-      int64_t offset,
-      int64_t numel,
-      bool sync_op) override {
+  std::shared_ptr<ProcessGroup::Task> AllGather(DenseTensor* out_tensor,
+                                                const DenseTensor& in_tensor,
+                                                int64_t offset,
+                                                int64_t numel,
+                                                bool sync_op) override {
     PADDLE_THROW(common::errors::Unimplemented(
         "ProcessGroupWithoutStream (%s) does not support all_gather.",
         GetBackendName()));
   }
 
-  std::shared_ptr<ProcessGroup::Task> Recv(phi::DenseTensor* tensor,
+  std::shared_ptr<ProcessGroup::Task> Recv(DenseTensor* tensor,
                                            int src_rank,
                                            bool sync_op) override {
     return Recv(tensor,
@@ -60,7 +58,7 @@ class ProcessGroupWithoutStream : public ProcessGroup {
                 sync_op);
   }
 
-  std::shared_ptr<ProcessGroup::Task> Recv(phi::DenseTensor* tensor,
+  std::shared_ptr<ProcessGroup::Task> Recv(DenseTensor* tensor,
                                            int src_rank,
                                            int64_t offset,
                                            int64_t numel,
@@ -70,7 +68,7 @@ class ProcessGroupWithoutStream : public ProcessGroup {
         GetBackendName()));
   }
 
-  std::shared_ptr<ProcessGroup::Task> Send(const phi::DenseTensor& tensor,
+  std::shared_ptr<ProcessGroup::Task> Send(const DenseTensor& tensor,
                                            int dst_rank,
                                            bool sync_op) override {
     return Send(tensor,
@@ -80,7 +78,7 @@ class ProcessGroupWithoutStream : public ProcessGroup {
                 sync_op);
   }
 
-  std::shared_ptr<ProcessGroup::Task> Send(const phi::DenseTensor& tensor,
+  std::shared_ptr<ProcessGroup::Task> Send(const DenseTensor& tensor,
                                            int dst_rank,
                                            int64_t offset,
                                            int64_t numel,
