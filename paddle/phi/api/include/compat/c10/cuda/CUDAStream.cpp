@@ -116,6 +116,20 @@ inline phi::GPUContext* getMutableGPUContext(c10::DeviceIndex device_index) {
           phi::GPUPlace(device_index)));
 }
 
+#ifdef PADDLE_WITH_HIP
+inline hipStream_t getPaddleCurrentStream(c10::DeviceIndex device_index) {
+  auto* current_stream =
+      paddle::GetCurrentCUDAStream(phi::GPUPlace(device_index));
+  return current_stream == nullptr ? nullptr : current_stream->raw_stream();
+}
+#else
+inline cudaStream_t getPaddleCurrentStream(c10::DeviceIndex device_index) {
+  auto* current_stream =
+      paddle::GetCurrentCUDAStream(phi::GPUPlace(device_index));
+  return current_stream == nullptr ? nullptr : current_stream->raw_stream();
+}
+#endif
+
 #endif  // defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 }  // namespace
@@ -213,16 +227,21 @@ CUDAStream getCurrentCUDAStream(c10::DeviceIndex device_index) {
   }
   check_gpu(device_index);
   // Thread-local semantics: if this thread has explicitly set a current
-  // stream for this device, return it; otherwise return the default stream.
-  // This matches PyTorch behavior where new threads start with the default
-  // stream, not inheriting the caller's current stream.
+  // stream for this device, return it; otherwise fall back to the Paddle
+  // GPUContext's current stream so that paddle.device.stream_guard() switches
+  // are visible through c10::cuda::getCurrentCUDAStream() (PR #78652
+  // reverse-sync). If neither is set, return the default stream.
   if (device_index < static_cast<c10::DeviceIndex>(
                          g_thread_local_current_streams.size()) &&
       g_thread_local_current_streams[device_index] != nullptr) {
     return make_cuda_stream(g_thread_local_current_streams[device_index],
                             device_index);
   }
-  return getDefaultCUDAStream(device_index);
+  auto raw = getPaddleCurrentStream(device_index);
+  if (raw == nullptr) {
+    return getDefaultCUDAStream(device_index);
+  }
+  return make_cuda_stream(raw, device_index);
 #else
   return getDefaultCUDAStream(device_index);
 #endif

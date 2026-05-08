@@ -28,6 +28,9 @@
 #include "gtest/gtest.h"
 #include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/phi/core/cuda_stream.h"
+#endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 namespace {
@@ -236,52 +239,62 @@ TEST(CUDAStreamTest, DefaultStreamUnaffectedBySetCurrentCUDAStream) {
             original_stream.stream());
 }
 
-// Verify that getCurrentCUDAStream follows thread-local semantics:
-// when a new thread is spawned, it should see the default stream,
-// not the current stream set by the parent thread.
-TEST(CUDAStreamTest, GetCurrentCUDAStreamIsThreadLocal) {
+// Verify setCurrentCUDAStream's per-thread WRITE isolation:
+// when a child thread calls setCurrentCUDAStream(pool_b), the main
+// thread's own thread-local current stream remains pool_a — i.e. each
+// thread's getCurrentCUDAStream is governed by its own thread-local
+// state, not by what other threads have written to thread-local.
+//
+// This replaces the older "child thread sees default" assertion. Under
+// PR #78652 fallback semantics getCurrentCUDAStream falls back to the
+// shared GPUContext stream when thread-local is unset, so a child that
+// has not called setCurrentCUDAStream is no longer guaranteed to see
+// the default stream. The remaining thread-local guarantee is that
+// each thread's *explicit* set is local to that thread.
+TEST(CUDAStreamTest, SetCurrentCUDAStreamWriteIsolatedAcrossThreads) {
   if (!at::cuda::is_available()) {
     return;
   }
 
-  // Save the original current stream so we can restore it later.
   auto original_stream = c10::cuda::getCurrentCUDAStream();
 
-  // Get a non-default stream from the pool.
-  auto pool_stream = c10::cuda::getStreamFromPool(/*isHighPriority=*/false);
+  auto pool_a = c10::cuda::getStreamFromPool(/*isHighPriority=*/false);
+  auto pool_b = c10::cuda::getStreamFromPool(/*isHighPriority=*/false);
 
-  // Set the current stream in the main thread.
-  c10::cuda::setCurrentCUDAStream(pool_stream);
-  EXPECT_EQ(c10::cuda::getCurrentCUDAStream(), pool_stream);
+  c10::cuda::setCurrentCUDAStream(pool_a);
+  EXPECT_EQ(c10::cuda::getCurrentCUDAStream(), pool_a);
 
-  // In a newly spawned thread, getCurrentCUDAStream must return the
-  // default stream (id == 0), not pool_stream.
-  c10::cuda::CUDAStream thread_stream = c10::cuda::getDefaultCUDAStream();
-  std::thread t([&thread_stream]() {
-    thread_stream = c10::cuda::getCurrentCUDAStream();
+  // Child thread sets its own thread-local current stream to pool_b.
+  std::thread t([&]() {
+    c10::cuda::setCurrentCUDAStream(pool_b);
+    EXPECT_EQ(c10::cuda::getCurrentCUDAStream(), pool_b);
   });
   t.join();
 
-  // Default stream has id == 0 (raw stream handle is nullptr).
-  EXPECT_EQ(thread_stream.id(), static_cast<c10::StreamId>(0));
+  // Main thread's thread-local is unaffected by the child's set —
+  // getCurrentCUDAStream still hits pool_a from the main thread's TLS,
+  // not pool_b that the child wrote to GPUContext.
+  EXPECT_EQ(c10::cuda::getCurrentCUDAStream(), pool_a)
+      << "Main thread's thread-local current stream should not be affected "
+         "by another thread's setCurrentCUDAStream.";
 
   // Restore the original current stream.
   c10::cuda::setCurrentCUDAStream(original_stream);
 }
 
-// Reproducer for the deadlock caused by getCurrentCUDAStream returning
-// the parent thread's current stream in a child thread.
+// Application-level pattern (the temp_modify reproducer in
+// PaddleCppAPITest): even when the main thread blocks the c10 current
+// stream via an event chain, a worker that uses its OWN independent
+// non-blocking CUDA stream + CPU-side sync completes promptly and is
+// not affected by the blocked stream.
 //
-// Scenario:
-// 1. Main thread sets pool_stream as current stream.
-// 2. Main thread blocks pool_stream by making it wait on event_end which
-//    is recorded on enq_stream after a sleeping callback (~200ms).
-// 3. Child thread calls getCurrentCUDAStream() and synchronizes it.
-//    - If bug exists: child gets pool_stream (inherited), sync blocks
-//      ~200ms, future.wait_for(50ms) returns timeout.
-//    - If fixed: child gets default stream, sync completes immediately,
-//      future.wait_for(50ms) returns ready.
-TEST(CUDAStreamTest, CurrentStreamDeadlockReproducer) {
+// This replaces the older deadlock-reproducer test which assumed the
+// child thread should fall back to the default stream. Under the
+// PR #78652 fallback semantics (getCurrentCUDAStream falls back to
+// the GPUContext stream when c10 thread-local is unset), the child
+// would inherit the parent's pool_stream — so deadlock avoidance must
+// come from the application itself by using a worker-private stream.
+TEST(CUDAStreamTest, IndependentWorkerStreamAvoidsBlockedCurrentStream) {
   if (!at::cuda::is_available()) {
     return;
   }
@@ -313,7 +326,8 @@ TEST(CUDAStreamTest, CurrentStreamDeadlockReproducer) {
   C10_CUDA_CHECK(cudaStreamWaitEvent(enq_stream, event_start, 0));
 #endif
 
-  // Add a blocking callback on enq_stream (~200ms sleep).
+  // Add a blocking callback on enq_stream (~200ms sleep), so pool_stream
+  // (== c10 current stream) is effectively blocked on event_end.
   std::atomic<bool> callback_done{false};
 #ifdef PADDLE_WITH_HIP
   C10_CUDA_CHECK(hipStreamAddCallback(
@@ -341,21 +355,28 @@ TEST(CUDAStreamTest, CurrentStreamDeadlockReproducer) {
   C10_CUDA_CHECK(cudaStreamWaitEvent(pool.stream(), event_end, 0));
 #endif
 
-  // Spawn child thread: get current stream and synchronize it.
+  // Worker thread uses its OWN non-blocking stream. It does NOT touch
+  // c10's current stream (which is blocked). Sync should be immediate.
   std::packaged_task<void()> task([]() {
-    auto current = c10::cuda::getCurrentCUDAStream();
 #ifdef PADDLE_WITH_HIP
-    C10_CUDA_CHECK(hipStreamSynchronize(current.stream()));
+    hipStream_t worker_stream = nullptr;
+    C10_CUDA_CHECK(
+        hipStreamCreateWithFlags(&worker_stream, hipStreamNonBlocking));
+    C10_CUDA_CHECK(hipStreamSynchronize(worker_stream));
+    C10_CUDA_CHECK(hipStreamDestroy(worker_stream));
 #else
-    C10_CUDA_CHECK(cudaStreamSynchronize(current.stream()));
+    cudaStream_t worker_stream = nullptr;
+    C10_CUDA_CHECK(
+        cudaStreamCreateWithFlags(&worker_stream, cudaStreamNonBlocking));
+    C10_CUDA_CHECK(cudaStreamSynchronize(worker_stream));
+    C10_CUDA_CHECK(cudaStreamDestroy(worker_stream));
 #endif
   });
   auto future = task.get_future();
   std::thread worker(std::move(task));
 
-  // If bug exists: child inherits pool_stream and sync blocks ~200ms,
-  // so wait_for(50ms) returns timeout.
-  // If fixed: child gets default stream and sync completes immediately.
+  // Worker should complete promptly (well under 50ms) — its independent
+  // stream has no dependency on enq_stream / event_end / pool_stream.
   auto status = future.wait_for(std::chrono::milliseconds(50));
 
   // Wait for callback to complete so pool_stream unblocks (with timeout
@@ -370,13 +391,13 @@ TEST(CUDAStreamTest, CurrentStreamDeadlockReproducer) {
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 
-  // Ensure worker completes (pool_stream is now unblocked).
   future.wait();
   worker.join();
 
   EXPECT_EQ(status, std::future_status::ready)
-      << "Deadlock reproducer: child thread inherited parent's current stream "
-         "and was blocked on it";
+      << "Worker with an independent non-blocking stream should complete "
+         "promptly even when c10's current stream is blocked by an event "
+         "chain on enq_stream.";
 
 #ifdef PADDLE_WITH_HIP
   C10_CUDA_CHECK(hipEventDestroy(event_end));
@@ -391,10 +412,18 @@ TEST(CUDAStreamTest, CurrentStreamDeadlockReproducer) {
   c10::cuda::setCurrentCUDAStream(original);
 }
 
-// Verify that for a thread that has never called setCurrentCUDAStream,
-// repeated getCurrentCUDAStream calls always return the same default stream
-// (id == 0), regardless of what other threads do with setCurrentCUDAStream.
-TEST(CUDAStreamTest, GetCurrentCUDAStreamStableInUnsetThread) {
+// Verify that a worker thread which has explicitly pinned its current
+// stream (via setCurrentCUDAStream(pool_worker)) sees a stable result
+// from getCurrentCUDAStream — the worker's thread-local "pinned"
+// stream wins over the GPUContext fallback even while the main thread
+// keeps switching its own current stream.
+//
+// This replaces the older "worker that never calls setCurrentCUDAStream
+// must see the default stream" assertion, which is no longer true under
+// PR #78652 fallback semantics (an unset thread reads from the shared
+// GPUContext, which the main thread is updating). The realistic
+// guarantee is: once a thread has pinned its TLS, its view is stable.
+TEST(CUDAStreamTest, GetCurrentCUDAStreamStableForWorkerThatExplicitlySet) {
   if (!at::cuda::is_available()) {
     return;
   }
@@ -402,33 +431,31 @@ TEST(CUDAStreamTest, GetCurrentCUDAStreamStableInUnsetThread) {
   auto original = c10::cuda::getCurrentCUDAStream();
   auto pool_a = c10::cuda::getStreamFromPool(/*isHighPriority=*/false);
   auto pool_b = c10::cuda::getStreamFromPool(/*isHighPriority=*/false);
+  auto pool_worker = c10::cuda::getStreamFromPool(/*isHighPriority=*/false);
 
   // Main thread sets a non-default current stream first.
   c10::cuda::setCurrentCUDAStream(pool_a);
 
-  // Worker thread: repeatedly read getCurrentCUDAStream.
-  // Worker NEVER calls setCurrentCUDAStream, so its thread-local is unset.
   std::atomic<bool> stop{false};
   std::atomic<int> samples_count{0};
-  std::atomic<bool> all_default{true};
-  c10::cuda::CUDAStream first_sample = c10::cuda::getDefaultCUDAStream();
-  std::atomic<bool> any_unequal{false};
+  std::atomic<bool> stable{true};
 
+  // Worker explicitly pins its TLS to pool_worker, then loops reading
+  // its current stream. Main thread keeps switching its own TLS between
+  // pool_a/pool_b in parallel.
   std::thread worker([&]() {
+    c10::cuda::setCurrentCUDAStream(pool_worker);
     while (!stop.load(std::memory_order_acquire)) {
       auto s = c10::cuda::getCurrentCUDAStream();
-      if (s.id() != static_cast<c10::StreamId>(0)) {
-        all_default.store(false, std::memory_order_release);
-      }
-      if (s != first_sample) {
-        any_unequal.store(true, std::memory_order_release);
+      if (s != pool_worker) {
+        stable.store(false, std::memory_order_release);
       }
       samples_count.fetch_add(1, std::memory_order_relaxed);
       std::this_thread::sleep_for(std::chrono::milliseconds(2));
     }
   });
 
-  // Main thread keeps switching the current stream (also mutates GPUContext).
+  // Main thread keeps switching the current stream.
   for (int i = 0; i < 30; ++i) {
     c10::cuda::setCurrentCUDAStream((i % 2 == 0) ? pool_a : pool_b);
     std::this_thread::sleep_for(std::chrono::milliseconds(5));
@@ -440,15 +467,69 @@ TEST(CUDAStreamTest, GetCurrentCUDAStreamStableInUnsetThread) {
   // Worker collected at least a few samples.
   EXPECT_GT(samples_count.load(std::memory_order_relaxed), 0);
 
-  // Every sample is the default stream (id == 0).
-  EXPECT_TRUE(all_default.load(std::memory_order_acquire))
-      << "Worker thread's getCurrentCUDAStream returned a non-default stream "
-         "even though it never called setCurrentCUDAStream.";
+  // Every sample equals pool_worker (worker's pinned stream is stable).
+  EXPECT_TRUE(stable.load(std::memory_order_acquire))
+      << "Worker thread's pinned current stream (pool_worker) should not be "
+         "affected by main thread's setCurrentCUDAStream switches.";
 
-  // Every sample equals the first one (default stream is stable).
-  EXPECT_FALSE(any_unequal.load(std::memory_order_acquire))
-      << "Worker thread saw inconsistent default streams across calls.";
+  c10::cuda::setCurrentCUDAStream(original);
+}
 
+// Verify that when paddle.device.stream_guard switches the GPUContext stream
+// (without going through c10::cuda::setCurrentCUDAStream),
+// c10::cuda::getCurrentCUDAStream still returns the same stream.
+//
+// This is the reverse-sync capability introduced by PR #78652 — the c10
+// compat layer should fall back to reading the GPUContext stream when the
+// caller's thread-local current stream is unset, so downstream code such as
+// DeepEP / FastDeploy can use paddle.device.stream_guard alone (without a
+// manual ctypes hack to call c10::cuda::setCurrentCUDAStream).
+TEST(CUDAStreamTest,
+     GetCurrentCUDAStreamReadsGPUContextAfterPaddleStreamGuard) {
+  if (!at::cuda::is_available()) {
+    return;
+  }
+
+  // Snapshot c10's current stream so we can restore the GPUContext binding
+  // at the end (avoids leaving a dangling pointer in ctx->stream_).
+  auto original = c10::cuda::getCurrentCUDAStream();
+
+  // Other tests in this binary may have left c10 thread-local set to a
+  // non-default stream. Clear it here so this test exercises the fallback
+  // path: thread-local empty → getCurrentCUDAStream reads GPUContext.
+  c10::cuda::setCurrentCUDAStream(c10::cuda::getDefaultCUDAStream());
+
+  // Pool stream — survives the test (not destroyed by ~CUDAStream).
+  auto pool = c10::cuda::getStreamFromPool(/*isHighPriority=*/false);
+  c10::DeviceIndex device_index = pool.device_index();
+
+  // Simulate paddle.device.stream_guard: write GPUContext only,
+  // do NOT call c10::cuda::setCurrentCUDAStream (so c10 thread-local
+  // remains unset for this thread).
+  auto* ctx = static_cast<phi::GPUContext*>(
+      paddle::experimental::DeviceContextPool::Instance().GetMutable(
+          phi::GPUPlace(device_index)));
+
+  // owned_ = false wrapper — destructor will not destroy the pool stream.
+  phi::CUDAStream wrapper(phi::GPUPlace(device_index), pool.stream());
+  // clear=false so the previous stream wrapper (whether owned by ctx or not)
+  // is not deleted; it may leak a wrapper struct in this test, but it never
+  // calls cudaStreamDestroy on a stream other code may still hold.
+  ctx->SetCUDAStream(&wrapper, /*clear=*/false);
+
+  auto cur = c10::cuda::getCurrentCUDAStream(device_index);
+
+  EXPECT_EQ(cur.stream(), pool.stream())
+      << "After paddle.device.stream_guard switched the GPUContext stream, "
+         "c10::cuda::getCurrentCUDAStream should fall back to the GPUContext "
+         "stream so downstream code (DeepEP / FastDeploy) reading c10's "
+         "current stream sees the same stream without manual c10 TLS sync. "
+         "If this assertion fails, fallback currently returns the default "
+         "stream and PR #78652's reverse-sync capability is lost.";
+
+  // Restore: re-bind ctx->stream_ to c10 compat's managed wrapper, so the
+  // local `wrapper` can be destructed safely without leaving a dangling
+  // pointer inside the GPUContext.
   c10::cuda::setCurrentCUDAStream(original);
 }
 
