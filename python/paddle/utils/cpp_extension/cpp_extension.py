@@ -803,10 +803,8 @@ class BuildExtension(build_ext):
                             cflags = cflags['hipcc']
                         else:
                             cflags = cflags['nvcc']
-                    cuda_cflags = [shlex.quote(f) for f in cc_args]
-                    cuda_post_cflags = [
-                        shlex.quote(f) for f in prepare_unix_cudaflags(cflags)
-                    ]
+                    cuda_cflags = list(cc_args)
+                    cuda_post_cflags = prepare_unix_cudaflags(cflags)
                     config.append(
                         f'build {_ninja_escape_path(obj)}: cuda_compile {_ninja_escape_path(src)}'
                     )
@@ -834,13 +832,11 @@ class BuildExtension(build_ext):
                     add_std_without_repeat(
                         cflags, self.compiler_type, use_std17=True
                     )
-                    cflags = [shlex.quote(f) for f in cflags]
-                    quoted_cc_args = [shlex.quote(f) for f in cc_args]
                     config.append(
                         f'build {_ninja_escape_path(obj)}: compile {_ninja_escape_path(src)}'
                     )
                     config.append(
-                        f'  cflags = {_join_ninja_shell_list(quoted_cc_args)}'
+                        f'  cflags = {_join_ninja_shell_list(cc_args)}'
                     )
                     config.append(
                         f'  post_cflags = {_join_ninja_shell_list(cflags)}'
@@ -1019,7 +1015,7 @@ class BuildExtension(build_ext):
                 [
                     '',
                     'rule compile',
-                    '  command = $cxx /showIncludes $cflags /Tp$in /Fo$out $post_cflags',
+                    '  command = $cxx /showIncludes $cflags $source_file_flag $in /Fo$out $post_cflags',
                     '  deps = msvc',
                 ]
             )
@@ -1034,7 +1030,7 @@ class BuildExtension(build_ext):
             config.append('')
 
             for obj in objects:
-                src, _ = build[obj]
+                src, ext = build[obj]
                 src = os.path.abspath(src)
                 obj = os.path.abspath(obj)
                 cflags = copy.deepcopy(extra_postargs)
@@ -1053,13 +1049,11 @@ class BuildExtension(build_ext):
                             flag,
                             *cuda_post_cflags,
                         ]
-                    quoted_pp_opts = _nt_quote_args(pp_opts)
-                    cuda_post_cflags = _nt_quote_args(cuda_post_cflags)
                     config.append(
                         f'build {_ninja_escape_path(obj)}: cuda_compile {_ninja_escape_path(src)}'
                     )
                     config.append(
-                        f'  cuda_cflags = {_join_ninja_shell_list(quoted_pp_opts)}'
+                        f'  cuda_cflags = {_join_ninja_shell_list(pp_opts)}'
                     )
                     config.append(
                         f'  cuda_post_cflags = {_join_ninja_shell_list(cuda_post_cflags)}'
@@ -1072,13 +1066,15 @@ class BuildExtension(build_ext):
                     post_cflags = [*MSVC_COMPILE_FLAGS, *cflags]
                     if current_extension_builder.contain_cuda_file:
                         post_cflags.append('/DPADDLE_WITH_CUDA')
-                    cflags = _nt_quote_args([*compile_opts, *pp_opts])
-                    post_cflags = _nt_quote_args(post_cflags)
+                    cflags = [*compile_opts, *pp_opts]
                     config.append(
                         f'build {_ninja_escape_path(obj)}: compile {_ninja_escape_path(src)}'
                     )
                     config.append(
                         f'  cflags = {_join_ninja_shell_list(cflags)}'
+                    )
+                    config.append(
+                        f'  source_file_flag = {"/Tc" if ext == ".c" else "/Tp"}'
                     )
                     config.append(
                         f'  post_cflags = {_join_ninja_shell_list(post_cflags)}'
@@ -1794,15 +1790,6 @@ def _ninja_escape_path(path: str) -> str:
     return str(path).replace('$', '$$').replace(' ', '$ ').replace(':', '$:')
 
 
-def _nt_quote_args(args: Sequence[str] | None) -> list[str]:
-    if args is None:
-        return []
-    return [
-        f'"{arg}"' if ' ' in arg and not arg.startswith('"') else arg
-        for arg in args
-    ]
-
-
 def _join_ninja_shell_list(args: Sequence[str] | str) -> str:
     if isinstance(args, str):
         return args
@@ -1854,11 +1841,15 @@ def _run_ninja_build(
             cwd=build_directory,
             env=env,
             check=True,
-            stdout=None if verbose else subprocess.DEVNULL,
+            stdout=None if verbose else subprocess.PIPE,
             stderr=None if verbose else subprocess.STDOUT,
+            text=not verbose,
         )
     except subprocess.CalledProcessError as error:
-        raise RuntimeError(f"{error_prefix}: {error}") from error
+        error_message = f"{error_prefix}: {error}"
+        if not verbose and error.output:
+            error_message = f"{error_message}\n{error.output.rstrip()}"
+        raise RuntimeError(error_message) from error
 
 
 def _get_pybind11_abi_build_flags():

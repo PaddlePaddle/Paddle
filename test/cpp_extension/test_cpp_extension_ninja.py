@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -29,7 +30,6 @@ from paddle.utils.cpp_extension.cpp_extension import (
     _is_ninja_available,
     _join_ninja_shell_list,
     _ninja_escape_path,
-    _nt_quote_args,
     _run_ninja_build,
     _write_ninja_file,
 )
@@ -67,19 +67,6 @@ class TestNinjaHelperFunctions(unittest.TestCase):
         self.assertEqual(
             _ninja_escape_path("C:/path with $var/file"),
             "C$:/path$ with$ $$var/file",
-        )
-
-    def test_nt_quote_args(self):
-        self.assertEqual(_nt_quote_args(None), [])
-        self.assertEqual(_nt_quote_args([]), [])
-        self.assertEqual(_nt_quote_args(['-c', '-O2']), ['-c', '-O2'])
-        self.assertEqual(
-            _nt_quote_args(['/path with space/file', '-c']),
-            ['"/path with space/file"', '-c'],
-        )
-        self.assertEqual(
-            _nt_quote_args(['"already quoted"', '-c']),
-            ['"already quoted"', '-c'],
         )
 
     def test_join_ninja_shell_list(self):
@@ -483,6 +470,60 @@ class TestBuildExtension(unittest.TestCase):
         self.assertIn('/I', content)
         self.assertTrue(captured['ninja_path'].endswith('build.ninja'))
 
+    def test_windows_ninja_quotes_flags_once(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_dir = Path(tmpdir)
+            include_dir = test_dir / "include dir"
+            sources = [
+                str(test_dir / "custom_extension.cc"),
+                str(test_dir / "custom_kernel.cu"),
+            ]
+            objects = [
+                str(test_dir / "build" / "custom_extension.obj"),
+                str(test_dir / "build" / "custom_kernel.obj"),
+            ]
+            build_map = {
+                objects[0]: (sources[0], '.cc'),
+                objects[1]: (sources[1], '.cu'),
+            }
+            compiler = _FakeMsvcCompiler(objects, build_map)
+
+            with (
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.IS_WINDOWS',
+                    True,
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.CUDA_HOME',
+                    '/opt/cuda',
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.prepare_win_cudaflags',
+                    side_effect=lambda flags: ['--prepared', *flags],
+                ),
+            ):
+                captured = self._run_build_with_fake_compiler(
+                    compiler,
+                    sources,
+                    extra_compile_args={
+                        'cxx': ['/DNAME=value with space'],
+                        'nvcc': ['--compiler-options=/Wall /WX'],
+                    },
+                    include_dirs=[str(include_dir)],
+                )
+
+        content = captured['ninja_content']
+        self.assertIn(subprocess.list2cmdline([f'/I{include_dir}']), content)
+        self.assertIn(
+            subprocess.list2cmdline(['/DNAME=value with space']), content
+        )
+        self.assertIn(
+            subprocess.list2cmdline(['--compiler-options=/Wall /WX']),
+            content,
+        )
+        self.assertNotIn('\\"/I', content)
+        self.assertNotIn('\\"/DNAME', content)
+
     def test_unix_ninja_build_file_contains_cuda_sources(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             test_dir = Path(tmpdir)
@@ -542,6 +583,66 @@ class TestBuildExtension(unittest.TestCase):
         self.assertIn('cuda_post_cflags = --prepared --gpu-flag', content)
         self.assertIn('post_cflags = -w -D_GLIBCXX_USE_CXX11_ABI=1', content)
         self.assertIn('-DPADDLE_WITH_CUDA', content)
+
+    def test_unix_ninja_quotes_flags_once(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_dir = Path(tmpdir)
+            include_dir = test_dir / "include dir"
+            sources = [
+                str(test_dir / "custom_extension.cc"),
+                str(test_dir / "custom_kernel.cu"),
+            ]
+            objects = [
+                str(test_dir / "build" / "custom_extension.o"),
+                str(test_dir / "build" / "custom_kernel.cu.o"),
+            ]
+            build_map = {
+                objects[0]: (sources[0], '.cc'),
+                objects[1]: (sources[1], '.cu'),
+            }
+            compiler = _FakeUnixCompiler(objects, build_map)
+
+            with (
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.IS_WINDOWS',
+                    False,
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.CUDA_HOME',
+                    '/opt/cuda',
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension._get_ccache_home',
+                    return_value=None,
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.prepare_unix_cudaflags',
+                    side_effect=lambda flags: ['--prepared', *flags],
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.core.is_compiled_with_rocm',
+                    return_value=False,
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.core.is_compiled_with_custom_device',
+                    return_value=False,
+                ),
+            ):
+                captured = self._run_build_with_fake_compiler(
+                    compiler,
+                    sources,
+                    extra_compile_args={
+                        'cxx': ['-DNAME=value with space'],
+                        'nvcc': ['--compiler-options=-Wall -Wextra'],
+                    },
+                    include_dirs=[str(include_dir)],
+                )
+
+        content = captured['ninja_content']
+        self.assertIn(shlex.join([f'-I{include_dir}']), content)
+        self.assertIn(shlex.join(['-DNAME=value with space']), content)
+        self.assertIn(shlex.join(['--compiler-options=-Wall -Wextra']), content)
+        self.assertNotIn('"\'"\'"', content)
 
     def test_unix_ninja_uses_hipcc_for_rocm_sources(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -1003,8 +1104,9 @@ class TestRunNinjaBuild(unittest.TestCase):
 
         _, kwargs = mock_run.call_args
         self.assertEqual(mock_run.call_args.args[0], ['ninja', '-v', '-j', '3'])
-        self.assertEqual(kwargs['stdout'], subprocess.DEVNULL)
+        self.assertEqual(kwargs['stdout'], subprocess.PIPE)
         self.assertEqual(kwargs['stderr'], subprocess.STDOUT)
+        self.assertTrue(kwargs['text'])
 
     def test_run_ninja_build_windows_merges_vc_env(self):
         vc_env = {'path': 'vc/bin', 'include': 'vc/include'}
