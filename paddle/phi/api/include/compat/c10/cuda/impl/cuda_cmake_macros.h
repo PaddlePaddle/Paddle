@@ -1,4 +1,4 @@
-// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,19 +14,7 @@
 
 #pragma once
 
-#include <c10/core/Device.h>
-#include <cstdint>
-#include "paddle/common/macros.h"
-
-namespace torch::cuda {
-
-PADDLE_API c10::DeviceIndex device_count();
-
-PADDLE_API bool is_available();
-
-PADDLE_API void synchronize(int64_t device_index = -1);
-
-}  // namespace torch::cuda
-namespace at::cuda {
-using torch::cuda::synchronize;
-}  // namespace at::cuda
+// Placeholder header to satisfy PyTorch compatibility checks.
+// Paddle does not use the same CUDA cmake macros as PyTorch,
+// but the presence of this file allows downstream code to use
+// __has_include(<c10/cuda/impl/cuda_cmake_macros.h>) for feature detection.

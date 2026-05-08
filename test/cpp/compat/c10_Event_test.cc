@@ -40,24 +40,6 @@ TEST(EventTest, CpuEventRecordThrows) {
   EXPECT_THROW(event.recordOnce(stream), std::exception);
 }
 
-// Test device_count() works in both CPU and CUDA builds
-TEST(EventTest, DeviceCount) {
-  c10::DeviceIndex count = c10::cuda::device_count();
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  // In CUDA builds, should return actual device count (>= 0)
-  EXPECT_GE(count, 0);
-#else
-  // In CPU-only builds, should return 0
-  EXPECT_EQ(count, 0);
-#endif
-}
-
-#ifdef PADDLE_WITH_CUDA
-using RawEventRecordMethod = void (c10::Event::*)(const cudaStream_t&);
-[[maybe_unused]] static RawEventRecordMethod g_raw_event_record_method =
-    &c10::Event::record;
-#endif
-
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(EventTest, CudaEventLazyCreateAndRecord) {
   if (!at::cuda::is_available()) {
@@ -110,19 +92,6 @@ TEST(EventTest, CudaEventElapsedTimeWithTimingEnabled) {
   EXPECT_NO_THROW(elapsed_ms = start.elapsedTime(end));
   EXPECT_GE(elapsed_ms, 0.0);
 }
-
-#ifdef PADDLE_WITH_CUDA
-TEST(EventTest, CudaEventRawStreamRecordCompatibility) {
-  if (!at::cuda::is_available()) {
-    return;
-  }
-  auto stream = c10::cuda::getCurrentCUDAStream();
-  c10::Event event(c10::DeviceType::CUDA);
-  EXPECT_NO_THROW(event.record(stream.raw_stream()));
-  EXPECT_EQ(event.device_index(), stream.device_index());
-  EXPECT_TRUE(event.was_marked_for_recording());
-}
-#endif
 
 TEST(EventTest, CudaEventRejectsDifferentDeviceRecord) {
   if (c10::cuda::device_count() < 2) {
