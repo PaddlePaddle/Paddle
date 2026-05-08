@@ -1299,11 +1299,13 @@ def init_process_group(
     Paddle picks up ``world_size`` / ``rank`` / endpoints from the environment
     variables that ``paddle.distributed.launch`` (or ``torchrun``) sets. Most
     PyTorch arguments are accepted for source compatibility but only
-    ``backend`` is honored: when supplied, it is forwarded via the
-    ``PADDLE_DISTRI_BACKEND`` env var that :func:`init_parallel_env` reads. If
-    ``world_size`` or ``rank`` is supplied but disagrees with the environment,
-    a :class:`UserWarning` is emitted because the supplied value will be
-    silently ignored.
+    ``backend``, ``world_size`` and ``rank`` are forwarded:
+
+    - ``backend``: written to ``PADDLE_DISTRI_BACKEND``.
+    - ``world_size``: when the env var ``PADDLE_TRAINERS_NUM`` is unset, it is
+      written from this value; if both are set and disagree, a
+      :class:`UserWarning` is emitted and the env value is preserved.
+    - ``rank``: same convention with ``PADDLE_TRAINER_ID``.
 
     Args:
         backend (str|None, optional): One of ``'nccl'``, ``'gloo'``,
@@ -1312,12 +1314,10 @@ def init_process_group(
             compatibility; not used.
         timeout (Any, optional): Accepted for PyTorch source compatibility;
             not used.
-        world_size (int, optional): Accepted for PyTorch source compatibility;
-            Paddle reads world size from ``PADDLE_TRAINERS_NUM``. A warning is
-            emitted on mismatch.
-        rank (int, optional): Accepted for PyTorch source compatibility;
-            Paddle reads rank from ``PADDLE_TRAINER_ID``. A warning is emitted
-            on mismatch.
+        world_size (int, optional): Number of trainers. Forwarded to
+            ``PADDLE_TRAINERS_NUM`` when that env var is unset.
+        rank (int, optional): Rank of the current trainer. Forwarded to
+            ``PADDLE_TRAINER_ID`` when that env var is unset.
         store (Any, optional): Accepted for PyTorch source compatibility; not
             used.
         group_name (str, optional): Accepted for PyTorch source compatibility;
@@ -1344,22 +1344,23 @@ def init_process_group(
 
     if world_size != -1:
         env_world_size = os.environ.get('PADDLE_TRAINERS_NUM')
-        if env_world_size is None or int(env_world_size) != world_size:
+        if env_world_size is None:
+            os.environ['PADDLE_TRAINERS_NUM'] = str(world_size)
+        elif int(env_world_size) != world_size:
             warnings.warn(
-                f"init_process_group(world_size={world_size}) is ignored; "
-                f"Paddle reads world size from PADDLE_TRAINERS_NUM "
-                f"(currently {env_world_size!r}). Launch via "
-                f"`paddle.distributed.launch` to set it.",
+                f"init_process_group(world_size={world_size}) disagrees with "
+                f"PADDLE_TRAINERS_NUM={env_world_size!r}; using the env value.",
                 UserWarning,
                 stacklevel=2,
             )
     if rank != -1:
         env_rank = os.environ.get('PADDLE_TRAINER_ID')
-        if env_rank is None or int(env_rank) != rank:
+        if env_rank is None:
+            os.environ['PADDLE_TRAINER_ID'] = str(rank)
+        elif int(env_rank) != rank:
             warnings.warn(
-                f"init_process_group(rank={rank}) is ignored; Paddle reads "
-                f"rank from PADDLE_TRAINER_ID (currently {env_rank!r}). "
-                f"Launch via `paddle.distributed.launch` to set it.",
+                f"init_process_group(rank={rank}) disagrees with "
+                f"PADDLE_TRAINER_ID={env_rank!r}; using the env value.",
                 UserWarning,
                 stacklevel=2,
             )

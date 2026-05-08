@@ -128,20 +128,13 @@ class _DistGroupNamespace:
 
     Exposes :attr:`WORLD` so user code converted from PyTorch - for example
     ``paddle.distributed.broadcast(t, group=paddle.distributed.group.WORLD)`` -
-    works without modification. ``WORLD`` resolves to the default global
-    :class:`Group` after :func:`init_parallel_env` /
-    :func:`init_process_group`, and to ``None`` before initialization, which
-    every collective treats as the default group.
-
-    Note:
-        Pre-init this returns ``None``, while ``torch.distributed.group.WORLD``
-        is a sentinel object. Code that passes ``WORLD`` to a collective works
-        identically; code that does ``g is GroupMember.WORLD`` does not.
+    works without modification. ``WORLD`` is a read-only sentinel set to
+    ``None``; every collective treats ``group=None`` as "use the default
+    global group", which is the semantics PyTorch users expect from
+    ``torch.distributed.group.WORLD``.
     """
 
-    @property
-    def WORLD(self) -> Group | None:
-        return _GroupManager.group_map_by_id.get(_GroupManager.global_group_id)
+    WORLD: Group | None = None
 
 
 group = _DistGroupNamespace()
