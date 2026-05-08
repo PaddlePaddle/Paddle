@@ -6442,6 +6442,7 @@ void UniqueRawInferMeta(const MetaTensor& x,
                         MetaTensor* indices,
                         MetaTensor* index,
                         MetaTensor* counts) {
+  out->set_dtype(x.dtype());
   if (!is_sorted) {
     PADDLE_ENFORCE_EQ(x.dims().size() == 1 || x.dims().size() == 0,
                       true,

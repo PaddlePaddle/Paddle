@@ -212,5 +212,5 @@ PD_REGISTER_KERNEL(conv3d_implicit_gemm,
                    float,
                    phi::float16) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
-  kernel->OutputAt(0).SetDataType(paddle::DataType::UNDEFINED);
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
