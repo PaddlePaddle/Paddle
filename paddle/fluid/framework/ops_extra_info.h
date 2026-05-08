@@ -14,6 +14,11 @@
 
 #pragma once
 
+// Moved from paddle/fluid/operators/ops_extra_info.h to break
+// framework -> operators dependency.
+// TODO(gongweibao): Migrate to namespace paddle::framework. Currently remains
+// in paddle::operators for API compatibility with 30+ downstream references.
+
 #include <string>
 #include <unordered_map>
 #include <vector>

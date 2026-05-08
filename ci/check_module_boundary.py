@@ -40,9 +40,34 @@ RULES = [
         "phi/core must not depend on fluid",
     ),
     (
+        "paddle/phi/kernels/**/*.[ch]*",
+        r'#include\s+"paddle/fluid/',
+        "phi/kernels must not depend on fluid",
+    ),
+    (
+        "paddle/pir/**/*.[ch]*",
+        r'#include\s+"paddle/fluid/',
+        "pir must not depend on fluid",
+    ),
+    (
+        "paddle/cinn/**/*.[ch]*",
+        r'#include\s+"paddle/fluid/framework/',
+        "cinn must not depend on fluid/framework",
+    ),
+    (
         "paddle/fluid/framework/**/*.[ch]*",
         r'#include\s+"paddle/fluid/operators/',
         "framework must not depend on operators",
+    ),
+    (
+        "paddle/common/**/*.[ch]*",
+        r'#include\s+"paddle/phi/',
+        "common must not depend on phi",
+    ),
+    (
+        "paddle/common/**/*.[ch]*",
+        r'#include\s+"paddle/fluid/',
+        "common must not depend on fluid",
     ),
 ]
 
@@ -61,6 +86,18 @@ EXCEPTIONS = [
     ("paddle/fluid/framework/operator.cc", "ops_signature/signatures.h"),
     # nccl_gpu_common.h used for var_type_traits (needs separate fix)
     ("paddle/fluid/framework/var_type_traits.cc", "nccl_gpu_common.h"),
+    # Phase 3: pir -> fluid (to be fixed when PIR is promoted to top-level)
+    ("paddle/pir/include/pass/pass_registry.h", "paddle/fluid/pir/drr/"),
+    # Phase 3: cinn -> fluid/framework (to be fixed in Phase 3)
+    (
+        "paddle/cinn/hlir/dialect/operator/transforms/"
+        "pir_to_py_code_converter.cc",
+        "paddle/fluid/framework/",
+    ),
+    (
+        "paddle/cinn/ir/group_schedule/search/measurer.h",
+        "paddle/fluid/framework/",
+    ),
 ]
 
 # Files to skip (comments, forwarding headers, etc.)

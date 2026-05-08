@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <optional>
 #include <string>
 
 namespace phi {
@@ -24,11 +25,14 @@ namespace phi {
 // on upper-layer modules (e.g., fluid).
 using DeviceCountFn = int (*)();
 
+// Register a device count provider for the given device_type.
+// PADDLE_ENFORCE: duplicate registration for the same device_type is fatal.
+// PADDLE_ENFORCE: fn must not be null.
 void RegisterDeviceCountProvider(const std::string& device_type,
                                  DeviceCountFn fn);
 
-// Returns the number of devices for the given type, or 0 if no provider
-// is registered.
-int GetDeviceCount(const std::string& device_type);
+// Returns the number of devices for the given type, or std::nullopt if
+// no provider is registered (caller decides whether to enforce or treat as 0).
+std::optional<int> GetDeviceCount(const std::string& device_type);
 
 }  // namespace phi

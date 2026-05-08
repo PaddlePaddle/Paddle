@@ -17,6 +17,9 @@
 #include <mutex>
 #include <unordered_map>
 
+#include "glog/logging.h"
+#include "paddle/phi/core/enforce.h"
+
 namespace phi {
 
 static std::mutex& GetRegistryMutex() {
@@ -31,15 +34,30 @@ static auto& GetRegistry() {
 
 void RegisterDeviceCountProvider(const std::string& device_type,
                                  DeviceCountFn fn) {
+  PADDLE_ENFORCE_NOT_NULL(
+      fn,
+      common::errors::InvalidArgument(
+          "DeviceCountFn must not be null for device_type '%s'.", device_type));
   std::lock_guard<std::mutex> lock(GetRegistryMutex());
+  PADDLE_ENFORCE_EQ(GetRegistry().count(device_type),
+                    0,
+                    common::errors::AlreadyExists(
+                        "DeviceCountProvider for '%s' already registered. "
+                        "Duplicate registration is not allowed.",
+                        device_type));
   GetRegistry()[device_type] = fn;
 }
 
-int GetDeviceCount(const std::string& device_type) {
+std::optional<int> GetDeviceCount(const std::string& device_type) {
   std::lock_guard<std::mutex> lock(GetRegistryMutex());
   auto& reg = GetRegistry();
   auto it = reg.find(device_type);
-  return (it != reg.end()) ? it->second() : 0;
+  if (it == reg.end()) {
+    LOG(WARNING) << "DeviceCountProvider for '" << device_type
+                 << "' not registered, returning nullopt.";
+    return std::nullopt;
+  }
+  return it->second();
 }
 
 }  // namespace phi

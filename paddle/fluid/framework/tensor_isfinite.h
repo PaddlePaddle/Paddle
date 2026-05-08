@@ -15,6 +15,8 @@
 // Tensor-level isfinite/isinf/isnan check utilities.
 // Moved from paddle/fluid/operators/isfinite_op.h to break
 // framework -> operators dependency.
+// TODO(gongweibao): Move to paddle/phi/core/utils/tensor_check.h per design.
+// Currently blocked by dependency on framework::convert_utils and tensor_util.
 
 #pragma once
 
