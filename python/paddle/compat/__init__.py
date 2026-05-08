@@ -22,6 +22,7 @@ import paddle
 from paddle import _C_ops
 from paddle.base import core
 from paddle.base.data_feeder import promote_types
+from paddle.base.dygraph.base import _DecoratorContextManager
 from paddle.base.framework import Variable
 from paddle.framework import (
     in_dynamic_mode,
@@ -64,24 +65,38 @@ def __getattr__(name):
         return paddle_triton_fun()
 
 
-def inference_mode(mode=True):
+class inference_mode(_DecoratorContextManager):
     """
     Context-manager/decorator compatible with ``torch.inference_mode`` at the
     grad-mode level.
 
+    Like PyTorch, a non-bool ``mode`` is treated as the function to decorate.
     ``mode=True`` delegates to ``paddle.no_grad()``, and ``mode=False``
-    delegates to ``paddle.enable_grad()``. Other truthy/falsy values use
-    ``paddle.set_grad_enabled(not mode)``. This wrapper does not implement
+    delegates to ``paddle.enable_grad()``. This wrapper does not implement
     PyTorch inference tensor semantics such as version counter disabling, view
     tracking disabling, or ``torch.is_inference``.
     """
-    if callable(mode):
-        return inference_mode()(mode)
-    if mode is True:
-        return paddle.no_grad()
-    if mode is False:
-        return paddle.enable_grad()
-    return paddle.set_grad_enabled(not mode)
+
+    def __init__(self, mode=True):
+        self.mode = mode
+
+    def __new__(cls, mode=True):
+        if isinstance(mode, bool):
+            return super().__new__(cls)
+        return cls()(mode)
+
+    def __enter__(self):
+        if self.mode:
+            self._inference_mode_context = paddle.no_grad()
+        else:
+            self._inference_mode_context = paddle.enable_grad()
+        self._inference_mode_context.__enter__()
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self._inference_mode_context.__exit__(exc_type, exc_value, traceback)
+
+    def clone(self):
+        return self.__class__(self.mode)
 
 
 @ForbidKeywordsDecorator(

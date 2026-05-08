@@ -2825,9 +2825,12 @@ class TestInferenceModeAPI(unittest.TestCase):
         x = paddle.to_tensor(self.np_x, stop_gradient=False)
 
         # 1. Paddle Positional arguments
-        with paddle.compat.inference_mode():
+        ctx = paddle.compat.inference_mode()
+        self.assertTrue(paddle.is_grad_enabled())
+        with ctx:
             out1 = x * 2
             self.assertFalse(paddle.is_grad_enabled())
+        self.assertTrue(paddle.is_grad_enabled())
         # 2. Paddle keyword arguments
         with paddle.compat.inference_mode(mode=True):
             out2 = x * 2
@@ -2856,11 +2859,16 @@ class TestInferenceModeAPI(unittest.TestCase):
         with paddle.no_grad():
             out5 = enable_grad_decorated(x)
 
+        def mode_func(tensor):
+            return tensor * 2
+
+        out6 = paddle.compat.inference_mode(mode=mode_func)(x)
+
         # Verify all outputs
         ref_out = self.np_x * 2
-        for out in [out1, out2, out3, out4, out5]:
+        for out in [out1, out2, out3, out4, out5, out6]:
             np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
-        for out in [out1, out2, out4]:
+        for out in [out1, out2, out4, out6]:
             self.assertTrue(out.stop_gradient)
         for out in [out3, out5]:
             self.assertFalse(out.stop_gradient)
