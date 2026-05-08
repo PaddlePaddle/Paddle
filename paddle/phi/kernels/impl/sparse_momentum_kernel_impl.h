@@ -29,7 +29,7 @@
 namespace phi {
 
 template <typename T>
-using MultiPrecisionType = typename dtype::MPTypeTrait<T>::Type;
+using MultiPrecisionType = typename MPTypeTrait<T>::Type;
 
 enum class RegularizationType {
   kNONE = 0,
