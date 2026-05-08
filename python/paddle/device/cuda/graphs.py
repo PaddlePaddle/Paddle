@@ -68,7 +68,13 @@ cuda_graph_id = 0
 
 
 class CUDAGraph:
-    def __init__(self, place=None, mode="thread_local", pool_id=None):
+    def __init__(
+        self,
+        place=None,
+        mode="thread_local",
+        pool_id=None,
+        enable_replace=False,
+    ):
         assert CoreCUDAGraph is not None, (
             "CUDA Graph is only supported on PaddlePaddle compiled with NVIDIA GPU."
         )
@@ -90,10 +96,11 @@ class CUDAGraph:
         assert mode in ALL_MODES
         self._mode = ALL_MODES.index(mode)
         self._pool_id = pool_id
+        self._enable_replace = enable_replace
 
     def capture_begin(self):
         CoreCUDAGraph.begin_capture_with_pool_id(
-            self._place, self._mode, self._pool_id
+            self._place, self._mode, self._pool_id, self._enable_replace
         )
 
     def capture_end(self):
@@ -115,3 +122,6 @@ class CUDAGraph:
         if flags is None:
             flags = 2047  # only all information. It can be any integer inside [1, 2048)
         self._graph.print_to_dot_files(dirname, flags)
+
+    def replace_input_ptrs(self, old_ptrs, new_ptrs):
+        self._graph.replace_input_ptrs(old_ptrs, new_ptrs)

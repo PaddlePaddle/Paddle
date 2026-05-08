@@ -39,7 +39,8 @@ PADDLE_API std::unique_ptr<CUDAGraph> EndCUDAGraphCapture();
 PADDLE_API void BeginCUDAGraphCapture(
     phi::GPUPlace place,
     gpuStreamCaptureMode mode,
-    int64_t pool_id = CUDAGraph::kInvalidPoolID);
+    int64_t pool_id = CUDAGraph::kInvalidPoolID,
+    bool enable_replace = false);
 #endif
 
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)

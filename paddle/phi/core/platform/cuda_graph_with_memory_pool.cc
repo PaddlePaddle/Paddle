@@ -98,7 +98,8 @@ phi::DeviceContext* SelectCUDAGraphDeviceContext(phi::GPUPlace place,
 
 void BeginCUDAGraphCapture(phi::GPUPlace place,
                            gpuStreamCaptureMode mode,
-                           int64_t pool_id) {
+                           int64_t pool_id,
+                           bool enable_replace) {
   auto* mutable_dev_ctx = SelectCUDAGraphDeviceContext(place, &pool_id);
   auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(mutable_dev_ctx);
   InitCUDNNRelatedHandle(dev_ctx);
@@ -116,7 +117,7 @@ void BeginCUDAGraphCapture(phi::GPUPlace place,
   }
 
   auto stream = dev_ctx->stream();
-  CUDAGraph::BeginCapture(place, stream, mode);
+  CUDAGraph::BeginCapture(place, stream, mode, enable_replace);
 
   // When using cuda graph in new executor, fast GC must be used.
   // FLAGS_use_stream_safe_cuda_allocator should be true.
