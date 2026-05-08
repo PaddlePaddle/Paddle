@@ -183,6 +183,6 @@ BestFitAllocation::BestFitAllocation(
                      reinterpret_cast<uintptr_t>(allocator->BasePtr()) +
                      chunk_it->offset_),  // NOLINT
                  chunk_it->size_,
-                 allocator->Place()),
+                 allocator->GetPlace()),
       chunk_it_(chunk_it) {}
 }  // namespace paddle::memory::allocation

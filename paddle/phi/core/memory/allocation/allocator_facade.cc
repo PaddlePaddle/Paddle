@@ -206,7 +206,7 @@ class AllocatorFacadePrivate {
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   using CustomDeviceAllocatorMap =
-      std::map<phi::CustomPlace,
+      std::map<CustomPlace,
                std::map<phi::stream::stream_t, std::shared_ptr<Allocator>>>;
 #endif
 
@@ -229,7 +229,7 @@ class AllocatorFacadePrivate {
         InitNaiveBestFitCPUAllocator();
 #ifdef PADDLE_WITH_IPU
         for (int dev_id = 0; dev_id < platform::GetIPUDeviceCount(); ++dev_id) {
-          InitNaiveBestFitIPUAllocator(phi::IPUPlace(dev_id));
+          InitNaiveBestFitIPUAllocator(IPUPlace(dev_id));
         }
 #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -250,7 +250,7 @@ class AllocatorFacadePrivate {
           for (auto& dev_id :
                phi::DeviceManager::GetSelectedDeviceList(dev_type)) {
             InitNaiveBestFitCustomDeviceAllocator(
-                phi::CustomPlace(dev_type, dev_id));
+                CustomPlace(dev_type, dev_id));
           }
         }
 #endif
@@ -312,7 +312,7 @@ class AllocatorFacadePrivate {
 #endif
 #ifdef PADDLE_WITH_IPU
         for (int dev_id = 0; dev_id < platform::GetIPUDeviceCount(); ++dev_id) {
-          InitNaiveBestFitIPUAllocator(phi::IPUPlace(dev_id));
+          InitNaiveBestFitIPUAllocator(IPUPlace(dev_id));
         }
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -320,9 +320,9 @@ class AllocatorFacadePrivate {
         for (const auto& dev_type : device_types) {
           for (auto& dev_id :
                phi::DeviceManager::GetSelectedDeviceList(dev_type)) {
-            InitAutoGrowthCustomDeviceAllocator(
-                phi::CustomPlace(dev_type, dev_id), allow_free_idle_chunk);
-            PreAllocCustomDeviceAllocator(phi::CustomPlace(dev_type, dev_id));
+            InitAutoGrowthCustomDeviceAllocator(CustomPlace(dev_type, dev_id),
+                                                allow_free_idle_chunk);
+            PreAllocCustomDeviceAllocator(CustomPlace(dev_type, dev_id));
           }
         }
         if (FLAGS_use_stream_safe_cuda_allocator) {
@@ -343,7 +343,7 @@ class AllocatorFacadePrivate {
 #endif
 #ifdef PADDLE_WITH_IPU
         for (int dev_id = 0; dev_id < platform::GetIPUDeviceCount(); ++dev_id) {
-          InitNaiveBestFitIPUAllocator(phi::IPUPlace(dev_id));
+          InitNaiveBestFitIPUAllocator(IPUPlace(dev_id));
         }
 #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -715,7 +715,7 @@ class AllocatorFacadePrivate {
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  bool HasCustomDeviceAllocator(const phi::CustomPlace& place,
+  bool HasCustomDeviceAllocator(const CustomPlace& place,
                                 phi::stream::stream_t stream) {
     auto it = custom_device_allocators_.find(place);
     if (it == custom_device_allocators_.end()) {
@@ -727,7 +727,7 @@ class AllocatorFacadePrivate {
   }
 
   const std::shared_ptr<Allocator>& GetAllocator(
-      const phi::CustomPlace& place,
+      const CustomPlace& place,
       phi::stream::stream_t stream,
       bool create_if_not_found = false) {
     if (stream == GetDefaultStream(place)) {
@@ -760,8 +760,7 @@ class AllocatorFacadePrivate {
   }
 
   const std::shared_ptr<StreamSafeCustomDeviceAllocator>
-  GetDefaultStreamSafeCustomDeviceAllocator(
-      const phi::CustomPlace& place) const {
+  GetDefaultStreamSafeCustomDeviceAllocator(const CustomPlace& place) const {
     const auto iter = default_stream_safe_custom_device_allocators_.find(place);
     PADDLE_ENFORCE_NE(
         iter,
@@ -772,13 +771,13 @@ class AllocatorFacadePrivate {
     return iter->second;
   }
 
-  phi::stream::stream_t GetDefaultStream(const phi::CustomPlace& place) const {
+  phi::stream::stream_t GetDefaultStream(const CustomPlace& place) const {
     const std::shared_ptr<StreamSafeCustomDeviceAllocator>& allocator =
         GetDefaultStreamSafeCustomDeviceAllocator(place);
     return allocator->GetDefaultStream();
   }
 
-  void SetDefaultStream(const phi::CustomPlace& place,
+  void SetDefaultStream(const CustomPlace& place,
                         phi::stream::stream_t stream) {
     const std::shared_ptr<StreamSafeCustomDeviceAllocator>& allocator =
         GetDefaultStreamSafeCustomDeviceAllocator(place);
@@ -1247,7 +1246,7 @@ class AllocatorFacadePrivate {
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  void PreAllocCustomDeviceAllocator(phi::CustomPlace p) {
+  void PreAllocCustomDeviceAllocator(CustomPlace p) {
     // fallback to single pool.
     if (FLAGS_small_pool_size_in_mb <= 0) {
       return;
@@ -1404,21 +1403,21 @@ class AllocatorFacadePrivate {
 #endif
 
 #ifdef PADDLE_WITH_IPU
-  void InitNaiveBestFitIPUAllocator(phi::IPUPlace p) {
+  void InitNaiveBestFitIPUAllocator(IPUPlace p) {
     allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
   }
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  void InitNaiveBestFitCustomDeviceAllocator(phi::CustomPlace p) {
+  void InitNaiveBestFitCustomDeviceAllocator(CustomPlace p) {
     allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
   }
 
-  std::shared_ptr<Allocator> CreateCustomDeviceAllocator(phi::CustomPlace p) {
+  std::shared_ptr<Allocator> CreateCustomDeviceAllocator(CustomPlace p) {
     return std::make_shared<CustomAllocator>(p);
   }
 
-  void InitStreamSafeCustomDeviceAllocator(phi::CustomPlace p,
+  void InitStreamSafeCustomDeviceAllocator(CustomPlace p,
                                            phi::stream::stream_t stream) {
     PADDLE_ENFORCE_EQ(
         strategy_,
@@ -1436,7 +1435,7 @@ class AllocatorFacadePrivate {
     }
   }
 
-  void InitAutoGrowthCustomDeviceAllocator(phi::CustomPlace p,
+  void InitAutoGrowthCustomDeviceAllocator(CustomPlace p,
                                            phi::stream::stream_t stream) {
     auto chunk_size = FLAGS_auto_growth_chunk_size_in_mb << 20;
     VLOG(4) << "FLAGS_auto_growth_chunk_size_in_mb is "
@@ -1454,7 +1453,7 @@ class AllocatorFacadePrivate {
             phi::DeviceManager::GetExtraPaddingSize(p));
   }
 
-  void InitAutoGrowthCustomDeviceAllocator(phi::CustomPlace p,
+  void InitAutoGrowthCustomDeviceAllocator(CustomPlace p,
                                            bool allow_free_idle_chunk) {
     auto chunk_size = FLAGS_auto_growth_chunk_size_in_mb << 20;
     VLOG(4) << "FLAGS_auto_growth_chunk_size_in_mb is "
@@ -1487,7 +1486,7 @@ class AllocatorFacadePrivate {
     }
   }
 
-  void WrapStreamSafeCustomDeviceAllocator(phi::CustomPlace p,
+  void WrapStreamSafeCustomDeviceAllocator(CustomPlace p,
                                            phi::stream::stream_t stream) {
     std::shared_ptr<Allocator>& allocator =
         custom_device_allocators_[p][stream];
@@ -1511,7 +1510,7 @@ class AllocatorFacadePrivate {
 #ifdef PADDLE_WITH_IPU
     int device_count = platform::GetIPUDeviceCount();
     for (int i = 0; i < device_count; ++i) {
-      phi::IPUPlace p(i);
+      IPUPlace p(i);
       system_allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
     }
 #endif
@@ -1528,7 +1527,7 @@ class AllocatorFacadePrivate {
     auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
     for (const auto& dev_type : device_types) {
       for (auto& dev_id : phi::DeviceManager::GetSelectedDeviceList(dev_type)) {
-        phi::CustomPlace p(dev_type, dev_id);
+        CustomPlace p(dev_type, dev_id);
         system_allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
       }
     }
@@ -1556,14 +1555,14 @@ class AllocatorFacadePrivate {
 #ifdef PADDLE_WITH_IPU
     int device_count = platform::GetIPUDeviceCount();
     for (int dev_id = 0; dev_id < device_count; ++dev_id) {
-      places.emplace_back(phi::IPUPlace(dev_id));
+      places.emplace_back(IPUPlace(dev_id));
     }
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
     for (const auto& dev_type : device_types) {
       for (auto& dev_id : phi::DeviceManager::GetSelectedDeviceList(dev_type)) {
-        places.emplace_back(phi::CustomPlace(dev_type, dev_id));
+        places.emplace_back(CustomPlace(dev_type, dev_id));
       }
     }
 #endif
@@ -1782,7 +1781,7 @@ AllocationPtr AllocatorFacade::Alloc(const Place& place,
       VLOG(6) << "Warning: StreamSafeCustomDeviceAllocator is not used!";
       return Alloc(place, size);
     }
-    phi::CustomPlace p(place);
+    CustomPlace p(place);
     if (LIKELY(size > 0 && FLAGS_use_system_allocator == false)) {
       phi::stream::stream_t s =
           reinterpret_cast<phi::stream::stream_t>(stream.id());
@@ -2025,7 +2024,7 @@ bool AllocatorFacade::RecordStream(std::shared_ptr<phi::Allocation> allocation,
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-uint64_t AllocatorFacade::Release(const phi::CustomPlace& place,
+uint64_t AllocatorFacade::Release(const CustomPlace& place,
                                   phi::stream::stream_t stream) {
   AllocatorFacadePrivate* m = GetPrivate();
   if (!m->IsStreamSafeCUDAAllocatorUsed()) {
@@ -2068,7 +2067,7 @@ phi::stream::stream_t AllocatorFacade::GetStream(
   return GetPrivate()->GetStream(allocation);
 }
 
-void AllocatorFacade::SetDefaultStream(const phi::CustomPlace& place,
+void AllocatorFacade::SetDefaultStream(const CustomPlace& place,
                                        phi::stream::stream_t stream) {
   if (m_->IsStreamSafeCUDAAllocatorUsed()) {
     m_->SetDefaultStream(place, stream);

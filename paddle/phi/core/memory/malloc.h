@@ -74,8 +74,7 @@ bool RecordStream(std::shared_ptr<Allocation> allocation, XPUStream stream);
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-extern uint64_t Release(const phi::CustomPlace& place,
-                        phi::stream::stream_t stream);
+extern uint64_t Release(const CustomPlace& place, phi::stream::stream_t stream);
 
 bool RecordStream(std::shared_ptr<Allocation> allocation,
                   phi::stream::stream_t stream);

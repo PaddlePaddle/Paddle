@@ -36,8 +36,6 @@ const int kNumHeadsDimIndex = 2;
     VLOG(4) << "src_dist_attr: [" << name.to_string() << "]"; \
   } while (0)
 
-using phi::distributed::auto_parallel::str_join;
-
 TensorDistAttr MapDims(
     const TensorDistAttr& src,
     const std::unordered_map<std::string, int64_t>& axes_mapping,
@@ -60,7 +58,7 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
                            const std::string& rng_name) {
   // q
   // [batch_size, seq_len_q, num_heads, head_dim]
-  auto q_shape = common::vectorize(q.dims());
+  auto q_shape = vectorize(q.dims());
   int q_ndim = q_shape.size();
   auto q_dist_attr = q.dist_attr();
   int q_dims_mapping_size = q_dist_attr.dims_mapping().size();
@@ -85,7 +83,7 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
 
   // k
   // [batch_size, seq_len_kv, num_heads, head_dim]
-  auto k_shape = common::vectorize(k.dims());
+  auto k_shape = vectorize(k.dims());
   int k_ndim = k_shape.size();
   auto k_dist_attr = k.dist_attr();
   int k_dims_mapping_size = k_dist_attr.dims_mapping().size();
@@ -142,7 +140,7 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
 
   // v
   // [batch_size, seq_len_kv, num_heads, head_dim]
-  auto v_shape = common::vectorize(v.dims());
+  auto v_shape = vectorize(v.dims());
   int v_ndim = v_shape.size();
   auto v_dist_attr = v.dist_attr();
   int v_dims_mapping_size = v_dist_attr.dims_mapping().size();
@@ -193,9 +191,9 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
   // fixed_seed_offset
   // TODO(liuzhenhai): process fixed_seed_offset and attn_mask
   auto fixed_seed_offset_dist_attr = fixed_seed_offset.dist_attr();
-  auto fixed_seed_offset_shape = common::vectorize(fixed_seed_offset.dims());
+  auto fixed_seed_offset_shape = vectorize(fixed_seed_offset.dims());
   // attn_mask
-  auto attn_mask_shape = common::vectorize(attn_mask.dims());
+  auto attn_mask_shape = vectorize(attn_mask.dims());
   int mask_ndim = attn_mask_shape.size();
   auto attn_mask_dist_attr = attn_mask.dist_attr();
   int mask_dims_mapping_size = attn_mask_dist_attr.dims_mapping().size();
@@ -381,25 +379,25 @@ SpmdInfo FlashAttInferSpmdReverse(const DistMetaTensor& q,
                                   bool is_test) {
   // q
   // [batch_size, seq_len_q, num_heads, head_dim]
-  auto q_shape = common::vectorize(q.dims());
+  auto q_shape = vectorize(q.dims());
   auto q_dist_attr = q.dist_attr();
 
   // k
   // [batch_size, seq_len_kv, num_heads, head_dim]
-  auto k_shape = common::vectorize(k.dims());
+  auto k_shape = vectorize(k.dims());
   auto k_dist_attr = k.dist_attr();
 
   // v
   // [batch_size, seq_len_kv, num_heads, head_dim]
-  auto v_shape = common::vectorize(v.dims());
+  auto v_shape = vectorize(v.dims());
   auto v_dist_attr = v.dist_attr();
 
   // fixed_seed_offset
   // TODO(liuzhenhai): process fixed_seed_offset、seed_offset、 and attn_mask
   auto fixed_seed_offset_dist_attr = fixed_seed_offset.dist_attr();
-  auto fixed_seed_offset_shape = common::vectorize(fixed_seed_offset.dims());
+  auto fixed_seed_offset_shape = vectorize(fixed_seed_offset.dims());
   // attn_mask
-  auto attn_mask_shape = common::vectorize(attn_mask.dims());
+  auto attn_mask_shape = vectorize(attn_mask.dims());
   int mask_ndim = attn_mask_shape.size();
   auto attn_mask_dist_attr = attn_mask.dist_attr();
   int mask_dims_mapping_size = attn_mask_dist_attr.dims_mapping().size();
@@ -415,7 +413,7 @@ SpmdInfo FlashAttInferSpmdReverse(const DistMetaTensor& q,
 
   // out
   // [batch_size, seq_len_q, num_heads, head_dim_v]
-  auto out_shape = common::vectorize(out.dims());
+  auto out_shape = vectorize(out.dims());
   int out_ndim = out_shape.size();
   auto out_dist_attr = v.dist_attr();
   int out_dims_mapping_size = out_dist_attr.dims_mapping().size();
@@ -439,7 +437,7 @@ SpmdInfo FlashAttInferSpmdReverse(const DistMetaTensor& q,
 
   // softmax_lse
   // [batch_size,  num_heads, seq_len_q, seq_len_kv]
-  auto softmax_lse_shape = common::vectorize(softmax_lse.dims());
+  auto softmax_lse_shape = vectorize(softmax_lse.dims());
   int softmax_lse_ndim = softmax_lse_shape.size();
   auto softmax_lse_dist_attr = softmax_lse.dist_attr();
   int softmax_lse_dims_mapping_size =
@@ -487,10 +485,10 @@ SpmdInfo FlashAttInferSpmdReverse(const DistMetaTensor& q,
           seq_len_q_2));
 
   TensorDistAttr seed_offset_dist_attr = fixed_seed_offset.dist_attr();
-  auto seed_offset_shape = common::vectorize(seed_offset.dims());
+  auto seed_offset_shape = vectorize(seed_offset.dims());
 
   TensorDistAttr softmax_dist_attr = softmax.dist_attr();
-  auto softmax_shape = common::vectorize(softmax.dims());
+  auto softmax_shape = vectorize(softmax.dims());
 
   std::string alphabet = "abcdefghijklmnopqrstuvwxyz";
   int used_axes_index = 0;
@@ -612,7 +610,7 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
                                bool causal) {
   // q
   // [batch_size, seq_len_q, num_heads, head_dim]
-  auto q_shape = common::vectorize(q.dims());
+  auto q_shape = vectorize(q.dims());
   int q_ndim = q_shape.size();
   auto q_dist_attr = q.dist_attr();
   int q_dims_mapping_size = q_dist_attr.dims_mapping().size();
@@ -637,7 +635,7 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
 
   // k
   // [batch_size, seq_len_kv, num_heads, head_dim]
-  auto k_shape = common::vectorize(k.dims());
+  auto k_shape = vectorize(k.dims());
   int k_ndim = k_shape.size();
   auto k_dist_attr = k.dist_attr();
   int k_dims_mapping_size = k_dist_attr.dims_mapping().size();
@@ -686,7 +684,7 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
 
   // v
   // [batch_size, seq_len_kv, num_heads, head_dim]
-  auto v_shape = common::vectorize(v.dims());
+  auto v_shape = vectorize(v.dims());
   int v_ndim = v_shape.size();
   auto v_dist_attr = v.dist_attr();
   int v_dims_mapping_size = v_dist_attr.dims_mapping().size();
@@ -734,10 +732,10 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
 
   // fixed_seed_offset
   auto seed_offset_dist_attr = seed_offset.dist_attr();
-  auto seed_offset_shape = common::vectorize(seed_offset.dims());
+  auto seed_offset_shape = vectorize(seed_offset.dims());
 
   // attn_mask
-  auto attn_mask_shape = common::vectorize(attn_mask.dims());
+  auto attn_mask_shape = vectorize(attn_mask.dims());
   int mask_ndim = attn_mask_shape.size();
   auto attn_mask_dist_attr = attn_mask.dist_attr();
   int mask_dims_mapping_size = attn_mask_dist_attr.dims_mapping().size();
@@ -751,13 +749,13 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
                           mask_dims_mapping_size));
   }
 
-  auto out_shape = common::vectorize(out.dims());
+  auto out_shape = vectorize(out.dims());
   auto out_dist_attr = out.dist_attr();
 
-  auto softmax_lse_shape = common::vectorize(softmax_lse.dims());
+  auto softmax_lse_shape = vectorize(softmax_lse.dims());
   auto softmax_lse_dist_attr = softmax_lse.dist_attr();
 
-  auto out_grad_shape = common::vectorize(out_grad.dims());
+  auto out_grad_shape = vectorize(out_grad.dims());
   auto out_grad_dist_attr = out_grad.dist_attr();
 
   std::string alphabet = "abcdefghijklmnopqrstuvwxyz";

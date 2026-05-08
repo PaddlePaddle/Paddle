@@ -114,7 +114,7 @@ size_t Used<CPUPlace>(const CPUPlace &place) {
 
 // For Graphcore IPU
 template <>
-void *Alloc<phi::IPUPlace>(const phi::IPUPlace &place, size_t size) {
+void *Alloc<IPUPlace>(const IPUPlace &place, size_t size) {
   VLOG(10) << "Allocate " << size << " bytes on " << Place(place);
   VLOG(10) << "IPUPlace, Allocate on cpu.";
 
@@ -126,16 +126,16 @@ void *Alloc<phi::IPUPlace>(const phi::IPUPlace &place, size_t size) {
   return p;
 }
 template <>
-void Free<phi::IPUPlace>(const phi::IPUPlace &place, void *p, size_t size) {
+void Free<IPUPlace>(const IPUPlace &place, void *p, size_t size) {
   VLOG(10) << "Free pointer=" << p << " on " << Place(place);
   GetCPUBuddyAllocator()->Free(p);
 }
 template <>
-uint64_t Release<phi::IPUPlace>(const phi::IPUPlace &place) {
+uint64_t Release<IPUPlace>(const IPUPlace &place) {
   return GetCPUBuddyAllocator()->Release();
 }
 template <>
-size_t Used<phi::IPUPlace>(const phi::IPUPlace &place) {
+size_t Used<IPUPlace>(const IPUPlace &place) {
   return GetCPUBuddyAllocator()->Used();
 }
 
@@ -515,7 +515,7 @@ class BuddyAllocatorList {
 
     std::call_once(*init_flags_[dev_id], [this, dev_id] {
       phi::DeviceManager::SetDevice(device_type_, dev_id);
-      phi::CustomPlace place(device_type_, dev_id);
+      CustomPlace place(device_type_, dev_id);
 
       VLOG(10) << "Init BuddyAllocator on " << place
                << " with GetExtraPaddingSize "
@@ -550,7 +550,7 @@ BuddyAllocator *GetBuddyAllocator(const Place &place) {
 #endif
 
 template <>
-void *Alloc<phi::CustomPlace>(const phi::CustomPlace &place, size_t size) {
+void *Alloc<CustomPlace>(const CustomPlace &place, size_t size) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   VLOG(10) << "Allocate " << size << " bytes on " << Place(place);
   auto *buddy_allocator = GetBuddyAllocator(place);
@@ -583,9 +583,7 @@ void *Alloc<phi::CustomPlace>(const phi::CustomPlace &place, size_t size) {
 }
 
 template <>
-void Free<phi::CustomPlace>(const phi::CustomPlace &place,
-                            void *p,
-                            size_t size) {
+void Free<CustomPlace>(const CustomPlace &place, void *p, size_t size) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   VLOG(10) << "Free pointer=" << p << " on " << Place(place);
   if (phi::DeviceManager::HasDeviceType(place.GetDeviceType())) {
@@ -598,7 +596,7 @@ void Free<phi::CustomPlace>(const phi::CustomPlace &place,
 }
 
 template <>
-uint64_t Release<phi::CustomPlace>(const phi::CustomPlace &place) {
+uint64_t Release<CustomPlace>(const CustomPlace &place) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   return GetBuddyAllocator(place)->Release();
 #else
@@ -608,7 +606,7 @@ uint64_t Release<phi::CustomPlace>(const phi::CustomPlace &place) {
 }
 
 template <>
-size_t Used<phi::CustomPlace>(const phi::CustomPlace &place) {
+size_t Used<CustomPlace>(const CustomPlace &place) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   return GetBuddyAllocator(place)->Used();
 #else

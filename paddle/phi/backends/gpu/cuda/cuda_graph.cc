@@ -171,7 +171,8 @@ void CUDAGraph::BeginSegmentCapture() {
 
 void CUDAGraph::BeginCapture(phi::GPUPlace place,
                              cudaStream_t stream,
-                             cudaStreamCaptureMode mode) {
+                             cudaStreamCaptureMode mode,
+                             bool enable_replace) {
   ThrowErrorIfNotSupportCUDAGraph();
   PADDLE_ENFORCE_EQ(IsCapturing(),
                     false,
@@ -181,7 +182,7 @@ void CUDAGraph::BeginCapture(phi::GPUPlace place,
       stream,
       common::errors::PermissionDenied(
           "CUDA Graph cannot be captured in default CUDA stream 0."));
-  capturing_graph_.reset(new CUDAGraph());
+  capturing_graph_.reset(new CUDAGraph(enable_replace));
   capturing_graph_->place_ = place;
   capturing_graph_->stream_ = stream;
   capturing_graph_->capture_mode_ = mode;
@@ -260,6 +261,10 @@ void CUDAGraph::EndSegmentCapture() {
            << ", memory pool id " << capturing_graph_->pool_id_;
   capturing_graph_->graphs_.emplace_back(graph);
   capturing_graph_->exec_graphs_.emplace_back(exec_graph);
+  if (capturing_graph_->enable_replace_) {
+    capturing_graph_->CacheKernelNodeInfos(capturing_graph_->graphs_.size() -
+                                           1);
+  }
 }
 
 std::unique_ptr<CUDAGraph> CUDAGraph::EndCapture() {
@@ -308,6 +313,98 @@ void CUDAGraph::PrintToDotFiles(const std::string &dirname,
       "The print_to_dot_files() method is only supported when CUDA version >= "
       "11.3."));
 #endif
+}
+
+void CUDAGraph::CacheKernelNodeInfos(size_t segment_idx) {
+  auto &graph = graphs_[segment_idx];
+  size_t numNodes = 0;
+  cudaGraphGetNodes(graph, nullptr, &numNodes);
+  std::vector<cudaGraphNode_t> nodes(numNodes);
+  cudaGraphGetNodes(graph, nodes.data(), &numNodes);
+
+  std::vector<KernelNodeInfo> kernel_nodes;
+  for (auto &node : nodes) {
+    cudaGraphNodeType type;
+    cudaGraphNodeGetType(node, &type);
+    if (type == cudaGraphNodeTypeKernel) {
+      KernelNodeInfo info;
+      info.node = node;
+      memset(&info.params, 0, sizeof(info.params));
+      // Use Driver API to get params (works for both Runtime and Driver API
+      // kernels, unlike Runtime API which may return invalid kernelParams
+      // for JIT kernels such as DeepGEMM)
+      dynload::cuGraphKernelNodeGetParams(static_cast<CUgraphNode>(node),
+                                          &info.params);
+      info.param_infos =
+          GetKernelParamInfos(static_cast<CUfunction>(info.params.func));
+      kernel_nodes.emplace_back(std::move(info));
+    }
+  }
+  VLOG(4) << "Cached " << kernel_nodes.size() << " kernel nodes for segment "
+          << segment_idx;
+  cached_kernel_nodes_.emplace_back(std::move(kernel_nodes));
+}
+
+void CUDAGraph::ReplaceInputPtrs(const std::vector<void *> &old_ptrs,
+                                 const std::vector<void *> &new_ptrs) {
+  PADDLE_ENFORCE_EQ(
+      enable_replace_,
+      true,
+      common::errors::PermissionDenied(
+          "ReplaceInputPtrs requires enable_replace to be set to true "
+          "when creating CUDAGraph."));
+#if CUDA_VERSION >= 12040
+  for (size_t i = 0; i < cached_kernel_nodes_.size(); ++i) {
+    for (auto &kernel_info : cached_kernel_nodes_[i]) {
+      auto &params = kernel_info.params;
+      bool modified = false;
+
+      for (size_t k = 0; k < kernel_info.param_infos.size(); k++) {
+        size_t param_size = kernel_info.param_infos[k].size;
+        char *param_base = reinterpret_cast<char *>(params.kernelParams[k]);
+
+        for (size_t offset = 0; offset + sizeof(void *) <= param_size;
+             offset += sizeof(void *)) {
+          void *actual_val = *(reinterpret_cast<void **>(param_base + offset));
+          for (size_t j = 0; j < old_ptrs.size(); j++) {
+            if (old_ptrs[j] == actual_val) {
+              VLOG(4) << "cuda func " << params.func << " match old ptr "
+                      << actual_val << " at param " << k << " offset " << offset
+                      << ", replace with " << new_ptrs[j];
+              *(reinterpret_cast<void **>(param_base + offset)) = new_ptrs[j];
+              modified = true;
+              break;
+            }
+          }
+        }
+      }
+      if (modified) {
+        dynload::cuGraphExecKernelNodeSetParams(
+            static_cast<CUgraphExec>(exec_graphs_[i]),
+            static_cast<CUgraphNode>(kernel_info.node),
+            &params);
+      }
+    }
+  }
+#endif
+}
+
+std::vector<CUDAGraph::KernelParamInfo> CUDAGraph::GetKernelParamInfos(
+    CUfunction func) {
+  std::vector<KernelParamInfo> infos;
+#if CUDA_VERSION >= 12040
+  size_t paramOffset, paramSize;
+  int k = 0;
+
+  while (dynload::cuFuncGetParamInfo(func, k, &paramOffset, &paramSize) ==
+         CUDA_SUCCESS) {
+    infos.push_back({paramOffset, paramSize});
+    VLOG(4) << "[GetKernelParamInfos] func " << func << " param[" << k
+            << "] offset=" << paramOffset << " size=" << paramSize;
+    k++;
+  }
+#endif
+  return infos;
 }
 
 void CUDAGraphNodeLauncher::KernelNodeLaunch(

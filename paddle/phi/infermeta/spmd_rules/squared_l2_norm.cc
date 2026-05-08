@@ -25,8 +25,6 @@ limitations under the License. */
 namespace phi {
 namespace distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 SpmdInfo SquaredL2NormInferSpmd(const DistMetaTensor& x) {
   VLOG(4) << "SquaredL2NormInferSpmd:";
   VLOG(4) << "Using ReductionInferSpmd Rule as internal implement.";
