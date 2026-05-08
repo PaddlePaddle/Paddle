@@ -602,8 +602,6 @@ PD_REGISTER_KERNEL(fused_adam,
   kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(3).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT64);  // beta1_pows_out
-  kernel->OutputAt(4).SetBackend(phi::Backend::UNDEFINED);
   kernel->OutputAt(5).SetDataType(phi::DataType::FLOAT64);  // beta2_pows_out
-  kernel->OutputAt(5).SetBackend(phi::Backend::UNDEFINED);
   kernel->OutputAt(6).SetDataType(phi::DataType::UNDEFINED);
 }
