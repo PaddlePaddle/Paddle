@@ -66,7 +66,7 @@ void send_shape_info(const Context& dev_ctx,
   const auto& cpu_place = CPUPlace();
 #ifdef PADDLE_WITH_CUDA
   const int* stable_shape_size =
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
           const_cast<int*>(cpu_shape_size_tensor.data<int>()),
           static_cast<size_t>(cpu_shape_size_tensor.numel()));
   memory_utils::Copy(dev_ctx.GetPlace(),
@@ -100,10 +100,9 @@ void send_shape_info(const Context& dev_ctx,
   shape_tensor.Resize({shape_size});
   dev_ctx.Alloc(&shape_tensor, shape_dtype);
 #ifdef PADDLE_WITH_CUDA
-  const int* stable_shape =
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
-          const_cast<int*>(cpu_shape_tensor.data<int>()),
-          static_cast<size_t>(cpu_shape_tensor.numel()));
+  const int* stable_shape = backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      const_cast<int*>(cpu_shape_tensor.data<int>()),
+      static_cast<size_t>(cpu_shape_tensor.numel()));
   memory_utils::Copy(dev_ctx.GetPlace(),
                      shape_tensor.data(),
                      cpu_place,
@@ -158,7 +157,7 @@ DDim recv_shape_info(const Context& dev_ctx,
   // copy the shape size tensor to cpu
 #ifdef PADDLE_WITH_CUDA
   PADDLE_ENFORCE_EQ(
-      phi::backends::gpu::IsCUDAGraphCapturing(),
+      backends::gpu::IsCUDAGraphCapturing(),
       false,
       common::errors::InvalidArgument(
           "RecvShape does not support CUDA Graph capture: async D2H copy to "

@@ -414,8 +414,8 @@ struct ReduceConfig {
 #ifdef PADDLE_WITH_XPU_KP
     bool not_higher = x_dim[0] > 1;
 #else
-    int64_t device_id = phi::backends::gpu::GetCurrentDeviceId();
-    int64_t max_grid_z = phi::backends::gpu::GetGpuMaxGridDimSize(device_id)[2];
+    int64_t device_id = backends::gpu::GetCurrentDeviceId();
+    int64_t max_grid_z = backends::gpu::GetGpuMaxGridDimSize(device_id)[2];
     bool not_higher = x_dim[0] >= max_grid_z;
 #endif  // PADDLE_WITH_XPU_KP
     reduce_type = static_cast<int64_t>(ReduceType::kReduceAny);
@@ -466,12 +466,12 @@ struct ReduceConfig {
       grid_x = details::CeilingDiv(left_num, block_dim->x);
       reduce_num_per_thread = details::CeilingDiv(reduce_num, block_dim->y);
     }
-    int64_t device_id = phi::backends::gpu::GetCurrentDeviceId();
-    int64_t max_mp = phi::backends::gpu::GetGPUMultiProcessors(device_id);
+    int64_t device_id = backends::gpu::GetCurrentDeviceId();
+    int64_t max_mp = backends::gpu::GetGPUMultiProcessors(device_id);
     int64_t max_threads_per_mp =
-        phi::backends::gpu::GetGPUMaxThreadsPerMultiProcessor(device_id);
+        backends::gpu::GetGPUMaxThreadsPerMultiProcessor(device_id);
     std::array<uint32_t, 3> max_grid_dim =
-        phi::backends::gpu::GetGpuMaxGridDimSize(device_id);
+        backends::gpu::GetGpuMaxGridDimSize(device_id);
     int64_t max_threads = max_threads_per_mp * max_mp;
     int64_t num_threads = block_dim->x * block_dim->y;
     int64_t max_num_blocks = max_threads / num_threads;
@@ -513,16 +513,16 @@ struct ReduceConfig {
     grid_dim->z = grid_z;
 
     // Set gridDim.x and blockDim.x
-    int device_id = phi::backends::gpu::GetCurrentDeviceId();
+    int device_id = backends::gpu::GetCurrentDeviceId();
     std::array<uint32_t, 3> max_grid_dim =
-        phi::backends::gpu::GetGpuMaxGridDimSize(device_id);
+        backends::gpu::GetGpuMaxGridDimSize(device_id);
     block_dim->x = GetBlockDim(left_num);
     grid_dim->x = std::min(details::CeilingDiv(left_num, block_dim->x),
                            static_cast<int64_t>(max_grid_dim[0]));
 
-    int max_mp = phi::backends::gpu::GetGPUMultiProcessors(device_id);
+    int max_mp = backends::gpu::GetGPUMultiProcessors(device_id);
     int max_threads_per_mp =
-        phi::backends::gpu::GetGPUMaxThreadsPerMultiProcessor(device_id);
+        backends::gpu::GetGPUMaxThreadsPerMultiProcessor(device_id);
     int max_threads = max_threads_per_mp * max_mp;
     int64_t num_block =
         std::min(max_threads / left_num, static_cast<int64_t>(max_grid_dim[1]));

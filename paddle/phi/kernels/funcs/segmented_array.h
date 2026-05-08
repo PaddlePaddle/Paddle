@@ -120,15 +120,15 @@ struct ArraySetterBase {
     int8_t* restored = reinterpret_cast<int8_t*>(src);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (use_cuda_graph) {
-      restored = phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph<int8_t>(
+      restored = backends::gpu::RestoreHostMemIfCapturingCUDAGraph<int8_t>(
           restored, num_bytes);
     }
 #endif
-    phi::backends::gpu::GpuMemcpyAsync(allocation->ptr(),
-                                       restored,
-                                       num_bytes,
-                                       phi::gpuMemcpyHostToDevice,
-                                       dev_ctx.stream());
+    backends::gpu::GpuMemcpyAsync(allocation->ptr(),
+                                  restored,
+                                  num_bytes,
+                                  phi::gpuMemcpyHostToDevice,
+                                  dev_ctx.stream());
 
     auto ptr = allocation->ptr();
     allocations.emplace_back(std::move(allocation));

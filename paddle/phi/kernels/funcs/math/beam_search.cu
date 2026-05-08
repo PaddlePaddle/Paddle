@@ -456,7 +456,7 @@ class BeamSearchFunctor<GPUContext, T> {
       int num_used_threads = GetNumUsedThreads(kMaxThreadsPerSeq,
                                                static_cast<int>(seq_width),
                                                static_cast<int>(beam_size));
-      switch (phi::backends::gpu::RoundToPowerOfTwo(beam_size * seq_width)) {
+      switch (backends::gpu::RoundToPowerOfTwo(beam_size * seq_width)) {
         CUDA_LAUNCH_KERNEL_HELPER(
             BeamSearchKernelSingle<kPowerOfTwoDim, kMaxThreadsPerSeq>
             <<<1, kMaxThreadsPerSeq, 0, dev_ctx.stream()>>>(
@@ -483,8 +483,7 @@ class BeamSearchFunctor<GPUContext, T> {
       int num_used_threads = GetNumUsedThreads(kMaxThreadsPerSeq,
                                                static_cast<int>(seq_width),
                                                static_cast<int>(beam_size));
-      switch (
-          phi::backends::gpu::RoundToPowerOfTwo(beam_size * num_seqs * 32)) {
+      switch (backends::gpu::RoundToPowerOfTwo(beam_size * num_seqs * 32)) {
         CUDA_LAUNCH_KERNEL_HELPER(
             BeamSearchKernel<kPowerOfTwoDim, kMaxThreadsPerSeq, kMaxSeqs>
             <<<1, num_seqs * kMaxThreadsPerSeq, 0, dev_ctx.stream()>>>(

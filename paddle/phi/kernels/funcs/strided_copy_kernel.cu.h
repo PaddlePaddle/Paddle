@@ -646,7 +646,7 @@ void LaunchContiguous2StridedDefaultKernel(
     int64_t output_numel,
     bool diff_dims) {
   constexpr int loop_count = 4;
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+  auto config = backends::gpu::GetGpuLaunchConfig1D(
       dev_ctx, output_numel, VecSize * loop_count);
   auto& grid = config.block_per_grid;
   auto& block = config.thread_per_block;

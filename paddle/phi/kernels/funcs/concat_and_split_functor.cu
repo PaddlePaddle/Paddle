@@ -111,7 +111,7 @@ struct PointerToPointer {
         dev_ctx.GetPlace(),
         in_num * sizeof(T*),
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-    auto* restored = phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+    auto* restored = backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
         pre_alloced_host_ptr, in_num);
     memory_utils::Copy(dev_ctx.GetPlace(),
                        (*dev_ins_ptr)->ptr(),
@@ -162,7 +162,7 @@ struct PointerToPointerAndCol {
         dev_ctx.GetPlace(),
         inputs_col_num * sizeof(IndexT),
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-    auto* restored = phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+    auto* restored = backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
         inputs_col, inputs_col_num);
     memory_utils::Copy(dev_ctx.GetPlace(),
                        (*dev_col_ptr)->ptr(),
@@ -279,7 +279,7 @@ void DispatchConcatWithDifferentShapeKernelLimitNum(
         dev_ctx, ins, inputs_col_num, inputs_data, inputs_col); \
     __VA_ARGS__;                                                \
   } break;
-  switch (phi::backends::gpu::RoundToNextHighPowOfTwo(limit_num, 4)) {
+  switch (backends::gpu::RoundToNextHighPowOfTwo(limit_num, 4)) {
     IMPL_CONCATE_CUDA_KERNEL_HELPER(
         IMPL_COMPLEX_CONCAT_CUDA_KERNEL_CASE,
         ConcatTensorWithDifferentShape<IndexT, MovSize, decltype(ptr_col_array)>
@@ -396,7 +396,7 @@ void DispatchConcatWithSameShapeKernelLimitNum(
     __VA_ARGS__;                                                          \
   } break;
 
-  switch (phi::backends::gpu::RoundToNextHighPowOfTwo(limit_num, 4)) {
+  switch (backends::gpu::RoundToNextHighPowOfTwo(limit_num, 4)) {
     IMPL_CONCATE_CUDA_KERNEL_HELPER(
         IMPL_CONCAT_CUDA_KERNEL_CASE,
         ConcatTensorWithSameShape<IndexT, MovSize, decltype(ptr_array)>

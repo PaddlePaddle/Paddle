@@ -317,14 +317,12 @@ struct ReduceConfig {
     const int max_num_threads =
         MaxThreadsConfig<T>::MAX_NUM_THREADS / output_vec_size;
 
-    int dim0_pow2 =
-        (dim0 < max_num_threads)
-            ? static_cast<int>(phi::backends::gpu::GetLastPow2(dim0))
-            : max_num_threads;
-    int dim1_pow2 =
-        (dim1 < max_num_threads)
-            ? static_cast<int>(phi::backends::gpu::GetLastPow2(dim1))
-            : max_num_threads;
+    int dim0_pow2 = (dim0 < max_num_threads)
+                        ? static_cast<int>(backends::gpu::GetLastPow2(dim0))
+                        : max_num_threads;
+    int dim1_pow2 = (dim1 < max_num_threads)
+                        ? static_cast<int>(backends::gpu::GetLastPow2(dim1))
+                        : max_num_threads;
     block_width = std::min(dim0_pow2, WARP_SIZE);
     block_height =
         std::min(dim1_pow2, static_cast<int>(max_num_threads / block_width));
@@ -348,8 +346,8 @@ struct ReduceConfig {
   dim3 GetBlockDim() const { return dim3(block_width, block_height); }
 
   dim3 GetGridDim() const {
-    return dim3(phi::backends::gpu::DivUp<int64_t>(
-                    num_outputs / output_vec_size, step_output),
+    return dim3(backends::gpu::DivUp<int64_t>(num_outputs / output_vec_size,
+                                              step_output),
                 ctas_per_output);
   }
 
@@ -459,7 +457,7 @@ struct ReduceConfig {
   }
 
   int ValuesPerThread() const {
-    return phi::backends::gpu::DivUp<int64_t>(num_inputs, step_input);
+    return backends::gpu::DivUp<int64_t>(num_inputs, step_input);
   }
 };
 
@@ -582,12 +580,12 @@ ReduceConfig SetReduceConfig(const DenseTensorIterator& iter) {
     // Calculate optimal block splitting strategy.
     // Based on SM utilization.
     int ctas_per_output1 =
-        phi::backends::gpu::DivUp<int64_t>(target_grid_size, grid);
+        backends::gpu::DivUp<int64_t>(target_grid_size, grid);
     // Based on min workload.
-    int ctas_per_output2 = phi::backends::gpu::DivUp<int64_t>(
+    int ctas_per_output2 = backends::gpu::DivUp<int64_t>(
         config.ValuesPerThread(), min_values_per_thread);
     // Based on max workload.
-    int ctas_per_output3 = phi::backends::gpu::DivUp<int64_t>(
+    int ctas_per_output3 = backends::gpu::DivUp<int64_t>(
         config.ValuesPerThread(), max_values_per_thread);
 
     // Choose best splitting strategy to balance parallelism and per-thread
@@ -1311,7 +1309,7 @@ inline void GPUReduceScheduler(const KPDevice& dev_ctx,
     buffer_ptr = buffer->ptr();
     semaphores_ptr = semaphores->ptr();
 
-    phi::backends::gpu::GpuMemsetAsync(
+    backends::gpu::GpuMemsetAsync(
         semaphores_ptr, 0, config.SemaphoreSize(), stream);
   }
 

@@ -2204,7 +2204,7 @@ int get_items_per_thread(uint64_t num_slices,
                          int device_id) {
   constexpr int REGS_PER_THREAD = 40;
   constexpr int REGS_PER_BLOCK = REGS_PER_THREAD * BLOCK_THREADS;
-  const auto& prop = phi::backends::gpu::GetDeviceProperties(device_id);
+  const auto& prop = backends::gpu::GetDeviceProperties(device_id);
   int mpc = prop.multiProcessorCount;
 #ifdef PADDLE_WITH_HIP
   // HIP/DCU: hipDeviceProp_t lacks regsPerMultiprocessor and

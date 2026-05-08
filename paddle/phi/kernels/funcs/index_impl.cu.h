@@ -63,8 +63,7 @@ void IndexKernel(const KPDevice &dev_ctx, DenseTensor *out, Functor func) {
   size_t grid = 8;
   auto stream = dev_ctx.x_context()->xpu_stream;
 #else
-  auto config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, vec_size);
+  auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, vec_size);
   size_t grid = config.block_per_grid.x;
   size_t block = config.thread_per_block.x;
   auto stream = dev_ctx.stream();

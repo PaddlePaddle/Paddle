@@ -313,12 +313,12 @@ void DropoutFwGPUKernelDriver(
       offset = cfg.increment;
     } else {
       auto gpu_config =
-          phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x_numel, kVecSize);
+          backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x_numel, kVecSize);
       grid_size = gpu_config.GetGridSize();
       block_size = gpu_config.GetBlockSize();
 
       int64_t device_id = dev_ctx.GetPlace().GetDeviceId();
-      const auto& prop = phi::backends::gpu::GetDeviceProperties(device_id);
+      const auto& prop = backends::gpu::GetDeviceProperties(device_id);
       size_t max_grid_size = prop.maxThreadsPerMultiProcessor *
                              prop.multiProcessorCount / block_size;
       grid_size = std::min(grid_size, max_grid_size);
@@ -365,9 +365,9 @@ void DropoutFwGPUKernelDriver(
       auto gen_cuda = dev_ctx.GetGenerator();
       auto state_index = gen_cuda->GetStateIndex();
 
-      phi::backends::gpu::CUDAGraphNodeLauncher::parameterSetter_t
-          parameterSetter = [offset, dev_ctx_p, state_index, is_fix_seed](
-                                phi::backends::gpu::gpuKernelParams& params) {
+      backends::gpu::CUDAGraphNodeLauncher::parameterSetter_t parameterSetter =
+          [offset, dev_ctx_p, state_index, is_fix_seed](
+              backends::gpu::gpuKernelParams& params) {
             if (!is_fix_seed) {
               // we assume seed is null pointer
               // seed copy to cpu is meaningless here
@@ -386,7 +386,7 @@ void DropoutFwGPUKernelDriver(
             }
           };
 
-      phi::backends::gpu::CUDAGraphNodeLauncher::gpuKernelCallback_t
+      backends::gpu::CUDAGraphNodeLauncher::gpuKernelCallback_t
           cudaKernelCallback = [=](unsigned int id) {
             void* functionPtr =
                 reinterpret_cast<void*>(&(VectorizedRandomGenerator<T>));
@@ -414,7 +414,7 @@ void DropoutFwGPUKernelDriver(
                                                        main_offset);
             return cudaFunc;
           };
-      phi::backends::gpu::CUDAGraphNodeLauncher::Instance().KernelNodeLaunch(
+      backends::gpu::CUDAGraphNodeLauncher::Instance().KernelNodeLaunch(
           parameterSetter, cudaKernelCallback);
 
       VLOG(10) << "NON_CUDA_GRAPH seed = " << seed_data

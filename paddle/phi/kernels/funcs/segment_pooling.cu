@@ -276,7 +276,7 @@ void SegmentPoolCUDAGradFunctor(const GPUContext& dev_ctx,
   auto h = ArrangeHelper<Index>(
       input.numel(), segment_ids.dims()[0], output.dims()[0]);
   auto config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, h.total_stripe_count);
+      backends::gpu::GetGpuLaunchConfig1D(dev_ctx, h.total_stripe_count);
   if (pooltype == "MAX" || pooltype == "MIN") {
     SegmentIndexGradKernel<T, Index, ArrangeHelper<Index>>
         <<<config.block_per_grid.x,
@@ -330,7 +330,7 @@ class SegmentPoolFunctor<GPUContext, T, IndexT> {
       auto total_stripe_count =
           (input_length_size + DimTileSize - 1) / DimTileSize;
       auto config =
-          phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total_stripe_count);
+          backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total_stripe_count);
       SegmentSumIdsKernel<T, IndexT, IndexT(8)>
           <<<config.block_per_grid.x,
              config.thread_per_block.x,
@@ -344,7 +344,7 @@ class SegmentPoolFunctor<GPUContext, T, IndexT> {
     auto h = ArrangeHelper<IndexT>(
         input.numel(), segment_ids.dims()[0], output->dims()[0]);
     auto config =
-        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, h.total_stripe_count);
+        backends::gpu::GetGpuLaunchConfig1D(dev_ctx, h.total_stripe_count);
     if (pooltype == "MEAN") {
       SegmentMeanKernel<T, IndexT, IndexT(8)>
           <<<config.block_per_grid.x,
@@ -421,7 +421,7 @@ class SegmentPoolGradFunctor<GPUContext, T, IndexT> {
       phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, &mean_grad);
       int64_t len = output.dims()[0];
       int64_t dim = output.numel() / len;
-      auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, len);
+      auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, len);
       SimpleDiv<T><<<config.block_per_grid.x,
                      config.thread_per_block.x,
                      0,

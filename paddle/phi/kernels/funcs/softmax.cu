@@ -22,9 +22,9 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-using ScopedTensorDescriptor = phi::backends::gpu::ScopedTensorDescriptor;
+using ScopedTensorDescriptor = backends::gpu::ScopedTensorDescriptor;
 template <typename T>
-using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
+using CudnnDataType = backends::gpu::CudnnDataType<T>;
 
 template <typename T, typename DeviceContext>
 void SoftmaxCUDNNFunctor<T, DeviceContext>::operator()(

@@ -325,7 +325,7 @@ void distribution_and_transform(const GPUContext &dev_ctx,
     size_t expect_grid_size = (size + block_size - 1) / block_size;
 
     int64_t device_id = dev_ctx.GetPlace().GetDeviceId();
-    const auto &prop = phi::backends::gpu::GetDeviceProperties(device_id);
+    const auto &prop = backends::gpu::GetDeviceProperties(device_id);
 
     size_t max_grid_size = (prop.maxThreadsPerMultiProcessor / block_size) *
                            prop.multiProcessorCount;

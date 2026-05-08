@@ -214,7 +214,7 @@ void GPUScatterAssign(const GPUContext& dev_ctx,
   int block = 512;
   int64_t n = slice_size * index_size;
   dim3 grid = dim3((n + block - 1) / block);
-  phi::backends::gpu::LimitGridDim(dev_ctx, &grid);
+  backends::gpu::LimitGridDim(dev_ctx, &grid);
 
   // if not overwrite mode, init data
   if (!overwrite) {
@@ -236,8 +236,8 @@ void GPUScatterAssign(const GPUContext& dev_ctx,
   }
 
   constexpr int loop_count = 4;
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
-      dev_ctx, n, vec_size * loop_count);
+  auto config =
+      backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n, vec_size * loop_count);
   switch (vec_size) {
 #define CASE_VEC_SIZE(__Sz)                                                \
   case __Sz:                                                               \
@@ -282,7 +282,7 @@ void GPUScatterGradForX(const GPUContext& dev_ctx,
   int64_t n = slice_size * index_size;
   int64_t height = (n + block - 1) / block;
   dim3 grid = dim3((n + block - 1) / block);
-  phi::backends::gpu::LimitGridDim(dev_ctx, &grid);
+  backends::gpu::LimitGridDim(dev_ctx, &grid);
 
   ScatterInitCUDAKernel<T, IndexT><<<grid, block, 0, dev_ctx.stream()>>>(
       p_index, p_output, dst_dims[0], index_size, slice_size);
@@ -328,7 +328,7 @@ void GPUScatterNdAdd(const GPUContext& dev_ctx,
   }
 
   constexpr int loop_count = 4;
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+  auto config = backends::gpu::GetGpuLaunchConfig1D(
       dev_ctx, remain_numel * slice_size, vec_size * loop_count);
 
   auto stream = dev_ctx.stream();

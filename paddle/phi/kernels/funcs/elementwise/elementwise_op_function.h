@@ -871,7 +871,7 @@ static __global__ void FusedElemwiseAndActGradBroadcast1CUDAKernel(
 #pragma unroll
     for (int i = BLOCK_X >> 1; i > 0; i >>= 1) {
       // reduce sum with wrap
-      val += phi::backends::gpu::CudaShuffleXorSync(0xFFFFFFFF, val, i);
+      val += backends::gpu::CudaShuffleXorSync(0xFFFFFFFF, val, i);
     }
 
     size_t idx_j = j + static_cast<size_t>(threadIdx.y);
@@ -894,7 +894,7 @@ static __global__ void FusedElemwiseAndActGradBroadcast1CUDAKernel(
         for (int i = BLOCK_X >> 1; i > 0; i >>= 1) {
           // reduce sum with wrap
           inter_val +=
-              phi::backends::gpu::CudaShuffleXorSync(0xFFFFFFFF, inter_val, i);
+              backends::gpu::CudaShuffleXorSync(0xFFFFFFFF, inter_val, i);
         }
         if (threadIdx.x == 0 && (idx_j < w)) d_intermediate[idx_j] = inter_val;
       }
@@ -1050,14 +1050,14 @@ static __global__ void FusedElemwiseAndActGradBroadcast2CUDAKernel(
   h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
   if (BcastY) {
     if (dy) {
-      val = phi::backends::gpu::reduceSum(val, tid, h);
+      val = backends::gpu::reduceSum(val, tid, h);
       if (threadIdx.x == 0) {
         dy[j] = val;
       }
     }
   } else {
     if (dx) {
-      val = phi::backends::gpu::reduceSum(val, tid, h);
+      val = backends::gpu::reduceSum(val, tid, h);
       if (threadIdx.x == 0) {
         dx[j] = val;
       }
@@ -1065,7 +1065,7 @@ static __global__ void FusedElemwiseAndActGradBroadcast2CUDAKernel(
   }
   if (!SameShapeOfIntermediateOutAndOut) {
     if (d_intermediate) {
-      inter_val = phi::backends::gpu::reduceSum(inter_val, tid, h);
+      inter_val = backends::gpu::reduceSum(inter_val, tid, h);
       if (threadIdx.x == 0) {
         d_intermediate[j] = inter_val;
       }

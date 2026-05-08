@@ -536,7 +536,7 @@ static __global__ void FastCommonGradBroadcastOneCUDAKernel(const T *x,
     }
     if (dd) {
       int h = n > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : n;
-      val = phi::backends::gpu::reduceSum(val, tid, h);
+      val = backends::gpu::reduceSum(val, tid, h);
       if (tid == 0) {
         dd[bid] = val;
       }
@@ -559,7 +559,7 @@ static __global__ void FastCommonGradBroadcastOneCUDAKernel(const T *x,
     }
     if (dd) {
       int h = n > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : n;
-      val = phi::backends::gpu::reduceSum(val, tid, h);
+      val = backends::gpu::reduceSum(val, tid, h);
       if (tid == 0) {
         dd[bid] = val;
       }
@@ -605,7 +605,7 @@ static __global__ void FastCommonGradBroadcastAllCUDAKernel(
     }
     if (dy) {
       int h = n > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : n;
-      val = phi::backends::gpu::reduceSum(val, tid, h);
+      val = backends::gpu::reduceSum(val, tid, h);
       if (tid == 0) {
         dy[bid] = val;
       }
@@ -626,7 +626,7 @@ static __global__ void FastCommonGradBroadcastAllCUDAKernel(
     }
     if (dx) {
       int h = n > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : n;
-      val = phi::backends::gpu::reduceSum(val, tid, h);
+      val = backends::gpu::reduceSum(val, tid, h);
       if (tid == 0) {
         dx[bid] = val;
       }
@@ -672,8 +672,7 @@ static __global__ void FastCommonGradBroadcastCUDAKernelHeight(const T *x,
       if (dy) {
         T my_val = sdata[THREAD_ID_X][THREAD_ID_Y];
         for (int i = warpSize >> 1; i > 0; i >>= 1) {
-          my_val +=
-              phi::backends::gpu::CudaShuffleXorSync(0xFFFFFFFF, my_val, i);
+          my_val += backends::gpu::CudaShuffleXorSync(0xFFFFFFFF, my_val, i);
         }
         __syncthreads();
         if ((THREAD_ID_X == 0)) {
@@ -702,8 +701,7 @@ static __global__ void FastCommonGradBroadcastCUDAKernelHeight(const T *x,
       if (dy) {
         T my_val = sdata[THREAD_ID_X][THREAD_ID_Y];
         for (int i = warpSize >> 1; i > 0; i >>= 1) {
-          my_val +=
-              phi::backends::gpu::CudaShuffleXorSync(0xFFFFFFFF, my_val, i);
+          my_val += backends::gpu::CudaShuffleXorSync(0xFFFFFFFF, my_val, i);
         }
         __syncthreads();
         if ((THREAD_ID_X == 0)) {
@@ -748,7 +746,7 @@ static __global__ void CommonGradBroadcast1CUDAKernelHeight(const T *x,
 
       if (dy) {
         h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
-        val = phi::backends::gpu::reduceSum(val, tid, static_cast<int>(h));
+        val = backends::gpu::reduceSum(val, tid, static_cast<int>(h));
         if (THREAD_ID_X == 0) {
           dy[j] = val;
         }
@@ -765,7 +763,7 @@ static __global__ void CommonGradBroadcast1CUDAKernelHeight(const T *x,
 
       if (dy) {
         h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
-        val = phi::backends::gpu::reduceSum(val, tid, static_cast<int>(h));
+        val = backends::gpu::reduceSum(val, tid, static_cast<int>(h));
         if (THREAD_ID_X == 0) {
           dy[j] = val;
         }
@@ -810,7 +808,7 @@ static __global__ void ElemwiseGradBroadcast1CUDAKernel(const T *x,
 
       if (dy) {
         h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
-        val = phi::backends::gpu::reduceSum(val, tid, static_cast<int>(h));
+        val = backends::gpu::reduceSum(val, tid, static_cast<int>(h));
         if (THREAD_ID_X == 0) {
           dy[j] = val;
         }
@@ -830,7 +828,7 @@ static __global__ void ElemwiseGradBroadcast1CUDAKernel(const T *x,
 
       if (dx) {
         h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
-        val = phi::backends::gpu::reduceSum(val, tid, static_cast<int>(h));
+        val = backends::gpu::reduceSum(val, tid, static_cast<int>(h));
         if (THREAD_ID_X == 0) {
           dx[j] = val;
         }
@@ -887,8 +885,7 @@ static __global__ void FastElemwiseGradBroadcast1CUDAKernel(
       if (dy) {
         T my_val = sdata[THREAD_ID_X][THREAD_ID_Y];
         for (int i = warpSize >> 1; i > 0; i >>= 1)
-          my_val +=
-              phi::backends::gpu::CudaShuffleXorSync(0xFFFFFFFF, my_val, i);
+          my_val += backends::gpu::CudaShuffleXorSync(0xFFFFFFFF, my_val, i);
         __syncthreads();
         if ((THREAD_ID_X == 0)) {
           sdata[0][THREAD_ID_Y] = my_val;
@@ -919,8 +916,7 @@ static __global__ void FastElemwiseGradBroadcast1CUDAKernel(
       if (dx) {
         T my_val = sdata[THREAD_ID_X][THREAD_ID_Y];
         for (int i = warpSize >> 1; i > 0; i >>= 1)
-          my_val +=
-              phi::backends::gpu::CudaShuffleXorSync(0xFFFFFFFF, my_val, i);
+          my_val += backends::gpu::CudaShuffleXorSync(0xFFFFFFFF, my_val, i);
         __syncthreads();
         if ((THREAD_ID_X == 0)) {
           sdata[0][THREAD_ID_Y] = my_val;
@@ -978,7 +974,7 @@ static __global__ void ElemwiseGradBroadcast2CUDAKernel(const T *x,
       if (dy) {
         IndexType h = pre * post;
         h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
-        val = phi::backends::gpu::reduceSum(val, tid, static_cast<int>(h));
+        val = backends::gpu::reduceSum(val, tid, static_cast<int>(h));
         if (THREAD_ID_X == 0) {
           dy[j] = val;
         }
@@ -1006,7 +1002,7 @@ static __global__ void ElemwiseGradBroadcast2CUDAKernel(const T *x,
       if (dx) {
         IndexType h = pre * post;
         h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
-        val = phi::backends::gpu::reduceSum(val, tid, static_cast<int>(h));
+        val = backends::gpu::reduceSum(val, tid, static_cast<int>(h));
         if (THREAD_ID_X == 0) {
           dx[j] = val;
         }
@@ -1142,7 +1138,7 @@ __global__ void CommonGradBroadcastCUDAKernel(const int64_t *x_strides_array,
   }
   thread_num =
       thread_num > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : thread_num;
-  val = phi::backends::gpu::reduceSum(val, tid, static_cast<int>(thread_num));
+  val = backends::gpu::reduceSum(val, tid, static_cast<int>(thread_num));
   if (THREAD_ID_X == 0) {
     dx[i] = val;
   }
@@ -1804,7 +1800,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
       reinterpret_cast<int64_t *>(y_strides_array_gpu + max_dim);
 
   const int64_t *stable_x_strides =
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
           reinterpret_cast<int64_t *>(x_strides_array.data()),
           x_strides_array.size());
   memory_utils::Copy(gplace,
@@ -1814,7 +1810,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
                      bytes,
                      dev_ctx.stream());
   const int64_t *stable_y_strides =
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
           reinterpret_cast<int64_t *>(y_strides_array.data()),
           y_strides_array.size());
   memory_utils::Copy(gplace,
@@ -1824,7 +1820,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
                      bytes,
                      dev_ctx.stream());
   const int64_t *stable_out_dims =
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
           out_dims_array, bytes / sizeof(int64_t));
   memory_utils::Copy(gplace,
                      out_dims_array_gpu,
@@ -1853,7 +1849,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
         reinterpret_cast<int64_t *>(x_strides_order_gpu + max_dim);
 
     const int64_t *stable_x_strides_order =
-        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+        backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
             reinterpret_cast<int64_t *>(x_strides_order.data()),
             x_strides_order.size());
     memory_utils::Copy(gplace,
@@ -1863,7 +1859,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
                        bytes,
                        dev_ctx.stream());
     const int64_t *stable_x_dims_order =
-        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+        backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
             reinterpret_cast<int64_t *>(x_dims_order.data()),
             x_dims_order.size());
     memory_utils::Copy(gplace,
@@ -1919,7 +1915,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
         reinterpret_cast<int64_t *>(y_strides_order_gpu + max_dim);
 
     const int64_t *stable_y_strides_order =
-        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+        backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
             reinterpret_cast<int64_t *>(y_strides_order.data()),
             y_strides_order.size());
     memory_utils::Copy(gplace,
@@ -1929,7 +1925,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
                        bytes,
                        dev_ctx.stream());
     const int64_t *stable_y_dims_order =
-        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+        backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
             reinterpret_cast<int64_t *>(y_dims_order.data()),
             y_dims_order.size());
     memory_utils::Copy(gplace,

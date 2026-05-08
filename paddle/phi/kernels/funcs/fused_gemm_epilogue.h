@@ -417,11 +417,11 @@ void ComputeFusedGemmEpilogueForward(const GPUContext& dev_ctx,
   auto* out_data = out->data<T>();
 
 #ifdef PADDLE_WITH_HIP
-  hipDataType_t mat_type = phi::backends::gpu::ToHipBlasLtDataType<T>();
-  hipDataType_t scale_type = phi::backends::gpu::ToHipBlasLtDataType<MT>();
+  hipDataType_t mat_type = backends::gpu::ToHipBlasLtDataType<T>();
+  hipDataType_t scale_type = backends::gpu::ToHipBlasLtDataType<MT>();
 #else
-  cudaDataType_t mat_type = phi::backends::gpu::ToCudaDataType<T>();
-  cudaDataType_t scale_type = phi::backends::gpu::ToCudaDataType<MT>();
+  cudaDataType_t mat_type = backends::gpu::ToCudaDataType<T>();
+  cudaDataType_t scale_type = backends::gpu::ToCudaDataType<MT>();
 #endif
   GPU(blasComputeType_t) compute_type = BLASLT_CONSTANT(BLAS_COMPUTE_32F);
   if (std::is_same<T, double>::value) {
@@ -718,11 +718,11 @@ void ComputeFusedGemmEpilogueBackwardImplDev(const GPUContext& dev_ctx,
   using Trait = FusedGEMMGradTrait<TransX, TransY>;
 
 #ifdef PADDLE_WITH_HIP
-  hipDataType_t mat_type = phi::backends::gpu::ToHipBlasLtDataType<T>();
-  hipDataType_t scale_type = phi::backends::gpu::ToHipBlasLtDataType<MT>();
+  hipDataType_t mat_type = backends::gpu::ToHipBlasLtDataType<T>();
+  hipDataType_t scale_type = backends::gpu::ToHipBlasLtDataType<MT>();
 #else
-  cudaDataType_t mat_type = phi::backends::gpu::ToCudaDataType<T>();
-  cudaDataType_t scale_type = phi::backends::gpu::ToCudaDataType<MT>();
+  cudaDataType_t mat_type = backends::gpu::ToCudaDataType<T>();
+  cudaDataType_t scale_type = backends::gpu::ToCudaDataType<MT>();
 #endif
   GPU(blasComputeType_t) compute_type = BLASLT_CONSTANT(BLAS_COMPUTE_32F);
   if (std::is_same<T, double>::value) {
@@ -805,10 +805,9 @@ void ComputeFusedGemmEpilogueBackwardImplDev(const GPUContext& dev_ctx,
     auto b_trans = BoolToCuBlasEnum(Trait::kXGradBTrans);
 
 #ifdef PADDLE_WITH_HIP
-    hipDataType_t dx_blaslt_type =
-        phi::backends::gpu::ToHipBlasLtDataType<DXT>();
+    hipDataType_t dx_blaslt_type = backends::gpu::ToHipBlasLtDataType<DXT>();
 #else
-    cudaDataType_t dx_blaslt_type = phi::backends::gpu::ToCudaDataType<DXT>();
+    cudaDataType_t dx_blaslt_type = backends::gpu::ToCudaDataType<DXT>();
 #endif
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::GPU(blasLtMatrixLayoutCreate)(
         &dx_desc, dx_blaslt_type, x_col, x_row, x_col));
@@ -925,10 +924,9 @@ void ComputeFusedGemmEpilogueBackwardImplDev(const GPUContext& dev_ctx,
     auto b_trans = BoolToCuBlasEnum(Trait::kYGradBTrans);
 
 #ifdef PADDLE_WITH_HIP
-    hipDataType_t dy_blaslt_type =
-        phi::backends::gpu::ToHipBlasLtDataType<DXT>();
+    hipDataType_t dy_blaslt_type = backends::gpu::ToHipBlasLtDataType<DXT>();
 #else
-    cudaDataType_t dy_blaslt_type = phi::backends::gpu::ToCudaDataType<DXT>();
+    cudaDataType_t dy_blaslt_type = backends::gpu::ToCudaDataType<DXT>();
 #endif
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::GPU(blasLtMatrixLayoutCreate)(
         &dy_desc, dy_blaslt_type, y_col, y_row, y_col));

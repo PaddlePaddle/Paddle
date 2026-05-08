@@ -282,8 +282,7 @@ void MatrixSolveFunctor<Context, T>::operator()(const Context& dev_ctx,
   perm.Resize({batch_size * n});
   dev_ctx.template Alloc<int>(&perm);
 
-  auto config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, batch_size * 32);
+  auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, batch_size * 32);
   auto stream = dev_ctx.stream();
   UnpackPivot<<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
       gpu_pivot_ptr, perm.data<int>(), batch_size, n);

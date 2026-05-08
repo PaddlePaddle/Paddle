@@ -40,7 +40,7 @@ inline CONTEXT_TYPE *GetCurrentContext() {
       static_cast<CustomContext *>(DeviceContextPool::Instance().Get(gplace));
   return dev_ctx;
 #elif defined(__NVCC__) || defined(__HIPCC__)
-  auto gplace = GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
+  auto gplace = GPUPlace(backends::gpu::GetCurrentDeviceId());
   auto *dev_ctx =
       static_cast<GPUContext *>(DeviceContextPool::Instance().Get(gplace));
   return dev_ctx;

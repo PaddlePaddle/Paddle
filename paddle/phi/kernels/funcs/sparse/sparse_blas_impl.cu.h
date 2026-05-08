@@ -595,7 +595,7 @@ void SparseBlas<GPUContext>::SPGEMM(bool transa,
         a_crows_data, a_rows, static_cast<int32_t*>(tmp_buffer_ptr));
 #ifdef PADDLE_WITH_CUDA
     PADDLE_ENFORCE_EQ(
-        phi::backends::gpu::IsCUDAGraphCapturing(),
+        backends::gpu::IsCUDAGraphCapturing(),
         false,
         common::errors::InvalidArgument(
             "SparseBlas CsrMM does not support CUDA Graph capture: async D2H "
@@ -604,19 +604,19 @@ void SparseBlas<GPUContext>::SPGEMM(bool transa,
             "vectors are re-created at different addresses, causing "
             "dangling-pointer writes."));
 #endif
-    phi::backends::gpu::GpuMemcpyAsync(a_batch_nnz_vec.data(),
-                                       tmp_buffer_ptr,
-                                       batch_size * sizeof(int32_t),
-                                       gpuMemcpyDeviceToHost,
-                                       dev_ctx_.stream());
+    backends::gpu::GpuMemcpyAsync(a_batch_nnz_vec.data(),
+                                  tmp_buffer_ptr,
+                                  batch_size * sizeof(int32_t),
+                                  gpuMemcpyDeviceToHost,
+                                  dev_ctx_.stream());
 
     GetCsrBatchNnz<T><<<1, batch_size, 0, dev_ctx_.stream()>>>(
         b_crows_data, b_rows, static_cast<int32_t*>(tmp_buffer_ptr));
-    phi::backends::gpu::GpuMemcpyAsync(b_batch_nnz_vec.data(),
-                                       tmp_buffer_ptr,
-                                       batch_size * sizeof(int32_t),
-                                       gpuMemcpyDeviceToHost,
-                                       dev_ctx_.stream());
+    backends::gpu::GpuMemcpyAsync(b_batch_nnz_vec.data(),
+                                  tmp_buffer_ptr,
+                                  batch_size * sizeof(int32_t),
+                                  gpuMemcpyDeviceToHost,
+                                  dev_ctx_.stream());
   }
 
   std::vector<DenseTensor> out_batch_cols_vec(batch_size);

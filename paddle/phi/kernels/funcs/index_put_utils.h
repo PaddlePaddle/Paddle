@@ -204,9 +204,8 @@ T** GetDevicePointerArray(const Context& dev_ctx,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   size_t nbytes_idx = h_indices_v.size() * sizeof(T*);
 #ifdef PADDLE_WITH_CUDA
-  const void* stable_idx =
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
-          reinterpret_cast<uint8_t*>(h_indices_v.data()), nbytes_idx);
+  const void* stable_idx = backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      reinterpret_cast<uint8_t*>(h_indices_v.data()), nbytes_idx);
 #else
   const void* stable_idx = reinterpret_cast<const void*>(h_indices_v.data());
 #endif
@@ -336,7 +335,7 @@ DenseTensor GetRangeCudaTensor(const Context& dev_ctx,
   res.Resize({N});
   DenseTensor* p_res = &res;
   T* out = dev_ctx.template Alloc<T>(p_res);
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, N);
+  auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, N);
   range_cuda_kernel<T>
       <<<config.block_per_grid, config.thread_per_block, 0, dev_ctx.stream()>>>(
           N, out);

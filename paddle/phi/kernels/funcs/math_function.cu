@@ -102,7 +102,7 @@ void BatchTranspose(T* output,
                     int64_t n,
                     const GPUContext* dev_ctx) {
   int64_t device_id = dev_ctx->GetPlace().GetDeviceId();
-  const auto& prop = phi::backends::gpu::GetDeviceProperties(device_id);
+  const auto& prop = backends::gpu::GetDeviceProperties(device_id);
   int max_grid_y = prop.maxGridSize[1];
   int64_t input_num = batch * m * n;
 

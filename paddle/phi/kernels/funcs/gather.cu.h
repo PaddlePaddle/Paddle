@@ -113,7 +113,7 @@ void GPUGatherNd(const GPUContext& dev_ctx,
   }
 
   constexpr int loop_count = 4;
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+  auto config = backends::gpu::GetGpuLaunchConfig1D(
       dev_ctx, remain_numel * slice_size, vec_size * loop_count);
 
   auto stream = dev_ctx.stream();
@@ -255,7 +255,7 @@ void GatherV2CUDAFunction(const DenseTensor* input,
   }
 
   constexpr int loop_count = 4;
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+  auto config = backends::gpu::GetGpuLaunchConfig1D(
       dev_ctx, out_size, vec_size * loop_count);
   auto stream = dev_ctx.stream();
   switch (vec_size) {
@@ -329,7 +329,7 @@ void GatherV2GradCUDAFunction(const DenseTensor* input,
   int64_t out_index_dim_size = out_dim[axis_index];
   funcs::set_constant(dev_ctx, out, static_cast<float>(0.0));
 
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, input_size);
+  auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, input_size);
   auto stream = dev_ctx.stream();
   GatherGradGPUKernel<T, U>
       <<<config.block_per_grid, config.thread_per_block, 0, stream>>>(

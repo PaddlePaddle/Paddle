@@ -309,9 +309,9 @@ __forceinline__ __device__ Pair<T> WarpReduce(Pair<T> input,
 #pragma unroll
     for (int offset = WARP_SIZE / 2; offset > 0; offset >>= 1) {
       T tmp_val =
-          phi::backends::gpu::CudaShuffleDownSync(FINAL_MASK, input.v, offset);
+          backends::gpu::CudaShuffleDownSync(FINAL_MASK, input.v, offset);
       int64_t tmp_id =
-          phi::backends::gpu::CudaShuffleDownSync(FINAL_MASK, input.id, offset);
+          backends::gpu::CudaShuffleDownSync(FINAL_MASK, input.id, offset);
       if (input.v < tmp_val || (input.v == tmp_val && input.id > tmp_id)) {
         input.v = tmp_val;
         input.id = tmp_id;
@@ -321,9 +321,9 @@ __forceinline__ __device__ Pair<T> WarpReduce(Pair<T> input,
 #pragma unroll
     for (int offset = WARP_SIZE / 2; offset > 0; offset >>= 1) {
       T tmp_val =
-          phi::backends::gpu::CudaShuffleDownSync(FINAL_MASK, input.v, offset);
+          backends::gpu::CudaShuffleDownSync(FINAL_MASK, input.v, offset);
       int64_t tmp_id =
-          phi::backends::gpu::CudaShuffleDownSync(FINAL_MASK, input.id, offset);
+          backends::gpu::CudaShuffleDownSync(FINAL_MASK, input.id, offset);
       if (input.v > tmp_val || (input.v == tmp_val && input.id > tmp_id)) {
         input.v = tmp_val;
         input.id = tmp_id;
@@ -386,7 +386,7 @@ __device__ __forceinline__ void BlockReduce(Pair<T> shared_max[],
     unsigned mask = 0u;
     CREATE_SHFL_MASK(mask, true);
     if (tid_max / WARP_SIZE == wid) {
-      if (phi::backends::gpu::CudaShuffleSync(
+      if (backends::gpu::CudaShuffleSync(
               mask, *beam, tid_max % WARP_SIZE, WARP_SIZE) == MaxLength)
         break;
     }

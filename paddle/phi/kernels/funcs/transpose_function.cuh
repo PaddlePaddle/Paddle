@@ -748,7 +748,7 @@ void SendSwapDim1And2InTranspose(const GPUContext& d,
     IndexType total_elements = input_dims[0];
     total_elements *= input_dims[1];
     total_elements *= input_dims[2];
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(d, total_elements);
+    auto config = backends::gpu::GetGpuLaunchConfig1D(d, total_elements);
     TransposeSimpleKernel<T, 0, 2, 1, IndexType>
         <<<config.block_per_grid.x, config.thread_per_block.x, 0, d.stream()>>>(
             total_elements, input, input_dims, output);
@@ -783,7 +783,7 @@ struct SwapDim0And2InTranspose {
     IndexType total_size = combined_dims[0];
     total_size *= combined_dims[1];
     total_size *= combined_dims[2];
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(d, total_size);
+    auto config = backends::gpu::GetGpuLaunchConfig1D(d, total_size);
 
     TransposeSimpleKernel<T, 2, 1, 0, IndexType>
         <<<config.block_per_grid.x, config.thread_per_block.x, 0, d.stream()>>>(
@@ -1403,7 +1403,7 @@ struct PermuteLauncher {
            const IndexT& count,
            const T* src,
            T* dst) {
-    auto cfg = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, main_cnt_);
+    auto cfg = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, main_cnt_);
     if (perm_type == PermuteType::kVecPermute) {
       dims_[Rank - 1] /= VecSize;
       const auto params = PermuteParams<IndexT, Rank>(dims_, perm);
@@ -1561,11 +1561,11 @@ inline void PermuteAndTranspose(
                                           dst_data);
   if (classifier.GetPermType() == PermuteType::kCopy) {
     // If perm is [0,1,2,3], then just operate a DtoD copy.
-    phi::backends::gpu::GpuMemcpyAsync(dst_data,
-                                       src_data,
-                                       count * sizeof(T),
-                                       phi::gpuMemcpyDeviceToDevice,
-                                       dev_ctx.stream());
+    backends::gpu::GpuMemcpyAsync(dst_data,
+                                  src_data,
+                                  count * sizeof(T),
+                                  phi::gpuMemcpyDeviceToDevice,
+                                  dev_ctx.stream());
   } else {
     if (count < std::numeric_limits<uint32_t>::max()) {
       PermuteDispatch<T, uint32_t>(dev_ctx,

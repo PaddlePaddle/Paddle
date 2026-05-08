@@ -127,7 +127,7 @@ void ScatterV2(const GPUContext& dev_ctx,
                T* output) {
   const int VecSize = VecBytes / sizeof(T);
   if (channels % VecSize == 0) {
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+    auto config = backends::gpu::GetGpuLaunchConfig1D(
         dev_ctx, non_zero_num * channels / VecSize, 1);
     ScatterKernelV2<T, VecSize><<<config.block_per_grid.x,
                                   config.thread_per_block.x,
@@ -141,7 +141,7 @@ void ScatterV2(const GPUContext& dev_ctx,
                                                       buffer_counts,
                                                       output);
   } else {
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+    auto config = backends::gpu::GetGpuLaunchConfig1D(
         dev_ctx, non_zero_num * channels, 1);
     ScatterKernelV2<T, 1><<<config.block_per_grid.x,
                             config.thread_per_block.x,

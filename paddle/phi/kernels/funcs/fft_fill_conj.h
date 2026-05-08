@@ -176,8 +176,8 @@ void FFTFillConj(const DeviceContext& dev_ctx,
   auto cplace = CPUPlace();
   const auto gplace = dev_ctx.GetPlace();
   const int64_t* stable_src_strides =
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
-          src_strides_v.data(), src_strides_v.size());
+      backends::gpu::RestoreHostMemIfCapturingCUDAGraph(src_strides_v.data(),
+                                                        src_strides_v.size());
   memory_utils::Copy(gplace,
                      src_strides,
                      cplace,
@@ -185,8 +185,8 @@ void FFTFillConj(const DeviceContext& dev_ctx,
                      sizeof(int64_t) * src_strides_v.size(),
                      dev_ctx.stream());
   const int64_t* stable_dst_strides =
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
-          dst_strides_v.data(), dst_strides_v.size());
+      backends::gpu::RestoreHostMemIfCapturingCUDAGraph(dst_strides_v.data(),
+                                                        dst_strides_v.size());
   memory_utils::Copy(gplace,
                      dst_strides,
                      cplace,
@@ -194,8 +194,8 @@ void FFTFillConj(const DeviceContext& dev_ctx,
                      sizeof(int64_t) * dst_strides_v.size(),
                      dev_ctx.stream());
   const int64_t* stable_dst_shape =
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
-          dst_shape_v.data(), dst_shape_v.size());
+      backends::gpu::RestoreHostMemIfCapturingCUDAGraph(dst_shape_v.data(),
+                                                        dst_shape_v.size());
   memory_utils::Copy(gplace,
                      dst_shape,
                      cplace,
@@ -203,7 +203,7 @@ void FFTFillConj(const DeviceContext& dev_ctx,
                      sizeof(int64_t) * dst_shape_v.size(),
                      dev_ctx.stream());
   const bool* stable_is_fft_axis =
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
           _is_fft_axis.get(), static_cast<size_t>(rank));
   memory_utils::Copy(gplace,
                      p_is_fft_axis,

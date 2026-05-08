@@ -46,9 +46,8 @@ inline DenseTensor GetOffsets(const Context& dev_ctx,
   DenseTensor strides = Empty<IntT>(dev_ctx, strides_shape);
   auto strides_ptr = strides.data<IntT>();
 #if defined(__NVCC__) || defined(__HIPCC__)
-  const IntT* stable_st =
-      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
-          host_strides.data(), host_strides.size());
+  const IntT* stable_st = backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      host_strides.data(), host_strides.size());
 #else
   const IntT* stable_st = host_strides.data();
 #endif

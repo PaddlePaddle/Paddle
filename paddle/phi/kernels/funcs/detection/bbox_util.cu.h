@@ -320,7 +320,7 @@ static void NMS(const GPUContext &dev_ctx,
 
 #ifdef __NVCC__
   PADDLE_ENFORCE_EQ(
-      phi::backends::gpu::IsCUDAGraphCapturing(),
+      backends::gpu::IsCUDAGraphCapturing(),
       false,
       common::errors::InvalidArgument(
           "NMSKernel (bbox_util) does not support CUDA Graph capture: async "
@@ -354,7 +354,7 @@ static void NMS(const GPUContext &dev_ctx,
   keep_out->Resize({num_to_keep});
   int *keep = dev_ctx.Alloc<int>(keep_out);
 #ifdef __NVCC__
-  const int *stable_kv = phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+  const int *stable_kv = backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
       const_cast<int *>(keep_vec.data()), keep_vec.size());
 #else
   const int *stable_kv = keep_vec.data();

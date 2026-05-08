@@ -60,7 +60,7 @@ __global__ void SoftCrossEntropyKernel(T* Y,
     val += funcs::TolerableValue<T>()(funcs::real_log(X[idx])) * label[idx];
   }
 
-  val = phi::backends::gpu::reduceSum(val, tid, blockDim.x);
+  val = backends::gpu::reduceSum(val, tid, blockDim.x);
   if (threadIdx.x == 0) {
     Y[blockIdx.x] = -val;
   }

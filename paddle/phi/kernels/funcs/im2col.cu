@@ -130,7 +130,7 @@ class Im2ColFunctor<funcs::ColFormat::CFO, DeviceContext, T> {
     int64_t num_outputs = im_channels * col_height * col_width;
     int num_thread = 512;
 #ifdef WITH_NV_JETSON
-    phi::backends::gpu::ChangeThreadNum(dev_ctx, &num_thread);
+    backends::gpu::ChangeThreadNum(dev_ctx, &num_thread);
 #endif
     int64_t blocks = (num_outputs + num_thread - 1) / num_thread;
     PADDLE_ENFORCE_LE_INT_MAX(blocks, "blocks");
@@ -292,7 +292,7 @@ class Col2ImFunctor<funcs::ColFormat::CFO, DeviceContext, T> {
 
     int num_thread = 512;
 #ifdef WITH_NV_JETSON
-    phi::backends::gpu::ChangeThreadNum(dev_ctx, &num_thread);
+    backends::gpu::ChangeThreadNum(dev_ctx, &num_thread);
 #endif
     int64_t blocks = (num_kernels + num_thread - 1) / num_thread;
     PADDLE_ENFORCE_LE_INT_MAX(blocks, "blocks");

@@ -87,7 +87,7 @@ DenseTensor get_pad_lse(const GPUContext& dev_ctx,
     int block = PADDLE_CUDA_NUM_THREADS;
     int64_t n = lse->numel();
     dim3 grid = dim3((n + block - 1) / block);
-    phi::backends::gpu::LimitGridDim(dev_ctx, &grid);
+    backends::gpu::LimitGridDim(dev_ctx, &grid);
     ViewSliceHelper<T><<<grid, block, 0, dev_ctx.stream()>>>(
         in_data, stride, in_dim[2], out_second_dim);
     return *lse;

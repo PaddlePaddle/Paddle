@@ -60,8 +60,7 @@ void LaunchStackKernel(const Context& dev_ctx,
                        const std::vector<const DenseTensor*>& x,
                        DenseTensor* out) {
   T* out_ptr = dev_ctx.template Alloc<T>(out);
-  auto config =
-      phi::backends::gpu::GetGpuLaunchConfig2D(dev_ctx, out_col, x_row);
+  auto config = backends::gpu::GetGpuLaunchConfig2D(dev_ctx, out_col, x_row);
 
   ConstPointerArraySetter<Context, T, Size> setter(dev_ctx, x);
   FastDivMod<IndexT> divmoder(x_col);
@@ -236,7 +235,7 @@ void LaunchUnStackKernel(const Context& dev_ctx,
             x_ptr, split_dim, out_row, tile_x_num, setter.array);
   } else {
     FastDivMod<IndexT> col_divmoder(out_col);
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+    auto config = backends::gpu::GetGpuLaunchConfig1D(
         dev_ctx, out_row * split_dim * out_col);
 
     UnStackCudaKernel<T, IndexT, decltype(setter.array)>

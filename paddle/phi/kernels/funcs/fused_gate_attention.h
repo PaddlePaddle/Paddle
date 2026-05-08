@@ -39,7 +39,7 @@ __global__ void SimpleScaleKernel(int64_t numel, float scale, T* inout) {
 }
 
 inline std::string MemoryDebugString(const DenseTensor& t) {
-  int device_id = phi::backends::gpu::GetCurrentDeviceId();
+  int device_id = backends::gpu::GetCurrentDeviceId();
   int64_t allocated =
       phi::memory_utils::DeviceMemoryStatCurrentValue("Allocated", device_id);
   int64_t reserved =
@@ -1237,8 +1237,7 @@ class FlashAttnWithGating {
     float scale = static_cast<float>(1.0f / std::sqrt(head_dim));
     VLOG(6) << "[ComputeScaleQ] numel=" << numel << ", scale=" << scale;
 
-    auto gpu_config =
-        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx_, numel, 1);
+    auto gpu_config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx_, numel, 1);
     SimpleScaleKernel<T><<<gpu_config.block_per_grid,
                            gpu_config.thread_per_block,
                            0,

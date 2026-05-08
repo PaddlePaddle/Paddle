@@ -460,7 +460,7 @@ void LaunchBroadcastKernel(
 #else
   const int64_t &numel = classifier.numel;
   auto gpu_config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, VecSize);
+      backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, VecSize);
   auto stream = dev_ctx.stream();
   auto threads = gpu_config.GetBlockSize();
   auto blocks = gpu_config.block_per_grid;

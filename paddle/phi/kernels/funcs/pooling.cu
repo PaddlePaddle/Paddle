@@ -578,7 +578,7 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
     int64_t blocks = std::min(max_threads / thread_num,
                               static_cast<int64_t>(output_channels));
     auto max_grid_dim = backends::gpu::GetGpuMaxGridDimSize(
-        phi::backends::gpu::GetCurrentDeviceId());
+        backends::gpu::GetCurrentDeviceId());
     dim3 threads(thread_num, blocks, 1);
     dim3 grid(std::max((output_channels + blocks - 1) / blocks,
                        static_cast<int64_t>(1)),
@@ -855,7 +855,7 @@ class Pool2dGradFunctor<GPUContext, PoolProcess, T> {
     T* input_grad_data = dev_ctx.template Alloc<T>(input_grad);
 
     int64_t nthreads = batch_size * input_channels * input_height * input_width;
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, nthreads);
+    auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, nthreads);
     if (input.numel() <= std::numeric_limits<int>::max() &&
         output.numel() <= std::numeric_limits<int>::max()) {
       auto pool_divmods = FastDivModForPoolingWithMoreStaff<int>(input_channels,

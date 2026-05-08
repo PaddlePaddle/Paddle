@@ -31,7 +31,7 @@ namespace phi {
 namespace funcs {
 
 template <typename T>
-using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
+using CudnnDataType = backends::gpu::CudnnDataType<T>;
 template <typename T>
 using LayerNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
@@ -64,7 +64,7 @@ static __forceinline__ __device__ U WarpReduceSum(U val) {
   unsigned mask = 0u;
   CREATE_SHFL_MASK(mask, true);
   for (int offset = warpSize / 2; offset > 0; offset /= 2) {
-    val += phi::backends::gpu::CudaShuffleDownSync(mask, val, offset);
+    val += backends::gpu::CudaShuffleDownSync(mask, val, offset);
   }
   return val;
 }

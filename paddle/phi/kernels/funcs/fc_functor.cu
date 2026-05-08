@@ -433,12 +433,12 @@ void FCInt8Functor<DeviceContext, T>::operator()(
                   cudaMemcpyHostToDevice);
 #endif
 
-  phi::backends::gpu::GpuLaunchConfig config;
+  backends::gpu::GpuLaunchConfig config;
   if (N % DequantKernelVecSize == 0) {
-    config = phi::backends::gpu::GetGpuLaunchConfig1D(
+    config = backends::gpu::GetGpuLaunchConfig1D(
         dev_ctx, M * N, DequantKernelVecSize);
   } else {
-    config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, M * N, 1);
+    config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, M * N, 1);
   }
   LaunchDequantKernelWithScaleOfInputAndWeight(quant_y_tensor.data<int32_t>(),
                                                Y,
