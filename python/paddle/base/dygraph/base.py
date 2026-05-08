@@ -618,6 +618,38 @@ class enable_grad(_DecoratorContextManager):
         _set_grad_enabled(self.prev)
 
 
+class inference_mode(_DecoratorContextManager):
+    """
+    Context-manager/decorator that enables or disables inference mode.
+
+    In this mode, the result of every computation will have `stop_gradient` set
+    to `True`. When ``mode=False``, gradient calculation is enabled.
+
+    Also functions as a decorator.
+    """
+
+    def __init__(self, mode=True) -> None:
+        self.mode = mode
+
+    def __new__(cls, mode=True):
+        if isinstance(mode, bool):
+            return super().__new__(cls)
+        return cls()(mode)
+
+    def __enter__(self) -> None:
+        if self.mode:
+            self._inference_mode_context = no_grad_()
+        else:
+            self._inference_mode_context = enable_grad()
+        self._inference_mode_context.__enter__()
+
+    def __exit__(self, *args: object) -> None:
+        self._inference_mode_context.__exit__(*args)
+
+    def clone(self) -> Self:
+        return self.__class__(self.mode)
+
+
 @signature_safe_contextmanager
 def guard(place: PlaceLike | None = None) -> Generator[None, None, None]:
     """

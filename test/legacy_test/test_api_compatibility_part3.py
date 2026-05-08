@@ -2825,23 +2825,23 @@ class TestInferenceModeAPI(unittest.TestCase):
         x = paddle.to_tensor(self.np_x, stop_gradient=False)
 
         # 1. Paddle Positional arguments
-        ctx = paddle.compat.inference_mode()
+        ctx = paddle.inference_mode()
         self.assertTrue(paddle.is_grad_enabled())
         with ctx:
             out1 = x * 2
             self.assertFalse(paddle.is_grad_enabled())
         self.assertTrue(paddle.is_grad_enabled())
         # 2. Paddle keyword arguments
-        with paddle.compat.inference_mode(mode=True):
+        with paddle.inference_mode(mode=True):
             out2 = x * 2
             self.assertFalse(paddle.is_grad_enabled())
         # 3. PyTorch keyword arguments
-        with paddle.no_grad(), paddle.compat.inference_mode(mode=False):
+        with paddle.no_grad(), paddle.inference_mode(mode=False):
             out3 = x * 2
             self.assertTrue(paddle.is_grad_enabled())
 
         # 4. Decorator without parentheses
-        @paddle.compat.inference_mode
+        @paddle.inference_mode
         def no_grad_decorated(tensor):
             out = tensor * 2
             self.assertFalse(paddle.is_grad_enabled())
@@ -2850,7 +2850,7 @@ class TestInferenceModeAPI(unittest.TestCase):
         out4 = no_grad_decorated(x)
 
         # 5. Decorator with mode=False
-        @paddle.compat.inference_mode(mode=False)
+        @paddle.inference_mode(mode=False)
         def enable_grad_decorated(tensor):
             out = tensor * 2
             self.assertTrue(paddle.is_grad_enabled())
@@ -2862,7 +2862,7 @@ class TestInferenceModeAPI(unittest.TestCase):
         def mode_func(tensor):
             return tensor * 2
 
-        out6 = paddle.compat.inference_mode(mode=mode_func)(x)
+        out6 = paddle.inference_mode(mode=mode_func)(x)
 
         # Verify all outputs
         ref_out = self.np_x * 2
@@ -2885,13 +2885,13 @@ class TestInferenceModeAPI(unittest.TestCase):
             x.stop_gradient = False
 
             # 1. Paddle Positional arguments
-            with paddle.compat.inference_mode():
+            with paddle.inference_mode():
                 out1 = x * 2
             # 2. Paddle keyword arguments
-            with paddle.compat.inference_mode(mode=True):
+            with paddle.inference_mode(mode=True):
                 out2 = x * 2
             # 3. PyTorch keyword arguments
-            with paddle.no_grad(), paddle.compat.inference_mode(mode=False):
+            with paddle.no_grad(), paddle.inference_mode(mode=False):
                 out3 = x * 2
 
             exe = paddle.static.Executor()
