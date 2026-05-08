@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <filesystem>
+#include "paddle/fluid/framework/new_executor/instruction/tensorrt_engine_instruction.h"
+
+#include <fstream>
 
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
-#include "paddle/fluid/framework/new_executor/instruction/tensorrt_engine_instruction.h"
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/interface.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
@@ -211,8 +212,10 @@ TensorRTEngineInstruction::TensorRTEngineInstruction(
   try {
     engine_data = ReadBinaryFileToString(engine_serialized_path);
   } catch (const std::exception &e) {
-    std::filesystem::path path(engine_serialized_path);
-    std::string filename = path.filename().string();
+    size_t last_slash = engine_serialized_path.find_last_of("/\\");
+    std::string filename = (last_slash == std::string::npos)
+                               ? engine_serialized_path
+                               : engine_serialized_path.substr(last_slash + 1);
     std::string file_root = FLAGS_trt_engine_serialized_path;
     engine_data = ReadBinaryFileToString(file_root + '/' + filename);
   }
