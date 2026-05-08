@@ -40,7 +40,7 @@ const char kGraphOps[] = "ops";  // NOLINT
 
 details::VarHandle *CreateOrGetLatestVarHandle(ir::Graph *graph,
                                                ir::Node *node,
-                                               const phi::Place &place,
+                                               const Place &place,
                                                size_t place_offset) {
   auto &var_holders =
       graph->Get<details::GraphVars>(details::kGraphVars)[place_offset];
@@ -72,7 +72,7 @@ details::VarHandle *CreateOrGetLatestVarHandle(ir::Graph *graph,
 void CreateOpOutput(ir::Graph *graph,
                     details::OpHandleBase *op_handle,
                     ir::Node *new_node,
-                    const phi::Place &place,
+                    const Place &place,
                     size_t place_offset) {
   auto &vars = graph->Get<details::GraphVars>(
       details::kGraphVars)[place_offset][new_node->Name()];
@@ -91,7 +91,7 @@ void MultiDevSSAGraphBuilderBase::Init() const {
 
   loss_var_name_ = Get<const std::string>(kLossVarName);
   VLOG(10) << "Init MultiDevSSAGraphBuilder, loss name: " << loss_var_name_;
-  places_ = Get<const std::vector<phi::Place>>(details::kPlaces);
+  places_ = Get<const std::vector<Place>>(details::kPlaces);
   local_scopes_ = Get<const std::vector<Scope *>>(details::kLocalScopes);
   strategy_ = Get<const details::BuildStrategy>(kStrategy);
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)

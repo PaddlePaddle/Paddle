@@ -32,11 +32,10 @@ namespace {
 
 using VarType = AutoMixedPrecisionPass::VarType;
 
-bool PhiKernelSupportPrecision(
-    const std::string& op_type,
-    phi::Backend backend,
-    DataType data_type,
-    phi::DataLayout layout = phi::DataLayout::ALL_LAYOUT) {
+bool PhiKernelSupportPrecision(const std::string& op_type,
+                               phi::Backend backend,
+                               DataType data_type,
+                               DataLayout layout = DataLayout::ALL_LAYOUT) {
   const auto& kernels = phi::KernelFactory::Instance().kernels();
   if (kernels.count(op_type) == 0) {
     return false;
@@ -45,13 +44,13 @@ bool PhiKernelSupportPrecision(
   return phi::KernelFactory::Instance().HasKernel(op_type, kernel_key);
 }
 
-static phi::Backend ConvertPlaceToBackend(const phi::Place& place) {
+static phi::Backend ConvertPlaceToBackend(const Place& place) {
   switch (place.GetType()) {
-    case phi::AllocationType::CPU:
+    case AllocationType::CPU:
       return phi::Backend::CPU;
-    case phi::AllocationType::GPU:
+    case AllocationType::GPU:
       return phi::Backend::GPU;
-    case phi::AllocationType::XPU:
+    case AllocationType::XPU:
       return phi::Backend::XPU;
     default:
       PADDLE_THROW(common::errors::InvalidArgument(
@@ -60,11 +59,10 @@ static phi::Backend ConvertPlaceToBackend(const phi::Place& place) {
   return phi::Backend::UNDEFINED;
 }
 
-bool KernelSupportPrecision(
-    const std::string& op_type,
-    phi::Backend backend,
-    DataType precision,
-    phi::DataLayout layout = phi::DataLayout::ALL_LAYOUT) {
+bool KernelSupportPrecision(const std::string& op_type,
+                            phi::Backend backend,
+                            DataType precision,
+                            DataLayout layout = DataLayout::ALL_LAYOUT) {
   auto phi_op_type = phi::TransToPhiKernelName(op_type);
 
   bool support =

@@ -31,8 +31,8 @@ namespace {
 void InsertLayoutTransOp(ir::Graph *graph,
                          ir::Node *prev_node,
                          ir::Node *next_node,
-                         phi::DataLayout from_layout,
-                         phi::DataLayout to_layout,
+                         DataLayout from_layout,
+                         DataLayout to_layout,
                          framework::BlockDesc *block_desc,
                          std::unordered_map<ir::Node *, ir::Node *> *cache) {
   auto do_insert = [&](const std::string &in_var_name,
@@ -60,7 +60,7 @@ void InsertLayoutTransOp(ir::Graph *graph,
       op_out_var_desc->SetPersistable(false);
       op_out_var_desc->SetDataType(prev_node->Var()->GetDataType());
       auto to_shape = prev_node->Var()->GetShape();
-      if (from_layout == phi::DataLayout::NCHW) {
+      if (from_layout == DataLayout::NCHW) {
         auto n = to_shape[0];
         auto c = to_shape[1];
         auto h = to_shape[2];
@@ -86,13 +86,11 @@ void InsertLayoutTransOp(ir::Graph *graph,
     IR_NODE_UNLINK(prev_node, next_node);
   };
 
-  if (from_layout == phi::DataLayout::NCHW &&
-      to_layout == phi::DataLayout::NHWC) {
+  if (from_layout == DataLayout::NCHW && to_layout == DataLayout::NHWC) {
     auto in_var_name = prev_node->Var()->Name();
     auto out_var_name = in_var_name + "_nchw_to_nhwc";
     do_insert(in_var_name, out_var_name);
-  } else if (from_layout == phi::DataLayout::NHWC &&
-             to_layout == phi::DataLayout::NCHW) {
+  } else if (from_layout == DataLayout::NHWC && to_layout == DataLayout::NCHW) {
     auto in_var_name = prev_node->Var()->Name();
     auto out_var_name = in_var_name + "_nhwc_to_nchw";
     do_insert(in_var_name, out_var_name);
@@ -259,13 +257,13 @@ void TransferLayoutPass::ApplyImpl(ir::Graph *graph) const {
       for (const auto &filter_name : filter_names) {
         auto *filter_var = scope->FindLocalVar(filter_name);
         auto *filter_tensor = filter_var->GetMutable<DenseTensor>();
-        if (filter_tensor->layout() == phi::DataLayout::NHWC) {
+        if (filter_tensor->layout() == DataLayout::NHWC) {
           continue;
         }
         DenseTensor temp_tensor;
 
-        framework::TransDataLayout(phi::DataLayout::NCHW,
-                                   phi::DataLayout::NHWC,
+        framework::TransDataLayout(DataLayout::NCHW,
+                                   DataLayout::NHWC,
                                    CPUPlace{},
                                    *filter_tensor,
                                    &temp_tensor);
@@ -317,8 +315,8 @@ void TransferLayoutPass::ApplyImpl(ir::Graph *graph) const {
         InsertLayoutTransOp(graph,
                             in_var_node,
                             op_node,
-                            phi::DataLayout::NCHW,
-                            phi::DataLayout::NHWC,
+                            DataLayout::NCHW,
+                            DataLayout::NHWC,
                             block_desc,
                             &cache);
       }
@@ -334,8 +332,8 @@ void TransferLayoutPass::ApplyImpl(ir::Graph *graph) const {
           InsertLayoutTransOp(graph,
                               in_var_node,
                               op_node,
-                              phi::DataLayout::NHWC,
-                              phi::DataLayout::NCHW,
+                              DataLayout::NHWC,
+                              DataLayout::NCHW,
                               block_desc,
                               &cache);
         }
