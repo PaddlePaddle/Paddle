@@ -107,8 +107,8 @@ void OneDNNMixedPhiKernelInstruction::Run() {
               phi::funcs::make_memory_desc(*transed_tensor, tmp_layout);
           transed_tensor->set_mem_desc(out_mem_desc);
           tmp_kernel_context.UpdataInput(i, transed_tensor);
-          auto meta_tensor = phi::MetaTensor(transed_tensor);
-          auto input_meta_tensor = phi::MetaTensor(input);
+          auto meta_tensor = MetaTensor(transed_tensor);
+          auto input_meta_tensor = MetaTensor(input);
           if (tmp_infer_meta_context_.InputsSize() > i &&
               tmp_infer_meta_context_.InputAt(i).is_same_tensor(
                   input_meta_tensor)) {
@@ -132,8 +132,8 @@ void OneDNNMixedPhiKernelInstruction::Run() {
                                                 transed_tensor,
                                                 CPUPlace());
           tmp_kernel_context.UpdataInput(i, transed_tensor);
-          auto meta_tensor = phi::MetaTensor(transed_tensor);
-          auto input_meta_tensor = phi::MetaTensor(input);
+          auto meta_tensor = MetaTensor(transed_tensor);
+          auto input_meta_tensor = MetaTensor(input);
           if (tmp_infer_meta_context_.InputsSize() > i &&
               tmp_infer_meta_context_.InputAt(i).is_same_tensor(
                   input_meta_tensor)) {
