@@ -178,7 +178,7 @@ bool RunPassAndAssert(Graph* graph,
 
 template <typename T>
 void InitDenseTensorHolder(const Scope& scope,
-                           const phi::Place& place,
+                           const Place& place,
                            const std::string& var_name,
                            const std::vector<int64_t>& dims,
                            const T* data) {
@@ -195,17 +195,17 @@ void InitDenseTensorHolder(const Scope& scope,
 
 // Instantiate for below data types.
 template void InitDenseTensorHolder<float>(const Scope&,
-                                           const phi::Place&,
+                                           const Place&,
                                            const std::string&,
                                            const std::vector<int64_t>&,
                                            const float*);
 template void InitDenseTensorHolder<int>(const Scope&,
-                                         const phi::Place&,
+                                         const Place&,
                                          const std::string&,
                                          const std::vector<int64_t>&,
                                          const int*);
 template void InitDenseTensorHolder<double>(const Scope&,
-                                            const phi::Place&,
+                                            const Place&,
                                             const std::string&,
                                             const std::vector<int64_t>&,
                                             const double*);

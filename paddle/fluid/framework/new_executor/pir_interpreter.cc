@@ -130,7 +130,7 @@ const int64_t PirInterpreter::cuda_graph_capture_pool_id_ =
     phi::backends::gpu::CUDAGraph::UniqueMemoryPoolID();
 #endif
 
-PirInterpreter::PirInterpreter(const phi::Place& place,
+PirInterpreter::PirInterpreter(const Place& place,
                                const std::vector<std::string>& fetch_var_names,
                                const pir::Block* ir_block,
                                framework::Scope* scope,
@@ -221,7 +221,7 @@ PirInterpreter::PirInterpreter(const phi::Place& place,
 }
 
 PirInterpreter::PirInterpreter(
-    const phi::Place& place,
+    const Place& place,
     const std::vector<std::string>& fetch_var_names,
     const pir::Block* ir_block,
     framework::Scope* scope,
@@ -1207,13 +1207,13 @@ void PirInterpreter::RecordStreamForGC(InstructionBase* instr) {
   }
 #endif
   auto TensorRecordStream = [&stream,
-                             &skip_record_stream](phi::DenseTensor& tensor) {
+                             &skip_record_stream](DenseTensor& tensor) {
     auto allocation = tensor.Holder();
     if (allocation == nullptr) {
       return;
     }
 
-    const phi::Place& place = allocation->place();
+    const Place& place = allocation->place();
     if (phi::is_gpu_place(place)) {
       if (memory::RecordStream(allocation, stream)) {
         skip_record_stream = false;

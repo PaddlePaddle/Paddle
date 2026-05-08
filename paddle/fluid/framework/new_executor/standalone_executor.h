@@ -33,7 +33,7 @@ class InterpreterCore;
 
 class StandaloneExecutor {
  public:
-  StandaloneExecutor(const phi::Place& place,
+  StandaloneExecutor(const Place& place,
                      const interpreter::Plan& plan_,
                      Scope* scope);
 
@@ -48,7 +48,7 @@ class StandaloneExecutor {
 
  private:
   bool is_interpretercore_build_result_shared_{false};
-  const phi::Place place_;
+  const Place place_;
   interpreter::Plan plan_;
   std::vector<std::shared_ptr<InterpreterCore>> interpretercores_;
 

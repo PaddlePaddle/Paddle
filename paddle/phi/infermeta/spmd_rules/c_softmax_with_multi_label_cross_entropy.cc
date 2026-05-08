@@ -20,7 +20,6 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
 namespace phi::distributed {
-using phi::distributed::auto_parallel::str_join;
 
 void GetMultiLabelCrossEntropyNotations(int x_ndim,
                                         std::string* x_axes_src,

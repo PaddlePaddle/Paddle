@@ -236,7 +236,7 @@ bool KernelFactory::HasKernel(const std::string& kernel_name,
 }
 
 void KernelFactory::AddToLowPrecisionKernelList(
-    const std::string& name, const phi::DataType& kernel_key_type) {
+    const std::string& name, const DataType& kernel_key_type) {
   if (FLAGS_low_precision_op_list >= 1) {
     auto op_name = phi::TransToFluidOpName(name);
     if (op_name.find("_grad") != std::string::npos) {
@@ -247,11 +247,11 @@ void KernelFactory::AddToLowPrecisionKernelList(
       auto count = OpCount();
       low_precision_kernels_[op_name] = count;
     }
-    if (kernel_key_type == phi::DataType::FLOAT16) {
+    if (kernel_key_type == DataType::FLOAT16) {
       low_precision_kernels_[op_name].fp16_called_ += 1;
-    } else if (kernel_key_type == phi::DataType::BFLOAT16) {
+    } else if (kernel_key_type == DataType::BFLOAT16) {
       low_precision_kernels_[op_name].bf16_called_ += 1;
-    } else if (kernel_key_type == phi::DataType::FLOAT32) {
+    } else if (kernel_key_type == DataType::FLOAT32) {
       low_precision_kernels_[op_name].fp32_called_ += 1;
     } else {
       low_precision_kernels_[op_name].other_called_ += 1;

@@ -19,7 +19,8 @@ from op_test import get_device, get_device_place, is_custom_device
 from utils import dygraph_guard
 
 import paddle
-from paddle.static import InputSpec
+from paddle.base.layer_helper import LayerHelper
+from paddle.static import InputSpec, Program, program_guard
 
 
 class TestTensorCreation(unittest.TestCase):
@@ -128,6 +129,7 @@ class TestTensorCreation(unittest.TestCase):
         ):
             with dygraph_guard():
                 for start, end, step in [
+                    (0, 0, 1),
                     (0, 5, 1),
                     (2, 7, 2),
                     (5, None, 1),
@@ -305,6 +307,85 @@ class TestCreationOut(unittest.TestCase):
         self.assertEqual(t.data_ptr(), y.data_ptr())
         self.assertEqual(y.stop_gradient, False)
         self.assertEqual(t.stop_gradient, False)
+
+
+class TestRangeV2LegacyInferMeta(unittest.TestCase):
+    """
+    Test that RangeTensorInferMetaLegacy is triggered via legacy static graph path.
+    - TestTensorCreation.test_range (above) calls paddle.range() in
+      dynamic graph mode, which triggers RangeTensorInferMeta (with dtype param).
+    - NO existing test triggers RangeTensorInferMetaLegacy (no dtype param),
+      because paddle.range() has no old static graph fallback like
+      paddle.arange() does (which falls back to append_op(type='range')
+      → mapped to the 'arange' op, not 'range_v2').
+    - To trigger RangeTensorInferMetaLegacy, we use append_op(type='range_v2')
+      under static graph mode).
+    """
+
+    def range_manual(self, start, end, step, dtype):
+        size_ = int(np.abs(np.trunc((end - start) / step))) + 1
+        out = np.empty([size_], dtype=dtype)
+        for i in range(size_):
+            out[i] = start + i * step
+        return out
+
+    def test_range_v2_legacy(self):
+        paddle.enable_static()
+        try:
+            test_cases = [
+                (0, 5, 1),
+                (2, 7, 2),
+                (0, 1, 0.1),
+                (10, 1, -2),
+                (-1, -10, -2),
+            ]
+            for start_val, end_val, step_val in test_cases:
+                with (
+                    paddle.pir_utils.OldIrGuard(),
+                    program_guard(Program(), Program()),
+                ):
+                    start = paddle.static.data(
+                        name='start', shape=[1], dtype='float32'
+                    )
+                    end = paddle.static.data(
+                        name='end', shape=[1], dtype='float32'
+                    )
+                    step = paddle.static.data(
+                        name='step', shape=[1], dtype='float32'
+                    )
+
+                    helper = LayerHelper('range_v2')
+                    out = helper.create_variable_for_type_inference(
+                        dtype='float32'
+                    )
+                    helper.append_op(
+                        type='range_v2',
+                        inputs={'Start': start, 'End': end, 'Step': step},
+                        outputs={'Out': out},
+                    )
+                    self.assertEqual(out.shape, (-1,))
+
+                    exe = paddle.static.Executor(paddle.CPUPlace())
+                    (result,) = exe.run(
+                        feed={
+                            'start': np.array([start_val], dtype='float32'),
+                            'end': np.array([end_val], dtype='float32'),
+                            'step': np.array([step_val], dtype='float32'),
+                        },
+                        fetch_list=[out],
+                    )
+                    expected = self.range_manual(
+                        start_val, end_val, step_val, 'float32'
+                    )
+                    np.testing.assert_allclose(
+                        result,
+                        expected,
+                        rtol=1e-6,
+                        atol=1e-6,
+                        err_msg=f"[FAILED] range_v2({start_val},{end_val},{step_val})",
+                    )
+        finally:
+            paddle.disable_static()
 
 
 if __name__ == '__main__':

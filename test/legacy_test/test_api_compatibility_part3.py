@@ -1337,30 +1337,30 @@ class TestLayerAndTensorToAPI(unittest.TestCase):
         self.assertIs(ret, linear)
         self.assertEqual(linear.weight.dtype, original_dtype)
 
-    # ---- Layer.to: all-dtype casting ----
+    # ---- Layer.to: floating-only dtype casting (PyTorch-aligned) ----
 
-    def test_layer_cast_all_with_positional_dtype(self):
-        """Layer.to(dtype) casts ALL params and buffers, including int buf."""
+    def test_layer_cast_floating_only_with_positional_dtype(self):
+        """Layer.to(dtype) casts only floating/complex params and buffers."""
         model = self._make_model()
         self.assertEqual(model.int_buf.dtype, paddle.int32)
         model.to(paddle.float64)
         self.assertEqual(model.linear.weight.dtype, paddle.float64)
-        self.assertEqual(model.int_buf.dtype, paddle.float64)
+        self.assertEqual(model.int_buf.dtype, paddle.int32)
 
-    def test_layer_cast_all_with_keyword_dtype(self):
-        """Layer.to(dtype='float64') casts ALL params and buffers."""
+    def test_layer_cast_floating_only_with_keyword_dtype(self):
+        """Layer.to(dtype='float64') casts only floating/complex tensors."""
         model = self._make_model()
         model.to(dtype='float64')
         self.assertEqual(model.linear.weight.dtype, paddle.float64)
-        self.assertEqual(model.int_buf.dtype, paddle.float64)
+        self.assertEqual(model.int_buf.dtype, paddle.int32)
 
-    def test_layer_cast_all_with_tensor(self):
-        """Layer.to(tensor) casts ALL params and buffers."""
+    def test_layer_cast_floating_only_with_tensor(self):
+        """Layer.to(tensor) casts only floating/complex tensors to tensor.dtype."""
         model = self._make_model()
         ref = paddle.to_tensor([1.0], dtype='float64')
         model.to(ref)
         self.assertEqual(model.linear.weight.dtype, paddle.float64)
-        self.assertEqual(model.int_buf.dtype, paddle.float64)
+        self.assertEqual(model.int_buf.dtype, paddle.int32)
 
     # ---- Layer.to: sublayers and chaining ----
 

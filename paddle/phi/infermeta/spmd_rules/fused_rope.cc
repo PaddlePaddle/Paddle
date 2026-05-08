@@ -28,7 +28,7 @@ const int kNumHeadsDimIndex = 2;
 const int kHeadDimIndex = 3;
 
 void check_q(const DistMetaTensor& q) {
-  std::vector<int64_t> q_shape = common::vectorize(q.dims());
+  std::vector<int64_t> q_shape = vectorize(q.dims());
   int q_ndim = q_shape.size();
   const TensorDistAttr& q_dist_attr_src = q.dist_attr();
   int q_dims_mapping_size = q_dist_attr_src.dims_mapping().size();
@@ -50,7 +50,7 @@ void check_q(const DistMetaTensor& q) {
 // check k/v's shape equal to q's shape
 void check_k_or_v(const DistMetaTensor& k_or_v,
                   const std::vector<int64_t>& q_shape) {
-  std::vector<int64_t> shape = common::vectorize(k_or_v.dims());
+  std::vector<int64_t> shape = vectorize(k_or_v.dims());
   int ndim = shape.size();
   int dims_mapping_size = k_or_v.dist_attr().dims_mapping().size();
   PADDLE_ENFORCE_EQ(ndim,
@@ -112,7 +112,7 @@ void check_sin_cos(const DistMetaTensor& sin,
                         sin.dims(),
                         sin.dims()));
 
-  std::vector<int64_t> shape = common::vectorize(sin.dims());
+  std::vector<int64_t> shape = vectorize(sin.dims());
   int ndim = shape.size();
   PADDLE_ENFORCE_EQ(
       (ndim == 2 || ndim == 4),
@@ -133,7 +133,7 @@ void check_sin_cos(const DistMetaTensor& sin,
   }
 
   const std::vector<int64_t> position_ids_shape =
-      common::vectorize(position_ids.dims());
+      vectorize(position_ids.dims());
   if (!IsEmpty(position_ids_shape)) {
     PADDLE_ENFORCE_EQ(
         (shape[seq_len_dim_index] >= seq_len &&
@@ -191,8 +191,8 @@ void infer_sin_cos(const DistMetaTensor& sin,
   *cos_dist_attr_dst = CopyTensorDistAttrForOutput(cos_dist_attr_src);
 
   // check sin, cos and position_ids shape
-  const std::vector<int64_t> sin_shape = common::vectorize(sin.dims());
-  const std::vector<int64_t> cos_shape = common::vectorize(cos.dims());
+  const std::vector<int64_t> sin_shape = vectorize(sin.dims());
+  const std::vector<int64_t> cos_shape = vectorize(cos.dims());
   // if one of sin cos is empty, they are all useless in kernel
   if (!IsEmpty(sin_shape) && !IsEmpty(cos_shape)) {
     // check sin, cos, position_ids's shape
@@ -253,10 +253,10 @@ SpmdInfo FusedRopeInferSpmd(const DistMetaTensor& q,
   const TensorDistAttr& k_dist_attr_src = k.dist_attr();
   // q_shape equals [bs, seq_len, num_heads, head_dim] if time_major is False,
   // otherwise [seq_len, bs, num_heads, head_dim]
-  std::vector<int64_t> q_shape = common::vectorize(q.dims());
-  std::vector<int64_t> k_shape = common::vectorize(k.dims());
-  std::vector<int64_t> v_shape = common::vectorize(v.dims());
-  bool is_k_none = IsEmpty(common::vectorize(k.dims()));
+  std::vector<int64_t> q_shape = vectorize(q.dims());
+  std::vector<int64_t> k_shape = vectorize(k.dims());
+  std::vector<int64_t> v_shape = vectorize(v.dims());
+  bool is_k_none = IsEmpty(vectorize(k.dims()));
   // except for q, all other inputs are optional.
   bool is_same_num_heads = true;
   bool is_divisible = true;
@@ -276,7 +276,7 @@ SpmdInfo FusedRopeInferSpmd(const DistMetaTensor& q,
   }
 
   const TensorDistAttr& v_dist_attr_src = v.dist_attr();
-  bool is_v_none = IsEmpty(common::vectorize(v.dims()));
+  bool is_v_none = IsEmpty(vectorize(v.dims()));
   if (!is_v_none) {
     check_k_or_v(v, q_shape);
     inputs_sharding_info.emplace_back(qkv_axes, v_dist_attr_src.dims_mapping());
@@ -304,7 +304,7 @@ SpmdInfo FusedRopeInferSpmd(const DistMetaTensor& q,
 
   const TensorDistAttr& position_ids_dist_attr_src = position_ids.dist_attr();
   std::string position_ids_axes = time_major ? "ba" : "ab";
-  bool is_ids_none = IsEmpty(common::vectorize(position_ids.dims()));
+  bool is_ids_none = IsEmpty(vectorize(position_ids.dims()));
   if (!is_ids_none) {
     inputs_sharding_info.emplace_back(
         position_ids_axes, position_ids_dist_attr_src.dims_mapping());
@@ -319,8 +319,8 @@ SpmdInfo FusedRopeInferSpmd(const DistMetaTensor& q,
 
   const int kSeqlenDimIndex = time_major ? 0 : 1;
   // if one of sin cos is empty, they are all useless in kernel
-  bool is_sin_cos_none = IsEmpty(common::vectorize(sin.dims())) ||
-                         IsEmpty(common::vectorize(cos.dims()));
+  bool is_sin_cos_none =
+      IsEmpty(vectorize(sin.dims())) || IsEmpty(vectorize(cos.dims()));
 
   // Enable sharding on seq_len dimension only if sin/cos is not None and
   // position_ids is None
@@ -404,10 +404,10 @@ SpmdInfo FusedRopeInferSpmdReverse(const DistMetaTensor& q,
 
   const TensorDistAttr& out_k_dist_attr_src = out_k.dist_attr();
   // out_q shape = [bs, seq_len, num_heads, head_dim]
-  std::vector<int64_t> out_q_shape = common::vectorize(out_q.dims());
-  std::vector<int64_t> out_k_shape = common::vectorize(out_k.dims());
-  std::vector<int64_t> out_v_shape = common::vectorize(out_v.dims());
-  bool is_k_none = IsEmpty(common::vectorize(out_k.dims()));
+  std::vector<int64_t> out_q_shape = vectorize(out_q.dims());
+  std::vector<int64_t> out_k_shape = vectorize(out_k.dims());
+  std::vector<int64_t> out_v_shape = vectorize(out_v.dims());
+  bool is_k_none = IsEmpty(vectorize(out_k.dims()));
   // except for q, all other inputs are optional.
   bool is_same_num_heads = true;
   bool is_divisible = true;
@@ -430,7 +430,7 @@ SpmdInfo FusedRopeInferSpmdReverse(const DistMetaTensor& q,
   }
 
   const TensorDistAttr& out_v_dist_attr_src = out_v.dist_attr();
-  bool is_v_none = IsEmpty(common::vectorize(v.dims()));
+  bool is_v_none = IsEmpty(vectorize(v.dims()));
   if (!is_v_none) {
     check_k_or_v(out_v, out_q_shape);
     outputs_sharding_info.emplace_back(qkv_axes,
@@ -470,9 +470,9 @@ SpmdInfo FusedRopeInferSpmdReverse(const DistMetaTensor& q,
 
   const int kSeqlenDimIndex = time_major ? 0 : 1;
   // if one of sin cos is empty, they are all useless in kernel
-  bool is_sin_cos_none = IsEmpty(common::vectorize(sin.dims())) ||
-                         IsEmpty(common::vectorize(cos.dims()));
-  bool is_ids_none = IsEmpty(common::vectorize(position_ids.dims()));
+  bool is_sin_cos_none =
+      IsEmpty(vectorize(sin.dims())) || IsEmpty(vectorize(cos.dims()));
+  bool is_ids_none = IsEmpty(vectorize(position_ids.dims()));
 
   // Enable sharding on seq_len dimension only if sin/cos is not None and
   // position_ids is None

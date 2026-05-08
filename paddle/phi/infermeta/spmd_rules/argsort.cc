@@ -24,13 +24,11 @@ limitations under the License. */
 
 namespace phi::distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 SpmdInfo ArgSortInferSpmd(const DistMetaTensor& x,
                           int axis,
                           bool descending,
                           bool stable) {
-  auto x_shape = common::vectorize(x.dims());
+  auto x_shape = vectorize(x.dims());
   int x_ndim = static_cast<int>(x_shape.size());
   auto x_dist_attr_src = x.dist_attr();
   std::vector<std::vector<int64_t>> x_dims_mapping =
@@ -80,7 +78,7 @@ SpmdInfo ArgSortGradInferSpmd(const DistMetaTensor& indices,
                               bool descending,
                               bool stable) {
   // step 0: check invalidation of parameters
-  auto x_shape = common::vectorize(x.dims());
+  auto x_shape = vectorize(x.dims());
   int x_ndim = static_cast<int>(x_shape.size());
   auto x_dist_attr_src = x.dist_attr();
   std::vector<std::vector<int64_t>> x_dims_mapping =
@@ -93,7 +91,7 @@ SpmdInfo ArgSortGradInferSpmd(const DistMetaTensor& indices,
                               x_ndim,
                               x_dims_mapping.size()));
 
-  auto ind_shape = common::vectorize(indices.dims());
+  auto ind_shape = vectorize(indices.dims());
   int ind_ndim = static_cast<int>(ind_shape.size());
   auto indices_dist_attr_src = indices.dist_attr();
   std::vector<std::vector<int64_t>> ind_dims_mapping =
@@ -106,7 +104,7 @@ SpmdInfo ArgSortGradInferSpmd(const DistMetaTensor& indices,
                               ind_ndim,
                               ind_dims_mapping.size()));
 
-  auto out_grad_shape = common::vectorize(out_grad.dims());
+  auto out_grad_shape = vectorize(out_grad.dims());
   int out_grad_ndim = static_cast<int>(out_grad_shape.size());
   auto out_grad_dist_attr_src = out_grad.dist_attr();
   std::vector<std::vector<int64_t>> out_grad_dims_mapping =
