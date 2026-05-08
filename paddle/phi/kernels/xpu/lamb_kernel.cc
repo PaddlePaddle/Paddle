@@ -47,7 +47,7 @@ void LambKernel(const Context& dev_ctx,
                 DenseTensor* beta2_pow_out,
                 DenseTensor* master_param_outs) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   if (!multi_precision) {
     constexpr auto kIsSameType = std::is_same<T, MT>::value;
     PADDLE_ENFORCE_EQ(

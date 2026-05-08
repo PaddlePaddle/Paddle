@@ -50,8 +50,8 @@ __forceinline__ __device__ void FusedResidualDropoutBiasOneThread(
     OutType *dst,
     MaskType *mask,
     const bool is_test,
-    typename phi::dtype::MPTypeTrait<T>::Type *mean_val,
-    typename phi::dtype::MPTypeTrait<T>::Type *var_val,
+    typename MPTypeTrait<T>::Type *mean_val,
+    typename MPTypeTrait<T>::Type *var_val,
     Functor act_func,
     const float residual_alpha = 1.0,
     const float quant_last_in_scale = 1.0,
@@ -67,7 +67,7 @@ __forceinline__ __device__ void FusedResidualDropoutBiasOneThread(
   using StoreOutType = AlignedVector<OutType, VecSize>;
 
   using MaskStoreT = AlignedVector<MaskType, VecSize>;
-  using U = typename phi::dtype::MPTypeTrait<T>::Type;
+  using U = typename MPTypeTrait<T>::Type;
 
   LoadInType src_vec;
   LoadT residual_vec;

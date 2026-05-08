@@ -869,7 +869,7 @@ void SwitchWarpSoftmaxForward(const IndexType blocks,
                               const IndexType stride,
                               const IndexType element_count,
                               IndexType log2_element_count) {
-  using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using AccT = typename MPTypeTrait<T>::Type;
   switch (log2_element_count) {
     SOFTMAX_WARP_FORWARD_CASE(0, AccT);
     SOFTMAX_WARP_FORWARD_CASE(1, AccT);
@@ -911,7 +911,7 @@ void SwitchWarpSoftmaxBackward(const IndexType blocks,
                                const IndexType stride,
                                const IndexType element_count,
                                IndexType log2_element_count) {
-  using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using AccT = typename MPTypeTrait<T>::Type;
   switch (log2_element_count) {
     SOFTMAX_WARP_BACKWARD_CASE(0, AccT);
     SOFTMAX_WARP_BACKWARD_CASE(1, AccT);
@@ -1099,7 +1099,7 @@ void LaunchNormalSoftmaxForward(const GPUContext& dev_ctx,
                                 IndexType high_dim,
                                 IndexType mid_dim,
                                 IndexType low_dim) {
-  using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using AccT = typename MPTypeTrait<T>::Type;
   dim3 grid, block;
   GetLaunchConfig(high_dim, mid_dim, low_dim, &grid, &block);
   if (LogMode) {
@@ -1121,7 +1121,7 @@ void LaunchNormalSoftmaxBackward(const GPUContext& dev_ctx,
                                  IndexType high_dim,
                                  IndexType mid_dim,
                                  IndexType low_dim) {
-  using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using AccT = typename MPTypeTrait<T>::Type;
   dim3 grid, block;
   GetLaunchConfig(high_dim, mid_dim, low_dim, &grid, &block);
   if (LogMode) {
@@ -1317,7 +1317,7 @@ void LaunchKeMatrixSoftmaxForwardKernel(const GPUContext& dev_ctx,
                                         const T* input,
                                         int64_t N,
                                         IndexType dim_size) {
-  using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using AccT = typename MPTypeTrait<T>::Type;
   constexpr int kVecSize =
       MaxWithOne<MATRIX_SOFTMAX_ALIGN_BYTES / sizeof(T)>::kValue;
   int block_dim = CalcBlockSize(kVecSize, dim_size);
@@ -2628,7 +2628,7 @@ void SoftmaxForwardCUDAKernelCompatible(const GPUContext& dev_ctx,
                                         const DenseTensor& x,
                                         const int input_axis,
                                         DenseTensor* out) {
-  using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using AccT = typename MPTypeTrait<T>::Type;
   auto* out_data = out->data<T>();
   auto* input_data = x.data<T>();
   int rank = x.dims().size();
@@ -2687,7 +2687,7 @@ void SoftmaxBackwardCUDAKernelCompatible(const GPUContext& dev_ctx,
                                          const DenseTensor& dout,
                                          const int input_axis,
                                          DenseTensor* dx) {
-  using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using AccT = typename MPTypeTrait<T>::Type;
   auto* dx_data = dx->data<T>();
   auto* out_data = out.data<T>();
   auto* dout_data = dout.data<T>();

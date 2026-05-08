@@ -722,23 +722,22 @@ void launch_vectorized_layer_norm_kernel_driver(int N,
 }
 
 template <typename T, typename Context>
-void LayerNormFwdCompatKernel(
-    const Context& dev_ctx,
-    const T* x_data,
-    const T* gamma_data,
-    const T* beta_data,
-    double epsilon,
-    int64_t rows,
-    int64_t cols,
-    T* y_data,
-    typename phi::dtype::MPTypeTrait<T>::Type* mean_data,
-    typename phi::dtype::MPTypeTrait<T>::Type* var_data) {
+void LayerNormFwdCompatKernel(const Context& dev_ctx,
+                              const T* x_data,
+                              const T* gamma_data,
+                              const T* beta_data,
+                              double epsilon,
+                              int64_t rows,
+                              int64_t cols,
+                              T* y_data,
+                              typename MPTypeTrait<T>::Type* mean_data,
+                              typename MPTypeTrait<T>::Type* var_data) {
 #ifdef PADDLE_WITH_HIP
   PADDLE_ENFORCE_GPU_SUCCESS(hipGetLastError());
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
 #endif
-  using T_ACC = typename phi::dtype::MPTypeTrait<T>::Type;
+  using T_ACC = typename MPTypeTrait<T>::Type;
 
   if (rows == 0 || cols == 0) {
     return;
@@ -2107,25 +2106,24 @@ void ConfigureAndLaunchGammaBetaBackwardKernel(const T* dY_data,
 }
 
 template <typename T, typename Context>
-void LayerNormBwdCompatKernel(
-    const Context& dev_ctx,
-    const T* dY_data,
-    const T* X_data,
-    const T* gamma_data,
-    const typename phi::dtype::MPTypeTrait<T>::Type* mean_data,
-    const typename phi::dtype::MPTypeTrait<T>::Type* var_data,
-    T* dX_data,
-    T* dgamma_data,
-    T* dbeta_data,
-    double epsilon,
-    int64_t rows,
-    int64_t cols) {
+void LayerNormBwdCompatKernel(const Context& dev_ctx,
+                              const T* dY_data,
+                              const T* X_data,
+                              const T* gamma_data,
+                              const typename MPTypeTrait<T>::Type* mean_data,
+                              const typename MPTypeTrait<T>::Type* var_data,
+                              T* dX_data,
+                              T* dgamma_data,
+                              T* dbeta_data,
+                              double epsilon,
+                              int64_t rows,
+                              int64_t cols) {
 #ifdef PADDLE_WITH_HIP
   PADDLE_ENFORCE_GPU_SUCCESS(hipGetLastError());
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
 #endif
-  using T_ACC = typename phi::dtype::MPTypeTrait<T>::Type;
+  using T_ACC = typename MPTypeTrait<T>::Type;
   if (rows == 0 || cols == 0) return;
   auto stream = dev_ctx.stream();
   int64_t M = rows;

@@ -71,7 +71,7 @@ void LambKernel(const Context& dev_ctx,
                 DenseTensor* beta1_pow_out,
                 DenseTensor* beta2_pow_out,
                 DenseTensor* master_param_outs) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   if (multi_precision) {
     ComputeRowImpl<T, MT, Context, true>(dev_ctx,
                                          param,

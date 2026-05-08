@@ -29,7 +29,7 @@ template <typename T1, typename T2 = T1, typename OutT = T1>
 struct NoMaskFwFunctor {
   const float retain_prob_;
   const bool is_upscale_in_train_;
-  using MT = typename phi::dtype::MPTypeTrait<T1>::Type;
+  using MT = typename MPTypeTrait<T1>::Type;
   MT factor;
   HOSTDEVICE inline NoMaskFwFunctor(const float retain_prob,
                                     const bool is_upscale_in_train)
@@ -59,7 +59,7 @@ struct NoMaskFwFunctor {
 
 template <typename T>
 struct ScaleAddFuctor {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   explicit ScaleAddFuctor(const MT factor, bool upscale_in_train)
       : factor_(factor), upscale_in_train_(upscale_in_train) {}
 
@@ -252,7 +252,7 @@ void FusedDropoutAddKernel(const Context& dev_ctx,
     VLOG(10) << "NON_CUDA_GRAPH seed = " << seed_data
              << ", increment = " << increment;
   } else {
-    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    using MT = typename MPTypeTrait<T>::Type;
     MT factor = static_cast<MT>(1.0f - dropout_rate);
     std::vector<DenseTensor*> outs = {out};
     std::vector<const DenseTensor*> ins = {&x, &y};

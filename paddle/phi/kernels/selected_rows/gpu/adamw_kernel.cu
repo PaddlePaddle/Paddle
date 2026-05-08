@@ -147,7 +147,7 @@ void AdamwDenseParamSparseGradKernel(const Context& dev_ctx,
                                      DenseTensor* beta1_pow_out,
                                      DenseTensor* beta2_pow_out,
                                      DenseTensor* master_param_outs) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
 
   VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
 

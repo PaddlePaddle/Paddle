@@ -41,7 +41,7 @@ void ScaleKernel(const Context& dev_ctx,
   }
 
   using XPUType = typename XPUTypeTrait<T>::Type;
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   int r = xpu::scale<XPUType, MT>(dev_ctx.x_context(),
                                   reinterpret_cast<const XPUType*>(x.data<T>()),
                                   reinterpret_cast<XPUType*>(out->data<T>()),

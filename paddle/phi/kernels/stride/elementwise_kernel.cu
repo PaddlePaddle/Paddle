@@ -285,7 +285,7 @@ void ScaleStrideKernel(const Context &dev_ctx,
     return;
   }
 
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   LaunchUnaryElementwiseStrideKernel<T, Context>(
       dev_ctx,
       x_,

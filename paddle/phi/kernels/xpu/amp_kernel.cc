@@ -44,7 +44,7 @@ void UpdateLossScalingKernel(const Context& dev_ctx,
                              DenseTensor* loss_scaling,
                              DenseTensor* out_good_steps,
                              DenseTensor* out_bad_steps) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   PADDLE_ENFORCE_EQ(found_infinite.numel(),
@@ -170,7 +170,7 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
                                  const DenseTensor& scale,
                                  std::vector<DenseTensor*> outs,
                                  DenseTensor* found_infinite) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   using XPUType = typename XPUTypeTrait<T>::Type;
   using XPUTypeFP16 = typename XPUTypeTrait<phi::float16>::Type;
 

@@ -148,7 +148,7 @@ void FusedLinearParamGradAdd(const Context &dev_ctx,
                              bool has_bias,
                              DenseTensor *dweight_out,
                              DenseTensor *dbias_out) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
 
   if (std::is_same<T, MT>::value) {
     multi_precision = false;

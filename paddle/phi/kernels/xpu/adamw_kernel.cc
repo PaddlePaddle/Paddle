@@ -75,7 +75,7 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
                          DenseTensor* master_param_outs) {
   // TODO(houj04):
   // 当KL3稳定以后，并且不需要支持KL1和KL2的时候，拿这里的AdamwDenseKernelKL3替换掉AdamwDenseKernel
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   const auto grad_type = grad.dtype();

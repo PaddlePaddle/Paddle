@@ -96,20 +96,19 @@ struct IdentityFunctor<phi::dtype::complex<T>, bool> {
 template <typename Tx, typename Ty = Tx>
 struct DivideFunctor {
  private:
-  using MPType = typename ::phi::dtype::MPTypeTrait<Tx>::Type;
+  using MT = typename MPTypeTrait<Tx>::Type;
 
  public:
-  HOSTDEVICE inline DivideFunctor() { n_inv = static_cast<MPType>(1.0f); }
+  HOSTDEVICE inline DivideFunctor() { n_inv = static_cast<MT>(1.0f); }
 
-  HOSTDEVICE explicit inline DivideFunctor(int64_t n)
-      : n_inv((MPType)(1.0 / n)) {}
+  HOSTDEVICE explicit inline DivideFunctor(int64_t n) : n_inv((MT)(1.0 / n)) {}
 
   HOSTDEVICE inline Ty operator()(const Tx x) const {
-    return static_cast<Ty>(static_cast<MPType>(x) * n_inv);
+    return static_cast<Ty>(static_cast<MT>(x) * n_inv);
   }
 
  private:
-  MPType n_inv;
+  MT n_inv;
 };
 
 /**
@@ -118,20 +117,20 @@ struct DivideFunctor {
 template <typename Tx, typename Ty = Tx>
 struct MPTypeDivideFunctor {
  private:
-  using MPType = typename ::phi::dtype::MPTypeTrait<Tx>::Type;
+  using MT = typename MPTypeTrait<Tx>::Type;
 
  public:
-  HOSTDEVICE inline MPTypeDivideFunctor() { n_inv = static_cast<MPType>(1.0f); }
+  HOSTDEVICE inline MPTypeDivideFunctor() { n_inv = static_cast<MT>(1.0f); }
 
   HOSTDEVICE explicit inline MPTypeDivideFunctor(int64_t n)
-      : n_inv(static_cast<MPType>(1.0) / static_cast<MPType>(n)) {}
+      : n_inv(static_cast<MT>(1.0) / static_cast<MT>(n)) {}
 
   HOSTDEVICE inline Ty operator()(const Tx x) const {
-    return static_cast<Ty>(static_cast<MPType>(x) * n_inv);
+    return static_cast<Ty>(static_cast<MT>(x) * n_inv);
   }
 
  private:
-  MPType n_inv;
+  MT n_inv;
 };
 
 /**
