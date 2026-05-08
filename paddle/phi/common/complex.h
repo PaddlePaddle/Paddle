@@ -222,7 +222,16 @@ HOSTDEVICE inline complex<T> operator*(const complex<T>& a,
                                        const complex<T>& b) {
 #if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
     (defined(__CUDA_ARCH__) || defined(__HIPCC__))
-  return complex<T>(thrust::complex<T>(a) * thrust::complex<T>(b));
+  if constexpr (std::is_same<T, double>::value) {
+    // real = a.real*b.real - a.imag*b.imag = fma(a.real, b.real,
+    // -(a.imag*b.imag)) imag = a.imag*b.real + b.imag*a.real = fma(b.imag,
+    // a.real, a.imag*b.real)
+    return complex<T>(__fma_rn(a.real, b.real, -__dmul_rn(a.imag, b.imag)),
+                      __fma_rn(b.imag, a.real, __dmul_rn(a.imag, b.real)));
+  } else {
+    return complex<T>(__fmaf_rn(a.real, b.real, -__fmul_rn(a.imag, b.imag)),
+                      __fmaf_rn(b.imag, a.real, __fmul_rn(a.imag, b.real)));
+  }
 #else
   return complex<T>(a.real * b.real - a.imag * b.imag,
                     a.imag * b.real + b.imag * a.real);
