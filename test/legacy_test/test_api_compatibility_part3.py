@@ -4566,5 +4566,134 @@ class TestLayerNormAPI(unittest.TestCase):
             np.testing.assert_allclose(out, expected, rtol=1e-5)
 
 
+# Test MultivariateNormal compatibility
+class TestMultivariateNormalAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_loc = np.array([2.0, -1.0], dtype="float32")
+        self.np_cov = np.array([[2.0, 0.5], [0.5, 1.5]], dtype="float32")
+        self.np_value = np.array([0.2, -0.8], dtype="float32")
+        self.np_scale_tril = np.linalg.cholesky(self.np_cov)
+        self.expected_mean = self.np_loc
+        self.expected_variance = np.diag(self.np_cov)
+        self.expected_entropy = (
+            0.5 * self.np_loc.shape[0] * (1.0 + np.log(2 * np.pi))
+            + np.log(np.diag(self.np_scale_tril)).sum()
+        )
+        diff = self.np_value - self.np_loc
+        mahalanobis = diff @ np.linalg.solve(self.np_cov, diff)
+        self.expected_log_prob = (
+            -0.5 * (self.np_loc.shape[0] * np.log(2 * np.pi) + mahalanobis)
+            - np.log(np.diag(self.np_scale_tril)).sum()
+        )
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        loc = paddle.to_tensor(self.np_loc)
+        cov = paddle.to_tensor(self.np_cov)
+        value = paddle.to_tensor(self.np_value)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.distribution.MultivariateNormal(loc, cov)
+        # 2. Paddle keyword arguments
+        out2 = paddle.distribution.MultivariateNormal(
+            loc=loc, covariance_matrix=cov
+        )
+        # 3. PyTorch Positional arguments
+        out3 = paddle.distribution.MultivariateNormal(
+            loc, cov, None, None, False
+        )
+        # 4. PyTorch keyword arguments
+        out4 = paddle.distribution.MultivariateNormal(
+            loc=loc, covariance_matrix=cov, validate_args=True
+        )
+        # 5. Mixed arguments
+        out5 = paddle.distribution.MultivariateNormal(
+            loc, covariance_matrix=cov, validate_args=None
+        )
+
+        for out in [out1, out2, out3, out4, out5]:
+            np.testing.assert_allclose(out.mean.numpy(), self.expected_mean)
+            np.testing.assert_allclose(
+                out.variance.numpy(), self.expected_variance
+            )
+            np.testing.assert_allclose(
+                out.entropy().numpy(), self.expected_entropy, rtol=1e-5
+            )
+            np.testing.assert_allclose(
+                out.log_prob(value).numpy(),
+                self.expected_log_prob,
+                rtol=1e-5,
+            )
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            loc = paddle.static.data(
+                name="loc",
+                shape=self.np_loc.shape,
+                dtype=str(self.np_loc.dtype),
+            )
+            cov = paddle.static.data(
+                name="cov",
+                shape=self.np_cov.shape,
+                dtype=str(self.np_cov.dtype),
+            )
+            value = paddle.static.data(
+                name="value",
+                shape=self.np_value.shape,
+                dtype=str(self.np_value.dtype),
+            )
+
+            # 1. Paddle Positional arguments
+            out1 = paddle.distribution.MultivariateNormal(loc, cov)
+            # 2. Paddle keyword arguments
+            out2 = paddle.distribution.MultivariateNormal(
+                loc=loc, covariance_matrix=cov
+            )
+            # 3. PyTorch Positional arguments
+            out3 = paddle.distribution.MultivariateNormal(
+                loc, cov, None, None, False
+            )
+            # 4. PyTorch keyword arguments
+            out4 = paddle.distribution.MultivariateNormal(
+                loc=loc, covariance_matrix=cov, validate_args=True
+            )
+            # 5. Mixed arguments
+            out5 = paddle.distribution.MultivariateNormal(
+                loc, covariance_matrix=cov, validate_args=None
+            )
+
+            fetches = []
+            for out in [out1, out2, out3, out4, out5]:
+                fetches.extend(
+                    [out.mean, out.variance, out.entropy(), out.log_prob(value)]
+                )
+
+            exe = paddle.static.Executor()
+            outputs = exe.run(
+                main,
+                feed={
+                    "loc": self.np_loc,
+                    "cov": self.np_cov,
+                    "value": self.np_value,
+                },
+                fetch_list=fetches,
+            )
+
+        for i in range(0, len(outputs), 4):
+            np.testing.assert_allclose(outputs[i], self.expected_mean)
+            np.testing.assert_allclose(outputs[i + 1], self.expected_variance)
+            np.testing.assert_allclose(
+                outputs[i + 2], self.expected_entropy, rtol=1e-5
+            )
+            np.testing.assert_allclose(
+                outputs[i + 3], self.expected_log_prob, rtol=1e-5
+            )
+
+
 if __name__ == "__main__":
     unittest.main()
