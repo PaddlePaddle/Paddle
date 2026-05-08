@@ -1309,7 +1309,7 @@ def _build_table(
         # ----- Print Operator Summary Report ----- #
         if statistic_data.event_summary.items:
             all_row_values = []
-            name_column_width = 400
+            name_column_width = 52
             if thread_sep:
                 thread_items = statistic_data.event_summary.thread_items
             else:
