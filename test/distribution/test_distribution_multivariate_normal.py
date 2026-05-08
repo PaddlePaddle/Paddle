@@ -260,5 +260,55 @@ class MVNTestError(unittest.TestCase):
         paddle.disable_static(self.place)
 
 
+class TestMVNValidateArgsAndExpand(unittest.TestCase):
+    def test_mode_and_expand(self):
+        paddle.disable_static()
+        loc = paddle.to_tensor([1.0, -2.0], dtype='float32')
+        cov = paddle.to_tensor([[2.0, 0.5], [0.5, 1.5]], dtype='float32')
+        dist = MultivariateNormal(
+            loc=loc, covariance_matrix=cov, validate_args=True
+        )
+        self.assertTrue(dist._validate_args_value)
+        np.testing.assert_allclose(dist.mode.numpy(), loc.numpy())
+
+        expanded = dist.expand((3,))
+        self.assertTrue(expanded._validate_args_value)
+        self.assertEqual(expanded.batch_shape, (3,))
+        self.assertEqual(expanded.event_shape, (2,))
+        np.testing.assert_allclose(
+            expanded.mode.numpy(), np.broadcast_to(loc.numpy(), (3, 2))
+        )
+        np.testing.assert_allclose(
+            expanded.mean.numpy(), np.broadcast_to(loc.numpy(), (3, 2))
+        )
+        np.testing.assert_allclose(
+            expanded.variance.numpy(),
+            np.broadcast_to(np.diag(cov.numpy()), (3, 2)),
+        )
+
+    def test_validate_args_errors(self):
+        paddle.disable_static()
+        loc = paddle.to_tensor([0.0, 0.0], dtype='float32')
+        bad_cov = paddle.to_tensor([[1.0, 2.0], [2.0, 1.0]], dtype='float32')
+        bad_scale = paddle.to_tensor([[1.0, 0.0], [0.1, -1.0]], dtype='float32')
+        good_cov = paddle.to_tensor([[2.0, 0.5], [0.5, 1.5]], dtype='float32')
+
+        with self.assertRaises(ValueError):
+            MultivariateNormal(
+                loc=loc, covariance_matrix=bad_cov, validate_args=True
+            )
+
+        with self.assertRaises(ValueError):
+            MultivariateNormal(
+                loc=loc, scale_tril=bad_scale, validate_args=True
+            )
+
+        dist = MultivariateNormal(
+            loc=loc, covariance_matrix=good_cov, validate_args=True
+        )
+        with self.assertRaises(ValueError):
+            dist.log_prob(paddle.to_tensor([np.nan, 0.0], dtype='float32'))
+
+
 if __name__ == '__main__':
     unittest.main(argv=[''], verbosity=3, exit=False)
