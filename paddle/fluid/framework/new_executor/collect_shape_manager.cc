@@ -68,7 +68,7 @@ void CollectShapeManager::CollectShapeInfo(
     paddle::platform::DeviceContextPool &pool =
         paddle::platform::DeviceContextPool::Instance();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    auto *dev_ctx = pool.Get(phi::GPUPlace());
+    auto *dev_ctx = pool.Get(GPUPlace());
     auto stream = static_cast<phi::GPUContext *>(dev_ctx)->stream();
 #ifdef PADDLE_WITH_HIP
     hipStreamSynchronize(stream);
@@ -77,7 +77,7 @@ void CollectShapeManager::CollectShapeInfo(
 #endif
 #endif
 
-    phi::DDim dim = tensor.dims();
+    DDim dim = tensor.dims();
     std::vector<int32_t> shape(dim.size());
     for (int i = 0; i < static_cast<int>(shape.size()); ++i)
       shape[i] = static_cast<int32_t>(dim[i]);
@@ -100,14 +100,14 @@ void CollectShapeManager::CollectShapeInfo(
     // This is a simple method to identify all shape tensors with some
     // mistakes, but it doesn't matter.
     auto is_shape_tensor = tensor.numel() <= 8 && tensor.numel() >= 1;
-    if ((tensor.dtype() == phi::DataType::INT32 ||
-         tensor.dtype() == phi::DataType::INT64) &&
+    if ((tensor.dtype() == DataType::INT32 ||
+         tensor.dtype() == DataType::INT64) &&
         is_shape_tensor) {
       std::vector<int> int32_host(tensor.numel());
 
       if (phi::is_cpu_place(tensor.place())) {
         auto &int32_tensor = tensor;
-        if (tensor.dtype() == phi::DataType::INT64) {
+        if (tensor.dtype() == DataType::INT64) {
           auto *cpu_ctx = pool.Get(CPUPlace());
           int32_tensor = phi::funcs::TransDataType(
               reinterpret_cast<const phi::CPUContext &>(*cpu_ctx),
@@ -123,7 +123,7 @@ void CollectShapeManager::CollectShapeInfo(
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
         auto *dev_ctx = pool.Get(tensor.place());
         auto &int32_tensor = tensor;
-        if (tensor.dtype() == phi::DataType::INT64) {
+        if (tensor.dtype() == DataType::INT64) {
           int32_tensor = phi::funcs::TransDataType(
               reinterpret_cast<const phi::GPUContext &>(*dev_ctx),
               tensor,

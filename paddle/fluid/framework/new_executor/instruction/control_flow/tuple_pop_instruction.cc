@@ -106,7 +106,7 @@ void ShareVarData(const Variable* src_var, Variable* dst_var) {
     if (src_tensor_array.size() == 0) return;
     dst_tensor_array->resize(src_tensor_array.size());
     for (size_t i = 0; i < src_tensor_array.size(); ++i) {
-      phi::DenseTensor& tmp_dst_tensor = dst_tensor_array->at(i);
+      DenseTensor& tmp_dst_tensor = dst_tensor_array->at(i);
       if (src_tensor_array.at(i).numel() == 0) {
         tmp_dst_tensor.set_meta(src_tensor_array.at(i).meta());
       } else {

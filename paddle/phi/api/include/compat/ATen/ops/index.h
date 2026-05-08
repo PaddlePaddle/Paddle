@@ -32,7 +32,7 @@ namespace at {
 inline at::Tensor index(const at::Tensor& self,
                         ArrayRef<at::indexing::TensorIndex> indices) {
   if (indices.size() == 0) {
-    return self;
+    PD_THROW("index() cannot be called with an empty index list");
   }
 
   bool has_slice = false;

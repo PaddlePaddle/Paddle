@@ -195,7 +195,7 @@ void BuildPhiContext(pir::Operation* op,
         optional_inputs.emplace_back(InType());
         ctx->EmplaceBackInputs(optional_inputs);
       } else {
-        phi::DenseTensor* temp = nullptr;
+        DenseTensor* temp = nullptr;
         InType optional_input(temp);
         ctx->EmplaceBackInput(optional_input);
       }
@@ -221,7 +221,7 @@ void BuildPhiContext(pir::Operation* op,
       auto& variable_array = var->Get<VariableRefArray>();
       for (size_t i = 0; i < variable_array.size(); ++i) {
         if (variable_array[i]->IsType<DenseTensor>()) {
-          inputs.emplace_back(InType(const_cast<phi::DenseTensor*>(
+          inputs.emplace_back(InType(const_cast<DenseTensor*>(
               &(variable_array[i]->Get<DenseTensor>()))));
         } else if (variable_array[i]->IsType<phi::SelectedRows>()) {
           inputs.emplace_back(InType(const_cast<phi::SelectedRows*>(
@@ -467,7 +467,7 @@ void BuildPhiContext(pir::Operation* op,
         OutListType optional_outputs;
         ctx->EmplaceBackOutputs(optional_outputs);
       } else {
-        phi::DenseTensor* temp = nullptr;
+        DenseTensor* temp = nullptr;
         OutType optional_input(temp);
         ctx->EmplaceBackOutput(optional_input);
       }
@@ -476,7 +476,7 @@ void BuildPhiContext(pir::Operation* op,
     }
 
     if (out_ptr.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
-      ctx->EmplaceBackOutput(OutType(const_cast<phi::DenseTensor*>(
+      ctx->EmplaceBackOutput(OutType(const_cast<DenseTensor*>(
           &(inner_scope->FindVar(value_exec_info.GetVarName(out_ptr))
                 ->Get<DenseTensor>()))));
       VLOG(8) << "ctx->EmplaceBackOutput DenseTensor: "
@@ -516,7 +516,7 @@ void BuildPhiContext(pir::Operation* op,
               ->Get<VariableRefArray>();
       for (size_t i = 0; i < variable_array.size(); ++i) {
         if (variable_array[i]->IsType<DenseTensor>()) {
-          outputs.emplace_back(OutType(const_cast<phi::DenseTensor*>(
+          outputs.emplace_back(OutType(const_cast<DenseTensor*>(
               &(variable_array[i]->Get<DenseTensor>()))));
         } else if (variable_array[i]->IsType<phi::SelectedRows>()) {
           outputs.emplace_back(OutType(const_cast<phi::SelectedRows*>(

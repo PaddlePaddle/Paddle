@@ -29,11 +29,6 @@ limitations under the License. */
 namespace phi {
 namespace tests {
 
-using DDim = phi::DDim;
-using float16 = phi::dtype::float16;
-using complex64 = ::phi::dtype::complex<float>;
-using complex128 = ::phi::dtype::complex<double>;
-
 __global__ void FillTensor(float* data) { data[0] = 1; }
 
 TEST(Scalar, ConstructFromDenseTensor1) {

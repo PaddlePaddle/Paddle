@@ -36,29 +36,29 @@ void moe_dispatch_grad(
     int64_t capacity,
     DenseTensor* x_grad,
     DenseTensor* gate_logits_grad) {
-  if (combine_weights.dtype() != paddle::DataType::FLOAT32) {
+  if (combine_weights.dtype() != DataType::FLOAT32) {
     PD_THROW(
         "Unsupported dtype for combine_weights, "
         "currently only float32 is supported.");
   }
-  if (scatter_index.dtype() != paddle::DataType::INT32) {
+  if (scatter_index.dtype() != DataType::INT32) {
     PD_THROW(
         "Unsupported dtype for scatter_index, "
         "currently only int32 is supported.");
   }
-  if (expert_id.dtype() != paddle::DataType::INT32) {
+  if (expert_id.dtype() != DataType::INT32) {
     PD_THROW(
         "Unsupported dtype for expert_id, "
         "currently only int32 is supported.");
   }
-  if (combine_weights_grad.dtype() != paddle::DataType::FLOAT32) {
+  if (combine_weights_grad.dtype() != DataType::FLOAT32) {
     PD_THROW(
         "Unsupported dtype for combine_weights_grad, "
         "currently only float32 is supported.");
   }
-  if (!(y_grad.dtype() == paddle::DataType::FLOAT32 ||
-        y_grad.dtype() == paddle::DataType::FLOAT16 ||
-        y_grad.dtype() == paddle::DataType::BFLOAT16)) {
+  if (!(y_grad.dtype() == DataType::FLOAT32 ||
+        y_grad.dtype() == DataType::FLOAT16 ||
+        y_grad.dtype() == DataType::BFLOAT16)) {
     PD_THROW(
         "Unsupported dtype for y_grad, "
         "currently float32, float16 and bfloat16 are supported.");

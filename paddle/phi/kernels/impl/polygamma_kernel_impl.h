@@ -113,7 +113,7 @@ struct CudaPolygammaFunctor {
   int _n;
   __forceinline__ CudaPolygammaFunctor(int n) { _n = n; }
   __device__ __forceinline__ T operator()(const T _x) const {
-    using MT = typename dtype::MPTypeTrait<T>::Type;
+    using MT = typename MPTypeTrait<T>::Type;
     const MT mp_x = static_cast<MT>(_x);
     const auto one = MT{1};
     return static_cast<T>(((_n % 2) ? one : -one) *
@@ -127,7 +127,7 @@ struct CudaPolygammaGradFunctor {
   int _n;
   __forceinline__ CudaPolygammaGradFunctor(int n) { _n = n; }
   __device__ __forceinline__ T operator()(const T _x, const T _out_grad) const {
-    using MT = typename dtype::MPTypeTrait<T>::Type;
+    using MT = typename MPTypeTrait<T>::Type;
     const MT mp_x = static_cast<MT>(_x);
     const MT mp_out_grad = static_cast<MT>(_out_grad);
     const auto one = MT{1};
@@ -225,7 +225,7 @@ struct PolygammaFunctor {
       : input_(input), n_(n), output_(output), size_(size) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    using MT = typename dtype::MPTypeTrait<T>::Type;
+    using MT = typename MPTypeTrait<T>::Type;
     const MT mp_x = static_cast<MT>(input_[idx]);
 
     const auto one = MT{1};
@@ -253,7 +253,7 @@ struct PolygammaGradFunctor {
         size_(size) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    using MT = typename dtype::MPTypeTrait<T>::Type;
+    using MT = typename MPTypeTrait<T>::Type;
     const MT mp_x = static_cast<MT>(input_[idx]);
     const MT mp_out_grad = static_cast<MT>(out_grad_[idx]);
 
