@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
-#include "paddle/fluid/operators/isfinite_op.h"
+#include "paddle/fluid/framework/tensor_isfinite.h"
 #include "paddle/fluid/platform/densetensor_printer.h"
 #include "paddle/phi/core/platform/cpu_helper.h"
 #include "paddle/utils/string/string_helper.h"

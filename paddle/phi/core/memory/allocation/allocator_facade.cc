@@ -68,7 +68,7 @@
 #endif
 
 #ifdef PADDLE_WITH_IPU
-#include "paddle/fluid/platform/device/ipu/ipu_info.h"
+#include "paddle/phi/core/platform/device_count.h"
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -228,7 +228,7 @@ class AllocatorFacadePrivate {
       case AllocatorStrategy::kNaiveBestFit: {
         InitNaiveBestFitCPUAllocator();
 #ifdef PADDLE_WITH_IPU
-        for (int dev_id = 0; dev_id < platform::GetIPUDeviceCount(); ++dev_id) {
+        for (int dev_id = 0; dev_id < phi::GetDeviceCount("IPU"); ++dev_id) {
           InitNaiveBestFitIPUAllocator(phi::IPUPlace(dev_id));
         }
 #endif
@@ -311,7 +311,7 @@ class AllocatorFacadePrivate {
         InitNaiveBestFitXPUPinnedAllocator();
 #endif
 #ifdef PADDLE_WITH_IPU
-        for (int dev_id = 0; dev_id < platform::GetIPUDeviceCount(); ++dev_id) {
+        for (int dev_id = 0; dev_id < phi::GetDeviceCount("IPU"); ++dev_id) {
           InitNaiveBestFitIPUAllocator(phi::IPUPlace(dev_id));
         }
 #endif
@@ -342,7 +342,7 @@ class AllocatorFacadePrivate {
         InitNaiveBestFitXPUPinnedAllocator();
 #endif
 #ifdef PADDLE_WITH_IPU
-        for (int dev_id = 0; dev_id < platform::GetIPUDeviceCount(); ++dev_id) {
+        for (int dev_id = 0; dev_id < phi::GetDeviceCount("IPU"); ++dev_id) {
           InitNaiveBestFitIPUAllocator(phi::IPUPlace(dev_id));
         }
 #endif
@@ -1509,7 +1509,7 @@ class AllocatorFacadePrivate {
     }
 #endif
 #ifdef PADDLE_WITH_IPU
-    int device_count = platform::GetIPUDeviceCount();
+    int device_count = phi::GetDeviceCount("IPU");
     for (int i = 0; i < device_count; ++i) {
       phi::IPUPlace p(i);
       system_allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
@@ -1554,7 +1554,7 @@ class AllocatorFacadePrivate {
     places.emplace_back(XPUPinnedPlace());
 #endif
 #ifdef PADDLE_WITH_IPU
-    int device_count = platform::GetIPUDeviceCount();
+    int device_count = phi::GetDeviceCount("IPU");
     for (int dev_id = 0; dev_id < device_count; ++dev_id) {
       places.emplace_back(phi::IPUPlace(dev_id));
     }
