@@ -1322,6 +1322,7 @@ __all__ = [
     'lerp',
     'erfinv',
     'inner',
+    'inverse',
     'outer',
     'ger',
     'square',
