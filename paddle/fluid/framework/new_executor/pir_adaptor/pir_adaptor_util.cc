@@ -341,9 +341,9 @@ void DeepCopyVariable(const Variable* src_var,
       }
     }
     framework::TensorCopy(src_tensor, src_tensor.place(), tmp_dst_tensor);
-  } else if (src_var->IsType<SelectedRows>()) {
-    auto& src_slr = src_var->Get<SelectedRows>();
-    auto* tmp_dst_slr = (*dst_var)->GetMutable<SelectedRows>();
+  } else if (src_var->IsType<phi::SelectedRows>()) {
+    auto& src_slr = src_var->Get<phi::SelectedRows>();
+    auto* tmp_dst_slr = (*dst_var)->GetMutable<phi::SelectedRows>();
     tmp_dst_slr->set_rows(src_slr.rows());
     tmp_dst_slr->set_height(src_slr.height());
     auto& src_t = src_slr.value();
@@ -362,9 +362,9 @@ void DeepCopyVariable(const Variable* src_var,
       }
     }
     framework::TensorCopy(src_t, src_t.place(), dst_t);
-  } else if (src_var->IsType<TensorArray>()) {
-    auto src_tensor_array = src_var->Get<TensorArray>();
-    auto* dst_tensor_array = (*dst_var)->GetMutable<TensorArray>();
+  } else if (src_var->IsType<phi::TensorArray>()) {
+    auto src_tensor_array = src_var->Get<phi::TensorArray>();
+    auto* dst_tensor_array = (*dst_var)->GetMutable<phi::TensorArray>();
     if (!src_tensor_array.has_allocation()) {
       if (is_optional) {
         (*dst_var) = nullptr;
@@ -430,7 +430,7 @@ void BuildValue(pir::Value value,
       value.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
     var->GetMutable<DenseTensor>();
   } else if (value.type().isa<paddle::dialect::AllocatedSelectedRowsType>()) {
-    var->GetMutable<SelectedRows>();
+    var->GetMutable<phi::SelectedRows>();
   } else if (value.type()
                  .isa<paddle::dialect::AllocatedSparseCooTensorType>()) {
     var->GetMutable<phi::SparseCooTensor>();
@@ -439,7 +439,7 @@ void BuildValue(pir::Value value,
     var->GetMutable<phi::SparseCsrTensor>();
   } else if (value.type()
                  .isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
-    var->GetMutable<TensorArray>();
+    var->GetMutable<phi::TensorArray>();
   } else if (value.type().isa<pir::StackType>()) {
     var->GetMutable<VariableRefArray>();
   } else if (value.type().isa<pir::VectorType>()) {
@@ -487,7 +487,7 @@ void HandleForSpecialOp(pir::Operation* op,
     if (op->operand_source(0)
             .type()
             .isa<paddle::dialect::DenseTensorArrayType>()) {
-      var->GetMutable<TensorArray>();
+      var->GetMutable<phi::TensorArray>();
     } else {
       var->GetMutable<DenseTensor>();
     }

@@ -213,8 +213,8 @@ void BuildPhiContext(pir::Operation* op,
     if (var->IsType<DenseTensor>()) {
       const phi::TensorBase* tensor_in = &(var->Get<DenseTensor>());
       ctx->EmplaceBackInput(InType(tensor_in));
-    } else if (var->IsType<TensorArray>()) {
-      const phi::TensorBase* tensor_in = &(var->Get<TensorArray>());
+    } else if (var->IsType<phi::TensorArray>()) {
+      const phi::TensorBase* tensor_in = &(var->Get<phi::TensorArray>());
       ctx->EmplaceBackInput(InType(tensor_in));
     } else if (var->IsType<VariableRefArray>()) {
       InListType inputs;
@@ -223,12 +223,12 @@ void BuildPhiContext(pir::Operation* op,
         if (variable_array[i]->IsType<DenseTensor>()) {
           inputs.emplace_back(InType(const_cast<phi::DenseTensor*>(
               &(variable_array[i]->Get<DenseTensor>()))));
-        } else if (variable_array[i]->IsType<SelectedRows>()) {
-          inputs.emplace_back(InType(const_cast<SelectedRows*>(
-              &(variable_array[i]->Get<SelectedRows>()))));
-        } else if (variable_array[i]->IsType<TensorArray>()) {
-          inputs.emplace_back(InType(const_cast<TensorArray*>(
-              &(variable_array[i]->Get<TensorArray>()))));
+        } else if (variable_array[i]->IsType<phi::SelectedRows>()) {
+          inputs.emplace_back(InType(const_cast<phi::SelectedRows*>(
+              &(variable_array[i]->Get<phi::SelectedRows>()))));
+        } else if (variable_array[i]->IsType<phi::TensorArray>()) {
+          inputs.emplace_back(InType(const_cast<phi::TensorArray*>(
+              &(variable_array[i]->Get<phi::TensorArray>()))));
         } else {
           PADDLE_THROW(common::errors::Unimplemented(
               "Only support Vector<DenseTensor> and vector<SelectedRows> "
@@ -238,8 +238,8 @@ void BuildPhiContext(pir::Operation* op,
         }
       }
       ctx->EmplaceBackInputs(inputs);
-    } else if (var->IsType<SelectedRows>()) {
-      const phi::TensorBase* tensor_in = &(var->Get<SelectedRows>());
+    } else if (var->IsType<phi::SelectedRows>()) {
+      const phi::TensorBase* tensor_in = &(var->Get<phi::SelectedRows>());
       ctx->EmplaceBackInput(InType(tensor_in));
     } else if (var->IsType<phi::SparseCooTensor>()) {
       const phi::TensorBase* tensor_in = &(var->Get<phi::SparseCooTensor>());
@@ -483,9 +483,9 @@ void BuildPhiContext(pir::Operation* op,
               << value_exec_info.GetVarName(out_ptr);
     } else if (out_ptr.type()
                    .isa<paddle::dialect::AllocatedSelectedRowsType>()) {
-      ctx->EmplaceBackOutput(OutType(const_cast<SelectedRows*>(
+      ctx->EmplaceBackOutput(OutType(const_cast<phi::SelectedRows*>(
           &(inner_scope->FindVar(value_exec_info.GetVarName(out_ptr))
-                ->Get<SelectedRows>()))));
+                ->Get<phi::SelectedRows>()))));
       VLOG(8) << "ctx->EmplaceBackOutput SelectedRows: "
               << value_exec_info.GetVarName(out_ptr);
     } else if (out_ptr.type()
@@ -504,9 +504,9 @@ void BuildPhiContext(pir::Operation* op,
               << value_exec_info.GetVarName(out_ptr);
     } else if (out_ptr.type()
                    .isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
-      ctx->EmplaceBackOutput(OutType(const_cast<TensorArray*>(
+      ctx->EmplaceBackOutput(OutType(const_cast<phi::TensorArray*>(
           &(inner_scope->FindVar(value_exec_info.GetVarName(out_ptr))
-                ->Get<TensorArray>()))));
+                ->Get<phi::TensorArray>()))));
       VLOG(8) << "ctx->EmplaceBackOutput TensorArray: "
               << value_exec_info.GetVarName(out_ptr);
     } else if (out_ptr.type().isa<pir::VectorType>()) {
@@ -518,9 +518,9 @@ void BuildPhiContext(pir::Operation* op,
         if (variable_array[i]->IsType<DenseTensor>()) {
           outputs.emplace_back(OutType(const_cast<phi::DenseTensor*>(
               &(variable_array[i]->Get<DenseTensor>()))));
-        } else if (variable_array[i]->IsType<SelectedRows>()) {
-          outputs.emplace_back(OutType(const_cast<SelectedRows*>(
-              &(variable_array[i]->Get<SelectedRows>()))));
+        } else if (variable_array[i]->IsType<phi::SelectedRows>()) {
+          outputs.emplace_back(OutType(const_cast<phi::SelectedRows*>(
+              &(variable_array[i]->Get<phi::SelectedRows>()))));
         } else {
           PADDLE_THROW(common::errors::Unimplemented(
               "Only support Vector<DenseTensor> and vector<SelectedRows> now, "
