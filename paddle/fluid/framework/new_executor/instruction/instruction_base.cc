@@ -158,19 +158,19 @@ static double GetDenseTensorEleSum(const Scope& scope,
     dev_ctx.Wait();
     double sum = 0.0;
     for (int64_t i = 0; i < cpu_tensor.numel(); i++) {
-      if (cpu_tensor.dtype() == phi::DataType::FLOAT32) {
+      if (cpu_tensor.dtype() == DataType::FLOAT32) {
         sum += static_cast<double>(cpu_tensor.data<float>()[i]);
-      } else if (cpu_tensor.dtype() == phi::DataType::FLOAT64) {
+      } else if (cpu_tensor.dtype() == DataType::FLOAT64) {
         sum += static_cast<double>(cpu_tensor.data<double>()[i]);
-      } else if (cpu_tensor.dtype() == phi::DataType::INT32) {
+      } else if (cpu_tensor.dtype() == DataType::INT32) {
         sum += static_cast<double>(cpu_tensor.data<int32_t>()[i]);
-      } else if (cpu_tensor.dtype() == phi::DataType::INT64) {
+      } else if (cpu_tensor.dtype() == DataType::INT64) {
         sum += static_cast<double>(cpu_tensor.data<int64_t>()[i]);
-      } else if (cpu_tensor.dtype() == phi::DataType::FLOAT16) {
+      } else if (cpu_tensor.dtype() == DataType::FLOAT16) {
         const phi::dtype::float16* data =
             cpu_tensor.data<phi::dtype::float16>();
         sum += static_cast<double>(data[0]);
-      } else if (cpu_tensor.dtype() == phi::DataType::BOOL) {
+      } else if (cpu_tensor.dtype() == DataType::BOOL) {
         sum += static_cast<double>(cpu_tensor.data<bool>()[i]);
       } else {
         return std::numeric_limits<double>::quiet_NaN();

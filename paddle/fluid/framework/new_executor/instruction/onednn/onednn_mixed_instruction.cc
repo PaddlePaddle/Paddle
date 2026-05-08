@@ -91,7 +91,7 @@ void OneDNNMixedPhiKernelInstruction::Run() {
 
     for (size_t i = 0; i < inputs.size(); ++i) {
       auto input = inputs[i];
-      if (input->layout() == phi::DataLayout::ONEDNN) {
+      if (input->layout() == DataLayout::ONEDNN) {
         DataLayout tmp_layout =
             phi::OneDNNContext::tls().get_cur_paddle_data_layout();
 
@@ -102,7 +102,7 @@ void OneDNNMixedPhiKernelInstruction::Run() {
           auto transed_tensor = tmp_holders.back().get();
           transed_tensor->set_layout(tmp_layout);
           phi::funcs::MatchShapeToLayout(
-              transed_tensor, phi::DataLayout::ONEDNN, tmp_layout);
+              transed_tensor, DataLayout::ONEDNN, tmp_layout);
           dnnl::memory::desc out_mem_desc =
               phi::funcs::make_memory_desc(*transed_tensor, tmp_layout);
           transed_tensor->set_mem_desc(out_mem_desc);
@@ -126,7 +126,7 @@ void OneDNNMixedPhiKernelInstruction::Run() {
           tmp_holders.emplace_back(std::make_shared<DenseTensor>());
           auto transed_tensor = tmp_holders.back().get();
           transed_tensor->set_meta(input->meta());
-          phi::funcs::TransDataLayoutFromOneDNN(phi::DataLayout::ONEDNN,
+          phi::funcs::TransDataLayoutFromOneDNN(DataLayout::ONEDNN,
                                                 tmp_layout,
                                                 *input,
                                                 transed_tensor,

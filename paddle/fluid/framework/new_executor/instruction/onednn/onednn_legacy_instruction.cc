@@ -275,22 +275,22 @@ void OneDNNLegacyKernelInstruction::Run() {
     for (auto& var : input_vars) {
       if (var->IsType<DenseTensor>()) {
         auto input = var->GetMutable<DenseTensor>();
-        if (input->layout() != phi::DataLayout::ONEDNN) {
-          phi::DataLayout from_layout = input->layout();
+        if (input->layout() != DataLayout::ONEDNN) {
+          DataLayout from_layout = input->layout();
 
           //  Handle 'layout_transform' in
           //  ops_onednn_extra.yaml(GetKernelTypeForVar)
           if (data_format_tensors_.count(*input_name) &&
-              input_layout_ != phi::DataLayout::ANY) {
+              input_layout_ != DataLayout::ANY) {
             from_layout = input_layout_;
           }
 
-          auto transed_tensor = const_cast<phi::DenseTensor*>(input);
+          auto transed_tensor = const_cast<DenseTensor*>(input);
 
           if (from_layout == DataLayout::NHWC ||
               from_layout == DataLayout::NDHWC) {
             phi::funcs::MatchShapeToLayout(
-                transed_tensor, from_layout, phi::DataLayout::ONEDNN);
+                transed_tensor, from_layout, DataLayout::ONEDNN);
             // We register only NHWC assuming that model is consistent e.g.
             // either NHWC or NCHW
             phi::OneDNNContext::tls().set_cur_paddle_data_layout(from_layout);

@@ -61,7 +61,7 @@ void CheckTensorHasNanOrInf(InstructionBase* instruction,
     if (!need_check) continue;
 
     if (scope) {
-      const phi::DenseTensor* dense_tensor{nullptr};
+      const DenseTensor* dense_tensor{nullptr};
       Variable* var = scope->FindVar(tensor_name);
       if (!var) {
         VLOG(10) << "No var found for tensor_name: " << tensor_name;

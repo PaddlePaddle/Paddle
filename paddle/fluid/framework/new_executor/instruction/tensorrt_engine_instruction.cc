@@ -232,9 +232,9 @@ TensorRTEngineInstruction::TensorRTEngineInstruction(
 
     std::vector<DenseTensor *> tensor_out;
     for (size_t i = 0; i < len; ++i) {
-      auto *tensor_temp = new phi::DenseTensor();
+      auto *tensor_temp = new DenseTensor();
       tensor_temp->Resize({1});
-      phi::DataType type_data = phi::DataType::FLOAT32;
+      DataType type_data = DataType::FLOAT32;
       phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
       const phi::DeviceContext *dev_ctx = nullptr;
       dev_ctx = pool.Get(CPUPlace());
@@ -324,28 +324,28 @@ static void RuntimeDynamicShapeCheck(
                         max_input_shape_str));
 }
 
-static phi::DataType TRT2PaddleDataType(nvinfer1::DataType type) {
+static DataType TRT2PaddleDataType(nvinfer1::DataType type) {
   switch (type) {
     case nvinfer1::DataType::kFLOAT:
-      return phi::DataType::FLOAT32;
+      return DataType::FLOAT32;
     case nvinfer1::DataType::kINT32:
-      return phi::DataType::INT32;
+      return DataType::INT32;
     case nvinfer1::DataType::kHALF:
-      return phi::DataType::FLOAT16;
+      return DataType::FLOAT16;
     case nvinfer1::DataType::kINT8:
-      return phi::DataType::INT8;
+      return DataType::INT8;
 #if IS_TRT_VERSION_GE(9000)
     case nvinfer1::DataType::kINT64:
       VLOG(4) << "get nvinfer1::DataType::kINT64 from TRT op, and will output "
                  "to paddle. Does the downstream paddle op here support int64?";
-      return phi::DataType::INT64;
+      return DataType::INT64;
 #endif
     case nvinfer1::DataType::kBOOL:
-      return phi::DataType::BOOL;
+      return DataType::BOOL;
     default:
       PADDLE_THROW(common::errors::InvalidArgument(
           "unknown fluid datatype in Fluid op converter"));
-      return phi::DataType::FLOAT32;
+      return DataType::FLOAT32;
   }
 }
 
@@ -492,21 +492,21 @@ void TensorRTEngineInstruction::BindInputTensor(const std::string &input_name,
       trt_engine_->engine()->getTensorIOMode(input_name.c_str()) ==
           nvinfer1::TensorIOMode::kINPUT) {
     shape_v.resize(input_tensor.numel());
-    if (input_tensor.dtype() == phi::DataType::INT32) {
+    if (input_tensor.dtype() == DataType::INT32) {
       phi::memory_utils::Copy(CPUPlace(),
                               shape_v.data(),
                               input_tensor.place(),
                               input_tensor.data<int32_t>(),
                               input_tensor.numel() * sizeof(int),
                               nullptr);
-    } else if (input_tensor.dtype() == phi::DataType::INT64 && support_int64) {
+    } else if (input_tensor.dtype() == DataType::INT64 && support_int64) {
       phi::memory_utils::Copy(CPUPlace(),
                               shape_v.data(),
                               input_tensor.place(),
                               input_tensor.data<int64_t>(),
                               input_tensor.numel() * sizeof(int64_t),
                               nullptr);
-    } else if (input_tensor.dtype() == phi::DataType::INT64 && !support_int64) {
+    } else if (input_tensor.dtype() == DataType::INT64 && !support_int64) {
       std::string x_t = input_name + "_cast_to_INT32";
       if (scope.FindVar(x_t) == nullptr) {
         const_cast<framework::Scope *>(&scope)->Var(x_t);
@@ -515,7 +515,7 @@ void TensorRTEngineInstruction::BindInputTensor(const std::string &input_name,
       *int32_tensor = phi::Cast<int64_t>(
           reinterpret_cast<const phi::GPUContext &>(*dev_ctx_),
           input_tensor,
-          phi::DataType::INT32);
+          DataType::INT32);
       phi::memory_utils::Copy(CPUPlace(),
                               shape_v.data(),
                               int32_tensor->place(),
@@ -555,10 +555,10 @@ void TensorRTEngineInstruction::BindInputTensor(const std::string &input_name,
                         "to the input data type [%d].",
                         static_cast<int>(intrt_type),
                         static_cast<int>(indata_type)));
-  if (input_tensor.dtype() == phi::DataType::FLOAT32) {
+  if (input_tensor.dtype() == DataType::FLOAT32) {
     buffers[bind_index] =
         static_cast<void *>(const_cast<float *>(input_tensor.data<float>()));
-  } else if (input_tensor.dtype() == phi::DataType::FLOAT64) {
+  } else if (input_tensor.dtype() == DataType::FLOAT64) {
     std::string x_t = input_name + "_cast_to_FP32";
     if (scope.FindVar(x_t) == nullptr) {
       const_cast<framework::Scope *>(&scope)->Var(x_t);
@@ -567,12 +567,12 @@ void TensorRTEngineInstruction::BindInputTensor(const std::string &input_name,
     *fp32_tensor =
         phi::Cast<double>(reinterpret_cast<const phi::GPUContext &>(*dev_ctx_),
                           input_tensor,
-                          phi::DataType::FLOAT32);
+                          DataType::FLOAT32);
     buffers[bind_index] = static_cast<void *>(fp32_tensor->data<float>());
-  } else if (input_tensor.dtype() == phi::DataType::INT64 && support_int64) {
+  } else if (input_tensor.dtype() == DataType::INT64 && support_int64) {
     buffers[bind_index] = static_cast<void *>(
         const_cast<int64_t *>(input_tensor.data<int64_t>()));
-  } else if (input_tensor.dtype() == phi::DataType::INT64 && !support_int64) {
+  } else if (input_tensor.dtype() == DataType::INT64 && !support_int64) {
     std::string x_t = input_name + "_cast_to_INT32";
     if (scope.FindVar(x_t) == nullptr) {
       const_cast<framework::Scope *>(&scope)->Var(x_t);
@@ -581,15 +581,15 @@ void TensorRTEngineInstruction::BindInputTensor(const std::string &input_name,
     *int32_tensor =
         phi::Cast<int64_t>(reinterpret_cast<const phi::GPUContext &>(*dev_ctx_),
                            input_tensor,
-                           phi::DataType::INT32);
+                           DataType::INT32);
     buffers[bind_index] = static_cast<void *>(int32_tensor->data<int32_t>());
-  } else if (input_tensor.dtype() == phi::DataType::INT32) {
+  } else if (input_tensor.dtype() == DataType::INT32) {
     buffers[bind_index] = static_cast<void *>(
         const_cast<int32_t *>(input_tensor.data<int32_t>()));
-  } else if (input_tensor.dtype() == phi::DataType::FLOAT16) {
+  } else if (input_tensor.dtype() == DataType::FLOAT16) {
     buffers[bind_index] = static_cast<void *>(
         const_cast<float16 *>(input_tensor.data<float16>()));
-  } else if (input_tensor.dtype() == phi::DataType::BOOL) {
+  } else if (input_tensor.dtype() == DataType::BOOL) {
     buffers[bind_index] =
         static_cast<void *>(const_cast<bool *>(input_tensor.data<bool>()));
 
@@ -830,28 +830,28 @@ void TensorRTEngineInstruction::RunTrt() {
       }
       output_tensor->Resize(common::make_ddim(ddim));
       dev_ctx_->Alloc(output_tensor, type);
-      if (type == phi::DataType::FLOAT32) {
+      if (type == DataType::FLOAT32) {
         auto *mutable_output = output_tensor->data<float>();
-        phi::memory_utils::Copy(phi::GPUPlace(),
+        phi::memory_utils::Copy(GPUPlace(),
                                 mutable_output,
-                                phi::GPUPlace(),
+                                GPUPlace(),
                                 output_tensor_tmp->data<float>(),
                                 sizeof(float) * output_tensor->numel(),
                                 nullptr);
-      } else if (type == phi::DataType::INT64 || type == phi::DataType::INT32) {
-        if (type == phi::DataType::INT64 && support_int64) {
+      } else if (type == DataType::INT64 || type == DataType::INT32) {
+        if (type == DataType::INT64 && support_int64) {
           auto *mutable_output = output_tensor->data<int64_t>();
-          phi::memory_utils::Copy(phi::GPUPlace(),
+          phi::memory_utils::Copy(GPUPlace(),
                                   mutable_output,
-                                  phi::GPUPlace(),
+                                  GPUPlace(),
                                   output_tensor_tmp->data<int64_t>(),
                                   sizeof(int64_t) * output_tensor->numel(),
                                   nullptr);
         } else {
           auto *mutable_output = output_tensor->data<int32_t>();
-          phi::memory_utils::Copy(phi::GPUPlace(),
+          phi::memory_utils::Copy(GPUPlace(),
                                   mutable_output,
-                                  phi::GPUPlace(),
+                                  GPUPlace(),
                                   output_tensor_tmp->data<int32_t>(),
                                   sizeof(int32_t) * output_tensor->numel(),
                                   nullptr);
@@ -864,7 +864,7 @@ void TensorRTEngineInstruction::RunTrt() {
 #endif
 
     // Type transformation for INT64 and FLOAT64
-    if (type == phi::DataType::INT64 && !support_int64) {
+    if (type == DataType::INT64 && !support_int64) {
       auto y = index_name_pair.second;
       auto *fluid_v = out_variable_array->at(i);
       auto *fluid_t = const_cast<DenseTensor *>(&(fluid_v->Get<DenseTensor>()));
@@ -879,8 +879,8 @@ void TensorRTEngineInstruction::RunTrt() {
       *fluid_t = phi::Cast<int32_t>(
           reinterpret_cast<const phi::GPUContext &>(*dev_ctx_),
           *int32_tensor,
-          phi::DataType::INT64);
-    } else if (type == phi::DataType::FLOAT64) {
+          DataType::INT64);
+    } else if (type == DataType::FLOAT64) {
       auto y = index_name_pair.second;
       auto *fluid_v = out_variable_array->at(i);
       auto *fluid_t = const_cast<DenseTensor *>(&(fluid_v->Get<DenseTensor>()));
@@ -895,7 +895,7 @@ void TensorRTEngineInstruction::RunTrt() {
       *fluid_t =
           phi::Cast<float>(reinterpret_cast<const phi::GPUContext &>(*dev_ctx_),
                            *fp32_tensor,
-                           phi::DataType::FLOAT64);
+                           DataType::FLOAT64);
     }
   }
 }

@@ -69,11 +69,11 @@ class CustomKernelInstruction : public InstructionBase {
   std::vector<std::vector<DataType>> vec_input_dtypes_;
 
   // use for calculate input shapes and dtypes in runtime
-  std::vector<phi::DenseTensor*> input_ptrs_;
-  std::vector<std::vector<phi::DenseTensor*>> vec_input_ptrs_;
+  std::vector<DenseTensor*> input_ptrs_;
+  std::vector<std::vector<DenseTensor*>> vec_input_ptrs_;
 
   // use for update output
-  std::vector<phi::DenseTensor*> cache_out_ptrs_;
+  std::vector<DenseTensor*> cache_out_ptrs_;
 
   std::string custom_op_name_;
 
