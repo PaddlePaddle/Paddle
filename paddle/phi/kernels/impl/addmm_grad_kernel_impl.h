@@ -34,7 +34,7 @@ struct CopyOrScaleFunctor {
       : scale_(scale), x_(x), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    using MPType = typename dtype::MPTypeTrait<T>::Type;
+    using MPType = typename MPTypeTrait<T>::Type;
     const MPType mp_scale = static_cast<MPType>(scale_);
     const MPType mp_x = static_cast<MPType>(x_[idx]);
     output_[idx] = static_cast<T>(mp_scale * mp_x);
@@ -73,7 +73,7 @@ void AddmmGradKernel(const Context& dev_ctx,
     }
     return;
   }
-  using MPType = typename dtype::MPTypeTrait<T>::Type;
+  using MPType = typename MPTypeTrait<T>::Type;
   bool is_float16_or_bfloat16 = false;
   bool is_big_tensor = false;
   if (input.numel() * input.dims()[1] > std::numeric_limits<int>::max() ||

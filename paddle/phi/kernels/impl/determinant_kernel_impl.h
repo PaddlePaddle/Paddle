@@ -81,7 +81,7 @@ struct DeterminantFunctor {
     std::vector<T> input_vec;
     std::vector<T> output_vec;
     TensorToVector(input, dev_ctx, &input_vec);
-    using MPType = typename dtype::MPTypeTrait<T>::Type;
+    using MPType = typename MPTypeTrait<T>::Type;
     for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
       auto begin_iter = input_vec.begin() + i * rank * rank;
       auto end_iter = input_vec.begin() + (i + 1) * rank * rank;

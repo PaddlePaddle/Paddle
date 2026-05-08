@@ -119,8 +119,8 @@ HOSTDEVICE ScalarT
 sample_gamma(ScalarT alpha,
              BaseSampler<AccscalarT, UniformSamplerT> standard_uniform,
              BaseSampler<AccscalarT, NormalSamplerT> standard_normal) {
-  using MPTypeScalar = typename dtype::MPTypeTrait<ScalarT>::Type;
-  using MPTypeAccscalar = typename dtype::MPTypeTrait<AccscalarT>::Type;
+  using MPTypeScalar = typename MPTypeTrait<ScalarT>::Type;
+  using MPTypeAccscalar = typename MPTypeTrait<AccscalarT>::Type;
 
   MPTypeAccscalar mp_scale = static_cast<MPTypeAccscalar>(1.0f);
   MPTypeScalar mp_alpha = static_cast<MPTypeScalar>(alpha);

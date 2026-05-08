@@ -24,7 +24,7 @@ struct LgammaGradFunctor {
       : dout_(dout), x_(x), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    using MT = typename dtype::MPTypeTrait<T>::Type;
+    using MT = typename MPTypeTrait<T>::Type;
     const MT mp_dout = static_cast<MT>(dout_[idx]);
     const MT mp_x = static_cast<MT>(x_[idx]);
     MT eigen_out = Eigen::numext::digamma(mp_x);

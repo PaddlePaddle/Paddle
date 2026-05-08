@@ -131,7 +131,7 @@ __global__ void IscloseCUDAKernel(const T* in_data,
       static_cast<IndexType>(blockIdx.x) * static_cast<IndexType>(blockDim.x) +
       static_cast<IndexType>(threadIdx.x);
   bool val;
-  using MPType = typename dtype::MPTypeTrait<T>::Type;
+  using MPType = typename MPTypeTrait<T>::Type;
   for (IndexType i = idx; i < num; i += blockDim.x * gridDim.x) {
     const MPType a = static_cast<MPType>(in_data[i]);
     const MPType b = static_cast<MPType>(other_data[i]);

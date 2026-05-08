@@ -144,7 +144,7 @@ void DeterminantGradKernel(const Context& dev_ctx,
     return;
   }
 
-  using MPType = typename dtype::MPTypeTrait<T>::Type;
+  using MPType = typename MPTypeTrait<T>::Type;
 
   // The matrix is invertible
   // let |A| = Determinant(A)

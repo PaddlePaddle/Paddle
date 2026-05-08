@@ -1474,7 +1474,7 @@ HOSTDEVICE T compute_pow_grad_dy(T x, T y, T out UNUSED, T dout) {
 
 template <typename T>
 struct PowGradDX {
-  using MPType = typename dtype::MPTypeTrait<T>::Type;
+  using MPType = typename MPTypeTrait<T>::Type;
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
     return compute_pow_grad_dx<T, MPType>(x, y, out, dout);
   }
@@ -1482,7 +1482,7 @@ struct PowGradDX {
 
 template <typename T, typename Enable = void>
 struct PowGradDY {
-  using MPType = typename dtype::MPTypeTrait<T>::Type;
+  using MPType = typename MPTypeTrait<T>::Type;
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
     return compute_pow_grad_dy<T, MPType>(x, y, out, dout);
   }
@@ -1563,7 +1563,7 @@ struct RemainderGradDx {
 template <typename T, typename Enable = void>
 struct RemainderGradDy {
   HOSTDEVICE T operator()(T x, T y, T out UNUSED, T dout) const {
-    using MPType = typename dtype::MPTypeTrait<T>::Type;
+    using MPType = typename MPTypeTrait<T>::Type;
     auto x_ = static_cast<MPType>(x);
     auto y_ = static_cast<MPType>(y);
     auto dout_ = static_cast<MPType>(dout);
@@ -1576,7 +1576,7 @@ struct RemainderGradDy<
     T,
     typename std::enable_if<std::is_floating_point<T>::value>::type> {
   HOSTDEVICE T operator()(T x, T y, T out UNUSED, T dout) const {
-    using MPType = typename dtype::MPTypeTrait<T>::Type;
+    using MPType = typename MPTypeTrait<T>::Type;
     auto x_ = static_cast<MPType>(x);
     auto y_ = static_cast<MPType>(y);
     auto dout_ = static_cast<MPType>(dout);

@@ -28,7 +28,7 @@ struct DigammaGradFunctor {
       : dout_(dout), x_(x), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    using MPType = typename dtype::MPTypeTrait<T>::Type;
+    using MPType = typename MPTypeTrait<T>::Type;
     const MPType mp_dout = static_cast<MPType>(dout_[idx]);
     const MPType mp_x = static_cast<MPType>(x_[idx]);
     output_[idx] =

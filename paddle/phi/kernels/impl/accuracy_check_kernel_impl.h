@@ -146,7 +146,7 @@ __global__ void AccuracyCheckCUDAKernel(const T* in_data,
                                         bool* out_data) {
   int64_t idx = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   bool val;
-  using MPType = typename dtype::MPTypeTrait<T>::Type;
+  using MPType = typename MPTypeTrait<T>::Type;
   for (int64_t i = idx; i < num; i += blockDim.x * gridDim.x) {
     const double a = static_cast<MPType>(in_data[i]);
     const double b = static_cast<MPType>(other_data[i]);

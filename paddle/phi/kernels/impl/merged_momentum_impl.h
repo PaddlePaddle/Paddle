@@ -27,7 +27,7 @@
 namespace phi {
 
 template <typename T>
-using MultiPrecisionType = typename dtype::MPTypeTrait<T>::Type;
+using MultiPrecisionType = typename MPTypeTrait<T>::Type;
 
 template <typename MT, uint32_t kParamNum, bool kHasMasterParams>
 struct MergedMomentumMasterParams {
@@ -382,7 +382,7 @@ void MergedMomentumKernel(
     std::vector<DenseTensor *> param_out,
     std::vector<DenseTensor *> velocity_out,
     std::vector<DenseTensor *> master_param_out) {
-  using MPType = typename dtype::MPTypeTrait<T>::Type;
+  using MPType = typename MPTypeTrait<T>::Type;
   if (multi_precision) {
     MergedMomentumInnerCompute<MPType, Context, MPType, T>(
         dev_ctx,
