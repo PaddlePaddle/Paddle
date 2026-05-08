@@ -25,7 +25,6 @@ from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
     legacy_reduction_func_decorator,
     param_one_alias,
-    param_two_alias,
     smooth_l1_beta_compat,
 )
 
@@ -617,7 +616,6 @@ def edit_distance(
 
 
 @legacy_reduction_func_decorator
-@param_one_alias(["label", "target"])
 def binary_cross_entropy(
     input: Tensor,
     label: Tensor,
@@ -753,7 +751,6 @@ def binary_cross_entropy(
 
 
 @legacy_reduction_func_decorator
-@param_two_alias(["logit", "input"], ["label", "target"])
 def binary_cross_entropy_with_logits(
     logit: Tensor,
     label: Tensor,
@@ -1148,7 +1145,6 @@ def hsigmoid_loss(
 
 @legacy_reduction_func_decorator
 @smooth_l1_beta_compat
-@param_one_alias(["label", "target"])
 def smooth_l1_loss(
     input: Tensor,
     label: Tensor,
@@ -1261,9 +1257,6 @@ def smooth_l1_loss(
 
 
 @legacy_reduction_func_decorator
-@ParamAliasDecorator(
-    {"input": ["input1"], "other": ["input2"], "label": ["target"]}
-)
 def margin_ranking_loss(
     input: Tensor,
     other: Tensor,
@@ -1389,7 +1382,6 @@ def margin_ranking_loss(
 
 
 @legacy_reduction_func_decorator
-@param_one_alias(["label", "target"])
 def l1_loss(
     input: Tensor,
     label: Tensor,
@@ -1498,7 +1490,6 @@ def l1_loss(
 
 
 @legacy_reduction_func_decorator
-@param_one_alias(["label", "target"])
 def nll_loss(
     input: Tensor,
     label: Tensor,
@@ -1633,7 +1624,6 @@ def nll_loss(
 
 
 @legacy_reduction_func_decorator
-@param_two_alias(["label", "target"], ["epsilon", "eps"])
 def poisson_nll_loss(
     input: Tensor,
     label: Tensor,
@@ -1754,7 +1744,6 @@ def poisson_nll_loss(
 
 
 @legacy_reduction_func_decorator
-@param_one_alias(["label", "target"])
 def kl_div(
     input: Tensor,
     label: Tensor,
@@ -1903,7 +1892,6 @@ def kl_div(
 
 
 @legacy_reduction_func_decorator
-@param_one_alias(["label", "target"])
 def mse_loss(
     input: Tensor,
     label: Tensor,
@@ -2800,7 +2788,6 @@ def softmax_with_cross_entropy(
 
 
 @legacy_reduction_func_decorator
-@param_one_alias(["label", "target"])
 def cross_entropy(
     input: Tensor,
     label: Tensor,
@@ -3645,7 +3632,6 @@ def sigmoid_focal_loss(
 
 
 @legacy_reduction_func_decorator
-@param_one_alias(["label", "target"])
 def multi_label_soft_margin_loss(
     input: Tensor,
     label: Tensor,
@@ -3761,7 +3747,6 @@ def multi_label_soft_margin_loss(
 
 
 @legacy_reduction_func_decorator
-@param_one_alias(["label", "target"])
 def hinge_embedding_loss(
     input: Tensor,
     label: Tensor,
@@ -3873,7 +3858,6 @@ def hinge_embedding_loss(
 
 
 @legacy_reduction_func_decorator
-@param_one_alias(["label", "target"])
 def cosine_embedding_loss(
     input1: Tensor,
     input2: Tensor,
@@ -4152,7 +4136,6 @@ def triplet_margin_with_distance_loss(
 
 
 @legacy_reduction_func_decorator
-@param_two_alias(["input", "anchor"], ["epsilon", "eps"])
 def triplet_margin_loss(
     input: Tensor,
     positive: Tensor,
@@ -4284,7 +4267,6 @@ def triplet_margin_loss(
 
 
 @legacy_reduction_func_decorator
-@param_one_alias(["label", "target"])
 def multi_margin_loss(
     input: Tensor,
     label: Tensor,
@@ -4417,7 +4399,6 @@ def multi_margin_loss(
 
 
 @legacy_reduction_func_decorator
-@param_one_alias(["label", "target"])
 def multi_label_margin_loss(
     input: Tensor,
     label: Tensor,
@@ -4539,7 +4520,6 @@ def multi_label_margin_loss(
 
 
 @legacy_reduction_func_decorator
-@param_one_alias(["label", "target"])
 def soft_margin_loss(
     input: Tensor,
     label: Tensor,

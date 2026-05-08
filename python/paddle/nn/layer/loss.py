@@ -1073,7 +1073,6 @@ class PoissonNLLLoss(Layer):
     """
 
     @legacy_reduction_decorator
-    @param_one_alias(["epsilon", "eps"])
     def __init__(
         self,
         log_input: bool = True,
@@ -2128,7 +2127,6 @@ class TripletMarginLoss(Layer):
     name: str | None
 
     @legacy_reduction_decorator
-    @param_one_alias(["epsilon", "eps"])
     def __init__(
         self,
         margin: float = 1.0,
@@ -2834,3 +2832,9 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
                 output, indices, paddle.argmax(log_prob, axis=1).cast('float32')
             )
             return result
+
+
+# PyTorch-style aliases mirroring the functional layer's
+# ``multilabel_margin_loss`` / ``multilabel_soft_margin_loss`` aliases.
+MultilabelMarginLoss = MultiLabelMarginLoss
+MultilabelSoftMarginLoss = MultiLabelSoftMarginLoss
