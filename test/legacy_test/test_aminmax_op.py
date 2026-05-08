@@ -51,12 +51,12 @@ class TestAminmaxOp(OpTest):
         self.init_args()
         np.random.seed(2025)
         self.input_data = np.random.random(self.shape).astype(self.dtype)
-        self.inputs = {'X': self.input_data}
+        self.inputs = {'x': self.input_data}
         self.attrs = {'axis': self.axis, 'keepdim': self.keepdim}
         min_val, max_val = ref_aminmax(
             self.input_data, axis=self.axis_for_np, keepdim=self.keepdim
         )
-        self.outputs = {'Min': min_val, 'Max': max_val}
+        self.outputs = {'min': min_val, 'max': max_val}
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -74,8 +74,8 @@ class TestAminmaxOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'],
-            ['Min', 'Max'],
+            ['x'],
+            ['min', 'max'],
             check_pir=True,
         )
 
