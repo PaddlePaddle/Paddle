@@ -154,7 +154,7 @@ void BeginCUDAGraphCapture(phi::GPUPlace place,
               .get());
       VLOG(4) << "set CUDAGraphAllocator for dev_ctx: " << capturing_dev_ctx
               << " with stream: " << capturing_stream;
-      cuda_graph_event->Wait(platform::kCUDA, capturing_dev_ctx);
+      cuda_graph_event->Wait(kCUDA, capturing_dev_ctx);
       VLOG(4) << "CUDA Graph stream eventWait. Capturing dev_ctx: "
               << capturing_dev_ctx
               << " wait for cuda graph dev_ctx: " << dev_ctx;
@@ -187,7 +187,7 @@ std::unique_ptr<CUDAGraph> EndCUDAGraphCapture() {
               capturing_dev_ctx->GetPlace(),
               platform::GenerateDeviceEventFlag());
       capturing_event->Record(capturing_dev_ctx);
-      capturing_event->Wait(platform::kCUDA, dev_ctx);
+      capturing_event->Wait(kCUDA, dev_ctx);
       VLOG(4) << "CUDA Graph stream eventWait. cuda graph dev_ctx: " << dev_ctx
               << " wait for capturing dev_ctx: " << capturing_dev_ctx;
       capturing_dev_ctx->cudnn_workspace_handle().ResetWorkspace();
@@ -315,7 +315,7 @@ void BeginCUDAGraphCapture(CustomPlace place,
               .get());
       VLOG(4) << "set CUDAGraphAllocator for dev_ctx: " << capturing_dev_ctx
               << " with stream: " << capturing_stream;
-      cuda_graph_event->Wait(platform::kCUSTOM_DEVICE, capturing_dev_ctx);
+      cuda_graph_event->Wait(kCUSTOM_DEVICE, capturing_dev_ctx);
       VLOG(4) << "CUDA Graph stream eventWait. Capturing dev_ctx: "
               << capturing_dev_ctx
               << " wait for cuda graph dev_ctx: " << dev_ctx;
@@ -348,7 +348,7 @@ std::unique_ptr<CUDAGraph> EndCUDAGraphCapture() {
               capturing_dev_ctx->GetPlace(),
               platform::GenerateDeviceEventFlag());
       capturing_event->Record(capturing_dev_ctx);
-      capturing_event->Wait(platform::kCUSTOM_DEVICE, dev_ctx);
+      capturing_event->Wait(kCUSTOM_DEVICE, dev_ctx);
       VLOG(4) << "CUDA Graph stream eventWait. cuda graph dev_ctx: " << dev_ctx
               << " wait for capturing dev_ctx: " << capturing_dev_ctx;
       // capturing_dev_ctx->cudnn_workspace_handle().ResetWorkspace();
@@ -461,7 +461,7 @@ void BeginCUDAGraphCapture(phi::XPUPlace place,
               .get());
       VLOG(4) << "set CUDAGraphAllocator for dev_ctx: " << capturing_dev_ctx
               << " with stream: " << capturing_stream;
-      cuda_graph_event->Wait(platform::kCUDA, capturing_dev_ctx);
+      cuda_graph_event->Wait(kCUDA, capturing_dev_ctx);
       VLOG(4) << "CUDA Graph stream eventWait. Capturing dev_ctx: "
               << capturing_dev_ctx
               << " wait for cuda graph dev_ctx: " << dev_ctx;
@@ -494,7 +494,7 @@ std::unique_ptr<phi::backends::xpu::CUDAGraph> EndCUDAGraphCapture() {
               capturing_dev_ctx->GetPlace(),
               platform::GenerateDeviceEventFlag());
       capturing_event->Record(capturing_dev_ctx);
-      capturing_event->Wait(platform::kCUDA, dev_ctx);
+      capturing_event->Wait(kCUDA, dev_ctx);
       VLOG(4) << "CUDA Graph stream eventWait. cuda graph dev_ctx: " << dev_ctx
               << " wait for capturing dev_ctx: " << capturing_dev_ctx;
       // capturing_dev_ctx->cudnn_workspace_handle().ResetWorkspace();

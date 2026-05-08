@@ -104,8 +104,7 @@ void StreamAnalyzer::ConstructEvents(std::vector<Instruction>* instructions) {
               std::make_shared<DeviceEvent>(
                   recorder_instr.DeviceContext().GetPlace(),
                   platform::GenerateDeviceEventFlag());
-          recorder_instr.AddEventToRecord(device_event,
-                                          platform::kCUDA /*unused*/);
+          recorder_instr.AddEventToRecord(device_event, kCUDA /*unused*/);
           // It means the event will be waited for other interpreter that the
           // event name of a operator is not 'default'.
           if (recorder_instr.OpFunc()->force_record_event_ == true &&
@@ -158,7 +157,7 @@ void StreamAnalyzer::ConstructEvents(std::vector<Instruction>* instructions) {
         std::shared_ptr<DeviceEvent> device_event =
             std::make_shared<DeviceEvent>(place,
                                           platform::GenerateDeviceEventFlag());
-        instruction.AddEventToRecord(device_event, platform::kCUDA /*unused*/);
+        instruction.AddEventToRecord(device_event, kCUDA /*unused*/);
         (*program_force_events_to_wait_)[op_func_node->event_to_record_] =
             instruction.EventToRecord();
         VLOG(6) << "Create manual event: " << op_func_node->event_to_record_
@@ -652,14 +651,14 @@ void StreamAnalyzer::ShrinkEventInfo(
 platform::DeviceType StreamAnalyzer::GetWaiterType(
     const Instruction& instr) const {
   if (instr.KernelType() == OpFuncType::kCpuSync) {
-    return platform::kCPU;
+    return kCPU;
   } else {
     if (phi::is_xpu_place(place_)) {
-      return platform::kXPU;
+      return kXPU;
     } else if (phi::is_custom_place(place_)) {
-      return platform::kCUSTOM_DEVICE;
+      return kCUSTOM_DEVICE;
     }
-    return platform::kCUDA;
+    return kCUDA;
   }
 }
 
@@ -740,8 +739,7 @@ void PirStreamAnalyzer::ConstructEvents(
               std::make_shared<DeviceEvent>(
                   recorder_instr->DeviceContext().GetPlace(),
                   platform::GenerateDeviceEventFlag());
-          recorder_instr->AddEventToRecord(device_event,
-                                           platform::kCUDA /*unused*/);
+          recorder_instr->AddEventToRecord(device_event, kCUDA /*unused*/);
           // It means the event will be waited for other interpreter that the
           // event name of a operator is not 'default'.
           if (recorder_instr->IsForceRecordEvent() == true &&
@@ -791,7 +789,7 @@ void PirStreamAnalyzer::ConstructEvents(
         std::shared_ptr<DeviceEvent> device_event =
             std::make_shared<DeviceEvent>(place,
                                           platform::GenerateDeviceEventFlag());
-        instr->AddEventToRecord(device_event, platform::kCUDA /*unused*/);
+        instr->AddEventToRecord(device_event, kCUDA /*unused*/);
         (*program_force_events_to_wait_)[instr->EventToRecordInfo()] =
             instr->EventToRecord();
         VLOG(6) << "Create manual event: " << instr->EventToRecordInfo()
@@ -847,14 +845,14 @@ void PirStreamAnalyzer::ShrinkEventInfo(
 platform::DeviceType PirStreamAnalyzer::GetWaiterType(
     const paddle::framework::InstructionBase* instr) const {
   if (instr->KernelType() == OpFuncType::kCpuSync) {
-    return platform::kCPU;
+    return kCPU;
   } else {
     if (phi::is_xpu_place(place_)) {
-      return platform::kXPU;
+      return kXPU;
     } else if (phi::is_custom_place(place_)) {
-      return platform::kCUSTOM_DEVICE;
+      return kCUSTOM_DEVICE;
     }
-    return platform::kCUDA;
+    return kCUDA;
   }
 }
 

@@ -48,8 +48,6 @@ class NCCLCommunicator;
 namespace paddle {
 namespace framework {
 namespace details {
-using DeviceType = paddle::platform::DeviceType;
-namespace p = paddle::platform;
 
 struct BuildStrategy {
   // ParallelExecutor supports two modes of ReduceStrategy, kAllReduce and

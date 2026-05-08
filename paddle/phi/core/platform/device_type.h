@@ -44,4 +44,12 @@ using DeviceContext = phi::DeviceContext;
 using DeviceContextPool = phi::DeviceContextPool;
 
 }  // namespace platform
+
+using platform::kCPU;
+using platform::kCUDA;
+using platform::kCUSTOM_DEVICE;
+using platform::kIPU;
+using platform::kXPU;
+using DeviceType = paddle::platform::DeviceType;
+
 }  // namespace paddle
