@@ -23,7 +23,6 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
 namespace phi::distributed {
-using phi::distributed::auto_parallel::str_join;
 // The input tensor shape is “NC", "NCL", "NCHW" or "NCDHW", the shape of scale
 // and bias is [C]
 //  only N,C axis can be sharded.
@@ -32,9 +31,9 @@ SpmdInfo InstanceNormInferSpmd(const DistMetaTensor& x,
                                const DistMetaTensor& bias,
                                float epsilon) {
   // Step0: verify input args based on instance_norm logic
-  auto x_shape = common::vectorize(x.dims());
-  auto scale_shape = common::vectorize(scale.dims());
-  auto bias_shape = common::vectorize(bias.dims());
+  auto x_shape = vectorize(x.dims());
+  auto scale_shape = vectorize(scale.dims());
+  auto bias_shape = vectorize(bias.dims());
   int x_ndim = static_cast<int>(x_shape.size());
   int scale_ndim = static_cast<int>(scale_shape.size());
   int bias_ndim = static_cast<int>(bias_shape.size());
@@ -137,11 +136,11 @@ SpmdInfo InstanceNormGradInferSpmd(const DistMetaTensor& x,
                                    const DistMetaTensor& y_grad,
                                    float epsilon) {
   // Step0: verify input args based on instance_norm logic
-  auto x_shape = common::vectorize(x.dims());
-  auto scale_shape = common::vectorize(scale.dims());
-  auto saved_mean_shape = common::vectorize(saved_mean.dims());
-  auto saved_variance_shape = common::vectorize(saved_variance.dims());
-  auto y_grad_shape = common::vectorize(y_grad.dims());
+  auto x_shape = vectorize(x.dims());
+  auto scale_shape = vectorize(scale.dims());
+  auto saved_mean_shape = vectorize(saved_mean.dims());
+  auto saved_variance_shape = vectorize(saved_variance.dims());
+  auto y_grad_shape = vectorize(y_grad.dims());
   int x_ndim = static_cast<int>(x_shape.size());
   int scale_ndim = static_cast<int>(scale_shape.size());
   int saved_mean_ndim = static_cast<int>(saved_mean_shape.size());

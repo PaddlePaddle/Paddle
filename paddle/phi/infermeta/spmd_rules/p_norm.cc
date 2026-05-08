@@ -26,7 +26,7 @@ SpmdInfo PNormInferSpmd(const DistMetaTensor& x,
                         bool asvector) {
   std::vector<int64_t> new_axis;
   if (asvector) {
-    auto x_shape = common::vectorize(x.dims());
+    auto x_shape = vectorize(x.dims());
     int x_ndim = static_cast<int>(x_shape.size());
     new_axis.resize(x_ndim);
     for (int i = 0; i < x_ndim; ++i) {
@@ -48,7 +48,7 @@ SpmdInfo PNormInferSpmdReverse(const DistMetaTensor& x,
                                bool asvector) {
   std::vector<int64_t> new_axis;
   if (asvector) {
-    auto x_shape = common::vectorize(x.dims());
+    auto x_shape = vectorize(x.dims());
     int x_ndim = static_cast<int>(x_shape.size());
     new_axis.resize(x_ndim);
     for (int i = 0; i < x_ndim; ++i) {
@@ -71,7 +71,7 @@ SpmdInfo PNormGradInferSpmd(const DistMetaTensor& x,
                             bool asvector) {
   std::vector<int64_t> new_axis;
   if (asvector) {
-    auto x_shape = common::vectorize(x.dims());
+    auto x_shape = vectorize(x.dims());
     int x_ndim = static_cast<int>(x_shape.size());
     new_axis.resize(x_ndim);
     for (int i = 0; i < x_ndim; ++i) {

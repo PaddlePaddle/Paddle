@@ -27,8 +27,6 @@
 
 namespace phi::distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 TensorDistAttr CreateUnsqueezeXshape(const TensorDistAttr& x) {
   TensorDistAttr out(x);
   auto dims_mapping = x.dims_mapping();
@@ -91,7 +89,7 @@ std::vector<std::shared_ptr<DimTrans>> MakeUnsqueezeDimTransReverse(
 SpmdInfo UnsqueezeInferSpmd(const DistMetaTensor& x,
                             const std::vector<int64_t>& axis) {
   // Step0: Verify input args based on unsqueeze logic
-  auto x_shape = common::vectorize(x.dims());
+  auto x_shape = vectorize(x.dims());
   int x_ndim = static_cast<int>(x_shape.size());
   const auto& x_dist_attr_src = x.dist_attr();
   const std::vector<int64_t>& x_dims_mapping = x_dist_attr_src.dims_mapping();
@@ -160,9 +158,9 @@ SpmdInfo UnsqueezeInferSpmdReverse(const DistMetaTensor& x,
                                    const DistMetaTensor& out,
                                    const std::vector<int64_t>& axis) {
   // Step0: Verify input args based on unsqueeze logic
-  auto x_shape = common::vectorize(x.dims());
+  auto x_shape = vectorize(x.dims());
   int x_ndim = static_cast<int>(x_shape.size());
-  auto out_shape = common::vectorize(out.dims());
+  auto out_shape = vectorize(out.dims());
   int out_ndim = static_cast<int>(out_shape.size());
   const auto& out_dist_attr_src = out.dist_attr();
   const std::vector<int64_t>& out_dims_mapping =
