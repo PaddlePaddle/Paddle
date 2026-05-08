@@ -55,7 +55,7 @@ class DenseTensor;
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/phi/core/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/backends/gpu/gpu_dnn.h"
 #endif
 
 COMMON_DECLARE_bool(benchmark);

@@ -31,11 +31,11 @@
 #ifdef PADDLE_WITH_RCCL
 #include "paddle/phi/backends/dynload/rccl.h"
 #endif
+#include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/platform/device/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace platform {}  // namespace platform
