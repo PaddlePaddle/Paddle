@@ -38,7 +38,7 @@ struct ErfinvFunctor<float16> {
   HOSTDEVICE inline float16 operator()(const float16 x) const {
     auto x_ = static_cast<float>(x);
     if (x_ > 1.0f || x_ < -1.0f) {
-      return static_cast<float16>(std::numeric_limits<float>::quiet_NaN());
+      return std::numeric_limits<float16>::quiet_NaN();
     }
     return static_cast<float16>(erfinv(x_));
   }
@@ -49,7 +49,7 @@ struct ErfinvFunctor<bfloat16> {
   HOSTDEVICE inline bfloat16 operator()(const bfloat16 x) const {
     auto x_ = static_cast<float>(x);
     if (x_ > 1.0f || x_ < -1.0f) {
-      return static_cast<bfloat16>(std::numeric_limits<float>::quiet_NaN());
+      return std::numeric_limits<bfloat16>::quiet_NaN();
     }
     return static_cast<bfloat16>(erfinv(x_));
   }
