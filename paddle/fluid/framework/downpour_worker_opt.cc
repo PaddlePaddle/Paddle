@@ -429,7 +429,7 @@ void DownpourWorkerOpt::TrainFiles() {
       if (var == nullptr) {
         continue;
       }
-      phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+      DenseTensor* tensor = var->GetMutable<DenseTensor>();
       if (tensor == nullptr) {
         continue;
       }

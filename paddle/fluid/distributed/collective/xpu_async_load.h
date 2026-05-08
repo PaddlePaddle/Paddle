@@ -34,8 +34,6 @@
 namespace paddle {
 namespace distributed {
 
-using Place = phi::Place;
-
 class XpuAsyncLoad {
  public:
   // Task represents an asynchronous offload/reload operation.
@@ -54,19 +52,17 @@ class XpuAsyncLoad {
   };
 
   // Offload from XPU to XPUPinned memory.
-  std::shared_ptr<Task> Offload(phi::DenseTensor* dst,
-                                const phi::DenseTensor& src);
+  std::shared_ptr<Task> Offload(DenseTensor* dst, const DenseTensor& src);
 
   // Offload a portion (with offset) from XPU to XPUPinned memory.
-  std::shared_ptr<Task> OffloadWithOffset(phi::DenseTensor* dst,
-                                          const phi::DenseTensor& src,
+  std::shared_ptr<Task> OffloadWithOffset(DenseTensor* dst,
+                                          const DenseTensor& src,
                                           size_t dst_offset,
                                           size_t src_offset,
                                           size_t offload_size);
 
   // Reload data from XPUPinned memory back to XPU.
-  std::shared_ptr<Task> Reload(phi::DenseTensor* dst,
-                               const phi::DenseTensor& src);
+  std::shared_ptr<Task> Reload(DenseTensor* dst, const DenseTensor& src);
 
   // Prepare the load environment (if needed).
   void PrepareLoadEnv(const std::string& key, const Place& place);

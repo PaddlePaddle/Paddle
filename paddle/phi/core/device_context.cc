@@ -174,8 +174,7 @@ struct DeviceContext::Impl {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     bool must_cuda_graph_allocator =
         (!fake_alloc && tensor->numel() != 0) && !pinned;
-    if (must_cuda_graph_allocator &&
-        place.GetType() == phi::AllocationType::GPU &&
+    if (must_cuda_graph_allocator && place.GetType() == AllocationType::GPU &&
         phi::backends::gpu::CUDAGraph::IsThisThreadCapturing()) {
       PADDLE_ENFORCE_NOT_NULL(cuda_graph_allocator_,
                               common::errors::InvalidArgument(
@@ -189,7 +188,7 @@ struct DeviceContext::Impl {
     bool must_cuda_graph_allocator =
         (!fake_alloc && tensor->numel() != 0) && !pinned;
     if (must_cuda_graph_allocator &&
-        place.GetType() == phi::AllocationType::CUSTOM &&
+        place.GetType() == AllocationType::CUSTOM &&
         phi::backends::gpu::CUDAGraph::IsThisThreadCapturing()) {
       PADDLE_ENFORCE_NOT_NULL(cuda_graph_allocator_,
                               common::errors::InvalidArgument(
@@ -201,8 +200,7 @@ struct DeviceContext::Impl {
 #if defined(PADDLE_WITH_XPU)
     bool must_cuda_graph_allocator =
         (!fake_alloc && tensor->numel() != 0) && !pinned;
-    if (must_cuda_graph_allocator &&
-        place.GetType() == phi::AllocationType::GPU &&
+    if (must_cuda_graph_allocator && place.GetType() == AllocationType::GPU &&
         phi::backends::xpu::CUDAGraph::IsThisThreadCapturing()) {
       PADDLE_ENFORCE_NOT_NULL(cuda_graph_allocator_,
                               common::errors::InvalidArgument(

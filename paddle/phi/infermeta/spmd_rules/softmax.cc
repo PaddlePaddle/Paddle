@@ -25,11 +25,9 @@ limitations under the License. */
 
 namespace phi::distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 SpmdInfo SoftmaxInferSpmd(const DistMetaTensor& x, int axis) {
   // Step0: Verify input args based on softmax logic
-  auto x_shape = common::vectorize(x.dims());
+  auto x_shape = vectorize(x.dims());
   int x_ndim = static_cast<int>(x_shape.size());
   auto x_dist_attr_src = x.dist_attr();
   std::vector<std::vector<int64_t>> x_dims_mapping =
@@ -101,8 +99,8 @@ SpmdInfo SoftmaxInferSpmdReverse(const DistMetaTensor& x,
                                  const DistMetaTensor& out,
                                  int axis) {
   // Step0: verify input args based on softmax logic
-  auto x_shape = common::vectorize(x.dims());
-  auto out_shape = common::vectorize(out.dims());
+  auto x_shape = vectorize(x.dims());
+  auto out_shape = vectorize(out.dims());
   int x_ndim = static_cast<int>(x_shape.size());
   int out_ndim = static_cast<int>(out_shape.size());
   auto out_dist_attr_src = out.dist_attr();
@@ -204,8 +202,8 @@ SpmdInfo SoftmaxGradInferSpmd(const DistMetaTensor& out,
             << str_join(out.dist_attr().multi_dims_mapping()) << "], "
             << "resharded dims_mapping[" << str_join(out_dims_mapping) << "].";
   }
-  const auto& out_grad_shape = common::vectorize(out_grad.dims());
-  const auto& out_shape = common::vectorize(out.dims());
+  const auto& out_grad_shape = vectorize(out_grad.dims());
+  const auto& out_shape = vectorize(out.dims());
   const auto& axes_size = GetAxesSizes(
       {{out_axes, out_shape}, {out_grad_axes, out_grad_shape}}, true);
   const auto& mesh_shape = out_grad.dist_attr().process_mesh().shape();

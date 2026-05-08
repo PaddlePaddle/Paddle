@@ -51,7 +51,7 @@ void GlooCommContext::Broadcast(DenseTensor* out_tensor,
                              /*dst_rank*/ rank_,
                              /*cur_rank*/ rank_,
                              size_,
-                             phi::AllocationType::CPU);
+                             AllocationType::CPU);
   gloo::BroadcastOptions opts(gloo_context_);
   const auto& dtype = in_tensor.dtype();
   GENERATE_FUNC(dtype, SetOutput, &opts, out_tensor);
