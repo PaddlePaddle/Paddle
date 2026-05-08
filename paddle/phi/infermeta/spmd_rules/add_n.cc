@@ -25,10 +25,10 @@ SpmdInfo AddNInferSpmd(
   std::string alphabet = "abcdefghijklmnopqrstuvwxyz";
   std::vector<std::pair<std::string, std::vector<int64_t>>>
       tensor_axes_to_dim_pairs;
-  auto ndim = common::vectorize(inputs[0].dims()).size();
+  auto ndim = vectorize(inputs[0].dims()).size();
   auto axes = alphabet.substr(0, ndim);
   for (const auto& input : inputs) {
-    auto input_shape = common::vectorize(input.dims());
+    auto input_shape = vectorize(input.dims());
     auto input_ndim = input_shape.size();
     TensorDistAttr input_dist_attr_src = input.dist_attr();
     std::vector<int64_t> input_dims_mapping =

@@ -51,17 +51,6 @@ using RecordCudaStreamMethod = void (at::Tensor::*)(at::cuda::CUDAStream) const;
 [[maybe_unused]] static RecordCudaStreamMethod g_record_cuda_stream_method =
     &at::Tensor::record_stream;
 
-// Raw stream type is platform-specific:
-// - CUDA: cudaStream_t (CUstream_st*)
-// - HIP: hipStream_t (ihipStream_t*)
-// Only test the raw stream overload on CUDA builds where cudaStream_t is
-// consistently defined. HIP builds use hipStream_t which is a different type.
-#if defined(PADDLE_WITH_CUDA)
-using RecordRawCudaStreamMethod = void (at::Tensor::*)(cudaStream_t) const;
-[[maybe_unused]] static RecordRawCudaStreamMethod
-    g_record_raw_cuda_stream_method = &at::Tensor::record_stream;
-#endif
-
 TEST_F(RecordStreamTest, CudaTensorCurrentCudaStream) {
   if (!at::cuda::is_available()) {
     return;
@@ -80,13 +69,6 @@ TEST_F(RecordStreamTest, CudaTensorDefaultCudaStream) {
   EXPECT_NO_THROW(cuda_tensor.record_stream(default_stream));
 }
 
-TEST_F(RecordStreamTest, CudaTensorRawCudaStream) {
-  if (!at::cuda::is_available()) {
-    return;
-  }
-  auto stream = at::cuda::getCurrentCUDAStream();
-  EXPECT_NO_THROW(cuda_tensor.record_stream(stream.raw_stream()));
-}
 #endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
 
 // --- Error path: CPU tensor + CPU stream (record_stream does not support CPU

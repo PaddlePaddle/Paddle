@@ -157,7 +157,8 @@ void CUDAGraph::BeginSegmentCapture() {
 
 void CUDAGraph::BeginCapture(phi::GPUPlace place,
                              gpuStream_t stream,
-                             hipStreamCaptureMode mode) {
+                             hipStreamCaptureMode mode,
+                             bool enable_replace) {
   ThrowErrorIfNotSupportCUDAGraph();
   PADDLE_ENFORCE_EQ(IsCapturing(),
                     false,
@@ -167,7 +168,7 @@ void CUDAGraph::BeginCapture(phi::GPUPlace place,
       stream,
       common::errors::PermissionDenied(
           "CUDA Graph cannot be captured in default CUDA stream 0."));
-  capturing_graph_.reset(new CUDAGraph());
+  capturing_graph_.reset(new CUDAGraph(enable_replace));
   capturing_graph_->place_ = place;
   capturing_graph_->stream_ = stream;
   capturing_graph_->capture_mode_ = mode;

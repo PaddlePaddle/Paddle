@@ -135,4 +135,4 @@ inline bool operator==(const SparseTensorMeta& lhs,
 
 namespace paddle {
 using DenseTensorMeta = phi::DenseTensorMeta;
-}  // namespace paddle
+}

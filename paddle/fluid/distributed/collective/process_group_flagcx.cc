@@ -198,8 +198,8 @@ phi::distributed::FlagcxCommContext* ProcessGroupFlagcx::GetOrCreateCommContext(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::AllGather(
-    phi::DenseTensor* out_tensor,
-    const phi::DenseTensor& in_tensor,
+    DenseTensor* out_tensor,
+    const DenseTensor& in_tensor,
     int64_t offset,
     int64_t numel,
     bool sync_op,
@@ -208,7 +208,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::AllGather(
   CheckTensorContiguous(*out_tensor);
 
   // numel > 0 indicates the tensor need to be sliced
-  const phi::DenseTensor& in_tensor_maybe_partial =
+  const DenseTensor& in_tensor_maybe_partial =
       numel > 0 ? GetPartialTensor(in_tensor, offset, numel) : in_tensor;
   return Collective(
       [&](phi::distributed::FlagcxCommContext* comm_context,
@@ -235,8 +235,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::AllGather(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::AllReduce(
-    phi::DenseTensor* out_tensor,
-    const phi::DenseTensor& in_tensor,
+    DenseTensor* out_tensor,
+    const DenseTensor& in_tensor,
     const AllreduceOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
@@ -269,8 +269,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::AllReduce(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::AllToAll(
-    phi::DenseTensor* out_tensor,
-    const phi::DenseTensor& in_tensor,
+    DenseTensor* out_tensor,
+    const DenseTensor& in_tensor,
     const std::vector<int64_t>& out_size_each_rank,
     const std::vector<int64_t>& in_size_each_rank,
     bool sync_op,
@@ -291,8 +291,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::AllToAll(
     in_split_sizes = in_size_each_rank;
   }
 
-  const phi::DDim& out_dim = out_tensor->dims();
-  const phi::DDim& in_dim = in_tensor.dims();
+  const DDim& out_dim = out_tensor->dims();
+  const DDim& in_dim = in_tensor.dims();
   CheckSizeOnEachRank(out_dim, out_split_sizes, size_);
   CheckSizeOnEachRank(in_dim, in_split_sizes, size_);
 
@@ -430,7 +430,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::Barrier(
   GPUPlace place(opts.device_id);
   auto allocator = std::unique_ptr<phi::Allocator>(
       new paddle::experimental::DefaultAllocator(place));
-  phi::DenseTensorMeta meta(phi::DataType::FLOAT32, phi::DDim{1});
+  DenseTensorMeta meta(DataType::FLOAT32, DDim{1});
   DenseTensor barrier_tensor{allocator.get(), meta};
 
   VLOG(3) << "[Barrier] "
@@ -447,8 +447,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::Barrier(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::Broadcast(
-    phi::DenseTensor* out_tensor,
-    const phi::DenseTensor& in_tensor,
+    DenseTensor* out_tensor,
+    const DenseTensor& in_tensor,
     const BroadcastOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
@@ -480,8 +480,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::Broadcast(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::Reduce(
-    phi::DenseTensor* out_tensor,
-    const phi::DenseTensor& in_tensor,
+    DenseTensor* out_tensor,
+    const DenseTensor& in_tensor,
     const ReduceOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
@@ -517,8 +517,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::Reduce(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::ReduceScatter(
-    phi::DenseTensor* out_tensor,
-    const phi::DenseTensor& in_tensor,
+    DenseTensor* out_tensor,
+    const DenseTensor& in_tensor,
     const ReduceScatterOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
@@ -550,8 +550,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::ReduceScatter(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::Scatter(
-    phi::DenseTensor* out_tensor,
-    const phi::DenseTensor& in_tensor,
+    DenseTensor* out_tensor,
+    const DenseTensor& in_tensor,
     const ScatterOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
@@ -602,8 +602,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::Scatter(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::Gather(
-    phi::DenseTensor* out_tensor,
-    const phi::DenseTensor& in_tensor,
+    DenseTensor* out_tensor,
+    const DenseTensor& in_tensor,
     const GatherOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
@@ -627,7 +627,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::Gather(
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::Gather(
     std::vector<DenseTensor>* gather_tensors_ptr,
-    const phi::DenseTensor& in_tensor,
+    const DenseTensor& in_tensor,
     const GatherOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
@@ -671,7 +671,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::Gather(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::Recv(
-    phi::DenseTensor* tensor,
+    DenseTensor* tensor,
     int src_rank,
     int64_t offset,
     int64_t numel,
@@ -712,7 +712,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::Recv(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::Send(
-    const phi::DenseTensor& tensor,
+    const DenseTensor& tensor,
     int dst_rank,
     int64_t offset,
     int64_t numel,
@@ -720,7 +720,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::Send(
     bool use_calc_stream) {
   CheckTensorContiguous(tensor);
   // numel > 0 indicates the tensor need to be sliced
-  const phi::DenseTensor& tensor_maybe_partial =
+  const DenseTensor& tensor_maybe_partial =
       numel > 0 ? GetPartialTensor(tensor, offset, numel) : tensor;
 
   return Point2Point(
@@ -947,7 +947,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::Collective(
 std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::Collective(
     std::function<void(phi::distributed::FlagcxCommContext*, flagcxStream_t)>
         fn,
-    const phi::DenseTensor& tensor,
+    const DenseTensor& tensor,
     CommType comm_type,
     bool sync_op,
     bool use_calc_stream) {
@@ -959,7 +959,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::Point2Point(
     std::function<
         void(phi::distributed::FlagcxCommContext*, flagcxStream_t, int)> fn,
     int peer,
-    const phi::DenseTensor& tensor,
+    const DenseTensor& tensor,
     CommType comm_type,
     bool sync_op,
     bool use_calc_stream) {

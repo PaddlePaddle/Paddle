@@ -549,12 +549,16 @@ class MuonShardingOptimizer:
                     comm_buffer._clear_param_storage()
         # 2D params
         if color in self._params_2d_by_color.keys():
-            for param in self._params_2d_by_color[color]:
+            group_info = self._color_to_group_info[color]
+            sharding_rank = max(group_info["rank"], 0)
+            rank2params_2d_by_color = self._rank2params_2d_by_color[color]
+            local_2d = rank2params_2d_by_color[sharding_rank]
+            for param in local_2d:
                 if not g_shard_bypass_dygraph_optimizer:
                     self._create_master_weight(param)
 
-                if param.name in self._master_weights:
-                    param._clear_to_zero_allocation()
+            for param in self._params_2d_by_color[color]:
+                param._clear_to_zero_allocation()
 
     def reset_param_storage(self):
         for color in self.clear_color:
