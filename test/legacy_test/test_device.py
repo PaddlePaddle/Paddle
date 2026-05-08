@@ -118,26 +118,33 @@ class TestImperativeDeviceManage(unittest.TestCase):
 class TestGetPaddlePlaceAdaptiveGPU(unittest.TestCase):
     """Test that _get_paddle_place('gpu'/'cuda') respects the globally set device ID."""
 
+    def setUp(self):
+        paddle.disable_static()
+
     def test_empty_device_cuda_follows_set_device(self):
         """paddle.empty(device='cuda') should be placed on the device
         selected by paddle.device.set_device('cuda:1'), not always GPU 0."""
-        if not core.is_compiled_with_cuda() or core.get_cuda_device_count() < 2:
+        if not core.is_compiled_with_cuda():
+            return
+        if core.get_cuda_device_count() < 2:
             return
         paddle.device.set_device('cuda:1')
         a = paddle.empty(1, device='cuda')
-        device_str = str(a.device)
+        place_str = str(a.place)
         # restore default
         paddle.device.set_device('cuda:0')
         self.assertIn(
             '1',
-            device_str,
-            msg=f"Expected tensor on GPU 1 but got place: {device_str}",
+            place_str,
+            msg=f"Expected tensor on GPU 1 but got place: {place_str}",
         )
 
     def test_empty_device_gpu_follows_set_device_cpu(self):
-        """paddle.empty(device='gpu') should also respect set_device('gpu:1')."""
-        if not core.is_compiled_with_cuda() or core.get_cuda_device_count() < 1:
-            self.skipTest("Requires at least 1 GPU devices")
+        """paddle.empty(device='gpu') should also respect set_device('gpu:0')."""
+        if not core.is_compiled_with_cuda():
+            return
+        if core.get_cuda_device_count() < 1:
+            return
         paddle.device.set_device('gpu:0')
         a = paddle.empty(1, device='gpu')
         self.assertTrue(a.place.is_gpu_place())
