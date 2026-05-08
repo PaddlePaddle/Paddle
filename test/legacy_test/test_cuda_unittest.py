@@ -361,9 +361,10 @@ class TestCudaCompat(unittest.TestCase):
         with self.assertRaisesRegex(CudaError, "invalid argument"):
             check_error(1)
 
-        with self.assertRaisesRegex(OutOfMemoryError, "out of memory"):
+        with self.assertRaisesRegex(CudaError, "out of memory"):
             check_error(2)
 
+    def test_out_of_memory_error(self):
         # OutOfMemoryError is a RuntimeError, not a CudaError
         self.assertTrue(issubclass(OutOfMemoryError, RuntimeError))
         self.assertFalse(issubclass(OutOfMemoryError, CudaError))

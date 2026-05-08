@@ -32,26 +32,7 @@ namespace paddle::pybind {
  *   - FatalError -> SystemError
  *   - ExternalError -> OSError
  *   - INVALID_TYPE -> PyExc_TypeError
- *   - BadAlloc -> paddle.cuda.OutOfMemoryError
  */
-
-namespace {
-
-PyObject* GetOutOfMemoryError() {
-  static PyObject* oom_error = []() -> PyObject* {
-    PyObject* cuda_mod = PyImport_ImportModule("paddle.cuda");
-    if (cuda_mod) {
-      PyObject* err = PyObject_GetAttrString(cuda_mod, "OutOfMemoryError");
-      Py_DECREF(cuda_mod);
-      if (err) return err;
-    }
-    PyErr_Clear();
-    return PyExc_MemoryError;
-  }();
-  return oom_error;
-}
-
-}  // namespace
 
 void BindException(pybind11::module* m) {
   static pybind11::exception<platform::EOFException> eof(*m, "EOFException");
@@ -62,7 +43,7 @@ void BindException(pybind11::module* m) {
     } catch (const platform::EOFException& e) {
       pybind11::set_error(eof, e.what());
     } catch (const memory::allocation::BadAlloc& e) {
-      PyErr_SetString(GetOutOfMemoryError(), e.what());
+      PyErr_SetString(PyExc_MemoryError, e.what());
     } catch (const platform::EnforceNotMet& e) {
       switch (e.code()) {
         case common::ErrorCode::INVALID_ARGUMENT:
@@ -117,7 +98,7 @@ void ThrowExceptionToPython(std::exception_ptr p) {
   } catch (const platform::EOFException& e) {
     PyErr_SetString(EOFExceptionException, e.what());
   } catch (const memory::allocation::BadAlloc& e) {
-    PyErr_SetString(GetOutOfMemoryError(), e.what());
+    PyErr_SetString(PyExc_MemoryError, e.what());
   } catch (const platform::EnforceNotMet& e) {
     switch (e.code()) {
       case common::ErrorCode::INVALID_ARGUMENT:
