@@ -92,28 +92,28 @@ void ConvertSetValueOp(OpDesc* op) {
   op->SetAttr("fp64_values", std::vector<double>());
   op->SetAttr("fp16_values", std::vector<float>());
 
-  phi::DataType dtype = phi::DataType::FLOAT32;
+  DataType dtype = DataType::FLOAT32;
   if (!values.empty()) {
     dtype = values.at(0).dtype();
   }
 
   switch (dtype) {
-    case phi::DataType::BOOL:
+    case DataType::BOOL:
       op->SetAttr("bool_values", ExtractPlainVector<int>(values));
       break;
-    case phi::DataType::FLOAT32:
+    case DataType::FLOAT32:
       op->SetAttr("fp32_values", ExtractPlainVector<float>(values));
       break;
-    case phi::DataType::INT32:
+    case DataType::INT32:
       op->SetAttr("int32_values", ExtractPlainVector<int>(values));
       break;
-    case phi::DataType::INT64:
+    case DataType::INT64:
       op->SetAttr("int64_values", ExtractPlainVector<int64_t>(values));
       break;
-    case phi::DataType::FLOAT64:
+    case DataType::FLOAT64:
       op->SetAttr("fp64_values", ExtractPlainVector<double>(values));
       break;
-    case phi::DataType::FLOAT16:
+    case DataType::FLOAT16:
       op->SetAttr("fp16_values", ExtractPlainVector<float>(values));
       break;
     default:
@@ -130,25 +130,25 @@ void ConvertAssignValueOp(OpDesc* op) {
   op->SetAttr("int32_values", std::vector<int>());
   op->SetAttr("int64_values", std::vector<int64_t>());
 
-  phi::DataType dtype = phi::DataType::FLOAT32;
+  DataType dtype = DataType::FLOAT32;
   if (!values.empty()) {
     dtype = values.at(0).dtype();
   }
 
   switch (dtype) {
-    case phi::DataType::BOOL:
+    case DataType::BOOL:
       op->SetAttr("bool_values", ExtractPlainVector<int>(values));
       break;
-    case phi::DataType::FLOAT32:
+    case DataType::FLOAT32:
       op->SetAttr("fp32_values", ExtractPlainVector<float>(values));
       break;
-    case phi::DataType::FLOAT64:
+    case DataType::FLOAT64:
       op->SetAttr("fp32_values", ExtractPlainVector<float>(values));
       break;
-    case phi::DataType::INT32:
+    case DataType::INT32:
       op->SetAttr("int32_values", ExtractPlainVector<int>(values));
       break;
-    case phi::DataType::INT64:
+    case DataType::INT64:
       op->SetAttr("int64_values", ExtractPlainVector<int64_t>(values));
       break;
     default:

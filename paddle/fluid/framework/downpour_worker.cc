@@ -141,7 +141,7 @@ void DownpourWorker::CollectLabelInfo(size_t table_idx) {
   auto& feature_label = feature_labels_[table_id];
   feature_label.resize(feature.size());
   Variable* var = thread_scope_->FindVar(label_var_name_[table_id]);
-  phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+  DenseTensor* tensor = var->GetMutable<DenseTensor>();
   int64_t* label_ptr = tensor->data<int64_t>();
 
   size_t global_index = 0;
@@ -152,7 +152,7 @@ void DownpourWorker::CollectLabelInfo(size_t table_idx) {
     if (fea_var == nullptr) {
       continue;
     }
-    phi::DenseTensor* tensor = fea_var->GetMutable<phi::DenseTensor>();
+    DenseTensor* tensor = fea_var->GetMutable<DenseTensor>();
     PADDLE_ENFORCE_NOT_NULL(
         tensor,
         common::errors::InvalidArgument("Tensor of var %s is null.",
@@ -213,7 +213,7 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
     if (var == nullptr) {
       continue;
     }
-    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+    DenseTensor* tensor = var->GetMutable<DenseTensor>();
     PADDLE_ENFORCE_NOT_NULL(tensor,
                             common::errors::InvalidArgument(
                                 "Tensor of var %s is null.", slot_name));
@@ -223,7 +223,7 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
     if (var_emb == nullptr) {
       continue;
     }
-    phi::DenseTensor* tensor_emb = var_emb->GetMutable<phi::DenseTensor>();
+    DenseTensor* tensor_emb = var_emb->GetMutable<DenseTensor>();
     float* ptr =
         tensor_emb->mutable_data<float>({len, table.emb_dim()}, CPUPlace());
     memset(ptr, 0, sizeof(float) * len * table.emb_dim());
@@ -298,7 +298,7 @@ void DownpourWorker::AdjustInsWeight() {
             << " is nullptr, skip adjust ins weight";
     return;
   }
-  phi::DenseTensor* nid_tensor = nid_var->GetMutable<phi::DenseTensor>();
+  DenseTensor* nid_tensor = nid_var->GetMutable<DenseTensor>();
   if (nid_tensor == nullptr) {
     VLOG(0) << "tensor of nid slot var " << adjust_ins_weight_config_.nid_slot()
             << " is nullptr, skip adjust ins weight";
@@ -311,8 +311,7 @@ void DownpourWorker::AdjustInsWeight() {
             << " is nullptr, skip adjust ins weight";
     return;
   }
-  phi::DenseTensor* ins_weight_tensor =
-      ins_weight_var->GetMutable<phi::DenseTensor>();
+  DenseTensor* ins_weight_tensor = ins_weight_var->GetMutable<DenseTensor>();
   if (ins_weight_tensor == nullptr) {
     VLOG(0) << "tensor of ins weight tensor "
             << adjust_ins_weight_config_.ins_weight_slot()
@@ -443,7 +442,7 @@ void DownpourWorker::CopyDenseVars() {
     PADDLE_ENFORCE_NOT_NULL(
         src_var,
         common::errors::InvalidArgument("%s not found.", src_var_name));
-    phi::DenseTensor* src_tensor = src_var->GetMutable<phi::DenseTensor>();
+    DenseTensor* src_tensor = src_var->GetMutable<DenseTensor>();
     PADDLE_ENFORCE_NOT_NULL(
         src_tensor,
         common::errors::InvalidArgument("%s tensor is null.", src_var_name));
@@ -453,7 +452,7 @@ void DownpourWorker::CopyDenseVars() {
     PADDLE_ENFORCE_NOT_NULL(
         dest_var,
         common::errors::InvalidArgument("%s not found.", dest_var_name));
-    phi::DenseTensor* dest_tensor = dest_var->GetMutable<phi::DenseTensor>();
+    DenseTensor* dest_tensor = dest_var->GetMutable<DenseTensor>();
     PADDLE_ENFORCE_NOT_NULL(
         dest_tensor,
         common::errors::InvalidArgument("%s tensor is null.", dest_var_name));
@@ -601,18 +600,18 @@ void DownpourWorker::TrainFilesWithProfiler() {
       if (var == nullptr) {
         continue;
       }
-      phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+      DenseTensor* tensor = var->GetMutable<DenseTensor>();
       if (tensor == nullptr) {
         continue;
       }
       PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor),
                         false,
                         common::errors::InvalidArgument(
-                            "phi::DenseTensor %s contains Inf.", var_name));
+                            "DenseTensor %s contains Inf.", var_name));
       PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor),
                         false,
                         common::errors::InvalidArgument(
-                            "phi::DenseTensor %s contains NAN.", var_name));
+                            "DenseTensor %s contains NAN.", var_name));
     }
 
     if (need_to_push_sparse_) {
@@ -808,7 +807,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
 /**
  * @brief add auc monitor
  */
-inline void AddAucMonitor(const Scope* scope, const phi::Place& place) {
+inline void AddAucMonitor(const Scope* scope, const Place& place) {
   auto metric_ptr = Metric::GetInstance();
   auto& metric_list = metric_ptr->GetMetricList();
   for (auto iter = metric_list.begin(); iter != metric_list.end(); iter++) {
@@ -897,10 +896,10 @@ void DownpourWorker::TrainFiles() {
             if (var == nullptr) {
               continue;
             }
-            phi::DenseTensor* tensor = nullptr;
+            DenseTensor* tensor = nullptr;
             int64_t len = 0;
-            if (var->IsType<phi::DenseTensor>()) {
-              tensor = var->GetMutable<phi::DenseTensor>();
+            if (var->IsType<DenseTensor>()) {
+              tensor = var->GetMutable<DenseTensor>();
               len = tensor->numel();
             } else if (var->IsType<phi::SelectedRows>()) {
               auto selected_rows = var->GetMutable<phi::SelectedRows>();
@@ -937,18 +936,18 @@ void DownpourWorker::TrainFiles() {
       if (var == nullptr) {
         continue;
       }
-      phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+      DenseTensor* tensor = var->GetMutable<DenseTensor>();
       if (tensor == nullptr) {
         continue;
       }
       PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor),
                         false,
                         common::errors::InvalidArgument(
-                            "phi::DenseTensor %s contains Inf.", var_name));
+                            "DenseTensor %s contains Inf.", var_name));
       PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor),
                         false,
                         common::errors::InvalidArgument(
-                            "phi::DenseTensor %s contains NAN.", var_name));
+                            "DenseTensor %s contains NAN.", var_name));
     }
 
     if (need_to_push_sparse_) {
@@ -998,7 +997,7 @@ void DownpourWorker::TrainFiles() {
     if (need_to_push_dense_) {
       if (flag_partial_push_) {
         Variable* var = (*thread_scope_).FindVar("cond_tag");
-        phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+        DenseTensor* tensor = var->GetMutable<DenseTensor>();
         // check type in python code
         int64_t* cond_value_batch = tensor->data<int64_t>();
 

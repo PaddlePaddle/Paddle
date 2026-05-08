@@ -132,13 +132,13 @@ void NaiveExecutor::Run() {
           int updated_cluster_id = it.second;
 
           // cluster_buffer_[it.second] has been updated to be a new
-          // phi::DenseTensor*, we need change all phi::DenseTensor's
+          // DenseTensor*, we need change all DenseTensor's
           // shared_holder in this cluster. The following two loops code looks
           // ugly, it does work. The following two loops seem time-consuming,
           // but once the memory reaches its peak, the cluster will not update,
           // so it's ok.
           for (auto &op_map : reuse_cache_) {
-            // op_map.second is std::unordered_map<phi::DenseTensor*, int>.
+            // op_map.second is std::unordered_map<DenseTensor*, int>.
             for (auto &it2 : op_map.second) {
               if (it2.second == updated_cluster_id) {
                 it2.first->ShareBufferWith(*cluster_buffer_[it2.second], true);

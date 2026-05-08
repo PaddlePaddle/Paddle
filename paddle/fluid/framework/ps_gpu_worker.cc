@@ -209,7 +209,7 @@ PSGPUWorker::~PSGPUWorker() {
 
 int PSGPUWorker::OpRunAndShapeCheck(OperatorBase& op,
                                     const Scope& scope,
-                                    const phi::Place& place) {
+                                    const Place& place) {
   if (shape_check_flag_.load()) {
     // before op run
     InferShapeCheckData check_data;
@@ -376,9 +376,9 @@ void PSGPUWorker::TrainFiles() {
       for (size_t i = 0; i < need_reuse_var_.size(); i++) {
         Variable* child = cur_scope_vars[i];
         Variable* parent = need_reuse_var_[i];
-        if (child->IsType<phi::DenseTensor>()) {
-          child->GetMutable<phi::DenseTensor>()->ShareBufferWith(
-              *(parent->GetMutable<phi::DenseTensor>()));
+        if (child->IsType<DenseTensor>()) {
+          child->GetMutable<DenseTensor>()->ShareBufferWith(
+              *(parent->GetMutable<DenseTensor>()));
         }
       }
     }
@@ -420,7 +420,7 @@ void PSGPUWorker::TrainFiles() {
       if (var == nullptr) {
         continue;
       }
-      phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+      DenseTensor* tensor = var->GetMutable<DenseTensor>();
       if (tensor == nullptr || !tensor->IsInitialized()) {
         continue;
       }
@@ -459,9 +459,9 @@ void PSGPUWorker::TrainFiles() {
       for (size_t i = 0; i < need_reuse_var_.size(); i++) {
         Variable* child = cur_scope_vars[i];
         Variable* parent = need_reuse_var_[i];
-        if (child->IsType<phi::DenseTensor>()) {
-          parent->GetMutable<phi::DenseTensor>()->ShareBufferWith(
-              *(child->GetMutable<phi::DenseTensor>()));
+        if (child->IsType<DenseTensor>()) {
+          parent->GetMutable<DenseTensor>()->ShareBufferWith(
+              *(child->GetMutable<DenseTensor>()));
         }
       }
       device_reader_->get_pack(cur_task.pack);

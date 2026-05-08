@@ -32,7 +32,7 @@ void DeviceWorker::SetDataFeed(DataFeed* data_feed) {
 }
 
 template <typename T>
-std::string PrintDenseTensorType(phi::DenseTensor* tensor,
+std::string PrintDenseTensorType(DenseTensor* tensor,
                                  int64_t start,
                                  int64_t end,
                                  char separator = ',',
@@ -55,7 +55,7 @@ std::string PrintDenseTensorType(phi::DenseTensor* tensor,
   return os.str();
 }
 template <typename T>
-void PrintDenseTensorType(phi::DenseTensor* tensor,
+void PrintDenseTensorType(DenseTensor* tensor,
                           int64_t start,
                           int64_t end,
                           std::string& out_val,  // NOLINT
@@ -85,7 +85,7 @@ void PrintDenseTensorType(phi::DenseTensor* tensor,
 #define FLOAT_EPS 1e-8
 #define MAX_FLOAT_BUFF_SIZE 40
 template <>
-void PrintDenseTensorType<float>(phi::DenseTensor* tensor,
+void PrintDenseTensorType<float>(DenseTensor* tensor,
                                  int64_t start,
                                  int64_t end,
                                  std::string& out_val,  // NOLINT
@@ -112,7 +112,7 @@ void PrintDenseTensorType<float>(phi::DenseTensor* tensor,
     }
   }
 }
-std::string PrintDenseTensorIntType(phi::DenseTensor* tensor,
+std::string PrintDenseTensorIntType(DenseTensor* tensor,
                                     int64_t start,
                                     int64_t end,
                                     char separator = ',',
@@ -135,7 +135,7 @@ std::string PrintDenseTensorIntType(phi::DenseTensor* tensor,
   return os.str();
 }
 
-void PrintDenseTensorIntType(phi::DenseTensor* tensor,
+void PrintDenseTensorIntType(DenseTensor* tensor,
                              int64_t start,
                              int64_t end,
                              std::string& out_val,  // NOLINT
@@ -164,7 +164,7 @@ void PrintDenseTensorIntType(phi::DenseTensor* tensor,
   // return os.str();
 }
 
-std::string PrintDenseTensor(phi::DenseTensor* tensor,
+std::string PrintDenseTensor(DenseTensor* tensor,
                              int64_t start,
                              int64_t end,
                              char separator,
@@ -187,7 +187,7 @@ std::string PrintDenseTensor(phi::DenseTensor* tensor,
   return out_val;
 }
 
-void PrintDenseTensor(phi::DenseTensor* tensor,
+void PrintDenseTensor(DenseTensor* tensor,
                       int64_t start,
                       int64_t end,
                       std::string& out_val,  // NOLINT
@@ -215,8 +215,7 @@ void PrintDenseTensor(phi::DenseTensor* tensor,
   }
 }
 
-std::pair<int64_t, int64_t> GetTensorBound(phi::DenseTensor* tensor,
-                                           int index) {
+std::pair<int64_t, int64_t> GetTensorBound(DenseTensor* tensor, int index) {
   auto& dims = tensor->dims();
   if (!tensor->lod().empty()) {
     auto& lod = tensor->lod()[0];
@@ -226,7 +225,7 @@ std::pair<int64_t, int64_t> GetTensorBound(phi::DenseTensor* tensor,
   }
 }
 
-bool CheckValidOutput(phi::DenseTensor* tensor, size_t batch_size) {
+bool CheckValidOutput(DenseTensor* tensor, size_t batch_size) {
   auto& dims = tensor->dims();
   if (dims.size() != 2) return false;
   if (!tensor->lod().empty()) {
@@ -255,7 +254,7 @@ void DeviceWorker::DumpParam(const Scope& scope, const int batch_id) {
     if (!var->IsType<DenseTensor>()) {
       continue;
     }
-    phi::DenseTensor* tensor = var->GetMutable<DenseTensor>();
+    DenseTensor* tensor = var->GetMutable<DenseTensor>();
     if (tensor == nullptr || !tensor->IsInitialized()) {
       continue;
     }
@@ -313,7 +312,7 @@ void DeviceWorker::DumpField(
                 << "] cannot be find in scope, so it was skipped.";
         continue;
       }
-      phi::DenseTensor* tensor = var->GetMutable<DenseTensor>();
+      DenseTensor* tensor = var->GetMutable<DenseTensor>();
       if (!tensor->IsInitialized()) {
         VLOG(3) << "Note: field[" << field
                 << "] is not initialized, so it was skipped.";
@@ -336,30 +335,30 @@ void DeviceWorker::DumpField(
     if (dump_fields_ == NULL || (*dump_fields_).empty()) {
       return;
     }
-    auto set_output_str =
-        [&, this](size_t begin, size_t end, phi::DenseTensor* tensor) {
-          std::pair<int64_t, int64_t> bound;
-          auto& dims = tensor->dims();
-          for (size_t i = begin; i < end; ++i) {
-            bound = {i * dims[1], (i + 1) * dims[1]};
-            // auto bound = GetTensorBound(tensor, i);
+    auto set_output_str = [&, this](
+                              size_t begin, size_t end, DenseTensor* tensor) {
+      std::pair<int64_t, int64_t> bound;
+      auto& dims = tensor->dims();
+      for (size_t i = begin; i < end; ++i) {
+        bound = {i * dims[1], (i + 1) * dims[1]};
+        // auto bound = GetTensorBound(tensor, i);
 
-            if (!ars[i].empty()) ars[i] += "\t";
-            // ars[i] += '[';
-            PrintDenseTensor(tensor,
-                             bound.first,
-                             bound.second,
-                             ars[i],
-                             ' ',
-                             false,
-                             dump_num_decimals_);
-            // ars[i] += ']';
-            // ars[i] += "<" + PrintDenseTensor(tensor, bound.first,
-            // bound.second,
-            // '
-            // ', false) + ">";
-          }
-        };
+        if (!ars[i].empty()) ars[i] += "\t";
+        // ars[i] += '[';
+        PrintDenseTensor(tensor,
+                         bound.first,
+                         bound.second,
+                         ars[i],
+                         ' ',
+                         false,
+                         dump_num_decimals_);
+        // ars[i] += ']';
+        // ars[i] += "<" + PrintDenseTensor(tensor, bound.first,
+        // bound.second,
+        // '
+        // ', false) + ">";
+      }
+    };
     std::vector<std::thread> threads(tensor_iterator_thread_num);
     for (auto& field : *dump_fields_) {
       Variable* var = scope.FindVar(field);
@@ -368,7 +367,7 @@ void DeviceWorker::DumpField(
                 << "] cannot be find in scope, so it was skipped.";
         continue;
       }
-      phi::DenseTensor* tensor = var->GetMutable<DenseTensor>();
+      DenseTensor* tensor = var->GetMutable<DenseTensor>();
       if (!tensor->IsInitialized()) {
         VLOG(3) << "Note: field[" << field
                 << "] is not initialized, so it was skipped.";
@@ -456,7 +455,7 @@ void DeviceWorker::DumpField(
               << "] is not dense tensor, so it was skipped.";
       continue;
     }
-    phi::DenseTensor* tensor = var->GetMutable<DenseTensor>();
+    DenseTensor* tensor = var->GetMutable<DenseTensor>();
     if (!tensor->IsInitialized()) {
       VLOG(3) << "Note: field[" << field
               << "] is not initialized, so it was skipped.";

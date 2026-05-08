@@ -65,9 +65,9 @@ COMMON_DECLARE_bool(enable_host_event_recorder_hook);
 
 namespace paddle::framework {
 
-std::vector<std::tuple<phi::Place, LibraryType>> kKernelPriority = {
-    std::make_tuple(phi::GPUPlace(0), LibraryType::kCUDNN),
-    std::make_tuple(phi::GPUPlace(0), LibraryType::kPlain),
+std::vector<std::tuple<Place, LibraryType>> kKernelPriority = {
+    std::make_tuple(GPUPlace(0), LibraryType::kCUDNN),
+    std::make_tuple(GPUPlace(0), LibraryType::kPlain),
     std::make_tuple(CPUPlace(), LibraryType::kMKLDNN),
     std::make_tuple(CPUPlace(), LibraryType::kPlain),
 };
@@ -81,7 +81,7 @@ static DDim GetDimsDebug(const Scope& scope,
   }
 
   if (var->IsType<DenseTensor>()) {
-    const phi::DenseTensor& tensor = var->Get<DenseTensor>();
+    const DenseTensor& tensor = var->Get<DenseTensor>();
     return tensor.dims();
   } else if (var->IsType<phi::SelectedRows>()) {
     if (get_actual_dim) {
@@ -115,7 +115,7 @@ static std::string GetDtype(const Scope& scope, const std::string& name) {
   }
 
   if (var->IsType<DenseTensor>()) {
-    const phi::DenseTensor& tensor = var->Get<DenseTensor>();
+    const DenseTensor& tensor = var->Get<DenseTensor>();
     if (UNLIKELY(!tensor.IsInitialized())) {
       return "";
     }
@@ -151,14 +151,14 @@ static std::string GetPlace(const Scope& scope, const std::string& name) {
   if (var == nullptr) {
     return "";
   }
-  auto to_string = [](const phi::Place& p) {
+  auto to_string = [](const Place& p) {
     std::stringstream sstream;
     sstream << p;
     return sstream.str();
   };
 
   if (var->IsType<DenseTensor>()) {
-    const phi::DenseTensor& tensor = var->Get<DenseTensor>();
+    const DenseTensor& tensor = var->Get<DenseTensor>();
     if (UNLIKELY(!tensor.IsInitialized())) {
       return "";
     }
@@ -197,7 +197,7 @@ static LegacyLoD GetLoDDebug(const Scope& scope, const std::string& name) {
   }
 
   if (var->IsType<DenseTensor>()) {
-    const phi::DenseTensor& tensor = var->Get<DenseTensor>();
+    const DenseTensor& tensor = var->Get<DenseTensor>();
     return tensor.lod();
   } else {
     return default_lod;
@@ -424,13 +424,12 @@ void RuntimeInferShapeContext::ShareAllLoD(const std::string& in,
     Variable* in_var = in_var_list[i];
     if (!in_var->IsType<DenseTensor>()) return;
     Variable* out_var = out_var_list[i];
-    PADDLE_ENFORCE_EQ(
-        out_var->IsType<DenseTensor>(),
-        true,
-        common::errors::PreconditionNotMet(
-            "The %d-th output of Output(%s) must be phi::DenseTensor.",
-            i,
-            out_var_names[i]));
+    PADDLE_ENFORCE_EQ(out_var->IsType<DenseTensor>(),
+                      true,
+                      common::errors::PreconditionNotMet(
+                          "The %d-th output of Output(%s) must be DenseTensor.",
+                          i,
+                          out_var_names[i]));
     auto& in_tensor = in_var->Get<DenseTensor>();
     auto* out_tensor = out_var->GetMutable<DenseTensor>();
     out_tensor->set_lod(in_tensor.lod());
@@ -478,14 +477,14 @@ void RuntimeInferShapeContext::ShareLoD(const std::string& in,
       out_var->IsType<DenseTensor>(),
       true,
       common::errors::InvalidArgument(
-          "The %zu-th output of Output(%s) must be phi::DenseTensor.", j, out));
+          "The %zu-th output of Output(%s) must be DenseTensor.", j, out));
   auto& in_tensor = in_var->Get<DenseTensor>();
   auto* out_tensor = out_var->GetMutable<DenseTensor>();
   out_tensor->set_lod(in_tensor.lod());
 
 // TODO(dzhwinter) : reuse ShareLoD in most operators.
 // Need to call ShareLayout explicitly in sequence related ops.
-// Shall we have a better method to shared info between in/out phi::DenseTensor?
+// Shall we have a better method to shared info between in/out DenseTensor?
 #ifdef PADDLE_WITH_DNNL
   // Fix me: ugly workaround below
   // Correct solution:
@@ -777,7 +776,7 @@ const std::vector<Variable*>& RuntimeInferShapeContext::OutputVars(
   return it->second;
 }
 
-void OperatorBase::Run(const Scope& scope, const phi::Place& place) {
+void OperatorBase::Run(const Scope& scope, const Place& place) {
   try {
     VLOG(4) << place << " " << DebugStringEx(&scope);
     if (phi::is_gpu_place(place)) {
@@ -1090,10 +1089,10 @@ void OperatorBase::GenerateTemporaryNames() {
   }
 }
 
-const phi::DenseTensor* GetDenseTensorOrSelectedRowsValueFromVar(
+const DenseTensor* GetDenseTensorOrSelectedRowsValueFromVar(
     const Variable& var) {
   if (var.IsType<DenseTensor>()) {
-    return static_cast<const phi::DenseTensor*>(&(var.Get<DenseTensor>()));
+    return static_cast<const DenseTensor*>(&(var.Get<DenseTensor>()));
   } else if (var.IsType<phi::SelectedRows>()) {
     return &(var.Get<phi::SelectedRows>().value());
   } else {
@@ -1103,8 +1102,7 @@ const phi::DenseTensor* GetDenseTensorOrSelectedRowsValueFromVar(
   }
 }
 
-phi::DenseTensor* GetMutableDenseTensorOrSelectedRowsValueFromVar(
-    Variable* var) {
+DenseTensor* GetMutableDenseTensorOrSelectedRowsValueFromVar(Variable* var) {
   if (var->IsType<DenseTensor>()) {
     return var->GetMutable<DenseTensor>();
   } else if (var->IsType<phi::SelectedRows>()) {
@@ -1177,24 +1175,24 @@ Variable* ExecutionContext::OutputVar(const std::string& name) const {
 }
 
 template <>
-const std::vector<const phi::DenseTensor*>
-ExecutionContext::MultiInput<DenseTensor>(const std::string& name) const {
+const std::vector<const DenseTensor*> ExecutionContext::MultiInput<DenseTensor>(
+    const std::string& name) const {
   auto vars = MultiInputVar(name);
   if (vars.empty()) {
     return {};
   }
-  std::vector<const phi::DenseTensor*> res;
+  std::vector<const DenseTensor*> res;
   res.reserve(vars.size());
   std::transform(vars.begin(),
                  vars.end(),
                  std::back_inserter(res),
-                 [&](const Variable* var) -> const phi::DenseTensor* {
+                 [&](const Variable* var) -> const DenseTensor* {
                    if (var == nullptr) return nullptr;
                    PADDLE_ENFORCE_EQ(
                        var->IsType<DenseTensor>(),
                        true,
                        common::errors::InvalidArgument(
-                           "Input variable should be phi::DenseTensor, "
+                           "Input variable should be DenseTensor, "
                            "but the received type is %s.",
                            ToTypeName(var->Type())));
                    return &(var->Get<DenseTensor>());
@@ -1203,19 +1201,19 @@ ExecutionContext::MultiInput<DenseTensor>(const std::string& name) const {
 }
 
 template <>
-std::vector<phi::DenseTensor*> ExecutionContext::MultiOutput<DenseTensor>(
+std::vector<DenseTensor*> ExecutionContext::MultiOutput<DenseTensor>(
     const std::string& name) const {
   auto vars = MultiOutputVar(name);
 
   if (vars.empty()) {
     return {};
   }
-  std::vector<phi::DenseTensor*> res;
+  std::vector<DenseTensor*> res;
   res.reserve(vars.size());
   std::transform(vars.begin(),
                  vars.end(),
                  std::back_inserter(res),
-                 [&](Variable* var) -> phi::DenseTensor* {
+                 [&](Variable* var) -> DenseTensor* {
                    return var == nullptr ? nullptr
                                          : var->GetMutable<DenseTensor>();
                  });
@@ -1261,7 +1259,7 @@ struct OperatorWithKernel::CacheImpl {
   static const char kNotAllowInferShapeCache[];  // NOLINT
   explicit CacheImpl(phi::KernelContext* kernel_ctx,
                      RuntimeInferShapeContext* infer_shape_ctx,
-                     const std::vector<phi::DenseTensor*>& tensors,
+                     const std::vector<DenseTensor*>& tensors,
                      bool not_allow_infer_shape_cache)
       : kernel_ctx_(kernel_ctx),
         infer_shape_ctx_(infer_shape_ctx),
@@ -1305,9 +1303,9 @@ struct OperatorWithKernel::CacheImpl {
  private:
   std::unique_ptr<phi::KernelContext> kernel_ctx_;
   std::unique_ptr<RuntimeInferShapeContext> infer_shape_ctx_;
-  std::vector<phi::DenseTensor*> tensors_;
+  std::vector<DenseTensor*> tensors_;
   bool not_allow_infer_shape_cache_;
-  std::vector<phi::DDim> last_ddims_;
+  std::vector<DDim> last_ddims_;
 };
 const char  // NOLINT
     OperatorWithKernel::CacheImpl::kNotAllowInferShapeCache[] =
@@ -1315,7 +1313,7 @@ const char  // NOLINT
 
 static void CheckTensorNANOrInf(const std::string& op_type,
                                 const std::string& name,
-                                const phi::DenseTensor& tensor) {
+                                const DenseTensor& tensor) {
   if (tensor.memory_size() == 0) {
     return;
   }
@@ -1436,7 +1434,7 @@ bool OperatorWithKernel::SupportCustomDevice() const {
 #endif
 }
 
-bool OperatorWithKernel::SupportsONEDNN(const phi::DataType data_type) const {
+bool OperatorWithKernel::SupportsONEDNN(const DataType data_type) const {
   auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
       phi::TransToPhiKernelName(type_));
   auto has_phi_kernel =
@@ -1467,7 +1465,7 @@ bool OperatorWithKernel::SupportsONEDNN(const phi::DataType data_type) const {
   }
 }
 
-bool OperatorWithKernel::SupportsCUDNN(const phi::DataType data_type) const {
+bool OperatorWithKernel::SupportsCUDNN(const DataType data_type) const {
   auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
       phi::TransToPhiKernelName(type_));
   auto has_phi_kernel =
@@ -1507,7 +1505,7 @@ bool OperatorWithKernel::SupportsCPUBF16() const {
                   phi_kernels.end(),
                   [](phi::KernelKeyMap::const_reference kern_pair) {
                     return kern_pair.first.backend() == phi::Backend::CPU &&
-                           kern_pair.first.dtype() == phi::DataType::BFLOAT16;
+                           kern_pair.first.dtype() == DataType::BFLOAT16;
                   });
   if (has_phi_kernel) {
     return true;
@@ -1594,7 +1592,7 @@ bool OperatorWithKernel::SupportsKernelType(
 }
 
 bool OperatorWithKernel::CanONEDNNBeUsed(const framework::ExecutionContext& ctx,
-                                         phi::DataType data_type) const {
+                                         DataType data_type) const {
   return ((ctx.HasAttr("use_mkldnn") && ctx.Attr<bool>("use_mkldnn")) ||
           (ctx.HasAttr("use_onednn") && ctx.Attr<bool>("use_onednn"))) &&
          phi::is_cpu_place(ctx.GetPlace()) && this->SupportsONEDNN(data_type);
@@ -1606,7 +1604,7 @@ bool OperatorWithKernel::CanONEDNNBeUsed(const framework::ExecutionContext& ctx,
 }
 
 bool OperatorWithKernel::CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
-                                        phi::DataType data_type) const {
+                                        DataType data_type) const {
   bool use_cudnn = ctx.HasAttr("use_cudnn") && ctx.Attr<bool>("use_cudnn") &&
                    (phi::is_gpu_place(ctx.GetPlace()) ||
                     phi::is_custom_place(ctx.GetPlace()));
@@ -1619,7 +1617,7 @@ bool OperatorWithKernel::CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
   }
 
 #if defined(PADDLE_WITH_CUDA)
-  if (use_cudnn && data_type == phi::DataType::BFLOAT16) {
+  if (use_cudnn && data_type == DataType::BFLOAT16) {
     PADDLE_ENFORCE_GE(
         platform::DnnVersion(),
         8100,
@@ -1644,7 +1642,7 @@ void OperatorWithKernel::InferShape(InferShapeContext* ctx) const {
 }
 
 void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
-                                           const phi::Place& place,
+                                           const Place& place,
                                            const RuntimeContext& ctx) const {
   RuntimeInferShapeContext infer_shape_ctx(*this, ctx);
   this->Info().infer_shape_(&infer_shape_ctx);
@@ -1706,8 +1704,7 @@ void OperatorWithKernel::CheckWhetherPreparePhiData(
   }
 }
 
-void OperatorWithKernel::RunImpl(const Scope& scope,
-                                 const phi::Place& place) const {
+void OperatorWithKernel::RunImpl(const Scope& scope, const Place& place) const {
   // To reduce the elapsed time of HasAttr, we use bool variable to record the
   // result of HasAttr.
   if (!enable_cache_runtime_context_ && HasAttr(kEnableCacheRuntimeContext))
@@ -1745,7 +1742,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 }
 
 void OperatorWithKernel::RunImpl(const Scope& scope,
-                                 const phi::Place& place,
+                                 const Place& place,
                                  RuntimeContext* runtime_ctx) const {
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   bool fallback_to_cpu = false;
@@ -1858,7 +1855,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                  kernel_type_->data_type_ ==
                      proto::VarType::Type::VarType_Type_BF16 &&
                  !this->SupportsCPUBF16() &&
-                 this->SupportsONEDNN(phi::DataType::BFLOAT16)) {
+                 this->SupportsONEDNN(DataType::BFLOAT16)) {
         kernel_type_->library_type_ = framework::LibraryType::kMKLDNN;
         kernel_type_->data_layout_ = framework::DataLayout::ONEDNN;
       }
@@ -2061,7 +2058,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
           }
         }
 
-        std::vector<phi::DenseTensor*> tensors;
+        std::vector<DenseTensor*> tensors;
         if (all_dense_tensor_input_) {
           for (auto& iter : Inputs()) {
             for (auto& name : iter.second) {
@@ -2177,7 +2174,7 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
              expected_kernel_key.data_type_ ==
                  proto::VarType::Type::VarType_Type_BF16 &&
              !this->SupportsCPUBF16() &&
-             this->SupportsONEDNN(phi::DataType::BFLOAT16)) {
+             this->SupportsONEDNN(DataType::BFLOAT16)) {
     expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
     expected_kernel_key.data_layout_ = framework::DataLayout::ONEDNN;
   }
@@ -2527,7 +2524,7 @@ Scope* OperatorWithKernel::PrepareData(
     const phi::KernelKey& expected_kernel_key,
     std::vector<std::string>* transferred_inplace_vars,
     RuntimeContext* ctx,
-    const phi::Place& place) const {
+    const Place& place) const {
   Scope* new_scope = nullptr;
 
   const std::unordered_set<std::string>* no_buffer_ins = nullptr;
@@ -2567,7 +2564,7 @@ Scope* OperatorWithKernel::PrepareData(
 
       auto* tensor_in = GetDenseTensorOrSelectedRowsValueFromVar(*var);
 
-      // When no_buffer_ins then checking of phi::DenseTensor::holder_ is
+      // When no_buffer_ins then checking of DenseTensor::holder_ is
       // not a thread safe. And for infershape scenario checks
       // to be omitted are not really needed
       if (should_skip_input == true) {
@@ -2615,7 +2612,7 @@ Scope* OperatorWithKernel::PrepareData(
       if (has_infer_varkernel_fn) {
         infer_varkernel_context.SetVarName(const_cast<std::string*>(&in_name));
         infer_varkernel_context.SetDenseTensor(
-            const_cast<phi::DenseTensor*>(tensor_in));
+            const_cast<DenseTensor*>(tensor_in));
         kernel_type_for_var =
             phi_kernel_->get_kerneltype_forvar_fn_(&infer_varkernel_context);
       }
@@ -2845,7 +2842,7 @@ void OperatorWithKernel::ParseInputDataType(
     const std::string& name,
     proto::VarType::Type* data_type) const {
   if (var != nullptr) {
-    const phi::DenseTensor* t = nullptr;
+    const DenseTensor* t = nullptr;
     if (var->IsType<DenseTensor>()) {
       t = &var->Get<DenseTensor>();
     } else if (var->IsType<phi::SelectedRows>()) {
@@ -2876,7 +2873,7 @@ void OperatorWithKernel::ParseMultiInputDataType(
       static_cast<proto::VarType::Type>(-1);
   for (auto* var : vars) {
     if (var != nullptr) {
-      const phi::DenseTensor* t = nullptr;
+      const DenseTensor* t = nullptr;
       if (var->IsType<DenseTensor>()) {
         t = &var->Get<DenseTensor>();
       } else if (var->IsType<phi::SelectedRows>()) {
@@ -2917,7 +2914,7 @@ void OperatorWithKernel::ParseMultiInputDataType(
                           true,
                           common::errors::InvalidArgument(
                               "The %s Op's Input Variable `%s` "
-                              "contains uninitialized phi::DenseTensor.",
+                              "contains uninitialized DenseTensor.",
                               Type(),
                               name));
         proto::VarType::Type tmp =
@@ -2982,7 +2979,7 @@ proto::VarType::Type OperatorWithKernel::IndicateVarDataType(
   return data_type;
 }
 
-phi::DenseTensor* OperatorWithKernel::GetTensorFormInputSafely(
+DenseTensor* OperatorWithKernel::GetTensorFormInputSafely(
     const ExecutionContext& ctx, const std::string& name) const {
   // 1. get variable and check
   // NOTE: only supports signal input var now
@@ -2995,7 +2992,7 @@ phi::DenseTensor* OperatorWithKernel::GetTensorFormInputSafely(
       common::errors::NotFound(
           "The variable %s is not found when promote complex types.", name));
   // 2. get tensor and check
-  phi::DenseTensor* t = nullptr;
+  DenseTensor* t = nullptr;
   if (var->IsType<DenseTensor>()) {
     t = var->GetMutable<DenseTensor>();
   } else if (var->IsType<phi::SelectedRows>()) {
@@ -3052,7 +3049,7 @@ phi::KernelKey OperatorWithKernel::GetExpectedKernelType(
 
 phi::KernelKey OperatorWithKernel::GetKernelTypeForVar(
     const std::string& var_name,
-    const phi::DenseTensor& tensor,
+    const DenseTensor& tensor,
     const phi::KernelKey& expected_kernel_type) const {
 #ifdef PADDLE_WITH_DNNL
   // When the op is first oneDNN op (there was some non oneDNN op
@@ -3227,8 +3224,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
          input_defs[i].type_index ==
              std::type_index(typeid(paddle::optional<phi::SelectedRows>)) ||
          input_defs[i].type_index ==
-             std::type_index(typeid(
-                 paddle::optional<std::vector<const phi::DenseTensor*>>)))) {
+             std::type_index(
+                 typeid(paddle::optional<std::vector<const DenseTensor*>>)))) {
       phi_kernel_context->EmplaceBackInputWithoutSetRange(nullptr);
       auto end_idx = start_idx + 1;
       phi_kernel_context->AssignInputRange(std::make_pair(start_idx, end_idx),
