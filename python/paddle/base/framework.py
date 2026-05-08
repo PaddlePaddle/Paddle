@@ -878,7 +878,6 @@ def _set_expected_place(place):
     global _global_expected_place_
     _global_expected_place_ = place
     _set_dygraph_tracer_expected_place(place)
-    core.eager_set_device_id()
 
 
 def _cpu_num():
