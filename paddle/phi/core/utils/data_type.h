@@ -56,7 +56,7 @@ namespace phi {
   _PhiForEachDataTypeHelper_(callback, int64_t, DataType::INT64);
 
 template <typename Visitor>
-inline void VisitDataType(phi::DataType type, Visitor visitor) {
+inline void VisitDataType(DataType type, Visitor visitor) {
 #define PhiVisitDataTypeCallback(cpp_type, data_type) \
   do {                                                \
     if (type == data_type) {                          \
@@ -68,11 +68,11 @@ inline void VisitDataType(phi::DataType type, Visitor visitor) {
   _PhiForEachDataType_(PhiVisitDataTypeCallback);
 #undef PhiVisitDataTypeCallback
   PADDLE_THROW(common::errors::Unimplemented(
-      "Not supported phi::DataType(%d) as data type.", static_cast<int>(type)));
+      "Not supported DataType(%d) as data type.", static_cast<int>(type)));
 }
 
 template <typename Visitor>
-inline void VisitDataTypeTiny(phi::DataType type, Visitor visitor) {
+inline void VisitDataTypeTiny(DataType type, Visitor visitor) {
 #define PhiVisitDataTypeCallbackTiny(cpp_type, data_type) \
   do {                                                    \
     if (type == data_type) {                              \
@@ -84,7 +84,7 @@ inline void VisitDataTypeTiny(phi::DataType type, Visitor visitor) {
   _PhiForEachDataTypeTiny_(PhiVisitDataTypeCallbackTiny);
 #undef PhiVisitDataTypeCallbackTiny
   PADDLE_THROW(common::errors::Unimplemented(
-      "Not supported phi::DataType(%d) as data type.", static_cast<int>(type)));
+      "Not supported DataType(%d) as data type.", static_cast<int>(type)));
 }
 
 inline bool IsComplexType(const DataType& type) {
@@ -119,7 +119,7 @@ inline DataType ToRealType(const DataType& type) {
   }
 }
 
-// In some cases we need to use the conversion between phi::DataType and
+// In some cases we need to use the conversion between DataType and
 // fluid proto::VarType::Type, but can't depend on the proto::VarType::Type.
 // So here we defined an enum type ProtoDataType which corresponds to
 // proto::VarType::Type in fluid, but keeps only the data types we need.

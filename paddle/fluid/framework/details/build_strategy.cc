@@ -283,13 +283,13 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       platform::NCCLCommunicator *nctx =
-          (use_device == p::kCUDA) ? nccl_ctxs : nullptr;
+          (use_device == kCUDA) ? nccl_ctxs : nullptr;
       pass->Erase(kNCCLCtxs);
       pass->SetNotOwned<platform::NCCLCommunicator>(kNCCLCtxs, nctx);
 #elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
       // ToDo: more check
       platform::BKCLCommunicator *bkcl_ctx =
-          (use_device == p::kXPU) ? bkcl_ctxs : nullptr;
+          (use_device == kXPU) ? bkcl_ctxs : nullptr;
       pass->Erase(kBKCLCtxs);
       pass->SetNotOwned<platform::BKCLCommunicator>(kBKCLCtxs, bkcl_ctx);
 #endif
@@ -297,25 +297,25 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->Erase(kNRanks);
       pass->Set<size_t>(kNRanks, new size_t(nranks));
     } else if (pass->Type() == "fuse_relu_depthwise_conv_pass") {
-      if (use_device != p::kCUDA) {
+      if (use_device != kCUDA) {
         VLOG(1) << "fuse_relu_depthwise_conv_pass is only supported on "
                    "GPU, skipped.";
         continue;
       }
     } else if (pass->Type() == "fusion_group_pass") {
-      pass->Set<bool>("use_gpu", new bool((use_device == p::kCUDA)));
-      if (use_device != p::kCUDA) {
+      pass->Set<bool>("use_gpu", new bool((use_device == kCUDA)));
+      if (use_device != kCUDA) {
         VLOG(1) << "fusion_group_pass is only supported on GPU, skipped.";
         continue;
       }
     } else if (pass->Type() == "fuse_bn_act_pass") {
-      if (use_device != p::kCUDA) {
+      if (use_device != kCUDA) {
         VLOG(1) << "fuse_bn_act_pass is only supported on "
                    "GPU, skipped.";
         continue;
       }
     } else if (pass->Type() == "fuse_bn_add_act_pass") {
-      if (use_device != p::kCUDA) {
+      if (use_device != kCUDA) {
         VLOG(1) << "fuse_bn_add_act_pass is only supported on "
                    "GPU, skipped.";
         continue;

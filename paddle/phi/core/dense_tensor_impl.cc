@@ -21,11 +21,11 @@ namespace phi {
 /*   From phi::DenseTensor     */
 /* --------------------------- */
 DenseTensor::DenseTensor() {
-  meta_.dtype = phi::DataType::FLOAT32;
+  meta_.dtype = DataType::FLOAT32;
   meta_.offset = 0;
 }
 
-DenseTensor::DenseTensor(phi::DataType dtype) {
+DenseTensor::DenseTensor(DataType dtype) {
   meta_.dtype = dtype;
   meta_.offset = 0;
 }
@@ -61,7 +61,7 @@ const Place& DenseTensor::place() const {
   return holder_->place();
 }
 
-phi::DataType DenseTensor::type() const { return meta_.dtype; }
+DataType DenseTensor::type() const { return meta_.dtype; }
 
 void DenseTensor::set_layout(const DataLayout layout) {
   if (meta_.strides.size() == -1) {
@@ -92,15 +92,15 @@ void DenseTensor::ResetHolder(const std::shared_ptr<phi::Allocation>& holder) {
 }
 
 void DenseTensor::ResetHolderWithType(
-    const std::shared_ptr<phi::Allocation>& holder, phi::DataType type) {
+    const std::shared_ptr<phi::Allocation>& holder, DataType type) {
   set_type(type);
   ResetHolder(holder);
 }
 
-void DenseTensor::set_type(phi::DataType type) { meta_.dtype = type; }
+void DenseTensor::set_type(DataType type) { meta_.dtype = type; }
 
 void* DenseTensor::mutable_data(const Place& place,
-                                phi::DataType type,
+                                DataType type,
                                 size_t requested_size) {
   set_type(type);
   PADDLE_ENFORCE_GE(
@@ -132,7 +132,7 @@ void* DenseTensor::mutable_data(const Place& place, size_t requested_size) {
 }
 
 void* DenseTensor::mutable_data(const Place& place,
-                                phi::DataType type,
+                                DataType type,
                                 const phi::Stream& stream) {
   set_type(type);
   PADDLE_ENFORCE_GE(
@@ -148,7 +148,7 @@ void* DenseTensor::mutable_data(const Place& place,
   /* some versions of paddle::variant don't have operator!= */
   if (holder_ == nullptr || !(holder_->place() == place) ||
       holder_->size() < size + meta_.offset ||
-      !(place.GetType() == phi::AllocationType::GPU &&
+      !(place.GetType() == AllocationType::GPU &&
         memory_utils::InSameStream(holder_, stream))) {
     holder_.reset();
     holder_ = memory_utils::AllocShared(place, size, stream);
