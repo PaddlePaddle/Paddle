@@ -25,6 +25,7 @@ from ..base.core import (
     VarDesc,
     finfo as core_finfo,
     iinfo as core_iinfo,
+    size_of_dtype,
 )
 
 if TYPE_CHECKING:
@@ -64,6 +65,10 @@ def bind_vartype():
     dtype = VarDesc.VarType
     dtype.__qualname__ = "dtype"
     dtype.__module__ = "paddle"
+    dtype.itemsize = property(
+        lambda self: size_of_dtype(self),
+        doc="The size in bytes of a single scalar value of this dtype.",
+    )
 
     uint8 = VarDesc.VarType.UINT8
     uint16 = VarDesc.VarType.UINT16
@@ -161,6 +166,10 @@ def bind_datatype():
     dtype = DataType
     dtype.__qualname__ = "dtype"
     dtype.__module__ = "paddle"
+    dtype.itemsize = property(
+        lambda self: size_of_dtype(self),
+        doc="The size in bytes of a single scalar value of this dtype.",
+    )
 
     uint8 = DataType.UINT8
     uint16 = DataType.UINT16

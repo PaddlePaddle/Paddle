@@ -1694,6 +1694,59 @@ class TestLayerAndTensorToAPI(unittest.TestCase):
             t.to('float64', copy='yes')
 
 
+# Test paddle.dtype.itemsize compatibility (mirrors torch.dtype.itemsize).
+class TestDtypeItemsizeAPI(unittest.TestCase):
+    EXPECTED = {
+        'float16': 2,
+        'bfloat16': 2,
+        'float32': 4,
+        'float64': 8,
+        'complex64': 8,
+        'complex128': 16,
+        'int8': 1,
+        'int16': 2,
+        'int32': 4,
+        'int64': 8,
+        'uint8': 1,
+        'uint16': 2,
+        'uint32': 4,
+        'uint64': 8,
+        'bool': 1,
+        'float8_e4m3fn': 1,
+        'float8_e5m2': 1,
+    }
+
+    def test_all_standard_dtypes(self):
+        for name, want in self.EXPECTED.items():
+            if not hasattr(paddle, name):
+                continue
+            with self.subTest(dtype=name):
+                self.assertEqual(getattr(paddle, name).itemsize, want)
+
+    def test_returns_int(self):
+        self.assertIsInstance(paddle.float32.itemsize, int)
+
+    def test_property_lives_on_class(self):
+        self.assertIsInstance(type(paddle.float32).itemsize, property)
+
+    def test_aliases_match(self):
+        self.assertEqual(paddle.float.itemsize, paddle.float32.itemsize)
+        self.assertEqual(paddle.double.itemsize, paddle.float64.itemsize)
+        self.assertEqual(paddle.half.itemsize, paddle.float16.itemsize)
+        self.assertEqual(paddle.short.itemsize, paddle.int16.itemsize)
+        self.assertEqual(paddle.long.itemsize, paddle.int64.itemsize)
+        self.assertEqual(paddle.cfloat.itemsize, paddle.complex64.itemsize)
+        self.assertEqual(paddle.cdouble.itemsize, paddle.complex128.itemsize)
+
+    def test_matches_tensor_element_size(self):
+        for name in ('float32', 'float64', 'int32', 'int64', 'bool'):
+            with self.subTest(dtype=name):
+                t = paddle.zeros([1], dtype=name)
+                self.assertEqual(
+                    getattr(paddle, name).itemsize, t.element_size()
+                )
+
+
 # Test select_scatter compatibility
 class TestSelectScatterAPICompatibility(unittest.TestCase):
     def setUp(self):
