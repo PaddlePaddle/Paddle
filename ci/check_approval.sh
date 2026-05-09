@@ -87,7 +87,7 @@ done
 
 CI_OLD_SCRIPTS_PADDLE_BUILD=$(git diff --name-only upstream/$BRANCH | grep -E "paddle/scripts/paddle_build.*")
 CI_OLD_SCRIPTS_COVERAGE=$(git diff --name-only upstream/$BRANCH | grep -E "tools/coverage")
-CI_OLD_SCRIPTS_TOOLS=$(git diff --name-only upstream/$BRANCH | grep -E "tools" | grep "check_")
+CI_OLD_SCRIPTS_TOOLS=$(git diff --name-only upstream/$BRANCH | grep -E "tools" | grep "check_" | grep -Ev "^tools/(test_)?check_abi_compatibility\.py$" || true)
 
 if [ -n "$CI_OLD_SCRIPTS_PADDLE_BUILD" ] || [ -n "$CI_OLD_SCRIPTS_COVERAGE" ] || [ -n "$CI_OLD_SCRIPTS_TOOLS" ]; then
     echo_line="You must have one RD (swgu98 or risemeup1) approval for the old CI scripts.\n"

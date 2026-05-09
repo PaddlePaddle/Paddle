@@ -55,6 +55,11 @@
   args_alias :
     use_default_mapping : True
 
+- op : aminmax
+  name : [paddle.aminmax, paddle.Tensor.aminmax]
+  args_alias :
+    use_default_mapping : True
+
 - op : angle
   name : [paddle.angle, paddle.Tensor.angle]
   args_alias :

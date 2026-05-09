@@ -38,7 +38,7 @@ COMMON_DECLARE_bool(use_stride_compute_kernel);
 
 namespace phi {
 
-inline void PrepareStridedOut(DenseTensor* out) {
+inline void PrepareStridedOut_elementwise(DenseTensor* out) {
   if (!FLAGS_use_stride_kernel) {
     PADDLE_THROW(common::errors::Fatal(
         "FLAGS_use_stride_kernel is closed. Strided kernel "
@@ -56,7 +56,7 @@ void SumStrideKernel(const Context& dev_ctx,
                      DataType out_dtype,
                      bool keep_dim,
                      DenseTensor* out) {
-  PrepareStridedOut(out);
+  PrepareStridedOut_elementwise(out);
 
   phi::SumKernel<T, Context>(dev_ctx, x, dims, out_dtype, keep_dim, out);
 }

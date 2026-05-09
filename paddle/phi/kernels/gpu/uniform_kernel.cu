@@ -163,7 +163,7 @@ struct UniformKernelImpl<T, Context, false> {
                     int seed,
                     DenseTensor* out) {
     if (seed == 0) {
-      using MT = typename dtype::MPTypeTrait<T>::Type;
+      using MT = typename MPTypeTrait<T>::Type;
       funcs::uniform_distribution<MT> dist;
       funcs::uniform_real_transform<MT> trans(min.to<float>(), max.to<float>());
       funcs::distribution_and_transform<T>(dev_ctx, out, dist, trans);

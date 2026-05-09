@@ -1932,7 +1932,7 @@ void FastRMSNormInfermeta(const MetaTensor& x,
 
   auto row_shape = slice_ddim(x_dim, 0, x_dim.size() - 1);
   invvar->set_dims({row_shape});
-  invvar->set_dtype(paddle::DataType::FLOAT32);
+  invvar->set_dtype(DataType::FLOAT32);
 }
 
 void FakeDequantizeMaxAbsInferMeta(const MetaTensor& x,

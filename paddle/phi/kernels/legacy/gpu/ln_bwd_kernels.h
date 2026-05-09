@@ -23,6 +23,7 @@
 #include "ln.h"        // NOLINT
 #include "ln_utils.h"  // NOLINT
 
+namespace phi {
 namespace layer_norm {
 
 template <typename Ktraits>
@@ -354,3 +355,4 @@ __launch_bounds__(Kernel_traits::THREADS_PER_CTA) void ln_bwd_finalize_kernel(
   }
 }
 }  // namespace layer_norm
+}  // namespace phi

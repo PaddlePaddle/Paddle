@@ -134,7 +134,7 @@ namespace phi {
 
 #ifdef PADDLE_WITH_IPU
 template <>
-struct DefaultDeviceContextType<phi::IPUPlace> {
+struct DefaultDeviceContextType<IPUPlace> {
   using TYPE = paddle::platform::IPUDeviceContext;
 };
 #endif

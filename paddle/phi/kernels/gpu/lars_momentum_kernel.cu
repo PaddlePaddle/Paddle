@@ -32,7 +32,7 @@
 namespace phi {
 
 template <typename T>
-using MultiPrecisionType = typename dtype::MPTypeTrait<T>::Type;
+using MultiPrecisionType = typename MPTypeTrait<T>::Type;
 
 __device__ __forceinline__ float Sqrt(float x) { return sqrtf(x); }
 __device__ __forceinline__ double Sqrt(double x) { return sqrt(x); }

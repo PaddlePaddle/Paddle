@@ -1264,7 +1264,7 @@ static void Interpolate1DCUDABwd(
     return;
   }
 
-  using MT = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   MT ratio_w =
       funcs::AreaPixelComputeScale<MT>(in_w, out_w, align_corners, scale_w);
   int64_t in_cw = c * in_w;
@@ -1399,7 +1399,7 @@ static void Interpolate2DCUDABwd(
 
   using MT = typename std::conditional_t<std::is_integral<T>::value,
                                          float,
-                                         typename dtype::MPTypeTrait<T>::Type>;
+                                         typename MPTypeTrait<T>::Type>;
   MT ratio_h =
       funcs::AreaPixelComputeScale<MT>(in_h, out_h, align_corners, scale_h);
   MT ratio_w =
@@ -1672,7 +1672,7 @@ static void InterpolateAA2DCUDABwd(
 
   using MT = typename std::conditional_t<std::is_integral<T>::value,
                                          float,
-                                         typename dtype::MPTypeTrait<T>::Type>;
+                                         typename MPTypeTrait<T>::Type>;
   MT ratio_h =
       funcs::AreaPixelComputeScale<MT>(in_h, out_h, align_corners, scale_h);
   MT ratio_w =
@@ -1742,7 +1742,8 @@ static void InterpolateAA2DCUDABwd(
       int block_y = std::min(256 / block_x, 8);
       int grid_x = (out_w + block_x - 1) / block_x;
       int grid_y = (out_h + block_y - 1) / block_y;
-      int grid_z = std::min(static_cast<int>(nc), gpu_props.maxGridSize[2]);
+      int grid_z = std::min(static_cast<int>(nc),
+                            static_cast<int>(gpu_props.maxGridSize[2]));
       dim3 block_noshmem(block_x, block_y);
       dim3 grid_noshmem(grid_x, grid_y, grid_z);
 
@@ -1912,7 +1913,7 @@ static void Interpolate3DCUDABwd(
 
   using MT = typename std::conditional_t<std::is_integral<T>::value,
                                          float,
-                                         typename dtype::MPTypeTrait<T>::Type>;
+                                         typename MPTypeTrait<T>::Type>;
   MT ratio_d =
       funcs::AreaPixelComputeScale<MT>(in_d, out_d, align_corners, scale_d);
   MT ratio_h =
