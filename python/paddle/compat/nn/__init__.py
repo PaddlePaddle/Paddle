@@ -600,11 +600,13 @@ class Linear(nn.Layer):
         Resets parameters based on their initialization used in ``__init__``.
         """
 
-        fan_in = self.weight.shape[1]
-        bound = 1 / sqrt(fan_in) if fan_in > 0 else 0
-        if 0 not in self.weight.shape:
-            nn.init.uniform_(self.weight, -bound, bound)
+        nn.init.kaiming_uniform_(self.weight, a=sqrt(5))
         if self.bias is not None:
+            # nn.init._calculate_fan_in_and_fan_out(self.weight) for 2D array
+            # is equivalent to returning (weight.shape[1], weight.shape[0])
+            # TODO(heqianyue): use _calculate_fan_in_and_fan_out when available
+            fan_in = self.weight.shape[1]
+            bound = 1 / sqrt(fan_in) if fan_in > 0 else 0
             nn.init.uniform_(self.bias, -bound, bound)
 
 

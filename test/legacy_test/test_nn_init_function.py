@@ -96,8 +96,8 @@ class TestCAlFanINOUT(unittest.TestCase):
             paddle.nn.init._calculate_fan_in_and_fan_out(x),
         )
 
-        y = paddle.tensor.randn([10, 10])
-        y_expected = (10, 10)
+        y = paddle.tensor.randn([5, 10])
+        y_expected = (10, 5)
         self.assertEqual(
             y_expected,
             paddle.nn.init._calculate_fan_in_and_fan_out(y),
@@ -117,8 +117,8 @@ class Test_kaiming_uniform_(unittest.TestCase):
     ):
         if len(tensor.shape) == 2:
             # This is the case for simple matrix multiply
-            fan_in = tensor.shape[0]
-            fan_out = tensor.shape[1]
+            fan_in = tensor.shape[1]
+            fan_out = tensor.shape[0]
         else:
             fan_in = tensor.shape[1]
             fan_out = tensor.shape[0]
@@ -259,8 +259,8 @@ class Test_kaiming_normal_(unittest.TestCase):
     ):
         if len(tensor.shape) == 2:
             # This is the case for simple matrix multiply
-            fan_in = tensor.shape[0]
-            fan_out = tensor.shape[1]
+            fan_in = tensor.shape[1]
+            fan_out = tensor.shape[0]
         else:
             fan_in = tensor.shape[1]
             fan_out = tensor.shape[0]

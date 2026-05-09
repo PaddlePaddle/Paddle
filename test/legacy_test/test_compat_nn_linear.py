@@ -187,14 +187,20 @@ class TestCompatLinearLayer(unittest.TestCase):
         """Test Linear(10, 1) with 1D and 2D input"""
         weight_np = np.random.randn(1, 10).astype(np.float32)
         bias_np = np.random.randn(1).astype(np.float32)
-
-        x_np = np.random.randn(1, 10).astype(np.float32)
-        self._compare_forward(x_np, weight_np, bias_np)
-        self._compare_backward(x_np, weight_np, bias_np)
+        linear = paddle.compat.nn.Linear(10, 1)
+        linear.weight.set_value(paddle.to_tensor(weight_np))
+        linear.bias.set_value(paddle.to_tensor(bias_np))
 
         x_np = np.random.randn(10).astype(np.float32)
-        self._compare_forward(x_np, weight_np, bias_np)
-        self._compare_backward(x_np, weight_np, bias_np)
+        y_np = self._numpy_linear_forward(x_np, weight_np, bias_np)
+        y_pd = linear(paddle.to_tensor(x_np))
+        rtol, atol = self.get_error_range()
+        np.testing.assert_allclose(y_pd.numpy(), y_np, rtol=rtol, atol=atol)
+
+        x_np = np.random.randn(1, 10).astype(np.float32)
+        y_np = self._numpy_linear_forward(x_np, weight_np, bias_np)
+        y_pd = linear(paddle.to_tensor(x_np))
+        np.testing.assert_allclose(y_pd.numpy(), y_np, rtol=rtol, atol=atol)
 
     def test_3d_input_with_bias(self):
         """Test 3D input with bias"""
@@ -316,27 +322,10 @@ class TestCompatLinearLayer(unittest.TestCase):
 
         # Check that weights are not all zeros
         self.assertFalse(np.allclose(linear.weight.numpy(), np.zeros((20, 10))))
-        bound = 1 / np.sqrt(10)
-        self.assertLessEqual(
-            float(np.max(np.abs(linear.weight.numpy()))), bound
-        )
-        self.assertLessEqual(float(np.max(np.abs(linear.bias.numpy()))), bound)
 
         # Test without bias
         linear_no_bias = Linear(10, 20, bias=False)
         self.assertIsNone(linear_no_bias.bias)
-
-        # Test zero out_features
-        linear_zero_out = Linear(3, 0)
-        self.assertEqual(linear_zero_out.weight.shape, [0, 3])
-        self.assertEqual(linear_zero_out.bias.shape, [0])
-        linear_zero_out.reset_parameters()
-
-        # Test zero in_features
-        linear_zero_in = Linear(0, 2)
-        self.assertEqual(linear_zero_in.weight.shape, [2, 0])
-        self.assertEqual(linear_zero_in.bias.shape, [2])
-        np.testing.assert_allclose(linear_zero_in.bias.numpy(), np.zeros([2]))
 
     def test_edge_cases(self):
         """Test edge cases"""

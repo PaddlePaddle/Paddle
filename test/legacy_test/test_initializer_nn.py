@@ -146,7 +146,7 @@ class TestKaimingInitializer(unittest.TestCase):
                         6.0 / (param.shape[1] * receptive_field_size)
                     )
                 else:
-                    limit = np.sqrt(6.0 / param.shape[0])
+                    limit = np.sqrt(6.0 / param.shape[1])
                 self.assertAlmostEqual(init_op.attr('min'), -limit, delta=DELTA)
                 self.assertAlmostEqual(init_op.attr('max'), limit, delta=DELTA)
             else:
@@ -155,7 +155,7 @@ class TestKaimingInitializer(unittest.TestCase):
                     receptive_field_size = float(15 * 20)
                     std = np.sqrt(2.0 / (param.shape[1] * receptive_field_size))
                 else:
-                    std = np.sqrt(2.0 / param.shape[0])
+                    std = np.sqrt(2.0 / param.shape[1])
                 self.assertAlmostEqual(init_op.attr('mean'), 0.0, delta=DELTA)
                 self.assertAlmostEqual(init_op.attr('std'), std, delta=DELTA)
             paddle.disable_static()

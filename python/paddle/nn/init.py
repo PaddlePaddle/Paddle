@@ -51,8 +51,8 @@ def _calculate_fan_in_and_fan_out(var: paddle.Tensor) -> tuple[int, int]:
         fan_in = fan_out = shape[0]
     elif len(shape) == 2:
         # This is the case for simple matrix multiply
-        fan_in = shape[0]
-        fan_out = shape[1]
+        fan_in = shape[1]
+        fan_out = shape[0]
     else:
         # Assume this to be a convolutional kernel
         # In PaddlePaddle, the shape of the kernel is like:
