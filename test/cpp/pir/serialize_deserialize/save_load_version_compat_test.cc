@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
+
 #include <stdio.h>
-#include <filesystem>
 #include <iostream>
 #include <map>
 #include <sstream>
@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "paddle/common/enforce.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
@@ -29,8 +30,6 @@
 #include "paddle/fluid/pir/serialize_deserialize/include/ir_deserialize.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/version_compat.h"
 #include "paddle/phi/common/port.h"
-
-#include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/pir/include/core/block.h"
 #include "paddle/pir/include/core/builder.h"
@@ -68,9 +67,9 @@ TEST(save_load_version_compat, op_patch_test) {
   const uint64_t pir_version = 0;
   pir::PatchBuilder builder(pir_version);
   builder.SetFileVersion(1);
-  std::filesystem::path patch_path("patch");
+  std::string patch_path = "patch";
   VLOG(8) << "Patch path: " << patch_path;
-  builder.BuildPatch(2, 2, patch_path.string());
+  builder.BuildPatch(2, 2, patch_path);
 }
 
 bool ReadModuleForTest(const std::string &file_path,
@@ -86,9 +85,9 @@ bool ReadModuleForTest(const std::string &file_path,
         data.at(BASE_CODE).at(PIRVERSION).template get<uint64_t>();
     if (file_version != pir_version) {
       builder.SetFileVersion(file_version);
-      std::filesystem::path patch_path("patch");
+      std::string patch_path = "patch";
       VLOG(8) << "Patch path: " << patch_path;
-      builder.BuildPatch(2, 2, patch_path.string());
+      builder.BuildPatch(2, 2, patch_path);
     }
   } else {
     PADDLE_THROW(::common::errors::InvalidArgument("Invalid model file: %s.",

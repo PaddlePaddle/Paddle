@@ -267,7 +267,7 @@ void DecoderAttentionXPUFusePass::ApplyDecoderAttentionXPUFuse(
         DenseTensor input_max_in_cpu_tensor;
         auto* cpu_ctx = static_cast<phi::CPUContext*>(
             phi::DeviceContextPool::Instance().Get(CPUPlace()));
-        input_max_in_cpu_tensor.set_type(phi::DataType::FLOAT32);
+        input_max_in_cpu_tensor.set_type(DataType::FLOAT32);
         input_max_in_cpu_tensor.Resize({max_ptr_size});
         std::vector<float> input_max(max_ptr_size, input_max_vec[i]);
         memcpy(cpu_ctx->Alloc<float>(&input_max_in_cpu_tensor),

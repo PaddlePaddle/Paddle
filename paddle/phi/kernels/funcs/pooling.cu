@@ -511,7 +511,7 @@ __global__ void KernelMaxPool2DGradCompatible(
     T* input_grad,
     FastDivModForPooling<IndexT> divmods,
     bool channel_last = false) {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
 
   CUDA_KERNEL_LOOP(index, input_height * input_width) {
     IndexT h = index / input_width;
@@ -523,19 +523,19 @@ __global__ void KernelMaxPool2DGradCompatible(
     T input_data_value = input_data[h * input_width + w];
     for (IndexT n = blockIdx.y; n < batch_size; n += gridDim.y) {
       for (IndexT c = blockIdx.z; c < channels; c += gridDim.z) {
-        MPType gradient = static_cast<MPType>(0.0f);
+        MT gradient = static_cast<MT>(0.0f);
         IndexT offset = (n * channels + c) * output_height * output_width;
         for (int ph = phstart; ph < phend; ++ph) {
           for (int pw = pwstart; pw < pwend; ++pw) {
             T output_data_value = output_data[ph * output_width + pw + offset];
             if (output_data_value == input_data_value) {
-              gradient += static_cast<MPType>(
-                  output_grad[ph * output_width + pw + offset]);
+              gradient +=
+                  static_cast<MT>(output_grad[ph * output_width + pw + offset]);
             }
           }
         }
         input_grad[(n * channels + c) * input_height * input_width + index] =
-            static_cast<MPType>(gradient);
+            static_cast<MT>(gradient);
       }
     }
   }

@@ -40,8 +40,11 @@ inline at::Tensor unflatten(const at::Tensor& self,
 inline at::Tensor unflatten_symint(const at::Tensor& self,
                                    const int64_t dim,
                                    c10::SymIntArrayRef sizes) {
-  // SymIntArrayRef is the same as IntArrayRef in this implementation
-  return unflatten(self, dim, sizes);
+  return unflatten(
+      self,
+      dim,
+      at::IntArrayRef(reinterpret_cast<const int64_t*>(sizes.data()),
+                      sizes.size()));
 }
 
 }  // namespace at

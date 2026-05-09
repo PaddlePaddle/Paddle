@@ -261,34 +261,12 @@ class RewriterBase : public Builder {
  public:
   // TODO(wilber): Supplementary methods of block and region.
 
-  virtual void ReplaceOpWithIf(Operation* op,
-                               const std::vector<Value>& new_values,
-                               bool* all_uses_replaced,
-                               const std::function<bool(OpOperand)>& functor);
-
-  void ReplaceOpWithIf(Operation* op,
-                       const std::vector<Value>& new_values,
-                       const std::function<bool(OpOperand)>& functor);
-
   virtual void ReplaceOp(Operation* op, const std::vector<Value>& new_values);
-
-  // Replaces the result op with a new op.
-  // The result values of the two ops must be the same types.
-  template <typename OpTy, typename... Args>
-  OpTy ReplaceOpWithNewOp(Operation* op, Args&&... args) {
-    auto new_op = Build<OpTy>(std::forward<Args>(args)...);
-    ReplaceOpWithResultsOfAnotherOp(op, new_op.operation());
-    return new_op;
-  }
 
   // This method erases an operation that is known to have no uses.
   virtual void EraseOp(Operation* op);
 
   IR_API void ReplaceAllUsesWith(Value from, Value to);
-
-  void ReplaceUseIf(Value from,
-                    Value to,
-                    std::function<bool(OpOperand&)> functor);
 
  protected:
   explicit RewriterBase(IrContext* ctx) : Builder(ctx) {}
@@ -320,8 +298,6 @@ class RewriterBase : public Builder {
  private:
   void operator=(const RewriterBase&) = delete;
   RewriterBase(const RewriterBase&) = delete;
-
-  void ReplaceOpWithResultsOfAnotherOp(Operation* op, Operation* new_op);
 };
 
 class PatternRewriter : public RewriterBase {

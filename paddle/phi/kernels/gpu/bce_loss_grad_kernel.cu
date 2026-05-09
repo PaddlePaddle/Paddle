@@ -27,7 +27,7 @@ namespace phi {
 
 template <typename T>
 struct BCELossGradFunctor {
-  using MT = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   MT one = static_cast<MT>(1.0f);
   MT eps = static_cast<MT>(1e-12);
 

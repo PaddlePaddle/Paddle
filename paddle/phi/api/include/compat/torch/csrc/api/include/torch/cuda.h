@@ -15,16 +15,16 @@
 #pragma once
 
 #include <c10/core/Device.h>
-
 #include <cstdint>
+#include "paddle/common/macros.h"
 
 namespace torch::cuda {
 
-c10::DeviceIndex device_count();
+PADDLE_API c10::DeviceIndex device_count();
 
-bool is_available();
+PADDLE_API bool is_available();
 
-void synchronize(int64_t device_index = -1);
+PADDLE_API void synchronize(int64_t device_index = -1);
 
 }  // namespace torch::cuda
 namespace at::cuda {

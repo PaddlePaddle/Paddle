@@ -23,11 +23,9 @@ limitations under the License. */
 
 namespace phi::distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 SpmdInfo SplitWithNumInferSpmd(const DistMetaTensor& x, int num, int axis) {
   // Step0: Verify input args based on split logic
-  auto x_shape = common::vectorize(x.dims());
+  auto x_shape = vectorize(x.dims());
   int x_ndim = static_cast<int>(x_shape.size());
   const auto& x_dist_attr_src = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
@@ -104,8 +102,8 @@ SpmdInfo SplitWithNumInferSpmdReverse(
     int axis) {
   // Step0: Verify input args based on split logic
   int nouts = static_cast<int>(outs.size());
-  int out_ndim = static_cast<int>(common::vectorize(outs[0]->dims()).size());
-  auto x_shape = common::vectorize(x.dims());
+  int out_ndim = static_cast<int>(vectorize(outs[0]->dims()).size());
+  auto x_shape = vectorize(x.dims());
   int x_ndim = static_cast<int>(x_shape.size());
   const auto& x_dist_attr = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr.dims_mapping();
@@ -124,7 +122,7 @@ SpmdInfo SplitWithNumInferSpmdReverse(
                                       x_ndim,
                                       out_ndim));
   for (int i = 0; i < num; i++) {
-    auto shape = common::vectorize(outs[i]->dims());
+    auto shape = vectorize(outs[i]->dims());
     int ndim = static_cast<int>(shape.size());
     auto dist_attr = outs[i]->dist_attr();
     int dims_mapping_size = static_cast<int>(dist_attr.dims_mapping().size());
@@ -189,7 +187,7 @@ SpmdInfo SplitWithNumInferSpmdReverse(
   VLOG(4) << "Einsum Notation: " << x_axes << "-->" << out_axes;
   for (int i = 0; i < nouts; i++) {
     VLOG(4) << "Output" << std::to_string(i) << " shape: ["
-            << str_join(common::vectorize(outs[i]->dims())) << "] "
+            << str_join(vectorize(outs[i]->dims())) << "] "
             << "src_dims_mapping: ["
             << str_join(outs[i]->dist_attr().dims_mapping()) << "] "
             << "dst_dims_mapping: ["

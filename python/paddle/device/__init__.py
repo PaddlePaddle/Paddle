@@ -644,6 +644,8 @@ def set_device(device: PlaceLike | int) -> PlaceLike:
     """
     place = device_to_place(device)
     framework._set_expected_place(place)
+    if framework.in_dygraph_mode():
+        core.eager_set_device_id()
     return place
 
 

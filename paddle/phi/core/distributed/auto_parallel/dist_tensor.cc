@@ -177,7 +177,7 @@ DistTensor::DistTensor(const std::shared_ptr<DenseTensor>& local_value,
   } else {
     value_ = std::make_shared<DenseTensor>(
         std::make_shared<phi::Allocation>(nullptr, 0, local_value->place()),
-        DenseTensorMeta(local_value->dtype(), phi::make_ddim({0})));
+        DenseTensorMeta(local_value->dtype(), make_ddim({0})));
   }
 }
 
@@ -205,7 +205,7 @@ DistTensor::DistTensor(const std::shared_ptr<DenseTensor>& global_value,
   // If the dims.size() == -1, the dims=[0] by default, which is not consistent
   // and will cause ToTensorDistAttr's error.
   if (global_dims_ == DDim()) {
-    global_dims_ = phi::make_ddim({});
+    global_dims_ = make_ddim({});
   }
   dist_attr_ = ToTensorDistAttr(process_mesh_, placements_, global_dims_);
 

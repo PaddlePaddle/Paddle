@@ -230,6 +230,9 @@ CircularPad3d = CircularPad3D
 Conv1d = Conv1D
 Conv2d = Conv2D
 Conv3d = Conv3D
+ConvTranspose1d = Conv1DTranspose
+ConvTranspose2d = Conv2DTranspose
+ConvTranspose3d = Conv3DTranspose
 AdaptiveMaxPool1d = AdaptiveMaxPool1D
 AdaptiveMaxPool2d = AdaptiveMaxPool2D
 AdaptiveMaxPool3d = AdaptiveMaxPool3D
@@ -336,6 +339,7 @@ __all__ = [
     'Sequential',
     'Hardswish',
     'Conv1DTranspose',
+    'ConvTranspose1d',
     'AdaptiveMaxPool1D',
     'TransformerEncoder',
     'Softmax',
@@ -354,6 +358,7 @@ __all__ = [
     'Silu',
     'SiLU',
     'Conv2DTranspose',
+    'ConvTranspose2d',
     'CTCLoss',
     'RNNTLoss',
     'ThresholdedReLU',
@@ -365,6 +370,7 @@ __all__ = [
     'Conv3d',
     'Tanh',
     'Conv3DTranspose',
+    'ConvTranspose3d',
     'Flatten',
     'AdaptiveAvgPool1D',
     'Tanhshrink',

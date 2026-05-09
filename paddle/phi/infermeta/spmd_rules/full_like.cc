@@ -25,11 +25,11 @@ SpmdInfo CreateLikeInferSpmd(const DistMetaTensor& x) {
 
 SpmdInfo FullLikeInferSpmd(const DistMetaTensor& x,
                            const Scalar& y,
-                           phi::DataType dtype) {
+                           DataType dtype) {
   return CreateLikeInferSpmd(x);
 }
 
-SpmdInfo EmptyLikeInferSpmd(const DistMetaTensor& x, phi::DataType dtype) {
+SpmdInfo EmptyLikeInferSpmd(const DistMetaTensor& x, DataType dtype) {
   return CreateLikeInferSpmd(x);
 }
 }  // namespace phi::distributed

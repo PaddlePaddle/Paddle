@@ -994,7 +994,7 @@ template phi::dtype::complex<double> GetValue(const DenseTensor* x);
 template <typename T>
 std::vector<T> GetVectorFromTensor(const DenseTensor* x) {
   std::vector<T> vec_new_data;
-  if (phi::TransToProtoVarType(x->dtype()) == ProtoDataType::INT32) {
+  if (x->dtype() == DataType::INT32) {
     auto* data = x->data<int>();
     DenseTensor cpu_attr_tensor;
     if (x->place().GetType() != phi::AllocationType::CPU) {
@@ -1004,7 +1004,7 @@ std::vector<T> GetVectorFromTensor(const DenseTensor* x) {
       data = cpu_attr_tensor.data<int>();
     }
     vec_new_data = std::vector<T>(data, data + x->numel());
-  } else if (phi::TransToProtoVarType(x->dtype()) == ProtoDataType::INT64) {
+  } else if (x->dtype() == DataType::INT64) {
     auto* data = x->data<int64_t>();
     DenseTensor cpu_attr_tensor;
     if (x->place().GetType() != phi::AllocationType::CPU) {
@@ -1018,7 +1018,7 @@ std::vector<T> GetVectorFromTensor(const DenseTensor* x) {
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "The dtype of Tensor must be int32 or int64, but received: %s",
-        phi::TransToProtoVarType(x->dtype())));
+        x->dtype()));
   }
   return vec_new_data;
 }
@@ -1046,20 +1046,18 @@ std::vector<T> _GetVectorFromTensor(const DenseTensor* x) {
 
 template <>
 std::vector<float> GetVectorFromTensor<float>(const DenseTensor* x) {
-  if (phi::TransToProtoVarType(x->dtype()) != ProtoDataType::FP32) {
+  if (x->dtype() != DataType::FLOAT32) {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "The dtype of Tensor must be float32, but received: %s",
-        phi::TransToProtoVarType(x->dtype())));
+        "The dtype of Tensor must be float32, but received: %s", x->dtype()));
   }
   return _GetVectorFromTensor<float>(x);
 }
 
 template <>
 std::vector<double> GetVectorFromTensor<double>(const DenseTensor* x) {
-  if (phi::TransToProtoVarType(x->dtype()) != ProtoDataType::FP64) {
+  if (x->dtype() != DataType::FLOAT64) {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "The dtype of Tensor must be float64, but received: %s",
-        phi::TransToProtoVarType(x->dtype())));
+        "The dtype of Tensor must be float64, but received: %s", x->dtype()));
   }
   return _GetVectorFromTensor<double>(x);
 }

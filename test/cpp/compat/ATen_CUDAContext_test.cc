@@ -15,10 +15,12 @@
 #include <ATen/cuda/CUDAContext.h>
 #include <c10/core/Allocator.h>
 #include <c10/cuda/CUDAFunctions.h>
+#include <torch/cuda.h>
 
 #include "gtest/gtest.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include <c10/cuda/CUDAGuard.h>
 #include <c10/cuda/CUDAStream.h>
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #endif
@@ -57,6 +59,27 @@ TEST(CUDAFunctionsTest, DeviceSynchronize) {
 #endif
 }
 
+// CPU-only: torch::cuda::synchronize must report "No CUDA GPUs are available"
+// rather than the older "Cannot visit device count" produced by device_count().
+// Matches PyTorch behavior where device_count() returns 0 in CPU-only builds
+// and the synchronize() pre-check is the single source of the GPU-missing
+// error message.
+TEST(CUDAFunctionsTest, SynchronizeReportsNoGpuMessageInCpuOnly) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  // Only relevant in CPU-only builds
+  return;
+#else
+  try {
+    torch::cuda::synchronize();
+    FAIL() << "expected exception";
+  } catch (const std::exception& e) {
+    const std::string msg = e.what();
+    EXPECT_NE(msg.find("No CUDA GPUs are available"), std::string::npos) << msg;
+    EXPECT_EQ(msg.find("Cannot visit device count"), std::string::npos) << msg;
+  }
+#endif
+}
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(CUDAFunctionsTest, StreamSynchronize) {
   if (!at::cuda::is_available()) {
@@ -77,6 +100,110 @@ TEST(CUDAFunctionsTest, AtNamespaceAliases) {
   ASSERT_NO_THROW(at::cuda::device_synchronize());
   auto stream = c10::cuda::getCurrentCUDAStream();
   ASSERT_NO_THROW(at::cuda::stream_synchronize(stream));
+}
+
+TEST(CUDAFunctionsTest, TorchSynchronizePreservesCurrentDevice) {
+  if (!torch::cuda::is_available()) {
+    return;
+  }
+  if (torch::cuda::device_count() < 2) {
+    return;
+  }
+
+  constexpr int current_device = 0;
+  constexpr int other_device = 1;
+  c10::cuda::CUDAGuard guard(static_cast<c10::DeviceIndex>(current_device));
+  ASSERT_EQ(phi::backends::gpu::GetCurrentDeviceId(), current_device);
+
+  ASSERT_NO_THROW(torch::cuda::synchronize(other_device));
+  EXPECT_EQ(phi::backends::gpu::GetCurrentDeviceId(), current_device);
+}
+
+TEST(CUDAFunctionsTest, SynchronizeRejectsInvalidNegativeDevice) {
+  if (!torch::cuda::is_available()) {
+    return;
+  }
+  ASSERT_THROW(torch::cuda::synchronize(-2), std::exception);
+}
+
+TEST(CUDAFunctionsTest, CUDAGuardRestoresOriginalDeviceAfterMultipleSwitches) {
+  if (!torch::cuda::is_available()) {
+    return;
+  }
+  if (torch::cuda::device_count() < 2) {
+    return;
+  }
+
+  constexpr int original_device = 0;
+  constexpr int intermediate_device = 1;
+  phi::backends::gpu::SetDeviceId(original_device);
+  ASSERT_EQ(phi::backends::gpu::GetCurrentDeviceId(), original_device);
+
+  {
+    c10::cuda::CUDAGuard guard(
+        static_cast<c10::DeviceIndex>(intermediate_device));
+    ASSERT_EQ(phi::backends::gpu::GetCurrentDeviceId(), intermediate_device);
+    guard.set_index(static_cast<c10::DeviceIndex>(original_device));
+    ASSERT_EQ(phi::backends::gpu::GetCurrentDeviceId(), original_device);
+    guard.set_index(static_cast<c10::DeviceIndex>(intermediate_device));
+    ASSERT_EQ(phi::backends::gpu::GetCurrentDeviceId(), intermediate_device);
+  }
+
+  EXPECT_EQ(phi::backends::gpu::GetCurrentDeviceId(), original_device);
+}
+
+TEST(CUDAFunctionsTest,
+     CUDAGuardRestoresOriginalDeviceAfterReturnToOriginalThenExit) {
+  if (!torch::cuda::is_available()) {
+    return;
+  }
+  if (torch::cuda::device_count() < 2) {
+    return;
+  }
+
+  constexpr int original_device = 0;
+  constexpr int intermediate_device = 1;
+  phi::backends::gpu::SetDeviceId(original_device);
+  ASSERT_EQ(phi::backends::gpu::GetCurrentDeviceId(), original_device);
+
+  {
+    c10::cuda::CUDAGuard guard(
+        static_cast<c10::DeviceIndex>(intermediate_device));
+    ASSERT_EQ(phi::backends::gpu::GetCurrentDeviceId(), intermediate_device);
+
+    guard.set_index(static_cast<c10::DeviceIndex>(original_device));
+    ASSERT_EQ(phi::backends::gpu::GetCurrentDeviceId(), original_device);
+  }
+
+  EXPECT_EQ(phi::backends::gpu::GetCurrentDeviceId(), original_device);
+}
+
+TEST(CUDAFunctionsTest,
+     OptionalCUDAGuardResetRestoresOriginalDeviceAfterReturnToOriginal) {
+  if (!torch::cuda::is_available()) {
+    return;
+  }
+  if (torch::cuda::device_count() < 2) {
+    return;
+  }
+
+  constexpr int original_device = 0;
+  constexpr int intermediate_device = 1;
+  phi::backends::gpu::SetDeviceId(original_device);
+  ASSERT_EQ(phi::backends::gpu::GetCurrentDeviceId(), original_device);
+
+  c10::cuda::OptionalCUDAGuard guard;
+  guard.set_index(static_cast<c10::DeviceIndex>(intermediate_device));
+  ASSERT_EQ(phi::backends::gpu::GetCurrentDeviceId(), intermediate_device);
+
+  guard.set_index(static_cast<c10::DeviceIndex>(original_device));
+  ASSERT_EQ(phi::backends::gpu::GetCurrentDeviceId(), original_device);
+
+  guard.reset();
+
+  EXPECT_EQ(phi::backends::gpu::GetCurrentDeviceId(), original_device);
+  EXPECT_FALSE(guard.original_device().has_value());
+  EXPECT_FALSE(guard.current_device().has_value());
 }
 #endif
 
@@ -108,6 +235,33 @@ TEST(CUDAContextLightTest, GetNumGPUs) {
 #else
   // In CPU-only builds, device_count() returns 0
   ASSERT_EQ(n, 0);
+#endif
+}
+
+// CPU-only: device_count() must return 0 instead of throwing, matching the
+// PyTorch contract that device_count() is a non-throwing query.
+TEST(CUDAContextLightTest, DeviceCountReturnsZeroInCpuOnly) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  // Only relevant in CPU-only builds
+  return;
+#else
+  ASSERT_NO_THROW({
+    EXPECT_EQ(c10::cuda::device_count(), 0);
+    EXPECT_EQ(torch::cuda::device_count(), 0);
+  });
+#endif
+}
+
+// CPU-only: is_available() must be false and not throw, matching PyTorch.
+TEST(CUDAContextLightTest, IsAvailableFalseAndNoThrowInCpuOnly) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  // Only relevant in CPU-only builds
+  return;
+#else
+  ASSERT_NO_THROW({
+    EXPECT_FALSE(at::cuda::is_available());
+    EXPECT_FALSE(torch::cuda::is_available());
+  });
 #endif
 }
 

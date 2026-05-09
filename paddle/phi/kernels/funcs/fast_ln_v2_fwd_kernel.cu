@@ -27,10 +27,10 @@ namespace fast_ln_v2 {
 
 FwdRegistry FAST_LN_V2_FWD_FUNCS;
 
-FwdFunction &get_fwd_launcher(phi::DataType weight_type,
-                              phi::DataType input_type,
-                              phi::DataType output_type,
-                              phi::DataType compute_type,
+FwdFunction &get_fwd_launcher(DataType weight_type,
+                              DataType input_type,
+                              DataType output_type,
+                              DataType compute_type,
                               uint32_t hidden_size) {
   auto iter = FAST_LN_V2_FWD_FUNCS.find(
       get_key(weight_type, input_type, output_type, compute_type, hidden_size));
@@ -46,10 +46,10 @@ FwdFunction &get_fwd_launcher(phi::DataType weight_type,
              compute_type);
   }
 }
-bool has_fast_ln_v2_fwd_kernel(phi::DataType weight_type,
-                               phi::DataType input_type,
-                               phi::DataType output_type,
-                               phi::DataType compute_type,
+bool has_fast_ln_v2_fwd_kernel(DataType weight_type,
+                               DataType input_type,
+                               DataType output_type,
+                               DataType compute_type,
                                uint32_t hidden_size) {
   auto iter = FAST_LN_V2_FWD_FUNCS.find(
       get_key(weight_type, input_type, output_type, compute_type, hidden_size));

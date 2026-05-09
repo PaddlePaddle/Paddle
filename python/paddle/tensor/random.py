@@ -2493,14 +2493,10 @@ def exponential_(
 
         f(x) = \lambda e^{-\lambda x}
 
-    .. note::
-        Alias Support: The parameter name ``lambd`` can be used as an alias for ``lam``.
-        For example, ``exponential_(tensor_x, lambd=1.0, ...)`` is equivalent to ``exponential_(tensor_x, lam=1.0, ...)``.
-
     Args:
         x(Tensor):  Input tensor. The data type should be float32, float64.
-        lam(float, optional): :math:`\lambda` parameter of Exponential Distribution. Default, 1.0.
-            alias: ``lambd``.
+        lam(float, optional): :math:`\lambda` parameter of Exponential Distribution. Default: 1.0.
+            Alias: ``lambd``.
         name(str|None, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
