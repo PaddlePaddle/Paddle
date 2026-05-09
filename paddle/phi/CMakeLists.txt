@@ -123,6 +123,10 @@ if(WITH_XPU)
   endif()
 endif()
 
+if(WITH_IPU)
+  list(APPEND PHI_DEPS popart-only)
+endif()
+
 if(WITH_DGC)
   list(APPEND PHI_DEPS dgc)
 endif()

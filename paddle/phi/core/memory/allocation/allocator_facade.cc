@@ -68,7 +68,7 @@
 #endif
 
 #ifdef PADDLE_WITH_IPU
-#include "paddle/fluid/platform/device/ipu/ipu_info.h"
+#include "paddle/phi/core/platform/device/ipu/ipu_info.h"
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE

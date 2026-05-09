@@ -13,19 +13,4 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
-#include <vector>
-
-namespace paddle {
-namespace platform {
-namespace ipu {
-
-// get the number of all available IPUs
-int GetNumDevices();
-
-// get the device id of all available IPUs
-std::vector<int> GetDeviceIds();
-
-}  // namespace ipu
-}  // namespace platform
-}  // namespace paddle
+#include "paddle/phi/core/platform/device/ipu/ipu_device.h"
