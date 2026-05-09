@@ -30,9 +30,8 @@ PY_STREAM_TYPE get_current_stream(int device_id) {
   if (device_id == -1) {
     device_id = phi::DeviceManager::GetDevice(dev_types[0]);
   }
-  auto *custom_context =
-      static_cast<const phi::CustomContext *>(DeviceContextPool::Instance().Get(
-          phi::CustomPlace(dev_types[0], device_id)));
+  auto *custom_context = static_cast<const phi::CustomContext *>(
+      DeviceContextPool::Instance().Get(CustomPlace(dev_types[0], device_id)));
   return custom_context->GetStream().get();
 }
 

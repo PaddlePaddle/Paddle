@@ -24,7 +24,7 @@ namespace paddle {
 namespace pybind {
 using pir::Value;
 void BindPir(pybind11::module *m);
-const phi::DDim &GetValueDims(Value value);
+const DDim &GetValueDims(Value value);
 bool GetValueBoolAttr(Value value, const std::string &attr_name);
 
 }  // namespace pybind

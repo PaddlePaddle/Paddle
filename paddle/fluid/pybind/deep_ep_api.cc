@@ -79,7 +79,7 @@ void BindDeepEPApi(pybind11::module *m) {
 #if defined(PADDLE_WITH_CUDA)
              return phi::CUDAStream(GPUPlace(device_id), s);
 #elif defined(PADDLE_WITH_XPU)
-             return phi::XPUCUDAStream(phi::XPUPlace(device_id), s);
+             return phi::XPUCUDAStream(XPUPlace(device_id), s);
 #endif
            })
       .def("get_local_ipc_handle", &deep_ep::Buffer::get_local_ipc_handle)

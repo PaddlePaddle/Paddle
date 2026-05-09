@@ -31,13 +31,13 @@ void BindCustomDevicePy(py::module *m_ptr) {
   auto &m = *m_ptr;
   // Bind Methods
   m.def("_get_device_min_chunk_size", [](const std::string &device_type) {
-    auto place = phi::CustomPlace(device_type);
+    auto place = CustomPlace(device_type);
     return phi::DeviceManager::GetMinChunkSize(place);
   });
   m.def(
       "_get_device_total_memory",
       [](const std::string &device_type, int device_id) {
-        auto place = phi::CustomPlace(
+        auto place = CustomPlace(
             device_type,
             device_id == -1 ? phi::DeviceManager::GetDevice(device_type)
                             : device_id);
@@ -51,7 +51,7 @@ void BindCustomDevicePy(py::module *m_ptr) {
       "_get_current_custom_device_stream",
       [](const std::string &device_type, int device_id) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-        auto place = phi::CustomPlace(
+        auto place = CustomPlace(
             device_type,
             device_id == -1 ? phi::DeviceManager::GetDevice(device_type)
                             : device_id);
@@ -74,7 +74,7 @@ void BindCustomDevicePy(py::module *m_ptr) {
          int device_id,
          std::shared_ptr<phi::stream::Stream> stream) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-        auto place = phi::CustomPlace(
+        auto place = CustomPlace(
             device_type,
             device_id == -1 ? phi::DeviceManager::GetDevice(device_type)
                             : device_id);
@@ -94,7 +94,7 @@ void BindCustomDevicePy(py::module *m_ptr) {
   m.def("_synchronize_custom_device",
         [](const std::string &device_type, int device_id) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-          auto place = phi::CustomPlace(
+          auto place = CustomPlace(
               device_type,
               device_id == -1 ? phi::DeviceManager::GetDevice(device_type)
                               : device_id);
@@ -134,7 +134,7 @@ void BindCustomDevicePy(py::module *m_ptr) {
       .def(
           "__init__",
           [](phi::stream::Stream &self,
-             const phi::CustomPlace &place,
+             const CustomPlace &place,
              int priority,
              bool blocking) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -164,10 +164,10 @@ void BindCustomDevicePy(py::module *m_ptr) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
             new (&self) phi::stream::Stream();
             self.Init(
-                phi::CustomPlace(
-                    device_type,
-                    device_id == -1 ? phi::DeviceManager::GetDevice(device_type)
-                                    : device_id),
+                CustomPlace(device_type,
+                            device_id == -1
+                                ? phi::DeviceManager::GetDevice(device_type)
+                                : device_id),
                 static_cast<phi::stream::Stream::Priority>(priority),
                 static_cast<phi::stream::Stream::Flag>(
                     blocking ? phi::stream::Stream::Flag::kDefaultFlag
@@ -387,7 +387,7 @@ void BindCustomDevicePy(py::module *m_ptr) {
           )DOC")
       .def_property_readonly("place", [](const phi::stream::Stream &self) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-        return reinterpret_cast<const phi::CustomPlace &>(self.GetPlace());
+        return reinterpret_cast<const CustomPlace &>(self.GetPlace());
 #else
         PADDLE_THROW(common::errors::Unavailable(
             "Paddle is not compiled with CustomDevice. "
@@ -420,7 +420,7 @@ void BindCustomDevicePy(py::module *m_ptr) {
       .def(
           "__init__",
           [](phi::event::Event &self,
-             const phi::CustomPlace &place,
+             const CustomPlace &place,
              bool enable_timing,
              bool blocking,
              bool interprocess) {
@@ -468,10 +468,10 @@ void BindCustomDevicePy(py::module *m_ptr) {
             );
             new (&self) phi::event::Event();
             self.Init(
-                phi::CustomPlace(
-                    device_type,
-                    device_id == -1 ? phi::DeviceManager::GetDevice(device_type)
-                                    : device_id),
+                CustomPlace(device_type,
+                            device_id == -1
+                                ? phi::DeviceManager::GetDevice(device_type)
+                                : device_id),
                 flag);
 #else
         PADDLE_THROW(common::errors::Unavailable(
@@ -601,7 +601,7 @@ void BindCustomDevicePy(py::module *m_ptr) {
           )DOC")
       .def_property_readonly("place", [](const phi::event::Event &self) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-        return reinterpret_cast<const phi::CustomPlace &>(self.GetPlace());
+        return reinterpret_cast<const CustomPlace &>(self.GetPlace());
 #else
         PADDLE_THROW(common::errors::Unavailable(
             "Paddle is not compiled with CustomDevice. "

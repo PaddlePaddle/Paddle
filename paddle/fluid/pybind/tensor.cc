@@ -523,14 +523,14 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            })
       .def("_set_dims",
            [](DenseTensor &self, const std::vector<int64_t> &dim) {
-             self.Resize(common::make_ddim(dim));
+             self.Resize(make_ddim(dim));
            })
       .def("_set_layout",
            [](DenseTensor &self, const std::string &layout) {
              self.set_layout(common::StringToDataLayout(layout));
            })
       .def("_alloc_float",
-           [](DenseTensor &self, phi::CustomPlace &place) {
+           [](DenseTensor &self, CustomPlace &place) {
              self.mutable_data<float>(place);
            })
       .def("_alloc_float",
@@ -538,7 +538,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              self.mutable_data<float>(place);
            })
       .def("_alloc_float",
-           [](DenseTensor &self, phi::XPUPlace &place) {
+           [](DenseTensor &self, XPUPlace &place) {
              self.mutable_data<float>(place);
            })
       .def("_alloc_float",
@@ -554,11 +554,11 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              self.mutable_data<int>(place);
            })
       .def("_alloc_int",
-           [](DenseTensor &self, phi::CustomPlace &place) {
+           [](DenseTensor &self, CustomPlace &place) {
              self.mutable_data<int>(place);
            })
       .def("_alloc_int",
-           [](DenseTensor &self, phi::XPUPlace &place) {
+           [](DenseTensor &self, XPUPlace &place) {
              self.mutable_data<int>(place);
            })
       .def("_alloc_int",
@@ -566,11 +566,11 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              self.mutable_data<int>(place);
            })
       .def("_alloc_int",
-           [](DenseTensor &self, phi::GPUPinnedPlace &place) {
+           [](DenseTensor &self, GPUPinnedPlace &place) {
              self.mutable_data<int>(place);
            })
       .def("_alloc_float",
-           [](DenseTensor &self, phi::GPUPinnedPlace &place) {
+           [](DenseTensor &self, GPUPinnedPlace &place) {
              self.mutable_data<float>(place);
            })
       .def("_mutable_data",
@@ -582,14 +582,14 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            })
       .def("_mutable_data",
            [](DenseTensor &self,
-              phi::CustomPlace &place,
+              CustomPlace &place,
               paddle::framework::proto::VarType::Type type) {
              return reinterpret_cast<uintptr_t>(
                  self.mutable_data(place, phi::TransToPhiDataType(type)));
            })
       .def("_mutable_data",
            [](DenseTensor &self,
-              phi::XPUPlace &place,
+              XPUPlace &place,
               paddle::framework::proto::VarType::Type type) {
              return reinterpret_cast<uintptr_t>(
                  self.mutable_data(place, phi::TransToPhiDataType(type)));
@@ -603,7 +603,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            })
       .def("_mutable_data",
            [](DenseTensor &self,
-              phi::GPUPinnedPlace &place,
+              GPUPinnedPlace &place,
               paddle::framework::proto::VarType::Type type) {
              return reinterpret_cast<uintptr_t>(
                  self.mutable_data(place, phi::TransToPhiDataType(type)));
@@ -615,12 +615,12 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            py::arg("place"),
            py::arg("batch_size") = -1)
       .def("_copy_from",
-           &TensorCopyFrom<phi::CustomPlace>,
+           &TensorCopyFrom<CustomPlace>,
            py::arg("tensor"),
            py::arg("place"),
            py::arg("batch_size") = -1)
       .def("_copy_from",
-           &TensorCopyFrom<phi::XPUPlace>,
+           &TensorCopyFrom<XPUPlace>,
            py::arg("tensor"),
            py::arg("place"),
            py::arg("batch_size") = -1)
@@ -630,7 +630,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            py::arg("place"),
            py::arg("batch_size") = -1)
       .def("_copy_from",
-           &TensorCopyFrom<phi::GPUPinnedPlace>,
+           &TensorCopyFrom<GPUPinnedPlace>,
            py::arg("tensor"),
            py::arg("place"),
            py::arg("batch_size") = -1)
@@ -650,12 +650,12 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            py::arg("place"),
            py::arg("zero_copy") = false)
       .def("set",
-           SetTensorFromPyArray<phi::CustomPlace>,
+           SetTensorFromPyArray<CustomPlace>,
            py::arg("array"),
            py::arg("place"),
            py::arg("zero_copy") = false)
       .def("set",
-           SetTensorFromPyArray<phi::XPUPlace>,
+           SetTensorFromPyArray<XPUPlace>,
            py::arg("array"),
            py::arg("place"),
            py::arg("zero_copy") = false)
@@ -670,12 +670,12 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            py::arg("place"),
            py::arg("zero_copy") = false)
       .def("set",
-           SetTensorFromPyArray<phi::XPUPinnedPlace>,
+           SetTensorFromPyArray<XPUPinnedPlace>,
            py::arg("array"),
            py::arg("place"),
            py::arg("zero_copy") = false)
       .def("set",
-           SetTensorFromPyArray<phi::GPUPinnedPlace>,
+           SetTensorFromPyArray<GPUPinnedPlace>,
            py::arg("array"),
            py::arg("place"),
            py::arg("zero_copy") = false,
@@ -962,7 +962,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              size_t size = t[0].cast<size_t>();
              auto dtype =
                  static_cast<DataType>(t[1].cast<int>());
-             auto dims = common::make_ddim(t[2].cast<std::vector<int>>());
+             auto dims = make_ddim(t[2].cast<std::vector<int>>());
              auto device_id = t[4].cast<int>();
 
              auto shared_reader_holder =
@@ -1080,7 +1080,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              tensor.ResetHolderWithType(
                  shared_reader_holder,
                  static_cast<DataType>(t[3].cast<int>()));
-             tensor.Resize(common::make_ddim(
+             tensor.Resize(make_ddim(
                  t[4].cast<std::vector<int64_t>>()));
 
              return tensor;
@@ -1130,7 +1130,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 
              size_t size = t[0].cast<size_t>();
              auto dtype = static_cast<DataType>(t[1].cast<int>());
-             auto dims = common::make_ddim(
+             auto dims = make_ddim(
                  t[2].cast<std::vector<int>>());
              auto device_id = t[4].cast<int>();
 
@@ -1138,7 +1138,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                  std::make_shared<memory::allocation::Allocation>(
                      xpu_ipc_allocation->ptr(),
                      xpu_ipc_allocation->base_ptr(), size,
-                     phi::XPUPlace(device_id));
+                     XPUPlace(device_id));
 
              self.ResetHolderWithType(shared_reader_holder, dtype);
              self.Resize(dims);
@@ -1241,7 +1241,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              tensor.ResetHolderWithType(
                  shared_holder,
                  static_cast<DataType>(t[3].cast<int>()));
-             tensor.Resize(common::make_ddim(
+             tensor.Resize(make_ddim(
                  t[4].cast<std::vector<int>>()));
              VLOG(6) << "[DEBUG XPU] _new_shared_xpu: Reshape tensor dims: "
                      << tensor.dims();
@@ -1307,7 +1307,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                if (phi::is_cuda_pinned_place(holder->place())) {
 #ifdef PADDLE_WITH_CUDA
                  memory::Copy(CPUPlace(), shared_holder->ptr(),
-                              phi::GPUPinnedPlace(), data_ptr, data_size);
+                              GPUPinnedPlace(), data_ptr, data_size);
 #endif
                } else {
                  memory::Copy(CPUPlace(), shared_holder->ptr(),
@@ -1371,7 +1371,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              tensor.ResetHolderWithType(
                  shared_holder,
                  static_cast<DataType>(t[3].cast<int>()));
-             tensor.Resize(common::make_ddim(t[4].cast<std::vector<int>>()));
+             tensor.Resize(make_ddim(t[4].cast<std::vector<int>>()));
 
              return tensor;
            },
@@ -1458,7 +1458,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
             tensor.ResetHolderWithType(
                 shared_reader_holder,
                 static_cast<DataType>(t[2].cast<int>()));
-            tensor.Resize(common::make_ddim(t[3].cast<std::vector<int>>()));
+            tensor.Resize(make_ddim(t[3].cast<std::vector<int>>()));
 
             return tensor;
           }));

@@ -81,7 +81,7 @@ void EmptyTensorInitializer(TensorObject* self,
                                 framework::proto::VarType::DENSE_TENSOR,
                             ProcessMesh* process_mesh = nullptr,
                             Placements* placements = nullptr) {
-  auto ddims = common::make_ddim(dims);
+  auto ddims = make_ddim(dims);
   self->tensor.set_name(name);
   auto autograd_meta = egr::EagerUtils::autograd_meta(&(self->tensor));
   autograd_meta->SetPersistable(persistable);
@@ -134,7 +134,7 @@ void EmptyStringTensorInitializer(TensorObject* self,
                                   const std::string& name,
                                   const Place& place,
                                   const std::vector<int>& dims = {}) {
-  auto ddims = common::make_ddim(dims);
+  auto ddims = make_ddim(dims);
   self->tensor.set_name(name);
   // Note(zhoushunjie): Only support CPUPlace when create StringTensor
   auto actual_place = CPUPlace();
@@ -175,7 +175,7 @@ void InitTensorWithNumpyValue(TensorObject* self,
     PADDLE_THROW(common::errors::PreconditionNotMet(
         "PaddlePaddle should compile with XPU if use XPUPlace."));
 #endif
-    SetTensorFromPyArray<phi::XPUPlace>(impl_ptr, array, place, zero_copy);
+    SetTensorFromPyArray<XPUPlace>(impl_ptr, array, place, zero_copy);
   } else if (phi::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     phi::backends::gpu::SetDeviceId(place.device);
@@ -187,11 +187,9 @@ void InitTensorWithNumpyValue(TensorObject* self,
 #endif
     SetTensorFromPyArray<GPUPlace>(impl_ptr, array, place, zero_copy);
   } else if (phi::is_cuda_pinned_place(place)) {
-    SetTensorFromPyArray<phi::GPUPinnedPlace>(
-        impl_ptr, array, place, zero_copy);
+    SetTensorFromPyArray<GPUPinnedPlace>(impl_ptr, array, place, zero_copy);
   } else if (phi::is_xpu_pinned_place(place)) {
-    SetTensorFromPyArray<phi::XPUPinnedPlace>(
-        impl_ptr, array, place, zero_copy);
+    SetTensorFromPyArray<XPUPinnedPlace>(impl_ptr, array, place, zero_copy);
   } else if (phi::is_custom_place(place)) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
     phi::DeviceManager::SetDevice(place);
@@ -202,7 +200,7 @@ void InitTensorWithNumpyValue(TensorObject* self,
     PADDLE_THROW(common::errors::PreconditionNotMet(
         "PaddlePaddle should compile with CUSTOM_DEVICE if use CustomPlace."));
 #endif
-    SetTensorFromPyArray<phi::CustomPlace>(impl_ptr, array, place, zero_copy);
+    SetTensorFromPyArray<CustomPlace>(impl_ptr, array, place, zero_copy);
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "Place should be one of "
@@ -298,7 +296,7 @@ void InitDistTensorWithTensor(TensorObject* self,
                     common::errors::InvalidArgument(
                         "DistTensor can only initialize by DenseTensor"));
   self->tensor.set_name(name);
-  auto global_ddims = common::make_ddim(global_dims);
+  auto global_ddims = make_ddim(global_dims);
   VLOG(4) << "Do TensorCopy from DenseTensor to DistTensor.";
   if (place == local_tensor.place()) {
     std::shared_ptr<DenseTensor> tensor =

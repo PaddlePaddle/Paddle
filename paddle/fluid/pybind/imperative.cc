@@ -124,18 +124,18 @@ static const Place PyObjectToPlace(const py::object &place_obj) {
     return place_obj.cast<CPUPlace>();
   } else if (py::isinstance<GPUPlace>(place_obj)) {
     return place_obj.cast<GPUPlace>();
-  } else if (py::isinstance<phi::XPUPlace>(place_obj)) {
-    return place_obj.cast<phi::XPUPlace>();
-  } else if (py::isinstance<phi::GPUPinnedPlace>(place_obj)) {
-    return place_obj.cast<phi::GPUPinnedPlace>();
-  } else if (py::isinstance<phi::XPUPinnedPlace>(place_obj)) {
-    return place_obj.cast<phi::XPUPinnedPlace>();
+  } else if (py::isinstance<XPUPlace>(place_obj)) {
+    return place_obj.cast<XPUPlace>();
+  } else if (py::isinstance<GPUPinnedPlace>(place_obj)) {
+    return place_obj.cast<GPUPinnedPlace>();
+  } else if (py::isinstance<XPUPinnedPlace>(place_obj)) {
+    return place_obj.cast<XPUPinnedPlace>();
   } else if (py::isinstance<phi::IPUPlace>(place_obj)) {
     return place_obj.cast<phi::IPUPlace>();
   } else if (py::isinstance<Place>(place_obj)) {
     return place_obj.cast<Place>();
-  } else if (py::isinstance<phi::CustomPlace>(place_obj)) {
-    return place_obj.cast<phi::CustomPlace>();
+  } else if (py::isinstance<CustomPlace>(place_obj)) {
+    return place_obj.cast<CustomPlace>();
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "Place should be one of "
@@ -179,17 +179,17 @@ static void InitVarBaseAndTensor(imperative::VarBase *self,
   if (phi::is_cpu_place(place)) {
     SetTensorFromPyArray<CPUPlace>(tensor, array, place, zero_copy);
   } else if (phi::is_xpu_place(place)) {
-    SetTensorFromPyArray<phi::XPUPlace>(tensor, array, place, zero_copy);
+    SetTensorFromPyArray<XPUPlace>(tensor, array, place, zero_copy);
   } else if (phi::is_gpu_place(place)) {
     SetTensorFromPyArray<GPUPlace>(tensor, array, place, zero_copy);
   } else if (phi::is_cuda_pinned_place(place)) {
-    SetTensorFromPyArray<phi::GPUPinnedPlace>(tensor, array, place, zero_copy);
+    SetTensorFromPyArray<GPUPinnedPlace>(tensor, array, place, zero_copy);
   } else if (phi::is_xpu_pinned_place(place)) {
-    SetTensorFromPyArray<phi::XPUPinnedPlace>(tensor, array, place, zero_copy);
+    SetTensorFromPyArray<XPUPinnedPlace>(tensor, array, place, zero_copy);
   } else if (phi::is_ipu_place(place)) {
     SetTensorFromPyArray<phi::IPUPlace>(tensor, array, place, zero_copy);
   } else if (phi::is_custom_place(place)) {
-    SetTensorFromPyArray<phi::CustomPlace>(tensor, array, place, zero_copy);
+    SetTensorFromPyArray<CustomPlace>(tensor, array, place, zero_copy);
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "Place should be one of "
@@ -699,8 +699,8 @@ void BindImperative(py::module *m_ptr) {
               // dygraph in eager mode
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
-            } else if (py::isinstance<phi::XPUPlace>(obj)) {
-              auto p = obj.cast<phi::XPUPlace *>();
+            } else if (py::isinstance<XPUPlace>(obj)) {
+              auto p = obj.cast<XPUPlace *>();
               self.SetExpectedPlace(*p);
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
@@ -709,13 +709,13 @@ void BindImperative(py::module *m_ptr) {
               self.SetExpectedPlace(*p);
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
-            } else if (py::isinstance<phi::GPUPinnedPlace>(obj)) {
-              auto p = obj.cast<phi::GPUPinnedPlace *>();
+            } else if (py::isinstance<GPUPinnedPlace>(obj)) {
+              auto p = obj.cast<GPUPinnedPlace *>();
               self.SetExpectedPlace(*p);
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
-            } else if (py::isinstance<phi::XPUPinnedPlace>(obj)) {
-              auto p = obj.cast<phi::XPUPinnedPlace *>();
+            } else if (py::isinstance<XPUPinnedPlace>(obj)) {
+              auto p = obj.cast<XPUPinnedPlace *>();
               self.SetExpectedPlace(*p);
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
@@ -724,8 +724,8 @@ void BindImperative(py::module *m_ptr) {
               self.SetExpectedPlace(*p);
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
-            } else if (py::isinstance<phi::CustomPlace>(obj)) {
-              auto p = obj.cast<phi::CustomPlace *>();
+            } else if (py::isinstance<CustomPlace>(obj)) {
+              auto p = obj.cast<CustomPlace *>();
               self.SetExpectedPlace(*p);
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
@@ -846,10 +846,10 @@ void BindImperative(py::module *m_ptr) {
   m.def("varbase_copy", &VarBaseCopy<Place>);
   m.def("varbase_copy", &VarBaseCopy<CPUPlace>);
   m.def("varbase_copy", &VarBaseCopy<GPUPlace>);
-  m.def("varbase_copy", &VarBaseCopy<phi::XPUPlace>);
-  m.def("varbase_copy", &VarBaseCopy<phi::GPUPinnedPlace>);
-  m.def("varbase_copy", &VarBaseCopy<phi::XPUPinnedPlace>);
-  m.def("varbase_copy", &VarBaseCopy<phi::CustomPlace>);
+  m.def("varbase_copy", &VarBaseCopy<XPUPlace>);
+  m.def("varbase_copy", &VarBaseCopy<GPUPinnedPlace>);
+  m.def("varbase_copy", &VarBaseCopy<XPUPinnedPlace>);
+  m.def("varbase_copy", &VarBaseCopy<CustomPlace>);
 
   m.def(
       "dygraph_partial_grad",
@@ -937,8 +937,8 @@ void BindImperative(py::module *m_ptr) {
              imperative::ParallelContext,
              std::shared_ptr<imperative::XCCLParallelContext>>(
       m, "XCCLParallelContext")
-      .def(py::init<const imperative::ParallelStrategy &,
-                    const phi::CustomPlace &>())
+      .def(
+          py::init<const imperative::ParallelStrategy &, const CustomPlace &>())
       .def("init", [](imperative::XCCLParallelContext &self) { self.Init(); })
       .def("init_with_ring_id",
            &imperative::XCCLParallelContext::InitWithRingID,
@@ -950,8 +950,7 @@ void BindImperative(py::module *m_ptr) {
              imperative::ParallelContext,
              std::shared_ptr<imperative::BKCLParallelContext>>(
       m, "BKCLParallelContext")
-      .def(py::init<const imperative::ParallelStrategy &,
-                    const phi::XPUPlace &>())
+      .def(py::init<const imperative::ParallelStrategy &, const XPUPlace &>())
       .def("init", [](imperative::BKCLParallelContext &self) { self.Init(); })
       .def("init_with_ring_id",
            &imperative::BKCLParallelContext::InitWithRingID,

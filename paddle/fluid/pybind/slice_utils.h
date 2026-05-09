@@ -49,7 +49,7 @@ static inline common::DDim infer_size_symdimvector(common::DDim a,
   auto dimsA = a.size();
   auto dimsB = b.size();
   auto ndim = dimsA > dimsB ? dimsA : dimsB;
-  common::DDim expandedSizes = common::make_ddim(std::vector<int64_t>(ndim, 0));
+  common::DDim expandedSizes = make_ddim(std::vector<int64_t>(ndim, 0));
 
   for (int64_t i = ndim - 1; i >= 0; --i) {
     int64_t offset = ndim - 1 - i;
@@ -887,10 +887,9 @@ static void ParseBoolAndBroadcastIndices(std::vector<Tensor>* advanced_index) {
   }
   if (advanced_index->size() > 1) {
     bool need_broadcast = false;
-    common::DDim common_shape = common::make_ddim((*advanced_index)[0].shape());
+    common::DDim common_shape = make_ddim((*advanced_index)[0].shape());
     for (size_t i = 1; i < advanced_index->size(); ++i) {
-      common::DDim current_shape =
-          common::make_ddim((*advanced_index)[i].shape());
+      common::DDim current_shape = make_ddim((*advanced_index)[i].shape());
       if (current_shape != common_shape) {
         need_broadcast = true;
         common_shape =
@@ -1112,14 +1111,14 @@ static void DispatchSetitemKernel(const int pos_of_new_dim,
       AdvancedIndex ad =
           AdvancedIndex(*transed_sub_tensor, transed_index_int64);
       PADDLE_ENFORCE_EQ(
-          phi::funcs::CheckIsDimsMatchBool(common::make_ddim(ad.src_sizes),
+          phi::funcs::CheckIsDimsMatchBool(make_ddim(ad.src_sizes),
                                            value_tensor->dims()),
           true,
           common::errors::InvalidArgument(
               "shape mismatch: value tensor of shape %s cannot be "
               "broadcast to indexing result of shape %s.",
               value_tensor->dims().to_str(),
-              common::make_ddim(ad.src_sizes).to_str()));
+              make_ddim(ad.src_sizes).to_str()));
       *transed_sub_tensor =
           index_elementwise_put_with_tensor__ad_func(*tensor,
                                                      ad.indices,

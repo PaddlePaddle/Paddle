@@ -417,7 +417,7 @@ void SetTensorFromPyArrayT(
   for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
     dims.push_back(static_cast<int64_t>(array.shape()[i]));
   }
-  self->Resize(common::make_ddim(dims));
+  self->Resize(make_ddim(dims));
 
   if (phi::is_cpu_place(place)) {
     if (zero_copy) {
@@ -583,7 +583,7 @@ void SetStringTensorFromPyArray(phi::StringTensor *self,
   for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
     dims.push_back(static_cast<int>(array.shape()[i]));
   }
-  self->Resize(common::make_ddim(dims));
+  self->Resize(make_ddim(dims));
   auto itemsize = array.itemsize();
   if (phi::is_cpu_place(place)) {
     auto dst = self->mutable_data(place);
@@ -636,7 +636,7 @@ void SetUVATensorFromPyArrayImpl(
     dims.emplace_back(static_cast<int64_t>(array.shape()[i]));
     numel *= static_cast<int64_t>(array.shape()[i]);
   }
-  self_tensor->Resize(common::make_ddim(dims));
+  self_tensor->Resize(make_ddim(dims));
 
   auto data_type = framework::ToDataType(std::type_index(typeid(T)));
   const auto &need_allocate_size = numel * framework::SizeOfType(data_type);
@@ -676,7 +676,7 @@ void SetUVATensorFromPyArray(const std::shared_ptr<Tensor> &self,
 #if defined(PADDLE_WITH_CUDA)
   VLOG(4) << "Running in SetUVATensorFromPyArray for Phi::Tensor.";
   phi::DenseTensorMeta meta =
-      phi::DenseTensorMeta(DataType::FLOAT32, common::make_ddim({1, 1}));
+      phi::DenseTensorMeta(DataType::FLOAT32, make_ddim({1, 1}));
   std::shared_ptr<DenseTensor> tmp_t = std::make_shared<DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(CPUPlace())
           .get(),
@@ -756,7 +756,7 @@ inline void _getSliceinfo(const DenseTensor &self,
   auto &stop = *pstop;
   auto &step = *pstep;
   auto &slicelength = *pslicelength;
-  const phi::DDim &srcDDim = self.dims();
+  const DDim &srcDDim = self.dims();
   PADDLE_ENFORCE(
       0 <= dim && dim < srcDDim.size(),
       common::errors::OutOfRange("The dim %d of slice is out of bounds, it "
@@ -797,7 +797,7 @@ inline void _getSliceinfo(const DenseTensor &self,
   }
 }
 
-inline DenseTensor *_getTensor(const DenseTensor &self, const phi::DDim &ddim) {
+inline DenseTensor *_getTensor(const DenseTensor &self, const DDim &ddim) {
   DenseTensor *output = new phi::DenseTensor();
   output->Resize(ddim);
   auto place = self.place();
@@ -870,7 +870,7 @@ inline DenseTensor *_sliceWrapper(const DenseTensor &self,
                                   int dim,
                                   int64_t start,
                                   int64_t slicelength) {
-  phi::DDim dstDDim = self.dims();
+  DDim dstDDim = self.dims();
   dstDDim[dim] = static_cast<int64_t>(slicelength);
   std::vector<int> axes({dim});
   std::vector<int> starts({static_cast<int>(start)});
@@ -895,7 +895,7 @@ inline DenseTensor *_sliceAndConcat(const DenseTensor &self,
     }
 
     // do the concat operation
-    phi::DDim dstDDim = self.dims();
+    DDim dstDDim = self.dims();
     dstDDim[dim] = static_cast<int64_t>(slicelength);
     DenseTensor *output1 = _getTensor(self, dstDDim);
     _concatCompute<T>(ins, output1, ctx, dim);

@@ -62,7 +62,7 @@ struct ConcatDenseTensor<phi::CustomContext, T> {
         phi::KernelFactory::Instance().SelectKernelOrThrowError(
             "concat",
             phi::KernelKey(phi::TransToPhiBackend(dev_ctx.GetPlace()),
-                           phi::DataLayout::ALL_LAYOUT,
+                           DataLayout::ALL_LAYOUT,
                            phi::CppTypeToDataType<T>::Type()));
     const auto &kernel = kernel_result.kernel;
     using kernel_signature = void (*)(const phi::DeviceContext &,
@@ -86,7 +86,7 @@ struct SplitDenseTensor<phi::CustomContext, T> {
         phi::KernelFactory::Instance().SelectKernelOrThrowError(
             "split_with_num",
             phi::KernelKey(phi::TransToPhiBackend(dev_ctx.GetPlace()),
-                           phi::DataLayout::ALL_LAYOUT,
+                           DataLayout::ALL_LAYOUT,
                            phi::CppTypeToDataType<T>::Type()));
     const auto &kernel = kernel_result.kernel;
     using kernel_signature = void (*)(const phi::DeviceContext &,
@@ -103,14 +103,14 @@ struct SplitDenseTensor<phi::CustomContext, T> {
         std::vector<int> new_dims({1});
         new_dims.insert(
             new_dims.end(), origin_out_dims.begin(), origin_out_dims.end());
-        tensor->Resize(common::make_ddim(new_dims));
+        tensor->Resize(make_ddim(new_dims));
       }
     }
     (*kernel_fn)(dev_ctx, in, out->size(), phi::Scalar(0), *out);
     for (auto *tensor : *out) {
       auto tensor_dims = common::vectorize(tensor->dims());
       if (tensor_dims.size() != origin_out_dims.size()) {
-        tensor->Resize(common::make_ddim(origin_out_dims));
+        tensor->Resize(make_ddim(origin_out_dims));
       }
     }
   }

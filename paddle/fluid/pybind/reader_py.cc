@@ -155,9 +155,9 @@ class MultiDeviceFeedReader {
         drop_last_(drop_last),
         pin_memory_(pin_memory),
         reader_buffer_size_(reader_buffer_size) {
-    std::vector<phi::DDim> dims;
+    std::vector<DDim> dims;
     for (auto &shape : shapes) {
-      dims.push_back(common::make_ddim(shape));
+      dims.push_back(make_ddim(shape));
     }
 
     auto first_reader = std::make_shared<reader::PyReader>(

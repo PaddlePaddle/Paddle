@@ -739,13 +739,13 @@ Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
   } else if (PyObject_TypeCheck(obj, g_cpuplace_pytype)) {
     place = ::pybind11::handle(obj).cast<CPUPlace>();
   } else if (PyObject_TypeCheck(obj, g_xpuplace_pytype)) {
-    place = ::pybind11::handle(obj).cast<phi::XPUPlace>();
+    place = ::pybind11::handle(obj).cast<XPUPlace>();
   } else if (PyObject_TypeCheck(obj, g_cudapinnedplace_pytype)) {
-    place = ::pybind11::handle(obj).cast<phi::GPUPinnedPlace>();
+    place = ::pybind11::handle(obj).cast<GPUPinnedPlace>();
   } else if (PyObject_TypeCheck(obj, g_xpupinnedplace_pytype)) {
-    place = ::pybind11::handle(obj).cast<phi::XPUPinnedPlace>();
+    place = ::pybind11::handle(obj).cast<XPUPinnedPlace>();
   } else if (PyObject_TypeCheck(obj, g_customplace_pytype)) {
-    place = ::pybind11::handle(obj).cast<phi::CustomPlace>();
+    place = ::pybind11::handle(obj).cast<CustomPlace>();
   } else {
     PADDLE_THROW(common::errors::InvalidType(
         "argument (position %d) must be "
@@ -2177,7 +2177,7 @@ Tensor CreateTensorFromVarDesc(const paddle::framework::VarDesc& var_desc) {
 
   auto var_type = var_desc.GetType();
 
-  auto ddims = common::make_ddim(dims);
+  auto ddims = make_ddim(dims);
   tensor.set_name(var_desc.Name());
   auto autograd_meta = egr::EagerUtils::autograd_meta(&tensor);
   autograd_meta->SetPersistable(false);

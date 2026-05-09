@@ -34,7 +34,7 @@ namespace paddle {
 namespace platform {
 #ifdef PADDLE_WITH_XPU
 phi::XPUStreamHandle *get_current_stream(int device_id) {
-  auto place = phi::XPUPlace(device_id);
+  auto place = XPUPlace(device_id);
   auto *dev_ctx = static_cast<phi::XPUContext *>(
       phi::DeviceContextPool::Instance().Get(place));
   dev_ctx->Wait();
@@ -44,7 +44,7 @@ phi::XPUStreamHandle *get_current_stream(int device_id) {
 phi::XPUStreamHandle *set_current_stream(int idx) {
   int device_id = phi::backends::xpu::GetXPUCurrentDeviceId();
   auto original_stream = get_current_stream(device_id);
-  auto place = phi::XPUPlace(device_id);
+  auto place = XPUPlace(device_id);
   auto *dev_ctx = static_cast<phi::XPUContext *>(
       phi::DeviceContextPool::Instance().Get(place));
   dev_ctx->SetCurrentStream(idx);
@@ -66,7 +66,7 @@ void BindXpuStream(py::module *m_ptr) {
     }
     int curr_device_id = paddle::platform::GetXPUCurrentDeviceId();
     paddle::platform::SetXPUDeviceId(device_id);
-    auto place = phi::XPUPlace(device_id);
+    auto place = XPUPlace(device_id);
     auto *dev_ctx = static_cast<phi::XPUContext *>(
         phi::DeviceContextPool::Instance().Get(place));
     dev_ctx->Wait();
@@ -184,7 +184,7 @@ void BindXpuStream(py::module *m_ptr) {
       .def_property_readonly(
           "place",
           [](phi::XPUStreamHandle &self) {
-            return phi::XPUPlace(platform::GetXPUCurrentDeviceId());
+            return XPUPlace(platform::GetXPUCurrentDeviceId());
           })
       .def_property_readonly(
           "idx", [](phi::XPUStreamHandle &self) { return self.id(); })
@@ -203,11 +203,11 @@ void BindXpuStream(py::module *m_ptr) {
            })
       .def(
           "__init__",
-          [](phi::XPUStreamHandle &self, phi::XPUPlace *place) {
+          [](phi::XPUStreamHandle &self, XPUPlace *place) {
 #ifdef PADDLE_WITH_XPU
             if (place == nullptr) {
               int curr_device_id = platform::GetXPUCurrentDeviceId();
-              auto place_tmp = phi::XPUPlace(curr_device_id);
+              auto place_tmp = XPUPlace(curr_device_id);
               new (&self) phi::XPUStreamHandle(place_tmp);
             } else {
               new (&self) phi::XPUStreamHandle(*place);
@@ -226,7 +226,7 @@ void BindXpuStream(py::module *m_ptr) {
             if (device < 0) {
               device = platform::GetXPUCurrentDeviceId();
             }
-            auto place_tmp = phi::XPUPlace(device);
+            auto place_tmp = XPUPlace(device);
             new (&self) phi::XPUStreamHandle(place_tmp);
 #else
             PADDLE_THROW(common::errors::Unavailable(
@@ -312,7 +312,7 @@ void BindXpuStream(py::module *m_ptr) {
 
           )DOC")
       .def("__init__",
-           [](phi::XPUCUDAStream &self, phi::XPUPlace *place, int priority) {
+           [](phi::XPUCUDAStream &self, XPUPlace *place, int priority) {
              if (priority != 1 && priority != 2) {
                PADDLE_THROW(common::errors::InvalidArgument(
                    "Priority should be 1(high) or 2(normal) "));
@@ -321,7 +321,7 @@ void BindXpuStream(py::module *m_ptr) {
                  phi::XPUCUDAStream::StreamFlag::kStreamNonBlocking;
              if (place == nullptr) {
                int curr_device_id = platform::GetXPUCurrentDeviceId();
-               auto place_tmp = phi::XPUPlace(curr_device_id);
+               auto place_tmp = XPUPlace(curr_device_id);
                new (&self)
                    phi::XPUCUDAStream(place_tmp, priority - 2, stream_flag);
              } else {

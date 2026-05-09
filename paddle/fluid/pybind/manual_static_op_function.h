@@ -880,9 +880,9 @@ static PyObject *static_api_run_custom_op(PyObject *self,
       std::vector<pir::Type> out_types;
       std::vector<pir::Attribute> dist_attrs;
       for (size_t j = 0; j < value_num; ++j) {
-        auto ddims = phi::make_ddim(output_shapes[value_index]);
+        auto ddims = make_ddim(output_shapes[value_index]);
         auto dtype = output_dtypes[value_index];
-        phi::DataLayout layout{DataLayout::NCHW};
+        DataLayout layout{DataLayout::NCHW};
         phi::LegacyLoD lod;
         auto type = paddle::dialect::DenseTensorType::get(
             pir::IrContext::Instance(),
@@ -908,9 +908,9 @@ static PyObject *static_api_run_custom_op(PyObject *self,
             pir::ArrayAttribute::get(pir::IrContext::Instance(), dist_attrs));
       }
     } else {
-      auto ddims = phi::make_ddim(output_shapes[value_index]);
+      auto ddims = make_ddim(output_shapes[value_index]);
       auto dtype = output_dtypes[value_index];
-      phi::DataLayout layout{DataLayout::NCHW};
+      DataLayout layout{DataLayout::NCHW};
       phi::LegacyLoD lod;
       auto out_type = paddle::dialect::DenseTensorType::get(
           pir::IrContext::Instance(),
@@ -1195,7 +1195,7 @@ static PyObject *run_python_op(PyObject *self,
   process_result.reserve(outputs.size());
   for (auto &out_meta : outputs_meta) {
     process_result.push_back(
-        IrTensor(out_meta.dtype(), out_meta.dims(), phi::DataLayout::NCHW, {}));
+        IrTensor(out_meta.dtype(), out_meta.dims(), DataLayout::NCHW, {}));
   }
   PADDLE_ENFORCE_EQ(
       process_result.size(),

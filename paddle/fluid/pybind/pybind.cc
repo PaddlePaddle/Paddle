@@ -701,7 +701,7 @@ static void inline CreateVariableIfNotExist(
         Py_DECREF(py_var_desc);
         var = const_cast<framework::Scope *>(&scope)->Var(para_name);
         auto *tensor_temp = var->GetMutable<DenseTensor>();
-        tensor_temp->Resize(common::make_ddim(var_desc.GetShape()));
+        tensor_temp->Resize(make_ddim(var_desc.GetShape()));
         tensor_temp->mutable_data(
             exe->GetPlace(), phi::TransToPhiDataType(var_desc.GetDataType()));
       }
@@ -1795,7 +1795,7 @@ PYBIND11_MODULE(libpaddle, m) {
                         place, static_cast<paddle::gpuStreamCaptureMode>(mode));
                   }
 #else
-          [](phi::CustomPlace place, int mode) {
+          [](CustomPlace place, int mode) {
             platform::BeginCUDAGraphCapture(
                 place, static_cast<phi::graph::streamCaptureMode>(mode));
           }
@@ -1822,7 +1822,7 @@ PYBIND11_MODULE(libpaddle, m) {
                     }
                   }
 #else
-          [](phi::CustomPlace place, int mode, std::optional<int64_t> pool_id,
+          [](CustomPlace place, int mode, std::optional<int64_t> pool_id,
              bool enable_replace) {
             if (pool_id.has_value()) {
               platform::BeginCUDAGraphCapture(
@@ -1866,14 +1866,14 @@ PYBIND11_MODULE(libpaddle, m) {
   py::class_<phi::backends::xpu::CUDAGraph>(m, "CUDAGraph")
       .def_static(
           "begin_capture",
-          [](phi::XPUPlace place, int mode) {
+          [](XPUPlace place, int mode) {
             platform::BeginCUDAGraphCapture(
                 place,
                 static_cast<phi::backends::xpu::xpuStreamCaptureMode>(mode));
           })
       .def_static(
           "begin_capture_with_pool_id",
-          [](phi::XPUPlace place,
+          [](XPUPlace place,
              int mode,
              std::optional<int64_t> pool_id,
              bool enable_replace) {
@@ -1927,7 +1927,7 @@ PYBIND11_MODULE(libpaddle, m) {
                  reinterpret_cast<void *>(data),
                  phi::IntArray({slicelength}),
                  dtype_phi,
-                 phi::DataLayout::NCHW,
+                 DataLayout::NCHW,
                  CPUPlace(),
                  [self_sp = std::move(self_sp)](
                      void *) mutable {  // NOLINT(readability/casting)
@@ -1985,7 +1985,7 @@ PYBIND11_MODULE(libpaddle, m) {
         return from_blob(offset_buf,
                          phi::IntArray({actual_count}),
                          dtype,
-                         phi::DataLayout::NCHW,
+                         DataLayout::NCHW,
                          CPUPlace(),
                          [obj = obj.release()](void *) {
                            pybind11::gil_scoped_acquire gil;
@@ -2136,8 +2136,7 @@ PYBIND11_MODULE(libpaddle, m) {
       }
       stridesIntArray = phi::IntArray(strides_vec);
     } else {
-      DDim ddim_strides =
-          phi::DenseTensorMeta::calc_strides(common::make_ddim(shapes));
+      DDim ddim_strides = phi::DenseTensorMeta::calc_strides(make_ddim(shapes));
       int rank = ddim_strides.size();
       const int64_t *ddim_data = ddim_strides.Get();
       std::vector<int64_t> strides_vec(ddim_data, ddim_data + rank);
@@ -2147,7 +2146,7 @@ PYBIND11_MODULE(libpaddle, m) {
                              shapeIntArray,
                              stridesIntArray,
                              dtype,
-                             phi::DataLayout::NCHW,
+                             DataLayout::NCHW,
                              Place(),
                              [obj](void *data) {
                                py::gil_scoped_acquire gil;
@@ -2199,7 +2198,7 @@ PYBIND11_MODULE(libpaddle, m) {
       "broadcast_shape",
       [](const std::vector<int64_t> &x_dim, const std::vector<int64_t> &y_dim) {
         return common::vectorize(phi::funcs::BroadcastTwoDims(
-            common::make_ddim(x_dim), common::make_ddim(y_dim), -1));
+            make_ddim(x_dim), make_ddim(y_dim), -1));
       });
 
   m.def(
@@ -2837,7 +2836,7 @@ All parameter, weight, gradient are variables in Paddle.
                   })
       .def_static(
           "create",
-          [](phi::XPUPlace &place) -> phi::DeviceContext * {
+          [](XPUPlace &place) -> phi::DeviceContext * {
 #ifndef PADDLE_WITH_XPU
             PADDLE_THROW(common::errors::PermissionDenied(
                 "Cannot use XPUPlace in CPU/GPU version, "
@@ -2862,14 +2861,14 @@ All parameter, weight, gradient are variables in Paddle.
                     .get());
             context->SetPinnedAllocator(
                 paddle::memory::allocation::AllocatorFacade::Instance()
-                    .GetAllocator(phi::XPUPinnedPlace())
+                    .GetAllocator(XPUPinnedPlace())
                     .get());
             return context;
 #endif
           })
       .def_static(
           "create",
-          [](phi::XPUPinnedPlace &place) -> phi::DeviceContext * {
+          [](XPUPinnedPlace &place) -> phi::DeviceContext * {
 #if !defined(PADDLE_WITH_XPU)
             PADDLE_THROW(common::errors::PermissionDenied(
                 "Cannot use XPUPinnedPlace in CPU only version, "
@@ -2879,7 +2878,7 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
           })
       .def_static("create",
-                  [](phi::CustomPlace &place) -> phi::DeviceContext * {
+                  [](CustomPlace &place) -> phi::DeviceContext * {
 #ifndef PADDLE_WITH_CUSTOM_DEVICE
                     PADDLE_THROW(common::errors::PermissionDenied(
                         "Cannot use CustomPlace in CPU/GPU/XPU version, "
@@ -2916,22 +2915,21 @@ All parameter, weight, gradient are variables in Paddle.
                     .get());
             context->SetPinnedAllocator(
                 paddle::memory::allocation::AllocatorFacade::Instance()
-                    .GetAllocator(phi::GPUPinnedPlace())
+                    .GetAllocator(GPUPinnedPlace())
                     .get());
             context->PartialInitWithAllocator();
             return context;
 #endif
           })
-      .def_static(
-          "create", [](phi::GPUPinnedPlace &place) -> phi::DeviceContext * {
+      .def_static("create", [](GPUPinnedPlace &place) -> phi::DeviceContext * {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
-            PADDLE_THROW(common::errors::PermissionDenied(
-                "Cannot use CUDAPinnedPlace in CPU only version, "
-                "Please recompile or reinstall Paddle with CUDA support."));
+        PADDLE_THROW(common::errors::PermissionDenied(
+            "Cannot use CUDAPinnedPlace in CPU only version, "
+            "Please recompile or reinstall Paddle with CUDA support."));
 #else
             return new phi::GPUPinnedContext(place);
 #endif
-          });
+      });
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
 #endif
@@ -3047,9 +3045,7 @@ All parameter, weight, gradient are variables in Paddle.
              self.Run(scope, place);
            })
       .def("run",
-           [](OperatorBase &self,
-              const Scope &scope,
-              const phi::XPUPlace &place) {
+           [](OperatorBase &self, const Scope &scope, const XPUPlace &place) {
              pybind11::gil_scoped_release release;
              self.Run(scope, place);
            })
@@ -3061,24 +3057,23 @@ All parameter, weight, gradient are variables in Paddle.
       .def("run",
            [](OperatorBase &self,
               const Scope &scope,
-              const phi::GPUPinnedPlace &place) {
+              const GPUPinnedPlace &place) {
              pybind11::gil_scoped_release release;
              self.Run(scope, place);
            })
       .def("run",
            [](OperatorBase &self,
               const Scope &scope,
-              const phi::XPUPinnedPlace &place) {
+              const XPUPinnedPlace &place) {
              pybind11::gil_scoped_release release;
              self.Run(scope, place);
            })
-      .def("run",
-           [](OperatorBase &self,
-              const Scope &scope,
-              const phi::CustomPlace &place) {
-             pybind11::gil_scoped_release release;
-             self.Run(scope, place);
-           })
+      .def(
+          "run",
+          [](OperatorBase &self, const Scope &scope, const CustomPlace &place) {
+            pybind11::gil_scoped_release release;
+            self.Run(scope, place);
+          })
       .def("type",
            [](const OperatorBase &op) -> std::string { return op.Type(); })
       .def("outputs",
@@ -3807,7 +3802,7 @@ All parameter, weight, gradient are variables in Paddle.
     std::vector<size_t> devices =
         phi::DeviceManager::GetSelectedDeviceList(dev_type);
     for (auto device : devices) {
-      memory::Release(phi::CustomPlace(dev_type, device));
+      memory::Release(CustomPlace(dev_type, device));
     }
   });
 

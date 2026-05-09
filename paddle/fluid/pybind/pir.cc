@@ -1269,7 +1269,7 @@ py::str Value2String(Value self) {
   return print_stream.str();
 }
 
-const phi::DDim &GetTensorDims(Type type) {
+const DDim &GetTensorDims(Type type) {
   if (!type) {
     PADDLE_THROW(common::errors::InvalidArgument(
         "The type used to get dims is nullptr."));
@@ -1291,9 +1291,7 @@ const phi::DDim &GetTensorDims(Type type) {
         "Currently, we can only get shape for dense and select rows type."));
   }
 }
-const phi::DDim &GetValueDims(Value value) {
-  return GetTensorDims(value.type());
-}
+const DDim &GetValueDims(Value value) { return GetTensorDims(value.type()); }
 
 Value apply(Value self, py::object func) {
   py::gil_scoped_acquire gil;
@@ -1870,7 +1868,7 @@ void BindType(py::module *m) {
              DenseTensorType dst_type =
                  DenseTensorType::get(IrContext::Instance(),
                                       src_type.dtype(),
-                                      phi::make_ddim(shape),
+                                      make_ddim(shape),
                                       src_type.data_layout(),
                                       src_type.lod(),
                                       src_type.offset());
@@ -1880,7 +1878,7 @@ void BindType(py::module *m) {
              SelectedRowsType dst_type =
                  SelectedRowsType::get(IrContext::Instance(),
                                        src_type.dtype(),
-                                       phi::make_ddim(shape),
+                                       make_ddim(shape),
                                        src_type.data_layout(),
                                        src_type.lod(),
                                        src_type.offset());
@@ -2525,7 +2523,7 @@ pir::Type CreateDistDenseTensorTypeByDenseTensor(
         paddle::dialect::TensorDistAttribute::get(
             IrContext::Instance(), mesh, dims_mapping, partial_status);
     return DistDenseTensorType::get(
-        IrContext::Instance(), type, tensor_dist_attr, phi::make_ddim(lshape));
+        IrContext::Instance(), type, tensor_dist_attr, make_ddim(lshape));
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "Currently, input is not a dense tensor type are not supported."));
@@ -2550,8 +2548,7 @@ static void inline CreateVariableIfNotExist(
                                   "or run startup program first"));
       var = scope->Var(para_name);
       auto *tensor_temp = var->GetMutable<DenseTensor>();
-      tensor_temp->Resize(
-          common::make_ddim(phi::vectorize(GetValueDims(value))));
+      tensor_temp->Resize(make_ddim(phi::vectorize(GetValueDims(value))));
       phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
       const phi::DeviceContext *dev_ctx = nullptr;
       dev_ctx = pool.Get(exe->GetPlace());

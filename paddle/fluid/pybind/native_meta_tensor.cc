@@ -41,7 +41,7 @@ void BindNativeMetaTensor(py::module* m) {
                    "or None, but got %s.",
                    py::str(shape)));
              }
-             return phi::NativeMetaTensor(dt, phi::make_ddim(dims));
+             return phi::NativeMetaTensor(dt, make_ddim(dims));
            }),
            py::arg("dtype") = py::none(),
            py::arg("shape") = py::list())
@@ -54,7 +54,7 @@ void BindNativeMetaTensor(py::module* m) {
       .def(
           "set_shape",
           [](phi::NativeMetaTensor& self, const std::vector<int64_t>& dims) {
-            phi::DDim ddim = phi::make_ddim(dims);
+            DDim ddim = make_ddim(dims);
             self.set_dims(ddim);
           },
           "Set tensor dimensions")
@@ -79,7 +79,7 @@ void BindNativeMetaTensor(py::module* m) {
       .def_property_readonly(
           "shape",
           [](const phi::NativeMetaTensor& self) -> std::vector<int64_t> {
-            const phi::DDim& dims = self.dims();
+            const DDim& dims = self.dims();
             return common::vectorize<int64_t>(dims);
           },
           "Get tensor shape")
@@ -90,7 +90,7 @@ void BindNativeMetaTensor(py::module* m) {
                     self.dims() == other.dims();
            })
       .def("__repr__", [](const phi::NativeMetaTensor& self) {
-        const phi::DDim& dims = self.dims();
+        const DDim& dims = self.dims();
         std::ostringstream shape_ss;
         shape_ss << "[";
         for (int i = 0; i < dims.size(); ++i) {
