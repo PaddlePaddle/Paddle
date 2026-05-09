@@ -3245,5 +3245,84 @@ class TestSquareInplaceAPI(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestDistributionAPI(unittest.TestCase):
+    def tearDown(self):
+        paddle.distribution.Distribution.set_default_validate_args(__debug__)
+        paddle.enable_static()
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        distribution_cls = paddle.distribution.Distribution
+
+        # 1. Paddle Positional arguments
+        distribution_cls.set_default_validate_args(False)
+        out1 = distribution_cls((2,), (3,))
+
+        # 2. Paddle keyword arguments
+        out2 = distribution_cls(
+            batch_shape=[2], event_shape=[3], validate_args=True
+        )
+
+        # 3. Mixed arguments
+        out3 = distribution_cls((2,), event_shape=[3], validate_args=False)
+
+        # Verify constructor compatibility
+        self.assertEqual(out1.batch_shape, (2,))
+        self.assertEqual(out1.event_shape, (3,))
+        self.assertFalse(out1._validate_args_enabled)
+        self.assertTrue(out2._validate_args_enabled)
+        self.assertFalse(out3._validate_args_enabled)
+        self.assertTrue(callable(out2._validate_args))
+
+        with self.assertRaises(ValueError):
+            distribution_cls.set_default_validate_args(None)
+
+        value = paddle.to_tensor([0.5], dtype="float32")
+        for attr in ["arg_constraints", "support"]:
+            with self.assertRaises(NotImplementedError):
+                getattr(out1, attr)
+        for api in [out1.cdf, out1.icdf]:
+            with self.assertRaises(NotImplementedError):
+                api(value)
+        with self.assertRaises(NotImplementedError):
+            out1.enumerate_support()
+        with self.assertRaises(NotImplementedError):
+            out1.sample_n(3)
+        with self.assertRaises(NotImplementedError):
+            out1.perplexity()
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        paddle.distribution.Distribution.set_default_validate_args(True)
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            distribution_cls = paddle.distribution.Distribution
+
+            # 1. Paddle Positional arguments
+            out1 = distribution_cls((2,), (3,), validate_args=False)
+
+            # 2. Paddle keyword arguments
+            out2 = distribution_cls(
+                batch_shape=[2], event_shape=[3], validate_args=True
+            )
+
+            # 3. Mixed arguments
+            out3 = distribution_cls((2,), event_shape=[3])
+
+            self.assertEqual(out1.batch_shape, (2,))
+            self.assertEqual(out1.event_shape, (3,))
+            self.assertFalse(out1._validate_args_enabled)
+            self.assertTrue(out2._validate_args_enabled)
+            self.assertTrue(out3._validate_args_enabled)
+            self.assertTrue(callable(out1._validate_args))
+            with self.assertRaises(NotImplementedError):
+                out1.sample_n(3)
+            with self.assertRaises(NotImplementedError):
+                out1.perplexity()
+
+
 if __name__ == "__main__":
     unittest.main()
