@@ -505,10 +505,17 @@ class set_grad_enabled(_DecoratorContextManager):
 
     def __init__(self, mode) -> None:
         self.prev = is_grad_enabled()
-        _set_grad_enabled(mode)
         self.mode = mode
+        _set_grad_enabled(mode)
 
-    def __enter__(self) -> None: ...
+    def __call__(
+        self, func: Callable[_InputT, _RetT]
+    ) -> Callable[_InputT, _RetT]:
+        _set_grad_enabled(self.prev)
+        return super().__call__(func)
+
+    def __enter__(self) -> None:
+        _set_grad_enabled(self.mode)
 
     def __exit__(self, *args: object) -> None:
         _set_grad_enabled(self.prev)
@@ -637,10 +644,7 @@ class inference_mode(_DecoratorContextManager):
         return cls()(mode)
 
     def __enter__(self) -> None:
-        if self.mode:
-            self._inference_mode_context = no_grad_()
-        else:
-            self._inference_mode_context = enable_grad()
+        self._inference_mode_context = set_grad_enabled(not self.mode)
         self._inference_mode_context.__enter__()
 
     def __exit__(self, *args: object) -> None:
