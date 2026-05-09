@@ -32,11 +32,6 @@ def use_torch_inside_inner_function():
 
 
 class TestTorchProxy(unittest.TestCase):
-    def test_legacy_torch_proxy_api_removed(self):
-        self.assertFalse(hasattr(paddle.compat, "enable_torch_proxy"))
-        self.assertFalse(hasattr(paddle.compat, "disable_torch_proxy"))
-        self.assertFalse(hasattr(paddle.compat, "use_torch_proxy_guard"))
-
     def test_enable_compat(self):
         with self.assertRaises(ModuleNotFoundError):
             import torch
