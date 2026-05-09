@@ -14,21 +14,17 @@ if(NOT DEFINED ROCM_PATH)
   endif()
 endif()
 
-if(NOT DEFINED HIP_PATH)
-  set(HIP_PATH
-      ${ROCM_PATH}
-      CACHE PATH "Path to which HIP has been installed")
-endif()
-
-# Prefer ROCm 7.0+ layout and fall back to legacy layout only when needed.
-if(EXISTS "${ROCM_PATH}/lib/cmake/hip/FindHIP.cmake")
-  set(CMAKE_MODULE_PATH "${ROCM_PATH}/lib/cmake/hip" ${CMAKE_MODULE_PATH})
-elseif(EXISTS "${ROCM_PATH}/hip/cmake")
+# Determine HIP layout from the available FindHIP module. Hygon/DCU keeps it
+# under ROCM_PATH/hip/cmake, while ROCm 7.0+ uses ROCM_PATH/lib/cmake/hip.
+if(EXISTS "${ROCM_PATH}/hip/cmake/FindHIP.cmake")
   set(HIP_PATH
       ${ROCM_PATH}/hip
       CACHE PATH "Path to which HIP has been installed")
   set(CMAKE_MODULE_PATH "${HIP_PATH}/cmake" ${CMAKE_MODULE_PATH})
 else()
+  set(HIP_PATH
+      ${ROCM_PATH}
+      CACHE PATH "Path to which HIP has been installed")
   set(CMAKE_MODULE_PATH "${ROCM_PATH}/lib/cmake/hip" ${CMAKE_MODULE_PATH})
 endif()
 
