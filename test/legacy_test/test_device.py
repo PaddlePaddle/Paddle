@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import ctypes
 import unittest
 
 from op_test import get_device, get_device_class, is_custom_device
@@ -18,6 +19,49 @@ from op_test import get_device, get_device_class, is_custom_device
 import paddle
 from paddle import base
 from paddle.base import core, framework
+
+
+class TestSetDeviceEagerSwitch(unittest.TestCase):
+    """Test that paddle.set_device immediately switches the underlying
+    hardware device (e.g. cudaSetDevice) without creating any tensor."""
+
+    def _get_cuda_runtime_device_id(self):
+        """Use ctypes to call cudaGetDevice directly from CUDA runtime."""
+        try:
+            lib_name = 'libcudart.so'
+            cudart = ctypes.CDLL(lib_name)
+        except:
+            return None
+        device = ctypes.c_int(-1)
+        cudart.cudaGetDevice(ctypes.byref(device))
+        return device.value
+
+    def test_set_device_switches_cuda_device_immediately(self):
+        """After set_device('gpu:1'), cudaGetDevice should return 1
+        immediately, even before creating any tensor."""
+        if not core.is_compiled_with_cuda() or core.get_cuda_device_count() < 2:
+            return
+        paddle.disable_static()
+
+        paddle.device.set_device('gpu:1')
+        runtime_device = self._get_cuda_runtime_device_id()
+        if runtime_device is None:
+            return
+        self.assertEqual(
+            runtime_device,
+            1,
+            msg=f"Expected cudaGetDevice()=1 after set_device('gpu:1'), "
+            f"but got {runtime_device}",
+        )
+
+        paddle.device.set_device('gpu:0')
+        runtime_device = self._get_cuda_runtime_device_id()
+        self.assertEqual(
+            runtime_device,
+            0,
+            msg=f"Expected cudaGetDevice()=0 after set_device('gpu:0'), "
+            f"but got {runtime_device}",
+        )
 
 
 class TestStaticDeviceManage(unittest.TestCase):
