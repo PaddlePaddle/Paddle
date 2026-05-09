@@ -119,6 +119,7 @@ XPUOpMap& get_kl3_ops() {
                      BFLOAT16,
 #ifdef PADDLE_WITH_XPU_FFT
                      COMPLEX64,
+                     COMPLEX128,
 #endif
                      FLOAT64,
                      BOOL,
