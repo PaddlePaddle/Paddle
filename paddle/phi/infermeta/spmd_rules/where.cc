@@ -20,12 +20,11 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
 namespace phi::distributed {
-using phi::distributed::auto_parallel::str_join;
 
 SpmdInfo WhereInferSpmd(const DistMetaTensor& condition,
                         const DistMetaTensor& x,
                         const DistMetaTensor& y) {
-  auto cond_shape = common::vectorize(condition.dims());
+  auto cond_shape = vectorize(condition.dims());
   int cond_ndim = cond_shape.size();
   const auto& cond_dist_attr_src = condition.dist_attr();
   std::vector<int64_t> cond_dims_mapping = cond_dist_attr_src.dims_mapping();
@@ -40,7 +39,7 @@ SpmdInfo WhereInferSpmd(const DistMetaTensor& condition,
   std::string alphabet = "abcdefghijklmnopqrstuvwxyz";
   std::string cond_axes = alphabet.substr(0, cond_ndim);
 
-  auto x_shape = common::vectorize(x.dims());
+  auto x_shape = vectorize(x.dims());
   int x_ndim = x_shape.size();
   const auto& x_dist_attr_src = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
@@ -62,7 +61,7 @@ SpmdInfo WhereInferSpmd(const DistMetaTensor& condition,
 
   std::string x_axes = alphabet.substr(cond_ndim - x_ndim, x_ndim);
 
-  auto y_shape = common::vectorize(y.dims());
+  auto y_shape = vectorize(y.dims());
   int y_ndim = y_shape.size();
   const auto& y_dist_attr_src = y.dist_attr();
   std::vector<int64_t> y_dims_mapping = y_dist_attr_src.dims_mapping();
@@ -133,7 +132,7 @@ SpmdInfo WhereInferSpmdReverse(const DistMetaTensor& condition,
                                const DistMetaTensor& x,
                                const DistMetaTensor& y,
                                const DistMetaTensor& output) {
-  auto cond_shape = common::vectorize(condition.dims());
+  auto cond_shape = vectorize(condition.dims());
   int cond_ndim = cond_shape.size();
   const auto& cond_dist_attr_src = condition.dist_attr();
   std::vector<int64_t> cond_dims_mapping = cond_dist_attr_src.dims_mapping();
@@ -148,7 +147,7 @@ SpmdInfo WhereInferSpmdReverse(const DistMetaTensor& condition,
   std::string alphabet = "abcdefghijklmnopqrstuvwxyz";
   std::string cond_axes = alphabet.substr(0, cond_ndim);
 
-  auto x_shape = common::vectorize(x.dims());
+  auto x_shape = vectorize(x.dims());
   int x_ndim = x_shape.size();
   const auto& x_dist_attr_src = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
@@ -170,7 +169,7 @@ SpmdInfo WhereInferSpmdReverse(const DistMetaTensor& condition,
 
   std::string x_axes = alphabet.substr(cond_ndim - x_ndim, x_ndim);
 
-  auto y_shape = common::vectorize(y.dims());
+  auto y_shape = vectorize(y.dims());
   int y_ndim = y_shape.size();
   const auto& y_dist_attr_src = y.dist_attr();
   std::vector<int64_t> y_dims_mapping = y_dist_attr_src.dims_mapping();
@@ -192,7 +191,7 @@ SpmdInfo WhereInferSpmdReverse(const DistMetaTensor& condition,
 
   std::string y_axes = alphabet.substr(cond_ndim - y_ndim, y_ndim);
 
-  auto out_shape = common::vectorize(output.dims());
+  auto out_shape = vectorize(output.dims());
   int out_ndim = out_shape.size();
   const auto& out_dist_attr_src = output.dist_attr();
   const std::vector<int64_t>& out_dims_mapping =
@@ -250,7 +249,7 @@ SpmdInfo WhereGradInferSpmd(const DistMetaTensor& condition,
                             const DistMetaTensor& x,
                             const DistMetaTensor& y,
                             const DistMetaTensor& out_grad) {
-  auto cond_shape = common::vectorize(condition.dims());
+  auto cond_shape = vectorize(condition.dims());
   int cond_ndim = cond_shape.size();
   const auto& cond_dist_attr_src = condition.dist_attr();
   std::vector<int64_t> cond_dims_mapping = cond_dist_attr_src.dims_mapping();
@@ -265,7 +264,7 @@ SpmdInfo WhereGradInferSpmd(const DistMetaTensor& condition,
   std::string alphabet = "abcdefghijklmnopqrstuvwxyz";
   std::string cond_axes = alphabet.substr(0, cond_ndim);
 
-  auto x_shape = common::vectorize(x.dims());
+  auto x_shape = vectorize(x.dims());
   int x_ndim = x_shape.size();
   const auto& x_dist_attr_src = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
@@ -287,7 +286,7 @@ SpmdInfo WhereGradInferSpmd(const DistMetaTensor& condition,
 
   std::string x_axes = alphabet.substr(cond_ndim - x_ndim, x_ndim);
 
-  auto y_shape = common::vectorize(y.dims());
+  auto y_shape = vectorize(y.dims());
   int y_ndim = y_shape.size();
   const auto& y_dist_attr_src = y.dist_attr();
   std::vector<int64_t> y_dims_mapping = y_dist_attr_src.dims_mapping();
@@ -309,7 +308,7 @@ SpmdInfo WhereGradInferSpmd(const DistMetaTensor& condition,
 
   std::string y_axes = alphabet.substr(cond_ndim - y_ndim, y_ndim);
 
-  auto out_grad_shape = common::vectorize(out_grad.dims());
+  auto out_grad_shape = vectorize(out_grad.dims());
   int out_grad_ndim = out_grad_shape.size();
   const auto& out_grad_dist_attr_src = out_grad.dist_attr();
   std::vector<int64_t> out_grad_dims_mapping =

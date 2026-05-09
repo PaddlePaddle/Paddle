@@ -24,8 +24,6 @@ limitations under the License. */
 
 namespace phi::distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 SpmdInfo UnbindInferSpmd(const DistMetaTensor& x, int axis) {
   EXTRACT_SHAPE_AND_DIST_ATTR(x);
   if (axis < 0) {
@@ -98,7 +96,7 @@ SpmdInfo UnbindInferSpmdReverse(const DistMetaTensor& x,
   int nouts = static_cast<int>(outs.size());
 
   for (int i = 0; i < nouts; i++) {
-    auto shape = common::vectorize(outs[i]->dims());
+    auto shape = vectorize(outs[i]->dims());
     int ndim = static_cast<int>(shape.size());
     auto dist_attr = outs[i]->dist_attr();
     int dims_mapping_size = static_cast<int>(dist_attr.dims_mapping().size());
