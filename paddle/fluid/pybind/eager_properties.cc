@@ -562,7 +562,7 @@ PyObject* tensor_properties_get_local_shape(TensorObject* self, void* closure) {
 #ifdef PADDLE_WITH_DISTRIBUTE
     phi::distributed::DistTensor* dist_tensor =
         static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
-    return ToPyObject(common::vectorize<int64_t>(dist_tensor->local_dims()));
+    return ToPyObject(vectorize<int64_t>(dist_tensor->local_dims()));
 #else
     PADDLE_THROW(common::errors::Unavailable(
         "The `_local_shape` property of (Dist)Tensor is not supported "

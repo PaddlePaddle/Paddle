@@ -96,8 +96,8 @@ struct SplitDenseTensor<phi::CustomContext, T> {
                                       std::vector<DenseTensor *>);
     auto *kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
 
-    auto in_dims = common::vectorize(in.dims());
-    auto origin_out_dims = common::vectorize(out->at(0)->dims());
+    auto in_dims = vectorize(in.dims());
+    auto origin_out_dims = vectorize(out->at(0)->dims());
     for (auto *tensor : *out) {
       if (origin_out_dims.size() != in_dims.size()) {
         std::vector<int> new_dims({1});
@@ -108,7 +108,7 @@ struct SplitDenseTensor<phi::CustomContext, T> {
     }
     (*kernel_fn)(dev_ctx, in, out->size(), phi::Scalar(0), *out);
     for (auto *tensor : *out) {
-      auto tensor_dims = common::vectorize(tensor->dims());
+      auto tensor_dims = vectorize(tensor->dims());
       if (tensor_dims.size() != origin_out_dims.size()) {
         tensor->Resize(make_ddim(origin_out_dims));
       }

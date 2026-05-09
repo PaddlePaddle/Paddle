@@ -27,6 +27,7 @@
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
@@ -43,13 +44,12 @@ namespace py = pybind11;
 
 namespace paddle {
 namespace pybind {
-static inline common::DDim infer_size_symdimvector(common::DDim a,
-                                                   common::DDim b) {
+static inline DDim infer_size_symdimvector(DDim a, DDim b) {
   // Use ptrdiff_t to ensure signed comparison.
   auto dimsA = a.size();
   auto dimsB = b.size();
   auto ndim = dimsA > dimsB ? dimsA : dimsB;
-  common::DDim expandedSizes = make_ddim(std::vector<int64_t>(ndim, 0));
+  DDim expandedSizes = make_ddim(std::vector<int64_t>(ndim, 0));
 
   for (int64_t i = ndim - 1; i >= 0; --i) {
     int64_t offset = ndim - 1 - i;
@@ -79,10 +79,10 @@ static inline Tensor expand_inplace(Tensor tensor, Tensor to_expand) {
   if (tensor.dims() == to_expand.dims()) {
     return to_expand;
   } else if (tensor.dims()[0] == to_expand.dims()[0]) {
-    return expand_ad_func(to_expand, common::vectorize<int64_t>(tensor.dims()));
+    return expand_ad_func(to_expand, vectorize<int64_t>(tensor.dims()));
   } else {
     to_expand = squeeze_ad_func(to_expand, {-1});
-    return expand_ad_func(to_expand, common::vectorize<int64_t>(tensor.dims()));
+    return expand_ad_func(to_expand, vectorize<int64_t>(tensor.dims()));
   }
 }
 
@@ -108,7 +108,7 @@ static inline std::vector<Tensor> expand_outplace(
     std::vector<Tensor> to_expand) {
   // expands a list of Tensors; ignores undefined (null) tensors
   bool first = true;
-  common::DDim sizes;
+  DDim sizes;
   for (size_t i = 0; i < to_expand.size(); i++) {
     if (!to_expand[i].defined()) {
       continue;
@@ -127,8 +127,7 @@ static inline std::vector<Tensor> expand_outplace(
     } else if (to_expand[i].dims() == sizes) {
       result[i] = to_expand[i];
     } else {
-      result[i] =
-          expand_ad_func(to_expand[i], common::vectorize<int64_t>(sizes));
+      result[i] = expand_ad_func(to_expand[i], vectorize<int64_t>(sizes));
     }
   }
   return result;
@@ -166,7 +165,7 @@ inline static void restride_src(std::vector<int64_t>* shape,
 inline static std::vector<int64_t> reshape_indexer(Tensor* index,
                                                    int64_t dims_before,
                                                    int64_t dims_after) {
-  auto orig_shape = common::vectorize<int64_t>(index->dims());
+  auto orig_shape = vectorize<int64_t>(index->dims());
   auto shape = std::vector<int64_t>{};
   shape.insert(shape.end(), dims_before, 1);
   shape.insert(shape.end(), orig_shape.begin(), orig_shape.end());
@@ -178,8 +177,8 @@ inline AdvancedIndex::AdvancedIndex(Tensor src,
                                     std::vector<Tensor> indices_list) {
   uint32_t element_size_bytes = phi::SizeOf(src.dtype());
   int64_t dims_before = 0, dims_after = 0, dims_indexed = 0;
-  std::vector<int64_t> shape_vec = common::vectorize<int64_t>(src.dims());
-  std::vector<int64_t> stride_vec = common::vectorize<int64_t>(src.strides());
+  std::vector<int64_t> shape_vec = vectorize<int64_t>(src.dims());
+  std::vector<int64_t> stride_vec = vectorize<int64_t>(src.strides());
   std::vector<int64_t> replacement_shape;
   std::vector<int64_t> idx_shape_vec = {};
   std::vector<int64_t> idx_stride_vec = {};
@@ -193,7 +192,7 @@ inline AdvancedIndex::AdvancedIndex(Tensor src,
       }
     } else {
       dims_indexed++;
-      replacement_shape = common::vectorize<int64_t>(indices_list[dim].dims());
+      replacement_shape = vectorize<int64_t>(indices_list[dim].dims());
 
       idx_shape_vec.push_back(shape_vec[dim]);
       idx_stride_vec.push_back(stride_vec[dim] * element_size_bytes);
@@ -887,9 +886,9 @@ static void ParseBoolAndBroadcastIndices(std::vector<Tensor>* advanced_index) {
   }
   if (advanced_index->size() > 1) {
     bool need_broadcast = false;
-    common::DDim common_shape = make_ddim((*advanced_index)[0].shape());
+    DDim common_shape = make_ddim((*advanced_index)[0].shape());
     for (size_t i = 1; i < advanced_index->size(); ++i) {
-      common::DDim current_shape = make_ddim((*advanced_index)[i].shape());
+      DDim current_shape = make_ddim((*advanced_index)[i].shape());
       if (current_shape != common_shape) {
         need_broadcast = true;
         common_shape =
@@ -900,7 +899,7 @@ static void ParseBoolAndBroadcastIndices(std::vector<Tensor>* advanced_index) {
     if (need_broadcast) {
       // Here advanced_index has been checked ContainDistTensor
       // and transed in dealWithAdvancedIndex
-      auto common_shape_vec = common::vectorize<int64_t>(common_shape);
+      auto common_shape_vec = vectorize<int64_t>(common_shape);
       for (size_t i = 0; i < advanced_index->size(); ++i) {
         auto current_shape = (*advanced_index)[i].shape();
         if (current_shape != common_shape_vec) {
@@ -1040,12 +1039,10 @@ static inline Tensor expand_inplace(Tensor* tensor, Tensor* to_expand) {
   if (tensor->dims() == to_expand->dims()) {
     return *to_expand;
   } else if (tensor->dims()[0] == to_expand->dims()[0]) {
-    return expand_ad_func(*to_expand,
-                          common::vectorize<int64_t>(tensor->dims()));
+    return expand_ad_func(*to_expand, vectorize<int64_t>(tensor->dims()));
   } else {
     *to_expand = squeeze_ad_func(*to_expand, {-1});
-    return expand_ad_func(*to_expand,
-                          common::vectorize<int64_t>(tensor->dims()));
+    return expand_ad_func(*to_expand, vectorize<int64_t>(tensor->dims()));
   }
 }
 
@@ -1076,10 +1073,10 @@ static void DispatchSetitemKernel(const int pos_of_new_dim,
             *tensor,
             {mask_tensor},
             (*values)[0],
-            common::vectorize<int64_t>(transed_sub_tensor->dims()),
-            common::vectorize<int64_t>(transed_sub_tensor->strides()),
-            common::vectorize<int64_t>(mask_tensor.dims()),
-            common::vectorize<int64_t>(mask_tensor.strides()),
+            vectorize<int64_t>(transed_sub_tensor->dims()),
+            vectorize<int64_t>(transed_sub_tensor->strides()),
+            vectorize<int64_t>(mask_tensor.dims()),
+            vectorize<int64_t>(mask_tensor.strides()),
             slice_offset);
         *out_is_view = false;
         return;

@@ -1574,15 +1574,14 @@ static PyObject* tensor_method_set_underline_tensor(TensorObject* self,
               "FLAGS_use_stride_kernel is closed. Strided kernel "
               "be called, something wrong has happened!"));
         }
-        PD_VISIT_ALL_TYPES(
-            src_tensor->dtype(), "StridedTensorCopy", ([&] {
-              phi::StridedTensorCopy<data_t>(
-                  *src_tensor,
-                  common::vectorize<int64_t>(dst_tensor->dims()),
-                  common::vectorize<int64_t>(dst_tensor->strides()),
-                  dst_tensor->offset(),
-                  dst_tensor);
-            }));
+        PD_VISIT_ALL_TYPES(src_tensor->dtype(), "StridedTensorCopy", ([&] {
+                             phi::StridedTensorCopy<data_t>(
+                                 *src_tensor,
+                                 vectorize<int64_t>(dst_tensor->dims()),
+                                 vectorize<int64_t>(dst_tensor->strides()),
+                                 dst_tensor->offset(),
+                                 dst_tensor);
+                           }));
       } else {
         if (!dst_tensor->meta().is_contiguous()) {
           PADDLE_THROW(common::errors::Fatal(
@@ -1855,7 +1854,7 @@ static PyObject* tensor__getitem_from_offset(TensorObject* self,
   const auto& tensor_dims = tensor.dims();
 
   std::vector<size_t> dims(tensor_dims.size());
-  std::vector<size_t> stride = common::vectorize<size_t>(tensor.strides());
+  std::vector<size_t> stride = vectorize<size_t>(tensor.strides());
 
   size_t numel = 1;
   for (int i = tensor_dims.size() - 1; i >= 0; --i) {

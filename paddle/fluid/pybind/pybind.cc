@@ -2197,7 +2197,7 @@ PYBIND11_MODULE(libpaddle, m) {
   m.def(
       "broadcast_shape",
       [](const std::vector<int64_t> &x_dim, const std::vector<int64_t> &y_dim) {
-        return common::vectorize(phi::funcs::BroadcastTwoDims(
+        return vectorize(phi::funcs::BroadcastTwoDims(
             make_ddim(x_dim), make_ddim(y_dim), -1));
       });
 

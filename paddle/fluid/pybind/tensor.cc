@@ -272,7 +272,7 @@ void ShareTensorViaVmm(const DenseTensor &self, py::tuple *out) {
   int dtype_idx = static_cast<int>(self.type());
   *out = py::make_tuple(py::bytes(blob),
                         dtype_idx,
-                        common::vectorize(self.dims()),
+                        vectorize(self.dims()),
                         self.lod(),
                         device_id);
 }
@@ -518,9 +518,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
       .def("_is_initialized",
            [](const DenseTensor &self) { return self.IsInitialized(); })
       .def("_get_dims",
-           [](const DenseTensor &self) {
-             return common::vectorize(self.dims());
-           })
+           [](const DenseTensor &self) { return vectorize(self.dims()); })
       .def("_set_dims",
            [](DenseTensor &self, const std::vector<int64_t> &dim) {
              self.Resize(make_ddim(dim));
@@ -704,7 +702,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 
       .def(
           "shape",
-          [](DenseTensor &self) { return common::vectorize(self.dims()); },
+          [](DenseTensor &self) { return vectorize(self.dims()); },
           R"DOC(
            Return the shape of Tensor.
 
@@ -805,7 +803,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
             new_lod.reserve(lod.size());
             std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
             PADDLE_ENFORCE_EQ(
-                CheckLegacyLoD(new_lod, common::vectorize(self.dims()).front()),
+                CheckLegacyLoD(new_lod, vectorize(self.dims()).front()),
                 true,
                 common::errors::InvalidArgument(
                     "The provided LegacyLoD is invalid, the LegacyLoD is %s",
@@ -848,8 +846,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                       std::back_inserter(new_lod));
             LegacyLoD new_offset_lod = ConvertToOffsetBasedLegacyLoD(new_lod);
             PADDLE_ENFORCE_EQ(
-                CheckLegacyLoD(new_offset_lod,
-                               common::vectorize(self.dims()).front()),
+                CheckLegacyLoD(new_offset_lod, vectorize(self.dims()).front()),
                 true,
                 common::errors::InvalidArgument(
                     "The provided recursive_sequence_lengths info is "
@@ -1032,7 +1029,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                                    (py::size_t)offset_bytes,
                                    data_size,
                                    type_idx,
-                                   common::vectorize(self.dims()),
+                                   vectorize(self.dims()),
                                    self.lod(),
                                    device_id);
            },
@@ -1202,7 +1199,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                                    (py::size_t)offset_bytes,
                                    data_size,
                                    type_idx,
-                                   common::vectorize(self.dims()),
+                                   vectorize(self.dims()),
                                    self.lod(),
                                    device_id);
            },
@@ -1321,7 +1318,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              return py::make_tuple(mmap_allocation->ipc_name(),
                                    mmap_allocation->shared_fd(),
                                    mmap_allocation->size(), type_idx,
-                                   common::vectorize(self.dims()), self.lod(),
+                                   vectorize(self.dims()), self.lod(),
                                    use_file_descriptor);
            },
            R"DOC(
@@ -1434,7 +1431,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 
             return py::make_tuple(mmap_writer_allocation->ipc_name(),
                                   mmap_writer_allocation->size(), type_idx,
-                                  common::vectorize(t.dims()), t.lod());
+                                  vectorize(t.dims()), t.lod());
           },
           [](py::tuple t) {  // __setstate__
             if (t.size() != 5)

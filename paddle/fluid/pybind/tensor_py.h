@@ -695,7 +695,7 @@ void _sliceCompute(const DenseTensor *in,
                    const std::vector<int> &axes,
                    const std::vector<int> &starts) {
   auto &eigen_place = *ctx.eigen_device();
-  auto out_dims = common::vectorize<int>(out->dims());
+  auto out_dims = vectorize<int>(out->dims());
   auto in_dims = in->dims();
 
   auto offsets = Eigen::DSizes<int64_t, D>();

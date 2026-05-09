@@ -80,7 +80,7 @@ void BindNativeMetaTensor(py::module* m) {
           "shape",
           [](const phi::NativeMetaTensor& self) -> std::vector<int64_t> {
             const DDim& dims = self.dims();
-            return common::vectorize<int64_t>(dims);
+            return vectorize<int64_t>(dims);
           },
           "Get tensor shape")
       .def("__eq__",

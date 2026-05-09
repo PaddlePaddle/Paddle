@@ -71,7 +71,7 @@ void ExpandAsPreProcess(Tensor* x,
         "The y of expand_as api must be specified."));
   }
   if (y->get_ptr() == nullptr) return;
-  *target_shape = common::vectorize<int64_t>(y->get_ptr()->dims());
+  *target_shape = vectorize<int64_t>(y->get_ptr()->dims());
 }
 void ExpandAsPreProcess(pir::Value* x,
                         paddle::optional<pir::Value>* y,
