@@ -17,6 +17,12 @@
 
 namespace paddle {
 using DDim = common::DDim;
+using common::make_ddim;
+using common::product;
+using common::slice_ddim;
+using common::stride;
+using common::stride_numel;
+using common::vectorize;
 }  // namespace paddle
 
 namespace phi {
