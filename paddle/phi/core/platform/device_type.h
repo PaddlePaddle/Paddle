@@ -32,7 +32,7 @@ enum DeviceType {
   MAX_DEVICE_TYPES = 7,
 };
 
-PADDLE_API DeviceType Place2DeviceType(const phi::Place& place);
+PADDLE_API DeviceType Place2DeviceType(const Place& place);
 
 constexpr DeviceType kCPU = DeviceType::CPU;
 constexpr DeviceType kCUDA = DeviceType::CUDA;
@@ -44,4 +44,12 @@ using DeviceContext = phi::DeviceContext;
 using DeviceContextPool = phi::DeviceContextPool;
 
 }  // namespace platform
+
+using platform::kCPU;
+using platform::kCUDA;
+using platform::kCUSTOM_DEVICE;
+using platform::kIPU;
+using platform::kXPU;
+using DeviceType = paddle::platform::DeviceType;
+
 }  // namespace paddle

@@ -53,7 +53,7 @@ static constexpr size_t kNumGcThreads = 1;
 // Note that the purpose of the config is to limit the total 'possible'
 // threads introduced by interpretercore to avoid hurting performance.
 
-inline std::tuple<int, int> GetThreadPoolConfig(const phi::Place& place,
+inline std::tuple<int, int> GetThreadPoolConfig(const Place& place,
                                                 size_t op_num) {
   int num_device_threads = kDeviceNumThreads,
       num_host_threads = kHostNumThreads;
@@ -125,7 +125,7 @@ inline std::tuple<int, int> GetThreadPoolConfig(const phi::Place& place,
   return std::make_tuple(num_host_threads, num_device_threads);
 }
 
-void ExecutionConfig::AnalyzeThreadPoolConfig(const phi::Place& place,
+void ExecutionConfig::AnalyzeThreadPoolConfig(const Place& place,
                                               size_t op_num) {
   if (host_num_threads == 0 || device_num_threads == 0) {
     std::tie(host_num_threads, device_num_threads) =

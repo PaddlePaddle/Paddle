@@ -539,9 +539,9 @@ void SparseBlas<GPUContext>::SPGEMM(bool transa,
   } else {
     a_crows_int = std::make_shared<DenseTensor>();
     a_cols_int = std::make_shared<DenseTensor>();
-    phi::MetaTensor crows_meta(a_crows_int.get());
+    MetaTensor crows_meta(a_crows_int.get());
     crows_meta.set_dims(mat_a.crows().dims());
-    phi::MetaTensor cols_meta(a_cols_int.get());
+    MetaTensor cols_meta(a_cols_int.get());
     cols_meta.set_dims(mat_a.cols().dims());
 
     CastKernel<int64_t>(
@@ -559,9 +559,9 @@ void SparseBlas<GPUContext>::SPGEMM(bool transa,
   } else {
     b_crows_int = std::make_shared<DenseTensor>();
     b_cols_int = std::make_shared<DenseTensor>();
-    phi::MetaTensor crows_meta(b_crows_int.get());
+    MetaTensor crows_meta(b_crows_int.get());
     crows_meta.set_dims(mat_b.crows().dims());
-    phi::MetaTensor cols_meta(b_cols_int.get());
+    MetaTensor cols_meta(b_cols_int.get());
     cols_meta.set_dims(mat_b.cols().dims());
 
     CastKernel<int64_t>(

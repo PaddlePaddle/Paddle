@@ -27,10 +27,10 @@ SpmdInfo IndexPutInferSpmd(const DistMetaTensor& x,
                            const DistMetaTensor& value,
                            const bool accumulate) {
   // Step0: verify input args based on group_norm logic
-  auto x_shape = common::vectorize(x.dims());
+  auto x_shape = vectorize(x.dims());
   int indices_size = indices.size();
-  auto indices_shape = common::vectorize(indices[0].dims());
-  auto value_shape = common::vectorize(value.dims());
+  auto indices_shape = vectorize(indices[0].dims());
+  auto value_shape = vectorize(value.dims());
   int x_ndim = static_cast<int>(x_shape.size());
   int indices_ndim = static_cast<int>(indices_shape.size());
   int value_ndim = static_cast<int>(value_shape.size());
@@ -135,11 +135,11 @@ SpmdInfo IndexPutGradInferSpmd(const DistMetaTensor& x,
                                const DistMetaTensor& out_grad,
                                const bool accumulate) {
   // Step0: verify input args based on group_norm logic
-  auto x_shape = common::vectorize(x.dims());
+  auto x_shape = vectorize(x.dims());
   int indices_size = indices.size();
-  auto indices_shape = common::vectorize(indices[0].dims());
-  auto value_shape = common::vectorize(value.dims());
-  auto out_grad_shape = common::vectorize(out_grad.dims());
+  auto indices_shape = vectorize(indices[0].dims());
+  auto value_shape = vectorize(value.dims());
+  auto out_grad_shape = vectorize(out_grad.dims());
   int x_ndim = static_cast<int>(x_shape.size());
   int indices_ndim = static_cast<int>(indices_shape.size());
   int value_ndim = static_cast<int>(value_shape.size());

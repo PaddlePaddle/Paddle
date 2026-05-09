@@ -26,8 +26,6 @@ limitations under the License. */
 
 namespace phi::distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 int PreprocessAxis(int axis, int ndim) {
   if (axis < 0) {
     axis += ndim;
@@ -93,7 +91,7 @@ SpmdInfo FlattenInferSpmd(const DistMetaTensor& x,
                           int start_axis,
                           int stop_axis) {
   // Step0: Verify input args based on flatten logic
-  auto src_shape = common::vectorize(x.dims());
+  auto src_shape = vectorize(x.dims());
   int x_ndim = static_cast<int>(src_shape.size());
   auto x_dist_attr_src = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
@@ -135,9 +133,9 @@ SpmdInfo FlattenInferSpmdReverse(const DistMetaTensor& x,
                                  int start_axis,
                                  int stop_axis) {
   // Step0: Verify input args based on flatten logic
-  auto x_shape = common::vectorize(x.dims());
+  auto x_shape = vectorize(x.dims());
   auto x_ndim = x_shape.size();
-  auto out_shape = common::vectorize(out.dims());
+  auto out_shape = vectorize(out.dims());
   int out_ndim = static_cast<int>(out_shape.size());
   auto out_dist_attr_src = out.dist_attr();
   std::vector<int64_t> out_dims_mapping = out_dist_attr_src.dims_mapping();
