@@ -189,8 +189,9 @@ class TestSimpleNetForSemiAutoParallel:
         loss_dy = self.run_dynamic(dy_layer, dy_opt, data_loader)
         md5_pass = hashlib.md5(loss_pass.tobytes()).hexdigest()
         md5_st = hashlib.md5(loss_st.tobytes()).hexdigest()
+        md5_dy = hashlib.md5(loss_dy.tobytes()).hexdigest()
         np.testing.assert_equal(md5_pass, md5_st)
-        np.testing.assert_allclose(loss_pass, loss_dy, rtol=1e-6)
+        np.testing.assert_equal(md5_pass, md5_dy)
 
     def test_c_embedding_with_pir_fp16(self):
         paddle.disable_static()

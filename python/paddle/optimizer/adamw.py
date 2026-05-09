@@ -387,7 +387,6 @@ class AdamW(Optimizer):
             acc_dtype = (
                 DataType.FLOAT32 if in_pir_mode() else core.VarDesc.VarType.FP32
             )
-        beta_pow_dtype = acc_dtype
         if core.is_compiled_with_xpu():
             import os
 
@@ -415,9 +414,6 @@ class AdamW(Optimizer):
                         self._moment2_acc_max_str, p, dtype=acc_dtype
                     )
         else:
-            beta_pow_dtype = (
-                DataType.FLOAT64 if in_pir_mode() else core.VarDesc.VarType.FP64
-            )
             self._add_accumulator(self._moment1_acc_str, p, dtype=acc_dtype)
             self._add_accumulator(self._moment2_acc_str, p, dtype=acc_dtype)
             if self._amsgrad:
@@ -427,7 +423,7 @@ class AdamW(Optimizer):
         self._add_accumulator(
             name=self._beta1_pow_acc_str,
             param=p,
-            dtype=beta_pow_dtype,
+            dtype=acc_dtype,
             fill_value=(
                 0.9
                 if isinstance(self._beta1, (Variable, Value))
@@ -440,7 +436,7 @@ class AdamW(Optimizer):
         self._add_accumulator(
             name=self._beta2_pow_acc_str,
             param=p,
-            dtype=beta_pow_dtype,
+            dtype=acc_dtype,
             fill_value=(
                 0.999
                 if isinstance(self._beta2, (Variable, Value))

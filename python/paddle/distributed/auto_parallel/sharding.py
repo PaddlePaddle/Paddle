@@ -1097,17 +1097,6 @@ class ShardingOptimizerStage1(Optimizer):
             pow_acc_suffixs.append(pow_acc_suffix)
         pow_acc_suffixs = sorted(set(pow_acc_suffixs))
 
-        # Build a mapping from pow_acc_suffix -> dtype by inspecting tensors
-        # that the current rank owns (as root). Non-root ranks may not own any
-        # pow_acc tensors for a given suffix, so we fall back to float32 if
-        # none are found locally (the actual dtype will be filled in by the
-        # broadcast from the root rank).
-        suffix_dtype = {}
-        for name in pow_acc_opt_param_names:
-            pow_acc_suffix = name.split(".dist")[-1]
-            if name in state_dict and pow_acc_suffix not in suffix_dtype:
-                suffix_dtype[pow_acc_suffix] = state_dict[name].dtype
-
         group_size = 0
         for param_name, param_info in group_info.items():
             group_size = max(group_size, param_info["param_end"])
@@ -1138,12 +1127,7 @@ class ShardingOptimizerStage1(Optimizer):
                     tmp_placements = [
                         dist.Replicate() for _ in range(len(tmp_mesh.shape))
                     ]
-                    # Use the dtype inferred from the root rank's pow_acc
-                    # tensor (collected above). Defaults to float32 if unknown.
-                    recv_dtype = suffix_dtype.get(
-                        pow_acc_suffix, paddle.float32
-                    )
-                    tmp_data = paddle.zeros([1], dtype=recv_dtype)
+                    tmp_data = paddle.zeros([1])
 
                     dist.broadcast(
                         tmp_data,

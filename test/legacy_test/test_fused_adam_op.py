@@ -141,8 +141,8 @@ class TestFusedAdamOp(OpTest):
                 "float32"
             )
             inputs_list[3][i] = np.random.random((102, 105)).astype("float32")
-            inputs_list[4][i] = np.array([beta1_pow]).astype("float64")
-            inputs_list[5][i] = np.array([beta2_pow]).astype("float64")
+            inputs_list[4][i] = np.array([beta1_pow]).astype("float32")
+            inputs_list[5][i] = np.array([beta2_pow]).astype("float32")
 
         self.inputs = {
             'Params': [

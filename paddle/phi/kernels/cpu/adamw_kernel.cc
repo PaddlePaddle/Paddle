@@ -124,12 +124,12 @@ PADDLE_API void AdamwDenseKernel(const Context& dev_ctx,
                               "value is:%d.",
                               beta2_pow_out->numel()));
 
-  double beta1_p = beta1_pow.data<double>()[0];
-  double beta2_p = beta2_pow.data<double>()[0];
+  T beta1_p = beta1_pow.data<T>()[0];
+  T beta2_p = beta2_pow.data<T>()[0];
 
   if (!use_global_beta_pow) {
-    dev_ctx.template Alloc<double>(beta1_pow_out)[0] = beta1_ * beta1_p;
-    dev_ctx.template Alloc<double>(beta2_pow_out)[0] = beta2_ * beta2_p;
+    dev_ctx.template Alloc<T>(beta1_pow_out)[0] = beta1_ * beta1_p;
+    dev_ctx.template Alloc<T>(beta2_pow_out)[0] = beta2_ * beta2_p;
   }
 
   T* param_out_ptr = dev_ctx.template Alloc<T>(param_out);
@@ -215,13 +215,5 @@ PADDLE_API void AdamwDenseKernel(const Context& dev_ctx,
 PD_REGISTER_KERNEL(
     adamw, CPU, ALL_LAYOUT, phi::AdamwDenseKernel, float, double) {
   kernel->InputAt(2).SetDataType(phi::DataType::FLOAT64);
-  kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
-  kernel->InputAt(6).SetDataType(phi::DataType::FLOAT64);
-  kernel->InputAt(7).SetBackend(phi::Backend::ALL_BACKEND);
-  kernel->InputAt(7).SetDataType(phi::DataType::FLOAT64);
   kernel->InputAt(9).SetBackend(phi::Backend::ALL_BACKEND);
-  kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT64);
-  kernel->OutputAt(4).SetBackend(phi::Backend::UNDEFINED);
-  kernel->OutputAt(5).SetDataType(phi::DataType::FLOAT64);
-  kernel->OutputAt(5).SetBackend(phi::Backend::UNDEFINED);
 }

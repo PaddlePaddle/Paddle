@@ -459,10 +459,10 @@ struct AdamWBiasCorrAccessor<MT, true> {
 // gpu
 template <typename MT>
 struct AdamWBiasCorrAccessor<MT, false> {
-  const double* beta1_pow;
-  const double* beta2_pow;
+  const MT* beta1_pow;
+  const MT* beta2_pow;
 
-  AdamWBiasCorrAccessor(const double* bp1, const double* bp2)
+  AdamWBiasCorrAccessor(const MT* bp1, const MT* bp2)
       : beta1_pow(bp1), beta2_pow(bp2) {}
 
   __device__ __forceinline__ double GetBc1() const { return 1.0 - *beta1_pow; }
@@ -762,26 +762,26 @@ PADDLE_API void AdamwDenseKernel(const Context& dev_ctx,
   if (lr_on_cpu) {                                                   \
     AdamWLrAccessor<true> lr_accessor(lr_double);                    \
     if (beta_pow_on_cpu) {                                           \
-      const double bc1 = 1.0 - beta1_pow.data<double>()[0];          \
-      const double bc2 = 1.0 - beta2_pow.data<double>()[0];          \
+      const double bc1 = 1.0 - beta1_pow.data<MT>()[0];              \
+      const double bc2 = 1.0 - beta2_pow.data<MT>()[0];              \
       AdamWBiasCorrAccessor<MT, true> bias_corr_accessor(bc1, bc2);  \
       LAUNCH_ADAMW_STYLE_KERNEL(MOMENT_T)                            \
     } else {                                                         \
       AdamWBiasCorrAccessor<MT, false> bias_corr_accessor(           \
-          beta1_pow.data<double>(), beta2_pow.data<double>());       \
+          beta1_pow.data<MT>(), beta2_pow.data<MT>());               \
       LAUNCH_ADAMW_STYLE_KERNEL(MOMENT_T)                            \
     }                                                                \
   } else {                                                           \
     AdamWLrAccessor<false> lr_accessor(learning_rate.data<double>(), \
                                        lr_ratio);                    \
     if (beta_pow_on_cpu) {                                           \
-      const double bc1 = 1.0 - beta1_pow.data<double>()[0];          \
-      const double bc2 = 1.0 - beta2_pow.data<double>()[0];          \
+      const double bc1 = 1.0 - beta1_pow.data<MT>()[0];              \
+      const double bc2 = 1.0 - beta2_pow.data<MT>()[0];              \
       AdamWBiasCorrAccessor<MT, true> bias_corr_accessor(bc1, bc2);  \
       LAUNCH_ADAMW_STYLE_KERNEL(MOMENT_T)                            \
     } else {                                                         \
       AdamWBiasCorrAccessor<MT, false> bias_corr_accessor(           \
-          beta1_pow.data<double>(), beta2_pow.data<double>());       \
+          beta1_pow.data<MT>(), beta2_pow.data<MT>());               \
       LAUNCH_ADAMW_STYLE_KERNEL(MOMENT_T)                            \
     }                                                                \
   }
@@ -798,20 +798,18 @@ PADDLE_API void AdamwDenseKernel(const Context& dev_ctx,
   // Update beta_pow (same as original)
   if (!use_global_beta_pow) {
     if (beta_pow_on_cpu) {
-      auto* beta1_pow_out_data =
-          dev_ctx.template HostAlloc<double>(beta1_pow_out);
-      auto* beta2_pow_out_data =
-          dev_ctx.template HostAlloc<double>(beta2_pow_out);
-      beta1_pow_out_data[0] = beta1_ * beta1_pow.data<double>()[0];
-      beta2_pow_out_data[0] = beta2_ * beta2_pow.data<double>()[0];
+      auto* beta1_pow_out_data = dev_ctx.template HostAlloc<MT>(beta1_pow_out);
+      auto* beta2_pow_out_data = dev_ctx.template HostAlloc<MT>(beta2_pow_out);
+      beta1_pow_out_data[0] = beta1_ * beta1_pow.data<MT>()[0];
+      beta2_pow_out_data[0] = beta2_ * beta2_pow.data<MT>()[0];
     } else {
-      UpdateBetaPowKernel<double><<<1, 1, 0, dev_ctx.stream()>>>(
+      UpdateBetaPowKernel<MT><<<1, 1, 0, dev_ctx.stream()>>>(
           beta1_,
           beta2_,
-          beta1_pow.data<double>(),
-          beta2_pow.data<double>(),
-          dev_ctx.template Alloc<double>(beta1_pow_out),
-          dev_ctx.template Alloc<double>(beta2_pow_out));
+          beta1_pow.data<MT>(),
+          beta2_pow.data<MT>(),
+          dev_ctx.template Alloc<MT>(beta1_pow_out),
+          dev_ctx.template Alloc<MT>(beta2_pow_out));
     }
   }
 }
@@ -827,11 +825,9 @@ PD_REGISTER_KERNEL(adamw,
                    phi::float16,
                    phi::bfloat16) {
   kernel->InputAt(2).SetDataType(phi::DataType::FLOAT64);
-  // beta1_pow, beta2_pow: always float64, skip backend and dtype transform
+  // beta1_pow, beta2_pow live on CPU; skip backend transform
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
-  kernel->InputAt(6).SetDataType(phi::DataType::FLOAT64);
   kernel->InputAt(7).SetBackend(phi::Backend::ALL_BACKEND);
-  kernel->InputAt(7).SetDataType(phi::DataType::FLOAT64);
   kernel->InputAt(9).SetBackend(phi::Backend::ALL_BACKEND);
 
   if (kernel_key.dtype() == phi::DataType::FLOAT16 ||
@@ -839,11 +835,10 @@ PD_REGISTER_KERNEL(adamw,
     kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(5).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(6).SetDataType(phi::DataType::FLOAT32);
   }
-  // beta1_pow_out, beta2_pow_out are always float64 regardless of param dtype
-  kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT64);
   kernel->OutputAt(4).SetBackend(phi::Backend::UNDEFINED);
-  kernel->OutputAt(5).SetDataType(phi::DataType::FLOAT64);
   kernel->OutputAt(5).SetBackend(phi::Backend::UNDEFINED);
 }

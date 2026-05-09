@@ -131,8 +131,6 @@ struct AdamInfo {
   std::vector<DenseTensor> moment2s_max;
   std::vector<DenseTensor> beta1_pows;
   std::vector<DenseTensor> beta2_pows;
-  std::vector<DenseTensor> adamw_beta1_pows;
-  std::vector<DenseTensor> adamw_beta2_pows;
   DenseTensor learning_rate;
   DenseTensor adamw_learning_rate;
   float beta1;
@@ -189,10 +187,6 @@ struct AdamInfo {
         GenerateConstantTensorVectors<MT, Context>(*ctx, one_shapes, beta1);
     beta2_pows =
         GenerateConstantTensorVectors<MT, Context>(*ctx, one_shapes, beta2);
-    adamw_beta1_pows = GenerateConstantTensorVectors<AdamWScalarT, Context>(
-        *ctx, one_shapes, beta1);
-    adamw_beta2_pows = GenerateConstantTensorVectors<AdamWScalarT, Context>(
-        *ctx, one_shapes, beta2);
   }
 
   void Update(bool use_fused, const std::vector<DenseTensor> &grads) {
@@ -236,8 +230,6 @@ struct AdamInfo {
     copy_tensors(other.moment2s_max, &copied.moment2s_max);
     copy_tensors(other.beta1_pows, &copied.beta1_pows);
     copy_tensors(other.beta2_pows, &copied.beta2_pows);
-    copy_tensors(other.adamw_beta1_pows, &copied.adamw_beta1_pows);
-    copy_tensors(other.adamw_beta2_pows, &copied.adamw_beta2_pows);
     copy_tensor(other.learning_rate, &copied.learning_rate);
     copy_tensor(other.adamw_learning_rate, &copied.adamw_learning_rate);
     copied.epsilon = other.epsilon;
@@ -256,8 +248,6 @@ struct AdamInfo {
     auto moment2_max_metas = ToMetaTensorVector(moment2s_max);
     auto beta1_pow_metas = ToMetaTensorVector(beta1_pows);
     auto beta2_pow_metas = ToMetaTensorVector(beta2_pows);
-    auto adamw_beta1_pow_metas = ToMetaTensorVector(adamw_beta1_pows);
-    auto adamw_beta2_pow_metas = ToMetaTensorVector(adamw_beta2_pows);
 
     FusedAdamInferMeta(ToConstMetaTensorPtrVector(param_metas),
                        ToConstMetaTensorPtrVector(grad_metas),
@@ -265,8 +255,8 @@ struct AdamInfo {
                        ToConstMetaTensorPtrVector(moment1_metas),
                        ToConstMetaTensorPtrVector(moment2_metas),
                        ToConstMetaTensorPtrVector(moment2_max_metas),
-                       ToConstMetaTensorPtrVector(adamw_beta1_pow_metas),
-                       ToConstMetaTensorPtrVector(adamw_beta2_pow_metas),
+                       ToConstMetaTensorPtrVector(beta1_pow_metas),
+                       ToConstMetaTensorPtrVector(beta2_pow_metas),
                        multi_precision
                            ? paddle::make_optional(
                                  ToConstMetaTensorPtrVector(master_param_metas))
@@ -285,8 +275,8 @@ struct AdamInfo {
                        ToMutableMetaTensorPtrVector(moment1_metas),
                        ToMutableMetaTensorPtrVector(moment2_metas),
                        ToMutableMetaTensorPtrVector(moment2_max_metas),
-                       ToMutableMetaTensorPtrVector(adamw_beta1_pow_metas),
-                       ToMutableMetaTensorPtrVector(adamw_beta2_pow_metas),
+                       ToMutableMetaTensorPtrVector(beta1_pow_metas),
+                       ToMutableMetaTensorPtrVector(beta2_pow_metas),
                        ToMutableMetaTensorPtrVector(master_param_metas));
 
     FusedAdamKernel<T, Context>(
@@ -297,8 +287,8 @@ struct AdamInfo {
         ToConstTensorPtrVector(moment1s),
         ToConstTensorPtrVector(moment2s),
         ToConstTensorPtrVector(moment2s_max),
-        ToConstTensorPtrVector(adamw_beta1_pows),
-        ToConstTensorPtrVector(adamw_beta2_pows),
+        ToConstTensorPtrVector(beta1_pows),
+        ToConstTensorPtrVector(beta2_pows),
         multi_precision
             ? paddle::make_optional(ToConstTensorPtrVector(master_params))
             : paddle::none,
@@ -316,15 +306,9 @@ struct AdamInfo {
         ToMutableTensorPtrVector(moment1s),
         ToMutableTensorPtrVector(moment2s),
         ToMutableTensorPtrVector(moment2s_max),
-        ToMutableTensorPtrVector(adamw_beta1_pows),
-        ToMutableTensorPtrVector(adamw_beta2_pows),
+        ToMutableTensorPtrVector(beta1_pows),
+        ToMutableTensorPtrVector(beta2_pows),
         ToMutableTensorPtrVector(master_params));
-    for (size_t j = 0; j < params.size(); ++j) {
-      beta1_pows[j] = Cast<AdamWScalarT, Context>(
-          *ctx, adamw_beta1_pows[j], phi::CppTypeToDataType<MT>::Type());
-      beta2_pows[j] = Cast<AdamWScalarT, Context>(
-          *ctx, adamw_beta2_pows[j], phi::CppTypeToDataType<MT>::Type());
-    }
   }
 
   void UpdateWithAdamWBaseline(const std::vector<DenseTensor> &grads,
@@ -337,8 +321,8 @@ struct AdamInfo {
         moment1s[idx],
         moment2s[idx],
         moment2s_max[idx],
-        adamw_beta1_pows[idx],
-        adamw_beta2_pows[idx],
+        beta1_pows[idx],
+        beta2_pows[idx],
         multi_precision ? paddle::make_optional(master_params[idx])
                         : paddle::none,
         paddle::none,
@@ -357,13 +341,9 @@ struct AdamInfo {
         &moment1s[idx],
         &moment2s[idx],
         &moment2s_max[idx],
-        &adamw_beta1_pows[idx],
-        &adamw_beta2_pows[idx],
+        &beta1_pows[idx],
+        &beta2_pows[idx],
         multi_precision ? &master_params[idx] : nullptr);
-    beta1_pows[idx] = Cast<AdamWScalarT, Context>(
-        *ctx, adamw_beta1_pows[idx], phi::CppTypeToDataType<MT>::Type());
-    beta2_pows[idx] = Cast<AdamWScalarT, Context>(
-        *ctx, adamw_beta2_pows[idx], phi::CppTypeToDataType<MT>::Type());
   }
 
   void UpdateWithAdamBaseline(const std::vector<DenseTensor> &grads,

@@ -333,7 +333,7 @@ class Muon(Optimizer):
                 self._add_accumulator(
                     acc_name,
                     param,
-                    dtype=paddle.float64,
+                    dtype=paddle.float32,
                     fill_value=init_val,
                     shape=[1],
                     type=framework.core.VarDesc.VarType.DENSE_TENSOR,

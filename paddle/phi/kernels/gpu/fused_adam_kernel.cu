@@ -32,9 +32,9 @@ namespace phi {
 template <typename T, bool CPUBetaPows /*=true*/>
 struct FusedAdamBetaPowInfo {
   using MT = typename MPTypeTrait<T>::Type;
-  FusedAdamBetaPowInfo(const double* beta1pow, const double* beta2pow) {
-    beta1pow_ = static_cast<MT>(*beta1pow);
-    beta2pow_ = static_cast<MT>(*beta2pow);
+  FusedAdamBetaPowInfo(const MT* beta1pow, const MT* beta2pow) {
+    beta1pow_ = *beta1pow;
+    beta2pow_ = *beta2pow;
   }
 
   DEVICE MT GetBeta1PowValue() const { return beta1pow_; }
@@ -49,18 +49,18 @@ struct FusedAdamBetaPowInfo {
 template <typename T>
 struct FusedAdamBetaPowInfo<T, /*CPUBetaPows=*/false> {
   using MT = typename MPTypeTrait<T>::Type;
-  FusedAdamBetaPowInfo(const double* beta1pow, const double* beta2pow) {
+  FusedAdamBetaPowInfo(const MT* beta1pow, const MT* beta2pow) {
     beta1pow_ = beta1pow;
     beta2pow_ = beta2pow;
   }
 
-  DEVICE MT GetBeta1PowValue() const { return static_cast<MT>(*beta1pow_); }
+  DEVICE MT GetBeta1PowValue() const { return *beta1pow_; }
 
-  DEVICE MT GetBeta2PowValue() const { return static_cast<MT>(*beta2pow_); }
+  DEVICE MT GetBeta2PowValue() const { return *beta2pow_; }
 
  private:
-  const double* __restrict__ beta1pow_;
-  const double* __restrict__ beta2pow_;
+  const MT* __restrict__ beta1pow_;
+  const MT* __restrict__ beta2pow_;
 };
 
 template <typename T,
@@ -416,7 +416,7 @@ PADDLE_API void FusedAdamKernel(
     constexpr int kMaxBlockSize = __multi_precision ? 320 : 320;             \
     constexpr int kBlockSize = 512;                                          \
     FusedAdamBetaPowInfo<T, __is_cpu_betapow> beta_pow_info(                 \
-        beta1_pow_first->data<double>(), beta2_pow_first->data<double>());   \
+        beta1_pow_first->data<MT>(), beta2_pow_first->data<MT>());           \
     FusedAdamFunctor<T,                                                      \
                      MT,                                                     \
                      __vec_size,                                             \
@@ -550,10 +550,10 @@ PADDLE_API void FusedAdamKernel(
     if (is_cpu_betapow) {
       for (size_t i = 0; i < n; i++) {
         VLOG(10) << "CPU Update BetaPow here...";
-        auto* beta1_ptr = dev_ctx.template HostAlloc<double>(beta1_pows_out[i]);
+        auto* beta1_ptr = dev_ctx.template HostAlloc<MT>(beta1_pows_out[i]);
         (*beta1_ptr) *= beta1_tmp;
 
-        auto* beta2_ptr = dev_ctx.template HostAlloc<double>(beta2_pows_out[i]);
+        auto* beta2_ptr = dev_ctx.template HostAlloc<MT>(beta2_pows_out[i]);
         (*beta2_ptr) *= beta2_tmp;
       }
     } else {
@@ -563,19 +563,15 @@ PADDLE_API void FusedAdamKernel(
       for (size_t i = 0; i < group_num; ++i) {
         size_t start = i * kGroupSize;
         size_t end = std::min((i + 1) * kGroupSize, n);
-        Array<double*, kGroupSize> beta1_ptrs, beta2_ptrs;
+        Array<MT*, kGroupSize> beta1_ptrs, beta2_ptrs;
         for (size_t j = start; j < end; ++j) {
           size_t idx = j - start;
-          beta1_ptrs[idx] = dev_ctx.template Alloc<double>(beta1_pows_out[j]);
-          beta2_ptrs[idx] = dev_ctx.template Alloc<double>(beta2_pows_out[j]);
+          beta1_ptrs[idx] = dev_ctx.template Alloc<MT>(beta1_pows_out[j]);
+          beta2_ptrs[idx] = dev_ctx.template Alloc<MT>(beta2_pows_out[j]);
         }
-        UpdateBetaPowGroup<double, kGroupSize>
+        UpdateBetaPowGroup<MT, kGroupSize>
             <<<1, kGroupSize, 0, dev_ctx.stream()>>>(
-                beta1_ptrs,
-                beta2_ptrs,
-                static_cast<double>(beta1_tmp),
-                static_cast<double>(beta2_tmp),
-                end - start);
+                beta1_ptrs, beta2_ptrs, beta1_tmp, beta2_tmp, end - start);
       }
     }
   }
@@ -594,14 +590,12 @@ PD_REGISTER_KERNEL(fused_adam,
   // Skip beta1_pow, beta2_pow, skip_update data transform
   kernel->InputAt(2).SetDataType(phi::DataType::FLOAT64);  // learning_rate
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
-  kernel->InputAt(6).SetDataType(phi::DataType::FLOAT64);  // beta1_pows
   kernel->InputAt(7).SetBackend(phi::Backend::ALL_BACKEND);
-  kernel->InputAt(7).SetDataType(phi::DataType::FLOAT64);  // beta2_pows
   kernel->InputAt(9).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(3).SetDataType(phi::DataType::UNDEFINED);
-  kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT64);  // beta1_pows_out
-  kernel->OutputAt(5).SetDataType(phi::DataType::FLOAT64);  // beta2_pows_out
+  kernel->OutputAt(4).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(5).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(6).SetDataType(phi::DataType::UNDEFINED);
 }
