@@ -130,8 +130,8 @@ static const Place PyObjectToPlace(const py::object &place_obj) {
     return place_obj.cast<GPUPinnedPlace>();
   } else if (py::isinstance<XPUPinnedPlace>(place_obj)) {
     return place_obj.cast<XPUPinnedPlace>();
-  } else if (py::isinstance<phi::IPUPlace>(place_obj)) {
-    return place_obj.cast<phi::IPUPlace>();
+  } else if (py::isinstance<IPUPlace>(place_obj)) {
+    return place_obj.cast<IPUPlace>();
   } else if (py::isinstance<Place>(place_obj)) {
     return place_obj.cast<Place>();
   } else if (py::isinstance<CustomPlace>(place_obj)) {
@@ -187,7 +187,7 @@ static void InitVarBaseAndTensor(imperative::VarBase *self,
   } else if (phi::is_xpu_pinned_place(place)) {
     SetTensorFromPyArray<XPUPinnedPlace>(tensor, array, place, zero_copy);
   } else if (phi::is_ipu_place(place)) {
-    SetTensorFromPyArray<phi::IPUPlace>(tensor, array, place, zero_copy);
+    SetTensorFromPyArray<IPUPlace>(tensor, array, place, zero_copy);
   } else if (phi::is_custom_place(place)) {
     SetTensorFromPyArray<CustomPlace>(tensor, array, place, zero_copy);
   } else {
@@ -719,8 +719,8 @@ void BindImperative(py::module *m_ptr) {
               self.SetExpectedPlace(*p);
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
-            } else if (py::isinstance<phi::IPUPlace>(obj)) {
-              auto p = obj.cast<phi::IPUPlace *>();
+            } else if (py::isinstance<IPUPlace>(obj)) {
+              auto p = obj.cast<IPUPlace *>();
               self.SetExpectedPlace(*p);
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;

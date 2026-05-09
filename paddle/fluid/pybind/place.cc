@@ -197,7 +197,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
       .def("_equals", &IsSamePlace<Place, GPUPlace>)
       .def("_equals", &IsSamePlace<Place, CPUPlace>)
       .def("_equals", &IsSamePlace<Place, XPUPlace>)
-      .def("_equals", &IsSamePlace<Place, phi::IPUPlace>)
+      .def("_equals", &IsSamePlace<Place, IPUPlace>)
       .def("_equals", &IsSamePlace<Place, GPUPinnedPlace>)
       .def("_equals", &IsSamePlace<Place, XPUPinnedPlace>)
       .def("_equals", &IsSamePlace<Place, CustomPlace>)
@@ -240,9 +240,8 @@ void BindPlace(pybind11::module &m) {  // NOLINT
            [](Place &self, const XPUPinnedPlace &xpu_pinned_place) {
              self = xpu_pinned_place;
            })
-      .def(
-          "set_place",
-          [](Place &self, const phi::IPUPlace &ipu_place) { self = ipu_place; })
+      .def("set_place",
+           [](Place &self, const IPUPlace &ipu_place) { self = ipu_place; })
       .def(
           "set_place",
           [](Place &self, const CustomPlace &plug_place) { self = plug_place; })
@@ -682,7 +681,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
       .def("__str__", string::to_string<const XPUPinnedPlace &>);
 
   // IPUPlace
-  py::class_<phi::IPUPlace, Place> ipuplace(m, "IPUPlace", R"DOC(
+  py::class_<IPUPlace, Place> ipuplace(m, "IPUPlace", R"DOC(
     IPUPlace is a descriptor of a device.
     It represents a IPU device on which a tensor will be allocated and a model will run.
 
@@ -697,7 +696,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
   g_ipuplace_pytype = reinterpret_cast<PyTypeObject *>(ipuplace.ptr());
   ipuplace
       .def("__init__",
-           [](phi::IPUPlace &self) {
+           [](IPUPlace &self) {
 #ifdef PADDLE_WITH_IPU
              if (platform::GetIPUDeviceCount() == 0) {
                LOG(ERROR) << "Cannot use IPU because there is no IPU "
@@ -708,7 +707,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
              }
              // use ipu(0) to compile, while run with the number user configure
              // in sharding and pipeline.
-             new (&self) phi::IPUPlace(0);
+             new (&self) IPUPlace(0);
 #else
              LOG(ERROR) << string::Sprintf(
                  "Cannot use IPU because you didn't install IPU version "
@@ -721,15 +720,15 @@ void BindPlace(pybind11::module &m) {  // NOLINT
             "use wrong place, Please check."));
 #endif
            })
-      .def("_type", &PlaceIndex<phi::IPUPlace>)
-      .def("_equals", &IsSamePlace<phi::IPUPlace, Place>)
-      .def("_equals", &IsSamePlace<phi::IPUPlace, GPUPlace>)
-      .def("_equals", &IsSamePlace<phi::IPUPlace, CPUPlace>)
-      .def("_equals", &IsSamePlace<phi::IPUPlace, XPUPlace>)
-      .def("_equals", &IsSamePlace<phi::IPUPlace, phi::IPUPlace>)
-      .def("_equals", &IsSamePlace<phi::IPUPlace, GPUPinnedPlace>)
-      .def("_equals", &IsSamePlace<phi::IPUPlace, XPUPinnedPlace>)
-      .def("__str__", string::to_string<const phi::IPUPlace &>);
+      .def("_type", &PlaceIndex<IPUPlace>)
+      .def("_equals", &IsSamePlace<IPUPlace, Place>)
+      .def("_equals", &IsSamePlace<IPUPlace, GPUPlace>)
+      .def("_equals", &IsSamePlace<IPUPlace, CPUPlace>)
+      .def("_equals", &IsSamePlace<IPUPlace, XPUPlace>)
+      .def("_equals", &IsSamePlace<IPUPlace, IPUPlace>)
+      .def("_equals", &IsSamePlace<IPUPlace, GPUPinnedPlace>)
+      .def("_equals", &IsSamePlace<IPUPlace, XPUPinnedPlace>)
+      .def("__str__", string::to_string<const IPUPlace &>);
 }
 
 }  // namespace paddle::pybind

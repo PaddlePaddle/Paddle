@@ -633,7 +633,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            py::arg("place"),
            py::arg("batch_size") = -1)
       .def("_copy_from",
-           &TensorCopyFrom<phi::IPUPlace>,
+           &TensorCopyFrom<IPUPlace>,
            py::arg("tensor"),
            py::arg("place"),
            py::arg("batch_size") = -1)
@@ -663,7 +663,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            py::arg("place"),
            py::arg("zero_copy") = false)
       .def("set",
-           SetTensorFromPyArray<phi::IPUPlace>,
+           SetTensorFromPyArray<IPUPlace>,
            py::arg("array"),
            py::arg("place"),
            py::arg("zero_copy") = false)
