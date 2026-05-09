@@ -103,7 +103,8 @@ void MatmulGradKernel(const Context& dev_ctx,
                                  dout_ptr);
   std::tie(info_dx, info_dy, a_1, b_1, a_2, b_2) = fc_info;
   if (dx) {
-    MatMulXPUFunction<XPUType>(xpu_ctx, a_1, b_1, c_1, info_dx, 1.0f);
+    MatMulXPUFunction<XPUType>(
+        xpu_ctx, a_1, b_1, c_1, info_dx, 1.0f, 0.f, true);
     if (info_forward.is_x_need_broadcast) {
       int r =
           xpu::reduce_sum<XPUType>(xpu_ctx,
@@ -117,7 +118,8 @@ void MatmulGradKernel(const Context& dev_ctx,
     }
   }
   if (dy) {
-    MatMulXPUFunction<XPUType>(xpu_ctx, a_2, b_2, c_2, info_dy, 1.0f);
+    MatMulXPUFunction<XPUType>(
+        xpu_ctx, a_2, b_2, c_2, info_dy, 1.0f, 0.f, true);
     if (info_forward.is_y_need_broadcast) {
       int r =
           xpu::reduce_sum<XPUType>(xpu_ctx,
@@ -199,10 +201,12 @@ void MatmulWithFlattenGradKernel(const Context& dev_ctx,
                                       dout_ptr);
   std::tie(info_dx, info_dy, a_1, b_1, a_2, b_2) = fc_info;
   if (x_grad) {
-    phi::MatMulXPUFunction<XPUType>(xpu_ctx, a_1, b_1, c_1, info_dx, 1.0f);
+    phi::MatMulXPUFunction<XPUType>(
+        xpu_ctx, a_1, b_1, c_1, info_dx, 1.0f, 0.f, true);
   }
   if (y_grad) {
-    phi::MatMulXPUFunction<XPUType>(xpu_ctx, a_2, b_2, c_2, info_dy, 1.0f);
+    phi::MatMulXPUFunction<XPUType>(
+        xpu_ctx, a_2, b_2, c_2, info_dy, 1.0f, 0.f, true);
   }
 }
 

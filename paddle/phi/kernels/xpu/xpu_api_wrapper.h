@@ -64,7 +64,8 @@ inline XPUFCCalcType FCCalcType() {
       {"XPU_PADDLE_FC_INT32_WITH_LL", XPUFCCalcType::FC_INT32_WITH_LL},
   };
 #ifdef PADDLE_WITH_XPU_XRE5
-  auto default_calc_type = XPUFCCalcType::FC_TF32;
+  // Use FC_FLOAT to match GPU's CUBLAS_COMPUTE_32F accumulation precision
+  auto default_calc_type = XPUFCCalcType::FC_FLOAT;
 #else
   auto default_calc_type = XPUFCCalcType::FC_INT16;
 #endif
@@ -89,10 +90,11 @@ inline XPUFCCalcType FCCalcType<XPUTypeFP16>() {
 template <>
 inline XPUFCCalcType FCCalcType<XPUTypeBF16>() {
   XPUFCCalcTypeMap calc_type_map = {
-      // TF32 is the default, do not need to be listed here.
+      {"XPU_PADDLE_FC_TF32", XPUFCCalcType::FC_TF32},
       {"XPU_PADDLE_FC_FLOAT", XPUFCCalcType::FC_FLOAT},
       {"XPU_PADDLE_FC_LOCAL_INT16", XPUFCCalcType::FC_FLOAT}};
-  auto default_calc_type = XPUFCCalcType::FC_TF32;
+  // Use FC_FLOAT to match GPU's fp32 accumulation for bf16 matmul
+  auto default_calc_type = XPUFCCalcType::FC_FLOAT;
   return GetFCCalcTypeFromEnv(calc_type_map, default_calc_type);
 }
 
@@ -637,10 +639,11 @@ static void MatMulXPUFunction(
 
   auto xblas_fc_api = xblas_fc_api_list[fc_calc_type];
 
-  if (std::getenv("XPU_PADDLE_FC_GRAD_LOCAL") != nullptr) {
-    if (is_grad) {
-      xblas_fc_api = xblas_fc_api_list[2];
-    }
+  // Always use FC_FLOAT (full fp32 accumulation) for gradient computation
+  // to match GPU's fp32 grad accumulation and prevent catastrophic precision
+  // loss, especially for bf16 backward pass
+  if (is_grad) {
+    xblas_fc_api = xblas_fc_api_list[2];
   }
   auto xblas_fc_batch_api = xblas_fc_batch_api_list[fc_calc_type];
 
