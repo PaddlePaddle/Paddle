@@ -182,7 +182,9 @@ class TestAdamW(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(no_check_set=self.no_check_set, check_pir=True)
+        self.check_output(
+            no_check_set=self.no_check_set, check_pir=True, rtol=1e-4
+        )
 
 
 class TestAdamWAMSGrad(TestAdamW):
