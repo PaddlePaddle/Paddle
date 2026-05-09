@@ -19,6 +19,6 @@ xdoctest==1.3.0
 ubelt==1.4.0 # just for xdoctest
 mypy==1.19.1
 soundfile
-apache-tvm-ffi==0.1.5
+apache-tvm-ffi==0.1.10
 graphviz
 nvidia-ml-py3 ; platform_system != "Darwin"

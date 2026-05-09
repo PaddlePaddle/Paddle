@@ -25,8 +25,6 @@ limitations under the License. */
 namespace phi {
 namespace distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 SpmdInfo DepthwiseConv2dInferSpmd(const DistMetaTensor& input,
                                   const DistMetaTensor& filter,
                                   const std::vector<int>& strides,
@@ -39,8 +37,8 @@ SpmdInfo DepthwiseConv2dInferSpmd(const DistMetaTensor& input,
   // input_dim: NCHinWin, filter_dim: M1HfWf, C = groups, M % groups == 0
   // output_dim: NMHoutWout
   VLOG(4) << "step 0: verify input args based on depthwise_conv2d logic";
-  auto original_input_shape = common::vectorize(input.dims());
-  auto original_filter_shape = common::vectorize(filter.dims());
+  auto original_input_shape = vectorize(input.dims());
+  auto original_filter_shape = vectorize(filter.dims());
   int input_ndim = static_cast<int>(original_input_shape.size());
   int filter_ndim = static_cast<int>(original_filter_shape.size());
   const auto& input_dist_attr_src = input.dist_attr();

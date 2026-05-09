@@ -270,10 +270,10 @@ OneDNNPhiKernelInstruction::OneDNNPhiKernelInstruction(
   if (infer_meta_interface_) {
     BuildPhiContext<
         phi::InferMetaContext,
-        phi::MetaTensor,
-        phi::MetaTensor,
-        paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
-        paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
+        MetaTensor,
+        MetaTensor,
+        paddle::small_vector<MetaTensor, phi::kInputSmallVectorSize>,
+        paddle::small_vector<MetaTensor, phi::kInputSmallVectorSize>,
         false>(op, *value_exec_info_, yaml_info_parser, &infer_meta_context_);
   }
   VLOG(6) << "finish process infer meta context";
@@ -491,8 +491,8 @@ void OneDNNPhiKernelInstruction::Run() {
           phi::funcs::make_memory_desc(*transed_tensor, from_layout);
       transed_tensor->set_mem_desc(out_mem_desc);
       tmp_kernel_context.UpdataInput(i, transed_tensor);
-      auto meta_tensor = phi::MetaTensor(transed_tensor);
-      auto input_meta_tensor = phi::MetaTensor(input);
+      auto meta_tensor = MetaTensor(transed_tensor);
+      auto input_meta_tensor = MetaTensor(input);
       if (tmp_infer_meta_context_.InputsSize() > i &&
           tmp_infer_meta_context_.InputAt(i).is_same_tensor(
               input_meta_tensor)) {

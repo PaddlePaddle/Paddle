@@ -166,7 +166,7 @@ ProcessGroupNCCL::~ProcessGroupNCCL() {
   }
 }
 
-void ProcessGroupNCCL::EraseStream(const phi::DenseTensor& tensor) const {
+void ProcessGroupNCCL::EraseStream(const DenseTensor& tensor) const {
   if (!tensor.initialized()) return;
   auto place = tensor.place();
   auto iter = place_to_comm_ctx_.find(GetKeyFromPlace(place));
@@ -241,8 +241,8 @@ phi::distributed::NCCLCommContext* ProcessGroupNCCL::GetOrCreateCommContext(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllGather(
-    phi::DenseTensor* out_tensor,
-    const phi::DenseTensor& in_tensor,
+    DenseTensor* out_tensor,
+    const DenseTensor& in_tensor,
     int64_t offset,
     int64_t numel,
     bool sync_op,
@@ -251,7 +251,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllGather(
   CheckTensorContiguous(*out_tensor);
 
   // numel > 0 indicates the tensor need to be sliced
-  const phi::DenseTensor& in_tensor_maybe_partial =
+  const DenseTensor& in_tensor_maybe_partial =
       numel > 0 ? GetPartialTensor(in_tensor, offset, numel) : in_tensor;
   return Collective(
       [&](phi::distributed::NCCLCommContext* comm_context, gpuStream_t stream) {
@@ -279,8 +279,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllGather(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduce(
-    phi::DenseTensor* out_tensor,
-    const phi::DenseTensor& in_tensor,
+    DenseTensor* out_tensor,
+    const DenseTensor& in_tensor,
     const AllreduceOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
@@ -288,8 +288,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduce(
   CheckTensorContiguous(*out_tensor);
 
   PADDLE_ENFORCE_EQ(
-      in_tensor.dtype() != phi::DataType::FLOAT8_E4M3FN &&
-          in_tensor.dtype() != phi::DataType::FLOAT8_E5M2,
+      in_tensor.dtype() != DataType::FLOAT8_E4M3FN &&
+          in_tensor.dtype() != DataType::FLOAT8_E5M2,
       true,
       common::errors::InvalidArgument(
           "float8 dtypes are not currently supported for NCCL reductions"));
@@ -320,8 +320,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduce(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
-    phi::DenseTensor* out_tensor,
-    const phi::DenseTensor& in_tensor,
+    DenseTensor* out_tensor,
+    const DenseTensor& in_tensor,
     const std::vector<int64_t>& out_size_each_rank,
     const std::vector<int64_t>& in_size_each_rank,
     bool sync_op,
@@ -340,8 +340,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
     in_split_sizes = in_size_each_rank;
   }
 
-  const phi::DDim& out_dim = out_tensor->dims();
-  const phi::DDim& in_dim = in_tensor.dims();
+  const DDim& out_dim = out_tensor->dims();
+  const DDim& in_dim = in_tensor.dims();
   CheckSizeOnEachRank(out_dim, out_split_sizes, size_);
   CheckSizeOnEachRank(in_dim, in_split_sizes, size_);
 
@@ -490,7 +490,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Barrier(
   GPUPlace place(opts.device_id);
   auto allocator = std::unique_ptr<phi::Allocator>(
       new paddle::experimental::DefaultAllocator(place));
-  phi::DenseTensorMeta meta(phi::DataType::FLOAT32, phi::DDim{1});
+  DenseTensorMeta meta(DataType::FLOAT32, DDim{1});
   DenseTensor barrier_tensor{allocator.get(), meta};
 
   VLOG(3) << "[Barrier] "
@@ -507,8 +507,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Barrier(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Broadcast(
-    phi::DenseTensor* out_tensor,
-    const phi::DenseTensor& in_tensor,
+    DenseTensor* out_tensor,
+    const DenseTensor& in_tensor,
     const BroadcastOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
@@ -540,8 +540,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Broadcast(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Reduce(
-    phi::DenseTensor* out_tensor,
-    const phi::DenseTensor& in_tensor,
+    DenseTensor* out_tensor,
+    const DenseTensor& in_tensor,
     const ReduceOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
@@ -549,8 +549,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Reduce(
   CheckTensorContiguous(*out_tensor);
 
   PADDLE_ENFORCE_EQ(
-      in_tensor.dtype() != phi::DataType::FLOAT8_E4M3FN &&
-          in_tensor.dtype() != phi::DataType::FLOAT8_E5M2,
+      in_tensor.dtype() != DataType::FLOAT8_E4M3FN &&
+          in_tensor.dtype() != DataType::FLOAT8_E5M2,
       true,
       common::errors::InvalidArgument(
           "float8 dtypes are not currently supported for NCCL reductions"));
@@ -584,8 +584,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Reduce(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::ReduceScatter(
-    phi::DenseTensor* out_tensor,
-    const phi::DenseTensor& in_tensor,
+    DenseTensor* out_tensor,
+    const DenseTensor& in_tensor,
     const ReduceScatterOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
@@ -593,8 +593,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::ReduceScatter(
   CheckTensorContiguous(*out_tensor);
 
   PADDLE_ENFORCE_EQ(
-      in_tensor.dtype() != phi::DataType::FLOAT8_E4M3FN &&
-          in_tensor.dtype() != phi::DataType::FLOAT8_E5M2,
+      in_tensor.dtype() != DataType::FLOAT8_E4M3FN &&
+          in_tensor.dtype() != DataType::FLOAT8_E5M2,
       true,
       common::errors::InvalidArgument(
           "float8 dtypes are not currently supported for NCCL reductions"));
@@ -624,8 +624,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::ReduceScatter(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
-    phi::DenseTensor* out_tensor,
-    const phi::DenseTensor& in_tensor,
+    DenseTensor* out_tensor,
+    const DenseTensor& in_tensor,
     const ScatterOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
@@ -684,8 +684,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
-    phi::DenseTensor* out_tensor,
-    const phi::DenseTensor& in_tensor,
+    DenseTensor* out_tensor,
+    const DenseTensor& in_tensor,
     const GatherOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
@@ -709,7 +709,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
     std::vector<DenseTensor>* gather_tensors_ptr,
-    const phi::DenseTensor& in_tensor,
+    const DenseTensor& in_tensor,
     const GatherOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
@@ -765,7 +765,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv(
-    phi::DenseTensor* tensor,
+    DenseTensor* tensor,
     int src_rank,
     int64_t offset,
     int64_t numel,
@@ -806,7 +806,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Send(
-    const phi::DenseTensor& tensor,
+    const DenseTensor& tensor,
     int dst_rank,
     int64_t offset,
     int64_t numel,
@@ -814,7 +814,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Send(
     bool use_calc_stream) {
   CheckTensorContiguous(tensor);
   // numel > 0 indicates the tensor need to be sliced
-  const phi::DenseTensor& tensor_maybe_partial =
+  const DenseTensor& tensor_maybe_partial =
       numel > 0 ? GetPartialTensor(tensor, offset, numel) : tensor;
 
   return Point2Point(
@@ -1198,7 +1198,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
     std::function<void(phi::distributed::NCCLCommContext*, gpuStream_t)> fn,
-    const phi::DenseTensor& tensor,
+    const DenseTensor& tensor,
     CommType comm_type,
     bool sync_op,
     bool use_calc_stream) {
@@ -1210,7 +1210,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Point2Point(
     std::function<void(phi::distributed::NCCLCommContext*, gpuStream_t, int)>
         fn,
     int peer,
-    const phi::DenseTensor& tensor,
+    const DenseTensor& tensor,
     CommType comm_type,
     bool sync_op,
     bool use_calc_stream) {

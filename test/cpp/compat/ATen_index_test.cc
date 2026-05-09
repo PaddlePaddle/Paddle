@@ -76,11 +76,9 @@ TEST(TensorIndexTest, SliceKeepsStrideWithoutContiguousCopy) {
 TEST(TensorIndexTest, IndexWithEmptyInitializerListReturnsSelf) {
   at::Tensor t = at::arange(5, at::kFloat);
 
-  at::Tensor result =
-      at::index(t, std::initializer_list<at::indexing::TensorIndex>{});
-
-  ASSERT_EQ(result.numel(), t.numel());
-  ASSERT_EQ(result.data_ptr<float>(), t.data_ptr<float>());
+  // PyTorch throws for empty index list
+  ASSERT_THROW(at::index(t, std::initializer_list<at::indexing::TensorIndex>{}),
+               std::exception);
 }
 
 TEST(TensorIndexTest, IndexWithTensorInitializerList) {

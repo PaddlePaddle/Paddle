@@ -95,7 +95,7 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
 #endif
 
   mutable std::string loss_var_name_;
-  mutable std::vector<phi::Place> places_;
+  mutable std::vector<Place> places_;
   mutable std::vector<Scope *> local_scopes_;
 
   mutable details::BuildStrategy strategy_;
