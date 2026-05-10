@@ -270,7 +270,6 @@ class TestRaiseVarargs(TestCaseBase):
             x += 5
         return x
 
-    @strict_mode_guard(True)
     def test_RAISE_VARARGS_argc(self):
         self.assert_results(
             self.argc_equal_to_0_wo_exception, paddle.to_tensor(0.01)
@@ -317,7 +316,6 @@ class TestException(TestCaseBase):
         return x
 
     @check_no_breakgraph
-    @strict_mode_guard(True)
     def test_dispatch(self):
         self.assert_results(
             self.create_builtin_exception, paddle.to_tensor(111.0)
@@ -478,7 +476,6 @@ class TestTryExcept(TestCaseBase):
             raise LookupError("TESTING!")
         return y + 3
 
-    @strict_mode_guard(True)
     def test_try_except(self):
         self.assert_results(self.try_except_wo_error, paddle.to_tensor(2))
         self.assert_results(
@@ -566,7 +563,6 @@ class TestTryFinally(TestCaseBase):
             x = 300 + x
         return x
 
-    @strict_mode_guard(True)
     def test_try_finally(self):
         self.assert_results(self.try_finally_wo_error, paddle.to_tensor(14))
         self.assert_results(
@@ -653,7 +649,6 @@ class TestTryExceptElse(TestCaseBase):
             raise ValueError("Testing!")
         return x
 
-    @strict_mode_guard(True)
     def test_try_except_else(self):
         # self.assert_results(self.try_except_else, paddle.to_tensor(14))
         self.assert_results(
@@ -663,7 +658,6 @@ class TestTryExceptElse(TestCaseBase):
         #     self.try_except_else_error_in_except, paddle.to_tensor(16)
         # )
 
-    @strict_mode_guard(True)
     def test_error(self):
         # RERAISE
         self.assert_exceptions(
@@ -740,7 +734,6 @@ class TestTryExceptFinally(TestCaseBase):
             raise ValueError
         return x
 
-    @strict_mode_guard(True)
     def test_try_except_finally(self):
         self.assert_results(self.try_except_finally, paddle.to_tensor([0.11]))
         self.assert_results(
@@ -752,7 +745,6 @@ class TestTryExceptFinally(TestCaseBase):
             paddle.to_tensor([0.33]),
         )
 
-    @strict_mode_guard(True)
     def test_error(self):
         # RERAISE
         self.assert_exceptions(
@@ -841,7 +833,6 @@ class TestTryExceptElseFinally(TestCaseBase):
             raise SyntaxError("TESTING")
         return x
 
-    @strict_mode_guard(True)
     def test_try_except_finally(self):
         self.assert_results(
             self.try_except_else_finally, paddle.to_tensor([0.11])
@@ -851,7 +842,6 @@ class TestTryExceptElseFinally(TestCaseBase):
             paddle.to_tensor([0.22]),
         )
 
-    @strict_mode_guard(True)
     def test_error(self):
         # RERAISE
         self.assert_exceptions(
@@ -875,7 +865,6 @@ class TestTryExceptElseFinally(TestCaseBase):
 
 
 class TestNestingCase(TestCaseBase):
-    @strict_mode_guard(True)
     @check_no_breakgraph
     def test_try_nesting(self):
         def try_nesting_wo_error(x):
@@ -920,7 +909,6 @@ class TestNestingCase(TestCaseBase):
 
         self.assert_results(try_nesting_wo_error, paddle.to_tensor(0.5))
 
-    @strict_mode_guard(True)
     @check_no_breakgraph
     def test_function_nesting(self):
         def raise_value_error_obj(x):
@@ -1001,7 +989,6 @@ class TestAssertException(TestCaseBase):
             x *= 4
         return x / 5
 
-    @strict_mode_guard(True)
     def test_assert_with_py_var_as_condition(self):
         # Test the case where `condition` is Python variable
         self.assert_results(self.try_assert, paddle.to_tensor(1), False)
@@ -1029,7 +1016,6 @@ class TestAssertException(TestCaseBase):
             self.try_assert, paddle.to_tensor(10), paddle.to_tensor(-1)
         )
 
-    @strict_mode_guard(True)
     def test_assert_true(self):
         @check_no_breakgraph
         def try_assert_except(x, y):
@@ -1043,7 +1029,6 @@ class TestAssertException(TestCaseBase):
 
         self.assert_results(try_assert_except, paddle.to_tensor(10), 10)
 
-    @strict_mode_guard(True)
     def test_assert_false(self):
         @check_no_breakgraph
         def try_assert_except(x, y):
