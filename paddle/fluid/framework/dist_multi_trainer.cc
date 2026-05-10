@@ -99,7 +99,7 @@ inline std::vector<std::shared_ptr<phi::ThreadPool>> &GetThreadPool(
 }
 
 void DistMultiTrainer::InitTrainerEnv(const ProgramDesc &main_program,
-                                      const phi::Place &place) {
+                                      const Place &place) {
   auto pool = GetThreadPool(thread_num_);
   std::vector<std::future<void>> wait_futures;
   PADDLE_ENFORCE_EQ(static_cast<int>(pool.size()),

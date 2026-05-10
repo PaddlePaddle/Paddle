@@ -24,8 +24,6 @@ limitations under the License. */
 
 namespace phi::distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 static inline std::vector<int64_t> FilterIndexMeshDims(
     const std::vector<int64_t>& index_mesh_dims,
     const std::vector<std::vector<int64_t>>& x_dims_mapping,

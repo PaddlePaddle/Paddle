@@ -36,11 +36,11 @@ SpmdInfo BatchNormInferSpmd(const DistMetaTensor& x,
                             const bool use_global_stats,
                             const bool trainable_statistics) {
   // Step0: verify input args based on batch_norm logic
-  auto x_shape = common::vectorize(x.dims());
-  auto mean_shape = common::vectorize(mean.dims());
-  auto variance_shape = common::vectorize(variance.dims());
-  auto scale_shape = common::vectorize(scale.dims());
-  auto bias_shape = common::vectorize(bias.dims());
+  auto x_shape = vectorize(x.dims());
+  auto mean_shape = vectorize(mean.dims());
+  auto variance_shape = vectorize(variance.dims());
+  auto scale_shape = vectorize(scale.dims());
+  auto bias_shape = vectorize(bias.dims());
   int x_ndim = static_cast<int>(x_shape.size());
   int mean_ndim = static_cast<int>(mean_shape.size());
   int variance_ndim = static_cast<int>(variance_shape.size());
@@ -219,15 +219,15 @@ SpmdInfo BatchNormGradInferSpmd(const DistMetaTensor& x,
                                 const bool is_test,
                                 const bool use_global_stats,
                                 const bool trainable_statistics) {
-  auto x_shape = common::vectorize(x.dims());
-  auto scale_shape = common::vectorize(scale.dims());
-  auto bias_shape = common::vectorize(bias.dims());
-  auto mean_out_shape = common::vectorize(mean_out.dims());
-  auto variance_out_shape = common::vectorize(variance_out.dims());
-  auto saved_mean_shape = common::vectorize(saved_mean.dims());
-  auto saved_variance_shape = common::vectorize(saved_variance.dims());
-  auto reserve_space_shape = common::vectorize(reserve_space.dims());
-  auto out_grad_shape = common::vectorize(out_grad.dims());
+  auto x_shape = vectorize(x.dims());
+  auto scale_shape = vectorize(scale.dims());
+  auto bias_shape = vectorize(bias.dims());
+  auto mean_out_shape = vectorize(mean_out.dims());
+  auto variance_out_shape = vectorize(variance_out.dims());
+  auto saved_mean_shape = vectorize(saved_mean.dims());
+  auto saved_variance_shape = vectorize(saved_variance.dims());
+  auto reserve_space_shape = vectorize(reserve_space.dims());
+  auto out_grad_shape = vectorize(out_grad.dims());
   int x_ndim = static_cast<int>(x_shape.size());
   int scale_ndim = static_cast<int>(scale_shape.size());
   int bias_ndim = static_cast<int>(bias_shape.size());
