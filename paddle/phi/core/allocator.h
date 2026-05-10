@@ -28,7 +28,6 @@ namespace phi {
 /// support being inherited.
 class Allocation {
  public:
-  using Place = phi::Place;
   using DeleterFnPtr = void (*)(Allocation*);
 
   Allocation() = default;
