@@ -3113,6 +3113,27 @@ class TestModuleAPI(unittest.TestCase):
             child._load_state_dict_post_hooks,
         )
 
+        assertion_module = paddle.nn.Module()
+        assertion_parameter = assertion_module.create_parameter(
+            shape=[1], dtype="float32", is_bias=False
+        )
+        assertion_module.register_parameter("weight", assertion_parameter)
+
+        def bad_load_state_dict_post_hook(layer, incompatible_keys):
+            return incompatible_keys
+
+        assertion_module.register_load_state_dict_post_hook(
+            bad_load_state_dict_post_hook
+        )
+        with self.assertRaisesRegex(
+            AssertionError,
+            "Hooks registered with ``register_load_state_dict_post_hook``",
+        ):
+            assertion_module.load_state_dict(
+                {"weight": paddle.ones_like(assertion_parameter)},
+                strict=True,
+            )
+
         class LegacyLayer(paddle.nn.Layer):
             pass
 
