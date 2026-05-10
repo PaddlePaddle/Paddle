@@ -73,13 +73,13 @@ class StorageHolderView final : public phi::Allocation {
 
   size_t size() const noexcept override { return impl_ ? impl_->nbytes_ : 0; }
 
-  const Place& place() const noexcept override {
+  const phi::Place& place() const noexcept override {
     return impl_ ? impl_->place_ : place_;
   }
 
  private:
   std::shared_ptr<StorageImpl> impl_;
-  Place place_;
+  phi::Place place_;
 };
 
 struct Storage {
