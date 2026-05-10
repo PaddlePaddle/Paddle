@@ -31,7 +31,11 @@ from paddle.base.framework import _to_pinned_place
 
 class TestToPinnedPlace(unittest.TestCase):
     def test_already_cuda_pinned_returns_same_object(self):
-        # Branch 1: already-pinned passes through unchanged.
+        # Branch 1: already-pinned passes through unchanged. Constructing
+        # ``CUDAPinnedPlace()`` itself requires a CUDA-built wheel, so skip
+        # on a pure-CPU build (where the branch is unreachable in practice).
+        if not core.is_compiled_with_cuda():
+            self.skipTest("CUDA not compiled in this build")
         p = core.CUDAPinnedPlace()
         self.assertIs(_to_pinned_place(p), p)
 
