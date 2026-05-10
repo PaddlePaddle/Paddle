@@ -353,7 +353,7 @@ void LaunchDepthwiseConv3dBackwardCompatible(const Context& dev_ctx,
   }
 
   auto stream = dev_ctx.stream();
-  using AccT = typename dtype::MPTypeTrait<T>::Type;
+  using AccT = typename MPTypeTrait<T>::Type;
 
   const T* input_ptr = input_ncdhw.data<T>();
   const T* grad_output_ptr = out_grad_ncdhw.data<T>();

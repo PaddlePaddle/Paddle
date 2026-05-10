@@ -30,6 +30,7 @@ limitations under the License. */
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"
+#include "paddle/phi/kernels/funcs/rng_launch_config.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 #endif
 
@@ -128,8 +129,6 @@ struct normal_transform {
 };
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-
-namespace kps = phi::kps;
 
 /*********************** Distribution Function *************************/
 
@@ -288,7 +287,7 @@ __global__ void DistributionKernel(size_t size,
   using SType = hiprandStatePhilox4_32_10_t;
 #endif
   size_t total_thread = GRID_NUM_X * BLOCK_NUM_X;
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   MT args[kCount];
   T result[kCount];
   for (size_t i = idx; i < size; i += total_thread * kCount) {
@@ -311,22 +310,36 @@ void distribution_and_transform(const GPUContext &dev_ctx,
   if (size == 0) return;
   auto gen_cuda = dev_ctx.GetGenerator();
 
-  size_t block_size = 256;
-  size_t expect_grid_size = (size + block_size - 1) / block_size;
+  size_t block_size;
+  size_t grid_size;
+  uint64_t increment;
 
-  int64_t device_id = dev_ctx.GetPlace().GetDeviceId();
-  const auto &prop = phi::backends::gpu::GetDeviceProperties(device_id);
+  if (funcs::IsDeterministicRNG()) {
+    constexpr int kCount = DistOp::kReturnsCount;
+    auto cfg = funcs::GetDeterministicRNGConfig(size, kCount);
+    block_size = cfg.block_size;
+    grid_size = cfg.grid_size;
+    increment = cfg.increment;
+  } else {
+    block_size = 256;
+    size_t expect_grid_size = (size + block_size - 1) / block_size;
 
-  size_t max_grid_size = (prop.maxThreadsPerMultiProcessor / block_size) *
-                         prop.multiProcessorCount;
-  size_t grid_size =
-      expect_grid_size > max_grid_size ? max_grid_size : expect_grid_size;
+    int64_t device_id = dev_ctx.GetPlace().GetDeviceId();
+    const auto &prop = phi::backends::gpu::GetDeviceProperties(device_id);
+
+    size_t max_grid_size = (prop.maxThreadsPerMultiProcessor / block_size) *
+                           prop.multiProcessorCount;
+    grid_size =
+        expect_grid_size > max_grid_size ? max_grid_size : expect_grid_size;
+
+    size_t total_thread = block_size * grid_size;
+    size_t curand4_loop_times =
+        (size + 4 * total_thread - 1) / (4 * total_thread);
+    // 'increment' should be multiple of 4
+    increment = curand4_loop_times * 4;
+  }
 
   size_t total_thread = block_size * grid_size;
-  size_t curand4_loop_times =
-      (size + 4 * total_thread - 1) / (4 * total_thread);
-  // 'increment' should be multiple of 4
-  uint64_t increment = curand4_loop_times * 4;
 
   auto seed_offset = gen_cuda->IncrementOffset(increment);
   uint64_t seed = seed_offset.first;

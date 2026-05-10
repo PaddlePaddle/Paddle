@@ -30,7 +30,7 @@ CustomDeviceStreamResourcePool::CustomDeviceStreamResourcePool(
   pool_.reserve(dev_cnt);
   for (int dev_idx = 0; dev_idx < dev_cnt; ++dev_idx) {
     auto creator = [place, dev_idx, this] {
-      auto place_ = phi::CustomPlace(place.GetDeviceType(), dev_idx);
+      auto place_ = CustomPlace(place.GetDeviceType(), dev_idx);
       phi::DeviceManager::SetDevice(place_);
 
       phi::stream::Stream* stream = new phi::stream::Stream;
@@ -86,7 +86,7 @@ CustomDeviceStreamResourcePool& CustomDeviceStreamResourcePool::Instance(
          ++i) {
       pool[place.GetDeviceType()].emplace_back(
           new CustomDeviceStreamResourcePool(
-              phi::CustomPlace(place.GetDeviceType(), i)));
+              CustomPlace(place.GetDeviceType(), i)));
     }
   }
   PADDLE_ENFORCE_LT(
@@ -128,7 +128,7 @@ CustomDeviceEventResourcePool::CustomDeviceEventResourcePool(
   pool_.reserve(dev_cnt);
   for (int dev_idx = 0; dev_idx < dev_cnt; ++dev_idx) {
     auto creator = [place, dev_idx, this] {
-      auto place_ = phi::CustomPlace(place.GetDeviceType(), dev_idx);
+      auto place_ = CustomPlace(place.GetDeviceType(), dev_idx);
       phi::DeviceManager::SetDevice(place_);
 
       phi::event::Event* event = new phi::event::Event;
@@ -169,7 +169,7 @@ void CustomDeviceEventResourcePool::Release() {
 }
 
 CustomDeviceEventResourcePool& CustomDeviceEventResourcePool::Instance(
-    const phi::Place& place) {
+    const Place& place) {
   auto& pool = GetMap();
   PADDLE_ENFORCE_EQ(
       phi::is_custom_place(place),
@@ -184,7 +184,7 @@ CustomDeviceEventResourcePool& CustomDeviceEventResourcePool::Instance(
          ++i) {
       pool[place.GetDeviceType()].emplace_back(
           new CustomDeviceEventResourcePool(
-              phi::CustomPlace(place.GetDeviceType(), i)));
+              CustomPlace(place.GetDeviceType(), i)));
     }
   }
   PADDLE_ENFORCE_LT(

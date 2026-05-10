@@ -46,7 +46,7 @@ struct GaussianGenerator {
   __host__ __device__ T operator()(const unsigned int n) const {
     thrust::minstd_rand rng;
     rng.seed(seed_);
-    using MT = typename dtype::MPTypeTrait<T>::Type;
+    using MT = typename MPTypeTrait<T>::Type;
     thrust::normal_distribution<MT> dist(static_cast<MT>(mean_),
                                          static_cast<MT>(std_));
     unsigned int new_n = n + offset_;
@@ -100,7 +100,7 @@ void GaussianRandom(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
   if (seed == 0) {
     // use global Generator seed
-    using MT = typename dtype::MPTypeTrait<T>::Type;
+    using MT = typename MPTypeTrait<T>::Type;
     funcs::normal_distribution<MT> dist;
     funcs::normal_transform<MT> trans(static_cast<MT>(mean),
                                       static_cast<MT>(std));
@@ -167,7 +167,7 @@ void GaussianRandomInplace(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
   if (seed == 0) {
     // use global Generator seed
-    using MT = typename dtype::MPTypeTrait<T>::Type;
+    using MT = typename MPTypeTrait<T>::Type;
     funcs::normal_distribution<MT> dist;
     funcs::normal_transform<MT> trans(static_cast<MT>(mean),
                                       static_cast<MT>(std));

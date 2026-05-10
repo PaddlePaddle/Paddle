@@ -387,7 +387,7 @@ void* CustomAllocator::Alloc(size_t* index, size_t size) {
   if (size <= 0) return nullptr;
 
   void* p;
-  auto place = phi::CustomPlace(dev_type_, dev_id_);
+  auto place = CustomPlace(dev_type_, dev_id_);
   auto device = phi::DeviceManager::GetDeviceWithPlace(place);
   p = device->MemoryAllocate(size);
   if (LIKELY(p)) {
@@ -428,7 +428,7 @@ void CustomAllocator::Free(void* p, size_t size, size_t index) {
                         size,
                         plug_alloc_size));
   plug_alloc_size -= size;
-  auto place = phi::CustomPlace(dev_type_, dev_id_);
+  auto place = CustomPlace(dev_type_, dev_id_);
   auto device = phi::DeviceManager::GetDeviceWithPlace(place);
   device->MemoryDeallocate(p, size);
   DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, size);

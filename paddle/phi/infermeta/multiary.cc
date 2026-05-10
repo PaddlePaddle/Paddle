@@ -2323,7 +2323,7 @@ void Fp8GemmBlockwiseInferMeta(const MetaTensor& A,
       2,
       errors::InvalidArgument("Input B should have 2 dimensions"));
 
-  const auto IsFp8Dtype = [](const paddle::DataType dtype) {
+  const auto IsFp8Dtype = [](const DataType dtype) {
     return dtype == DataType::FLOAT8_E4M3FN || dtype == DataType::FLOAT8_E5M2;
   };
 
@@ -2849,11 +2849,12 @@ void FusionGroupInferMeta(const std::vector<const MetaTensor*>& ins,
   }
 
   for (size_t j = 0; j < num_outs; ++j) {
-    if (outs_dtype[j] == phi::TransToProtoVarType(DataType::FLOAT16)) {
+    DataType out_dtype = TransToPhiDataType(outs_dtype[j]);
+    if (out_dtype == DataType::FLOAT16) {
       outs[j]->set_dtype(DataType::FLOAT16);
-    } else if (outs_dtype[j] == phi::TransToProtoVarType(DataType::FLOAT32)) {
+    } else if (out_dtype == DataType::FLOAT32) {
       outs[j]->set_dtype(DataType::FLOAT32);
-    } else if (outs_dtype[j] == phi::TransToProtoVarType(DataType::FLOAT64)) {
+    } else if (out_dtype == DataType::FLOAT64) {
       outs[j]->set_dtype(DataType::FLOAT64);
     }
   }

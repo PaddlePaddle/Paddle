@@ -25,28 +25,28 @@ template <>
 void SplitDenseTensorByNumelWithType(const phi::XPUContext &dev_ctx,
                                      const DenseTensor &t_in,
                                      std::vector<DenseTensor> *t_list,
-                                     phi::DataType type) {
+                                     DataType type) {
   switch (type) {
-    case phi::DataType::FLOAT16:
+    case DataType::FLOAT16:
       SplitDenseTensorByNumel<phi::XPUContext, phi::dtype::float16>()(
           dev_ctx, t_in, t_list);
       break;
-    case phi::DataType::BFLOAT16:
+    case DataType::BFLOAT16:
       SplitDenseTensorByNumel<phi::XPUContext, phi::dtype::bfloat16>()(
           dev_ctx, t_in, t_list);
       break;
-    case phi::DataType::FLOAT32:
+    case DataType::FLOAT32:
       SplitDenseTensorByNumel<phi::XPUContext, float>()(dev_ctx, t_in, t_list);
       break;
-    case phi::DataType::INT32:
+    case DataType::INT32:
       SplitDenseTensorByNumel<phi::XPUContext, int32_t>()(
           dev_ctx, t_in, t_list);
       break;
-    case phi::DataType::INT64:
+    case DataType::INT64:
       SplitDenseTensorByNumel<phi::XPUContext, int64_t>()(
           dev_ctx, t_in, t_list);
       break;
-    case phi::DataType::UINT8:
+    case DataType::UINT8:
       SplitDenseTensorByNumel<phi::XPUContext, uint8_t>()(
           dev_ctx, t_in, t_list);
       break;
@@ -60,29 +60,29 @@ template <>
 void ConcatDenseTensorByNumelWithType(const phi::XPUContext &dev_ctx,
                                       const std::vector<DenseTensor> &t_list,
                                       DenseTensor *p_out,
-                                      phi::DataType type) {
+                                      DataType type) {
   switch (type) {
-    case phi::DataType::FLOAT16:
+    case DataType::FLOAT16:
       ConcatDenseTensorByNumel<phi::XPUContext, phi::dtype::float16>()(
           dev_ctx, t_list, p_out);
       break;
-    case phi::DataType::BFLOAT16:
+    case DataType::BFLOAT16:
       ConcatDenseTensorByNumel<phi::XPUContext, phi::dtype::bfloat16>()(
           dev_ctx, t_list, p_out);
       break;
-    case phi::DataType::FLOAT32:
+    case DataType::FLOAT32:
       ConcatDenseTensorByNumel<phi::XPUContext, float>()(
           dev_ctx, t_list, p_out);
       break;
-    case phi::DataType::INT32:
+    case DataType::INT32:
       ConcatDenseTensorByNumel<phi::XPUContext, int32_t>()(
           dev_ctx, t_list, p_out);
       break;
-    case phi::DataType::INT64:
+    case DataType::INT64:
       ConcatDenseTensorByNumel<phi::XPUContext, int64_t>()(
           dev_ctx, t_list, p_out);
       break;
-    case phi::DataType::UINT8:
+    case DataType::UINT8:
       ConcatDenseTensorByNumel<phi::XPUContext, uint8_t>()(
           dev_ctx, t_list, p_out);
       break;

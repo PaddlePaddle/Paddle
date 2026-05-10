@@ -31,10 +31,9 @@ namespace tests {
 
 TEST(IntArray, ConstructFromCPUDenseTensor) {
   auto& pool = paddle::experimental::DeviceContextPool::Instance();
-  const auto* dev_ctx =
-      static_cast<const phi::CPUContext*>(pool.Get(CPUPlace()));
-  phi::DenseTensor shape = Full<int>(*dev_ctx, {2}, 3);
-  phi::DenseTensor out = Full<int>(*dev_ctx, shape, 1);
+  const auto* dev_ctx = static_cast<const CPUContext*>(pool.Get(CPUPlace()));
+  DenseTensor shape = Full<int>(*dev_ctx, {2}, 3);
+  DenseTensor out = Full<int>(*dev_ctx, shape, 1);
   ASSERT_EQ(out.dims().size(), 2);
   ASSERT_EQ(out.dims()[0], 3);
   ASSERT_EQ(out.dims()[1], 3);
@@ -43,12 +42,11 @@ TEST(IntArray, ConstructFromCPUDenseTensor) {
 
 TEST(IntArray, ConstructFromCPUDenseTensorVector) {
   auto& pool = paddle::experimental::DeviceContextPool::Instance();
-  const auto* dev_ctx =
-      static_cast<const phi::CPUContext*>(pool.Get(CPUPlace()));
-  phi::DenseTensor shape0 = Full<int>(*dev_ctx, {1}, 3);
-  phi::DenseTensor shape1 = Full<int64_t>(*dev_ctx, {1}, 3);
-  std::vector<phi::DenseTensor> shape{shape0, shape1};
-  phi::DenseTensor out = Full<int>(*dev_ctx, shape, 1);
+  const auto* dev_ctx = static_cast<const CPUContext*>(pool.Get(CPUPlace()));
+  DenseTensor shape0 = Full<int>(*dev_ctx, {1}, 3);
+  DenseTensor shape1 = Full<int64_t>(*dev_ctx, {1}, 3);
+  std::vector<DenseTensor> shape{shape0, shape1};
+  DenseTensor out = Full<int>(*dev_ctx, shape, 1);
   ASSERT_EQ(out.dims().size(), 2);
   ASSERT_EQ(out.dims()[0], 3);
   ASSERT_EQ(out.dims()[1], 3);
@@ -99,8 +97,8 @@ TEST(IntArray, ConstructFromGPUDenseTensor) {
   auto& pool = paddle::experimental::DeviceContextPool::Instance();
   const auto* dev_ctx =
       static_cast<const phi::GPUContext*>(pool.Get(GPUPlace()));
-  phi::DenseTensor shape = Full<int>(*dev_ctx, {2}, 3);
-  phi::DenseTensor out = Full<int>(*dev_ctx, shape, 1);
+  DenseTensor shape = Full<int>(*dev_ctx, {2}, 3);
+  DenseTensor out = Full<int>(*dev_ctx, shape, 1);
   ASSERT_EQ(out.dims().size(), 2);
   ASSERT_EQ(out.dims()[0], 3);
   ASSERT_EQ(out.dims()[1], 3);
@@ -111,10 +109,10 @@ TEST(IntArray, ConstructFromGPUDenseTensorVector) {
   auto& pool = paddle::experimental::DeviceContextPool::Instance();
   const auto* dev_ctx =
       static_cast<const phi::GPUContext*>(pool.Get(GPUPlace()));
-  phi::DenseTensor shape0 = Full<int>(*dev_ctx, {1}, 3);
-  phi::DenseTensor shape1 = Full<int64_t>(*dev_ctx, {1}, 3);
-  std::vector<phi::DenseTensor> shape{shape0, shape1};
-  phi::DenseTensor out = Full<int>(*dev_ctx, shape, 1);
+  DenseTensor shape0 = Full<int>(*dev_ctx, {1}, 3);
+  DenseTensor shape1 = Full<int64_t>(*dev_ctx, {1}, 3);
+  std::vector<DenseTensor> shape{shape0, shape1};
+  DenseTensor out = Full<int>(*dev_ctx, shape, 1);
   ASSERT_EQ(out.dims().size(), 2);
   ASSERT_EQ(out.dims()[0], 3);
   ASSERT_EQ(out.dims()[1], 3);

@@ -22,8 +22,8 @@ namespace phi {
 
 template <typename T>
 struct CudaSoftReluGradFunctor {
-  using MPType = typename dtype::MPTypeTrait<T>::Type;
-  MPType one = static_cast<MPType>(1.0f);
+  using MT = typename MPTypeTrait<T>::Type;
+  MT one = static_cast<MT>(1.0f);
   float threshold;
 
   void SetAttrs(float threshold_) { threshold = threshold_; }
@@ -31,9 +31,9 @@ struct CudaSoftReluGradFunctor {
   // dx = (out > -threshold && out < threshold) ? dout * (1 - exp(-out)) : 0
   // threshold should not be negative
   __device__ __forceinline__ T operator()(const T arg_dout, const T arg_out) {
-    MPType dout = static_cast<MPType>(arg_dout);
-    MPType out = static_cast<MPType>(arg_out);
-    MPType t = static_cast<MPType>(threshold);
+    MT dout = static_cast<MT>(arg_dout);
+    MT out = static_cast<MT>(arg_out);
+    MT t = static_cast<MT>(threshold);
     return (out > -t && out < t) ? static_cast<T>(dout * (one - exp(-out)))
                                  : static_cast<T>(0.0f);
   }

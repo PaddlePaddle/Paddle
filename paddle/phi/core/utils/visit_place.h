@@ -21,10 +21,10 @@ namespace phi {
 
 // need add dependency to phi_place when use phi::VisitPlace
 template <typename Visitor>
-typename Visitor::result_type VisitPlace(const phi::Place& place,
+typename Visitor::result_type VisitPlace(const Place& place,
                                          const Visitor& visitor) {
   switch (place.GetType()) {
-    case phi::AllocationType::GPU: {
+    case AllocationType::GPU: {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       phi::GPUPlace p(place.GetDeviceId());
       return visitor(p);
@@ -34,7 +34,7 @@ typename Visitor::result_type VisitPlace(const phi::Place& place,
       return typename Visitor::result_type();
 #endif
     }
-    case phi::AllocationType::GPUPINNED: {
+    case AllocationType::GPUPINNED: {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       phi::GPUPinnedPlace p;
       return visitor(p);
@@ -44,7 +44,7 @@ typename Visitor::result_type VisitPlace(const phi::Place& place,
       return typename Visitor::result_type();
 #endif
     }
-    case phi::AllocationType::XPU: {
+    case AllocationType::XPU: {
 #ifdef PADDLE_WITH_XPU
       phi::XPUPlace p(place.GetDeviceId());
       return visitor(p);
@@ -54,7 +54,7 @@ typename Visitor::result_type VisitPlace(const phi::Place& place,
       return typename Visitor::result_type();
 #endif
     }
-    case phi::AllocationType::XPUPINNED: {
+    case AllocationType::XPUPINNED: {
 #if defined(PADDLE_WITH_XPU)
       phi::XPUPinnedPlace p;
       return visitor(p);
@@ -64,9 +64,9 @@ typename Visitor::result_type VisitPlace(const phi::Place& place,
       return typename Visitor::result_type();
 #endif
     }
-    case phi::AllocationType::IPU: {
+    case AllocationType::IPU: {
 #ifdef PADDLE_WITH_IPU
-      phi::IPUPlace p(place.GetDeviceId());
+      IPUPlace p(place.GetDeviceId());
       return visitor(p);
 #else
       PADDLE_THROW(common::errors::Unavailable(
@@ -74,9 +74,9 @@ typename Visitor::result_type VisitPlace(const phi::Place& place,
       return typename Visitor::result_type();
 #endif
     }
-    case phi::AllocationType::CUSTOM: {
+    case AllocationType::CUSTOM: {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-      phi::CustomPlace p(place.GetDeviceType(), place.GetDeviceId());
+      CustomPlace p(place.GetDeviceType(), place.GetDeviceId());
       return visitor(p);
 #else
       PADDLE_THROW(common::errors::Unavailable(

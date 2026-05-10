@@ -35,7 +35,7 @@ void TileKernel(const Context& dev_ctx,
   rank = std::max(rank, repeat_times_size);
 
   if (rank == 0) {
-    Copy<DeviceContext>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     return;
   }
 

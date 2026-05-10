@@ -94,7 +94,7 @@ void VarGradKernel(const Context& dev_ctx,
   // For float16/bfloat16, multiplications are performed in AccT (float32) to
   // match PyTorch's opmath behavior, which uses float32 for intermediate
   // multiply computations on float16 tensors.
-  using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using AccT = typename MPTypeTrait<T>::Type;
   DenseTensor x_mean = Mean<T, Context>(dev_ctx, x, axes64, /*keepdim=*/true);
   DenseTensor diff = Subtract<T, Context>(dev_ctx, x, x_mean);
   dev_ctx.template Alloc<T>(x_grad);

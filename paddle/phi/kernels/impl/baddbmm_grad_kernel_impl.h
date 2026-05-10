@@ -32,7 +32,7 @@ struct BCopyOrScaleFunctor {
       : scale_(scale), x_(x), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    using MPType = typename dtype::MPTypeTrait<T>::Type;
+    using MPType = typename MPTypeTrait<T>::Type;
     const MPType mp_scale = static_cast<MPType>(scale_);
     const MPType mp_x = static_cast<MPType>(x_[idx]);
     output_[idx] = static_cast<T>(mp_scale * mp_x);
@@ -60,7 +60,7 @@ void BaddbmmGradKernel(const Context& dev_ctx,
                        DenseTensor* input_grad,
                        DenseTensor* x_grad,
                        DenseTensor* y_grad) {
-  using MPType = typename dtype::MPTypeTrait<T>::Type;
+  using MPType = typename MPTypeTrait<T>::Type;
   bool is_float16_or_bfloat16 = false;
   if (std::is_same<T, float16>::value || std::is_same<T, bfloat16>::value) {
     is_float16_or_bfloat16 = true;
