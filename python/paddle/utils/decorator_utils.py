@@ -760,6 +760,98 @@ def index_select_decorator() -> Callable[
     return decorator
 
 
+# PyTorch positional layout for each loss API. Each entry maps the API
+# name to the index of ``size_average`` and ``reduce`` in PyTorch's
+# positional layout; the rest is recovered from Paddle's own signature
+# via Python's parameter binding. Loss APIs with the same shape share a
+# single dict by reference (``_SA0_RD1`` etc.) to keep the table compact.
+_SA0_RD1 = {'size_average': 0, 'reduce': 1}
+_SA1_RD2 = {'size_average': 1, 'reduce': 2}
+_SA1_RD3 = {'size_average': 1, 'reduce': 3}
+_SA2_RD4 = {'size_average': 2, 'reduce': 4}
+_SA3_RD4 = {'size_average': 3, 'reduce': 4}
+_SA4_RD5 = {'size_average': 4, 'reduce': 5}
+_SA2_RD3 = {'size_average': 2, 'reduce': 3}
+_SA3_RD5 = {'size_average': 3, 'reduce': 5}
+_SA4_RD6 = {'size_average': 4, 'reduce': 6}
+_SA5_RD7 = {'size_average': 5, 'reduce': 7}
+_SA7_RD8 = {'size_average': 7, 'reduce': 8}
+
+LEGACY_POS: dict[str, dict[str, int]] = {
+    # ----- Layer __init__ (positions are after ``self``) -----
+    **dict.fromkeys(
+        (
+            'L1Loss',
+            'MSELoss',
+            'KLDivLoss',
+            'SmoothL1Loss',
+            'SoftMarginLoss',
+            'MultiLabelMarginLoss',
+        ),
+        _SA0_RD1,
+    ),
+    **dict.fromkeys(
+        (
+            'BCELoss',
+            'BCEWithLogitsLoss',
+            'MultiLabelSoftMarginLoss',
+            'HingeEmbeddingLoss',
+            'CosineEmbeddingLoss',
+            'MarginRankingLoss',
+        ),
+        _SA1_RD2,
+    ),
+    'CrossEntropyLoss': _SA1_RD3,
+    'NLLLoss': _SA1_RD3,
+    'PoissonNLLLoss': _SA2_RD4,
+    'MultiMarginLoss': _SA3_RD4,
+    'TripletMarginLoss': _SA4_RD5,
+    # ----- Functional APIs -----
+    **dict.fromkeys(
+        (
+            'l1_loss',
+            'mse_loss',
+            'kl_div',
+            'smooth_l1_loss',
+            'soft_margin_loss',
+            'multi_label_margin_loss',
+        ),
+        _SA2_RD3,
+    ),
+    **dict.fromkeys(
+        (
+            'binary_cross_entropy',
+            'binary_cross_entropy_with_logits',
+            'multi_label_soft_margin_loss',
+            'hinge_embedding_loss',
+        ),
+        _SA3_RD4,
+    ),
+    **dict.fromkeys(
+        ('cosine_embedding_loss', 'margin_ranking_loss'),
+        _SA4_RD5,
+    ),
+    'nll_loss': _SA3_RD5,
+    'cross_entropy': _SA3_RD5,
+    'poisson_nll_loss': _SA4_RD6,
+    'multi_margin_loss': _SA5_RD7,
+    'triplet_margin_loss': _SA7_RD8,
+}
+
+
+# Disambiguation for APIs whose Paddle-positional layout has a string
+# ``reduction`` value at the same slot where PyTorch expects a bool
+# legacy flag. If the value at the listed slot is one of the recognized
+# reduction strings, the call is Paddle-positional and the legacy
+# decorator should leave it alone.
+LEGACY_SPECIAL_GUARD: dict[str, tuple[int, frozenset[str]]] = {
+    'CrossEntropyLoss': (2, frozenset({'mean', 'sum', 'none'})),
+    'KLDivLoss': (0, frozenset({'mean', 'sum', 'none', 'batchmean'})),
+    'cross_entropy': (4, frozenset({'mean', 'sum', 'none'})),
+    'kl_div': (2, frozenset({'mean', 'sum', 'none', 'batchmean'})),
+}
+
+
 def compute_legacy_reduction(reduce_val, size_average_val):
     if reduce_val is False:
         return 'none'
@@ -768,79 +860,128 @@ def compute_legacy_reduction(reduce_val, size_average_val):
     return 'sum' if size_average_val is False else 'mean'
 
 
+def _peek_legacy_reduction(name, use_args, kwargs):
+    """Detect ``size_average`` / ``reduce`` from kwargs or positional args.
+
+    Returns ``(sa, rd, drops)``:
+
+    * ``sa``, ``rd`` are the values found, or ``''`` if not provided.
+      ``None`` is treated as "not provided" (matches PyTorch's semantics).
+    * ``drops`` is the list of positional indices that should be removed
+      from ``use_args`` if and when we commit to translating. Kwargs are
+      not popped at peek time so that the caller can decline to translate
+      (the special-case path) without losing user input.
+
+    For positional detection we look at ``args[sa_idx]`` / ``args[rd_idx]``
+    and only treat the slot as a legacy flag when the value is a ``bool``
+    -- a ``str`` ``'mean'`` or an ``int`` reduction value at the same slot
+    is left alone, which is what disambiguates Paddle-positional calls
+    such as ``KLDivLoss('mean', True)`` from the PyTorch-positional form.
+    """
+    pos = LEGACY_POS.get(name)
+    if pos is None:
+        return '', '', []
+    sa, rd = '', ''
+    drops = []
+
+    sa_idx = pos['size_average']
+    if 'size_average' in kwargs:
+        v = kwargs['size_average']
+        if v is not None:
+            sa = v
+    elif len(use_args) > sa_idx and type(use_args[sa_idx]) is bool:
+        sa = use_args[sa_idx]
+        drops.append(sa_idx)
+
+    rd_idx = pos['reduce']
+    if 'reduce' in kwargs:
+        v = kwargs['reduce']
+        if v is not None:
+            rd = v
+    elif len(use_args) > rd_idx and type(use_args[rd_idx]) is bool:
+        rd = use_args[rd_idx]
+        drops.append(rd_idx)
+
+    return sa, rd, drops
+
+
+def _is_paddle_positional_special(name, use_args):
+    """Return True if the call matches a known Paddle-positional shape
+    that would otherwise look like PyTorch-positional.
+
+    Example: ``KLDivLoss('mean', True)`` puts a ``bool`` at the
+    ``reduce`` slot, but the user is calling Paddle-positional with
+    ``log_target=True`` -- the ``str`` at slot 0 is the unambiguous
+    fingerprint.
+    """
+    guard = LEGACY_SPECIAL_GUARD.get(name)
+    if guard is None:
+        return False
+    idx, allowed = guard
+    return len(use_args) > idx and use_args[idx] in allowed
+
+
 def legacy_reduction_decorator(fn=None, *, is_method=True):
-    """Pop deprecated ``size_average`` / ``reduce`` and translate to
-    ``reduction``, matching :class:`torch.nn` loss APIs.
+    """Translate deprecated ``size_average`` / ``reduce`` args (kwargs or
+    positional) into Paddle's ``reduction``, with a ``DeprecationWarning``.
 
-    Relies on the wrapped function (or method) already declaring
-    ``size_average=None`` and ``reduce=None`` in its own signature, at
-    PyTorch-compatible positions. The decorator binds the call against
-    that signature with :func:`inspect.signature.bind_partial`, so both
-    PyTorch-style positional calls (e.g. ``L1Loss(None, None, 'mean')``)
-    and keyword calls (e.g. ``L1Loss(size_average=False)``) are handled
-    by Python itself. We only:
+    The decorator handles both passing styles:
 
-    1. Pop ``size_average`` / ``reduce`` from the bound kwargs.
-    2. Backfill ``reduction`` if either was set, with a
-       ``DeprecationWarning``. ``None`` means "not provided", consistent
-       with PyTorch's semantics.
-    3. As a backwards-compat shim for Paddle-style positional callers
-       like ``L1Loss('mean')`` (where ``'mean'`` lands in the new
-       ``size_average`` slot), forward a non-``None`` / non-``bool``
-       value to ``reduction`` instead of treating it as a legacy flag.
+    * **kwargs**: pop ``size_average`` / ``reduce`` from ``kwargs``.
+    * **positional**: look at the slot listed in ``LEGACY_POS`` for this
+      API; if the value is a ``bool`` it is the legacy flag, otherwise
+      the call is Paddle-positional and we leave it alone.
+
+    On commit, the popped/extracted values are run through
+    ``compute_legacy_reduction`` to produce the equivalent ``reduction``
+    string, which is set on ``kwargs`` (overriding any previous value),
+    a ``DeprecationWarning`` is emitted, and any positional flag values
+    are deleted from ``use_args`` so Python's normal binding maps the
+    remaining positional arguments to Paddle's signature.
 
     Per-API name aliases (``target`` / ``label``, ``beta`` / ``delta``,
-    ``eps`` / ``epsilon``, ...) are handled by separate decorators
-    (``param_one_alias`` etc.) stacked above this one where needed.
+    ``eps`` / ``epsilon``, ...) live in separate decorators
+    (``param_one_alias`` etc.) stacked above this one.
     """
 
     def decorate(f):
-        sig = inspect.signature(f)
-
         @functools.wraps(f)
         def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
             if is_method:
+                # avoid subclass calling parent class init, causing
+                # name to be inaccurate
                 name = f.__qualname__.split(".")[0]
+                self_args, use_args = args[:1], list(args[1:])
             else:
                 name = f.__name__
+                self_args, use_args = (), list(args)
 
-            try:
-                bound = sig.bind_partial(*args, **kwargs)
-            except TypeError:
-                # Unbindable call (extra args, missing required) — let
-                # the wrapped function raise the natural error.
-                return f(*args, **kwargs)
-            kw = dict(bound.arguments)
-
-            sa = kw.pop('size_average', None)
-            rd = kw.pop('reduce', None)
-
-            # Paddle-style positional callers may have landed a non-bool /
-            # non-None value (e.g. the string 'mean') in the size_average
-            # slot. Forward it to ``reduction`` silently rather than
-            # treating it as a legacy flag.
-            if sa is not None and not isinstance(sa, bool):
-                kw.setdefault('reduction', sa)
-                sa = None
-            if rd is not None and not isinstance(rd, bool):
-                kw.setdefault('reduction', rd)
-                rd = None
-
-            if sa is not None or rd is not None:
-                suggested = compute_legacy_reduction(
-                    rd if rd is not None else '',
-                    sa if sa is not None else '',
+            sa, rd, drops = _peek_legacy_reduction(name, use_args, kwargs)
+            if sa != '' or rd != '':
+                only_positional = (
+                    'size_average' not in kwargs and 'reduce' not in kwargs
                 )
-                kw['reduction'] = suggested
-                warnings.warn(
-                    f"'size_average' and 'reduce' args of '{name}' will be "
-                    f"deprecated, please use reduction='{suggested}' instead.",
-                    DeprecationWarning,
-                    stacklevel=3,
-                )
-            return f(**kw)
+                if not (
+                    only_positional
+                    and _is_paddle_positional_special(name, use_args)
+                ):
+                    # Commit: pop kwargs, drop positional flags, set reduction.
+                    kwargs.pop('size_average', None)
+                    kwargs.pop('reduce', None)
+                    for idx in sorted(drops, reverse=True):
+                        del use_args[idx]
+                    suggested = compute_legacy_reduction(rd, sa)
+                    kwargs['reduction'] = suggested
+                    warnings.warn(
+                        f"'size_average' and 'reduce' args of '{name}' will "
+                        f"be deprecated, please use reduction='{suggested}' "
+                        f"instead.",
+                        DeprecationWarning,
+                        stacklevel=3,
+                    )
+            return f(*self_args, *use_args, **kwargs)
 
-        wrapper.__signature__ = sig
+        wrapper.__signature__ = inspect.signature(f)
         return wrapper
 
     if fn is None:
@@ -848,13 +989,7 @@ def legacy_reduction_decorator(fn=None, *, is_method=True):
     return decorate(fn)
 
 
-# Functional variant — same logic without skipping ``self``. The "special"
-# case for CrossEntropyLoss / KLDivLoss positional ambiguity is absorbed
-# into the layout-based detection itself: positional args are only converted
-# when the ``size_average`` slot holds ``bool``/``None``, so calls like
-# ``KLDivLoss('mean', True)`` (str at slot 0) and
-# ``CrossEntropyLoss(w, -100, 'mean', True)`` (int at slot 1) naturally
-# fall through unmodified.
+# Functional variant — same logic without skipping ``self``.
 legacy_reduction_func_decorator = legacy_reduction_decorator(is_method=False)
 
 

@@ -622,8 +622,6 @@ def binary_cross_entropy(
     input: Tensor,
     label: Tensor,
     weight: Tensor | None = None,
-    size_average: bool | None = None,
-    reduce: bool | None = None,
     reduction: _ReduceMode = 'mean',
     name: str | None = None,
 ) -> Tensor:
@@ -760,8 +758,6 @@ def binary_cross_entropy_with_logits(
     logit: Tensor,
     label: Tensor,
     weight: Tensor | None = None,
-    size_average: bool | None = None,
-    reduce: bool | None = None,
     reduction: _ReduceMode = 'mean',
     pos_weight: Tensor | None = None,
     name: str | None = None,
@@ -1156,8 +1152,6 @@ def hsigmoid_loss(
 def smooth_l1_loss(
     input: Tensor,
     label: Tensor,
-    size_average: bool | None = None,
-    reduce: bool | None = None,
     reduction: _ReduceMode = 'mean',
     delta: float = 1.0,
     is_huber: bool = True,
@@ -1275,8 +1269,6 @@ def margin_ranking_loss(
     other: Tensor,
     label: Tensor,
     margin: float = 0.0,
-    size_average: bool | None = None,
-    reduce: bool | None = None,
     reduction: _ReduceMode = 'mean',
     name: str | None = None,
 ) -> Tensor:
@@ -1401,8 +1393,6 @@ def margin_ranking_loss(
 def l1_loss(
     input: Tensor,
     label: Tensor,
-    size_average: bool | None = None,
-    reduce: bool | None = None,
     reduction: _ReduceMode = 'mean',
     name: str | None = None,
 ) -> Tensor:
@@ -1514,8 +1504,6 @@ def nll_loss(
     label: Tensor,
     weight: Tensor | None = None,
     ignore_index: int = -100,
-    size_average: bool | None = None,
-    reduce: bool | None = None,
     reduction: _ReduceMode = 'mean',
     name: str | None = None,
 ) -> Tensor:
@@ -1652,8 +1640,6 @@ def poisson_nll_loss(
     log_input: bool = True,
     full: bool = False,
     epsilon: float = 1e-08,
-    size_average: bool | None = None,
-    reduce: bool | None = None,
     reduction: _ReduceMode = 'mean',
     name: str | None = None,
 ) -> Tensor:
@@ -1772,8 +1758,6 @@ def poisson_nll_loss(
 def kl_div(
     input: Tensor,
     label: Tensor,
-    size_average: bool | None = None,
-    reduce: bool | None = None,
     reduction: _ReduceMode = 'mean',
     log_target: bool = False,
     name: str | None = None,
@@ -1923,8 +1907,6 @@ def kl_div(
 def mse_loss(
     input: Tensor,
     label: Tensor,
-    size_average: bool | None = None,
-    reduce: bool | None = None,
     reduction: _ReduceMode = 'mean',
     name: str | None = None,
 ) -> Tensor:
@@ -2824,8 +2806,6 @@ def cross_entropy(
     label: Tensor,
     weight: Tensor | None = None,
     ignore_index: int = -100,
-    size_average: bool | None = None,
-    reduce: bool | None = None,
     reduction: _ReduceMode = 'mean',
     soft_label: bool = False,
     axis: int = -1,
@@ -3670,8 +3650,6 @@ def multi_label_soft_margin_loss(
     input: Tensor,
     label: Tensor,
     weight: Tensor | None = None,
-    size_average: bool | None = None,
-    reduce: bool | None = None,
     reduction: _ReduceMode = 'mean',
     name: str | None = None,
 ) -> Tensor:
@@ -3788,8 +3766,6 @@ def hinge_embedding_loss(
     input: Tensor,
     label: Tensor,
     margin: float = 1.0,
-    size_average: bool | None = None,
-    reduce: bool | None = None,
     reduction: _ReduceMode = 'mean',
     name: str | None = None,
 ) -> Tensor:
@@ -3903,8 +3879,6 @@ def cosine_embedding_loss(
     input2: Tensor,
     label: Tensor,
     margin: float = 0,
-    size_average: bool | None = None,
-    reduce: bool | None = None,
     reduction: _ReduceMode = 'mean',
     name: str | None = None,
 ) -> Tensor:
@@ -4187,8 +4161,6 @@ def triplet_margin_loss(
     p: float = 2,
     epsilon: float = 1e-06,
     swap: bool = False,
-    size_average: bool | None = None,
-    reduce: bool | None = None,
     reduction: _ReduceMode = 'mean',
     name: str | None = None,
 ) -> Tensor:
@@ -4319,8 +4291,6 @@ def multi_margin_loss(
     p: int = 1,
     margin: float = 1.0,
     weight: Tensor | None = None,
-    size_average: bool | None = None,
-    reduce: bool | None = None,
     reduction: _ReduceMode = 'mean',
     name: str | None = None,
 ) -> Tensor:
@@ -4451,8 +4421,6 @@ def multi_margin_loss(
 def multi_label_margin_loss(
     input: Tensor,
     label: Tensor,
-    size_average: bool | None = None,
-    reduce: bool | None = None,
     reduction: _ReduceMode = 'mean',
     name: str | None = None,
 ) -> Tensor:
@@ -4575,8 +4543,6 @@ def multi_label_margin_loss(
 def soft_margin_loss(
     input: Tensor,
     label: Tensor,
-    size_average: bool | None = None,
-    reduce: bool | None = None,
     reduction: _ReduceMode = 'mean',
     name: str | None = None,
 ) -> Tensor:
