@@ -49,12 +49,9 @@ inline at::Tensor sparse_coo_tensor(const at::Tensor& indices,
   paddle::Tensor idx = indices._PD_GetInner();
   paddle::Tensor vals = values._PD_GetInner();
 
-  if (options.dtype_opt().has_value() &&
-      options.dtype_opt().value() != values.scalar_type()) {
-    vals = paddle::experimental::cast(
-        vals,
-        compat::_PD_AtenScalarTypeToPhiDataType(options.dtype_opt().value()));
-  }
+  // PyTorch ignores dtype mismatch between values and TensorOptions in
+  // sparse_coo_tensor; the resulting sparse tensor uses values' original dtype.
+  // Do not cast or throw here.
 
   if (options.pinned_memory()) {
     phi::Place base_place = options._PD_GetPlace();

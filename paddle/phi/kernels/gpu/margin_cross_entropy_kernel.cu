@@ -16,7 +16,7 @@
 
 namespace phi {
 
-template <typename T, typename MPType, typename IndexT>
+template <typename T, typename MT, typename IndexT>
 __global__ void AddMarginToPositiveLogitsKernel(T* logit,
                                                 const IndexT* label,
                                                 const float margin1,
@@ -42,47 +42,47 @@ __global__ void AddMarginToPositiveLogitsKernel(T* logit,
 
     if (real_label >= start_index && real_label < end_index) {
       int64_t offset = i * D + real_label - start_index;
-      MPType x = static_cast<MPType>(logit[offset]);
-      MPType theta = acos(x);
-      theta *= static_cast<MPType>(margin1);
-      theta += static_cast<MPType>(margin2);
-      MPType y = cos(theta) - static_cast<MPType>(margin3);
+      MT x = static_cast<MT>(logit[offset]);
+      MT theta = acos(x);
+      theta *= static_cast<MT>(margin1);
+      theta += static_cast<MT>(margin2);
+      MT y = cos(theta) - static_cast<MT>(margin3);
       logit[offset] = static_cast<T>(y);
     }
   }
 }
 
-template <typename T, typename MPType>
+template <typename T, typename MT>
 __global__ void ScaleLogitKernel(T* logits,
                                  const float scale,
                                  const int64_t N,
                                  const int64_t D) {
   CUDA_KERNEL_LOOP_TYPE(i, N * D, int64_t) {
-    logits[i] = static_cast<MPType>(logits[i]) * (scale);
+    logits[i] = static_cast<MT>(logits[i]) * (scale);
   }
 }
 
-template <typename T, typename MPType>
+template <typename T, typename MT>
 __global__ void LogitsMinusMaxKernel(T* logits,
                                      const T* logits_max_per_row,
                                      const int64_t N,
                                      const int64_t D) {
   CUDA_KERNEL_LOOP_TYPE(i, N * D, int64_t) {
     auto row = i / D;
-    logits[i] = static_cast<MPType>(logits[i]) -
-                static_cast<MPType>(logits_max_per_row[row]);
+    logits[i] =
+        static_cast<MT>(logits[i]) - static_cast<MT>(logits_max_per_row[row]);
   }
 }
 
-template <typename T, typename MPType>
+template <typename T, typename MT>
 __global__ void LogitsMinusLogSumKernel(T* logits,
                                         const T* logits_sum_per_row,
                                         const int64_t N,
                                         const int64_t D) {
   CUDA_KERNEL_LOOP_TYPE(i, N * D, int64_t) {
     auto row = i / D;
-    logits[i] = static_cast<MPType>(logits[i]) -
-                static_cast<MPType>(kps::details::Log(logits_sum_per_row[row]));
+    logits[i] = static_cast<MT>(logits[i]) -
+                static_cast<MT>(kps::details::Log(logits_sum_per_row[row]));
   }
 }
 
@@ -124,7 +124,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
                               DenseTensor* softmax,
                               DenseTensor* loss) {
   const auto& place = dev_ctx.GetPlace();  // old code
-  using MPType = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   distributed::NCCLCommContext* comm_ctx = nullptr;
@@ -184,7 +184,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
   // save match_logits, used for gradient computation.
   if (label_type == DataType::INT32) {
     typedef int32_t LabelT;
-    AddMarginToPositiveLogitsKernel<T, MPType>
+    AddMarginToPositiveLogitsKernel<T, MT>
         <<<NumBlocks(N), threads, 0, dev_ctx.stream()>>>(
             logits_ptr,
             labels.data<LabelT>(),
@@ -198,7 +198,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
             class_interval.data<int>());
   } else if (label_type == DataType::INT64) {
     typedef int64_t LabelT;
-    AddMarginToPositiveLogitsKernel<T, MPType>
+    AddMarginToPositiveLogitsKernel<T, MT>
         <<<NumBlocks(N), threads, 0, dev_ctx.stream()>>>(
             logits_ptr,
             labels.data<LabelT>(),
@@ -218,9 +218,8 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
   }
 
   // scale by s
-  ScaleLogitKernel<T, MPType>
-      <<<NumBlocks(N * D), threads, 0, dev_ctx.stream()>>>(
-          logits_ptr, scale, N, D);
+  ScaleLogitKernel<T, MT><<<NumBlocks(N * D), threads, 0, dev_ctx.stream()>>>(
+      logits_ptr, scale, N, D);
 
   // step 2, obtain logit_max
   DenseTensor logits_max;
@@ -242,7 +241,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
 #endif
 
   // step 3, logit - logit_max
-  LogitsMinusMaxKernel<T, MPType>
+  LogitsMinusMaxKernel<T, MT>
       <<<NumBlocks(N * D), threads, 0, dev_ctx.stream()>>>(
           logits_ptr, logits_max_buff, N, D);
 
@@ -265,7 +264,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
 #endif
 
   // step 5, (logit - logit_max) - log(sum(exp(logit - logit_max)))
-  LogitsMinusLogSumKernel<T, MPType>
+  LogitsMinusLogSumKernel<T, MT>
       <<<NumBlocks(N * D), threads, 0, dev_ctx.stream()>>>(
           logits_ptr, sum_exp_logits_buff, N, D);
 

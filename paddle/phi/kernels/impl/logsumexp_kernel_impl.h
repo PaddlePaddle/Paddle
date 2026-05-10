@@ -34,7 +34,7 @@ template <typename T>
 struct LogsumexpFunctor {
   template <typename Context, typename X, typename Y, typename Dim>
   void operator()(const Context& place, X* x, Y* y, const Dim& dim) {
-    using MT = typename dtype::MPTypeTrait<T>::Type;
+    using MT = typename MPTypeTrait<T>::Type;
     auto x_dim = x->dimensions();
     auto t_dim = x_dim;
     for (int i = 0; i < static_cast<int>(dim.size()); i++) {

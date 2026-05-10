@@ -23,8 +23,6 @@ limitations under the License. */
 
 namespace phi::distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 ////////////////// Utils Functions //////////////////
 
 TensorDistAttr GetMatmulInferredDistAttr(
@@ -119,8 +117,8 @@ SpmdInfo MatmulInferSpmd(const DistMetaTensor& x,
                          bool trans_x,
                          bool trans_y) {
   // Step0: verify input args based on matmul logic
-  auto ori_x_shape = common::vectorize(x.dims());
-  auto ori_y_shape = common::vectorize(y.dims());
+  auto ori_x_shape = vectorize(x.dims());
+  auto ori_y_shape = vectorize(y.dims());
   int x_ndim = static_cast<int>(ori_x_shape.size());
   int y_ndim = static_cast<int>(ori_y_shape.size());
   const auto& x_dist_attr_src = x.dist_attr();
@@ -183,8 +181,8 @@ SpmdInfo MatmulInferSpmd(const DistMetaTensor& x,
       x_axes, x_dims_mapping);
   std::pair<std::string, std::vector<std::vector<int64_t>>> y_pair(
       y_axes, y_dims_mapping);
-  auto x_shape = common::vectorize(x.dims());
-  auto y_shape = common::vectorize(y.dims());
+  auto x_shape = vectorize(x.dims());
+  auto y_shape = vectorize(y.dims());
   if (trans_x) {
     std::iter_swap(x_shape.end() - 2, x_shape.end() - 1);
   }
@@ -235,11 +233,11 @@ SpmdInfo MatmulInferSpmdReverse(const DistMetaTensor& x,
                                 const DistMetaTensor& out,
                                 bool trans_x,
                                 bool trans_y) {
-  auto out_shape = common::vectorize(out.dims());
+  auto out_shape = vectorize(out.dims());
   int out_ndim = static_cast<int>(out_shape.size());
 
-  auto x_shape = common::vectorize(x.dims());
-  auto y_shape = common::vectorize(y.dims());
+  auto x_shape = vectorize(x.dims());
+  auto y_shape = vectorize(y.dims());
   int x_ndim = static_cast<int>(x_shape.size());
   int y_ndim = static_cast<int>(y_shape.size());
   int max_ndim = std::max(x_ndim, y_ndim);

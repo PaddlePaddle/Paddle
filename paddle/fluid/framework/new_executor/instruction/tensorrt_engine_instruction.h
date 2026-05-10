@@ -66,7 +66,7 @@ class TensorRTEngineInstruction : public InstructionBase {
       output_names_;  // Only record output name that is not empty
   int output_nums_ = 0;
   std::vector<int> outputs_rank_;
-  std::vector<phi::DataType> outputs_dtype_;
+  std::vector<DataType> outputs_dtype_;
   std::string op_name_ = "pd_op.tensorrt_engine";
   pir::Operation* op_{nullptr};  // not owned
   std::string refit_params_path_;

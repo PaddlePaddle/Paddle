@@ -145,7 +145,7 @@ __global__ void BinomialSampling(const T* n,
                                  const int N,
                                  unsigned int seed,
                                  unsigned int offset) {
-  using MT = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   CUDA_KERNEL_LOOP_TYPE(idx, N, int64_t) {
     MT nt = static_cast<MT>(n[idx]);
     MT pt = static_cast<MT>(p[idx]);

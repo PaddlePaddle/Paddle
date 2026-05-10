@@ -38,8 +38,6 @@ namespace framework {
 class CompiledProgramPrivate;
 
 using details::BuildStrategy;
-namespace p = paddle::platform;
-using DeviceType = paddle::platform::DeviceType;
 
 class CompiledProgram {
   DISABLE_COPY_AND_ASSIGN(CompiledProgram);

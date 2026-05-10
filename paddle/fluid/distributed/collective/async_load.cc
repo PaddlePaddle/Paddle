@@ -57,8 +57,8 @@ void AsyncLoad::SyncCalcStream(const Place& place,
   calc_event.Wait(platform::Place2DeviceType(place), ctx);
 }
 
-std::shared_ptr<AsyncLoad::Task> AsyncLoad::Offload(
-    phi::DenseTensor* dst, const phi::DenseTensor& src) {
+std::shared_ptr<AsyncLoad::Task> AsyncLoad::Offload(DenseTensor* dst,
+                                                    const DenseTensor& src) {
   // GPU -> GPUPinned
   const auto& place = src.place();
 
@@ -104,8 +104,8 @@ std::shared_ptr<AsyncLoad::Task> AsyncLoad::Offload(
 }
 
 std::shared_ptr<AsyncLoad::Task> AsyncLoad::OffloadWithOffset(
-    phi::DenseTensor* dst,
-    const phi::DenseTensor& src,
+    DenseTensor* dst,
+    const DenseTensor& src,
     size_t dst_offset,
     size_t src_offset,
     size_t offload_size) {
@@ -176,8 +176,8 @@ std::shared_ptr<AsyncLoad::Task> AsyncLoad::OffloadWithOffset(
   return task;
 }
 
-std::shared_ptr<AsyncLoad::Task> AsyncLoad::Reload(
-    phi::DenseTensor* dst, const phi::DenseTensor& src) {
+std::shared_ptr<AsyncLoad::Task> AsyncLoad::Reload(DenseTensor* dst,
+                                                   const DenseTensor& src) {
   // GPUPinned -> GPU
   const auto& place = src.place();
   PADDLE_ENFORCE_EQ(

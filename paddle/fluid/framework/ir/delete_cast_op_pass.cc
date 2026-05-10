@@ -690,16 +690,16 @@ int DeleteCastOpPass::ApplyCastLookupTablePass(ir::Graph* graph) const {
     auto* w_tensor =
         scope->Var(lookup_table_w->Name())->GetMutable<DenseTensor>();
     lookup_table_w->Var()->SetDataType(proto::VarType::FP16);
-    if (w_tensor->dtype() != phi::DataType::FLOAT16) {
+    if (w_tensor->dtype() != DataType::FLOAT16) {
       auto* cpu_ctx = static_cast<phi::CPUContext*>(
           phi::DeviceContextPool::Instance().Get(CPUPlace()));
       DenseTensor w_fp32_tensor;
       w_fp32_tensor.Resize(w_tensor->dims());
       w_fp32_tensor.set_type(w_tensor->dtype());
       phi::AssignKernel(*cpu_ctx, *w_tensor, &w_fp32_tensor);
-      w_tensor->set_type(phi::DataType::FLOAT16);
+      w_tensor->set_type(DataType::FLOAT16);
       phi::CastKernel<float>(
-          *cpu_ctx, w_fp32_tensor, phi::DataType::FLOAT16, w_tensor);
+          *cpu_ctx, w_fp32_tensor, DataType::FLOAT16, w_tensor);
     }
 
     for (auto* next_op : cast_out->outputs) {

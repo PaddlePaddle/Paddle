@@ -124,10 +124,10 @@ PhiKernelInstruction::PhiKernelInstruction(
   if (infer_meta_interface_) {
     BuildPhiContext<
         phi::InferMetaContext,
-        phi::MetaTensor,
-        phi::MetaTensor,
-        paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
-        paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
+        MetaTensor,
+        MetaTensor,
+        paddle::small_vector<MetaTensor, phi::kInputSmallVectorSize>,
+        paddle::small_vector<MetaTensor, phi::kInputSmallVectorSize>,
         false>(op, *value_exec_info_, yaml_info_parser, &infer_meta_context_);
   }
   VLOG(6) << "finish process infer meta context";

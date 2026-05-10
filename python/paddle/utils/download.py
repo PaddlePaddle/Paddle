@@ -360,7 +360,7 @@ def _safe_extract_zip(zip, path, members=None):
     for member in members_to_check:
         if not _safe_extract_member(member, path, 'zip'):
             raise ValueError(
-                f"Attempted path traversal in tar file: {member.name}"
+                f"Attempted path traversal in zip file: {member.filename}"
             )
     zip.extractall(path, members=members_to_check)
 

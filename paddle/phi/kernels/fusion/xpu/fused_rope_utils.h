@@ -282,7 +282,10 @@ void XPUFusedRotaryEveryTwo(const Context& dev_ctx,
     single_func_name = "rotary_embedding_everytwo_unary_freqs_grad";
     fusion_func_name = "rotary_embedding_everytwo_binary_freqs_grad";
   }
-  if (!in_k) {
+  // Check k/v numel > 0, matching GPU's guard (k && k->numel() > 0), to
+  // avoid passing a zero-element tensor pointer to the XPU library which
+  // causes undefined behavior and overflow outputs.
+  if (!in_k || in_k->numel() == 0) {
     int ret = everytwo_func(dev_ctx.x_context(),
                             reinterpret_cast<const XPUType*>(in_q.data()),
                             nullptr,
@@ -310,7 +313,7 @@ void XPUFusedRotaryEveryTwo(const Context& dev_ctx,
                             10000.0f);
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, fusion_func_name);
   }
-  if (in_v) {
+  if (in_v && in_v->numel() > 0) {
     int64_t num_heads_v = in_v->dims()[2];
     int ret = everytwo_func(dev_ctx.x_context(),
                             reinterpret_cast<const XPUType*>(in_v->data()),
@@ -352,7 +355,10 @@ void XPUFusedRotaryHalf(const Context& dev_ctx,
     fusion_func_name = "xpu::rotary_embedding_half_binary_freqs_grad";
   }
 
-  if (!in_k) {
+  // Check k/v numel > 0, matching GPU's guard (k && k->numel() > 0), to
+  // avoid passing a zero-element tensor pointer to the XPU library which
+  // causes undefined behavior and overflow outputs.
+  if (!in_k || in_k->numel() == 0) {
     int ret = half_func(dev_ctx.x_context(),
                         reinterpret_cast<const XPUType*>(in_q.data()),
                         nullptr,
@@ -389,7 +395,7 @@ void XPUFusedRotaryHalf(const Context& dev_ctx,
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, fusion_func_name);
   }
 
-  if (in_v) {
+  if (in_v && in_v->numel() > 0) {
     int64_t num_heads_v = in_v->dims()[2];
     int ret = half_func(dev_ctx.x_context(),
                         reinterpret_cast<const XPUType*>(in_v->data()),

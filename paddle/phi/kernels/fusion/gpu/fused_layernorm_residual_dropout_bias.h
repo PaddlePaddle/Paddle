@@ -75,14 +75,14 @@ __device__ void CalcLayernormY(
           static_cast<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>>(0);
     }
     // vectorize load data from global
-    phi::Load<T, VecSize>(&x[row_id * cols + i], &x_vec);
+    Load<T, VecSize>(&x[row_id * cols + i], &x_vec);
 
     if (scale != nullptr) {
-      phi::Load<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>, VecSize>(
+      Load<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>, VecSize>(
           &scale[i], &scale_vec);
     }
     if (bias != nullptr) {
-      phi::Load<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>, VecSize>(
+      Load<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>, VecSize>(
           &bias[i], &bias_vec);
     }
 
@@ -93,7 +93,7 @@ __device__ void CalcLayernormY(
                              (static_cast<U>(x_vec[ii]) - mean_val) * invvar +
                          static_cast<U>(bias_vec[ii]));
     }
-    phi::Store<T, VecSize>(y_vec, &y[row_id * cols + i]);
+    Store<T, VecSize>(y_vec, &y[row_id * cols + i]);
   }
 }
 
@@ -595,7 +595,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
   if (bias_ptr != nullptr) {
 #pragma unroll
     for (int64_t it = 0, col = c; it < LDGS; it++) {
-      phi::Load<T, VecSize>(bias_ptr + col * VecSize, &bias[it]);
+      Load<T, VecSize>(bias_ptr + col * VecSize, &bias[it]);
       col += THREADS_PER_ROW;
     }
   }
@@ -604,8 +604,8 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
   Vec_scale beta[LDGS];
 #pragma unroll
   for (int64_t it = 0, col = c; it < LDGS; it++) {
-    phi::Load<ScaleT, VecSize>(gamma_ptr + col * VecSize, &gamma[it]);
-    phi::Load<ScaleT, VecSize>(beta_ptr + col * VecSize, &beta[it]);
+    Load<ScaleT, VecSize>(gamma_ptr + col * VecSize, &gamma[it]);
+    Load<ScaleT, VecSize>(beta_ptr + col * VecSize, &beta[it]);
     col += THREADS_PER_ROW;
   }
 
@@ -620,11 +620,11 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
 #pragma unroll
     for (int64_t it = 0, col = c; it < LDGS; it++) {
       int64_t index = row * ELTS_PER_ROW + col * VecSize;
-      phi::Load<T, VecSize>(residual_ptr + index, &residual[it]);
-      phi::Load<InType, VecSize>(x_ptr + index, &x_input[it]);
+      Load<T, VecSize>(residual_ptr + index, &residual[it]);
+      Load<InType, VecSize>(x_ptr + index, &x_input[it]);
       if (quant_out_scale_ptr != nullptr) {
-        phi::Load<float, VecSize>(quant_out_scale_ptr + col * VecSize,
-                                  &dequant_out_scale[it]);
+        Load<float, VecSize>(quant_out_scale_ptr + col * VecSize,
+                             &dequant_out_scale[it]);
       }
       col += THREADS_PER_ROW;
     }
@@ -704,14 +704,14 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
 #pragma unroll
     for (int it = 0, col = c; it < LDGS; it++) {
       int64_t index = row * ELTS_PER_ROW + col * VecSize;
-      phi::Store<T, VecSize>(x[it], residual_out_ptr + index);
+      Store<T, VecSize>(x[it], residual_out_ptr + index);
       col += THREADS_PER_ROW;
     }
     if (!is_test && HasDropout) {
 #pragma unroll
       for (int it = 0, col = c; it < LDGS; it++) {
         int64_t index = row * ELTS_PER_ROW + col * VecSize;
-        phi::Store<MaskType, VecSize>(mask_vec[it], mask_out_ptr + index);
+        Store<MaskType, VecSize>(mask_vec[it], mask_out_ptr + index);
         col += THREADS_PER_ROW;
       }
     }
@@ -823,9 +823,9 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
     for (int64_t it = 0, col = c; it < LDGS; it++) {
       int64_t index = row * ELTS_PER_ROW + col * VecSize;
       if (std::is_same<OutType, int8_t>::value) {
-        phi::Store<OutType, VecSize>(x_output[it], y_ptr + index);
+        Store<OutType, VecSize>(x_output[it], y_ptr + index);
       } else {
-        phi::Store<T, VecSize>(x[it], reinterpret_cast<T *>(y_ptr) + index);
+        Store<T, VecSize>(x[it], reinterpret_cast<T *>(y_ptr) + index);
       }
       col += THREADS_PER_ROW;
     }

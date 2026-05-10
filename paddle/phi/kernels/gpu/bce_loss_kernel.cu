@@ -28,7 +28,7 @@ namespace phi {
 
 template <typename T>
 struct BCELossFunctor {
-  using MT = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   MT zero = static_cast<MT>(0);
   MT one = static_cast<MT>(1.0f);
   MT neg_100 = static_cast<MT>(-100.);
