@@ -30,9 +30,8 @@ def can_use_cuda_graph():
 
 
 @unittest.skipIf(
-    not (paddle.is_compiled_with_cuda() or is_custom_device())
-    or float(paddle.version.cuda()) < 11.0,
-    "only support cuda >= 11.0",
+    not (paddle.is_compiled_with_cuda() or is_custom_device()),
+    "only support cuda",
 )
 class TestCUDAGraphInDygraphMode(unittest.TestCase):
     def setUp(self):
@@ -107,16 +106,10 @@ class TestCUDAGraphInDygraphMode(unittest.TestCase):
             np.testing.assert_array_equal(z.numpy(), xs_np[i])
 
         output_dir = f'cuda_graph_dot_{os.getpid()}'
-        try:
-            graph.print_to_dot_files(pathlib.Path(output_dir))
-            graph.reset()
-            shutil.rmtree(output_dir)
-        except Exception as e:
-            msg = str(e)
-            sub_msg = "The print_to_dot_files() method is only supported when CUDA version >= 11.3"
-            self.assertTrue(sub_msg in msg)
-        finally:
-            graph.reset()
+        graph.print_to_dot_files(pathlib.Path(output_dir))
+        graph.reset()
+        shutil.rmtree(output_dir)
+        graph.reset()
 
     def test_dataloader(self):
         if not can_use_cuda_graph():
