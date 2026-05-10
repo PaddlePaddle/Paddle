@@ -56,7 +56,7 @@ After the pass is applied:
                     Output
 */
 
-namespace {
+namespace pir {
 
 class RmsNormFusePattern : public paddle::drr::DrrPatternBase {
  private:
@@ -190,13 +190,10 @@ class RmsNormXpuFusePass : public pir::PatternRewritePass {
   }
 };
 
-}  // namespace
-
-namespace pir {
 std::unique_ptr<Pass> CreateRmsNormXpuFusePass() {
   return std::make_unique<RmsNormXpuFusePass>();
 }
 
 }  // namespace pir
 
-REGISTER_IR_PASS(rms_norm_xpu_fuse_pass, RmsNormXpuFusePass);
+REGISTER_IR_PASS(rms_norm_xpu_fuse_pass, pir::RmsNormXpuFusePass);
