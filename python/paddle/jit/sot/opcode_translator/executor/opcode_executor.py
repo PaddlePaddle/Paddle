@@ -143,7 +143,6 @@ COMPARE_OP_NAME_TO_FN = {
 
 # In Python 3.13, the method layout is changed, and a NULL will be pushed after the value.
 CALL_METHOD_LAYOUT_NULL_AFTER_VALUE = sys.version_info >= (3, 13)
-ALREADY_SUPPORTED_EXCEPTION = sys.version_info < (3, 15)
 
 
 @dataclass
@@ -373,18 +372,6 @@ def fallback_when_occur_error(fn: Callable):
             raise FallbackError(
                 f'[Fallback] An exception occurred when processing break graph, fallback to dygraph, error message is: \n{type(e)} : {e}\n'
             )
-
-    return inner
-
-
-def fallback_if_python_version_unsupported(fn: Callable):
-    def inner(*args, **kwargs):
-        if not ALREADY_SUPPORTED_EXCEPTION:
-            raise FallbackError(
-                "SOT currently supports exception handling on Python 3.14 and below. "
-                "Unsupported exception bytecode will fall back to dynamic graph mode."
-            )
-        return fn(*args, **kwargs)
 
     return inner
 
@@ -2127,22 +2114,18 @@ class OpcodeExecutorBase:
         else:
             raise FallbackError(f"No support Intrinsics, {intrinsic_func.name}")
 
-    @fallback_if_python_version_unsupported
     def SETUP_FINALLY(self, instr: Instruction):
         self.vframe.block_stack.append(
             BlockStackItem(instr.opname, instr, instr.jump_to, len(self.stack))
         )
 
-    @fallback_if_python_version_unsupported
     def POP_BLOCK(self, instr: Instruction):
         self.vframe.block_stack.pop()
 
-    @fallback_if_python_version_unsupported
     def LOAD_ASSERTION_ERROR(self, instr: Instruction):
         value = self.vframe.builtins["AssertionError"]
         self.stack.push(value)
 
-    @fallback_if_python_version_unsupported
     def POP_EXCEPT(self, instr: Instruction):
         if sys.version_info >= (3, 11):
             prev_exc = self.stack.pop()
@@ -2190,7 +2173,6 @@ class OpcodeExecutorBase:
 
         raise FallbackError("Attempted to raise a non-Exception type/value.")
 
-    @fallback_if_python_version_unsupported
     def RAISE_VARARGS(self, instr: Instruction):
         if instr.arg == 0:
             if self.exception_stack.empty():
@@ -2223,7 +2205,6 @@ class OpcodeExecutorBase:
                 origin_exc=val.get_py_value()
             )
 
-    @fallback_if_python_version_unsupported
     def JUMP_IF_NOT_EXC_MATCH(self, instr: Instruction):
         assert len(self.stack) >= 2
         expected_exc_types = self.stack.pop()
@@ -2233,7 +2214,6 @@ class OpcodeExecutorBase:
         ):
             self.jump_to(instr.jump_to)
 
-    @fallback_if_python_version_unsupported
     def CHECK_EXC_MATCH(self, instr: Instruction):
         assert len(self.stack) >= 2
         expected_exc_types = self.stack.pop()
@@ -2243,7 +2223,6 @@ class OpcodeExecutorBase:
         )
         self.stack.push(ConstantVariable.wrap_literal(result, self._graph))
 
-    @fallback_if_python_version_unsupported
     def PUSH_EXC_INFO(self, instr: Instruction):
         val = self.stack.pop()
         if len(self.exception_stack) == 0:
@@ -2255,7 +2234,6 @@ class OpcodeExecutorBase:
         self.stack.push(val)
         self.exception_stack.move_current_exception_to_stack()
 
-    @fallback_if_python_version_unsupported
     def RERAISE(self, instr: Instruction):
         if sys.version_info >= (3, 11):
             exc_instance = self.stack.pop()
