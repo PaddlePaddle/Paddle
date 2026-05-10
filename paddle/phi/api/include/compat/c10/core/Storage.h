@@ -32,6 +32,7 @@ namespace c10 {
 
 struct Storage;
 class StorageHolderView;
+using Place = Place;
 
 // Check if two storages share the same underlying allocation
 inline bool isSharedStorageAlias(const Storage& storage0,
@@ -46,7 +47,7 @@ struct StorageImpl {
   phi::Allocator* allocator_ = nullptr;
   size_t nbytes_ = 0;
   bool resizable_ = false;
-  phi::Place place_;
+  Place place_;
   // DataPtr is stored directly (not in a shared_ptr) because all Storage
   // copies already share this StorageImpl, so one level of indirection
   // suffices to propagate mutations.
@@ -73,13 +74,13 @@ class StorageHolderView final : public phi::Allocation {
 
   size_t size() const noexcept override { return impl_ ? impl_->nbytes_ : 0; }
 
-  const phi::Place& place() const noexcept override {
+  const Place& place() const noexcept override {
     return impl_ ? impl_->place_ : place_;
   }
 
  private:
   std::shared_ptr<StorageImpl> impl_;
-  phi::Place place_;
+  Place place_;
 };
 
 struct Storage {
@@ -311,8 +312,8 @@ struct Storage {
   }
 
   // Get the device/place
-  phi::Place device() const {
-    if (!impl_) return phi::Place();
+  Place device() const {
+    if (!impl_) return Place();
     if (impl_->data_allocation_) return impl_->data_allocation_->place();
     return impl_->place_;
   }
@@ -394,7 +395,7 @@ struct Storage {
       impl_->place_ = impl_->data_allocation_->place();
     } else {
       impl_->nbytes_ = 0;
-      impl_->place_ = phi::Place();
+      impl_->place_ = Place();
     }
     impl_->data_ptr_ = viewDataPtrFrom(impl_->data_allocation_);
   }
@@ -403,7 +404,7 @@ struct Storage {
     impl_->data_allocation_ = nullptr;
     impl_->nbytes_ = size_bytes;
     impl_->place_ =
-        new_data_ptr ? new_data_ptr.device()._PD_GetInner() : phi::Place();
+        new_data_ptr ? new_data_ptr.device()._PD_GetInner() : Place();
     impl_->data_ptr_ = std::move(new_data_ptr);
   }
 
