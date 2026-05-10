@@ -194,7 +194,7 @@ phi::DeviceContext* ParseDeviceContext(pir::Operation* op,
       }
 
       if (comm_context) {
-        dev_ctx = static_cast<platform::DeviceContext*>(
+        dev_ctx = static_cast<DeviceContext*>(
             static_cast<COMM_CONTEXT*>(comm_context)->GetDevContext());
         dev_ctx->SetCommContext(comm_context);
 

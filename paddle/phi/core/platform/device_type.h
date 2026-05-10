@@ -40,11 +40,10 @@ constexpr DeviceType kXPU = DeviceType::XPU;
 constexpr DeviceType kIPU = DeviceType::IPU;
 constexpr DeviceType kCUSTOM_DEVICE = DeviceType::CUSTOM_DEVICE;
 
-using DeviceContext = phi::DeviceContext;
-using DeviceContextPool = phi::DeviceContextPool;
-
 }  // namespace platform
 
+using DeviceContext = phi::DeviceContext;
+using DeviceContextPool = phi::DeviceContextPool;
 using platform::kCPU;
 using platform::kCUDA;
 using platform::kCUSTOM_DEVICE;

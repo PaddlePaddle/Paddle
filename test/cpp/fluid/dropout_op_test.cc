@@ -28,11 +28,10 @@ limitations under the License. */
 #include "paddle/utils/string/printf.h"
 
 namespace f = paddle::framework;
-namespace p = paddle::platform;
 
 USE_OP_ITSELF(dropout);
 
-void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
+void Compare(f::Scope* scope, const phi::DeviceContext& ctx) {
   // init
   auto var = scope->Var("X");
   auto tensor = var->GetMutable<phi::DenseTensor>();
