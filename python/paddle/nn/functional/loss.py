@@ -25,6 +25,7 @@ from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
     legacy_reduction_func_decorator,
     param_one_alias,
+    param_two_alias,
     smooth_l1_beta_compat,
 )
 
@@ -615,11 +616,14 @@ def edit_distance(
     return edit_distance_out, sequence_num
 
 
+@param_one_alias(["label", "target"])
 @legacy_reduction_func_decorator
 def binary_cross_entropy(
     input: Tensor,
     label: Tensor,
     weight: Tensor | None = None,
+    size_average: bool | None = None,
+    reduce: bool | None = None,
     reduction: _ReduceMode = 'mean',
     name: str | None = None,
 ) -> Tensor:
@@ -750,11 +754,14 @@ def binary_cross_entropy(
             return out
 
 
+@param_two_alias(["logit", "input"], ["label", "target"])
 @legacy_reduction_func_decorator
 def binary_cross_entropy_with_logits(
     logit: Tensor,
     label: Tensor,
     weight: Tensor | None = None,
+    size_average: bool | None = None,
+    reduce: bool | None = None,
     reduction: _ReduceMode = 'mean',
     pos_weight: Tensor | None = None,
     name: str | None = None,
@@ -1143,11 +1150,14 @@ def hsigmoid_loss(
         return out
 
 
+@param_one_alias(["label", "target"])
 @legacy_reduction_func_decorator
 @smooth_l1_beta_compat
 def smooth_l1_loss(
     input: Tensor,
     label: Tensor,
+    size_average: bool | None = None,
+    reduce: bool | None = None,
     reduction: _ReduceMode = 'mean',
     delta: float = 1.0,
     is_huber: bool = True,
@@ -1256,12 +1266,17 @@ def smooth_l1_loss(
         return paddle.sum(out)
 
 
+@ParamAliasDecorator(
+    {"input": ["input1"], "other": ["input2"], "label": ["target"]}
+)
 @legacy_reduction_func_decorator
 def margin_ranking_loss(
     input: Tensor,
     other: Tensor,
     label: Tensor,
     margin: float = 0.0,
+    size_average: bool | None = None,
+    reduce: bool | None = None,
     reduction: _ReduceMode = 'mean',
     name: str | None = None,
 ) -> Tensor:
@@ -1381,10 +1396,13 @@ def margin_ranking_loss(
             return result_out
 
 
+@param_one_alias(["label", "target"])
 @legacy_reduction_func_decorator
 def l1_loss(
     input: Tensor,
     label: Tensor,
+    size_average: bool | None = None,
+    reduce: bool | None = None,
     reduction: _ReduceMode = 'mean',
     name: str | None = None,
 ) -> Tensor:
@@ -1489,12 +1507,15 @@ def l1_loss(
             return paddle.abs(paddle.subtract(x=input, y=label, name=name))
 
 
+@param_one_alias(["label", "target"])
 @legacy_reduction_func_decorator
 def nll_loss(
     input: Tensor,
     label: Tensor,
     weight: Tensor | None = None,
     ignore_index: int = -100,
+    size_average: bool | None = None,
+    reduce: bool | None = None,
     reduction: _ReduceMode = 'mean',
     name: str | None = None,
 ) -> Tensor:
@@ -1623,6 +1644,7 @@ def nll_loss(
         return out
 
 
+@param_two_alias(["label", "target"], ["epsilon", "eps"])
 @legacy_reduction_func_decorator
 def poisson_nll_loss(
     input: Tensor,
@@ -1630,6 +1652,8 @@ def poisson_nll_loss(
     log_input: bool = True,
     full: bool = False,
     epsilon: float = 1e-08,
+    size_average: bool | None = None,
+    reduce: bool | None = None,
     reduction: _ReduceMode = 'mean',
     name: str | None = None,
 ) -> Tensor:
@@ -1743,10 +1767,13 @@ def poisson_nll_loss(
     return loss_out
 
 
+@param_one_alias(["label", "target"])
 @legacy_reduction_func_decorator
 def kl_div(
     input: Tensor,
     label: Tensor,
+    size_average: bool | None = None,
+    reduce: bool | None = None,
     reduction: _ReduceMode = 'mean',
     log_target: bool = False,
     name: str | None = None,
@@ -1891,10 +1918,13 @@ def kl_div(
         return loss
 
 
+@param_one_alias(["label", "target"])
 @legacy_reduction_func_decorator
 def mse_loss(
     input: Tensor,
     label: Tensor,
+    size_average: bool | None = None,
+    reduce: bool | None = None,
     reduction: _ReduceMode = 'mean',
     name: str | None = None,
 ) -> Tensor:
@@ -2787,12 +2817,15 @@ def softmax_with_cross_entropy(
     )
 
 
+@param_one_alias(["label", "target"])
 @legacy_reduction_func_decorator
 def cross_entropy(
     input: Tensor,
     label: Tensor,
     weight: Tensor | None = None,
     ignore_index: int = -100,
+    size_average: bool | None = None,
+    reduce: bool | None = None,
     reduction: _ReduceMode = 'mean',
     soft_label: bool = False,
     axis: int = -1,
@@ -3631,11 +3664,14 @@ def sigmoid_focal_loss(
         return loss
 
 
+@param_one_alias(["label", "target"])
 @legacy_reduction_func_decorator
 def multi_label_soft_margin_loss(
     input: Tensor,
     label: Tensor,
     weight: Tensor | None = None,
+    size_average: bool | None = None,
+    reduce: bool | None = None,
     reduction: _ReduceMode = 'mean',
     name: str | None = None,
 ) -> Tensor:
@@ -3746,11 +3782,14 @@ def multi_label_soft_margin_loss(
         return paddle.sum(loss)
 
 
+@param_one_alias(["label", "target"])
 @legacy_reduction_func_decorator
 def hinge_embedding_loss(
     input: Tensor,
     label: Tensor,
     margin: float = 1.0,
+    size_average: bool | None = None,
+    reduce: bool | None = None,
     reduction: _ReduceMode = 'mean',
     name: str | None = None,
 ) -> Tensor:
@@ -3857,12 +3896,15 @@ def hinge_embedding_loss(
         return loss
 
 
+@param_one_alias(["label", "target"])
 @legacy_reduction_func_decorator
 def cosine_embedding_loss(
     input1: Tensor,
     input2: Tensor,
     label: Tensor,
     margin: float = 0,
+    size_average: bool | None = None,
+    reduce: bool | None = None,
     reduction: _ReduceMode = 'mean',
     name: str | None = None,
 ) -> Tensor:
@@ -4135,6 +4177,7 @@ def triplet_margin_with_distance_loss(
         return loss
 
 
+@param_two_alias(["input", "anchor"], ["epsilon", "eps"])
 @legacy_reduction_func_decorator
 def triplet_margin_loss(
     input: Tensor,
@@ -4144,6 +4187,8 @@ def triplet_margin_loss(
     p: float = 2,
     epsilon: float = 1e-06,
     swap: bool = False,
+    size_average: bool | None = None,
+    reduce: bool | None = None,
     reduction: _ReduceMode = 'mean',
     name: str | None = None,
 ) -> Tensor:
@@ -4266,6 +4311,7 @@ def triplet_margin_loss(
         return loss
 
 
+@param_one_alias(["label", "target"])
 @legacy_reduction_func_decorator
 def multi_margin_loss(
     input: Tensor,
@@ -4273,6 +4319,8 @@ def multi_margin_loss(
     p: int = 1,
     margin: float = 1.0,
     weight: Tensor | None = None,
+    size_average: bool | None = None,
+    reduce: bool | None = None,
     reduction: _ReduceMode = 'mean',
     name: str | None = None,
 ) -> Tensor:
@@ -4398,10 +4446,13 @@ def multi_margin_loss(
         return loss
 
 
+@param_one_alias(["label", "target"])
 @legacy_reduction_func_decorator
 def multi_label_margin_loss(
     input: Tensor,
     label: Tensor,
+    size_average: bool | None = None,
+    reduce: bool | None = None,
     reduction: _ReduceMode = 'mean',
     name: str | None = None,
 ) -> Tensor:
@@ -4519,10 +4570,13 @@ def multi_label_margin_loss(
         return losses
 
 
+@param_one_alias(["label", "target"])
 @legacy_reduction_func_decorator
 def soft_margin_loss(
     input: Tensor,
     label: Tensor,
+    size_average: bool | None = None,
+    reduce: bool | None = None,
     reduction: _ReduceMode = 'mean',
     name: str | None = None,
 ) -> Tensor:

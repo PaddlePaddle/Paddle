@@ -760,291 +760,6 @@ def index_select_decorator() -> Callable[
     return decorator
 
 
-# Per-loss alignment table consumed by ``legacy_reduction_decorator``.
-#
-# ``layout`` is the PyTorch positional layout (under PyTorch's parameter
-# names). When a call's ``size_average`` slot holds a ``bool`` / ``None``,
-# we treat the call as PyTorch-positional and convert all positional args
-# to kwargs by their PyTorch name. Calls with non-bool at that slot fall
-# through unchanged and are interpreted as Paddle-positional.
-#
-# ``rename`` (optional) maps PyTorch kwarg names to Paddle kwarg names.
-# After positional-to-kwargs conversion (or when the user calls with
-# kwargs directly), each PyTorch name is renamed in-place. Examples:
-# ``target -> label``, ``beta -> delta``, ``eps -> epsilon``, etc.
-#
-# Folding both fields here means each loss API needs exactly one
-# decorator: ``@legacy_reduction_decorator`` (layer) or
-# ``@legacy_reduction_func_decorator`` (functional). The only loss that
-# stacks an extra decorator is ``smooth_l1_loss`` /  ``SmoothL1Loss``,
-# which use ``@smooth_l1_beta_compat`` for PyTorch's non-Huber formula.
-LEGACY_POS: dict[str, dict] = {
-    # ----- Layer __init__ (args after self) -----
-    'L1Loss': {'layout': ['size_average', 'reduce', 'reduction']},
-    'MSELoss': {'layout': ['size_average', 'reduce', 'reduction']},
-    'KLDivLoss': {
-        'layout': ['size_average', 'reduce', 'reduction', 'log_target'],
-    },
-    'SmoothL1Loss': {
-        'layout': ['size_average', 'reduce', 'reduction', 'beta'],
-    },
-    'SoftMarginLoss': {'layout': ['size_average', 'reduce', 'reduction']},
-    'MultiLabelMarginLoss': {
-        'layout': ['size_average', 'reduce', 'reduction'],
-    },
-    'BCELoss': {
-        'layout': ['weight', 'size_average', 'reduce', 'reduction'],
-    },
-    'BCEWithLogitsLoss': {
-        'layout': [
-            'weight',
-            'size_average',
-            'reduce',
-            'reduction',
-            'pos_weight',
-        ],
-    },
-    'MultiLabelSoftMarginLoss': {
-        'layout': ['weight', 'size_average', 'reduce', 'reduction'],
-    },
-    'HingeEmbeddingLoss': {
-        'layout': ['margin', 'size_average', 'reduce', 'reduction'],
-    },
-    'CosineEmbeddingLoss': {
-        'layout': ['margin', 'size_average', 'reduce', 'reduction'],
-    },
-    'MarginRankingLoss': {
-        'layout': ['margin', 'size_average', 'reduce', 'reduction'],
-    },
-    'CrossEntropyLoss': {
-        'layout': [
-            'weight',
-            'size_average',
-            'ignore_index',
-            'reduce',
-            'reduction',
-            'label_smoothing',
-        ],
-    },
-    'NLLLoss': {
-        'layout': [
-            'weight',
-            'size_average',
-            'ignore_index',
-            'reduce',
-            'reduction',
-        ],
-    },
-    'PoissonNLLLoss': {
-        'layout': [
-            'log_input',
-            'full',
-            'size_average',
-            'eps',
-            'reduce',
-            'reduction',
-        ],
-        'rename': {'eps': 'epsilon'},
-    },
-    'MultiMarginLoss': {
-        'layout': [
-            'p',
-            'margin',
-            'weight',
-            'size_average',
-            'reduce',
-            'reduction',
-        ],
-    },
-    'TripletMarginLoss': {
-        'layout': [
-            'margin',
-            'p',
-            'eps',
-            'swap',
-            'size_average',
-            'reduce',
-            'reduction',
-        ],
-        'rename': {'eps': 'epsilon'},
-    },
-    # ----- Functional APIs -----
-    'l1_loss': {
-        'layout': ['input', 'target', 'size_average', 'reduce', 'reduction'],
-        'rename': {'target': 'label'},
-    },
-    'mse_loss': {
-        'layout': ['input', 'target', 'size_average', 'reduce', 'reduction'],
-        'rename': {'target': 'label'},
-    },
-    'kl_div': {
-        'layout': [
-            'input',
-            'target',
-            'size_average',
-            'reduce',
-            'reduction',
-            'log_target',
-        ],
-        'rename': {'target': 'label'},
-    },
-    'smooth_l1_loss': {
-        'layout': [
-            'input',
-            'target',
-            'size_average',
-            'reduce',
-            'reduction',
-            'beta',
-        ],
-        'rename': {'target': 'label'},
-    },
-    'soft_margin_loss': {
-        'layout': ['input', 'target', 'size_average', 'reduce', 'reduction'],
-        'rename': {'target': 'label'},
-    },
-    'multi_label_margin_loss': {
-        'layout': ['input', 'target', 'size_average', 'reduce', 'reduction'],
-        'rename': {'target': 'label'},
-    },
-    'binary_cross_entropy': {
-        'layout': [
-            'input',
-            'target',
-            'weight',
-            'size_average',
-            'reduce',
-            'reduction',
-        ],
-        'rename': {'target': 'label'},
-    },
-    'binary_cross_entropy_with_logits': {
-        'layout': [
-            'input',
-            'target',
-            'weight',
-            'size_average',
-            'reduce',
-            'reduction',
-            'pos_weight',
-        ],
-        'rename': {'input': 'logit', 'target': 'label'},
-    },
-    'multi_label_soft_margin_loss': {
-        'layout': [
-            'input',
-            'target',
-            'weight',
-            'size_average',
-            'reduce',
-            'reduction',
-        ],
-        'rename': {'target': 'label'},
-    },
-    'hinge_embedding_loss': {
-        'layout': [
-            'input',
-            'target',
-            'margin',
-            'size_average',
-            'reduce',
-            'reduction',
-        ],
-        'rename': {'target': 'label'},
-    },
-    'cosine_embedding_loss': {
-        'layout': [
-            'input1',
-            'input2',
-            'target',
-            'margin',
-            'size_average',
-            'reduce',
-            'reduction',
-        ],
-        'rename': {'target': 'label'},
-    },
-    'margin_ranking_loss': {
-        'layout': [
-            'input1',
-            'input2',
-            'target',
-            'margin',
-            'size_average',
-            'reduce',
-            'reduction',
-        ],
-        'rename': {'input1': 'input', 'input2': 'other', 'target': 'label'},
-    },
-    'nll_loss': {
-        'layout': [
-            'input',
-            'target',
-            'weight',
-            'size_average',
-            'ignore_index',
-            'reduce',
-            'reduction',
-        ],
-        'rename': {'target': 'label'},
-    },
-    'cross_entropy': {
-        'layout': [
-            'input',
-            'target',
-            'weight',
-            'size_average',
-            'ignore_index',
-            'reduce',
-            'reduction',
-            'label_smoothing',
-        ],
-        'rename': {'target': 'label'},
-    },
-    'poisson_nll_loss': {
-        'layout': [
-            'input',
-            'target',
-            'log_input',
-            'full',
-            'size_average',
-            'eps',
-            'reduce',
-            'reduction',
-        ],
-        'rename': {'target': 'label', 'eps': 'epsilon'},
-    },
-    'multi_margin_loss': {
-        'layout': [
-            'input',
-            'target',
-            'p',
-            'margin',
-            'weight',
-            'size_average',
-            'reduce',
-            'reduction',
-        ],
-        'rename': {'target': 'label'},
-    },
-    'triplet_margin_loss': {
-        'layout': [
-            'anchor',
-            'positive',
-            'negative',
-            'margin',
-            'p',
-            'eps',
-            'swap',
-            'size_average',
-            'reduce',
-            'reduction',
-        ],
-        'rename': {'anchor': 'input', 'eps': 'epsilon'},
-    },
-}
-
-
 def compute_legacy_reduction(reduce_val, size_average_val):
     if reduce_val is False:
         return 'none'
@@ -1054,83 +769,78 @@ def compute_legacy_reduction(reduce_val, size_average_val):
 
 
 def legacy_reduction_decorator(fn=None, *, is_method=True):
-    """Translate PyTorch-style loss API calls into Paddle's signature.
+    """Pop deprecated ``size_average`` / ``reduce`` and translate to
+    ``reduction``, matching :class:`torch.nn` loss APIs.
 
-    For each loss API listed in ``LEGACY_POS`` this single decorator does:
+    Relies on the wrapped function (or method) already declaring
+    ``size_average=None`` and ``reduce=None`` in its own signature, at
+    PyTorch-compatible positions. The decorator binds the call against
+    that signature with :func:`inspect.signature.bind_partial`, so both
+    PyTorch-style positional calls (e.g. ``L1Loss(None, None, 'mean')``)
+    and keyword calls (e.g. ``L1Loss(size_average=False)``) are handled
+    by Python itself. We only:
 
-    Step 1 — PyTorch positional → kwargs. If the call's ``size_average``
-    slot holds a ``bool`` / ``None`` (the unambiguous PyTorch fingerprint
-    distinguishing it from a Paddle-internal positional call whose
-    ``size_average`` slot holds a ``str`` reduction or an ``int``),
-    convert all positional args to kwargs by their PyTorch name.
+    1. Pop ``size_average`` / ``reduce`` from the bound kwargs.
+    2. Backfill ``reduction`` if either was set, with a
+       ``DeprecationWarning``. ``None`` means "not provided", consistent
+       with PyTorch's semantics.
+    3. As a backwards-compat shim for Paddle-style positional callers
+       like ``L1Loss('mean')`` (where ``'mean'`` lands in the new
+       ``size_average`` slot), forward a non-``None`` / non-``bool``
+       value to ``reduction`` instead of treating it as a legacy flag.
 
-    Step 2 — PyTorch kwarg name → Paddle kwarg name, using the ``rename``
-    mapping in ``LEGACY_POS`` (e.g. ``target -> label``,
-    ``beta -> delta``, ``eps -> epsilon``).
-
-    Step 3 — pop deprecated ``size_average`` / ``reduce`` and set
-    ``reduction`` accordingly. PyTorch semantics: ``None`` means
-    "not provided"; only translate when at least one is non-None. Emits
-    a ``DeprecationWarning`` matching PyTorch's wording.
+    Per-API name aliases (``target`` / ``label``, ``beta`` / ``delta``,
+    ``eps`` / ``epsilon``, ...) are handled by separate decorators
+    (``param_one_alias`` etc.) stacked above this one where needed.
     """
 
     def decorate(f):
+        sig = inspect.signature(f)
+
         @functools.wraps(f)
         def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
             if is_method:
-                # avoid subclass calling parent class init, causing
-                # name to be inaccurate
                 name = f.__qualname__.split(".")[0]
-                self_args, use_args = args[:1], list(args[1:])
             else:
                 name = f.__name__
-                self_args, use_args = (), list(args)
 
-            entry = LEGACY_POS.get(name)
-            if entry is not None:
-                layout = entry['layout']
-                rename = entry.get('rename', {})
+            try:
+                bound = sig.bind_partial(*args, **kwargs)
+            except TypeError:
+                # Unbindable call (extra args, missing required) — let
+                # the wrapped function raise the natural error.
+                return f(*args, **kwargs)
+            kw = dict(bound.arguments)
 
-                # Step 1: PyTorch positional layout → kwargs by PyTorch name.
-                sa_idx = layout.index('size_average')
-                if len(use_args) > sa_idx and (
-                    type(use_args[sa_idx]) is bool or use_args[sa_idx] is None
-                ):
-                    for i, val in enumerate(use_args):
-                        if i < len(layout):
-                            kwargs.setdefault(layout[i], val)
-                    use_args = []
+            sa = kw.pop('size_average', None)
+            rd = kw.pop('reduce', None)
 
-                # Step 2: rename PyTorch kwarg names to Paddle kwarg names.
-                for pt_name, pd_name in rename.items():
-                    if pt_name in kwargs:
-                        if pd_name in kwargs:
-                            raise ValueError(
-                                f"Cannot specify both '{pd_name}' and its "
-                                f"alias '{pt_name}'"
-                            )
-                        kwargs[pd_name] = kwargs.pop(pt_name)
+            # Paddle-style positional callers may have landed a non-bool /
+            # non-None value (e.g. the string 'mean') in the size_average
+            # slot. Forward it to ``reduction`` silently rather than
+            # treating it as a legacy flag.
+            if sa is not None and not isinstance(sa, bool):
+                kw.setdefault('reduction', sa)
+                sa = None
+            if rd is not None and not isinstance(rd, bool):
+                kw.setdefault('reduction', rd)
+                rd = None
 
-            # Step 3: pop legacy size_average / reduce, set reduction.
-            sa_val = kwargs.pop('size_average', '')
-            rd_val = kwargs.pop('reduce', '')
-            sa_set = sa_val != '' and sa_val is not None
-            rd_set = rd_val != '' and rd_val is not None
-            if sa_set or rd_set:
+            if sa is not None or rd is not None:
                 suggested = compute_legacy_reduction(
-                    rd_val if rd_set else '',
-                    sa_val if sa_set else '',
+                    rd if rd is not None else '',
+                    sa if sa is not None else '',
                 )
-                kwargs['reduction'] = suggested
+                kw['reduction'] = suggested
                 warnings.warn(
                     f"'size_average' and 'reduce' args of '{name}' will be "
                     f"deprecated, please use reduction='{suggested}' instead.",
                     DeprecationWarning,
                     stacklevel=3,
                 )
-            return f(*self_args, *use_args, **kwargs)
+            return f(**kw)
 
-        wrapper.__signature__ = inspect.signature(f)
+        wrapper.__signature__ = sig
         return wrapper
 
     if fn is None:
