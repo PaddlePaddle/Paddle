@@ -1689,7 +1689,7 @@ class TestMSRAInitializerFanoutDygraph(unittest.TestCase):
         hist, _ = output_hist(tensor.numpy())
 
         hist2, _ = output_hist(
-            np.random.normal(0, np.sqrt(2.0 / (1024)), [16, 1024])
+            np.random.normal(0, np.sqrt(2.0 / (16)), [16, 1024])
         )
 
         np.testing.assert_allclose(hist, hist2, rtol=0, atol=0.01)
