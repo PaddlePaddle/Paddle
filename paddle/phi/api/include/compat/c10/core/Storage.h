@@ -32,7 +32,7 @@ namespace c10 {
 
 struct Storage;
 class StorageHolderView;
-using Place = Place;
+using Place = phi::Place;
 
 // Check if two storages share the same underlying allocation
 inline bool isSharedStorageAlias(const Storage& storage0,
