@@ -15,6 +15,7 @@ import os
 import pathlib
 import shutil
 import unittest
+import warnings
 
 import numpy as np
 from op_test import is_custom_device
@@ -473,6 +474,123 @@ class TestCUDAGraphInDygraphMode(unittest.TestCase):
         )
         if cuda_ver >= 12.4:
             np.testing.assert_allclose(y.numpy(), x_new_val - 1.0, rtol=1e-5)
+        g.reset()
+
+
+@unittest.skipIf(
+    not (paddle.is_compiled_with_cuda() or is_custom_device())
+    or float(paddle.version.cuda()) < 11.0,
+    "only support cuda >= 11.0",
+)
+class TestPaddleCudaCUDAGraphCompat(unittest.TestCase):
+    """Tests for ``paddle.cuda.CUDAGraph``, the PyTorch-compatible wrapper.
+
+    Verifies wrapper-level behavior (constructor signature, pool token
+    handling, error gating, no-op shims) as well as a single end-to-end
+    capture/replay round-trip.
+    """
+
+    def setUp(self):
+        if can_use_cuda_graph():
+            paddle.set_flags(
+                {
+                    'FLAGS_allocator_strategy': 'auto_growth',
+                    'FLAGS_sync_nccl_allreduce': False,
+                    'FLAGS_cudnn_deterministic': True,
+                    'FLAGS_use_stream_safe_cuda_allocator': False,
+                }
+            )
+
+    def test_constructor_keep_graph(self):
+        from paddle.cuda import CUDAGraph as PtCUDAGraph
+
+        g = PtCUDAGraph()
+        self.assertFalse(g._keep_graph)
+        g2 = PtCUDAGraph(keep_graph=True)
+        self.assertTrue(g2._keep_graph)
+
+    def test_pool_returns_int_idempotent(self):
+        from paddle.cuda import CUDAGraph as PtCUDAGraph
+
+        g = PtCUDAGraph()
+        token = g.pool()
+        self.assertIsInstance(token, int)
+        self.assertEqual(g.pool(), token)
+
+    def test_capture_begin_pool_propagation(self):
+        from paddle.cuda import CUDAGraph as PtCUDAGraph
+
+        g = PtCUDAGraph()
+        # Avoid entering an actual CUDA capture; stub the impl so we can
+        # check only that the pool token is propagated to both the wrapper
+        # and the underlying impl.
+        g._impl.capture_begin = lambda: None
+        g.capture_begin(pool=42)
+        self.assertEqual(g._pool_token, 42)
+        self.assertEqual(g._impl._pool_id, 42)
+
+    def test_capture_error_mode_warns(self):
+        from paddle.cuda import CUDAGraph as PtCUDAGraph
+
+        g = PtCUDAGraph()
+        g._impl.capture_begin = lambda: None
+        with warnings.catch_warnings(record=True) as ws:
+            warnings.simplefilter("always")
+            g.capture_begin(capture_error_mode="thread_local")
+        self.assertTrue(any("capture_error_mode" in str(w.message) for w in ws))
+
+    def test_instantiate_is_noop(self):
+        from paddle.cuda import CUDAGraph as PtCUDAGraph
+
+        g = PtCUDAGraph()
+        self.assertIsNone(g.instantiate())
+
+    def test_debug_dump_requires_enable_debug_mode(self):
+        from paddle.cuda import CUDAGraph as PtCUDAGraph
+
+        g = PtCUDAGraph()
+        with self.assertRaises(RuntimeError):
+            g.debug_dump("/tmp/no_such_path")
+        g.enable_debug_mode()
+        self.assertTrue(g._debug_mode)
+
+    def test_raw_handles_not_implemented(self):
+        from paddle.cuda import CUDAGraph as PtCUDAGraph
+
+        g = PtCUDAGraph()
+        with self.assertRaises(NotImplementedError):
+            g.raw_cuda_graph()
+        with self.assertRaises(NotImplementedError):
+            g.raw_cuda_graph_exec()
+
+    def test_capture_replay_round_trip(self):
+        if not can_use_cuda_graph():
+            return
+        from paddle.cuda import CUDAGraph as PtCUDAGraph
+
+        shape = [2, 3]
+        x = paddle.to_tensor(
+            np.random.randint(0, 10, size=shape).astype("float32")
+        )
+        z = paddle.to_tensor(
+            np.random.randint(0, 10, size=shape).astype("float32")
+        )
+
+        g = PtCUDAGraph()
+        g.capture_begin()
+        y = x + 10
+        z.add_(x)
+        g.capture_end()
+        g.instantiate()  # no-op but should not error
+
+        z_before = z.numpy().copy()
+        x_new = paddle.to_tensor(
+            np.random.randint(0, 10, size=shape).astype("float32")
+        )
+        x.copy_(x_new, False)
+        g.replay()
+        self.assertTrue((y.numpy() - x.numpy() == 10).all())
+        self.assertTrue((z.numpy() - z_before == x.numpy()).all())
         g.reset()
 
 
