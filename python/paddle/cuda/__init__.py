@@ -433,6 +433,13 @@ class CudaError(RuntimeError):
         super().__init__(f"{msg} ({code})")
 
 
+class OutOfMemoryError(RuntimeError):
+    """Exception raised when a CUDA operation fails due to running out of GPU memory."""
+
+    def __init__(self, msg: str) -> None:
+        super().__init__(msg)
+
+
 def check_error(res: int) -> None:
     r"""Check the return code of a CUDA runtime API call.
 
@@ -847,6 +854,8 @@ def get_stream_from_external(
 
 
 __all__ = [
+    "CudaError",
+    "OutOfMemoryError",
     "cudart",
     "check_error",
     "is_available",
