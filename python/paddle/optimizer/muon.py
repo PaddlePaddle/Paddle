@@ -626,6 +626,7 @@ class Muon(Optimizer):
 
         # --- Pass 1: Muon updates (large temporary tensors) ---
         lr_tensor = paddle.to_tensor(lr, dtype=paddle.float32)
+        lr_tensor_f64 = paddle.to_tensor(lr, dtype=paddle.float64)
         for param, grad in muon_params:
             self._muon_update(
                 param,
@@ -645,7 +646,7 @@ class Muon(Optimizer):
             self._adamw_update(
                 param,
                 grad,
-                lr_tensor,
+                lr_tensor_f64,
                 self._get_accumulator(self._moment_acc_str, param),
                 self._get_accumulator(self._moment2_acc_str, param),
                 self._get_accumulator(self._beta1_pow_acc_str, param),
