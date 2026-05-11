@@ -33,11 +33,32 @@ class TestDistributedTorchCompat(unittest.TestCase):
         self.assertTrue(hasattr(dist, 'group'))
         self.assertTrue(hasattr(dist.group, 'WORLD'))
 
-    def test_group_world_is_none_sentinel(self):
-        # ``dist.group.WORLD`` is a class-level ``None`` sentinel; every
-        # collective treats ``group=None`` as "use the default global group",
-        # which is the semantics PyTorch users expect.
+    def test_group_world_is_none_before_init(self):
+        # Before init_parallel_env / init_process_group runs, the default
+        # group does not exist yet and ``WORLD`` resolves to ``None`` -
+        # matching ``torch.distributed.group.WORLD`` semantics. The single
+        # process running this test does not enter distributed mode, so
+        # ``_get_global_group`` raises and the metaclass property catches
+        # it.
         self.assertIsNone(dist.group.WORLD)
+
+    def test_group_world_reflects_default_group_after_init(self):
+        # After initialization, ``WORLD`` must return the actual default
+        # Group object (not a static ``None``). We mock the lookup so this
+        # runs in a single process without a real distributed launch.
+        from paddle.distributed.communication.group import Group
+
+        fake_default = Group(
+            rank_in_group=0, id=0, ranks=[0], pg=None, name='fake-world'
+        )
+        with mock.patch(
+            'paddle.distributed.communication.group._get_global_group',
+            return_value=fake_default,
+        ):
+            world = dist.group.WORLD
+            self.assertIs(world, fake_default)
+            self.assertIsInstance(world, Group)
+            self.assertEqual(world.name, 'fake-world')
 
     def test_process_group_re_export(self):
         from paddle.base.core import ProcessGroup as core_pg
@@ -53,9 +74,25 @@ class TestDistributedTorchCompat(unittest.TestCase):
 
     @mock.patch('paddle.distributed.parallel.init_parallel_env')
     @mock.patch.dict(os.environ, {}, clear=False)
-    def test_init_process_group_exists_and_returns_none(self, _):
+    def test_init_process_group_returns_default_group(self, mock_init):
+        # Mirrors torch.distributed.init_process_group, which sets up the
+        # default group and exposes it via ``group.WORLD``. The wrapper
+        # forwards the value produced by ``init_parallel_env``.
+        from paddle.distributed.communication.group import Group
+
         self.assertTrue(hasattr(dist, 'init_process_group'))
-        self.assertIsNone(dist.init_process_group(backend='gloo'))
+        fake_default = Group(
+            rank_in_group=0, id=0, ranks=[0], pg=None, name='fake-world'
+        )
+        mock_init.return_value = fake_default
+        result = dist.init_process_group(backend='gloo')
+        self.assertIs(result, fake_default)
+        # And the same group is exposed through ``dist.group.WORLD``.
+        with mock.patch(
+            'paddle.distributed.communication.group._get_global_group',
+            return_value=fake_default,
+        ):
+            self.assertIs(dist.group.WORLD, fake_default)
 
     @mock.patch('paddle.distributed.parallel.init_parallel_env')
     @mock.patch.dict(os.environ, {}, clear=False)

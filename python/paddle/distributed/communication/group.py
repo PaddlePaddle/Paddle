@@ -123,21 +123,36 @@ class _GroupManager:
     group_map_by_id = {}
 
 
-class _DistGroupNamespace:
-    """Compat namespace mirroring ``torch.distributed.group``.
+class _DistGroupMeta(type):
+    """Metaclass exposing :attr:`group.WORLD` as a dynamic class property.
 
-    Exposes :attr:`WORLD` so user code converted from PyTorch - for example
-    ``paddle.distributed.broadcast(t, group=paddle.distributed.group.WORLD)`` -
-    works without modification. ``WORLD`` is a read-only sentinel set to
-    ``None``; every collective treats ``group=None`` as "use the default
-    global group", which is the semantics PyTorch users expect from
-    ``torch.distributed.group.WORLD``.
+    Mirrors PyTorch's ``torch.distributed.group`` (also implemented via a
+    metaclass) so that ``WORLD`` reflects the current default global group
+    rather than a static sentinel.
     """
 
-    WORLD: Group | None = None
+    @property
+    def WORLD(cls) -> Group | None:
+        try:
+            return _get_global_group()
+        except RuntimeError:
+            return None
 
 
-group = _DistGroupNamespace()
+class group(metaclass=_DistGroupMeta):
+    """Compat namespace mirroring ``torch.distributed.group``.
+
+    Exposes :attr:`WORLD`, which returns the default global :class:`Group`
+    after :func:`paddle.distributed.init_parallel_env` /
+    :func:`paddle.distributed.init_process_group`, and ``None`` before
+    initialization - matching ``torch.distributed.group.WORLD`` semantics.
+
+    User code converted from PyTorch such as
+    ``paddle.distributed.broadcast(t, group=paddle.distributed.group.WORLD)``
+    works without modification, and so do
+    ``isinstance(group.WORLD, Group)`` and attribute access on the returned
+    group object once distributed is initialized.
+    """
 
 
 def _get_global_group():

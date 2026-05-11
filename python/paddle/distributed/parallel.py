@@ -1290,7 +1290,7 @@ def init_process_group(
     group_name: str = '',
     pg_options: Any = None,
     device_id: Any = None,
-) -> None:
+) -> Group:
     """
 
     Compatibility wrapper around :func:`init_parallel_env` mirroring the
@@ -1306,6 +1306,9 @@ def init_process_group(
       written from this value; if both are set and disagree, a
       :class:`UserWarning` is emitted and the env value is preserved.
     - ``rank``: same convention with ``PADDLE_TRAINER_ID``.
+
+    The created default group is also accessible via
+    :attr:`paddle.distributed.group.WORLD`.
 
     Args:
         backend (str|None, optional): One of ``'nccl'``, ``'gloo'``,
@@ -1328,14 +1331,17 @@ def init_process_group(
             not used.
 
     Returns:
-        None.
+        Group: The default global communication group, the same object
+        returned by :func:`paddle.distributed.init_parallel_env` and
+        reachable via :attr:`paddle.distributed.group.WORLD`.
 
     Examples:
         .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle.distributed as dist
-            >>> dist.init_process_group(backend='nccl')
+            >>> world = dist.init_process_group(backend='nccl')
+            >>> assert world is dist.group.WORLD
             >>> # equivalent Paddle-native form:
             >>> # dist.init_parallel_env()
     """
@@ -1365,7 +1371,7 @@ def init_process_group(
                 stacklevel=2,
             )
 
-    init_parallel_env()
+    return init_parallel_env()
 
 
 def get_rank(group: Group | None = None) -> int:
