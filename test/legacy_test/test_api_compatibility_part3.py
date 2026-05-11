@@ -3618,6 +3618,62 @@ class TestModuleAPI(unittest.TestCase):
                 strict=True,
             )
 
+        class ParamOnlyLayer(paddle.nn.Layer):
+            def __init__(self):
+                super().__init__()
+                self.weight = self.create_parameter(
+                    shape=[1], dtype="float32", is_bias=False
+                )
+
+            def forward(self, x):
+                return x * self.weight
+
+        layer = ParamOnlyLayer()
+        hook_calls = []
+
+        def full_backward_pre_hook(layer, grad_output):
+            hook_calls.append(("pre", grad_output[0].numpy().copy()))
+
+        def full_backward_hook(layer, grad_input, grad_output):
+            hook_calls.append(
+                (
+                    "full",
+                    len(grad_input),
+                    grad_output[0].numpy().copy(),
+                )
+            )
+
+        layer.register_full_backward_pre_hook(full_backward_pre_hook)
+        layer.register_full_backward_hook(full_backward_hook)
+        x = paddle.to_tensor([2.0], stop_gradient=True)
+        y = layer(x)
+        y.backward()
+        self.assertEqual([call[0] for call in hook_calls], ["pre", "full"])
+        np.testing.assert_allclose(hook_calls[0][1], [1.0])
+        self.assertEqual(hook_calls[1][1], 0)
+        np.testing.assert_allclose(hook_calls[1][2], [1.0])
+        np.testing.assert_allclose(layer.weight.grad.numpy(), [2.0])
+
+        layer = ParamOnlyLayer()
+        hook_calls = []
+
+        def backward_hook(layer, grad_input, grad_output):
+            hook_calls.append(
+                (
+                    len(grad_input),
+                    grad_output[0].numpy().copy(),
+                )
+            )
+
+        layer.register_backward_hook(backward_hook)
+        x = paddle.to_tensor([2.0], stop_gradient=True)
+        y = layer(x)
+        y.backward()
+        self.assertEqual(len(hook_calls), 1)
+        self.assertEqual(hook_calls[0][0], 0)
+        np.testing.assert_allclose(hook_calls[0][1], [1.0])
+        np.testing.assert_allclose(layer.weight.grad.numpy(), [2.0])
+
         class LegacyLayer(paddle.nn.Layer):
             pass
 
