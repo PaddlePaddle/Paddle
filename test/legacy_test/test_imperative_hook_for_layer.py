@@ -399,5 +399,101 @@ class TestHookWithKWArgs(unittest.TestCase):
         )
 
 
+class TestBackwardHook(unittest.TestCase):
+    def test_backward_hooks(self):
+        for place in get_places():
+            with base.dygraph.guard(place):
+
+                class ParamOnlyLayer(paddle.nn.Layer):
+                    def __init__(self):
+                        super().__init__()
+                        self.weight = self.create_parameter(
+                            shape=[1], dtype="float32", is_bias=False
+                        )
+
+                    def forward(self, x):
+                        return x * self.weight
+
+                layer = ParamOnlyLayer()
+                hook_calls = []
+
+                def full_backward_pre_hook(layer, grad_output):
+                    hook_calls.append(("pre", grad_output[0].numpy().copy()))
+
+                def full_backward_hook(layer, grad_input, grad_output):
+                    hook_calls.append(
+                        (
+                            "full",
+                            len(grad_input),
+                            grad_output[0].numpy().copy(),
+                        )
+                    )
+
+                layer.register_full_backward_pre_hook(full_backward_pre_hook)
+                layer.register_full_backward_hook(full_backward_hook)
+                x = paddle.to_tensor([2.0], stop_gradient=True)
+                y = layer(x)
+                y.backward()
+                self.assertEqual(
+                    [call[0] for call in hook_calls], ["pre", "full"]
+                )
+                np.testing.assert_allclose(hook_calls[0][1], [1.0])
+                self.assertEqual(hook_calls[1][1], 0)
+                np.testing.assert_allclose(hook_calls[1][2], [1.0])
+                np.testing.assert_allclose(layer.weight.grad.numpy(), [2.0])
+
+                layer = ParamOnlyLayer()
+                hook_calls = []
+
+                def backward_hook(layer, grad_input, grad_output):
+                    hook_calls.append(
+                        (
+                            len(grad_input),
+                            grad_output[0].numpy().copy(),
+                        )
+                    )
+
+                layer.register_backward_hook(backward_hook)
+                x = paddle.to_tensor([2.0], stop_gradient=True)
+                y = layer(x)
+                y.backward()
+                self.assertEqual(len(hook_calls), 1)
+                self.assertEqual(hook_calls[0][0], 0)
+                np.testing.assert_allclose(hook_calls[0][1], [1.0])
+                np.testing.assert_allclose(layer.weight.grad.numpy(), [2.0])
+
+    def test_backward_hook_with_forward_pre_hook(self):
+        for place in get_places():
+            with base.dygraph.guard(place):
+
+                class PreHookLayer(paddle.nn.Layer):
+                    def forward(self, x):
+                        return x * 3
+
+                layer = PreHookLayer()
+                hook_calls = []
+
+                def scale_input(layer, inputs):
+                    return (inputs[0] * 2,)
+
+                def full_backward_hook(layer, grad_input, grad_output):
+                    hook_calls.append(
+                        (
+                            grad_input[0].numpy().copy(),
+                            grad_output[0].numpy().copy(),
+                        )
+                    )
+
+                layer.register_forward_pre_hook(scale_input)
+                layer.register_full_backward_hook(full_backward_hook)
+                x = paddle.to_tensor([1.0], stop_gradient=False)
+                y = layer(x)
+                y.backward()
+                self.assertEqual(len(hook_calls), 1)
+                np.testing.assert_allclose(hook_calls[0][0], [6.0])
+                np.testing.assert_allclose(hook_calls[0][1], [1.0])
+                np.testing.assert_allclose(x.grad.numpy(), [6.0])
+
+
 if __name__ == '__main__':
     unittest.main()

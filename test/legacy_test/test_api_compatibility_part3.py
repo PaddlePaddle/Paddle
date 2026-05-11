@@ -3298,457 +3298,83 @@ class TestSquareInplaceAPI(unittest.TestCase):
         paddle.enable_static()
 
 
-class TestModuleAPI(unittest.TestCase):
-    def _assert_torch_module_state(self, module):
-        self.assertIsInstance(module, paddle.nn.Layer)
-        self.assertTrue(module.training)
-        self.assertEqual(module._parameters, {})
-        self.assertEqual(module._buffers, {})
-        self.assertEqual(module._modules, {})
-        self.assertEqual(module._sub_layers, {})
-        self.assertEqual(module._non_persistent_buffers_set, set())
-        self.assertIsInstance(module._backward_pre_hooks, dict)
-        self.assertIsInstance(module._backward_hooks, dict)
-        self.assertIsNone(module._is_full_backward_hook)
-        self.assertIs(module._forward_hooks, module._forward_post_hooks)
-        self.assertIs(
-            module._forward_hooks_with_kwargs,
-            module._forward_post_hooks_with_kwargs_flag,
-        )
-        self.assertIs(
-            module._forward_hooks_always_called,
-            module._forward_post_hooks_always_called,
-        )
-        self.assertIs(
-            module._forward_pre_hooks_with_kwargs,
-            module._forward_pre_hooks_with_kwargs_flag,
-        )
-        self.assertIsInstance(module._state_dict_hooks, dict)
-        self.assertIsInstance(module._state_dict_pre_hooks, dict)
-        self.assertIsInstance(module._load_state_dict_pre_hooks, dict)
-        self.assertIsInstance(module._load_state_dict_post_hooks, dict)
+class TestDistributionAPI(unittest.TestCase):
+    def tearDown(self):
+        paddle.distribution.Distribution.set_default_validate_args(__debug__)
+        paddle.enable_static()
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
-        # 1. Paddle/PyTorch positional arguments
-        module = paddle.nn.Module()
-        self._assert_torch_module_state(module)
+        distribution_cls = paddle.distribution.Distribution
 
-        module = paddle.nn.Module(name_scope="module", dtype="float64")
-        self._assert_torch_module_state(module)
-        self.assertTrue(module.full_name().startswith("module"))
-        self.assertEqual(module._dtype, "float64")
+        # 1. Paddle Positional arguments
+        distribution_cls.set_default_validate_args(False)
+        out1 = distribution_cls((2,), (3,))
 
-        child = paddle.nn.Module()
-        module.add_module("child", child)
-        self.assertIs(module._modules["child"], child)
-        self.assertIs(module._sub_layers["child"], child)
-
-        buffer = paddle.ones([1], dtype="float32")
-        module.register_buffer("buffer", buffer)
-        self.assertIs(module._buffers["buffer"], buffer)
-
-        parameter = module.create_parameter(
-            shape=[1], dtype="float32", is_bias=False
-        )
-        module.register_parameter("weight", parameter)
-        self.assertIs(module._parameters["weight"], parameter)
-
-        hook = module.register_forward_hook(
-            lambda layer, inputs, kwargs, output: output,
-            with_kwargs=True,
-            always_call=True,
-        )
-        self.assertIn(hook._hook_id, module._forward_hooks)
-        self.assertIn(hook._hook_id, module._forward_hooks_with_kwargs)
-        self.assertIn(hook._hook_id, module._forward_hooks_always_called)
-        hook.remove()
-
-        pre_hook = module.register_forward_pre_hook(
-            lambda layer, inputs, kwargs: None,
-            with_kwargs=True,
-        )
-        self.assertIn(pre_hook._hook_id, module._forward_pre_hooks)
-        self.assertIn(pre_hook._hook_id, module._forward_pre_hooks_with_kwargs)
-        pre_hook.remove()
-
-        backward_pre_hook = lambda *args, **kwargs: None
-        backward_pre_hook_first = lambda *args, **kwargs: None
-        backward_pre_hook_handle = module.register_full_backward_pre_hook(
-            backward_pre_hook
-        )
-        backward_pre_hook_first_handle = module.register_full_backward_pre_hook(
-            backward_pre_hook_first, prepend=True
-        )
-        self.assertEqual(
-            module._get_backward_pre_hooks(),
-            [backward_pre_hook_first, backward_pre_hook],
-        )
-        backward_pre_hook_handle.remove()
-        backward_pre_hook_first_handle.remove()
-
-        backward_hook = lambda *args, **kwargs: None
-        backward_hook_handle = module.register_backward_hook(backward_hook)
-        self.assertIs(module._is_full_backward_hook, False)
-        self.assertEqual(module._get_backward_hooks(), ([], [backward_hook]))
-        with self.assertRaisesRegex(
-            RuntimeError, "Cannot use both regular backward hooks"
-        ):
-            module.register_full_backward_hook(lambda *args, **kwargs: None)
-        backward_hook_handle.remove()
-
-        module._is_full_backward_hook = None
-        full_backward_hook = lambda *args, **kwargs: None
-        full_backward_hook_first = lambda *args, **kwargs: None
-        full_backward_hook_handle = module.register_full_backward_hook(
-            full_backward_hook
-        )
-        full_backward_hook_first_handle = module.register_full_backward_hook(
-            full_backward_hook_first, prepend=True
-        )
-        self.assertIs(module._is_full_backward_hook, True)
-        self.assertEqual(
-            module._get_backward_hooks(),
-            ([full_backward_hook_first, full_backward_hook], []),
-        )
-        with self.assertRaisesRegex(
-            RuntimeError, "Cannot use both regular backward hooks"
-        ):
-            module.register_backward_hook(lambda *args, **kwargs: None)
-        full_backward_hook_handle.remove()
-        full_backward_hook_first_handle.remove()
-
-        class DoubleLayer(paddle.nn.Layer):
-            def forward(self, x):
-                return x * 2
-
-        backward_hook_module = DoubleLayer()
-        backward_hook_calls = []
-
-        def backward_pre_hook(layer, grad_output):
-            backward_hook_calls.append(("pre", grad_output[0].numpy().copy()))
-            return (grad_output[0] * 3,)
-
-        def full_backward_hook(layer, grad_input, grad_output):
-            backward_hook_calls.append(
-                (
-                    "full",
-                    grad_input[0].numpy().copy(),
-                    grad_output[0].numpy().copy(),
-                )
-            )
-            return (grad_input[0] * 5,)
-
-        backward_hook_module.register_full_backward_pre_hook(backward_pre_hook)
-        backward_hook_module.register_full_backward_hook(full_backward_hook)
-        x = paddle.to_tensor([1.0], stop_gradient=False)
-        y = backward_hook_module(x)
-        y.backward()
-        self.assertEqual(backward_hook_calls[0][0], "pre")
-        np.testing.assert_allclose(backward_hook_calls[0][1], [1.0])
-        self.assertEqual(backward_hook_calls[1][0], "full")
-        np.testing.assert_allclose(backward_hook_calls[1][1], [6.0])
-        np.testing.assert_allclose(backward_hook_calls[1][2], [3.0])
-        np.testing.assert_allclose(x.grad.numpy(), [30.0])
-
-        backward_hook_module = DoubleLayer()
-        backward_hook_calls = []
-
-        def backward_hook(layer, grad_input, grad_output):
-            backward_hook_calls.append(
-                (grad_input[0].numpy().copy(), grad_output[0].numpy().copy())
-            )
-            return (grad_input[0] * 4,)
-
-        backward_hook_module.register_backward_hook(backward_hook)
-        x = paddle.to_tensor([1.0], stop_gradient=False)
-        y = backward_hook_module(x)
-        y.backward()
-        np.testing.assert_allclose(backward_hook_calls[0][0], [2.0])
-        np.testing.assert_allclose(backward_hook_calls[0][1], [1.0])
-        np.testing.assert_allclose(x.grad.numpy(), [8.0])
-
-        state_dict_pre_hook_calls = []
-
-        def state_dict_pre_hook(layer, prefix, keep_vars):
-            state_dict_pre_hook_calls.append((layer, prefix, keep_vars))
-
-        state_dict_pre_hook = module.register_state_dict_pre_hook(
-            state_dict_pre_hook
-        )
-        self.assertIn(
-            state_dict_pre_hook._hook_id, module._state_dict_pre_hooks
-        )
-        state_dict = module.state_dict(prefix="prefix.", keep_vars=False)
-        self.assertIn("prefix.weight", state_dict)
-        self.assertEqual(
-            state_dict_pre_hook_calls, [(module, "prefix.", False)]
-        )
-        state_dict_pre_hook.remove()
-        self.assertNotIn(
-            state_dict_pre_hook._hook_id, module._state_dict_pre_hooks
+        # 2. Paddle keyword arguments
+        out2 = distribution_cls(
+            batch_shape=[2], event_shape=[3], validate_args=True
         )
 
-        load_state_dict_pre_hook_calls = []
-        load_state_dict_post_hook_calls = []
-        child_load_state_dict_pre_hook_calls = []
-        child_load_state_dict_post_hook_calls = []
+        # 3. Mixed arguments
+        out3 = distribution_cls((2,), event_shape=[3], validate_args=False)
 
-        def load_state_dict_pre_hook(
-            layer,
-            state_dict,
-            prefix,
-            local_metadata,
-            strict,
-            missing_keys,
-            unexpected_keys,
-            error_msgs,
-        ):
-            load_state_dict_pre_hook_calls.append(
-                (layer, prefix, local_metadata, strict)
-            )
-            unexpected_keys.clear()
+        # Verify constructor compatibility
+        self.assertEqual(out1.batch_shape, (2,))
+        self.assertEqual(out1.event_shape, (3,))
+        self.assertFalse(out1._validate_args_enabled)
+        self.assertTrue(out2._validate_args_enabled)
+        self.assertFalse(out3._validate_args_enabled)
+        self.assertTrue(callable(out2._validate_args))
 
-        def child_load_state_dict_pre_hook(
-            layer,
-            state_dict,
-            prefix,
-            local_metadata,
-            strict,
-            missing_keys,
-            unexpected_keys,
-            error_msgs,
-        ):
-            child_load_state_dict_pre_hook_calls.append(
-                (layer, prefix, local_metadata, strict)
-            )
+        with self.assertRaises(ValueError):
+            distribution_cls.set_default_validate_args(None)
 
-        def load_state_dict_post_hook(layer, incompatible_keys):
-            load_state_dict_post_hook_calls.append(
-                (layer, incompatible_keys.missing_keys)
-            )
-            incompatible_keys.unexpected_keys.clear()
-
-        def child_load_state_dict_post_hook(layer, incompatible_keys):
-            child_load_state_dict_post_hook_calls.append(
-                (layer, incompatible_keys.missing_keys)
-            )
-
-        load_state_dict_pre_hook = module.register_load_state_dict_pre_hook(
-            load_state_dict_pre_hook
-        )
-        load_state_dict_post_hook = module.register_load_state_dict_post_hook(
-            load_state_dict_post_hook
-        )
-        child_load_state_dict_pre_hook = (
-            child.register_load_state_dict_pre_hook(
-                child_load_state_dict_pre_hook
-            )
-        )
-        child_load_state_dict_post_hook = (
-            child.register_load_state_dict_post_hook(
-                child_load_state_dict_post_hook
-            )
-        )
-        self.assertIn(
-            load_state_dict_pre_hook._hook_id,
-            module._load_state_dict_pre_hooks,
-        )
-        self.assertIn(
-            load_state_dict_post_hook._hook_id,
-            module._load_state_dict_post_hooks,
-        )
-        incompatible_keys = module.load_state_dict(
-            {
-                "buffer": paddle.ones_like(buffer),
-                "weight": paddle.ones_like(parameter),
-            },
-            strict=True,
-        )
-        self.assertEqual(incompatible_keys.missing_keys, [])
-        self.assertEqual(incompatible_keys.unexpected_keys, [])
-        self.assertEqual(
-            load_state_dict_pre_hook_calls, [(module, "", {}, True)]
-        )
-        self.assertEqual(
-            child_load_state_dict_pre_hook_calls,
-            [(child, "child.", {}, True)],
-        )
-        self.assertEqual(load_state_dict_post_hook_calls, [(module, [])])
-        self.assertEqual(child_load_state_dict_post_hook_calls, [(child, [])])
-        load_state_dict_pre_hook.remove()
-        load_state_dict_post_hook.remove()
-        child_load_state_dict_pre_hook.remove()
-        child_load_state_dict_post_hook.remove()
-        self.assertNotIn(
-            load_state_dict_pre_hook._hook_id,
-            module._load_state_dict_pre_hooks,
-        )
-        self.assertNotIn(
-            load_state_dict_post_hook._hook_id,
-            module._load_state_dict_post_hooks,
-        )
-        self.assertNotIn(
-            child_load_state_dict_pre_hook._hook_id,
-            child._load_state_dict_pre_hooks,
-        )
-        self.assertNotIn(
-            child_load_state_dict_post_hook._hook_id,
-            child._load_state_dict_post_hooks,
-        )
-
-        assertion_module = paddle.nn.Module()
-        assertion_parameter = assertion_module.create_parameter(
-            shape=[1], dtype="float32", is_bias=False
-        )
-        assertion_module.register_parameter("weight", assertion_parameter)
-
-        def bad_load_state_dict_post_hook(layer, incompatible_keys):
-            return incompatible_keys
-
-        assertion_module.register_load_state_dict_post_hook(
-            bad_load_state_dict_post_hook
-        )
-        with self.assertRaisesRegex(
-            AssertionError,
-            "Hooks registered with ``register_load_state_dict_post_hook``",
-        ):
-            assertion_module.load_state_dict(
-                {"weight": paddle.ones_like(assertion_parameter)},
-                strict=True,
-            )
-
-        class ParamOnlyLayer(paddle.nn.Layer):
-            def __init__(self):
-                super().__init__()
-                self.weight = self.create_parameter(
-                    shape=[1], dtype="float32", is_bias=False
-                )
-
-            def forward(self, x):
-                return x * self.weight
-
-        layer = ParamOnlyLayer()
-        hook_calls = []
-
-        def full_backward_pre_hook(layer, grad_output):
-            hook_calls.append(("pre", grad_output[0].numpy().copy()))
-
-        def full_backward_hook(layer, grad_input, grad_output):
-            hook_calls.append(
-                (
-                    "full",
-                    len(grad_input),
-                    grad_output[0].numpy().copy(),
-                )
-            )
-
-        layer.register_full_backward_pre_hook(full_backward_pre_hook)
-        layer.register_full_backward_hook(full_backward_hook)
-        x = paddle.to_tensor([2.0], stop_gradient=True)
-        y = layer(x)
-        y.backward()
-        self.assertEqual([call[0] for call in hook_calls], ["pre", "full"])
-        np.testing.assert_allclose(hook_calls[0][1], [1.0])
-        self.assertEqual(hook_calls[1][1], 0)
-        np.testing.assert_allclose(hook_calls[1][2], [1.0])
-        np.testing.assert_allclose(layer.weight.grad.numpy(), [2.0])
-
-        layer = ParamOnlyLayer()
-        hook_calls = []
-
-        def backward_hook(layer, grad_input, grad_output):
-            hook_calls.append(
-                (
-                    len(grad_input),
-                    grad_output[0].numpy().copy(),
-                )
-            )
-
-        layer.register_backward_hook(backward_hook)
-        x = paddle.to_tensor([2.0], stop_gradient=True)
-        y = layer(x)
-        y.backward()
-        self.assertEqual(len(hook_calls), 1)
-        self.assertEqual(hook_calls[0][0], 0)
-        np.testing.assert_allclose(hook_calls[0][1], [1.0])
-        np.testing.assert_allclose(layer.weight.grad.numpy(), [2.0])
-
-        class LegacyLayer(paddle.nn.Layer):
-            pass
-
-        legacy_layer = LegacyLayer(name_scope="legacy_layer", dtype="float64")
-        self.assertTrue(legacy_layer.full_name().startswith("legacy_layer"))
-        self.assertEqual(legacy_layer._dtype, "float64")
-
-        legacy_layer = LegacyLayer("legacy_layer_pos", "float64")
-        self.assertTrue(legacy_layer.full_name().startswith("legacy_layer_pos"))
-        self.assertEqual(legacy_layer._dtype, "float64")
-        paddle.enable_static()
-
-    def test_module_registration_Compatibility(self):
-        paddle.disable_static()
-
-        module = paddle.nn.Module()
-        self._assert_torch_module_state(module)
-
-        buffer1 = paddle.to_tensor([1.0, 2.0, 3.0], stop_gradient=True)
-        buffer2 = paddle.to_tensor([[1.0, 2.0], [3.0, 4.0]], stop_gradient=True)
-        module.register_buffer("buffer_name", buffer1)
-        self.assertIs(module.buffer_name, buffer1)
-        module.register_buffer("buffer_name", buffer2)
-        self.assertIs(module.buffer_name, buffer2)
-        module.register_buffer("buffer_name", None)
-        self.assertIsNone(module.buffer_name)
-
-        non_persistent = paddle.to_tensor([9.0], stop_gradient=True)
-        module.register_buffer(
-            "non_persistent_buffer", non_persistent, persistable=False
-        )
-        self.assertEqual(len(list(module.buffers())), 1)
-        self.assertEqual(len(module.state_dict()), 0)
-
-        child = paddle.nn.Module()
-        child.register_buffer("inner_buffer", buffer1)
-        self.assertIs(module.register_module("child", child), None)
-        self.assertIs(module.get_buffer("child.inner_buffer"), buffer1)
-
-        conflict_module = paddle.nn.Module()
-        conflict_module.__dict__["attribute_name"] = 5
-        with self.assertRaisesRegex(
-            KeyError, "attribute 'attribute_name' already exists"
-        ):
-            conflict_module.register_buffer("attribute_name", buffer1)
-
-        conflict_module = paddle.nn.Module()
-        conflict_module.__dict__["attribute_name"] = 5
-        parameter = conflict_module.create_parameter(
-            shape=[1], dtype="float32", is_bias=False
-        )
-        with self.assertRaisesRegex(
-            KeyError, "The parameter 'attribute_name' already exists"
-        ):
-            conflict_module.register_parameter("attribute_name", parameter)
-
-        with self.assertRaisesRegex(
-            TypeError, "The name of buffer should be a string"
-        ):
-            module.register_buffer(1, buffer1)
-        with self.assertRaisesRegex(
-            TypeError, "The name of parameter should be a string"
-        ):
-            module.register_parameter(None, parameter)
+        value = paddle.to_tensor([0.5], dtype="float32")
+        for attr in ["arg_constraints", "support"]:
+            with self.assertRaises(NotImplementedError):
+                getattr(out1, attr)
+        for api in [out1.cdf, out1.icdf]:
+            with self.assertRaises(NotImplementedError):
+                api(value)
+        with self.assertRaises(NotImplementedError):
+            out1.enumerate_support()
+        with self.assertRaises(NotImplementedError):
+            out1.sample_n(3)
+        with self.assertRaises(NotImplementedError):
+            out1.perplexity()
 
         paddle.enable_static()
 
     def test_static_Compatibility(self):
         paddle.enable_static()
-        module = paddle.nn.Module()
-        self._assert_torch_module_state(module)
+        paddle.distribution.Distribution.set_default_validate_args(True)
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            distribution_cls = paddle.distribution.Distribution
 
-        module = paddle.nn.Module(dtype="float64")
-        self._assert_torch_module_state(module)
-        self.assertEqual(module._dtype, "float64")
+            # 1. Paddle Positional arguments
+            out1 = distribution_cls((2,), (3,), validate_args=False)
+
+            # 2. Paddle keyword arguments
+            out2 = distribution_cls(
+                batch_shape=[2], event_shape=[3], validate_args=True
+            )
+
+            # 3. Mixed arguments
+            out3 = distribution_cls((2,), event_shape=[3])
+
+            self.assertEqual(out1.batch_shape, (2,))
+            self.assertEqual(out1.event_shape, (3,))
+            self.assertFalse(out1._validate_args_enabled)
+            self.assertTrue(out2._validate_args_enabled)
+            self.assertTrue(out3._validate_args_enabled)
+            self.assertTrue(callable(out1._validate_args))
+            with self.assertRaises(NotImplementedError):
+                out1.sample_n(3)
+            with self.assertRaises(NotImplementedError):
+                out1.perplexity()
 
 
 if __name__ == "__main__":

@@ -691,9 +691,9 @@ class Layer:
         self._forward_hooks_always_called: typing.OrderedDict[int, bool] = (
             OrderedDict()
         )
-        object.__setattr__(self, "_backward_pre_hooks", OrderedDict())
-        object.__setattr__(self, "_backward_hooks", OrderedDict())
-        object.__setattr__(self, "_is_full_backward_hook", None)
+        self._backward_pre_hooks = OrderedDict()
+        self._backward_hooks = OrderedDict()
+        self._is_full_backward_hook = None
 
         # only used in AMP Training
         self._cast_to_low_precision = True
@@ -701,9 +701,9 @@ class Layer:
         self._state_dict_hooks: typing.OrderedDict[int, _StateDictHook] = (
             OrderedDict()
         )
-        object.__setattr__(self, "_state_dict_pre_hooks", OrderedDict())
-        object.__setattr__(self, "_load_state_dict_pre_hooks", OrderedDict())
-        object.__setattr__(self, "_load_state_dict_post_hooks", OrderedDict())
+        self._state_dict_pre_hooks = OrderedDict()
+        self._load_state_dict_pre_hooks = OrderedDict()
+        self._load_state_dict_post_hooks = OrderedDict()
         # Records original functions after @to_static to support to rollback
         self._original_funcs = OrderedDict()
 
@@ -2042,6 +2042,27 @@ class Layer:
                     self._get_backward_hooks()
                 )
 
+            for hook_id, forward_pre_hook in self._forward_pre_hooks.items():
+                if hook_id in self._forward_pre_hooks_with_kwargs_flag:
+                    args_kwargs_result = forward_pre_hook(self, inputs, kwargs)
+                    if args_kwargs_result is not None:
+                        if (
+                            isinstance(args_kwargs_result, tuple)
+                            and len(args_kwargs_result) == 2
+                        ):
+                            inputs, kwargs = args_kwargs_result
+                        else:
+                            raise RuntimeError(
+                                "forward pre-hook must return None or a tuple "
+                                f"of (new_args, new_kwargs), but got {args_kwargs_result}."
+                            )
+                else:
+                    hook_result = forward_pre_hook(self, inputs)
+                    if hook_result is not None:
+                        if not isinstance(hook_result, tuple):
+                            hook_result = (hook_result,)
+                        inputs = hook_result
+
             if in_dygraph_mode() and (
                 full_backward_hooks
                 or backward_pre_hooks
@@ -2068,27 +2089,6 @@ class Layer:
                         return inp
 
                     inputs = paddle.utils.map_structure(replace_input, inputs)
-
-            for hook_id, forward_pre_hook in self._forward_pre_hooks.items():
-                if hook_id in self._forward_pre_hooks_with_kwargs_flag:
-                    args_kwargs_result = forward_pre_hook(self, inputs, kwargs)
-                    if args_kwargs_result is not None:
-                        if (
-                            isinstance(args_kwargs_result, tuple)
-                            and len(args_kwargs_result) == 2
-                        ):
-                            inputs, kwargs = args_kwargs_result
-                        else:
-                            raise RuntimeError(
-                                "forward pre-hook must return None or a tuple "
-                                f"of (new_args, new_kwargs), but got {args_kwargs_result}."
-                            )
-                else:
-                    hook_result = forward_pre_hook(self, inputs)
-                    if hook_result is not None:
-                        if not isinstance(hook_result, tuple):
-                            hook_result = (hook_result,)
-                        inputs = hook_result
 
             if not self._built:
                 self._build_once(*inputs, **kwargs)
@@ -2124,13 +2124,28 @@ class Layer:
                 or backward_pre_hooks
                 or non_full_backward_hooks
             ):
-                outputs = self._wrap_backward_hooks(
-                    inputs,
-                    outputs,
-                    full_backward_hooks,
-                    backward_pre_hooks,
-                    non_full_backward_hooks,
-                )
+                flat_outputs = paddle.utils.flatten(outputs)
+                tensor_outputs = [
+                    out
+                    for out in flat_outputs
+                    if isinstance(out, Tensor) and not out.stop_gradient
+                ]
+                if tensor_outputs:
+                    hooked_outputs = _LayerBackwardOutputHook.apply(
+                        self, *tensor_outputs
+                    )
+                    if isinstance(hooked_outputs, Tensor):
+                        hooked_outputs = (hooked_outputs,)
+                    hooked_outputs = list(hooked_outputs)
+
+                    def replace_output(out):
+                        if isinstance(out, Tensor) and not out.stop_gradient:
+                            return hooked_outputs.pop(0)
+                        return out
+
+                    outputs = paddle.utils.map_structure(
+                        replace_output, outputs
+                    )
 
             return outputs
 
@@ -2176,45 +2191,6 @@ class Layer:
             return self.forward(*inputs, **kwargs)
         else:
             return self._dygraph_call_func(*inputs, **kwargs)
-
-    def _wrap_backward_hooks(
-        self,
-        inputs,
-        outputs,
-        full_backward_hooks,
-        backward_pre_hooks,
-        non_full_backward_hooks,
-    ):
-        flat_outputs = paddle.utils.flatten(outputs)
-        tensor_outputs = [
-            out
-            for out in flat_outputs
-            if isinstance(out, Tensor) and not out.stop_gradient
-        ]
-        if not tensor_outputs:
-            return outputs
-
-        if full_backward_hooks or backward_pre_hooks or non_full_backward_hooks:
-            hooked_outputs = _LayerBackwardOutputHook.apply(
-                self, *tensor_outputs
-            )
-            if isinstance(hooked_outputs, Tensor):
-                hooked_outputs = (hooked_outputs,)
-            hooked_outputs = list(hooked_outputs)
-
-            def replace_output(out):
-                if isinstance(out, Tensor) and not out.stop_gradient:
-                    return hooked_outputs.pop(0)
-                return out
-
-            outputs = paddle.utils.map_structure(replace_output, outputs)
-            tensor_outputs = [
-                out
-                for out in paddle.utils.flatten(outputs)
-                if isinstance(out, Tensor) and not out.stop_gradient
-            ]
-
-        return outputs
 
     def forward(self, *inputs: Any, **kwargs: Any) -> Any:
         """
