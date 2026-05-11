@@ -28,7 +28,7 @@ struct CostInfo {
 
 class ProfilerGuard {
  public:
-  ProfilerGuard(const phi::Place& place, CostInfo* cost_info)
+  ProfilerGuard(const Place& place, CostInfo* cost_info)
       : place_(place), cost_info_(cost_info) {
     timer_.Start();
   }
@@ -40,7 +40,7 @@ class ProfilerGuard {
   }
 
  private:
-  void TotalCUDAAllocatedMemorySize(const phi::Place& place) {
+  void TotalCUDAAllocatedMemorySize(const Place& place) {
     if (phi::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       auto cuda_place = place;
@@ -50,7 +50,7 @@ class ProfilerGuard {
     }
   }
 
-  const phi::Place& place_;
+  const Place& place_;
   CostInfo* cost_info_;
   platform::Timer timer_;
 };

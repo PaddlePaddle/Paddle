@@ -23,20 +23,20 @@
 namespace paddle {
 namespace pybind {
 
-template <typename DeviceContext, typename T>
+template <typename Context, typename T>
 struct ConcatDenseTensor {
-  void operator()(const DeviceContext &context,
+  void operator()(const Context &dev_ctx,
                   const std::vector<DenseTensor> &in,
                   DenseTensor *out,
                   int axis = 0) {
-    phi::funcs::ConcatFunctor<DeviceContext, T> concat_functor;
-    concat_functor(context, in, axis, out);
+    phi::funcs::ConcatFunctor<Context, T> concat_functor;
+    concat_functor(dev_ctx, in, axis, out);
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename Context, typename T>
 struct SplitDenseTensor {
-  void operator()(const DeviceContext &context,
+  void operator()(const Context &dev_ctx,
                   const DenseTensor &in,
                   std::vector<DenseTensor *> *out,
                   int axis = 0) {
@@ -45,15 +45,15 @@ struct SplitDenseTensor {
     for (auto *p_tensor : *out) {
       shape_refer.emplace_back(p_tensor);
     }
-    phi::funcs::SplitFunctor<DeviceContext, T> split_functor;
-    split_functor(context, in, shape_refer, axis, out);
+    phi::funcs::SplitFunctor<Context, T> split_functor;
+    split_functor(dev_ctx, in, shape_refer, axis, out);
   }
 };
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 template <typename T>
 struct ConcatDenseTensor<phi::CustomContext, T> {
-  void operator()(const phi::CustomContext &context,
+  void operator()(const phi::CustomContext &dev_ctx,
                   const std::vector<DenseTensor> &in,
                   DenseTensor *out,
                   int axis UNUSED = 0) {
@@ -61,7 +61,7 @@ struct ConcatDenseTensor<phi::CustomContext, T> {
     auto kernel_result =
         phi::KernelFactory::Instance().SelectKernelOrThrowError(
             "concat",
-            phi::KernelKey(phi::TransToPhiBackend(context.GetPlace()),
+            phi::KernelKey(phi::TransToPhiBackend(dev_ctx.GetPlace()),
                            phi::DataLayout::ALL_LAYOUT,
                            phi::CppTypeToDataType<T>::Type()));
     const auto &kernel = kernel_result.kernel;
@@ -71,13 +71,13 @@ struct ConcatDenseTensor<phi::CustomContext, T> {
                                       DenseTensor *);
     auto *kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
     std::vector<const DenseTensor *> inputs;
-    (*kernel_fn)(context, inputs, phi::Scalar(0), out);
+    (*kernel_fn)(dev_ctx, inputs, phi::Scalar(0), out);
   }
 };
 
 template <typename T>
 struct SplitDenseTensor<phi::CustomContext, T> {
-  void operator()(const phi::CustomContext &context,
+  void operator()(const phi::CustomContext &dev_ctx,
                   const DenseTensor &in,
                   std::vector<DenseTensor *> *out,
                   int axis UNUSED = 0) {
@@ -85,7 +85,7 @@ struct SplitDenseTensor<phi::CustomContext, T> {
     auto kernel_result =
         phi::KernelFactory::Instance().SelectKernelOrThrowError(
             "split_with_num",
-            phi::KernelKey(phi::TransToPhiBackend(context.GetPlace()),
+            phi::KernelKey(phi::TransToPhiBackend(dev_ctx.GetPlace()),
                            phi::DataLayout::ALL_LAYOUT,
                            phi::CppTypeToDataType<T>::Type()));
     const auto &kernel = kernel_result.kernel;
@@ -106,7 +106,7 @@ struct SplitDenseTensor<phi::CustomContext, T> {
         tensor->Resize(common::make_ddim(new_dims));
       }
     }
-    (*kernel_fn)(context, in, out->size(), phi::Scalar(0), *out);
+    (*kernel_fn)(dev_ctx, in, out->size(), phi::Scalar(0), *out);
     for (auto *tensor : *out) {
       auto tensor_dims = common::vectorize(tensor->dims());
       if (tensor_dims.size() != origin_out_dims.size()) {
@@ -117,38 +117,38 @@ struct SplitDenseTensor<phi::CustomContext, T> {
 };
 #endif
 
-template <typename DeviceContext>
-void ConcatDenseTensorWithType(const DeviceContext &dev_ctx,
+template <typename Context>
+void ConcatDenseTensorWithType(const Context &dev_ctx,
                                const std::vector<DenseTensor> &t_list,
                                DenseTensor *p_out,
                                DataType type) {
   switch (type) {
     case DataType::BOOL:
-      ConcatDenseTensor<DeviceContext, bool>()(dev_ctx, t_list, p_out);
+      ConcatDenseTensor<Context, bool>()(dev_ctx, t_list, p_out);
       break;
     case DataType::UINT8:
-      ConcatDenseTensor<DeviceContext, uint8_t>()(dev_ctx, t_list, p_out);
+      ConcatDenseTensor<Context, uint8_t>()(dev_ctx, t_list, p_out);
       break;
     case DataType::INT8:
-      ConcatDenseTensor<DeviceContext, int8_t>()(dev_ctx, t_list, p_out);
+      ConcatDenseTensor<Context, int8_t>()(dev_ctx, t_list, p_out);
       break;
     case DataType::INT32:
-      ConcatDenseTensor<DeviceContext, int32_t>()(dev_ctx, t_list, p_out);
+      ConcatDenseTensor<Context, int32_t>()(dev_ctx, t_list, p_out);
       break;
     case DataType::INT64:
-      ConcatDenseTensor<DeviceContext, int64_t>()(dev_ctx, t_list, p_out);
+      ConcatDenseTensor<Context, int64_t>()(dev_ctx, t_list, p_out);
       break;
     case DataType::FLOAT16:
-      ConcatDenseTensor<DeviceContext, phi::float16>()(dev_ctx, t_list, p_out);
+      ConcatDenseTensor<Context, phi::float16>()(dev_ctx, t_list, p_out);
       break;
     case DataType::BFLOAT16:
-      ConcatDenseTensor<DeviceContext, phi::bfloat16>()(dev_ctx, t_list, p_out);
+      ConcatDenseTensor<Context, phi::bfloat16>()(dev_ctx, t_list, p_out);
       break;
     case DataType::FLOAT32:
-      ConcatDenseTensor<DeviceContext, float>()(dev_ctx, t_list, p_out);
+      ConcatDenseTensor<Context, float>()(dev_ctx, t_list, p_out);
       break;
     case DataType::FLOAT64:
-      ConcatDenseTensor<DeviceContext, double>()(dev_ctx, t_list, p_out);
+      ConcatDenseTensor<Context, double>()(dev_ctx, t_list, p_out);
       break;
     default:
       PADDLE_THROW(common::errors::Unimplemented(
@@ -190,46 +190,44 @@ void ConcatDenseTensorWithType(const phi::XPUContext &dev_ctx,
 }
 #endif
 
-template <typename DeviceContext>
-void SplitDenseTensorWithType(const DeviceContext &dev_ctx,
+template <typename Context>
+void SplitDenseTensorWithType(const Context &dev_ctx,
                               const DenseTensor &t_in,
                               std::vector<DenseTensor *> *p_list,
                               DataType type) {
   switch (type) {
     case DataType::BOOL:
-      SplitDenseTensor<DeviceContext, bool>()(dev_ctx, t_in, p_list);
+      SplitDenseTensor<Context, bool>()(dev_ctx, t_in, p_list);
       break;
     case DataType::UINT8:
-      SplitDenseTensor<DeviceContext, uint8_t>()(dev_ctx, t_in, p_list);
+      SplitDenseTensor<Context, uint8_t>()(dev_ctx, t_in, p_list);
       break;
     case DataType::INT8:
-      SplitDenseTensor<DeviceContext, int8_t>()(dev_ctx, t_in, p_list);
+      SplitDenseTensor<Context, int8_t>()(dev_ctx, t_in, p_list);
       break;
     case DataType::FLOAT8_E4M3FN:
-      SplitDenseTensor<DeviceContext, phi::float8_e4m3fn>()(
-          dev_ctx, t_in, p_list);
+      SplitDenseTensor<Context, phi::float8_e4m3fn>()(dev_ctx, t_in, p_list);
       break;
     case DataType::FLOAT8_E5M2:
-      SplitDenseTensor<DeviceContext, phi::float8_e5m2>()(
-          dev_ctx, t_in, p_list);
+      SplitDenseTensor<Context, phi::float8_e5m2>()(dev_ctx, t_in, p_list);
       break;
     case DataType::INT32:
-      SplitDenseTensor<DeviceContext, int32_t>()(dev_ctx, t_in, p_list);
+      SplitDenseTensor<Context, int32_t>()(dev_ctx, t_in, p_list);
       break;
     case DataType::INT64:
-      SplitDenseTensor<DeviceContext, int64_t>()(dev_ctx, t_in, p_list);
+      SplitDenseTensor<Context, int64_t>()(dev_ctx, t_in, p_list);
       break;
     case DataType::FLOAT16:
-      SplitDenseTensor<DeviceContext, phi::float16>()(dev_ctx, t_in, p_list);
+      SplitDenseTensor<Context, phi::float16>()(dev_ctx, t_in, p_list);
       break;
     case DataType::BFLOAT16:
-      SplitDenseTensor<DeviceContext, phi::bfloat16>()(dev_ctx, t_in, p_list);
+      SplitDenseTensor<Context, phi::bfloat16>()(dev_ctx, t_in, p_list);
       break;
     case DataType::FLOAT32:
-      SplitDenseTensor<DeviceContext, float>()(dev_ctx, t_in, p_list);
+      SplitDenseTensor<Context, float>()(dev_ctx, t_in, p_list);
       break;
     case DataType::FLOAT64:
-      SplitDenseTensor<DeviceContext, double>()(dev_ctx, t_in, p_list);
+      SplitDenseTensor<Context, double>()(dev_ctx, t_in, p_list);
       break;
     default:
       PADDLE_THROW(common::errors::Unimplemented(

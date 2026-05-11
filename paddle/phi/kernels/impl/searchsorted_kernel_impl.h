@@ -63,8 +63,8 @@ class GpuAndCpuSearchSortedCompute {
     // @{ Group LowerBound
     // The following code is from
     // https://en.cppreference.com/w/cpp/algorithm/lower_bound
-    using MT1 = typename dtype::MPTypeTrait<T1>::Type;
-    using MT2 = typename dtype::MPTypeTrait<T2>::Type;
+    using MT1 = typename MPTypeTrait<T1>::Type;
+    using MT2 = typename MPTypeTrait<T2>::Type;
     MT2 val_mt = static_cast<MT2>(val);
 
     auto* first = x;
@@ -87,8 +87,8 @@ class GpuAndCpuSearchSortedCompute {
     // @{ Group UpperBound
     // The following code is from
     // https://en.cppreference.com/w/cpp/algorithm/upper_bound
-    using MT1 = typename dtype::MPTypeTrait<T1>::Type;
-    using MT2 = typename dtype::MPTypeTrait<T2>::Type;
+    using MT1 = typename MPTypeTrait<T1>::Type;
+    using MT2 = typename MPTypeTrait<T2>::Type;
     MT2 val_mt = static_cast<MT2>(val);
 
     auto* first = x;
@@ -122,7 +122,7 @@ class GpuAndCpuSearchSortedCompute {
         seq_size_(seq_size),
         out_data_(out_data) {}
   HOSTDEVICE void operator()(int64_t idx) {
-    using MT2 = typename dtype::MPTypeTrait<T2>::Type;
+    using MT2 = typename MPTypeTrait<T2>::Type;
     const T2* value_ptr = value_data_ + idx;
     const MT2 value_mt = static_cast<MT2>(*value_ptr);
     const T1* sequence_ptr = is_1d_boundaries_

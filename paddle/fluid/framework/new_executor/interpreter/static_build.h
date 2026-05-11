@@ -25,17 +25,17 @@ namespace interpreter {
 
 struct VarMetaInfo {
   std::string name_;
-  phi::DataType dtype_;
-  phi::Place place_;
+  DataType dtype_;
+  Place place_;
 
   explicit VarMetaInfo(const std::string& name) : name_(name) {
-    dtype_ = phi::DataType::UNDEFINED;
-    place_ = phi::Place();
+    dtype_ = DataType::UNDEFINED;
+    place_ = Place();
   }
 
   VarMetaInfo(const std::string& name,
-              const phi::DataType& dtype,
-              const phi::Place& place)
+              const DataType& dtype,
+              const Place& place)
       : name_(name), dtype_(dtype), place_(place) {}
 
   bool operator==(const VarMetaInfo& other) const {
@@ -53,7 +53,7 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block);
 
 void FakeInitializeOutputsForOperatorBase(
     const OperatorBase& op,
-    const phi::Place& place,
+    const Place& place,
     Scope* scope,
     std::vector<std::shared_ptr<OperatorBase>> following_ops);
 

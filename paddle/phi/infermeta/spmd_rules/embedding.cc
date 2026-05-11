@@ -25,8 +25,6 @@ limitations under the License. */
 
 namespace phi::distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 SpmdInfo EmbeddingInferSpmdUnsupportedVocabParallel(
     const DistMetaTensor& x,
     const DistMetaTensor& weight,
@@ -48,8 +46,8 @@ SpmdInfo EmbeddingInferSpmd(const DistMetaTensor& x,
                             int padding_idx,
                             bool sparse) {
   // Step0: Verify input args based on embedding logic
-  auto x_shape = common::vectorize(x.dims());
-  auto weight_shape = common::vectorize(weight.dims());
+  auto x_shape = vectorize(x.dims());
+  auto weight_shape = vectorize(weight.dims());
   int x_ndim = static_cast<int>(x_shape.size());
   int weight_ndim = static_cast<int>(weight_shape.size());
   auto x_dist_attr_src = x.dist_attr();
@@ -174,9 +172,9 @@ SpmdInfo EmbeddingInferSpmdReverse(const DistMetaTensor& x,
                                    bool sparse) {
   // Step0: Verify input args based on embedding logic
   // InferBackward is called after InferForward, so we skip some checks.
-  auto x_shape = common::vectorize(x.dims());
+  auto x_shape = vectorize(x.dims());
   int x_ndim = static_cast<int>(x_shape.size());
-  auto out_shape = common::vectorize(out.dims());
+  auto out_shape = vectorize(out.dims());
   int out_ndim = static_cast<int>(out_shape.size());
 
   PADDLE_ENFORCE_EQ(x_ndim,

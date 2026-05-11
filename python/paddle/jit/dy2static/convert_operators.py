@@ -702,6 +702,30 @@ def convert_enumerate(*args):
 
 def convert_range(*args):
     has_variable = any(isinstance(x, (Variable, Value)) for x in args)
+    # NOTE(SigureMo): Add an `Assign` OP after the Tensor input to mark it as a variable, which can
+    # avoid confusing it with the scalar case in `arange` API.
+    # For example:
+    # ```python
+    # l = []
+    # for i in range(n):
+    #    l.append(i)
+    # ```
+    # - If `n` is a scalar (e.g., `n=10`), we expect to create an `ArangeOp` with a fixed output shape [10].
+    # - If `n` is a Tensor (e.g., `n=full([], 10, "int32")`), we expect to create an `ArangeOp` with a dynamic
+    # output shape [-1]. To ensure the python level and graph level all recognize this is data-dependent control
+    # flow.
+    # However, we can't distinguish the scalar case and the Tensor case when creating the `ArangeOp`. Because
+    # the scalar case also be convert as a `Full` OP output.
+    # So we add an `Assign` OP after the Tensor input to **mark** it as a variable, which can avoid confusing
+    # it with the scalar case.
+    is_full_op_output = lambda x: (
+        isinstance(x, Value)
+        and x.get_defining_op()
+        and x.get_defining_op().name() == "pd_op.full"
+    )
+    args = [
+        paddle.assign(arg) if is_full_op_output(arg) else arg for arg in args
+    ]
     if has_variable:
         if len(args) == 1:
             return paddle.arange(0, args[0], 1, "int64")

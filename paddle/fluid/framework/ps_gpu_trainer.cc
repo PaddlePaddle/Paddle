@@ -60,10 +60,10 @@ void PSGPUTrainer::Initialize(const TrainerDesc& trainer_desc,
   for (int i = 0; i < place_num; ++i) {
     int num = trainer_desc.worker_places(i);
 #ifdef PADDLE_WITH_CUDA
-    phi::GPUPlace place = phi::GPUPlace(num);
+    GPUPlace place = GPUPlace(num);
 #endif
 #ifdef PADDLE_WITH_XPU_KP
-    phi::XPUPlace place = phi::XPUPlace(num);
+    XPUPlace place = XPUPlace(num);
 #endif
     places_.push_back(place);
     dev_ids.push_back(num);
@@ -262,7 +262,7 @@ void PSGPUTrainer::RegisterHeterCallback() {
 }
 
 void PSGPUTrainer::InitTrainerEnv(const ProgramDesc& main_program,
-                                  const phi::Place& place) {
+                                  const Place& place) {
   for (size_t i = 0; i < places_.size(); ++i) {
     workers_[i]->SetRootScope(root_scope_);
     workers_[i]->CreateDeviceResource(main_program);  // Program
@@ -281,9 +281,8 @@ void PSGPUTrainer::InitTrainerEnv(const ProgramDesc& main_program,
         if (!root_var) {
           continue;
         }
-        phi::DenseTensor* root_tensor =
-            root_var->GetMutable<phi::DenseTensor>();
-        phi::DenseTensor* thread_tensor = ptr->GetMutable<phi::DenseTensor>();
+        DenseTensor* root_tensor = root_var->GetMutable<DenseTensor>();
+        DenseTensor* thread_tensor = ptr->GetMutable<DenseTensor>();
         TensorCopy(*root_tensor, place, thread_tensor);
       }
     }
@@ -356,12 +355,12 @@ void PSGPUTrainer::Run() {
 Scope* PSGPUTrainer::GetWorkerScope(int thread_id) { return nullptr; }
 
 template <typename T>
-void PSGPUTrainer::MergeToRootScope(phi::DenseTensor* root_tensor,
-                                    phi::DenseTensor* tensor) {
-  phi::DenseTensor tmp_root;
+void PSGPUTrainer::MergeToRootScope(DenseTensor* root_tensor,
+                                    DenseTensor* tensor) {
+  DenseTensor tmp_root;
   TensorCopySync(*root_tensor, CPUPlace(), &tmp_root);
   T* tmp_root_data = tmp_root.data<T>();
-  phi::DenseTensor tmp_tensor;
+  DenseTensor tmp_tensor;
   TensorCopySync(*tensor, CPUPlace(), &tmp_tensor);
   T* data = tmp_tensor.data<T>();
   for (int i = 0; i < tmp_tensor.numel(); i++) {
@@ -375,9 +374,9 @@ void PSGPUTrainer::MergeDenseParam() {
   for (auto& name : trainable_param_) {
     VLOG(2) << "merge var " << name << " to root scope";
     Variable* root_var = root_scope_->FindVar(name);
-    phi::DenseTensor* root_tensor = root_var->GetMutable<phi::DenseTensor>();
+    DenseTensor* root_tensor = root_var->GetMutable<DenseTensor>();
     Variable* var = thread_scope->FindVar(name);
-    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+    DenseTensor* tensor = var->GetMutable<DenseTensor>();
     TensorCopySync((*tensor), root_tensor->place(), root_tensor);
   }
 }
@@ -391,7 +390,7 @@ void PSGPUTrainer::Finalize() {
     if (root_var == nullptr) {
       continue;
     }
-    phi::DenseTensor* root_tensor = root_var->GetMutable<phi::DenseTensor>();
+    DenseTensor* root_tensor = root_var->GetMutable<DenseTensor>();
     if (root_tensor == nullptr || !root_tensor->IsInitialized()) {
       continue;
     }
@@ -402,8 +401,7 @@ void PSGPUTrainer::Finalize() {
       if (thread_var == nullptr) {
         continue;
       }
-      phi::DenseTensor* thread_tensor =
-          thread_var->GetMutable<phi::DenseTensor>();
+      DenseTensor* thread_tensor = thread_var->GetMutable<DenseTensor>();
       if (thread_tensor == nullptr || !thread_tensor->IsInitialized()) {
         continue;
       }
