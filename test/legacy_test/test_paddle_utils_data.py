@@ -24,104 +24,93 @@ class TestUtilsAttrError(unittest.TestCase):
 
 class TestAlias(unittest.TestCase):
     def setUp(self):
-        self.ioObject = paddle.io.Dataset
-        self.utilsObject = paddle.utils.data.Dataset
-        self.directObject = paddle.utils.data.dataset.Dataset
+        self.api_map = [
+            (
+                paddle.io.Dataset,
+                paddle.utils.data.Dataset,
+                paddle.utils.data.dataset.Dataset,
+                None,
+            ),
+            (
+                paddle.io.ChainDataset,
+                paddle.utils.data.ChainDataset,
+                paddle.utils.data.dataset.ChainDataset,
+                None,
+            ),
+            (
+                paddle.io.ConcatDataset,
+                paddle.utils.data.ConcatDataset,
+                paddle.utils.data.dataset.ConcatDataset,
+                None,
+            ),
+            (
+                paddle.io.IterableDataset,
+                paddle.utils.data.IterableDataset,
+                paddle.utils.data.dataset.IterableDataset,
+                None,
+            ),
+            (
+                paddle.io.Sampler,
+                paddle.utils.data.Sampler,
+                paddle.utils.data.sampler.Sampler,
+                None,
+            ),
+            (
+                paddle.io.SequenceSampler,
+                paddle.utils.data.SequentialSampler,
+                paddle.utils.data.sampler.SequentialSampler,
+                None,
+            ),
+            (
+                paddle.io.Subset,
+                paddle.utils.data.Subset,
+                paddle.utils.data.dataset.Subset,
+                None,
+            ),
+            (
+                paddle.io.get_worker_info,
+                paddle.utils.data.get_worker_info,
+                paddle.utils.data.dataloader.get_worker_info,
+                paddle.utils.data._utils.worker.get_worker_info,
+            ),
+            (
+                paddle.io.random_split,
+                paddle.utils.data.random_split,
+                paddle.utils.data.dataset.random_split,
+                None,
+            ),
+            (
+                paddle.io.dataloader.collate.default_collate_fn,
+                paddle.utils.data.default_collate,
+                paddle.utils.data.dataloader.default_collate,
+                paddle.utils.data._utils.collate.default_collate,
+            ),
+            (
+                paddle.io.BatchSampler,
+                paddle.utils.data.BatchSampler,
+                paddle.utils.data.sampler.BatchSampler,
+                None,
+            ),
+            (
+                paddle.io.RandomSampler,
+                paddle.utils.data.RandomSampler,
+                paddle.utils.data.sampler.RandomSampler,
+                None,
+            ),
+            (
+                paddle.io.TensorDataset,
+                paddle.utils.data.TensorDataset,
+                paddle.utils.data.dataset.TensorDataset,
+                None,
+            ),
+        ]
 
     def test_compatibility(self):
-        self.assertTrue(self.ioObject is self.utilsObject)
-        self.assertTrue(self.ioObject is self.directObject)
-
-
-class TestChainDatasetAlias(TestAlias):
-    def setUp(self):
-        self.ioObject = paddle.io.ChainDataset
-        self.utilsObject = paddle.utils.data.ChainDataset
-        self.directObject = paddle.utils.data.dataset.ChainDataset
-
-
-class TestConcatDatasetAlias(TestAlias):
-    def setUp(self):
-        self.ioObject = paddle.io.ConcatDataset
-        self.utilsObject = paddle.utils.data.ConcatDataset
-        self.directObject = paddle.utils.data.dataset.ConcatDataset
-
-
-class TestIterableDatasetAlias(TestAlias):
-    def setUp(self):
-        self.ioObject = paddle.io.IterableDataset
-        self.utilsObject = paddle.utils.data.IterableDataset
-        self.directObject = paddle.utils.data.dataset.IterableDataset
-
-
-class TestSamplerAlias(TestAlias):
-    def setUp(self):
-        self.ioObject = paddle.io.Sampler
-        self.utilsObject = paddle.utils.data.Sampler
-        self.directObject = paddle.utils.data.sampler.Sampler
-
-
-class TestSequentialSamplerAlias(TestAlias):
-    def setUp(self):
-        self.ioObject = paddle.io.SequenceSampler
-        self.utilsObject = paddle.utils.data.SequentialSampler
-        self.directObject = paddle.utils.data.sampler.SequentialSampler
-
-
-class TestSubsetAlias(TestAlias):
-    def setUp(self):
-        self.ioObject = paddle.io.Subset
-        self.utilsObject = paddle.utils.data.Subset
-        self.directObject = paddle.utils.data.dataset.Subset
-
-
-class TestGetWorkerInfoAlias(TestAlias):
-    def setUp(self):
-        self.ioObject = paddle.io.get_worker_info
-        self.utilsObject = paddle.utils.data.get_worker_info
-        self.directObject = paddle.utils.data.dataloader.get_worker_info
-        self.internalUtilsObject = (
-            paddle.utils.data._utils.worker.get_worker_info
-        )
-
-    def test_compatibility(self):
-        super().test_compatibility()
-        self.assertTrue(self.ioObject is self.internalUtilsObject)
-
-
-class TestRandomSplitAlias(TestAlias):
-    def setUp(self):
-        self.ioObject = paddle.io.random_split
-        self.utilsObject = paddle.utils.data.random_split
-        self.directObject = paddle.utils.data.dataset.random_split
-
-
-class TestDefaultCollateAlias(TestAlias):
-    def setUp(self):
-        self.ioObject = paddle.io.dataloader.collate.default_collate_fn
-        self.utilsObject = paddle.utils.data.default_collate
-        self.directObject = paddle.utils.data.dataloader.default_collate
-        self.internalUtilsObject = (
-            paddle.utils.data._utils.collate.default_collate
-        )
-
-    def test_compatibility(self):
-        super().test_compatibility()
-        self.assertTrue(self.ioObject is self.internalUtilsObject)
-
-
-class TestBatchSamplerAlias(TestAlias):
-    def setUp(self):
-        self.ioObject = paddle.io.BatchSampler
-        self.utilsObject = paddle.utils.data.BatchSampler
-        self.directObject = paddle.utils.data.sampler.BatchSampler
-
-
-class TestRandomSamplerAlias(TestAlias):
-    def setUp(self):
-        self.ioObject = paddle.io.RandomSampler
-        self.utilsObject = paddle.utils.data.RandomSampler
-        self.directObject = paddle.utils.data.sampler.RandomSampler
+        for pairs in self.api_map:
+            self.assertTrue(pairs[0], pairs[1])
+            self.assertTrue(pairs[0], pairs[2])
+            if pairs[3] is not None:
+                self.assertTrue(pairs[0], pairs[3])
 
 
 if __name__ == "__main__":

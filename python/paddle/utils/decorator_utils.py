@@ -1001,6 +1001,7 @@ def use_first_signature(
 
 def variadic_tensor_decorator(
     param_name: str,
+    param_pos: int = 0,
 ) -> Callable[[Callable[_InputT, _RetT]], Callable[_InputT, _RetT]]:
     """
     Decorator to handle variadic tensor arguments.
@@ -1018,14 +1019,14 @@ def variadic_tensor_decorator(
         def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
             # PyTorch usage: variadic tensor arguments
             if len(args) >= 1 and isinstance(
-                args[0], (paddle.Tensor, paddle.pir.Value)
+                args[param_pos], (paddle.Tensor, paddle.pir.Value)
             ):
-                kwargs[param_name] = list(args)
-                args = ()
+                kwargs[param_name] = list(args[param_pos:])
+                args = args[:param_pos]
             # Paddle usage: list/tuple argument
-            elif len(args) >= 1 and isinstance(args[0], (list, tuple)):
-                kwargs[param_name] = args[0]
-                args = ()
+            elif len(args) >= 1 and isinstance(args[param_pos], (list, tuple)):
+                kwargs[param_name] = args[param_pos]
+                args = args[:param_pos]
             return func(*args, **kwargs)
 
         wrapper.__signature__ = inspect.signature(func)
