@@ -120,6 +120,7 @@ void FullLikeKernel(const Context& dev_ctx,
 }
 #ifdef _WIN32
 INSTANTIATE_FULL_KERNEL(float, GPUContext)
+INSTANTIATE_FULL_KERNEL(double, GPUContext)
 INSTANTIATE_FULL_KERNEL(int, GPUContext)
 INSTANTIATE_FULL_KERNEL(int64_t, GPUContext)
 #endif

@@ -524,28 +524,30 @@ class Optimizer:
     def get_opti_var_name_list(self) -> list[str]:
         return self._opti_name_list
 
+    def get_lr_dtype(self) -> paddle.dtype:
+        # lr var can't be float16 or bfloat16, for pure fp16 or bf16 training, should extra handle the dtype for lr
+        _lr_dtype = (
+            paddle.get_default_dtype() if self._dtype is None else self._dtype
+        )
+        _lr_dtype = (
+            paddle.float32
+            if (
+                (
+                    paddle.get_default_dtype() != "float16"
+                    and _lr_dtype == paddle.float16
+                )
+                or (
+                    paddle.get_default_dtype() != "bfloat16"
+                    and _lr_dtype == paddle.bfloat16
+                )
+            )
+            else _lr_dtype
+        )
+        return _lr_dtype
+
     def _create_global_learning_rate(self):
         def do_create():
-            # lr var can't be float16 or bfloat16, for pure fp16 or bf16 training, should extra handle the dtype for lr
-            _lr_dtype = (
-                paddle.get_default_dtype()
-                if self._dtype is None
-                else self._dtype
-            )
-            _lr_dtype = (
-                paddle.float32
-                if (
-                    (
-                        paddle.get_default_dtype() != "float16"
-                        and _lr_dtype == paddle.float16
-                    )
-                    or (
-                        paddle.get_default_dtype() != "bfloat16"
-                        and _lr_dtype == paddle.bfloat16
-                    )
-                )
-                else _lr_dtype
-            )
+            _lr_dtype = self.get_lr_dtype()
             if isinstance(self._learning_rate, LRScheduler):
                 lr_var = self._global_learning_rate()
                 # only create global lr_var once

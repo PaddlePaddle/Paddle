@@ -20,6 +20,7 @@
 
 #include "paddle/phi/kernels/adam_kernel.h"
 #include "paddle/phi/kernels/adamw_kernel.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 
 namespace phi {
 
@@ -115,11 +116,16 @@ PADDLE_API void FusedAdamKernel(
     auto moments2_max_tmp = TensorPtrToOptionalTensor(moments2_max, idx);
 
     if (!use_adamw) {
+      // learning_rate arrives as FLOAT64 (SetDataType constraint).
+      // AdamDenseKernel<T> reads lr as T, so cast to T first.
+      auto lr_T = Cast<double, Context>(
+          dev_ctx, learning_rate, phi::CppTypeToDataType<T>::Type());
+
       AdamDenseKernel<T, Context>(
           dev_ctx,
           *params[idx],
           *grads[idx],
-          learning_rate,
+          lr_T,
           *moments1[idx],
           *moments2[idx],
           moments2_max_tmp,
@@ -181,6 +187,7 @@ PADDLE_API void FusedAdamKernel(
 
 PD_REGISTER_KERNEL(
     fused_adam, CPU, ALL_LAYOUT, phi::FusedAdamKernel, float, double) {
+  kernel->InputAt(2).SetDataType(phi::DataType::FLOAT64);  // learning_rate
   kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(3).SetDataType(phi::DataType::UNDEFINED);

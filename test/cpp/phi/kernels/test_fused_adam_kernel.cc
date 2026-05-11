@@ -119,6 +119,8 @@ static auto ToMutableMetaTensorPtrVector(
 
 template <typename T, typename Context>
 struct AdamInfo {
+  using AdamWScalarT = double;
+
   const Context *ctx;
   std::vector<std::vector<int64_t>> shapes;
 
@@ -130,7 +132,9 @@ struct AdamInfo {
   std::vector<DenseTensor> beta1_pows;
   std::vector<DenseTensor> beta2_pows;
   DenseTensor learning_rate;
+  DenseTensor adamw_learning_rate;
   float beta1;
+
   float beta2;
   float weight_decay;
   float epsilon = 1e-6;
@@ -164,6 +168,8 @@ struct AdamInfo {
 
     params = GenerateRandomTensorVectors<T, Context>(*ctx, shapes);
     learning_rate = GenerateConstantTensorVectors<MT, Context>(
+        *ctx, learning_rate_shapes, 1e-3)[0];
+    adamw_learning_rate = GenerateConstantTensorVectors<AdamWScalarT, Context>(
         *ctx, learning_rate_shapes, 1e-3)[0];
     moment1s = GenerateConstantTensorVectors<MT, Context>(*ctx, shapes, 0);
     moment2s = GenerateConstantTensorVectors<MT, Context>(*ctx, shapes, 0);
@@ -225,6 +231,7 @@ struct AdamInfo {
     copy_tensors(other.beta1_pows, &copied.beta1_pows);
     copy_tensors(other.beta2_pows, &copied.beta2_pows);
     copy_tensor(other.learning_rate, &copied.learning_rate);
+    copy_tensor(other.adamw_learning_rate, &copied.adamw_learning_rate);
     copied.epsilon = other.epsilon;
     copied.chunk_size = other.chunk_size;
     other.ctx->Wait();
@@ -244,7 +251,7 @@ struct AdamInfo {
 
     FusedAdamInferMeta(ToConstMetaTensorPtrVector(param_metas),
                        ToConstMetaTensorPtrVector(grad_metas),
-                       learning_rate,
+                       adamw_learning_rate,
                        ToConstMetaTensorPtrVector(moment1_metas),
                        ToConstMetaTensorPtrVector(moment2_metas),
                        ToConstMetaTensorPtrVector(moment2_max_metas),
@@ -276,7 +283,7 @@ struct AdamInfo {
         *ctx,
         ToConstTensorPtrVector(params),
         ToConstTensorPtrVector(grads),
-        learning_rate,
+        adamw_learning_rate,
         ToConstTensorPtrVector(moment1s),
         ToConstTensorPtrVector(moment2s),
         ToConstTensorPtrVector(moment2s_max),
@@ -310,7 +317,7 @@ struct AdamInfo {
         *ctx,
         params[idx],
         grads[idx],
-        learning_rate,
+        adamw_learning_rate,
         moment1s[idx],
         moment2s[idx],
         moment2s_max[idx],
@@ -495,7 +502,10 @@ TEST(fused_adam, test_fp32_gpu) {
     // AdamwDenseKernel now uses torch-compatible math (double-precision
     // intermediates, FMA intrinsics) while FusedAdamKernel still uses the
     // original float-precision math, so allow a small tolerance for adamw.
-    float atol = use_adamw ? 1e-5f : 0.0f;
+    // For non-adamw, FusedAdamKernel reads learning_rate as double and casts
+    // to float, while AdamDenseKernel baseline uses a float learning_rate
+    // directly, causing up to 1 ulp difference.
+    float atol = use_adamw ? 1e-5f : 1e-6f;
     for (auto amsgrad : {false, true}) {
       TestFusedAdamBase<float, GPUPlace>(shapes, atol, use_adamw, amsgrad);
     }
