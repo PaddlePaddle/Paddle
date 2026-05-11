@@ -242,20 +242,20 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
   }
 
   // learning_rate may be float64 (get_lr_dtype returns float64 for all
-  // platforms), but XPU kernels only support float32 (MT). Cast if needed.
-  const MT* lr_for_xdnn = nullptr;
-  MT* lr_cast_buf = nullptr;
+  // platforms), but XPU kernels only support float32 (MPDType). Cast if needed.
+  const MPDType* lr_for_xdnn = nullptr;
+  MPDType* lr_cast_buf = nullptr;
   if (learning_rate.dtype() == DataType::FLOAT64) {
-    lr_cast_buf = RAII_GUARD.alloc_l3_or_gm<MT>(learning_rate.numel());
+    lr_cast_buf = RAII_GUARD.alloc_l3_or_gm<MPDType>(learning_rate.numel());
     PADDLE_ENFORCE_XDNN_NOT_NULL(lr_cast_buf);
-    int r = xpu::cast<double, MT>(dev_ctx.x_context(),
-                                  learning_rate.template data<double>(),
-                                  lr_cast_buf,
-                                  learning_rate.numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast lr from float64 to MT");
+    int r = xpu::cast<double, MPDType>(dev_ctx.x_context(),
+                                       learning_rate.template data<double>(),
+                                       lr_cast_buf,
+                                       learning_rate.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast lr from float64 to MPDType");
     lr_for_xdnn = lr_cast_buf;
   } else {
-    lr_for_xdnn = learning_rate.data<MT>();
+    lr_for_xdnn = learning_rate.data<MPDType>();
   }
 
   // template <typename T, typename TG, typename MT> DLL_EXPORT int

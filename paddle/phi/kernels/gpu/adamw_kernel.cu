@@ -154,11 +154,11 @@ PADDLE_API void AdamwDenseKernel_compatible(
     const DenseTensor& learning_rate,
     const DenseTensor& moment1,
     const DenseTensor& moment2,
-    const optional<DenseTensor>& moment2_max,
+    const paddle::optional<DenseTensor>& moment2_max,
     const DenseTensor& beta1_pow,
     const DenseTensor& beta2_pow,
-    const optional<DenseTensor>& master_param,
-    const optional<DenseTensor>& skip_update,
+    const paddle::optional<DenseTensor>& master_param,
+    const paddle::optional<DenseTensor>& skip_update,
     const Scalar& beta1,
     const Scalar& beta2,
     const Scalar& epsilon,
@@ -179,35 +179,36 @@ PADDLE_API void AdamwDenseKernel_compatible(
     DenseTensor* master_param_outs);
 
 template <typename T, typename Context>
-PADDLE_API void AdamwDenseKernel(const Context& dev_ctx,
-                                 const DenseTensor& param,
-                                 const DenseTensor& grad,
-                                 const DenseTensor& learning_rate,
-                                 const DenseTensor& moment1,
-                                 const DenseTensor& moment2,
-                                 const optional<DenseTensor>& moment2_max,
-                                 const DenseTensor& beta1_pow,
-                                 const DenseTensor& beta2_pow,
-                                 const optional<DenseTensor>& master_param,
-                                 const optional<DenseTensor>& skip_update,
-                                 const Scalar& beta1,
-                                 const Scalar& beta2,
-                                 const Scalar& epsilon,
-                                 double lr_ratio,
-                                 double coeff,
-                                 bool with_decay,
-                                 bool lazy_mode,
-                                 int64_t min_row_size_to_use_multithread,
-                                 bool multi_precision,
-                                 bool use_global_beta_pow,
-                                 bool amsgrad,
-                                 DenseTensor* param_out,
-                                 DenseTensor* moment1_out,
-                                 DenseTensor* moment2_out,
-                                 DenseTensor* moment2_max_out,
-                                 DenseTensor* beta1_pow_out,
-                                 DenseTensor* beta2_pow_out,
-                                 DenseTensor* master_param_outs) {
+PADDLE_API void AdamwDenseKernel(
+    const Context& dev_ctx,
+    const DenseTensor& param,
+    const DenseTensor& grad,
+    const DenseTensor& learning_rate,
+    const DenseTensor& moment1,
+    const DenseTensor& moment2,
+    const paddle::optional<DenseTensor>& moment2_max,
+    const DenseTensor& beta1_pow,
+    const DenseTensor& beta2_pow,
+    const paddle::optional<DenseTensor>& master_param,
+    const paddle::optional<DenseTensor>& skip_update,
+    const Scalar& beta1,
+    const Scalar& beta2,
+    const Scalar& epsilon,
+    double lr_ratio,
+    double coeff,
+    bool with_decay,
+    bool lazy_mode,
+    int64_t min_row_size_to_use_multithread,
+    bool multi_precision,
+    bool use_global_beta_pow,
+    bool amsgrad,
+    DenseTensor* param_out,
+    DenseTensor* moment1_out,
+    DenseTensor* moment2_out,
+    DenseTensor* moment2_max_out,
+    DenseTensor* beta1_pow_out,
+    DenseTensor* beta2_pow_out,
+    DenseTensor* master_param_outs) {
   if (FLAGS_use_accuracy_compatible_kernel) {
     AdamwDenseKernel_compatible<T, Context>(dev_ctx,
                                             param,
@@ -240,7 +241,7 @@ PADDLE_API void AdamwDenseKernel(const Context& dev_ctx,
                                             master_param_outs);
     return;
   }
-  using MT = typename MPTypeTrait<T>::Type;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   MT coeff_ = static_cast<MT>(coeff);
   MT lr_ratio_ = static_cast<MT>(lr_ratio);
 
@@ -437,7 +438,7 @@ PADDLE_API void AdamwDenseKernel(const Context& dev_ctx,
 
   // Select template instantiation based on moment type
   if (use_bfloat16_moments) {
-    LAUNCH_ADAMW_KERNEL(bfloat16)
+    LAUNCH_ADAMW_KERNEL(phi::dtype::bfloat16)
   } else {
     LAUNCH_ADAMW_KERNEL(MT)
   }
@@ -699,11 +700,11 @@ PADDLE_API void AdamwDenseKernel_compatible(
     const DenseTensor& learning_rate,
     const DenseTensor& moment1,
     const DenseTensor& moment2,
-    const optional<DenseTensor>& moment2_max,
+    const paddle::optional<DenseTensor>& moment2_max,
     const DenseTensor& beta1_pow,
     const DenseTensor& beta2_pow,
-    const optional<DenseTensor>& master_param,
-    const optional<DenseTensor>& skip_update,
+    const paddle::optional<DenseTensor>& master_param,
+    const paddle::optional<DenseTensor>& skip_update,
     const Scalar& beta1,
     const Scalar& beta2,
     const Scalar& epsilon,
