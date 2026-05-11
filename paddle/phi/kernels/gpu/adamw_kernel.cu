@@ -240,7 +240,7 @@ PADDLE_API void AdamwDenseKernel(const Context& dev_ctx,
                                             master_param_outs);
     return;
   }
-  using MT = typename MPTypeTrait<T>::Type;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   MT coeff_ = static_cast<MT>(coeff);
   MT lr_ratio_ = static_cast<MT>(lr_ratio);
 
@@ -721,7 +721,7 @@ PADDLE_API void AdamwDenseKernel_compatible(
     DenseTensor* beta1_pow_out,
     DenseTensor* beta2_pow_out,
     DenseTensor* master_param_outs) {
-  using MT = typename MPTypeTrait<T>::Type;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   bool skip_update_ = false;
   if (skip_update.is_initialized()) {
