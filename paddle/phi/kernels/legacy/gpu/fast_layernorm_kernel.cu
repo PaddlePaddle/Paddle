@@ -36,7 +36,7 @@ void LnFwdKernel(const Context& dev_ctx,
   auto input_type = x.type();
   auto weight_type = scale.type();
   auto output_type = weight_type;
-  auto compute_type = paddle::DataType::FLOAT32;
+  auto compute_type = DataType::FLOAT32;
 
   PD_CHECK(bias.type() == weight_type);
 

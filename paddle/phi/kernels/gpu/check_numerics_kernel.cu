@@ -435,7 +435,7 @@ void CheckNumericsKernel(const Context& dev_ctx,
       std::min(static_cast<size_t>(128),
                static_cast<size_t>((tensor.numel() + threads - 1) / threads));
 
-  using MT = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
 
   int64_t numel_max_min = blocks;
 

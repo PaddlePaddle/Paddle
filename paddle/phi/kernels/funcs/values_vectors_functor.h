@@ -281,8 +281,8 @@ struct MatrixEighFunctor<CPUContext, T> {
     ValueType *rwork_data = nullptr;
 
     // complex type
-    if (input.type() == phi::DataType::COMPLEX64 ||
-        input.type() == phi::DataType::COMPLEX128) {
+    if (input.type() == DataType::COMPLEX64 ||
+        input.type() == DataType::COMPLEX128) {
       lrwork = std::max<int>(1, static_cast<int>(rwork_opt));
 
       rwork_tensor.Resize({lrwork});
@@ -496,8 +496,8 @@ struct MatrixEighFunctor<GPUContext, T> {
     // well in Paddle(cuda10.2)
     use_cusolver_syevj_batched = (use_cusolver_syevj_batched) &&
                                  (batch_size > 1) &&
-                                 (input.dtype() != phi::DataType::COMPLEX128);
-    bool use_cusolver_syevj = (input.dtype() == phi::DataType::FLOAT32 &&
+                                 (input.dtype() != DataType::COMPLEX128);
+    bool use_cusolver_syevj = (input.dtype() == DataType::FLOAT32 &&
                                last_dim >= 32 && last_dim <= 512);
     auto handle = dev_ctx.cusolver_dn_handle();
 

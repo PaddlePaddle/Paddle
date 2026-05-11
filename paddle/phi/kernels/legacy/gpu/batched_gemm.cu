@@ -45,13 +45,13 @@ namespace {
   } while (0)
 
 // datatype mapping
-inline cudaDataType_t GetCudaDataType(paddle::DataType dtype) {
+inline cudaDataType_t GetCudaDataType(DataType dtype) {
   switch (dtype) {
-    case paddle::DataType::FLOAT32:
+    case DataType::FLOAT32:
       return CUDA_R_32F;
-    case paddle::DataType::FLOAT16:
+    case DataType::FLOAT16:
       return CUDA_R_16F;
-    case paddle::DataType::BFLOAT16:
+    case DataType::BFLOAT16:
       return CUDA_R_16BF;
     default:
       PD_CHECK(false, "Unsupported data type");
@@ -60,13 +60,13 @@ inline cudaDataType_t GetCudaDataType(paddle::DataType dtype) {
 }
 
 // compute type mapping
-inline cublasComputeType_t GetCublasComputeType(paddle::DataType dtype) {
+inline cublasComputeType_t GetCublasComputeType(DataType dtype) {
   switch (dtype) {
-    case paddle::DataType::FLOAT32:
+    case DataType::FLOAT32:
       return CUBLAS_COMPUTE_32F;
-    case paddle::DataType::FLOAT16:
+    case DataType::FLOAT16:
       return CUBLAS_COMPUTE_16F;
-    case paddle::DataType::BFLOAT16:
+    case DataType::BFLOAT16:
       return CUBLAS_COMPUTE_32F_FAST_16BF;
     default:
       PD_CHECK(false, "Unsupported data type");
@@ -278,7 +278,7 @@ void BatchedGEMM(const Context &dev_ctx,
 
   // TODO(Pan Zhaowu): Using macros to support more dtypes.
   switch (lhs.dtype()) {
-    case paddle::DataType::BFLOAT16:
+    case DataType::BFLOAT16:
       if (!trans_lhs) {
         // =============================================================================
         // Case 1 and 2: group forward or lhs_grad (input_grad)
@@ -298,7 +298,7 @@ void BatchedGEMM(const Context &dev_ctx,
             dev_ctx, lhs, rhs, batch_sizes, output);
       }
       break;
-    case paddle::DataType::FLOAT32:
+    case DataType::FLOAT32:
       if (!trans_lhs) {
         m_grouped_gemm_cuda_forward<float>(
             dev_ctx, lhs, rhs, batch_sizes, trans_rhs, output);

@@ -2961,8 +2961,8 @@ void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num,
   // alloc gpu memory
   pack->resize_tensor();
 
-  phi::DenseTensor& float_tensor = pack->float_tensor();
-  phi::DenseTensor& uint64_tensor = pack->uint64_tensor();
+  DenseTensor& float_tensor = pack->float_tensor();
+  DenseTensor& uint64_tensor = pack->uint64_tensor();
 
   int64_t float_offset = 0;
   int64_t uint64_offset = 0;
@@ -3005,8 +3005,7 @@ void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num,
         h_tensor_ptrs[j] = float_tensor.data<float>() + float_offset;
         float_offset += total_instance;
       } else {
-        phi::DenseTensor& f_tensor =
-            pack->float_tensor_vec()[float_zero_slot_index];
+        DenseTensor& f_tensor = pack->float_tensor_vec()[float_zero_slot_index];
         f_tensor.Resize({total_instance, 1});
         dev_ctx->Alloc<float>(&f_tensor);
         h_tensor_ptrs[j] = f_tensor.data<float>();
@@ -3017,7 +3016,7 @@ void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num,
         h_tensor_ptrs[j] = uint64_tensor.data<int64_t>() + uint64_offset;
         uint64_offset += total_instance;
       } else {
-        phi::DenseTensor& i_tensor =
+        DenseTensor& i_tensor =
             pack->uint64_tensor_vec()[uint64_zero_slot_index];
         i_tensor.Resize({total_instance, 1});
         dev_ctx->Alloc<int64_t>(&i_tensor);
@@ -3058,8 +3057,8 @@ void SlotRecordInMemoryDataFeed::PackToScope(MiniBatchGpuPack* pack,
 
   int offset_cols_size = (pack->ins_num() + 1);
   HostBuffer<size_t>& offsets = pack->offsets();
-  phi::DenseTensor& float_tensor = pack->float_tensor();
-  phi::DenseTensor& uint64_tensor = pack->uint64_tensor();
+  DenseTensor& float_tensor = pack->float_tensor();
+  DenseTensor& uint64_tensor = pack->uint64_tensor();
 
   auto* feed_vec = &feed_vec_;
   if (scope) {
@@ -3149,7 +3148,7 @@ MiniBatchGpuPack* SlotRecordInMemoryDataFeed::get_pack(
   }
 }
 
-MiniBatchGpuPack::MiniBatchGpuPack(const phi::Place& place,
+MiniBatchGpuPack::MiniBatchGpuPack(const Place& place,
                                    const std::vector<UsedSlotInfo>& infos,
                                    phi::StreamId stream_id) {
   place_ = place;
@@ -3186,7 +3185,7 @@ MiniBatchGpuPack::MiniBatchGpuPack(const phi::Place& place,
 
 MiniBatchGpuPack::~MiniBatchGpuPack() {}
 
-void MiniBatchGpuPack::reset(const phi::Place& place) {
+void MiniBatchGpuPack::reset(const Place& place) {
   place_ = place;
   stream_holder_.reset(new phi::CUDAStream(place));
   stream_ = stream_holder_->raw_stream();

@@ -18,7 +18,7 @@
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 namespace paddle::platform {
 struct CUDADeviceEventWrapper {
-  CUDADeviceEventWrapper(const phi::Place& place, unsigned int flag)
+  CUDADeviceEventWrapper(const Place& place, unsigned int flag)
       : inner_event_(flag) {
     PADDLE_ENFORCE_EQ(
         phi::is_gpu_place(place),
@@ -40,7 +40,7 @@ struct CUDADeviceEventWrapper {
 };
 
 void DeviceEventCreateCUDA(DeviceEvent* event,
-                           const phi::Place& place,
+                           const Place& place,
                            unsigned int flag) {
   event->InitEvent(std::make_shared<CUDADeviceEventWrapper>(place, flag));
 }

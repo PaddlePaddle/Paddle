@@ -40,17 +40,17 @@ __global__ void CrossGrad(const T* x,
     int64_t pos1 = offset + 1 * stride;
     int64_t pos2 = offset + 2 * stride;
 
-    using MPType = typename dtype::MPTypeTrait<T>::Type;
+    using MT = typename MPTypeTrait<T>::Type;
 
-    MPType x_pos0_mp = static_cast<MPType>(x[pos0]);
-    MPType x_pos1_mp = static_cast<MPType>(x[pos1]);
-    MPType x_pos2_mp = static_cast<MPType>(x[pos2]);
-    MPType y_pos0_mp = static_cast<MPType>(y[pos0]);
-    MPType y_pos1_mp = static_cast<MPType>(y[pos1]);
-    MPType y_pos2_mp = static_cast<MPType>(y[pos2]);
-    MPType out_pos0_mp = static_cast<MPType>(out[pos0]);
-    MPType out_pos1_mp = static_cast<MPType>(out[pos1]);
-    MPType out_pos2_mp = static_cast<MPType>(out[pos2]);
+    MT x_pos0_mp = static_cast<MT>(x[pos0]);
+    MT x_pos1_mp = static_cast<MT>(x[pos1]);
+    MT x_pos2_mp = static_cast<MT>(x[pos2]);
+    MT y_pos0_mp = static_cast<MT>(y[pos0]);
+    MT y_pos1_mp = static_cast<MT>(y[pos1]);
+    MT y_pos2_mp = static_cast<MT>(y[pos2]);
+    MT out_pos0_mp = static_cast<MT>(out[pos0]);
+    MT out_pos1_mp = static_cast<MT>(out[pos1]);
+    MT out_pos2_mp = static_cast<MT>(out[pos2]);
 
     out_dx[pos0] =
         static_cast<T>(out_pos2_mp * y_pos1_mp - out_pos1_mp * y_pos2_mp);

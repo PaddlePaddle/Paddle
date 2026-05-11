@@ -180,7 +180,7 @@ __global__ void IndexingBackwardKernel(const int64_t* sorted_indices,
                                        int64_t stride_before,
                                        int64_t outer_dim,
                                        bool accumulate) {
-  using opmath_t = typename dtype::MPTypeTrait<scalar_t>::Type;
+  using opmath_t = typename MPTypeTrait<scalar_t>::Type;
 
   for (int64_t z = blockIdx.z; z < outer_dim; z += gridDim.z) {
     for (int64_t idx =

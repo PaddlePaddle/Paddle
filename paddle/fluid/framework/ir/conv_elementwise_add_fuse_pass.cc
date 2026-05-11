@@ -122,8 +122,8 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
     new_op_desc.SetAttr("use_cudnn", true);
 
     bool is_fp16_precision =
-        static_cast<phi::DataType>(Get<int>("model_precision")) ==
-            phi::DataType::FLOAT16 ||
+        static_cast<DataType>(Get<int>("model_precision")) ==
+            DataType::FLOAT16 ||
         Get<bool>("enable_gpu_mixed");
 
     bool cutlass_enable = Get<bool>("use_cutlass");
