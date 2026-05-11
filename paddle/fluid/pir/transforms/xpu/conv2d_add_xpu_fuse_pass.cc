@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/transforms/xpu/conv2d_add_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/xpu/conv2d_add_xpu_fuse_pass.h"
 #include <optional>
 
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -253,9 +253,10 @@ class Conv2dAddXpuFusePattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-class Conv2dAddFusePass : public pir::PatternRewritePass {
+class Conv2dAddXpuFusePass : public pir::PatternRewritePass {
  public:
-  Conv2dAddFusePass() : pir::PatternRewritePass("conv2d_add_fuse_pass", 2) {}
+  Conv2dAddXpuFusePass()
+      : pir::PatternRewritePass("conv2d_add_xpu_fuse_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
@@ -281,12 +282,9 @@ class Conv2dAddFusePass : public pir::PatternRewritePass {
   }
 };
 
+std::unique_ptr<Pass> CreateConv2dAddXpuFusePass() {
+  return std::make_unique<Conv2dAddXpuFusePass>();
+}
 }  // namespace
 
-namespace pir {
-std::unique_ptr<Pass> CreateConv2dAddXpuFusePass() {
-  return std::make_unique<Conv2dAddFusePass>();
-}
-}  // namespace pir
-
-REGISTER_IR_PASS(conv2d_add_xpu_fuse_pass, Conv2dAddFusePass);
+REGISTER_IR_PASS(conv2d_add_xpu_fuse_pass, pir::Conv2dAddXpuFusePass);
