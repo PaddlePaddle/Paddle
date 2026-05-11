@@ -930,7 +930,7 @@ class TestMSRAInitializer(unittest.TestCase):
             self.assertEqual(len(block.ops), 1)
             init_op = block.ops[0]
             self.assertEqual(init_op.type, 'uniform_random')
-            limit = np.sqrt(6.0 / param.shape[1])
+            limit = np.sqrt(6.0 / param.shape[0])
             self.assertAlmostEqual(init_op.attr('min'), -limit, delta=DELTA)
             self.assertAlmostEqual(init_op.attr('max'), limit, delta=DELTA)
             self.assertEqual(init_op.attr('seed'), 0)
@@ -975,7 +975,7 @@ class TestMSRAInitializer(unittest.TestCase):
             self.assertEqual(len(block.ops), 1)
             init_op = block.ops[0]
             self.assertEqual(init_op.type, 'gaussian_random')
-            std = np.sqrt(2.0 / param.shape[1])
+            std = np.sqrt(2.0 / param.shape[0])
             self.assertAlmostEqual(init_op.attr('mean'), 0.0, delta=DELTA)
             self.assertAlmostEqual(init_op.attr('std'), std, delta=DELTA)
             self.assertEqual(init_op.attr('seed'), 0)
@@ -1082,7 +1082,7 @@ class TestMSRAInitializerPir(unittest.TestCase):
                 )
                 self.assertEqual(len(checked_ops), 1)
                 init_op = checked_ops[0]
-                limit = np.sqrt(6.0 / param.shape[1])
+                limit = np.sqrt(6.0 / param.shape[0])
                 min = self.get_operand_definition_op_attrs(
                     init_op, "min", "value"
                 )
@@ -1145,7 +1145,7 @@ class TestMSRAInitializerPir(unittest.TestCase):
                 )
                 self.assertEqual(len(checked_ops), 1)
                 init_op = checked_ops[0]
-                std = np.sqrt(2.0 / param.shape[1])
+                std = np.sqrt(2.0 / param.shape[0])
                 self.assertAlmostEqual(
                     init_op.attrs()['mean'], 0.0, delta=DELTA
                 )
@@ -1689,7 +1689,7 @@ class TestMSRAInitializerFanoutDygraph(unittest.TestCase):
         hist, _ = output_hist(tensor.numpy())
 
         hist2, _ = output_hist(
-            np.random.normal(0, np.sqrt(2.0 / (16)), [16, 1024])
+            np.random.normal(0, np.sqrt(2.0 / (1024)), [16, 1024])
         )
 
         np.testing.assert_allclose(hist, hist2, rtol=0, atol=0.01)
@@ -1725,7 +1725,7 @@ class TestMSRAInitializerFanoutDygraph(unittest.TestCase):
 
         hist, _ = output_hist(tensor.numpy())
 
-        fan_out = tensor.shape[0]
+        fan_out = tensor.shape[1]
         limit = np.sqrt(6.0 / fan_out)
         theory_data = np.random.uniform(-limit, limit, [16, 1024])
 
