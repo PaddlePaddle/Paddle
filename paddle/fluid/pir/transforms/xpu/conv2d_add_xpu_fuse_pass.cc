@@ -26,7 +26,7 @@
 #include "paddle/pir/include/pass/pass_registry.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_match.h"
 
-namespace {
+namespace pir {
 
 class Conv2dAddXpuFusePattern : public paddle::drr::DrrPatternBase {
  private:
@@ -285,6 +285,6 @@ class Conv2dAddXpuFusePass : public pir::PatternRewritePass {
 std::unique_ptr<Pass> CreateConv2dAddXpuFusePass() {
   return std::make_unique<Conv2dAddXpuFusePass>();
 }
-}  // namespace
+}  // namespace pir
 
 REGISTER_IR_PASS(conv2d_add_xpu_fuse_pass, pir::Conv2dAddXpuFusePass);
