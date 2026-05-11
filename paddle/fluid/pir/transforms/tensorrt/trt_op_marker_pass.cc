@@ -28,7 +28,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 
 inline auto kCanRunTrtAttr = paddle::dialect::kCanRunTrtAttr;
 
@@ -1176,18 +1176,18 @@ class CastOpPattern : public pir::OpRewritePattern<paddle::dialect::CastOp> {
     }
     auto dtype =
         op->attribute<paddle::dialect::DataTypeAttribute>("dtype").data();
-    if (dtype == phi::DataType::BOOL) {
+    if (dtype == DataType::BOOL) {
 #if IS_TRT_VERSION_LT(8400)
       VLOG(3)
           << "the cast op supports inputs and outputs of BOOL by trt8.4 above ";
       return false;
 #endif
     }
-    if (dtype != phi::DataType::BOOL && dtype != phi::DataType::FLOAT32 &&
-        dtype != phi::DataType::FLOAT64 && dtype != phi::DataType::FLOAT16 &&
-        dtype != phi::DataType::INT32 && dtype != phi::DataType::INT64) {
+    if (dtype != DataType::BOOL && dtype != DataType::FLOAT32 &&
+        dtype != DataType::FLOAT64 && dtype != DataType::FLOAT16 &&
+        dtype != DataType::INT32 && dtype != DataType::INT64) {
       VLOG(3) << "the cast op does not support type: "
-              << phi::DataTypeToString(dtype);
+              << DataTypeToString(dtype);
       return false;
     }
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
@@ -1582,10 +1582,10 @@ class ArgmaxOpPattern
                                     .data());
 
     bool flatten = op.attribute<pir::BoolAttribute>("flatten").data();
-    phi::DataType dtype =
+    DataType dtype =
         op.attribute<paddle::dialect::DataTypeAttribute>("dtype").data();
     if (axis == 0 || flatten ||
-        (dtype != phi::DataType::INT32 && dtype != phi::DataType::INT64)) {
+        (dtype != DataType::INT32 && dtype != DataType::INT64)) {
       VLOG(3) << "Skipping TRT conversion in pd_op.argmax: axis is zero, "
                  "flatten is True, or dtype isn't int32/int64";
       return false;
@@ -1625,10 +1625,10 @@ class ArgminOpPattern
                                     .data());
 
     bool flatten = op.attribute<pir::BoolAttribute>("flatten").data();
-    phi::DataType dtype =
+    DataType dtype =
         op.attribute<paddle::dialect::DataTypeAttribute>("dtype").data();
     if (axis == 0 || flatten ||
-        (dtype != phi::DataType::INT32 && dtype != phi::DataType::INT64)) {
+        (dtype != DataType::INT32 && dtype != DataType::INT64)) {
       VLOG(3) << "Skipping TRT conversion in pd_op.argmin: axis is zero, "
                  "flatten is True, or dtype isn't int32/int64";
       return false;
@@ -2138,8 +2138,7 @@ class FullLikeOpPattern
     auto dtype =
         op->attribute<paddle::dialect::DataTypeAttribute>("dtype").data();
 
-    if (dtype == phi::DataType::BOOL ||
-        (!hasAttr && x_dtype.isa<pir::BoolType>())) {
+    if (dtype == DataType::BOOL || (!hasAttr && x_dtype.isa<pir::BoolType>())) {
       op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
       VLOG(3) << "the pd_op.full_like supports input of BOOL by trt8.4 above";
       return true;
@@ -2189,8 +2188,8 @@ class FullWithTensorPattern
 #endif
     auto dtype =
         op->attribute<paddle::dialect::DataTypeAttribute>("dtype").data();
-    if (dtype != phi::DataType::INT32 && dtype != phi::DataType::INT64 &&
-        dtype != phi::DataType::FLOAT32) {
+    if (dtype != DataType::INT32 && dtype != DataType::INT64 &&
+        dtype != DataType::FLOAT32) {
       VLOG(3) << "pd_op.full_with_tensor only support int32, int64, float32";
       return false;
     }
@@ -2403,8 +2402,7 @@ bool SetValueOpMatchAndRewrite(const pir::Operation *op) {
   auto value = values[0];
   auto value_dtype =
       value.dyn_cast<paddle::dialect::ScalarAttribute>().data().dtype();
-  if (value_dtype != phi::DataType::FLOAT32 &&
-      value_dtype != phi::DataType::FLOAT64) {
+  if (value_dtype != DataType::FLOAT32 && value_dtype != DataType::FLOAT64) {
     VLOG(3) << "SetValueOp only support float32/float64 value when translate "
                "to trt.";
     return false;
@@ -3112,12 +3110,10 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     return ps;
   }
 };
-}  // namespace
 
-namespace pir {
 std::unique_ptr<Pass> CreateTrtOpMarkerPass() {
   return std::make_unique<TrtOpMarkerPass>();
 }
 }  // namespace pir
 
-REGISTER_IR_PASS(trt_op_marker_pass, TrtOpMarkerPass);
+REGISTER_IR_PASS(trt_op_marker_pass, pir::TrtOpMarkerPass);

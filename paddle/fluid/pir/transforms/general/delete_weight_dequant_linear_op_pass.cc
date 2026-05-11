@@ -93,7 +93,7 @@ class DeleteWeightDequantLinearOpPattern : public paddle::drr::DrrPatternBase {
               GetParameterNameFromValue(match_ctx.Tensor("scale"));
           auto* weight_scale_var = this->scope_->FindVar(weight_scale_name);
           auto* weight_scale_tensor =
-              weight_scale_var->GetMutable<phi::DenseTensor>();
+              weight_scale_var->GetMutable<DenseTensor>();
           auto weight_scale_nums = weight_scale_tensor->numel();
 
           if (quant_axis == -1) {

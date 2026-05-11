@@ -59,7 +59,7 @@ class ConstantFoldingPattern : public RewritePattern {
   ConstantFoldingPattern(
       IrContext* context,
       size_t* suffix,
-      const phi::Place& place,
+      const Place& place,
       paddle::framework::Scope* scope,
       paddle::framework::interpreter::ExecutionConfig* exe_config)
       : RewritePattern(MatchAnyOpTypeTag(),
@@ -184,14 +184,14 @@ class ConstantFoldingPattern : public RewritePattern {
                                           output_var_name));
 
       if (use_parameter_op) {
-        if (output_var->IsType<phi::DenseTensor>()) {
-          auto* output_tensor = output_var->GetMutable<phi::DenseTensor>();
+        if (output_var->IsType<DenseTensor>()) {
+          auto* output_tensor = output_var->GetMutable<DenseTensor>();
           if (output_tensor->has_allocation() &&
               output_tensor->place().GetType() != place_.GetType()) {
-            phi::DenseTensor temp_tensor;
+            DenseTensor temp_tensor;
             temp_tensor.Resize(output_tensor->dims());
             paddle::framework::TensorCopySync(
-                *output_tensor, phi::CPUPlace{}, &temp_tensor);
+                *output_tensor, CPUPlace{}, &temp_tensor);
             output_tensor->clear();
             paddle::framework::TensorCopySync(
                 temp_tensor, place_, output_tensor);
@@ -207,16 +207,16 @@ class ConstantFoldingPattern : public RewritePattern {
         rewriter.ReplaceAllUsesWith(op->result(i), parameter_op->result(0));
 
       } else {
-        if (output_var->IsType<phi::DenseTensor>()) {
-          auto* output_tensor = output_var->GetMutable<phi::DenseTensor>();
-          if (output_tensor->place().GetType() != phi::AllocationType::CPU) {
-            phi::DenseTensor temp_tensor;
+        if (output_var->IsType<DenseTensor>()) {
+          auto* output_tensor = output_var->GetMutable<DenseTensor>();
+          if (output_tensor->place().GetType() != AllocationType::CPU) {
+            DenseTensor temp_tensor;
             temp_tensor.Resize(output_tensor->dims());
             paddle::framework::TensorCopySync(
-                *output_tensor, phi::CPUPlace{}, &temp_tensor);
+                *output_tensor, CPUPlace{}, &temp_tensor);
             output_tensor->clear();
             paddle::framework::TensorCopySync(
-                temp_tensor, phi::CPUPlace{}, output_tensor);
+                temp_tensor, CPUPlace{}, output_tensor);
           }
         }
 
@@ -409,7 +409,7 @@ class ConstantFoldingPattern : public RewritePattern {
 
  protected:
   size_t* suffix_;
-  phi::Place place_;
+  Place place_;
   paddle::framework::Scope* scope_;
   paddle::framework::interpreter::ExecutionConfig* exe_config_;
   mutable std::vector<std::string> deleted_vars_;
@@ -420,7 +420,7 @@ class ConstantFoldingPatternForTrain : public ConstantFoldingPattern {
   ConstantFoldingPatternForTrain(
       IrContext* context,
       size_t* suffix,
-      const phi::Place& place,
+      const Place& place,
       paddle::framework::Scope* scope,
       paddle::framework::interpreter::ExecutionConfig* exe_config)
       : ConstantFoldingPattern(context, suffix, place, scope, exe_config) {}
@@ -496,7 +496,7 @@ class ConstantFoldingPass : public Pass {
             "When using ConstantFoldingPass, scope attribute is required!"
             "Use Set method to set the scope attribute."));
 
-    place_ = Get<phi::Place>(Pass::kPlaceAttr);
+    place_ = Get<Place>(Pass::kPlaceAttr);
     scope_ = &Get<paddle::framework::Scope>(Pass::kParamScopeAttr);
 
     PADDLE_ENFORCE_NOT_NULL(
@@ -506,7 +506,7 @@ class ConstantFoldingPass : public Pass {
 
     if (Has("train_mode") && Get<bool>("train_mode")) {
       ps.Add<ConstantFoldingPatternForTrain>(
-          context, &suffix_, phi::CPUPlace{}, scope_, &exe_config_);
+          context, &suffix_, CPUPlace{}, scope_, &exe_config_);
     } else {
       ps.Add<ConstantFoldingPattern>(
           context, &suffix_, place_, scope_, &exe_config_);
@@ -532,7 +532,7 @@ class ConstantFoldingPass : public Pass {
 
  private:
   size_t suffix_{0};
-  phi::Place place_{phi::CPUPlace{}};
+  Place place_{CPUPlace{}};
   paddle::framework::Scope* scope_{nullptr};
   paddle::framework::interpreter::ExecutionConfig exe_config_{};
 

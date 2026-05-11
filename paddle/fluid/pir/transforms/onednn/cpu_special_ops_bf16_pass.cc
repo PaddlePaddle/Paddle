@@ -65,12 +65,12 @@ class CastBf16Pattern : public OpRewritePattern<OpType> {
     IrContext *ctx = rewriter.ir_context();
 
     auto dtype_attr = attributes["dtype"];
-    phi::DataType dtype =
+    DataType dtype =
         dtype_attr.template dyn_cast<paddle::dialect::DataTypeAttribute>()
             .data();
-    if (dtype == phi::DataType::FLOAT32) {
+    if (dtype == DataType::FLOAT32) {
       Attribute new_dtype =
-          paddle::dialect::DataTypeAttribute::get(ctx, phi::DataType::BFLOAT16);
+          paddle::dialect::DataTypeAttribute::get(ctx, DataType::BFLOAT16);
       attributes["dtype"] = new_dtype;
     } else {
       return false;
@@ -408,7 +408,7 @@ class SplitdoubleBf16QuantizePattern
           vec_type[idx].dyn_cast<paddle::dialect::DenseTensorType>();
       auto new_type = paddle::dialect::DenseTensorType::get(
           rewriter.ir_context(),
-          paddle::dialect::TransToIrDataType(phi::DataType::BFLOAT16,
+          paddle::dialect::TransToIrDataType(DataType::BFLOAT16,
                                              rewriter.ir_context()),
           dense_type.dims(),
           dense_type.data_layout(),

@@ -19,7 +19,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 
 class SiluFusePattern : public paddle::drr::DrrPatternBase {
  public:
@@ -49,14 +49,10 @@ class SiluFusePass : public pir::PatternRewritePass {
   }
 };
 
-}  // namespace
-
-namespace pir {
-
 std::unique_ptr<Pass> CreateSiluFusePass() {
   return std::make_unique<SiluFusePass>();
 }
 
 }  // namespace pir
 
-REGISTER_IR_PASS(silu_fuse_pass, SiluFusePass);
+REGISTER_IR_PASS(silu_fuse_pass, pir::SiluFusePass);

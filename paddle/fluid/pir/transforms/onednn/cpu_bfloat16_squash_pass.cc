@@ -433,7 +433,7 @@ class CastBf16SquashPattern : public OpRewritePattern<OpType> {
     OpType new_cast;
     if (with_dq) {
       Attribute new_dtype = paddle::dialect::DataTypeAttribute::get(
-          rewriter.ir_context(), phi::DataType::FLOAT32);
+          rewriter.ir_context(), DataType::FLOAT32);
       cast_attributes["dtype"] = new_dtype;
     }
     if (with_q) {

@@ -20,7 +20,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 
 class FusedDropoutAddPattern : public paddle::drr::DrrPatternBase {
  public:
@@ -137,14 +137,10 @@ class FusedDropoutAddPass : public pir::PatternRewritePass {
   }
 };
 
-}  // namespace
-
-namespace pir {
-
 std::unique_ptr<Pass> CreateFusedDropoutAddPass() {
   return std::make_unique<FusedDropoutAddPass>();
 }
 
 }  // namespace pir
 
-REGISTER_IR_PASS(fused_dropout_add_pass, FusedDropoutAddPass);
+REGISTER_IR_PASS(fused_dropout_add_pass, pir::FusedDropoutAddPass);

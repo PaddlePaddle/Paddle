@@ -185,16 +185,16 @@ static const std::vector<Type> InferMetaByValue(
   return output_types;
 }
 
-std::unordered_map<std::string, phi::DataType> Str2PhiDataType = {
-    {"DataType::FLOAT16", phi::DataType::FLOAT16},
-    {"DataType::BFLOAT16", phi::DataType::BFLOAT16},
-    {"DataType::FLOAT32", phi::DataType::FLOAT32},
-    {"DataType::FLOAT64", phi::DataType::FLOAT64},
-    {"DataType::INT16", phi::DataType::INT16},
-    {"DataType::INT32", phi::DataType::INT32},
-    {"DataType::INT64", phi::DataType::INT64},
-    {"DataType::INT8", phi::DataType::INT8},
-    {"DataType::BOOL", phi::DataType::BOOL},
+std::unordered_map<std::string, DataType> Str2PhiDataType = {
+    {"DataType::FLOAT16", DataType::FLOAT16},
+    {"DataType::BFLOAT16", DataType::BFLOAT16},
+    {"DataType::FLOAT32", DataType::FLOAT32},
+    {"DataType::FLOAT64", DataType::FLOAT64},
+    {"DataType::INT16", DataType::INT16},
+    {"DataType::INT32", DataType::INT32},
+    {"DataType::INT64", DataType::INT64},
+    {"DataType::INT8", DataType::INT8},
+    {"DataType::BOOL", DataType::BOOL},
 };
 
 const std::unordered_set<std::string> UnchangeOutputOps = {
@@ -236,12 +236,12 @@ const std::unordered_map<int, Place> MemcpyOpAttr2Place = {
     {0, CPUPlace()},
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     {1, GPUPlace()},
-    {2, phi::GPUPinnedPlace()},
+    {2, GPUPinnedPlace()},
 #elif defined(PADDLE_WITH_XPU)
-    {3, phi::XPUPlace()},
-    {5, phi::XPUPinnedPlace()},
+    {3, XPUPlace()},
+    {5, XPUPinnedPlace()},
 #elif defined(PADDLE_WITH_CUSTOM_DEVICE)
-    {4, phi::CustomPlace()}
+    {4, CustomPlace()}
 #endif
 };
 
@@ -417,24 +417,24 @@ static std::set<std::string> GetInputsByDataOp(Block* block) {
 }
 
 template <class IrType>
-static phi::DenseTensorMeta parse_tensor_meta(IrType type) {
+static DenseTensorMeta parse_tensor_meta(IrType type) {
   auto dtype = TransToPhiDataType(type.dtype());
-  return phi::DenseTensorMeta(
+  return DenseTensorMeta(
       dtype, type.dims(), type.data_layout(), type.lod(), type.offset());
 }
 
 template <>
-phi::DenseTensorMeta parse_tensor_meta<AllocatedSparseCooTensorType>(
+DenseTensorMeta parse_tensor_meta<AllocatedSparseCooTensorType>(
     AllocatedSparseCooTensorType type) {
   auto dtype = TransToPhiDataType(type.dtype());
-  return phi::DenseTensorMeta(dtype, type.dims(), type.data_layout());
+  return DenseTensorMeta(dtype, type.dims(), type.data_layout());
 }
 
 template <>
-phi::DenseTensorMeta parse_tensor_meta<AllocatedSparseCsrTensorType>(
+DenseTensorMeta parse_tensor_meta<AllocatedSparseCsrTensorType>(
     AllocatedSparseCsrTensorType type) {
   auto dtype = TransToPhiDataType(type.dtype());
-  return phi::DenseTensorMeta(dtype, type.dims(), type.data_layout());
+  return DenseTensorMeta(dtype, type.dims(), type.data_layout());
 }
 
 static std::vector<std::shared_ptr<phi::TensorBase>> PrepareFakeTensors(
@@ -443,50 +443,48 @@ static std::vector<std::shared_ptr<phi::TensorBase>> PrepareFakeTensors(
   auto in_type = input.type();
 
   auto fake_dt = [](const AllocatedDenseTensorType& type) {
-    auto ptr = new phi::Allocation(nullptr, 0, type.place());
-    std::shared_ptr<phi::Allocation> holder(ptr);
-    phi::DenseTensorMeta meta =
-        parse_tensor_meta<AllocatedDenseTensorType>(type);
-    return std::make_shared<phi::DenseTensor>(holder, meta);
+    auto ptr = new Allocation(nullptr, 0, type.place());
+    std::shared_ptr<Allocation> holder(ptr);
+    DenseTensorMeta meta = parse_tensor_meta<AllocatedDenseTensorType>(type);
+    return std::make_shared<DenseTensor>(holder, meta);
   };
 
   auto fake_spcoo = [](const AllocatedSparseCooTensorType& type) {
-    auto ptr = new phi::Allocation(nullptr, 0, type.place());
-    std::shared_ptr<phi::Allocation> holder(ptr);
-    phi::DenseTensorMeta meta =
+    auto ptr = new Allocation(nullptr, 0, type.place());
+    std::shared_ptr<Allocation> holder(ptr);
+    DenseTensorMeta meta =
         parse_tensor_meta<AllocatedSparseCooTensorType>(type);
-    return std::make_shared<phi::DenseTensor>(holder, meta);
+    return std::make_shared<DenseTensor>(holder, meta);
   };
 
   auto fake_spcsr = [](const AllocatedSparseCsrTensorType& type) {
-    auto ptr = new phi::Allocation(nullptr, 0, type.place());
-    std::shared_ptr<phi::Allocation> holder(ptr);
-    phi::DenseTensorMeta meta =
+    auto ptr = new Allocation(nullptr, 0, type.place());
+    std::shared_ptr<Allocation> holder(ptr);
+    DenseTensorMeta meta =
         parse_tensor_meta<AllocatedSparseCsrTensorType>(type);
 
-    return std::make_shared<phi::DenseTensor>(holder, meta);
+    return std::make_shared<DenseTensor>(holder, meta);
   };
   auto fake_sr = [](const AllocatedSelectedRowsType& type) {
-    auto ptr = new phi::Allocation(nullptr, 0, type.place());
-    std::shared_ptr<phi::Allocation> holder(ptr);
-    phi::DenseTensorMeta meta =
-        parse_tensor_meta<AllocatedSelectedRowsType>(type);
+    auto ptr = new Allocation(nullptr, 0, type.place());
+    std::shared_ptr<Allocation> holder(ptr);
+    DenseTensorMeta meta = parse_tensor_meta<AllocatedSelectedRowsType>(type);
 
     std::vector<int64_t> rows;
     rows.clear();
     auto sr = std::make_shared<phi::SelectedRows>(rows, 0);
-    phi::DenseTensor dense_tensor(holder, meta);
+    DenseTensor dense_tensor(holder, meta);
     *(sr->mutable_value()) = dense_tensor;
 
     return sr;
   };
 
   auto fake_tensor_array = [](const AllocatedDenseTensorArrayType& type) {
-    auto ptr = new phi::Allocation(nullptr, 0, type.place());
-    std::shared_ptr<phi::Allocation> holder(ptr);
+    auto ptr = new Allocation(nullptr, 0, type.place());
+    std::shared_ptr<Allocation> holder(ptr);
     auto dtype = TransToPhiDataType(type.dtype());
-    phi::DenseTensorMeta meta(dtype, {});
-    phi::DenseTensor dt(holder, meta);
+    DenseTensorMeta meta(dtype, {});
+    DenseTensor dt(holder, meta);
     auto tensor_array = std::make_shared<phi::TensorArray>(0);
     tensor_array->set_type(dtype);
     tensor_array->push_back(dt);
@@ -532,19 +530,19 @@ static Value AddPlaceTransferOp(Value in,
   IrContext* ctx = IrContext::Instance();
 
   auto copy_kernel_key = kernel_key;
-  auto place2backend = [](phi::AllocationType new_place_type) {
+  auto place2backend = [](AllocationType new_place_type) {
     auto new_backend = phi::Backend::GPU;
     switch (new_place_type) {
-      case phi::AllocationType::GPU:
+      case AllocationType::GPU:
         new_backend = phi::Backend::GPU;
         break;
-      case phi::AllocationType::XPU:
+      case AllocationType::XPU:
         new_backend = phi::Backend::XPU;
         break;
-      case phi::AllocationType::CUSTOM:
+      case AllocationType::CUSTOM:
         new_backend = phi::Backend::CUSTOM;
         break;
-      case phi::AllocationType::IPU:
+      case AllocationType::IPU:
         new_backend = phi::Backend::IPU;
         break;
       default:
@@ -554,7 +552,7 @@ static Value AddPlaceTransferOp(Value in,
     return new_backend;
   };
   std::unordered_map<std::string, Attribute> op_attribute;
-  if ((src_place.GetType() == phi::AllocationType::CPU) &&
+  if ((src_place.GetType() == AllocationType::CPU) &&
       phi::is_accelerat_allocation_type(dst_place.GetType())) {
     copy_kernel_key.set_backend(place2backend(dst_place.GetType()));
 
@@ -564,8 +562,8 @@ static Value AddPlaceTransferOp(Value in,
                     {"kernel_key", KernelAttribute::get(ctx, copy_kernel_key)},
                     {"dst_place_type", Int32Attribute::get(ctx, 1)}};
   } else if (phi::is_accelerat_allocation_type(src_place.GetType()) &&
-             (dst_place.GetType() == phi::AllocationType::CPU)) {
-    if (src_place.GetType() == phi::AllocationType::CUSTOM) {
+             (dst_place.GetType() == AllocationType::CPU)) {
+    if (src_place.GetType() == AllocationType::CUSTOM) {
       paddle::experimental::detail::KernelKeyParser kernel_key_parser;
 
       auto fake_tensors = PrepareFakeTensors(in);
@@ -652,22 +650,20 @@ static Value AddOneDNN2PaddleLayoutTransferOp(Value in,
 }
 #endif
 
-static bool NeedTransformDataType(const phi::DataType& l,
-                                  const phi::DataType& r) {
-  return l != phi::DataType::ALL_DTYPE && r != phi::DataType::ALL_DTYPE &&
-         l != r;
+static bool NeedTransformDataType(const DataType& l, const DataType& r) {
+  return l != DataType::ALL_DTYPE && r != DataType::ALL_DTYPE && l != r;
 }
 
-static const phi::DataType GetKernelTypeforVar(
+static const DataType GetKernelTypeforVar(
     Operation* op,
     const std::string& var_name,
-    const phi::DataType& tensor_dtype,
+    const DataType& tensor_dtype,
     const phi::KernelKey* expected_kernel_key) {
   OpInfo op_info = IrContext::Instance()->GetRegisteredOpInfo(op->name());
   auto get_kernel_type_for_var =
       op_info.GetInterfaceImpl<GetKernelTypeForVarInterface>();
   if (get_kernel_type_for_var) {
-    phi::DataType kernel_dtype_for_var =
+    DataType kernel_dtype_for_var =
         get_kernel_type_for_var->get_kernel_type_for_var_(
             var_name, tensor_dtype, (*expected_kernel_key).dtype());
     return kernel_dtype_for_var;
@@ -734,7 +730,7 @@ static Type create_type(Type type,
 
 static Type BuildDtypeTransferOutputType(Type type,
                                          const Place& place,
-                                         phi::DataType data_dtype,
+                                         DataType data_dtype,
                                          IrContext* ctx) {
   if (type.isa<AllocatedDenseTensorType>()) {
     auto out_dtype = TransToIrDataType(data_dtype, ctx);
@@ -839,8 +835,8 @@ Value AddDtypeTransferOp(Value in,
                          const phi::KernelKey& kernel_key,
                          const Place& origin_place,
                          const Place& out_place,
-                         const phi::DataType& src_dtype,
-                         const phi::DataType& dst_dtype) {
+                         const DataType& src_dtype,
+                         const DataType& dst_dtype) {
   IrContext* ctx = IrContext::Instance();
 
   OpInfo kernel_op_info = ctx->GetRegisteredOpInfo(PhiKernelOp::name());
@@ -901,13 +897,13 @@ Value AddDtypeTransferOp(Value in,
   return new_in;
 }
 
-static phi::DataType GetKernelDtypeByYaml(
+static DataType GetKernelDtypeByYaml(
     const Operation* op,
     const std::unordered_map<Value, Value>& map_value_pair,
     const OpYamlInfoParser* op_info_parser) {
   auto& attr_map = op->attributes();
   auto& data_type_info = op_info_parser->OpRuntimeInfo().kernel_key_dtype;
-  phi::DataType kernel_data_type = phi::DataType::UNDEFINED;
+  DataType kernel_data_type = DataType::UNDEFINED;
 
   for (auto slot_name : data_type_info) {
     auto& input_map = op_info_parser->InputName2Id();
@@ -931,7 +927,7 @@ static phi::DataType GetKernelDtypeByYaml(
       } else if (type.isa<VectorType>()) {
         auto vec_data = type.dyn_cast<VectorType>().data();
         if (vec_data.empty()) {
-          kernel_data_type = phi::DataType::UNDEFINED;
+          kernel_data_type = DataType::UNDEFINED;
         } else {
           if (vec_data[0].isa<AllocatedDenseTensorType>()) {
             kernel_data_type = TransToPhiDataType(
@@ -986,7 +982,7 @@ static phi::DataType GetKernelDtypeByYaml(
           attr_map.at(slot_name).dyn_cast<DataTypeAttribute>().data();
     }
 
-    if (kernel_data_type != phi::DataType::UNDEFINED) {
+    if (kernel_data_type != DataType::UNDEFINED) {
       // In yaml definition, data type have an order
       // like: data_type : dtype > x
       // Should break when found a defined data type
@@ -1105,8 +1101,7 @@ std::string GetKernelName(const OpYamlInfoParser* op_info_parser,
 }
 
 #ifdef PADDLE_WITH_DNNL
-bool SupportsONEDNN(const std::string& kernel_name,
-                    const phi::DataType data_type) {
+bool SupportsONEDNN(const std::string& kernel_name, const DataType data_type) {
   auto phi_kernels =
       phi::KernelFactory::Instance().SelectKernelMap(kernel_name);
   auto has_phi_kernel =
@@ -1154,7 +1149,7 @@ bool SupportsCPUBF16(const std::string& kernel_name) {
                   phi_kernels.end(),
                   [](phi::KernelKeyMap::const_reference kern_pair) {
                     return kern_pair.first.backend() == phi::Backend::CPU &&
-                           kern_pair.first.dtype() == phi::DataType::BFLOAT16;
+                           kern_pair.first.dtype() == DataType::BFLOAT16;
                   });
   if (has_phi_kernel) {
     return true;
@@ -1223,7 +1218,7 @@ phi::KernelKey GetKernelKey(
         op->attributes().at("place").dyn_cast<PlaceAttribute>().data();
 
     phi::Backend backend;
-    if (data_place.GetType() == phi::AllocationType::GPUPINNED) {
+    if (data_place.GetType() == AllocationType::GPUPINNED) {
       backend = phi::Backend::CPU;
     } else {
       backend = paddle::experimental::ParseBackend(data_place);
@@ -1238,7 +1233,7 @@ phi::KernelKey GetKernelKey(
   if (op->isa<SeedOp>()) {
     VLOG(6) << "SeedOp doesn't need a kernel";
     auto backend = paddle::experimental::ParseBackend(place);
-    return {backend, DataLayout::ANY, phi::DataType::INT32};
+    return {backend, DataLayout::ANY, DataType::INT32};
   }
 
   if (op->isa<FullWithTensorOp>()) {
@@ -1281,7 +1276,7 @@ phi::KernelKey GetKernelKey(
 
   phi::Backend kernel_backend = phi::Backend::UNDEFINED;
   DataLayout kernel_layout = DataLayout::UNDEFINED;
-  phi::DataType kernel_dtype = phi::DataType::UNDEFINED;
+  DataType kernel_dtype = DataType::UNDEFINED;
 
   if (op_info_parser != nullptr) {
     // only support non vector input for now
@@ -1318,7 +1313,7 @@ phi::KernelKey GetKernelKey(
   }
 
   if ((kernel_backend == phi::Backend::UNDEFINED ||
-       kernel_dtype == phi::DataType::UNDEFINED) &&
+       kernel_dtype == DataType::UNDEFINED) &&
       op->num_operands() > 0) {
     paddle::experimental::detail::KernelKeyParser kernel_key_parser;
     VLOG(8) << "Begin to infer kernel key from op operands";
@@ -1408,9 +1403,9 @@ phi::KernelKey GetKernelKey(
         VLOG(8) << "Infer kernel layout from op operands";
       }
     }
-    if (kernel_dtype == phi::DataType::UNDEFINED) {
+    if (kernel_dtype == DataType::UNDEFINED) {
       kernel_dtype = kernel_key.dtype();
-      if (kernel_dtype != phi::DataType::UNDEFINED) {
+      if (kernel_dtype != DataType::UNDEFINED) {
         VLOG(8) << "Infer kernel data_type from op operands";
       }
     }
@@ -1447,12 +1442,12 @@ phi::KernelKey GetKernelKey(
 #endif
 
   if (op->isa<LoadCombineOp>()) {
-    res.set_dtype(phi::DataType::FLOAT32);
+    res.set_dtype(DataType::FLOAT32);
     VLOG(8) << "LoadCombineOp's kernel data type must be FLOAT32";
   }
 
   if (op->isa<SyncCommStream_Op>() || op->isa<SyncCommStreamOp>()) {
-    res.set_dtype(phi::DataType::FLOAT32);
+    res.set_dtype(DataType::FLOAT32);
     VLOG(8) << "SyncCommStream_Op/SyncCommStreamOp's kernel data type must "
                "be FLOAT32";
   }
@@ -1757,7 +1752,7 @@ Place ParsePhiPlace(Type type) {
   }
 }
 
-phi::DataType ParsePhiDType(Type type) {
+DataType ParsePhiDType(Type type) {
   if (type.isa<AllocatedDenseTensorType>()) {
     return TransToPhiDataType(
         type.dyn_cast<AllocatedDenseTensorType>().dtype());
@@ -1888,7 +1883,7 @@ void AddShadowFeedForTuplePopOp(
                            .at("place")
                            .dyn_cast<PlaceAttribute>()
                            .data()
-                           .GetType()) == phi::AllocationType::UNDEFINED;
+                           .GetType()) == AllocationType::UNDEFINED;
   }
 
   // if value place not gpu, add shadow feed op
@@ -2040,14 +2035,14 @@ void HandleForSpecialOp(const Place& place,
             // make sure while's first iter place same as next iter place
             auto first_value = (*map_value_pair)[parent_op->operand_source(i)];
             if (ParsePhiPlace(first_value.type()).GetType() !=
-                phi::AllocationType::UNDEFINED) {
+                AllocationType::UNDEFINED) {
               arg_place = ParsePhiPlace(first_value.type());
             }
           }
 
           if ((!new_in.type().isa<VectorType>()) &&
               (ParsePhiPlace(new_in.type()).GetType() !=
-               phi::AllocationType::UNDEFINED) &&
+               AllocationType::UNDEFINED) &&
               (ParsePhiPlace(new_in.type()) != arg_place)) {
             phi::KernelKey kernel_key(TransToPhiBackend(place),
                                       DataLayout::ALL_LAYOUT,
@@ -2110,10 +2105,9 @@ void HandleForSpecialOp(const Place& place,
           auto in_place =
               new_in.type().dyn_cast<AllocatedDenseTensorType>().place();
           auto dst_backend = phi::TransToPhiBackend(place);
-          bool need_trans =
-              (in_place.GetType() != phi::AllocationType::UNDEFINED) &&
-              (paddle::experimental::NeedTransformPlace(
-                  in_place, dst_backend, {}));
+          bool need_trans = (in_place.GetType() != AllocationType::UNDEFINED) &&
+                            (paddle::experimental::NeedTransformPlace(
+                                in_place, dst_backend, {}));
           if (need_trans) {
             VLOG(6) << "need trans from " << in_place << " to " << dst_backend;
             // build memcopy op
@@ -2296,8 +2290,8 @@ void HandleForSpecialOp(const Place& place,
     if (run_cpu_kernel) {
       dst_backend = phi::Backend::CPU;
 
-      exec_backend = paddle::dialect::PlaceAttribute::get(
-          ctx, Place(phi::AllocationType::CPU));
+      exec_backend =
+          paddle::dialect::PlaceAttribute::get(ctx, Place(AllocationType::CPU));
     }
 
     op_item->set_attribute(kAttrExecBackend, exec_backend);
@@ -2309,10 +2303,9 @@ void HandleForSpecialOp(const Place& place,
         auto in_place =
             new_in.type().dyn_cast<AllocatedDenseTensorType>().place();
 
-        bool need_trans =
-            (in_place.GetType() != phi::AllocationType::UNDEFINED) &&
-            (paddle::experimental::NeedTransformPlace(
-                in_place, dst_backend, {}));
+        bool need_trans = (in_place.GetType() != AllocationType::UNDEFINED) &&
+                          (paddle::experimental::NeedTransformPlace(
+                              in_place, dst_backend, {}));
         if (need_trans) {
           VLOG(6) << "need trans from " << in_place << " to " << dst_backend;
           auto value_type =
@@ -2476,7 +2469,7 @@ void HandleForCustomOp(IrContext* ctx,
     if (new_in_type.isa<AllocatedDenseTensorType>()) {
       auto in_place = new_in_type.dyn_cast<AllocatedDenseTensorType>().place();
       // GPU_PINNED -> GPU, refer to PR#41972
-      if (phi::AllocationType::GPUPINNED == place.GetType()) {
+      if (AllocationType::GPUPINNED == place.GetType()) {
         VLOG(6) << "need trans from GPUPINNED to GPU";
         // build memcopy op
         auto out_place = phi::TransToPhiPlace(phi::Backend::GPU);
@@ -2577,7 +2570,7 @@ void HandleForPythonOp(IrContext* ctx,
     if (new_in_type.isa<AllocatedDenseTensorType>()) {
       auto in_place = new_in_type.dyn_cast<AllocatedDenseTensorType>().place();
       // need trans from GPU_PINNED to GPU, refer to PR#41972
-      if (phi::AllocationType::GPUPINNED == place.GetType()) {
+      if (AllocationType::GPUPINNED == place.GetType()) {
         // build memcopy op
         auto out_place = phi::TransToPhiPlace(phi::Backend::GPU);
         auto new_in_alloc_type =
@@ -2953,10 +2946,9 @@ std::vector<Value> BuildInputs(
         VLOG(6) << "Infer kernel backend from input " << i << " of op "
                 << op_item->name();
 
-        bool need_trans =
-            (in_place.GetType() != phi::AllocationType::UNDEFINED) &&
-            (paddle::experimental::NeedTransformPlace(
-                in_place, dst_backend, {}));
+        bool need_trans = (in_place.GetType() != AllocationType::UNDEFINED) &&
+                          (paddle::experimental::NeedTransformPlace(
+                              in_place, dst_backend, {}));
         if (need_trans) {
           VLOG(6) << "need trans from " << in_place << " to "
                   << kernel_key.backend();
@@ -3016,12 +3008,11 @@ std::vector<Value> BuildInputs(
 
             auto input_backend = ChooseInputBackend(
                 kernel, tensor_param_index, kernel_key.backend());
-            bool need_trans =
-                (place.GetType() != phi::AllocationType::UNDEFINED) &&
-                (op_info_parser != nullptr &&
-                 !op_info_parser->IsTensorAttribute(i)) &&
-                (paddle::experimental::NeedTransformPlace(
-                    place, input_backend, {}));
+            bool need_trans = (place.GetType() != AllocationType::UNDEFINED) &&
+                              (op_info_parser != nullptr &&
+                               !op_info_parser->IsTensorAttribute(i)) &&
+                              (paddle::experimental::NeedTransformPlace(
+                                  place, input_backend, {}));
             if (need_trans) {
               // build memcopy op
               auto out_place = phi::TransToPhiPlace(input_backend);
@@ -3108,10 +3099,9 @@ std::vector<Value> BuildInputs(
         auto dst_backend = DeriveBackend(
             op_item->name(), place, op_info_parser, input_backend, i);
         VLOG(6) << "Infer kernel backend from input " << i << " of op ";
-        bool need_trans =
-            (in_place.GetType() != phi::AllocationType::UNDEFINED) &&
-            (paddle::experimental::NeedTransformPlace(
-                in_place, dst_backend, {}));
+        bool need_trans = (in_place.GetType() != AllocationType::UNDEFINED) &&
+                          (paddle::experimental::NeedTransformPlace(
+                              in_place, dst_backend, {}));
         if (need_trans) {
           VLOG(6) << "need trans from " << in_place << " to "
                   << kernel_key.backend();
@@ -3144,10 +3134,9 @@ std::vector<Value> BuildInputs(
         auto dst_backend = DeriveBackend(
             op_item->name(), place, op_info_parser, input_backend, i);
         VLOG(6) << "Infer kernel backend from input " << i << " of op ";
-        bool need_trans =
-            (in_place.GetType() != phi::AllocationType::UNDEFINED) &&
-            (paddle::experimental::NeedTransformPlace(
-                in_place, dst_backend, {}));
+        bool need_trans = (in_place.GetType() != AllocationType::UNDEFINED) &&
+                          (paddle::experimental::NeedTransformPlace(
+                              in_place, dst_backend, {}));
         if (need_trans) {
           VLOG(6) << "need trans from " << in_place << " to "
                   << kernel_key.backend();
@@ -3178,10 +3167,9 @@ std::vector<Value> BuildInputs(
         auto dst_backend = DeriveBackend(
             op_item->name(), place, op_info_parser, input_backend, i);
         VLOG(6) << "Infer kernel backend from input " << i << " of op ";
-        bool need_trans =
-            (in_place.GetType() != phi::AllocationType::UNDEFINED) &&
-            (paddle::experimental::NeedTransformPlace(
-                in_place, dst_backend, {}));
+        bool need_trans = (in_place.GetType() != AllocationType::UNDEFINED) &&
+                          (paddle::experimental::NeedTransformPlace(
+                              in_place, dst_backend, {}));
         if (need_trans) {
           VLOG(6) << "need trans from " << in_place << " to "
                   << kernel_key.backend();
@@ -3216,10 +3204,9 @@ std::vector<Value> BuildInputs(
         auto dst_backend = DeriveBackend(
             op_item->name(), place, op_info_parser, input_backend, i);
         VLOG(6) << "Infer kernel backend from input " << i << " of op ";
-        bool need_trans =
-            (in_place.GetType() != phi::AllocationType::UNDEFINED) &&
-            (paddle::experimental::NeedTransformPlace(
-                in_place, dst_backend, {}));
+        bool need_trans = (in_place.GetType() != AllocationType::UNDEFINED) &&
+                          (paddle::experimental::NeedTransformPlace(
+                              in_place, dst_backend, {}));
         if (need_trans) {
           VLOG(6) << "need trans from " << in_place << " to "
                   << kernel_key.backend();
@@ -3253,7 +3240,7 @@ std::vector<Value> BuildInputs(
       auto fake_tensors = PrepareFakeTensors(new_in);
       if (!fake_tensors.empty()) {
         const phi::KernelKey expected_kernel_key = kernel_key;
-        const phi::DataType kernel_dtype_for_var =
+        const DataType kernel_dtype_for_var =
             GetKernelTypeforVar(op_item,
                                 var_name,
                                 (*fake_tensors[0]).dtype(),
@@ -3293,13 +3280,13 @@ void AddShadowFeedOpForDataOrFeed(
     std::unordered_map<Value, Value>* map_value_pair) {
   bool feed_op_add_shadow_feed =
       (op_item->isa<FeedOp>()) && phi::is_accelerat_place(place);
-  bool data_op_add_shadow_feed =
-      (op_item->isa<DataOp>()) && phi::is_accelerat_place(place) &&
-      (kernel_op->attributes()
-           .at("place")
-           .dyn_cast<PlaceAttribute>()
-           .data()
-           .GetType() == phi::AllocationType::UNDEFINED);
+  bool data_op_add_shadow_feed = (op_item->isa<DataOp>()) &&
+                                 phi::is_accelerat_place(place) &&
+                                 (kernel_op->attributes()
+                                      .at("place")
+                                      .dyn_cast<PlaceAttribute>()
+                                      .data()
+                                      .GetType() == AllocationType::UNDEFINED);
   bool add_shadow_feed = feed_op_add_shadow_feed || data_op_add_shadow_feed;
   if (add_shadow_feed) {
     PADDLE_ENFORCE(op_item->num_results() == 1,
@@ -3762,10 +3749,10 @@ void ProcessBlock(const Place& place,
     }
 
     // Use OneDNN if CPU not support bf16
-    if (kernel_key.dtype() == phi::DataType::BFLOAT16 &&
+    if (kernel_key.dtype() == DataType::BFLOAT16 &&
         kernel_key.backend() == phi::Backend::CPU &&
         !op_item->HasTrait<OneDNNTrait>() && !SupportsCPUBF16(kernel_name) &&
-        SupportsONEDNN(kernel_name, phi::DataType::BFLOAT16)) {
+        SupportsONEDNN(kernel_name, DataType::BFLOAT16)) {
       auto op_item_inner = PdOp2OneDNNOp(op_item, block, ctx);
       if (op_item_inner != op_item) {
         op_item = op_item_inner;

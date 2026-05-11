@@ -21,7 +21,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 
 std::set<std::string> act_ops = {
     "gelu",
@@ -228,14 +228,10 @@ class MatmulAddActFusePass : public pir::PatternRewritePass {
   }
 };
 
-}  // namespace
-
-namespace pir {
-
 std::unique_ptr<Pass> CreateMatmulAddActFusePass() {
   return std::make_unique<MatmulAddActFusePass>();
 }
 
 }  // namespace pir
 
-REGISTER_IR_PASS(matmul_add_act_fuse_pass, MatmulAddActFusePass);
+REGISTER_IR_PASS(matmul_add_act_fuse_pass, pir::MatmulAddActFusePass);

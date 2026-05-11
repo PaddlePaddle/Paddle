@@ -29,7 +29,7 @@
 
 #include "paddle/common/ddim.h"
 
-namespace {
+namespace pir {
 
 class Conv2dAddActFusePassDrrPattern : public paddle::drr::DrrPatternBase {
  private:
@@ -339,14 +339,10 @@ class Conv2dAddActFusePass : public pir::PatternRewritePass {
   }
 };
 
-}  // namespace
-
-namespace pir {
-
 std::unique_ptr<Pass> CreateConv2dAddActFusePass() {
   return std::make_unique<Conv2dAddActFusePass>();
 }
 
 }  // namespace pir
 
-REGISTER_IR_PASS(conv2d_add_act_fuse_pass, Conv2dAddActFusePass);
+REGISTER_IR_PASS(conv2d_add_act_fuse_pass, pir::Conv2dAddActFusePass);

@@ -20,7 +20,7 @@
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/pass/pass.h"
 
-namespace {
+namespace pir {
 
 class FusedBnAddActPattern : public paddle::drr::DrrPatternBase {
  public:
@@ -249,14 +249,10 @@ class FusedBnAddActPass : public pir::PatternRewritePass {
   }
 };
 
-}  // namespace
-
-namespace pir {
-
 std::unique_ptr<Pass> CreateFusedBnAddActPass() {
   return std::make_unique<FusedBnAddActPass>();
 }
 
 }  // namespace pir
 
-// REGISTER_IR_PASS(fused_bn_add_act_pass, FusedBnAddActPass);
+// REGISTER_IR_PASS(fused_bn_add_act_pass, pir::FusedBnAddActPass);

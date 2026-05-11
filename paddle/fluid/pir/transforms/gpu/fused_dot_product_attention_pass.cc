@@ -20,7 +20,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 
 class FusedDotProductAttentionPattern : public paddle::drr::DrrPatternBase {
  public:
@@ -631,14 +631,10 @@ class FusedDotProductAttentionPass : public pir::PatternRewritePass {
   }
 };
 
-}  // namespace
-
-namespace pir {
-
 std::unique_ptr<Pass> CreateFusedDotProductAttentionPass() {
   return std::make_unique<FusedDotProductAttentionPass>();
 }
 }  // namespace pir
 
 REGISTER_IR_PASS(fused_dot_product_attention_pass,
-                 FusedDotProductAttentionPass);
+                 pir::FusedDotProductAttentionPass);

@@ -21,7 +21,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 
 class FcElementwiseLayerNormFusePattern : public paddle::drr::DrrPatternBase {
  public:
@@ -75,7 +75,7 @@ class FcElementwiseLayerNormFusePattern : public paddle::drr::DrrPatternBase {
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
     const auto &cast_op_dtype = res.ComputeAttr(
-        [](const paddle::drr::MatchContext &match_ctx) -> phi::DataType {
+        [](const paddle::drr::MatchContext &match_ctx) -> DataType {
           auto x_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("x"));
           return paddle::dialect::TransToPhiDataType(x_dtype);
         });
@@ -122,10 +122,6 @@ class FcElementwiseLayerNormFusePass : public pir::PatternRewritePass {
   }
 };
 
-}  // namespace
-
-namespace pir {
-
 std::unique_ptr<Pass> CreateFcElementwiseLayerNormFusePass() {
   return std::make_unique<FcElementwiseLayerNormFusePass>();
 }
@@ -133,4 +129,4 @@ std::unique_ptr<Pass> CreateFcElementwiseLayerNormFusePass() {
 }  // namespace pir
 
 REGISTER_IR_PASS(fc_elementwise_layernorm_fuse_pass,
-                 FcElementwiseLayerNormFusePass);
+                 pir::FcElementwiseLayerNormFusePass);

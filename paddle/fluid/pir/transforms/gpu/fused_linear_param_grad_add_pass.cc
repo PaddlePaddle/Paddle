@@ -21,7 +21,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 
 // add_grad + matmul_grad + add_ -> matmul + fused_linear_param_grad_add
 class FusedMatmulAddGradAddPattern : public paddle::drr::DrrPatternBase {
@@ -435,14 +435,11 @@ class FusedLinearParamGradAddPass : public pir::PatternRewritePass {
   }
 };
 
-}  // namespace
-
-namespace pir {
-
 std::unique_ptr<Pass> CreateFusedLinearParamGradAddPass() {
   return std::make_unique<FusedLinearParamGradAddPass>();
 }
 
 }  // namespace pir
 
-REGISTER_IR_PASS(fused_linear_param_grad_add_pass, FusedLinearParamGradAddPass);
+REGISTER_IR_PASS(fused_linear_param_grad_add_pass,
+                 pir::FusedLinearParamGradAddPass);

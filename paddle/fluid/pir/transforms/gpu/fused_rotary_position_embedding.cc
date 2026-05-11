@@ -25,7 +25,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 
 class FusedRotaryPositionEmbeddingPattern : public paddle::drr::DrrPatternBase {
  private:
@@ -276,13 +276,10 @@ class FusedRotaryPositionEmbeddingPass : public pir::PatternRewritePass {
     return ps;
   }
 };
-}  // namespace
-
-namespace pir {
 
 std::unique_ptr<Pass> CreateFusedRotaryPositionEmbeddingPass() {
   return std::make_unique<FusedRotaryPositionEmbeddingPass>();
 }
 }  // namespace pir
 REGISTER_IR_PASS(fused_rotary_position_embedding_pass,
-                 FusedRotaryPositionEmbeddingPass);
+                 pir::FusedRotaryPositionEmbeddingPass);

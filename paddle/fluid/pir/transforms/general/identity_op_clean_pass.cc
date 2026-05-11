@@ -170,10 +170,10 @@ class RemoveRedundantCastPattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("ret") = pat.Op(
         "pd_op.cast", {{"dtype", pat.Attr("dtype2")}})(pat.Tensor("tmp"));
     pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
-      const auto &cast1_out_type = match_ctx.Attr<phi::DataType>("dtype1");
-      return cast1_out_type != phi::DataType::INT64 &&
-             cast1_out_type != phi::DataType::INT32 &&
-             cast1_out_type != phi::DataType::BOOL;
+      const auto &cast1_out_type = match_ctx.Attr<DataType>("dtype1");
+      return cast1_out_type != DataType::INT64 &&
+             cast1_out_type != DataType::INT32 &&
+             cast1_out_type != DataType::BOOL;
     });
     auto res = pat.ResultPattern();
     res.Tensor("ret") = res.Op(
@@ -253,13 +253,11 @@ class ReplaceDropoutWithScalePattern : public paddle::drr::DrrPatternBase {
                               -> phi::IntArray { return {1}; })},
          {"value", res_scale_input},
          {"dtype",
-          res.ComputeAttr(
-              [](const paddle::drr::MatchContext &match_ctx) -> phi::DataType {
-                return phi::DataType::FLOAT32;
-              })},
+          res.ComputeAttr([](const paddle::drr::MatchContext &match_ctx)
+                              -> DataType { return DataType::FLOAT32; })},
          {"place",
           res.ComputeAttr([](const paddle::drr::MatchContext &match_ctx)
-                              -> phi::Place { return phi::CPUPlace{}; })}});
+                              -> Place { return CPUPlace{}; })}});
     const auto &scale_op_res =
         res.Op("pd_op.scale",
                {{"bias", res.Float32Attr(0)},

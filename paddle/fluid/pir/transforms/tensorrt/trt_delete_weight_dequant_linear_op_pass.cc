@@ -28,7 +28,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 
 class TrtDeleteWeightDequantLinearOpBasePattern
     : public paddle::drr::DrrPatternBase {
@@ -89,15 +89,15 @@ class TrtDeleteWeightDequantLinearOpBasePattern
     auto weight_name =
         pir::GetParameterNameFromValue(match_ctx.Tensor("weight"));
     auto* weight_tensor =
-        this->scope_->GetVar(weight_name)->GetMutable<phi::DenseTensor>();
-    phi::DenseTensor weight_tensor_cpu;
+        this->scope_->GetVar(weight_name)->GetMutable<DenseTensor>();
+    DenseTensor weight_tensor_cpu;
     weight_tensor_cpu.Resize(weight_tensor->dims());
     paddle::framework::TensorCopySync(
-        *weight_tensor, phi::CPUPlace{}, &weight_tensor_cpu);
+        *weight_tensor, CPUPlace{}, &weight_tensor_cpu);
     // int8 cast to float for calculation
     std::vector<float> quantized_weight_data;
     for (int i = 0; i < weight_tensor_cpu.numel(); i++) {
-      if (weight_tensor_cpu.dtype() == phi::DataType::INT8) {
+      if (weight_tensor_cpu.dtype() == DataType::INT8) {
         quantized_weight_data.push_back(
             static_cast<float>(weight_tensor_cpu.data<int8_t>()[i]));
       } else {
@@ -111,11 +111,11 @@ class TrtDeleteWeightDequantLinearOpBasePattern
     auto weight_scale_name =
         pir::GetParameterNameFromValue(match_ctx.Tensor("scale"));
     auto* weight_scale_tensor =
-        this->scope_->GetVar(weight_scale_name)->GetMutable<phi::DenseTensor>();
-    phi::DenseTensor weight_scale_tensor_tmp;
+        this->scope_->GetVar(weight_scale_name)->GetMutable<DenseTensor>();
+    DenseTensor weight_scale_tensor_tmp;
     weight_scale_tensor_tmp.Resize(weight_scale_tensor->dims());
     paddle::framework::TensorCopySync(
-        *weight_scale_tensor, phi::CPUPlace{}, &weight_scale_tensor_tmp);
+        *weight_scale_tensor, CPUPlace{}, &weight_scale_tensor_tmp);
     weight_scale_tensor = &weight_scale_tensor_tmp;
     float* weight_scale_data = weight_scale_tensor->data<float>();
     auto weight_scale_nums = weight_scale_tensor->numel();
@@ -211,9 +211,9 @@ class TrtDeleteWeightDequantLinearOpBasePattern
           phi::DeviceContextPool::Instance().Get(phi::GPUPlace()));
       paddle::framework::TensorFromVector(
           weight_data_tmp, *dev_ctx, weight_tensor);
-    } else if (weight_tensor_place == phi::CPUPlace()) {
+    } else if (weight_tensor_place == CPUPlace()) {
       auto* dev_ctx = static_cast<phi::CPUContext*>(
-          phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+          phi::DeviceContextPool::Instance().Get(CPUPlace()));
       paddle::framework::TensorFromVector(
           weight_data_tmp, *dev_ctx, weight_tensor);
     } else {
@@ -347,9 +347,6 @@ class TrtDeleteWeightDequantLinearOpPatternPass
  private:
   paddle::framework::Scope* scope_{nullptr};
 };
-}  // namespace
-
-namespace pir {
 
 std::unique_ptr<Pass> CreateTrtDeleteWeightDequantLinearOpPatternPass() {
   return std::make_unique<TrtDeleteWeightDequantLinearOpPatternPass>();
@@ -358,4 +355,4 @@ std::unique_ptr<Pass> CreateTrtDeleteWeightDequantLinearOpPatternPass() {
 }  // namespace pir
 
 REGISTER_IR_PASS(trt_delete_weight_dequant_linear_op_pass,
-                 TrtDeleteWeightDequantLinearOpPatternPass);
+                 pir::TrtDeleteWeightDequantLinearOpPatternPass);

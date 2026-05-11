@@ -69,11 +69,11 @@ class DeleteQuantDequantLinearOpBasePattern
     auto input_scale_name =
         GetParameterNameFromValue(match_ctx.Tensor("scale"));
     auto* input_scale_var = this->scope_->FindVar(input_scale_name);
-    auto* input_scale_tensor = input_scale_var->GetMutable<phi::DenseTensor>();
-    phi::DenseTensor temp_tensor;
+    auto* input_scale_tensor = input_scale_var->GetMutable<DenseTensor>();
+    DenseTensor temp_tensor;
     temp_tensor.Resize(input_scale_tensor->dims());
     paddle::framework::TensorCopySync(
-        *input_scale_tensor, phi::CPUPlace{}, &temp_tensor);
+        *input_scale_tensor, CPUPlace{}, &temp_tensor);
 
     if (input_scale_dtype.isa<Float16Type>()) {
       const phi::dtype::float16* input_scale_data =

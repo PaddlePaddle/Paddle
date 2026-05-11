@@ -25,7 +25,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 
 class RmsNormFusePattern : public paddle::drr::DrrPatternBase {
  private:
@@ -92,17 +92,17 @@ class RmsNormFusePattern : public paddle::drr::DrrPatternBase {
           return false;
         }
 
-        auto cast_type_1 = match_ctx.Attr<phi::DataType>("cast_type_1");
-        auto cast_type_2 = match_ctx.Attr<phi::DataType>("cast_type_2");
-        if (cast_type_1 != phi::DataType::FLOAT32) {
+        auto cast_type_1 = match_ctx.Attr<DataType>("cast_type_1");
+        auto cast_type_2 = match_ctx.Attr<DataType>("cast_type_2");
+        if (cast_type_1 != DataType::FLOAT32) {
           return false;
         }
         if (w_type.isa<pir::Float16Type>() &&
-            cast_type_2 != phi::DataType::FLOAT16) {
+            cast_type_2 != DataType::FLOAT16) {
           return false;
         }
         if (w_type.isa<pir::BFloat16Type>() &&
-            cast_type_2 != phi::DataType::BFLOAT16) {
+            cast_type_2 != DataType::BFLOAT16) {
           return false;
         }
       }
@@ -258,8 +258,8 @@ class AddLayerNormFusePattern : public paddle::drr::DrrPatternBase {
     });
     paddle::drr::ResultPattern res = pat.ResultPattern();
     const auto &cast_op_dtype = res.ComputeAttr(
-        [](const paddle::drr::MatchContext &match_ctx) -> phi::DataType {
-          return phi::DataType::FLOAT32;
+        [](const paddle::drr::MatchContext &match_ctx) -> DataType {
+          return DataType::FLOAT32;
         });
     const auto cast_1_op =
         res.Op(paddle::dialect::CastOp::name(), {{"dtype", cast_op_dtype}});
@@ -476,12 +476,10 @@ class AddNormFusePass : public pir::PatternRewritePass {
     return ps;
   }
 };
-}  // namespace
 
-namespace pir {
 std::unique_ptr<Pass> CreateAddNormFusePass() {
   return std::make_unique<AddNormFusePass>();
 }
 }  // namespace pir
 
-REGISTER_IR_PASS(add_norm_fuse_pass, AddNormFusePass);
+REGISTER_IR_PASS(add_norm_fuse_pass, pir::AddNormFusePass);

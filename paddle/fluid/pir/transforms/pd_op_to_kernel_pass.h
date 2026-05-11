@@ -13,12 +13,9 @@
 // limitations under the License.
 #pragma once
 
+#include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/pir/include/core/program.h"
-
-using Place = phi::Place;
-using CPUPlace = phi::CPUPlace;
-using GPUPlace = phi::GPUPlace;
 
 namespace pir {
 

@@ -23,7 +23,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 
 class Fused2EmbeddingEltwiseLayernormPattern
     : public paddle::drr::DrrPatternBase {
@@ -85,7 +85,7 @@ class Fused2EmbeddingEltwiseLayernormPattern
                  {&res.Tensor("combine2_out")});
 
     const auto &cast_op_dtype = res.ComputeAttr(
-        [](const paddle::drr::MatchContext &match_ctx) -> phi::DataType {
+        [](const paddle::drr::MatchContext &match_ctx) -> DataType {
           auto w1_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("w1"));
           return paddle::dialect::TransToPhiDataType(w1_dtype);
         });
@@ -181,7 +181,7 @@ class Fused3EmbeddingEltwiseLayernormPattern
     combine_op_2({&res.Tensor("w1"), &res.Tensor("w2"), &res.Tensor("w3")},
                  {&res.Tensor("combine2_out")});
     const auto &cast_op_dtype = res.ComputeAttr(
-        [](const paddle::drr::MatchContext &match_ctx) -> phi::DataType {
+        [](const paddle::drr::MatchContext &match_ctx) -> DataType {
           auto w1_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("w1"));
           return paddle::dialect::TransToPhiDataType(w1_dtype);
         });
@@ -224,9 +224,6 @@ class EmbeddingEltwiseLayernormFusePass : public pir::PatternRewritePass {
   }
 };
 
-}  // namespace
-
-namespace pir {
 std::unique_ptr<Pass> CreateFusedEmbeddingEltwiseLayerNormPass() {
   return std::make_unique<EmbeddingEltwiseLayernormFusePass>();
 }
@@ -234,4 +231,4 @@ std::unique_ptr<Pass> CreateFusedEmbeddingEltwiseLayerNormPass() {
 }  // namespace pir
 
 REGISTER_IR_PASS(embedding_eltwise_layernorm_fuse_pass,
-                 EmbeddingEltwiseLayernormFusePass);
+                 pir::EmbeddingEltwiseLayernormFusePass);

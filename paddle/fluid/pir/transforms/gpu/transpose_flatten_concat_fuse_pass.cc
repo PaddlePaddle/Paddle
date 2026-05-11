@@ -21,7 +21,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 
 class NTransposeFlattenConcatFusePattern : public paddle::drr::DrrPatternBase {
  private:
@@ -173,14 +173,10 @@ class TransposeFlattenConcatFusePass : public pir::PatternRewritePass {
   }
 };
 
-}  // namespace
-
-namespace pir {
-
 std::unique_ptr<Pass> CreateTransposeFlattenConcatFusePass() {
   return std::make_unique<TransposeFlattenConcatFusePass>();
 }
 }  // namespace pir
 
 REGISTER_IR_PASS(transpose_flatten_concat_fuse_pass,
-                 TransposeFlattenConcatFusePass);
+                 pir::TransposeFlattenConcatFusePass);

@@ -34,6 +34,8 @@ namespace phi {
 class DenseTensor;
 class Place;
 class CPUPlace;
+class DenseTensorMeta;
+class Allocation;
 }  // namespace phi
 
 namespace pir {
@@ -44,6 +46,18 @@ class Value;
 
 using Variable = paddle::framework::Variable;
 using Scope = paddle::framework::Scope;
+using Place = phi::Place;
+using CPUPlace = phi::CPUPlace;
+using GPUPlace = phi::GPUPlace;
+using GPUPinnedPlace = phi::GPUPinnedPlace;
+using XPUPlace = phi::XPUPlace;
+using XPUPinnedPlace = phi::XPUPinnedPlace;
+using CustomPlace = phi::CustomPlace;
+using DenseTensorMeta = phi::DenseTensorMeta;
+using DenseTensor = phi::DenseTensor;
+using Allocation = phi::Allocation;
+using AllocationType = phi::AllocationType;
+using DataType = phi::DataType;
 
 /**
  * @brief Copy a DenseTensor to another.

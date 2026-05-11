@@ -49,7 +49,7 @@ class ParamsSyncAmongDevicesPass : public Pass {
             "When using ConstantFoldingPass, scope attribute is required!"
             "Use Set method to set the scope attribute."));
 
-    place_ = Get<phi::Place>(Pass::kPlaceAttr);
+    place_ = Get<Place>(Pass::kPlaceAttr);
     scope_ = &Get<paddle::framework::Scope>(Pass::kParamScopeAttr);
     return true;
   }
@@ -64,7 +64,7 @@ class ParamsSyncAmongDevicesPass : public Pass {
     auto& block = module_op.block();
     int64_t num_rewrites_{0};
 
-    std::vector<phi::DenseTensor*> dense_tensors;
+    std::vector<DenseTensor*> dense_tensors;
     for (auto& inner_op : block) {
       if (inner_op.template isa<ParameterOp>() && inner_op.num_results() > 0) {
         auto var = inner_op.result(0);
@@ -83,8 +83,8 @@ class ParamsSyncAmongDevicesPass : public Pass {
             common::errors::InvalidArgument("Parameter var [%s] not in scope.",
                                             param_name));
 
-        if (param_var->IsType<phi::DenseTensor>()) {
-          dense_tensors.push_back(param_var->GetMutable<phi::DenseTensor>());
+        if (param_var->IsType<DenseTensor>()) {
+          dense_tensors.push_back(param_var->GetMutable<DenseTensor>());
         } else {
           PADDLE_THROW(common::errors::Unimplemented(
               "params_sync_among_devices_pass only support DenseTensor type of "
@@ -100,7 +100,7 @@ class ParamsSyncAmongDevicesPass : public Pass {
     num_threads = std::min(num_threads, dense_tensors.size() / chunk_size);
     size_t remain_size = dense_tensors.size() % num_threads;
 
-    auto sync_handler = [&](const std::vector<phi::DenseTensor*>& tensors) {
+    auto sync_handler = [&](const std::vector<DenseTensor*>& tensors) {
       for (auto* tensor : tensors) {
         paddle::framework::TensorCopySync(*tensor, place_, tensor);
       }
@@ -114,14 +114,14 @@ class ParamsSyncAmongDevicesPass : public Pass {
       futures.push_back(
           std::async(std::launch::async,
                      sync_handler,
-                     std::vector<phi::DenseTensor*>(start_it, end_it)));
+                     std::vector<DenseTensor*>(start_it, end_it)));
     }
     if (remain_size > 0) {
       futures.push_back(std::async(
           std::launch::async,
           sync_handler,
-          std::vector<phi::DenseTensor*>(
-              dense_tensors.rbegin(), dense_tensors.rbegin() + remain_size)));
+          std::vector<DenseTensor*>(dense_tensors.rbegin(),
+                                    dense_tensors.rbegin() + remain_size)));
     }
 
     for (auto& future : futures) {
@@ -152,7 +152,7 @@ class ParamsSyncAmongDevicesPass : public Pass {
   }
 
  private:
-  phi::Place place_{phi::CPUPlace{}};
+  Place place_{CPUPlace{}};
   paddle::framework::Scope* scope_{nullptr};
 };
 

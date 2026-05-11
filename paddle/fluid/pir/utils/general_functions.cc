@@ -79,20 +79,18 @@ void GetUsedExternalValueImpl(
   }
 }
 
-void TensorCopySync(const phi::DenseTensor& src,
-                    phi::DenseTensor* dst,
-                    const phi::Place& dst_place) {
+void TensorCopySync(const DenseTensor& src,
+                    DenseTensor* dst,
+                    const Place& dst_place) {
   paddle::framework::TensorCopySync(src, dst_place, dst);
 }
 
-void DenseTensorCastToFp32(phi::DenseTensor* in,
-                           phi::DenseTensor* out,
-                           int world_size) {
+void DenseTensorCastToFp32(DenseTensor* in, DenseTensor* out, int world_size) {
   auto* cpu_ctx = static_cast<phi::CPUContext*>(
       phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
 
-  phi::DenseTensor fp32_tensor;
-  phi::DenseTensor* out_ptr = out == nullptr ? &fp32_tensor : out;
+  DenseTensor fp32_tensor;
+  DenseTensor* out_ptr = out == nullptr ? &fp32_tensor : out;
   out_ptr->Resize(in->dims());
   out_ptr->set_type(phi::DataType::FLOAT32);
   out_ptr->set_layout(in->layout());
@@ -157,8 +155,8 @@ bool VarIsType(Variable* var) {
   return var->IsType<T>();
 }
 
-template phi::DenseTensor* VarGetMutable<phi::DenseTensor>(Variable*);
-template bool VarIsType<phi::DenseTensor>(Variable*);
+template DenseTensor* VarGetMutable<DenseTensor>(Variable*);
+template bool VarIsType<DenseTensor>(Variable*);
 
 Variable* ScopeFindVar(Scope* scope_, const std::string& name) {
   return scope_->FindVar(name);

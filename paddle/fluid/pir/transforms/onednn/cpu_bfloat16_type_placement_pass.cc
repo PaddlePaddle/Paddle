@@ -104,7 +104,7 @@ class CpuBfloat16TypePattern : public RewritePattern {
           auto dense_type = type.dyn_cast<paddle::dialect::DenseTensorType>();
           auto new_type = paddle::dialect::DenseTensorType::get(
               rewriter.ir_context(),
-              paddle::dialect::TransToIrDataType(phi::DataType::BFLOAT16,
+              paddle::dialect::TransToIrDataType(DataType::BFLOAT16,
                                                  rewriter.ir_context()),
               dense_type.dims(),
               dense_type.data_layout(),
@@ -121,7 +121,7 @@ class CpuBfloat16TypePattern : public RewritePattern {
                 vec_type[idx].dyn_cast<paddle::dialect::DenseTensorType>();
             auto new_type = paddle::dialect::DenseTensorType::get(
                 rewriter.ir_context(),
-                paddle::dialect::TransToIrDataType(phi::DataType::BFLOAT16,
+                paddle::dialect::TransToIrDataType(DataType::BFLOAT16,
                                                    rewriter.ir_context()),
                 dense_type.dims(),
                 dense_type.data_layout(),

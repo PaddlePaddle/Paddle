@@ -33,7 +33,7 @@
 #include "paddle/pir/include/pattern_rewrite/pattern_match.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 
-namespace {
+namespace pir {
 
 class HorizontalFusePattern : public pir::RewritePattern {
  public:
@@ -351,14 +351,10 @@ class HorizontalFusePass : public pir::Pass {
   pir::FrozenRewritePatternSet patterns_;
 };
 
-}  // namespace
-
-namespace pir {
-
 std::unique_ptr<Pass> CreateHorizontalFusePass() {
   return std::make_unique<HorizontalFusePass>();
 }
 
 }  // namespace pir
 
-REGISTER_IR_PASS(horizontal_fuse_pass, HorizontalFusePass);
+REGISTER_IR_PASS(horizontal_fuse_pass, pir::HorizontalFusePass);

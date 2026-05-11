@@ -21,7 +21,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 
 class MultiHeadMatmulFuseNoBiasQKPattern : public paddle::drr::DrrPatternBase {
  public:
@@ -683,12 +683,9 @@ class MultiHeadMatmulFusePass : public pir::PatternRewritePass {
   }
 };
 
-}  // namespace
-
-namespace pir {
 std::unique_ptr<Pass> CreateMultiHeadMatmulFusePass() {
   return std::make_unique<MultiHeadMatmulFusePass>();
 }
 }  // namespace pir
 
-REGISTER_IR_PASS(multihead_matmul_fuse_pass, MultiHeadMatmulFusePass);
+REGISTER_IR_PASS(multihead_matmul_fuse_pass, pir::MultiHeadMatmulFusePass);

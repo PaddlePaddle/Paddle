@@ -26,7 +26,6 @@
 #include "paddle/pir/include/pass/pass_registry.h"
 
 namespace {
-
 int getSMVersion() {
   int sm_version = -1;
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_CUTLASS)
@@ -35,7 +34,9 @@ int getSMVersion() {
 #endif
   return sm_version;
 }
+}  // namespace
 
+namespace pir {
 class FusedWeightOnlyLinearWithBiasPattern
     : public paddle::drr::DrrPatternBase {
  private:
@@ -322,12 +323,9 @@ class FusedWeightOnlyLinearPass : public pir::PatternRewritePass {
   pir::FrozenRewritePatternSet patterns_;
 };
 
-}  // namespace
-
-namespace pir {
 std::unique_ptr<Pass> CreateFusedWeightOnlyLinearPass() {
   return std::make_unique<FusedWeightOnlyLinearPass>();
 }
 }  // namespace pir
 
-REGISTER_IR_PASS(fused_weight_only_linear_pass, FusedWeightOnlyLinearPass);
+REGISTER_IR_PASS(fused_weight_only_linear_pass, pir::FusedWeightOnlyLinearPass);

@@ -59,8 +59,8 @@ class AutoMixedPrecisionPass : public Pass {
  public:
   AutoMixedPrecisionPass()
       : Pass("auto_mixed_precision_pass", 1),
-        place_(phi::CPUPlace{}),
-        precision_mode_(phi::DataType::FLOAT16),
+        place_(CPUPlace{}),
+        precision_mode_(DataType::FLOAT16),
         enable_low_precision_io_(false),
         context_(nullptr),
         op_run_low_precision_(),
@@ -111,8 +111,8 @@ class AutoMixedPrecisionPass : public Pass {
             "required!"
             "Use Set method to set the scope attribute."));
 
-    place_ = Get<phi::Place>(Pass::kPlaceAttr);
-    precision_mode_ = Get<phi::DataType>("mixed_precision_mode");
+    place_ = Get<Place>(Pass::kPlaceAttr);
+    precision_mode_ = Get<DataType>("mixed_precision_mode");
     context_ = context;
     enable_low_precision_io_ = Get<bool>("enable_low_precision_io");
     black_list_ = Get<std::unordered_set<std::string>>("mixed_black_list");
@@ -129,13 +129,13 @@ class AutoMixedPrecisionPass : public Pass {
   bool CanApplyOn(Operation* op) const override {
     return op->num_regions() > 0 && op->isa<ModuleOp>() &&
            phi::is_gpu_place(place_) &&
-           (precision_mode_ == phi::DataType::FLOAT16 ||
-            precision_mode_ == phi::DataType::BFLOAT16);
+           (precision_mode_ == DataType::FLOAT16 ||
+            precision_mode_ == DataType::BFLOAT16);
   }
 
  private:
-  phi::Place place_;
-  phi::DataType precision_mode_;
+  Place place_;
+  DataType precision_mode_;
   bool enable_low_precision_io_;
   IrContext* context_;
 
@@ -303,7 +303,7 @@ class AutoMixedPrecisionPass : public Pass {
   bool PhiKernelSupportPrecision(
       const std::string& op_type,
       phi::Backend backend,
-      phi::DataType data_type,
+      DataType data_type,
       DataLayout layout = DataLayout::ALL_LAYOUT) const {
     const auto& kernels = phi::KernelFactory::Instance().kernels();
     if (kernels.count(op_type) == 0) {
@@ -313,15 +313,15 @@ class AutoMixedPrecisionPass : public Pass {
     return phi::KernelFactory::Instance().HasKernel(op_type, kernel_key);
   }
 
-  phi::Backend ConvertPlaceToBackend(const phi::Place& place) const {
+  phi::Backend ConvertPlaceToBackend(const Place& place) const {
     switch (place.GetType()) {
-      case phi::AllocationType::CPU:
+      case AllocationType::CPU:
         return phi::Backend::CPU;
-      case phi::AllocationType::GPU:
+      case AllocationType::GPU:
         return phi::Backend::GPU;
-      case phi::AllocationType::XPU:
+      case AllocationType::XPU:
         return phi::Backend::XPU;
-      case phi::AllocationType::CUSTOM:
+      case AllocationType::CUSTOM:
         return phi::Backend::CUSTOM;
       default:
         return phi::Backend::UNDEFINED;
@@ -332,7 +332,7 @@ class AutoMixedPrecisionPass : public Pass {
   bool KernelSupportPrecision(
       const std::string& op_type,
       phi::Backend backend,
-      phi::DataType precision,
+      DataType precision,
       DataLayout layout = DataLayout::ALL_LAYOUT) const {
     auto& phi_op_type = op_type;
 
@@ -363,7 +363,7 @@ class AutoMixedPrecisionPass : public Pass {
 
   phi::Kernel GetPhiKernelInPrecision(const std::string& kernel_fn_str,
                                       phi::Backend backend,
-                                      phi::DataType precision) const {
+                                      DataType precision) const {
     if (backend == phi::Backend::GPU) {
       if (PhiKernelSupportPrecision(
               kernel_fn_str, phi::Backend::GPUDNN, precision)) {
@@ -388,7 +388,7 @@ class AutoMixedPrecisionPass : public Pass {
 
   bool OpSupportPrecision(const std::string& kernel_fn_str,
                           phi::Backend backend,
-                          phi::DataType precision) const {
+                          DataType precision) const {
     // if the op is in white list, return true
     if (white_list_.count(kernel_fn_str)) {
       return true;
@@ -403,7 +403,7 @@ class AutoMixedPrecisionPass : public Pass {
   }
 
   void SetResultDataType(Value result,
-                         phi::DataType precision,
+                         DataType precision,
                          IrContext* context) const {
     auto type = result.type();
     if (type.isa<paddle::dialect::DenseTensorType>()) {
@@ -478,9 +478,9 @@ class AutoMixedPrecisionPass : public Pass {
     return false;
   }
 
-  bool IsPhiDataTypeFloat(const phi::DataType& dtype) const {
-    return dtype == phi::DataType::FLOAT32 || dtype == phi::DataType::FLOAT16 ||
-           dtype == phi::DataType::BFLOAT16;
+  bool IsPhiDataTypeFloat(const DataType& dtype) const {
+    return dtype == DataType::FLOAT32 || dtype == DataType::FLOAT16 ||
+           dtype == DataType::BFLOAT16;
   }
 
   bool IsDenseTensorTypeFloat(
@@ -501,11 +501,11 @@ class AutoMixedPrecisionPass : public Pass {
     return true;
   }
 
-  phi::DataType GetPhiDataTypeFromOpOperand(const OpOperand& operand) const {
+  DataType GetPhiDataTypeFromOpOperand(const OpOperand& operand) const {
     return GetPhiDataTypeFromValue(operand.source());
   }
 
-  phi::DataType GetPhiDataTypeFromValue(const Value& value) const {
+  DataType GetPhiDataTypeFromValue(const Value& value) const {
     auto dtype = GetDataTypeFromValue(value);
     return paddle::dialect::TransToPhiDataType(dtype);
   }
@@ -520,7 +520,7 @@ class AutoMixedPrecisionPass : public Pass {
 
   void DoInsertCastOp(Operation* op,
                       OpOperand operand,
-                      phi::DataType precision,
+                      DataType precision,
                       Builder& builder) {  // NOLINT
     auto value = operand.source();
     if (cached_cast_ops_.count(value)) {
@@ -564,7 +564,7 @@ class AutoMixedPrecisionPass : public Pass {
           auto operand = op->operand(i);
           auto operand_phi_dtype = GetPhiDataTypeFromOpOperand(operand);
           if (operand_phi_dtype == precision_mode_) {
-            DoInsertCastOp(op, operand, phi::DataType::FLOAT32, builder);
+            DoInsertCastOp(op, operand, DataType::FLOAT32, builder);
           }
         }
       }
@@ -629,7 +629,7 @@ class AutoMixedPrecisionPass : public Pass {
           common::errors::PreconditionNotMet(
               "op [%s] kernel doesn't support precision [%s] on backend [%s]",
               op->name(),
-              phi::DataTypeToString(precision_mode_).c_str(),
+              DataTypeToString(precision_mode_).c_str(),
               paddle::experimental::BackendToString(backend).c_str()));
 
       auto args_def = phi_kernel.args_def();
@@ -659,9 +659,8 @@ class AutoMixedPrecisionPass : public Pass {
           Attribute attr_dtype = paddle::dialect::DataTypeAttribute::get(
               builder.ir_context(), precision_mode_);
           op->set_attribute("dtype", attr_dtype);
-        } else if (phi_dtype ==
-                   phi::DataType::UNDEFINED) {  // dtype is not set, means all
-                                                // ok
+        } else if (phi_dtype == DataType::UNDEFINED) {  // dtype is not set,
+                                                        // means all ok
           Attribute attr_dtype = paddle::dialect::DataTypeAttribute::get(
               builder.ir_context(), precision_mode_);
           op->set_attribute("dtype", attr_dtype);
@@ -680,8 +679,8 @@ class AutoMixedPrecisionPass : public Pass {
       for (size_t i = 0; i < op->num_results(); i++) {
         auto result = op->result(i);
         if (!result.type()) continue;
-        phi::DataType out_phi_dtype = output_defs[i].dtype;
-        if (out_phi_dtype == phi::DataType::UNDEFINED)
+        DataType out_phi_dtype = output_defs[i].dtype;
+        if (out_phi_dtype == DataType::UNDEFINED)
           out_phi_dtype = precision_mode_;
         if (!IsPhiDataTypeFloat(out_phi_dtype))
           continue;  // here handle op like "unequal", which has bool result
@@ -694,7 +693,7 @@ class AutoMixedPrecisionPass : public Pass {
     } else {
       // current op doesn't support low precision
       // if the op's input is in low precision, insert cast op
-      auto phi_dtype = phi::DataType::FLOAT32;
+      auto phi_dtype = DataType::FLOAT32;
       for (size_t i = 0; i < op->num_operands(); i++) {
         auto operand = op->operand(i);
         if (IsOperandHasDenseTensorType(operand)) {
@@ -715,9 +714,9 @@ class AutoMixedPrecisionPass : public Pass {
               auto operand = defining_op_->operand(i);
               auto operand_phi_dtype = GetPhiDataTypeFromOpOperand(operand);
               if (IsPhiDataTypeFloat(operand_phi_dtype) &&
-                  operand_phi_dtype != phi::DataType::FLOAT32) {
+                  operand_phi_dtype != DataType::FLOAT32) {
                 DoInsertCastOp(
-                    defining_op_, operand, phi::DataType::FLOAT32, builder);
+                    defining_op_, operand, DataType::FLOAT32, builder);
               }
             }
             std::vector<Type> inputs_type(input_num);
@@ -778,11 +777,10 @@ class AutoMixedPrecisionPass : public Pass {
     auto defining_op_ = operand.source().defining_op();
     auto full_op = defining_op_->dyn_cast<paddle::dialect::FullOp>();
     Attribute attr_dtype = paddle::dialect::DataTypeAttribute::get(
-        builder.ir_context(), phi::DataType::FLOAT32);
+        builder.ir_context(), DataType::FLOAT32);
     full_op->set_attribute("dtype", attr_dtype);
 
-    SetResultDataType(
-        full_op.out(), phi::DataType::FLOAT32, builder.ir_context());
+    SetResultDataType(full_op.out(), DataType::FLOAT32, builder.ir_context());
   }
 
   void SubOpRun(Operation* op) {

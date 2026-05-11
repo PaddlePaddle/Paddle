@@ -32,7 +32,7 @@
 
 COMMON_DECLARE_int32(trt_min_group_size);
 
-namespace {
+namespace pir {
 using GroupOpsVec = std::vector<pir::Operation*>;
 
 bool IsSupportedByTRT(const pir::Operation& op) {
@@ -75,9 +75,6 @@ class TrtSubGraphExtractPass : public pir::Pass {
     return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
   }
 };
-}  // namespace
-
-namespace pir {
 
 std::unique_ptr<Pass> CreateTrtSubGraphExtractPass() {
   return std::make_unique<TrtSubGraphExtractPass>();
@@ -85,4 +82,4 @@ std::unique_ptr<Pass> CreateTrtSubGraphExtractPass() {
 
 }  // namespace pir
 
-REGISTER_IR_PASS(trt_sub_graph_extract_pass, TrtSubGraphExtractPass);
+REGISTER_IR_PASS(trt_sub_graph_extract_pass, pir::TrtSubGraphExtractPass);

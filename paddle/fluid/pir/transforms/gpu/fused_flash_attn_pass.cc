@@ -25,7 +25,6 @@
 #include "paddle/pir/include/pass/pass_registry.h"
 
 namespace {
-
 int getSMVersion() {
   int sm_version = -1;
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_CUTLASS)
@@ -34,7 +33,9 @@ int getSMVersion() {
 #endif
   return sm_version;
 }
+}  // namespace
 
+namespace pir {
 // 1. scale after q
 // 2. cast before and after softmax
 // 3. with mask
@@ -672,12 +673,9 @@ class FusedFlashAttnPass : public pir::PatternRewritePass {
   }
 };
 
-}  // namespace
-
-namespace pir {
 std::unique_ptr<Pass> CreateFusedFlashAttnPass() {
   return std::make_unique<FusedFlashAttnPass>();
 }
 }  // namespace pir
 
-REGISTER_IR_PASS(fused_flash_attn_pass, FusedFlashAttnPass);
+REGISTER_IR_PASS(fused_flash_attn_pass, pir::FusedFlashAttnPass);

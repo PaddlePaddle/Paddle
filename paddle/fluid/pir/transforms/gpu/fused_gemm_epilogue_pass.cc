@@ -22,7 +22,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 
 //  %2 = pd_op.matmul( %0, %1 )
 //  %4 = pd_op.add( %2, %3 )
@@ -505,14 +505,10 @@ class FusedGemmEpiloguePass : public pir::PatternRewritePass {
   }
 };
 
-}  // namespace
-
-namespace pir {
-
 std::unique_ptr<Pass> CreateFusedGemmEpiloguePass() {
   return std::make_unique<FusedGemmEpiloguePass>();
 }
 
 }  // namespace pir
 
-REGISTER_IR_PASS(fused_gemm_epilogue_pass, FusedGemmEpiloguePass);
+REGISTER_IR_PASS(fused_gemm_epilogue_pass, pir::FusedGemmEpiloguePass);
