@@ -262,9 +262,9 @@ void TDMSamplerKernel(const Context &dev_ctx,
                       DenseTensor *out,
                       DenseTensor *labels,
                       DenseTensor *mask) {
-  const auto &input_type = TransToProtoVarType(x.dtype());
+  const auto &input_type = x.dtype();
   bool input_type_match =
-      input_type == ProtoDataType::INT32 || input_type == ProtoDataType::INT64;
+      input_type == DataType::INT32 || input_type == DataType::INT64;
   PADDLE_ENFORCE_EQ(input_type_match,
                     true,
                     common::errors::InvalidArgument(
@@ -274,9 +274,9 @@ void TDMSamplerKernel(const Context &dev_ctx,
                         DataTypeToString(DataType::INT32),
                         DataTypeToString(DataType::INT64)));
 
-  const auto &travel_type = TransToProtoVarType(travel.dtype());
-  bool travel_type_match = travel_type == ProtoDataType::INT32 ||
-                           travel_type == ProtoDataType::INT64;
+  const auto &travel_type = travel.dtype();
+  bool travel_type_match =
+      travel_type == DataType::INT32 || travel_type == DataType::INT64;
   PADDLE_ENFORCE_EQ(travel_type_match,
                     true,
                     common::errors::InvalidArgument(
@@ -286,9 +286,9 @@ void TDMSamplerKernel(const Context &dev_ctx,
                         DataTypeToString(DataType::INT32),
                         DataTypeToString(DataType::INT64)));
 
-  const auto &layer_type = TransToProtoVarType(layer.dtype());
+  const auto &layer_type = layer.dtype();
   bool layer_type_match =
-      layer_type == ProtoDataType::INT32 || layer_type == ProtoDataType::INT64;
+      layer_type == DataType::INT32 || layer_type == DataType::INT64;
   PADDLE_ENFORCE_EQ(layer_type_match,
                     true,
                     common::errors::InvalidArgument(
@@ -305,10 +305,9 @@ void TDMSamplerKernel(const Context &dev_ctx,
                         DataTypeToString(travel.dtype()),
                         DataTypeToString(layer.dtype())));
 
-  auto output_type = static_cast<ProtoDataType>(dtype);
+  auto output_type = TransToPhiDataType(dtype);
 
-  if (travel_type == ProtoDataType::INT32 &&
-      output_type == ProtoDataType::INT32) {
+  if (travel_type == DataType::INT32 && output_type == DataType::INT32) {
     TDMSamplerInner<T, Context, int, int>(dev_ctx,
                                           x,
                                           travel,
@@ -320,8 +319,7 @@ void TDMSamplerKernel(const Context &dev_ctx,
                                           out,
                                           labels,
                                           mask);
-  } else if (travel_type == ProtoDataType::INT64 &&
-             output_type == ProtoDataType::INT32) {
+  } else if (travel_type == DataType::INT64 && output_type == DataType::INT32) {
     TDMSamplerInner<T, Context, int64_t, int>(dev_ctx,
                                               x,
                                               travel,
@@ -333,8 +331,7 @@ void TDMSamplerKernel(const Context &dev_ctx,
                                               out,
                                               labels,
                                               mask);
-  } else if (travel_type == ProtoDataType::INT32 &&
-             output_type == ProtoDataType::INT64) {
+  } else if (travel_type == DataType::INT32 && output_type == DataType::INT64) {
     TDMSamplerInner<T, Context, int, int64_t>(dev_ctx,
                                               x,
                                               travel,
@@ -346,8 +343,7 @@ void TDMSamplerKernel(const Context &dev_ctx,
                                               out,
                                               labels,
                                               mask);
-  } else if (travel_type == ProtoDataType::INT64 &&
-             output_type == ProtoDataType::INT64) {
+  } else if (travel_type == DataType::INT64 && output_type == DataType::INT64) {
     TDMSamplerInner<T, Context, int64_t, int64_t>(dev_ctx,
                                                   x,
                                                   travel,

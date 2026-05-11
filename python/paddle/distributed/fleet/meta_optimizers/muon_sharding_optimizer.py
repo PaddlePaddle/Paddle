@@ -39,6 +39,8 @@ import warnings
 from collections import defaultdict
 from functools import reduce as functools_reduce
 
+import numpy as np
+
 import paddle
 from paddle import framework
 from paddle.base.framework import EagerParamBase
@@ -58,7 +60,6 @@ from paddle.distributed.fleet.utils.tensor_fusion_helper import (
 g_shard_bypass_dygraph_optimizer = int(
     os.environ.get("FLAGS_shard_bypass_dygraph_optimizer", 0)
 )
-g_shard_fused_gradient = int(os.environ.get("FLAGS_shard_fused_gradient", 0))
 
 
 def _is_trainable(param):
@@ -133,6 +134,9 @@ class MuonShardingOptimizer:
 
         pp_overlap = strategy.hybrid_configs['pp_configs'].sharding_comm_overlap
         self.pp_overlap = pp_overlap
+        assert not self.pp_overlap, (
+            "muon_sharding_optimizer do not support PP overlap"
+        )
 
         self._use_main_grad = hasattr(optimizer._parameter_list[0], "main_grad")
 
@@ -145,12 +149,6 @@ class MuonShardingOptimizer:
         self._color_to_group_info = self._build_color_to_group_info_from_params(
             self._parameter_list, sharding_group
         )
-
-        # Extract MoE group info from color_to_group_info for backward compatibility
-        moe_info = self._color_to_group_info.get('moe_expert', {})
-        self._moe_sharding_world_size = moe_info.get('world_size', 1)
-        self._moe_sharding_rank = moe_info.get('rank', 0)
-        self._moe_sharding_group = moe_info.get('group', None)
 
         # Get muon_param_info_map from the inner Muon optimizer.
         # Each entry has use_muon=True/False, set by the Trainer before construction.
@@ -239,25 +237,25 @@ class MuonShardingOptimizer:
                 key=lambda p: self._param2rank_2d_by_color[color_key][p.name]
             )
 
-        # ---- Backward compatibility: expose legacy attributes ----
-        # These are kept for any external code that might reference them
-        self._params_2d = self._params_2d_by_color.get(None, [])
-        self._params_2d_moe = self._params_2d_by_color.get('moe_expert', [])
-        self._rank2params_2d = self._rank2params_2d_by_color.get(None, {0: []})
-        self._param2rank_2d = self._param2rank_2d_by_color.get(None, {})
-        self._rank2params_2d_moe = self._rank2params_2d_by_color.get(
-            'moe_expert', {0: []}
-        )
-        self._param2rank_2d_moe = self._param2rank_2d_by_color.get(
-            'moe_expert', {}
-        )
+        # 2D params owned by this sharding rank
+        self._local_2d = []
+        for color_key, params_2d in self._params_2d_by_color.items():
+            rank2params_2d_by_color = self._rank2params_2d_by_color[color_key]
 
-        self._use_fuse_gradients = g_shard_fused_gradient
+            group_info = self._color_to_group_info[color_key]
+            sharding_rank = max(group_info['rank'], 0)
+
+            self._local_2d.extend(rank2params_2d_by_color[sharding_rank])
+
+        self.sd_release_grads = (
+            strategy.hybrid_configs['pp_configs'].release_gradients
+            or sharding_configs.release_gradients
+        )
+        self._use_fuse_gradients = self.comm_buffer_size_MB > 0
         # ---- Build comm buffers for 2D params (V1-style) ----
         if self._use_fuse_gradients:
-            if not hasattr(self, 'comm_buffer_2d'):
-                self.comm_buffer_2d = self._build_2d_comm_buffers()
-                self.comm_buffer_2d.sort(key=lambda x: x._dst)
+            self.comm_buffer_2d = self._build_2d_comm_buffers()
+            self.comm_buffer_2d.sort(key=lambda x: (x._comm_group._id, x._dst))
 
         # ---- Step 3: Build comm buffers for 1D params (V2-style) ----
         self._slice_params = {}
@@ -267,10 +265,6 @@ class MuonShardingOptimizer:
         ]
 
         self.param2bucket = {}
-        self.sd_release_grads = (
-            strategy.hybrid_configs['pp_configs'].release_gradients
-            or sharding_configs.release_gradients
-        )
 
         self._build_1d_comm_buffers()
 
@@ -278,15 +272,9 @@ class MuonShardingOptimizer:
         # The optimizer should see:
         #   - All 2D params assigned to this rank (all colors, as whole tensors)
         #   - 1D slice_params for all non-2D params (element-wise shards)
-        local_2d_params = []
-        for color_key, rank2params in self._rank2params_2d_by_color.items():
-            group_info = self._color_to_group_info.get(color_key, {})
-            color_rank = group_info.get('rank', 0)
-            world_size = group_info.get('world_size', 1)
-            rank_key = color_rank if world_size > 1 else 0
-            local_2d_params.extend(rank2params.get(rank_key, []))
-
-        local_opt_params = local_2d_params + list(self._local_parameter_list_1d)
+        local_opt_params = list(self._local_2d) + list(
+            self._local_parameter_list_1d
+        )
 
         self._set_inner_opt_attr('_parameter_list', local_opt_params)
         self._set_inner_opt_attr('_param_groups', local_opt_params)
@@ -306,18 +294,10 @@ class MuonShardingOptimizer:
         _sg_group = hcg.get_sharding_parallel_group()
         _N = self._sharding_world_size
 
-        # 2D params owned by this sharding rank (default color, via legacy alias)
+        # 2D params owned by this sharding rank
         _local_2d_numel = sum(
             int(functools_reduce(lambda x, y: x * y, p.shape, 1))
-            for p in self._rank2params_2d.get(self._sharding_rank, [])
-        )
-        # 2D MoE-expert params owned by this rank (moe_expert color, via legacy alias)
-        _moe_rank_key = (
-            self._moe_sharding_rank if self._moe_sharding_world_size > 1 else 0
-        )
-        _local_2d_moe_numel = sum(
-            int(functools_reduce(lambda x, y: x * y, p.shape, 1))
-            for p in self._rank2params_2d_moe.get(_moe_rank_key, [])
+            for p in self._local_2d
         )
         # 1D (AdamW) slice: each rank holds ceil(numel / sharding_world_size) elements.
         _local_1d_numel = sum(
@@ -327,9 +307,7 @@ class MuonShardingOptimizer:
             for p in self._params_1d
         )
 
-        _local_total_numel = (
-            _local_2d_numel + _local_2d_moe_numel + _local_1d_numel
-        )
+        _local_total_numel = _local_2d_numel + _local_1d_numel
         _local_total_MB = (
             _local_total_numel * 2 / (1024 * 1024)
         )  # bf16/fp16 = 2 bytes
@@ -399,17 +377,36 @@ class MuonShardingOptimizer:
         return color_to_info
 
     def _partition_2d_parameters(self, params, world_size, label=""):
-        """Partition 2D parameters among ranks using greedy bin-packing."""
+        """Partition 2D parameters among ranks using greedy bin-packing.
+
+        Only assign parameters to the first n ranks such that total size > comm_buffer_size_MB.
+        Remaining ranks get no parameters.
+        """
         mapping = {}
         for rank in range(world_size):
             mapping[rank] = []
-        sizes = [0] * world_size
 
         parameters = list(params)
         parameters.sort(
             key=lambda p: functools_reduce(lambda x, y: x * y, p.shape),
             reverse=True,
         )
+
+        total_numel = sum(
+            functools_reduce(lambda x, y: x * y, p.shape, 1) for p in parameters
+        )
+        total_size_bytes = total_numel * 4
+        total_size_mb = total_size_bytes / (1024**2)
+
+        buffer_size_mb = (
+            self.comm_buffer_size_MB if self.comm_buffer_size_MB > 0 else 256
+        )
+        min_active_ranks = 1
+        if total_size_mb > 0:
+            min_active_ranks = max(1, int(total_size_mb / buffer_size_mb) + 1)
+
+        active_ranks = min(min_active_ranks, world_size)
+        sizes = [0] * active_ranks
 
         for param in parameters:
             rank = sizes.index(min(sizes))
@@ -454,7 +451,7 @@ class MuonShardingOptimizer:
                         self.accumulate_steps,
                         act=HOOK_ACTION.REDUCE,
                         dst=abs_dst,
-                        release_grads=False,
+                        release_grads=self.sd_release_grads,
                         use_reduce_avg=True,
                     )
                     for group_idx, parameters in var_groups.items()
@@ -545,9 +542,15 @@ class MuonShardingOptimizer:
         self._comm_buffer_list.sort(key=lambda x: x._dst)
 
     def clear_param_storage(self, color):
+        assert self._multi_precision, (
+            "Muon Sharding Optimizer only support clear param with multi_precision mode"
+        )
+
         self.clear_color.add(color)
+        # 1D params
         if color in self._color_to_comm_buffer_list.keys():
             for comm_buffer in self._color_to_comm_buffer_list[color]:
+                has_clear = False
                 for param in comm_buffer.params:
                     grad_view = comm_buffer._sharding_param_grad_view[
                         param.name
@@ -559,16 +562,40 @@ class MuonShardingOptimizer:
                     ):
                         grad_view.fill_slice_param(slice_param)
                         self._create_master_weight(slice_param)
-                    slice_param._clear_dataptr()
-                comm_buffer._clear_param_storage()
+                    if param.name in self._master_weights:
+                        slice_param._clear_dataptr()
+                        has_clear = True
+
+                if has_clear:
+                    comm_buffer._clear_param_storage()
+        # 2D params
+        if color in self._params_2d_by_color.keys():
+            group_info = self._color_to_group_info[color]
+            sharding_rank = max(group_info["rank"], 0)
+            rank2params_2d_by_color = self._rank2params_2d_by_color[color]
+            local_2d = rank2params_2d_by_color[sharding_rank]
+            for param in local_2d:
+                if not g_shard_bypass_dygraph_optimizer:
+                    self._create_master_weight(param)
+
+            for param in self._params_2d_by_color[color]:
+                param._clear_to_zero_allocation()
 
     def reset_param_storage(self):
         for color in self.clear_color:
             if color is None:
                 continue
+            # 1D params
             if color in self._color_to_comm_buffer_list.keys():
                 for comm_buffer in self._color_to_comm_buffer_list[color]:
-                    comm_buffer._reset_param_storage()
+                    if not comm_buffer.param_storage._is_initialized():
+                        comm_buffer._reset_param_storage()
+            # 2D params
+            if color in self._params_2d_by_color.keys():
+                for param in self._params_2d_by_color[color]:
+                    if not param._is_initialized():
+                        new_param = paddle.empty_like(param)
+                        new_param._share_buffer_to(param)
 
     # ------------------------------------------------------------------
     # Gradient communication
@@ -623,7 +650,17 @@ class MuonShardingOptimizer:
             paddle.device.synchronize()
 
         with framework.no_grad():
+            # --- 2D params: reduce to owner rank via each color's group ---
             if self._use_fuse_gradients:
+                for comm_buffer in self.comm_buffer_2d:
+                    if (
+                        self.sd_release_grads
+                        and comm_buffer.grad_storage is None
+                    ):
+                        if comm_buffer.need_reduce_scale_sync():
+                            for param in comm_buffer.params:
+                                comm_buffer._copy_grad_to_buffer(param)
+
                 for comm_buffer in self.comm_buffer_2d:
                     comm_buffer._comm_grads()
             else:
@@ -661,46 +698,56 @@ class MuonShardingOptimizer:
 
     def filter_parameters(self, parameter_list, hcg):
         """Filter parameters: return local 2D params + initialized 1D slices."""
-        sharding_rank = hcg.get_sharding_parallel_rank()
-        local_2d = [
-            p
-            for p in parameter_list
-            if p.name in self._param2rank_2d
-            and self._param2rank_2d[p.name] == sharding_rank
-        ]
-        # Also include MoE 2D params owned by this rank
-        if self._moe_sharding_world_size > 1:
-            moe_rank = self._moe_sharding_rank
-        else:
-            moe_rank = 0
-        local_2d_moe = [
-            p
-            for p in parameter_list
-            if p.name in self._param2rank_2d_moe
-            and self._param2rank_2d_moe[p.name] == moe_rank
-        ]
         local_1d = [
             self._slice_params[p.name]
             for p in parameter_list
             if p.name in self._slice_params
         ]
         local_1d = [p for p in local_1d if p._is_initialized()]
-        return local_2d + local_2d_moe + local_1d
+        return self._local_2d + local_1d
 
     # ------------------------------------------------------------------
     # Parameter sync after optimizer step
     # ------------------------------------------------------------------
-
     def _broadcast_2d_params(self, rank2params, comm_group):
         """Broadcast 2D params from owner ranks within comm_group."""
         broadcast_tasks = []
         for rank, params in rank2params.items():
             src_rank = comm_group.ranks[rank]
-            for param in params:
-                if param.stop_gradient:
-                    continue
+
+            if len(params) == 0:
+                continue
+
+            with framework.no_grad():
+                # Calculate total size and build param-to-offset mapping
+                param_sizes = [np.prod(p.shape) for p in params]
+                total_size = sum(param_sizes)
+                dtype = params[0].dtype
+
+                param_buffer = paddle.empty(shape=[total_size], dtype=dtype)
+                offset = 0
+                for param in params:
+                    param_shape = param.shape
+                    stop_gradient = param.stop_gradient
+                    param.stop_gradient = True
+                    param.flatten_()
+
+                    paddle.assign(
+                        param,
+                        param_buffer._slice(
+                            offset, offset + np.prod(param_shape)
+                        ),
+                    )
+
+                    param.get_tensor()._set_dims(param_shape)
+                    param.stop_gradient = stop_gradient
+                    param_buffer._slice(
+                        offset, offset + np.prod(param_shape)
+                    )._share_buffer_to(param)
+
+                    offset += np.prod(param_shape)
                 task = paddle.distributed.broadcast(
-                    param,
+                    param_buffer,
                     src=src_rank,
                     group=comm_group,
                     sync_op=False,
@@ -761,12 +808,12 @@ class MuonShardingOptimizer:
         for p in self._parameter_list:
             clear_grad_func(p)
 
-        # 1D params are managed by comm buffers
         if self.sd_release_grads and not self.pp_overlap:
+            # 1D params are managed by comm buffers
             for comm_buffer in self._comm_buffer_list:
                 if comm_buffer.need_reduce_scale_sync():
                     comm_buffer._clear_grad_storage()
-
+            # 2D params are managed by comm buffers
             if self._use_fuse_gradients:
                 for comm_buffer in self.comm_buffer_2d:
                     if comm_buffer.need_reduce_scale_sync():
@@ -810,6 +857,8 @@ class MuonShardingOptimizer:
 
     def step(self):
         """Optimizer step: update local 2D params and 1D slices, then sync."""
+        self.reset_param_storage()
+
         self._collect_comm_buffers()
         self._assign_slice_grad()
 
@@ -874,18 +923,7 @@ class MuonShardingOptimizer:
     def set_state_dict(self, state_dict):
         inner_state = {}
         # Collect local parameters: 2D whole-tensor params + 1D original params
-        # (set_state_dict uses legacy aliases; covers default and moe_expert colors)
-        local_2d = list(self._rank2params_2d.get(self._sharding_rank, []))
-        if self._moe_sharding_world_size > 1:
-            local_2d_moe = list(
-                self._rank2params_2d_moe.get(self._moe_sharding_rank, [])
-            )
-        else:
-            local_2d_moe = list(self._rank2params_2d_moe.get(0, []))
-        parameters = local_2d + local_2d_moe
-        # Add 1D params (use original param names for matching)
-        for p in self._params_1d:
-            parameters.append(p)
+        parameters = list(self._local_2d) + list(self._params_1d)
 
         if "LR_Scheduler" in state_dict:
             inner_state["LR_Scheduler"] = state_dict.pop("LR_Scheduler")

@@ -31,7 +31,7 @@ namespace phi {
 
 template <typename T, bool CPUBetaPows /*=true*/>
 struct FusedAdamBetaPowInfo {
-  using MT = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   FusedAdamBetaPowInfo(const MT* beta1pow, const MT* beta2pow) {
     beta1pow_ = *beta1pow;
     beta2pow_ = *beta2pow;
@@ -48,7 +48,7 @@ struct FusedAdamBetaPowInfo {
 
 template <typename T>
 struct FusedAdamBetaPowInfo<T, /*CPUBetaPows=*/false> {
-  using MT = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   FusedAdamBetaPowInfo(const MT* beta1pow, const MT* beta2pow) {
     beta1pow_ = beta1pow;
     beta2pow_ = beta2pow;
@@ -81,9 +81,9 @@ struct FusedAdamFunctor {
       MT beta2,
       FusedAdamBetaPowInfo<T, IsCPUBetaPow> beta_pow,
       MT epsilon,
-      const MT* learning_rate,
+      const double* learning_rate,
       MT decay) const {
-    MT lr = *learning_rate;
+    MT lr = static_cast<MT>(*learning_rate);
     MT beta1_pow = beta_pow.GetBeta1PowValue();
     MT beta2_pow = beta_pow.GetBeta2PowValue();
     T* __restrict__ p_ptr;
@@ -330,7 +330,7 @@ PADDLE_API void FusedAdamKernel(
     std::vector<DenseTensor*> beta1_pows_out,
     std::vector<DenseTensor*> beta2_pows_out,
     std::vector<DenseTensor*> master_params_out) {
-  using MT = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
 
   auto n = params.size();
   auto beta1_pow_first = beta1_pows[0];
@@ -441,7 +441,7 @@ PADDLE_API void FusedAdamKernel(
         beta2_tmp,                                                           \
         beta_pow_info,                                                       \
         epsilon.to<MT>(),                                                    \
-        learning_rate.data<MT>(),                                            \
+        learning_rate.data<double>(),                                        \
         static_cast<MT>(weight_decay));                                      \
   } while (0)
 
@@ -588,6 +588,7 @@ PD_REGISTER_KERNEL(fused_adam,
                    float,
                    double) {
   // Skip beta1_pow, beta2_pow, skip_update data transform
+  kernel->InputAt(2).SetDataType(phi::DataType::FLOAT64);  // learning_rate
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(7).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(9).SetBackend(phi::Backend::ALL_BACKEND);

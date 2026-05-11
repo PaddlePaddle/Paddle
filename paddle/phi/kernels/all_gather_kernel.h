@@ -33,7 +33,7 @@ void AllGather(const Context& dev_ctx,
   MetaTensor out_meta(*out);
   MetaTensor* out_meta_ptr = &out_meta;
 
-  AllGatherInferMeta(phi::MetaTensor(x), nranks, out_meta_ptr);
+  AllGatherInferMeta(MetaTensor(x), nranks, out_meta_ptr);
   if (x.initialized()) {
     AllGatherKernel<T, Context>(dev_ctx, x, nranks, out);
   }

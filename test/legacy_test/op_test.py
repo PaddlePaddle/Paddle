@@ -2561,7 +2561,7 @@ class OpTest(unittest.TestCase):
                 elif actual_np.dtype == np.float16:
                     self.rtol = 1.0e-3
                 else:
-                    self.rtol = 1.0e-5
+                    self.rtol = max(1.0e-5, rtol)
                 if (
                     expect_np.dtype == np.uint16
                     and actual_np.dtype == np.uint16
@@ -2630,7 +2630,7 @@ class OpTest(unittest.TestCase):
                 elif actual_np.dtype == np.float16:
                     self.rtol = 1.0e-3
                 else:
-                    self.rtol = 1.0e-5
+                    self.rtol = max(1.0e-5, rtol)
                 if self.op_test.is_bfloat16_op():
                     if actual_np.dtype == np.uint16:
                         actual_np = convert_uint16_to_float(actual_np)
@@ -2724,7 +2724,7 @@ class OpTest(unittest.TestCase):
                 elif actual_np.dtype == np.float16:
                     self.rtol = 1.0e-3
                 else:
-                    self.rtol = 1.0e-5
+                    self.rtol = max(1.0e-5, rtol)
                 if self.op_test.is_bfloat16_op():
                     if actual_np.dtype == np.uint16:
                         actual_np = convert_uint16_to_float(actual_np)

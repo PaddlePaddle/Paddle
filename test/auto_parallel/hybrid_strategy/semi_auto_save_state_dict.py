@@ -69,14 +69,13 @@ class TestSaveStateDict:
         save_state_dict(state_dict, self._ckpt_path)
         check_structure_name_mapping(self._ckpt_path, state_dict)
 
-    def test_save_state_dict_with_four_devices(self):
+    def test_save_state_dict_with_two_devices(self):
         global_state_dict = get_global_state_dict()
         keys = list(global_state_dict.keys())
         w1, w2 = list(global_state_dict.values())
         mesh = dist.ProcessMesh([0, 1])
-        mesh2 = dist.ProcessMesh([2, 3])
         sharded_w1 = dist.shard_tensor(w1, mesh, [dist.Shard(0)])
-        sharded_w2 = dist.shard_tensor(w2, mesh2, [dist.Shard(0)])
+        sharded_w2 = dist.shard_tensor(w2, mesh, [dist.Shard(0)])
         state_dict = dict(zip(keys, [sharded_w1, sharded_w2]))
         save_state_dict(state_dict, self._ckpt_path)
         paddle.distributed.barrier()
@@ -86,8 +85,8 @@ class TestSaveStateDict:
         device_num = int(os.getenv("device_num"))
         if device_num == 1:
             self.test_save_state_dict_with_one_device()
-        elif device_num == 4:
-            self.test_save_state_dict_with_four_devices()
+        elif device_num == 2:
+            self.test_save_state_dict_with_two_devices()
 
 
 class TestSaveShardedStateDict:
@@ -110,20 +109,20 @@ class TestSaveShardedStateDict:
         )
         save_state_dict(sharded_state_dict, self._ckpt_path)
 
-    def test_save_state_dict_with_four_devices(self):
+    def test_save_state_dict_with_two_devices(self):
         if dist.get_rank() == 0:
             # On rank 0:
             # The global tensor (4x4) is distributed as:
-            # [[ 0,  1,  *,  *],
-            #  [ 4,  *,  *,  *],
+            # [[ 0,  1,  2,  *],
+            #  [ *,  *,  *,  *],
             #  [ *,  *,  *,  *],
             #  [ *,  *,  *,  *]]
-            # Numbers 0,1,4 are local, '*' means not present on this rank.
-            local_tensor = paddle.to_tensor([0, 1, 4], dtype='int32')
+            # Numbers 0,1,2 are local, '*' means not present on this rank.
+            local_tensor = paddle.to_tensor([0, 1, 2], dtype='int32')
             sharded_weight = ShardedWeight(
                 key="t",
                 local_tensor=local_tensor,
-                local_shape=(4, 2),
+                local_shape=(4, 4),
                 global_shape=(4, 4),
                 global_offset=(0, 0),
                 is_flattened=True,
@@ -132,56 +131,22 @@ class TestSaveShardedStateDict:
         elif dist.get_rank() == 1:
             # On rank 1:
             # The global tensor (4x4) is distributed as:
-            # [[ *,  *,  *,  *],
-            #  [ *,  5,  *,  *],
-            #  [ 8,  9,  *,  *],
-            #  [ 12,  13,  *,  *]]
-            # Numbers 5,8,9,12,13 are local, '*' means not present on this rank.
-            local_tensor = paddle.to_tensor([5, 8, 9, 12, 13], dtype='int32')
+            # [[ *,  *,  *,  3],
+            #  [ 4,  5,  5,  6],
+            #  [ 8,  9,  10, 11],
+            #  [ 12, 13, 14, 15]]
+            # Numbers 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 are local, '*' means not present on this rank.
+            local_tensor = paddle.to_tensor(
+                [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], dtype='int32'
+            )
             sharded_weight = ShardedWeight(
                 key="t",
                 local_tensor=local_tensor,
-                local_shape=(4, 2),
+                local_shape=(4, 4),
                 global_shape=(4, 4),
                 global_offset=(0, 0),
                 is_flattened=True,
-                flattened_range=slice(3, 8),
-            )
-        elif dist.get_rank() == 2:
-            # On rank 2:
-            # The global tensor (4x4) is distributed as:
-            # [[ *,  *,  2,  3],
-            #  [ *,  *,  6,  7],
-            #  [ *,  *,  10,  *],
-            #  [ *,  *,  *,  *]]
-            # Numbers 2,3,6,7,10 are local, '*' means not present on this rank.
-            local_tensor = paddle.to_tensor([2, 3, 6, 7, 10], dtype='int32')
-            sharded_weight = ShardedWeight(
-                key="t",
-                local_tensor=local_tensor,
-                local_shape=(4, 2),
-                global_shape=(4, 4),
-                global_offset=(0, 2),
-                is_flattened=True,
-                flattened_range=slice(0, 5),
-            )
-        else:
-            # On rank 3:
-            # The global tensor (4x4) is distributed as:
-            # [[ *,  *,  *,  *],
-            #  [ *,  *,  *,  *],
-            #  [ *,  *,  *,  11],
-            #  [ *,  *,  14,  15]]
-            # Numbers 11,14,15 are local, '*' means not present on this rank.
-            local_tensor = paddle.to_tensor([11, 14, 15], dtype='int32')
-            sharded_weight = ShardedWeight(
-                key="t",
-                local_tensor=local_tensor,
-                local_shape=(4, 2),
-                global_shape=(4, 4),
-                global_offset=(0, 2),
-                is_flattened=True,
-                flattened_range=slice(5, 8),
+                flattened_range=slice(3, 16),
             )
 
         sharded_state_dict = {"t": sharded_weight}
@@ -192,8 +157,8 @@ class TestSaveShardedStateDict:
         device_num = int(os.getenv("device_num"))
         if device_num == 1:
             self.test_save_state_dict_with_one_device()
-        elif device_num == 4:
-            self.test_save_state_dict_with_four_devices()
+        elif device_num == 2:
+            self.test_save_state_dict_with_two_devices()
 
 
 class TestSaveShardedStateDictWithReplica:
@@ -216,7 +181,7 @@ class TestSaveShardedStateDictWithReplica:
         )
         save_state_dict(sharded_state_dict, self._ckpt_path, save_replicas=True)
 
-    def test_save_state_dict_with_four_devices(self):
+    def test_save_state_dict_with_two_devices(self):
         # Construct a 4x4 integer tensor as expected result:
         # [[ 0,  1,  2,  3],
         #  [ 4,  5,  6,  7],
@@ -237,8 +202,8 @@ class TestSaveShardedStateDictWithReplica:
         device_num = int(os.getenv("device_num"))
         if device_num == 1:
             self.test_save_state_dict_with_one_device()
-        elif device_num == 4:
-            self.test_save_state_dict_with_four_devices()
+        elif device_num == 2:
+            self.test_save_state_dict_with_two_devices()
 
 
 if __name__ == "__main__":

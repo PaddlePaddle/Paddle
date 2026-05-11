@@ -37,19 +37,19 @@ namespace paddle::distributed {
 #ifdef _WIN32
 #define GENERATE_FUNC(type, func, ...)       \
   switch (type) {                            \
-    case phi::DataType::FLOAT32:             \
+    case DataType::FLOAT32:                  \
       func<float>(__VA_ARGS__);              \
       break;                                 \
-    case phi::DataType::FLOAT64:             \
+    case DataType::FLOAT64:                  \
       func<double>(__VA_ARGS__);             \
       break;                                 \
-    case phi::DataType::FLOAT16:             \
+    case DataType::FLOAT16:                  \
       func<gloo::float16>(__VA_ARGS__);      \
       break;                                 \
-    case phi::DataType::INT32:               \
+    case DataType::INT32:                    \
       func<int32_t>(__VA_ARGS__);            \
       break;                                 \
-    case phi::DataType::INT64:               \
+    case DataType::INT64:                    \
       func<int64_t>(__VA_ARGS__);            \
       break;                                 \
     default:                                 \
@@ -62,31 +62,31 @@ namespace paddle::distributed {
 #else
 #define GENERATE_FUNC(type, func, args...)   \
   switch (type) {                            \
-    case phi::DataType::FLOAT32:             \
+    case DataType::FLOAT32:                  \
       func<float>(args);                     \
       break;                                 \
-    case phi::DataType::FLOAT64:             \
+    case DataType::FLOAT64:                  \
       func<double>(args);                    \
       break;                                 \
-    case phi::DataType::FLOAT16:             \
+    case DataType::FLOAT16:                  \
       func<gloo::float16>(args);             \
       break;                                 \
-    case phi::DataType::INT32:               \
+    case DataType::INT32:                    \
       func<int32_t>(args);                   \
       break;                                 \
-    case phi::DataType::INT64:               \
+    case DataType::INT64:                    \
       func<int64_t>(args);                   \
       break;                                 \
-    case phi::DataType::INT8:                \
+    case DataType::INT8:                     \
       func<int8_t>(args);                    \
       break;                                 \
-    case phi::DataType::UINT8:               \
+    case DataType::UINT8:                    \
       func<uint8_t>(args);                   \
       break;                                 \
-    case phi::DataType::BOOL:                \
+    case DataType::BOOL:                     \
       func<bool>(args);                      \
       break;                                 \
-    case phi::DataType::BFLOAT16:            \
+    case DataType::BFLOAT16:                 \
       func<bfloat16>(args);                  \
       break;                                 \
     default:                                 \
@@ -96,7 +96,7 @@ namespace paddle::distributed {
 #endif
 
 template <typename T>
-T* get_data(phi::DenseTensor& tensor) {  // NOLINT
+T* get_data(DenseTensor& tensor) {  // NOLINT
   return reinterpret_cast<T*>(tensor.data());
 }
 
@@ -111,12 +111,12 @@ std::vector<T*> get_multi_data(std::vector<DenseTensor>& tensors) {  // NOLINT
 }
 
 template <typename T, typename P>
-void set_output(P& opts, phi::DenseTensor& tensor) {  // NOLINT
+void set_output(P& opts, DenseTensor& tensor) {  // NOLINT
   opts.setOutput(get_data<T>(tensor), tensor.numel());
 }
 
 template <typename T, typename P>
-void set_input(P& opts, phi::DenseTensor& tensor) {  // NOLINT
+void set_input(P& opts, DenseTensor& tensor) {  // NOLINT
   opts.setInput(get_data<T>(tensor), tensor.numel());
 }
 
@@ -133,8 +133,8 @@ void set_inputs(P& opts,                              // NOLINT
 }
 
 template <typename T, typename P>
-void set_inputs_for_scatter(P& opts,                   // NOLINT
-                            phi::DenseTensor& tensor,  // NOLINT
+void set_inputs_for_scatter(P& opts,              // NOLINT
+                            DenseTensor& tensor,  // NOLINT
                             int nranks) {
   std::vector<T*> ret;
   ret.reserve(nranks);
@@ -189,15 +189,15 @@ class BroadcastGlooTask : public ProcessGroupGloo::GlooTask {
   std::vector<DenseTensor> _outputs{};
   const uint32_t _tag;
 
-  void _do_broadcast(phi::DenseTensor& in, phi::DenseTensor& out) {  // NOLINT
+  void _do_broadcast(DenseTensor& in, DenseTensor& out) {  // NOLINT
     _comm_context->Broadcast(&(out), in, _root, _tag);
   }
 };
 
 // TODO(sunyilun): for compatibility, will be updated later
 std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Broadcast(
-    phi::DenseTensor* out_tensor,
-    const phi::DenseTensor& in_tensor,
+    DenseTensor* out_tensor,
+    const DenseTensor& in_tensor,
     const BroadcastOptions& opts,
     bool sync_op) {
   std::vector<DenseTensor> in_wrapper{in_tensor};
@@ -257,7 +257,7 @@ class SendGlooTask : public ProcessGroupGloo::GlooTask {
 };
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Send(
-    const phi::DenseTensor& tensor, int dst_rank, bool sync_op) {
+    const DenseTensor& tensor, int dst_rank, bool sync_op) {
   std::vector<DenseTensor> in_wrapper{tensor};
   return Send(in_wrapper, dst_rank);
 }
@@ -301,8 +301,9 @@ class RecvGlooTask : public ProcessGroupGloo::GlooTask {
   }
 };
 
-std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Recv(
-    phi::DenseTensor* tensor, int src_rank, bool sync_op) {
+std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Recv(DenseTensor* tensor,
+                                                           int src_rank,
+                                                           bool sync_op) {
   std::vector<DenseTensor> in_wrapper{*tensor};
   return Recv(in_wrapper, src_rank);
 }
@@ -351,8 +352,8 @@ class AllreduceGlooTask : public ProcessGroupGloo::GlooTask {
 };
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::AllReduce(
-    phi::DenseTensor* out_tensor,
-    const phi::DenseTensor& in_tensor,
+    DenseTensor* out_tensor,
+    const DenseTensor& in_tensor,
     const AllreduceOptions& opts,
     bool sync_op) {
   std::vector<DenseTensor> in_wrapper{in_tensor};
@@ -436,8 +437,8 @@ class AllgatherGlooTask : public ProcessGroupGloo::GlooTask {
 };
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::AllGather(
-    phi::DenseTensor* out_tensor,
-    const phi::DenseTensor& in_tensor,
+    DenseTensor* out_tensor,
+    const DenseTensor& in_tensor,
     int64_t /*offset*/,
     int64_t /*offset*/,
     bool sync_op) {
@@ -503,8 +504,8 @@ class ReduceGlooTask : public ProcessGroupGloo::GlooTask {
 };
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Reduce(
-    phi::DenseTensor* out_tensor,
-    const phi::DenseTensor& in_tensor,
+    DenseTensor* out_tensor,
+    const DenseTensor& in_tensor,
     const ReduceOptions& opts,
     bool sync_op  // for compatibility, no use now
 ) {
@@ -569,8 +570,8 @@ class ScatterGlooTask : public ProcessGroupGloo::GlooTask {
 };
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Scatter(
-    phi::DenseTensor* out_tensor,
-    const phi::DenseTensor& in_tensor,
+    DenseTensor* out_tensor,
+    const DenseTensor& in_tensor,
     const ScatterOptions& opts,
     bool sync_op) {
   CheckTensorContiguous(in_tensor);
@@ -598,8 +599,8 @@ class GatherGlooTask : public ProcessGroupGloo::GlooTask {
  public:
   GatherGlooTask(int rank,
                  phi::distributed::GlooCommContext* comm_context,
-                 const phi::DenseTensor& input,  // NOLINT
-                 phi::DenseTensor* output,       // NOLINT
+                 const DenseTensor& input,  // NOLINT
+                 DenseTensor* output,       // NOLINT
                  int src,
                  uint32_t tag)
       : ProcessGroupGloo::GlooTask(rank, {input}, CommType::GATHER),
@@ -618,16 +619,16 @@ class GatherGlooTask : public ProcessGroupGloo::GlooTask {
   int _src;
   uint32_t _tag;
 
-  void _do_gather(phi::DenseTensor& in,   // NOLINT
-                  phi::DenseTensor& out,  // NOLINT
+  void _do_gather(DenseTensor& in,   // NOLINT
+                  DenseTensor& out,  // NOLINT
                   int src) {
     _comm_context->Gather(&(out), in, src, _tag);
   }
 };
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Gather(
-    phi::DenseTensor* out_tensor,
-    const phi::DenseTensor& in_tensor,
+    DenseTensor* out_tensor,
+    const DenseTensor& in_tensor,
     const GatherOptions& opts,
     bool sync_op,
     bool use_calc_stream) {

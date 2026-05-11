@@ -20,7 +20,7 @@ namespace phi {
 
 template <typename T>
 __global__ void MeanRunKernel(const T* in_data, T* out_data, int64_t N) {
-  using MT = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   int64_t idx = static_cast<int64_t>(blockDim.x) * blockIdx.x + threadIdx.x;
   auto data = static_cast<MT>(in_data[0]);
   for (; idx < N; idx += static_cast<int64_t>(blockDim.x) * gridDim.x) {

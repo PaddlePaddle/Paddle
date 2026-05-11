@@ -134,7 +134,7 @@ void PNormKernel(const Context& dev_ctx,
           dev_ctx, *in_x, out_norm, reduce_axis);
     } else {
       // vanilla norm
-      using MPType = typename dtype::MPTypeTrait<T>::Type;
+      using MT = typename MPTypeTrait<T>::Type;
       funcs::ReduceGpuKernel<T, T, kps::GenericPNormOps>(
           dev_ctx, *in_x, out_norm, reduce_axis, porder);
     }

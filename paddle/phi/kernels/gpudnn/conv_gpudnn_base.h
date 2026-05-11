@@ -183,7 +183,7 @@ static inline void GetNCDHW(const DDim& dims,
   }
 }
 
-template <typename DeviceContext, typename T, size_t D>
+template <typename Context, typename T, size_t D>
 static void RemovePaddingSlice(const GPUContext& dev_ctx,
                                const DenseTensor* input,
                                DenseTensor* out,

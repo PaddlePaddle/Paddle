@@ -22,6 +22,8 @@ void* rocm_dso_handle = nullptr;
 
 #define DEFINE_WRAP(__name) DynLoad__##__name __name
 
+ROCM_ROUTINE_EACH_VVM(DEFINE_WRAP);
+ROCM_ROUTINE_EACH_GPU_GRAPH(DEFINE_WRAP);
 ROCM_ROUTINE_EACH(DEFINE_WRAP);
 
 bool HasCUDADriver() {
