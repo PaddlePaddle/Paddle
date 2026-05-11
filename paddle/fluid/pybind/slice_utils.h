@@ -1069,21 +1069,12 @@ static void DispatchSetitemKernel(const int pos_of_new_dim,
       }
     } else {
       if (*out_is_view) {
-        mask_tensor = expand_inplace(transed_sub_tensor, &mask_tensor);
-        int64_t slice_offset = static_cast<int64_t>(
-            reinterpret_cast<char*>(transed_sub_tensor->data()) -
-            reinterpret_cast<char*>(tensor->data()));
-        *transed_sub_tensor = index_elementwise_put__ad_func(
-            *tensor,
-            {mask_tensor},
-            (*values)[0],
-            common::vectorize<int64_t>(transed_sub_tensor->dims()),
-            common::vectorize<int64_t>(transed_sub_tensor->strides()),
-            common::vectorize<int64_t>(mask_tensor.dims()),
-            common::vectorize<int64_t>(mask_tensor.strides()),
-            slice_offset);
-        *out_is_view = false;
-        return;
+        // For out_is_view==true with scalar value and bool mask, fall through
+        // to the stride kernel path below. Previously this case passed the
+        // bool mask directly to index_elementwise_put, which reinterprets
+        // 1-byte bool data as 8-byte int64 on XPU, causing garbage results
+        // and crashes. The stride kernel path converts bool to int64 via
+        // nonzero before calling the kernel, avoiding this issue.
       } else {
         Tensor value_tmp_tensor =
             full_ad_func({1}, (*values)[0], tensor->dtype(), tensor->place());
@@ -1111,6 +1102,7 @@ static void DispatchSetitemKernel(const int pos_of_new_dim,
 
       AdvancedIndex ad =
           AdvancedIndex(*transed_sub_tensor, transed_index_int64);
+
       PADDLE_ENFORCE_EQ(
           phi::funcs::CheckIsDimsMatchBool(common::make_ddim(ad.src_sizes),
                                            value_tensor->dims()),

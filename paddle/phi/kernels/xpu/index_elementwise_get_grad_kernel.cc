@@ -83,6 +83,34 @@ void XPUIndexElementwiseGetGradKernel(
   std::vector<std::vector<int64_t>> strides_vec_vec =
       std::vector<std::vector<int64_t>>(strides_vec.begin(), strides_vec.end());
 
+  // Convert strides from byte strides to element strides for the XPU library.
+  // The XDNN index_elementwise_get_grad function receives typed pointers (T*,
+  // int64_t*) and performs element-level pointer arithmetic. Byte strides (from
+  // compute_strides which multiplies by element_size_in_bytes) would cause
+  // offsets to be scaled incorrectly, reading/writing at wrong positions.
+  // Dividing each stride by its respective element size converts byte strides
+  // to element strides consistent with typed-pointer arithmetic.
+  // strides_vec_vec[0] = output strides, strides_vec_vec[1] = value strides,
+  // strides_vec_vec[2] = index strides.
+  int64_t output_ele_size =
+      phi::SizeOf(output->dtype());  // strides_vec_vec[0]: output
+  int64_t value_ele_size =
+      phi::SizeOf(value.dtype());  // strides_vec_vec[1]: value
+  int64_t index_ele_size =
+      phi::SizeOf(index[0]->dtype());  // strides_vec_vec[2]: index
+  for (auto& s : strides_vec_vec[0]) {
+    s /= output_ele_size;
+  }
+  for (auto& s : strides_vec_vec[1]) {
+    s /= value_ele_size;
+  }
+  for (auto& s : strides_vec_vec[2]) {
+    s /= index_ele_size;
+  }
+  for (auto& s : orig_strides_vec) {
+    s /= index_ele_size;
+  }
+
   XPUType* output_ptr = reinterpret_cast<XPUType*>(output->data<T>());
 
   // call xpu kernel
