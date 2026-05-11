@@ -154,7 +154,6 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
         dist_attr = dist_op.dist_attr
         process_mesh = dist_attr.process_mesh
         processes = process_mesh.process_ids
-        op_type = dist_op.serial_op.type
 
         cost_mapping = build_comp_costs_from_descs(
             Reshape2GradOpCost, ctx, processes, desc_mapping, cluster
@@ -163,7 +162,6 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
 
         backward_op = dist_op.serial_op
         main_block = backward_op.block
-        need_gradient_allreduce = False
         for input_name in backward_op.desc.input_names():
             for varname in backward_op.desc.input(input_name):
                 if "@GRAD" not in varname and is_parameter_related(
@@ -291,7 +289,6 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
         dist_op_context = ctx.dist_op_context
         main_block = dist_op_context.work_block
         src_op = dist_op_context.cur_src_op
-        rank_id = dist_op_context.rank_id
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert op_dist_attr is not None, (
             f"backward op [{src_op}] don't have dist attribute !"
@@ -407,7 +404,6 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
         dist_attr = dist_op.dist_attr
         process_mesh = dist_attr.process_mesh
         processes = process_mesh.process_ids
-        op_type = dist_op.serial_op.type
 
         cost_mapping = build_comp_costs_from_descs(
             Reshape2GradOpCost, ctx, processes, desc_mapping, cluster
@@ -416,7 +412,6 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
 
         backward_op = dist_op.serial_op
         main_block = backward_op.block
-        need_gradient_allreduce = False
         for input_name in backward_op.desc.input_names():
             for varname in backward_op.desc.input(input_name):
                 if "@GRAD" not in varname and not is_parameter_related(
@@ -547,7 +542,6 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
         dist_op_context = ctx.dist_op_context
         main_block = dist_op_context.work_block
         src_op = dist_op_context.cur_src_op
-        rank_id = dist_op_context.rank_id
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert op_dist_attr is not None, (
             f"backward op [{src_op}] don't have dist attribute !"
@@ -663,7 +657,6 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
         dist_attr = dist_op.dist_attr
         process_mesh = dist_attr.process_mesh
         processes = process_mesh.process_ids
-        op_type = dist_op.serial_op.type
 
         cost_mapping = build_comp_costs_from_descs(
             Reshape2GradOpCost, ctx, processes, desc_mapping, cluster
@@ -672,7 +665,6 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
 
         backward_op = dist_op.serial_op
         main_block = backward_op.block
-        need_gradient_allreduce = False
         for input_name in backward_op.desc.input_names():
             for varname in backward_op.desc.input(input_name):
                 if "@GRAD" not in varname and not is_parameter_related(

@@ -139,7 +139,6 @@ class DistributedSplitImpl(DistributedOperatorImpl):
         op_desc = dist_op.serial_op.desc
         op_dist_attr = dist_op.dist_attr
         x_name = op_desc.input('X')[0]
-        axis = op_desc.attr('axis')
         out_names = op_desc.output('Out')
         x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
         for out_name in out_names:

@@ -138,13 +138,11 @@ class DistributedReduceSumPrimitiveImpl0(DistributedOperatorImpl):
 
     def is_input_compatible(self, dist_op):
         op_desc = dist_op.serial_op.desc
-        op_dist_attr = dist_op.dist_attr
 
         return len(op_desc.input_arg_names()) == 1
 
     def is_output_compatible(self, dist_op):
         op_desc = dist_op.serial_op.desc
-        op_dist_attr = dist_op.dist_attr
         outputs = op_desc.output_arg_names()
 
         if len(outputs) != 1:
@@ -158,9 +156,6 @@ class DistributedReduceSumPrimitiveImpl0(DistributedOperatorImpl):
         return True
 
     def is_auto_compatible(self, dist_op):
-        op_desc = dist_op.serial_op.desc
-        op_dist_attr = dist_op.dist_attr
-
         return self.is_input_compatible(dist_op) and self.is_output_compatible(
             dist_op
         )
@@ -174,9 +169,7 @@ class DistributedReduceSumPrimitiveImpl0(DistributedOperatorImpl):
     def forward(ctx, *args, **kwargs):
         dist_op_context = ctx.dist_op_context
         main_block = dist_op_context.work_block
-        startup_block = dist_op_context.startup_block
         src_op = dist_op_context.cur_src_op
-        rank_id = dist_op_context.rank_id
 
         # check validation of inputs / outputs
         for input_name in src_op.desc.input_names():

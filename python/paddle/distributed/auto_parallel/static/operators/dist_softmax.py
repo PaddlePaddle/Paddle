@@ -84,7 +84,6 @@ class DistributedSoftmaxImpl(DistributedOperatorImpl):
 
         backward_op = dist_op.serial_op
         main_block = backward_op.block
-        need_gradient_allreduce = False
         for input_name in backward_op.desc.input_names():
             for varname in backward_op.desc.input(input_name):
                 if "@GRAD" not in varname and is_parameter_related(
@@ -152,7 +151,6 @@ class DistributedSoftmaxImpl(DistributedOperatorImpl):
         op_desc = dist_op.serial_op.desc
         op_dist_attr = dist_op.dist_attr
         x_name = op_desc.input('X')[0]
-        axis = op_desc.attr('axis')
         out_name = op_desc.output('Out')[0]
         x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
