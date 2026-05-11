@@ -23,7 +23,7 @@ try:
 except:
     from .utils import tqdm
 
-from paddle.base.framework import IrGraph, _get_var
+from paddle.base.framework import IrGraph
 
 from ... import static
 from ...framework import core
@@ -586,11 +586,6 @@ class PostTrainingQuantization:
 
         if self._optimize_model:
             self._optimize_fp32_model()
-
-        feed_vars = [
-            _get_var(str(var_name), self._program)
-            for var_name in self._feed_list
-        ]
 
         self._batch_nums = (
             self._batch_nums if self._batch_nums else len(self._data_loader)
@@ -1666,7 +1661,6 @@ class WeightQuantization:
         # Load model
         place = core.CPUPlace()
         exe = static.Executor(place)
-        scope = static.global_scope()
         [infer_program, feed_list, fetch_list] = static.load_inference_model(
             self._model_dir,
             executor=exe,

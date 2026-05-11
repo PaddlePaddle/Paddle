@@ -3217,7 +3217,6 @@ class QuantWeightPass:
         assert isinstance(graph, IrGraph), (
             'graph must be the instance of IrGraph.'
         )
-        fake_quant_ops_for_weight = []
 
         fake_quant_ops = [
             op for op in graph.all_op_nodes() if op.name() == "quantize_linear"
@@ -3227,9 +3226,6 @@ class QuantWeightPass:
             if x_node.persistable():
                 scale_node = graph._find_node_by_name(
                     _op.inputs, _op.input("Scale")[0]
-                )
-                zero_point_node = graph._find_node_by_name(
-                    _op.inputs, _op.input("ZeroPoint")[0]
                 )
                 out_node = graph._find_node_by_name(
                     _op.outputs, _op.output("Y")[0]

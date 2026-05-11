@@ -96,7 +96,6 @@ class QuantInt8OnednnPass:
         )
         ops = graph.all_op_nodes()
 
-        persistable_vars = [p.name() for p in graph.all_persistable_nodes()]
         # Collect the _in_scales and _max_range to calculate the new scales for MKL-DNN
         # INT8 conv2d and mul
         for op_node in ops:
@@ -110,8 +109,6 @@ class QuantInt8OnednnPass:
                 self._new_output[input_name] = op_node.output("Out")[0]
 
             if op_node.name() in self._quantize_dequantize_type:
-                inputs = op_node.op().input_names()
-                attrs = op_node.op().attr_names()
                 input_name = op_node.input("X")[0]
                 scale_name = op_node.input("InScale")[0]
                 self._in_scale[input_name] = self._load_param(
@@ -136,8 +133,7 @@ class QuantInt8OnednnPass:
         return graph
 
     def _transform_to_pool_onednn(self, graph, op):
-        output_name = op.output("Out")[0]
-        input_name = op.input("X")[0]
+        pass
 
     def _transform_to_conv_onednn(self, graph, op_node):
         weight_name = op_node.input("Filter")[0]
