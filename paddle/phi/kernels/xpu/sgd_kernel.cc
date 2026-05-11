@@ -49,20 +49,13 @@ void SGDDenseKernel(const Context& dev_ctx,
                               grad.numel(),
                               sz));
 
-  const T* lr_t = learning_rate.data<T>();
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-  const float* lr = nullptr;
-  if (std::is_same<T, dtype::float16>::value) {
-    float* lr_float = RAII_GUARD.alloc_l3_or_gm<float>(learning_rate.numel());
-    int r = xpu::cast<XPUType, float>(dev_ctx.x_context(),
-                                      reinterpret_cast<const XPUType*>(lr_t),
-                                      lr_float,
-                                      learning_rate.numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
-    lr = lr_float;
-  } else {
-    lr = reinterpret_cast<const float*>(lr_t);
-  }
+
+  // Cast learning_rate from float64 to float32 on device
+  float* lr_f32 = RAII_GUARD.alloc_l3_or_gm<float>(1);
+  int r_cast = xpu::cast<double, float>(
+      dev_ctx.x_context(), learning_rate.data<double>(), lr_f32, 1);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r_cast, "cast_lr_fp64_to_fp32");
 
   const T* param_data = param.data<T>();
   const XPUType* grad_ptr = nullptr;
@@ -82,7 +75,7 @@ void SGDDenseKernel(const Context& dev_ctx,
   int r = xpu::sgd(dev_ctx.x_context(),
                    grad_ptr,
                    reinterpret_cast<const XPUType*>(param_data),
-                   lr,
+                   lr_f32,
                    reinterpret_cast<XPUType*>(out_data),
                    sz);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "sgd");
@@ -134,11 +127,18 @@ void SGDDenseParamSparseGradKernel(const Context& dev_ctx,
   auto* in_data = in_value.data<T>();
   auto* out_data = param_out->data<T>();
 
+  // Cast learning_rate from float64 to float32 on device
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+  float* lr_f32 = RAII_GUARD.alloc_l3_or_gm<float>(1);
+  int r_cast = xpu::cast<double, float>(
+      dev_ctx.x_context(), learning_rate.data<double>(), lr_f32, 1);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r_cast, "cast_lr_fp64_to_fp32");
+
   int r = xpu::sparse_sgd<XPUType, int64_t>(
       dev_ctx.x_context(),
       reinterpret_cast<const XPUType*>(in_data),
       reinterpret_cast<const XPUType*>(param.data<T>()),
-      learning_rate.data<float>(),
+      lr_f32,
       in_rows_vec,
       reinterpret_cast<XPUType*>(out_data),
       in_row_numel,
@@ -150,10 +150,14 @@ void SGDDenseParamSparseGradKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    sgd, XPU, ALL_LAYOUT, phi::SGDDenseKernel, phi::float16, float) {}
+    sgd, XPU, ALL_LAYOUT, phi::SGDDenseKernel, phi::float16, float) {
+  kernel->InputAt(1).SetDataType(phi::DataType::FLOAT64);
+}
 PD_REGISTER_KERNEL(sgd_dense_param_sparse_grad,
                    XPU,
                    ALL_LAYOUT,
                    phi::SGDDenseParamSparseGradKernel,
                    phi::float16,
-                   float) {}
+                   float) {
+  kernel->InputAt(1).SetDataType(phi::DataType::FLOAT64);
+}
