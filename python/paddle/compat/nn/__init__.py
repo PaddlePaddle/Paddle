@@ -601,9 +601,9 @@ class Linear(nn.Layer):
         """
 
         bound = 1 / sqrt(self.in_features) if self.in_features > 0 else 0
-        if all(dim > 0 for dim in self.weight.shape):
+        if self.weight.size > 0:
             nn.init.uniform_(self.weight, -bound, bound)
-        if self.bias is not None and all(dim > 0 for dim in self.bias.shape):
+        if self.bias is not None and self.bias.size > 0:
             nn.init.uniform_(self.bias, -bound, bound)
 
 
