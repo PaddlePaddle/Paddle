@@ -27,15 +27,6 @@
 
 namespace {
 
-int getSMVersion() {
-  int sm_version = -1;
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_CUTLASS)
-  sm_version = paddle::platform::GetGPUComputeCapability(
-      paddle::platform::GetCurrentDeviceId());
-#endif
-  return sm_version;
-}
-
 class FusedWeightOnlyLinearWithBiasPattern
     : public paddle::drr::DrrPatternBase {
  private:
@@ -274,7 +265,7 @@ class FusedWeightOnlyLinearPass : public pir::PatternRewritePass {
  public:
   FusedWeightOnlyLinearPass()
       : pir::PatternRewritePass("fused_weight_only_linear_pass", 4),
-        sm_version_(getSMVersion()) {}
+        sm_version_(pir::getSMVersion()) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     std::string algo = "weight_only_int8";

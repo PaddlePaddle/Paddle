@@ -288,4 +288,5 @@ TargetOpT CastDefinedTo(const SourceOpT& op, const size_t idx) {
   return defined_op->dyn_cast<TargetOpT>();
 }
 
+int getSMVersion();
 }  // namespace pir

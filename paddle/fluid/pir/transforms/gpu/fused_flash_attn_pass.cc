@@ -26,15 +26,6 @@
 
 namespace {
 
-int getSMVersion() {
-  int sm_version = -1;
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_CUTLASS)
-  sm_version = paddle::platform::GetGPUComputeCapability(
-      paddle::platform::GetCurrentDeviceId());
-#endif
-  return sm_version;
-}
-
 // 1. scale after q
 // 2. cast before and after softmax
 // 3. with mask
@@ -661,7 +652,7 @@ class FusedFlashAttnPass : public pir::PatternRewritePass {
 
   bool CanApplyOn(pir::Operation *op) const override {
 #ifdef PADDLE_WITH_FLASHATTN
-    int sm_version = getSMVersion();
+    int sm_version = pir::getSMVersion();
     if (sm_version < 80) {
       return false;
     }

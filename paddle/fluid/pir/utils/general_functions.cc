@@ -307,4 +307,12 @@ phi::DataType GetValueDtype(const Value& val) {
   return GetTensorDtype(val.type());
 }
 
+int getSMVersion() {
+  int sm_version = -1;
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_CUTLASS)
+  sm_version = paddle::platform::GetGPUComputeCapability(
+      paddle::platform::GetCurrentDeviceId());
+#endif
+  return sm_version;
+}
 }  // namespace pir
