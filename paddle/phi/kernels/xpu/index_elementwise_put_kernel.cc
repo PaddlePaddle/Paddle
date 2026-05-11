@@ -106,6 +106,21 @@ void XPUIndexElementwisePutWithTensorKernel(
   // offsets to be scaled incorrectly, reading/writing at wrong positions.
   // Dividing each stride by its respective element size converts byte strides
   // to element strides consistent with typed-pointer arithmetic.
+  //
+  // strides_vec_vec[0] = output/data strides: compute_strides multiplied by
+  //   data_ele_size, so divide by data_ele_size to get element strides for T*.
+  // strides_vec_vec[1] = value strides: compute_strides multiplied by
+  //   value_ele_size, so divide by value_ele_size to get element strides for
+  //   T*.
+  // strides_vec_vec[2] = index strides: compute_strides multiplied by
+  //   index_ele_size only (the original strides were pure element strides from
+  //   cal_shape_stride, NOT the indexed_strides byte strides), so divide by
+  //   index_ele_size only to get element strides for int64_t*.
+  //
+  // orig_strides_vec comes directly from index_strides (indexed_strides from
+  // AdvancedIndex), which are byte strides = element_stride * data_ele_size.
+  // compute_strides was NOT applied to this vector, so we only need to divide
+  // by data_ele_size to convert from byte strides to element strides.
   int64_t data_ele_size =
       phi::SizeOf(input.dtype());  // strides_vec_vec[0]: output/data
   int64_t value_ele_size =
@@ -122,7 +137,7 @@ void XPUIndexElementwisePutWithTensorKernel(
     s /= index_ele_size;
   }
   for (auto& s : orig_strides_vec) {
-    s /= index_ele_size;
+    s /= data_ele_size;
   }
 
   const char* in_ptr = reinterpret_cast<const char*>(value.data<T>());
@@ -234,10 +249,19 @@ void XPUIndexElementwisePutKernel(const Context& dev_ctx,
   // compute_strides which multiplies by element_size_in_bytes) would cause
   // offsets to be scaled incorrectly, reading/writing at wrong positions.
   // Dividing each stride by its respective element size converts byte strides
-  // to element strides consistent with typed-pointer arithmetic. For scalar
-  // put: strides_vec_vec[0] = output strides, strides_vec_vec[2] = index
-  // strides. strides_vec_vec[1] is not present (no value tensor, scalar value
-  // is passed separately).
+  // to element strides consistent with typed-pointer arithmetic.
+  //
+  // strides_vec_vec[0] = output strides: compute_strides multiplied by
+  //   data_ele_size, so divide by data_ele_size to get element strides for T*.
+  // strides_vec_vec[2] = index strides: compute_strides multiplied by
+  //   index_ele_size only (the original strides were pure element strides from
+  //   cal_shape_stride, NOT the indexed_strides byte strides), so divide by
+  //   index_ele_size only to get element strides for int64_t*.
+  //
+  // orig_strides_vec comes directly from index_strides (indexed_strides from
+  // AdvancedIndex), which are byte strides = element_stride * data_ele_size.
+  // compute_strides was NOT applied to this vector, so we only need to divide
+  // by data_ele_size to convert from byte strides to element strides.
   int64_t data_ele_size =
       phi::SizeOf(input.dtype());  // strides_vec_vec[0]: output/data
   int64_t index_ele_size =
@@ -249,7 +273,7 @@ void XPUIndexElementwisePutKernel(const Context& dev_ctx,
     s /= index_ele_size;
   }
   for (auto& s : orig_strides_vec) {
-    s /= index_ele_size;
+    s /= data_ele_size;
   }
 
   char* out_ptr = reinterpret_cast<char*>(output->data<T>()) + slice_offset;

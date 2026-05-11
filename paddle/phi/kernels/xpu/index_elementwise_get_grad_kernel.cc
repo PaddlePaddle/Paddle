@@ -90,8 +90,20 @@ void XPUIndexElementwiseGetGradKernel(
   // offsets to be scaled incorrectly, reading/writing at wrong positions.
   // Dividing each stride by its respective element size converts byte strides
   // to element strides consistent with typed-pointer arithmetic.
-  // strides_vec_vec[0] = output strides, strides_vec_vec[1] = value strides,
-  // strides_vec_vec[2] = index strides.
+  //
+  // strides_vec_vec[0] = output strides: compute_strides multiplied by
+  //   output_ele_size, so divide by output_ele_size to get element strides.
+  // strides_vec_vec[1] = value strides: compute_strides multiplied by
+  //   value_ele_size, so divide by value_ele_size to get element strides.
+  // strides_vec_vec[2] = index strides: compute_strides multiplied by
+  //   index_ele_size only (the original strides were pure element strides from
+  //   cal_shape_stride, NOT the indexed_strides byte strides), so divide by
+  //   index_ele_size only to get element strides for int64_t*.
+  //
+  // orig_strides_vec comes directly from index_strides (indexed_strides from
+  // AdvancedIndex), which are byte strides = element_stride * output_ele_size.
+  // compute_strides was NOT applied to this vector, so we only need to divide
+  // by output_ele_size to convert from byte strides to element strides.
   int64_t output_ele_size =
       phi::SizeOf(output->dtype());  // strides_vec_vec[0]: output
   int64_t value_ele_size =
@@ -108,7 +120,7 @@ void XPUIndexElementwiseGetGradKernel(
     s /= index_ele_size;
   }
   for (auto& s : orig_strides_vec) {
-    s /= index_ele_size;
+    s /= output_ele_size;
   }
 
   XPUType* output_ptr = reinterpret_cast<XPUType*>(output->data<T>());

@@ -94,9 +94,23 @@ void XPUIndexElementwiseGetKernel(const Context& dev_ctx,
   // compute_strides which multiplies by element_size_in_bytes) would cause
   // offsets to be scaled incorrectly, reading/writing at wrong positions.
   // Dividing each stride by its respective element size converts byte strides
-  // to element strides consistent with typed-pointer arithmetic. For get:
-  // strides_vec_vec[0] = input strides, strides_vec_vec[1] = output strides,
-  // strides_vec_vec[2] = index strides.
+  // to element strides consistent with typed-pointer arithmetic.
+  //
+  // strides_vec_vec[0] = input strides: compute_strides multiplied by
+  //   input_ele_size, so divide by input_ele_size to get element strides for
+  //   T*.
+  // strides_vec_vec[1] = output strides: compute_strides multiplied by
+  //   output_ele_size, so divide by output_ele_size to get element strides for
+  //   T*.
+  // strides_vec_vec[2] = index strides: compute_strides multiplied by
+  //   index_ele_size only (the original strides were pure element strides from
+  //   cal_shape_stride, NOT the indexed_strides byte strides), so divide by
+  //   index_ele_size only to get element strides for int64_t*.
+  //
+  // orig_strides_vec comes directly from index_strides (indexed_strides from
+  // AdvancedIndex), which are byte strides = element_stride * input_ele_size.
+  // compute_strides was NOT applied to this vector, so we only need to divide
+  // by input_ele_size to convert from byte strides to element strides.
   int64_t input_ele_size =
       phi::SizeOf(input.dtype());  // strides_vec_vec[0]: input data
   int64_t output_ele_size =
@@ -113,7 +127,7 @@ void XPUIndexElementwiseGetKernel(const Context& dev_ctx,
     s /= index_ele_size;
   }
   for (auto& s : orig_strides_vec) {
-    s /= index_ele_size;
+    s /= input_ele_size;
   }
 
   const char* in_ptr =
