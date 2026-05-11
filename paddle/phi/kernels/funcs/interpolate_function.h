@@ -127,7 +127,7 @@ inline std::vector<int> get_new_shape(
             "The shape of dimension tensor should be [1] or [],"
             "but received d%.",
             tensor->dims()));
-    if (tensor->dtype() == phi::DataType::INT64) {
+    if (tensor->dtype() == DataType::INT64) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       if (tensor->place().GetType() == AllocationType::CUSTOM) {
         DenseTensor temp;
@@ -151,7 +151,7 @@ inline std::vector<int> get_new_shape(
       } else {
         vec_new_shape.push_back(static_cast<int64_t>(*tensor->data<int64_t>()));
       }
-    } else if (tensor->dtype() == phi::DataType::INT32) {
+    } else if (tensor->dtype() == DataType::INT32) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       if (tensor->place().GetType() == AllocationType::CUSTOM) {
         DenseTensor temp;

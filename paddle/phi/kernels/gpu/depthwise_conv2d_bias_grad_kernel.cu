@@ -118,7 +118,7 @@ __global__ void DWConv2dBwdInputKernel(const T* __restrict__ grad_output,
                                        const int padHeight,
                                        const int dilationWidth,
                                        const int dilationHeight) {
-  using AccT = typename dtype::MPTypeTrait<T>::Type;
+  using AccT = typename MPTypeTrait<T>::Type;
   const int KW_LIMIT = (kSize != 0) ? kSize : kernelWidth;
   const int KH_LIMIT = (kSize != 0) ? kSize : kernelHeight;
   const int strideW = (stride != 0) ? stride : strideWidth;
@@ -188,7 +188,7 @@ __global__ void DWConv2dBwdWeightKernel(const T* __restrict__ grad_output,
                                         const int padHeight,
                                         const int dilationWidth,
                                         const int dilationHeight) {
-  using AccT = typename dtype::MPTypeTrait<T>::Type;
+  using AccT = typename MPTypeTrait<T>::Type;
   const int channelStride = kernelWidth * kernelHeight;
 
   int bidx = blockIdx.x;
@@ -317,8 +317,8 @@ void LaunchDepthwiseConv2dBackwardCompatible(const Context& dev_ctx,
     dim3 grid(blocks);
     dim3 block(GetGradParamsNumThreads(batchSize));
 
-    size_t smem = (block.x / CUDA_WARP_SIZE) *
-                  sizeof(typename dtype::MPTypeTrait<T>::Type);
+    size_t smem =
+        (block.x / CUDA_WARP_SIZE) * sizeof(typename MPTypeTrait<T>::Type);
 
     DWConv2dBwdWeightKernel<T, int>
         <<<grid, block, smem, stream>>>(out_grad_nchw.data<T>(),

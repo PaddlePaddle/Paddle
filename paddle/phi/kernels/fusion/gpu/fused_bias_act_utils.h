@@ -76,8 +76,8 @@ struct BaseActivationFunctor {
 // For windows build
 template <typename T>
 struct CudaSwishFunctor : public BaseActivationFunctor<T> {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  MPType one = static_cast<MPType>(1.0f);
+  using MT = typename MPTypeTrait<T>::Type;
+  MT one = static_cast<MT>(1.0f);
   float beta = 1.0;
 
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
@@ -86,8 +86,8 @@ struct CudaSwishFunctor : public BaseActivationFunctor<T> {
 
   // swish(x) = x / (1 + exp(-beta * x))
   __device__ __forceinline__ T operator()(const T arg_x) const {
-    MPType x = static_cast<MPType>(arg_x);
-    MPType b = static_cast<MPType>(beta);
+    MT x = static_cast<MT>(arg_x);
+    MT b = static_cast<MT>(beta);
     return static_cast<T>(x / (one + exp(-b * x)));
   }
 };

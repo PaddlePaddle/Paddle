@@ -72,8 +72,8 @@ static void RunKernelFunc(
     if (detail::IsDuplicableVar(in_name)) {  // inputs vector<Tensor>
       std::vector<paddle::Tensor> custom_vec_in;
       if (ctx.HasInputs(in_name)) {  // general vector<Tensor> inputs
-        // return const std::vector<const phi::DenseTensor*>
-        auto vec_x = ctx.MultiInput<phi::DenseTensor>(in_name);
+        // return const std::vector<const DenseTensor*>
+        auto vec_x = ctx.MultiInput<DenseTensor>(in_name);
         PADDLE_ENFORCE_NE(vec_x.empty(),
                           true,
                           common::errors::NotFound(
@@ -94,7 +94,7 @@ static void RunKernelFunc(
                                 i,
                                 in_name));
           paddle::Tensor custom_t;
-          custom_t.set_impl(std::make_shared<phi::DenseTensor>(*x));
+          custom_t.set_impl(std::make_shared<DenseTensor>(*x));
           custom_vec_in.emplace_back(custom_t);
         }
       } else {  // optional vector<Tensor> inputs.
@@ -115,7 +115,7 @@ static void RunKernelFunc(
       kernel_ctx.EmplaceBackInputs(custom_vec_in);
     } else {                        // inputs Tensor
       if (ctx.HasInput(in_name)) {  // general Tensor inputs
-        auto* x = ctx.Input<phi::DenseTensor>(in_name);
+        auto* x = ctx.Input<DenseTensor>(in_name);
         PADDLE_ENFORCE_NOT_NULL(
             x,
             common::errors::NotFound("Input tensor (%s) is nullptr.", in_name));
@@ -125,11 +125,11 @@ static void RunKernelFunc(
             common::errors::InvalidArgument(
                 "Input tensor (%s) is not initialized.", in_name));
         paddle::Tensor custom_in;
-        custom_in.set_impl(std::make_shared<phi::DenseTensor>(*x));
+        custom_in.set_impl(std::make_shared<DenseTensor>(*x));
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
         if (custom_in.is_gpu_pinned()) {
           VLOG(3) << "Custom Operator: custom input is gpu pinned tensor";
-          auto gpu_place = phi::GPUPlace(platform::GetCurrentDeviceId());
+          auto gpu_place = GPUPlace(platform::GetCurrentDeviceId());
           auto custom_gpu_in = custom_in.copy_to(gpu_place, true);
           kernel_ctx.EmplaceBackInput(std::move(custom_gpu_in));
         } else {
@@ -192,7 +192,7 @@ static void RunKernelFunc(
 
   VLOG(3) << "Custom Operator: push outputs into CustomOpKernelContext.";
   // cache the target tensor pointers
-  std::vector<phi::DenseTensor*> true_out_ptrs;
+  std::vector<DenseTensor*> true_out_ptrs;
   for (size_t i = 0; i < outputs.size(); ++i) {
     auto out_name = outputs[i];
     if (detail::IsDuplicableVar(
@@ -202,7 +202,7 @@ static void RunKernelFunc(
           common::errors::PreconditionNotMet(
               "If custom operator's outputs contains `paddle::Vec()` type "
               "without setting InplaceMap, it only can hold one output."));
-      auto vec_out = ctx.MultiOutput<phi::DenseTensor>(out_name);
+      auto vec_out = ctx.MultiOutput<DenseTensor>(out_name);
       // handle inplace optional outputs = None case
       if (vec_out.empty()) {
         PADDLE_ENFORCE(
@@ -235,7 +235,7 @@ static void RunKernelFunc(
         true_out_ptrs.emplace_back(out);
         paddle::Tensor custom_t;
         // here only can copy the output tensor into context
-        custom_t.set_impl(std::make_shared<phi::DenseTensor>(*out));
+        custom_t.set_impl(std::make_shared<DenseTensor>(*out));
         custom_vec_out.emplace_back(custom_t);
       }
       kernel_ctx.EmplaceBackOutputs(custom_vec_out);
@@ -260,14 +260,14 @@ static void RunKernelFunc(
         continue;
       }
       // general/inplace Tensor outputs
-      auto* out = ctx.Output<phi::DenseTensor>(out_name);
+      auto* out = ctx.Output<DenseTensor>(out_name);
       PADDLE_ENFORCE_NOT_NULL(
           out,
           common::errors::NotFound("Output tensor (%s) is nullptr.", out_name));
       true_out_ptrs.emplace_back(out);
       paddle::Tensor custom_out;
       // here only can copy the output tensor into context
-      custom_out.set_impl(std::make_shared<phi::DenseTensor>(*out));
+      custom_out.set_impl(std::make_shared<DenseTensor>(*out));
       kernel_ctx.EmplaceBackOutput(std::move(custom_out));
     }
   }
@@ -310,7 +310,7 @@ static void RunKernelFunc(
               "The returned Tensor is not defined in the KernelFn or custom "
               "operator passes wrong output in static mode."));
       auto calc_out =
-          std::dynamic_pointer_cast<phi::DenseTensor>(calc_outs->at(i).impl());
+          std::dynamic_pointer_cast<DenseTensor>(calc_outs->at(i).impl());
       // assign meta info
       auto* true_out_meta = phi::DenseTensorUtils::GetMutableMeta(true_out);
       true_out_meta->dims = calc_out->dims();
@@ -885,7 +885,7 @@ class CustomOperator : public OperatorWithKernel {
    */
   phi::KernelKey GetKernelTypeForVar(
       const std::string& var_name,
-      const phi::DenseTensor& tensor,
+      const DenseTensor& tensor,
       const phi::KernelKey& expected_kernel_type) const override {
     return phi::KernelKey(phi::Backend::ALL_BACKEND,
                           tensor.layout(),
@@ -899,7 +899,7 @@ static void RegisterOperatorKernelWithPlace(
     const std::string& name,
     const OperatorWithKernel::OpKernelFunc& op_kernel_func,
     const proto::VarType::Type type,
-    const phi::Place& place) {
+    const Place& place) {
   OpKernelType key(type, place);
   VLOG(3) << "Custom Operator: op kernel key: " << key;
   OperatorWithKernel::AllOpKernels()[name][key] = op_kernel_func;
@@ -944,11 +944,11 @@ static void RegisterOperatorKernel(
       name, op_kernel_func, proto::VarType::RAW, CPUPlace());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   RegisterOperatorKernelWithPlace(
-      name, op_kernel_func, proto::VarType::RAW, phi::GPUPlace());
+      name, op_kernel_func, proto::VarType::RAW, GPUPlace());
 #endif
 #if defined(PADDLE_WITH_XPU)
   RegisterOperatorKernelWithPlace(
-      name, op_kernel_func, proto::VarType::RAW, phi::XPUPlace());
+      name, op_kernel_func, proto::VarType::RAW, XPUPlace());
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();

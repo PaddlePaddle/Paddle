@@ -31,7 +31,7 @@ __global__ void NormalizeGradient(const T* x,
                                   const int axis_n,
                                   const int64_t post,
                                   T* x_grad) {
-  using MT = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   typedef cub::BlockReduce<MT, BlockDim> BlockReduce;
   __shared__ typename BlockReduce::TempStorage temp_storage_sum;
   int64_t num = pre * post;

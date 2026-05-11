@@ -35,7 +35,7 @@ void InstanceNormKernel(const Context &dev_ctx,
                         DenseTensor *y,
                         DenseTensor *saved_mean,
                         DenseTensor *saved_variance) {
-  using AccT = typename dtype::MPTypeTrait<T>::Type;
+  using AccT = typename MPTypeTrait<T>::Type;
   double epsilon = static_cast<double>(epsilon_f);
   auto &x_dims = x.dims();
   PADDLE_ENFORCE_GE(x_dims.size(),

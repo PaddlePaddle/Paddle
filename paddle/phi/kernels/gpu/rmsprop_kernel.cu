@@ -47,7 +47,7 @@ struct RmsFunctor<T, GPUContext> {
     size_t limit = static_cast<size_t>(ms_tensor.numel());
     DenseRmspropGradFunctor<T> grad_func(grad_tensor.data<T>());
     funcs::ForRange<GPUContext> for_range(dev_ctx, limit);
-    using MT = typename dtype::MPTypeTrait<T>::Type;
+    using MT = typename MPTypeTrait<T>::Type;
     MT *master_out_data = multi_precision
                               ? dev_ctx.template Alloc<MT>(master_param_outs)
                               : nullptr;

@@ -125,18 +125,18 @@ void apply_moe_dispatch_fwd(
     cudaStream_t stream) {
   phi::CubKeyValueSorter sorter(stream);
   // paddle::Tensor expanded_source_row_to_expanded_dest_row_tensor =
-  //     paddle::empty({num_rows, k}, paddle::DataType::INT32, place);
+  //     paddle::empty({num_rows, k}, DataType::INT32, place);
   // int* expanded_source_row_to_expanded_dest_row =
   //     expanded_source_row_to_expanded_dest_row_tensor.data<int>();
 
   // paddle::Tensor expert_scales_tensor_float = paddle::empty({num_rows, k},
-  // paddle::DataType::FLOAT32, place); float* expert_scales_float =
+  // DataType::FLOAT32, place); float* expert_scales_float =
   // expert_scales_tensor_float.data<float>();
 
   // paddle::Tensor expert_for_source_row_tensor = paddle::empty({num_rows, k},
-  // paddle::DataType::INT32, place); int* expert_for_source_row =
+  // DataType::INT32, place); int* expert_for_source_row =
   // expert_for_source_row_tensor.data<int>(); paddle::Tensor active_cnt_tensor
-  // = paddle::empty({1}, paddle::DataType::INT32, place);
+  // = paddle::empty({1}, DataType::INT32, place);
 
   int64_t bytes = getWorkspaceSize<T>(num_rows,
                                       hidden_size,  // hidden-size=0

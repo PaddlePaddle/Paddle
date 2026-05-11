@@ -72,7 +72,7 @@ void SGDDenseKernel(const Context& dev_ctx,
                     bool multi_precision,
                     DenseTensor* param_out,
                     DenseTensor* master_param_out) {
-  using MT = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   // do check here
   // if (multi_precision) {
   //   bool has_master =
@@ -119,7 +119,7 @@ void SGDDenseParamSparseGradKernel(const Context& dev_ctx,
                                    bool multi_precision,
                                    DenseTensor* param_out,
                                    DenseTensor* master_param_out) {
-  using MT = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   // do some check here
   // if (multi_precision) {
   //   bool has_master =

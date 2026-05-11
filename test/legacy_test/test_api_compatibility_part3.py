@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
@@ -1336,30 +1337,30 @@ class TestLayerAndTensorToAPI(unittest.TestCase):
         self.assertIs(ret, linear)
         self.assertEqual(linear.weight.dtype, original_dtype)
 
-    # ---- Layer.to: all-dtype casting ----
+    # ---- Layer.to: floating-only dtype casting (PyTorch-aligned) ----
 
-    def test_layer_cast_all_with_positional_dtype(self):
-        """Layer.to(dtype) casts ALL params and buffers, including int buf."""
+    def test_layer_cast_floating_only_with_positional_dtype(self):
+        """Layer.to(dtype) casts only floating/complex params and buffers."""
         model = self._make_model()
         self.assertEqual(model.int_buf.dtype, paddle.int32)
         model.to(paddle.float64)
         self.assertEqual(model.linear.weight.dtype, paddle.float64)
-        self.assertEqual(model.int_buf.dtype, paddle.float64)
+        self.assertEqual(model.int_buf.dtype, paddle.int32)
 
-    def test_layer_cast_all_with_keyword_dtype(self):
-        """Layer.to(dtype='float64') casts ALL params and buffers."""
+    def test_layer_cast_floating_only_with_keyword_dtype(self):
+        """Layer.to(dtype='float64') casts only floating/complex tensors."""
         model = self._make_model()
         model.to(dtype='float64')
         self.assertEqual(model.linear.weight.dtype, paddle.float64)
-        self.assertEqual(model.int_buf.dtype, paddle.float64)
+        self.assertEqual(model.int_buf.dtype, paddle.int32)
 
-    def test_layer_cast_all_with_tensor(self):
-        """Layer.to(tensor) casts ALL params and buffers."""
+    def test_layer_cast_floating_only_with_tensor(self):
+        """Layer.to(tensor) casts only floating/complex tensors to tensor.dtype."""
         model = self._make_model()
         ref = paddle.to_tensor([1.0], dtype='float64')
         model.to(ref)
         self.assertEqual(model.linear.weight.dtype, paddle.float64)
-        self.assertEqual(model.int_buf.dtype, paddle.float64)
+        self.assertEqual(model.int_buf.dtype, paddle.int32)
 
     # ---- Layer.to: sublayers and chaining ----
 
@@ -1693,6 +1694,59 @@ class TestLayerAndTensorToAPI(unittest.TestCase):
             t.to('float64', copy='yes')
 
 
+# Test paddle.dtype.itemsize compatibility (mirrors torch.dtype.itemsize).
+class TestDtypeItemsizeAPI(unittest.TestCase):
+    EXPECTED = {
+        'float16': 2,
+        'bfloat16': 2,
+        'float32': 4,
+        'float64': 8,
+        'complex64': 8,
+        'complex128': 16,
+        'int8': 1,
+        'int16': 2,
+        'int32': 4,
+        'int64': 8,
+        'uint8': 1,
+        'uint16': 2,
+        'uint32': 4,
+        'uint64': 8,
+        'bool': 1,
+        'float8_e4m3fn': 1,
+        'float8_e5m2': 1,
+    }
+
+    def test_all_standard_dtypes(self):
+        for name, want in self.EXPECTED.items():
+            if not hasattr(paddle, name):
+                continue
+            with self.subTest(dtype=name):
+                self.assertEqual(getattr(paddle, name).itemsize, want)
+
+    def test_returns_int(self):
+        self.assertIsInstance(paddle.float32.itemsize, int)
+
+    def test_property_lives_on_class(self):
+        self.assertIsInstance(type(paddle.float32).itemsize, property)
+
+    def test_aliases_match(self):
+        self.assertEqual(paddle.float.itemsize, paddle.float32.itemsize)
+        self.assertEqual(paddle.double.itemsize, paddle.float64.itemsize)
+        self.assertEqual(paddle.half.itemsize, paddle.float16.itemsize)
+        self.assertEqual(paddle.short.itemsize, paddle.int16.itemsize)
+        self.assertEqual(paddle.long.itemsize, paddle.int64.itemsize)
+        self.assertEqual(paddle.cfloat.itemsize, paddle.complex64.itemsize)
+        self.assertEqual(paddle.cdouble.itemsize, paddle.complex128.itemsize)
+
+    def test_matches_tensor_element_size(self):
+        for name in ('float32', 'float64', 'int32', 'int64', 'bool'):
+            with self.subTest(dtype=name):
+                t = paddle.zeros([1], dtype=name)
+                self.assertEqual(
+                    getattr(paddle, name).itemsize, t.element_size()
+                )
+
+
 # Test select_scatter compatibility
 class TestSelectScatterAPICompatibility(unittest.TestCase):
     def setUp(self):
@@ -2005,7 +2059,180 @@ class TestLogitAPI(unittest.TestCase):
         )
 
 
+# Test conv1d_transpose / conv_transpose1d compatibility
+@unittest.skipIf(
+    sys.platform == 'win32',
+    "Conv transpose compatibility tests not supported on Windows-Inference",
+)
+class TestConv1dTransposeAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.dtype = 'float32'
+        self.np_x = np.random.rand(1, 2, 4).astype(self.dtype)
+        self.np_weight = np.random.rand(2, 2, 3).astype(self.dtype)
+        self.np_bias = np.random.rand(2).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        weight = paddle.to_tensor(self.np_weight)
+        bias = paddle.to_tensor(self.np_bias)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.nn.functional.conv1d_transpose(x, weight)
+        # 2. Paddle keyword arguments
+        out2 = paddle.nn.functional.conv1d_transpose(x=x, weight=weight)
+        # 3. PyTorch keyword arguments (alias: input)
+        out3 = paddle.nn.functional.conv1d_transpose(input=x, weight=weight)
+        # 4. PyTorch function name alias
+        out4 = paddle.nn.functional.conv_transpose1d(x, weight)
+        # 5. PyTorch function name alias + PyTorch keyword
+        out5 = paddle.nn.functional.conv_transpose1d(input=x, weight=weight)
+        # 6. Mixed arguments (positional + keyword)
+        out6 = paddle.nn.functional.conv1d_transpose(
+            x, weight, bias=bias, stride=1, padding=0
+        )
+        # 7. Positional arguments with bias
+        out7 = paddle.nn.functional.conv1d_transpose(x, weight, bias)
+        # 8. All positional arguments
+        out8 = paddle.nn.functional.conv1d_transpose(
+            x, weight, bias, 1, 0, 0, 1, 1, None, 'NCL', None
+        )
+        # 9. All keyword arguments
+        out9 = paddle.nn.functional.conv1d_transpose(
+            x=x,
+            weight=weight,
+            bias=bias,
+            stride=1,
+            padding=0,
+            output_padding=0,
+            groups=1,
+            dilation=1,
+            output_size=None,
+            data_format='NCL',
+            name=None,
+        )
+        # 10. PyTorch alias + all keyword arguments
+        out10 = paddle.nn.functional.conv_transpose1d(
+            input=x,
+            weight=weight,
+            bias=bias,
+            stride=1,
+            padding=0,
+            output_padding=0,
+            groups=1,
+            dilation=1,
+            output_size=None,
+            data_format='NCL',
+            name=None,
+        )
+
+        # Verify outputs without bias
+        ref = out1.numpy()
+        for out in [out2, out3, out4, out5]:
+            np.testing.assert_allclose(out.numpy(), ref, rtol=1e-5)
+
+        # Verify outputs with bias
+        ref_bias = out6.numpy()
+        for out in [out7, out8, out9, out10]:
+            np.testing.assert_allclose(out.numpy(), ref_bias, rtol=1e-5)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=[1, 2, 4], dtype=self.dtype)
+            weight = paddle.static.data(
+                name="weight", shape=[2, 2, 3], dtype=self.dtype
+            )
+
+            # 1. Paddle Positional arguments
+            out1 = paddle.nn.functional.conv1d_transpose(x, weight)
+            # 2. Paddle keyword arguments
+            out2 = paddle.nn.functional.conv1d_transpose(x=x, weight=weight)
+            # 3. PyTorch keyword arguments (alias: input)
+            out3 = paddle.nn.functional.conv1d_transpose(input=x, weight=weight)
+            # 4. PyTorch function name alias
+            out4 = paddle.nn.functional.conv_transpose1d(x, weight)
+            # 5. PyTorch function name alias + PyTorch keyword
+            out5 = paddle.nn.functional.conv_transpose1d(input=x, weight=weight)
+            # 6. All positional arguments
+            out6 = paddle.nn.functional.conv1d_transpose(
+                x, weight, None, 1, 0, 0, 1, 1, None, 'NCL', None
+            )
+            # 7. All keyword arguments
+            out7 = paddle.nn.functional.conv1d_transpose(
+                x=x,
+                weight=weight,
+                bias=None,
+                stride=1,
+                padding=0,
+                output_padding=0,
+                groups=1,
+                dilation=1,
+                output_size=None,
+                data_format='NCL',
+                name=None,
+            )
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={
+                    "x": self.np_x,
+                    "weight": self.np_weight,
+                },
+                fetch_list=[out1, out2, out3, out4, out5, out6, out7],
+            )
+
+            # Verify all outputs
+            for i in range(1, len(fetches)):
+                np.testing.assert_allclose(fetches[0], fetches[i], rtol=1e-5)
+
+
+# Test Conv1DTranspose layer compatibility
+@unittest.skipIf(
+    sys.platform == 'win32',
+    "Conv transpose compatibility tests not supported on Windows-Inference",
+)
+class TestConv1DTransposeLayerAPI(unittest.TestCase):
+    def test_paddle_style_keyword_only(self):
+        paddle.disable_static()
+        layer = paddle.nn.Conv1DTranspose(2, 2, 3)
+        self.assertIsNotNone(layer.weight)
+        self.assertIsNotNone(layer.bias)
+
+    def test_bias_false_disables_bias_attr(self):
+        paddle.disable_static()
+        layer = paddle.nn.Conv1DTranspose(2, 2, 3, bias=False)
+        self.assertIsNone(layer.bias)
+
+    def test_pytorch_style_positional_bias_only(self):
+        paddle.disable_static()
+        layer = paddle.nn.Conv1DTranspose(2, 2, 3, 1, 0, 0, 1, True)
+        self.assertIsNotNone(layer.bias)
+
+    def test_pytorch_style_full_positional(self):
+        paddle.disable_static()
+        layer = paddle.nn.ConvTranspose1d(
+            2, 2, 3, 1, 0, 0, 1, False, 1, 'zeros', None, None
+        )
+        self.assertIsNone(layer.bias)
+
+    def test_pytorch_style_duplicate_bias_raises(self):
+        paddle.disable_static()
+        with self.assertRaises(TypeError):
+            paddle.nn.Conv1DTranspose(2, 2, 3, 1, 0, 0, 1, True, bias=True)
+
+
 # Test conv2d_transpose / conv_transpose2d compatibility
+@unittest.skipIf(
+    sys.platform == 'win32',
+    "Conv transpose compatibility tests not supported on Windows-Inference",
+)
 class TestConv2dTransposeAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -2014,7 +2241,7 @@ class TestConv2dTransposeAPI(unittest.TestCase):
         self.np_weight = np.random.rand(2, 2, 3, 3).astype(self.dtype)
         self.np_bias = np.random.rand(2).astype(self.dtype)
 
-    def _test_dygraph_Compatibility(self):
+    def test_dygraph_Compatibility(self):
         paddle.disable_static()
         x = paddle.to_tensor(self.np_x)
         weight = paddle.to_tensor(self.np_weight)
@@ -2036,6 +2263,38 @@ class TestConv2dTransposeAPI(unittest.TestCase):
         )
         # 7. Positional arguments with bias
         out7 = paddle.nn.functional.conv2d_transpose(x, weight, bias)
+        # 8. All positional arguments
+        out8 = paddle.nn.functional.conv2d_transpose(
+            x, weight, bias, 1, 0, 0, 1, 1, None, 'NCHW', None
+        )
+        # 9. All keyword arguments
+        out9 = paddle.nn.functional.conv2d_transpose(
+            x=x,
+            weight=weight,
+            bias=bias,
+            stride=1,
+            padding=0,
+            output_padding=0,
+            groups=1,
+            dilation=1,
+            output_size=None,
+            data_format='NCHW',
+            name=None,
+        )
+        # 10. PyTorch alias + all keyword arguments
+        out10 = paddle.nn.functional.conv_transpose2d(
+            input=x,
+            weight=weight,
+            bias=bias,
+            stride=1,
+            padding=0,
+            output_padding=0,
+            groups=1,
+            dilation=1,
+            output_size=None,
+            data_format='NCHW',
+            name=None,
+        )
 
         # Verify outputs without bias
         ref = out1.numpy()
@@ -2044,11 +2303,12 @@ class TestConv2dTransposeAPI(unittest.TestCase):
 
         # Verify outputs with bias
         ref_bias = out6.numpy()
-        np.testing.assert_allclose(out7.numpy(), ref_bias, rtol=1e-5)
+        for out in [out7, out8, out9, out10]:
+            np.testing.assert_allclose(out.numpy(), ref_bias, rtol=1e-5)
 
         paddle.enable_static()
 
-    def _test_static_Compatibility(self):
+    def test_static_Compatibility(self):
         paddle.enable_static()
         main = paddle.static.Program()
         startup = paddle.static.Program()
@@ -2070,6 +2330,24 @@ class TestConv2dTransposeAPI(unittest.TestCase):
             out4 = paddle.nn.functional.conv_transpose2d(x, weight)
             # 5. PyTorch function name alias + PyTorch keyword
             out5 = paddle.nn.functional.conv_transpose2d(input=x, weight=weight)
+            # 6. All positional arguments
+            out6 = paddle.nn.functional.conv2d_transpose(
+                x, weight, None, 1, 0, 0, 1, 1, None, 'NCHW', None
+            )
+            # 7. All keyword arguments
+            out7 = paddle.nn.functional.conv2d_transpose(
+                x=x,
+                weight=weight,
+                bias=None,
+                stride=1,
+                padding=0,
+                output_padding=0,
+                groups=1,
+                dilation=1,
+                output_size=None,
+                data_format='NCHW',
+                name=None,
+            )
 
             exe = paddle.static.Executor()
             fetches = exe.run(
@@ -2078,12 +2356,218 @@ class TestConv2dTransposeAPI(unittest.TestCase):
                     "x": self.np_x,
                     "weight": self.np_weight,
                 },
-                fetch_list=[out1, out2, out3, out4, out5],
+                fetch_list=[out1, out2, out3, out4, out5, out6, out7],
             )
 
             # Verify all outputs
             for i in range(1, len(fetches)):
                 np.testing.assert_allclose(fetches[0], fetches[i], rtol=1e-5)
+
+
+# Test Conv2DTranspose layer compatibility
+@unittest.skipIf(
+    sys.platform == 'win32',
+    "Conv transpose compatibility tests not supported on Windows-Inference",
+)
+class TestConv2DTransposeLayerAPI(unittest.TestCase):
+    def test_paddle_style_keyword_only(self):
+        paddle.disable_static()
+        layer = paddle.nn.Conv2DTranspose(2, 2, 3)
+        self.assertIsNotNone(layer.weight)
+        self.assertIsNotNone(layer.bias)
+
+    def test_bias_false_disables_bias_attr(self):
+        paddle.disable_static()
+        layer = paddle.nn.Conv2DTranspose(2, 2, 3, bias=False)
+        self.assertIsNone(layer.bias)
+
+    def test_pytorch_style_positional_bias_only(self):
+        paddle.disable_static()
+        layer = paddle.nn.Conv2DTranspose(2, 2, 3, 1, 0, 0, 1, True)
+        self.assertIsNotNone(layer.bias)
+
+    def test_pytorch_style_full_positional(self):
+        paddle.disable_static()
+        layer = paddle.nn.ConvTranspose2d(
+            2, 2, 3, 1, 0, 0, 1, False, 1, 'zeros', None, None
+        )
+        self.assertIsNone(layer.bias)
+
+    def test_pytorch_style_duplicate_bias_raises(self):
+        paddle.disable_static()
+        with self.assertRaises(TypeError):
+            paddle.nn.Conv2DTranspose(2, 2, 3, 1, 0, 0, 1, True, bias=True)
+
+
+# Test conv3d_transpose / conv_transpose3d compatibility
+@unittest.skipIf(
+    sys.platform == 'win32',
+    "Conv transpose compatibility tests not supported on Windows-Inference",
+)
+class TestConv3dTransposeAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.dtype = 'float32'
+        self.np_x = np.random.rand(1, 2, 4, 4, 4).astype(self.dtype)
+        self.np_weight = np.random.rand(2, 2, 3, 3, 3).astype(self.dtype)
+        self.np_bias = np.random.rand(2).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        weight = paddle.to_tensor(self.np_weight)
+        bias = paddle.to_tensor(self.np_bias)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.nn.functional.conv3d_transpose(x, weight)
+        # 2. Paddle keyword arguments
+        out2 = paddle.nn.functional.conv3d_transpose(x=x, weight=weight)
+        # 3. PyTorch keyword arguments (alias: input)
+        out3 = paddle.nn.functional.conv3d_transpose(input=x, weight=weight)
+        # 4. PyTorch function name alias
+        out4 = paddle.nn.functional.conv_transpose3d(x, weight)
+        # 5. PyTorch function name alias + PyTorch keyword
+        out5 = paddle.nn.functional.conv_transpose3d(input=x, weight=weight)
+        # 6. Mixed arguments (positional + keyword)
+        out6 = paddle.nn.functional.conv3d_transpose(
+            x, weight, bias=bias, stride=1, padding=0
+        )
+        # 7. Positional arguments with bias
+        out7 = paddle.nn.functional.conv3d_transpose(x, weight, bias)
+        # 8. All positional arguments
+        out8 = paddle.nn.functional.conv3d_transpose(
+            x, weight, bias, 1, 0, 0, 1, 1, None, 'NCDHW', None
+        )
+        # 9. All keyword arguments
+        out9 = paddle.nn.functional.conv3d_transpose(
+            x=x,
+            weight=weight,
+            bias=bias,
+            stride=1,
+            padding=0,
+            output_padding=0,
+            groups=1,
+            dilation=1,
+            output_size=None,
+            data_format='NCDHW',
+            name=None,
+        )
+        # 10. PyTorch alias + all keyword arguments
+        out10 = paddle.nn.functional.conv_transpose3d(
+            input=x,
+            weight=weight,
+            bias=bias,
+            stride=1,
+            padding=0,
+            output_padding=0,
+            groups=1,
+            dilation=1,
+            output_size=None,
+            data_format='NCDHW',
+            name=None,
+        )
+
+        # Verify outputs without bias
+        ref = out1.numpy()
+        for out in [out2, out3, out4, out5]:
+            np.testing.assert_allclose(out.numpy(), ref, rtol=1e-5)
+
+        # Verify outputs with bias
+        ref_bias = out6.numpy()
+        for out in [out7, out8, out9, out10]:
+            np.testing.assert_allclose(out.numpy(), ref_bias, rtol=1e-5)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x", shape=[1, 2, 4, 4, 4], dtype=self.dtype
+            )
+            weight = paddle.static.data(
+                name="weight", shape=[2, 2, 3, 3, 3], dtype=self.dtype
+            )
+
+            # 1. Paddle Positional arguments
+            out1 = paddle.nn.functional.conv3d_transpose(x, weight)
+            # 2. Paddle keyword arguments
+            out2 = paddle.nn.functional.conv3d_transpose(x=x, weight=weight)
+            # 3. PyTorch keyword arguments (alias: input)
+            out3 = paddle.nn.functional.conv3d_transpose(input=x, weight=weight)
+            # 4. PyTorch function name alias
+            out4 = paddle.nn.functional.conv_transpose3d(x, weight)
+            # 5. PyTorch function name alias + PyTorch keyword
+            out5 = paddle.nn.functional.conv_transpose3d(input=x, weight=weight)
+            # 6. All positional arguments
+            out6 = paddle.nn.functional.conv3d_transpose(
+                x, weight, None, 1, 0, 0, 1, 1, None, 'NCDHW', None
+            )
+            # 7. All keyword arguments
+            out7 = paddle.nn.functional.conv3d_transpose(
+                x=x,
+                weight=weight,
+                bias=None,
+                stride=1,
+                padding=0,
+                output_padding=0,
+                groups=1,
+                dilation=1,
+                output_size=None,
+                data_format='NCDHW',
+                name=None,
+            )
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={
+                    "x": self.np_x,
+                    "weight": self.np_weight,
+                },
+                fetch_list=[out1, out2, out3, out4, out5, out6, out7],
+            )
+
+            # Verify all outputs
+            for i in range(1, len(fetches)):
+                np.testing.assert_allclose(fetches[0], fetches[i], rtol=1e-5)
+
+
+# Test Conv3DTranspose layer compatibility
+@unittest.skipIf(
+    sys.platform == 'win32',
+    "Conv transpose compatibility tests not supported on Windows-Inference",
+)
+class TestConv3DTransposeLayerAPI(unittest.TestCase):
+    def test_paddle_style_keyword_only(self):
+        paddle.disable_static()
+        layer = paddle.nn.Conv3DTranspose(2, 2, 3)
+        self.assertIsNotNone(layer.weight)
+        self.assertIsNotNone(layer.bias)
+
+    def test_bias_false_disables_bias_attr(self):
+        paddle.disable_static()
+        layer = paddle.nn.Conv3DTranspose(2, 2, 3, bias=False)
+        self.assertIsNone(layer.bias)
+
+    def test_pytorch_style_positional_bias_only(self):
+        paddle.disable_static()
+        layer = paddle.nn.Conv3DTranspose(2, 2, 3, 1, 0, 0, 1, True)
+        self.assertIsNotNone(layer.bias)
+
+    def test_pytorch_style_full_positional(self):
+        paddle.disable_static()
+        layer = paddle.nn.ConvTranspose3d(
+            2, 2, 3, 1, 0, 0, 1, False, 1, 'zeros', None, None
+        )
+        self.assertIsNone(layer.bias)
+
+    def test_pytorch_style_duplicate_bias_raises(self):
+        paddle.disable_static()
+        with self.assertRaises(TypeError):
+            paddle.nn.Conv3DTranspose(2, 2, 3, 1, 0, 0, 1, True, bias=True)
 
 
 def _assert_unary_inplace_result(
@@ -2812,6 +3296,85 @@ class TestSquareInplaceAPI(unittest.TestCase):
         _assert_unary_inplace_result(self, x, out, ref_out)
 
         paddle.enable_static()
+
+
+class TestDistributionAPI(unittest.TestCase):
+    def tearDown(self):
+        paddle.distribution.Distribution.set_default_validate_args(__debug__)
+        paddle.enable_static()
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        distribution_cls = paddle.distribution.Distribution
+
+        # 1. Paddle Positional arguments
+        distribution_cls.set_default_validate_args(False)
+        out1 = distribution_cls((2,), (3,))
+
+        # 2. Paddle keyword arguments
+        out2 = distribution_cls(
+            batch_shape=[2], event_shape=[3], validate_args=True
+        )
+
+        # 3. Mixed arguments
+        out3 = distribution_cls((2,), event_shape=[3], validate_args=False)
+
+        # Verify constructor compatibility
+        self.assertEqual(out1.batch_shape, (2,))
+        self.assertEqual(out1.event_shape, (3,))
+        self.assertFalse(out1._validate_args_enabled)
+        self.assertTrue(out2._validate_args_enabled)
+        self.assertFalse(out3._validate_args_enabled)
+        self.assertTrue(callable(out2._validate_args))
+
+        with self.assertRaises(ValueError):
+            distribution_cls.set_default_validate_args(None)
+
+        value = paddle.to_tensor([0.5], dtype="float32")
+        for attr in ["arg_constraints", "support"]:
+            with self.assertRaises(NotImplementedError):
+                getattr(out1, attr)
+        for api in [out1.cdf, out1.icdf]:
+            with self.assertRaises(NotImplementedError):
+                api(value)
+        with self.assertRaises(NotImplementedError):
+            out1.enumerate_support()
+        with self.assertRaises(NotImplementedError):
+            out1.sample_n(3)
+        with self.assertRaises(NotImplementedError):
+            out1.perplexity()
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        paddle.distribution.Distribution.set_default_validate_args(True)
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            distribution_cls = paddle.distribution.Distribution
+
+            # 1. Paddle Positional arguments
+            out1 = distribution_cls((2,), (3,), validate_args=False)
+
+            # 2. Paddle keyword arguments
+            out2 = distribution_cls(
+                batch_shape=[2], event_shape=[3], validate_args=True
+            )
+
+            # 3. Mixed arguments
+            out3 = distribution_cls((2,), event_shape=[3])
+
+            self.assertEqual(out1.batch_shape, (2,))
+            self.assertEqual(out1.event_shape, (3,))
+            self.assertFalse(out1._validate_args_enabled)
+            self.assertTrue(out2._validate_args_enabled)
+            self.assertTrue(out3._validate_args_enabled)
+            self.assertTrue(callable(out1._validate_args))
+            with self.assertRaises(NotImplementedError):
+                out1.sample_n(3)
+            with self.assertRaises(NotImplementedError):
+                out1.perplexity()
 
 
 if __name__ == "__main__":

@@ -498,10 +498,10 @@ template class PADDLE_API LayerNormDirectCUDAFunctor<double, double>;
 template class PADDLE_API LayerNormDirectCUDAFunctor<half, float>;
 #endif
 static inline LayerNormKernelVariant LayerNormKernelDispatch(
-    const paddle::DataType weight_type,
-    const paddle::DataType input_type,
-    const paddle::DataType output_type,
-    const paddle::DataType compute_type,
+    const DataType weight_type,
+    const DataType input_type,
+    const DataType output_type,
+    const DataType compute_type,
     const uint32_t hidden_size,
     const int64_t x_numel,
     const DenseTensor* scale,
@@ -515,7 +515,7 @@ static inline LayerNormKernelVariant LayerNormKernelDispatch(
   }
 #endif
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
-  if (input_type != paddle::DataType::FLOAT32 && hidden_size != 4096 &&
+  if (input_type != DataType::FLOAT32 && hidden_size != 4096 &&
       hidden_size > 1024 && hidden_size <= 10240 &&
       x_numel <= std::numeric_limits<uint32_t>::max()) {
     // using fast_ln_v2 only sm > 70 and x_numel <= uint32_max
@@ -705,8 +705,9 @@ void LayerNormKernel(const Context& dev_ctx,
     case LayerNormKernelVariant::GENERIC:
     default:
 #ifdef PADDLE_WITH_CUDA
-      if (FLAGS_use_accuracy_compatible_kernel ||
-          (!isPowerOfTwo(feature_size) && feature_size > 1024)) {
+      if ((x_dtype == scale_bias_dtype) &&
+          (FLAGS_use_accuracy_compatible_kernel ||
+           (!isPowerOfTwo(feature_size) && feature_size > 1024))) {
         LayerNormFwdCompatKernel<T, Context>(
             dev_ctx,
             x_data,
