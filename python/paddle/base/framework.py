@@ -8393,7 +8393,10 @@ def _get_paddle_place(place):
         if place == "gpu_pinned":
             return core.CUDAPinnedPlace()
         elif place == "gpu" or place == "dcu":
-            return core.CUDAPlace(0)
+            if isinstance(_current_expected_place_(), core.CUDAPlace):
+                return _current_expected_place_()
+            else:
+                return core.CUDAPlace(0)
         else:
             place_info_list = place.split(":", 1)
             device_id = place_info_list[1]

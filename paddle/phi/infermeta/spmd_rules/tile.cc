@@ -21,7 +21,6 @@ limitations under the License. */
 
 namespace phi {
 namespace distributed {
-using phi::distributed::auto_parallel::str_join;
 
 namespace {
 std::vector<int64_t> GetRepeatTimes(const std::vector<int64_t>& repeat_times,
@@ -39,7 +38,7 @@ std::vector<int64_t> GetRepeatTimes(const std::vector<int64_t>& repeat_times,
 
 SpmdInfo TileInferSpmd(const DistMetaTensor& x,
                        const std::vector<int64_t>& repeat_times) {
-  auto x_shape = common::vectorize(x.dims());
+  auto x_shape = vectorize(x.dims());
   int x_ndim = x_shape.size();
   const auto& x_dist_attr_src = x.dist_attr();
   const std::vector<std::vector<int64_t>>& x_dims_mapping =
@@ -98,7 +97,7 @@ SpmdInfo TileInferSpmdDynamic(const DistMetaTensor& x,
 SpmdInfo TileInferSpmdReverse(const DistMetaTensor& x,
                               const DistMetaTensor& out,
                               const std::vector<int64_t>& repeat_times) {
-  auto x_shape = common::vectorize(x.dims());
+  auto x_shape = vectorize(x.dims());
   int x_ndim = x_shape.size();
   const auto& x_dist_attr_src = x.dist_attr();
   const std::vector<std::vector<int64_t>>& x_dims_mapping =
@@ -112,7 +111,7 @@ SpmdInfo TileInferSpmdReverse(const DistMetaTensor& x,
                                       x_dims_mapping.size()));
   auto repeat_times_new = GetRepeatTimes(repeat_times, x_ndim);
 
-  auto out_shape = common::vectorize(out.dims());
+  auto out_shape = vectorize(out.dims());
   int out_ndim = out_shape.size();
   const auto& out_dist_attr_src = out.dist_attr();
   const std::vector<std::vector<int64_t>>& out_dims_mapping =
@@ -174,7 +173,7 @@ SpmdInfo TileInferSpmdReverse(const DistMetaTensor& x,
 SpmdInfo TileGradInferSpmd(const DistMetaTensor& x,
                            const DistMetaTensor& out_grad,
                            const std::vector<int64_t>& repeat_times) {
-  auto x_shape = common::vectorize(x.dims());
+  auto x_shape = vectorize(x.dims());
   int x_ndim = x_shape.size();
   const auto& x_dist_attr_src = x.dist_attr();
   const std::vector<std::vector<int64_t>>& x_dims_mapping =
@@ -188,7 +187,7 @@ SpmdInfo TileGradInferSpmd(const DistMetaTensor& x,
                                       x_dims_mapping.size()));
   auto repeat_times_new = GetRepeatTimes(repeat_times, x_ndim);
 
-  auto out_grad_shape = common::vectorize(out_grad.dims());
+  auto out_grad_shape = vectorize(out_grad.dims());
   int out_grad_ndim = out_grad_shape.size();
   const auto& out_grad_dist_attr_src = out_grad.dist_attr();
   const std::vector<std::vector<int64_t>>& out_grad_dims_mapping =

@@ -44,7 +44,7 @@ inline bool UseCanonicalizedTransposeGradPath(const Context& dev_ctx) {
 #endif
 }
 
-inline void PrepareStridedOut(DenseTensor* out) {
+inline void PrepareStridedOut_matmul(DenseTensor* out) {
   if (out == nullptr) {
     return;
   }
@@ -175,8 +175,8 @@ void MatmulGradStrideKernel(const Context& dev_ctx,
     if (!out_grad_.meta().is_contiguous()) {
       out_grad_ = Tensor2Contiguous<Context>(dev_ctx, out_grad_);
     }
-    PrepareStridedOut(dx);
-    PrepareStridedOut(dy);
+    PrepareStridedOut_matmul(dx);
+    PrepareStridedOut_matmul(dy);
     phi::MatmulGradKernel<T, Context>(
         dev_ctx, x_, y_, out_grad_, transpose_x, transpose_y, dx, dy);
     return;
@@ -204,14 +204,14 @@ void MatmulGradStrideKernel(const Context& dev_ctx,
     dx_tmp.Resize(x_.dims());
     dx_out = &dx_tmp;
   } else {
-    PrepareStridedOut(dx_out);
+    PrepareStridedOut_matmul(dx_out);
   }
 
   if (dy != nullptr && y_info.applied) {
     dy_tmp.Resize(y_.dims());
     dy_out = &dy_tmp;
   } else {
-    PrepareStridedOut(dy_out);
+    PrepareStridedOut_matmul(dy_out);
   }
 
   phi::MatmulGradKernel<T, Context>(

@@ -133,7 +133,7 @@ bool RunPassAndAssert(Graph* graph,
 ///
 template <typename T>
 void InitDenseTensorHolder(const Scope& scope,
-                           const phi::Place& place,
+                           const Place& place,
                            const std::string& var_name,
                            const std::vector<int64_t>& dims,
                            const T* data = nullptr);

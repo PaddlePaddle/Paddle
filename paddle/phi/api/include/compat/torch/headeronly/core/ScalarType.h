@@ -313,4 +313,25 @@ inline std::ostream& operator<<(std::ostream& stream, ScalarType scalar_type) {
   return stream << toString(scalar_type);
 }
 
+inline bool isQIntType(ScalarType t) {
+  return t == ScalarType::QInt8 || t == ScalarType::QUInt8 ||
+         t == ScalarType::QInt32 || t == ScalarType::QUInt4x2 ||
+         t == ScalarType::QUInt2x4;
+}
+
+inline ScalarType toUnderlying(ScalarType t) {
+  switch (t) {
+    case ScalarType::QUInt8:
+    case ScalarType::QUInt4x2:
+    case ScalarType::QUInt2x4:
+      return ScalarType::Byte;
+    case ScalarType::QInt8:
+      return ScalarType::Char;
+    case ScalarType::QInt32:
+      return ScalarType::Int;
+    default:
+      return t;
+  }
+}
+
 }  // namespace c10

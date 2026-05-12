@@ -23,7 +23,7 @@
 #include "ln_kernel_traits.h"  // NOLINT
 #include "ln_utils.h"          // NOLINT
 
-using namespace layer_norm;  // NOLINT
+using namespace phi::layer_norm;  // NOLINT
 
 template <typename weight_t,
           typename input_t,

@@ -235,7 +235,7 @@ void RmspropSparseKernel(const Context &dev_ctx,
                          DenseTensor *mean_square_out,
                          DenseTensor *mean_grad_out,
                          DenseTensor *master_param_outs) {
-  using MT = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   auto epsilon = static_cast<MT>(epsilon_t);
   auto rho = static_cast<MT>(decay_t);
   auto momentum = static_cast<MT>(momentum_t);

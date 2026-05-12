@@ -60,16 +60,15 @@ class ProcessGroupWithStream : public ProcessGroup {
   ProcessGroupWithStream(int rank, int size, int gid)
       : ProcessGroup(rank, size, gid) {}
 
-  virtual void EraseStream(const phi::DenseTensor& tensor) const {
+  virtual void EraseStream(const DenseTensor& tensor) const {
     PADDLE_THROW(phi::errors::Unimplemented("EraseStream is not implemented."));
   }
 
   virtual ~ProcessGroupWithStream() = default;
 
-  std::shared_ptr<ProcessGroup::Task> AllGather(
-      phi::DenseTensor* out_tensor,
-      const phi::DenseTensor& in_tensor,
-      bool sync_op) override {
+  std::shared_ptr<ProcessGroup::Task> AllGather(DenseTensor* out_tensor,
+                                                const DenseTensor& in_tensor,
+                                                bool sync_op) override {
     return AllGather(out_tensor,
                      in_tensor,
                      /*offset*/ 0,
@@ -77,12 +76,11 @@ class ProcessGroupWithStream : public ProcessGroup {
                      sync_op);
   }
 
-  std::shared_ptr<ProcessGroup::Task> AllGather(
-      phi::DenseTensor* out_tensor,
-      const phi::DenseTensor& in_tensor,
-      int64_t offset,
-      int64_t numel,
-      bool sync_op) override {
+  std::shared_ptr<ProcessGroup::Task> AllGather(DenseTensor* out_tensor,
+                                                const DenseTensor& in_tensor,
+                                                int64_t offset,
+                                                int64_t numel,
+                                                bool sync_op) override {
     return AllGather(out_tensor,
                      in_tensor,
                      offset,
@@ -91,11 +89,10 @@ class ProcessGroupWithStream : public ProcessGroup {
                      /*use_calc_stream*/ false);
   }
 
-  std::shared_ptr<ProcessGroup::Task> AllGather(
-      phi::DenseTensor* out_tensor,
-      const phi::DenseTensor& in_tensor,
-      bool sync_op,
-      bool use_calc_stream) override {
+  std::shared_ptr<ProcessGroup::Task> AllGather(DenseTensor* out_tensor,
+                                                const DenseTensor& in_tensor,
+                                                bool sync_op,
+                                                bool use_calc_stream) override {
     return AllGather(out_tensor,
                      in_tensor,
                      /*offset*/ 0,
@@ -105,8 +102,8 @@ class ProcessGroupWithStream : public ProcessGroup {
   }
 
   std::shared_ptr<ProcessGroup::Task> AllGather(
-      phi::DenseTensor* out_tensor UNUSED,
-      const phi::DenseTensor& in_tensor UNUSED,
+      DenseTensor* out_tensor UNUSED,
+      const DenseTensor& in_tensor UNUSED,
       int64_t offset UNUSED,
       int64_t numel UNUSED,
       bool sync_op UNUSED,
@@ -116,11 +113,10 @@ class ProcessGroupWithStream : public ProcessGroup {
         GetBackendName()));
   }
 
-  std::shared_ptr<ProcessGroup::Task> AllReduce(
-      phi::DenseTensor* out_tensor,
-      const phi::DenseTensor& in_tensor,
-      const AllreduceOptions& opts,
-      bool sync_op) override {
+  std::shared_ptr<ProcessGroup::Task> AllReduce(DenseTensor* out_tensor,
+                                                const DenseTensor& in_tensor,
+                                                const AllreduceOptions& opts,
+                                                bool sync_op) override {
     return AllReduce(out_tensor,
                      in_tensor,
                      opts,
@@ -129,8 +125,8 @@ class ProcessGroupWithStream : public ProcessGroup {
   }
 
   std::shared_ptr<ProcessGroup::Task> AllReduce(
-      phi::DenseTensor* out_tensor UNUSED,
-      const phi::DenseTensor& in_tensor UNUSED,
+      DenseTensor* out_tensor UNUSED,
+      const DenseTensor& in_tensor UNUSED,
       const AllreduceOptions& opts UNUSED,
       bool sync_op UNUSED,
       bool use_calc_stream UNUSED) override {
@@ -140,8 +136,8 @@ class ProcessGroupWithStream : public ProcessGroup {
   }
 
   std::shared_ptr<ProcessGroup::Task> AllToAll(
-      phi::DenseTensor* out_tensor,
-      const phi::DenseTensor& in_tensor,
+      DenseTensor* out_tensor,
+      const DenseTensor& in_tensor,
       const std::vector<int64_t>& out_size_each_rank,
       const std::vector<int64_t>& in_size_each_rank,
       bool sync_op) override {
@@ -154,8 +150,8 @@ class ProcessGroupWithStream : public ProcessGroup {
   }
 
   std::shared_ptr<ProcessGroup::Task> AllToAll(
-      phi::DenseTensor* out_tensor UNUSED,
-      const phi::DenseTensor& in_tensor UNUSED,
+      DenseTensor* out_tensor UNUSED,
+      const DenseTensor& in_tensor UNUSED,
       const std::vector<int64_t>& out_size_each_rank UNUSED,
       const std::vector<int64_t>& in_size_each_rank UNUSED,
       bool sync_op UNUSED,
@@ -186,11 +182,10 @@ class ProcessGroupWithStream : public ProcessGroup {
         GetBackendName()));
   }
 
-  std::shared_ptr<ProcessGroup::Task> Broadcast(
-      phi::DenseTensor* out_tensor,
-      const phi::DenseTensor& in_tensor,
-      const BroadcastOptions& opts,
-      bool sync_op) override {
+  std::shared_ptr<ProcessGroup::Task> Broadcast(DenseTensor* out_tensor,
+                                                const DenseTensor& in_tensor,
+                                                const BroadcastOptions& opts,
+                                                bool sync_op) override {
     return Broadcast(out_tensor,
                      in_tensor,
                      opts,
@@ -199,8 +194,8 @@ class ProcessGroupWithStream : public ProcessGroup {
   }
 
   std::shared_ptr<ProcessGroup::Task> Broadcast(
-      phi::DenseTensor* out_tensor UNUSED,
-      const phi::DenseTensor& in_tensor UNUSED,
+      DenseTensor* out_tensor UNUSED,
+      const DenseTensor& in_tensor UNUSED,
       const BroadcastOptions& opts UNUSED,
       bool sync_op UNUSED,
       bool use_calc_stream UNUSED) override {
@@ -209,8 +204,8 @@ class ProcessGroupWithStream : public ProcessGroup {
         GetBackendName()));
   }
 
-  std::shared_ptr<ProcessGroup::Task> Reduce(phi::DenseTensor* out_tensor,
-                                             const phi::DenseTensor& in_tensor,
+  std::shared_ptr<ProcessGroup::Task> Reduce(DenseTensor* out_tensor,
+                                             const DenseTensor& in_tensor,
                                              const ReduceOptions& opts,
                                              bool sync_op) override {
     return Reduce(out_tensor,
@@ -221,8 +216,8 @@ class ProcessGroupWithStream : public ProcessGroup {
   }
 
   std::shared_ptr<ProcessGroup::Task> Reduce(
-      phi::DenseTensor* out_tensor UNUSED,
-      const phi::DenseTensor& in_tensor UNUSED,
+      DenseTensor* out_tensor UNUSED,
+      const DenseTensor& in_tensor UNUSED,
       const ReduceOptions& opts UNUSED,
       bool sync_op UNUSED,
       bool use_calc_stream UNUSED) override {
@@ -232,8 +227,8 @@ class ProcessGroupWithStream : public ProcessGroup {
   }
 
   std::shared_ptr<ProcessGroup::Task> ReduceScatter(
-      phi::DenseTensor* out_tensor,
-      const phi::DenseTensor& in_tensor,
+      DenseTensor* out_tensor,
+      const DenseTensor& in_tensor,
       const ReduceScatterOptions& opts,
       bool sync_op) override {
     return ReduceScatter(out_tensor,
@@ -244,8 +239,8 @@ class ProcessGroupWithStream : public ProcessGroup {
   }
 
   std::shared_ptr<ProcessGroup::Task> ReduceScatter(
-      phi::DenseTensor* out_tensor UNUSED,
-      const phi::DenseTensor& in_tensor UNUSED,
+      DenseTensor* out_tensor UNUSED,
+      const DenseTensor& in_tensor UNUSED,
       const ReduceScatterOptions& opts UNUSED,
       bool sync_op UNUSED,
       bool use_calc_stream UNUSED) override {
@@ -254,8 +249,8 @@ class ProcessGroupWithStream : public ProcessGroup {
         GetBackendName()));
   }
 
-  std::shared_ptr<ProcessGroup::Task> Scatter(phi::DenseTensor* out_tensor,
-                                              const phi::DenseTensor& in_tensor,
+  std::shared_ptr<ProcessGroup::Task> Scatter(DenseTensor* out_tensor,
+                                              const DenseTensor& in_tensor,
                                               const ScatterOptions& opts,
                                               bool sync_op) override {
     return Scatter(out_tensor,
@@ -266,8 +261,8 @@ class ProcessGroupWithStream : public ProcessGroup {
   }
 
   std::shared_ptr<ProcessGroup::Task> Scatter(
-      phi::DenseTensor* out_tensor UNUSED,
-      const phi::DenseTensor& in_tensor UNUSED,
+      DenseTensor* out_tensor UNUSED,
+      const DenseTensor& in_tensor UNUSED,
       const ScatterOptions& opts UNUSED,
       bool sync_op UNUSED,
       bool use_calc_stream UNUSED) override {
@@ -276,7 +271,7 @@ class ProcessGroupWithStream : public ProcessGroup {
         GetBackendName()));
   }
 
-  std::shared_ptr<ProcessGroup::Task> Recv(phi::DenseTensor* tensor,
+  std::shared_ptr<ProcessGroup::Task> Recv(DenseTensor* tensor,
                                            int src_rank,
                                            bool sync_op) override {
     return Recv(tensor,
@@ -286,7 +281,7 @@ class ProcessGroupWithStream : public ProcessGroup {
                 sync_op);
   }
 
-  std::shared_ptr<ProcessGroup::Task> Recv(phi::DenseTensor* tensor,
+  std::shared_ptr<ProcessGroup::Task> Recv(DenseTensor* tensor,
                                            int src_rank,
                                            int64_t offset,
                                            int64_t numel,
@@ -299,7 +294,7 @@ class ProcessGroupWithStream : public ProcessGroup {
                 /*use_calc_stream*/ false);
   }
 
-  std::shared_ptr<ProcessGroup::Task> Recv(phi::DenseTensor* tensor,
+  std::shared_ptr<ProcessGroup::Task> Recv(DenseTensor* tensor,
                                            int src_rank,
                                            bool sync_op,
                                            bool use_calc_stream) override {
@@ -311,7 +306,7 @@ class ProcessGroupWithStream : public ProcessGroup {
                 use_calc_stream);
   }
 
-  std::shared_ptr<ProcessGroup::Task> Recv(phi::DenseTensor* tensor UNUSED,
+  std::shared_ptr<ProcessGroup::Task> Recv(DenseTensor* tensor UNUSED,
                                            int src_rank UNUSED,
                                            int64_t offset UNUSED,
                                            int64_t numel UNUSED,
@@ -323,7 +318,7 @@ class ProcessGroupWithStream : public ProcessGroup {
         GetBackendName()));
   }
 
-  std::shared_ptr<ProcessGroup::Task> Send(const phi::DenseTensor& tensor,
+  std::shared_ptr<ProcessGroup::Task> Send(const DenseTensor& tensor,
                                            int dst_rank,
                                            bool sync_op) override {
     return Send(tensor,
@@ -333,7 +328,7 @@ class ProcessGroupWithStream : public ProcessGroup {
                 sync_op);
   }
 
-  std::shared_ptr<ProcessGroup::Task> Send(const phi::DenseTensor& tensor,
+  std::shared_ptr<ProcessGroup::Task> Send(const DenseTensor& tensor,
                                            int dst_rank,
                                            int64_t offset,
                                            int64_t numel,
@@ -346,7 +341,7 @@ class ProcessGroupWithStream : public ProcessGroup {
                 /*use_calc_stream*/ false);
   }
 
-  std::shared_ptr<ProcessGroup::Task> Send(const phi::DenseTensor& tensor,
+  std::shared_ptr<ProcessGroup::Task> Send(const DenseTensor& tensor,
                                            int dst_rank,
                                            bool sync_op,
                                            bool use_calc_stream) override {
@@ -358,13 +353,13 @@ class ProcessGroupWithStream : public ProcessGroup {
                 use_calc_stream);
   }
 
-  std::shared_ptr<ProcessGroup::Task> Send(
-      const phi::DenseTensor& tensor UNUSED,
-      int dst_rank UNUSED,
-      int64_t offset UNUSED,
-      int64_t numel UNUSED,
-      bool sync_op UNUSED,
-      bool use_calc_stream UNUSED) override {
+  std::shared_ptr<ProcessGroup::Task> Send(const DenseTensor& tensor UNUSED,
+                                           int dst_rank UNUSED,
+                                           int64_t offset UNUSED,
+                                           int64_t numel UNUSED,
+                                           bool sync_op UNUSED,
+                                           bool use_calc_stream
+                                               UNUSED) override {
     PADDLE_THROW(common::errors::Unimplemented(
         "ProcessGroupWithStream (%s) does not support send.",
         GetBackendName()));

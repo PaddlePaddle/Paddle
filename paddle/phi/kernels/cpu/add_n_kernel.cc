@@ -40,7 +40,7 @@ void AddNKernel(const Context& dev_ctx,
   }
 
   // using MT to keep precision
-  using MT = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   auto& place = *dev_ctx.eigen_device();
 
   if constexpr (std::is_same_v<MT, T>) {
