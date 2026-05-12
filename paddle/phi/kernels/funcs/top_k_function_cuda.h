@@ -22,6 +22,7 @@ limitations under the License. */
 #endif
 #ifdef __HIPCC__
 #include <hipcub/hipcub.hpp>
+#include <rocprim/config.hpp>
 #endif
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
@@ -47,7 +48,44 @@ inline static size_t round_up(size_t n, size_t q) {
 }
 
 #ifdef __HIPCC__
-#include "paddle/phi/kernels/funcs/rocprim_traits.h"
+#if defined(ROCPRIM_VERSION) && ROCPRIM_VERSION >= 400000
+// rocPRIM 4.x (ROCm 7.0+) replaces detail::radix_key_codec_base
+// with traits::define for non-builtin / wrapper types.
+namespace rocprim {
+namespace traits {
+template <>
+struct define<phi::float16> {
+  using float_bit_mask =
+      float_bit_mask::values<uint16_t, 0x8000, 0x7C00, 0x03FF>;
+};
+template <>
+struct define<phi::bfloat16> {
+  using float_bit_mask =
+      float_bit_mask::values<uint16_t, 0x8000, 0x7F80, 0x007F>;
+};
+}  // namespace traits
+}  // namespace rocprim
+#else
+namespace rocprim {
+namespace detail {
+template <>
+struct radix_key_codec_base<phi::float16>
+    : radix_key_codec_integral<phi::float16, uint16_t> {};
+
+template <>
+struct radix_key_codec_base<phi::bfloat16>
+    : radix_key_codec_integral<phi::bfloat16, uint16_t> {};
+
+#if HIP_VERSION >= 50400000
+template <>
+struct float_bit_mask<phi::float16> : float_bit_mask<rocprim::half> {};
+
+template <>
+struct float_bit_mask<phi::bfloat16> : float_bit_mask<rocprim::bfloat16> {};
+#endif
+}  // namespace detail
+}  // namespace rocprim
+#endif  // ROCPRIM_VERSION
 namespace cub = hipcub;
 #else
 // set cub base traits in order to handle float16
