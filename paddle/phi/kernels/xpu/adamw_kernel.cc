@@ -241,6 +241,23 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
     }
   }
 
+  // learning_rate may be float64 (get_lr_dtype returns float64 for all
+  // platforms), but XPU kernels only support float32 (MPDType). Cast if needed.
+  const MPDType* lr_for_xdnn = nullptr;
+  MPDType* lr_cast_buf = nullptr;
+  if (learning_rate.dtype() == DataType::FLOAT64) {
+    lr_cast_buf = RAII_GUARD.alloc_l3_or_gm<MPDType>(learning_rate.numel());
+    PADDLE_ENFORCE_XDNN_NOT_NULL(lr_cast_buf);
+    int r = xpu::cast<double, MPDType>(dev_ctx.x_context(),
+                                       learning_rate.template data<double>(),
+                                       lr_cast_buf,
+                                       learning_rate.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast lr from float64 to MPDType");
+    lr_for_xdnn = lr_cast_buf;
+  } else {
+    lr_for_xdnn = learning_rate.data<MPDType>();
+  }
+
   // template <typename T, typename TG, typename MT> DLL_EXPORT int
   // adamw(Context* xpu_ctx, MT beta1, MT beta2, MT epsilon, MT coeff, MT
   // lr_ratio, const MT* beta1_pow, MT beta1_pow_scalar, const MT* beta2_pow, MT
@@ -269,7 +286,7 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
                          : moment2.template data<MPDType>(),
           moment_in_fp16 ? moment2_output_for_xdnn
                          : dev_ctx.template Alloc<MPDType>(moment2_out),
-          learning_rate.data<MPDType>(),
+          lr_for_xdnn,
           grad.data<float>(),
           reinterpret_cast<const XPUType*>(param.data<T>()),
           reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(param_out)),
@@ -297,7 +314,7 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
                          : moment2.template data<MPDType>(),
           moment_in_fp16 ? moment2_output_for_xdnn
                          : dev_ctx.template Alloc<MPDType>(moment2_out),
-          learning_rate.data<MPDType>(),
+          lr_for_xdnn,
           reinterpret_cast<const XPUType*>(grad.data<T>()),
           reinterpret_cast<const XPUType*>(param.data<T>()),
           reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(param_out)),
@@ -334,7 +351,7 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
                          : moment2.template data<MPDType>(),
           moment_in_fp16 ? moment2_output_for_xdnn
                          : dev_ctx.template Alloc<MPDType>(moment2_out),
-          learning_rate.data<MPDType>(),
+          lr_for_xdnn,
           grad.data<float>(),
           reinterpret_cast<const XPUType*>(param.data<T>()),
           reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(param_out)),
@@ -362,7 +379,7 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
                          : moment2.template data<MPDType>(),
           moment_in_fp16 ? moment2_output_for_xdnn
                          : dev_ctx.template Alloc<MPDType>(moment2_out),
-          learning_rate.data<MPDType>(),
+          lr_for_xdnn,
           reinterpret_cast<const XPUType*>(grad.data<T>()),
           reinterpret_cast<const XPUType*>(param.data<T>()),
           reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(param_out)),
@@ -678,13 +695,32 @@ void AdamwDenseKernel(
   float* new_lr = RAII_GUARD.alloc_l3_or_gm<float>(learning_rate.numel());
   PADDLE_ENFORCE_XDNN_NOT_NULL(new_lr);
   int r = 0;
-  r = xpu::scale(dev_ctx.x_context(),
-                 learning_rate.template data<float>(),
-                 new_lr,
-                 learning_rate.numel(),
-                 false,
-                 static_cast<float>(lr_ratio),
-                 0.0f);
+  // learning_rate may be float64 (get_lr_dtype returns float64 for all
+  // platforms), cast to float32 for XPU kernels which only support float.
+  if (learning_rate.dtype() == DataType::FLOAT64) {
+    float* lr_fp32 = RAII_GUARD.alloc_l3_or_gm<float>(learning_rate.numel());
+    PADDLE_ENFORCE_XDNN_NOT_NULL(lr_fp32);
+    r = xpu::cast<double, float>(dev_ctx.x_context(),
+                                 learning_rate.template data<double>(),
+                                 lr_fp32,
+                                 learning_rate.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast lr from float64 to float32");
+    r = xpu::scale(dev_ctx.x_context(),
+                   lr_fp32,
+                   new_lr,
+                   learning_rate.numel(),
+                   false,
+                   static_cast<float>(lr_ratio),
+                   0.0f);
+  } else {
+    r = xpu::scale(dev_ctx.x_context(),
+                   learning_rate.template data<float>(),
+                   new_lr,
+                   learning_rate.numel(),
+                   false,
+                   static_cast<float>(lr_ratio),
+                   0.0f);
+  }
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
 
   if (multi_precision) {

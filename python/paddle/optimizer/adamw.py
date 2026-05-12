@@ -336,6 +336,9 @@ class AdamW(Optimizer):
         else:
             return None
 
+    def get_lr_dtype(self) -> paddle.dtype:
+        return paddle.float64
+
     def _add_param_group(self, param_group):
         """
         Add a param group to parameter_list.
@@ -519,17 +522,6 @@ class AdamW(Optimizer):
                 if self._lr_ratio is None
                 else self._lr_ratio(param_and_grad[0])
             )
-
-            # Note: Since the data type of lr is constructed within the optimizer class, modifying it would have a significant impact. Therefore, this method is used to bypass it.
-            # Paddle stores lr as float32 tensor, losing ~7 digits
-            # of precision. PyTorch passes lr as double. The kernel computes
-            # lr_double = float32(lr_tensor) * lr_ratio, so we adjust lr_ratio
-            # to compensate: lr_ratio *= (double_lr / float32_lr).
-            if paddle.in_dynamic_mode():
-                current_lr = float(self.get_lr())
-                lr_f32 = float(lr.item())
-                if lr_f32 != 0.0:
-                    lr_ratio_ = lr_ratio_ * (current_lr / lr_f32)
 
             _beta1 = (
                 self._beta1
