@@ -16,7 +16,14 @@ import unittest
 
 import numpy as np
 from op import Operator
-from op_test import OpTest, get_device_place, get_places, is_custom_device
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 from utils import dygraph_guard
 
 import paddle
@@ -320,6 +327,135 @@ class TestSGDSimple(unittest.TestCase):
         out1 = self.run_dygraph()
         out2 = self.run_static()
         np.testing.assert_allclose(out1, out2)
+
+
+class TestSGDSparseBF16(unittest.TestCase):
+    """Test SGD with bfloat16 sparse grad on CPU (no oneDNN)."""
+
+    def test_sparse_grad_sgd_bf16(self):
+        paddle.enable_static()
+        scope = core.Scope()
+        place = core.CPUPlace()
+        height = 10
+        rows = [0, 4, 7]
+        row_numel = 12
+
+        # Grad: SelectedRows in bfloat16
+        grad_selected_rows = scope.var('Grad').get_selected_rows()
+        grad_selected_rows.set_height(height)
+        grad_selected_rows.set_rows(rows)
+        grad_np = np.random.random((len(rows), row_numel)).astype('float32')
+        grad_tensor = grad_selected_rows.get_tensor()
+        grad_tensor.set(convert_float_to_uint16(grad_np), place)
+
+        # Param: dense bfloat16
+        param_np = np.random.random((height, row_numel)).astype('float32')
+        param_var = scope.var('Param').get_tensor()
+        param_var.set(convert_float_to_uint16(param_np), place)
+
+        # LearningRate: float32
+        lr_value = 0.1
+        lr_var = scope.var('LearningRate').get_tensor()
+        lr_var.set(np.array([lr_value]).astype('float32'), place)
+
+        sgd_op = Operator(
+            "sgd",
+            Param='Param',
+            Grad='Grad',
+            ParamOut='Param',
+            LearningRate='LearningRate',
+        )
+        sgd_op.run(scope, place)
+
+        reference = np.copy(param_np)
+        for idx, row_id in enumerate(rows):
+            reference[row_id] -= lr_value * grad_np[idx]
+
+        result = convert_uint16_to_float(np.array(param_var))
+        np.testing.assert_allclose(result, reference, atol=5e-3, rtol=1e-1)
+        paddle.disable_static()
+
+
+class TestSGDDenseBF16OneDNN(unittest.TestCase):
+    """Test SGD with bfloat16 dense grad on CPU with oneDNN."""
+
+    def test_dense_sgd_bf16_onednn(self):
+        paddle.enable_static()
+        scope = core.Scope()
+        place = core.CPUPlace()
+        h, w = 10, 12
+
+        param_np = np.random.random((h, w)).astype('float32')
+        grad_np = np.random.random((h, w)).astype('float32')
+        lr_value = 0.1
+
+        param_var = scope.var('Param').get_tensor()
+        param_var.set(convert_float_to_uint16(param_np), place)
+
+        grad_var = scope.var('Grad').get_tensor()
+        grad_var.set(convert_float_to_uint16(grad_np), place)
+
+        lr_var = scope.var('LearningRate').get_tensor()
+        lr_var.set(np.array([lr_value]).astype('float32'), place)
+
+        sgd_op = Operator(
+            "sgd",
+            Param='Param',
+            Grad='Grad',
+            ParamOut='Param',
+            LearningRate='LearningRate',
+            use_onednn=True,
+        )
+        sgd_op.run(scope, place)
+
+        reference = param_np - lr_value * grad_np
+        result = convert_uint16_to_float(np.array(param_var))
+        np.testing.assert_allclose(result, reference, atol=5e-3, rtol=1e-1)
+        paddle.disable_static()
+
+    def test_sparse_grad_sgd_bf16_onednn(self):
+        paddle.enable_static()
+        scope = core.Scope()
+        place = core.CPUPlace()
+        height = 10
+        rows = [0, 4, 7]
+        row_numel = 12
+
+        # Grad: SelectedRows in bfloat16
+        grad_selected_rows = scope.var('Grad').get_selected_rows()
+        grad_selected_rows.set_height(height)
+        grad_selected_rows.set_rows(rows)
+        grad_np = np.random.random((len(rows), row_numel)).astype('float32')
+        grad_tensor = grad_selected_rows.get_tensor()
+        grad_tensor.set(convert_float_to_uint16(grad_np), place)
+
+        # Param: dense bfloat16
+        param_np = np.random.random((height, row_numel)).astype('float32')
+        param_var = scope.var('Param').get_tensor()
+        param_var.set(convert_float_to_uint16(param_np), place)
+
+        # LearningRate: float32
+        lr_value = 0.1
+        lr_var = scope.var('LearningRate').get_tensor()
+        lr_var.set(np.array([lr_value]).astype('float32'), place)
+
+        sgd_op = Operator(
+            "sgd",
+            Param='Param',
+            Grad='Grad',
+            ParamOut='Param',
+            LearningRate='LearningRate',
+            use_onednn=True,
+        )
+        sgd_op.run(scope, place)
+
+        reference = np.copy(param_np)
+        for idx, row_id in enumerate(rows):
+            reference[row_id] -= lr_value * grad_np[idx]
+
+        result = convert_uint16_to_float(np.array(param_var))
+        np.testing.assert_allclose(result, reference, atol=5e-3, rtol=1e-1)
+        paddle.disable_static()
 
 
 class TestSGDGradFP32(unittest.TestCase):

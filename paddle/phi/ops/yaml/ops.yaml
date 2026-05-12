@@ -5025,8 +5025,6 @@
            sgd_dense_param_sparse_grad {dense, dense, selected_rows, dense -> dense, dense},
            sgd_sparse_param_sparse_grad {selected_rows, dense, selected_rows, selected_rows -> selected_rows, selected_rows}
     data_type : param
-  data_transform :
-    support_trans_dtype : learning_rate
   optional : master_param, master_param_out
   inplace : (param -> param_out), (master_param -> master_param_out)
   traits : pir::SideEffectTrait, paddle::dialect::ForwardOnlyTrait
