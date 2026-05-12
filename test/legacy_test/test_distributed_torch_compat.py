@@ -21,11 +21,21 @@ symbols are exposed and behave correctly without a distributed runtime.
 """
 
 import os
+import sys
 import unittest
 import warnings
 from unittest import mock
 
 import paddle.distributed as dist
+
+# ``paddle.distributed.communication.__init__`` binds the name ``group`` to the
+# torch-compat class (so ``dist.group.WORLD`` works), which shadows the module
+# attribute on the parent package. Look up the module via ``sys.modules`` so
+# ``mock.patch.object`` hits the module-level ``_get_global_group`` rather than
+# the class.
+import paddle.distributed.communication.group  # noqa: F401  (ensures import)
+
+_group_module = sys.modules['paddle.distributed.communication.group']
 
 
 class TestDistributedTorchCompat(unittest.TestCase):
@@ -51,9 +61,8 @@ class TestDistributedTorchCompat(unittest.TestCase):
         fake_default = Group(
             rank_in_group=0, id=0, ranks=[0], pg=None, name='fake-world'
         )
-        with mock.patch(
-            'paddle.distributed.communication.group._get_global_group',
-            return_value=fake_default,
+        with mock.patch.object(
+            _group_module, '_get_global_group', return_value=fake_default
         ):
             world = dist.group.WORLD
             self.assertIs(world, fake_default)
@@ -88,9 +97,8 @@ class TestDistributedTorchCompat(unittest.TestCase):
         result = dist.init_process_group(backend='gloo')
         self.assertIs(result, fake_default)
         # And the same group is exposed through ``dist.group.WORLD``.
-        with mock.patch(
-            'paddle.distributed.communication.group._get_global_group',
-            return_value=fake_default,
+        with mock.patch.object(
+            _group_module, '_get_global_group', return_value=fake_default
         ):
             self.assertIs(dist.group.WORLD, fake_default)
 
