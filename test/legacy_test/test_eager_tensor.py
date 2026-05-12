@@ -422,16 +422,33 @@ class TestEagerTensor(unittest.TestCase):
             tensor_pin = paddle.tensor(self.array, device="xpu_pinned")
             self.assertEqual(tensor_pin.place, core.XPUPinnedPlace())
 
-        with self.assertRaises(RuntimeError) as context:
-            paddle.tensor(
-                self.array,
-                device="cpu",
-                pin_memory=True,  # no support
+        # ``device="cpu", pin_memory=True`` is relaxed to map onto the
+        # available pinned allocator (matching torch's pin_memory contract).
+        # On a pure-CPU build there is no pinned allocator at all, so the
+        # call must raise with the legacy "Pinning memory is not supported"
+        # message; on GPU/XPU builds it succeeds and produces a pinned
+        # tensor.
+        if core.is_compiled_with_xpu():
+            tensor_res = paddle.tensor(
+                self.array, device="cpu", pin_memory=True
             )
-        self.assertIn(
-            "Pinning memory is not supported",
-            str(context.exception),
-        )
+            self.assertEqual(tensor_res.place, core.XPUPinnedPlace())
+        elif core.is_compiled_with_cuda():
+            tensor_res = paddle.tensor(
+                self.array, device="cpu", pin_memory=True
+            )
+            self.assertEqual(tensor_res.place, core.CUDAPinnedPlace())
+        else:
+            with self.assertRaises(RuntimeError) as context:
+                paddle.tensor(
+                    self.array,
+                    device="cpu",
+                    pin_memory=True,
+                )
+            self.assertIn(
+                "Pinning memory is not supported",
+                str(context.exception),
+            )
 
     def test_tensor_and_to_tensor(self):
         """

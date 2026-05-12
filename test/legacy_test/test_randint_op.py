@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import unittest
+from unittest import mock
 
 import numpy as np
 from op_test import OpTest, get_device, get_device_place, is_custom_device
 
 import paddle
+import paddle.tensor.random as paddle_tensor_random
 
 paddle.enable_static()
 
@@ -415,10 +417,16 @@ class TestRandintDeviceRequiresGradPinMemory(unittest.TestCase):
         self.assertFalse(x.stop_gradient)
         paddle.enable_static()
 
-    def test_pin_memory_unsupported_device_raises(self):
+    def test_pin_memory_cpu(self):
+        if not (
+            paddle.device.is_compiled_with_cuda()
+            or paddle.device.is_compiled_with_xpu()
+        ):
+            return
         paddle.disable_static()
-        with self.assertRaises(RuntimeError):
-            paddle.randint(high=10, shape=[2, 3], device='cpu', pin_memory=True)
+        x = paddle.randint(high=10, shape=[2, 3], device='cpu', pin_memory=True)
+        self.assertEqual(x.shape, [2, 3])
+        self.assertTrue("pinned" in str(x.place))
         paddle.enable_static()
 
     def test_pin_memory_cuda(self):
@@ -426,6 +434,30 @@ class TestRandintDeviceRequiresGradPinMemory(unittest.TestCase):
             return
         paddle.disable_static()
         x = paddle.randint(high=10, shape=[2, 3], device='gpu', pin_memory=True)
+        self.assertTrue("pinned" in str(x.place))
+        paddle.enable_static()
+
+    def test_pin_memory_cpu_xpu_branch(self):
+        # Cover the cpu+pin_memory XPU branch (line where
+        # ``place = core.XPUPinnedPlace()`` runs when
+        # ``is_compiled_with_xpu()`` is True). XPUPinnedPlace can't be
+        # instantiated on a CUDA-only build, so route it to CUDAPinnedPlace.
+        if not paddle.device.is_compiled_with_cuda():
+            return
+        paddle.disable_static()
+        with (
+            mock.patch.object(
+                paddle.device, 'is_compiled_with_xpu', return_value=True
+            ),
+            mock.patch.object(
+                paddle_tensor_random.core,
+                'XPUPinnedPlace',
+                paddle_tensor_random.core.CUDAPinnedPlace,
+            ),
+        ):
+            x = paddle.randint(
+                high=10, shape=[2, 3], device='cpu', pin_memory=True
+            )
         self.assertTrue("pinned" in str(x.place))
         paddle.enable_static()
 
