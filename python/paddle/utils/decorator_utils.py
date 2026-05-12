@@ -851,8 +851,8 @@ def legacy_reduction_decorator(
             for torch_name, paddle_name in kwargs_change.items():
                 if torch_name in kwargs:
                     if paddle_name in kwargs:
-                        raise TypeError(
-                            f"{name}() got both '{paddle_name}' and "
+                        raise ValueError(
+                            f"Cannot specify both '{paddle_name}' and "
                             f"its alias '{torch_name}'"
                         )
                     kwargs[paddle_name] = kwargs.pop(torch_name)
