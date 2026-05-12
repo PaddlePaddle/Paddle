@@ -17,8 +17,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_complex.h>
-// Note: thrust/complex.h is not needed for magma type definitions
-// and should only be included when compiled with hipcc
+#include <thrust/complex.h>
 typedef hipDoubleComplex magmaDoubleComplex;
 typedef hipFloatComplex magmaFloatComplex;
 #endif  // PADDLE_WITH_HIP

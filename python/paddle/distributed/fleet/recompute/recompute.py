@@ -379,7 +379,7 @@ class RecomputeFunction(PyLayer):
 
         ctx.amp_white_list, ctx.amp_black_list = tracer._get_amp_op_list()
 
-        with paddle.no_grad():
+        with paddle.no_grad(), _recompute_context:
             outputs = run_function(*args, **kwargs)
 
         # save input for backward
@@ -491,16 +491,20 @@ class RecomputeFunction(PyLayer):
                         level=ctx.amp_level,
                         dtype=ctx.amp_dtype,
                     ),
+                    _recompute_context,
                 ):
                     detached_inputs = detach_variable(tuple(inputs))
                     outputs = ctx.run_function(*detached_inputs, **ctx.kwargs)
             else:
-                with paddle.amp.auto_cast(
-                    enable=ctx.is_fw_autocast,
-                    custom_white_list=ctx.amp_white_list,
-                    custom_black_list=ctx.amp_black_list,
-                    level=ctx.amp_level,
-                    dtype=ctx.amp_dtype,
+                with (
+                    paddle.amp.auto_cast(
+                        enable=ctx.is_fw_autocast,
+                        custom_white_list=ctx.amp_white_list,
+                        custom_black_list=ctx.amp_black_list,
+                        level=ctx.amp_level,
+                        dtype=ctx.amp_dtype,
+                    ),
+                    _recompute_context,
                 ):
                     detached_inputs = detach_variable(tuple(inputs))
                     outputs = ctx.run_function(*detached_inputs, **ctx.kwargs)
@@ -707,7 +711,6 @@ def _recompute_without_reentrant(
     return outputs
 
 
-@_recompute_context
 def recompute(function, *args, **kwargs):
     """
     recompute intermediate activations to save then memory.

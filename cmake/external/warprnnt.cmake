@@ -46,7 +46,7 @@ if(WITH_ROCM)
     set(WARPRNNT_PATCH_ROCM_COMMAND
         patch -p1 <
         ${PADDLE_SOURCE_DIR}/patches/warprnnt/CMakeLists.txt.rocm.patch && cp
-        ${PADDLE_SOURCE_DIR}/patches/hip.cmake.rocm70 cmake/hip.cmake)
+        ${PADDLE_SOURCE_DIR}/cmake/hip.cmake cmake/hip.cmake)
   else()
     set(WARPRNNT_PATCH_ROCM_COMMAND
         patch -p1 <
@@ -162,7 +162,7 @@ ExternalProject_Add(
              -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
              ${EXTERNAL_OPTIONAL_ARGS}
              ${WARPRNNT_POLICY_ARGS}
-             ${WARPRNNT_CCBIN_OPTION}
+             ${WARPCTC_CCBIN_OPTION}
   CMAKE_CACHE_ARGS
     -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
     -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON

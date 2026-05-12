@@ -17,11 +17,7 @@
 #include "paddle/phi/backends/dynload/cusolver.h"
 #endif  // PADDLE_WITH_CUDA
 #ifdef PADDLE_WITH_HIP
-// thrust/device_vector.h requires hipcc
-// (rocThrust 7.0+ pulls in rocprim)
-#ifdef __HIPCC__
 #include <thrust/device_vector.h>
-#endif
 #include "paddle/phi/backends/dynload/rocsolver.h"
 #endif  // PADDLE_WITH_HIP
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -331,9 +327,7 @@ struct MatrixEighFunctor<CPUContext, T> {
   }
 };
 
-// HIP code using thrust::device_vector requires hipcc
-// (rocThrust 7.0+ pulls in rocprim)
-#if defined(PADDLE_WITH_HIP) && defined(__HIPCC__)
+#ifdef PADDLE_WITH_HIP
 #define ROCSOLVER_SYEVJ_BATCHED_ARGTYPES(scalar_t, value_t)            \
   solverHandle_t handle, rocblas_esort esort, rocblas_evect evect,     \
       rocblas_fill uplo, int n, scalar_t *const A[], int lda,          \
