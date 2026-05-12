@@ -22,7 +22,6 @@ from paddle.base.framework import in_dynamic_or_pir_mode
 from paddle.utils.decorator_utils import (
     legacy_reduction_decorator,
     param_one_alias,
-    smooth_l1_beta_compat,
 )
 
 from .. import functional as F
@@ -124,7 +123,16 @@ class BCEWithLogitsLoss(Layer):
     pos_weight: Tensor | None
     name: str | None
 
-    @legacy_reduction_decorator
+    @legacy_reduction_decorator(
+        args_list=[
+            'weight',
+            'size_average',
+            'reduce',
+            'reduction',
+            'pos_weight',
+        ],
+        is_method=True,
+    )
     def __init__(
         self,
         weight: Tensor | None = None,
@@ -431,7 +439,17 @@ class CrossEntropyLoss(Layer):
     label_smoothing: float
     name: str | None
 
-    @legacy_reduction_decorator
+    @legacy_reduction_decorator(
+        args_list=[
+            'weight',
+            'size_average',
+            'ignore_index',
+            'reduce',
+            'reduction',
+            'label_smoothing',
+        ],
+        is_method=True,
+    )
     def __init__(
         self,
         weight: Tensor | None = None,
@@ -674,7 +692,10 @@ class MSELoss(Layer):
 
     reduction: _ReduceMode
 
-    @legacy_reduction_decorator
+    @legacy_reduction_decorator(
+        args_list=['size_average', 'reduce', 'reduction'],
+        is_method=True,
+    )
     def __init__(self, reduction: _ReduceMode = 'mean'):
         super().__init__()
         if reduction not in ['sum', 'mean', 'none']:
@@ -778,7 +799,10 @@ class L1Loss(Layer):
     reduction: _ReduceMode
     name: str | None
 
-    @legacy_reduction_decorator
+    @legacy_reduction_decorator(
+        args_list=['size_average', 'reduce', 'reduction'],
+        is_method=True,
+    )
     def __init__(
         self, reduction: _ReduceMode = 'mean', name: str | None = None
     ) -> None:
@@ -869,7 +893,10 @@ class BCELoss(Layer):
     reduction: _ReduceMode
     name: str | None
 
-    @legacy_reduction_decorator
+    @legacy_reduction_decorator(
+        args_list=['weight', 'size_average', 'reduce', 'reduction'],
+        is_method=True,
+    )
     def __init__(
         self,
         weight: Tensor | None = None,
@@ -982,7 +1009,16 @@ class NLLLoss(Layer):
 
     """
 
-    @legacy_reduction_decorator
+    @legacy_reduction_decorator(
+        args_list=[
+            'weight',
+            'size_average',
+            'ignore_index',
+            'reduce',
+            'reduction',
+        ],
+        is_method=True,
+    )
     def __init__(
         self,
         weight: Tensor | None = None,
@@ -1072,8 +1108,18 @@ class PoissonNLLLoss(Layer):
 
     """
 
-    @legacy_reduction_decorator
-    @param_one_alias(["epsilon", "eps"])
+    @legacy_reduction_decorator(
+        args_list=[
+            'log_input',
+            'full',
+            'size_average',
+            'eps',
+            'reduce',
+            'reduction',
+        ],
+        kwargs_change={'eps': 'epsilon'},
+        is_method=True,
+    )
     def __init__(
         self,
         log_input: bool = True,
@@ -1205,7 +1251,10 @@ class KLDivLoss(Layer):
     reduction: _ReduceMode
     log_target: bool
 
-    @legacy_reduction_decorator
+    @legacy_reduction_decorator(
+        args_list=['size_average', 'reduce', 'reduction', 'log_target'],
+        is_method=True,
+    )
     def __init__(
         self, reduction: _ReduceMode = 'mean', log_target: bool = False
     ) -> None:
@@ -1278,7 +1327,10 @@ class MarginRankingLoss(Layer):
     reduction: _ReduceMode
     name: str | None
 
-    @legacy_reduction_decorator
+    @legacy_reduction_decorator(
+        args_list=['margin', 'size_average', 'reduce', 'reduction'],
+        is_method=True,
+    )
     def __init__(
         self,
         margin: float = 0.0,
@@ -1577,8 +1629,12 @@ class SmoothL1Loss(Layer):
     delta: float
     name: str | None
 
-    @legacy_reduction_decorator
-    @smooth_l1_beta_compat
+    @legacy_reduction_decorator(
+        args_list=['size_average', 'reduce', 'reduction', 'beta'],
+        kwargs_change={'beta': 'delta'},
+        paddle_default_kwargs={'is_huber': False},
+        is_method=True,
+    )
     def __init__(
         self,
         reduction: _ReduceMode = 'mean',
@@ -1668,7 +1724,10 @@ class MultiLabelSoftMarginLoss(Layer):
     reduction: _ReduceMode
     name: str | None
 
-    @legacy_reduction_decorator
+    @legacy_reduction_decorator(
+        args_list=['weight', 'size_average', 'reduce', 'reduction'],
+        is_method=True,
+    )
     def __init__(
         self,
         weight: Tensor | None = None,
@@ -1781,7 +1840,10 @@ class HingeEmbeddingLoss(Layer):
     reduction: _ReduceMode
     name: str | None
 
-    @legacy_reduction_decorator
+    @legacy_reduction_decorator(
+        args_list=['margin', 'size_average', 'reduce', 'reduction'],
+        is_method=True,
+    )
     def __init__(
         self,
         margin: float = 1.0,
@@ -1880,7 +1942,10 @@ class CosineEmbeddingLoss(Layer):
     reduction: _ReduceMode
     name: str | None
 
-    @legacy_reduction_decorator
+    @legacy_reduction_decorator(
+        args_list=['margin', 'size_average', 'reduce', 'reduction'],
+        is_method=True,
+    )
     def __init__(
         self,
         margin: float = 0,
@@ -2127,8 +2192,19 @@ class TripletMarginLoss(Layer):
     reduction: _ReduceMode
     name: str | None
 
-    @legacy_reduction_decorator
-    @param_one_alias(["epsilon", "eps"])
+    @legacy_reduction_decorator(
+        args_list=[
+            'margin',
+            'p',
+            'eps',
+            'swap',
+            'size_average',
+            'reduce',
+            'reduction',
+        ],
+        kwargs_change={'eps': 'epsilon'},
+        is_method=True,
+    )
     def __init__(
         self,
         margin: float = 1.0,
@@ -2245,7 +2321,17 @@ class MultiMarginLoss(Layer):
     reduction: _ReduceMode
     name: str | None
 
-    @legacy_reduction_decorator
+    @legacy_reduction_decorator(
+        args_list=[
+            'p',
+            'margin',
+            'weight',
+            'size_average',
+            'reduce',
+            'reduction',
+        ],
+        is_method=True,
+    )
     def __init__(
         self,
         p: int = 1,
@@ -2341,7 +2427,10 @@ class MultiLabelMarginLoss(Layer):
     reduction: _ReduceMode
     name: str | None
 
-    @legacy_reduction_decorator
+    @legacy_reduction_decorator(
+        args_list=['size_average', 'reduce', 'reduction'],
+        is_method=True,
+    )
     def __init__(
         self,
         reduction: _ReduceMode = 'mean',
@@ -2430,7 +2519,10 @@ class SoftMarginLoss(Layer):
     reduction: _ReduceMode
     name: str | None
 
-    @legacy_reduction_decorator
+    @legacy_reduction_decorator(
+        args_list=['size_average', 'reduce', 'reduction'],
+        is_method=True,
+    )
     def __init__(
         self, reduction: _ReduceMode = 'mean', name: str | None = None
     ) -> None:
@@ -2532,7 +2624,10 @@ class GaussianNLLLoss(Layer):
     reduction: _ReduceMode
     name: str | None
 
-    @param_one_alias(["epsilon", "eps"])
+    @legacy_reduction_decorator(
+        kwargs_change={'eps': 'epsilon'},
+        is_method=True,
+    )
     def __init__(
         self,
         full: bool = False,
