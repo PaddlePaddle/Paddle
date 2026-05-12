@@ -2,16 +2,14 @@ if(NOT WITH_ROCM)
   return()
 endif()
 
-if(NOT DEFINED ROCM_PATH)
-  if(DEFINED ENV{ROCM_PATH})
-    set(ROCM_PATH
-        $ENV{ROCM_PATH}
-        CACHE PATH "Path to which ROCm has been installed")
-  else()
-    set(ROCM_PATH
-        "/opt/rocm"
-        CACHE PATH "Path to which ROCm has been installed")
-  endif()
+if(NOT DEFINED ENV{ROCM_PATH})
+  set(ROCM_PATH
+      "/opt/rocm"
+      CACHE PATH "Path to which ROCm has been installed")
+else()
+  set(ROCM_PATH
+      $ENV{ROCM_PATH}
+      CACHE PATH "Path to which ROCm has been installed")
 endif()
 
 # Determine HIP layout from the available FindHIP module. Hygon/DCU keeps it
@@ -103,8 +101,6 @@ endif()
 set(PADDLE_AMDGPU_TARGETS
     "${PADDLE_DEFAULT_AMDGPU_TARGETS}"
     CACHE STRING "Semicolon-separated AMD GPU architectures for HIP offload")
-string(REPLACE "," ";" PADDLE_AMDGPU_TARGETS "${PADDLE_AMDGPU_TARGETS}")
-string(REPLACE " " ";" PADDLE_AMDGPU_TARGETS "${PADDLE_AMDGPU_TARGETS}")
 message(STATUS "PADDLE_AMDGPU_TARGETS: ${PADDLE_AMDGPU_TARGETS}")
 
 macro(find_package_and_include PACKAGE_NAME)
@@ -118,27 +114,19 @@ macro(find_package_and_include PACKAGE_NAME)
   message(STATUS "${PACKAGE_NAME} version: ${${PACKAGE_NAME}_VERSION}")
 endmacro()
 
-if(DEFINED PADDLE_SOURCE_DIR)
-  set(PADDLE_HIP_PACKAGES
-      miopen
-      rocblas
-      hipblaslt
-      hiprand
-      rocrand
-      rccl
-      rocthrust
-      hipcub
-      rocprim
-      hipsparse
-      rocsparse
-      rocfft
-      rocsolver)
-else()
-  set(PADDLE_HIP_PACKAGES hiprand rocrand rocthrust)
-endif()
-foreach(PACKAGE_NAME IN LISTS PADDLE_HIP_PACKAGES)
-  find_package_and_include(${PACKAGE_NAME})
-endforeach()
+find_package_and_include(miopen)
+find_package_and_include(rocblas)
+find_package_and_include(hipblaslt)
+find_package_and_include(hiprand)
+find_package_and_include(rocrand)
+find_package_and_include(rccl)
+find_package_and_include(rocthrust)
+find_package_and_include(hipcub)
+find_package_and_include(rocprim)
+find_package_and_include(hipsparse)
+find_package_and_include(rocsparse)
+find_package_and_include(rocfft)
+find_package_and_include(rocsolver)
 
 if(CCACHE_PATH)
   set(HIP_HIPCC_EXECUTABLE ${CCACHE_PATH} ${HIP_HIPCC_EXECUTABLE})
@@ -214,10 +202,8 @@ set(HIP_CLANG_FLAGS ${HIP_CXX_FLAGS})
 list(APPEND HIP_HCC_FLAGS -fno-gpu-rdc)
 list(APPEND HIP_CLANG_FLAGS -fno-gpu-rdc)
 foreach(amdgpu_target IN LISTS PADDLE_AMDGPU_TARGETS)
-  if(amdgpu_target)
-    list(APPEND HIP_HCC_FLAGS --offload-arch=${amdgpu_target})
-    list(APPEND HIP_CLANG_FLAGS --offload-arch=${amdgpu_target})
-  endif()
+  list(APPEND HIP_HCC_FLAGS --offload-arch=${amdgpu_target})
+  list(APPEND HIP_CLANG_FLAGS --offload-arch=${amdgpu_target})
 endforeach()
 
 if(HIP_COMPILER STREQUAL clang)
@@ -231,9 +217,7 @@ message(STATUS "HIP library name: ${hip_library_name}")
 find_library(ROCM_HIPRTC_LIB ${hip_library_name} HINTS ${HIP_PATH}/lib)
 message(STATUS "ROCM_HIPRTC_LIB: ${ROCM_HIPRTC_LIB}")
 
-if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/thrust.cmake")
-  include(thrust)
-endif()
+include(thrust)
 
 if(WITH_Z100)
   add_definitions(-DCINN_WITH_Z100)

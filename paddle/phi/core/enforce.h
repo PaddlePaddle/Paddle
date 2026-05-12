@@ -27,8 +27,11 @@ limitations under the License. */
 #include <hiprand/hiprand.h>
 #include <miopen/miopen.h>
 #include <rocblas/rocblas.h>
+// thrust headers require hipcc (rocThrust 7.0+ pulls in rocprim)
+#ifdef __HIPCC__
 #include <thrust/system/hip/error.h>
 #include <thrust/system_error.h>  // NOLINT
+#endif
 #endif
 
 #include <fstream>
