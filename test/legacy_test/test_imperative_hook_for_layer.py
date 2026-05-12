@@ -494,6 +494,85 @@ class TestBackwardHook(unittest.TestCase):
                 np.testing.assert_allclose(hook_calls[0][1], [1.0])
                 np.testing.assert_allclose(x.grad.numpy(), [6.0])
 
+    def test_backward_hook_prepend_and_return(self):
+        for place in get_places():
+            with base.dygraph.guard(place):
+
+                class ScaleLayer(paddle.nn.Layer):
+                    def forward(self, x):
+                        return x * 2
+
+                layer = ScaleLayer()
+                hook_calls = []
+
+                def full_backward_pre_hook(layer, grad_output):
+                    hook_calls.append(("pre1", grad_output[0].numpy().copy()))
+                    return (grad_output[0] * 2,)
+
+                def full_backward_pre_hook_first(layer, grad_output):
+                    hook_calls.append(("pre2", grad_output[0].numpy().copy()))
+
+                def full_backward_hook(layer, grad_input, grad_output):
+                    hook_calls.append(
+                        (
+                            "full1",
+                            grad_input[0].numpy().copy(),
+                            grad_output[0].numpy().copy(),
+                        )
+                    )
+                    return (grad_input[0] * 3,)
+
+                def full_backward_hook_first(layer, grad_input, grad_output):
+                    hook_calls.append(
+                        (
+                            "full2",
+                            grad_input[0].numpy().copy(),
+                            grad_output[0].numpy().copy(),
+                        )
+                    )
+                    return (grad_input[0] * 5,)
+
+                layer.register_full_backward_pre_hook(full_backward_pre_hook)
+                layer.register_full_backward_pre_hook(
+                    full_backward_pre_hook_first, prepend=True
+                )
+                layer.register_full_backward_hook(full_backward_hook)
+                layer.register_full_backward_hook(
+                    full_backward_hook_first, prepend=True
+                )
+                x = paddle.to_tensor([1.0], stop_gradient=False)
+                y = layer(x)
+                y.backward()
+                self.assertEqual(
+                    [call[0] for call in hook_calls],
+                    ["pre2", "pre1", "full2", "full1"],
+                )
+                np.testing.assert_allclose(hook_calls[0][1], [1.0])
+                np.testing.assert_allclose(hook_calls[1][1], [1.0])
+                np.testing.assert_allclose(hook_calls[2][1], [4.0])
+                np.testing.assert_allclose(hook_calls[2][2], [2.0])
+                np.testing.assert_allclose(hook_calls[3][1], [20.0])
+                np.testing.assert_allclose(hook_calls[3][2], [2.0])
+                np.testing.assert_allclose(x.grad.numpy(), [60.0])
+
+                layer = ScaleLayer()
+                layer.register_backward_hook(lambda *args, **kwargs: None)
+                with self.assertRaisesRegex(
+                    RuntimeError,
+                    "Cannot use both regular backward hooks and full backward hooks",
+                ):
+                    layer.register_full_backward_hook(
+                        lambda *args, **kwargs: None
+                    )
+
+                layer = ScaleLayer()
+                layer.register_full_backward_hook(lambda *args, **kwargs: None)
+                with self.assertRaisesRegex(
+                    RuntimeError,
+                    "Cannot use both regular backward hooks and full backward hooks",
+                ):
+                    layer.register_backward_hook(lambda *args, **kwargs: None)
+
 
 if __name__ == '__main__':
     unittest.main()
