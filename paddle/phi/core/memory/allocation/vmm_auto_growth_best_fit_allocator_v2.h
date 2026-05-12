@@ -23,6 +23,7 @@
 #include "paddle/phi/core/memory/allocation/cuda_virtual_mem_allocator_v2.h"
 #include "paddle/phi/core/memory/allocation/spin_lock.h"
 #include "paddle/phi/core/memory/allocation/vmm_allocator_v2_types.h"
+#include "paddle/phi/core/memory/mem_visitor.h"
 
 #if defined(PADDLE_WITH_CUDA)
 
@@ -43,6 +44,7 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
       PoolType pool_type);
 
   bool IsAllocThreadSafe() const override { return true; }
+  void Accept(AllocatorVisitor* visitor) override { visitor->Visit(this); }
 
   const BlockList& all_blocks() const { return all_blocks_; }
   PoolType pool_type() const { return pool_type_; }
@@ -61,12 +63,18 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
  protected:
   phi::Allocation* AllocateImpl(size_t size) override;
   void FreeImpl(phi::Allocation* allocation) override;
+  uint64_t ReleaseImpl(const Place& place) override;
 
  private:
   phi::Allocation* AllocFromFreeBlocks(size_t size);
   void InsertFreeBlock(BlockListIt it);
   void EraseFreeBlock(BlockListIt it);
   void TryMerge(BlockListIt it);
+  // Per-allocation release: release entire underlying allocations whose VA
+  // range is completely covered by FREE blocks.
+  uint64_t FreeIdleChunks();
+  bool IsRangeEntirelyFree(void* base, size_t size) const;
+  void SplitAndRemoveRange(void* base, size_t size);
 
   // Best-fit V2 only grows from the fixed-handle CUDA VMM provider. This
   // keeps the layer boundary explicit: the bottom allocator owns allocation

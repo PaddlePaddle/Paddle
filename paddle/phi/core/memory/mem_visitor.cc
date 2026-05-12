@@ -21,6 +21,8 @@
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/core/memory/allocation/stream_safe_cuda_allocator.h"
 #include "paddle/phi/core/memory/allocation/virtual_memory_auto_growth_best_fit_allocator.h"
+#include "paddle/phi/core/memory/allocation/vmm_auto_growth_best_fit_allocator_v2.h"
+#include "paddle/phi/core/memory/allocation/vmm_auto_growth_best_fit_multi_pool_allocator_v2.h"
 #endif
 
 namespace paddle {
@@ -58,6 +60,20 @@ void AllocatorVisitor::Visit(
     allocator->GetSmallAllocator()->Accept(this);
   if (allocator->GetLargeAllocator())
     allocator->GetLargeAllocator()->Accept(this);
+}
+
+void AllocatorVisitor::Visit(VMMAutoGrowthBestFitAllocatorV2* allocator) {
+  (void)allocator;
+}
+
+void AllocatorVisitor::Visit(
+    VMMAutoGrowthBestFitMultiPoolAllocatorV2* allocator) {
+  if (allocator->small_allocator()) {
+    allocator->small_allocator()->Accept(this);
+  }
+  if (allocator->large_allocator()) {
+    allocator->large_allocator()->Accept(this);
+  }
 }
 
 void AllocatorComputeStreamVisitor::Visit(StreamSafeCUDAAllocator* allocator) {
@@ -124,6 +140,45 @@ void VMMAllocateRecordEventsVisitor::Visit(
 void VMMAllocateCompactSizeVisitor::Visit(
     VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator* allocator) {
   allocate_compact_size_ = allocator->GetCompactSize();
+}
+
+void VMMV2PoolStatsVisitor::Visit(VMMAutoGrowthBestFitAllocatorV2* allocator) {
+  size_t active_count = 0, active_bytes = 0;
+  size_t free_count = 0, free_bytes = 0;
+  size_t gap_count = 0, gap_bytes = 0;
+  for (const auto& block : allocator->all_blocks()) {
+    switch (block.type_) {
+      case allocation::BlockType::kActive:
+        ++active_count;
+        active_bytes += block.size_;
+        break;
+      case allocation::BlockType::kFree:
+        ++free_count;
+        free_bytes += block.size_;
+        break;
+      case allocation::BlockType::kGap:
+        ++gap_count;
+        gap_bytes += block.size_;
+        break;
+    }
+  }
+  pool_stats_.emplace_back(static_cast<int>(allocator->pool_type()),
+                           active_count,
+                           active_bytes,
+                           free_count,
+                           free_bytes,
+                           gap_count,
+                           gap_bytes);
+}
+
+void VMMV2PoolStatsVisitor::Visit(
+    VMMAutoGrowthBestFitMultiPoolAllocatorV2* allocator) {
+  if (allocator->small_allocator()) {
+    Visit(allocator->small_allocator().get());
+  }
+  if (allocator->large_allocator()) {
+    Visit(allocator->large_allocator().get());
+  }
 }
 
 void VmmTensorPartsVisitor::Visit(

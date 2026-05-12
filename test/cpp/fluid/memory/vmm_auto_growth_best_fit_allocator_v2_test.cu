@@ -28,7 +28,7 @@ namespace {
 
 std::shared_ptr<CUDAVirtualMemAllocatorV2> CreateUnderlyingAllocator() {
   return std::make_shared<CUDAVirtualMemAllocatorV2>(
-      phi::GPUPlace(), 2UL << 20, PoolType::kTransient);
+      phi::GPUPlace(), 2UL << 20, PoolType::kLarge);
 }
 
 }  // namespace
@@ -36,7 +36,7 @@ std::shared_ptr<CUDAVirtualMemAllocatorV2> CreateUnderlyingAllocator() {
 TEST(VMMAutoGrowthBestFitAllocatorV2, SplitFreeBlockOnReuse) {
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
-      underlying, 256, phi::GPUPlace(), PoolType::kTransient);
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
 
   auto large = allocator.Allocate(underlying->handle_size() * 2);
   ASSERT_NE(large, nullptr);
@@ -67,7 +67,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, SplitFreeBlockOnReuse) {
 TEST(VMMAutoGrowthBestFitAllocatorV2, ReuseSmallestSufficientFreeBlock) {
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
-      underlying, 256, phi::GPUPlace(), PoolType::kTransient);
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
 
   // Layout after allocation:
   //   [ACTIVE 4MB] [ACTIVE 2MB separator] [ACTIVE 2MB small]
@@ -106,7 +106,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, ReuseSmallestSufficientFreeBlock) {
 TEST(VMMAutoGrowthBestFitAllocatorV2, SplitGrowBlockOnFirstAllocation) {
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
-      underlying, 256, phi::GPUPlace(), PoolType::kTransient);
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
 
   // The bottom allocator rounds this grow to one full handle, but best-fit
   // should immediately split it into [ACTIVE requested_size] + [FREE remain].
@@ -134,7 +134,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, SplitGrowBlockOnFirstAllocation) {
 TEST(VMMAutoGrowthBestFitAllocatorV2, ReturnedAllocationSizeMatchesRequest) {
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
-      underlying, 256, phi::GPUPlace(), PoolType::kTransient);
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
 
   auto allocation = allocator.Allocate(256UL);
   ASSERT_NE(allocation, nullptr);
@@ -147,7 +147,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, ReturnedAllocationSizeMatchesRequest) {
 TEST(VMMAutoGrowthBestFitAllocatorV2, SplitGrowBlockAcrossTwoHandles) {
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
-      underlying, 256, phi::GPUPlace(), PoolType::kTransient);
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
 
   const size_t requested_size = underlying->handle_size() + 256UL;
   auto allocation = allocator.Allocate(requested_size);
@@ -175,7 +175,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, SplitGrowBlockAcrossTwoHandles) {
 TEST(VMMAutoGrowthBestFitAllocatorV2, SplitGrowBlockStartsWithEmptyRemapState) {
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
-      underlying, 256, phi::GPUPlace(), PoolType::kTransient);
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
 
   auto allocation = allocator.Allocate(256UL);
   ASSERT_NE(allocation, nullptr);
@@ -198,7 +198,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2,
      MergeSplitFreeSlicesIntoSingleHandlePart) {
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
-      underlying, 256, phi::GPUPlace(), PoolType::kTransient);
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
 
   auto allocation = allocator.Allocate(256UL);
   ASSERT_NE(allocation, nullptr);
@@ -216,7 +216,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2,
 TEST(VMMAutoGrowthBestFitAllocatorV2, MergeAdjacentFreeBlocks) {
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
-      underlying, 256, phi::GPUPlace(), PoolType::kTransient);
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
 
   auto whole = allocator.Allocate(underlying->handle_size() * 2);
   ASSERT_NE(whole, nullptr);
@@ -241,7 +241,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, MergeAdjacentFreeBlocks) {
 TEST(VMMAutoGrowthBestFitAllocatorV2, NonAdjacentFreeBlocksDoNotMerge) {
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
-      underlying, 256, phi::GPUPlace(), PoolType::kTransient);
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
 
   auto first = allocator.Allocate(underlying->handle_size());
   auto middle = allocator.Allocate(underlying->handle_size());
@@ -274,7 +274,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, NonAdjacentFreeBlocksDoNotMerge) {
 TEST(VMMAutoGrowthBestFitAllocatorV2, SplitFreeBlockInheritsRemapEvent) {
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
-      underlying, 256, phi::GPUPlace(), PoolType::kTransient);
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
 
   auto allocation = allocator.Allocate(underlying->handle_size());
   ASSERT_NE(allocation, nullptr);
@@ -322,7 +322,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, SplitFreeBlockInheritsRemapEvent) {
 TEST(VMMAutoGrowthBestFitAllocatorV2, SetBlockRemapEventStoresRuntimeState) {
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
-      underlying, 256, phi::GPUPlace(), PoolType::kTransient);
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
 
   auto allocation = allocator.Allocate(underlying->handle_size());
   ASSERT_NE(allocation, nullptr);
@@ -345,7 +345,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, SetBlockRemapEventStoresRuntimeState) {
 TEST(VMMAutoGrowthBestFitAllocatorV2, SetBlockRemapEventRejectsUnknownPtr) {
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
-      underlying, 256, phi::GPUPlace(), PoolType::kTransient);
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
 
   EXPECT_FALSE(allocator.SetBlockRemapEvent(
       reinterpret_cast<void*>(0x1), nullptr, nullptr));
@@ -354,7 +354,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, SetBlockRemapEventRejectsUnknownPtr) {
 TEST(VMMAutoGrowthBestFitAllocatorV2, GrowExactHandleMultipleNoSplit) {
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
-      underlying, 256, phi::GPUPlace(), PoolType::kTransient);
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
 
   // Request exactly 1 handle_size — the bottom allocator returns the same
   // amount, so grow-split should produce NO remaining FREE block.
@@ -372,7 +372,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, AlignmentRoundsUpRequestedSize) {
   auto underlying = CreateUnderlyingAllocator();
   const size_t alignment = 512;
   VMMAutoGrowthBestFitAllocatorV2 allocator(
-      underlying, alignment, phi::GPUPlace(), PoolType::kTransient);
+      underlying, alignment, phi::GPUPlace(), PoolType::kLarge);
 
   // Request 100 bytes with alignment=512 → AlignedSize(100,512) = 512.
   auto allocation = allocator.Allocate(100);
@@ -390,7 +390,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, AlignmentRoundsUpRequestedSize) {
 TEST(VMMAutoGrowthBestFitAllocatorV2, ExactFitReuseNoSplit) {
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
-      underlying, 256, phi::GPUPlace(), PoolType::kTransient);
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
 
   // Allocate and free one handle — creates one FREE block of handle_size.
   auto allocation = allocator.Allocate(underlying->handle_size());
@@ -413,7 +413,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, ExactFitReuseNoSplit) {
 TEST(VMMAutoGrowthBestFitAllocatorV2, AllocFreeCycleConsistency) {
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
-      underlying, 256, phi::GPUPlace(), PoolType::kTransient);
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
 
   // Perform several alloc/free cycles and verify invariants after each.
   for (int round = 0; round < 3; ++round) {
@@ -441,7 +441,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, AllocFreeCycleConsistency) {
 TEST(VMMAutoGrowthBestFitAllocatorV2, FreeBlockTooSmallFallsBackToGrow) {
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
-      underlying, 256, phi::GPUPlace(), PoolType::kTransient);
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
 
   // Create a small free block (handle_size).
   auto small = allocator.Allocate(underlying->handle_size());
@@ -476,7 +476,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, FreeBlockTooSmallFallsBackToGrow) {
 TEST(VMMAutoGrowthBestFitAllocatorV2, ThreeWayMerge) {
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
-      underlying, 256, phi::GPUPlace(), PoolType::kTransient);
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
 
   // Allocate 3 consecutive handle-sized blocks.
   auto a = allocator.Allocate(underlying->handle_size());
@@ -502,6 +502,122 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, ThreeWayMerge) {
   EXPECT_EQ(merged.type_, BlockType::kFree);
   EXPECT_EQ(merged.size_, underlying->handle_size() * 3);
   EXPECT_EQ(merged.parts_.size(), 3UL);
+}
+
+// ---------------------------------------------------------------------------
+// ReleaseImpl tests — per-allocation granularity release
+// ---------------------------------------------------------------------------
+
+TEST(VMMAutoGrowthBestFitAllocatorV2, ReleaseFreesFullyFreeAllocation) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+
+  // Allocate one handle-sized block, then free it.
+  auto allocation = allocator.Allocate(underlying->handle_size());
+  ASSERT_NE(allocation, nullptr);
+  allocation.reset();
+
+  // The single underlying allocation is entirely FREE.
+  ASSERT_EQ(allocator.all_blocks_.size(), 1UL);
+  ASSERT_EQ(allocator.all_blocks_.front().type_, BlockType::kFree);
+
+  uint64_t released = allocator.Release(phi::GPUPlace());
+  EXPECT_EQ(released, underlying->handle_size());
+
+  // After release: all blocks removed, underlying allocation erased.
+  EXPECT_EQ(allocator.all_blocks_.size(), 0UL);
+  EXPECT_EQ(allocator.free_blocks_.size(), 0UL);
+  EXPECT_EQ(allocator.underlying_allocations_.size(), 0UL);
+}
+
+TEST(VMMAutoGrowthBestFitAllocatorV2, ReleaseSkipsPartiallyActiveAllocation) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+
+  // Allocate a small block (< handle_size), so part of the underlying
+  // allocation is ACTIVE and part is FREE remainder.
+  auto allocation = allocator.Allocate(256UL);
+  ASSERT_NE(allocation, nullptr);
+
+  // There should be 1 ACTIVE + 1 FREE block, but the underlying allocation
+  // is not entirely free.
+  ASSERT_EQ(allocator.all_blocks_.size(), 2UL);
+
+  uint64_t released = allocator.Release(phi::GPUPlace());
+  EXPECT_EQ(released, 0UL);
+
+  // Nothing changed.
+  EXPECT_EQ(allocator.free_blocks_.size(), 1UL);
+  EXPECT_EQ(allocator.underlying_allocations_.size(), 1UL);
+}
+
+TEST(VMMAutoGrowthBestFitAllocatorV2, ReleaseMultipleAllocationsSelective) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+
+  // Allocate 3 handle-sized blocks from 3 separate underlying allocations.
+  auto a = allocator.Allocate(underlying->handle_size());
+  auto b = allocator.Allocate(underlying->handle_size());
+  auto c = allocator.Allocate(underlying->handle_size());
+  ASSERT_EQ(allocator.underlying_allocations_.size(), 3UL);
+
+  // Free only a and c — their underlying allocations become entirely free.
+  // b stays active — its underlying allocation is not released.
+  a.reset();
+  c.reset();
+
+  uint64_t released = allocator.Release(phi::GPUPlace());
+  EXPECT_EQ(released, underlying->handle_size() * 2);
+
+  // Only b's underlying allocation remains.
+  EXPECT_EQ(allocator.underlying_allocations_.size(), 1UL);
+  EXPECT_EQ(allocator.allocated_blocks_.size(), 1UL);
+  EXPECT_EQ(allocator.free_blocks_.size(), 0UL);
+}
+
+TEST(VMMAutoGrowthBestFitAllocatorV2, ReleaseNothingWhenAllActive) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+
+  auto allocation = allocator.Allocate(underlying->handle_size());
+  ASSERT_NE(allocation, nullptr);
+
+  // No FREE blocks at all — nothing to release.
+  uint64_t released = allocator.Release(phi::GPUPlace());
+  EXPECT_EQ(released, 0UL);
+  EXPECT_EQ(allocator.underlying_allocations_.size(), 1UL);
+}
+
+TEST(VMMAutoGrowthBestFitAllocatorV2, AllocAfterReleaseGrowsNewAllocation) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+
+  // Allocate and free, then release the underlying allocation.
+  auto allocation = allocator.Allocate(underlying->handle_size());
+  allocation.reset();
+
+  uint64_t released = allocator.Release(phi::GPUPlace());
+  EXPECT_EQ(released, underlying->handle_size());
+  EXPECT_EQ(allocator.underlying_allocations_.size(), 0UL);
+
+  // Allocate again — must grow a new underlying allocation.
+  auto new_alloc = allocator.Allocate(underlying->handle_size());
+  ASSERT_NE(new_alloc, nullptr);
+  EXPECT_EQ(allocator.underlying_allocations_.size(), 1UL);
+
+  // Verify the new block is ACTIVE.
+  bool found_active = false;
+  for (const auto& block : allocator.all_blocks_) {
+    if (block.type_ == BlockType::kActive && block.ptr_ == new_alloc->ptr()) {
+      found_active = true;
+    }
+  }
+  EXPECT_TRUE(found_active);
 }
 
 }  // namespace allocation

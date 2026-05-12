@@ -16,13 +16,13 @@
 
 #if defined(PADDLE_WITH_CUDA)
 
-#include <mutex>
 #include <unordered_map>
 #include <vector>
 
 #include "paddle/phi/backends/dynload/cuda_driver.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/memory/allocation/allocator.h"
+#include "paddle/phi/core/memory/allocation/spin_lock.h"
 #include "paddle/phi/core/memory/allocation/vmm_allocator_v2_types.h"
 
 namespace paddle {
@@ -35,11 +35,11 @@ namespace allocation {
 // transform that list into block-level BlockPartV2 state.
 class CUDAVirtualMemAllocatorV2 : public Allocator {
  public:
-  // Standalone use defaults to the transient pool. Upper layers may still
-  // override this explicitly when routing by lifecycle.
+  // Standalone use defaults to the large pool. Upper layers may also choose
+  // explicit small/large pool types.
   CUDAVirtualMemAllocatorV2(const GPUPlace& place,
                             size_t handle_size,
-                            PoolType pool = PoolType::kTransient);
+                            PoolType pool = PoolType::kLarge);
 
   bool IsAllocThreadSafe() const override;
 
@@ -54,6 +54,10 @@ class CUDAVirtualMemAllocatorV2 : public Allocator {
   void AdvanceTailOffset(size_t bytes) { virtual_mem_alloced_offset_ += bytes; }
 
   void UnmapHandle(VmmDevicePtr ptr, size_t size);
+  // Unmap a single handle from VA and release its physical memory back to the
+  // CUDA driver.  Used by ReleaseImpl to free individual handles within a
+  // partially-free allocation.
+  void UnmapAndReleaseHandle(VmmHandleMeta* meta);
   void MapHandlesToVA(VmmDevicePtr ptr, const std::vector<VmmAllocHandle>& hs);
   // Exposes the allocation-level handle list for IPC/export queries. The key
   // is the raw allocation ptr returned by this allocator.
@@ -81,7 +85,7 @@ class CUDAVirtualMemAllocatorV2 : public Allocator {
   std::vector<CUmemAccessDesc> access_desc_;
 
   mutable std::unordered_map<void*, HandleLayout> allocation_layout_map_;
-  mutable std::mutex allocation_layout_mu_;
+  mutable SpinLock allocation_layout_mu_;
 };
 
 }  // namespace allocation

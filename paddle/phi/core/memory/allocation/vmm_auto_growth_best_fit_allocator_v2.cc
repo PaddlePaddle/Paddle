@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <iterator>
 
+#include "glog/logging.h"
 #include "paddle/phi/core/enforce.h"
 namespace paddle {
 namespace memory {
@@ -333,6 +334,161 @@ void VMMAutoGrowthBestFitAllocatorV2::TryMerge(BlockListIt it) {
   }
 
   InsertFreeBlock(it);
+}
+
+// ---------------------------------------------------------------------------
+// ReleaseImpl – per-allocation release.
+//
+// Iterates underlying_allocations_ and checks whether the entire VA range of
+// each underlying allocation is covered exclusively by FREE blocks. If so,
+// removes those blocks from the best-fit state and erases the underlying
+// allocation, which triggers CUDAVirtualMemAllocatorV2::FreeImpl to cuMemUnmap
+// + cuMemRelease all handles in that allocation.
+//
+// This is conservative: partial coverage (some ACTIVE blocks still inside the
+// allocation range) means nothing is released. The upside is simplicity — no
+// kGap holes, no handle-level bookkeeping, clean allocator state.
+//
+// More aggressive per-handle release is reserved for the remap/compaction
+// system, where kGap blocks and handle-level lifecycle management are needed
+// anyway.
+// ---------------------------------------------------------------------------
+
+uint64_t VMMAutoGrowthBestFitAllocatorV2::ReleaseImpl(
+    const Place& place UNUSED) {
+  std::lock_guard<SpinLock> guard(spinlock_);
+  return FreeIdleChunks();
+}
+
+uint64_t VMMAutoGrowthBestFitAllocatorV2::FreeIdleChunks() {
+  uint64_t released_bytes = 0;
+
+  for (auto alloc_it = underlying_allocations_.begin();
+       alloc_it != underlying_allocations_.end();) {
+    auto* base = (*alloc_it)->ptr();
+    size_t size = (*alloc_it)->size();
+
+    if (!IsRangeEntirelyFree(base, size)) {
+      ++alloc_it;
+      continue;
+    }
+
+    // The entire underlying allocation VA range is FREE. Remove the
+    // corresponding blocks from best-fit state, then erase the underlying
+    // allocation (triggers FreeImpl → cuMemUnmap + cuMemRelease).
+    SplitAndRemoveRange(base, size);
+    alloc_it = underlying_allocations_.erase(alloc_it);
+    released_bytes += size;
+  }
+
+  if (released_bytes > 0) {
+    VLOG(5) << "VMM V2 pool " << static_cast<int>(pool_type_) << " released "
+            << released_bytes << " bytes ("
+            << released_bytes / (1024.0 * 1024.0)
+            << " MB) via per-allocation release.";
+  }
+  return released_bytes;
+}
+
+bool VMMAutoGrowthBestFitAllocatorV2::IsRangeEntirelyFree(void* base,
+                                                          size_t size) const {
+  const auto* begin = reinterpret_cast<uint8_t*>(base);
+  const auto* end = begin + size;
+  size_t covered = 0;
+
+  for (const auto& block : all_blocks_) {
+    const auto* bptr = reinterpret_cast<uint8_t*>(block.ptr_);
+    if (bptr >= end) break;
+    if (bptr + block.size_ <= begin) continue;
+
+    // Block overlaps the range.
+    if (block.type_ != BlockType::kFree) {
+      return false;
+    }
+    covered += block.size_;
+  }
+  return covered == size;
+}
+
+void VMMAutoGrowthBestFitAllocatorV2::SplitAndRemoveRange(void* base,
+                                                          size_t size) {
+  // Remove all FREE blocks fully within [base, base+size) from the block list
+  // and free_blocks_ index. If a FREE block straddles the boundary (possible
+  // after merge), split it so only the interior portion is removed.
+  const auto* range_begin = reinterpret_cast<uint8_t*>(base);
+  const auto* range_end = range_begin + size;
+
+  for (auto it = all_blocks_.begin(); it != all_blocks_.end();) {
+    auto* bptr = reinterpret_cast<uint8_t*>(it->ptr_);
+    if (bptr >= range_end) break;
+    if (bptr + it->size_ <= range_begin) {
+      ++it;
+      continue;
+    }
+
+    // Block overlaps the range. Must be FREE (caller checked).
+    PADDLE_ENFORCE_EQ(
+        it->type_,
+        BlockType::kFree,
+        common::errors::PreconditionNotMet(
+            "SplitAndRemoveRange encountered non-FREE block at %p.", it->ptr_));
+    EraseFreeBlock(it);
+
+    const auto* block_begin = bptr;
+    const auto* block_end = bptr + it->size_;
+
+    // Case 1: block is fully inside the range — remove it entirely.
+    if (block_begin >= range_begin && block_end <= range_end) {
+      it = all_blocks_.erase(it);
+      continue;
+    }
+
+    // Case 2: block extends before the range — keep the left portion.
+    if (block_begin < range_begin && block_end <= range_end) {
+      const size_t keep_size = static_cast<size_t>(range_begin - block_begin);
+      it->size_ = keep_size;
+      it->parts_ = SlicePartsForRange(it->parts_, 0, keep_size);
+      InsertFreeBlock(it);
+      ++it;
+      continue;
+    }
+
+    // Case 3: block extends after the range — keep the right portion.
+    if (block_begin >= range_begin && block_end > range_end) {
+      const size_t trim_left = static_cast<size_t>(range_end - block_begin);
+      const size_t keep_size = it->size_ - trim_left;
+      it->ptr_ = const_cast<uint8_t*>(range_end);
+      it->size_ = keep_size;
+      it->parts_ = SlicePartsForRange(it->parts_, trim_left, keep_size);
+      InsertFreeBlock(it);
+      ++it;
+      continue;
+    }
+
+    // Case 4: block straddles both sides — split into left + right, remove
+    // the interior.
+    const size_t left_size = static_cast<size_t>(range_begin - block_begin);
+    const size_t right_size = static_cast<size_t>(block_end - range_end);
+
+    // Shrink current block to the left portion.
+    auto original_parts = std::move(it->parts_);
+    it->size_ = left_size;
+    it->parts_ = SlicePartsForRange(original_parts, 0, left_size);
+    InsertFreeBlock(it);
+
+    // Insert a new block for the right portion.
+    BlockV2 right_block;
+    right_block.ptr_ = const_cast<uint8_t*>(range_end);
+    right_block.size_ = right_size;
+    right_block.type_ = BlockType::kFree;
+    right_block.pool_type_ = it->pool_type_;
+    right_block.parts_ =
+        SlicePartsForRange(original_parts, left_size + size, right_size);
+    auto next_it = std::next(it);
+    auto right_it = all_blocks_.insert(next_it, std::move(right_block));
+    InsertFreeBlock(right_it);
+    it = std::next(right_it);
+  }
 }
 
 }  // namespace allocation
