@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/sgd_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/jit/kernels.h"
@@ -49,9 +50,9 @@ void sgd_dense_param_dense_grad_impl<phi::bfloat16>(
   auto p = EigenVector<phi::bfloat16>::Flatten(param);
   auto g = EigenVector<phi::bfloat16>::Flatten(grad);
   auto o = EigenVector<phi::bfloat16>::Flatten(*param_out);
-  const auto* lr = learning_rate.data<phi::bfloat16>();
+  const auto* lr = learning_rate.data<float>();
 
-  o = p - lr[0] * g;
+  o = p - static_cast<phi::bfloat16>(lr[0]) * g;
 }
 
 template <typename T>
@@ -95,7 +96,7 @@ void sgd_dense_param_sparse_grad_impl<phi::bfloat16>(
 
   const auto* grad_data = grad_value.data<phi::bfloat16>();
   auto* out_data = param_out->data<phi::bfloat16>();
-  const auto* lr = learning_rate.data<phi::bfloat16>();
+  const auto* lr = learning_rate.data<float>();
 
   for (size_t i = 0; i < grad_rows.size(); ++i) {
     PADDLE_ENFORCE_LT(
@@ -108,7 +109,8 @@ void sgd_dense_param_sparse_grad_impl<phi::bfloat16>(
             grad_height));
     const int64_t row = grad_rows[i];
     for (int64_t j = 0; j < grad_width; ++j) {
-      out_data[row * grad_width + j] -= lr[0] * grad_data[i * grad_width + j];
+      out_data[row * grad_width + j] -=
+          static_cast<phi::bfloat16>(lr[0]) * grad_data[i * grad_width + j];
     }
   }
 }
@@ -168,7 +170,8 @@ void SGDSparseParamSparseGradKernel(
           param_row_width,
           grad_row_width));
 
-  const auto* lr = learning_rate.data<T>();
+  using MT = typename dtype::MPTypeTrait<T>::Type;
+  const auto* lr = learning_rate.data<MT>();
   const auto* grad_data = grad.value().data<T>();
   auto* out_data = param_out->mutable_value()->data<T>();
   for (size_t i = 0; i < grad.rows().size(); i++) {
@@ -180,8 +183,8 @@ void SGDSparseParamSparseGradKernel(
             "The id in SgdOp should be >= 0. But received id_index is [%s]",
             id_index));
     for (int64_t j = 0; j < grad_row_width; j++) {
-      out_data[id_index * grad_row_width + j] -=
-          lr[0] * grad_data[i * grad_row_width + j];
+      out_data[id_index * grad_row_width + j] -= static_cast<T>(
+          lr[0] * static_cast<MT>(grad_data[i * grad_row_width + j]));
     }
   }
 }
