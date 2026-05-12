@@ -316,7 +316,7 @@ PD_REGISTER_KERNEL(conv3d_coo,
                    double,
                    phi::float16) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
-  kernel->OutputAt(0).SetDataType(paddle::DataType::UNDEFINED);
-  kernel->OutputAt(1).SetDataType(paddle::DataType::INT32);
-  kernel->OutputAt(2).SetDataType(paddle::DataType::INT32);
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
+  kernel->OutputAt(2).SetDataType(phi::DataType::INT32);
 }

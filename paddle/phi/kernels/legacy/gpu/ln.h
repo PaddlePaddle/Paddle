@@ -32,6 +32,7 @@
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 
+namespace phi {
 namespace layer_norm {
 
 template <typename Params>
@@ -202,27 +203,26 @@ struct BwdRegistrar {
 
 // Create registries and provide runtime versions of config hash functions.
 
-uint32_t get_type_id(paddle::DataType dtype);
+uint32_t get_type_id(DataType dtype);
 
-uint64_t get_key(paddle::DataType weight_type,
-                 paddle::DataType input_type,
-                 paddle::DataType output_type,
-                 paddle::DataType compute_type,
+uint64_t get_key(DataType weight_type,
+                 DataType input_type,
+                 DataType output_type,
+                 DataType compute_type,
                  uint64_t hidden_size);
 
 }  // namespace layer_norm
 
-namespace phi {
-layer_norm::FwdFunction& get_fwd_launcher(paddle::DataType weight_type,
-                                          paddle::DataType input_type,
-                                          paddle::DataType output_type,
-                                          paddle::DataType compute_type,
+layer_norm::FwdFunction& get_fwd_launcher(DataType weight_type,
+                                          DataType input_type,
+                                          DataType output_type,
+                                          DataType compute_type,
                                           uint32_t hidden_size);
 
-layer_norm::BwdFunction& get_bwd_launcher(paddle::DataType weight_type,
-                                          paddle::DataType input_type,
-                                          paddle::DataType output_type,
-                                          paddle::DataType compute_type,
+layer_norm::BwdFunction& get_bwd_launcher(DataType weight_type,
+                                          DataType input_type,
+                                          DataType output_type,
+                                          DataType compute_type,
                                           uint32_t hidden_size);
 
 inline static cudaDeviceProp GetDevicePropImpl() {
@@ -248,10 +248,10 @@ void LaunchNormFwd(const Context& dev_ctx,
                    void* y_ptr,
                    void* mean_ptr,
                    void* invvar_ptr,
-                   const paddle::DataType weight_type,
-                   const paddle::DataType input_type,
-                   const paddle::DataType output_type,
-                   const paddle::DataType compute_type,
+                   const DataType weight_type,
+                   const DataType input_type,
+                   const DataType output_type,
+                   const DataType compute_type,
                    const uint32_t hidden_size,
                    const int64_t rows,
                    const int64_t cols,
@@ -306,10 +306,10 @@ void LaunchNormBwd(const Context& dev_ctx,
                    void* dx_ptr,
                    void* dscale_ptr,
                    void* dbias_ptr,
-                   const paddle::DataType weight_type,
-                   const paddle::DataType input_type,
-                   const paddle::DataType output_type,
-                   const paddle::DataType compute_type,
+                   const DataType weight_type,
+                   const DataType input_type,
+                   const DataType output_type,
+                   const DataType compute_type,
                    const uint32_t hidden_size,
                    const int64_t rows,
                    const int64_t cols,

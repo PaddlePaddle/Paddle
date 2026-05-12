@@ -359,8 +359,8 @@ void TensorCopySync(const DenseTensor& src,
       return;
     }
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
-    phi::XPUPlace xpu_dst_place = dst_place;
-    phi::XPUPlace xpu_src_place = src_place;
+    XPUPlace xpu_dst_place = dst_place;
+    XPUPlace xpu_src_place = src_place;
     if (xpu_dst_place.device == xpu_src_place.device) {
       auto xpu_ctx = phi::DeviceContextPool::Instance().Get(xpu_dst_place);
       xpu_ctx->Wait();
@@ -722,23 +722,23 @@ void TensorFromStream(std::istream& is,
   }
 }
 
-phi::DataType ConvertToPDDataType(const std::string& typestr) {
-  static const std::unordered_map<std::string, phi::DataType> type_map = {
-      {"<c8", phi::DataType::COMPLEX64},
-      {"<c16", phi::DataType::COMPLEX128},
-      {"<f2", phi::DataType::BFLOAT16},
-      {"<f4", phi::DataType::FLOAT32},
-      {"<f8", phi::DataType::FLOAT64},
-      {"|u1", phi::DataType::UINT8},
-      {"|i1", phi::DataType::INT8},
-      {"<i2", phi::DataType::INT16},
-      {"<i4", phi::DataType::INT32},
-      {"<i8", phi::DataType::INT64},
-      {"|b1", phi::DataType::BOOL},
+DataType ConvertToPDDataType(const std::string& typestr) {
+  static const std::unordered_map<std::string, DataType> type_map = {
+      {"<c8", DataType::COMPLEX64},
+      {"<c16", DataType::COMPLEX128},
+      {"<f2", DataType::BFLOAT16},
+      {"<f4", DataType::FLOAT32},
+      {"<f8", DataType::FLOAT64},
+      {"|u1", DataType::UINT8},
+      {"|i1", DataType::INT8},
+      {"<i2", DataType::INT16},
+      {"<i4", DataType::INT32},
+      {"<i8", DataType::INT64},
+      {"|b1", DataType::BOOL},
       // NOTE: Paddle not support uint32, uint64, uint16 yet.
-      // {"<u2", phi::DataType::UINT16},
-      // {"<u4", phi::DataType::UINT32},
-      // {"<u8", phi::DataType::UINT64},
+      // {"<u2", DataType::UINT16},
+      // {"<u4", DataType::UINT32},
+      // {"<u8", DataType::UINT64},
   };
   auto it = type_map.find(typestr);
   PADDLE_ENFORCE_NE(

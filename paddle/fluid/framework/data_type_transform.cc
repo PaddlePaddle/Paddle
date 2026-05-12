@@ -113,8 +113,8 @@ struct CastDataTypeFunctor<::phi::dtype::bfloat16,
 #if defined(PADDLE_WITH_XPU)
 
 template <typename InType, typename OutType>
-static void XPUCastData(const phi::DenseTensor& in,
-                        phi::DenseTensor* out,
+static void XPUCastData(const DenseTensor& in,
+                        DenseTensor* out,
                         const phi::XPUContext* dev_ctx) {
   using XPUInTDType = typename XPUTypeTrait<InType>::Type;
   using XPUOutTDType = typename XPUTypeTrait<OutType>::Type;
@@ -129,8 +129,8 @@ static void XPUCastData(const phi::DenseTensor& in,
 
 template <typename InType>
 static void XPUTransDataType(
-    const phi::DenseTensor& in,
-    phi::DenseTensor* out,
+    const DenseTensor& in,
+    DenseTensor* out,
     const paddle::framework::proto::VarType::Type& dst_type,
     const phi::DeviceContext* ctx) {
   auto* context = static_cast<const phi::XPUContext*>(ctx);
@@ -158,12 +158,12 @@ static void XPUTransDataType(
 
 template <typename InType>
 struct CastDataType {
-  CastDataType(const phi::DenseTensor& in,
-               phi::DenseTensor* out,
+  CastDataType(const DenseTensor& in,
+               DenseTensor* out,
                const phi::DeviceContext* ctx)
       : in_(in), out_(out), ctx_(ctx) {}
   const DenseTensor in_;
-  phi::DenseTensor* out_;
+  DenseTensor* out_;
   const phi::DeviceContext* ctx_;
 
   template <typename OutType>
@@ -215,8 +215,8 @@ struct CastDataType {
 #endif
 #if defined(PADDLE_WITH_XPU)
     } else if (phi::is_xpu_place(in_.place())) {
-      if (in_.dtype() == phi::DataType::COMPLEX64 &&
-          out_->dtype() == phi::DataType::FLOAT32) {
+      if (in_.dtype() == DataType::COMPLEX64 &&
+          out_->dtype() == DataType::FLOAT32) {
         auto* context = static_cast<const phi::XPUContext*>(ctx_);
         phi::RealKernel<phi::dtype::complex<float>>(*context, in_, out_);
       } else {
@@ -237,8 +237,8 @@ struct CastDataType {
 
 void TransDataType(const phi::KernelKey& kernel_type_for_var,
                    const phi::KernelKey& expected_kernel_type,
-                   const phi::DenseTensor& in,
-                   phi::DenseTensor* out) {
+                   const DenseTensor& in,
+                   DenseTensor* out) {
   PADDLE_ENFORCE_EQ(in.dtype(),
                     kernel_type_for_var.dtype(),
                     common::errors::InvalidArgument(
@@ -250,9 +250,9 @@ void TransDataType(const phi::KernelKey& kernel_type_for_var,
   TransDataType(in, dst_type, out);
 }
 
-void TransDataType(const phi::DenseTensor& in,
+void TransDataType(const DenseTensor& in,
                    const paddle::framework::proto::VarType::Type& type,
-                   phi::DenseTensor* out) {
+                   DenseTensor* out) {
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
 
   out->Resize(in.dims());
@@ -339,8 +339,8 @@ void TransDataType(const phi::DenseTensor& in,
 
 void TransComplexToReal(const proto::VarType::Type& dst_type,
                         const proto::VarType::Type& src_type,
-                        const phi::DenseTensor& in,
-                        phi::DenseTensor* out) {
+                        const DenseTensor& in,
+                        DenseTensor* out) {
   auto& pool = phi::DeviceContextPool::Instance();
   auto* ctx = pool.Get(in.place());
   out->Resize(in.dims());
