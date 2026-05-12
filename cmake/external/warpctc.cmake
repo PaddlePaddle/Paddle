@@ -43,17 +43,38 @@ if(NOT WIN32 AND WITH_GPU)
     file(TO_NATIVE_PATH
          ${PADDLE_SOURCE_DIR}/patches/warpctc/CMakeLists.txt.patch native_src)
     set(WARPCTC_PATCH_COMMAND git checkout -- . && git checkout ${WARPCTC_TAG}
-                              && patch -Nd ${SOURCE_DIR} < ${native_src} &&)
+                              && patch -Nd ${SOURCE_DIR} < ${native_src})
     set(WARPCTC_CCBIN_OPTION -DCCBIN_COMPILER=${CCBIN_COMPILER})
   endif()
 endif()
 
+set(WARPCTC_PATCH_ROCM_EXTRA "")
 if(WITH_ROCM)
-  set(WARPCTC_PATCH_ROCM_COMMAND
-      patch -p1 <
-      ${PADDLE_SOURCE_DIR}/patches/warpctc/CMakeLists.txt.rocm.patch && patch
-      -p1 < ${PADDLE_SOURCE_DIR}/patches/warpctc/devicetypes.cuh.patch && patch
-      -p1 < ${PADDLE_SOURCE_DIR}/patches/warpctc/hip.cmake.patch)
+  set(WARPCTC_PATCH_ROCM_EXTRA
+      COMMAND
+      patch
+      -N
+      -p1
+      -d
+      "${SOURCE_DIR}"
+      -i
+      "${PADDLE_SOURCE_DIR}/patches/warpctc/CMakeLists.txt.rocm.patch"
+      COMMAND
+      patch
+      -N
+      -p1
+      -d
+      "${SOURCE_DIR}"
+      -i
+      "${PADDLE_SOURCE_DIR}/patches/warpctc/devicetypes.cuh.patch"
+      COMMAND
+      patch
+      -N
+      -p1
+      -d
+      "${SOURCE_DIR}"
+      -i
+      "${PADDLE_SOURCE_DIR}/patches/warpctc/hip.cmake.patch")
 endif()
 
 set(WARPCTC_INCLUDE_DIR
@@ -111,6 +132,54 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL "4.0.0")
   set(WARPCTC_POLICY_ARGS "-DCMAKE_POLICY_VERSION_MINIMUM=3.5")
 endif()
 
+set(WARPCTC_ROCM_EXTRA_CMAKE_ARGS "")
+if(WITH_ROCM)
+  if(NOT ROCM_PATH AND DEFINED ENV{ROCM_PATH} AND NOT "$ENV{ROCM_PATH}" STREQUAL "")
+    set(ROCM_PATH "$ENV{ROCM_PATH}")
+  endif()
+  if(NOT ROCM_PATH)
+    set(ROCM_PATH "/opt/rocm")
+  endif()
+
+  # ExternalProject_Add's CMAKE_ARGS is a CMake list split on ';'. A value like
+  # -DCMAKE_PREFIX_PATH=a;b is therefore broken into multiple arguments for the
+  # child cmake. Only pass a single prefix here (ROCm root is sufficient).
+  set(WARPCTC_ROCM_CMAKE_PREFIX_PATH "${ROCM_PATH}")
+
+  find_library(
+    WARPCTC_ROCM_HIPRTC_LIB amdhip64
+    HINTS "${ROCM_PATH}/lib" "${ROCM_PATH}/lib64"
+    NO_DEFAULT_PATH)
+  if(NOT WARPCTC_ROCM_HIPRTC_LIB)
+    find_library(WARPCTC_ROCM_HIPRTC_LIB amdhip64)
+  endif()
+  if(NOT WARPCTC_ROCM_HIPRTC_LIB)
+    message(
+      FATAL_ERROR
+        "warpctc(ROCm): failed to locate libamdhip64.so (amdhip64). "
+        "Please set ROCM_PATH correctly (current: '${ROCM_PATH}').")
+  endif()
+
+  # ROCm 6+ often installs FindHIP.cmake under lib/cmake/hip; older layouts use
+  # hip/cmake. ExternalProject CMAKE_ARGS cannot pass a ';'-separated module
+  # path list reliably, so pick the first directory that actually contains
+  # FindHIP.cmake (match the main Paddle configure when users pass
+  # -DCMAKE_MODULE_PATH=/opt/rocm/lib/cmake/hip).
+  set(WARPCTC_ROCM_HIP_CMAKE_MODULE_DIR "${ROCM_PATH}/hip/cmake")
+  if(EXISTS "${ROCM_PATH}/lib/cmake/hip/FindHIP.cmake")
+    set(WARPCTC_ROCM_HIP_CMAKE_MODULE_DIR "${ROCM_PATH}/lib/cmake/hip")
+  elseif(EXISTS "${ROCM_PATH}/hip/cmake/FindHIP.cmake")
+    set(WARPCTC_ROCM_HIP_CMAKE_MODULE_DIR "${ROCM_PATH}/hip/cmake")
+  endif()
+
+  set(WARPCTC_ROCM_EXTRA_CMAKE_ARGS
+      "-DROCM_PATH=${ROCM_PATH}"
+      "-DHIP_ROOT_DIR=${ROCM_PATH}"
+      "-DCMAKE_PREFIX_PATH=${WARPCTC_ROCM_CMAKE_PREFIX_PATH}"
+      "-DCMAKE_MODULE_PATH=${WARPCTC_ROCM_HIP_CMAKE_MODULE_DIR}"
+      "-DROCM_HIPRTC_LIB=${WARPCTC_ROCM_HIPRTC_LIB}")
+endif()
+
 ExternalProject_Add(
   extern_warpctc
   ${EXTERNAL_PROJECT_LOG_ARGS}
@@ -120,7 +189,7 @@ ExternalProject_Add(
   PATCH_COMMAND
   COMMAND ${WARPCTC_PATCH_COMMAND}
   COMMAND ${WARPCTC_PATCH_CUDA_COMMAND}
-  COMMAND ${WARPCTC_PATCH_ROCM_COMMAND}
+  ${WARPCTC_PATCH_ROCM_EXTRA}
   #BUILD_ALWAYS    1
   CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
              -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
@@ -142,6 +211,7 @@ ExternalProject_Add(
              -DCMAKE_POSITION_INDEPENDENT_CODE=ON
              -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
              -DCUDA_TOOLKIT_ROOT_DIR=${CUDA_TOOLKIT_ROOT_DIR}
+             ${WARPCTC_ROCM_EXTRA_CMAKE_ARGS}
              ${EXTERNAL_OPTIONAL_ARGS}
              ${WARPCTC_POLICY_ARGS}
              ${WARPCTC_CCBIN_OPTION}

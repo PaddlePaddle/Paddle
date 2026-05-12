@@ -56,11 +56,22 @@
 
 #ifdef PADDLE_WITH_HIP
 #include <float.h>
-#include <hip/hip_bf16.h>
 #include <hip/hip_fp16.h>
 #include <hip/hip_runtime.h>
+#include <type_traits>
+// ROCm/HIP bf16 header/layout differs by version. Prefer hip_bfloat16.h.
+#if __has_include(<hip/hip_bfloat16.h>)
+#include <hip/hip_bfloat16.h>
+#elif __has_include(<hip/hip_bf16.h>)
+#include <hip/hip_bf16.h>
+#endif
+// Provide a CUDA-bf16 compatible surface for HIP compilation units.
+#ifndef __nv_bfloat16
 #define __nv_bfloat16 __hip_bfloat16
+#endif
+#ifndef __nv_bfloat162
 #define __nv_bfloat162 __hip_bfloat162
+#endif
 #else
 #include <cuda_fp16.h>
 #include <float.h>
@@ -69,7 +80,7 @@
 #include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP) && !defined(PADDLE_CUDA_BF16)
 /// integral_constant
 template <typename _Tp, _Tp __v>
 struct kernel_dtype_integral_constant {
@@ -3947,16 +3958,36 @@ constexpr int32_t HALF_WARP_TMP = 16;
 constexpr float QUANT_MAX_BOUND = 127.0;
 constexpr float QUANT_MIN_BOUND = -127.0;
 
+#ifdef PADDLE_WITH_HIP
+template <typename T>
+struct IsHipHalfType
+    : public std::bool_constant<std::is_same<T, half>::value ||
+                                std::is_same<T, __half>::value> {};
+
+template <typename T>
+__host__ __device__ __forceinline__ float ToFloat(T x) {
+  if constexpr (IsHipHalfType<T>::value) {
+    return __half2float(x);
+  } else {
+    return static_cast<float>(x);
+  }
+}
+
+template <typename T>
+__host__ __device__ __forceinline__ T FromFloat(float x) {
+  if constexpr (IsHipHalfType<T>::value) {
+    return __float2half(x);
+  } else {
+    return static_cast<T>(x);
+  }
+}
+#endif
+
 template <typename T>
 struct QuantFunc {
   __host__ __device__ uint8_t operator()(T x, float quant_scale) {
 #ifdef PADDLE_WITH_HIP
-    float tmp;
-    if constexpr (kernel_dtype_is_same<T, half>::value) {
-      tmp = __half2float(x) * quant_scale;
-    } else {
-      tmp = static_cast<float>(x) * quant_scale;
-    }
+    float tmp = ToFloat<T>(x) * quant_scale;
 #else
     float tmp = static_cast<float>(x) * quant_scale;
 #endif
@@ -3971,17 +4002,13 @@ struct QuantFunc {
 
 template <typename T>
 struct MaxFunc {
-  __device__ T operator()(T a, T b) { return max(a, b); }
-};
-
-template <>
-struct MaxFunc<half> {
-  __device__ half operator()(half a, half b) {
-#if __CUDA_ARCH__ >= 800 || defined(PADDLE_WITH_HIP)
-    return __hmax(a, b);
-#else
-    return max(static_cast<float>(a), static_cast<float>(b));
+  __device__ T operator()(T a, T b) {
+#ifdef PADDLE_WITH_HIP
+    if constexpr (IsHipHalfType<T>::value) {
+      return __hmax(a, b);
+    }
 #endif
+    return max(a, b);
   }
 };
 
@@ -4009,16 +4036,18 @@ struct MaxFunc<__nv_bfloat16> {
 
 template <typename T>
 struct AbsFunc {
-  __device__ T operator()(T x) { return abs(x); }
-};
-
-template <>
-struct AbsFunc<half> {
-  __device__ half operator()(half x) {
-#if __CUDA_ARCH__ >= 800 || defined(PADDLE_WITH_HIP)
-    return __habs(x);
+  __device__ T operator()(T x) {
+#ifdef PADDLE_WITH_HIP
+    // `abs(__half)` is not available on HIP device; `__habs` is.
+    // Do not fall through to a second `return abs(x)` — HIP-clang still
+    // type-checks that line for `T == __half` even when `if constexpr` returns.
+    if constexpr (IsHipHalfType<T>::value) {
+      return __habs(x);
+    } else {
+      return abs(x);
+    }
 #else
-    return abs(static_cast<float>(x));
+    return abs(x);
 #endif
   }
 };
@@ -4048,12 +4077,7 @@ struct AbsFunc<__nv_bfloat16> {
 template <typename T, typename Vec, int VecSize>
 __inline__ __device__ T LocalReduceMax(Vec& vec) {  // NOLINT
 #ifdef PADDLE_WITH_HIP
-  T local_max;
-  if constexpr (kernel_dtype_is_same<T, half>::value) {
-    local_max = __float2half(0.0f);
-  } else {
-    local_max = static_cast<T>(0.0f);
-  }
+  T local_max = FromFloat<T>(0.0f);
 #else
   T local_max = static_cast<T>(0.0);
 #endif
@@ -4069,9 +4093,13 @@ __inline__ __device__ T WarpReduceAbsMax(T val, unsigned lane_mask) {
 #pragma unroll
   for (int mask = HALF_WARP_TMP; mask > 0; mask >>= 1) {
 #ifdef PADDLE_WITH_HIP
-    if constexpr (kernel_dtype_is_same<T, __hip_bfloat16>::value) {
+    // Avoid depending on kernel_dtype_is_same (it is only defined when
+    // PADDLE_CUDA_BF16 is not set). Use std::is_same instead.
+    if constexpr (std::is_same<T, __nv_bfloat16>::value ||
+                  IsHipHalfType<T>::value) {
       val = MaxFunc<T>()(
-          val, __shfl_xor(static_cast<float>(val), mask, WARP_SIZE_TMP));
+          val,
+          FromFloat<T>(__shfl_xor(ToFloat<T>(val), mask, WARP_SIZE_TMP)));
     } else {
       val = MaxFunc<T>()(val, __shfl_xor(val, mask, WARP_SIZE_TMP));
     }
@@ -4098,12 +4126,7 @@ __inline__ __device__ T BlockReduceAbsMax(T val, unsigned mask) {
   __syncthreads();
 
 #ifdef PADDLE_WITH_HIP
-  T abs_max_val;
-  if constexpr (kernel_dtype_is_same<T, half>::value) {
-    abs_max_val = __float2half(0.0f);
-  } else {
-    abs_max_val = static_cast<T>(0.0f);
-  }
+  T abs_max_val = FromFloat<T>(0.0f);
   abs_max_val = smem[threadIdx.x];
 #else
   T abs_max_val = (threadIdx.x < (blockDim.x / WARP_SIZE_TMP))

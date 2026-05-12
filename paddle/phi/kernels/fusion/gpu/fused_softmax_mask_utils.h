@@ -20,7 +20,11 @@
 #endif
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
+#if __has_include(<hiprand/hiprand_kernel.h>)
+#include <hiprand/hiprand_kernel.h>
+#else
 #include <hiprand_kernel.h>
+#endif
 #endif
 
 #include "paddle/phi/kernels/funcs/aligned_vector.h"

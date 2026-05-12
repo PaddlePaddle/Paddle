@@ -24,9 +24,59 @@ else()
       CACHE PATH "Path to which clang has been installed")
 endif()
 set(CMAKE_MODULE_PATH "${HIP_PATH}/cmake" ${CMAKE_MODULE_PATH})
+# ROCm 7 uses a unified CMake module layout under ${ROCM_PATH}/lib/cmake/hip.
+if(EXISTS "${ROCM_PATH}/lib/cmake/hip")
+  list(PREPEND CMAKE_MODULE_PATH "${ROCM_PATH}/lib/cmake/hip")
+endif()
+if(EXISTS "${ROCM_PATH}/hip/cmake")
+  list(PREPEND CMAKE_MODULE_PATH "${ROCM_PATH}/hip/cmake")
+endif()
 set(CMAKE_PREFIX_PATH "${ROCM_PATH}" ${CMAKE_PREFIX_PATH})
 
 find_package(HIP REQUIRED)
+# hip_add_library/hip_add_executable are defined in UseHIP.cmake.
+if(EXISTS "${ROCM_PATH}/lib/cmake/hip/UseHIP.cmake")
+  include(UseHIP)
+elseif(EXISTS "${ROCM_PATH}/hip/cmake/UseHIP.cmake")
+  include(UseHIP)
+elseif(EXISTS "${HIP_PATH}/cmake/UseHIP.cmake")
+  include(UseHIP)
+endif()
+# ROCm Thrust may include <cuda/__cccl_config>. Some targets (e.g. pure C++
+# `paddle/pir`) compile without HIP-specific include order, so we must ensure
+# vendored libcudacxx is visible *before* `${ROCM_PATH}/include/thrust`.
+set(PADDLE_ROCM_LIBCUDACXX_INCLUDE_DIR
+    "${PADDLE_SOURCE_DIR}/third_party/cccl/libcudacxx/include")
+# Vendored libcudacxx first, then overlay patches (HIP `NV_IF_TARGET` fixes live in
+# `patches/cccl/...`). CMake prepends each `BEFORE` at the front, so add the
+# submodule path first, then the overlay — otherwise `third_party/cccl` wins
+# and the overlay never takes effect (see compile_commands `-I` order).
+if(EXISTS "${PADDLE_ROCM_LIBCUDACXX_INCLUDE_DIR}/cuda/__cccl_config")
+  include_directories(BEFORE "${PADDLE_ROCM_LIBCUDACXX_INCLUDE_DIR}")
+else()
+  message(
+    WARNING
+      "Missing ${PADDLE_ROCM_LIBCUDACXX_INCLUDE_DIR}/cuda/__cccl_config. "
+      "ROCm Thrust may fail to compile; initialize `third_party/cccl` (see cmake/external/cccl.cmake)."
+  )
+endif()
+if(EXISTS "${PADDLE_SOURCE_DIR}/patches/cccl/libcudacxx/include/nv/target")
+  include_directories(BEFORE
+                      "${PADDLE_SOURCE_DIR}/patches/cccl/libcudacxx/include")
+endif()
+if(EXISTS "${PADDLE_SOURCE_DIR}/patches/thrust/thrust/shuffle.h")
+  # Ensure our patched Thrust headers can override ROCm's Thrust when present.
+  include_directories(BEFORE "${PADDLE_SOURCE_DIR}/patches/thrust")
+endif()
+if(EXISTS "${PADDLE_SOURCE_DIR}/patches/hip/fix_nv_if_target.h")
+  # Allow patched Thrust shims to `#include "hip/fix_nv_if_target.h"`.
+  include_directories(BEFORE "${PADDLE_SOURCE_DIR}/patches")
+endif()
+# Shadow select HIP headers so AMD platform macros are set before ROCm's
+# `#error` paths. ROCm 7 HIPCC rules may not apply `HIP_CXX_FLAGS` / `-include`.
+if(EXISTS "${PADDLE_SOURCE_DIR}/patches/rocm_shim/hip/hip_runtime.h")
+  include_directories(BEFORE "${PADDLE_SOURCE_DIR}/patches/rocm_shim")
+endif()
 include_directories(${ROCM_PATH}/include)
 message(STATUS "HIP version: ${HIP_VERSION}")
 message(STATUS "HIP_CLANG_PATH: ${HIP_CLANG_PATH}")
@@ -65,7 +115,22 @@ macro(find_hip_version hip_header_file)
     )
   endif()
 endmacro()
-find_hip_version(${HIP_PATH}/include/hip/hip_version.h)
+set(HIP_VERSION_HEADER "")
+if(EXISTS "${ROCM_PATH}/include/hip/hip_version.h")
+  set(HIP_VERSION_HEADER "${ROCM_PATH}/include/hip/hip_version.h")
+elseif(EXISTS "${ROCM_PATH}/hip/include/hip/hip_version.h")
+  set(HIP_VERSION_HEADER "${ROCM_PATH}/hip/include/hip/hip_version.h")
+elseif(EXISTS "${HIP_PATH}/include/hip/hip_version.h")
+  set(HIP_VERSION_HEADER "${HIP_PATH}/include/hip/hip_version.h")
+endif()
+if(HIP_VERSION_HEADER)
+  find_hip_version(${HIP_VERSION_HEADER})
+else()
+  message(
+    WARNING
+      "Cannot find hip_version.h under ${ROCM_PATH}/include/hip, ${ROCM_PATH}/hip/include/hip, or ${HIP_PATH}/include/hip"
+  )
+endif()
 
 macro(find_package_and_include PACKAGE_NAME)
   find_package("${PACKAGE_NAME}" REQUIRED)
@@ -106,6 +171,16 @@ set(THRUST_DEVICE_SYSTEM THRUST_DEVICE_SYSTEM_HIP)
 list(APPEND HIP_CXX_FLAGS -fPIC)
 list(APPEND HIP_CXX_FLAGS -D__HIP_PLATFORM_HCC__=1)
 list(APPEND HIP_CXX_FLAGS -D__HIP_PLATFORM_AMD__=1)
+# Some ROCm headers (e.g., Thrust/NV_IF_TARGET) key off __HIPCC__ even when
+# we compile HIP sources via clang++ -x hip instead of the hipcc wrapper.
+list(APPEND HIP_CXX_FLAGS -D__HIPCC__=1)
+
+# HIP public headers need a valid __HIP_PLATFORM_* before any `#include <hip/...>`.
+# Some HIP-Clang invocations omit hipcc's default -D flags; force AMD ROCm first.
+if(EXISTS "${PADDLE_SOURCE_DIR}/patches/hip/hip_amd_platform_prefix.h")
+  list(APPEND HIP_CXX_FLAGS
+              "-include${PADDLE_SOURCE_DIR}/patches/hip/hip_amd_platform_prefix.h")
+endif()
 # Note(qili93): HIP has compile conflicts of float16.h as platform::float16 overload std::is_floating_point and std::is_integer
 list(APPEND HIP_CXX_FLAGS -D__HIP_NO_HALF_CONVERSIONS__=1)
 list(APPEND HIP_CXX_FLAGS -DROCM_NO_WRAPPER_HEADER_WARNING)
@@ -119,6 +194,9 @@ list(APPEND HIP_CXX_FLAGS -Wno-duplicate-decl-specifier)
 list(APPEND HIP_CXX_FLAGS -Wno-implicit-int-float-conversion)
 list(APPEND HIP_CXX_FLAGS -Wno-pass-failed)
 list(APPEND HIP_CXX_FLAGS -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_HIP)
+# Avoid Thrust exceptions/throw paths in HIP builds (device code cannot throw).
+list(APPEND HIP_CXX_FLAGS -DTHRUST_DISABLE_EXCEPTIONS=1)
+list(APPEND HIP_CXX_FLAGS -DTHRUST_NO_EXCEPTIONS=1)
 list(APPEND HIP_CXX_FLAGS -Wno-unused-result)
 list(APPEND HIP_CXX_FLAGS -Wno-deprecated-declarations)
 list(APPEND HIP_CXX_FLAGS -Wno-format)
@@ -160,14 +238,8 @@ set(HIP_CLANG_FLAGS ${HIP_CXX_FLAGS})
 # host linker to link.
 list(APPEND HIP_HCC_FLAGS -fno-gpu-rdc)
 list(APPEND HIP_HCC_FLAGS --offload-arch=gfx906) # Z100 (ZIFANG)
-list(APPEND HIP_HCC_FLAGS --offload-arch=gfx926) # K100 (KONGING)
-list(APPEND HIP_HCC_FLAGS --offload-arch=gfx928) # K100_AI (KONGING_AI)
-list(APPEND HIP_HCC_FLAGS --offload-arch=gfx936) # BW1000 (BOWEN)
 list(APPEND HIP_CLANG_FLAGS -fno-gpu-rdc)
 list(APPEND HIP_CLANG_FLAGS --offload-arch=gfx906) # Z100 (ZIFANG)
-list(APPEND HIP_CLANG_FLAGS --offload-arch=gfx926) # K100 (KONGING)
-list(APPEND HIP_CLANG_FLAGS --offload-arch=gfx928) # K100_AI (KONGING_AI)
-list(APPEND HIP_CLANG_FLAGS --offload-arch=gfx936) # BW1000 (BOWEN)
 
 if(HIP_COMPILER STREQUAL clang)
   set(hip_library_name amdhip64)
@@ -177,7 +249,8 @@ endif()
 message(STATUS "HIP library name: ${hip_library_name}")
 
 # set HIP link libs
-find_library(ROCM_HIPRTC_LIB ${hip_library_name} HINTS ${HIP_PATH}/lib)
+find_library(ROCM_HIPRTC_LIB ${hip_library_name} HINTS ${ROCM_PATH}/lib
+             ${ROCM_PATH}/lib64 ${HIP_PATH}/lib)
 message(STATUS "ROCM_HIPRTC_LIB: ${ROCM_HIPRTC_LIB}")
 
 include(thrust)

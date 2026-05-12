@@ -41,10 +41,25 @@ else()
       ${SOURCE_DIR} <
       ${PADDLE_SOURCE_DIR}/patches/warprnnt/CMakeLists.txt.cuda.patch)
 endif()
+set(WARPRNNT_PATCH_ROCM_EXTRA "")
 if(WITH_ROCM)
-  set(WARPRNNT_PATCH_ROCM_COMMAND
-      patch -p1 <
-      ${PADDLE_SOURCE_DIR}/patches/warprnnt/CMakeLists.txt.rocm.patch)
+  set(WARPRNNT_PATCH_ROCM_EXTRA
+      COMMAND
+      patch
+      -N
+      -p1
+      -d
+      "${SOURCE_DIR}"
+      -i
+      "${PADDLE_SOURCE_DIR}/patches/warprnnt/CMakeLists.txt.rocm.patch"
+      COMMAND
+      patch
+      -N
+      -p1
+      -d
+      "${SOURCE_DIR}"
+      -i
+      "${PADDLE_SOURCE_DIR}/patches/warprnnt/hip.cmake.patch")
 endif()
 if(NOT WIN32 AND WITH_GPU)
   if(${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0 AND ${CMAKE_CXX_COMPILER_VERSION}
@@ -121,7 +136,7 @@ ExternalProject_Add(
   UPDATE_COMMAND ""
   PATCH_COMMAND
   COMMAND ${WARPCTC_PATCH_CUDA_COMMAND}
-  COMMAND ${WARPRNNT_PATCH_ROCM_COMMAND}
+  ${WARPRNNT_PATCH_ROCM_EXTRA}
   #BUILD_ALWAYS    1
   CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
              -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}

@@ -45,7 +45,11 @@
 #include <curand_kernel.h>
 #endif
 #ifdef PADDLE_WITH_HIP
+#if __has_include(<hiprand/hiprand_kernel.h>)
+#include <hiprand/hiprand_kernel.h>
+#else
 #include <hiprand_kernel.h>
+#endif
 #endif
 
 #if defined(PADDLE_WITH_CUDA)
