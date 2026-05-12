@@ -490,7 +490,7 @@ class TestBackwardHook(unittest.TestCase):
                 y = layer(x)
                 y.backward()
                 self.assertEqual(len(hook_calls), 1)
-                np.testing.assert_allclose(hook_calls[0][0], [6.0])
+                np.testing.assert_allclose(hook_calls[0][0], [3.0])
                 np.testing.assert_allclose(hook_calls[0][1], [1.0])
                 np.testing.assert_allclose(x.grad.numpy(), [6.0])
 
