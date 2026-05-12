@@ -1694,6 +1694,59 @@ class TestLayerAndTensorToAPI(unittest.TestCase):
             t.to('float64', copy='yes')
 
 
+# Test paddle.dtype.itemsize compatibility (mirrors torch.dtype.itemsize).
+class TestDtypeItemsizeAPI(unittest.TestCase):
+    EXPECTED = {
+        'float16': 2,
+        'bfloat16': 2,
+        'float32': 4,
+        'float64': 8,
+        'complex64': 8,
+        'complex128': 16,
+        'int8': 1,
+        'int16': 2,
+        'int32': 4,
+        'int64': 8,
+        'uint8': 1,
+        'uint16': 2,
+        'uint32': 4,
+        'uint64': 8,
+        'bool': 1,
+        'float8_e4m3fn': 1,
+        'float8_e5m2': 1,
+    }
+
+    def test_all_standard_dtypes(self):
+        for name, want in self.EXPECTED.items():
+            if not hasattr(paddle, name):
+                continue
+            with self.subTest(dtype=name):
+                self.assertEqual(getattr(paddle, name).itemsize, want)
+
+    def test_returns_int(self):
+        self.assertIsInstance(paddle.float32.itemsize, int)
+
+    def test_property_lives_on_class(self):
+        self.assertIsInstance(type(paddle.float32).itemsize, property)
+
+    def test_aliases_match(self):
+        self.assertEqual(paddle.float.itemsize, paddle.float32.itemsize)
+        self.assertEqual(paddle.double.itemsize, paddle.float64.itemsize)
+        self.assertEqual(paddle.half.itemsize, paddle.float16.itemsize)
+        self.assertEqual(paddle.short.itemsize, paddle.int16.itemsize)
+        self.assertEqual(paddle.long.itemsize, paddle.int64.itemsize)
+        self.assertEqual(paddle.cfloat.itemsize, paddle.complex64.itemsize)
+        self.assertEqual(paddle.cdouble.itemsize, paddle.complex128.itemsize)
+
+    def test_matches_tensor_element_size(self):
+        for name in ('float32', 'float64', 'int32', 'int64', 'bool'):
+            with self.subTest(dtype=name):
+                t = paddle.zeros([1], dtype=name)
+                self.assertEqual(
+                    getattr(paddle, name).itemsize, t.element_size()
+                )
+
+
 # Test select_scatter compatibility
 class TestSelectScatterAPICompatibility(unittest.TestCase):
     def setUp(self):
@@ -3243,6 +3296,85 @@ class TestSquareInplaceAPI(unittest.TestCase):
         _assert_unary_inplace_result(self, x, out, ref_out)
 
         paddle.enable_static()
+
+
+class TestDistributionAPI(unittest.TestCase):
+    def tearDown(self):
+        paddle.distribution.Distribution.set_default_validate_args(__debug__)
+        paddle.enable_static()
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        distribution_cls = paddle.distribution.Distribution
+
+        # 1. Paddle Positional arguments
+        distribution_cls.set_default_validate_args(False)
+        out1 = distribution_cls((2,), (3,))
+
+        # 2. Paddle keyword arguments
+        out2 = distribution_cls(
+            batch_shape=[2], event_shape=[3], validate_args=True
+        )
+
+        # 3. Mixed arguments
+        out3 = distribution_cls((2,), event_shape=[3], validate_args=False)
+
+        # Verify constructor compatibility
+        self.assertEqual(out1.batch_shape, (2,))
+        self.assertEqual(out1.event_shape, (3,))
+        self.assertFalse(out1._validate_args_enabled)
+        self.assertTrue(out2._validate_args_enabled)
+        self.assertFalse(out3._validate_args_enabled)
+        self.assertTrue(callable(out2._validate_args))
+
+        with self.assertRaises(ValueError):
+            distribution_cls.set_default_validate_args(None)
+
+        value = paddle.to_tensor([0.5], dtype="float32")
+        for attr in ["arg_constraints", "support"]:
+            with self.assertRaises(NotImplementedError):
+                getattr(out1, attr)
+        for api in [out1.cdf, out1.icdf]:
+            with self.assertRaises(NotImplementedError):
+                api(value)
+        with self.assertRaises(NotImplementedError):
+            out1.enumerate_support()
+        with self.assertRaises(NotImplementedError):
+            out1.sample_n(3)
+        with self.assertRaises(NotImplementedError):
+            out1.perplexity()
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        paddle.distribution.Distribution.set_default_validate_args(True)
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            distribution_cls = paddle.distribution.Distribution
+
+            # 1. Paddle Positional arguments
+            out1 = distribution_cls((2,), (3,), validate_args=False)
+
+            # 2. Paddle keyword arguments
+            out2 = distribution_cls(
+                batch_shape=[2], event_shape=[3], validate_args=True
+            )
+
+            # 3. Mixed arguments
+            out3 = distribution_cls((2,), event_shape=[3])
+
+            self.assertEqual(out1.batch_shape, (2,))
+            self.assertEqual(out1.event_shape, (3,))
+            self.assertFalse(out1._validate_args_enabled)
+            self.assertTrue(out2._validate_args_enabled)
+            self.assertTrue(out3._validate_args_enabled)
+            self.assertTrue(callable(out1._validate_args))
+            with self.assertRaises(NotImplementedError):
+                out1.sample_n(3)
+            with self.assertRaises(NotImplementedError):
+                out1.perplexity()
 
 
 if __name__ == "__main__":

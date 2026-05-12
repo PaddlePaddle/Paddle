@@ -106,6 +106,9 @@ _NS_COEFFICIENT_SETS = {
         (2.7573, -3.2939, 1.4254),
         (2.7215, -3.0494, 1.3169),
     ],
+    "deepseekv4":
+    # From DeepSeekV4: https://huggingface.co/deepseek-ai/DeepSeek-V4-Pro/resolve/main/DeepSeek_V4.pdf
+    [(3.4445, -4.7750, 2.0315)] * 8 + [(2.0, -1.5, 0.5)] * 2,
 }
 
 # ------------------------------------------------------------------
@@ -168,6 +171,13 @@ class Muon(Optimizer):
         adam_beta2 (float): β₂ for the AdamW fallback. Default: ``0.95``.
         weight_decay (float): Decoupled weight decay. Default: ``0.01``.
         ns_steps (int): Newton-Schulz iteration steps. Default: ``5``.
+        ns_coeff_type (str): Preset name for Newton-Schulz coefficients.
+            Options: ``"simple"``, ``"quintic"``, ``"polar_express"``,
+            ``"aol"``, ``"deepseekv4"``, ``"custom"``. Default: ``"simple"``.
+        ns_coeffs (list[tuple[float, float, float]] | None): Custom
+            Newton-Schulz coefficient set. Each tuple is ``(a, b, c)``
+            for one iteration step. Default: ``None``.
+            Only used when ns_coeff_type=``custom``.
         nesterov (bool): Use Nesterov momentum in Muon. Default: ``True``.
         adam_epsilon (float): ε for numerical stability in AdamW. Default: ``1e-9``.
         grad_clip (GradientClipBase | None): Gradient clipping. Default: ``None``.
@@ -185,11 +195,6 @@ class Muon(Optimizer):
             dict mapping param name to :class:`MuonParamInfo` (use_muon,
             split_concat_func). Built by Trainer and passed in.
             Default: ``None``.
-        muon_slice_config (dict | None): Declarative slice configuration mapping
-            param name to (slice_fn, slice_kwargs) tuple. Built by model's
-            _build_muon_slice_config method and passed in. This allows slice
-            strategies to be defined in the model configuration rather than
-            hard-coded in the optimizer. Default: ``None``.
         ns_matmul_dtype (paddle.dtype | None): Dtype for Newton-Schulz matmul
             iterations. ``None`` = auto-detect: bfloat16 on Ampere+ (capability
             >= 8.0), float32 on V100 and older. Pass ``paddle.float32``
@@ -214,6 +219,7 @@ class Muon(Optimizer):
         weight_decay=0.01,
         ns_steps=5,
         ns_coeff_type="simple",
+        ns_coeffs=None,
         nesterov=True,
         adam_epsilon=1e-9,
         grad_clip=None,
@@ -274,6 +280,16 @@ class Muon(Optimizer):
         self._muon_exclude_patterns = muon_exclude_patterns
         self._muon_extra_scale_factor = muon_extra_scale_factor
         self._ns_coeff_type = ns_coeff_type
+        if ns_coeff_type == "custom":
+            assert ns_coeffs is not None, (
+                "ns_coeffs must be provided when ns_coeff_type is 'custom'."
+            )
+            self._ns_coeffs = ns_coeffs
+        else:
+            assert ns_coeff_type in _NS_COEFFICIENT_SETS, (
+                f"Invalid ns_coeff_type: {ns_coeff_type}"
+            )
+            self._ns_coeffs = _NS_COEFFICIENT_SETS[ns_coeff_type]
         self._muon_param_info_map = muon_param_info_map or {}
         # Dtype for Newton-Schulz matmul.
         # None = auto: bfloat16 on Ampere+ (capability >= 8.0), float32 on older.
@@ -364,7 +380,7 @@ class Muon(Optimizer):
         X,
         steps=5,
         eps=1e-9,
-        ns_coeff_type="simple",
+        ns_coeffs=None,
         ns_matmul_dtype=paddle.bfloat16,
     ):
         """Approximate the matrix sign function via Newton-Schulz iteration.
@@ -373,14 +389,15 @@ class Muon(Optimizer):
             X: Input tensor to orthogonalize.
             steps: Number of Newton-Schulz iterations.
             eps: Small constant for numerical stability.
-            ns_coeff_type: Type of coefficient set to use.
-                Options: "simple", "quintic", "polar_express", "aol".
+            ns_coeffs: List of (a, b, c) coefficient tuples for iteration.
+                If None, uses the "simple" preset.
             ns_matmul_dtype: Dtype for matmul iterations. Defaults to
                 bfloat16. Pass paddle.float32 for V100 compatibility.
         """
-        # Get coefficient set
-        coeff_sets = _NS_COEFFICIENT_SETS.get(
-            ns_coeff_type, _NS_COEFFICIENT_SETS["simple"]
+        coeff_sets = (
+            ns_coeffs
+            if ns_coeffs is not None
+            else _NS_COEFFICIENT_SETS["simple"]
         )
 
         if X.shape[-2] > X.shape[-1]:
@@ -518,13 +535,13 @@ class Muon(Optimizer):
             # are already 2D/3D (no sharding gather needed).
             matrix_2d_global = update_buffer.reshape(param_shape)
 
-            # Shared NS + scaling closure (captures ns_steps, epsilon, version, ns_coeff_type)
+            # Shared NS + scaling closure (captures ns_steps, epsilon, version, ns_coeffs)
             def ortho_fn(m):
                 ns_out = Muon._zeropower_via_newtonschulz5(
                     m,
                     steps=ns_steps,
                     eps=epsilon,
-                    ns_coeff_type=self._ns_coeff_type,
+                    ns_coeffs=self._ns_coeffs,
                     ns_matmul_dtype=self._ns_matmul_dtype,
                 )
                 scaled = Muon._scaling_fn(
@@ -622,6 +639,7 @@ class Muon(Optimizer):
 
         # --- Pass 1: Muon updates (large temporary tensors) ---
         lr_tensor = paddle.to_tensor(lr, dtype=paddle.float32)
+        lr_tensor_f64 = paddle.to_tensor(lr, dtype=paddle.float64)
         for param, grad in muon_params:
             self._muon_update(
                 param,
@@ -641,7 +659,7 @@ class Muon(Optimizer):
             self._adamw_update(
                 param,
                 grad,
-                lr_tensor,
+                lr_tensor_f64,
                 self._get_accumulator(self._moment_acc_str, param),
                 self._get_accumulator(self._moment2_acc_str, param),
                 self._get_accumulator(self._beta1_pow_acc_str, param),
