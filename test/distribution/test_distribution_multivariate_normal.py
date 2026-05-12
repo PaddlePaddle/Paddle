@@ -460,6 +460,25 @@ class TestMVNConstraints(unittest.TestCase):
             np.array(False),
         )
 
+<<<<<<< HEAD
+=======
+        eigvalsh = paddle.linalg.eigvalsh
+        delattr(paddle.linalg, 'eigvalsh')
+        try:
+            np.testing.assert_array_equal(
+                constraint.positive_definite.check(square).numpy(),
+                np.array(True),
+            )
+            np.testing.assert_array_equal(
+                constraint.positive_definite.check(
+                    not_positive_definite
+                ).numpy(),
+                np.array(False),
+            )
+        finally:
+            paddle.linalg.eigvalsh = eigvalsh
+
+>>>>>>> 62c82bdae5 (Add tests for coverage)
 
 if __name__ == '__main__':
     unittest.main(argv=[''], verbosity=3, exit=False)
