@@ -458,7 +458,7 @@ jobs:
           pip uninstall paddlepaddle-gpu -y
           pip install paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --force-reinstall --extra-index-url=https://www.paddlepaddle.org.cn/packages/nightly/cu129/
           pip install paddle-nvidia-nvshmem-cu12 --extra-index-url https://www.paddlepaddle.org.cn/packages/nightly/cu129/
-          uv build --wheel --no-build-isolation -v
+          uv build --wheel --no-build-isolation -v --python $(which python)
           '
 
       - name: upload whl to BOS
