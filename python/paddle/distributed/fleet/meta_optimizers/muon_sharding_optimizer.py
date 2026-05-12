@@ -39,6 +39,8 @@ import warnings
 from collections import defaultdict
 from functools import reduce as functools_reduce
 
+import numpy as np
+
 import paddle
 from paddle import framework
 from paddle.base.framework import EagerParamBase
@@ -253,7 +255,7 @@ class MuonShardingOptimizer:
         # ---- Build comm buffers for 2D params (V1-style) ----
         if self._use_fuse_gradients:
             self.comm_buffer_2d = self._build_2d_comm_buffers()
-            self.comm_buffer_2d.sort(key=lambda x: x._dst)
+            self.comm_buffer_2d.sort(key=lambda x: (x._comm_group._id, x._dst))
 
         # ---- Step 3: Build comm buffers for 1D params (V2-style) ----
         self._slice_params = {}
@@ -375,17 +377,36 @@ class MuonShardingOptimizer:
         return color_to_info
 
     def _partition_2d_parameters(self, params, world_size, label=""):
-        """Partition 2D parameters among ranks using greedy bin-packing."""
+        """Partition 2D parameters among ranks using greedy bin-packing.
+
+        Only assign parameters to the first n ranks such that total size > comm_buffer_size_MB.
+        Remaining ranks get no parameters.
+        """
         mapping = {}
         for rank in range(world_size):
             mapping[rank] = []
-        sizes = [0] * world_size
 
         parameters = list(params)
         parameters.sort(
             key=lambda p: functools_reduce(lambda x, y: x * y, p.shape),
             reverse=True,
         )
+
+        total_numel = sum(
+            functools_reduce(lambda x, y: x * y, p.shape, 1) for p in parameters
+        )
+        total_size_bytes = total_numel * 4
+        total_size_mb = total_size_bytes / (1024**2)
+
+        buffer_size_mb = (
+            self.comm_buffer_size_MB if self.comm_buffer_size_MB > 0 else 256
+        )
+        min_active_ranks = 1
+        if total_size_mb > 0:
+            min_active_ranks = max(1, int(total_size_mb / buffer_size_mb) + 1)
+
+        active_ranks = min(min_active_ranks, world_size)
+        sizes = [0] * active_ranks
 
         for param in parameters:
             rank = sizes.index(min(sizes))
@@ -688,17 +709,45 @@ class MuonShardingOptimizer:
     # ------------------------------------------------------------------
     # Parameter sync after optimizer step
     # ------------------------------------------------------------------
-
     def _broadcast_2d_params(self, rank2params, comm_group):
         """Broadcast 2D params from owner ranks within comm_group."""
         broadcast_tasks = []
         for rank, params in rank2params.items():
             src_rank = comm_group.ranks[rank]
-            for param in params:
-                if param.stop_gradient:
-                    continue
+
+            if len(params) == 0:
+                continue
+
+            with framework.no_grad():
+                # Calculate total size and build param-to-offset mapping
+                param_sizes = [np.prod(p.shape) for p in params]
+                total_size = sum(param_sizes)
+                dtype = params[0].dtype
+
+                param_buffer = paddle.empty(shape=[total_size], dtype=dtype)
+                offset = 0
+                for param in params:
+                    param_shape = param.shape
+                    stop_gradient = param.stop_gradient
+                    param.stop_gradient = True
+                    param.flatten_()
+
+                    paddle.assign(
+                        param,
+                        param_buffer._slice(
+                            offset, offset + np.prod(param_shape)
+                        ),
+                    )
+
+                    param.get_tensor()._set_dims(param_shape)
+                    param.stop_gradient = stop_gradient
+                    param_buffer._slice(
+                        offset, offset + np.prod(param_shape)
+                    )._share_buffer_to(param)
+
+                    offset += np.prod(param_shape)
                 task = paddle.distributed.broadcast(
-                    param,
+                    param_buffer,
                     src=src_rank,
                     group=comm_group,
                     sync_op=False,
