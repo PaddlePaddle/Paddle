@@ -140,7 +140,12 @@ class TestNinjaHelperFunctions(unittest.TestCase):
             os.makedirs(build_dir)
             os.makedirs(work_dir)
 
-            with mock.patch('subprocess.run') as mock_run:
+            with (
+                mock.patch.dict(
+                    os.environ, {'VSCMD_ARG_TGT_ARCH': 'x64'}, clear=False
+                ),
+                mock.patch('subprocess.run') as mock_run,
+            ):
                 _run_ninja_build(
                     build_dir,
                     verbose=True,
