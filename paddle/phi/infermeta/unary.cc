@@ -1599,6 +1599,10 @@ void FFTR2CInferMeta(const MetaTensor& x,
   }
 }
 
+void FlashMaskGetUniqueIdInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->share_meta(x);
+}
+
 void FlattenWithXShapeInferMeta(const MetaTensor& x,
                                 int start_axis,
                                 int stop_axis,
@@ -3790,7 +3794,7 @@ void PixelUnshuffleInferMeta(const MetaTensor& x,
 }
 
 void PNormInferMeta(const MetaTensor& x,
-                    float porder,
+                    double porder,
                     int axis,
                     float epsilon,
                     bool keepdim,
@@ -4285,6 +4289,24 @@ void ReduceInferMeta(const MetaTensor& x,
   }
 
   ReduceInferMetaBase(x, axis, keep_dim, reduce_all, out);
+}
+
+void AMinMaxInferMeta(const MetaTensor& x,
+                      const std::vector<int64_t>& axis,
+                      bool keep_dim,
+                      MetaTensor* min,
+                      MetaTensor* max) {
+  bool reduce_all = false;
+  if (axis.empty()) {
+    reduce_all = true;
+  }
+  DDim out_dim = ReduceInferDim(x, axis, keep_dim, reduce_all);
+  min->set_dims(out_dim);
+  min->set_dtype(x.dtype());
+  min->set_layout(x.layout());
+  max->set_dims(out_dim);
+  max->set_dtype(x.dtype());
+  max->set_layout(x.layout());
 }
 
 DDim ReduceInferDimForIntArrayAxis(const MetaTensor& x,
@@ -6420,6 +6442,7 @@ void UniqueRawInferMeta(const MetaTensor& x,
                         MetaTensor* indices,
                         MetaTensor* index,
                         MetaTensor* counts) {
+  out->set_dtype(x.dtype());
   if (!is_sorted) {
     PADDLE_ENFORCE_EQ(x.dims().size() == 1 || x.dims().size() == 0,
                       true,

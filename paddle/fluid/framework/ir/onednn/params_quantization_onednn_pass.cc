@@ -58,7 +58,7 @@ void QuantizeConvInput(Scope* scope,
                        const std::string& input_name,
                        const std::string& scales_attr_name) {
   auto var = scope->GetVar(input_name);
-  if (var->Get<DenseTensor>().dtype() != phi::DataType::FLOAT32) {
+  if (var->Get<DenseTensor>().dtype() != DataType::FLOAT32) {
     VLOG(0) << "Skipping convolution filter: " << input_name
             << " because it is detected again.";
     conv_op->Op()->SetAttr(scales_attr_name, std::vector<float>(1, 1));

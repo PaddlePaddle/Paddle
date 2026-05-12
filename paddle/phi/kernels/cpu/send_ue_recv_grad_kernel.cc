@@ -71,12 +71,11 @@ void CalculateXGrad(const Context& dev_ctx,
           ElementwiseInnerOperation<T, IndexT, GraphSendRecvSumFunctor<T>>(
               out_grad_tensor, &x_grad_v2, src, dst, false, sum_functor);
         }
-        DenseTensor x_grad_out =
-            phi::Sum<T, Context>(dev_ctx,
-                                 x_grad_v2,
-                                 phi::IntArray(reduce_idx),
-                                 CppTypeToDataType<T>::Type(),
-                                 true);
+        DenseTensor x_grad_out = Sum<T, Context>(dev_ctx,
+                                                 x_grad_v2,
+                                                 IntArray(reduce_idx),
+                                                 CppTypeToDataType<T>::Type(),
+                                                 true);
         memcpy(x_grad, x_grad_out.data<T>(), x_grad_out.numel() * sizeof(T));
       }
     } else if (message_op == "MUL") {
@@ -129,12 +128,11 @@ void CalculateXGrad(const Context& dev_ctx,
             }
           }
         }
-        DenseTensor x_grad_out =
-            phi::Sum<T, Context>(dev_ctx,
-                                 x_grad_v2,
-                                 phi::IntArray(reduce_idx),
-                                 CppTypeToDataType<T>::Type(),
-                                 true);
+        DenseTensor x_grad_out = Sum<T, Context>(dev_ctx,
+                                                 x_grad_v2,
+                                                 IntArray(reduce_idx),
+                                                 CppTypeToDataType<T>::Type(),
+                                                 true);
         memcpy(x_grad, x_grad_out.data<T>(), x_grad_out.numel() * sizeof(T));
       }
     }
@@ -164,12 +162,11 @@ void CalculateXGrad(const Context& dev_ctx,
           auto eigen_x_grad = EigenVector<T>::Flatten(x_grad_slice);
           eigen_x_grad += (eigen_out_grad / static_cast<T>(s_count[src]));
         }
-        DenseTensor x_grad_out =
-            phi::Sum<T, Context>(dev_ctx,
-                                 x_grad_v2,
-                                 phi::IntArray(reduce_idx),
-                                 CppTypeToDataType<T>::Type(),
-                                 true);
+        DenseTensor x_grad_out = Sum<T, Context>(dev_ctx,
+                                                 x_grad_v2,
+                                                 IntArray(reduce_idx),
+                                                 CppTypeToDataType<T>::Type(),
+                                                 true);
         memcpy(x_grad, x_grad_out.data<T>(), x_grad_out.numel() * sizeof(T));
       }
     } else if (message_op == "MUL") {
@@ -218,12 +215,11 @@ void CalculateXGrad(const Context& dev_ctx,
             x_grad_off[j] += (val / s_count[src]);
           }
         }
-        DenseTensor x_grad_out =
-            phi::Sum<T, Context>(dev_ctx,
-                                 x_grad_v2,
-                                 phi::IntArray(reduce_idx),
-                                 CppTypeToDataType<T>::Type(),
-                                 true);
+        DenseTensor x_grad_out = Sum<T, Context>(dev_ctx,
+                                                 x_grad_v2,
+                                                 IntArray(reduce_idx),
+                                                 CppTypeToDataType<T>::Type(),
+                                                 true);
         memcpy(x_grad, x_grad_out.data<T>(), x_grad_out.numel() * sizeof(T));
       }
     }
@@ -466,7 +462,7 @@ void SendUERecvGradKernel(const Context& dev_ctx,
     return;
   }
 
-  if (index_type == phi::DataType::INT32) {
+  if (index_type == DataType::INT32) {
     GraphSendUERecvGradOpKernelLaunchHelper<Context, T, int32_t>(
         dev_ctx,
         out_grad,
@@ -480,7 +476,7 @@ void SendUERecvGradKernel(const Context& dev_ctx,
         y_grad,
         dst_count.get_ptr(),
         out.get_ptr());
-  } else if (index_type == phi::DataType::INT64) {
+  } else if (index_type == DataType::INT64) {
     GraphSendUERecvGradOpKernelLaunchHelper<Context, T, int64_t>(
         dev_ctx,
         out_grad,

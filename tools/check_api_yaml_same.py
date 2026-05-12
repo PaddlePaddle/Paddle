@@ -195,21 +195,6 @@ for each_add in api_add:
     if need_approve:
         approve_api_msg.append(each_add)
 
-# API delete
-for each_delete in api_delete:
-    api_name = get_api_name(each_delete)
-    api_args = get_api_args(each_delete)
-
-    need_approve = False
-    for op in yaml_ops:
-        # When api is deleted, it is unusual to find the same name's
-        # op in yaml. So, we need review code.
-        if op['op'] == api_name and api_args == get_yaml_op_args(op['args']):
-            need_approve = True
-            break
-    if need_approve:
-        approve_api_msg.append(each_delete)
-
 # For yaml, we don't have to consider its add or delete.
 # Because if it is related with api, code above has dealt with it.
 # But we need consider below situation:

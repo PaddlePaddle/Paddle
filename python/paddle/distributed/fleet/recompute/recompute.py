@@ -16,8 +16,10 @@ from __future__ import annotations
 
 import contextlib
 import copy
+import functools
 import inspect
 import random
+import threading
 import weakref
 from typing import TYPE_CHECKING, Any, TypedDict
 
@@ -27,6 +29,7 @@ import paddle
 from paddle import framework
 from paddle.autograd import PyLayer
 from paddle.base.framework import EagerParamBase
+from paddle.base.wrapped_decorator import copy_signature
 from paddle.distributed.fleet.meta_parallel.parallel_layers.random import (
     get_rng_state_tracker,
 )
@@ -49,6 +52,112 @@ if TYPE_CHECKING:
 
 __all__ = []
 _SIGNATURE_CACHE = weakref.WeakKeyDictionary()
+
+
+class RecomputeContext:
+    """
+    A thread-safe context manager and decorator for tracking whether the current
+    execution is inside a recompute phase.
+
+    RecomputeContext uses a thread-local flag to mark when code is running within a
+    recompute region. It can be used as a context manager (``with`` statement) or as
+    a decorator to automatically set and clear the recompute-active state. This allows
+    downstream code to query ``is_in_recompute()`` and adapt its behavior accordingly
+    (e.g., skipping certain logging or side effects during recomputation).
+
+    Parameters:
+        None.
+
+    Returns:
+        RecomputeContext: A recompute context instance that can be used as a context
+            manager or decorator.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> from paddle.distributed.fleet.utils import is_in_recompute
+
+            >>> # Usage as a context manager
+            >>> ctx = RecomputeContext()
+            >>> print(ctx.active)
+            False
+            >>> with ctx:
+            ...     print(ctx.active)
+            True
+            >>> print(ctx.active)
+            False
+
+            >>> # Usage as a decorator
+            >>> ctx = RecomputeContext()
+            >>> @ctx
+            ... def my_forward(x):
+            ...     return is_in_recompute()
+            >>> print(my_forward(None))
+            True
+    """
+
+    def __init__(self):
+        self._local = threading.local()
+
+    @property
+    def active(self) -> bool:
+        return getattr(self._local, 'active', False)
+
+    def __enter__(self):
+        self._local.active = True
+        return self
+
+    def __exit__(self, *_exc):
+        self._local.active = False
+        return False
+
+    def __call__(self, fn):
+        @functools.wraps(fn)
+        def wrapper(*args, **kwargs):
+            with self:
+                return fn(*args, **kwargs)
+
+        copy_signature(fn, wrapper)
+
+        return wrapper
+
+
+_recompute_context = RecomputeContext()
+
+
+def is_in_recompute() -> bool:
+    """
+    Check whether the current thread is executing inside a recompute context.
+
+    This function inspects the global ``_recompute_context`` to determine if the
+    current thread is within an active recompute phase. It is typically used inside
+    forward computations to detect whether the execution is a normal forward pass
+    or a recompute (re-forward) pass triggered during backpropagation, so that
+    certain operations (e.g., logging, random state management) can be skipped or
+    adjusted accordingly.
+
+    Parameters:
+        None.
+
+    Returns:
+        bool: ``True`` if the current thread is inside a recompute context,
+            ``False`` otherwise.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> from paddle.distributed.fleet.utils import is_in_recompute
+            >>> # Outside any recompute context
+            >>> print(is_in_recompute())
+            False
+
+            >>> from paddle.distributed.fleet.utils.__init__ import RecomputeContext
+            >>> ctx = RecomputeContext()
+            >>> with ctx:
+            ...     print(is_in_recompute())
+            True
+    """
+    return _recompute_context.active
 
 
 def _varbase_help(param):
@@ -115,6 +224,27 @@ def check_recompute_necessary(inputs):
             "[Recompute]: None of the inputs to current recompute block need grad, "
             "therefore there is NO need to recompute this block in backward !"
         )
+
+
+def _closure_cell_values(run_function):
+    """Return cell contents of ``run_function``'s ``__closure__`` as a tuple.
+
+    Supports plain functions/lambdas and ``paddle.nn.Layer`` (uses ``forward``).
+    Deep Tensor extraction is done by the C++ side of ``_hold_tensors``.
+    """
+    fn = (
+        run_function.forward
+        if isinstance(run_function, paddle.nn.Layer)
+        else run_function
+    )
+    closure = getattr(fn, '__closure__', None) or ()
+    values = []
+    for cell in closure:
+        try:
+            values.append(cell.cell_contents)
+        except ValueError:  # empty cell
+            pass
+    return tuple(values)
 
 
 class CustomStatesManager:
@@ -249,7 +379,7 @@ class RecomputeFunction(PyLayer):
 
         ctx.amp_white_list, ctx.amp_black_list = tracer._get_amp_op_list()
 
-        with paddle.no_grad():
+        with paddle.no_grad(), _recompute_context:
             outputs = run_function(*args, **kwargs)
 
         # save input for backward
@@ -301,12 +431,25 @@ class RecomputeFunction(PyLayer):
 
         ctx.save_for_backward(*tensor_inputs)
 
+        # Protect tensors captured in run_function's Python __closure__ against
+        # pipeline-parallel _clear_dataptr(); explicit tensor args are already
+        # covered by save_for_backward's tensor_hold_helper.
+        closure_values = _closure_cell_values(run_function)
+        ctx._has_held_tensors = bool(closure_values)
+        if closure_values:
+            ctx._hold_tensors(closure_values)
+
         return outputs
 
     @staticmethod
     def backward(ctx, *args):
         with paddle.base.dygraph.guard():
             # TODO need to check the recompute calling is valid or not
+
+            # Restore closure-captured tensors potentially emptied by
+            # pipeline-parallel _clear_dataptr() before re-running forward.
+            if getattr(ctx, '_has_held_tensors', False):
+                ctx._restore_held_tensors()
 
             # Restore inputs
             inputs = list(ctx.inputs)
@@ -348,16 +491,20 @@ class RecomputeFunction(PyLayer):
                         level=ctx.amp_level,
                         dtype=ctx.amp_dtype,
                     ),
+                    _recompute_context,
                 ):
                     detached_inputs = detach_variable(tuple(inputs))
                     outputs = ctx.run_function(*detached_inputs, **ctx.kwargs)
             else:
-                with paddle.amp.auto_cast(
-                    enable=ctx.is_fw_autocast,
-                    custom_white_list=ctx.amp_white_list,
-                    custom_black_list=ctx.amp_black_list,
-                    level=ctx.amp_level,
-                    dtype=ctx.amp_dtype,
+                with (
+                    paddle.amp.auto_cast(
+                        enable=ctx.is_fw_autocast,
+                        custom_white_list=ctx.amp_white_list,
+                        custom_black_list=ctx.amp_black_list,
+                        level=ctx.amp_level,
+                        dtype=ctx.amp_dtype,
+                    ),
+                    _recompute_context,
                 ):
                     detached_inputs = detach_variable(tuple(inputs))
                     outputs = ctx.run_function(*detached_inputs, **ctx.kwargs)
@@ -760,10 +907,6 @@ def recompute(function, *args, **kwargs):
                 )
             else:
                 raise ValueError("Unknown parameter kind.")
-        # Make a shallow copy of each Tensor to prevent the release of some Tensors reserved for backward in some special scenarios (such as scheduling logic of parallel pipelines)
-        for idx, arg in enumerate(input_args):
-            if isinstance(arg, core.eager.Tensor):
-                input_args[idx] = arg._new_shared_tensor()
         return RecomputeFunction.apply(
             function,
             preserve,

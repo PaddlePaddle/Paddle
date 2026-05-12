@@ -65,7 +65,7 @@ namespace phi {
 // Direct cublasLt matmul+bias, bypassing MatmulPlanner/DescriptorSetter/
 // CublasLtBase. Uses persistent workspace from GPUContext.
 template <typename T>
-static void CublasLtMatmulBias(const phi::GPUContext& ctx,
+static void CublasLtMatmulBias(const GPUContext& ctx,
                                const T* x,
                                const T* w,
                                const T* bias,
@@ -74,11 +74,11 @@ static void CublasLtMatmulBias(const phi::GPUContext& ctx,
                                int64_t N,
                                int64_t K,
                                bool trans_w) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   constexpr auto compute =
       std::is_same<T, double>::value ? CUBLAS_COMPUTE_64F : CUBLAS_COMPUTE_32F;
-  const auto dtype = phi::backends::gpu::ToCudaDataType<T>();
-  const auto stype = phi::backends::gpu::ToCudaDataType<MT>();
+  const auto dtype = backends::gpu::ToCudaDataType<T>();
+  const auto stype = backends::gpu::ToCudaDataType<MT>();
 
   MT alpha = static_cast<MT>(1), beta = static_cast<MT>(0);
   auto lt = ctx.cublaslt_handle();
@@ -183,18 +183,18 @@ void LinearV2Kernel(const Context& dev_ctx,
 
     DenseTensor input_processed = input;
     DenseTensor weight_processed = weight;
-    input_processed.Resize(common::make_ddim({M, K}));
+    input_processed.Resize({M, K});
     if (transpose_weight) {
-      weight_processed.Resize(common::make_ddim({N, K}));
+      weight_processed.Resize({N, K});
     } else {
-      weight_processed.Resize(common::make_ddim({K, N}));
+      weight_processed.Resize({K, N});
     }
-    out->Resize(common::make_ddim({M, N}));
+    out->Resize({M, N});
 
     if (N > 1 && K > 1) {
       DenseTensor bias_processed;
       if (bias.numel() != N) {
-        phi::TileKernel<T, Context>(dev_ctx, bias, {N}, &bias_processed);
+        TileKernel<T, Context>(dev_ctx, bias, {N}, &bias_processed);
       } else {
         bias_processed = bias;
       }
@@ -210,20 +210,20 @@ void LinearV2Kernel(const Context& dev_ctx,
     } else {
       // When N=1 or K=1, {N,K} and {K,N} have identical memory layout,
       // so just reshape to {K,N} which is what AddmmKernel expects.
-      weight_processed.Resize(common::make_ddim({K, N}));
+      weight_processed.Resize({K, N});
       DenseTensor bias_processed = bias;
       if (bias.numel() != (M * N)) {
         bias_processed.Resize({1, bias.numel()});
-        phi::TileKernel<T, Context>(
+        TileKernel<T, Context>(
             dev_ctx, bias_processed, {M, 1}, &bias_processed);
       }
-      phi::AddmmKernel<T>(dev_ctx,
-                          bias_processed,
-                          input_processed,
-                          weight_processed,
-                          1.0f,
-                          1.0f,
-                          out);
+      AddmmKernel<T>(dev_ctx,
+                     bias_processed,
+                     input_processed,
+                     weight_processed,
+                     1.0f,
+                     1.0f,
+                     out);
     }
     out->Resize(out_dim_original);
   } else  // NOLINT

@@ -38,7 +38,7 @@ void FullKernel(const Context& dev_ctx,
                 const Scalar& val,
                 DataType dtype UNUSED,
                 DenseTensor* out) {
-  out->Resize(make_ddim(shape.GetData()));
+  out->Resize(shape.GetData());
   if (out->numel() == 0) {
     dev_ctx.template Alloc<T>(out);
     return;
@@ -57,15 +57,13 @@ void FullLikeKernel(const Context& dev_ctx,
     out->Resize(x.dims());
     return;
   }
-  if (!std::is_same<T, phi::complex64>::value &&
-      !std::is_same<T, phi::complex128>::value &&
-      !std::is_same<T, int64_t>::value) {
+  if (!std::is_same<T, complex64>::value &&
+      !std::is_same<T, complex128>::value && !std::is_same<T, int64_t>::value) {
     auto value = val.to<double>();
     using CommonType = typename std::common_type<
         float,
-        typename std::conditional<std::is_same<T, phi::float16>::value,
-                                  float,
-                                  T>::type>::type;
+        typename std::conditional<std::is_same<T, float16>::value, float, T>::
+            type>::type;
 
     auto common_type_value = static_cast<CommonType>(value);
 
@@ -130,6 +128,11 @@ template PADDLE_API void FullKernel<float, CPUContext>(const CPUContext&,
                                                        const Scalar&,
                                                        DataType dtype UNUSED,
                                                        DenseTensor*);
+template PADDLE_API void FullKernel<double, CPUContext>(const CPUContext&,
+                                                        const IntArray&,
+                                                        const Scalar&,
+                                                        DataType dtype UNUSED,
+                                                        DenseTensor*);
 #endif
 }  // namespace phi
 

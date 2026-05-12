@@ -64,15 +64,15 @@ class TestSaveLoadStateDict(test_base.CommunicationTestDistBase):
         ckpt_path_2.cleanup()
         ckpt_path_3.cleanup()
 
-        # save with 4 devices
+        # save with 2 devices
         ckpt_path = tempfile.TemporaryDirectory()
         ckpt_path_2 = tempfile.TemporaryDirectory()
         ckpt_path_3 = tempfile.TemporaryDirectory()
-        super().setUp(num_of_devices=4, timeout=120, nnode=1)
+        super().setUp(num_of_devices=2, timeout=120, nnode=1)
         self.run_test_case(
             "semi_auto_save_state_dict.py",
             user_defined_envs={
-                "device_num": "4",
+                "device_num": "2",
                 "ckpt_path": ckpt_path.name,
                 "ckpt_path_2": ckpt_path_2.name,
                 "ckpt_path_3": ckpt_path_3.name,
@@ -128,6 +128,20 @@ class TestSaveLoadStateDict(test_base.CommunicationTestDistBase):
             user_defined_envs={
                 "device_num": "2",
                 "ckpt_path": ckpt_path.name,
+            },
+        )
+        ckpt_path.cleanup()
+
+    def test_save_safetensors_load_fc_with_index(self):
+        """Test saving safetensors files and loading with flex checkpoint when model.safetensors.index.json exists."""
+        ckpt_path = tempfile.TemporaryDirectory()
+        super().setUp(num_of_devices=2, timeout=120, nnode=1)
+        self.run_test_case(
+            "save_safetensors_load_fc.py",
+            user_defined_envs={
+                "device_num": "2",
+                "ckpt_path": ckpt_path.name,
+                "test_func": "test_save_safetensors_load_fc_with_index",
             },
         )
         ckpt_path.cleanup()

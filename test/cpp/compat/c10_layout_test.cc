@@ -21,6 +21,7 @@
 #include <c10/core/ScalarType.h>
 #include <c10/core/SymInt.h>
 #include <c10/core/TensorOptions.h>
+#include <vector>
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <c10/cuda/CUDAFunctions.h>
 #include <c10/cuda/CUDAGuard.h>
@@ -343,6 +344,37 @@ TEST(SparseConstructorTest, SparseCsrTensorWithOptions) {
   ASSERT_EQ(sparse.layout(), c10::kSparseCsr);
 }
 
+TEST(SparseConstructorTest, SparseCsrTensorMismatchedOptionsDtypeIgnored) {
+  // PyTorch ignores dtype mismatch in sparse_csr_tensor;
+  // the resulting tensor uses values' original dtype.
+  at::Tensor crow_indices =
+      at::empty({3}, c10::TensorOptions().dtype(at::kLong));
+  int64_t* crow_ptr = crow_indices.data_ptr<int64_t>();
+  crow_ptr[0] = 0;
+  crow_ptr[1] = 1;
+  crow_ptr[2] = 2;
+
+  at::Tensor col_indices =
+      at::empty({2}, c10::TensorOptions().dtype(at::kLong));
+  int64_t* col_ptr = col_indices.data_ptr<int64_t>();
+  col_ptr[0] = 0;
+  col_ptr[1] = 1;
+
+  at::Tensor values = at::empty({2}, c10::TensorOptions().dtype(at::kFloat));
+  float* values_ptr = values.data_ptr<float>();
+  values_ptr[0] = 5.0f;
+  values_ptr[1] = 6.0f;
+
+  std::vector<int64_t> size = {2, 2};
+  auto options = c10::TensorOptions().dtype(at::kDouble);
+
+  at::Tensor sparse =
+      at::sparse_csr_tensor(crow_indices, col_indices, values, size, options);
+
+  // Result should use values' dtype (float), not options' dtype (double).
+  ASSERT_EQ(sparse.dtype(), at::kFloat);
+}
+
 // ============== Additional sparse_coo_tensor tests ==============
 
 TEST(SparseConstructorTest, SparseCooTensorInferSize) {
@@ -368,6 +400,9 @@ TEST(SparseConstructorTest, SparseCooTensorInferSize) {
 
   ASSERT_TRUE(sparse.is_sparse());
   ASSERT_EQ(sparse.layout(), c10::kSparse);
+  ASSERT_EQ(sparse.dim(), 2);
+  ASSERT_EQ(sparse.size(0), 3);
+  ASSERT_EQ(sparse.size(1), 3);
 }
 
 TEST(SparseConstructorTest, SparseCooTensorDouble) {

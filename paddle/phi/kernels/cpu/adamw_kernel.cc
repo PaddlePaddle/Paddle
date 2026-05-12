@@ -42,8 +42,8 @@ PADDLE_API void AdamwDenseKernel(const Context& dev_ctx,
                                  const Scalar& beta1,
                                  const Scalar& beta2,
                                  const Scalar& epsilon,
-                                 float lr_ratio,
-                                 float coeff,
+                                 double lr_ratio,
+                                 double coeff,
                                  bool with_decay,
                                  bool lazy_mode,
                                  int64_t min_row_size_to_use_multithread,
@@ -137,12 +137,12 @@ PADDLE_API void AdamwDenseKernel(const Context& dev_ctx,
   T* mom2_out_ptr = dev_ctx.template Alloc<T>(moment2_out);
   T* mom2_max_out_ptr =
       amsgrad ? dev_ctx.template Alloc<T>(moment2_max_out) : nullptr;
-  T old_lr = learning_rate.data<T>()[0];
-  T learning_rate_ =
-      learning_rate.data<T>()[0] * (sqrt(1 - beta2_p) / (1 - beta1_p));
+  T old_lr = static_cast<T>(learning_rate.data<double>()[0]);
+  T learning_rate_ = static_cast<T>(learning_rate.data<double>()[0]) *
+                     (sqrt(1 - beta2_p) / (1 - beta1_p));
   T eps = epsilon_ * sqrt(1 - beta2_p);
 
-  phi::jit::adamw_attr_t attr(beta1_, beta2_, coeff_, amsgrad);
+  jit::adamw_attr_t attr(beta1_, beta2_, coeff_, amsgrad);
   int64_t numel = param.numel();
 
   const T* param_ptr = param.data<T>();
@@ -151,9 +151,7 @@ PADDLE_API void AdamwDenseKernel(const Context& dev_ctx,
   const T* mom2_max_ptr = amsgrad ? moment2_max.get().data<T>() : nullptr;
   const T* grad_ptr = grad.data<T>();
 
-  auto adamw =
-      phi::jit::KernelFuncs<phi::jit::AdamWTuple<T>, CPUPlace>::Cache().At(
-          attr);
+  auto adamw = jit::KernelFuncs<jit::AdamWTuple<T>, CPUPlace>::Cache().At(attr);
 
   static constexpr int64_t chunk_size = 512;
 
@@ -215,4 +213,7 @@ PADDLE_API void AdamwDenseKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    adamw, CPU, ALL_LAYOUT, phi::AdamwDenseKernel, float, double) {}
+    adamw, CPU, ALL_LAYOUT, phi::AdamwDenseKernel, float, double) {
+  kernel->InputAt(2).SetDataType(phi::DataType::FLOAT64);
+  kernel->InputAt(9).SetBackend(phi::Backend::ALL_BACKEND);
+}

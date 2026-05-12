@@ -159,7 +159,7 @@ void LaunchIndexPutGradKernel(const Context& dev_ctx,
           &after_dims, &before_dims, &compress_dims, &dims_without_1);
 
       auto pre_dims = value_grad->dims();
-      value_grad->Resize(make_ddim(dims_without_1));
+      value_grad->Resize(dims_without_1);
       IntArray v_axis(compress_dims);
       SumKernel<T>(dev_ctx,
                    tmp_value_grad,
@@ -217,7 +217,7 @@ void IndexPutGradKernel(const Context& dev_ctx,
   for (int i = static_cast<int>(int_indices_v.size()); i < x.dims().size();
        ++i) {
     range_tensor_v.emplace_back(funcs::GetRangeTensor<int64_t, Context>(
-        dev_ctx, x.dims()[i], phi::DataType::INT64));
+        dev_ctx, x.dims()[i], DataType::INT64));
   }
 
   funcs::DealWithIndices<T, Context>(dev_ctx,

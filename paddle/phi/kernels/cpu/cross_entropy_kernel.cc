@@ -101,7 +101,7 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
     return;
   }
 
-  phi::SoftmaxKernel<T, Context>(dev_ctx, logits, axis, softmax);
+  SoftmaxKernel<T, Context>(dev_ctx, logits, axis, softmax);
   CrossEntropy<T>(
       dev_ctx, *softmax, label, soft_label, ignore_index, axis, loss);
 }

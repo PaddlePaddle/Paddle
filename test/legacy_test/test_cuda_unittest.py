@@ -23,6 +23,8 @@ from op_test import get_device, is_custom_device
 
 import paddle
 from paddle.cuda import (
+    CudaError,
+    OutOfMemoryError,
     Stream,
     StreamContext,
     _device_to_paddle,
@@ -356,11 +358,22 @@ class TestCudaCompat(unittest.TestCase):
     def test_check_error(self):
         check_error(0)
 
-        with self.assertRaisesRegex(RuntimeError, "invalid argument"):
+        with self.assertRaisesRegex(CudaError, "invalid argument"):
             check_error(1)
 
-        with self.assertRaisesRegex(RuntimeError, "out of memory"):
+        with self.assertRaisesRegex(CudaError, "out of memory"):
             check_error(2)
+
+    def test_out_of_memory_error(self):
+        # OutOfMemoryError is a RuntimeError, not a CudaError
+        self.assertTrue(issubclass(OutOfMemoryError, RuntimeError))
+        self.assertFalse(issubclass(OutOfMemoryError, CudaError))
+        self.assertTrue(issubclass(CudaError, RuntimeError))
+
+        # Direct construction
+        oom = OutOfMemoryError("test message")
+        self.assertIsInstance(oom, RuntimeError)
+        self.assertEqual(str(oom), "test message")
 
 
 def can_use_cuda_graph():

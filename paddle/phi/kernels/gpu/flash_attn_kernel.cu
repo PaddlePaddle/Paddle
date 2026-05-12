@@ -446,32 +446,32 @@ void FlashAttnBaseKernel(const Context& dev_ctx,
                           "mask_bounds must in [1,2,4]"));
     auto flashmask_maxmin_shape = params.startend_row_indices->dims();
     flashmask_maxmin_shape[2] = (flashmask_maxmin_shape[2] + 31) / 32 * 8;
-    flashmask_maxmin.set_type(phi::DataType::INT32);
+    flashmask_maxmin.set_type(DataType::INT32);
     flashmask_maxmin.Resize(flashmask_maxmin_shape);
     dev_ctx.template Alloc<T>(&flashmask_maxmin);
 
     downstart_row_indices =
-        phi::Slice<int32_t>(dev_ctx, startend_row_indices.get(), {3}, {0}, {1});
+        Slice<int32_t>(dev_ctx, startend_row_indices.get(), {3}, {0}, {1});
     downstart_row_indices_data = downstart_row_indices.data();
     if (startend_row_indices->dims()[3] == 2) {
       if (!causal) {
-        upend_row_indices = phi::Slice<int32_t>(
-            dev_ctx, startend_row_indices.get(), {3}, {1}, {2});
+        upend_row_indices =
+            Slice<int32_t>(dev_ctx, startend_row_indices.get(), {3}, {1}, {2});
         upend_row_indices_data = upend_row_indices.data();
       } else {
-        downend_row_indices = phi::Slice<int32_t>(
-            dev_ctx, startend_row_indices.get(), {3}, {1}, {2});
+        downend_row_indices =
+            Slice<int32_t>(dev_ctx, startend_row_indices.get(), {3}, {1}, {2});
         downend_row_indices_data = downend_row_indices.data();
       }
     } else if (startend_row_indices->dims()[3] == 4) {
-      upend_row_indices = phi::Slice<int32_t>(
-          dev_ctx, startend_row_indices.get(), {3}, {3}, {4});
+      upend_row_indices =
+          Slice<int32_t>(dev_ctx, startend_row_indices.get(), {3}, {3}, {4});
       upend_row_indices_data = upend_row_indices.data();
-      downend_row_indices = phi::Slice<int32_t>(
-          dev_ctx, startend_row_indices.get(), {3}, {1}, {2});
+      downend_row_indices =
+          Slice<int32_t>(dev_ctx, startend_row_indices.get(), {3}, {1}, {2});
       downend_row_indices_data = downend_row_indices.data();
-      upstart_row_indices = phi::Slice<int32_t>(
-          dev_ctx, startend_row_indices.get(), {3}, {2}, {3});
+      upstart_row_indices =
+          Slice<int32_t>(dev_ctx, startend_row_indices.get(), {3}, {2}, {3});
       upstart_row_indices_data = upstart_row_indices.data();
     }
   }
@@ -730,6 +730,24 @@ void FlashMaskKernel(const Context& dev_ctx,
                      DenseTensor* softmax,
                      DenseTensor* softmax_lse,
                      DenseTensor* seed_offset) {
+  // Handle 0-size tensors: return zeros without calling CUDA kernel
+  // to avoid invalid memory access
+  if (q.numel() == 0 || k.numel() == 0 || v.numel() == 0) {
+    if (out) {
+      Full<T, Context>(dev_ctx, out->dims(), 0, out);
+    }
+    if (softmax) {
+      Full<T, Context>(dev_ctx, softmax->dims(), 0, softmax);
+    }
+    if (softmax_lse) {
+      Full<T, Context>(dev_ctx, softmax_lse->dims(), 0, softmax_lse);
+    }
+    if (seed_offset) {
+      Full<T, Context>(dev_ctx, seed_offset->dims(), 0, seed_offset);
+    }
+    return;
+  }
+
   FlashAttnBaseKernel<T, Context>(dev_ctx,
                                   q,
                                   k,

@@ -954,6 +954,7 @@ def conv2d(
     )
 
 
+@param_one_alias(["x", "input"])
 def conv1d_transpose(
     x: Tensor,
     weight: Tensor,
@@ -1222,6 +1223,7 @@ def conv1d_transpose(
     return out
 
 
+@param_one_alias(["x", "input"])
 def conv2d_transpose(
     x: Tensor,
     weight: Tensor,
@@ -1229,8 +1231,8 @@ def conv2d_transpose(
     stride: Size2 = 1,
     padding: _PaddingSizeMode | Size2 | Size4 | Sequence[Size2] = 0,
     output_padding: Size2 = 0,
-    dilation: Size2 = 1,
     groups: int = 1,
+    dilation: Size2 = 1,
     output_size: Size2 | None = None,
     data_format: DataLayout2D = 'NCHW',
     name: str | None = None,
@@ -1725,6 +1727,7 @@ def conv3d(
     )
 
 
+@param_one_alias(["x", "input"])
 def conv3d_transpose(
     x: Tensor,
     weight: Tensor,

@@ -126,10 +126,10 @@ struct WelfordOps {
   inline C10_DEVICE res_t post_process(acc_t acc) const {
     const auto mean = static_cast<scalar_t>(acc.mean);
     const auto divisor = acc.nf > correction ? acc.nf - correction : 0;
-    const auto var = static_cast<scalar_t>(acc.m2 / divisor);
-    const auto var_sqrt =
-        static_cast<scalar_t>(device_sqrt(static_cast<acc_scalar_t>(var)));
-    res_t results(take_sqrt ? var_sqrt : var, mean);
+    const auto var = acc.m2 / divisor;
+    res_t results(take_sqrt ? static_cast<scalar_t>(device_sqrt(var))
+                            : static_cast<scalar_t>(var),
+                  mean);
     return results;
   }
 
@@ -174,7 +174,7 @@ void Std_VarKernel(const Context& dev_ctx,
   dense_iter_config.add_const_input(x);
   DenseTensorIterator iter = dense_iter_config.build();
 
-  using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using AccT = typename MPTypeTrait<T>::Type;
   using ops_t = WelfordOps<T, AccT, int32_t, thrust::pair<T, T>>;
   ops_t ops(static_cast<AccT>(correction), take_sqrt);
 

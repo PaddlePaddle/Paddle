@@ -89,7 +89,7 @@ def dice_loss(
             >>> import paddle.nn.functional as F
 
             >>> x = paddle.randn((3,224,224,2))
-            >>> label = paddle.randint(high=2, shape=(3,224,224,1))
+            >>> label = paddle.randint(high=2, size=(3,224,224,1))
             >>> predictions = F.softmax(x)
             >>> loss = F.dice_loss(input=predictions, label=label)
     """
@@ -268,7 +268,7 @@ def base_softmax_with_cross_entropy(
             >>> paddle.seed(2023)
 
             >>> logits = paddle.to_tensor([0.4, 0.6, 0.9])
-            >>> label = paddle.randint(high=2, shape=[1], dtype="int64")
+            >>> label = paddle.randint(high=2, size=[1], dtype="int64")
 
             >>> out = paddle.nn.functional.softmax_with_cross_entropy(logits=logits, label=label)
             >>> print(out)
@@ -2360,7 +2360,7 @@ def margin_cross_entropy(
             >>> feature_length = 4
             >>> num_classes = 4
 
-            >>> label = paddle.randint(low=0, high=num_classes, shape=[batch_size], dtype='int64')
+            >>> label = paddle.randint(low=0, high=num_classes, size=[batch_size], dtype='int64')
 
             >>> X = paddle.randn(
             ...     shape=[batch_size, feature_length],
@@ -2424,7 +2424,7 @@ def margin_cross_entropy(
             >>> num_class_per_card = [4, 8]
             >>> num_classes = paddle.sum(paddle.to_tensor(num_class_per_card))
 
-            >>> label = paddle.randint(low=0, high=num_classes.item(), shape=[batch_size], dtype='int64')  # type: ignore[arg-type]
+            >>> label = paddle.randint(low=0, high=int(num_classes.item()), size=[batch_size], dtype='int64')  # type: ignore[call-overload, arg-type]
             >>> label_list: List[paddle.Tensor] = []
             >>> dist.all_gather(label_list, label)
             >>> label = paddle.concat(label_list, axis=0)
@@ -2972,7 +2972,7 @@ def cross_entropy(
             >>> C = 200
             >>> reduction = 'mean'
             >>> input = paddle.rand([N, C], dtype='float64')
-            >>> label = paddle.randint(0, C, shape=[N], dtype='int64')
+            >>> label = paddle.randint(0, C, size=[N], dtype='int64')
             >>> weight = paddle.rand([C], dtype='float64')
 
             >>> cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
@@ -3027,7 +3027,7 @@ def cross_entropy(
             >>> reduction = 'mean'
             >>> weight: Optional[paddle.Tensor] = None
             >>> logits = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
-            >>> integer_labels = paddle.randint(low=0, high=C, shape=[N], dtype='int64')
+            >>> integer_labels = paddle.randint(low=0, high=C, size=[N], dtype='int64')
             >>> one_hot_labels = paddle.nn.functional.one_hot(integer_labels, C).astype('float32')
 
             >>> # integer labels
@@ -3106,6 +3106,66 @@ def cross_entropy(
         _, out = _C_ops.cross_entropy_with_softmax(
             input, label, soft_label, use_softmax, True, ignore_index, axis
         )
+
+        # Accuracy-compatible mode: decompose into log_softmax + nll_loss
+        # for precision alignment with mainstream frameworks.
+        if (
+            not soft_label
+            and use_softmax
+            and (axis == -1 or axis == len(input.shape) - 1)
+            and paddle.get_flags(["FLAGS_use_accuracy_compatible_kernel"]).get(
+                "FLAGS_use_accuracy_compatible_kernel", False
+            )
+        ):
+            _nll_input = input
+            _nll_orig_dtype = input.dtype
+            log_softmax_out = paddle.nn.functional.log_softmax(
+                _nll_input, axis=axis
+            )
+            _nll_weight = weight
+            # nll_loss does not support float16/bfloat16; promote to float32
+            if _nll_orig_dtype in (paddle.float16, paddle.bfloat16):
+                log_softmax_out = paddle.cast(log_softmax_out, paddle.float32)
+                # Cast weight to match promoted dtype if needed
+                if weight is not None:
+                    _nll_weight = paddle.cast(weight, paddle.float32)
+            # nll_loss expects label shape [N] for 2D input
+            nll_label = label
+            if nll_label.ndim > 1 and nll_label.shape[-1] == 1:
+                nll_label = paddle.squeeze(nll_label, axis=-1)
+            # Save original label shape before reshape for reduction='none'
+            _nll_label_shape = list(nll_label.shape)
+            _did_reshape = False
+            # nll_loss only accepts rank 2 or 4; reshape N-D [B,d1,...,dk,C] -> [B*d1*...*dk, C]
+            if log_softmax_out.ndim >= 3:
+                _C = log_softmax_out.shape[-1]
+                log_softmax_out = paddle.reshape(log_softmax_out, [-1, _C])
+                nll_label = paddle.reshape(nll_label, [-1])
+                _did_reshape = True
+            # nll_loss requires int64 labels
+            if nll_label.dtype != paddle.int64:
+                nll_label = paddle.cast(nll_label, paddle.int64)
+            loss, _ = _C_ops.nll_loss(
+                log_softmax_out,
+                nll_label,
+                _nll_weight,
+                ignore_index,
+                reduction,
+            )
+            # For reduction='none', reshape loss back to original label shape
+            if reduction == 'none' and _did_reshape:
+                loss = paddle.reshape(loss, _nll_label_shape)
+            # Match output shape with non-compatible path:
+            # - If user passed label without trailing 1 (input_dims-1==label_dims),
+            #   the non-compatible path squeezes; our output is already correct.
+            # - If user passed label with trailing 1 (input_dims==label_dims),
+            #   the non-compatible path keeps [B,S,1]; we need to unsqueeze back.
+            if reduction == 'none' and input_dims == label_dims:
+                loss = paddle.unsqueeze(loss, axis=axis)
+            # Cast back to original dtype if promoted
+            if _nll_orig_dtype in (paddle.float16, paddle.bfloat16):
+                loss = paddle.cast(loss, _nll_orig_dtype)
+            return loss
 
         if weight is not None:
             # trans weight from class to sample, shape:N or [N,H,W] for 1d and 2d cases.
@@ -4482,7 +4542,7 @@ def soft_margin_loss(
                    0.64022040)
 
             >>> input = paddle.uniform(shape=(5, 5), dtype="float32", min=0.1, max=0.8)
-            >>> label = paddle.randint(0, 2, shape=(5, 5), dtype="int64")
+            >>> label = paddle.randint(0, 2, size=(5, 5), dtype="int64")
             >>> label[label == 0] = -1
 
             >>> output = paddle.nn.functional.soft_margin_loss(input, label, reduction='none')
@@ -4796,7 +4856,7 @@ def adaptive_log_softmax_with_loss(
         if row_indices.dim() == 0:
             row_indices.unsqueeze_(0)
 
-        if row_indices.numel() == 0:
+        if 0 in row_indices.shape:
             continue
 
         if i == 0:

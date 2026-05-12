@@ -26,7 +26,7 @@
 namespace phi {
 namespace fusion {
 
-using phi::backends::gpu::GpuLaunchConfig;
+using backends::gpu::GpuLaunchConfig;
 
 template <typename T>
 class AttnMatmulINT8 {
@@ -37,8 +37,8 @@ class AttnMatmulINT8 {
     auto helper = std::make_shared<phi::CublasLtHelper>(
         m, k, n, dev_ctx.cublaslt_handle());
     helpers_.emplace_back(helper);
-    gpu_config_ = std::make_unique<GpuLaunchConfig>(
-        phi::backends::gpu::GetGpuLaunchConfig1D(
+    gpu_config_ =
+        std::make_unique<GpuLaunchConfig>(backends::gpu::GetGpuLaunchConfig1D(
             dev_ctx, m * n, DequantKernelVecSize));
   }
   ~AttnMatmulINT8() {}

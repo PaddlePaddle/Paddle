@@ -17,8 +17,8 @@ limitations under the License. */
 namespace phi::distributed {
 
 InferSpmdContext::InferSpmdContext(
-    paddle::small_vector<DistMetaTensor, phi::kInputSmallVectorSize> inputs,
-    paddle::small_vector<Attribute, phi::kAttrSmallVectorSize> attrs) {
+    paddle::small_vector<DistMetaTensor, kInputSmallVectorSize> inputs,
+    paddle::small_vector<Attribute, kAttrSmallVectorSize> attrs) {
   for (size_t i = 0; i < inputs.size(); i++) {
     EmplaceBackInput(inputs[i]);
   }
@@ -34,7 +34,7 @@ void InferSpmdContext::EmplaceBackInput(DistMetaTensor input) {
 }
 
 void InferSpmdContext::EmplaceBackInputs(
-    paddle::small_vector<DistMetaTensor, phi::kInputSmallVectorSize> inputs) {
+    paddle::small_vector<DistMetaTensor, kInputSmallVectorSize> inputs) {
   int index = static_cast<int>(inputs_.size());
   input_range_.emplace_back(std::pair<int, int>(index, index + inputs.size()));
   inputs_.insert(inputs_.end(),
@@ -81,6 +81,23 @@ bool InferSpmdContext::AttrAt(size_t idx) const {
     PADDLE_THROW(common::errors::InvalidArgument(
         "Attribute cast error in InferSpmd Context, the input attr type is "
         "`%s`, but the expected attribute type is `bool`.",
+        attrs_.at(idx).type().name()));
+  }
+}
+
+template <>
+double InferSpmdContext::AttrAt(size_t idx) const {
+  try {
+    auto attr = attrs_.at(idx);
+    if (attr.type() == typeid(float)) {
+      return static_cast<double>(paddle::get<float>(attr));
+    } else {
+      return paddle::get<double>(attr);
+    }
+  } catch (paddle::bad_variant_access const& e) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Attribute cast error in InferSpmd Context, the input attr type is "
+        "`%s`, but the expected attribute type is `double`.",
         attrs_.at(idx).type().name()));
   }
 }

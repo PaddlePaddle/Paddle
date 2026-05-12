@@ -22,6 +22,8 @@
 #include <functional>
 #include <ostream>
 
+#include "paddle/common/macros.h"
+
 namespace c10 {
 
 using StreamId = int64_t;
@@ -32,7 +34,7 @@ struct StreamData3 {
   DeviceType device_type;
 };
 
-class Stream final {
+class PADDLE_API Stream final {
  private:
   Device device_;
   StreamId id_;
@@ -90,9 +92,8 @@ class Stream final {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Stream& s) {
-  os << "Stream(device_type=" << static_cast<int>(s.device_type())
-     << ", device_index=" << static_cast<int>(s.device_index())
-     << ", id=" << s.id() << ")";
+  // Format: "stream {id} on device {device_type}:{device_index}"
+  os << "stream " << s.id() << " on device " << s.device();
   return os;
 }
 
@@ -106,3 +107,7 @@ struct hash<c10::Stream> {
   }
 };
 }  // namespace std
+
+namespace at {
+using c10::Stream;
+}

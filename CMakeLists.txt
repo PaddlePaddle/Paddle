@@ -615,6 +615,9 @@ include(third_party
 )# download, build, install third_party, Contains about 20+ dependencies
 
 include(flags) # set paddle compile flags
+if(APPLE)
+  safe_set_cxxflag(CMAKE_CXX_FLAGS "-Wno-invalid-specialization")
+endif()
 include(util) # set unittest and link libs
 include(version) # set PADDLE_VERSION
 include(coveralls) # set code coverage

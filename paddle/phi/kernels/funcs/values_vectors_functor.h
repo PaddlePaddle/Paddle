@@ -281,20 +281,20 @@ struct MatrixEighFunctor<CPUContext, T> {
     ValueType *rwork_data = nullptr;
 
     // complex type
-    if (input.type() == phi::DataType::COMPLEX64 ||
-        input.type() == phi::DataType::COMPLEX128) {
+    if (input.type() == DataType::COMPLEX64 ||
+        input.type() == DataType::COMPLEX128) {
       lrwork = std::max<int>(1, static_cast<int>(rwork_opt));
 
-      rwork_tensor.Resize(make_ddim({lrwork}));
+      rwork_tensor.Resize({lrwork});
       rwork_data = dev_ctx.template Alloc<ValueType>(&rwork_tensor);
     }
 
     DenseTensor iwork_tensor, work_tensor;
 
-    iwork_tensor.Resize(make_ddim({liwork}));
+    iwork_tensor.Resize({liwork});
     int *iwork_data = dev_ctx.template Alloc<int>(&iwork_tensor);
 
-    work_tensor.Resize(make_ddim({lwork}));
+    work_tensor.Resize({lwork});
     T *work_data = dev_ctx.template Alloc<T>(&work_tensor);
 
     for (auto i = 0; i < batch_size; i++) {
@@ -496,8 +496,8 @@ struct MatrixEighFunctor<GPUContext, T> {
     // well in Paddle(cuda10.2)
     use_cusolver_syevj_batched = (use_cusolver_syevj_batched) &&
                                  (batch_size > 1) &&
-                                 (input.dtype() != phi::DataType::COMPLEX128);
-    bool use_cusolver_syevj = (input.dtype() == phi::DataType::FLOAT32 &&
+                                 (input.dtype() != DataType::COMPLEX128);
+    bool use_cusolver_syevj = (input.dtype() == DataType::FLOAT32 &&
                                last_dim >= 32 && last_dim <= 512);
     auto handle = dev_ctx.cusolver_dn_handle();
 

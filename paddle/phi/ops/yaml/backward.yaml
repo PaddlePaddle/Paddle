@@ -141,6 +141,16 @@
   kernel :
     func : amin_grad
 
+- backward_op : aminmax_grad
+  forward : aminmax (Tensor x, int64_t[] axis={}, bool keepdim=false) -> Tensor(min), Tensor(max)
+  args : (Tensor x, Tensor min, Tensor max, Tensor min_grad, Tensor max_grad, int64_t[] axis={}, bool keepdim=false, bool reduce_all=false)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : aminmax_grad
+
 - backward_op : angle_grad
   forward : angle (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
@@ -1255,8 +1265,8 @@
     data_type: q
 
 - backward_op : flashmask_attention_v2_grad
-  forward : flashmask_attention_v2 (Tensor q, Tensor k, Tensor v, Tensor startend_row_indices,Tensor block_mask, float softmax_scale, bool is_causal) -> Tensor(out), Tensor(softmax_lse)
-  args : (Tensor q, Tensor k, Tensor v, Tensor out, Tensor softmax_lse, Tensor startend_row_indices, Tensor block_mask, Tensor out_grad, float softmax_scale, bool is_causal)
+  forward : flashmask_attention_v2 (Tensor q, Tensor k, Tensor v, Tensor startend_row_indices, Tensor block_mask, Tensor unique_id, float softmax_scale, bool is_causal, int rank = 0, int nranks = 1) -> Tensor(out), Tensor(softmax_lse)
+  args : (Tensor q, Tensor k, Tensor v, Tensor out, Tensor softmax_lse, Tensor startend_row_indices, Tensor block_mask, Tensor out_grad, float softmax_scale, bool is_causal, int rank = 0, int nranks = 1)
   optional : block_mask
   output : Tensor(q_grad), Tensor(k_grad), Tensor(v_grad)
   infer_meta :
@@ -2019,8 +2029,8 @@
     func : label_smooth_grad
 
 - backward_op : layer_norm_grad
-  forward : layer_norm (Tensor x, Tensor scale, Tensor bias, float epsilon = 1e-5, int begin_norm_axis = 1) -> Tensor(out), Tensor(mean), Tensor(variance)
-  args : (Tensor x,  Tensor scale, Tensor bias, Tensor mean, Tensor variance, Tensor out_grad, float epsilon = 1e-5, int begin_norm_axis = 1)
+  forward : layer_norm (Tensor x, Tensor scale, Tensor bias, double epsilon = 1e-5, int begin_norm_axis = 1) -> Tensor(out), Tensor(mean), Tensor(variance)
+  args : (Tensor x,  Tensor scale, Tensor bias, Tensor mean, Tensor variance, Tensor out_grad, double epsilon = 1e-5, int begin_norm_axis = 1)
   output : Tensor(x_grad), Tensor(scale_grad), Tensor(bias_grad)
   infer_meta :
     func : LayerNormGradInferMeta
@@ -2334,6 +2344,18 @@
   inplace : (out_grad -> x_grad)
   no_need_buffer : x, value
   backward: masked_fill_double_grad
+
+- backward_op : masked_scatter_grad
+  forward : masked_scatter (Tensor x, Tensor mask, Tensor value) -> Tensor(out)
+  args : (Tensor x, Tensor mask, Tensor value, Tensor out_grad)
+  output : Tensor(x_grad), Tensor(value_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, value]
+  kernel :
+    func : masked_scatter_grad
+    data_type : out_grad
+  no_need_buffer : x, value
 
 - backward_op : masked_select_double_grad
   forward: masked_select_grad (Tensor x, Tensor mask, Tensor grad_out) -> Tensor(grad_x)
@@ -2695,8 +2717,8 @@
     data_type : x
 
 - backward_op : p_norm_grad
-  forward : p_norm(Tensor x,  float porder=2,  int axis=-1,  float epsilon=1.0e-12f,  bool keepdim=false,  bool asvector=false) -> Tensor(out)
-  args : (Tensor x, Tensor out, Tensor out_grad,  float porder,  int axis,  float epsilon,  bool keepdim,  bool asvector)
+  forward : p_norm(Tensor x,  double porder=2,  int axis=-1,  float epsilon=1.0e-12f,  bool keepdim=false,  bool asvector=false) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad,  double porder,  int axis,  float epsilon,  bool keepdim,  bool asvector)
   output : Tensor(x_grad)
   infer_meta :
     func : GeneralUnaryGradInferMeta
@@ -4331,8 +4353,8 @@
     data_type: w
 
 - backward_op: rms_norm_grad
-  forward: rms_norm (Tensor x, Tensor scale, int64_t[] normalized_shape={}, double epsilon = 1e-5) -> Tensor(y), Tensor(invvar)
-  args: (Tensor x, Tensor scale, Tensor invvar, Tensor y_grad, int64_t[] normalized_shape={}, double epsilon = 1e-5)
+  forward: rms_norm (Tensor x, Tensor scale, int64_t[] normalized_shape={}, double epsilon = 1.19209289550781250e-7) -> Tensor(y), Tensor(invvar)
+  args: (Tensor x, Tensor scale, Tensor invvar, Tensor y_grad, int64_t[] normalized_shape={}, double epsilon = 1.19209289550781250e-7)
   output: Tensor(x_grad), Tensor(scale_grad)
   infer_meta:
     func: RMSNormGradInferMeta

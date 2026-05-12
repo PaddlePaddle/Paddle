@@ -12,105 +12,153 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// #The file has been adapted from pytorch project
-// #Licensed under  BSD-style license -
+// The file has been adapted from pytorch project
+// Licensed under BSD-style license -
 // https://github.com/pytorch/pytorch/blob/main/LICENSE
 
 #pragma once
 
 #include <c10/core/Device.h>
+#include <c10/util/Exception.h>
+
 #include <optional>
-#include "paddle/phi/core/platform/cuda_device_guard.h"
+
+#include "paddle/phi/backends/gpu/gpu_info.h"
 
 namespace c10::cuda {
+
+namespace detail {
+
+inline Device current_cuda_device() {
+  return Device(kCUDA, phi::backends::gpu::GetCurrentDeviceId());
+}
+
+inline Device normalize_cuda_device(Device device) {
+  TORCH_CHECK(device.is_cuda(), "Expected a CUDA device, but got ", device);
+  return device.has_index() ? Device(kCUDA, device.index())
+                            : current_cuda_device();
+}
+
+}  // namespace detail
+
 struct CUDAGuard {
   explicit CUDAGuard() = delete;  // NOLINT
 
-  explicit CUDAGuard(DeviceIndex device_index) : guard_(device_index) {}
+  explicit CUDAGuard(DeviceIndex device_index)
+      : original_device_(detail::current_cuda_device()),
+        current_device_(original_device_) {
+    set_index(device_index);
+  }
 
-  explicit CUDAGuard(Device device) : guard_(device._PD_GetInner()) {}
+  explicit CUDAGuard(Device device)
+      : original_device_(detail::current_cuda_device()),
+        current_device_(original_device_) {
+    set_device(device);
+  }
 
   CUDAGuard(const CUDAGuard&) = delete;
   CUDAGuard& operator=(const CUDAGuard&) = delete;
 
   CUDAGuard(CUDAGuard&& other) = delete;
   CUDAGuard& operator=(CUDAGuard&& other) = delete;
-  ~CUDAGuard() = default;
+  ~CUDAGuard() {
+    // Always restore to original_device_ to handle cases where the device
+    // was changed outside of this guard, matching PyTorch semantics.
+    phi::backends::gpu::SetDeviceId(static_cast<int>(original_device_.index()));
+  }
 
-  void set_device(Device device) { guard_.SetDevice(device._PD_GetInner()); }
+  void set_device(Device device) {
+    const Device normalized = detail::normalize_cuda_device(device);
+    if (normalized.index() != current_device_.index()) {
+      phi::backends::gpu::SetDeviceId(static_cast<int>(normalized.index()));
+      current_device_ = normalized;
+    }
+  }
 
   void reset_device(Device device) { set_device(device); }
 
   void set_index(DeviceIndex device_index) {
-    guard_.SetDeviceIndex(device_index);
+    if (current_device_.index() != device_index) {
+      phi::backends::gpu::SetDeviceId(static_cast<int>(device_index));
+      current_device_ = Device(kCUDA, device_index);
+    }
   }
 
-  Device current_device() const {
-    return c10::Device(c10::kCUDA, phi::backends::gpu::GetCurrentDeviceId());
-  }
+  Device original_device() const { return original_device_; }
+
+  Device current_device() const { return current_device_; }
 
  private:
-  paddle::platform::CUDADeviceGuard guard_;
+  Device original_device_;
+  Device current_device_;
 };
 
 struct OptionalCUDAGuard {
   OptionalCUDAGuard() = default;
 
-  explicit OptionalCUDAGuard(std::optional<Device> device_opt) : guard_() {
+  explicit OptionalCUDAGuard(std::optional<Device> device_opt) {
     if (device_opt.has_value()) {
-      guard_.emplace(device_opt.value()._PD_GetInner());
+      set_device(device_opt.value());
     }
   }
 
-  explicit OptionalCUDAGuard(std::optional<DeviceIndex> device_index_opt)
-      : guard_() {
+  explicit OptionalCUDAGuard(std::optional<DeviceIndex> device_index_opt) {
     if (device_index_opt.has_value()) {
-      guard_.emplace(device_index_opt.value());
+      set_index(device_index_opt.value());
     }
   }
 
-  // Copy is not allowed
   OptionalCUDAGuard(const OptionalCUDAGuard&) = delete;
   OptionalCUDAGuard& operator=(const OptionalCUDAGuard&) = delete;
 
   OptionalCUDAGuard(OptionalCUDAGuard&& other) = delete;
-
   OptionalCUDAGuard& operator=(OptionalCUDAGuard&& other) = delete;
-  ~OptionalCUDAGuard() = default;
+  ~OptionalCUDAGuard() { reset(); }
 
   void set_device(Device device) {
-    if (!guard_.has_value()) {
-      guard_.emplace(device._PD_GetInner());
-    } else {
-      guard_->SetDevice(device._PD_GetInner());
+    const Device normalized = detail::normalize_cuda_device(device);
+    init_if_needed();
+    if (normalized.index() != current_device_->index()) {
+      phi::backends::gpu::SetDeviceId(static_cast<int>(normalized.index()));
     }
+    current_device_ = normalized;
   }
 
-  void reset_device(Device device) {
-    if (!guard_.has_value()) {
-      guard_.emplace(device._PD_GetInner());
-    } else {
-      guard_->SetDevice(device._PD_GetInner());
-    }
-  }
+  void reset_device(Device device) { set_device(device); }
 
   void set_index(DeviceIndex device_index) {
-    if (!guard_.has_value()) {
-      guard_.emplace(device_index);
-    } else {
-      guard_->SetDeviceIndex(device_index);
+    init_if_needed();
+    if (device_index != current_device_->index()) {
+      phi::backends::gpu::SetDeviceId(static_cast<int>(device_index));
     }
+    current_device_ = Device(kCUDA, device_index);
   }
 
-  std::optional<Device> current_device() const {
-    return guard_.has_value()
-               ? std::make_optional(c10::Device(
-                     c10::kCUDA, phi::backends::gpu::GetCurrentDeviceId()))
-               : std::nullopt;
+  std::optional<Device> original_device() const { return original_device_; }
+
+  std::optional<Device> current_device() const { return current_device_; }
+
+  void reset() {
+    if (original_device_.has_value()) {
+      // Always restore to original_device_ to handle external device changes.
+      // This matches PyTorch OptionalDeviceGuard semantics.
+      phi::backends::gpu::SetDeviceId(
+          static_cast<int>(original_device_->index()));
+    }
+    original_device_.reset();
+    current_device_.reset();
   }
 
  private:
-  std::optional<paddle::platform::CUDADeviceGuard> guard_;
+  void init_if_needed() {
+    if (!original_device_.has_value()) {
+      original_device_ = detail::current_cuda_device();
+      current_device_ = original_device_;
+    }
+  }
+
+  std::optional<Device> original_device_;
+  std::optional<Device> current_device_;
 };
 
 }  // namespace c10::cuda

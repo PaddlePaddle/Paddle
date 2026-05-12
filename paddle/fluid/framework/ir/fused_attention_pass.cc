@@ -1510,7 +1510,7 @@ ir::Graph* FusedAttentionsPass::BackwardHandlerHelper(
     fused_attention_grad_op_desc.SetAttr(
         "epsilon",
         PADDLE_GET_CONST(
-            float, pre_layer_norm_grad_op_node->Op()->GetAttr("epsilon")));
+            double, pre_layer_norm_grad_op_node->Op()->GetAttr("epsilon")));
     std::vector<int> shape =
         PADDLE_GET_CONST(std::vector<int>,
                          fuse_qkv_reshape_grad_op_node->Op()->GetAttr("shape"));

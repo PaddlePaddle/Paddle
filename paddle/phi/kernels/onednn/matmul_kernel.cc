@@ -92,7 +92,7 @@ void CalculateMatrixDims(const std::vector<int64_t> &x_dims,
               (*y_bd_dims)[i]));
       (out_dims)[i] = std::max((*x_bd_dims)[i], (*y_bd_dims)[i]);
     }
-    out->Resize(make_ddim((out_dims)));
+    out->Resize(out_dims);
   }
 }
 
@@ -449,9 +449,9 @@ std::shared_ptr<MulPrimitiveFactory<XT, YT, OT>> GetPrimitiveFactory(
     const DenseTensor *input_y,
     const engine &onednn_engine) {
   std::string key = funcs::CreateKey(dev_ctx,
-                                     phi::TransToProtoVarType(input_x->dtype()),
+                                     TransToProtoVarType(input_x->dtype()),
                                      vectorize(input_x->dims()),
-                                     phi::TransToProtoVarType(input_y->dtype()),
+                                     TransToProtoVarType(input_y->dtype()),
                                      vectorize(input_y->dims()),
                                      dev_ctx.GetOutputsName("Out")[0]);
   key = funcs::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);

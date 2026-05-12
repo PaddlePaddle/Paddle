@@ -133,16 +133,15 @@ __global__ void GPUMaskedFillGradKernel(const T* out_grad,
 }
 
 template <typename T>
-void DispatchMaskFillGradKernel(
-    const GPUContext& dev_ctx,
-    const T* input,
-    const bool* mask,
-    const int64_t input_len,
-    const int64_t batch_size,
-    T* x_grad,
-    T* value_grad,
-    int vec_size,
-    const phi::backends::gpu::GpuLaunchConfig& config) {
+void DispatchMaskFillGradKernel(const GPUContext& dev_ctx,
+                                const T* input,
+                                const bool* mask,
+                                const int64_t input_len,
+                                const int64_t batch_size,
+                                T* x_grad,
+                                T* value_grad,
+                                int vec_size,
+                                const backends::gpu::GpuLaunchConfig& config) {
   auto stream = dev_ctx.stream();
   if (x_grad && value_grad) {
     switch (vec_size) {
@@ -207,7 +206,7 @@ void DispatchMaskFillOneValueGradKernel(
     const int64_t batch_size,
     T* x_grad,
     int vec_size,
-    const phi::backends::gpu::GpuLaunchConfig& config) {
+    const backends::gpu::GpuLaunchConfig& config) {
   auto stream = dev_ctx.stream();
   if (x_grad) {
     switch (vec_size) {
@@ -246,15 +245,15 @@ void GPUMaskedFillGrad(const GPUContext& dev_ctx,
   int64_t batch_size = input_len / mask_len;
 
   int vec_size = 8;
-  vec_size = std::min(phi::GetVectorizedSize(out_grad_data), vec_size);
+  vec_size = std::min(GetVectorizedSize(out_grad_data), vec_size);
   if (x_grad && x_grad->initialized()) {
     x_grad_data = x_grad->data<T>();
-    vec_size = std::min(phi::GetVectorizedSize(x_grad_data), vec_size);
+    vec_size = std::min(GetVectorizedSize(x_grad_data), vec_size);
   }
 
   if (value_grad && value_grad->initialized()) {
     value_grad_data = value_grad->data<T>();
-    vec_size = std::min(phi::GetVectorizedSize(value_grad_data), vec_size);
+    vec_size = std::min(GetVectorizedSize(value_grad_data), vec_size);
   }
 
   while (vec_size > 1 && batch_size % vec_size != 0) {
@@ -262,7 +261,7 @@ void GPUMaskedFillGrad(const GPUContext& dev_ctx,
   }
 
   auto config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, input_len, vec_size);
+      backends::gpu::GetGpuLaunchConfig1D(dev_ctx, input_len, vec_size);
 
   if (value_grad && value_grad->numel() == 1) {
     DispatchMaskFillOneValueGradKernel<T>(dev_ctx,

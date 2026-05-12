@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
@@ -386,19 +387,19 @@ template <typename TokenT,
           bool DoGather,
           bool ReturnIndices,
           int TOPK>
-void launch_permute_kernel(const phi::GPUContext &dev_ctx,
-                           const phi::DenseTensor &X,
-                           const phi::DenseTensor &expert_routemap_topk,
-                           const phi::DenseTensor &expert_prob_topk,
-                           const paddle::optional<phi::DenseTensor> &XScale,
-                           const phi::DenseTensor &expert_offsets,
-                           const phi::DenseTensor &expert_offset_end,
-                           phi::DenseTensor *X_unzipped,
-                           phi::DenseTensor *zipped_expertwise_rowmap,
-                           phi::DenseTensor *token_prob_unzipped,
-                           phi::DenseTensor *XScale_unzipped,
-                           phi::DenseTensor *global_expertwise_block_cumsum,
-                           phi::DenseTensor *expert_indices,
+void launch_permute_kernel(const GPUContext &dev_ctx,
+                           const DenseTensor &X,
+                           const DenseTensor &expert_routemap_topk,
+                           const DenseTensor &expert_prob_topk,
+                           const paddle::optional<DenseTensor> &XScale,
+                           const DenseTensor &expert_offsets,
+                           const DenseTensor &expert_offset_end,
+                           DenseTensor *X_unzipped,
+                           DenseTensor *zipped_expertwise_rowmap,
+                           DenseTensor *token_prob_unzipped,
+                           DenseTensor *XScale_unzipped,
+                           DenseTensor *global_expertwise_block_cumsum,
+                           DenseTensor *expert_indices,
                            int total_zipped_tokens_num,
                            int token_length,
                            int scale_length,
@@ -488,18 +489,18 @@ void launch_permute_kernel(const phi::GPUContext &dev_ctx,
 // ============================================================================
 template <typename T, typename Context>
 void dispatch_permute_kernel(const Context &dev_ctx,
-                             const phi::DenseTensor &X,
-                             const phi::DenseTensor &expert_routemap_topk,
-                             const phi::DenseTensor &expert_prob_topk,
-                             const paddle::optional<phi::DenseTensor> &XScale,
-                             const phi::DenseTensor &expert_offsets,
-                             const phi::DenseTensor &expert_offset_end,
-                             phi::DenseTensor *X_unzipped,
-                             phi::DenseTensor *zipped_expertwise_rowmap,
-                             phi::DenseTensor *token_prob_unzipped,
-                             phi::DenseTensor *XScale_unzipped,
-                             phi::DenseTensor *global_expertwise_block_cumsum,
-                             phi::DenseTensor *expert_indices,
+                             const DenseTensor &X,
+                             const DenseTensor &expert_routemap_topk,
+                             const DenseTensor &expert_prob_topk,
+                             const paddle::optional<DenseTensor> &XScale,
+                             const DenseTensor &expert_offsets,
+                             const DenseTensor &expert_offset_end,
+                             DenseTensor *X_unzipped,
+                             DenseTensor *zipped_expertwise_rowmap,
+                             DenseTensor *token_prob_unzipped,
+                             DenseTensor *XScale_unzipped,
+                             DenseTensor *global_expertwise_block_cumsum,
+                             DenseTensor *expert_indices,
                              int total_zipped_tokens_num,
                              int token_length,
                              int topk,
@@ -582,8 +583,10 @@ void dispatch_preprocess(const Context &dev_ctx,
   padding_tokens_tensor.Resize({static_cast<int64_t>(padding_rows.size())});
   dev_ctx.template Alloc<int>(&padding_tokens_tensor);
 
+  auto *stable_padding_rows = backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      const_cast<int *>(padding_rows.data()), padding_rows.size());
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(padding_tokens_tensor.data<int>(),
-                                             padding_rows.data(),
+                                             stable_padding_rows,
                                              sizeof(int) * padding_rows.size(),
                                              cudaMemcpyHostToDevice,
                                              dev_ctx.stream()));
@@ -795,14 +798,20 @@ void MoePermuteKernel(const Context &dev_ctx,
         expert_offset[i] = 0;
       }
     }
+    auto *stable_expert_offset =
+        backends::gpu::RestoreHostMemIfCapturingCUDAGraph(expert_offset,
+                                                          kMaxNumExperts);
     PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(expert_offset_tensor.data<int>(),
-                                               expert_offset,
+                                               stable_expert_offset,
                                                sizeof(int) * kMaxNumExperts,
                                                cudaMemcpyHostToDevice,
                                                dev_ctx.stream()));
+    auto *stable_expert_offset_end =
+        backends::gpu::RestoreHostMemIfCapturingCUDAGraph(expert_offset_end,
+                                                          kMaxNumExperts);
     PADDLE_ENFORCE_GPU_SUCCESS(
         cudaMemcpyAsync(expert_offset_end_tensor.data<int>(),
-                        expert_offset_end,
+                        stable_expert_offset_end,
                         sizeof(int) * kMaxNumExperts,
                         cudaMemcpyHostToDevice,
                         dev_ctx.stream()));

@@ -35,7 +35,7 @@ void LogSoftmaxKernel(const Context &dev_ctx,
     funcs::set_constant(dev_ctx, out, static_cast<T>(0.0));
     return;
   }
-  phi::SoftmaxForwardCUDAKernelDriver<T, true>(dev_ctx, x, axis, out);
+  SoftmaxForwardCUDAKernelDriver<T, true>(dev_ctx, x, axis, out);
 }
 
 }  // namespace phi

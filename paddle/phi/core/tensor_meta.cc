@@ -21,7 +21,7 @@ COMMON_DECLARE_bool(use_stride_kernel);
 namespace phi {
 
 DDim DenseTensorMeta::calc_strides(const DDim& dims) {
-  if (dims.size() == -1 || product(dims) <= 0) {
+  if (dims.size() == -1 || contain_unknown_dim(dims)) {
     return dims;
   }
 

@@ -25,7 +25,7 @@ from paddle.device import (
     Stream,
     StreamContext,
     _device_to_paddle as _device_to_paddle,
-    amp,  # noqa: F401
+    amp,
     current_device,
     device,
     ipc_collect,
@@ -431,6 +431,13 @@ class CudaError(RuntimeError):
             base.libpaddle._cudart.cudaError(code)
         )
         super().__init__(f"{msg} ({code})")
+
+
+class OutOfMemoryError(RuntimeError):
+    """Exception raised when a CUDA operation fails due to running out of GPU memory."""
+
+    def __init__(self, msg: str) -> None:
+        super().__init__(msg)
 
 
 def check_error(res: int) -> None:
@@ -847,6 +854,8 @@ def get_stream_from_external(
 
 
 __all__ = [
+    "CudaError",
+    "OutOfMemoryError",
     "cudart",
     "check_error",
     "is_available",
@@ -889,4 +898,5 @@ __all__ = [
     "Event",
     "ipc_collect",
     "StreamContext",
+    "amp",
 ]

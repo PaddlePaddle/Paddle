@@ -53,11 +53,11 @@ def _preload_nvidia_lib(lib_glob, sub_dirs=None):
     import glob
     import os
 
-    from .version import cuda as cuda_version
+    from .version import cuda_version as _cuda_version
 
     pkg_dir = os.path.dirname(os.path.abspath(__file__))
     nvidia_dir = os.path.join(pkg_dir, '..', 'nvidia')
-    cuda_major = cuda_version().split('.')[0]
+    cuda_major = _cuda_version.split('.')[0]
 
     paths = glob.glob(
         os.path.join(nvidia_dir, f'cu{cuda_major}', 'lib', lib_glob)
@@ -70,13 +70,23 @@ def _preload_nvidia_lib(lib_glob, sub_dirs=None):
 
 
 if __is_metainfo_generated:
+    import builtins
     import platform
 
-    if platform.system() == 'Linux' and platform.machine() == 'x86_64':
+    if platform.system() == 'Linux':
         try:
-            from .version import with_pip_cuda_libraries
+            from .version import (
+                cuda_version as _cuda_version,
+                with_pip_cuda_libraries,
+            )
 
-            if with_pip_cuda_libraries == 'ON':
+            if with_pip_cuda_libraries == 'ON' and (
+                platform.machine() in ('x86_64', 'AMD64')
+                or (
+                    platform.machine() == 'aarch64'
+                    and builtins.float(_cuda_version) >= 13.0
+                )
+            ):
                 _preload_nvidia_lib('libcublasLt.so.*[0-9]', ['cublas'])
                 _preload_nvidia_lib('libcublas.so.*[0-9]', ['cublas'])
         except Exception:
@@ -235,6 +245,7 @@ from paddle import (
     metric as metric,
     nn as nn,
     onnx as onnx,
+    optim as optim,
     optimizer as optimizer,
     quantization as quantization,
     random as random,
@@ -282,15 +293,16 @@ from .audio.functional.window import (  # noqa: F401
 from .autograd import (
     enable_grad,
     grad,
+    inference_mode,
     is_grad_enabled,
     no_grad,
     set_grad_enabled,
 )
 from .base.core import Size
-from .compat import (
-    disable_torch_proxy as disable_compat,
-    enable_torch_proxy as enable_compat,
-    use_torch_proxy_guard as use_compat_guard,  # noqa: F401
+from .compat.proxy import (
+    disable_compat,
+    enable_compat,
+    use_compat_guard,
 )
 from .device import (  # noqa: F401
     Event,
@@ -794,6 +806,7 @@ from .tensor.stat import (
     var,
 )
 from .tensor.to_string import set_printoptions
+from .testing import _assert as _assert
 from .utils.dlpack import (
     from_dlpack,
     to_dlpack,
@@ -843,13 +856,22 @@ if is_compiled_with_cinn():
     os.environ['CINN_CONFIG_PATH'] = str(data_file_path)
 
 if __is_metainfo_generated and is_compiled_with_cuda():
+    import builtins
     import os
     import platform
 
+    from .version import cuda_version as _cuda_version, with_pip_cuda_libraries
+
     if (
         platform.system() == 'Linux'
-        and platform.machine() == 'x86_64'
-        and paddle.version.with_pip_cuda_libraries == 'ON'
+        and (
+            platform.machine() in ('x86_64', 'AMD64')
+            or (
+                platform.machine() == 'aarch64'
+                and builtins.float(_cuda_version) >= 13.0
+            )
+        )
+        and with_pip_cuda_libraries == 'ON'
     ):
         package_dir = os.path.dirname(os.path.abspath(__file__))
         nvidia_package_path = package_dir + "/.." + "/nvidia"
@@ -1123,6 +1145,7 @@ __all__ = [
     'min',
     'narrow',
     'amin',
+    'aminmax',
     'any',
     'slice',
     'slice_scatter',
@@ -1252,6 +1275,7 @@ __all__ = [
     'enable_grad',
     'set_grad_enabled',
     'is_grad_enabled',
+    'inference_mode',
     'mod',
     'mod_',
     'abs',
@@ -1301,6 +1325,7 @@ __all__ = [
     'lerp',
     'erfinv',
     'inner',
+    'inverse',
     'outer',
     'ger',
     'square',
@@ -1548,6 +1573,7 @@ __all__ = [
     'autocast',
     'enable_compat',
     'disable_compat',
+    'use_compat_guard',
 ]
 import os
 

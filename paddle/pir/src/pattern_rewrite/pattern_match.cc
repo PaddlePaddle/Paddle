@@ -86,36 +86,6 @@ RewritePattern::~RewritePattern() = default;
 //===----------------------------------------------------------------------===//
 RewriterBase::~RewriterBase() = default;
 
-void RewriterBase::ReplaceOpWithIf(
-    Operation* op,
-    const std::vector<Value>& new_values,
-    bool* all_uses_replaced,
-    const std::function<bool(OpOperand)>& functor) {
-  PADDLE_ENFORCE_EQ(op->num_results(),
-                    new_values.size(),
-                    common::errors::InvalidArgument(
-                        "incorrect number of values to replace operation"));
-  NotifyRootReplaced(op, new_values);
-
-  // Replace each use of the results when the functor is true.
-  bool replace_all_uses = true;
-  for (uint32_t i = 0; i < op->num_results(); ++i) {
-    auto src_res = op->result(i);
-    src_res.ReplaceUsesWithIf(new_values[i], functor);
-    replace_all_uses &= src_res.use_empty();
-  }
-  if (replace_all_uses) {
-    *all_uses_replaced = replace_all_uses;
-  }
-}
-
-void RewriterBase::ReplaceOpWithIf(
-    Operation* op,
-    const std::vector<Value>& new_values,
-    const std::function<bool(OpOperand)>& functor) {
-  ReplaceOpWithIf(op, new_values, nullptr, functor);
-}
-
 void RewriterBase::ReplaceOp(Operation* op,
                              const std::vector<Value>& new_values) {
   // Notify that the rewriter subclass we're about to replace this root.
@@ -152,47 +122,6 @@ void RewriterBase::ReplaceAllUsesWith(Value from, Value to) {
     UpdateRootInplace(it.owner(), [&]() { (it++)->set_source(to); });
   }
   NotifyValueReplaced(from, to);
-}
-
-// Find uses of `from` and replace them with `to` if the `functor` returns true.
-void RewriterBase::ReplaceUseIf(Value from,
-                                Value to,
-                                std::function<bool(OpOperand&)> functor) {
-  // Use post-increment operator for iterator since set_source() will change
-  // `it`.
-  // TODO(zhangbopd): Add unit test for this.
-  bool replaced = false;
-  for (auto it = from.use_begin(); it != from.use_end();) {
-    if (functor(*it)) {
-      UpdateRootInplace(it.owner(), [&]() { (it++)->set_source(to); });
-      replaced = true;
-    }
-  }
-  if (replaced) {
-    NotifyValueReplaced(from, to);
-  }
-}
-
-// Replace the uses of op with uses of new_op.
-// 'op' and 'new_op' are known to have the same number of results
-void RewriterBase::ReplaceOpWithResultsOfAnotherOp(Operation* op,
-                                                   Operation* new_op) {
-  PADDLE_ENFORCE_EQ(op->num_results(),
-                    new_op->num_results(),
-                    common::errors::InvalidArgument(
-                        "replacement op doesn't match results of original op"));
-  // TODO(zhangbopd): Add unit test for this.
-  if (op->num_results() == 1) {
-    std::vector<Value> new_values;
-    new_values.push_back(new_op->result(0));
-    return ReplaceOp(op, new_values);
-  }
-
-  std::vector<Value> new_values;
-  for (auto res : new_op->results()) {
-    new_values.push_back(res);
-  }
-  return ReplaceOp(op, new_values);
 }
 
 }  // namespace pir

@@ -16,7 +16,6 @@
 
 #include <cuda_profiler_api.h>
 #include <functional>
-#include "matmul.h"  // NOLINT
 
 namespace ap {
 

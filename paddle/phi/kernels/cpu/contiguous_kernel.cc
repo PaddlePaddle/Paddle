@@ -154,7 +154,7 @@ void ContiguousKernel(const Context& dev_ctx,
   if (FastTransposeCopyValid(*out, input)) {
     constexpr int64_t TRANS_NUMEL = 60;
     void* trans_buffer =
-        malloc(phi::SizeOf(input.dtype()) * TRANS_NUMEL * TRANS_NUMEL);
+        malloc(SizeOf(input.dtype()) * TRANS_NUMEL * TRANS_NUMEL);
 
     const T* tmp_src_ptr = input_data;
     T* tmp_out_ptr = output_data;

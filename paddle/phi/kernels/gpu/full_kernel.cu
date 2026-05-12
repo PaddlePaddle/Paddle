@@ -41,7 +41,7 @@ void FullKernel(const Context& dev_ctx,
                 const Scalar& val,
                 DataType dtype,
                 DenseTensor* out) {
-  out->Resize(make_ddim(shape.GetData()));
+  out->Resize(shape.GetData());
   int64_t numel = out->numel();
   dev_ctx.template Alloc<T>(out);
 
@@ -71,14 +71,13 @@ void FullLikeKernel(const Context& dev_ctx,
   // the operator is 0
   int64_t numel = out->numel();
 
-  if (!std::is_same<T, phi::complex64>::value &&
-      !std::is_same<T, phi::complex128>::value &&
-      !std::is_same<T, int64_t>::value) {
+  if (!std::is_same<T, complex64>::value &&
+      !std::is_same<T, complex128>::value && !std::is_same<T, int64_t>::value) {
     auto value = val.to<double>();
     using CommonType = typename std::common_type<
         float,
-        typename std::conditional<std::is_same<T, phi::float16>::value ||
-                                      std::is_same<T, phi::bfloat16>::value,
+        typename std::conditional<std::is_same<T, float16>::value ||
+                                      std::is_same<T, bfloat16>::value,
                                   float,
                                   T>::type>::type;
     auto common_type_value = static_cast<CommonType>(value);
@@ -121,6 +120,7 @@ void FullLikeKernel(const Context& dev_ctx,
 }
 #ifdef _WIN32
 INSTANTIATE_FULL_KERNEL(float, GPUContext)
+INSTANTIATE_FULL_KERNEL(double, GPUContext)
 INSTANTIATE_FULL_KERNEL(int, GPUContext)
 INSTANTIATE_FULL_KERNEL(int64_t, GPUContext)
 #endif

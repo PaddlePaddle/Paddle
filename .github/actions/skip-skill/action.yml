@@ -6,7 +6,7 @@ inputs:
   ignore-paths:
     description: 'Comma-separated paths to ignore (e.g., "skill/**,docs/**,**.md")'
     required: true
-    default: 'skill/**'
+    default: '.agents/skills/**'
   base-ref:
     description: 'Base branch (defaults to PR target branch)'
     required: false
@@ -33,7 +33,7 @@ runs:
   using: 'composite'
   steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         fetch-depth: 0
 

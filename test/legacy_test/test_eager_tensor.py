@@ -96,8 +96,30 @@ class TestEagerTensor(unittest.TestCase):
                     self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
                     y = x.cuda(device_id=0, blocking=False)
                     self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
+                    y = x.cuda(core.CUDAPlace(0))
+                    self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
+                    y = x.cuda(paddle.device("cuda:0"))
+                    self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
+                    y = x.cuda("cuda:0")
+                    self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
+                    y = x.cuda(device=0, non_blocking=False)
+                    self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
+                    y = x.cuda("cuda:0", False)
+                    self.assertEqual(y.place.__repr__(), "Place(gpu:0)")
+                    # non-existing place
                     with self.assertRaises(ValueError):
                         y = x.cuda("test")
+                    # data type error
+                    with self.assertRaises(ValueError):
+                        y = x.cuda(["cuda:0", "cpu"])
+                    # arg error
+                    with self.assertRaises(ValueError):
+                        y = x.cuda(device="cuda:0", device_id="cuda:0")
+                    with self.assertRaises(ValueError):
+                        y = x.cuda(blocking=True, non_blocking=True)
+                    # too many positional args
+                    with self.assertRaises(ValueError):
+                        y = x.cuda("cuda:0", False, None)
 
                 # support 'dtype' is core.VarType
                 x = paddle.rand((2, 2))
@@ -400,16 +422,33 @@ class TestEagerTensor(unittest.TestCase):
             tensor_pin = paddle.tensor(self.array, device="xpu_pinned")
             self.assertEqual(tensor_pin.place, core.XPUPinnedPlace())
 
-        with self.assertRaises(RuntimeError) as context:
-            paddle.tensor(
-                self.array,
-                device="cpu",
-                pin_memory=True,  # no support
+        # ``device="cpu", pin_memory=True`` is relaxed to map onto the
+        # available pinned allocator (matching torch's pin_memory contract).
+        # On a pure-CPU build there is no pinned allocator at all, so the
+        # call must raise with the legacy "Pinning memory is not supported"
+        # message; on GPU/XPU builds it succeeds and produces a pinned
+        # tensor.
+        if core.is_compiled_with_xpu():
+            tensor_res = paddle.tensor(
+                self.array, device="cpu", pin_memory=True
             )
-        self.assertIn(
-            "Pinning memory is not supported",
-            str(context.exception),
-        )
+            self.assertEqual(tensor_res.place, core.XPUPinnedPlace())
+        elif core.is_compiled_with_cuda():
+            tensor_res = paddle.tensor(
+                self.array, device="cpu", pin_memory=True
+            )
+            self.assertEqual(tensor_res.place, core.CUDAPinnedPlace())
+        else:
+            with self.assertRaises(RuntimeError) as context:
+                paddle.tensor(
+                    self.array,
+                    device="cpu",
+                    pin_memory=True,
+                )
+            self.assertIn(
+                "Pinning memory is not supported",
+                str(context.exception),
+            )
 
     def test_tensor_and_to_tensor(self):
         """
@@ -1159,6 +1198,9 @@ class TestEagerTensor(unittest.TestCase):
         with base.dygraph.guard():
             var = paddle.to_tensor(self.array)
             np.testing.assert_array_equal(var.numpy(), var.numpy(False))
+            np.testing.assert_array_equal(
+                var.numpy(force=True), var.numpy(force=False)
+            )
 
     def test_tensor_as_np(self):
         with base.dygraph.guard():
@@ -2242,6 +2284,33 @@ class TestEagerTensorStride(unittest.TestCase):
         strides_4d = x4d.get_strides()
         for i in range(4):
             self.assertEqual(x4d.stride(i), strides_4d[i])
+
+    def test_stride_zero_size_contiguous_view_reshape_and_slice(self):
+        paddle.disable_static()
+
+        x = paddle.zeros([0, 2048], dtype='float32')
+        self.assertEqual(x.stride(), [2048, 1])
+        self.assertEqual(x.get_strides(), [2048, 1])
+        self.assertTrue(x.is_contiguous())
+
+        viewed = x.view([0, 512, 4])
+        self.assertEqual(viewed.stride(), [2048, 4, 1])
+        self.assertEqual(viewed.get_strides(), [2048, 4, 1])
+        self.assertTrue(viewed.is_contiguous())
+
+        reshaped = x.reshape([0, 512, 4])
+        self.assertEqual(reshaped.stride(), [2048, 4, 1])
+        self.assertEqual(reshaped.get_strides(), [2048, 4, 1])
+        self.assertTrue(reshaped.is_contiguous())
+
+        sliced = x[:, ::2]
+        self.assertEqual(sliced.stride(), [2048, 2])
+        self.assertEqual(sliced.get_strides(), [2048, 2])
+        self.assertFalse(sliced.is_contiguous())
+
+        contiguous = sliced.contiguous()
+        self.assertEqual(contiguous.stride(), [1024, 1])
+        self.assertTrue(contiguous.is_contiguous())
 
     def test_stride_different_dtypes(self):
         paddle.disable_static()

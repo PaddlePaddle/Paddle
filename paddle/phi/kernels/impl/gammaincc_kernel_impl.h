@@ -56,8 +56,8 @@ HOSTDEVICE T igam(const T a, const T x) {
 
 template <typename T>
 HOSTDEVICE T igamc(const T a, const T x) {
-  static T big = 4.503599627370496e15;
-  static T biginv = 2.22044604925031308085e-16;
+  static const T big = 4.503599627370496e15;
+  static const T biginv = 2.22044604925031308085e-16;
 
   if ((x <= T{0}) || (a <= T{0})) return (T{1.0});
 
@@ -114,7 +114,7 @@ struct IgammaFunctor {
       : x_(x), a_(a), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    using MT = typename MPTypeTrait<T>::Type;
     const MT mp_x = static_cast<MT>(x_[idx]);
     const MT mp_a = static_cast<MT>(a_[idx]);
     output_[idx] = static_cast<T>(igamc<MT>(mp_a, mp_x));

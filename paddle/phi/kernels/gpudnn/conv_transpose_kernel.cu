@@ -379,12 +379,12 @@ void ConvTransposeRawGPUDNNKernel(const Context& dev_ctx,
 
   DenseTensor transformed_out;
   if (!is_sys_pad) {
-    transformed_out.Resize(make_ddim(transformed_out_vec));
+    transformed_out.Resize(transformed_out_vec);
     dev_ctx.template Alloc<T>(&transformed_out);
   } else {
     dev_ctx.template Alloc<T>(out);
     transformed_out.ShareDataWith(*out);
-    transformed_out.Resize(make_ddim(transformed_out_vec));
+    transformed_out.Resize(transformed_out_vec);
   }
 
   DataLayout layout;
@@ -448,7 +448,7 @@ void ConvTransposeRawGPUDNNKernel(const Context& dev_ctx,
     DenseTensor out_transpose;
     DenseTensor out_nchw;
     out_nchw.ShareDataWith(*out);
-    out_nchw.Resize(make_ddim(out_vec));
+    out_nchw.Resize(out_vec);
 
     if (strides.size() == 2U) {
       out_transpose = Transpose<T, Context>(dev_ctx, out_nchw, {0, 2, 3, 1});

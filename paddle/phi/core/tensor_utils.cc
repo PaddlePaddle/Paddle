@@ -19,6 +19,9 @@ limitations under the License. */
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
+#endif
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/compat/convert_utils.h"
@@ -165,8 +168,15 @@ void Copy(const Context& dev_ctx,
     auto stream =
         blocking ? nullptr
                  : reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
+    // During CUDA Graph capturing, the host pointer may be freed or modified
+    // after the graph is captured but before replay. Restore the host memory
+    // into a stable buffer whose lifetime is tied to the graph.
+    const void* stable_src_ptr =
+        backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+            const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(src_ptr)),
+            size);
     memory_utils::Copy(
-        dst_gpu_place, dst_ptr, src_cpu_place, src_ptr, size, stream);
+        dst_gpu_place, dst_ptr, src_cpu_place, stable_src_ptr, size, stream);
   } else if (src_place.GetType() == AllocationType::GPU &&  // NOLINT
              dst_place.GetType() == AllocationType::GPU) {
     auto src_gpu_place = src_place;
@@ -499,10 +509,14 @@ void TensorFromVector(const std::vector<T>& src,
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   else if (dst_place.GetType() == AllocationType::GPU) {  // NOLINT
+    const void* stable_src_ptr =
+        backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+            const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(src_ptr)),
+            size);
     memory_utils::Copy(dst_place,
                        dst_ptr,
                        src_place,
-                       src_ptr,
+                       stable_src_ptr,
                        size,
                        reinterpret_cast<const phi::GPUContext&>(ctx).stream());
   }
@@ -553,10 +567,14 @@ void TensorFromVector(const std::vector<bool>& src,
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   else if (dst_place.GetType() == AllocationType::GPU) {  // NOLINT
+    const void* stable_src_ptr =
+        backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+            const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(src_ptr)),
+            size);
     memory_utils::Copy(dst_place,
                        dst_ptr,
                        src_place,
-                       src_ptr,
+                       stable_src_ptr,
                        size,
                        reinterpret_cast<const phi::GPUContext&>(ctx).stream());
   }
@@ -645,10 +663,14 @@ void TensorFromArray(const T* src,
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   else if (dst_place.GetType() == AllocationType::GPU) {  // NOLINT
+    const void* stable_src_ptr =
+        backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+            const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(src_ptr)),
+            size);
     memory_utils::Copy(dst_place,
                        dst_ptr,
                        src_place,
-                       src_ptr,
+                       stable_src_ptr,
                        size,
                        reinterpret_cast<const phi::GPUContext&>(ctx).stream());
   }
@@ -972,7 +994,7 @@ template phi::dtype::complex<double> GetValue(const DenseTensor* x);
 template <typename T>
 std::vector<T> GetVectorFromTensor(const DenseTensor* x) {
   std::vector<T> vec_new_data;
-  if (phi::TransToProtoVarType(x->dtype()) == ProtoDataType::INT32) {
+  if (x->dtype() == DataType::INT32) {
     auto* data = x->data<int>();
     DenseTensor cpu_attr_tensor;
     if (x->place().GetType() != phi::AllocationType::CPU) {
@@ -982,7 +1004,7 @@ std::vector<T> GetVectorFromTensor(const DenseTensor* x) {
       data = cpu_attr_tensor.data<int>();
     }
     vec_new_data = std::vector<T>(data, data + x->numel());
-  } else if (phi::TransToProtoVarType(x->dtype()) == ProtoDataType::INT64) {
+  } else if (x->dtype() == DataType::INT64) {
     auto* data = x->data<int64_t>();
     DenseTensor cpu_attr_tensor;
     if (x->place().GetType() != phi::AllocationType::CPU) {
@@ -996,7 +1018,7 @@ std::vector<T> GetVectorFromTensor(const DenseTensor* x) {
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "The dtype of Tensor must be int32 or int64, but received: %s",
-        phi::TransToProtoVarType(x->dtype())));
+        x->dtype()));
   }
   return vec_new_data;
 }
@@ -1024,20 +1046,18 @@ std::vector<T> _GetVectorFromTensor(const DenseTensor* x) {
 
 template <>
 std::vector<float> GetVectorFromTensor<float>(const DenseTensor* x) {
-  if (phi::TransToProtoVarType(x->dtype()) != ProtoDataType::FP32) {
+  if (x->dtype() != DataType::FLOAT32) {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "The dtype of Tensor must be float32, but received: %s",
-        phi::TransToProtoVarType(x->dtype())));
+        "The dtype of Tensor must be float32, but received: %s", x->dtype()));
   }
   return _GetVectorFromTensor<float>(x);
 }
 
 template <>
 std::vector<double> GetVectorFromTensor<double>(const DenseTensor* x) {
-  if (phi::TransToProtoVarType(x->dtype()) != ProtoDataType::FP64) {
+  if (x->dtype() != DataType::FLOAT64) {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "The dtype of Tensor must be float64, but received: %s",
-        phi::TransToProtoVarType(x->dtype())));
+        "The dtype of Tensor must be float64, but received: %s", x->dtype()));
   }
   return _GetVectorFromTensor<double>(x);
 }
