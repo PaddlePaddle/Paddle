@@ -46,7 +46,7 @@ if(WITH_ROCM)
     set(WARPRNNT_PATCH_ROCM_COMMAND
         patch -p1 <
         ${PADDLE_SOURCE_DIR}/patches/warprnnt/CMakeLists.txt.rocm.patch && cp
-        ${PADDLE_SOURCE_DIR}/patches/hip.cmake.rocm70 cmake/hip.cmake)
+        ${PADDLE_SOURCE_DIR}/cmake/hip.cmake cmake/hip.cmake)
   else()
     set(WARPRNNT_PATCH_ROCM_COMMAND
         patch -p1 <

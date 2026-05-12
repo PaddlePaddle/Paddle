@@ -406,8 +406,15 @@ endif()
 
 list(APPEND third_party_deps extern_eigen3 extern_gflags extern_glog
      extern_xxhash)
-list(APPEND third_party_deps extern_zlib extern_dlpack extern_threadpool
-     extern_lapack)
+list(
+  APPEND
+  third_party_deps
+  extern_zlib
+  extern_dlpack
+  extern_warpctc
+  extern_warprnnt
+  extern_threadpool
+  extern_lapack)
 
 if(WITH_MAGMA)
   list(APPEND third_party_deps extern_magma)
