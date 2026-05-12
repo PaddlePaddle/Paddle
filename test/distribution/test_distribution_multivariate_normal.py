@@ -268,11 +268,11 @@ class TestMVNValidateArgsAndExpand(unittest.TestCase):
         dist = MultivariateNormal(
             loc=loc, covariance_matrix=cov, validate_args=True
         )
-        self.assertTrue(dist._validate_args_value)
+        self.assertTrue(dist._validate_args_enabled)
         np.testing.assert_allclose(dist.mode.numpy(), loc.numpy())
 
         expanded = dist.expand((3,))
-        self.assertTrue(expanded._validate_args_value)
+        self.assertTrue(expanded._validate_args_enabled)
         self.assertEqual(expanded.batch_shape, (3,))
         self.assertEqual(expanded.event_shape, (2,))
         np.testing.assert_allclose(

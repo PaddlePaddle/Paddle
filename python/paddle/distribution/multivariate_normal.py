@@ -188,7 +188,7 @@ class MultivariateNormal(distribution.Distribution):
         self.loc = loc.expand([*batch_shape, -1])
         event_shape = self.loc.shape[-1:]
         super().__init__(batch_shape, event_shape, validate_args=validate_args)
-        if in_dynamic_mode() and self._validate_args_value:
+        if in_dynamic_mode() and self._validate_args_enabled:
             self._validate_parameters(
                 scale_tril=scale_tril,
                 covariance_matrix=covariance_matrix,
@@ -258,7 +258,7 @@ class MultivariateNormal(distribution.Distribution):
         super(MultivariateNormal, new).__init__(
             batch_shape, self.event_shape, validate_args=False
         )
-        new._validate_args_value = self._validate_args_value
+        new._validate_args_enabled = self._validate_args_enabled
         return new
 
     @property
@@ -365,7 +365,7 @@ class MultivariateNormal(distribution.Distribution):
           Tensor: log probability. The data type is the same as `self.loc`.
         """
         value = paddle.cast(value, dtype=self.dtype)
-        if in_dynamic_mode() and self._validate_args_value:
+        if in_dynamic_mode() and self._validate_args_enabled:
             self._validate_sample(value)
 
         diff = value - self.loc

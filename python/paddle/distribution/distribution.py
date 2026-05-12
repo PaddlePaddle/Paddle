@@ -79,7 +79,7 @@ class Distribution:
             if isinstance(event_shape, tuple)
             else tuple(event_shape)
         )
-        self._validate_args_value = (
+        self._validate_args_enabled = (
             Distribution._default_validate_args
             if validate_args is None
             else validate_args
