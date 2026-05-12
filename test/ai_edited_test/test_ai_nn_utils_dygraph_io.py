@@ -1,19 +1,32 @@
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # [AUTO-GENERATED] Test file for paddle.nn.utils.dygraph_utils and paddle.io.multiprocess_utils
 # 覆盖模块: paddle/nn/utils/dygraph_utils.py, paddle/io/multiprocess_utils.py
 # 未覆盖行: dygraph_utils: 30,31,33; multiprocess_utils: 34,36,37,38,39,45,47,53,66,67,68,70,74,81,82,83,84,85,90,91,92,96,97,98,99,135
 # Covered module: paddle/nn/utils/dygraph_utils.py, paddle/io/multiprocess_utils.py
 # Uncovered lines: dygraph_utils: 30,31,33; multiprocess_utils: 34,36,37,38,39,45,47,53,66,67,68,70,74,81,82,83,84,85,90,91,92,96,97,98,99,135
 
-import numpy as np
 import queue
-import signal
 import unittest
-from unittest.mock import MagicMock, patch
+
+import numpy as np
 
 import paddle
 from paddle.io.multiprocess_utils import (
-    CleanupFuncRegistrar,
     MP_STATUS_CHECK_INTERVAL,
+    CleanupFuncRegistrar,
     _clear_multiprocess_queue_set,
     _set_SIGCHLD_handler,
     multiprocess_queue_set,
@@ -39,9 +52,7 @@ class TestAppendBiasInDygraph(unittest.TestCase):
         bias = paddle.to_tensor([0.5, 1.0])
         result = _append_bias_in_dygraph(input_tensor, bias)
         expected = input_tensor + bias
-        np.testing.assert_allclose(
-            result.numpy(), expected.numpy(), rtol=1e-6
-        )
+        np.testing.assert_allclose(result.numpy(), expected.numpy(), rtol=1e-6)
 
     def test_append_bias_1d_input(self):
         """测试1D输入的 bias append
@@ -50,9 +61,7 @@ class TestAppendBiasInDygraph(unittest.TestCase):
         bias = paddle.to_tensor([0.1, 0.2, 0.3])
         result = _append_bias_in_dygraph(input_tensor, bias, axis=0)
         expected = input_tensor + bias
-        np.testing.assert_allclose(
-            result.numpy(), expected.numpy(), rtol=1e-6
-        )
+        np.testing.assert_allclose(result.numpy(), expected.numpy(), rtol=1e-6)
 
 
 class TestMultiprocessUtils(unittest.TestCase):

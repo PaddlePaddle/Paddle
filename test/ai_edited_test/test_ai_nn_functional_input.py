@@ -1,3 +1,17 @@
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # [AUTO-GENERATED] Test file for paddle.nn.functional.input
 # 覆盖模块: paddle/nn/functional/input.py
 # 未覆盖行: 118,119,121,122,124,125,127,128,129,130,137,315,316,318,324,326,332
@@ -7,6 +21,7 @@
 import unittest
 
 import numpy as np
+
 import paddle
 
 
@@ -84,7 +99,9 @@ class TestEmbedding(unittest.TestCase):
         """测试2D索引的 embedding
         Test embedding with 2D indices"""
         x = paddle.arange(3, 6).reshape((3, 1)).astype(paddle.int64)
-        weight = paddle.full(shape=(10, 3), fill_value=2.0).astype(paddle.float32)
+        weight = paddle.full(shape=(10, 3), fill_value=2.0).astype(
+            paddle.float32
+        )
         result = paddle.nn.functional.embedding(x, weight, sparse=True)
         self.assertEqual(result.shape, [3, 1, 3])
         np.testing.assert_allclose(result.numpy(), np.full((3, 1, 3), 2.0))
@@ -152,9 +169,7 @@ class TestEmbeddingRenorm(unittest.TestCase):
         x = paddle.to_tensor([0, 1, 2], dtype='int64')
         weight = paddle.randn([5, 4]) * 10
         original_norms = paddle.norm(weight[:3], p=2, axis=1)
-        result = paddle.nn.functional.embedding_renorm_(
-            x, weight, max_norm=1.0
-        )
+        result = paddle.nn.functional.embedding_renorm_(x, weight, max_norm=1.0)
         new_norms = paddle.norm(result[:3], p=2, axis=1)
         # All norms should be <= max_norm
         self.assertTrue(paddle.all(new_norms <= 1.0 + 1e-5).item())

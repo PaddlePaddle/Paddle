@@ -1,3 +1,17 @@
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # [AUTO-GENERATED] Test file for paddle.distributed.communication.group
 # 覆盖模块: paddle/distributed/communication/group.py
 # 未覆盖行: 85,92,109,128,134,251,252,253,254,258,259,261,262,263,264,265,271,272,274,275,276,277,278,312,313,315,316,318,319,351,354,363,364,365,370,401,403
@@ -5,13 +19,12 @@
 # Uncovered lines: 85,92,109,128,134,251,252,253,254,258,259,261,262,263,264,265,271,272,274,275,276,277,278,312,313,315,316,318,319
 
 import unittest
-from unittest.mock import MagicMock, patch
 
 from paddle.distributed.communication.group import (
     Group,
-    _GroupManager,
     _add_new_group,
     _get_global_group,
+    _GroupManager,
     _is_global_group,
     is_initialized,
 )

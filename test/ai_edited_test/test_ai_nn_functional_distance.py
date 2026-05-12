@@ -1,3 +1,17 @@
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # [AUTO-GENERATED] Test file for paddle.nn.functional.distance
 # 覆盖模块: paddle/nn/functional/distance.py
 # 未覆盖行: 95,96,97,99,102,105,106,107,108,111,112,113,119,120,124
@@ -7,6 +21,7 @@
 import unittest
 
 import numpy as np
+
 import paddle
 
 
@@ -76,9 +91,7 @@ class TestPairwiseDistance(unittest.TestCase):
         Test pairwise_distance with parameter aliases (x1, x2, eps)"""
         x = paddle.to_tensor([[1.0, 2.0]], dtype='float32')
         y = paddle.to_tensor([[4.0, 6.0]], dtype='float32')
-        result = paddle.nn.functional.pairwise_distance(
-            x1=x, x2=y, eps=1e-6
-        )
+        result = paddle.nn.functional.pairwise_distance(x1=x, x2=y, eps=1e-6)
         self.assertEqual(result.shape, [1])
 
     def test_pairwise_distance_large_p(self):
@@ -101,7 +114,9 @@ class TestPdist(unittest.TestCase):
     def test_pdist_basic(self):
         """测试基本的 pdist 计算
         Test basic pdist computation"""
-        x = paddle.to_tensor([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]], dtype='float32')
+        x = paddle.to_tensor(
+            [[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]], dtype='float32'
+        )
         result = paddle.nn.functional.pdist(x, p=2.0)
         # N=3, output shape = 3*(3-1)/2 = 3
         self.assertEqual(result.shape, [3])
@@ -109,7 +124,9 @@ class TestPdist(unittest.TestCase):
     def test_pdist_p1(self):
         """测试 p=1 的 pdist
         Test pdist with p=1"""
-        x = paddle.to_tensor([[0.0, 0.0], [1.0, 1.0], [2.0, 2.0]], dtype='float32')
+        x = paddle.to_tensor(
+            [[0.0, 0.0], [1.0, 1.0], [2.0, 2.0]], dtype='float32'
+        )
         result = paddle.nn.functional.pdist(x, p=1.0)
         self.assertEqual(result.shape, [3])
         # distances: |0-1|+|0-1|=2, |0-2|+|0-2|=4, |1-2|+|1-2|=2

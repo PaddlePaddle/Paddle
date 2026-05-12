@@ -1,3 +1,17 @@
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # [AUTO-GENERATED] Test file for paddle.nn.functional.vision
 # 覆盖模块: paddle/nn/functional/vision.py
 # 未覆盖行: 111,125,135,136,139,140,141,142,143,144,148,150,156,210,211,214,215,224,291,292,293,294,300
@@ -6,7 +20,6 @@
 
 import unittest
 
-import numpy as np
 import paddle
 
 
@@ -120,9 +133,7 @@ class TestGridSample(unittest.TestCase):
         """测试 nearest 插值的 grid_sample
         Test grid_sample with nearest interpolation"""
         x = paddle.randn([1, 1, 3, 3])
-        grid = paddle.to_tensor(
-            [[[[0.0, 0.0], [0.5, 0.5]]]], dtype='float32'
-        )
+        grid = paddle.to_tensor([[[[0.0, 0.0], [0.5, 0.5]]]], dtype='float32')
         result = paddle.nn.functional.grid_sample(x, grid, mode='nearest')
         self.assertEqual(result.shape, [1, 1, 1, 2])
 
@@ -130,12 +141,8 @@ class TestGridSample(unittest.TestCase):
         """测试 align_corners 参数的 grid_sample
         Test grid_sample with align_corners parameter"""
         x = paddle.randn([1, 1, 4, 4])
-        grid = paddle.to_tensor(
-            [[[[0.0, 0.0], [1.0, 1.0]]]], dtype='float32'
-        )
-        result = paddle.nn.functional.grid_sample(
-            x, grid, align_corners=True
-        )
+        grid = paddle.to_tensor([[[[0.0, 0.0], [1.0, 1.0]]]], dtype='float32')
+        result = paddle.nn.functional.grid_sample(x, grid, align_corners=True)
         self.assertEqual(result.shape, [1, 1, 1, 2])
 
 

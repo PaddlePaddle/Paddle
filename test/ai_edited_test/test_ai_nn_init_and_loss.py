@@ -1,3 +1,17 @@
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # [AUTO-GENERATED] Test file for paddle.nn.initializer.orthogonal and paddle.nn.functional.loss
 # 覆盖模块: paddle/nn/initializer/orthogonal.py, paddle/nn/functional/loss.py
 # 未覆盖行: orthogonal: 157,161,167,181,187,193,204,210,218,219,226,234,240,241,247,254,256,264,271; loss: 169,170,171,173,175,181,280,284,289,290,291,338,584,593,594,595,596,597,598,601,602,603,610,706,712,719,720,721,722,731
@@ -6,7 +20,6 @@
 
 import unittest
 
-import numpy as np
 import paddle
 import paddle.nn.functional as F
 

@@ -1,3 +1,17 @@
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # [AUTO-GENERATED] Test file for paddle.tensor.search
 # 覆盖模块: paddle/tensor/search.py
 # 未覆盖行: 165,181,182,185,188,194,283,284,300,307,309,315,405,421,423,427,588,589,592,595,601,727,728,729,730,731,733,734,736,742
@@ -7,6 +21,7 @@
 import unittest
 
 import numpy as np
+
 import paddle
 
 
@@ -193,9 +208,7 @@ class TestIndexSelect(unittest.TestCase):
         index = paddle.to_tensor([0, 2], dtype='int64')
         result = paddle.index_select(x, index, axis=0)
         self.assertEqual(result.shape, [2, 2])
-        np.testing.assert_array_equal(
-            result.numpy(), [[1.0, 2.0], [5.0, 6.0]]
-        )
+        np.testing.assert_array_equal(result.numpy(), [[1.0, 2.0], [5.0, 6.0]])
 
     def test_index_select_axis1(self):
         """测试 axis=1 的 index_select

@@ -1,3 +1,17 @@
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # [AUTO-GENERATED] Test file for paddle.tensor.array
 # 覆盖模块: paddle/tensor/array.py
 # 未覆盖行: 83,87,91,92,93,94,99,172,173,174,178,179,180,185,262,269,275,284,285,286,287,288,292,295,296,301,306,369,370,376
@@ -7,6 +21,7 @@
 import unittest
 
 import numpy as np
+
 import paddle
 
 

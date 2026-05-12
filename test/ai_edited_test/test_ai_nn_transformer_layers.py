@@ -1,3 +1,17 @@
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # [AUTO-GENERATED] Test file for paddle.nn.layer.transformer
 # 覆盖模块: paddle/nn/layer/transformer.py
 # 未覆盖行: 73,76,77,78,79,80,82,84,87,88,89,91,98,126,293,299,300,301,399,400,401,402,403,404,405,406,407,410,530,562
@@ -6,7 +20,6 @@
 
 import unittest
 
-import numpy as np
 import paddle
 
 
@@ -17,17 +30,13 @@ class TestMultiHeadAttention(unittest.TestCase):
     def test_mha_init(self):
         """测试 MultiHeadAttention 初始化
         Test MultiHeadAttention initialization"""
-        mha = paddle.nn.MultiHeadAttention(
-            embed_dim=64, num_heads=4
-        )
+        mha = paddle.nn.MultiHeadAttention(embed_dim=64, num_heads=4)
         self.assertIsNotNone(mha)
 
     def test_mha_forward(self):
         """测试 MultiHeadAttention 前向传播
         Test MultiHeadAttention forward pass"""
-        mha = paddle.nn.MultiHeadAttention(
-            embed_dim=64, num_heads=4
-        )
+        mha = paddle.nn.MultiHeadAttention(embed_dim=64, num_heads=4)
         query = paddle.randn([2, 5, 64])
         key = paddle.randn([2, 5, 64])
         value = paddle.randn([2, 5, 64])
@@ -37,9 +46,7 @@ class TestMultiHeadAttention(unittest.TestCase):
     def test_mha_with_attn_mask(self):
         """测试带注意力掩码的 MultiHeadAttention
         Test MultiHeadAttention with attention mask"""
-        mha = paddle.nn.MultiHeadAttention(
-            embed_dim=64, num_heads=4
-        )
+        mha = paddle.nn.MultiHeadAttention(embed_dim=64, num_heads=4)
         query = paddle.randn([2, 5, 64])
         key = paddle.randn([2, 5, 64])
         value = paddle.randn([2, 5, 64])

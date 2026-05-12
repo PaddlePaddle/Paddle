@@ -1,3 +1,17 @@
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # [AUTO-GENERATED] Test file for paddle.optimizer.asgd and paddle.optimizer.adam
 # 覆盖模块: paddle/optimizer/asgd.py, paddle/optimizer/adam.py
 # 未覆盖行: asgd: 146,161,196,208,222,224,228,232,314,316,321,325,338,340,349,355,357,358,359,361,369,371,375; adam: 277,278,280,330,424,441,445,449,458,459,528,529,548,553,570,654,656,694,695,696,697,698,699,703,706,707,708,712,715,716
@@ -6,7 +20,6 @@
 
 import unittest
 
-import numpy as np
 import paddle
 
 
