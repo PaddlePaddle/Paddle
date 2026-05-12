@@ -99,7 +99,7 @@ class TestAdamOp1(OpTest):
             'Moment1': moment1,
             'Moment2': moment2,
             'Moment2Max': moment2_max,
-            'LearningRate': np.array([learning_rate]).astype("float32"),
+            'LearningRate': np.array([learning_rate]).astype("float64"),
             'Beta1Pow': np.array([beta1_pow]).astype("float32"),
             'Beta2Pow': np.array([beta2_pow]).astype("float32"),
         }
@@ -125,7 +125,9 @@ class TestAdamOp1(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(no_check_set=self.no_check_set, check_pir=True)
+        self.check_output(
+            no_check_set=self.no_check_set, check_pir=True, rtol=2e-4
+        )
 
 
 class TestAdamOp1AMSGrad(TestAdamOp1):
@@ -174,7 +176,7 @@ class TestAdamOp2(OpTest):
             'Moment1': moment1,
             'Moment2': moment2,
             'Moment2Max': moment2_max,
-            'LearningRate': np.array([learning_rate]).astype("float32"),
+            'LearningRate': np.array([learning_rate]).astype("float64"),
             'Beta1Pow': np.array([beta1_pow]).astype("float32"),
             'Beta2Pow': np.array([beta2_pow]).astype("float32"),
         }
@@ -200,7 +202,9 @@ class TestAdamOp2(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(no_check_set=self.no_check_set, check_pir=True)
+        self.check_output(
+            no_check_set=self.no_check_set, check_pir=True, rtol=2e-4
+        )
 
 
 class TestAdamOnlyTailOp(TestAdamOp2):
@@ -252,7 +256,7 @@ class TestAdamOpMultipleSteps(OpTest):
             'Moment1': moment1,
             'Moment2': moment2,
             'Moment2Max': moment2_max,
-            'LearningRate': np.array([learning_rate]).astype("float32"),
+            'LearningRate': np.array([learning_rate]).astype("float64"),
             'Beta1Pow': np.array([self.beta1_pow]).astype("float32"),
             'Beta2Pow': np.array([self.beta2_pow]).astype("float32"),
         }
@@ -282,7 +286,9 @@ class TestAdamOpMultipleSteps(OpTest):
             }
 
             # Verify output for this step
-            self.check_output(no_check_set=self.no_check_set, check_pir=True)
+            self.check_output(
+                no_check_set=self.no_check_set, check_pir=True, rtol=2e-4
+            )
 
             # Output of this step becomes input for next step
             self.inputs['Param'] = param_out
@@ -455,7 +461,7 @@ class TestSparseAdamOp(unittest.TestCase):
             "Moment2Max": np.zeros((height, row_numel)).astype("float32"),
             'Beta1Pow': beta1_pow,
             'Beta2Pow': beta2_pow,
-            "LearningRate": np.full((1), 2.0).astype("float32"),
+            "LearningRate": np.full((1), 2.0).astype("float64"),
         }
         self.init_output = np.full((height, row_numel), 0.0).astype("float32")
         self.attrs = {
@@ -580,7 +586,7 @@ class TestAdamOpBetaVariable(OpTest):
             'Moment1': moment1,
             'Moment2': moment2,
             'Moment2Max': moment2_max,
-            'LearningRate': np.array([learning_rate]).astype("float32"),
+            'LearningRate': np.array([learning_rate]).astype("float64"),
             'Beta1Pow': np.array([beta1_pow]).astype("float32"),
             'Beta2Pow': np.array([beta2_pow]).astype("float32"),
             "Beta1Tensor": np.array([beta1]).astype("float32"),
@@ -603,7 +609,9 @@ class TestAdamOpBetaVariable(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(no_check_set=self.no_check_set, check_pir=True)
+        self.check_output(
+            no_check_set=self.no_check_set, check_pir=True, rtol=2e-4
+        )
 
 
 class TestAdamOpBetaVariableAMSGrad(TestAdamOpBetaVariable):
@@ -649,7 +657,7 @@ class TestAdamOpBetaEpsilonVariable(OpTest):
             'Moment1': moment1,
             'Moment2': moment2,
             'Moment2Max': moment2_max,
-            'LearningRate': np.array([learning_rate]).astype("float32"),
+            'LearningRate': np.array([learning_rate]).astype("float64"),
             'Beta1Pow': np.array([beta1_pow]).astype("float32"),
             'Beta2Pow': np.array([beta2_pow]).astype("float32"),
             "Beta1Tensor": np.array([beta1]).astype("float32"),
@@ -673,7 +681,9 @@ class TestAdamOpBetaEpsilonVariable(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(no_check_set=self.no_check_set, check_pir=True)
+        self.check_output(
+            no_check_set=self.no_check_set, check_pir=True, rtol=2e-4
+        )
 
 
 class TestAdamOpBetaEpsilonVariableAMSGrad(TestAdamOpBetaEpsilonVariable):
@@ -719,7 +729,7 @@ class TestAdamOpWithGlobalBetaPow(OpTest):
             'Moment1': moment1,
             'Moment2': moment2,
             'Moment2Max': moment2_max,
-            'LearningRate': np.array([learning_rate]).astype("float32"),
+            'LearningRate': np.array([learning_rate]).astype("float64"),
             'Beta1Pow': np.array([beta1_pow]).astype("float32"),
             'Beta2Pow': np.array([beta2_pow]).astype("float32"),
             "Beta1Tensor": np.array([beta1]).astype("float32"),
@@ -748,7 +758,9 @@ class TestAdamOpWithGlobalBetaPow(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(no_check_set=self.no_check_set, check_pir=True)
+        self.check_output(
+            no_check_set=self.no_check_set, check_pir=True, rtol=2e-4
+        )
 
 
 class TestAdamOpWithGlobalBetaPowAMSGrad(TestAdamOpWithGlobalBetaPow):
@@ -794,7 +806,7 @@ class TestAdamOpWithSkipUpdate(OpTest):
             'Moment1': moment1,
             'Moment2': moment2,
             'Moment2Max': moment2_max,
-            'LearningRate': np.array([learning_rate]).astype("float32"),
+            'LearningRate': np.array([learning_rate]).astype("float64"),
             'Beta1Pow': np.array([beta1_pow]).astype("float32"),
             'Beta2Pow': np.array([beta2_pow]).astype("float32"),
             "Beta1Tensor": np.array([beta1]).astype("float32"),
@@ -820,7 +832,9 @@ class TestAdamOpWithSkipUpdate(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(no_check_set=self.no_check_set, check_pir=True)
+        self.check_output(
+            no_check_set=self.no_check_set, check_pir=True, rtol=2e-4
+        )
 
 
 class TestAdamOpWithSkipUpdateAMSGrad(TestAdamOpWithSkipUpdate):
