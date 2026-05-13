@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import builtins
 import functools
 import inspect
 import math
@@ -7959,14 +7960,15 @@ def index_copy_(
     if x.ndim == 0:
         if source_is_scalar:
             source = source.reshape([1])
-        x.reshape_([1]).scatter_(index.reshape([num_indices]), source)
+        x.reshape_([1])[index.reshape([num_indices])] = source
         return x.reshape_([])
 
-    x_sliced_shape = list(x.shape)
-    del x_sliced_shape[dim]
-    source_sliced_shape = [] if source_is_scalar else list(source.shape)
-    if not source_is_scalar:
-        del source_sliced_shape[dim]
+    x_sliced_shape = list(x.shape[:dim]) + list(x.shape[dim + 1 :])
+    source_sliced_shape = (
+        []
+        if source_is_scalar
+        else list(source.shape[:dim]) + list(source.shape[dim + 1 :])
+    )
     if x_sliced_shape != source_sliced_shape:
         raise RuntimeError(
             "index_copy_(): Source/destination tensor must have same slice shapes. "
@@ -7976,17 +7978,8 @@ def index_copy_(
 
     if source_is_scalar:
         source = source.reshape([1])
-    index_shape = [1] * x.ndim
-    index_shape[dim] = num_indices
-    return put_along_axis_(
-        x,
-        index.reshape(index_shape),
-        source,
-        dim,
-        'assign',
-        include_self=True,
-        broadcast=True,
-    )
+    x[(builtins.slice(None),) * dim + (index,)] = source
+    return x
 
 
 @ParamAliasDecorator({"x": ["input"], "axis": ["dim"], "shape": ["sizes"]})
