@@ -133,6 +133,31 @@ class TestNinjaHelperFunctions(unittest.TestCase):
                 _run_ninja_build(tmpdir, verbose=True, error_prefix="Test")
                 mock_run.assert_called_once()
 
+    def test_run_ninja_build_with_work_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            build_dir = os.path.join(tmpdir, 'build')
+            work_dir = os.path.join(tmpdir, 'src')
+            os.makedirs(build_dir)
+            os.makedirs(work_dir)
+
+            with (
+                mock.patch.dict(
+                    os.environ, {'VSCMD_ARG_TGT_ARCH': 'x64'}, clear=False
+                ),
+                mock.patch('subprocess.run') as mock_run,
+            ):
+                _run_ninja_build(
+                    build_dir,
+                    verbose=True,
+                    error_prefix='Test',
+                    work_directory=work_dir,
+                )
+
+        command = mock_run.call_args.args[0]
+        self.assertIn('-f', command)
+        self.assertIn(os.path.join(build_dir, 'build.ninja'), command)
+        self.assertEqual(mock_run.call_args.kwargs['cwd'], work_dir)
+
     def test_run_ninja_build_windows_with_vscmd_env(self):
         if sys.platform != 'win32':
             self.skipTest("Windows-only test")
@@ -316,6 +341,12 @@ class TestBuildExtension(unittest.TestCase):
                 captured['ninja_path'] = path
                 captured['ninja_content'] = content
 
+            def fake_run_ninja_build(
+                build_directory, verbose, error_prefix, work_directory=None
+            ):
+                captured['ninja_build_directory'] = build_directory
+                captured['ninja_work_directory'] = work_directory
+
             def fake_build_extensions(_):
                 _.compiler.compile(
                     sources,
@@ -349,7 +380,7 @@ class TestBuildExtension(unittest.TestCase):
                 ),
                 mock.patch(
                     'paddle.utils.cpp_extension.cpp_extension._run_ninja_build',
-                    return_value=None,
+                    side_effect=fake_run_ninja_build,
                 ),
                 mock.patch(
                     'paddle.utils.cpp_extension.cpp_extension.build_ext.build_extensions',
@@ -643,6 +674,67 @@ class TestBuildExtension(unittest.TestCase):
         self.assertIn(shlex.join(['-DNAME=value with space']), content)
         self.assertIn(shlex.join(['--compiler-options=-Wall -Wextra']), content)
         self.assertNotIn('"\'"\'"', content)
+
+    def test_unix_ninja_preserves_relative_include_flags(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_dir = Path(tmpdir)
+            sources = [
+                str(test_dir / "custom_extension.cc"),
+                str(test_dir / "custom_kernel.cu"),
+            ]
+            objects = [
+                str(test_dir / "build" / "custom_extension.o"),
+                str(test_dir / "build" / "custom_kernel.cu.o"),
+            ]
+            build_map = {
+                objects[0]: (sources[0], '.cc'),
+                objects[1]: (sources[1], '.cu'),
+            }
+            compiler = _FakeUnixCompiler(objects, build_map)
+
+            with (
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.os.getcwd',
+                    return_value=str(test_dir),
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.CUDA_HOME',
+                    '/opt/cuda',
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension._get_ccache_home',
+                    return_value=None,
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.prepare_unix_cudaflags',
+                    side_effect=lambda flags: ['--prepared', *flags],
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.core.is_compiled_with_rocm',
+                    return_value=False,
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.core.is_compiled_with_custom_device',
+                    return_value=False,
+                ),
+            ):
+                captured = self._run_build_with_fake_compiler(
+                    compiler,
+                    sources,
+                    extra_compile_args={
+                        'cxx': ['-Ithird_party/cxx', '-isystem', 'system/cxx'],
+                        'nvcc': ['-Ithird_party/cuda', '-I', 'cuda_split'],
+                    },
+                    include_dirs=['public/include'],
+                )
+
+        content = captured['ninja_content']
+        self.assertIn('-Ipublic/include', content)
+        self.assertIn('-Ithird_party/cxx', content)
+        self.assertIn('-isystem system/cxx', content)
+        self.assertIn('-Ithird_party/cuda', content)
+        self.assertIn('-I cuda_split', content)
+        self.assertEqual(captured['ninja_work_directory'], str(test_dir))
 
     def test_unix_ninja_uses_hipcc_for_rocm_sources(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -996,6 +1088,53 @@ class TestBuildExtension(unittest.TestCase):
         self.assertIn('--prepared', content)
         self.assertIn('/DPADDLE_WITH_CUDA', content)
         self.assertIn('deps = msvc', content)
+
+    def test_windows_ninja_preserves_relative_include_flags(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_dir = Path(tmpdir)
+            sources = [
+                str(test_dir / "custom_extension.cc"),
+                str(test_dir / "custom_kernel.cu"),
+            ]
+            objects = [
+                str(test_dir / "build" / "custom_extension.obj"),
+                str(test_dir / "build" / "custom_kernel.obj"),
+            ]
+            build_map = {
+                objects[0]: (sources[0], '.cc'),
+                objects[1]: (sources[1], '.cu'),
+            }
+            compiler = _FakeMsvcCompiler(objects, build_map)
+
+            with (
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.os.getcwd',
+                    return_value=str(test_dir),
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.CUDA_HOME',
+                    '/opt/cuda',
+                ),
+                mock.patch(
+                    'paddle.utils.cpp_extension.cpp_extension.prepare_win_cudaflags',
+                    side_effect=lambda flags: ['--prepared', *flags],
+                ),
+            ):
+                captured = self._run_build_with_fake_compiler(
+                    compiler,
+                    sources,
+                    extra_compile_args={
+                        'cxx': ['/Ithird_party/cxx'],
+                        'nvcc': ['/Ithird_party/cuda'],
+                    },
+                    include_dirs=['public/include'],
+                )
+
+        content = captured['ninja_content']
+        self.assertIn('/Ipublic/include', content)
+        self.assertIn('/Ithird_party/cxx', content)
+        self.assertIn('/Ithird_party/cuda', content)
+        self.assertEqual(captured['ninja_work_directory'], str(test_dir))
 
     def test_windows_ninja_ignores_invalid_extra_compile_args(self):
         with tempfile.TemporaryDirectory() as tmpdir:
