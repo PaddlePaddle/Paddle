@@ -172,6 +172,46 @@ class TestGetRocmArchFlags(unittest.TestCase):
         )
         self.assertEqual(flags, [])
 
+    def test_rocm_version_header_empty_home(self):
+        self.assertIsNone(extension_utils._get_rocm_version_from_header(""))
+
+    def test_rocm_version_header_oserror(self):
+        with tempfile.TemporaryDirectory() as rocm_home:
+            hip_include = os.path.join(rocm_home, "include", "hip")
+            os.makedirs(hip_include)
+            hip_version_file = os.path.join(hip_include, "hip_version.h")
+            with open(hip_version_file, "w", encoding="utf-8") as f:
+                f.write("")
+            with mock.patch(
+                "paddle.utils.cpp_extension.extension_utils.open",
+                side_effect=OSError("forced"),
+                create=True,
+            ):
+                self.assertIsNone(
+                    extension_utils._get_rocm_version_from_header(rocm_home)
+                )
+
+    def test_default_arch_list_falls_back_to_opt_rocm(self):
+        for var in ("ROCM_HOME", "ROCM_PATH"):
+            os.environ.pop(var, None)
+        with mock.patch.object(
+            extension_utils,
+            "_get_rocm_version_from_header",
+            return_value=None,
+        ) as mocked:
+            result = extension_utils._get_default_rocm_arch_list()
+        mocked.assert_called_once_with("/opt/rocm")
+        self.assertEqual(result, extension_utils._ROCM_LEGACY_AMDGPU_TARGETS)
+
+    def test_get_rocm_arch_flags_accepts_none_cflags(self):
+        if "PADDLE_ROCM_ARCH_LIST" in os.environ:
+            del os.environ["PADDLE_ROCM_ARCH_LIST"]
+        os.environ["ROCM_PATH"] = "/tmp/paddle-missing-rocm-for-test"
+        os.environ["ROCM_HOME"] = "/tmp/paddle-missing-rocm-for-test"
+        flags = extension_utils.get_rocm_arch_flags(None)
+        self.assertIn("-fno-gpu-rdc", flags)
+        self.assertIn("--offload-arch=gfx906", flags)
+
 
 class TestCppExtensionUtils(unittest.TestCase):
     def test_cuda_home(self):
