@@ -461,6 +461,14 @@ jobs:
           uv build --wheel --no-build-isolation -v --python $(which python)
           '
 
+      - name: download ops whl from latest
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -ce '
+          set -x
+          OPS_DST=paddlefleet_ops-0.0.0-cp310-cp310-linux_x86_64.whl
+          wget -q --no-proxy "https://paddle-whl.bj.bcebos.com/nightly/cu129/paddlefleet-ops/${OPS_DST}" -O dist/${OPS_DST}
+          '
+
       - name: upload whl to BOS
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -ce '
@@ -543,7 +551,8 @@ jobs:
           wget -q --tries=5 --no-proxy --no-check-certificate https://paddle-github-action.cdn.bcebos.com/PR/paddlefleet/${PR_ID}/${COMMIT_ID}/paddldfleet.tar.gz
           tar -xf paddldfleet.tar.gz --strip-components=1
           git config --global --add safe.directory /paddle
-          pip install dist/paddlefleet-*.whl --extra-index-url=https://www.paddlepaddle.org.cn/packages/stable/cu129/ --extra-index-url=https://www.paddlepaddle.org.cn/packages/nightly/cu129/
+          pip install dist/paddlefleet-*.whl --extra-index-url=https://www.paddlepaddle.org.cn/packages/nightly/cu129/ --extra-index-url=https://www.paddlepaddle.org.cn/packages/stable/cu129/
+          pip install dist/paddlefleet_ops-*.whl --extra-index-url=https://www.paddlepaddle.org.cn/packages/stable/cu129/ --extra-index-url=https://www.paddlepaddle.org.cn/packages/nightly/cu129/
           wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq
           chmod +x /usr/local/bin/yq
           '
@@ -654,7 +663,8 @@ jobs:
           wget -q --tries=5 --no-proxy --no-check-certificate https://paddle-github-action.cdn.bcebos.com/PR/paddlefleet/${PR_ID}/${COMMIT_ID}/paddldfleet.tar.gz
           tar -xf paddldfleet.tar.gz --strip-components=1
           git config --global --add safe.directory /paddle
-          pip install dist/paddlefleet-*.whl --extra-index-url=https://www.paddlepaddle.org.cn/packages/stable/cu129/ --extra-index-url=https://www.paddlepaddle.org.cn/packages/nightly/cu129/
+          pip install dist/paddlefleet-*.whl --extra-index-url=https://www.paddlepaddle.org.cn/packages/nightly/cu129/ --extra-index-url=https://www.paddlepaddle.org.cn/packages/stable/cu129/
+          pip install dist/paddlefleet_ops-*.whl --extra-index-url=https://www.paddlepaddle.org.cn/packages/stable/cu129/ --extra-index-url=https://www.paddlepaddle.org.cn/packages/nightly/cu129/
           wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq
           chmod +x /usr/local/bin/yq
           '
