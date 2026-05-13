@@ -140,7 +140,7 @@ class TestMergedAdam(unittest.TestCase):
         )
         params = self.gen_rand_data(shapes, dtype)
         grads = self.gen_rand_data(shapes, dtype)
-        lrs = self.gen_rand_data([[1], [1], [1], [1]], mp_dtype)
+        lrs = self.gen_rand_data([[1], [1], [1], [1]], np.float64)
         moment1s = self.gen_rand_data(shapes, mp_dtype)
         moment2s = self.gen_rand_data(shapes, mp_dtype)
         moment2s_max = self.gen_zero_data(shapes, mp_dtype)

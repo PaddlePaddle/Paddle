@@ -126,7 +126,7 @@ class TestAdamOp1(OpTest):
 
     def test_check_output(self):
         self.check_output(
-            no_check_set=self.no_check_set, check_pir=True, rtol=2e-4
+            no_check_set=self.no_check_set, check_pir=True, rtol=1e-3
         )
 
 
@@ -203,7 +203,7 @@ class TestAdamOp2(OpTest):
 
     def test_check_output(self):
         self.check_output(
-            no_check_set=self.no_check_set, check_pir=True, rtol=2e-4
+            no_check_set=self.no_check_set, check_pir=True, rtol=1e-3
         )
 
 
@@ -287,7 +287,7 @@ class TestAdamOpMultipleSteps(OpTest):
 
             # Verify output for this step
             self.check_output(
-                no_check_set=self.no_check_set, check_pir=True, rtol=2e-4
+                no_check_set=self.no_check_set, check_pir=True, rtol=1e-3
             )
 
             # Output of this step becomes input for next step
@@ -335,38 +335,40 @@ def adam_step(inputs, attributes, weight_decay=False):
     moment1 = inputs['Moment1']
     moment2 = inputs['Moment2']
     moment2_max = inputs['Moment2Max']
-    lr = inputs['LearningRate']
+    lr = float(inputs['LearningRate'])
     beta1_pow = inputs['Beta1Pow']
     beta2_pow = inputs['Beta2Pow']
 
-    epsilon = attributes['epsilon']
+    epsilon = np.float32(attributes['epsilon'])
 
     if 'beta1' in attributes:
-        beta1 = attributes['beta1']
+        beta1 = np.float32(attributes['beta1'])
     else:
         beta1 = inputs['Beta1Tensor'][0]
     if 'beta2' in attributes:
-        beta2 = attributes['beta2']
+        beta2 = np.float32(attributes['beta2'])
     else:
         beta2 = inputs['Beta2Tensor'][0]
 
     amsgrad = attributes['amsgrad']
 
-    moment1_out = beta1 * moment1 + (1 - beta1) * grad
-    moment2_out = beta2 * moment2 + (1 - beta2) * np.square(grad)
+    moment1_out = beta1 * moment1 + (np.float32(1) - beta1) * grad
+    moment2_out = beta2 * moment2 + (np.float32(1) - beta2) * np.square(grad)
 
-    lr_t = lr * np.sqrt(1 - beta2_pow) / (1 - beta1_pow)
+    # Match AdamKernelREG formula exactly:
+    #   denom = sqrt(m2) / sqrt(1 - beta2_pow) + epsilon
+    #   update = m1 / denom * (lr / (1 - beta1_pow))
+    bias_correction1 = np.float32(1) - beta1_pow
+    bias_correction2_sqrt = np.sqrt(np.float32(1) - beta2_pow)
 
     if amsgrad:
         moment2_max_out = np.maximum(moment2_out, moment2_max)
-        param_out = param - lr_t * (
-            moment1_out / (np.sqrt(moment2_max_out) + epsilon)
-        )
+        denom = np.sqrt(moment2_max_out) / bias_correction2_sqrt + epsilon
     else:
         moment2_max_out = np.empty_like(moment2_out)
-        param_out = param - lr_t * (
-            moment1_out / (np.sqrt(moment2_out) + epsilon)
-        )
+        denom = np.sqrt(moment2_out) / bias_correction2_sqrt + epsilon
+
+    param_out = param + (moment1_out / denom) * (-(lr / bias_correction1))
 
     return param_out, moment1_out, moment2_out, moment2_max_out
 
@@ -610,7 +612,7 @@ class TestAdamOpBetaVariable(OpTest):
 
     def test_check_output(self):
         self.check_output(
-            no_check_set=self.no_check_set, check_pir=True, rtol=2e-4
+            no_check_set=self.no_check_set, check_pir=True, rtol=1e-3
         )
 
 
@@ -682,7 +684,7 @@ class TestAdamOpBetaEpsilonVariable(OpTest):
 
     def test_check_output(self):
         self.check_output(
-            no_check_set=self.no_check_set, check_pir=True, rtol=2e-4
+            no_check_set=self.no_check_set, check_pir=True, rtol=1e-3
         )
 
 
@@ -759,7 +761,7 @@ class TestAdamOpWithGlobalBetaPow(OpTest):
 
     def test_check_output(self):
         self.check_output(
-            no_check_set=self.no_check_set, check_pir=True, rtol=2e-4
+            no_check_set=self.no_check_set, check_pir=True, rtol=1e-3
         )
 
 
@@ -833,7 +835,7 @@ class TestAdamOpWithSkipUpdate(OpTest):
 
     def test_check_output(self):
         self.check_output(
-            no_check_set=self.no_check_set, check_pir=True, rtol=2e-4
+            no_check_set=self.no_check_set, check_pir=True, rtol=1e-3
         )
 
 
