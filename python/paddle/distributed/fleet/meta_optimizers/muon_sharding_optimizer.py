@@ -478,6 +478,7 @@ class MuonShardingOptimizer:
         copy_attr("do_model_average")
         copy_attr("need_clip")
         copy_attr("no_sync")
+        copy_attr("is_firstly_shared")
 
         self._slice_params[param.name] = slice_param
         return slice_param
