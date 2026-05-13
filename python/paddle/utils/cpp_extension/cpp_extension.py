@@ -739,6 +739,7 @@ class BuildExtension(build_ext):
                 )
             )
             cc_args = self._get_cc_args(pp_opts, debug, extra_preargs)
+            build_work_directory = os.getcwd()
             build_directory = os.path.dirname(objects[0]) if objects else "."
             config = ['ninja_required_version = 1.5', '']
             ccache_home = _get_ccache_home()
@@ -854,6 +855,7 @@ class BuildExtension(build_ext):
                 build_directory,
                 verbose=bool(current_extension_builder.verbose),
                 error_prefix='Failed to compile C++ extension with ninja',
+                work_directory=build_work_directory,
             )
             return objects
 
@@ -981,6 +983,7 @@ class BuildExtension(build_ext):
                     extra_postargs,
                 )
             )
+            build_work_directory = os.getcwd()
             compile_opts = list(extra_preargs or [])
             compile_opts.append('/c')
             if debug:
@@ -1093,6 +1096,7 @@ class BuildExtension(build_ext):
                 build_directory,
                 verbose=bool(current_extension_builder.verbose),
                 error_prefix='Failed to compile C++ extension with ninja',
+                work_directory=build_work_directory,
             )
             return objects
 
@@ -1817,8 +1821,12 @@ def _run_ninja_build(
     build_directory: str,
     verbose: bool,
     error_prefix: str,
+    work_directory: str | None = None,
 ) -> None:
     command = ['ninja', '-v']
+    cwd = build_directory if work_directory is None else work_directory
+    if os.path.abspath(cwd) != os.path.abspath(build_directory):
+        command.extend(['-f', os.path.join(build_directory, 'build.ninja')])
     num_workers = _get_num_workers(verbose)
     if num_workers is not None:
         command.extend(['-j', str(num_workers)])
@@ -1838,7 +1846,7 @@ def _run_ninja_build(
     try:
         subprocess.run(
             command,
-            cwd=build_directory,
+            cwd=cwd,
             env=env,
             check=True,
             stdout=None if verbose else subprocess.PIPE,
