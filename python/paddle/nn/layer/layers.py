@@ -141,16 +141,7 @@ class _LayerBackwardInputHook(PyLayer):
         grad_inputs = tuple(grad_inputs)
         grad_outputs = getattr(layer, "_current_grad_outputs", ())
 
-        backward_hooks = []
-        full_backward_hooks, non_full_backward_hooks = (
-            layer._get_backward_hooks()
-        )
-        if full_backward_hooks:
-            backward_hooks = full_backward_hooks
-        elif non_full_backward_hooks:
-            backward_hooks = non_full_backward_hooks
-
-        for hook in backward_hooks:
+        for hook in layer._get_backward_hooks():
             hook_result = hook(layer, grad_inputs, grad_outputs)
             if hook_result is not None:
                 if not isinstance(hook_result, tuple):
@@ -184,16 +175,7 @@ class _LayerBackwardOutputHook(PyLayer):
 
         if not getattr(layer, "_has_backward_input_hook", False):
             grad_inputs = ()
-            backward_hooks = []
-            full_backward_hooks, non_full_backward_hooks = (
-                layer._get_backward_hooks()
-            )
-            if full_backward_hooks:
-                backward_hooks = full_backward_hooks
-            elif non_full_backward_hooks:
-                backward_hooks = non_full_backward_hooks
-
-            for hook in backward_hooks:
+            for hook in layer._get_backward_hooks():
                 hook_result = hook(layer, grad_inputs, grad_outputs)
                 if hook_result is not None:
                     if not isinstance(hook_result, tuple):
@@ -693,7 +675,6 @@ class Layer:
         )
         self._backward_pre_hooks = OrderedDict()
         self._backward_hooks = OrderedDict()
-        self._is_full_backward_hook = None
 
         # only used in AMP Training
         self._cast_to_low_precision = True
@@ -1145,29 +1126,14 @@ class Layer:
     def register_backward_hook(
         self, hook: Callable[..., Any]
     ) -> HookRemoveHelper:
-        if self._is_full_backward_hook is True:
-            raise RuntimeError(
-                "Cannot use both regular backward hooks and full backward hooks on a "
-                "single Module. Please use only one of them."
-            )
-
-        self._is_full_backward_hook = False
-
-        hook_remove_helper = HookRemoveHelper(self._backward_hooks)
-        self._backward_hooks[hook_remove_helper._hook_id] = hook
-        return hook_remove_helper
+        raise NotImplementedError(
+            "register_backward_hook is not supported. "
+            "Please use register_full_backward_hook instead."
+        )
 
     def register_full_backward_hook(
         self, hook: Callable[..., Any], prepend: bool = False
     ) -> HookRemoveHelper:
-        if self._is_full_backward_hook is False:
-            raise RuntimeError(
-                "Cannot use both regular backward hooks and full backward hooks on a "
-                "single Module. Please use only one of them."
-            )
-
-        self._is_full_backward_hook = True
-
         hook_remove_helper = HookRemoveHelper(self._backward_hooks)
         self._backward_hooks[hook_remove_helper._hook_id] = hook
         if prepend:
@@ -1177,15 +1143,7 @@ class Layer:
         return hook_remove_helper
 
     def _get_backward_hooks(self):
-        full_backward_hooks = []
-        if self._is_full_backward_hook is True:
-            full_backward_hooks += self._backward_hooks.values()
-
-        non_full_backward_hooks = []
-        if self._is_full_backward_hook is False:
-            non_full_backward_hooks += self._backward_hooks.values()
-
-        return full_backward_hooks, non_full_backward_hooks
+        return list(self._backward_hooks.values())
 
     def _get_backward_pre_hooks(self):
         return list(self._backward_pre_hooks.values())
@@ -2033,14 +1991,12 @@ class Layer:
         def inner():
             nonlocal outputs, inputs, kwargs
 
-            full_backward_hooks, non_full_backward_hooks = [], []
+            backward_hooks = []
             backward_pre_hooks = []
             if self._backward_pre_hooks:
                 backward_pre_hooks = self._get_backward_pre_hooks()
             if self._backward_hooks:
-                full_backward_hooks, non_full_backward_hooks = (
-                    self._get_backward_hooks()
-                )
+                backward_hooks = self._get_backward_hooks()
 
             for hook_id, forward_pre_hook in self._forward_pre_hooks.items():
                 if hook_id in self._forward_pre_hooks_with_kwargs_flag:
@@ -2063,11 +2019,7 @@ class Layer:
                             hook_result = (hook_result,)
                         inputs = hook_result
 
-            if in_dygraph_mode() and (
-                full_backward_hooks
-                or backward_pre_hooks
-                or non_full_backward_hooks
-            ):
+            if in_dygraph_mode() and (backward_hooks or backward_pre_hooks):
                 flat_inputs = paddle.utils.flatten(inputs)
                 tensor_inputs = [
                     inp
@@ -2119,11 +2071,7 @@ class Layer:
                 if hook_result is not None:
                     outputs = hook_result
 
-            if in_dygraph_mode() and (
-                full_backward_hooks
-                or backward_pre_hooks
-                or non_full_backward_hooks
-            ):
+            if in_dygraph_mode() and (backward_hooks or backward_pre_hooks):
                 flat_outputs = paddle.utils.flatten(outputs)
                 tensor_outputs = [
                     out
@@ -2695,6 +2643,11 @@ class Layer:
         hook_remove_helper = HookRemoveHelper(self._state_dict_hooks)
         self._state_dict_hooks[hook_remove_helper._hook_id] = hook
         return hook_remove_helper
+
+    def register_state_dict_post_hook(
+        self, hook: _StateDictHook
+    ) -> HookRemoveHelper:
+        return self.register_state_dict_hook(hook)
 
     def register_state_dict_pre_hook(self, hook: Callable[..., None]):
         hook_remove_helper = HookRemoveHelper(self._state_dict_pre_hooks)

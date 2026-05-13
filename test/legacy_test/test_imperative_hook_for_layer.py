@@ -442,25 +442,11 @@ class TestBackwardHook(unittest.TestCase):
                 np.testing.assert_allclose(hook_calls[1][2], [1.0])
                 np.testing.assert_allclose(layer.weight.grad.numpy(), [2.0])
 
-                layer = ParamOnlyLayer()
-                hook_calls = []
-
-                def backward_hook(layer, grad_input, grad_output):
-                    hook_calls.append(
-                        (
-                            len(grad_input),
-                            grad_output[0].numpy().copy(),
-                        )
-                    )
-
-                layer.register_backward_hook(backward_hook)
-                x = paddle.to_tensor([2.0], stop_gradient=True)
-                y = layer(x)
-                y.backward()
-                self.assertEqual(len(hook_calls), 1)
-                self.assertEqual(hook_calls[0][0], 0)
-                np.testing.assert_allclose(hook_calls[0][1], [1.0])
-                np.testing.assert_allclose(layer.weight.grad.numpy(), [2.0])
+                with self.assertRaisesRegex(
+                    NotImplementedError,
+                    "Please use register_full_backward_hook instead",
+                ):
+                    layer.register_backward_hook(lambda *args, **kwargs: None)
 
     def test_backward_hook_with_forward_pre_hook(self):
         for place in get_places():
@@ -555,23 +541,63 @@ class TestBackwardHook(unittest.TestCase):
                 np.testing.assert_allclose(hook_calls[3][2], [2.0])
                 np.testing.assert_allclose(x.grad.numpy(), [60.0])
 
-                layer = ScaleLayer()
-                layer.register_backward_hook(lambda *args, **kwargs: None)
-                with self.assertRaisesRegex(
-                    RuntimeError,
-                    "Cannot use both regular backward hooks and full backward hooks",
-                ):
-                    layer.register_full_backward_hook(
-                        lambda *args, **kwargs: None
-                    )
+                self.assertEqual(len(layer._get_backward_hooks()), 2)
 
-                layer = ScaleLayer()
-                layer.register_full_backward_hook(lambda *args, **kwargs: None)
-                with self.assertRaisesRegex(
-                    RuntimeError,
-                    "Cannot use both regular backward hooks and full backward hooks",
-                ):
-                    layer.register_backward_hook(lambda *args, **kwargs: None)
+    def test_linear_full_backward_hook_result(self):
+        for place in get_places():
+            with base.dygraph.guard(place):
+                linear = paddle.nn.Linear(128, 64, bias_attr=False)
+                weight = (
+                    np.arange(128 * 64).reshape(128, 64).astype("float32")
+                    / 1000
+                )
+                linear.weight.set_value(weight)
+
+                hook_calls = []
+
+                def full_backward_pre_hook(layer, grad_output):
+                    hook_calls.append(("pre", grad_output[0].numpy().copy()))
+                    return (grad_output[0] * 2,)
+
+                def full_backward_hook(layer, grad_input, grad_output):
+                    hook_calls.append(
+                        (
+                            "full",
+                            grad_input[0].numpy().copy(),
+                            grad_output[0].numpy().copy(),
+                        )
+                    )
+                    return (grad_input[0] * 3,)
+
+                linear.register_full_backward_pre_hook(full_backward_pre_hook)
+                linear.register_full_backward_hook(full_backward_hook)
+                np_x = (
+                    np.arange(2 * 128).reshape(2, 128).astype("float32") / 100
+                )
+                x = paddle.to_tensor(np_x, stop_gradient=False)
+                y = linear(x)
+                y.sum().backward()
+
+                expected_grad_output = np.ones([2, 64], dtype="float32")
+                expected_hook_grad_output = expected_grad_output * 2
+                expected_grad_input = np.matmul(
+                    expected_hook_grad_output, weight.T
+                )
+                self.assertEqual(
+                    [call[0] for call in hook_calls], ["pre", "full"]
+                )
+                np.testing.assert_allclose(
+                    hook_calls[0][1], expected_grad_output
+                )
+                np.testing.assert_allclose(
+                    hook_calls[1][1], expected_grad_input, rtol=1e-5
+                )
+                np.testing.assert_allclose(
+                    hook_calls[1][2], expected_hook_grad_output
+                )
+                np.testing.assert_allclose(
+                    x.grad.numpy(), expected_grad_input * 3, rtol=1e-5
+                )
 
 
 if __name__ == '__main__':
