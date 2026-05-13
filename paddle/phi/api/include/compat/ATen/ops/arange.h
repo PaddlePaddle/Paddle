@@ -63,9 +63,8 @@ inline at::ScalarType _PD_ResolveArangeDtype(const at::Scalar& start,
 }
 
 inline paddle::Tensor _PD_MakeArangeScalarTensor(const at::Scalar& scalar,
-                                                 phi::DataType dtype,
-                                                 const phi::Place& place) {
-  return paddle::experimental::full({}, scalar, dtype, place);
+                                                 phi::DataType dtype) {
+  return paddle::experimental::full({}, scalar, dtype, phi::CPUPlace());
 }
 
 }  // namespace detail
@@ -87,19 +86,17 @@ inline at::Tensor arange(const at::Scalar& start,
     phi::Place base_place = options._PD_GetPlace();
     phi::Place pinned_place = compat::_PD_GetCreatePinnedPlace(base_place);
     auto dense = paddle::experimental::arange(
-        detail::_PD_MakeArangeScalarTensor(start, pd_dtype, phi::CPUPlace()),
-        detail::_PD_MakeArangeScalarTensor(end, pd_dtype, phi::CPUPlace()),
-        detail::_PD_MakeArangeScalarTensor(step, pd_dtype, phi::CPUPlace()),
+        detail::_PD_MakeArangeScalarTensor(start, pd_dtype),
+        detail::_PD_MakeArangeScalarTensor(end, pd_dtype),
+        detail::_PD_MakeArangeScalarTensor(step, pd_dtype),
         pd_dtype,
         phi::CPUPlace());
     return dense.copy_to(pinned_place, /*blocking=*/true);
   }
   return paddle::experimental::arange(
-      detail::_PD_MakeArangeScalarTensor(
-          start, pd_dtype, options._PD_GetPlace()),
-      detail::_PD_MakeArangeScalarTensor(end, pd_dtype, options._PD_GetPlace()),
-      detail::_PD_MakeArangeScalarTensor(
-          step, pd_dtype, options._PD_GetPlace()),
+      detail::_PD_MakeArangeScalarTensor(start, pd_dtype),
+      detail::_PD_MakeArangeScalarTensor(end, pd_dtype),
+      detail::_PD_MakeArangeScalarTensor(step, pd_dtype),
       pd_dtype,
       options._PD_GetPlace());
 }
