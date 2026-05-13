@@ -2645,6 +2645,7 @@ class TestMultivariateNormalAPI(unittest.TestCase):
         value = paddle.to_tensor(self.np_value)
 
         # 1. Paddle Positional arguments
+<<<<<<< HEAD
         out1 = paddle.distributions.multivariate_normal.MultivariateNormal(
             loc, cov
         )
@@ -2662,6 +2663,23 @@ class TestMultivariateNormalAPI(unittest.TestCase):
         )
         # 5. Mixed arguments
         out5 = paddle.distributions.multivariate_normal.MultivariateNormal(
+=======
+        out1 = paddle.distribution.MultivariateNormal(loc, cov)
+        # 2. Paddle keyword arguments
+        out2 = paddle.distribution.MultivariateNormal(
+            loc=loc, covariance_matrix=cov
+        )
+        # 3. PyTorch Positional arguments
+        out3 = paddle.distribution.MultivariateNormal(
+            loc, cov, None, None, False
+        )
+        # 4. PyTorch keyword arguments
+        out4 = paddle.distribution.MultivariateNormal(
+            loc=loc, covariance_matrix=cov, validate_args=True
+        )
+        # 5. Mixed arguments
+        out5 = paddle.distribution.MultivariateNormal(
+>>>>>>> 777bfad34c (Fix some bugs)
             loc, covariance_matrix=cov, validate_args=None
         )
 
@@ -2701,6 +2719,7 @@ class TestMultivariateNormalAPI(unittest.TestCase):
             )
 
             # 1. Paddle Positional arguments
+<<<<<<< HEAD
             out1 = paddle.distributions.multivariate_normal.MultivariateNormal(
                 loc, cov
             )
@@ -2718,6 +2737,23 @@ class TestMultivariateNormalAPI(unittest.TestCase):
             )
             # 5. Mixed arguments
             out5 = paddle.distributions.multivariate_normal.MultivariateNormal(
+=======
+            out1 = paddle.distribution.MultivariateNormal(loc, cov)
+            # 2. Paddle keyword arguments
+            out2 = paddle.distribution.MultivariateNormal(
+                loc=loc, covariance_matrix=cov
+            )
+            # 3. PyTorch Positional arguments
+            out3 = paddle.distribution.MultivariateNormal(
+                loc, cov, None, None, False
+            )
+            # 4. PyTorch keyword arguments
+            out4 = paddle.distribution.MultivariateNormal(
+                loc=loc, covariance_matrix=cov, validate_args=True
+            )
+            # 5. Mixed arguments
+            out5 = paddle.distribution.MultivariateNormal(
+>>>>>>> 777bfad34c (Fix some bugs)
                 loc, covariance_matrix=cov, validate_args=None
             )
 
@@ -2749,6 +2785,7 @@ class TestMultivariateNormalAPI(unittest.TestCase):
             )
 
 
+<<<<<<< HEAD
 class TestNormalValidateArgsAPI(unittest.TestCase):
     def setUp(self):
         self.np_loc = np.array([0.0, 1.0, -1.0], dtype="float32")
@@ -2976,5 +3013,7 @@ class TestDistributionAPI(unittest.TestCase):
             )._validate_sample(paddle.ones([1], dtype="float32"))
 
 
+=======
+>>>>>>> 777bfad34c (Fix some bugs)
 if __name__ == '__main__':
     unittest.main()

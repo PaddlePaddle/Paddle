@@ -461,6 +461,7 @@ class TestMVNConstraints(unittest.TestCase):
         )
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
         eigvalsh = paddle.linalg.eigvalsh
         delattr(paddle.linalg, 'eigvalsh')
@@ -479,6 +480,8 @@ class TestMVNConstraints(unittest.TestCase):
             paddle.linalg.eigvalsh = eigvalsh
 
 >>>>>>> 62c82bdae5 (Add tests for coverage)
+=======
+>>>>>>> 777bfad34c (Fix some bugs)
 
 if __name__ == '__main__':
     unittest.main(argv=[''], verbosity=3, exit=False)

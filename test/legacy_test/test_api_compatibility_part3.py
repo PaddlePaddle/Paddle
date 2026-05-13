@@ -3300,6 +3300,7 @@ class TestSquareInplaceAPI(unittest.TestCase):
 
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 # Test MultivariateNormal compatibility
 @unittest.skipIf(
@@ -3433,6 +3434,8 @@ class TestMultivariateNormalAPI(unittest.TestCase):
             )
 
 
+=======
+>>>>>>> 777bfad34c (Fix some bugs)
 class TestDistributionAPI(unittest.TestCase):
     def tearDown(self):
         paddle.distribution.Distribution.set_default_validate_args(__debug__)
