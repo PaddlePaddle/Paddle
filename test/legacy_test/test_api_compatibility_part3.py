@@ -3391,5 +3391,166 @@ class TestInferenceModeAPI(unittest.TestCase):
             np.testing.assert_allclose(out, ref_out, rtol=1e-6)
 
 
+class TestTensorIndexCopyInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_x = np.zeros((2, 3, 4), dtype="float32")
+        self.np_source_dim1 = (
+            np.arange(1, 17).reshape(2, 2, 4).astype("float32")
+        )
+        self.np_source_dim2 = (
+            np.arange(1, 13).reshape(2, 3, 2).astype("float32")
+        )
+
+    def _expected(self, x, dim, index, source):
+        expected = x.copy()
+        for i, idx in enumerate(index):
+            dest_index = [slice(None)] * expected.ndim
+            src_index = [slice(None)] * source.ndim
+            dest_index[dim] = idx
+            src_index[dim] = i
+            expected[tuple(dest_index)] = source[tuple(src_index)]
+        return expected
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        index = paddle.to_tensor([0, 2], dtype="int64")
+        source_dim1 = paddle.to_tensor(self.np_source_dim1)
+        source_dim2 = paddle.to_tensor(self.np_source_dim2)
+
+        # 1. Tensor method - positional args
+        x1 = paddle.to_tensor(self.np_x)
+        out1 = x1.index_copy_(1, index, source_dim1)
+        # 2. Tensor method - keyword args
+        x2 = paddle.to_tensor(self.np_x)
+        out2 = x2.index_copy_(dim=1, index=index, source=source_dim1)
+        # 3. Tensor method - mixed args
+        x3 = paddle.to_tensor(self.np_x)
+        out3 = x3.index_copy_(1, index=index, source=source_dim1)
+        # 4. Tensor method - negative dim
+        x4 = paddle.to_tensor(self.np_x)
+        out4 = x4.index_copy_(-1, index, source_dim2)
+        # 5. Tensor method - dim 0
+        x5 = paddle.zeros([3, 2], dtype="int32")
+        out5 = x5.index_copy_(
+            0,
+            paddle.to_tensor([0, 2], dtype="int64"),
+            paddle.to_tensor([[3, 4], [5, 6]], dtype="int32"),
+        )
+        # 6. Tensor method - scalar tensor
+        x6 = paddle.zeros([], dtype="float32")
+        out6 = x6.index_copy_(
+            0, paddle.to_tensor([0], dtype="int64"), paddle.to_tensor(7.0)
+        )
+        # 7. Tensor method - scalar source
+        x7 = paddle.zeros([3], dtype="float32")
+        out7 = x7.index_copy_(
+            0, paddle.to_tensor([1], dtype="int64"), paddle.to_tensor(8.0)
+        )
+        # 8. Tensor method - empty index
+        x8 = paddle.ones([2, 3], dtype="float32")
+        out8 = x8.index_copy_(
+            1,
+            paddle.to_tensor([], dtype="int64"),
+            paddle.empty([2, 0], dtype="float32"),
+        )
+        # 9. Tensor method - scalar index
+        x9 = paddle.zeros([3], dtype="float32")
+        out9 = x9.index_copy_(
+            0, paddle.to_tensor(1, dtype="int64"), paddle.to_tensor([9.0])
+        )
+        # 10. Tensor method - scalar tensor with non-scalar source
+        x10 = paddle.zeros([], dtype="float32")
+        out10 = x10.index_copy_(
+            -1, paddle.to_tensor(0, dtype="int64"), paddle.to_tensor([10.0])
+        )
+
+        ref_dim1 = self._expected(self.np_x, 1, [0, 2], self.np_source_dim1)
+        ref_dim2 = self._expected(self.np_x, 2, [0, 2], self.np_source_dim2)
+        for out in [out1, out2, out3]:
+            np.testing.assert_allclose(out.numpy(), ref_dim1, rtol=1e-6)
+        np.testing.assert_allclose(out4.numpy(), ref_dim2, rtol=1e-6)
+        np.testing.assert_array_equal(
+            out5.numpy(), np.array([[3, 4], [0, 0], [5, 6]], dtype="int32")
+        )
+        np.testing.assert_allclose(out6.numpy(), np.array(7.0, dtype="float32"))
+        np.testing.assert_allclose(
+            out7.numpy(), np.array([0.0, 8.0, 0.0], dtype="float32")
+        )
+        np.testing.assert_allclose(
+            out8.numpy(), np.ones([2, 3], dtype="float32")
+        )
+        np.testing.assert_allclose(
+            out9.numpy(), np.array([0.0, 9.0, 0.0], dtype="float32")
+        )
+        np.testing.assert_allclose(
+            out10.numpy(), np.array(10.0, dtype="float32")
+        )
+        self.assertIs(out1, x1)
+        self.assertIs(out6, x6)
+        self.assertIs(out10, x10)
+
+        with self.assertRaises(IndexError):
+            paddle.zeros([], dtype="float32").index_copy_(
+                1, paddle.to_tensor([0], dtype="int64"), paddle.to_tensor(7.0)
+            )
+        with self.assertRaises(RuntimeError):
+            paddle.to_tensor(self.np_x).index_copy_(
+                1,
+                paddle.to_tensor([0, 2], dtype="int32"),
+                source_dim1,
+            )
+        with self.assertRaises(RuntimeError):
+            paddle.to_tensor(self.np_x).index_copy_(
+                1,
+                index,
+                paddle.ones(self.np_source_dim1.shape, dtype="float64"),
+            )
+        with self.assertRaises(IndexError):
+            paddle.to_tensor(self.np_x).index_copy_(
+                1,
+                paddle.to_tensor([[0, 2]], dtype="int64"),
+                source_dim1,
+            )
+        with self.assertRaises(IndexError):
+            paddle.to_tensor(self.np_x).index_copy_(
+                1,
+                index,
+                paddle.ones([2, 2], dtype="float32"),
+            )
+        with self.assertRaises(IndexError):
+            paddle.to_tensor(self.np_x).index_copy_(
+                1,
+                paddle.to_tensor([0], dtype="int64"),
+                source_dim1,
+            )
+        with self.assertRaises(IndexError):
+            paddle.zeros([3], dtype="float32").index_copy_(
+                0,
+                paddle.to_tensor([0, 1], dtype="int64"),
+                paddle.to_tensor(7.0),
+            )
+        with self.assertRaises(RuntimeError):
+            paddle.to_tensor(self.np_x).index_copy_(
+                1,
+                index,
+                paddle.ones([2, 2, 3], dtype="float32"),
+            )
+        with self.assertRaises(IndexError):
+            paddle.zeros([3], dtype="float32").index_copy_(
+                0,
+                paddle.to_tensor([-1], dtype="int64"),
+                paddle.to_tensor([7.0]),
+            )
+        with self.assertRaises(IndexError):
+            paddle.zeros([3], dtype="float32").index_copy_(
+                0,
+                paddle.to_tensor([3], dtype="int64"),
+                paddle.to_tensor([7.0]),
+            )
+
+        paddle.enable_static()
+
+
 if __name__ == "__main__":
     unittest.main()

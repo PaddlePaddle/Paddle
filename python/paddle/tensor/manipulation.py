@@ -7900,6 +7900,95 @@ def index_add_(
     return _C_ops.index_add_(x, index, scaled_value, axis)
 
 
+@inplace_apis_in_dygraph_only
+def index_copy_(
+    x: Tensor,
+    dim: int,
+    index: Tensor,
+    source: Tensor,
+) -> Tensor:
+    """
+    Copies the elements of source tensor into the input tensor by selecting the indices in the order given in index.
+    """
+    if x.ndim == 0:
+        if dim not in (-1, 0):
+            raise IndexError(
+                f"Dimension out of range (expected to be in range of [-1, 0], but got {dim})"
+            )
+        dim = 0
+    else:
+        dim = non_negative_axis(x, dim)
+    if index.ndim >= 2:
+        raise IndexError(
+            f"index_copy_(): Index should have dimension 1 or 0 (got {index.ndim})"
+        )
+    if convert_dtype(index.dtype) != 'int64':
+        raise RuntimeError(
+            f"index_copy_(): Expected a long tensor for index, but got {convert_dtype(index.dtype)}"
+        )
+    if x.dtype != source.dtype:
+        raise RuntimeError(
+            f"index_copy_(): self and source expected to have the same dtype, but got (self) {x.dtype} and (source) {source.dtype}"
+        )
+    if (index < 0).any():
+        raise IndexError(
+            f"index_copy_(): index {index.min().item()} is out of bounds for dimension {dim} with size {x.shape[dim] if x.ndim > 0 else 1}"
+        )
+    if (index >= (x.shape[dim] if x.ndim > 0 else 1)).any():
+        raise IndexError(
+            f"index_copy_(): index {index.max().item()} is out of bounds for dimension {dim} with size {x.shape[dim] if x.ndim > 0 else 1}"
+        )
+
+    num_indices = index.numel().item()
+    source_is_scalar = source.ndim == 0
+    if source_is_scalar:
+        if num_indices != 1:
+            raise IndexError(
+                f"index_copy_(): When source is scalar, index should have one element (got {num_indices})"
+            )
+    elif source.ndim != x.ndim and x.ndim != 0:
+        raise IndexError(
+            "index_copy_(): When source and destination are not scalars, their dimensionality must match. "
+            f"Source dimensionality ({source.ndim}), destination dimensionality ({x.ndim})"
+        )
+    elif num_indices != source.shape[dim]:
+        raise IndexError(
+            f"index_copy_(): Number of indices ({num_indices}) should be equal to source.size(dim) ({source.shape[dim]})"
+        )
+
+    if x.ndim == 0:
+        if source_is_scalar:
+            source = source.reshape([1])
+        x.reshape_([1]).scatter_(index.reshape([num_indices]), source)
+        return x.reshape_([])
+
+    x_sliced_shape = list(x.shape)
+    del x_sliced_shape[dim]
+    source_sliced_shape = [] if source_is_scalar else list(source.shape)
+    if not source_is_scalar:
+        del source_sliced_shape[dim]
+    if x_sliced_shape != source_sliced_shape:
+        raise RuntimeError(
+            "index_copy_(): Source/destination tensor must have same slice shapes. "
+            f"Destination slice shape: {x_sliced_shape} at dimension {dim} "
+            f"and source slice shape: {source_sliced_shape} at dimension 0."
+        )
+
+    if source_is_scalar:
+        source = source.reshape([1])
+    index_shape = [1] * x.ndim
+    index_shape[dim] = num_indices
+    return put_along_axis_(
+        x,
+        index.reshape(index_shape),
+        source,
+        dim,
+        'assign',
+        include_self=True,
+        broadcast=True,
+    )
+
+
 @ParamAliasDecorator({"x": ["input"], "axis": ["dim"], "shape": ["sizes"]})
 def unflatten(
     x: Tensor, axis: int, shape: ShapeLike, name: str | None = None
