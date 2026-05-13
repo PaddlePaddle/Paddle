@@ -3302,6 +3302,11 @@ class TestSquareInplaceAPI(unittest.TestCase):
 <<<<<<< HEAD
 =======
 # Test MultivariateNormal compatibility
+@unittest.skipIf(
+    paddle.is_compiled_with_xpu(),
+    "MultivariateNormal with covariance_matrix and validate_args=True "
+    "depends on linalg cholesky/eigvalsh, which do not have XPU kernels.",
+)
 class TestMultivariateNormalAPI(unittest.TestCase):
     def setUp(self):
         self.np_loc = np.array([2.0, -1.0], dtype="float32")
