@@ -140,7 +140,11 @@ class Normal(distribution.Distribution):
     dtype: dtype
 
     def __init__(
-        self, loc: _NormalLoc, scale: _NormalScale, name: str | None = None
+        self,
+        loc: _NormalLoc,
+        scale: _NormalScale,
+        name: str | None = None,
+        validate_args: bool | None = None,
     ) -> None:
         if not in_dynamic_mode():
             check_type(
@@ -252,7 +256,7 @@ class Normal(distribution.Distribution):
                 if self.dtype != convert_dtype(self.loc.dtype):
                     self.loc = paddle.cast(self.loc, dtype=self.dtype)
                     self.scale = paddle.cast(self.scale, dtype=self.dtype)
-        super().__init__(self.loc.shape)
+        super().__init__(self.loc.shape, validate_args=validate_args)
 
     @property
     def mean(self) -> Tensor:
