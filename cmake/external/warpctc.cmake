@@ -49,11 +49,31 @@ if(NOT WIN32 AND WITH_GPU)
 endif()
 
 if(WITH_ROCM)
-  set(WARPCTC_PATCH_ROCM_COMMAND
-      patch -p1 <
-      ${PADDLE_SOURCE_DIR}/patches/warpctc/CMakeLists.txt.rocm.patch && patch
-      -p1 < ${PADDLE_SOURCE_DIR}/patches/warpctc/devicetypes.cuh.patch && patch
-      -p1 < ${PADDLE_SOURCE_DIR}/patches/warpctc/hip.cmake.patch)
+  if(DEFINED PADDLE_ROCM_VERSION AND PADDLE_ROCM_VERSION GREATER_EQUAL 70000000)
+    set(WARPCTC_PATCH_ROCM_COMMAND
+        patch -p1 <
+        ${PADDLE_SOURCE_DIR}/patches/warpctc/CMakeLists.txt.rocm.patch && patch
+        -p1 < ${PADDLE_SOURCE_DIR}/patches/warpctc/devicetypes.cuh.patch && cp
+        ${PADDLE_SOURCE_DIR}/cmake/hip.cmake cmake/hip.cmake)
+  else()
+    set(WARPCTC_PATCH_ROCM_COMMAND
+        patch -p1 <
+        ${PADDLE_SOURCE_DIR}/patches/warpctc/CMakeLists.txt.rocm.patch && patch
+        -p1 < ${PADDLE_SOURCE_DIR}/patches/warpctc/devicetypes.cuh.patch &&
+        patch -p1 < ${PADDLE_SOURCE_DIR}/patches/warpctc/hip.cmake.patch)
+  endif()
+endif()
+
+set(WARPCTC_ROCM_CMAKE_ARGS "")
+if(WITH_ROCM)
+  list(APPEND WARPCTC_ROCM_CMAKE_ARGS -DROCM_PATH=${ROCM_PATH}
+       -DHIP_PATH=${HIP_PATH})
+  if(DEFINED PADDLE_ROCM_VERSION AND PADDLE_ROCM_VERSION GREATER_EQUAL 70000000)
+    set(WARPCTC_AMDGPU_TARGETS "${PADDLE_AMDGPU_TARGETS}")
+    string(REPLACE ";" "," WARPCTC_AMDGPU_TARGETS "${WARPCTC_AMDGPU_TARGETS}")
+    list(APPEND WARPCTC_ROCM_CMAKE_ARGS
+         -DPADDLE_AMDGPU_TARGETS=${WARPCTC_AMDGPU_TARGETS})
+  endif()
 endif()
 
 set(WARPCTC_INCLUDE_DIR
@@ -133,6 +153,7 @@ ExternalProject_Add(
              -DCMAKE_INSTALL_PREFIX=${WARPCTC_INSTALL_DIR}
              -DWITH_GPU=${WITH_GPU}
              -DWITH_ROCM=${WITH_ROCM}
+             ${WARPCTC_ROCM_CMAKE_ARGS}
              -DWITH_OMP=${USE_OMP}
              -DNVCC_FLAGS_EXTRA=${NVCC_FLAGS_EXTRA}
              -DWITH_TORCH=OFF

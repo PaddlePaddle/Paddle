@@ -48,8 +48,20 @@ PADDLE_API phi::Place GetPlaceFromPtr(void* data) {
 #else
   hipPointerAttribute_t attr = {};
   hipError_t status = hipPointerGetAttributes(&attr, data);
-  if (status == hipSuccess && attr.memoryType == hipMemoryTypeDevice) {
-    return phi::GPUPlace(attr.device);
+  if (status == hipSuccess) {
+#if defined(PADDLE_ROCM_VERSION) && PADDLE_ROCM_VERSION >= 70000000
+    if (attr.type == hipMemoryTypeDevice) {
+      return phi::GPUPlace(attr.device);
+    } else if (attr.type == hipMemoryTypeHost) {
+      return phi::GPUPinnedPlace();
+    }
+#else
+    if (attr.memoryType == hipMemoryTypeDevice) {
+      return phi::GPUPlace(attr.device);
+    } else if (attr.memoryType == hipMemoryTypeHost) {
+      return phi::GPUPinnedPlace();
+    }
+#endif
   }
 #endif
 #endif

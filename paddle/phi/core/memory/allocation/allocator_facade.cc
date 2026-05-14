@@ -42,17 +42,13 @@
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 
 #if defined(PADDLE_WITH_CUDA)
-#include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
-#elif defined(PADDLE_WITH_HIP)
-#include "paddle/phi/backends/gpu/rocm/hip_graph.h"
-#endif
-
 #include "paddle/phi/backends/dynload/cuda_driver.h"
+#include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
 #include "paddle/phi/core/memory/allocation/cuda_malloc_async_allocator.h"
 #include "paddle/phi/core/memory/allocation/cuda_virtual_mem_allocator.h"
 #include "paddle/phi/core/memory/allocation/virtual_memory_auto_growth_best_fit_allocator.h"
-
-#ifdef PADDLE_WITH_HIP
+#elif defined(PADDLE_WITH_HIP)
+#include "paddle/phi/backends/gpu/rocm/hip_graph.h"
 #include "paddle/phi/core/memory/allocation/cuda_malloc_async_allocator.h"  // NOLINT
 #endif
 #endif
