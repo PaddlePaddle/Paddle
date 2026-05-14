@@ -97,11 +97,11 @@ class TestTensorDataset(unittest.TestCase):
         self.assertEqual(len(items), 5)
 
     def test_tensor_dataset_varargs(self):
-        """TensorDataset with variable arguments (*args)."""
+        """TensorDataset with multiple tensors in list."""
         data1 = paddle.randn([10, 5])
         data2 = paddle.randn([10, 3])
         data3 = paddle.randn([10, 2])
-        dataset = TensorDataset(data1, data2, data3)
+        dataset = TensorDataset([data1, data2, data3])
         self.assertEqual(len(dataset), 10)
         item = dataset[0]
         self.assertIsInstance(item, tuple)
@@ -111,9 +111,9 @@ class TestTensorDataset(unittest.TestCase):
         self.assertEqual(item[2].shape, [2])
 
     def test_tensor_dataset_varargs_single(self):
-        """TensorDataset with single tensor as vararg."""
+        """TensorDataset with single tensor in list."""
         data = paddle.randn([8, 4])
-        dataset = TensorDataset(data)
+        dataset = TensorDataset([data])
         self.assertEqual(len(dataset), 8)
         item = dataset[0]
         self.assertIsInstance(item, tuple)
