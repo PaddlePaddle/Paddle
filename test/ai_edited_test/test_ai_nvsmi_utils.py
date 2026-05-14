@@ -24,9 +24,11 @@ import sys
 import unittest
 from unittest.mock import MagicMock, patch
 
-# Import through the working path, then get module from sys.modules for patching
-# 通过可用的路径导入，然后从 sys.modules 获取模块用于 patching
+import importlib
 
+# Ensure module is imported before accessing sys.modules
+# 确保在访问 sys.modules 之前先导入模块
+_nvsmi_spec = importlib.import_module('paddle.distributed.launch.utils.nvsmi')
 nvsmi_mod = sys.modules['paddle.distributed.launch.utils.nvsmi']
 
 from paddle.distributed.launch.utils.nvsmi import (
