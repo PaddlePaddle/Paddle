@@ -105,7 +105,7 @@ void StreamSafeCustomDeviceAllocation::SetOwningStream(
 
 StreamSafeCustomDeviceAllocator::StreamSafeCustomDeviceAllocator(
     std::shared_ptr<Allocator> underlying_allocator,
-    phi::CustomPlace place,
+    CustomPlace place,
     phi::stream::stream_t default_stream)
     : underlying_allocator_(std::move(underlying_allocator)),
       place_(std::move(place)),

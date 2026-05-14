@@ -23,8 +23,6 @@ limitations under the License. */
 
 namespace phi::distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 ////////////////// Utils Functions //////////////////
 std::string GetOutputNotation(int input_ndim,
                               const std::string& input_axes,
@@ -69,7 +67,7 @@ SpmdInfo ReductionInferSpmdBase(const DistMetaTensor& x,
                                 bool keep_dim,
                                 int reduce_type) {
   // Step0: Verify input args based on reduction logic
-  auto x_shape = common::vectorize(x.dims());
+  auto x_shape = vectorize(x.dims());
   int x_ndim = static_cast<int>(x_shape.size());
   const auto& x_dist_attr_src = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
@@ -183,8 +181,8 @@ SpmdInfo ReductionInferSpmdReverse(const DistMetaTensor& x,
                                    const std::vector<int64_t>& axis,
                                    bool keep_dim) {
   // Step0: Verify input args based on reduction logic
-  auto x_shape = common::vectorize(x.dims());
-  auto out_shape = common::vectorize(out.dims());
+  auto x_shape = vectorize(x.dims());
+  auto out_shape = vectorize(out.dims());
   int x_ndim = static_cast<int>(x_shape.size());
   int out_ndim = static_cast<int>(out_shape.size());
   auto out_dist_attr_src = out.dist_attr();
@@ -241,8 +239,8 @@ SpmdInfo ReductionGradInferSpmd(const DistMetaTensor& x,
   TensorDistAttr x_dist_attr = out_grad_dist_attr;
   TensorDistAttr x_grad_dist_attr = out_grad_dist_attr;
 
-  std::vector<int64_t> x_dim = common::vectorize(x.dims());
-  std::vector<int64_t> out_grad_dim = common::vectorize(out_grad.dims());
+  std::vector<int64_t> x_dim = vectorize(x.dims());
+  std::vector<int64_t> out_grad_dim = vectorize(out_grad.dims());
 
   if (x_dim.size() != out_grad_dim.size()) {
     auto dims_mapping = x_dist_attr.dims_mapping();

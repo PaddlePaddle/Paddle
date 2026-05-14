@@ -75,7 +75,7 @@ void BKCLCommContext::Broadcast(DenseTensor* out_tensor,
                              /*dst_rank*/ rank_,
                              /*cur_rank*/ rank_,
                              size_,
-                             phi::AllocationType::XPU);
+                             AllocationType::XPU);
 #if defined(PADDLE_WITH_FLAGCX)
   FLAGCX_CHECK(
       phi::dynload::flagcxBroadcast(in_tensor.data(),
@@ -104,7 +104,7 @@ void BKCLCommContext::AllGather(DenseTensor* out_tensor,
                                                      /*dst_rank*/ rank_,
                                                      /*cur_rank*/ rank_,
                                                      size_,
-                                                     phi::AllocationType::XPU);
+                                                     AllocationType::XPU);
 #if defined(PADDLE_WITH_FLAGCX)
   FLAGCX_CHECK(
       phi::dynload::flagcxAllGather(in_tensor.data(),
@@ -132,7 +132,7 @@ void BKCLCommContext::ReduceScatter(DenseTensor* out_tensor,
                                                       /*dst_rank*/ rank_,
                                                       /*cur_rank*/ rank_,
                                                       size_,
-                                                      phi::AllocationType::XPU);
+                                                      AllocationType::XPU);
 #if defined(PADDLE_WITH_FLAGCX)
   FLAGCX_CHECK(phi::dynload::flagcxReduceScatter(
       in_tensor.data(),
@@ -164,7 +164,7 @@ void BKCLCommContext::Scatter(DenseTensor* out_tensor,
                                                       /*dst_rank*/ rank_,
                                                       /*cur_rank*/ rank_,
                                                       size_,
-                                                      phi::AllocationType::XPU);
+                                                      AllocationType::XPU);
 
   FLAGCX_CHECK(
       phi::dynload::flagcxScatter(in_tensor.data(),
@@ -182,7 +182,7 @@ void BKCLCommContext::Send(const DenseTensor& in_tensor,
                            const int& peer,
                            XPUStream stream) {
   phi::distributed::CommStaticCheck::CheckShape(
-      in_tensor, rank_, size_, phi::AllocationType::XPU);
+      in_tensor, rank_, size_, AllocationType::XPU);
 
 #if defined(PADDLE_WITH_FLAGCX)
   FLAGCX_CHECK(
@@ -210,7 +210,7 @@ void BKCLCommContext::Recv(DenseTensor* out_tensor,
                            const int& peer,
                            XPUStream stream) {
   phi::distributed::CommStaticCheck::CheckShape(
-      *out_tensor, rank_, size_, phi::AllocationType::XPU);
+      *out_tensor, rank_, size_, AllocationType::XPU);
 #if defined(PADDLE_WITH_FLAGCX)
   FLAGCX_CHECK(
       phi::dynload::flagcxRecv(out_tensor->data(),
@@ -241,7 +241,7 @@ void BKCLCommContext::AllReduce(DenseTensor* out_tensor,
                                                /*dst_rank*/ rank_,
                                                /*cur_rank*/ rank_,
                                                size_,
-                                               phi::AllocationType::XPU);
+                                               AllocationType::XPU);
 
 #if defined(PADDLE_WITH_FLAGCX)
   FLAGCX_CHECK(
@@ -271,7 +271,7 @@ void BKCLCommContext::AllToAll(DenseTensor* out_tensor,
                                                /*dst_rank*/ rank_,
                                                /*cur_rank*/ rank_,
                                                size_,
-                                               phi::AllocationType::XPU);
+                                               AllocationType::XPU);
 
 #if defined(PADDLE_WITH_FLAGCX)
   FLAGCX_CHECK(
@@ -341,7 +341,7 @@ void BKCLCommContext::Reduce(DenseTensor* out_tensor,
                                                /*dst_rank*/ root,
                                                /*cur_rank*/ rank_,
                                                size_,
-                                               phi::AllocationType::XPU);
+                                               AllocationType::XPU);
 
 #if defined(PADDLE_WITH_FLAGCX)
   FLAGCX_CHECK(

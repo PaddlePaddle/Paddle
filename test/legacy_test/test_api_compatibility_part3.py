@@ -1337,30 +1337,30 @@ class TestLayerAndTensorToAPI(unittest.TestCase):
         self.assertIs(ret, linear)
         self.assertEqual(linear.weight.dtype, original_dtype)
 
-    # ---- Layer.to: all-dtype casting ----
+    # ---- Layer.to: floating-only dtype casting (PyTorch-aligned) ----
 
-    def test_layer_cast_all_with_positional_dtype(self):
-        """Layer.to(dtype) casts ALL params and buffers, including int buf."""
+    def test_layer_cast_floating_only_with_positional_dtype(self):
+        """Layer.to(dtype) casts only floating/complex params and buffers."""
         model = self._make_model()
         self.assertEqual(model.int_buf.dtype, paddle.int32)
         model.to(paddle.float64)
         self.assertEqual(model.linear.weight.dtype, paddle.float64)
-        self.assertEqual(model.int_buf.dtype, paddle.float64)
+        self.assertEqual(model.int_buf.dtype, paddle.int32)
 
-    def test_layer_cast_all_with_keyword_dtype(self):
-        """Layer.to(dtype='float64') casts ALL params and buffers."""
+    def test_layer_cast_floating_only_with_keyword_dtype(self):
+        """Layer.to(dtype='float64') casts only floating/complex tensors."""
         model = self._make_model()
         model.to(dtype='float64')
         self.assertEqual(model.linear.weight.dtype, paddle.float64)
-        self.assertEqual(model.int_buf.dtype, paddle.float64)
+        self.assertEqual(model.int_buf.dtype, paddle.int32)
 
-    def test_layer_cast_all_with_tensor(self):
-        """Layer.to(tensor) casts ALL params and buffers."""
+    def test_layer_cast_floating_only_with_tensor(self):
+        """Layer.to(tensor) casts only floating/complex tensors to tensor.dtype."""
         model = self._make_model()
         ref = paddle.to_tensor([1.0], dtype='float64')
         model.to(ref)
         self.assertEqual(model.linear.weight.dtype, paddle.float64)
-        self.assertEqual(model.int_buf.dtype, paddle.float64)
+        self.assertEqual(model.int_buf.dtype, paddle.int32)
 
     # ---- Layer.to: sublayers and chaining ----
 
@@ -1692,6 +1692,59 @@ class TestLayerAndTensorToAPI(unittest.TestCase):
         t = paddle.to_tensor([1.0, 2.0])
         with self.assertRaises(TypeError):
             t.to('float64', copy='yes')
+
+
+# Test paddle.dtype.itemsize compatibility (mirrors torch.dtype.itemsize).
+class TestDtypeItemsizeAPI(unittest.TestCase):
+    EXPECTED = {
+        'float16': 2,
+        'bfloat16': 2,
+        'float32': 4,
+        'float64': 8,
+        'complex64': 8,
+        'complex128': 16,
+        'int8': 1,
+        'int16': 2,
+        'int32': 4,
+        'int64': 8,
+        'uint8': 1,
+        'uint16': 2,
+        'uint32': 4,
+        'uint64': 8,
+        'bool': 1,
+        'float8_e4m3fn': 1,
+        'float8_e5m2': 1,
+    }
+
+    def test_all_standard_dtypes(self):
+        for name, want in self.EXPECTED.items():
+            if not hasattr(paddle, name):
+                continue
+            with self.subTest(dtype=name):
+                self.assertEqual(getattr(paddle, name).itemsize, want)
+
+    def test_returns_int(self):
+        self.assertIsInstance(paddle.float32.itemsize, int)
+
+    def test_property_lives_on_class(self):
+        self.assertIsInstance(type(paddle.float32).itemsize, property)
+
+    def test_aliases_match(self):
+        self.assertEqual(paddle.float.itemsize, paddle.float32.itemsize)
+        self.assertEqual(paddle.double.itemsize, paddle.float64.itemsize)
+        self.assertEqual(paddle.half.itemsize, paddle.float16.itemsize)
+        self.assertEqual(paddle.short.itemsize, paddle.int16.itemsize)
+        self.assertEqual(paddle.long.itemsize, paddle.int64.itemsize)
+        self.assertEqual(paddle.cfloat.itemsize, paddle.complex64.itemsize)
+        self.assertEqual(paddle.cdouble.itemsize, paddle.complex128.itemsize)
+
+    def test_matches_tensor_element_size(self):
+        for name in ('float32', 'float64', 'int32', 'int64', 'bool'):
+            with self.subTest(dtype=name):
+                t = paddle.zeros([1], dtype=name)
+                self.assertEqual(
+                    getattr(paddle, name).itemsize, t.element_size()
+                )
 
 
 # Test select_scatter compatibility
@@ -3243,6 +3296,99 @@ class TestSquareInplaceAPI(unittest.TestCase):
         _assert_unary_inplace_result(self, x, out, ref_out)
 
         paddle.enable_static()
+
+
+class TestInferenceModeAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([1.0, 2.0, 3.0], dtype="float32")
+        self.shape = self.np_x.shape
+        self.dtype = str(self.np_x.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x, stop_gradient=False)
+
+        # 1. Paddle Positional arguments
+        ctx = paddle.inference_mode()
+        self.assertTrue(paddle.is_grad_enabled())
+        with ctx:
+            out1 = x * 2
+            self.assertFalse(paddle.is_grad_enabled())
+        self.assertTrue(paddle.is_grad_enabled())
+        # 2. Paddle keyword arguments
+        with paddle.inference_mode(mode=True):
+            out2 = x * 2
+            self.assertFalse(paddle.is_grad_enabled())
+        # 3. PyTorch keyword arguments
+        with paddle.no_grad(), paddle.inference_mode(mode=False):
+            out3 = x * 2
+            self.assertTrue(paddle.is_grad_enabled())
+
+        # 4. Decorator without parentheses
+        @paddle.inference_mode
+        def no_grad_decorated(tensor):
+            out = tensor * 2
+            self.assertFalse(paddle.is_grad_enabled())
+            return out
+
+        out4 = no_grad_decorated(x)
+
+        # 5. Decorator with mode=False
+        @paddle.inference_mode(mode=False)
+        def enable_grad_decorated(tensor):
+            out = tensor * 2
+            self.assertTrue(paddle.is_grad_enabled())
+            return out
+
+        with paddle.no_grad():
+            out5 = enable_grad_decorated(x)
+
+        def mode_func(tensor):
+            return tensor * 2
+
+        out6 = paddle.inference_mode(mode=mode_func)(x)
+
+        # Verify all outputs
+        ref_out = self.np_x * 2
+        for out in [out1, out2, out3, out4, out5, out6]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+        for out in [out1, out2, out4, out6]:
+            self.assertTrue(out.stop_gradient)
+        for out in [out3, out5]:
+            self.assertFalse(out.stop_gradient)
+        self.assertTrue(paddle.is_grad_enabled())
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            x.stop_gradient = False
+
+            # 1. Paddle Positional arguments
+            with paddle.inference_mode():
+                out1 = x * 2
+            # 2. Paddle keyword arguments
+            with paddle.inference_mode(mode=True):
+                out2 = x * 2
+            # 3. PyTorch keyword arguments
+            with paddle.no_grad(), paddle.inference_mode(mode=False):
+                out3 = x * 2
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2, out3],
+            )
+
+        # Verify all outputs
+        ref_out = self.np_x * 2
+        for out in fetches:
+            np.testing.assert_allclose(out, ref_out, rtol=1e-6)
 
 
 if __name__ == "__main__":

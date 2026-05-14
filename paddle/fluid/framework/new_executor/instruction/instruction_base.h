@@ -21,6 +21,7 @@
 
 #include "paddle/fluid/framework/new_executor/instruction/instruction_defs.h"
 #include "paddle/phi/api/profiler/event.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace pir {
 class Value;

@@ -31,14 +31,14 @@ namespace framework {
 
 static void PassTensorData(DenseTensor *from, DenseTensor *to) {
   to->ShareDataWith(*from);
-  *from = phi::DenseTensor();
+  *from = DenseTensor();
 }
 
 void TransformData(const phi::KernelKey &expected_kernel_type,
                    const phi::KernelKey &kernel_type_for_var,
                    const DenseTensor &input_tensor,
                    DenseTensor *output_tensor,
-                   const phi::Place &place) {
+                   const Place &place) {
   bool transformed = false;
   DenseTensor in;
   in.ShareDataWith(input_tensor);

@@ -525,14 +525,17 @@ class TestRandpermNewParams(unittest.TestCase):
                 self.assertEqual(result.dtype, out_tensor.dtype)
                 self.assertTrue(check_randperm_out(self.n, result.numpy()))
 
-    def test_pin_memory_error_cases(self):
-        """Test pin_memory error cases"""
+    def test_pin_memory_cpu_device(self):
+        """``device='cpu', pin_memory=True`` is relaxed to the available
+        pinned allocator (matches torch's pin_memory contract)."""
         if not paddle.device.is_compiled_with_cuda():
             return
 
-        with dygraph_guard(), self.assertRaises(RuntimeError):
-            # Test unsupported device with pin_memory=True
-            paddle.randperm([2, 3], device=paddle.CPUPlace(), pin_memory=True)
+        with dygraph_guard():
+            x = paddle.randperm(
+                self.n, device=paddle.CPUPlace(), pin_memory=True
+            )
+            self.assertIn("pinned", str(x.place).lower())
 
 
 class TestRandperm_compatible(unittest.TestCase):
