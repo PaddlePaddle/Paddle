@@ -104,5 +104,10 @@ void TileGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    tile_grad, XPU, ALL_LAYOUT, phi::TileGradKernel, float, phi::bfloat16) {}
+PD_REGISTER_KERNEL(tile_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::TileGradKernel,
+                   float,
+                   phi::float16,
+                   phi::bfloat16) {}
