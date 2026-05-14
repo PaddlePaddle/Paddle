@@ -2807,6 +2807,9 @@ class TestMultivariateNormalAPI(unittest.TestCase):
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> fff10c84ae (Add more test cases)
 class TestNormalValidateArgsAPI(unittest.TestCase):
     def setUp(self):
         self.np_loc = np.array([0.0, 1.0, -1.0], dtype="float32")
@@ -2906,8 +2909,11 @@ class TestNormalValidateArgsAPI(unittest.TestCase):
             np.testing.assert_allclose(out, ref_out, rtol=1e-6)
 
 
+<<<<<<< HEAD
 =======
 >>>>>>> 2ac780c67e (Align paths and modify tests)
+=======
+>>>>>>> fff10c84ae (Add more test cases)
 class TestDistributionAPI(unittest.TestCase):
     def tearDown(self):
         paddle.distribution.Distribution.set_default_validate_args(__debug__)
