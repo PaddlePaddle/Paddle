@@ -19,6 +19,7 @@
 # implemented as independent modules with no runtime dependency on PyTorch.
 
 import math
+import sys
 import typing
 
 __is_metainfo_generated = False
@@ -262,6 +263,7 @@ from paddle import (
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 optim = optimizer
 distributions = distribution
 _sys.modules['paddle.optim'] = optimizer
@@ -278,6 +280,15 @@ def _set_module_alias(alias_path, origin_module, submodule_names=()):
         origin_path = f'{origin_module.__name__}.{submodule_name}'
         if origin_path in _sys.modules:
             _sys.modules[f'{alias_path}.{submodule_name}'] = _sys.modules[
+=======
+
+def _set_module_alias(alias_path, origin_module, submodule_names=()):
+    sys.modules[alias_path] = origin_module
+    for submodule_name in submodule_names:
+        origin_path = f'{origin_module.__name__}.{submodule_name}'
+        if origin_path in sys.modules:
+            sys.modules[f'{alias_path}.{submodule_name}'] = sys.modules[
+>>>>>>> 4d4062833a (Refactor the alignment)
                 origin_path
             ]
 
@@ -317,7 +328,10 @@ _set_module_alias(
         'categorical',
         'cauchy',
         'chi2',
+<<<<<<< HEAD
         'constraint',
+=======
+>>>>>>> 4d4062833a (Refactor the alignment)
         'continuous_bernoulli',
         'dirichlet',
         'distribution',
@@ -343,11 +357,14 @@ _set_module_alias(
     ),
 )
 del _set_module_alias
+<<<<<<< HEAD
 >>>>>>> 1599b3883d (Refactor the alignment)
 =======
 _sys.modules['paddle.distributions'] = distribution
 distributions = distribution
 >>>>>>> 1297e14fc9 (Align paths)
+=======
+>>>>>>> 4d4062833a (Refactor the alignment)
 
 # high-level api
 from . import (

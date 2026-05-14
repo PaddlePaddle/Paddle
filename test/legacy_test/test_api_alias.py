@@ -25,6 +25,7 @@ class TestUtilsAttrError(unittest.TestCase):
 
 class TestAlias(unittest.TestCase):
 <<<<<<< HEAD
+<<<<<<< HEAD
     def test_optim_module_alias(self):
         from paddle import optim, optimizer
 
@@ -504,6 +505,137 @@ class TestAlias(unittest.TestCase):
         'variable',
     ]
 
+=======
+    utils_data_aliases = [
+        (
+            'paddle.io.Dataset',
+            'paddle.utils.data.Dataset',
+            'paddle.utils.data.dataset.Dataset',
+        ),
+        (
+            'paddle.io.ChainDataset',
+            'paddle.utils.data.ChainDataset',
+            'paddle.utils.data.dataset.ChainDataset',
+        ),
+        (
+            'paddle.io.ConcatDataset',
+            'paddle.utils.data.ConcatDataset',
+            'paddle.utils.data.dataset.ConcatDataset',
+        ),
+        (
+            'paddle.io.IterableDataset',
+            'paddle.utils.data.IterableDataset',
+            'paddle.utils.data.dataset.IterableDataset',
+        ),
+        (
+            'paddle.io.Sampler',
+            'paddle.utils.data.Sampler',
+            'paddle.utils.data.sampler.Sampler',
+        ),
+        (
+            'paddle.io.SequenceSampler',
+            'paddle.utils.data.SequentialSampler',
+            'paddle.utils.data.sampler.SequentialSampler',
+        ),
+        (
+            'paddle.io.Subset',
+            'paddle.utils.data.Subset',
+            'paddle.utils.data.dataset.Subset',
+        ),
+        (
+            'paddle.io.get_worker_info',
+            'paddle.utils.data.get_worker_info',
+            'paddle.utils.data.dataloader.get_worker_info',
+            'paddle.utils.data._utils.worker.get_worker_info',
+        ),
+        (
+            'paddle.io.random_split',
+            'paddle.utils.data.random_split',
+            'paddle.utils.data.dataset.random_split',
+        ),
+        (
+            'paddle.io.dataloader.collate.default_collate_fn',
+            'paddle.utils.data.default_collate',
+            'paddle.utils.data.dataloader.default_collate',
+            'paddle.utils.data._utils.collate.default_collate',
+        ),
+        (
+            'paddle.io.BatchSampler',
+            'paddle.utils.data.BatchSampler',
+            'paddle.utils.data.sampler.BatchSampler',
+        ),
+        (
+            'paddle.io.RandomSampler',
+            'paddle.utils.data.RandomSampler',
+            'paddle.utils.data.sampler.RandomSampler',
+        ),
+        (
+            'paddle.io.TensorDataset',
+            'paddle.utils.data.TensorDataset',
+            'paddle.utils.data.dataset.TensorDataset',
+        ),
+    ]
+    optim_module_names = [
+        'adadelta',
+        'adagrad',
+        'adam',
+        'adamax',
+        'adamw',
+        'asgd',
+        'lamb',
+        'lbfgs',
+        'lr',
+        'momentum',
+        'muon',
+        'nadam',
+        'optimizer',
+        'radam',
+        'rmsprop',
+        'rprop',
+        'sgd',
+    ]
+    optim_api_names = [
+        'Adadelta',
+        'Adagrad',
+        'Adam',
+        'Adamax',
+        'AdamW',
+        'ASGD',
+        'Lamb',
+        'LBFGS',
+        'Momentum',
+        'Muon',
+        'NAdam',
+        'Optimizer',
+        'RAdam',
+        'RMSProp',
+        'Rprop',
+        'SGD',
+    ]
+    optim_submodule_apis = [
+        ('adadelta', 'Adadelta'),
+        ('adagrad', 'Adagrad'),
+        ('adam', 'Adam'),
+        ('adamax', 'Adamax'),
+        ('adamw', 'AdamW'),
+        ('asgd', 'ASGD'),
+        ('lamb', 'Lamb'),
+        ('lbfgs', 'LBFGS'),
+        ('momentum', 'Momentum'),
+        ('muon', 'Muon'),
+        ('nadam', 'NAdam'),
+        ('optimizer', 'Optimizer'),
+        ('radam', 'RAdam'),
+        ('rmsprop', 'RMSProp'),
+        ('rprop', 'Rprop'),
+        ('sgd', 'SGD'),
+    ]
+    distribution_submodule_apis = [
+        ('distribution', 'Distribution'),
+        ('normal', 'Normal'),
+    ]
+
+>>>>>>> 4d4062833a (Refactor the alignment)
     def assert_api_alias(self, canonical_path, *alias_paths):
         canonical_module_path, canonical_name = canonical_path.rsplit('.', 1)
         canonical_module = importlib.import_module(canonical_module_path)
@@ -545,11 +677,14 @@ class TestAlias(unittest.TestCase):
 
     def test_distributions_module_alias(self):
         self.assert_module_alias('paddle.distribution', 'paddle.distributions')
+<<<<<<< HEAD
         for name in self.distribution_module_names:
             self.assert_module_alias(
                 f'paddle.distribution.{name}',
                 f'paddle.distributions.{name}',
             )
+=======
+>>>>>>> 4d4062833a (Refactor the alignment)
 
     def test_distributions_api_alias(self):
         for module_name, api_name in self.distribution_submodule_apis:
@@ -557,7 +692,10 @@ class TestAlias(unittest.TestCase):
                 f'paddle.distribution.{module_name}.{api_name}',
                 f'paddle.distributions.{module_name}.{api_name}',
             )
+<<<<<<< HEAD
 >>>>>>> fff10c84ae (Add more test cases)
+=======
+>>>>>>> 4d4062833a (Refactor the alignment)
 
 
 if __name__ == "__main__":
