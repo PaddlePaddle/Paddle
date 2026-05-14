@@ -19,6 +19,7 @@
 # implemented as independent modules with no runtime dependency on PyTorch.
 
 import math
+import sys
 import typing
 
 __is_metainfo_generated = False
@@ -245,7 +246,6 @@ from paddle import (
     metric as metric,
     nn as nn,
     onnx as onnx,
-    optim as optim,
     optimizer as optimizer,
     quantization as quantization,
     random as random,
@@ -257,6 +257,78 @@ from paddle import (
     testing as testing,
     vision as vision,
 )
+
+
+def _set_module_alias(alias_path, origin_module, submodule_names=()):
+    sys.modules[alias_path] = origin_module
+    for submodule_name in submodule_names:
+        origin_path = f'{origin_module.__name__}.{submodule_name}'
+        if origin_path in sys.modules:
+            sys.modules[f'{alias_path}.{submodule_name}'] = sys.modules[
+                origin_path
+            ]
+
+
+optim = optimizer
+distributions = distribution
+_set_module_alias(
+    'paddle.optim',
+    optimizer,
+    (
+        'adadelta',
+        'adagrad',
+        'adam',
+        'adamax',
+        'adamw',
+        'asgd',
+        'lamb',
+        'lbfgs',
+        'lr',
+        'momentum',
+        'muon',
+        'nadam',
+        'optimizer',
+        'radam',
+        'rmsprop',
+        'rprop',
+        'sgd',
+    ),
+)
+_set_module_alias(
+    'paddle.distributions',
+    distribution,
+    (
+        'bernoulli',
+        'beta',
+        'binomial',
+        'categorical',
+        'cauchy',
+        'chi2',
+        'continuous_bernoulli',
+        'dirichlet',
+        'distribution',
+        'exponential',
+        'exponential_family',
+        'gamma',
+        'geometric',
+        'gumbel',
+        'independent',
+        'kl',
+        'laplace',
+        'lkj_cholesky',
+        'lognormal',
+        'multinomial',
+        'multivariate_normal',
+        'normal',
+        'poisson',
+        'student_t',
+        'transform',
+        'transformed_distribution',
+        'uniform',
+        'variable',
+    ),
+)
+del _set_module_alias
 
 # high-level api
 from . import (

@@ -2675,7 +2675,6 @@ def get_setup_parameters():
         'paddle.incubate.xpu',
         'paddle.io',
         'paddle.io.dataloader',
-        'paddle.optim',
         'paddle.optimizer',
         'paddle.nn',
         'paddle.nn.attention',
