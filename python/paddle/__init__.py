@@ -264,10 +264,10 @@ def _set_module_alias(alias_path, origin_module, submodule_names=()):
     _sys.modules[alias_path] = origin_module
     for submodule_name in submodule_names:
         origin_path = f'{origin_module.__name__}.{submodule_name}'
-        if origin_path in _sys.modules:
-            _sys.modules[f'{alias_path}.{submodule_name}'] = _sys.modules[
-                origin_path
-            ]
+        __import__(origin_path)
+        _sys.modules[f'{alias_path}.{submodule_name}'] = _sys.modules[
+            origin_path
+        ]
 
 
 optim = optimizer
