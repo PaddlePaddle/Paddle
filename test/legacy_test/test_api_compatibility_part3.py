@@ -14,7 +14,6 @@
 
 import sys
 import unittest
-import warnings
 
 import numpy as np
 
@@ -3301,6 +3300,7 @@ class TestSquareInplaceAPI(unittest.TestCase):
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 # Test MultivariateNormal compatibility
 @unittest.skipIf(
@@ -3565,6 +3565,8 @@ class TestDistributionAPI(unittest.TestCase):
 
 
 >>>>>>> 62c82bdae5 (Add tests for coverage)
+=======
+>>>>>>> 2ac780c67e (Align paths and modify tests)
 class TestInferenceModeAPI(unittest.TestCase):
     def setUp(self):
         self.np_x = np.array([1.0, 2.0, 3.0], dtype="float32")

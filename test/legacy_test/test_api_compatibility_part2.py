@@ -2646,6 +2646,7 @@ class TestMultivariateNormalAPI(unittest.TestCase):
 
         # 1. Paddle Positional arguments
 <<<<<<< HEAD
+<<<<<<< HEAD
         out1 = paddle.distributions.multivariate_normal.MultivariateNormal(
             loc, cov
         )
@@ -2665,21 +2666,30 @@ class TestMultivariateNormalAPI(unittest.TestCase):
         out5 = paddle.distributions.multivariate_normal.MultivariateNormal(
 =======
         out1 = paddle.distribution.MultivariateNormal(loc, cov)
+=======
+        out1 = paddle.distributions.multivariate_normal.MultivariateNormal(
+            loc, cov
+        )
+>>>>>>> 2ac780c67e (Align paths and modify tests)
         # 2. Paddle keyword arguments
-        out2 = paddle.distribution.MultivariateNormal(
+        out2 = paddle.distributions.multivariate_normal.MultivariateNormal(
             loc=loc, covariance_matrix=cov
         )
         # 3. PyTorch Positional arguments
-        out3 = paddle.distribution.MultivariateNormal(
+        out3 = paddle.distributions.multivariate_normal.MultivariateNormal(
             loc, cov, None, None, False
         )
         # 4. PyTorch keyword arguments
-        out4 = paddle.distribution.MultivariateNormal(
+        out4 = paddle.distributions.multivariate_normal.MultivariateNormal(
             loc=loc, covariance_matrix=cov, validate_args=True
         )
         # 5. Mixed arguments
+<<<<<<< HEAD
         out5 = paddle.distribution.MultivariateNormal(
 >>>>>>> 777bfad34c (Fix some bugs)
+=======
+        out5 = paddle.distributions.multivariate_normal.MultivariateNormal(
+>>>>>>> 2ac780c67e (Align paths and modify tests)
             loc, covariance_matrix=cov, validate_args=None
         )
 
@@ -2720,6 +2730,7 @@ class TestMultivariateNormalAPI(unittest.TestCase):
 
             # 1. Paddle Positional arguments
 <<<<<<< HEAD
+<<<<<<< HEAD
             out1 = paddle.distributions.multivariate_normal.MultivariateNormal(
                 loc, cov
             )
@@ -2739,21 +2750,30 @@ class TestMultivariateNormalAPI(unittest.TestCase):
             out5 = paddle.distributions.multivariate_normal.MultivariateNormal(
 =======
             out1 = paddle.distribution.MultivariateNormal(loc, cov)
+=======
+            out1 = paddle.distributions.multivariate_normal.MultivariateNormal(
+                loc, cov
+            )
+>>>>>>> 2ac780c67e (Align paths and modify tests)
             # 2. Paddle keyword arguments
-            out2 = paddle.distribution.MultivariateNormal(
+            out2 = paddle.distributions.multivariate_normal.MultivariateNormal(
                 loc=loc, covariance_matrix=cov
             )
             # 3. PyTorch Positional arguments
-            out3 = paddle.distribution.MultivariateNormal(
+            out3 = paddle.distributions.multivariate_normal.MultivariateNormal(
                 loc, cov, None, None, False
             )
             # 4. PyTorch keyword arguments
-            out4 = paddle.distribution.MultivariateNormal(
+            out4 = paddle.distributions.multivariate_normal.MultivariateNormal(
                 loc=loc, covariance_matrix=cov, validate_args=True
             )
             # 5. Mixed arguments
+<<<<<<< HEAD
             out5 = paddle.distribution.MultivariateNormal(
 >>>>>>> 777bfad34c (Fix some bugs)
+=======
+            out5 = paddle.distributions.multivariate_normal.MultivariateNormal(
+>>>>>>> 2ac780c67e (Align paths and modify tests)
                 loc, covariance_matrix=cov, validate_args=None
             )
 
@@ -2785,6 +2805,7 @@ class TestMultivariateNormalAPI(unittest.TestCase):
             )
 
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 class TestNormalValidateArgsAPI(unittest.TestCase):
     def setUp(self):
@@ -2885,6 +2906,8 @@ class TestNormalValidateArgsAPI(unittest.TestCase):
             np.testing.assert_allclose(out, ref_out, rtol=1e-6)
 
 
+=======
+>>>>>>> 2ac780c67e (Align paths and modify tests)
 class TestDistributionAPI(unittest.TestCase):
     def tearDown(self):
         paddle.distribution.Distribution.set_default_validate_args(__debug__)
@@ -3013,7 +3036,10 @@ class TestDistributionAPI(unittest.TestCase):
             )._validate_sample(paddle.ones([1], dtype="float32"))
 
 
+<<<<<<< HEAD
 =======
 >>>>>>> 777bfad34c (Fix some bugs)
+=======
+>>>>>>> 2ac780c67e (Align paths and modify tests)
 if __name__ == '__main__':
     unittest.main()
