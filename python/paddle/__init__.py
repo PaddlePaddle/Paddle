@@ -260,9 +260,6 @@ from paddle import (
 )
 
 _sys.modules['paddle.distributions'] = distribution
-_sys.modules['paddle.distributions.multivariate_normal'] = (
-    distribution.multivariate_normal
-)
 distributions = distribution
 
 # high-level api
