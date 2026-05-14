@@ -266,9 +266,6 @@ _sys.modules['paddle.optim'] = optimizer
 _sys.modules['paddle.distributions'] = distribution
 =======
 _sys.modules['paddle.distributions'] = distribution
-_sys.modules['paddle.distributions.multivariate_normal'] = (
-    distribution.multivariate_normal
-)
 distributions = distribution
 >>>>>>> 2ac780c67e (Align paths and modify tests)
 
