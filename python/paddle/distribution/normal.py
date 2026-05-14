@@ -146,6 +146,10 @@ class Normal(distribution.Distribution):
         name: str | None = None,
         validate_args: bool | None = None,
     ) -> None:
+        if isinstance(name, bool) and validate_args is None:
+            validate_args = name
+            name = None
+
         if not in_dynamic_mode():
             check_type(
                 loc,
