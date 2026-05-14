@@ -120,7 +120,8 @@ void MaskedScatterKernel(const Context& dev_ctx,
 
   if (rank == 1) {
     // For 1-D, indices are already flat - just copy them
-    r = xpu::copy<int64_t>(dev_ctx.x_context(), indices_data, flat_indices, mask_count);
+    r = xpu::copy<int64_t>(
+        dev_ctx.x_context(), indices_data, flat_indices, mask_count);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
   } else {
     // For multi-D, compute flat indices: flat_idx = sum(idx[j] * stride[j])
@@ -133,7 +134,8 @@ void MaskedScatterKernel(const Context& dev_ctx,
                        rank * sizeof(int64_t));
 
     // Initialize flat_indices to 0
-    r = xpu::constant<int64_t>(dev_ctx.x_context(), flat_indices, mask_count, 0);
+    r = xpu::constant<int64_t>(
+        dev_ctx.x_context(), flat_indices, mask_count, 0);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
 
     // For each dimension, add idx * stride to flat_indices
@@ -142,12 +144,12 @@ void MaskedScatterKernel(const Context& dev_ctx,
       // Extract column j: col_indices[i] = indices[i * rank + j]
       // Use strided_slice with stride (rank, 1) starting at j
       r = xpu::strided_slice<int64_t>(dev_ctx.x_context(),
-                                        indices_data,
-                                        col_indices,
-                                        {mask_count * rank},
-                                        {j},
-                                        {mask_count * rank},
-                                        {rank});
+                                      indices_data,
+                                      col_indices,
+                                      {mask_count * rank},
+                                      {j},
+                                      {mask_count * rank},
+                                      {rank});
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "strided_slice");
 
       // Multiply col_indices by stride[j] and add to flat_indices
@@ -161,20 +163,20 @@ void MaskedScatterKernel(const Context& dev_ctx,
       auto* col_scaled_data = dev_ctx.template Alloc<int64_t>(&col_scaled);
 
       r = xpu::broadcast_mul<int64_t>(dev_ctx.x_context(),
-                                       col_indices,
-                                       &strides[j],
-                                       col_scaled_data,
-                                       {mask_count},
-                                       {1});
+                                      col_indices,
+                                      &strides[j],
+                                      col_scaled_data,
+                                      {mask_count},
+                                      {1});
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_mul");
 
       // Add to flat_indices
       r = xpu::broadcast_add<int64_t>(dev_ctx.x_context(),
-                                       col_scaled_data,
-                                       flat_indices,
-                                       flat_indices,
-                                       {mask_count},
-                                       {mask_count});
+                                      col_scaled_data,
+                                      flat_indices,
+                                      flat_indices,
+                                      {mask_count},
+                                      {mask_count});
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_add");
     }
   }
@@ -185,13 +187,8 @@ void MaskedScatterKernel(const Context& dev_ctx,
   int64_t dim0 = total;
   int64_t dim1 = 1;
 
-  r = xpu::scatter<XPUType>(dev_ctx.x_context(),
-                            value_data,
-                            out_data,
-                            indices_vec,
-                            dim0,
-                            dim1,
-                            true);
+  r = xpu::scatter<XPUType>(
+      dev_ctx.x_context(), value_data, out_data, indices_vec, dim0, dim1, true);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "scatter");
 }
 

@@ -84,7 +84,8 @@ void MaskedScatterGradKernel(const Context& dev_ctx,
       // For each element: x_grad[i] = mask[i] ? 0 : out_grad[i]
       // Since we can't use masked_fill directly, we do this manually:
       // First, copy out_grad to x_grad
-      int r = xpu::copy<XPUType>(dev_ctx.x_context(), out_grad_data, x_grad_data, total);
+      int r = xpu::copy<XPUType>(
+          dev_ctx.x_context(), out_grad_data, x_grad_data, total);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
 
       // Get indices where mask is True and set corresponding positions to 0
@@ -97,16 +98,19 @@ void MaskedScatterGradKernel(const Context& dev_ctx,
         // Simpler: create a tensor of zeros and scatter it
         xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
         XPUType* zeros = RAII_GUARD.alloc_l3_or_gm<XPUType>(true_count);
-        r = xpu::constant<XPUType>(dev_ctx.x_context(), zeros, true_count, static_cast<XPUType>(0));
+        r = xpu::constant<XPUType>(
+            dev_ctx.x_context(), zeros, true_count, static_cast<XPUType>(0));
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
 
         // Get flat indices
-        int64_t rank = true_indices.dims().size() > 1 ? true_indices.dims()[1] : 1;
+        int64_t rank =
+            true_indices.dims().size() > 1 ? true_indices.dims()[1] : 1;
         auto* indices_data = true_indices.data<int64_t>();
 
         if (rank == 1) {
           // For 1-D, use scatter directly
-          xpu::VectorParam<int64_t> indices_vec{nullptr, true_count, indices_data};
+          xpu::VectorParam<int64_t> indices_vec{
+              nullptr, true_count, indices_data};
           r = xpu::scatter<XPUType>(dev_ctx.x_context(),
                                     zeros,
                                     x_grad_data,
@@ -126,50 +130,54 @@ void MaskedScatterGradKernel(const Context& dev_ctx,
             }
           }
 
-          int64_t* flat_indices = RAII_GUARD.alloc_l3_or_gm<int64_t>(true_count);
+          int64_t* flat_indices =
+              RAII_GUARD.alloc_l3_or_gm<int64_t>(true_count);
           int64_t* strides_xpu = RAII_GUARD.alloc_l3_or_gm<int64_t>(rank);
           memory_utils::Copy(dev_ctx.GetPlace(),
-                           static_cast<void*>(strides_xpu),
-                           CPUPlace(),
-                           static_cast<void*>(strides.data()),
-                           rank * sizeof(int64_t));
+                             static_cast<void*>(strides_xpu),
+                             CPUPlace(),
+                             static_cast<void*>(strides.data()),
+                             rank * sizeof(int64_t));
 
-          r = xpu::constant<int64_t>(dev_ctx.x_context(), flat_indices, true_count, 0);
+          r = xpu::constant<int64_t>(
+              dev_ctx.x_context(), flat_indices, true_count, 0);
           PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
 
           int64_t* col_indices = RAII_GUARD.alloc_l3_or_gm<int64_t>(true_count);
           for (int j = 0; j < rank; ++j) {
             r = xpu::strided_slice<int64_t>(dev_ctx.x_context(),
-                                              indices_data,
-                                              col_indices,
-                                              {true_count * rank},
-                                              {j},
-                                              {true_count * rank},
-                                              {rank});
+                                            indices_data,
+                                            col_indices,
+                                            {true_count * rank},
+                                            {j},
+                                            {true_count * rank},
+                                            {rank});
             PADDLE_ENFORCE_XDNN_SUCCESS(r, "strided_slice");
 
             DenseTensor col_scaled(DataType::INT64);
             col_scaled.Resize(phi::make_ddim({true_count}));
-            auto* col_scaled_data = dev_ctx.template Alloc<int64_t>(&col_scaled);
+            auto* col_scaled_data =
+                dev_ctx.template Alloc<int64_t>(&col_scaled);
 
             r = xpu::broadcast_mul<int64_t>(dev_ctx.x_context(),
-                                             col_indices,
-                                             &strides[j],
-                                             col_scaled_data,
-                                             {true_count},
-                                             {1});
+                                            col_indices,
+                                            &strides[j],
+                                            col_scaled_data,
+                                            {true_count},
+                                            {1});
             PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_mul");
 
             r = xpu::broadcast_add<int64_t>(dev_ctx.x_context(),
-                                             col_scaled_data,
-                                             flat_indices,
-                                             flat_indices,
-                                             {true_count},
-                                             {true_count});
+                                            col_scaled_data,
+                                            flat_indices,
+                                            flat_indices,
+                                            {true_count},
+                                            {true_count});
             PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_add");
           }
 
-          xpu::VectorParam<int64_t> indices_vec{nullptr, true_count, flat_indices};
+          xpu::VectorParam<int64_t> indices_vec{
+              nullptr, true_count, flat_indices};
           r = xpu::scatter<XPUType>(dev_ctx.x_context(),
                                     zeros,
                                     x_grad_data,
@@ -185,10 +193,12 @@ void MaskedScatterGradKernel(const Context& dev_ctx,
       DenseTensor x_grad_broadcast;
       x_grad_broadcast.Resize(expanded_dims);
       dev_ctx.template Alloc<T>(&x_grad_broadcast);
-      auto* x_grad_broadcast_data = reinterpret_cast<XPUType*>(x_grad_broadcast.data<T>());
+      auto* x_grad_broadcast_data =
+          reinterpret_cast<XPUType*>(x_grad_broadcast.data<T>());
 
       // Copy out_grad
-      int r = xpu::copy<XPUType>(dev_ctx.x_context(), out_grad_data, x_grad_broadcast_data, total);
+      int r = xpu::copy<XPUType>(
+          dev_ctx.x_context(), out_grad_data, x_grad_broadcast_data, total);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
 
       // Zero out where mask is True
@@ -199,14 +209,17 @@ void MaskedScatterGradKernel(const Context& dev_ctx,
       if (true_count > 0) {
         xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
         XPUType* zeros = RAII_GUARD.alloc_l3_or_gm<XPUType>(true_count);
-        r = xpu::constant<XPUType>(dev_ctx.x_context(), zeros, true_count, static_cast<XPUType>(0));
+        r = xpu::constant<XPUType>(
+            dev_ctx.x_context(), zeros, true_count, static_cast<XPUType>(0));
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
 
-        int64_t rank = true_indices.dims().size() > 1 ? true_indices.dims()[1] : 1;
+        int64_t rank =
+            true_indices.dims().size() > 1 ? true_indices.dims()[1] : 1;
         auto* indices_data = true_indices.data<int64_t>();
 
         if (rank == 1) {
-          xpu::VectorParam<int64_t> indices_vec{nullptr, true_count, indices_data};
+          xpu::VectorParam<int64_t> indices_vec{
+              nullptr, true_count, indices_data};
           r = xpu::scatter<XPUType>(dev_ctx.x_context(),
                                     zeros,
                                     x_grad_broadcast_data,
@@ -225,50 +238,54 @@ void MaskedScatterGradKernel(const Context& dev_ctx,
             }
           }
 
-          int64_t* flat_indices = RAII_GUARD.alloc_l3_or_gm<int64_t>(true_count);
+          int64_t* flat_indices =
+              RAII_GUARD.alloc_l3_or_gm<int64_t>(true_count);
           int64_t* strides_xpu = RAII_GUARD.alloc_l3_or_gm<int64_t>(rank);
           memory_utils::Copy(dev_ctx.GetPlace(),
-                           static_cast<void*>(strides_xpu),
-                           CPUPlace(),
-                           static_cast<void*>(strides.data()),
-                           rank * sizeof(int64_t));
+                             static_cast<void*>(strides_xpu),
+                             CPUPlace(),
+                             static_cast<void*>(strides.data()),
+                             rank * sizeof(int64_t));
 
-          r = xpu::constant<int64_t>(dev_ctx.x_context(), flat_indices, true_count, 0);
+          r = xpu::constant<int64_t>(
+              dev_ctx.x_context(), flat_indices, true_count, 0);
           PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
 
           int64_t* col_indices = RAII_GUARD.alloc_l3_or_gm<int64_t>(true_count);
           for (int j = 0; j < rank; ++j) {
             r = xpu::strided_slice<int64_t>(dev_ctx.x_context(),
-                                              indices_data,
-                                              col_indices,
-                                              {true_count * rank},
-                                              {j},
-                                              {true_count * rank},
-                                              {rank});
+                                            indices_data,
+                                            col_indices,
+                                            {true_count * rank},
+                                            {j},
+                                            {true_count * rank},
+                                            {rank});
             PADDLE_ENFORCE_XDNN_SUCCESS(r, "strided_slice");
 
             DenseTensor col_scaled(DataType::INT64);
             col_scaled.Resize(phi::make_ddim({true_count}));
-            auto* col_scaled_data = dev_ctx.template Alloc<int64_t>(&col_scaled);
+            auto* col_scaled_data =
+                dev_ctx.template Alloc<int64_t>(&col_scaled);
 
             r = xpu::broadcast_mul<int64_t>(dev_ctx.x_context(),
-                                             col_indices,
-                                             &strides[j],
-                                             col_scaled_data,
-                                             {true_count},
-                                             {1});
+                                            col_indices,
+                                            &strides[j],
+                                            col_scaled_data,
+                                            {true_count},
+                                            {1});
             PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_mul");
 
             r = xpu::broadcast_add<int64_t>(dev_ctx.x_context(),
-                                             col_scaled_data,
-                                             flat_indices,
-                                             flat_indices,
-                                             {true_count},
-                                             {true_count});
+                                            col_scaled_data,
+                                            flat_indices,
+                                            flat_indices,
+                                            {true_count},
+                                            {true_count});
             PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_add");
           }
 
-          xpu::VectorParam<int64_t> indices_vec{nullptr, true_count, flat_indices};
+          xpu::VectorParam<int64_t> indices_vec{
+              nullptr, true_count, flat_indices};
           r = xpu::scatter<XPUType>(dev_ctx.x_context(),
                                     zeros,
                                     x_grad_broadcast_data,
@@ -297,19 +314,25 @@ void MaskedScatterGradKernel(const Context& dev_ctx,
     int64_t value_numel = value_grad->numel();
 
     // Initialize value_grad to 0
-    int r = xpu::constant<XPUType>(dev_ctx.x_context(), value_grad_data, value_numel, static_cast<XPUType>(0));
+    int r = xpu::constant<XPUType>(dev_ctx.x_context(),
+                                   value_grad_data,
+                                   value_numel,
+                                   static_cast<XPUType>(0));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
 
     // Use masked_select to get out_grad elements where mask is True
     DenseTensor value_grad_selected;
-    MaskedSelectKernel<T, Context>(dev_ctx, out_grad, mask_expand, &value_grad_selected);
+    MaskedSelectKernel<T, Context>(
+        dev_ctx, out_grad, mask_expand, &value_grad_selected);
 
     // value_grad_selected has shape [count], we need to copy it to value_grad
     int64_t selected_count = value_grad_selected.numel();
-    auto* selected_data = reinterpret_cast<const XPUType*>(value_grad_selected.data<T>());
+    auto* selected_data =
+        reinterpret_cast<const XPUType*>(value_grad_selected.data<T>());
 
     // Copy selected values to value_grad
-    r = xpu::copy<XPUType>(dev_ctx.x_context(), selected_data, value_grad_data, selected_count);
+    r = xpu::copy<XPUType>(
+        dev_ctx.x_context(), selected_data, value_grad_data, selected_count);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
   }
 }
