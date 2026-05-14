@@ -30,6 +30,25 @@
 #include "paddle/phi/kernels/transpose_kernel.h"
 
 #ifdef __HIPCC__
+#include <rocprim/config.hpp>
+#if defined(ROCPRIM_VERSION) && ROCPRIM_VERSION >= 400000
+// rocPRIM 4.x (ROCm 7.0+) replaces detail::radix_key_codec_base
+// with traits::define for non-builtin / wrapper types.
+namespace rocprim {
+namespace traits {
+template <>
+struct define<phi::float16> {
+  using float_bit_mask =
+      float_bit_mask::values<uint16_t, 0x8000, 0x7C00, 0x03FF>;
+};
+template <>
+struct define<phi::bfloat16> {
+  using float_bit_mask =
+      float_bit_mask::values<uint16_t, 0x8000, 0x7F80, 0x007F>;
+};
+}  // namespace traits
+}  // namespace rocprim
+#else
 namespace rocprim {
 namespace detail {
 template <>
@@ -49,6 +68,7 @@ struct float_bit_mask<phi::bfloat16> : float_bit_mask<rocprim::bfloat16> {};
 #endif
 }  // namespace detail
 }  // namespace rocprim
+#endif  // ROCPRIM_VERSION
 #else
 // set cub base traits in order to handle float16
 namespace cub {
