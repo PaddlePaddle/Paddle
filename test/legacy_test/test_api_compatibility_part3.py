@@ -3464,6 +3464,13 @@ class TestTensorIndexCopyInplaceAPI(unittest.TestCase):
         out10 = x10.index_copy_(
             -1, paddle.to_tensor(0, dtype="int64"), paddle.to_tensor([10.0])
         )
+        # 11. Tensor method - scalar tensor with empty index
+        x11 = paddle.zeros([], dtype="float32")
+        out11 = x11.index_copy_(
+            0,
+            paddle.to_tensor([], dtype="int64"),
+            paddle.empty([0], dtype="float32"),
+        )
 
         ref_dim1 = self._expected(self.np_x, 1, [0, 2], self.np_source_dim1)
         ref_dim2 = self._expected(self.np_x, 2, [0, 2], self.np_source_dim2)
@@ -3486,9 +3493,13 @@ class TestTensorIndexCopyInplaceAPI(unittest.TestCase):
         np.testing.assert_allclose(
             out10.numpy(), np.array(10.0, dtype="float32")
         )
+        np.testing.assert_allclose(
+            out11.numpy(), np.array(0.0, dtype="float32")
+        )
         self.assertIs(out1, x1)
         self.assertIs(out6, x6)
         self.assertIs(out10, x10)
+        self.assertIs(out11, x11)
 
         with self.assertRaises(IndexError):
             paddle.zeros([], dtype="float32").index_copy_(

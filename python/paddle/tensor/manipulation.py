@@ -7931,16 +7931,17 @@ def index_copy_(
         raise RuntimeError(
             f"index_copy_(): self and source expected to have the same dtype, but got (self) {x.dtype} and (source) {source.dtype}"
         )
-    if (index < 0).any():
-        raise IndexError(
-            f"index_copy_(): index {index.min().item()} is out of bounds for dimension {dim} with size {x.shape[dim] if x.ndim > 0 else 1}"
-        )
-    if (index >= (x.shape[dim] if x.ndim > 0 else 1)).any():
-        raise IndexError(
-            f"index_copy_(): index {index.max().item()} is out of bounds for dimension {dim} with size {x.shape[dim] if x.ndim > 0 else 1}"
-        )
-
     num_indices = index.numel().item()
+    if num_indices != 0:
+        if (index < 0).any():
+            raise IndexError(
+                f"index_copy_(): index {index.min().item()} is out of bounds for dimension {dim} with size {x.shape[dim] if x.ndim > 0 else 1}"
+            )
+        if (index >= (x.shape[dim] if x.ndim > 0 else 1)).any():
+            raise IndexError(
+                f"index_copy_(): index {index.max().item()} is out of bounds for dimension {dim} with size {x.shape[dim] if x.ndim > 0 else 1}"
+            )
+
     source_is_scalar = source.ndim == 0
     if source_is_scalar:
         if num_indices != 1:
@@ -7958,6 +7959,8 @@ def index_copy_(
         )
 
     if x.ndim == 0:
+        if num_indices == 0:
+            return x
         if source_is_scalar:
             source = source.reshape([1])
         x.reshape_([1])[index.reshape([num_indices])] = source
@@ -7976,6 +7979,8 @@ def index_copy_(
             f"and source slice shape: {source_sliced_shape} at dimension 0."
         )
 
+    if num_indices == 0:
+        return x
     if source_is_scalar:
         source = source.reshape([1])
     x[(builtins.slice(None),) * dim + (index,)] = source
