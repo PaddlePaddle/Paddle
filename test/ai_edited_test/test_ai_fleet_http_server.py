@@ -311,6 +311,7 @@ class TestKVHandlerSendStatusCode(unittest.TestCase):
 
 
 @unittest.skip("Live HTTP server tests are unstable in CI environments")
+@unittest.skip("Live HTTP server tests are unstable in CI environments")
 class TestKVServerStartStop(unittest.TestCase):
     """测试 KVServer 启停 / Test KVServer start and stop"""
 

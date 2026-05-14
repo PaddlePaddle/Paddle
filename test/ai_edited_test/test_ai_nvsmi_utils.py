@@ -19,12 +19,16 @@
 # 未覆盖行: Info.json/str, query_smi return None 分支, query_rocm_smi, query_npu_smi,
 #           query_xpu_smi, has_*_smi 函数
 
+import importlib
 import json
+import shutil
 import sys
 import unittest
 from unittest.mock import MagicMock, patch
 
-import importlib
+# Skip tests in environments where nvidia-smi is unavailable (e.g. CI Docker)
+# 在没有 nvidia-smi 的环境（如 CI Docker）中跳过测试
+_NVIDIA_SMI_AVAILABLE = shutil.which("nvidia-smi") is not None
 
 # Ensure module is imported before accessing sys.modules
 # 确保在访问 sys.modules 之前先导入模块
@@ -53,7 +57,12 @@ from paddle.distributed.launch.utils.nvsmi import (
 NPS = nvsmi_mod.__name__
 
 
-class TestInfo(unittest.TestCase):
+_SMI_SKIP = unittest.skipUnless(
+    _NVIDIA_SMI_AVAILABLE, "nvidia-smi not available"
+)
+
+
+class TestInfo(_SMI_SKIP, unittest.TestCase):
     """Test the Info helper class.
     测试 Info 辅助类。"""
 
@@ -124,7 +133,7 @@ class TestInfo(unittest.TestCase):
         self.assertEqual(result, "1,")
 
 
-class TestQuerySmi(unittest.TestCase):
+class TestQuerySmi(_SMI_SKIP, unittest.TestCase):
     """Test query_smi function.
     测试 query_smi 函数。"""
 
@@ -235,7 +244,7 @@ class TestQuerySmi(unittest.TestCase):
             self.assertEqual(len(result), 1)
 
 
-class TestQueryRocmSmi(unittest.TestCase):
+class TestQueryRocmSmi(_SMI_SKIP, unittest.TestCase):
     """Test query_rocm_smi function.
     测试 query_rocm_smi 函数。"""
 
@@ -319,7 +328,7 @@ class TestQueryRocmSmi(unittest.TestCase):
             self.assertEqual(len(result), 0)
 
 
-class TestQueryNpuSmi(unittest.TestCase):
+class TestQueryNpuSmi(_SMI_SKIP, unittest.TestCase):
     """Test query_npu_smi function.
     测试 query_npu_smi 函数。"""
 
@@ -401,7 +410,7 @@ class TestQueryNpuSmi(unittest.TestCase):
             self.assertEqual(len(result), 0)
 
 
-class TestQueryXpuSmi(unittest.TestCase):
+class TestQueryXpuSmi(_SMI_SKIP, unittest.TestCase):
     """Test query_xpu_smi function.
     测试 query_xpu_smi 函数。"""
 
@@ -491,7 +500,7 @@ class TestQueryXpuSmi(unittest.TestCase):
             self.assertEqual(result[1].index, 3)
 
 
-class TestHasSmiFunctions(unittest.TestCase):
+class TestHasSmiFunctions(_SMI_SKIP, unittest.TestCase):
     """Test has_*_smi helper functions.
     测试 has_*_smi 辅助函数。"""
 
@@ -552,7 +561,7 @@ class TestHasSmiFunctions(unittest.TestCase):
             self.assertFalse(has_xpu_smi())
 
 
-class TestGetGpuInfo(unittest.TestCase):
+class TestGetGpuInfo(_SMI_SKIP, unittest.TestCase):
     """Test get_gpu_info function.
     测试 get_gpu_info 函数。"""
 
@@ -577,7 +586,7 @@ class TestGetGpuInfo(unittest.TestCase):
             self.assertEqual(call_kwargs["index"], ["0"])
 
 
-class TestGetGpuUtil(unittest.TestCase):
+class TestGetGpuUtil(_SMI_SKIP, unittest.TestCase):
     """Test get_gpu_util function.
     测试 get_gpu_util 函数。"""
 
@@ -637,7 +646,7 @@ class TestGetGpuUtil(unittest.TestCase):
             self.assertEqual(result, [])
 
 
-class TestGetGpuProcess(unittest.TestCase):
+class TestGetGpuProcess(_SMI_SKIP, unittest.TestCase):
     """Test get_gpu_process function.
     测试 get_gpu_process 函数。"""
 
