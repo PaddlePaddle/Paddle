@@ -26,6 +26,12 @@
 #include "paddle/phi/kernels/transpose_kernel.h"
 
 #ifdef __HIPCC__
+#include <rocprim/config.hpp>
+#if defined(ROCPRIM_VERSION) && ROCPRIM_VERSION >= 400000
+// rocPRIM 4.x (ROCm 7.0+) removed rocprim::detail::radix_key_codec_base.
+// This TU has no actual cub::*/thrust::*/rocprim::* sort calls, so no
+// replacement traits are needed; keep this arm empty.
+#else
 namespace rocprim {
 namespace detail {
 template <>
@@ -37,6 +43,7 @@ struct radix_key_codec_base<phi::bfloat16>
     : radix_key_codec_integral<phi::bfloat16, uint16_t> {};
 }  // namespace detail
 }  // namespace rocprim
+#endif  // ROCPRIM_VERSION
 #else
 // set cub base traits in order to handle float16
 namespace cub {

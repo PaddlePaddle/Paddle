@@ -135,14 +135,15 @@ class TestTensorCreation(unittest.TestCase):
                 )
                 self.assertEqual(x.data_ptr(), y.data_ptr())
 
-    def test_pin_memory_error_cases(self):
-        """Test pin_memory error cases"""
+    def test_pin_memory_cpu_device(self):
+        """``device='cpu', pin_memory=True`` is relaxed to the available
+        pinned allocator (matches torch's pin_memory contract)."""
         if not paddle.device.is_compiled_with_cuda():
             return
 
-        with dygraph_guard(), self.assertRaises(RuntimeError):
-            # Test unsupported device with pin_memory=True
-            paddle.rand([2, 3], device=paddle.CPUPlace(), pin_memory=True)
+        with dygraph_guard():
+            x = paddle.rand([2, 3], device=paddle.CPUPlace(), pin_memory=True)
+            self.assertIn("pinned", str(x.place).lower())
 
 
 class TestCreationOut(unittest.TestCase):

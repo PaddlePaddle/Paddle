@@ -2,28 +2,35 @@ if(NOT WITH_ROCM)
   return()
 endif()
 
-if(NOT DEFINED ENV{ROCM_PATH})
-  set(ROCM_PATH
-      "/opt/rocm"
-      CACHE PATH "Path to which ROCm has been installed")
-  set(HIP_PATH
-      ${ROCM_PATH}/hip
-      CACHE PATH "Path to which HIP has been installed")
-  set(HIP_CLANG_PATH
-      ${ROCM_PATH}/llvm/bin
-      CACHE PATH "Path to which clang has been installed")
-else()
-  set(ROCM_PATH
-      $ENV{ROCM_PATH}
-      CACHE PATH "Path to which ROCm has been installed")
-  set(HIP_PATH
-      ${ROCM_PATH}/hip
-      CACHE PATH "Path to which HIP has been installed")
-  set(HIP_CLANG_PATH
-      ${ROCM_PATH}/llvm/bin
-      CACHE PATH "Path to which clang has been installed")
+if(NOT DEFINED ROCM_PATH)
+  if(DEFINED ENV{ROCM_PATH})
+    set(ROCM_PATH
+        $ENV{ROCM_PATH}
+        CACHE PATH "Path to which ROCm has been installed")
+  else()
+    set(ROCM_PATH
+        "/opt/rocm"
+        CACHE PATH "Path to which ROCm has been installed")
+  endif()
 endif()
-set(CMAKE_MODULE_PATH "${HIP_PATH}/cmake" ${CMAKE_MODULE_PATH})
+
+# Determine HIP layout from the available FindHIP module. Hygon/DCU keeps it
+# under ROCM_PATH/hip/cmake, while ROCm 7.0+ uses ROCM_PATH/lib/cmake/hip.
+if(EXISTS "${ROCM_PATH}/hip/cmake/FindHIP.cmake")
+  set(HIP_PATH
+      ${ROCM_PATH}/hip
+      CACHE PATH "Path to which HIP has been installed")
+  set(CMAKE_MODULE_PATH "${HIP_PATH}/cmake" ${CMAKE_MODULE_PATH})
+else()
+  set(HIP_PATH
+      ${ROCM_PATH}
+      CACHE PATH "Path to which HIP has been installed")
+  set(CMAKE_MODULE_PATH "${ROCM_PATH}/lib/cmake/hip" ${CMAKE_MODULE_PATH})
+endif()
+
+set(HIP_CLANG_PATH
+    ${ROCM_PATH}/llvm/bin
+    CACHE PATH "Path to which clang has been installed")
 set(CMAKE_PREFIX_PATH "${ROCM_PATH}" ${CMAKE_PREFIX_PATH})
 
 find_package(HIP REQUIRED)
@@ -65,27 +72,73 @@ macro(find_hip_version hip_header_file)
     )
   endif()
 endmacro()
-find_hip_version(${HIP_PATH}/include/hip/hip_version.h)
+# ROCm 7.0+: hip_version.h is directly under ROCM_PATH/include
+if(EXISTS "${ROCM_PATH}/include/hip/hip_version.h")
+  find_hip_version(${ROCM_PATH}/include/hip/hip_version.h)
+elseif(EXISTS "${HIP_PATH}/include/hip/hip_version.h")
+  find_hip_version(${HIP_PATH}/include/hip/hip_version.h)
+else()
+  message(WARNING "Cannot find hip_version.h")
+endif()
+
+if(NOT HIP_VERSION MATCHES "^[0-9]+$")
+  message(
+    FATAL_ERROR
+      "HIP_VERSION is unavailable. Cannot derive PADDLE_ROCM_VERSION for version dispatch."
+  )
+endif()
+set(PADDLE_ROCM_VERSION
+    ${HIP_VERSION}
+    CACHE INTERNAL "ROCm HIP version used for Paddle version dispatch" FORCE)
+add_definitions(-DPADDLE_ROCM_VERSION=${PADDLE_ROCM_VERSION})
+message(STATUS "PADDLE_ROCM_VERSION: ${PADDLE_ROCM_VERSION}")
+
+# Keep legacy DCU defaults narrow; ROCm 7 adds newer CDNA targets.
+if(PADDLE_ROCM_VERSION GREATER_EQUAL 70000000)
+  set(PADDLE_DEFAULT_AMDGPU_TARGETS
+      "gfx906;gfx908;gfx90a;gfx926;gfx928;gfx936;gfx942;gfx950")
+else()
+  set(PADDLE_DEFAULT_AMDGPU_TARGETS "gfx906;gfx926;gfx928;gfx936")
+endif()
+set(PADDLE_AMDGPU_TARGETS
+    "${PADDLE_DEFAULT_AMDGPU_TARGETS}"
+    CACHE STRING "Semicolon-separated AMD GPU architectures for HIP offload")
+string(REPLACE "," ";" PADDLE_AMDGPU_TARGETS "${PADDLE_AMDGPU_TARGETS}")
+string(REPLACE " " ";" PADDLE_AMDGPU_TARGETS "${PADDLE_AMDGPU_TARGETS}")
+message(STATUS "PADDLE_AMDGPU_TARGETS: ${PADDLE_AMDGPU_TARGETS}")
 
 macro(find_package_and_include PACKAGE_NAME)
   find_package("${PACKAGE_NAME}" REQUIRED)
-  include_directories("${ROCM_PATH}/${PACKAGE_NAME}/include")
+  # ROCm 7.0+ uses /opt/rocm/include/<package>/ instead of /opt/rocm/<package>/include/
+  if(EXISTS "${ROCM_PATH}/include/${PACKAGE_NAME}")
+    include_directories("${ROCM_PATH}/include/${PACKAGE_NAME}")
+  elseif(EXISTS "${ROCM_PATH}/${PACKAGE_NAME}/include")
+    include_directories("${ROCM_PATH}/${PACKAGE_NAME}/include")
+  endif()
   message(STATUS "${PACKAGE_NAME} version: ${${PACKAGE_NAME}_VERSION}")
 endmacro()
 
-find_package_and_include(miopen)
-find_package_and_include(rocblas)
-find_package_and_include(hipblaslt)
-find_package_and_include(hiprand)
-find_package_and_include(rocrand)
-find_package_and_include(rccl)
-find_package_and_include(rocthrust)
-find_package_and_include(hipcub)
-find_package_and_include(rocprim)
-find_package_and_include(hipsparse)
-find_package_and_include(rocsparse)
-find_package_and_include(rocfft)
-find_package_and_include(rocsolver)
+if(DEFINED PADDLE_SOURCE_DIR)
+  set(PADDLE_HIP_PACKAGES
+      miopen
+      rocblas
+      hipblaslt
+      hiprand
+      rocrand
+      rccl
+      rocthrust
+      hipcub
+      rocprim
+      hipsparse
+      rocsparse
+      rocfft
+      rocsolver)
+else()
+  set(PADDLE_HIP_PACKAGES hiprand rocrand rocthrust)
+endif()
+foreach(PACKAGE_NAME IN LISTS PADDLE_HIP_PACKAGES)
+  find_package_and_include(${PACKAGE_NAME})
+endforeach()
 
 if(CCACHE_PATH)
   set(HIP_HIPCC_EXECUTABLE ${CCACHE_PATH} ${HIP_HIPCC_EXECUTABLE})
@@ -159,15 +212,13 @@ set(HIP_CLANG_FLAGS ${HIP_CXX_FLAGS})
 # Ask hcc to generate device code during compilation so we can use
 # host linker to link.
 list(APPEND HIP_HCC_FLAGS -fno-gpu-rdc)
-list(APPEND HIP_HCC_FLAGS --offload-arch=gfx906) # Z100 (ZIFANG)
-list(APPEND HIP_HCC_FLAGS --offload-arch=gfx926) # K100 (KONGING)
-list(APPEND HIP_HCC_FLAGS --offload-arch=gfx928) # K100_AI (KONGING_AI)
-list(APPEND HIP_HCC_FLAGS --offload-arch=gfx936) # BW1000 (BOWEN)
 list(APPEND HIP_CLANG_FLAGS -fno-gpu-rdc)
-list(APPEND HIP_CLANG_FLAGS --offload-arch=gfx906) # Z100 (ZIFANG)
-list(APPEND HIP_CLANG_FLAGS --offload-arch=gfx926) # K100 (KONGING)
-list(APPEND HIP_CLANG_FLAGS --offload-arch=gfx928) # K100_AI (KONGING_AI)
-list(APPEND HIP_CLANG_FLAGS --offload-arch=gfx936) # BW1000 (BOWEN)
+foreach(amdgpu_target IN LISTS PADDLE_AMDGPU_TARGETS)
+  if(amdgpu_target)
+    list(APPEND HIP_HCC_FLAGS --offload-arch=${amdgpu_target})
+    list(APPEND HIP_CLANG_FLAGS --offload-arch=${amdgpu_target})
+  endif()
+endforeach()
 
 if(HIP_COMPILER STREQUAL clang)
   set(hip_library_name amdhip64)
@@ -180,7 +231,9 @@ message(STATUS "HIP library name: ${hip_library_name}")
 find_library(ROCM_HIPRTC_LIB ${hip_library_name} HINTS ${HIP_PATH}/lib)
 message(STATUS "ROCM_HIPRTC_LIB: ${ROCM_HIPRTC_LIB}")
 
-include(thrust)
+if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/thrust.cmake")
+  include(thrust)
+endif()
 
 if(WITH_Z100)
   add_definitions(-DCINN_WITH_Z100)

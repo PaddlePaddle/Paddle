@@ -40,6 +40,14 @@ namespace phi {
     __VA_ARGS__;                             \
   } break
 
+#ifdef PADDLE_WITH_HIP
+#define FIXED_BLOCK_DIM(...)                 \
+  FIXED_BLOCK_DIM_BASE(1024, ##__VA_ARGS__); \
+  FIXED_BLOCK_DIM_BASE(512, ##__VA_ARGS__);  \
+  FIXED_BLOCK_DIM_BASE(256, ##__VA_ARGS__);  \
+  FIXED_BLOCK_DIM_BASE(128, ##__VA_ARGS__);  \
+  FIXED_BLOCK_DIM_BASE(64, ##__VA_ARGS__)
+#else
 #define FIXED_BLOCK_DIM(...)                 \
   FIXED_BLOCK_DIM_BASE(1024, ##__VA_ARGS__); \
   FIXED_BLOCK_DIM_BASE(512, ##__VA_ARGS__);  \
@@ -47,6 +55,7 @@ namespace phi {
   FIXED_BLOCK_DIM_BASE(128, ##__VA_ARGS__);  \
   FIXED_BLOCK_DIM_BASE(64, ##__VA_ARGS__);   \
   FIXED_BLOCK_DIM_BASE(32, ##__VA_ARGS__)
+#endif
 
 #define FIXED_MAXLENGTH(...)              \
   FIXED_MAXLENGTH_BASE(1, ##__VA_ARGS__); \
@@ -202,6 +211,11 @@ void TopkKernel(const Context& dev_ctx,
     const int kMaxHeight = 2048;
     int gridx = input_height < kMaxHeight ? input_height : kMaxHeight;
     auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, input_width);
+#ifdef PADDLE_WITH_HIP
+    if (config.thread_per_block.x < WARP_SIZE) {
+      config.thread_per_block.x = WARP_SIZE;
+    }
+#endif
     switch (config.thread_per_block.x) {
 #ifdef PADDLE_WITH_HIP
       FIXED_BLOCK_DIM(
@@ -310,6 +324,11 @@ void TopkKernel(const Context& dev_ctx,
     const int kMaxHeight = 2048;
     int gridx = input_height < kMaxHeight ? input_height : kMaxHeight;
     auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, input_width);
+#ifdef PADDLE_WITH_HIP
+    if (config.thread_per_block.x < WARP_SIZE) {
+      config.thread_per_block.x = WARP_SIZE;
+    }
+#endif
     switch (config.thread_per_block.x) {
 #ifdef PADDLE_WITH_HIP
       FIXED_BLOCK_DIM(
