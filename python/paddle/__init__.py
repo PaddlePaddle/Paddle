@@ -245,6 +245,7 @@ from paddle import (
     metric as metric,
     nn as nn,
     onnx as onnx,
+    optim as optim,
     optimizer as optimizer,
     quantization as quantization,
     random as random,
@@ -292,6 +293,7 @@ from .audio.functional.window import (  # noqa: F401
 from .autograd import (
     enable_grad,
     grad,
+    inference_mode,
     is_grad_enabled,
     no_grad,
     set_grad_enabled,
@@ -1273,6 +1275,7 @@ __all__ = [
     'enable_grad',
     'set_grad_enabled',
     'is_grad_enabled',
+    'inference_mode',
     'mod',
     'mod_',
     'abs',

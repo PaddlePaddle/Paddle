@@ -3298,83 +3298,97 @@ class TestSquareInplaceAPI(unittest.TestCase):
         paddle.enable_static()
 
 
-class TestDistributionAPI(unittest.TestCase):
-    def tearDown(self):
-        paddle.distribution.Distribution.set_default_validate_args(__debug__)
-        paddle.enable_static()
+class TestInferenceModeAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([1.0, 2.0, 3.0], dtype="float32")
+        self.shape = self.np_x.shape
+        self.dtype = str(self.np_x.dtype)
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
-        distribution_cls = paddle.distribution.Distribution
+        x = paddle.to_tensor(self.np_x, stop_gradient=False)
 
         # 1. Paddle Positional arguments
-        distribution_cls.set_default_validate_args(False)
-        out1 = distribution_cls((2,), (3,))
-
+        ctx = paddle.inference_mode()
+        self.assertTrue(paddle.is_grad_enabled())
+        with ctx:
+            out1 = x * 2
+            self.assertFalse(paddle.is_grad_enabled())
+        self.assertTrue(paddle.is_grad_enabled())
         # 2. Paddle keyword arguments
-        out2 = distribution_cls(
-            batch_shape=[2], event_shape=[3], validate_args=True
-        )
+        with paddle.inference_mode(mode=True):
+            out2 = x * 2
+            self.assertFalse(paddle.is_grad_enabled())
+        # 3. PyTorch keyword arguments
+        with paddle.no_grad(), paddle.inference_mode(mode=False):
+            out3 = x * 2
+            self.assertTrue(paddle.is_grad_enabled())
 
-        # 3. Mixed arguments
-        out3 = distribution_cls((2,), event_shape=[3], validate_args=False)
+        # 4. Decorator without parentheses
+        @paddle.inference_mode
+        def no_grad_decorated(tensor):
+            out = tensor * 2
+            self.assertFalse(paddle.is_grad_enabled())
+            return out
 
-        # Verify constructor compatibility
-        self.assertEqual(out1.batch_shape, (2,))
-        self.assertEqual(out1.event_shape, (3,))
-        self.assertFalse(out1._validate_args_enabled)
-        self.assertTrue(out2._validate_args_enabled)
-        self.assertFalse(out3._validate_args_enabled)
-        self.assertTrue(callable(out2._validate_args))
+        out4 = no_grad_decorated(x)
 
-        with self.assertRaises(ValueError):
-            distribution_cls.set_default_validate_args(None)
+        # 5. Decorator with mode=False
+        @paddle.inference_mode(mode=False)
+        def enable_grad_decorated(tensor):
+            out = tensor * 2
+            self.assertTrue(paddle.is_grad_enabled())
+            return out
 
-        value = paddle.to_tensor([0.5], dtype="float32")
-        for attr in ["arg_constraints", "support"]:
-            with self.assertRaises(NotImplementedError):
-                getattr(out1, attr)
-        for api in [out1.cdf, out1.icdf]:
-            with self.assertRaises(NotImplementedError):
-                api(value)
-        with self.assertRaises(NotImplementedError):
-            out1.enumerate_support()
-        with self.assertRaises(NotImplementedError):
-            out1.sample_n(3)
-        with self.assertRaises(NotImplementedError):
-            out1.perplexity()
+        with paddle.no_grad():
+            out5 = enable_grad_decorated(x)
+
+        def mode_func(tensor):
+            return tensor * 2
+
+        out6 = paddle.inference_mode(mode=mode_func)(x)
+
+        # Verify all outputs
+        ref_out = self.np_x * 2
+        for out in [out1, out2, out3, out4, out5, out6]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+        for out in [out1, out2, out4, out6]:
+            self.assertTrue(out.stop_gradient)
+        for out in [out3, out5]:
+            self.assertFalse(out.stop_gradient)
+        self.assertTrue(paddle.is_grad_enabled())
 
         paddle.enable_static()
 
     def test_static_Compatibility(self):
         paddle.enable_static()
-        paddle.distribution.Distribution.set_default_validate_args(True)
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
-            distribution_cls = paddle.distribution.Distribution
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            x.stop_gradient = False
 
             # 1. Paddle Positional arguments
-            out1 = distribution_cls((2,), (3,), validate_args=False)
-
+            with paddle.inference_mode():
+                out1 = x * 2
             # 2. Paddle keyword arguments
-            out2 = distribution_cls(
-                batch_shape=[2], event_shape=[3], validate_args=True
+            with paddle.inference_mode(mode=True):
+                out2 = x * 2
+            # 3. PyTorch keyword arguments
+            with paddle.no_grad(), paddle.inference_mode(mode=False):
+                out3 = x * 2
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2, out3],
             )
 
-            # 3. Mixed arguments
-            out3 = distribution_cls((2,), event_shape=[3])
-
-            self.assertEqual(out1.batch_shape, (2,))
-            self.assertEqual(out1.event_shape, (3,))
-            self.assertFalse(out1._validate_args_enabled)
-            self.assertTrue(out2._validate_args_enabled)
-            self.assertTrue(out3._validate_args_enabled)
-            self.assertTrue(callable(out1._validate_args))
-            with self.assertRaises(NotImplementedError):
-                out1.sample_n(3)
-            with self.assertRaises(NotImplementedError):
-                out1.perplexity()
+        # Verify all outputs
+        ref_out = self.np_x * 2
+        for out in fetches:
+            np.testing.assert_allclose(out, ref_out, rtol=1e-6)
 
 
 if __name__ == "__main__":
