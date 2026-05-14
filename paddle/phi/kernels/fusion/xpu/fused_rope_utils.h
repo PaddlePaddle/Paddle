@@ -27,7 +27,8 @@ void GetSinCosByPassValue(const Context& dev_ctx,
                           XPUSCType* cos_data,
                           int64_t batch_size,
                           int64_t seq_len,
-                          int64_t head_dim) {
+                          int64_t head_dim,
+                          int64_t freqs_head_dim) {
   PADDLE_ENFORCE_EQ((std::is_same<XPUType, XPUSCType>::value),
                     true,
                     common::errors::Unimplemented(
@@ -44,15 +45,16 @@ void GetSinCosByPassValue(const Context& dev_ctx,
                                       dims_size));
   if (dims_size == 4) {
     // sin.shape: [1, seq_len, 1, head_dim]
-    PADDLE_ENFORCE_EQ((sin_cos_dims[2] == 1),
-                      true,
-                      common::errors::InvalidArgument(
-                          "The num_heads of sin and cos must be 1."));
+    PADDLE_ENFORCE_EQ(
+        (sin_cos_dims[0] == 1 && sin_cos_dims[2] == 1),
+        true,
+        common::errors::InvalidArgument(
+            "The batch_size and num_heads of sin and cos must be 1."));
   }
   int sin_seq_len_dim = (dims_size) == 4 ? 1 : 0;
   if (position_ids) {
     PADDLE_ENFORCE_EQ(
-        (sin_cos_dims[dims_size - 1] == head_dim &&
+        (sin_cos_dims[dims_size - 1] == freqs_head_dim &&
          sin_cos_dims[sin_seq_len_dim] >= seq_len),
         true,
         common::errors::InvalidArgument(
@@ -80,7 +82,7 @@ void GetSinCosByPassValue(const Context& dev_ctx,
         reinterpret_cast<const XPUSCType*>(sin->data()),
         position_ids->data<int64_t>(),
         sin_data,
-        {seq_len, head_dim},
+        {seq_len, freqs_head_dim},
         batch_size * seq_len,
         0);
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "paddle_gather");
@@ -89,7 +91,7 @@ void GetSinCosByPassValue(const Context& dev_ctx,
         reinterpret_cast<const XPUSCType*>(cos->data()),
         position_ids->data<int64_t>(),
         cos_data,
-        {seq_len, head_dim},
+        {seq_len, freqs_head_dim},
         batch_size * seq_len,
         0);
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "paddle_gather");
@@ -99,15 +101,15 @@ void GetSinCosByPassValue(const Context& dev_ctx,
         dev_ctx.x_context(),
         reinterpret_cast<const XPUSCType*>(sin->data()),
         sin_data,
-        {sin_cos_batch_size, seq_len, head_dim},
-        {batch_size, seq_len, head_dim});
+        {sin_cos_batch_size, seq_len, freqs_head_dim},
+        {batch_size, seq_len, freqs_head_dim});
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "broadcast");
     ret = xpu::broadcast<XPUSCType>(
         dev_ctx.x_context(),
         reinterpret_cast<const XPUSCType*>(cos->data()),
         cos_data,
-        {sin_cos_batch_size, seq_len, head_dim},
-        {batch_size, seq_len, head_dim});
+        {sin_cos_batch_size, seq_len, freqs_head_dim},
+        {batch_size, seq_len, freqs_head_dim});
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "broadcast");
   }
 }
@@ -119,6 +121,7 @@ void GetSinCosByRotaryBase(const Context& dev_ctx,
                            int64_t batch_size,
                            int64_t seq_len,
                            int64_t head_dim,
+                           int64_t freqs_head_dim,
                            float rotary_emb_base) {
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
 
@@ -127,13 +130,13 @@ void GetSinCosByRotaryBase(const Context& dev_ctx,
   int ret =
       xpu::range<float>(dev_ctx.x_context(), pos_seq_data, 0.0f, 1.0f, seq_len);
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "range");
-  float* freqs_half_data = RAII_GUARD.alloc_l3_or_gm<float>(head_dim / 2);
+  float* freqs_half_data = RAII_GUARD.alloc_l3_or_gm<float>(freqs_head_dim / 2);
   PADDLE_ENFORCE_XDNN_NOT_NULL(freqs_half_data);
   ret = xpu::range<float>(dev_ctx.x_context(),
                           freqs_half_data,
                           0.0f,
-                          2.0f / head_dim,
-                          head_dim / 2);
+                          2.0f / freqs_head_dim,
+                          freqs_head_dim / 2);
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "range");
 
   float* rotary_base_xpu_data = RAII_GUARD.alloc_l3_or_gm<float>(1);
@@ -146,19 +149,21 @@ void GetSinCosByRotaryBase(const Context& dev_ctx,
                                   freqs_half_data,
                                   freqs_half_data,
                                   {1},
-                                  {head_dim / 2});
+                                  {freqs_head_dim / 2});
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "broadcast_pow");
-  ret = xpu::reciprocal<float>(
-      dev_ctx.x_context(), freqs_half_data, freqs_half_data, head_dim / 2);
+  ret = xpu::reciprocal<float>(dev_ctx.x_context(),
+                               freqs_half_data,
+                               freqs_half_data,
+                               freqs_head_dim / 2);
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "reciprocal");
-  float* freqs_data = RAII_GUARD.alloc_l3_or_gm<float>(head_dim);
+  float* freqs_data = RAII_GUARD.alloc_l3_or_gm<float>(freqs_head_dim);
   ret = xpu::broadcast<float>(dev_ctx.x_context(),
                               freqs_half_data,
                               freqs_data,
-                              {head_dim / 2, 1},
-                              {head_dim / 2, 2});
+                              {freqs_head_dim / 2, 1},
+                              {freqs_head_dim / 2, 2});
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "broadcast");
-  int64_t rotary_len = seq_len * head_dim;
+  int64_t rotary_len = seq_len * freqs_head_dim;
   float* indices_data = RAII_GUARD.alloc_l3_or_gm<float>(rotary_len);
   PADDLE_ENFORCE_XDNN_NOT_NULL(indices_data);
 
@@ -167,7 +172,7 @@ void GetSinCosByRotaryBase(const Context& dev_ctx,
                                   freqs_data,
                                   indices_data,
                                   {seq_len, 1},
-                                  {1, head_dim});
+                                  {1, freqs_head_dim});
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "broadcast_mul");
 
   float* sin_fp32_data = nullptr;
@@ -214,14 +219,14 @@ void GetSinCosByRotaryBase(const Context& dev_ctx,
     ret = xpu::broadcast<XPUSCType>(dev_ctx.x_context(),
                                     sin_part_data,
                                     sin_data,
-                                    {1, seq_len, head_dim},
-                                    {batch_size, seq_len, head_dim});
+                                    {1, seq_len, freqs_head_dim},
+                                    {batch_size, seq_len, freqs_head_dim});
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "broadcast");
     ret = xpu::broadcast<XPUSCType>(dev_ctx.x_context(),
                                     cos_part_data,
                                     cos_data,
-                                    {1, seq_len, head_dim},
-                                    {batch_size, seq_len, head_dim});
+                                    {1, seq_len, freqs_head_dim},
+                                    {batch_size, seq_len, freqs_head_dim});
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "broadcast");
   }
 }
@@ -236,6 +241,7 @@ void XPUGetSinCosData(const Context& dev_ctx,
                       int64_t batch_size,
                       int64_t seq_len,
                       int64_t head_dim,
+                      int64_t freqs_head_dim,
                       float rotary_emb_base) {
   if (sin && cos) {
     GetSinCosByPassValue<XPUType, XPUSCType, Context>(dev_ctx,
@@ -246,7 +252,8 @@ void XPUGetSinCosData(const Context& dev_ctx,
                                                       cos_data,
                                                       batch_size,
                                                       seq_len,
-                                                      head_dim);
+                                                      head_dim,
+                                                      freqs_head_dim);
   } else {
     GetSinCosByRotaryBase<XPUType, XPUSCType, Context>(dev_ctx,
                                                        sin_data,
@@ -254,6 +261,7 @@ void XPUGetSinCosData(const Context& dev_ctx,
                                                        batch_size,
                                                        seq_len,
                                                        head_dim,
+                                                       freqs_head_dim,
                                                        rotary_emb_base);
   }
 }
@@ -269,6 +277,7 @@ void XPUFusedRotaryEveryTwo(const Context& dev_ctx,
                             int64_t seq_len,
                             int64_t num_heads,
                             int64_t head_dim,
+                            int64_t freqs_head_dim,
                             bool time_major,
                             bool is_bwd,
                             DenseTensor* out_q,
@@ -282,6 +291,57 @@ void XPUFusedRotaryEveryTwo(const Context& dev_ctx,
     single_func_name = "rotary_embedding_everytwo_unary_freqs_grad";
     fusion_func_name = "rotary_embedding_everytwo_binary_freqs_grad";
   }
+  // xpu::rotary_embedding_everytwo does not support partial rotary
+  // (freqs_head_dim < head_dim). We pad sin/cos to full head_dim:
+  // extra dims filled with sin=0, cos=1 so rotation formula degenerates
+  // to copy for d >= freqs_head_dim.
+  const XPUSCType* sin_data_final = sin_data;
+  const XPUSCType* cos_data_final = cos_data;
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+  XPUSCType* sin_full_data = nullptr;
+  XPUSCType* cos_full_data = nullptr;
+  if (freqs_head_dim < head_dim) {
+    int64_t full_len = batch_size * seq_len * head_dim;
+    sin_full_data = RAII_GUARD.alloc_l3_or_gm<XPUSCType>(full_len);
+    PADDLE_ENFORCE_XDNN_NOT_NULL(sin_full_data);
+    cos_full_data = RAII_GUARD.alloc_l3_or_gm<XPUSCType>(full_len);
+    PADDLE_ENFORCE_XDNN_NOT_NULL(cos_full_data);
+    int ret = xpu::constant<XPUSCType>(dev_ctx.x_context(),
+                                       sin_full_data,
+                                       full_len,
+                                       static_cast<XPUSCType>(0));
+    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "constant");
+    ret = xpu::constant<XPUSCType>(dev_ctx.x_context(),
+                                   cos_full_data,
+                                   full_len,
+                                   static_cast<XPUSCType>(1));
+    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "constant");
+    std::vector<int64_t> slice_shape = {batch_size, seq_len, freqs_head_dim};
+    std::vector<int64_t> out_shape = {batch_size, seq_len, head_dim};
+    std::vector<int64_t> starts = {0, 0, 0};
+    std::vector<int64_t> ends = {batch_size, seq_len, freqs_head_dim};
+    std::vector<int64_t> strides = {1, 1, 1};
+    ret = xpu::strided_slice_view_update(dev_ctx.x_context(),
+                                         sin_data,
+                                         sin_full_data,
+                                         slice_shape,
+                                         out_shape,
+                                         starts,
+                                         ends,
+                                         strides);
+    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "strided_slice_view_update");
+    ret = xpu::strided_slice_view_update(dev_ctx.x_context(),
+                                         cos_data,
+                                         cos_full_data,
+                                         slice_shape,
+                                         out_shape,
+                                         starts,
+                                         ends,
+                                         strides);
+    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "strided_slice_view_update");
+    sin_data_final = sin_full_data;
+    cos_data_final = cos_full_data;
+  }
   // Check k/v numel > 0, matching GPU's guard (k && k->numel() > 0), to
   // avoid passing a zero-element tensor pointer to the XPU library which
   // causes undefined behavior and overflow outputs.
@@ -289,8 +349,8 @@ void XPUFusedRotaryEveryTwo(const Context& dev_ctx,
     int ret = everytwo_func(dev_ctx.x_context(),
                             reinterpret_cast<const XPUType*>(in_q.data()),
                             nullptr,
-                            sin_data,
-                            cos_data,
+                            sin_data_final,
+                            cos_data_final,
                             reinterpret_cast<XPUType*>(out_q->data()),
                             nullptr,
                             {batch_size, seq_len, num_heads, head_dim},
@@ -303,8 +363,8 @@ void XPUFusedRotaryEveryTwo(const Context& dev_ctx,
     int ret = everytwo_func(dev_ctx.x_context(),
                             reinterpret_cast<const XPUType*>(in_q.data()),
                             reinterpret_cast<const XPUType*>(in_k->data()),
-                            sin_data,
-                            cos_data,
+                            sin_data_final,
+                            cos_data_final,
                             reinterpret_cast<XPUType*>(out_q->data()),
                             reinterpret_cast<XPUType*>(out_k->data()),
                             {batch_size, seq_len, num_heads, head_dim},
@@ -318,8 +378,8 @@ void XPUFusedRotaryEveryTwo(const Context& dev_ctx,
     int ret = everytwo_func(dev_ctx.x_context(),
                             reinterpret_cast<const XPUType*>(in_v->data()),
                             nullptr,
-                            sin_data,
-                            cos_data,
+                            sin_data_final,
+                            cos_data_final,
                             reinterpret_cast<XPUType*>(out_v->data()),
                             nullptr,
                             {batch_size, seq_len, num_heads_v, head_dim},
@@ -341,6 +401,7 @@ void XPUFusedRotaryHalf(const Context& dev_ctx,
                         int64_t seq_len,
                         int64_t num_heads,
                         int64_t head_dim,
+                        int64_t freqs_head_dim,
                         bool time_major,
                         bool is_bwd,
                         DenseTensor* out_q,
@@ -368,7 +429,7 @@ void XPUFusedRotaryHalf(const Context& dev_ctx,
                         reinterpret_cast<XPUType*>(out_q->data()),
                         nullptr,
                         {batch_size, seq_len, num_heads, head_dim},
-                        {batch_size, seq_len, 1, head_dim},
+                        {batch_size, seq_len, 1, freqs_head_dim},
                         {},
                         0,
                         "BLHD",
@@ -386,7 +447,7 @@ void XPUFusedRotaryHalf(const Context& dev_ctx,
                         reinterpret_cast<XPUType*>(out_q->data()),
                         reinterpret_cast<XPUType*>(out_k->data()),
                         {batch_size, seq_len, num_heads, head_dim},
-                        {batch_size, seq_len, 1, head_dim},
+                        {batch_size, seq_len, 1, freqs_head_dim},
                         {},
                         0,
                         "BLHD",
@@ -406,7 +467,7 @@ void XPUFusedRotaryHalf(const Context& dev_ctx,
                         reinterpret_cast<XPUType*>(out_v->data()),
                         nullptr,
                         {batch_size, seq_len, num_heads_v, head_dim},
-                        {batch_size, seq_len, 1, head_dim},
+                        {batch_size, seq_len, 1, freqs_head_dim},
                         {},
                         0,
                         "BLHD",
@@ -449,7 +510,13 @@ void XPUFusedRopeImpl(const Context& dev_ctx,
       false,
       common::errors::InvalidArgument("time_major is not supported in xpu"));
 
-  int64_t sin_cos_len = batch_size * seq_len * head_dim;
+  int64_t freqs_head_dim = head_dim;
+  if (sin && cos) {
+    auto sin_dims = sin->dims();
+    freqs_head_dim = sin_dims[sin_dims.size() - 1];
+  }
+
+  int64_t sin_cos_len = batch_size * seq_len * freqs_head_dim;
   auto* sin_data = RAII_GUARD.alloc_l3_or_gm<XPUSCType>(sin_cos_len);
   PADDLE_ENFORCE_XDNN_NOT_NULL(sin_data);
   auto* cos_data = RAII_GUARD.alloc_l3_or_gm<XPUSCType>(sin_cos_len);
@@ -463,6 +530,7 @@ void XPUFusedRopeImpl(const Context& dev_ctx,
                                                 batch_size,
                                                 seq_len,
                                                 head_dim,
+                                                freqs_head_dim,
                                                 rotary_emb_base);
   if (use_neox_rotary_style) {
     XPUFusedRotaryEveryTwo<XPUType, XPUSCType, Context>(dev_ctx,
@@ -475,6 +543,7 @@ void XPUFusedRopeImpl(const Context& dev_ctx,
                                                         seq_len,
                                                         num_heads,
                                                         head_dim,
+                                                        freqs_head_dim,
                                                         time_major,
                                                         is_bwd,
                                                         out_q,
@@ -491,6 +560,7 @@ void XPUFusedRopeImpl(const Context& dev_ctx,
                                                     seq_len,
                                                     num_heads,
                                                     head_dim,
+                                                    freqs_head_dim,
                                                     time_major,
                                                     is_bwd,
                                                     out_q,
