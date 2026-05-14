@@ -144,9 +144,13 @@ class Normal(distribution.Distribution):
         loc: _NormalLoc,
         scale: _NormalScale,
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
         name: str | None = None,
 >>>>>>> 62f6f13e11 (Align paths)
+=======
+        name: str | None = None,
+>>>>>>> ff3070eee1 (Align paths)
         validate_args: bool | None = None,
     ) -> None:
         if isinstance(name, bool) and validate_args is None:
