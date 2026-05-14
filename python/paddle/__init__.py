@@ -223,6 +223,8 @@ else:
 
     Tensor.__init__ = new_init
 
+import sys as _sys
+
 import paddle.distributed.fleet
 import paddle.text
 import paddle.vision
@@ -256,6 +258,12 @@ from paddle import (
     testing as testing,
     vision as vision,
 )
+
+_sys.modules['paddle.distributions'] = distribution
+_sys.modules['paddle.distributions.multivariate_normal'] = (
+    distribution.multivariate_normal
+)
+distributions = distribution
 
 # high-level api
 from . import (
