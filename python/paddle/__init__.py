@@ -239,7 +239,6 @@ from paddle import (
     device as device,
     distributed as distributed,
     distribution as distribution,
-    distributions as distributions,
     geometric as geometric,
     incubate as incubate,
     inference as inference,
@@ -260,6 +259,7 @@ from paddle import (
     vision as vision,
 )
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 optim = optimizer
@@ -344,6 +344,10 @@ _set_module_alias(
 )
 del _set_module_alias
 >>>>>>> 1599b3883d (Refactor the alignment)
+=======
+_sys.modules['paddle.distributions'] = distribution
+distributions = distribution
+>>>>>>> 1297e14fc9 (Align paths)
 
 # high-level api
 from . import (
