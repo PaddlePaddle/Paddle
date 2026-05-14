@@ -3777,10 +3777,10 @@ class TestDistributionsNormalAPI(unittest.TestCase):
         value = paddle.to_tensor(self.np_value)
 
         # 1. Paddle Positional arguments
-        dist1 = paddle.distribution.Normal(loc, scale)
+        dist1 = paddle.distributions.normal.Normal(loc, scale)
         out1 = dist1.log_prob(value)
         # 2. Paddle keyword arguments
-        dist2 = paddle.distribution.Normal(loc=loc, scale=scale)
+        dist2 = paddle.distributions.normal.Normal(loc=loc, scale=scale)
         out2 = dist2.log_prob(value)
         # 3. PyTorch Positional arguments
         dist3 = paddle.distributions.normal.Normal(loc, scale, False)
@@ -3791,7 +3791,7 @@ class TestDistributionsNormalAPI(unittest.TestCase):
         )
         out4 = dist4.log_prob(value)
         # 5. Mixed arguments
-        dist5 = paddle.distributions.Normal(loc, scale=scale)
+        dist5 = paddle.distributions.normal.Normal(loc, scale=scale)
         out5 = dist5.log_prob(value)
 
         ref_out = self._expected_log_prob()
@@ -3818,11 +3818,13 @@ class TestDistributionsNormalAPI(unittest.TestCase):
             )
 
             # 1. Paddle Positional arguments
-            out1 = paddle.distribution.Normal(loc, scale).log_prob(value)
-            # 2. Paddle keyword arguments
-            out2 = paddle.distribution.Normal(loc=loc, scale=scale).log_prob(
+            out1 = paddle.distributions.normal.Normal(loc, scale).log_prob(
                 value
             )
+            # 2. Paddle keyword arguments
+            out2 = paddle.distributions.normal.Normal(
+                loc=loc, scale=scale
+            ).log_prob(value)
             # 3. PyTorch Positional arguments
             out3 = paddle.distributions.normal.Normal(
                 loc, scale, False
@@ -3832,7 +3834,9 @@ class TestDistributionsNormalAPI(unittest.TestCase):
                 loc=loc, scale=scale, validate_args=False
             ).log_prob(value)
             # 5. Mixed arguments
-            out5 = paddle.distributions.Normal(loc, scale=scale).log_prob(value)
+            out5 = paddle.distributions.normal.Normal(
+                loc, scale=scale
+            ).log_prob(value)
 
             exe = paddle.static.Executor()
             fetches = exe.run(
@@ -3851,14 +3855,23 @@ class TestDistributionsNormalAPI(unittest.TestCase):
 
 
 class TestDistributionsDistributionAPI(unittest.TestCase):
+    def tearDown(self):
+        paddle.distributions.distribution.Distribution.set_default_validate_args(
+            __debug__
+        )
+        paddle.enable_static()
+
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
 
         # 1. Paddle Positional arguments
-        dist1 = paddle.distribution.Distribution([2], [3])
+        paddle.distributions.distribution.Distribution.set_default_validate_args(
+            False
+        )
+        dist1 = paddle.distributions.distribution.Distribution([2], [3])
         # 2. Paddle keyword arguments
-        dist2 = paddle.distribution.Distribution(
-            batch_shape=[2], event_shape=[3]
+        dist2 = paddle.distributions.distribution.Distribution(
+            batch_shape=[2], event_shape=[3], validate_args=True
         )
         # 3. PyTorch Positional arguments
         dist3 = paddle.distributions.distribution.Distribution([2], [3], False)
@@ -3867,33 +3880,60 @@ class TestDistributionsDistributionAPI(unittest.TestCase):
             batch_shape=[2], event_shape=[3], validate_args=False
         )
         # 5. Mixed arguments
-        dist5 = paddle.distributions.Distribution(
+        dist5 = paddle.distributions.distribution.Distribution(
             [2], event_shape=[3], validate_args=None
         )
 
         for dist in [dist1, dist2, dist3, dist4, dist5]:
             self.assertEqual(dist.batch_shape, (2,))
             self.assertEqual(dist.event_shape, (3,))
-            self.assertIsInstance(dist, paddle.distribution.Distribution)
+            self.assertIsInstance(
+                dist, paddle.distributions.distribution.Distribution
+            )
+        self.assertFalse(dist1._validate_args_enabled)
+        self.assertTrue(dist2._validate_args_enabled)
         self.assertFalse(dist3._validate_args_enabled)
         self.assertFalse(dist4._validate_args_enabled)
+        self.assertTrue(callable(dist2._validate_args))
+        with self.assertRaises(ValueError):
+            paddle.distributions.distribution.Distribution.set_default_validate_args(
+                None
+            )
+
+        value = paddle.to_tensor([0.5], dtype="float32")
+        for attr in ["arg_constraints", "support"]:
+            with self.assertRaises(NotImplementedError):
+                getattr(dist1, attr)
         for method, args in [
-            (dist3.icdf, (paddle.to_tensor([0.5]),)),
-            (dist4.entropy, ()),
+            (dist1.cdf, (value,)),
+            (
+                paddle.distributions.distribution.Distribution.icdf,
+                (dist3, value),
+            ),
+            (
+                paddle.distributions.distribution.Distribution.entropy,
+                (dist4,),
+            ),
+            (dist1.enumerate_support, ()),
+            (dist1.sample_n, (3,)),
+            (dist1.perplexity, ()),
         ]:
             with self.assertRaises(NotImplementedError):
                 method(*args)
 
-        paddle.enable_static()
-
     def test_static_Compatibility(self):
         paddle.enable_static()
+        paddle.distributions.distribution.Distribution.set_default_validate_args(
+            True
+        )
 
         # 1. Paddle Positional arguments
-        dist1 = paddle.distribution.Distribution([2], [3])
+        dist1 = paddle.distributions.distribution.Distribution(
+            [2], [3], validate_args=False
+        )
         # 2. Paddle keyword arguments
-        dist2 = paddle.distribution.Distribution(
-            batch_shape=[2], event_shape=[3]
+        dist2 = paddle.distributions.distribution.Distribution(
+            batch_shape=[2], event_shape=[3], validate_args=True
         )
         # 3. PyTorch Positional arguments
         dist3 = paddle.distributions.distribution.Distribution([2], [3], False)
@@ -3902,19 +3942,33 @@ class TestDistributionsDistributionAPI(unittest.TestCase):
             batch_shape=[2], event_shape=[3], validate_args=False
         )
         # 5. Mixed arguments
-        dist5 = paddle.distributions.Distribution(
+        dist5 = paddle.distributions.distribution.Distribution(
             [2], event_shape=[3], validate_args=None
         )
 
         for dist in [dist1, dist2, dist3, dist4, dist5]:
             self.assertEqual(dist.batch_shape, (2,))
             self.assertEqual(dist.event_shape, (3,))
-            self.assertIsInstance(dist, paddle.distribution.Distribution)
+            self.assertIsInstance(
+                dist, paddle.distributions.distribution.Distribution
+            )
+        self.assertFalse(dist1._validate_args_enabled)
+        self.assertTrue(dist2._validate_args_enabled)
         self.assertFalse(dist3._validate_args_enabled)
         self.assertFalse(dist4._validate_args_enabled)
+        self.assertTrue(dist5._validate_args_enabled)
+        self.assertTrue(callable(dist1._validate_args))
         for method, args in [
-            (dist3.icdf, (paddle.to_tensor([0.5]),)),
-            (dist4.entropy, ()),
+            (
+                paddle.distributions.distribution.Distribution.icdf,
+                (dist3, paddle.to_tensor([0.5])),
+            ),
+            (
+                paddle.distributions.distribution.Distribution.entropy,
+                (dist4,),
+            ),
+            (dist1.sample_n, (3,)),
+            (dist1.perplexity, ()),
         ]:
             with self.assertRaises(NotImplementedError):
                 method(*args)
