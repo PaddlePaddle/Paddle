@@ -7963,6 +7963,9 @@ def index_copy_(
             return x
         if source_is_scalar:
             source = source.reshape([1])
+        if x.place.is_xpu_place():
+            x.reshape_([1]).scatter_(index.reshape([num_indices]), source)
+            return x.reshape_([])
         x.reshape_([1])[index.reshape([num_indices])] = source
         return x.reshape_([])
 
@@ -7983,6 +7986,18 @@ def index_copy_(
         return x
     if source_is_scalar:
         source = source.reshape([1])
+    if x.place.is_xpu_place():
+        index_shape = [1] * x.ndim
+        index_shape[dim] = num_indices
+        return put_along_axis_(
+            x,
+            index.reshape(index_shape),
+            source,
+            dim,
+            'assign',
+            include_self=True,
+            broadcast=True,
+        )
     x[(builtins.slice(None),) * dim + (index,)] = source
     return x
 
