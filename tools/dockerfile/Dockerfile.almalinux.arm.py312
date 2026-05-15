@@ -1,0 +1,138 @@
+ARG CUDA_VERSION=13.0
+ARG BASE_TARGET=cuda${CUDA_VERSION}
+FROM arm64v8/almalinux:9 as base
+
+#ENV LC_ALL=en_US.UTF-8
+#ENV LANG=en_US.UTF-8
+#ENV LANGUAGE=en_US.UTF-8
+
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
+
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ARG NO_PROXY
+
+
+RUN yum -y update
+RUN yum -y install epel-release
+
+RUN dnf install -y 'dnf-command(config-manager)' && \
+    dnf config-manager --set-enabled crb && \
+    dnf install -y --allowerasing \
+        sudo wget curl perl util-linux xz bzip2 git patch which \
+        zlib-devel openssl-devel yum-utils autoconf automake make \
+        gcc gcc-c++ unzip bison diffutils file vim libffi-devel \
+        ncurses-devel sqlite-devel readline-devel tk-devel \
+        gdbm-devel glibc-devel libstdc++-devel glib2-devel \
+        libX11-devel libXext-devel libXrender-devel mesa-libGL-devel \
+        libICE-devel libSM-devel freetype-devel libpng-devel \
+        kernel-devel kmod && \
+    dnf clean all
+
+RUN git config --global --add safe.directory '*'
+
+WORKDIR /home
+
+# cmake-3.31.0
+COPY cmake-3.31.0-linux-aarch64.tar.gz .
+RUN tar -zxvf cmake-3.31.0-linux-aarch64.tar.gz && \
+    rm cmake-3.31.0-linux-aarch64.tar.gz && \
+    rm -rf /home/cmake-3.31.0-linux-aarch64/doc /home/cmake-3.31.0-linux-aarch64/man
+ENV PATH=/home/cmake-3.31.0-linux-aarch64/bin:$PATH
+
+#WORKDIR /home
+#RUN wget -q https://cmake.org/files/v3.31/cmake-3.31.0-linux-aarch64.tar.gz && \
+#    tar -zxf cmake-3.31.0-linux-aarch64.tar.gz && \
+#    rm cmake-3.31.0-linux-aarch64.tar.gz && \
+#    rm -rf /home/cmake-3.31.0-linux-aarch64/doc /home/cmake-3.31.0-linux-aarch64/man
+#ENV PATH=/home/cmake-3.31.0-linux-aarch64/bin:$PATH
+
+# go
+#WORKDIR /home
+#RUN wget --no-check-certificate -qO- https://go.dev/dl/go1.15.12.linux-arm64.tar.gz | \
+#    tar -xz -C /usr/local && \
+#    mkdir -p /root/gopath/bin /root/gopath/src
+#ENV GOROOT=/usr/local/go GOPATH=/root/gopath
+#ENV PATH=/usr/local/ssl:${GOROOT}/bin:${GOPATH}/bin:${PATH}
+
+WORKDIR /home
+
+COPY go1.15.12.linux-arm64.tar.gz /tmp/
+RUN tar -xz -C /usr/local -f /tmp/go1.15.12.linux-arm64.tar.gz && \
+    mkdir -p /root/gopath/bin /root/gopath/src && \
+    rm /tmp/go1.15.12.linux-arm64.tar.gz
+ENV GOROOT=/usr/local/go GOPATH=/root/gopath
+ENV PATH=/usr/local/ssl:${GOROOT}/bin:${GOPATH}/bin:${PATH}
+
+
+#FROM base as python
+#ADD ./common/install_python.sh install_python.sh
+#RUN bash ./install_python.sh && rm install_python.sh
+
+RUN dnf install -y python3.12 python3.12-devel python3.12-pip
+RUN alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1 && \
+    python3 -m pip install --upgrade pip
+
+#FROM base as openssl
+#ADD ./common/install_openssl.sh install_openssl.sh
+#RUN bash ./install_openssl.sh && rm install_openssl.sh
+RUN dnf install -y openssl openssl-devel
+
+#FROM base as patchelf
+#DD ./common/install_patchelf.sh install_patchelf.sh
+#RUN bash ./install_patchelf.sh && rm install_patchelf.sh
+ARG TMP_DIR=patchelf_tmp
+RUN rm -rf "$TMP_DIR" && git clone -b 0.15.0 https://github.com/NixOS/patchelf "$TMP_DIR" && \
+    cd "$TMP_DIR" && ./bootstrap.sh && \
+    ./configure && make && make install && \
+    cd .. && rm -rf "$TMP_DIR"
+
+
+FROM base as ccache
+ADD ./common/install_ccache.sh install_ccache.sh
+RUN bash ./install_ccache.sh && rm install_ccache.sh
+
+# Install CUDA
+FROM base as cuda
+ARG CUDA_VERSION=13.0
+RUN rm -rf /usr/local/cuda-*
+ENV CUDA_HOME=/usr/local/cuda-${CUDA_VERSION}
+ENV CUDA_VERSION=${CUDA_VERSION}
+ENV PATH=/usr/local/cuda-${CUDA_VERSION}/bin:$PATH
+ADD ./common/install_cuda.sh install_cuda.sh
+
+#FROM cuda as cuda13.0
+#RUN bash ./install_cuda.sh 13.0
+#ENV DESIRED_CUDA=13.0
+RUN dnf install -y dnf-plugins-core
+RUN dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel9/sbsa/cuda-rhel9.repo
+RUN dnf clean all && \
+    dnf install -y cuda-toolkit-13-0
+ENV CUDA_HOME=/usr/local/cuda-13.0
+ENV PATH=${CUDA_HOME}/bin:${PATH}
+ENV LD_LIBRARY_PATH=${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}
+RUN nvcc --version
+
+# Install paddle
+#FROM python as paddle
+#RUN wget https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/requirements.txt -O /root/requirements.txt
+#RUN LD_LIBRARY_PATH=/opt/_internal/cpython-3.12.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.12.0/bin/pip3 install setuptools pyyaml wheel -U
+#RUN LD_LIBRARY_PATH=/opt/_internal/cpython-3.12.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.12.0/bin/pip3 install -r /root/requirements.txt
+COPY python/requirements.txt /root/requirements.txt
+RUN python3 -m pip install setuptools pyyaml wheel -U
+RUN python3 -m pip install -r /root/requirements.txt
+
+RUN go get github.com/Masterminds/glide
+RUN rm -rf /root/requirements.txt
+
+ENV LD_LIBRARY_PATH=/usr/lib64:/usr/lib:$LD_LIBRARY_PATH
+RUN rm -rf /usr/local/cuda
+RUN chmod o+rw /usr/local
+
+# Final step
+#FROM ${BASE_TARGET} as final
+#COPY --from=openssl          /usr/local/ssl          /usr/local/ssl
+#COPY --from=patchelf         /usr/local/bin/patchelf /usr/local/bin/patchelf
+#COPY --from=ccache           /usr/local/bin/ccache   /usr/local/bin/ccache
+#COPY --from=paddle           /opt/_internal          /opt/_internal
