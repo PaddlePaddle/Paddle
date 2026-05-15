@@ -1609,6 +1609,178 @@ def nll_loss(
         return out
 
 
+def _reshape_weight_for_cross_entropy_compatible(
+    weight: Tensor, ndim: int, class_axis: int
+) -> Tensor:
+    weight_shape = [1] * ndim
+    weight_shape[class_axis] = weight.shape[0]
+    return reshape(weight, shape=weight_shape)
+
+
+def _cross_entropy_compatible_log_prob(
+    input: Tensor,
+) -> tuple[Tensor, int]:
+    input_dims = len(list(input.shape))
+    if input.dtype in (paddle.float16, paddle.bfloat16):
+        input = paddle.cast(input, paddle.float32)
+
+    if input_dims >= 3:
+        perm = [0, input_dims - 1, *range(1, input_dims - 1)]
+        input = paddle.transpose(input, perm=perm)
+        return paddle.nn.functional.log_softmax(input, axis=1), 1
+
+    return paddle.nn.functional.log_softmax(input, axis=input_dims - 1), (
+        input_dims - 1
+    )
+
+
+def _cross_entropy_compatible_soft_label_loss(
+    input: Tensor,
+    label: Tensor,
+    weight: Tensor | None,
+    reduction: _ReduceMode,
+    label_smoothing: float = 0.0,
+) -> Tensor:
+    log_prob, class_axis = _cross_entropy_compatible_log_prob(input)
+    if len(list(label.shape)) >= 3:
+        perm = [
+            0,
+            len(list(label.shape)) - 1,
+            *range(1, len(list(label.shape)) - 1),
+        ]
+        label = paddle.transpose(label, perm=perm)
+    original_label = paddle.cast(label, log_prob.dtype)
+    label = original_label
+    if label_smoothing > 0.0:
+        # Keep smoothing on the compatible Python path so the weight reduction
+        # can still use the original pre-smoothed soft target semantics.
+        label = (1.0 - label_smoothing) * label + (
+            label_smoothing / label.shape[class_axis]
+        )
+
+    loss = -paddle.sum(label * log_prob, axis=class_axis)
+    if weight is not None:
+        weight = paddle.cast(weight, log_prob.dtype)
+        weight = _reshape_weight_for_cross_entropy_compatible(
+            weight, len(list(label.shape)), class_axis
+        )
+        weighted_label = original_label if label_smoothing > 0.0 else label
+        loss_weight = paddle.sum(
+            weighted_label * weight,
+            axis=class_axis,
+        )
+        loss = loss * loss_weight
+
+    if reduction == 'none':
+        loss = paddle.unsqueeze(loss, axis=-1)
+    elif reduction == 'sum':
+        loss = paddle.sum(loss)
+    else:
+        if weight is None and input.shape[class_axis] == 0:
+            zero = paddle.sum(loss)
+            loss = zero / zero
+        else:
+            if weight is not None:
+                total_weight = paddle.sum(
+                    paddle.sum(
+                        weighted_label * weight,
+                        axis=class_axis,
+                    )
+                )
+                loss = paddle.sum(loss) / (
+                    total_weight
+                    + (total_weight == 0.0).astype(total_weight.dtype)
+                )
+            else:
+                loss = paddle.mean(loss)
+
+    if input.dtype in (paddle.float16, paddle.bfloat16):
+        loss = paddle.cast(loss, input.dtype)
+    return loss
+
+
+def _cross_entropy_compatible_label_smoothing_loss(
+    input: Tensor,
+    label: Tensor,
+    weight: Tensor | None,
+    reduction: _ReduceMode,
+    ignore_index: int,
+    label_smoothing: float,
+    restore_trailing_axis: bool,
+) -> Tensor:
+    log_prob, class_axis = _cross_entropy_compatible_log_prob(input)
+    nll_label = label
+    if nll_label.ndim > 1 and nll_label.shape[-1] == 1:
+        nll_label = paddle.squeeze(nll_label, axis=-1)
+    if nll_label.dtype != paddle.int64:
+        nll_label = paddle.cast(nll_label, paddle.int64)
+
+    weight_cast = (
+        paddle.cast(weight, log_prob.dtype) if weight is not None else None
+    )
+    nllloss = nll_loss(
+        log_prob,
+        nll_label,
+        weight=weight_cast,
+        ignore_index=ignore_index,
+        reduction=reduction,
+    )
+
+    if weight_cast is not None:
+        smooth_loss = -paddle.sum(
+            log_prob
+            * _reshape_weight_for_cross_entropy_compatible(
+                weight_cast, len(list(log_prob.shape)), class_axis
+            ),
+            axis=class_axis,
+        )
+    else:
+        smooth_loss = -paddle.sum(log_prob, axis=class_axis)
+
+    ignore_mask = nll_label == ignore_index
+    smooth_loss = paddle.where(
+        ignore_mask, paddle.zeros_like(smooth_loss), smooth_loss
+    )
+
+    if reduction == 'none':
+        smooth_loss = smooth_loss
+    elif reduction == 'sum':
+        smooth_loss = paddle.sum(smooth_loss)
+    else:
+        smooth_loss_sum = paddle.sum(smooth_loss)
+        if weight_cast is not None:
+            valid_label = paddle.where(
+                ignore_mask, paddle.zeros_like(nll_label), nll_label
+            )
+            weight_gather = paddle.gather(
+                weight_cast, paddle.flatten(valid_label)
+            )
+            weight_gather = reshape(weight_gather, shape=nll_label.shape)
+            weight_gather = paddle.where(
+                ignore_mask,
+                paddle.zeros_like(weight_gather),
+                weight_gather,
+            )
+            total_weight = paddle.sum(weight_gather)
+        else:
+            total_weight = paddle.sum(
+                paddle.cast(~ignore_mask, dtype=smooth_loss_sum.dtype)
+            )
+        smooth_loss = smooth_loss_sum / (
+            total_weight + (total_weight == 0.0).astype(total_weight.dtype)
+        )
+
+    loss = (1.0 - label_smoothing) * nllloss + (
+        label_smoothing / input.shape[-1]
+    ) * smooth_loss
+    if reduction == 'none' and restore_trailing_axis:
+        loss = paddle.unsqueeze(loss, axis=-1)
+
+    if input.dtype in (paddle.float16, paddle.bfloat16):
+        loss = paddle.cast(loss, input.dtype)
+    return loss
+
+
 @param_two_alias(["label", "target"], ["epsilon", "eps"])
 def poisson_nll_loss(
     input: Tensor,
@@ -3074,6 +3246,7 @@ def cross_entropy(
         raise ValueError('The dimension of input should be larger than zero!')
 
     label_dims = len(list(label.shape))
+    original_label_dims = label_dims
     if input_dims - 1 == label_dims:
         label = paddle.unsqueeze(label, axis=axis)
 
@@ -3083,6 +3256,22 @@ def cross_entropy(
              (got input_dims{input_dims}, label_dims{label_dims})'
         )
 
+    explicit_soft_label = soft_label
+    label_smoothing_from_hard_label = label_smoothing > 0.0 and not soft_label
+    label_for_compatible_label_smoothing = (
+        label if label_smoothing_from_hard_label else None
+    )
+    class_axis = axis % input_dims
+    use_accuracy_compatible_kernel = paddle.get_flags(
+        ["FLAGS_use_accuracy_compatible_kernel"]
+    ).get("FLAGS_use_accuracy_compatible_kernel", False)
+    use_compatible_soft_label_smoothing_path = (
+        explicit_soft_label
+        and label_smoothing > 0.0
+        and use_softmax
+        and class_axis == input_dims - 1
+        and use_accuracy_compatible_kernel
+    )
     if label_smoothing > 0.0:
         soft_label = True
         # converting the label to one-hot encoding
@@ -3092,11 +3281,45 @@ def cross_entropy(
             label = paddle.squeeze(label, axis=axis)
             label = paddle.nn.functional.one_hot(label, input.shape[-1])
 
-        label = paddle.nn.functional.label_smooth(
-            label, epsilon=label_smoothing
+        if not use_compatible_soft_label_smoothing_path:
+            label = paddle.nn.functional.label_smooth(
+                label, epsilon=label_smoothing
+            )
+            label = label.astype(input.dtype)
+            label_dims = len(list(label.shape))
+
+    if weight is not None and class_axis == input_dims - 1:
+        if input.shape[class_axis] != weight.shape[-1]:
+            raise ValueError(
+                f"input's class_dimension({input.shape[class_axis]}) must equal to "
+                f"weight's class_dimension({weight.shape[-1]}) "
+                "when weight is provided"
+            )
+    if (
+        soft_label
+        and use_softmax
+        and class_axis == input_dims - 1
+        and use_accuracy_compatible_kernel
+    ) or use_compatible_soft_label_smoothing_path:
+        if label_smoothing_from_hard_label and use_accuracy_compatible_kernel:
+            return _cross_entropy_compatible_label_smoothing_loss(
+                input,
+                label_for_compatible_label_smoothing,
+                weight,
+                reduction,
+                ignore_index,
+                label_smoothing,
+                input_dims == original_label_dims,
+            )
+        return _cross_entropy_compatible_soft_label_loss(
+            input,
+            label,
+            weight,
+            reduction,
+            label_smoothing
+            if use_compatible_soft_label_smoothing_path
+            else 0.0,
         )
-        label = label.astype(input.dtype)
-        label_dims = len(list(label.shape))
 
     if in_dynamic_mode():
         if not soft_label:
@@ -3117,44 +3340,50 @@ def cross_entropy(
                 "FLAGS_use_accuracy_compatible_kernel", False
             )
         ):
-            _nll_input = input
             _nll_orig_dtype = input.dtype
-            log_softmax_out = paddle.nn.functional.log_softmax(
-                _nll_input, axis=axis
-            )
             _nll_weight = weight
+            nll_label = label
+            if nll_label.ndim > 1 and nll_label.shape[-1] == 1:
+                nll_label = paddle.squeeze(nll_label, axis=-1)
+            # nll_loss requires int64 labels
+            if nll_label.dtype != paddle.int64:
+                nll_label = paddle.cast(nll_label, paddle.int64)
+            if input_dims >= 3:
+                # Match PyTorch's rank>2 hard-label route by converting class-last
+                # inputs [N, d1, ..., dk, C] to class-first [N, C, d1, ..., dk]
+                # before log_softmax + nll_loss. nll_loss then follows its
+                # N-D path, reshaping non-4D inputs to [N, C, 1, -1] internally.
+                perm = [0, input_dims - 1, *range(1, input_dims - 1)]
+                log_softmax_out = paddle.nn.functional.log_softmax(
+                    paddle.transpose(input, perm=perm), axis=1
+                )
+            else:
+                # Keep the rank-2 compatible path unchanged.
+                log_softmax_out = paddle.nn.functional.log_softmax(
+                    input, axis=axis
+                )
             # nll_loss does not support float16/bfloat16; promote to float32
             if _nll_orig_dtype in (paddle.float16, paddle.bfloat16):
                 log_softmax_out = paddle.cast(log_softmax_out, paddle.float32)
                 # Cast weight to match promoted dtype if needed
                 if weight is not None:
                     _nll_weight = paddle.cast(weight, paddle.float32)
-            # nll_loss expects label shape [N] for 2D input
-            nll_label = label
-            if nll_label.ndim > 1 and nll_label.shape[-1] == 1:
-                nll_label = paddle.squeeze(nll_label, axis=-1)
-            # Save original label shape before reshape for reduction='none'
-            _nll_label_shape = list(nll_label.shape)
-            _did_reshape = False
-            # nll_loss only accepts rank 2 or 4; reshape N-D [B,d1,...,dk,C] -> [B*d1*...*dk, C]
-            if log_softmax_out.ndim >= 3:
-                _C = log_softmax_out.shape[-1]
-                log_softmax_out = paddle.reshape(log_softmax_out, [-1, _C])
-                nll_label = paddle.reshape(nll_label, [-1])
-                _did_reshape = True
-            # nll_loss requires int64 labels
-            if nll_label.dtype != paddle.int64:
-                nll_label = paddle.cast(nll_label, paddle.int64)
-            loss, _ = _C_ops.nll_loss(
-                log_softmax_out,
-                nll_label,
-                _nll_weight,
-                ignore_index,
-                reduction,
-            )
-            # For reduction='none', reshape loss back to original label shape
-            if reduction == 'none' and _did_reshape:
-                loss = paddle.reshape(loss, _nll_label_shape)
+            if input_dims >= 3:
+                loss = nll_loss(
+                    log_softmax_out,
+                    nll_label,
+                    weight=_nll_weight,
+                    ignore_index=ignore_index,
+                    reduction=reduction,
+                )
+            else:
+                loss, _ = _C_ops.nll_loss(
+                    log_softmax_out,
+                    nll_label,
+                    _nll_weight,
+                    ignore_index,
+                    reduction,
+                )
             # Match output shape with non-compatible path:
             # - If user passed label without trailing 1 (input_dims-1==label_dims),
             #   the non-compatible path squeezes; our output is already correct.

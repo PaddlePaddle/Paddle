@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include <thrust/functional.h>
 
 #include <algorithm>
 #include <functional>
@@ -26,6 +25,9 @@
 
 namespace phi {
 static constexpr int kNumCUDAThreads = 512;
+// Thread count for the 4D hard-label reduce path, matching PyTorch's
+// CUDA_NUM_THREADS = 1024 used in NLLLoss2d.cu.
+static constexpr int kNumCUDAThreads4D = 1024;
 static constexpr int kNumMaximumNumBlocks = 4096;
 static const int NTHREADS = 32;
 static inline int64_t NumBlocks(const int64_t N) {
@@ -272,6 +274,54 @@ __device__ T reduceBlock(T* smem,
   return threadVal;
 }
 
+// ---------------------------------------------------------------------------
+// Warp/block reduction helpers matching PyTorch's block_reduce.cuh pattern.
+// Used exclusively by GPUNLLLossForward2D_with_reduce (4D hard-label reduce).
+// ---------------------------------------------------------------------------
+
+// Per-warp butterfly sum using __shfl_down_sync (matches PyTorch
+// WarpReduceSum). All lanes receive the warp-sum, but only lane-0 is
+// authoritative after the subsequent two-level block reduce.
+template <typename T>
+__device__ __forceinline__ T NLLLossWarpReduceSum(T val) {
+#pragma unroll
+  for (int offset = (warpSize >> 1); offset > 0; offset >>= 1) {
+#ifdef PADDLE_WITH_CUDA
+    val += __shfl_down_sync(0xffffffff, val, offset);
+#else
+    val += __shfl_down(val, offset);
+#endif
+  }
+  return val;
+}
+
+// Two-level block reduction matching PyTorch's BlockReduceSum in
+// block_reduce.cuh.
+//   1. Each warp does NLLLossWarpReduceSum -> warp leader writes to
+//   shared[wid].
+//   2. Warp 0 loads shared and does another NLLLossWarpReduceSum.
+// Only thread 0 has the correct result on return.
+// shared[] must hold at least (blockDim.x / warpSize) elements.
+// A __syncthreads() at the start prevents races when called back-to-back.
+template <typename T>
+__device__ __forceinline__ T NLLLossBlockReduceSum(T val, T* shared) {
+  const int lid = threadIdx.x % warpSize;
+  const int wid = threadIdx.x / warpSize;
+  val = NLLLossWarpReduceSum(val);
+  __syncthreads();  // guard against back-to-back calls sharing the same smem
+  if (lid == 0) {
+    shared[wid] = val;
+  }
+  __syncthreads();
+  const int n_warps = (blockDim.x + warpSize - 1) / warpSize;
+  val = (threadIdx.x < n_warps) ? shared[lid] : T(0);
+  if (wid == 0) {
+    val = NLLLossWarpReduceSum(val);
+  }
+  return val;
+}
+// ---------------------------------------------------------------------------
+
 template <typename T>
 __global__ void GPUNLLLossForward2D_no_reduce(T* out_data,
                                               const T* x_data,
@@ -316,39 +366,106 @@ __global__ void GPUNLLLossForward2D_with_reduce(T* out_data,
                                                 const int64_t map_nelem,
                                                 const int64_t blocks_per_sample,
                                                 const int64_t ignore_index) {
-  __shared__ AccT partial_sums[kNumCUDAThreads];
-  int64_t i;
-  AccT input_sum = 0;
-  AccT acc_weight = 0;
-  *out_data = 0;
-  *total_weight_data = 0;
+  // Two separate shared-memory arrays for the two-level block reduction.
+  // 32 entries is sufficient for up to kNumCUDAThreads4D=1024 threads
+  // (1024 / 32 = 32 warps on CUDA; 1024 / 64 = 16 wavefronts on HIP).
+  // Layout matches PyTorch's nll_loss2d_forward_kernel in NLLLoss2d.cu.
+  __shared__ AccT acc_weight_smem[32];
+  __shared__ AccT input_sum_smem[32];
+
+  AccT input_sum = AccT(0);
+  AccT acc_weight = AccT(0);
 
   int64_t sample = static_cast<int64_t>(blockIdx.x) / blocks_per_sample;
   int64_t toffset = sample * map_nelem;
   int64_t ioffset = sample * map_nelem * n_classes;
   int64_t step = static_cast<int64_t>(blockDim.x) * blocks_per_sample;
-  for (i = (blockIdx.x % blocks_per_sample) * blockDim.x + threadIdx.x;
+  for (int64_t i = (static_cast<int64_t>(blockIdx.x) % blocks_per_sample) *
+                       static_cast<int64_t>(blockDim.x) +
+                   static_cast<int64_t>(threadIdx.x);
        i < map_nelem;
        i += step) {
     const int64_t cur_label = label_data[toffset + i];
     if (cur_label != ignore_index) {
       PADDLE_ENFORCE(cur_label >= 0 && cur_label < n_classes,
                      "label should not be out of bounds.");
-      const AccT cur_weight = weight_data ? weight_data[cur_label] : (T)1;
-      input_sum -= x_data[ioffset + i + map_nelem * cur_label] * cur_weight;
+      const AccT cur_weight =
+          weight_data ? static_cast<AccT>(weight_data[cur_label]) : AccT(1);
+      input_sum -=
+          static_cast<AccT>(x_data[ioffset + i + map_nelem * cur_label]) *
+          cur_weight;
       acc_weight += cur_weight;
     }
   }
 
-  input_sum = reduceBlock(
-      partial_sums, blockDim.x, input_sum, thrust::plus<AccT>(), (AccT)0);
-  __syncthreads();
-  acc_weight = reduceBlock(
-      partial_sums, blockDim.x, acc_weight, thrust::plus<AccT>(), (AccT)0);
+  // Two-level warp-shuffle block reduction matching PyTorch's BlockReduceSum.
+  // acc_weight_ is reduced first so its __syncthreads guards input_sum's smem.
+  AccT acc_weight_ = NLLLossBlockReduceSum(acc_weight, acc_weight_smem);
+  AccT input_sum_ = NLLLossBlockReduceSum(input_sum, input_sum_smem);
 
   if (threadIdx.x == 0) {
-    CudaAtomicAdd(total_weight_data, acc_weight);
-    CudaAtomicAdd(out_data, input_sum);
+    CudaAtomicAdd(total_weight_data, static_cast<T>(acc_weight_));
+    CudaAtomicAdd(out_data, static_cast<T>(input_sum_));
+  }
+}
+
+template <typename T, typename AccT>
+__global__ void GPUNLLLossForward2D_with_reduce_compatible(
+    T* out_data,
+    T* total_weight_data,
+    const T* x_data,
+    const int64_t* label_data,
+    const T* weight_data,
+    const int64_t batch_size,
+    const int64_t n_classes,
+    const int64_t map_nelem,
+    const int64_t size_average,
+    const int64_t ignore_index) {
+  extern __shared__ char smem[];
+  AccT* sh_loss = reinterpret_cast<AccT*>(smem);
+  AccT* sh_weight = sh_loss + blockDim.x;
+
+  const int64_t total_nelem = batch_size * map_nelem;
+  const int64_t sample_size = map_nelem * n_classes;
+  AccT thread_loss = AccT(0);
+  AccT thread_weight = AccT(0);
+
+  for (int64_t index = threadIdx.x; index < total_nelem; index += blockDim.x) {
+    const int64_t cur_label = label_data[index];
+    if (cur_label != ignore_index) {
+      PADDLE_ENFORCE(cur_label >= 0 && cur_label < n_classes,
+                     "label should not be out of bounds.");
+      const int64_t sample = index / map_nelem;
+      const int64_t map_offset = index % map_nelem;
+      const AccT cur_weight =
+          weight_data ? static_cast<AccT>(weight_data[cur_label]) : AccT(1);
+      thread_loss -=
+          static_cast<AccT>(x_data[sample * sample_size + map_offset +
+                                   map_nelem * cur_label]) *
+          cur_weight;
+      thread_weight += cur_weight;
+    }
+  }
+
+  sh_loss[threadIdx.x] = thread_loss;
+  sh_weight[threadIdx.x] = thread_weight;
+  __syncthreads();
+
+  for (unsigned int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
+    if (threadIdx.x < stride) {
+      sh_loss[threadIdx.x] += sh_loss[threadIdx.x + stride];
+      sh_weight[threadIdx.x] += sh_weight[threadIdx.x + stride];
+    }
+    __syncthreads();
+  }
+
+  if (threadIdx.x == 0) {
+    if (size_average && sh_weight[0] != AccT(0)) {
+      *out_data = static_cast<T>(sh_loss[0] / sh_weight[0]);
+    } else {
+      *out_data = static_cast<T>(sh_loss[0]);
+    }
+    *total_weight_data = static_cast<T>(sh_weight[0]);
   }
 }
 
