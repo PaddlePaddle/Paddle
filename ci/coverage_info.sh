@@ -32,12 +32,14 @@ echo "::endgroup::"
 
 cd ${PADDLE_ROOT}/build
 
-# NOTE: This gcda pre-cleaning step keeps/removes files by mapping PR
-# changed files to "*.gcda" paths. That is not always correct: for header-only
-# changes, or changes whose coverage is recorded in other translation units,
-# valid gcda may be removed before lcov capture. Keep the current behavior for
-# now because removing this step may increase "lcov/gcov --capture -d" cost.
-python ${PADDLE_ROOT}/ci/coverage_gcda_clean.py ${PR_ID} || exit 101
+if [ ${WITH_ALL_COVERAGE:-OFF} == "OFF" ]; then
+    # NOTE: This gcda pre-cleaning step keeps/removes files by mapping PR
+    # changed files to "*.gcda" paths. That is not always correct: for header-only
+    # changes, or changes whose coverage is recorded in other translation units,
+    # valid gcda may be removed before lcov capture. Keep the current behavior for
+    # now because removing this step may increase "lcov/gcov --capture -d" cost.
+    python ${PADDLE_ROOT}/ci/coverage_gcda_clean.py ${PR_ID} || exit 101
+fi
 echo "::group::Run lcov"
 lcov --ignore-errors gcov --capture -d ./ -o coverage.info --rc lcov_branch_coverage=0
 echo "::endgroup::"
@@ -148,6 +150,9 @@ python ${PADDLE_ROOT}/ci/coverage_diff.py coverage-diff.info git-diff.out > cove
 mv -f coverage-diff.tmp coverage-diff.info
 
 cp coverage-diff.info coverage_files
+if [ ${WITH_ALL_COVERAGE:-OFF} == "ON" ]; then
+    cp coverage-full.info coverage_files/
+fi
 
 # python coverage
 
@@ -195,3 +200,6 @@ python ${PADDLE_ROOT}/ci/coverage_diff.py python-coverage-diff.info python-git-d
 mv -f python-coverage-diff.tmp python-coverage-diff.info
 
 cp python-coverage-diff.info coverage_files
+if [ ${WITH_ALL_COVERAGE:-OFF} == "ON" ]; then
+    cp python-coverage-full.info coverage_files/
+fi
