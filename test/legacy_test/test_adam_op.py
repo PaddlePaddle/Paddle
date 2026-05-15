@@ -141,6 +141,18 @@ class TestAdamOp1AMSGrad(TestAdamOp1):
             self.no_check_set = None
 
 
+class TestAdamOp1AMSGradCompatible(TestAdamOp1):
+    def set_amsgrad(self):
+        paddle.set_flags({'FLAGS_use_accuracy_compatible_kernel': 1})
+        # xpu not support `amsgrad`
+        if core.is_compiled_with_xpu():
+            self.amsgrad = False
+            self.no_check_set = ['Moment2MaxOut']
+        else:
+            self.amsgrad = True
+            self.no_check_set = None
+
+
 class TestAdamOp2(OpTest):
     def set_shape(self):
         self.shape = (102, 105)
@@ -209,6 +221,12 @@ class TestAdamOp2(OpTest):
 
 class TestAdamOnlyTailOp(TestAdamOp2):
     def set_shape(self):
+        self.shape = 3
+
+
+class TestAdamOnlyTailOpCompatible(TestAdamOp2):
+    def set_shape(self):
+        paddle.set_flags({'FLAGS_use_accuracy_compatible_kernel': 1})
         self.shape = 3
 
 
@@ -308,6 +326,18 @@ class TestAdamOpMultipleSteps(OpTest):
 
 class TestAdamOpMultipleStepsAMSGrad(TestAdamOpMultipleSteps):
     def set_amsgrad(self):
+        # xpu not support `amsgrad`
+        if core.is_compiled_with_xpu():
+            self.amsgrad = False
+            self.no_check_set = ['Moment2MaxOut']
+        else:
+            self.amsgrad = True
+            self.no_check_set = None
+
+
+class TestAdamOpMultipleStepsAMSGradCompatible(TestAdamOpMultipleSteps):
+    def set_amsgrad(self):
+        paddle.set_flags({'FLAGS_use_accuracy_compatible_kernel': 1})
         # xpu not support `amsgrad`
         if core.is_compiled_with_xpu():
             self.amsgrad = False
@@ -547,6 +577,18 @@ class TestSparseAdamOp(unittest.TestCase):
 
 class TestSparseAdamOpAMSGrad(TestSparseAdamOp):
     def set_amsgrad(self):
+        # xpu not support `amsgrad`
+        if core.is_compiled_with_xpu():
+            self.amsgrad = False
+            self.no_check_set = ['Moment2MaxOut']
+        else:
+            self.amsgrad = True
+            self.no_check_set = None
+
+
+class TestSparseAdamOpAMSGradCompatible(TestSparseAdamOp):
+    def set_amsgrad(self):
+        paddle.set_flags({'FLAGS_use_accuracy_compatible_kernel': 1})
         # xpu not support `amsgrad`
         if core.is_compiled_with_xpu():
             self.amsgrad = False
