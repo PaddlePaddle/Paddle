@@ -173,7 +173,11 @@ class MuonShardingOptimizer:
 
         self.use_group_call_opt = sharding_configs.comm_group_call_opt
         hcg = fleet.get_hybrid_communicate_group()
-        ep_degree = hcg.get_expert_parallel_world_size()
+        ep_degree = (
+            hcg.get_expert_parallel_world_size()
+            if hasattr(hcg, "get_expert_parallel_world_size")
+            else 1
+        )
         moe_sharding_degree = hcg.get_moe_sharding_parallel_world_size()
         if self.use_group_call_opt:
             assert ep_degree == 8 and moe_sharding_degree != 1, (
