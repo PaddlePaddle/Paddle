@@ -77,7 +77,7 @@ void FillDiagonalTensorGradKernel(const Context &dev_ctx,
     tensor_tmp.Resize({2 + matrows});
     int64_t *memory_block_cu = dev_ctx.template Alloc<int64_t>(&tensor_tmp);
     const auto gpu_place = dev_ctx.GetPlace();
-    auto *stable_mb = phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+    auto *stable_mb = backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
         memory_block.data(), memory_block.size());
     memory_utils::Copy(gpu_place,
                        memory_block_cu,

@@ -404,7 +404,7 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
   auto* filter_t =
       scope->FindVar(mul_w_replicated_node->Name())->GetMutable<DenseTensor>();
   auto filter_dtype = filter_t->dtype();
-  if (filter_dtype == phi::DataType::FLOAT16) {
+  if (filter_dtype == DataType::FLOAT16) {
     CastToFp32(filter_t, nullptr);
   }
 
@@ -686,7 +686,7 @@ void FcXPUFusePass::CreateFusionOutputs(
     DenseTensor out_max_in_cpu_tensor;
     auto* cpu_ctx = static_cast<phi::CPUContext*>(
         phi::DeviceContextPool::Instance().Get(CPUPlace()));
-    out_max_in_cpu_tensor.set_type(phi::DataType::FLOAT32);
+    out_max_in_cpu_tensor.set_type(DataType::FLOAT32);
     out_max_in_cpu_tensor.Resize({max_ptr_size});
     std::vector<float> output_scales(max_ptr_size, output_scale);
     memcpy(cpu_ctx->Alloc<float>(&out_max_in_cpu_tensor),
@@ -744,7 +744,7 @@ void FcXPUFusePass::CreateFusionInputs(
     mul_x_max = graph->CreateVarNode(&x_max_desc);
     auto input_max_tensor =
         scope->Var(mul_x_max_name)->GetMutable<DenseTensor>();
-    input_max_tensor->set_type(phi::DataType::FLOAT32);
+    input_max_tensor->set_type(DataType::FLOAT32);
     input_max_tensor->Resize({max_ptr_size});
     auto* cpu_ctx = static_cast<phi::CPUContext*>(
         phi::DeviceContextPool::Instance().Get(CPUPlace()));
@@ -832,9 +832,9 @@ int FcXPUFusePass::ApplyImpl(ir::Graph* graph,
                                 ->GetMutable<DenseTensor>()
                                 ->dtype();
     std::string op_weights_precision = "float32";
-    if (filter_data_type == phi::DataType::INT8) {
+    if (filter_data_type == DataType::INT8) {
       op_weights_precision = "int8";
-    } else if (filter_data_type == phi::DataType::FLOAT16) {
+    } else if (filter_data_type == DataType::FLOAT16) {
       op_weights_precision = "float16";
     }
     if (op_weights_precision == "float32" &&
@@ -855,7 +855,7 @@ int FcXPUFusePass::ApplyImpl(ir::Graph* graph,
       }
       const auto weight_dims = weight_tensor->dims();
       weight_tensor->clear();  // clear int weight
-      weight_tensor->set_type(phi::DataType::INT8);
+      weight_tensor->set_type(DataType::INT8);
       weight_tensor->Resize(common::make_ddim(common::vectorize(weight_dims)));
       auto* cpu_ctx = static_cast<phi::CPUContext*>(
           phi::DeviceContextPool::Instance().Get(CPUPlace()));

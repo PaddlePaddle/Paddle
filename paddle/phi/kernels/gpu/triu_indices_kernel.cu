@@ -116,7 +116,7 @@ void TriuIndicesKernel(const Context& dev_ctx,
     }
 
     //  using gpu_launch_config to get grid_size and block_size
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, triu_size);
+    auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, triu_size);
 
     triu_indices_kernel<T><<<config.block_per_grid.x,
                              config.thread_per_block.x,

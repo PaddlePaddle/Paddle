@@ -45,7 +45,7 @@ static inline int ExpandByMemoryCopy(const GPUContext& dev_ctx,
         }
         for (size_t j = 0; j < repeat_num; j++) {
           for (size_t k = 0; k < x_seq_len; k++) {
-            phi::memory_utils::Copy(
+            memory_utils::Copy(
                 gpu_place,
                 out_data + (out_start + j * x_seq_len + k) * x_item_length,
                 gpu_place,
@@ -117,7 +117,7 @@ struct SequenceExpandFunctor<GPUContext, T> {
         out_offset[2 * x_lod_size + i] = ref_lod[i];
       }
 
-      phi::MixVector<size_t> mixv_out_offset(&out_offset);
+      MixVector<size_t> mixv_out_offset(&out_offset);
       const size_t* out_offset_data =
           mixv_out_offset.CUDAData(dev_ctx.GetPlace());
       const size_t* x_lod_data = out_offset_data + x_lod_size;

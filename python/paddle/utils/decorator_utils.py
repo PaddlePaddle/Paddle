@@ -261,6 +261,46 @@ def lp_pool_function_decorator(
     return wrapper
 
 
+def conv_transpose_layer_decorator(
+    func: Callable[_InputT, _RetT],
+) -> Callable[_InputT, _RetT]:
+    """Dispatch decorator for ``Conv{1,3}DTranspose.__init__``.
+
+    PyTorch's ``ConvTranspose{1,2,3}d`` places ``bias`` (``bool``) at the 9th
+    positional argument (index 8 when ``self`` is counted), while Paddle's
+    native signature places ``dilation`` (``int``) at the same position.
+    When ``args[8]`` is a ``bool`` we interpret the call as the PyTorch
+    convention and remap positional arguments ``args[8:13]`` to keyword
+    arguments ``bias``, ``dilation``, ``padding_mode``, ``device``, ``dtype``
+    so the call succeeds against Paddle's signature.
+    """
+
+    @functools.wraps(func)
+    def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+        if len(args) >= 9 and isinstance(args[8], bool):
+            torch_names = (
+                "bias",
+                "dilation",
+                "padding_mode",
+                "device",
+                "dtype",
+            )
+            for i, name in enumerate(torch_names):
+                pos = 8 + i
+                if pos >= len(args):
+                    break
+                if name in kwargs:
+                    raise TypeError(
+                        f"__init__() got multiple values for argument '{name}'"
+                    )
+                kwargs[name] = args[pos]
+            args = args[:8]
+        return func(*args, **kwargs)
+
+    wrapper.__signature__ = inspect.signature(func)
+    return wrapper
+
+
 def param_two_alias_one_default(
     alias_list1: list[str], alias_list2: list[str], default_param: list[str]
 ) -> Callable[[Callable[_InputT, _RetT]], Callable[_InputT, _RetT]]:
@@ -961,6 +1001,7 @@ def use_first_signature(
 
 def variadic_tensor_decorator(
     param_name: str,
+    param_pos: int = 0,
 ) -> Callable[[Callable[_InputT, _RetT]], Callable[_InputT, _RetT]]:
     """
     Decorator to handle variadic tensor arguments.
@@ -978,14 +1019,14 @@ def variadic_tensor_decorator(
         def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
             # PyTorch usage: variadic tensor arguments
             if len(args) >= 1 and isinstance(
-                args[0], (paddle.Tensor, paddle.pir.Value)
+                args[param_pos], (paddle.Tensor, paddle.pir.Value)
             ):
-                kwargs[param_name] = list(args)
-                args = ()
+                kwargs[param_name] = list(args[param_pos:])
+                args = args[:param_pos]
             # Paddle usage: list/tuple argument
-            elif len(args) >= 1 and isinstance(args[0], (list, tuple)):
-                kwargs[param_name] = args[0]
-                args = ()
+            elif len(args) >= 1 and isinstance(args[param_pos], (list, tuple)):
+                kwargs[param_name] = args[param_pos]
+                args = args[:param_pos]
             return func(*args, **kwargs)
 
         wrapper.__signature__ = inspect.signature(func)

@@ -350,9 +350,9 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   if (nranks > 1) {
     auto stream = dev_ctx.stream();
-    phi::distributed::NCCLCommContext* comm_ctx = nullptr;
-    comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
-        dev_ctx.GetCommContext());
+    distributed::NCCLCommContext* comm_ctx = nullptr;
+    comm_ctx =
+        static_cast<distributed::NCCLCommContext*>(dev_ctx.GetCommContext());
     PADDLE_ENFORCE_NE(comm_ctx,
                       nullptr,
                       common::errors::Unavailable(
@@ -361,7 +361,7 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
 
     comm_ctx->AllReduce(
         &num_classes_per_device, num_classes_per_device, ncclSum, stream);
-    phi::backends::gpu::GpuStreamSync(stream);
+    backends::gpu::GpuStreamSync(stream);
   }
 #endif
 
@@ -446,7 +446,7 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
                      (NumBlocks(num_classes) * kNumCUDAThreads * vec_size) +
                  1) *
                 vec_size;
-  // auto gen_cuda = phi::DefaultCUDAGenerator(device_id);
+  // auto gen_cuda = DefaultCUDAGenerator(device_id);
   auto gen_cuda = dev_ctx.GetGenerator();
   if (!fix_seed) {
     auto seed_offset = gen_cuda->IncrementOffset(offset);

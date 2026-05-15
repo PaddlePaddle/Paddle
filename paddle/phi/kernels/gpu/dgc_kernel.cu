@@ -186,18 +186,18 @@ void DGCKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(gather_buff);
 
   int buf_size = paddle::communication::dgc::get_buffer_size(k);
-  phi::Allocator::AllocationPtr tmp_ious_data;
+  Allocator::AllocationPtr tmp_ious_data;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (dev_ctx.GetPlace().GetType() == AllocationType::GPU ||
       dev_ctx.GetPlace().GetType() == AllocationType::CUSTOM) {
-    tmp_ious_data = phi::memory_utils::Alloc(
+    tmp_ious_data = memory_utils::Alloc(
         dev_ctx.GetPlace(),
         buf_size,
-        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+        Stream(reinterpret_cast<StreamId>(dev_ctx.stream())));
   }
 #endif
   if (dev_ctx.GetPlace().GetType() == AllocationType::CPU) {
-    tmp_ious_data = phi::memory_utils::Alloc(dev_ctx.GetPlace(), buf_size);
+    tmp_ious_data = memory_utils::Alloc(dev_ctx.GetPlace(), buf_size);
   }
 
   void* buf = reinterpret_cast<void*>(tmp_ious_data->ptr());

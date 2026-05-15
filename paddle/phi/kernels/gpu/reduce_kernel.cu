@@ -71,13 +71,9 @@ void ReduceSumGradKernel(const Context& dev_ctx,
 
   // call ReduceGrad
   dev_ctx.Alloc(x_grad, x.dtype());
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  phi::ReduceGrad<kps::IdentityFunctor<T, MPType>>(
-      dev_ctx,
-      &new_out_grad,
-      x_grad,
-      x.dtype(),
-      kps::IdentityFunctor<T, MPType>());
+  using MT = typename MPTypeTrait<T>::Type;
+  ReduceGrad<kps::IdentityFunctor<T, MT>>(
+      dev_ctx, &new_out_grad, x_grad, x.dtype(), kps::IdentityFunctor<T, MT>());
 }
 
 template <typename T, typename Context>
@@ -116,11 +112,11 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
   std::vector<const DenseTensor*> inputs = {&new_out_grad};
   std::vector<DenseTensor*> outputs = {x_grad};
 
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   funcs::BroadcastKernel<T>(dev_ctx,
                             inputs,
                             &outputs,
-                            kps::MPTypeDivideFunctor<T, MPType>(reduce_num),
+                            kps::MPTypeDivideFunctor<T, MT>(reduce_num),
                             0);
 }
 
@@ -275,19 +271,15 @@ void NansumGradKernel(const Context& dev_ctx,
   new_out_grad.Resize(update_dims);
 
   dev_ctx.Alloc(x_grad, x.dtype());
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  phi::ReduceGrad<kps::IdentityFunctor<T, MPType>>(
-      dev_ctx,
-      &new_out_grad,
-      x_grad,
-      x.dtype(),
-      kps::IdentityFunctor<T, MPType>());
+  using MT = typename MPTypeTrait<T>::Type;
+  ReduceGrad<kps::IdentityFunctor<T, MT>>(
+      dev_ctx, &new_out_grad, x_grad, x.dtype(), kps::IdentityFunctor<T, MT>());
 
   // Step 2: zero out gradient where x is NaN
   const T* x_data = x.data<T>();
   T* x_grad_data = x_grad->data<T>();
   int64_t numel = x.numel();
-  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
+  funcs::ForRange<Context> for_range(dev_ctx, numel);
   for_range(NanMaskFunctor<T>(x_data, x_grad_data));
 }
 

@@ -61,6 +61,7 @@ if(NOT EXISTS ${CMAKE_BINARY_DIR}/cmake/cinn/config.cmake)
        DESTINATION ${CMAKE_BINARY_DIR}/cmake/cinn)
 endif()
 include(${CMAKE_BINARY_DIR}/cmake/cinn/config.cmake)
+include(${PROJECT_SOURCE_DIR}/cmake/architecture.cmake)
 
 if(WITH_MKL)
   generate_dummy_static_lib(LIB_NAME "cinn_mklml" GENERATOR "mklml.cmake")
@@ -85,9 +86,14 @@ if(WITH_GPU)
   endif()
   enable_language(CUDA)
   find_package(CUDA REQUIRED)
+  paddle_normalize_target_arch(TARGET_ARCH)
+  paddle_get_system_library_arch_dir(SYSTEM_LIBRARY_ARCH_DIR)
+  paddle_detect_cuda_target_dir(CUDA_TARGET_DIR)
   include_directories(${CUDA_INCLUDE_DIRS})
   include_directories(${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/cuda)
-  include_directories(/usr/lib/x86_64-linux-gnu)
+  if(NOT SYSTEM_LIBRARY_ARCH_DIR STREQUAL "")
+    include_directories(${SYSTEM_LIBRARY_ARCH_DIR})
+  endif()
   set(CUDA_SEPARABLE_COMPILATION ON)
 
   cuda_select_nvcc_arch_flags(ARCH_FLAGS Auto)
@@ -102,16 +108,31 @@ if(WITH_GPU)
             paddle/cinn/common/float8e4m3.h
        DESTINATION $ENV{runtime_include_dir})
 
-  find_library(CUDASTUB libcuda.so HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64/stubs/
-                                         REQUIRED)
-  find_library(CUBLAS libcublas.so HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64
-                                         /usr/lib /usr/lib64 REQUIRED)
-  find_library(CUDNN libcudnn.so HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64 /usr/lib
-                                       /usr/lib64 REQUIRED)
-  find_library(CURAND libcurand.so HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64
-                                         /usr/lib /usr/lib64 REQUIRED)
-  find_library(CUSOLVER libcusolver.so HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64
-                                             /usr/lib /usr/lib64 REQUIRED)
+  find_library(
+    CUDASTUB libcuda.so
+    HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64/stubs/
+          ${CUDA_TOOLKIT_ROOT_DIR}/targets/${CUDA_TARGET_DIR}/lib/stubs
+          REQUIRED)
+  find_library(
+    CUBLAS libcublas.so
+    HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64
+          ${CUDA_TOOLKIT_ROOT_DIR}/targets/${CUDA_TARGET_DIR}/lib /usr/lib
+          /usr/lib64 ${SYSTEM_LIBRARY_ARCH_DIR} REQUIRED)
+  find_library(
+    CUDNN libcudnn.so
+    HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64
+          ${CUDA_TOOLKIT_ROOT_DIR}/targets/${CUDA_TARGET_DIR}/lib /usr/lib
+          /usr/lib64 ${SYSTEM_LIBRARY_ARCH_DIR} REQUIRED)
+  find_library(
+    CURAND libcurand.so
+    HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64
+          ${CUDA_TOOLKIT_ROOT_DIR}/targets/${CUDA_TARGET_DIR}/lib /usr/lib
+          /usr/lib64 ${SYSTEM_LIBRARY_ARCH_DIR} REQUIRED)
+  find_library(
+    CUSOLVER libcusolver.so
+    HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64
+          ${CUDA_TOOLKIT_ROOT_DIR}/targets/${CUDA_TARGET_DIR}/lib /usr/lib
+          /usr/lib64 ${SYSTEM_LIBRARY_ARCH_DIR} REQUIRED)
 endif()
 
 if(WITH_SYCL)
@@ -358,7 +379,11 @@ set(ISL_INCLUDE_DIR "${CMAKE_BINARY_DIR}/third_party/install/isl/include")
 include_directories(${ISL_INCLUDE_DIR})
 
 # Add LLVM
-set(LLVM_INCLUDE_DIR "${CMAKE_BINARY_DIR}/dist/third_party/llvm/include")
+if(DEFINED LLVM_INCLUDE_DIRS)
+  set(LLVM_INCLUDE_DIR "${LLVM_INCLUDE_DIRS}")
+else()
+  set(LLVM_INCLUDE_DIR "${CMAKE_BINARY_DIR}/dist/third_party/llvm/include")
+endif()
 include_directories(${LLVM_INCLUDE_DIR})
 
 ######################################################

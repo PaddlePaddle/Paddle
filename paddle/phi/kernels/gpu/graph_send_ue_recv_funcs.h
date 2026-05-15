@@ -14,8 +14,12 @@
 // limitations under the License.
 
 #pragma once
+// thrust headers require nvcc/hipcc
+// (rocThrust 7.0+ pulls in rocprim)
+#if defined(__NVCC__) || defined(__HIPCC__)
 #include <thrust/device_vector.h>
 #include <thrust/fill.h>
+#endif
 
 #include "paddle/common/hostdevice.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -109,14 +113,14 @@ struct GraphSendUERecvSumCUDAFunctor {
 template <typename T>
 struct GraphSendUERecvMaxCUDAFunctor {
   DEVICE inline void operator()(T* output, T val) {
-    phi::CudaAtomicMax(output, val);
+    CudaAtomicMax(output, val);
   }
 };
 
 template <typename T>
 struct GraphSendUERecvMinCUDAFunctor {
   DEVICE inline void operator()(T* output, T val) {
-    phi::CudaAtomicMin(output, val);
+    CudaAtomicMin(output, val);
   }
 };
 

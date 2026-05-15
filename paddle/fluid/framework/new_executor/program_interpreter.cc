@@ -60,7 +60,7 @@ namespace paddle::framework {
 #define PROCESS_GROUP paddle::distributed::ProcessGroupNCCL
 #endif
 
-ProgramInterpreter::ProgramInterpreter(const phi::Place& place,
+ProgramInterpreter::ProgramInterpreter(const Place& place,
                                        const BlockDesc& block,
                                        framework::Scope* scope,
                                        const ExecutionConfig& execution_config)
@@ -1441,7 +1441,7 @@ void ProgramInterpreter::RecordStreamForGC(const Instruction& instr) {
       return;
     }
 
-    const phi::Place& place = allocation->place();
+    const Place& place = allocation->place();
     if (phi::is_gpu_place(place)) {
       memory::RecordStream(allocation, stream);
     } else if (phi::is_cuda_pinned_place(place)) {

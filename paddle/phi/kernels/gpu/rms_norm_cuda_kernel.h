@@ -430,6 +430,11 @@ void launch_vectorized_rms_norm_kernel_driver(int N,
   vectorized_rms_norm_kernel<T, T_ACC, kVecSize>
       <<<blocks, threads, nshared, stream>>>(
           N, eps, X_data, scale_data, rstd_data, Y_data);
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_GPU_SUCCESS(hipGetLastError());
+#else
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+#endif
 }
 
 struct WelfordDataLN {
@@ -709,6 +714,11 @@ void launch_vectorized_layer_norm_kernel_driver(int N,
   vectorized_layer_norm_kernel<T, T_ACC, kVecSize>
       <<<blocks, threads, nshared, stream>>>(
           N, eps, X_data, gamma_data, beta_data, mean_data, var_data, Y_data);
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_GPU_SUCCESS(hipGetLastError());
+#else
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+#endif
 }
 
 template <typename T, typename Context>
@@ -723,6 +733,11 @@ void LayerNormFwdCompatKernel(
     T* y_data,
     typename phi::dtype::MPTypeTrait<T>::Type* mean_data,
     typename phi::dtype::MPTypeTrait<T>::Type* var_data) {
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_GPU_SUCCESS(hipGetLastError());
+#else
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+#endif
   using T_ACC = typename phi::dtype::MPTypeTrait<T>::Type;
 
   if (rows == 0 || cols == 0) {
@@ -763,7 +778,11 @@ void LayerNormFwdCompatKernel(
     LayerNormRowwiseMomentsCUDAKernel<T, T_ACC>
         <<<rows, kCUDABlockReduceNumThreads, 0, stream>>>(
             cols, static_cast<T_ACC>(epsilon), x_data, mean_data, var_data);
-
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_GPU_SUCCESS(hipGetLastError());
+#else
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+#endif
     LayerNormForwardCUDAKernel<T, T_ACC>
         <<<rows, kCUDANumThreads, 0, stream>>>(cols,
                                                x_data,
@@ -773,6 +792,11 @@ void LayerNormFwdCompatKernel(
                                                gamma_data,
                                                beta_data,
                                                y_data);
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_GPU_SUCCESS(hipGetLastError());
+#else
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+#endif
   }
 }
 
@@ -1184,6 +1208,11 @@ void ConfigureAndLaunchScaleBackwardKernel(const T* dY_data,
                                       true>
           <<<blocks, threads, shmem_sz, cuda_stream>>>(
               M, N, dY_data, X_data, rstd_data, dscale_data);
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_GPU_SUCCESS(hipGetLastError());
+#else
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+#endif
     } else {
       ScaleBackwardCUDAKernelTemplate<T,
                                       T_ACC,
@@ -1194,6 +1223,11 @@ void ConfigureAndLaunchScaleBackwardKernel(const T* dY_data,
                                       false>
           <<<blocks, threads, shmem_sz, cuda_stream>>>(
               M, N, dY_data, X_data, rstd_data, dscale_data);
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_GPU_SUCCESS(hipGetLastError());
+#else
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+#endif
     }
   } else {
     if (aligned_grid) {
@@ -1206,6 +1240,11 @@ void ConfigureAndLaunchScaleBackwardKernel(const T* dY_data,
                                       true>
           <<<blocks, threads, shmem_sz, cuda_stream>>>(
               M, N, dY_data, X_data, rstd_data, dscale_data);
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_GPU_SUCCESS(hipGetLastError());
+#else
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+#endif
     } else {
       ScaleBackwardCUDAKernelTemplate<T,
                                       T_ACC,
@@ -1216,6 +1255,11 @@ void ConfigureAndLaunchScaleBackwardKernel(const T* dY_data,
                                       false>
           <<<blocks, threads, shmem_sz, cuda_stream>>>(
               M, N, dY_data, X_data, rstd_data, dscale_data);
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_GPU_SUCCESS(hipGetLastError());
+#else
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+#endif
     }
   }
 }
@@ -1232,7 +1276,12 @@ void RMSNormFwdKernel(const Context& dev_ctx,
                       double epsilon,
                       DenseTensor* y,
                       DenseTensor* invvar) {
-  using T_ACC = typename phi::dtype::MPTypeTrait<T>::Type;
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_GPU_SUCCESS(hipGetLastError());
+#else
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+#endif
+  using T_ACC = typename MPTypeTrait<T>::Type;
 
   if (x.numel() == 0) {
     dev_ctx.template Alloc<T>(y);
@@ -1265,8 +1314,8 @@ void RMSNormFwdKernel(const Context& dev_ctx,
     bool can_vec_X2 = can_vectorize(x_data, alignment2);
     bool can_vec_Y2 = can_vectorize(y_data, alignment2);
     bool can_vec_scale2 = can_vectorize(scale_data, alignment2);
-    bool is_supported_type2 = (std::is_same<T, phi::dtype::float16>::value ||
-                               std::is_same<T, phi::dtype::bfloat16>::value);
+    bool is_supported_type2 = (std::is_same<T, dtype::float16>::value ||
+                               std::is_same<T, dtype::bfloat16>::value);
     if (is_supported_type2 &&
         cols <=
             static_cast<int64_t>(1ULL << std::numeric_limits<float>::digits) &&
@@ -1292,8 +1341,8 @@ void RMSNormFwdKernel(const Context& dev_ctx,
   bool can_vec_Y = can_vectorize(y_data, alignment);
   bool can_vec_scale = can_vectorize(scale_data, alignment);
   bool is_supported_type = (std::is_same<T, float>::value ||
-                            std::is_same<T, phi::dtype::float16>::value ||
-                            std::is_same<T, phi::dtype::bfloat16>::value);
+                            std::is_same<T, dtype::float16>::value ||
+                            std::is_same<T, dtype::bfloat16>::value);
 
   if (is_supported_type &&
       cols <=
@@ -1313,9 +1362,19 @@ void RMSNormFwdKernel(const Context& dev_ctx,
     RowwiseMomentsCUDAKernel<T, T_ACC>
         <<<rows, kCUDABlockReduceNumThreads, 0, stream>>>(
             cols, static_cast<T_ACC>(epsilon), x_data, rstd_data);
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_GPU_SUCCESS(hipGetLastError());
+#else
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+#endif
 
     RMSNormForwardCUDAKernel<T, T_ACC><<<rows, kCUDANumThreads, 0, stream>>>(
         cols, x_data, rstd_data, scale_data, y_data);
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_GPU_SUCCESS(hipGetLastError());
+#else
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+#endif
   }
 }
 
@@ -1329,7 +1388,12 @@ void RMSNormBwdKernel(const Context& dev_ctx,
                       double epsilon,
                       DenseTensor* dX,
                       DenseTensor* dscale) {
-  using T_ACC = typename phi::dtype::MPTypeTrait<T>::Type;
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_GPU_SUCCESS(hipGetLastError());
+#else
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+#endif
+  using T_ACC = typename MPTypeTrait<T>::Type;
 
   if (X.numel() == 0) {
     if (dX) {
@@ -1374,16 +1438,16 @@ void RMSNormBwdKernel(const Context& dev_ctx,
                            can_vectorize(scale_data, alignment) &&
                            can_vectorize(dX_data, alignment);
     bool is_supported_type = (std::is_same<T, float>::value ||
-                              std::is_same<T, phi::dtype::float16>::value ||
-                              std::is_same<T, phi::dtype::bfloat16>::value);
+                              std::is_same<T, dtype::float16>::value ||
+                              std::is_same<T, dtype::bfloat16>::value);
 
     const unsigned int alignment2 = sizeof(T) * 8;
     bool bAlignedBuffers2 = can_vectorize(dY_data, alignment2) &&
                             can_vectorize(X_data, alignment2) &&
                             can_vectorize(scale_data, alignment2) &&
                             can_vectorize(dX_data, alignment2);
-    bool is_supported_type2 = (std::is_same<T, phi::dtype::float16>::value ||
-                               std::is_same<T, phi::dtype::bfloat16>::value);
+    bool is_supported_type2 = (std::is_same<T, dtype::float16>::value ||
+                               std::is_same<T, dtype::bfloat16>::value);
 
     dim3 blocks(M);
     constexpr int num_threads = 128;
@@ -1396,14 +1460,29 @@ void RMSNormBwdKernel(const Context& dev_ctx,
       rms_norm_grad_input_kernel_vectorized<T, T_ACC, 8>
           <<<blocks, num_threads, nshared, stream>>>(
               dY_data, X_data, invvar_data, scale_data, dX_data, N);
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_GPU_SUCCESS(hipGetLastError());
+#else
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+#endif
     } else if (is_supported_type && bAlignedBuffers && bVectorSizeMultiple) {
       rms_norm_grad_input_kernel_vectorized<T, T_ACC, kVecSize>
           <<<blocks, num_threads, nshared, stream>>>(
               dY_data, X_data, invvar_data, scale_data, dX_data, N);
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_GPU_SUCCESS(hipGetLastError());
+#else
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+#endif
     } else {
       rms_norm_grad_input_kernel<T, T_ACC>
           <<<blocks, num_threads, nshared, stream>>>(
               dY_data, X_data, invvar_data, scale_data, dX_data, N);
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_GPU_SUCCESS(hipGetLastError());
+#else
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+#endif
     }
   }
 
@@ -1437,6 +1516,11 @@ void RMSNormBwdKernel(const Context& dev_ctx,
                                         true,
                                         true><<<blocks, threads, 0, stream>>>(
             M, N, dY_data, X_data, invvar_data, dscale_blocks_ptr);
+#ifdef PADDLE_WITH_HIP
+        PADDLE_ENFORCE_GPU_SUCCESS(hipGetLastError());
+#else
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+#endif
       } else {
         ScaleBackwardCUDAKernelTemplate<T,
                                         T_ACC,
@@ -1446,10 +1530,15 @@ void RMSNormBwdKernel(const Context& dev_ctx,
                                         true,
                                         false><<<blocks, threads, 0, stream>>>(
             M, N, dY_data, X_data, invvar_data, dscale_blocks_ptr);
+#ifdef PADDLE_WITH_HIP
+        PADDLE_ENFORCE_GPU_SUCCESS(hipGetLastError());
+#else
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+#endif
       }
 
       // Sum reduction along blocks.y dimension to get final dscale
-      phi::SumKernel<T, Context>(
+      SumKernel<T, Context>(
           dev_ctx, dscale_blocks, {0}, dscale->dtype(), false, dscale);
 
     } else {
@@ -1794,15 +1883,15 @@ template <typename T,
           unsigned int rows_per_block_y,
           bool partial_reduction,
           bool aligned_grid>
-__global__ void GammaBetaBackwardCUDAKernelTemplate(
-    int64_t M,
-    int64_t N,
-    const T* __restrict__ dY,
-    const T* __restrict__ X,
-    const T_ACC* __restrict__ mean,
-    const T_ACC* __restrict__ rstd,
-    T* __restrict__ dgamma,
-    T* __restrict__ dbeta) {
+__global__ void __launch_bounds__(block_dim_x* block_dim_y)
+    GammaBetaBackwardCUDAKernelTemplate(int64_t M,
+                                        int64_t N,
+                                        const T* __restrict__ dY,
+                                        const T* __restrict__ X,
+                                        const T_ACC* __restrict__ mean,
+                                        const T_ACC* __restrict__ rstd,
+                                        T* __restrict__ dgamma,
+                                        T* __restrict__ dbeta) {
   constexpr int rows_per_thread_y = rows_per_block_y / block_dim_y;
   static_assert(rows_per_thread_y <= kWarpSize);
 
@@ -1943,6 +2032,11 @@ void ConfigureAndLaunchGammaBetaBackwardKernel(const T* dY_data,
                                                        rstd_data,
                                                        dgamma_data,
                                                        dbeta_data);
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_GPU_SUCCESS(hipGetLastError());
+#else
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+#endif
     } else {
       GammaBetaBackwardCUDAKernelTemplate<T,
                                           T_ACC,
@@ -1959,6 +2053,11 @@ void ConfigureAndLaunchGammaBetaBackwardKernel(const T* dY_data,
                                                        rstd_data,
                                                        dgamma_data,
                                                        dbeta_data);
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_GPU_SUCCESS(hipGetLastError());
+#else
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+#endif
     }
   } else {
     if (aligned_grid) {
@@ -1977,6 +2076,11 @@ void ConfigureAndLaunchGammaBetaBackwardKernel(const T* dY_data,
                                                        rstd_data,
                                                        dgamma_data,
                                                        dbeta_data);
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_GPU_SUCCESS(hipGetLastError());
+#else
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+#endif
     } else {
       GammaBetaBackwardCUDAKernelTemplate<T,
                                           T_ACC,
@@ -1993,6 +2097,11 @@ void ConfigureAndLaunchGammaBetaBackwardKernel(const T* dY_data,
                                                        rstd_data,
                                                        dgamma_data,
                                                        dbeta_data);
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_GPU_SUCCESS(hipGetLastError());
+#else
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+#endif
     }
   }
 }
@@ -2011,6 +2120,11 @@ void LayerNormBwdCompatKernel(
     double epsilon,
     int64_t rows,
     int64_t cols) {
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_GPU_SUCCESS(hipGetLastError());
+#else
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+#endif
   using T_ACC = typename phi::dtype::MPTypeTrait<T>::Type;
   if (rows == 0 || cols == 0) return;
   auto stream = dev_ctx.stream();
@@ -2028,6 +2142,11 @@ void LayerNormBwdCompatKernel(
     int64_t num_blocks = (M + kBlockSize - 1) / kBlockSize;
     VarToRstdKernel<T_ACC><<<num_blocks, kBlockSize, 0, stream>>>(
         var_data, static_cast<T_ACC>(epsilon), rstd_data, M);
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_GPU_SUCCESS(hipGetLastError());
+#else
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+#endif
   }
 
   // Step 2: Compute dX using vectorized or non-vectorized kernel
@@ -2059,6 +2178,11 @@ void LayerNormBwdCompatKernel(
       layer_norm_grad_input_kernel_vectorized<T, T_ACC, kVecSize>
           <<<blocks, num_threads, nshared, stream>>>(
               dY_data, X_data, mean_data, rstd_data, gamma_data, dX_data, N);
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_GPU_SUCCESS(hipGetLastError());
+#else
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+#endif
     } else {
       layer_norm_grad_input_kernel<T, T_ACC>
           <<<blocks, num_threads, nshared, stream>>>(
@@ -2112,6 +2236,11 @@ void LayerNormBwdCompatKernel(
                                              rstd_data,
                                              dgamma_blocks_ptr,
                                              dbeta_blocks_ptr);
+#ifdef PADDLE_WITH_HIP
+        PADDLE_ENFORCE_GPU_SUCCESS(hipGetLastError());
+#else
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+#endif
       } else {
         GammaBetaBackwardCUDAKernelTemplate<T,
                                             T_ACC,
@@ -2128,6 +2257,11 @@ void LayerNormBwdCompatKernel(
                                              rstd_data,
                                              dgamma_blocks_ptr,
                                              dbeta_blocks_ptr);
+#ifdef PADDLE_WITH_HIP
+        PADDLE_ENFORCE_GPU_SUCCESS(hipGetLastError());
+#else
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+#endif
       }
 
       // Sum reduction along blocks.y dimension to get final dgamma/dbeta.

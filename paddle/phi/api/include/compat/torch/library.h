@@ -871,7 +871,7 @@ class PADDLE_API OperatorRegistry {
   }
 };
 
-class Library {
+class PADDLE_API Library {
  public:
   enum Kind {
     DEF,      // TORCH_LIBRARY

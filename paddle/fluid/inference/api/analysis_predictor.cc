@@ -18,7 +18,6 @@
 
 #include <algorithm>
 #include <cstdlib>
-#include <filesystem>
 #include <fstream>
 #include <memory>
 #include <set>
@@ -64,6 +63,7 @@
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/memory/memcpy.h"
 #include "paddle/phi/core/platform/cpu_helper.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
@@ -71,8 +71,6 @@
 #include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/core/platform/profiler.h"
 #include "paddle/phi/core/tensor_utils.h"
-
-#include "paddle/phi/core/generator.h"
 #include "paddle/phi/kernels/funcs/data_type_transform.h"
 #include "paddle/utils/string/split.h"
 
@@ -470,13 +468,10 @@ bool AnalysisPredictor::Init(
   } else if (!config_.model_dir().empty()) {
     std::string model_dir = config_.model_dir();
     load_pir_model_ = false;
-    for (const auto &entry : std::filesystem::directory_iterator(model_dir)) {
-      if (entry.is_regular_file() &&
-          entry.path().filename() == "__model__.json") {
-        load_pir_model_ = true;
-        config_.SetProgFile(config_.model_dir() + "/__model__.json");
-        break;
-      }
+    std::string model_json_path = model_dir + "/__model__.json";
+    if (paddle::inference::IsFileExists(model_json_path)) {
+      load_pir_model_ = true;
+      config_.SetProgFile(model_json_path);
     }
   }
   if (load_pir_model_) {
@@ -495,7 +490,8 @@ bool AnalysisPredictor::Init(
     }
     std::string optimized_params =
         optimized_model_path + "/" + "_optimized.pdiparams";
-    if (FileExists(optimized_model) && FileExists(optimized_params)) {
+    if (paddle::inference::IsFileExists(optimized_model) &&
+        paddle::inference::IsFileExists(optimized_params)) {
       config_.SetModel(optimized_model, optimized_params);
       if (config_.new_ir_enabled()) {
         load_pir_model_ = true;
@@ -1379,7 +1375,7 @@ bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
       }
 
     } else {
-      if (std::filesystem::exists(config_.params_file())) {
+      if (paddle::inference::IsFileExists(config_.params_file())) {
         pir::LoadCombineFunction(config_.params_file(),
                                  filter_param_names,
                                  &tensor_out,

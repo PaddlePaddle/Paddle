@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING, overload
 import paddle
 from paddle import _C_ops
 from paddle._C_ops import poisson  # noqa: F401
-from paddle.base.framework import _current_expected_place
+from paddle.base.framework import _current_expected_place, _to_pinned_place
 from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import Variable
 from paddle.framework import (
@@ -1059,22 +1059,8 @@ def randn(
         if device is not None
         else _current_expected_place()
     )
-    if (
-        pin_memory
-        and in_dynamic_mode()
-        and device is not None
-        and not isinstance(device, (core.CUDAPinnedPlace, core.XPUPinnedPlace))
-    ):
-        if isinstance(device, core.CUDAPlace) or (
-            isinstance(device, core.Place) and device.is_gpu_place()
-        ):
-            device = core.CUDAPinnedPlace()
-        elif isinstance(device, core.XPUPlace) or (
-            isinstance(device, core.Place) and device.is_xpu_place()
-        ):
-            device = core.XPUPinnedPlace()
-        else:
-            raise RuntimeError(f"Pinning memory is not supported for {device}")
+    if pin_memory and in_dynamic_mode() and device is not None:
+        device = _to_pinned_place(device)
     tensor = standard_normal(
         shape,
         dtype,
@@ -1897,21 +1883,8 @@ def randint(
         if device is not None
         else _current_expected_place()
     )
-    if (
-        pin_memory
-        and in_dynamic_mode()
-        and not isinstance(place, (core.CUDAPinnedPlace, core.XPUPinnedPlace))
-    ):
-        if isinstance(place, core.CUDAPlace) or (
-            isinstance(place, core.Place) and place.is_gpu_place()
-        ):
-            place = core.CUDAPinnedPlace()
-        elif isinstance(place, core.XPUPlace) or (
-            isinstance(place, core.Place) and place.is_xpu_place()
-        ):
-            place = core.XPUPinnedPlace()
-        else:
-            raise RuntimeError(f"Pinning memory is not supported for {place}")
+    if pin_memory and in_dynamic_mode():
+        place = _to_pinned_place(place)
 
     if in_dynamic_mode():
         shape = paddle.utils.convert_shape_to_list(shape)
@@ -2290,22 +2263,8 @@ def randperm(
         if device is not None
         else _current_expected_place()
     )
-    if (
-        pin_memory
-        and in_dynamic_mode()
-        and device is not None
-        and not isinstance(device, (core.CUDAPinnedPlace, core.XPUPinnedPlace))
-    ):
-        if isinstance(device, core.CUDAPlace) or (
-            isinstance(device, core.Place) and device.is_gpu_place()
-        ):
-            device = core.CUDAPinnedPlace()
-        elif isinstance(device, core.XPUPlace) or (
-            isinstance(device, core.Place) and device.is_xpu_place()
-        ):
-            device = core.XPUPinnedPlace()
-        else:
-            raise RuntimeError(f"Pinning memory is not supported for {device}")
+    if pin_memory and in_dynamic_mode() and device is not None:
+        device = _to_pinned_place(device)
 
     if not isinstance(dtype, (core.VarDesc.VarType, paddle.pir.core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
@@ -2449,22 +2408,8 @@ def rand(
         if device is not None
         else _current_expected_place()
     )
-    if (
-        pin_memory
-        and in_dynamic_mode()
-        and device is not None
-        and not isinstance(device, (core.CUDAPinnedPlace, core.XPUPinnedPlace))
-    ):
-        if isinstance(device, core.CUDAPlace) or (
-            isinstance(device, core.Place) and device.is_gpu_place()
-        ):
-            device = core.CUDAPinnedPlace()
-        elif isinstance(device, core.XPUPlace) or (
-            isinstance(device, core.Place) and device.is_xpu_place()
-        ):
-            device = core.XPUPinnedPlace()
-        else:
-            raise RuntimeError(f"Pinning memory is not supported for {device}")
+    if pin_memory and in_dynamic_mode() and device is not None:
+        device = _to_pinned_place(device)
     tensor = uniform(
         shape=shape,
         dtype=dtype,
@@ -2493,14 +2438,10 @@ def exponential_(
 
         f(x) = \lambda e^{-\lambda x}
 
-    .. note::
-        Alias Support: The parameter name ``lambd`` can be used as an alias for ``lam``.
-        For example, ``exponential_(tensor_x, lambd=1.0, ...)`` is equivalent to ``exponential_(tensor_x, lam=1.0, ...)``.
-
     Args:
         x(Tensor):  Input tensor. The data type should be float32, float64.
-        lam(float, optional): :math:`\lambda` parameter of Exponential Distribution. Default, 1.0.
-            alias: ``lambd``.
+        lam(float, optional): :math:`\lambda` parameter of Exponential Distribution. Default: 1.0.
+            Alias: ``lambd``.
         name(str|None, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.

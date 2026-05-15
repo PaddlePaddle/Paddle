@@ -63,7 +63,10 @@ class TestCDLPackExchangeAPI(unittest.TestCase):
         """
 
         mod: Module = tvm_ffi.cpp.load_inline(
-            name='mod', cpp_sources=cpp_source, functions='add_one_cpu'
+            name='mod',
+            cpp_sources=cpp_source,
+            functions='add_one_cpu',
+            keep_module_alive=False,
         )
 
         x = paddle.full((3,), 1.0, dtype='float32').cpu()
@@ -141,11 +144,23 @@ class TestCDLPackExchangeAPI(unittest.TestCase):
             }
         """
         mod: Module = tvm_ffi.cpp.load_inline(
-            name='mod', cpp_sources=cpp_source, functions=['add_one_cpu']
+            name='mod',
+            cpp_sources=cpp_source,
+            functions=['add_one_cpu'],
+            keep_module_alive=False,
         )
-        x = paddle.full((3,), 1.0, dtype='float32').cpu()
-        y = mod.add_one_cpu(x)
-        np.testing.assert_allclose(y.numpy(), [2.0, 2.0, 2.0])
+
+        def run_check():
+            """Must run in a separate function to ensure deletion happens before mod unloads.
+
+            When a module returns an object, the object deleter address is part of the
+            loaded library. We need to keep the module loaded until the object is deleted.
+            """
+            x = paddle.full((3,), 1.0, dtype='float32').cpu()
+            y = mod.add_one_cpu(x)
+            np.testing.assert_allclose(y.numpy(), [2.0, 2.0, 2.0])
+
+        run_check()
 
 
 class TestDLPackDataType(unittest.TestCase):
@@ -191,7 +206,10 @@ class TestDLPackDataType(unittest.TestCase):
             }
         """
         mod: Module = tvm_ffi.cpp.load_inline(
-            name='mod', cpp_sources=cpp_source, functions='check_dtype'
+            name='mod',
+            cpp_sources=cpp_source,
+            functions='check_dtype',
+            keep_module_alive=False,
         )
         for dtype in [
             paddle.bool,
@@ -251,7 +269,10 @@ class TestDLPackDeviceType(unittest.TestCase):
             }
         """
         mod: Module = tvm_ffi.cpp.load_inline(
-            name='mod', cpp_sources=cpp_source, functions='check_device'
+            name='mod',
+            cpp_sources=cpp_source,
+            functions='check_device',
+            keep_module_alive=False,
         )
 
         x_cpu = paddle.zeros((10,), dtype='float32').cpu()

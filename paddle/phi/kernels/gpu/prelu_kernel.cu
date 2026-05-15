@@ -51,21 +51,18 @@ void PReluKernel(const Context& dev_ctx,
     size_t channel = channel_last ? dim[x_rank - 1] : dim[1];
     if (channel_last) {
       auto func = PReluChannelLastWiseCUDAFunctor<T>(x_ptr, alpha_ptr, channel);
-      phi::IndexKernel<T, PReluChannelLastWiseCUDAFunctor<T>>(
-          dev_ctx, out, func);
+      IndexKernel<T, PReluChannelLastWiseCUDAFunctor<T>>(dev_ctx, out, func);
     } else {
       size_t plane_size = numel / dim[0] / channel;
       auto func = PReluChannelFirstWiseCUDAFunctor<T>(
           x_ptr, alpha_ptr, numel, channel, plane_size);
-      phi::IndexKernel<T, PReluChannelFirstWiseCUDAFunctor<T>>(
-          dev_ctx, out, func);
+      IndexKernel<T, PReluChannelFirstWiseCUDAFunctor<T>>(dev_ctx, out, func);
     }
   } else if (mode == "element") {
     size_t spatial_size = numel / dim[0];
     auto func =
         PreluElementWiseDirectCUDAFunctor<T>(x_ptr, alpha_ptr, spatial_size);
-    phi::IndexKernel<T, PreluElementWiseDirectCUDAFunctor<T>>(
-        dev_ctx, out, func);
+    IndexKernel<T, PreluElementWiseDirectCUDAFunctor<T>>(dev_ctx, out, func);
   } else {
     std::vector<const DenseTensor*> ins = {&x};
     std::vector<DenseTensor*> outs = {out};

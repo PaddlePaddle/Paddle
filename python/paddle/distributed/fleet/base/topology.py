@@ -869,7 +869,6 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
         self._sharding_parallel_id = self._get_sharding_parallel_id()
         self._sep_parallel_id = self._get_parallel_id(self._dense_topo, "sep")
 
-        self._cp_parallel_id = self._get_parallel_id(self._cp_topo, "context")
         self._cp_sharding_degree = self._cp_topo.get_dim("cp_sharding")
 
         self.stage_id = self._get_parallel_id(self._moe_topo, "pipe")
@@ -1031,6 +1030,8 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
                     ),
                 )
             )
+
+        self._cp_parallel_id = self._cp_group.index(self.global_rank)
 
         self._cp_sharding_group, self._cp_sharding_comm_group = (
             self.build_context_sharding_group(

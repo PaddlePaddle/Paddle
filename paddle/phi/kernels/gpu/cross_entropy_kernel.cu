@@ -40,7 +40,7 @@ enum class SoftmaxMode { kSoftmax, kLogSoftmax, kCrossEntropy };
 // Wrapper of log function. Use log(float32) for float16
 template <typename T>
 static __device__ __forceinline__ T Log(T x) {
-  using AccT = typename dtype::MPTypeTrait<T>::Type;
+  using AccT = typename MPTypeTrait<T>::Type;
   AccT logx = std::log(static_cast<AccT>(x));
   return funcs::TolerableValue<T>()(static_cast<T>(logx));
 }
@@ -48,7 +48,7 @@ static __device__ __forceinline__ T Log(T x) {
 // Wrapper of exp function. Use exp(float32) for float16
 template <typename T>
 static __device__ __forceinline__ T Exp(T x) {
-  using AccT = typename dtype::MPTypeTrait<T>::Type;
+  using AccT = typename MPTypeTrait<T>::Type;
   AccT expx = std::exp(static_cast<AccT>(x));
   return funcs::TolerableValue<T>()(static_cast<T>(expx));
 }
@@ -313,7 +313,7 @@ template <typename T>
 __device__ __forceinline__ T WarpReduceSumDown(T val) {
 #pragma unroll
   for (int offset = warpSize / 2; offset > 0; offset >>= 1) {
-    val += phi::backends::gpu::CudaShuffleDownSync(0xFFFFFFFF, val, offset);
+    val += backends::gpu::CudaShuffleDownSync(0xFFFFFFFF, val, offset);
   }
   return val;
 }
@@ -322,7 +322,7 @@ template <typename T>
 __device__ __forceinline__ T WarpReduceMaxDown(T val) {
 #pragma unroll
   for (int offset = warpSize / 2; offset > 0; offset >>= 1) {
-    T other = phi::backends::gpu::CudaShuffleDownSync(0xFFFFFFFF, val, offset);
+    T other = backends::gpu::CudaShuffleDownSync(0xFFFFFFFF, val, offset);
     val = max(val, other);
   }
   return val;
@@ -940,7 +940,7 @@ void SwitchWarpSoftmaxForwardSoftLabel(const int blocks,
                                        const int stride,
                                        const int element_count,
                                        const int log2_elements) {
-  using AccT = typename dtype::MPTypeTrait<T>::Type;
+  using AccT = typename MPTypeTrait<T>::Type;
   switch (log2_elements) {
     SOFTMAX_WARP_FORWARD_SOFT_CASE(0, T, AccT);
     SOFTMAX_WARP_FORWARD_SOFT_CASE(1, T, AccT);
@@ -1035,10 +1035,10 @@ static void SoftmaxWithCrossEntropySoftLabel(const GPUContext& dev_ctx,
                                    : MIOPEN_SOFTMAX_MODE_CHANNEL;
       PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSoftmaxForward_V2(
           handle,
-          phi::backends::gpu::CudnnDataType<T>::kOne(),
+          backends::gpu::CudnnDataType<T>::kOne(),
           descp,
           logits_data,
-          phi::backends::gpu::CudnnDataType<T>::kZero(),
+          backends::gpu::CudnnDataType<T>::kZero(),
           descp,
           softmax_data,
           MIOPEN_SOFTMAX_LOG,
@@ -1606,7 +1606,7 @@ void SwitchWarpSoftmaxForward(T* loss,
                               const int64_t element_count,
                               const int ignore_index,
                               gpuStream_t stream) {
-  using AccT = typename dtype::MPTypeTrait<T>::Type;
+  using AccT = typename MPTypeTrait<T>::Type;
 
   // use 128 threads per block to maximimize gpu utilization
   const int log2_elements = static_cast<int>(Log2Ceil(element_count));
@@ -1668,7 +1668,7 @@ void LaunchVectorizedSoftmaxForward(StoreT* loss,
                                     const int mid_dim,
                                     const int ignore_index,
                                     gpuStream_t stream) {
-  using AccT = typename dtype::MPTypeTrait<T>::Type;
+  using AccT = typename MPTypeTrait<T>::Type;
   // Use vec_size=4 and block_size=min(mid_dim, 1024) aligned to warp size,
   // matching mainstream framework accumulation order for precision alignment.
   constexpr int vec_size = 4;
@@ -1781,10 +1781,10 @@ static void SoftmaxWithCrossEntropyHardLabel(const GPUContext& dev_ctx,
                                    : MIOPEN_SOFTMAX_MODE_CHANNEL;
       PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSoftmaxForward_V2(
           handle,
-          phi::backends::gpu::CudnnDataType<T>::kOne(),
+          backends::gpu::CudnnDataType<T>::kOne(),
           descp,
           logits_data,
-          phi::backends::gpu::CudnnDataType<T>::kZero(),
+          backends::gpu::CudnnDataType<T>::kZero(),
           descp,
           softmax_data,
           MIOPEN_SOFTMAX_LOG,

@@ -23,17 +23,15 @@ limitations under the License. */
 
 namespace phi::distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 SpmdInfo LayerNormInferSpmd(const DistMetaTensor& x,
                             const DistMetaTensor& scale,
                             const DistMetaTensor& bias,
                             double epsilon,
                             int begin_norm_axis) {
   // Step0: verify input args based on layer_norm logic
-  auto x_shape = common::vectorize(x.dims());
-  auto scale_shape = common::vectorize(scale.dims());
-  auto bias_shape = common::vectorize(bias.dims());
+  auto x_shape = vectorize(x.dims());
+  auto scale_shape = vectorize(scale.dims());
+  auto bias_shape = vectorize(bias.dims());
   int x_ndim = static_cast<int>(x_shape.size());
   int scale_ndim = static_cast<int>(scale_shape.size());
   int bias_ndim = static_cast<int>(bias_shape.size());
@@ -157,10 +155,10 @@ SpmdInfo LayerNormInferSpmdReverse(const DistMetaTensor& x,
                                    double epsilon,
                                    int begin_norm_axis) {
   // Step0: Verify input args based on layer_norm logic
-  auto x_shape = common::vectorize(x.dims());
-  auto out_shape = common::vectorize(out.dims());
-  auto mean_shape = common::vectorize(mean.dims());
-  auto variance_shape = common::vectorize(variance.dims());
+  auto x_shape = vectorize(x.dims());
+  auto out_shape = vectorize(out.dims());
+  auto mean_shape = vectorize(mean.dims());
+  auto variance_shape = vectorize(variance.dims());
   int x_ndim = static_cast<int>(x_shape.size());
   int out_ndim = static_cast<int>(out_shape.size());
   int mean_ndim = static_cast<int>(mean_shape.size());
@@ -301,7 +299,7 @@ SpmdInfo LayerNormGradInferSpmd(const DistMetaTensor& x,
                                 double epsilon,
                                 int begin_norm_axis) {
   auto get_shape = [](const auto& meta) {
-    return common::vectorize<int64_t>(meta.dims());
+    return vectorize<int64_t>(meta.dims());
   };
   // 1、check tensors shapes
   auto x_shape = get_shape(x);

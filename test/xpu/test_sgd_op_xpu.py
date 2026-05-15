@@ -40,7 +40,7 @@ class XPUTestSgdOp(XPUOpTestWrapper):
             self.conf()
             w = np.random.random((self.h, self.w)).astype(self.dtype)
             g = np.random.random((self.h, self.w)).astype(self.dtype)
-            lr = np.array([0.1]).astype(self.dtype)
+            lr = np.array([0.1]).astype('float32')
 
             self.inputs = {'Param': w, 'Grad': g, 'LearningRate': lr}
             self.outputs = {'ParamOut': w - lr * g}

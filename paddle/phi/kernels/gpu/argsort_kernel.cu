@@ -21,6 +21,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/cub.h"
@@ -29,6 +30,25 @@
 #include "paddle/phi/kernels/transpose_kernel.h"
 
 #ifdef __HIPCC__
+#include <rocprim/config.hpp>
+#if defined(ROCPRIM_VERSION) && ROCPRIM_VERSION >= 400000
+// rocPRIM 4.x (ROCm 7.0+) replaces detail::radix_key_codec_base
+// with traits::define for non-builtin / wrapper types.
+namespace rocprim {
+namespace traits {
+template <>
+struct define<phi::float16> {
+  using float_bit_mask =
+      float_bit_mask::values<uint16_t, 0x8000, 0x7C00, 0x03FF>;
+};
+template <>
+struct define<phi::bfloat16> {
+  using float_bit_mask =
+      float_bit_mask::values<uint16_t, 0x8000, 0x7F80, 0x007F>;
+};
+}  // namespace traits
+}  // namespace rocprim
+#else
 namespace rocprim {
 namespace detail {
 template <>
@@ -48,6 +68,7 @@ struct float_bit_mask<phi::bfloat16> : float_bit_mask<rocprim::bfloat16> {};
 #endif
 }  // namespace detail
 }  // namespace rocprim
+#endif  // ROCPRIM_VERSION
 #else
 // set cub base traits in order to handle float16
 namespace cub {
@@ -283,9 +304,13 @@ void PerSort(const GPUContext& dev_ctx,
              bool stable,
              bool descending) {
 #ifdef PADDLE_WITH_CUDA
-  const auto& exec_policy = thrust::cuda::par.on(dev_ctx.stream());
+  phi::memory_utils::ThrustAllocator<cudaStream_t> allocator(dev_ctx.GetPlace(),
+                                                             dev_ctx.stream());
+  const auto& exec_policy = thrust::cuda::par(allocator).on(dev_ctx.stream());
 #else
-  const auto& exec_policy = thrust::hip::par.on(dev_ctx.stream());
+  phi::memory_utils::ThrustAllocator<hipStream_t> allocator(dev_ctx.GetPlace(),
+                                                            dev_ctx.stream());
+  const auto& exec_policy = thrust::hip::par(allocator).on(dev_ctx.stream());
 #endif
   if (stable) {
     if (descending) {
@@ -349,9 +374,13 @@ void ArgsortKernel(const Context& dev_ctx,
     T* out_data = dev_ctx.template Alloc<T>(output);
     int64_t* ids_data = dev_ctx.template Alloc<int64_t>(indices);
 #ifdef PADDLE_WITH_CUDA
-    const auto& exec_policy = thrust::cuda::par.on(dev_ctx.stream());
+    phi::memory_utils::ThrustAllocator<cudaStream_t> allocator(
+        dev_ctx.GetPlace(), dev_ctx.stream());
+    const auto& exec_policy = thrust::cuda::par(allocator).on(dev_ctx.stream());
 #else
-    const auto& exec_policy = thrust::hip::par.on(dev_ctx.stream());
+    phi::memory_utils::ThrustAllocator<hipStream_t> allocator(
+        dev_ctx.GetPlace(), dev_ctx.stream());
+    const auto& exec_policy = thrust::hip::par(allocator).on(dev_ctx.stream());
 #endif
     auto cu_stream = dev_ctx.stream();
     thrust::sequence(exec_policy, ids_data, ids_data + size);
@@ -375,7 +404,7 @@ void ArgsortKernel(const Context& dev_ctx,
         PerSort<T, int64_t>(
             dev_ctx, out_data, ids_data, start, end, stable, descending);
         if (start != 0) {
-          auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, end);
+          auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, end);
           merge_kernel<<<config.block_per_grid.x,
                          config.thread_per_block.x,
                          0,

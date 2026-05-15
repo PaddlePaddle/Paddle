@@ -24,6 +24,7 @@
 
 #include <ostream>
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/place.h"
 
@@ -100,12 +101,6 @@ class CUDAStream {
 
   Device device() const { return Device(DeviceType::CUDA, device_index()); }
 
-#ifdef PADDLE_WITH_HIP
-  hipStream_t raw_stream() const { return stream(); }
-#else
-  cudaStream_t raw_stream() const { return stream(); }
-#endif
-
   struct c10::StreamData3 pack3() const {
     return stream_.pack3();
   }
@@ -139,66 +134,44 @@ class CUDAStream {
   Stream stream_;
 };
 
-#ifdef PADDLE_WITH_HIP
-inline CUDAStream make_cuda_stream(hipStream_t raw,
-                                   c10::DeviceIndex device_index) {
-  c10::StreamId sid =
-      static_cast<c10::StreamId>(reinterpret_cast<intptr_t>(raw));
-  return CUDAStream(
-      c10::Stream(c10::Stream::UNSAFE,
-                  c10::Device(c10::DeviceType::CUDA, device_index),
-                  sid));
-}
-#else
-inline CUDAStream make_cuda_stream(cudaStream_t raw,
-                                   c10::DeviceIndex device_index) {
-  c10::StreamId sid =
-      static_cast<c10::StreamId>(reinterpret_cast<intptr_t>(raw));
-  return CUDAStream(
-      c10::Stream(c10::Stream::UNSAFE,
-                  c10::Device(c10::DeviceType::CUDA, device_index),
-                  sid));
-}
-#endif
-
 /**
  * Get the current CUDA stream for the passed CUDA device, or for the
  * current device if no device index is passed.
  */
-CUDAStream getCurrentCUDAStream(c10::DeviceIndex device_index = -1);
+PADDLE_API CUDAStream getCurrentCUDAStream(c10::DeviceIndex device_index = -1);
 
 /**
  * Get a new stream from the CUDA stream pool.
  * Priority -1 is high priority, 0 is default/low priority.
  * Matches PyTorch behavior where negative priority = high priority.
  */
-CUDAStream getStreamFromPool(const int priority = 0,
-                             c10::DeviceIndex device_index = -1);
+PADDLE_API CUDAStream getStreamFromPool(const int priority = 0,
+                                        c10::DeviceIndex device_index = -1);
 
 /**
  * Get a new stream from the CUDA stream pool.
  * Bool overload: true = high priority (-1), false = default priority (0).
  */
-CUDAStream getStreamFromPool(const bool isHighPriority,
-                             c10::DeviceIndex device_index = -1);
+PADDLE_API CUDAStream getStreamFromPool(const bool isHighPriority,
+                                        c10::DeviceIndex device_index = -1);
 
 #ifdef PADDLE_WITH_HIP
-CUDAStream getStreamFromExternal(hipStream_t ext_stream,
-                                 c10::DeviceIndex device_index);
+PADDLE_API CUDAStream getStreamFromExternal(hipStream_t ext_stream,
+                                            c10::DeviceIndex device_index);
 #else
-CUDAStream getStreamFromExternal(cudaStream_t ext_stream,
-                                 c10::DeviceIndex device_index);
+PADDLE_API CUDAStream getStreamFromExternal(cudaStream_t ext_stream,
+                                            c10::DeviceIndex device_index);
 #endif
 
 /**
- * Set the current CUDA stream for the device of the given stream in the
- * calling thread.
+ * Set the current CUDA stream for the device of the given stream.
  *
- * Implements per-thread, per-device current stream semantics.
+ * Keeps the compat c10 stream state aligned with Paddle's GPUContext so
+ * Paddle stream guards and c10 callers observe the same current stream.
  */
-void setCurrentCUDAStream(CUDAStream stream);
+PADDLE_API void setCurrentCUDAStream(CUDAStream stream);
 
-CUDAStream getDefaultCUDAStream(c10::DeviceIndex device_index = -1);
+PADDLE_API CUDAStream getDefaultCUDAStream(c10::DeviceIndex device_index = -1);
 
 inline std::ostream& operator<<(std::ostream& stream, const CUDAStream& s) {
   return stream << s.unwrap();
