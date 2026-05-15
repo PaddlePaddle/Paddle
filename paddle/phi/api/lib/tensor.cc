@@ -126,11 +126,26 @@ void Tensor::reshape(const std::vector<int64_t> &shape) {
   }
 }
 
-DataType Tensor::dtype() const { return impl_->dtype(); }
+DataType Tensor::dtype() const {
+  if (impl_ == nullptr) {
+    return DataType::UNDEFINED;
+  }
+  return impl_->dtype();
+}
 
-DataType Tensor::type() const { return impl_->dtype(); }
+DataType Tensor::type() const {
+  if (impl_ == nullptr) {
+    return DataType::UNDEFINED;
+  }
+  return impl_->dtype();
+}
 
-phi::DataLayout Tensor::layout() const { return impl_->layout(); }
+phi::DataLayout Tensor::layout() const {
+  if (impl_ == nullptr) {
+    return phi::DataLayout::UNDEFINED;
+  }
+  return impl_->layout();
+}
 
 bool Tensor::is_dense_tensor() const {
   if (impl_ == nullptr) {

@@ -54,6 +54,18 @@ void StackGradKernel(const Context& dev_ctx,
   }
 
   if (valid_slices.empty()) {
+    // Allocate zero-size grad tensors so downstream nodes receive properly
+    // defined tensors with valid metadata (matching GPU UnStackRawKernel).
+    // Pass requested_size=sizeof(T) to force real allocation; otherwise
+    // Alloc for zero-numel tensors uses zero_allocator_ which may not
+    // create a proper holder, causing downstream null-pointer crashes.
+    for (size_t i = 0; i < x_grad.size(); ++i) {
+      DenseTensor* dx_i = x_grad[i];
+      if (dx_i != nullptr) {
+        dev_ctx.template Alloc<T>(dx_i, sizeof(T));
+        dx_i->Resize(dx_i->dims());
+      }
+    }
     return;
   }
 
