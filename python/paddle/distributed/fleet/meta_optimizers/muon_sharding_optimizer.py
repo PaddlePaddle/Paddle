@@ -392,13 +392,14 @@ class MuonShardingOptimizer:
                 f"per-rank MB: {[f'{mb:.1f}' for mb in _all_MB]} | "
                 f"max memory diff={_imbalance * 100:.2f}%"
             )
-        self.trainer_comms = {}
-        world_size = paddle.distributed.get_world_size()
-        num_trainers = world_size // 8
-        for i in range(num_trainers):
-            ranks = range(i * 8, (i + 1) * 8)
-            group = paddle.distributed.new_group(ranks)
-            self.trainer_comms[i] = group
+        if self.use_group_call_opt:
+            self.trainer_comms = {}
+            world_size = paddle.distributed.get_world_size()
+            num_trainers = world_size // 8
+            for i in range(num_trainers):
+                ranks = range(i * 8, (i + 1) * 8)
+                group = paddle.distributed.new_group(ranks)
+                self.trainer_comms[i] = group
 
     # ------------------------------------------------------------------
     # 2D partition (V1-style greedy)
