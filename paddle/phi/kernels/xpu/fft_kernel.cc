@@ -66,17 +66,21 @@ void FFTC2CKernel(const Context& dev_ctx,
     DenseTensor x_cpu;
     x_cpu.Resize(x.dims());
     auto* x_cpu_ptr = x_cpu.mutable_data<T>(cpu_place);
-    memory_utils::Copy(
-        cpu_place, x_cpu_ptr, dev_ctx.GetPlace(), x.data<T>(),
-        x.numel() * sizeof(T));
+    memory_utils::Copy(cpu_place,
+                       x_cpu_ptr,
+                       dev_ctx.GetPlace(),
+                       x.data<T>(),
+                       x.numel() * sizeof(T));
     DenseTensor out_cpu;
     out_cpu.Resize(out->dims());
     auto* out_cpu_ptr = out_cpu.mutable_data<T>(cpu_place);
     funcs::FFTC2CFunctor<phi::CPUContext, T, T> fft_c2c_func;
     fft_c2c_func(cpu_ctx, x_cpu, &out_cpu, axes, norm_type, forward);
-    memory_utils::Copy(
-        dev_ctx.GetPlace(), out->data<T>(), cpu_place, out_cpu_ptr,
-        out->numel() * sizeof(T));
+    memory_utils::Copy(dev_ctx.GetPlace(),
+                       out->data<T>(),
+                       cpu_place,
+                       out_cpu_ptr,
+                       out->numel() * sizeof(T));
     return;
   }
 
@@ -106,17 +110,21 @@ void FFTC2RKernel(const Context& dev_ctx,
     DenseTensor x_cpu;
     x_cpu.Resize(x.dims());
     auto* x_cpu_ptr = x_cpu.mutable_data<T>(cpu_place);
-    memory_utils::Copy(
-        cpu_place, x_cpu_ptr, dev_ctx.GetPlace(), x.data<T>(),
-        x.numel() * sizeof(T));
+    memory_utils::Copy(cpu_place,
+                       x_cpu_ptr,
+                       dev_ctx.GetPlace(),
+                       x.data<T>(),
+                       x.numel() * sizeof(T));
     DenseTensor out_cpu;
     out_cpu.Resize(out->dims());
     auto* out_cpu_ptr = out_cpu.mutable_data<R>(cpu_place);
     funcs::FFTC2RFunctor<phi::CPUContext, T, R> fft_c2r_func;
     fft_c2r_func(cpu_ctx, x_cpu, &out_cpu, axes, norm_type, forward);
-    memory_utils::Copy(
-        dev_ctx.GetPlace(), out->data<R>(), cpu_place, out_cpu_ptr,
-        out->numel() * sizeof(R));
+    memory_utils::Copy(dev_ctx.GetPlace(),
+                       out->data<R>(),
+                       cpu_place,
+                       out_cpu_ptr,
+                       out->numel() * sizeof(R));
     return;
   }
 
@@ -146,9 +154,11 @@ void FFTR2CKernel(const Context& dev_ctx,
     DenseTensor x_cpu;
     x_cpu.Resize(x.dims());
     auto* x_cpu_ptr = x_cpu.mutable_data<T>(cpu_place);
-    memory_utils::Copy(
-        cpu_place, x_cpu_ptr, dev_ctx.GetPlace(), x.data<T>(),
-        x.numel() * sizeof(T));
+    memory_utils::Copy(cpu_place,
+                       x_cpu_ptr,
+                       dev_ctx.GetPlace(),
+                       x.data<T>(),
+                       x.numel() * sizeof(T));
     DenseTensor out_cpu;
     out_cpu.Resize(out->dims());
     auto* out_cpu_ptr = out_cpu.mutable_data<C>(cpu_place);
@@ -165,16 +175,14 @@ void FFTR2CKernel(const Context& dev_ctx,
       DenseTensor onesided_out_cpu;
       onesided_out_cpu.Resize(onesided_out_shape);
       onesided_out_cpu.mutable_data<C>(cpu_place);
-      fft_r2c_func(
-          cpu_ctx, x_cpu, &onesided_out_cpu, axes, norm_type, forward);
+      fft_r2c_func(cpu_ctx, x_cpu, &onesided_out_cpu, axes, norm_type, forward);
 
       // Use FFTFillConjFunctor directly for CPU (avoid XPU template conflict)
       std::vector<int64_t> src_strides_v =
           vectorize<int64_t>(common::stride(onesided_out_cpu.dims()));
       std::vector<int64_t> dst_strides_v =
           vectorize<int64_t>(common::stride(out_cpu.dims()));
-      std::vector<int64_t> dst_shape_v =
-          vectorize<int64_t>(out_cpu.dims());
+      std::vector<int64_t> dst_shape_v = vectorize<int64_t>(out_cpu.dims());
       auto _is_fft_axis = std::make_unique<bool[]>(out_cpu.dims().size());
       for (const auto i : axes) {
         _is_fft_axis[i] = true;
@@ -193,9 +201,11 @@ void FFTR2CKernel(const Context& dev_ctx,
       for_range(fill_conj_functor);
     }
 
-    memory_utils::Copy(
-        dev_ctx.GetPlace(), out->data<C>(), cpu_place, out_cpu_ptr,
-        out->numel() * sizeof(C));
+    memory_utils::Copy(dev_ctx.GetPlace(),
+                       out->data<C>(),
+                       cpu_place,
+                       out_cpu_ptr,
+                       out->numel() * sizeof(C));
     return;
   }
 

@@ -100,8 +100,7 @@ class FFTConfig {
 
     // Use cufftGetSize instead of cufftGetSizeMany to avoid potential plan
     // corruption from re-specifying all plan parameters on XPU
-    PADDLE_ENFORCE_FFT_SUCCESS(
-        phi::dynload::cufftGetSize(plan(), &ws_size_));
+    PADDLE_ENFORCE_FFT_SUCCESS(phi::dynload::cufftGetSize(plan(), &ws_size_));
   }
 
   FFTConfig(const FFTConfig& other) = delete;
