@@ -62,7 +62,8 @@ _SMI_SKIP = unittest.skipUnless(
 )
 
 
-class TestInfo(_SMI_SKIP, unittest.TestCase):
+@_SMI_SKIP
+class TestInfo(unittest.TestCase):
     """Test the Info helper class.
     测试 Info 辅助类。"""
 
@@ -133,7 +134,8 @@ class TestInfo(_SMI_SKIP, unittest.TestCase):
         self.assertEqual(result, "1,")
 
 
-class TestQuerySmi(_SMI_SKIP, unittest.TestCase):
+@_SMI_SKIP
+class TestQuerySmi(unittest.TestCase):
     """Test query_smi function.
     测试 query_smi 函数。"""
 
@@ -244,7 +246,8 @@ class TestQuerySmi(_SMI_SKIP, unittest.TestCase):
             self.assertEqual(len(result), 1)
 
 
-class TestQueryRocmSmi(_SMI_SKIP, unittest.TestCase):
+@_SMI_SKIP
+class TestQueryRocmSmi(unittest.TestCase):
     """Test query_rocm_smi function.
     测试 query_rocm_smi 函数。"""
 
@@ -328,7 +331,8 @@ class TestQueryRocmSmi(_SMI_SKIP, unittest.TestCase):
             self.assertEqual(len(result), 0)
 
 
-class TestQueryNpuSmi(_SMI_SKIP, unittest.TestCase):
+@_SMI_SKIP
+class TestQueryNpuSmi(unittest.TestCase):
     """Test query_npu_smi function.
     测试 query_npu_smi 函数。"""
 
@@ -410,7 +414,8 @@ class TestQueryNpuSmi(_SMI_SKIP, unittest.TestCase):
             self.assertEqual(len(result), 0)
 
 
-class TestQueryXpuSmi(_SMI_SKIP, unittest.TestCase):
+@_SMI_SKIP
+class TestQueryXpuSmi(unittest.TestCase):
     """Test query_xpu_smi function.
     测试 query_xpu_smi 函数。"""
 
@@ -500,7 +505,8 @@ class TestQueryXpuSmi(_SMI_SKIP, unittest.TestCase):
             self.assertEqual(result[1].index, 3)
 
 
-class TestHasSmiFunctions(_SMI_SKIP, unittest.TestCase):
+@_SMI_SKIP
+class TestHasSmiFunctions(unittest.TestCase):
     """Test has_*_smi helper functions.
     测试 has_*_smi 辅助函数。"""
 
@@ -561,7 +567,8 @@ class TestHasSmiFunctions(_SMI_SKIP, unittest.TestCase):
             self.assertFalse(has_xpu_smi())
 
 
-class TestGetGpuInfo(_SMI_SKIP, unittest.TestCase):
+@_SMI_SKIP
+class TestGetGpuInfo(unittest.TestCase):
     """Test get_gpu_info function.
     测试 get_gpu_info 函数。"""
 
@@ -586,7 +593,8 @@ class TestGetGpuInfo(_SMI_SKIP, unittest.TestCase):
             self.assertEqual(call_kwargs["index"], ["0"])
 
 
-class TestGetGpuUtil(_SMI_SKIP, unittest.TestCase):
+@_SMI_SKIP
+class TestGetGpuUtil(unittest.TestCase):
     """Test get_gpu_util function.
     测试 get_gpu_util 函数。"""
 
@@ -646,7 +654,8 @@ class TestGetGpuUtil(_SMI_SKIP, unittest.TestCase):
             self.assertEqual(result, [])
 
 
-class TestGetGpuProcess(_SMI_SKIP, unittest.TestCase):
+@_SMI_SKIP
+class TestGetGpuProcess(unittest.TestCase):
     """Test get_gpu_process function.
     测试 get_gpu_process 函数。"""
 
