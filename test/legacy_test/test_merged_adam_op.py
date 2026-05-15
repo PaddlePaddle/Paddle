@@ -208,8 +208,11 @@ class TestMergedAdam(unittest.TestCase):
                     )
 
     def test_main(self):
+        places = get_devices()
+        if 'cpu' not in places:
+            places = ['cpu', *places]
         for multi_precision in [False, True]:
-            for place in get_devices():
+            for place in places:
                 self.check_with_place(place, multi_precision)
 
 
