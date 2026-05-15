@@ -124,7 +124,7 @@ class BCEWithLogitsLoss(Layer):
     name: str | None
 
     @legacy_reduction_decorator(
-        args_list=[
+        overload_args_list=[
             'weight',
             'size_average',
             'reduce',
@@ -440,7 +440,7 @@ class CrossEntropyLoss(Layer):
     name: str | None
 
     @legacy_reduction_decorator(
-        args_list=[
+        overload_args_list=[
             'weight',
             'size_average',
             'ignore_index',
@@ -693,7 +693,7 @@ class MSELoss(Layer):
     reduction: _ReduceMode
 
     @legacy_reduction_decorator(
-        args_list=['size_average', 'reduce', 'reduction'],
+        overload_args_list=['size_average', 'reduce', 'reduction'],
         is_method=True,
     )
     def __init__(self, reduction: _ReduceMode = 'mean'):
@@ -800,7 +800,7 @@ class L1Loss(Layer):
     name: str | None
 
     @legacy_reduction_decorator(
-        args_list=['size_average', 'reduce', 'reduction'],
+        overload_args_list=['size_average', 'reduce', 'reduction'],
         is_method=True,
     )
     def __init__(
@@ -894,7 +894,7 @@ class BCELoss(Layer):
     name: str | None
 
     @legacy_reduction_decorator(
-        args_list=['weight', 'size_average', 'reduce', 'reduction'],
+        overload_args_list=['weight', 'size_average', 'reduce', 'reduction'],
         is_method=True,
     )
     def __init__(
@@ -1010,7 +1010,7 @@ class NLLLoss(Layer):
     """
 
     @legacy_reduction_decorator(
-        args_list=[
+        overload_args_list=[
             'weight',
             'size_average',
             'ignore_index',
@@ -1109,7 +1109,7 @@ class PoissonNLLLoss(Layer):
     """
 
     @legacy_reduction_decorator(
-        args_list=[
+        overload_args_list=[
             'log_input',
             'full',
             'size_average',
@@ -1117,7 +1117,7 @@ class PoissonNLLLoss(Layer):
             'reduce',
             'reduction',
         ],
-        kwargs_change={'eps': 'epsilon'},
+        alias_mapping={'eps': 'epsilon'},
         is_method=True,
     )
     def __init__(
@@ -1252,7 +1252,12 @@ class KLDivLoss(Layer):
     log_target: bool
 
     @legacy_reduction_decorator(
-        args_list=['size_average', 'reduce', 'reduction', 'log_target'],
+        overload_args_list=[
+            'size_average',
+            'reduce',
+            'reduction',
+            'log_target',
+        ],
         is_method=True,
     )
     def __init__(
@@ -1328,7 +1333,7 @@ class MarginRankingLoss(Layer):
     name: str | None
 
     @legacy_reduction_decorator(
-        args_list=['margin', 'size_average', 'reduce', 'reduction'],
+        overload_args_list=['margin', 'size_average', 'reduce', 'reduction'],
         is_method=True,
     )
     def __init__(
@@ -1630,9 +1635,7 @@ class SmoothL1Loss(Layer):
     name: str | None
 
     @legacy_reduction_decorator(
-        args_list=['size_average', 'reduce', 'reduction', 'beta'],
-        kwargs_change={'beta': 'delta'},
-        paddle_default_kwargs={'is_huber': False},
+        overload_args_list=['size_average', 'reduce', 'reduction'],
         is_method=True,
     )
     def __init__(
@@ -1725,7 +1728,7 @@ class MultiLabelSoftMarginLoss(Layer):
     name: str | None
 
     @legacy_reduction_decorator(
-        args_list=['weight', 'size_average', 'reduce', 'reduction'],
+        overload_args_list=['weight', 'size_average', 'reduce', 'reduction'],
         is_method=True,
     )
     def __init__(
@@ -1841,7 +1844,7 @@ class HingeEmbeddingLoss(Layer):
     name: str | None
 
     @legacy_reduction_decorator(
-        args_list=['margin', 'size_average', 'reduce', 'reduction'],
+        overload_args_list=['margin', 'size_average', 'reduce', 'reduction'],
         is_method=True,
     )
     def __init__(
@@ -1943,7 +1946,7 @@ class CosineEmbeddingLoss(Layer):
     name: str | None
 
     @legacy_reduction_decorator(
-        args_list=['margin', 'size_average', 'reduce', 'reduction'],
+        overload_args_list=['margin', 'size_average', 'reduce', 'reduction'],
         is_method=True,
     )
     def __init__(
@@ -2193,7 +2196,7 @@ class TripletMarginLoss(Layer):
     name: str | None
 
     @legacy_reduction_decorator(
-        args_list=[
+        overload_args_list=[
             'margin',
             'p',
             'eps',
@@ -2202,7 +2205,7 @@ class TripletMarginLoss(Layer):
             'reduce',
             'reduction',
         ],
-        kwargs_change={'eps': 'epsilon'},
+        alias_mapping={'eps': 'epsilon'},
         is_method=True,
     )
     def __init__(
@@ -2322,7 +2325,7 @@ class MultiMarginLoss(Layer):
     name: str | None
 
     @legacy_reduction_decorator(
-        args_list=[
+        overload_args_list=[
             'p',
             'margin',
             'weight',
@@ -2428,7 +2431,7 @@ class MultiLabelMarginLoss(Layer):
     name: str | None
 
     @legacy_reduction_decorator(
-        args_list=['size_average', 'reduce', 'reduction'],
+        overload_args_list=['size_average', 'reduce', 'reduction'],
         is_method=True,
     )
     def __init__(
@@ -2520,7 +2523,7 @@ class SoftMarginLoss(Layer):
     name: str | None
 
     @legacy_reduction_decorator(
-        args_list=['size_average', 'reduce', 'reduction'],
+        overload_args_list=['size_average', 'reduce', 'reduction'],
         is_method=True,
     )
     def __init__(
@@ -2625,7 +2628,7 @@ class GaussianNLLLoss(Layer):
     name: str | None
 
     @legacy_reduction_decorator(
-        kwargs_change={'eps': 'epsilon'},
+        alias_mapping={'eps': 'epsilon'},
         is_method=True,
     )
     def __init__(
@@ -2929,9 +2932,3 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
                 output, indices, paddle.argmax(log_prob, axis=1).cast('float32')
             )
             return result
-
-
-# PyTorch-style aliases mirroring the functional layer's
-# ``multilabel_margin_loss`` / ``multilabel_soft_margin_loss`` aliases.
-MultilabelMarginLoss = MultiLabelMarginLoss
-MultilabelSoftMarginLoss = MultiLabelSoftMarginLoss

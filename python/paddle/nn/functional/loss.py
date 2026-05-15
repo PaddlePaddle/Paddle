@@ -611,7 +611,7 @@ def edit_distance(
 
 
 @legacy_reduction_decorator(
-    args_list=[
+    overload_args_list=[
         'input',
         'target',
         'weight',
@@ -619,7 +619,7 @@ def edit_distance(
         'reduce',
         'reduction',
     ],
-    kwargs_change={'target': 'label'},
+    alias_mapping={'target': 'label'},
 )
 def binary_cross_entropy(
     input: Tensor,
@@ -756,7 +756,7 @@ def binary_cross_entropy(
 
 
 @legacy_reduction_decorator(
-    args_list=[
+    overload_args_list=[
         'input',
         'target',
         'weight',
@@ -765,7 +765,7 @@ def binary_cross_entropy(
         'reduction',
         'pos_weight',
     ],
-    kwargs_change={'input': 'logit', 'target': 'label'},
+    alias_mapping={'input': 'logit', 'target': 'label'},
 )
 def binary_cross_entropy_with_logits(
     logit: Tensor,
@@ -1160,16 +1160,14 @@ def hsigmoid_loss(
 
 
 @legacy_reduction_decorator(
-    args_list=[
+    overload_args_list=[
         'input',
         'target',
         'size_average',
         'reduce',
         'reduction',
-        'beta',
     ],
-    kwargs_change={'target': 'label', 'beta': 'delta'},
-    paddle_default_kwargs={'is_huber': False},
+    alias_mapping={'target': 'label'},
 )
 def smooth_l1_loss(
     input: Tensor,
@@ -1283,7 +1281,7 @@ def smooth_l1_loss(
 
 
 @legacy_reduction_decorator(
-    args_list=[
+    overload_args_list=[
         'input1',
         'input2',
         'target',
@@ -1292,7 +1290,7 @@ def smooth_l1_loss(
         'reduce',
         'reduction',
     ],
-    kwargs_change={
+    alias_mapping={
         'input1': 'input',
         'input2': 'other',
         'target': 'label',
@@ -1423,8 +1421,14 @@ def margin_ranking_loss(
 
 
 @legacy_reduction_decorator(
-    args_list=['input', 'target', 'size_average', 'reduce', 'reduction'],
-    kwargs_change={'target': 'label'},
+    overload_args_list=[
+        'input',
+        'target',
+        'size_average',
+        'reduce',
+        'reduction',
+    ],
+    alias_mapping={'target': 'label'},
 )
 def l1_loss(
     input: Tensor,
@@ -1534,7 +1538,7 @@ def l1_loss(
 
 
 @legacy_reduction_decorator(
-    args_list=[
+    overload_args_list=[
         'input',
         'target',
         'weight',
@@ -1543,7 +1547,7 @@ def l1_loss(
         'reduce',
         'reduction',
     ],
-    kwargs_change={'target': 'label'},
+    alias_mapping={'target': 'label'},
 )
 def nll_loss(
     input: Tensor,
@@ -1679,7 +1683,7 @@ def nll_loss(
 
 
 @legacy_reduction_decorator(
-    args_list=[
+    overload_args_list=[
         'input',
         'target',
         'log_input',
@@ -1689,7 +1693,7 @@ def nll_loss(
         'reduce',
         'reduction',
     ],
-    kwargs_change={'target': 'label', 'eps': 'epsilon'},
+    alias_mapping={'target': 'label', 'eps': 'epsilon'},
 )
 def poisson_nll_loss(
     input: Tensor,
@@ -1811,7 +1815,7 @@ def poisson_nll_loss(
 
 
 @legacy_reduction_decorator(
-    args_list=[
+    overload_args_list=[
         'input',
         'target',
         'size_average',
@@ -1819,7 +1823,7 @@ def poisson_nll_loss(
         'reduction',
         'log_target',
     ],
-    kwargs_change={'target': 'label'},
+    alias_mapping={'target': 'label'},
 )
 def kl_div(
     input: Tensor,
@@ -1969,8 +1973,14 @@ def kl_div(
 
 
 @legacy_reduction_decorator(
-    args_list=['input', 'target', 'size_average', 'reduce', 'reduction'],
-    kwargs_change={'target': 'label'},
+    overload_args_list=[
+        'input',
+        'target',
+        'size_average',
+        'reduce',
+        'reduction',
+    ],
+    alias_mapping={'target': 'label'},
 )
 def mse_loss(
     input: Tensor,
@@ -2868,7 +2878,7 @@ def softmax_with_cross_entropy(
 
 
 @legacy_reduction_decorator(
-    args_list=[
+    overload_args_list=[
         'input',
         'target',
         'weight',
@@ -2878,7 +2888,7 @@ def softmax_with_cross_entropy(
         'reduction',
         'label_smoothing',
     ],
-    kwargs_change={'target': 'label'},
+    alias_mapping={'target': 'label'},
 )
 def cross_entropy(
     input: Tensor,
@@ -3724,7 +3734,7 @@ def sigmoid_focal_loss(
 
 
 @legacy_reduction_decorator(
-    args_list=[
+    overload_args_list=[
         'input',
         'target',
         'weight',
@@ -3732,7 +3742,7 @@ def sigmoid_focal_loss(
         'reduce',
         'reduction',
     ],
-    kwargs_change={'target': 'label'},
+    alias_mapping={'target': 'label'},
 )
 def multi_label_soft_margin_loss(
     input: Tensor,
@@ -3849,7 +3859,7 @@ def multi_label_soft_margin_loss(
 
 
 @legacy_reduction_decorator(
-    args_list=[
+    overload_args_list=[
         'input',
         'target',
         'margin',
@@ -3857,7 +3867,7 @@ def multi_label_soft_margin_loss(
         'reduce',
         'reduction',
     ],
-    kwargs_change={'target': 'label'},
+    alias_mapping={'target': 'label'},
 )
 def hinge_embedding_loss(
     input: Tensor,
@@ -3970,7 +3980,7 @@ def hinge_embedding_loss(
 
 
 @legacy_reduction_decorator(
-    args_list=[
+    overload_args_list=[
         'input1',
         'input2',
         'target',
@@ -3979,7 +3989,7 @@ def hinge_embedding_loss(
         'reduce',
         'reduction',
     ],
-    kwargs_change={'target': 'label'},
+    alias_mapping={'target': 'label'},
 )
 def cosine_embedding_loss(
     input1: Tensor,
@@ -4102,7 +4112,7 @@ def cosine_embedding_loss(
         return paddle.sum(out, name=name)
 
 
-@legacy_reduction_decorator(kwargs_change={'anchor': 'input'})
+@legacy_reduction_decorator(alias_mapping={'anchor': 'input'})
 def triplet_margin_with_distance_loss(
     input: Tensor,
     positive: Tensor,
@@ -4259,7 +4269,7 @@ def triplet_margin_with_distance_loss(
 
 
 @legacy_reduction_decorator(
-    args_list=[
+    overload_args_list=[
         'anchor',
         'positive',
         'negative',
@@ -4271,7 +4281,7 @@ def triplet_margin_with_distance_loss(
         'reduce',
         'reduction',
     ],
-    kwargs_change={'anchor': 'input', 'eps': 'epsilon'},
+    alias_mapping={'anchor': 'input', 'eps': 'epsilon'},
 )
 def triplet_margin_loss(
     input: Tensor,
@@ -4404,7 +4414,7 @@ def triplet_margin_loss(
 
 
 @legacy_reduction_decorator(
-    args_list=[
+    overload_args_list=[
         'input',
         'target',
         'p',
@@ -4414,7 +4424,7 @@ def triplet_margin_loss(
         'reduce',
         'reduction',
     ],
-    kwargs_change={'target': 'label'},
+    alias_mapping={'target': 'label'},
 )
 def multi_margin_loss(
     input: Tensor,
@@ -4548,8 +4558,14 @@ def multi_margin_loss(
 
 
 @legacy_reduction_decorator(
-    args_list=['input', 'target', 'size_average', 'reduce', 'reduction'],
-    kwargs_change={'target': 'label'},
+    overload_args_list=[
+        'input',
+        'target',
+        'size_average',
+        'reduce',
+        'reduction',
+    ],
+    alias_mapping={'target': 'label'},
 )
 def multi_label_margin_loss(
     input: Tensor,
@@ -4672,8 +4688,14 @@ def multi_label_margin_loss(
 
 
 @legacy_reduction_decorator(
-    args_list=['input', 'target', 'size_average', 'reduce', 'reduction'],
-    kwargs_change={'target': 'label'},
+    overload_args_list=[
+        'input',
+        'target',
+        'size_average',
+        'reduce',
+        'reduction',
+    ],
+    alias_mapping={'target': 'label'},
 )
 def soft_margin_loss(
     input: Tensor,
@@ -4773,7 +4795,7 @@ def soft_margin_loss(
 
 
 @legacy_reduction_decorator(
-    kwargs_change={'target': 'label', 'var': 'variance', 'eps': 'epsilon'},
+    alias_mapping={'target': 'label', 'var': 'variance', 'eps': 'epsilon'},
 )
 def gaussian_nll_loss(
     input: Tensor,

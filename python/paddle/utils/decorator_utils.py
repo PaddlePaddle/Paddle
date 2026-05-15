@@ -760,25 +760,17 @@ def index_select_decorator() -> Callable[
     return decorator
 
 
-def compute_legacy_reduction(reduce_val, size_average_val):
-    if reduce_val is False:
-        return 'none'
-    return 'sum' if size_average_val is False else 'mean'
-
-
 def legacy_reduction_decorator(
-    fn=None,
     *,
-    args_list: list[str] | None = None,
-    kwargs_change: dict[str, str] | None = None,
-    paddle_default_kwargs: dict[str, object] | None = None,
+    overload_args_list: list[str] | None = None,
+    alias_mapping: dict[str, str] | None = None,
     is_method: bool = False,
 ):
     """One-shot PyTorch compatibility wrapper for a loss API.
 
     Each loss API declares its own PyTorch positional layout
-    (``args_list``) and PyTorch-to-Paddle kwarg renames
-    (``kwargs_change``). When the call matches PyTorch's positional
+    (``overload_args_list``) and PyTorch-to-Paddle kwarg renames
+    (``alias_mapping``). When the call matches PyTorch's positional
     layout, positional args are bound to their PyTorch names; the
     deprecated ``size_average`` / ``reduce`` pair is translated into
     Paddle's ``reduction`` with a ``DeprecationWarning``; remaining
@@ -787,24 +779,19 @@ def legacy_reduction_decorator(
     decorator covers the whole loss family.
 
     Args:
-        args_list: PyTorch positional names (after ``self`` when
-            ``is_method=True``). Positional translation is only
+        overload_args_list: PyTorch positional names (after ``self``
+            when ``is_method=True``). Positional translation is only
             triggered when the ``size_average`` slot contains
             ``bool`` / ``None`` -- a ``str`` reduction or non-bool
             value there means the caller is using Paddle's positional
             layout and we leave the call alone.
-        kwargs_change: ``{pytorch_name: paddle_name}`` kwarg renames.
-        paddle_default_kwargs: defaults applied via ``setdefault``
-            only when ``kwargs_change`` actually fires (used to flip
-            ``is_huber=False`` only when the caller passes PyTorch's
-            ``beta``).
+        alias_mapping: ``{pytorch_name: paddle_name}`` kwarg renames.
         is_method: ``True`` for class ``__init__``.
     """
-    kwargs_change = kwargs_change or {}
-    paddle_default_kwargs = paddle_default_kwargs or {}
+    alias_mapping = alias_mapping or {}
     sa_idx = (
-        args_list.index('size_average')
-        if args_list and 'size_average' in args_list
+        overload_args_list.index('size_average')
+        if overload_args_list and 'size_average' in overload_args_list
         else -1
     )
 
@@ -828,16 +815,17 @@ def legacy_reduction_decorator(
                 and (type(use_args[sa_idx]) is bool or use_args[sa_idx] is None)
             ):
                 for i, val in enumerate(use_args):
-                    if i < len(args_list):
-                        kwargs.setdefault(args_list[i], val)
+                    if i < len(overload_args_list):
+                        kwargs.setdefault(overload_args_list[i], val)
                 use_args = []
 
-            sa = kwargs.pop('size_average', '')
-            rd = kwargs.pop('reduce', '')
-            if (sa != '' and sa is not None) or (rd != '' and rd is not None):
-                suggested = compute_legacy_reduction(
-                    rd if rd is not None else '',
-                    sa if sa is not None else '',
+            sa = kwargs.pop('size_average', None)
+            rd = kwargs.pop('reduce', None)
+            if sa is not None or rd is not None:
+                suggested = (
+                    'none'
+                    if rd is False
+                    else ('sum' if sa is False else 'mean')
                 )
                 kwargs['reduction'] = suggested
                 warnings.warn(
@@ -847,8 +835,7 @@ def legacy_reduction_decorator(
                     stacklevel=3,
                 )
 
-            renamed = False
-            for torch_name, paddle_name in kwargs_change.items():
+            for torch_name, paddle_name in alias_mapping.items():
                 if torch_name in kwargs:
                     if paddle_name in kwargs:
                         raise ValueError(
@@ -856,19 +843,13 @@ def legacy_reduction_decorator(
                             f"its alias '{torch_name}'"
                         )
                     kwargs[paddle_name] = kwargs.pop(torch_name)
-                    renamed = True
-            if renamed:
-                for k, v in paddle_default_kwargs.items():
-                    kwargs.setdefault(k, v)
 
             return f(*self_args, *use_args, **kwargs)
 
         wrapper.__signature__ = inspect.signature(f)
         return wrapper
 
-    if fn is None:
-        return decorate
-    return decorate(fn)
+    return decorate
 
 
 def index_add_decorator() -> Callable[

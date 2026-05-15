@@ -129,9 +129,7 @@ from .layer.loss import (
     MarginRankingLoss,
     MSELoss,
     MultiLabelMarginLoss,
-    MultilabelMarginLoss,
     MultiLabelSoftMarginLoss,
-    MultilabelSoftMarginLoss,
     MultiMarginLoss,
     NLLLoss,
     PoissonNLLLoss,
@@ -209,6 +207,8 @@ AdaptiveAvgPool1d = AdaptiveAvgPool1D
 AdaptiveAvgPool2d = AdaptiveAvgPool2D
 AdaptiveAvgPool3d = AdaptiveAvgPool3D
 HuberLoss = SmoothL1Loss
+MultilabelMarginLoss = MultiLabelMarginLoss
+MultilabelSoftMarginLoss = MultiLabelSoftMarginLoss
 MaxUnpool1d = MaxUnPool1D
 MaxUnpool2d = MaxUnPool2D
 MaxUnpool3d = MaxUnPool3D

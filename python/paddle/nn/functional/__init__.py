@@ -119,9 +119,7 @@ from .loss import (
     margin_ranking_loss,
     mse_loss,
     multi_label_margin_loss,
-    multi_label_margin_loss as multilabel_margin_loss,
     multi_label_soft_margin_loss,
-    multi_label_soft_margin_loss as multilabel_soft_margin_loss,
     multi_margin_loss,
     nll_loss,
     npair_loss,
@@ -181,6 +179,8 @@ logsigmoid = log_sigmoid
 conv_transpose1d = conv1d_transpose
 conv_transpose2d = conv2d_transpose
 conv_transpose3d = conv3d_transpose
+multilabel_margin_loss = multi_label_margin_loss
+multilabel_soft_margin_loss = multi_label_soft_margin_loss
 __all__ = [
     'celu',
     'conv1d',
