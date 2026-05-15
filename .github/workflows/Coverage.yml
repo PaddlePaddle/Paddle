@@ -4,6 +4,12 @@ on:
   pull_request:
     types: [opened, synchronize]
     branches: [develop, release/**]
+  workflow_dispatch:
+    inputs:
+      full_coverage:
+        description: 'Enable full coverage mode (OFF: incremental diff coverage, ON: full coverage)'
+        type: boolean
+        default: false
 
 permissions: read-all
 
@@ -298,6 +304,7 @@ jobs:
           PY_VERSION: 3.9
           WITH_SHARED_PHI: "ON"
           WITH_CINN: "ON"
+          WITH_ALL_COVERAGE: ${{ inputs.full_coverage && 'ON' || 'OFF' }}
           INFERENCE_DEMO_INSTALL_DIR: /root/.cache/coverage
           CCACHE_MAXSIZE: 200G
           CCACHE_LIMIT_MULTIPLE: 0.8
@@ -340,6 +347,7 @@ jobs:
             -e PY_VERSION \
             -e WITH_SHARED_PHI \
             -e WITH_CINN \
+            -e WITH_ALL_COVERAGE \
             -e INFERENCE_DEMO_INSTALL_DIR \
             -e CCACHE_MAXSIZE \
             -e CCACHE_LIMIT_MULTIPLE \
@@ -395,6 +403,7 @@ jobs:
           verbose: true
 
       - name: Determine whether the coverage rate reaches 90%
+        if: "!inputs.full_coverage"
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ~/.bashrc
