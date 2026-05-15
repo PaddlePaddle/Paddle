@@ -59,6 +59,7 @@ if _MODULE_AVAILABLE:
         query_smi,
         query_xpu_smi,
     )
+
     NPS = nvsmi_mod.__name__
 
 
