@@ -125,9 +125,7 @@ class TestAdamOp1(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(
-            no_check_set=self.no_check_set, check_pir=True, rtol=1e-3
-        )
+        self.check_output(no_check_set=self.no_check_set, check_pir=True)
 
 
 class TestAdamOp1AMSGrad(TestAdamOp1):
@@ -214,9 +212,7 @@ class TestAdamOp2(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(
-            no_check_set=self.no_check_set, check_pir=True, rtol=1e-3
-        )
+        self.check_output(no_check_set=self.no_check_set, check_pir=True)
 
 
 class TestAdamOnlyTailOp(TestAdamOp2):
@@ -304,9 +300,7 @@ class TestAdamOpMultipleSteps(OpTest):
             }
 
             # Verify output for this step
-            self.check_output(
-                no_check_set=self.no_check_set, check_pir=True, rtol=1e-3
-            )
+            self.check_output(no_check_set=self.no_check_set, check_pir=True)
 
             # Output of this step becomes input for next step
             self.inputs['Param'] = param_out
@@ -653,9 +647,7 @@ class TestAdamOpBetaVariable(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(
-            no_check_set=self.no_check_set, check_pir=True, rtol=1e-3
-        )
+        self.check_output(no_check_set=self.no_check_set, check_pir=True)
 
 
 class TestAdamOpBetaVariableAMSGrad(TestAdamOpBetaVariable):
@@ -725,9 +717,7 @@ class TestAdamOpBetaEpsilonVariable(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(
-            no_check_set=self.no_check_set, check_pir=True, rtol=1e-3
-        )
+        self.check_output(no_check_set=self.no_check_set, check_pir=True)
 
 
 class TestAdamOpBetaEpsilonVariableAMSGrad(TestAdamOpBetaEpsilonVariable):
@@ -802,9 +792,7 @@ class TestAdamOpWithGlobalBetaPow(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(
-            no_check_set=self.no_check_set, check_pir=True, rtol=1e-3
-        )
+        self.check_output(no_check_set=self.no_check_set, check_pir=True)
 
 
 class TestAdamOpWithGlobalBetaPowAMSGrad(TestAdamOpWithGlobalBetaPow):
@@ -876,9 +864,7 @@ class TestAdamOpWithSkipUpdate(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(
-            no_check_set=self.no_check_set, check_pir=True, rtol=1e-3
-        )
+        self.check_output(no_check_set=self.no_check_set, check_pir=True)
 
 
 class TestAdamOpWithSkipUpdateAMSGrad(TestAdamOpWithSkipUpdate):
