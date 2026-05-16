@@ -28,7 +28,7 @@ limitations under the License. */
 #include "paddle/common/exception.h"
 #include "paddle/common/layout.h"
 
-#if CPP_STANDARD >= 201703L && !defined(__clang__)
+#if CPP_STANDARD >= 201703L && !defined(__clang__) && !defined(_WIN32)
 // pir&pass headers
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
