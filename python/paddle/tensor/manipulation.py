@@ -7079,6 +7079,7 @@ def moveaxis(
         return out
 
 
+@param_one_alias(["x", "input"])
 def movedim(
     x: Tensor,
     source: int | Sequence[int],

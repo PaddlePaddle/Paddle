@@ -741,8 +741,15 @@ class TestMoveAxis(unittest.TestCase):
         x_np = np.random.randn(2, 3, 5)
         expected = np.moveaxis(x_np, -2, -1)
         paddle.disable_static()
+        # tensor method
         x = paddle.to_tensor(x_np)
         out = x.movedim(-2, -1)
+        self.assertEqual(out.shape, [2, 5, 3])
+        # paddle method
+        out = paddle.movedim(x, -2, -1)
+        self.assertEqual(out.shape, [2, 5, 3])
+        # arg alias
+        out = paddle.movedim(input=x, source=-2, destination=-1)
         self.assertEqual(out.shape, [2, 5, 3])
         np.testing.assert_array_equal(out.numpy(), expected)
         paddle.enable_static()
