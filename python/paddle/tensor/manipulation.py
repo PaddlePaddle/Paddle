@@ -7079,6 +7079,18 @@ def moveaxis(
         return out
 
 
+def movedim(
+    x: Tensor,
+    source: int | Sequence[int],
+    destination: int | Sequence[int],
+    name: str | None = None,
+) -> Tensor:
+    """
+    Move the axis of tensor from ``source`` position to ``destination`` position. Alias for ``moveaxis``.
+    """
+    return moveaxis(x, source, destination, name)
+
+
 @param_one_alias(["x", "input"])
 def masked_fill(
     x, mask: Tensor, value: Numeric, name: str | None = None
