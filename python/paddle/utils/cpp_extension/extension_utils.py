@@ -906,15 +906,14 @@ def _get_all_paddle_includes_from_include_root(
     """
     third_party_dir = os.path.join(include_root, 'third_party')
     include_dirs = [include_root, third_party_dir]
-    if not IS_WINDOWS:
-        compat_dir_root = os.path.join(
-            include_root, 'paddle/phi/api/include/compat'
-        )
-        compat_dir_api_include = os.path.join(
-            include_root,
-            'paddle/phi/api/include/compat/torch/csrc/api/include',
-        )
-        include_dirs.extend([compat_dir_root, compat_dir_api_include])
+    compat_dir_root = os.path.join(
+        include_root, 'paddle/phi/api/include/compat'
+    )
+    compat_dir_api_include = os.path.join(
+        include_root,
+        'paddle/phi/api/include/compat/torch/csrc/api/include',
+    )
+    include_dirs.extend([compat_dir_root, compat_dir_api_include])
     return include_dirs
 
 
