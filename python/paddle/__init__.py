@@ -24,7 +24,10 @@ import typing
 __is_metainfo_generated = False
 try:
     from paddle.cuda_env import *  # noqa: F403
-    from paddle.paddle_version import __version__  # noqa: F401
+    from paddle.paddle_version import (  # noqa: F401
+        PaddleVersion,
+        __version__,
+    )
     from paddle.version import commit as __git_commit__  # noqa: F401
 
     __is_metainfo_generated = True
