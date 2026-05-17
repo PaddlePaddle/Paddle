@@ -21,7 +21,13 @@ from paddle.jit.sot import symbolic_translate
 from paddle.jit.sot.opcode_translator.executor.executor_cache import (
     OpcodeExecutorCache,
 )
-from paddle.jit.sot.opcode_translator.executor.guard import make_compiled_guard
+from paddle.jit.sot.opcode_translator.executor.guard import (
+    GuardAccessStep,
+    GuardOpKind,
+    UnsupportedCompiledGuard,
+    make_compiled_guard,
+    make_guard_spec,
+)
 from paddle.jit.sot.utils import (
     ENV_SOT_ENABLE_COMPILED_GUARD,
     ENV_SOT_ENABLE_STRICT_GUARD_CHECK,
@@ -228,11 +234,29 @@ class TestCompiledGuard(unittest.TestCase):
 
         with (
             EnvironmentVariableGuard(ENV_SOT_ENABLE_COMPILED_GUARD, True),
-            self.assertRaises(ValueError),
+            self.assertRaises(UnsupportedCompiledGuard),
         ):
             make_compiled_guard(
                 [("unknown_guard_kind", (("local", "x"),), 1)],
                 python_guard,
+            )
+
+    def test_compiled_guard_spec_requires_typed_ir(self):
+        access = (GuardAccessStep.local("x"),)
+        spec = make_guard_spec(GuardOpKind.TYPE_MATCH, access, int)
+        cpp_spec = spec.to_cpp_spec()
+
+        self.assertIsInstance(cpp_spec[0], int)
+        self.assertIsInstance(cpp_spec[1][0][0], int)
+        self.assertNotIsInstance(cpp_spec[0], str)
+        self.assertNotIsInstance(cpp_spec[1][0][0], str)
+
+        with self.assertRaises(UnsupportedCompiledGuard):
+            make_guard_spec("type_match", access, int)
+
+        with self.assertRaises(TypeError):
+            paddle.framework.core.CompiledGuard(
+                [("type_match", ((0, "x"),), int)]
             )
 
     def test_legacy_guard_apis_are_retired(self):

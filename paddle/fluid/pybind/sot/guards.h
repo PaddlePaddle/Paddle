@@ -121,9 +121,39 @@ class CompiledGuard {
     BINARY,
   };
 
+  enum class ExprUnaryOp {
+    POSITIVE,
+    NEGATIVE,
+    BITWISE_NOT,
+    LOGICAL_NOT,
+    BOOL,
+  };
+
+  enum class ExprBinaryOp {
+    EQ,
+    NE,
+    LT,
+    LE,
+    GT,
+    GE,
+    ADD,
+    SUB,
+    MUL,
+    TRUE_DIV,
+    FLOOR_DIV,
+    MOD,
+    POW,
+    LSHIFT,
+    RSHIFT,
+    BITWISE_AND,
+    BITWISE_OR,
+    BITWISE_XOR,
+  };
+
   struct GuardExpr {
     ExprKind kind;
-    std::string op;
+    ExprUnaryOp unary_op{ExprUnaryOp::POSITIVE};
+    ExprBinaryOp binary_op{ExprBinaryOp::EQ};
     py::object value;
     std::vector<AccessStep> access_path;
     std::shared_ptr<GuardExpr> lhs;

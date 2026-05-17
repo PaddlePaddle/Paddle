@@ -109,6 +109,12 @@ from ..dispatch_functions import (
     tensor_dim,
 )
 from ..guard import (
+    GuardAccessStep,
+    GuardBinaryOp,
+    GuardExpr,
+    GuardOpKind,
+    GuardSpec,
+    GuardUnaryOp,
     StringifiedExpression,
     check_guard,
     make_guard_spec,
@@ -364,7 +370,7 @@ class TensorDtypeVariable(DataVariable):
         ):
             return [
                 make_guard_spec(
-                    "tensor_dtype",
+                    GuardOpKind.TENSOR_DTYPE,
                     self.tracker.obj.tracker.guard_access_path(),
                     self.value,
                 )
@@ -531,32 +537,34 @@ class TensorVariable(VariableBase):
         access = self.tracker.guard_access_path()
         meta = self.origin_meta
         if meta.is_null():
-            return [make_guard_spec("tensor_not_hold_allocation", access)]
+            return [
+                make_guard_spec(GuardOpKind.TENSOR_NOT_HOLD_ALLOCATION, access)
+            ]
 
         min_non_specialized_number = get_min_non_specialized_number()
         meta = meta.unwrap_unsafe()
         specs = [
             make_guard_spec(
-                "tensor_shape",
+                GuardOpKind.TENSOR_SHAPE,
                 access,
                 meta.shape,
                 min_non_specialized_number,
             ),
-            make_guard_spec("tensor_dtype", access, meta.dtype),
+            make_guard_spec(GuardOpKind.TENSOR_DTYPE, access, meta.dtype),
             make_guard_spec(
-                "value_match",
-                (*access, ("attr", "stop_gradient")),
+                GuardOpKind.VALUE_MATCH,
+                (*access, GuardAccessStep.attr("stop_gradient")),
                 meta.stop_gradient,
             ),
             make_guard_spec(
-                "tensor_is_dist", access, meta.dist_info is not None
+                GuardOpKind.TENSOR_IS_DIST, access, meta.dist_info is not None
             ),
         ]
         if meta.dist_info is not None:
             tensor_dist_info = meta.dist_info
             specs.append(
                 make_guard_spec(
-                    "tensor_dist_meta",
+                    GuardOpKind.TENSOR_DIST_META,
                     access,
                     tensor_dist_info.mesh.shape,
                     tensor_dist_info.mesh.process_ids,
@@ -960,31 +968,28 @@ def get_symbolic_from_meta(meta_or_null: MetaInfoOrNull) -> SymbolicValue:
 def make_compiled_constraint_expr(
     constraint_node: ConstraintNode,
     extern_vars: dict[str, Any],
-):
+) -> GuardExpr:
     if isinstance(constraint_node, ConstantConstraintNode):
-        return ("const", constraint_node.value)
+        return GuardExpr.constant(constraint_node.value)
     if isinstance(constraint_node, SymbolicConstraintNode):
         if constraint_node.name not in extern_vars:
             raise InnerError(
                 f"Symbolic variable {constraint_node.name} not found in extern_vars."
             )
-        return (
-            "access",
-            extern_vars[constraint_node.name].tracker.guard_access_path(),
+        return GuardExpr.from_access(
+            extern_vars[constraint_node.name].tracker.guard_access_path()
         )
     if hasattr(constraint_node, "input"):
-        return (
-            "unary",
-            constraint_node.READABLE_SYMBOL,
+        return GuardExpr.unary(
+            GuardUnaryOp.from_symbol(constraint_node.READABLE_SYMBOL),
             make_compiled_constraint_expr(
                 constraint_node.input,
                 extern_vars,
             ),
         )
     if hasattr(constraint_node, "lhs") and hasattr(constraint_node, "rhs"):
-        return (
-            "binary",
-            constraint_node.READABLE_SYMBOL,
+        return GuardExpr.binary(
+            GuardBinaryOp.from_symbol(constraint_node.READABLE_SYMBOL),
             make_compiled_constraint_expr(
                 constraint_node.lhs,
                 extern_vars,
@@ -1296,7 +1301,7 @@ class SymbolicVariable(VariableBase):
             return super().make_compiled_guard_specs()
         guards = [
             make_guard_spec(
-                "type_match",
+                GuardOpKind.TYPE_MATCH,
                 self.tracker.guard_access_path(),
                 self.get_py_type(),
             )
@@ -1304,8 +1309,7 @@ class SymbolicVariable(VariableBase):
         for constraint in self.constraints:
             constraint_node, constraint_extern_vars = constraint
             guards.append(
-                (
-                    "expr_match",
+                GuardSpec.expr_match(
                     make_compiled_constraint_expr(
                         constraint_node,
                         constraint_extern_vars,
@@ -1613,7 +1617,7 @@ class SliceVariable(VariableBase):
     def make_compiled_guard_specs(self):
         return [
             make_guard_spec(
-                "type_match",
+                GuardOpKind.TYPE_MATCH,
                 self.tracker.guard_access_path(),
                 slice,
             ),
@@ -1796,11 +1800,13 @@ class NumPyNumberVariable(NumPyVariable):
         access = self.tracker.guard_access_path()
         return [
             make_guard_spec(
-                "numpy_dtype",
+                GuardOpKind.NUMPY_DTYPE,
                 access,
                 self.get_py_value().dtype,
             ),
-            make_guard_spec("value_match", access, self.get_py_value()),
+            make_guard_spec(
+                GuardOpKind.VALUE_MATCH, access, self.get_py_value()
+            ),
         ]
 
     @check_guard
@@ -1908,14 +1914,14 @@ class NumPyArrayVariable(NumPyVariable):
         meta = self.meta.unwrap_unsafe()
         access = self.tracker.guard_access_path()
         return [
-            make_guard_spec("type_match", access, self.get_py_type()),
+            make_guard_spec(GuardOpKind.TYPE_MATCH, access, self.get_py_type()),
             make_guard_spec(
-                "numpy_dtype",
+                GuardOpKind.NUMPY_DTYPE,
                 access,
                 np.dtype(_PADDLE_PIR_DTYPE_2_NUMPY_DTYPE[meta.dtype]),
             ),
             make_guard_spec(
-                "numpy_shape",
+                GuardOpKind.NUMPY_SHAPE,
                 access,
                 meta.shape,
                 min_non_specialized_number,
@@ -2327,8 +2333,8 @@ class EnumVariable(VariableBase):
     def make_compiled_guard_specs(self):
         access = self.tracker.guard_access_path()
         return [
-            make_guard_spec("type_match", access, self.get_py_type()),
-            make_guard_spec("value_match", access, self.value),
+            make_guard_spec(GuardOpKind.TYPE_MATCH, access, self.get_py_type()),
+            make_guard_spec(GuardOpKind.VALUE_MATCH, access, self.value),
         ]
 
     @check_guard
@@ -2474,7 +2480,7 @@ class DataClassInstanceVariable(VariableBase):
             [
                 [
                     make_guard_spec(
-                        "instance_check",
+                        GuardOpKind.INSTANCE_CHECK,
                         self.tracker.guard_access_path(),
                         self.get_py_type(),
                     )

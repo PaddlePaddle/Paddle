@@ -20,7 +20,12 @@ from itertools import chain
 from typing import TYPE_CHECKING
 
 from ...utils import InnerError, NameGenerator
-from .guard import StringifiedExpression, stringify_pyobject, union_free_vars
+from .guard import (
+    GuardAccessStep,
+    StringifiedExpression,
+    stringify_pyobject,
+    union_free_vars,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -200,7 +205,7 @@ class LocalTracker(Tracker):
         codegen.gen_load_fast(self.name)
 
     def guard_access_path(self) -> GuardAccess:
-        return (("local", self.name),)
+        return (GuardAccessStep.local(self.name),)
 
     def trace_value_from_frame(self) -> StringifiedExpression:
         return StringifiedExpression(f"frame.f_locals['{self.name}']", [], {})
@@ -214,7 +219,7 @@ class CellTracker(LocalTracker):
         codegen.gen_load_deref(self.name)
 
     def guard_access_path(self) -> GuardAccess:
-        return (("local", self.name),)
+        return (GuardAccessStep.local(self.name),)
 
     def trace_value_from_frame(self):
         return StringifiedExpression(f"frame.f_locals['{self.name}']", [], {})
@@ -239,7 +244,7 @@ class GlobalTracker(Tracker):
         codegen.gen_load_global(self.name, push_null=False)
 
     def guard_access_path(self) -> GuardAccess:
-        return (("global", self.name),)
+        return (GuardAccessStep.global_(self.name),)
 
     def trace_value_from_frame(self) -> StringifiedExpression:
         return StringifiedExpression(f"frame.f_globals['{self.name}']", [], {})
@@ -264,7 +269,7 @@ class BuiltinTracker(Tracker):
         codegen.gen_load_global(self.name, push_null=False)
 
     def guard_access_path(self) -> GuardAccess:
-        return (("builtin", self.name),)
+        return (GuardAccessStep.builtin(self.name),)
 
     def trace_value_from_frame(self) -> StringifiedExpression:
         return StringifiedExpression(
@@ -291,7 +296,7 @@ class ConstTracker(Tracker):
         codegen.gen_load_const(self.value)
 
     def guard_access_path(self) -> GuardAccess:
-        return (("const", self.value),)
+        return (GuardAccessStep.constant(self.value),)
 
     def trace_value_from_frame(self):
         value_str, value_free_vars = stringify_pyobject(self.value)
@@ -325,7 +330,10 @@ class GetAttrTracker(Tracker):
         codegen.gen_load_attr(self.attr)
 
     def guard_access_path(self) -> GuardAccess:
-        return (*self.obj.tracker.guard_access_path(), ("attr", self.attr))
+        return (
+            *self.obj.tracker.guard_access_path(),
+            GuardAccessStep.attr(self.attr),
+        )
 
     def trace_value_from_frame(self):
         obj_tracer = self.obj.tracker.trace_value_from_frame()
@@ -376,7 +384,7 @@ class GetItemTracker(Tracker):
     def guard_access_path(self) -> GuardAccess:
         return (
             *self.container.tracker.guard_access_path(),
-            ("item", self.key),
+            GuardAccessStep.item(self.key),
         )
 
     def trace_value_from_frame(self):
@@ -517,9 +525,9 @@ class FunctionClosureTracker(Tracker):
     def guard_access_path(self) -> GuardAccess:
         return (
             *self.fn.tracker.guard_access_path(),
-            ("attr", "__closure__"),
-            ("item", self.idx),
-            ("attr", "cell_contents"),
+            GuardAccessStep.attr("__closure__"),
+            GuardAccessStep.item(self.idx),
+            GuardAccessStep.attr("cell_contents"),
         )
 
     def trace_value_from_frame(self):
@@ -572,8 +580,8 @@ class FunctionGlobalTracker(Tracker):
     def guard_access_path(self) -> GuardAccess:
         return (
             *self.fn.tracker.guard_access_path(),
-            ("attr", "__globals__"),
-            ("item", self.name),
+            GuardAccessStep.attr("__globals__"),
+            GuardAccessStep.item(self.name),
         )
 
     def trace_value_from_frame(self) -> StringifiedExpression:

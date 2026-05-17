@@ -368,7 +368,7 @@ class FunctionGraph:
         ]
 
     def load_builtin_compiled_guard_specs(self) -> list[GuardSpec]:
-        return [("grad_enabled", paddle.is_grad_enabled())]
+        return [GuardSpec.grad_enabled(paddle.is_grad_enabled())]
 
     @property
     @event_register("compiled_guard_specs")

@@ -37,6 +37,7 @@ from ....utils import (
 from ....utils.exceptions import FallbackError, HasNoAttributeError
 from ..dispatcher import Dispatcher
 from ..guard import (
+    GuardOpKind,
     GuardSpec,
     StringifiedExpression,
     check_guard,
@@ -380,12 +381,14 @@ class VariableBase:
         access = self.tracker.guard_access_path()
         if support_weak_ref(value):
             return [
-                make_guard_spec("weakref_match", access, weakref.ref(value))
+                make_guard_spec(
+                    GuardOpKind.WEAKREF_MATCH, access, weakref.ref(value)
+                )
             ]
         return [
-            make_guard_spec("type_match", access, self.get_py_type()),
+            make_guard_spec(GuardOpKind.TYPE_MATCH, access, self.get_py_type()),
             make_guard_spec(
-                "value_match",
+                GuardOpKind.VALUE_MATCH,
                 access,
                 value,
             ),

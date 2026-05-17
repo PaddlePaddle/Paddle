@@ -90,6 +90,7 @@ from ....utils.paddle_api_config import (
 )
 from ..dispatcher import Dispatcher
 from ..guard import (
+    GuardOpKind,
     StringifiedExpression,
     check_guard,
     make_guard_spec,
@@ -733,7 +734,7 @@ class LayerVariable(CallableVariable):
     def make_compiled_guard_specs(self):
         return [
             make_guard_spec(
-                "layer_match",
+                GuardOpKind.LAYER_MATCH,
                 self.tracker.guard_access_path(),
                 self.get_py_value(),
             )
@@ -807,7 +808,11 @@ class ContainerLayerVariable(LayerVariable):
     def make_compiled_guard_specs(self):
         if isinstance(self.value, PD_SEQ_CONTAINERS):
             access = self.tracker.guard_access_path()
-            guards = [make_guard_spec("length_match", access, len(self.value))]
+            guards = [
+                make_guard_spec(
+                    GuardOpKind.LENGTH_MATCH, access, len(self.value)
+                )
+            ]
             for idx, layer in enumerate(self.value):
                 layer_variable = VariableFactory.from_value(
                     layer, self.graph, GetItemTracker(self, idx)

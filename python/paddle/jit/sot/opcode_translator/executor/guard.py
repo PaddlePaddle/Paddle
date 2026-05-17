@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import types
 import weakref
+from dataclasses import dataclass
+from enum import IntEnum
 from functools import cached_property
 from typing import TYPE_CHECKING, Any, Callable, TypeVar
 
@@ -31,8 +33,268 @@ from ...utils import (
 )
 
 Guard = Callable[[types.FrameType], bool]
-GuardAccess = tuple[tuple[str, Any], ...]
-GuardSpec = tuple[Any, ...]
+
+
+class GuardAccessKind(IntEnum):
+    LOCAL = 0
+    GLOBAL = 1
+    BUILTIN = 2
+    CONSTANT = 3
+    ATTR = 4
+    ITEM = 5
+
+
+class GuardAttrKind(IntEnum):
+    GENERIC = 0
+    TRAINING = 1
+    SUB_LAYERS = 2
+    FORWARD_PRE_HOOKS = 3
+    FORWARD_POST_HOOKS = 4
+    FUNC = 5
+    CODE = 6
+    GLOBALS = 7
+    CALL = 8
+    FORWARD = 9
+    STOP_GRADIENT = 10
+
+
+class GuardOpKind(IntEnum):
+    GRAD_ENABLED = 0
+    TYPE_MATCH = 1
+    INSTANCE_CHECK = 2
+    ID_MATCH = 3
+    VALUE_MATCH = 4
+    LENGTH_MATCH = 5
+    LAYER_MATCH = 6
+    LAYER_MATCH_GROUP = 7
+    TENSOR_SHAPE = 8
+    TENSOR_DTYPE = 9
+    TENSOR_IS_DIST = 10
+    TENSOR_META = 11
+    TENSOR_DIST_META = 12
+    TENSOR_NOT_HOLD_ALLOCATION = 13
+    NUMPY_DTYPE = 14
+    NUMPY_SHAPE = 15
+    WEAKREF_MATCH = 16
+    EXPR_MATCH = 17
+
+
+class GuardExprKind(IntEnum):
+    CONSTANT = 0
+    ACCESS = 1
+    UNARY = 2
+    BINARY = 3
+
+
+class GuardUnaryOp(IntEnum):
+    POSITIVE = 0
+    NEGATIVE = 1
+    BITWISE_NOT = 2
+    LOGICAL_NOT = 3
+    BOOL = 4
+
+    @classmethod
+    def from_symbol(cls, symbol: str) -> GuardUnaryOp:
+        return {
+            "+": cls.POSITIVE,
+            "-": cls.NEGATIVE,
+            "~": cls.BITWISE_NOT,
+            "not": cls.LOGICAL_NOT,
+            "bool": cls.BOOL,
+        }[symbol]
+
+
+class GuardBinaryOp(IntEnum):
+    EQ = 0
+    NE = 1
+    LT = 2
+    LE = 3
+    GT = 4
+    GE = 5
+    ADD = 6
+    SUB = 7
+    MUL = 8
+    TRUE_DIV = 9
+    FLOOR_DIV = 10
+    MOD = 11
+    POW = 12
+    LSHIFT = 13
+    RSHIFT = 14
+    BITWISE_AND = 15
+    BITWISE_OR = 16
+    BITWISE_XOR = 17
+
+    @classmethod
+    def from_symbol(cls, symbol: str) -> GuardBinaryOp:
+        return {
+            "==": cls.EQ,
+            "!=": cls.NE,
+            "<": cls.LT,
+            "<=": cls.LE,
+            ">": cls.GT,
+            ">=": cls.GE,
+            "+": cls.ADD,
+            "-": cls.SUB,
+            "*": cls.MUL,
+            "/": cls.TRUE_DIV,
+            "//": cls.FLOOR_DIV,
+            "%": cls.MOD,
+            "**": cls.POW,
+            "<<": cls.LSHIFT,
+            ">>": cls.RSHIFT,
+            "&": cls.BITWISE_AND,
+            "|": cls.BITWISE_OR,
+            "^": cls.BITWISE_XOR,
+        }[symbol]
+
+
+_SPECIAL_ATTR_KINDS = {
+    "training": GuardAttrKind.TRAINING,
+    "_sub_layers": GuardAttrKind.SUB_LAYERS,
+    "_forward_pre_hooks": GuardAttrKind.FORWARD_PRE_HOOKS,
+    "_forward_post_hooks": GuardAttrKind.FORWARD_POST_HOOKS,
+    "__func__": GuardAttrKind.FUNC,
+    "__code__": GuardAttrKind.CODE,
+    "__globals__": GuardAttrKind.GLOBALS,
+    "__call__": GuardAttrKind.CALL,
+    "forward": GuardAttrKind.FORWARD,
+    "stop_gradient": GuardAttrKind.STOP_GRADIENT,
+}
+
+
+@dataclass(frozen=True)
+class GuardAccessStep:
+    kind: GuardAccessKind
+    value: Any
+    attr_kind: GuardAttrKind = GuardAttrKind.GENERIC
+
+    @staticmethod
+    def local(name: str) -> GuardAccessStep:
+        return GuardAccessStep(GuardAccessKind.LOCAL, name)
+
+    @staticmethod
+    def global_(name: str) -> GuardAccessStep:
+        return GuardAccessStep(GuardAccessKind.GLOBAL, name)
+
+    @staticmethod
+    def builtin(name: str) -> GuardAccessStep:
+        return GuardAccessStep(GuardAccessKind.BUILTIN, name)
+
+    @staticmethod
+    def constant(value: Any) -> GuardAccessStep:
+        return GuardAccessStep(GuardAccessKind.CONSTANT, value)
+
+    @staticmethod
+    def attr(name: str) -> GuardAccessStep:
+        return GuardAccessStep(
+            GuardAccessKind.ATTR,
+            name,
+            _SPECIAL_ATTR_KINDS.get(name, GuardAttrKind.GENERIC),
+        )
+
+    @staticmethod
+    def item(key: Any) -> GuardAccessStep:
+        return GuardAccessStep(GuardAccessKind.ITEM, key)
+
+    def to_cpp_step(self) -> tuple[Any, ...]:
+        if self.kind is GuardAccessKind.ATTR:
+            return (int(self.kind), self.value, int(self.attr_kind))
+        if self.attr_kind is not GuardAttrKind.GENERIC:
+            raise UnsupportedCompiledGuard(
+                f"{self.kind.name} access cannot carry attr kind {self.attr_kind.name}"
+            )
+        return (int(self.kind), self.value)
+
+
+GuardAccess = tuple[GuardAccessStep, ...]
+
+
+@dataclass(frozen=True)
+class GuardExpr:
+    kind: GuardExprKind
+    value: Any = None
+    access: GuardAccess | None = None
+    unary_op: GuardUnaryOp | None = None
+    binary_op: GuardBinaryOp | None = None
+    lhs: GuardExpr | None = None
+    rhs: GuardExpr | None = None
+
+    @staticmethod
+    def constant(value: Any) -> GuardExpr:
+        return GuardExpr(GuardExprKind.CONSTANT, value=value)
+
+    @staticmethod
+    def from_access(access: GuardAccess) -> GuardExpr:
+        return GuardExpr(GuardExprKind.ACCESS, access=access)
+
+    @staticmethod
+    def unary(op: GuardUnaryOp, operand: GuardExpr) -> GuardExpr:
+        return GuardExpr(GuardExprKind.UNARY, unary_op=op, lhs=operand)
+
+    @staticmethod
+    def binary(op: GuardBinaryOp, lhs: GuardExpr, rhs: GuardExpr) -> GuardExpr:
+        return GuardExpr(GuardExprKind.BINARY, binary_op=op, lhs=lhs, rhs=rhs)
+
+    def to_cpp_expr(self) -> tuple[Any, ...]:
+        if self.kind is GuardExprKind.CONSTANT:
+            return (int(self.kind), self.value)
+        if self.kind is GuardExprKind.ACCESS:
+            assert self.access is not None
+            return (
+                int(self.kind),
+                tuple(step.to_cpp_step() for step in self.access),
+            )
+        if self.kind is GuardExprKind.UNARY:
+            assert self.unary_op is not None
+            assert self.lhs is not None
+            return (
+                int(self.kind),
+                int(self.unary_op),
+                self.lhs.to_cpp_expr(),
+            )
+        if self.kind is GuardExprKind.BINARY:
+            assert self.binary_op is not None
+            assert self.lhs is not None
+            assert self.rhs is not None
+            return (
+                int(self.kind),
+                int(self.binary_op),
+                self.lhs.to_cpp_expr(),
+                self.rhs.to_cpp_expr(),
+            )
+        raise UnsupportedCompiledGuard(f"unknown guard expr kind: {self.kind}")
+
+
+@dataclass(frozen=True)
+class GuardSpec:
+    kind: GuardOpKind
+    access: GuardAccess | None = None
+    args: tuple[Any, ...] = ()
+
+    @staticmethod
+    def grad_enabled(value: bool) -> GuardSpec:
+        return GuardSpec(GuardOpKind.GRAD_ENABLED, args=(value,))
+
+    @staticmethod
+    def expr_match(expr: GuardExpr) -> GuardSpec:
+        return GuardSpec(GuardOpKind.EXPR_MATCH, args=(expr,))
+
+    def to_cpp_spec(self) -> tuple[Any, ...]:
+        if self.kind is GuardOpKind.GRAD_ENABLED:
+            return (int(self.kind), *self.args)
+        if self.kind is GuardOpKind.EXPR_MATCH:
+            expr = self.args[0]
+            assert isinstance(expr, GuardExpr)
+            return (int(self.kind), expr.to_cpp_expr())
+        if not self.access:
+            raise UnsupportedCompiledGuard(
+                f"{self.kind.name} guard requires an access path"
+            )
+        return (
+            int(self.kind),
+            tuple(step.to_cpp_step() for step in self.access),
+            *self.args,
+        )
 
 
 class UnsupportedCompiledGuard(ValueError):
@@ -172,7 +434,16 @@ def make_compiled_guard(
     if not ENV_SOT_ENABLE_COMPILED_GUARD.get():
         return python_guard
 
-    compiled_guard = paddle.framework.core.CompiledGuard(specs)
+    cpp_specs: list[tuple[Any, ...]] = []
+    for spec in specs:
+        if not isinstance(spec, GuardSpec):
+            raise UnsupportedCompiledGuard(
+                "compiled guard specs must be GuardSpec objects; "
+                f"got {type(spec).__name__}: {spec!r}"
+            )
+        cpp_specs.append(spec.to_cpp_spec())
+
+    compiled_guard = paddle.framework.core.CompiledGuard(cpp_specs)
 
     def guard(frame):
         return compiled_guard.check(frame)
@@ -186,10 +457,18 @@ def make_compiled_guard(
     return guard
 
 
-def make_guard_spec(kind: str, access: GuardAccess, *args: Any) -> GuardSpec:
+def make_guard_spec(
+    kind: GuardOpKind, access: GuardAccess, *args: Any
+) -> GuardSpec:
+    if not isinstance(kind, GuardOpKind):
+        raise UnsupportedCompiledGuard(
+            f"compiled guard kind must be GuardOpKind, got {kind!r}"
+        )
     if not access:
-        raise UnsupportedCompiledGuard(f"{kind} guard requires an access path")
-    return (kind, access, *args)
+        raise UnsupportedCompiledGuard(
+            f"{kind.name} guard requires an access path"
+        )
+    return GuardSpec(kind, access, args)
 
 
 def support_weak_ref(obj):

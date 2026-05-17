@@ -25,6 +25,7 @@ from ....utils import ConstTypes, is_namedtuple_class
 from ....utils.exceptions import FallbackError, InnerError
 from ..dispatcher import Dispatcher
 from ..guard import (
+    GuardOpKind,
     StringifiedExpression,
     check_guard,
     make_guard_spec,
@@ -129,18 +130,18 @@ class ContainerVariable(VariableBase):
 
         if self.get_py_type() is dict:
             type_guard = make_guard_spec(
-                "instance_check",
+                GuardOpKind.INSTANCE_CHECK,
                 access,
                 self.get_py_type(),
             )
         else:
             type_guard = make_guard_spec(
-                "type_match",
+                GuardOpKind.TYPE_MATCH,
                 access,
                 self.get_py_type(),
             )
         len_guard = make_guard_spec(
-            "length_match",
+            GuardOpKind.LENGTH_MATCH,
             access,
             len(self.init_value),
         )
@@ -809,7 +810,7 @@ class RangeVariable(ContainerVariable):
     def make_compiled_guard_specs(self):
         access = self.tracker.guard_access_path()
         return [
-            make_guard_spec("instance_check", access, range),
+            make_guard_spec(GuardOpKind.INSTANCE_CHECK, access, range),
             *self.start.make_compiled_guard_specs(),
             *self.stop.make_compiled_guard_specs(),
             *self.step.make_compiled_guard_specs(),

@@ -131,6 +131,22 @@ static inline void AppendInt64VectorKey(std::stringstream& ss,
   ss << "]";
 }
 
+static inline int ParseEnumIndex(py::handle value,
+                                 int max_value,
+                                 const std::string& name) {
+  int raw_value = 0;
+  try {
+    raw_value = value.cast<int>();
+  } catch (const py::cast_error&) {
+    throw py::type_error(name + " must be an integer enum");
+  }
+  if (raw_value < 0 || raw_value > max_value) {
+    throw py::value_error(name +
+                          " is out of range: " + std::to_string(raw_value));
+  }
+  return raw_value;
+}
+
 std::optional<paddle::Tensor> GetTensorFromPyObject(PyObject* obj) {
   if (!paddle::pybind::PyCheckTensor(obj)) {
     // TODO(zrr1999): PyCheckTensor only check if the object is a p_tensor_type.
@@ -764,55 +780,50 @@ std::vector<CompiledGuard::AccessStep> CompiledGuard::ParseAccessPath(
   std::vector<AccessStep> result;
   for (auto step_handle : py::reinterpret_borrow<py::iterable>(access)) {
     py::tuple step = py::reinterpret_borrow<py::tuple>(step_handle);
-    if (py::len(step) != 2) {
-      throw py::value_error("compiled guard access step must be a pair");
+    if (py::len(step) < 2) {
+      throw py::value_error("compiled guard access step is too short");
     }
-    std::string kind = step[0].cast<std::string>();
+    auto kind = static_cast<AccessKind>(
+        ParseEnumIndex(step[0],
+                       static_cast<int>(AccessKind::ITEM),
+                       "compiled guard access step kind"));
     AccessStep access_step;
+    access_step.kind = kind;
     access_step.name_object = py::none();
     access_step.value = py::none();
-    if (kind == "local") {
-      access_step.kind = AccessKind::LOCAL;
-      access_step.name = step[1].cast<std::string>();
-    } else if (kind == "global") {
-      access_step.kind = AccessKind::GLOBAL;
-      access_step.name = step[1].cast<std::string>();
-    } else if (kind == "builtin") {
-      access_step.kind = AccessKind::BUILTIN;
-      access_step.name = step[1].cast<std::string>();
-    } else if (kind == "const") {
-      access_step.kind = AccessKind::CONSTANT;
-      access_step.value = py::reinterpret_borrow<py::object>(step[1]);
-    } else if (kind == "attr") {
-      access_step.kind = AccessKind::ATTR;
-      access_step.name = step[1].cast<std::string>();
-      if (access_step.name == "training") {
-        access_step.attr_kind = CompiledGuardAttrKind::TRAINING;
-      } else if (access_step.name == "_sub_layers") {
-        access_step.attr_kind = CompiledGuardAttrKind::SUB_LAYERS;
-      } else if (access_step.name == "_forward_pre_hooks") {
-        access_step.attr_kind = CompiledGuardAttrKind::FORWARD_PRE_HOOKS;
-      } else if (access_step.name == "_forward_post_hooks") {
-        access_step.attr_kind = CompiledGuardAttrKind::FORWARD_POST_HOOKS;
-      } else if (access_step.name == "__func__") {
-        access_step.attr_kind = CompiledGuardAttrKind::FUNC;
-      } else if (access_step.name == "__code__") {
-        access_step.attr_kind = CompiledGuardAttrKind::CODE;
-      } else if (access_step.name == "__globals__") {
-        access_step.attr_kind = CompiledGuardAttrKind::GLOBALS;
-      } else if (access_step.name == "__call__") {
-        access_step.attr_kind = CompiledGuardAttrKind::CALL;
-      } else if (access_step.name == "forward") {
-        access_step.attr_kind = CompiledGuardAttrKind::FORWARD;
-      } else if (access_step.name == "stop_gradient") {
-        access_step.attr_kind = CompiledGuardAttrKind::STOP_GRADIENT;
-      }
-    } else if (kind == "item") {
-      access_step.kind = AccessKind::ITEM;
-      access_step.value = py::reinterpret_borrow<py::object>(step[1]);
-      access_step.key_hash = GetObjectHashNoError(access_step.value.ptr());
-    } else {
-      throw py::value_error("unknown compiled guard access step: " + kind);
+    switch (kind) {
+      case AccessKind::LOCAL:
+      case AccessKind::GLOBAL:
+      case AccessKind::BUILTIN:
+        if (py::len(step) != 2) {
+          throw py::value_error("named guard access step expects 2 fields");
+        }
+        access_step.name = step[1].cast<std::string>();
+        break;
+      case AccessKind::CONSTANT:
+        if (py::len(step) != 2) {
+          throw py::value_error("const guard access step expects 2 fields");
+        }
+        access_step.value = py::reinterpret_borrow<py::object>(step[1]);
+        break;
+      case AccessKind::ATTR:
+        if (py::len(step) != 3) {
+          throw py::value_error("attr guard access step expects 3 fields");
+        }
+        access_step.name = step[1].cast<std::string>();
+        access_step.attr_kind =
+            static_cast<CompiledGuardAttrKind>(ParseEnumIndex(
+                step[2],
+                static_cast<int>(CompiledGuardAttrKind::STOP_GRADIENT),
+                "compiled guard attr kind"));
+        break;
+      case AccessKind::ITEM:
+        if (py::len(step) != 2) {
+          throw py::value_error("item guard access step expects 2 fields");
+        }
+        access_step.value = py::reinterpret_borrow<py::object>(step[1]);
+        access_step.key_hash = GetObjectHashNoError(access_step.value.ptr());
+        break;
     }
     if (access_step.kind == AccessKind::LOCAL ||
         access_step.kind == AccessKind::GLOBAL ||
@@ -880,39 +891,48 @@ std::shared_ptr<CompiledGuard::GuardExpr> CompiledGuard::ParseExpr(
   if (py::len(expr_tuple) < 1) {
     throw py::value_error("compiled guard expression cannot be empty");
   }
-  std::string kind = expr_tuple[0].cast<std::string>();
+  auto kind =
+      static_cast<ExprKind>(ParseEnumIndex(expr_tuple[0],
+                                           static_cast<int>(ExprKind::BINARY),
+                                           "compiled guard expression kind"));
   auto result = std::make_shared<GuardExpr>();
+  result->kind = kind;
   result->value = py::none();
 
-  if (kind == "const") {
-    if (py::len(expr_tuple) != 2) {
-      throw py::value_error("const expression expects 2 fields");
-    }
-    result->kind = ExprKind::CONSTANT;
-    result->value = py::reinterpret_borrow<py::object>(expr_tuple[1]);
-  } else if (kind == "access") {
-    if (py::len(expr_tuple) != 2) {
-      throw py::value_error("access expression expects 2 fields");
-    }
-    result->kind = ExprKind::ACCESS;
-    result->access_path = ParseAccessPath(expr_tuple[1]);
-  } else if (kind == "unary") {
-    if (py::len(expr_tuple) != 3) {
-      throw py::value_error("unary expression expects 3 fields");
-    }
-    result->kind = ExprKind::UNARY;
-    result->op = expr_tuple[1].cast<std::string>();
-    result->lhs = ParseExpr(expr_tuple[2]);
-  } else if (kind == "binary") {
-    if (py::len(expr_tuple) != 4) {
-      throw py::value_error("binary expression expects 4 fields");
-    }
-    result->kind = ExprKind::BINARY;
-    result->op = expr_tuple[1].cast<std::string>();
-    result->lhs = ParseExpr(expr_tuple[2]);
-    result->rhs = ParseExpr(expr_tuple[3]);
-  } else {
-    throw py::value_error("unknown compiled guard expression: " + kind);
+  switch (kind) {
+    case ExprKind::CONSTANT:
+      if (py::len(expr_tuple) != 2) {
+        throw py::value_error("const expression expects 2 fields");
+      }
+      result->value = py::reinterpret_borrow<py::object>(expr_tuple[1]);
+      break;
+    case ExprKind::ACCESS:
+      if (py::len(expr_tuple) != 2) {
+        throw py::value_error("access expression expects 2 fields");
+      }
+      result->access_path = ParseAccessPath(expr_tuple[1]);
+      break;
+    case ExprKind::UNARY:
+      if (py::len(expr_tuple) != 3) {
+        throw py::value_error("unary expression expects 3 fields");
+      }
+      result->unary_op = static_cast<ExprUnaryOp>(
+          ParseEnumIndex(expr_tuple[1],
+                         static_cast<int>(ExprUnaryOp::BOOL),
+                         "compiled guard unary expression op"));
+      result->lhs = ParseExpr(expr_tuple[2]);
+      break;
+    case ExprKind::BINARY:
+      if (py::len(expr_tuple) != 4) {
+        throw py::value_error("binary expression expects 4 fields");
+      }
+      result->binary_op = static_cast<ExprBinaryOp>(
+          ParseEnumIndex(expr_tuple[1],
+                         static_cast<int>(ExprBinaryOp::BITWISE_XOR),
+                         "compiled guard binary expression op"));
+      result->lhs = ParseExpr(expr_tuple[2]);
+      result->rhs = ParseExpr(expr_tuple[3]);
+      break;
   }
 
   return result;
@@ -1862,120 +1882,126 @@ CompiledGuard::CompiledGuard(const py::list& specs) {
     if (py::len(spec) < 1) {
       throw py::value_error("compiled guard spec cannot be empty");
     }
-    std::string kind = spec[0].cast<std::string>();
+    auto kind =
+        static_cast<OpKind>(ParseEnumIndex(spec[0],
+                                           static_cast<int>(OpKind::EXPR_MATCH),
+                                           "compiled guard op kind"));
     GuardOp op;
+    op.kind = kind;
     op.expected = py::none();
 
-    if (kind == "grad_enabled") {
+    if (kind == OpKind::GRAD_ENABLED) {
       if (py::len(spec) != 2) {
         throw py::value_error("grad_enabled guard expects 2 fields");
       }
-      op.kind = OpKind::GRAD_ENABLED;
       op.expected_bool = spec[1].cast<bool>();
-    } else if (kind == "expr_match") {
+    } else if (kind == OpKind::EXPR_MATCH) {
       if (py::len(spec) != 2) {
         throw py::value_error("expr_match guard expects 2 fields");
       }
-      op.kind = OpKind::EXPR_MATCH;
       op.expr = ParseExpr(spec[1]);
     } else {
       if (py::len(spec) < 3) {
-        throw py::value_error(kind + " guard expects an access path");
+        throw py::value_error("compiled access guard expects an access path");
       }
       op.access_path = ParseAccessPath(spec[1]);
       op.access_id = InternAccessPath(op.access_path);
       op.expected = py::reinterpret_borrow<py::object>(spec[2]);
 
-      if (kind == "type_match") {
-        op.kind = OpKind::TYPE_MATCH;
-        op.expected_type = reinterpret_cast<PyTypeObject*>(op.expected.ptr());
-      } else if (kind == "instance_check") {
-        op.kind = OpKind::INSTANCE_CHECK;
-        op.expected_is_dict =
-            op.expected.ptr() == reinterpret_cast<PyObject*>(&PyDict_Type);
-      } else if (kind == "id_match") {
-        op.kind = OpKind::ID_MATCH;
-      } else if (kind == "value_match") {
-        op.kind = OpKind::VALUE_MATCH;
-        PyObject* expected = op.expected.ptr();
-        op.value_match_by_identity = PyCode_Check(expected) ||
-                                     PyBool_Check(expected) ||
-                                     Py_IsNone(expected);
-      } else if (kind == "length_match") {
-        op.kind = OpKind::LENGTH_MATCH;
-        op.expected_length = spec[2].cast<Py_ssize_t>();
-        if (!ops_.empty()) {
-          const auto& previous = ops_.back();
-          if (previous.kind == OpKind::INSTANCE_CHECK &&
-              previous.access_id == op.access_id && previous.expected_is_dict) {
-            op.require_dict_length = true;
-            ops_.pop_back();
+      switch (kind) {
+        case OpKind::TYPE_MATCH:
+          op.expected_type = reinterpret_cast<PyTypeObject*>(op.expected.ptr());
+          break;
+        case OpKind::INSTANCE_CHECK:
+          op.expected_is_dict =
+              op.expected.ptr() == reinterpret_cast<PyObject*>(&PyDict_Type);
+          break;
+        case OpKind::ID_MATCH:
+          break;
+        case OpKind::VALUE_MATCH: {
+          PyObject* expected = op.expected.ptr();
+          op.value_match_by_identity = PyCode_Check(expected) ||
+                                       PyBool_Check(expected) ||
+                                       Py_IsNone(expected);
+          break;
+        }
+        case OpKind::LENGTH_MATCH:
+          op.expected_length = spec[2].cast<Py_ssize_t>();
+          if (!ops_.empty()) {
+            const auto& previous = ops_.back();
+            if (previous.kind == OpKind::INSTANCE_CHECK &&
+                previous.access_id == op.access_id &&
+                previous.expected_is_dict) {
+              op.require_dict_length = true;
+              ops_.pop_back();
+            }
           }
-        }
-      } else if (kind == "layer_match") {
-        op.kind = OpKind::LAYER_MATCH;
-        op.expected_bool = op.expected.attr("training").cast<bool>();
-        op.expected_layer_dict_ptr = _PyObject_GetDictPtr(op.expected.ptr());
-        if (op.expected_layer_dict_ptr != nullptr &&
-            *op.expected_layer_dict_ptr != nullptr) {
-          op.expected_layer_dict_version =
-              GetDictVersion(*op.expected_layer_dict_ptr);
-        }
-      } else if (kind == "tensor_shape") {
-        if (py::len(spec) != 4) {
-          throw py::value_error("tensor_shape guard expects 4 fields");
-        }
-        op.kind = OpKind::TENSOR_SHAPE;
-        op.expected_shape = ParseShape(spec[2]);
-        op.min_non_specialized_number = spec[3].cast<int64_t>();
-      } else if (kind == "tensor_dtype") {
-        op.kind = OpKind::TENSOR_DTYPE;
-        op.expected_dtype = ParseDtype(spec[2]);
-      } else if (kind == "tensor_is_dist") {
-        op.kind = OpKind::TENSOR_IS_DIST;
-        op.expected_bool = spec[2].cast<bool>();
-      } else if (kind == "tensor_dist_meta") {
-        if (py::len(spec) != 7) {
-          throw py::value_error("tensor_dist_meta guard expects 7 fields");
-        }
-        op.kind = OpKind::TENSOR_DIST_META;
-        op.expected_dist_mesh_shape =
-            py::reinterpret_borrow<py::object>(spec[2]);
-        op.expected_dist_process_ids =
-            py::reinterpret_borrow<py::object>(spec[3]);
-        op.expected_dist_dims_mapping =
-            py::reinterpret_borrow<py::object>(spec[4]);
-        op.expected_dist_local_shape =
-            py::reinterpret_borrow<py::object>(spec[5]);
-        op.expected_dist_info_from_tensor =
-            py::reinterpret_borrow<py::object>(spec[6]);
-        if (!PyCallable_Check(op.expected_dist_info_from_tensor.ptr())) {
-          throw py::type_error(
-              "tensor_dist_meta requires a callable extractor");
-        }
-        op.expected_dist_mesh_shape_values =
-            ParseInt64Vector(spec[2], "tensor_dist_meta mesh shape");
-        op.expected_dist_process_ids_values =
-            ParseInt64Vector(spec[3], "tensor_dist_meta process ids");
-        op.expected_dist_dims_mapping_values =
-            ParseInt64Vector(spec[4], "tensor_dist_meta dims mapping");
-        op.expected_dist_local_shape_values =
-            ParseInt64Vector(spec[5], "tensor_dist_meta local shape");
-      } else if (kind == "tensor_not_hold_allocation") {
-        op.kind = OpKind::TENSOR_NOT_HOLD_ALLOCATION;
-      } else if (kind == "numpy_dtype") {
-        op.kind = OpKind::NUMPY_DTYPE;
-      } else if (kind == "numpy_shape") {
-        if (py::len(spec) != 4) {
-          throw py::value_error("numpy_shape guard expects 4 fields");
-        }
-        op.kind = OpKind::NUMPY_SHAPE;
-        op.expected_shape = ParseShape(spec[2]);
-        op.min_non_specialized_number = spec[3].cast<int64_t>();
-      } else if (kind == "weakref_match") {
-        op.kind = OpKind::WEAKREF_MATCH;
-      } else {
-        throw py::value_error("unknown compiled guard op: " + kind);
+          break;
+        case OpKind::LAYER_MATCH:
+          op.expected_bool = op.expected.attr("training").cast<bool>();
+          op.expected_layer_dict_ptr = _PyObject_GetDictPtr(op.expected.ptr());
+          if (op.expected_layer_dict_ptr != nullptr &&
+              *op.expected_layer_dict_ptr != nullptr) {
+            op.expected_layer_dict_version =
+                GetDictVersion(*op.expected_layer_dict_ptr);
+          }
+          break;
+        case OpKind::TENSOR_SHAPE:
+          if (py::len(spec) != 4) {
+            throw py::value_error("tensor_shape guard expects 4 fields");
+          }
+          op.expected_shape = ParseShape(spec[2]);
+          op.min_non_specialized_number = spec[3].cast<int64_t>();
+          break;
+        case OpKind::TENSOR_DTYPE:
+          op.expected_dtype = ParseDtype(spec[2]);
+          break;
+        case OpKind::TENSOR_IS_DIST:
+          op.expected_bool = spec[2].cast<bool>();
+          break;
+        case OpKind::TENSOR_DIST_META:
+          if (py::len(spec) != 7) {
+            throw py::value_error("tensor_dist_meta guard expects 7 fields");
+          }
+          op.expected_dist_mesh_shape =
+              py::reinterpret_borrow<py::object>(spec[2]);
+          op.expected_dist_process_ids =
+              py::reinterpret_borrow<py::object>(spec[3]);
+          op.expected_dist_dims_mapping =
+              py::reinterpret_borrow<py::object>(spec[4]);
+          op.expected_dist_local_shape =
+              py::reinterpret_borrow<py::object>(spec[5]);
+          op.expected_dist_info_from_tensor =
+              py::reinterpret_borrow<py::object>(spec[6]);
+          if (!PyCallable_Check(op.expected_dist_info_from_tensor.ptr())) {
+            throw py::type_error(
+                "tensor_dist_meta requires a callable extractor");
+          }
+          op.expected_dist_mesh_shape_values =
+              ParseInt64Vector(spec[2], "tensor_dist_meta mesh shape");
+          op.expected_dist_process_ids_values =
+              ParseInt64Vector(spec[3], "tensor_dist_meta process ids");
+          op.expected_dist_dims_mapping_values =
+              ParseInt64Vector(spec[4], "tensor_dist_meta dims mapping");
+          op.expected_dist_local_shape_values =
+              ParseInt64Vector(spec[5], "tensor_dist_meta local shape");
+          break;
+        case OpKind::TENSOR_NOT_HOLD_ALLOCATION:
+        case OpKind::NUMPY_DTYPE:
+        case OpKind::WEAKREF_MATCH:
+          break;
+        case OpKind::NUMPY_SHAPE:
+          if (py::len(spec) != 4) {
+            throw py::value_error("numpy_shape guard expects 4 fields");
+          }
+          op.expected_shape = ParseShape(spec[2]);
+          op.min_non_specialized_number = spec[3].cast<int64_t>();
+          break;
+        case OpKind::GRAD_ENABLED:
+        case OpKind::EXPR_MATCH:
+        case OpKind::LAYER_MATCH_GROUP:
+        case OpKind::TENSOR_META:
+          throw py::value_error("invalid compiled access guard op");
       }
     }
     if (op.kind == OpKind::VALUE_MATCH && !ops_.empty()) {
@@ -2179,26 +2205,30 @@ PyObject* CompiledGuard::EvalExpr(FrameProxy* frame,
         return nullptr;
       }
       PyObject* result = nullptr;
-      if (expr.op == "+") {
-        result = PyNumber_Positive(value);
-      } else if (expr.op == "-") {
-        result = PyNumber_Negative(value);
-      } else if (expr.op == "~") {
-        result = PyNumber_Invert(value);
-      } else if (expr.op == "not" || expr.op == "!") {
-        int truth = PyObject_IsTrue(value);
-        if (truth != -1) {
-          result = PyBool_FromLong(!truth);
+      switch (expr.unary_op) {
+        case ExprUnaryOp::POSITIVE:
+          result = PyNumber_Positive(value);
+          break;
+        case ExprUnaryOp::NEGATIVE:
+          result = PyNumber_Negative(value);
+          break;
+        case ExprUnaryOp::BITWISE_NOT:
+          result = PyNumber_Invert(value);
+          break;
+        case ExprUnaryOp::LOGICAL_NOT: {
+          int truth = PyObject_IsTrue(value);
+          if (truth != -1) {
+            result = PyBool_FromLong(!truth);
+          }
+          break;
         }
-      } else if (expr.op == "bool") {
-        int truth = PyObject_IsTrue(value);
-        if (truth != -1) {
-          result = PyBool_FromLong(truth);
+        case ExprUnaryOp::BOOL: {
+          int truth = PyObject_IsTrue(value);
+          if (truth != -1) {
+            result = PyBool_FromLong(truth);
+          }
+          break;
         }
-      } else {
-        PyErr_SetString(
-            PyExc_TypeError,
-            ("unsupported compiled guard unary op: " + expr.op).c_str());
       }
       Py_DECREF(value);
       if (result == nullptr) {
@@ -2218,46 +2248,61 @@ PyObject* CompiledGuard::EvalExpr(FrameProxy* frame,
       }
 
       PyObject* result = nullptr;
-      if (expr.op == "==") {
-        result = PyObject_RichCompare(lhs, rhs, Py_EQ);
-      } else if (expr.op == "!=") {
-        result = PyObject_RichCompare(lhs, rhs, Py_NE);
-      } else if (expr.op == "<") {
-        result = PyObject_RichCompare(lhs, rhs, Py_LT);
-      } else if (expr.op == "<=") {
-        result = PyObject_RichCompare(lhs, rhs, Py_LE);
-      } else if (expr.op == ">") {
-        result = PyObject_RichCompare(lhs, rhs, Py_GT);
-      } else if (expr.op == ">=") {
-        result = PyObject_RichCompare(lhs, rhs, Py_GE);
-      } else if (expr.op == "+") {
-        result = PyNumber_Add(lhs, rhs);
-      } else if (expr.op == "-") {
-        result = PyNumber_Subtract(lhs, rhs);
-      } else if (expr.op == "*") {
-        result = PyNumber_Multiply(lhs, rhs);
-      } else if (expr.op == "/") {
-        result = PyNumber_TrueDivide(lhs, rhs);
-      } else if (expr.op == "//") {
-        result = PyNumber_FloorDivide(lhs, rhs);
-      } else if (expr.op == "%") {
-        result = PyNumber_Remainder(lhs, rhs);
-      } else if (expr.op == "**") {
-        result = PyNumber_Power(lhs, rhs, Py_None);
-      } else if (expr.op == "<<") {
-        result = PyNumber_Lshift(lhs, rhs);
-      } else if (expr.op == ">>") {
-        result = PyNumber_Rshift(lhs, rhs);
-      } else if (expr.op == "&") {
-        result = PyNumber_And(lhs, rhs);
-      } else if (expr.op == "|") {
-        result = PyNumber_Or(lhs, rhs);
-      } else if (expr.op == "^") {
-        result = PyNumber_Xor(lhs, rhs);
-      } else {
-        PyErr_SetString(
-            PyExc_TypeError,
-            ("unsupported compiled guard binary op: " + expr.op).c_str());
+      switch (expr.binary_op) {
+        case ExprBinaryOp::EQ:
+          result = PyObject_RichCompare(lhs, rhs, Py_EQ);
+          break;
+        case ExprBinaryOp::NE:
+          result = PyObject_RichCompare(lhs, rhs, Py_NE);
+          break;
+        case ExprBinaryOp::LT:
+          result = PyObject_RichCompare(lhs, rhs, Py_LT);
+          break;
+        case ExprBinaryOp::LE:
+          result = PyObject_RichCompare(lhs, rhs, Py_LE);
+          break;
+        case ExprBinaryOp::GT:
+          result = PyObject_RichCompare(lhs, rhs, Py_GT);
+          break;
+        case ExprBinaryOp::GE:
+          result = PyObject_RichCompare(lhs, rhs, Py_GE);
+          break;
+        case ExprBinaryOp::ADD:
+          result = PyNumber_Add(lhs, rhs);
+          break;
+        case ExprBinaryOp::SUB:
+          result = PyNumber_Subtract(lhs, rhs);
+          break;
+        case ExprBinaryOp::MUL:
+          result = PyNumber_Multiply(lhs, rhs);
+          break;
+        case ExprBinaryOp::TRUE_DIV:
+          result = PyNumber_TrueDivide(lhs, rhs);
+          break;
+        case ExprBinaryOp::FLOOR_DIV:
+          result = PyNumber_FloorDivide(lhs, rhs);
+          break;
+        case ExprBinaryOp::MOD:
+          result = PyNumber_Remainder(lhs, rhs);
+          break;
+        case ExprBinaryOp::POW:
+          result = PyNumber_Power(lhs, rhs, Py_None);
+          break;
+        case ExprBinaryOp::LSHIFT:
+          result = PyNumber_Lshift(lhs, rhs);
+          break;
+        case ExprBinaryOp::RSHIFT:
+          result = PyNumber_Rshift(lhs, rhs);
+          break;
+        case ExprBinaryOp::BITWISE_AND:
+          result = PyNumber_And(lhs, rhs);
+          break;
+        case ExprBinaryOp::BITWISE_OR:
+          result = PyNumber_Or(lhs, rhs);
+          break;
+        case ExprBinaryOp::BITWISE_XOR:
+          result = PyNumber_Xor(lhs, rhs);
+          break;
       }
 
       Py_DECREF(lhs);
