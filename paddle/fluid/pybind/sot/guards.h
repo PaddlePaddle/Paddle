@@ -354,6 +354,7 @@ class CompiledGuard {
     TENSOR_DTYPE,
     TENSOR_IS_DIST,
     TENSOR_META,
+    TENSOR_DIST_META,
     TENSOR_NOT_HOLD_ALLOCATION,
     NUMPY_DTYPE,
     NUMPY_SHAPE,
@@ -486,8 +487,17 @@ class CompiledGuard {
     std::vector<AccessStep> access_path;
     std::shared_ptr<GuardExpr> expr;
     py::object expected;
+    py::object expected_dist_mesh_shape;
+    py::object expected_dist_process_ids;
+    py::object expected_dist_dims_mapping;
+    py::object expected_dist_local_shape;
+    py::object expected_dist_info_from_tensor;
     PyTypeObject* expected_type{nullptr};
     std::vector<std::optional<int64_t>> expected_shape;
+    std::vector<int64_t> expected_dist_mesh_shape_values;
+    std::vector<int64_t> expected_dist_process_ids_values;
+    std::vector<int64_t> expected_dist_dims_mapping_values;
+    std::vector<int64_t> expected_dist_local_shape_values;
     size_t access_id{0};
     int expected_dtype{0};
     bool expected_bool{false};
@@ -506,9 +516,12 @@ class CompiledGuard {
 
   static std::vector<AccessStep> ParseAccessPath(py::handle access);
   static std::vector<std::optional<int64_t>> ParseShape(py::handle shape);
+  static std::vector<int64_t> ParseInt64Vector(py::handle values,
+                                               const std::string& name);
   static std::shared_ptr<GuardExpr> ParseExpr(py::handle expr);
   static std::string AccessStepKey(const AccessStep& step);
   static std::string GuardOpKey(const GuardOp& op);
+  static bool CheckTensorDistMeta(PyObject* value, const GuardOp& op);
   size_t InternAccessPath(const std::vector<AccessStep>& access_path);
   void DeduplicateOps();
   void FuseTensorMetaOps();

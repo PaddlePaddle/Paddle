@@ -122,6 +122,15 @@ static inline bool PyObject_RichEqual(PyObject* a, PyObject* b) {
   return result == 1;
 }
 
+static inline void AppendInt64VectorKey(std::stringstream& ss,
+                                        const std::vector<int64_t>& values) {
+  ss << "[";
+  for (const auto& value : values) {
+    ss << value << ",";
+  }
+  ss << "]";
+}
+
 std::optional<paddle::Tensor> GetTensorFromPyObject(PyObject* obj) {
   if (!paddle::pybind::PyCheckTensor(obj)) {
     // TODO(zrr1999): PyCheckTensor only check if the object is a p_tensor_type.
@@ -1026,6 +1035,23 @@ std::vector<std::optional<int64_t>> CompiledGuard::ParseShape(
   return result;
 }
 
+std::vector<int64_t> CompiledGuard::ParseInt64Vector(py::handle values,
+                                                     const std::string& name) {
+  std::vector<int64_t> result;
+  try {
+    for (auto value : py::reinterpret_borrow<py::iterable>(values)) {
+      result.push_back(value.cast<int64_t>());
+    }
+  } catch (const py::cast_error&) {
+    PyErr_Clear();
+    throw py::type_error(name + " must be an integer sequence");
+  } catch (const py::type_error&) {
+    PyErr_Clear();
+    throw py::type_error(name + " must be an integer sequence");
+  }
+  return result;
+}
+
 std::shared_ptr<CompiledGuard::GuardExpr> CompiledGuard::ParseExpr(
     py::handle expr) {
   py::tuple expr_tuple = py::reinterpret_borrow<py::tuple>(expr);
@@ -1173,6 +1199,17 @@ std::string CompiledGuard::GuardOpKey(const GuardOp& op) {
         }
         ss << ",";
       }
+      break;
+    case OpKind::TENSOR_DIST_META:
+      ss << reinterpret_cast<uintptr_t>(op.expected_dist_info_from_tensor.ptr())
+         << ":";
+      AppendInt64VectorKey(ss, op.expected_dist_mesh_shape_values);
+      ss << ":";
+      AppendInt64VectorKey(ss, op.expected_dist_process_ids_values);
+      ss << ":";
+      AppendInt64VectorKey(ss, op.expected_dist_dims_mapping_values);
+      ss << ":";
+      AppendInt64VectorKey(ss, op.expected_dist_local_shape_values);
       break;
     case OpKind::TENSOR_NOT_HOLD_ALLOCATION:
       break;
@@ -1349,6 +1386,17 @@ std::string CompiledGuard::LookupGuardOpKey(const GuardOp& op) const {
       for (const auto& dim : op.expected_shape) {
         ss << (dim.has_value() ? std::to_string(dim.value()) : "*") << ",";
       }
+      break;
+    case OpKind::TENSOR_DIST_META:
+      ss << reinterpret_cast<uintptr_t>(op.expected_dist_info_from_tensor.ptr())
+         << ":";
+      AppendInt64VectorKey(ss, op.expected_dist_mesh_shape_values);
+      ss << ":";
+      AppendInt64VectorKey(ss, op.expected_dist_process_ids_values);
+      ss << ":";
+      AppendInt64VectorKey(ss, op.expected_dist_dims_mapping_values);
+      ss << ":";
+      AppendInt64VectorKey(ss, op.expected_dist_local_shape_values);
       break;
     case OpKind::TENSOR_NOT_HOLD_ALLOCATION:
       break;
@@ -2064,6 +2112,33 @@ CompiledGuard::CompiledGuard(const py::list& specs) {
       } else if (kind == "tensor_is_dist") {
         op.kind = OpKind::TENSOR_IS_DIST;
         op.expected_bool = spec[2].cast<bool>();
+      } else if (kind == "tensor_dist_meta") {
+        if (py::len(spec) != 7) {
+          throw py::value_error("tensor_dist_meta guard expects 7 fields");
+        }
+        op.kind = OpKind::TENSOR_DIST_META;
+        op.expected_dist_mesh_shape =
+            py::reinterpret_borrow<py::object>(spec[2]);
+        op.expected_dist_process_ids =
+            py::reinterpret_borrow<py::object>(spec[3]);
+        op.expected_dist_dims_mapping =
+            py::reinterpret_borrow<py::object>(spec[4]);
+        op.expected_dist_local_shape =
+            py::reinterpret_borrow<py::object>(spec[5]);
+        op.expected_dist_info_from_tensor =
+            py::reinterpret_borrow<py::object>(spec[6]);
+        if (!PyCallable_Check(op.expected_dist_info_from_tensor.ptr())) {
+          throw py::type_error(
+              "tensor_dist_meta requires a callable extractor");
+        }
+        op.expected_dist_mesh_shape_values =
+            ParseInt64Vector(spec[2], "tensor_dist_meta mesh shape");
+        op.expected_dist_process_ids_values =
+            ParseInt64Vector(spec[3], "tensor_dist_meta process ids");
+        op.expected_dist_dims_mapping_values =
+            ParseInt64Vector(spec[4], "tensor_dist_meta dims mapping");
+        op.expected_dist_local_shape_values =
+            ParseInt64Vector(spec[5], "tensor_dist_meta local shape");
       } else if (kind == "tensor_not_hold_allocation") {
         op.kind = OpKind::TENSOR_NOT_HOLD_ALLOCATION;
       } else if (kind == "numpy_dtype") {
@@ -2372,6 +2447,49 @@ PyObject* CompiledGuard::EvalExpr(FrameProxy* frame,
     }
   }
   return nullptr;
+}
+
+bool CompiledGuard::CheckTensorDistMeta(PyObject* value, const GuardOp& op) {
+  auto tensor = GetTensorFromPyObject(value);
+  if (!tensor || !tensor->is_dist_tensor()) {
+    return false;
+  }
+
+  PyObject* dist_info =
+      PyObject_CallOneArg(op.expected_dist_info_from_tensor.ptr(), value);
+  if (dist_info == nullptr) {
+    PyErr_Clear();
+    return false;
+  }
+
+  PyObject* mesh = PyObject_GetAttrString(dist_info, "mesh");
+  if (mesh == nullptr) {
+    Py_DECREF(dist_info);
+    PyErr_Clear();
+    return false;
+  }
+
+  PyObject* mesh_shape = PyObject_GetAttrString(mesh, "shape");
+  PyObject* process_ids = PyObject_GetAttrString(mesh, "process_ids");
+  PyObject* dims_mapping = PyObject_GetAttrString(dist_info, "dims_mapping");
+  PyObject* local_shape = PyObject_GetAttrString(dist_info, "local_shape");
+
+  bool result =
+      mesh_shape != nullptr && process_ids != nullptr &&
+      dims_mapping != nullptr && local_shape != nullptr &&
+      PyObject_RichEqual(mesh_shape, op.expected_dist_mesh_shape.ptr()) &&
+      PyObject_RichEqual(process_ids, op.expected_dist_process_ids.ptr()) &&
+      PyObject_RichEqual(dims_mapping, op.expected_dist_dims_mapping.ptr()) &&
+      PyObject_RichEqual(local_shape, op.expected_dist_local_shape.ptr());
+
+  Py_XDECREF(mesh_shape);
+  Py_XDECREF(process_ids);
+  Py_XDECREF(dims_mapping);
+  Py_XDECREF(local_shape);
+  Py_DECREF(mesh);
+  Py_DECREF(dist_info);
+  PyErr_Clear();
+  return result;
 }
 
 bool CompiledGuard::CheckOp(FrameProxy* frame,
@@ -2876,6 +2994,9 @@ bool CompiledGuard::CheckOp(FrameProxy* frame,
           tensor->is_dist_tensor() == op.expected_bool;
       break;
     }
+    case OpKind::TENSOR_DIST_META:
+      result = CheckTensorDistMeta(value, op);
+      break;
     case OpKind::TENSOR_NOT_HOLD_ALLOCATION:
       result = CheckIsNotDenseTensorHoldAllocation(value);
       break;

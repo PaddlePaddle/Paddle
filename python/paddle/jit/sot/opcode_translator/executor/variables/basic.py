@@ -601,11 +601,7 @@ class TensorVariable(VariableBase):
 
         min_non_specialized_number = get_min_non_specialized_number()
         meta = meta.unwrap_unsafe()
-        if meta.dist_info is not None:
-            raise NotImplementedError(
-                "distributed tensor meta compiled guard is not implemented"
-            )
-        return [
+        specs = [
             make_guard_spec(
                 "tensor_shape",
                 access,
@@ -618,8 +614,24 @@ class TensorVariable(VariableBase):
                 (*access, ("attr", "stop_gradient")),
                 meta.stop_gradient,
             ),
-            make_guard_spec("tensor_is_dist", access, False),
+            make_guard_spec(
+                "tensor_is_dist", access, meta.dist_info is not None
+            ),
         ]
+        if meta.dist_info is not None:
+            tensor_dist_info = meta.dist_info
+            specs.append(
+                make_guard_spec(
+                    "tensor_dist_meta",
+                    access,
+                    tensor_dist_info.mesh.shape,
+                    tensor_dist_info.mesh.process_ids,
+                    tensor_dist_info.dims_mapping,
+                    tensor_dist_info.local_shape,
+                    DistInfo.from_tensor,
+                )
+            )
+        return specs
 
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
