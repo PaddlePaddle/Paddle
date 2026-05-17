@@ -7920,42 +7920,28 @@ def index_copy_(
     else:
         dim = non_negative_axis(x, dim)
     if index.ndim >= 2:
-        raise IndexError(
-            f"index_copy_(): Index should have dimension 1 or 0 (got {index.ndim})"
-        )
+        raise IndexError("index_copy_(): index must be 0D or 1D")
     if convert_dtype(index.dtype) != 'int64':
-        raise RuntimeError(
-            f"index_copy_(): Expected a long tensor for index, but got {convert_dtype(index.dtype)}"
-        )
+        raise RuntimeError("index_copy_(): index must be int64")
     if x.dtype != source.dtype:
         raise RuntimeError(
-            f"index_copy_(): self and source expected to have the same dtype, but got (self) {x.dtype} and (source) {source.dtype}"
+            "index_copy_(): self and source must have same dtype"
         )
     num_indices = index.numel().item()
     if num_indices != 0:
-        if (index < 0).any():
-            raise IndexError(
-                f"index_copy_(): index {index.min().item()} is out of bounds for dimension {dim} with size {x.shape[dim] if x.ndim > 0 else 1}"
-            )
-        if (index >= (x.shape[dim] if x.ndim > 0 else 1)).any():
-            raise IndexError(
-                f"index_copy_(): index {index.max().item()} is out of bounds for dimension {dim} with size {x.shape[dim] if x.ndim > 0 else 1}"
-            )
+        dim_size = x.shape[dim] if x.ndim > 0 else 1
+        if ((index < 0) | (index >= dim_size)).any():
+            raise IndexError("index_copy_(): index out of bounds")
 
     source_is_scalar = source.ndim == 0
     if source_is_scalar:
         if num_indices != 1:
-            raise IndexError(
-                f"index_copy_(): When source is scalar, index should have one element (got {num_indices})"
-            )
+            raise IndexError("index_copy_(): scalar source requires one index")
     elif source.ndim != x.ndim and x.ndim != 0:
-        raise IndexError(
-            "index_copy_(): When source and destination are not scalars, their dimensionality must match. "
-            f"Source dimensionality ({source.ndim}), destination dimensionality ({x.ndim})"
-        )
+        raise IndexError("index_copy_(): source and self must have same rank")
     elif num_indices != source.shape[dim]:
         raise IndexError(
-            f"index_copy_(): Number of indices ({num_indices}) should be equal to source.size(dim) ({source.shape[dim]})"
+            "index_copy_(): index length must match source size at dim"
         )
 
     if x.ndim == 0:
@@ -7977,9 +7963,7 @@ def index_copy_(
     )
     if x_sliced_shape != source_sliced_shape:
         raise RuntimeError(
-            "index_copy_(): Source/destination tensor must have same slice shapes. "
-            f"Destination slice shape: {x_sliced_shape} at dimension {dim} "
-            f"and source slice shape: {source_sliced_shape} at dimension 0."
+            "index_copy_(): source and destination slices must match"
         )
 
     if num_indices == 0:
