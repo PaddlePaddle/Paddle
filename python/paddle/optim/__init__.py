@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from . import lr_scheduler
 from .adadelta import Adadelta
 from .adagrad import Adagrad
 from .adam import Adam
@@ -42,4 +43,5 @@ __all__ = [
     "RMSProp",
     "Rprop",
     "SGD",
+    "lr_scheduler",
 ]
