@@ -26,6 +26,8 @@ from ...psdb import NO_FALLBACK_CODES
 from ...utils import (
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
     ENV_SOT_ENABLE_COMPILE_TIME_LIMIT,
+    ENV_SOT_ENABLE_COMPILED_GUARD,
+    ENV_SOT_ENABLE_COMPILED_GUARD_TREE,
     ENV_SOT_ENABLE_GUARD_TREE,
     ENV_SOT_ENABLE_STRICT_GUARD_CHECK,
     ENV_SOT_UNSAFE_CACHE_FASTPATH,
@@ -80,6 +82,10 @@ class OpcodeExecutorCache(metaclass=Singleton):
     cache: dict[
         types.CodeType, tuple[GuardedFunctions, paddle.framework.core.GuardTree]
     ]
+    compiled_guard_lookups: dict[
+        types.CodeType, paddle.framework.core.CompiledGuardLookup
+    ]
+    compiled_guard_lookup_unsupported_codes: set[types.CodeType]
     translate_count: int
     code_symbolic_inputs: dict[types.CodeType, dict[str, None | dict[int, int]]]
     compile_time_stats: dict[types.CodeType, float]
@@ -87,6 +93,8 @@ class OpcodeExecutorCache(metaclass=Singleton):
 
     def __init__(self):
         self.cache = {}
+        self.compiled_guard_lookups = {}
+        self.compiled_guard_lookup_unsupported_codes = set()
         self.translate_count = 0
         self.code_symbolic_inputs = {}
         self.compile_time_stats = {}
@@ -103,23 +111,38 @@ class OpcodeExecutorCache(metaclass=Singleton):
         Clears the cache and resets the translate count.
         """
         self.cache.clear()
+        self.compiled_guard_lookups.clear()
+        self.compiled_guard_lookup_unsupported_codes.clear()
         self.translate_count = 0
         self.code_symbolic_inputs.clear()
         self.compile_time_stats.clear()
+        self.consecutive_cache_hit_count.clear()
 
     def dump_state(self):
         return {
             "cache": self.cache,
+            "compiled_guard_lookups": self.compiled_guard_lookups,
+            "compiled_guard_lookup_unsupported_codes": (
+                self.compiled_guard_lookup_unsupported_codes
+            ),
             "translate_count": self.translate_count,
             "code_symbolic_inputs": self.code_symbolic_inputs,
             "compile_time_stats": self.compile_time_stats,
+            "consecutive_cache_hit_count": self.consecutive_cache_hit_count,
         }
 
     def load_state(self, state):
         self.cache = state["cache"]
+        self.compiled_guard_lookups = state.get("compiled_guard_lookups", {})
+        self.compiled_guard_lookup_unsupported_codes = state.get(
+            "compiled_guard_lookup_unsupported_codes", set()
+        )
         self.translate_count = state["translate_count"]
         self.code_symbolic_inputs = state["code_symbolic_inputs"]
         self.compile_time_stats = state["compile_time_stats"]
+        self.consecutive_cache_hit_count = defaultdict(
+            int, state.get("consecutive_cache_hit_count", {})
+        )
 
     def __call__(self, frame: types.FrameType, **kwargs) -> CustomCode:
         code: types.CodeType = frame.f_code
@@ -134,6 +157,7 @@ class OpcodeExecutorCache(metaclass=Singleton):
                 [(new_custom_code, guard_fn)],
                 paddle.framework.core.GuardTree([guard_chain]),
             )
+            self.add_compiled_guard_lookup(code, guard_fn, 0)
             return new_custom_code
         guarded_fns, guard_tree = self.cache[code]
         compile_time_for_code = self.compile_time_stats.get(code, 0)
@@ -154,6 +178,70 @@ class OpcodeExecutorCache(metaclass=Singleton):
             self.consecutive_cache_hit_count.get(code, 0)
             >= self.CACHE_HIT_FASTPATH_THRESHOLD
         )
+
+    def add_compiled_guard_lookup(
+        self,
+        code: types.CodeType,
+        guard_fn: Guard,
+        cache_index: int,
+    ):
+        compiled_guard = getattr(guard_fn, "compiled_guard", None)
+        if compiled_guard is None:
+            self.compiled_guard_lookups.pop(code, None)
+            self.compiled_guard_lookup_unsupported_codes.add(code)
+            return
+        if code in self.compiled_guard_lookup_unsupported_codes:
+            return
+        lookup = self.compiled_guard_lookups.get(code)
+        if lookup is None:
+            lookup = paddle.framework.core.CompiledGuardLookup()
+            self.compiled_guard_lookups[code] = lookup
+        lookup.add_guard(compiled_guard, cache_index)
+
+    def translate_cache_miss(
+        self,
+        frame: types.FrameType,
+        guarded_fns: GuardedFunctions,
+        guard_tree: paddle.framework.core.GuardTree,
+        compile_time_for_code: float,
+        compile_time_total: float,
+        miss_source: str,
+        **kwargs,
+    ) -> CustomCode:
+        if miss_source:
+            log(2, f"[Cache] all guards missed ({miss_source})\n")
+        else:
+            log(2, "[Cache] all guards missed\n")
+
+        enable_compile_time_limit = ENV_SOT_ENABLE_COMPILE_TIME_LIMIT.get()
+        if (
+            enable_compile_time_limit
+            and compile_time_for_code >= self.MAX_COMPILE_TIME_PER_CODE
+        ):
+            log(2, "[Cache] Exceed max compile time per code, skip it\n")
+            return CustomCode(None, False)
+        if (
+            enable_compile_time_limit
+            and compile_time_total >= self.MAX_COMPILE_TIME_TOTAL
+        ):
+            log_once(
+                f"[SOT] Current compile time total is {compile_time_total}, exceed max compile time total {self.MAX_COMPILE_TIME_TOTAL}, skip new function"
+            )
+            log(
+                2,
+                "[Cache] Exceed max compile time total, skip it\n",
+            )
+            return CustomCode(None, False)
+
+        new_custom_code, guard_fn, guard_chain = self.translate(frame, **kwargs)
+        if guard_fn is not None:
+            assert guard_chain is not None
+            guarded_fns.append((new_custom_code, guard_fn))
+            guard_tree.add_guard_chain(guard_chain)
+            self.add_compiled_guard_lookup(
+                frame.f_code, guard_fn, len(guarded_fns) - 1
+            )
+        return new_custom_code
 
     @event_register("lookup")
     def lookup(
@@ -183,9 +271,9 @@ class OpcodeExecutorCache(metaclass=Singleton):
 
         enable_strict_guard = ENV_SOT_ENABLE_STRICT_GUARD_CHECK.get()
         enable_guard_tree = ENV_SOT_ENABLE_GUARD_TREE.get()
+        enable_compiled_guard = ENV_SOT_ENABLE_COMPILED_GUARD.get()
+        enable_compiled_guard_tree = ENV_SOT_ENABLE_COMPILED_GUARD_TREE.get()
         enable_unsafe_cache_fastpath = ENV_SOT_UNSAFE_CACHE_FASTPATH.get()
-        enable_compile_time_limit = ENV_SOT_ENABLE_COMPILE_TIME_LIMIT.get()
-
         if enable_unsafe_cache_fastpath and (
             self.is_fastpath_threshold_reached(code)
         ):
@@ -197,48 +285,61 @@ class OpcodeExecutorCache(metaclass=Singleton):
             return guarded_fns[0][0]
 
         cache_index = None
-        if enable_strict_guard or enable_guard_tree:
+        compiled_guard_lookup = self.compiled_guard_lookups.get(code)
+        lookup_source = None
+        use_compiled_guard_lookup = (
+            enable_compiled_guard
+            and enable_compiled_guard_tree
+            and not enable_unsafe_cache_fastpath
+            and compiled_guard_lookup is not None
+        )
+        if use_compiled_guard_lookup:
+            log(
+                4,
+                f"[Cache] Compiled guard lookup: "
+                f"{compiled_guard_lookup.stringify()}\n",
+            )
+            with EventGuard("compiled guard tree lookup"):
+                cache_index = compiled_guard_lookup.lookup(frame)
+            lookup_source = "compiled guard tree"
+            if not enable_strict_guard:
+                if cache_index is not None:
+                    return guarded_fns[cache_index][0]
+                return self.translate_cache_miss(
+                    frame,
+                    guarded_fns,
+                    guard_tree,
+                    compile_time_for_code,
+                    compile_time_total,
+                    lookup_source,
+                    **kwargs,
+                )
+        elif enable_strict_guard or enable_guard_tree:
             log(4, f"[Cache] Guard tree: \n{guard_tree.stringify()}")
             cache_index = guard_tree.lookup(frame)
+            lookup_source = "guard tree"
 
-        if not enable_strict_guard and enable_guard_tree:
+        if (
+            not enable_strict_guard
+            and enable_guard_tree
+            and lookup_source == "guard tree"
+        ):
             if cache_index is not None:
                 # TODO(zrr1999): add a mapping between custom_code and cache_index
                 return guarded_fns[cache_index][0]
-            else:
-                log(2, "[Cache] all guards missed (guard tree mode)\n")
-                if (
-                    enable_compile_time_limit
-                    and compile_time_for_code >= self.MAX_COMPILE_TIME_PER_CODE
-                ):
-                    log(
-                        2,
-                        "[Cache] Exceed max compile time per code, skip it\n",
-                    )
-                    return CustomCode(None, False)
-                if (
-                    enable_compile_time_limit
-                    and compile_time_total >= self.MAX_COMPILE_TIME_TOTAL
-                ):
-                    log_once(
-                        f"[SOT] Current total compile time is {compile_time_total}, exceed max compile time total {self.MAX_COMPILE_TIME_TOTAL}, fallback new function to dygraph"
-                    )
-                    log(
-                        2,
-                        "[Cache] Exceed max compile time total, skip it\n",
-                    )
-                    return CustomCode(None, False)
-                new_custom_code, guard_fn, guard_chain = self.translate(
-                    frame, **kwargs
-                )
-                if guard_fn is not None:
-                    assert guard_chain is not None
-                    guarded_fns.append((new_custom_code, guard_fn))
-                    guard_tree.add_guard_chain(guard_chain)
-                return new_custom_code
+            return self.translate_cache_miss(
+                frame,
+                guarded_fns,
+                guard_tree,
+                compile_time_for_code,
+                compile_time_total,
+                "guard tree mode",
+                **kwargs,
+            )
 
         for index, (custom_code, guard_fn) in enumerate(guarded_fns):
             if enable_strict_guard:
+                mirror_guard_result = False
                 mirror_guard_error = None
                 try:
                     with EventGuard("try mirror guard"):
@@ -251,21 +352,39 @@ class OpcodeExecutorCache(metaclass=Singleton):
                 with EventGuard("try guard"):
                     guard_result = guard_fn(frame)
                 if enable_strict_guard and (not enable_unsafe_cache_fastpath):
-                    assert mirror_guard_result == guard_result, (
-                        "faster guard result is not equal to guard result, "
-                        f"guard_expr: {getattr(guard_fn, 'expr', 'None')} \n"
-                        f"faster_guard_expr: {getattr(guard_fn.mirror_guard, 'expr', 'None')},"
-                    )
+                    if mirror_guard_error is not None:
+                        assert guard_result is False, (
+                            "faster guard hits but mirror guard raises, "
+                            f"guard_expr: {getattr(guard_fn, 'expr', 'None')} \n"
+                            f"faster_guard_expr: {getattr(guard_fn.mirror_guard, 'expr', 'None')},"
+                            f"mirror_guard_error: {mirror_guard_error},"
+                        )
+                    else:
+                        assert mirror_guard_result == guard_result, (
+                            "faster guard result is not equal to guard result, "
+                            f"guard_expr: {getattr(guard_fn, 'expr', 'None')} \n"
+                            f"faster_guard_expr: {getattr(guard_fn.mirror_guard, 'expr', 'None')},"
+                        )
                 if guard_result:
                     log(
                         2,
                         f"[Cache] Cache hit, Guard is \n{getattr(guard_fn, 'expr', 'None')}\n",
                     )
                     if not enable_unsafe_cache_fastpath:
-                        # TODO(zrr1999): cache_index should be equal to index when enable_strict_guard.
-                        assert cache_index is None or index == cache_index, (
-                            f"cache_index({cache_index}) is not equal to index({index})"
-                        )
+                        if lookup_source == "compiled guard tree":
+                            assert index == cache_index, (
+                                "compiled guard tree result is not equal to "
+                                "guard result, "
+                                f"cache_index({cache_index}) is not equal to "
+                                f"index({index})"
+                            )
+                        else:
+                            # TODO(zrr1999): cache_index should be equal to index when enable_strict_guard.
+                            assert (
+                                cache_index is None or index == cache_index
+                            ), (
+                                f"cache_index({cache_index}) is not equal to index({index})"
+                            )
 
                     if enable_unsafe_cache_fastpath:
                         if index == 0:
@@ -279,6 +398,10 @@ class OpcodeExecutorCache(metaclass=Singleton):
                                 *guarded_fns[:index],
                                 *guarded_fns[index + 1 :],
                             ]
+                            self.compiled_guard_lookups.pop(code, None)
+                            self.compiled_guard_lookup_unsupported_codes.add(
+                                code
+                            )
                             self.consecutive_cache_hit_count[code] = 0
 
                     return custom_code
@@ -314,31 +437,20 @@ class OpcodeExecutorCache(metaclass=Singleton):
                         f"mirror_guard_error: {mirror_guard_error},"
                     )
 
-        log(2, "[Cache] all guards missed\n")
-        if (
-            enable_compile_time_limit
-            and compile_time_for_code >= self.MAX_COMPILE_TIME_PER_CODE
-        ):
-            log(2, "[Cache] Exceed max compile time per code, skip it\n")
-            return CustomCode(None, False)
-        if (
-            enable_compile_time_limit
-            and compile_time_total >= self.MAX_COMPILE_TIME_TOTAL
-        ):
-            log_once(
-                f"[SOT] Current compile time total is {compile_time_total}, exceed max compile time total {self.MAX_COMPILE_TIME_TOTAL}, fallback new function to dygraph"
+        if enable_strict_guard and lookup_source == "compiled guard tree":
+            assert cache_index is None, (
+                "compiled guard tree hits but all guards miss, "
+                f"cache_index({cache_index})"
             )
-            log(
-                2,
-                "[Cache] Exceed max compile time total, skip it\n",
-            )
-            return CustomCode(None, False)
-        new_custom_code, guard_fn, guard_chain = self.translate(frame, **kwargs)
-        if guard_fn is not None:
-            assert guard_chain is not None
-            guarded_fns.append((new_custom_code, guard_fn))
-            guard_tree.add_guard_chain(guard_chain)
-        return new_custom_code
+        return self.translate_cache_miss(
+            frame,
+            guarded_fns,
+            guard_tree,
+            compile_time_for_code,
+            compile_time_total,
+            "",
+            **kwargs,
+        )
 
     def before_translate_hook(self, frame: types.FrameType):
         if not ENV_SOT_ALLOW_DYNAMIC_SHAPE.get():

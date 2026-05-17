@@ -113,6 +113,7 @@ from ..guard import (
     StringifiedExpression,
     check_faster_guard,
     check_guard,
+    make_guard_spec,
     object_equal_faster_guard,
     object_equal_stringified_guard,
     stringify_pyobject,
@@ -375,6 +376,19 @@ class TensorDtypeVariable(DataVariable):
         else:
             return object_equal_faster_guard(self)
 
+    def make_compiled_guard_specs(self):
+        if isinstance(self.tracker, GetAttrTracker) and isinstance(
+            self.tracker.obj, TensorVariable
+        ):
+            return [
+                make_guard_spec(
+                    "tensor_dtype",
+                    self.tracker.obj.tracker.guard_access_path(),
+                    self.value,
+                )
+            ]
+        return super().make_compiled_guard_specs()
+
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
         if isinstance(self.tracker, GetAttrTracker) and isinstance(
@@ -577,6 +591,34 @@ class TensorVariable(VariableBase):
                     ),
                 ],
             ),
+        ]
+
+    def make_compiled_guard_specs(self):
+        access = self.tracker.guard_access_path()
+        meta = self.origin_meta
+        if meta.is_null():
+            return [make_guard_spec("tensor_not_hold_allocation", access)]
+
+        min_non_specialized_number = get_min_non_specialized_number()
+        meta = meta.unwrap_unsafe()
+        if meta.dist_info is not None:
+            raise NotImplementedError(
+                "distributed tensor meta compiled guard is not implemented"
+            )
+        return [
+            make_guard_spec(
+                "tensor_shape",
+                access,
+                meta.shape,
+                min_non_specialized_number,
+            ),
+            make_guard_spec("tensor_dtype", access, meta.dtype),
+            make_guard_spec(
+                "value_match",
+                (*access, ("attr", "stop_gradient")),
+                meta.stop_gradient,
+            ),
+            make_guard_spec("tensor_is_dist", access, False),
         ]
 
     @check_guard
@@ -969,6 +1011,48 @@ def get_symbolic_from_meta(meta_or_null: MetaInfoOrNull) -> SymbolicValue:
     return value
 
 
+def make_compiled_constraint_expr(
+    constraint_node: ConstraintNode,
+    extern_vars: dict[str, Any],
+):
+    if isinstance(constraint_node, ConstantConstraintNode):
+        return ("const", constraint_node.value)
+    if isinstance(constraint_node, SymbolicConstraintNode):
+        if constraint_node.name not in extern_vars:
+            raise InnerError(
+                f"Symbolic variable {constraint_node.name} not found in extern_vars."
+            )
+        return (
+            "access",
+            extern_vars[constraint_node.name].tracker.guard_access_path(),
+        )
+    if hasattr(constraint_node, "input"):
+        return (
+            "unary",
+            constraint_node.READABLE_SYMBOL,
+            make_compiled_constraint_expr(
+                constraint_node.input,
+                extern_vars,
+            ),
+        )
+    if hasattr(constraint_node, "lhs") and hasattr(constraint_node, "rhs"):
+        return (
+            "binary",
+            constraint_node.READABLE_SYMBOL,
+            make_compiled_constraint_expr(
+                constraint_node.lhs,
+                extern_vars,
+            ),
+            make_compiled_constraint_expr(
+                constraint_node.rhs,
+                extern_vars,
+            ),
+        )
+    raise InnerError(
+        f"{constraint_node.__class__.__name__} compiled guard is not implemented"
+    )
+
+
 class SymbolicVariable(VariableBase):
     """
     SymbolicVariable is a subclass of VariableBase used to wrap a symbolic value.
@@ -1292,6 +1376,29 @@ class SymbolicVariable(VariableBase):
         ]
         return guards
 
+    def make_compiled_guard_specs(self):
+        if self.need_guard_value:
+            return super().make_compiled_guard_specs()
+        guards = [
+            make_guard_spec(
+                "type_match",
+                self.tracker.guard_access_path(),
+                self.get_py_type(),
+            )
+        ]
+        for constraint in self.constraints:
+            constraint_node, constraint_extern_vars = constraint
+            guards.append(
+                (
+                    "expr_match",
+                    make_compiled_constraint_expr(
+                        constraint_node,
+                        constraint_extern_vars,
+                    ),
+                )
+            )
+        return guards
+
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
         assert ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
@@ -1604,6 +1711,18 @@ class SliceVariable(VariableBase):
             *self.getattr("step").make_faster_guard(),
         ]
 
+    def make_compiled_guard_specs(self):
+        return [
+            make_guard_spec(
+                "type_match",
+                self.tracker.guard_access_path(),
+                slice,
+            ),
+            *self.getattr("start").make_compiled_guard_specs(),
+            *self.getattr("stop").make_compiled_guard_specs(),
+            *self.getattr("step").make_compiled_guard_specs(),
+        ]
+
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
         frame_value_tracer = self.tracker.trace_value_from_frame()
@@ -1760,6 +1879,11 @@ class NumPyVariable(VariableBase):
             f"{self.__class__.__name__}.make_faster_guard is not implemented"
         )
 
+    def make_compiled_guard_specs(self):
+        raise NotImplementedError(
+            f"{self.__class__.__name__}.make_compiled_guard_specs is not implemented"
+        )
+
     def make_stringified_guard(self) -> None:
         raise NotImplementedError
 
@@ -1797,6 +1921,17 @@ class NumPyNumberVariable(NumPyVariable):
                 paddle.framework.core.ValueMatchGuard(self.get_py_value()),
                 [expr_node],
             ),
+        ]
+
+    def make_compiled_guard_specs(self):
+        access = self.tracker.guard_access_path()
+        return [
+            make_guard_spec(
+                "numpy_dtype",
+                access,
+                self.get_py_value().dtype,
+            ),
+            make_guard_spec("value_match", access, self.get_py_value()),
         ]
 
     @check_guard
@@ -1925,6 +2060,25 @@ class NumPyArrayVariable(NumPyVariable):
             [expr_node],
         )
         return [type_guard, dtype_guard, shape_guard]
+
+    def make_compiled_guard_specs(self):
+        min_non_specialized_number = get_min_non_specialized_number()
+        meta = self.meta.unwrap_unsafe()
+        access = self.tracker.guard_access_path()
+        return [
+            make_guard_spec("type_match", access, self.get_py_type()),
+            make_guard_spec(
+                "numpy_dtype",
+                access,
+                np.dtype(_PADDLE_PIR_DTYPE_2_NUMPY_DTYPE[meta.dtype]),
+            ),
+            make_guard_spec(
+                "numpy_shape",
+                access,
+                meta.shape,
+                min_non_specialized_number,
+            ),
+        ]
 
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
@@ -2345,6 +2499,13 @@ class EnumVariable(VariableBase):
         )
         return [type_guard, value_guard]
 
+    def make_compiled_guard_specs(self):
+        access = self.tracker.guard_access_path()
+        return [
+            make_guard_spec("type_match", access, self.get_py_type()),
+            make_guard_spec("value_match", access, self.value),
+        ]
+
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
         frame_value_tracer = self.tracker.trace_value_from_frame()
@@ -2496,6 +2657,29 @@ class DataClassInstanceVariable(VariableBase):
             [[type_guard]]
             + [
                 item.make_faster_guard()
+                for item in guard_variables
+                if item.tracker.need_guard()
+            ],
+        )
+
+    def make_compiled_guard_specs(self):
+        guard_variables = filter(
+            lambda var: not isinstance(var, MutableDictLikeData.Empty),
+            self.proxy.reproduce(0).values(),
+        )
+        return reduce(
+            operator.add,
+            [
+                [
+                    make_guard_spec(
+                        "instance_check",
+                        self.tracker.guard_access_path(),
+                        self.get_py_type(),
+                    )
+                ]
+            ]
+            + [
+                item.make_compiled_guard_specs()
                 for item in guard_variables
                 if item.tracker.need_guard()
             ],

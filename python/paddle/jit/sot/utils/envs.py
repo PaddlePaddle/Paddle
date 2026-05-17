@@ -135,6 +135,14 @@ ENV_SOT_ENABLE_GUARD_TREE = BooleanEnvironmentVariable(
     "SOT_ENABLE_GUARD_TREE",
     False,
 )
+ENV_SOT_ENABLE_COMPILED_GUARD = BooleanEnvironmentVariable(
+    "SOT_ENABLE_COMPILED_GUARD",
+    True,
+)
+ENV_SOT_ENABLE_COMPILED_GUARD_TREE = BooleanEnvironmentVariable(
+    "SOT_ENABLE_COMPILED_GUARD_TREE",
+    True,
+)
 ENV_ENABLE_SOT_STEP_PROFILER = BooleanEnvironmentVariable(
     "ENABLE_SOT_STEP_PROFILER", False
 )
@@ -217,6 +225,18 @@ def faster_guard_guard(value: bool):
 @contextmanager
 def guard_tree_guard(value: bool):
     with EnvironmentVariableGuard(ENV_SOT_ENABLE_GUARD_TREE, value):
+        yield
+
+
+@contextmanager
+def compiled_guard_guard(value: bool):
+    with EnvironmentVariableGuard(ENV_SOT_ENABLE_COMPILED_GUARD, value):
+        yield
+
+
+@contextmanager
+def compiled_guard_tree_guard(value: bool):
+    with EnvironmentVariableGuard(ENV_SOT_ENABLE_COMPILED_GUARD_TREE, value):
         yield
 
 

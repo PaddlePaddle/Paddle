@@ -23,6 +23,7 @@ import paddle
 
 from ...profiler import EventGuard
 from ...utils import (
+    ENV_SOT_ENABLE_COMPILED_GUARD,
     ENV_SOT_ENABLE_FASTER_GUARD,
     ENV_SOT_ENABLE_STRICT_GUARD_CHECK,
     current_symbol_registry,
@@ -31,6 +32,13 @@ from ...utils import (
 )
 
 Guard = Callable[[types.FrameType], bool]
+GuardAccess = tuple[tuple[str, Any], ...]
+GuardSpec = tuple[Any, ...]
+
+
+class UnsupportedCompiledGuard(ValueError):
+    pass
+
 
 if TYPE_CHECKING:
     from .variables import VariableBase
@@ -211,6 +219,39 @@ def make_guard(stringified_guards: list[StringifiedExpression]) -> Guard:
         check_guard_callable(guard)
 
         return guard
+
+
+def make_compiled_guard(
+    specs: list[GuardSpec],
+    python_guard: Guard,
+) -> Guard:
+    """
+    Make a guard backed by a C++ guard program.
+
+    The Python guard is deliberately kept as the mirror/oracle for strict
+    checking while the hot check path runs inside paddle.framework.core.
+    """
+    if not ENV_SOT_ENABLE_COMPILED_GUARD.get():
+        return python_guard
+
+    compiled_guard = paddle.framework.core.CompiledGuard(specs)
+
+    def guard(frame):
+        return compiled_guard.check(frame)
+
+    guard.expr = compiled_guard.stringify()
+    guard.inlined_expr = guard.expr
+    guard.compiled_guard = compiled_guard
+    guard.original_guard = python_guard
+    if ENV_SOT_ENABLE_STRICT_GUARD_CHECK.get():
+        guard.mirror_guard = python_guard
+    return guard
+
+
+def make_guard_spec(kind: str, access: GuardAccess, *args: Any) -> GuardSpec:
+    if not access:
+        raise UnsupportedCompiledGuard(f"{kind} guard requires an access path")
+    return (kind, access, *args)
 
 
 def support_weak_ref(obj):

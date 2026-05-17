@@ -51,6 +51,7 @@ from ...symbolic.statement_ir import (
 from ...symbolic_shape.operators import SYMBOLIC_BINARY_OPS, SYMBOLIC_UNARY_OPS
 from ...utils import (
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
+    ENV_SOT_ENABLE_COMPILED_GUARD,
     NUMPY_API_SUPPORTED_DICT,
     NameGenerator,
     SIRToCodeMap,
@@ -70,7 +71,13 @@ from ...utils.exceptions import (
     SotExtraInfo,
 )
 from ..instruction_utils import get_instructions
-from .guard import Guard, StringifiedExpression, make_guard
+from .guard import (
+    Guard,
+    GuardSpec,
+    StringifiedExpression,
+    make_compiled_guard,
+    make_guard,
+)
 from .mutable_data import MutationDel, MutationNew, MutationSet
 from .pycode_generator import PyCodeGen
 from .side_effects import (
@@ -371,6 +378,22 @@ class FunctionGraph:
             ),
         ]
 
+    def load_builtin_compiled_guard_specs(self) -> list[GuardSpec]:
+        return [("grad_enabled", paddle.is_grad_enabled())]
+
+    @property
+    @event_register("compiled_guard_specs")
+    def compiled_guard_specs(self) -> list[GuardSpec]:
+        guard_specs: list[GuardSpec] = []
+        guard_specs.extend(self.load_builtin_compiled_guard_specs())
+
+        with EventGuard("guard_fn: find vars and make compiled guard"):
+            for variable in find_traceable_vars(
+                self.input_variables + list(self._global_guarded_variables)
+            ):
+                guard_specs.extend(variable.make_compiled_guard_specs())
+        return guard_specs
+
     @property
     @event_register("guard_chain")
     def guard_chain(self) -> list[paddle.framework.core.GuardNodeBase]:
@@ -403,7 +426,11 @@ class FunctionGraph:
                     "guard must be StringifiedExpression."
                 )
 
-            return make_guard(guards)
+            python_guard = make_guard(guards)
+            if ENV_SOT_ENABLE_COMPILED_GUARD.get():
+                guard_specs = self.compiled_guard_specs
+                return make_compiled_guard(guard_specs, python_guard)
+            return python_guard
 
     def _restore_origin_opcode(self, stack_vars, store_var_info, instr_idx):
         origin_instrs = get_instructions(self.pycode_gen._origin_code)

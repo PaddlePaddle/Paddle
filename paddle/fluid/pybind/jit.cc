@@ -143,6 +143,25 @@ void BindGuard(pybind11::module *m) {
       "IsNotDenseTensorHoldAllocationMatchGuard",
       R"DOC(IsNotDenseTensorHoldAllocationMatchGuard Class.)DOC")
       .def(py::init());
+  py::class_<CompiledGuard, std::shared_ptr<CompiledGuard>>(
+      *m, "CompiledGuard", R"DOC(CompiledGuard Class.)DOC")
+      .def(py::init<const py::list &>(), py::arg("specs"))
+      .def("check", &CompiledGuard::check_pybind, py::arg("frame"))
+      .def("stringify", &CompiledGuard::stringify);
+  py::class_<CompiledGuardLookup, std::shared_ptr<CompiledGuardLookup>>(
+      *m, "CompiledGuardLookup", R"DOC(CompiledGuardLookup Class.)DOC")
+      .def(py::init<>())
+      .def("add_guard",
+           &CompiledGuardLookup::add_guard,
+           py::arg("guard"),
+           py::arg("cache_index"))
+      .def(
+          "lookup",
+          [](CompiledGuardLookup &self, py::object frame) {
+            return self.lookup(reinterpret_cast<FrameProxy *>(frame.ptr()));
+          },
+          py::arg("frame"))
+      .def("stringify", &CompiledGuardLookup::stringify);
 
   m->def(
       "merge_guard",

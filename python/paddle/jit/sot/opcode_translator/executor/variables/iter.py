@@ -110,6 +110,13 @@ class SequenceIterVariable(IterVariable):
             guard for held in self.holds for guard in held.make_faster_guard()
         ]
 
+    def make_compiled_guard_specs(self):
+        return [
+            guard
+            for held in self.holds
+            for guard in held.make_compiled_guard_specs()
+        ]
+
     def make_stringified_guard(self):
         return [
             guard
@@ -455,6 +462,13 @@ class UserDefinedIterVariable(IterVariable):
     def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
         return [
             guard for held in self.holds for guard in held.make_faster_guard()
+        ]
+
+    def make_compiled_guard_specs(self):
+        return [
+            guard
+            for held in self.holds
+            for guard in held.make_compiled_guard_specs()
         ]
 
     def make_stringified_guard(self):

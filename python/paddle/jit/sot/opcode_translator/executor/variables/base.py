@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import inspect
 import operator
+import weakref
 from contextlib import contextmanager
 from dataclasses import fields
 from functools import cached_property
@@ -37,9 +38,12 @@ from ....utils.exceptions import FallbackError, HasNoAttributeError
 from ..dispatcher import Dispatcher
 from ..guard import (
     FasterStringifiedExpression,
+    GuardSpec,
     StringifiedExpression,
     check_faster_guard,
     check_guard,
+    make_guard_spec,
+    support_weak_ref,
     union_free_vars,
 )
 from ..mutable_data import MutableDictLikeData
@@ -381,6 +385,22 @@ class VariableBase:
                 paddle.framework.core.ValueMatchGuard(self.get_py_value()),
                 [expr_node],
             )
+        ]
+
+    def make_compiled_guard_specs(self) -> list[GuardSpec]:
+        value = self.get_py_value()
+        access = self.tracker.guard_access_path()
+        if support_weak_ref(value):
+            return [
+                make_guard_spec("weakref_match", access, weakref.ref(value))
+            ]
+        return [
+            make_guard_spec("type_match", access, self.get_py_type()),
+            make_guard_spec(
+                "value_match",
+                access,
+                value,
+            ),
         ]
 
     @check_guard

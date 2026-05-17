@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from ...utils.magic_methods import BinaryOp, UnaryOp
+    from .guard import GuardAccess
     from .pycode_generator import PyCodeGen
     from .variables import FunctionVariable, VariableBase
 
@@ -64,6 +65,11 @@ class Tracker:
     def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
         raise NotImplementedError(
             f"{self.__class__.__name__} has no guard_tree_expr_node"
+        )
+
+    def guard_access_path(self) -> GuardAccess:
+        raise NotImplementedError(
+            f"{self.__class__.__name__} has no compiled guard access path"
         )
 
     # TODO(xiongkun): trace_value_from_frame is not a good name, it should be more related to guard but not traceable.
@@ -203,6 +209,9 @@ class LocalTracker(Tracker):
     def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
         return paddle.framework.core.LocalVarExprNode(self.name)
 
+    def guard_access_path(self) -> GuardAccess:
+        return (("local", self.name),)
+
     def trace_value_from_frame(self) -> StringifiedExpression:
         return StringifiedExpression(f"frame.f_locals['{self.name}']", [], {})
 
@@ -216,6 +225,9 @@ class CellTracker(LocalTracker):
 
     def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
         return paddle.framework.core.LocalVarExprNode(self.name)
+
+    def guard_access_path(self) -> GuardAccess:
+        return (("local", self.name),)
 
     def trace_value_from_frame(self):
         return StringifiedExpression(f"frame.f_locals['{self.name}']", [], {})
@@ -241,6 +253,9 @@ class GlobalTracker(Tracker):
 
     def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
         return paddle.framework.core.GlobalVarExprNode(self.name)
+
+    def guard_access_path(self) -> GuardAccess:
+        return (("global", self.name),)
 
     def trace_value_from_frame(self) -> StringifiedExpression:
         return StringifiedExpression(f"frame.f_globals['{self.name}']", [], {})
@@ -269,6 +284,9 @@ class BuiltinTracker(Tracker):
             getattr(builtins, self.name)
         )
 
+    def guard_access_path(self) -> GuardAccess:
+        return (("builtin", self.name),)
+
     def trace_value_from_frame(self) -> StringifiedExpression:
         return StringifiedExpression(
             f"builtins.__dict__['{self.name}']", [], {"builtins": builtins}
@@ -295,6 +313,9 @@ class ConstTracker(Tracker):
 
     def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
         return paddle.framework.core.ConstantExprNode(self.value)
+
+    def guard_access_path(self) -> GuardAccess:
+        return (("const", self.value),)
 
     def trace_value_from_frame(self):
         value_str, value_free_vars = stringify_pyobject(self.value)
@@ -333,6 +354,9 @@ class GetAttrTracker(Tracker):
             obj_tracer,
             self.attr,
         )
+
+    def guard_access_path(self) -> GuardAccess:
+        return (*self.obj.tracker.guard_access_path(), ("attr", self.attr))
 
     def trace_value_from_frame(self):
         obj_tracer = self.obj.tracker.trace_value_from_frame()
@@ -385,6 +409,12 @@ class GetItemTracker(Tracker):
         return paddle.framework.core.ItemExprNode(
             container_tracer,
             paddle.framework.core.ConstantExprNode(self.key),
+        )
+
+    def guard_access_path(self) -> GuardAccess:
+        return (
+            *self.container.tracker.guard_access_path(),
+            ("item", self.key),
         )
 
     def trace_value_from_frame(self):
@@ -543,6 +573,14 @@ class FunctionClosureTracker(Tracker):
             "cell_contents",
         )
 
+    def guard_access_path(self) -> GuardAccess:
+        return (
+            *self.fn.tracker.guard_access_path(),
+            ("attr", "__closure__"),
+            ("item", self.idx),
+            ("attr", "cell_contents"),
+        )
+
     def trace_value_from_frame(self):
         """
         Trace the value of the function closure variable from the frame.
@@ -598,6 +636,13 @@ class FunctionGlobalTracker(Tracker):
                 "__globals__",
             ),
             paddle.framework.core.ConstantExprNode(self.name),
+        )
+
+    def guard_access_path(self) -> GuardAccess:
+        return (
+            *self.fn.tracker.guard_access_path(),
+            ("attr", "__globals__"),
+            ("item", self.name),
         )
 
     def trace_value_from_frame(self) -> StringifiedExpression:

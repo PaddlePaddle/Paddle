@@ -94,6 +94,7 @@ from ..guard import (
     StringifiedExpression,
     check_faster_guard,
     check_guard,
+    make_guard_spec,
     object_equal_faster_guard,
     object_equal_stringified_guard,
     union_free_vars,
@@ -746,6 +747,15 @@ class LayerVariable(CallableVariable):
             )
         ]
 
+    def make_compiled_guard_specs(self):
+        return [
+            make_guard_spec(
+                "layer_match",
+                self.tracker.guard_access_path(),
+                self.get_py_value(),
+            )
+        ]
+
 
 class ContainerLayerVariable(LayerVariable):
     def __init__(
@@ -831,6 +841,18 @@ class ContainerLayerVariable(LayerVariable):
         else:
             return super().make_faster_guard()
 
+    def make_compiled_guard_specs(self):
+        if isinstance(self.value, PD_SEQ_CONTAINERS):
+            access = self.tracker.guard_access_path()
+            guards = [make_guard_spec("length_match", access, len(self.value))]
+            for idx, layer in enumerate(self.value):
+                layer_variable = VariableFactory.from_value(
+                    layer, self.graph, GetItemTracker(self, idx)
+                )
+                guards.extend(layer_variable.make_compiled_guard_specs())
+            return guards
+        return super().make_compiled_guard_specs()
+
     @property
     def main_info(self) -> dict[str, Any]:
         return {
@@ -890,6 +912,17 @@ class PaddleLayerVariable(LayerVariable):
             )
         else:
             return super().make_faster_guard()
+
+    def make_compiled_guard_specs(self):
+        if isinstance(self.tracker, CreateLayerTracker):
+            return reduce(
+                operator.add,
+                [
+                    var.make_compiled_guard_specs()
+                    for var in self.tracker.inputs
+                ],
+            )
+        return super().make_compiled_guard_specs()
 
     @property
     def main_info(self) -> dict[str, Any]:

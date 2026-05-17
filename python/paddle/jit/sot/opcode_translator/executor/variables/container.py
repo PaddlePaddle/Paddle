@@ -29,6 +29,7 @@ from ..guard import (
     StringifiedExpression,
     check_faster_guard,
     check_guard,
+    make_guard_spec,
 )
 from ..mutable_data import MutableDictLikeData, MutableListLikeData
 from ..tracker import (
@@ -163,6 +164,47 @@ class ContainerVariable(VariableBase):
             [[type_guard, len_guard]]
             + [
                 item.make_faster_guard()
+                for item in guard_variables
+                if item.tracker.need_guard()
+            ],
+        )
+
+    def make_compiled_guard_specs(self):
+        access = self.tracker.guard_access_path()
+
+        if self.get_py_type() is dict:
+            type_guard = make_guard_spec(
+                "instance_check",
+                access,
+                self.get_py_type(),
+            )
+        else:
+            type_guard = make_guard_spec(
+                "type_match",
+                access,
+                self.get_py_type(),
+            )
+        len_guard = make_guard_spec(
+            "length_match",
+            access,
+            len(self.init_value),
+        )
+
+        if isinstance(self, (ListVariable, TupleVariable)):
+            guard_variables = self.proxy.reproduce(0)
+        elif isinstance(self, DictVariable):
+            guard_variables = filter(
+                lambda var: not isinstance(var, MutableDictLikeData.Empty),
+                self.proxy.reproduce(0).values(),
+            )
+        else:
+            raise InnerError(f"Unsupported container type: {type(self)}")
+
+        return reduce(
+            operator.add,
+            [[type_guard, len_guard]]
+            + [
+                item.make_compiled_guard_specs()
                 for item in guard_variables
                 if item.tracker.need_guard()
             ],
@@ -820,6 +862,15 @@ class RangeVariable(ContainerVariable):
             *self.start.make_faster_guard(),
             *self.stop.make_faster_guard(),
             *self.step.make_faster_guard(),
+        ]
+
+    def make_compiled_guard_specs(self):
+        access = self.tracker.guard_access_path()
+        return [
+            make_guard_spec("instance_check", access, range),
+            *self.start.make_compiled_guard_specs(),
+            *self.stop.make_compiled_guard_specs(),
+            *self.step.make_compiled_guard_specs(),
         ]
 
     @check_guard
