@@ -171,7 +171,7 @@ void ThrowErrorIfLoadProcessFailed() {
               "space of `/dev/shm`. Shared storage space needs to be greater "
               "than (DataLoader Num * DataLoader queue capacity * 1 batch data "
               "size).\n  You can solve this problem by increasing the shared "
-              "storage space or reducing the queue capacity appropriately.\n",
+              "storage space or reducing the queue capacity appropriately.\n"
               "  1. If run DataLoader by DataLoader.from_generator(...), queue "
               "capacity is set by from_generator(..., capacity=xx, ...).\n"
               "  2. If run DataLoader by DataLoader(dataset, ...), queue "

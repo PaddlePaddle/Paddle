@@ -8449,6 +8449,49 @@ def _get_paddle_place(place):
     )
 
 
+def _to_pinned_place(place):
+    """Convert a place to its pinned counterpart for ``pin_memory=True``.
+
+    PyTorch's contract is that ``pin_memory=True`` is requested against a
+    CPU placement and produces page-locked host memory. Paddle's pinned
+    allocators are tied to the GPU/XPU runtime, so we map:
+
+    - already-pinned (``CUDAPinnedPlace`` / ``XPUPinnedPlace``): unchanged;
+    - ``CUDAPlace`` (or any ``Place`` reporting ``is_gpu_place``):
+      ``CUDAPinnedPlace``;
+    - ``XPUPlace`` (or any ``Place`` reporting ``is_xpu_place``):
+      ``XPUPinnedPlace``;
+    - ``CPUPlace`` (or any ``Place`` reporting ``is_cpu_place``): the XPU
+      pinned allocator when Paddle is compiled with XPU, the CUDA pinned
+      allocator when Paddle is compiled with CUDA, otherwise this branch
+      raises (no pinned allocator is available on a pure CPU build). This
+      relaxation lets PyTorch-style code such as
+      ``randint(..., device='cpu', pin_memory=True)`` work unchanged on
+      GPU/XPU builds.
+
+    Any other place raises :class:`RuntimeError`.
+    """
+    if isinstance(place, (core.CUDAPinnedPlace, core.XPUPinnedPlace)):
+        return place
+    if isinstance(place, core.CUDAPlace) or (
+        isinstance(place, core.Place) and place.is_gpu_place()
+    ):
+        return core.CUDAPinnedPlace()
+    if isinstance(place, core.XPUPlace) or (
+        isinstance(place, core.Place) and place.is_xpu_place()
+    ):
+        return core.XPUPinnedPlace()
+    if isinstance(place, core.CPUPlace) or (
+        isinstance(place, core.Place) and place.is_cpu_place()
+    ):
+        if core.is_compiled_with_xpu():
+            return core.XPUPinnedPlace()
+        if core.is_compiled_with_cuda():
+            return core.CUDAPinnedPlace()
+        raise RuntimeError(f"Pinning memory is not supported for {place}")
+    raise RuntimeError(f"Pinning memory is not supported for {place}")
+
+
 def _get_paddle_place_list(places):
     if not isinstance(places, (list, tuple)):
         raise TypeError("places must to be List or Tuple")
