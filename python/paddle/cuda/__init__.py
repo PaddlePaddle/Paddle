@@ -16,11 +16,11 @@
 
 from __future__ import annotations
 
-import warnings
-from typing import TYPE_CHECKING, NoReturn, Union
+from typing import TYPE_CHECKING, Union
 
 import paddle
 from paddle import base, core, device as paddle_device, framework
+from paddle.cuda.graphs import CUDAGraph, graph, graph_pool_handle
 from paddle.device import (
     Event,
     Stream,
@@ -38,10 +38,6 @@ from paddle.device import (
     reset_peak_memory_stats,
     set_stream,
     stream,
-)
-from paddle.device.cuda.graphs import (
-    CUDAGraph as _PaddleCUDAGraph,
-    is_cuda_graph_supported as _is_cuda_graph_supported,
 )
 from paddle.tensor.creation import (
     BFloat16Tensor,
@@ -851,147 +847,6 @@ def get_stream_from_external(
     return stream_ex
 
 
-class CUDAGraph:
-    r"""Wrapper around a CUDA graph, aligned with ``torch.cuda.CUDAGraph``.
-
-    A thin compatibility layer over :class:`paddle.device.cuda.graphs.CUDAGraph`
-    that follows PyTorch's API surface. Captures and replays a sequence of CUDA
-    operations to amortize per-kernel launch overhead.
-
-    Args:
-        keep_graph (bool, optional): If ``False`` (default), the underlying
-            ``cudaGraph_t`` is destroyed after capture and only the executable
-            ``cudaGraphExec_t`` is retained. If ``True``, the ``cudaGraph_t`` is
-            kept around. Paddle currently instantiates the executable eagerly at
-            ``capture_end`` regardless of this flag; the value is recorded for
-            API compatibility.
-
-    Examples:
-        .. code-block:: pycon
-
-            >>> # doctest: +REQUIRES(env:GPU)
-            >>> import paddle
-            >>> g = paddle.cuda.CUDAGraph()
-            >>> x = paddle.zeros([2, 3])
-            >>> g.capture_begin()
-            >>> y = x + 1
-            >>> g.capture_end()
-            >>> g.replay()
-    """
-
-    def __init__(self, keep_graph: bool = False) -> None:
-        if not _is_cuda_graph_supported():
-            raise RuntimeError(
-                "CUDA Graph is only supported on PaddlePaddle compiled with "
-                "NVIDIA GPU."
-            )
-        self._impl = _PaddleCUDAGraph()
-        self._keep_graph = keep_graph
-        self._debug_mode = False
-        self._pool_token: int | None = None
-
-    def capture_begin(
-        self, pool: int | None = None, capture_error_mode: str = 'global'
-    ) -> None:
-        """Begin capturing CUDA work on the current stream.
-
-        Args:
-            pool (int, optional): A memory pool token returned by another
-                graph's :meth:`pool` method. When provided, this graph shares
-                the indicated memory pool.
-            capture_error_mode (str, optional): Capture error mode. Only
-                ``'global'`` is currently honored by Paddle; other values are
-                accepted for API compatibility and produce a warning.
-        """
-        if pool is not None:
-            self._impl._pool_id = pool
-            self._pool_token = pool
-        if capture_error_mode != 'global':
-            warnings.warn(
-                f"capture_error_mode='{capture_error_mode}' is not yet "
-                "supported in Paddle CUDAGraph; only 'global' is honored.",
-                stacklevel=2,
-            )
-        self._impl.capture_begin()
-
-    def capture_end(self) -> None:
-        """End CUDA graph capture on the current stream."""
-        self._impl.capture_end()
-
-    def instantiate(self) -> None:
-        """Instantiate the captured graph for execution.
-
-        In Paddle the executable is built eagerly inside :meth:`capture_end`,
-        so this method is a no-op. Provided for API compatibility with
-        ``torch.cuda.CUDAGraph``.
-        """
-        return None
-
-    def replay(self) -> None:
-        """Replay the previously captured CUDA work."""
-        self._impl.replay()
-
-    def reset(self) -> None:
-        """Delete the graph currently held by this instance."""
-        self._impl.reset()
-
-    def pool(self) -> int:
-        """Return an opaque integer token representing this graph's memory pool.
-
-        The token can be passed as the ``pool`` argument to another graph's
-        :meth:`capture_begin` so the two graphs share the same memory pool.
-        """
-        if self._pool_token is None:
-            self._pool_token = core.CUDAGraph.gen_new_memory_pool_id()
-            self._impl._pool_id = self._pool_token
-        return self._pool_token
-
-    def enable_debug_mode(self) -> None:
-        """Enable debug mode so that :meth:`debug_dump` is permitted."""
-        self._debug_mode = True
-
-    def debug_dump(self, debug_path: str) -> None:
-        """Dump the captured graph to ``debug_path`` for inspection.
-
-        :meth:`enable_debug_mode` must be called first.
-
-        Args:
-            debug_path (str): Directory path where the graph will be written.
-        """
-        if not self._debug_mode:
-            raise RuntimeError(
-                "debug_dump requires debug mode to be enabled first. "
-                "Call enable_debug_mode() before debug_dump()."
-            )
-        self._impl.print_to_dot_files(debug_path)
-
-    def raw_cuda_graph(self) -> NoReturn:
-        """Return the underlying ``cudaGraph_t`` handle.
-
-        Paddle does not expose the raw ``cudaGraph_t`` handle through its
-        Python binding, so this method always raises
-        :class:`NotImplementedError`.
-        """
-        raise NotImplementedError(
-            "raw_cuda_graph is not yet supported in Paddle CUDAGraph. "
-            "The underlying cudaGraph_t handle is not exposed by the Python "
-            "binding."
-        )
-
-    def raw_cuda_graph_exec(self) -> NoReturn:
-        """Return the underlying ``cudaGraphExec_t`` handle.
-
-        Paddle does not expose the raw ``cudaGraphExec_t`` handle through its
-        Python binding, so this method always raises
-        :class:`NotImplementedError`.
-        """
-        raise NotImplementedError(
-            "raw_cuda_graph_exec is not yet supported in Paddle CUDAGraph. "
-            "The underlying cudaGraphExec_t handle is not exposed by the "
-            "Python binding."
-        )
-
-
 __all__ = [
     "cudart",
     "check_error",
@@ -1037,4 +892,6 @@ __all__ = [
     "StreamContext",
     "amp",
     "CUDAGraph",
+    "graph",
+    "graph_pool_handle",
 ]

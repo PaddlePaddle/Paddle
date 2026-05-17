@@ -12,7 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import os
+import warnings
+from typing import NoReturn
 
 from paddle.base.core import (
     CUDAPlace,
@@ -68,12 +72,23 @@ cuda_graph_id = 0
 
 
 class CUDAGraph:
+    """Wrapper around a CUDA graph capture, aligned with ``torch.cuda.CUDAGraph``.
+
+    The native Paddle constructor takes ``place``, ``mode``, ``pool_id`` and
+    ``enable_replace``; the PyTorch-compatible ``keep_graph`` keyword is
+    accepted as well. ``capture_begin`` additionally accepts the PyTorch
+    keywords ``pool`` and ``capture_error_mode`` so the same instance can be
+    driven from either API style.
+    """
+
     def __init__(
         self,
         place=None,
         mode="thread_local",
         pool_id=None,
         enable_replace=False,
+        *,
+        keep_graph: bool = False,
     ):
         assert CoreCUDAGraph is not None, (
             "CUDA Graph is only supported on PaddlePaddle compiled with NVIDIA GPU."
@@ -97,8 +112,29 @@ class CUDAGraph:
         self._mode = ALL_MODES.index(mode)
         self._pool_id = pool_id
         self._enable_replace = enable_replace
+        self._keep_graph = keep_graph
+        self._debug_mode = False
 
-    def capture_begin(self):
+    def capture_begin(self, pool=None, capture_error_mode='global'):
+        """Begin capturing CUDA work on the current stream.
+
+        Args:
+            pool (int, optional): A memory pool token from
+                :func:`paddle.cuda.graph_pool_handle` or another graph's
+                :meth:`pool`. When provided, this graph shares the indicated
+                memory pool. Overrides ``pool_id`` from the constructor.
+            capture_error_mode (str, optional): PyTorch-compatible knob; only
+                ``'global'`` is currently honored. Other values are accepted
+                with a warning.
+        """
+        if pool is not None:
+            self._pool_id = pool
+        if capture_error_mode != 'global':
+            warnings.warn(
+                f"capture_error_mode='{capture_error_mode}' is not yet "
+                "supported in Paddle CUDAGraph; only 'global' is honored.",
+                stacklevel=2,
+            )
         CoreCUDAGraph.begin_capture_with_pool_id(
             self._place, self._mode, self._pool_id, self._enable_replace
         )
@@ -106,11 +142,63 @@ class CUDAGraph:
     def capture_end(self):
         self._graph = CoreCUDAGraph.end_capture()
 
+    def instantiate(self) -> None:
+        """No-op shim for ``torch.cuda.CUDAGraph.instantiate``.
+
+        Paddle builds the executable eagerly inside :meth:`capture_end`, so
+        there is nothing left to do at instantiate time. Provided for API
+        compatibility.
+        """
+        return None
+
     def replay(self):
         self._graph.replay()
 
     def reset(self):
         self._graph.reset()
+
+    def pool(self) -> int:
+        """Return an opaque integer token representing this graph's memory pool.
+
+        The token can be passed as the ``pool`` argument to another graph's
+        :meth:`capture_begin` (or to :class:`paddle.cuda.graph`) so the two
+        graphs share the same memory pool.
+        """
+        if self._pool_id is None:
+            self._pool_id = CoreCUDAGraph.gen_new_memory_pool_id()
+        return self._pool_id
+
+    def enable_debug_mode(self) -> None:
+        """Enable debug mode so that :meth:`debug_dump` is permitted."""
+        self._debug_mode = True
+
+    def debug_dump(self, debug_path) -> None:
+        """Dump the captured graph to ``debug_path`` for inspection.
+
+        :meth:`enable_debug_mode` must be called first.
+        """
+        if not self._debug_mode:
+            raise RuntimeError(
+                "debug_dump requires debug mode to be enabled first. "
+                "Call enable_debug_mode() before debug_dump()."
+            )
+        self.print_to_dot_files(debug_path)
+
+    def raw_cuda_graph(self) -> NoReturn:
+        """Paddle does not expose the raw ``cudaGraph_t`` handle."""
+        raise NotImplementedError(
+            "raw_cuda_graph is not yet supported in Paddle CUDAGraph. "
+            "The underlying cudaGraph_t handle is not exposed by the Python "
+            "binding."
+        )
+
+    def raw_cuda_graph_exec(self) -> NoReturn:
+        """Paddle does not expose the raw ``cudaGraphExec_t`` handle."""
+        raise NotImplementedError(
+            "raw_cuda_graph_exec is not yet supported in Paddle CUDAGraph. "
+            "The underlying cudaGraphExec_t handle is not exposed by the "
+            "Python binding."
+        )
 
     def print_to_dot_files(self, dirname, flags=None):
         if not isinstance(dirname, (str, bytes)):
