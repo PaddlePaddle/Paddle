@@ -2161,5 +2161,60 @@ class TestPixelShuffleAPI(unittest.TestCase):
                 np.testing.assert_array_equal(fetches[0], out)
 
 
+# Test nansum compatibility
+class TestNansumAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2026)
+        self.np_x = np.array(
+            [
+                [[1, np.nan], [3, 4]],
+                [[5, 6], [-np.nan, 8]],
+            ]
+        ).astype('float32')
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle positional arguments
+        out1 = paddle.nansum(x, [1, 2])
+        # 2. Paddle keyword arguments
+        out2 = paddle.nansum(x=x, axis=[1, 2])
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.nansum(input=x, dim=[1, 2])
+        # 4. Argument out
+        out4 = paddle.empty_like(x)
+        out5 = paddle.nansum(x, dim=[1, 2], out=out4)
+
+        # Verify all outputs match
+        for out in [out2, out3, out4, out5]:
+            np.testing.assert_array_equal(out1.numpy(), out.numpy())
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=[2, 2, 2], dtype='float32')
+
+            # 1. Paddle positional arguments
+            out1 = paddle.nansum(x, [1, 2])
+            # 2. Paddle keyword arguments
+            out2 = paddle.nansum(x=x, axis=[1, 2])
+            # 3. PyTorch keyword arguments (alias)
+            out3 = paddle.nansum(input=x, dim=[1, 2])
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2, out3],
+            )
+            for out in fetches[1:]:
+                np.testing.assert_array_equal(fetches[0], out)
+
+
 if __name__ == '__main__':
     unittest.main()
