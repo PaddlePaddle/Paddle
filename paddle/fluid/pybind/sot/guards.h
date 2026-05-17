@@ -336,7 +336,7 @@ class CompiledGuard {
     LOCAL,
     GLOBAL,
     BUILTIN,
-    CONST,
+    CONSTANT,
     ATTR,
     ITEM,
   };
@@ -384,7 +384,7 @@ class CompiledGuard {
   };
 
   enum class ExprKind {
-    CONST,
+    CONSTANT,
     ACCESS,
     UNARY,
     BINARY,

@@ -959,7 +959,7 @@ std::vector<CompiledGuard::AccessStep> CompiledGuard::ParseAccessPath(
       access_step.kind = AccessKind::BUILTIN;
       access_step.name = step[1].cast<std::string>();
     } else if (kind == "const") {
-      access_step.kind = AccessKind::CONST;
+      access_step.kind = AccessKind::CONSTANT;
       access_step.value = py::reinterpret_borrow<py::object>(step[1]);
     } else if (kind == "attr") {
       access_step.kind = AccessKind::ATTR;
@@ -1066,7 +1066,7 @@ std::shared_ptr<CompiledGuard::GuardExpr> CompiledGuard::ParseExpr(
     if (py::len(expr_tuple) != 2) {
       throw py::value_error("const expression expects 2 fields");
     }
-    result->kind = ExprKind::CONST;
+    result->kind = ExprKind::CONSTANT;
     result->value = py::reinterpret_borrow<py::object>(expr_tuple[1]);
   } else if (kind == "access") {
     if (py::len(expr_tuple) != 2) {
@@ -1108,7 +1108,7 @@ std::string CompiledGuard::AccessStepKey(const AccessStep& step) {
     case AccessKind::ATTR:
       ss << step.name << ":" << static_cast<int>(step.attr_kind);
       break;
-    case AccessKind::CONST:
+    case AccessKind::CONSTANT:
     case AccessKind::ITEM: {
       PyObject* value = step.value.ptr();
       if (PyUnicode_Check(value)) {
@@ -2196,7 +2196,7 @@ PyObject* CompiledGuard::EvalAccess(
                               step.name,
                               step.key_hash);
         break;
-      case AccessKind::CONST:
+      case AccessKind::CONSTANT:
         next = step.value.ptr();
         Py_INCREF(next);
         break;
@@ -2317,7 +2317,7 @@ PyObject* CompiledGuard::EvalAccessNode(FrameProxy* frame,
                                   step.name,
                                   step.key_hash);
       break;
-    case AccessKind::CONST:
+    case AccessKind::CONSTANT:
       next = {step.value.ptr(), false};
       break;
     case AccessKind::ATTR:
@@ -2344,7 +2344,7 @@ PyObject* CompiledGuard::EvalAccessNode(FrameProxy* frame,
 PyObject* CompiledGuard::EvalExpr(FrameProxy* frame,
                                   const GuardExpr& expr) const {
   switch (expr.kind) {
-    case ExprKind::CONST: {
+    case ExprKind::CONSTANT: {
       PyObject* value = expr.value.ptr();
       Py_INCREF(value);
       return value;
