@@ -559,6 +559,11 @@
   args_alias :
     use_default_mapping : True
 
+- op : nansum
+  name : [paddle.nansum, paddle.Tensor.nansum]
+  args_alias :
+    use_default_mapping : True
+
 - op : poisson
   name : [paddle.poisson]
   args_alias :

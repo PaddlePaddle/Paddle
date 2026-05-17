@@ -1638,97 +1638,97 @@ def nan_to_num_(
     return x
 
 
-def nansum(
-    x: Tensor,
-    axis: int | Sequence[int] | None = None,
-    dtype: DTypeLike | None = None,
-    keepdim: bool = False,
-    name: str | None = None,
-) -> Tensor:
-    """
-    Computes the sum of tensor elements over the given axis, treating Not a Numbers (NaNs) as zero.
+# def nansum(
+#     x: Tensor,
+#     axis: int | Sequence[int] | None = None,
+#     dtype: DTypeLike | None = None,
+#     keepdim: bool = False,
+#     name: str | None = None,
+# ) -> Tensor:
+#     """
+#     Computes the sum of tensor elements over the given axis, treating Not a Numbers (NaNs) as zero.
 
-    Args:
-        x (Tensor): An N-D Tensor, the data type is bfloat16, float16, float32, float64, int32 or int64.
-        axis (int|list|tuple, optional): The dimensions along which the nansum is performed. If
-            :attr:`None`, nansum all elements of :attr:`x` and return a
-            Tensor with a single element, otherwise must be in the
-            range :math:`[-rank(x), rank(x))`. If :math:`axis[i] < 0`,
-            the dimension to reduce is :math:`rank + axis[i]`.
-        dtype (str|paddle.dtype|np.dtype, optional): The dtype of output Tensor. The default value is None, the dtype
-            of output is the same as input Tensor `x`.
-        keepdim (bool, optional): Whether to reserve the reduced dimension in the
-            output Tensor. The result Tensor will have one fewer dimension
-            than the :attr:`x` unless :attr:`keepdim` is true, default
-            value is False.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+#     Args:
+#         x (Tensor): An N-D Tensor, the data type is bfloat16, float16, float32, float64, int32 or int64.
+#         axis (int|list|tuple, optional): The dimensions along which the nansum is performed. If
+#             :attr:`None`, nansum all elements of :attr:`x` and return a
+#             Tensor with a single element, otherwise must be in the
+#             range :math:`[-rank(x), rank(x))`. If :math:`axis[i] < 0`,
+#             the dimension to reduce is :math:`rank + axis[i]`.
+#         dtype (str|paddle.dtype|np.dtype, optional): The dtype of output Tensor. The default value is None, the dtype
+#             of output is the same as input Tensor `x`.
+#         keepdim (bool, optional): Whether to reserve the reduced dimension in the
+#             output Tensor. The result Tensor will have one fewer dimension
+#             than the :attr:`x` unless :attr:`keepdim` is true, default
+#             value is False.
+#         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
-    Returns:
-        Tensor: Results of summation operation on the specified axis of input Tensor `x`,
+#     Returns:
+#         Tensor: Results of summation operation on the specified axis of input Tensor `x`,
 
-    Examples:
-        .. code-block:: pycon
+#     Examples:
+#         .. code-block:: pycon
 
-            >>> import paddle
+#             >>> import paddle
 
-            >>> # x is a Tensor with following elements:
-            >>> #    [[nan, 0.3, 0.5, 0.9]
-            >>> #     [0.1, 0.2, -nan, 0.7]]
-            >>> # Each example is followed by the corresponding output tensor.
-            >>> x = paddle.to_tensor([[float('nan'), 0.3, 0.5, 0.9], [0.1, 0.2, float('-nan'), 0.7]], dtype="float32")
-            >>> out1 = paddle.nansum(x)
-            >>> out1
-            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-            2.69999981)
-            >>> out2 = paddle.nansum(x, axis=0)
-            >>> out2
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [0.10000000, 0.50000000, 0.50000000, 1.59999990])
-            >>> out3 = paddle.nansum(x, axis=-1)
-            >>> out3
-            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [1.70000005, 1.        ])
-            >>> out4 = paddle.nansum(x, axis=1, keepdim=True)
-            >>> out4
-            Tensor(shape=[2, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[1.70000005],
-             [1.        ]])
+#             >>> # x is a Tensor with following elements:
+#             >>> #    [[nan, 0.3, 0.5, 0.9]
+#             >>> #     [0.1, 0.2, -nan, 0.7]]
+#             >>> # Each example is followed by the corresponding output tensor.
+#             >>> x = paddle.to_tensor([[float('nan'), 0.3, 0.5, 0.9], [0.1, 0.2, float('-nan'), 0.7]], dtype="float32")
+#             >>> out1 = paddle.nansum(x)
+#             >>> out1
+#             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+#             2.69999981)
+#             >>> out2 = paddle.nansum(x, axis=0)
+#             >>> out2
+#             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+#             [0.10000000, 0.50000000, 0.50000000, 1.59999990])
+#             >>> out3 = paddle.nansum(x, axis=-1)
+#             >>> out3
+#             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+#             [1.70000005, 1.        ])
+#             >>> out4 = paddle.nansum(x, axis=1, keepdim=True)
+#             >>> out4
+#             Tensor(shape=[2, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
+#             [[1.70000005],
+#              [1.        ]])
 
-            >>> # y is a Tensor with shape [2, 2, 2] and elements as below:
-            >>> #      [[[1, nan], [3, 4]],
-            >>> #       [[5, 6], [-nan, 8]]]
-            >>> # Each example is followed by the corresponding output tensor.
-            >>> y = paddle.to_tensor(
-            ...     [
-            ...         [[1, float('nan')], [3, 4]],
-            ...         [[5, 6], [float('-nan'), 8]],
-            ...     ]
-            ... )
-            >>> out5 = paddle.nansum(y, axis=[1, 2])
-            >>> out5
-            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [8. , 19.])
-            >>> out6 = paddle.nansum(y, axis=[0, 1])
-            >>> out6
-            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [9. , 18.])
-    """
-    check_variable_and_dtype(
-        x,
-        'x',
-        ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
-        'nansum',
-    )
-    check_type(axis, 'axis', (int, list, tuple, type(None)), 'nansum')
+#             >>> # y is a Tensor with shape [2, 2, 2] and elements as below:
+#             >>> #      [[[1, nan], [3, 4]],
+#             >>> #       [[5, 6], [-nan, 8]]]
+#             >>> # Each example is followed by the corresponding output tensor.
+#             >>> y = paddle.to_tensor(
+#             ...     [
+#             ...         [[1, float('nan')], [3, 4]],
+#             ...         [[5, 6], [float('-nan'), 8]],
+#             ...     ]
+#             ... )
+#             >>> out5 = paddle.nansum(y, axis=[1, 2])
+#             >>> out5
+#             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+#             [8. , 19.])
+#             >>> out6 = paddle.nansum(y, axis=[0, 1])
+#             >>> out6
+#             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+#             [9. , 18.])
+#     """
+#     check_variable_and_dtype(
+#         x,
+#         'x',
+#         ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
+#         'nansum',
+#     )
+#     check_type(axis, 'axis', (int, list, tuple, type(None)), 'nansum')
 
-    if (
-        paddle.core.is_compiled_with_cuda()
-        or paddle.core.is_compiled_with_rocm()
-    ):
-        return _C_ops.nansum(x, axis, dtype, keepdim)
-    zero_tensor = paddle.zeros_like(x)
-    tmp_tensor = paddle.where(isnan(x), zero_tensor, x)
-    return sum(tmp_tensor, axis, dtype, keepdim, name)
+#     if (
+#         paddle.core.is_compiled_with_cuda()
+#         or paddle.core.is_compiled_with_rocm()
+#     ):
+#         return _C_ops.nansum(x, axis, dtype, keepdim)
+#     zero_tensor = paddle.zeros_like(x)
+#     tmp_tensor = paddle.where(isnan(x), zero_tensor, x)
+#     return sum(tmp_tensor, axis, dtype, keepdim, name)
 
 
 def nanmean(
