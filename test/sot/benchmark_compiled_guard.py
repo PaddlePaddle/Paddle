@@ -32,8 +32,6 @@ from paddle.jit.sot.opcode_translator.executor.executor_cache import (
 from paddle.jit.sot.utils import (
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
     ENV_SOT_ENABLE_COMPILED_GUARD,
-    ENV_SOT_ENABLE_COMPILED_GUARD_TREE,
-    ENV_SOT_ENABLE_GUARD_TREE,
     ENV_SOT_ENABLE_STRICT_GUARD_CHECK,
     ENV_SOT_UNSAFE_CACHE_FASTPATH,
 )
@@ -162,8 +160,6 @@ def bench_paddle_guard_only(
         EnvironmentVariableGuard(
             ENV_SOT_ENABLE_COMPILED_GUARD, enable_compiled_guard
         ),
-        EnvironmentVariableGuard(ENV_SOT_ENABLE_COMPILED_GUARD_TREE, False),
-        EnvironmentVariableGuard(ENV_SOT_ENABLE_GUARD_TREE, False),
         EnvironmentVariableGuard(ENV_SOT_ENABLE_STRICT_GUARD_CHECK, False),
         EnvironmentVariableGuard(ENV_SOT_UNSAFE_CACHE_FASTPATH, False),
         EnvironmentVariableGuard(ENV_SOT_ALLOW_DYNAMIC_SHAPE, False),
@@ -171,7 +167,8 @@ def bench_paddle_guard_only(
         fn(*args)
 
         cache = OpcodeExecutorCache().cache
-        guarded_fns, _ = next(iter(cache.values()))
+        guarded_fns = next(iter(cache.values()))
+        OpcodeExecutorCache().compiled_guard_lookups.clear()
         custom_code, guard_fn = guarded_fns[0]
 
         samples = []
@@ -195,7 +192,7 @@ def bench_paddle_guard_only(
     return BenchResult(name, statistics.median(samples), samples)
 
 
-def bench_paddle_compiled_guard_tree_lookup_resnet18(
+def bench_paddle_compiled_guard_lookup_resnet18(
     name: str,
     iterations: int,
     rounds: int,
@@ -213,8 +210,6 @@ def bench_paddle_compiled_guard_tree_lookup_resnet18(
 
     with (
         EnvironmentVariableGuard(ENV_SOT_ENABLE_COMPILED_GUARD, True),
-        EnvironmentVariableGuard(ENV_SOT_ENABLE_COMPILED_GUARD_TREE, False),
-        EnvironmentVariableGuard(ENV_SOT_ENABLE_GUARD_TREE, False),
         EnvironmentVariableGuard(ENV_SOT_ENABLE_STRICT_GUARD_CHECK, False),
         EnvironmentVariableGuard(ENV_SOT_UNSAFE_CACHE_FASTPATH, False),
         EnvironmentVariableGuard(ENV_SOT_ALLOW_DYNAMIC_SHAPE, False),
@@ -223,7 +218,7 @@ def bench_paddle_compiled_guard_tree_lookup_resnet18(
             fn(x, net)
 
         cache = OpcodeExecutorCache().cache
-        guarded_fns, _ = next(iter(cache.values()))
+        guarded_fns = next(iter(cache.values()))
         if len(guarded_fns) != cache_count:
             raise RuntimeError(
                 f"expected {cache_count} cache entries, got {len(guarded_fns)}"
@@ -232,29 +227,34 @@ def bench_paddle_compiled_guard_tree_lookup_resnet18(
             iter(OpcodeExecutorCache().compiled_guard_lookups.values())
         )
         hit_index = cache_count - 1
-        custom_code, guard_fn = guarded_fns[hit_index]
         samples = []
 
-        def measuring_guard(frame):
-            result = guard_fn(frame)
+        def measuring_cache_lookup(
+            frame,
+            guarded_fns,
+            compile_time_for_code,
+            compile_time_total,
+            **kwargs,
+        ):
             lookup_result = lookup.lookup(frame)
             if lookup_result != hit_index:
                 raise AssertionError(
-                    f"compiled guard tree lookup returned {lookup_result}, "
+                    f"compiled guard lookup returned {lookup_result}, "
                     f"expected {hit_index}"
                 )
             start = time.perf_counter_ns()
             for _ in range(iterations):
                 lookup.lookup(frame)
             samples.append((time.perf_counter_ns() - start) / iterations)
-            return result
+            return guarded_fns[lookup_result][0]
 
-        guarded_fns[hit_index] = (custom_code, measuring_guard)
+        cache_obj = OpcodeExecutorCache()
+        cache_obj.lookup = measuring_cache_lookup
         try:
             for _ in range(rounds):
                 fn(inputs[hit_index], net)
         finally:
-            guarded_fns[hit_index] = (custom_code, guard_fn)
+            del cache_obj.lookup
 
     OpcodeExecutorCache().clear()
     return BenchResult(name, statistics.median(samples), samples)
@@ -463,7 +463,7 @@ def main():
         type=float,
         default=0.0,
         help=(
-            "Fail if compiled tree multi-cache lookup / torch multi-cache "
+            "Fail if compiled guard multi-cache lookup / torch multi-cache "
             "lookup is above this value. Requires --compare-torch and "
             "--multi-cache-count > 1. Use 0 to report only."
         ),
@@ -565,8 +565,8 @@ def main():
     if args.multi_cache_count > 1:
         if args.case != "resnet18":
             raise SystemExit("--multi-cache-count currently supports resnet18")
-        paddle_multi_lookup = bench_paddle_compiled_guard_tree_lookup_resnet18(
-            f"paddle_compiled_guard_tree_lookup_{args.multi_cache_count}_cache",
+        paddle_multi_lookup = bench_paddle_compiled_guard_lookup_resnet18(
+            f"paddle_compiled_guard_lookup_{args.multi_cache_count}_cache",
             args.iterations,
             args.rounds,
             args.resnet_image_size,
@@ -594,7 +594,7 @@ def main():
                     f"{torch_multi_lookup.median_us:.3f} us/lookup"
                 )
                 print(
-                    "compiled_guard_tree_vs_torch_multi_guard_ratio: "
+                    "compiled_guard_lookup_vs_torch_multi_guard_ratio: "
                     f"{multi_lookup_ratio:.2f}x"
                 )
                 if (
@@ -602,7 +602,7 @@ def main():
                     and multi_lookup_ratio > args.max_torch_multi_lookup_ratio
                 ):
                     raise SystemExit(
-                        "compiled guard tree / torch multi-cache lookup ratio "
+                        "compiled guard lookup / torch multi-cache lookup ratio "
                         f"{multi_lookup_ratio:.2f}x is above "
                         f"{args.max_torch_multi_lookup_ratio:.2f}x"
                     )

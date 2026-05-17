@@ -90,12 +90,9 @@ from ....utils.paddle_api_config import (
 )
 from ..dispatcher import Dispatcher
 from ..guard import (
-    FasterStringifiedExpression,
     StringifiedExpression,
-    check_faster_guard,
     check_guard,
     make_guard_spec,
-    object_equal_faster_guard,
     object_equal_stringified_guard,
     union_free_vars,
 )
@@ -235,7 +232,6 @@ class FunctionVariable(CallableVariable):
         )
 
     make_stringified_guard = object_equal_stringified_guard
-    make_faster_guard = object_equal_faster_guard
 
 
 class UserDefinedFunctionVariable(FunctionVariable):
@@ -440,7 +436,6 @@ class PaddleApiVariable(FunctionVariable):
         }
 
     make_stringified_guard = object_equal_stringified_guard
-    make_faster_guard = object_equal_faster_guard
 
 
 class NumPyApiVariable(FunctionVariable):
@@ -515,7 +510,6 @@ class NumPyApiVariable(FunctionVariable):
         }
 
     make_stringified_guard = object_equal_stringified_guard
-    make_faster_guard = object_equal_faster_guard
 
 
 class TensorFunctionVariable(FunctionVariable):
@@ -729,22 +723,11 @@ class LayerVariable(CallableVariable):
     def make_stringified_guard(self) -> list[StringifiedExpression]:
         frame_value_tracer = self.tracker.trace_value_from_frame()
         return [
-            FasterStringifiedExpression(
+            StringifiedExpression(
                 f"id({{0}}) == {id(self.get_py_value())} and {{0}}.training == {self.get_py_value().training}",
-                paddle.framework.core.LayerMatchGuard(self.get_py_value()),
                 [frame_value_tracer],
                 union_free_vars(frame_value_tracer.free_vars),
             ),
-        ]
-
-    @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
-        expr_node = self.tracker.guard_tree_expr_node()
-        return [
-            paddle.framework.core.GuardNode(
-                paddle.framework.core.LayerMatchGuard(self.get_py_value()),
-                [expr_node],
-            )
         ]
 
     def make_compiled_guard_specs(self):
@@ -804,9 +787,8 @@ class ContainerLayerVariable(LayerVariable):
         if isinstance(self.value, PD_SEQ_CONTAINERS):
             frame_value_tracer = self.tracker.trace_value_from_frame()
 
-            len_guard = FasterStringifiedExpression(
+            len_guard = StringifiedExpression(
                 f"len({{}}) == {len(self.value)}",
-                paddle.framework.core.LengthMatchGuard(len(self.value)),
                 [frame_value_tracer],
                 frame_value_tracer.free_vars,
             )
@@ -821,25 +803,6 @@ class ContainerLayerVariable(LayerVariable):
             return guards
         else:
             return super().make_stringified_guard()
-
-    @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
-        if isinstance(self.value, PD_SEQ_CONTAINERS):
-            expr_node = self.tracker.guard_tree_expr_node()
-            len_guard = paddle.framework.core.GuardNode(
-                paddle.framework.core.LengthMatchGuard(len(self.value)),
-                [expr_node],
-            )
-
-            guards: list[paddle.framework.core.GuardNodeBase] = [len_guard]
-            for idx, layer in enumerate(self.value):
-                layer_variable = VariableFactory.from_value(
-                    layer, self.graph, GetItemTracker(self, idx)
-                )
-                guards.extend(layer_variable.make_faster_guard())
-            return guards
-        else:
-            return super().make_faster_guard()
 
     def make_compiled_guard_specs(self):
         if isinstance(self.value, PD_SEQ_CONTAINERS):
@@ -902,16 +865,6 @@ class PaddleLayerVariable(LayerVariable):
             )
         else:
             return super().make_stringified_guard()
-
-    @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
-        if isinstance(self.tracker, CreateLayerTracker):
-            return reduce(
-                operator.add,
-                [var.make_faster_guard() for var in self.tracker.inputs],
-            )
-        else:
-            return super().make_faster_guard()
 
     def make_compiled_guard_specs(self):
         if isinstance(self.tracker, CreateLayerTracker):
@@ -1287,7 +1240,6 @@ class ClassVariable(CallableVariable):
         return new_object_variable
 
     make_stringified_guard = object_equal_stringified_guard
-    make_faster_guard = object_equal_faster_guard
 
     @VariableFactory.register_from_value()
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):

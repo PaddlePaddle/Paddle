@@ -26,9 +26,6 @@ from ...psdb import NO_FALLBACK_CODES
 from ...utils import (
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
     ENV_SOT_ENABLE_COMPILE_TIME_LIMIT,
-    ENV_SOT_ENABLE_COMPILED_GUARD,
-    ENV_SOT_ENABLE_COMPILED_GUARD_TREE,
-    ENV_SOT_ENABLE_GUARD_TREE,
     ENV_SOT_ENABLE_STRICT_GUARD_CHECK,
     ENV_SOT_UNSAFE_CACHE_FASTPATH,
     BreakGraphError,
@@ -55,8 +52,6 @@ if TYPE_CHECKING:
 
 GuardedFunction = tuple[CustomCode, Guard]
 GuardedFunctions = list[GuardedFunction]
-GuardChain = list[paddle.framework.core.GuardNodeBase]
-GuardChainList = list[GuardChain]
 
 dummy_guard: Guard = lambda frame: True
 dummy_guard.expr = "lambda frame: True"
@@ -79,9 +74,7 @@ class OpcodeExecutorCache(metaclass=Singleton):
     MAX_COMPILE_TIME_PER_CODE = 40
     MAX_COMPILE_TIME_TOTAL = 15 * 60
     CACHE_HIT_FASTPATH_THRESHOLD = 32
-    cache: dict[
-        types.CodeType, tuple[GuardedFunctions, paddle.framework.core.GuardTree]
-    ]
+    cache: dict[types.CodeType, GuardedFunctions]
     compiled_guard_lookups: dict[
         types.CodeType, paddle.framework.core.CompiledGuardLookup
     ]
@@ -148,24 +141,17 @@ class OpcodeExecutorCache(metaclass=Singleton):
         code: types.CodeType = frame.f_code
         if code not in self.cache:
             log(2, f"[Cache] Firstly call {code}\n")
-            new_custom_code, guard_fn, guard_chain = self.translate(
-                frame, **kwargs
-            )
+            new_custom_code, guard_fn = self.translate(frame, **kwargs)
             assert guard_fn is not None
-            assert guard_chain is not None
-            self.cache[code] = (
-                [(new_custom_code, guard_fn)],
-                paddle.framework.core.GuardTree([guard_chain]),
-            )
+            self.cache[code] = [(new_custom_code, guard_fn)]
             self.add_compiled_guard_lookup(code, guard_fn, 0)
             return new_custom_code
-        guarded_fns, guard_tree = self.cache[code]
+        guarded_fns = self.cache[code]
         compile_time_for_code = self.compile_time_stats.get(code, 0)
         compile_time_total = sum(self.compile_time_stats.values())
         return self.lookup(
             frame,
             guarded_fns,
-            guard_tree,
             compile_time_for_code,
             compile_time_total,
             **kwargs,
@@ -202,7 +188,6 @@ class OpcodeExecutorCache(metaclass=Singleton):
         self,
         frame: types.FrameType,
         guarded_fns: GuardedFunctions,
-        guard_tree: paddle.framework.core.GuardTree,
         compile_time_for_code: float,
         compile_time_total: float,
         miss_source: str,
@@ -233,11 +218,9 @@ class OpcodeExecutorCache(metaclass=Singleton):
             )
             return CustomCode(None, False)
 
-        new_custom_code, guard_fn, guard_chain = self.translate(frame, **kwargs)
+        new_custom_code, guard_fn = self.translate(frame, **kwargs)
         if guard_fn is not None:
-            assert guard_chain is not None
             guarded_fns.append((new_custom_code, guard_fn))
-            guard_tree.add_guard_chain(guard_chain)
             self.add_compiled_guard_lookup(
                 frame.f_code, guard_fn, len(guarded_fns) - 1
             )
@@ -248,7 +231,6 @@ class OpcodeExecutorCache(metaclass=Singleton):
         self,
         frame: types.FrameType,
         guarded_fns: GuardedFunctions,
-        guard_tree: paddle.framework.core.GuardTree,
         compile_time_for_code: float,
         compile_time_total: float,
         **kwargs,
@@ -270,9 +252,6 @@ class OpcodeExecutorCache(metaclass=Singleton):
             return CustomCode(None, False)
 
         enable_strict_guard = ENV_SOT_ENABLE_STRICT_GUARD_CHECK.get()
-        enable_guard_tree = ENV_SOT_ENABLE_GUARD_TREE.get()
-        enable_compiled_guard = ENV_SOT_ENABLE_COMPILED_GUARD.get()
-        enable_compiled_guard_tree = ENV_SOT_ENABLE_COMPILED_GUARD_TREE.get()
         enable_unsafe_cache_fastpath = ENV_SOT_UNSAFE_CACHE_FASTPATH.get()
         if enable_unsafe_cache_fastpath and (
             self.is_fastpath_threshold_reached(code)
@@ -287,55 +266,29 @@ class OpcodeExecutorCache(metaclass=Singleton):
         cache_index = None
         compiled_guard_lookup = self.compiled_guard_lookups.get(code)
         lookup_source = None
-        use_compiled_guard_lookup = (
-            enable_compiled_guard
-            and enable_compiled_guard_tree
-            and not enable_unsafe_cache_fastpath
+        if (
+            not enable_unsafe_cache_fastpath
             and compiled_guard_lookup is not None
-        )
-        if use_compiled_guard_lookup:
+        ):
             log(
                 4,
                 f"[Cache] Compiled guard lookup: "
                 f"{compiled_guard_lookup.stringify()}\n",
             )
-            with EventGuard("compiled guard tree lookup"):
+            with EventGuard("compiled guard lookup"):
                 cache_index = compiled_guard_lookup.lookup(frame)
-            lookup_source = "compiled guard tree"
+            lookup_source = "compiled guard lookup"
             if not enable_strict_guard:
                 if cache_index is not None:
                     return guarded_fns[cache_index][0]
                 return self.translate_cache_miss(
                     frame,
                     guarded_fns,
-                    guard_tree,
                     compile_time_for_code,
                     compile_time_total,
                     lookup_source,
                     **kwargs,
                 )
-        elif enable_strict_guard or enable_guard_tree:
-            log(4, f"[Cache] Guard tree: \n{guard_tree.stringify()}")
-            cache_index = guard_tree.lookup(frame)
-            lookup_source = "guard tree"
-
-        if (
-            not enable_strict_guard
-            and enable_guard_tree
-            and lookup_source == "guard tree"
-        ):
-            if cache_index is not None:
-                # TODO(zrr1999): add a mapping between custom_code and cache_index
-                return guarded_fns[cache_index][0]
-            return self.translate_cache_miss(
-                frame,
-                guarded_fns,
-                guard_tree,
-                compile_time_for_code,
-                compile_time_total,
-                "guard tree mode",
-                **kwargs,
-            )
 
         for index, (custom_code, guard_fn) in enumerate(guarded_fns):
             if enable_strict_guard:
@@ -354,16 +307,16 @@ class OpcodeExecutorCache(metaclass=Singleton):
                 if enable_strict_guard and (not enable_unsafe_cache_fastpath):
                     if mirror_guard_error is not None:
                         assert guard_result is False, (
-                            "faster guard hits but mirror guard raises, "
+                            "compiled guard hits but mirror guard raises, "
                             f"guard_expr: {getattr(guard_fn, 'expr', 'None')} \n"
-                            f"faster_guard_expr: {getattr(guard_fn.mirror_guard, 'expr', 'None')},"
+                            f"mirror_guard_expr: {getattr(guard_fn.mirror_guard, 'expr', 'None')},"
                             f"mirror_guard_error: {mirror_guard_error},"
                         )
                     else:
                         assert mirror_guard_result == guard_result, (
-                            "faster guard result is not equal to guard result, "
+                            "compiled guard result is not equal to mirror guard result, "
                             f"guard_expr: {getattr(guard_fn, 'expr', 'None')} \n"
-                            f"faster_guard_expr: {getattr(guard_fn.mirror_guard, 'expr', 'None')},"
+                            f"mirror_guard_expr: {getattr(guard_fn.mirror_guard, 'expr', 'None')},"
                         )
                 if guard_result:
                     log(
@@ -371,9 +324,9 @@ class OpcodeExecutorCache(metaclass=Singleton):
                         f"[Cache] Cache hit, Guard is \n{getattr(guard_fn, 'expr', 'None')}\n",
                     )
                     if not enable_unsafe_cache_fastpath:
-                        if lookup_source == "compiled guard tree":
+                        if lookup_source == "compiled guard lookup":
                             assert index == cache_index, (
-                                "compiled guard tree result is not equal to "
+                                "compiled guard lookup result is not equal to "
                                 "guard result, "
                                 f"cache_index({cache_index}) is not equal to "
                                 f"index({index})"
@@ -437,15 +390,14 @@ class OpcodeExecutorCache(metaclass=Singleton):
                         f"mirror_guard_error: {mirror_guard_error},"
                     )
 
-        if enable_strict_guard and lookup_source == "compiled guard tree":
+        if enable_strict_guard and lookup_source == "compiled guard lookup":
             assert cache_index is None, (
-                "compiled guard tree hits but all guards miss, "
+                "compiled guard lookup hits but all guards miss, "
                 f"cache_index({cache_index})"
             )
         return self.translate_cache_miss(
             frame,
             guarded_fns,
-            guard_tree,
             compile_time_for_code,
             compile_time_total,
             "",
@@ -458,7 +410,7 @@ class OpcodeExecutorCache(metaclass=Singleton):
 
     def translate(
         self, frame: types.FrameType, **kwargs
-    ) -> tuple[CustomCode, Guard | None, GuardChain | None]:
+    ) -> tuple[CustomCode, Guard | None]:
         """
         Translates the given frame's code object and returns the cache getter function and a guarded function for the translated code object.
 
@@ -470,10 +422,8 @@ class OpcodeExecutorCache(metaclass=Singleton):
         """
         self.before_translate_hook(frame)
         self.translate_count += 1
-        custom_new_code, guard_fn, guard_chain = start_translate(
-            frame, **kwargs
-        )
-        return custom_new_code, guard_fn, guard_chain
+        custom_new_code, guard_fn = start_translate(frame, **kwargs)
+        return custom_new_code, guard_fn
 
     def analyse_guard_global_object(self, guard_fn):
         def inner():
@@ -512,15 +462,15 @@ class OpcodeExecutorCache(metaclass=Singleton):
 def start_translate(
     frame: types.FrameType,
     **kwargs,
-) -> tuple[CustomCode, Guard | None, GuardChain | None]:
+) -> tuple[CustomCode, Guard | None]:
     """
-    Starts the translation process for the given frame and returns the translated code object, its guard function and its guard tree node, or None if translation fails.
+    Starts the translation process for the given frame and returns the translated code object and its guard function, or None if translation fails.
 
     Args:
         frame: The frame to be translated.
 
     Returns:
-        tuple[CustomCode, Guard | None, GuardChain | None]: The translated code object, its guard function and its guard tree node, or None if translation fails.
+        tuple[CustomCode, Guard | None]: The translated code object and its guard function, or None if translation fails.
     """
     simulator = None
     graph = FunctionGraph(frame.f_code, frame.f_globals, **kwargs)
@@ -539,12 +489,8 @@ def start_translate(
             return (
                 CustomCode(None, True),
                 None,
-                None,
             )
-        guard_chain = simulator.guard_chain
-        if len(guard_chain) == 0:
-            guard_chain: GuardChain = [paddle.framework.core.DummyGuardNode()]
-        return new_custom_code, guard_fn, guard_chain
+        return new_custom_code, guard_fn
     # TODO(0x45f): handle BreakGraphError to trigger fallback
     except BreakGraphError as e:
         raise RuntimeError(
@@ -562,19 +508,16 @@ def start_translate(
             f"Unsupported Frame is {frame.f_code}, error message is: \n"
             + "".join(traceback.format_exception(type(e), e, e.__traceback__)),
         )
-        dummy_guard_chain: GuardChain = [paddle.framework.core.DummyGuardNode()]
-        guard, guard_chain = dummy_guard, dummy_guard_chain
+        guard = dummy_guard
 
         if isinstance(e, ConditionalFallbackError):
             # Guard global variables only
             graph.input_variables.clear()
             guard = graph.guard_fn
-            guard_chain = graph.guard_chain
 
         return (
             CustomCode(None, e.disable_eval_frame),
             guard,
-            guard_chain,
         )
     except SotCapturedException as e:
         log(
@@ -584,8 +527,7 @@ def start_translate(
         )
         if is_strict_mode():
             raise
-        dummy_guard_chain: GuardChain = [paddle.framework.core.DummyGuardNode()]
-        return (CustomCode(None, True), dummy_guard, dummy_guard_chain)
+        return (CustomCode(None, True), dummy_guard)
     except Exception as e:
         raise InnerError(OpcodeExecutorBase.error_message_summary(e)) from e
     finally:

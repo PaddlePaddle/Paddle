@@ -16,8 +16,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import paddle
-
 from ..utils.exceptions import InnerError
 
 if TYPE_CHECKING:
@@ -32,13 +30,6 @@ class ConstraintNode:
         self, extern_vars: dict[str, StringifiedExpression]
     ) -> StringifiedExpression:
         raise NotImplementedError
-
-    def create_guard_node(
-        self, extern_vars: dict[str, paddle.framework.core.ExprNodeBase]
-    ) -> paddle.framework.core.ExprNodeBase:
-        raise NotImplementedError(
-            f"{self.__class__.__name__}.create_guard_node is not implemented"
-        )
 
 
 class LeafConstraintNode(ConstraintNode):
@@ -71,12 +62,6 @@ class UnaryConstraintNode(ConstraintNode):
             union_free_vars(input.free_vars),
         )
 
-    def create_guard_node(
-        self, extern_vars: dict[str, paddle.framework.core.ExprNodeBase]
-    ) -> paddle.framework.core.ExprNodeBase:
-        input = self.input.create_guard_node(extern_vars)
-        return paddle.framework.core.UnaryExprNode(input, self.READABLE_SYMBOL)
-
 
 class BinaryConstraintNode(ConstraintNode):
     READABLE_SYMBOL: str
@@ -102,15 +87,6 @@ class BinaryConstraintNode(ConstraintNode):
             union_free_vars(lhs.free_vars, rhs.free_vars),
         )
 
-    def create_guard_node(
-        self, extern_vars: dict[str, paddle.framework.core.ExprNodeBase]
-    ) -> paddle.framework.core.ExprNodeBase:
-        lhs = self.lhs.create_guard_node(extern_vars)
-        rhs = self.rhs.create_guard_node(extern_vars)
-        return paddle.framework.core.BinaryExprNode(
-            lhs, rhs, self.READABLE_SYMBOL
-        )
-
     def __repr__(self):
         return f"{self.__class__.__name__}({self.lhs}, {self.rhs})"
 
@@ -128,11 +104,6 @@ class ConstantConstraintNode(LeafConstraintNode):
         )
 
         return StringifiedExpression(f"{self.value!r}", [], {})
-
-    def create_guard_node(
-        self, extern_vars: dict[str, paddle.framework.core.ExprNodeBase]
-    ) -> paddle.framework.core.ExprNodeBase:
-        return paddle.framework.core.ConstantExprNode(self.value)
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.value})"
@@ -160,15 +131,6 @@ class SymbolicConstraintNode(LeafConstraintNode):
             [extern_vars[self.name]],
             union_free_vars(extern_vars[self.name].free_vars),
         )
-
-    def create_guard_node(
-        self, extern_vars: dict[str, paddle.framework.core.ExprNodeBase]
-    ) -> paddle.framework.core.ExprNodeBase:
-        if self.name not in extern_vars:
-            raise InnerError(
-                f"Symbolic variable {self.name} not found in extern_vars."
-            )
-        return extern_vars[self.name]
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.name})"

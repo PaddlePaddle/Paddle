@@ -33,7 +33,6 @@ from ....utils.exceptions import (
     SotErrorBase,
     UnsupportedOperationBreak,
 )
-from ..guard import check_faster_guard
 from ..tracker import ConstTracker, DanglingTracker, DummyTracker
 from .base import (
     VariableBase,
@@ -45,8 +44,6 @@ from .container import TupleVariable
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-
-    import paddle
 
     from ..function_graph import FunctionGraph
     from ..pycode_generator import PyCodeGen
@@ -103,12 +100,6 @@ class SequenceIterVariable(IterVariable):
         self.holds = held
         self.idx = 0
         self.graph.side_effects.record_mutable_variable(self)
-
-    @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
-        return [
-            guard for held in self.holds for guard in held.make_faster_guard()
-        ]
 
     def make_compiled_guard_specs(self):
         return [
@@ -457,12 +448,6 @@ class UserDefinedIterVariable(IterVariable):
                 reason_str="Break graph when iterating user defined iterator"
             )
         )
-
-    @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
-        return [
-            guard for held in self.holds for guard in held.make_faster_guard()
-        ]
 
     def make_compiled_guard_specs(self):
         return [

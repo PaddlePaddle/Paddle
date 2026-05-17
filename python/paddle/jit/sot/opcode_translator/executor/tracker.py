@@ -19,8 +19,6 @@ import sys
 from itertools import chain
 from typing import TYPE_CHECKING
 
-import paddle
-
 from ...utils import InnerError, NameGenerator
 from .guard import StringifiedExpression, stringify_pyobject, union_free_vars
 
@@ -61,11 +59,6 @@ class Tracker:
             codegen (PyCodeGen): An instance of PyCodeGen to generate instructions.
         """
         raise NotImplementedError
-
-    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
-        raise NotImplementedError(
-            f"{self.__class__.__name__} has no guard_tree_expr_node"
-        )
 
     def guard_access_path(self) -> GuardAccess:
         raise NotImplementedError(
@@ -206,9 +199,6 @@ class LocalTracker(Tracker):
     def gen_instructions(self, codegen: PyCodeGen) -> None:
         codegen.gen_load_fast(self.name)
 
-    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
-        return paddle.framework.core.LocalVarExprNode(self.name)
-
     def guard_access_path(self) -> GuardAccess:
         return (("local", self.name),)
 
@@ -222,9 +212,6 @@ class LocalTracker(Tracker):
 class CellTracker(LocalTracker):
     def gen_instructions(self, codegen: PyCodeGen):
         codegen.gen_load_deref(self.name)
-
-    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
-        return paddle.framework.core.LocalVarExprNode(self.name)
 
     def guard_access_path(self) -> GuardAccess:
         return (("local", self.name),)
@@ -251,9 +238,6 @@ class GlobalTracker(Tracker):
     def gen_instructions(self, codegen: PyCodeGen) -> None:
         codegen.gen_load_global(self.name, push_null=False)
 
-    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
-        return paddle.framework.core.GlobalVarExprNode(self.name)
-
     def guard_access_path(self) -> GuardAccess:
         return (("global", self.name),)
 
@@ -278,11 +262,6 @@ class BuiltinTracker(Tracker):
 
     def gen_instructions(self, codegen: PyCodeGen) -> None:
         codegen.gen_load_global(self.name, push_null=False)
-
-    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
-        return paddle.framework.core.ConstantExprNode(
-            getattr(builtins, self.name)
-        )
 
     def guard_access_path(self) -> GuardAccess:
         return (("builtin", self.name),)
@@ -310,9 +289,6 @@ class ConstTracker(Tracker):
 
     def gen_instructions(self, codegen: PyCodeGen):
         codegen.gen_load_const(self.value)
-
-    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
-        return paddle.framework.core.ConstantExprNode(self.value)
 
     def guard_access_path(self) -> GuardAccess:
         return (("const", self.value),)
@@ -347,13 +323,6 @@ class GetAttrTracker(Tracker):
     def gen_instructions(self, codegen: PyCodeGen):
         self.obj.tracker.gen_instructions(codegen)
         codegen.gen_load_attr(self.attr)
-
-    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
-        obj_tracer = self.obj.tracker.guard_tree_expr_node()
-        return paddle.framework.core.AttributeExprNode(
-            obj_tracer,
-            self.attr,
-        )
 
     def guard_access_path(self) -> GuardAccess:
         return (*self.obj.tracker.guard_access_path(), ("attr", self.attr))
@@ -404,13 +373,6 @@ class GetItemTracker(Tracker):
             codegen.gen_load_const(self.key)
         codegen.gen_subscribe()
 
-    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
-        container_tracer = self.container.tracker.guard_tree_expr_node()
-        return paddle.framework.core.ItemExprNode(
-            container_tracer,
-            paddle.framework.core.ConstantExprNode(self.key),
-        )
-
     def guard_access_path(self) -> GuardAccess:
         return (
             *self.container.tracker.guard_access_path(),
@@ -451,10 +413,6 @@ class GetIterTracker(Tracker):
         self.iter_source.tracker.gen_instructions(codegen)
         codegen.add_instr("GET_ITER")
 
-    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
-        # TODO(zrr1999): implement IterExprNode
-        raise NotImplementedError("IterExprNode is not implemented")
-
     def trace_value_from_frame(self):
         iter_source_tracer = self.iter_source.tracker.trace_value_from_frame()
         return StringifiedExpression(
@@ -491,10 +449,6 @@ class CreateLayerTracker(Tracker):
                 v.reconstruct(codegen)
             codegen.gen_build_map(len(self.kwargs))
             codegen.gen_call_function_ex(has_kwargs=True)
-
-    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
-        # TODO(zrr1999): implement LayerExprNode.guard_tree_expr_node
-        raise NotImplementedError("LayerExprNode is not implemented")
 
     def trace_value_from_frame(self):
         class_tracer = self.layer_class.tracker.trace_value_from_frame()
@@ -560,19 +514,6 @@ class FunctionClosureTracker(Tracker):
         codegen.gen_subscribe()
         codegen.gen_load_attr("cell_contents")
 
-    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
-        fn_tracer = self.fn.tracker.guard_tree_expr_node()
-        return paddle.framework.core.AttributeExprNode(
-            paddle.framework.core.ItemExprNode(
-                paddle.framework.core.AttributeExprNode(
-                    fn_tracer,
-                    "__closure__",
-                ),
-                paddle.framework.core.ConstantExprNode(self.idx),
-            ),
-            "cell_contents",
-        )
-
     def guard_access_path(self) -> GuardAccess:
         return (
             *self.fn.tracker.guard_access_path(),
@@ -627,16 +568,6 @@ class FunctionGlobalTracker(Tracker):
         codegen.gen_load_attr("__globals__")
         codegen.gen_load_const(self.name)
         codegen.gen_subscribe()
-
-    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
-        fn_tracer = self.fn.tracker.guard_tree_expr_node()
-        return paddle.framework.core.ItemExprNode(
-            paddle.framework.core.AttributeExprNode(
-                fn_tracer,
-                "__globals__",
-            ),
-            paddle.framework.core.ConstantExprNode(self.name),
-        )
 
     def guard_access_path(self) -> GuardAccess:
         return (

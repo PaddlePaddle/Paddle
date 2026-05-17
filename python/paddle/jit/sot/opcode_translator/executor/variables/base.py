@@ -37,10 +37,8 @@ from ....utils import (
 from ....utils.exceptions import FallbackError, HasNoAttributeError
 from ..dispatcher import Dispatcher
 from ..guard import (
-    FasterStringifiedExpression,
     GuardSpec,
     StringifiedExpression,
-    check_faster_guard,
     check_guard,
     make_guard_spec,
     support_weak_ref,
@@ -377,16 +375,6 @@ class VariableBase:
     def __hash__(self):
         return hash(self.id)
 
-    @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
-        expr_node = self.tracker.guard_tree_expr_node()
-        return [
-            paddle.framework.core.GuardNode(
-                paddle.framework.core.ValueMatchGuard(self.get_py_value()),
-                [expr_node],
-            )
-        ]
-
     def make_compiled_guard_specs(self) -> list[GuardSpec]:
         value = self.get_py_value()
         access = self.tracker.guard_access_path()
@@ -415,9 +403,8 @@ class VariableBase:
         # Get a ValueTracer object from the Tracker object associated with the variable
         frame_value_tracer = self.tracker.trace_value_from_frame()
         return [
-            FasterStringifiedExpression(
+            StringifiedExpression(
                 f"id(type({{0}})) == {id(self.get_py_type())} and {{0}} == {self.get_py_value()!r}",
-                paddle.framework.core.ValueMatchGuard(self.get_py_value()),
                 [frame_value_tracer],
                 union_free_vars(frame_value_tracer.free_vars),
             )

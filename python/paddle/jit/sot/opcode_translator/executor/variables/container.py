@@ -25,9 +25,7 @@ from ....utils import ConstTypes, is_namedtuple_class
 from ....utils.exceptions import FallbackError, InnerError
 from ..dispatcher import Dispatcher
 from ..guard import (
-    FasterStringifiedExpression,
     StringifiedExpression,
-    check_faster_guard,
     check_guard,
     make_guard_spec,
 )
@@ -90,22 +88,19 @@ class ContainerVariable(VariableBase):
         frame_value_tracer = self.tracker.trace_value_from_frame()
 
         if self.get_py_type() is dict:
-            type_guard = FasterStringifiedExpression(
+            type_guard = StringifiedExpression(
                 f"isinstance({{}}, {self.get_py_type().__name__})",
-                paddle.framework.core.InstanceCheckGuard(self.get_py_type()),
                 [frame_value_tracer],
                 frame_value_tracer.free_vars,
             )
         else:
-            type_guard = FasterStringifiedExpression(
+            type_guard = StringifiedExpression(
                 f"id(type({{}})) == {id(self.get_py_type())}",
-                paddle.framework.core.TypeMatchGuard(self.get_py_type()),
                 [frame_value_tracer],
                 frame_value_tracer.free_vars,
             )
-        len_guard = FasterStringifiedExpression(
+        len_guard = StringifiedExpression(
             f"len({{}}) == {len(self.init_value)}",
-            paddle.framework.core.LengthMatchGuard(len(self.init_value)),
             [frame_value_tracer],
             frame_value_tracer.free_vars,
         )
@@ -124,46 +119,6 @@ class ContainerVariable(VariableBase):
             [[type_guard, len_guard]]
             + [
                 item.make_stringified_guard()
-                for item in guard_variables
-                if item.tracker.need_guard()
-            ],
-        )
-
-    @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
-        expr_node = self.tracker.guard_tree_expr_node()
-
-        if self.get_py_type() is dict:
-            # TODO(zrr1999): Use TypeMatchGuard
-            type_guard = paddle.framework.core.GuardNode(
-                paddle.framework.core.InstanceCheckGuard(self.get_py_type()),
-                [expr_node],
-            )
-        else:
-            type_guard = paddle.framework.core.GuardNode(
-                paddle.framework.core.TypeMatchGuard(self.get_py_type()),
-                [expr_node],
-            )
-        len_guard = paddle.framework.core.GuardNode(
-            paddle.framework.core.LengthMatchGuard(len(self.init_value)),
-            [expr_node],
-        )
-
-        if isinstance(self, (ListVariable, TupleVariable)):
-            guard_variables = self.proxy.reproduce(0)
-        elif isinstance(self, DictVariable):
-            guard_variables = filter(
-                lambda var: not isinstance(var, MutableDictLikeData.Empty),
-                self.proxy.reproduce(0).values(),
-            )
-        else:
-            raise InnerError(f"Unsupported container type: {type(self)}")
-
-        return reduce(
-            operator.add,
-            [[type_guard, len_guard]]
-            + [
-                item.make_faster_guard()
                 for item in guard_variables
                 if item.tracker.need_guard()
             ],
@@ -851,19 +806,6 @@ class RangeVariable(ContainerVariable):
             return range_variable
         return None
 
-    @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
-        frame_value_tracer = self.tracker.guard_tree_expr_node()
-        return [
-            paddle.framework.core.GuardNode(
-                paddle.framework.core.InstanceCheckGuard(range),
-                [frame_value_tracer],
-            ),
-            *self.start.make_faster_guard(),
-            *self.stop.make_faster_guard(),
-            *self.step.make_faster_guard(),
-        ]
-
     def make_compiled_guard_specs(self):
         access = self.tracker.guard_access_path()
         return [
@@ -877,9 +819,8 @@ class RangeVariable(ContainerVariable):
     def make_stringified_guard(self) -> list[StringifiedExpression]:
         frame_value_tracer = self.tracker.trace_value_from_frame()
         return [
-            FasterStringifiedExpression(
+            StringifiedExpression(
                 "isinstance({0}, range)",
-                paddle.framework.core.InstanceCheckGuard(range),
                 [frame_value_tracer],
                 frame_value_tracer.free_vars,
             ),

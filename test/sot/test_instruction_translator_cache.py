@@ -25,7 +25,6 @@ from test_case_base import (
     test_instruction_translator_cache_context,
 )
 
-import paddle
 from paddle.jit.sot.opcode_translator.custom_code import CustomCode
 from paddle.jit.sot.opcode_translator.executor.executor_cache import (
     OpcodeExecutorCache,
@@ -102,17 +101,14 @@ def mock_start_translate(frame: FrameType, **kwargs):
         FRAME_1: (
             CustomCode(FRAME_2.f_code, False),
             GuardCode(True),
-            [paddle.framework.core.DummyGuardNode()],
         ),
         FRAME_3: (
             CustomCode(FRAME_4.f_code, False),
             GuardCode(False),
-            [paddle.framework.core.DummyGuardNode(False)],
         ),  # Always re-compile
         FRAME_5: (
             CustomCode(None, False),
             lambda frame: True,
-            [paddle.framework.core.DummyGuardNode()],
         ),
     }
     return translate_map[frame]

@@ -123,24 +123,12 @@ ENV_SOT_ALLOW_DYNAMIC_SHAPE = BooleanEnvironmentVariable(
     # Enable SOT dynamic shape as default in PIR mode
     True,
 )
-ENV_SOT_ENABLE_FASTER_GUARD = BooleanEnvironmentVariable(
-    "SOT_ENABLE_FASTER_GUARD",
-    False,
-)
 ENV_SOT_ENABLE_STRICT_GUARD_CHECK = BooleanEnvironmentVariable(
     "SOT_ENABLE_STRICT_GUARD_CHECK",
     False,
 )
-ENV_SOT_ENABLE_GUARD_TREE = BooleanEnvironmentVariable(
-    "SOT_ENABLE_GUARD_TREE",
-    False,
-)
 ENV_SOT_ENABLE_COMPILED_GUARD = BooleanEnvironmentVariable(
     "SOT_ENABLE_COMPILED_GUARD",
-    True,
-)
-ENV_SOT_ENABLE_COMPILED_GUARD_TREE = BooleanEnvironmentVariable(
-    "SOT_ENABLE_COMPILED_GUARD_TREE",
     True,
 )
 ENV_ENABLE_SOT_STEP_PROFILER = BooleanEnvironmentVariable(
@@ -217,26 +205,8 @@ def allow_dynamic_shape_guard(value: bool):
 
 
 @contextmanager
-def faster_guard_guard(value: bool):
-    with EnvironmentVariableGuard(ENV_SOT_ENABLE_FASTER_GUARD, value):
-        yield
-
-
-@contextmanager
-def guard_tree_guard(value: bool):
-    with EnvironmentVariableGuard(ENV_SOT_ENABLE_GUARD_TREE, value):
-        yield
-
-
-@contextmanager
 def compiled_guard_guard(value: bool):
     with EnvironmentVariableGuard(ENV_SOT_ENABLE_COMPILED_GUARD, value):
-        yield
-
-
-@contextmanager
-def compiled_guard_tree_guard(value: bool):
-    with EnvironmentVariableGuard(ENV_SOT_ENABLE_COMPILED_GUARD_TREE, value):
         yield
 
 

@@ -24,7 +24,6 @@ from paddle.jit.sot.opcode_translator.executor.executor_cache import (
 from paddle.jit.sot.opcode_translator.executor.guard import make_compiled_guard
 from paddle.jit.sot.utils import (
     ENV_SOT_ENABLE_COMPILED_GUARD,
-    ENV_SOT_ENABLE_COMPILED_GUARD_TREE,
     ENV_SOT_ENABLE_STRICT_GUARD_CHECK,
     ENV_SOT_UNSAFE_CACHE_FASTPATH,
 )
@@ -45,7 +44,7 @@ class TestCompiledGuard(unittest.TestCase):
     def get_only_guard(self):
         cache = OpcodeExecutorCache().cache
         self.assertEqual(len(cache), 1)
-        guarded_fns, _ = next(iter(cache.values()))
+        guarded_fns = next(iter(cache.values()))
         self.assertEqual(len(guarded_fns), 1)
         return guarded_fns[0][1]
 
@@ -236,7 +235,17 @@ class TestCompiledGuard(unittest.TestCase):
                 python_guard,
             )
 
-    def test_compiled_guard_tree_skips_earlier_linear_guards(self):
+    def test_legacy_guard_apis_are_retired(self):
+        for api_name in [
+            "GuardTree",
+            "GuardNode",
+            "DummyGuardNode",
+            "TypeMatchGuard",
+            "ValueMatchGuard",
+        ]:
+            self.assertFalse(hasattr(paddle.framework.core, api_name))
+
+    def test_compiled_guard_lookup_skips_earlier_linear_guards(self):
         def fn(x, mode):
             if mode == 0:
                 return x + 1
@@ -251,7 +260,6 @@ class TestCompiledGuard(unittest.TestCase):
 
         with (
             EnvironmentVariableGuard(ENV_SOT_ENABLE_COMPILED_GUARD, True),
-            EnvironmentVariableGuard(ENV_SOT_ENABLE_COMPILED_GUARD_TREE, True),
             EnvironmentVariableGuard(ENV_SOT_ENABLE_STRICT_GUARD_CHECK, False),
             EnvironmentVariableGuard(ENV_SOT_UNSAFE_CACHE_FASTPATH, False),
         ):
@@ -261,7 +269,7 @@ class TestCompiledGuard(unittest.TestCase):
 
             cache = OpcodeExecutorCache().cache
             self.assertEqual(len(cache), 1)
-            guarded_fns, _ = next(iter(cache.values()))
+            guarded_fns = next(iter(cache.values()))
             self.assertEqual(len(guarded_fns), len(modes))
             self.assertEqual(OpcodeExecutorCache().translate_count, len(modes))
 
@@ -271,7 +279,7 @@ class TestCompiledGuard(unittest.TestCase):
                 def raising_guard(_frame, index=index):
                     raise AssertionError(f"linear guard {index} should not run")
 
-                raising_guard.expr = "compiled guard tree test guard"
+                raising_guard.expr = "compiled guard lookup test guard"
                 raising_guard.inlined_expr = raising_guard.expr
                 guarded_fns[index] = (custom_code, raising_guard)
 
