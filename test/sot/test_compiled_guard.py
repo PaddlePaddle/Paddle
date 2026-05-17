@@ -279,11 +279,10 @@ class TestCompiledGuard(unittest.TestCase):
             self.assertEqual(list(out.shape), [2, 3])
             self.assertEqual(OpcodeExecutorCache().translate_count, len(modes))
 
-    @unittest.skipIf(
-        not paddle.is_compiled_with_distribute(),
-        reason="Paddle is not compiled with distribute.",
-    )
     def test_compiled_guard_distributed_tensor_meta(self):
+        if not paddle.is_compiled_with_distribute():
+            return
+
         import paddle.distributed as dist
 
         def fn(x, y):
