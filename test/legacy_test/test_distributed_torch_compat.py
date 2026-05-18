@@ -39,6 +39,20 @@ _group_module = sys.modules['paddle.distributed.communication.group']
 
 
 class TestDistributedTorchCompat(unittest.TestCase):
+    def setUp(self):
+        # The default-group slot is process-global state. Snapshot it so
+        # tests that mutate ``group.WORLD`` (or its underlying mapping) do
+        # not leak into one another.
+        self._saved_group_map = dict(
+            _group_module._GroupManager.group_map_by_id
+        )
+
+    def tearDown(self):
+        _group_module._GroupManager.group_map_by_id.clear()
+        _group_module._GroupManager.group_map_by_id.update(
+            self._saved_group_map
+        )
+
     def test_group_namespace_exists(self):
         self.assertTrue(hasattr(dist, 'group'))
         self.assertTrue(hasattr(dist.group, 'WORLD'))
@@ -68,6 +82,45 @@ class TestDistributedTorchCompat(unittest.TestCase):
             self.assertIs(world, fake_default)
             self.assertIsInstance(world, Group)
             self.assertEqual(world.name, 'fake-world')
+
+    def test_group_world_setter_assigns_default_group(self):
+        # ``group.WORLD = pg`` mirrors ``torch.distributed.GroupMember.WORLD``
+        # assignment: it rewrites the default-group slot and a subsequent
+        # read returns the assigned group without any mock.
+        from paddle.distributed.communication.group import Group
+
+        assigned = Group(
+            rank_in_group=0, id=0, ranks=[0], pg=None, name='assigned-world'
+        )
+        dist.group.WORLD = assigned
+        self.assertIs(dist.group.WORLD, assigned)
+        # And the underlying mapping is the single source of truth.
+        self.assertIs(
+            _group_module._GroupManager.group_map_by_id[
+                _group_module._GroupManager.global_group_id
+            ],
+            assigned,
+        )
+
+    def test_group_world_setter_clears_with_none(self):
+        from paddle.distributed.communication.group import Group
+
+        dist.group.WORLD = Group(
+            rank_in_group=0, id=0, ranks=[0], pg=None, name='to-clear'
+        )
+        self.assertIsNotNone(dist.group.WORLD)
+        dist.group.WORLD = None
+        self.assertIsNone(dist.group.WORLD)
+        self.assertNotIn(
+            _group_module._GroupManager.global_group_id,
+            _group_module._GroupManager.group_map_by_id,
+        )
+
+    def test_group_world_setter_rejects_invalid_type(self):
+        with self.assertRaises(TypeError):
+            dist.group.WORLD = "not a group"
+        with self.assertRaises(TypeError):
+            dist.group.WORLD = 42
 
     def test_process_group_re_export(self):
         from paddle.base.core import ProcessGroup as core_pg
@@ -101,6 +154,42 @@ class TestDistributedTorchCompat(unittest.TestCase):
             _group_module, '_get_global_group', return_value=fake_default
         ):
             self.assertIs(dist.group.WORLD, fake_default)
+
+    @mock.patch('paddle.distributed.parallel.init_parallel_env')
+    @mock.patch.dict(os.environ, {}, clear=False)
+    def test_init_process_group_populates_group_world(self, mock_init):
+        # End-to-end check of the relationship between
+        # ``dist.init_process_group`` and ``dist.group.WORLD``: a real
+        # ``init_parallel_env`` populates ``_GroupManager`` with the default
+        # group, after which ``dist.group.WORLD`` resolves to that group.
+        # We mock ``init_parallel_env`` to perform exactly that side effect
+        # (without a multi-process distributed launch) and read
+        # ``dist.group.WORLD`` through the normal ``_get_global_group``
+        # lookup — no mock on the lookup itself.
+        from paddle.distributed.communication.group import Group
+
+        fake_default = Group(
+            rank_in_group=0, id=0, ranks=[0], pg=None, name='real-flow-world'
+        )
+
+        def fake_init_parallel_env():
+            _group_module._GroupManager.group_map_by_id[
+                _group_module._GroupManager.global_group_id
+            ] = fake_default
+            return fake_default
+
+        mock_init.side_effect = fake_init_parallel_env
+
+        # Before the call, the slot is empty (setUp cleared it).
+        self.assertIsNone(dist.group.WORLD)
+
+        returned = dist.init_process_group(backend='gloo')
+
+        # The return value is the default group...
+        self.assertIs(returned, fake_default)
+        # ...and ``dist.group.WORLD`` resolves to the same object without
+        # any further mocking.
+        self.assertIs(dist.group.WORLD, fake_default)
 
     @mock.patch('paddle.distributed.parallel.init_parallel_env')
     @mock.patch.dict(os.environ, {}, clear=False)

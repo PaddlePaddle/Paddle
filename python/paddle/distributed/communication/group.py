@@ -128,7 +128,9 @@ class _DistGroupMeta(type):
 
     Mirrors PyTorch's ``torch.distributed.group`` (also implemented via a
     metaclass) so that ``WORLD`` reflects the current default global group
-    rather than a static sentinel.
+    rather than a static sentinel. Assignment is supported and rewrites the
+    default-group slot in :class:`_GroupManager`, matching PyTorch's
+    ``GroupMember.WORLD = pg`` pattern.
     """
 
     @property
@@ -138,6 +140,25 @@ class _DistGroupMeta(type):
         except RuntimeError:
             return None
 
+    @WORLD.setter
+    def WORLD(cls, value: Group | None) -> None:
+        # Mirrors ``torch.distributed.GroupMember.WORLD = pg`` (which the
+        # framework itself uses inside ``init_process_group``). The
+        # default-group slot in ``_GroupManager`` is the single source of
+        # truth, so the setter rewrites that slot directly. ``None`` clears
+        # the slot, returning ``WORLD`` to its pre-init state.
+        if value is None:
+            _GroupManager.group_map_by_id.pop(
+                _GroupManager.global_group_id, None
+            )
+            return
+        if not isinstance(value, Group):
+            raise TypeError(
+                "group.WORLD must be a Group instance or None, got "
+                f"{type(value).__name__}"
+            )
+        _GroupManager.group_map_by_id[_GroupManager.global_group_id] = value
+
 
 class group(metaclass=_DistGroupMeta):
     """Compat namespace mirroring ``torch.distributed.group``.
@@ -146,6 +167,8 @@ class group(metaclass=_DistGroupMeta):
     after :func:`paddle.distributed.init_parallel_env` /
     :func:`paddle.distributed.init_process_group`, and ``None`` before
     initialization - matching ``torch.distributed.group.WORLD`` semantics.
+    Assignment (``group.WORLD = pg`` / ``group.WORLD = None``) is also
+    supported and updates the default-group slot in :class:`_GroupManager`.
 
     User code converted from PyTorch such as
     ``paddle.distributed.broadcast(t, group=paddle.distributed.group.WORLD)``
