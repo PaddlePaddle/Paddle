@@ -2364,7 +2364,6 @@ class TestConv2dTransposeAPI(unittest.TestCase):
                 np.testing.assert_allclose(fetches[0], fetches[i], rtol=1e-5)
 
 
-# Test Conv2DTranspose layer compatibility
 @unittest.skipIf(
     sys.platform == 'win32',
     "Conv transpose compatibility tests not supported on Windows-Inference",
@@ -2568,6 +2567,471 @@ class TestConv3DTransposeLayerAPI(unittest.TestCase):
         paddle.disable_static()
         with self.assertRaises(TypeError):
             paddle.nn.Conv3DTranspose(2, 2, 3, 1, 0, 0, 1, True, bias=True)
+
+
+class TestL1LossAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.random.rand(3, 4).astype("float32")
+        self.np_label = np.random.rand(3, 4).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        label = paddle.to_tensor(self.np_label)
+
+        # 1. Paddle positional arguments
+        out1 = paddle.nn.functional.l1_loss(input, label)
+        # 2. Paddle keyword arguments
+        out2 = paddle.nn.functional.l1_loss(input=input, label=label)
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.nn.functional.l1_loss(input=input, target=label)
+        # 4. Mixed arguments
+        out4 = paddle.nn.functional.l1_loss(input, target=label)
+
+        ref_out = np.mean(np.abs(self.np_input - self.np_label))
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+
+        # PyTorch deprecated args translate to reduction
+        ref_sum = np.sum(np.abs(self.np_input - self.np_label))
+        ref_none = np.abs(self.np_input - self.np_label)
+
+        # 5. size_average=False translates to reduction='sum'
+        out5 = paddle.nn.functional.l1_loss(input, label, size_average=False)
+        np.testing.assert_allclose(out5.numpy(), ref_sum, rtol=1e-6)
+        # 6. reduce=False translates to reduction='none'
+        out6 = paddle.nn.functional.l1_loss(input, label, reduce=False)
+        np.testing.assert_allclose(out6.numpy(), ref_none, rtol=1e-6)
+        # 7. reduce=True + size_average=True translates to reduction='mean'
+        out7 = paddle.nn.functional.l1_loss(
+            input, label, reduce=True, size_average=True
+        )
+        np.testing.assert_allclose(out7.numpy(), ref_out, rtol=1e-6)
+        # 8. reduce=True + size_average=False translates to reduction='sum'
+        out8 = paddle.nn.functional.l1_loss(
+            input, label, reduce=True, size_average=False
+        )
+        np.testing.assert_allclose(out8.numpy(), ref_sum, rtol=1e-6)
+        # 9. legacy args combined with target alias
+        out9 = paddle.nn.functional.l1_loss(
+            input=input, target=label, size_average=False
+        )
+        np.testing.assert_allclose(out9.numpy(), ref_sum, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            input = paddle.static.data(
+                name="input", shape=[3, 4], dtype='float32'
+            )
+            label = paddle.static.data(
+                name="label", shape=[3, 4], dtype='float32'
+            )
+
+            out1 = paddle.nn.functional.l1_loss(input, label)
+            out2 = paddle.nn.functional.l1_loss(input=input, label=label)
+            out3 = paddle.nn.functional.l1_loss(input=input, target=label)
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"input": self.np_input, "label": self.np_label},
+                fetch_list=[out1, out2, out3],
+            )
+            ref_out = np.mean(np.abs(self.np_input - self.np_label))
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out, rtol=1e-6)
+
+
+class TestKLDivAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        # input is log-probability
+        x = np.log(np.random.rand(5, 6).astype("float32") + 1e-3)
+        self.np_input = x
+        self.np_label = np.random.rand(5, 6).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        label = paddle.to_tensor(self.np_label)
+
+        # 1. Paddle positional arguments
+        out1 = paddle.nn.functional.kl_div(input, label, 'mean')
+        # 2. Paddle keyword arguments
+        out2 = paddle.nn.functional.kl_div(input=input, label=label)
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.nn.functional.kl_div(input=input, target=label)
+        # 4. Mixed arguments
+        out4 = paddle.nn.functional.kl_div(input, target=label)
+
+        for out in [out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+
+class TestSmoothL1LossAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.random.rand(3, 4).astype("float32")
+        self.np_label = np.random.rand(3, 4).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        label = paddle.to_tensor(self.np_label)
+
+        # 1. Paddle positional arguments
+        out1 = paddle.nn.functional.smooth_l1_loss(input, label)
+        # 2. Paddle keyword arguments
+        out2 = paddle.nn.functional.smooth_l1_loss(input=input, label=label)
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.nn.functional.smooth_l1_loss(input=input, target=label)
+        # 4. Mixed arguments
+        out4 = paddle.nn.functional.smooth_l1_loss(input, target=label)
+
+        for out in [out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+
+class TestHingeEmbeddingLossAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.random.rand(3, 4).astype("float32")
+        self.np_label = np.random.choice([-1, 1], size=(3, 4)).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        label = paddle.to_tensor(self.np_label)
+
+        out1 = paddle.nn.functional.hinge_embedding_loss(input, label)
+        out2 = paddle.nn.functional.hinge_embedding_loss(
+            input=input, label=label
+        )
+        out3 = paddle.nn.functional.hinge_embedding_loss(
+            input=input, target=label
+        )
+        out4 = paddle.nn.functional.hinge_embedding_loss(input, target=label)
+
+        for out in [out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+
+class TestCosineEmbeddingLossAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input1 = np.random.rand(4, 5).astype("float32")
+        self.np_input2 = np.random.rand(4, 5).astype("float32")
+        self.np_label = np.array([1, -1, 1, -1], dtype="int64")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input1 = paddle.to_tensor(self.np_input1)
+        input2 = paddle.to_tensor(self.np_input2)
+        label = paddle.to_tensor(self.np_label)
+
+        out1 = paddle.nn.functional.cosine_embedding_loss(input1, input2, label)
+        out2 = paddle.nn.functional.cosine_embedding_loss(
+            input1=input1, input2=input2, label=label
+        )
+        out3 = paddle.nn.functional.cosine_embedding_loss(
+            input1=input1, input2=input2, target=label
+        )
+        out4 = paddle.nn.functional.cosine_embedding_loss(
+            input1, input2, target=label
+        )
+
+        for out in [out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+
+class TestMultiLabelSoftMarginLossAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.random.rand(3, 4).astype("float32")
+        self.np_label = np.random.choice([-1, 1], size=(3, 4)).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        label = paddle.to_tensor(self.np_label)
+
+        out1 = paddle.nn.functional.multi_label_soft_margin_loss(input, label)
+        out2 = paddle.nn.functional.multi_label_soft_margin_loss(
+            input=input, label=label
+        )
+        out3 = paddle.nn.functional.multi_label_soft_margin_loss(
+            input=input, target=label
+        )
+        out4 = paddle.nn.functional.multi_label_soft_margin_loss(
+            input, target=label
+        )
+
+        for out in [out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+
+class TestMultiLabelMarginLossAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.random.rand(2, 4).astype("float32")
+        self.np_label = np.array(
+            [[3, 0, -1, -1], [0, 2, -1, -1]], dtype="int64"
+        )
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        label = paddle.to_tensor(self.np_label)
+
+        out1 = paddle.nn.functional.multi_label_margin_loss(input, label)
+        out2 = paddle.nn.functional.multi_label_margin_loss(
+            input=input, label=label
+        )
+        out3 = paddle.nn.functional.multi_label_margin_loss(
+            input=input, target=label
+        )
+        out4 = paddle.nn.functional.multi_label_margin_loss(input, target=label)
+
+        for out in [out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+
+class TestSoftMarginLossAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.random.rand(3, 4).astype("float32")
+        self.np_label = np.random.choice([-1, 1], size=(3, 4)).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        label = paddle.to_tensor(self.np_label)
+
+        out1 = paddle.nn.functional.soft_margin_loss(input, label)
+        out2 = paddle.nn.functional.soft_margin_loss(input=input, label=label)
+        out3 = paddle.nn.functional.soft_margin_loss(input=input, target=label)
+        out4 = paddle.nn.functional.soft_margin_loss(input, target=label)
+
+        for out in [out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+
+class TestTripletMarginWithDistanceLossAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.random.rand(3, 4).astype("float32")
+        self.np_pos = np.random.rand(3, 4).astype("float32")
+        self.np_neg = np.random.rand(3, 4).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        pos = paddle.to_tensor(self.np_pos)
+        neg = paddle.to_tensor(self.np_neg)
+
+        out1 = paddle.nn.functional.triplet_margin_with_distance_loss(
+            input, pos, neg
+        )
+        out2 = paddle.nn.functional.triplet_margin_with_distance_loss(
+            input=input, positive=pos, negative=neg
+        )
+        # PyTorch alias: anchor instead of input
+        out3 = paddle.nn.functional.triplet_margin_with_distance_loss(
+            anchor=input, positive=pos, negative=neg
+        )
+
+        for out in [out2, out3]:
+            np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+
+class TestTripletMarginLossAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.random.rand(3, 4).astype("float32")
+        self.np_pos = np.random.rand(3, 4).astype("float32")
+        self.np_neg = np.random.rand(3, 4).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        pos = paddle.to_tensor(self.np_pos)
+        neg = paddle.to_tensor(self.np_neg)
+
+        out1 = paddle.nn.functional.triplet_margin_loss(input, pos, neg)
+        out2 = paddle.nn.functional.triplet_margin_loss(
+            input=input, positive=pos, negative=neg
+        )
+        # PyTorch aliases: anchor instead of input, eps instead of epsilon
+        out3 = paddle.nn.functional.triplet_margin_loss(
+            anchor=input, positive=pos, negative=neg, eps=1e-06
+        )
+        out4 = paddle.nn.functional.triplet_margin_loss(
+            input, pos, neg, eps=1e-06
+        )
+
+        for out in [out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+
+class TestGaussianNLLLossAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.random.randn(5, 2).astype("float32")
+        self.np_label = np.random.randn(5, 2).astype("float32")
+        self.np_var = np.ones((5, 2)).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        label = paddle.to_tensor(self.np_label)
+        var = paddle.to_tensor(self.np_var)
+
+        # 1. Paddle positional arguments
+        out1 = paddle.nn.functional.gaussian_nll_loss(input, label, var)
+        # 2. Paddle keyword arguments
+        out2 = paddle.nn.functional.gaussian_nll_loss(
+            input=input, label=label, variance=var
+        )
+        # 3. PyTorch keyword arguments (aliases)
+        out3 = paddle.nn.functional.gaussian_nll_loss(
+            input=input, target=label, var=var
+        )
+        # 4. Mixed
+        out4 = paddle.nn.functional.gaussian_nll_loss(
+            input, target=label, var=var, eps=1e-06
+        )
+
+        for out in [out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+
+class TestMarginRankingLossAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.random.rand(4, 5).astype("float32")
+        self.np_other = np.random.rand(4, 5).astype("float32")
+        self.np_label = np.random.choice([-1, 1], size=(4, 5)).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        other = paddle.to_tensor(self.np_other)
+        label = paddle.to_tensor(self.np_label)
+
+        # 1. Paddle positional arguments
+        out1 = paddle.nn.functional.margin_ranking_loss(input, other, label)
+        # 2. Paddle keyword arguments
+        out2 = paddle.nn.functional.margin_ranking_loss(
+            input=input, other=other, label=label
+        )
+        # 3. PyTorch keyword arguments (aliases)
+        out3 = paddle.nn.functional.margin_ranking_loss(
+            input1=input, input2=other, target=label
+        )
+
+        for out in [out2, out3]:
+            np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+
+class TestGaussianNLLLossLayerAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.random.randn(5, 2).astype("float32")
+        self.np_label = np.random.randn(5, 2).astype("float32")
+        self.np_var = np.ones((5, 2)).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        label = paddle.to_tensor(self.np_label)
+        var = paddle.to_tensor(self.np_var)
+
+        # Paddle: epsilon
+        layer1 = paddle.nn.GaussianNLLLoss(epsilon=1e-06)
+        # PyTorch alias: eps
+        layer2 = paddle.nn.GaussianNLLLoss(eps=1e-06)
+
+        out1 = layer1(input, label, var)
+        out2 = layer2(input, label, var)
+        np.testing.assert_allclose(out1.numpy(), out2.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+
+class TestPoissonNLLLossLayerAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.random.randn(5, 2).astype("float32")
+        self.np_label = np.random.randn(5, 2).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        label = paddle.to_tensor(self.np_label)
+
+        # Paddle: epsilon
+        layer1 = paddle.nn.PoissonNLLLoss(epsilon=1e-08)
+        # PyTorch alias: eps
+        layer2 = paddle.nn.PoissonNLLLoss(eps=1e-08)
+
+        out1 = layer1(input, label)
+        out2 = layer2(input, label)
+        np.testing.assert_allclose(out1.numpy(), out2.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+
+class TestTripletMarginLossLayerAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.random.rand(3, 4).astype("float32")
+        self.np_pos = np.random.rand(3, 4).astype("float32")
+        self.np_neg = np.random.rand(3, 4).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        pos = paddle.to_tensor(self.np_pos)
+        neg = paddle.to_tensor(self.np_neg)
+
+        # Paddle: epsilon
+        layer1 = paddle.nn.TripletMarginLoss(epsilon=1e-06)
+        # PyTorch alias: eps
+        layer2 = paddle.nn.TripletMarginLoss(eps=1e-06)
+
+        out1 = layer1(input, pos, neg)
+        out2 = layer2(input, pos, neg)
+        np.testing.assert_allclose(out1.numpy(), out2.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
 
 
 def _assert_unary_inplace_result(

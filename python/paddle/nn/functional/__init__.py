@@ -179,6 +179,8 @@ logsigmoid = log_sigmoid
 conv_transpose1d = conv1d_transpose
 conv_transpose2d = conv2d_transpose
 conv_transpose3d = conv3d_transpose
+multilabel_margin_loss = multi_label_margin_loss
+multilabel_soft_margin_loss = multi_label_soft_margin_loss
 __all__ = [
     'celu',
     'conv1d',
@@ -311,6 +313,8 @@ __all__ = [
     'adaptive_log_softmax_with_loss',
     'multi_margin_loss',
     'multi_label_margin_loss',
+    'multilabel_margin_loss',
+    'multilabel_soft_margin_loss',
     'soft_margin_loss',
     'gaussian_nll_loss',
     'scaled_dot_product_attention',

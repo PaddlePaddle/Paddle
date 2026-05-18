@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+import warnings
 
 import paddle
 from paddle.nn import (
@@ -36,12 +37,22 @@ from paddle.nn import (
 )
 
 
+def _get_reduction(loss):
+    return getattr(loss, 'reduction', None) or getattr(loss, '_reduction', None)
+
+
 class TestLegacyLossArgs(unittest.TestCase):
     def assertSuggests(self, loss_ctor, expected_reduction, **legacy_kwargs):
-        with self.assertRaises(ValueError) as cm:
-            loss_ctor(**legacy_kwargs)
-        msg = str(cm.exception)
-        self.assertIn(f"reduction='{expected_reduction}'", msg)
+        # Legacy kwargs are translated (not raised). Verify the resulting
+        # reduction matches the expected value and a DeprecationWarning fires.
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter('always')
+            loss = loss_ctor(**legacy_kwargs)
+        self.assertEqual(_get_reduction(loss), expected_reduction)
+        self.assertTrue(
+            any(issubclass(w.category, DeprecationWarning) for w in caught),
+            f"Expected DeprecationWarning when using legacy args, got: {caught}",
+        )
 
     def test_no_legacy_all_constructible(self):
         # Ensure all 17 losses still construct with reduction only
@@ -156,10 +167,15 @@ class TestLegacyLossArgs(unittest.TestCase):
 
     def test_ce_positional_legacy_reduce_trigger(self):
         # CrossEntropyLoss(weight=None, size_average=True, ignore_index, reduce=True)
-        with self.assertRaises(ValueError) as cm:
+        # PyTorch positional layout is translated into reduction='mean'.
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter('always')
             w = paddle.ones([3], dtype='float32')
-            CrossEntropyLoss(w, True, -100, True)
-        self.assertIn("reduction='mean'", str(cm.exception))
+            loss = CrossEntropyLoss(w, True, -100, True)
+        self.assertEqual(_get_reduction(loss), 'mean')
+        self.assertTrue(
+            any(issubclass(w.category, DeprecationWarning) for w in caught)
+        )
 
     def test_kldiv_positional_log_target_guard(self):
         # KLDivLoss(reduction='mean', log_target=True)
@@ -167,9 +183,13 @@ class TestLegacyLossArgs(unittest.TestCase):
 
     def test_kldiv_positional_legacy_reduce_trigger(self):
         # KLDivLoss(log_target=True)(Not provide reduction string, treat as legacy reduce)
-        with self.assertRaises(ValueError) as cm:
-            KLDivLoss(True)
-        self.assertIn("reduction='mean'", str(cm.exception))
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter('always')
+            loss = KLDivLoss(True)
+        self.assertEqual(_get_reduction(loss), 'mean')
+        self.assertTrue(
+            any(issubclass(w.category, DeprecationWarning) for w in caught)
+        )
 
     def test_poisson_positional_eps_float_guard(self):
         # PoissonNLLLoss(log_input, full, eps)
@@ -177,9 +197,13 @@ class TestLegacyLossArgs(unittest.TestCase):
 
     def test_poisson_positional_legacy_reduce_trigger(self):
         # PoissonNLLLoss(log_input, full, size_average=True, epsilon, reduce=True)
-        with self.assertRaises(ValueError) as cm:
-            PoissonNLLLoss(True, False, True, 1e-8, True)
-        self.assertIn("reduction='mean'", str(cm.exception))
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter('always')
+            loss = PoissonNLLLoss(True, False, True, 1e-8, True)
+        self.assertEqual(_get_reduction(loss), 'mean')
+        self.assertTrue(
+            any(issubclass(w.category, DeprecationWarning) for w in caught)
+        )
 
 
 if __name__ == '__main__':
