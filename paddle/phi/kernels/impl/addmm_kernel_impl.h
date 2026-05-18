@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/addmm_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -115,21 +116,37 @@ void AddmmKernel(const Context& dev_ctx,
     return;
   }
 
-  T t_alpha = static_cast<T>(alpha);
-  T t_beta = static_cast<T>(beta);
-  blas.GEMM(false,
-            false,
-            x_dims[0],
-            y_dims[1],
-            x_dims[1],
-            t_alpha,
-            x.data<T>(),
-            x_dims[1],
-            y.data<T>(),
-            y_dims[1],
-            t_beta,
-            out->data<T>(),
-            y_dims[1]);
+  using MPType = typename MPTypeTrait<T>::Type;
+  if constexpr (std::is_same_v<MPType, float>) {
+    float t_alpha = alpha;
+    float t_beta = beta;
+    blas.GEMM(CblasNoTrans,
+              CblasNoTrans,
+              x_dims[0],
+              y_dims[1],
+              x_dims[1],
+              t_alpha,
+              x.data<T>(),
+              y.data<T>(),
+              t_beta,
+              out->data<T>());
+  } else {
+    T t_alpha = static_cast<T>(alpha);
+    T t_beta = static_cast<T>(beta);
+    blas.GEMM(false,
+              false,
+              x_dims[0],
+              y_dims[1],
+              x_dims[1],
+              t_alpha,
+              x.data<T>(),
+              x_dims[1],
+              y.data<T>(),
+              y_dims[1],
+              t_beta,
+              out->data<T>(),
+              y_dims[1]);
+  }
 }
 
 }  // namespace phi
