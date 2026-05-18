@@ -150,6 +150,13 @@ class TestOverrideTorchModule(unittest.TestCase):
         self.assertIs(torch.relu, paddle.nn.functional.relu)
 
     @paddle.use_compat_guard()
+    def test_torch_version_class(self):
+        import torch
+
+        self.assertIs(torch.TorchVersion, paddle.PaddleVersion)
+        self.assertIsInstance(torch.__version__, paddle.PaddleVersion)
+
+    @paddle.use_compat_guard()
     def test_access_compat_functions_by_getattr(self):
         import torch
 

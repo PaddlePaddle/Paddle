@@ -127,6 +127,9 @@ def _create_proxy_module(
 
 GLOBAL_OVERRIDES: dict[str, OverriddenAttribute] = {
     "torch.relu": LazyImportOverriddenAttribute("paddle.nn.functional.relu"),
+    "torch.TorchVersion": LazyImportOverriddenAttribute(
+        "paddle.paddle_version.PaddleVersion"
+    ),
 }
 
 TORCH_PROXY_BLOCKED_MODULES = {
