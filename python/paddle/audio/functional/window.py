@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 from paddle.base.framework import (
     _current_expected_place,
     _get_paddle_place,
-    core,
+    _to_pinned_place,
     in_dynamic_or_pir_mode,
 )
 
@@ -473,26 +473,8 @@ def _apply_window_postprocess(
             if device is not None
             else _current_expected_place()
         )
-        if (
-            pin_memory
-            and paddle.in_dynamic_mode()
-            and device is not None
-            and not isinstance(
-                device, (core.CUDAPinnedPlace, core.XPUPinnedPlace)
-            )
-        ):
-            if isinstance(device, core.CUDAPlace) or (
-                isinstance(device, core.Place) and device.is_gpu_place()
-            ):
-                device = core.CUDAPinnedPlace()
-            elif isinstance(device, core.XPUPlace) or (
-                isinstance(device, core.Place) and device.is_xpu_place()
-            ):
-                device = core.XPUPinnedPlace()
-            else:
-                raise RuntimeError(
-                    f"Pinning memory is not supported for {device}"
-                )
+        if pin_memory and paddle.in_dynamic_mode() and device is not None:
+            device = _to_pinned_place(device)
     w = w.to(device=device)
     if pin_memory and paddle.in_dynamic_mode():
         w = w.pin_memory()

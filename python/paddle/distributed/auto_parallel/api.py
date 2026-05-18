@@ -1195,6 +1195,9 @@ class _ShardOptimizer(Optimizer):
         self.enable_tensor_fusion = False
         self.enable_sharding_overlap = False
 
+    def get_lr_dtype(self):
+        return self._inner_opt.get_lr_dtype()
+
     def _set_and_check_sharding_prop_from_param(self):
         global_mesh = fleet.auto.get_mesh()
         if global_mesh:

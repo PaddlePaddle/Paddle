@@ -24,10 +24,11 @@ import typing
 __is_metainfo_generated = False
 try:
     from paddle.cuda_env import *  # noqa: F403
-    from paddle.version import (  # noqa: F401
-        commit as __git_commit__,
-        full_version as __version__,
+    from paddle.paddle_version import (  # noqa: F401
+        PaddleVersion,
+        __version__,
     )
+    from paddle.version import commit as __git_commit__  # noqa: F401
 
     __is_metainfo_generated = True
 
@@ -245,6 +246,7 @@ from paddle import (
     metric as metric,
     nn as nn,
     onnx as onnx,
+    optim as optim,
     optimizer as optimizer,
     quantization as quantization,
     random as random,
@@ -292,6 +294,7 @@ from .audio.functional.window import (  # noqa: F401
 from .autograd import (
     enable_grad,
     grad,
+    inference_mode,
     is_grad_enabled,
     no_grad,
     set_grad_enabled,
@@ -1273,6 +1276,7 @@ __all__ = [
     'enable_grad',
     'set_grad_enabled',
     'is_grad_enabled',
+    'inference_mode',
     'mod',
     'mod_',
     'abs',

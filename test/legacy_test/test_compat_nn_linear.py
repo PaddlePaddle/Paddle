@@ -183,6 +183,25 @@ class TestCompatLinearLayer(unittest.TestCase):
         self._compare_forward(x_np, weight_np, bias_np)
         self._compare_backward(x_np, weight_np, bias_np)
 
+    def test_out_features_one(self):
+        """Test Linear(10, 1) with 1D and 2D input"""
+        weight_np = np.random.randn(1, 10).astype(np.float32)
+        bias_np = np.random.randn(1).astype(np.float32)
+        linear = paddle.compat.nn.Linear(10, 1)
+        linear.weight.set_value(paddle.to_tensor(weight_np))
+        linear.bias.set_value(paddle.to_tensor(bias_np))
+
+        x_np = np.random.randn(10).astype(np.float32)
+        y_np = self._numpy_linear_forward(x_np, weight_np, bias_np)
+        y_pd = linear(paddle.to_tensor(x_np))
+        rtol, atol = self.get_error_range()
+        np.testing.assert_allclose(y_pd.numpy(), y_np, rtol=rtol, atol=atol)
+
+        x_np = np.random.randn(1, 10).astype(np.float32)
+        y_np = self._numpy_linear_forward(x_np, weight_np, bias_np)
+        y_pd = linear(paddle.to_tensor(x_np))
+        np.testing.assert_allclose(y_pd.numpy(), y_np, rtol=rtol, atol=atol)
+
     def test_3d_input_with_bias(self):
         """Test 3D input with bias"""
         x_np = np.random.randn(2, 4, 3).astype(np.float32)
