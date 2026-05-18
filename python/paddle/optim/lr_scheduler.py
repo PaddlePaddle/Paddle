@@ -13,17 +13,33 @@
 # limitations under the License.
 
 from paddle.optimizer.lr import (
-    CosineAnnealingDecay as CosineAnnealingLR,  # noqa: F401
+    CosineAnnealingDecay as CosineAnnealingLR,
     CosineAnnealingWarmRestarts as CosineAnnealingWarmRestarts,
     CyclicLR as CyclicLR,
-    ExponentialDecay as ExponentialLR,  # noqa: F401
-    LambdaDecay as LambdaLR,  # noqa: F401
+    ExponentialDecay as ExponentialLR,
+    LambdaDecay as LambdaLR,
     LinearLR as LinearLR,
     LRScheduler as LRScheduler,
-    MultiplicativeDecay as MultiplicativeLR,  # noqa: F401
-    MultiStepDecay as MultiStepLR,  # noqa: F401
+    MultiplicativeDecay as MultiplicativeLR,
+    MultiStepDecay as MultiStepLR,
     OneCycleLR as OneCycleLR,
-    PiecewiseDecay as ConstantLR,  # noqa: F401
-    ReduceOnPlateau as ReduceLROnPlateau,  # noqa: F401
-    StepDecay as StepLR,  # noqa: F401
+    PiecewiseDecay as ConstantLR,
+    ReduceOnPlateau as ReduceLROnPlateau,
+    StepDecay as StepLR,
 )
+
+__all__ = [
+    "LambdaLR",
+    "MultiplicativeLR",
+    "StepLR",
+    "MultiStepLR",
+    "ConstantLR",
+    "LinearLR",
+    "ExponentialLR",
+    "CosineAnnealingLR",
+    "ReduceLROnPlateau",
+    "CyclicLR",
+    "CosineAnnealingWarmRestarts",
+    "OneCycleLR",
+    "LRScheduler",
+]
