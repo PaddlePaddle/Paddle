@@ -143,6 +143,38 @@ class API_Test_Nansum(unittest.TestCase):
                 msg='nansum output is wrong, out =' + str(out.numpy()),
             )
 
+    def test_compat(self):
+        x = np.array(
+            [
+                [[1, np.nan], [3, 4]],
+                [[5, 6], [-np.nan, 8]],
+            ]
+        ).astype('float32')
+        with base.dygraph.guard():
+            inputs = paddle.to_tensor(x)
+            out1 = paddle.nansum(x=inputs, axis=[1, 2])
+            out2 = paddle.nansum(input=inputs, dim=[1, 2])
+            out3 = paddle.empty_like(inputs)
+            out4 = paddle.nansum(inputs, dim=[1, 2], out=out3)
+            for out in [out2, out3, out4]:
+                np.testing.assert_array_equal(out1.numpy(), out.numpy())
+
+    def test_compat_error(self):
+        x = np.array(
+            [
+                [[1, np.nan], [3, 4]],
+                [[5, 6], [-np.nan, 8]],
+            ]
+        ).astype('float32')
+        with base.dygraph.guard():
+            inputs = paddle.to_tensor(x)
+            with self.assertRaises(ValueError):
+                out1 = paddle.nansum(x=inputs, input=inputs)
+            with self.assertRaises(ValueError):
+                out2 = paddle.nansum(inputs, dim=[1, 2], axis=[1, 2])
+            with self.assertRaises(TypeError):
+                out3 = paddle.nansum(inputs, [1, 2], False, 'int32')
+
 
 class API_Test_Nansum_ZeroSize(unittest.TestCase):
     def test_dygraph(self):
