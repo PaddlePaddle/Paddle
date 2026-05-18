@@ -27,12 +27,11 @@ __all__ = ["PaddleVersion"]
 class PaddleVersion(str):
     """A string with magic powers to compare to both Version and iterables!
 
-    Mirrors ``torch.torch_version.TorchVersion``. ``paddle.__version__`` is
-    historically stored as a plain ``str`` and many users compare against
-    it as if it were a ``str``. ``PaddleVersion`` masquerades as a ``str``
-    so those keep working while also comparing as a
-    ``packaging.version.Version`` against another ``Version`` / ``str`` /
-    iterable of version components such as ``(2, 6, 1)``.
+    Mirrors ``torch.torch_version.TorchVersion``. ``paddle.__version__`` was
+    historically a plain ``str`` and existing user code compares against it
+    as a ``str``; ``PaddleVersion`` masquerades as a ``str`` so those keep
+    working while also comparing as a ``packaging.version.Version`` against
+    another ``Version`` / ``str`` / iterable such as ``(2, 6, 1)``.
 
     Examples:
         Comparing a PaddleVersion object to a Version object
