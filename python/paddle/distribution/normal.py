@@ -145,18 +145,17 @@ class Normal(distribution.Distribution):
         scale: _NormalScale,
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
         name: str | None = None,
 >>>>>>> 62f6f13e11 (Align paths)
 =======
         name: str | None = None,
 >>>>>>> ff3070eee1 (Align paths)
+=======
+>>>>>>> 4ba450abc2 (Del name)
         validate_args: bool | None = None,
     ) -> None:
-        if isinstance(name, bool) and validate_args is None:
-            validate_args = name
-            name = None
-
         if not in_dynamic_mode():
             check_type(
                 loc,
