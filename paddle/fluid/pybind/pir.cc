@@ -56,6 +56,7 @@
 #include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/gpu/fused_bn_add_act_pass.h"
 #include "paddle/fluid/pir/transforms/passes.h"
+#include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/fluid/pir/utils/name_analysis.h"
 #include "paddle/fluid/pybind/control_flow_api.h"
@@ -2874,6 +2875,12 @@ std::shared_ptr<Program> ApplyCommonSubexpressionEliminationPass(
   return program;
 }
 
+std::shared_ptr<Program> ApplyPdOpToKernelPass(std::shared_ptr<Program> program,
+                                               const phi::Place &place) {
+  auto lowered_program = pir::PdOpLowerToKernelPass(program.get(), place);
+  return std::shared_ptr<Program>(std::move(lowered_program));
+}
+
 void ApplyReduceAsToSumPass(
     std::shared_ptr<pir::PassManager> &pass_manager,  // NOLINT
     pir::Program &program) {                          // NOLINT
@@ -2905,6 +2912,7 @@ void BindIrPass(pybind11::module *m) {
   m->def("apply_pcc_pass", ApplyPccPass);
   m->def("check_infer_symbolic_if_need", CheckInferSymbolicIfNeed);
   m->def("infer_symbolic_shape_pass", InferSymbolicShapePass);
+  m->def("apply_pd_op_to_kernel_pass", ApplyPdOpToKernelPass);
   m->def("apply_cse_pass", ApplyCommonSubexpressionEliminationPass);
   m->def("apply_bn_add_act_pass", ApplyFusedBnAddActPass);
   m->def("reduce_as_sum_pass", ApplyReduceAsToSumPass);

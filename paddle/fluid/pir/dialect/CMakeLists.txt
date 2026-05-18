@@ -196,6 +196,19 @@ set(trimmed_op_yaml_files
 set(python_api_info_yaml_path
     "${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/python_api_info.yaml")
 
+set(kernel_python_c_gen_file
+    ${PADDLE_SOURCE_DIR}/paddle/fluid/eager/auto_code_generator/generator/python_c_gen.py
+)
+set(kernel_python_c_header_file
+    ${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/kernel_op_function.h)
+set(kernel_python_c_source_file
+    ${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/kernel_op_function.cc)
+set(kernel_python_c_header_file_tmp ${kernel_python_c_header_file}.tmp)
+set(kernel_python_c_source_file_tmp ${kernel_python_c_source_file}.tmp)
+set(kernel_op_yaml_files
+    ${ops_yaml_dir}/ops.yaml,${ops_yaml_dir}/inconsistent/dygraph_ops.yaml,${ops_yaml_dir}/sparse_ops.yaml,${ops_yaml_dir}/fused_ops.yaml
+)
+
 execute_process(
   COMMAND
     ${PYTHON_EXECUTABLE} ${python_c_gen_file} --op_yaml_files
@@ -205,8 +218,25 @@ execute_process(
     ${python_c_source_file_tmp} --python_api_info_yaml_path
     ${python_api_info_yaml_path})
 
-set(generated_files_python_c "${python_c_header_file}"
-                             "${python_c_source_file}")
+execute_process(
+  COMMAND
+    ${PYTHON_EXECUTABLE} ${kernel_python_c_gen_file} --api_yaml_path
+    ${kernel_op_yaml_files} --python_api_info_yaml_path
+    ${python_api_info_yaml_path} --source_path
+    ${kernel_python_c_source_file_tmp} --header_path
+    ${kernel_python_c_header_file_tmp} --direct_kernel --call_namespace
+    "paddle::experimental::" --binding_namespace "direct_kernel::"
+    --bind_function_name "BindDirectKernelOpFunctions" --method_array_name
+    "DirectKernelMethods" --module_error_name "core.eager.kernel_ops"
+    --no_predefined_out_tensor
+  RESULT_VARIABLE kernel_python_c_gen_result)
+if(NOT kernel_python_c_gen_result EQUAL 0)
+  message(FATAL_ERROR "Direct kernel Python-C code generation failed")
+endif()
+
+set(generated_files_python_c
+    "${python_c_header_file}" "${python_c_source_file}"
+    "${kernel_python_c_header_file}" "${kernel_python_c_source_file}")
 
 set(ops_api_gen_file
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/op_generator/ops_api_gen.py)

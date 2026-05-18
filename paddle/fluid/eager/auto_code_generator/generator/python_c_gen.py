@@ -44,6 +44,7 @@ skipped_forward_api_names = {
 }
 # The python api info which not in ops.yaml
 python_api_info_from_yaml = {}
+kernel_ops_args_info = {}
 
 
 def SkipAPIGeneration(forward_api_name):
@@ -160,12 +161,12 @@ RETURN_INPLACE_NAME_PYOBJECT_TEMPLATE = """
 PYTHON_C_FUNCTION_TEMPLATE = """
 PyObject * eager_api_{}(PyObject *self, PyObject *args, PyObject *kwargs) {{
   {}
-  PyThreadState *tstate = nullptr;
+  {}
   try {{
-    VLOG(6) << "Running Eager Final State API: {}";
+{}
     // Get Total Params count and check validity if needed
 {}
-    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+{}
     // Get EagerTensors from args
 {}
     // Parse Attributes if needed
@@ -180,20 +181,17 @@ PyObject * eager_api_{}(PyObject *self, PyObject *args, PyObject *kwargs) {{
 {}
     // Parse predefined_out if needed
 {}
-    tstate = PyEval_SaveThread();
+{}
 
     // Set Device ID
 {}
     // Call dygraph function
     {}
 
-    PyEval_RestoreThread(tstate);
-    tstate = nullptr;
+{}
 {}
   }} catch(...) {{
-    if (tstate) {{
-      PyEval_RestoreThread(tstate);
-    }}
+{}
     ThrowExceptionToPython(std::current_exception());
     return nullptr;
   }}
@@ -201,6 +199,7 @@ PyObject * eager_api_{}(PyObject *self, PyObject *args, PyObject *kwargs) {{
 """
 
 NOAMP_DYGRAPH_FUNCTION_TEMPLATE = "decltype({}({})) ad_func_out = {}({});"
+DIRECT_KERNEL_FUNCTION_TEMPLATE = "decltype({}({})) kernel_api_out = {}({});"
 
 
 FUNCTION_SET_DEVICE_TEMPLATE = """{}
@@ -279,6 +278,66 @@ void BindFinalStateEagerOpFunctions(pybind11::module *module) {{
 
 }} // namespace pybind
 }} // namespace paddle
+"""
+
+DIRECT_KERNEL_PYTHON_C_WRAPPER_TEMPLATE = """
+#include <Python.h>
+#include <pybind11/pybind11.h>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/pybind/arg_pre_process.h"
+#include "paddle/fluid/pybind/args_mapper.h"
+#include "paddle/fluid/pybind/eager_utils.h"
+#include "paddle/fluid/pybind/exception.h"
+#include "paddle/fluid/pybind/op_function_common.h"
+#include "paddle/fluid/eager/utils.h"
+#include "paddle/phi/api/include/api.h"
+#include "paddle/phi/api/include/fused_api.h"
+#include "paddle/phi/api/include/sparse_api.h"
+#include "paddle/phi/api/include/strings_api.h"
+
+namespace paddle {{
+namespace pybind {{
+
+{}
+
+{}
+
+static PyMethodDef {}[] = {{
+{}
+}};
+
+void {}(pybind11::module *module) {{
+  if (PyModule_AddFunctions(module->ptr(), {}) < 0) {{
+    PADDLE_THROW(common::errors::Fatal("Add functions to {} failed!"));
+  }}
+}}
+
+}} // namespace pybind
+}} // namespace paddle
+"""
+
+KERNEL_OPS_ARGS_INFO = """
+static std::unordered_map<std::string, std::vector<std::string>> kernel_ops_args_info = {{
+{}
+}};
+
+static PyObject * direct_kernel_get_kernel_ops_args_info(PyObject *self) {{
+    try {{
+      return ToPyObject(kernel_ops_args_info);
+    }}
+    catch(...) {{
+      ThrowExceptionToPython(std::current_exception());
+      return nullptr;
+    }}
+}}
+"""
+
+KERNEL_OPS_ARGS_INFO_REGISTRY = """
+  {\"get_kernel_ops_args_info\", (PyCFunction)(void(*)(void))direct_kernel_get_kernel_ops_args_info, METH_NOARGS, \"C++ interface function for direct_kernel_get_kernel_ops_args_info.\"},
 """
 
 
@@ -361,7 +420,14 @@ PyObject *eager_api_{name}(PyObject *self, PyObject *args, PyObject *kwargs);
 # Generator Classes #
 #####################
 class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
-    def __init__(self, forward_api_contents, namespace):
+    def __init__(
+        self,
+        forward_api_contents,
+        namespace,
+        call_namespace=None,
+        api_namespace=None,
+        direct_kernel=False,
+    ):
         # Members from Parent:
         # self.namespace
         # self.forward_api_contents
@@ -376,6 +442,9 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         # self.intermediate_outputs
         # self.forward_inplace_map
         FunctionGeneratorBase.__init__(self, forward_api_contents, namespace)
+        self.call_namespace = call_namespace
+        self.api_namespace = api_namespace
+        self.direct_kernel = direct_kernel
 
         # Generated Results
         self.python_c_function_str = ""
@@ -716,7 +785,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
 
         convert_to_dist_str = ""
         # No inputs, skip convert to DistTensor
-        if len(input_names) > 0:
+        if len(input_names) > 0 and not self.direct_kernel:
             optional_and_vector_convert_code = ""
             for name, (ttype, pos) in forward_inputs_position_map.items():
                 is_optional = name in optional_inputs
@@ -773,7 +842,11 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                     optional_and_vector_convert_code=optional_and_vector_convert_code,
                 )
 
-        set_device_str = FUNCTION_SET_DEVICE_TEMPLATE.format(expected_place_str)
+        set_device_str = (
+            ""
+            if self.direct_kernel
+            else FUNCTION_SET_DEVICE_TEMPLATE.format(expected_place_str)
+        )
 
         # Generate Dygraph Function Call Logic
         num_args = len(forward_inputs_position_map.keys()) + len(
@@ -808,14 +881,27 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                 )
 
         # Generate Python-C Function Definitions
+        target_function_name = (
+            function_name
+            if self.direct_kernel
+            else GetForwardFunctionName(function_name)
+        )
         fwd_function_name = FUNCTION_NAME_TEMPLATE.format(
             "::",
-            namespace,
-            GetForwardFunctionName(function_name),
+            self.call_namespace
+            if self.call_namespace is not None
+            else namespace,
+            target_function_name,
         )
 
-        # Generate ad_func Call
-        noamp_dygraph_function_str = NOAMP_DYGRAPH_FUNCTION_TEMPLATE.format(
+        # Generate Function Call
+        output_name = "kernel_api_out" if self.direct_kernel else "ad_func_out"
+        function_template = (
+            DIRECT_KERNEL_FUNCTION_TEMPLATE
+            if self.direct_kernel
+            else NOAMP_DYGRAPH_FUNCTION_TEMPLATE
+        )
+        noamp_dygraph_function_str = function_template.format(
             fwd_function_name,
             dygraph_function_call_str,
             fwd_function_name,
@@ -851,25 +937,71 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                         inplace_returns_pos_map[inplace_output],
                         _get_keywords(inplace_input, args_alias_map),
                     )
-            return_str += "    return ToPyObject(ad_func_out, args, kwargs, inplace_var_idx_map, inplace_var_name_map);"
+            return_str += f"    return ToPyObject({output_name}, args, kwargs, inplace_var_idx_map, inplace_var_name_map);"
         else:
-            return_str = "    return ToPyObject(ad_func_out);"
+            return_str = f"    return ToPyObject({output_name});"
 
         # Generate Record Event for performance profiling
-        pythonc_record_event_str = RECORD_EVENT_TEMPLATE.format(
-            "pythonc_record_event", forward_api_name, "pybind_imperative_func"
+        pythonc_record_event_str = (
+            ""
+            if self.direct_kernel
+            else RECORD_EVENT_TEMPLATE.format(
+                "pythonc_record_event",
+                forward_api_name,
+                "pybind_imperative_func",
+            )
         )
 
         # Set prefix of forward_api_name to avoid conflicts
-        prefix = self.namespace.removeprefix("::").removesuffix("::")
+        prefix_namespace = (
+            self.api_namespace
+            if self.api_namespace is not None
+            else self.namespace
+        )
+        prefix = prefix_namespace.removeprefix("::").removesuffix("::")
         forward_api_name_prefix = "" if prefix == "" else prefix + "_"
+        if self.direct_kernel:
+            kernel_ops_args_info[
+                f"{forward_api_name_prefix}{function_name}"
+            ] = dygraph_function_call_list
+        api_vlog_str = (
+            ""
+            if self.direct_kernel
+            else f'    VLOG(6) << "Running Eager Final State API: {function_name}";'
+        )
+        args_count_vlog_str = (
+            ""
+            if self.direct_kernel
+            else '    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);'
+        )
+        gil_release_str = (
+            "" if self.direct_kernel else "    tstate = PyEval_SaveThread();"
+        )
+        gil_restore_str = (
+            ""
+            if self.direct_kernel
+            else """    PyEval_RestoreThread(tstate);
+    tstate = nullptr;"""
+        )
+        tstate_declare_str = (
+            "" if self.direct_kernel else "PyThreadState *tstate = nullptr;"
+        )
+        exception_restore_str = (
+            ""
+            if self.direct_kernel
+            else """    if (tstate) {
+      PyEval_RestoreThread(tstate);
+    }"""
+        )
 
         # Generate Python-C Function Definition
         python_c_function_str = PYTHON_C_FUNCTION_TEMPLATE.format(
             function_name,
             pythonc_record_event_str,
-            function_name,
+            tstate_declare_str,
+            api_vlog_str,
             get_params_nums_and_check_str,
+            args_count_vlog_str,
             get_eager_tensor_str,
             parse_attributes_str,
             check_remaining_params_validity_str,
@@ -877,9 +1009,12 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             convert_to_dist_str,
             pre_process_str,
             get_predefined_out_str,
+            gil_release_str,
             set_device_str,
             noamp_dygraph_function_str,
+            gil_restore_str,
             return_str,
+            exception_restore_str,
         )
         python_c_function_declare_str = (
             PYTHON_C_FUNCTION_DECLARE_TEMPLATE.format(name=function_name)
@@ -936,12 +1071,24 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
 
 
 class PythonCGenerator(GeneratorBase):
-    def __init__(self, path):
+    def __init__(
+        self,
+        path,
+        *,
+        call_namespace=None,
+        binding_namespace=None,
+        direct_kernel=False,
+    ):
         # Parent members:
         # self.namespace
         # self.api_yaml_path
         # self.forward_api_list
-        GeneratorBase.__init__(self, api_yaml_path)
+        GeneratorBase.__init__(self, path)
+        self.call_namespace_base = call_namespace
+        self.binding_namespace_base = binding_namespace
+        self.direct_kernel = direct_kernel
+        self.api_namespace = ""
+        self.call_namespace = None
 
         # Generated Result
         self.python_c_functions_str = ""
@@ -960,7 +1107,11 @@ class PythonCGenerator(GeneratorBase):
             ].endswith(('double_grad', 'triple_grad', 'grad_grad')):
                 continue
             f_generator = PythonCSingleFunctionGenerator(
-                forward_api_content, namespace
+                forward_api_content,
+                namespace,
+                self.call_namespace,
+                self.api_namespace,
+                self.direct_kernel,
             )
             status = f_generator.run(
                 no_predefined_out_tensor, no_parse_python_api_info
@@ -997,6 +1148,11 @@ class PythonCGenerator(GeneratorBase):
     ):
         # Infer namespace from yaml_path
         self.InferNameSpace()
+        self.api_namespace = self.namespace
+        if self.call_namespace_base is not None:
+            self.call_namespace = self.call_namespace_base + self.api_namespace
+        if self.binding_namespace_base is not None:
+            self.namespace = self.binding_namespace_base + self.api_namespace
 
         # Read Yaml file
         self.ParseForwardYamlContents()
@@ -1021,6 +1177,25 @@ def ParseArguments():
     parser.add_argument('--python_api_info_yaml_path', type=str)
     parser.add_argument('--source_path', type=str)
     parser.add_argument('--header_path', type=str)
+    parser.add_argument('--direct_kernel', action='store_true')
+    parser.add_argument('--no_predefined_out_tensor', action='store_true')
+    parser.add_argument('--call_namespace', type=str, default=None)
+    parser.add_argument('--binding_namespace', type=str, default=None)
+    parser.add_argument(
+        '--bind_function_name',
+        type=str,
+        default='BindFinalStateEagerOpFunctions',
+    )
+    parser.add_argument(
+        '--method_array_name',
+        type=str,
+        default='EagerFinalStateMethods',
+    )
+    parser.add_argument(
+        '--module_error_name',
+        type=str,
+        default='core.eager.ops',
+    )
 
     args = parser.parse_args()
     return args
@@ -1030,7 +1205,42 @@ def GenerateCoreOpsInfoMap():
     return CORE_OPS_INFO, CORE_OPS_INFO_REGISTRY
 
 
-def GeneratePythonCWrappers(python_c_function_str, python_c_function_reg_str):
+def GenerateKernelOpsArgsInfoMap():
+    args_info_items = []
+    for op_name in sorted(kernel_ops_args_info):
+        args = ", ".join(f'"{name}"' for name in kernel_ops_args_info[op_name])
+        args_info_items.append(f'  {{"{op_name}", {{{args}}}}},')
+    return (
+        KERNEL_OPS_ARGS_INFO.format("\n".join(args_info_items)),
+        KERNEL_OPS_ARGS_INFO_REGISTRY,
+    )
+
+
+def GeneratePythonCWrappers(
+    python_c_function_str,
+    python_c_function_reg_str,
+    *,
+    direct_kernel=False,
+    bind_function_name='BindFinalStateEagerOpFunctions',
+    method_array_name='EagerFinalStateMethods',
+    module_error_name='core.eager.ops',
+):
+    if direct_kernel:
+        kernel_ops_args_info_definition, kernel_ops_args_info_registry = (
+            GenerateKernelOpsArgsInfoMap()
+        )
+        python_c_function_reg_str += kernel_ops_args_info_registry
+        python_c_function_reg_str += "  {nullptr,nullptr,0,nullptr}"
+        return DIRECT_KERNEL_PYTHON_C_WRAPPER_TEMPLATE.format(
+            python_c_function_str,
+            kernel_ops_args_info_definition,
+            method_array_name,
+            python_c_function_reg_str,
+            bind_function_name,
+            method_array_name,
+            module_error_name,
+        )
+
     (
         core_ops_infos_definition,
         core_ops_infos_registry,
@@ -1066,14 +1276,19 @@ if __name__ == "__main__":
     for i in range(len(api_yaml_paths)):
         api_yaml_path = api_yaml_paths[i]
 
-        no_predefined_out_tensor = (
+        no_predefined_out_tensor = args.no_predefined_out_tensor or (
             "backward" in api_yaml_path
             or "strings" in api_yaml_path
             or "sparse" in api_yaml_path
         )
         no_parse_python_api_info = "sparse" in api_yaml_path
 
-        py_c_generator = PythonCGenerator(api_yaml_path)
+        py_c_generator = PythonCGenerator(
+            api_yaml_path,
+            call_namespace=args.call_namespace,
+            binding_namespace=args.binding_namespace,
+            direct_kernel=args.direct_kernel,
+        )
         py_c_generator.run(no_predefined_out_tensor, no_parse_python_api_info)
 
         generated_python_c_functions += (
@@ -1087,7 +1302,12 @@ if __name__ == "__main__":
         )
 
     python_c_str = GeneratePythonCWrappers(
-        generated_python_c_functions, generated_python_c_registration
+        generated_python_c_functions,
+        generated_python_c_registration,
+        direct_kernel=args.direct_kernel,
+        bind_function_name=args.bind_function_name,
+        method_array_name=args.method_array_name,
+        module_error_name=args.module_error_name,
     )
     source_path = args.source_path
     header_path = args.header_path

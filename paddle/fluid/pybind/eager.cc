@@ -1524,6 +1524,9 @@ void BindEager(pybind11::module* module) {
   BindFunctions(m.ptr());
   BindEagerPyLayer(m.ptr());
   BindEagerOpFunctions(&m);
+  auto kernel_ops = m.def_submodule("kernel_ops");
+  BindDirectKernelOpFunctions(&kernel_ops);
+  BindManualDirectKernelOpFunctions(&kernel_ops);
 }
 
 void BindEagerStringTensor(pybind11::module* module) {

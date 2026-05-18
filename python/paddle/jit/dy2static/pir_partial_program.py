@@ -129,8 +129,14 @@ class NestSequence:
     @cached_property
     def quick_index_map(self):
         raw_inputs = self._raw_input
-        if len(raw_inputs) == 1:
+        if isinstance(raw_inputs, Value):
+            raw_inputs = [raw_inputs]
+        elif len(raw_inputs) == 1:
             raw_inputs = raw_inputs[0]
+            if isinstance(raw_inputs, Value):
+                raw_inputs = [raw_inputs]
+            else:
+                raw_inputs = paddle.utils.flatten(raw_inputs)
         assert all(isinstance(v, Value) for v in raw_inputs)
         return [self._var_map[v] for v in raw_inputs]
 
@@ -753,6 +759,10 @@ class PartialProgramLayer:
 
         self._compile_time_counter = TimeCounter()
         self._prog_attrs_map_cache = {}
+        self._fast_kernel_runtime_cache = {}
+        self._last_fast_kernel_runtime = None
+        self._last_fast_kernel_place = None
+        self._last_fast_kernel_input_tensor_id = None
 
     @staticmethod
     def run_impl(partial_program_layer, inputs, parameters, attrs):
@@ -795,6 +805,13 @@ class PartialProgramLayer:
         """
         In sot, inputs and outputs of partial program only contain tensors, so we can skip some step to speed up
         """
+        from paddle.jit.sot.utils.envs import (
+            ENV_SOT_ENABLE_FAST_KERNEL_CODEGEN,
+        )
+
+        if ENV_SOT_ENABLE_FAST_KERNEL_CODEGEN.get():
+            return self.sot_fast_kernel_call(inputs)
+
         attrs = self._prepare_attributes(in_sot_mode=True)
 
         out = self.call_run_impl_with_hook(
@@ -802,6 +819,73 @@ class PartialProgramLayer:
             self._params,
             attrs,
         )
+        return self._outputs.quick_restore(out)
+
+    @property
+    def fast_kernel_runtime(self):
+        if self._last_fast_kernel_runtime is not None:
+            return self._last_fast_kernel_runtime
+        return self._get_fast_kernel_runtime([])
+
+    def _get_fast_kernel_first_tensor(self, inputs):
+        for value in inputs:
+            if isinstance(value, core.eager.Tensor):
+                return value
+        for value in paddle.utils.flatten(inputs):
+            if isinstance(value, core.eager.Tensor):
+                return value
+        return None
+
+    def _get_fast_kernel_place(self, inputs):
+        first_tensor = self._get_fast_kernel_first_tensor(inputs)
+        if first_tensor is not None:
+            return first_tensor.place
+        return framework._current_expected_place()
+
+    def _get_fast_kernel_runtime(self, inputs):
+        from .pir_fast_runtime import compile_fast_kernel_runtime
+
+        first_tensor = self._get_fast_kernel_first_tensor(inputs)
+        if (
+            self._last_fast_kernel_runtime is not None
+            and first_tensor is not None
+            and id(first_tensor) == self._last_fast_kernel_input_tensor_id
+        ):
+            return self._last_fast_kernel_runtime
+
+        place = (
+            first_tensor.place
+            if first_tensor is not None
+            else framework._current_expected_place()
+        )
+        if (
+            self._last_fast_kernel_runtime is not None
+            and place == self._last_fast_kernel_place
+        ):
+            return self._last_fast_kernel_runtime
+        cache_key = str(place)
+        if cache_key not in self._fast_kernel_runtime_cache:
+            self._fast_kernel_runtime_cache[cache_key] = (
+                compile_fast_kernel_runtime(self.program, place)
+            )
+        self._last_fast_kernel_runtime = self._fast_kernel_runtime_cache[
+            cache_key
+        ]
+        self._last_fast_kernel_place = place
+        self._last_fast_kernel_input_tensor_id = (
+            id(first_tensor) if first_tensor is not None else None
+        )
+        return self._last_fast_kernel_runtime
+
+    @event_register("sot call fast kernel runtime")
+    def sot_fast_kernel_call(self, inputs):
+        if paddle.base.core._has_grad():
+            raise RuntimeError(
+                "SOT fast kernel runtime is enabled, but autograd is active. "
+                "The direct kernel path intentionally does not fall back to "
+                "run_program."
+            )
+        out = self._get_fast_kernel_runtime(inputs)(inputs, self._params)
         return self._outputs.quick_restore(out)
 
     def call_run_impl_with_hook(

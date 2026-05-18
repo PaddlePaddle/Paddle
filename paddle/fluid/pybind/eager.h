@@ -60,5 +60,7 @@ void BindFunctions(PyObject* module);
 void BindEagerPyLayer(PyObject* module);
 void BindEagerOpFunctions(pybind11::module* module);
 void BindFinalStateEagerOpFunctions(pybind11::module* module);
+void BindDirectKernelOpFunctions(pybind11::module* module);
+void BindManualDirectKernelOpFunctions(pybind11::module* module);
 }  // namespace pybind
 }  // namespace paddle

@@ -1,3 +1,4 @@
 pybind.h
 eager_op_function.*
+kernel_op_function.*
 eager_legacy_op_function.cc

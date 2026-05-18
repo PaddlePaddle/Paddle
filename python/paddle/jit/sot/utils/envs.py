@@ -160,6 +160,9 @@ ENV_SOT_SPECIALIZED_DIM_NUMBERS = StringEnvironmentVariable(
 ENV_SOT_ENABLE_COMPILE_TIME_LIMIT = BooleanEnvironmentVariable(
     "SOT_ENABLE_COMPILE_TIME_LIMIT", True
 )
+ENV_SOT_ENABLE_FAST_KERNEL_CODEGEN = BooleanEnvironmentVariable(
+    "SOT_ENABLE_FAST_KERNEL_CODEGEN", False
+)
 
 
 def update_ce_flags():
