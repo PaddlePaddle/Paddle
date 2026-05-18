@@ -524,7 +524,6 @@ from .tensor.manipulation import (
     masked_scatter,
     masked_scatter_,
     moveaxis,
-    movedim,
     narrow,
     put_along_axis,
     ravel,
@@ -1052,6 +1051,7 @@ swapaxes = transpose
 manual_seed = seed
 sub = subtract
 sub_ = subtract_
+movedim = moveaxis
 
 __all__ = [
     'block_diag',

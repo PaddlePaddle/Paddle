@@ -6956,6 +6956,7 @@ def repeat_interleave(
     return out
 
 
+@param_one_alias(["x", "input"])
 def moveaxis(
     x: Tensor,
     source: int | Sequence[int],
@@ -6969,6 +6970,7 @@ def moveaxis(
 
     Args:
         x (Tensor): The input Tensor. It is a N-D Tensor of data types bool, int32, int64, float32, float64, complex64, complex128.
+            Alias: ``input``.
         source(int|tuple|list): ``source`` position of axis that will be moved. Each element must be unique and integer.
         destination(int|tuple|list): ``destination`` position of axis that has been moved. Each element must be unique and integer.
         name(str|None, optional): The default value is None.  Normally there is no need for user to set this
@@ -7077,19 +7079,6 @@ def moveaxis(
             attrs={'axis': perm},
         )
         return out
-
-
-@param_one_alias(["x", "input"])
-def movedim(
-    x: Tensor,
-    source: int | Sequence[int],
-    destination: int | Sequence[int],
-    name: str | None = None,
-) -> Tensor:
-    """
-    Move the axis of tensor from ``source`` position to ``destination`` position. Alias for ``moveaxis``.
-    """
-    return moveaxis(x, source, destination, name)
 
 
 @param_one_alias(["x", "input"])

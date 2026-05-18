@@ -194,7 +194,6 @@ from .manipulation import (  # noqa: F401
     masked_scatter,
     masked_scatter_,
     moveaxis,
-    movedim,
     narrow,
     put_along_axis,
     put_along_axis_,
@@ -514,6 +513,7 @@ ge = greater_equal
 sub = subtract
 sub_ = subtract_
 clamp_ = clip_
+movedim = moveaxis
 
 # this list used in math_op_patch.py for _binary_creator_
 tensor_method_func = [
