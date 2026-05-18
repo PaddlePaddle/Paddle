@@ -143,13 +143,8 @@ class Normal(distribution.Distribution):
         self,
         loc: _NormalLoc,
         scale: _NormalScale,
-        name: str | None = None,
         validate_args: bool | None = None,
     ) -> None:
-        if isinstance(name, bool) and validate_args is None:
-            validate_args = name
-            name = None
-
         if not in_dynamic_mode():
             check_type(
                 loc,
@@ -182,7 +177,7 @@ class Normal(distribution.Distribution):
             )
 
         self.all_arg_is_float = False
-        self.name = name if name is not None else 'Normal'
+        self.name = 'Normal'
         self.dtype = 'float32'
         self._complex_gaussian = False
 
