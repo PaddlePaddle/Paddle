@@ -3562,6 +3562,65 @@ class TestTensorIndexCopyInplaceAPI(unittest.TestCase):
 
         paddle.enable_static()
 
+    def test_dygraph_functionality(self):
+        paddle.disable_static()
+
+        x = paddle.arange(60, dtype="float64").reshape([3, 4, 5])
+        source = paddle.arange(100, 140, dtype="float64").reshape([2, 4, 5])
+        out = x.index_copy_(0, paddle.to_tensor([2, 0], dtype="int64"), source)
+        expected = self._expected(
+            np.arange(60).reshape([3, 4, 5]).astype("float64"),
+            0,
+            [2, 0],
+            np.arange(100, 140).reshape([2, 4, 5]).astype("float64"),
+        )
+        np.testing.assert_allclose(out.numpy(), expected, rtol=1e-6)
+        self.assertIs(out, x)
+
+        x = paddle.zeros([2, 0, 3], dtype="float32")
+        source = paddle.empty([2, 0, 0], dtype="float32")
+        out = x.index_copy_(2, paddle.to_tensor([], dtype="int64"), source)
+        np.testing.assert_allclose(out.numpy(), np.zeros([2, 0, 3], "float32"))
+
+        x = paddle.ones([3, 2], dtype="float32")
+        source = paddle.to_tensor([[2.0, 3.0], [4.0, 5.0]])
+        out = x.index_copy_(0, paddle.to_tensor([2, 0], dtype="int64"), source)
+        np.testing.assert_allclose(
+            out.numpy(),
+            np.array([[4.0, 5.0], [1.0, 1.0], [2.0, 3.0]], dtype="float32"),
+        )
+
+        paddle.enable_static()
+
+    def test_dygraph_backward(self):
+        paddle.disable_static()
+
+        x = paddle.arange(6, dtype="float32").reshape([3, 2])
+        x.stop_gradient = False
+        source = paddle.to_tensor(
+            [[7.0, 8.0], [9.0, 10.0]], stop_gradient=False
+        )
+        out = x.clone().index_copy_(
+            0, paddle.to_tensor([0, 2], dtype="int64"), source
+        )
+        out.sum().backward()
+
+        np.testing.assert_allclose(
+            out.numpy(),
+            np.array([[7.0, 8.0], [2.0, 3.0], [9.0, 10.0]], dtype="float32"),
+            rtol=1e-6,
+        )
+        np.testing.assert_allclose(
+            x.grad.numpy(),
+            np.array([[0.0, 0.0], [1.0, 1.0], [0.0, 0.0]], dtype="float32"),
+            rtol=1e-6,
+        )
+        np.testing.assert_allclose(
+            source.grad.numpy(), np.ones([2, 2], dtype="float32"), rtol=1e-6
+        )
+
+        paddle.enable_static()
+
 
 if __name__ == "__main__":
     unittest.main()
