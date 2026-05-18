@@ -433,6 +433,11 @@
   args_alias :
     use_default_mapping : True
 
+- op : index_get
+  name : [paddle.index_get, paddle.Tensor.index_get]
+  args_alias :
+    use_default_mapping : True
+
 - op : index_put
   name : [paddle.index_put, paddle.Tensor.index_put]
   args_alias :

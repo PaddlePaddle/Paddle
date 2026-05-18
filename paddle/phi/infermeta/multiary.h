@@ -745,6 +745,10 @@ PADDLE_API void IndexFillInferMeta(const MetaTensor& x,
                                    const Scalar& value,
                                    MetaTensor* out);
 
+PADDLE_API void IndexGetInferMeta(const MetaTensor& x,
+                                  const std::vector<const MetaTensor*>& indices,
+                                  MetaTensor* out);
+
 PADDLE_API void IndexPutInferMeta(const MetaTensor& x,
                                   const std::vector<const MetaTensor*>& indices,
                                   const MetaTensor& value,

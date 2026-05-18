@@ -2952,6 +2952,17 @@
     skip_transform : index
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : index_get
+  args : (Tensor x, Tensor[] indices)
+  output : Tensor(out)
+  infer_meta :
+    func : IndexGetInferMeta
+  kernel :
+    func : index_get
+    data_type : x
+  backward : index_get_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
 - op : index_put
   args : (Tensor x, Tensor[] indices, Tensor value, bool accumulate=false)
   output : Tensor(out)

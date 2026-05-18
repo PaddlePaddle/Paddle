@@ -2026,6 +2026,29 @@ def index_put_(
 """,
 )
 
+add_doc_and_signature(
+    "index_get",
+    r"""
+    Gets elements from the input tensor at positions specified by index tensors.
+
+    Args:
+        x (Tensor): The input tensor. Alias: ``input``.
+        indices (Sequence[Tensor]): Index tensors. Each index tensor selects
+            elements along the corresponding dimension of ``x``. Bool tensors
+            are converted to int64 via ``nonzero``. All index tensors are
+            broadcast to a common shape.
+
+    Returns:
+        Tensor: Elements gathered from ``x`` at positions specified by ``indices``.
+    """,
+    """
+def index_get(
+    x: Tensor,
+    indices: Sequence[Tensor],
+) -> Tensor
+""",
+)
+
 # liuyi
 add_doc_and_signature(
     "any",

@@ -2733,6 +2733,83 @@ bool IndexPut_OpInferSymbolicShape(
   return IndexPutOpInferSymbolicShape(op, infer_context);
 }
 
+bool IndexGetOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  std::vector<symbol::DimExpr> x_shape = x_shape_or_data.shape();
+
+  int num_operands = op->num_operands();
+  int num_indices = num_operands - 1;
+
+  // Separate bool from non-bool indices (bool indices expand to N int
+  // tensors via NonZero, where N is their rank).
+  int64_t effective_num = 0;
+  bool has_bool = false;
+  std::vector<int> int_index_ids;
+  int_index_ids.reserve(num_indices);
+  for (int i = 0; i < num_indices; ++i) {
+    auto val = op->operand_source(i + 1);
+    auto dtype = val.type().dyn_cast<pir::DenseTensorType>().dtype();
+    if (dtype.isa<pir::BoolType>()) {
+      const auto &idx_shape =
+          infer_context->GetShapeOrDataForValue(val).shape();
+      effective_num += static_cast<int64_t>(idx_shape.size());
+      has_bool = true;
+    } else {
+      effective_num += 1;
+      int_index_ids.push_back(i);
+    }
+  }
+
+  // Compute broadcast shape from non-bool (int) indices only.
+  int target_rank = 0;
+  for (int idx : int_index_ids) {
+    const auto &idx_shape =
+        infer_context->GetShapeOrDataForValue(op->operand_source(idx + 1))
+            .shape();
+    target_rank = std::max(target_rank, static_cast<int>(idx_shape.size()));
+  }
+
+  std::vector<symbol::DimExpr> broadcast_shape;
+  symbol::DimExprBuilder builder;
+  for (int r = 0; r < target_rank; ++r) {
+    auto target_size = symbol::DimExpr{1};
+    for (int idx : int_index_ids) {
+      const auto &idx_shape =
+          infer_context->GetShapeOrDataForValue(op->operand_source(idx + 1))
+              .shape();
+      int axis = static_cast<int>(idx_shape.size()) - r - 1;
+      if (axis >= 0) {
+        infer_context->AddBroadcastableCstr(idx_shape[axis], target_size);
+        target_size = builder.Broadcast(idx_shape[axis], target_size);
+      }
+    }
+    broadcast_shape.emplace_back(target_size);
+  }
+  // Reverse to get correct order
+  std::reverse(broadcast_shape.begin(), broadcast_shape.end());
+
+  // If all indices are bool, the leading dimension size is unknown
+  // (depends on the number of True elements at runtime).
+  if (has_bool && broadcast_shape.empty()) {
+    broadcast_shape.emplace_back(-1);
+  }
+
+  // Append trailing dims of x not covered by effective indices
+  for (int64_t i = effective_num; i < static_cast<int64_t>(x_shape.size());
+       ++i) {
+    broadcast_shape.emplace_back(x_shape[i]);
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(broadcast_shape)});
+
+  return true;
+}
+
 bool LogLossOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const symbol::ShapeOrDataDimExprs &input_shape_or_data =

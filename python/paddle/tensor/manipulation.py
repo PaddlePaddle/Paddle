@@ -24,7 +24,13 @@ from typing_extensions import overload
 
 import paddle
 from paddle import _C_ops
-from paddle._C_ops import flip, index_put, index_put_, roll  # noqa: F401
+from paddle._C_ops import (  # noqa: F401
+    flip,
+    index_get,
+    index_put,
+    index_put_,
+    roll,
+)
 from paddle.tensor import fill_constant
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
@@ -7898,6 +7904,18 @@ def index_add_(
     """
     scaled_value = value * alpha if alpha != 1 else value
     return _C_ops.index_add_(x, index, scaled_value, axis)
+
+
+@inplace_apis_in_dygraph_only
+def index_get_(
+    x: Tensor, indices: Sequence[Tensor], name: str | None = None
+) -> Tensor:
+    """
+    Inplace version of ``index_get`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_index_get`.
+    """
+    out = index_get(x, indices)
+    return _C_ops.set_(x, out, list(out.shape), list(out.strides), 0)
 
 
 @ParamAliasDecorator({"x": ["input"], "axis": ["dim"], "shape": ["sizes"]})

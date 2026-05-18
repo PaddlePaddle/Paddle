@@ -3859,6 +3859,92 @@ void IndexFillInferMeta(const MetaTensor& x,
   out->share_meta(x);
 }
 
+void IndexGetInferMeta(const MetaTensor& x,
+                       const std::vector<const MetaTensor*>& indices,
+                       MetaTensor* out) {
+  auto x_dims = x.dims();
+  int64_t x_rank = x_dims.size();
+  int64_t num_indices = static_cast<int64_t>(indices.size());
+
+  PADDLE_ENFORCE_GT(
+      num_indices,
+      0,
+      common::errors::InvalidArgument("Indices cannot be empty."));
+
+  // bool indices are converted to int indices via NonZero+Split:
+  // a bool index of rank r produces r int tensors.
+  // Separate non-bool indices for broadcast computation and count
+  // the effective number of int indices after bool expansion.
+  int64_t effective_num = 0;
+  bool has_bool = false;
+  std::vector<DDim> int_index_dims;
+  int_index_dims.reserve(indices.size());
+  for (const auto* idx : indices) {
+    if (idx->dtype() == DataType::BOOL) {
+      effective_num += idx->dims().size();
+      has_bool = true;
+    } else {
+      effective_num += 1;
+      int_index_dims.push_back(idx->dims());
+    }
+  }
+
+  PADDLE_ENFORCE_LE(
+      effective_num,
+      x_rank,
+      common::errors::InvalidArgument(
+          "The number of effective indices (%d) must be <= rank of x (%d).",
+          effective_num,
+          x_rank));
+
+  // Compute broadcast shape from non-bool (int) indices only.
+  // bool-derived indices have unknown size at meta time — they contribute
+  // a leading dimension when no int indices provide shape information.
+  int target_rank = 0;
+  for (const auto& d : int_index_dims) {
+    target_rank = std::max(target_rank, d.size());
+  }
+
+  std::vector<int64_t> broadcast_shape(target_rank, 0);
+  for (int r = 0; r < target_rank; ++r) {
+    int64_t target_size = 1;
+    for (const auto& d : int_index_dims) {
+      int axis = static_cast<int>(d.size()) - r - 1;
+      int64_t dim_size = (axis >= 0) ? d[axis] : 1;
+      if (dim_size != target_size) {
+        PADDLE_ENFORCE_EQ(target_size == 1 || dim_size == 1,
+                          true,
+                          common::errors::InvalidArgument(
+                              "Index tensors are not broadcastable: axis %d, "
+                              "target size %d vs current size %d.",
+                              r,
+                              target_size,
+                              dim_size));
+        target_size = std::max(target_size, dim_size);
+      }
+    }
+    broadcast_shape[target_rank - r - 1] = target_size;
+  }
+
+  auto out_dims = broadcast_shape;
+  if (has_bool && out_dims.empty()) {
+    // All indices are bool — the kernel's BroadCastTensorsDims on the
+    // bool-derived int tensors (each 1-D) produces at least one dimension,
+    // but the exact size (num True elements) is unknown at meta time.
+    out_dims.push_back(-1);
+  }
+
+  // Append trailing dims of x not covered by effective indices
+  for (int64_t i = effective_num; i < x_rank; ++i) {
+    out_dims.push_back(x_dims[i]);
+  }
+
+  out->set_dims(common::make_ddim(out_dims));
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+  out->share_lod(x);
+}
+
 void IndexPutInferMeta(const MetaTensor& x,
                        const std::vector<const MetaTensor*>& indices,
                        const MetaTensor& value,
