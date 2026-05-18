@@ -23,6 +23,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from paddle import core
+from paddle.device import stream as _stream_context
 from paddle.device.cuda.graphs import (
     CUDAGraph,
     is_cuda_graph_supported,
@@ -32,6 +33,8 @@ if TYPE_CHECKING:
     from types import TracebackType
 
     from typing_extensions import Self
+
+    from paddle.device import Stream
 
 
 __all__ = [
@@ -61,9 +64,10 @@ def graph_pool_handle() -> int:
 class graph:
     """Context manager that wraps a CUDA graph capture.
 
-    Mirrors ``torch.cuda.graph``: entering the context calls
-    ``cuda_graph.capture_begin(...)``, exiting calls
-    ``cuda_graph.capture_end()``.
+    Mirrors ``torch.cuda.graph``: entering the context switches to
+    ``stream`` (via :func:`paddle.cuda.stream`) when provided and calls
+    ``cuda_graph.capture_begin(...)``; exiting calls
+    ``cuda_graph.capture_end()`` and restores the previous stream.
 
     Args:
         cuda_graph (CUDAGraph): The :class:`CUDAGraph` instance to capture into.
@@ -71,8 +75,9 @@ class graph:
             or another graph's :meth:`CUDAGraph.pool`. Passed through to
             ``capture_begin``.
         stream (paddle.cuda.Stream, optional): CUDA stream to capture on.
-            Accepted for ``torch.cuda.graph`` parity; Paddle currently
-            captures on the current stream and ignores this value.
+            When provided, the capture runs under
+            ``paddle.cuda.stream(stream)`` so the previous stream is restored
+            on exit. When ``None``, capture happens on the current stream.
         capture_error_mode (str, optional): Passed through to
             ``capture_begin``; only ``'global'`` is honored.
 
@@ -92,18 +97,26 @@ class graph:
         self,
         cuda_graph: CUDAGraph,
         pool: int | None = None,
-        stream=None,
+        stream: Stream | None = None,
         capture_error_mode: str = 'global',
     ) -> None:
         self.cuda_graph = cuda_graph
         self.pool = pool
         self.stream = stream
         self.capture_error_mode = capture_error_mode
+        # ``paddle.device.stream(None)`` is a documented no-op, so the same
+        # guard works whether or not the caller pinned a stream.
+        self._stream_ctx = _stream_context(stream)
 
     def __enter__(self) -> Self:
-        self.cuda_graph.capture_begin(
-            pool=self.pool, capture_error_mode=self.capture_error_mode
-        )
+        self._stream_ctx.__enter__()
+        try:
+            self.cuda_graph.capture_begin(
+                pool=self.pool, capture_error_mode=self.capture_error_mode
+            )
+        except BaseException:
+            self._stream_ctx.__exit__(None, None, None)
+            raise
         return self
 
     def __exit__(
@@ -112,4 +125,7 @@ class graph:
         exc_value: BaseException | None,
         traceback: TracebackType | None,
     ) -> None:
-        self.cuda_graph.capture_end()
+        try:
+            self.cuda_graph.capture_end()
+        finally:
+            self._stream_ctx.__exit__(exc_type, exc_value, traceback)

@@ -676,6 +676,73 @@ class TestPaddleCudaGraphContextManager(unittest.TestCase):
         np.testing.assert_allclose(y.numpy(), x.numpy() + 1, rtol=1e-5)
         g.reset()
 
+    def test_graph_context_manager_switches_stream(self):
+        # When ``stream`` is provided, the body must execute on that stream
+        # and the previous stream must be restored on exit.
+        if not can_use_cuda_graph():
+            return
+
+        side_stream = paddle.device.Stream()
+        prev_stream = paddle.device.current_stream()
+        observed = {}
+
+        g = paddle.cuda.CUDAGraph()
+        from paddle.device.cuda import graphs as graphs_module
+
+        original_begin = graphs_module.CoreCUDAGraph.begin_capture_with_pool_id
+        original_end = graphs_module.CoreCUDAGraph.end_capture
+        graphs_module.CoreCUDAGraph.begin_capture_with_pool_id = (
+            lambda *args, **kwargs: observed.__setitem__(
+                "inside", paddle.device.current_stream()
+            )
+        )
+        graphs_module.CoreCUDAGraph.end_capture = lambda: None
+        try:
+            with paddle.cuda.graph(g, stream=side_stream):
+                pass
+        finally:
+            graphs_module.CoreCUDAGraph.begin_capture_with_pool_id = (
+                original_begin
+            )
+            graphs_module.CoreCUDAGraph.end_capture = original_end
+
+        # ``Stream`` wrappers are fresh Python objects each call; compare by
+        # repr which embeds the underlying CUDA stream pointer.
+        self.assertEqual(repr(observed["inside"]), repr(side_stream))
+        self.assertEqual(
+            repr(paddle.device.current_stream()), repr(prev_stream)
+        )
+
+    def test_graph_context_manager_stream_none_is_noop(self):
+        # When ``stream`` is None the current stream must be unchanged.
+        if not can_use_cuda_graph():
+            return
+
+        prev_stream = paddle.device.current_stream()
+        g = paddle.cuda.CUDAGraph()
+        from paddle.device.cuda import graphs as graphs_module
+
+        original_begin = graphs_module.CoreCUDAGraph.begin_capture_with_pool_id
+        original_end = graphs_module.CoreCUDAGraph.end_capture
+        graphs_module.CoreCUDAGraph.begin_capture_with_pool_id = (
+            lambda *args, **kwargs: None
+        )
+        graphs_module.CoreCUDAGraph.end_capture = lambda: None
+        try:
+            with paddle.cuda.graph(g):
+                self.assertEqual(
+                    repr(paddle.device.current_stream()), repr(prev_stream)
+                )
+        finally:
+            graphs_module.CoreCUDAGraph.begin_capture_with_pool_id = (
+                original_begin
+            )
+            graphs_module.CoreCUDAGraph.end_capture = original_end
+
+        self.assertEqual(
+            repr(paddle.device.current_stream()), repr(prev_stream)
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
