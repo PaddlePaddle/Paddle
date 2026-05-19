@@ -1881,6 +1881,50 @@ def get_package_data_and_package_dir():
             package_data['paddle.libs'] += [
                 env_dict.get("XPU_XBLAS_CLANG_LIB_NAME")
             ]
+            shutil.copy(env_dict.get("XPU_XBLAS_CLANG"), libs_path)
+            xpu_xblas_clang_path = os.path.join(
+                libs_path, env_dict.get("XPU_XBLAS_CLANG_NAME")
+            )
+            os.chmod(
+                xpu_xblas_clang_path,
+                os.stat(xpu_xblas_clang_path).st_mode | 0o111,
+            )
+            package_data['paddle.libs'] += [
+                env_dict.get("XPU_XBLAS_CLANG_NAME")
+            ]
+            shutil.copy(env_dict.get("XPU_XBLAS_LLD"), libs_path)
+            xpu_xblas_lld_path = os.path.join(
+                libs_path, env_dict.get("XPU_XBLAS_LLD_NAME")
+            )
+            os.chmod(
+                xpu_xblas_lld_path,
+                os.stat(xpu_xblas_lld_path).st_mode | 0o111,
+            )
+            package_data['paddle.libs'] += [env_dict.get("XPU_XBLAS_LLD_NAME")]
+            shutil.copy(
+                env_dict.get("XPU_XBLAS_CLUSTER_BUILTINS_P800_ENC"), libs_path
+            )
+            package_data['paddle.libs'] += [
+                env_dict.get("XPU_XBLAS_CLUSTER_BUILTINS_P800_ENC_NAME")
+            ]
+            shutil.copy(
+                env_dict.get("XPU_XBLAS_SDNN_BUILTINS_P800_ENC"), libs_path
+            )
+            package_data['paddle.libs'] += [
+                env_dict.get("XPU_XBLAS_SDNN_BUILTINS_P800_ENC_NAME")
+            ]
+            shutil.copy(
+                env_dict.get("XPU_XBLAS_XBFLOAT16_BUILTINS_P800_ENC"), libs_path
+            )
+            package_data['paddle.libs'] += [
+                env_dict.get("XPU_XBLAS_XBFLOAT16_BUILTINS_P800_ENC_NAME")
+            ]
+            shutil.copy(
+                env_dict.get("XPU_XBLAS_XCCL_BUILTINS_P800_ENC"), libs_path
+            )
+            package_data['paddle.libs'] += [
+                env_dict.get("XPU_XBLAS_XCCL_BUILTINS_P800_ENC_NAME")
+            ]
             shutil.copy(env_dict.get("XPU_XFA_LIB"), libs_path)
             package_data['paddle.libs'] += [env_dict.get("XPU_XFA_LIB_NAME")]
             shutil.copy(env_dict.get("XPU_XPUDNN_LIB"), libs_path)
