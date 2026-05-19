@@ -125,8 +125,10 @@ int GetMaxNumThreadsImpl(HygonDCUArchSYCL arch) { return 1024; }
 
 int GetMaxNumThreadsImpl(CustomDeviceArch arch) {
 #ifdef CINN_WITH_CUSTOM_DEVICE
-  return static_cast<int>(phi::DeviceManager::GetMaxThreadsPerBlock(
+  if (arch.device_type.empty()) return 1024;
+  int v = static_cast<int>(phi::DeviceManager::GetMaxThreadsPerBlock(
       phi::CustomPlace(arch.device_type, arch.device_id)));
+  return v > 0 ? v : 1024;
 #else
   PADDLE_THROW(::common::errors::Unimplemented(
       "GetMaxNumThreadsImpl(CustomDeviceArch) requires "
@@ -174,8 +176,10 @@ int GetMultiProcessCountImpl(HygonDCUArchSYCL arch) {
 
 int GetMultiProcessCountImpl(CustomDeviceArch arch) {
 #ifdef CINN_WITH_CUSTOM_DEVICE
-  return static_cast<int>(phi::DeviceManager::GetMultiProcessors(
+  if (arch.device_type.empty()) return 1;
+  int v = static_cast<int>(phi::DeviceManager::GetMultiProcessors(
       phi::CustomPlace(arch.device_type, arch.device_id)));
+  return v > 0 ? v : 1;
 #else
   PADDLE_THROW(::common::errors::Unimplemented(
       "GetMultiProcessCountImpl(CustomDeviceArch) requires "
@@ -229,8 +233,10 @@ int GetMaxThreadsPerSmImpl(HygonDCUArchSYCL arch) {
 
 int GetMaxThreadsPerSmImpl(CustomDeviceArch arch) {
 #ifdef CINN_WITH_CUSTOM_DEVICE
-  return static_cast<int>(phi::DeviceManager::GetMaxThreadsPerMultiProcessor(
+  if (arch.device_type.empty()) return 2048;
+  int v = static_cast<int>(phi::DeviceManager::GetMaxThreadsPerMultiProcessor(
       phi::CustomPlace(arch.device_type, arch.device_id)));
+  return v > 0 ? v : 2048;
 #else
   PADDLE_THROW(::common::errors::Unimplemented(
       "GetMaxThreadsPerSmImpl(CustomDeviceArch) requires "
@@ -282,8 +288,10 @@ int GetMaxBlocksPerSmImpl(HygonDCUArchSYCL arch) {
 
 int GetMaxBlocksPerSmImpl(CustomDeviceArch arch) {
 #ifdef CINN_WITH_CUSTOM_DEVICE
-  return static_cast<int>(phi::DeviceManager::GetMaxBlocksPerMultiProcessor(
+  if (arch.device_type.empty()) return 0;
+  int v = static_cast<int>(phi::DeviceManager::GetMaxBlocksPerMultiProcessor(
       phi::CustomPlace(arch.device_type, arch.device_id)));
+  return v > 0 ? v : 0;  // 0 = "unknown", callers check `if (hw_max_bps > 0)`
 #else
   PADDLE_THROW(::common::errors::Unimplemented(
       "GetMaxBlocksPerSmImpl(CustomDeviceArch) requires "
@@ -478,7 +486,7 @@ int GetMaxThreads() {
     auto place = phi::CustomPlace(dev_type, device_id);
     max_threads = static_cast<int>(
         phi::DeviceManager::GetMultiProcessors(place) *
-        phi::DeviceManager::GetMaxThreadsPerMultiProcessor(place));
+        phi::DeviceManager::GetMaxThreadsPerMultiProcessor(place) * 4);
   }
 #endif
   return max_threads;

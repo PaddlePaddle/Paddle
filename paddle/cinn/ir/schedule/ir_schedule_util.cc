@@ -25,6 +25,11 @@
 
 #include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/common/target.h"
+#ifdef CINN_WITH_CUSTOM_DEVICE
+#include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/common/place.h"
+#endif
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/ir_visitor.h"
@@ -178,7 +183,34 @@ void SetCudaAxisInfo(ir::LoweredFunc lowered_func) {
     int min_blocks_per_sm = -1;
     info.set_max_threads_per_block(max_threads_per_block);
     if (!lowered_func->temp_spaces.empty()) {
+#ifdef CINN_WITH_CUSTOM_DEVICE
+      // Maintain ">= 64 reg/thread" budget (A100: 65536/1024 = 64).
+      // Scale by RegistersPerSM, not MaxThreadsPerSM, to avoid spill on
+      // wide-register architectures (e.g. MetaX 2x, Iluvatar 4x NV regs).
+      constexpr int kTargetRegPerThread = 64;
+      const auto& tgt = cinn::common::DefaultDeviceTarget();
+      int reg_per_sm = 65536;  // NV fallback
+      if (auto* arch =
+              std::get_if<cinn::common::CustomDeviceArch>(&tgt.arch.variant())) {
+        if (!arch->device_type.empty()) {
+          int v = phi::DeviceManager::GetMaxRegistersPerMultiProcessor(
+              phi::CustomPlace(arch->device_type, arch->device_id));
+          if (v > 0) reg_per_sm = v;
+        }
+      }
+      int mtps = tgt.get_max_threads_per_sm();
+      int target_total = reg_per_sm / kTargetRegPerThread;
+      if (mtps > 0) target_total = std::min(target_total, mtps);
+      if (target_total <= 0) target_total = 1024;  // extreme fallback
+      min_blocks_per_sm = target_total / max_threads_per_block;
+
+      int hw_max_bps = tgt.get_max_blocks_per_sm();
+      if (hw_max_bps > 0) {
+        min_blocks_per_sm = std::min(min_blocks_per_sm, hw_max_bps);
+      }
+#else
       min_blocks_per_sm = 1024 / max_threads_per_block;
+#endif
       if (min_blocks_per_sm > 1) {
         info.set_min_blocks_per_sm(min_blocks_per_sm);
       }

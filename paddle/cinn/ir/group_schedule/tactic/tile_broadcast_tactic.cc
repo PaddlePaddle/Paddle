@@ -614,6 +614,17 @@ void TileBroadcastTactic::Apply(ir::IRSchedule* sch,
     ApplyVectorize(sch, block_id, block_size);
     return;
   }
+#ifdef CINN_WITH_CUSTOM_DEVICE
+  // Thick-SM upgrade: only takes effect on devices like Iluvatar (mtps >= 4096).
+  // Doubles per-block work density; matches NV's medium-bucket serial-8 intent.
+  // Vectorize path uses the original block_size unchanged.
+  const int mtps = context_->target.get_max_threads_per_sm();
+  if (mtps >= 4096) {
+    const int ws = context_->config.tile_config.warp_size;
+    block_size = std::min(static_cast<int>(ws * 16),
+                          static_cast<int>(context_->target.max_num_threads()));
+  }
+#endif
   // check the number of warps here, if not a applicable
   // preserved_size, func will return later
   if (applied_layout_ == BroadcastLayout::NHWCLayout) {
