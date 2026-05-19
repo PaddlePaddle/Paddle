@@ -116,16 +116,11 @@ PADDLE_API void FusedAdamKernel(
     auto moments2_max_tmp = TensorPtrToOptionalTensor(moments2_max, idx);
 
     if (!use_adamw) {
-      // learning_rate arrives as FLOAT64 (SetDataType constraint).
-      // AdamDenseKernel<T> reads lr as T, so cast to T first.
-      auto lr_T = Cast<double, Context>(
-          dev_ctx, learning_rate, phi::CppTypeToDataType<T>::Type());
-
       AdamDenseKernel<T, Context>(
           dev_ctx,
           *params[idx],
           *grads[idx],
-          lr_T,
+          learning_rate,
           *moments1[idx],
           *moments2[idx],
           moments2_max_tmp,

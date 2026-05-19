@@ -167,7 +167,7 @@ struct AdamInfo {
         one_shapes.begin(), one_shapes.begin() + 1);
 
     params = GenerateRandomTensorVectors<T, Context>(*ctx, shapes);
-    learning_rate = GenerateConstantTensorVectors<MT, Context>(
+    learning_rate = GenerateConstantTensorVectors<double, Context>(
         *ctx, learning_rate_shapes, 1e-3)[0];
     adamw_learning_rate = GenerateConstantTensorVectors<AdamWScalarT, Context>(
         *ctx, learning_rate_shapes, 1e-3)[0];
@@ -499,13 +499,10 @@ TEST(fused_adam, test_fp32_cpu) {
 TEST(fused_adam, test_fp32_gpu) {
   auto shapes = GenerateRandomShapes(40, 0, 2 << 18);
   for (auto use_adamw : {false, true}) {
-    // AdamwDenseKernel now uses torch-compatible math (double-precision
-    // intermediates, FMA intrinsics) while FusedAdamKernel still uses the
+    // AdamwDenseKernel uses torch-compatible math (double-precision
+    // intermediates, FMA intrinsics) while FusedAdamKernel uses the
     // original float-precision math, so allow a small tolerance for adamw.
-    // For non-adamw, FusedAdamKernel reads learning_rate as double and casts
-    // to float, while AdamDenseKernel baseline uses a float learning_rate
-    // directly, causing up to 1 ulp difference.
-    float atol = use_adamw ? 1e-5f : 1e-6f;
+    float atol = use_adamw ? 1e-5f : 0.0f;
     for (auto amsgrad : {false, true}) {
       TestFusedAdamBase<float, GPUPlace>(shapes, atol, use_adamw, amsgrad);
     }

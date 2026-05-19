@@ -99,7 +99,7 @@ class TestAdamOp1(OpTest):
             'Moment1': moment1,
             'Moment2': moment2,
             'Moment2Max': moment2_max,
-            'LearningRate': np.array([learning_rate]).astype("float32"),
+            'LearningRate': np.array([learning_rate]).astype("float64"),
             'Beta1Pow': np.array([beta1_pow]).astype("float32"),
             'Beta2Pow': np.array([beta2_pow]).astype("float32"),
         }
@@ -130,6 +130,18 @@ class TestAdamOp1(OpTest):
 
 class TestAdamOp1AMSGrad(TestAdamOp1):
     def set_amsgrad(self):
+        # xpu not support `amsgrad`
+        if core.is_compiled_with_xpu():
+            self.amsgrad = False
+            self.no_check_set = ['Moment2MaxOut']
+        else:
+            self.amsgrad = True
+            self.no_check_set = None
+
+
+class TestAdamOp1AMSGradCompatible(TestAdamOp1):
+    def set_amsgrad(self):
+        paddle.set_flags({'FLAGS_use_accuracy_compatible_kernel': 1})
         # xpu not support `amsgrad`
         if core.is_compiled_with_xpu():
             self.amsgrad = False
@@ -174,7 +186,7 @@ class TestAdamOp2(OpTest):
             'Moment1': moment1,
             'Moment2': moment2,
             'Moment2Max': moment2_max,
-            'LearningRate': np.array([learning_rate]).astype("float32"),
+            'LearningRate': np.array([learning_rate]).astype("float64"),
             'Beta1Pow': np.array([beta1_pow]).astype("float32"),
             'Beta2Pow': np.array([beta2_pow]).astype("float32"),
         }
@@ -205,6 +217,12 @@ class TestAdamOp2(OpTest):
 
 class TestAdamOnlyTailOp(TestAdamOp2):
     def set_shape(self):
+        self.shape = 3
+
+
+class TestAdamOnlyTailOpCompatible(TestAdamOp2):
+    def set_shape(self):
+        paddle.set_flags({'FLAGS_use_accuracy_compatible_kernel': 1})
         self.shape = 3
 
 
@@ -252,7 +270,7 @@ class TestAdamOpMultipleSteps(OpTest):
             'Moment1': moment1,
             'Moment2': moment2,
             'Moment2Max': moment2_max,
-            'LearningRate': np.array([learning_rate]).astype("float32"),
+            'LearningRate': np.array([learning_rate]).astype("float64"),
             'Beta1Pow': np.array([self.beta1_pow]).astype("float32"),
             'Beta2Pow': np.array([self.beta2_pow]).astype("float32"),
         }
@@ -311,6 +329,18 @@ class TestAdamOpMultipleStepsAMSGrad(TestAdamOpMultipleSteps):
             self.no_check_set = None
 
 
+class TestAdamOpMultipleStepsAMSGradCompatible(TestAdamOpMultipleSteps):
+    def set_amsgrad(self):
+        paddle.set_flags({'FLAGS_use_accuracy_compatible_kernel': 1})
+        # xpu not support `amsgrad`
+        if core.is_compiled_with_xpu():
+            self.amsgrad = False
+            self.no_check_set = ['Moment2MaxOut']
+        else:
+            self.amsgrad = True
+            self.no_check_set = None
+
+
 def adam_step(inputs, attributes, weight_decay=False):
     '''
     Simulate one step of the adam optimizer
@@ -329,38 +359,40 @@ def adam_step(inputs, attributes, weight_decay=False):
     moment1 = inputs['Moment1']
     moment2 = inputs['Moment2']
     moment2_max = inputs['Moment2Max']
-    lr = inputs['LearningRate']
+    lr = float(inputs['LearningRate'])
     beta1_pow = inputs['Beta1Pow']
     beta2_pow = inputs['Beta2Pow']
 
-    epsilon = attributes['epsilon']
+    epsilon = np.float32(attributes['epsilon'])
 
     if 'beta1' in attributes:
-        beta1 = attributes['beta1']
+        beta1 = np.float32(attributes['beta1'])
     else:
         beta1 = inputs['Beta1Tensor'][0]
     if 'beta2' in attributes:
-        beta2 = attributes['beta2']
+        beta2 = np.float32(attributes['beta2'])
     else:
         beta2 = inputs['Beta2Tensor'][0]
 
     amsgrad = attributes['amsgrad']
 
-    moment1_out = beta1 * moment1 + (1 - beta1) * grad
-    moment2_out = beta2 * moment2 + (1 - beta2) * np.square(grad)
+    moment1_out = beta1 * moment1 + (np.float32(1) - beta1) * grad
+    moment2_out = beta2 * moment2 + (np.float32(1) - beta2) * np.square(grad)
 
-    lr_t = lr * np.sqrt(1 - beta2_pow) / (1 - beta1_pow)
+    # Match AdamKernelREG formula exactly:
+    #   denom = sqrt(m2) / sqrt(1 - beta2_pow) + epsilon
+    #   update = m1 / denom * (lr / (1 - beta1_pow))
+    bias_correction1 = np.float32(1) - beta1_pow
+    bias_correction2_sqrt = np.sqrt(np.float32(1) - beta2_pow)
 
     if amsgrad:
         moment2_max_out = np.maximum(moment2_out, moment2_max)
-        param_out = param - lr_t * (
-            moment1_out / (np.sqrt(moment2_max_out) + epsilon)
-        )
+        denom = np.sqrt(moment2_max_out) / bias_correction2_sqrt + epsilon
     else:
         moment2_max_out = np.empty_like(moment2_out)
-        param_out = param - lr_t * (
-            moment1_out / (np.sqrt(moment2_out) + epsilon)
-        )
+        denom = np.sqrt(moment2_out) / bias_correction2_sqrt + epsilon
+
+    param_out = param + (moment1_out / denom) * (-(lr / bias_correction1))
 
     return param_out, moment1_out, moment2_out, moment2_max_out
 
@@ -455,7 +487,7 @@ class TestSparseAdamOp(unittest.TestCase):
             "Moment2Max": np.zeros((height, row_numel)).astype("float32"),
             'Beta1Pow': beta1_pow,
             'Beta2Pow': beta2_pow,
-            "LearningRate": np.full((1), 2.0).astype("float32"),
+            "LearningRate": np.full((1), 2.0).astype("float64"),
         }
         self.init_output = np.full((height, row_numel), 0.0).astype("float32")
         self.attrs = {
@@ -548,6 +580,18 @@ class TestSparseAdamOpAMSGrad(TestSparseAdamOp):
             self.no_check_set = None
 
 
+class TestSparseAdamOpAMSGradCompatible(TestSparseAdamOp):
+    def set_amsgrad(self):
+        paddle.set_flags({'FLAGS_use_accuracy_compatible_kernel': 1})
+        # xpu not support `amsgrad`
+        if core.is_compiled_with_xpu():
+            self.amsgrad = False
+            self.no_check_set = ['Moment2MaxOut']
+        else:
+            self.amsgrad = True
+            self.no_check_set = None
+
+
 class TestAdamOpBetaVariable(OpTest):
     def set_amsgrad(self):
         self.amsgrad = False
@@ -580,7 +624,7 @@ class TestAdamOpBetaVariable(OpTest):
             'Moment1': moment1,
             'Moment2': moment2,
             'Moment2Max': moment2_max,
-            'LearningRate': np.array([learning_rate]).astype("float32"),
+            'LearningRate': np.array([learning_rate]).astype("float64"),
             'Beta1Pow': np.array([beta1_pow]).astype("float32"),
             'Beta2Pow': np.array([beta2_pow]).astype("float32"),
             "Beta1Tensor": np.array([beta1]).astype("float32"),
@@ -649,7 +693,7 @@ class TestAdamOpBetaEpsilonVariable(OpTest):
             'Moment1': moment1,
             'Moment2': moment2,
             'Moment2Max': moment2_max,
-            'LearningRate': np.array([learning_rate]).astype("float32"),
+            'LearningRate': np.array([learning_rate]).astype("float64"),
             'Beta1Pow': np.array([beta1_pow]).astype("float32"),
             'Beta2Pow': np.array([beta2_pow]).astype("float32"),
             "Beta1Tensor": np.array([beta1]).astype("float32"),
@@ -719,7 +763,7 @@ class TestAdamOpWithGlobalBetaPow(OpTest):
             'Moment1': moment1,
             'Moment2': moment2,
             'Moment2Max': moment2_max,
-            'LearningRate': np.array([learning_rate]).astype("float32"),
+            'LearningRate': np.array([learning_rate]).astype("float64"),
             'Beta1Pow': np.array([beta1_pow]).astype("float32"),
             'Beta2Pow': np.array([beta2_pow]).astype("float32"),
             "Beta1Tensor": np.array([beta1]).astype("float32"),
@@ -794,7 +838,7 @@ class TestAdamOpWithSkipUpdate(OpTest):
             'Moment1': moment1,
             'Moment2': moment2,
             'Moment2Max': moment2_max,
-            'LearningRate': np.array([learning_rate]).astype("float32"),
+            'LearningRate': np.array([learning_rate]).astype("float64"),
             'Beta1Pow': np.array([beta1_pow]).astype("float32"),
             'Beta2Pow': np.array([beta2_pow]).astype("float32"),
             "Beta1Tensor": np.array([beta1]).astype("float32"),
